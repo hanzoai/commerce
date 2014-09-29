@@ -1,0 +1,260 @@
+body {
+    background-color: #448198;
+}
+
+.whiteback
+{
+    background-color: white;
+    border-radius: 10px;
+    text-align: center;
+    padding: 10px 50px 20px;
+    position: relative;
+    display: inline-block;
+    -moz-box-shadow: 2px 2px 2px rgba(0, 0, 0, 0.36);
+    -webkit-box-shadow: 2px 2px 2px rgba(0, 0, 0, 0.36);
+    box-shadow: 2px 2px 2px rgba(0, 0, 0, 0.36);
+}
+
+.row {
+    margin-bottom: 30px;
+}
+
+.centerer {
+    text-align: center;
+}
+
+.bordered, .bb {
+    border: 1px black solid;
+}
+
+.whiteback2
+{
+    background-color: #fff;
+    border-radius: 10px;
+    text-align: center;
+    -moz-box-shadow: 2px 2px 2px rgba(0, 0, 0, 0.36);
+    -webkit-box-shadow: 2px 2px 2px rgba(0, 0, 0, 0.36);
+    box-shadow: 2px 2px 2px rgba(0, 0, 0, 0.36);
+    margin-bottom: 20px;
+}
+
+#donate-header {
+    margin: 5px;
+}
+
+#donate-headline #tagline {
+    margin-top: 15px;
+    font-size: 2.8em;
+    color: #FB7740;
+    text-shadow: 1px 1px #000000;
+    text-align: left;
+}
+
+#donate-headline p {
+    line-height: 1em;
+}
+
+#donate-button-lg {
+    margin: 0 auto;
+    width: 344px;
+    height: 132px;
+
+    background: url('../img/donate/donate-here-big.png'),
+                url('../img/donate/quarter.png');
+    background-repeat: no-repeat, no-repeat;
+    background-position: bottom center, top center;
+    background-size: auto, auto;
+
+    color: white;
+    text-align: center;
+    text-shadow: 1px 1px #000000;
+}
+
+#donate-button-lg .donate-here {
+    padding-top: 55px;
+    font-size: 2em;
+}
+
+#donate-button-lg .turn-off-ads {
+    padding-top: 28px;
+}
+
+#donate-plea {
+    line-height: 1.5em;
+    font-size:   1.3em;
+    text-align: left;
+}
+
+#donate-plea #one {
+    margin-bottom: 20px;
+}
+
+#donate-plea .orange {
+    color: #FB7740;
+}
+
+#donate-plea #two {
+    margin-bottom: 20px;
+    background: url('../img/donate/arrow.png');
+    background-repeat: no-repeat;
+    background-position: right 2.1em;
+}
+
+#donate-plea #pitch {
+    padding: 20px 70px 70px 0;
+    background: url('../img/donate/pez.png');
+    background-repeat: no-repeat;
+    background-position: bottom center;
+}
+
+#donate-action {}
+
+#donate-action p {
+    font-size: 1.3em;
+    text-align: center;
+    font-style: italic;
+    margin-bottom: 30px;
+}
+
+#donate-action .choice {
+    border: 1px #FB7740 solid;
+    height: 135px;
+    background-image: url('../img/donate/button.png');
+    background-origin: content-box;
+    text-align: center;
+    background-repeat: no-repeat;
+    cursor: pointer;
+}
+
+#donate-action .choice-number {
+    float: left;
+    width: 30px;
+    color: white;
+    font-size: 3em;
+    padding: 48px 16px;
+}
+
+#choice-donate-body, #choice-ad-body {
+    font-size: 1.2em;
+    margin-left: 54px;
+    padding: 10px 20px;
+    line-height: 1.5em;
+}
+
+#choice-ad-body {
+    padding-top: 20px;
+}
+
+#choice-donate-body span {
+    color: #FB7740;
+}
+
+#donate-button-sm {
+    margin: 0 auto;
+    margin-top: 10px;
+    height: 47px;
+    width: 190px;
+    color: white;
+
+    background: url('../img/donate/donate-here-small.png'),
+                url('../img/donate/quarter.png');
+    background-repeat: no-repeat, no-repeat;
+    background-position: bottom center, top center;
+    background-size: auto, 28%;
+}
+
+#donate-button-sm span {
+    padding-top: 22px;
+    display: block;
+    color: white;
+    text-shadow: 1px 1px #000000;
+}
+
+#donate-footer {
+    text-align: center;
+    padding-top: 30px;
+}
+
+.left {
+  text-align: left;
+}
+
+h1 {
+    font-size: 25px;
+    color: #be1121;
+    margin-top: 22px;
+    margin-bottom: 0;
+}
+
+h1 span
+{
+    font-family: "Helvetica Neue", Arial, Helvetica, Geneva, sans-serif;
+    font-weight: normal;
+    font-style: normal;
+    color: black;
+}
+
+h2
+{
+    color: #00b4fe;
+    font-size: 14px;
+    margin: 0;
+    line-height: 25px;
+    padding-bottom: 13px;
+    color: black;
+}
+
+.bulletpoints
+{
+   color: #000000;
+   font-size: 12px;
+   line-height: 25px;
+   text-align: left;
+   width: 469px;
+   margin-bottom: 35px;
+}
+
+.youtube
+{
+    margin: 30px 0 17px;
+}
+
+.bodytext
+{
+    color: #398dc1;
+    font-size: 18px;
+    line-height: 25px;
+    text-align: left;
+    width: 559px;
+    margin-bottom: 18px;
+}
+
+.content
+{
+    position: relative;
+}
+
+.logo
+{
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.downloadbutton
+{
+    margin: 20px 0 23px;
+}
+
+.terms
+{
+    border: 1px solid #333;
+    position: relative;
+    display: inline-block;
+    width: 100px;
+
+}
+
+.agreeto
+{
+    color: #d56217;
+}
