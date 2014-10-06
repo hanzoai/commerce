@@ -10,9 +10,9 @@ html(lang='en')
     link(rel='chrome-webstore-item', href='https://chrome.google.com/webstore/detail/dfjpomofbadillhmdjcjfbbdghgikmac')
 
     // Le styles
-    link(href='../css/bootstrap.min.css', rel='stylesheet')
-    link(href='../css/style.css', rel='stylesheet')
-    link(href='css/storefront.css', rel='stylesheet')
+    link(href='/css/bootstrap.min.css', rel='stylesheet')
+    link(href='/css/style.css', rel='stylesheet')
+    link(href='/storefront.css', rel='stylesheet')
 
     style(type='text/css').
       body {
@@ -66,37 +66,48 @@ html(lang='en')
     // /container
     script(src='https://www.paypalobjects.com/js/external/api.js')
 
-    script(src='js/jquery-2.0.3.min.js')
-    script(src='js/underscore-min.js')
-    script(src='js/backbone-min.js')
-    script(src='js/storefront.js')
+    script(src='/donate/js/jquery-2.0.3.min.js')
+    script(src='/donate/js/underscore-min.js')
+    script(src='/donate/js/backbone-min.js')
+    script(src='/storefront.js')
     script(type='text/javascript').
       storefrontStart({
         extension: {
           id:   2,
-          name: 'Smooth Gestures'
+          name: 'SKULLY AR-1'
+        },
+        thankyou: {
+          url: "http://www.youtube.com/watch?v=4cIrx-WfllA",
+          text: "Helping our users to be smooth operators since 2010",
         },
         price: {
-          min:       1.99,
-          suggested: 2.99,
-          max:       29.99
+          min:        1399,
+          suggested:  1399,
+          max:        9999,
+        },
+        kachingUrl: "checkout.verus.io",
+        paypal: {
+          loginButton: {
+            appid:       'ARoPGhAMN-4s8EluF1MgIq07w5mzGM0oI0zCO2jKSoviRT0CFqBgzI67hliF', // sandbox
+            // appid:     'AYHjgRAmyNjcUAuiw2Unz-s5ordZl-6_Z5qF9eIOGLf2r6oCQEgFRfTlLEYJ', // production
+            authend:     'sandbox',  // comment this out for production
+            containerid: 'login-with-paypal',
+            locale:      'en-us',
+            returnurl:   'http://k.yieldsquare.com/logged-in/2',
+            scopes:      'openid email https://uri.paypal.com/services/expresscheckout'
+          },
+          expressCheckoutEndpoint: 'www.sandbox.paypal.com',                               // sandbox
+          // expressCheckoutEndpoint: 'www.paypal.com',                                     // production
         }
       });
 
     script(type='text/javascript').
-      // google+ widget
-      (function() {
-        var po = document.createElement('script'); po.type = 'text/javascript'; po.async = true;
-        po.src = 'https://apis.google.com/js/plusone.js';
-        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
-      })();
-
       // ga code
-      var _gaq = _gaq || [];
-      _gaq.push(['_setAccount', 'UA-45074427-2']);
-      _gaq.push(['_trackPageview']);
-      (function() {
-        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-      })();
+      // var _gaq = _gaq || [];
+      // _gaq.push(['_setAccount', 'UA-66666666']);
+      // _gaq.push(['_trackPageview']);
+      // (function() {
+      //   var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      //   ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      //   var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      // })();

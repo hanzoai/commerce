@@ -1,6 +1,5 @@
 module.exports =
-  # hostname: 'localhost:3000'
-  hostname: 'k.yieldsquare.com'
+  hostname: 'checkout.verus.io'
 
   db:
     host:     'kaching.cr0jmxshfkhb.us-east-1.rds.amazonaws.com'

@@ -11,7 +11,7 @@ app = express()
 
 app.configure 'development', ->
   app.locals.pretty = true
-  app.set 'views', __dirname + '/views'
+  app.set 'views', __dirname
   app.set 'view engine', 'jade'
   app.use express.favicon()
   app.use express.logger 'dev'
@@ -26,8 +26,13 @@ app.configure ->
     res.header 'Access-Control-Allow-Origin', '*'
     next()
 
+  app.use express.static __dirname + '/storefront'
   app.use app.router
   app.use express.errorHandler()
+
+
+app.get '/', (req, res) ->
+  res.render 'storefront/donate/index'
 
 
 app.get '/logged-in/:id', (req, res) ->
