@@ -2,10 +2,10 @@ module.exports =
   hostname: 'checkout.verus.io'
 
   db:
-    host:     'kaching.cr0jmxshfkhb.us-east-1.rds.amazonaws.com'
-    user:     'kaching'
-    password: 'TyR9Kac51kSd'
-    database:  'kaching'
+    host:     'localhost'
+    user:     'root'
+    password: 'UsZXGHtvADP8V6nB'
+    database: 'cloudstart'
 
   paypal:
     restApi:
