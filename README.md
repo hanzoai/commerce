@@ -4,6 +4,8 @@ Crowdfunding platform.
 ## Requirements
 
 ### Squarespace
+Slight template modification + minimal JS to add interactivity to squarespace
+page.
 
 #### Cart
 - Save shopping info in cookie
@@ -22,6 +24,8 @@ Crowdfunding platform.
     - AJAX call, save cart info into our platform
 
 ### Crowdstart
+Secure checkout process, customer/order storage.
+
 - Save cart id + info into db
 - Read cart info on secure.crowdstart.io
 
