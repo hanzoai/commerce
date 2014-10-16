@@ -3,7 +3,7 @@ fs      = require 'fs'
 {spawn} = require 'child_process'
 
 instances = [
-  '23.21.131.233'  # kaching-us-east-1b (i-e4565e9f)
+  'checkout.verus.io'
 ]
 
 option '-e', '--email [email]', 'email of user'
@@ -11,7 +11,7 @@ option '-i', '--id [id]', 'id of extension'
 option '-h', '--host [host]', 'host address to bind to'
 option '-p', '--port [port]', 'port to run use'
 
-identityFile = process.env.HOME + '/.ssh/verus.pem'
+identityFile = process.env.HOME + '/.ssh/digitalocean-verus'
 sshOpts = '-o LogLevel=quiet -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i ' + identityFile
 
 # run a command or array of commands on an instance or array of instances
