@@ -125,5 +125,4 @@ app.get '/api/v1/save-purchase', (req, res) ->
   db.savePurchase email, id, (err) ->
     res.json err.toString(), 500 if err?
 
-
 module.exports = app
