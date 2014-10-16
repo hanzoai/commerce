@@ -17,7 +17,7 @@ module.exports =
       signature: 'An5ns1Kso7MWUdW4ErQKJJJ4qi4-AfYMWWkK4Zy4f8IxXgjdthkvmMSC'
 
   extensions:
-    0: # mailcheckerplus
+    0:
       redirect: 'http://checkout.verus.io/donate/logged-in.html'
 
       paypal:
