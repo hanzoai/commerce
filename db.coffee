@@ -1,5 +1,6 @@
 mysql    = require 'mysql'
 settings = require './settings'
+async    = require 'async'
 
 pool = mysql.createPool settings.db
 
@@ -34,22 +35,23 @@ module.exports =
   removePurchase: (email, id, cb) ->
     @query 'DELETE FROM users where email = ? and extensionId = ?', [email, id], cb
 
-  createdb: (cb = ->) ->    
-    @query '''
-      CREATE TABLE users (
-        id            INT AUTO_INCREMENT PRIMARY KEY,
-        email         VARCHAR(255) NOT NULL,
-        name          VARCHAR(255) NOT NULL,
-        street        VARCHAR(255) NOT NULL,
-        city          VARCHAR(255) NOT NULL,
-        state         VARCHAR(255) NOT NULL,
-        postal_code   VARCHAR(255) NOT NULL,
-        country       VARCHAR(255) NOT NULL,
-        UNIQUE(email)
-      );
-    ''', (err) =>
-      cb err if err?
-      @query '''
+  createdb: (cb = ->) ->
+    queries = [
+       '''
+        CREATE TABLE users (
+          id            INT AUTO_INCREMENT PRIMARY KEY,
+          email         VARCHAR(255) NOT NULL,
+          name          VARCHAR(255) NOT NULL,
+          street        VARCHAR(255) NOT NULL,
+          city          VARCHAR(255) NOT NULL,
+          state         VARCHAR(255) NOT NULL,
+          postal_code   VARCHAR(255) NOT NULL,
+          country       VARCHAR(255) NOT NULL,
+          UNIQUE(email)
+        );
+      ''',
+      
+      '''
         CREATE TABLE carts (
           id          INT AUTO_INCREMENT PRIMARY KEY,
           user_id     INT NOT NULL,
@@ -58,53 +60,61 @@ module.exports =
           
           FOREIGN KEY (user_id) REFERENCES users(id)
         );
-      ''', (err) =>
-        cb err if err?
+      ''',
       
-        @query '''
-          CREATE TABLE items (
-            id       INT AUTO_INCREMENT PRIMARY KEY,
-            name     VARCHAR(255) NOT NULL,
-            price    FLOAT NOT NULL,
-            sku      VARCHAR(40) NOT NULL
-          );
-        ''', (err) =>
-          cb err if err?
+      '''
+        CREATE TABLE items (
+          id       INT AUTO_INCREMENT PRIMARY KEY,
+          name     VARCHAR(255) NOT NULL,
+          price    FLOAT NOT NULL,
+          sku      VARCHAR(40) NOT NULL
+        );
+      ''',
 
-          @query '''
-            CREATE TABLE line_items (
-              id         INT AUTO_INCREMENT PRIMARY KEY,
-              quantity   INT NOT NULL,
-              cart_id    INT NOT NULL,
-              item_id    INT NOT NULL,
-            
-              FOREIGN KEY(cart_id) REFERENCES carts(id),
-              FOREIGN KEY(item_id) REFERENCES items(id)
-            );
-          ''', (err) =>
-            cb err if err?
-            
-            @query '''
-              CREATE TABLE orders (
-                id          INT AUTO_INCREMENT PRIMARY KEY,
-                created_at  DATETIME NOT NULL,
-                cart_id     INT NOT NULL,
-                
-                FOREIGN KEY (cart_id) REFERENCES carts(id)
-              );
-            ''', (err) =>
-              if err? then cb err else cb null
+       '''
+        CREATE TABLE line_items (
+          id         INT AUTO_INCREMENT PRIMARY KEY,
+          quantity   INT NOT NULL,
+          cart_id    INT NOT NULL,
+          item_id    INT NOT NULL,
+
+          FOREIGN KEY(item_id) REFERENCES items(id),
+          FOREIGN KEY(cart_id) REFERENCES carts(id)
+        );
+      ''',
+
+       '''
+        CREATE TABLE orders (
+          id          INT AUTO_INCREMENT PRIMARY KEY,
+          created_at  DATETIME NOT NULL,
+          cart_id     INT NOT NULL,
+  
+          FOREIGN KEY (cart_id) REFERENCES carts(id)
+        );
+      '''
+    ]
+
+    qs = queries.map (q) =>
+      (callback) =>
+        @query q, (err) =>
+          cb err if err?
+          callback(null)
+    
+    async.series(qs, () ->
+      cb null
+    )
   
   dropdb: (cb = ->) ->
-    @query 'DROP TABLE line_items;', (err) =>
+    @query 'DROP TABLE orders;', (err) =>
       cb err if err?
-      @query 'DROP TABLE items;', (err) =>
+      @query 'DROP TABLE line_items;', (err) =>
         cb err if err?
-        @query 'DROP TABLE carts;', (err) =>
+        @query 'DROP TABLE items;', (err) =>
           cb err if err?
-          @query 'DROP TABLE orders;', (err) =>
+          @query 'DROP TABLE carts;', (err) =>
             cb err if err?
             @query 'DROP TABLE users;', (err) =>
-              if err? then cb err else cb null
+              cb err
+      
   end: ->
     pool.end()
