@@ -37,14 +37,39 @@ module.exports =
   createdb: (cb = ->) ->
     @query '''
       CREATE TABLE users (
-        email       VARCHAR(255) NOT NULL,
-        extensionId VARCHAR(55)  NOT NULL,
-        previousDonation BOOL,
-        CONSTRAINT uc_email_extensionId UNIQUE (email, extensionId)
-      )
+        id      INT AUTO_INCREMENT PRIMARY KEY,
+        email   VARCHAR(255) NOT NULL,
+        name    VARCHAR(255) NOT NULL,
+        address VARCHAR(255) NOT NULL,
+        UNIQUE(email)
+      );
     ''', (err) ->
-      cb err
+      cb err if err?
 
+      @query '''
+        CREATE TABLE items (
+          id       INT AUTO_INCREMENT PRIMARY KEY,
+          name     VARCHAR(255) NOT NULL,
+          price    FLOAT NOT NULL,
+          sku      VARCHAR(40) NOT NULL,
+          minimum  INT NOT NULL
+        );
+      ''', (err) ->
+        cb err if err?
+    
+        @query '''
+          CREATE TABLE line_items (
+            id         INT AUTO_INCREMENT PRIMARY KEY,
+            quantity   INT NOT NULL,
+            user_id    INT NOT NULL,
+            item_id    INT NOT NULL,
+          
+            FOREIGN KEY(user_id) REFERENCES users(id),
+            FOREIGN KEY(item_id) REFERENCES items(id)
+          );
+        ''', (err) ->
+          cb err
+  
   dropdb: (cb = ->) ->
     @query 'DROP TABLE users', (err) ->
       cb err
