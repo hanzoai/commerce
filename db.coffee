@@ -49,50 +49,62 @@ module.exports =
       );
     ''', (err) =>
       cb err if err?
-      
       @query '''
-        CREATE TABLE orders (
+        CREATE TABLE carts (
           id          INT AUTO_INCREMENT PRIMARY KEY,
-          created_at  DATETIME NOT NULL
+          user_id     INT NOT NULL,
+          created_at  DATETIME NOT NULL,
+          updated_at  DATETIME,
+          
+          FOREIGN KEY (user_id) REFERENCES users(id)
         );
       ''', (err) =>
         cb err if err?
-
+      
         @query '''
-          CREATE TABLE carts (
-            id          INT AUTO_INCREMENT PRIMARY KEY,
-            created_at  DATETIME NOT NULL,
-            updated_at  DATETIME
+          CREATE TABLE items (
+            id       INT AUTO_INCREMENT PRIMARY KEY,
+            name     VARCHAR(255) NOT NULL,
+            price    FLOAT NOT NULL,
+            sku      VARCHAR(40) NOT NULL
           );
         ''', (err) =>
           cb err if err?
-        
+
           @query '''
-            CREATE TABLE items (
-              id       INT AUTO_INCREMENT PRIMARY KEY,
-              name     VARCHAR(255) NOT NULL,
-              price    FLOAT NOT NULL,
-              sku      VARCHAR(40) NOT NULL
+            CREATE TABLE line_items (
+              id         INT AUTO_INCREMENT PRIMARY KEY,
+              quantity   INT NOT NULL,
+              cart_id    INT NOT NULL,
+              item_id    INT NOT NULL,
+            
+              FOREIGN KEY(cart_id) REFERENCES carts(id),
+              FOREIGN KEY(item_id) REFERENCES items(id)
             );
           ''', (err) =>
             cb err if err?
-  
+            
             @query '''
-              CREATE TABLE line_items (
-                id         INT AUTO_INCREMENT PRIMARY KEY,
-                quantity   INT NOT NULL,
-                cart_id    INT NOT NULL,
-                item_id    INT NOT NULL,
-              
-                FOREIGN KEY(cart_id) REFERENCES carts(id),
-                FOREIGN KEY(item_id) REFERENCES items(id)
+              CREATE TABLE orders (
+                id          INT AUTO_INCREMENT PRIMARY KEY,
+                created_at  DATETIME NOT NULL,
+                cart_id     INT NOT NULL,
+                
+                FOREIGN KEY (cart_id) REFERENCES carts(id)
               );
             ''', (err) =>
               if err? then cb err else cb null
-    
+  
   dropdb: (cb = ->) ->
-    @query 'DROP TABLE users', (err) ->
-      cb err
-
+    @query 'DROP TABLE line_items;', (err) =>
+      cb err if err?
+      @query 'DROP TABLE items;', (err) =>
+        cb err if err?
+        @query 'DROP TABLE carts;', (err) =>
+          cb err if err?
+          @query 'DROP TABLE orders;', (err) =>
+            cb err if err?
+            @query 'DROP TABLE users;', (err) =>
+              if err? then cb err else cb null
   end: ->
     pool.end()
