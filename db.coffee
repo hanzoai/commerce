@@ -34,7 +34,7 @@ module.exports =
 
   removePurchase: (email, id, cb) ->
     @query 'DELETE FROM users where email = ? and extensionId = ?', [email, id], cb
-
+  
   createdb: (cb = ->) ->
     queries = [
        '''
@@ -93,7 +93,6 @@ module.exports =
         );
       '''
     ]
-
     qs = queries.map (q) =>
       (callback) =>
         @query q, (err) =>
@@ -105,16 +104,23 @@ module.exports =
     )
   
   dropdb: (cb = ->) ->
-    @query 'DROP TABLE orders;', (err) =>
-      cb err if err?
-      @query 'DROP TABLE line_items;', (err) =>
-        cb err if err?
-        @query 'DROP TABLE items;', (err) =>
+    queries = [
+      'DROP TABLE orders;',
+      'DROP TABLE line_items;',
+      'DROP TABLE items;',
+      'DROP TABLE carts;',
+      'DROP TABLE users;'
+    ]
+    
+    qs = queries.map (q) =>
+      (callback) =>
+        @query q, (err) =>
           cb err if err?
-          @query 'DROP TABLE carts;', (err) =>
-            cb err if err?
-            @query 'DROP TABLE users;', (err) =>
-              cb err
+          callback(null)
+    
+    async.series(qs, () ->
+      cb null
+    )
       
   end: ->
     pool.end()
