@@ -1,6 +1,17 @@
 # crowdstart
 Crowdfunding platform.
 
+## Development
+Download [Google App Engine SDK for
+Go](https://storage.googleapis.com/appengine-sdks/featured/go_appengine_sdk_darwin_amd64-1.9.13.zip)
+and add it to your `$PATH`.
+
+Start dev server:
+
+```bash
+$ goapp serve .
+```
+
 ## Requirements
 
 ### Squarespace
