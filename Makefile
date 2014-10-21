@@ -1,4 +1,5 @@
 sdk = go_appengine_sdk_darwin_amd64-1.9.13
+
 tools = github.com/nsf/gocode \
         code.google.com/p/go.tools/cmd/goimports \
         code.google.com/p/rog-go/exp/cmd/godef \
@@ -10,7 +11,7 @@ tools = github.com/nsf/gocode \
 
 all: deps test
 
-build: sdk/gopath/src/verus.io/crowdstart
+build: sdk
 	goapp build verus.io/crowdstart
 
 deps: sdk
@@ -21,9 +22,8 @@ sdk:
 	unzip $(sdk).zip && \
 	mv go_appengine sdk && \
 	rm $(sdk).zip && \
-
-sdk/gopath/src/verus.io/crowdstart: sdk
-	mkdir -p sdk/gopath/src/verus.io && ln -s $(pwd)/crowdstart $(pwd)/sdk/gopath/src/verus.io/crowdstart
+	mkdir -p sdk/gopath/src/verus.io && \
+	ln -s $(pwd)/src $(pwd)/sdk/gopath/src/verus.io/crowdstart
 
 serve:
 	goapp serve verus.io/crowdstart
