@@ -1,2 +1,4 @@
-zeekay.io/zip master
+github.com/codegangsta/negroni master
+github.com/gorilla/mux master
+github.com/gorilla/sessions master
 github.com/qedus/nds master
