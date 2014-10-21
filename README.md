@@ -2,15 +2,12 @@
 Crowdfunding platform.
 
 ## Development
-Download [Google App Engine SDK for
-Go](https://storage.googleapis.com/appengine-sdks/featured/go_appengine_sdk_darwin_amd64-1.9.13.zip)
-and add it to your `$PATH`.
+Setup your enviroment by running `make deps`. This will download the appengine
+sdk to `sdk/` and install any dependencies. A `.env` file will set your
+enviromental variables, you can use autoenv to automatically source the file
+when you enter the directory or manually `source .env` yourself.
 
-Start dev server:
-
-```bash
-$ goapp serve .
-```
+The Makefile has a few useful commands, like `serve`, `test`, etc.
 
 ## Requirements
 
