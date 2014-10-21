@@ -45,7 +45,7 @@ func init() {
 	router.Path("/add").Methods("POST").HandlerFunc(add)
 
 	n.UseHandler(router)
-	n.Run(":8080")
+	http.Handle("/", n)
 }
 
 func checkSession(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
