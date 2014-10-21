@@ -11,13 +11,23 @@ sdk:
 	  && mv go_appengine sdk \
 	  && rm $(sdk).zip
 
-bench:
-	goapp test ./... --bench=.
+serve:
+	goapp serve .
+
+tools:
+	goapp install github.com/nsf/gocode \
+                  code.google.com/p/go.tools/cmd/goimports \
+                  code.google.com/p/rog-go/exp/cmd/godef \
+                  code.google.com/p/go.tools/cmd/oracle \
+                  code.google.com/p/go.tools/cmd/gorename \
+                  github.com/golang/lint/golint \
+                  github.com/kisielk/errcheck \
+                  github.com/jstemmer/gotags
 
 test:
 	goapp test ./...
 
-serve:
-	goapp serve .
+bench:
+	goapp test ./... --bench=.
 
-.PHONY: all build deps test serve
+.PHONY: all build deps test serve tools
