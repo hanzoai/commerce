@@ -10,17 +10,20 @@ tools = github.com/nsf/gocode \
 
 all: deps test
 
-build:
+build: sdk/gopath/src/verus.io/crowdstart
 	goapp build verus.io/crowdstart
 
 deps: sdk
 	gpm install || curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.1/bin/gpm | bash
 
 sdk:
-	wget https://storage.googleapis.com/appengine-sdks/featured/$(sdk).zip \
-	  && unzip $(sdk).zip \
-	  && mv go_appengine sdk \
-	  && rm $(sdk).zip
+	wget https://storage.googleapis.com/appengine-sdks/featured/$(sdk).zip && \
+	unzip $(sdk).zip && \
+	mv go_appengine sdk && \
+	rm $(sdk).zip && \
+
+sdk/gopath/src/verus.io/crowdstart: sdk
+	mkdir -p sdk/gopath/src/verus.io && ln -s $(pwd)/crowdstart $(pwd)/sdk/gopath/src/verus.io/crowdstart
 
 serve:
 	goapp serve verus.io/crowdstart
