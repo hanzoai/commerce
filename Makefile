@@ -1,7 +1,8 @@
 platform = $(shell uname | tr '[A-Z]' '[a-z]')_amd64
 sdk = go_appengine_sdk_$(platform)-1.9.13
-goroot_pkg_path = $(shell pwd)/sdk/goroot/pkg/$(platform)_appengine/
-gopath_pkg_path = $(shell pwd)/sdk/gopath/pkg/$(platform)_appengine/
+sdk_path = $(shell pwd)/sdk
+goroot_pkg_path = $(sdk_path)/goroot/pkg/$(platform)_appengine/
+gopath_pkg_path = $(sdk_path)/gopath/pkg/$(platform)_appengine/
 
 deps = github.com/codegangsta/negroni \
        github.com/gorilla/mux \
@@ -29,10 +30,10 @@ deps: sdk
 sdk:
 	wget https://storage.googleapis.com/appengine-sdks/featured/$(sdk).zip && \
 	unzip $(sdk).zip && \
-	mv go_appengine sdk && \
+	mv go_appengine $(sdk_path) && \
 	rm $(sdk).zip && \
-	mkdir -p sdk/gopath/src/verus.io && \
-	ln -s $(pwd)/src $(pwd)/sdk/gopath/src/verus.io/crowdstart
+	mkdir -p $(sdk_path)/gopath/src/verus.io && \
+	ln -s $(pwd)/src $(sdk_path)/gopath/src/verus.io/crowdstart
 
 serve:
 	goapp serve verus.io/crowdstart
