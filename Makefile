@@ -49,4 +49,7 @@ test:
 bench:
 	goapp test verus.io/crowdstart/test --bench=.
 
-.PHONY: all build deps test serve tools
+deploy:
+	goapp deploy verus.io/crowdstart
+
+.PHONY: all build deploy deps test serve tools
