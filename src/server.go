@@ -43,6 +43,7 @@ func init() {
 	)
 
 	router.Path("/add").Methods("POST").HandlerFunc(add)
+	router.Path("/remove").Methods("POST").HandlerFunc(remove)
 
 	n.UseHandler(router)
 	http.Handle("/", n)
@@ -82,7 +83,7 @@ func setCart(cart Cart, session *sessions.Session) {
 // id, quantity, cart, session
 type updateCart func(int, int, Cart) Cart
 
-func modifier(w http.ResponseWriter, r *http.Request, f updateCart) {
+func cartModifier(w http.ResponseWriter, r *http.Request, f updateCart) {
 	session := getSession(r)
 	cart, _ := getCart(session)
 
@@ -125,7 +126,7 @@ func modifier(w http.ResponseWriter, r *http.Request, f updateCart) {
 func add(w http.ResponseWriter, r *http.Request) {
 	//cart [itemId quantity]
 	//TODO check if itemId correlates with catalog
-	modifier(w, r, func(id, qi int, cart Cart) Cart {
+	cartModifier(w, r, func(id, qi int, cart Cart) Cart {
 		processed := false
 		for _, item := range cart.items {
 			if item.id == id {
@@ -143,7 +144,7 @@ func add(w http.ResponseWriter, r *http.Request) {
 func remove(w http.ResponseWriter, r *http.Request) {
 	//cart [itemId]
 	//TODO check if itemId correlates with catalog
-	modifier(w, r, func(id, qi int, cart Cart) Cart {
+	cartModifier(w, r, func(id, qi int, cart Cart) Cart {
 		loc := -1
 		for i, item := range cart.items {
 			if item.id == id {
