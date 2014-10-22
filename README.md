@@ -2,12 +2,20 @@
 Crowdfunding platform.
 
 ## Development
-Setup your enviroment by running `make deps`. This will download the appengine
-sdk to `sdk/` and install any dependencies. A `.env` file will set your
-enviromental variables, you can use autoenv to automatically source the file
-when you enter the directory or manually `source .env` yourself.
+Setup your local development enviroment, installing the deps and the SDK and creating
+symlink from `src/` to `sdk/gopath`.
 
-The Makefile has a few useful commands, like `serve`, `test`, etc.
+```bash
+$ make deps
+```
+
+Optionally you can install the normal go cli tools into your local `sdk`:
+
+```bash
+$ make tools
+```
+
+You can `make serve` to run development server or `make test` to run tests.
 
 ## Requirements
 
