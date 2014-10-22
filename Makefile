@@ -1,6 +1,6 @@
-platform = $(shell uname | tr '[A-Z]' '[a-z]')_amd64
-sdk = go_appengine_sdk_$(platform)-1.9.13
-sdk_path = $(shell pwd)/sdk
+platform        = $(shell uname | tr '[A-Z]' '[a-z]')_amd64
+sdk 	        = go_appengine_sdk_$(platform)-1.9.13
+sdk_path        = $(shell pwd)/sdk
 goroot_pkg_path = $(sdk_path)/goroot/pkg/$(platform)_appengine/
 gopath_pkg_path = $(sdk_path)/gopath/pkg/$(platform)_appengine/
 
