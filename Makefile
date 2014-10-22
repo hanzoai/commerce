@@ -1,4 +1,4 @@
-platform = darwin_amd64
+platform = $(shell uname | tr '[A-Z]' '[a-z]')_amd64
 sdk = go_appengine_sdk_$(platform)-1.9.13
 goroot_pkg_path = $(shell pwd)/sdk/goroot/pkg/$(platform)_appengine/
 gopath_pkg_path = $(shell pwd)/sdk/gopath/pkg/$(platform)_appengine/
