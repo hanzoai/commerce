@@ -4,11 +4,6 @@ sdk_path        = $(shell pwd)/sdk
 goroot_pkg_path = $(sdk_path)/goroot/pkg/$(platform)_appengine/
 gopath_pkg_path = $(sdk_path)/gopath/pkg/$(platform)_appengine/
 
-deps = github.com/codegangsta/negroni \
-       github.com/gorilla/mux \
-       github.com/gorilla/sessions \
-       github.com/qedus/nds
-
 tools = github.com/nsf/gocode \
         code.google.com/p/go.tools/cmd/goimports \
         code.google.com/p/rog-go/exp/cmd/godef \
@@ -24,8 +19,7 @@ build: sdk
 	goapp build verus.io/crowdstart
 
 deps: sdk
-	goapp get $(deps) && \
-	goapp install $(deps)
+	gpm install || curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.1/bin/gpm | bash
 
 sdk:
 	wget https://storage.googleapis.com/appengine-sdks/featured/$(sdk).zip && \
@@ -33,7 +27,7 @@ sdk:
 	mv go_appengine $(sdk_path) && \
 	rm $(sdk).zip && \
 	mkdir -p $(sdk_path)/gopath/src/verus.io && \
-	ln -s $(pwd)/src $(sdk_path)/gopath/src/verus.io/crowdstart
+	ln -s $(pwd)/src $(sdk_path)/gopath/src/verus.io/crowdstart && \
 
 serve:
 	goapp serve verus.io/crowdstart

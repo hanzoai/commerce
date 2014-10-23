@@ -9,10 +9,10 @@ import (
 	"time"
     // "appengine"
     // "appengine/datastore"
-	"github.com/codegangsta/negroni"
-	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
     // "github.com/qedus/nds"
+    "github.com/gin-gonic/gin"
+    "os"
 )
 
 // TODO: Extract CRUD logic from add and remove functions and place in another
@@ -32,25 +32,33 @@ type Cart struct {
 }
 
 func init() {
+	staticRoot, _ := os.Getwd()
+
 	gob.Register(&LineItem{})
 	gob.Register(&Cart{})
 
-	router := mux.NewRouter().StrictSlash(false)
-	n := negroni.New(
-		negroni.NewLogger(),
-		negroni.NewStatic(http.Dir("skully_fe")),
-		negroni.HandlerFunc(checkSession),
-	)
+	r := gin.Default()
 
-	router.Path("/add").Methods("POST").HandlerFunc(add)
+    // middleware
+    r.Use(gin.Logger())
+    r.Use(gin.Recovery())
 
-	n.UseHandler(router)
-	http.Handle("/", n)
+    // Static files
+	r.Static("/static", staticRoot)
+
+	r.GET("/", func(c *gin.Context) {
+		c.String(200, "Hello Crowds")
+	})
+
+	r.POST("/add", add)
+
+	http.Handle("/", r)
 }
 
-func checkSession(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
-	session := getSession(r)
-	defer session.Save(r, w)
+func checkSession(c *gin.Context) {
+	session := getSession(c.Request)
+
+	defer session.Save(c.Request, c.Writer)
 	_, success := getCart(session)
 
 	if !success {
@@ -59,7 +67,7 @@ func checkSession(w http.ResponseWriter, r *http.Request, next http.HandlerFunc)
 			last_updated: time.Now().Unix(),
 		}
 	}
-	next(w, r)
+	c.Next()
 }
 
 func getSession(r *http.Request) *sessions.Session {
@@ -122,10 +130,10 @@ func modifier(w http.ResponseWriter, r *http.Request, f updateCart) {
 	cart = f(id, qi, cart)
 }
 
-func add(w http.ResponseWriter, r *http.Request) {
+func add(c *gin.Context) {
 	//cart [itemId quantity]
 	//TODO check if itemId correlates with catalog
-	modifier(w, r, func(id, qi int, cart Cart) Cart {
+	modifier(c.Writer, c.Request, func(id, qi int, cart Cart) Cart {
 		processed := false
 		for _, item := range cart.items {
 			if item.id == id {
@@ -140,10 +148,10 @@ func add(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func remove(w http.ResponseWriter, r *http.Request) {
+func remove(c *gin.Context) {
 	//cart [itemId]
 	//TODO check if itemId correlates with catalog
-	modifier(w, r, func(id, qi int, cart Cart) Cart {
+	modifier(c.Writer, c.Request, func(id, qi int, cart Cart) Cart {
 		loc := -1
 		for i, item := range cart.items {
 			if item.id == id {
