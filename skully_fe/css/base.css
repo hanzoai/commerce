@@ -1,0 +1,28 @@
+#header {
+    min-height: 65px;
+    background-color: #000000;
+}
+
+nav.top-bar {
+    background-color: #000000;
+}
+
+div.separator {
+    height: 10px;
+}
+
+a.button {
+    background-color: #d70404;
+}
+
+a.button:hover {
+    background-color: #d70404;
+}
+
+a.link:hover {
+    color: rgba(255,255,255,.7);
+}
+
+body {
+    background: #f6f6f6;
+}
