@@ -1,13 +1,17 @@
 package crowdstart
 
 import (
+	"appengine"
+	"encoding/gob"
 	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
-	"appengine"
 )
 
 func init() {
+	gob.Register(&LineItem{})
+	gob.Register(&Cart{})
+	
 	router := gin.Default()
 
 	router.Use(
