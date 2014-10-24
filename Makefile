@@ -1,8 +1,10 @@
 platform        = $(shell uname | tr '[A-Z]' '[a-z]')_amd64
 sdk 	        = go_appengine_sdk_$(platform)-1.9.13
 sdk_path        = $(shell pwd)/.sdk
-goroot_pkg_path = $(sdk_path)/goroot/pkg/$(platform)_appengine/
-gopath_pkg_path = $(sdk_path)/gopath/pkg/$(platform)_appengine/
+goroot          = $(sdk_path)/goroot
+gopath          = $(sdk_path)/gopath
+goroot_pkg_path = $(goroot)/pkg/$(platform)_appengine/
+gopath_pkg_path = $(gopath)/pkg/$(platform)_appengine/
 
 tools = github.com/nsf/gocode \
         code.google.com/p/go.tools/cmd/goimports \
@@ -12,6 +14,9 @@ tools = github.com/nsf/gocode \
         github.com/golang/lint/golint \
         github.com/kisielk/errcheck \
         github.com/jstemmer/gotags
+
+export GOROOT:= $(goroot)
+export GOPATH:= $(gopath)
 
 all: deps test
 
