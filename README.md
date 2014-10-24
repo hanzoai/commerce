@@ -19,36 +19,65 @@ You can `make serve` to run development server or `make test` to run tests.
 
 ## Requirements
 
-### Squarespace
-Slight template modification + minimal JS to add interactivity to squarespace
-page.
+# Frontend UI
 
-#### Cart
-- Save shopping info in cookie
+## store.skullysystems.com (store.crowdstart.io)
+Needs to display hover when something is in cart to link to cart page.
 
-#### Product page  (https://skully-staging.squarespace.com/store/ar-1)
-- Add cart should add item to crowdstart platform
+### - / product listing
+    - product
+        - thumbnail, title
 
-#### Cart hover (.sqs-pill-shopping-cart)
-- should appear on all pages when items are in cart
-- button goes to show cart / shopping cart view
+### - /product/<slug>
+    - title
+    - images
+    - description
+    - add to cart
+    - dropdowns
+        - color
+        - size
+    - force color/size stuff to be selected
 
-#### Shopping cart view (https://skully-staging.squarespace.com/commerce/show-cart)
-- List items in cart
-- Show total
-- Checkout drives to secure.crowdstart.io
-    - AJAX call, save cart info into our platform
+### - /show-cart
+    - products + total
+    - checkout
 
-### Crowdstart
-Secure checkout process, customer/order storage.
+### - /account
+    - Show orders
+    - Account information
 
-- Save cart id + info into db
-- Read cart info on secure.crowdstart.io
+### - /create-account
+### - /login
+### - /logout
+### - /reset-password
 
-#### secure.crowdstart.io
-Landing page/checkout
+### - /orders/<order-id>
+    - Show order
+    - Current status
+    - Tracking info?
+    - Ability to manage order up until shipped
 
-#### AJAX API
-- /api
-    - /save-cart/<cart-id>
-    - /get-cart/<cart-id>
+## secure.skullysystems.com (secure.crowdstart.io)
+### - /checkout/<cartid>
+    - billing info
+    - order summary
+    - shipping options
+    - continue
+    - display errors if unable to direct to complete
+    - save email / password for login?
+
+### - /checkout/complete
+    - thank you
+
+# Backend API
+# - /api/cart
+    - create, get, add, remove stuff from a cart
+
+# Admin UI
+## admin.crowdstart.io
+
+### - /login
+### - /logout
+
+# Models
+See [models.go](models.go).

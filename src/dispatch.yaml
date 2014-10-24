@@ -1,5 +1,0 @@
-application: crowdstart-io
-
-dispatch:
-  - url: "*/*"
-    module: default

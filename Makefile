@@ -1,6 +1,6 @@
 platform        = $(shell uname | tr '[A-Z]' '[a-z]')_amd64
 sdk 	        = go_appengine_sdk_$(platform)-1.9.13
-sdk_path        = $(shell pwd)/sdk
+sdk_path        = $(shell pwd)/.sdk
 goroot_pkg_path = $(sdk_path)/goroot/pkg/$(platform)_appengine/
 gopath_pkg_path = $(sdk_path)/gopath/pkg/$(platform)_appengine/
 
@@ -15,22 +15,24 @@ tools = github.com/nsf/gocode \
 
 all: deps test
 
-build: sdk
-	goapp build verus.io/crowdstart
+build: .sdk
+	goapp build crowdstart.io/api crowdstart.io/checkout crowdstart.io/store
 
-deps: sdk
+deps: .sdk
 	gpm install || curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.1/bin/gpm | bash
 
-sdk:
+.sdk:
 	wget https://storage.googleapis.com/appengine-sdks/featured/$(sdk).zip && \
 	unzip $(sdk).zip && \
 	mv go_appengine $(sdk_path) && \
 	rm $(sdk).zip && \
-	mkdir -p $(sdk_path)/gopath/src/verus.io && \
-	ln -s $(pwd)/src $(sdk_path)/gopath/src/verus.io/crowdstart && \
+	mkdir -p $(sdk_path)/gopath/src/crowdstart.io && \
+	ln -s $(pwd)/src $(sdk_path)/gopath/src/crowdstart.io/api && \
+	ln -s $(pwd)/src $(sdk_path)/gopath/src/crowdstart.io/checkout && \
+	ln -s $(pwd)/src $(sdk_path)/gopath/src/crowdstart.io/store
 
 serve:
-	goapp serve verus.io/crowdstart
+	$(sdk_path)/dev_appserver.py dispatch.yaml app.yaml api/app.yaml store/app.yaml checkout/app.yaml
 
 tools:
 	goapp get $(tools) && \
