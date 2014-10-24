@@ -43,47 +43,6 @@ func decode(buf []byte) (Cart, error) {
 	return cart, err
 }
 
-func CheckSession(ctx *gin.Context) {
-	log.Println("Checking session")
-	c := appengine.NewContext(ctx.Request)
-
-	cookie, err := ctx.Request.Cookie("crowdstart_cart")
-	_, reseterr := ctx.Get("reset")
-	if err != nil || reseterr != nil {
-		//id := uuid.NewV4().String()
-		ts := time.Now().Unix()
-
-		cart := Cart{
-			Created:      ts,
-			Last_updated: ts,
-		}
-
-		key, _ := SetCart(c, cart)
-
-		cookie := &http.Cookie{
-			Name:    "crowdstart_cart",
-			Value:   key,
-			Path:    "/",
-			Expires: time.Now().Add(24 * time.Hour),
-		}
-
-		http.SetCookie(ctx.Writer, cookie)
-
-		ctx.Set("cart", cart)
-		ctx.Set("key", key)
-		ctx.Next()
-	} else {
-		id := cookie.Value
-		if cart, err := GetCart(c, id); err == nil {
-			ctx.Set("cart", cart)
-		} else {
-			ctx.Set("reset", true)
-			CheckSession(ctx)
-		}
-		ctx.Next()
-	}
-}
-
 func SetCart(c appengine.Context, cart Cart) (string, error) {
  	if cartEnc, err := cart.encode(); err == nil {
 		var key *datastore.Key
