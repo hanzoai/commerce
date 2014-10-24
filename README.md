@@ -67,6 +67,8 @@ subdirectory.
   [`Makefile`](Makefile) for details).
 - If you update an `app.yaml`'s url patterns, make sure to update
   `dispatch.yaml` or they will be ignored.
+- You have to run `appcfg.py update_dispatch` for dispatch rules to be used in
+  production.
 
 ## Frontend UI
 
