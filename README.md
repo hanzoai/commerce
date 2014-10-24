@@ -81,4 +81,4 @@ You can `make serve` to run development server or `make test` to run tests.
 ### /logout
 
 ## Models
-Part of `api` module. See `api/models` package.
+Part of `api` module. See [`api/models`](blob/master/api/models/models.go) package.
