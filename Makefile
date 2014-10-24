@@ -40,12 +40,13 @@ tools:
 	gocode set lib-path "$(gopath_pkg_path):$(goroot_pkg_path)"
 
 test:
-	goapp test verus.io/crowdstart/test
+	goapp test crowdstart.io/api/test crowdstart.io/checkout/test crowdstart.io/store/test
 
 bench:
-	goapp test verus.io/crowdstart/test --bench=.
+	goapp test crowdstart.io/api/test crowdstart.io/checkout/test crowdstart.io/store/test --bench=.
 
 deploy:
-	goapp deploy verus.io/crowdstart
+	$(sdk_path)/appcfg.py update app.yaml api/app.yaml checkout/app.yaml store/app.yaml && \
+	$(sdk_path)/appcfg.py update_dispatch .
 
 .PHONY: all build deploy deps test serve tools

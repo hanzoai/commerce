@@ -9,3 +9,6 @@ dispatch:
 
   - url: "*/store/*"
     module: store
+
+  - url: "*/*"
+    module: default
