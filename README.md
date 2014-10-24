@@ -17,18 +17,16 @@ $ make tools
 
 You can `make serve` to run development server or `make test` to run tests.
 
-## Requirements
+## Frontend UI
 
-# Frontend UI
+### store.crowdstart.io (`store module`)
+- Need to display hover when something is in cart with link to show cart page.
 
-## store.skullysystems.com (store.crowdstart.io)
-Needs to display hover when something is in cart to link to cart page.
-
-### - / product listing
+### / product listing
     - product
         - thumbnail, title
 
-### - /product/<slug>
+### /product/<slug>
     - title
     - images
     - description
@@ -38,27 +36,29 @@ Needs to display hover when something is in cart to link to cart page.
         - size
     - force color/size stuff to be selected
 
-### - /show-cart
+### /show-cart
     - products + total
     - checkout
 
-### - /account
+### /account
     - Show orders
     - Account information
 
-### - /create-account
-### - /login
-### - /logout
-### - /reset-password
+### /create-account
+### /login
+### /logout
+### /reset-password
 
-### - /orders/<order-id>
+### /orders/<order-id>
     - Show order
     - Current status
     - Tracking info?
     - Ability to manage order up until shipped
 
-## secure.skullysystems.com (secure.crowdstart.io)
-### - /checkout/<cartid>
+### secure.crowdstart.io (`checkout` module)
+- Requires SSL.
+
+### /checkout/<cartid>
     - billing info
     - order summary
     - shipping options
@@ -66,18 +66,19 @@ Needs to display hover when something is in cart to link to cart page.
     - display errors if unable to direct to complete
     - save email / password for login?
 
-### - /checkout/complete
+### /checkout/complete
     - thank you
 
-# Backend API
-# - /api/cart
+## Backend API
+## api.crowdstart.io (`api` module)
+### /api/cart
     - create, get, add, remove stuff from a cart
 
-# Admin UI
-## admin.crowdstart.io
+## Admin UI
+### admin.crowdstart.io (`admin` module)
 
-### - /login
-### - /logout
+### /login
+### /logout
 
-# Models
-See [models.go](models.go).
+## Models
+Part of `api` module. See `api/models` package.
