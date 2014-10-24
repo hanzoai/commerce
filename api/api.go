@@ -11,9 +11,9 @@ func init() {
     router.Use(gin.Logger())
     router.Use(gin.Recovery())
 
-	router.GET("/v1/", func(ctx *gin.Context) {
+	router.GET("/api/", func(ctx *gin.Context) {
 		ctx.String(200, "api")
 	})
 
-	http.Handle("/v1/", router)
+	http.Handle("/api/", router)
 }

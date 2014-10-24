@@ -3,7 +3,6 @@ package store
 import (
 	"appengine"
 	"github.com/gin-gonic/gin"
-	"log"
 	"net/http"
 )
 
@@ -13,15 +12,15 @@ func init() {
     router.Use(gin.Logger())
     router.Use(gin.Recovery())
 
-    // Static files
-	router.Use(
-		setCtx,
-		CheckSession,
-	)
+	router.Use(setCtx)
+	router.Use(CheckSession)
 
-	router.GET("/", func(ctx *gin.Context) {
-		log.Println("Request on index")
-		ctx.String(200, "Index")
+	router.GET("/foo/", func(ctx *gin.Context) {
+		ctx.String(200, "foo")
+	})
+
+	router.GET("/bar/", func(ctx *gin.Context) {
+		ctx.String(200, "bar")
 	})
 
 	http.Handle("/", router)

@@ -11,5 +11,11 @@ handlers:
   static_files: static/index.html
   upload: static/index.html
 
-- url: /
-  static_dir: static
+- url: /css
+  static_dir: static/css
+
+- url: /js
+  static_dir: static/js
+
+- url: /img
+  static_dir: static/img
