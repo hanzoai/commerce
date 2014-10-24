@@ -52,15 +52,19 @@ Implements store frontend, product pages, cart view, order management.
 Should eventually implement some sort of reporting/management interface for
 clients.
 
-We use `dispatch.yaml` to pipe requests to the proper module. During local
-development you can use `localhost:8080` and subdir bound to each module, but
-it's presumed that in production a different mapping will be used.
+### `dispatch.yaml`
+We use `dispatch.yaml` to pipe requests to the proper module. Unfortunately
+configuring modules to route to different hostnames is not supported during
+local development, which is why each module's handlers are set to a different
+subdirectory.
 
-#### Common gotchas with `dispatch.yaml`
+#### Gotchas
 - Order matters, first matching pattern takes precedence.
 - Subdomains are incompatible with the local development server.
+- Routing to the same url in multiple Go modules is not allowed (at least
+  locally).
 - All `goapp` incantations change once you use modules (see our
-  [`Makefile`](Makefile)).
+  [`Makefile`](Makefile) for details).
 
 ## Frontend UI
 
