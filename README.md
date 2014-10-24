@@ -135,3 +135,6 @@ subdirectory.
 
 ## Models
 Part of `api` module. See [`api/models`](api/models/models.go) package.
+
+## TODO
+- Support [multitenancy](https://cloud.google.com/appengine/docs/go/multitenancy/#Go_About_multitenancy).
