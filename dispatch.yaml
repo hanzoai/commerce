@@ -1,0 +1,11 @@
+application: crowdstart-io
+
+dispatch:
+  - url: "*/v1/*"
+    module: api
+
+  - url: "*/checkout/*"
+    module: checkout
+
+  - url: "*/store/*"
+    module: store
