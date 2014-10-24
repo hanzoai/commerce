@@ -1,14 +1,23 @@
 application: crowdstart-io
 
 dispatch:
-  - url: "*/v1/*"
+  - url: "*/api/*"
     module: api
 
   - url: "*/checkout/*"
     module: checkout
 
-  - url: "*/store/*"
-    module: store
+  - url: "*/css/*"
+    module: default
+
+  - url: "*/js/*"
+    module: default
+
+  - url: "*/img/*"
+    module: default
+
+  - url: "*/"
+    module: default
 
   - url: "*/*"
-    module: default
+    module: store
