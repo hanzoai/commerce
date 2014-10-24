@@ -2,6 +2,7 @@ application: crowdstart-io
 module: default
 runtime: go
 api_version: go1
+version: v1
 
 instance_class: F2
 
@@ -13,5 +14,9 @@ automatic_scaling:
   max_concurrent_requests: 500
 
 handlers:
-- url: /.*
-  script: _go_app
+- url: /
+  static_files: static/index.html
+  upload: static/index.html
+
+- url: /
+  static_dir: static

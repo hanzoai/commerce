@@ -2,26 +2,18 @@ package store
 
 import (
 	"appengine"
-	"encoding/gob"
 	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
-	"os"
 )
 
 func init() {
-	staticRoot, _ := os.Getwd()
-
-	gob.Register(&LineItem{})
-	gob.Register(&Cart{})
-
 	router := gin.Default()
 
     router.Use(gin.Logger())
     router.Use(gin.Recovery())
 
     // Static files
-	router.Static("/static", staticRoot)
 	router.Use(
 		setCtx,
 		CheckSession,
