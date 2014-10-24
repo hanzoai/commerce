@@ -35,6 +35,9 @@ Crowdstart is broken up into several different [App Engine
 Modules](https://cloud.google.com/appengine/docs/go/modules/), for clarity,
 performance, reliability and scalability reasons. They are:
 
+### `default` (`app.yaml`)
+Not a Go app module, contains static file mappings for Google CDN hosting.
+
 ### `api` (`api/app.yaml`)
 Implements backend models and provides abstraction layer between Google's
 Datastore. `api/models` package is shared across project.
@@ -42,10 +45,7 @@ Datastore. `api/models` package is shared across project.
 ### `checkout` (`checkout/app.yaml`)
 Implements secure checkout, generally hosted at `https://secure.crowdstart.io`.
 
-### `default` (`app.yaml`)
-Not a Go app module, only contains static file mappings for Google CDN hosting.
-
-### `store` module (`store/app.yaml`)
+### `store` (`store/app.yaml`)
 Implements store frontend, product pages, cart view, order management.
 
 ### `admin` (`admin/app.yaml`)
