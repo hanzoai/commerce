@@ -33,6 +33,7 @@ deps: .sdk
 	rm $(sdk).zip && \
 	mkdir -p $(sdk_path)/gopath/src/crowdstart.io && \
 	ln -s $(pwd)/src $(sdk_path)/gopath/src/crowdstart.io/api && \
+	ln -s $(pwd)/src $(sdk_path)/gopath/src/crowdstart.io/admin && \
 	ln -s $(pwd)/src $(sdk_path)/gopath/src/crowdstart.io/checkout && \
 	ln -s $(pwd)/src $(sdk_path)/gopath/src/crowdstart.io/store
 
