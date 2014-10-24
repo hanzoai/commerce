@@ -2,20 +2,29 @@
 Crowdfunding platform.
 
 ## Development
-Setup your local development enviroment, installing the deps and the SDK and creating
-symlink from `src/` to `sdk/gopath`.
+You can use `make` to setup your development enviroment. Running:
 
-```bash
+```
 $ make deps
 ```
 
-Optionally you can install the normal go cli tools into your local `sdk`:
+...will download the Go App Engine SDK and unzip it into `.sdk/`. When hacking
+on things you'll want to ensure `$GOROOT` and `$GOPATH` point to their
+respective subdirs inside `.sdk/`.
+
+You can use the provided `.env` file (`source .env`), or
+[`autoenv`](https://github.com/kennethreitz/autoenv), which autosources `.env`
+files on entry.
+
+Optionally you can also install the common Go command line tools into your local
+SDK and configure `gocode` to work with:
 
 ```bash
 $ make tools
 ```
 
-You can `make serve` to run development server or `make test` to run tests.
+You can then use `make serve` to run the local development server and `make
+test` to run tests.
 
 ## Frontend UI
 
