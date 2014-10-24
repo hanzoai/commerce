@@ -16,6 +16,12 @@ dispatch:
   - url: "*/img/*"
     module: default
 
+  - url: "*/robots.txt"
+    module: default
+
+  - url: "*/humans.txt"
+    module: default
+
   - url: "*/"
     module: default
 

@@ -65,6 +65,8 @@ subdirectory.
   locally).
 - All `goapp` incantations change once you use modules (see our
   [`Makefile`](Makefile) for details).
+- If you update an `app.yaml`'s url patterns, make sure to update
+  `dispatch.yaml` or they will be ignored.
 
 ## Frontend UI
 
