@@ -10,14 +10,14 @@ $ make deps
 
 ...will download the Go App Engine SDK and unzip it into `.sdk/`. When hacking
 on things you'll want to ensure `$GOROOT` and `$GOPATH` point to their
-respective subdirs inside `.sdk/`.
+respective directories inside `.sdk/`.
 
-You can use the provided `.env` file (`source .env`), or
-[`autoenv`](https://github.com/kennethreitz/autoenv), which autosources `.env`
-files on entry.
+You can source the provided `.env` file to set these variables, or
+[`autoenv`](https://github.com/kennethreitz/autoenv) to set them automatically
+when entering the project directory.
 
-Optionally you can also install the common Go command line tools into your local
-SDK and configure `gocode` to work with:
+You can install the common Go command line tools and configure `gocode` to work
+with App Engine by running:
 
 ```bash
 $ make tools
@@ -27,8 +27,13 @@ You can then use `make serve` to run the local development server and `make
 test` to run tests.
 
 ## Architecture
+- Go is used for all backend code.
+- Datastore is primary database
+- Hosted on Google App Engine
+
 Crowdstart is broken up into several different [App Engine
-Modules](https://cloud.google.com/appengine/docs/go/modules/).
+Modules](https://cloud.google.com/appengine/docs/go/modules/), for clarity,
+performance, reliability and scalability reasons. They are:
 
 ### `api` module
 Implements backend models and provides abstraction layer between Google's
