@@ -16,6 +16,10 @@ func init() {
 
 	api := router.Group("/v1")
 	{
+		api.GET("/", func(c *gin.Context) {
+			c.Redirect(301, "http://crowdstart.io")
+		})
+
 		api.GET("/cart/:id", cart.Get)
 		api.POST("/cart",	 cart.Add)
 		api.PUT("/cart",	 cart.Update)
