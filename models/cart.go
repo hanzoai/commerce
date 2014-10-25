@@ -5,33 +5,33 @@ import (
 )
 
 type LineItem struct {
-	product     Product
-	variant     ProductVariant
-	description string
-	quantity    int
+	Product     Product
+	Variant     ProductVariant
+	Description string
+	Quantity    int
 }
 
 type Cart struct {
-	id        string
-	items     []LineItem
-	createdAt time.Time
+	Id        string
+	Items     []LineItem
+	CreatedAt time.Time
 }
 
 type Order struct {
-	id              string
-	items           []LineItem
-	createdAt       time.Time
-	user            User
-	shippingAddress Address
-	billingAddress  Address
-	subtotal        int
-	tax             int
-	shippingOption  ShippingOption
-	shipping        int
-	total           int
+	Id              string
+	Items           []LineItem
+	CreatedAt       time.Time
+	User            User
+	ShippingAddress Address
+	BillingAddress  Address
+	Subtotal        int
+	Tax             int
+	ShippingOption  ShippingOption
+	Shipping        int
+	Total           int
 }
 
 type ShippingOption struct {
-	name  string
-	price Currency
+	Name  string
+	Price Currency
 }

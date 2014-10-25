@@ -22,20 +22,43 @@ func New(ctx interface{}) (d *Datastore) {
 	return d
 }
 
-func (d *Datastore) NewKey(kind, stringID string, intID int64, parent *Key) *Key {
-	return NewKey(d.ctx, kind, stringID, intID, parent)
+func (d *Datastore) Get(key string, value interface{}) error {
+	k, err := DecodeKey(key)
+	if err != nil {
+		return err
+	}
+
+	return nds.Get(d.ctx, k, value)
 }
 
-func (d *Datastore) Get(key *Key, value interface{}) error {
-	return nds.Get(d.ctx, key, value)
+func (d *Datastore) Put(key string, src interface{}) (string, error) {
+	k := NewIncompleteKey(d.ctx, key, nil)
+	k, err := nds.Put(d.ctx, k, src)
+	if err != nil {
+		return "", err
+	}
+	return k.Encode(), nil
 }
 
-func (d *Datastore) Put(key *Key, src interface{}) (*Key, error) {
-	return nds.Put(d.ctx, key, src)
+func (d *Datastore) Update(key string, src interface{}) (string, error) {
+	k, err := DecodeKey(key)
+	if err != nil {
+		return "", err
+	}
+
+	k, err = nds.Put(d.ctx, k, src)
+	if err != nil {
+		return "", err
+	}
+	return k.Encode(), nil
 }
 
-func (d *Datastore) Delete(key *Key) error {
-	return nds.Delete(d.ctx, key)
+func (d *Datastore) Delete(key string) error {
+	k, err := DecodeKey(key)
+	if err != nil {
+		return err
+	}
+	return nds.Delete(d.ctx, k)
 }
 
 func (d *Datastore) RunInTransaction(f func(tc appengine.Context) error, opts *TransactionOptions) error {
