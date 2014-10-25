@@ -13,9 +13,9 @@ func init() {
     router.Use(gin.Recovery())
     router.Use(middleware.Host())
 
-	router.GET("/api/", func(ctx *gin.Context) {
+	router.GET("/v1/", func(ctx *gin.Context) {
 		ctx.String(200, "api")
 	})
 
-	http.Handle("/api/", router)
+	http.Handle("/v1/", router)
 }
