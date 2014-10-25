@@ -5,8 +5,7 @@ import (
 )
 
 type LineItem struct {
-	Product     Product
-	Variant     ProductVariant
+	SKU			string
 	Description string
 	Quantity    int
 }
