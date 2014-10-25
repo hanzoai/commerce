@@ -3,13 +3,8 @@ package store
 import (
 	"appengine"
 	"appengine/datastore"
-	"github.com/gin-gonic/gin"
-	//	"github.com/twinj/uuid"
 	"bytes"
 	"encoding/gob"
-	"log"
-	"net/http"
-	"time"
 )
 
 type LineItem struct {
