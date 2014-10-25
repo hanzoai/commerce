@@ -3,6 +3,7 @@ package datastore
 import (
 	"appengine"
 	. "appengine/datastore"
+	"github.com/gin-gonic/gin"
 	"github.com/qedus/nds"
 )
 
@@ -10,8 +11,15 @@ type Datastore struct {
 	ctx appengine.Context
 }
 
-func New(ctx appengine.Context) *Datastore {
-	return &Datastore{ctx}
+func New(ctx interface{}) (d *Datastore) {
+	switch ctx := ctx.(type) {
+	case appengine.Context:
+		d = &Datastore{ctx}
+	case gin.Context:
+		c := ctx.MustGet("appengine").(appengine.Context)
+		d = &Datastore{c}
+	}
+	return d
 }
 
 func (d *Datastore) NewKey(kind, stringID string, intID int64, parent *Key) *Key {

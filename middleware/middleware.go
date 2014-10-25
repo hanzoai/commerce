@@ -34,7 +34,6 @@ func Sessions(sessionNames ...string) gin.HandlerFunc {
 //	 datastore.RunInTransaction -> nds.RunInTransaction
 func Datastore() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		ctx := c.MustGet("appengine").(appengine.Context)
-		c.Set("datastore", datastore.New(ctx))
+		c.Set("datastore", datastore.New(c))
 	}
 }
