@@ -13,6 +13,10 @@ func AppEngine() gin.HandlerFunc {
 	}
 }
 
+func GetAppEngine(c *gin.Context) appengine.Context {
+	return c.MustGet("appengine").(appengine.Context)
+}
+
 // Automatically get the Host header so we can decide what to do with a given
 // request.
 func Host() gin.HandlerFunc {
