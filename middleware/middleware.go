@@ -2,12 +2,9 @@ package middleware
 
 import (
 	"appengine"
-	"appengine/datastore"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/sessions"
-	"github.com/qedus/nds"
-	"net/http"
-	"time"
+	"crowdstart.io/datastore"
 )
 
 // Automatically get App Engine context.
@@ -19,13 +16,13 @@ func AppEngine() gin.HandlerFunc {
 }
 
 // Middleware for working with sessions
-func Sessions(sessions ...string) gin.HandlerFunc {
+func Sessions(sessionNames ...string) gin.HandlerFunc {
 	var store = sessions.NewCookieStore([]byte("ae5ZsJJ6ThySVPzkQM87KQSAtLfe67eU"))
 
-	return func(ctx *gin.Context) {
-		for _, sessionName := range sessions {
+	return func(c *gin.Context) {
+		for _, sessionName := range sessionNames {
 			session, _ := store.Get(c.Request, sessionName)
-			c.Set(session, sessionName)
+			c.Set(sessionName, session)
 		}
 	}
 }
@@ -36,6 +33,8 @@ func Sessions(sessions ...string) gin.HandlerFunc {
 //	 datastore.Delete -> nds.Delete
 //	 datastore.RunInTransaction -> nds.RunInTransaction
 func Datastore() gin.HandlerFunc {
-	return func(ctx *gin.Context) {
+	return func(c *gin.Context) {
+		ctx := c.MustGet("appengine").(appengine.Context)
+		c.Set("datastore", datastore.New(ctx))
 	}
 }

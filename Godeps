@@ -1,4 +1,3 @@
-github.com/gorilla/securecookie
 github.com/gin-gonic/gin app_engine
 github.com/gorilla/sessions master
 github.com/qedus/nds master
