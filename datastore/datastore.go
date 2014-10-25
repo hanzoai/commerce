@@ -5,6 +5,7 @@ import (
 	. "appengine/datastore"
 	"github.com/gin-gonic/gin"
 	"github.com/qedus/nds"
+	"crowdstart.io/middleware"
 )
 
 type Datastore struct {
@@ -15,8 +16,8 @@ func New(ctx interface{}) (d *Datastore) {
 	switch ctx := ctx.(type) {
 	case appengine.Context:
 		d = &Datastore{ctx}
-	case gin.Context:
-		c := ctx.MustGet("appengine").(appengine.Context)
+	case *gin.Context:
+		c := middleware.GetAppEngine(ctx)
 		d = &Datastore{c}
 	}
 	return d
@@ -31,8 +32,8 @@ func (d *Datastore) Get(key string, value interface{}) error {
 	return nds.Get(d.ctx, k, value)
 }
 
-func (d *Datastore) Put(key string, src interface{}) (string, error) {
-	k := NewIncompleteKey(d.ctx, key, nil)
+func (d *Datastore) Put(kind string, src interface{}) (string, error) {
+	k := NewIncompleteKey(d.ctx, kind, nil)
 	k, err := nds.Put(d.ctx, k, src)
 	if err != nil {
 		return "", err

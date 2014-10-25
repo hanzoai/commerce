@@ -3,7 +3,10 @@ package cart
 import (
 	"github.com/gin-gonic/gin"
 	"crowdstart.io/datastore"
+	"crowdstart.io/middleware"
 	"crowdstart.io/models"
+	"crowdstart.io/util"
+
 )
 
 func Get(c *gin.Context) {
@@ -11,7 +14,9 @@ func Get(c *gin.Context) {
 	id := c.Params.ByName("id")
 
 	var json models.Cart
-	if err := d.Get(id, json); err != nil {
+	if err := d.Get(id, &json); err != nil {
+		ctx := middleware.GetAppEngine(c)
+		ctx.Errorf("%v", err)
 		c.JSON(500, gin.H{"status": "unable to find cart"})
 	} else {
 		c.JSON(200, json)
@@ -22,11 +27,16 @@ func Add(c *gin.Context) {
 	d := datastore.New(c)
 
 	var json models.Cart
-	c.Bind(&json)
 
-	key, err := d.Put("cart", json)
+	util.DecodeJson(c, &json)
+	ctx := middleware.GetAppEngine(c)
+	ctx.Infof("JSON: %v", json)
+
+	key, err := d.Put("cart", &json)
 	if err != nil {
-		c.JSON(500, gin.H{"status": "unable to find cart"})
+		ctx := middleware.GetAppEngine(c)
+		ctx.Errorf("%v", err)
+		c.JSON(500, gin.H{"status": "unable to save cart"})
 	} else {
 		json.Id = key
 		c.JSON(200, json)
@@ -38,10 +48,12 @@ func Update(c *gin.Context) {
 	id := c.Params.ByName("id")
 
 	var json models.Cart
-	c.Bind(&json)
+	util.DecodeJson(c, &json)
 
-	key, err := d.Update(id, json)
+	key, err := d.Update(id, &json)
 	if err != nil {
+		ctx := middleware.GetAppEngine(c)
+		ctx.Errorf("%v", err)
 		c.JSON(500, gin.H{"status": "unable to find cart"})
 	} else {
 		json.Id = key

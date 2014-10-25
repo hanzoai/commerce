@@ -13,17 +13,20 @@ func init() {
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
 	router.Use(middleware.Host())
+	router.Use(middleware.AppEngine())
 
 	api := router.Group("/v1")
 
-	api.GET("/", func(c *gin.Context) {
-		c.Redirect(301, "http://crowdstart.io")
-	})
-
+	// Cart API
 	api.GET("/cart/:id", cart.Get)
 	api.POST("/cart",	 cart.Add)
 	api.PUT("/cart",	 cart.Update)
 	api.DELETE("/cart",  cart.Delete)
+
+	// Redirect root
+	api.GET("/", func(c *gin.Context) {
+		c.Redirect(301, "http://crowdstart.io")
+	})
 
 	http.Handle("/v1/", router)
 }
