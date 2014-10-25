@@ -16,7 +16,11 @@
 
     <style id="checkout-page-styles">
 
+      #form-wrapper > div:nth-child(2){ /*Shipping details.*/
+      display:none;
+      }
 
+      
 /*! Squarespace LESS Compiler  (less.js language v1.3.3)  */
 #sqs-standard-checkout {
   background: #f3f3f3;
@@ -28,10 +32,10 @@
   background: #222;
 }
 
+
 .sqs-system-error {
   display: none !important;
 }
-
 div.dialog-screen-overlay.sqs-system-error-overlay {
   display: none !important;
   z-index: -1 !important;
@@ -71,6 +75,9 @@ div.dialog-screen-overlay.sqs-system-error-overlay {
     <!-- GOOGLE ANALYTICS -->
     
   <style>@-webkit-keyframes popiuwzlrsoreqxdrjlyowqaspczsolayvi {50% {-webkit-transform:scale(1.2);}100% {-webkit-transform:scale(1);}}@keyframes popiuwzlrsoreqxdrjlyowqaspczsolayvi {50% {-webkit-transform:scale(1.2);transform:scale(1.2);}100% {-webkit-transform:scale(1);transform:scale(1);}}#iuwzlrsoreqxdrjlyowqaspczsolayvi{padding:0;margin:0;font:13px Arial,Helvetica;text-transform:none;font-size: 100%;vertical-align:baseline;line-height:normal;color:#fff;position:static;border:solid 2px #fff !important;box-sizing:content-box !important;color:#fff !important;display:block !important;height:auto !important;margin:0 !important;opacity:0.9 !important;padding:7px 10px !important;position:fixed !important;visibility:visible !important;width:auto !important;z-index:2147483647 !important;-webkit-border-radius:5px !important;-webkit-box-shadow:0px 0px 20px #000 !important;-webkit-box-sizing:content-box !important;}.iuwzlrsoreqxdrjlyowqaspczsolayvi-blocked{padding:0;margin:0;font:13px Arial,Helvetica;text-transform:none;font-size: 100%;vertical-align:baseline;line-height:normal;color:#fff;position:static;color:#AAA !important;display:inline !important;text-decoration:line-through !important;}#iuwzlrsoreqxdrjlyowqaspczsolayvi br{display:block !important;padding:0;margin:0;font:13px Arial,Helvetica;text-transform:none;font-size: 100%;vertical-align:baseline;line-height:normal;color:#fff;position:static;}#iuwzlrsoreqxdrjlyowqaspczsolayvi span{background:transparent !important;padding:0;margin:0;font:13px Arial,Helvetica;text-transform:none;font-size: 100%;vertical-align:baseline;line-height:normal;color:#fff;position:static;}#iuwzlrsoreqxdrjlyowqaspczsolayvi div{padding:0;margin:0;font:13px Arial,Helvetica;text-transform:none;font-size: 100%;vertical-align:baseline;line-height:normal;color:#fff;position:static;border:0 !important;margin:0 !important;padding:0 !important;width:auto !important;letter-spacing:normal !important;font:13px Arial,Helvetica !important;text-align:left !important;text-shadow:none !important;text-transform:none !important;word-spacing:normal !important;}#iuwzlrsoreqxdrjlyowqaspczsolayvi a{padding:0;margin:0;font:13px Arial,Helvetica;text-transform:none;font-size: 100%;vertical-align:baseline;line-height:normal;color:#fff;position:static;font-weight:normal !important;background:none !important;text-decoration:underline !important;color:#fff !important;}a#iuwzlrsoreqxdrjlyowqaspczsolayvi-gear{padding:0;margin:0;font:13px Arial,Helvetica;text-transform:none;font-size: 100%;vertical-align:baseline;line-height:normal;color:#fff;position:static;text-decoration:none !important;position:absolute !important;display:none !important;font-size:20px !important;width:20px !important;height:20px !important;line-height:20px !important;text-align:center !important;background-color:rgba(255,255,255,.8) !important;background-image:url(chrome-extension://mlomiejdfkolichcflejclcbmpeaniij/data/images/gear.svg) !important;background-size:16px 16px !important;background-position:center center !important;background-repeat:no-repeat !important;text-decoration:none !important;}a#iuwzlrsoreqxdrjlyowqaspczsolayvi-gear:hover{-webkit-animation-name:popiuwzlrsoreqxdrjlyowqaspczsolayvi !important;animation-name:popiuwzlrsoreqxdrjlyowqaspczsolayvi !important;-webkit-animation-duration:0.3s !important;animation-duration:0.3s !important;}#iuwzlrsoreqxdrjlyowqaspczsolayvi:hover #iuwzlrsoreqxdrjlyowqaspczsolayvi-gear{text-decoration:none !important;display:inline-block !important;}@media print{#iuwzlrsoreqxdrjlyowqaspczsolayvi{display:none !important;}}</style><script charset="utf-8" id="yui_3_17_2_1_1414184167898_446" src="./checkout_files/js"></script><script type="text/javascript" charset="UTF-8" src="./checkout_files/{common,util,stats}.js"></script><script type="text/javascript" charset="UTF-8" src="./checkout_files/AuthenticationService.Authenticate"></script></head>
+
+  <body id="sqs-standard-checkout" class="native-currency-code-usd">
+
 
     <!-- MAIN SCRIPT -->
     <script type="text/javascript">
@@ -389,9 +396,15 @@ div.dialog-screen-overlay.sqs-system-error-overlay {
       </div>
 
       <!-- CHECKOUT FORM -->
-      <div id="form-wrapper" class="right-column-wrapper"><div id="yui_3_17_2_1_1414184167898_246" class="yui3-widget sqs-widget sqs-checkout-form"><div id="yui_3_17_2_1_1414184167898_248" class="sqs-checkout-form-content"><form action="https://secure.squarespace.com/commerce/submit-order?crumb=6ccefd8a56" method="POST" accept-charset="UTF-8" enctype="application/x-www-form-urlencoded; charset=utf-8"><input type="hidden" name="forceTestMode"><input type="hidden" name="customFormSubmission"><div id="yui_3_17_2_1_1414184167898_258" class="yui3-widget sqs-widget sqs-checkout-form-section card sqs-checkout-form-address sqs-checkout-form-billing editing"><div id="yui_3_17_2_1_1414184167898_260" class="sqs-checkout-form-billing-content"><div class="title">Billing Info<a class="edit-button">edit</a></div>
+      <div id="form-wrapper" class="right-column-wrapper"><div id="yui_3_17_2_1_1414184167898_246" class="yui3-widget sqs-widget sqs-checkout-form">
+          <div id="yui_3_17_2_1_1414184167898_248" class="sqs-checkout-form-content">
+            <form action="https://secure.squarespace.com/commerce/submit-order?crumb=6ccefd8a56" method="POST" accept-charset="UTF-8" enctype="application/x-www-form-urlencoded; charset=utf-8">
+              <input type="hidden" name="forceTestMode"><input type="hidden" name="customFormSubmission">
+              <div id="yui_3_17_2_1_1414184167898_258" class="yui3-widget sqs-widget sqs-checkout-form-section card sqs-checkout-form-address sqs-checkout-form-billing editing">
+                <div id="yui_3_17_2_1_1414184167898_260" class="sqs-checkout-form-billing-content">
+                  <div class="title">Billing Info<a class="edit-button">edit</a></div>
 
-<fieldset>
+                  <fieldset>
 
   <!-- First Name -->
   <div id="billing-first-name" data-label="First Name" class="field first-name required">
