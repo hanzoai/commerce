@@ -1,7 +1,7 @@
 application: crowdstart-io
 
 dispatch:
-  - url: "*/api/*"
+  - url: "*/v1/*"
     module: api
 
   - url: "*/checkout/*"
