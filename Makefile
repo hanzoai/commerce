@@ -13,6 +13,13 @@ modules 	    = crowdstart.io/api \
 				  crowdstart.io/checkout \
 				  crowdstart.io/store
 
+packages 		= crowdstart.io/cardconnect \
+				  crowdstart.io/datastore \
+				  crowdstart.io/middleware \
+				  crowdstart.io/models \
+				  crowdstart.io/sessions \
+				  crowdstart.io/util \
+
 test_modules    = crowdstart.io/api/test \
 				  crowdstart.io/checkout/test \
 				  crowdstart.io/store/test
@@ -44,7 +51,7 @@ deps: .sdk
 	gpm install || curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.1/bin/gpm | bash
 
 install: install-deps
-	goapp install $(modules)
+	goapp install $(modules) $(packages)
 
 install-deps:
 	goapp install $(deps)
