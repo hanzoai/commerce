@@ -11,5 +11,5 @@ automatic_scaling:
   min_idle_instances: 1
 
 handlers:
-- url: /api/.*
+- url: /v1/.*
   script: _go_app
