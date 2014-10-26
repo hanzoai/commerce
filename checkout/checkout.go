@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"crowdstart.io/middleware"
 	"github.com/gin-gonic/gin"
+	"crowdstart.io/util/template"
 )
 
 func init() {
@@ -15,11 +16,9 @@ func init() {
 	checkout := router.Group("/checkout")
 
 	checkout.GET("/", func(ctx *gin.Context) {
-		ctx.String(200, "checkout")
-	})
-
-	checkout.POST("/", func(ctx *gin.Context) {
-		ctx.String(200, "checkout")
+		if err := template.Render(c, "checkout.html", nil); err != nil {
+			c.String(500, "Unable to render template")
+		}
 	})
 
 	http.Handle("/checkout/", router)
