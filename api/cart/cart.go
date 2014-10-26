@@ -14,6 +14,7 @@ func Get(c *gin.Context) {
 	id := c.Params.ByName("id")
 
 	var json models.Cart
+
 	if err := d.Get(id, &json); err != nil {
 		ctx := middleware.GetAppEngine(c)
 		ctx.Errorf("%v", err)
@@ -48,11 +49,13 @@ func Update(c *gin.Context) {
 	id := c.Params.ByName("id")
 
 	var json models.Cart
+
 	util.DecodeJson(c, &json)
+	ctx := middleware.GetAppEngine(c)
+	ctx.Infof("JSON: %v", json)
 
 	key, err := d.Update(id, &json)
 	if err != nil {
-		ctx := middleware.GetAppEngine(c)
 		ctx.Errorf("%v", err)
 		c.JSON(500, gin.H{"status": "unable to find cart"})
 	} else {
@@ -64,6 +67,7 @@ func Update(c *gin.Context) {
 func Delete(c *gin.Context) {
 	d := datastore.New(c)
 	id := c.Params.ByName("id")
+
 	if err := d.Delete(id); err != nil {
 		c.JSON(500, gin.H{"status": "failed to delete cart"})
 	} else {
