@@ -2,16 +2,23 @@ package checkout
 
 import (
 	"net/http"
+	"crowdstart.io/middleware"
 	"github.com/gin-gonic/gin"
 )
 
 func init() {
 	router := gin.Default()
 
-    router.Use(gin.Logger())
-    router.Use(gin.Recovery())
+	router.Use(middleware.Host())
+	router.Use(middleware.AppEngine())
 
-	router.GET("/checkout/", func(ctx *gin.Context) {
+	checkout := router.Group("/checkout")
+
+	checkout.GET("/", func(ctx *gin.Context) {
+		ctx.String(200, "checkout")
+	})
+
+	checkout.POST("/", func(ctx *gin.Context) {
 		ctx.String(200, "checkout")
 	})
 
