@@ -8,10 +8,12 @@ import (
 func init() {
 	router := gin.Default()
 
-    router.Use(gin.Logger())
-    router.Use(gin.Recovery())
+	router.Use(middleware.Host())
+	router.Use(middleware.AppEngine())
 
-	router.GET("/admin/", func(ctx *gin.Context) {
+	admin = router.Group("/admin")
+
+	admin.GET("/", func(ctx *gin.Context) {
 		ctx.String(200, "api")
 	})
 

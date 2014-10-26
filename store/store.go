@@ -1,24 +1,19 @@
 package store
 
 import (
-	"net/http"
-	"github.com/gin-gonic/gin"
 	"crowdstart.io/middleware"
+	"github.com/gin-gonic/gin"
+	"net/http"
 )
 
 func init() {
 	router := gin.Default()
 
-    router.Use(gin.Logger())
-    router.Use(gin.Recovery())
-    router.Use(middleware.AppEngine())
+	router.Use(middleware.Host())
+	router.Use(middleware.AppEngine())
 
-	router.GET("/foo/", func(ctx *gin.Context) {
-		ctx.String(200, "foo")
-	})
-
-	router.GET("/bar/", func(ctx *gin.Context) {
-		ctx.String(200, "bar")
+	router.GET("/", func(ctx *gin.Context) {
+		ctx.String(200, "product listing")
 	})
 
 	http.Handle("/", router)
