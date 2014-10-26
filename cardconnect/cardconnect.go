@@ -2,7 +2,6 @@ package cardconnect
 
 import (
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"github.com/jmcvetta/napping"
 	"net/http"
@@ -47,13 +46,11 @@ var baseUrl = "fts.prinpay.com:6443/cardconnect/rest" // 496160873888-CardConnec
 var authCode = base64.StdEncoding.EncodeToString([]byte("testing:testing123"))
 
 func Authorize(areq AuthorizationRequest) (ares AuthorizationResponse, err error) {
-	s := napping.Session{
-		Header: *http.Header{
-			"Authorization": "Basic " + authCode,
-		},
-	}
+	header := http.Header{}
+	header.Add("Authorization", "Basic " + authCode)
+	s := napping.Session{Header: &header}
 
-	switch res, err := s.Post(baseUrl+"/auth", &areq, &ares); {
+	switch res, err := s.Post(baseUrl+"/auth", &areq, &ares, nil); {
 	case err != nil:
 		return ares, err
 	case res.Status() == 200:
