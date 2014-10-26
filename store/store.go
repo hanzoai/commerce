@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"github.com/gin-gonic/gin"
 	"crowdstart.io/middleware"
-	"crowdstart.io/templates"
+	"crowdstart.io/util/template"
 )
 
 func init() {
@@ -16,7 +16,7 @@ func init() {
 	router.GET("/", func(c *gin.Context) {
 		ctx := middleware.GetAppEngine(c)
 
-		err := templates.Render(c, "products.html", nil); if err != nil {
+		err := template.Render(c, "products.html", nil); if err != nil {
 			ctx.Errorf("%v", err)
 			c.String(500, "Unable to render template")
 		}
