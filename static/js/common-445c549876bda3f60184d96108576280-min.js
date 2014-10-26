@@ -7133,9 +7133,11 @@ YUI.add("squarespace-widgets-position-helper", function(a) {
 }, "1.0", {
   requires: ["dom-base", "squarespace-damask-context-globals", "squarespace-ui-base"]
 });
+
 YUI.add("squarespace-currency-symbols", function(a) {}, "1.0", {
   requires: []
 });
+
 YUI.add("squarespace-system-error", function(a) {
   a.Squarespace.SystemError = Class.create({
     initialize: function(a, b, c) {
@@ -7149,6 +7151,9 @@ YUI.add("squarespace-system-error", function(a) {
       a.one(".dialog-screen-overlay.sqs-system-error-overlay").remove()
     },
     show: function() {
+      // TODO: Block sqs error overlay, do this better.
+      return
+
       var f;
       if (this.data.cleaned) f = '<div style="font-weight: normal; font-size: 22px; margin-top: -2px;">Something Went Wrong!</div><div style="font-weight: normal; font-size: 13px; padding-top: 5px;">Our system has encountered an error.  This exception has been automatically logged and reported.  We will return shortly.</div>';
       else if (this.data.network) {
@@ -7182,6 +7187,7 @@ YUI.add("squarespace-system-error", function(a) {
     }
   })
 }, "1.0");
+
 YUI.add("widget-uievents", function(a, f) {
   var b = a.Widget,
     c = a.Lang,
