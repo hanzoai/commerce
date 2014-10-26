@@ -64,7 +64,7 @@ install-deps:
 	ln -s $(shell pwd) $(sdk_path)/gopath/src/crowdstart.io
 
 serve:
-	$(sdk_path)/dev_appserver.py $(appengine_yaml)
+	$(sdk_path)/dev_appserver.py $(gae_yaml)
 
 tools:
 	goapp get $(tools) && \
