@@ -22,6 +22,9 @@ dispatch:
   - url: "*/humans.txt"
     module: default
 
+  - url: "*/favicon.ico"
+    module: default
+
   # - url: "*/"
   #   module: default
 
