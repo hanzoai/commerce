@@ -6,7 +6,7 @@ import (
 )
 
 func List(c *gin.Context) {
-	err := template.Render(c, "products/list.html", nil); if err != nil {
+	if err := template.Render(c, "products/list.html", nil); err != nil {
 		c.String(500, "Unable to render template")
 	}
 }
@@ -14,7 +14,7 @@ func List(c *gin.Context) {
 func Get(c *gin.Context) {
 	slug := c.Params.ByName("slug")
 
-	err := template.Render(c, slug + ".html", nil); if err != nil {
+	if err := template.Render(c, "products/" + slug + ".html", nil); err != nil {
 		c.String(500, "Unable to render template")
 	}
 }
