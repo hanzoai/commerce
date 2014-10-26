@@ -42,6 +42,18 @@ type AuthorizationResponse struct {        // {
 	RespProc string `json:"respproc"`      //   "respproc": "FNOR"
 }                                          // }
 
+
+func (ares *AuthorizationResponse) Success() bool {
+	var successVars = [4]string{ares.AvsResp, ares.CvvResp, ares.AuthCode, ares.RespProc}
+
+	for _,v := range successVars {
+		if v == "" {
+			return false
+		}
+	}
+	return true
+}
+
 var baseUrl = "fts.prinpay.com:6443/cardconnect/rest" // 496160873888-CardConnect - USD - NORTH
 var authCode = base64.StdEncoding.EncodeToString([]byte("testing:testing123"))
 
