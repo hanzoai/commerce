@@ -14,8 +14,8 @@ func init() {
 
 	admin := router.Group("/admin")
 
-	admin.GET("/", func(ctx *gin.Context) {
-		ctx.String(200, "api")
+	admin.GET("/", func(c *gin.Context) {
+		c.String(200, "api")
 	})
 
 	http.Handle("/admin/", router)
