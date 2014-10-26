@@ -1,10 +1,10 @@
 package store
 
 import (
-	"net/http"
-	"github.com/gin-gonic/gin"
 	"crowdstart.io/middleware"
-	"crowdstart.io/util/template"
+	"crowdstart.io/store/products"
+	"github.com/gin-gonic/gin"
+	"net/http"
 )
 
 func init() {
@@ -13,14 +13,10 @@ func init() {
 	router.Use(middleware.Host())
 	router.Use(middleware.AppEngine())
 
-	router.GET("/", func(c *gin.Context) {
-		ctx := middleware.GetAppEngine(c)
-
-		err := template.Render(c, "products.html", nil); if err != nil {
-			ctx.Errorf("%v", err)
-			c.String(500, "Unable to render template")
-		}
-	})
+	// Products
+	router.GET("/",				  products.List)
+	router.GET("/products",		  products.List)
+	router.GET("/products/:slug", products.Get)
 
 	http.Handle("/", router)
 }

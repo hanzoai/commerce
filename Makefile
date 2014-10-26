@@ -41,7 +41,7 @@ tools:
 	goapp install $(tools) && \
 	gocode set lib-path "$(gopath_pkg_path):$(goroot_pkg_path)"
 
-test:
+test: build
 	goapp test crowdstart.io/api/test crowdstart.io/checkout/test crowdstart.io/store/test
 
 bench:
