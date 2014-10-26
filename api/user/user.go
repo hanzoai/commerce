@@ -32,9 +32,8 @@ func Add(c *gin.Context) {
 	ctx := middleware.GetAppEngine(c)
 	ctx.Infof("[Api.User.Add] JSON: %v", json)
 
-	key, err := d.Put("cart", &json)
+	key, err := d.Put("user", &json)
 	if err != nil {
-		ctx := middleware.GetAppEngine(c)
 		ctx.Errorf("[Api.User.Add] %v", err)
 		c.JSON(500, gin.H{"status": "unable to save user"})
 	} else {
@@ -55,7 +54,7 @@ func Update(c *gin.Context) {
 
 	key, err := d.Update(id, &json)
 	if err != nil {
-		ctx.Errorf("[Api.User.Add] %v", err)
+		ctx.Errorf("[Api.User.Update] %v", err)
 		c.JSON(500, gin.H{"status": "unable to update user"})
 	} else {
 		json.Id = key
