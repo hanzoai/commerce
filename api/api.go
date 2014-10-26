@@ -10,8 +10,6 @@ import (
 func init() {
 	router := gin.Default()
 
-	router.Use(gin.Logger())
-	router.Use(gin.Recovery())
 	router.Use(middleware.Host())
 	router.Use(middleware.AppEngine())
 
@@ -19,9 +17,9 @@ func init() {
 
 	// Cart API
 	api.GET("/cart/:id", cart.Get)
-	api.POST("/cart",	 cart.Add)
-	api.PUT("/cart",	 cart.Update)
-	api.DELETE("/cart",  cart.Delete)
+	api.POST("/cart", cart.Add)
+	api.PUT("/cart", cart.Update)
+	api.DELETE("/cart", cart.Delete)
 
 	// Redirect root
 	api.GET("/", func(c *gin.Context) {
