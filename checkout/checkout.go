@@ -15,7 +15,7 @@ func init() {
 
 	checkout := router.Group("/checkout")
 
-	checkout.GET("/", func(ctx *gin.Context) {
+	checkout.GET("/", func(c *gin.Context) {
 		if err := template.Render(c, "checkout.html", nil); err != nil {
 			c.String(500, "Unable to render template")
 		}
