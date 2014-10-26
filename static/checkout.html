@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<!-- saved from url=(0080)https://secure.squarespace.com/commerce/checkout?cartId=544abc91e4b07e8995def842 -->
+<html class="squarespace-cameron yui3-js-enabled js flexbox canvas canvastext webgl no-touch geolocation postmessage websqldatabase indexeddb hashchange history draganddrop websockets rgba hsla multiplebgs backgroundsize borderimage borderradius boxshadow textshadow opacity cssanimations csscolumns cssgradients cssreflections csstransforms csstransforms3d csstransitions fontface video audio localstorage sessionstorage webworkers applicationcache svg inlinesvg smil svgclippaths"><script>var Typekit={load:function(){}};</script><div id="yui3-css-stamp" style="position: absolute !important; visibility: hidden !important"></div><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><style type="text/css"></style>
+
+    <title>SKULLY AR-1: Secure Checkout</title>
+
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1">
+
+    <!-- SQUARESPACE -->
+    <script type="text/javascript" src="./checkout_files/common-445c549876bda3f60184d96108576280-min.js"></script><link rel="stylesheet" type="text/css" href="./checkout_files/common-9a0089058c9ec7f1d74f56616b32375b-min.css">
+    <script type="text/javascript" src="./checkout_files/commerce-cfbec50462637311c832714f0686fb6c-min.js"></script><link rel="stylesheet" type="text/css" href="./checkout_files/commerce-930a1b9b6c4fc5cce40f0a2b839272b9-min.css">
+    <script type="text/javascript" src="./checkout_files/checkout-7ab800faf6f674e1007b9a4e22c55875-min.js"></script><link rel="stylesheet" type="text/css" href="./checkout_files/checkout-56facadb1760b1442d03355ac8e12a4d-min.css">
+
+    
+
+    <style id="checkout-page-styles">
+
+      #form-wrapper > div:nth-child(2){ /*Shipping details.*/
+      display:none;
+      }
+
+      
+/*! Squarespace LESS Compiler  (less.js language v1.3.3)  */
+#sqs-standard-checkout {
+  background: #f3f3f3;
+}
+#store-logo .site-title {
+  color: #333;
+}
+#sqs-standard-checkout .button {
+  background: #222;
+}
+
+
+.sqs-system-error {
+  display: none !important;
+}
+div.dialog-screen-overlay.sqs-system-error-overlay {
+  display: none !important;
+  z-index: -1 !important;
+}
+
+</style>
+
+    <!-- TYPEKIT: expecting proxima nova light (300) regular (400) and bold (600) -->
+    <script type="text/javascript" src="https://use.typekit.com/cpb5jyo.js"></script>
+    <script type="text/javascript">
+      try {
+        Typekit.load();
+      } catch(e) {
+        // falls back to default system font
+      }
+    </script>
+
+
+    <!-- STRIPE -->
+    <script type="text/javascript" src="./checkout_files/saved_resource"></script>
+
+
+    <!-- SQUARESPACE_CONTEXT -->
+    <script>
+      Static = { };
+      Static.SQUARESPACE_CONTEXT = {"rollups":{"squarespace-audio-player":{"css":"//static.squarespace.com/universal/styles-compressed/audio-player-e30821377b06fc27e1b4c80dd4927e7e-min.css","js":"//static.squarespace.com/universal/scripts-compressed/audio-player-f5ce3258cb3e4f7ce8c796b7ff6ab899-min.js"},"squarespace-calendar-block-renderer":{"css":"//static.squarespace.com/universal/styles-compressed/calendar-block-renderer-d41d8cd98f00b204e9800998ecf8427e-min.css","js":"//static.squarespace.com/universal/scripts-compressed/calendar-block-renderer-55e94ad4ea4f7223879c175eff66dd0d-min.js"},"squarespace-comments":{"css":"//static.squarespace.com/universal/styles-compressed/comments-df5bce0431a69485c8498aca7a08bdc9-min.css","js":"//static.squarespace.com/universal/scripts-compressed/comments-737e94424abdb43f6983f5669daae67b-min.js"},"squarespace-dialog":{"css":"//static.squarespace.com/universal/styles-compressed/dialog-2ca513791e1634ad4e05a74a3c33d491-min.css","js":"//static.squarespace.com/universal/scripts-compressed/dialog-8d105a3cc40f251a87fcc25cbe0b5ca8-min.js"},"squarespace-events-collection":{"css":"//static.squarespace.com/universal/styles-compressed/events-collection-d41d8cd98f00b204e9800998ecf8427e-min.css","js":"//static.squarespace.com/universal/scripts-compressed/events-collection-c3dd1b46d1c335d33dfd064d4f195db1-min.js"},"squarespace-pinterest":{"css":"//static.squarespace.com/universal/styles-compressed/pinterest-d41d8cd98f00b204e9800998ecf8427e-min.css","js":"//static.squarespace.com/universal/scripts-compressed/pinterest-e2d1ba37ad07db5eeada67621609a0d0-min.js"}},"pageType":201,"website":{"id":"53dd2a15e4b06cbe07110bd5","identifier":"skullysystems","contentModifiedOn":1414179556588,"cloneable":false,"developerMode":true,"siteStatus":{},"language":"en-US","timeZone":"America/Los_Angeles","machineTimeZoneOffset":-25200000,"timeZoneOffset":-25200000,"timeZoneAbbr":"PDT","siteTitle":"SKULLY AR-1","siteTagLine":"World's Smartest Motorcycle Helmet. Heads up display, rearview camera & GPS navigation.","siteDescription":"<p>The SKULLY AR-1:&nbsp;World's Smartest Motorcycle Helmet. Heads up display (HUD), rearview camera &amp; GPS navigation.</p>","location":{"mapZoom":12.0,"mapLat":37.7749295,"mapLng":-122.41941550000001,"markerLat":37.7749295,"markerLng":-122.41941550000001,"addressTitle":"SKULLY HQ","addressLine1":"","addressLine2":"San Francisco, CA","addressCountry":"USA"},"logoImageId":"53e6a955e4b0e7362df988ff","shareButtonOptions":{"1":true,"8":true,"3":true,"4":true,"7":true,"6":true,"2":true,"5":true},"logoImageUrl":"//static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/t/53e6a955e4b0e7362df988ff/1414179556588/","authenticUrl":"http://www.skullysystems.com","baseUrl":"http://www.skullysystems.com","primaryDomain":"www.skullysystems.com","typekitId":"","statsMigrated":false,"imageMetadataProcessingEnabled":false},"websiteSettings":{"id":"53dd2a15e4b06cbe07110bd6","websiteId":"53dd2a15e4b06cbe07110bd5","type":"Business","subjects":[{"systemSubject":"tech"}],"markdownMode":false,"simpleLikingEnabled":true,"mobileInfoBarSettings":{"isContactEmailEnabled":false,"isContactPhoneNumberEnabled":false,"isLocationEnabled":false,"isBusinessHoursEnabled":false},"lastAgreedTermsOfService":2,"defaultPostFormat":"%y/%m/%d/%t","commentLikesAllowed":true,"commentAnonAllowed":true,"commentThreaded":true,"commentApprovalRequired":false,"commentAvatarsOn":false,"commentSortType":2,"commentFlagThreshold":0,"commentFlagsAllowed":true,"commentEnableByDefault":true,"commentDisableAfterDaysDefault":0,"disqusShortname":"","homepageTitleFormat":"%s","collectionTitleFormat":"%c | %s","itemTitleFormat":"%i | %s","commentsEnabled":true,"contactEmail":"connect@skullysystems.com","allowSquarespacePromotion":true,"storeSettings":{"returnPolicy":null,"termsOfService":null,"privacyPolicy":null,"expressCheckout":false,"useLightCart":false,"showNoteField":false,"currenciesSupported":["USD"],"defaultCurrency":"USD","selectedCurrency":"USD","measurementStandard":1,"orderConfirmationInjectCode":"","showCustomCheckoutForm":false,"enableMailingListOptInByDefault":true,"stripeConnected":false,"storeState":3,"isLive":false},"useEscapeKeyToLogin":false,"configurationMenuItems":[{},{},{},{},{},{},{},{}],"ssBadgeType":1,"ssBadgePosition":4,"ssBadgeVisibility":1,"ssBadgeDevices":1},"websiteCloneable":false,"subscribed":false,"appDomain":"squarespace.com","secureDomain":"https://skullysystems.squarespace.com","templateTweakable":true,"tweakJSON":{"aspect-ratio":"Auto","contentBgColor":"rgba(255,255,255,1)","first-index-image-fullscreen":"true","fixed-header":"true","footerBgColor":"rgba(23,23,23,1)","gallery-arrow-style":"No Background","gallery-auto-crop":"true","gallery-autoplay":"false","gallery-design":"Slideshow","gallery-info-overlay":"Show on Hover","gallery-loop":"false","gallery-navigation":"Bullets","gallery-show-arrows":"true","galleryArrowBackground":"rgba(34,34,34,1)","galleryArrowColor":"rgba(255,255,255,1)","galleryAutoplaySpeed":"3","galleryCircleColor":"rgba(255,255,255,1)","galleryInfoBackground":"rgba(0, 0, 0, .7)","galleryThumbnailSize":"100px","gridSize":"350px","gridSpacing":"20px","headerBgColor":"rgba(0,0,0,1)","index-image-height":"Two Thirds","parallax-scrolling":"true","product-gallery-auto-crop":"true","product-image-auto-crop":"true"},"templateId":"53fe5418e4b07d15fecd29c9","pageFeatures":[2],"impersonatedSession":false,"demoCollections":[{"collectionId":"51c37050e4b0895fa6dc9175","deleted":true},{"collectionId":"515c7b5ae4b0875140c3d955","deleted":true},{"collectionId":"515c7b5ae4b0875140c3d957","deleted":true},{"collectionId":"515c7b5ae4b0875140c3d954","deleted":true},{"collectionId":"51b6248fe4b01c921f517255","deleted":true},{"collectionId":"515c7b5ae4b0875140c3d959","deleted":true},{"collectionId":"515c7b5ae4b0875140c3d952","deleted":true},{"collectionId":"51b8d19de4b0a5cf9d021df1","deleted":true},{"collectionId":"51b78b56e4b0d550d999d2d6","deleted":true}],"isFacebookTab":false,"tzData":{"zones":[[-480,"US","P%sT",null]],"rules":{"US":[[1967,2006,null,"Oct","lastSun","2:00","0","S"],[1987,2006,null,"Apr","Sun>=1","2:00","1:00","D"],[2007,"max",null,"Mar","Sun>=8","2:00","1:00","D"],[2007,"max",null,"Nov","Sun>=1","2:00","0","S"]]}}};
+      Static.SQUARESPACE_CONTEXT.isInDesignMode = false;
+    </script>
+
+    
+
+
+    <!-- MIXPANEL -->
+    
+
+
+    <!-- GOOGLE ANALYTICS -->
+    
+  <style>@-webkit-keyframes popiuwzlrsoreqxdrjlyowqaspczsolayvi {50% {-webkit-transform:scale(1.2);}100% {-webkit-transform:scale(1);}}@keyframes popiuwzlrsoreqxdrjlyowqaspczsolayvi {50% {-webkit-transform:scale(1.2);transform:scale(1.2);}100% {-webkit-transform:scale(1);transform:scale(1);}}#iuwzlrsoreqxdrjlyowqaspczsolayvi{padding:0;margin:0;font:13px Arial,Helvetica;text-transform:none;font-size: 100%;vertical-align:baseline;line-height:normal;color:#fff;position:static;border:solid 2px #fff !important;box-sizing:content-box !important;color:#fff !important;display:block !important;height:auto !important;margin:0 !important;opacity:0.9 !important;padding:7px 10px !important;position:fixed !important;visibility:visible !important;width:auto !important;z-index:2147483647 !important;-webkit-border-radius:5px !important;-webkit-box-shadow:0px 0px 20px #000 !important;-webkit-box-sizing:content-box !important;}.iuwzlrsoreqxdrjlyowqaspczsolayvi-blocked{padding:0;margin:0;font:13px Arial,Helvetica;text-transform:none;font-size: 100%;vertical-align:baseline;line-height:normal;color:#fff;position:static;color:#AAA !important;display:inline !important;text-decoration:line-through !important;}#iuwzlrsoreqxdrjlyowqaspczsolayvi br{display:block !important;padding:0;margin:0;font:13px Arial,Helvetica;text-transform:none;font-size: 100%;vertical-align:baseline;line-height:normal;color:#fff;position:static;}#iuwzlrsoreqxdrjlyowqaspczsolayvi span{background:transparent !important;padding:0;margin:0;font:13px Arial,Helvetica;text-transform:none;font-size: 100%;vertical-align:baseline;line-height:normal;color:#fff;position:static;}#iuwzlrsoreqxdrjlyowqaspczsolayvi div{padding:0;margin:0;font:13px Arial,Helvetica;text-transform:none;font-size: 100%;vertical-align:baseline;line-height:normal;color:#fff;position:static;border:0 !important;margin:0 !important;padding:0 !important;width:auto !important;letter-spacing:normal !important;font:13px Arial,Helvetica !important;text-align:left !important;text-shadow:none !important;text-transform:none !important;word-spacing:normal !important;}#iuwzlrsoreqxdrjlyowqaspczsolayvi a{padding:0;margin:0;font:13px Arial,Helvetica;text-transform:none;font-size: 100%;vertical-align:baseline;line-height:normal;color:#fff;position:static;font-weight:normal !important;background:none !important;text-decoration:underline !important;color:#fff !important;}a#iuwzlrsoreqxdrjlyowqaspczsolayvi-gear{padding:0;margin:0;font:13px Arial,Helvetica;text-transform:none;font-size: 100%;vertical-align:baseline;line-height:normal;color:#fff;position:static;text-decoration:none !important;position:absolute !important;display:none !important;font-size:20px !important;width:20px !important;height:20px !important;line-height:20px !important;text-align:center !important;background-color:rgba(255,255,255,.8) !important;background-image:url(chrome-extension://mlomiejdfkolichcflejclcbmpeaniij/data/images/gear.svg) !important;background-size:16px 16px !important;background-position:center center !important;background-repeat:no-repeat !important;text-decoration:none !important;}a#iuwzlrsoreqxdrjlyowqaspczsolayvi-gear:hover{-webkit-animation-name:popiuwzlrsoreqxdrjlyowqaspczsolayvi !important;animation-name:popiuwzlrsoreqxdrjlyowqaspczsolayvi !important;-webkit-animation-duration:0.3s !important;animation-duration:0.3s !important;}#iuwzlrsoreqxdrjlyowqaspczsolayvi:hover #iuwzlrsoreqxdrjlyowqaspczsolayvi-gear{text-decoration:none !important;display:inline-block !important;}@media print{#iuwzlrsoreqxdrjlyowqaspczsolayvi{display:none !important;}}</style><script charset="utf-8" id="yui_3_17_2_1_1414184167898_446" src="./checkout_files/js"></script><script type="text/javascript" charset="UTF-8" src="./checkout_files/{common,util,stats}.js"></script><script type="text/javascript" charset="UTF-8" src="./checkout_files/AuthenticationService.Authenticate"></script></head>
+
+  <body id="sqs-standard-checkout" class="native-currency-code-usd">
+
+
+    <!-- MAIN SCRIPT -->
+    <script type="text/javascript">
+      Y = YUI(YUI_CONFIG).use(
+
+        'squarespace-common',
+        'squarespace-commerce',
+        'squarespace-checkout',
+        'squarespace-management',
+
+        function(Y) {
+          var storeSettings = Static.SQUARESPACE_CONTEXT.websiteSettings.storeSettings;
+
+          function setPublishableKeyForCurrentMode(storeSettings, currentIsTestMode) {
+            if (currentIsTestMode) {
+              Stripe.setPublishableKey(storeSettings.testPublishableKey);
+            } else {
+              Stripe.setPublishableKey(storeSettings.stripePublishableKey);
+            }
+          }
+
+           // IE 7 explodes on a lot of YUI stuff (JSON parsing and HB are broken)
+          if (Y.UA.ie === 7) {
+            alert('Sorry, your browser (Internet Explorer 7) is not supported. Please use an alternate browser or upgrade your version of Internet Explorer');
+            return;
+          }
+
+          var storeSettings = Static.SQUARESPACE_CONTEXT.websiteSettings.storeSettings;
+          var customCheckoutForm = Static.SQUARESPACE_CONTEXT.customCheckoutForm;
+
+          // enable pill for logged-in guys
+          if (Y.Lang.isValue(Static.SQUARESPACE_CONTEXT.authenticatedAccount)) {
+            Y.use('squarespace-management');
+          }
+
+          var storeState = storeSettings.storeState;
+          var storeInTestMode = (storeState === Y.Squarespace.StoreStates.TEST_MODE);
+
+          // Stripe key based on storeState
+          setPublishableKeyForCurrentMode(storeSettings, storeInTestMode);
+
+          Y.on('domready', function(cartData) {
+            
+            var checkoutPageEl = Y.one('#checkout-page');
+            var model = Y.Squarespace.Singletons.ShoppingCart;
+
+            model.load({
+              // whether this is a mock cart for the Style Editor
+              mock: Static.SQUARESPACE_CONTEXT.isInDesignMode
+            }, function() {
+
+              Y.Squarespace.CommerceAnalytics.checkoutStarted(cartData);
+
+              var optionalFields = Y.merge({
+                  showMailingList: false,
+                },
+                storeSettings.showCustomCheckoutForm ? { customForm: customCheckoutForm } : {}
+              );
+
+              var checkoutForm = new Y.Squarespace.Widgets.CheckoutForm({
+                model: model,
+                countriesAllowed: [],
+                storeCurrencyCode: storeSettings.selectedCurrency,
+                enableMailingListOptInByDefault: storeSettings.enableMailingListOptInByDefault,
+                inTestMode: storeInTestMode,
+                optionalFields: optionalFields,
+                render: Y.one('#form-wrapper'),
+                inTestMode: storeInTestMode,
+                optionalFields: optionalFields
+              });
+
+              var shoppingCart = new Y.Squarespace.Widgets.CheckoutShoppingCart({
+                model: model,
+                render: Y.one('#cart-summary')
+              });
+
+              var couponList = new Y.Squarespace.Widgets.CheckoutCouponList({
+                model: model,
+                render: Y.one('#coupon-summary')
+              });
+
+              checkoutForm.on('lock', function() {
+                shoppingCart.lock();
+                couponList.lock();
+              }, this);
+
+              checkoutForm.on('unlock', function() {
+                shoppingCart.unlock();
+                couponList.unlock();
+              }, this);
+
+              Y.Array.each(['termsOfService', 'privacyPolicy', 'returnPolicy'], function(linkId) {
+                var policyLinkContent = storeSettings[linkId];
+
+                // what the fuck. ECB serializes into either an Object or plain string
+                // depending on authentication
+                if (Y.Lang.isObject(policyLinkContent)) {
+                  policyLinkContent = policyLinkContent.html;
+                }
+
+                if (!Y.Lang.isValue(policyLinkContent) || policyLinkContent.trim() === '') {
+                  Y.one('#' + linkId).hide();
+                }
+              }, this);
+
+              Y.one('body').delegate('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                var storePolicyEl = e.currentTarget;
+
+                var content = {
+                  title: storePolicyEl.get('title'),
+                  body: Y.Object.getValue(storeSettings, [
+                    storePolicyEl.getAttribute('data-property')
+                  ])
+                };
+
+                var policyLightbox = new Y.Squarespace.Widgets.ModalLightbox({
+                  className: 'store-policy',
+                  openOnRender: true,
+                  content: Y.Node.create('<div class="wrapper">' +
+                                           '<div class="title">' + content.title + '</div>' +
+                                           '<div class="body">' + content.body + '</div>' +
+                                           '<div class="button-wrapper"><input type="button" class="dismiss" value="OK"/></div>' +
+                                         '</div>')
+                })
+                .render();
+
+                policyLightbox.get('content').one('.dismiss').on('click', function() {
+                  policyLightbox.close();
+                });
+
+              }, '.store-policy-link', this);
+
+
+              var animDuration = 0.35;
+
+              checkoutPageEl.plug(Y.Squarespace.Animations.Fadeable, {
+                duration: animDuration
+              });
+
+              checkoutPageEl.show();
+
+              // In Safari 6.0.x, the Fadeable anim runs, yet somehow fails to actually change
+              // the opacity. This ensures that regardless, the page will be visible at the end.
+              Y.later(animDuration, checkoutPageEl, checkoutPageEl.setStyle, ['opacity', 1]);
+
+
+              // Don't allow toggling Test Mode if the store isn't live. Live orders should
+              // not be placed in a Test store under any circumstances
+              if (!storeInTestMode) {
+                Y.on('toggleTestMode', function() {
+                   var inTestMode = checkoutForm.get('inTestMode');
+                   var transitioningIntoTestMode = !inTestMode;
+                   Y.one('body').toggleClass('in-test-mode', transitioningIntoTestMode)
+                                .toggleClass('overriding', transitioningIntoTestMode);
+                   checkoutForm.set('inTestMode', transitioningIntoTestMode);
+                   setPublishableKeyForCurrentMode(storeSettings, transitioningIntoTestMode);
+                });
+              }
+
+              if (window.location.hash === '#forcetestmode') {
+                Y.fire('toggleTestMode');
+              }
+            });
+
+            if (Y.Squarespace.Utils.isInDamaskFrame() && storeInTestMode) {
+              Squarespace.INITIALIZED = true;
+            }
+
+          });
+        }
+      );
+    </script>
+
+    <!-- NOTIFICATION BANNERS -->
+    <div id="test-mode-banner" class="notification-banner">
+      <span class="standard-message">
+        <strong>Store Not Live</strong>&nbsp;&nbsp;
+        <span>Test all the features of your store without charging a real credit card.</span>
+      </span>
+      <span class="override-message">
+        <strong>Test Mode Override</strong>&nbsp;&nbsp;
+        <span>This order will be placed in Test Mode.</span>
+      </span>
+    </div>
+
+    <div id="payments-not-connected-banner" class="notification-banner">
+      <strong>Payments Not Connected</strong>&nbsp;&nbsp;
+      <span>This store has not yet set-up payments. Checkout is disabled.</span>
+    </div>
+
+    <div id="design-mode-banner" class="notification-banner">
+      <strong>Style Mode</strong>&nbsp;&nbsp;
+      <span>You are designing a sample checkout page. Checkout is disabled.</span>
+    </div>
+
+    <!-- MAIN CHECKOUT PAGE -->
+    <div id="checkout-page" style="opacity: 1;" class="fadeable-plugged">
+
+      <!-- LOGO -->
+      <div id="store-logo">
+        <h1>
+          <a href="http://www.skullysystems.com/">
+            
+              
+                <img src="./checkout_files/saved_resource(1)">
+              
+            
+            <span class="site-title">SKULLY AR-1</span>
+          </a>
+        </h1>
+
+      </div>
+
+      <!-- CART/COUPON SUMMARIES -->
+      <div id="summary-wrapper" class="right-column-wrapper">
+        <div id="cart-summary" class="card"><div id="yui_3_17_2_1_1414184167898_1016" class="yui3-widget sqs-widget yui3-tableshoppingcart sqs-checkout-shopping-cart"><div id="yui_3_17_2_1_1414184167898_1018" class="sqs-checkout-shopping-cart-content single-item"><div class="loading-spinner"><div id="yui_3_17_2_1_1414184167898_1080" class="yui3-widget sqs-spin dark" style="height: 50px; width: 50px;"><div id="yui_3_17_2_1_1414184167898_1082" class="sqs-spin-content yui3-widget-content-expanded"></div></div></div>
+
+<div class="title">Order Summary</div>
+
+<table>
+  <thead> 
+    <tr>
+      <td class="item">Item</td>
+      <td class="quantity">Quantity</td>
+      <td class="price">Price</td>
+      <td class="remove"></td>
+    </tr>
+  </thead>
+  <tbody><tr data-item-id="544a2657e4b0ff95316b8ea0" data-chosen-variant-sku="AR1-BLACK-S" id="yui_3_17_2_1_1414184167898_1146">
+
+  <td class="item">
+    <div class="item-image"><img src="./checkout_files/140804 Trailer V14.Still011.png"></div>
+    <div class="item-desc"><div>SKULLY AR-1</div><div class="variant-info">Black / Small</div></div>
+  </td>
+
+  <td class="quantity">
+    
+      <input size="1">
+    
+  </td>
+
+  <td class="price"><span class="sqs-money-native">1,499.00</span></td>
+
+  <td class="remove">
+    <div class="remove-item"></div>
+  </td>
+
+</tr></tbody>
+</table>
+
+<div class="subtotal total">
+  <div class="price"><span class="sqs-money-native">1,499.00</span></div>
+  <div class="label">Subtotal</div>
+</div>
+
+<div class="tax total">
+  <div class="price"><span class="sqs-money-native">0.00</span></div>
+  <div class="label">Tax</div>
+</div>
+
+<div class="shipping total">
+  <div class="price"><span class="sqs-money-native">0.00</span></div>
+  <div class="label">Shipping</div>
+</div>
+
+<div class="discounts total" id="yui_3_17_2_1_1414184167898_1160" hidden="hidden" style="display: none;">
+  <div class="price">- <span class="sqs-money-native">0.00</span></div>
+  <div class="label">Discounts</div>
+</div>
+
+<div class="grand-total total">
+  <div class="price"><span class="sqs-money-native">1,499.00</span></div>
+  <div class="label">Grand Total</div>
+</div>
+
+<div class="empty-message">
+  You have nothing in your shopping cart.&nbsp;
+  <a href="http://www.skullysystems.com/">Continue shopping</a>
+</div></div></div></div>
+        <div id="coupon-summary" class="card  hidden "><div id="yui_3_17_2_1_1414184167898_1168" class="yui3-widget sqs-widget sqs-checkout-coupon-list"><div id="yui_3_17_2_1_1414184167898_1170" class="sqs-checkout-coupon-list-content"><div class="title">Coupons</div>
+
+<fieldset>
+
+  <div class="field">
+
+    <label>
+      Promo Code
+    </label>
+
+    <div class="codeline">
+      <div class="codeleft">
+        <input name="promoCode" class="field-element" type="text" placeholder="Promo Code" spellcheck="false">
+       </div>
+
+      <!-- Redeem Button -->
+      <div class="button redeem-coupon">Redeem</div> 
+    </div>
+
+    <!-- List -->
+    <div class="coupon-list"><div id="yui_3_17_2_1_1414184167898_1203" class="yui3-widget sqs-widget sqs-data-widget sqs-dialog-field sqs-list data-state-loaded"><div id="yui_3_17_2_1_1414184167898_1205" class="sqs-list-content"><div class="controls"><button class="add-item" type="button" hidden="hidden" style="display: none;">Add Item</button></div><div class="list-title">Set strings.title to something.</div><div class="list-items" id="yui_3_17_2_1_1414184167898_1247"><div class="empty"></div></div></div></div></div>
+
+    <div class="invalid-coupon-title hidden">
+      The coupons below are no longer valid. This can occur if a coupon expires
+      or if you remove an item from your shopping cart.
+    </div>
+
+    <!-- No Longer Valid Coupons -->
+    <div class="invalid-coupon-list hidden"><div id="yui_3_17_2_1_1414184167898_1269" class="yui3-widget sqs-widget sqs-data-widget sqs-dialog-field sqs-list data-state-loaded"><div id="yui_3_17_2_1_1414184167898_1271" class="sqs-list-content"><div class="controls"><button class="add-item" type="button" hidden="hidden" style="display: none;">Add Item</button></div><div class="list-title">Set strings.title to something.</div><div class="list-items" id="yui_3_17_2_1_1414184167898_1313"><div class="empty"></div></div></div></div></div>
+
+  </div>
+
+</fieldset></div></div></div>
+      </div>
+
+      <!-- CHECKOUT FORM -->
+      <div id="form-wrapper" class="right-column-wrapper"><div id="yui_3_17_2_1_1414184167898_246" class="yui3-widget sqs-widget sqs-checkout-form">
+          <div id="yui_3_17_2_1_1414184167898_248" class="sqs-checkout-form-content">
+            <form action="https://secure.squarespace.com/commerce/submit-order?crumb=6ccefd8a56" method="POST" accept-charset="UTF-8" enctype="application/x-www-form-urlencoded; charset=utf-8">
+              <input type="hidden" name="forceTestMode"><input type="hidden" name="customFormSubmission">
+              <div id="yui_3_17_2_1_1414184167898_258" class="yui3-widget sqs-widget sqs-checkout-form-section card sqs-checkout-form-address sqs-checkout-form-billing editing">
+                <div id="yui_3_17_2_1_1414184167898_260" class="sqs-checkout-form-billing-content">
+                  <div class="title">Billing Info<a class="edit-button">edit</a></div>
+
+                  <fieldset>
+
+  <!-- First Name -->
+  <div id="billing-first-name" data-label="First Name" class="field first-name required">
+    <label>First Name</label>
+    <input name="billingFirstName" class="field-element pulse-warnable" placeholder="First Name" x-autocompletetype="given-name" type="text" spellcheck="false" maxlength="30">
+  </div>
+
+
+  <!-- Last Name -->
+  <div id="billing-last-name" data-label="Last Name" class="field last-name required">
+    <label>Last Name</label>
+    <input name="billingLastName" class="field-element pulse-warnable" placeholder="Last Name" x-autocompletetype="surname" a="" type="text" spellcheck="false" maxlength="30">
+  </div>
+
+
+  <!-- Email Address -->
+  <div id="email" data-label="Email Address" class="field email required">
+    <label>Email Address</label>
+    <input name="email" class="field-element pulse-warnable" placeholder="Email" x-autocompletetype="email" type="text" spellcheck="false" maxlength="50">
+  </div>
+
+
+  <!-- Billing Address 1 -->
+  <div id="billing-address-1" data-label="Address Line 1" class="field required">
+    <label>Address Line 1</label>
+    <input name="billingAddress1" class="field-element address-line1 pulse-warnable sqs-scroll-ac-input" placeholder="Address Line 1" x-autocompletetype="address-line1" type="text" spellcheck="false" maxlength="50" aria-autocomplete="list" aria-expanded="false" aria-owns="yui_3_17_2_1_1414184167898_449" id="yui_3_17_2_1_1414184167898_467" autocomplete="on">
+  <div id="yui_3_17_2_1_1414184167898_414" class="yui3-widget yui3-aclist sqs-scroll-ac yui3-widget-positioned sqs-scroll-ac-hidden" aria-hidden="true" style="left: 0px; top: 40.796875px;"><div id="yui_3_17_2_1_1414184167898_416" class="sqs-scroll-ac-content sqs-google-places-autocomplete-mixin"><div class="sqs-scroll-ac-scroll-container" hidden="hidden" style="display: none;"><ul class="sqs-scroll-ac-list" id="yui_3_17_2_1_1414184167898_449" role="listbox"></ul><div class="google-required-elements"><div class="google-attributions"></div><div class="powered-by-google"></div></div></div></div></div><div class="sqs-scroll-ac-aria" aria-live="polite" role="status"></div></div>
+
+
+  <!-- Billing Address 2 -->
+  <div id="billing-address-2" data-label="Address Line 2" class="field">
+    <label>Address Line 2</label>
+    <input name="billingAddress2" class="field-element address-line2 pulse-warnable" placeholder="Address Line 2" type="text" x-autocompletetype="address-line2" spellcheck="false" maxlength="50">
+  </div>
+
+
+  <!-- Country -->
+  <div id="billing-country" data-label="Country" class="field country required">
+    <label>Country</label>
+    <select name="billingCountry" class="field-element pulse-warnable" x-autocompletetype="country-name"><option value="United States">United States</option></select>
+  </div>
+
+
+  <!-- City -->
+  <div id="billing-city" data-label="City" class="field city required">
+    <label>City</label>
+    <input name="billingCity" class="field-element pulse-warnable" placeholder="City" type="text" spellcheck="false" maxlength="30">
+  </div>
+
+
+  <!-- State/Province -->
+  <div id="billing-state" data-label="State/Province" class="field state required">
+    <label>State/Province</label>
+    <select name="billingState" class="field-element pulse-warnable" x-autocompletetype="state" id="yui_3_17_2_1_1414184167898_596"><option value="AL">AL</option><option value="AK">AK</option><option value="AZ">AZ</option><option value="AR">AR</option><option value="CA">CA</option><option value="CO">CO</option><option value="CT">CT</option><option value="DE">DE</option><option value="FL">FL</option><option value="GA">GA</option><option value="HI">HI</option><option value="ID">ID</option><option value="IL">IL</option><option value="IN">IN</option><option value="IA">IA</option><option value="KS">KS</option><option value="KY">KY</option><option value="LA">LA</option><option value="ME">ME</option><option value="MD">MD</option><option value="MA">MA</option><option value="MI">MI</option><option value="MN">MN</option><option value="MS">MS</option><option value="MO">MO</option><option value="MT">MT</option><option value="NE">NE</option><option value="NV">NV</option><option value="NH">NH</option><option value="NJ">NJ</option><option value="NM">NM</option><option value="NY">NY</option><option value="NC">NC</option><option value="ND">ND</option><option value="OH">OH</option><option value="OK">OK</option><option value="OR">OR</option><option value="PA">PA</option><option value="RI">RI</option><option value="SC">SC</option><option value="SD">SD</option><option value="TN">TN</option><option value="TX">TX</option><option value="UT">UT</option><option value="VT">VT</option><option value="VA">VA</option><option value="WA">WA</option><option value="DC">DC</option><option value="WV">WV</option><option value="WI">WI</option><option value="WY">WY</option><option value="AA">AA</option><option value="AE">AE</option><option value="AP">AP</option></select>
+  </div>
+
+
+  <!-- Zip Code -->
+  <div id="billing-zip" data-label="Zip Code" class="field zip required">
+    <label>Zip / Postal</label>
+    <input name="billingZip" class="field-element pulse-warnable" placeholder="Zip / Postal" type="text" spellcheck="false" maxlength="10">
+  </div>
+
+  <div style="clear:both;"></div>
+  <div id="phone" data-label="Phone Number" class="field phone">
+    <label>Phone Number</label>
+    <input name="phone" class="field-element pulse-warnable" placeholder="Phone Number" x-autocompletetype="phone" type="text" spellcheck="false" maxlength="20">
+  </div>
+
+  
+
+  
+
+  
+
+
+  <!-- Continue -->
+  <div class="btn-container">
+    <div class="button continue-button">Continue</div>
+  </div>
+
+</fieldset></div></div><div id="yui_3_17_2_1_1414184167898_271" class="yui3-widget sqs-widget sqs-checkout-form-section card sqs-checkout-form-address sqs-checkout-form-shipping incomplete"><div id="yui_3_17_2_1_1414184167898_273" class="sqs-checkout-form-shipping-content empty-shipping-options"><div class="title">Shipping Options<a class="edit-button">edit</a></div>
+
+<fieldset>
+
+
+  <!-- Ship to Billing Address -->
+  <div id="ship-to-billing" class="check-element active">
+    Shipping Address same as Billing
+  </div>
+  <input name="shipToBilling" value="true" type="hidden">
+
+
+  <!-- Shipping Address -->
+  <div id="shipping-address-wrapper" class="hidden">
+
+
+    <!-- First Name -->
+    <div id="shipping-first-name" data-label="First Name" class="field first-name required">
+      <label>First Name</label>
+      <input name="shippingFirstName" class="field-element pulse-warnable" placeholder="First Name" x-autocompletetype="given-name" type="text" spellcheck="false" maxlength="30">
+    </div>
+
+
+    <!-- Last Name -->
+    <div id="shipping-last-name" data-label="Last Name" class="field last-name required">
+      <label>Last Name</label>
+      <input name="shippingLastName" class="field-element pulse-warnable" placeholder="Last Name" x-autocompletetype="surname" type="text" spellcheck="false" maxlength="30">
+    </div>
+
+
+    <!-- Shipping Address 1 -->
+    <div id="shipping-address-1" data-label="Address Line 1" class="field address required">
+      <label>Address Line 1</label>
+      <input name="shippingAddress1" class="field-element address-line1 pulse-warnable sqs-scroll-ac-input" type="text" x-autocompletetype="address-line1" placeholder="Street Address 1" spellcheck="false" maxlength="50" aria-autocomplete="list" aria-expanded="false" aria-owns="yui_3_17_2_1_1414184167898_702" id="yui_3_17_2_1_1414184167898_720" autocomplete="on">
+    <div id="yui_3_17_2_1_1414184167898_676" class="yui3-widget yui3-aclist sqs-scroll-ac yui3-widget-positioned sqs-scroll-ac-hidden" aria-hidden="true" style="left: 0px; top: 0px;"><div id="yui_3_17_2_1_1414184167898_678" class="sqs-scroll-ac-content sqs-google-places-autocomplete-mixin"><div class="sqs-scroll-ac-scroll-container" hidden="hidden" style="display: none;"><ul class="sqs-scroll-ac-list" id="yui_3_17_2_1_1414184167898_702" role="listbox"></ul><div class="google-required-elements"><div class="google-attributions"></div><div class="powered-by-google"></div></div></div></div></div><div class="sqs-scroll-ac-aria" aria-live="polite" role="status"></div></div>
+
+
+    <!-- Shipping Address 2 -->
+    <div id="shipping-address-2" data-label="Address Line 2" class="field address">
+      <label>Address Line 2</label>
+      <input name="shippingAddress2" class="field-element address-line2 pulse-warnable" type="text" placeholder="Street Address 2" x-autocompletetype="address-line2" spellcheck="false" maxlength="50">
+    </div>
+
+
+    <!-- Country -->
+    <div id="shipping-country" data-label="Country" class="field country required">
+      <label>Country</label>
+      <select name="shippingCountry" class="field-element pulse-warnable" x-autocompletetype="country-name"><option value="United States">United States</option></select>
+    </div>
+
+
+    <!-- City -->
+    <div id="shipping-city" data-label="City" class="field city required">
+      <label>City</label>
+      <input name="shippingCity" class="field-element pulse-warnable" placeholder="City" x-autocompletetype="city" type="text" spellcheck="false" maxlength="30">
+    </div>
+
+
+    <!-- State/Province -->
+    <div id="shipping-state" data-label="State/Province" class="field state required">
+      <label>State/Province</label>
+      <select name="shippingState" class="field-element pulse-warnable" x-autocompletetype="state" id="yui_3_17_2_1_1414184167898_899"><option value="AL">AL</option><option value="AK">AK</option><option value="AZ">AZ</option><option value="AR">AR</option><option value="CA">CA</option><option value="CO">CO</option><option value="CT">CT</option><option value="DE">DE</option><option value="FL">FL</option><option value="GA">GA</option><option value="HI">HI</option><option value="ID">ID</option><option value="IL">IL</option><option value="IN">IN</option><option value="IA">IA</option><option value="KS">KS</option><option value="KY">KY</option><option value="LA">LA</option><option value="ME">ME</option><option value="MD">MD</option><option value="MA">MA</option><option value="MI">MI</option><option value="MN">MN</option><option value="MS">MS</option><option value="MO">MO</option><option value="MT">MT</option><option value="NE">NE</option><option value="NV">NV</option><option value="NH">NH</option><option value="NJ">NJ</option><option value="NM">NM</option><option value="NY">NY</option><option value="NC">NC</option><option value="ND">ND</option><option value="OH">OH</option><option value="OK">OK</option><option value="OR">OR</option><option value="PA">PA</option><option value="RI">RI</option><option value="SC">SC</option><option value="SD">SD</option><option value="TN">TN</option><option value="TX">TX</option><option value="UT">UT</option><option value="VT">VT</option><option value="VA">VA</option><option value="WA">WA</option><option value="DC">DC</option><option value="WV">WV</option><option value="WI">WI</option><option value="WY">WY</option><option value="AA">AA</option><option value="AE">AE</option><option value="AP">AP</option></select>
+    </div>
+
+
+    <!-- Zip Code -->
+    <div id="shipping-zip" data-label="Zip Code" class="field zip required">
+      <label>Zip / Postal</label>
+      <input name="shippingZip" class="field-element pulse-warnable" x-autocompletetype="postal-code" placeholder="Zip / Postal" type="text" spellcheck="false" maxlength="10">
+    </div>
+
+  </div> <!-- end #shipping-address -->
+
+
+  <div class="subtitle">Select a Shipping Option</div>
+
+
+  <!-- Shipping Options -->
+  <div id="shipping-options"><div id="yui_3_17_2_1_1414184167898_284" class="yui3-widget sqs-widget sqs-checkout-form-shipping-options"><div id="yui_3_17_2_1_1414184167898_286" class="sqs-checkout-form-shipping-options-content empty"><div class="empty-message">
+  You cannot continue checkout because this store has not configured any
+  shipping options for your country.
+</div>
+
+<div class="warning-message zip-warning-message">
+  <img src="./checkout_files/tiny-alert.png">Shipping options require your zip/postal code to estimate.
+</div>
+
+<div class="warning-message zip-invalid-warning-message">
+  <img src="./checkout_files/tiny-alert.png">The zip code you entered is not valid.
+</div>
+
+<div class="warning-message weight-missing-warning-message">
+  <img src="./checkout_files/tiny-alert.png">All products in this cart are missing weight information.
+</div>
+
+<div class="warning-message service-unavailable-warning-message">
+  <img src="./checkout_files/tiny-alert.png">A method is unavailable for some items due to size restrictions.
+</div>
+
+<div class="warning-message carrier-warning-message">
+  <img src="./checkout_files/tiny-alert.png">Something went wrong reaching the shipping carrier for estimates.
+</div>
+
+<div class="loading-spinner"><div id="yui_3_17_2_1_1414184167898_818" class="yui3-widget sqs-spin dark" style="height: 15px; width: 15px;"><div id="yui_3_17_2_1_1414184167898_820" class="sqs-spin-content yui3-widget-content-expanded"></div></div></div>
+<div class="options-container"></div></div></div></div>
+
+
+  <!-- Continue -->
+  <div class="btn-container">
+    <div class="button continue-button configure-shipping-button">Configure Shipping Options</div>
+  </div>
+
+ </fieldset></div></div><div id="yui_3_17_2_1_1414184167898_303" class="yui3-widget sqs-widget sqs-checkout-form-section card sqs-checkout-form-payment incomplete"><div id="yui_3_17_2_1_1414184167898_305" class="sqs-checkout-form-payment-content"><div class="title">
+  <a class="edit-button">edit</a>
+
+  <div class="cards">
+    <img src="./checkout_files/discover.png">
+    <img src="./checkout_files/mastercard.png">
+    <img src="./checkout_files/visa.png">
+    <img src="./checkout_files/americanexpress.png">
+  </div>
+
+  Secure Payment
+</div>
+
+<fieldset>
+
+
+  <!-- Credit Card -->
+  <div id="credit-card">
+
+
+    <!-- Name -->
+    <input name="cardHolderName" type="hidden">
+
+
+    <!-- Card Number -->
+    <div id="card-number" data-label="Card Number" class="field required">
+      <label>Card Number</label>
+      <input class="field-element pulse-warnable" type="text" size="20" autocomplete="off" placeholder="Credit Card Number" value="">
+    </div>
+
+
+    <!-- Expiry/CVC -->
+    <div id="expiry-cvc">
+
+      <!-- Expiry Month -->
+      <div id="card-expiry-month" data-label="Exp. Mo." class="field required">
+        <label>Exp. Mo.</label>
+        <select class="field-element pulse-warnable" value="04" id="yui_3_17_2_1_1414184167898_969">
+          <option value="1">01</option><option value="2">02</option><option value="3">03</option><option value="4">04</option><option value="5">05</option><option value="6">06</option><option value="7">07</option><option value="8">08</option><option value="9">09</option><option value="10">10</option><option value="11">11</option><option value="12">12</option>
+        </select>
+      </div>
+
+      <!-- Expiry Year -->
+      <div id="card-expiry-year" data-label="Exp. Yr." class="field required">
+        <label>Exp. Yr.</label>
+        <select class="field-element pulse-warnable" value="2015" id="yui_3_17_2_1_1414184167898_971">
+          <option value="2014">2014</option><option value="2015">2015</option><option value="2016">2016</option><option value="2017">2017</option><option value="2018">2018</option><option value="2019">2019</option><option value="2020">2020</option><option value="2021">2021</option><option value="2022">2022</option><option value="2023">2023</option>
+        </select>
+      </div>
+
+      <!-- CVC -->
+      <div id="cvc" data-label="CVC" class="field required">
+        <label>CVC</label>
+        <input class="field-element pulse-warnable" type="text" size="4" autocomplete="off" placeholder="CVC" value="">
+      </div>
+
+    </div>
+
+  </div> <!-- end #credit-card -->
+
+
+  <!-- Secure payment conditions -->
+  <div id="comfort">
+    All transactions are secure and encrypted, and we never store your credit card information. Payments are
+    processed through Stripe. Payment information is also governed by
+    <a target="_blank" href="https://stripe.com/privacy">Stripe's privacy policy</a>.
+  </div>
+
+
+  <!-- Place Order -->
+  <div id="place-order">
+    <div id="place-order-button" class="button continue-button" value="Place Order">Submit Order</div>
+    <div class="trust"><img src="./checkout_files/truste.png"></div>
+
+    <!-- hidden field to convey the Stripe Token so we may submit the charge -->
+    <input name="stripeToken" type="hidden">
+
+    <!-- optional hidden fields -->
+    
+
+  </div>
+
+</fieldset></div></div></form></div></div></div>
+
+      <!-- POLICIES -->
+      <div id="policies-wrapper" class="right-column-wrapper">
+
+        <!-- Terms of Service -->
+        <a href="javascript:void(0)" id="termsOfService" class="store-policy-link" title="Terms Of Service" data-property="termsOfService" hidden="hidden" style="display: none;">
+          Terms of Service
+        </a>
+
+        <!-- Privacy Policy -->
+        <a href="javascript:void(0)" id="privacyPolicy" class="store-policy-link" title="Privacy Policy" data-property="privacyPolicy" hidden="hidden" style="display: none;">
+          Privacy Policy
+        </a>
+
+        <!-- Return Policy -->
+        <a href="javascript:void(0)" id="returnPolicy" class="store-policy-link" title="Return Policy" data-property="returnPolicy" hidden="hidden" style="display: none;">
+          Return Policy
+        </a>
+
+      </div>
+
+    </div>
+  
+  <script>
+    Squarespace.globalMarkReady(Y);
+  </script><div class="absolute-cart-box"><div id="yui_3_17_2_1_1414184167898_154" class="yui3-widget sqs-widget sqs-pill-shopping-cart" style="visibility: visible; opacity: 1;"><div id="yui_3_17_2_1_1414184167898_156" class="sqs-pill-shopping-cart-content dark"><div class="icon"></div>
+
+<div class="details">
+  Cart&nbsp;-&nbsp;
+    <span class="total-quantity">1</span>
+    <span class="suffix">item</span>
+</div>
+
+<span class="subtotal">
+  <span class="price"><span class="sqs-money-native">1,499.00</span></span>
+</span></div></div></div>
+
+
+<div id="iuwzlrsoreqxdrjlyowqaspczsolayvi" title="Click to dismiss alert bubble" style="right: 20px !important; bottom: 15px !important; cursor: pointer; background: rgb(51, 0, 51) !important;"><div style="background: rgb(51, 0, 51) !important;"><a href="https://secure.squarespace.com/commerce/checkout?cartId=544abc91e4b07e8995def842#" id="iuwzlrsoreqxdrjlyowqaspczsolayvi-gear" title="Click to configure alert bubble" style="right: 0px !important; bottom: 0px !important; border-top-left-radius: 3px !important; border-bottom-right-radius: 3px !important;">&nbsp;</a><span class="iuwzlrsoreqxdrjlyowqaspczsolayvi-blocked">Typekit by Adobe</span><br></div></div><div id="yui_3_17_2_1_1414184167898_1029" class="yui3-widget sqs-widget sqs-modal-lightbox" hidden="hidden" style="display: none;"><div id="yui_3_17_2_1_1414184167898_1031" class="sqs-modal-lightbox-content"><div class="lightbox-background"></div><div class="lightbox-inner" id="yui_3_17_2_1_1414184167898_1049"><div class="lightbox-content" style="margin-top: 318px; margin-bottom: 318px;"><div class="lightbox-close">×</div></div></div></div></div><script src="./checkout_files/{main,places}.js"></script></body></html>
