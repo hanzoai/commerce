@@ -1,9 +1,9 @@
 package util
 
 import (
-	"io/ioutil"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
+	"io/ioutil"
 )
 
 func DecodeJson(c *gin.Context, v interface{}) error {
