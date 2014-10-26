@@ -1,15 +1,17 @@
 package templates
 
 import (
+	"os"
 	"github.com/flosch/pongo2"
 	"github.com/gin-gonic/gin"
 )
 
 var templateCache map[string]*pongo2.Template
+var cwd, _ = os.Getwd()
 
 func Render(c *gin.Context, path string, ctx pongo2.Context) (err error) {
 	// All templates are expected to be in templates dir
-	path = "templates/" + path
+	path = cwd + "/templates/" + path
 
 	template, ok := templateCache[path]
 	if !ok {

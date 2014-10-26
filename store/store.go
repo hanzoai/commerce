@@ -14,7 +14,12 @@ func init() {
 	router.Use(middleware.AppEngine())
 
 	router.GET("/", func(c *gin.Context) {
-		templates.Render(c, "store/product.html", nil)
+		ctx := middleware.GetAppEngine(c)
+
+		err := templates.Render(c, "products.html", nil); if err != nil {
+			ctx.Errorf("%v", err)
+			c.String(500, "Unable to render template")
+		}
 	})
 
 	http.Handle("/", router)
