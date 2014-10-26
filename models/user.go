@@ -1,21 +1,21 @@
 package models
 
 type User struct {
-	id              string
-	name            string
-	email           string
-	phone           string
-	orders          []Order
-	cart            Cart
-	billingAddress  Address
-	shippingAddress Address
+	Id              string
+	Name            string
+	Email           string
+	Phone           string
+	Orders          []Order
+	Cart            Cart
+	BillingAddress  Address
+	ShippingAddress Address
 }
 
 type Address struct {
-	street     string
-	unit       string
-	city       string
-	state      string
-	postalCode string
-	country    string
+	Street     string
+	Unit       string
+	City       string
+	State      string
+	PostalCode string
+	Country    string
 }
