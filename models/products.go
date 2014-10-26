@@ -5,28 +5,28 @@ import (
 )
 
 type Product struct {
-	id          string
-	title       string
-	variants    []ProductVariant
-	images      []Image
-	description string
-	stocked     int
-	available   bool
-	released    time.Time
-	addLabel    string // Pre-order now or Add to cart
+	Id          string
+	Title       string
+	Variants    []ProductVariant
+	Images      []Image
+	Description string
+	Stocked     int
+	Available   bool
+	Released    time.Time
+	AddLabel    string // Pre-order now or Add to cart
 }
 
 type ProductVariant struct {
-	sku        string
-	price      Currency
-	stock      int
-	weight     int
-	dimensions string
-	color      string
-	size       string
+	Sku        string
+	Price      Currency
+	Stock      int
+	Weight     int
+	Dimensions string
+	Color      string
+	Size       string
 }
 
 type Image struct {
-	name string
-	url  string
+	Name string
+	Url  string
 }
