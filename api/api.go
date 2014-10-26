@@ -18,7 +18,6 @@ func init() {
 
 	api := router.Group("/v1")
 
-	// Cart API
 	api.GET("/cart/:id", cart.Get)
 	api.POST("/cart", cart.Add)
 	api.PUT("/cart", cart.Update)

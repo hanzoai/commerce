@@ -5,7 +5,7 @@ type User struct {
 	Name            string
 	Email           string
 	Phone           string
-	Orders          []Order
+	OrdersIds		[]string
 	Cart            Cart
 	BillingAddress  Address
 	ShippingAddress Address

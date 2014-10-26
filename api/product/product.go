@@ -33,9 +33,8 @@ func Add(c *gin.Context) {
 	ctx := middleware.GetAppEngine(c)
 	ctx.Infof("[Api.Product.Add] JSON: %v", json)
 
-	key, err := d.Put("cart", &json)
+	key, err := d.Put("product", &json)
 	if err != nil {
-		ctx := middleware.GetAppEngine(c)
 		ctx.Errorf("[Api.Product.Add] %v", err)
 		c.JSON(500, gin.H{"status": "unable to save cart"})
 	} else {

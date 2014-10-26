@@ -32,11 +32,10 @@ func Add(c *gin.Context) {
 	ctx := middleware.GetAppEngine(c)
 	ctx.Infof("[Api.Order.Add] JSON: %v", json)
 
-	key, err := d.Put("cart", &json)
+	key, err := d.Put("order", &json)
 	if err != nil {
-		ctx := middleware.GetAppEngine(c)
 		ctx.Errorf("[Api.Order.Add] %v", err)
-		c.JSON(500, gin.H{"status": "unable to save cart"})
+		c.JSON(500, gin.H{"status": "unable to save order"})
 	} else {
 		json.Id = key
 		c.JSON(200, json)
