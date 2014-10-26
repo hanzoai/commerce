@@ -4,21 +4,17 @@ import (
 	"net/http"
 	"github.com/gin-gonic/gin"
 	"crowdstart.io/middleware"
+	"crowdstart.io/templates"
 )
 
 func init() {
 	router := gin.Default()
 
-    router.Use(gin.Logger())
-    router.Use(gin.Recovery())
-    router.Use(middleware.AppEngine())
+	router.Use(middleware.Host())
+	router.Use(middleware.AppEngine())
 
-	router.GET("/foo/", func(ctx *gin.Context) {
-		ctx.String(200, "foo")
-	})
-
-	router.GET("/bar/", func(ctx *gin.Context) {
-		ctx.String(200, "bar")
+	router.GET("/", func(c *gin.Context) {
+		templates.Render(c, "store/product.html", nil)
 	})
 
 	http.Handle("/", router)
