@@ -31,7 +31,7 @@ deps: .sdk
 	unzip $(sdk).zip && \
 	mv go_appengine $(sdk_path) && \
 	rm $(sdk).zip && \
-	ln -s $(pwd) $(sdk_path)/gopath/src/crowdstart.io
+	ln -s $(shell pwd) $(sdk_path)/gopath/src/crowdstart.io
 
 serve:
 	$(sdk_path)/dev_appserver.py dispatch.yaml app.yaml api/app.yaml store/app.yaml checkout/app.yaml
