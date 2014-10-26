@@ -3,7 +3,8 @@ package cardconnect
 import (
 	"encoding/base64"
 	"encoding/json"
-	"io/ioutil"
+	"errors"
+	"github.com/jmcvetta/napping"
 	"net/http"
 )
 
@@ -44,29 +45,22 @@ type AuthorizationResponse struct {
 	CommCard string
 }
 
-var base_url = "fts.prinpay.com:6443/cardconnect/rest" //496160873888-CardConnect - USD - NORTH
+var baseUrl = "fts.prinpay.com:6443/cardconnect/rest" // 496160873888-CardConnect - USD - NORTH
 var authCode = base64.StdEncoding.EncodeToString([]byte("testing:testing123"))
 
-func Authorize(areq AuthorizationRequest) (aresp AuthorizationResponse, err error) {
-	var err error
-	var aresp AuthorizationResponse
+func Authorize(areq AuthorizationRequest) (ares AuthorizationResponse, err error) {
+	s := napping.Session{
+		Header: *http.Header{
+			"Authorization": "Basic " + authCode,
+		},
+	}
 
-	if reqJson, err := json.Marshal(areq); err == nil {
-		reqJson := string(reqJson)
-		client := &http.Client{}
-
-		if req, err := http.NewRequest("POST", base_url, nil); err == nil {
-			req.Header.Add("Authorization: Basic " + authCode)
-			resp, err := client.Do(req)
-			defer resp.Body.Close()
-
-			if err == nil {
-				if body, err := ioutil.ReadAll(resp.Body); err == nil {
-					if err := json.Unmarshal(body, &aresp); err == nil {
-						return aresp, nil
-					}
-				}
-			}
-		}
+	switch res, err := s.Post(baseUrl+"/auth", &areq, &ares); {
+	case err != nil:
+		return ares, err
+	case res.Status() == 200:
+		return ares, nil
+	default:
+		return ares, errors.New("CardConnect returned invalid response")
 	}
 }
