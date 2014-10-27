@@ -5,13 +5,13 @@ import (
 	"crowdstart.io/api/user"
 	"crowdstart.io/api/order"
 	"crowdstart.io/api/product"
-	"crowdstart.io/middleware"
+	"crowdstart.io/util/router"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
 
 func init() {
-	router := middleware.NewRouter()
+	router := router.New()
 
 	api := router.Group("/v1")
 
