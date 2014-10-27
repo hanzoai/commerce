@@ -14,7 +14,7 @@ function setupStats() {
   c && (b += "1 day, ");
   $("span.campaign-counter").text(b + (d + " hours, " + e + " minutes left to order your AR-1"))
 }
-Y.use("node", "squarespace-ui-base", function() {
+Y.use("node", "yui-throttle", "squarespace-ui-base", function() {
   window.Site = Singleton.create({
     PARALLAX_FACTOR: 0.8,
     SCROLL_SPEED: 0.6,
