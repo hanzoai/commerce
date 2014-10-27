@@ -6,10 +6,10 @@ import (
 )
 
 func List(c *gin.Context) {
-	template.Render(c, "products/list.html", nil)
+	template.Render(c, "store/list.html", nil)
 }
 
 func Get(c *gin.Context) {
-	slug := c.Params.ByName("slug")
-	template.Render(c, "products/" + slug + ".html", nil)
+	// slug := c.Params.ByName("slug")
+	template.Render(c, "store/product.html", nil)
 }
