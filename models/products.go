@@ -17,6 +17,7 @@ type Product struct {
 }
 
 type ProductVariant struct {
+	Id		   string
 	Sku        string
 	Price      Currency
 	Stock      int
