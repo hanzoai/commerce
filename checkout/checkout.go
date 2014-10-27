@@ -8,7 +8,7 @@ import (
 func init() {
 	router := router.New()
 
-	router.GET("/checkout",  showCheckout)
+	router.GET("/checkout", showCheckout)
 	router.GET("/checkout/", showCheckout)
 	router.POST("/checkout", processCheckout)
 
