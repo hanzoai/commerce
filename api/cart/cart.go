@@ -2,11 +2,11 @@ package cart
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/mholt/binding"
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models"
 	"crowdstart.io/util"
-
 )
 
 func Get(c *gin.Context) {
@@ -27,10 +27,15 @@ func Get(c *gin.Context) {
 func Add(c *gin.Context) {
 	d := datastore.New(c)
 
-	var json models.Cart
+	json := new(models.Cart)
 
-	util.DecodeJson(c, &json)
 	ctx := middleware.GetAppEngine(c)
+
+	errs := binding.Bind(c.Request, json)
+	if errs.Handle(c.Writer) {
+		ctx.Errorf("[Api.User.Add] %v", errs)
+		return
+	}
 	ctx.Infof("[Api.Cart.Add] JSON: %v", json)
 
 	key, err := d.Put("cart", &json)

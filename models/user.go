@@ -21,6 +21,7 @@ func (u *User) FieldMap() binding.FieldMap {
 }
 
 func (u User) Validate(req *http.Request, errs binding.Errors) binding.Errors {
+	// Name cannot be empty string.
 	if u.Name == "" {
         errs = append(errs, binding.Error{
             FieldNames:     []string{"Name"},
@@ -28,6 +29,10 @@ func (u User) Validate(req *http.Request, errs binding.Errors) binding.Errors {
             Message:        "User name cannot be empty.",
         })
     }
+
+    // Validate cart implicitly.
+    u.Cart.Validate(req, errs)
+
     return errs
 }
 
