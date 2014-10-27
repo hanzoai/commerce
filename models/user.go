@@ -1,14 +1,36 @@
 package models
 
+import (
+	"net/http"
+	"github.com/mholt/binding"
+)
+
 type User struct {
 	Id              string
 	Name            string
 	Email           string
 	Phone           string
-	OrdersIds		[]string
+	OrdersIds       []string
 	Cart            Cart
 	BillingAddress  Address
 	ShippingAddress Address
+	FieldMapMixin
+}
+
+func (u User) Validate(req *http.Request, errs binding.Errors) binding.Errors {
+	// Name cannot be empty string.
+	if u.Name == "" {
+        errs = append(errs, binding.Error{
+            FieldNames:     []string{"Name"},
+            Classification: "InputError",
+            Message:        "User name cannot be empty.",
+        })
+    }
+
+    // Validate cart implicitly.
+    u.Cart.Validate(req, errs)
+
+    return errs
 }
 
 type Address struct {

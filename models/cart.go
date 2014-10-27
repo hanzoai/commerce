@@ -2,6 +2,8 @@ package models
 
 import (
 	"time"
+	"net/http"
+	"github.com/mholt/binding"
 )
 
 type LineItem struct {
@@ -14,6 +16,19 @@ type Cart struct {
 	Id        string
 	Items     []LineItem
 	CreatedAt time.Time
+	FieldMapMixin
+}
+
+func (c Cart) Validate(req *http.Request, errs binding.Errors) binding.Errors {
+	// Cart cannot be empty.
+	if len(c.Items) == 0 {
+        errs = append(errs, binding.Error{
+            FieldNames:     []string{"Items"},
+            Classification: "InputError",
+            Message:        "Cart is empty.",
+        })
+    }
+    return errs
 }
 
 type Order struct {
@@ -28,6 +43,7 @@ type Order struct {
 	ShippingOption  ShippingOption
 	Shipping        int
 	Total           int
+	FieldMapMixin
 }
 
 type ShippingOption struct {

@@ -2,9 +2,10 @@ package api
 
 import (
 	"crowdstart.io/api/cart"
-	"crowdstart.io/api/user"
 	"crowdstart.io/api/order"
 	"crowdstart.io/api/product"
+	"crowdstart.io/api/user"
+	"crowdstart.io/api/variant"
 	"crowdstart.io/util/router"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -34,6 +35,11 @@ func init() {
 	api.POST("/product", product.Add)
 	api.PUT("/product/:id", product.Update)
 	api.DELETE("/product/:id", product.Delete)
+
+	api.GET("/variant/:id", variant.Get)
+	api.POST("/variant", variant.Add)
+	api.PUT("/variant/:id", variant.Update)
+	api.DELETE("/variant/:id", variant.Delete)
 
 	// Redirect root
 	api.GET("/", func(c *gin.Context) {
