@@ -24,44 +24,12 @@
     <meta itemprop="name" content="Store">
     <meta itemprop="url" content="http://www.skullysystems.com/store/">
     <meta itemprop="thumbnailUrl" content="http://static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544a9f13e4b0f2ea4e14e7d0/?format=1000w">
-    <link rel="image_src" href="http://static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544a9f13e4b0f2ea4e14e7d0/?format=1000w">
-    <link href='http://fonts.googleapis.com/css?family=Michroma' rel='stylesheet' type='text/css'>
     <meta itemprop="image" content="http://static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544a9f13e4b0f2ea4e14e7d0/?format=1000w">
     <script async="" src="/js/fbds.js"></script>
     <!-- TODO: Ensure this can be removed: -->
     <!-- <script async="" src="/js/analytics.js"></script> -->
-    <script type="text/javascript">
-        SQUARESPACE_ROLLUPS = {};
-    </script>
-    <script>
-        (function(rollups, name) {
-            if (!rollups[name]) {
-                rollups[name] = {};
-            }
-            rollups[name].js = ["//static.squarespace.com/universal/scripts-compressed/common-445c549876bda3f60184d96108576280-min.js"];
-        })(SQUARESPACE_ROLLUPS, 'squarespace-common');
-    </script>
     <link rel="shortcut icon" type="image/x-icon" href="http://skullysystems.squarespace.com/favicon.ico">
-    <script type="text/javascript" data-sqs-type="dynamic-assets-loader">
-        (function() {
-            (function(a) {
-                try {
-                    if (window.top != window && window.top.Squarespace && window.top.Squarespace.frameAvailable) {
-                        window.top.Squarespace.frameAvailable(window, SQUARESPACE_ROLLUPS);
-                        return
-                    }
-                } catch (d) {
-                    console.error(d)
-                }
-                for (var c in a) {
-                    if (a[c].js)
-                        for (var b = 0; b < a[c].js.length; b++) document.write('<script type="text/javascript" src="' + a[c].js[b] + '">\x3c/script>');
-                    if (a[c].css)
-                        for (b = 0; b < a[c].css.length; b++) document.write('<link rel="stylesheet" type="text/css" href="' + a[c].css[b] + '" />')
-                }
-            })(SQUARESPACE_ROLLUPS);
-        })();
-    </script>
+    <script type="text/javascript" src="/js/common-445c549876bda3f60184d96108576280-min.js"></script>
     <script src="http://yui.yahooapis.com/3.18.1/build/yui/yui-min.js"></script>
     <script src="http://cdnjs.cloudflare.com/ajax/libs/yui/3.18.0/yui-throttle/yui-throttle-min.js"></script>
     <script>
@@ -652,25 +620,6 @@
             </footer>
 
             <!--INJECTION POINT FOR TRACKING SCRIPTS AND USER CONTENT FROM THE CODE INJECTION TAB-->
-            <!-- Facebook retargetting code -->
-            <script>
-                (function() {
-                    var _fbq = window._fbq || (window._fbq = []);
-                    if (!_fbq.loaded) {
-                        var fbds = document.createElement('script');
-                        fbds.async = true;
-                        fbds.src = '//connect.facebook.net/en_US/fbds.js';
-                        var s = document.getElementsByTagName('script')[0];
-                        s.parentNode.insertBefore(fbds, s);
-                        _fbq.loaded = true;
-                    }
-                    _fbq.push(['addPixelId', '552096258229612']);
-                })();
-                window._fbq = window._fbq || [];
-                window._fbq.push(['track', 'PixelInitialized', {}]);
-            </script>
-            <noscript>&lt;img height="1" width="1" alt="" style="display:none" src="https://www.facebook.com/tr?id=552096258229612&amp;amp;ev=PixelInitialized" /&gt;</noscript>
-
             <script type="text/javascript" data-sqs-type="imageloader">
                 (function() {
                     var SQUARESPACE_SIZES = [1500, 1E3, 750, 500, 300, 100],
@@ -906,9 +855,6 @@
                     init();
                     window.YUI && YUI.add("squarespace-imageloader", function(a) {});
                 })();
-            </script>
-            <script>
-                Squarespace.afterBodyLoad(Y);
             </script>
         </div>
     </div>
