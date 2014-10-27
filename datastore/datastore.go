@@ -32,8 +32,22 @@ func (d *Datastore) Get(key string, value interface{}) error {
 	return nds.Get(d.ctx, k, value)
 }
 
+func (d *Datastore) GetKey(kind string, key string, value interface{}) error {
+	k := NewKey(d.ctx, kind, key, 0, nil)
+	return nds.Get(d.ctx, k, value)
+}
+
 func (d *Datastore) Put(kind string, src interface{}) (string, error) {
 	k := NewIncompleteKey(d.ctx, kind, nil)
+	k, err := nds.Put(d.ctx, k, src)
+	if err != nil {
+		return "", err
+	}
+	return k.Encode(), nil
+}
+
+func (d *Datastore) PutKey(kind string, key string, src interface{}) (string, error) {
+	k := NewKey(d.ctx, kind, key, 0, nil)
 	k, err := nds.Put(d.ctx, k, src)
 	if err != nil {
 		return "", err
@@ -60,6 +74,10 @@ func (d *Datastore) Delete(key string) error {
 		return err
 	}
 	return nds.Delete(d.ctx, k)
+}
+
+func (d *Datastore) Query(kind string) *Query {
+	return NewQuery(kind)
 }
 
 func (d *Datastore) RunInTransaction(f func(tc appengine.Context) error, opts *TransactionOptions) error {

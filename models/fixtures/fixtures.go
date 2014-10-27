@@ -6,7 +6,7 @@ import (
 )
 
 func Install(db *datastore.Datastore) {
-	db.Put("product", &Product{
+	db.PutKey("product", "ar-1", &Product{
 		Slug:  "ar-1",
 		Title: "SKULLY AR-1",
 		Description: "World's smartest helmet!",
@@ -76,6 +76,6 @@ func Install(db *datastore.Datastore) {
 	}
 
 	for _, v := range variants {
-		db.Put("variant", &v)
+		db.PutKey("variant", v.SKU, &v)
 	}
 }
