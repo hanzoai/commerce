@@ -12,7 +12,7 @@ var baseUrl = "fts.prinpay.com:6443/cardconnect/rest" // 496160873888-CardConnec
 var authCode = base64.StdEncoding.EncodeToString([]byte("testing:testing123"))
 
 type LineItem struct {
-	SKU          string // {
+	SKU          string							 // {
 	Cost         int64  `json:"unitcost,string"` // "unitcost":    "450",
 	Description  string `json:"description"`     // "description": "DESCRIPTION-2",
 	DiscountAmnt int64  `json:"discamnt,string"` // "discamnt":    "0",
@@ -23,38 +23,44 @@ type LineItem struct {
 	// NetAmnt      string `json:"netamnt"`         // "netamnt":     "300",
 	// TaxAmnt      string `json:"taxamnt"`         // "taxamnt":     "117",
 	// UPC          string `json:"upc"`             // "upc":	      "UPC-1",
-}												 //  }
+}										         //  }
 
-type AuthorizationRequest struct { // {
-	Account  string      `json:"account"`  // "account":  "4111111111111111",
-	AcctType string      `json:"accttype"` // "accttype": "VISA",
-	Address  string      `json:"address"`  // "address":  "123 MAIN STREET",
-	Amount   string      `json:"amount"`   // "amount":   "0",
-	City     string      `json:"city"`     // "city":     "anytown",
-	Country  string      `json:"country"`  // "country":  "US",
-	Currency string      `json:"currency"` // "currency": "USD",
-	CVV2     string      `json:"cvv2"`     // "cvv2":     "123",
-	Ecomind  string      `json:"ecomind"`  // "ecomind":  "E",
-	Expiry   string      `json:"expiry"`   // "expiry":   "1212",
-	MerchId  string      `json:"merchid"`  // "merchid":  "000000927996",
-	Name     string      `json:"name"`     // "name":     "TOM JONES",
-	OrderId  string      `json:"orderid"`  // "orderid":  "AB-11-9876",
-	Postal   string      `json:"postal"`   // "postal":   "55555",
-	Region   string      `json:"region"`   // "region":   "NY",
-	Tokenize string      `json:"tokenize"` // "tokenize": "Y",
-	Track    interface{} `json:"track"`    // "track":    null,
+type AuthorizationReq struct {				     // {
+	Account  string      `json:"account"`        // "account":  "4111111111111111",
+	AcctType string      `json:"accttype"`       // "accttype": "VISA",
+	Address  string      `json:"address"`        // "address":  "123 MAIN STREET",
+	Amount   int64       `json:"amount,string"`  // "amount":   "0",
+	City     string      `json:"city"`           // "city":     "anytown",
+	Country  string      `json:"country"`        // "country":  "US",
+	Currency string      `json:"currency"`       // "currency": "USD",
+	CVV2     int         `json:"cvv2"`           // "cvv2":     "123",
+	Ecomind  string      `json:"ecomind"`        // "ecomind":  "E",
+	Expiry   int         `json:"expiry,string"`  // "expiry":   "1212",
+	MerchId  int         `json:"merchid,string"` // "merchid":  "000000927996",
+	Name     string      `json:"name"`           // "name":     "TOM JONES",
+	Email    string      `json:"email"`          // "email":    "dev@hanzo.ai JONES",
+	Phone    string      `json:"phone"`          // "phone":    "913-777-9708",
+	OrderId  string      `json:"orderid"`        // "orderid":  "AB-11-9876",
+	Postal   string      `json:"postal"`         // "postal":   "55555",
+	Region   string      `json:"region"`         // "region":   "NY",
+	Tokenize string      `json:"tokenize"`       // "tokenize": "Y",
+	// Track    interface{} `json:"track"`          // "track":    null,
+												 // }
 
-	// Capture Request (embed to autocapture)
+	// Capture Request can be embeded to automate capture, we probably want to
+	// do this.                         // {
 	Capture string     `json:"capture"` // "capture":  "Y",
 	Items   []LineItem `json:"items"`   // "items": [],
+									    // }
 
-	// 3D Secure (optional)
-	SecureFlag  string `json:"secureflag"`
-	SecureValue string `json:"securevalue"`
-	SecureXid   string `json:"securexid"`
-} // }
+	// 3D Secure (optional), supposedly we'll get these values back from the 3D
+	// secure shit when it's enabled.
+	// SecureFlag  string `json:"secureflag"`
+	// SecureValue string `json:"securevalue"`
+	// SecureXid   string `json:"securexid"`
+}
 
-type AuthorizationResponse struct { // {
+type AuthorizationRes struct {	      // {
 	Account  string `json:"account"`  // "account":  "41XXXXXXXXXX1111",
 	Amount   string `json:"amount"`   // "amount":   "111",
 	AuthCode string `json:"authcode"` // "authcode": "046221",
@@ -67,10 +73,25 @@ type AuthorizationResponse struct { // {
 	Text     string `json:"resptext"` // "resptext": "Approved",
 	RetRef   string `json:"retref"`   // "retref":   "343005123105",
 	Token    string `json:"token"`    // "token":    "9419786452781111",
-} // }
+}									  // }
 
-func Authorize(order models.Order) (AuthorizationRespons, error) {
-	areq := AuthorizationRequest{
+func Authorize(order models.Order) (ares AuthorizationRes, err error) {
+	// Convert models.LineItem to our CardConnect specialized LineItem that
+	// will serialize properly.
+	items := make([]LineItem, len(order.Items))
+	for i, v := range order.Items {
+		items[i] = LineItem{
+			SKU:          v.SKU,
+			Cost:         v.Cost,
+			Description:  v.Description,
+			DiscountAmnt: v.DiscountAmnt,
+			LineNo:       v.LineNo,
+			Quantity:     v.Quantity,
+			UOM:          v.UOM,
+		}
+	}
+
+	areq := AuthorizationReq{
 		Account:  order.Account.Number,
 		AcctType: order.Account.Type,
 		Address:  order.BillingAddress.Unit + " " + order.BillingAddress.Street,
@@ -82,16 +103,15 @@ func Authorize(order models.Order) (AuthorizationRespons, error) {
 		Ecomind:  "E",
 		Email:    order.User.Email,
 		Expiry:   order.Account.Expiry,
-		MerchId:  "496160873888",
+		MerchId:  496160873888,
 		Name:     order.User.Name,
 		OrderId:  order.Id,
 		Phone:    order.User.Phone,
 		Postal:   order.BillingAddress.PostalCode,
 		Region:   order.BillingAddress.State,
 		Tokenize: "Y",
-		Track:    null,
 		Capture:  "Y",
-		Items:    order.Items,
+		Items:    items,
 	}
 
 	header := http.Header{}
@@ -106,6 +126,6 @@ func Authorize(order models.Order) (AuthorizationRespons, error) {
 		return ares, nil
 
 	default:
-		return ares, errors.New("Invalid response")
+		return ares, errors.New("Invalid response from CardConnect.")
 	}
 }
