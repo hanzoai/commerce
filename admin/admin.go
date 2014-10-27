@@ -3,11 +3,11 @@ package admin
 import (
 	"net/http"
 	"github.com/gin-gonic/gin"
-	"crowdstart.io/middleware"
+	"crowdstart.io/util/router"
 )
 
 func init() {
-	router := middleware.NewRouter()
+	router := router.New()
 
 	admin := router.Group("/admin")
 

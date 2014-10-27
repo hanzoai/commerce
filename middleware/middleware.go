@@ -21,16 +21,6 @@ func AddHost() gin.HandlerFunc {
 	}
 }
 
-func NewRouter() *gin.Engine {
-	router := gin.New()
-
-	router.Use(ErrorHandler())
-	router.Use(NotFoundHandler())
-	router.Use(AddHost())
-	router.Use(AppEngine())
-	return router
-}
-
 func GetAppEngine(c *gin.Context) appengine.Context {
 	return c.MustGet("appengine").(appengine.Context)
 }
