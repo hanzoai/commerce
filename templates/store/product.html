@@ -57,8 +57,8 @@
                     <div class="variant-option-title">Color: </div>
                     <select data-variant-option-name="Color">
                         <option value="none">Select Color</option>
-                        {% for variant in product.Variants %}
-                        <option value="{{ variant.Color }}">{{ variant.Color }}</option>
+                        {% for color in product.VariantOptions("Color") %}
+                        <option value="{{ color }}">{{ color }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -67,8 +67,8 @@
                     <div class="variant-option-title">Size: </div>
                     <select data-variant-option-name="Size">
                         <option value="none">Select Size</option>
-                        {% for variant in product.Variants %}
-                        <option value="{{ variant.Size }}">{{ variant.Size }}</option>
+                        {% for size in product.VariantOptions("Size") %}
+                        <option value="{{ size }}">{{ size }}</option>
                         {% endfor %}
                     </select>
                 </div>
