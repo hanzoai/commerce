@@ -6,6 +6,7 @@ import (
 	"github.com/mholt/binding"
 	"math"
 	"strconv"
+	"reflect"
 )
 
 func FormatPrice(price int64) float64   {
@@ -40,6 +41,23 @@ func (p Product) MinPrice() int64 {
 
 func (p Product) DisplayPrice() string {
 	return strconv.FormatFloat(FormatPrice(p.MinPrice()), 'f', 2, 64)
+}
+
+// TODO: Don't do this.
+func (p Product) VariantOptions(name string) (options []string) {
+	set := make(map[string]bool)
+
+	for _, v := range p.Variants {
+		r := reflect.ValueOf(v)
+		f := reflect.Indirect(r).FieldByName(name)
+		set[f.String()] = true
+	}
+
+    for key := range set {
+    	options = append(options, key)
+    }
+
+	return options
 }
 
 func (p Product) Validate(req *http.Request, errs binding.Errors) binding.Errors {
