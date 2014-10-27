@@ -82,7 +82,7 @@ func ErrorHandler() gin.HandlerFunc {
 		// When someone calls c.Fail(500)
 		if c.Request.Method == "GET" && !c.Writer.Written() && c.Writer.Status() == 500 {
 			stack := fmt.Sprint(c.LastError())
-			stack = stack + "\n" + getStack()
+			// stack = stack + "\n" + getStack()
 			handleError(c, stack)
 		}
 	}
