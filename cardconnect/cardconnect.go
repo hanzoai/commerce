@@ -64,11 +64,11 @@ type AuthorizationRes struct {	      // {
 	Account  string `json:"account"`  // "account":  "41XXXXXXXXXX1111",
 	Amount   string `json:"amount"`   // "amount":   "111",
 	AuthCode string `json:"authcode"` // "authcode": "046221",
-	AvsResp  string `json:"avsresp"`  // "avsresp":  "9",
-	CvvResp  string `json:"cvvresp"`  // "cvvresp":  "M",
+	AVSRes   string `json:"avsresp"`  // "avsresp":  "9",
+	CVVRes   string `json:"cvvresp"`  // "cvvresp":  "M",
 	MerchId  string `json:"merchid"`  // "merchid":  "020594000000",
 	Code     string `json:"respcode"` // "respcode": "00",
-	RespProc string `json:"respproc"` // "respproc": "FNOR"
+	ResProc  string `json:"respproc"` // "respproc": "FNOR"
 	Status   string `json:"respstat"` // "respstat": "A",
 	Text     string `json:"resptext"` // "resptext": "Approved",
 	RetRef   string `json:"retref"`   // "retref":   "343005123105",
