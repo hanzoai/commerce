@@ -42,6 +42,19 @@ func logToSentry(c *gin.Context, ctx appengine.Context, stack string) {
 	}
 }
 
+// Not needed?
+func getStack() string {
+	buf := make([]byte, 32)
+	for {
+		n := runtime.Stack(buf, false)
+		if n < len(buf) {
+			break
+		}
+		buf = make([]byte, len(buf)*2)
+	}
+	return string(buf)
+}
+
 // Show our error page & log it out
 func handleError(c *gin.Context, stack string) {
 	c.Writer.WriteHeader(http.StatusInternalServerError)
@@ -68,9 +81,8 @@ func ErrorHandler() gin.HandlerFunc {
 
 		// When someone calls c.Fail(500)
 		if c.Request.Method == "GET" && !c.Writer.Written() && c.Writer.Status() == 500 {
-			var buf []byte
-			runtime.Stack(buf, false)
-			stack := fmt.Sprint(buf)
+			stack := fmt.Sprint(c.LastError())
+			stack = stack + "\n" + getStack()
 			handleError(c, stack)
 		}
 	}
