@@ -2,10 +2,10 @@ package checkout
 
 import (
 	"crowdstart.io/cardconnect"
+	"crowdstart.io/models"
 	"crowdstart.io/util/template"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/schema"
-	"github.com/mholt/binding"
 )
 
 func checkout(c *gin.Context) {
@@ -19,9 +19,9 @@ func checkoutComplete(c *gin.Context) {
 var decoder = schema.NewDecoder()
 
 func submitOrder(c *gin.Context) {
-	errs = make([]string, 5)
+	errs := make([]string, 5)
 
-	order := new(Order)
+	order := new(models.Order)
 
 	err := decoder.Decode(order, c.Request.PostForm)
 
@@ -53,25 +53,27 @@ func submitOrder(c *gin.Context) {
 		if order.BillingAddress.Country == "" {
 			errs = append(errs, "Country is required")
 		}
-		if len(string(order.PaymentAccount.CVV2)) == 3 {
+		if len(string(order.Account.CVV2)) == 3 {
 			errs = append(errs, "Confirmation code is required.")
 		}
-		if len(string(order.PaymentAccount.Expiry)) == 4 {
+		if len(string(order.Account.Expiry)) == 4 {
 			errs = append(errs, "Expiry is required")
 		}
 	}
-
+	
 	// Authorize order
-	ares, err := cardconnect.Authorize(checkoutForm.Order)
-	switch {
-	case err != nil:
-		c.JSON(500, gin.H{"status": "Unable to authorize payment."})
-	case ares.Status == "A":
+	if len(errs) == 0 {
+		ares, err := cardconnect.Authorize(*order)
+		switch {
+		case err != nil:
+			c.JSON(500, gin.H{"status": "Unable to authorize payment."})
+		case ares.Status == "A":
 
-		c.JSON(200, gin.H{"status": "ok"})
-	case ares.Status == "B":
-		c.JSON(200, gin.H{"status": "retry"})
-	case ares.Status == "C":
-		c.JSON(200, gin.H{"status": "declined"})
+			c.JSON(200, gin.H{"status": "ok"})
+		case ares.Status == "B":
+			c.JSON(200, gin.H{"status": "retry"})
+		case ares.Status == "C":
+			c.JSON(200, gin.H{"status": "declined"})
+		}
 	}
 }
