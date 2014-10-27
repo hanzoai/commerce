@@ -10,6 +10,6 @@ type FieldMapMixin struct {
 }
 
 // Noop, binding delegates to encoding/json
-func (f *FieldMappable) FieldMap() binding.FieldMap {
+func (f *FieldMapMixin) FieldMap() binding.FieldMap {
 	return binding.FieldMap{}
 }
