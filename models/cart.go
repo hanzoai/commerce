@@ -73,8 +73,8 @@ func (c Cart) Validate(req *http.Request, errs binding.Errors) binding.Errors {
 }
 
 type PaymentAccount struct {
-	CVV2    string
-	Expiry  string
+	CVV2    int
+	Expiry  int
 	Number  string
 	Type    string
 }
