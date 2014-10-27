@@ -42,6 +42,7 @@ func New(order models.Order, cardType string, account string, expiry string, amo
 	areq.Account = account
 	areq.Expiry = expiry
 	areq.Amount = amount.String()
+	areq.Currency = "USD" // not necessary for USD
 	return areq
 }
 
