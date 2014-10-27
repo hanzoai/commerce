@@ -53,10 +53,10 @@ func submitOrder(c *gin.Context) {
 		if order.BillingAddress.Country == "" {
 			errs = append(errs, "Country is required")
 		}
-		if order.PaymentAccount.CVV2 < 100 {
+		if len(string(order.PaymentAccount.CVV2)) == 3 {
 			errs = append(errs, "Confirmation code is required.")
 		}
-		if order.PaymentAccount.Expiry < 1000 {
+		if len(string(order.PaymentAccount.Expiry)) == 4 {
 			errs = append(errs, "Expiry is required")
 		}
 	}
