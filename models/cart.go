@@ -2,6 +2,7 @@ package models
 
 import (
 	"time"
+	"net/http"
 	"github.com/mholt/binding"
 )
 
@@ -19,6 +20,18 @@ type Cart struct {
 
 func (c *Cart) FieldMap() binding.FieldMap {
 	return binding.FieldMap{}
+}
+
+func (c Cart) Validate(req *http.Request, errs binding.Errors) binding.Errors {
+	// Cart cannot be empty.
+	if len(c.Items) == 0 {
+        errs = append(errs, binding.Error{
+            FieldNames:     []string{"Items"},
+            Classification: "InputError",
+            Message:        "Cart is empty.",
+        })
+    }
+    return errs
 }
 
 type Order struct {
