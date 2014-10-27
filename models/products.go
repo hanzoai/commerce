@@ -8,6 +8,7 @@ import (
 
 type Product struct {
 	Id          string
+	Slug		string
 	Title       string
 	Variants    []ProductVariant
 	Images      []Image
@@ -50,7 +51,7 @@ func (p Product) Validate(req *http.Request, errs binding.Errors) binding.Errors
 
 type ProductVariant struct {
 	Id		   string
-	Sku        string
+	SKU        string
 	Price      int64
 	Stock      int
 	Weight     int
@@ -61,9 +62,9 @@ type ProductVariant struct {
 }
 
 func (pv ProductVariant) Validate(req *http.Request, errs binding.Errors) binding.Errors {
-	if pv.Sku == "" {
+	if pv.SKU == "" {
 		errs = append(errs, binding.Error {
-			FieldNames:		[]string{"Sku"},
+			FieldNames:		[]string{"SKU"},
 			Classification:	"InputError",
 			Message:		"Variant does not have a SKU",
 		})
