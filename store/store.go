@@ -4,15 +4,11 @@ import (
 	"crowdstart.io/middleware"
 	"crowdstart.io/store/cart"
 	"crowdstart.io/store/products"
-	"github.com/gin-gonic/gin"
 	"net/http"
 )
 
 func init() {
-	router := gin.Default()
-
-	router.Use(middleware.Host())
-	router.Use(middleware.AppEngine())
+	router := middleware.NewRouter()
 
 	// Products
 	router.GET("/",				  products.List)

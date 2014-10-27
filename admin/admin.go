@@ -7,10 +7,7 @@ import (
 )
 
 func init() {
-	router := gin.Default()
-
-	router.Use(middleware.Host())
-	router.Use(middleware.AppEngine())
+	router := middleware.NewRouter()
 
 	admin := router.Group("/admin")
 
