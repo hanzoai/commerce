@@ -1,0 +1,15 @@
+package models
+
+import (
+	"github.com/mholt/binding"
+)
+
+// This is just a convenience struct for objects which are JSON
+// serializable/deserialized only.
+type FieldMapMixin struct {
+}
+
+// Noop, binding delegates to encoding/json
+func (f *FieldMappable) FieldMap() binding.FieldMap {
+	return binding.FieldMap{}
+}

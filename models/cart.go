@@ -16,10 +16,7 @@ type Cart struct {
 	Id        string
 	Items     []LineItem
 	CreatedAt time.Time
-}
-
-func (c *Cart) FieldMap() binding.FieldMap {
-	return binding.FieldMap{}
+	FieldMapMixin
 }
 
 func (c Cart) Validate(req *http.Request, errs binding.Errors) binding.Errors {
@@ -46,10 +43,7 @@ type Order struct {
 	ShippingOption  ShippingOption
 	Shipping        int
 	Total           int
-}
-
-func (o *Order) FieldMap() binding.FieldMap {
-	return binding.FieldMap{}
+	FieldMapMixin
 }
 
 type ShippingOption struct {
