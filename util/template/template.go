@@ -25,7 +25,7 @@ func Render(c *gin.Context, path string, pairs ...interface{}) (err error) {
 	ctx := pongo2.Context{}
 
 	for i := 0; i < len(pairs); i=i+2 {
-		ctx[pairs[i].(string)] = i+1
+		ctx[pairs[i].(string)] = pairs[i+1]
 	}
 
 	// Render template

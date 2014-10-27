@@ -4,7 +4,13 @@ import (
 	"time"
 	"net/http"
 	"github.com/mholt/binding"
+	"math"
+	"strconv"
 )
+
+func FormatPrice(price int64) float64   {
+	return math.Floor(float64(price)*100+0.5) / 1000000
+}
 
 type Product struct {
 	Id          string
@@ -18,6 +24,22 @@ type Product struct {
 	Released    time.Time
 	AddLabel    string // Pre-order now or Add to cart
 	FieldMapMixin
+}
+
+func (p Product) MinPrice() int64 {
+	min := p.Variants[0].Price
+
+	for _, v := range p.Variants {
+		if v.Price < min {
+			min = v.Price
+		}
+	}
+
+	return min
+}
+
+func (p Product) DisplayPrice() string {
+	return strconv.FormatFloat(FormatPrice(p.MinPrice()), 'f', 2, 64)
 }
 
 func (p Product) Validate(req *http.Request, errs binding.Errors) binding.Errors {
