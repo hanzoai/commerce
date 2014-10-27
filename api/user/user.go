@@ -2,6 +2,7 @@ package user
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/mholt/binding"
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models"
@@ -24,15 +25,19 @@ func Get(c *gin.Context) {
 }
 
 func Add(c *gin.Context) {
+	ctx := middleware.GetAppEngine(c)
 	d := datastore.New(c)
 
-	var json models.User
+	json := new(models.User)
 
-	util.DecodeJson(c, &json)
-	ctx := middleware.GetAppEngine(c)
+	errs := binding.Bind(c.Request, json)
+	if errs.Handle(c.Writer) {
+		ctx.Errorf("[Api.User.Add] %v", errs)
+		return
+	}
 	ctx.Infof("[Api.User.Add] JSON: %v", json)
 
-	key, err := d.Put("user", &json)
+	key, err := d.Put("user", json)
 	if err != nil {
 		ctx.Errorf("[Api.User.Add] %v", err)
 		c.JSON(500, gin.H{"status": "unable to save user"})
