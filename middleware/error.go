@@ -1,54 +1,89 @@
 package middleware
 
 import (
+	"appengine"
 	"errors"
 	"fmt"
-	"net/http"
-	"runtime/debug"
-	"sync"
-	"appengine"
 	"github.com/getsentry/raven-go"
 	"github.com/gin-gonic/gin"
+	"net/http"
+	"runtime"
+	"sync"
 )
+
+var once sync.Once
+var sentryDsn = "https://4daf3e86c2744df4b932abbe4eb48aa8:27fa30055d9747e795ca05d5ffb96f0c@app.getsentry.com/32164"
+var client *raven.Client
+
+// Logs errors to sentry
+func logToSentry(c *gin.Context, ctx appengine.Context, stack string) {
+
+	// Only capture to sentry in production
+	if appengine.IsDevAppServer() {
+		return
+	}
+
+	// Get client
+	once.Do(func() {
+		client, err := raven.NewClient(sentryDsn, map[string]string{})
+		if err != nil {
+			ctx.Errorf("Unable to create Sentry client: %v, %v", client, err)
+		}
+	})
+
+	// Send request
+	flags := map[string]string{
+		"endpoint": c.Request.RequestURI,
+	}
+
+	if client != nil {
+		packet := raven.NewPacket(stack, raven.NewException(errors.New(stack), raven.NewStacktrace(2, 3, nil)))
+		client.Capture(packet, flags)
+	}
+}
+
+// Not needed?
+func getStack() string {
+	buf := make([]byte, 32)
+	for {
+		n := runtime.Stack(buf, false)
+		if n < len(buf) {
+			break
+		}
+		buf = make([]byte, len(buf)*2)
+	}
+	return string(buf)
+}
+
+// Show our error page & log it out
+func handleError(c *gin.Context, stack string) {
+	c.Writer.WriteHeader(http.StatusInternalServerError)
+	http.ServeFile(c.Writer, c.Request, "../static/500.html")
+
+	ctx := GetAppEngine(c)
+	ctx.Errorf(stack)
+
+	logToSentry(c, ctx, stack)
+}
 
 // Serve custom 500 error page and log to sentry in production.
 func ErrorHandler() gin.HandlerFunc {
-	var once sync.Once
-	var sentryDsn = "https://4daf3e86c2744df4b932abbe4eb48aa8:27fa30055d9747e795ca05d5ffb96f0c@app.getsentry.com/32164"
-	var client *raven.Client
-
 	return func(c *gin.Context) {
+		// On panic
 		defer func() {
-			ctx := GetAppEngine(c)
-
-			flags := map[string]string{
-				"endpoint": c.Request.RequestURI,
-			}
-
 			if rval := recover(); rval != nil {
-				c.Writer.WriteHeader(http.StatusInternalServerError)
-				debug.PrintStack()
-				rvalStr := fmt.Sprint(rval)
-				ctx.Errorf(rvalStr)
-
-				if !appengine.IsDevAppServer() {
-					once.Do(func() {
-						client, err := raven.NewClient(sentryDsn, map[string]string{})
-						if err != nil {
-							ctx.Errorf("Unable to create Sentry client: %v, %v", client, err)
-						}
-					})
-
-					if client != nil {
-						packet := raven.NewPacket(rvalStr, raven.NewException(errors.New(rvalStr), raven.NewStacktrace(2, 3, nil)))
-						client.Capture(packet, flags)
-					}
-				}
-
-				c.Writer.WriteHeader(http.StatusInternalServerError)
-				http.ServeFile(c.Writer, c.Request, "../static/500.html")
+				stack := fmt.Sprint(rval)
+				handleError(c, stack)
 			}
 		}()
+
 		c.Next()
+
+		// When someone calls c.Fail(500)
+		if c.Request.Method == "GET" && !c.Writer.Written() && c.Writer.Status() == 500 {
+			stack := fmt.Sprint(c.LastError())
+			// stack = stack + "\n" + getStack()
+			handleError(c, stack)
+		}
 	}
 }
