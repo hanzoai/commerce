@@ -14,10 +14,7 @@ type User struct {
 	Cart            Cart
 	BillingAddress  Address
 	ShippingAddress Address
-}
-
-func (u *User) FieldMap() binding.FieldMap {
-	return binding.FieldMap{}
+	FieldMapMixin
 }
 
 func (u User) Validate(req *http.Request, errs binding.Errors) binding.Errors {
