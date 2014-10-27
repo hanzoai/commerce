@@ -1,4 +1,4 @@
-package cart
+package user
 
 import (
 	"github.com/gin-gonic/gin"
@@ -10,38 +10,37 @@ import (
 )
 
 func Get(c *gin.Context) {
-	d  := datastore.New(c)
-	id := c.Params.ByName("id")
+	d := datastore.New(c)
+	id := c.Params.ByName("Id")
 
-	var json models.Cart
+	var json models.User
 
 	if err := d.Get(id, &json); err != nil {
 		ctx := middleware.GetAppEngine(c)
-		ctx.Errorf("%v", err)
-		c.JSON(500, gin.H{"status": "unable to find cart"})
+		ctx.Errorf("[Api.User.Get] %v", err)
+		c.JSON(500, gin.H{"status": "unable to find user"})
 	} else {
 		c.JSON(200, json)
 	}
 }
 
 func Add(c *gin.Context) {
+	ctx := middleware.GetAppEngine(c)
 	d := datastore.New(c)
 
-	json := new(models.Cart)
-
-	ctx := middleware.GetAppEngine(c)
+	json := new(models.User)
 
 	errs := binding.Bind(c.Request, json)
 	if errs.Handle(c.Writer) {
 		ctx.Errorf("[Api.User.Add] %v", errs)
 		return
 	}
-	ctx.Infof("[Api.Cart.Add] JSON: %v", json)
+	ctx.Infof("[Api.User.Add] JSON: %v", json)
 
-	key, err := d.Put("cart", &json)
+	key, err := d.Put("user", json)
 	if err != nil {
-		ctx.Errorf("[Api.Cart.Add] %v", err)
-		c.JSON(500, gin.H{"status": "unable to save cart"})
+		ctx.Errorf("[Api.User.Add] %v", err)
+		c.JSON(500, gin.H{"status": "unable to save user"})
 	} else {
 		json.Id = key
 		c.JSON(200, json)
@@ -52,16 +51,16 @@ func Update(c *gin.Context) {
 	d := datastore.New(c)
 	id := c.Params.ByName("id")
 
-	var json models.Cart
+	var json models.User
 
 	util.DecodeJson(c, &json)
 	ctx := middleware.GetAppEngine(c)
-	ctx.Infof("JSON: %v", json)
+	ctx.Infof("[Api.User.Update] JSON: %v", json)
 
 	key, err := d.Update(id, &json)
 	if err != nil {
-		ctx.Errorf("%v", err)
-		c.JSON(500, gin.H{"status": "unable to find cart"})
+		ctx.Errorf("[Api.User.Update] %v", err)
+		c.JSON(500, gin.H{"status": "unable to update user"})
 	} else {
 		json.Id = key
 		c.JSON(200, json)
