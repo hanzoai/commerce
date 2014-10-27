@@ -4,10 +4,10 @@ import (
 	"net/http"
 	"github.com/mholt/binding"
 	"crowdstart.io/models"
+	"github.com/gorilla/schema"
 )
 
 type CheckoutForm struct {
-	User models.User
 	Order models.Order
 }
 

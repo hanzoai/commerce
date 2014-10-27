@@ -5,3 +5,4 @@ github.com/jmcvetta/napping master
 github.com/flosch/pongo2 master
 github.com/getsentry/raven-go master
 github.com/mholt/binding master
+github.com/gorilla/schema master
