@@ -81,17 +81,17 @@ type PaymentAccount struct {
 
 type Order struct {
 	FieldMapMixin
-	Id              string
-	Items           []LineItem
-	CreatedAt       time.Time
-	User            User
-	ShippingAddress Address
+	Account         PaymentAccount
 	BillingAddress  Address
+	CreatedAt       time.Time
+	Id              string
+	Shipping        int64
+	ShippingAddress Address
 	Subtotal        int64
 	Tax             int64
-	Shipping        int64
 	Total           int64
-	Account         PaymentAccount
+	User            User
+	Items           []LineItem
 	// ShippingOption  ShippingOption
 }
 

@@ -6,7 +6,5 @@ import (
 )
 
 func Get(c *gin.Context) {
-	if err := template.Render(c, "cart.html", nil); err != nil {
-		c.String(500, "Unable to render template")
-	}
+	template.Render(c, "cart.html", nil)
 }
