@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"github.com/jmcvetta/napping"
-	"github.com/mholt/binding"
 	"net/http"
 	"crowdstart.io/models"
 )
@@ -31,14 +30,14 @@ type AuthorizationRequest struct { // {
 
 func New(order models.Order, cardType string, account string, expiry string, amount models.Currency) (areq AuthorizationRequest) {
 	areq.MerchId = "496160873888"
-	areq.OrderId = order.OrderId
+	areq.OrderId = order.Id
 	areq.AcctType = cardType
 	areq.Name = order.User.Name
 	areq.Address = order.BillingAddress.Unit + " " + order.BillingAddress.Street
 	areq.City = order.BillingAddress.City
-	areq.Region =  order.State
-	areq.Postal = order.PostalCode
-	areq.Country = order.Country
+	areq.Region =  order.BillingAddress.State
+	areq.Postal = order.BillingAddress.PostalCode
+	areq.Country = order.BillingAddress.Country
 	areq.Account = account
 	areq.Expiry = expiry
 	areq.Amount = amount.String()
