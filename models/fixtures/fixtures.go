@@ -77,7 +77,7 @@ func Install(db *datastore.Datastore) {
 		Slug:  "ar-1",
 		Title: "SKULLY AR-1",
 		Description: "World's smartest helmet!",
-		ProductVariants: variants,
+		Variants: variants,
 	})
 
 }
