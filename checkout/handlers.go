@@ -8,11 +8,11 @@ import (
 )
 
 func checkout(c *gin.Context) {
-	template.Render(c, "checkout.html", nil)
+	template.Render(c, "checkout.html")
 }
 
 func checkoutComplete(c *gin.Context) {
-	template.Render(c, "checkout-complete.html", nil)
+	template.Render(c, "checkout-complete.html")
 }
 
 func submitOrder(c *gin.Context) {
