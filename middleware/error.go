@@ -11,7 +11,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func Recovery() gin.HandlerFunc {
+// Serve custom 500 error page and log to sentry in production.
+func ErrorHandler() gin.HandlerFunc {
 	var once sync.Once
 	var sentryDsn = "https://4daf3e86c2744df4b932abbe4eb48aa8:27fa30055d9747e795ca05d5ffb96f0c@app.getsentry.com/32164"
 	var client *raven.Client
