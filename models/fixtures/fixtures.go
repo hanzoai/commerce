@@ -6,6 +6,7 @@ import (
 )
 
 func Install(db *datastore.Datastore) {
+	// AR-1
 	variants := []ProductVariant{
 		ProductVariant{
 			SKU: "AR-1-BLACK-S",
@@ -80,4 +81,48 @@ func Install(db *datastore.Datastore) {
 		Variants: variants,
 	})
 
+	// T-Shirts
+	variants = []ProductVariant{
+		ProductVariant{
+			SKU: "SKULLY-T-SHIRT-S",
+			Size: "S",
+			Color: "Black",
+			Price: 1499*100,
+		},
+		ProductVariant{
+			SKU: "SKULLY-T-SHIRT-M",
+			Size: "M",
+			Color: "Black",
+			Price: 1499*100,
+		},
+		ProductVariant{
+			SKU: "SKULLY-T-SHIRT-L",
+			Size: "L",
+			Color: "Black",
+			Price: 1499*100,
+		},
+		ProductVariant{
+			SKU: "SKULLY-T-SHIRT-XL",
+			Size: "XL",
+			Color: "Black",
+			Price: 1499*100,
+		},
+		ProductVariant{
+			SKU: "SKULLY-T-SHIRT-XXL",
+			Size: "XXL",
+			Color: "Black",
+			Price: 1499*100,
+		},
+	}
+
+	for _, v := range variants {
+		db.PutKey("variant", v.SKU, &v)
+	}
+
+	db.PutKey("product", "t-shirt", &Product{
+		Slug:  "t-shirt",
+		Title: "SKULLY T-shirt",
+		Description: "SKULLY Nation T-shirt",
+		Variants: variants,
+	})
 }

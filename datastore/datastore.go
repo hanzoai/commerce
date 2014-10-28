@@ -3,13 +3,13 @@ package datastore
 import (
 	"appengine"
 	. "appengine/datastore"
+	"crowdstart.io/middleware"
 	"github.com/gin-gonic/gin"
 	"github.com/qedus/nds"
-	"crowdstart.io/middleware"
 )
 
 type Datastore struct {
-	ctx appengine.Context
+	Context appengine.Context
 }
 
 func New(ctx interface{}) (d *Datastore) {
@@ -29,17 +29,41 @@ func (d *Datastore) Get(key string, value interface{}) error {
 		return err
 	}
 
-	return nds.Get(d.ctx, k, value)
+	return nds.Get(d.Context, k, value)
 }
 
-func (d *Datastore) GetKey(kind string, key string, value interface{}) error {
-	k := NewKey(d.ctx, kind, key, 0, nil)
-	return nds.Get(d.ctx, k, value)
+func (d *Datastore) GetKey(kind, key string, value interface{}) error {
+	k := NewKey(d.Context, kind, key, 0, nil)
+	return nds.Get(d.Context, k, value)
+}
+
+func (d *Datastore) GetMulti(keys []string, values []interface{}) error {
+	_keys := make([]*Key, len(keys))
+
+	for _, v := range keys {
+		if key, err := DecodeKey(v); err != nil {
+			return err
+		} else {
+			_keys = append(_keys, key)
+		}
+	}
+
+	return nds.GetMulti(d.Context, _keys, values)
+}
+
+func (d *Datastore) GetKeyMulti(kind string, keys []string, values []interface{}) error {
+	_keys := make([]*Key, len(keys))
+
+	for _, v := range keys {
+		_keys = append(_keys, NewKey(d.Context, kind, v, 0, nil))
+	}
+
+	return nds.GetMulti(d.Context, _keys, values)
 }
 
 func (d *Datastore) Put(kind string, src interface{}) (string, error) {
-	k := NewIncompleteKey(d.ctx, kind, nil)
-	k, err := nds.Put(d.ctx, k, src)
+	k := NewIncompleteKey(d.Context, kind, nil)
+	k, err := nds.Put(d.Context, k, src)
 	if err != nil {
 		return "", err
 	}
@@ -47,12 +71,53 @@ func (d *Datastore) Put(kind string, src interface{}) (string, error) {
 }
 
 func (d *Datastore) PutKey(kind string, key string, src interface{}) (string, error) {
-	k := NewKey(d.ctx, kind, key, 0, nil)
-	k, err := nds.Put(d.ctx, k, src)
+	k := NewKey(d.Context, kind, key, 0, nil)
+	k, err := nds.Put(d.Context, k, src)
 	if err != nil {
 		return "", err
 	}
 	return k.Encode(), nil
+}
+
+func (d *Datastore) PutMulti(kind string, srcs []interface{}) (keys []string, err error) {
+	nkeys := len(srcs)
+	_keys := make([]*Key, nkeys)
+
+	for i := 0; i < nkeys; i++ {
+		_keys[i] = NewIncompleteKey(d.Context, kind, nil)
+	}
+
+	_keys, err = nds.PutMulti(d.Context, _keys, srcs)
+	if err != nil {
+		return keys, err
+	}
+
+	keys = make([]string, nkeys)
+	for i := 0; i < nkeys; i++ {
+		keys[i] = _keys[i].Encode()
+	}
+
+	return keys, nil
+}
+
+func (d *Datastore) PutKeyMulti(kind string, keys []string, srcs []interface{}) ([]string, error) {
+	nkeys := len(srcs)
+	_keys := make([]*Key, nkeys)
+
+	for i := 0; i < nkeys; i++ {
+		_keys[i] = NewKey(d.Context, kind, keys[i], 0, nil)
+	}
+
+	_keys, err := nds.PutMulti(d.Context, _keys, srcs)
+	if err != nil {
+		return keys, err
+	}
+
+	for i := 0; i < nkeys; i++ {
+		keys[i] = _keys[i].Encode()
+	}
+
+	return keys, nil
 }
 
 func (d *Datastore) Update(key string, src interface{}) (string, error) {
@@ -61,7 +126,7 @@ func (d *Datastore) Update(key string, src interface{}) (string, error) {
 		return "", err
 	}
 
-	k, err = nds.Put(d.ctx, k, src)
+	k, err = nds.Put(d.Context, k, src)
 	if err != nil {
 		return "", err
 	}
@@ -73,7 +138,7 @@ func (d *Datastore) Delete(key string) error {
 	if err != nil {
 		return err
 	}
-	return nds.Delete(d.ctx, k)
+	return nds.Delete(d.Context, k)
 }
 
 func (d *Datastore) Query(kind string) *Query {
@@ -81,5 +146,5 @@ func (d *Datastore) Query(kind string) *Query {
 }
 
 func (d *Datastore) RunInTransaction(f func(tc appengine.Context) error, opts *TransactionOptions) error {
-	return nds.RunInTransaction(d.ctx, f, opts)
+	return nds.RunInTransaction(d.Context, f, opts)
 }

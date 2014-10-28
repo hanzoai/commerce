@@ -1,18 +1,26 @@
 package products
 
 import (
-	"github.com/gin-gonic/gin"
-	"crowdstart.io/util/template"
 	"crowdstart.io/datastore"
+	"crowdstart.io/middleware"
 	"crowdstart.io/models"
+	"crowdstart.io/util/template"
+	"github.com/gin-gonic/gin"
 )
 
 func List(c *gin.Context) {
-	template.Render(c, "store/list.html")
+	db := datastore.New(c)
+	var products []models.Product
+	db.Query("product").GetAll(db.Context, &products)
+
+	ctx := middleware.GetAppEngine(c)
+	ctx.Infof("%v", products)
+
+	template.Render(c, "store/list.html", "products", products)
 }
 
 func Get(c *gin.Context) {
-	db   := datastore.New(c)
+	db := datastore.New(c)
 	slug := c.Params.ByName("slug")
 
 	product := new(models.Product)
