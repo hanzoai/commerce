@@ -9,12 +9,12 @@ import (
 type LineItem struct {
 	FieldMapMixin
 	SKU          string
-	Cost         int64
-	Description  string
-	DiscountAmnt int64
-	LineNo       int
+	Cost         int64 `schema:"-"`
+	Description  string `schema:"-"`
+	DiscountAmnt int64 `schema:"-"`
+	LineNo       int `schema:"-"`
 	Quantity     int
-	UOM          string
+	UOM          string `schema:"-"`
 	// Material     string
 	// NetAmnt      string
 	// TaxAmnt      string
@@ -51,9 +51,9 @@ func (li LineItem) Validate(req *http.Request, errs binding.Errors) binding.Erro
 
 type Cart struct {
 	FieldMapMixin
-	Id        string
+	Id        string `schema:"-"`
 	Items     []LineItem
-	CreatedAt time.Time
+	CreatedAt time.Time `schema:"-"`
 }
 
 func (c Cart) Validate(req *http.Request, errs binding.Errors) binding.Errors {
@@ -76,20 +76,20 @@ type PaymentAccount struct {
 	CVV2    int
 	Expiry  int
 	Number  string
-	Type    string
+	Type    string `schema:"-"`
 }
 
 type Order struct {
 	FieldMapMixin
 	Account         PaymentAccount
 	BillingAddress  Address
-	CreatedAt       time.Time
-	Id              string
-	Shipping        int64
+	CreatedAt       time.Time `schema:"-"`
+	Id              string `schema:"-"`
+	Shipping        int64 `schema:"-"`
 	ShippingAddress Address
-	Subtotal        int64
-	Tax             int64
-	Total           int64
+	Subtotal        int64 `schema:"-"`
+	Tax             int64 `schema:"-"`
+	Total           int64 `schema:"-"`
 	User            User
 	Items           []LineItem
 	// ShippingOption  ShippingOption
