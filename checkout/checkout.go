@@ -8,9 +8,9 @@ import (
 func init() {
 	router := router.New()
 
-	router.GET("/checkout/", checkout)
-	router.POST("/checkout/submit-order", submitOrder)
-	router.GET("/checkout/complete", checkoutComplete)
+	router.POST("/checkout/", checkout)
+	router.POST("/checkout/authorize", authorize)
+	router.GET("/checkout/complete", complete)
 
 	http.Handle("/checkout/", router)
 }

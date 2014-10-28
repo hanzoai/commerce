@@ -10,28 +10,31 @@ import (
 	"log"
 )
 
-func checkout(c *gin.Context) {
-	template.Render(c, "checkout/checkout.html")
-}
-
-func checkoutComplete(c *gin.Context) {
-	template.Render(c, "checkout-complete.html")
-}
-
 var decoder = schema.NewDecoder()
 
-func submitOrder(c *gin.Context) {
-	log.Println("Submitting order")
+func checkout(c *gin.Context) {
+	order := new(models.Order)
+
+	c.Request.ParseForm()
+	if err := decoder.Decode(order, c.Request.PostForm); err != nil {
+		c.Fail(500, err)
+		return
+	}
+
+	template.Render(c, "checkout/checkout.html", "order", order)
+}
+
+func authorize(c *gin.Context) {
 	errs := make([]string, 5)
 	order := new(models.Order)
 	c.Request.ParseForm()
 	err := decoder.Decode(order, c.Request.PostForm)
 	log.Println(order.BillingAddress.Country)
-	
+
 	db := datastore.New(c)
 
 	log.Println(err)
-	
+
 	if err == nil {
 		if order.User.FirstName == "" {
 			errs = append(errs, "First name is required")
@@ -71,7 +74,7 @@ func submitOrder(c *gin.Context) {
 		}
 
 		wantedItems := make([]models.LineItem, 5)
-		
+
 		for _, i := range order.Items {
 			if i.Quantity > 1 {
 				item := new(models.ProductVariant)
@@ -91,9 +94,9 @@ func submitOrder(c *gin.Context) {
 
 		log.Println(order.Items)
 		log.Println(errs)
-		
-		checkoutComplete(c)
-		
+
+		complete(c)
+
 		// Authorize order
 		if len(errs) == 0 {
 			ares, err := cardconnect.Authorize(*order)
@@ -110,4 +113,8 @@ func submitOrder(c *gin.Context) {
 			}
 		}
 	}
+}
+
+func complete(c *gin.Context) {
+	template.Render(c, "checkout-complete.html")
 }
