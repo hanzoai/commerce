@@ -78,21 +78,21 @@ func Install(db *datastore.Datastore) {
 		Slug:        "ar-1",
 		Title:       "SKULLY AR-1",
 		Headline:    "The World's smartest helmet.",
-		Excerpt:	 "The World's smartest helmet, featuring a state-of-the-art head-up display, GPS and bluetooth.",
+		Excerpt:     "The World's smartest helmet, featuring a state-of-the-art head-up display, GPS and bluetooth.",
 		Description: "The World's smartest helmet. Even more descriptive text.",
 		Variants:    variants,
 		HeaderImage: Image{
 			Alt: "SKULLY AR-1",
-			Url: "https://static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544a2657e4b0ff95316b8ea0/1414359306658/",
+			Url: "//static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544a2657e4b0ff95316b8ea0/1414359306658/",
 		},
 		Images: []Image{
 			Image{
 				Alt: "blackhelmet_store.jpg",
-				Url: "https://static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544c1bd6e4b07de01f6f22aa/1414274007569/blackhelmet_store.jpg",
+				Url: "//static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544c1bd6e4b07de01f6f22aa/1414274007569/blackhelmet_store.jpg",
 			},
 			Image{
 				Alt: "whitehelmet_store.jpg",
-				Url: "https://static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544c1bdde4b07de01f6f22b5/1414274015307/whitehelmet_store.jpg",
+				Url: "//static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544c1bdde4b07de01f6f22b5/1414274015307/whitehelmet_store.jpg",
 			},
 		},
 	})
@@ -143,7 +143,7 @@ func Install(db *datastore.Datastore) {
 		Images: []Image{
 			Image{
 				Alt: "skully_shirt_1000px.jpg",
-				Url: "https://static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544f7b03e4b07cd673960362/1414494980796/skully_shirt_1000px.jpg",
+				Url: "//static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544f7b03e4b07cd673960362/1414494980796/skully_shirt_1000px.jpg",
 			},
 		},
 	})
