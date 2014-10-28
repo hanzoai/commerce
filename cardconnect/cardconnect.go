@@ -104,7 +104,7 @@ func Authorize(order models.Order) (ares AuthorizationRes, err error) {
 		Email:    order.User.Email,
 		Expiry:   order.Account.Expiry,
 		MerchId:  496160873888,
-		Name:     order.User.Name,
+		Name:     order.User.Name(),
 		OrderId:  order.Id,
 		Phone:    order.User.Phone,
 		Postal:   order.BillingAddress.PostalCode,

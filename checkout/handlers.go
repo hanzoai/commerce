@@ -2,6 +2,7 @@ package checkout
 
 import (
 	"crowdstart.io/cardconnect"
+	"crowdstart.io/datastore"
 	"crowdstart.io/models"
 	"crowdstart.io/util/template"
 	"github.com/gin-gonic/gin"
@@ -9,7 +10,7 @@ import (
 )
 
 func checkout(c *gin.Context) {
-	template.Render(c, "checkout.html")
+	template.Render(c, "checkout/checkout.html")
 }
 
 func checkoutComplete(c *gin.Context) {
@@ -20,14 +21,16 @@ var decoder = schema.NewDecoder()
 
 func submitOrder(c *gin.Context) {
 	errs := make([]string, 5)
-
 	order := new(models.Order)
-
 	err := decoder.Decode(order, c.Request.PostForm)
+	db := datastore.New(c)
 
-	if err != nil {
-		if order.User.Name == "" {
-			errs = append(errs, "Name is required")
+	if err == nil {
+		if order.User.FirstName == "" {
+			errs = append(errs, "First name is required")
+		}
+		if order.User.LastName == "" {
+			errs = append(errs, "Last name is required")
 		}
 		if order.User.Email == "" {
 			errs = append(errs, "Email address is required")
@@ -59,21 +62,39 @@ func submitOrder(c *gin.Context) {
 		if len(string(order.Account.Expiry)) == 4 {
 			errs = append(errs, "Expiry is required")
 		}
-	}
-	
-	// Authorize order
-	if len(errs) == 0 {
-		ares, err := cardconnect.Authorize(*order)
-		switch {
-		case err != nil:
-			c.JSON(500, gin.H{"status": "Unable to authorize payment."})
-		case ares.Status == "A":
 
-			c.JSON(200, gin.H{"status": "ok"})
-		case ares.Status == "B":
-			c.JSON(200, gin.H{"status": "retry"})
-		case ares.Status == "C":
-			c.JSON(200, gin.H{"status": "declined"})
+		wantedItems := make([]LineItem, 5)
+		
+		for _, i := range order.Items {
+			if i.Quantity > 1 {
+				item := new(models.ProductVariant)
+				err := db.GetKey("variant", i.SKU, &item)
+
+				if err != nil {
+					template.Render(c, "abskjabn.html") // 500
+					return
+				}
+				i.Cost = i.Quantity * item.Price
+				wantedItems = append(wantedItems, i)
+			}
+		}
+
+		order.Items = wantedItems
+
+		// Authorize order
+		if len(errs) == 0 {
+			ares, err := cardconnect.Authorize(*order)
+			switch {
+			case err != nil:
+				c.JSON(500, gin.H{"status": "Unable to authorize payment."})
+			case ares.Status == "A":
+
+				c.JSON(200, gin.H{"status": "ok"})
+			case ares.Status == "B":
+				c.JSON(200, gin.H{"status": "retry"})
+			case ares.Status == "C":
+				c.JSON(200, gin.H{"status": "declined"})
+			}
 		}
 	}
 }
