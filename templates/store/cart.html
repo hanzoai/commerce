@@ -38,7 +38,7 @@
                 </div>
 
                 <div class="checkout">
-                    <input type="submit" value="CHECKOUT" class="checkout-button"></input>
+                    <input type="submit" value="CHECKOUT" class="checkout-button">
                 </div>
 
                 </form>
@@ -53,7 +53,8 @@
 </div>
 
 <table style="display:none">
-    <tr class='template' data-chosen-variant-sku="{{ item.SKU() }}">
+    <tr class='template'>
+        <input class='slug' type="hidden" name="Order.Items.1.Product.Slug" value="{{ item.Slug() }}">
         <input class='sku' type="hidden" name="Order.Items.1.SKU" value="{{ item.SKU() }}">
         <td class="item">
             <div class="item-image">
@@ -90,11 +91,13 @@
         function renderTemplate(data, index) {
             var cartEl = templateEl.clone(false);
             cartEl.find('img.thumbnail').attr('src', data.img[0]);
-            cartEl.find('input.sku').val(data.sku).attr('name', 'Order.Items.' + (index + 1) + '.SKU');;
+            cartEl.find('input.slug').val(data.slug).attr('name', 'Order.Items.' + (index + 1) + '.Slug');
+            cartEl.find('input.sku').val(data.sku).attr('name', 'Order.Items.' + (index + 1) + '.SKU');
             cartEl.find('a.title').text(data.name);
-            cartEl.find('div.variant-info').text(data.color + ' / ' + data.name);
+            cartEl.find('div.variant-info').text(data.color + ' / ' + data.size);
             cartEl.find('.quantity input').val(data.quantity).attr('name', 'Order.Items.' + (index + 1) + '.Quantity');
             cartEl.find('.price span').text(data.price);
+            cartEl.removeClass('template');
 
             $('.cart-container tbody').append(cartEl);
         }
@@ -112,4 +115,8 @@
         $('.subtotal .price span').text(price);
     });
 </script>
+{% endblock %}
+
+{% block js %}
+<script type="text/javascript" src="/js/cart.js"><script>
 {% endblock %}

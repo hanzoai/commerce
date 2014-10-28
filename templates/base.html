@@ -38,6 +38,10 @@
     <!--[if lt IE 9]><script src="//static.squarespace.com/universal/scripts-thirdparty/html5/html5-shiv.js"></script><link rel="stylesheet" type="text/css" href="//static.squarespace.com/static/sitecss/53dd2a15e4b06cbe07110bd5/553/53fe5418e4b07d15fecd29c9/53fe5419e4b07d15fecd29e3/54/1414178414360/site.css?&noMedia=true&part=1"/><link rel="stylesheet" type="text/css" href="//static.squarespace.com/static/sitecss/53dd2a15e4b06cbe07110bd5/553/53fe5418e4b07d15fecd29c9/53fe5419e4b07d15fecd29e3/54/1414178414360/site.css?&noMedia=true&part=2"/><link rel="stylesheet" type="text/css" href="//static.squarespace.com/static/sitecss/53dd2a15e4b06cbe07110bd5/553/53fe5418e4b07d15fecd29c9/53fe5419e4b07d15fecd29e3/54/1414178414360/site.css?&noMedia=true&part=3"/><link rel="stylesheet" type="text/css" href="//static.squarespace.com/static/sitecss/53dd2a15e4b06cbe07110bd5/553/53fe5418e4b07d15fecd29c9/53fe5419e4b07d15fecd29e3/54/1414178414360/site.css?&noMedia=true&part=4"/><![endif]-->
     <!--[if !IE]> -->
     <link rel="stylesheet" type="text/css" href="/css/site.css">
+    <link rel="stylesheet" type="text/css" href="/css/commerce.css">
+
+    {% block css %}{% endblock %}
+
     <!-- <![endif]-->
 
     <!--SCRIPTS-->
@@ -157,25 +161,22 @@
             <section id="content-wrapper">
 
                 <!--CART HOVER-->
-                <div class="sqs-cart-dropzone fixed-cart">
-                    <div>
-                        <div>
-                            <div class="icon"></div>
+                <div class="sqs-cart-dropzone fixed-cart" style="margin-top: 67px; top: 77px;">
+                  <div class="yui3-widget sqs-widget sqs-pill-shopping-cart" style="visibility: visible; opacity: 1;">
+                    <div class="sqs-pill-shopping-cart-content dark">
+                      <div class="icon"></div>
 
-                            <div class="details">
-                                Cart&nbsp;-&nbsp;
-                                <span class="total-quantity">0</span>
-                                <span class="suffix">items</span>
-                            </div>
+                      <div class="details">
+                        Cart&nbsp;-&nbsp;
+                          <span class="total-quantity">1</span>
+                          <span class="suffix">item</span>
+                      </div>
 
-                            <span class="subtotal">
-                              <span class="price">
-                                <span class="sqs-money-native">0.00</span>
-                              </span>
-                            </span>
-
-                        </div>
+                      <span class="subtotal">
+                        <span class="price"><span class="sqs-money-native">0.00</span></span>
+                      </span>
                     </div>
+                  </div>
                 </div>
 
                 <div class="content">
@@ -511,4 +512,6 @@
             window.YUI && YUI.add("squarespace-imageloader", function(a) {});
         })();
     </script>
+
+    {% block js %}{% endblock %}
 </html>

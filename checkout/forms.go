@@ -7,7 +7,7 @@ import (
 
 type CheckoutForm struct {
 	form.Form
-	Order models.Order
+	Order *models.Order
 }
 
 type AuthorizeForm struct {

@@ -22,11 +22,19 @@ type LineItem struct {
 }
 
 func (li LineItem) Price() int64 {
-	return li.Variant.Price
+	return li.Variant.Price * int64(li.Quantity)
+}
+
+func (li LineItem) DisplayPrice() string {
+	return DisplayPrice(li.Price())
 }
 
 func (li LineItem) SKU() string {
 	return li.Variant.SKU
+}
+
+func (li LineItem) Slug() string {
+	return li.Product.Slug
 }
 
 func (li LineItem) Validate(req *http.Request, errs binding.Errors) binding.Errors {
