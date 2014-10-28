@@ -66,6 +66,8 @@
             </div>
 
             <div class="product-variants">
+
+                {% if len(product.VariantOptions("Color")) > 0 %}
                 <div class="variant-option">
                     <div class="variant-option-title">Color: </div>
                     <select data-variant-option-name="Color">
@@ -75,7 +77,9 @@
                         {% endfor %}
                     </select>
                 </div>
+                {% endif %}
 
+                {% if len(product.VariantOptions("Size")) > 0 %}
                 <div class="variant-option">
                     <div class="variant-option-title">Size: </div>
                     <select data-variant-option-name="Size">
@@ -85,6 +89,7 @@
                         {% endfor %}
                     </select>
                 </div>
+                {% endif %}
             </div>
 
             <div class="product-quantity-input">
