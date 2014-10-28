@@ -63,7 +63,7 @@ func submitOrder(c *gin.Context) {
 			errs = append(errs, "Expiry is required")
 		}
 
-		wantedItems := make([]LineItem, 5)
+		wantedItems := make([]models.LineItem, 5)
 		
 		for _, i := range order.Items {
 			if i.Quantity > 1 {
@@ -74,7 +74,7 @@ func submitOrder(c *gin.Context) {
 					template.Render(c, "abskjabn.html") // 500
 					return
 				}
-				i.Cost = i.Quantity * item.Price
+				i.Cost = int64(i.Quantity) * item.Price
 				wantedItems = append(wantedItems, i)
 			}
 		}
