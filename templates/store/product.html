@@ -43,7 +43,7 @@
                 </div>
             </div>
 
-            {% if len(product.Images) > 1 %}
+            {% if product.Images | length > 1 %}
             <div id="productThumbnails" style="visibility: visible;">
                 {% for image in product.Images %}
                 <div class="slide content-fill sqs-active-slide" style="overflow: hidden;">
@@ -67,7 +67,7 @@
 
             <div class="product-variants">
 
-                {% if len(product.VariantOptions("Color")) > 0 %}
+                {% if product.VariantOptions("Color") | length > 0 %}
                 <div class="variant-option">
                     <div class="variant-option-title">Color: </div>
                     <select data-variant-option-name="Color">
@@ -79,7 +79,7 @@
                 </div>
                 {% endif %}
 
-                {% if len(product.VariantOptions("Size")) > 0 %}
+                {% if product.VariantOptions("Size") | length > 0 %}
                 <div class="variant-option">
                     <div class="variant-option-title">Size: </div>
                     <select data-variant-option-name="Size">
