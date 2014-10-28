@@ -66,7 +66,10 @@ func (p Product) VariantOptions(name string) (options []string) {
 	for _, v := range p.Variants {
 		r := reflect.ValueOf(v)
 		f := reflect.Indirect(r).FieldByName(name)
-		set[f.String()] = true
+		v := f.String()
+		if v != "" {
+			set[v] = true
+		}
 	}
 
 	for key := range set {
