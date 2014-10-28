@@ -3,6 +3,7 @@ package middleware
 import (
 	"net/http"
 	"github.com/gin-gonic/gin"
+	"crowdstart.io/util/template"
 )
 
 // Serve custom 404 page.
@@ -11,7 +12,8 @@ func NotFoundHandler() gin.HandlerFunc {
 		c.Next()
 
 		if c.Request.Method == "GET" && !c.Writer.Written() && c.Writer.Status() == 404 {
-			http.ServeFile(c.Writer, c.Request, "../static/404.html")
+			c.Writer.WriteHeader(http.StatusNotFound)
+			template.Render(c, "error/404.html")
 		}
 	}
 }
