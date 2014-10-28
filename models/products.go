@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"github.com/dustin/go-humanize"
 	"github.com/mholt/binding"
 	"math"
@@ -143,6 +144,12 @@ type Image struct {
 	FieldMapMixin
 	Alt string
 	Url string
+	X int
+	Y int
+}
+
+func (i Image) Dimensions() string {
+	return fmt.Sprintf("%sx%s", i.X, i.Y)
 }
 
 func (i Image) Validate(req *http.Request, errs binding.Errors) binding.Errors {

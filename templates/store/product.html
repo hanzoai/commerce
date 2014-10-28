@@ -3,15 +3,15 @@
 {% block content_header %}
 <div class="banner-image content-fill" style="overflow: hidden;">
   {% if product.HeaderImage.Url %}
-    <img data-src="{{ product.HeaderImage.Url }}" data-image="{{ product.HeaderImage.Url }}" data-image-dimensions="2500x1406" data-image-focal-point="0.5,0.5" alt="{{ product.HeaderImage.Alt }}" src="{{ product.HeaderImage.Url }}?format=1500w" style="top: -216px; left: 0px; width: 1440px; height: 810px; position: relative; transform: translate3d(0px, 0px, 0px);" data-image-resolution="1500w">
+  <img data-src="{{ product.HeaderImage.Url }}" data-image="{{ product.HeaderImage.Url }}" data-image-dimensions="{{ image.Dimensions() }}" data-image-focal-point="0.5,0.5" alt="{{ product.HeaderImage.Alt }}" src="{{ product.HeaderImage.Url }}?format=1500w" style="top: -216px; left: 0px; width: 1440px; height: 810px; position: relative; transform: translate3d(0px, 0px, 0px);" data-image-resolution="1500w">
   {% else %}
-    <img data-src="{{ product.DisplayImage().Url }}" data-image="{{ product.DisplayImage().Url }}" data-image-dimensions="2500x1406" data-image-focal-point="0.5,0.5" alt="{{ product.DisplayImage().Alt }}" src="{{ product.DisplayImage().Url }}?format=1500w" style="top: -216px; left: 0px; width: 1440px; height: 810px; position: relative; transform: translate3d(0px, 0px, 0px);" data-image-resolution="1500w">
+  <img data-load="lazy" data-src="{{ product.DisplayImage().Url }}" data-image="{{ product.DisplayImage().Url }}" data-image-dimensions="{{ image.Dimensions() }}" data-image-focal-point="0.5,0.5" alt="{{ product.DisplayImage().Alt }}"  data-image-resolution="1500w">
   {% endif %}
 </div>
 
 <div class="title-desc-wrapper has-main-image" data-content-field="main-image">
-    <div class="title-desc-inner" data-collection-id="544a2657e4b0ff95316b8ea0">
-        <h1 class="page-title" data-shrink-original-size="33" style="letter-spacing: 0.212121212121212em;">{{ product.Title }}</h1>
+    <div class="title-desc-inner">
+        <h1 class="page-title" data-shrink-original-size="33" style="letter-spacing: 0.21em;">{{ product.Title }}</h1>
         <br>
         <div class="page-desc"><p>{{ product.Headline }}</p></div>
     </div>
@@ -19,7 +19,7 @@
 {% endblock %}
 
 {% block content %}
-<div id="productWrapper" class="product hentry author-marcus-weller post-type-store-item">
+<div id="productWrapper" class="product hentry post-type-store-item">
     <div id="productNav">
         <a href="/products">
             <span class="back-arrow">&#8592;</span> Back to Store
@@ -35,7 +35,7 @@
                     <div id="productSlideshow" class="sqs-gallery-design-stacked">
                         {% for image in product.Images %}
                         <div class="slide sqs-gallery-design-stacked-slide sqs-active-slide" data-type="image" style="opacity: 1; z-index: 889;">
-                            <img data-load="false" data-src="{{ image.Url }}" data-image="{{ image.Url }}" data-image-dimensions="1000x1000" data-image-focal-point="0.5,0.5" alt="{{ image.Alt }}" class="loaded" src="{{ image.Url }}?format=1500w&amp;storage=local" data-image-resolution="1500w" style="top: 0px; left: 0px; width: 610px; height: 610px; position: relative;">
+                            <img data-load="false" data-src="{{ image.Url }}" data-image="{{ image.Url }}" data-image-dimensions="{{ image.Dimensions() }}" data-image-focal-point="0.5,0.5" alt="{{ image.Alt }}" class="loaded" src="{{ image.Url }}?format=1500w&amp;storage=local" data-image-resolution="1500w" style="top: 0px; left: 0px; width: 610px; height: 610px; position: relative;">
                             <div class=""></div>
                         </div>
                         {% endfor %}
@@ -47,7 +47,7 @@
             <div id="productThumbnails" style="visibility: visible;">
                 {% for image in product.Images %}
                 <div class="slide content-fill sqs-active-slide" style="overflow: hidden;">
-                  <img data-src="{{ image.Url }}" data-image="{{ image.Url }}" data-image-dimensions="1000x1000" data-image-focal-point="0.5,0.5" alt="{{ image.Alt }}" class="" src="{{ image.Url }}?format=100w" style="top: 0px; left: 0px; width: 50px; height: 50px; position: relative;" data-image-resolution="100w">
+                    <img data-src="{{ image.Url }}" data-image="{{ image.Url }}" data-image-dimensions="{{ image.Dimensions() }}" data-image-focal-point="0.5,0.5" alt="{{ image.Alt }}" class="" src="{{ image.Url }}?format=100w" style="top: 0px; left: 0px; width: 50px; height: 50px; position: relative;" data-image-resolution="100w">
                 </div>
                 {% endfor %}
             </div>

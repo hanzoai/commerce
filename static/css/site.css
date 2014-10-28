@@ -14088,7 +14088,7 @@ h1.page-title {
   font-family:"proxima-nova";
   font-size:1.4em;
   line-height:1.6em;
-  text-transform:none;
+  text-transform:uppercase;
   text-decoration:none;
   letter-spacing:1px;
   font-weight:100;
