@@ -6,5 +6,5 @@ import (
 )
 
 func Get(c *gin.Context) {
-	template.Render(c, "cart.html")
+	template.Render(c, "store/cart.html")
 }
