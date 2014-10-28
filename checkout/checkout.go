@@ -10,8 +10,8 @@ func init() {
 
 	router.GET("/checkout", checkout)
 	router.GET("/checkout/", checkout)
-	router.GET("/checkout-complete/", checkoutComplete)
-	router.POST("/submit-order", submitOrder)
+	router.GET("/checkout/complete", checkoutComplete)
+	router.POST("/checkout/submit-order", submitOrder)
 
-	http.Handle("/", router)
+	http.Handle("/checkout", router)
 }
