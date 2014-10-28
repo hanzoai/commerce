@@ -1,5 +1,9 @@
 {% extends "../base.html" %}
 
+{% block css %}
+<link rel="stylesheet" type="text/css" href="/css/cart.css"/>
+{% endblock %}
+
 {% block content %}
 <div id="sqs-shopping-cart-wrapper">
     <div class="yui3-widget sqs-widget yui3-tableshoppingcart sqs-fullpage-shopping-cart">
@@ -51,7 +55,7 @@
                             </td>
 
                             <td class="remove">
-                                <div class="remove-item">REMOVE</div>
+                                <div class="remove-item">×</div>
                             </td>
 
                         </tr>
@@ -82,4 +86,8 @@
 
 <script type="text/javascript">
 </script>
+{% endblock %}
+
+{% block js %}
+<script type="text/javascript" src="/js/cart.js"><script>
 {% endblock %}
