@@ -26,6 +26,7 @@ func DisplayPrice(price int64) string {
 
 type Product struct {
 	FieldMapMixin
+	SerializerMixin
 	Id          string
 	Slug        string
 	Title       string
