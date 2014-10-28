@@ -25,9 +25,11 @@
             var newCartItem = {
                 img: imgs,
                 name: '{{ product.Title }}',
+                sku: '{{ product.SKU() }}',
                 color: $('#color').val(),
                 size: $('#size').val(),
                 quantity: quantity,
+                price: {{ product.DisplayPrice() }}
             }
 
             cart[cartItemName] = newCartItem;

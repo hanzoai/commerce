@@ -27,39 +27,13 @@
                     </thead>
 
                     <tbody>
-                        <tr data-chosen-variant-sku="{{ item.SKU() }}">
-                            <input style="display:none;" name="Order.Items.1.SKU" value="{{ item.SKU() }}">
-                            <td class="item">
-                                <div class="item-image">
-                                    <img src="{{ item.Product.DisplayImage().Url }}?format=100w">
-                                </div>
-                            </td>
-
-                            <td class="item-desc">
-                                <a href="/products/ar-1">{{ item.Product.Title }}</a>
-                                <div class="variant-info">{{ item.Product.Color }} / {{ item.Product.Size }}</div>
-                            </td>
-
-                            <td class="quantity">
-                                <input size="1" value="1" name="Order.Items.1.Quantity">
-                            </td>
-
-                            <td class="price">
-                                <span class="sqs-money-native">{{ item.Product.DisplayPrice() }}</span>
-                            </td>
-
-                            <td class="remove">
-                                <div class="remove-item">×</div>
-                            </td>
-
-                        </tr>
                     </tbody>
                 </table>
 
                 <div class="subtotal">
                     <span class="label">Subtotal</span>
                     <span class="price">
-                        <span class="sqs-money-native">{{ item.Product.DisplayPrice() }}</span>
+                        <span class="sqs-money-native"></span>
                     </span>
                 </div>
 
@@ -78,6 +52,64 @@
     </div>
 </div>
 
+<table style="display:none">
+    <tr class='template' data-chosen-variant-sku="{{ item.SKU() }}">
+        <input class='sku' type="hidden" name="Order.Items.1.SKU" value="{{ item.SKU() }}">
+        <td class="item">
+            <div class="item-image">
+                <img class="thumbnail" src="{{ item.Product.DisplayImage().Url }}?format=100w">
+            </div>
+        </td>
+
+        <td class="item-desc">
+            <a class="title" href="/products/ar-1">{{ item.Product.Title }}</a>
+            <div class="variant-info">{{ item.Product.Color }} / {{ item.Product.Size }}</div>
+        </td>
+
+        <td class="quantity">
+            <input size="1" value="1" name="Order.Items.1.Quantity">
+        </td>
+
+        <td class="price">
+            <span class="sqs-money-native">{{ item.Product.DisplayPrice() }}</span>
+        </td>
+
+        <td class="remove">
+            <div class="remove-item">×</div>
+        </td>
+    </tr>
+</table>
+
 <script type="text/javascript">
+    $(document).ready(function(){
+        $.cookie.json = true;
+
+        var templateEl = $('.template');
+        templateEl.parent().remove();
+
+        function renderTemplate(data, index) {
+            var cartEl = templateEl.clone(false);
+            cartEl.find('img.thumbnail').attr('src', data.img[0]);
+            cartEl.find('input.sku').val(data.sku).attr('name', 'Order.Items.' + (index + 1) + '.SKU');;
+            cartEl.find('a.title').text(data.name);
+            cartEl.find('div.variant-info').text(data.color + ' / ' + data.name);
+            cartEl.find('.quantity input').val(data.quantity).attr('name', 'Order.Items.' + (index + 1) + '.Quantity');
+            cartEl.find('.price span').text(data.price);
+
+            $('.cart-container tbody').append(cartEl);
+        }
+
+        var cart = $.cookie('SkullySystemsCart');
+        var i = 0;
+        var price = 0;
+        for(var key in cart) {
+            var data = cart[key];
+            renderTemplate(data, i);
+            price += data.quantity * data.price;
+            i++;
+        }
+
+        $('.subtotal .price span').text(price);
+    });
 </script>
 {% endblock %}
