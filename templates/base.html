@@ -162,21 +162,23 @@
 
                 <!--CART HOVER-->
                 <div class="sqs-cart-dropzone fixed-cart" style="margin-top: 67px; top: 77px;">
-                  <div class="yui3-widget sqs-widget sqs-pill-shopping-cart" style="visibility: visible; opacity: 1;">
-                    <div class="sqs-pill-shopping-cart-content dark">
-                      <div class="icon"></div>
+                  <a href="/cart">
+                    <div class="yui3-widget sqs-widget sqs-pill-shopping-cart" style="visibility: visible; opacity: 1;">
+                      <div class="sqs-pill-shopping-cart-content dark">
+                        <div class="icon"></div>
 
-                      <div class="details">
-                        Cart&nbsp;-&nbsp;
-                          <span class="total-quantity">1</span>
-                          <span class="suffix">item</span>
+                        <div class="details">
+                          Cart&nbsp;-&nbsp;
+                            <span class="total-quantity">1</span>
+                            <span class="suffix">item</span>
+                        </div>
+
+                        <span class="subtotal">
+                          <span class="price"><span class="sqs-money-native">0.00</span></span>
+                        </span>
                       </div>
-
-                      <span class="subtotal">
-                        <span class="price"><span class="sqs-money-native">0.00</span></span>
-                      </span>
                     </div>
-                  </div>
+                  </a>
                 </div>
 
                 <div class="content">
@@ -512,6 +514,6 @@
             window.YUI && YUI.add("squarespace-imageloader", function(a) {});
         })();
     </script>
-
+    <script type="text/javascript" src="/js/commerce.js"></script>
     {% block js %}{% endblock %}
 </html>
