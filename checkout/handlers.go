@@ -7,6 +7,7 @@ import (
 	"crowdstart.io/util/template"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/schema"
+	"log"
 )
 
 func checkout(c *gin.Context) {
@@ -20,11 +21,17 @@ func checkoutComplete(c *gin.Context) {
 var decoder = schema.NewDecoder()
 
 func submitOrder(c *gin.Context) {
+	log.Println("Submitting order")
 	errs := make([]string, 5)
 	order := new(models.Order)
+	c.Request.ParseForm()
 	err := decoder.Decode(order, c.Request.PostForm)
+	log.Println(order.BillingAddress.Country)
+	
 	db := datastore.New(c)
 
+	log.Println(err)
+	
 	if err == nil {
 		if order.User.FirstName == "" {
 			errs = append(errs, "First name is required")
@@ -69,8 +76,9 @@ func submitOrder(c *gin.Context) {
 			if i.Quantity > 1 {
 				item := new(models.ProductVariant)
 				err := db.GetKey("variant", i.SKU, &item)
-
+				log.Println(err)
 				if err != nil {
+					log.Println("err is not nil")
 					template.Render(c, "abskjabn.html") // 500
 					return
 				}
@@ -81,6 +89,11 @@ func submitOrder(c *gin.Context) {
 
 		order.Items = wantedItems
 
+		log.Println(order.Items)
+		log.Println(errs)
+		
+		checkoutComplete(c)
+		
 		// Authorize order
 		if len(errs) == 0 {
 			ares, err := cardconnect.Authorize(*order)
