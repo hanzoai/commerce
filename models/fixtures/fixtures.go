@@ -79,6 +79,10 @@ func Install(db *datastore.Datastore) {
 		Title: "SKULLY AR-1",
 		Description: "World's smartest helmet!",
 		Variants: variants,
+		Images: []Image{
+			Image{Url: "/img/products/blackhelmet_store.jpg"},
+			Image{Url: "/img/products/whitehelmet_store.jpg"},
+		},
 	})
 
 	// T-Shirts
@@ -124,5 +128,8 @@ func Install(db *datastore.Datastore) {
 		Title: "SKULLY T-shirt",
 		Description: "SKULLY Nation T-shirt",
 		Variants: variants,
+		Images: []Image{
+			Image{Url: "/img/products/skully_shirt_1000px.jpg"},
+		},
 	})
 }
