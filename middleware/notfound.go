@@ -11,7 +11,7 @@ func NotFoundHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Next()
 
-		if c.Request.Method == "GET" && !c.Writer.Written() && c.Writer.Status() == 404 {
+		if !c.Writer.Written() && c.Writer.Status() == 404 {
 			c.Writer.WriteHeader(http.StatusNotFound)
 			template.Render(c, "error/404.html")
 		}
