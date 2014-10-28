@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"runtime"
 	"sync"
+	"crowdstart.io/util/template"
 )
 
 var once sync.Once
@@ -58,7 +59,7 @@ func getStack() string {
 // Show our error page & log it out
 func handleError(c *gin.Context, stack string) {
 	c.Writer.WriteHeader(http.StatusInternalServerError)
-	http.ServeFile(c.Writer, c.Request, "../static/500.html")
+	template.Render(c, "error/500.html")
 
 	ctx := GetAppEngine(c)
 	ctx.Errorf(stack)
