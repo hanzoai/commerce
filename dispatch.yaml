@@ -4,7 +4,7 @@ dispatch:
   - url: "*/v1/*"
     module: api
 
-  - url: "*/checkout"
+  - url: "*/checkout/*"
     module: checkout
 
   - url: "*/css/*"
