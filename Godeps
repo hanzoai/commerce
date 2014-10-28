@@ -2,11 +2,8 @@ github.com/dustin/go-humanize master
 github.com/flosch/pongo2 master
 github.com/getsentry/raven-go master
 github.com/gin-gonic/gin app_engine
+github.com/gorilla/schema master
 github.com/gorilla/sessions master
 github.com/jmcvetta/napping master
 github.com/mholt/binding master
-<<<<<<< HEAD
 github.com/qedus/nds master
-=======
-github.com/gorilla/schema master
->>>>>>> 99342fc737b682dcca4a4fcad3f8488da68f3c3c
