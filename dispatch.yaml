@@ -7,12 +7,6 @@ dispatch:
   - url: "*/checkout"
     module: checkout
 
-  - url: "*/checkout/*"
-    module: checkout
-
-  - url: "*/submit-order/*"
-    module: checkout
-
   - url: "*/submit-order*"
     module: checkout
 
@@ -36,9 +30,6 @@ dispatch:
 
   # - url: "*/"
   #   module: default
-
-  - url: "*/"
-    module: store
 
   - url: "*/*"
     module: store
