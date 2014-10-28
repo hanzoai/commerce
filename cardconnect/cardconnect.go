@@ -81,9 +81,7 @@ func Authorize(order models.Order) (ares AuthorizationRes, err error) {
 	items := make([]LineItem, len(order.Items))
 	for i, v := range order.Items {
 		items[i] = LineItem{
-			SKU:          v.SKU,
-			Cost:         v.Cost,
-			Description:  v.Description,
+			Description:  v.Product.Description,
 			DiscountAmnt: v.DiscountAmnt,
 			LineNo:       v.LineNo,
 			Quantity:     v.Quantity,

@@ -32,13 +32,12 @@ func authorize(c *gin.Context) {
 	for _, i := range form.Order.Items {
 		if i.Quantity > 1 {
 			item := new(models.ProductVariant)
-			err := db.GetKey("variant", i.SKU, &item)
+			err := db.GetKey("variant", i.SKU(), &item)
 			log.Println(err)
 			if err != nil {
 				c.Fail(500, err)
 				return
 			}
-			i.Cost = int64(i.Quantity) * item.Price
 			wantedItems = append(wantedItems, i)
 		}
 	}
