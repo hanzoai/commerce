@@ -1,19 +1,9 @@
-function setupStats() {
-  $.getJSON("https://s3-us-west-1.amazonaws.com/skully/stats.json", function(a) {
-    $("span.pledged-amount").text(a.funding);
-    $("span.indiegogo-pledges").text(a.funders)
-  });
-  var b = "",
-    a = new Date(1412924399E3) - new Date,
-    c = 864E5 < a ? !0 : !1,
-    a = a / 1E3 / 60,
-    e = Math.floor(a % 60),
-    a = a / 60,
-    d = Math.floor(a % 24),
-    a = a / 24;
-  c && (b += "1 day, ");
-  $("span.campaign-counter").text(b + (d + " hours, " + e + " minutes left to order your AR-1"))
+Y.Squarespace.Template = {
+  getTweakValue: function(k) {
+    return null
+  }
 }
+
 Y.use("node", "yui-throttle", "squarespace-ui-base", function() {
   window.Site = Singleton.create({
     PARALLAX_FACTOR: 0.8,
@@ -25,7 +15,6 @@ Y.use("node", "yui-throttle", "squarespace-ui-base", function() {
       Y.on("domready", this.initialize, this)
     },
     initialize: function() {
-      setupStats();
       this.parallaxImages = Y.all("#parallax-images .image-container");
       this.parallaxPages = Y.all(".parallax-item");
       this.scrollEl = Y.one(Y.UA.gecko || Y.UA.ie || navigator.userAgent.match(/Trident.*rv.11\./) ? "html" : "body");

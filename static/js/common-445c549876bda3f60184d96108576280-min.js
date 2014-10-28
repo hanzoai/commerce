@@ -14183,26 +14183,22 @@ function Common(a) {
     window.Squarespace = {
       INITIALIZED: !1,
       isWrappedForDamask: function(a) {
-        a = a || window;
-        return !(a.Static.SQUARESPACE_CONTEXT.websiteSettings && a.Static.SQUARESPACE_CONTEXT.websiteSettings.damaskEnabled && a.Static.SQUARESPACE_CONTEXT.authenticatedAccount && a.top == a)
+        // TODO: Remove this cruft. If false it will try to drop in frame for config shit.
+        return true;
       },
       load: function(a) {
         a = a || window;
-        if (Squarespace.isWrappedForDamask(a)) {
-          var b = YUI,
-            c = {}, e;
-          for (e in a.YUI_CONFIG) c[e] = a.YUI_CONFIG[e];
-          c.win = a;
-          c.doc = a.document;
-          c.scriptDoc = a.document;
-          c.linkDoc = a.document;
-          a.Y = b(c);
-          a.Static.SQUARESPACE_CONTEXT.collection && (a.Static.SQUARESPACE_CONTEXT.collectionId = a.Static.SQUARESPACE_CONTEXT.collection.id);
-          a.Static.SQUARESPACE_CONTEXT.item && (a.Static.SQUARESPACE_CONTEXT.itemId = a.Static.SQUARESPACE_CONTEXT.item.id);
-          a.Y.use("squarespace-image-loader");
-          a.Y.on("domready",
-          a.Squarespace.afterBodyLoad, a.Squarespace)
-        } else a.stop && a.stop(), a.location.href = "/config/#/content" + a.location.pathname + "|" + a.location.pathname + (window.location.search || "")
+        var b = YUI, c = {}, e;
+        for (e in a.YUI_CONFIG) c[e] = a.YUI_CONFIG[e];
+        c.win = a;
+        c.doc = a.document;
+        c.scriptDoc = a.document;
+        c.linkDoc = a.document;
+        a.Y = b(c);
+        // a.Static.SQUARESPACE_CONTEXT.collection && (a.Static.SQUARESPACE_CONTEXT.collectionId = a.Static.SQUARESPACE_CONTEXT.collection.id);
+        // a.Static.SQUARESPACE_CONTEXT.item && (a.Static.SQUARESPACE_CONTEXT.itemId = a.Static.SQUARESPACE_CONTEXT.item.id);
+        a.Y.use("squarespace-image-loader");
+        a.Y.on("domready", a.Squarespace.afterBodyLoad, a.Squarespace)
       },
       onInitialize: function(a, b) {
         if (a.config.win.Squarespace.INITIALIZED) b();
@@ -14299,38 +14295,36 @@ function Common(a) {
         }
       },
       globalInit: function(a) {
-        a.Squarespace.Utils.isInDamaskFrame() && a.Array.each(["Y.Squarespace.Singletons.TemplateInstallationListCache", "Y.Squarespace.Singletons.Template", "Y.Squarespace.ContentCollectionCache"], function(b) {
+        Static.SQUARESPACE_CONTEXT = {websiteSettings: {}};
+
+        a.Array.each(["Y.Squarespace.Singletons.TemplateInstallationListCache", "Y.Squarespace.Singletons.Template", "Y.Squarespace.ContentCollectionCache"], function(b) {
           b = b.split(".");
           var c = b.slice(1, b.length - 1).join("."),
             e = b[b.length - 1];
-          a.namespace(c)[e] = a.Squarespace.Damask.ContextGlobals.fromTop(b)
         });
-        a.Squarespace.EscManager && a.Squarespace.EscManager.attach(a.one(a.config.win));
-        a.Squarespace.Analytics.hit();
-        a.Squarespace.Census.hit();
         a.Squarespace.DateUtils.humanizeAllDates(".timesince");
         a.config.win.Squarespace.initializeLayoutBlocks(a);
         a.config.win.Squarespace.initializeGlobalLightbox(a);
         a.config.win.Squarespace.initializeVideo(a);
-        Squarespace.INITIALIZED || (a.namespace("Squarespace.Singletons").WebsiteOverlaysManager = new a.Squarespace.Frontend.WebsiteOverlaysManager);
-        var b = Static.SQUARESPACE_CONTEXT.websiteSettings.disqusShortname;
-        a.Lang.isValue(b) && "" !== b && a.config.win.Squarespace.initializeDisqusCommentLinks(a);
-        if (-1 !== document.location.href.indexOf("logout=true")) a.on("domready", function() {
-          new a.Squarespace.Widgets.Information({
-            "strings.title": "Logout Successful",
-            "strings.message": "You have been successfully logged out."
-          })
-        });
-        if (Static.SQUARESPACE_CONTEXT.websiteSettings.commentsEnabled) {
-          var b = Static.SQUARESPACE_CONTEXT.demoCollections,
-            c = Static.SQUARESPACE_CONTEXT.collectionId,
-            e = !1;
-          a.Lang.isArray(b) && a.Lang.isValue(c) && -1 !== a.Array.map(b, function(a) {
-            return a.collectionId
-          }).indexOf(c) && (e = !0);
-          e || a.config.win.Squarespace.addLoadTrigger(".squarespace-comments", ["squarespace-dialog", "squarespace-comments"])
-        }
-        a.config.win.Squarespace.addLoadTrigger(".sqs-audio-embed, .sqs-audio-playlist, .sqs-album-block", ["squarespace-audio-player"]);
+        // Squarespace.INITIALIZED || (a.namespace("Squarespace.Singletons").WebsiteOverlaysManager = new a.Squarespace.Frontend.WebsiteOverlaysManager);
+        // var b = Static.SQUARESPACE_CONTEXT.websiteSettings.disqusShortname;
+        // a.Lang.isValue(b) && "" !== b && a.config.win.Squarespace.initializeDisqusCommentLinks(a);
+        // if (-1 !== document.location.href.indexOf("logout=true")) a.on("domready", function() {
+        //   new a.Squarespace.Widgets.Information({
+        //     "strings.title": "Logout Successful",
+        //     "strings.message": "You have been successfully logged out."
+        //   })
+        // });
+        // if (Static.SQUARESPACE_CONTEXT.websiteSettings.commentsEnabled) {
+        //   var b = Static.SQUARESPACE_CONTEXT.demoCollections,
+        //     c = Static.SQUARESPACE_CONTEXT.collectionId,
+        //     e = !1;
+        //   a.Lang.isArray(b) && a.Lang.isValue(c) && -1 !== a.Array.map(b, function(a) {
+        //     return a.collectionId
+        //   }).indexOf(c) && (e = !0);
+        //   e || a.config.win.Squarespace.addLoadTrigger(".squarespace-comments", ["squarespace-dialog", "squarespace-comments"])
+        // }
+        // a.config.win.Squarespace.addLoadTrigger(".sqs-audio-embed, .sqs-audio-playlist, .sqs-album-block", ["squarespace-audio-player"]);
         a.Lang.isObject(Static.SQUARESPACE_CONTEXT.websiteSettings.pinterestOverlayOptions) && "disabled" !== Static.SQUARESPACE_CONTEXT.websiteSettings.pinterestOverlayOptions.mode && a.config.win.Squarespace.addLoadTrigger(".sqs-block-image,.sqs-gallery-block-stacked,.sqs-gallery-block-grid,.sqs-gallery-block-slideshow,.sqs-block-html img", ["squarespace-pinterest"]);
         a.config.win.Squarespace.addLoadTrigger(".sqs-block.calendar-block", ["squarespace-calendar-block-renderer"]);
         a.config.win.Squarespace.addLoadTrigger(".sqs-events-collection-list, .sqs-events-collection-calendar", ["squarespace-events-collection"]);
@@ -14489,22 +14483,6 @@ function Common(a) {
         a.Squarespace.Commerce.initializeCommerce(a)
       },
       initializeAudioBlock: function(a) {
-        a.Squarespace.Widgets.AudioPlayer ? a.all(".sqs-audio-embed").each(function(b) {
-          if (!(0 < b.get("children").size()) && !a.Widget.getByNode(b.one("." + a.Squarespace.Widgets.AudioPlayer.CSS_PREFIX))) {
-            switch (a.Object.getValue(b.getData(), "design-style") || "minimal") {
-            case "legacy":
-              b = new a.Squarespace.Widgets.AudioPlayer({
-                render: b
-              });
-              break;
-            default:
-              b = new a.Squarespace.Widgets.AudioPlayerMinimal({
-                render: b
-              })
-            }
-            b.render()
-          }
-        }) : Squarespace.addLoadTrigger(".sqs-audio-embed", ["squarespace-audio-player"])
       },
       initializeVideo: function(a) {
         a.all(".sqs-video-wrapper").each(function(b) {
@@ -14514,7 +14492,7 @@ function Common(a) {
         })
       },
       initializeAspectRatioBlocks: function(a) {
-        a.Squarespace.Block.Utils.AspectRatioManager.initAllBlocks()
+        // a.Squarespace.Block.Utils.AspectRatioManager.initAllBlocks()
       }
     }
   }
