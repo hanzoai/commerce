@@ -425,7 +425,7 @@
             }
         }
     </style>
-    <script charset="utf-8" id="yui_3_17_2_1_1414184167898_446" src="/js/checkout-gmaps.js"></script>
+    <script charset="utf-8" src="/js/checkout-gmaps.js"></script>
     <script type="text/javascript" charset="UTF-8" src="/js/{common,util,stats}.js"></script>
 </head>
 
@@ -650,11 +650,11 @@
         <!-- CART/COUPON SUMMARIES -->
         <div id="summary-wrapper" class="right-column-wrapper">
             <div id="cart-summary" class="card">
-                <div id="yui_3_17_2_1_1414184167898_1016" class="yui3-widget sqs-widget yui3-tableshoppingcart sqs-checkout-shopping-cart">
-                    <div id="yui_3_17_2_1_1414184167898_1018" class="sqs-checkout-shopping-cart-content single-item">
+                <div class="yui3-widget sqs-widget yui3-tableshoppingcart sqs-checkout-shopping-cart">
+                    <div class="sqs-checkout-shopping-cart-content single-item">
                         <div class="loading-spinner">
-                            <div id="yui_3_17_2_1_1414184167898_1080" class="yui3-widget sqs-spin dark" style="height: 50px; width: 50px;">
-                                <div id="yui_3_17_2_1_1414184167898_1082" class="sqs-spin-content yui3-widget-content-expanded"></div>
+                            <div class="yui3-widget sqs-spin dark" style="height: 50px; width: 50px;">
+                                <div class="sqs-spin-content yui3-widget-content-expanded"></div>
                             </div>
                         </div>
 
@@ -670,279 +670,78 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr data-item-id="544a2657e4b0ff95316b8ea0" data-chosen-variant-sku="AR1-BLACK-S" id="yui_3_17_2_1_1414184167898_1146">
-                                  <input style="display:none;" name="Order.Items.0.SKU" value="AR1-BLACK-S">
+                                {% for item in order.Items %}
+                                <tr data-chosen-variant-sku="{{ item.SKU }}">
+                                    <input style="display:none;" name="Order.Items.{{ forloop.Counter }}.SKU" value="{{ item.SKU }}">
                                     <td class="item">
-                                        <div class="item-image"><img src="/img/140804 Trailer V14.Still011.png">
+                                        <div class="item-image">
+                                            <img src="{{ item.Product.DisplayImage().Url }}?format=100w">
                                         </div>
                                         <div class="item-desc">
-                                            <div>SKULLY AR-1</div>
-                                            <div class="variant-info">Black / Small</div>
+                                            <div>{{ item.Product.Title }}</div>
+                                            <div class="variant-info">{{ item.Product.Color }} / {{ item.Product.Size }}</div>
                                         </div>
                                     </td>
 
                                     <td class="quantity">
-                                        <input size="1" value="0" name="Order.Items.0.Quantity">
+                                        <input size="1" value="{{ item.Quantity }}" name="Order.Items.{{ forloop.Counter }}.Quantity">
                                     </td>
 
-                                    <td class="price"><span class="sqs-money-native">0.00</span>
+                                    <td class="price"><span class="sqs-money-native">{{ item.DisplayPrice() }}</span>
                                     </td>
 
                                     <td class="remove">
                                         <div class="remove-item"></div>
                                     </td>
                                 </tr>
-
-                                <tr data-item-id="544a2657e4b0ff95316b8ea0" data-chosen-variant-sku="AR1-BLACK-M" id="yui_3_17_2_1_1414184167898_1146">
-                                  <input style="display:none;" name="Order.Items.1.SKU" value="AR1-BLACK-M">
-                                    <td class="item">
-                                        <div class="item-image"><img src="/img/140804 Trailer V14.Still011.png">
-                                        </div>
-                                        <div class="item-desc">
-                                            <div>SKULLY AR-1</div>
-                                            <div class="variant-info">Black / Medium</div>
-                                        </div>
-                                    </td>
-
-                                    <td class="quantity">
-                                        <input size="1" value="0" name="Order.Items.1.Quantity">
-                                    </td>
-
-                                    <td class="price"><span class="sqs-money-native">0.00</span>
-                                    </td>
-
-                                    <td class="remove">
-                                        <div class="remove-item"></div>
-                                    </td>
-                                </tr>
-
-                                <tr data-item-id="544a2657e4b0ff95316b8ea0" data-chosen-variant-sku="AR1-BLACK-L" id="yui_3_17_2_1_1414184167898_1146">
-                                  <input style="display:none;" name="Order.Items.2.SKU" value="AR1-BLACK-L">
-                                    <td class="item">
-                                        <div class="item-image"><img src="/img/140804 Trailer V14.Still011.png">
-                                        </div>
-                                        <div class="item-desc">
-                                            <div>SKULLY AR-1</div>
-                                            <div class="variant-info">Black / Large</div>
-                                        </div>
-                                    </td>
-
-                                    <td class="quantity">
-                                        <input size="1" value="0" name="Order.Items.2.Quantity">
-                                    </td>
-
-                                    <td class="price"><span class="sqs-money-native">0.00</span>
-                                    </td>
-
-                                    <td class="remove">
-                                        <div class="remove-item"></div>
-                                    </td>
-                                </tr>
-
-                                <tr data-item-id="544a2657e4b0ff95316b8ea0" data-chosen-variant-sku="AR1-BLACK-XL" id="yui_3_17_2_1_1414184167898_1146">
-                                  <input style="display:none;" name="Order.Items.3.SKU" value="AR1-BLACK-XL">
-                                    <td class="item">
-                                        <div class="item-image"><img src="/img/140804 Trailer V14.Still011.png">
-                                        </div>
-                                        <div class="item-desc">
-                                            <div>SKULLY AR-1</div>
-                                            <div class="variant-info">Black / X-Large</div>
-                                        </div>
-                                    </td>
-
-                                    <td class="quantity">
-                                        <input size="1" value="0" name="Order.Items.3.Quantity">
-                                    </td>
-
-                                    <td class="price"><span class="sqs-money-native">0.00</span>
-                                    </td>
-
-                                    <td class="remove">
-                                        <div class="remove-item"></div>
-                                    </td>
-                                </tr>
-
-                                <tr data-item-id="544a2657e4b0ff95316b8ea0" data-chosen-variant-sku="AR1-BLACK-XXL" id="yui_3_17_2_1_1414184167898_1146">
-                                  <input style="display:none;" name="Order.Items.4.SKU" value="AR1-BLACK-XXL">
-                                    <td class="item">
-                                        <div class="item-image"><img src="/img/140804 Trailer V14.Still011.png">
-                                        </div>
-                                        <div class="item-desc">
-                                            <div>SKULLY AR-1</div>
-                                            <div class="variant-info">Black / XX-Large</div>
-                                        </div>
-                                    </td>
-
-                                    <td class="quantity">
-                                        <input size="1" value="0" name="Order.Items.4.Quantity">
-                                    </td>
-
-                                    <td class="price"><span class="sqs-money-native">0.00</span>
-                                    </td>
-
-                                    <td class="remove">
-                                        <div class="remove-item"></div>
-                                    </td>
-                                </tr>
-
-
-                                <tr data-item-id="544a2657e4b0ff95316b8ea0" data-chosen-variant-sku="AR1-WHITE-S" id="yui_3_17_2_1_1414184167898_1146">
-                                  <input style="display:none;" name="Order.Items.5.SKU" value="AR1-WHITE-S">
-                                    <td class="item">
-                                        <div class="item-image"><img src="/img/140804 Trailer V14.Still011.png">
-                                        </div>
-                                        <div class="item-desc">
-                                            <div>SKULLY AR-1</div>
-                                            <div class="variant-info">White / Small</div>
-                                        </div>
-                                    </td>
-
-                                    <td class="quantity">
-                                        <input size="1" value="0" name="Order.Items.5.Quantity">
-                                    </td>
-
-                                    <td class="price"><span class="sqs-money-native">0.00</span>
-                                    </td>
-
-                                    <td class="remove">
-                                        <div class="remove-item"></div>
-                                    </td>
-                                </tr>
-
-                                <tr data-item-id="544a2657e4b0ff95316b8ea0" data-chosen-variant-sku="AR1-WHITE-M" id="yui_3_17_2_1_1414184167898_1146">
-                                  <input style="display:none;" name="Order.Items.6.SKU" value="AR1-WHITE-M">
-                                    <td class="item">
-                                        <div class="item-image"><img src="/img/140804 Trailer V14.Still011.png">
-                                        </div>
-                                        <div class="item-desc">
-                                            <div>SKULLY AR-1</div>
-                                            <div class="variant-info">White / Medium</div>
-                                        </div>
-                                    </td>
-
-                                    <td class="quantity">
-                                        <input size="1" value="0" name="Order.Items.6.Quantity">
-                                    </td>
-
-                                    <td class="price"><span class="sqs-money-native">0.00</span>
-                                    </td>
-
-                                    <td class="remove">
-                                        <div class="remove-item"></div>
-                                    </td>
-                                </tr>
-
-                                <tr data-item-id="544a2657e4b0ff95316b8ea0" data-chosen-variant-sku="AR1-WHITE-L" id="yui_3_17_2_1_1414184167898_1146">
-                                  <input style="display:none;" name="Order.Items.7.SKU" value="AR1-WHITE-L">
-                                    <td class="item">
-                                        <div class="item-image"><img src="/img/140804 Trailer V14.Still011.png">
-                                        </div>
-                                        <div class="item-desc">
-                                            <div>SKULLY AR-1</div>
-                                            <div class="variant-info">White / Large</div>
-                                        </div>
-                                    </td>
-
-                                    <td class="quantity">
-                                        <input size="1" value="0" name="Order.Items.7.Quantity">
-                                    </td>
-
-                                    <td class="price"><span class="sqs-money-native">0.00</span>
-                                    </td>
-
-                                    <td class="remove">
-                                        <div class="remove-item"></div>
-                                    </td>
-                                </tr>
-
-                                <tr data-item-id="544a2657e4b0ff95316b8ea0" data-chosen-variant-sku="AR1-WHITE-XL" id="yui_3_17_2_1_1414184167898_1146">
-                                  <input style="display:none;" name="Order.Items.8.SKU" value="AR1-WHITE-XL">
-                                    <td class="item">
-                                        <div class="item-image"><img src="/img/140804 Trailer V14.Still011.png">
-                                        </div>
-                                        <div class="item-desc">
-                                            <div>SKULLY AR-1</div>
-                                            <div class="variant-info">White / X-Large</div>
-                                        </div>
-                                    </td>
-
-                                    <td class="quantity">
-                                        <input size="1" value="0" name="Order.Items.8.Quantity">
-                                    </td>
-
-                                    <td class="price"><span class="sqs-money-native">0.00</span>
-                                    </td>
-
-                                    <td class="remove">
-                                        <div class="remove-item"></div>
-                                    </td>
-                                </tr>
-
-                                <tr data-item-id="544a2657e4b0ff95316b8ea0" data-chosen-variant-sku="AR1-WHITE-XXL" id="yui_3_17_2_1_1414184167898_1146">
-                                  <input style="display:none;" name="Order.Items.9.SKU" value="AR1-WHITE-XXL">
-                                    <td class="item">
-                                        <div class="item-image"><img src="/img/140804 Trailer V14.Still011.png">
-                                        </div>
-                                        <div class="item-desc">
-                                            <div>SKULLY AR-1</div>
-                                            <div class="variant-info">White / XX-Large</div>
-                                        </div>
-                                    </td>
-
-                                    <td class="quantity">
-                                        <input size="1" value="0" name="Order.Items.9.Quantity">
-                                    </td>
-
-                                    <td class="price"><span class="sqs-money-native">0.00</span>
-                                    </td>
-
-                                    <td class="remove">
-                                        <div class="remove-item"></div>
-                                    </td>
-                                </tr>
+                                {% endfor %}
                             </tbody>
                         </table>
 
                         <div class="subtotal total">
-                            <div class="price"><span class="sqs-money-native">0.00</span>
+                            <div class="price"><span class="sqs-money-native">{{ order.Subtotal }}</span>
                             </div>
                             <div class="label">Subtotal</div>
                         </div>
 
                         <div class="tax total">
-                            <div class="price"><span class="sqs-money-native">0.00</span>
+                            <div class="price"><span class="sqs-money-native">{{ order.Tax }}</span>
                             </div>
                             <div class="label">Tax</div>
                         </div>
 
-                        <div class="shipping total">
-                            <div class="price"><span class="sqs-money-native">0.00</span>
+                        <div class="shipping total" hidden="hidden" style="display: none;">
+                            <div class="price"><span class="sqs-money-native">{{ order.Shipping }}</span>
                             </div>
                             <div class="label">Shipping</div>
                         </div>
 
-                        <div class="discounts total" id="yui_3_17_2_1_1414184167898_1160" hidden="hidden" style="display: none;">
-                            <div class="price">- <span class="sqs-money-native">0.00</span>
+                        <div class="discounts total" hidden="hidden" style="display: none;">
+                            <div class="price">- <span class="sqs-money-native">{{ order.Discounts }}</span>
                             </div>
                             <div class="label">Discounts</div>
                         </div>
 
                         <div class="grand-total total">
-                            <div class="price"><span class="sqs-money-native">0.00</span>
+                            <div class="price"><span class="sqs-money-native">{{ order.Total }}</span>
                             </div>
                             <div class="label">Grand Total</div>
                         </div>
 
+                        {% if order.Empty() %}
                         <div class="empty-message">
                             You have nothing in your shopping cart.&nbsp;
                             <a href="http://www.skullysystems.com/">Continue shopping</a>
                         </div>
+                        {% endif %}
+
                     </div>
                 </div>
             </div>
-            <div id="coupon-summary" class="card  hidden ">
-                <div id="yui_3_17_2_1_1414184167898_1168" class="yui3-widget sqs-widget sqs-checkout-coupon-list">
-                    <div id="yui_3_17_2_1_1414184167898_1170" class="sqs-checkout-coupon-list-content">
+
+            <div id="coupon-summary" class="card  hidden">
+                <div class="yui3-widget sqs-widget sqs-checkout-coupon-list">
+                    <div class="sqs-checkout-coupon-list-content">
                         <div class="title">Coupons</div>
 
                         <fieldset>
@@ -964,13 +763,13 @@
 
                                 <!-- List -->
                                 <div class="coupon-list">
-                                    <div id="yui_3_17_2_1_1414184167898_1203" class="yui3-widget sqs-widget sqs-data-widget sqs-dialog-field sqs-list data-state-loaded">
-                                        <div id="yui_3_17_2_1_1414184167898_1205" class="sqs-list-content">
+                                    <div class="yui3-widget sqs-widget sqs-data-widget sqs-dialog-field sqs-list data-state-loaded">
+                                        <div class="sqs-list-content">
                                             <div class="controls">
                                                 <button class="add-item" type="button" hidden="hidden" style="display: none;">Add Item</button>
                                             </div>
                                             <div class="list-title">Set strings.title to something.</div>
-                                            <div class="list-items" id="yui_3_17_2_1_1414184167898_1247">
+                                            <div class="list-items">
                                                 <div class="empty"></div>
                                             </div>
                                         </div>
@@ -983,13 +782,13 @@
 
                                 <!-- No Longer Valid Coupons -->
                                 <div class="invalid-coupon-list hidden">
-                                    <div id="yui_3_17_2_1_1414184167898_1269" class="yui3-widget sqs-widget sqs-data-widget sqs-dialog-field sqs-list data-state-loaded">
-                                        <div id="yui_3_17_2_1_1414184167898_1271" class="sqs-list-content">
+                                    <div class="yui3-widget sqs-widget sqs-data-widget sqs-dialog-field sqs-list data-state-loaded">
+                                        <div class="sqs-list-content">
                                             <div class="controls">
                                                 <button class="add-item" type="button" hidden="hidden" style="display: none;">Add Item</button>
                                             </div>
                                             <div class="list-title">Set strings.title to something.</div>
-                                            <div class="list-items" id="yui_3_17_2_1_1414184167898_1313">
+                                            <div class="list-items">
                                                 <div class="empty"></div>
                                             </div>
                                         </div>
@@ -1006,13 +805,13 @@
 
         <!-- CHECKOUT FORM -->
         <div id="form-wrapper" class="right-column-wrapper">
-            <div id="yui_3_17_2_1_1414184167898_246" class="yui3-widget sqs-widget sqs-checkout-form">
-                <div id="yui_3_17_2_1_1414184167898_248" class="sqs-checkout-form-content">
+            <div class="yui3-widget sqs-widget sqs-checkout-form">
+                <div class="sqs-checkout-form-content">
                     <form action="/checkout/authorize" method="POST" accept-charset="UTF-8" enctype="application/x-www-form-urlencoded; charset=utf-8">
                         <!-- <input type="hidden" name="forceTestMode"> -->
                         <!-- <input type="hidden" name="customFormSubmission"> -->
-                        <div id="yui_3_17_2_1_1414184167898_258" class="yui3-widget sqs-widget sqs-checkout-form-section card sqs-checkout-form-address sqs-checkout-form-billing editing">
-                            <div id="yui_3_17_2_1_1414184167898_260" class="sqs-checkout-form-billing-content">
+                        <div class="yui3-widget sqs-widget sqs-checkout-form-section card sqs-checkout-form-address sqs-checkout-form-billing editing">
+                            <div class="sqs-checkout-form-billing-content">
                                 <div class="title">Billing Info<a class="edit-button">edit</a>
                                 </div>
 
@@ -1042,11 +841,11 @@
                                     <!-- Billing Address 1 -->
                                     <div id="billing-address-1" data-label="Address Line 1" class="field required">
                                         <label>Unit</label>
-                                        <input name="BillingAddress.Unit" class="field-element address-line1 pulse-warnable sqs-scroll-ac-input" placeholder="Unit" x-autocompletetype="address-line1" type="text" spellcheck="false" maxlength="50" aria-autocomplete="list" aria-expanded="false" aria-owns="yui_3_17_2_1_1414184167898_449" id="yui_3_17_2_1_1414184167898_467" autocomplete="on">
-                                        <div id="yui_3_17_2_1_1414184167898_414" class="yui3-widget yui3-aclist sqs-scroll-ac yui3-widget-positioned sqs-scroll-ac-hidden" aria-hidden="true" style="left: 0px; top: 40.796875px;">
-                                            <div id="yui_3_17_2_1_1414184167898_416" class="sqs-scroll-ac-content sqs-google-places-autocomplete-mixin">
+                                        <input name="BillingAddress.Unit" class="field-element address-line1 pulse-warnable sqs-scroll-ac-input" placeholder="Unit" x-autocompletetype="address-line1" type="text" spellcheck="false" maxlength="50" aria-autocomplete="list" aria-expanded="false" autocomplete="on">
+                                        <div class="yui3-widget yui3-aclist sqs-scroll-ac yui3-widget-positioned sqs-scroll-ac-hidden" aria-hidden="true" style="left: 0px; top: 40.796875px;">
+                                            <div class="sqs-scroll-ac-content sqs-google-places-autocomplete-mixin">
                                                 <div class="sqs-scroll-ac-scroll-container" hidden="hidden" style="display: none;">
-                                                    <ul class="sqs-scroll-ac-list" id="yui_3_17_2_1_1414184167898_449" role="listbox"></ul>
+                                                    <ul class="sqs-scroll-ac-list" role="listbox"></ul>
                                                     <div class="google-required-elements">
                                                         <div class="google-attributions"></div>
                                                         <div class="powered-by-google"></div>
@@ -1084,7 +883,7 @@
                                     <!-- State/Province -->
                                     <div id="billing-state" data-label="State/Province" class="field state required">
                                         <label>State/Province</label>
-                                        <select name="BillingAddress.State" class="field-element pulse-warnable" x-autocompletetype="state" id="yui_3_17_2_1_1414184167898_596">
+                                        <select name="BillingAddress.State" class="field-element pulse-warnable" x-autocompletetype="state">
                                             <option value="AL">AL</option>
                                             <option value="AK">AK</option>
                                             <option value="AZ">AZ</option>
@@ -1167,8 +966,8 @@
                                 </fieldset>
                             </div>
                         </div>
-                        <div id="yui_3_17_2_1_1414184167898_271" class="yui3-widget sqs-widget sqs-checkout-form-section card sqs-checkout-form-address sqs-checkout-form-shipping incomplete">
-                            <div id="yui_3_17_2_1_1414184167898_273" class="sqs-checkout-form-shipping-content empty-shipping-options">
+                        <div class="yui3-widget sqs-widget sqs-checkout-form-section card sqs-checkout-form-address sqs-checkout-form-shipping incomplete">
+                            <div class="sqs-checkout-form-shipping-content empty-shipping-options">
                                 <div class="title">Shipping Options<a class="edit-button">edit</a>
                                 </div>
 
@@ -1203,9 +1002,9 @@
                                         <!-- Shipping Address 1 -->
                                         <div id="shipping-address-1" data-label="Address Line 1" class="field address required">
                                             <label>Address Line 1</label>
-                                            <!-- <input name="shippingAddress1" class="field-element address-line1 pulse-warnable sqs-scroll-ac-input" type="text" x-autocompletetype="address-line1" placeholder="Street Address 1" spellcheck="false" maxlength="50" aria-autocomplete="list" aria-expanded="false" aria-owns="yui_3_17_2_1_1414184167898_702" id="yui_3_17_2_1_1414184167898_720" autocomplete="on">
-                                            <div id="yui_3_17_2_1_1414184167898_676" class="yui3-widget yui3-aclist sqs-scroll-ac yui3-widget-positioned sqs-scroll-ac-hidden" aria-hidden="true" style="left: 0px; top: 0px;"> -->
-                                                <div id="yui_3_17_2_1_1414184167898_678" class="sqs-scroll-ac-content sqs-google-places-autocomplete-mixin">
+                                            <!-- <input name="shippingAddress1" class="field-element address-line1 pulse-warnable sqs-scroll-ac-input" type="text" x-autocompletetype="address-line1" placeholder="Street Address 1" spellcheck="false" maxlength="50" aria-autocomplete="list" aria-expanded="false" autocomplete="on">
+                                            <div class="yui3-widget yui3-aclist sqs-scroll-ac yui3-widget-positioned sqs-scroll-ac-hidden" aria-hidden="true" style="left: 0px; top: 0px;"> -->
+                                                <div class="sqs-scroll-ac-content sqs-google-places-autocomplete-mixin">
                                                     <div class="sqs-scroll-ac-scroll-container" hidden="hidden" style="display: none;">
                                                         <ul class="sqs-scroll-ac-list" id="yui_3_17_2_1_1414184167898_702" role="listbox"></ul>
                                                         <div class="google-required-elements">
@@ -1245,7 +1044,7 @@
                                         <!-- State/Province -->
                                         <div id="shipping-state" data-label="State/Province" class="field state required">
                                             <label>State/Province</label>
-                                           <!-- <select name="shippingState" class="field-element pulse-warnable" x-autocompletetype="state" id="yui_3_17_2_1_1414184167898_899">
+                                           <!-- <select name="shippingState" class="field-element pulse-warnable" x-autocompletetype="state">
                                                 <option value="AL">AL</option>
                                                 <option value="AK">AK</option>
                                                 <option value="AZ">AZ</option>
@@ -1319,8 +1118,8 @@
 
                                     <!-- Shipping Options -->
                                     <div id="shipping-options">
-                                        <div id="yui_3_17_2_1_1414184167898_284" class="yui3-widget sqs-widget sqs-checkout-form-shipping-options">
-                                            <div id="yui_3_17_2_1_1414184167898_286" class="sqs-checkout-form-shipping-options-content empty">
+                                        <div class="yui3-widget sqs-widget sqs-checkout-form-shipping-options">
+                                            <div class="sqs-checkout-form-shipping-options-content empty">
                                                 <div class="empty-message">
                                                     You cannot continue checkout because this store has not configured any shipping options for your country.
                                                 </div>
@@ -1346,8 +1145,8 @@
                                                 </div>
 
                                                 <div class="loading-spinner">
-                                                    <div id="yui_3_17_2_1_1414184167898_818" class="yui3-widget sqs-spin dark" style="height: 15px; width: 15px;">
-                                                        <div id="yui_3_17_2_1_1414184167898_820" class="sqs-spin-content yui3-widget-content-expanded"></div>
+                                                    <div class="yui3-widget sqs-spin dark" style="height: 15px; width: 15px;">
+                                                        <div class="sqs-spin-content yui3-widget-content-expanded"></div>
                                                     </div>
                                                 </div>
                                                 <div class="options-container"></div>
@@ -1364,8 +1163,8 @@
                                 </fieldset>
                             </div>
                         </div>
-                        <div id="yui_3_17_2_1_1414184167898_303" class="yui3-widget sqs-widget sqs-checkout-form-section card sqs-checkout-form-payment incomplete">
-                            <div id="yui_3_17_2_1_1414184167898_305" class="sqs-checkout-form-payment-content">
+                        <div class="yui3-widget sqs-widget sqs-checkout-form-section card sqs-checkout-form-payment incomplete">
+                            <div class="sqs-checkout-form-payment-content">
                                 <div class="title">
                                     <a class="edit-button">edit</a>
 
@@ -1403,7 +1202,7 @@
                                             <!-- Expiry Month -->
                                             <div id="card-expiry-month" data-label="Exp. Mo." class="field required">
                                                 <label>Exp. Mo.</label>
-                                                <!-- <select class="field-element pulse-warnable" value="04" id="yui_3_17_2_1_1414184167898_969">
+                                                <!-- <select class="field-element pulse-warnable" value="04">
                                                     <option value="1">01</option>
                                                     <option value="2">02</option>
                                                     <option value="3">03</option>
@@ -1422,7 +1221,7 @@
                                             <!-- Expiry Year -->
                                             <div id="card-expiry-year" data-label="Exp. Yr." class="field required">
                                                 <label>Exp. Yr.</label>
-                                                <!--<select class="field-element pulse-warnable" value="2015" id="yui_3_17_2_1_1414184167898_971">
+                                                <!--<select class="field-element pulse-warnable" value="2015">
                                                     <option value="2014">2014</option>
                                                     <option value="2015">2015</option>
                                                     <option value="2016">2016</option>
