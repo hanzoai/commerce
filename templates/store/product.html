@@ -2,17 +2,18 @@
 
 {% block content_header %}
 <div class="banner-image content-fill" style="overflow: hidden;">
-    <img data-src="{{ product.HeaderImage.Url }}" data-image="{{ product.HeaderImage.Url }}" data-image-dimensions="2500x1406" data-image-focal-point="0.5,0.5" alt="{{ product.HeaderImage.Alt }}" class="" src="{{ product.HeaderImage.Url }}?format=1500w" style="top: -216px; left: 0px; width: 1440px; height: 810px; position: relative; transform: translate3d(0px, 0px, 0px);" data-image-resolution="1500w"><img data-src="http://static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544a2657e4b0ff95316b8ea0/1414359306658/" data-image="http://static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544a2657e4b0ff95316b8ea0/1414359306658/" data-image-dimensions="2500x1406" data-image-focal-point="0.5,0.5" alt="SKULLY AR-1" class="" src="https://static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544a2657e4b0ff95316b8ea0/1414359306658/?format=1500w" style="top: -216px; left: 0px; width: 1440px; height: 810px; position: relative; transform: translate3d(0px, 0px, 0px);" data-image-resolution="1500w">
+  {% if product.HeaderImage.Url %}
+    <img data-src="{{ product.HeaderImage.Url }}" data-image="{{ product.HeaderImage.Url }}" data-image-dimensions="2500x1406" data-image-focal-point="0.5,0.5" alt="{{ product.HeaderImage.Alt }}" src="{{ product.HeaderImage.Url }}?format=1500w" style="top: -216px; left: 0px; width: 1440px; height: 810px; position: relative; transform: translate3d(0px, 0px, 0px);" data-image-resolution="1500w">
+  {% else %}
+    <img data-src="{{ product.DisplayImage().Url }}" data-image="{{ product.DisplayImage().Url }}" data-image-dimensions="2500x1406" data-image-focal-point="0.5,0.5" alt="{{ product.DisplayImage().Alt }}" src="{{ product.DisplayImage().Url }}?format=1500w" style="top: -216px; left: 0px; width: 1440px; height: 810px; position: relative; transform: translate3d(0px, 0px, 0px);" data-image-resolution="1500w">
+  {% endif %}
 </div>
 
 <div class="title-desc-wrapper has-main-image" data-content-field="main-image">
     <div class="title-desc-inner" data-collection-id="544a2657e4b0ff95316b8ea0">
-
-      <h1 class="page-title" data-shrink-original-size="33" style="letter-spacing: 0.212121212121212em;">{{ product.Title }}</h1>
-      <br>
-      <div class="page-desc">
-        <p>{{ product.Headline }}</p>
-      </div>
+        <h1 class="page-title" data-shrink-original-size="33" style="letter-spacing: 0.212121212121212em;">{{ product.Title }}</h1>
+        <br>
+        <div class="page-desc"><p>{{ product.Headline }}</p></div>
     </div>
 </div>
 {% endblock %}
@@ -42,6 +43,7 @@
                 </div>
             </div>
 
+            {% if len(product.Images) > 1 %}
             <div id="productThumbnails" style="visibility: visible;">
                 {% for image in product.Images %}
                 <div class="slide content-fill sqs-active-slide" style="overflow: hidden;">
@@ -49,6 +51,7 @@
                 </div>
                 {% endfor %}
             </div>
+            {% endif %}
         </div>
 
         <div id="productDetails">

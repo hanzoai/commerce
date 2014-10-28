@@ -141,7 +141,10 @@ func Install(db *datastore.Datastore) {
 		Description: "SKULLY Nation T-shirt",
 		Variants:    variants,
 		Images: []Image{
-			Image{Url: "/img/products/skully_shirt_1000px.jpg"},
+			Image{
+				Alt: "skully_shirt_1000px.jpg",
+				Url: "https://static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544f7b03e4b07cd673960362/1414494980796/skully_shirt_1000px.jpg",
+			},
 		},
 	})
 }
