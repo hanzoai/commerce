@@ -16,6 +16,14 @@ func FloatPrice(price int64) float64 {
 	return math.Floor(float64(price)*100+0.5) / 1000000
 }
 
+func DisplayPrice(price int64) string {
+	f := strconv.FormatFloat(FloatPrice(price), 'f', 2, 64)
+	bits := strings.Split(f, ".")
+	decimal := bits[1]
+	integer, _ := strconv.ParseInt(bits[0], 10, 64)
+	return humanize.Comma(integer) + "." + decimal
+}
+
 type Product struct {
 	FieldMapMixin
 	Id          string
@@ -40,6 +48,10 @@ func (p Product) DisplayImage() Image {
 	return Image{}
 }
 
+func (p Product) DisplayPrice() string {
+	return DisplayPrice(p.MinPrice())
+}
+
 func (p Product) MinPrice() int64 {
 	min := p.Variants[0].Price
 
@@ -50,14 +62,6 @@ func (p Product) MinPrice() int64 {
 	}
 
 	return min
-}
-
-func (p Product) DisplayPrice() string {
-	f := strconv.FormatFloat(FloatPrice(p.MinPrice()), 'f', 2, 64)
-	bits := strings.Split(f, ".")
-	decimal := bits[1]
-	integer, _ := strconv.ParseInt(bits[0], 10, 64)
-	return humanize.Comma(integer) + "." + decimal
 }
 
 // TODO: Don't do this.
