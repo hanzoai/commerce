@@ -26,7 +26,6 @@ func DisplayPrice(price int64) string {
 
 type Product struct {
 	FieldMapMixin
-	SerializerMixin
 	Id          string
 	Slug        string
 	Title       string
@@ -40,6 +39,10 @@ type Product struct {
 	HeaderImage Image
 	Images      []Image
 	Variants    []ProductVariant
+}
+
+func (p Product) AsJSON() string {
+	return asJSON(&p)
 }
 
 func (p Product) DisplayImage() Image {

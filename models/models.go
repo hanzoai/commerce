@@ -15,10 +15,8 @@ func (f *FieldMapMixin) FieldMap() binding.FieldMap {
 	return binding.FieldMap{}
 }
 
-type SerializerMixin struct{}
-
-func (s SerializerMixin) AsJSON() string {
-	b, err := json.Marshal(s)
+func asJSON(value interface{}) string {
+	b, err := json.Marshal(value)
 	if err != nil {
 		fmt.Println("error:", err)
 	}
