@@ -1,6 +1,41 @@
 {% extends "../base.html" %}
 
 {% block content_header %}
+<script type="text/javascript">
+    var imgs = []
+    {% for image in product.Images %}
+    imgs.push('{{ image.Url }}');
+    {% endfor %}
+
+    function checkout() {
+        $.cookie.json = true;
+
+        var quantity = parseInt($('#quantity').val(), 10);
+
+        var cart = $.cookie('SkullySystemsCart');
+        if (!cart) {
+            cart = {};
+        }
+
+        var cartItemName = $('#color').val() + ' ' + $('#size').val() + ' {{ product.Title }}';
+        
+        if(cart[cartItemName]) {
+            cart[cartItemName].quantity += quantity;
+        } else {
+            var newCartItem = {
+                img: imgs,
+                name: '{{ product.Title }}',
+                color: $('#color').val(),
+                size: $('#size').val(),
+                quantity: quantity,
+            }
+
+            cart[cartItemName] = newCartItem;
+        }
+
+        $.cookie('SkullySystemsCart', cart, { expires: 7, path: '/' });
+    }
+</script>
 <div class="banner-image content-fill" style="overflow: hidden;">
   {% if product.HeaderImage.Url %}
   <img data-src="{{ product.HeaderImage.Url }}" data-image="{{ product.HeaderImage.Url }}" data-image-dimensions="{{ image.Dimensions() }}" data-image-focal-point="0.5,0.5" alt="{{ product.HeaderImage.Alt }}" src="{{ product.HeaderImage.Url }}?format=1500w" style="top: -216px; left: 0px; width: 1440px; height: 810px; position: relative; transform: translate3d(0px, 0px, 0px);" data-image-resolution="1500w">
@@ -70,7 +105,7 @@
                 {% if product.VariantOptions("Color") | length > 0 %}
                 <div class="variant-option">
                     <div class="variant-option-title">Color: </div>
-                    <select data-variant-option-name="Color">
+                    <select id="color" data-variant-option-name="Color">
                         <option value="none">Select Color</option>
                         {% for color in product.VariantOptions("Color") %}
                         <option value="{{ color }}">{{ color }}</option>
@@ -82,7 +117,7 @@
                 {% if product.VariantOptions("Size") | length > 0 %}
                 <div class="variant-option">
                     <div class="variant-option-title">Size: </div>
-                    <select data-variant-option-name="Size">
+                    <select id="size" data-variant-option-name="Size">
                         <option value="none">Select Size</option>
                         {% for size in product.VariantOptions("Size") %}
                         <option value="{{ size }}">{{ size }}</option>
@@ -94,11 +129,11 @@
 
             <div class="product-quantity-input">
                 <div class="quantity-label">Quantity:</div>
-                <input size="4" max="100" min="1" value="1" type="number" step="1">
+                <input id="quantity" size="4" max="100" min="1" value="1" type="number" step="1">
             </div>
 
             <div class="sqs-add-to-cart-button-wrapper" style="visibility: visible;">
-                <div class="sqs-add-to-cart-button sqs-suppress-edit-mode sqs-editable-button" data-original-label="Pre-order Now">
+                <div id="preorder" class="sqs-add-to-cart-button sqs-suppress-edit-mode sqs-editable-button" data-original-label="Pre-order Now" onclick="checkout()">
                     <div class="sqs-add-to-cart-button-inner">Pre-order Now</div>
                 </div>
             </div>
