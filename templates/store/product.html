@@ -7,6 +7,11 @@
     imgs.push('{{ image.Url }}');
     {% endfor %}
 
+    function getDecimal() {
+        var sep = (1.1).toLocaleString().substring(1, 2);
+        return sep == '.' ? '\\.' : sep;
+    }
+
     function checkout() {
         $.cookie.json = true;
 
@@ -29,7 +34,7 @@
                 color: $('#color').val(),
                 size: $('#size').val(),
                 quantity: quantity,
-                price: {{ product.DisplayPrice() }}
+                price: ('{{ product.DisplayPrice() }}').replace(new RegExp('[^0-9-' + getDecimal() + ']', 'g'), ''),
             }
 
             cart[cartItemName] = newCartItem;
