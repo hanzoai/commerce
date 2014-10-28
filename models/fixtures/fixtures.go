@@ -103,31 +103,31 @@ func Install(db *datastore.Datastore) {
 			SKU:   "SKULLY-T-SHIRT-S",
 			Size:  "S",
 			Color: "Black",
-			Price: 1499 * 100,
+			Price: 1999 * 100,
 		},
 		ProductVariant{
 			SKU:   "SKULLY-T-SHIRT-M",
 			Size:  "M",
 			Color: "Black",
-			Price: 1499 * 100,
+			Price: 1999 * 100,
 		},
 		ProductVariant{
 			SKU:   "SKULLY-T-SHIRT-L",
 			Size:  "L",
 			Color: "Black",
-			Price: 1499 * 100,
+			Price: 1999 * 100,
 		},
 		ProductVariant{
 			SKU:   "SKULLY-T-SHIRT-XL",
 			Size:  "XL",
 			Color: "Black",
-			Price: 1499 * 100,
+			Price: 1999 * 100,
 		},
 		ProductVariant{
 			SKU:   "SKULLY-T-SHIRT-XXL",
 			Size:  "XXL",
 			Color: "Black",
-			Price: 1499 * 100,
+			Price: 1999 * 100,
 		},
 	}
 
@@ -144,6 +144,72 @@ func Install(db *datastore.Datastore) {
 			Image{
 				Alt: "skully_shirt_1000px.jpg",
 				Url: "//static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544f7b03e4b07cd673960362/1414494980796/skully_shirt_1000px.jpg",
+			},
+		},
+	})
+
+	// Hat
+	variants = []ProductVariant{
+		ProductVariant{
+			SKU:   "SKULLY-HAT-S",
+			Size:  "S",
+			Color: "Black",
+			Price: 1499 * 100,
+		},
+		ProductVariant{
+			SKU:   "SKULLY-HAT-M",
+			Size:  "M",
+			Color: "Black",
+			Price: 1499 * 100,
+		},
+		ProductVariant{
+			SKU:   "SKULLY-HAT-L",
+			Size:  "L",
+			Color: "Black",
+			Price: 1499 * 100,
+		},
+	}
+
+	for _, v := range variants {
+		db.PutKey("variant", v.SKU, &v)
+	}
+
+	db.PutKey("product", "hat", &Product{
+		Slug:        "hat",
+		Title:       "SKULLY Hat",
+		Description: "SKULLY Nation Hat",
+		Variants:    variants,
+		Images: []Image{
+			Image{
+				Alt: "skully_hat_1000px.jpg",
+				Url: "//static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544f9301e4b070a33c5fd494/1414501121892/skully_hat1000px.jpg",
+			},
+		},
+	})
+
+	// Stickers
+	variants = []ProductVariant{
+		ProductVariant{
+			SKU:   "SKULLY-STICKERS",
+			Size:  "",
+			Color: "",
+			Price: 499 * 100,
+		},
+	}
+
+	for _, v := range variants {
+		db.PutKey("variant", v.SKU, &v)
+	}
+
+	db.PutKey("product", "stickers", &Product{
+		Slug:        "stickers",
+		Title:       "SKULLY Stickers",
+		Description: "SKULLY Nation Stickers",
+		Variants:    variants,
+		Images: []Image{
+			Image{
+				Alt: "sticker_pack_1000px.jpg",
+				Url: "//static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544f9403e4b08f5872d5e730/1414501383224/sticker_pack_1000px.jpg",
 			},
 		},
 	})
