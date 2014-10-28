@@ -7,9 +7,6 @@ dispatch:
   - url: "*/checkout"
     module: checkout
 
-  - url: "*/submit-order*"
-    module: checkout
-
   - url: "*/css/*"
     module: default
 

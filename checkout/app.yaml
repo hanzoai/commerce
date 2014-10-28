@@ -13,5 +13,3 @@ automatic_scaling:
 handlers:
 - url: /checkout*
   script: _go_app
-- url: /submit-order*
-  script: _go_app
