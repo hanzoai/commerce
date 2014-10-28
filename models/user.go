@@ -6,11 +6,11 @@ import (
 )
 
 type User struct {
-	Id              string
+	Id              string `schema:"-"`
 	Name            string
 	Email           string
 	Phone           string
-	OrdersIds       []string
+	OrdersIds       []string `schema:"-"`
 	Cart            Cart
 	BillingAddress  Address
 	ShippingAddress Address
