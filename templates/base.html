@@ -502,8 +502,9 @@
 
             function init() {
                 var a = document.images;
-                if (0 < a.length)
+                if (0 < a.length) {
                     for (var b = 0, c = a.length; b < c; b++)(hasAttr(a[b], "data-image") || hasAttr(a[b], "data-src")) && "false" !== getAttr(a[b], "data-load") + "" && ImageLoader.load(a[b])
+                }
             }
             init();
             window.YUI && YUI.add("squarespace-imageloader", function(a) {});
