@@ -13,5 +13,5 @@ func init() {
 	router.GET("/checkout-complete/", checkoutComplete)
 	router.POST("/submit-order", submitOrder)
 
-	http.Handle("/checkout", router)
+	http.Handle("/", router)
 }
