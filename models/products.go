@@ -138,8 +138,8 @@ func (pv ProductVariant) Validate(req *http.Request, errs binding.Errors) bindin
 
 type Image struct {
 	FieldMapMixin
-	Name string
-	Url  string
+	Alt string
+	Url string
 }
 
 func (i Image) Validate(req *http.Request, errs binding.Errors) binding.Errors {

@@ -9,64 +9,64 @@ func Install(db *datastore.Datastore) {
 	// AR-1
 	variants := []ProductVariant{
 		ProductVariant{
-			SKU: "AR-1-BLACK-S",
-			Size: "S",
+			SKU:   "AR-1-BLACK-S",
+			Size:  "S",
 			Color: "Black",
-			Price: 1499*100*100,
+			Price: 1499 * 100 * 100,
 		},
 		ProductVariant{
-			SKU: "AR-1-BLACK-M",
-			Size: "M",
+			SKU:   "AR-1-BLACK-M",
+			Size:  "M",
 			Color: "Black",
-			Price: 1499*100*100,
+			Price: 1499 * 100 * 100,
 		},
 		ProductVariant{
-			SKU: "AR-1-BLACK-L",
-			Size: "L",
+			SKU:   "AR-1-BLACK-L",
+			Size:  "L",
 			Color: "Black",
-			Price: 1499*100*100,
+			Price: 1499 * 100 * 100,
 		},
 		ProductVariant{
-			SKU: "AR-1-BLACK-XL",
-			Size: "XL",
+			SKU:   "AR-1-BLACK-XL",
+			Size:  "XL",
 			Color: "Black",
-			Price: 1499*100*100,
+			Price: 1499 * 100 * 100,
 		},
 		ProductVariant{
-			SKU: "AR-1-BLACK-XXL",
-			Size: "XXL",
+			SKU:   "AR-1-BLACK-XXL",
+			Size:  "XXL",
 			Color: "Black",
-			Price: 1499*100*100,
+			Price: 1499 * 100 * 100,
 		},
 		ProductVariant{
-			SKU: "AR-1-WHITE-S",
-			Size: "S",
+			SKU:   "AR-1-WHITE-S",
+			Size:  "S",
 			Color: "White",
-			Price: 1499*100*100,
+			Price: 1499 * 100 * 100,
 		},
 		ProductVariant{
-			SKU: "AR-1-WHITE-M",
-			Size: "M",
+			SKU:   "AR-1-WHITE-M",
+			Size:  "M",
 			Color: "White",
-			Price: 1499*100*100,
+			Price: 1499 * 100 * 100,
 		},
 		ProductVariant{
-			SKU: "AR-1-WHITE-L",
-			Size: "L",
+			SKU:   "AR-1-WHITE-L",
+			Size:  "L",
 			Color: "White",
-			Price: 1499*100*100,
+			Price: 1499 * 100 * 100,
 		},
 		ProductVariant{
-			SKU: "AR-1-WHITE-XL",
-			Size: "XL",
+			SKU:   "AR-1-WHITE-XL",
+			Size:  "XL",
 			Color: "White",
-			Price: 1499*100*100,
+			Price: 1499 * 100 * 100,
 		},
 		ProductVariant{
-			SKU: "AR-1-WHITE-XXL",
-			Size: "XXL",
+			SKU:   "AR-1-WHITE-XXL",
+			Size:  "XXL",
 			Color: "White",
-			Price: 1499*100*100,
+			Price: 1499 * 100 * 100,
 		},
 	}
 
@@ -75,47 +75,59 @@ func Install(db *datastore.Datastore) {
 	}
 
 	db.PutKey("product", "ar-1", &Product{
-		Slug:  "ar-1",
-		Title: "SKULLY AR-1",
-		Description: "World's smartest helmet!",
-		Variants: variants,
+		Slug:        "ar-1",
+		Title:       "SKULLY AR-1",
+		Headline:    "The World's smartest helmet.",
+		Excerpt:	 "The World's smartest helmet, featuring a state-of-the-art head-up display, GPS and bluetooth.",
+		Description: "The World's smartest helmet. Even more descriptive text.",
+		Variants:    variants,
+		HeaderImage: Image{
+			Alt: "SKULLY AR-1",
+			Url: "https://static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544a2657e4b0ff95316b8ea0/1414359306658/",
+		},
 		Images: []Image{
-			Image{Url: "/img/products/blackhelmet_store.jpg"},
-			Image{Url: "/img/products/whitehelmet_store.jpg"},
+			Image{
+				Alt: "blackhelmet_store.jpg",
+				Url: "https://static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544c1bd6e4b07de01f6f22aa/1414274007569/blackhelmet_store.jpg",
+			},
+			Image{
+				Alt: "whitehelmet_store.jpg",
+				Url: "https://static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544c1bdde4b07de01f6f22b5/1414274015307/whitehelmet_store.jpg",
+			},
 		},
 	})
 
 	// T-Shirts
 	variants = []ProductVariant{
 		ProductVariant{
-			SKU: "SKULLY-T-SHIRT-S",
-			Size: "S",
+			SKU:   "SKULLY-T-SHIRT-S",
+			Size:  "S",
 			Color: "Black",
-			Price: 1499*100,
+			Price: 1499 * 100,
 		},
 		ProductVariant{
-			SKU: "SKULLY-T-SHIRT-M",
-			Size: "M",
+			SKU:   "SKULLY-T-SHIRT-M",
+			Size:  "M",
 			Color: "Black",
-			Price: 1499*100,
+			Price: 1499 * 100,
 		},
 		ProductVariant{
-			SKU: "SKULLY-T-SHIRT-L",
-			Size: "L",
+			SKU:   "SKULLY-T-SHIRT-L",
+			Size:  "L",
 			Color: "Black",
-			Price: 1499*100,
+			Price: 1499 * 100,
 		},
 		ProductVariant{
-			SKU: "SKULLY-T-SHIRT-XL",
-			Size: "XL",
+			SKU:   "SKULLY-T-SHIRT-XL",
+			Size:  "XL",
 			Color: "Black",
-			Price: 1499*100,
+			Price: 1499 * 100,
 		},
 		ProductVariant{
-			SKU: "SKULLY-T-SHIRT-XXL",
-			Size: "XXL",
+			SKU:   "SKULLY-T-SHIRT-XXL",
+			Size:  "XXL",
 			Color: "Black",
-			Price: 1499*100,
+			Price: 1499 * 100,
 		},
 	}
 
@@ -124,10 +136,10 @@ func Install(db *datastore.Datastore) {
 	}
 
 	db.PutKey("product", "t-shirt", &Product{
-		Slug:  "t-shirt",
-		Title: "SKULLY T-shirt",
+		Slug:        "t-shirt",
+		Title:       "SKULLY T-shirt",
 		Description: "SKULLY Nation T-shirt",
-		Variants: variants,
+		Variants:    variants,
 		Images: []Image{
 			Image{Url: "/img/products/skully_shirt_1000px.jpg"},
 		},
