@@ -13,7 +13,7 @@
             <h2>Shopping Cart</h2>
 
             <div class="cart-container">
-
+                <form action="/checkout/" method="POST" accept-charset="UTF-8" enctype="application/x-www-form-urlencoded; charset=utf-8">
                 <table>
 
                     <thead>
@@ -27,24 +27,25 @@
                     </thead>
 
                     <tbody>
-                        <tr data-item-id="544a2657e4b0ff95316b8ea0" data-chosen-variant-sku="AR1-BLACK-S">
+                        <tr data-chosen-variant-sku="{{ product.SKU }}">
+                            <input style="display:none;" name="Order.Items.1.SKU" value="{{ product.SKU }}">
                             <td class="item">
-                                <div class="item-image"><img src="https://static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544c1bd6e4b07de01f6f22aa/1414274007569/blackhelmet_store.jpg?format=100w">
+                                <div class="item-image">
+                                    <img src="{{ product.DisplayImage().Url }}">
                                 </div>
                             </td>
 
-                            <td class="item-desc"><a href="/products/ar-1">SKULLY AR-1</a>
-                                <div class="variant-info">Black / Small</div>
+                            <td class="item-desc">
+                                <a href="/products/ar-1">{{ product.Title }}</a>
+                                <div class="variant-info">{{ product.Color }} / {{ Product.Size }}</div>
                             </td>
 
                             <td class="quantity">
-
-                                <input size="1">
-                                <div class="cooldown hidden">•</div>
-
+                                <input size="1" value="1" name="Order.Items.1.Quantity">
                             </td>
 
-                            <td class="price"><span class="sqs-money-native">1,499.00</span>
+                            <td class="price">
+                                <span class="sqs-money-native">{{ product.DisplayPrice() }}</span>
                             </td>
 
                             <td class="remove">
@@ -53,18 +54,20 @@
 
                         </tr>
                     </tbody>
-
                 </table>
 
                 <div class="subtotal">
                     <span class="label">Subtotal</span>
-                    <span class="price"><span class="sqs-money-native">1,499.00</span></span>
+                    <span class="price">
+                        <span class="sqs-money-native">0.00</span>
+                    </span>
                 </div>
 
                 <div class="checkout">
-                    <div class="checkout-button sqs-system-button sqs-editable-button">CHECKOUT</div>
+                    <input type="submit" value="CHECKOUT" class="checkout-button"></input>
                 </div>
 
+                </form>
             </div>
 
             <div class="empty-message">
