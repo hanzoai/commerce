@@ -6,7 +6,7 @@
 </div>
 
 <div class="title-desc-wrapper has-main-image" data-content-field="main-image">
-    <div class="title-desc-inner" data-collection-id="544a2657e4b0ff95316b8ea0" id="yui_3_17_2_1_1414178441510_308">
+    <div class="title-desc-inner" data-collection-id="544a2657e4b0ff95316b8ea0">
 
       <h1 class="page-title" data-shrink-original-size="33" style="letter-spacing: 0.212121212121212em;">{{ product.Title }}</h1>
         <br>
@@ -18,8 +18,7 @@
 {% endblock %}
 
 {% block content %}
-<div id="productWrapper" class="product hentry author-marcus-weller post-type-store-item" data-item-id="544a2657e4b0ff95316b8ea0">
-
+<div id="productWrapper" class="product hentry author-marcus-weller post-type-store-item">
     <div id="productNav">
       <a href="/products">
         <span class="back-arrow">&#8592;</span> Back to Store
@@ -30,11 +29,12 @@
         <h1 class="product-title mobile" data-content-field="title">{{ product.Title }}e</h1>
 
         <div id="productGallery">
-            <div class="intrinsic" id="yui_3_17_2_1_1414178441510_391">
-                <div class="wrapper" id="yui_3_17_2_1_1414178441510_390">
+          <div class="intrinsic">
+            <div class="wrapper">
                     <div id="productSlideshow" class="sqs-gallery-design-stacked">
-                        <div class="slide sqs-gallery-design-stacked-slide sqs-active-slide loaded" id="yui_3_17_2_1_1414178441510_343" data-type="image" style="opacity: 1; z-index: 889;"><img data-load="false" data-src="http://static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544a26a7e4b05e7d0fe88892/1414145714778/140804%20Trailer%20V14.Still011.png" data-image="http://static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544a26a7e4b05e7d0fe88892/1414145714778/140804%20Trailer%20V14.Still011.png" data-image-dimensions="2500x1406" data-image-focal-point="0.5,0.5" alt="140804 Trailer V14.Still011.png" class="loaded" src="/img/140804 Trailer V14.Still011.png" id="yui_3_17_2_1_1414178441510_389" data-image-resolution="1500w" style="top: 0px; left: -237px; width: 1085px; height: 610px; position: relative;">
-                            <div class=""></div>
+                        <div class="slide sqs-gallery-design-stacked-slide sqs-active-slide loaded" data-type="image" style="opacity: 1; z-index: 889;">
+                          <img data-load="false" data-image-dimensions="2500x1406" data-image-focal-point="0.5,0.5" alt="{{ product.DisplayImage().Url }}" class="loaded" src="{{ product.DisplayImage().Url }}" data-image-resolution="1500w" style="top: 0px; left: -237px; width: 1085px; height: 610px; position: relative;">
+                          <div class=""></div>
                         </div>
                     </div>
                 </div>
@@ -42,13 +42,13 @@
         </div>
 
         <div id="productDetails">
-          <h1 class="product-title" data-content-field="title" id="yui_3_17_2_1_1414178441510_216">{{ product.Title }}</h1>
+          <h1 class="product-title" data-content-field="title">{{ product.Title }}</h1>
 
-          <div class="product-price" id="yui_3_17_2_1_1414178441510_215">
+          <div class="product-price">
             <span class="sqs-money-native">{{ product.DisplayPrice() }}</span>
             </div>
 
-            <div class="product-excerpt" data-content-field="excerpt" id="yui_3_17_2_1_1414178441510_214">
+            <div class="product-excerpt" data-content-field="excerpt">
               <p>{{ product.Description }}</p>
             </div>
 
@@ -73,22 +73,22 @@
                     </select>
                 </div>
             </div>
-            <div class="product-quantity-input" data-item-id="544a2657e4b0ff95316b8ea0" id="yui_3_17_2_1_1414178441510_217">
+            <div class="product-quantity-input">
                 <div class="quantity-label">Quantity:</div>
-                <input size="4" max="9999" min="1" value="1" type="number" step="1">
+                <input size="4" max="100" min="1" value="1" type="number" step="1">
             </div>
 
-            <div class="sqs-add-to-cart-button-wrapper" id="yui_3_17_2_1_1414178441510_218" style="visibility: visible;">
-                <div class="sqs-add-to-cart-button sqs-suppress-edit-mode sqs-editable-button" data-collection-id="544a257de4b015b5ef71847c" data-item-id="544a2657e4b0ff95316b8ea0" data-original-label="Add To Cart" id="yui_3_17_2_1_1414178441510_228">
-                    <div class="sqs-add-to-cart-button-inner">Add To Cart</div>
+            <div class="sqs-add-to-cart-button-wrapper" style="visibility: visible;">
+              <div class="sqs-add-to-cart-button sqs-suppress-edit-mode sqs-editable-button">
+                    <div class="sqs-add-to-cart-button-inner">Pre-order Now</div>
                 </div>
             </div>
 
             <div class="product-description">
-                <div class="sqs-layout sqs-grid-12 columns-12" data-layout-label="Post Body" data-type="item" data-updated-on="1414145908895" id="item-544a2657e4b0ff95316b8ea0">
+              <div class="sqs-layout sqs-grid-12 columns-12">
                     <div class="row sqs-row">
                         <div class="col sqs-col-12 span-12">
-                            <div class="sqs-block html-block sqs-block-html" data-block-type="2" id="block-9803ad15ec3875004d31">
+                            <div class="sqs-block html-block sqs-block-html" data-block-type="2">
                                 <div class="sqs-block-content">
                                   {{ product.Description }}
                                 </div>

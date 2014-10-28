@@ -16,17 +16,27 @@ func FloatPrice(price int64) float64 {
 }
 
 type Product struct {
+	FieldMapMixin
 	Id          string
 	Slug        string
 	Title       string
-	Variants    []ProductVariant
-	Images      []Image
+	Headline    string
+	Excerpt     string
 	Description string
-	Stocked     int
-	Available   bool
 	Released    time.Time
+	Available   bool
+	Stocked     int
 	AddLabel    string // Pre-order now or Add to cart
-	FieldMapMixin
+	HeaderImage Image
+	Images      []Image
+	Variants    []ProductVariant
+}
+
+func (p Product) DisplayImage() Image {
+	if len(p.Images) > 0 {
+		return p.Images[0]
+	}
+	return Image{}
 }
 
 func (p Product) MinPrice() int64 {
@@ -96,6 +106,7 @@ func (p Product) Validate(req *http.Request, errs binding.Errors) binding.Errors
 }
 
 type ProductVariant struct {
+	FieldMapMixin
 	Id         string
 	SKU        string
 	Price      int64
@@ -104,7 +115,6 @@ type ProductVariant struct {
 	Dimensions string
 	Color      string
 	Size       string
-	FieldMapMixin
 }
 
 func (pv ProductVariant) Validate(req *http.Request, errs binding.Errors) binding.Errors {
@@ -127,9 +137,9 @@ func (pv ProductVariant) Validate(req *http.Request, errs binding.Errors) bindin
 }
 
 type Image struct {
+	FieldMapMixin
 	Name string
 	Url  string
-	FieldMapMixin
 }
 
 func (i Image) Validate(req *http.Request, errs binding.Errors) binding.Errors {
