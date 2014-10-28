@@ -5153,6 +5153,7 @@ html.blogapp .sqs-state-message, html.blogapp .state-message {
 }
 
 #productList .product .product-title {
+  font-family: "Michroma";
   font-size:15px;
   line-height:1.5em;
   margin-top:1em
