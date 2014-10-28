@@ -555,7 +555,7 @@
                                     content: Y.Node.create('<div class="wrapper">' +
                                         '<div class="title">' + content.title + '</div>' +
                                         '<div class="body">' + content.body + '</div>' +
-                                        '<div class="button-wrapper"><input type="button" class="dismiss" value="OK"/></div>' +
+                                        '<div class="button-wrapper"><!--<input type="button" class="dismiss" value="OK"/>--></div>' +
                                         '</div>')
                                 })
                                 .render();
@@ -955,7 +955,7 @@
 
                                 <div class="codeline">
                                     <div class="codeleft">
-                                        <input name="promoCode" class="field-element" type="text" placeholder="Promo Code" spellcheck="false">
+                                        <!-- <input name="promoCode" class="field-element" type="text" placeholder="Promo Code" spellcheck="false"> -->
                                     </div>
 
                                     <!-- Redeem Button -->
@@ -1008,9 +1008,9 @@
         <div id="form-wrapper" class="right-column-wrapper">
             <div id="yui_3_17_2_1_1414184167898_246" class="yui3-widget sqs-widget sqs-checkout-form">
                 <div id="yui_3_17_2_1_1414184167898_248" class="sqs-checkout-form-content">
-                    <form action="/submit-order" method="POST" accept-charset="UTF-8" enctype="application/x-www-form-urlencoded; charset=utf-8">
-                        <input type="hidden" name="forceTestMode">
-                        <input type="hidden" name="customFormSubmission">
+                    <form action="submit-order" method="POST" accept-charset="UTF-8" enctype="application/x-www-form-urlencoded; charset=utf-8">
+                        <!-- <input type="hidden" name="forceTestMode"> -->
+                        <!-- <input type="hidden" name="customFormSubmission"> -->
                         <div id="yui_3_17_2_1_1414184167898_258" class="yui3-widget sqs-widget sqs-checkout-form-section card sqs-checkout-form-address sqs-checkout-form-billing editing">
                             <div id="yui_3_17_2_1_1414184167898_260" class="sqs-checkout-form-billing-content">
                                 <div class="title">Billing Info<a class="edit-button">edit</a>
@@ -1021,28 +1021,28 @@
                                     <!-- First Name -->
                                     <div id="billing-first-name" data-label="First Name" class="field first-name required">
                                         <label>First Name</label>
-                                        <input name="Order.User.FirstName" class="field-element pulse-warnable" placeholder="First Name" x-autocompletetype="given-name" type="text" spellcheck="false" maxlength="30">
+                                        <input name="User.FirstName" class="field-element pulse-warnable" placeholder="First Name" x-autocompletetype="given-name" type="text" spellcheck="false" maxlength="30">
                                     </div>
 
 
                                     <!-- Last Name -->
                                     <div id="billing-last-name" data-label="Last Name" class="field last-name required">
                                         <label>Last Name</label>
-                                        <input name="Order.User.LastName" class="field-element pulse-warnable" placeholder="Last Name" x-autocompletetype="surname" a="" type="text" spellcheck="false" maxlength="30">
+                                        <input name="User.LastName" class="field-element pulse-warnable" placeholder="Last Name" x-autocompletetype="surname" a="" type="text" spellcheck="false" maxlength="30">
                                     </div>
 
 
                                     <!-- Email Address -->
                                     <div id="email" data-label="Email Address" class="field email required">
                                         <label>Email Address</label>
-                                        <input name="Order.User.Email" class="field-element pulse-warnable" placeholder="Email" x-autocompletetype="email" type="text" spellcheck="false" maxlength="50">
+                                        <input name="User.Email" class="field-element pulse-warnable" placeholder="Email" x-autocompletetype="email" type="text" spellcheck="false" maxlength="50">
                                     </div>
 
 
                                     <!-- Billing Address 1 -->
                                     <div id="billing-address-1" data-label="Address Line 1" class="field required">
                                         <label>Unit</label>
-                                        <input name="Order.BillingAddress.Unit" class="field-element address-line1 pulse-warnable sqs-scroll-ac-input" placeholder="Unit" x-autocompletetype="address-line1" type="text" spellcheck="false" maxlength="50" aria-autocomplete="list" aria-expanded="false" aria-owns="yui_3_17_2_1_1414184167898_449" id="yui_3_17_2_1_1414184167898_467" autocomplete="on">
+                                        <input name="BillingAddress.Unit" class="field-element address-line1 pulse-warnable sqs-scroll-ac-input" placeholder="Unit" x-autocompletetype="address-line1" type="text" spellcheck="false" maxlength="50" aria-autocomplete="list" aria-expanded="false" aria-owns="yui_3_17_2_1_1414184167898_449" id="yui_3_17_2_1_1414184167898_467" autocomplete="on">
                                         <div id="yui_3_17_2_1_1414184167898_414" class="yui3-widget yui3-aclist sqs-scroll-ac yui3-widget-positioned sqs-scroll-ac-hidden" aria-hidden="true" style="left: 0px; top: 40.796875px;">
                                             <div id="yui_3_17_2_1_1414184167898_416" class="sqs-scroll-ac-content sqs-google-places-autocomplete-mixin">
                                                 <div class="sqs-scroll-ac-scroll-container" hidden="hidden" style="display: none;">
@@ -1061,14 +1061,14 @@
                                     <!-- Billing Address 2 -->
                                     <div id="billing-address-2" data-label="Address Line 2" class="field">
                                         <label>Address</label>
-                                        <input name="Order.BillingAddress.Address" class="field-element address-line2 pulse-warnable" placeholder="Address" type="text" x-autocompletetype="address-line2" spellcheck="false" maxlength="50">
+                                        <input name="BillingAddress.Street" class="field-element address-line2 pulse-warnable" placeholder="Address" type="text" x-autocompletetype="address-line2" spellcheck="false" maxlength="50">
                                     </div>
 
 
                                     <!-- Country -->
                                     <div id="billing-country" data-label="Country" class="field country required">
                                         <label>Country</label>
-                                        <select name="Order.BillingAddress.Country" class="field-element pulse-warnable" x-autocompletetype="country-name">
+                                        <select name="BillingAddress.Country" class="field-element pulse-warnable" x-autocompletetype="country-name">
                                             <option value="United States">United States</option>
                                         </select>
                                     </div>
@@ -1077,14 +1077,14 @@
                                     <!-- City -->
                                     <div id="billing-city" data-label="City" class="field city required">
                                         <label>City</label>
-                                        <input name="Order.BillingAddress.City" class="field-element pulse-warnable" placeholder="City" type="text" spellcheck="false" maxlength="30">
+                                        <input name="BillingAddress.City" class="field-element pulse-warnable" placeholder="City" type="text" spellcheck="false" maxlength="30">
                                     </div>
 
 
                                     <!-- State/Province -->
                                     <div id="billing-state" data-label="State/Province" class="field state required">
                                         <label>State/Province</label>
-                                        <select name="Order.BillingAddress.State" class="field-element pulse-warnable" x-autocompletetype="state" id="yui_3_17_2_1_1414184167898_596">
+                                        <select name="BillingAddress.State" class="field-element pulse-warnable" x-autocompletetype="state" id="yui_3_17_2_1_1414184167898_596">
                                             <option value="AL">AL</option>
                                             <option value="AK">AK</option>
                                             <option value="AZ">AZ</option>
@@ -1146,13 +1146,13 @@
                                     <!-- Zip Code -->
                                     <div id="billing-zip" data-label="Zip Code" class="field zip required">
                                         <label>Zip / Postal</label>
-                                        <input name="Order.BillingAddress.PostalCode" class="field-element pulse-warnable" placeholder="Zip / Postal" type="text" spellcheck="false" maxlength="10">
+                                        <input name="BillingAddress.PostalCode" class="field-element pulse-warnable" placeholder="Zip / Postal" type="text" spellcheck="false" maxlength="10">
                                     </div>
 
                                     <div style="clear:both;"></div>
                                     <div id="phone" data-label="Phone Number" class="field phone">
                                         <label>Phone Number</label>
-                                        <input name="Order.User.Phone" class="field-element pulse-warnable" placeholder="Phone Number" x-autocompletetype="phone" type="text" spellcheck="false" maxlength="20">
+                                        <input name="User.Phone" class="field-element pulse-warnable" placeholder="Phone Number" x-autocompletetype="phone" type="text" spellcheck="false" maxlength="20">
                                     </div>
 
 
@@ -1179,7 +1179,7 @@
                                     <div id="ship-to-billing" class="check-element active">
                                         Shipping Address same as Billing
                                     </div>
-                                    <input name="shipToBilling" value="true" type="hidden">
+                                    <!-- <input name="shipToBilling" value="true" type="hidden"> -->
 
 
                                     <!-- Shipping Address -->
@@ -1189,22 +1189,22 @@
                                         <!-- First Name -->
                                         <div id="shipping-first-name" data-label="First Name" class="field first-name required">
                                             <label>First Name</label>
-                                            <input name="shippingFirstName" class="field-element pulse-warnable" placeholder="First Name" x-autocompletetype="given-name" type="text" spellcheck="false" maxlength="30">
+                                            <!-- <input name="shippingFirstName" class="field-element pulse-warnable" placeholder="First Name" x-autocompletetype="given-name" type="text" spellcheck="false" maxlength="30"> -->
                                         </div>
 
 
                                         <!-- Last Name -->
                                         <div id="shipping-last-name" data-label="Last Name" class="field last-name required">
                                             <label>Last Name</label>
-                                            <input name="shippingLastName" class="field-element pulse-warnable" placeholder="Last Name" x-autocompletetype="surname" type="text" spellcheck="false" maxlength="30">
+                                            <!-- <input name="shippingLastName" class="field-element pulse-warnable" placeholder="Last Name" x-autocompletetype="surname" type="text" spellcheck="false" maxlength="30"> -->
                                         </div>
 
 
                                         <!-- Shipping Address 1 -->
                                         <div id="shipping-address-1" data-label="Address Line 1" class="field address required">
                                             <label>Address Line 1</label>
-                                            <input name="shippingAddress1" class="field-element address-line1 pulse-warnable sqs-scroll-ac-input" type="text" x-autocompletetype="address-line1" placeholder="Street Address 1" spellcheck="false" maxlength="50" aria-autocomplete="list" aria-expanded="false" aria-owns="yui_3_17_2_1_1414184167898_702" id="yui_3_17_2_1_1414184167898_720" autocomplete="on">
-                                            <div id="yui_3_17_2_1_1414184167898_676" class="yui3-widget yui3-aclist sqs-scroll-ac yui3-widget-positioned sqs-scroll-ac-hidden" aria-hidden="true" style="left: 0px; top: 0px;">
+                                            <!-- <input name="shippingAddress1" class="field-element address-line1 pulse-warnable sqs-scroll-ac-input" type="text" x-autocompletetype="address-line1" placeholder="Street Address 1" spellcheck="false" maxlength="50" aria-autocomplete="list" aria-expanded="false" aria-owns="yui_3_17_2_1_1414184167898_702" id="yui_3_17_2_1_1414184167898_720" autocomplete="on">
+                                            <div id="yui_3_17_2_1_1414184167898_676" class="yui3-widget yui3-aclist sqs-scroll-ac yui3-widget-positioned sqs-scroll-ac-hidden" aria-hidden="true" style="left: 0px; top: 0px;"> -->
                                                 <div id="yui_3_17_2_1_1414184167898_678" class="sqs-scroll-ac-content sqs-google-places-autocomplete-mixin">
                                                     <div class="sqs-scroll-ac-scroll-container" hidden="hidden" style="display: none;">
                                                         <ul class="sqs-scroll-ac-list" id="yui_3_17_2_1_1414184167898_702" role="listbox"></ul>
@@ -1222,30 +1222,30 @@
                                         <!-- Shipping Address 2 -->
                                         <div id="shipping-address-2" data-label="Address Line 2" class="field address">
                                             <label>Address Line 2</label>
-                                            <input name="shippingAddress2" class="field-element address-line2 pulse-warnable" type="text" placeholder="Street Address 2" x-autocompletetype="address-line2" spellcheck="false" maxlength="50">
+                                            <!--<input name="shippingAddress2" class="field-element address-line2 pulse-warnable" type="text" placeholder="Street Address 2" x-autocompletetype="address-line2" spellcheck="false" maxlength="50">-->
                                         </div>
 
 
                                         <!-- Country -->
                                         <div id="shipping-country" data-label="Country" class="field country required">
                                             <label>Country</label>
-                                            <select name="shippingCountry" class="field-element pulse-warnable" x-autocompletetype="country-name">
+                                            <!-- <select name="shippingCountry" class="field-element pulse-warnable" x-autocompletetype="country-name">
                                                 <option value="United States">United States</option>
-                                            </select>
+                                            </select> -->
                                         </div>
 
 
                                         <!-- City -->
                                         <div id="shipping-city" data-label="City" class="field city required">
                                             <label>City</label>
-                                            <input name="shippingCity" class="field-element pulse-warnable" placeholder="City" x-autocompletetype="city" type="text" spellcheck="false" maxlength="30">
+                                            <!-- <input name="shippingCity" class="field-element pulse-warnable" placeholder="City" x-autocompletetype="city" type="text" spellcheck="false" maxlength="30"> -->
                                         </div>
 
 
                                         <!-- State/Province -->
                                         <div id="shipping-state" data-label="State/Province" class="field state required">
                                             <label>State/Province</label>
-                                            <select name="shippingState" class="field-element pulse-warnable" x-autocompletetype="state" id="yui_3_17_2_1_1414184167898_899">
+                                           <!-- <select name="shippingState" class="field-element pulse-warnable" x-autocompletetype="state" id="yui_3_17_2_1_1414184167898_899">
                                                 <option value="AL">AL</option>
                                                 <option value="AK">AK</option>
                                                 <option value="AZ">AZ</option>
@@ -1300,14 +1300,14 @@
                                                 <option value="AA">AA</option>
                                                 <option value="AE">AE</option>
                                                 <option value="AP">AP</option>
-                                            </select>
+                                            </select> -->
                                         </div>
 
 
                                         <!-- Zip Code -->
                                         <div id="shipping-zip" data-label="Zip Code" class="field zip required">
                                             <label>Zip / Postal</label>
-                                            <input name="shippingZip" class="field-element pulse-warnable" x-autocompletetype="postal-code" placeholder="Zip / Postal" type="text" spellcheck="false" maxlength="10">
+                                            <!-- <input name="shippingZip" class="field-element pulse-warnable" x-autocompletetype="postal-code" placeholder="Zip / Postal" type="text" spellcheck="false" maxlength="10"> -->
                                         </div>
 
                                     </div>
@@ -1387,13 +1387,13 @@
 
 
                                         <!-- Name -->
-                                        <input name="cardHolderName" type="hidden">
+                                        <!-- <input name="cardHolderName" type="hidden"> -->
 
 
                                         <!-- Card Number -->
                                         <div id="card-number" data-label="Card Number" class="field required">
                                             <label>Card Number</label>
-                                            <input class="field-element pulse-warnable" type="text" size="20" autocomplete="off" placeholder="Credit Card Number" value="">
+                                            <!-- <input class="field-element pulse-warnable" type="text" size="20" autocomplete="off" placeholder="Credit Card Number" value="">-->
                                         </div>
 
 
@@ -1403,7 +1403,7 @@
                                             <!-- Expiry Month -->
                                             <div id="card-expiry-month" data-label="Exp. Mo." class="field required">
                                                 <label>Exp. Mo.</label>
-                                                <select class="field-element pulse-warnable" value="04" id="yui_3_17_2_1_1414184167898_969">
+                                                <!-- <select class="field-element pulse-warnable" value="04" id="yui_3_17_2_1_1414184167898_969">
                                                     <option value="1">01</option>
                                                     <option value="2">02</option>
                                                     <option value="3">03</option>
@@ -1416,13 +1416,13 @@
                                                     <option value="10">10</option>
                                                     <option value="11">11</option>
                                                     <option value="12">12</option>
-                                                </select>
+                                                </select> -->
                                             </div>
 
                                             <!-- Expiry Year -->
                                             <div id="card-expiry-year" data-label="Exp. Yr." class="field required">
                                                 <label>Exp. Yr.</label>
-                                                <select class="field-element pulse-warnable" value="2015" id="yui_3_17_2_1_1414184167898_971">
+                                                <!--<select class="field-element pulse-warnable" value="2015" id="yui_3_17_2_1_1414184167898_971">
                                                     <option value="2014">2014</option>
                                                     <option value="2015">2015</option>
                                                     <option value="2016">2016</option>
@@ -1433,13 +1433,13 @@
                                                     <option value="2021">2021</option>
                                                     <option value="2022">2022</option>
                                                     <option value="2023">2023</option>
-                                                </select>
+                                                </select> -->
                                             </div>
 
                                             <!-- CVC -->
                                             <div id="cvc" data-label="CVC" class="field required">
                                                 <label>CVC</label>
-                                                <input class="field-element pulse-warnable" type="text" size="4" autocomplete="off" placeholder="CVC" value="">
+                                                <!-- <input class="field-element pulse-warnable" type="text" size="4" autocomplete="off" placeholder="CVC" value="">-->
                                             </div>
 
                                         </div>
@@ -1462,7 +1462,7 @@
                                         </div>
 
                                         <!-- hidden field to convey the Stripe Token so we may submit the charge -->
-                                        <input name="stripeToken" type="hidden">
+                                        <!-- <input name="stripeToken" type="hidden"> -->
 
                                         <!-- optional hidden fields -->
 
