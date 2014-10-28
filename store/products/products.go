@@ -13,9 +13,6 @@ func List(c *gin.Context) {
 	var products []models.Product
 	db.Query("product").GetAll(db.Context, &products)
 
-	ctx := middleware.GetAppEngine(c)
-	ctx.Infof("%v", products)
-
 	template.Render(c, "store/list.html", "products", products)
 }
 

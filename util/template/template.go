@@ -12,7 +12,7 @@ type Context map[string]interface{}
 
 func Render(c *gin.Context, path string, pairs ...interface{}) (err error) {
 	// All templates are expected to be in templates dir
-	path = cwd + "templates/" + path
+	path = cwd + "/templates/" + path
 
 	// Get template from cache
 	template, err := pongo2.FromCache(path)
