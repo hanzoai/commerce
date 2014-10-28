@@ -27,17 +27,17 @@
                     </thead>
 
                     <tbody>
-                        <tr data-chosen-variant-sku="{{ product.SKU }}">
-                            <input style="display:none;" name="Order.Items.1.SKU" value="{{ product.SKU }}">
+                        <tr data-chosen-variant-sku="{{ item.SKU() }}">
+                            <input style="display:none;" name="Order.Items.1.SKU" value="{{ item.SKU() }}">
                             <td class="item">
                                 <div class="item-image">
-                                    <img src="{{ product.DisplayImage().Url }}">
+                                    <img src="{{ item.Product.DisplayImage().Url }}">
                                 </div>
                             </td>
 
                             <td class="item-desc">
-                                <a href="/products/ar-1">{{ product.Title }}</a>
-                                <div class="variant-info">{{ product.Color }} / {{ Product.Size }}</div>
+                                <a href="/products/ar-1">{{ item.Product.Title }}</a>
+                                <div class="variant-info">{{ item.Product.Color }} / {{ item.Product.Size }}</div>
                             </td>
 
                             <td class="quantity">
@@ -45,7 +45,7 @@
                             </td>
 
                             <td class="price">
-                                <span class="sqs-money-native">{{ product.DisplayPrice() }}</span>
+                                <span class="sqs-money-native">{{ item.Product.DisplayPrice() }}</span>
                             </td>
 
                             <td class="remove">
@@ -59,7 +59,7 @@
                 <div class="subtotal">
                     <span class="label">Subtotal</span>
                     <span class="price">
-                        <span class="sqs-money-native">0.00</span>
+                        <span class="sqs-money-native">{{ item.Product.DisplayPrice() }}</span>
                     </span>
                 </div>
 

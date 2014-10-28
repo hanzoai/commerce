@@ -8,8 +8,8 @@ import (
 
 type LineItem struct {
 	FieldMapMixin
-	SKU          string
-	Cost         int64 `schema:"-"`
+	Product		 Product
+	Variant      ProductVariant
 	Description  string `schema:"-"`
 	DiscountAmnt int64 `schema:"-"`
 	LineNo       int `schema:"-"`
@@ -21,10 +21,18 @@ type LineItem struct {
 	// UPC          string
 }
 
+func (li LineItem) Price() int64 {
+	return li.Variant.Price
+}
+
+func (li LineItem) SKU() string {
+	return li.Variant.SKU
+}
+
 func (li LineItem) Validate(req *http.Request, errs binding.Errors) binding.Errors {
-	if li.SKU == "" {
+	if li.SKU() == "" {
 		errs = append(errs, binding.Error{
-			FieldNames:     []string{"SKU"},
+			FieldNames:     []string{"Variant.SKU"},
 			Classification: "InputError",
 			Message:        "SKU cannot be empty.",
 		})
@@ -38,14 +46,6 @@ func (li LineItem) Validate(req *http.Request, errs binding.Errors) binding.Erro
 		})
 	}
 
-	// Validate against database?
-	if li.Cost < 1 {
-		errs = append(errs, binding.Error{
-			FieldNames:     []string{"Cost"},
-			Classification: "InputError",
-			Message:        "Cost is too low.",
-		})
-	}
 	return errs
 }
 
