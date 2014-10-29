@@ -11,19 +11,19 @@ csio.renderLineItem = function(lineItem, index) {
     cartEl.find('a.title').text(lineItem.name);
     cartEl.find('div.variant-info').text(lineItem.color + ' / ' + lineItem.size);
     cartEl.find('.quantity input').val(lineItem.quantity).attr('name', 'Order.Items.' + index + '.Quantity');
-    cartEl.find('.price span').text(lineItem.price);
+    cartEl.find('.price span').text(formatCurrency(lineItem.price));
 
     cartEl.find('.remove-item').click(function() {
-      csio.removeLineItem(lineItem.sku)
-    })
+      csio.removeLineItem(lineItem.sku);
+    });
 
     cartEl.removeClass('template');
 
     $('.cart-container tbody').append(cartEl);
-}
+};
 
-csio.renderCart = function(cart) {
-  var cart = cart || csio.getCart();
+csio.renderCart = function(modifiedCart) {
+  var cart = modifiedCart || csio.getCart();
   var numItems = 0;
   var subTotal = 0;
   var i = 0;
@@ -32,7 +32,7 @@ csio.renderCart = function(cart) {
     var lineItem = cart[k];
     numItems += lineItem.quantity;
     subTotal += lineItem.price * lineItem.quantity;
-    csio.renderLineItem(lineItem, i)
+    csio.renderLineItem(lineItem, i);
     i += 1;
   }
 
@@ -42,15 +42,15 @@ csio.renderCart = function(cart) {
   } else {
     $('.subtotal .price span').text(formatCurrency(price));
   }
-}
+};
 
 csio.removeLineItem = function(sku) {
   var cart = csio.getCart();
 
-  delete cart[sku]
+  delete cart[sku];
 
-  csio.setCart(cart)
-  csio.renderCart(cart)
-}
+  csio.setCart(cart);
+  csio.renderCart(cart);
+};
 
-csio.renderCart()
+csio.renderCart();
