@@ -107,8 +107,7 @@ type Order struct {
 	Subtotal        int64 `schema:"-"`
 	Tax             int64 `schema:"-"`
 	Total           int64 `schema:"-"`
-	BillingUser     User
-	ShippingUser    User
+	User     User
 	Items           []LineItem
 	// ShippingOption  ShippingOption
 }

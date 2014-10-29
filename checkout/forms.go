@@ -23,24 +23,19 @@ func (f *AuthorizeForm) Parse(c *gin.Context) error {
 }
 
 func (f AuthorizeForm) Validate() (errs []string) {
-	if f.Order.BillingUser.FirstName == "" {
+	if f.Order.User.FirstName == "" {
 		errs = append(errs, "Billed user's first name is required")
 	}
-	if f.Order.BillingUser.LastName == "" {
+	if f.Order.User.LastName == "" {
 		errs = append(errs, "Billed user's Last name is required")
 	}
-	if f.Order.BillingUser.Email == "" {
+	if f.Order.User.Email == "" {
 		errs = append(errs, "Billed user's Email address is required")
 	}
-	if f.Order.BillingUser.Phone == "" {
+	if f.Order.User.Phone == "" {
 		errs = append(errs, "Billed user's Phone number is required")
 	}
-	if f.Order.ShippingUser.FirstName == "" {
-		errs = append(errs, "Shipping: First name is required")
-	}
-	if f.Order.ShippingUser.LastName == "" {
-		errs = append(errs, "Shipping: Last name is required")
-	}
+	
 	if f.Order.BillingAddress.Line1 == "" {
 		errs = append(errs, "Address line 1 is required")
 	}
