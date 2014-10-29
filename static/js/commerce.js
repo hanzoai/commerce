@@ -83,10 +83,14 @@ csio.addToCart = function() {
   }
 
   // Set cookie
-  $.cookie(csio.cookieName, cart, { expires: 30, path: '/' });
+  csio.setCart(cart)
 
   // Update cart hover
   csio.updateCartHover(cart)
+}
+
+csio.setCart = function(cart) {
+  $.cookie(csio.cookieName, cart, { expires: 30, path: '/' });
 }
 
 csio.getCart = function() {

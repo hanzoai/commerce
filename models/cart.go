@@ -103,6 +103,18 @@ type Order struct {
 	// ShippingOption  ShippingOption
 }
 
+func (o Order) DisplaySubtotal() string {
+	return DisplayPrice(o.Subtotal)
+}
+
+func (o Order) DisplayTax() string {
+	return DisplayPrice(o.Tax)
+}
+
+func (o Order) DisplayTotal() string {
+	return DisplayPrice(o.Total)
+}
+
 func (o Order) Validate(req *http.Request, errs binding.Errors) binding.Errors {
 	if len(o.Items) == 0 {
 		errs = append(errs, binding.Error{

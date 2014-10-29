@@ -672,7 +672,7 @@
                             <tbody>
                                 {% for item in order.Items %}
                                 <tr data-chosen-variant-sku="{{ item.SKU }}">
-                                    <input style="display:none;" name="Order.Items.{{ forloop.Counter }}.SKU" value="{{ item.SKU }}">
+                                    <input style="display:none;" name="Order.Items.{{ forloop.Counter }}.SKU()" value="{{ item.SKU() }}">
                                     <td class="item">
                                         <div class="item-image">
                                             <img src="{{ item.Product.DisplayImage().Url }}?format=100w">
@@ -699,13 +699,13 @@
                         </table>
 
                         <div class="subtotal total">
-                            <div class="price"><span class="sqs-money-native">{{ order.Subtotal }}</span>
+                            <div class="price"><span class="sqs-money-native">{{ order.DisplaySubtotal() }}</span>
                             </div>
                             <div class="label">Subtotal</div>
                         </div>
 
                         <div class="tax total">
-                            <div class="price"><span class="sqs-money-native">{{ order.Tax }}</span>
+                            <div class="price"><span class="sqs-money-native">{{ order.DisplayTax() }}</span>
                             </div>
                             <div class="label">Tax</div>
                         </div>
@@ -723,7 +723,7 @@
                         </div>
 
                         <div class="grand-total total">
-                            <div class="price"><span class="sqs-money-native">{{ order.Total }}</span>
+                            <div class="price"><span class="sqs-money-native">{{ order.DisplayTotal() }}</span>
                             </div>
                             <div class="label">Grand Total</div>
                         </div>

@@ -4,6 +4,7 @@ templateEl.parent().remove();
 
 csio.renderLineItem = function(lineItem, index) {
     var cartEl = templateEl.clone(false);
+
     cartEl.find('img.thumbnail').attr('src', lineItem.img);
     cartEl.find('input.slug').val(lineItem.slug).attr('name', 'Order.Items.' + index + '.Product.Slug');
     cartEl.find('input.sku').val(lineItem.sku).attr('name', 'Order.Items.' + index + '.Variant.SKU');
@@ -11,16 +12,21 @@ csio.renderLineItem = function(lineItem, index) {
     cartEl.find('div.variant-info').text(lineItem.color + ' / ' + lineItem.size);
     cartEl.find('.quantity input').val(lineItem.quantity).attr('name', 'Order.Items.' + index + '.Quantity');
     cartEl.find('.price span').text(lineItem.price);
+
+    cartEl.find('.remove-item').click(function() {
+      csio.removeLineItem(lineItem.sku)
+    })
+
     cartEl.removeClass('template');
 
     $('.cart-container tbody').append(cartEl);
 }
 
-csio.renderCart = function() {
+csio.renderCart = function(cart) {
   var cart = cart || csio.getCart();
   var numItems = 0;
   var subTotal = 0;
-  var i = 1;
+  var i = 0;
 
   for (var k in cart) {
     var lineItem = cart[k];
@@ -30,7 +36,21 @@ csio.renderCart = function() {
     i += 1;
   }
 
-  $('.subtotal .price span').text(price);
+  if (i === 0) {
+    $('.cart-container').hide();
+    $('.empty-message').show();
+  } else {
+    $('.subtotal .price span').text(formatCurrency(price));
+  }
+}
+
+csio.removeLineItem = function(sku) {
+  var cart = csio.getCart();
+
+  delete cart[sku]
+
+  csio.setCart(cart)
+  csio.renderCart(cart)
 }
 
 csio.renderCart()
