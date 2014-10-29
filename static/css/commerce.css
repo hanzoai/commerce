@@ -1340,14 +1340,14 @@ html.squarespace-cameron .sqs-panel-type-link-edit .sqs-panel-content {
     display: inline-block;
     position: absolute;
     right: 25px;
-    top: 16px;
+    top: 13px;
     max-width: 75px
 }
 
 .sqs-pill-shopping-cart .subtotal .price {
-    font-size: 15px;
+    font-size: 14px;
     font-weight: bold;
-    max-width: 70px;
+    max-width: 100px;
     float: right;
     letter-spacing: 1px;
     white-space: nowrap;
