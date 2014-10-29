@@ -1,3 +1,17 @@
+$('div.field').on('click', function() {
+    $(this).removeClass('error');
+});
+
+$("input[type='text']").prop('value', "")
+
+$('#form').submit(function(e) {
+    var empty = $('div.required > input').filter(function() {return $(this).val() == "";});
+    if (empty.length > 0) {
+        e.preventDefault();
+        empty.parent().addClass('error');
+    }
+});
+
 (function() {
   var e, t, n, r, i, s = {}.hasOwnProperty,
     o = function(e, t) {
