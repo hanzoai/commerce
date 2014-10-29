@@ -3,17 +3,18 @@ package models
 import (
 	"github.com/mholt/binding"
 	"net/http"
-	"time"
 	"strconv"
+	"strings"
+	"time"
 )
 
 type LineItem struct {
 	FieldMapMixin
-	Product		 Product
+	Product      Product
 	Variant      ProductVariant
 	Description  string `schema:"-"`
-	DiscountAmnt int64 `schema:"-"`
-	LineNo       int `schema:"-"`
+	DiscountAmnt int64  `schema:"-"`
+	LineNo       int    `schema:"-"`
 	Quantity     int
 	UOM          string `schema:"-"`
 	// Material     string
@@ -82,15 +83,16 @@ func (c Cart) Validate(req *http.Request, errs binding.Errors) binding.Errors {
 }
 
 type PaymentAccount struct {
-	CVV2    int
-	Month   string
-	Year    string
-	Number  string
-	Type    string `schema:"-"`
+	CVV2           int
+	UnparsedExpiry string
+	Number         string
+	Type           string `schema:"-"`
 }
 
-func (pa PaymentAccount) Expiry() int {
-	i, _ := strconv.Atoi(pa.Month + pa.Year)
+func (pa PaymentAccount) ParsedExpiry() int {
+	expiry := strings.TrimSpace(pa.UnparsedExpiry)
+	expiry = strings.Replace(expiry, "/", "", 1)
+	i, _ := strconv.Atoi(expiry)
 	return i
 }
 
@@ -99,13 +101,14 @@ type Order struct {
 	Account         PaymentAccount
 	BillingAddress  Address
 	CreatedAt       time.Time `schema:"-"`
-	Id              string `schema:"-"`
-	Shipping        int64 `schema:"-"`
+	Id              string    `schema:"-"`
+	Shipping        int64     `schema:"-"`
 	ShippingAddress Address
 	Subtotal        int64 `schema:"-"`
 	Tax             int64 `schema:"-"`
 	Total           int64 `schema:"-"`
-	User            User
+	BillingUser     User
+	ShippingUser    User
 	Items           []LineItem
 	// ShippingOption  ShippingOption
 }
