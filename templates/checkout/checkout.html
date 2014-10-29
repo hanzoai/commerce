@@ -17,6 +17,8 @@
     <script type="text/javascript" src="/js/checkout-7ab800faf6f674e1007b9a4e22c55875-min.js"></script>
     <link rel="stylesheet" type="text/css" href="/css/checkout-56facadb1760b1442d03355ac8e12a4d-min.css">
 
+    <link rel="stylesheet" type="text/css" href="/css/card.css">
+
     <style id="checkout-page-styles">
         #form-wrapper > div:nth-child(2) {
             /*Shipping details.*/
@@ -1147,11 +1149,12 @@
                                 </div>
 
                                 <fieldset style="display:none;">
-
-
+                                  <div style="display:block;">
+                                    <div id="card-wrapper"></div>
+                                  </div>
+                                  
                                     <!-- Credit Card -->
                                     <div id="credit-card">
-
 
                                         <!-- Name -->
                                         <!-- <input name="cardHolderName" type="hidden">-->
@@ -1168,6 +1171,7 @@
                                         <div id="expiry-cvc">
 
                                             <!-- Expiry Month -->
+                                            <!--
                                             <div id="card-expiry-month" data-label="Exp. Mo." class="field required">
                                                 <label>Exp. Mo.</label>
                                                 <select class="field-element pulse-warnable" name="Order.Account.Month" value="04">
@@ -1184,9 +1188,10 @@
                                                     <option value="11">11</option>
                                                     <option value="12">12</option>
                                                 </select>
-                                            </div>
+                                            </div> -->
 
                                             <!-- Expiry Year -->
+                                            <!--
                                             <div id="card-expiry-year" data-label="Exp. Yr." class="field required">
                                                 <label>Exp. Yr.</label>
                                                 <select class="field-element pulse-warnable" value="2015" name="Order.Account.Year">
@@ -1201,8 +1206,12 @@
                                                     <option value="2022">2022</option>
                                                     <option value="2023">2023</option>
                                                 </select>
-                                            </div>
+                                            </div> -->
 
+                                            <div id="card-expiry-year" data-label="Exp. Yr." class="field required">
+                                              <label>Expiry.</label>
+                                              <input class="field-element pulse-warnable" type="text" size="5" maxlength="7" autocomplete="off" placeholder="Expiry" value="" name="Order.Account.Expiry">
+                                            </div>
                                             <!-- CVC -->
                                             <div id="cvc" data-label="CVC" class="field required">
                                                 <label>CVC</label>
@@ -1298,6 +1307,7 @@
     </div>
     <script src="/js/{main,places}.js"></script>
     <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script src="/js/card.js"></script>
     <script src="/js/checkout.js"></script>
 </body>
 
