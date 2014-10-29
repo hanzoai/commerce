@@ -7,9 +7,7 @@ $.cookie.json = true;
 
 // Helper functions
 function humanizeNumber(num) {
-  var humanizedNum = (num || 0) + "";
-
-  return humanizedNum.replace(/(\d)(?=(\d\d\d)+(?!\d))/g, '$1,');
+  return num.toString().replace(/(\d)(?=(\d\d\d)+(?!\d))/g, '$1,');
 }
 
 function formatCurrency(num) {
@@ -53,9 +51,9 @@ csio.getVariant = function() {
 };
 
 csio.addToCart = function() {
-  var quantity     = parseInt($('#quantity').val(), 10);
-  var cart         = $.cookie(csio.cookieName) || {};
-  var variant      = csio.getVariant();
+  var quantity = parseInt($('#quantity').val(), 10);
+  var cart     = $.cookie(csio.cookieName) || {};
+  var variant  = csio.getVariant();
 
   if (variant == null) {
     alert('Please select an option');
@@ -72,7 +70,7 @@ csio.addToCart = function() {
       name:     csio.currentProduct.Title,
       quantity: quantity,
       size:     variant.Size,
-      price:    variant.Price*0.0001,
+      price:    parseInt(variant.Price, 10) * 0.0001,
       slug:     csio.currentProduct.Slug,
     };
   }
@@ -109,6 +107,12 @@ csio.updateCartHover = function(modifiedCart) {
 
   $('.total-quantity').text(humanizeNumber(numItems));
   $('.subtotal .price span').text(formatCurrency(subTotal));
+
+  if (numItems === 1)
+    $('.details span.suffix').text('item')
+  else
+    $('.details span.suffix').text('items')
+
 };
 
 // Events
