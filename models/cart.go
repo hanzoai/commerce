@@ -81,10 +81,11 @@ func (c Cart) Validate(req *http.Request, errs binding.Errors) binding.Errors {
 }
 
 type PaymentAccount struct {
-	CVV2           int
-	UnparsedExpiry string
-	Number         string
-	Type           string `schema:"-"`
+	CVV2    int
+	Month   string
+	Year    string
+	Number  string
+	Type    string `schema:"-"`
 }
 
 func (pa PaymentAccount) Expiry() string {

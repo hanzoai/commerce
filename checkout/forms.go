@@ -36,7 +36,7 @@ func (f AuthorizeForm) Validate() (errs []string) {
 	if f.Order.User.Phone == "" {
 		errs = append(errs, "Billed user's Phone number is required")
 	}
-	
+
 	if f.Order.BillingAddress.Line1 == "" {
 		errs = append(errs, "Address line 1 is required")
 	}
@@ -70,8 +70,8 @@ func (f AuthorizeForm) Validate() (errs []string) {
 	if len(string(f.Order.Account.CVV2)) < 3 {
 		errs = append(errs, "Confirmation code is required.")
 	}
-	if len(string(f.Order.Account.ParsedExpiry())) != 4 {
-		errs = append(errs, "Expiry is required")
+	if len(f.Order.Account.Expiry()) != 4 {
+		errs = append(errs, "Invalid expiry")
 	}
 
 	return errs

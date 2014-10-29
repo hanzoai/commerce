@@ -104,7 +104,7 @@ func Authorize(ctx appengine.Context, order models.Order) (ares AuthorizationRes
 		Currency: "USD",
 		Ecomind:  "E",
 		Email:    order.User.Email,
-		Expiry:   order.Account.ParsedExpiry(),
+		Expiry:   order.Account.Expiry(),
 		MerchId:  496160873888,
 		Name:     order.User.Name(),
 		OrderId:  order.Id,
