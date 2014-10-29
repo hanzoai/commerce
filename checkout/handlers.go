@@ -2,8 +2,8 @@ package checkout
 
 import (
 	"crowdstart.io/cardconnect"
-	"crowdstart.io/middleware"
 	"crowdstart.io/datastore"
+	"crowdstart.io/middleware"
 	"crowdstart.io/util/template"
 	"github.com/gin-gonic/gin"
 )
@@ -51,17 +51,29 @@ func authorize(c *gin.Context) {
 
 	db := datastore.New(c)
 	order := form.Order
-	ctx := middleware.GetAppEngine(c)
-	ctx.Infof("%#v", order)
+	user := form.User
+	order.User = user
 
-	for index, item := range order.Items {
-		if err := db.GetKey("variant", item.SKU(), order.Items[index].Variant); err != nil {
+	ctx := middleware.GetAppEngine(c)
+	ctx.Infof("%#v", order.Items)
+
+	for i, lineItem := range order.Items {
+		// TODO: Figure out why this happens
+		if lineItem.SKU() == "" {
+			continue
+		}
+
+		ctx.Infof("SKU: %#v", lineItem.SKU())
+
+		// Fetch Variant for LineItem from datastore
+		if err := db.GetKey("variant", lineItem.SKU(), &lineItem.Variant); err != nil {
 			c.Fail(500, err)
 			return
 		}
-		ctx.Debugf("%#v", item)
-		order.Items[index] = item
-		order.Subtotal += item.Price()
+
+		ctx.Debugf("%#v", lineItem)
+		order.Items[i] = lineItem
+		order.Subtotal += lineItem.Price()
 	}
 
 	// Authorize order
