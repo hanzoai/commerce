@@ -2244,7 +2244,7 @@ html.squarespace-cameron .sqs-widgets-confirmation {
   -webkit-user-select:none;
   -ms-user-select:none;
   user-select:none;
-  background-color:rgba(11, 11, 11, .9);
+  background-color:rgba(11, 11, 11, .92);
   position:absolute;
   z-index:1000000
 }
@@ -2304,12 +2304,15 @@ html.squarespace-cameron .sqs-widgets-confirmation-content.label .description {
 }
 
 html.squarespace-cameron .sqs-widgets-confirmation-content .title {
-  font-size:15px;
-  padding-bottom:8px
+  line-height:1.6em;
+  letter-spacing:0px;
+  font-weight:400;
+  padding-bottom:8px;
+  text-transform: uppercase;
 }
 
 html.squarespace-cameron .sqs-widgets-confirmation-content .message {
-  font-size:13px;
+  font-size:15px;
   line-height:19px;
   color:#bbb;
   margin-top:5px
@@ -2348,7 +2351,7 @@ html.squarespace-cameron .sqs-widgets-confirmation-content .buttons .confirmatio
   border:0;
   background-color:#272727;
   color:#eee;
-  font:400 11px / 14px'proxima-nova', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font:400 16px 'proxima-nova', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   margin-left:10px;
   padding:6px 15px !important
 }
