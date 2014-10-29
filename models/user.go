@@ -57,8 +57,8 @@ func (u User) Validate(req *http.Request, errs binding.Errors) binding.Errors {
 }
 
 type Address struct {
-	Street     string
-	Unit       string
+	Line1     string
+	Line2     string
 	City       string
 	State      string
 	PostalCode string
@@ -66,12 +66,12 @@ type Address struct {
 }
 
 func (a Address) Line() string {
-	return a.Unit + " " + a.Street
+	return a.Line1 + " " + a.Line2
 }
 
 func (a Address) Validate(req *http.Request, errs binding.Errors) binding.Errors {
 
-	if a.Street == "" {
+	if a.Line() == "" {
 		errs = append(errs, binding.Error{
 			FieldNames:     []string{"Street"},
 			Classification: "InputError",

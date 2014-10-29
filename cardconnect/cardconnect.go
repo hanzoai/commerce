@@ -92,7 +92,7 @@ func Authorize(order models.Order) (ares AuthorizationRes, err error) {
 	areq := AuthorizationReq{
 		Account:  order.Account.Number,
 		AcctType: order.Account.Type,
-		Address:  order.BillingAddress.Unit + " " + order.BillingAddress.Street,
+		Address:  order.BillingAddress.Line(),
 		Amount:   order.Total,
 		CVV2:     order.Account.CVV2,
 		City:     order.BillingAddress.City,
