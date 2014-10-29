@@ -73,17 +73,21 @@ func authorize(c *gin.Context) {
 	complete(c)
 
 	// Authorize order
-	ares, err := cardconnect.Authorize(form.Order)
+	ctx := middleware.GetAppEngine(c)
+	ares, err := cardconnect.Authorize(ctx, form.Order)
 	switch {
 	case err != nil:
+		ctx.Errorf("%v", err)
 		c.JSON(500, gin.H{"status": "Unable to authorize payment."})
 	case ares.Status == "A":
-
+		ctx.Debugf("%#v", ares)
 		c.JSON(200, gin.H{"status": "ok"})
 	case ares.Status == "B":
-		c.JSON(200, gin.H{"status": "retry"})
+		ctx.Debugf("%#v", ares)
+		c.JSON(200, gin.H{"status": "retry", "message": ares.Text})
 	case ares.Status == "C":
-		c.JSON(200, gin.H{"status": "declined"})
+		ctx.Debugf("%#v", ares)
+		c.JSON(200, gin.H{"status": "declined", "message": ares.Text})
 	}
 }
 

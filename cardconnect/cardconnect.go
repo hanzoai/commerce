@@ -4,11 +4,15 @@ import (
 	"crowdstart.io/models"
 	"encoding/base64"
 	"errors"
-	"github.com/jmcvetta/napping"
 	"net/http"
+	"bytes"
+	"io/ioutil"
+	"encoding/json"
+	"appengine/urlfetch"
+	"appengine"
 )
 
-var baseUrl = "fts.prinpay.com:6443/cardconnect/rest" // 496160873888-CardConnect - USD - NORTH
+var baseUrl = "https://fts.prinpay.com:6443/cardconnect/rest" // 496160873888-CardConnect - USD - NORTH
 var authCode = base64.StdEncoding.EncodeToString([]byte("testing:testing123"))
 
 type LineItem struct {
@@ -75,7 +79,7 @@ type AuthorizationRes struct {	      // {
 	Token    string `json:"token"`    // "token":    "9419786452781111",
 }									  // }
 
-func Authorize(order models.Order) (ares AuthorizationRes, err error) {
+func Authorize(ctx appengine.Context, order models.Order) (ares AuthorizationRes, err error) {
 	// Convert models.LineItem to our CardConnect specialized LineItem that
 	// will serialize properly.
 	items := make([]LineItem, len(order.Items))
@@ -112,18 +116,30 @@ func Authorize(order models.Order) (ares AuthorizationRes, err error) {
 		Items:    items,
 	}
 
-	header := http.Header{}
-	header.Add("Authorization", "Basic "+authCode)
-	s := napping.Session{Header: &header}
+	client := urlfetch.Client(ctx)
 
-	switch res, err := s.Post(baseUrl+"/auth", &areq, &ares, nil); {
+	jsonreq,_ := json.Marshal(areq)
+	reqbuf := bytes.NewBuffer(jsonreq)
+
+	req, err := http.NewRequest("PUT", baseUrl+"/auth",reqbuf)
+	req.Header.Add("Authorization", "Basic "+authCode)
+	req.Header.Add("Content-Type", "application/json")
+
+	switch res, err := client.Do(req); {
 	case err != nil:
 		return ares, err
 
-	case res.Status() == 200:
+	case res.StatusCode == 200:
+		defer res.Body.Close()
+		body,_ := ioutil.ReadAll(res.Body)
+		json.Unmarshal(body, &ares)
 		return ares, nil
 
 	default:
+		defer res.Body.Close()
+		body,_ := ioutil.ReadAll(res.Body)
+		json.Unmarshal(body, &ares)
+		ctx.Errorf("%v %v", res.StatusCode, ares)
 		return ares, errors.New("Invalid response from CardConnect.")
 	}
 }
