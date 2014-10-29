@@ -5561,7 +5561,9 @@ html.blogapp .sqs-state-message, html.blogapp .state-message {
 
 .collection-type-products .sqs-add-to-cart-button {
   margin:20px 0;
-  padding:1.5em 4em !important
+  padding:1.2em 4em !important;
+  width: 100px;
+  height: 10px;
 }
 
 .sqs-donate-button {
@@ -18133,4 +18135,26 @@ a.soldout-button {
   letter-spacing:1px;
   font-weight:300;
   font-style:normal
+}
+
+.sqs-add-to-cart-button-inner .status-spinner {
+  width: 10px;
+  height: 10px;
+}
+
+.sqs-add-to-cart-button-inner .sqs-spin {
+  width: 10px;
+  height: 10px;
+  float: left;
+  padding: 0px;
+  margin: 0 auto;
+}
+
+.sqs-add-to-cart-button-inner .status-text {
+  padding-left: 10px;
+  float: right;
+}
+
+.sqs-add-to-cart-button {
+  padding: 10px;
 }
