@@ -16,7 +16,6 @@ func (f *CheckoutForm) Parse(c *gin.Context) error {
 
 type AuthorizeForm struct {
 	Order models.Order
-	User  models.User
 }
 
 func (f *AuthorizeForm) Parse(c *gin.Context) error {
