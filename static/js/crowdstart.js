@@ -140,16 +140,15 @@ csio.addToCart = function() {
   setTimeout(function() {
     $('.status-text').text('Added!').fadeOut(500, function() {
       inner.html('Add to Cart')
-
     })
   }, 500)
 
   setTimeout(function() {
     // Flash cart hover
-    $('.sqs-pill-shopping-cart-content').animate({opacity: 0.85}, 300, function() {
+    $('.sqs-pill-shopping-cart-content').animate({opacity: 0.85}, 400, function() {
       // Update cart hover
       csio.updateCartHover(cart);
-      $('.sqs-pill-shopping-cart-content').animate({opacity: 1}, 400)
+      $('.sqs-pill-shopping-cart-content').animate({opacity: 1}, 300)
     })
   }, 300)
 }

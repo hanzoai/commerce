@@ -1729,56 +1729,6 @@ body.native-currency-code-chf .sqs-money-native:before {
   }
 }
 
-.sqs-lightbox-signup-spinner {
-  position:fixed !important;
-  left:50% !important;
-  margin-top:-150px !important;
-  margin-left:-150px !important;
-  width:300px !important;
-  height:300px !important
-}
-
-.squarespace-signup-text {
-  font-family:'proxima-nova', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  color:#fff;
-  width:300px;
-  text-align:center;
-  padding-top:15px;
-  line-height:21px;
-  font-size:15px;
-  padding-bottom:100px
-}
-
-.squarespace-signup-text .join-thank-you {
-  font-weight:bold;
-  padding-bottom:20px
-}
-
-.squarespace-signup-spinner {
-  background:transparent url('//static.squarespace.com/universal/images-v6/big-gear.png') center center no-repeat;
-  width:300px !important;
-  height:220px !important;
-  -webkit-animation-duration:2s;
-  -moz-animation-duration:2s;
-  -o-animation-duration:2s;
-  animation-duration:2s;
-  -webkit-animation-iteration-count:infinite;
-  -moz-animation-iteration-count:infinite;
-  -o-animation-iteration-count:infinite;
-  animation-iteration-count:infinite;
-  -webkit-animation-name:spin-frames;
-  -moz-animation-name:spin-frames;
-  -o-animation-name:spin-frames;
-  animation-name:spin-frames
-}
-
-.squarespace-signup-spinner.stopped {
-  -webkit-animation-name:stopped;
-  -moz-animation-name:stopped;
-  -o-animation-name:stopped;
-  animation-name:stopped
-}
-
 .sqs-g {
   letter-spacing:-.31em;
   *letter-spacing:normal;
@@ -5560,10 +5510,10 @@ html.blogapp .sqs-state-message, html.blogapp .state-message {
 }
 
 .collection-type-products .sqs-add-to-cart-button {
-  margin:20px 0;
-  padding:1.2em 4em !important;
-  width: 100px;
-  height: 10px;
+  margin: 20px 0;
+  padding: 1.2em 4em !important;
+  width: 90px;
+  height: 20px;
 }
 
 .sqs-donate-button {
@@ -18137,22 +18087,22 @@ a.soldout-button {
   font-style:normal
 }
 
-.sqs-add-to-cart-button-inner .status-spinner {
-  width: 10px;
-  height: 10px;
+.sqs-add-to-cart-button-inner {
+  margin-top: 4px;
 }
 
 .sqs-add-to-cart-button-inner .sqs-spin {
-  width: 10px;
-  height: 10px;
+  width: 20px;
+  height: 20px;
   float: left;
   padding: 0px;
-  margin: 0 auto;
+  margin-top: -6px;
+  margin-left: -33px;
 }
 
 .sqs-add-to-cart-button-inner .status-text {
-  padding-left: 10px;
-  float: right;
+  padding-left: 5px;
+
 }
 
 .sqs-add-to-cart-button {
