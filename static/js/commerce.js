@@ -2,31 +2,10 @@
 csio = window.csio || {};
 csio.cookieName = 'SKULLYSystemsCart';
 
-// JSON cookies
+// Enable JSON cookies
 $.cookie.json = true;
 
-// Show cart when cart button is clicked
-$('.fixed-cart').click(function() {
-  window.location = '/cart';
-});
-
-// Hide cart button on cart page
-if (location.pathname == '/cart') {
-  $('.fixed-cart').hide();
-}
-
-$('#productThumbnails .slide img').each(function(i,v) {
-  $(v).click(function(){
-    var src = $(v).data('src');
-    $('#productSlideshow .slide img').each(function(i,v) {
-      if (src === $(v).data('src'))
-        $(v).fadeIn(400)
-      else
-        $(v).fadeOut(400)
-    })
-  })
-})
-
+// Helper functions
 function humanizeNumber(num) {
   var humanizedNum = (num || 0) + "";
 
@@ -60,13 +39,17 @@ csio.getVariant = function() {
 
   for (var i=0; i<csio.currentProduct.Variants.length; i++) {
     var variant = variants[i];
+    // All options match match variants
     for (k in options) {
-      if (variant[k] != options[k])
-        continue;
+      if (variant[k] !== options[k])
+        continue
 
       return variant;
     }
   }
+
+  // Only one variant, no options.
+  return csio.currentProduct.Variants[0];
 };
 
 csio.addToCart = function() {
@@ -128,5 +111,30 @@ csio.updateCartHover = function(modifiedCart) {
   $('.subtotal .price span').text(formatCurrency(subTotal));
 };
 
+// Events
+
+// Show cart when cart button is clicked
+$('.fixed-cart').click(function() {
+  window.location = '/cart';
+})
+
+// Hide cart button on cart page
+if (location.pathname == '/cart') {
+  $('.fixed-cart').hide()
+}
+
+// Product gallery image switching
+$('#productThumbnails .slide img').each(function(i,v) {
+  $(v).click(function(){
+    var src = $(v).data('src');
+    $('#productSlideshow .slide img').each(function(i,v) {
+      if (src === $(v).data('src'))
+        $(v).fadeIn(400)
+      else
+        $(v).fadeOut(400)
+    })
+  })
+})
+
 // Update cart hover onload
-csio.updateCartHover();
+csio.updateCartHover()
