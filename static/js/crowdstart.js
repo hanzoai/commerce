@@ -132,9 +132,27 @@ csio.addToCart = function() {
   // Set cookie
   csio.setCart(cart);
 
-  // Update cart hover
-  csio.updateCartHover(cart);
-};
+  var inner = $('.sqs-add-to-cart-button-inner');
+  inner.html('')
+  inner.append('<div class="yui3-widget sqs-spin light" ></div>');
+  inner.append('<div class="status-text">Adding...</div>');
+
+  setTimeout(function() {
+    $('.status-text').text('Added!').fadeOut(500, function() {
+      inner.html('Add to Cart')
+
+    })
+  }, 500)
+
+  setTimeout(function() {
+    // Flash cart hover
+    $('.sqs-pill-shopping-cart-content').animate({opacity: 0.85}, 300, function() {
+      // Update cart hover
+      csio.updateCartHover(cart);
+      $('.sqs-pill-shopping-cart-content').animate({opacity: 1}, 400)
+    })
+  }, 300)
+}
 
 csio.setCart = function(cart) {
   $.cookie(csio.cookieName, cart, { expires: 30, path: '/' });

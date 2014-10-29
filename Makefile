@@ -1,6 +1,6 @@
 pwd 			= $(shell pwd)
 platform        = $(shell uname | tr '[A-Z]' '[a-z]')_amd64
-sdk 	        = go_appengine_sdk_$(platform)-1.9.13
+sdk 	        = go_appengine_sdk_$(platform)-1.9.14
 sdk_path        = $(pwd)/.sdk
 goroot          = $(sdk_path)/goroot
 gopath          = $(sdk_path)/gopath
@@ -61,6 +61,7 @@ install-deps:
 	unzip $(sdk).zip && \
 	mv go_appengine $(sdk_path) && \
 	rm $(sdk).zip && \
+	mkdir -p $(sdk_path)/gopath/src && \
 	ln -s $(shell pwd) $(sdk_path)/gopath/src/crowdstart.io
 
 serve:
