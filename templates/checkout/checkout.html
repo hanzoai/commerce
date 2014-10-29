@@ -822,21 +822,21 @@
                                     <!-- First Name -->
                                     <div id="billing-first-name" data-label="First Name" class="field first-name required">
                                         <label>First Name</label>
-                                        <input name="Order.BillingUser.FirstName" class="field-element pulse-warnable" placeholder="First Name" x-autocompletetype="given-name" type="text" spellcheck="false" maxlength="30" value="">
+                                        <input name="Order.User.FirstName" class="field-element pulse-warnable" placeholder="First Name" x-autocompletetype="given-name" type="text" spellcheck="false" maxlength="30" value="">
                                     </div>
 
 
                                     <!-- Last Name -->
                                     <div id="billing-last-name" data-label="Last Name" class="field last-name required">
                                         <label>Last Name</label>
-                                        <input name="Order.BillingUser.LastName" class="field-element pulse-warnable" placeholder="Last Name" x-autocompletetype="surname" a="" type="text" spellcheck="false" maxlength="30" value>
+                                        <input name="Order.User.LastName" class="field-element pulse-warnable" placeholder="Last Name" x-autocompletetype="surname" a="" type="text" spellcheck="false" maxlength="30" value>
                                     </div>
 
 
                                     <!-- Email Address -->
                                     <div id="email" data-label="Email Address" class="field email required">
                                         <label>Email Address</label>
-                                        <input name="Order.BillingUser.Email" class="field-element pulse-warnable" placeholder="Email" x-autocompletetype="email" type="text" spellcheck="false" maxlength="50" value>
+                                        <input name="Order.User.Email" class="field-element pulse-warnable" placeholder="Email" x-autocompletetype="email" type="text" spellcheck="false" maxlength="50" value>
                                     </div>
 
 
@@ -976,22 +976,22 @@
                                 </div>
                                 <fieldset>
                                     <!-- Ship to Billing Address -->
-                                    <div id="ship-to-billing" class="check-element active">
+                                    <!-- <div id="ship-to-billing" class="check-element active">
                                       <input name="ShipToBilling" type="checkbox"></input>
                                       Shipping Address same as Billing
-                                    </div>
+                                    </div> -->
                                     <!-- Shipping Address -->
                                     <div id="shipping-address-wrapper" class="show-overflow">
                                         <!-- First Name -->
-                                        <div id="shipping-first-name" data-label="First Name" class="field first-name required">
+                                        <!-- <div id="shipping-first-name" data-label="First Name" class="field first-name required">
                                             <label>First Name</label>
                                             <input name="Order.ShippingUser.FirstName" class="field-element pulse-warnable" placeholder="First Name" x-autocompletetype="given-name" type="text" spellcheck="false" maxlength="30">
-                                        </div>
+                                        </div> -->
                                         <!-- Last Name -->
-                                        <div id="shipping-last-name" data-label="Last Name" class="field last-name required">
+                                        <!-- <div id="shipping-last-name" data-label="Last Name" class="field last-name required">
                                             <label>Last Name</label>
                                             <input name="Order.ShippingUser.LastName" class="field-element pulse-warnable" placeholder="Last Name" x-autocompletetype="surname" type="text" spellcheck="false" maxlength="30">
-                                        </div>
+                                        </div> -->
                                         <!-- Shipping Address 1 -->
                                         <div id="shipping-address-1" data-label="Address Line 1" class="field address required">
                                             <label>Address Line 1</label>
@@ -1173,7 +1173,7 @@
 
                                             <div id="card-expiry-year" data-label="Exp. Yr." class="field required">
                                               <label>Expiry.</label>
-                                              <input class="field-element pulse-warnable" type="text" size="5" maxlength="7" autocomplete="off" placeholder="Expiry" value="" name="Order.Account.Expiry">
+                                              <input class="field-element pulse-warnable" type="text" size="5" maxlength="7" autocomplete="off" placeholder="Expiry" value="" name="Order.Account.UnparsedExpiry">
                                             </div>
                                             <!-- CVC -->
                                             <div id="cvc" data-label="CVC" class="field required">
