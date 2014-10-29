@@ -9,7 +9,7 @@ csio.renderLineItem = function(lineItem, index) {
     cartEl.find('input.slug').val(lineItem.slug).attr('name', 'Order.Items.' + index + '.Product.Slug');
     cartEl.find('input.sku').val(lineItem.sku).attr('name', 'Order.Items.' + index + '.Variant.SKU');
     cartEl.find('a.title').text(lineItem.name);
-    cartEl.find('div.variant-info').text(lineItem.color + ' / ' + lineItem.size);
+    cartEl.find('div.variant-info').text([lineItem.color, lineItem.size].join(' / '));
     cartEl.find('.quantity input').val(lineItem.quantity).attr('name', 'Order.Items.' + index + '.Quantity');
     cartEl.find('.price span').text(formatCurrency(lineItem.price));
 
