@@ -1,5 +1,6 @@
-// Globals
 /* global csio */
+
+// Globals
 window.csio = window.csio || {};
 csio.cookieName = 'SKULLYSystemsCart';
 
@@ -175,11 +176,6 @@ $('.fixed-cart').click(function() {
   window.location = '/cart';
 })
 
-// Hide cart button on cart page
-if (location.pathname == '/cart') {
-  $('.fixed-cart').hide()
-}
-
 // Product gallery image switching
 $('#productThumbnails .slide img').each(function(i,v) {
   $(v).click(function(){
@@ -195,3 +191,25 @@ $('#productThumbnails .slide img').each(function(i,v) {
 
 // Update cart hover onload
 csio.updateCartHover()
+
+// PAGE SPECIFIC HACKS
+
+// Hide cart button on cart page
+if (location.pathname == '/cart') {
+  $('.fixed-cart').hide();
+}
+
+// Swap images when changing colors on helmet page
+if (location.pathname == '/products/ar-1') {
+  var $slides = $('#productSlideshow .slide img');
+
+  $('[data-variant-option-name=Color]').change(function() {
+    if ($(this).val() === 'Black') {
+      $($slides[0]).fadeIn()
+      $($slides[1]).fadeOut()
+    } else {
+      $($slides[1]).fadeIn()
+      $($slides[0]).fadeOut()
+    }
+  })
+}
