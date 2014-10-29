@@ -960,13 +960,13 @@
 
                                     <!-- Continue -->
                                     <div class="btn-container" style="text-align: center;">
-                                        <input type="submit" value="Submit" class="button continue-button" style="width:100%"></input>
+                                        <!--<input type="submit" value="Continue" class="button continue-button" style="width:100%"></input>-->
                                     </div>
 
                                 </fieldset>
                             </div>
                         </div>
-                        <div class="yui3-widget sqs-widget sqs-checkout-form-section card sqs-checkout-form-address sqs-checkout-form-shipping incomplete">
+                        <div class="yui3-widget sqs-widget sqs-checkout-form-section card sqs-checkout-form-address sqs-checkout-form-shipping" style="display:none;">
                             <div class="sqs-checkout-form-shipping-content empty-shipping-options">
                                 <div class="title">Shipping Options<a class="edit-button">edit</a>
                                 </div>
@@ -1125,13 +1125,13 @@
 
                                     <!-- Continue -->
                                     <div class="btn-container">
-                                        <div class="button continue-button configure-shipping-button">Configure Shipping Options</div>
+                                        <!-- <div class="button continue-button configure-shipping-button">Configure Shipping Options</div>-->
                                     </div>
 
                                 </fieldset>
                             </div>
                         </div>
-                        <div class="yui3-widget sqs-widget sqs-checkout-form-section card sqs-checkout-form-payment incomplete">
+                        <div class="yui3-widget sqs-widget sqs-checkout-form-section card sqs-checkout-form-payment">
                             <div class="sqs-checkout-form-payment-content">
                                 <div class="title">
                                     <a class="edit-button">edit</a>
@@ -1223,10 +1223,9 @@
 
 
                                     <!-- Place Order -->
-                                    <div id="place-order">
-                                        <div id="place-order-button" class="button continue-button" value="Place Order">Submit Order/div>
-                                        <div class="trust"><img src="/img/truste.png">
-                                        </div>
+                                    <div class="btn-container" style="text-align: center;">
+                                      <input type="submit" value="Place order" class="button continue-button" style="width:100%"></input>
+                                    </div>
 
                                         <!-- hidden field to convey the Stripe Token so we may submit the charge -->
                                         <!-- <input name="stripeToken" type="hidden"> -->
