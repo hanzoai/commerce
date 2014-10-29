@@ -822,21 +822,21 @@
                                     <!-- First Name -->
                                     <div id="billing-first-name" data-label="First Name" class="field first-name required">
                                         <label>First Name</label>
-                                        <input name="Order.User.FirstName" class="field-element pulse-warnable" placeholder="First Name" x-autocompletetype="given-name" type="text" spellcheck="false" maxlength="30" value="">
+                                        <input name="Order.BillingUser.FirstName" class="field-element pulse-warnable" placeholder="First Name" x-autocompletetype="given-name" type="text" spellcheck="false" maxlength="30" value="">
                                     </div>
 
 
                                     <!-- Last Name -->
                                     <div id="billing-last-name" data-label="Last Name" class="field last-name required">
                                         <label>Last Name</label>
-                                        <input name="Order.User.LastName" class="field-element pulse-warnable" placeholder="Last Name" x-autocompletetype="surname" a="" type="text" spellcheck="false" maxlength="30" value>
+                                        <input name="Order.BillingUser.LastName" class="field-element pulse-warnable" placeholder="Last Name" x-autocompletetype="surname" a="" type="text" spellcheck="false" maxlength="30" value>
                                     </div>
 
 
                                     <!-- Email Address -->
                                     <div id="email" data-label="Email Address" class="field email required">
                                         <label>Email Address</label>
-                                        <input name="Order.User.Email" class="field-element pulse-warnable" placeholder="Email" x-autocompletetype="email" type="text" spellcheck="false" maxlength="50" value>
+                                        <input name="Order.BillingUser.Email" class="field-element pulse-warnable" placeholder="Email" x-autocompletetype="email" type="text" spellcheck="false" maxlength="50" value>
                                     </div>
 
 
@@ -995,7 +995,7 @@
                                         <!-- Shipping Address 1 -->
                                         <div id="shipping-address-1" data-label="Address Line 1" class="field address required">
                                             <label>Address Line 1</label>
-                                            <input name="Order.ShippingAddress.Unit" class="field-element address-line1 pulse-warnable sqs-scroll-ac-input" type="text" x-autocompletetype="address-line1" placeholder="Street Address 1" spellcheck="false" maxlength="50" aria-autocomplete="list" aria-expanded="false" autocomplete="on">
+                                            <input name="Order.ShippingAddress.Line1" class="field-element address-line1 pulse-warnable sqs-scroll-ac-input" type="text" x-autocompletetype="address-line1" placeholder="Address Line 1" spellcheck="false" maxlength="50" aria-autocomplete="list" aria-expanded="false" autocomplete="on">
                                             <div class="yui3-widget yui3-aclist sqs-scroll-ac yui3-widget-positioned sqs-scroll-ac-hidden" aria-hidden="true" style="left: 0px; top: 0px;">
                                                 <div class="sqs-scroll-ac-content sqs-google-places-autocomplete-mixin">
                                                     <div class="sqs-scroll-ac-scroll-container" hidden="hidden" style="display: none;">
@@ -1012,7 +1012,7 @@
                                         <!-- Shipping Address 2 -->
                                         <div id="shipping-address-2" data-label="Address Line 2" class="field address">
                                             <label>Address Line 2</label>
-                                            <input name="Order.ShippingAddress.Street" class="field-element address-line2 pulse-warnable" type="text" placeholder="Street Address 2" x-autocompletetype="address-line2" spellcheck="false" maxlength="50">
+                                            <input name="Order.ShippingAddress.Line2" class="field-element address-line2 pulse-warnable" type="text" placeholder="Address Line 2" x-autocompletetype="address-line2" spellcheck="false" maxlength="50">
                                         </div>
                                         <!-- Country -->
                                         <div id="shipping-country" data-label="Country" class="field country required">
