@@ -29,3 +29,12 @@ $('#form').card({
     cvcInput: 'input[name="Order.Account.CVV2"]',
     nameInput: 'input[name="Order.User.FirstName"], input[name="Order.User.LastName"]'
 });
+
+$('input[name="ShipToBilling"]').change(function(){
+    var fields = $('#shipping_fields')
+    if (this.checked) {
+        fields.css('display', 'block');
+    } else {
+        fields.css('display', 'none');
+    }
+});

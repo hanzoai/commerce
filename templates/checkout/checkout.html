@@ -651,7 +651,7 @@
 
         <!-- CART/COUPON SUMMARIES -->
         <div id="summary-wrapper" class="right-column-wrapper">
-            <div id="cart-summary" class="card">
+            <div id="cart-summary" class="sqs-card">
                 <div class="yui3-widget sqs-widget yui3-tableshoppingcart sqs-checkout-shopping-cart">
                     <div class="sqs-checkout-shopping-cart-content single-item">
                         <div class="loading-spinner">
@@ -742,7 +742,7 @@
                 </div>
             </div>
 
-            <div id="coupon-summary" class="card  hidden">
+            <div id="coupon-summary" class="sqs-card  hidden">
                 <div class="yui3-widget sqs-widget sqs-checkout-coupon-list">
                     <div class="sqs-checkout-coupon-list-content">
                         <div class="title">Coupons</div>
@@ -817,7 +817,7 @@
                         <input type="hidden" name="Order.Items.{{ forloop.Counter }}.Quantity" value="{{ item.Quantity }}" >
                         {% endfor %}
 
-                        <div class="yui3-widget sqs-widget sqs-checkout-form-section card sqs-checkout-form-address sqs-checkout-form-billing editing">
+                        <div class="yui3-widget sqs-widget sqs-checkout-form-section sqs-card sqs-checkout-form-address sqs-checkout-form-billing editing">
                             <div class="sqs-checkout-form-billing-content">
                                 <div class="title">Billing Info<a class="edit-button">edit</a>
                                 </div>
@@ -970,7 +970,7 @@
                         </div>
 
 
-                        <div class="yui3-widget sqs-widget sqs-checkout-form-section card sqs-checkout-form-address sqs-checkout-form-shipping"">
+                        <div class="yui3-widget sqs-widget sqs-checkout-form-section sqs-card sqs-checkout-form-address sqs-checkout-form-shipping"">
                             <div class="sqs-checkout-form-shipping-content empty-shipping-options">
                                 <div class="title">Shipping Options<a class="edit-button">edit</a>
                                 </div>
@@ -1111,7 +1111,7 @@
                             </div>
                 </div>
 
-                <div class="yui3-widget sqs-widget sqs-checkout-form-section card sqs-checkout-form-payment">
+                <div class="yui3-widget sqs-widget sqs-checkout-form-section sqs-card sqs-checkout-form-payment">
                   <div class="sqs-checkout-form-payment-content">
                                 <div class="title">
                                   <a class="edit-button">edit</a>
