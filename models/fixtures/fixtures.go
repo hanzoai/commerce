@@ -106,32 +106,68 @@ func Install(db *datastore.Datastore) {
 	// T-Shirts
 	variants = []ProductVariant{
 		ProductVariant{
-			SKU:   "SKULLY-T-SHIRT-S",
-			Size:  "S",
+			SKU:   "SKULL-TSHIRT-MEN-S",
+			Size:  "Men's Small",
 			Color: "Black",
 			Price: 1999 * 100,
 		},
 		ProductVariant{
-			SKU:   "SKULLY-T-SHIRT-M",
-			Size:  "M",
+			SKU:   "SKULLY-TSHIRT-MEN-M",
+			Size:  "Men's Medium",
 			Color: "Black",
 			Price: 1999 * 100,
 		},
 		ProductVariant{
-			SKU:   "SKULLY-T-SHIRT-L",
-			Size:  "L",
+			SKU:   "SKULLY-TSHIRT-MEN-L",
+			Size:  "Men's Large",
 			Color: "Black",
 			Price: 1999 * 100,
 		},
 		ProductVariant{
-			SKU:   "SKULLY-T-SHIRT-XL",
-			Size:  "XL",
+			SKU:   "SKULLY-TSHIRT-MEN-XL",
+			Size:  "Men's X-Large",
 			Color: "Black",
 			Price: 1999 * 100,
 		},
 		ProductVariant{
-			SKU:   "SKULLY-T-SHIRT-XXL",
-			Size:  "XXL",
+			SKU:   "SKULLY-TSHIRT-MEN-XXL",
+			Size:  "Men's XX-Large",
+			Color: "Black",
+			Price: 1999 * 100,
+		},
+		ProductVariant{
+			SKU:   "SKULL-TSHIRT-WOMEN-XS",
+			Size:  "Women's X-Small",
+			Color: "Black",
+			Price: 1999 * 100,
+		},
+		ProductVariant{
+			SKU:   "SKULL-TSHIRT-WOMEN-S",
+			Size:  "Women's Small",
+			Color: "Black",
+			Price: 1999 * 100,
+		},
+		ProductVariant{
+			SKU:   "SKULLY-TSHIRT-WOMEN-M",
+			Size:  "Women's Medium",
+			Color: "Black",
+			Price: 1999 * 100,
+		},
+		ProductVariant{
+			SKU:   "SKULLY-TSHIRT-WOMEN-L",
+			Size:  "Women's Large",
+			Color: "Black",
+			Price: 1999 * 100,
+		},
+		ProductVariant{
+			SKU:   "SKULLY-TSHIRT-WOMEN-XL",
+			Size:  "Women's X-Large",
+			Color: "Black",
+			Price: 1999 * 100,
+		},
+		ProductVariant{
+			SKU:   "SKULLY-TSHIRT-WOMEN-XXL",
+			Size:  "Women's XX-Large",
 			Color: "Black",
 			Price: 1999 * 100,
 		},
@@ -146,6 +182,12 @@ func Install(db *datastore.Datastore) {
 		Title:       "SKULLY T-shirt",
 		Description: "SKULLY Nation T-shirt",
 		Variants:    variants,
+		HeaderImage: Image{
+			Alt: "SKULLY T-SHIRT",
+			Url: "//static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/t/544011e7e4b0ea72c07a5fec/1413485036166/140919%20CoverPhoto5.jpg",
+			X: 1000,
+			Y: 369,
+		},
 		Images: []Image{
 			Image{
 				Alt: "skully_shirt_1000px.jpg",
@@ -176,6 +218,12 @@ func Install(db *datastore.Datastore) {
 			Color: "Black",
 			Price: 1499 * 100,
 		},
+		ProductVariant{
+			SKU:   "SKULLY-HAT-L",
+			Size:  "XL",
+			Color: "Black",
+			Price: 1499 * 100,
+		},
 	}
 
 	for _, v := range variants {
@@ -187,6 +235,12 @@ func Install(db *datastore.Datastore) {
 		Title:       "SKULLY Hat",
 		Description: "SKULLY Nation Hat",
 		Variants:    variants,
+		HeaderImage: Image{
+			Alt: "SKULLY HAT",
+			Url: "//static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/t/544011e7e4b0ea72c07a5fec/1413485036166/140919%20CoverPhoto5.jpg",
+			X: 1000,
+			Y: 369,
+		},
 		Images: []Image{
 			Image{
 				Alt: "skully_hat_1000px.jpg",
@@ -216,6 +270,12 @@ func Install(db *datastore.Datastore) {
 		Title:       "SKULLY Stickers",
 		Description: "SKULLY Nation Stickers",
 		Variants:    variants,
+		HeaderImage: Image{
+			Alt: "SKULLY STICKERS",
+			Url: "//static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/t/53f0cd31e4b05292018da5e2/1408290101751/motorcyclist.jpg",
+			X: 1500,
+			Y: 583,
+		},
 		Images: []Image{
 			Image{
 				Alt: "sticker_pack_1000px.jpg",
