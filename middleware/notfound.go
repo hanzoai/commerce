@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"appengine"
 	"net/http"
 	"github.com/gin-gonic/gin"
 	"crowdstart.io/util/template"
@@ -13,8 +14,11 @@ func NotFoundHandler() gin.HandlerFunc {
 
 		if !c.Writer.Written() && c.Writer.Status() == 404 {
 			c.Writer.WriteHeader(http.StatusNotFound)
-			template.Render(c, "error/404.html")
+			if appengine.IsDevAppServer() {
+				c.String(404, "error 404: No matching handlers found.")
+			} else {
+				template.Render(c, "error/404.html")
+			}
 		}
 	}
 }
-

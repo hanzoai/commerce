@@ -59,7 +59,12 @@ func getStack() string {
 // Show our error page & log it out
 func handleError(c *gin.Context, stack string) {
 	c.Writer.WriteHeader(http.StatusInternalServerError)
-	template.Render(c, "error/500.html")
+
+	if appengine.IsDevAppServer() {
+		c.String(500, "error 500: " + stack)
+	} else {
+		template.Render(c, "error/500.html")
+	}
 
 	ctx := GetAppEngine(c)
 	ctx.Errorf(stack)
