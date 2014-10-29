@@ -5,7 +5,7 @@
   {% if product.HeaderImage.Url %}
   <img data-src="{{ product.HeaderImage.Url }}" data-image="{{ product.HeaderImage.Url }}" data-image-dimensions="{{ image.Dimensions() }}" data-image-focal-point="0.5,0.5" alt="{{ product.HeaderImage.Alt }}" src="{{ product.HeaderImage.Url }}?format=1500w" style="top: -216px; left: 0px; width: 1440px; height: 810px; position: relative; transform: translate3d(0px, 0px, 0px);" data-image-resolution="1500w">
   {% else %}
-  <img data-load="lazy" data-src="{{ product.DisplayImage().Url }}" data-image="{{ product.DisplayImage().Url }}" data-image-dimensions="{{ image.Dimensions() }}" data-image-focal-point="0.5,0.5" alt="{{ product.DisplayImage().Alt }}"  data-image-resolution="1500w">
+  <img data-src="{{ product.DisplayImage().Url }}" data-image="{{ product.DisplayImage().Url }}" data-image-dimensions="{{ image.Dimensions() }}" data-image-focal-point="0.5,0.5" alt="{{ product.DisplayImage().Alt }}" src="{{ product.DisplayImage().Url }}?format=1500w" style="top: -216px; left: 0px; width: 1440px; height: 810px; position: relative; transform: translate3d(0px, 0px, 0px);" data-image-resolution="1500w">
   {% endif %}
 </div>
 
