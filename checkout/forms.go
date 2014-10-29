@@ -35,11 +35,8 @@ func (f AuthorizeForm) Validate() (errs []string) {
 	if f.Order.User.Phone == "" {
 		errs = append(errs, "Phone number is required")
 	}
-	if f.Order.BillingAddress.Street == "" {
-		errs = append(errs, "Street is required")
-	}
-	if f.Order.BillingAddress.Unit == "" {
-		errs = append(errs, "Unit is required")
+	if f.Order.BillingAddress.Line1 == "" {
+		errs = append(errs, "Address line 1 is required")
 	}
 	if f.Order.BillingAddress.City == "" {
 		errs = append(errs, "City is required")
