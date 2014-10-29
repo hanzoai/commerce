@@ -4,6 +4,8 @@ import (
 	"crowdstart.io/models"
 	"crowdstart.io/util/form"
 	"github.com/gin-gonic/gin"
+	"strings"
+	"strconv"
 )
 
 type CheckoutForm struct {
@@ -17,10 +19,25 @@ func (f *CheckoutForm) Parse(c *gin.Context) error {
 type AuthorizeForm struct {
 	Order models.Order
 	User models.User
+	RawExpiry string
 }
 
 func (f *AuthorizeForm) Parse(c *gin.Context) error {
-	return form.Parse(c, f)
+	if err := form.Parse(c, f); err != nil {
+		return err
+	}
+
+	// Parse raw expiry
+	parts := strings.Split(f.RawExpiry, "/")
+	strMonth, strYear := parts[0], parts[1]
+	month, _ := strconv.Atoi(strMonth)
+	year, _  := strconv.Atoi(strYear)
+
+	f.Order.Account.Month = month
+	f.Order.Account.Year = year
+	f.Order.Account.Expiry = strMonth + strYear
+
+	return nil
 }
 
 func (f AuthorizeForm) Validate() (errs []string) {
@@ -70,7 +87,7 @@ func (f AuthorizeForm) Validate() (errs []string) {
 	if len(string(f.Order.Account.CVV2)) < 3 {
 		errs = append(errs, "Confirmation code is required.")
 	}
-	if len(f.Order.Account.Expiry()) != 4 {
+	if len(f.Order.Account.Expiry) != 4 {
 		errs = append(errs, "Invalid expiry")
 	}
 

@@ -82,14 +82,11 @@ func (c Cart) Validate(req *http.Request, errs binding.Errors) binding.Errors {
 
 type PaymentAccount struct {
 	CVV2    int
-	Month   string
-	Year    string
+	Month   int
+	Year    int
+	Expiry  string
 	Number  string
 	Type    string `schema:"-"`
-}
-
-func (pa PaymentAccount) Expiry() string {
-	return pa.Month + pa.Year[2:4]
 }
 
 type Order struct {
