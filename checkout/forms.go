@@ -54,10 +54,10 @@ func (f AuthorizeForm) Validate() (errs []string) {
 	if f.Order.BillingAddress.Country == "" {
 		errs = append(errs, "Country is required")
 	}
-	if len(string(f.Order.Account.CVV2)) == 3 {
+	if len(string(f.Order.Account.CVV2)) != 3 {
 		errs = append(errs, "Confirmation code is required.")
 	}
-	if len(string(f.Order.Account.Expiry)) == 4 {
+	if len(string(f.Order.Account.Expiry())) != 4 {
 		errs = append(errs, "Expiry is required")
 	}
 
