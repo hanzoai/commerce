@@ -36,10 +36,14 @@
                 <div class="wrapper">
                     <div id="productSlideshow" class="sqs-gallery-design-stacked">
                         {% for image in product.Images %}
-                        <div class="slide sqs-gallery-design-stacked-slide" data-type="image" style="opacity: 1; z-index: 889;">
-                            <img data-load="false" data-src="{{ image.Url }}" data-image="{{ image.Url }}" data-image-dimensions="{{ image.Dimensions() }}" data-image-focal-point="0.5,0.5" alt="{{ image.Alt }}" class="loaded" src="{{ image.Url }}?format=1500w&amp;storage=local" data-image-resolution="1500w" style="top: 0px; left: 0px; width: 610px; height: 610px; position: relative;">
-                            <div class=""></div>
-                        </div>
+                            <div class="slide sqs-gallery-design-stacked-slide" data-type="image" style="z-index: 889;">
+                                {% if forloop.First %}
+                                <img data-load="false" data-src="{{ image.Url }}" data-image="{{ image.Url }}" data-image-dimensions="{{ image.Dimensions() }}" data-image-focal-point="0.5,0.5" alt="{{ image.Alt }}" class="loaded" src="{{ image.Url }}?format=1500w&amp;storage=local" data-image-resolution="1500w" style="top: 0px; left: 0px; width: 610px; height: 610px; position: relative;">
+                                {% else %}
+                                <img data-load="false" data-src="{{ image.Url }}" data-image="{{ image.Url }}" data-image-dimensions="{{ image.Dimensions() }}" data-image-focal-point="0.5,0.5" alt="{{ image.Alt }}" class="loaded" src="{{ image.Url }}?format=1500w&amp;storage=local" data-image-resolution="1500w" style="display: none; top: 0px; left: 0px; width: 610px; height: 610px; position: relative;">
+                                {% endif %}
+                                <div class=""></div>
+                            </div>
                         {% endfor %}
                     </div>
                 </div>
