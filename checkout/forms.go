@@ -1,19 +1,26 @@
 package checkout
 
 import (
+	"github.com/gin-gonic/gin"
 	"crowdstart.io/util/form"
 	"crowdstart.io/models"
 )
 
 type CheckoutForm struct {
-	form.Form
-	Order *models.Order
+	Order models.Order
+}
+
+func (f *CheckoutForm) Parse(c *gin.Context) error {
+	return form.Parse(c, f)
 }
 
 type AuthorizeForm struct {
-	form.Form
 	Order models.Order
 	User  models.User
+}
+
+func (f *AuthorizeForm) Parse(c *gin.Context) error {
+	return form.Parse(c, f)
 }
 
 func (f AuthorizeForm) Validate() (errs []string) {
