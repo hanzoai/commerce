@@ -39,7 +39,7 @@ type AuthorizationReq struct {				     // {
 	Currency string      `json:"currency"`       // "currency": "USD",
 	CVV2     int         `json:"cvv2"`           // "cvv2":     "123",
 	Ecomind  string      `json:"ecomind"`        // "ecomind":  "E",
-	Expiry   int         `json:"expiry,string"`  // "expiry":   "1212",
+	Expiry   string		 `json:"expiry"`	     // "expiry":   "1212",
 	MerchId  int         `json:"merchid,string"` // "merchid":  "000000927996",
 	Name     string      `json:"name"`           // "name":     "TOM JONES",
 	Email    string      `json:"email"`          // "email":    "dev@hanzo.ai JONES",
@@ -120,6 +120,7 @@ func Authorize(ctx appengine.Context, order models.Order) (ares AuthorizationRes
 
 	jsonreq,_ := json.Marshal(areq)
 	reqbuf := bytes.NewBuffer(jsonreq)
+	ctx.Debugf("%#v", areq)
 
 	req, err := http.NewRequest("PUT", baseUrl+"/auth",reqbuf)
 	req.Header.Add("Authorization", "Basic "+authCode)
