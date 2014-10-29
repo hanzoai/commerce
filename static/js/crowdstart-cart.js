@@ -28,7 +28,7 @@ csio.renderLineItem = function(lineItem, index) {
       e.stopPropagation();
 
       // Get quantity
-      var quantity = $(this).val()
+      var quantity = parseInt($(this).val(), 10);
 
       // Prevent less than one quantity
       if (quantity < 1) {
