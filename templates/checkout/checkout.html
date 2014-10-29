@@ -673,8 +673,9 @@
                             </thead>
                             <tbody>
                                 {% for item in order.Items %}
-                                <tr data-chosen-variant-sku="{{ item.SKU }}">
-                                    <input style="display:none;" name="Order.Items.{{ forloop.Counter }}.SKU()" value="{{ item.SKU() }}">
+                                <tr data-chosen-variant-sku="{{ item.SKU() }}">
+                                    <input type="hidden" value="{{ item.Slug() }}">
+                                    <input type="hidden" value="{{ item.SKU() }}">
                                     <td class="item">
                                         <div class="item-image">
                                             <img src="{{ item.Product.DisplayImage().Url }}?format=100w">
@@ -686,7 +687,7 @@
                                     </td>
 
                                     <td class="quantity">
-                                        <input size="1" value="{{ item.Quantity }}" name="Order.Items.{{ forloop.Counter }}.Quantity">
+                                        <input size="1" value="{{ item.Quantity }}">
                                     </td>
 
                                     <td class="price"><span class="sqs-money-native">{{ item.DisplayPrice() }}</span>
@@ -810,8 +811,12 @@
             <div class="yui3-widget sqs-widget sqs-checkout-form">
                 <div class="sqs-checkout-form-content">
                     <form id="form" action="/checkout/authorize" method="POST" accept-charset="UTF-8" enctype="application/x-www-form-urlencoded; charset=utf-8">
-                        <!-- <input type="hidden" name="forceTestMode"> -->
-                        <!-- <input type="hidden" name="customFormSubmission"> -->
+                        {% for item in order.Items %}
+                        <input type="hidden" name="Order.Items.{{ forloop.Counter }}.Product.Slug" value="{{ item.Slug() }}">
+                        <input type="hidden" name="Order.Items.{{ forloop.Counter }}.Variant.SKU" value="{{ item.SKU() }}">
+                        <input type="hidden" name="Order.Items.{{ forloop.Counter }}.Quantity" value="{{ item.Quantity }}" >
+                        {% endfor %}
+
                         <div class="yui3-widget sqs-widget sqs-checkout-form-section card sqs-checkout-form-address sqs-checkout-form-billing editing">
                             <div class="sqs-checkout-form-billing-content">
                                 <div class="title">Billing Info<a class="edit-button">edit</a>
@@ -822,21 +827,21 @@
                                     <!-- First Name -->
                                     <div id="billing-first-name" data-label="First Name" class="field first-name required">
                                         <label>First Name</label>
-                                        <input name="Order.User.FirstName" class="field-element pulse-warnable" placeholder="First Name" x-autocompletetype="given-name" type="text" spellcheck="false" maxlength="30" value="">
+                                        <input name="User.FirstName" class="field-element pulse-warnable" placeholder="First Name" x-autocompletetype="given-name" type="text" spellcheck="false" maxlength="30" value="">
                                     </div>
 
 
                                     <!-- Last Name -->
                                     <div id="billing-last-name" data-label="Last Name" class="field last-name required">
                                         <label>Last Name</label>
-                                        <input name="Order.User.LastName" class="field-element pulse-warnable" placeholder="Last Name" x-autocompletetype="surname" a="" type="text" spellcheck="false" maxlength="30" value>
+                                        <input name="User.LastName" class="field-element pulse-warnable" placeholder="Last Name" x-autocompletetype="surname" a="" type="text" spellcheck="false" maxlength="30" value>
                                     </div>
 
 
                                     <!-- Email Address -->
                                     <div id="email" data-label="Email Address" class="field email required">
                                         <label>Email Address</label>
-                                        <input name="Order.User.Email" class="field-element pulse-warnable" placeholder="Email" x-autocompletetype="email" type="text" spellcheck="false" maxlength="50" value>
+                                        <input name="User.Email" class="field-element pulse-warnable" placeholder="Email" x-autocompletetype="email" type="text" spellcheck="false" maxlength="50" value>
                                     </div>
 
 
@@ -943,7 +948,6 @@
                                         </select>
                                     </div>
 
-
                                     <!-- Zip Code -->
                                     <div id="billing-zip" data-label="Zip Code" class="field zip required">
                                         <label>Zip / Postal</label>
@@ -953,12 +957,8 @@
                                     <div style="clear:both;"></div>
                                     <div id="phone" data-label="Phone Number" class="field phone">
                                         <label>Phone Number</label>
-                                        <input name="Order.User.Phone" class="field-element pulse-warnable" placeholder="Phone Number" x-autocompletetype="phone" type="text" spellcheck="false" maxlength="20" value>
+                                        <input name="User.Phone" class="field-element pulse-warnable" placeholder="Phone Number" x-autocompletetype="phone" type="text" spellcheck="false" maxlength="20" value>
                                     </div>
-
-
-
-
 
                                     <!-- Continue -->
                                     <div class="btn-container" style="text-align: center;">
@@ -969,7 +969,7 @@
                             </div>
                         </div>
 
-                        
+
                         <div class="yui3-widget sqs-widget sqs-checkout-form-section card sqs-checkout-form-address sqs-checkout-form-shipping"">
                             <div class="sqs-checkout-form-shipping-content empty-shipping-options">
                                 <div class="title">Shipping Options<a class="edit-button">edit</a>
@@ -1093,9 +1093,24 @@
                                         </div>
                                     </div>
 
+
+                                    <!-- Shipping Options -->
+                                    <div id="shipping-options">
+                                        <div class="yui3-widget sqs-widget sqs-checkout-form-shipping-options">
+
+                                        </div>
+                                    </div>
+
+
+                                    <!-- Continue -->
+                                    <div class="btn-container">
+                                        <!-- <div class="button continue-button configure-shipping-button">Configure Shipping Options</div>-->
+                                    </div>
+
+                                </fieldset>
                             </div>
                 </div>
-                            
+
                 <div class="yui3-widget sqs-widget sqs-checkout-form-section card sqs-checkout-form-payment">
                   <div class="sqs-checkout-form-payment-content">
                                 <div class="title">
@@ -1115,7 +1130,7 @@
                                   <div style="display:block; text-align:center; margin-bottom: 15%;">
                                     <div id="card-wrapper"></div>
                                   </div>
-                                  
+
                                     <!-- Credit Card -->
                                     <div id="credit-card">
 
@@ -1138,15 +1153,15 @@
                                             <div id="card-expiry-month" data-label="Exp. Mo." class="field required">
                                                 <label>Exp. Mo.</label>
                                                 <select class="field-element pulse-warnable" name="Order.Account.Month" value="04">
-                                                    <option value="1">01</option>
-                                                    <option value="2">02</option>
-                                                    <option value="3">03</option>
-                                                    <option value="4">04</option>
-                                                    <option value="5">05</option>
-                                                    <option value="6">06</option>
-                                                    <option value="7">07</option>
-                                                    <option value="8">08</option>
-                                                    <option value="9">09</option>
+                                                    <option value="01">01</option>
+                                                    <option value="02">02</option>
+                                                    <option value="03">03</option>
+                                                    <option value="04">04</option>
+                                                    <option value="05">05</option>
+                                                    <option value="06">06</option>
+                                                    <option value="07">07</option>
+                                                    <option value="08">08</option>
+                                                    <option value="09">09</option>
                                                     <option value="10">10</option>
                                                     <option value="11">11</option>
                                                     <option value="12">12</option>

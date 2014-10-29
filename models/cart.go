@@ -3,8 +3,6 @@ package models
 import (
 	"github.com/mholt/binding"
 	"net/http"
-	"strconv"
-	"strings"
 	"time"
 )
 
@@ -89,11 +87,8 @@ type PaymentAccount struct {
 	Type           string `schema:"-"`
 }
 
-func (pa PaymentAccount) ParsedExpiry() int {
-	expiry := strings.TrimSpace(pa.UnparsedExpiry)
-	expiry = strings.Replace(expiry, "/", "", 1)
-	i, _ := strconv.Atoi(expiry)
-	return i
+func (pa PaymentAccount) Expiry() string {
+	return pa.Month + pa.Year[2:4]
 }
 
 type Order struct {
