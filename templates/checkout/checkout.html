@@ -672,8 +672,8 @@
                             <tbody>
                                 {% for item in order.Items %}
                                 <tr data-chosen-variant-sku="{{ item.SKU() }}">
-                                    <input type="hidden" name="Order.Items.{{ forloop.Counter }}.Product.Slug" value="{{ item.Slug() }}">
-                                    <input type="hidden" name="Order.Items.{{ forloop.Counter }}.Variant.SKU" value="{{ item.SKU() }}">
+                                    <input type="hidden" value="{{ item.Slug() }}">
+                                    <input type="hidden" value="{{ item.SKU() }}">
                                     <td class="item">
                                         <div class="item-image">
                                             <img src="{{ item.Product.DisplayImage().Url }}?format=100w">
@@ -685,7 +685,7 @@
                                     </td>
 
                                     <td class="quantity">
-                                        <input size="1" value="{{ item.Quantity }}" name="Order.Items.{{ forloop.Counter }}.Quantity">
+                                        <input size="1" value="{{ item.Quantity }}">
                                     </td>
 
                                     <td class="price"><span class="sqs-money-native">{{ item.DisplayPrice() }}</span>
@@ -809,8 +809,12 @@
             <div class="yui3-widget sqs-widget sqs-checkout-form">
                 <div class="sqs-checkout-form-content">
                     <form id="form" action="/checkout/authorize" method="POST" accept-charset="UTF-8" enctype="application/x-www-form-urlencoded; charset=utf-8">
-                        <!-- <input type="hidden" name="forceTestMode"> -->
-                        <!-- <input type="hidden" name="customFormSubmission"> -->
+                        {% for item in order.Items %}
+                        <input type="hidden" name="Order.Items.{{ forloop.Counter }}.Product.Slug" value="{{ item.Slug() }}">
+                        <input type="hidden" name="Order.Items.{{ forloop.Counter }}.Variant.SKU" value="{{ item.SKU() }}">
+                        <input type="hidden" name="Order.Items.{{ forloop.Counter }}.Quantity" value="{{ item.Quantity }}" >
+                        {% endfor %}
+
                         <div class="yui3-widget sqs-widget sqs-checkout-form-section card sqs-checkout-form-address sqs-checkout-form-billing editing">
                             <div class="sqs-checkout-form-billing-content">
                                 <div class="title">Billing Info<a class="edit-button">edit</a>
@@ -942,7 +946,6 @@
                                         </select>
                                     </div>
 
-
                                     <!-- Zip Code -->
                                     <div id="billing-zip" data-label="Zip Code" class="field zip required">
                                         <label>Zip / Postal</label>
@@ -954,10 +957,6 @@
                                         <label>Phone Number</label>
                                         <input name="User.Phone" class="field-element pulse-warnable" placeholder="Phone Number" x-autocompletetype="phone" type="text" spellcheck="false" maxlength="20" value>
                                     </div>
-
-
-
-
 
                                     <!-- Continue -->
                                     <div class="btn-container" style="text-align: center;">
