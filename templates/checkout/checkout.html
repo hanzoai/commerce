@@ -807,7 +807,7 @@
         <div id="form-wrapper" class="right-column-wrapper">
             <div class="yui3-widget sqs-widget sqs-checkout-form">
                 <div class="sqs-checkout-form-content">
-                    <form action="/checkout/authorize" method="POST" accept-charset="UTF-8" enctype="application/x-www-form-urlencoded; charset=utf-8">
+                    <form id="form" action="/checkout/authorize" method="POST" accept-charset="UTF-8" enctype="application/x-www-form-urlencoded; charset=utf-8">
                         <!-- <input type="hidden" name="forceTestMode"> -->
                         <!-- <input type="hidden" name="customFormSubmission"> -->
                         <div class="yui3-widget sqs-widget sqs-checkout-form-section card sqs-checkout-form-address sqs-checkout-form-billing editing">
@@ -820,28 +820,28 @@
                                     <!-- First Name -->
                                     <div id="billing-first-name" data-label="First Name" class="field first-name required">
                                         <label>First Name</label>
-                                        <input name="Order.User.FirstName" class="field-element pulse-warnable" placeholder="First Name" x-autocompletetype="given-name" type="text" spellcheck="false" maxlength="30">
+                                        <input name="Order.User.FirstName" class="field-element pulse-warnable" placeholder="First Name" x-autocompletetype="given-name" type="text" spellcheck="false" maxlength="30" value="">
                                     </div>
 
 
                                     <!-- Last Name -->
                                     <div id="billing-last-name" data-label="Last Name" class="field last-name required">
                                         <label>Last Name</label>
-                                        <input name="Order.User.LastName" class="field-element pulse-warnable" placeholder="Last Name" x-autocompletetype="surname" a="" type="text" spellcheck="false" maxlength="30">
+                                        <input name="Order.User.LastName" class="field-element pulse-warnable" placeholder="Last Name" x-autocompletetype="surname" a="" type="text" spellcheck="false" maxlength="30" value>
                                     </div>
 
 
                                     <!-- Email Address -->
                                     <div id="email" data-label="Email Address" class="field email required">
                                         <label>Email Address</label>
-                                        <input name="Order.User.Email" class="field-element pulse-warnable" placeholder="Email" x-autocompletetype="email" type="text" spellcheck="false" maxlength="50">
+                                        <input name="Order.User.Email" class="field-element pulse-warnable" placeholder="Email" x-autocompletetype="email" type="text" spellcheck="false" maxlength="50" value>
                                     </div>
 
 
                                     <!-- Billing Address 1 -->
                                     <div id="billing-address-1" data-label="Address Line 1" class="field required" style="width: 20%; margin-right:5px;">
                                         <label>Unit</label>
-                                        <input name="Order.BillingAddress.Unit" class="field-element address-line1 pulse-warnable sqs-scroll-ac-input" placeholder="Unit" x-autocompletetype="address-line1" type="text" spellcheck="false" maxlength="50" aria-autocomplete="list" aria-expanded="false" autocomplete="on">
+                                        <input name="Order.BillingAddress.Unit" class="field-element address-line1 pulse-warnable sqs-scroll-ac-input" placeholder="Unit" x-autocompletetype="address-line1" type="text" spellcheck="false" maxlength="50" aria-autocomplete="list" aria-expanded="false" autocomplete="on" value>
                                         <div class="yui3-widget yui3-aclist sqs-scroll-ac yui3-widget-positioned sqs-scroll-ac-hidden" aria-hidden="true" style="left: 0px; top: 40.796875px;">
                                             <div class="sqs-scroll-ac-content sqs-google-places-autocomplete-mixin">
                                                 <div class="sqs-scroll-ac-scroll-container" hidden="hidden" style="display: none;">
@@ -858,16 +858,16 @@
 
 
                                     <!-- Billing Address 2 -->
-                                    <div id="billing-address-2" data-label="Address Line 2" class="field" style="width:78%;">
+                                    <div id="billing-address-2" data-label="Address Line 2" class="field required" style="width:78%;">
                                         <label>Street</label>
-                                        <input name="Order.BillingAddress.Street" class="field-element address-line2 pulse-warnable" placeholder="Street" type="text" x-autocompletetype="address-line2" spellcheck="false" maxlength="50">
+                                        <input name="Order.BillingAddress.Street" class="field-element address-line2 pulse-warnable" placeholder="Street" type="text" x-autocompletetype="address-line2" spellcheck="false" maxlength="50" value="">
                                     </div>
 
 
                                     <!-- Country -->
                                     <div id="billing-country" data-label="Country" class="field country required">
                                         <label>Country</label>
-                                        <select name="Order.BillingAddress.Country" class="field-element pulse-warnable" x-autocompletetype="country-name">
+                                        <select name="Order.BillingAddress.Country" class="field-element pulse-warnable" x-autocompletetype="country-name" value>
                                             <option value="United States">United States</option>
                                         </select>
                                     </div>
@@ -876,14 +876,14 @@
                                     <!-- City -->
                                     <div id="billing-city" data-label="City" class="field city required">
                                         <label>City</label>
-                                        <input name="Order.BillingAddress.City" class="field-element pulse-warnable" placeholder="City" type="text" spellcheck="false" maxlength="30">
+                                        <input name="Order.BillingAddress.City" class="field-element pulse-warnable" placeholder="City" type="text" spellcheck="false" maxlength="30" value>
                                     </div>
 
 
                                     <!-- State/Province -->
                                     <div id="billing-state" data-label="State/Province" class="field state required">
                                         <label>State/Province</label>
-                                        <select name="Order.BillingAddress.State" class="field-element pulse-warnable" x-autocompletetype="state">
+                                        <select name="Order.BillingAddress.State" class="field-element pulse-warnable" x-autocompletetype="state" value>
                                             <option value="AL">AL</option>
                                             <option value="AK">AK</option>
                                             <option value="AZ">AZ</option>
@@ -945,13 +945,13 @@
                                     <!-- Zip Code -->
                                     <div id="billing-zip" data-label="Zip Code" class="field zip required">
                                         <label>Zip / Postal</label>
-                                        <input name="Order.BillingAddress.PostalCode" class="field-element pulse-warnable" placeholder="Zip / Postal" type="text" spellcheck="false" maxlength="10">
+                                        <input name="Order.BillingAddress.PostalCode" class="field-element pulse-warnable" placeholder="Zip / Postal" type="text" spellcheck="false" maxlength="10" value>
                                     </div>
 
                                     <div style="clear:both;"></div>
                                     <div id="phone" data-label="Phone Number" class="field phone">
                                         <label>Phone Number</label>
-                                        <input name="Order.User.Phone" class="field-element pulse-warnable" placeholder="Phone Number" x-autocompletetype="phone" type="text" spellcheck="false" maxlength="20">
+                                        <input name="Order.User.Phone" class="field-element pulse-warnable" placeholder="Phone Number" x-autocompletetype="phone" type="text" spellcheck="false" maxlength="20" value>
                                     </div>
 
 
@@ -1297,6 +1297,8 @@
         </div>
     </div>
     <script src="/js/{main,places}.js"></script>
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script src="/js/checkout.js"></script>
 </body>
 
 </html>
