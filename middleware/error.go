@@ -58,10 +58,11 @@ func getStack() string {
 
 // Show our error page & log it out
 func handleError(c *gin.Context, stack string) {
+	c.Writer.Header().Set("Content-Type", "text/html")
 	c.Writer.WriteHeader(http.StatusInternalServerError)
 
 	if appengine.IsDevAppServer() {
-		c.String(500, "error 500: " + stack)
+		c.Writer.Write([]byte("<head><style>body{font-family:monospace; margin:20px}</style><h4>500 Internal Server Error (crowdstart/1.0.0)</h1><p>" + stack + "</p>"))
 	} else {
 		template.Render(c, "error/500.html")
 	}
