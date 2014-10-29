@@ -84,43 +84,8 @@
         </td>
     </tr>
 </table>
-
-<script type="text/javascript">
-    $(document).ready(function(){
-        $.cookie.json = true;
-
-        var templateEl = $('.template');
-        templateEl.parent().remove();
-
-        function renderTemplate(data, index) {
-            var cartEl = templateEl.clone(false);
-            cartEl.find('img.thumbnail').attr('src', data.img[0]);
-            cartEl.find('input.slug').val(data.slug).attr('name', 'Order.Items.' + (index + 1) + '.Slug');
-            cartEl.find('input.sku').val(data.sku).attr('name', 'Order.Items.' + (index + 1) + '.SKU');
-            cartEl.find('a.title').text(data.name);
-            cartEl.find('div.variant-info').text(data.color + ' / ' + data.size);
-            cartEl.find('.quantity input').val(data.quantity).attr('name', 'Order.Items.' + (index + 1) + '.Quantity');
-            cartEl.find('.price span').text(data.price);
-            cartEl.removeClass('template');
-
-            $('.cart-container tbody').append(cartEl);
-        }
-
-        var cart = $.cookie('SkullySystemsCart');
-        var i = 0;
-        var price = 0;
-        for(var key in cart) {
-            var data = cart[key];
-            renderTemplate(data, i);
-            price += data.quantity * data.price;
-            i++;
-        }
-
-        $('.subtotal .price span').text(price);
-    });
-</script>
 {% endblock %}
 
 {% block js %}
-<script type="text/javascript" src="/js/cart.js"><script>
+<script type="text/javascript" src="/js/cart.js"></script>
 {% endblock %}
