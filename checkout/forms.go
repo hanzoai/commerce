@@ -23,17 +23,23 @@ func (f *AuthorizeForm) Parse(c *gin.Context) error {
 }
 
 func (f AuthorizeForm) Validate() (errs []string) {
-	if f.Order.User.FirstName == "" {
-		errs = append(errs, "First name is required")
+	if f.Order.BillingUser.FirstName == "" {
+		errs = append(errs, "Billed user's first name is required")
 	}
-	if f.Order.User.LastName == "" {
-		errs = append(errs, "Last name is required")
+	if f.Order.BillingUser.LastName == "" {
+		errs = append(errs, "Billed user's Last name is required")
 	}
-	if f.Order.User.Email == "" {
-		errs = append(errs, "Email address is required")
+	if f.Order.BillingUser.Email == "" {
+		errs = append(errs, "Billed user's Email address is required")
 	}
-	if f.Order.User.Phone == "" {
-		errs = append(errs, "Phone number is required")
+	if f.Order.BillingUser.Phone == "" {
+		errs = append(errs, "Billed user's Phone number is required")
+	}
+	if f.Order.ShippingUser.FirstName == "" {
+		errs = append(errs, "Shipping: First name is required")
+	}
+	if f.Order.ShippingUser.LastName == "" {
+		errs = append(errs, "Shipping: Last name is required")
 	}
 	if f.Order.BillingAddress.Line1 == "" {
 		errs = append(errs, "Address line 1 is required")
@@ -50,10 +56,25 @@ func (f AuthorizeForm) Validate() (errs []string) {
 	if f.Order.BillingAddress.Country == "" {
 		errs = append(errs, "Country is required")
 	}
-	if len(string(f.Order.Account.CVV2)) != 3 {
+		if f.Order.ShippingAddress.Line1 == "" {
+		errs = append(errs, "Address line 1 is required")
+	}
+	if f.Order.ShippingAddress.City == "" {
+		errs = append(errs, "City is required")
+	}
+	if f.Order.ShippingAddress.State == "" {
+		errs = append(errs, "State is required")
+	}
+	if f.Order.ShippingAddress.PostalCode == "" {
+		errs = append(errs, "Postal code is required")
+	}
+	if f.Order.ShippingAddress.Country == "" {
+		errs = append(errs, "Country is required")
+	}
+	if len(string(f.Order.Account.CVV2)) < 3 {
 		errs = append(errs, "Confirmation code is required.")
 	}
-	if len(string(f.Order.Account.Expiry())) != 4 {
+	if len(string(f.Order.Account.ParsedExpiry())) != 4 {
 		errs = append(errs, "Expiry is required")
 	}
 
