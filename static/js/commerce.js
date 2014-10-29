@@ -15,6 +15,18 @@ if (location.pathname == '/cart') {
   $('.fixed-cart').hide();
 }
 
+$('#productThumbnails .slide img').each(function(i,v) {
+  $(v).click(function(){
+    var src = $(v).data('src');
+    $('#productSlideshow .slide img').each(function(i,v) {
+      if (src === $(v).data('src'))
+        $(v).fadeIn(400)
+      else
+        $(v).fadeOut(400)
+    })
+  })
+})
+
 function humanizeNumber(num) {
   var humanizedNum = (num || 0) + "";
 

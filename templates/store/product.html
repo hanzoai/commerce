@@ -5,7 +5,7 @@
   {% if product.HeaderImage.Url %}
   <img data-src="{{ product.HeaderImage.Url }}" data-image="{{ product.HeaderImage.Url }}" data-image-dimensions="{{ image.Dimensions() }}" data-image-focal-point="0.5,0.5" alt="{{ product.HeaderImage.Alt }}" src="{{ product.HeaderImage.Url }}?format=1500w" style="top: -216px; left: 0px; width: 1440px; height: 810px; position: relative; transform: translate3d(0px, 0px, 0px);" data-image-resolution="1500w">
   {% else %}
-  <img data-load="lazy" data-src="{{ product.DisplayImage().Url }}" data-image="{{ product.DisplayImage().Url }}" data-image-dimensions="{{ image.Dimensions() }}" data-image-focal-point="0.5,0.5" alt="{{ product.DisplayImage().Alt }}"  data-image-resolution="1500w">
+  <img data-src="{{ product.DisplayImage().Url }}" data-image="{{ product.DisplayImage().Url }}" data-image-dimensions="{{ image.Dimensions() }}" data-image-focal-point="0.5,0.5" alt="{{ product.DisplayImage().Alt }}" src="{{ product.DisplayImage().Url }}?format=1500w" style="top: -216px; left: 0px; width: 1440px; height: 810px; position: relative; transform: translate3d(0px, 0px, 0px);" data-image-resolution="1500w">
   {% endif %}
 </div>
 
@@ -36,7 +36,7 @@
                 <div class="wrapper">
                     <div id="productSlideshow" class="sqs-gallery-design-stacked">
                         {% for image in product.Images %}
-                        <div class="slide sqs-gallery-design-stacked-slide sqs-active-slide" data-type="image" style="opacity: 1; z-index: 889;">
+                        <div class="slide sqs-gallery-design-stacked-slide" data-type="image" style="opacity: 1; z-index: 889;">
                             <img data-load="false" data-src="{{ image.Url }}" data-image="{{ image.Url }}" data-image-dimensions="{{ image.Dimensions() }}" data-image-focal-point="0.5,0.5" alt="{{ image.Alt }}" class="loaded" src="{{ image.Url }}?format=1500w&amp;storage=local" data-image-resolution="1500w" style="top: 0px; left: 0px; width: 610px; height: 610px; position: relative;">
                             <div class=""></div>
                         </div>
@@ -48,7 +48,7 @@
             {% if product.Images | length > 1 %}
             <div id="productThumbnails" style="visibility: visible;">
                 {% for image in product.Images %}
-                <div class="slide content-fill sqs-active-slide" style="overflow: hidden;">
+                <div class="slide content-fill style="overflow: hidden;">
                     <img data-src="{{ image.Url }}" data-image="{{ image.Url }}" data-image-dimensions="{{ image.Dimensions() }}" data-image-focal-point="0.5,0.5" alt="{{ image.Alt }}" class="" src="{{ image.Url }}?format=100w" style="top: 0px; left: 0px; width: 50px; height: 50px; position: relative;" data-image-resolution="100w">
                 </div>
                 {% endfor %}
