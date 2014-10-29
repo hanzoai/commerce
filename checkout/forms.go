@@ -1,9 +1,9 @@
 package checkout
 
 import (
-	"github.com/gin-gonic/gin"
-	"crowdstart.io/util/form"
 	"crowdstart.io/models"
+	"crowdstart.io/util/form"
+	"github.com/gin-gonic/gin"
 )
 
 type CheckoutForm struct {
