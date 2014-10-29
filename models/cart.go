@@ -4,7 +4,6 @@ import (
 	"github.com/mholt/binding"
 	"net/http"
 	"time"
-	"strconv"
 )
 
 type LineItem struct {
@@ -89,9 +88,8 @@ type PaymentAccount struct {
 	Type    string `schema:"-"`
 }
 
-func (pa PaymentAccount) Expiry() int {
-	i, _ := strconv.Atoi(pa.Month + pa.Year)
-	return i
+func (pa PaymentAccount) Expiry() string {
+	return pa.Month + pa.Year[2:4]
 }
 
 type Order struct {
