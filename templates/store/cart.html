@@ -59,7 +59,7 @@
 <table style="display:none">
     <tr class='template'>
         <input class='slug' type="hidden" name="Order.Items.1.Product.Slug" value="{{ item.Slug() }}">
-        <input class='sku' type="hidden" name="Order.Items.1.SKU" value="{{ item.SKU() }}">
+        <input class='sku' type="hidden" name="Order.Items.1.Variant.SKU" value="{{ item.SKU() }}">
         <td class="item">
             <div class="item-image">
                 <img class="thumbnail" src="{{ item.Product.DisplayImage().Url }}?format=100w">

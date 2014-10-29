@@ -7,13 +7,7 @@ import (
 
 var decoder = schema.NewDecoder()
 
-type Form struct{}
-
-func (f *Form) Parse(c *gin.Context) error {
+func Parse(c *gin.Context, form interface{}) error {
 	c.Request.ParseForm()
-	return decoder.Decode(f, c.Request.PostForm)
-}
-
-func (f Form) Validate() (errs []string) {
-	return errs
+	return decoder.Decode(form, c.Request.PostForm)
 }
