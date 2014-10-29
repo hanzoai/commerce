@@ -1,9 +1,9 @@
 package checkout
 
 import (
-	"github.com/gin-gonic/gin"
-	"crowdstart.io/util/form"
 	"crowdstart.io/models"
+	"crowdstart.io/util/form"
+	"github.com/gin-gonic/gin"
 )
 
 type CheckoutForm struct {
@@ -16,7 +16,6 @@ func (f *CheckoutForm) Parse(c *gin.Context) error {
 
 type AuthorizeForm struct {
 	Order models.Order
-	User  models.User
 }
 
 func (f *AuthorizeForm) Parse(c *gin.Context) error {
@@ -54,10 +53,10 @@ func (f AuthorizeForm) Validate() (errs []string) {
 	if f.Order.BillingAddress.Country == "" {
 		errs = append(errs, "Country is required")
 	}
-	if len(string(f.Order.Account.CVV2)) == 3 {
+	if len(string(f.Order.Account.CVV2)) != 3 {
 		errs = append(errs, "Confirmation code is required.")
 	}
-	if len(string(f.Order.Account.Expiry)) == 4 {
+	if len(string(f.Order.Account.Expiry())) != 4 {
 		errs = append(errs, "Expiry is required")
 	}
 

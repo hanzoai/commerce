@@ -100,7 +100,7 @@ func Authorize(order models.Order) (ares AuthorizationRes, err error) {
 		Currency: "USD",
 		Ecomind:  "E",
 		Email:    order.User.Email,
-		Expiry:   order.Account.Expiry,
+		Expiry:   order.Account.Expiry(),
 		MerchId:  496160873888,
 		Name:     order.User.Name(),
 		OrderId:  order.Id,
