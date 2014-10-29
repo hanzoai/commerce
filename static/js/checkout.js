@@ -2,8 +2,6 @@ $('div.field').on('click', function() {
     $(this).removeClass('error');
 });
 
-$("input[type='text']").prop('value', "")
-
 $('#form').submit(function(e) {
     var empty = $('div.required > input').filter(function() {return $(this).val() == "";});
     if (empty.length > 0) {
@@ -11,6 +9,18 @@ $('#form').submit(function(e) {
         empty.parent().addClass('error');
     }
 });
+
+var t = setInterval(function(){
+    var empty = $('div:visible.required > input').filter(function() {return $(this).val() == "";});
+
+    if (empty.length == 0) {
+        var fieldset = $('div.sqs-checkout-form-payment-content > fieldset');
+        fieldset.css('display', 'block');
+        fieldset.css('opacity', '0');
+        fieldset.fadeTo(1000, 1);
+        clearInterval(t);
+    }
+}, 500);
 
 (function() {
   var e, t, n, r, i, s = {}.hasOwnProperty,
