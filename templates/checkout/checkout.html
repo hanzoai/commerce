@@ -820,28 +820,28 @@
                                     <!-- First Name -->
                                     <div id="billing-first-name" data-label="First Name" class="field first-name required">
                                         <label>First Name</label>
-                                        <input name="User.FirstName" class="field-element pulse-warnable" placeholder="First Name" x-autocompletetype="given-name" type="text" spellcheck="false" maxlength="30">
+                                        <input name="Order.User.FirstName" class="field-element pulse-warnable" placeholder="First Name" x-autocompletetype="given-name" type="text" spellcheck="false" maxlength="30">
                                     </div>
 
 
                                     <!-- Last Name -->
                                     <div id="billing-last-name" data-label="Last Name" class="field last-name required">
                                         <label>Last Name</label>
-                                        <input name="User.LastName" class="field-element pulse-warnable" placeholder="Last Name" x-autocompletetype="surname" a="" type="text" spellcheck="false" maxlength="30">
+                                        <input name="Order.User.LastName" class="field-element pulse-warnable" placeholder="Last Name" x-autocompletetype="surname" a="" type="text" spellcheck="false" maxlength="30">
                                     </div>
 
 
                                     <!-- Email Address -->
                                     <div id="email" data-label="Email Address" class="field email required">
                                         <label>Email Address</label>
-                                        <input name="User.Email" class="field-element pulse-warnable" placeholder="Email" x-autocompletetype="email" type="text" spellcheck="false" maxlength="50">
+                                        <input name="Order.User.Email" class="field-element pulse-warnable" placeholder="Email" x-autocompletetype="email" type="text" spellcheck="false" maxlength="50">
                                     </div>
 
 
                                     <!-- Billing Address 1 -->
                                     <div id="billing-address-1" data-label="Address Line 1" class="field required" style="width: 20%; margin-right:5px;">
                                         <label>Unit</label>
-                                        <input name="BillingAddress.Unit" class="field-element address-line1 pulse-warnable sqs-scroll-ac-input" placeholder="Unit" x-autocompletetype="address-line1" type="text" spellcheck="false" maxlength="50" aria-autocomplete="list" aria-expanded="false" autocomplete="on">
+                                        <input name="Order.BillingAddress.Unit" class="field-element address-line1 pulse-warnable sqs-scroll-ac-input" placeholder="Unit" x-autocompletetype="address-line1" type="text" spellcheck="false" maxlength="50" aria-autocomplete="list" aria-expanded="false" autocomplete="on">
                                         <div class="yui3-widget yui3-aclist sqs-scroll-ac yui3-widget-positioned sqs-scroll-ac-hidden" aria-hidden="true" style="left: 0px; top: 40.796875px;">
                                             <div class="sqs-scroll-ac-content sqs-google-places-autocomplete-mixin">
                                                 <div class="sqs-scroll-ac-scroll-container" hidden="hidden" style="display: none;">
@@ -860,14 +860,14 @@
                                     <!-- Billing Address 2 -->
                                     <div id="billing-address-2" data-label="Address Line 2" class="field" style="width:78%;">
                                         <label>Street</label>
-                                        <input name="BillingAddress.Street" class="field-element address-line2 pulse-warnable" placeholder="Street" type="text" x-autocompletetype="address-line2" spellcheck="false" maxlength="50">
+                                        <input name="Order.BillingAddress.Street" class="field-element address-line2 pulse-warnable" placeholder="Street" type="text" x-autocompletetype="address-line2" spellcheck="false" maxlength="50">
                                     </div>
 
 
                                     <!-- Country -->
                                     <div id="billing-country" data-label="Country" class="field country required">
                                         <label>Country</label>
-                                        <select name="BillingAddress.Country" class="field-element pulse-warnable" x-autocompletetype="country-name">
+                                        <select name="Order.BillingAddress.Country" class="field-element pulse-warnable" x-autocompletetype="country-name">
                                             <option value="United States">United States</option>
                                         </select>
                                     </div>
@@ -876,14 +876,14 @@
                                     <!-- City -->
                                     <div id="billing-city" data-label="City" class="field city required">
                                         <label>City</label>
-                                        <input name="BillingAddress.City" class="field-element pulse-warnable" placeholder="City" type="text" spellcheck="false" maxlength="30">
+                                        <input name="Order.BillingAddress.City" class="field-element pulse-warnable" placeholder="City" type="text" spellcheck="false" maxlength="30">
                                     </div>
 
 
                                     <!-- State/Province -->
                                     <div id="billing-state" data-label="State/Province" class="field state required">
                                         <label>State/Province</label>
-                                        <select name="BillingAddress.State" class="field-element pulse-warnable" x-autocompletetype="state">
+                                        <select name="Order.BillingAddress.State" class="field-element pulse-warnable" x-autocompletetype="state">
                                             <option value="AL">AL</option>
                                             <option value="AK">AK</option>
                                             <option value="AZ">AZ</option>
@@ -945,13 +945,13 @@
                                     <!-- Zip Code -->
                                     <div id="billing-zip" data-label="Zip Code" class="field zip required">
                                         <label>Zip / Postal</label>
-                                        <input name="BillingAddress.PostalCode" class="field-element pulse-warnable" placeholder="Zip / Postal" type="text" spellcheck="false" maxlength="10">
+                                        <input name="Order.BillingAddress.PostalCode" class="field-element pulse-warnable" placeholder="Zip / Postal" type="text" spellcheck="false" maxlength="10">
                                     </div>
 
                                     <div style="clear:both;"></div>
                                     <div id="phone" data-label="Phone Number" class="field phone">
                                         <label>Phone Number</label>
-                                        <input name="User.Phone" class="field-element pulse-warnable" placeholder="Phone Number" x-autocompletetype="phone" type="text" spellcheck="false" maxlength="20">
+                                        <input name="Order.User.Phone" class="field-element pulse-warnable" placeholder="Phone Number" x-autocompletetype="phone" type="text" spellcheck="false" maxlength="20">
                                     </div>
 
 
@@ -960,13 +960,13 @@
 
                                     <!-- Continue -->
                                     <div class="btn-container" style="text-align: center;">
-                                        <input type="submit" value="Submit" class="button continue-button" style="width:100%"></input>
+                                        <!--<input type="submit" value="Continue" class="button continue-button" style="width:100%"></input>-->
                                     </div>
 
                                 </fieldset>
                             </div>
                         </div>
-                        <div class="yui3-widget sqs-widget sqs-checkout-form-section card sqs-checkout-form-address sqs-checkout-form-shipping incomplete">
+                        <div class="yui3-widget sqs-widget sqs-checkout-form-section card sqs-checkout-form-address sqs-checkout-form-shipping" style="display:none;">
                             <div class="sqs-checkout-form-shipping-content empty-shipping-options">
                                 <div class="title">Shipping Options<a class="edit-button">edit</a>
                                 </div>
@@ -975,8 +975,7 @@
 
 
                                     <!-- Ship to Billing Address -->
-                                    <div id="ship-to-billing" class="check-element active">
-                                        Shipping Address same as Billing
+                                    <div id="ship-to-billing" class="check-element active">                                        Shipping Address same as Billing
                                     </div>
                                     <!-- <input name="shipToBilling" value="true" type="hidden"> -->
 
@@ -1119,51 +1118,20 @@
                                     <!-- Shipping Options -->
                                     <div id="shipping-options">
                                         <div class="yui3-widget sqs-widget sqs-checkout-form-shipping-options">
-                                            <div class="sqs-checkout-form-shipping-options-content empty">
-                                                <div class="empty-message">
-                                                    You cannot continue checkout because this store has not configured any shipping options for your country.
-                                                </div>
-
-                                                <div class="warning-message zip-warning-message">
-                                                    <img src="/img/tiny-alert.png">Shipping options require your zip/postal code to estimate.
-                                                </div>
-
-                                                <div class="warning-message zip-invalid-warning-message">
-                                                    <img src="/img/tiny-alert.png">The zip code you entered is not valid.
-                                                </div>
-
-                                                <div class="warning-message weight-missing-warning-message">
-                                                    <img src="/img/tiny-alert.png">All products in this cart are missing weight information.
-                                                </div>
-
-                                                <div class="warning-message service-unavailable-warning-message">
-                                                    <img src="/img/tiny-alert.png">A method is unavailable for some items due to size restrictions.
-                                                </div>
-
-                                                <div class="warning-message carrier-warning-message">
-                                                    <img src="/img/tiny-alert.png">Something went wrong reaching the shipping carrier for estimates.
-                                                </div>
-
-                                                <div class="loading-spinner">
-                                                    <div class="yui3-widget sqs-spin dark" style="height: 15px; width: 15px;">
-                                                        <div class="sqs-spin-content yui3-widget-content-expanded"></div>
-                                                    </div>
-                                                </div>
-                                                <div class="options-container"></div>
-                                            </div>
+                                          
                                         </div>
                                     </div>
 
 
                                     <!-- Continue -->
                                     <div class="btn-container">
-                                        <div class="button continue-button configure-shipping-button">Configure Shipping Options</div>
+                                        <!-- <div class="button continue-button configure-shipping-button">Configure Shipping Options</div>-->
                                     </div>
 
                                 </fieldset>
                             </div>
                         </div>
-                        <div class="yui3-widget sqs-widget sqs-checkout-form-section card sqs-checkout-form-payment incomplete">
+                        <div class="yui3-widget sqs-widget sqs-checkout-form-section card sqs-checkout-form-payment">
                             <div class="sqs-checkout-form-payment-content">
                                 <div class="title">
                                     <a class="edit-button">edit</a>
@@ -1178,7 +1146,7 @@
                                     Secure Payment
                                 </div>
 
-                                <fieldset>
+                                <fieldset style="display:block;">
 
 
                                     <!-- Credit Card -->
@@ -1186,13 +1154,13 @@
 
 
                                         <!-- Name -->
-                                        <!-- <input name="cardHolderName" type="hidden"> -->
+                                        <input name="cardHolderName" type="hidden">
 
 
                                         <!-- Card Number -->
                                         <div id="card-number" data-label="Card Number" class="field required">
                                             <label>Card Number</label>
-                                            <!-- <input class="field-element pulse-warnable" type="text" size="20" autocomplete="off" placeholder="Credit Card Number" value="">-->
+                                            <input class="field-element pulse-warnable" type="text" size="20" autocomplete="off" placeholder="Credit Card Number" name="Order.Account.Number" value="">
                                         </div>
 
 
@@ -1202,7 +1170,7 @@
                                             <!-- Expiry Month -->
                                             <div id="card-expiry-month" data-label="Exp. Mo." class="field required">
                                                 <label>Exp. Mo.</label>
-                                                <!-- <select class="field-element pulse-warnable" value="04">
+                                                <select class="field-element pulse-warnable" name="Order.Account.Month" value="04">
                                                     <option value="1">01</option>
                                                     <option value="2">02</option>
                                                     <option value="3">03</option>
@@ -1215,13 +1183,13 @@
                                                     <option value="10">10</option>
                                                     <option value="11">11</option>
                                                     <option value="12">12</option>
-                                                </select> -->
+                                                </select>
                                             </div>
 
                                             <!-- Expiry Year -->
                                             <div id="card-expiry-year" data-label="Exp. Yr." class="field required">
                                                 <label>Exp. Yr.</label>
-                                                <!--<select class="field-element pulse-warnable" value="2015">
+                                                <select class="field-element pulse-warnable" value="2015" name="Order.Account.Year">
                                                     <option value="2014">2014</option>
                                                     <option value="2015">2015</option>
                                                     <option value="2016">2016</option>
@@ -1232,13 +1200,13 @@
                                                     <option value="2021">2021</option>
                                                     <option value="2022">2022</option>
                                                     <option value="2023">2023</option>
-                                                </select> -->
+                                                </select>
                                             </div>
 
                                             <!-- CVC -->
                                             <div id="cvc" data-label="CVC" class="field required">
                                                 <label>CVC</label>
-                                                <!-- <input class="field-element pulse-warnable" type="text" size="4" autocomplete="off" placeholder="CVC" value="">-->
+                                                <input class="field-element pulse-warnable" type="text" size="4" autocomplete="off" placeholder="CVC" value="" name="Order.Account.CVC">
                                             </div>
 
                                         </div>
@@ -1248,17 +1216,16 @@
 
 
                                     <!-- Secure payment conditions -->
-                                    <div id="comfort">
+                                    <div id="comfort" style="display:none;">
                                         All transactions are secure and encrypted, and we never store your credit card information. Payments are processed through Stripe. Payment information is also governed by
                                         <a target="_blank" href="https://stripe.com/privacy">Stripe's privacy policy</a>.
                                     </div>
 
 
                                     <!-- Place Order -->
-                                    <div id="place-order">
-                                        <div id="place-order-button" class="button continue-button" value="Place Order">Submit Order/div>
-                                        <div class="trust"><img src="/img/truste.png">
-                                        </div>
+                                    <div class="btn-container" style="text-align: center;">
+                                      <input type="submit" value="Place order" class="button continue-button" style="width:100%"></input>
+                                    </div>
 
                                         <!-- hidden field to convey the Stripe Token so we may submit the charge -->
                                         <!-- <input name="stripeToken" type="hidden"> -->

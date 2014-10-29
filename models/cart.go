@@ -4,6 +4,7 @@ import (
 	"github.com/mholt/binding"
 	"net/http"
 	"time"
+	"strconv"
 )
 
 type LineItem struct {
@@ -82,9 +83,15 @@ func (c Cart) Validate(req *http.Request, errs binding.Errors) binding.Errors {
 
 type PaymentAccount struct {
 	CVV2    int
-	Expiry  int
+	Month   string
+	Year    string
 	Number  string
 	Type    string `schema:"-"`
+}
+
+func (pa PaymentAccount) Expiry() int {
+	i, _ := strconv.Atoi(pa.Month + pa.Year)
+	return i
 }
 
 type Order struct {
