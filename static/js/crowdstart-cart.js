@@ -73,7 +73,7 @@ csio.renderCart = function(modifiedCart) {
     $('.cart-container').hide();
     $('.empty-message').show();
   } else {
-    updateSubtotal(subtotal)
+    csio.updateSubtotal(subtotal)
   }
 };
 
@@ -111,3 +111,5 @@ csio.updateLineItem = function(lineItem, el) {
 };
 
 csio.renderCart();
+
+$('input,select').keypress(function(e) { return e.keyCode != 13; });
