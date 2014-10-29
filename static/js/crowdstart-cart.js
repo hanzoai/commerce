@@ -1,4 +1,7 @@
-csio = window.csio || {};
+/* global csio, formatCurrency */
+
+// Globals
+window.csio = window.csio || {};
 var templateEl = $('.template');
 templateEl.parent().remove();
 
@@ -8,10 +11,10 @@ csio.renderLineItem = function(lineItem, index) {
 
     // get list of variants
     var variantInfo = []
-    if (lineItem.color !== "")
+    if (lineItem.color !== '')
       variantInfo.push(lineItem.color)
 
-    if (lineItem.size !== "")
+    if (lineItem.size !== '')
       variantInfo.push(lineItem.size)
 
     el.find('img.thumbnail').attr('src', lineItem.img);
@@ -87,7 +90,7 @@ csio.getSubtotal = function() {
 }
 
 csio.updateSubtotal = function(subtotal) {
-  var subtotal = subtotal || csio.getSubtotal();
+  subtotal = subtotal || csio.getSubtotal();
 
   $('.subtotal .price span').text(formatCurrency(subtotal));
 }
@@ -99,10 +102,12 @@ csio.removeLineItem = function(sku, el) {
 
   csio.setCart(cart);
   csio.updateSubtotal();
-  $(el).remove()
+  $(el).fadeOut(function() {
+    $(el).remove()
+  })
 };
 
-csio.updateLineItem = function(lineItem, el) {
+csio.updateLineItem = function(lineItem) {
   var cart = csio.getCart();
 
   cart[lineItem.sku] = lineItem;

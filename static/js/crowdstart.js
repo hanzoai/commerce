@@ -1,5 +1,7 @@
+/* global csio */
+
 // Globals
-csio = window.csio || {};
+window.csio = window.csio || {};
 csio.cookieName = 'SKULLYSystemsCart';
 
 // Enable JSON cookies
@@ -16,49 +18,101 @@ function formatCurrency(num) {
   return humanizeNumber(currency.toFixed(2));
 }
 
+csio.Alert = function(opts) {
+  var $el = $('.sqs-widgets-confirmation.alert')
+  var offset = opts.$nextTo.offset()
+  var topOffset = offset.top - $(window).scrollTop()
+
+  $el.find('.title').text(opts.title)
+  $el.find('.message').text(opts.message)
+  $el.find('.confirmation-button').text(opts.confirm)
+
+  $el.css({
+    position: 'fixed',
+    top:      (topOffset - 42) + 'px',
+    left:     (offset.left - 66) + 'px',
+  })
+
+  // Show
+  $el.fadeIn(200)
+
+  // Dismiss
+  function dismiss() {
+    $el.fadeOut(200, function() {
+      $el.css({top: -1000})
+    })
+  }
+
+  // Dismiss on click, escape, and scroll
+  $(document).mousedown(function() {
+    dismiss()
+  })
+
+  $(document).keydown(function(e) {
+    if (!e) e = event;
+    if (e.keyCode == 27) dismiss()
+  })
+
+  $(window).scroll(function() {
+    dismiss()
+  })
+}
+
 // Lookup variant based on selected options.
 csio.getVariant = function() {
-  var options = {};
-  var variants = csio.currentProduct.Variants;
+  var selected       = {};
+  var variants       = csio.currentProduct.Variants;
+  var missingOptions = [];
 
+  // Determine if selected options match variant
+  function optionsMatch(selected, variant) {
+    for (var k in selected)
+      if (variant[k] !== selected[k])
+        return false
+    return true
+  }
+
+  // Get selected options
   $('.variant-option').each(function(i, v) {
     $(v).find('select').each(function(i,v) {
       var $select = $(v);
       var name  = $select.data('variant-option-name');
       var value = $select.val();
-      options[name] = value;
+      selected[name] = value;
+
+      if (value === 'none') missingOptions.push(name)
     });
   });
 
-  for (var k in options) {
-    if (options[k] === "none")
-      return;
+  // Warn if missing options (we'll be unable to figure out a SKU).
+  if (missingOptions.length > 0) {
+    return csio.Alert({
+      title:   'Unable To Add Item',
+      message: 'Please select a ' + missingOptions[0] + ' option.',
+      confirm: 'Okay',
+      $nextTo: $('.sqs-add-to-cart-button'),
+    })
   }
 
-  for (var i=0; i<csio.currentProduct.Variants.length; i++) {
+  // Figure out SKU
+  for (var i=0; i<variants.length; i++) {
     var variant = variants[i];
-    // All options match match variants
-    for (k in options) {
-      if (variant[k] !== options[k])
-        continue
 
-      return variant;
-    }
+    // All options match match variant
+    if (optionsMatch(selected, variant)) return variant
   }
 
   // Only one variant, no options.
-  return csio.currentProduct.Variants[0];
+  return variants[0];
 };
 
+// Add to cart
 csio.addToCart = function() {
   var quantity = parseInt($('#quantity').val(), 10);
   var cart     = $.cookie(csio.cookieName) || {};
   var variant  = csio.getVariant();
 
-  if (variant == null) {
-    alert('Please select an option');
-    return;
-  }
+  if (variant == null) return
 
   if (cart[variant.SKU]) {
     cart[variant.SKU].quantity += quantity;
@@ -122,11 +176,6 @@ $('.fixed-cart').click(function() {
   window.location = '/cart';
 })
 
-// Hide cart button on cart page
-if (location.pathname == '/cart') {
-  $('.fixed-cart').hide()
-}
-
 // Product gallery image switching
 $('#productThumbnails .slide img').each(function(i,v) {
   $(v).click(function(){
@@ -142,3 +191,25 @@ $('#productThumbnails .slide img').each(function(i,v) {
 
 // Update cart hover onload
 csio.updateCartHover()
+
+// PAGE SPECIFIC HACKS
+
+// Hide cart button on cart page
+if (location.pathname == '/cart') {
+  $('.fixed-cart').hide();
+}
+
+// Swap images when changing colors on helmet page
+if (location.pathname == '/products/ar-1') {
+  var $slides = $('#productSlideshow .slide img');
+
+  $('[data-variant-option-name=Color]').change(function() {
+    if ($(this).val() === 'Black') {
+      $($slides[0]).fadeIn()
+      $($slides[1]).fadeOut()
+    } else {
+      $($slides[1]).fadeIn()
+      $($slides[0]).fadeOut()
+    }
+  })
+}
