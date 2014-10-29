@@ -27,5 +27,5 @@ $('#form').card({
     numberInput: 'input[name="Order.Account.Number"]',
     expiryInput: 'input[name="RawExpiry"]',
     cvcInput: 'input[name="Order.Account.CVV2"]',
-    nameInput: 'input[name="Order.BillingUser.FirstName"], input[name="Order.BillingUser.LastName"]'
+    nameInput: 'input[name="Order.User.FirstName"], input[name="Order.User.LastName"]'
 });
