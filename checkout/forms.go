@@ -2,10 +2,12 @@ package checkout
 
 import (
 	"crowdstart.io/models"
+	"crowdstart.io/middleware"
 	"crowdstart.io/util/form"
+	"errors"
 	"github.com/gin-gonic/gin"
-	"strings"
 	"strconv"
+	"strings"
 )
 
 type CheckoutForm struct {
@@ -17,8 +19,8 @@ func (f *CheckoutForm) Parse(c *gin.Context) error {
 }
 
 type AuthorizeForm struct {
-	Order models.Order
-	User models.User
+	Order     models.Order
+	User      models.User
 	RawExpiry string
 }
 
@@ -27,15 +29,21 @@ func (f *AuthorizeForm) Parse(c *gin.Context) error {
 		return err
 	}
 
+	ctx := middleware.GetAppEngine(c)
+	ctx.Debugf("%v", f.RawExpiry)
+
 	// Parse raw expiry
-	parts := strings.Split(f.RawExpiry, "/")
-	strMonth, strYear := parts[0], parts[1]
-	month, _ := strconv.Atoi(strMonth)
-	year, _  := strconv.Atoi(strYear)
+	parts := strings.Split(f.RawExpiry, " / ")
+	if len(parts) != 2 {
+		return errors.New("Invalid expiry")
+	}
+
+	month, _ := strconv.Atoi(parts[0])
+	year, _ := strconv.Atoi(parts[1])
 
 	f.Order.Account.Month = month
 	f.Order.Account.Year = year
-	f.Order.Account.Expiry = strMonth + strYear
+	f.Order.Account.Expiry = strings.Join(parts, "")
 
 	return nil
 }
@@ -69,7 +77,7 @@ func (f AuthorizeForm) Validate() (errs []string) {
 	if f.Order.BillingAddress.Country == "" {
 		errs = append(errs, "Country is required")
 	}
-		if f.Order.ShippingAddress.Line1 == "" {
+	if f.Order.ShippingAddress.Line1 == "" {
 		errs = append(errs, "Address line 1 is required")
 	}
 	if f.Order.ShippingAddress.City == "" {

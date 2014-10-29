@@ -25,7 +25,7 @@ var t = setInterval(function(){
 $('#form').card({
     container: '#card-wrapper',
     numberInput: 'input[name="Order.Account.Number"]',
-    expiryInput: 'input[name="Order.Account.Expiry"]',
+    expiryInput: 'input[name="RawExpiry"]',
     cvcInput: 'input[name="Order.Account.CVV2"]',
     nameInput: 'input[name="Order.BillingUser.FirstName"], input[name="Order.BillingUser.LastName"]'
 });
