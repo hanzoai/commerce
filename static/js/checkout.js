@@ -16,6 +16,7 @@ var validation = {
 
 $('div.field').on('click', function() {
     $(this).removeClass('error');
+    $(this).removeClass('shake');
 });
 
 $('#form').submit(function(e) {
@@ -23,13 +24,15 @@ $('#form').submit(function(e) {
 
     var email = $('input[name="User.Email"]')
     if (!validation.isEmail(email)) {
-        email.parent().addClass('error')
-        e.preventDefault()
+        email.parent().addClass('error');
+        email.parent().addClass('shake');
+        e.preventDefault();
     }
 
     if (empty.length > 0) {
         e.preventDefault();
         empty.parent().addClass('error');
+        empty.parent().addClass('shake');
     }
 });
 
