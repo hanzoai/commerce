@@ -39,7 +39,6 @@ tools = github.com/nsf/gocode \
         github.com/kisielk/errcheck \
         github.com/jstemmer/gotags
 
-current_branch := $(shell git rev-parse --abbrev-ref HEAD)
 export GOROOT  := $(goroot)
 export GOPATH  := $(gopath)
 
@@ -80,10 +79,7 @@ bench: build
 	goapp test $(test_modules) --bench=.
 
 deploy:
-	git checkout production && \
-	git merge master && \
-	git push origin production && \
-	git checkout $(current_branch)
+	goapp run deploy.go
 
 deploy-appengine:
 	$(sdk_path)/appcfg.py --oauth2_refresh_token=$(gae_token) rollback app.yaml && \
