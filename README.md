@@ -1,4 +1,4 @@
-# crowdstart
+# crowdstart [ ![Codeship Status for verus-io/crowdstart](https://www.codeship.io/projects/6d197000-4232-0132-a221-0608fd86df6c/status)](https://www.codeship.io/projects/44348)
 Crowdfunding platform.
 
 ## Development
