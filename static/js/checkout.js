@@ -2,25 +2,26 @@ $('div.field').on('click', function() {
     $(this).removeClass('error');
 });
 
+$visibleRequired = $('div:visible.required > input');
+
 $('#form').submit(function(e) {
-    var empty = $('div.required > input').filter(function() {return $(this).val() == "";});
+    var empty = $visibleRequired.filter(function() {return $(this).val() == "";});
     if (empty.length > 0) {
         e.preventDefault();
         empty.parent().addClass('error');
     }
 });
 
-var t = setInterval(function(){
-    var empty = $('div:visible.required > input').filter(function() {return $(this).val() == "";});
+$visibleRequired.change(function(){
+    var empty = $visibleRequired.filter(function() {return $(this).val() == "";});
 
     if (empty.length == 0) {
         var fieldset = $('div.sqs-checkout-form-payment-content > fieldset');
         fieldset.css('display', 'block');
         fieldset.css('opacity', '0');
         fieldset.fadeTo(1000, 1);
-        clearInterval(t);
     }
-}, 500);
+});
 
 $('#form').card({
     container: '#card-wrapper',
@@ -30,11 +31,17 @@ $('#form').card({
     nameInput: 'input[name="Order.User.FirstName"], input[name="Order.User.LastName"]'
 });
 
+var firstTime = true
 $('input[name="ShipToBilling"]').change(function(){
-    var fields = $('#shipping_fields')
-    if (this.checked) {
-        fields.css('display', 'block');
+    firstTime = false
+    var shipping = $('#shippingInfo')
+    if (this.checked && !firstTime) {
+        shipping.fadeTo(500, 0);
+        setTimeout(function(){
+            shipping.css('display', 'none');
+        }, 500);
     } else {
-        fields.css('display', 'none');
+        shipping.fadeTo(500, 1);
+        shipping.css('display', 'block');
     }
 });
