@@ -79,6 +79,7 @@ bench: build
 	goapp test $(test_modules) --bench=.
 
 deploy:
+	@appcfg.py rollback ./ >& /dev/null && \
 	$(sdk_path)/appcfg.py --oauth2_refresh_token=$(gae_token) update app.yaml api/app.yaml checkout/app.yaml store/app.yaml && \
 	$(sdk_path)/appcfg.py --oauth2_refresh_token=$(gae_token) update_dispatch .
 
