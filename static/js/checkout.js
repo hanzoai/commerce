@@ -19,13 +19,17 @@ $('div.field').on('click', function() {
 });
 
 $('#form').submit(function(e) {
-    var empty = $('div.required > input').filter(function() {return $(this).val() === '';});
+    var empty = $('div:visible.required > input').filter(function() {return $(this).val() === '';});
 
     var email = $('input[name="User.Email"]')
-    if (!validation.isEmail(email)) {
+    if (!validation.isEmail(email.val())) {
+        console.log(validation.isEmail(email.text()));
+        e.preventDefault();
         email.parent().addClass('error');
         email.parent().addClass('shake');
-        e.preventDefault();
+        setTimeout(function(){
+            email.parent().removeClass('shake');
+        }, 500);
     }
 
     if (empty.length > 0) {
@@ -78,4 +82,45 @@ $('input[name="ShipToBilling"]').change(function(){
         shipping.fadeIn(500);
         shipping.css('display', 'block');
     }
+});
+
+
+var $state = $('select[name="Order.BillingAddress.State"]');
+var $city = $('input[name="Order.BillingAddress.City"]');
+var $tax = $('div.tax.total > div.price > span');
+var $grandTotal = $('div.grand-total.total > div.price > span');
+var $subTotal = $('div.subtotal.total > div.price > span');
+
+function tax() {
+    var subTotal = parseFloat($subTotal
+                              .text()
+                              .replace(',', ''));
+
+    var taxTotal = 0;
+    var grandTotal = subTotal;
+
+    var state = $state.val();
+    if (state === "CA") {
+        taxTotal += subTotal * 0.075;
+    }
+
+    var city = $city.val().trim().toLowerCase();
+    if (city === "san francisco" || city == "sanfrancisco") {
+        taxTotal += subTotal * 0.0125;
+    }
+
+    grandTotal += taxTotal;
+
+    taxTotal = taxTotal.toFixed(2);
+    $tax.text(taxTotal);
+
+    grandTotal = grandTotal.toFixed(2);
+    $grandTotal.text(grandTotal.toString());
+}
+
+$state.change(tax);
+$city.on('keyup', tax);
+
+$('select[name="Order.BillingAddress.State"]').change(function(e) {
+
 });
