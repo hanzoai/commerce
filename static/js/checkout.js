@@ -3,16 +3,16 @@
 // Globals
 window.csio = window.csio || {};
 
+// Validation helper
 var validation = {
     isEmpty: function (str) {
-        return str.trim().length == 0;
+        return str.trim().length === 0;
     },
     isEmail: function(email) {
         var pattern = new RegExp(/^[+a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/i);
         return pattern.test(email);
     }
 }
-
 
 $('div.field').on('click', function() {
     $(this).removeClass('error');
@@ -42,7 +42,6 @@ $('#form').submit(function(e) {
         }, 500);
     }
 });
-
 
 // Show payment options when first half is competed.
 var $requiredVisible = $('div:visible.required > input')
@@ -84,46 +83,36 @@ $('input[name="ShipToBilling"]').change(function(){
     }
 });
 
-
+// Update tax display
 var $state = $('select[name="Order.BillingAddress.State"]');
 var $city = $('input[name="Order.BillingAddress.City"]');
 var $tax = $('div.tax.total > div.price > span');
-var $grandTotal = $('div.grand-total.total > div.price > span');
-var $subTotal = $('div.subtotal.total > div.price > span');
+var $total = $('div.grand-total.total > div.price > span');
+var $subtotal = $('div.subtotal.total > div.price > span');
 
-function tax() {
-    var subTotal = parseFloat($subTotal
+var updateTax = $.debounce(250, function() {
+    var city = $city.val();
+    var state = $state.val();
+    var tax = 0;
+    var total = 0;
+    var subtotal = parseFloat($subtotal
                               .text()
                               .replace(',', ''));
 
-    var taxTotal = 0;
-    var grandTotal = subTotal;
 
-    var state = $state.val();
-    if (state === "CA") {
-        taxTotal += subTotal * 0.075;
-    }
+    // Add CA tax
+    if (state === 'CA')
+        tax += subtotal * 0.075;
 
-    var city = $city.val().trim().toLowerCase();
-    if (city === "san francisco" || city == "sanfrancisco") {
-        if (taxTotal == 0) { // state tax
-            taxTotal += subTotal * 0.075;
-        }
-        taxTotal += subTotal * 0.0125;
-    }
+    // Add SF county tax
+    if (state == 'CA' && (/san francisco/i).test(city))
+        tax += subtotal * 0.0125;
 
-    grandTotal += taxTotal;
+    total = subtotal + tax;
 
-    taxTotal = taxTotal.toFixed(2);
-    $tax.text(taxTotal);
+    $tax.text(tax.toFixed(2));
+    $total.text(total.toFixed(2));
+})
 
-    grandTotal = grandTotal.toFixed(2);
-    $grandTotal.text(grandTotal.toString());
-}
-
-$state.change(tax);
-$city.on('keyup', tax);
-
-$('select[name="Order.BillingAddress.State"]').change(function(e) {
-
-});
+$state.change(updateTax);
+$city.on('keyup', updateTax);
