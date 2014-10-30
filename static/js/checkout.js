@@ -21,8 +21,6 @@ $(document).ready(function() {
   var $required = $('div:visible.required > input')
 
   var showPaymentOptions = $.debounce(250, function() {
-    console.log('checking for completion...')
-
     for (var i=0; i< $required.length; i++) {
       if ($required[i].value === '') return
     }
