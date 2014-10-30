@@ -116,3 +116,37 @@ var updateTax = $.debounce(250, function() {
 
 $state.change(updateTax);
 $city.on('keyup', updateTax);
+
+// AJAX form submit
+csio.handleSubmit = function(formSelector) {
+  $(formSelector).submit(function(e) {
+    e.preventDefault()
+
+    if (csio.authorizePending) return;
+
+    csio.authorizePending = true;
+
+    var url = '/checkout/authorize';
+
+    $.ajax({
+      type: 'POST',
+      url: url,
+      data: $(formSelector).serialize(),
+      dataType: 'json',
+      error: function(xhr) {
+        var data = $.parseJSON(xhr);
+        console.log(data.message);
+      },
+      success: function(data) {
+        console.log(data.message);
+        csio.authorizePending = false;
+      },
+      complete: function() {
+        csio.authorizePending = false;
+      },
+      timeout: 5000,
+    })
+  })
+}
+
+csio.handleSubmit('#form')
