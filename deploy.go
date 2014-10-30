@@ -70,4 +70,5 @@ func main() {
 	run("git commit -m 'v" + strconv.Itoa(next) + "'")
 	run(fmt.Sprintf("git tag v%s", strconv.Itoa(next)))
 	run("git push origin production -f")
+	run("git push --tags")
 }
