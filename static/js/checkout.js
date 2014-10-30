@@ -19,13 +19,17 @@ $('div.field').on('click', function() {
 });
 
 $('#form').submit(function(e) {
-    var empty = $('div.required > input').filter(function() {return $(this).val() === '';});
+    var empty = $('div:visible.required > input').filter(function() {return $(this).val() === '';});
 
     var email = $('input[name="User.Email"]')
-    if (!validation.isEmail(email)) {
+    if (!validation.isEmail(email.val())) {
+        console.log(validation.isEmail(email.text()));
+        e.preventDefault();
         email.parent().addClass('error');
         email.parent().addClass('shake');
-        e.preventDefault();
+        setTimeout(function(){
+            email.parent().removeClass('shake');
+        }, 500);
     }
 
     if (empty.length > 0) {
