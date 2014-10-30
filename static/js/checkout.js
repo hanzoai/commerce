@@ -40,7 +40,7 @@ var $requiredVisible = $('div:visible.required > input')
 var showPaymentOptions = $.debounce(250, function() {
   // Check if all required inputs are filled
   for (var i=0; i< $requiredVisible.length; i++) {
-    if ($required[i].value === '') return
+    if ($requiredVisible[i].value === '') return
   }
 
   var fieldset = $('div.sqs-checkout-form-payment-content > fieldset');
