@@ -83,3 +83,41 @@ $('input[name="ShipToBilling"]').change(function(){
         shipping.css('display', 'block');
     }
 });
+
+
+var $state = $('select[name="Order.BillingAddress.State"]');
+var $city = $('input[name="Order.BillingAddress.City"]');
+var $tax = $('div.tax.total > div.price > span');
+var $grandTotal = $('div.grand-total.total > div.price > span');
+var $subTotal = $('div.subtotal.total > div.price > span');
+
+function tax() {
+    var subTotal = parseFloat($subTotal
+                              .text()
+                              .replace(',', ''));
+
+    var taxTotal = 0;
+    var grandTotal = subTotal;
+
+    var state = $state.val();
+    if (state === "CA") {
+        taxTotal += subTotal * 0.075;
+    }
+    
+    var city = $city.val().trim().toLowerCase();
+    if (city === "san francisco") {
+        taxTotal += subTotal * 0.0125;
+    }
+
+    grandTotal += taxTotal;
+    
+    $tax.text(taxTotal.toString());
+    $grandTotal.text(grandTotal.toString());
+}
+
+$state.change(tax);
+$city.on('keyup', tax);
+
+$('select[name="Order.BillingAddress.State"]').change(function(e) {
+    
+});
