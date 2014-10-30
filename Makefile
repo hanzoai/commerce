@@ -82,14 +82,14 @@ deploy:
 	goapp run deploy.go
 
 deploy-appengine:
-	$(sdk_path)/appcfg.py --oauth2_refresh_token=$(gae_token) rollback app.yaml && \
-	$(sdk_path)/appcfg.py --oauth2_refresh_token=$(gae_token) rollback api/app.yaml && \
-	$(sdk_path)/appcfg.py --oauth2_refresh_token=$(gae_token) rollback checkout/app.yaml && \
-	$(sdk_path)/appcfg.py --oauth2_refresh_token=$(gae_token) rollback store/app.yaml && \
-	$(sdk_path)/appcfg.py --oauth2_refresh_token=$(gae_token) update app.yaml && \
-	$(sdk_path)/appcfg.py --oauth2_refresh_token=$(gae_token) update api/app.yaml && \
-	$(sdk_path)/appcfg.py --oauth2_refresh_token=$(gae_token) update checkout/app.yaml && \
-	$(sdk_path)/appcfg.py --oauth2_refresh_token=$(gae_token) update store/app.yaml && \
-	$(sdk_path)/appcfg.py --oauth2_refresh_token=$(gae_token) update_dispatch .
+	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) rollback app.yaml && \
+	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) rollback api/app.yaml && \
+	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) rollback checkout/app.yaml && \
+	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) rollback store/app.yaml && \
+	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update app.yaml && \
+	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update api/app.yaml && \
+	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update checkout/app.yaml && \
+	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update store/app.yaml && \
+	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update_dispatch .
 
 .PHONY: all build deploy deps test serve tools
