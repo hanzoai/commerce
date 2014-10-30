@@ -3,12 +3,30 @@
 // Globals
 window.csio = window.csio || {};
 
+var validation = {
+    isEmpty: function (str) {
+        return str.trim().length == 0;
+    },
+    isEmail: function(email) {
+        var pattern = new RegExp(/^[+a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/i);
+        return pattern.test(email);
+    }
+}
+
+
 $('div.field').on('click', function() {
     $(this).removeClass('error');
 });
 
 $('#form').submit(function(e) {
     var empty = $('div.required > input').filter(function() {return $(this).val() === '';});
+
+    var email = $('input[name="User.Email"]')
+    if (!validation.isEmail(email)) {
+        email.parent().addClass('error')
+        e.preventDefault()
+    }
+
     if (empty.length > 0) {
         e.preventDefault();
         empty.parent().addClass('error');
@@ -17,24 +35,23 @@ $('#form').submit(function(e) {
 
 
 // Show payment options when first half is competed.
-$(document).ready(function() {
-  var $required = $('div:visible.required > input')
+var $requiredVisible = $('div:visible.required > input')
 
-  var showPaymentOptions = $.debounce(250, function() {
-    for (var i=0; i< $required.length; i++) {
-      if ($required[i].value === '') return
-    }
+var showPaymentOptions = $.debounce(250, function() {
+  // Check if all required inputs are filled
+  for (var i=0; i< $requiredVisible.length; i++) {
+    if ($required[i].value === '') return
+  }
 
-    var fieldset = $('div.sqs-checkout-form-payment-content > fieldset');
-    fieldset.css('display', 'block');
-    fieldset.css('opacity', '0');
-    fieldset.fadeTo(1000, 1);
+  var fieldset = $('div.sqs-checkout-form-payment-content > fieldset');
+  fieldset.css('display', 'block');
+  fieldset.css('opacity', '0');
+  fieldset.fadeTo(1000, 1);
 
-    $required.unbind('keyup', showPaymentOptions)
-  })
-
-  $required.bind('keyup', showPaymentOptions)
+  $requiredVisible.off('keyup', showPaymentOptions)
 })
+
+$requiredVisible.on('keyup', showPaymentOptions)
 
 $('#form').card({
     container: '#card-wrapper',
@@ -45,10 +62,14 @@ $('#form').card({
 });
 
 $('input[name="ShipToBilling"]').change(function(){
-    var fields = $('#shipping_fields')
+    var shipping = $('#shippingInfo')
     if (this.checked) {
-        fields.css('display', 'block');
+        shipping.fadeOut(500);
+        setTimeout(function(){
+            shipping.css('display', 'none');
+        }, 500);
     } else {
-        fields.css('display', 'none');
+        shipping.fadeIn(500);
+        shipping.css('display', 'block');
     }
 });
