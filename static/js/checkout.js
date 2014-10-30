@@ -105,13 +105,16 @@ function tax() {
     }
     
     var city = $city.val().trim().toLowerCase();
-    if (city === "san francisco") {
+    if (city === "san francisco" || city == "sanfrancisco") {
         taxTotal += subTotal * 0.0125;
     }
 
     grandTotal += taxTotal;
+
+    taxTotal = taxTotal.toFixed(2);
+    $tax.text(taxTotal);
     
-    $tax.text(taxTotal.toString());
+    grandTotal = grandTotal.toFixed(2);
     $grandTotal.text(grandTotal.toString());
 }
 
