@@ -16,7 +16,6 @@ var validation = {
 
 $('div.field').on('click', function() {
     $(this).removeClass('error');
-    $(this).removeClass('shake');
 });
 
 $('#form').submit(function(e) {
@@ -33,6 +32,10 @@ $('#form').submit(function(e) {
         e.preventDefault();
         empty.parent().addClass('error');
         empty.parent().addClass('shake');
+
+        setTimeout(function(){
+            empty.parent().removeClass('shake');
+        }, 500);
     }
 });
 
