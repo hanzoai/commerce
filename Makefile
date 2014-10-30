@@ -44,7 +44,7 @@ export GOPATH:= $(gopath)
 
 all: deps test
 
-build: .sdk
+build: deps
 	goapp build $(modules)
 
 deps: .sdk
@@ -75,7 +75,7 @@ tools:
 test: build
 	goapp test $(test_modules)
 
-bench:
+bench: build
 	goapp test $(test_modules) --bench=.
 
 deploy:
