@@ -86,7 +86,7 @@ deploy:
 	git checkout $(current_branch)
 
 deploy-appengine:
-	@appcfg.py rollback ./ && \
+	@appcfg.py --oauth2_refresh_token=$(gae_token) rollback ./ && \
 	$(sdk_path)/appcfg.py --oauth2_refresh_token=$(gae_token) update app.yaml api/app.yaml checkout/app.yaml store/app.yaml && \
 	$(sdk_path)/appcfg.py --oauth2_refresh_token=$(gae_token) update_dispatch .
 
