@@ -69,8 +69,5 @@ func main() {
     run("git add .")
 	run("git commit -m 'v" + strconv.Itoa(next) + "'")
 	run(fmt.Sprintf("git tag v%s", strconv.Itoa(next)))
-	run("git checkout production")
-	run("git merge master")
-	run("git push origin production")
-	run("git checkout master")
+	run("git push origin production -f")
 }
