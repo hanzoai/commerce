@@ -106,6 +106,9 @@ function tax() {
 
     var city = $city.val().trim().toLowerCase();
     if (city === "san francisco" || city == "sanfrancisco") {
+        if (taxTotal == 0) { // state tax
+            taxTotal += subTotal * 0.075;
+        }
         taxTotal += subTotal * 0.0125;
     }
 
