@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io/ioutil"
 	"log"
 	"regexp"
@@ -27,21 +26,21 @@ func writeFile(path string, data string) {
 	}
 }
 
-func bumpVersion(path string) (prev, next int) {
+func bumpVersion(path string) (version string) {
 	lines := readFile(path)
 	re := regexp.MustCompile("^version:")
 
 	for i, line := range lines {
 		if re.FindStringIndex(line) != nil {
-			prev, _ = strconv.Atoi(strings.Replace(line, "version: v", "", 1))
-			next = prev + 1
-			lines[i] = "version: v" + strconv.Itoa(next)
+			prev, _ := strconv.Atoi(strings.Replace(line, "version: v", "", 1))
+			version = "v" + strconv.Itoa(prev + 1)
+			lines[i] = "version: " + version
 			break
 		}
 	}
 
 	writeFile(path, strings.Join(lines, "\n"))
-	return prev, next
+	return version
 }
 
 func run(cmd string) {
@@ -60,15 +59,15 @@ func run(cmd string) {
 func main() {
 	files := []string{"app.yaml", "api/app.yaml", "store/app.yaml", "checkout/app.yaml"}
 
-	var next int
+	var version string
 
 	for _, file := range files {
-		_, next = bumpVersion(file)
+		version = bumpVersion(file)
 	}
 
     run("git add .")
-	run("git commit -m 'v" + strconv.Itoa(next) + "'")
-	run(fmt.Sprintf("git tag v%s", strconv.Itoa(next)))
-	run("git push origin production -f")
-	run("git push --tags")
+	run("git commit -m " + version)
+	run("git tag " + version)
+	run("git push origin master --tags")
+	run("git push origin master:production")
 }
