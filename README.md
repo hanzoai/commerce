@@ -26,6 +26,11 @@ $ make tools
 You can then use `make serve` to run the local development server and `make
 test` to run tests.
 
+## Deployment
+We use [codeship](http://codeship.io) for continuous integration and deployment.
+Pushing to master will (in the case of a successful test run) deploy the project
+to production automatically.
+
 ## Architecture
 - Go is used for all backend code.
 - Datastore is primary database
