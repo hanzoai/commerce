@@ -1,8 +1,8 @@
 package checkout
 
 import (
-	"crowdstart.io/models"
 	"crowdstart.io/middleware"
+	"crowdstart.io/models"
 	"crowdstart.io/util/form"
 	"errors"
 	"github.com/gin-gonic/gin"
@@ -19,9 +19,10 @@ func (f *CheckoutForm) Parse(c *gin.Context) error {
 }
 
 type AuthorizeForm struct {
-	Order     models.Order
-	User      models.User
-	RawExpiry string
+	Order         models.Order
+	User          models.User
+	RawExpiry     string
+	ShipToBilling bool
 }
 
 func (f *AuthorizeForm) Parse(c *gin.Context) error {

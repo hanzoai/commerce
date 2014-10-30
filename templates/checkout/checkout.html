@@ -822,19 +822,19 @@
                                 <div class="title">Billing Info<a class="edit-button">edit</a>
                                 </div>
 
-                                <fieldset>
+                                <fieldset data-stage="1">
 
                                     <!-- First Name -->
                                     <div id="billing-first-name" data-label="First Name" class="field first-name required">
                                         <label>First Name</label>
-                                        <input name="User.FirstName" class="field-element pulse-warnable" placeholder="First Name" x-autocompletetype="given-name" type="text" spellcheck="false" maxlength="30" value="">
+                                        <input name="Order.User.FirstName" class="field-element pulse-warnable" placeholder="First Name" x-autocompletetype="given-name" type="text" spellcheck="false" maxlength="30" value="">
                                     </div>
 
 
                                     <!-- Last Name -->
                                     <div id="billing-last-name" data-label="Last Name" class="field last-name required">
                                         <label>Last Name</label>
-                                        <input name="User.LastName" class="field-element pulse-warnable" placeholder="Last Name" x-autocompletetype="surname" a="" type="text" spellcheck="false" maxlength="30" value>
+                                        <input name="Order.User.LastName" class="field-element pulse-warnable" placeholder="Last Name" x-autocompletetype="surname" a="" type="text" spellcheck="false" maxlength="30" value>
                                     </div>
 
 
@@ -974,12 +974,14 @@
                             <div class="sqs-checkout-form-shipping-content empty-shipping-options">
                                 <div class="title">Shipping Options<a class="edit-button">edit</a>
                                 </div>
-                                <fieldset>
+
+                                <div id="ship-to-billing" class="check-element active">
+                                  <input name="ShipToBilling" id="ShipToBilling" type="checkbox" checked="checked"></input>
+                                  <label for="ShipToBilling">Shipping address same as billing address</label>
+                                </div>
+                                
+                                <fieldset id="shippingInfo" data-stage="2" style="display:none;">
                                     <!-- Ship to Billing Address -->
-                                    <!-- <div id="ship-to-billing" class="check-element active">
-                                      <input name="ShipToBilling" type="checkbox"></input>
-                                      Shipping Address same as Billing
-                                    </div> -->
                                     <!-- Shipping Address -->
                                     <div id="shipping-address-wrapper" class="show-overflow">
                                         <!-- First Name -->
@@ -1126,7 +1128,7 @@
                                     Secure Payment
                                 </div>
 
-                                <fieldset style="display:none;">
+                                <fieldset style="display:none;" data-stage="3">
                                   <div style="display:block; text-align:center; margin-bottom: 15%;">
                                     <div id="card-wrapper"></div>
                                   </div>
