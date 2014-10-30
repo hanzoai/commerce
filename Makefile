@@ -7,7 +7,6 @@ gopath          = $(sdk_path)/gopath
 goroot_pkg_path = $(goroot)/pkg/$(platform)_appengine/
 gopath_pkg_path = $(gopath)/pkg/$(platform)_appengine/
 
-
 deps 		    = $(shell cat Godeps | cut -d ' ' -f 1)
 modules 	    = crowdstart.io/api \
 				  crowdstart.io/checkout \
@@ -24,6 +23,7 @@ test_modules    = crowdstart.io/api/test \
 				  crowdstart.io/checkout/test \
 				  crowdstart.io/store/test
 
+gae_token 	    = 1/DLPZCHjjCkiegGp0SiIvkWmtZcUNl15JlOg4qB0-1r0MEudVrK5jSpoR30zcRFq6
 gae_yaml  	    = dispatch.yaml \
 				  app.yaml \
 				  api/app.yaml \
@@ -79,7 +79,7 @@ bench: build
 	goapp test $(test_modules) --bench=.
 
 deploy:
-	$(sdk_path)/appcfg.py update app.yaml api/app.yaml checkout/app.yaml store/app.yaml && \
-	$(sdk_path)/appcfg.py update_dispatch .
+	$(sdk_path)/appcfg.py --oauth2_refresh_token=$(gae_token) update app.yaml api/app.yaml checkout/app.yaml store/app.yaml && \
+	$(sdk_path)/appcfg.py --oauth2_refresh_token=$(gae_token) update_dispatch .
 
 .PHONY: all build deploy deps test serve tools
