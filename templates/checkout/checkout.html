@@ -562,7 +562,12 @@
                                     <!-- Zip Code -->
                                     <div id="billing-zip" data-label="Zip Code" class="field zip required">
                                         <label>Zip / Postal</label>
-                                        <input name="Order.BillingAddress.PostalCode" class="field-element pulse-warnable" placeholder="Zip / Postal" type="text" spellcheck="false" maxlength="10" value>
+                                        <input name="Order.BillingAddress.PostalCode"
+                                               class="field-element pulse-warnable"
+                                               placeholder="Zip / Postal" type="text"
+                                               spellcheck="false"
+                                               maxlength="9"
+                                               onkeypress="return event.charCode >= 48 && event.charCode <= 57"> <!--http://stackoverflow.com/a/469362-->
                                     </div>
 
                                     <div style="clear:both;"></div>
