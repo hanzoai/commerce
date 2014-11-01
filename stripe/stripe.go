@@ -8,14 +8,14 @@ import (
 	"github.com/stripe/stripe-go/currency"
 )
 
-func Authorize(ctx appengine.Context, order models.Order) error {
+func Charge(ctx appengine.Context, token string) error {
 	client := &client.API{}
 	client.Init("access_token", nil)
 
 	params := &stripe.ChargeParams {
 		Amount:   1000,
 		Currency: currency.USD,
-		Card:     &stripe.CardParams{Token:"tok_14dlcYGBoqcjK6A1Th7tPXfJ"},
+		Card:     &stripe.CardParams{Token token},
 		Desc:     "Gopher t-shirt",
 	}
 
