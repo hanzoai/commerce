@@ -100,7 +100,7 @@
 
             <div class="product-quantity-input">
                 <div class="quantity-label">Quantity:</div>
-                <input id="quantity" size="4" max="100" min="1" value="1" type="number" step="1">
+                <input id="quantity" size="4" max="100" min="1" value="1" type="number" step="1" onkeypress="return csio.NumbersOnly(event);">
             </div>
 
             <div class="sqs-add-to-cart-button-wrapper" style="visibility: visible;">
