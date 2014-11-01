@@ -230,3 +230,7 @@ if (location.pathname == '/products/ar-1') {
     }
   })
 }
+
+csio.NumbersOnly = function(event) {
+    return event.charCode >= 48 && event.charCode <= 57;
+}
