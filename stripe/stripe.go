@@ -9,7 +9,7 @@ import (
 	"github.com/stripe/stripe-go/currency"
 )
 
-func Charge(ctx appengine.Context, order models.Order) error {
+func Charge(ctx appengine.Context, order models.Order) (string, error) {
 	backend := stripe.NewInternalBackend(urlfetch.Client(ctx), "")
 
 	sc := &client.API{}
@@ -22,6 +22,7 @@ func Charge(ctx appengine.Context, order models.Order) error {
 		Desc:     order.Description(),
 	}
 
-	_, err := sc.Charges.New(params)
-	return err
+	charge, err := sc.Charges.New(params)
+	
+	return charge.ID, err
 }
