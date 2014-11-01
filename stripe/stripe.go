@@ -13,7 +13,7 @@ func Charge(ctx appengine.Context, order models.Order) error {
 	backend := stripe.NewInternalBackend(urlfetch.Client(ctx), "")
 
 	sc := &client.API{}
-	sc.Init("access_token", backend)
+	sc.Init(order.Campaign.StripeKey, backend) // TODO grab this from datastore
 
 	params := &stripe.ChargeParams{
 		Amount:   uint64(order.Total),
