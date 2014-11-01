@@ -5,7 +5,7 @@ import (
 	"github.com/gorilla/schema"
 )
 
-var decoder := schema.NewDecoder()
+var decoder = schema.NewDecoder()
 
 func Parse(c *gin.Context, form interface{}) error {
 	c.Request.ParseForm()
