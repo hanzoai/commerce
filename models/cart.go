@@ -1,6 +1,7 @@
 package models
 
 import (
+	"bytes"
 	"github.com/mholt/binding"
 	"net/http"
 	"time"
@@ -89,11 +90,6 @@ type PaymentAccount struct {
 	Type   string `schema:"-"`
 }
 
-type Campaign struct {
-	ID          string
-	StripeToken string `schema:"-"` // TODO set this
-}
-
 type Order struct {
 	FieldMapMixin
 	Account         PaymentAccount
@@ -107,12 +103,24 @@ type Order struct {
 	Total           int64 `schema:"-"`
 	User            User
 	Items           []LineItem
-	Campaign        Campaign `schema:"-"`
+	StripeToken     string `schema:"-"`
 	// ShippingOption  ShippingOption
 }
 
 func (o Order) DisplaySubtotal() string {
 	return DisplayPrice(o.Subtotal)
+}
+
+func (o Order) Description() string {
+	buffer := bytes.NewBufferString("")
+
+	for _, i := range o.Items {
+		buffer.WriteString(i.Description)
+		buffer.WriteString(" ")
+		buffer.WriteString(string(i.Quantity))
+		buffer.WriteString("\n")
+	}
+	return buffer.String()
 }
 
 func (o Order) DisplayTax() string {
