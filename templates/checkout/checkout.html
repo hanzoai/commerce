@@ -293,7 +293,7 @@
                                         </div>
                                         <div class="item-desc">
                                             <div>{{ item.Product.Title }}</div>
-                                            <div class="variant-info">{{ item.Product.Color }} / {{ item.Product.Size }}</div>
+                                            <div class="variant-info">{{ item.Variant.Color }} / {{ item.Variant.Size }}</div>
                                         </div>
                                     </td>
 
@@ -562,11 +562,16 @@
                                     <!-- Zip Code -->
                                     <div id="billing-zip" data-label="Zip Code" class="field zip required">
                                         <label>Zip / Postal</label>
-                                        <input name="Order.BillingAddress.PostalCode" class="field-element pulse-warnable" placeholder="Zip / Postal" type="text" spellcheck="false" maxlength="10" value>
+                                        <input name="Order.BillingAddress.PostalCode"
+                                               class="field-element pulse-warnable"
+                                               placeholder="Zip / Postal" type="text"
+                                               spellcheck="false"
+                                               maxlength="9"
+                                               onkeypress="return event.charCode >= 48 && event.charCode <= 57"> <!--http://stackoverflow.com/a/469362-->
                                     </div>
 
                                     <div style="clear:both;"></div>
-                                    <div id="phone" data-label="Phone Number" class="field phone">
+                                    <div id="phone" data-label="Phone Number" class="field phone required">
                                         <label>Phone Number</label>
                                         <input name="User.Phone" class="field-element pulse-warnable" placeholder="(424)-424-4200" x-autocompletetype="phone" type="text" spellcheck="false" maxlength="20" value>
                                     </div>
