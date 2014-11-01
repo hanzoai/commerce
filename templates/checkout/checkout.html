@@ -25,7 +25,7 @@
       #sqs-standard-checkout .sqs-checkout-form-section fieldset .field.error.required input, #sqs-standard-checkout .sqs-checkout-form-section fieldset .field.error.required select {
       border: 2px solid #d70404;
       }
-      
+
         #form-wrapper > div:nth-child(2) {
             /*Shipping details.*/
 
@@ -774,24 +774,24 @@
                                     </div>
                                     <!-- end #credit-card -->
 
-
                                     <!-- Secure payment conditions -->
-                                    <div id="comfort" style="display:none;">
-                                        All transactions are secure and encrypted, and we never store your credit card information. Payments are processed through Stripe. Payment information is also governed by
-                                        <a target="_blank" href="https://stripe.com/privacy">Stripe's privacy policy</a>.
-                                    </div>
+                                    <!-- <div id="comfort" style="display:none;"> -->
+                                    <!--     All transactions are secure and encrypted, and we never store your credit card information. Payments are processed through Stripe. Payment information is also governed by -->
+                                    <!--     <a target="_blank" href="https://stripe.com/privacy">Stripe's privacy policy</a>. -->
+                                    <!-- </div> -->
 
+                                    <!-- Authorize message display -->
+                                    <div id="authorize-message" style="display:none"></div>
 
                                     <!-- Place Order -->
                                     <div class="btn-container" style="text-align: center;">
                                       <input type="submit" value="Place order" class="button continue-button" style="width:100%"></input>
                                     </div>
 
-                                        <!-- hidden field to convey the Stripe Token so we may submit the charge -->
-                                        <!-- <input name="stripeToken" type="hidden"> -->
+                                    <!-- hidden field to convey the Stripe Token so we may submit the charge -->
+                                    <!-- <input name="stripeToken" type="hidden"> -->
 
-                                        <!-- optional hidden fields -->
-
+                                    <!-- optional hidden fields -->
 
                                     </div>
 
