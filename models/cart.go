@@ -81,12 +81,17 @@ func (c Cart) Validate(req *http.Request, errs binding.Errors) binding.Errors {
 }
 
 type PaymentAccount struct {
-	CVV2    int
-	Month   int
-	Year    int
-	Expiry  string
-	Number  string
-	Type    string `schema:"-"`
+	CVV2   int
+	Month  int
+	Year   int
+	Expiry string
+	Number string
+	Type   string `schema:"-"`
+}
+
+type Campaign struct {
+	ID          string
+	StripeToken string `schema:"-"` // TODO set this
 }
 
 type Order struct {
@@ -100,8 +105,9 @@ type Order struct {
 	Subtotal        int64 `schema:"-"`
 	Tax             int64 `schema:"-"`
 	Total           int64 `schema:"-"`
-	User     User
+	User            User
 	Items           []LineItem
+	Campaign        Campaign `schema:"-"`
 	// ShippingOption  ShippingOption
 }
 
