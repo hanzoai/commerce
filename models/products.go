@@ -1,6 +1,7 @@
 package models
 
 import (
+	"crowdstart.io/util/json"
 	"fmt"
 	"github.com/dustin/go-humanize"
 	"github.com/mholt/binding"
@@ -42,7 +43,7 @@ type Product struct {
 }
 
 func (p Product) JSON() string {
-	return JSON(&p)
+	return json.Encode(&p)
 }
 
 func (p Product) DisplayImage() Image {
