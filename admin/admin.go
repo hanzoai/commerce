@@ -35,7 +35,7 @@ func init() {
 		db.GetKey("user", userid, user)
 
 		// update  stripe token
-		user.stripeToken = token
+		user.StripeToken = token
 
 		// update in datastore
 		db.PutKey("user", userid, user)
