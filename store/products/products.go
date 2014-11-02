@@ -12,7 +12,7 @@ func List(c *gin.Context) {
 	var products []models.Product
 	db.Query("product").GetAll(db.Context, &products)
 
-	template.Render(c, "store/list.html", "products", products)
+	template.Render(c, "list.html", "products", products)
 }
 
 func Get(c *gin.Context) {
@@ -22,5 +22,5 @@ func Get(c *gin.Context) {
 	product := new(models.Product)
 	db.GetKey("product", slug, product)
 
-	template.Render(c, "store/product.html", "product", product)
+	template.Render(c, "product.html", "product", product)
 }

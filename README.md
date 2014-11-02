@@ -64,6 +64,7 @@ local development, which is why each module's handlers are set to a different
 subdirectory.
 
 #### Gotchas
+- Routing is not relative, it's absolute.
 - Order matters, first matching pattern takes precedence.
 - Subdomains are incompatible with the local development server.
 - Routing to the same url in multiple Go modules is not allowed (at least
