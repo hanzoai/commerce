@@ -5,41 +5,40 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models"
-	"crowdstart.io/util"
-
+	"crowdstart.io/util/json"
 )
 
 func Get(c *gin.Context) {
 	d  := datastore.New(c)
 	id := c.Params.ByName("id")
 
-	var json models.ProductVariant
+	var variant models.ProductVariant
 
-	if err := d.Get(id, &json); err != nil {
+	if err := d.Get(id, &variant); err != nil {
 		ctx := middleware.GetAppEngine(c)
 		ctx.Errorf("[API.Variant.Get] %v", err)
 		c.JSON(500, gin.H{"status": "unable to find product variant"})
 	} else {
-		c.JSON(200, json)
+		c.JSON(200, variant)
 	}
 }
 
 func Add(c *gin.Context) {
 	d := datastore.New(c)
 
-	var json models.ProductVariant
+	var variant models.ProductVariant
 
-	util.DecodeJson(c, &json)
+	json.Decode(c.Request.Body, &variant)
 	ctx := middleware.GetAppEngine(c)
-	ctx.Infof("[Api.Variant.Add] JSON: %v", json)
+	ctx.Infof("[Api.Variant.Add] JSON: %v", variant)
 
-	key, err := d.Put("productvariant", &json)
+	key, err := d.Put("productvariant", &variant)
 	if err != nil {
 		ctx.Errorf("[Api.Variant.Add] %v", err)
 		c.JSON(500, gin.H{"status": "unable to save product variant"})
 	} else {
-		json.Id = key
-		c.JSON(200, json)
+		variant.Id = key
+		c.JSON(200, variant)
 	}
 }
 
@@ -47,19 +46,19 @@ func Update(c *gin.Context) {
 	d := datastore.New(c)
 	id := c.Params.ByName("id")
 
-	var json models.ProductVariant
+	var variant models.ProductVariant
 
-	util.DecodeJson(c, &json)
+	json.Decode(c.Request.Body, &variant)
 	ctx := middleware.GetAppEngine(c)
-	ctx.Infof("[API.Variant.Update] JSON: %v", json)
+	ctx.Infof("[API.Variant.Update] JSON: %v", variant)
 
-	key, err := d.Update(id, &json)
+	key, err := d.Update(id, &variant)
 	if err != nil {
 		ctx.Errorf("[API.Variant.Update] %v", err)
 		c.JSON(500, gin.H{"status": "unable to find product variant"})
 	} else {
-		json.Id = key
-		c.JSON(200, json)
+		variant.Id = key
+		c.JSON(200, variant)
 	}
 }
 

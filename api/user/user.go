@@ -6,21 +6,21 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models"
-	"crowdstart.io/util"
+	"crowdstart.io/util/json"
 )
 
 func Get(c *gin.Context) {
 	d := datastore.New(c)
 	id := c.Params.ByName("Id")
 
-	var json models.User
+	var user models.User
 
-	if err := d.Get(id, &json); err != nil {
+	if err := d.Get(id, &user); err != nil {
 		ctx := middleware.GetAppEngine(c)
 		ctx.Errorf("[Api.User.Get] %v", err)
 		c.JSON(500, gin.H{"status": "unable to find user"})
 	} else {
-		c.JSON(200, json)
+		c.JSON(200, user)
 	}
 }
 
@@ -28,22 +28,22 @@ func Add(c *gin.Context) {
 	ctx := middleware.GetAppEngine(c)
 	d := datastore.New(c)
 
-	json := new(models.User)
+	user := new(models.User)
 
-	errs := binding.Bind(c.Request, json)
+	errs := binding.Bind(c.Request, user)
 	if errs.Handle(c.Writer) {
 		ctx.Errorf("[Api.User.Add] %v", errs)
 		return
 	}
-	ctx.Infof("[Api.User.Add] JSON: %v", json)
+	ctx.Infof("[Api.User.Add] JSON: %v", user)
 
-	key, err := d.Put("user", json)
+	key, err := d.Put("user", user)
 	if err != nil {
 		ctx.Errorf("[Api.User.Add] %v", err)
 		c.JSON(500, gin.H{"status": "unable to save user"})
 	} else {
-		json.Id = key
-		c.JSON(200, json)
+		user.Id = key
+		c.JSON(200, user)
 	}
 }
 
@@ -51,19 +51,19 @@ func Update(c *gin.Context) {
 	d := datastore.New(c)
 	id := c.Params.ByName("id")
 
-	var json models.User
+	var user models.User
 
-	util.DecodeJson(c, &json)
+	json.Decode(c.Request.Body, &user)
 	ctx := middleware.GetAppEngine(c)
-	ctx.Infof("[Api.User.Update] JSON: %v", json)
+	ctx.Infof("[Api.User.Update] JSON: %v", user)
 
-	key, err := d.Update(id, &json)
+	key, err := d.Update(id, &user)
 	if err != nil {
 		ctx.Errorf("[Api.User.Update] %v", err)
 		c.JSON(500, gin.H{"status": "unable to update user"})
 	} else {
-		json.Id = key
-		c.JSON(200, json)
+		user.Id = key
+		c.JSON(200, user)
 	}
 }
 
