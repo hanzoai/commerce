@@ -39,7 +39,12 @@ func checkout(c *gin.Context) {
 	}
 
 	order.Total = order.Subtotal + order.Tax
-	template.Render(c, "checkout/checkout.html", "order", order)
+
+	// Pass in user model so we have token to use.
+	user := new(models.User)
+	db.GetKey("user", "skully", &user)
+
+	template.Render(c, "checkout/checkout.html", "order", order, "user", &user)
 }
 
 func authorize(c *gin.Context) {
