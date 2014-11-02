@@ -14,11 +14,3 @@ type FieldMapMixin struct{}
 func (f *FieldMapMixin) FieldMap() binding.FieldMap {
 	return binding.FieldMap{}
 }
-
-func JSON(value interface{}) string {
-	b, err := json.Marshal(value)
-	if err != nil {
-		fmt.Println("error:", err)
-	}
-	return string(b)
-}
