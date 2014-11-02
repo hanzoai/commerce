@@ -6,16 +6,20 @@ import (
 )
 
 type User struct {
-	Id              string `schema:"-"`
-	FirstName       string
-	LastName        string
-	Email           string
-	Phone           string
-	OrdersIds       []string `schema:"-"`
-	Cart            Cart
-	BillingAddress  Address
-	ShippingAddress Address
 	FieldMapMixin
+	Id               string `schema:"-"`
+	FirstName        string
+	LastName         string
+	Email            string
+	Phone            string
+	OrdersIds        []string `schema:"-"`
+	Cart             Cart
+	BillingAddress   Address
+	ShippingAddress  Address
+
+	// SHOULD ONLY BE ACCESSED INTERNALLY. PLZ.
+	StripeToken		 string
+	CardconnectToken string
 }
 
 func (u User) Name() string {

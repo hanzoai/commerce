@@ -41,8 +41,8 @@ type Product struct {
 	Variants    []ProductVariant
 }
 
-func (p Product) AsJSON() string {
-	return asJSON(&p)
+func (p Product) JSON() string {
+	return JSON(&p)
 }
 
 func (p Product) DisplayImage() Image {
