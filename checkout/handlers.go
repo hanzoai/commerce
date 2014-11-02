@@ -45,7 +45,7 @@ func checkout(c *gin.Context) {
 	user := new(models.User)
 	db.GetKey("user", "skully", &user)
 
-	template.Render(c, "checkout/checkout.html", "order", order, "user", &user)
+	template.Render(c, "checkout.html", "order", order, "user", &user)
 }
 
 func authorize(c *gin.Context) {
