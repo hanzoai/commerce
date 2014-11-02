@@ -4,6 +4,7 @@ import (
 	"crowdstart.io/cardconnect"
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
+	"crowdstart.io/models"
 	"crowdstart.io/util/template"
 	"github.com/gin-gonic/gin"
 )

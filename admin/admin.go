@@ -14,9 +14,14 @@ func init() {
 
 	admin := router.Group("/admin")
 
+	// Admin index
+	admin.GET("/", func(c *gin.Context) {
+		template.Render(c, "admin/index.html")
+	})
+
 	// Show stripe button
 	admin.GET("/stripe/connect", func(c *gin.Context) {
-		template.Render("admin/stripe/connect.html")
+		template.Render(c, "admin/stripe/connect.html")
 	})
 
 	// Redirected on success from connect button.
@@ -35,11 +40,7 @@ func init() {
 		// update in datastore
 		db.PutKey("user", userid, user)
 
-		template.Render("admin/stripe/success.html")
-	})
-
-	admin.GET("/", func(c *gin.Context) {
-		c.String(200, "api")
+		template.Render(c, "admin/stripe/success.html")
 	})
 
 	http.Handle("/admin/", router)

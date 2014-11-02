@@ -4,6 +4,9 @@ dispatch:
   - url: "*/v1/*"
     module: api
 
+  - url: "*/admin/*"
+    module: admin
+
   - url: "*/checkout/*"
     module: checkout
 
