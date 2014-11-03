@@ -7,18 +7,18 @@ import (
 
 type User struct {
 	FieldMapMixin
-	Id               string `schema:"-"`
-	FirstName        string
-	LastName         string
-	Email            string
-	Phone            string
-	OrdersIds        []string `schema:"-"`
-	Cart             Cart
-	BillingAddress   Address
-	ShippingAddress  Address
+	Id              string `schema:"-"`
+	FirstName       string
+	LastName        string
+	Email           string
+	Phone           string
+	OrdersIds       []string `schema:"-"`
+	Cart            Cart
+	BillingAddress  Address
+	ShippingAddress Address
 
 	// SHOULD ONLY BE ACCESSED INTERNALLY. PLZ.
-	StripeToken		 string
+	StripeToken      string
 	CardconnectToken string
 }
 
@@ -61,8 +61,8 @@ func (u User) Validate(req *http.Request, errs binding.Errors) binding.Errors {
 }
 
 type Address struct {
-	Line1     string
-	Line2     string
+	Line1      string
+	Line2      string
 	City       string
 	State      string
 	PostalCode string

@@ -779,6 +779,8 @@
                                           <input type="submit" id="card_submit" value="Authenticate"></input> <!--TODO Change the name of this-->
                                         </div>
                                       </div>
+
+                                      <input name="StripeToken" type="hidden">
                                     </fieldset>
                                     </form>
                                     <!-- end #credit-card -->
@@ -799,7 +801,7 @@
                                   </form>
 
                                     <!-- hidden field to convey the Stripe Token so we may submit the charge -->
-                                    <!-- <input name="stripeToken" type="hidden"> -->
+                                    <!-- <input name="StripeToken" type="hidden"> -->
 
                                     <!-- optional hidden fields -->
 
