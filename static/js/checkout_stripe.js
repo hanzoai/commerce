@@ -31,13 +31,13 @@ function validateCard() {
     var year = arr[1];
 
     if (month.length != 2)
-        return fail();
+        return fail;
     if (year.length != 2)
-        return fail();
+        return fail;
 
     var cvc = $cvc.val()
     if (cvc.length != 2)
-        return fail();
+        return fail;
 
     return {
         success: true,
