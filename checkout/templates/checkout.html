@@ -725,6 +725,7 @@
                                     <!-- </div> -->
 
                                 </fieldset>
+                              </form>
                             </div>
                 </div>
 
@@ -743,13 +744,15 @@
                                     Secure Payment
                                 </div>
 
+                                <form id="credit_card_form" action="" method="POST">
+
                                 <fieldset style="display:none;" data-stage="3">
                                   <div style="display:block; text-align:center; margin-bottom: 5%;">
                                     <div id="card-wrapper"></div>
                                   </div>
 
                                     <!-- Credit Card -->
-                                    <div id="credit-card">
+                                      <div id="credit-card">
 
                                         <!-- Name -->
                                         <!-- <input name="cardHolderName" type="hidden">-->
@@ -757,26 +760,30 @@
 
                                         <!-- Card Number -->
                                         <div id="card-number" data-label="Card Number" class="field required">
-                                            <label>Card Number</label>
-                                            <input class="field-element pulse-warnable" type="text" size="20" autocomplete="off" placeholder="Credit Card Number" name="Order.Account.Number" value="">
-                                        </div>
-
+                                          <label>Card Number</label>
+                                          <input class="field-element pulse-warnable" type="text" size="20" autocomplete="off" placeholder="Credit Card Number" name="Order.Account.Number" value="" id="cardNumber">
+                                          </div>
+                                          
 
                                         <!-- Expiry/CVC -->
                                         <div id="expiry-cvc">
-                                            <div id="card-expiry-year" data-label="Exp. Yr." class="field required">
-                                              <label>Expiry</label>
-                                              <input class="field-element pulse-warnable" type="text" size="5" maxlength="7" autocomplete="off" placeholder="Expiry" value="" name="RawExpiry" style="width:66px">
+                                          <div id="card-expiry-year" data-label="Exp. Yr." class="field required">
+                                            <label>Expiry</label>
+                                            <input class="field-element pulse-warnable" type="text" size="5" maxlength="7" autocomplete="off" placeholder="Expiry" value="" name="RawExpiry" style="width:66px" id="expiry">
                                             </div>
                                             <!-- CVC -->
                                             <div id="cvc" data-label="CVC" class="field required">
-                                                <label>CVC</label>
-                                                <input class="field-element pulse-warnable" type="text" size="4" autocomplete="off" placeholder="CVC" value="" name="Order.Account.CVV2">
+                                              <label>CVC</label>
+                                              <input id="cvcInput" class="field-element pulse-warnable" type="text" size="4" autocomplete="off" placeholder="CVC" value="" name="Order.Account.CVV2" data-stripe="cvc">
                                             </div>
-
                                         </div>
-
-                                    </div>
+                                        
+                                        <div>
+                                          <input type="submit" id="card_submit" value="Authenticate"></input> <!--TODO Change the name of this-->
+                                        </div>
+                                      </div>
+                                    </fieldset>
+                                    </form>
                                     <!-- end #credit-card -->
 
                                     <!-- Secure payment conditions -->
@@ -792,6 +799,7 @@
                                     <div class="btn-container" style="text-align: center;">
                                       <input type="submit" value="Place order" class="button continue-button" style="width:100%"></input>
                                     </div>
+                                  </form>
 
                                     <!-- hidden field to convey the Stripe Token so we may submit the charge -->
                                     <!-- <input name="stripeToken" type="hidden"> -->
@@ -799,11 +807,8 @@
                                     <!-- optional hidden fields -->
 
                                     </div>
-
-                                </fieldset>
                             </div>
                         </div>
-                    </form>
                 </div>
             </div>
         </div>
@@ -858,10 +863,22 @@
             </div>
         </div>
     </div>
+
+    <form id="stripeForm" action="" method="POST" style="display:none;">
+      <span class='payment-errors'></span>
+      <input data-stripe="number"/>
+      <input data-stripe="cvc"/>
+      <input data-stripe="exp-month"/>
+      <input data-stripe="exp-year"/>
+      <button type="submit">Submit Payment</button>
+    </form>
+      
     <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
     <script src="/js/jquery.ba-throttle-debounce.min.js"></script>
     <script src="/js/card.js"></script>
     <script src="/js/checkout.js"></script>
+    <script type="text/javascript" src="https://js.stripe.com/v2/"></script>
+    <script type="text/javascript" src="/js/checkout_stripe.js"></script>
 </body>
 
 </html>

@@ -119,49 +119,7 @@ $city.on('keyup', updateTax);
 
 // AJAX form submit
 csio.handleSubmit = function(formSelector) {
-  var $message = $('#authorize-message');
-  var url = '/checkout/authorize';
-  var authorizePending = false;
-
-  $(formSelector).submit(function(e) {
-    e.preventDefault()
-
-    if (authorizePending) return;
-
-    authorizePending = true;
-
-    $.ajax({
-      type: 'POST',
-      url: url,
-      data: $(formSelector).serialize(),
-      dataType: 'json',
-      error: function(xhr) {
-        var data = $.parseJSON(xhr);
-        console.log(data)
-        $message.text('Unable to authorize your payment. Please try again in a few moments.')
-        $message.fadeIn()
-      },
-      success: function(data) {
-        console.log(data)
-        switch (data.status) {
-          case 'ok':
-            $message.text('Thank you for your payment.')
-            break;
-          case 'retry':
-            $message.text('We were unable to authorize payment, please try again.')
-            break;
-          case 'declined':
-            $message.text('Unable to authorize payment, please check your card details and try again.')
-            break;
-        }
-        $message.fadeIn()
-      },
-      complete: function() {
-        authorizePending = false;
-      },
-      timeout: 5000,
-    })
-  })
+    
 }
 
 csio.handleSubmit('#form')
