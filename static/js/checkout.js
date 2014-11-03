@@ -119,7 +119,13 @@ $city.on('keyup', updateTax);
 
 // AJAX form submit
 csio.handleSubmit = function(formSelector) {
-    
+    if (csio.approved) {
+        csio.disable($cardNumber);
+        csio.disable($expiry);
+        csio.disable($cvc);
+
+        $(formSelector).submit();
+    }
 }
 
-csio.handleSubmit('#form')
+csio.handleSubmit('#form');
