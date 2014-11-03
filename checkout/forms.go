@@ -46,6 +46,10 @@ func (f *AuthorizeForm) Parse(c *gin.Context) error {
 	f.Order.Account.Year = year
 	f.Order.Account.Expiry = strings.Join(parts, "")
 
+	if ShipToBilling {
+		f.Order.ShippingAddress = f.Order.BillingAddress
+	}
+
 	return nil
 }
 
