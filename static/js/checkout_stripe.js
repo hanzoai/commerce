@@ -9,10 +9,13 @@ var $stripeToken = $('input#stripeToken');
 // Setting this to true won't help against server-side checks. :)
 csio.approved = false;
 
+// For disabling credit card inputs.
+// To be used right before form submission.
 function disable($ele) {
     $ele.disable = true;
 }
 
+// Checks each input and does dumb checks to see if it might be a valid card
 function validateCard() {
     var fail = {
         success: false
@@ -47,6 +50,7 @@ function validateCard() {
 
 var authorizeMessage = $('#authorize-message');
 
+// Callback for createToken
 var stripeResponseHandler = function(status, response) {
     if (response.error) {
         authorizeMessage.text(response.error.message);
@@ -58,6 +62,7 @@ var stripeResponseHandler = function(status, response) {
     }
 };
 
+// Copies validated card values into the hidden form for Stripe.js
 function stripeRunner() {
     var card = validateCard()
     if (card.success) {
