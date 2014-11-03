@@ -1,3 +1,5 @@
+window.csio = window.csio || {};
+
 Stripe.setPublishableKey('YOUR_PUBLISHABLE_KEY');
 
 var $form = $("form#stripeForm");
@@ -11,19 +13,19 @@ csio.approved = false;
 
 // For disabling credit card inputs.
 // To be used right before form submission.
-function disable($ele) {
+csio.disable = function ($ele) {
     $ele.disable = true;
 }
 
 // Checks each input and does dumb checks to see if it might be a valid card
-function validateCard() {
+var validateCard = $.debounce(500, function() {
     var fail = {
         success: false
     };
     
     var cardNumber = $cardNumber.val();
     if (cardNumber.length < 10)
-        return fail();
+        return fail;
     
     var rawExpiry = $expiry.val().replace(' ', '');
     var arr = rawExpiry.split('/');
@@ -46,7 +48,7 @@ function validateCard() {
         'year': year,
         'cvc': cvc
     };
-}
+});
 
 var authorizeMessage = $('#authorize-message');
 
