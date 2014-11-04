@@ -22,6 +22,14 @@ type User struct {
 	CardconnectToken string
 }
 
+type Owner struct {
+	Id           string
+	Name         string
+	Email        string
+	PasswordHash []byte
+	Campaigns    []Campaign
+}
+
 func (u User) Name() string {
 	return u.FirstName + " " + u.LastName
 }

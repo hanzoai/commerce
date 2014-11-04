@@ -1,11 +1,15 @@
 package admin
 
 import (
+	"appengine/memcache"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
+	"crowdstart.io/util/form"
 	"crowdstart.io/util/router"
 	"crowdstart.io/util/template"
 	"github.com/gin-gonic/gin"
+	"github.com/twinj/uuid"
+	"net/http"
 )
 
 func init() {
@@ -38,5 +42,54 @@ func init() {
 		db.PutKey("user", userid, user)
 
 		template.Render(c, "stripe/success.html")
+	})
+
+	admin.POST("/login", func(c *gin.Context) {
+		f := new(models.LoginForm)
+		err := form.Parse(c, f)
+
+		if err != nil {
+			c.Fail(401, err)
+			return
+		}
+
+		hash, err := f.PasswordHash()
+		if err != nil {
+			c.Fail(401, err)
+			return
+		}
+
+		var owners [1]models.Owner
+		db := datastore.New(c)
+		q := db.Query("owner").
+			Filter("PasswordHash =", hash)
+
+		keys, err := q.GetAll(db.Context, &owners)
+		if err != nil {
+			c.Fail(401, err)
+			return
+		}
+
+		if err == nil && len(owners) > 0 {
+			u := uuid.NewV4()
+			err := memcache.Add(
+				db.Context,
+				&memcache.Item{
+					Key:   u.String(),
+					Value: []byte(owners[0].Id),
+				},
+			)
+
+			if err == nil {
+				http.SetCookie(c.Writer,  &http.Cookie{
+					Name: "CrowdstartOwner"
+					Value: uuid.String()
+				})
+			}
+			else {
+				c.Fail(401, err)
+				return
+			}
+		}
 	})
 }
