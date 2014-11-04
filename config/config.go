@@ -4,17 +4,19 @@ import (
 	"appengine"
 )
 
-type Config struct {
-	Stripe struct {
-		ClientId    string
-		APIKey      string
-		APISecret   string
-		RedirectURI string
-		RedirectURL string
-	}
+type Stripe struct {
+	ClientId    string
+	APIKey      string
+	APISecret   string
+	RedirectURI string
+	RedirectURL string
 }
 
-func Development() Config {
+type Config struct {
+	Stripe Stripe
+}
+
+func Development() *Config {
 	return &Config{
 		Stripe: Stripe{
 			"ca_53yyPzxlPsdAtzMEIuS2mXYDp4FFXLmm",
@@ -26,7 +28,7 @@ func Development() Config {
 	}
 }
 
-func Production() Config {
+func Production() *Config {
 	return &Config{
 		Stripe: Stripe{
 			"ca_53yyRUNpMtTRUgMlVlLAM3vllY1AVybU",
@@ -38,7 +40,7 @@ func Production() Config {
 	}
 }
 
-func Get() Config {
+func Get() *Config {
 	if appengine.IsDevAppServer() {
 		return Development()
 	} else {
