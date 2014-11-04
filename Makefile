@@ -56,7 +56,7 @@ assets-watch:
 build: deps
 	goapp build $(modules)
 
-deps: .sdk assets
+deps: .sdk
 	(gpm install || curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.1/bin/gpm | bash) && \
 	(hash requisite 2>/dev/null || npm install -g requisite)
 
@@ -82,7 +82,7 @@ tools:
 	goapp install $(tools) && \
 	gocode set lib-path "$(gopath_pkg_path):$(goroot_pkg_path)"
 
-test: build
+test: assets build
 	goapp test $(test_modules)
 
 bench: build
