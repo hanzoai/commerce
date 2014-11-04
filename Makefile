@@ -47,10 +47,10 @@ export GOPATH  := $(gopath)
 all: deps test
 
 assets:
-	requisite assets/js/crowdstart.coffee -o static/js/crowdstart.js
+	requisite assets/js/crowdstart.coffee -g -o static/js/crowdstart.js
 
 assets-watch:
-	requisite -w assets/js/crowdstart.coffee -o static/js/crowdstart.js
+	requisite assets/js/crowdstart.coffee -g -w -o static/js/crowdstart.js
 
 build: deps
 	goapp build $(modules)

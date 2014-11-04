@@ -4,3 +4,8 @@ exports.humanizeNumber = (num) ->
 exports.formatCurrency = (num) ->
   currency = num or 0
   humanizeNumber currency.toFixed(2)
+
+_idCounter = 0
+exports.uniqueId = (prefix) ->
+  id = ++_idCounter + ''
+  prefix ? prefix + id

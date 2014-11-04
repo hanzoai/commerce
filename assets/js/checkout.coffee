@@ -16,11 +16,6 @@ $("div.field").on "click", ->
   $(this).removeClass "error"
   return
 
-crowdstart.init({
-  form: 'selector',
-  checkout: 'button#foo'
-})
-
 class CheckoutForm
   constructor: (selector) ->
     @bindForm selector
@@ -74,14 +69,17 @@ showPaymentOptions = $.debounce(250, ->
 )
 
 $requiredVisible.on "keyup", showPaymentOptions
-$("#form").card
-  container: "#card-wrapper"
-  numberInput: "input[name=\"Order.Account.Number\"]"
-  expiryInput: "input[name=\"RawExpiry\"]"
-  cvcInput: "input[name=\"Order.Account.CVV2\"]"
-  nameInput: "input[name=\"User.FirstName\"], input[name=\"User.LastName\"]"
 
-$("input[name=\"ShipToBilling\"]").change ->
+setupCard = (selector) ->
+  $(selector).card({
+    container:   '#card-wrapper'
+    numberInput: 'input[name="Order.Account.Number"]'
+    expiryInput: 'input[name="RawExpiry"]'
+    cvcInput:    'input[name="Order.Account.CVV2"]'
+    nameInput:   'input[name="User.FirstName"], input[name="User.LastName"]'
+  })
+
+$('input[name="ShipToBilling"]').change ->
   shipping = $("#shippingInfo")
   if @checked
     shipping.fadeOut 500
