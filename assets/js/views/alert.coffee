@@ -1,0 +1,52 @@
+View = require '../view'
+
+class Alert extends View
+  el: '.sqs-widgets-confirmation.alert'
+
+  constructor: (opts = {}) ->
+    super
+    @$nextTo       = $(opts.nextTo  ? 'body')
+    @state.confirm =   opts.confirm ? 'okay'
+    @state.message =   opts.message ? 'message'
+    @state.title   =   opts.title   ? 'title'
+
+  bindings:
+    '.title':               'title'
+    '.message':             'message'
+    '.confirmation-button': 'confirm'
+
+  events:
+    # Dismiss on click, escape, and scroll
+    'mousedown document': ->
+      @dismiss()
+
+    'keydown document': ->
+      e = event unless e
+      @dismiss() if e.keyCode is 27
+
+    'scroll window': ->
+      @dismiss()
+
+  # show alert box
+  show: ->
+    @render()
+    @bind()
+    @position()
+    @$el.fadeIn(200)
+
+  # hide alert box
+  dismiss: ->
+    @unbind()
+    @$el.fadeOut 200, => @$el.css top: -1000
+
+  # update position relative to thing this should be next to
+  position: ->
+    offset = @$nextTo.offset()
+    topOffset = offset.top - $(window).scrollTop()
+
+    @$el.css
+      position: 'fixed'
+      top:      (topOffset   - 42) + 'px'
+      left:     (offset.left - 66) + 'px'
+
+module.exports = Alert
