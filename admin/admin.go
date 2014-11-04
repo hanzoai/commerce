@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
 	"crowdstart.io/util/router"
@@ -22,7 +23,7 @@ func init() {
 
 	// Show stripe button
 	admin.GET("/stripe/connect", func(c *gin.Context) {
-		template.Render(c, "stripe/connect.html")
+		template.Render(c, "stripe/connect.html", "clientid", config.Get().Stripe.ClientId)
 	})
 
 	admin.GET("/stripe/callback", func(c *gin.Context) {
@@ -39,7 +40,7 @@ func init() {
 			}
 
 			data := url.Values{}
-			data.Set("client_secret", "")
+			data.Set("client_secret", config.Get().Stripe.APISecret)
 			data.Add("code", code)
 			data.Add("grant_type", "authorization_code")
 
