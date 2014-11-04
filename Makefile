@@ -48,18 +48,17 @@ export GOPATH  := $(gopath)
 all: deps test
 
 assets:
-	(hash requisite 2>/dev/null || npm install -g requisite) && \
 	requisite assets/js/crowdstart.coffee -o static/js/crowdstart.js
 
 assets-watch:
-	(hash requisite 2>/dev/null || npm install -g requisite) && \
 	requisite -w assets/js/crowdstart.coffee -o static/js/crowdstart.js
 
 build: deps
 	goapp build $(modules)
 
-deps: .sdk
-	gpm install || curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.1/bin/gpm | bash
+deps: .sdk assets
+	(gpm install || curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.1/bin/gpm | bash) && \
+	(hash requisite 2>/dev/null || npm install -g requisite)
 
 install: install-deps
 	goapp install $(modules) $(packages)
