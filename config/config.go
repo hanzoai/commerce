@@ -4,40 +4,38 @@ import (
 	"appengine"
 )
 
-type Stripe struct {
-	ClientId    string
-	APIKey      string
-	APISecret   string
-	RedirectURI string
-	RedirectURL string
+type Config struct {
+	Stripe struct {
+		ClientId    string
+		APIKey      string
+		APISecret   string
+		RedirectURL string
+		WebhookURL  string
+	}
 }
 
-type Config struct {
-	Stripe Stripe
+func Defaults() *Config {
+	return new(Config)
 }
 
 func Development() *Config {
-	return &Config{
-		Stripe: Stripe{
-			"ca_REDACTED",
-			"pk_test_REDACTED",
-			"",
-			"http://localhost:8080/stripe/callback",
-			"http://localhost:8080/stripe/hook",
-		},
-	}
+	config := Defaults()
+	config.Stripe.ClientId = "ca_REDACTED"
+	config.Stripe.APIKey = "pk_test_REDACTED"
+	config.Stripe.APISecret = ""
+	config.Stripe.RedirectURL = "http://localhost:8080/stripe/callback"
+	config.Stripe.WebhookURL = "http://localhost:8080/stripe/hook"
+	return config
 }
 
 func Production() *Config {
-	return &Config{
-		Stripe: Stripe{
-			"ca_REDACTED",
-			"pk_live_REDACTED",
-			"",
-			"https://secure.crowdstart.io/stripe/callback",
-			"https://secure.crowdstart.io/stripe/hook",
-		},
-	}
+	config := Defaults()
+	config.Stripe.ClientId = "ca_REDACTED"
+	config.Stripe.APIKey = "pk_live_REDACTED"
+	config.Stripe.APISecret = ""
+	config.Stripe.RedirectURL = "https://secure.crowdstart.io/stripe/callback"
+	config.Stripe.WebhookURL = "https://secure.crowdstart.io/stripe/hook"
+	return config
 }
 
 func Get() *Config {
