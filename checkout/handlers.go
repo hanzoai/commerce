@@ -1,6 +1,7 @@
 package checkout
 
 import (
+	"crowdstart.io/config"
 	"crowdstart.io/stripe"
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
@@ -45,7 +46,7 @@ func checkout(c *gin.Context) {
 	user := new(models.User)
 	db.GetKey("user", "skully", &user)
 
-	template.Render(c, "checkout.html", "order", order, "user", &user)
+	template.Render(c, "checkout.html", "order", order, "user", &user, "config", config.Get())
 }
 
 func authorize(c *gin.Context) {
@@ -83,7 +84,7 @@ func authorize(c *gin.Context) {
 	}
 
 	_, err := stripe.Charge(ctx, order)
-	
+
 	if err != nil {
 		c.Fail(500, err)
 	}

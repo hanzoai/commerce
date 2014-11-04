@@ -742,7 +742,7 @@
 
                                     Secure Payment
                                 </div>
-                                
+
                                 <fieldset style="display:none;" data-stage="3">
                                   <div style="display:block; text-align:center; margin-bottom: 5%;">
                                     <div id="card-wrapper"></div>
@@ -760,7 +760,7 @@
                                           <label>Card Number</label>
                                           <input class="field-element pulse-warnable" type="text" size="20" autocomplete="off" placeholder="Credit Card Number" name="Order.Account.Number" value="" id="cardNumber">
                                           </div>
-                                          
+
 
                                         <!-- Expiry/CVC -->
                                         <div id="expiry-cvc">
@@ -774,7 +774,7 @@
                                               <input id="cvcInput" class="field-element pulse-warnable" type="text" size="4" autocomplete="off" placeholder="CVC" value="" name="Order.Account.CVV2" data-stripe="cvc">
                                             </div>
                                         </div>
-                                        
+
                                         <div>
                                           <input type="submit" id="card_submit" value="Authenticate"></input> <!--TODO Change the name of this-->
                                         </div>
@@ -871,11 +871,14 @@
       <input data-stripe="exp-year"/>
       <button type="submit">Submit Payment</button>
     </form>
-      
+
     <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
     <script type="text/javascript" src="/js/jquery.ba-throttle-debounce.min.js"></script>
     <script type="text/javascript" src="/js/card.js"></script>
     <script type="text/javascript" src="https://js.stripe.com/v2/"></script>
+    <script>
+      Stripe.setPublishableKey('{{ config.Stripe.APIKey }}')
+    </script>
     <script type="text/javascript" src="/js/checkout_stripe.js"></script>
     <script type="text/javascript" src="/js/checkout.js"></script>
 </body>
