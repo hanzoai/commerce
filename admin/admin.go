@@ -6,6 +6,10 @@ import (
 	"crowdstart.io/util/router"
 	"crowdstart.io/util/template"
 	"github.com/gin-gonic/gin"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"strings"
 )
 
 func init() {
@@ -19,6 +23,45 @@ func init() {
 	// Show stripe button
 	admin.GET("/stripe/connect", func(c *gin.Context) {
 		template.Render(c, "stripe/connect.html")
+	})
+
+	admin.GET("/stripe/callback", func(c *gin.Context) {
+		req := c.Request
+		error := req.URL.Query().Get("error")
+		code := req.URL.Query().Get("code")
+
+		if len(error) == 0 {
+
+			transport := http.Transport{}
+
+			client := &http.Client{
+				Transport: &transport,
+			}
+
+			data := url.Values{}
+			data.Set("client_secret", "")
+			data.Add("code", code)
+			data.Add("grant_type", "authorization_code")
+
+			tokenReq, _ := http.NewRequest("POST", "https://connect.stripe.com/oauth/token", strings.NewReader(data.Encode()))
+			resp, err := client.Do(tokenReq)
+
+			if err == nil {
+				defer resp.Body.Close()
+				contents, err := ioutil.ReadAll(resp.Body)
+				if err != nil {
+					error = err.Error()
+				} else {
+					template.Render(c, "stripe/success.html", "resp", string(contents), "code", code)
+				}
+			} else {
+				error = err.Error()
+			}
+		}
+
+		if len(error) > 0 {
+			template.Render(c, "stripe/failure.html", "error", error, "code", code)
+		}
 	})
 
 	// Redirected on success from connect button.
