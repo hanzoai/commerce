@@ -245,7 +245,9 @@
     }
     csio.NumbersOnly = function (event) {
       return event.charCode >= 48 && event.charCode <= 57
-    }
+    };
+    require('./cart');
+    require('./checkout')
   });
   require('crowdstart')
 }.call(this, this))
