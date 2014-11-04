@@ -1,4 +1,4 @@
-Alert = require './alert'
+alert = require './alert'
 
 # Lookup variant based on selected options.
 exports.getVariant = ->
@@ -27,7 +27,7 @@ exports.getVariant = ->
 
   # Warn if missing options (we'll be unable to figure out a SKU).
   if missingOptions.length > 0
-    return Alert({
+    return alert({
       title: "Unable To Add Item"
       message: "Please select a " + missingOptions[0] + " option."
       confirm: "Okay"
