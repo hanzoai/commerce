@@ -17,8 +17,7 @@ packages 		= crowdstart.io/cardconnect \
 				  crowdstart.io/datastore \
 				  crowdstart.io/middleware \
 				  crowdstart.io/models \
-				  crowdstart.io/sessions \
-				  crowdstart.io/util \
+				  crowdstart.io/sessions
 
 test_modules    = crowdstart.io/admin/test \
 				  crowdstart.io/api/test \
@@ -48,10 +47,10 @@ export GOPATH  := $(gopath)
 all: deps test
 
 assets:
-	requisite assets/js/crowdstart.coffee -o static/js/crowdstart.js
+	requisite assets/js/crowdstart.coffee -g -o static/js/crowdstart.js
 
 assets-watch:
-	requisite -w assets/js/crowdstart.coffee -o static/js/crowdstart.js
+	requisite assets/js/crowdstart.coffee -g -w -o static/js/crowdstart.js
 
 build: deps
 	goapp build $(modules)
@@ -75,7 +74,7 @@ install-deps:
 	ln -s $(shell pwd) $(sdk_path)/gopath/src/crowdstart.io
 
 serve:
-	$(sdk_path)/dev_appserver.py $(gae_yaml)
+	$(sdk_path)/dev_appserver.py --max_module_instances=1 $(gae_yaml)
 
 tools:
 	goapp get $(tools) && \

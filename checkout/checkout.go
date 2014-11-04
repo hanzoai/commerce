@@ -2,15 +2,12 @@ package checkout
 
 import (
 	"crowdstart.io/util/router"
-	"net/http"
 )
 
 func init() {
-	router := router.New()
+	router := router.New("/checkout/")
 
-	router.POST("/checkout/", checkout)
-	router.POST("/checkout/authorize", authorize)
-	router.GET("/checkout/complete", complete)
-
-	http.Handle("/checkout/", router)
+	router.POST("/", checkout)
+	router.POST("/authorize", authorize)
+	router.GET("/complete", complete)
 }
