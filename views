@@ -15,26 +15,6 @@ class Alert extends View
     '.message':             'message'
     '.confirmation-button': 'confirm'
 
-  # show alert box
-  show: ->
-    @render()
-    @position()
-    @$el.fadeIn(200)
-
-  # hide alert box
-  dismiss: ->
-    @$el.fadeOut 200, => @$el.css top: -1000
-
-  # update position relative to thing this should be next to
-  position: ->
-    offset = @$nextTo.offset()
-    topOffset = offset.top - $(window).scrollTop()
-
-    @$el.css
-      position: 'fixed'
-      top: (topOffset - 42) + 'px'
-      left: (offset.left - 66) + 'px'
-
   events:
     # Dismiss on click, escape, and scroll
     'mousedown document': ->
@@ -46,6 +26,28 @@ class Alert extends View
 
     'scroll window': ->
       @dismiss()
+
+  # show alert box
+  show: ->
+    @render()
+    @bind()
+    @position()
+    @$el.fadeIn(200)
+
+  # hide alert box
+  dismiss: ->
+    @unbind()
+    @$el.fadeOut 200, => @$el.css top: -1000
+
+  # update position relative to thing this should be next to
+  position: ->
+    offset = @$nextTo.offset()
+    topOffset = offset.top - $(window).scrollTop()
+
+    @$el.css
+      position: 'fixed'
+      top: (topOffset - 42) + 'px'
+      left: (offset.left - 66) + 'px'
 
 module.exports = (opts) ->
   new Alert opts

@@ -1,3 +1,8 @@
+Alert = require '../views/alert'
+
+exports.alert = ->
+  app.alert = new Alert()
+
 # Product gallery image switching
 exports.gallery = ->
   for thumb in $('#productThumbnails .slide img')
@@ -9,6 +14,7 @@ exports.gallery = ->
         else
           img.fadeOut 400
 
+# Swap AR-1 helmets when color selected
 exports.customizeAr1 = ->
     $slides = $('#productSlideshow .slide img')
     $('[data-variant-option-name=Color]').change ->
