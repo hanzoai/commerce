@@ -27,7 +27,7 @@ $("#productThumbnails .slide img").each (i, v) ->
   return
 
 # Update cart hover onload
-csio.updateCartHover()
+# csio.updateCartHover()
 
 # PAGE SPECIFIC HACKS
 

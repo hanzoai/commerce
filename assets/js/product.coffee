@@ -1,14 +1,17 @@
+Alert = require './alert'
+
 # Lookup variant based on selected options.
 exports.getVariant = ->
-
-  # Determine if selected options match variant
-  optionsMatch = (selected, variant) ->
-    for k of selected
-      continue
-    true
   selected = {}
   variants = csio.currentProduct.Variants
   missingOptions = []
+
+  # Determine if selected options match variant
+  optionsMatch = (selected, variant) ->
+    for k,v of selected
+      if variant[k] != selected[k]
+        return false
+    true
 
   # Get selected options
   $(".variant-option").each (i, v) ->
@@ -24,12 +27,12 @@ exports.getVariant = ->
 
   # Warn if missing options (we'll be unable to figure out a SKU).
   if missingOptions.length > 0
-    return alert({
+    return Alert({
       title: "Unable To Add Item"
       message: "Please select a " + missingOptions[0] + " option."
       confirm: "Okay"
-      $nextTo: $(".sqs-add-to-cart-button")
-    })
+      nextTo: ".sqs-add-to-cart-button"
+    }).show()
 
   # Figure out SKU
   for variant in variants
