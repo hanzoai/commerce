@@ -1,5 +1,3 @@
-Alert = require './alert'
-
 # Lookup variant based on selected options.
 exports.getVariant = ->
   selected = {}
@@ -27,12 +25,12 @@ exports.getVariant = ->
 
   # Warn if missing options (we'll be unable to figure out a SKU).
   if missingOptions.length > 0
-    return Alert({
+    return app.alert({
       title: "Unable To Add Item"
       message: "Please select a " + missingOptions[0] + " option."
       confirm: "Okay"
       nextTo: ".sqs-add-to-cart-button"
-    }).show()
+    })
 
   # Figure out SKU
   for variant in variants

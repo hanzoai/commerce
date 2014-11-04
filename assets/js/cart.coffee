@@ -1,7 +1,5 @@
 product = require './product'
 
-window.csio ?= {}
-
 exports.setCart = (cart) ->
   $.cookie csio.cookieName, cart,
     expires: 30
@@ -19,7 +17,7 @@ exports.clearCart = ->
 
   return
 
-exports.updateCartHover = (modifiedCart) ->
+exports.updateHover = (modifiedCart) ->
   cart = modifiedCart or csio.getCart()
   numItems = 0
   subTotal = 0
@@ -27,19 +25,14 @@ exports.updateCartHover = (modifiedCart) ->
     lineItem = cart[k]
     numItems += lineItem.quantity
     subTotal += lineItem.price * lineItem.quantity
-  $(".total-quantity").text util.humanizeNumber(numItems)
-  $(".subtotal .price span").text util.formatCurrency(subTotal)
+  $('.total-quantity').text util.humanizeNumber(numItems)
+  $('.subtotal .price span').text util.formatCurrency(subTotal)
   if numItems is 1
-    $(".details span.suffix").text "item"
+    $('.details span.suffix').text 'item'
   else
-    $(".details span.suffix").text "items"
+    $('.details span.suffix').text 'items'
   return
 
-
-# global csio, formatCurrency
-
-# Globals
-window.csio = window.csio or {}
 templateEl = $(".template")
 templateEl.parent().remove()
 csio.renderLineItem = (lineItem, index) ->
