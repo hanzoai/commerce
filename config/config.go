@@ -6,11 +6,11 @@ import (
 
 type Config struct {
 	Stripe struct {
-		ClientId     string
-		ClientSecret string
-		APIKey       string
-		RedirectURI  string
-		RedirectURL  string
+		ClientId    string
+		APIKey      string
+		APISecret   string
+		RedirectURI string
+		RedirectURL string
 	}
 }
 
@@ -18,9 +18,9 @@ func Development() Config {
 	return &Config{
 		Stripe: Stripe{
 			"ca_REDACTED",
+			"pk_test_REDACTED",
 			"",
-			"pk_test_REDACTED"
-			"http://localhost:8080/stripe/redirect",
+			"http://localhost:8080/stripe/callback",
 			"http://localhost:8080/stripe/hook",
 		},
 	}
@@ -30,9 +30,9 @@ func Production() Config {
 	return &Config{
 		Stripe: Stripe{
 			"ca_REDACTED",
-			"",
 			"pk_live_REDACTED",
-			"https://secure.crowdstart.io/stripe/redirect",
+			"",
+			"https://secure.crowdstart.io/stripe/callback",
 			"https://secure.crowdstart.io/stripe/hook",
 		},
 	}
