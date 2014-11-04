@@ -4,40 +4,38 @@ import (
 	"appengine"
 )
 
-type Stripe struct {
-	ClientId    string
-	APIKey      string
-	APISecret   string
-	RedirectURI string
-	RedirectURL string
+type Config struct {
+	Stripe struct {
+		ClientId    string
+		APIKey      string
+		APISecret   string
+		RedirectURL string
+		WebhookURL  string
+	}
 }
 
-type Config struct {
-	Stripe Stripe
+func Defaults() *Config {
+	return new(Config)
 }
 
 func Development() *Config {
-	return &Config{
-		Stripe: Stripe{
-			"ca_53yyPzxlPsdAtzMEIuS2mXYDp4FFXLmm",
-			"pk_test_ucSTeAAtkSXVEg713ir40UhX",
-			"",
-			"http://localhost:8080/stripe/callback",
-			"http://localhost:8080/stripe/hook",
-		},
-	}
+	config := Defaults()
+	config.Stripe.ClientId = "ca_53yyPzxlPsdAtzMEIuS2mXYDp4FFXLmm"
+	config.Stripe.APIKey = "pk_test_ucSTeAAtkSXVEg713ir40UhX"
+	config.Stripe.APISecret = ""
+	config.Stripe.RedirectURL = "http://localhost:8080/stripe/callback"
+	config.Stripe.WebhookURL = "http://localhost:8080/stripe/hook"
+	return config
 }
 
 func Production() *Config {
-	return &Config{
-		Stripe: Stripe{
-			"ca_53yyRUNpMtTRUgMlVlLAM3vllY1AVybU",
-			"pk_live_APr2mdiUblcOO4c2qTeyQ3hq",
-			"",
-			"https://secure.crowdstart.io/stripe/callback",
-			"https://secure.crowdstart.io/stripe/hook",
-		},
-	}
+	config := Defaults()
+	config.Stripe.ClientId = "ca_53yyRUNpMtTRUgMlVlLAM3vllY1AVybU"
+	config.Stripe.APIKey = "pk_live_APr2mdiUblcOO4c2qTeyQ3hq"
+	config.Stripe.APISecret = ""
+	config.Stripe.RedirectURL = "https://secure.crowdstart.io/stripe/callback"
+	config.Stripe.WebhookURL = "https://secure.crowdstart.io/stripe/hook"
+	return config
 }
 
 func Get() *Config {
