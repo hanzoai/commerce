@@ -1,4 +1,4 @@
-# global csio 
+# global csio
 
 # Globals
 window.csio = window.csio or {}
@@ -16,35 +16,49 @@ $("div.field").on "click", ->
   $(this).removeClass "error"
   return
 
-$("#form").submit (e) ->
-  empty = $("div:visible.required > input").filter(->
-    $(this).val() is ""
-  )
-  email = $("input[name=\"User.Email\"]")
-  unless validation.isEmail(email.val())
-    console.log validation.isEmail(email.text())
-    e.preventDefault()
-    email.parent().addClass "error"
-    email.parent().addClass "shake"
-    setTimeout (->
-      email.parent().removeClass "shake"
-      return
-    ), 500
-  if empty.length > 0
-    e.preventDefault()
-    empty.parent().addClass "error"
-    empty.parent().addClass "shake"
-    setTimeout (->
-      empty.parent().removeClass "shake"
-      return
-    ), 500
-  return
+crowdstart.init({
+  form: 'selector',
+  checkout: 'button#foo'
+})
+
+class CheckoutForm
+  constructor: (selector) ->
+    @bindForm selector
+
+  bindForm: ->
+    $("#form").submit @submit
+
+  empty: ->
+    $("div:visible.required > input").filter ->
+      $(this).val() is ""
+
+  submit: (e) ->
+    empty = @empty()
+
+    email = $("input[name=\"User.Email\"]")
+    unless validation.isEmail(email.val())
+      console.log validation.isEmail(email.text())
+      e.preventDefault()
+      email.parent().addClass "error"
+      email.parent().addClass "shake"
+      setTimeout (->
+        email.parent().removeClass "shake"
+        return
+      ), 500
+    if empty.length > 0
+      e.preventDefault()
+      empty.parent().addClass "error"
+      empty.parent().addClass "shake"
+      setTimeout (->
+        empty.parent().removeClass "shake"
+        return
+      ), 500
 
 
 # Show payment options when first half is competed.
 $requiredVisible = $("div:visible.required > input")
 showPaymentOptions = $.debounce(250, ->
-  
+
   # Check if all required inputs are filled
   i = 0
 
@@ -58,6 +72,7 @@ showPaymentOptions = $.debounce(250, ->
   $requiredVisible.off "keyup", showPaymentOptions
   return
 )
+
 $requiredVisible.on "keyup", showPaymentOptions
 $("#form").card
   container: "#card-wrapper"
@@ -79,23 +94,23 @@ $("input[name=\"ShipToBilling\"]").change ->
     shipping.css "display", "block"
   return
 
-
 # Update tax display
 $state = $("select[name=\"Order.BillingAddress.State\"]")
 $city = $("input[name=\"Order.BillingAddress.City\"]")
 $tax = $("div.tax.total > div.price > span")
 $total = $("div.grand-total.total > div.price > span")
 $subtotal = $("div.subtotal.total > div.price > span")
+
 updateTax = $.debounce(250, ->
   city = $city.val()
   state = $state.val()
   tax = 0
   total = 0
   subtotal = parseFloat($subtotal.text().replace(",", ""))
-  
+
   # Add CA tax
   tax += subtotal * 0.075  if state is "CA"
-  
+
   # Add SF county tax
   tax += subtotal * 0.0125  if state is "CA" and (/san francisco/i).test(city)
   total = subtotal + tax
@@ -103,6 +118,7 @@ updateTax = $.debounce(250, ->
   $total.text total.toFixed(2)
   return
 )
+
 $state.change updateTax
 $city.on "keyup", updateTax
 

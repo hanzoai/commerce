@@ -17,8 +17,7 @@ packages 		= crowdstart.io/cardconnect \
 				  crowdstart.io/datastore \
 				  crowdstart.io/middleware \
 				  crowdstart.io/models \
-				  crowdstart.io/sessions \
-				  crowdstart.io/util \
+				  crowdstart.io/sessions
 
 test_modules    = crowdstart.io/admin/test \
 				  crowdstart.io/api/test \
@@ -75,7 +74,7 @@ install-deps:
 	ln -s $(shell pwd) $(sdk_path)/gopath/src/crowdstart.io
 
 serve:
-	$(sdk_path)/dev_appserver.py $(gae_yaml)
+	$(sdk_path)/dev_appserver.py --max_module_instances=1 $(gae_yaml)
 
 tools:
 	goapp get $(tools) && \

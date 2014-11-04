@@ -8,11 +8,10 @@ import (
 	"crowdstart.io/store/products"
 	"crowdstart.io/util/router"
 	"github.com/gin-gonic/gin"
-	"net/http"
 )
 
 func init() {
-	router := router.New()
+	router := router.New("/")
 
 	// Products
 	router.GET("/", products.List)
@@ -28,6 +27,4 @@ func init() {
 		db := datastore.New(ctx)
 		fixtures.Install(db)
 	})
-
-	http.Handle("/", router)
 }
