@@ -1,15 +1,13 @@
 package admin
 
 import (
-	"appengine/memcache"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
 	"crowdstart.io/util/form"
 	"crowdstart.io/util/router"
 	"crowdstart.io/util/template"
+	"crowdstart.io/auth"
 	"github.com/gin-gonic/gin"
-	"github.com/twinj/uuid"
-	"net/http"
 )
 
 func init() {
@@ -62,6 +60,7 @@ func init() {
 		var owners [1]models.Owner
 		db := datastore.New(c)
 		q := db.Query("owner").
+			Filter("Email =", f.Email).
 			Filter("PasswordHash =", hash)
 
 		keys, err := q.GetAll(db.Context, &owners)
@@ -71,25 +70,7 @@ func init() {
 		}
 
 		if err == nil && len(owners) > 0 {
-			u := uuid.NewV4()
-			err := memcache.Add(
-				db.Context,
-				&memcache.Item{
-					Key:   u.String(),
-					Value: []byte(owners[0].Id),
-				},
-			)
-
-			if err == nil {
-				http.SetCookie(c.Writer,  &http.Cookie{
-					Name: "CrowdstartOwner"
-					Value: uuid.String()
-				})
-			}
-			else {
-				c.Fail(401, err)
-				return
-			}
+			auth.Login(c, keys[0].StringID())
 		}
 	})
 }
