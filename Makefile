@@ -55,7 +55,7 @@ assets-watch:
 	(hash requisite 2>/dev/null || npm install -g requisite) && \
 	requisite -w assets/js/crowdstart.coffee -o static/js/crowdstart.js
 
-build: assets deps
+build: deps
 	goapp build $(modules)
 
 deps: .sdk
