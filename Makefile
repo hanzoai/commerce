@@ -49,7 +49,11 @@ all: deps test
 
 assets:
 	(hash requisite 2>/dev/null || npm install -g requisite) && \
-	requisite assets/js/crowdstart.coffee > static/js/crowdstart.js
+	requisite assets/js/crowdstart.coffee -o static/js/crowdstart.js
+
+assets-watch:
+	(hash requisite 2>/dev/null || npm install -g requisite) && \
+	requisite -w assets/js/crowdstart.coffee -o static/js/crowdstart.js
 
 build: assets deps
 	goapp build $(modules)
