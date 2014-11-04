@@ -1,7 +1,5 @@
 window.csio = window.csio || {};
 
-Stripe.setPublishableKey('YOUR_PUBLISHABLE_KEY');
-
 var $form = $("form#stripeForm");
 var $cardNumber = $('input#cardNumber');
 var $expiry = $('input#expiry');
@@ -22,11 +20,11 @@ var validateCard = $.debounce(500, function() {
     var fail = {
         success: false
     };
-    
+
     var cardNumber = $cardNumber.val();
     if (cardNumber.length < 10)
         return fail;
-    
+
     var rawExpiry = $expiry.val().replace(' ', '');
     var arr = rawExpiry.split('/');
     var month = arr[0];
