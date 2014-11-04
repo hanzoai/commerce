@@ -47,7 +47,11 @@ export GOPATH  := $(gopath)
 
 all: deps test
 
-build: deps
+assets:
+	(hash requisite 2>/dev/null || npm install -g requisite) && \
+	requisite assets/js/crowdstart.coffee > static/js/crowdstart.js
+
+build: assets deps
 	goapp build $(modules)
 
 deps: .sdk
@@ -96,4 +100,4 @@ deploy-appengine:
 	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update store/app.yaml && \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update_dispatch .
 
-.PHONY: all build deploy deps test serve tools
+.PHONY: all assets build deploy deps test serve tools
