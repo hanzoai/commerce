@@ -1,4 +1,38 @@
-# global csio, formatCurrency 
+exports.setCart = (cart) ->
+  $.cookie csio.cookieName, cart,
+    expires: 30
+    path: "/"
+
+  return
+
+exports.getCart = ->
+  $.cookie(csio.cookieName) or {}
+
+exports.clearCart = ->
+  $.cookie csio.cookieName, {},
+    expires: 30
+    path: "/"
+
+  return
+
+exports.updateCartHover = (modifiedCart) ->
+  cart = modifiedCart or csio.getCart()
+  numItems = 0
+  subTotal = 0
+  for k of cart
+    lineItem = cart[k]
+    numItems += lineItem.quantity
+    subTotal += lineItem.price * lineItem.quantity
+  $(".total-quantity").text util.humanizeNumber(numItems)
+  $(".subtotal .price span").text util.formatCurrency(subTotal)
+  if numItems is 1
+    $(".details span.suffix").text "item"
+  else
+    $(".details span.suffix").text "items"
+  return
+
+
+# global csio, formatCurrency
 
 # Globals
 window.csio = window.csio or {}
@@ -7,7 +41,7 @@ templateEl.parent().remove()
 csio.renderLineItem = (lineItem, index) ->
   el = templateEl.clone(false)
   $quantity = el.find(".quantity input")
-  
+
   # get list of variants
   variantInfo = []
   variantInfo.push lineItem.color  if lineItem.color isnt ""
@@ -19,28 +53,28 @@ csio.renderLineItem = (lineItem, index) ->
   el.find("div.variant-info").text variantInfo.join(" / ")
   el.find(".price span").text formatCurrency(lineItem.price)
   $quantity.val(lineItem.quantity).attr "name", "Order.Items." + index + ".Quantity"
-  
+
   # Handle quantity changes
   $quantity.change (e) ->
     e.preventDefault()
     e.stopPropagation()
-    
+
     # Get quantity
     quantity = parseInt($(this).val(), 10)
-    
+
     # Prevent less than one quantity
     if quantity < 1
       quantity = 1
       $(this).val 1
-    
+
     # Update quantity
     lineItem.quantity = quantity
-    
+
     # Update line item
     csio.updateLineItem lineItem, el
     return
 
-  
+
   # Handle lineItem removals
   el.find(".remove-item").click ->
     csio.removeLineItem lineItem.sku, el
@@ -50,7 +84,7 @@ csio.renderLineItem = (lineItem, index) ->
   $(".cart-container tbody").append el
   return
 
-csio.renderCart = (modifiedCart) ->
+exports.renderCart = (modifiedCart) ->
   cart = modifiedCart or csio.getCart()
   numItems = 0
   subtotal = 0

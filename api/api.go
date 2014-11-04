@@ -8,13 +8,15 @@ import (
 	"crowdstart.io/api/variant"
 	"crowdstart.io/util/router"
 	"github.com/gin-gonic/gin"
-	"net/http"
 )
 
 func init() {
-	router := router.New()
+	api := router.New("/v1/")
 
-	api := router.Group("/v1")
+	// Redirect root
+	api.GET("/", func(c *gin.Context) {
+		c.Redirect(301, "http://crowdstart.io")
+	})
 
 	api.GET("/cart/:id", cart.Get)
 	api.POST("/cart", cart.Add)
@@ -40,11 +42,4 @@ func init() {
 	api.POST("/variant", variant.Add)
 	api.PUT("/variant/:id", variant.Update)
 	api.DELETE("/variant/:id", variant.Delete)
-
-	// Redirect root
-	api.GET("/", func(c *gin.Context) {
-		c.Redirect(301, "http://crowdstart.io")
-	})
-
-	http.Handle("/v1/", router)
 }
