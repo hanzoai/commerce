@@ -90,7 +90,7 @@ bench: build
 deploy:
 	goapp run deploy.go
 
-deploy-appengine:
+deploy-appengine: assets
 	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) rollback app.yaml && \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) rollback api/app.yaml && \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) rollback checkout/app.yaml && \
