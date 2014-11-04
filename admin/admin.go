@@ -6,13 +6,10 @@ import (
 	"crowdstart.io/util/router"
 	"crowdstart.io/util/template"
 	"github.com/gin-gonic/gin"
-	"net/http"
 )
 
 func init() {
-	router := router.New()
-
-	admin := router.Group("/admin")
+	admin := router.New("/admin/")
 
 	// Admin index
 	admin.GET("/", func(c *gin.Context) {
@@ -42,6 +39,4 @@ func init() {
 
 		template.Render(c, "stripe/success.html")
 	})
-
-	http.Handle("/admin/", router)
 }
