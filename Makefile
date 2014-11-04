@@ -47,11 +47,18 @@ export GOPATH  := $(gopath)
 
 all: deps test
 
+assets:
+	requisite assets/js/crowdstart.coffee -o static/js/crowdstart.js
+
+assets-watch:
+	requisite -w assets/js/crowdstart.coffee -o static/js/crowdstart.js
+
 build: deps
 	goapp build $(modules)
 
 deps: .sdk
-	gpm install || curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.1/bin/gpm | bash
+	(gpm install || curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.1/bin/gpm | bash) && \
+	(hash requisite 2>/dev/null || npm install -g requisite)
 
 install: install-deps
 	goapp install $(modules) $(packages)
@@ -75,7 +82,7 @@ tools:
 	goapp install $(tools) && \
 	gocode set lib-path "$(gopath_pkg_path):$(goroot_pkg_path)"
 
-test: build
+test: assets build
 	goapp test $(test_modules)
 
 bench: build
@@ -96,4 +103,4 @@ deploy-appengine:
 	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update store/app.yaml && \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update_dispatch .
 
-.PHONY: all build deploy deps test serve tools
+.PHONY: all assets build deploy deps test serve tools
