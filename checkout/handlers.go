@@ -1,7 +1,7 @@
 package checkout
 
 import (
-	"crowdstart.io/cardconnect"
+	"crowdstart.io/stripe"
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models"
@@ -82,21 +82,10 @@ func authorize(c *gin.Context) {
 		order.Subtotal += lineItem.Price()
 	}
 
-	// Authorize order
-	ares, err := cardconnect.Authorize(ctx, form.Order)
-	switch {
-	case err != nil:
-		ctx.Errorf("%v", err)
-		c.JSON(500, gin.H{"status": "Unable to authorize payment."})
-	case ares.Status == "A":
-		ctx.Debugf("%#v", ares)
-		c.JSON(200, gin.H{"status": "ok"})
-	case ares.Status == "B":
-		ctx.Debugf("%#v", ares)
-		c.JSON(200, gin.H{"status": "retry", "message": ares.Text})
-	case ares.Status == "C":
-		ctx.Debugf("%#v", ares)
-		c.JSON(200, gin.H{"status": "declined", "message": ares.Text})
+	_, err := stripe.Charge(ctx, order)
+	
+	if err != nil {
+		c.Fail(500, err)
 	}
 }
 
