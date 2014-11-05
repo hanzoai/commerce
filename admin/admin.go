@@ -8,6 +8,7 @@ import (
 	"crowdstart.io/util/template"
 	"crowdstart.io/auth"
 	"github.com/gin-gonic/gin"
+	"errors"
 )
 
 func init() {
@@ -57,11 +58,12 @@ func init() {
 			return
 		}
 
-		var owners [1]models.Owner
+		var admins [1]models.Admin
 		db := datastore.New(c)
-		q := db.Query("owner").
+		q := db.Query("admin").
 			Filter("Email =", f.Email).
-			Filter("PasswordHash =", hash)
+			Filter("PasswordHash =", hash).
+			Limit(1)
 
 		keys, err := q.GetAll(db.Context, &owners)
 		if err != nil {
@@ -69,8 +71,22 @@ func init() {
 			return
 		}
 
-		if err == nil && len(owners) > 0 {
+		if err == nil && len(owners) == 1 {
 			auth.Login(c, keys[0].StringID())
 		}
 	})
+}
+
+func NewAdmin(m models.Admin) error {
+	db := datastore.New(c)
+	q := db.Query("admin").
+		Filter("Email =", m.Email).
+		Limit(1)
+
+	var admins [1]models.Admin
+	keys, err := q.GetAll(db.Context, &admins)
+
+	if len(admins) == 1 {
+		errors.New("Email is already registered")
+	}
 }
