@@ -6,12 +6,12 @@ class EventEmitter
     @_jQuery.trigger event, data
 
   once: (event, callback) ->
-    @_jQuery.one event, (event, data...) ->
-      callback.apply null, data
+    @_jQuery.one event, (event, data...) =>
+      callback.apply @, data
 
   on: (event, callback) ->
-    @_jQuery.bind event, (event, data...) ->
-      callback.apply null, data
+    @_jQuery.bind event, (event, data...) =>
+      callback.apply @, data
 
   off: (event, callback) ->
     @_jQuery.unbind event, callback
