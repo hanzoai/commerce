@@ -83,6 +83,7 @@ class View
 
   # unbind event
   off: (event) ->
+    console.log 'off', event
     callback = @_events[event]
     [$el, event] = @_splitEvent event
     $el.off "#{event}.#{@id}", callback
