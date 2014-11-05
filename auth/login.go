@@ -1,30 +1,70 @@
 package auth
 
 import (
-	"github.com/gorilla/sessions"
+	"crowdstart.io/datastore"
+	"crowdstart.io/models"
+	"crowdstart.io/util/form"
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/sessions"
+	"errors"
 )
 
-const sessionName = "crowdstartLogin"
+// const sessionName = "crowdstartLogin"
 const secret = "askjaakjl12"
 
 var store = sessions.NewCookieStore([]byte(secret))
 
-func IsLoggedIn(c *gin.Context) bool {
-	session, err := store.Get(c.Request, sessionName)
+func IsLoggedIn(c *gin.Context, kind string) bool {
+	session, err := store.Get(c.Request, kind)
 
-	if err != nil{
+	if err != nil {
 		return false
 	}
 
 	return session.Values["id"] != nil
 }
 
-func Login(c *gin.Context, id string) error {
-	session, err := store.Get(c.Request, sessionName)
+func Login(c *gin.Context, kind, id string) error {
+	session, err := store.Get(c.Request, kind)
 	if err != nil {
 		return err
 	}
 	session.Values["id"] = id
 	return session.Save(c.Request, c.Writer)
+}
+
+func VerifyUser(c *gin.Context, kind string) error {
+	f := new(models.LoginForm)
+	err := form.Parse(c, f)
+
+	if err != nil {
+		c.Fail(401, err)
+		return err
+	}
+
+	hash, err := f.PasswordHash()
+	if err != nil {
+		c.Fail(401, err)
+		return err
+	}
+
+	var users [1]models.Admin
+	db := datastore.New(c)
+	q := db.Query(kind).
+		Filter("Email =", f.Email).
+		Filter("PasswordHash =", hash).
+		Limit(1)
+
+	keys, err := q.GetAll(db.Context, &users)
+	if err != nil {
+		c.Fail(401, err)
+		return err
+	}
+
+	if err == nil && len(keys) == 1 {
+		Login(c, users[0].Email, "crowdstart_"+kind)
+		return nil
+	}
+
+	return errors.New("Email/Password combo is invalid.")
 }

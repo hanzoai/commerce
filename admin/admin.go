@@ -44,36 +44,7 @@ func init() {
 	})
 
 	admin.POST("/login", func(c *gin.Context) {
-		f := new(models.LoginForm)
-		err := form.Parse(c, f)
-
-		if err != nil {
-			c.Fail(401, err)
-			return
-		}
-
-		hash, err := f.PasswordHash()
-		if err != nil {
-			c.Fail(401, err)
-			return
-		}
-
-		var admins [1]models.Admin
-		db := datastore.New(c)
-		q := db.Query("admin").
-			Filter("Email =", f.Email).
-			Filter("PasswordHash =", hash).
-			Limit(1)
-
-		_, err = q.GetAll(db.Context, &admins)
-		if err != nil {
-			c.Fail(401, err)
-			return
-		}
-
-		if err == nil && len(admins) == 1 {
-			auth.Login(c, admins[0].Email)
-		}
+		
 	})
 }
 
