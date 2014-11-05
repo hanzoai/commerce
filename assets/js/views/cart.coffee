@@ -1,28 +1,9 @@
 view = require '../view'
 cart = require '../cart'
 
-class CartHover extends View
-  bindings:
-    quantity: '.total-quantity'
-    subtotal: '.subtotal .price span'
-    suffix:   '.details span.suffix'
+class CartView extends View
 
-  formatters:
-    quantity: (v) -> util.humanizeNumber v
-    subtotal: (v) -> util.formatCurrency v
-
-  update: ->
-    @set 'quantity', cart.quantity
-    @set 'subtotal', cart.subtotal
-
-    if cart.quantity > 1
-      @set 'suffix', 'item'
-    else
-      @set 'suffix', 'items'
-
-class Cart extends View
-
-class LineItem extends View
+class LineItemView extends View
   el: '.line-item'
 
 # renderLineItem = (lineItem, index) ->
