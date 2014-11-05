@@ -25,12 +25,12 @@ class Cart
     @cart[sku] = item
     @save()
 
-  add: (sku, item) ->
-    if (_item = @get sku)?
+  add: (item) ->
+    if (_item = @get item.sku)?
       _item.quantity += item.quantity
       @save()
     else
-      @set sku, item
+      @set item.sku, item
 
   remove: (sku, el) ->
     delete @cart[sku]

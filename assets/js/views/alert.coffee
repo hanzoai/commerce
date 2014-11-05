@@ -1,6 +1,6 @@
 View = require '../view'
 
-class Alert extends View
+class AlertView extends View
   el: '.sqs-widgets-confirmation.alert'
 
   constructor: (opts = {}) ->
@@ -49,4 +49,4 @@ class Alert extends View
       top:      (topOffset   - 42) + 'px'
       left:     (offset.left - 66) + 'px'
 
-module.exports = Alert
+module.exports = AlertView

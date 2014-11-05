@@ -1,3 +1,11 @@
+ProductView = require '../views/product'
+
+# setup view
+exports.setupView = ->
+  view = new ProductView()
+  app.views.push view
+  view.bind()
+
 # Product gallery image switching
 exports.gallery = ->
   $('#productThumbnails .slide img').each (i, v) ->

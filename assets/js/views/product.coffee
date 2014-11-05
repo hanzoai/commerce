@@ -1,48 +1,88 @@
-view = require '../view'
+AlertView = require './alert'
+View = require '../view'
+cart = require '../cart'
 
-class Product extends View
-  addProduct: ->
-    quantity = parseInt($("#quantity").val(), 10)
-    cart = @get()
-    variant = product.getVariant()
+class ProductView extends View
+  el: '.sqs-add-to-cart-button'
 
-    return unless variant?
+  events:
+    click: -> @addToCart()
 
-    sku = variant.SKU
+  addToCart: ->
+    console.log 'adding 2 cart'
+    unless (variant = @getVariant())?
+      return
 
-    if cart[sku]
-      cart[sku].quantity += quantity
-    else
-      cart[sku] =
-        sku: variant.SKU
-        color: variant.Color
-        img: csio.currentProduct.Images[0].Url
-        name: csio.currentProduct.Title
-        quantity: quantity
-        size: variant.Size
-        price: parseInt(variant.Price, 10) * 0.0001
-        slug: csio.currentProduct.Slug
+    quantity = parseInt $("#quantity").val(), 10
 
-    # Set cookie
-    csio.setCart cart
+    cart.add
+      sku: variant.SKU
+      color: variant.Color
+      img: currentProduct.Images[0].Url
+      name: currentProduct.Title
+      quantity: quantity
+      size: variant.Size
+      price: parseInt(variant.Price, 10) * 0.0001
+      slug: currentProduct.Slug
 
-    inner = $(".sqs-add-to-cart-button-inner")
-    inner.html ""
-    inner.append "<div class=\"yui3-widget sqs-spin light\" ></div>"
-    inner.append "<div class=\"status-text\">Adding...</div>"
+    inner = $('.sqs-add-to-cart-button-inner')
+    inner.html ''
+    inner.append '<div class="yui3-widget sqs-spin light"></div>'
+    inner.append '<div class="status-text">Adding...</div>'
 
     setTimeout ->
-      $(".status-text").text("Added!").fadeOut 500, ->
-        inner.html "Add to Cart"
-
+      $('.status-text').text('Added!').fadeOut 500, ->
+        inner.html 'Add to Cart'
     , 500
 
     setTimeout ->
       # Flash cart hover
-      $(".sqs-pill-shopping-cart-content").animate opacity: 0.85, 400, ->
+      $('.sqs-pill-shopping-cart-content').animate opacity: 0.85, 400, ->
         # Update cart hover
-        csio.updateCartHover cart
+        # updateCartHover cart
 
-        $(".sqs-pill-shopping-cart-content").animate opacity: 1, 300
-
+        $('.sqs-pill-shopping-cart-content').animate opacity: 1, 300
     , 300
+
+  getVariant: ->
+    selected = {}
+    variants = currentProduct.Variants
+    missingOptions = []
+
+    # Determine if selected options match variant
+    optionsMatch = (selected, variant) ->
+      for k,v of selected
+        if variant[k] != selected[k]
+          return false
+      true
+
+    # Get selected options
+    $(".variant-option").each (i, v) ->
+      $(v).find("select").each (i, v) ->
+        $select = $(v)
+        name = $select.data("variant-option-name")
+        value = $select.val()
+        selected[name] = value
+        missingOptions.push name  if value is "none"
+        return
+
+      return
+
+    # Warn if missing options (we'll be unable to figure out a SKU).
+    if missingOptions.length > 0
+      (new AlertView
+        title: "Unable To Add Item"
+        message: "Please select a " + missingOptions[0] + " option."
+        confirm: "Okay"
+        nextTo: ".sqs-add-to-cart-button"
+      ).render()
+
+    # Figure out SKU
+    for variant in variants
+      # All options match match variant
+      return variant if optionsMatch selected, variant
+
+    # Only one variant, no options.
+    variants[0]
+
+module.exports = ProductView
