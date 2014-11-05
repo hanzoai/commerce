@@ -14,23 +14,20 @@ class CartHover extends View
   formatters:
     quantity: (v) -> util.humanizeNumber v
     subtotal: (v) -> util.formatCurrency v
+    suffix:   (v) -> if v > 1 then 'items' else 'item'
 
   listen: ->
     # listen to cart changes
-    cart.on 'update', (quantity, subtotal) =>
-      @update quantity, subtotal
+    cart.on 'quantity', (quantity) =>
+      @set 'quantity', quantity
+      @set 'suffix', quantity
 
-    # manually trigger first update
-    @update cart.quantity, cart.subtotal
+    cart.on 'subtotal', (subtotal) =>
+      @set 'subtotal', subtotal
 
-  update: (quantity, subtotal) ->
-    @set 'quantity', quantity
-    @set 'subtotal', subtotal
-
-    if quantity > 1
-      @set 'suffix', 'item'
-    else
-      @set 'suffix', 'items'
-
+    # set initial values
+    @set 'quantity', cart.quantity
+    @set 'suffix',   cart.quantity
+    @set 'subtotal', cart.subtotal
 
 module.exports = CartHover
