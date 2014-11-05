@@ -1,8 +1,8 @@
-product = require './product'
-util    = require './util'
+EventEmitter = require './event-emitter'
 
-class Cart
+class Cart extends EventEmitter
   constructor: (opts = {}) ->
+    super
     @cookieName = app.get 'cookieName'
     @fetch()
 
@@ -51,5 +51,8 @@ class Cart
 
     @quantity = quantity
     @subtotal = subtotal
+
+    @emit 'quantity', quantity
+    @emit 'subtotal', quantity
 
 module.exports = new Cart()
