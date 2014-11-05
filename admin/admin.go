@@ -1,14 +1,14 @@
 package admin
 
 import (
+	"crowdstart.io/auth"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
 	"crowdstart.io/util/form"
 	"crowdstart.io/util/router"
 	"crowdstart.io/util/template"
-	"crowdstart.io/auth"
-	"github.com/gin-gonic/gin"
 	"errors"
+	"github.com/gin-gonic/gin"
 )
 
 func init() {
@@ -65,28 +65,35 @@ func init() {
 			Filter("PasswordHash =", hash).
 			Limit(1)
 
-		keys, err := q.GetAll(db.Context, &owners)
+		_, err = q.GetAll(db.Context, &admins)
 		if err != nil {
 			c.Fail(401, err)
 			return
 		}
 
-		if err == nil && len(owners) == 1 {
-			auth.Login(c, keys[0].StringID())
+		if err == nil && len(admins) == 1 {
+			auth.Login(c, admins[0].Email)
 		}
 	})
 }
 
-func NewAdmin(m models.Admin) error {
+func NewAdmin(c *gin.Context, m models.Admin) error {
 	db := datastore.New(c)
 	q := db.Query("admin").
 		Filter("Email =", m.Email).
 		Limit(1)
 
 	var admins [1]models.Admin
-	keys, err := q.GetAll(db.Context, &admins)
+	_, err := q.GetAll(db.Context, &admins)
+
+	if err != nil {
+		return err
+	}
 
 	if len(admins) == 1 {
-		errors.New("Email is already registered")
+		return errors.New("Email is already registered")
+	} else {
+		_, err := db.Put("admin", m)
+		return err
 	}
 }
