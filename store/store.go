@@ -24,7 +24,7 @@ func init() {
 	router.GET("/cart", cart.Get)
 
 	// Warmup, install fixtures, etc.
-	router.GET("_ah/warmup", func(c *gin.Context) {
+	router.GET("/_ah/warmup", func(c *gin.Context) {
 		ctx := appengine.NewContext(c.Request)
 		db := datastore.New(ctx)
 		fixtures.Install(db)
