@@ -1,4 +1,5 @@
 product = require './product'
+util    = require './util'
 
 exports.setCart = (cart) ->
   $.cookie csio.cookieName, cart,
@@ -7,18 +8,18 @@ exports.setCart = (cart) ->
 
   return
 
-exports.getCart = ->
-  $.cookie(csio.cookieName) or {}
+exports.getCart = getCart = ->
+  $.cookie (app.get 'cookieName') or {}
 
 exports.clearCart = ->
-  $.cookie csio.cookieName, {},
+  $.cookie (app.get 'cookieName'), {},
     expires: 30
     path: "/"
 
   return
 
 exports.updateHover = (modifiedCart) ->
-  cart = modifiedCart or csio.getCart()
+  cart = modifiedCart or getCart()
   numItems = 0
   subTotal = 0
   for k of cart
