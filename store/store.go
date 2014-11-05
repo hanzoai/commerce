@@ -2,6 +2,7 @@ package store
 
 import (
 	"appengine"
+	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/fixtures"
 	"crowdstart.io/store/cart"
@@ -29,8 +30,9 @@ func init() {
 		db := datastore.New(ctx)
 		fixtures.Install(db)
 
+
 		// Recompile static assets
-		if appengine.IsDevAppServer() {
+		if config.Get().AutoCompileAssets {
 			exec.Run("/usr/local/bin/requisite ../assets/js/crowdstart.coffee -g -o /tmp/crowdstart.js")
 			a := fs.ReadFile("../static/js/crowdstart.js")
 			b := fs.ReadFile("/tmp/crowdstart.js")
