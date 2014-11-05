@@ -6,12 +6,18 @@ import (
 	"crowdstart.io/models"
 	"crowdstart.io/util/router"
 	"crowdstart.io/util/template"
+	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
 )
+
+type TokenData struct {
+	Livemode                                                                                                         bool
+	Token_type, Stripe_publishable_key, Scope, Stripe_user_id, Refresh_token, Access_token, Error, Error_description string
+}
 
 func init() {
 	admin := router.New("/admin/")
@@ -45,15 +51,22 @@ func init() {
 			data.Add("grant_type", "authorization_code")
 
 			tokenReq, _ := http.NewRequest("POST", "https://connect.stripe.com/oauth/token", strings.NewReader(data.Encode()))
-			resp, err := client.Do(tokenReq)
 
-			if err == nil {
+			if resp, err := client.Do(tokenReq); err == nil {
 				defer resp.Body.Close()
-				contents, err := ioutil.ReadAll(resp.Body)
-				if err != nil {
-					error = err.Error()
+				if jsonBlob, err := ioutil.ReadAll(resp.Body); err == nil {
+					token := &TokenData{}
+					if err := json.Unmarshal(jsonBlob, &token); err == nil {
+						if len(token.Error) == 0 {
+							template.Render(c, "stripe/success.html", "token", token.Access_token)
+						} else {
+							error = token.Error
+						}
+					} else {
+						error = err.Error()
+					}
 				} else {
-					template.Render(c, "stripe/success.html", "resp", string(contents), "code", code)
+					error = err.Error()
 				}
 			} else {
 				error = err.Error()
@@ -61,7 +74,7 @@ func init() {
 		}
 
 		if len(error) > 0 {
-			template.Render(c, "stripe/failure.html", "error", error, "code", code)
+			template.Render(c, "stripe/failure.html", "error", error)
 		}
 	})
 
