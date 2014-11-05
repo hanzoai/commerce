@@ -1,4 +1,3 @@
-AlertView = require './alert'
 View = require '../view'
 
 cart = app.get 'cart'
@@ -70,7 +69,7 @@ class ProductView extends View
 
     # Warn if missing options (we'll be unable to figure out a SKU).
     if missingOptions.length > 0
-      alert = new AlertView nextTo: '.sqs-add-to-cart-button'
+      alert = app.get 'alert'
       alert.show
         title:   'Unable To Add Item'
         message: 'Please select a ' + missingOptions[0] + ' option.'
