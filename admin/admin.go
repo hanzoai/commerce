@@ -1,16 +1,23 @@
 package admin
 
 import (
+	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
 	"crowdstart.io/util/router"
 	"crowdstart.io/util/template"
+	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
 )
+
+type TokenData struct {
+	Livemode                                                                                                         bool
+	Token_type, Stripe_publishable_key, Scope, Stripe_user_id, Refresh_token, Access_token, Error, Error_description string
+}
 
 func init() {
 	admin := router.New("/admin/")
@@ -22,7 +29,7 @@ func init() {
 
 	// Show stripe button
 	admin.GET("/stripe/connect", func(c *gin.Context) {
-		template.Render(c, "stripe/connect.html")
+		template.Render(c, "stripe/connect.html", "clientid", config.Get().Stripe.ClientId)
 	})
 
 	admin.GET("/stripe/callback", func(c *gin.Context) {
@@ -39,20 +46,46 @@ func init() {
 			}
 
 			data := url.Values{}
-			data.Set("client_secret", "")
+			data.Set("client_secret", config.Get().Stripe.APISecret)
 			data.Add("code", code)
 			data.Add("grant_type", "authorization_code")
 
 			tokenReq, _ := http.NewRequest("POST", "https://connect.stripe.com/oauth/token", strings.NewReader(data.Encode()))
-			resp, err := client.Do(tokenReq)
 
-			if err == nil {
+			// try to post to OAuth API
+			if resp, err := client.Do(tokenReq); err == nil {
 				defer resp.Body.Close()
-				contents, err := ioutil.ReadAll(resp.Body)
-				if err != nil {
-					error = err.Error()
+				// decode the json
+				if jsonBlob, err := ioutil.ReadAll(resp.Body); err == nil {
+					token := &TokenData{}
+					// try and extract the json struct
+					if err := json.Unmarshal(jsonBlob, &token); err == nil {
+						if len(token.Error) == 0 {
+							// success!, render the template
+							template.Render(c, "stripe/success.html", "token", token.Access_token)
+
+							// update the user
+							user := &models.User{}
+							db := datastore.New(c)
+
+							// get user instance
+							db.GetKey("user", "admin", user)
+
+							// update  stripe token
+							user.StripeToken = token.Access_token
+
+							// update in datastore
+							db.PutKey("user", "admin", user)
+
+							// Everything below is Error Handling
+						} else {
+							error = token.Error
+						}
+					} else {
+						error = err.Error()
+					}
 				} else {
-					template.Render(c, "stripe/success.html", "resp", string(contents), "code", code)
+					error = err.Error()
 				}
 			} else {
 				error = err.Error()
@@ -60,7 +93,7 @@ func init() {
 		}
 
 		if len(error) > 0 {
-			template.Render(c, "stripe/failure.html", "error", error, "code", code)
+			template.Render(c, "stripe/failure.html", "error", error)
 		}
 	})
 
