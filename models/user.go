@@ -22,7 +22,7 @@ type User struct {
 	CardconnectToken string
 }
 
-type Owner struct {
+type Admin struct {
 	Id           string
 	Name         string
 	Email        string
