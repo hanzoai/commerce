@@ -1,6 +1,5 @@
 AlertView = require './alert'
 View = require '../view'
-cart = require '../cart'
 
 class ProductView extends View
   el: '.sqs-add-to-cart-button'
@@ -15,15 +14,17 @@ class ProductView extends View
 
     quantity = parseInt $("#quantity").val(), 10
 
+    cart = app.get 'cart'
+
     cart.add
-      sku: variant.SKU
-      color: variant.Color
-      img: currentProduct.Images[0].Url
-      name: currentProduct.Title
+      sku:      variant.SKU
+      color:    variant.Color
+      img:      currentProduct.Images[0].Url
+      name:     currentProduct.Title
+      price:    parseInt(variant.Price, 10) * 0.0001
       quantity: quantity
-      size: variant.Size
-      price: parseInt(variant.Price, 10) * 0.0001
-      slug: currentProduct.Slug
+      size:     variant.Size
+      slug:     currentProduct.Slug
 
     inner = $('.sqs-add-to-cart-button-inner')
     inner.html ''
