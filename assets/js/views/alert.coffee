@@ -20,7 +20,7 @@ class AlertView extends View
     'mousedown document': ->
       @dismiss()
 
-    'keydown document': ->
+    'keydown document': (e) ->
       e = event unless e
       @dismiss() if e.keyCode is 27
 

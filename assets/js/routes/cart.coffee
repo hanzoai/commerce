@@ -8,6 +8,6 @@ exports.hideHover = ->
 exports.setupHover = ->
   view = new (require '../views/cart-hover')
   app.views.push view
-  view.update()
+  view.listen()
 
 exports.setupView = ->
