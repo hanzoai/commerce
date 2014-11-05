@@ -26,7 +26,7 @@
         </a>
     </div>
 
-    <script>csio = window.csio || {}; csio.currentProduct = {{ product.JSON() | safe}}</script>
+    <script>var currentProduct = {{ product.JSON() | safe}}</script>
 
     <div id="productSummary" class="clear">
         <h1 class="product-title mobile" data-content-field="title">{{ product.Title }}</h1>
@@ -104,7 +104,7 @@
             </div>
 
             <div class="sqs-add-to-cart-button-wrapper" style="visibility: visible;">
-                <div id="preorder" class="sqs-add-to-cart-button sqs-suppress-edit-mode sqs-editable-button" data-original-label="Pre-order Now" onclick="csio.addToCart()">
+                <div id="preorder" class="sqs-add-to-cart-button sqs-suppress-edit-mode sqs-editable-button" data-original-label="Pre-order Now">
                     <div class="sqs-add-to-cart-button-inner">
                         Add to Cart
                     </div>

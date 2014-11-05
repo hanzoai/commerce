@@ -1,5 +1,3 @@
-cart = require '../cart'
-
 exports.click = ->
   $('.fixed-cart').click ->
     window.location = '/cart'
@@ -7,6 +5,9 @@ exports.click = ->
 exports.hideHover = ->
   $(".fixed-cart").hide()
 
-exports.updateHover = ->
-  cart.updateHover()
+exports.setupHover = ->
+  view = new (require '../views/cart-hover')
+  app.views.push view
+  view.update()
 
+exports.setupView = ->
