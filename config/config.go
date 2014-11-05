@@ -5,6 +5,7 @@ import (
 )
 
 type Config struct {
+	AutoCompileAssets bool
 	Stripe struct {
 		ClientId    string
 		APIKey      string
@@ -20,6 +21,7 @@ func Defaults() *Config {
 
 func Development() *Config {
 	config := Defaults()
+	config.AutoCompileAssets = true
 	config.Stripe.ClientId = "ca_REDACTED"
 	config.Stripe.APIKey = "pk_test_REDACTED"
 	config.Stripe.APISecret = ""
