@@ -17,7 +17,7 @@ class View
       @$el = opts.$el
     else
       if @template
-        @$el = $(@template).html()
+        @$el = $($(@template).html())
       else
         @$el = $(@el)
 
@@ -72,26 +72,26 @@ class View
 
     [$el, event]
 
-  # bind event namespaced to view id
   on: (event, callback) ->
-    @_events[event] = callback
     [$el, event] = @_splitEvent event
-    $el.on "#{event}.#{@id}", =>
-      console.log event, @id
-      callback.apply @, arguments
+    $el.on "#{event}.#{@id}", (event, data...) =>
+      callback.apply @, data
     @
 
-  # unbind event
+  once: (event, callback) ->
+    [$el, event] = @_splitEvent event
+    $el.one "#{event}.#{@id}", (event, data...) =>
+      callback.apply @, data
+    @
+
   off: (event) ->
-    console.log 'off', event
-    callback = @_events[event]
     [$el, event] = @_splitEvent event
-    $el.off "#{event}.#{@id}", callback
+    $el.off "#{event}.#{@id}"
     @
 
-  trigger: (event, params...) ->
+  emit: (event, data...) ->
     [$el, event] = @_splitEvent event
-    $el.trigger event, params...
+    $el.trigger event, data
     @
 
   bind: ->
@@ -99,7 +99,7 @@ class View
     @
 
   unbind: ->
-    @off k for k of @events
+    @off k,v for k,v of @events
     @
 
 module.exports = View
