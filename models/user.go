@@ -21,16 +21,16 @@ type User struct {
 	CardconnectToken string
 
 	Email        string
-	PasswordHash []byte
+	PasswordHash []byte `schema:"-"`
 }
 
 type Admin struct {
-	Id           string
-	Name         string
-	Campaigns    []Campaign
+	Id        string `schema:"-"`
+	Name      string
+	Campaigns []Campaign `schema:"-"`
 
 	Email        string
-	PasswordHash []byte
+	PasswordHash []byte `schema:"-"`
 }
 
 func (u User) Name() string {

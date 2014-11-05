@@ -7,6 +7,9 @@ dispatch:
   - url: "*/admin/*"
     module: admin
 
+  - url: "*/user/*"
+    module: user
+
   - url: "*/checkout/*"
     module: checkout
 
