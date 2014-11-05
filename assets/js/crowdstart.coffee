@@ -2,8 +2,9 @@ window.app = app = (require './app')
   cookieName: 'SKULLYSystemsCart'
 
 # Store cart for later
-app.set 'cart', (require './cart')
-app.set 'alert' new AlertView nextTo: '.sqs-add-to-cart-button'
+app.set 'cart',  (require './cart')
+app.set 'alert', new (require './views/alert')
+  nextTo: '.sqs-add-to-cart-button'
 
 cart     = require './routes/cart'
 products = require './routes/products'
