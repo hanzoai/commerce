@@ -10,5 +10,7 @@ app.routes =
   '/products/ar-1': [products.customizeAr1]
   '*':              cart.click
 
-app.cart = require './cart'
+# Store cart for later
+app.set 'cart', (require './cart')
+
 app.start()

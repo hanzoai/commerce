@@ -14,21 +14,19 @@ class CartHover extends View
     subtotal: (v) -> util.formatCurrency v
 
   listen: ->
+    cart = app.get 'cart'
+
     # listen to cart changes
-    app.cart.on 'quantity', (e) =>
-      console.log 'quantity', e
-      @set 'quantity', app.cart.quantity
-      if app.cart.quantity > 1
+    cart.on 'update', (quantity, subtotal) =>
+      @set 'quantity', quantity
+      if cart.quantity > 1
         @set 'suffix', 'item'
       else
         @set 'suffix', 'items'
 
-    app.cart.on 'subtotal', (e) =>
-      console.log 'subtotal', e
-      @set 'subtotal', app.cart.subtotal
+      @set 'subtotal', subtotal
 
     # trigger first change
-    cart.emit 'quantity', cart.quantity
-    cart.emit 'subtotal', cart.quantity
+    cart.update()
 
 module.exports = CartHover
