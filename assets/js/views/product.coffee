@@ -63,19 +63,19 @@ class ProductView extends View
         name = $select.data("variant-option-name")
         value = $select.val()
         selected[name] = value
-        missingOptions.push name  if value is "none"
+        missingOptions.push name if value is 'none'
         return
 
       return
 
     # Warn if missing options (we'll be unable to figure out a SKU).
     if missingOptions.length > 0
-      (new AlertView
-        title: "Unable To Add Item"
-        message: "Please select a " + missingOptions[0] + " option."
-        confirm: "Okay"
-        nextTo: ".sqs-add-to-cart-button"
-      ).render()
+      alert = new AlertView nextTo: '.sqs-add-to-cart-button'
+      alert.show
+        title:   'Unable To Add Item'
+        message: 'Please select a ' + missingOptions[0] + ' option.'
+        confirm: 'Okay'
+      return
 
     # Figure out SKU
     for variant in variants

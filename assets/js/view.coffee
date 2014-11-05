@@ -1,6 +1,11 @@
 util = require './util'
 
 class View
+  el:         null
+  formatters: {}
+  events:     {}
+  bindings:   {}
+
   constructor: (opts = {}) ->
     @el ?= opts.el
 
@@ -57,30 +62,30 @@ class View
       return [$el, event]
 
     # allow global event binding
-    if /^document$|^window$/.test selector
-      $el = $(selector)
-    else
-      $el = @$el.find selector
+    switch selector
+      when 'document'
+        $el = $(document)
+      when 'window'
+        $el = $(window)
+      else
+        $el = @$el.find selector
 
     [$el, event]
 
   # bind event namespaced to view id
   on: (event, callback) ->
     @_events[event] = callback
-    [$el, eventName] = @_splitEvent event
-    $el.on "#{event}.#{@id}", => callback.apply @, arguments
+    [$el, event] = @_splitEvent event
+    $el.on "#{event}.#{@id}", =>
+      console.log event, @id
+      callback.apply @, arguments
     @
 
   # unbind event
   off: (event) ->
-    if event
-      callback = @_events[event]
-      [$el, event] = @_splitEvent event
-      $el.off "#{event}.#{@id}", callback
-    else
-      for k,v of @_events
-        [$el, event] = @_splitEvent k
-        $el.off "#{event}.#{@id}", v
+    callback = @_events[event]
+    [$el, event] = @_splitEvent event
+    $el.off "#{event}.#{@id}", callback
     @
 
   trigger: (event, params...) ->
@@ -93,7 +98,7 @@ class View
     @
 
   unbind: ->
-    @off k,v for k,v of @events
+    @off k for k of @events
     @
 
 module.exports = View
