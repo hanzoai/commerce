@@ -6,6 +6,19 @@ import (
 )
 
 func Install(db *datastore.Datastore) {
+	db.PutKey("user", "admin", &User{
+		Id:        "admin",
+		FirstName: "Ad",
+		LastName:  "Min",
+		Email:     "admin@crowdstart.io",
+		Phone:     "(123)-456-7890",
+		OrdersIds: []string{},
+
+		// SHOULD ONLY BE ACCESSED INTERNALLY. PLZ.
+		StripeToken:      "",
+		CardconnectToken: "",
+	})
+
 	// AR-1
 	variants := []ProductVariant{
 		ProductVariant{
@@ -84,21 +97,21 @@ func Install(db *datastore.Datastore) {
 		HeaderImage: Image{
 			Alt: "SKULLY AR-1",
 			Url: "//static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544a2657e4b0ff95316b8ea0/1414359306658/",
-			X: 1500,
-			Y: 844,
+			X:   1500,
+			Y:   844,
 		},
 		Images: []Image{
 			Image{
 				Alt: "blackhelmet_store.jpg",
 				Url: "//static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544c1bd6e4b07de01f6f22aa/1414274007569/blackhelmet_store.jpg",
-				X: 1000,
-				Y: 1000,
+				X:   1000,
+				Y:   1000,
 			},
 			Image{
 				Alt: "whitehelmet_store.jpg",
 				Url: "//static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544c1bdde4b07de01f6f22b5/1414274015307/whitehelmet_store.jpg",
-				X: 1000,
-				Y: 1000,
+				X:   1000,
+				Y:   1000,
 			},
 		},
 	})
@@ -185,15 +198,15 @@ func Install(db *datastore.Datastore) {
 		HeaderImage: Image{
 			Alt: "SKULLY T-SHIRT",
 			Url: "//static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/t/544011e7e4b0ea72c07a5fec/1413485036166/140919%20CoverPhoto5.jpg",
-			X: 1000,
-			Y: 369,
+			X:   1000,
+			Y:   369,
 		},
 		Images: []Image{
 			Image{
 				Alt: "skully_shirt_1000px.jpg",
 				Url: "//static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544f7b03e4b07cd673960362/1414494980796/skully_shirt_1000px.jpg",
-				X: 1000,
-				Y: 1000,
+				X:   1000,
+				Y:   1000,
 			},
 		},
 	})
@@ -238,15 +251,15 @@ func Install(db *datastore.Datastore) {
 		HeaderImage: Image{
 			Alt: "SKULLY HAT",
 			Url: "//static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/t/544011e7e4b0ea72c07a5fec/1413485036166/140919%20CoverPhoto5.jpg",
-			X: 1000,
-			Y: 369,
+			X:   1000,
+			Y:   369,
 		},
 		Images: []Image{
 			Image{
 				Alt: "skully_hat_1000px.jpg",
 				Url: "//static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544f9301e4b070a33c5fd494/1414501121892/skully_hat1000px.jpg",
-				X: 1000,
-				Y: 1000,
+				X:   1000,
+				Y:   1000,
 			},
 		},
 	})
@@ -273,15 +286,15 @@ func Install(db *datastore.Datastore) {
 		HeaderImage: Image{
 			Alt: "SKULLY STICKERS",
 			Url: "//static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/t/53f0cd31e4b05292018da5e2/1408290101751/motorcyclist.jpg",
-			X: 1500,
-			Y: 583,
+			X:   1500,
+			Y:   583,
 		},
 		Images: []Image{
 			Image{
 				Alt: "sticker_pack_1000px.jpg",
 				Url: "//static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544f9403e4b08f5872d5e730/1414501383224/sticker_pack_1000px.jpg",
-				X: 1000,
-				Y: 1000,
+				X:   1000,
+				Y:   1000,
 			},
 		},
 	})

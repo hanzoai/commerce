@@ -52,13 +52,32 @@ func init() {
 
 			tokenReq, _ := http.NewRequest("POST", "https://connect.stripe.com/oauth/token", strings.NewReader(data.Encode()))
 
+			// try to post to OAuth API
 			if resp, err := client.Do(tokenReq); err == nil {
 				defer resp.Body.Close()
+				// decode the json
 				if jsonBlob, err := ioutil.ReadAll(resp.Body); err == nil {
 					token := &TokenData{}
+					// try and extract the json struct
 					if err := json.Unmarshal(jsonBlob, &token); err == nil {
 						if len(token.Error) == 0 {
+							// success!, render the template
 							template.Render(c, "stripe/success.html", "token", token.Access_token)
+
+							// update the user
+							user := &models.User{}
+							db := datastore.New(c)
+
+							// get user instance
+							db.GetKey("user", "admin", user)
+
+							// update  stripe token
+							user.StripeToken = token.Access_token
+
+							// update in datastore
+							db.PutKey("user", "admin", user)
+
+							// Everything below is Error Handling
 						} else {
 							error = token.Error
 						}
