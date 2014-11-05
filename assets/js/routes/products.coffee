@@ -1,21 +1,13 @@
-Alert = require '../views/alert'
-
-exports.alert = ->
-  app.alert = new Alert()
-
 # Product gallery image switching
 exports.gallery = ->
-  $images     = ($(i) for i in $('#productSlideshow .slide img'))
-  $thumbnails = ($(i) for i in $('#productThumbnails .slide img'))
-
-  for $thumb in $thumbnails
-    $thumb.click ->
-      src = $thumb.data('src')
-      for $img in $images
-        if src is $img.data 'src'
-          $img.fadeIn 400
+  $('#productThumbnails .slide img').each (i, v) ->
+    $(v).click ->
+      src = $(v).data('src')
+      $('#productSlideshow .slide img').each (i, v) ->
+        if src is $(v).data('src')
+          $(v).fadeIn 400
         else
-          $img.fadeOut 400
+          $(v).fadeOut 400
 
 # Swap AR-1 helmets when color selected
 exports.customizeAr1 = ->

@@ -26,14 +26,12 @@ class Application
         for cb in v
           @addRoute k, cb
       else
-        @addRoute k, cb
+        @addRoute k, v
     null
 
   dispatchRoutes: ->
     for _, route of @_routes
       if route.regexp.test location.pathname
-        console.log 'yep'
-        console.log route.callbacks
         for cb in route.callbacks
           cb()
     null

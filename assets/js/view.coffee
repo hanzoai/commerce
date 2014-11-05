@@ -8,39 +8,33 @@ class View
     @state   = opts.state ? {}
     @_events = {}
 
-    @bindingsReverse = {}
-    for k,v of @bindings
-      @bindingsReverse[v] = k
-
-    @_cacheDatabindEls()
-
     unless not opts.autoRender
       @render()
+
+  _cacheDatabinds: ->
+    return if @_databinds?
+
+    @_databinds = {}
+
+    for k,v of @bindings
+      @_databinds[k] = $(@$el.find v)
+
+  updateBinding: (k, v) ->
+    if (formatter = @formatters[k])?
+      v = formatter v
+    @databinds[k].text v
 
   get: (k) ->
     @state[k]
 
   set: (k, v) ->
     @state[k] = v
-    @_databindEls[@bindingsReverse[k]].text v
+    @updateBinding k, v
 
-  _cacheDatabindEls: ->
-    return if @_databindEls?
-
-    @_databindEls = {}
-
-    for k,v of @bindings
-      @_databindEls[k] = @$el.find k
-
-  # render data bindings
   render: (state) ->
     # update state
     for k,v of state
-      @state[k] = v
-
-    # update text on all bindings
-    for k,v of @bindings
-      @_databindEls[k].text @state[v]
+      @set k, v
 
   _splitEvent: (event) ->
     [event, selector] = event.split /\s+/
