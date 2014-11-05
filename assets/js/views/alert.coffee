@@ -6,9 +6,9 @@ class AlertView extends View
   constructor: (opts = {}) ->
     super
     @$nextTo       = $(opts.nextTo  ? 'body')
-    @state.confirm =   opts.confirm ? 'okay'
-    @state.message =   opts.message ? 'message'
-    @state.title   =   opts.title   ? 'title'
+    @set 'confirm',   (opts.confirm ? 'okay')
+    @set 'message',   (opts.message ? 'message')
+    @set 'title',     (opts.title   ? 'title')
 
   bindings:
     title:   '.title'
@@ -28,7 +28,11 @@ class AlertView extends View
       @dismiss()
 
   # show alert box
-  show: ->
+  show: (opts = {}) ->
+    (@set 'title',   opts.title)   if opts.title?
+    (@set 'message', opts.message) if opts.message?
+    (@set 'title',   opts.title)   if opts.title?
+
     @render()
     @bind()
     @position()
