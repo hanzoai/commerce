@@ -1,6 +1,8 @@
 AlertView = require './alert'
 View = require '../view'
 
+cart = app.get 'cart'
+
 class ProductView extends View
   el: '.sqs-add-to-cart-button'
 
@@ -8,13 +10,15 @@ class ProductView extends View
     click: -> @addToCart()
 
   addToCart: ->
-    console.log 'adding 2 cart'
     unless (variant = @getVariant())?
       return
 
     quantity = parseInt $("#quantity").val(), 10
 
-    cart = app.get 'cart'
+    inner = $('.sqs-add-to-cart-button-inner')
+    inner.html ''
+    inner.append '<div class="yui3-widget sqs-spin light"></div>'
+    inner.append '<div class="status-text">Adding...</div>'
 
     cart.add
       sku:      variant.SKU
@@ -25,11 +29,6 @@ class ProductView extends View
       quantity: quantity
       size:     variant.Size
       slug:     currentProduct.Slug
-
-    inner = $('.sqs-add-to-cart-button-inner')
-    inner.html ''
-    inner.append '<div class="yui3-widget sqs-spin light"></div>'
-    inner.append '<div class="status-text">Adding...</div>'
 
     setTimeout ->
       $('.status-text').text('Added!').fadeOut 500, ->
