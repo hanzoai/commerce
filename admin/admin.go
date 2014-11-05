@@ -4,7 +4,6 @@ import (
 	"crowdstart.io/auth"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
-	"crowdstart.io/util/form"
 	"crowdstart.io/util/router"
 	"crowdstart.io/util/template"
 	"errors"
@@ -44,11 +43,12 @@ func init() {
 	})
 
 	admin.POST("/login", func(c *gin.Context) {
-		
+		auth.VerifyUser(c, "admin") // logs in the user if credentials are valid
 	})
 }
 
-func NewAdmin(c *gin.Context, m models.Admin) error {
+func NewAdmin(c *gin.Context, f models.RegistrationForm) error {
+	m := f.Admin
 	db := datastore.New(c)
 	q := db.Query("admin").
 		Filter("Email =", m.Email).
@@ -61,6 +61,12 @@ func NewAdmin(c *gin.Context, m models.Admin) error {
 		return err
 	}
 
+	m.PasswordHash, err = f.PasswordHash()
+
+	if err != nil {
+		return err
+	}
+	
 	if len(admins) == 1 {
 		return errors.New("Email is already registered")
 	} else {

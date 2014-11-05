@@ -4,9 +4,9 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
 	"crowdstart.io/util/form"
+	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/sessions"
-	"errors"
 )
 
 // const sessionName = "crowdstartLogin"
@@ -24,13 +24,21 @@ func IsLoggedIn(c *gin.Context, kind string) bool {
 	return session.Values["id"] != nil
 }
 
-func Login(c *gin.Context, kind, id string) error {
+func setSession(c *gin.Context, kind, id string) error {
 	session, err := store.Get(c.Request, kind)
 	if err != nil {
 		return err
 	}
 	session.Values["id"] = id
 	return session.Save(c.Request, c.Writer)
+}
+
+func GetId(c *gin.Context, kind string) (string, error) {
+	session, err := store.Get(c.Request, kind)
+	if err != nil {
+		return "", err
+	}
+	return session.Values["id"].(string), nil
 }
 
 func VerifyUser(c *gin.Context, kind string) error {
@@ -48,23 +56,39 @@ func VerifyUser(c *gin.Context, kind string) error {
 		return err
 	}
 
-	var users [1]models.Admin
 	db := datastore.New(c)
 	q := db.Query(kind).
 		Filter("Email =", f.Email).
 		Filter("PasswordHash =", hash).
 		Limit(1)
 
-	keys, err := q.GetAll(db.Context, &users)
-	if err != nil {
-		c.Fail(401, err)
-		return err
-	}
+	if kind == "admin" {
+		var admins [1]models.Admin
+		_, err = q.GetAll(db.Context, &admins)
+		if err != nil {
+			return err
+		}
 
-	if err == nil && len(keys) == 1 {
-		Login(c, users[0].Email, "crowdstart_"+kind)
-		return nil
-	}
+		if err == nil && len(admins) == 1 {
+			setSession(c, admins[0].Id, "crowdstart_"+kind) // sets cookie
+			return nil
+		}
+		return errors.New("Email/Password combo is invalid.")
 
-	return errors.New("Email/Password combo is invalid.")
+	} else if kind == "user" {
+		var admins [1]models.User
+		_, err = q.GetAll(db.Context, &admins)
+		if err != nil {
+			return err
+		}
+
+		if err == nil && len(admins) == 1 {
+			setSession(c, admins[0].Id, "crowdstart_"+kind)
+			return nil
+		}
+		
+		return errors.New("Email/password combination is invalid.")
+	} else {
+		return errors.New("Unknown kind")
+	}
 }
