@@ -2,8 +2,9 @@ page = require 'page'
 
 class Application
   constructor: (state = {}) ->
-    @state = state
+    @state   = state
     @_routes = {}
+    @views   = []
 
   # global setup
   setup: ->
