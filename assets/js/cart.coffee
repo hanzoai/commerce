@@ -53,6 +53,7 @@ class Cart extends EventEmitter
     @subtotal = subtotal
 
     @emit 'quantity', quantity
-    @emit 'subtotal', quantity
+    @emit 'subtotal', subtotal
+    @emit 'update',   quantity, subtotal
 
 module.exports = new Cart()
