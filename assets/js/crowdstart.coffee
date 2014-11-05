@@ -13,6 +13,7 @@ app.routes =
   '/cart':          [cart.hideHover, cart.setupView]
   '/products/*':    [products.setupView, products.gallery, cart.setupHover]
   '/products/ar-1': [products.customizeAr1]
+  '/':              [cart.setupHover]
   '*':              cart.click
 
 app.start()
