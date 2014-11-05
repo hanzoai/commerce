@@ -3,6 +3,7 @@ window.app = app = (require './app')
 
 # Store cart for later
 app.set 'cart', (require './cart')
+app.set 'alert' new AlertView nextTo: '.sqs-add-to-cart-button'
 
 cart     = require './routes/cart'
 products = require './routes/products'
