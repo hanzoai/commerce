@@ -11,9 +11,9 @@ class Alert extends View
     @state.title   =   opts.title   ? 'title'
 
   bindings:
-    '.title':               'title'
-    '.message':             'message'
-    '.confirmation-button': 'confirm'
+    title:   '.title'
+    message: '.message'
+    confirm: '.confirmation-button'
 
   events:
     # Dismiss on click, escape, and scroll
