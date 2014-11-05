@@ -10,7 +10,6 @@ type User struct {
 	Id              string `schema:"-"`
 	FirstName       string
 	LastName        string
-	Email           string
 	Phone           string
 	OrdersIds       []string `schema:"-"`
 	Cart            Cart
@@ -20,14 +19,18 @@ type User struct {
 	// SHOULD ONLY BE ACCESSED INTERNALLY. PLZ.
 	StripeToken      string
 	CardconnectToken string
+
+	Email        string
+	PasswordHash []byte
 }
 
 type Admin struct {
 	Id           string
 	Name         string
+	Campaigns    []Campaign
+
 	Email        string
 	PasswordHash []byte
-	Campaigns    []Campaign
 }
 
 func (u User) Name() string {
