@@ -6,8 +6,9 @@ products = require './routes/products'
 
 app.routes =
   '/cart':          cart.hideHover
-  '/products/':     [products.alert, products.gallery]
+  '/products/*':    products.gallery
   '/products/ar-1': products.customizeAr1
-  '*':              [cart.click, cart.updateHover, (-> alert("hi"))]
+  '*':              cart.click
 
+app.cart = require './cart'
 app.start()
