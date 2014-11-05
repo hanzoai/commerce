@@ -1,6 +1,8 @@
 View = require '../view'
 util = require '../util'
 
+cart = app.get 'cart'
+
 class CartHover extends View
   el: '.fixed-cart'
 
@@ -14,19 +16,21 @@ class CartHover extends View
     subtotal: (v) -> util.formatCurrency v
 
   listen: ->
-    cart = app.get 'cart'
-
     # listen to cart changes
     cart.on 'update', (quantity, subtotal) =>
-      @set 'quantity', quantity
-      if cart.quantity > 1
-        @set 'suffix', 'item'
-      else
-        @set 'suffix', 'items'
+      @update quantity, subtotal
 
-      @set 'subtotal', subtotal
+    # manually trigger first update
+    @update cart.quantity, cart.subtotal
 
-    # trigger first change
-    cart.update()
+  update: (quantity, subtotal) ->
+    @set 'quantity', quantity
+    @set 'subtotal', subtotal
+
+    if quantity > 1
+      @set 'suffix', 'item'
+    else
+      @set 'suffix', 'items'
+
 
 module.exports = CartHover
