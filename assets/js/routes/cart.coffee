@@ -11,3 +11,6 @@ exports.setupHover = ->
   view.listen()
 
 exports.setupView = ->
+  view = new (require '../views/cart')
+  app.views.push view
+  view.render()

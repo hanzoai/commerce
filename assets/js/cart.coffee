@@ -47,6 +47,9 @@ class Cart extends EventEmitter
     @save()
     item
 
+  items: ->
+    @cart
+
   add: (item) ->
     unless (_item = @get item.sku)?
       return @set item.sku, item

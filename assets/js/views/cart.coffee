@@ -1,65 +1,34 @@
+LineItemView = require './line-item'
 View = require '../view'
+util = require '../util'
 
 cart = app.get 'cart'
 
 class CartView extends View
-
-class LineItemView extends View
-  template: '#line-item-template'
-
+  el: '.sqs-fullpage-shopping-cart-content'
   bindings:
-    img:        'img.thumbnail   @src'
-    slug:       'input.slug      @value'
-    name:       'a.title'
-    desc:       'div.desc'
-    price:      '.price span'
-    quantity:   '.quantity input @value'
-
-    index:     ['input.sku       @name'
-                'input.slug      @name'
-                '.quantity input @name']
-
-    skuIndex:   'input.sku @name'
-    slugIndex:  'input.slug @name'
-    quantIndex: '.quantity input @name'
-
-  computed:
-    desc: (color, size) -> [color, size]
-
-  watching:
-    desc: ['color', 'size']
+    subtotal: '.subtotal .price span'
 
   formatters:
-    slug: (v) ->
-      'Order.Items.' + v + '.Product.Slug'
+    subtotal: (v) -> util.formatCurrency v
 
-    index: (v, selector) ->
-      switch selector
-        when 'input.sku @name'
-          "Order.Items.#{v}.Variant.SKU"
-        when 'input.slug @name'
-          "Order.Items.#{v}.Product.Slug"
+  render: ->
+    $('.cart-container tbody').html ''
+    index = 0
 
-    desc: (v) ->
-      v.join ' / '
+    @set 'quantity', cart.quantity
+    @set 'subtotal', cart.subtotal
 
-    price: (v) ->
-      util.formatCurrency v
+    for sku, item of cart.items()
+      item.index = index++
+      view = new LineItemView state: item
+      window.view = view
+      view.render()
+      $('.cart-container tbody').append view.$el
 
-# renderLineItem = (lineItem, index) ->
-#   el = templateEl.clone(false)
+module.exports = CartView
 
-#   # get list of variants
-#   variantInfo = []
-#   variantInfo.push lineItem.color  if lineItem.color isnt ""
-#   variantInfo.push lineItem.size  if lineItem.size isnt ""
-#   el.find('input.slug').val(lineItem.slug).attr 'name', 'Order.Items.' + index + '.Product.Slug'
-#   el.find('input.sku').val(lineItem.sku).attr 'name', 'Order.Items.' + index + '.Variant.SKU'
-#   el.find('a.title').text lineItem.name
-#   el.find('div.variant-info').text variantInfo.join(' / ')
-#   el.find('.price span').text formatCurrency(lineItem.price)
-#   $quantity.val(lineItem.quantity).attr 'name', 'Order.Items.' + index + '.Quantity'
-
+# EVENTSSSS
 #   # Handle quantity changes
 #   $quantity.change (e) ->
 #     e.preventDefault()
@@ -90,24 +59,6 @@ class LineItemView extends View
 #   $(".cart-container tbody").append el
 #   return
 
-# exports.renderCart = (modifiedCart) ->
-#   cart = modifiedCart or csio.getCart()
-#   numItems = 0
-#   subtotal = 0
-#   i = 0
-#   $(".cart-container tbody").html ""
-#   for k of cart
-#     lineItem = cart[k]
-#     numItems += lineItem.quantity
-#     subtotal += lineItem.price * lineItem.quantity
-#     csio.renderLineItem lineItem, i
-#     i += 1
-#   if i is 0
-#     $(".cart-container").hide()
-#     $(".empty-message").show()
-#   else
-#     csio.updateSubtotal subtotal
-#   return
 
 # $("input,select").keypress (e) ->
 #   e.keyCode isnt 13
