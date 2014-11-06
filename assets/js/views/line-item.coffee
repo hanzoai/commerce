@@ -11,7 +11,6 @@ class LineItemView extends View
     desc:       'div.desc'
     price:      '.price span'
     quantity:   '.quantity input @value'
-
     index:     ['input.sku       @name'
                 'input.slug      @name'
                 '.quantity input @name']
@@ -42,6 +41,7 @@ class LineItemView extends View
   events:
     # Dismiss on click, escape, and scroll
     'change .quantity input': 'updateQuantity'
+
     # Prevent user pressing enter
     'keypress input,select': (e) ->
       if e.keyCode isnt 13
@@ -54,7 +54,6 @@ class LineItemView extends View
     'click .remove-item': ->
       cart = app.get('cart')
       cart.remove(@state.sku)
-
       @destroy()
 
   updateQuantity: (e) ->

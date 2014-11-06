@@ -30,38 +30,3 @@ class CartView extends View
       cart.on 'subtotal', (subtotal) => @set 'subtotal', subtotal
 
 module.exports = CartView
-
-# EVENTSSSS
-#   # Handle quantity changes
-#   $quantity.change (e) ->
-#     e.preventDefault()
-#     e.stopPropagation()
-
-#     # Get quantity
-#     quantity = parseInt($(this).val(), 10)
-
-#     # Prevent less than one quantity
-#     if quantity < 1
-#       quantity = 1
-#       $(this).val 1
-
-#     # Update quantity
-#     lineItem.quantity = quantity
-
-#     # Update line item
-#     csio.updateLineItem lineItem, el
-#     return
-
-
-#   # Handle lineItem removals
-#   el.find(".remove-item").click ->
-#     csio.removeLineItem lineItem.sku, el
-#     return
-
-#   el.removeClass "template"
-#   $(".cart-container tbody").append el
-#   return
-
-
-# $("input,select").keypress (e) ->
-#   e.keyCode isnt 13
