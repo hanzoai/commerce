@@ -7,4 +7,8 @@
 
 {% block content %}
 
+{% for order in orders %}
+<h1>{{ order.Items }}</h1>
+{% endfor %}
+
 {% endblock %}
