@@ -73,8 +73,9 @@ class View
     for sources in @watching[name]
       unless Array.isArray sources
         sources = [sources]
+
       for src in sources
-        args.push src
+        args.push @state[src]
 
     value = @computed[name].apply @, args
 
