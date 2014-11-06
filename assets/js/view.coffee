@@ -2,9 +2,11 @@ util = require './util'
 
 class View
   el:         null
-  formatters: {}
-  events:     {}
   bindings:   {}
+  computed:   {}
+  events:     {}
+  formatters: {}
+  watching:   {}
 
   constructor: (opts = {}) ->
     @el ?= opts.el
@@ -24,30 +26,89 @@ class View
     @id         = util.uniqueId @constructor.name
     @state      = opts.state ? {}
     @_events    = {}
-    @_databinds = {}
+    @_targets = {}
+    @_watchers = {}
+
+    # Generate list of watchers per name
+    for watcher, watched in @watching
+      unless Array.isArray watched
+        watched = [watched]
+
+      for name in watched
+        @_watchers[name] ?= []
+        @_watchers[name].push watcher
 
     # find all elements in DOM.
-    @_cacheDatabinds()
+    @_cacheTargets()
 
-    unless not opts.autoRender
-      @render()
+    @render() unless not opts.autoRender
 
-  _cacheDatabinds: ->
-    for k,v of @bindings
-      @_databinds[k] = $(@$el.find v)
+  # Split target selector + attr, if attr is none use text.
+  _splitTarget: (target) ->
+    [selector, attr] = target.split /\s+@/
+    unless attr?
+      attr = 'text'
 
-  _updateBinding: (k, v) ->
-    if (formatter = @formatters[k])?
-      v = formatter v
-    @_databinds[k].text v
+    [selector, attr]
 
-  get: (k) ->
-    @state[k]
+  # Find and cache binding targets.
+  _cacheTargets: ->
+    for name, targets of @bindings
+      unless Array.isArray targets
+        targets = [targets]
 
-  set: (k, v) ->
-    @state[k] = v
-    @_updateBinding k, v
+      # For each target cache based on selector
+      for target in targets
+        [selector, attr] = @_splitTarget target
 
+        unless @_targets[selector]?
+          @_targets[selector] = @$el.find selector
+
+  _renderComputed: (name) ->
+    args = []
+    for sources in @watching[name]
+      unless Array.isArray sources
+        sources = [sources]
+      for src in sources
+        args.push src
+
+    value = @computed[name].apply @, args
+
+  # This translates a state change to it's intended target(s).
+  _renderBindings: (name, value) ->
+    # Check if this is a computed property
+    if @computed[name]?
+      value = @_renderComputed name
+
+    # Get list of targets for this binding name
+    targets = @bindings[name]
+    unless Array.isArray targets
+      targets = [targets]
+
+    # Update each target
+    for target in targets
+      [selector, attr] = @_splitTarget target
+
+      # Format value
+      if (formatter = @formatters[name])?
+        value = formatter value, "#{selector} @#{attr}"
+
+      # Update DOM
+      @_targets[selector].attr attr, value
+
+  # Get value from state for name.
+  get: (name) ->
+    @state[name]
+
+  # Set name to value.
+  set: (name, value) ->
+    @state[name] = value
+    @_renderBindings name, value
+    for watchers in @_watchers[name]
+      for watcher in watchers
+        @_renderBindings watcher
+
+  # Render current state according to bindings.
   render: (state) ->
     # update state
     for k,v of state

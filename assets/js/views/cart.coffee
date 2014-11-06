@@ -8,19 +8,26 @@ class LineItemView extends View
   template: '#line-item-template'
 
   bindings:
-    img:       'img.thumbnail   attr:src'
-    slug:      'input.slug      attr:value'
-    name:      'a.title'
-    desc:      'div.desc'
-    price:     '.price span'
-    quantity:  '.quantity input attr:value'
-    index:    ['input.sku       attr:name'
-               'input.slug      attr:name'
-               '.quantity input attr:name']
+    img:        'img.thumbnail   @src'
+    slug:       'input.slug      @value'
+    name:       'a.title'
+    desc:       'div.desc'
+    price:      '.price span'
+    quantity:   '.quantity input @value'
+
+    index:     ['input.sku       @name'
+                'input.slug      @name'
+                '.quantity input @name']
+
+    skuIndex:   'input.sku @name'
+    slugIndex:  'input.slug @name'
+    quantIndex: '.quantity input @name'
 
   computed:
-    desc: ->
-      [@get 'color', @get 'size']
+    desc: (color, size) -> [color, size]
+
+  watching:
+    desc: ['color', 'size']
 
   formatters:
     slug: (v) ->
@@ -28,9 +35,9 @@ class LineItemView extends View
 
     index: (v, selector) ->
       switch selector
-        when 'input.sku  attr:name'
+        when 'input.sku @name'
           "Order.Items.#{v}.Variant.SKU"
-        when 'input.slug attr:name'
+        when 'input.slug @name'
           "Order.Items.#{v}.Product.Slug"
 
     desc: (v) ->
