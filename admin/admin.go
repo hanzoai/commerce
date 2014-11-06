@@ -33,6 +33,7 @@ func init() {
 	})
 
 	admin.POST("/register", func(c *gin.Context) {
+		c.Redirect(301, "dashboard")
 	})
 
 	// Admin login
@@ -41,13 +42,20 @@ func init() {
 	})
 
 	admin.POST("/login", func(c *gin.Context) {
+		c.Redirect(301, "dashboard")
 	})
 
-	// Show stripe button
-	admin.GET("/stripe/connect", func(c *gin.Context) {
-		template.Render(c, "stripe/connect.html", "clientid", config.Get().Stripe.ClientId)
+	// Admin Dashboard
+	admin.GET("/dashboard", func(c *gin.Context) {
+		template.Render(c, "adminlte/dashboard.html")
 	})
 
+	// Admin Profile
+	admin.GET("/profile", func(c *gin.Context) {
+		template.Render(c, "adminlte/profile.html", "clientid", config.Get().Stripe.ClientId)
+	})
+
+	// Stripe End Points
 	admin.GET("/stripe/callback", func(c *gin.Context) {
 		req := c.Request
 		error := req.URL.Query().Get("error")
