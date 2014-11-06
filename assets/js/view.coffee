@@ -45,7 +45,11 @@ class View
 
   # Split target selector + attr, if attr is none use text.
   _splitTarget: (target) ->
-    [selector, attr] = target.split /\s+@/
+    if target.indexOf '@' != -1
+      [selector, attr] = target.split /\s+@/
+    else
+      [selector, attr] = [target, null]
+
     unless attr?
       attr = 'text'
 
@@ -64,7 +68,7 @@ class View
         unless @_targets[selector]?
           @_targets[selector] = @$el.find selector
 
-  _renderComputed: (name) ->
+  _computeComputed: (name) ->
     args = []
     for sources in @watching[name]
       unless Array.isArray sources
@@ -78,7 +82,7 @@ class View
   _renderBindings: (name, value) ->
     # Check if this is a computed property
     if @computed[name]?
-      value = @_renderComputed name
+      value = @_computeComputed name
 
     # Get list of targets for this binding name
     targets = @bindings[name]
@@ -94,7 +98,10 @@ class View
         value = formatter value, "#{selector} @#{attr}"
 
       # Update DOM
-      @_targets[selector].attr attr, value
+      if attr == 'text'
+        @_targets[selector].text value
+      else
+        @_targets[selector].attr attr, value
 
   # Get value from state for name.
   get: (name) ->
@@ -103,16 +110,25 @@ class View
   # Set name to value.
   set: (name, value) ->
     @state[name] = value
-    @_renderBindings name, value
-    for watchers in @_watchers[name]
+
+    # Render our binding
+    if @bindings[name]?
+      @_renderBindings name, value
+
+    # Force anything watching us to be recomputed
+    if (watchers = @_watchers[name])?
       for watcher in watchers
         @_renderBindings watcher
 
   # Render current state according to bindings.
   render: (state) ->
-    # update state
-    for k,v of state
-      @set k, v
+    if state?
+      # update state
+      for k,v of state
+        @set k, v
+    else
+      for name, targets of @bindings
+        @_renderBindings name, @state[name]
     @
 
   _splitEvent: (event) ->
