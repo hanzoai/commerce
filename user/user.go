@@ -30,14 +30,23 @@ func init() {
 				return
 			}
 
-			var orders []models.Order
+			orders := make([]interface{}, len(m.OrdersIds))
+			for i, v := range orders {
+				orders[i] = interface{}(v)
+			}
+			
 			err = db.GetMulti(m.OrdersIds, orders)
 
+			o := make([]models.Order, len(orders))
+			for i, v := range orders {
+				o[i] = v.(models.Order)
+			}
+			
 			if err != nil {
 				c.Fail(500, err)
 				return
 			}
-			template.Render(c, "index.html", "orders", orders)
+			template.Render(c, "index.html", "orders", o)
 		}
 	})
 
