@@ -10,10 +10,35 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const kind = "user"
+
 func init() {
 	user := router.New("/user/")
 	user.GET("/", func(c *gin.Context) {
-		template.Render(c, "index.html")
+		if auth.IsLoggedIn(c, kind) {
+			key, err := auth.GetKey(c, "User")
+			if err != nil {
+				c.Fail(500, err)
+				return
+			}
+
+			db := datastore.New(c)
+			m := new(models.User)
+			err = db.GetKey("User", key, m)
+			if err != nil {
+				c.Fail(500, err)
+				return
+			}
+
+			var orders []models.Order
+			err = db.GetMulti(m.OrdersIds, orders)
+
+			if err != nil {
+				c.Fail(500, err)
+				return
+			}
+			template.Render(c, "index.html", "orders", orders)
+		}
 	})
 
 	user.POST("/login", func(c *gin.Context) {
@@ -24,7 +49,7 @@ func init() {
 func NewUser(c *gin.Context, f models.RegistrationForm) error {
 	m := f.User
 	db := datastore.New(c)
-	q := db.Query("user").
+	q := db.Query(kind).
 		Filter("Email =", m.Email).
 		Limit(1)
 
@@ -34,13 +59,13 @@ func NewUser(c *gin.Context, f models.RegistrationForm) error {
 	if err != nil {
 		return err
 	}
-	
+
 	m.PasswordHash, err = f.PasswordHash()
 
 	if err != nil {
 		return err
 	}
-	
+
 	if len(admins) == 1 {
 		return errors.New("Email is already registered")
 	} else {

@@ -21,24 +21,24 @@ func IsLoggedIn(c *gin.Context, kind string) bool {
 		return false
 	}
 
-	return session.Values["id"] != nil
+	return session.Values["key"] != nil
 }
 
-func setSession(c *gin.Context, kind, id string) error {
+func setSession(c *gin.Context, kind, key string) error {
 	session, err := store.Get(c.Request, kind)
 	if err != nil {
 		return err
 	}
-	session.Values["id"] = id
+	session.Values["key"] = key
 	return session.Save(c.Request, c.Writer)
 }
 
-func GetId(c *gin.Context, kind string) (string, error) {
+func GetKey(c *gin.Context, kind string) (string, error) {
 	session, err := store.Get(c.Request, kind)
 	if err != nil {
 		return "", err
 	}
-	return session.Values["id"].(string), nil
+	return session.Values["key"].(string), nil
 }
 
 func VerifyUser(c *gin.Context, kind string) error {
@@ -60,35 +60,17 @@ func VerifyUser(c *gin.Context, kind string) error {
 	q := db.Query(kind).
 		Filter("Email =", f.Email).
 		Filter("PasswordHash =", hash).
+		KeysOnly().
 		Limit(1)
-
-	if kind == "admin" {
-		var admins [1]models.Admin
-		_, err = q.GetAll(db.Context, &admins)
-		if err != nil {
-			return err
-		}
-
-		if err == nil && len(admins) == 1 {
-			setSession(c, admins[0].Id, "crowdstart_"+kind) // sets cookie
-			return nil
-		}
-		return errors.New("Email/Password combo is invalid.")
-
-	} else if kind == "user" {
-		var admins [1]models.User
-		_, err = q.GetAll(db.Context, &admins)
-		if err != nil {
-			return err
-		}
-
-		if err == nil && len(admins) == 1 {
-			setSession(c, admins[0].Id, "crowdstart_"+kind)
-			return nil
-		}
-		
-		return errors.New("Email/password combination is invalid.")
-	} else {
-		return errors.New("Unknown kind")
+	
+	keys, err := q.GetAll(db.Context, nil)
+	if err != nil {
+		return err
 	}
+	
+	if err == nil && len(keys) == 1 {
+		setSession(c, keys[0].StringID(), "crowdstart_"+kind) // sets cookie
+		return nil
+	}
+	return errors.New("Email/password combination is invalid.")
 }
