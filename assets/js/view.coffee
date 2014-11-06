@@ -132,8 +132,9 @@ class View
         @_renderBindings name, @state[name]
     @
 
-  _splitEvent: (event) ->
-    [event, selector] = event.split /\s+/
+  _splitEvent: (e) ->
+    [event, selector...] = e.split /\s+/
+    selector = selector.join ' '
 
     unless selector
       $el = @$el
@@ -150,25 +151,29 @@ class View
 
     [$el, event]
 
-  on: (event, callback) ->
-    [$el, event] = @_splitEvent event
-    $el.on "#{event}.#{@id}", (event, data...) =>
-      callback.apply @, data
+  on: (e, callback) ->
+    [$el, event] = @_splitEvent e
+    if typeof callback is 'string'
+      callback = @[callback]
+    $el.on "#{event}.#{@id}", =>
+      callback.apply @, arguments
     @
 
-  once: (event, callback) ->
-    [$el, event] = @_splitEvent event
-    $el.one "#{event}.#{@id}", (event, data...) =>
-      callback.apply @, data
+  once: (e, callback) ->
+    [$el, event] = @_splitEvent e
+    if typeof callback is 'string'
+      callback = @[callback]
+    $el.one "#{event}.#{@id}", =>
+      callback.apply @, arguments
     @
 
-  off: (event) ->
-    [$el, event] = @_splitEvent event
+  off: (e) ->
+    [$el, event] = @_splitEvent e
     $el.off "#{event}.#{@id}"
     @
 
-  emit: (event, data...) ->
-    [$el, event] = @_splitEvent event
+  emit: (e, data...) ->
+    [$el, event] = @_splitEvent e
     $el.trigger event, data
     @
 

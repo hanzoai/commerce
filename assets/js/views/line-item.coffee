@@ -16,10 +16,6 @@ class LineItemView extends View
                 'input.slug      @name'
                 '.quantity input @name']
 
-    skuIndex:   'input.sku @name'
-    slugIndex:  'input.slug @name'
-    quantIndex: '.quantity input @name'
-
   computed:
     desc: (color, size) -> [color, size]
 
@@ -28,7 +24,7 @@ class LineItemView extends View
 
   formatters:
     slug: (v) ->
-      'Order.Items.' + v + '.Product.Slug'
+      "Order.Items.#{v}.Product.Slug"
 
     index: (v, selector) ->
       switch selector
@@ -42,5 +38,46 @@ class LineItemView extends View
 
     price: (v) ->
       util.formatCurrency v
+
+  events:
+    # Dismiss on click, escape, and scroll
+    'change .quantity input': 'updateQuantity'
+    # Prevent user pressing enter
+    'keypress input,select': (e) ->
+      if e.keyCode isnt 13
+        true
+      else
+        @updateQuantity(e)
+        false
+
+    # Handle lineItem removals
+    'click .remove-item': ->
+      cart = app.get('cart')
+      cart.remove(@state.sku)
+
+      @destroy()
+
+  updateQuantity: (e) ->
+    el = $(e.currentTarget)
+    e.preventDefault()
+    e.stopPropagation()
+
+    # Get quantity
+    quantity = parseInt(el.val(), 10)
+
+    # Prevent less than one quantity
+    if quantity < 1 || isNaN quantity
+      quantity = 1
+
+    # Update quantity
+    @set 'quantity', quantity
+
+    # Update line item
+    cart = app.get('cart')
+    cart.set(@state.sku, @state)
+
+  destroy: ->
+    @unbind()
+    @$el.animate {opacity: "toggle"}, 500, 'swing', => @$el.remove()
 
 module.exports = LineItemView
