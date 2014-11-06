@@ -45,14 +45,26 @@ func init() {
 		c.Redirect(301, "dashboard")
 	})
 
+	admin.GET("/logout", func(c *gin.Context) {
+		c.Redirect(301, "/")
+	})
+
+	// Admin User Profile
+	admin.GET("/profile", func(c *gin.Context) {
+	})
+
+	admin.POST("/profile", func(c *gin.Context) {
+		c.Redirect(301, "profile")
+	})
+
 	// Admin Dashboard
 	admin.GET("/dashboard", func(c *gin.Context) {
 		template.Render(c, "adminlte/dashboard.html")
 	})
 
-	// Admin Profile
-	admin.GET("/profile", func(c *gin.Context) {
-		template.Render(c, "adminlte/profile.html", "clientid", config.Get().Stripe.ClientId)
+	// Admin Payment Connectors
+	admin.GET("/connect", func(c *gin.Context) {
+		template.Render(c, "adminlte/connect.html", "clientid", config.Get().Stripe.ClientId)
 	})
 
 	// Stripe End Points
