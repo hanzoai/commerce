@@ -22,9 +22,25 @@ type TokenData struct {
 func init() {
 	admin := router.New("/admin/")
 
-	// Admin index
+	// Admin Index
 	admin.GET("/", func(c *gin.Context) {
 		template.Render(c, "index.html")
+	})
+
+	// Admin Register
+	admin.GET("/register", func(c *gin.Context) {
+		template.Render(c, "adminlte/register.html")
+	})
+
+	admin.POST("/register", func(c *gin.Context) {
+	})
+
+	// Admin login
+	admin.GET("/login", func(c *gin.Context) {
+		template.Render(c, "adminlte/login.html")
+	})
+
+	admin.POST("/login", func(c *gin.Context) {
 	})
 
 	// Show stripe button
