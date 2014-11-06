@@ -6,7 +6,7 @@ import (
 
 type Config struct {
 	AutoCompileAssets bool
-	Stripe struct {
+	Stripe            struct {
 		ClientId    string
 		APIKey      string
 		APISecret   string
