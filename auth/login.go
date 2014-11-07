@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/sessions"
 	"log"
+	"code.google.com/p/go.crypto/bcrypt"
 )
 
 // const sessionName = "crowdstartLogin"
@@ -53,26 +54,35 @@ func VerifyUser(c *gin.Context) error {
 		return err
 	}
 
-	hash := f.PasswordHash()
-
+	hash, err := f.PasswordHash()
 	log.Println(string(hash))
+
+	if err != nil {
+		return err
+	}
 	
 	db := datastore.New(c)
 	q := db.Query(kind).
 		Filter("Email =", f.Email).
-		Filter("PasswordHash =", hash).
-		KeysOnly().
 		Limit(1)
 
-	keys, err := q.GetAll(db.Context, nil)
+	var users []models.User
+	keys, err := q.GetAll(db.Context, &users)
 	if err != nil {
 		return err
 	}
 
 	log.Printf("keys %d", len(keys))
 	if len(keys) == 1 {
-		setSession(c, keys[0].StringID()) // sets cookie
-		return nil
+		if err := bcrypt.CompareHashAndPassword(users[0].PasswordHash, []byte(f.Password)); err == nil {
+			setSession(c, keys[0].StringID()) // sets cookie
+			return nil
+		}	else {
+			return errors.New("Email/password combination is invalid.")
+		}
+	} else {
+		// return errors.New("Email isn't registered")
 	}
-	return errors.New("Email/password combination is invalid.")
+
+	return nil
 }
