@@ -4,15 +4,12 @@ import (
 	"crowdstart.io/datastore"
 	. "crowdstart.io/models"
 	"log"
-	"code.google.com/p/go.crypto/pbkdf2"
-	"crypto/sha256"
+	"code.google.com/p/go.crypto/bcrypt"
 )
-
-const salt = "apOWE0I 1 4E04148408B 4 ['"
 
 func Install(db *datastore.Datastore) {
 	log.Println("Fixtures")
-	pwhash := pbkdf2.Key([]byte("password"), []byte(salt), 4096, sha256.Size, sha256.New)
+	pwhash, _ := bcrypt.GenerateFromPassword([]byte("password"), 12)
 	log.Println(string(pwhash))
 
 	// Default User (SKULLY)
