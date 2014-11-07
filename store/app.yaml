@@ -1,6 +1,6 @@
 application: crowdstart-io
 module: store
-version: v4
+version: v6
 
 runtime: go
 api_version: go1
