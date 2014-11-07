@@ -16,7 +16,7 @@ func init() {
 	user := router.New("/user/")
 	user.GET("/", func(c *gin.Context) {
 		if auth.IsLoggedIn(c) {
-			key, err := auth.GetKey(c, "User")
+			key, err := auth.GetKey(c)
 			if err != nil {
 				c.Fail(500, err)
 				return
@@ -24,7 +24,7 @@ func init() {
 
 			db := datastore.New(c)
 			m := new(models.User)
-			err = db.GetKey("User", key, m)
+			err = db.GetKey(kind, key, m)
 			if err != nil {
 				c.Fail(500, err)
 				return
@@ -51,7 +51,11 @@ func init() {
 	})
 
 	user.POST("/login", func(c *gin.Context) {
-		auth.VerifyUser(c, "user")
+		if err := auth.VerifyUser(c); err == nil {
+			// Success
+		} else {
+			c.Fail(401, err)
+		}
 	})
 }
 

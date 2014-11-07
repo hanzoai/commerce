@@ -16,9 +16,10 @@ const secret = "askjaakjl12"
 var store = sessions.NewCookieStore([]byte(secret))
 
 const kind = "user"
+const sessionName = "logged-in-"+kind
 
 func IsLoggedIn(c *gin.Context) bool {
-	session, err := store.Get(c.Request, "logged-in" + kind)
+	session, err := store.Get(c.Request, sessionName)
 
 	if err != nil {
 		return false
@@ -28,8 +29,8 @@ func IsLoggedIn(c *gin.Context) bool {
 	return session.Values["key"] != nil
 }
 
-func setSession(c *gin.Context, kind, key string) error {
-	session, err := store.Get(c.Request, kind)
+func setSession(c *gin.Context, key string) error {
+	session, err := store.Get(c.Request, sessionName)
 	if err != nil {
 		return err
 	}
@@ -37,26 +38,24 @@ func setSession(c *gin.Context, kind, key string) error {
 	return session.Save(c.Request, c.Writer)
 }
 
-func GetKey(c *gin.Context, kind string) (string, error) {
-	session, err := store.Get(c.Request, kind)
+func GetKey(c *gin.Context) (string, error) {
+	session, err := store.Get(c.Request, sessionName)
 	if err != nil {
 		return "", err
 	}
 	return session.Values["key"].(string), nil
 }
 
-func VerifyUser(c *gin.Context, kind string) error {
+func VerifyUser(c *gin.Context) error {
 	f := new(models.LoginForm)
 	err := form.Parse(c, f)
 
 	if err != nil {
-		c.Fail(401, err)
 		return err
 	}
 
 	hash, err := f.PasswordHash()
 	if err != nil {
-		c.Fail(401, err)
 		return err
 	}
 
@@ -73,7 +72,7 @@ func VerifyUser(c *gin.Context, kind string) error {
 	}
 
 	if err == nil && len(keys) == 1 {
-		setSession(c, keys[0].StringID(), "logged-in"+kind) // sets cookie
+		setSession(c, keys[0].StringID()) // sets cookie
 		return nil
 	}
 	return errors.New("Email/password combination is invalid.")

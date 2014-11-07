@@ -54,7 +54,7 @@ func init() {
 
 	admin.POST("/login", func(c *gin.Context) {
 		// Actually use this.
-		auth.VerifyUser(c, "admin")
+		auth.VerifyUser(c)
 		c.Redirect(301, "dashboard")
 	})
 
