@@ -172,7 +172,10 @@ func NewUser(c *gin.Context, f models.RegistrationForm) error {
 		return err
 	}
 
-	m.PasswordHash = f.PasswordHash()
+	m.PasswordHash, err = f.PasswordHash()
+	if err != nil {
+		return nil
+	}
 
 	if len(users) == 1 {
 		return errors.New("Email is already registered")
