@@ -6,17 +6,20 @@ import (
 )
 
 func Install(db *datastore.Datastore) {
-	db.PutKey("user", "admin", &User{
-		Id:        "admin",
-		FirstName: "Ad",
-		LastName:  "Min",
-		Email:     "admin@crowdstart.io",
-		Phone:     "(123)-456-7890",
+	// Default User (SKULLY)
+	db.PutKey("user", "skully", &User{
+		Id:        "skully",
+		FirstName: "Mitchell",
+		LastName:  "Weller",
+		Email:     "dev@hanzo.ai",
+		Phone:     "(123) 456-7890",
 		OrdersIds: []string{},
+	})
 
-		// SHOULD ONLY BE ACCESSED INTERNALLY. PLZ.
-		StripeToken:      "",
-		CardconnectToken: "",
+	// Default Campaign (SKULLY)
+	db.PutKey("campaign", "skully", &Campaign{
+		Id:        "skully",
+		Title:     "SKULLY AR-1",
 	})
 
 	// AR-1
