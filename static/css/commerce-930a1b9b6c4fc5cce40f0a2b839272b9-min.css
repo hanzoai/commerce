@@ -545,10 +545,7 @@ html.sqs-modal-lightbox-open, html.sqs-modal-lightbox-open body {
 
 #sqs-standard-checkout .sqs-checkout-form-payment #credit-card {
   zoom:1;
-  background:#f3f3f3;
-  border:1px solid #ddd;
   padding:30px;
-  border-radius:5px
 }
 
 #sqs-standard-checkout .sqs-checkout-form-payment #credit-card:after {
