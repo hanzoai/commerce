@@ -16,7 +16,7 @@ func init() {
 	user := router.New("/user/")
 	user.GET("/", func(c *gin.Context) {
 		if auth.IsLoggedIn(c) {
-			key, err := auth.GetKey(c)
+			key, err := auth.GetSession(c, "login-key")
 			if err != nil {
 				c.Fail(500, err)
 				return
