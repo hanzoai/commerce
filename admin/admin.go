@@ -1,11 +1,12 @@
 package admin
 
 import (
+	"appengine/urlfetch"
 	"crowdstart.io/auth"
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
-	"crowdstart.io/models"
 	"crowdstart.io/middleware"
+	"crowdstart.io/models"
 	"crowdstart.io/util/router"
 	"crowdstart.io/util/template"
 	"encoding/json"
@@ -13,9 +14,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"io/ioutil"
 	"net/http"
-	"strings"
-	"appengine/urlfetch"
 	"net/url"
+	"strings"
 )
 
 type TokenData struct {
@@ -63,7 +63,7 @@ func init() {
 	})
 
 	// Admin User Profile
-	admin.GET("/profile", func(c *gin.Context) {
+	admin.GET("/profile", middleware.LoginRequired(), func(c *gin.Context) {
 	})
 
 	admin.POST("/profile", func(c *gin.Context) {
