@@ -12,13 +12,12 @@ type User struct {
 	LastName        string
 	Phone           string
 	OrdersIds       []string `schema:"-"`
-	Cart            Cart
-	BillingAddress  Address
-	ShippingAddress Address
-
-	Email        string
-	Campaigns    []Campaign `schema:"-"`
-	PasswordHash []byte `schema:"-"`
+	Cart            Cart     `datastore:"-"`
+	BillingAddress  Address  `datastore:"-"`
+	ShippingAddress Address  `datastore:"-"`
+	Email           string
+	Campaigns       []Campaign `schema:"-" datastore:"-"`
+	PasswordHash    []byte     `schema:"-"`
 }
 
 func (u User) Name() string {

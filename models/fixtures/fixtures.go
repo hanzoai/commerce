@@ -1,16 +1,19 @@
 package fixtures
 
 import (
-	"code.google.com/p/go.crypto/bcrypt"
 	"crowdstart.io/datastore"
 	. "crowdstart.io/models"
+	"log"
+	"code.google.com/p/go.crypto/bcrypt"
 )
 
 func Install(db *datastore.Datastore) {
+	log.Println("Fixtures")
 	pwhash, _ := bcrypt.GenerateFromPassword([]byte("password"), 12)
+	log.Println(string(pwhash))
 
 	// Default User (SKULLY)
-	db.PutKey("user", "skully", &User{
+	key, err := db.PutKey("user", "skully", &User{
 		Id:           "skully",
 		FirstName:    "Mitchell",
 		LastName:     "Weller",
@@ -19,6 +22,13 @@ func Install(db *datastore.Datastore) {
 		OrdersIds:    []string{},
 		PasswordHash: pwhash,
 	})
+
+	log.Printf("%#v", err)
+	log.Printf("%#v", key)
+
+	var users []User
+	db.Query("user").GetAll(db.Context, &users)
+	log.Printf("%#v", users)
 
 	// Default Campaign (SKULLY)
 	db.PutKey("campaign", "skully", &Campaign{

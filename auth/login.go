@@ -1,10 +1,9 @@
 package auth
 
 import (
+	"code.google.com/p/go.crypto/bcrypt"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
-	"crowdstart.io/util/form"
-	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/sessions"
 	"log"
@@ -16,64 +15,66 @@ const secret = "askjaakjl12"
 var store = sessions.NewCookieStore([]byte(secret))
 
 const kind = "user"
-const sessionName = "logged-in-"+kind
+const sessionName = "logged-in-" + kind
+const loginKey = "login-key"
 
 func IsLoggedIn(c *gin.Context) bool {
-	session, err := store.Get(c.Request, sessionName)
-
-	if err != nil {
-		return false
-	}
-
-	log.Println(session.Values)
-	return session.Values["key"] != nil
+	value, err := GetSession(c, loginKey)
+	return err == nil && value != ""
 }
 
-func setSession(c *gin.Context, key string) error {
+func ClearSession(c *gin.Context) error {
 	session, err := store.Get(c.Request, sessionName)
 	if err != nil {
 		return err
 	}
-	session.Values["key"] = key
+	session.Values[loginKey] = ""
 	return session.Save(c.Request, c.Writer)
 }
 
-func GetKey(c *gin.Context) (string, error) {
+func SetSession(c *gin.Context, key, value string) error {
+	session, err := store.Get(c.Request, sessionName)
+	if err != nil {
+		return err
+	}
+	session.Values[key] = value
+	return session.Save(c.Request, c.Writer)
+}
+
+func GetSession(c *gin.Context, key string) (string, error) {
 	session, err := store.Get(c.Request, sessionName)
 	if err != nil {
 		return "", err
 	}
-	return session.Values["key"].(string), nil
+	return session.Values[key].(string), nil
 }
 
 func VerifyUser(c *gin.Context) error {
 	f := new(models.LoginForm)
-	err := form.Parse(c, f)
+	err := f.Parse(c)
 
 	if err != nil {
 		return err
 	}
 
 	hash, err := f.PasswordHash()
+	log.Println(string(hash))
+
 	if err != nil {
 		return err
 	}
 
 	db := datastore.New(c)
-	q := db.Query(kind).
-		Filter("Email =", f.Email).
-		Filter("PasswordHash =", hash).
-		KeysOnly().
-		Limit(1)
+	user := new(models.User)
 
-	keys, err := q.GetAll(db.Context, nil)
-	if err != nil {
+	if err := db.GetKey("user", f.Email, user); err != nil {
 		return err
 	}
 
-	if err == nil && len(keys) == 1 {
-		setSession(c, keys[0].StringID()) // sets cookie
-		return nil
+	if err := bcrypt.CompareHashAndPassword(user.PasswordHash, []byte(f.Password)); err != nil {
+		return err
 	}
-	return errors.New("Email/password combination is invalid.")
+
+	SetSession(c, loginKey, "PLEASE WORK") // sets cookie
+	return nil
 }
