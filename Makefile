@@ -47,10 +47,8 @@ export GOPATH  := $(gopath)
 all: deps test
 
 assets: assets-deps
-	requisite assets/js/crowdstart.coffee -g -o static/js/crowdstart.js
-
-assets-watch: assets-deps
-	requisite assets/js/crowdstart.coffee -g -w -o static/js/crowdstart.js
+	requisite assets/js/store.coffee -g -o static/js/store.js && \
+	requisite assets/js/checkout.coffee -g -o static/js/checkout.js
 
 build: deps
 	goapp build $(modules)
