@@ -21,7 +21,7 @@ func Defaults() *Config {
 
 func Development() *Config {
 	config := Defaults()
-	config.AutoCompileAssets = true
+	config.AutoCompileAssets = false
 	config.Stripe.ClientId = "ca_53yyPzxlPsdAtzMEIuS2mXYDp4FFXLmm"
 	config.Stripe.APIKey = "pk_test_ucSTeAAtkSXVEg713ir40UhX"
 	config.Stripe.APISecret = ""

@@ -13,10 +13,10 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
-	"log"
 )
 
 type TokenData struct {
@@ -60,10 +60,12 @@ func init() {
 		} else {
 			log.Println("Failure")
 			log.Printf("%#v", err)
+			c.Redirect(301, "login")
 		}
 	})
 
 	admin.GET("/logout", func(c *gin.Context) {
+		auth.ClearSession(c)
 		c.Redirect(301, "/")
 	})
 
