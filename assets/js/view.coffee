@@ -96,9 +96,11 @@ class View
 
       # Format value and mutate DOM
       if (formatter = @formatters[name])?
-        @_mutateDom selector, attr, (formatter value, "#{selector} @#{attr}")
+        _value = formatter value, "#{selector} @#{attr}"
       else
-        @_mutateDom selector, attr, value
+        _value = value
+
+      @_mutateDom selector, attr, _value
 
     return
 

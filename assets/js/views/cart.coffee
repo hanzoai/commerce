@@ -20,13 +20,14 @@ class CartView extends View
     @set 'subtotal', cart.subtotal
 
     for sku, item of cart.items()
-      item.index = index++
+      item.index = ++index
       view = new LineItemView state: item
       window.view = view
       view.render()
       view.bind()
       $('.cart-container tbody').append view.$el
 
-      cart.on 'subtotal', (subtotal) => @set 'subtotal', subtotal
+    cart.on 'subtotal', (subtotal) =>
+      @set 'subtotal', subtotal
 
 module.exports = CartView
