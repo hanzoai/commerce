@@ -14,9 +14,9 @@ func Install(db *datastore.Datastore) {
 	log.Println("Fixtures")
 	pwhash := pbkdf2.Key([]byte("password"), []byte(salt), 4096, sha256.Size, sha256.New)
 	log.Println(string(pwhash))
-	
+
 	// Default User (SKULLY)
-	db.PutKey("user", "skully", &User{
+	key, err := db.PutKey("user", "skully", &User{
 		Id:           "skully",
 		FirstName:    "Mitchell",
 		LastName:     "Weller",
@@ -26,10 +26,13 @@ func Install(db *datastore.Datastore) {
 		PasswordHash: pwhash,
 	})
 
-	var user []User
-	db.Query("user").GetAll(db.Context, &user)
-	log.Printf("%#v", user)
-	
+	log.Printf("%#v", err)
+	log.Printf("%#v", key)
+
+	var users []User
+	db.Query("user").GetAll(db.Context, &users)
+	log.Printf("%#v", users)
+
 	// Default Campaign (SKULLY)
 	db.PutKey("campaign", "skully", &Campaign{
 		Id:    "skully",
