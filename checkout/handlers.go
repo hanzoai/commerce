@@ -18,12 +18,15 @@ func checkout(c *gin.Context) {
 		return
 	}
 
-	order := form.Order
-	db := datastore.New(c)
 	ctx := middleware.GetAppEngine(c)
-	ctx.Infof("%#v", order)
+	db := datastore.New(c)
+
+	order := form.Order
+
+	ctx.Infof("Order: %#v", order)
 
 	for i, lineItem := range order.Items {
+
 		// Fetch Variant for LineItem from datastore
 		if err := db.GetKey("variant", lineItem.SKU(), &lineItem.Variant); err != nil {
 			c.Fail(500, err)
