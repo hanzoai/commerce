@@ -1,10 +1,10 @@
 package fixtures
 
 import (
+	"code.google.com/p/go.crypto/bcrypt"
 	"crowdstart.io/datastore"
 	. "crowdstart.io/models"
 	"log"
-	"code.google.com/p/go.crypto/bcrypt"
 )
 
 func Install(db *datastore.Datastore) {
@@ -31,10 +31,13 @@ func Install(db *datastore.Datastore) {
 	log.Printf("%#v", users)
 
 	// Default Campaign (SKULLY)
-	db.PutKey("campaign", "skully", &Campaign{
+	key, err = db.PutKey("campaign", "skully", &Campaign{
 		Id:    "skully",
 		Title: "SKULLY AR-1",
 	})
+
+	log.Printf("%#v", err)
+	log.Printf("%#v", key)
 
 	// AR-1
 	variants := []ProductVariant{
