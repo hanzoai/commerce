@@ -25,6 +25,7 @@ func New(ctx interface{}) (d *Datastore) {
 func (d *Datastore) Get(key string, value interface{}) error {
 	k, err := DecodeKey(key)
 	if err != nil {
+		d.Context.Errorf(err)
 		return err
 	}
 
@@ -41,6 +42,7 @@ func (d *Datastore) GetMulti(keys []string, values []interface{}) error {
 
 	for _, v := range keys {
 		if key, err := DecodeKey(v); err != nil {
+			d.Context.Errorf(err)
 			return err
 		} else {
 			_keys = append(_keys, key)
@@ -64,6 +66,7 @@ func (d *Datastore) Put(kind string, src interface{}) (string, error) {
 	k := NewIncompleteKey(d.Context, kind, nil)
 	k, err := nds.Put(d.Context, k, src)
 	if err != nil {
+		d.Context.Errorf(err)
 		return "", err
 	}
 	return k.Encode(), nil
@@ -73,6 +76,7 @@ func (d *Datastore) PutKey(kind string, key string, src interface{}) (string, er
 	k := NewKey(d.Context, kind, key, 0, nil)
 	k, err := nds.Put(d.Context, k, src)
 	if err != nil {
+		d.Context.Errorf(err)
 		return "", err
 	}
 	return k.Encode(), nil
@@ -88,6 +92,7 @@ func (d *Datastore) PutMulti(kind string, srcs []interface{}) (keys []string, er
 
 	_keys, err = nds.PutMulti(d.Context, _keys, srcs)
 	if err != nil {
+		d.Context.Errorf(err)
 		return keys, err
 	}
 
@@ -109,6 +114,7 @@ func (d *Datastore) PutKeyMulti(kind string, keys []string, srcs []interface{}) 
 
 	_keys, err := nds.PutMulti(d.Context, _keys, srcs)
 	if err != nil {
+		d.Context.Errorf(err)
 		return keys, err
 	}
 
@@ -122,11 +128,13 @@ func (d *Datastore) PutKeyMulti(kind string, keys []string, srcs []interface{}) 
 func (d *Datastore) Update(key string, src interface{}) (string, error) {
 	k, err := DecodeKey(key)
 	if err != nil {
+		d.Context.Errorf(err)
 		return "", err
 	}
 
 	k, err = nds.Put(d.Context, k, src)
 	if err != nil {
+		d.Context.Errorf(err)
 		return "", err
 	}
 	return k.Encode(), nil
@@ -135,6 +143,7 @@ func (d *Datastore) Update(key string, src interface{}) (string, error) {
 func (d *Datastore) Delete(key string) error {
 	k, err := DecodeKey(key)
 	if err != nil {
+		d.Context.Errorf(err)
 		return err
 	}
 	return nds.Delete(d.Context, k)
