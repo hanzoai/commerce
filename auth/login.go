@@ -7,6 +7,7 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/sessions"
+	"log"
 )
 
 // const sessionName = "crowdstartLogin"
@@ -17,12 +18,13 @@ var store = sessions.NewCookieStore([]byte(secret))
 const kind = "user"
 
 func IsLoggedIn(c *gin.Context) bool {
-	session, err := store.Get(c.Request, kind)
+	session, err := store.Get(c.Request, "logged-in" + kind)
 
 	if err != nil {
 		return false
 	}
 
+	log.Println(session.Values)
 	return session.Values["key"] != nil
 }
 
@@ -71,7 +73,7 @@ func VerifyUser(c *gin.Context, kind string) error {
 	}
 
 	if err == nil && len(keys) == 1 {
-		setSession(c, keys[0].StringID(), "crowdstart_"+kind) // sets cookie
+		setSession(c, keys[0].StringID(), "logged-in"+kind) // sets cookie
 		return nil
 	}
 	return errors.New("Email/password combination is invalid.")
