@@ -1,9 +1,10 @@
 package models
 
 import (
-	"code.google.com/p/go.crypto/bcrypt"
+	"code.google.com/p/go.crypto/pbkdf2"
 	"crowdstart.io/util/form"
 	"github.com/gin-gonic/gin"
+	"crypto/sha256"
 )
 
 type LoginForm struct {
@@ -11,10 +12,10 @@ type LoginForm struct {
 	Password string
 }
 
-const Cost = 12
+const salt = "apOWE0I 1 4E04148408B 4 ['"
 
-func (f LoginForm) PasswordHash() ([]byte, error) {
-	return bcrypt.GenerateFromPassword([]byte(f.Password), Cost)
+func (f LoginForm) PasswordHash() []byte {
+	return pbkdf2.Key([]byte(f.Password), []byte(salt), 4096, sha256.Size, sha256.New)
 }
 
 func (f *LoginForm) Parse(c *gin.Context) error {
@@ -26,6 +27,6 @@ type RegistrationForm struct {
 	Password string
 }
 
-func (f RegistrationForm) PasswordHash() ([]byte, error) {
-	return bcrypt.GenerateFromPassword([]byte(f.Password), Cost)
+func (f RegistrationForm) PasswordHash() []byte {
+	return pbkdf2.Key([]byte(f.Password), []byte(salt), 4096, sha256.Size, sha256.New)
 }
