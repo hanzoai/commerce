@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"log"
 )
 
 type TokenData struct {
@@ -53,9 +54,13 @@ func init() {
 	})
 
 	admin.POST("/login", func(c *gin.Context) {
-		// Actually use this.
-		auth.VerifyUser(c)
-		c.Redirect(301, "dashboard")
+		if err := auth.VerifyUser(c); err == nil {
+			log.Println("Success")
+			c.Redirect(301, "dashboard")
+		} else {
+			log.Println("Failure")
+			log.Printf("%#v", err)
+		}
 	})
 
 	admin.GET("/logout", func(c *gin.Context) {
@@ -167,11 +172,7 @@ func NewUser(c *gin.Context, f models.RegistrationForm) error {
 		return err
 	}
 
-	m.PasswordHash, err = f.PasswordHash()
-
-	if err != nil {
-		return err
-	}
+	m.PasswordHash = f.PasswordHash()
 
 	if len(users) == 1 {
 		return errors.New("Email is already registered")
