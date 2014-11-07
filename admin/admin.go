@@ -71,7 +71,7 @@ func init() {
 	})
 
 	// Admin Dashboard
-	admin.GET("/dashboard", func(c *gin.Context) {
+	admin.GET("/dashboard", middleware.LoginRequired(), func(c *gin.Context) {
 		template.Render(c, "adminlte/dashboard.html")
 	})
 
