@@ -15,7 +15,22 @@ type CheckoutForm struct {
 }
 
 func (f *CheckoutForm) Parse(c *gin.Context) error {
-	return form.Parse(c, f)
+	if err := form.Parse(c, f); err != nil {
+		return err
+	}
+
+	if len(f.Order.Items) < 2 {
+		return nil
+	}
+
+	// For some reason gorilla/schema deserializes an extra nil lineItem,
+	// we need to remove this.
+	if f.Order.Items[0].SKU() == "" {
+		slice := make([]models.LineItem, 0)
+		f.Order.Items = append(slice, f.Order.Items[1:]...)
+	}
+
+	return nil
 }
 
 type AuthorizeForm struct {

@@ -35,6 +35,8 @@ class LineItemView extends View
           "Order.Items.#{v}.Variant.SKU"
         when 'input.slug @name'
           "Order.Items.#{v}.Product.Slug"
+        when '.quantity input @name'
+          "Order.Items.#{v}.Quantity"
 
     price: (v) ->
       util.formatCurrency v
