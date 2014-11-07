@@ -19,6 +19,7 @@ func (f *CheckoutForm) Parse(c *gin.Context) error {
 		return err
 	}
 
+	// Nasty shit. Please fix.
 	if len(f.Order.Items) < 2 {
 		return nil
 	}
