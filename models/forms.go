@@ -23,7 +23,6 @@ func (f *LoginForm) Parse(c *gin.Context) error {
 
 type RegistrationForm struct {
 	User     User
-	Admin    Admin
 	Password string
 }
 

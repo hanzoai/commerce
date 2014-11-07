@@ -16,20 +16,8 @@ type User struct {
 	BillingAddress  Address
 	ShippingAddress Address
 
-	// SHOULD ONLY BE ACCESSED INTERNALLY. PLZ.
-	StripeToken      string
-	CardconnectToken string
-
 	Email        string
-	PasswordHash []byte `schema:"-"`
-}
-
-type Admin struct {
-	Id        string `schema:"-"`
-	Name      string
-	Campaigns []Campaign `schema:"-"`
-
-	Email        string
+	Campaigns    []Campaign `schema:"-"`
 	PasswordHash []byte `schema:"-"`
 }
 
