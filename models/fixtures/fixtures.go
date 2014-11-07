@@ -112,7 +112,7 @@ func Install(db *datastore.Datastore) {
 		Title:       "SKULLY AR-1",
 		Headline:    "The World's smartest helmet.",
 		Excerpt:     "The World's smartest helmet, featuring a state-of-the-art head-up display, GPS and bluetooth.",
-		Description: "The World's smartest helmet. Even more descriptive text.",
+		Description: "",
 		Variants:    variants,
 		HeaderImage: Image{
 			Alt: "SKULLY AR-1",
@@ -213,7 +213,7 @@ func Install(db *datastore.Datastore) {
 	db.PutKey("product", "t-shirt", &Product{
 		Slug:        "t-shirt",
 		Title:       "SKULLY T-shirt",
-		Description: "SKULLY Nation T-shirt",
+		Description: "",
 		Variants:    variants,
 		HeaderImage: Image{
 			Alt: "SKULLY T-SHIRT",
@@ -266,7 +266,7 @@ func Install(db *datastore.Datastore) {
 	db.PutKey("product", "hat", &Product{
 		Slug:        "hat",
 		Title:       "SKULLY Hat",
-		Description: "SKULLY Nation Hat",
+		Description: "",
 		Variants:    variants,
 		HeaderImage: Image{
 			Alt: "SKULLY HAT",
@@ -301,7 +301,7 @@ func Install(db *datastore.Datastore) {
 	db.PutKey("product", "stickers", &Product{
 		Slug:        "stickers",
 		Title:       "SKULLY Stickers",
-		Description: "SKULLY Nation Stickers",
+		Description: "",
 		Variants:    variants,
 		HeaderImage: Image{
 			Alt: "SKULLY STICKERS",
