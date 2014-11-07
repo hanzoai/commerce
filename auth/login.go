@@ -62,12 +62,12 @@ func VerifyUser(c *gin.Context, kind string) error {
 		Filter("PasswordHash =", hash).
 		KeysOnly().
 		Limit(1)
-	
+
 	keys, err := q.GetAll(db.Context, nil)
 	if err != nil {
 		return err
 	}
-	
+
 	if err == nil && len(keys) == 1 {
 		setSession(c, keys[0].StringID(), "crowdstart_"+kind) // sets cookie
 		return nil

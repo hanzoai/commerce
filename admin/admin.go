@@ -5,6 +5,7 @@ import (
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
+	"crowdstart.io/middleware"
 	"crowdstart.io/util/router"
 	"crowdstart.io/util/template"
 	"encoding/json"
@@ -12,8 +13,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"strings"
+	"appengine/urlfetch"
+	"net/url"
 )
 
 type TokenData struct {
@@ -81,98 +83,85 @@ func init() {
 	// Stripe End Points
 	admin.GET("/stripe/callback", func(c *gin.Context) {
 		req := c.Request
-		error := req.URL.Query().Get("error")
 		code := req.URL.Query().Get("code")
+		errStr := req.URL.Query().Get("error")
 
-		if len(error) == 0 {
-
-			transport := http.Transport{}
-
-			client := &http.Client{
-				Transport: &transport,
-			}
-
-			data := url.Values{}
-			data.Set("client_secret", config.Get().Stripe.APISecret)
-			data.Add("code", code)
-			data.Add("grant_type", "authorization_code")
-
-			tokenReq, _ := http.NewRequest("POST", "https://connect.stripe.com/oauth/token", strings.NewReader(data.Encode()))
-
-			// try to post to OAuth API
-			if resp, err := client.Do(tokenReq); err == nil {
-				defer resp.Body.Close()
-				// decode the json
-				if jsonBlob, err := ioutil.ReadAll(resp.Body); err == nil {
-					token := &TokenData{}
-					// try and extract the json struct
-					if err := json.Unmarshal(jsonBlob, &token); err == nil {
-						if len(token.Error) == 0 {
-							// success!, render the template
-							template.Render(c, "stripe/success.html", "token", token.Access_token)
-
-							// update the user
-							user := &models.User{}
-							db := datastore.New(c)
-
-							// get user instance
-							db.GetKey("user", "admin", user)
-
-							// update  stripe token
-							user.StripeToken = token.Access_token
-
-							// update in datastore
-							db.PutKey("user", "admin", user)
-
-							// Everything below is Error Handling
-						} else {
-							error = token.Error
-						}
-					} else {
-						error = err.Error()
-					}
-				} else {
-					error = err.Error()
-				}
-			} else {
-				error = err.Error()
-			}
+		// Failed to get back authorization code from Stripe
+		if errStr != "" {
+			template.Render(c, "stripe/failure.html", "error", errStr)
+			return
 		}
 
-		if len(error) > 0 {
-			template.Render(c, "stripe/failure.html", "error", error)
+		ctx := middleware.GetAppEngine(c)
+		client := urlfetch.Client(ctx)
+
+		data := url.Values{}
+		data.Set("client_secret", config.Get().Stripe.APISecret)
+		data.Add("code", code)
+		data.Add("grant_type", "authorization_code")
+
+		tokenReq, err := http.NewRequest("POST", "https://connect.stripe.com/oauth/token", strings.NewReader(data.Encode()))
+		if err != nil {
+			c.Fail(500, err)
+			return
 		}
-	})
 
-	// Redirected on success from connect button.
-	admin.POST("/stripe/success/:userid/:token", func(c *gin.Context) {
-		db := datastore.New(c)
-		token := c.Params.ByName("token")
-		userid := c.Params.ByName("userid")
+		// try to post to OAuth API
+		res, err := client.Do(tokenReq)
+		defer res.Body.Close()
+		if err != nil {
+			c.Fail(500, err)
+			return
+		}
 
-		// get user instance
-		user := new(models.User)
-		db.GetKey("user", userid, user)
+		// decode the json
+		jsonBlob, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			c.Fail(500, err)
+			return
+		}
 
-		// update  stripe token
-		user.StripeToken = token
+		token := new(TokenData)
 
-		// update in datastore
-		db.PutKey("user", userid, user)
+		// try and extract the json struct
+		if err := json.Unmarshal(jsonBlob, token); err != nil {
+			c.Fail(500, err)
+		}
 
-		template.Render(c, "stripe/success.html")
+		// Stripe returned an error
+		if token.Error != "" {
+			template.Render(c, "stripe/failure.html", "error", token.Error)
+			return
+		}
+
+		// Success
+		template.Render(c, "stripe/success.html", "token", token.Access_token)
+
+		// Update the user
+		campaign := new(models.Campaign)
+
+		db := datastore.New(ctx)
+
+		// Get user instance
+		db.GetKey("campaign", "skully", campaign)
+
+		// Update  stripe token
+		campaign.StripeToken = token.Access_token
+
+		// Update in datastore
+		db.PutKey("campaign", "skully", campaign)
 	})
 }
 
-func NewAdmin(c *gin.Context, f models.RegistrationForm) error {
-	m := f.Admin
+func NewUser(c *gin.Context, f models.RegistrationForm) error {
+	m := f.User
 	db := datastore.New(c)
-	q := db.Query("admin").
+	q := db.Query("user").
 		Filter("Email =", m.Email).
 		Limit(1)
 
-	var admins [1]models.Admin
-	_, err := q.GetAll(db.Context, &admins)
+	var users [1]models.User
+	_, err := q.GetAll(db.Context, &users)
 
 	if err != nil {
 		return err
@@ -184,10 +173,10 @@ func NewAdmin(c *gin.Context, f models.RegistrationForm) error {
 		return err
 	}
 
-	if len(admins) == 1 {
+	if len(users) == 1 {
 		return errors.New("Email is already registered")
 	} else {
-		_, err := db.Put("admin", m)
+		_, err := db.Put("user", m)
 		return err
 	}
 }
