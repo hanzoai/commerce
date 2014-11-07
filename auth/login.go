@@ -3,7 +3,6 @@ package auth
 import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
-	"crowdstart.io/util/form"
 	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/sessions"
@@ -48,17 +47,16 @@ func GetKey(c *gin.Context) (string, error) {
 
 func VerifyUser(c *gin.Context) error {
 	f := new(models.LoginForm)
-	err := form.Parse(c, f)
-
+	err := f.Parse(c)
+	
 	if err != nil {
 		return err
 	}
 
-	hash, err := f.PasswordHash()
-	if err != nil {
-		return err
-	}
+	hash := f.PasswordHash()
 
+	log.Println(string(hash))
+	
 	db := datastore.New(c)
 	q := db.Query(kind).
 		Filter("Email =", f.Email).
@@ -71,7 +69,8 @@ func VerifyUser(c *gin.Context) error {
 		return err
 	}
 
-	if err == nil && len(keys) == 1 {
+	log.Printf("keys %d", len(keys))
+	if len(keys) == 1 {
 		setSession(c, keys[0].StringID()) // sets cookie
 		return nil
 	}

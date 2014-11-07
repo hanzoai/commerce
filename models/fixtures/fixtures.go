@@ -1,14 +1,20 @@
 package fixtures
 
 import (
-	"code.google.com/p/go.crypto/bcrypt"
 	"crowdstart.io/datastore"
 	. "crowdstart.io/models"
+	"log"
+	"code.google.com/p/go.crypto/pbkdf2"
+	"crypto/sha256"
 )
 
-func Install(db *datastore.Datastore) {
-	pwhash, _ := bcrypt.GenerateFromPassword([]byte("password"), 12)
+const salt = "apOWE0I 1 4E04148408B 4 ['"
 
+func Install(db *datastore.Datastore) {
+	log.Println("Fixtures")
+	pwhash := pbkdf2.Key([]byte("password"), []byte(salt), 4096, sha256.Size, sha256.New)
+	log.Println(string(pwhash))
+	
 	// Default User (SKULLY)
 	db.PutKey("user", "skully", &User{
 		Id:           "skully",
@@ -20,6 +26,10 @@ func Install(db *datastore.Datastore) {
 		PasswordHash: pwhash,
 	})
 
+	var user []User
+	db.Query("user").GetAll(db.Context, &user)
+	log.Printf("%#v", user)
+	
 	// Default Campaign (SKULLY)
 	db.PutKey("campaign", "skully", &Campaign{
 		Id:    "skully",
