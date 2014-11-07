@@ -1,8 +1,8 @@
 package admin
 
 import (
-	"crowdstart.io/config"
 	"crowdstart.io/auth"
+	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
 	"crowdstart.io/util/router"
@@ -17,8 +17,15 @@ import (
 )
 
 type TokenData struct {
-	Livemode                                                                                                         bool
-	Token_type, Stripe_publishable_key, Scope, Stripe_user_id, Refresh_token, Access_token, Error, Error_description string
+	Access_token           string
+	Error                  string
+	Error_description      string
+	Livemode               bool
+	Refresh_token          string
+	Scope                  string
+	Stripe_publishable_key string
+	Stripe_user_id         string
+	Token_type             string
 }
 
 func init() {
@@ -44,6 +51,8 @@ func init() {
 	})
 
 	admin.POST("/login", func(c *gin.Context) {
+		// Actually use this.
+		auth.VerifyUser(c, "admin")
 		c.Redirect(301, "dashboard")
 	})
 
@@ -152,10 +161,6 @@ func init() {
 		db.PutKey("user", userid, user)
 
 		template.Render(c, "stripe/success.html")
-	})
-
-	admin.POST("/login", func(c *gin.Context) {
-		auth.VerifyUser(c, "admin") // logs in the user if credentials are valid
 	})
 }
 
