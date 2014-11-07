@@ -19,6 +19,9 @@ dispatch:
   - url: "*/img/*"
     module: default
 
+  - url: "*/adminlte/*"
+    module: default
+
   - url: "*/robots.txt"
     module: default
 
