@@ -137,7 +137,7 @@ func init() {
 
 		// Stripe returned an error
 		if token.Error != "" {
-			template.Render(c, "stripe/failure.html", "error", token.Error)
+			template.Render(c, "adminlte/connect.html", "error", token.Error, "clientid", config.Get().Stripe.ClientId)
 			return
 		}
 
