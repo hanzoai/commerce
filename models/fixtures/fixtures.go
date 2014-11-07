@@ -1,25 +1,29 @@
 package fixtures
 
 import (
+	"code.google.com/p/go.crypto/bcrypt"
 	"crowdstart.io/datastore"
 	. "crowdstart.io/models"
 )
 
 func Install(db *datastore.Datastore) {
+	pwhash, _ := bcrypt.GenerateFromPassword([]byte("password"), 12)
+
 	// Default User (SKULLY)
 	db.PutKey("user", "skully", &User{
-		Id:        "skully",
-		FirstName: "Mitchell",
-		LastName:  "Weller",
-		Email:     "dev@hanzo.ai",
-		Phone:     "(123) 456-7890",
-		OrdersIds: []string{},
+		Id:           "skully",
+		FirstName:    "Mitchell",
+		LastName:     "Weller",
+		Email:        "dev@hanzo.ai",
+		Phone:        "(123) 456-7890",
+		OrdersIds:    []string{},
+		PasswordHash: pwhash,
 	})
 
 	// Default Campaign (SKULLY)
 	db.PutKey("campaign", "skully", &Campaign{
-		Id:        "skully",
-		Title:     "SKULLY AR-1",
+		Id:    "skully",
+		Title: "SKULLY AR-1",
 	})
 
 	// AR-1
