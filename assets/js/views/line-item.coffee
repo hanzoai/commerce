@@ -6,6 +6,7 @@ class LineItemView extends View
 
   bindings:
     img:        'img.thumbnail   @src'
+    sku:        'input.sku       @value'
     slug:       'input.slug      @value'
     name:       'a.title'
     desc:       'div.desc'
@@ -22,8 +23,11 @@ class LineItemView extends View
     desc: ['color', 'size']
 
   formatters:
-    slug: (v) ->
-      "Order.Items.#{v}.Product.Slug"
+    desc: (v) ->
+      if v.length > 1
+        v.join ' / '
+      else
+        v.join ''
 
     index: (v, selector) ->
       switch selector
@@ -31,9 +35,6 @@ class LineItemView extends View
           "Order.Items.#{v}.Variant.SKU"
         when 'input.slug @name'
           "Order.Items.#{v}.Product.Slug"
-
-    desc: (v) ->
-      v.join ' / '
 
     price: (v) ->
       util.formatCurrency v

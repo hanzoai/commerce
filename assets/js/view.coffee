@@ -94,15 +94,20 @@ class View
     for target in targets
       [selector, attr] = @_splitTarget target
 
-      # Format value
+      # Format value and mutate DOM
       if (formatter = @formatters[name])?
-        value = formatter value, "#{selector} @#{attr}"
-
-      # Update DOM
-      if attr == 'text'
-        @_targets[selector].text value
+        @_mutateDom selector, attr, (formatter value, "#{selector} @#{attr}")
       else
-        @_targets[selector].attr attr, value
+        @_mutateDom selector, attr, value
+
+    return
+
+  _mutateDom: (selector, attr, value) ->
+    if attr == 'text'
+      @_targets[selector].text value
+    else
+      @_targets[selector].attr attr, value
+    return
 
   # Get value from state for name.
   get: (name) ->
