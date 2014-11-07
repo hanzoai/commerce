@@ -13,6 +13,7 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -53,12 +54,18 @@ func init() {
 	})
 
 	admin.POST("/login", func(c *gin.Context) {
-		// Actually use this.
-		auth.VerifyUser(c)
-		c.Redirect(301, "dashboard")
+		if err := auth.VerifyUser(c); err == nil {
+			log.Println("Success")
+			c.Redirect(301, "dashboard")
+		} else {
+			log.Println("Failure")
+			log.Printf("%#v", err)
+			c.Redirect(301, "login")
+		}
 	})
 
 	admin.GET("/logout", func(c *gin.Context) {
+		auth.ClearSession(c)
 		c.Redirect(301, "/")
 	})
 
@@ -168,9 +175,8 @@ func NewUser(c *gin.Context, f models.RegistrationForm) error {
 	}
 
 	m.PasswordHash, err = f.PasswordHash()
-
 	if err != nil {
-		return err
+		return nil
 	}
 
 	if len(users) == 1 {
