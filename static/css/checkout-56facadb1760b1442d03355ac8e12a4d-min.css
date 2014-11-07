@@ -849,7 +849,7 @@ html.sqs-modal-lightbox-open, html.sqs-modal-lightbox-open body {
   margin:0px auto 0px auto;
   box-shadow:none;
   float:none;
-  border-radius:25px;
+  border:0px;
   color:#fff
 }
 
