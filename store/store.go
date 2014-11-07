@@ -33,11 +33,11 @@ func init() {
 
 		// Recompile static assets
 		if config.Get().AutoCompileAssets {
-			exec.Run("/usr/local/bin/requisite ../assets/js/crowdstart.coffee -g -o /tmp/crowdstart.js")
+			exec.Run("requisite ../assets/js/crowdstart.coffee -g -o /tmp/crowdstart.js")
 			a := fs.ReadFile("../static/js/crowdstart.js")
 			b := fs.ReadFile("/tmp/crowdstart.js")
 			if a != b {
-				exec.Run("/bin/mv /tmp/crowdstart.js ../static/js/crowdstart.js")
+				exec.Run("mv /tmp/crowdstart.js ../static/js/crowdstart.js")
 			}
 		}
 	})
