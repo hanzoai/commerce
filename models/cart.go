@@ -90,11 +90,6 @@ type PaymentAccount struct {
 	Type   string `schema:"-"`
 }
 
-type Campaign struct {
-	ID string
-	StripeKey string `schema:"-"`
-}
-
 type Order struct {
 	FieldMapMixin
 	Account         PaymentAccount
