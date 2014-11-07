@@ -26,9 +26,9 @@ type Campaign struct {
 	Thumbnail       string
 	OriginalUrl     string
 	StoreUrl        string
-	Products        []Product
-	Members         []User
-	Creator         User `datastore:"-"`
+	Products        []Product `datastore:"-"`
+	Members         []User    `datastore:"-"`
+	Creator         User      `datastore:"-"`
 	Fundee          struct {
 		BusinessName        string
 		DBA                 string
@@ -38,7 +38,7 @@ type Campaign struct {
 		Owner               string
 		PrimaryContact      string
 		PrimaryContactPhone string
-	} `datastore:"-"`
+	}
 	PayPalConnected bool
 	PayPalApiKeys   string
 	StripeToken     string `schema:"-"`
