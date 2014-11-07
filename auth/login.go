@@ -14,7 +14,9 @@ const secret = "askjaakjl12"
 
 var store = sessions.NewCookieStore([]byte(secret))
 
-func IsLoggedIn(c *gin.Context, kind string) bool {
+const kind = "user"
+
+func IsLoggedIn(c *gin.Context) bool {
 	session, err := store.Get(c.Request, kind)
 
 	if err != nil {
