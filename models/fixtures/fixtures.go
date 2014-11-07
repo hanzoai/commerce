@@ -130,7 +130,6 @@ func Install(db *datastore.Datastore) {
 			Image{
 				Alt: "whitehelmet_store_1000px.jpg",
 				Url: "/img/products/whitehelmet_store_1000px.jpg",
-				Url: "",
 				X:   1000,
 				Y:   1000,
 			},
