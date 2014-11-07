@@ -2,11 +2,13 @@ package admin
 
 import (
 	"crowdstart.io/config"
+	"crowdstart.io/auth"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
 	"crowdstart.io/util/router"
 	"crowdstart.io/util/template"
 	"encoding/json"
+	"errors"
 	"github.com/gin-gonic/gin"
 	"io/ioutil"
 	"net/http"
@@ -151,4 +153,36 @@ func init() {
 
 		template.Render(c, "stripe/success.html")
 	})
+
+	admin.POST("/login", func(c *gin.Context) {
+		auth.VerifyUser(c, "admin") // logs in the user if credentials are valid
+	})
+}
+
+func NewAdmin(c *gin.Context, f models.RegistrationForm) error {
+	m := f.Admin
+	db := datastore.New(c)
+	q := db.Query("admin").
+		Filter("Email =", m.Email).
+		Limit(1)
+
+	var admins [1]models.Admin
+	_, err := q.GetAll(db.Context, &admins)
+
+	if err != nil {
+		return err
+	}
+
+	m.PasswordHash, err = f.PasswordHash()
+
+	if err != nil {
+		return err
+	}
+
+	if len(admins) == 1 {
+		return errors.New("Email is already registered")
+	} else {
+		_, err := db.Put("admin", m)
+		return err
+	}
 }
