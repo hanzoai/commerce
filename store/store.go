@@ -33,11 +33,13 @@ func init() {
 
 		// Recompile static assets
 		if config.Get().AutoCompileAssets {
-			exec.Run("requisite ../assets/js/crowdstart.coffee -g -o /tmp/crowdstart.js")
-			a := fs.ReadFile("../static/js/crowdstart.js")
-			b := fs.ReadFile("/tmp/crowdstart.js")
-			if a != b {
-				exec.Run("mv /tmp/crowdstart.js ../static/js/crowdstart.js")
+			for _, bundle := range []string{"store", "checkout"} {
+				exec.Run("requisite ../assets/js/" + bundle + ".coffee -g -o /tmp/" + bundle + ".js")
+				a := fs.ReadFile("../static/js/" + bundle + ".js")
+				b := fs.ReadFile("/tmp/" + bundle + ".js")
+				if a != b {
+					exec.Run("mv /tmp/" + bundle + ".js ../static/js/" + bundle + ".js")
+				}
 			}
 		}
 	})
