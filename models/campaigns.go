@@ -10,8 +10,8 @@ const (
 
 type Campaign struct {
 	Id              string
-	Approved		bool
-	Enabled			bool
+	Approved        bool
+	Enabled         bool
 	Category        Category
 	Title           string
 	Tagline         string
@@ -28,7 +28,7 @@ type Campaign struct {
 	StoreUrl        string
 	Products        []Product
 	Members         []User
-	Creator			User
+	Creator         User `datastore:"-"`
 	Fundee          struct {
 		BusinessName        string
 		DBA                 string
@@ -38,7 +38,7 @@ type Campaign struct {
 		Owner               string
 		PrimaryContact      string
 		PrimaryContactPhone string
-	}
+	} `datastore:"-"`
 	PayPalConnected bool
 	PayPalApiKeys   string
 	StripeToken     string `schema:"-"`
