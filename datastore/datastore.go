@@ -3,7 +3,6 @@ package datastore
 import (
 	"appengine"
 	. "appengine/datastore"
-	"crowdstart.io/middleware"
 	"github.com/gin-gonic/gin"
 	"github.com/qedus/nds"
 )
@@ -17,7 +16,7 @@ func New(ctx interface{}) (d *Datastore) {
 	case appengine.Context:
 		d = &Datastore{ctx}
 	case *gin.Context:
-		c := middleware.GetAppEngine(ctx)
+		c := ctx.MustGet("appengine").(appengine.Context)
 		d = &Datastore{c}
 	}
 	return d

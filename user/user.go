@@ -15,7 +15,7 @@ const kind = "user"
 func init() {
 	user := router.New("/user/")
 	user.GET("/", func(c *gin.Context) {
-		if auth.IsLoggedIn(c, kind) {
+		if auth.IsLoggedIn(c) {
 			key, err := auth.GetKey(c, "User")
 			if err != nil {
 				c.Fail(500, err)
@@ -34,14 +34,14 @@ func init() {
 			for i, v := range orders {
 				orders[i] = interface{}(v)
 			}
-			
+
 			err = db.GetMulti(m.OrdersIds, orders)
 
 			o := make([]models.Order, len(orders))
 			for i, v := range orders {
 				o[i] = v.(models.Order)
 			}
-			
+
 			if err != nil {
 				c.Fail(500, err)
 				return
