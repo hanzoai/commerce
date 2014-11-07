@@ -80,9 +80,6 @@ func VerifyUser(c *gin.Context) error {
 		}	else {
 			return errors.New("Email/password combination is invalid.")
 		}
-	} else {
-		// return errors.New("Email isn't registered")
 	}
-
-	return nil
+	return errors.New("Email/password combination is invalid.")
 }
