@@ -1,10 +1,14 @@
-<!DOCTYPE html>
-<html>
-<head>
-<title>Title of the document</title>
-</head>
-<body>
-  WOOT WOOT
-  {{ token }}
-</body>
-</html>
+{% extends "../adminlte/base.html" %}
+
+{% block name %}Connect{% endblock %}
+{% block desc %}to your payment processing account.{% endblock %}
+
+{% block css %}
+{% endblock %}
+
+{% block content %}
+  <h3>Your stripe account has been connected!</h3>
+{% endblock %}
+
+{% block js %}
+{% endblock %}

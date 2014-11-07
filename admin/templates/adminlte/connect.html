@@ -8,6 +8,9 @@
 {% endblock %}
 
 {% block content %}
+  {% if error != "" %}
+    <h3>Your stripe account was not successfully be connected.  Please try again.</h3>
+  {% endif %}
   <a href="https://connect.stripe.com/oauth/authorize?response_type=code&client_id={{ clientid }}&scope=read_write&state=movetoserver&stripe_landing=login" class="stripe-connect"><span>Connect with Stripe</span></a>
 {% endblock %}
 
