@@ -3,4 +3,5 @@ node_modules
 data/
 log/
 .sdk
-static/js/crowdstart.js
+static/js/store.js
+static/js/checkout.js
