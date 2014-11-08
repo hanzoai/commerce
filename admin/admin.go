@@ -163,15 +163,30 @@ func init() {
 func NewUser(c *gin.Context, f models.RegistrationForm) error {
 	m := f.User
 	db := datastore.New(c)
-	q := db.Query("user").
+
+	qEmail := db.Query("user").
 		Filter("Email =", m.Email).
+		KeysOnly().
 		Limit(1)
-
-	var users [1]models.User
-	_, err := q.GetAll(db.Context, &users)
-
+	qId := db.Query("user").
+		Filter("Email =", m.Email).
+		KeysOnly().
+		Limit(1)
+	
+	keys, err := qEmail.GetAll(db.Context, nil)
 	if err != nil {
 		return err
+	}
+	if len(keys) > 0 {
+		return errors.New("Email is already registered")
+	}
+
+	keys, err := qId.GetAll(db.Context, nil)
+		if err != nil {
+		return err
+	}
+	if len(keys) > 0 {
+		return errors.New("Id is already taken")
 	}
 
 	m.PasswordHash, err = f.PasswordHash()
