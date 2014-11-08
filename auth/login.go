@@ -10,6 +10,7 @@ import (
 
 // const sessionName = "crowdstartLogin"
 const kind = "user"
+const loginKey = "login-key"
 
 func IsLoggedIn(c *gin.Context) bool {
 	value, err := GetSession(c, loginKey)
@@ -17,7 +18,7 @@ func IsLoggedIn(c *gin.Context) bool {
 }
 
 func VerifyUser(c *gin.Context) error {
-	f := new(models.LoginForm)
+	f := new(models.LoginForm) // f.Email is User.Id
 	err := f.Parse(c)
 
 	if err != nil {
@@ -42,6 +43,5 @@ func VerifyUser(c *gin.Context) error {
 		return err
 	}
 
-	SetSession(c, loginKey, "PLEASE WORK") // sets cookie
-	return nil
+	return SetSession(c, loginKey, f.Email) // sets cookie value to the user id
 }
