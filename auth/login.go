@@ -47,6 +47,10 @@ func VerifyUser(c *gin.Context) error {
 	return SetSession(c, loginKey, f.Email) // sets cookie value to the user id
 }
 
+func GetId(c *gin.Context) (string, error) {
+	return GetSession(c, loginKey)
+}
+
 // Validates a form and inserts a new user into the datastore
 func NewUser(c *gin.Context, f models.RegistrationForm) error {
 	// Checks if the Email and Id are unique, and calculates a hash for the password
