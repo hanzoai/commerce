@@ -7,9 +7,6 @@ dispatch:
   - url: "*/admin/*"
     module: admin
 
-  - url: "*/user/*"
-    module: user
-
   - url: "*/checkout/*"
     module: checkout
 
@@ -28,8 +25,8 @@ dispatch:
   - url: "*/robots.txt"
     module: default
 
-  - url: "*/humans.txt"
-    module: default
+  # - url: "*/humans.txt"
+  #   module: default
 
   - url: "*/favicon.ico"
     module: default
