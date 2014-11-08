@@ -4,6 +4,8 @@ import (
 	"appengine"
 )
 
+const demoMode = true
+
 type Config struct {
 	AutoCompileAssets bool
 	Stripe            struct {
@@ -41,7 +43,7 @@ func Production() *Config {
 }
 
 func Get() *Config {
-	if appengine.IsDevAppServer() {
+	if demoMode || appengine.IsDevAppServer() {
 		return Development()
 	} else {
 		return Production()

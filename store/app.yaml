@@ -1,6 +1,6 @@
 application: crowdstart-io
 module: store
-version: v3
+version: v6
 
 runtime: go
 api_version: go1
@@ -13,7 +13,6 @@ automatic_scaling:
 handlers:
 - url: /.*
   script: _go_app
-  login: required
 
 inbound_services:
 - warmup

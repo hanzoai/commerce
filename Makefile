@@ -89,7 +89,7 @@ test: assets build
 bench: build
 	goapp test $(test_modules) --bench=.
 
-deploy:
+deploy: test
 	goapp run deploy.go
 
 deploy-appengine: assets
