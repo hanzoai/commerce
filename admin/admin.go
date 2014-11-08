@@ -10,7 +10,6 @@ import (
 	"crowdstart.io/util/router"
 	"crowdstart.io/util/template"
 	"encoding/json"
-	"errors"
 	"github.com/gin-gonic/gin"
 	"io/ioutil"
 	"log"
@@ -158,46 +157,4 @@ func init() {
 		// Update in datastore
 		db.PutKey("campaign", "skully", campaign)
 	})
-}
-
-func NewUser(c *gin.Context, f models.RegistrationForm) error {
-	m := f.User
-	db := datastore.New(c)
-
-	qEmail := db.Query("user").
-		Filter("Email =", m.Email).
-		KeysOnly().
-		Limit(1)
-	qId := db.Query("user").
-		Filter("Email =", m.Email).
-		KeysOnly().
-		Limit(1)
-	
-	keys, err := qEmail.GetAll(db.Context, nil)
-	if err != nil {
-		return err
-	}
-	if len(keys) > 0 {
-		return errors.New("Email is already registered")
-	}
-
-	keys, err := qId.GetAll(db.Context, nil)
-		if err != nil {
-		return err
-	}
-	if len(keys) > 0 {
-		return errors.New("Id is already taken")
-	}
-
-	m.PasswordHash, err = f.PasswordHash()
-	if err != nil {
-		return nil
-	}
-
-	if len(users) == 1 {
-		return errors.New("Email is already registered")
-	} else {
-		_, err := db.Put("user", m)
-		return err
-	}
 }
