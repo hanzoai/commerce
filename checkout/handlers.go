@@ -2,10 +2,10 @@ package checkout
 
 import (
 	"crowdstart.io/config"
-	"crowdstart.io/stripe"
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models"
+	"crowdstart.io/stripe"
 	"crowdstart.io/util/template"
 	"github.com/gin-gonic/gin"
 )
