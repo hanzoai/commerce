@@ -7,7 +7,6 @@ import (
 
 const secret = "askjaakjl12"
 const sessionName = "logged-in-" + kind
-const loginKey = "login-key"
 
 var store = sessions.NewCookieStore([]byte(secret))
 
