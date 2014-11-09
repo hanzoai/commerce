@@ -3,11 +3,11 @@ package main
 import (
 	"io/ioutil"
 	"log"
+	"os"
+	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
-	"os"
-	"os/exec"
 )
 
 func readFile(path string) []string {
@@ -33,7 +33,7 @@ func bumpVersion(path string) (version string) {
 	for i, line := range lines {
 		if re.FindStringIndex(line) != nil {
 			prev, _ := strconv.Atoi(strings.Replace(line, "version: v", "", 1))
-			version = "v" + strconv.Itoa(prev + 1)
+			version = "v" + strconv.Itoa(prev+1)
 			lines[i] = "version: " + version
 			break
 		}
@@ -65,7 +65,7 @@ func main() {
 		version = bumpVersion(file)
 	}
 
-    run("git add .")
+	run("git add .")
 	run("git commit -m " + version)
 	run("git tag " + version)
 	run("git push origin master --tags")
