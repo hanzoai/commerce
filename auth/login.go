@@ -47,7 +47,7 @@ func VerifyUser(c *gin.Context) error {
 	return SetSession(c, loginKey, f.Email) // sets cookie value to the user id
 }
 
-func GetId(c *gin.Context) (string, error) {
+func GetUsername(c *gin.Context) (string, error) {
 	return GetSession(c, loginKey)
 }
 

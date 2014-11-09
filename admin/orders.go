@@ -7,9 +7,9 @@ import (
 	"crowdstart.io/auth"
 )
 
-func orders(c *gin.Context) {
+func listOrders(c *gin.Context) {
 	db := datastore.New(c)
-	id, err := auth.GetId(c)
+	id, err := auth.GetUsername(c)
 
 	if err != nil {
 		return
@@ -19,4 +19,15 @@ func orders(c *gin.Context) {
 	q := db.Query("order").
 		Filter("User.Id =", id)
 	q.GetAll(db.Context, orders)
+
+	// Render the template here
+}
+
+// Extracts the Order.Id from the url and removes it from the datastore.
+func removeOrder(c *gin.Context) {
+	id := c.Request.URL.Query().Get("orderId")
+	db := datastore.New(c)
+	db.Delete(id)
+
+	// Return json success
 }
