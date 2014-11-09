@@ -1,6 +1,15 @@
 package platform
 
-import "github.com/gin-gonic/gin"
+import (
+	"encoding/json"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"net/url"
+	"strings"
+
+	"github.com/gin-gonic/gin"
+)
 
 func adminIndex(c *gin.Context) {
 	template.Render(c, "index.html")
