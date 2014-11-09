@@ -105,6 +105,8 @@ type Order struct {
 	Items           []LineItem
 	StripeToken     string `schema:"-"`
 	Campaign        Campaign
+
+	Cancelled bool // represents whether the order has been cancelled
 	// ShippingOption  ShippingOption
 }
 

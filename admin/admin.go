@@ -32,7 +32,6 @@ type TokenData struct {
 
 func init() {
 	admin := router.New("/admin/")
-
 	// Admin Index
 	admin.GET("/", func(c *gin.Context) {
 		template.Render(c, "index.html")
@@ -46,7 +45,8 @@ func init() {
 	admin.POST("/register", func(c *gin.Context) {
 		c.Redirect(301, "dashboard")
 	})
-
+	
+	
 	// Admin login
 	admin.GET("/login", func(c *gin.Context) {
 		template.Render(c, "adminlte/login.html")
