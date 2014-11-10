@@ -107,6 +107,7 @@ type Order struct {
 	Campaign        Campaign
 
 	Cancelled bool // represents whether the order has been cancelled
+	Shipped   bool
 	// ShippingOption  ShippingOption
 }
 
