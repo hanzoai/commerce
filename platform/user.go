@@ -18,40 +18,55 @@ func listOrders(c *gin.Context) {
 		return
 	}
 
-	var orders []models.Order
-	q := db.Query("order").
-		Filter("User.Id =", id)
-	q.GetAll(db.Context, orders)
+	var user models.User
+	err = db.GetKey("user", id, user)
+	if err != nil {
+		return
+	}
+	if user == nil {
+		return
+	}
 
-	// Render the template here
+	var orders []models.Order
+	err = db.GetKeyMulti("order", user.OrdersIds, orders)
+	if err != nil {
+		return
+	}
+	if orders == nil {
+		return
+	}
+
+	// Render the template using orders here
+}
+
+func modifyOrder(c *gin.Context) {
+	id := c.Request.URL.Query().Get("orderId")
 }
 
 // Extracts the Order.Id from the url and removes it from the datastore.
 func removeOrder(c *gin.Context) {
-	d := c.Request.URL.Query().Get("orderId")
-	ch := make(chan error)
-	go db.RunInTransaction(func(c appengine.Context) (err error) {
+	id := c.Request.URL.Query().Get("orderId")
+	err := db.RunInTransaction(func(c appengine.Context) error {
 		db := datastore.New(c)
-		var orders [1]models.Order
-		q := db.Query("order").
-			Filter("Id =", id).
-			Limit(1)
 
-		keys, err := q.GetAll(c, orders)
+		var order models.Order
+		err := db.GetKey("order", id, order)
 		if err != nil {
-			ch <- err
-			return
+			return err
 		}
 
-		if len(keys) < 1 {
-			ch <- errors.New()
-			return
+		if user == nil {
+			return errors.New("User is nil")
 		}
 
-		orders[0].Cancelled = true
-		_, err := db.Update(id, orders[0])
-		ch <- err
+		order.Cancelled = true
+		_, err = db.Update(id, orders)
+		return err
 	}, nil)
 
-	// Return json success
+	if err == nil {
+		//success
+		return
+	}
+	// Return json of err
 }
