@@ -69,5 +69,5 @@ func main() {
 	run("git commit -m " + version)
 	run("git tag " + version)
 	run("git push origin master --tags")
-	run("git push origin master:production")
+	run("git push -f origin master:production")
 }
