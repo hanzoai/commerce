@@ -13,10 +13,10 @@ csio.approved = false;
 // To be used right before form submission.
 csio.disable = function ($ele) {
     $ele.disable = true;
-}
+};
 
 // Checks each input and does dumb checks to see if it might be a valid card
-var validateCard = $.debounce(500, function() {
+var validateCard = function() {
     var fail = {
         success: false
     };
@@ -25,7 +25,7 @@ var validateCard = $.debounce(500, function() {
     if (cardNumber.length < 10)
         return fail;
 
-    var rawExpiry = $expiry.val().replace(' ', '');
+    var rawExpiry = $expiry.val().replace(/\s/g, '');
     var arr = rawExpiry.split('/');
     var month = arr[0];
     var year = arr[1];
@@ -35,8 +35,8 @@ var validateCard = $.debounce(500, function() {
     if (year.length != 2)
         return fail;
 
-    var cvc = $cvc.val()
-    if (cvc.length != 2)
+    var cvc = $cvc.val();
+    if (cvc.length < 3)
         return fail;
 
     return {
@@ -46,7 +46,7 @@ var validateCard = $.debounce(500, function() {
         'year': year,
         'cvc': cvc
     };
-});
+};
 
 var authorizeMessage = $('#authorize-message');
 
@@ -64,12 +64,12 @@ var stripeResponseHandler = function(status, response) {
 
 // Copies validated card values into the hidden form for Stripe.js
 function stripeRunner() {
-    var card = validateCard()
+    var card = validateCard();
     if (card.success) {
-        $form.find('input[data-stripe="number"]') = card.number
-        $form.find('input[data-stripe="cvc"]') = card.cvc
-        $form.find('input[data-stripe="exp-month"]') = card.month
-        $form.find('input[data-stripe="exp-year"]') = card.year
+        $form.find('input[data-stripe="number"]').val(card.number);
+        $form.find('input[data-stripe="cvc"]').val(card.cvc);
+        $form.find('input[data-stripe="exp-month"]').val(card.month);
+        $form.find('input[data-stripe="exp-year"]').val(card.year);
 
         Stripe.card.createToken($form, stripeResponseHandler);
     }
