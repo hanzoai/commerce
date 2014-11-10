@@ -1,7 +1,8 @@
-package auth
+package test
 
 import (
 	"appengine/aetest"
+	"crowdstart.io/auth"
 	"crowdstart.io/models"
 	"errors"
 	"github.com/gin-gonic/gin"
@@ -9,6 +10,14 @@ import (
 	"net/http/httptest"
 	"testing"
 )
+
+var mockUser = struct {
+	Id       string
+	Password string
+}{
+	"AzureDiamond",
+	"hunter2",
+}
 
 func TestNewUser(t *testing.T) {
 	ctx, err := aetest.NewContext(nil)
@@ -20,22 +29,19 @@ func TestNewUser(t *testing.T) {
 	c := &gin.Context{}
 	c.Set("appengine", ctx)
 
-	userId := "AzureDiamond"
-	password := "hunter2"
-
 	f := models.RegistrationForm{
-		Email:    userId,
-		Password: password,
+		Email:    mockUser.Id,
+		Password: mockUser.Password,
 	}
 
-	err = NewUser(c, f)
+	err = auth.NewUser(c, f)
 	if err != nil {
 		t.Error(err)
 	}
 
 	db := datastore.New(ctx)
 	var user models.User
-	err = db.GetKey("user", userId, user)
+	err = db.GetKey("user", mockUser.Id, user)
 
 	if err != nil {
 		t.Error(err)
@@ -46,13 +52,13 @@ func TestNewUser(t *testing.T) {
 		t.FailNow()
 	}
 
-	if user.Id != userId {
-		t.Logf("User id is not valid \n\tExpected: %s \n\tActual: %s", userId, user.Id)
+	if user.Id != mockUser.Id {
+		t.Logf("User id is not valid \n\tExpected: %s \n\tActual: %s", mockUser.Id, user.Id)
 		t.Fail()
 	}
 
 	if user.PasswordHash != f.PasswordHash() {
-		t.Logf("User id is not valid \n\tExpected: %s \n\tActual: %s", user.PasswordHash, f.PasswordHash())
+		t.Logf("User password hash is not valid \n\tExpected: %s \n\tActual: %s", user.PasswordHash, f.PasswordHash())
 		t.Fail()
 	}
 }

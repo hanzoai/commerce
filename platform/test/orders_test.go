@@ -1,4 +1,4 @@
-package platform
+package test
 
 import (
 	"appengine"
@@ -14,7 +14,6 @@ func TestOrders(t *testing.T) {
 		t.Error(err)
 		t.Fail()
 	}
-
 	orders, err := Orders(c, "AzureDiamond")
 
 	if err != nil {
