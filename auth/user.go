@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// Retrieves the user id from the session and queries the db for a User object
 func GetUser(c *gin.Context) (user models.User, err error) {
 	username, err := GetUsername(c)
 	if err != nil {
@@ -18,12 +19,13 @@ func GetUser(c *gin.Context) (user models.User, err error) {
 }
 
 // Validates a form and inserts a new user into the datastore
+// Checks if the Email and Id are unique, and calculates a hash for the password
 func NewUser(c *gin.Context, f models.RegistrationForm) error {
-	// Checks if the Email and Id are unique, and calculates a hash for the password
 	m := f.User
 	db := datastore.New(c)
 
-	// Both queries are run synchronously
+	// Both queries are run synchronously. There seems to be no support for a logical OR when querying the database.
+	// If each query returns no keys, then both fields are unique.
 	qEmail := db.Query("user").
 		Filter("Email =", m.Email).
 		KeysOnly().
