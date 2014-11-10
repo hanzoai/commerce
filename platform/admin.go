@@ -1,4 +1,4 @@
-package platform
+package admin
 
 import (
 	"encoding/json"
