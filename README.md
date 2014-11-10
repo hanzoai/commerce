@@ -49,13 +49,20 @@ Datastore. `api/models` package is shared across project.
 
 ### `checkout` (`checkout/app.yaml`)
 Implements secure checkout, generally hosted at `https://secure.crowdstart.io`.
+should be possible to CNAME to it from `secure.client.com` for branding
+purposes.
 
 ### `store` (`store/app.yaml`)
-Implements store frontend, product pages, cart view, order management.
+This is a custom store for boutique luxury brands that need their own hosted
+store/cart experience. This is versioned separately from our own internal
+platform store, so that the client's designers can have a stable API to work
+with. Implements store frontend, product pages, cart view, order management.
 
-### `admin` (`admin/app.yaml`)
-Should eventually implement some sort of reporting/management interface for
-clients.
+### `platform` (`platform/app.yaml`)
+Our crowdfunding platform ala `backerkit.com` or `indiegogo.com`. Has our
+"crowdstart" branded experience. This is the non-white label version of the
+platform. Needs administrative interface similar to Indiegogo, with
+reporting/stats/etc.
 
 ### `dispatch.yaml`
 We use `dispatch.yaml` to pipe requests to the proper module. Unfortunately
@@ -133,8 +140,8 @@ subdirectory.
 ### /api/cart
 - create, get, add, remove stuff from a cart
 
-## Admin UI
-### admin.crowdstart.io (`admin` module)
+## Platform UI
+### crowdstart.io (`platform` module)
 
 ### /login
 ### /logout
