@@ -114,3 +114,78 @@ func TestKeyCRUD(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func TestMultiCRUD(t *testing.T) {
+	var oPut [10]TestStruct
+	for i := 0; i < 10; i++ {
+		oPut[i] = TestStruct{string(i * 2)}
+	}
+
+	ctx := aetest.NewContext(nil)
+	db := datastore.New(ctx)
+
+	keys, err := db.PutMulti("test", oPut)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if len(keys) != len(oPut) {
+		t.Logf("Wrong number of keys returned \n\t Expected: %d \n\t Actual: %d", len(oPut), len(keys))
+		t.Fail()
+	}
+
+	var oGet [len(oPut)]TestStruct
+	err = db.GetMulti(keys, oGet)
+	if err != nil {
+		t.Error(err)
+	}
+
+	empty := TestStruct{}
+	for i := 0; i < len(oGet); i++ {
+		if oGet[i] == empty {
+			t.Logf("Some objects are empty \n\t Expected: %#v \n\t Actual: %#v", oPut, oGet)
+			t.Fail()
+			break
+		}
+	}
+
+	// Update
+	var oModified [len(oPut)]TestStruct
+	var _keys []string
+	for i := 0; i < 10; i++ {
+		oModified[i] = TestStruct{string(i * 3)}
+	}
+	for i := range keys {
+		key, err := db.Update(keys[i], oModified[i])
+		_keys = append(_keys, key)
+		if err != nil {
+			t.Error(err)
+		}
+	}
+
+	keys = _keys
+
+	err = db.GetMulti(keys, oGet)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if oGet != oModified {
+		t.Logf("Update of multiple keys did not work \n\t Expected: %#v \n\t Actual: %#v", oModified, oGet)
+		t.Fail()
+	}
+
+	// Delete
+	for i := range keys {
+		err = db.Delete(keys[i])
+		if err != nil {
+			t.Error(err)
+		}
+	}
+
+	err = db.GetMulti(keys, oGet)
+	if err == nil {
+		t.Logf("Deletion of multiple keys did not work. \n\t Objects: %#v", oGet)
+		t.Fail()
+	}
+}
