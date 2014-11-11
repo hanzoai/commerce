@@ -110,7 +110,7 @@ func TestKeyCRUD(t *testing.T) {
 
 	err = db.GetKey("test", key, oGet)
 	if err == nil {
-		t.Logf("db.Get worked even though the entry was removed \n\t %#v", oGet)
+		t.Logf("Deletion of key did not work \n\t %#v", oGet)
 		t.Fail()
 	}
 }
@@ -185,7 +185,7 @@ func TestMultiCRUD(t *testing.T) {
 
 	err = db.GetMulti(keys, oGet)
 	if err == nil {
-		t.Logf("Deletion of multiple keys did not work. \n\t Objects: %#v", oGet)
+		t.Logf("Deletion of multiple keys did not work. \n\t %#v", oGet)
 		t.Fail()
 	}
 }
