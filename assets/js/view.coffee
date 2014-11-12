@@ -43,18 +43,6 @@ class View
 
     @render() unless not opts.autoRender
 
-  # Split target selector + attr, if attr is none use text.
-  _splitTarget: (target) ->
-    if target.indexOf '@' != -1
-      [selector, attr] = target.split /\s+@/
-    else
-      [selector, attr] = [target, null]
-
-    unless attr?
-      attr = 'text'
-
-    [selector, attr]
-
   # Find and cache binding targets.
   _cacheTargets: ->
     for name, targets of @bindings
@@ -78,6 +66,13 @@ class View
         args.push @state[src]
 
     value = @computed[name].apply @, args
+
+  _mutateDom: (selector, attr, value) ->
+    if attr == 'text'
+      @_targets[selector].text value
+    else
+      @_targets[selector].attr attr, value
+    return
 
   # This translates a state change to it's intended target(s).
   _renderBindings: (name, value) ->
@@ -104,12 +99,37 @@ class View
 
     return
 
-  _mutateDom: (selector, attr, value) ->
-    if attr == 'text'
-      @_targets[selector].text value
+  # Split event name / selector
+  _splitEvent: (e) ->
+    [event, selector...] = e.split /\s+/
+    selector = selector.join ' '
+
+    unless selector
+      $el = @$el
+      return [$el, event]
+
+    # allow global event binding
+    switch selector
+      when 'document'
+        $el = $(document)
+      when 'window'
+        $el = $(window)
+      else
+        $el = @$el.find selector
+
+    [$el, event]
+
+  # Split target selector + attr, if attr is none use text.
+  _splitTarget: (target) ->
+    if target.indexOf '@' != -1
+      [selector, attr] = target.split /\s+@/
     else
-      @_targets[selector].attr attr, value
-    return
+      [selector, attr] = [target, null]
+
+    unless attr?
+      attr = 'text'
+
+    [selector, attr]
 
   # Get value from state for name.
   get: (name) ->
@@ -138,25 +158,6 @@ class View
       for name, targets of @bindings
         @_renderBindings name, @state[name]
     @
-
-  _splitEvent: (e) ->
-    [event, selector...] = e.split /\s+/
-    selector = selector.join ' '
-
-    unless selector
-      $el = @$el
-      return [$el, event]
-
-    # allow global event binding
-    switch selector
-      when 'document'
-        $el = $(document)
-      when 'window'
-        $el = $(window)
-      else
-        $el = @$el.find selector
-
-    [$el, event]
 
   on: (e, callback) ->
     [$el, event] = @_splitEvent e
