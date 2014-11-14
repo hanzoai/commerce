@@ -1,6 +1,6 @@
 application: crowdstart-io
 module: checkout
-version: v7
+version: v8
 
 runtime: go
 api_version: go1
