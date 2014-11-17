@@ -261,7 +261,7 @@
         <div id="form-wrapper" class="right-column-wrapper">
             <div class="yui3-widget sqs-widget sqs-checkout-form">
                 <div class="sqs-checkout-form-content">
-                    <form id="form" action="/checkout/authorize" method="POST" accept-charset="UTF-8" enctype="application/x-www-form-urlencoded; charset=utf-8">
+                    <form id="form">
                         {% for item in order.Items %}
                         <input type="hidden" name="Order.Items.{{ forloop.Counter }}.Product.Slug" value="{{ item.Slug() }}">
                         <input type="hidden" name="Order.Items.{{ forloop.Counter }}.Variant.SKU" value="{{ item.SKU() }}">
@@ -615,8 +615,6 @@
                                             </div>
                                         </div>
                                       </div>
-
-                                      <input name="User.StripeToken" type="hidden">
                                     </fieldset>
                                     </form>
                                     <!-- end #credit-card -->
@@ -632,7 +630,7 @@
 
                                     <!-- Place Order -->
                                     <div class="btn-container" style="text-align: center;">
-                                      <input type="submit" value="Place order" class="button continue-button" style="width:100%"></input>
+                                      <input type="submit" value="Place order" class="button submit-button continue-button" style="width:100%"></input>
                                     </div>
                                   </form>
 
@@ -699,21 +697,27 @@
         </div>
     </div>
 
-    <form id="stripeForm" action="" method="POST" style="display:none;">
-      <span class='payment-errors'></span>
-      <input data-stripe="number"/>
-      <input data-stripe="cvc"/>
-      <input data-stripe="exp-month"/>
-      <input data-stripe="exp-year"/>
-      <button type="submit">Submit Payment</button>
+    <span class='payment-errors' style="display:none;"></span>
+    <form id="stripeForm"  action="/checkout/authorize" method="POST" accept-charset="UTF-8" enctype="application/x-www-form-urlencoded; charset=utf-8">
+      <input type="hidden" data-stripe="number"/>
+      <input type="hidden"  data-stripe="cvc"/>
+      <input type="hidden"  data-stripe="exp-month"/>
+      <input type="hidden"  data-stripe="exp-year"/>
     </form>
 
     <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
     <script type="text/javascript" src="/js/jquery.ba-throttle-debounce.min.js"></script>
     <script type="text/javascript" src="/js/card.js"></script>
     <script type="text/javascript" src="https://js.stripe.com/v2/"></script>
-    <script>
-      Stripe.setPublishableKey('{{ config.Stripe.APIKey }}')
+    <script type="text/javascript">
+        Stripe.setPublishableKey('{{ config.Stripe.APIKey }}')
+
+        $(document).ready(function(){
+            $('#form').submit(function(event) {
+                $('#stripeForm').submit();
+                return false;
+            });
+        });  
     </script>
     <script type="text/javascript" src="/js/checkout_stripe.js"></script>
     <script type="text/javascript" src="/js/checkout.js"></script>
