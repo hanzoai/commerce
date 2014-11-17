@@ -1,5 +1,5 @@
 application: crowdstart-io
-module: admin
+module: platform
 version: v1
 
 runtime: go
@@ -11,5 +11,5 @@ automatic_scaling:
   min_idle_instances: 1
 
 handlers:
-- url: /admin/.*
+- url: /platform/.*
   script: _go_app

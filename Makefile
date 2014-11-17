@@ -28,7 +28,6 @@ gae_token 	    = 1/DLPZCHjjCkiegGp0SiIvkWmtZcUNl15JlOg4qB0-1r0MEudVrK5jSpoR30zcR
 gae_yaml  	    = dispatch.yaml \
 				  app.yaml \
 				  platform/app.yaml \
-				  user/app.yaml \
 				  api/app.yaml \
 				  store/app.yaml \
 				  checkout/app.yaml

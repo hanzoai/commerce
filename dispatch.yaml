@@ -5,7 +5,7 @@ dispatch:
     module: api
 
   - url: "*/admin/*"
-    module: admin
+    module: platform
 
   - url: "*/checkout/*"
     module: checkout
