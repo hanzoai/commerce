@@ -1,21 +1,8 @@
 package platform
 
 import (
-	"appengine/urlfetch"
-	"crowdstart.io/auth"
-	"crowdstart.io/config"
-	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
-	"crowdstart.io/models"
 	"crowdstart.io/util/router"
-	"crowdstart.io/util/template"
-	"encoding/json"
-	"github.com/gin-gonic/gin"
-	"io/ioutil"
-	"log"
-	"net/http"
-	"net/url"
-	"strings"
 )
 
 type TokenData struct {
@@ -34,7 +21,7 @@ type TokenData struct {
 func init() {
 	admin := router.New("/admin/")
 	router.New("/user/") // for future usage
-	
+
 	admin.GET("/", adminIndex)
 
 	admin.GET("/register", adminRegister)
