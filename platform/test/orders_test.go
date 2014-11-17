@@ -7,6 +7,7 @@ import (
 	"testing"
 )
 
+// Not functional
 func TestOrders(t *testing.T) {
 	c, err := aetest.NewContext(nil)
 	defer c.Close()
