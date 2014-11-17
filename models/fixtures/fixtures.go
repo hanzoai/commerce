@@ -112,7 +112,7 @@ func Install(db *datastore.Datastore) {
 		Title:       "SKULLY AR-1",
 		Headline:    "The World's smartest helmet.",
 		Excerpt:     "The World's smartest helmet, featuring a state-of-the-art head-up display, GPS and bluetooth.",
-		Description: "The World's smartest helmet. Even more descriptive text.",
+		Description: "",
 		Variants:    variants,
 		HeaderImage: Image{
 			Alt: "SKULLY AR-1",
@@ -122,14 +122,14 @@ func Install(db *datastore.Datastore) {
 		},
 		Images: []Image{
 			Image{
-				Alt: "blackhelmet_store.jpg",
-				Url: "//static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544c1bd6e4b07de01f6f22aa/1414274007569/blackhelmet_store.jpg",
+				Alt: "blackhelmet_store_1000px.jpg",
+				Url: "/img/products/blackhelmet_store_1000px.jpg",
 				X:   1000,
 				Y:   1000,
 			},
 			Image{
-				Alt: "whitehelmet_store.jpg",
-				Url: "//static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544c1bdde4b07de01f6f22b5/1414274015307/whitehelmet_store.jpg",
+				Alt: "whitehelmet_store_1000px.jpg",
+				Url: "/img/products/whitehelmet_store_1000px.jpg",
 				X:   1000,
 				Y:   1000,
 			},
@@ -213,7 +213,7 @@ func Install(db *datastore.Datastore) {
 	db.PutKey("product", "t-shirt", &Product{
 		Slug:        "t-shirt",
 		Title:       "SKULLY T-shirt",
-		Description: "SKULLY Nation T-shirt",
+		Description: "",
 		Variants:    variants,
 		HeaderImage: Image{
 			Alt: "SKULLY T-SHIRT",
@@ -266,7 +266,7 @@ func Install(db *datastore.Datastore) {
 	db.PutKey("product", "hat", &Product{
 		Slug:        "hat",
 		Title:       "SKULLY Hat",
-		Description: "SKULLY Nation Hat",
+		Description: "",
 		Variants:    variants,
 		HeaderImage: Image{
 			Alt: "SKULLY HAT",
@@ -301,7 +301,7 @@ func Install(db *datastore.Datastore) {
 	db.PutKey("product", "stickers", &Product{
 		Slug:        "stickers",
 		Title:       "SKULLY Stickers",
-		Description: "SKULLY Nation Stickers",
+		Description: "",
 		Variants:    variants,
 		HeaderImage: Image{
 			Alt: "SKULLY STICKERS",
