@@ -3,6 +3,7 @@ package auth
 import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
+	"errors"
 	"github.com/gin-gonic/gin"
 )
 

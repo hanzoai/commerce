@@ -4,7 +4,6 @@ import (
 	"code.google.com/p/go.crypto/bcrypt"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
-	"errors"
 	"github.com/gin-gonic/gin"
 	"log"
 )
