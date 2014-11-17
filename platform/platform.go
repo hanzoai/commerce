@@ -20,7 +20,9 @@ type TokenData struct {
 // Defines the routes for the platform
 func init() {
 	admin := router.New("/admin/")
-	router.New("/user/") // for future usage
+	user := router.New("/user/") // for future usage
+
+	user.GET("/login", userLogin)
 
 	admin.GET("/", adminIndex)
 

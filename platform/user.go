@@ -1,4 +1,4 @@
-package user
+package platform
 
 import (
 	"crowdstart.io/auth"
@@ -13,10 +13,10 @@ import (
 const kind = "user"
 
 func init() {
-	user := router.New("/user/")
+	user := router.New("/_user")
 	user.GET("/", func(c *gin.Context) {
 		if auth.IsLoggedIn(c) {
-			key, err := auth.GetSession(c, "login-key")
+			key, err := auth.Get(c, "login-key")
 			if err != nil {
 				c.Fail(500, err)
 				return
@@ -57,6 +57,10 @@ func init() {
 			c.Fail(401, err)
 		}
 	})
+}
+
+func userLogin(c *gin.Context) {
+
 }
 
 func NewUser(c *gin.Context, f models.RegistrationForm) error {
