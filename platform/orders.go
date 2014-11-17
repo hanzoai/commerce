@@ -10,8 +10,8 @@ import (
 )
 
 // Gets the orders associated with a user id.
-func Orders(c appengine.Context, id string) ([]models.Order, error) {
-	db := datastore.New(c)
+func Orders(ctx appengine.Context, id string) ([]models.Order, error) {
+	db := datastore.New(ctx)
 
 	var user models.User
 	err := db.GetKey("user", id, user)
@@ -37,13 +37,18 @@ func listOrders(c *gin.Context) {
 	if err != nil {
 		return
 	}
-	orders := Orders(c, id)
+	ctx := c.MustGet("appengine").(appengine.Context)
+	orders, err := Orders(ctx, id)
+
+	if err != nil {
+
+	}
 
 	// TODO Figure out a way to separately display pending orders and completed orders.
 	var pendingOrders []models.Order
-	for order := range orders {
+	for i, order := range orders {
 		if !order.Cancelled && !order.Shipped {
-			append(pendingOrders, order)
+			pendingOrders = append(pendingOrders, order)
 		}
 	}
 
@@ -68,12 +73,8 @@ func removeOrder(c *gin.Context) {
 			return err
 		}
 
-		if user == nil {
-			return errors.New("User is nil")
-		}
-
 		order.Cancelled = true
-		_, err = db.Update(id, orders)
+		_, err = db.Update(id, order)
 		return err
 	}, nil)
 
