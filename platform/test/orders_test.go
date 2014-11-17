@@ -1,9 +1,10 @@
 package test
 
 import (
-	"appengine"
+	//"appengine"
 	"appengine/aetest"
-	"crowdstart.io/datastore"
+	//"crowdstart.io/datastore"
+	"crowdstart.io/platform"
 	"testing"
 )
 
@@ -15,7 +16,7 @@ func TestOrders(t *testing.T) {
 		t.Error(err)
 		t.Fail()
 	}
-	orders, err := Orders(c, "AzureDiamond")
+	orders, err := platform.Orders(c, "AzureDiamond")
 
 	if err != nil {
 		t.Error(err)
