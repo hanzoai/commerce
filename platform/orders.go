@@ -1,4 +1,4 @@
-package adminord
+package platform
 
 import (
 	"appengine"
@@ -14,11 +14,8 @@ func Orders(c appengine.Context, id string) ([]models.Order, error) {
 	db := datastore.New(c)
 
 	var user models.User
-	err = db.GetKey("user", id, user)
+	err := db.GetKey("user", id, user)
 	if err != nil {
-		return nil, err
-	}
-	if user == nil {
 		return nil, err
 	}
 
@@ -60,6 +57,8 @@ func modifyOrder(c *gin.Context) {
 // Extracts the Order.Id from the url and removes it from the datastore.
 func removeOrder(c *gin.Context) {
 	id := c.Request.URL.Query().Get("orderId")
+	db := datastore.New(c)
+
 	err := db.RunInTransaction(func(c appengine.Context) error {
 		db := datastore.New(c)
 

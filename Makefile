@@ -8,7 +8,7 @@ goroot_pkg_path = $(goroot)/pkg/$(platform)_appengine/
 gopath_pkg_path = $(gopath)/pkg/$(platform)_appengine/
 
 deps 		    = $(shell cat Godeps | cut -d ' ' -f 1)
-modules 	    = crowdstart.io/admin \
+modules 	    = crowdstart.io/platform \
 				  crowdstart.io/api \
 				  crowdstart.io/checkout \
 				  crowdstart.io/store
@@ -19,7 +19,7 @@ packages 		= crowdstart.io/cardconnect \
 				  crowdstart.io/models \
 				  crowdstart.io/sessions
 
-test_modules    = crowdstart.io/admin/test \
+test_modules    = crowdstart.io/platform/test \
 				  crowdstart.io/api/test \
 				  crowdstart.io/checkout/test \
 				  crowdstart.io/store/test
@@ -27,7 +27,7 @@ test_modules    = crowdstart.io/admin/test \
 gae_token 	    = 1/DLPZCHjjCkiegGp0SiIvkWmtZcUNl15JlOg4qB0-1r0MEudVrK5jSpoR30zcRFq6
 gae_yaml  	    = dispatch.yaml \
 				  app.yaml \
-				  admin/app.yaml \
+				  platform/app.yaml \
 				  user/app.yaml \
 				  api/app.yaml \
 				  store/app.yaml \
@@ -98,7 +98,7 @@ deploy-appengine: assets
 	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) rollback checkout/app.yaml && \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) rollback store/app.yaml && \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update app.yaml && \
-	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update admin/app.yaml && \
+	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update platform/app.yaml && \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update api/app.yaml && \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update checkout/app.yaml && \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update store/app.yaml && \

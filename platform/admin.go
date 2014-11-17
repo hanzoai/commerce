@@ -1,14 +1,20 @@
-package admin
+package platform
 
 import (
+	"appengine/urlfetch"
+	"crowdstart.io/auth"
+	"crowdstart.io/config"
+	"crowdstart.io/datastore"
+	"crowdstart.io/middleware"
+	"crowdstart.io/models"
+	"crowdstart.io/util/template"
 	"encoding/json"
+	"github.com/gin-gonic/gin"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
 	"strings"
-
-	"github.com/gin-gonic/gin"
 )
 
 func adminIndex(c *gin.Context) {
