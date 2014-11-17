@@ -1,19 +1,19 @@
 class EventEmitter
   constructor: ->
-    @_jQuery = $(@)
+    @_dollar = $(@)
 
   emit: (event, data...) ->
-    @_jQuery.trigger event, data
+    @_dollar.trigger event, data
 
   once: (event, callback) ->
-    @_jQuery.one event, (event, data...) =>
+    @_dollar.one event, (event, data...) =>
       callback.apply @, data
 
   on: (event, callback) ->
-    @_jQuery.bind event, (event, data...) =>
+    @_dollar.bind event, (event, data...) =>
       callback.apply @, data
 
   off: (event, callback) ->
-    @_jQuery.unbind event, callback
+    @_dollar.unbind event, callback
 
 module.exports = EventEmitter
