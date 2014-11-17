@@ -19,7 +19,7 @@ func Orders(ctx appengine.Context, id string) ([]models.Order, error) {
 		return nil, err
 	}
 
-	var rawOrders []interface{}
+	rawOrders := make([]interface{}, len(user.OrdersIds))
 	err = db.GetKeyMulti("order", user.OrdersIds, rawOrders)
 	if err != nil {
 		return nil, err
@@ -29,7 +29,7 @@ func Orders(ctx appengine.Context, id string) ([]models.Order, error) {
 		return nil, errors.New("No orders found")
 	}
 
-	orders := make([]models.Order, len(rawOrders), cap(rawOrders))
+	orders := make([]models.Order, len(rawOrders))
 
 	for i := range orders {
 		orders[i] = rawOrders[i].(models.Order)
