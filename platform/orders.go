@@ -29,7 +29,7 @@ func Orders(ctx appengine.Context, id string) ([]models.Order, error) {
 		return nil, errors.New("No orders found")
 	}
 
-	orders := make([]models.Order, cap(rawOrders), len(rawOrders))
+	orders := make([]models.Order, len(rawOrders), cap(rawOrders))
 
 	for i := range orders {
 		orders[i] = rawOrders[i].(models.Order)
