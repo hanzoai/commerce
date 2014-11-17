@@ -13,7 +13,7 @@ const kind = "user"
 const loginKey = "login-key"
 
 func IsLoggedIn(c *gin.Context) bool {
-	value, err := GetSession(c, loginKey)
+	value, err := Get(c, loginKey)
 	return err == nil && value != ""
 }
 
@@ -43,9 +43,14 @@ func VerifyUser(c *gin.Context) error {
 		return err
 	}
 
-	return SetSession(c, loginKey, f.Email) // sets cookie value to the user id
+	return Set(c, loginKey, f.Email) // sets the loginKey value to the user id
 }
 
 func GetUsername(c *gin.Context) (string, error) {
-	return GetSession(c, loginKey)
+	return Get(c, loginKey)
+}
+
+func Logout(c *gin.Context) {
+	Delete(c, loginKey)
+	c.Redirect(301, "/user/login")
 }

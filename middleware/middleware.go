@@ -2,8 +2,8 @@ package middleware
 
 import (
 	"appengine"
-	"github.com/gin-gonic/gin"
 	"crowdstart.io/auth"
+	"github.com/gin-gonic/gin"
 )
 
 // Automatically get App Engine context.
@@ -26,7 +26,15 @@ func AddHost() gin.HandlerFunc {
 func LoginRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if !auth.IsLoggedIn(c) {
-			c.Redirect(301, "/login")
+			c.Redirect(301, "/user/login")
+		}
+	}
+}
+
+func LoggedOutRequired() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if auth.IsLoggedIn(c) {
+			c.Redirect(301, "/")
 		}
 	}
 }
