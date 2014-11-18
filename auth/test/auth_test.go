@@ -16,15 +16,16 @@ var mockRegForm = struct {
 	User     models.User
 	Password string
 }{
-	models.User{"AzureDiamond"},
+	models.User{Id: "AzureDiamond"},
 	"hunter2",
 }
 
 func TestNewUser(t *testing.T) {
+	println("ctx")
 	ctx, err := aetest.NewContext(nil)
 	if err != nil {
 		t.Error(err)
-		t.FailNow()
+		t.Fail()
 	}
 
 	c := &gin.Context{}
@@ -39,18 +40,19 @@ func TestNewUser(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+	println("New user")
 
 	db := datastore.New(ctx)
 	var user models.User
 	err = db.GetKey("user", mockRegForm.User.Id, user)
-
 	if err != nil {
 		t.Error(err)
 	}
+	println("Get user")
 
 	if reflect.DeepEqual(user, models.User{}) {
 		t.Error(errors.New("User is empty"))
-		t.FailNow()
+		t.Fail()
 	}
 
 	if user.Id != mockRegForm.User.Id {
