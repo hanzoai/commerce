@@ -1,4 +1,4 @@
-package platform
+package user
 
 import (
 	"appengine"
@@ -38,7 +38,7 @@ func Orders(ctx appengine.Context, id string) ([]models.Order, error) {
 	return orders, nil
 }
 
-func listOrders(c *gin.Context) {
+func ListOrders(c *gin.Context) {
 	id, err := auth.GetUsername(c)
 	if err != nil {
 		return
@@ -61,12 +61,12 @@ func listOrders(c *gin.Context) {
 	// Render the template using filtered orders
 }
 
-func modifyOrder(c *gin.Context) {
+func ModifyOrder(c *gin.Context) {
 	// id := c.Request.URL.Query().Get("orderId")
 }
 
 // Extracts the Order.Id from the url and removes it from the datastore.
-func removeOrder(c *gin.Context) {
+func RemoveOrder(c *gin.Context) {
 	id := c.Request.URL.Query().Get("orderId")
 	db := datastore.New(c)
 

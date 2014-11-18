@@ -1,4 +1,4 @@
-package platform
+package admin
 
 import (
 	"appengine/urlfetch"
@@ -17,25 +17,36 @@ import (
 	"strings"
 )
 
-func adminIndex(c *gin.Context) {
+type TokenData struct {
+	Access_token           string
+	Error                  string
+	Error_description      string
+	Livemode               bool
+	Refresh_token          string
+	Scope                  string
+	Stripe_publishable_key string
+	Stripe_user_id         string
+	Token_type             string
+}
+
+func Index(c *gin.Context) {
 	template.Render(c, "index.html")
 }
 
 // Admin Register
-func adminRegister(c *gin.Context) {
+func Register(c *gin.Context) {
 	template.Render(c, "adminlte/register.html")
 }
 
-func adminSubmitRegister(c *gin.Context) {
+func SubmitRegister(c *gin.Context) {
 	c.Redirect(301, "dashboard")
 }
 
-// Admin login
-func adminLogin(c *gin.Context) {
+func Login(c *gin.Context) {
 	template.Render(c, "adminlte/login.html")
 }
 
-func adminSubmitLogin(c *gin.Context) {
+func SubmitLogin(c *gin.Context) {
 	if err := auth.VerifyUser(c); err == nil {
 		log.Println("Success")
 		c.Redirect(301, "dashboard")
@@ -46,31 +57,31 @@ func adminSubmitLogin(c *gin.Context) {
 	}
 }
 
-func adminLogout(c *gin.Context) {
+func Logout(c *gin.Context) {
 	auth.ClearSession(c)
 	c.Redirect(301, "/")
 }
 
 // Admin User Profile
-func adminProfile(c *gin.Context) {
+func Profile(c *gin.Context) {
 }
 
-func adminSubmitProfile(c *gin.Context) {
+func SubmitProfile(c *gin.Context) {
 	c.Redirect(301, "profile")
 }
 
 // Admin Dashboard
-func adminDashboard(c *gin.Context) {
+func Dashboard(c *gin.Context) {
 	template.Render(c, "adminlte/dashboard.html")
 }
 
 // Admin Payment Connectors
-func adminConnect(c *gin.Context) {
+func Connect(c *gin.Context) {
 	template.Render(c, "adminlte/connect.html", "clientid", config.Get().Stripe.ClientId)
 }
 
 // Stripe End Points
-func stripeCallback(c *gin.Context) {
+func StripeCallback(c *gin.Context) {
 	req := c.Request
 	code := req.URL.Query().Get("code")
 	errStr := req.URL.Query().Get("error")
