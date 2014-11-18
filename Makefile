@@ -22,7 +22,7 @@ packages 		= crowdstart.io/cardconnect \
 test_modules    = crowdstart.io/api/test \
 				  crowdstart.io/checkout/test \
 				  crowdstart.io/store/test \
-				  crowdstart.io/auth/test \
+				  #crowdstart.io/auth/test \
 				  #crowdstart.io/datastore/test
 				  #crowdstart.io/platform/test
 
