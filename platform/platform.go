@@ -2,43 +2,33 @@ package platform
 
 import (
 	"crowdstart.io/middleware"
+	"crowdstart.io/platform/admin"
+	"crowdstart.io/platform/user"
 	"crowdstart.io/util/router"
 )
 
-type TokenData struct {
-	Access_token           string
-	Error                  string
-	Error_description      string
-	Livemode               bool
-	Refresh_token          string
-	Scope                  string
-	Stripe_publishable_key string
-	Stripe_user_id         string
-	Token_type             string
-}
-
 // Defines the routes for the platform
 func init() {
-	admin := router.New("/admin/")
-	user := router.New("/user/") // for future usage
+	adminR := router.New("/admin/")
+	userR := router.New("/user/")
 
-	user.GET("/login", userLogin)
+	userR.GET("/login", user.Login)
 
-	admin.GET("/", adminIndex)
+	adminR.GET("/", admin.Index)
 
-	admin.GET("/register", adminRegister)
-	admin.POST("/register", adminSubmitRegister)
+	adminR.GET("/register", admin.Register)
+	adminR.POST("/register", admin.SubmitRegister)
 
-	admin.GET("/login", adminLogin)
-	admin.POST("/login", adminSubmitLogin)
+	adminR.GET("/login", admin.Login)
+	adminR.POST("/login", admin.SubmitLogin)
 
-	admin.GET("logout", adminLogout)
+	adminR.GET("logout", admin.Logout)
 
-	admin.GET("/profile", middleware.LoginRequired(), adminProfile)
-	admin.POST("/profile", adminSubmitProfile)
+	adminR.GET("/profile", middleware.LoginRequired(), admin.Profile)
+	adminR.POST("/profile", admin.SubmitProfile)
 
-	admin.GET("/dashboard", middleware.LoginRequired(), adminDashboard)
-	admin.GET("/connect", middleware.LoginRequired(), adminConnect)
+	adminR.GET("/dashboard", middleware.LoginRequired(), admin.Dashboard)
+	adminR.GET("/connect", middleware.LoginRequired(), admin.Connect)
 
-	admin.GET("/stripe/callback", middleware.LoginRequired(), stripeCallback)
+	adminR.GET("/stripe/callback", middleware.LoginRequired(), admin.StripeCallback)
 }
