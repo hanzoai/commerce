@@ -22,7 +22,7 @@ packages 		= crowdstart.io/cardconnect \
 test_modules    = crowdstart.io/api/test \
 				  crowdstart.io/checkout/test \
 				  crowdstart.io/store/test \
-				  crowdstart.io/datastore/test
+				  #crowdstart.io/datastore/test
 				  #crowdstart.io/platform/test
 
 gae_token 	    = 1/DLPZCHjjCkiegGp0SiIvkWmtZcUNl15JlOg4qB0-1r0MEudVrK5jSpoR30zcRFq6

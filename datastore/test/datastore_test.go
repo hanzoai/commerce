@@ -3,7 +3,6 @@ package test
 import (
 	"appengine/aetest"
 	"crowdstart.io/datastore"
-	"github.com/gin-gonic/gin"
 	"testing"
 )
 
@@ -12,7 +11,8 @@ type TestStruct struct {
 }
 
 func TestCRUD(t *testing.T) {
-	ctx := aetest.NewContext(nil)
+	ctx, _ := aetest.NewContext(nil)
+	defer ctx.Close()
 	db := datastore.New(ctx)
 
 	oPut := TestStruct{"eqhwikas"}
@@ -64,7 +64,8 @@ func TestCRUD(t *testing.T) {
 
 // Tests all the Key functions
 func TestKeyCRUD(t *testing.T) {
-	ctx := aetest.NewContext(nil)
+	ctx, _ := aetest.NewContext(nil)
+	defer ctx.Close()
 	db := datastore.New(ctx)
 
 	key := "testkey"
@@ -116,12 +117,13 @@ func TestKeyCRUD(t *testing.T) {
 }
 
 func TestMultiCRUD(t *testing.T) {
-	var oPut [10]TestStruct
+	var oPut []interface{}
 	for i := 0; i < 10; i++ {
 		oPut[i] = TestStruct{string(i * 2)}
 	}
 
-	ctx := aetest.NewContext(nil)
+	ctx, _ := aetest.NewContext(nil)
+	defer ctx.Close()
 	db := datastore.New(ctx)
 
 	keys, err := db.PutMulti("test", oPut)
@@ -134,7 +136,7 @@ func TestMultiCRUD(t *testing.T) {
 		t.Fail()
 	}
 
-	var oGet [len(oPut)]TestStruct
+	var oGet []interface{}
 	err = db.GetMulti(keys, oGet)
 	if err != nil {
 		t.Error(err)
@@ -150,7 +152,7 @@ func TestMultiCRUD(t *testing.T) {
 	}
 
 	// Update
-	var oModified [len(oPut)]TestStruct
+	var oModified []interface{}
 	var _keys []string
 	for i := 0; i < 10; i++ {
 		oModified[i] = TestStruct{string(i * 3)}
@@ -170,7 +172,7 @@ func TestMultiCRUD(t *testing.T) {
 		t.Error(err)
 	}
 
-	if oGet != oModified {
+	if !identicalSlices(oGet, oModified) {
 		t.Logf("Update of multiple keys did not work \n\t Expected: %#v \n\t Actual: %#v", oModified, oGet)
 		t.Fail()
 	}
@@ -186,6 +188,56 @@ func TestMultiCRUD(t *testing.T) {
 	err = db.GetMulti(keys, oGet)
 	if err == nil {
 		t.Logf("Deletion of multiple keys did not work. \n\t %#v", oGet)
+		t.Fail()
+	}
+}
+
+func identicalSlices(x, y []interface{}) bool {
+	if len(x) != len(y) {
+		return false
+	}
+
+	for i := range x {
+		if x[i] != y[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
+func TestEqualSlices(t *testing.T) {
+	equalA := make([]interface{}, 10)
+	equalB := make([]interface{}, 10)
+
+	for i := range equalA {
+		equalA[i] = string(i)
+		equalB[i] = string(i)
+	}
+
+	if res := identicalSlices(equalA, equalB); !res {
+		t.Logf("Comparison of identical slices \n\t Expected: %#v \n\t Actual: %#v", true, res)
+		t.Fail()
+	}
+
+	diffLengthA := make([]interface{}, 2)
+	diffLengthB := make([]interface{}, 1)
+
+	if res := identicalSlices(diffLengthA, diffLengthB); res {
+		t.Logf("Comparison of slices with different lengths \n\t Expected: %#v \n\t Actual: %#v", false, res)
+		t.Fail()
+	}
+
+	diffA := make([]interface{}, 10)
+	diffB := make([]interface{}, 10)
+
+	for i := range diffA {
+		diffA[i] = string(i + 1)
+		diffB[i] = string(i)
+	}
+
+	if res := identicalSlices(diffA, diffB); !res {
+		t.Logf("Comparison of slices with different elements \n\t Expected: %#v \n\t Actual: %#v", false, res)
 		t.Fail()
 	}
 }
