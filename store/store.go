@@ -6,6 +6,7 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/fixtures"
 	"crowdstart.io/store/cart"
+	"crowdstart.io/store/preorder"
 	"crowdstart.io/store/products"
 	"crowdstart.io/util/exec"
 	"crowdstart.io/util/fs"
@@ -21,6 +22,9 @@ func init() {
 	router.GET("/products", products.List)
 	router.GET("/products/:slug", products.Get)
 
+	// Preorder
+	router.GET("/preorder", preorder.Get)
+
 	// Cart
 	router.GET("/cart", cart.Get)
 
@@ -29,7 +33,6 @@ func init() {
 		ctx := appengine.NewContext(c.Request)
 		db := datastore.New(ctx)
 		fixtures.Install(db)
-
 
 		// Recompile static assets
 		if config.Get().AutoCompileAssets {
