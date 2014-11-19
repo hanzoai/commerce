@@ -5,3 +5,4 @@ log/
 .sdk
 static/js/store.js
 static/js/checkout.js
+npm-debug.log
