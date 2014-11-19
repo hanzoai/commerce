@@ -92,37 +92,64 @@
           </div>
         </div>
         <div class="item-separator"></div>
-        <div class="narrow center item">
+        <div class="narrow center item ar1">
           <div class="content-centered">
-            <h2>Skully AR-1 color &amp; size infromation</h2>
+            <h2 class="underline">Skully AR-1 color &amp; size infromation</h2>
           </div>
           <div class="form">
-            <div class="row variant">
-              <select id="color">
-                <option value="Matte Black">Matte Black</option>
-                <option value="Shinny Black">Shiny Black</option>
-                <option value="Glossy Black">Glossy Black</option>
-                <option value="Dark Black">Dark Black</option>
-                <option value="Super Black">Super Black</option>
-              </select>
-              <select id="size">
-                <option value="S">S</option>
-                <option value="M">M</option>
-                <option value="L">L</option>
-                <option value="XL">XL</option>
-              </select>
-              <input id="quantity" type="text" value="Qty.">
-              <button class="add">+</button>
-          </div>
           </div>
         </div>
       </form>
     </div>
     <script type="text/javascript">
       $(document).ready(function(){
-        $('input').on('click', function() {
+        function activateInput() {
           $(this).addClass('active').val('').off('click');
-        })
+        }
+
+        $('input').on('click', activateInput)
+
+        var subButtonT = '<button class="sub">-</button>'
+
+        var ar1VariantT = '\
+<div class="row variant">\
+  <select id="color">\
+    <option value="Matte Black">Matte Black</option>\
+    <option value="Shinny Black">Shiny Black</option>\
+    <option value="Glossy Black">Glossy Black</option>\
+    <option value="Dark Black">Dark Black</option>\
+    <option value="Super Black">Super Black</option>\
+  </select>\
+  <select id="size">\
+    <option value="S">S</option>\
+    <option value="M">M</option>\
+    <option value="L">L</option>\
+    <option value="XL">XL</option>\
+  </select>\
+  <input id="quantity" type="text" value="Qty.">\
+  <button class="add">+</button>\
+</div>';
+
+        var firstAr1 = false;
+        function appendAr1() {
+          var ar1VariantEl = $(ar1VariantT);
+          if(!firstAr1) {
+            firstAr1 = true;
+          } else {
+            var subButtonEl = $(subButtonT);
+            subButtonEl.on('click', function(){
+              ar1VariantEl.remove();
+            });
+            ar1VariantEl.append(subButtonEl);
+          }
+
+          ar1VariantEl.find('input').on('click', activateInput);
+          ar1VariantEl.find('button.add').on('click', appendAr1);
+          $(".item.ar1 .form").append(ar1VariantEl);
+          return false;
+        }
+
+        appendAr1();
       });
     </script>
   </body>
