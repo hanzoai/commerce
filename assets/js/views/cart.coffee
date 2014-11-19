@@ -1,6 +1,6 @@
+View         = require 'mvstar/lib/view'
 LineItemView = require './line-item'
-View = require '../view'
-util = require '../util'
+util         = require '../util'
 
 cart = app.get 'cart'
 

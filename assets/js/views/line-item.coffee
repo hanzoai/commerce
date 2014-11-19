@@ -1,4 +1,4 @@
-View = require '../view'
+View = require 'mvstar/lib/view'
 util = require '../util'
 
 class LineItemView extends View
