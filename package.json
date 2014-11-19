@@ -2,6 +2,6 @@
   "name": "crowdstart",
   "private": true,
   "dependencies": {
-    "mvstar": "^0.0.3"
+    "mvstar": "0.0.4"
   }
 }
