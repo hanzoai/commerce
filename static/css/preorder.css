@@ -22,14 +22,13 @@ body {
 }
 
 .logo {
-  margin-top: 32px;
+  font-family:Michroma;
   text-transform: uppercase;
-  line-height: 0.8
 }
 
 h1 {
   font-weight: 600;
-  font-size: 180px
+  font-size: 135px
 }
 
 .form {
@@ -63,17 +62,17 @@ h1 {
   color: white
 }
 
-.shipping input#city {
+.shipping input.city {
   width: 220px
 }
 
-.shipping select#state {
+.shipping select.state {
   width: 55px;
   text-indent: 5px;
   margin: 0 20px
 }
 
-.shipping input#zip {
+.shipping input.zip {
   width: 180px;
   right: 0px;
   position: absolute
@@ -98,24 +97,36 @@ h2.underline {
   padding: 15px
 }
 
-.item-separator {
+.break-65 {
   height: 62px
 }
 
-.item select#color {
+.item {
+  white-space: nowrap
+}
+
+.item select.color {
   width: 340px
 }
 
-.item select#size {
+.item select.size {
   width: 60px;
   margin-left: 20px;
   text-indent: 5px
 }
 
-.item input#quantity {
+.item input.quantity {
   width: 60px;
   position: absolute;
   right: 0px
+}
+
+.item.apparel select.type, .item.apparel select.color {
+  width: 160px
+}
+
+.item.apparel select.color {
+  margin-left: 20px
 }
 
 .item button.add {
@@ -126,4 +137,28 @@ h2.underline {
 .item button.sub {
   left: -25px;
   position: absolute
+}
+
+.counter {
+  font-size: 24px
+}
+
+.counter.bad {
+  color: rgb(202, 2, 2)
+}
+
+.submit {
+  color: rgb(75,75,75);
+  font-size: 14px;
+  margin-bottom: 50px
+}
+
+.submit input {
+  width: 100%;
+  background-color: rgb(202, 2, 2);
+  border: 0;
+  color: white;
+  font-size: 30px;
+  height: 55px;
+  padding: 12px;
 }
