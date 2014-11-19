@@ -71,9 +71,10 @@ install-deps:
 	mv go_appengine $(sdk_path) && \
 	rm $(sdk).zip && \
 	mkdir -p $(sdk_path)/gopath/src && \
+	mkdir -p $(sdk_path)/gopath/bin && \
 	ln -s $(shell pwd) $(sdk_path)/gopath/src/crowdstart.io && \
-	echo '#!/usr/bin/env bash\ngoapp $@' > .sdk/gopath/bin/go && \
-	chmod +x .sdk/gopath/bin/go
+	echo '#!/usr/bin/env bash\ngoapp $@' > $(sdk_path)/gopath/bin/go && \
+	chmod +x $(sdk_path)/gopath/bin/go
 
 serve:
 	$(sdk_path)/dev_appserver.py --max_module_instances=1 $(gae_yaml)
