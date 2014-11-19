@@ -1,4 +1,4 @@
-View = require '../view'
+View = require 'mvstar/lib/view'
 
 cart = app.get 'cart'
 

@@ -1,4 +1,4 @@
-EventEmitter = require './event-emitter'
+EventEmitter = require 'mvstar/lib/event-emitter'
 
 class Cart extends EventEmitter
   constructor: (opts = {}) ->
