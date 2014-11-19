@@ -81,7 +81,7 @@ tools:
 	goapp install $(tools) && \
 	gocode set lib-path "$(gopath_pkg_path):$(goroot_pkg_path)"
 
-test: assets build
+test:
 	goapp test $(test_modules)
 
 bench: build
