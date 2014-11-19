@@ -1,0 +1,124 @@
+body {
+  font-family:"proxima-nova", sans-serif;
+  color: white;
+  background-color: black;
+  line-height: 1.5
+}
+
+.wide {
+  width: 780px
+}
+
+.narrow {
+  width:500px
+}
+
+.center {
+  margin: auto
+}
+
+.content-centered {
+  text-align: center
+}
+
+.logo {
+  margin-top: 32px;
+  text-transform: uppercase;
+  line-height: 0.8
+}
+
+h1 {
+  font-weight: 600;
+  font-size: 180px
+}
+
+.form {
+  margin-top: 20px;
+  position: relative;
+}
+
+.form input, .form select {
+  background-color: rgb(38, 38, 38);
+  border: 0;
+  width: 500px;
+  font-size: 14px;
+  height: 45px;
+  margin-bottom: 15px;
+  text-indent: 20px
+}
+
+.form input {
+  color: rgb(103, 103, 103);
+}
+
+.form select, .form input.active {
+  color: white
+}
+
+.shipping input#city {
+  width: 220px
+}
+
+.shipping select#state {
+  width: 55px;
+  text-indent: 5px;
+  margin: 0 20px
+}
+
+.shipping input#zip {
+  width: 180px;
+  right: 0px;
+  position: absolute
+}
+
+.shipping {
+  margin-bottom: 10px
+}
+
+h2 {
+  font-size: 22px;
+  text-transform: uppercase
+}
+
+h2.underline {
+  border-bottom: 3px solid rgb(61, 61, 61);
+  margin-bottom: 10px
+}
+
+.description {
+  background-color: rgb(38, 38, 38);
+  padding: 15px
+}
+
+.item-separator {
+  height: 62px
+}
+
+.item select#color {
+  width: 340px
+}
+
+.item select#size {
+  width: 60px;
+  margin-left: 20px;
+  text-indent: 5px
+}
+
+.item input#quantity {
+  width: 60px;
+  position: absolute;
+  right: 0px
+}
+
+.item button.add {
+  right: -25px;
+  position: absolute
+}
+
+button {
+  color: white;
+  background-color: rgba(0,0,0,0);
+  border: 0;
+  font-size: 14px;
+  height: 45px;
+}
