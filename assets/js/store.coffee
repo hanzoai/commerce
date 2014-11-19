@@ -1,5 +1,11 @@
-window.app = app = (require './app')
-  cookieName: 'SKULLYSystemsCart'
+App = require 'mvstar/lib/app'
+
+class StoreApp extends App
+  start: ->
+    super
+    $.cookie.json = true
+
+window.app = app = new StoreApp cookieName: 'SKULLYSystemsCart'
 
 # Store cart for later
 app.set 'cart',  (require './cart')
