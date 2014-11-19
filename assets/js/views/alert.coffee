@@ -1,4 +1,4 @@
-View = require '../view'
+View = require 'mvstar/lib/view'
 
 class AlertView extends View
   el: '.sqs-widgets-confirmation.alert'
