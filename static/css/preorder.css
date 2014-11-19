@@ -37,6 +37,14 @@ h1 {
   position: relative;
 }
 
+.form button {
+  color: white;
+  background-color: rgba(0,0,0,0);
+  border: 0;
+  font-size: 14px;
+  height: 45px;
+}
+
 .form input, .form select {
   background-color: rgb(38, 38, 38);
   border: 0;
@@ -115,10 +123,7 @@ h2.underline {
   position: absolute
 }
 
-button {
-  color: white;
-  background-color: rgba(0,0,0,0);
-  border: 0;
-  font-size: 14px;
-  height: 45px;
+.item button.sub {
+  left: -25px;
+  position: absolute
 }
