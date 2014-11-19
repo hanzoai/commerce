@@ -85,10 +85,10 @@ tools:
 	gocode set lib-path "$(gopath_pkg_path):$(goroot_pkg_path)"
 
 test:
-	goapp test $(test_modules)
+	goapp test -timeout 60s $(test_modules)
 
 bench: build
-	goapp test $(test_modules) --bench=.
+	goapp test -timeout 60s $(test_modules) --bench=.
 
 deploy: test
 	goapp run deploy.go
