@@ -1,5 +1,6 @@
 pwd 			= $(shell pwd)
-platform        = $(shell uname | tr '[A-Z]' '[a-z]')_amd64
+os		        = $(shell uname | tr '[A-Z]' '[a-z]')
+platform        = $(os)_amd64
 sdk 	        = go_appengine_sdk_$(platform)-1.9.15
 sdk_path        = $(pwd)/.sdk
 goroot          = $(sdk_path)/goroot
@@ -12,19 +13,6 @@ modules 	    = crowdstart.io/platform \
 				  crowdstart.io/api \
 				  crowdstart.io/checkout \
 				  crowdstart.io/store
-
-packages 		= crowdstart.io/cardconnect \
-				  crowdstart.io/datastore \
-				  crowdstart.io/middleware \
-				  crowdstart.io/models \
-				  crowdstart.io/sessions
-
-test_modules    = crowdstart.io/api/test \
-				  crowdstart.io/checkout/test \
-				  crowdstart.io/store/test \
-				  #crowdstart.io/auth/test \
-				  #crowdstart.io/datastore/test
-				  #crowdstart.io/platform/test
 
 gae_token 	    = 1/DLPZCHjjCkiegGp0SiIvkWmtZcUNl15JlOg4qB0-1r0MEudVrK5jSpoR30zcRFq6
 gae_yaml  	    = dispatch.yaml \
@@ -42,6 +30,15 @@ tools = github.com/nsf/gocode \
         github.com/golang/lint/golint \
         github.com/kisielk/errcheck \
         github.com/jstemmer/gotags
+
+# find command differs between bsd/linux thus the two versions
+ifeq ($(os), "linux")
+	packages 	 = $(shell find . -maxdepth 3 -mindepth 2 -name '*.go' -printf '%h\n' | sort -u | sed -e 's/.\//crowdstart.io\//')
+	test_modules = $(shell find . -maxdepth 3 -mindepth 3 -name '*_test.go' -printf '%h\n' | sort -u | sed -e 's/.\//crowdstart.io\//')
+else
+	packages 	 = $(shell find . -maxdepth 3 -mindepth 2 -name '*.go' -print0 | xargs -0 -n1 dirname | sort --unique | sed -e 's/.\//crowdstart.io\//')
+	test_modules = $(shell find . -maxdepth 3 -mindepth 2 -name '*_test.go' -print0 | xargs -0 -n1 dirname | sort --unique | sed -e 's/.\//crowdstart.io\//')
+endif
 
 export GOROOT  := $(goroot)
 export GOPATH  := $(gopath)
