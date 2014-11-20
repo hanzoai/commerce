@@ -162,3 +162,7 @@ h2.underline {
   height: 55px;
   padding: 12px;
 }
+
+input.fix {
+  border: 1px solid rgb(202, 2, 2)
+}
