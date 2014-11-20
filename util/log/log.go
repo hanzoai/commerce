@@ -12,10 +12,10 @@ type Logger struct {
 	appengineBackend *AppengineBackend
 }
 
-// Set app engine context if passed one
-func (l *Logger) setContext(args ...interface{}) {
+// Process args, setting app engine context if passed one.
+func (l *Logger) setContext(args ...interface{}) []interface{} {
 	if len(args) == 0 {
-		return
+		return args
 	}
 
 	ctx := args[len(args)-1]
@@ -23,9 +23,12 @@ func (l *Logger) setContext(args ...interface{}) {
 	switch ctx := ctx.(type) {
 	case appengine.Context:
 		l.appengineBackend.context = ctx
+		args = args[:len(args)-1]
 	default:
 		l.appengineBackend.context = nil
 	}
+
+	return args
 }
 
 // Custom logger backend that knows about AppEngine
@@ -86,31 +89,31 @@ func New() *Logger {
 var std = New()
 
 func Debug(format string, args ...interface{}) {
-	std.setContext(args...)
+	args = std.setContext(args...)
 	std.Debug(format, args...)
 }
 
 func Info(format string, args ...interface{}) {
-	std.setContext(args...)
+	args = std.setContext(args...)
 	std.Info(format, args...)
 }
 
 func Warn(format string, args ...interface{}) {
-	std.setContext(args...)
+	args = std.setContext(args...)
 	std.Warning(format, args...)
 }
 
 func Error(format string, args ...interface{}) {
-	std.setContext(args...)
+	args = std.setContext(args...)
 	std.Error(format, args...)
 }
 
 func Fatal(format string, args ...interface{}) {
-	std.setContext(args...)
+	args = std.setContext(args...)
 	std.Fatalf(format, args...)
 }
 
 func Panic(format string, args ...interface{}) {
-	std.setContext(args...)
+	args = std.setContext(args...)
 	std.Panicf(format, args...)
 }
