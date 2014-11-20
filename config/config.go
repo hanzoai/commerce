@@ -20,21 +20,17 @@ type Config struct {
 	}
 }
 
-func (c Config) URLFor(moduleName, domain, string) string {
+func (c Config) URLFor(moduleName, domain string) string {
 	// Build URL for module.
 	url := c.Hosts[moduleName] + c.Prefixes[moduleName]
 
 	// If module is hosted, return relative to that root domain.
 	if domain != "" {
-		url = strings.Replace(url, "crowdstart.io", domain, 1))
+		url = strings.Replace(url, "crowdstart.io", domain, 1)
 
 	}
 
 	return url
-}
-
-func (c Config) URLFor(moduleName, domain, string) string {
-	return c.Hosts[moduleName] + c.Prefixes[moduleName]
 }
 
 func Defaults() *Config {
