@@ -2,20 +2,22 @@ package fixtures
 
 import (
 	"encoding/csv"
-	"log"
 	"os"
 	"strings"
 
 	"code.google.com/p/go.crypto/bcrypt"
+
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
+	"crowdstart.io/util/log"
+
 	. "crowdstart.io/models"
 )
 
 func Install(db *datastore.Datastore) {
-	log.Println("Fixtures")
+	log.Debug("Fixtures")
 	pwhash, _ := bcrypt.GenerateFromPassword([]byte("password"), 12)
-	log.Println(string(pwhash))
+	log.Debug(string(pwhash))
 
 	// Default User (SKULLY)
 	key, err := db.PutKey("user", "skully", &User{
@@ -28,12 +30,12 @@ func Install(db *datastore.Datastore) {
 		PasswordHash: pwhash,
 	})
 
-	log.Printf("%#v", err)
-	log.Printf("%#v", key)
+	log.Debug("%#v", err)
+	log.Debug("%#v", key)
 
 	var users []User
 	db.Query("user").GetAll(db.Context, &users)
-	log.Printf("%#v", users)
+	log.Debug("%#v", users)
 
 	// Default Campaign (SKULLY)
 	key, err = db.PutKey("campaign", "skully", &Campaign{
@@ -41,8 +43,8 @@ func Install(db *datastore.Datastore) {
 		Title: "SKULLY AR-1",
 	})
 
-	log.Printf("%#v", err)
-	log.Printf("%#v", key)
+	log.Debug("%#v", err)
+	log.Debug("%#v", key)
 
 	// AR-1
 	variants := []ProductVariant{
@@ -326,15 +328,18 @@ func Install(db *datastore.Datastore) {
 
 	// Try to import existing contributors, but only if we have yet to
 	count, err := db.Query("contribution").KeysOnly().Count(db.Context)
-	log.Printf("count: %v", count)
-	if count > 0 || err != nil {
+	log.Debug("Contributions persisted: %v", count)
+	if count > 0 {
 		return
+	}
+	if err != nil {
+		log.Fatal("Failed to query for contributions: %v", err)
 	}
 
 	csvfile, err := os.Open("resources/contributions.csv")
 	defer csvfile.Close()
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatal("Failed to open CSV File: %v", err)
 	}
 
 	reader := csv.NewReader(csvfile)
@@ -359,9 +364,32 @@ func Install(db *datastore.Datastore) {
 		}
 
 		// Only save first 100 in production
-		if config.Get().Development && i > 100 {
+		if config.Get().Development && i > 25 {
 			break
 		}
+
+		// Normalize various bits
+		email := row[8]
+		email = strings.ToLower(email)
+
+		// Da fuq, Indiegogo?
+		postalCode := row[16]
+		postalCode = strings.Trim(postalCode, "=")
+		postalCode = strings.Trim(postalCode, "\"")
+
+		// Title case name
+		name := strings.SplitN(row[7], " ", 2)
+		firstName := ""
+		lastName := ""
+
+		if len(name) > 0 {
+			firstName = strings.Title(strings.ToLower(name[0]))
+		}
+		if len(name) > 1 {
+			lastName = strings.Title(strings.ToLower(name[1]))
+		}
+
+		city := strings.Title(strings.ToLower(row[14]))
 
 		perk := Perk{
 			Id:    row[1],
@@ -374,32 +402,27 @@ func Install(db *datastore.Datastore) {
 			Status:        row[3],
 			FundingDate:   row[4],
 			PaymentMethod: row[5],
-			Email:         row[8],
+			Email:         email,
 		}
 		db.PutKey("contribution", contribution.Email, &contribution)
 
 		token := new(InviteToken)
 		token.Id = row[0]
-		token.Email = row[8]
+		token.Email = email
 		db.PutKey("invite-token", token.Id, token)
 
 		user := new(User)
-		name := strings.SplitN(row[7], " ", 2)
-		if len(name) > 0 {
-			user.FirstName = name[0]
-		}
-		if len(name) > 1 {
-			user.LastName = name[1]
-		}
-		user.Email = row[8]
-		user.Id = row[8]
+		user.Id = email
+		user.Email = email
+		user.FirstName = firstName
+		user.LastName = lastName
 
 		address := Address{
 			Line1:      row[12],
 			Line2:      row[13],
-			City:       row[14],
+			City:       city,
 			State:      row[15],
-			PostalCode: row[16],
+			PostalCode: postalCode,
 			Country:    row[17],
 		}
 
@@ -407,6 +430,6 @@ func Install(db *datastore.Datastore) {
 		user.BillingAddress = address
 
 		db.PutKey("user", user.Email, user)
-		log.Printf("User %#v\nPerk %#v\nInviteToken: %#v", user, perk, token)
+		log.Debug("User %#v\nPerk %#v\nInviteToken: %#v", user, perk, token)
 	}
 }
