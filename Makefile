@@ -15,12 +15,20 @@ modules 	    = crowdstart.io/platform \
 				  crowdstart.io/store
 
 gae_token 	    = 1/DLPZCHjjCkiegGp0SiIvkWmtZcUNl15JlOg4qB0-1r0MEudVrK5jSpoR30zcRFq6
-gae_yaml  	    = dispatch.yaml \
-				  app.yaml \
-				  platform/app.yaml \
-				  api/app.yaml \
-				  store/app.yaml \
-				  checkout/app.yaml
+
+gae_dev_yaml    = config/dev/dispatch.yaml \
+				  config/dev/app.yaml \
+				  platform/app.dev.yaml \
+				  api/app.dev.yaml \
+				  store/app.dev.yaml \
+				  checkout/app.dev.yaml
+
+gae_prod_yaml  	= config/prod/dispatch.yaml \
+				  config/prod/app.yaml \
+				  platform/app.prod.yaml \
+				  api/app.prod.yaml \
+				  store/app.prod.yaml \
+				  checkout/app.prod.yaml
 
 tools = github.com/nsf/gocode \
         code.google.com/p/go.tools/cmd/goimports \
@@ -77,7 +85,7 @@ install-deps:
 	chmod +x $(sdk_path)/gopath/bin/go
 
 serve:
-	$(sdk_path)/dev_appserver.py --max_module_instances=1 $(gae_yaml)
+	$(sdk_path)/dev_appserver.py --max_module_instances=1 $(gae_dev_yaml)
 
 tools:
 	goapp get $(tools) && \
@@ -94,15 +102,7 @@ deploy: test
 	goapp run deploy.go
 
 deploy-appengine: assets
-	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) rollback app.yaml && \
-	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) rollback api/app.yaml && \
-	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) rollback checkout/app.yaml && \
-	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) rollback store/app.yaml && \
-	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update app.yaml && \
-	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update platform/app.yaml && \
-	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update api/app.yaml && \
-	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update checkout/app.yaml && \
-	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update store/app.yaml && \
-	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update_dispatch .
+	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) rollback $(gae_prod_yaml)
+	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update_dispatch config/prod
 
 .PHONY: all assets assets-deps build deploy deps test serve tools
