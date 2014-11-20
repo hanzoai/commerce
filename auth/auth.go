@@ -1,11 +1,12 @@
 package auth
 
 import (
+	"log"
+
 	"code.google.com/p/go.crypto/bcrypt"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
 	"github.com/gin-gonic/gin"
-	"log"
 )
 
 // const sessionName = "crowdstartLogin"
@@ -44,10 +45,6 @@ func VerifyUser(c *gin.Context) error {
 	}
 
 	return Set(c, loginKey, f.Email) // sets the loginKey value to the user id
-}
-
-func GetUsername(c *gin.Context) (string, error) {
-	return Get(c, loginKey)
 }
 
 func Logout(c *gin.Context) {
