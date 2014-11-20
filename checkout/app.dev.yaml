@@ -1,0 +1,10 @@
+application: crowdstart-io-dev
+module: checkout
+
+runtime: go
+api_version: go1
+threadsafe: true
+
+handlers:
+- url: /checkout/.*
+  script: _go_app

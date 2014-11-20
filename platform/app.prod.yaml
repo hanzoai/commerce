@@ -1,6 +1,6 @@
 application: crowdstart-io
-module: checkout
-version: v10
+module: platform
+version: v1
 
 runtime: go
 api_version: go1
@@ -11,5 +11,5 @@ automatic_scaling:
   min_idle_instances: 1
 
 handlers:
-- url: /checkout/.*
+- url: /.*
   script: _go_app
