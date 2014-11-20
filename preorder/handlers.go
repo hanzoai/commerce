@@ -10,10 +10,11 @@ import (
 
 func Get(c *gin.Context) {
 	db := datastore.New(c)
-	slug := c.Params.ByName("slug")
+	token := c.Params.ByName("token")
 
+	// Should use token to lookup email
 	user := new(models.User)
-	db.GetKey("user", slug, user)
+	db.GetKey("user", token, user)
 
 	log.Printf("%#v", user)
 	template.Render(c, "preorder.html", "user", user)
