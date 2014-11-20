@@ -6,7 +6,7 @@ import (
 )
 
 func init() {
-	router := router.New(config.Get().PrefixFor("/preorder/"))
+	router := router.New(config.Get().PrefixFor("preorder"))
 
-	router.GET("/preorder/:slug", Get)
+	router.GET("/:token", Get)
 }
