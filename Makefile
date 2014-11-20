@@ -23,8 +23,7 @@ gae_dev_yaml    = config/dev/dispatch.yaml \
 				  store/app.dev.yaml \
 				  checkout/app.dev.yaml
 
-gae_prod_yaml  	= config/prod/dispatch.yaml \
-				  config/prod/app.yaml \
+gae_prod_yaml  	= config/prod/app.yaml \
 				  platform/app.prod.yaml \
 				  api/app.prod.yaml \
 				  store/app.prod.yaml \
