@@ -5,6 +5,7 @@
     <link rel="stylesheet" type="text/css" href="/css/preorder.css">
     <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Michroma:400,400italic,700normal,700italic|PT+Serif:400,400italic,700normal,700italic"/>
     <script type="text/javascript" src="/js/jquery.min.js"></script>
+    <script type="text/javascript" src="/js/card.js"></script>
     <script src="//use.typekit.net/uye2ojv.js"></script>
     <script type="text/javascript">try{Typekit.load();}catch(e){}</script>
   </head>
@@ -141,16 +142,21 @@
             if (this != window) {
               // Validate current input
               var el = $(this);
-              var val;
-              var number = val = parseInt(el.val(), 10);
-              number = isNaN(number) ? 0 : number;
-              if (number < 0) {
-                number = 0;
-              } else if (number > 999) {
-                number = 999;
-              }
-              if (number != 0 && ""+number !== val) {
-                el.val(number);
+              var val = el.val();
+              // Cancel if too long
+              if (val.length >= 3) {
+                return false;
+              } else if (val.length > 0) {
+                var number = parseInt(val, 10);
+                number = isNaN(number) ? 0 : number;
+                if (number < 0) {
+                  number = 0;
+                } else if (number > 999) {
+                  number = 999;
+                }
+                if ("" + number !== val) {
+                  el.val(number);
+                }
               }
             }
 
@@ -193,7 +199,7 @@
             }
 
             variantEl.find('input[type=text]').on('click', activateInput);
-            variantEl.find('input#quantity').on('keypress', numericOnly).on('change keyup keypress', count);
+            variantEl.find('input#quantity').payment('restrictNumeric').on('change keyup keypress', count);
             variantEl.find('button.add').on('click', append);
             $(selector).find('.form').append(variantEl);
             return false;
