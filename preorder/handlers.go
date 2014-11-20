@@ -3,9 +3,9 @@ package preorder
 import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
+	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
 	"github.com/gin-gonic/gin"
-	"log"
 )
 
 func Get(c *gin.Context) {
@@ -16,6 +16,10 @@ func Get(c *gin.Context) {
 	user := new(models.User)
 	db.GetKey("user", token, user)
 
-	log.Printf("%#v", user)
+	log.Debug("%#v", user)
 	template.Render(c, "preorder.html", "user", user)
+}
+
+func Login(c *gin.Context) {
+	template.Render(c, "login.html")
 }
