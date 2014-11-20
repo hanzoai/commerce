@@ -127,8 +127,34 @@
 
         var total = 20; //populate from db
 
+        function numericOnly(e) {
+          return ( e.ctrlKey || e.altKey
+                    || (47<e.keyCode && e.keyCode<58 && !e.shiftKey)
+                    || (95<e.keyCode && e.keyCode<106)
+                    || (e.keyCode===8) || (e.keyCode===9)
+                    || (e.keyCode>34 && e.keyCode<40)
+                    || (e.keyCode===46));
+        }
+
         function countFunc(selector) {
           return function() {
+            if (this != window) {
+              // Validate current input
+              var el = $(this);
+              var val;
+              var number = val = parseInt(el.val(), 10);
+              number = isNaN(number) ? 0 : number;
+              if (number < 0) {
+                number = 0;
+              } else if (number > 999) {
+                number = 999;
+              }
+              if (number != 0 && ""+number !== val) {
+                el.val(number);
+              }
+            }
+
+            // Start looping over everything else
             var itemEl = $(selector);
             var counterEl = itemEl.find('.counter');
 
@@ -167,7 +193,7 @@
             }
 
             variantEl.find('input[type=text]').on('click', activateInput);
-            variantEl.find('input#quantity').on('change keyup', count);
+            variantEl.find('input#quantity').on('keypress', numericOnly).on('change keyup keypress', count);
             variantEl.find('button.add').on('click', append);
             $(selector).find('.form').append(variantEl);
             return false;
