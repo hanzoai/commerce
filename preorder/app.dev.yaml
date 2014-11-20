@@ -1,0 +1,13 @@
+application: crowdstart-io-dev
+module: preorder
+
+runtime: go
+api_version: go1
+threadsafe: true
+
+handlers:
+- url: /preorder/.*
+  script: _go_app
+
+inbound_services:
+- warmup
