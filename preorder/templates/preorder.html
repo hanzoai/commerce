@@ -118,10 +118,12 @@
     <script type="text/javascript">
       $(document).ready(function(){
         function activateInput() {
-          $(this).addClass('active').val('').off('click');
+          if(!$(this).hasClass('active')) {
+            $(this).addClass('active').val('').off('click');
+          }
         }
 
-        $('input').on('click', activateInput);
+        $('input[type=text]').on('click', activateInput);
 
         var total = 20; //populate from db
 
@@ -164,7 +166,7 @@
               variantEl.append(subButtonEl);
             }
 
-            variantEl.find('input').on('click', activateInput);
+            variantEl.find('input[type=text]').on('click', activateInput);
             variantEl.find('input#quantity').on('change keyup', count);
             variantEl.find('button.add').on('click', append);
             $(selector).find('.form').append(variantEl);
@@ -190,6 +192,7 @@
     <option value="M">M</option>\
     <option value="L">L</option>\
     <option value="XL">XL</option>\
+    <option value="XXL">XXL</option>\
   </select>\
   <input id="quantity" class="quantity" type="text" value="Qty.">\
   <button class="add">+</button>\
