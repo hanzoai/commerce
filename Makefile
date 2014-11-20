@@ -23,7 +23,7 @@ gae_dev_yaml    = config/dev/dispatch.yaml \
 				  store/app.dev.yaml \
 				  checkout/app.dev.yaml
 
-gae_prod_yaml  	= config/prod/app.yaml \
+gae_prod_yaml  	= config/prod \
 				  platform/app.prod.yaml \
 				  api/app.prod.yaml \
 				  store/app.prod.yaml \
@@ -102,6 +102,7 @@ deploy: test
 
 deploy-appengine: assets
 	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) rollback $(gae_prod_yaml)
+	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update $(gae_prod_yaml)
 	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update_dispatch config/prod
 
 .PHONY: all assets assets-deps build deploy deps test serve tools
