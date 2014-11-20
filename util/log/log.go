@@ -14,7 +14,12 @@ type Logger struct {
 
 // Set app engine context if passed one
 func (l *Logger) setContext(args ...interface{}) {
+	if len(args) == 0 {
+		return
+	}
+
 	ctx := args[len(args)-1]
+
 	switch ctx := ctx.(type) {
 	case appengine.Context:
 		l.appengineBackend.context = ctx
@@ -39,7 +44,7 @@ func (b AppengineBackend) Log(level logging.Level, calldepth int, record *loggin
 			b.context.Errorf(formatted)
 		case logging.INFO:
 			b.context.Infof(formatted)
-		case logging.NOTICE, logging.DEBUG:
+		default:
 			b.context.Debugf(formatted)
 		}
 	} else {
@@ -79,25 +84,31 @@ func New() *Logger {
 var std = New()
 
 func Debug(format string, args ...interface{}) {
+	std.setContext(args...)
 	std.Debug(format, args...)
 }
 
 func Info(format string, args ...interface{}) {
+	std.setContext(args...)
 	std.Info(format, args...)
 }
 
 func Warn(format string, args ...interface{}) {
+	std.setContext(args...)
 	std.Warning(format, args...)
 }
 
 func Error(format string, args ...interface{}) {
+	std.setContext(args...)
 	std.Error(format, args...)
 }
 
 func Fatal(format string, args ...interface{}) {
+	std.setContext(args...)
 	std.Fatalf(format, args...)
 }
 
 func Panic(format string, args ...interface{}) {
-	std.Panicf(format, args)
+	std.setContext(args...)
+	std.Panicf(format, args...)
 }
