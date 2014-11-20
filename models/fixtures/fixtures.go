@@ -359,7 +359,7 @@ func Install(db *datastore.Datastore) {
 		}
 
 		// Only save first 100 in production
-		if config.Get().Development && i > 100 {
+		if config.Get().Development && i > 25 {
 			break
 		}
 
