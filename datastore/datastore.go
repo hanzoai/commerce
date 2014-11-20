@@ -6,6 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/qedus/nds"
+
+	"crowdstart.io/util/log"
 )
 
 type Datastore struct {
@@ -26,16 +28,24 @@ func New(ctx interface{}) (d *Datastore) {
 func (d *Datastore) Get(key string, value interface{}) error {
 	k, err := DecodeKey(key)
 	if err != nil {
-		d.Context.Errorf("%#v", err)
+		log.Error("%v", err, d.Context)
 		return err
 	}
 
-	return nds.Get(d.Context, k, value)
+	err = nds.Get(d.Context, k, value)
+	if err != nil {
+		log.Error("%v", err, d.Context)
+	}
+	return err
 }
 
 func (d *Datastore) GetKey(kind, key string, value interface{}) error {
 	k := NewKey(d.Context, kind, key, 0, nil)
-	return nds.Get(d.Context, k, value)
+	err := nds.Get(d.Context, k, value)
+	if err != nil {
+		log.Error("%#v", err, d.Context)
+	}
+	return err
 }
 
 func (d *Datastore) GetMulti(keys []string, values []interface{}) error {
