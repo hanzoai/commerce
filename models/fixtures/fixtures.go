@@ -363,6 +363,29 @@ func Install(db *datastore.Datastore) {
 			break
 		}
 
+		// Normalize various bits
+		email := row[8]
+		email = strings.ToLower(email)
+
+		// Da fuq, Indiegogo?
+		postalCode := row[16]
+		postalCode = strings.Trim(postalCode, "=")
+		postalCode = strings.Trim(postalCode, "\"")
+
+		// Title case name
+		name := strings.SplitN(row[7], " ", 2)
+		firstName := ""
+		lastName := ""
+
+		if len(name) > 0 {
+			firstName = strings.Title(strings.ToLower(name[0]))
+		}
+		if len(name) > 1 {
+			lastName = strings.Title(strings.ToLower(name[1]))
+		}
+
+		city := strings.Title(strings.ToLower(row[14]))
+
 		perk := Perk{
 			Id:    row[1],
 			Title: row[10],
@@ -374,32 +397,27 @@ func Install(db *datastore.Datastore) {
 			Status:        row[3],
 			FundingDate:   row[4],
 			PaymentMethod: row[5],
-			Email:         row[8],
+			Email:         email,
 		}
 		db.PutKey("contribution", contribution.Email, &contribution)
 
 		token := new(InviteToken)
 		token.Id = row[0]
-		token.Email = row[8]
+		token.Email = email
 		db.PutKey("invite-token", token.Id, token)
 
 		user := new(User)
-		name := strings.SplitN(row[7], " ", 2)
-		if len(name) > 0 {
-			user.FirstName = name[0]
-		}
-		if len(name) > 1 {
-			user.LastName = name[1]
-		}
-		user.Email = row[8]
-		user.Id = row[8]
+		user.Id = email
+		user.Email = email
+		user.FirstName = firstName
+		user.LastName = lastName
 
 		address := Address{
 			Line1:      row[12],
 			Line2:      row[13],
-			City:       row[14],
+			City:       city,
 			State:      row[15],
-			PostalCode: row[16],
+			PostalCode: postalCode,
 			Country:    row[17],
 		}
 
