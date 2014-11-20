@@ -383,6 +383,11 @@ func Install(db *datastore.Datastore) {
 
 		city := strings.Title(strings.ToLower(row[14]))
 
+		token := new(InviteToken)
+		token.Id = row[0]
+		token.Email = email
+		db.PutKey("invite-token", token.Id, token)
+
 		perk := Perk{
 			Id:    row[1],
 			Title: row[10],
@@ -397,11 +402,6 @@ func Install(db *datastore.Datastore) {
 			Email:         email,
 		}
 		db.PutKey("contribution", contribution.Email, &contribution)
-
-		token := new(InviteToken)
-		token.Id = row[0]
-		token.Email = email
-		db.PutKey("invite-token", token.Id, token)
 
 		user := new(User)
 		user.Id = email
