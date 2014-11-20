@@ -1,0 +1,10 @@
+application: crowdstart-io-dev
+module: platform
+
+runtime: go
+api_version: go1
+threadsafe: true
+
+handlers:
+- url: /admin/.*
+  script: _go_app

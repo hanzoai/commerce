@@ -1,0 +1,38 @@
+application: crowdstart-io
+
+dispatch:
+  - url: "api.*/*"
+    module: api
+
+  - url: "platform.*/*"
+    module: platform
+
+  - url: "store.*/*"
+    module: store
+
+  - url: "secure.*/*"
+    module: checkout
+
+  - url: "*/css/*"
+    module: default
+
+  - url: "*/js/*"
+    module: default
+
+  - url: "*/img/*"
+    module: default
+
+  - url: "*/adminlte/*"
+    module: default
+
+  - url: "*/robots.txt"
+    module: default
+
+  # - url: "*/humans.txt"
+  #   module: default
+
+  - url: "*/favicon.ico"
+    module: default
+
+  # - url: "*/"
+  #   module: default
