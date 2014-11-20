@@ -1,8 +1,9 @@
 package models
 
 import (
-	"github.com/mholt/binding"
 	"net/http"
+
+	"github.com/mholt/binding"
 )
 
 type InviteToken struct {
