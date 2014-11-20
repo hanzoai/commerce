@@ -38,7 +38,10 @@ func (c Config) URLFor(moduleName, domain string) string {
 }
 
 func Defaults() *Config {
-	return new(Config)
+	config := new(Config)
+	config.Hosts = make(map[string]string, 10)
+	config.Prefixes = make(map[string]string, 10)
+	return config
 }
 
 func Development() *Config {
@@ -46,14 +49,16 @@ func Development() *Config {
 	config.AutoCompileAssets = false
 
 	config.Prefixes["api"] = "/v1/"
-	config.Prefixes["store"] = "/"
 	config.Prefixes["checkout"] = "/checkout/"
+	config.Prefixes["platform"] = "/admin/"
 	config.Prefixes["preorder"] = "/preorder/"
+	config.Prefixes["store"] = "/"
 
 	config.Hosts["api"] = "localhost:8080"
-	config.Hosts["store"] = "localhost:8080"
 	config.Hosts["checkout"] = "localhost:8080"
+	config.Hosts["platform"] = "localhost:8080"
 	config.Hosts["preorder"] = "localhost:8080"
+	config.Hosts["store"] = "localhost:8080"
 
 	config.Stripe.ClientId = "ca_53yyPzxlPsdAtzMEIuS2mXYDp4FFXLmm"
 	config.Stripe.APIKey = "pk_test_ucSTeAAtkSXVEg713ir40UhX"
@@ -67,14 +72,16 @@ func Production() *Config {
 	config := Defaults()
 
 	config.Prefixes["api"] = "/v1"
-	config.Prefixes["store"] = "/"
 	config.Prefixes["checkout"] = "/"
+	config.Prefixes["platform"] = "/"
 	config.Prefixes["preorder"] = "/"
+	config.Prefixes["store"] = "/"
 
 	config.Hosts["api"] = "api.crowdstart.io"
-	config.Hosts["store"] = "store.crowdstart.io"
 	config.Hosts["checkout"] = "secure.crowdstart.io"
+	config.Hosts["platform"] = "platform.crowdstart.io"
 	config.Hosts["preorder"] = "preorder.crowdstart.io"
+	config.Hosts["store"] = "store.crowdstart.io"
 
 	config.Stripe.ClientId = "ca_53yyRUNpMtTRUgMlVlLAM3vllY1AVybU"
 	config.Stripe.APIKey = "pk_live_APr2mdiUblcOO4c2qTeyQ3hq"
