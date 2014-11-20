@@ -2,6 +2,7 @@ package config
 
 import (
 	"appengine"
+	"os"
 	"strings"
 )
 
@@ -9,6 +10,7 @@ const demoMode = true
 
 type Config struct {
 	AutoCompileAssets bool
+	RootDir           string
 	Prefixes          map[string]string
 	Hosts             map[string]string
 	Stripe            struct {
@@ -41,6 +43,7 @@ func Defaults() *Config {
 	config := new(Config)
 	config.Hosts = make(map[string]string, 10)
 	config.Prefixes = make(map[string]string, 10)
+	config.RootDir, _ = os.Getwd()
 	return config
 }
 
