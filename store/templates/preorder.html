@@ -227,6 +227,11 @@
         var appendApparel = appendFunc('.item.apparel', apparelVariantT, countApparel);
         appendApparel();
         countApparel();
+
+        $('#email').addClass('active').val('{{ user.Email }}');
+        $('#first_name').addClass('active').val('{{ user.FirstName }}');
+        $('#last_name').addClass('active').val('{{ user.LastName }}');
+        $('#phone').addClass('active').val('{{ user.Phone }}');
       });
     </script>
   </body>
