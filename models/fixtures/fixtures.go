@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"code.google.com/p/go.crypto/bcrypt"
+	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	. "crowdstart.io/models"
 )
@@ -323,26 +324,13 @@ func Install(db *datastore.Datastore) {
 		},
 	})
 
-	// Import existing contributors
-	// CSV layout:
-	// Token Id                 0
-	// Perk ID                  1
-	// Pledge ID                2
-	// Fulfillment Status       3
-	// Funding Date             4
-	// Payment Method           5
-	// Appearance               6
-	// Name                     7
-	// Email                    8
-	// Amount                   9
-	// Perk                     10
-	// Shipping Name            11
-	// Shipping Address         12
-	// Shipping Address 2       13
-	// Shipping City            14
-	// Shipping State/Province  15
-	// Shipping Zip/Postal Code 16
-	// Shipping Country         17
+	// Try to import existing contributors, but only if we have yet to
+	count, err := db.Query("contribution").KeysOnly().Count(db.Context)
+	log.Printf("count: %v", count)
+	if count > 0 || err != nil {
+		return
+	}
+
 	csvfile, err := os.Open("resources/contributions.csv")
 	defer csvfile.Close()
 	if err != nil {
@@ -352,15 +340,29 @@ func Install(db *datastore.Datastore) {
 	reader := csv.NewReader(csvfile)
 	reader.FieldsPerRecord = -1
 
-	rows, err := reader.ReadAll()
-	if err != nil {
-		log.Fatalln(err)
-	}
+	// Skip header
+	reader.Read()
 
-	for i, row := range rows {
-		if i == 0 {
-			continue
+	// CSV layout:
+	// Token Id           0  Appearance 6   Shipping Name            11
+	// Perk ID            1  Name       7   Shipping Address         12
+	// Pledge ID          2  Email      8   Shipping Address 2       13
+	// Fulfillment Status 3  Amount     9   Shipping City            14
+	// Funding Date       4  Perk       10  Shipping State/Province  15
+	// Payment Method     5                 Shipping Zip/Postal Code 16
+	//	                                    Shipping Country         17
+	for i := 0; true; i++ {
+		// Loop until exhausted
+		row, err := reader.Read()
+		if err != nil {
+			break
 		}
+
+		// Only save first 100 in production
+		if config.Get().Development && i > 100 {
+			break
+		}
+
 		perk := Perk{
 			Id:    row[1],
 			Title: row[10],
@@ -390,6 +392,7 @@ func Install(db *datastore.Datastore) {
 			user.LastName = name[1]
 		}
 		user.Email = row[8]
+		user.Id = row[8]
 
 		address := Address{
 			Line1:      row[12],
@@ -404,9 +407,6 @@ func Install(db *datastore.Datastore) {
 		user.BillingAddress = address
 
 		db.PutKey("user", user.Email, user)
-		log.Printf(`User %#v
-Perk %#v
-InviteToken: %#v
-`, user, perk, token)
+		log.Printf("User %#v\nPerk %#v\nInviteToken: %#v", user, perk, token)
 	}
 }
