@@ -15,11 +15,14 @@ import (
 )
 
 func Install(db *datastore.Datastore) {
+	log.Debug("Loading fixtures...")
+
 	pwhash, _ := bcrypt.GenerateFromPassword([]byte("password"), 12)
-	log.Debug("Password: %v", string(pwhash))
+
+	db.GetKey("user", "doesntexist", nil)
 
 	// Default User (SKULLY)
-	key, err := db.PutKey("user", "skully", &User{
+	db.PutKey("user", "skully", &User{
 		Id:           "skully",
 		FirstName:    "Mitchell",
 		LastName:     "Weller",
@@ -30,13 +33,10 @@ func Install(db *datastore.Datastore) {
 	})
 
 	// Default Campaign (SKULLY)
-	key, err = db.PutKey("campaign", "skully", &Campaign{
+	db.PutKey("campaign", "skully", &Campaign{
 		Id:    "skully",
 		Title: "SKULLY AR-1",
 	})
-
-	log.Debug("%#v", err)
-	log.Debug("%#v", key)
 
 	// AR-1
 	variants := []ProductVariant{
@@ -422,6 +422,9 @@ func Install(db *datastore.Datastore) {
 		user.BillingAddress = address
 
 		db.PutKey("user", user.Email, user)
-		log.Debug("User %#v\nPerk %#v\nInviteToken: %#v", user, perk, token)
+
+		log.Debug("User %#v", user)
+		log.Debug("Perk %#v", perk)
+		log.Debug("InviteToken: %#v", token)
 	}
 }
