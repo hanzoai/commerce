@@ -18,7 +18,7 @@
       <div class="instructions">
         <p>Bacon ipsum dolor amet biltong landjaeger swine meatball brisket frankfurter andouille cupim pork chop doner ribeye beef. Jowl andouille sirloin beef. Flank hamburger landjaeger tenderloin ham rump alcatra sausage capicola pork chop beef biltong andouille leberkas jowl. Venison hamburger meatloaf alcatra tri-tip pork belly tenderloin filet mignon beef ribs. Strip steak jerky bresaola, pastrami prosciutto pork loin boudin shankle kielbasa corned beef short loin porchetta biltong tongue. Frankfurter pastrami corned beef, pig leberkas porchetta turkey tongue bacon pancetta ham hock brisket venison ground round pork loin.</p>
       </div>
-      <form name="skully">
+      <form id="skully" name="skully">
         <div class="narrow center shipping">
           <div class="form">
             <input id="email" name="email" class="email" type="text" value="Email Address ex. info@skullysystems.com">
@@ -26,7 +26,7 @@
             <input id="last_name" name="last_name" class="last_name" type="text" value="Last Name ex. Systems">
             <input id="phone" name="phone" class="phone" type="text" value="Phone Number ex. 5-555-555-5555">
             <input id="address1" name="address1" class="address1" type="text" value="Address ex. 555 3rd Street">
-            <input id="address2" name="address2" class="address2" type="text" value="Address 2 ex. Suite 3, Apt#">
+            <input id="address2" name="address2" class="address2 optional" type="text" value="Address 2 ex. Suite 3, Apt#">
             <input id="city" name="city" class="city" type="text" value="City ex. San Francisco">
             <select id="state" name="state" class="state">
               <option value="AL">AL</option>
@@ -250,38 +250,58 @@
         setValue('#state', '{{ user.ShippingAddress.State }}');
         setValue('#postal_code', '{{ user.ShippingAddress.PostalCode }}');
 
-        var validator = new FormValidator("skully", [{
-          name: 'email',
-          rules: 'required|valid_email',
-        }, {
-          name: 'first_name',
-          display: 'first name',
-          rules: 'required',
-        }, {
-          name: 'last_name',
-          display: 'last name',
-          rules: 'required',
-        }, {
-          name: 'phone',
-          rules: 'required|alpha_dash',
-        }, {
-          name: 'address1',
-          display: 'address',
-          rules: 'required',
-        }, {
-          name: 'city',
-          rules: 'required',
-        }, {
-          name: 'postal_code',
-          display: 'postal code',
-          rules: 'required|alpha_dash',
-        }],
-        function(errors, event) {
-          for(var i = 0; i < errors.length; i++) {
-            $('#' + errors[i].id).addClass('fix');
+        $('.submit input[type=submit]').on('click', function(){
+          var ret = true;
+          $('#skully').find('input').each(function() {
+            var el = $(this);
+            if(!(el.hasClass('active') || el.hasClass('optional'))) {
+              el.addClass('fix');
+              ret = false;
+            }
+          });
+          if (ret) {
+            $('#skully').find('input').each(function() {
+              var el = $(this);
+              if (!el.hasClass('active') && el.hasClass('optional')) {
+                el.val('');
+              }
+            });
           }
-        })
-      });
-    </script>
+          return ret;
+        });
+
+        var validator = new FormValidator("skully", [{
+            name: 'email',
+            rules: 'required|valid_email',
+          }, {
+            name: 'first_name',
+            display: 'first name',
+            rules: 'required',
+          }, {
+            name: 'last_name',
+            display: 'last name',
+            rules: 'required',
+          }, {
+            name: 'phone',
+            rules: 'required|alpha_dash',
+          }, {
+            name: 'address1',
+            display: 'address',
+            rules: 'required',
+          }, {
+            name: 'city',
+            rules: 'required',
+          }, {
+            name: 'postal_code',
+            display: 'postal code',
+            rules: 'required|alpha_dash',
+          }],
+          function(errors, event) {
+            for(var i = 0; i < errors.length; i++) {
+              $('#' + errors[i].id).addClass('fix');
+            }
+          })
+        });
+      </script>
   </body>
 </html>
