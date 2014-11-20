@@ -381,17 +381,17 @@ func Install(db *datastore.Datastore) {
 
 		user.Email = row[8]
 
-		address := new(Address)
-		address.Line1 = row[12]
-		address.Line2 = row[13]
-		address.City = row[14]
-		address.State = row[15]
-		address.PostalCode = row[16]
-		address.Country = row[17]
+		address := Address{
+			Line1:      row[12],
+			Line2:      row[13],
+			City:       row[14],
+			State:      row[15],
+			PostalCode: row[16],
+			Country:    row[17],
+		}
 
-		// Not persisted yet
-		// user.ShippingAddress = address
-		// user.BillingAddress = address
+		user.ShippingAddress = address
+		user.BillingAddress = address
 
 		db.PutKey("user", user.Email, user)
 		log.Println("User %v, Perk %v, InviteToken %v", user, perk, token)

@@ -20,8 +20,8 @@ type User struct {
 	Phone           string
 	OrdersIds       []string `schema:"-"`
 	Cart            Cart     `datastore:"-"`
-	BillingAddress  Address  `datastore:"-"`
-	ShippingAddress Address  `datastore:"-"`
+	BillingAddress  Address
+	ShippingAddress Address
 	Email           string
 	Campaigns       []Campaign `schema:"-" datastore:"-"`
 	PasswordHash    []byte     `schema:"-"`
