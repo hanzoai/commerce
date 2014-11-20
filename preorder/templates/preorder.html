@@ -9,8 +9,15 @@
     <script type="text/javascript" src="/js/validate.min.js"></script>
     <script src="//use.typekit.net/uye2ojv.js"></script>
     <script type="text/javascript">try{Typekit.load();}catch(e){}</script>
+    <script>
+      var PreorderData = {
+          user: {{ userJSON | safe}},
+          contributions: {{ contributionsJSON | safe}},
+      };
+    </script>
   </head>
   <body>
+
     <div class="wide center body">
       <div class="content-centered logo">
         <h1>Skully</h1>
