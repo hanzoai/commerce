@@ -1,7 +1,6 @@
 node_modules
 /.cake_task_cache
 data/
-log/
 .sdk
 static/js/store.js
 static/js/checkout.js
