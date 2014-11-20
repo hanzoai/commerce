@@ -252,14 +252,34 @@
 
         var validator = new FormValidator("skully", [{
           name: 'email',
-          rules: 'valid_email',
+          rules: 'required|valid_email',
         }, {
           name: 'first_name',
           display: 'first name',
           rules: 'required',
+        }, {
+          name: 'last_name',
+          display: 'last name',
+          rules: 'required',
+        }, {
+          name: 'phone',
+          rules: 'required|alpha_dash',
+        }, {
+          name: 'address1',
+          display: 'address',
+          rules: 'required',
+        }, {
+          name: 'city',
+          rules: 'required',
+        }, {
+          name: 'postal_code',
+          display: 'postal code',
+          rules: 'required|alpha_dash',
         }],
         function(errors, event) {
-          console.log(errors);
+          for(var i = 0; i < errors.length; i++) {
+            $('#' + errors[i].id).addClass('fix');
+          }
         })
       });
     </script>
