@@ -4,6 +4,7 @@ import (
 	"github.com/flosch/pongo2"
 	"github.com/gin-gonic/gin"
 	"os"
+	"strings"
 )
 
 var cwd, _ = os.Getwd()
@@ -24,7 +25,7 @@ func Render(c *gin.Context, path string, pairs ...interface{}) (err error) {
 	// Create context from pairs
 	ctx := pongo2.Context{}
 
-	for i := 0; i < len(pairs); i=i+2 {
+	for i := 0; i < len(pairs); i = i + 2 {
 		ctx[pairs[i].(string)] = pairs[i+1]
 	}
 
