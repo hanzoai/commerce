@@ -4,7 +4,10 @@ import (
 	"code.google.com/p/go.crypto/bcrypt"
 	"crowdstart.io/datastore"
 	. "crowdstart.io/models"
+	"encoding/csv"
 	"log"
+	"os"
+	"strings"
 )
 
 func Install(db *datastore.Datastore) {
@@ -318,4 +321,75 @@ func Install(db *datastore.Datastore) {
 			},
 		},
 	})
+
+	// Import existing contributors
+	// CSV layout:
+	// Token Id                 0
+	// Perk ID                  1
+	// Pledge ID                2
+	// Fulfillment Status       3
+	// Funding Date             4
+	// Payment Method           5
+	// Appearance               6
+	// Name                     7
+	// Email                    8
+	// Amount                   9
+	// Perk                     10
+	// Shipping Name            11
+	// Shipping Address         12
+	// Shipping Address 2       13
+	// Shipping City            14
+	// Shipping State/Province  15
+	// Shipping Zip/Postal Code 16
+	// Shipping Country         17
+	csvfile, err := os.Open("resources/contributions.csv")
+	defer csvfile.Close()
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	reader := csv.NewReader(csvfile)
+	reader.FieldsPerRecord = -1
+
+	rows, err := reader.ReadAll()
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	for _, row := range rows {
+		perk := new(Perk)
+		perk.Id = row[1]
+		perk.Title = row[10]
+		perk.Status = row[3]
+		perk.FundingDate = row[4]
+		perk.PaymentMethod = row[5]
+		db.PutKey("perk", perk.Id, perk)
+
+		token := new(InviteToken)
+		token.Id = row[0]
+		token.Email = row[8]
+		db.PutKey("invite-token", token.Id, token)
+
+		user := new(User)
+		name := strings.SplitN(row[7], " ", 2)
+		user.FirstName = name[0]
+		user.LastName = name[1]
+		user.Email = row[8]
+
+		address := new(Address)
+		address.Line1 = row[12]
+		address.Line2 = row[13]
+		address.City = row[14]
+		address.State = row[15]
+		address.PostalCode = row[16]
+		address.Country = row[17]
+
+		// Not persisted yet
+		// user.ShippingAddress = address
+		// user.BillingAddress = address
+
+		db.PutKey("user", user.Email, user)
+		log.Println("User %v, Perk %v, InviteToken %v", user, perk, token)
+	}
+
 }
