@@ -5,6 +5,11 @@ import (
 	"net/http"
 )
 
+type InviteToken struct {
+	Id    string
+	Email string
+}
+
 type User struct {
 	FieldMapMixin
 	Id              string `schema:"-"`
