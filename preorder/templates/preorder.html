@@ -92,16 +92,7 @@
           </div>
         </div>
         <div class="narrow center perk">
-          <div class="content-centered">
-            <h2 class="underline">Perk: <span>Auto-populate w/perk title</span></h2>
-          </div>
-          <div class="content-centered description">
-            <p class='p1'>Perk description here. Blah blah blah. Please follow format of original perk cards with estimated shipping date down at the bottom. Expand box to accomodate texts if necessary.</p>
-            <br/>
-            <p class='p2'>Estimated Delivery: May 2015 (etc)</p>
-          </div>
         </div>
-        <div class="break-65"></div>
         <div class="narrow center item ar1">
           <div class="content-centered">
             <h2 class="underline">Skully AR-1 color &amp; size <span>(</span><span class="counter"></span><span class="total"></span></h2>
@@ -134,9 +125,11 @@
 
         $('input[type=text]').on('click', activateInput);
 
-        var total = 20; //populate from db
+        // Total from perks
+        var helmetTotal = 0;
+        var gearTotal = 0;
 
-        function countFunc(selector) {
+        function countFunc(selector, total) {
           return function() {
             // Start looping over everything else
             var itemEl = $(selector);
@@ -185,7 +178,49 @@
           return append;
         }
 
-        var subButtonT = '<button class="sub">-</button>'
+        var perkT = '\
+<div class="instance">\
+  <div class="content-centered">\
+    <h2 class="underline">Perk: <span class="title"></span><span class="count"><span></h2>\
+  </div>\
+  <div class="content-centered description">\
+    <p class="p1">Perk description here. Blah blah blah. Please follow format\
+    of original perk cards with estimated shipping date down at the bottom.\
+    Expand box to accomodate texts if necessary.</p>\
+    <br/>\
+    <p class="p2">Estimated Delivery: May 2015 (etc)</p>\
+  </div>\
+  <div class="break-65"></div>\
+  </div>';
+
+        function setText(el, selector, data) {
+          el.find(selector).text(data);
+        }
+
+        function processPerks() {
+          var perkMap = {};
+          for(var i = 0; i < PreorderData.contributions.length; i++) {
+            var contribution = PreorderData.contributions[i];
+            var perk = perkMap[contribution.Perk.Id];
+            if (!perk) {
+              var perkEl = $(perkT);
+              setText(perkEl, 'h2 span.title', contribution.Perk.Title);
+              setText(perkEl, 'p.p1', contribution.Perk.Description);
+              setText(perkEl, 'p.p2', contribution.Perk.EstimatedDelivery);
+              perkMap[contribution.Perk.Id] = { el: perkEl, count: 1 };
+              $('.perk').append(perkEl);
+            } else {
+              perk.count++;
+              setText(perkEl, 'h2 span.count', ' x' + perk.count);
+            }
+            helmetTotal += parseInt(contribution.Perk.HelmetQuantity, 10);
+            gearTotal += parseInt(contribution.Perk.GearQuantity, 10);
+          }
+        }
+
+        processPerks();
+
+        var subButtonT = '<button class="sub">-</button>';
 
         // AR 1 stuff, refactor
         var ar1VariantT = '\
@@ -205,7 +240,7 @@
   <button class="add">+</button>\
 </div>';
 
-        var countAr1 = countFunc('.item.ar1');
+        var countAr1 = countFunc('.item.ar1', helmetTotal);
         var appendAr1 = appendFunc('.item.ar1', ar1VariantT, countAr1);
         appendAr1();
         countAr1();
@@ -231,9 +266,9 @@
   </select>\
   <input id="quantity" name="quantity" class="quantity" type="text"  maxlength="2" value="Qty.">\
   <button class="add">+</button>\
-  </div>';
+</div>';
 
-        var countApparel = countFunc('.item.apparel');
+        var countApparel = countFunc('.item.apparel', gearTotal);
         var appendApparel = appendFunc('.item.apparel', apparelVariantT, countApparel);
         appendApparel();
         countApparel();
@@ -253,15 +288,6 @@
         setValue('#city', PreorderData.user.ShippingAddress.City);
         setValue('#state', PreorderData.user.ShippingAddress.State);
         setValue('#postal_code', PreorderData.user.ShippingAddress.PostalCode);
-
-        function setText(selector, data) {
-          $(selector).text(data);
-        }
-
-        var contribution = PreorderData.contributions[0];
-        setText('.perk h2 span', contribution.Perk.Title);
-        setText('.perk p.p1', contribution.Perk.Description);
-        setText('.perk p.p2', contribution.Perk.EstimatedDelivery);
 
         $('.submit input[type=submit]').on('click', function(){
           var ret = true;
