@@ -90,6 +90,9 @@ install-deps:
 serve:
 	$(sdk_path)/dev_appserver.py --max_module_instances=1 $(gae_dev_yaml)
 
+serve-clear-datastore:
+	$(sdk_path)/dev_appserver.py --max_module_instances=1 --clear_datastore=true $(gae_dev_yaml)
+
 tools:
 	goapp get $(tools) && \
 	goapp install $(tools) && \
