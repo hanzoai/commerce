@@ -61,23 +61,25 @@ func New() *Logger {
 		"%{color}%{level:.5s} %{shortfile} %{longfunc} %{color:reset}%{message}",
 	)
 
+	// appengineFormat := logging.MustStringFormatter(
+	// 	"%{color}%{shortfile} %{longfunc} %{color:reset}%{message}",
+	// )
+
 	backend := new(AppengineBackend)
 	log.appengineBackend = backend
 
-	// For messages written to backend2 we want to add some additional
-	// information to the output, including the used log level and the name of
-	// the function.
 	defaultBackend := logging.NewBackendFormatter(backend, format)
 
+	// Don't use a specific app engine backend yet
+	// appengineBackend := logging.NewBackendFormatter(backend, appengineFormat)
+
 	// Only errors and more severe messages should be sent to backend1
-	errorBackend := logging.AddModuleLevel(backend)
-	errorBackend.SetLevel(logging.ERROR, "")
+	// errorBackend := logging.AddModuleLevel(backend)
+	// errorBackend.SetLevel(logging.ERROR, "")
 
 	// Set the backends to be used.
-	multiBackend := logging.SetBackend(defaultBackend, errorBackend)
-
+	multiBackend := logging.SetBackend(defaultBackend)
 	log.SetBackend(multiBackend)
-
 	return log
 }
 
