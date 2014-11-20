@@ -25,12 +25,8 @@ gae_dev_yaml    = config/dev/dispatch.yaml \
 				  store/app.dev.yaml \
 				  checkout/app.dev.yaml
 
-<<<<<<< HEAD
 gae_prod_yaml  	= config/prod/dispatch.yaml \
 				  config/prod/app.yaml \
-=======
-gae_prod_yaml  	= config/prod \
->>>>>>> 0f7330051b1180c5f291ee9b20558348f0609db2
 				  platform/app.prod.yaml \
 				  api/app.prod.yaml \
 				  preorder/app.prod.yaml \
