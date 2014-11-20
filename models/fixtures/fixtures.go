@@ -372,8 +372,13 @@ func Install(db *datastore.Datastore) {
 
 		user := new(User)
 		name := strings.SplitN(row[7], " ", 2)
-		user.FirstName = name[0]
-		user.LastName = name[1]
+		if len(name) > 0 {
+			user.FirstName = name[0]
+		}
+		if len(name) > 1 {
+			user.LastName = name[1]
+		}
+
 		user.Email = row[8]
 
 		address := new(Address)
