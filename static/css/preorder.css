@@ -82,6 +82,10 @@ h1 {
   margin-bottom: 10px
 }
 
+.perk p.p1 {
+  text-align: justify
+}
+
 h2 {
   font-size: 22px;
   text-transform: uppercase
