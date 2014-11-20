@@ -1,5 +1,5 @@
 application: crowdstart-io
-module: api
+module: preorder
 version: v11
 
 runtime: go
@@ -11,6 +11,8 @@ automatic_scaling:
   min_idle_instances: 1
 
 handlers:
-- url: /v1/.*
+- url: /.*
   script: _go_app
-  login: required
+
+inbound_services:
+- warmup
