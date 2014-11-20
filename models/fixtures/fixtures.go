@@ -15,9 +15,8 @@ import (
 )
 
 func Install(db *datastore.Datastore) {
-	log.Debug("Fixtures")
 	pwhash, _ := bcrypt.GenerateFromPassword([]byte("password"), 12)
-	log.Debug(string(pwhash))
+	log.Debug("Password: %v", string(pwhash))
 
 	// Default User (SKULLY)
 	key, err := db.PutKey("user", "skully", &User{
@@ -29,13 +28,6 @@ func Install(db *datastore.Datastore) {
 		OrdersIds:    []string{},
 		PasswordHash: pwhash,
 	})
-
-	log.Debug("%#v", err)
-	log.Debug("%#v", key)
-
-	var users []User
-	db.Query("user").GetAll(db.Context, &users)
-	log.Debug("%#v", users)
 
 	// Default Campaign (SKULLY)
 	key, err = db.PutKey("campaign", "skully", &Campaign{
