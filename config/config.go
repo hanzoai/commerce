@@ -9,6 +9,8 @@ import (
 const demoMode = true
 
 type Config struct {
+	Development       bool
+	Production        bool
 	AutoCompileAssets bool
 	RootDir           string
 	Prefixes          map[string]string
@@ -50,6 +52,7 @@ func Defaults() *Config {
 func Development() *Config {
 	config := Defaults()
 	config.AutoCompileAssets = false
+	config.Development = true
 
 	config.Prefixes["api"] = "/v1/"
 	config.Prefixes["checkout"] = "/checkout/"
@@ -73,6 +76,8 @@ func Development() *Config {
 
 func Production() *Config {
 	config := Defaults()
+
+	config.Production = true
 
 	config.Prefixes["api"] = "/v1"
 	config.Prefixes["checkout"] = "/"
