@@ -139,27 +139,6 @@
 
         function countFunc(selector) {
           return function() {
-            if (this != window) {
-              // Validate current input
-              var el = $(this);
-              var val = el.val();
-              // Cancel if too long
-              if (val.length >= 3) {
-                return false;
-              } else if (val.length > 0) {
-                var number = parseInt(val, 10);
-                number = isNaN(number) ? 0 : number;
-                if (number < 0) {
-                  number = 0;
-                } else if (number > 999) {
-                  number = 999;
-                }
-                if ("" + number !== val) {
-                  el.val(number);
-                }
-              }
-            }
-
             // Start looping over everything else
             var itemEl = $(selector);
             var counterEl = itemEl.find('.counter');
@@ -226,7 +205,7 @@
     <option value="XL">XL</option>\
     <option value="XXL">XXL</option>\
   </select>\
-  <input id="quantity" class="quantity" type="text" value="Qty.">\
+  <input id="quantity" class="quantity" type="text" maxlength="2" value="Qty.">\
   <button class="add">+</button>\
 </div>';
 
@@ -254,7 +233,7 @@
     <option value="L">L</option>\
     <option value="XL">XL</option>\
   </select>\
-  <input id="quantity" class="quantity" type="text" value="Qty.">\
+  <input id="quantity" class="quantity" type="text"  maxlength="2" value="Qty.">\
   <button class="add">+</button>\
   </div>';
 
