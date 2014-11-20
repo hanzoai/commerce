@@ -29,13 +29,9 @@ func Get(c *gin.Context) {
 	}
 
 	// Find all of a user's contributions
-	contributions := make([]models.Contribution, 1)
+	contributions := new([]models.Contribution)
 	if _, err := db.Query("contribution").Filter("Email =", user.Email).GetAll(db.Context, contributions); err != nil {
 		log.Panic("Failed to find contributions: %v", err)
-	}
-
-	if len(contributions) == 0 {
-		log.Panic("No contributions found.")
 	}
 
 	userJSON := json.Encode(user)

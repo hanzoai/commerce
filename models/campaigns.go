@@ -48,9 +48,11 @@ type Campaign struct {
 }
 
 type Perk struct {
-	Id          string
-	Title       string
-	Description string
+	Id                string
+	Title             string
+	Description       string
+	Price             string
+	EstimatedDelivery string
 }
 
 type Contribution struct {
