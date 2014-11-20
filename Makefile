@@ -11,7 +11,7 @@ gopath_pkg_path = $(gopath)/pkg/$(platform)_appengine/
 deps 		    = $(shell cat Godeps | cut -d ' ' -f 1)
 modules 	    = crowdstart.io/platform \
 				  crowdstart.io/api \
-				  crowdstate.io/preorder \
+				  crowdstart.io/preorder \
 				  crowdstart.io/checkout \
 				  crowdstart.io/store
 

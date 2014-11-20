@@ -1,11 +1,12 @@
 package preorder
 
 import (
+	"crowdstart.io/config"
 	"crowdstart.io/util/router"
 )
 
 func init() {
-	router := router.New("/")
+	router := router.New(config.Get().PrefixFor("/preorder/"))
 
 	router.GET("/preorder/:slug", Get)
 }
