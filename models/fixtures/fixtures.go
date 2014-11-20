@@ -481,7 +481,7 @@ func Install(db *datastore.Datastore) {
 			PaymentMethod: row[5],
 			Email:         email,
 		}
-		db.PutKey("contribution", contribution.Email, &contribution)
+		db.Put("contribution", &contribution)
 
 		// Create user
 		user := new(User)
