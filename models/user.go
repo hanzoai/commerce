@@ -6,8 +6,10 @@ import (
 )
 
 type InviteToken struct {
-	Id    string
-	Email string
+	Id      string
+	Email   string
+	Used    bool
+	Expired bool
 }
 
 type User struct {

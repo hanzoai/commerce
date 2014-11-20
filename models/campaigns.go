@@ -46,3 +46,11 @@ type Campaign struct {
 	FacebookTag     string
 	Links           []string
 }
+
+type Perk struct {
+	Id            string
+	Title         string
+	FundingDate   string
+	PaymentMethod string
+	Status        string
+}
