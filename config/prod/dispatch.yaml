@@ -7,6 +7,9 @@ dispatch:
   - url: "platform.crowdstart.io/*"
     module: platform
 
+  - url: "preorder.crowdstart.io/*"
+    module: preorder
+
   - url: "store.crowdstart.io/*"
     module: store
 

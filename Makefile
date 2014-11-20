@@ -11,6 +11,7 @@ gopath_pkg_path = $(gopath)/pkg/$(platform)_appengine/
 deps 		    = $(shell cat Godeps | cut -d ' ' -f 1)
 modules 	    = crowdstart.io/platform \
 				  crowdstart.io/api \
+				  crowdstate.io/preorder \
 				  crowdstart.io/checkout \
 				  crowdstart.io/store
 
@@ -20,12 +21,15 @@ gae_dev_yaml    = config/dev/dispatch.yaml \
 				  config/dev/app.yaml \
 				  platform/app.dev.yaml \
 				  api/app.dev.yaml \
+				  preorder/app.dev.yaml \
 				  store/app.dev.yaml \
 				  checkout/app.dev.yaml
 
-gae_prod_yaml  	= config/prod/app.yaml \
+gae_prod_yaml  	= config/prod/dispatch.yaml \
+				  config/prod/app.yaml \
 				  platform/app.prod.yaml \
 				  api/app.prod.yaml \
+				  preorder/app.prod.yaml \
 				  store/app.prod.yaml \
 				  checkout/app.prod.yaml
 
