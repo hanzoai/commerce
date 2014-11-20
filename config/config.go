@@ -20,9 +20,13 @@ type Config struct {
 	}
 }
 
+func (c Config) PrefixFor(moduleName string) string {
+	return c.Prefixes[moduleName]
+}
+
 func (c Config) URLFor(moduleName, domain string) string {
 	// Build URL for module.
-	url := c.Hosts[moduleName] + c.Prefixes[moduleName]
+	url := c.Hosts[moduleName] + c.PrefixFor(moduleName)
 
 	// If module is hosted, return relative to that root domain.
 	if domain != "" {
