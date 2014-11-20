@@ -8,6 +8,3 @@ threadsafe: true
 handlers:
 - url: /preorder/.*
   script: _go_app
-
-inbound_services:
-- warmup
