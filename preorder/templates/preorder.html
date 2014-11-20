@@ -5,6 +5,7 @@
     <link rel="stylesheet" type="text/css" href="/css/preorder.css">
     <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Michroma:400,400italic,700normal,700italic|PT+Serif:400,400italic,700normal,700italic"/>
     <script type="text/javascript" src="/js/jquery.min.js"></script>
+    <script type="text/javascript" src="/js/card.js"></script>
     <script src="//use.typekit.net/uye2ojv.js"></script>
     <script type="text/javascript">try{Typekit.load();}catch(e){}</script>
   </head>
@@ -127,8 +128,18 @@
 
         var total = 20; //populate from db
 
+        function numericOnly(e) {
+          return ( e.ctrlKey || e.altKey
+                    || (47<e.keyCode && e.keyCode<58 && !e.shiftKey)
+                    || (95<e.keyCode && e.keyCode<106)
+                    || (e.keyCode===8) || (e.keyCode===9)
+                    || (e.keyCode>34 && e.keyCode<40)
+                    || (e.keyCode===46));
+        }
+
         function countFunc(selector) {
           return function() {
+            // Start looping over everything else
             var itemEl = $(selector);
             var counterEl = itemEl.find('.counter');
 
@@ -167,7 +178,7 @@
             }
 
             variantEl.find('input[type=text]').on('click', activateInput);
-            variantEl.find('input#quantity').on('change keyup', count);
+            variantEl.find('input#quantity').payment('restrictNumeric').on('change keyup keypress', count);
             variantEl.find('button.add').on('click', append);
             $(selector).find('.form').append(variantEl);
             return false;
@@ -194,7 +205,7 @@
     <option value="XL">XL</option>\
     <option value="XXL">XXL</option>\
   </select>\
-  <input id="quantity" class="quantity" type="text" value="Qty.">\
+  <input id="quantity" class="quantity" type="text" maxlength="2" value="Qty.">\
   <button class="add">+</button>\
 </div>';
 
@@ -222,7 +233,7 @@
     <option value="L">L</option>\
     <option value="XL">XL</option>\
   </select>\
-  <input id="quantity" class="quantity" type="text" value="Qty.">\
+  <input id="quantity" class="quantity" type="text"  maxlength="2" value="Qty.">\
   <button class="add">+</button>\
   </div>';
 
