@@ -6,6 +6,7 @@
     <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Michroma:400,400italic,700normal,700italic|PT+Serif:400,400italic,700normal,700italic"/>
     <script type="text/javascript" src="/js/jquery.min.js"></script>
     <script type="text/javascript" src="/js/card.js"></script>
+    <script type="text/javascript" src="/js/validate.min.js"></script>
     <script src="//use.typekit.net/uye2ojv.js"></script>
     <script type="text/javascript">try{Typekit.load();}catch(e){}</script>
   </head>
@@ -17,17 +18,17 @@
       <div class="instructions">
         <p>Bacon ipsum dolor amet biltong landjaeger swine meatball brisket frankfurter andouille cupim pork chop doner ribeye beef. Jowl andouille sirloin beef. Flank hamburger landjaeger tenderloin ham rump alcatra sausage capicola pork chop beef biltong andouille leberkas jowl. Venison hamburger meatloaf alcatra tri-tip pork belly tenderloin filet mignon beef ribs. Strip steak jerky bresaola, pastrami prosciutto pork loin boudin shankle kielbasa corned beef short loin porchetta biltong tongue. Frankfurter pastrami corned beef, pig leberkas porchetta turkey tongue bacon pancetta ham hock brisket venison ground round pork loin.</p>
       </div>
-      <form>
+      <form name="skully">
         <div class="narrow center shipping">
           <div class="form">
-            <input id="email" class="email" type="text" value="Email Address ex. info@skullysystems.com">
-            <input id="first_name" class="first_name" type="text" value="First Name ex. SKULLY">
-            <input id="last_name" class="last_name" type="text" value="Last Name ex. Systems">
-            <input id="phone" class="phone" type="text" value="Phone Number ex. 5-555-555-5555">
-            <input id="address1" class="address1" type="text" value="Address ex. 555 3rd Street">
-            <input id="address2" class="address2" type="text" value="Address 2 ex. Suite 3, Apt#">
-            <input id="city" class="city" type="text" value="City ex. San Francisco">
-            <select id="state" class="state">
+            <input id="email" name="email" class="email" type="text" value="Email Address ex. info@skullysystems.com">
+            <input id="first_name" name="first_name" class="first_name" type="text" value="First Name ex. SKULLY">
+            <input id="last_name" name="last_name" class="last_name" type="text" value="Last Name ex. Systems">
+            <input id="phone" name="phone" class="phone" type="text" value="Phone Number ex. 5-555-555-5555">
+            <input id="address1" name="address1" class="address1" type="text" value="Address ex. 555 3rd Street">
+            <input id="address2" name="address2" class="address2" type="text" value="Address 2 ex. Suite 3, Apt#">
+            <input id="city" name="city" class="city" type="text" value="City ex. San Francisco">
+            <select id="state" name="state" class="state">
               <option value="AL">AL</option>
               <option value="AK">AK</option>
               <option value="AZ">AZ</option>
@@ -80,7 +81,7 @@
               <option value="WI">WI</option>
               <option value="WY">WY</option>
             </select>
-            <input id="postal_code" class="postal_code" type="text" value="Postal Code ex. 94107">
+            <input id="postal_code" name="postal_code" class="postal_code" type="text" value="Postal Code ex. 94107">
           </div>
         </div>
         <div class="narrow center perk">
@@ -127,15 +128,6 @@
         $('input[type=text]').on('click', activateInput);
 
         var total = 20; //populate from db
-
-        function numericOnly(e) {
-          return ( e.ctrlKey || e.altKey
-                    || (47<e.keyCode && e.keyCode<58 && !e.shiftKey)
-                    || (95<e.keyCode && e.keyCode<106)
-                    || (e.keyCode===8) || (e.keyCode===9)
-                    || (e.keyCode>34 && e.keyCode<40)
-                    || (e.keyCode===46));
-        }
 
         function countFunc(selector) {
           return function() {
@@ -191,21 +183,21 @@
         // AR 1 stuff, refactor
         var ar1VariantT = '\
 <div class="row variant">\
-  <select id="color" class="color">\
+  <select id="color" name="color" class="color">\
     <option value="Matte Black">Matte Black</option>\
     <option value="Shinny Black">Shiny Black</option>\
     <option value="Glossy Black">Glossy Black</option>\
     <option value="Dark Black">Dark Black</option>\
     <option value="Super Black">Super Black</option>\
   </select>\
-  <select id="size" class="size">\
+  <select id="size" name="size" class="size">\
     <option value="S">S</option>\
     <option value="M">M</option>\
     <option value="L">L</option>\
     <option value="XL">XL</option>\
     <option value="XXL">XXL</option>\
   </select>\
-  <input id="quantity" class="quantity" type="text" maxlength="2" value="Qty.">\
+  <input id="quantity" name="quantity" class="quantity" type="text" maxlength="2" value="Qty.">\
   <button class="add">+</button>\
 </div>';
 
@@ -216,24 +208,24 @@
 
         var apparelVariantT = '\
 <div class="row variant">\
-  <select id="type" class="type">\
+  <select id="type" name="type" class="type">\
     <option value="Men\'s Shirt">Men\'s Shirt</option>\
     <option value="Women\'s Shirt">Women\'s Shirt</option>\
   </select>\
-  <select id="color" class="color">\
+  <select id="color" name="color" class="color">\
     <option value="Matte Black">Matte Black</option>\
     <option value="Shinny Black">Shiny Black</option>\
     <option value="Glossy Black">Glossy Black</option>\
     <option value="Dark Black">Dark Black</option>\
     <option value="Super Black">Super Black</option>\
   </select>\
-  <select id="size" class="size">\
+  <select id="size" name="size" class="size">\
     <option value="S">S</option>\
     <option value="M">M</option>\
     <option value="L">L</option>\
     <option value="XL">XL</option>\
   </select>\
-  <input id="quantity" class="quantity" type="text"  maxlength="2" value="Qty.">\
+  <input id="quantity" name="quantity" class="quantity" type="text"  maxlength="2" value="Qty.">\
   <button class="add">+</button>\
   </div>';
 
@@ -257,6 +249,18 @@
         setValue('#city', '{{ user.ShippingAddress.City }}');
         setValue('#state', '{{ user.ShippingAddress.State }}');
         setValue('#postal_code', '{{ user.ShippingAddress.PostalCode }}');
+
+        var validator = new FormValidator("skully", [{
+          name: 'email',
+          rules: 'valid_email',
+        }, {
+          name: 'first_name',
+          display: 'first name',
+          rules: 'required',
+        }],
+        function(errors, event) {
+          console.log(errors);
+        })
       });
     </script>
   </body>
