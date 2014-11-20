@@ -1,13 +1,14 @@
 package fixtures
 
 import (
-	"code.google.com/p/go.crypto/bcrypt"
-	"crowdstart.io/datastore"
-	. "crowdstart.io/models"
 	"encoding/csv"
 	"log"
 	"os"
 	"strings"
+
+	"code.google.com/p/go.crypto/bcrypt"
+	"crowdstart.io/datastore"
+	. "crowdstart.io/models"
 )
 
 func Install(db *datastore.Datastore) {
@@ -394,7 +395,7 @@ func Install(db *datastore.Datastore) {
 		user.BillingAddress = address
 
 		db.PutKey("user", user.Email, user)
-		log.Println("User %v, Perk %v, InviteToken %v", user, perk, token)
+		log.Printf("User %#v, Perk %#v, InviteToken %#v", user, perk, token)
 	}
 
 }
