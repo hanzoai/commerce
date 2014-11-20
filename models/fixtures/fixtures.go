@@ -395,7 +395,10 @@ func Install(db *datastore.Datastore) {
 		user.BillingAddress = address
 
 		db.PutKey("user", user.Email, user)
-		log.Printf("User %#v, Perk %#v, InviteToken %#v", user, perk, token)
+		log.Printf(`User %#v
+Perk %#v
+InviteToken: %#v
+`, user, perk, token)
 	}
 
 }
