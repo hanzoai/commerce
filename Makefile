@@ -88,10 +88,10 @@ install-deps:
 	chmod +x $(sdk_path)/gopath/bin/go
 
 serve:
-	$(sdk_path)/dev_appserver.py --datastore_path=.datastore.bin $(gae_dev_yaml)
+	$(sdk_path)/dev_appserver.py --datastore_path=~/.gae_datastore.bin $(gae_dev_yaml)
 
 serve-clear-datastore:
-	$(sdk_path)/dev_appserver.py --datastore_path=.datastore.bin --clear_datastore=true $(gae_dev_yaml)
+	$(sdk_path)/dev_appserver.py --datastore_path=~/.gae_datastore.bin --clear_datastore=true $(gae_dev_yaml)
 
 tools:
 	goapp get $(tools) && \
