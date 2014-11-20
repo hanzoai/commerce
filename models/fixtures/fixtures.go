@@ -357,14 +357,24 @@ func Install(db *datastore.Datastore) {
 		log.Fatalln(err)
 	}
 
-	for _, row := range rows {
-		perk := new(Perk)
-		perk.Id = row[1]
-		perk.Title = row[10]
-		perk.Status = row[3]
-		perk.FundingDate = row[4]
-		perk.PaymentMethod = row[5]
-		db.PutKey("perk", perk.Id, perk)
+	for i, row := range rows {
+		if i == 0 {
+			continue
+		}
+		perk := Perk{
+			Id:    row[1],
+			Title: row[10],
+		}
+		db.PutKey("perk", perk.Id, &perk)
+
+		contribution := Contribution{
+			Perk:          perk,
+			Status:        row[3],
+			FundingDate:   row[4],
+			PaymentMethod: row[5],
+			Email:         row[8],
+		}
+		db.PutKey("contribution", contribution.Email, &contribution)
 
 		token := new(InviteToken)
 		token.Id = row[0]
@@ -379,7 +389,6 @@ func Install(db *datastore.Datastore) {
 		if len(name) > 1 {
 			user.LastName = name[1]
 		}
-
 		user.Email = row[8]
 
 		address := Address{
@@ -400,5 +409,4 @@ Perk %#v
 InviteToken: %#v
 `, user, perk, token)
 	}
-
 }
