@@ -1,6 +1,7 @@
 package preorder
 
 import (
+	"crowdstart.io/auth"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
 	"crowdstart.io/util/json"
@@ -41,6 +42,11 @@ func Get(c *gin.Context) {
 	template.Render(c, "preorder.html", "user", user, "userJSON", userJSON, "contributionsJSON", contributionsJSON)
 }
 
-func Login(c *gin.Context) {
-	template.Render(c, "login.html")
+func SubmitLogin(c *gin.Context) {
+	err := auth.VerifyUser(c)
+	if err != nil {
+		template.Render(c, "login.html", "message", "Invalid username or password")
+	} else {
+		c.Redirect(301, "/preorder")
+	}
 }
