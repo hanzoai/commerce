@@ -23,7 +23,7 @@ func init() {
 	router.GET("/products/:slug", products.Get)
 
 	// Preorder
-	router.GET("/preorder", preorder.Get)
+	router.GET("/preorder/:slug", preorder.Get)
 
 	// Cart
 	router.GET("/cart", cart.Get)
