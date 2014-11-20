@@ -8,5 +8,6 @@ import (
 func init() {
 	router := router.New(config.Get().PrefixFor("preorder"))
 
+	router.GET("/", Login)
 	router.GET("/:token", Get)
 }
