@@ -10,6 +10,9 @@ dispatch:
   - url: "*/checkout/*"
     module: checkout
 
+  - url: "*/preorder/*"
+    module: preorder
+
   - url: "*/css/*"
     module: default
 
@@ -36,3 +39,4 @@ dispatch:
 
   - url: "*/*"
     module: store
+

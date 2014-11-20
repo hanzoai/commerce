@@ -6,7 +6,6 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/fixtures"
 	"crowdstart.io/store/cart"
-	"crowdstart.io/store/preorder"
 	"crowdstart.io/store/products"
 	"crowdstart.io/util/exec"
 	"crowdstart.io/util/fs"
@@ -21,9 +20,6 @@ func init() {
 	router.GET("/", products.List)
 	router.GET("/products", products.List)
 	router.GET("/products/:slug", products.Get)
-
-	// Preorder
-	router.GET("/preorder/:slug", preorder.Get)
 
 	// Cart
 	router.GET("/cart", cart.Get)
