@@ -1,11 +1,16 @@
 package auth
 
 import (
+	"errors"
+
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
-	"errors"
 	"github.com/gin-gonic/gin"
 )
+
+func GetUsername(c *gin.Context) (string, error) {
+	return Get(c, loginKey)
+}
 
 // Retrieves the user id from the session and queries the db for a User object
 func GetUser(c *gin.Context) (user models.User, err error) {
