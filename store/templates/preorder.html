@@ -79,7 +79,7 @@
               <option value="WI">WI</option>
               <option value="WY">WY</option>
             </select>
-            <input id="zip" class="zip" type="text" value="Zip ex. 94107">
+            <input id="postal_code" class="postal_code" type="text" value="Postal Code ex. 94107">
           </div>
         </div>
         <div class="narrow center perk">
@@ -228,10 +228,21 @@
         appendApparel();
         countApparel();
 
-        $('#email').addClass('active').val('{{ user.Email }}');
-        $('#first_name').addClass('active').val('{{ user.FirstName }}');
-        $('#last_name').addClass('active').val('{{ user.LastName }}');
-        $('#phone').addClass('active').val('{{ user.Phone }}');
+        function setValue(selector, data) {
+          if (data != '') {
+            $(selector).addClass('active').val(data);
+          }
+        }
+
+        setValue('#email', '{{ user.Email }}');
+        setValue('#first_name', '{{ user.FirstName }}');
+        setValue('#last_name', '{{ user.LastName }}');
+        setValue('#phone', '{{ user.Phone }}');
+        setValue('#address1', '{{ user.ShippingAddress.Line1 }}');
+        setValue('#address2', '{{ user.ShippingAddress.Line2 }}');
+        setValue('#city', '{{ user.ShippingAddress.City }}');
+        setValue('#state', '{{ user.ShippingAddress.State }}');
+        setValue('#postal_code', '{{ user.ShippingAddress.PostalCode }}');
       });
     </script>
   </body>
