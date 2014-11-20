@@ -1,18 +1,51 @@
 package log
 
 import (
+	"appengine"
 	"github.com/zeekay/go-logging"
 	"log"
 )
 
+// Custom logger
 type Logger struct {
 	logging.Logger
+	appengineBackend *AppengineBackend
 }
 
-type LogBackend struct{}
+// Set app engine context if passed one
+func (l *Logger) setContext(args ...interface{}) {
+	ctx := args[len(args)-1]
+	switch ctx := ctx.(type) {
+	case appengine.Context:
+		l.appengineBackend.context = ctx
+	default:
+		l.appengineBackend.context = nil
+	}
+}
 
-func (b LogBackend) Log(level logging.Level, calldepth int, record *logging.Record) error {
-	log.Println(record.Formatted(calldepth + 2))
+// Custom logger backend that knows about AppEngine
+type AppengineBackend struct {
+	context appengine.Context
+}
+
+func (b AppengineBackend) Log(level logging.Level, calldepth int, record *logging.Record) error {
+	formatted := record.Formatted(calldepth + 2)
+
+	if b.context != nil {
+		switch level {
+		case logging.WARNING:
+			b.context.Warningf(formatted)
+		case logging.ERROR:
+			b.context.Errorf(formatted)
+		case logging.INFO:
+			b.context.Infof(formatted)
+		case logging.NOTICE, logging.DEBUG:
+			b.context.Debugf(formatted)
+		}
+	} else {
+		log.Println(formatted)
+	}
+
 	return nil
 }
 
@@ -23,7 +56,8 @@ func New() *Logger {
 		"%{color}%{level:.5s} %{shortfile} %{longfunc} %{color:reset}%{message}",
 	)
 
-	backend := new(LogBackend)
+	backend := new(AppengineBackend)
+	log.appengineBackend = backend
 
 	// For messages written to backend2 we want to add some additional
 	// information to the output, including the used log level and the name of
@@ -57,7 +91,7 @@ func Warn(format string, args ...interface{}) {
 }
 
 func Error(format string, args ...interface{}) {
-	std.Debug(format, args...)
+	std.Error(format, args...)
 }
 
 func Fatal(format string, args ...interface{}) {
