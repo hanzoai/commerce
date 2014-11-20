@@ -14,6 +14,65 @@ import (
 	. "crowdstart.io/models"
 )
 
+var perks = map[string]Perk{
+	"2123732": Perk{
+		Id:                "2123732",
+		Title:             "SKULLY AR-1",
+		Description:       "Get 1 SKULLY AR-1 Motorcycle helmet at a limited introductory launch price. Free shipping to the United States. Sizes S-XXL in Matte Black or Gloss White. Team SKULLY will email you after the campaign for size and color choices.",
+		Price:             "$1,399 USD",
+		EstimatedDelivery: "May 2015",
+	},
+	"2291929": Perk{
+		Id:                "2291929",
+		Title:             "SKULLY NATION GEAR",
+		Description:       "Join Team SKULLY with a package of official gear: limited edition hat, shirt, and decals. Free shipping to the United States. Shirt sizes S-XXL (available in men’s and women’s cut), Flexfit hat sizes S/M, L/XL. Team SKULLY will email you after the campaign for cut and size choices. *Free w/ AR-1 preorder.",
+		Price:             "$49 USD",
+		EstimatedDelivery: "December 2014",
+	},
+	"2267279": Perk{
+		Id:                "2267279",
+		Title:             "$499 Now and $949 Due at Ship",
+		Description:       "Reserve 1 SKULLY AR-1 Motorcycle helmet with $499 deposit, and $949* due when the AR-1 ships. Sizes S-XXL in Matte Black or Gloss White. Reserved helmets will ship after all regular pre-orders are shipped. No credit check necessary. Free shipping to the United States. *FOR INTERNATIONAL: additional shipping fee of $99.99 USD will apply to the second payment. SKULLY will email after the campaign for size and color choice, and will email you closer to your ship date to collect the second payment.",
+		Price:             "$499 USD",
+		EstimatedDelivery: "July 2015",
+	},
+	"2244337": Perk{
+		Id:                "2244337",
+		Title:             "International SKULLY AR-1",
+		Description:       "Includes international shipping. Get 1 SKULLY AR-1 Motorcycle helmet at our international launch price. If you live outside of the United States, reserve your SKULLY AR-1 here. Sizes S-XXL in Matte Black or Gloss White. Team SKULLY will email you after the campaign for size and color choices.",
+		Price:             "$1,499 USD",
+		EstimatedDelivery: "May 2015",
+	},
+	"2123523": Perk{
+		Id:                "2123523",
+		Title:             "Signature Edition SKULLY AR-1",
+		Description:       "Get 1 Signature Edition SKULLY AR-1 Motorcycle helmet, hand-numbered and signed by CEO Marcus Weller. Sizes S-XXL in Matte Black or Gloss White. Team SKULLY will email you after the campaign for size and color choices.",
+		Price:             "$1,999 USD",
+		EstimatedDelivery: "May 2015",
+	},
+	"2210249": Perk{
+		Id:                "2210249",
+		Title:             "Passenger 2-Pack Deal",
+		Description:       "Get 2 SKULLY AR-1 Motorcycle helmets and save! Sizes S-XXL in Matte Black or Gloss White. Team SKULLY will email you after the campaign for size and color choices.",
+		Price:             "$2,649 USD",
+		EstimatedDelivery: "May 2015",
+	},
+	"2291934": Perk{
+		Id:                "2291934",
+		Title:             "CLUB & DISTRIBUTOR 5 PACK",
+		Description:       "Outfit your crew with 5 SKULLY AR-1s and save even more! Free shipping to the United States. Sizes S-XXL in Matte Black or Gloss White. Team SKULLY will email you after the campaign for size and color choices. *FOR INTERNATIONAL, add $375 USD for shipping.",
+		Price:             "$6,495 USD",
+		EstimatedDelivery: "May 2015",
+	},
+	"2353031": Perk{
+		Id:                "2353031",
+		Title:             "20 AR-1 DISTRIBUTOR PACK",
+		Description:       "Line your store shelves with 20 SKULLY AR-1s for massive savings! Free shipping to the United States. Sizes S-XXL in Matte Black or Gloss White. Team SKULLY will email you after the campaign for size and color choices. *FOR INTERNATIONAL, add $1499 USD for shipping.",
+		Price:             "$24,979 USD",
+		EstimatedDelivery: "May 2015",
+	},
+}
+
 func Install(db *datastore.Datastore) {
 	log.Debug("Loading fixtures...")
 
@@ -383,19 +442,17 @@ func Install(db *datastore.Datastore) {
 
 		city := strings.Title(strings.ToLower(row[14]))
 
+		perkId := row[1]
+
+		// Create token
 		token := new(InviteToken)
 		token.Id = row[0]
 		token.Email = email
 		db.PutKey("invite-token", token.Id, token)
 
-		perk := Perk{
-			Id:    row[1],
-			Title: row[10],
-		}
-		db.PutKey("perk", perk.Id, &perk)
-
+		// Save contribution
 		contribution := Contribution{
-			Perk:          perk,
+			Perk:          perks[perkId],
 			Status:        row[3],
 			FundingDate:   row[4],
 			PaymentMethod: row[5],
@@ -403,6 +460,7 @@ func Install(db *datastore.Datastore) {
 		}
 		db.PutKey("contribution", contribution.Email, &contribution)
 
+		// Create user
 		user := new(User)
 		user.Id = email
 		user.Email = email
@@ -424,7 +482,6 @@ func Install(db *datastore.Datastore) {
 		db.PutKey("user", user.Email, user)
 
 		log.Debug("User %#v", user)
-		log.Debug("Perk %#v", perk)
 		log.Debug("InviteToken: %#v", token)
 	}
 }
