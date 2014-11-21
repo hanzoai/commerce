@@ -57,6 +57,10 @@ func SavePreorder(c *gin.Context) {
 
 	// Update user from form
 	user.PasswordHash = form.User.PasswordHash
+	user.Phone = form.User.Phone
+	user.FirstName = form.User.FirstName
+	user.LastName = form.User.LastName
+	user.ShippingAddress = form.ShippingAddress
 
 	// Save user back to database
 	db.PutKey("user", user.Email, user)
