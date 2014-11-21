@@ -64,8 +64,8 @@ func SavePreorder(c *gin.Context) {
 	c.Redirect(301, "save")
 }
 
-func ThankYou(c *gin.Context) {
-	template.Render(c, "thankyou.html")
+func Thanks(c *gin.Context) {
+	template.Render(c, "thanks.html")
 }
 
 func Index(c *gin.Context) {
@@ -94,7 +94,7 @@ func Login(c *gin.Context) {
 	}
 
 	if err != nil {
-		c.Redirect(301, token.Id)
+		c.Redirect(301, "order/"+token.Id)
 	} else {
 		c.Redirect(301, "/")
 	}
