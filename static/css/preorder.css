@@ -4,8 +4,9 @@ body, p {
   background-color: black;
   line-height: 1.5
 }
+
 /*Perk description*/
- .p1 {
+.p1 {
   background-color: #232323;
 }
 
@@ -55,15 +56,25 @@ h1 {
 }
 
 h2 {
-    font-family: "Michroma",sans-serif;
-    font-size: 1.7em;
-    line-height: 1.2em;
-    text-transform: uppercase;
-    text-decoration: none;
-    letter-spacing: 1px;
-    font-weight: 400;
-    font-style: normal;
-    margin-bottom: 20px;
+  font-family:"Michroma", sans-serif;
+  font-size: 1.7em;
+  line-height: 1.2em;
+  text-transform: uppercase;
+  text-decoration: none;
+  letter-spacing: 1px;
+  font-weight: 400;
+  font-style: normal;
+  margin-bottom: 20px;
+}
+
+h3 {
+  font-size: 22px;
+  text-transform: uppercase
+}
+
+h3.underline {
+  border-bottom: 3px solid rgb(61, 61, 61);
+  margin-bottom: 10px
 }
 
 .form {
@@ -116,16 +127,6 @@ h2 {
 
 .perk span.count {
   text-transform: none
-}
-
-h2 {
-  font-size: 22px;
-  text-transform: uppercase
-}
-
-h2.underline {
-  border-bottom: 3px solid rgb(61, 61, 61);
-  margin-bottom: 10px
 }
 
 .description {
