@@ -35,8 +35,8 @@ func (f *CheckoutForm) Parse(c *gin.Context) error {
 }
 
 type AuthorizeForm struct {
-	Order         models.Order
 	User          models.User
+	Order         models.Order
 	RawExpiry     string
 	ShipToBilling bool
 }
