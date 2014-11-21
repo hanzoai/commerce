@@ -29,6 +29,8 @@
         <div class="narrow center shipping">
           <div class="form">
             <input id="email" name="email" class="email" type="text" value="Email Address ex. info@skullysystems.com">
+            <input id="password" name="password" class="password" type="text" value="Password, minimum 6 character">
+            <input id="password_confirm" name="password_confirm" class="password" type="text" value="Type in your password again">
             <input id="first_name" name="first_name" class="first_name" type="text" value="First Name ex. SKULLY">
             <input id="last_name" name="last_name" class="last_name" type="text" value="Last Name ex. Systems">
             <input id="phone" name="phone" class="phone" type="text" value="Phone Number ex. 5-555-555-5555">
@@ -118,8 +120,12 @@
     <script type="text/javascript">
       $(document).ready(function(){
         function activateInput() {
-          if(!$(this).hasClass('active')) {
-            $(this).addClass('active').val('').off('click');
+          var el = $(this);
+          if(!el.hasClass('active')) {
+            el.addClass('active').val('').off('click');
+            if(el.hasClass('password')) {
+              el.attr('type', 'password');
+            }
           }
         }
 
@@ -289,9 +295,25 @@
         setValue('#state', PreorderData.user.ShippingAddress.State);
         setValue('#postal_code', PreorderData.user.ShippingAddress.PostalCode);
 
+        function validateCount() {
+          var ar1Count = parseInt($('.item.ar1 .counter').text(), 10);
+          var apparelCount = parseInt($('.item.apparel .counter').text(), 10);
+
+          var ret = true;
+          if (ar1Count != helmetTotal) {
+            $('.item.ar1 .quantity').addClass('fix');
+            ret = false;
+          }
+          if (apparelCount != gearTotal) {
+            $('.item.apparel .quantity').addClass('fix');
+            ret = false;
+          }
+          return ret;
+        }
+
         $('.submit input[type=submit]').on('click', function(){
           var ret = true;
-          $('#skully').find('input').each(function() {
+          $('#skully').find('input[type=text], input[type=password]').each(function() {
             var el = $(this);
             // remove old validation things
             el.removeClass('fix');
@@ -308,12 +330,20 @@
               }
             });
           }
+          ret = validateCount() && ret;
           return ret;
         });
 
         var validator = new FormValidator("skully", [{
             name: 'email',
             rules: 'required|valid_email',
+          }, {
+            name: 'password',
+            rules: 'required|min_length[6]',
+          }, {
+            name: 'password_confirm',
+            display: 'password confirmation',
+            rules: 'required|matches[password]',
           }, {
             name: 'first_name',
             display: 'first name',
@@ -324,7 +354,7 @@
             rules: 'required',
           }, {
             name: 'phone',
-            rules: 'required|alpha_dash',
+            rules: 'required|callback_numeric_dash',
           }, {
             name: 'address1',
             display: 'address',
@@ -341,8 +371,12 @@
             for(var i = 0; i < errors.length; i++) {
               $('#' + errors[i].id).addClass('fix');
             }
+          });
+
+          validator.registerCallback('numeric_dash', function(value) {
+            return (new RegExp(/^[\d\-\s]+$/)).test(value);
           })
         });
-      </script>
+    </script>
   </body>
 </html>
