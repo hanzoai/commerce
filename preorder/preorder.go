@@ -14,5 +14,5 @@ func init() {
 	router.GET("/order/:token", GetPreorder)
 	router.POST("/order/save", SavePreorder)
 
-	router.GET("/order/thanks", Thanks)
+	router.GET("/thanks", Thanks)
 }
