@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="stylesheet" type="text/css" href="/css/reset.css">
+    <link rel="stylesheet" type="text/css" href="/css/preorder.css">
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Michroma:400,400italic,700normal,700italic|PT+Serif:400,400italic,700normal,700italic"/>
+
+    <script type="text/javascript" src="/js/jquery.min.js"></script>
+    <script type="text/javascript" src="/js/card.js"></script>
+    <script type="text/javascript" src="/js/validate.min.js"></script>
+    <script src="//use.typekit.net/uye2ojv.js"></script>
+    <script type="text/javascript">try{Typekit.load();}catch(e){}</script>
+
+    <title>{% block title %}{% endblock %}</title>
+  </head>
+  <body>
+
+    <div class="wide center body">
+      <div class="content-centered logo">
+        <h1>Skully</h1>
+      </div>
+
+      {% block content %}{% endblock %}
+    </div>
+
+  </body>
+</html>
