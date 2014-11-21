@@ -6,16 +6,16 @@ api_version: go1
 threadsafe: true
 
 handlers:
-- url: /css/*
+- url: /static/css/*
   static_dir: ../../static/css
 
-- url: /js/*
+- url: /static/js/*
   static_dir: ../../static/js
 
-- url: /img/*
+- url: /static/img/*
   static_dir: ../../static/img
 
-- url: /adminlte/*
+- url: /static/adminlte/*
   static_dir: ../../static/adminlte
 
 - url: /favicon.ico
@@ -29,7 +29,3 @@ handlers:
 - url: /robots.txt
   static_files: static/robots.txt
   upload: ../../static/robots.txt
-
-# - url: /
-#   static_files: static/index.html
-#   upload: static/index.html
