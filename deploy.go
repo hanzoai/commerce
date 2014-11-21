@@ -61,7 +61,7 @@ func run(cmd string, opts ...interface{}) string {
 	}
 
 	out := string(cmdOutput.Bytes())
-	if silent && out != "" {
+	if !silent && out != "" {
 		fmt.Print(out)
 	}
 
