@@ -19,7 +19,7 @@ type PreorderForm struct {
 	ShirtStyle      string `"schema":-`
 	ShirtColor      string `"schema":-`
 	ShirtSize       string `"schema":-`
-	ShirtQuanity    string `"schema":-`
+	ShirtQuantity   string `"schema":-`
 }
 
 func (f *PreorderForm) Parse(c *gin.Context) error {
