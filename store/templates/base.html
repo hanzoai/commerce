@@ -42,7 +42,7 @@
       <link rel="stylesheet" type="text/css" href="//static.squarespace.com/static/sitecss/53dd2a15e4b06cbe07110bd5/553/53fe5418e4b07d15fecd29c9/53fe5419e4b07d15fecd29e3/54/1414178414360/site.css?&noMedia=true&part=4"/>
     <![endif]-->
     <!--[if !IE]> -->
-    <link rel="stylesheet" type="text/css" href="/css/site.css">
+    <link rel="stylesheet" type="text/css" href="{{ staticUrl }}/css/site.css">
     <!-- <![endif]-->
 
     <!--FONTS-->
@@ -106,7 +106,7 @@
 
                         <h1 data-content-field="site-title" class="site-title">
                           <a href="http://www.skullysystems.com/" id="top">
-                            <img src="/img/skully.png" alt="SKULLY AR-1">
+			    <img src="{{ staticUrl }}/img/skully.png" alt="SKULLY AR-1">
                           </a>
                         </h1>
 
@@ -277,17 +277,17 @@
 
 
     <!--SCRIPTS-->
-    <script type="text/javascript" src="/js/yui-min.js"></script>
-    <script type="text/javascript" src="/js/yui-throttle-min.js"></script>
-    <script type="text/javascript" src="/js/common-445c549876bda3f60184d96108576280-min.js"></script>
+    <script type="text/javascript" src="{{ staticUrl }}/js/yui-min.js"></script>
+    <script type="text/javascript" src="{{ staticUrl }}/js/yui-throttle-min.js"></script>
+    <script type="text/javascript" src="{{ staticUrl }}/js/common-445c549876bda3f60184d96108576280-min.js"></script>
     <script>
         window.Y = YUI();
         Squarespace.load(window);
     </script>
-    <script type="text/javascript" src="/js/parallax.js"></script>
-    <script type="text/javascript" src="/js/jquery.min.js"></script>
-    <script type="text/javascript" src="/js/jquery.ba-throttle-debounce.min.js"></script>
-    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/jquery-cookie/1.4.1/jquery.cookie.min.js"></script>
-    <script type="text/javascript" src="/js/store.js"></script>
+    <script type="text/javascript" src="{{ staticUrl }}/js/parallax.js"></script>
+    <script type="text/javascript" src="{{ staticUrl }}/js/jquery.min.js"></script>
+    <script type="text/javascript" src="{{ staticUrl }}/js/jquery.ba-throttle-debounce.min.js"></script>
+    <script type="text/javascript" src="{{ staticUrl }}/js/jquery.cookie.min.js"></script>
+    <script type="text/javascript" src="{{ staticUrl }}/js/store.js"></script>
     {% block js %}{% endblock %}
 </html>
