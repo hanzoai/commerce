@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os/exec"
@@ -46,7 +47,7 @@ func run(cmd string) string {
 
 	out := string(cmdOutput.Bytes())
 	if out != "" {
-		log.Println(out)
+		fmt.Println(out)
 	}
 
 	return out
