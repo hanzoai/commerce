@@ -43,7 +43,7 @@ func (d *Datastore) GetKey(kind, key string, value interface{}) error {
 	k := NewKey(d.Context, kind, key, 0, nil)
 	err := nds.Get(d.Context, k, value)
 	if err != nil {
-		log.Error("%v", err, d.Context)
+		log.Error("%v, %v, %v", kind, key, err, d.Context)
 	}
 	return err
 }
