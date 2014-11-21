@@ -28,6 +28,7 @@ func writeFile(path string, data string) {
 
 func bumpVersion(version string) string {
 	prev, _ := strconv.Atoi(strings.Replace(version, "v", "", 1))
+	log.Println(prev)
 	return "v" + strconv.Itoa(prev+1)
 }
 
