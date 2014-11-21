@@ -12,5 +12,7 @@ func init() {
 	router.POST("/", Login)
 
 	router.GET("/:token", GetPreorder)
-	router.POST("/preorder", SavePreorder)
+	router.POST("/save", SavePreorder)
+
+	router.GET("/thankyou", ThankYou)
 }
