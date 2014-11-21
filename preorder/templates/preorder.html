@@ -1,137 +1,138 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <link rel="stylesheet" type="text/css" href="/css/reset.css">
-    <link rel="stylesheet" type="text/css" href="/css/preorder.css">
-    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Michroma:400,400italic,700normal,700italic|PT+Serif:400,400italic,700normal,700italic"/>
-    <script type="text/javascript" src="/js/jquery.min.js"></script>
-    <script type="text/javascript" src="/js/card.js"></script>
-    <script type="text/javascript" src="/js/validate.min.js"></script>
-    <script src="//use.typekit.net/uye2ojv.js"></script>
-    <script type="text/javascript">try{Typekit.load();}catch(e){}</script>
-    <script>
-      var PreorderData = {
-        user: {{ userJSON | safe }},
-          contributions: {{ contributionsJSON | safe }},
-      };
-    </script>
-    <title>Pre-order &mdash; SKULLY AR-1</title>
-  </head>
-  <body>
+{% extends "base.html" %}
 
-    <div class="wide center body">
+{% block title %}
+Pre-order &mdash; SKULLY AR-1
+{% endblock %}
 
-      <div class="content-centered logo">
-        <h1>Skully</h1>
+{% block head %}
+<script>
+  var PreorderData = {
+    user: {{ userJSON | safe }},
+      contributions: {{ contributionsJSON | safe }},
+  };
+</script>
+{% endblock %}
+
+{% block content %}
+  <div class="instructions">
+    <p>Please enter your shipping and size information below to claim your pre-orders of the AR-1 and apparel package from our Indiegogo campaign.</p>
+  </div>
+
+  <form id="skully" name="skully" action="save" method="post">
+    <div class="narrow center shipping">
+      <div class="form">
+        <input id="email" name="User.Email" class="email" type="text" placeholder="Email Address ex. info@skullysystems.com">
+        <input id="password" name="Password" class="password" type="password" placeholder="Password, minimum 6 character">
+        <input id="password_confirm" name="PasswordConfirm" class="password" type="password" placeholder="Type in your password again">
+        <input id="first_name" name="User.FirstName" class="first_name" type="text" placeholder="First Name ex. SKULLY">
+        <input id="last_name" name="User.LastName" class="last_name" type="text" placeholder="Last Name ex. Systems">
+        <input id="phone" name="User.Phone" class="phone" type="text" placeholder="Phone Number ex. 5-555-555-5555">
+        <input id="address1" name="ShippingAddress.Line1" class="address1" type="text" placeholder="Address ex. 555 3rd Street">
+        <input id="address2" name="ShippingAddress.Line2" class="address2 optional" type="text" placeholder="Address 2 ex. Suite 3, Apt#">
+        <input id="city" name="ShippingAddress.City" class="city" type="text" placeholder="City ex. San Francisco">
+
+        <select id="state" name="ShippingAddress.State" class="state">
+          <option value="Alabama">AL</option>
+          <option value="Alaska">AK</option>
+          <option value="Arizona">AZ</option>
+          <option value="Arkansas">AR</option>
+          <option value="California">CA</option>
+          <option value="Colorado">CO</option>
+          <option value="Connecticut">CT</option>
+          <option value="Delaware">DE</option>
+          <option value="District Of Columbia">DC</option>
+          <option value="Florida">FL</option>
+          <option value="Georgia">GA</option>
+          <option value="Hawaii">HI</option>
+          <option value="Idaho">ID</option>
+          <option value="Illinois">IL</option>
+          <option value="Indiana">IN</option>
+          <option value="Iowa">IA</option>
+          <option value="Kansas">KS</option>
+          <option value="Kentucky">KY</option>
+          <option value="Louisiana">LA</option>
+          <option value="Maine">ME</option>
+          <option value="Maryland">MD</option>
+          <option value="Massachusetts">MA</option>
+          <option value="Michigan">MI</option>
+          <option value="Minnesota">MN</option>
+          <option value="Mississippi">MS</option>
+          <option value="Missouri">MO</option>
+          <option value="Montana">MT</option>
+          <option value="Nebraska">NE</option>
+          <option value="Nevada">NV</option>
+          <option value="New Hampshire">NH</option>
+          <option value="New Jersey">NJ</option>
+          <option value="New Mexico">NM</option>
+          <option value="New York">NY</option>
+          <option value="North Carolina">NC</option>
+          <option value="North Dakota">ND</option>
+          <option value="Ohio">OH</option>
+          <option value="Oklahoma">OK</option>
+          <option value="Oregon">OR</option>
+          <option value="Pennsylvania">PA</option>
+          <option value="Rhode Island">RI</option>
+          <option value="South Carolina">SC</option>
+          <option value="South Dakota">SD</option>
+          <option value="Tennessee">TN</option>
+          <option value="Texas">TX</option>
+          <option value="Utah">UT</option>
+          <option value="Vermont">VT</option>
+          <option value="Virginia">VA</option>
+          <option value="Washington">WA</option>
+          <option value="West Virginia">WV</option>
+          <option value="Wisconsin">WI</option>
+          <option value="Wyoming">WY</option>
+        </select>
+
+        <input id="postal_code" name="ShippingAddress.PostalCode" class="postal_code" type="text" placeholder="Postal Code ex. 94107">
+
       </div>
-
-      <div class="instructions">
-        <p>Please enter your shipping and size information below to claim your pre-orders of the AR-1 and apparel package from our Indiegogo campaign.</p>
-      </div>
-
-      <form id="skully" name="skully" action="save" method="post">
-        <div class="narrow center shipping">
-          <div class="form">
-            <input id="email" name="User.Email" class="email" type="text" placeholder="Email Address ex. info@skullysystems.com">
-            <input id="password" name="Password" class="password" type="password" placeholder="Password, minimum 6 character">
-            <input id="password_confirm" name="PasswordConfirm" class="password" type="password" placeholder="Type in your password again">
-            <input id="first_name" name="User.FirstName" class="first_name" type="text" placeholder="First Name ex. SKULLY">
-            <input id="last_name" name="User.LastName" class="last_name" type="text" placeholder="Last Name ex. Systems">
-            <input id="phone" name="User.Phone" class="phone" type="text" placeholder="Phone Number ex. 5-555-555-5555">
-            <input id="address1" name="ShippingAddress.Line1" class="address1" type="text" placeholder="Address ex. 555 3rd Street">
-            <input id="address2" name="ShippingAddress.Line2" class="address2 optional" type="text" placeholder="Address 2 ex. Suite 3, Apt#">
-            <input id="city" name="ShippingAddress.City" class="city" type="text" placeholder="City ex. San Francisco">
-            <select id="state" name="ShippingAddress.State" class="state">
-              <option value="Alabama">AL</option>
-              <option value="Alaska">AK</option>
-              <option value="Arizona">AZ</option>
-              <option value="Arkansas">AR</option>
-              <option value="California">CA</option>
-              <option value="Colorado">CO</option>
-              <option value="Connecticut">CT</option>
-              <option value="Delaware">DE</option>
-              <option value="District Of Columbia">DC</option>
-              <option value="Florida">FL</option>
-              <option value="Georgia">GA</option>
-              <option value="Hawaii">HI</option>
-              <option value="Idaho">ID</option>
-              <option value="Illinois">IL</option>
-              <option value="Indiana">IN</option>
-              <option value="Iowa">IA</option>
-              <option value="Kansas">KS</option>
-              <option value="Kentucky">KY</option>
-              <option value="Louisiana">LA</option>
-              <option value="Maine">ME</option>
-              <option value="Maryland">MD</option>
-              <option value="Massachusetts">MA</option>
-              <option value="Michigan">MI</option>
-              <option value="Minnesota">MN</option>
-              <option value="Mississippi">MS</option>
-              <option value="Missouri">MO</option>
-              <option value="Montana">MT</option>
-              <option value="Nebraska">NE</option>
-              <option value="Nevada">NV</option>
-              <option value="New Hampshire">NH</option>
-              <option value="New Jersey">NJ</option>
-              <option value="New Mexico">NM</option>
-              <option value="New York">NY</option>
-              <option value="North Carolina">NC</option>
-              <option value="North Dakota">ND</option>
-              <option value="Ohio">OH</option>
-              <option value="Oklahoma">OK</option>
-              <option value="Oregon">OR</option>
-              <option value="Pennsylvania">PA</option>
-              <option value="Rhode Island">RI</option>
-              <option value="South Carolina">SC</option>
-              <option value="South Dakota">SD</option>
-              <option value="Tennessee">TN</option>
-              <option value="Texas">TX</option>
-              <option value="Utah">UT</option>
-              <option value="Vermont">VT</option>
-              <option value="Virginia">VA</option>
-              <option value="Washington">WA</option>
-              <option value="West Virginia">WV</option>
-              <option value="Wisconsin">WI</option>
-              <option value="Wyoming">WY</option>
-            </select>
-            <input id="postal_code" name="ShippingAddress.PostalCode" class="postal_code" type="text" placeholder="Postal Code ex. 94107">
-          </div>
-        </div>
-        <div class="narrow center perk">
-        </div>
-        <div class="narrow center item ar1">
-          <div class="content-centered">
-            <h2 class="underline">Skully AR-1 color &amp; size <span>(</span><span class="counter"></span><span class="total"></span></h2>
-          </div>
-          <div class="form">
-          </div>
-        </div>
-        <div class="break-65"></div>
-        <div class="narrow center item apparel">
-          <div class="content-centered">
-            <h2 class="underline">Skully Nation Apparel Color &amp; size <span>(</span><span class="counter"></span><span class="total"></span></h2>
-          </div>
-          <div class="form">
-          </div>
-          <div class="form hat">
-            <div class="text">Select your hat size:</div>
-            <select id="size" name="HatSize" class="size">
-              <option value="S">S</option>
-              <option value="M">M</option>
-              <option value="L">L</option>
-              <option value="XL">XL</option>
-            </select>
-            <input id="quantity" name="HatQuantity" class="quantity" type="text" maxlength="2" placeholder="Qty.">
-          </div>
-        </div>
-        <div class="break-65"></div>
-        <div class="narrow center content-centered submit">
-          <span>Please check to see if the above information is correct before submitting.</span>
-          <input type="submit" value="SUBMIT">
-        </div>
-      </form>
     </div>
-    <script type="text/javascript">
+
+    <div class="narrow center perk"></div>
+
+    <div class="narrow center item ar1">
+      <div class="content-centered">
+        <h2 class="underline">Skully AR-1 color &amp; size <span>(</span><span class="counter"></span><span class="total"></span></h2>
+      </div>
+      <div class="form"></div>
+    </div>
+
+    <div class="break-65"></div>
+
+    <div class="narrow center item apparel">
+      <div class="content-centered">
+        <h2 class="underline">Skully Nation Apparel Color &amp; size <span>(</span><span class="counter"></span><span class="total"></span></h2>
+      </div>
+
+      <div class="form"></div>
+
+      <div class="form hat">
+        <div class="text">Select your hat size:</div>
+        <select id="size" name="HatSize" class="size">
+          <option value="S">S</option>
+          <option value="M">M</option>
+          <option value="L">L</option>
+          <option value="XL">XL</option>
+        </select>
+        <input id="quantity" name="HatQuantity" class="quantity" type="text" maxlength="2" placeholder="Qty.">
+      </div>
+    </div>
+
+    <div class="break-65"></div>
+
+    <div class="narrow center content-centered submit">
+      <span>Please check to see if the above information is correct before submitting.</span>
+      <input type="submit" value="SUBMIT">
+    </div>
+
+  </form>
+</div>
+{% endblock %}
+
+{% block script %}
+<script type="text/javascript">
       $(document).ready(function(){
         // Total from perks
         var helmetTotal = 0;
@@ -279,93 +280,92 @@
   <button class="add">+</button>\
 </div>';
 
-        var countApparel = countFunc('.item.apparel', gearTotal);
-        var appendApparel = appendFunc('.item.apparel', apparelVariantT, countApparel);
-        appendApparel();
-        countApparel();
+var countApparel = countFunc('.item.apparel', gearTotal);
+var appendApparel = appendFunc('.item.apparel', apparelVariantT, countApparel);
+appendApparel();
+countApparel();
 
-        function setValue(selector, data) {
-          if (data != '') {
-            $(selector).val(data);
-          }
-        }
+function setValue(selector, data) {
+  if (data != '') {
+    $(selector).val(data);
+  }
+}
 
-        setValue('#email', PreorderData.user.Email);
-        setValue('#first_name', PreorderData.user.FirstName);
-        setValue('#last_name', PreorderData.user.LastName);
-        setValue('#phone', PreorderData.user.Phone);
-        setValue('#address1', PreorderData.user.ShippingAddress.Line1);
-        setValue('#address2', PreorderData.user.ShippingAddress.Line2);
-        setValue('#city', PreorderData.user.ShippingAddress.City);
-        setValue('#state', PreorderData.user.ShippingAddress.State);
-        setValue('#postal_code', PreorderData.user.ShippingAddress.PostalCode);
+setValue('#email', PreorderData.user.Email);
+setValue('#first_name', PreorderData.user.FirstName);
+setValue('#last_name', PreorderData.user.LastName);
+setValue('#phone', PreorderData.user.Phone);
+setValue('#address1', PreorderData.user.ShippingAddress.Line1);
+setValue('#address2', PreorderData.user.ShippingAddress.Line2);
+setValue('#city', PreorderData.user.ShippingAddress.City);
+setValue('#state', PreorderData.user.ShippingAddress.State);
+setValue('#postal_code', PreorderData.user.ShippingAddress.PostalCode);
 
-        function validateCount() {
-          var ar1Count = parseInt($('.item.ar1 .counter').text(), 10);
-          var apparelCount = parseInt($('.item.apparel .counter').text(), 10);
+function validateCount() {
+  var ar1Count = parseInt($('.item.ar1 .counter').text(), 10);
+  var apparelCount = parseInt($('.item.apparel .counter').text(), 10);
 
-          var ret = true;
-          if (ar1Count != helmetTotal) {
-            $('.item.ar1 .quantity').addClass('fix');
-            ret = false;
-          }
-          if (apparelCount != gearTotal) {
-            $('.item.apparel .quantity').addClass('fix');
-            ret = false;
-          }
-          return ret;
-        }
+  var ret = true;
+  if (ar1Count != helmetTotal) {
+    $('.item.ar1 .quantity').addClass('fix');
+    ret = false;
+  }
+  if (apparelCount != gearTotal) {
+    $('.item.apparel .quantity').addClass('fix');
+    ret = false;
+  }
+  return ret;
+}
 
-        $('.submit input[type=submit]').on('click', function(){
-          var ret = true;
-          // there used to be mroe stuff here
-          ret = validateCount() && ret;
-          return ret;
-        });
+$('.submit input[type=submit]').on('click', function(){
+  var ret = true;
+  // there used to be mroe stuff here
+  ret = validateCount() && ret;
+  return ret;
+});
 
-        var validator = new FormValidator("skully", [{
-            name: 'email',
-            rules: 'required|valid_email',
-          }, {
-            name: 'password',
-            rules: 'required|min_length[6]',
-          }, {
-            name: 'password_confirm',
-            display: 'password confirmation',
-            rules: 'required|matches[password]',
-          }, {
-            name: 'first_name',
-            display: 'first name',
-            rules: 'required',
-          }, {
-            name: 'last_name',
-            display: 'last name',
-            rules: 'required',
-          }, {
-            name: 'phone',
-            rules: 'callback_numeric_dash',
-          }, {
-            name: 'address1',
-            display: 'address',
-            rules: 'required',
-          }, {
-            name: 'city',
-            rules: 'required',
-          }, {
-            name: 'postal_code',
-            display: 'postal code',
-            rules: 'required|numeric_dash',
-          }],
-          function(errors, event) {
-            for(var i = 0; i < errors.length; i++) {
-              $('#' + errors[i].id).addClass('fix');
-            }
-          });
+var validator = new FormValidator("skully", [{
+    name: 'email',
+    rules: 'required|valid_email',
+  }, {
+    name: 'password',
+    rules: 'required|min_length[6]',
+  }, {
+    name: 'password_confirm',
+    display: 'password confirmation',
+    rules: 'required|matches[password]',
+  }, {
+    name: 'first_name',
+    display: 'first name',
+    rules: 'required',
+  }, {
+    name: 'last_name',
+    display: 'last name',
+    rules: 'required',
+  }, {
+    name: 'phone',
+    rules: 'callback_numeric_dash',
+  }, {
+    name: 'address1',
+    display: 'address',
+    rules: 'required',
+  }, {
+    name: 'city',
+    rules: 'required',
+  }, {
+    name: 'postal_code',
+    display: 'postal code',
+    rules: 'required|numeric_dash',
+  }],
+  function(errors, event) {
+    for(var i = 0; i < errors.length; i++) {
+      $('#' + errors[i].id).addClass('fix');
+    }
+  });
 
-          validator.registerCallback('numeric_dash', function(value) {
-            return (new RegExp(/^[\d\-\s]+$/)).test(value);
-          })
-        });
-    </script>
-  </body>
-</html>
+  validator.registerCallback('numeric_dash', function(value) {
+    return (new RegExp(/^[\d\-\s]+$/)).test(value);
+  })
+});
+</script>
+{% endblock %}

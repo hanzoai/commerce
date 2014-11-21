@@ -1,6 +1,18 @@
 application: crowdstart-io
 
 dispatch:
+  - url: "static.crowdstart.io/*"
+    module: default
+
+  - url: "*/robots.txt"
+    module: default
+
+  - url: "*/humans.txt"
+    module: default
+
+  - url: "*/favicon.ico"
+    module: default
+
   - url: "api.crowdstart.io/*"
     module: api
 
@@ -15,24 +27,3 @@ dispatch:
 
   - url: "secure.crowdstart.io/*"
     module: checkout
-
-  - url: "*/css/*"
-    module: default
-
-  - url: "*/js/*"
-    module: default
-
-  - url: "*/img/*"
-    module: default
-
-  - url: "*/robots.txt"
-    module: default
-
-  # - url: "*/humans.txt"
-  #   module: default
-
-  - url: "*/favicon.ico"
-    module: default
-
-  # - url: "*/"
-  #   module: default
