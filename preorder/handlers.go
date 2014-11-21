@@ -10,8 +10,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// /preorder/:token
-func WithToken(c *gin.Context) {
+// GET /:token
+func GetPreorder(c *gin.Context) {
 	db := datastore.New(c)
 
 	// Fetch token
@@ -43,35 +43,55 @@ func WithToken(c *gin.Context) {
 	template.Render(c, "preorder.html", "user", user, "userJSON", userJSON, "contributionsJSON", contributionsJSON)
 }
 
-// Preorder renders a preorder form for a logged in user
-// Requires login
-// /preorder
-func Preorder(c *gin.Context) {
-	user, err := auth.GetUser(c)
-	if err != nil {
-		c.Redirect(500, "/failwhale")
+func SavePreorder(c *gin.Context) {
+	form := new(PreorderForm)
+	if err := form.Parse(c); err != nil {
+		c.Fail(500, err)
 		return
 	}
 
-	contributions := new([]models.Contribution)
 	db := datastore.New(c)
-	if _, err := db.Query("contribution").Filter("Email =", user.Email).GetAll(db.Context, contributions); err != nil {
-		log.Panic("Failed to find contributions: %v", err)
-	}
+	// Get user from datastore
+	user := new(models.User)
+	db.GetKey("user", form.User.Email, user)
 
-	log.Debug("%#v", user)
+	// Update user from form
+	user.PasswordHash = form.User.PasswordHash
 
-	userJSON := json.Encode(user)
-	contributionsJSON := json.Encode(contributions)
+	// Save user back to database
+	db.PutKey("user", user.Email, user)
 
-	template.Render(c, "preorder.html", "user", user, "userJSON", userJSON, "contributionsJSON", contributionsJSON)
+	template.Render(c, "thankyou.html")
 }
 
-func SubmitLogin(c *gin.Context) {
+func Index(c *gin.Context) {
+	template.Render(c, "login.html")
+}
+
+func Login(c *gin.Context) {
 	err := auth.VerifyUser(c)
 	if err != nil {
-		template.Render(c, "login.html", "message", "Invalid username or password")
+		c.Fail(500, err)
+		return
+	}
+
+	user, err := auth.GetUser(c)
+	if err != nil {
+		c.Fail(500, err)
+		return
+	}
+
+	db := datastore.New(c)
+	token := new(models.InviteToken)
+	err = db.GetKey("invite-token", user.Email, token)
+	if err != nil {
+		c.Fail(500, err)
+		return
+	}
+
+	if err != nil {
+		c.Redirect(301, token.Id)
 	} else {
-		c.Redirect(301, "/preorder")
+		c.Redirect(301, "/")
 	}
 }
