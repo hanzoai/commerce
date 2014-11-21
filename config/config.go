@@ -14,6 +14,7 @@ type Config struct {
 	Production        bool
 	AutoCompileAssets bool
 	RootDir           string
+	StaticUrl         string
 	Prefixes          map[string]string
 	Hosts             map[string]string
 	Stripe            struct {
@@ -68,6 +69,8 @@ func Development() *Config {
 	config.Hosts["preorder"] = "localhost:8080"
 	config.Hosts["store"] = "localhost:8080"
 
+	config.StaticUrl = "/static"
+
 	config.Stripe.ClientId = "ca_53yyPzxlPsdAtzMEIuS2mXYDp4FFXLmm"
 	config.Stripe.APIKey = "pk_test_ucSTeAAtkSXVEg713ir40UhX"
 	config.Stripe.APISecret = ""
@@ -92,6 +95,8 @@ func Production() *Config {
 	config.Hosts["platform"] = "platform.crowdstart.io"
 	config.Hosts["preorder"] = "preorder.crowdstart.io"
 	config.Hosts["store"] = "store.crowdstart.io"
+
+	config.StaticUrl = "//static.crowdstart.io"
 
 	// Only use production credentials if demo mode is off.
 	if !config.DemoMode {
