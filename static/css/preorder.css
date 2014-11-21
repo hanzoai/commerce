@@ -174,3 +174,13 @@ h2.underline {
 input.fix {
   border: 1px solid rgb(202, 2, 2)
 }
+
+.btn {
+  font-family: proxima-nova, sans-serif;
+  font-size: 15px;
+  font-style: normal;
+  font-weight: normal;
+  height: 15px;
+  letter-spacing: normal;
+  line-height: 15px;
+}
