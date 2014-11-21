@@ -120,7 +120,7 @@
               <option value="L">L</option>
               <option value="XL">XL</option>
             </select>
-            <input id="quantity" name="HatQuantity" class="quantity" type="text"  maxlength="2" value="Qty.">
+            <input id="quantity" name="HatQuantity" class="quantity" type="text" maxlength="2" placeholder="Qty.">
           </div>
         </div>
         <div class="break-65"></div>
@@ -132,18 +132,6 @@
     </div>
     <script type="text/javascript">
       $(document).ready(function(){
-        function activateInput() {
-          var el = $(this);
-          if(!el.hasClass('active')) {
-            el.addClass('active').val('').off('focus click');
-            if(el.hasClass('password')) {
-              el.attr('type', 'password');
-            }
-          }
-        }
-
-        $('input[type=text]').on('focus click', activateInput);
-
         // Total from perks
         var helmetTotal = 0;
         var gearTotal = 0;
@@ -187,7 +175,6 @@
               variantEl.append(subButtonEl);
             }
 
-            variantEl.find('input[type=text]').on('click', activateInput);
             variantEl.find('input#quantity').payment('restrictNumeric').on('change keyup keypress', countF);
             variantEl.find('button.add').on('click', append);
 
@@ -259,7 +246,7 @@
     <option value="XL">XL</option>\
     <option value="XXL">XXL</option>\
   </select>\
-  <input id="quantity" class="quantity" name="HelmetQuantity" type="text" maxlength="2" value="Qty.">\
+  <input id="quantity" class="quantity" name="HelmetQuantity" type="text" maxlength="2" placeholder="Qty.">\
   <button class="add">+</button>\
 </div>';
 
@@ -287,7 +274,7 @@
     <option value="L">L</option>\
     <option value="XL">XL</option>\
   </select>\
-  <input id="quantity" name="ShirtQuantity" class="quantity" type="text"  maxlength="2" value="Qty.">\
+  <input id="quantity" name="ShirtQuantity" class="quantity" type="text" maxlength="2" placeholder="Qty.">\
   <button class="add">+</button>\
 </div>';
 
@@ -298,7 +285,7 @@
 
         function setValue(selector, data) {
           if (data != '') {
-            $(selector).addClass('active').val(data);
+            $(selector).val(data);
           }
         }
 
@@ -330,23 +317,7 @@
 
         $('.submit input[type=submit]').on('click', function(){
           var ret = true;
-          $('#skully').find('input[type=text], input[type=password]').each(function() {
-            var el = $(this);
-            // remove old validation things
-            el.removeClass('fix');
-            if(!(el.hasClass('active') || el.hasClass('optional'))) {
-              el.addClass('fix');
-              ret = false;
-            }
-          });
-          if (ret) {
-            $('#skully').find('input').each(function() {
-              var el = $(this);
-              if (!el.hasClass('active') && el.hasClass('optional')) {
-                el.val('');
-              }
-            });
-          }
+          // there used to be mroe stuff here
           ret = validateCount() && ret;
           return ret;
         });
@@ -371,7 +342,7 @@
             rules: 'required',
           }, {
             name: 'phone',
-            rules: 'required|callback_numeric_dash',
+            rules: 'callback_numeric_dash',
           }, {
             name: 'address1',
             display: 'address',
@@ -382,7 +353,7 @@
           }, {
             name: 'postal_code',
             display: 'postal code',
-            rules: 'required|alpha_dash',
+            rules: 'required|numeric_dash',
           }],
           function(errors, event) {
             for(var i = 0; i < errors.length; i++) {

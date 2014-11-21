@@ -45,6 +45,7 @@ h1 {
 }
 
 .form input, .form select {
+  color: white;
   background-color: rgb(38, 38, 38);
   border: 0;
   width: 500px;
@@ -52,14 +53,6 @@ h1 {
   height: 45px;
   margin-bottom: 15px;
   text-indent: 20px
-}
-
-.form input {
-  color: rgb(103, 103, 103);
-}
-
-.form select, .form input.active {
-  color: white
 }
 
 .shipping input.city {
