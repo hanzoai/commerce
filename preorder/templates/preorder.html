@@ -112,6 +112,16 @@
           </div>
           <div class="form">
           </div>
+          <div class="form hat">
+            <div class="text">Select your hat size:</div>
+            <select id="size" name="HatSize" class="size">
+              <option value="S">S</option>
+              <option value="M">M</option>
+              <option value="L">L</option>
+              <option value="XL">XL</option>
+            </select>
+            <input id="quantity" name="HatQuantity" class="quantity" type="text"  maxlength="2" value="Qty.">
+          </div>
         </div>
         <div class="break-65"></div>
         <div class="narrow center content-centered submit">
@@ -184,7 +194,7 @@
             // Start here
             // variantEl.find('#color').attr
 
-            $(selector).find('.form').append(variantEl);
+            $(selector).find('.form:first').append(variantEl);
             count++;
             return false;
           }
