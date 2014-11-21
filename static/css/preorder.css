@@ -5,6 +5,11 @@ body, p {
   line-height: 1.5
 }
 
+/*Perk description*/
+.p1 {
+    background-color: #232323;
+}
+
 nav.social-icons > .large {
     font-size: 50px;
     margin-right: 20x;
