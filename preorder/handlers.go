@@ -73,28 +73,40 @@ func Index(c *gin.Context) {
 }
 
 func Login(c *gin.Context) {
+	// Parse login form
+	f := new(models.LoginForm)
+	if err := f.Parse(c); err != nil {
+		c.Fail(500, err)
+		return
+	}
+
+	// Verify password
 	err := auth.VerifyUser(c)
 	if err != nil {
 		c.Fail(500, err)
 		return
 	}
 
-	user, err := auth.GetUser(c)
-	if err != nil {
-		c.Fail(500, err)
-		return
-	}
-
 	db := datastore.New(c)
-	token := new(models.InviteToken)
-	err = db.GetKey("invite-token", user.Email, token)
-	if err != nil {
+
+	// Look up tokens for this user
+	log.Debug("Searching for valid token for: %v", f.Email)
+
+	tokens := make([]*models.InviteToken, 0)
+	if _, err = db.Query("invite-token").Filter("Email =", f.Email).GetAll(db.Context, tokens); err != nil {
+		log.Panic("Failed to query for tokens: %v", err)
+		return
+	}
+
+	// Complain if user doesn't have any tokens
+	if len(tokens) < 1 {
 		c.Fail(500, err)
 		return
 	}
 
+	// Redirect to order page if they have a valid token
 	if err != nil {
-		c.Redirect(301, "order/"+token.Id)
+		c.Redirect(301, "order/"+tokens[0].Id)
 	} else {
 		c.Redirect(301, "/")
 	}
