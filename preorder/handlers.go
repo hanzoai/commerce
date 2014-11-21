@@ -61,6 +61,10 @@ func SavePreorder(c *gin.Context) {
 	// Save user back to database
 	db.PutKey("user", user.Email, user)
 
+	c.Redirect(301, "save")
+}
+
+func ThankYou(c *gin.Context) {
 	template.Render(c, "thankyou.html")
 }
 
