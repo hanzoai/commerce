@@ -1,6 +1,7 @@
 package template
 
 import (
+	"crowdstart.io/config"
 	"github.com/flosch/pongo2"
 	"github.com/gin-gonic/gin"
 	"os"
@@ -9,6 +10,8 @@ import (
 var cwd, _ = os.Getwd()
 
 type Context map[string]interface{}
+
+var staticUrl = config.Get().StaticUrl
 
 func Render(c *gin.Context, path string, pairs ...interface{}) (err error) {
 	// All templates are expected to be in templates dir
@@ -23,6 +26,9 @@ func Render(c *gin.Context, path string, pairs ...interface{}) (err error) {
 
 	// Create context from pairs
 	ctx := pongo2.Context{}
+
+	// Default context
+	ctx["staticUrl"] = staticUrl
 
 	for i := 0; i < len(pairs); i = i + 2 {
 		ctx[pairs[i].(string)] = pairs[i+1]
