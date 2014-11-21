@@ -3,24 +3,31 @@ package auth
 import (
 	"errors"
 
+	"github.com/gin-gonic/gin"
+
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
-	"github.com/gin-gonic/gin"
+	"crowdstart.io/util/log"
 )
 
-func GetUsername(c *gin.Context) (string, error) {
+func GetEmail(c *gin.Context) (string, error) {
+	log.Debug("Retrieving email from session")
 	return Get(c, loginKey)
 }
 
 // Retrieves the user id from the session and queries the db for a User object
 func GetUser(c *gin.Context) (user models.User, err error) {
-	username, err := GetUsername(c)
+	email, err := GetEmail(c)
+	log.Debug("Email ", email)
 	if err != nil {
+		log.Error("Error retrieving email", err)
 		return user, err
 	}
 
 	db := datastore.New(c)
-	err = db.GetKey("user", username, user)
+	log.Debug(kind)
+	err = db.GetKey(kind, email, &user)
+	log.Debug("%#v", user)
 	return user, err
 }
 
@@ -59,6 +66,6 @@ func NewUser(c *gin.Context, f models.RegistrationForm) error {
 
 	m.PasswordHash, err = f.PasswordHash()
 
-	_, err = db.Put("user", m)
+	_, err = db.Put(kind, m)
 	return err
 }

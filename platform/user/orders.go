@@ -1,20 +1,22 @@
 package user
 
 import (
-	"appengine"
+	"errors"
+
 	"crowdstart.io/auth"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
-	"errors"
 	"github.com/gin-gonic/gin"
+
+	"appengine"
 )
 
-// Gets the orders associated with a user id.
-func Orders(ctx appengine.Context, id string) ([]models.Order, error) {
+// Gets the orders associated with a user's email.
+func Orders(ctx appengine.Context, email string) ([]models.Order, error) {
 	db := datastore.New(ctx)
 
 	var user models.User
-	err := db.GetKey("user", id, user)
+	err := db.GetKey("user", email, user)
 	if err != nil {
 		return nil, err
 	}
@@ -39,12 +41,12 @@ func Orders(ctx appengine.Context, id string) ([]models.Order, error) {
 }
 
 func ListOrders(c *gin.Context) {
-	id, err := auth.GetUsername(c)
+	email, err := auth.GetEmail(c)
 	if err != nil {
 		return
 	}
 	ctx := c.MustGet("appengine").(appengine.Context)
-	orders, err := Orders(ctx, id)
+	orders, err := Orders(ctx, email)
 
 	if err != nil {
 

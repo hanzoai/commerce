@@ -30,6 +30,7 @@ func GetPreorder(c *gin.Context) {
 		log.Error("Failed to fetch user: %v", err, c)
 		// Bad token
 		c.Redirect(301, "../../")
+		return
 	}
 
 	// Find all of a user's contributions
@@ -74,7 +75,26 @@ func Thanks(c *gin.Context) {
 }
 
 func Index(c *gin.Context) {
-	template.Render(c, "login.html")
+	if !auth.IsLoggedIn(c) {
+		template.Render(c, "login.html")
+	} else {
+		user, err := auth.GetUser(c)
+		if err != nil {
+			log.Error("Error getting user", err)
+			template.Render(c, "login.html", "message", "A server side error occurred")
+			return
+		}
+		tokens := getTokens(c, user.Email)
+
+		// Complain if user doesn't have any tokens
+		if len(tokens) > 0 {
+			// Redirect to order page as they have a valid token
+			c.Redirect(301, "order/"+tokens[0].Id)
+		} else {
+			template.Render(c, "login.html", "message", "No pre-orders found for your account")
+			return
+		}
+	}
 }
 
 func Login(c *gin.Context) {
@@ -92,17 +112,7 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	db := datastore.New(c)
-
-	// Look up tokens for this user
-	log.Debug("Searching for valid token for: %v", f.Email, c)
-
-	tokens := make([]models.InviteToken, 0)
-	if _, err = db.Query("invite-token").Filter("Email =", f.Email).GetAll(db.Context, &tokens); err != nil {
-		log.Panic("Failed to query for tokens: %v", err, c)
-		return
-	}
-
+	tokens := getTokens(c, f.Email)
 	// Complain if user doesn't have any tokens
 	if len(tokens) > 0 {
 		// Redirect to order page as they have a valid token
@@ -110,4 +120,18 @@ func Login(c *gin.Context) {
 	} else {
 		template.Render(c, "login.html", "message", "No pre-orders found for your account")
 	}
+}
+
+func getTokens(c *gin.Context, email string) []models.InviteToken {
+	db := datastore.New(c)
+
+	// Look up tokens for this user
+	log.Debug("Searching for valid token for: %v", email, c)
+
+	tokens := make([]models.InviteToken, 0)
+	if _, err := db.Query("invite-token").Filter("Email =", email).GetAll(db.Context, &tokens); err != nil {
+		log.Panic("Failed to query for tokens: %v", err, c)
+	}
+
+	return tokens
 }
