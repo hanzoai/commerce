@@ -293,6 +293,8 @@
           var ret = true;
           $('#skully').find('input').each(function() {
             var el = $(this);
+            // remove old validation things
+            el.removeClass('fix');
             if(!(el.hasClass('active') || el.hasClass('optional'))) {
               el.addClass('fix');
               ret = false;
