@@ -2,7 +2,6 @@ package preorder
 
 import (
 	"crowdstart.io/auth"
-	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
 	"crowdstart.io/util/json"
@@ -74,7 +73,6 @@ func Thanks(c *gin.Context) {
 }
 
 func Index(c *gin.Context) {
-	log.Info("Prefix: "+config.Get().PrefixFor("preorder"), c)
 	template.Render(c, "login.html")
 }
 
