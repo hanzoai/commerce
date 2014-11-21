@@ -2,6 +2,7 @@ package log
 
 import (
 	"appengine"
+	"github.com/gin-gonic/gin"
 	"github.com/zeekay/go-logging"
 	"log"
 )
@@ -21,6 +22,10 @@ func (l *Logger) setContext(args ...interface{}) []interface{} {
 	ctx := args[len(args)-1]
 
 	switch ctx := ctx.(type) {
+	case *gin.Context:
+		c := ctx.MustGet("appengine").(appengine.Context)
+		l.appengineBackend.context = c
+		args = args[:len(args)-1]
 	case appengine.Context:
 		l.appengineBackend.context = ctx
 		args = args[:len(args)-1]
@@ -60,27 +65,20 @@ func (b AppengineBackend) Log(level logging.Level, calldepth int, record *loggin
 func New() *Logger {
 	log := new(Logger)
 
-	format := logging.MustStringFormatter(
-		"%{color}%{level:.5s} %{shortfile} %{longfunc} %{color:reset}%{message}",
-	)
-
-	// appengineFormat := logging.MustStringFormatter(
-	// 	"%{color}%{shortfile} %{longfunc} %{color:reset}%{message}",
-	// )
-
+	// Backend that is appengine-aware
 	backend := new(AppengineBackend)
 	log.appengineBackend = backend
 
-	defaultBackend := logging.NewBackendFormatter(backend, format)
+	// Log formatting
+	formatter := logging.MustStringFormatter("%{level:.5s} %{shortfile} %{longfunc} %{message}")
+	colorized := logging.MustStringFormatter("%{color}%{level:.5s} %{shortfile} %{longfunc} %{color:reset}%{message}")
 
-	// Don't use a specific app engine backend yet
-	// appengineBackend := logging.NewBackendFormatter(backend, appengineFormat)
+	defaultBackend := logging.NewBackendFormatter(backend, formatter)
 
-	// Only errors and more severe messages should be sent to backend1
-	// errorBackend := logging.AddModuleLevel(backend)
-	// errorBackend.SetLevel(logging.ERROR, "")
+	if appengine.IsDevAppServer() {
+		defaultBackend = logging.NewBackendFormatter(backend, colorized)
+	}
 
-	// Set the backends to be used.
 	multiBackend := logging.SetBackend(defaultBackend)
 	log.SetBackend(multiBackend)
 	return log
