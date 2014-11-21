@@ -184,3 +184,9 @@ input.fix {
   letter-spacing: normal;
   line-height: 15px;
 }
+
+.hat .text {
+  width: 344px;
+  display: inline-block;
+  text-align: right
+}
