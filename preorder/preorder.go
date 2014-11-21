@@ -8,6 +8,9 @@ import (
 func init() {
 	router := router.New(config.Get().PrefixFor("preorder"))
 
-	router.GET("/", Login)
-	router.GET("/:token", Get)
+	router.GET("/", Index)
+	router.POST("/", Login)
+
+	router.GET("/:token", GetPreorder)
+	router.POST("/preorder", SavePreorder)
 }

@@ -101,8 +101,6 @@ func Install(db *datastore.Datastore) {
 
 	pwhash, _ := bcrypt.GenerateFromPassword([]byte("password"), 12)
 
-	db.GetKey("user", "doesntexist", nil)
-
 	// Default User (SKULLY)
 	db.PutKey("user", "skully", &User{
 		Id:           "skully",

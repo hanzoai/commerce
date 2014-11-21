@@ -1,6 +1,7 @@
 package preorder
 
 import (
+	"crowdstart.io/auth"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
 	"crowdstart.io/util/json"
@@ -9,7 +10,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func Get(c *gin.Context) {
+// GET /:token
+func GetPreorder(c *gin.Context) {
 	db := datastore.New(c)
 
 	// Fetch token
@@ -41,6 +43,55 @@ func Get(c *gin.Context) {
 	template.Render(c, "preorder.html", "user", user, "userJSON", userJSON, "contributionsJSON", contributionsJSON)
 }
 
-func Login(c *gin.Context) {
+func SavePreorder(c *gin.Context) {
+	form := new(PreorderForm)
+	if err := form.Parse(c); err != nil {
+		c.Fail(500, err)
+		return
+	}
+
+	db := datastore.New(c)
+	// Get user from datastore
+	user := new(models.User)
+	db.GetKey("user", form.User.Email, user)
+
+	// Update user from form
+	user.PasswordHash = form.User.PasswordHash
+
+	// Save user back to database
+	db.PutKey("user", user.Email, user)
+
+	template.Render(c, "thankyou.html")
+}
+
+func Index(c *gin.Context) {
 	template.Render(c, "login.html")
+}
+
+func Login(c *gin.Context) {
+	err := auth.VerifyUser(c)
+	if err != nil {
+		c.Fail(500, err)
+		return
+	}
+
+	user, err := auth.GetUser(c)
+	if err != nil {
+		c.Fail(500, err)
+		return
+	}
+
+	db := datastore.New(c)
+	token := new(models.InviteToken)
+	err = db.GetKey("invite-token", user.Email, token)
+	if err != nil {
+		c.Fail(500, err)
+		return
+	}
+
+	if err != nil {
+		c.Redirect(301, token.Id)
+	} else {
+		c.Redirect(301, "/")
+	}
 }

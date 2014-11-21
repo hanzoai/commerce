@@ -137,6 +137,8 @@ func (d *Datastore) PutKeyMulti(kind string, keys []string, srcs []interface{}) 
 }
 
 func (d *Datastore) Update(key string, src interface{}) (string, error) {
+	log.Warn("DEPRECATED. DOES NOTHING PUT DOES NOT.")
+
 	k, err := DecodeKey(key)
 	if err != nil {
 		d.Context.Errorf("%#v", err)

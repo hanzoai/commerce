@@ -2,15 +2,28 @@ package auth
 
 import (
 	"code.google.com/p/go.crypto/bcrypt"
+	"github.com/gin-gonic/gin"
+
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
-	"github.com/gin-gonic/gin"
-	"log"
+	"crowdstart.io/util/log"
 )
 
 // const sessionName = "crowdstartLogin"
 const kind = "user"
 const loginKey = "login-key"
+
+func CompareHashAndPassword(hash []byte, password string) error {
+	return bcrypt.CompareHashAndPassword(hash, []byte(password))
+}
+
+func HashPassword(password string) []byte {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), 12)
+	if err != nil {
+		log.Panic("Failed to hash password: %v", err)
+	}
+	return hash
+}
 
 func IsLoggedIn(c *gin.Context) bool {
 	value, err := Get(c, loginKey)
@@ -18,36 +31,27 @@ func IsLoggedIn(c *gin.Context) bool {
 }
 
 func VerifyUser(c *gin.Context) error {
-	f := new(models.LoginForm) // f.Email is User.Id
-	err := f.Parse(c)
-
-	if err != nil {
-		return err
-	}
-
-	hash, err := f.PasswordHash()
-	log.Println(string(hash))
-
-	if err != nil {
+	// Parse login form
+	f := new(models.LoginForm)
+	if err := f.Parse(c); err != nil {
 		return err
 	}
 
 	db := datastore.New(c)
-	user := new(models.User)
 
+	// Get user from database
+	user := new(models.User)
 	if err := db.GetKey("user", f.Email, user); err != nil {
 		return err
 	}
 
-	if err := bcrypt.CompareHashAndPassword(user.PasswordHash, []byte(f.Password)); err != nil {
+	// Compare form password with saved hash
+	if err := CompareHashAndPassword(user.PasswordHash, f.Password); err != nil {
 		return err
 	}
 
-	return Set(c, loginKey, f.Email) // sets the loginKey value to the user id
-}
-
-func GetUsername(c *gin.Context) (string, error) {
-	return Get(c, loginKey)
+	// Set the loginKey value to the user id
+	return Set(c, loginKey, f.Email)
 }
 
 func Logout(c *gin.Context) {
