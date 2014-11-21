@@ -6,7 +6,13 @@ runtime: go
 api_version: go1
 threadsafe: true
 
+inbound_services:
+- warmup
+
 handlers:
+- url: /_ah/.*
+  script: _go_app
+
 - url: /css/*
   static_dir: static/css
 
@@ -31,6 +37,5 @@ handlers:
   static_files: static/robots.txt
   upload: static/robots.txt
 
-# - url: /
-#   static_files: static/index.html
-#   upload: static/index.html
+inbound_services:
+- warmup
