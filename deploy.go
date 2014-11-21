@@ -57,7 +57,14 @@ func run(cmd string) {
 }
 
 func main() {
-	files := []string{"config/prod/app.yaml", "api/app.prod.yaml", "platform/app.prod.yaml", "store/app.prod.yaml", "checkout/app.prod.yaml"}
+	files := []string{
+		"config/prod/app.yaml",
+		"api/app.prod.yaml",
+		"checkout/app.prod.yaml",
+		"platform/app.prod.yaml",
+		"preorder/app.prod.yaml",
+		"store/app.prod.yaml",
+	}
 
 	var version string
 
