@@ -1,4 +1,4 @@
-package main
+package crowdstart
 
 import "crowdstart.io/_default"
 
