@@ -82,6 +82,14 @@ h1 {
   margin-bottom: 10px
 }
 
+.perk p.p1 {
+  text-align: justify
+}
+
+.perk span.count {
+  text-transform: none
+}
+
 h2 {
   font-size: 22px;
   text-transform: uppercase
