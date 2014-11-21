@@ -20,7 +20,7 @@ func GetUser(c *gin.Context) (user models.User, err error) {
 	}
 
 	db := datastore.New(c)
-	err = db.Get(username, user)
+	err = db.GetKey("user", username, user)
 	return user, err
 }
 
