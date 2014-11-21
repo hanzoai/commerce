@@ -76,14 +76,14 @@ func Login(c *gin.Context) {
 	// Parse login form
 	f := new(models.LoginForm)
 	if err := f.Parse(c); err != nil {
-		c.Fail(500, err)
+		template.Render(c, "login.html", "message", "Please ensure you have correctly entered your username and password")
 		return
 	}
 
 	// Verify password
 	err := auth.VerifyUser(c)
 	if err != nil {
-		c.Fail(500, err)
+		template.Render(c, "login.html", "message", "Please ensure you have correctly entered your username and password")
 		return
 	}
 
@@ -92,22 +92,17 @@ func Login(c *gin.Context) {
 	// Look up tokens for this user
 	log.Debug("Searching for valid token for: %v", f.Email)
 
-	tokens := make([]*models.InviteToken, 0)
-	if _, err = db.Query("invite-token").Filter("Email =", f.Email).GetAll(db.Context, tokens); err != nil {
+	tokens := make([]models.InviteToken, 0)
+	if _, err = db.Query("invite-token").Filter("Email =", f.Email).GetAll(db.Context, &tokens); err != nil {
 		log.Panic("Failed to query for tokens: %v", err)
 		return
 	}
 
 	// Complain if user doesn't have any tokens
-	if len(tokens) < 1 {
-		c.Fail(500, err)
-		return
-	}
-
-	// Redirect to order page if they have a valid token
-	if err != nil {
+	if len(tokens) > 0 {
+		// Redirect to order page as they have a valid token
 		c.Redirect(301, "order/"+tokens[0].Id)
 	} else {
-		c.Redirect(301, "/")
+		template.Render(c, "login.html", "message", "No pre-orders found for your account")
 	}
 }
