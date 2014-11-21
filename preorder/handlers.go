@@ -27,7 +27,9 @@ func GetPreorder(c *gin.Context) {
 	// Should use token to lookup email
 	user := new(models.User)
 	if err := db.GetKey("user", token.Email, user); err != nil {
-		log.Panic("Failed to fetch user: %v", err, c)
+		log.Error("Failed to fetch user: %v", err, c)
+		// Bad token
+		c.Redirect(301, "../../")
 	}
 
 	// Find all of a user's contributions
