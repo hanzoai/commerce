@@ -160,25 +160,29 @@
           }
         }
 
-        function appendFunc(selector, variantT, count) {
-          var first = false;
+        function appendFunc(selector, variantT, countF) {
+          var count = 0;
           var append = function() {
             var variantEl = $(variantT);
-            if(!first) {
-              first = true;
-            } else {
+            if (count > 0) {
               var subButtonEl = $(subButtonT);
               subButtonEl.on('click', function(){
                 variantEl.remove();
-                count();
+                count--;
+                countF();
               });
               variantEl.append(subButtonEl);
             }
 
             variantEl.find('input[type=text]').on('click', activateInput);
-            variantEl.find('input#quantity').payment('restrictNumeric').on('change keyup keypress', count);
+            variantEl.find('input#quantity').payment('restrictNumeric').on('change keyup keypress', countF);
             variantEl.find('button.add').on('click', append);
+
+            // Start here
+            // variantEl.find('#color').attr
+
             $(selector).find('.form').append(variantEl);
+            count++;
             return false;
           }
           return append;
