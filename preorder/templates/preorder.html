@@ -122,14 +122,14 @@
         function activateInput() {
           var el = $(this);
           if(!el.hasClass('active')) {
-            el.addClass('active').val('').off('click');
+            el.addClass('active').val('').off('focus click');
             if(el.hasClass('password')) {
               el.attr('type', 'password');
             }
           }
         }
 
-        $('input[type=text]').on('click', activateInput);
+        $('input[type=text]').on('focus click', activateInput);
 
         // Total from perks
         var helmetTotal = 0;
