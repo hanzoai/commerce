@@ -14,10 +14,6 @@ import (
 func Init() {
 	router := router.New("/")
 
-	router.GET("/hello", func(c *gin.Context) {
-		c.String(200, "hi")
-	})
-
 	// Warmup: install fixtures, etc.
 	router.GET("/_ah/warmup", func(c *gin.Context) {
 		ctx := appengine.NewContext(c.Request)
