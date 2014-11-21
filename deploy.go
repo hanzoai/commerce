@@ -27,17 +27,26 @@ func writeFile(path string, data string) {
 }
 
 func bumpVersion(version string) string {
-	log.Println(version)
 	version = strings.Trim(version[1:], "\n")
 	prev, err := strconv.Atoi(version)
 	if err != nil {
 		log.Panicln("Failed to convert to int: %v", err)
 	}
-	log.Println(prev)
 	return "v" + strconv.Itoa(prev+1)
 }
 
-func run(cmd string) string {
+func run(cmd string, opts ...interface{}) string {
+	// opts
+	silent := false
+
+	// parse opts
+	for i, opt := range opts {
+		switch i {
+		case 0:
+			silent = opt.(bool)
+		}
+	}
+
 	args := strings.Split(cmd, " ")
 	cmd, args = args[0], args[1:]
 
@@ -52,16 +61,15 @@ func run(cmd string) string {
 	}
 
 	out := string(cmdOutput.Bytes())
-	if out != "" {
-		fmt.Println(out)
+	if silent && out != "" {
+		fmt.Print(out)
 	}
 
 	return out
 }
 
 func main() {
-	version := bumpVersion(run("git describe --abbrev=0 --tags"))
-	log.Println(version)
+	version := bumpVersion(run("git describe --abbrev=0 --tags", true))
 	run("git add .")
 	run("git commit -m " + version)
 	run("git tag " + version)
