@@ -10,7 +10,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func Get(c *gin.Context) {
+// /preorder/:token
+func WithToken(c *gin.Context) {
 	db := datastore.New(c)
 
 	// Fetch token
@@ -39,6 +40,30 @@ func Get(c *gin.Context) {
 	contributionsJSON := json.Encode(contributions)
 
 	log.Debug("%#v", user)
+	template.Render(c, "preorder.html", "user", user, "userJSON", userJSON, "contributionsJSON", contributionsJSON)
+}
+
+// Preorder renders a preorder form for a logged in user
+// Requires login
+// /preorder
+func Preorder(c *gin.Context) {
+	user, err := auth.GetUser(c)
+	if err != nil {
+		c.Redirect(500, "/failwhale")
+		return
+	}
+
+	contributions := new([]models.Contribution)
+	db := datastore.New(c)
+	if _, err := db.Query("contribution").Filter("Email =", user.Email).GetAll(db.Context, contributions); err != nil {
+		log.Panic("Failed to find contributions: %v", err)
+	}
+
+	log.Debug("%#v", user)
+
+	userJSON := json.Encode(user)
+	contributionsJSON := json.Encode(contributions)
+
 	template.Render(c, "preorder.html", "user", user, "userJSON", userJSON, "contributionsJSON", contributionsJSON)
 }
 
