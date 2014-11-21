@@ -1,11 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"io/ioutil"
 	"log"
-	"os"
 	"os/exec"
-	"regexp"
 	"strconv"
 	"strings"
 )
@@ -26,52 +25,35 @@ func writeFile(path string, data string) {
 	}
 }
 
-func bumpVersion(path string) (version string) {
-	lines := readFile(path)
-	re := regexp.MustCompile("^version:")
-
-	for i, line := range lines {
-		if re.FindStringIndex(line) != nil {
-			prev, _ := strconv.Atoi(strings.Replace(line, "version: v", "", 1))
-			version = "v" + strconv.Itoa(prev+1)
-			lines[i] = "version: " + version
-			break
-		}
-	}
-
-	writeFile(path, strings.Join(lines, "\n"))
-	return version
+func bumpVersion(version string) string {
+	prev, _ := strconv.Atoi(strings.Replace(version, "v", "", 1))
+	return "v" + strconv.Itoa(prev+1)
 }
 
-func run(cmd string) {
+func run(cmd string) string {
 	args := strings.Split(cmd, " ")
 	cmd, args = args[0], args[1:]
 
+	cmdOutput := &bytes.Buffer{}
+
 	proc := exec.Command(cmd, args...)
-	proc.Stdout = os.Stdout
-	proc.Stderr = os.Stderr
+	proc.Stdout = cmdOutput
+	proc.Stderr = cmdOutput
+
 	if err := proc.Run(); err != nil {
 		log.Fatalln(err)
-
 	}
+
+	out := string(cmdOutput.Bytes())
+	if out != "" {
+		log.Println(out)
+	}
+
+	return out
 }
 
 func main() {
-	files := []string{
-		"config/prod/app.yaml",
-		"api/app.yaml",
-		"checkout/app.yaml",
-		"platform/app.yaml",
-		"preorder/app.yaml",
-		"store/app.yaml",
-	}
-
-	var version string
-
-	for _, file := range files {
-		version = bumpVersion(file)
-	}
-
+	version := bumpVersion(run("git describe --abbrev=0 --tags"))
 	run("git add .")
 	run("git commit -m " + version)
 	run("git tag " + version)
