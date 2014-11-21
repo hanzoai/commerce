@@ -155,7 +155,7 @@
             var counterEl = itemEl.find('.counter');
 
             var count = 0;
-            itemEl.find('.quantity').each(function(){
+            itemEl.find('.form:first .quantity').each(function(){
               var val = parseInt($(this).val(), 10);
               if(isNaN(val)) {
                 val = 0;
@@ -176,7 +176,7 @@
         function appendFunc(selector, variantT, countF) {
           var count = 0;
           var append = function() {
-            var variantEl = $(variantT);
+            var variantEl = $(variantT + ' .form:first');
             if (count > 0) {
               var subButtonEl = $(subButtonT);
               subButtonEl.on('click', function(){
