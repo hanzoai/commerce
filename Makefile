@@ -9,28 +9,28 @@ goroot_pkg_path = $(goroot)/pkg/$(platform)_appengine/
 gopath_pkg_path = $(gopath)/pkg/$(platform)_appengine/
 
 deps 		    = $(shell cat Godeps | cut -d ' ' -f 1)
-modules 	    = crowdstart.io/platform \
-				  crowdstart.io/api \
-				  crowdstart.io/preorder \
+modules 	    = crowdstart.io/api \
 				  crowdstart.io/checkout \
+				  crowdstart.io/platform \
+				  crowdstart.io/preorder \
 				  crowdstart.io/store
 
 gae_token 	    = 1/DLPZCHjjCkiegGp0SiIvkWmtZcUNl15JlOg4qB0-1r0MEudVrK5jSpoR30zcRFq6
 
-gae_dev_yaml    = config/dev/dispatch.yaml \
+gae_development = config/dev/dispatch.yaml \
+				  api/app.dev.yaml \
+				  checkout/app.dev.yaml \
 				  config/dev/app.yaml \
 				  platform/app.dev.yaml \
-				  api/app.dev.yaml \
 				  preorder/app.dev.yaml \
-				  store/app.dev.yaml \
-				  checkout/app.dev.yaml
+				  store/app.dev.yaml
 
-gae_prod_yaml  	= config/prod \
-				  platform/app.prod.yaml \
-				  api/app.prod.yaml \
-				  preorder/app.prod.yaml \
-				  store/app.prod.yaml \
-				  checkout/app.prod.yaml
+gae_production  = config/prod \
+				  api \
+				  checkout \
+			      platform \
+				  preorder \
+				  store
 
 tools = github.com/nsf/gocode \
         code.google.com/p/go.tools/cmd/goimports \
@@ -91,10 +91,10 @@ install-deps:
 	chmod +x $(sdk_path)/gopath/bin/go
 
 serve:
-	$(sdk_path)/dev_appserver.py --datastore_path=~/.gae_datastore.bin $(gae_dev_yaml)
+	$(sdk_path)/dev_appserver.py --datastore_path=~/.gae_datastore.bin $(gae_development)
 
 serve-clear-datastore:
-	$(sdk_path)/dev_appserver.py --datastore_path=~/.gae_datastore.bin --clear_datastore=true $(gae_dev_yaml)
+	$(sdk_path)/dev_appserver.py --datastore_path=~/.gae_datastore.bin --clear_datastore=true $(gae_development)
 
 tools:
 	goapp get $(tools) && \
@@ -111,7 +111,7 @@ deploy: test
 	goapp run deploy.go
 
 deploy-appengine: assets
-	for module in $(gae_prod_yaml); do \
+	for module in $(gae_production); do \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) rollback $$module; \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update $$module; \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) set_default_version $$module; \
