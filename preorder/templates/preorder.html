@@ -211,7 +211,7 @@
               $('.perk').append(perkEl);
             } else {
               perk.count++;
-              setText(perkEl, 'h2 span.count', ' x' + perk.count);
+              setText(perkEl, 'h2 span.count', ' [x' + perk.count + ']');
             }
             helmetTotal += parseInt(contribution.Perk.HelmetQuantity, 10);
             gearTotal += parseInt(contribution.Perk.GearQuantity, 10);
