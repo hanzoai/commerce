@@ -27,19 +27,18 @@ func GetPreorder(c *gin.Context) {
 	// Should use token to lookup email
 	user := new(models.User)
 	if err := db.GetKey("user", token.Email, user); err != nil {
-		log.Panic("Failed to fetch user: %v", err)
+		log.Panic("Failed to fetch user: %v", err, c)
 	}
 
 	// Find all of a user's contributions
 	contributions := new([]models.Contribution)
 	if _, err := db.Query("contribution").Filter("Email =", user.Email).GetAll(db.Context, contributions); err != nil {
-		log.Panic("Failed to find contributions: %v", err)
+		log.Panic("Failed to find contributions: %v", err, c)
 	}
 
 	userJSON := json.Encode(user)
 	contributionsJSON := json.Encode(contributions)
 
-	log.Debug("%#v", user)
 	template.Render(c, "preorder.html", "user", user, "userJSON", userJSON, "contributionsJSON", contributionsJSON)
 }
 
@@ -94,11 +93,11 @@ func Login(c *gin.Context) {
 	db := datastore.New(c)
 
 	// Look up tokens for this user
-	log.Debug("Searching for valid token for: %v", f.Email)
+	log.Debug("Searching for valid token for: %v", f.Email, c)
 
 	tokens := make([]models.InviteToken, 0)
 	if _, err = db.Query("invite-token").Filter("Email =", f.Email).GetAll(db.Context, &tokens); err != nil {
-		log.Panic("Failed to query for tokens: %v", err)
+		log.Panic("Failed to query for tokens: %v", err, c)
 		return
 	}
 
