@@ -69,14 +69,14 @@ func New() *Logger {
 	backend := new(AppengineBackend)
 	log.appengineBackend = backend
 
-	// Log formatting
-	formatter := logging.MustStringFormatter("%{level:.5s} %{shortfile} %{longfunc} %{message}")
-	colorized := logging.MustStringFormatter("%{color}%{level:.5s} %{shortfile} %{longfunc} %{color:reset}%{message}")
+	// Log formatters, color for dev, plain for production
+	plainFormatter := logging.MustStringFormatter("%{shortfile} %{longfunc} %{message}")
+	colorFormatter := logging.MustStringFormatter("%{color}%{level:.5s} %{shortfile} %{longfunc} %{color:reset}%{message}")
 
-	defaultBackend := logging.NewBackendFormatter(backend, formatter)
+	defaultBackend := logging.NewBackendFormatter(backend, plainFormatter)
 
 	if appengine.IsDevAppServer() {
-		defaultBackend = logging.NewBackendFormatter(backend, colorized)
+		defaultBackend = logging.NewBackendFormatter(backend, colorFormatter)
 	}
 
 	multiBackend := logging.SetBackend(defaultBackend)
