@@ -35,7 +35,7 @@ func TestCRUD(t *testing.T) {
 	}
 
 	oModified := TestStruct{"jaks"}
-	key, err = db.Update(key, oModified)
+	key, err = db.Put(key, oModified)
 	if err != nil {
 		t.Error(err)
 	}
@@ -91,7 +91,7 @@ func TestKeyCRUD(t *testing.T) {
 	}
 
 	oModified := TestStruct{"jaks"}
-	key, err = db.Update(key, oModified)
+	key, err = db.Put(key, oModified)
 	if err != nil {
 		t.Error(err)
 	}
@@ -161,7 +161,7 @@ func TestMultiCRUD(t *testing.T) {
 		oModified[i] = TestStruct{string(i * 3)}
 	}
 	for i := range keys {
-		key, err := db.Update(keys[i], oModified[i])
+		key, err := db.Put(keys[i], oModified[i])
 		_keys = append(_keys, key)
 		if err != nil {
 			t.Error(err)
