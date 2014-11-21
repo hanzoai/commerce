@@ -53,6 +53,8 @@ type Perk struct {
 	Description       string
 	Price             string
 	EstimatedDelivery string
+	HelmetQuantity    int
+	GearQuantity      int
 }
 
 type Contribution struct {
