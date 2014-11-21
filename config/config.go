@@ -6,9 +6,10 @@ import (
 	"strings"
 )
 
-const demoMode = true
+var demoMode = true
 
 type Config struct {
+	DemoMode          bool
 	Development       bool
 	Production        bool
 	AutoCompileAssets bool
@@ -46,6 +47,7 @@ func Defaults() *Config {
 	config.Hosts = make(map[string]string, 10)
 	config.Prefixes = make(map[string]string, 10)
 	config.RootDir, _ = os.Getwd()
+	config.DemoMode = demoMode
 	return config
 }
 
@@ -91,16 +93,20 @@ func Production() *Config {
 	config.Hosts["preorder"] = "preorder.crowdstart.io"
 	config.Hosts["store"] = "store.crowdstart.io"
 
-	config.Stripe.ClientId = "ca_53yyRUNpMtTRUgMlVlLAM3vllY1AVybU"
-	config.Stripe.APIKey = "pk_live_APr2mdiUblcOO4c2qTeyQ3hq"
-	config.Stripe.APISecret = ""
-	config.Stripe.RedirectURL = "https://secure.crowdstart.io/admin/stripe/callback"
-	config.Stripe.WebhookURL = "https://secure.crowdstart.io/admin/stripe/hook"
+	// Only use production credentials if demo mode is off.
+	if !config.DemoMode {
+		config.Stripe.ClientId = "ca_53yyRUNpMtTRUgMlVlLAM3vllY1AVybU"
+		config.Stripe.APIKey = "pk_live_APr2mdiUblcOO4c2qTeyQ3hq"
+		config.Stripe.APISecret = ""
+		config.Stripe.RedirectURL = "https://secure.crowdstart.io/admin/stripe/callback"
+		config.Stripe.WebhookURL = "https://secure.crowdstart.io/admin/stripe/hook"
+	}
+
 	return config
 }
 
 func Get() *Config {
-	if demoMode || appengine.IsDevAppServer() {
+	if appengine.IsDevAppServer() {
 		return Development()
 	} else {
 		return Production()
