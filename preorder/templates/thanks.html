@@ -1,49 +1,38 @@
+{% extends "base.html" %}
 
-<!DOCTYPE html>
-<html>
-  <head>
-    <link rel="stylesheet" type="text/css" href="/css/reset.css">
-    <link rel="stylesheet" type="text/css" href="/css/foundation-icons.css">
-    <link rel="stylesheet" type="text/css" href="/css/preorder.css">
-    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Michroma:400,400italic,700normal,700italic|PT+Serif:400,400italic,700normal,700italic"/>
+{% block title %}
+Order Saved &mdash; SKULLY AR-1
+{% endblock %}
 
-    <script type="text/javascript" src="/js/jquery.min.js"></script>
-    <script type="text/javascript" src="/js/card.js"></script>
-    <script type="text/javascript" src="/js/validate.min.js"></script>
-    <script src="//use.typekit.net/uye2ojv.js"></script>
-    <script type="text/javascript">try{Typekit.load();}catch(e){}</script>
+{% block head %}
+<link rel="stylesheet" type="text/css" href="{{ staticUrl }}/css/foundation-icons.css">
+{% endblock %}
 
-    <title>Order Saved &mdash; SKULLY AR-1</title>
-  </head>
-  <body>
-    <div class="wide center body">
-      <div class="content-centered logo">
+{% block content %}
+<div class="narrow center content-centered">
+    <h2>Thank you!</h2>
 
-        <h1>Skully</h1>
+    <p>
+	We have your shipping information saved. You can use your email and
+	password to login and change your preorder details at any time.
+    </p>
 
-        <h3>Thank you!</h3>
+    <br>
 
-        <p>
-          We have your shipping information saved! Follow us on our various
-          social media sites to stay up to date on our progress:
-        </p>
+    <p>Follow us to keep up to date about everything SKULLY:</p>
 
-        <nav class="social-icons">
-              <a href="https://www.facebook.com/skullysystems" target="_blank" title="Skully Helmets, Inc" class="fi-social-facebook large"></a>
+    <nav class="social-icons">
+      <a href="https://www.facebook.com/skullysystems" target="_blank" title="Skully Helmets, Inc" class="fi-social-facebook large"></a>
 
-              <a href="http://www.twitter.com/skullysystems" target="_blank" title="SKULLY HELMETS" class="fi-social-twitter large"></a>
+      <a href="http://www.twitter.com/skullysystems" target="_blank" title="SKULLY HELMETS" class="fi-social-twitter large"></a>
 
-              <a href="http://www.youtube.com/channel/UCgGXkEJ5S_MmQCSoBnusr1Q" target="_blank" title="SKULLY" class="fi-social-youtube large"></a>
+      <a href="http://www.youtube.com/channel/UCgGXkEJ5S_MmQCSoBnusr1Q" target="_blank" title="SKULLY" class="fi-social-youtube large"></a>
 
-              <a href="http://www.instagram.com/skullysystems" target="_blank" title="Skully Helmets" class="fi-social-instagram large"></a>
+      <a href="http://www.instagram.com/skullysystems" target="_blank" title="Skully Helmets" class="fi-social-instagram large"></a>
 
-              <a href="https://plus.google.com/112776474651298122010/posts" target="_blank" title="Marcus Weller" class="fi-social-google-plus large"></a>
+      <a href="https://plus.google.com/112776474651298122010/posts" target="_blank" title="Marcus Weller" class="fi-social-google-plus large"></a>
 
-              <a href="https://www.linkedin.com/company/3233339?trk=vsrp_companies_res_name&amp;trkInfo=VSRPsearchId%3A637198571407629012548%2CVSRPtargetId%3A3233339%2CVSRPcmpt%3Aprimary" target="_blank" title="Marcus Weller, PhD" class="fi-social-linkedin large"></a>
-        </nav>
-
-      </div>
-    </div>
-
-  </body>
-</html>
+      <a href="https://www.linkedin.com/company/3233339?trk=vsrp_companies_res_name&amp;trkInfo=VSRPsearchId%3A637198571407629012548%2CVSRPtargetId%3A3233339%2CVSRPcmpt%3Aprimary" target="_blank" title="Marcus Weller, PhD" class="fi-social-linkedin large"></a>
+    </nav>
+</div>
+{% endblock %}
