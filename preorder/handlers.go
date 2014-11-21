@@ -101,14 +101,14 @@ func Login(c *gin.Context) {
 	// Parse login form
 	f := new(models.LoginForm)
 	if err := f.Parse(c); err != nil {
-		template.Render(c, "login.html", "message", "Please ensure you have correctly entered your username and password")
+		template.Render(c, "login.html", "message", "The email or password you entered is incorrect.")
 		return
 	}
 
 	// Verify password
 	err := auth.VerifyUser(c)
 	if err != nil {
-		template.Render(c, "login.html", "message", "Please ensure you have correctly entered your username and password")
+		template.Render(c, "login.html", "message", "The email or password you entered is incorrect.")
 		return
 	}
 
