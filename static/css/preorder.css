@@ -1,4 +1,4 @@
-body {
+body, p {
   font-family:"proxima-nova", sans-serif;
   color: white;
   background-color: black;
@@ -28,7 +28,7 @@ body {
 
 h1 {
   font-weight: 600;
-  font-size: 135px
+  font-size: 80px;
 }
 
 .form {
