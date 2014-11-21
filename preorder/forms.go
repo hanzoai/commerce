@@ -13,6 +13,9 @@ type PreorderForm struct {
 	Password        string
 	PasswordConfirm string
 	ShippingAddress models.Address
+	HatColor        string `"schema":-`
+	HatSize         string `"schema":-`
+	HatQuantity     string `"schema":-`
 	HelmetColor     string `"schema":-`
 	HelmetSize      string `"schema":-`
 	HelmetQuantity  string `"schema":-`
