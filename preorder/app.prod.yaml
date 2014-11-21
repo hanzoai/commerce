@@ -13,5 +13,5 @@ automatic_scaling:
 handlers:
 - url: /.*
   script: _go_app
-  secure: true
+  secure: always
   login: required
