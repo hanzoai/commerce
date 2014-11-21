@@ -7,7 +7,7 @@ dispatch:
   - url: "platform.crowdstart.io/*"
     module: platform
 
-  - url: "preorder.crowdstart.io/*"
+  - url: "preorder.skullysystems.com/*"
     module: preorder
 
   - url: "store.crowdstart.io/*"
