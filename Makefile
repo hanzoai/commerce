@@ -55,25 +55,25 @@ export GOPATH  := $(gopath)
 
 all: deps test
 
-assets: js-deps
+assets: deps-js
 	requisite assets/js/store.coffee -g -o static/js/store.js && \
 	requisite assets/js/checkout.coffee -g -o static/js/checkout.js
 
 build: deps
 	goapp build $(modules)
 
-js-deps:
+deps-js:
 	(hash requisite 2>/dev/null || npm install -g requisite) && npm install
 
-go-deps: .sdk
+deps-go: .sdk
 	gpm install || curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.1/bin/gpm | bash
 
-deps: go-deps js-deps
+deps: deps-go deps-js
 
 install: install-deps
 	goapp install $(modules) $(packages)
 
-install-deps: go-deps
+install-deps:
 	goapp install $(deps)
 
 .sdk:
@@ -115,4 +115,4 @@ deploy-appengine: assets
 	done && \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update_dispatch config/prod
 
-.PHONY: all assets assets-deps build deploy deps test serve tools
+.PHONY: all assets build deploy deps deps-js deps-go serve test tools
