@@ -23,6 +23,10 @@ nav.social-icons > .large:visited {
     color: #D70404;
 }
 
+nav.social-icons > .large:hover:visited {
+    color: white;
+}
+
 .wide {
   width: 780px
 }
