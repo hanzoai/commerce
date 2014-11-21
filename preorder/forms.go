@@ -8,9 +8,18 @@ import (
 )
 
 type PreorderForm struct {
-	User     models.User
-	Order    models.Order
-	Password string
+	User            models.User
+	Order           models.Order
+	Password        string
+	PasswordConfirm string
+	ShippingAddress models.Address
+	HelmetColor     string `"schema":-`
+	HelmetSize      string `"schema":-`
+	HelmetQuantity  string `"schema":-`
+	ShirtStyle      string `"schema":-`
+	ShirtColor      string `"schema":-`
+	ShirtSize       string `"schema":-`
+	ShirtQuanity    string `"schema":-`
 }
 
 func (f *PreorderForm) Parse(c *gin.Context) error {
