@@ -1,8 +1,12 @@
 package auth
 
 import (
+	"errors"
+
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/sessions"
+
+	"crowdstart.io/util/log"
 )
 
 const secret = "askjaakjl12"
@@ -38,7 +42,12 @@ func Get(c *gin.Context, key string) (string, error) {
 		return "", err
 	}
 
-	return session.Values[key].(string), SaveSession(c, session)
+	value, ok := session.Values[key].(string)
+	if !ok {
+		log.Debug("Value doesn't exist")
+		return "", errors.New("Value doesn't exist at " + key)
+	}
+	return value, SaveSession(c, session)
 }
 
 func ClearSession(c *gin.Context) error {
