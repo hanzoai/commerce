@@ -19,13 +19,13 @@ handlers:
   static_dir: ../../static/adminlte
 
 - url: /favicon.ico
-  static_files: static/favicon.ico
+  static_files: ../../static/favicon.ico
   upload: ../../static/favicon.ico
 
 - url: /humans.txt
-  static_files: static/humans.txt
+  static_files: ../../static/humans.txt
   upload: ../../static/humans.txt
 
 - url: /robots.txt
-  static_files: static/robots.txt
+  static_files: ../../static/robots.txt
   upload: ../../static/robots.txt
