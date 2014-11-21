@@ -83,7 +83,7 @@ install-deps:
 	mkdir -p $(sdk_path)/gopath/src && \
 	mkdir -p $(sdk_path)/gopath/bin && \
 	ln -s $(shell pwd) $(sdk_path)/gopath/src/crowdstart.io && \
-	echo '#!/usr/bin/env bash\ngoapp $@' > $(sdk_path)/gopath/bin/go && \
+	echo '#!/usr/bin/env bash\ngoapp $$@' > $(sdk_path)/gopath/bin/go && \
 	chmod +x $(sdk_path)/gopath/bin/go
 
 serve:
