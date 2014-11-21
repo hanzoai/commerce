@@ -4,35 +4,28 @@ body, p {
   background-color: black;
   line-height: 1.5
 }
-
 /*Perk description*/
-.p1 {
-    background-color: #232323;
+ .p1 {
+  background-color: #232323;
 }
 
-nav.social-icons > .large {
-    font-size: 50px;
-    margin-right: 20x;
-    margin-left: 20px;
-    text-decoration: none;
+nav.social-icons > .bounce .large {
+  font-size: 50px;
+  padding: 15px;
+  text-decoration: none;
 }
 
-nav.social-icons > .large:link {
-    color: white;
-}
-
-nav.social-icons > .large:visited {
-    color: white;
-}
-
-nav.social-icons > .large:hover {
+nav.social-icons > .bounce .large:link {
   color: white;
-   /* color: #D70404; */
 }
 
-nav.social-icons > .large:hover:visited {
+nav.social-icons > .bounce .large:visited {
   color: white;
-   /* color: #D70404; */
+}
+
+nav.social-icons > .bounce .large:hover {
+  color: white;
+  margin-top: 5px;
 }
 
 .wide {
@@ -68,7 +61,7 @@ h1 {
 
 .form button {
   color: white;
-  background-color: rgba(0,0,0,0);
+  background-color: rgba(0, 0, 0, 0);
   border: 0;
   font-size: 14px;
   height: 45px;
@@ -179,7 +172,7 @@ h2.underline {
 }
 
 .submit {
-  color: rgb(75,75,75);
+  color: rgb(75, 75, 75);
   font-size: 14px;
   margin-bottom: 50px
 }
@@ -212,4 +205,21 @@ input.fix {
   width: 344px;
   display: inline-block;
   text-align: right
+}
+
+.bounce {
+  float: left;
+  margin-top: 10px;
+  -webkit-transition: margin 0.5s ease-out;
+  -moz-transition: margin 0.5s ease-out;
+  -o-transition: margin 0.5s ease-out;
+}
+
+.bounce:hover {
+  padding-top: 5px;
+}
+
+.social-icons {
+  display:flex;
+  justify-content:space-between;
 }
