@@ -94,7 +94,7 @@ Pre-order &mdash; SKULLY AR-1
 
     <div class="narrow center item ar1">
       <div class="content-centered">
-        <h2 class="underline">Skully AR-1 color &amp; size <span>(</span><span class="counter"></span><span class="total"></span></h2>
+        <h3 class="underline">Skully AR-1 color &amp; size <span>(</span><span class="counter"></span><span class="total"></span></h3>
       </div>
       <div class="form"></div>
     </div>
@@ -103,7 +103,7 @@ Pre-order &mdash; SKULLY AR-1
 
     <div class="narrow center item apparel">
       <div class="content-centered">
-        <h2 class="underline">Skully Nation Apparel Color &amp; size <span>(</span><span class="counter"></span><span class="total"></span></h2>
+        <h3 class="underline">Skully Nation Apparel Color &amp; size <span>(</span><span class="counter"></span><span class="total"></span></h3>
       </div>
 
       <div class="form"></div>
@@ -193,7 +193,7 @@ Pre-order &mdash; SKULLY AR-1
         var perkT = '\
 <div class="instance">\
   <div class="content-centered">\
-    <h2 class="underline">Perk: <span class="title"></span><span class="count"><span></h2>\
+    <h3 class="underline">Perk: <span class="title"></span><span class="count"><span></h3>\
   </div>\
   <div class="content-centered description">\
     <p class="p1">Perk description here. Blah blah blah. Please follow format\
@@ -216,14 +216,14 @@ Pre-order &mdash; SKULLY AR-1
             var perk = perkMap[contribution.Perk.Id];
             if (!perk) {
               var perkEl = $(perkT);
-              setText(perkEl, 'h2 span.title', contribution.Perk.Title);
+              setText(perkEl, 'h3 span.title', contribution.Perk.Title);
               setText(perkEl, 'p.p1', contribution.Perk.Description);
               setText(perkEl, 'p.p2', contribution.Perk.EstimatedDelivery);
               perkMap[contribution.Perk.Id] = { el: perkEl, count: 1 };
               $('.perk').append(perkEl);
             } else {
               perk.count++;
-              setText(perkEl, 'h2 span.count', ' [x' + perk.count + ']');
+              setText(perkEl, 'h3 span.count', ' [x' + perk.count + ']');
             }
             helmetTotal += parseInt(contribution.Perk.HelmetQuantity, 10);
             gearTotal += parseInt(contribution.Perk.GearQuantity, 10);
