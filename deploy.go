@@ -70,6 +70,7 @@ func run(cmd string, opts ...interface{}) string {
 
 func main() {
 	version := bumpVersion(run("git describe --abbrev=0 --tags", true))
+	log.Println(version)
 	run("git add .")
 	run("git commit -m " + version)
 	run("git tag " + version)
