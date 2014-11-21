@@ -55,24 +55,25 @@ export GOPATH  := $(gopath)
 
 all: deps test
 
-assets: assets-deps
+assets: js-deps
 	requisite assets/js/store.coffee -g -o static/js/store.js && \
 	requisite assets/js/checkout.coffee -g -o static/js/checkout.js
 
 build: deps
 	goapp build $(modules)
 
-assets-deps:
-	cd assets/js && npm install
+js-deps:
+	(hash requisite 2>/dev/null || npm install -g requisite) && npm install
 
-deps: .sdk
-	(gpm install || curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.1/bin/gpm | bash) && \
-	(hash requisite 2>/dev/null || npm install -g requisite)
+go-deps: .sdk
+	gpm install || curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.1/bin/gpm | bash
+
+deps: go-deps js-deps
 
 install: install-deps
 	goapp install $(modules) $(packages)
 
-install-deps:
+install-deps: go-deps
 	goapp install $(deps)
 
 .sdk:
