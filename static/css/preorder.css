@@ -152,7 +152,7 @@ h3.underline {
   text-indent: 5px
 }
 
-.item input.quantity {
+.item input.quantity, .item select.quantity {
   width: 60px;
   position: absolute;
   right: 0px
