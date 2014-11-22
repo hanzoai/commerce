@@ -3,6 +3,7 @@ package config
 import (
 	"appengine"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -44,10 +45,11 @@ func (c Config) URLFor(moduleName, domain string) string {
 }
 
 func Defaults() *Config {
+	cwd, _ := os.Getwd()
 	config := new(Config)
 	config.Hosts = make(map[string]string, 10)
 	config.Prefixes = make(map[string]string, 10)
-	config.RootDir, _ = os.Getwd()
+	config.RootDir, _ = filepath.Abs(cwd + "/../..")
 	config.DemoMode = demoMode
 	return config
 }

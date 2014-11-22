@@ -20,10 +20,12 @@ func Init() {
 		db := datastore.New(ctx)
 		fixtures.Install(db)
 
+		conf := config.Get()
+
 		// Recompile static assets
-		if config.Get().AutoCompileAssets {
-			for _, bundle := range []string{"store", "checkout"} {
-				exec.Run("requisite ../assets/js/" + bundle + ".coffee -g -o /tmp/" + bundle + ".js")
+		if conf.AutoCompileAssets {
+			for _, bundle := range []string{"store", "checkout", "preorder"} {
+				exec.Run(conf.RootDir + "/node_modules/.bin/requisite ../assets/js/" + bundle + "/" + bundle + ".coffee -g -o /tmp/" + bundle + ".js")
 				a := fs.ReadFile("../static/js/" + bundle + ".js")
 				b := fs.ReadFile("/tmp/" + bundle + ".js")
 				if a != b {
