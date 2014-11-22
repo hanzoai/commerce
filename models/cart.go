@@ -126,9 +126,9 @@ func (o *Order) LoadItems(c *gin.Context) error {
 		return err
 	}
 
-	items := make([]LineItem, len(genItems))
+	o.Items = make([]LineItem, len(genItems))
 	for i, item := range genItems {
-		items[i] = item.(LineItem)
+		o.Items[i] = item.(LineItem)
 	}
 
 	return err
