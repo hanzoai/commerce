@@ -7,10 +7,16 @@ import (
 
 	"crowdstart.io/config"
 	"crowdstart.io/middleware"
+	"crowdstart.io/util/log"
 )
 
-func New(path string) *gin.RouterGroup {
+func New(moduleName string) *gin.RouterGroup {
 	router := gin.New()
+
+	prefix := config.Get().PrefixFor(moduleName)
+	if prefix == "" {
+		log.Panic("Unable to determine prefix for module: '%s'", moduleName)
+	}
 
 	router.Use(middleware.ErrorHandler())
 	router.Use(middleware.NotFoundHandler())
@@ -21,7 +27,7 @@ func New(path string) *gin.RouterGroup {
 		router.Use(middleware.LiveReload())
 	}
 
-	http.Handle(path, router)
+	http.Handle(prefix, router)
 
-	return router.Group(path)
+	return router.Group(prefix)
 }

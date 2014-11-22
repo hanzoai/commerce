@@ -61,12 +61,14 @@ func Development() *Config {
 
 	config.AutoCompileAssets = false
 
-	config.Prefixes["api"] = "/v1/"
+	config.Prefixes["default"] = "/"
+	config.Prefixes["api"] = "/api/"
 	config.Prefixes["checkout"] = "/checkout/"
 	config.Prefixes["platform"] = "/admin/"
 	config.Prefixes["preorder"] = "/preorder/"
-	config.Prefixes["store"] = "/"
+	config.Prefixes["store"] = "/store/"
 
+	config.Hosts["default"] = "localhost:8080"
 	config.Hosts["api"] = "localhost:8080"
 	config.Hosts["checkout"] = "localhost:8080"
 	config.Hosts["platform"] = "localhost:8080"
@@ -88,12 +90,14 @@ func Production() *Config {
 
 	config.Production = true
 
-	config.Prefixes["api"] = "/v1"
+	config.Prefixes["default"] = "/"
+	config.Prefixes["api"] = "/"
 	config.Prefixes["checkout"] = "/"
 	config.Prefixes["platform"] = "/"
 	config.Prefixes["preorder"] = "/"
 	config.Prefixes["store"] = "/"
 
+	config.Hosts["default"] = "static.crowdstart.io"
 	config.Hosts["api"] = "api.crowdstart.io"
 	config.Hosts["checkout"] = "secure.crowdstart.io"
 	config.Hosts["platform"] = "platform.crowdstart.io"

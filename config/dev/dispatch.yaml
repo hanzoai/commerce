@@ -31,5 +31,5 @@ dispatch:
   - url: "*/preorder/*"
     module: preorder
 
-  - url: "*/*"
+  - url: "*/store/*"
     module: store
