@@ -8,6 +8,7 @@ import (
 )
 
 var demoMode = true
+var cachedConfig *Config
 
 type Config struct {
 	DemoMode          bool
@@ -114,9 +115,14 @@ func Production() *Config {
 }
 
 func Get() *Config {
-	if appengine.IsDevAppServer() {
-		return Development()
-	} else {
-		return Production()
+	if cachedConfig != nil {
+		return cachedConfig
 	}
+	if appengine.IsDevAppServer() {
+		cachedConfig = Development()
+	} else {
+		cachedConfig = Production()
+	}
+
+	return cachedConfig
 }
