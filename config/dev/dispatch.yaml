@@ -1,10 +1,25 @@
 application: crowdstart-io-dev
 
 dispatch:
-  - url: "*/assets/*"
-    module: default
+  - url: "*/api/*"
+    module: api
+
+  - url: "*/checkout/*"
+    module: checkout
+
+  - url: "*/platform/*"
+    module: platform
+
+  - url: "*/preorder/*"
+    module: preorder
+
+  - url: "*/store/*"
+    module: store
 
   - url: "*/static/*"
+    module: default
+
+  - url: "*/assets/*"
     module: default
 
   - url: "*/robots.txt"
@@ -13,20 +28,9 @@ dispatch:
   - url: "*/humans.txt"
     module: default
 
-  - url: "*/favicon.ico"
+  - url: "*/apple-touch-icon.png"
     module: default
 
-  - url: "*/api/*"
-    module: api
+  - url: "*/apple-touch-icon-precomposed.png"
+    module: default
 
-  - url: "*/platform/*"
-    module: platform
-
-  - url: "*/checkout/*"
-    module: checkout
-
-  - url: "*/preorder/*"
-    module: preorder
-
-  - url: "*/*"
-    module: store

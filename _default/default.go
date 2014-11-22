@@ -11,7 +11,7 @@ import (
 )
 
 func Init() {
-	router := router.New("/")
+	router := router.New("default")
 
 	// Warmup: install fixtures, etc.
 	router.GET("/_ah/warmup", func(c *gin.Context) {
