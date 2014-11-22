@@ -3,6 +3,6 @@
   "private": true,
   "dependencies": {
     "mvstar": "0.0.9",
-    "requisite": "^1.7.8"
+    "requisite": "^1.7.9"
   }
 }
