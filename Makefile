@@ -56,8 +56,9 @@ export GOPATH  := $(gopath)
 all: deps assets test
 
 assets: deps-js
-	node_modules/.bin/requisite assets/js/store.coffee -g -o static/js/store.js && \
-	node_modules/.bin/requisite assets/js/checkout.coffee -g -o static/js/checkout.js
+	node_modules/.bin/requisite assets/js/store/store.coffee -g -o static/js/store.js && \
+	node_modules/.bin/requisite assets/js/checkout/checkout.coffee -g -o static/js/checkout.js && \
+	node_modules/.bin/requisite assets/js/preorder/preorder.coffee -g -o static/js/preorder.js
 
 build: deps
 	goapp build $(modules)
