@@ -12,8 +12,8 @@ var cachedConfig *Config
 
 type Config struct {
 	DemoMode          bool
-	Development       bool
-	Production        bool
+	IsDevelopment     bool
+	IsProduction      bool
 	AutoCompileAssets bool
 	RootDir           string
 	StaticUrl         string
@@ -28,23 +28,25 @@ type Config struct {
 	}
 }
 
+// Return routing prefix for module
 func (c Config) PrefixFor(moduleName string) string {
 	return c.Prefixes[moduleName]
 }
 
-func (c Config) URLFor(moduleName, domain string) string {
+// Return full url to module
+func (c Config) ModuleUrl(moduleName, domain string) string {
 	// Build URL for module.
 	url := c.Hosts[moduleName] + c.PrefixFor(moduleName)
 
 	// If module is hosted, return relative to that root domain.
 	if domain != "" {
 		url = strings.Replace(url, "crowdstart.io", domain, 1)
-
 	}
 
 	return url
 }
 
+// Default settings
 func Defaults() *Config {
 	cwd, _ := os.Getwd()
 	config := new(Config)
@@ -55,9 +57,10 @@ func Defaults() *Config {
 	return config
 }
 
+// Development settings
 func Development() *Config {
 	config := Defaults()
-	config.Development = true
+	config.IsDevelopment = true
 
 	config.AutoCompileAssets = false
 
@@ -85,10 +88,11 @@ func Development() *Config {
 	return config
 }
 
+// Production Settings
 func Production() *Config {
 	config := Defaults()
 
-	config.Production = true
+	config.IsProduction = true
 
 	config.Prefixes["default"] = "/"
 	config.Prefixes["api"] = "/"
@@ -118,6 +122,7 @@ func Production() *Config {
 	return config
 }
 
+// Get current config object
 func Get() *Config {
 	if cachedConfig != nil {
 		return cachedConfig
@@ -129,4 +134,23 @@ func Get() *Config {
 	}
 
 	return cachedConfig
+}
+
+var config = Get()
+
+var DemoMode = config.DemoMode
+var IsDevelopment = config.IsDevelopment
+var IsProduction = config.IsProduction
+var AutoCompileAssets = config.AutoCompileAssets
+var RootDir = config.RootDir
+var StaticUrl = config.StaticUrl
+var Stripe = config.Stripe
+
+func PrefixFor(moduleName string) string {
+	return config.PrefixFor(moduleName)
+}
+
+// Return full url to module
+func ModuleUrl(moduleName, domain string) string {
+	return config.ModuleUrl(moduleName, domain)
 }
