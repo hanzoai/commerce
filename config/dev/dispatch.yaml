@@ -13,7 +13,10 @@ dispatch:
   - url: "*/humans.txt"
     module: default
 
-  - url: "*/favicon.ico"
+  - url: "*/apple-touch-icon.png"
+    module: default
+
+  - url: "*/apple-touch-icon-precomposed.png"
     module: default
 
   - url: "*/api/*"
