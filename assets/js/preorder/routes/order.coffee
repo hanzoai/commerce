@@ -1,10 +1,14 @@
 PerkView = require '../views/perk'
+HelmetView = require '../views/helmet'
 
 exports.setupView = ->
 
 exports.displayPerks = ->
   console.log 'displaying perks'
   perkMap = {}
+
+  window.helmetTotal = 0
+  window.gearTotal = 0
 
   for contribution in PreorderData.contributions
     unless (view = perkMap[contribution.Perk.Id])?
@@ -22,5 +26,9 @@ exports.displayPerks = ->
   return
 
 exports.displayHelmets = ->
-  view = new HelmetView
+  if window.helmetTotal > 0
+    view = new HelmetView {state: {total: window.helmetTotal}}
+    view.render()
+    view.newItem()
+    $('.item.ar1').append view.$el
   return
