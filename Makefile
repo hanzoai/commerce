@@ -41,15 +41,14 @@ tools = github.com/nsf/gocode \
         github.com/kisielk/errcheck \
         github.com/jstemmer/gotags
 
-# static assets
-requisite = node_modules/.bin/requisite
-
-js_bundles = assets/js/store/store.coffee \
-		     assets/js/preorder/preorder.coffee \
-		     assets/js/checkout/checkout.coffee \
-		     -o static/js/store.js \
-		     -o static/js/preorder.js \
-		     -o static/js/checkout.js \
+# static assets, requisite javascript from assets -> static
+requisite 	   = node_modules/.bin/requisite
+requisite_opts = assets/js/store/store.coffee \
+		         assets/js/preorder/preorder.coffee \
+		         assets/js/checkout/checkout.coffee \
+		         -o static/js/store.js \
+		         -o static/js/preorder.js \
+		         -o static/js/checkout.js \
 
 # find command differs between bsd/linux thus the two versions
 ifeq ($(os), "linux")
@@ -66,10 +65,10 @@ export GOPATH  := $(gopath)
 all: deps assets test
 
 assets: deps-js
-	$(requisite) $(js_bundles) -g
+	$(requisite) $(requisite_opts) -g
 
 assets-watch: deps-js
-	$(requisite) $(js_bundles) -g -w
+	$(requisite) $(requisite_opts) -g -w
 
 build: deps
 	goapp build $(modules)
