@@ -2,9 +2,10 @@ package models
 
 import (
 	"bytes"
-	"github.com/mholt/binding"
 	"net/http"
 	"time"
+
+	"github.com/mholt/binding"
 )
 
 type LineItem struct {
@@ -101,7 +102,6 @@ type Order struct {
 	Subtotal        int64 `schema:"-"`
 	Tax             int64 `schema:"-"`
 	Total           int64 `schema:"-"`
-	User            User
 	Items           []LineItem
 	StripeToken     string `schema:"-"`
 	Campaign        Campaign
