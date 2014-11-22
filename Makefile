@@ -53,7 +53,7 @@ endif
 export GOROOT  := $(goroot)
 export GOPATH  := $(gopath)
 
-all: deps test
+all: deps assets test
 
 assets: deps-js
 	node_modules/.bin/requisite assets/js/store.coffee -g -o static/js/store.js && \
