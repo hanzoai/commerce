@@ -61,8 +61,6 @@ func authorize(c *gin.Context) {
 
 	db := datastore.New(c)
 	order := form.Order
-	user := form.User
-	order.User = user
 
 	ctx := middleware.GetAppEngine(c)
 	ctx.Infof("%#v", order.Items)

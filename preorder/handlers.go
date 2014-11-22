@@ -64,8 +64,50 @@ func SavePreorder(c *gin.Context) {
 	user.LastName = form.User.LastName
 	user.ShippingAddress = form.ShippingAddress
 
+	order := form.Order
+
+	for i, lineItem := range order.Items {
+		// Fetch Variant for LineItem from datastore
+		if err := db.GetKey("variant", lineItem.SKU(), &lineItem.Variant); err != nil {
+			c.Fail(500, err)
+			return
+		}
+
+		// Fetch Product for LineItem from datastore
+		if err := db.GetKey("product", lineItem.Slug(), &lineItem.Product); err != nil {
+			c.Fail(500, err)
+			return
+		}
+
+		order.Items[i] = lineItem
+		order.Subtotal += lineItem.Price()
+	}
+
+	order.Total = order.Subtotal + order.Tax
+
+	var key string
+	var err error
+	if len(user.OrdersIds) > 0 {
+		key = user.OrdersIds[0]
+		_, err = db.PutKey("order", key, order)
+	} else {
+		key, err = db.Put("order", order)
+	}
+
+	if err != nil {
+		log.Error("Error while writing order", err)
+		c.Fail(500, err)
+		return
+	}
+
+	user.OrdersIds[0] = key
 	// Save user back to database
-	db.PutKey("user", user.Email, user)
+	_, err = db.PutKey("user", user.Email, &user)
+	if err != nil {
+		log.Error("Error while writing user", err)
+		c.Fail(500, err)
+		return
+	}
 
 	c.Redirect(301, "../thanks")
 }
