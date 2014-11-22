@@ -20,11 +20,15 @@ class HelmetItemView extends Views.ItemView
     index: (v, selector) ->
       switch selector
         when 'input.sku @name'
-          '#{v}.Variant.SKU'
+          "#{v}.Variant.SKU"
         when 'input.slug @name'
-          '#{v}.Product.Slug'
+          "#{v}.Product.Slug"
+        when 'select.color @name'
+          "#{v}.Color"
+        when 'select.size @name'
+          "#{v}.Size"
         when 'select.quantity @name'
-          '#{v}.Quantity'
+          "#{v}.Quantity"
         when 'button.sub'
           return if v != 0 then '-' else ''
 
