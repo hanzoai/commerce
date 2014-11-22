@@ -7,7 +7,7 @@ import (
 )
 
 func init() {
-	router := router.New("/")
+	router := router.New("store")
 
 	// Products
 	router.GET("/", products.List)

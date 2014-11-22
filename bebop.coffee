@@ -4,7 +4,7 @@ path = require 'path'
 module.exports =
   cwd: process.cwd() + '/assets/js'
 
-  port: 3001
+  forceReload: true
 
   compilers:
     coffee: (src) ->

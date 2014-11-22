@@ -11,35 +11,35 @@ import (
 )
 
 func init() {
-	api := router.New("/v1/")
+	router := router.New("api")
 
 	// Redirect root
-	api.GET("/", func(c *gin.Context) {
+	router.GET("/", func(c *gin.Context) {
 		c.Redirect(301, "http://crowdstart.io")
 	})
 
-	api.GET("/cart/:id", cart.Get)
-	api.POST("/cart", cart.Add)
-	api.PUT("/cart/:id", cart.Update)
-	api.DELETE("/cart/:id", cart.Delete)
+	router.GET("/cart/:id", cart.Get)
+	router.POST("/cart", cart.Add)
+	router.PUT("/cart/:id", cart.Update)
+	router.DELETE("/cart/:id", cart.Delete)
 
-	api.GET("/user/:id", user.Get)
-	api.POST("/user", user.Add)
-	api.PUT("/user/:id", user.Update)
-	api.DELETE("/user/:id", user.Delete)
+	router.GET("/user/:id", user.Get)
+	router.POST("/user", user.Add)
+	router.PUT("/user/:id", user.Update)
+	router.DELETE("/user/:id", user.Delete)
 
-	api.GET("/order/:id", order.Get)
-	api.POST("/order", order.Add)
-	api.PUT("/order/:id", order.Update)
-	api.DELETE("/order/:id", order.Delete)
+	router.GET("/order/:id", order.Get)
+	router.POST("/order", order.Add)
+	router.PUT("/order/:id", order.Update)
+	router.DELETE("/order/:id", order.Delete)
 
-	api.GET("/product/:id", product.Get)
-	api.POST("/product", product.Add)
-	api.PUT("/product/:id", product.Update)
-	api.DELETE("/product/:id", product.Delete)
+	router.GET("/product/:id", product.Get)
+	router.POST("/product", product.Add)
+	router.PUT("/product/:id", product.Update)
+	router.DELETE("/product/:id", product.Delete)
 
-	api.GET("/variant/:id", variant.Get)
-	api.POST("/variant", variant.Add)
-	api.PUT("/variant/:id", variant.Update)
-	api.DELETE("/variant/:id", variant.Delete)
+	router.GET("/variant/:id", variant.Get)
+	router.POST("/variant", variant.Add)
+	router.PUT("/variant/:id", variant.Update)
+	router.DELETE("/variant/:id", variant.Delete)
 }

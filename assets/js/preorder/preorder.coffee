@@ -13,6 +13,7 @@ app.set 'variants', (require './variants')
 app.routes =
   '/preorder/order/:token': [
     routes.order.displayPerks
+    routes.order.displayHelmets
   ]
   '*': [
     (-> console.log 'global')
