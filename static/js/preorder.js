@@ -284,11 +284,330 @@
     }
     ;
   });
+  require.define('./routes', function (module, exports, __dirname, __filename) {
+    module.exports = { order: require('./routes/order') }
+  });
+  require.define('./routes/order', function (module, exports, __dirname, __filename) {
+    var PerkView;
+    PerkView = require('./views/perk');
+    exports.setupView = function () {
+    };
+    exports.displayPerks = function () {
+      var contribution, perkMap, view, _i, _len, _ref;
+      console.log('displaying perks');
+      perkMap = {};
+      _ref = PreorderData.contributions;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        contribution = _ref[_i];
+        if ((view = perkMap[contribution.Perk.Id]) == null) {
+          view = new PerkView({ state: contribution.Perk });
+          view.set('count', 1);
+          view.render();
+          $('.perk').append(view.$el);
+          perkMap[contribution.Perk.Id] = view
+        } else {
+          view.set('count', view.get('count') + 1)
+        }
+        window.helmetTotal += parseInt(contribution.Perk.HelmetQuantity, 10);
+        window.gearTotal += parseInt(contribution.Perk.GearQuantity, 10)
+      }
+    }
+  });
+  require.define('./views/perk', function (module, exports, __dirname, __filename) {
+    var PerkView, View, __hasProp = {}.hasOwnProperty, __extends = function (child, parent) {
+        for (var key in parent) {
+          if (__hasProp.call(parent, key))
+            child[key] = parent[key]
+        }
+        function ctor() {
+          this.constructor = child
+        }
+        ctor.prototype = parent.prototype;
+        child.prototype = new ctor;
+        child.__super__ = parent.prototype;
+        return child
+      };
+    View = require('mvstar/lib/view');
+    PerkView = function (_super) {
+      __extends(PerkView, _super);
+      function PerkView() {
+        return PerkView.__super__.constructor.apply(this, arguments)
+      }
+      PerkView.prototype.template = '#perk-template';
+      PerkView.prototype.bindings = {
+        Title: 'h3 span.title',
+        Description: 'p.p1',
+        EstimatedDelivery: 'p.p2',
+        count: 'h3 span.count'
+      };
+      PerkView.prototype.formatters = {
+        count: function (v) {
+          if (v > 1) {
+            return ' [x' + v + ']'
+          } else {
+            return ''
+          }
+        }
+      };
+      return PerkView
+    }(View);
+    module.exports = PerkView
+  });
+  require.define('mvstar/lib/view', function (module, exports, __dirname, __filename) {
+    var View, nextId, __slice = [].slice;
+    nextId = function () {
+      var counter;
+      counter = 0;
+      return function (prefix) {
+        var id;
+        id = ++counter + '';
+        return prefix != null ? prefix : prefix + id
+      }
+    }();
+    View = function () {
+      View.prototype.el = null;
+      View.prototype.bindings = {};
+      View.prototype.computed = {};
+      View.prototype.events = {};
+      View.prototype.formatters = {};
+      View.prototype.watching = {};
+      function View(opts) {
+        var name, watched, watcher, _base, _i, _j, _len, _len1, _ref, _ref1;
+        if (opts == null) {
+          opts = {}
+        }
+        if (this.el == null) {
+          this.el = opts.el
+        }
+        if (opts.$el) {
+          this.$el = opts.$el
+        } else {
+          if (this.template) {
+            this.$el = $($(this.template).html())
+          } else {
+            this.$el = $(this.el)
+          }
+        }
+        this.id = nextId(this.constructor.name);
+        this.state = (_ref = opts.state) != null ? _ref : {};
+        this._events = {};
+        this._targets = {};
+        this._watchers = {};
+        _ref1 = this.watching;
+        for (watched = _i = 0, _len = _ref1.length; _i < _len; watched = ++_i) {
+          watcher = _ref1[watched];
+          if (!Array.isArray(watched)) {
+            watched = [watched]
+          }
+          for (_j = 0, _len1 = watched.length; _j < _len1; _j++) {
+            name = watched[_j];
+            if ((_base = this._watchers)[name] == null) {
+              _base[name] = []
+            }
+            this._watchers[name].push(watcher)
+          }
+        }
+        this._cacheTargets();
+        if (!!opts.autoRender) {
+          this.render()
+        }
+      }
+      View.prototype._cacheTargets = function () {
+        var attr, name, selector, target, targets, _ref, _results;
+        _ref = this.bindings;
+        _results = [];
+        for (name in _ref) {
+          targets = _ref[name];
+          if (!Array.isArray(targets)) {
+            targets = [targets]
+          }
+          _results.push(function () {
+            var _i, _len, _ref1, _results1;
+            _results1 = [];
+            for (_i = 0, _len = targets.length; _i < _len; _i++) {
+              target = targets[_i];
+              _ref1 = this._splitTarget(target), selector = _ref1[0], attr = _ref1[1];
+              if (this._targets[selector] == null) {
+                _results1.push(this._targets[selector] = this.$el.find(selector))
+              } else {
+                _results1.push(void 0)
+              }
+            }
+            return _results1
+          }.call(this))
+        }
+        return _results
+      };
+      View.prototype._computeComputed = function (name) {
+        var args, sources, src, value, _i, _j, _len, _len1, _ref;
+        args = [];
+        _ref = this.watching[name];
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          sources = _ref[_i];
+          if (!Array.isArray(sources)) {
+            sources = [sources]
+          }
+          for (_j = 0, _len1 = sources.length; _j < _len1; _j++) {
+            src = sources[_j];
+            args.push(this.state[src])
+          }
+        }
+        return value = this.computed[name].apply(this, args)
+      };
+      View.prototype._mutateDom = function (selector, attr, value) {
+        if (attr === 'text') {
+          this._targets[selector].text(value)
+        } else {
+          this._targets[selector].attr(attr, value)
+        }
+      };
+      View.prototype._renderBindings = function (name, value) {
+        var attr, formatter, selector, target, targets, _i, _len, _ref, _value;
+        if (this.computed[name] != null) {
+          value = this._computeComputed(name)
+        }
+        targets = this.bindings[name];
+        if (!Array.isArray(targets)) {
+          targets = [targets]
+        }
+        for (_i = 0, _len = targets.length; _i < _len; _i++) {
+          target = targets[_i];
+          _ref = this._splitTarget(target), selector = _ref[0], attr = _ref[1];
+          if ((formatter = this.formatters[name]) != null) {
+            _value = formatter(value, '' + selector + ' @' + attr)
+          } else {
+            _value = value
+          }
+          this._mutateDom(selector, attr, _value)
+        }
+      };
+      View.prototype._splitEvent = function (e) {
+        var $el, event, selector, _ref;
+        _ref = e.split(/\s+/), event = _ref[0], selector = 2 <= _ref.length ? __slice.call(_ref, 1) : [];
+        selector = selector.join(' ');
+        if (!selector) {
+          $el = this.$el;
+          return [
+            $el,
+            event
+          ]
+        }
+        switch (selector) {
+        case 'document':
+          $el = $(document);
+          break;
+        case 'window':
+          $el = $(window);
+          break;
+        default:
+          $el = this.$el.find(selector)
+        }
+        return [
+          $el,
+          event
+        ]
+      };
+      View.prototype._splitTarget = function (target) {
+        var attr, selector, _ref, _ref1;
+        if (target.indexOf('@' !== -1)) {
+          _ref = target.split(/\s+@/), selector = _ref[0], attr = _ref[1]
+        } else {
+          _ref1 = [
+            target,
+            null
+          ], selector = _ref1[0], attr = _ref1[1]
+        }
+        if (attr == null) {
+          attr = 'text'
+        }
+        return [
+          selector,
+          attr
+        ]
+      };
+      View.prototype.get = function (name) {
+        return this.state[name]
+      };
+      View.prototype.set = function (name, value) {
+        var watcher, watchers, _i, _len, _results;
+        this.state[name] = value;
+        if (this.bindings[name] != null) {
+          this._renderBindings(name, value)
+        }
+        if ((watchers = this._watchers[name]) != null) {
+          _results = [];
+          for (_i = 0, _len = watchers.length; _i < _len; _i++) {
+            watcher = watchers[_i];
+            _results.push(this._renderBindings(watcher))
+          }
+          return _results
+        }
+      };
+      View.prototype.render = function (state) {
+        var k, name, targets, v, _ref;
+        if (state != null) {
+          for (k in state) {
+            v = state[k];
+            this.set(k, v)
+          }
+        } else {
+          _ref = this.bindings;
+          for (name in _ref) {
+            targets = _ref[name];
+            this._renderBindings(name, this.state[name])
+          }
+        }
+        return this
+      };
+      View.prototype.bindEvent = function (selector, callback) {
+        var $el, eventName, _ref;
+        _ref = this._splitEvent(selector), $el = _ref[0], eventName = _ref[1];
+        if (typeof callback === 'string') {
+          callback = this[callback]
+        }
+        $el.on('' + eventName + '.' + this.id, function (_this) {
+          return function (event) {
+            return callback.call(_this, event, event.currentTarget)
+          }
+        }(this));
+        return this
+      };
+      View.prototype.unbindEvent = function (selector) {
+        var $el, eventName, _ref;
+        _ref = this._splitEvent(selector), $el = _ref[0], eventName = _ref[1];
+        $el.off('' + eventName + '.' + this.id);
+        return this
+      };
+      View.prototype.bind = function () {
+        var callback, selector, _ref;
+        _ref = this.events;
+        for (selector in _ref) {
+          callback = _ref[selector];
+          this.bindEvent(selector, callback)
+        }
+        return this
+      };
+      View.prototype.unbind = function () {
+        var callback, selector, _ref;
+        _ref = this.events;
+        for (selector in _ref) {
+          callback = _ref[selector];
+          this.unbindEvent(selector, callback)
+        }
+        return this
+      };
+      View.prototype.remove = function () {
+        return this.$el.remove()
+      };
+      return View
+    }();
+    module.exports = View  //# sourceMappingURL=view.js.map
+  });
   require.define('./variants', function (module, exports, __dirname, __filename) {
     module.exports = { skus: [] }
   });
   require.define('./preorder', function (module, exports, __dirname, __filename) {
-    var App, PreorderApp, app, __hasProp = {}.hasOwnProperty, __extends = function (child, parent) {
+    var App, PreorderApp, app, gearTotal, helmetTotal, routes, __hasProp = {}.hasOwnProperty, __extends = function (child, parent) {
         for (var key in parent) {
           if (__hasProp.call(parent, key))
             child[key] = parent[key]
@@ -302,6 +621,7 @@
         return child
       };
     App = require('mvstar/lib/app');
+    routes = require('./routes');
     PreorderApp = function (_super) {
       __extends(PreorderApp, _super);
       function PreorderApp() {
@@ -314,12 +634,17 @@
     }(App);
     window.app = app = new PreorderApp;
     app.set('variants', require('./variants'));
-    app.routes = { '/order/*': [] };
+    app.routes = {
+      '/preorder/order/:token': [routes.order.displayPerks],
+      '*': [function () {
+          return console.log('global')
+        }]
+    };
     app.start();
+    window.helmetTotal = helmetTotal = 0;
+    window.gearTotal = gearTotal = 0;
     $(document).ready(function () {
-      var apparelVariantT, appendApparel, appendAr1, appendFunc, ar1VariantT, countApparel, countAr1, countFunc, gearTotal, helmetTotal, perkT, processPerks, setText, setValue, subButtonT, validateCount, validator;
-      helmetTotal = 0;
-      gearTotal = 0;
+      var apparelVariantT, appendApparel, appendAr1, appendFunc, ar1VariantT, countApparel, countAr1, countFunc, setText, setValue, subButtonT, validateCount, validator;
       countFunc = function (selector, total) {
         return function () {
           var count, counterEl, itemEl;
@@ -369,33 +694,6 @@
       setText = function (el, selector, data) {
         el.find(selector).text(data)
       };
-      processPerks = function () {
-        var contribution, i, perk, perkEl, perkMap;
-        perkMap = {};
-        i = 0;
-        while (i < PreorderData.contributions.length) {
-          contribution = PreorderData.contributions[i];
-          perk = perkMap[contribution.Perk.Id];
-          if (!perk) {
-            perkEl = $(perkT);
-            setText(perkEl, 'h3 span.title', contribution.Perk.Title);
-            setText(perkEl, 'p.p1', contribution.Perk.Description);
-            setText(perkEl, 'p.p2', contribution.Perk.EstimatedDelivery);
-            perkMap[contribution.Perk.Id] = {
-              el: perkEl,
-              count: 1
-            };
-            $('.perk').append(perkEl)
-          } else {
-            perk.count++;
-            setText(perkEl, 'h3 span.count', ' [x' + perk.count + ']')
-          }
-          helmetTotal += parseInt(contribution.Perk.HelmetQuantity, 10);
-          gearTotal += parseInt(contribution.Perk.GearQuantity, 10);
-          i++
-        }
-      };
-      processPerks();
       setValue = function (selector, data) {
         if (data !== '') {
           $(selector).val(data)
@@ -416,7 +714,6 @@
         }
         return ret
       };
-      perkT = '<div class="instance">  <div class="content-centered">    <h3 class="underline">Perk: <span class="title"></span><span class="count"><span></h3>  </div>  <div class="content-centered description">    <p class="p1">Perk description here. Blah blah blah. Please follow format    of original perk cards with estimated shipping date down at the bottom.    Expand box to accomodate texts if necessary.</p>    <br/>    <p class="p2">Estimated Delivery: May 2015 (etc)</p>  </div>  <div class="break-65"></div>  </div>';
       subButtonT = '<button class="sub">-</button>';
       ar1VariantT = '<div class="row variant">  <select id="color" name="HelmetColor" class="color">    <option value="Matte Black">Matte Black</option>    <option value="Gloss White">Gloss White</option>  </select>  <select id="size" name="HelmetSize" class="size">    <option value="S">S</option>    <option value="M">M</option>    <option value="L">L</option>    <option value="XL">XL</option>    <option value="XXL">XXL</option>  </select>  <input id="quantity" class="quantity" name="HelmetQuantity" type="text" maxlength="2" placeholder="Qty.">  <button class="add">+</button></div>';
       apparelVariantT = '<div class="row variant">  <select id="type" name="ShirtStyle" class="type">    <option value="Men\'s Shirt">Men\'s Shirt</option>    <option value="Women\'s Shirt">Women\'s Shirt</option>  </select>  <select id="color" name="ShirtColor" class="color">    <option value="Matte Black">Matte Black</option>    <option value="Shinny Black">Shiny Black</option>    <option value="Glossy Black">Glossy Black</option>    <option value="Dark Black">Dark Black</option>    <option value="Super Black">Super Black</option>  </select>  <select id="size" name="ShirtSize" class="size">    <option value="S">S</option>    <option value="M">M</option>    <option value="L">L</option>    <option value="XL">XL</option>  </select>  <input id="quantity" name="ShirtQuantity" class="quantity" type="text" maxlength="2" placeholder="Qty.">  <button class="add">+</button></div>';
