@@ -32,9 +32,9 @@ class CategoryView extends View
     newItem: 'newItem'
     deleteItem: 'deleteItem'
 
-  updateCount: (index, newCount) ->
+  updateCount: (e) ->
     counts = @get 'counts'
-    counts[index] = newCount
+    counts[e.index] = e.newCount
     @set 'counts', counts
 
     #cancel bubbling
@@ -44,6 +44,7 @@ class CategoryView extends View
     @index++
     itemView = new @ItemView {total: @get 'total', state: $.extend({index: @index}, @itemDefaults)}
     itemView.render()
+    itemView.bind()
     @itemViews[@index] = itemView
     @$el.find('.form:first').append itemView.$el
     #cancel bubbling
@@ -66,7 +67,7 @@ class ItemView extends View
       @destroy() if @get 'index' != 0
 
     'click button.add': ->
-      @trigger 'newItem'
+      @$el.trigger 'newItem'
 
   render: ()->
     super
@@ -75,7 +76,7 @@ class ItemView extends View
       quantity.append $('<option/>').attr('value', i).text(i)
 
   updateQuantity: (e) ->
-    @trigger 'updateCount', parseInt $(e.currentTarget).val(), 10
+    @$el.trigger 'updateCount', {index: @get 'index', newCount: parseInt $(e.currentTarget).val(), 10}
 
   destroy: ->
     @unbind()

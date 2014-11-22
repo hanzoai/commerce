@@ -29,6 +29,7 @@ exports.displayHelmets = ->
   if window.helmetTotal > 0
     view = new HelmetView {state: {total: window.helmetTotal}}
     view.render()
+    view.bind()
     view.newItem()
     $('.item.ar1').append view.$el
   return
