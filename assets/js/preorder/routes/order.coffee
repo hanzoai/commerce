@@ -20,3 +20,7 @@ exports.displayPerks = ->
     window.gearTotal += parseInt(contribution.Perk.GearQuantity, 10)
 
   return
+
+exports.displayHelmets = ->
+  view = new HelmetView
+  return
