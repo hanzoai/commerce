@@ -42,7 +42,7 @@ tools = github.com/nsf/gocode \
         github.com/jstemmer/gotags
 
 # replacement file watcher for the dev appengine
-mtime_file_watcher = https://gist.githubusercontent.com/zeekay/d92deea5091849d79782/raw/6afe09fd7dd7bdd8aff2f65312990ded60f97285/mtime_file_watcher.py
+mtime_file_watcher = https://gist.githubusercontent.com/zeekay/d92deea5091849d79782/raw/a2f43b902afef21a2a53f4ca529975a28b20d943/mtime_file_watcher.py
 
 # static assets, requisite javascript from assets -> static
 requisite 	   = node_modules/.bin/requisite
@@ -52,6 +52,8 @@ requisite_opts = assets/js/store/store.coffee \
 		         -o static/js/store.js \
 		         -o static/js/preorder.js \
 		         -o static/js/checkout.js \
+
+bebop = node_modules/.bin/bebop
 
 # find command differs between bsd/linux thus the two versions
 ifeq ($(os), "linux")
@@ -105,16 +107,21 @@ install-deps:
 	mkdir -p $(sdk_path)/gopath/bin && \
 	ln -s $(shell pwd) $(sdk_path)/gopath/src/crowdstart.io && \
 	echo '#!/usr/bin/env bash\ngoapp $$@' > $(sdk_path)/gopath/bin/go && \
-	chmod +x $(sdk_path)/gopath/bin/go && \
-	curl  $(mtime_file_watcher) > $(sdk_path)/google/appengine/tools/devappserver2/mtime_file_watcher.py && \
-	pip install watchdog
-
+	chmod +x $(sdk_path)/gopath/bin/go
+	# curl  $(mtime_file_watcher) > $(sdk_path)/google/appengine/tools/devappserver2/mtime_file_watcher.py && \
+	# pip install watchdog
 
 serve:
 	$(sdk_path)/dev_appserver.py --datastore_path=~/.gae_datastore.bin $(gae_development)
 
 serve-clear-datastore:
 	$(sdk_path)/dev_appserver.py --datastore_path=~/.gae_datastore.bin --clear_datastore=true $(gae_development)
+
+serve-no-restart:
+	$(sdk_path)/dev_appserver.py --datastore_path=~/.gae_datastore.bin --automatic_restart=false $(gae_development)
+
+live-reload:
+	$(bebop)
 
 tools:
 	goapp get $(tools) && \
@@ -135,7 +142,7 @@ deploy-appengine: assets
 		$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) rollback $$module; \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update $$module; \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) set_default_version $$module; \
-	done && \
+	done; \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update_dispatch config/prod
 
 .PHONY: all assets assets-watch autocompile-assets build deploy deps deps-js deps-go serve test tools

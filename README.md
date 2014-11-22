@@ -41,7 +41,7 @@ Modules](https://cloud.google.com/appengine/docs/go/modules/), for clarity,
 performance, reliability and scalability reasons. They are:
 
 ### `default` (`app.yaml`)
-Not a Go app module, contains static file mappings for Google CDN hosting.
+Default module, static file serving and App Engine warmup.
 
 ### `api` (`api/app.yaml`)
 Implements backend models and provides abstraction layer between Google's

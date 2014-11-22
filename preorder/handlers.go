@@ -89,11 +89,12 @@ func SavePreorder(c *gin.Context) {
 	var err error
 	if len(user.OrdersIds) > 0 {
 		key = user.OrdersIds[0]
-		_, err = db.PutKey("order", key, order)
+		_, err = db.PutKey("order", key, &order)
+		log.Debug("Previous orders found")
 	} else {
-		key, err = db.Put("order", order)
+		key, err = db.Put("order", &order)
+		log.Debug("No previous order found")
 	}
-
 	if err != nil {
 		log.Error("Error while writing order", err)
 		c.Fail(500, err)
