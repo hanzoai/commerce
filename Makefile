@@ -73,6 +73,9 @@ assets: deps-js
 assets-watch: deps-js
 	$(requisite) $(requisite_opts) -g -w
 
+autocompile-assets:
+	$(requisite) $(requisite_opts) -g
+
 build: deps
 	goapp build $(modules)
 
@@ -135,4 +138,4 @@ deploy-appengine: assets
 	done && \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update_dispatch config/prod
 
-.PHONY: all assets build deploy deps deps-js deps-go serve test tools
+.PHONY: all assets assets-watch autocompile-assets build deploy deps deps-js deps-go serve test tools
