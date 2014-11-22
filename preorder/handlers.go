@@ -103,7 +103,7 @@ func SavePreorder(c *gin.Context) {
 	}
 	user.OrdersIds[0] = key
 	// Save user back to database
-	_, err = db.PutKey("user", user.Email, &user)
+	_, err = db.PutKey("user", user.Email, user)
 	if err != nil {
 		log.Error("Error while writing user", err)
 		c.Fail(500, err)
