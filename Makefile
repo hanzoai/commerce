@@ -60,6 +60,9 @@ assets: deps-js
 	node_modules/.bin/requisite assets/js/checkout/checkout.coffee -g -o static/js/checkout.js && \
 	node_modules/.bin/requisite assets/js/preorder/preorder.coffee -g -o static/js/preorder.js
 
+assets-watch: deps-js
+	node_modules/.bin/requisite assets/js/preorder/preorder.coffee -w -g -o static/js/preorder.js
+
 build: deps
 	goapp build $(modules)
 
