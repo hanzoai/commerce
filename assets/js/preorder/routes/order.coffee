@@ -1,5 +1,6 @@
 PerkView = require '../views/perk'
 HelmetView = require '../views/helmet'
+EventEmitter = require 'mvstar/lib/event-emitter'
 
 exports.setupView = ->
 
@@ -27,8 +28,9 @@ exports.displayPerks = ->
 
 exports.displayHelmets = ->
   if window.helmetTotal > 0
-    view = new HelmetView {state: {total: window.helmetTotal}}
+    view = new HelmetView {state: {total: window.helmetTotal}, emitter: new EventEmitter }
     view.render()
+    view.bind()
     view.newItem()
     $('.item.ar1').append view.$el
   return
