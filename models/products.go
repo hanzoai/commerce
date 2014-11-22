@@ -67,6 +67,23 @@ func (p *Product) LoadImages(c *gin.Context) error {
 	return err
 }
 
+func (p *Product) LoadVariants(c *gin.Context) error {
+	db := datastore.New(c)
+	var genVariants []interface{}
+	err := db.GetKeyMulti("variant", p.VariantIds, genVariants)
+
+	if err != nil {
+		return err
+	}
+
+	p.Variants = make([]ProductVariant, len(genVariants))
+	for i, variant := range genVariants {
+		p.Variants[i] = variant.(ProductVariant)
+	}
+
+	return err
+}
+
 func (p Product) JSON() string {
 	return json.Encode(&p)
 }
