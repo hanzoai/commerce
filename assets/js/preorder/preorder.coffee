@@ -1,4 +1,5 @@
-App = require 'mvstar/lib/app'
+App      = require 'mvstar/lib/app'
+routes   = require './routes'
 
 class PreorderApp extends App
   start: ->
@@ -9,15 +10,20 @@ window.app = app = new PreorderApp()
 # Store variant options for later
 app.set 'variants', (require './variants')
 
-
 app.routes =
-  '/order/*': []
+  '/preorder/order/:token': [
+    routes.order.displayPerks
+  ]
+  '*': [
+    (-> console.log 'global')
+  ]
 
 app.start()
 
+window.helmetTotal = helmetTotal = 0
+window.gearTotal = gearTotal = 0
+
 $(document).ready ->
-  helmetTotal = 0
-  gearTotal = 0
 
   # Total from perks
   countFunc = (selector, total) ->
@@ -70,32 +76,6 @@ $(document).ready ->
     el.find(selector).text data
     return
 
-  processPerks = ->
-    perkMap = {}
-    i = 0
-
-    while i < PreorderData.contributions.length
-      contribution = PreorderData.contributions[i]
-      perk = perkMap[contribution.Perk.Id]
-      unless perk
-        perkEl = $(perkT)
-        setText perkEl, "h3 span.title", contribution.Perk.Title
-        setText perkEl, "p.p1", contribution.Perk.Description
-        setText perkEl, "p.p2", contribution.Perk.EstimatedDelivery
-        perkMap[contribution.Perk.Id] =
-          el: perkEl
-          count: 1
-
-        $(".perk").append perkEl
-      else
-        perk.count++
-        setText perkEl, "h3 span.count", " [x" + perk.count + "]"
-      helmetTotal += parseInt(contribution.Perk.HelmetQuantity, 10)
-      gearTotal += parseInt(contribution.Perk.GearQuantity, 10)
-      i++
-    return
-  processPerks()
-
   # AR 1 stuff, refactor
   setValue = (selector, data) ->
     $(selector).val data  unless data is ""
@@ -113,7 +93,6 @@ $(document).ready ->
       ret = false
     ret
 
-  perkT = "<div class=\"instance\">  <div class=\"content-centered\">    <h3 class=\"underline\">Perk: <span class=\"title\"></span><span class=\"count\"><span></h3>  </div>  <div class=\"content-centered description\">    <p class=\"p1\">Perk description here. Blah blah blah. Please follow format    of original perk cards with estimated shipping date down at the bottom.    Expand box to accomodate texts if necessary.</p>    <br/>    <p class=\"p2\">Estimated Delivery: May 2015 (etc)</p>  </div>  <div class=\"break-65\"></div>  </div>"
   subButtonT = "<button class=\"sub\">-</button>"
   ar1VariantT = "<div class=\"row variant\">  <select id=\"color\" name=\"HelmetColor\" class=\"color\">    <option value=\"Matte Black\">Matte Black</option>    <option value=\"Gloss White\">Gloss White</option>  </select>  <select id=\"size\" name=\"HelmetSize\" class=\"size\">    <option value=\"S\">S</option>    <option value=\"M\">M</option>    <option value=\"L\">L</option>    <option value=\"XL\">XL</option>    <option value=\"XXL\">XXL</option>  </select>  <input id=\"quantity\" class=\"quantity\" name=\"HelmetQuantity\" type=\"text\" maxlength=\"2\" placeholder=\"Qty.\">  <button class=\"add\">+</button></div>"
   apparelVariantT = "<div class=\"row variant\">  <select id=\"type\" name=\"ShirtStyle\" class=\"type\">    <option value=\"Men's Shirt\">Men's Shirt</option>    <option value=\"Women's Shirt\">Women's Shirt</option>  </select>  <select id=\"color\" name=\"ShirtColor\" class=\"color\">    <option value=\"Matte Black\">Matte Black</option>    <option value=\"Shinny Black\">Shiny Black</option>    <option value=\"Glossy Black\">Glossy Black</option>    <option value=\"Dark Black\">Dark Black</option>    <option value=\"Super Black\">Super Black</option>  </select>  <select id=\"size\" name=\"ShirtSize\" class=\"size\">    <option value=\"S\">S</option>    <option value=\"M\">M</option>    <option value=\"L\">L</option>    <option value=\"XL\">XL</option>  </select>  <input id=\"quantity\" name=\"ShirtQuantity\" class=\"quantity\" type=\"text\" maxlength=\"2\" placeholder=\"Qty.\">  <button class=\"add\">+</button></div>"
