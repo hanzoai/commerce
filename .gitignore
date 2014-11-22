@@ -2,7 +2,9 @@ node_modules
 /.cake_task_cache
 data/
 .sdk
-static/js/store.js
-static/js/checkout.js
 npm-debug.log
 .datastore.bin
+
+static/js/checkout.js
+static/js/preorder.js
+static/js/store.js
