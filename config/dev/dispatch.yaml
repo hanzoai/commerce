@@ -1,6 +1,9 @@
 application: crowdstart-io-dev
 
 dispatch:
+  - url: "*/assets/*"
+    module: default
+
   - url: "*/static/*"
     module: default
 
