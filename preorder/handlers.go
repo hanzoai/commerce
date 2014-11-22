@@ -1,13 +1,14 @@
 package preorder
 
 import (
+	"github.com/gin-gonic/gin"
+
 	"crowdstart.io/auth"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
-	"github.com/gin-gonic/gin"
 )
 
 // GET /:token
@@ -92,6 +93,7 @@ func SavePreorder(c *gin.Context) {
 		_, err = db.PutKey("order", key, &order)
 		log.Debug("Previous orders found")
 	} else {
+		user.OrdersIds = make([]string, 1)
 		key, err = db.Put("order", &order)
 		log.Debug("No previous order found")
 	}
@@ -100,10 +102,9 @@ func SavePreorder(c *gin.Context) {
 		c.Fail(500, err)
 		return
 	}
-
 	user.OrdersIds[0] = key
 	// Save user back to database
-	_, err = db.PutKey("user", user.Email, &user)
+	_, err = db.PutKey("user", user.Email, user)
 	if err != nil {
 		log.Error("Error while writing user", err)
 		c.Fail(500, err)

@@ -1,16 +1,20 @@
 package models
 
 import (
-	"crowdstart.io/util/json"
 	"fmt"
-	"github.com/dustin/go-humanize"
-	"github.com/mholt/binding"
 	"math"
 	"net/http"
 	"reflect"
 	"strconv"
 	"strings"
 	"time"
+
+	humanize "github.com/dustin/go-humanize"
+	"github.com/gin-gonic/gin"
+	"github.com/mholt/binding"
+
+	"crowdstart.io/datastore"
+	"crowdstart.io/util/json"
 )
 
 func FloatPrice(price int64) float64 {
@@ -38,8 +42,55 @@ type Product struct {
 	Stocked     int
 	AddLabel    string // Pre-order now or Add to cart
 	HeaderImage Image
-	Images      []Image
-	Variants    []ProductVariant
+
+	ImageIds []string
+	Images   []Image `datastore:"-"`
+
+	VariantIds []string
+	Variants   []ProductVariant `datastore:"-"`
+}
+
+func (p *Product) Load(c *gin.Context) error {
+	err := p.LoadImages(c)
+	if err != nil {
+		return err
+	}
+
+	return p.LoadVariants(c)
+}
+
+func (p *Product) LoadImages(c *gin.Context) error {
+	db := datastore.New(c)
+	var genImages []interface{}
+	err := db.GetKeyMulti("image", p.ImageIds, genImages)
+
+	if err != nil {
+		return err
+	}
+
+	p.Images = make([]Image, len(genImages))
+	for i, image := range genImages {
+		p.Images[i] = image.(Image)
+	}
+
+	return err
+}
+
+func (p *Product) LoadVariants(c *gin.Context) error {
+	db := datastore.New(c)
+	var genVariants []interface{}
+	err := db.GetKeyMulti("variant", p.VariantIds, genVariants)
+
+	if err != nil {
+		return err
+	}
+
+	p.Variants = make([]ProductVariant, len(genVariants))
+	for i, variant := range genVariants {
+		p.Variants[i] = variant.(ProductVariant)
+	}
+
+	return err
 }
 
 func (p Product) JSON() string {
@@ -153,8 +204,8 @@ type Image struct {
 	FieldMapMixin
 	Alt string
 	Url string
-	X int
-	Y int
+	X   int
+	Y   int
 }
 
 func (i Image) Dimensions() string {
