@@ -202,13 +202,13 @@ func Install(db *datastore.Datastore) {
 		Images: []Image{
 			Image{
 				Alt: "blackhelmet_store_1000px.jpg",
-				Url: config.Get().StaticUrl + "/img/products/blackhelmet_store_1000px.jpg",
+				Url: config.StaticUrl + "/img/products/blackhelmet_store_1000px.jpg",
 				X:   1000,
 				Y:   1000,
 			},
 			Image{
 				Alt: "whitehelmet_store_1000px.jpg",
-				Url: config.Get().StaticUrl + "/img/products/whitehelmet_store_1000px.jpg",
+				Url: config.StaticUrl + "/img/products/whitehelmet_store_1000px.jpg",
 				X:   1000,
 				Y:   1000,
 			},
@@ -436,7 +436,7 @@ func Install(db *datastore.Datastore) {
 		}
 
 		// Only save first 100 in production
-		if config.Get().Development && i > 25 {
+		if config.IsDevelopment && i > 25 {
 			break
 		}
 

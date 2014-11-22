@@ -13,7 +13,7 @@ import (
 func New(moduleName string) *gin.RouterGroup {
 	router := gin.New()
 
-	prefix := config.Get().PrefixFor(moduleName)
+	prefix := config.PrefixFor(moduleName)
 	if prefix == "" {
 		log.Panic("Unable to determine prefix for module: '%s'", moduleName)
 	}
@@ -23,7 +23,7 @@ func New(moduleName string) *gin.RouterGroup {
 	router.Use(middleware.AddHost())
 	router.Use(middleware.AppEngine())
 
-	if config.Get().Development {
+	if config.IsDevelopment {
 		router.Use(middleware.LiveReload())
 	}
 
