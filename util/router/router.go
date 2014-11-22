@@ -9,6 +9,7 @@ import (
 func New(path string) *gin.RouterGroup {
 	router := gin.New()
 
+	router.Use(middleware.LiveReload())
 	router.Use(middleware.ErrorHandler())
 	router.Use(middleware.NotFoundHandler())
 	router.Use(middleware.AddHost())
