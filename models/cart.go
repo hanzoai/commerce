@@ -99,11 +99,11 @@ type Order struct {
 	Id              string    `schema:"-"`
 	Shipping        int64     `schema:"-"`
 	ShippingAddress Address
-	Subtotal        int64 `schema:"-"`
-	Tax             int64 `schema:"-"`
-	Total           int64 `schema:"-"`
-	Items           []LineItem
-	StripeToken     string `schema:"-"`
+	Subtotal        int64      `schema:"-"`
+	Tax             int64      `schema:"-"`
+	Total           int64      `schema:"-"`
+	Items           []LineItem `datastore:"-"`
+	StripeToken     string     `schema:"-"`
 	Campaign        Campaign
 
 	Cancelled bool // represents whether the order has been cancelled

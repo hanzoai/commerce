@@ -1,16 +1,18 @@
 package models
 
 import (
-	"crowdstart.io/util/json"
 	"fmt"
-	"github.com/dustin/go-humanize"
-	"github.com/mholt/binding"
 	"math"
 	"net/http"
 	"reflect"
 	"strconv"
 	"strings"
 	"time"
+
+	humanize "github.com/dustin/go-humanize"
+	"github.com/mholt/binding"
+
+	"crowdstart.io/util/json"
 )
 
 func FloatPrice(price int64) float64 {
@@ -38,8 +40,12 @@ type Product struct {
 	Stocked     int
 	AddLabel    string // Pre-order now or Add to cart
 	HeaderImage Image
-	Images      []Image
-	Variants    []ProductVariant
+
+	ImageIds []string
+	Images   []Image `datastore:"-"`
+
+	VariantIds []string
+	Variants   []ProductVariant `datastore:"-"`
 }
 
 func (p Product) JSON() string {
@@ -153,8 +159,8 @@ type Image struct {
 	FieldMapMixin
 	Alt string
 	Url string
-	X int
-	Y int
+	X   int
+	Y   int
 }
 
 func (i Image) Dimensions() string {
