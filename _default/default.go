@@ -6,7 +6,6 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/fixtures"
 	"crowdstart.io/util/exec"
-	"crowdstart.io/util/fs"
 	"crowdstart.io/util/router"
 	"github.com/gin-gonic/gin"
 )
@@ -24,14 +23,7 @@ func Init() {
 
 		// Recompile static assets
 		if conf.AutoCompileAssets {
-			for _, bundle := range []string{"store", "checkout", "preorder"} {
-				exec.Run(conf.RootDir + "/node_modules/.bin/requisite ../assets/js/" + bundle + "/" + bundle + ".coffee -g -o /tmp/" + bundle + ".js")
-				a := fs.ReadFile("../static/js/" + bundle + ".js")
-				b := fs.ReadFile("/tmp/" + bundle + ".js")
-				if a != b {
-					exec.Run("mv /tmp/" + bundle + ".js ../static/js/" + bundle + ".js")
-				}
-			}
+			exec.Run("make autocompile-assets")
 		}
 	})
 }
