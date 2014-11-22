@@ -50,6 +50,15 @@ type Product struct {
 	Variants   []ProductVariant `datastore:"-"`
 }
 
+func (p *Product) Load(c *gin.Context) error {
+	err := p.LoadImages(c)
+	if err != nil {
+		return err
+	}
+
+	return p.LoadVariants(c)
+}
+
 func (p *Product) LoadImages(c *gin.Context) error {
 	db := datastore.New(c)
 	var genImages []interface{}
