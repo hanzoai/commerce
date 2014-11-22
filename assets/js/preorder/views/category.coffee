@@ -1,6 +1,12 @@
 View = require 'mvstar/lib/view'
 
-class CategoryView extends View
+class EmitterView extends View
+  emitter: null
+  constructor: (opts)->
+    super
+    @emitter = opts.emitter
+
+class CategoryView extends EmitterView
   index: 0
   ItemView: View
   itemDefaults: {}
@@ -8,17 +14,21 @@ class CategoryView extends View
 
   template:"#-template"
   bindings:
-    count:      'span.counter' #array of counts
+    counts:     'span.counter' #array of counts
     total:      'span.total' #total number of things in category, SHOULD NOT CHANGE
 
   constructor: ->
     super
-    @set 'count', 0
+    @set 'counts', []
     @itemViews = []
 
+    @emitter.on 'updateCount', => @updateCount.apply(@, arguments)
+    @emitter.on 'newItem', => @newItem.apply(@, arguments)
+    @emitter.on 'deleteItem', => @deleteItem.apply(@, arguments)
+
   formatters:
-    count: (v) ->
-      count = @get 'count'
+    counts: (v) ->
+      count = (@get 'counts').reduce ((sum, n)-> return sum + n), 0
       if count != @get 'total'
         @$el.find('span.counter').addClass 'bad'
       else
@@ -26,11 +36,6 @@ class CategoryView extends View
       return count
     total: (v) ->
       return '/' + v + ')'
-
-  events:
-    updateCount: 'updateCount'
-    newItem: 'newItem'
-    deleteItem: 'deleteItem'
 
   updateCount: (e) ->
     counts = @get 'counts'
@@ -42,7 +47,11 @@ class CategoryView extends View
 
   newItem: ->
     @index++
-    itemView = new @ItemView {total: @get 'total', state: $.extend({index: @index}, @itemDefaults)}
+    itemView = new @ItemView
+      emitter: @emitter,
+      total: @get 'total'
+      state: $.extend({index: @index}, @itemDefaults)
+
     itemView.render()
     itemView.bind()
     @itemViews[@index] = itemView
@@ -52,11 +61,12 @@ class CategoryView extends View
 
   deleteItem: ->
 
-class ItemView extends View
+class ItemView extends EmitterView
   total: 1
   constructor: (opts)->
     super
     @total = opts.total
+    @emitter.emit 'updateCount', {index: @get('index'), newCount: 1}
 
   events:
     # Dismiss on click, escape, and scroll
@@ -67,7 +77,7 @@ class ItemView extends View
       @destroy() if @get 'index' != 0
 
     'click button.add': ->
-      @$el.trigger 'newItem'
+      @emitter.emit 'newItem'
 
   render: ()->
     super
@@ -76,11 +86,11 @@ class ItemView extends View
       quantity.append $('<option/>').attr('value', i).text(i)
 
   updateQuantity: (e) ->
-    @$el.trigger 'updateCount', {index: @get 'index', newCount: parseInt $(e.currentTarget).val(), 10}
+    @emitter.emit 'updateCount', {index: @get('index'), newCount: parseInt $(e.currentTarget).val(), 10}
 
   destroy: ->
     @unbind()
-    @trigger 'removeItem', @get 'index'
+    @emit 'removeItem', @get 'index'
     @$el.animate {opacity: "toggle"}, 500, 'swing', => @$el.remove()
 
 module.exports =
