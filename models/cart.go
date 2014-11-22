@@ -156,6 +156,10 @@ func (o *Order) loadItems(c *gin.Context) error {
 	o.Items = make([]LineItem, len(genItems))
 	for i, item := range genItems {
 		o.Items[i] = item.(LineItem)
+		err = o.Items[i].Product.Load(c)
+		if err != nil {
+			return err
+		}
 	}
 
 	return err
