@@ -1,13 +1,14 @@
 package checkout
 
 import (
+	"errors"
+	"strconv"
+	"strings"
+
 	"crowdstart.io/middleware"
 	"crowdstart.io/models"
 	"crowdstart.io/util/form"
-	"errors"
 	"github.com/gin-gonic/gin"
-	"strconv"
-	"strings"
 )
 
 type CheckoutForm struct {
@@ -70,19 +71,6 @@ func (f *AuthorizeForm) Parse(c *gin.Context) error {
 }
 
 func (f AuthorizeForm) Validate() (errs []string) {
-	if f.Order.User.FirstName == "" {
-		errs = append(errs, "Billed user's first name is required")
-	}
-	if f.Order.User.LastName == "" {
-		errs = append(errs, "Billed user's Last name is required")
-	}
-	if f.Order.User.Email == "" {
-		errs = append(errs, "Billed user's Email address is required")
-	}
-	if f.Order.User.Phone == "" {
-		errs = append(errs, "Billed user's Phone number is required")
-	}
-
 	if f.Order.BillingAddress.Line1 == "" {
 		errs = append(errs, "Address line 1 is required")
 	}
