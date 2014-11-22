@@ -41,6 +41,9 @@ tools = github.com/nsf/gocode \
         github.com/kisielk/errcheck \
         github.com/jstemmer/gotags
 
+# replacement file watcher for the dev appengine
+mtime_file_watcher = https://gist.githubusercontent.com/zeekay/d92deea5091849d79782/raw/6afe09fd7dd7bdd8aff2f65312990ded60f97285/mtime_file_watcher.py
+
 # static assets, requisite javascript from assets -> static
 requisite 	   = node_modules/.bin/requisite
 requisite_opts = assets/js/store/store.coffee \
@@ -99,7 +102,10 @@ install-deps:
 	mkdir -p $(sdk_path)/gopath/bin && \
 	ln -s $(shell pwd) $(sdk_path)/gopath/src/crowdstart.io && \
 	echo '#!/usr/bin/env bash\ngoapp $$@' > $(sdk_path)/gopath/bin/go && \
-	chmod +x $(sdk_path)/gopath/bin/go
+	chmod +x $(sdk_path)/gopath/bin/go && \
+	curl  $(mtime_file_watcher) > $(sdk_path)/google/appengine/tools/devappserver2/mtime_file_watcher.py && \
+	pip install watchdog
+
 
 serve:
 	$(sdk_path)/dev_appserver.py --datastore_path=~/.gae_datastore.bin $(gae_development)
