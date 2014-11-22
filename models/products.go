@@ -10,8 +10,10 @@ import (
 	"time"
 
 	humanize "github.com/dustin/go-humanize"
+	"github.com/gin-gonic/gin"
 	"github.com/mholt/binding"
 
+	"crowdstart.io/datastore"
 	"crowdstart.io/util/json"
 )
 
@@ -46,6 +48,23 @@ type Product struct {
 
 	VariantIds []string
 	Variants   []ProductVariant `datastore:"-"`
+}
+
+func (p *Product) LoadImages(c *gin.Context) error {
+	db := datastore.New(c)
+	var genImages []interface{}
+	err := db.GetKeyMulti("image", p.ImageIds, genImages)
+
+	if err != nil {
+		return err
+	}
+
+	p.Images = make([]Image, len(genImages))
+	for i, image := range genImages {
+		p.Images[i] = image.(Image)
+	}
+
+	return err
 }
 
 func (p Product) JSON() string {
