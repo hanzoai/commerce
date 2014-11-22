@@ -56,8 +56,9 @@ func Defaults() *Config {
 
 func Development() *Config {
 	config := Defaults()
-	config.AutoCompileAssets = false
 	config.Development = true
+
+	config.AutoCompileAssets = false
 
 	config.Prefixes["api"] = "/v1/"
 	config.Prefixes["checkout"] = "/checkout/"
