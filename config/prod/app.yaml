@@ -10,8 +10,8 @@ inbound_services:
 - warmup
 
 handlers:
-- url: /_ah/.*
+- url: /_ah/*
   script: _go_app
 
-- url: /.*
+- url: /*
   static_dir: static

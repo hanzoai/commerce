@@ -9,7 +9,7 @@ inbound_services:
 - warmup
 
 handlers:
-- url: /_ah/.*
+- url: /_ah/*
   script: _go_app
 
 - url: /assets/*
