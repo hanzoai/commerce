@@ -2,7 +2,8 @@
   "name": "crowdstart",
   "private": true,
   "dependencies": {
-    "mvstar": "0.0.10",
+    "bebop": "^1.1.12",
+    "mvstar": "0.0.11",
     "requisite": "^1.8.0"
   }
 }
