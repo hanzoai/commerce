@@ -4,6 +4,8 @@ path = require 'path'
 module.exports =
   cwd: process.cwd() + '/assets/js'
 
+  forceReload: true
+
   compilers:
     coffee: (src) ->
       if /^checkout/.test src
