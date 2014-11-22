@@ -120,7 +120,7 @@ serve-clear-datastore:
 serve-no-restart:
 	$(sdk_path)/dev_appserver.py --datastore_path=~/.gae_datastore.bin --automatic_restart=false $(gae_development)
 
-live-reload:
+live-reload: autocompile-assets
 	$(bebop)
 
 tools:
