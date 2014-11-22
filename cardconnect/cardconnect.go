@@ -1,22 +1,22 @@
 package cardconnect
 
 import (
+	"appengine"
+	"appengine/urlfetch"
+	"bytes"
 	"crowdstart.io/models"
 	"encoding/base64"
-	"errors"
-	"net/http"
-	"bytes"
-	"io/ioutil"
 	"encoding/json"
-	"appengine/urlfetch"
-	"appengine"
+	"errors"
+	"io/ioutil"
+	"net/http"
 )
 
 var baseUrl = "https://fts.prinpay.com:6443/cardconnect/rest" // 496160873888-CardConnect - USD - NORTH
 var authCode = base64.StdEncoding.EncodeToString([]byte("testing:testing123"))
 
 type LineItem struct {
-	SKU          string							 // {
+	SKU          string // {
 	Cost         int64  `json:"unitcost,string"` // "unitcost":    "450",
 	Description  string `json:"description"`     // "description": "DESCRIPTION-2",
 	DiscountAmnt int64  `json:"discamnt,string"` // "discamnt":    "0",
@@ -27,35 +27,35 @@ type LineItem struct {
 	// NetAmnt      string `json:"netamnt"`         // "netamnt":     "300",
 	// TaxAmnt      string `json:"taxamnt"`         // "taxamnt":     "117",
 	// UPC          string `json:"upc"`             // "upc":	      "UPC-1",
-}										         //  }
+} //  }
 
-type AuthorizationReq struct {				     // {
-	Account  string      `json:"account"`        // "account":  "4111111111111111",
-	AcctType string      `json:"accttype"`       // "accttype": "VISA",
-	Address  string      `json:"address"`        // "address":  "123 MAIN STREET",
-	Amount   int64       `json:"amount,string"`  // "amount":   "0",
-	City     string      `json:"city"`           // "city":     "anytown",
-	Country  string      `json:"country"`        // "country":  "US",
-	Currency string      `json:"currency"`       // "currency": "USD",
-	CVV2     int         `json:"cvv2"`           // "cvv2":     "123",
-	Ecomind  string      `json:"ecomind"`        // "ecomind":  "E",
-	Expiry   string		 `json:"expiry"`	     // "expiry":   "1212",
-	MerchId  int         `json:"merchid,string"` // "merchid":  "000000927996",
-	Name     string      `json:"name"`           // "name":     "TOM JONES",
-	Email    string      `json:"email"`          // "email":    "dev@hanzo.ai JONES",
-	Phone    string      `json:"phone"`          // "phone":    "913-777-9708",
-	OrderId  string      `json:"orderid"`        // "orderid":  "AB-11-9876",
-	Postal   string      `json:"postal"`         // "postal":   "55555",
-	Region   string      `json:"region"`         // "region":   "NY",
-	Tokenize string      `json:"tokenize"`       // "tokenize": "Y",
+type AuthorizationReq struct { // {
+	Account  string `json:"account"`        // "account":  "4111111111111111",
+	AcctType string `json:"accttype"`       // "accttype": "VISA",
+	Address  string `json:"address"`        // "address":  "123 MAIN STREET",
+	Amount   int64  `json:"amount,string"`  // "amount":   "0",
+	City     string `json:"city"`           // "city":     "anytown",
+	Country  string `json:"country"`        // "country":  "US",
+	Currency string `json:"currency"`       // "currency": "USD",
+	CVV2     int    `json:"cvv2"`           // "cvv2":     "123",
+	Ecomind  string `json:"ecomind"`        // "ecomind":  "E",
+	Expiry   string `json:"expiry"`         // "expiry":   "1212",
+	MerchId  int    `json:"merchid,string"` // "merchid":  "000000927996",
+	Name     string `json:"name"`           // "name":     "TOM JONES",
+	Email    string `json:"email"`          // "email":    "dev@hanzo.ai JONES",
+	Phone    string `json:"phone"`          // "phone":    "913-777-9708",
+	OrderId  string `json:"orderid"`        // "orderid":  "AB-11-9876",
+	Postal   string `json:"postal"`         // "postal":   "55555",
+	Region   string `json:"region"`         // "region":   "NY",
+	Tokenize string `json:"tokenize"`       // "tokenize": "Y",
 	// Track    interface{} `json:"track"`          // "track":    null,
-												 // }
+	// }
 
 	// Capture Request can be embeded to automate capture, we probably want to
 	// do this.                         // {
 	Capture string     `json:"capture"` // "capture":  "Y",
 	Items   []LineItem `json:"items"`   // "items": [],
-									    // }
+	// }
 
 	// 3D Secure (optional), supposedly we'll get these values back from the 3D
 	// secure shit when it's enabled.
@@ -64,7 +64,7 @@ type AuthorizationReq struct {				     // {
 	// SecureXid   string `json:"securexid"`
 }
 
-type AuthorizationRes struct {	      // {
+type AuthorizationRes struct { // {
 	Account  string `json:"account"`  // "account":  "41XXXXXXXXXX1111",
 	Amount   string `json:"amount"`   // "amount":   "111",
 	AuthCode string `json:"authcode"` // "authcode": "046221",
@@ -77,9 +77,9 @@ type AuthorizationRes struct {	      // {
 	Text     string `json:"resptext"` // "resptext": "Approved",
 	RetRef   string `json:"retref"`   // "retref":   "343005123105",
 	Token    string `json:"token"`    // "token":    "9419786452781111",
-}									  // }
+} // }
 
-func Authorize(ctx appengine.Context, order models.Order) (ares AuthorizationRes, err error) {
+func Authorize(ctx appengine.Context, order models.Order, user models.User) (ares AuthorizationRes, err error) {
 	// Convert models.LineItem to our CardConnect specialized LineItem that
 	// will serialize properly.
 	items := make([]LineItem, len(order.Items))
@@ -103,12 +103,12 @@ func Authorize(ctx appengine.Context, order models.Order) (ares AuthorizationRes
 		Country:  order.BillingAddress.Country,
 		Currency: "USD",
 		Ecomind:  "E",
-		Email:    order.User.Email,
+		Email:    user.Email,
 		Expiry:   order.Account.Expiry,
 		MerchId:  496160873888,
-		Name:     order.User.Name(),
+		Name:     user.Name(),
 		OrderId:  order.Id,
-		Phone:    order.User.Phone,
+		Phone:    user.Phone,
 		Postal:   order.BillingAddress.PostalCode,
 		Region:   order.BillingAddress.State,
 		Tokenize: "Y",
@@ -118,11 +118,11 @@ func Authorize(ctx appengine.Context, order models.Order) (ares AuthorizationRes
 
 	client := urlfetch.Client(ctx)
 
-	jsonreq,_ := json.Marshal(areq)
+	jsonreq, _ := json.Marshal(areq)
 	reqbuf := bytes.NewBuffer(jsonreq)
 	ctx.Debugf("%#v", areq)
 
-	req, err := http.NewRequest("PUT", baseUrl+"/auth",reqbuf)
+	req, err := http.NewRequest("PUT", baseUrl+"/auth", reqbuf)
 	req.Header.Add("Authorization", "Basic "+authCode)
 	req.Header.Add("Content-Type", "application/json")
 
@@ -132,13 +132,13 @@ func Authorize(ctx appengine.Context, order models.Order) (ares AuthorizationRes
 
 	case res.StatusCode == 200:
 		defer res.Body.Close()
-		body,_ := ioutil.ReadAll(res.Body)
+		body, _ := ioutil.ReadAll(res.Body)
 		json.Unmarshal(body, &ares)
 		return ares, nil
 
 	default:
 		defer res.Body.Close()
-		body,_ := ioutil.ReadAll(res.Body)
+		body, _ := ioutil.ReadAll(res.Body)
 		json.Unmarshal(body, &ares)
 		ctx.Errorf("%v %v", res.StatusCode, ares)
 		return ares, errors.New("Invalid response from CardConnect.")
