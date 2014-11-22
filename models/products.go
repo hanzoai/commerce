@@ -50,16 +50,39 @@ type Product struct {
 	Variants   []ProductVariant `datastore:"-"`
 }
 
+func (p *Product) Save(c *gin.Context) error {
+	return p.saveVariants(c)
+}
+
+// TODO Implement this
+func (p *Product) saveImages(c *gin.Context) error {
+	return nil
+}
+
+func (p *Product) saveVariants(c *gin.Context) error {
+	p.VariantIds = make([]string, len(p.Variants))
+	genVars := make([]interface{}, len(p.Variants))
+	for i, variant := range p.Variants {
+		p.VariantIds[i] = variant.Id
+		genVars[i] = interface{}(variant)
+	}
+
+	db := datastore.New(c)
+
+	_, err := db.PutKeyMulti("variant", p.VariantIds, genVars)
+	return err
+}
+
 func (p *Product) Load(c *gin.Context) error {
-	err := p.LoadImages(c)
+	err := p.loadImages(c)
 	if err != nil {
 		return err
 	}
 
-	return p.LoadVariants(c)
+	return p.loadVariants(c)
 }
 
-func (p *Product) LoadImages(c *gin.Context) error {
+func (p *Product) loadImages(c *gin.Context) error {
 	db := datastore.New(c)
 	var genImages []interface{}
 	err := db.GetKeyMulti("image", p.ImageIds, genImages)
@@ -76,7 +99,7 @@ func (p *Product) LoadImages(c *gin.Context) error {
 	return err
 }
 
-func (p *Product) LoadVariants(c *gin.Context) error {
+func (p *Product) loadVariants(c *gin.Context) error {
 	db := datastore.New(c)
 	var genVariants []interface{}
 	err := db.GetKeyMulti("variant", p.VariantIds, genVariants)
