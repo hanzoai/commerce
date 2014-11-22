@@ -2,7 +2,7 @@
   "name": "crowdstart",
   "private": true,
   "dependencies": {
-    "mvstar": "0.0.9",
+    "mvstar": "0.0.10",
     "requisite": "^1.7.9"
   }
 }
