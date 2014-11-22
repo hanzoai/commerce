@@ -95,13 +95,13 @@ $(document).ready ->
     ret
 
   subButtonT = "<button class=\"sub\">-</button>"
-  ar1VariantT = "<div class=\"row variant\">  <select id=\"color\" name=\"HelmetColor\" class=\"color\">    <option value=\"Matte Black\">Matte Black</option>    <option value=\"Gloss White\">Gloss White</option>  </select>  <select id=\"size\" name=\"HelmetSize\" class=\"size\">    <option value=\"S\">S</option>    <option value=\"M\">M</option>    <option value=\"L\">L</option>    <option value=\"XL\">XL</option>    <option value=\"XXL\">XXL</option>  </select>  <input id=\"quantity\" class=\"quantity\" name=\"HelmetQuantity\" type=\"text\" maxlength=\"2\" placeholder=\"Qty.\">  <button class=\"add\">+</button></div>"
+  #ar1VariantT = "<div class=\"row variant\">  <select id=\"color\" name=\"HelmetColor\" class=\"color\">    <option value=\"Matte Black\">Matte Black</option>    <option value=\"Gloss White\">Gloss White</option>  </select>  <select id=\"size\" name=\"HelmetSize\" class=\"size\">    <option value=\"S\">S</option>    <option value=\"M\">M</option>    <option value=\"L\">L</option>    <option value=\"XL\">XL</option>    <option value=\"XXL\">XXL</option>  </select>  <input id=\"quantity\" class=\"quantity\" name=\"HelmetQuantity\" type=\"text\" maxlength=\"2\" placeholder=\"Qty.\">  <button class=\"add\">+</button></div>"
   apparelVariantT = "<div class=\"row variant\">  <select id=\"type\" name=\"ShirtStyle\" class=\"type\">    <option value=\"Men's Shirt\">Men's Shirt</option>    <option value=\"Women's Shirt\">Women's Shirt</option>  </select>  <select id=\"color\" name=\"ShirtColor\" class=\"color\">    <option value=\"Matte Black\">Matte Black</option>    <option value=\"Shinny Black\">Shiny Black</option>    <option value=\"Glossy Black\">Glossy Black</option>    <option value=\"Dark Black\">Dark Black</option>    <option value=\"Super Black\">Super Black</option>  </select>  <select id=\"size\" name=\"ShirtSize\" class=\"size\">    <option value=\"S\">S</option>    <option value=\"M\">M</option>    <option value=\"L\">L</option>    <option value=\"XL\">XL</option>  </select>  <input id=\"quantity\" name=\"ShirtQuantity\" class=\"quantity\" type=\"text\" maxlength=\"2\" placeholder=\"Qty.\">  <button class=\"add\">+</button></div>"
 
-  countAr1 = countFunc(".item.ar1", helmetTotal)
-  appendAr1 = appendFunc(".item.ar1", ar1VariantT, countAr1)
-  appendAr1()
-  countAr1()
+  #countAr1 = countFunc(".item.ar1", helmetTotal)
+  #appendAr1 = appendFunc(".item.ar1", ar1VariantT, countAr1)
+  #appendAr1()
+  #countAr1()
 
   countApparel = countFunc(".item.apparel", gearTotal)
   appendApparel = appendFunc(".item.apparel", apparelVariantT, countApparel)
