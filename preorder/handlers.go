@@ -1,13 +1,14 @@
 package preorder
 
 import (
+	"github.com/gin-gonic/gin"
+
 	"crowdstart.io/auth"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
-	"github.com/gin-gonic/gin"
 )
 
 // GET /:token
