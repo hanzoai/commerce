@@ -5,7 +5,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/mholt/binding"
+
+	"crowdstart.io/datastore"
 )
 
 type LineItem struct {
@@ -99,16 +102,36 @@ type Order struct {
 	Id              string    `schema:"-"`
 	Shipping        int64     `schema:"-"`
 	ShippingAddress Address
-	Subtotal        int64      `schema:"-"`
-	Tax             int64      `schema:"-"`
-	Total           int64      `schema:"-"`
-	Items           []LineItem `datastore:"-"`
-	StripeToken     string     `schema:"-"`
-	Campaign        Campaign
+	Subtotal        int64 `schema:"-"`
+	Tax             int64 `schema:"-"`
+	Total           int64 `schema:"-"`
+
+	ItemIds []string
+	Items   []LineItem `datastore:"-"`
+
+	StripeToken string `schema:"-"`
+	Campaign    Campaign
 
 	Cancelled bool // represents whether the order has been cancelled
 	Shipped   bool
 	// ShippingOption  ShippingOption
+}
+
+func (o *Order) LoadItems(c *gin.Context) error {
+	db := datastore.New(c)
+	var genItems []interface{}
+	err := db.GetKeyMulti("line-item", o.ItemIds, genItems)
+
+	if err != nil {
+		return err
+	}
+
+	items := make([]LineItem, len(genItems))
+	for i, item := range genItems {
+		items[i] = item.(LineItem)
+	}
+
+	return err
 }
 
 func (o Order) DisplaySubtotal() string {
