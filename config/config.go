@@ -17,7 +17,7 @@ type Config struct {
 	AutoCompileAssets bool
 	RootDir           string
 	StaticUrl         string
-	SiteTitle		  string
+	SiteTitle         string
 	Prefixes          map[string]string
 	Hosts             map[string]string
 	Stripe            struct {
@@ -37,8 +37,8 @@ func (c Config) PrefixFor(moduleName string) string {
 // Return full url to module
 func (c Config) ModuleUrl(moduleName string, args ...interface{}) string {
 
-	// Build URL for module.
-	url := c.Hosts[moduleName] + c.PrefixFor(moduleName)
+	// Build protocol-relative URL for module.
+	url := "//" + c.Hosts[moduleName] + c.PrefixFor(moduleName)
 
 	for i, arg := range args {
 		switch i {
@@ -79,7 +79,7 @@ func Development() *Config {
 	config.Prefixes["default"] = "/"
 	config.Prefixes["api"] = "/api/"
 	config.Prefixes["checkout"] = "/checkout/"
-	config.Prefixes["platform"] = "/admin/"
+	config.Prefixes["platform"] = "/platform/"
 	config.Prefixes["preorder"] = "/preorder/"
 	config.Prefixes["store"] = "/store/"
 
@@ -95,8 +95,8 @@ func Development() *Config {
 	config.Stripe.ClientId = "ca_53yyPzxlPsdAtzMEIuS2mXYDp4FFXLmm"
 	config.Stripe.APIKey = "pk_test_ucSTeAAtkSXVEg713ir40UhX"
 	config.Stripe.APISecret = ""
-	config.Stripe.RedirectURL = "http://localhost:8080/admin/stripe/callback"
-	config.Stripe.WebhookURL = "http://localhost:8080/admin/stripe/hook"
+	config.Stripe.RedirectURL = "http:" + config.ModuleUrl("platform") + "/stripe/callback"
+	config.Stripe.WebhookURL = "http:" + config.ModuleUrl("platform") + "/stripe/hook"
 	return config
 }
 
@@ -127,8 +127,8 @@ func Production() *Config {
 		config.Stripe.ClientId = "ca_53yyRUNpMtTRUgMlVlLAM3vllY1AVybU"
 		config.Stripe.APIKey = "pk_live_APr2mdiUblcOO4c2qTeyQ3hq"
 		config.Stripe.APISecret = ""
-		config.Stripe.RedirectURL = "https://secure.crowdstart.io/admin/stripe/callback"
-		config.Stripe.WebhookURL = "https://secure.crowdstart.io/admin/stripe/hook"
+		config.Stripe.RedirectURL = "https:" + config.ModuleUrl("platform") + "/stripe/callback"
+		config.Stripe.WebhookURL = "https:" + config.ModuleUrl("platform") + "/stripe/hook"
 	}
 
 	return config
@@ -150,6 +150,7 @@ func Get() *Config {
 
 var config = Get()
 
+// Expose global config.
 var DemoMode = config.DemoMode
 var IsDevelopment = config.IsDevelopment
 var IsProduction = config.IsProduction
@@ -157,6 +158,7 @@ var AutoCompileAssets = config.AutoCompileAssets
 var RootDir = config.RootDir
 var StaticUrl = config.StaticUrl
 var Stripe = config.Stripe
+var SiteTitle = config.SiteTitle
 
 func PrefixFor(moduleName string) string {
 	return config.PrefixFor(moduleName)

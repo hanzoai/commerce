@@ -135,7 +135,7 @@ bench: build
 	goapp test -timeout 60s $(test_modules) --bench=.
 
 deploy: test
-	go run deploy.go
+	go run scripts/deploy.go
 
 deploy-appengine: assets
 	for module in $(gae_production); do \
