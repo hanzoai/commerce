@@ -2,6 +2,7 @@ PerkView = require '../views/perk'
 HelmetView = require '../views/helmet'
 ApparelView = require '../views/apparel'
 HatsView    = require '../views/hats'
+ShippingView = require '../views/shipping'
 EventEmitter = require 'mvstar/lib/event-emitter'
 
 exports.setupView = ->
@@ -39,6 +40,7 @@ exports.displayHelmets = ->
   return
 
 exports.displayApparel = ->
+  console.log 'displaying apparel'
   if window.gearTotal > 0
     view = new ApparelView {state: {total: window.gearTotal}, emitter: new EventEmitter }
     view.render()
@@ -49,6 +51,7 @@ exports.displayApparel = ->
 
 exports.displayHats = ->
   if window.gearTotal > 0
+    console.log 'displaying hats'
     view = new HatsView {state: {total: window.gearTotal}, emitter: new EventEmitter }
     view.render()
     view.bind()
@@ -56,3 +59,10 @@ exports.displayHats = ->
     $('.item.hats').append view.$el
   return
 
+exports.initializeShipping = ->
+  console.log 'initializing shipping'
+  view = new ShippingView {state: $.extend {}, PreorderData.user, PreorderData.user.ShippingAddress }
+  view.render()
+  view.bind()
+  $('#skully .form').append(view.$el)
+  return

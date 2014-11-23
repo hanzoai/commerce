@@ -18,76 +18,9 @@ Pre-order &mdash; SKULLY AR-1
     <p>Please enter your shipping and size information below to claim your pre-orders of the AR-1 and apparel package from our Indiegogo campaign.</p>
   </div>
 
-  <form id="skully" name="skully" action="save" method="post">
-    <div class="narrow center shipping">
-      <div class="form">
-        <input id="email" name="User.Email" class="email" type="text" placeholder="Email Address ex. info@skullysystems.com">
-        <input id="password" name="Password" class="password" type="password" placeholder="Password, minimum 6 character">
-        <input id="password_confirm" name="PasswordConfirm" class="password" type="password" placeholder="Type in your password again">
-        <input id="first_name" name="User.FirstName" class="first_name" type="text" placeholder="First Name ex. SKULLY">
-        <input id="last_name" name="User.LastName" class="last_name" type="text" placeholder="Last Name ex. Systems">
-        <input id="phone" name="User.Phone" class="phone" type="text" placeholder="Phone Number ex. 5-555-555-5555">
-        <input id="address1" name="ShippingAddress.Line1" class="address1" type="text" placeholder="Address ex. 555 3rd Street">
-        <input id="address2" name="ShippingAddress.Line2" class="address2 optional" type="text" placeholder="Address 2 ex. Suite 3, Apt#">
-        <input id="city" name="ShippingAddress.City" class="city" type="text" placeholder="City ex. San Francisco">
-
-        <select id="state" name="ShippingAddress.State" class="state">
-          <option value="Alabama">AL</option>
-          <option value="Alaska">AK</option>
-          <option value="Arizona">AZ</option>
-          <option value="Arkansas">AR</option>
-          <option value="California">CA</option>
-          <option value="Colorado">CO</option>
-          <option value="Connecticut">CT</option>
-          <option value="Delaware">DE</option>
-          <option value="District Of Columbia">DC</option>
-          <option value="Florida">FL</option>
-          <option value="Georgia">GA</option>
-          <option value="Hawaii">HI</option>
-          <option value="Idaho">ID</option>
-          <option value="Illinois">IL</option>
-          <option value="Indiana">IN</option>
-          <option value="Iowa">IA</option>
-          <option value="Kansas">KS</option>
-          <option value="Kentucky">KY</option>
-          <option value="Louisiana">LA</option>
-          <option value="Maine">ME</option>
-          <option value="Maryland">MD</option>
-          <option value="Massachusetts">MA</option>
-          <option value="Michigan">MI</option>
-          <option value="Minnesota">MN</option>
-          <option value="Mississippi">MS</option>
-          <option value="Missouri">MO</option>
-          <option value="Montana">MT</option>
-          <option value="Nebraska">NE</option>
-          <option value="Nevada">NV</option>
-          <option value="New Hampshire">NH</option>
-          <option value="New Jersey">NJ</option>
-          <option value="New Mexico">NM</option>
-          <option value="New York">NY</option>
-          <option value="North Carolina">NC</option>
-          <option value="North Dakota">ND</option>
-          <option value="Ohio">OH</option>
-          <option value="Oklahoma">OK</option>
-          <option value="Oregon">OR</option>
-          <option value="Pennsylvania">PA</option>
-          <option value="Rhode Island">RI</option>
-          <option value="South Carolina">SC</option>
-          <option value="South Dakota">SD</option>
-          <option value="Tennessee">TN</option>
-          <option value="Texas">TX</option>
-          <option value="Utah">UT</option>
-          <option value="Vermont">VT</option>
-          <option value="Virginia">VA</option>
-          <option value="Washington">WA</option>
-          <option value="West Virginia">WV</option>
-          <option value="Wisconsin">WI</option>
-          <option value="Wyoming">WY</option>
-        </select>
-
-        <input id="postal_code" name="ShippingAddress.PostalCode" class="postal_code" type="text" placeholder="Postal Code ex. 94107">
-
-      </div>
+  <form id="skully" action="save" method="post">
+    <div class="narrow center shipping us">
+      <div class="form"></div>
     </div>
 
     <div class="narrow center perk"></div>
@@ -100,12 +33,84 @@ Pre-order &mdash; SKULLY AR-1
       <span>Please check to see if the above information is correct before submitting.</span>
       <input type="submit" value="SUBMIT">
     </div>
-
+  </form>
+  <form id="password">
+    <input id="password" name="Password" class="password" type="password" placeholder="Password, minimum 6 character">
+    <input id="password_confirm" name="PasswordConfirm" class="password" type="password" placeholder="Type in your password again">
   </form>
 </div>
 {% endblock %}
 
 {% block script %}
+<script id="shipping-template" type="text/template">
+<div>
+    <h3>Account for <span class="email"></></h2>
+    <input id="email" name="User.Email" class="email" type="hidden" placeholder="Email Address ex. info@skullysystems.com">
+    <input id="first_name" name="User.FirstName" class="first_name" type="text" placeholder="First Name ex. SKULLY">
+    <input id="last_name" name="User.LastName" class="last_name" type="text" placeholder="Last Name ex. Systems">
+    <input id="phone" name="User.Phone" class="phone" type="text" placeholder="Phone Number ex. 5-555-555-5555">
+    <input id="address1" name="ShippingAddress.Line1" class="address1" type="text" placeholder="Address ex. 555 3rd Street">
+    <input id="address2" name="ShippingAddress.Line2" class="address2 optional" type="text" placeholder="Address 2 ex. Suite 3, Apt#">
+    <input id="city" name="ShippingAddress.City" class="city" type="text" placeholder="City ex. San Francisco">
+
+    <select id="state" name="ShippingAddress.State" class="state us-only">
+      <option value="Alabama">AL</option>
+      <option value="Alaska">AK</option>
+      <option value="Arizona">AZ</option>
+      <option value="Arkansas">AR</option>
+      <option value="California">CA</option>
+      <option value="Colorado">CO</option>
+      <option value="Connecticut">CT</option>
+      <option value="Delaware">DE</option>
+      <option value="District Of Columbia">DC</option>
+      <option value="Florida">FL</option>
+      <option value="Georgia">GA</option>
+      <option value="Hawaii">HI</option>
+      <option value="Idaho">ID</option>
+      <option value="Illinois">IL</option>
+      <option value="Indiana">IN</option>
+      <option value="Iowa">IA</option>
+      <option value="Kansas">KS</option>
+      <option value="Kentucky">KY</option>
+      <option value="Louisiana">LA</option>
+      <option value="Maine">ME</option>
+      <option value="Maryland">MD</option>
+      <option value="Massachusetts">MA</option>
+      <option value="Michigan">MI</option>
+      <option value="Minnesota">MN</option>
+      <option value="Mississippi">MS</option>
+      <option value="Missouri">MO</option>
+      <option value="Montana">MT</option>
+      <option value="Nebraska">NE</option>
+      <option value="Nevada">NV</option>
+      <option value="New Hampshire">NH</option>
+      <option value="New Jersey">NJ</option>
+      <option value="New Mexico">NM</option>
+      <option value="New York">NY</option>
+      <option value="North Carolina">NC</option>
+      <option value="North Dakota">ND</option>
+      <option value="Ohio">OH</option>
+      <option value="Oklahoma">OK</option>
+      <option value="Oregon">OR</option>
+      <option value="Pennsylvania">PA</option>
+      <option value="Rhode Island">RI</option>
+      <option value="South Carolina">SC</option>
+      <option value="South Dakota">SD</option>
+      <option value="Tennessee">TN</option>
+      <option value="Texas">TX</option>
+      <option value="Utah">UT</option>
+      <option value="Vermont">VT</option>
+      <option value="Virginia">VA</option>
+      <option value="Washington">WA</option>
+      <option value="West Virginia">WV</option>
+      <option value="Wisconsin">WI</option>
+      <option value="Wyoming">WY</option>
+    </select>
+    <input id="state_province" name="ShippingAddress.State" class="state intl-only" type="text" placeholder="Province">
+    <input id="postal_code" name="ShippingAddress.PostalCode" class="postal_code" type="text" placeholder="Postal Code">
+    <input id="country" name="ShippingAddress.Country" class="country intl-only" type="text" placeholder="Country">
+</div>
+</script>
 <script id="perk-template" type="text/template">
 <div class="instance">
     <div class="content-centered">
