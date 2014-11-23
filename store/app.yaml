@@ -15,24 +15,24 @@ handlers:
   script: _go_app
   login: required
 
-- url: '*/humans.txt'
+- url: /humans.txt
   static_files: ../static/humans.txt
   upload: ../static/humans.txt
 
-- url: '*/robots.txt'
+- url: /robots.txt
   static_files: ../static/robots.txt
   upload: ../static/robots.txt
 
-- url: '*/apple-touch-icon.png'
+- url: /apple-touch-icon.png
   static_files: ../static/apple-touch-icon.png
   upload: ../static/apple-touch-icon.png
 
-- url: '*/apple-touch-icon-precomposed.png'
+- url: /apple-touch-icon-precomposed.png
   static_files: ../static/apple-touch-icon-precomposed.png
   upload: ../static/apple-touch-icon-precomposed.png
 
 pagespeed:
-    enabled_rewriters:
+  enabled_rewriters:
     # HTML
     - ProxyCss
     - ProxyImages
@@ -41,7 +41,7 @@ pagespeed:
     - InlineCss
     - InlineJs
     - InlineImages
-    - InlinePreviewImages - default
+    - InlinePreviewImages
     - CollapseWhitespace
     - CombineHeads
     - ElideAttributes
@@ -50,14 +50,14 @@ pagespeed:
     - LeftTrimUrls
 
     # css
-    - CombineCss - default
-    - MoveCssToHead - default
+    - CombineCss
+    - MoveCssToHead
     - MinifyCss
 
     # images
     - WebpOptimization
     # - ImageConvertToJpeg
-    - ImageRecompressJpeg
+    # - ImageRecompressJpeg
     - ImageProgressiveJpeg
     - ImageRecompressPng
     - ImageStripMetadata
@@ -67,9 +67,9 @@ pagespeed:
     - ImageAddDimensions
 
     # js
-    - CombineJs - default
-    - JsOptimize - default
+    - CombineJs
+    - JsOptimize
     - DeferJs
 
-    disabled_rewriters:
+  disabled_rewriters:
     - FlushSubresources
