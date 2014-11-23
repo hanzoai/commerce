@@ -17,6 +17,7 @@ type Config struct {
 	AutoCompileAssets bool
 	RootDir           string
 	StaticUrl         string
+	SiteTitle		  string
 	Prefixes          map[string]string
 	Hosts             map[string]string
 	Stripe            struct {
@@ -34,14 +35,24 @@ func (c Config) PrefixFor(moduleName string) string {
 }
 
 // Return full url to module
-func (c Config) ModuleUrl(moduleName, domain string) string {
+func (c Config) ModuleUrl(moduleName string, args ...interface{}) string {
+
 	// Build URL for module.
 	url := c.Hosts[moduleName] + c.PrefixFor(moduleName)
 
-	// If module is hosted, return relative to that root domain.
-	if domain != "" {
-		url = strings.Replace(url, "crowdstart.io", domain, 1)
+	for i, arg := range args {
+		switch i {
+		case 0:
+			domain := arg.(string)
+			// If module is hosted, return relative to that root domain.
+			if domain != "" {
+				url = strings.Replace(url, "crowdstart.io", domain, 1)
+			}
+		}
 	}
+
+	// Strip trailing slash
+	url = strings.TrimRight(url, "/")
 
 	return url
 }
@@ -53,6 +64,7 @@ func Defaults() *Config {
 	config.Hosts = make(map[string]string, 10)
 	config.Prefixes = make(map[string]string, 10)
 	config.RootDir, _ = filepath.Abs(cwd + "/../..")
+	config.SiteTitle = "Crowdstart"
 	config.DemoMode = demoMode
 	return config
 }
@@ -151,6 +163,6 @@ func PrefixFor(moduleName string) string {
 }
 
 // Return full url to module
-func ModuleUrl(moduleName, domain string) string {
-	return config.ModuleUrl(moduleName, domain)
+func ModuleUrl(moduleName string, args ...interface{}) string {
+	return config.ModuleUrl(moduleName, args...)
 }
