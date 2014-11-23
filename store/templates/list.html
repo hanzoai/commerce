@@ -17,7 +17,7 @@
 {% block content %}
 <div id="productList">
     {% for product in products %}
-    <a href="/products/{{ product.Slug }}" class="product hentry post-type-store-item article-index-1" id="thumb-skully-{{ product.Slug }}">
+    <a href="{{ moduleUrl("store") }}/products/{{ product.Slug }}" class="product hentry post-type-store-item article-index-1" id="thumb-skully-{{ product.Slug }}">
         <div>
             <div class="product-image">
                 <div class="intrinsic">
