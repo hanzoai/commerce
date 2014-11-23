@@ -30,7 +30,7 @@ func GetPreorder(c *gin.Context) {
 	if err := db.GetKey("user", token.Email, user); err != nil {
 		log.Error("Failed to fetch user: %v", err, c)
 		// Bad token
-		c.Redirect(301, "../../")
+		c.Redirect(301, "../")
 		return
 	}
 
