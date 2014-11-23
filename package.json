@@ -3,7 +3,7 @@
   "private": true,
   "dependencies": {
     "bebop": "^1.1.12",
-    "mvstar": "0.1.0",
+    "mvstar": "0.1.2",
     "requisite": "^1.8.0"
   }
 }
