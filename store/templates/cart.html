@@ -65,7 +65,7 @@
         </td>
 
         <td class="item-desc">
-            <a class="title" href="/products/ar-1">{{ item.Product.Title }}</a>
+            <a class="title" href="{{ moduleUrl("store") }}/products/{{ item.Slug() }}">{{ item.Product.Title }}</a>
             <div class="desc">{{ item.Product.Color }} / {{ item.Product.Size }}</div>
         </td>
 
