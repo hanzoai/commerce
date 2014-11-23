@@ -143,6 +143,6 @@ deploy-appengine: assets
 		$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update $$module; \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) set_default_version $$module; \
 	done; \
-	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update_dispatch config/prod
+	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update_dispatch config/production
 
 .PHONY: all assets assets-watch autocompile-assets build deploy deps deps-js deps-go serve test tools
