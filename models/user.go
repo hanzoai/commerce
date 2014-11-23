@@ -15,21 +15,25 @@ type InviteToken struct {
 
 type User struct {
 	FieldMapMixin
-	Id              string `schema:"-"`
+	Id              string `schema:"-" json:"-"`
 	FirstName       string
 	LastName        string
 	Phone           string
-	OrdersIds       []string `schema:"-"`
-	Cart            Cart     `datastore:"-"`
+	OrdersIds       []string `schema:"-" json:"-"`
+	Cart            Cart     `datastore:"-" json:"-"`
 	BillingAddress  Address
 	ShippingAddress Address
 	Email           string
 	Campaigns       []Campaign `schema:"-" datastore:"-"`
-	PasswordHash    []byte     `schema:"-"`
+	PasswordHash    []byte     `schema:"-" json:"-"`
 }
 
 func (u User) Name() string {
 	return u.FirstName + " " + u.LastName
+}
+
+func (u User) HasPassword() bool {
+	return u.PasswordHash != nil
 }
 
 func (u User) Validate(req *http.Request, errs binding.Errors) binding.Errors {
