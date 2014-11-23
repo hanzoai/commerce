@@ -36,7 +36,6 @@ class HelmetItemView extends Views.ItemView
             ''
 
 class HelmetView extends Views.CategoryView
-  template: '#helmet-template'
   ItemView: HelmetItemView
   itemDefaults:
     sku: ''
@@ -44,5 +43,9 @@ class HelmetView extends Views.CategoryView
     quantity: 1
     color: ''
     size: ''
+
+  constructor: ->
+    super
+    @set 'title', 'Skully AR-1 color & size'
 
 module.exports = HelmetView

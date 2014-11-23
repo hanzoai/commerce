@@ -158,8 +158,8 @@ h3.underline {
   right: 0px
 }
 
-.item.apparel select.type, .item.apparel select.color {
-  width: 160px
+.item.apparel select.style, .item.apparel select.color {
+  width: 340px
 }
 
 .item.apparel select.color {
@@ -214,10 +214,22 @@ input.fix {
   line-height: 15px;
 }
 
-.hat .text {
-  width: 344px;
+.hats .text {
+  font-size: 18px;
+  width: 340px;
   display: inline-block;
-  text-align: right
+  text-align: right;
+  vertical-align: top;
+  margin-top: 30px
+}
+
+.hats .counter {
+  font-size: inherit
+}
+
+.hats .form {
+  width: 160px;
+  display: inline-block;
 }
 
 .bounce {

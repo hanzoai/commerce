@@ -91,32 +91,11 @@ Pre-order &mdash; SKULLY AR-1
     </div>
 
     <div class="narrow center perk"></div>
-
     <div class="narrow center item ar1"></div>
-
     <div class="break-65"></div>
-
-    <div class="narrow center item apparel">
-      <div class="content-centered">
-        <h3 class="underline">Skully Nation Apparel Color &amp; size <span>(</span><span class="counter"></span><span class="total"></span></h3>
-      </div>
-
-      <div class="form"></div>
-
-      <div class="form hat">
-        <div class="text">Select your hat size:</div>
-        <select id="size" name="HatSize" class="size">
-          <option value="S">S</option>
-          <option value="M">M</option>
-          <option value="L">L</option>
-          <option value="XL">XL</option>
-        </select>
-        <input id="quantity" name="HatQuantity" class="quantity" type="text" maxlength="2" placeholder="Qty.">
-      </div>
-    </div>
-
+    <div class="narrow center item apparel"></div>
+    <div class="narrow center item hats"></div>
     <div class="break-65"></div>
-
     <div class="narrow center content-centered submit">
       <span>Please check to see if the above information is correct before submitting.</span>
       <input type="submit" value="SUBMIT">
@@ -146,11 +125,17 @@ Pre-order &mdash; SKULLY AR-1
     <div class="break-65"></div>
 </div>
 </script>
-<script id="helmet-template" type="text/template">
+<script id="category-template" type="text/template">
 <div>
     <div class="content-centered">
-        <h3 class="underline">Skully AR-1 color &amp; size <span>(</span><span class="counter"></span><span class="total"></span></h3>
+        <h3 class="underline"><span class="title"></span><span>(</span><span class="counter"></span><span class="total"></span></h3>
     </div>
+    <div class="form"></div>
+</div>
+</script>
+<script id="hat-template" type="text/template">
+<div>
+    <div class="text">Select your hat size </span><span>(</span><span class="counter"></span><span class="total"></span>:</div>
     <div class="form"></div>
 </div>
 </script>
@@ -165,10 +150,44 @@ Pre-order &mdash; SKULLY AR-1
     </select>
     <select name="N.Size" class="size">
         <option value="S">S</option>
-        <option value="M">M</option>
+        <option value="M" selected="selected">M</option>
         <option value="L">L</option>
         <option value="XL">XL</option>
         <option value="XXL">XXL</option>
+    </select>
+    <select class="quantity" name="N.Quantity">
+    </select>
+    <button class="add">+</button>
+</div>
+</script>
+<script id="apparel-item-template" type="text/template">
+<div class="row variant">
+    <button class="sub"></button>
+    <input name="N.SKU" class="sku" type="hidden" value="">
+    <input name="N.Slug" class="slug" type="hidden" value="">
+    <select name="N.Style" class="style">
+        <option value="Men's Shirt">Men's Shirt</option>
+        <option value="Women's Shirt">Women's Shirt</option>
+    </select>
+    <select name="N.Size" class="size">
+        <option value="S">S</option>
+        <option value="M" selected="selected">M</option>
+        <option value="L">L</option>
+        <option value="XL">XL</option>
+    </select>
+    <select class="quantity" name="N.Quantity">
+    </select>
+    <button class="add">+</button>
+</div>
+</script>
+<script id="hat-item-template" type="text/template">
+<div class="row variant">
+    <button class="sub"></button>
+    <select id="size" name="N.Size" class="size">
+        <option value="S">S</option>
+        <option value="M">M</option>
+        <option value="L">L</option>
+        <option value="XL">XL</option>
     </select>
     <select class="quantity" name="N.Quantity">
     </select>
