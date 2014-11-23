@@ -37,11 +37,11 @@ func Init() {
 					<h4>200 ok (crowdstart/1.0.0)</h4>
 
 					<ul>
-						<li><a href="/api">api</a></li>
-						<li><a href="/checkout">checkout</a></li>
-						<li><a href="/platform">platform</a></li>
-						<li><a href="/preorder">preorder</a></li>
-						<li><a href="/store">store</a></li>
+						<li><a href="/api/">api</a></li>
+						<li><a href="/checkout/">checkout</a></li>
+						<li><a href="/platform/">platform</a></li>
+						<li><a href="/preorder/">preorder</a></li>
+						<li><a href="/store/">store</a></li>
 					</ul>
 
 					<a href="http://localhost:8000">admin</a>
