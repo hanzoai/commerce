@@ -44,10 +44,10 @@ type Product struct {
 	HeaderImage Image
 
 	ImageIds []string
-	Images   []Image `datastore:"-"`
+	Images   []Image
 
 	VariantIds []string
-	Variants   []ProductVariant `datastore:"-"`
+	Variants   []ProductVariant
 }
 
 func (p *Product) Save(c *gin.Context) error {
