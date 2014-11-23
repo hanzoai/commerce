@@ -43,7 +43,18 @@ func GetPreorder(c *gin.Context) {
 	userJSON := json.Encode(user)
 	contributionsJSON := json.Encode(contributions)
 
-	template.Render(c, "preorder.html", "user", user, "userJSON", userJSON, "contributionsJSON", contributionsJSON)
+	// Get all products
+	var products []models.Product
+	db.Query("product").GetAll(db.Context, &products)
+
+	// Create map of slug -> product
+	productsMap := make(map[string]models.Product)
+	for _, product := range products {
+		productsMap[product.Slug] = product
+	}
+	allProductsJSON := json.Encode(productsMap)
+
+	template.Render(c, "preorder.html", "user", user, "userJSON", userJSON, "contributionsJSON", contributionsJSON, "allProductsJSON", allProductsJSON)
 }
 
 func SavePreorder(c *gin.Context) {
@@ -86,7 +97,7 @@ func SavePreorder(c *gin.Context) {
 
 	order.Total = order.Subtotal + order.Tax
 
-	err := order.Save(c) //Saves the nested structs in the order
+	err := order.Save(c) // Saves the nested structs in the order
 	if err != nil {
 		c.Fail(500, err)
 		return

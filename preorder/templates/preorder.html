@@ -6,10 +6,12 @@ Pre-order &mdash; SKULLY AR-1
 
 {% block head %}
 <script>
-  var PreorderData = {
+var PreorderData = {
     user: {{ userJSON | safe }},
-      contributions: {{ contributionsJSON | safe }},
-  };
+    contributions: {{ contributionsJSON | safe }},
+};
+
+var AllProducts = {{ allProductsJSON | safe}};
 </script>
 {% endblock %}
 
