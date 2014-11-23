@@ -1,7 +1,5 @@
 View = require 'mvstar/lib/view'
-{getVariant} = require '../../utils/products'
-
-cart = app.get 'cart'
+products = require '../../utils/products'
 
 class ProductView extends View
   el: '.sqs-add-to-cart-button'
@@ -20,7 +18,7 @@ class ProductView extends View
     inner.append '<div class="yui3-widget sqs-spin light"></div>'
     inner.append '<div class="status-text">Adding...</div>'
 
-    cart.add
+    app.get('cart').add
       sku:      variant.SKU
       color:    variant.Color
       img:      currentProduct.Images[0].Url
@@ -74,6 +72,6 @@ class ProductView extends View
         confirm: 'Okay'
       return
 
-    getVariant options
+    products.getVariant options
 
 module.exports = ProductView
