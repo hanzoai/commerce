@@ -86,8 +86,14 @@ func SavePreorder(c *gin.Context) {
 
 	order.Total = order.Subtotal + order.Tax
 
+	err := order.Save(c) //Saves the nested structs in the order
+	if err != nil {
+		c.Fail(500, err)
+		return
+	}
+
 	var key string
-	var err error
+
 	if len(user.OrdersIds) > 0 {
 		key = user.OrdersIds[0]
 		_, err = db.PutKey("order", key, &order)
