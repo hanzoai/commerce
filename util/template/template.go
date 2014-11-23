@@ -11,8 +11,6 @@ var cwd, _ = os.Getwd()
 
 type Context map[string]interface{}
 
-var staticUrl = config.Get().StaticUrl
-
 func Render(c *gin.Context, path string, pairs ...interface{}) (err error) {
 	// All templates are expected to be in templates dir
 	path = cwd + "/templates/" + path
@@ -28,7 +26,11 @@ func Render(c *gin.Context, path string, pairs ...interface{}) (err error) {
 	ctx := pongo2.Context{}
 
 	// Default context
-	ctx["staticUrl"] = staticUrl
+	ctx["staticUrl"] = config.StaticUrl
+	ctx["siteTitle"] = config.SiteTitle
+	ctx["moduleUrl"] = func(moduleName string) string {
+		return config.ModuleUrl(moduleName)
+	}
 
 	for i := 0; i < len(pairs); i = i + 2 {
 		ctx[pairs[i].(string)] = pairs[i+1]
