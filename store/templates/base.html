@@ -11,21 +11,19 @@
     <base href=".">
     <meta charset="utf-8">
 
-    <title>SKULLY AR-1 | SKULLY AR-1</title>
+    <title>SKULLY AR-1 {% block title %}{% endblock %}</title>
 
-    <link rel="canonical" href="https://store.skullysystems.com/products/skully-ar-1">
+    {% block canonical_link %}
+    <link rel="canonical" href="{{ moduleUrl("store") }}">
+    {% endblock %}
 
-    <meta property="og:site_name" content="SKULLY AR-1">
-    <meta property="og:title" content="SKULLY AR-1">
-    <meta property="og:url" content="https://store.skullysystems.com/products/skully-ar-1">
-    <meta property="og:type" content="product">
-    <meta property="og:description" content="The world&#39;s smartest motorcycle helmet.">
-    <meta property="og:image" content="http://static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544a2657e4b0ff95316b8ea0/1414145975053/?format=1000w">
-    <meta itemprop="name" content="SKULLY AR-1">
-    <meta itemprop="url" content="https://store.skullysystems.com/products/skully-ar-1">
-    <meta itemprop="description" content="The world&#39;s smartest motorcycle helmet.">
-    <meta itemprop="thumbnailUrl" content="http://static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544a2657e4b0ff95316b8ea0/1414145975053/?format=1000w">
-    <meta itemprop="image" content="http://static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544a2657e4b0ff95316b8ea0/1414145975053/?format=1000w">
+    {% block meta %}
+    <meta property="og:site_name" content="{{ siteTitle }}">
+    <meta property="og:title" content="{{ siteTitle }}">
+    <meta property="og:url" content="{{ moduleUrl("store") }}">
+    <meta itemprop="name" content="{{ product.Title }}">
+    <meta itemprop="url" content="{{ moduleUrl("store") }}">
+    {% endblock %}
 
     <link rel="shortcut icon" type="image/x-icon" href="{{ staticUrl }}/favicon.ico">
 
@@ -77,7 +75,7 @@
                     </li>
 
                     <li class="external-link">
-                        <a href="/products/ar-1"><span></span></a><a
+                      <a href="{{ moduleUrl("store") }}/products/ar-1"><span></span></a><a
                           class="title-button"
                         onclick="_gaq.push([&#39;_trackEvent&#39;,
                         &#39;CTA_Button&#39;, &#39;click&#39;,
