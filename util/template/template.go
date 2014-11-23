@@ -26,13 +26,11 @@ func Render(c *gin.Context, path string, pairs ...interface{}) (err error) {
 	// Create context from pairs
 	ctx := pongo2.Context{}
 
-	conf := config.Get()
-
 	// Default context
-	ctx["staticUrl"] = conf.StaticUrl
-	ctx["siteTitle"] = conf.SiteTitle
+	ctx["staticUrl"] = config.StaticUrl
+	ctx["siteTitle"] = config.SiteTitle
 	ctx["moduleUrl"] = func(moduleName string) string {
-		return conf.ModuleUrl(moduleName)
+		return config.ModuleUrl(moduleName)
 	}
 
 	for i := 0; i < len(pairs); i = i + 2 {
