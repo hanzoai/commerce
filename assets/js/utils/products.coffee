@@ -1,0 +1,20 @@
+# determin variant selected for product
+exports.getVariant = (options, slug) ->
+  if slug?
+    variants = allProducts[slug].Variants
+  else
+    variants = currentProduct.Variants
+
+  # Determine if selected options match variant
+  optionsMatch = (options, variant) ->
+    for option, value of options
+      if variant[option] != value
+        return false
+    true
+
+  # Figure out SKU, all options match match variant
+  for variant in variants
+    return variant if optionsMatch options, variant
+
+  # Only one variant, no options.
+  variants[0]
