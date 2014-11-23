@@ -10,17 +10,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1">
 
     <!-- SQUARESPACE -->
-    <!-- <script type="text/javascript" src="/js/common-445c549876bda3f60184d96108576280-min.js"></script> -->
-    <link rel="stylesheet" type="text/css" href="/css/common-9a0089058c9ec7f1d74f56616b32375b-min.css">
+    <!-- <script type="text/javascript" src="/js/common.js"></script> -->
+    <link rel="stylesheet" type="text/css" href="{{ staticUrl }}/css/common-9a0089058c9ec7f1d74f56616b32375b-min.css">
 
     <!-- <script type="text/javascript" src="/js/commerce-cfbec50462637311c832714f0686fb6c-min.js"></script> -->
-    <link rel="stylesheet" type="text/css" href="/css/commerce-930a1b9b6c4fc5cce40f0a2b839272b9-min.css">
+    <link rel="stylesheet" type="text/css" href="{{ staticUrl }}/css/commerce-930a1b9b6c4fc5cce40f0a2b839272b9-min.css">
 
     <!-- <script type="text/javascript" src="/js/checkout-7ab800faf6f674e1007b9a4e22c55875-min.js"></script> -->
-    <link rel="stylesheet" type="text/css" href="/css/checkout-56facadb1760b1442d03355ac8e12a4d-min.css">
+    <link rel="stylesheet" type="text/css" href="{{ staticUrl }}/css/checkout-56facadb1760b1442d03355ac8e12a4d-min.css">
 
-    <link rel="stylesheet" type="text/css" href="/css/card.css">
-    <link rel="stylesheet" type="text/css" href="/css/shake.css">
+    <link rel="stylesheet" type="text/css" href="{{ staticUrl }}/css/card.css">
+    <link rel="stylesheet" type="text/css" href="{{ staticUrl }}/css/shake.css">
 
     <style id="checkout-page-styles">
       #sqs-standard-checkout .sqs-checkout-form-section fieldset .field.error.required input, #sqs-standard-checkout .sqs-checkout-form-section fieldset .field.error.required select {
@@ -86,7 +86,7 @@
         <div id="store-logo">
             <h1>
                 <a href="http://www.skullysystems.com/">
-                    <img src="/img/logo.png">
+                  <img src="{{ staticUrl }}/img/logo.png">
                     <span class="site-title">SECURE CHECKOUT</span>
                 </a>
             </h1>
@@ -574,10 +574,10 @@
                                   <a class="edit-button">edit</a>
 
                                     <div class="cards">
-                                        <img src="/img/discover.png">
-                                        <img src="/img/mastercard.png">
-                                        <img src="/img/visa.png">
-                                        <img src="/img/americanexpress.png">
+                                        <img src="{{ staticUrl }}/img/discover.png">
+                                        <img src="{{ staticUrl }}/img/mastercard.png">
+                                        <img src="{{ staticUrl }}/img/visa.png">
+                                        <img src="{{ staticUrl }}/img/americanexpress.png">
                                     </div>
 
                                     Secure Payment
@@ -706,8 +706,8 @@
     </form>
 
     <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
-    <script type="text/javascript" src="/js/jquery.ba-throttle-debounce.min.js"></script>
-    <script type="text/javascript" src="/js/card.js"></script>
+    <script type="text/javascript" src="{{ staticUrl }}/js/jquery.ba-throttle-debounce.min.js"></script>
+    <script type="text/javascript" src="{{ staticUrl }}/js/card.js"></script>
     <script type="text/javascript" src="https://js.stripe.com/v2/"></script>
     <script type="text/javascript">
         Stripe.setPublishableKey('{{ config.Stripe.APIKey }}')
@@ -717,10 +717,10 @@
                 $('#stripeForm').submit();
                 return false;
             });
-        });  
+        });
     </script>
-    <script type="text/javascript" src="/js/checkout_stripe.js"></script>
-    <script type="text/javascript" src="/js/checkout.js"></script>
+    <script type="text/javascript" src="{{ staticUrl }}/js/checkout_stripe.js"></script>
+    <script type="text/javascript" src="{{ staticUrl }}/js/checkout.js"></script>
 </body>
 
 </html>
