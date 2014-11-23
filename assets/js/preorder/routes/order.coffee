@@ -1,5 +1,7 @@
 PerkView = require '../views/perk'
 HelmetView = require '../views/helmet'
+ApparelView = require '../views/apparel'
+HatsView    = require '../views/hats'
 EventEmitter = require 'mvstar/lib/event-emitter'
 
 exports.setupView = ->
@@ -27,6 +29,7 @@ exports.displayPerks = ->
   return
 
 exports.displayHelmets = ->
+  console.log 'displaying helmets'
   if window.helmetTotal > 0
     view = new HelmetView {state: {total: window.helmetTotal}, emitter: new EventEmitter }
     view.render()
@@ -34,3 +37,22 @@ exports.displayHelmets = ->
     view.newItem()
     $('.item.ar1').append view.$el
   return
+
+exports.displayApparel = ->
+  if window.gearTotal > 0
+    view = new ApparelView {state: {total: window.gearTotal}, emitter: new EventEmitter }
+    view.render()
+    view.bind()
+    view.newItem()
+    $('.item.apparel').append view.$el
+  return
+
+exports.displayHats = ->
+  if window.gearTotal > 0
+    view = new HatsView {state: {total: window.gearTotal}, emitter: new EventEmitter }
+    view.render()
+    view.bind()
+    view.newItem()
+    $('.item.hats').append view.$el
+  return
+
