@@ -1,4 +1,4 @@
-application: crowdstart-io-dev
+application: crowdstart-io
 
 dispatch:
   - url: "*/api/*"
@@ -33,4 +33,3 @@ dispatch:
 
   - url: "*/apple-touch-icon-precomposed.png"
     module: default
-
