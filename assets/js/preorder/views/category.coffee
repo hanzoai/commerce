@@ -24,7 +24,7 @@ class CategoryView extends EmitterView
 
     @emitter.on 'updateCount', => @updateCount.apply(@, arguments)
     @emitter.on 'newItem', => @newItem.apply(@, arguments)
-    @emitter.on 'deleteItem', => @deleteItem.apply(@, arguments)
+    @emitter.on 'removeItem', => @removeItem.apply(@, arguments)
 
   formatters:
     counts: (v) ->
@@ -37,9 +37,9 @@ class CategoryView extends EmitterView
     total: (v) ->
       return '/' + v + ')'
 
-  updateCount: (e) ->
+  updateCount: (data) ->
     counts = @get 'counts'
-    counts[e.index] = e.newCount
+    counts[data.index] = data.count
     @set 'counts', counts
 
     #cancel bubbling
@@ -59,14 +59,18 @@ class CategoryView extends EmitterView
     #cancel bubbling
     return false
 
-  deleteItem: ->
+  removeItem: (index)->
+    counts = @get 'counts'
+    counts[index] = 0
+    @set 'counts', counts
+    @updateCount {index: index, count: 0}
 
 class ItemView extends EmitterView
   total: 1
   constructor: (opts)->
     super
     @total = opts.total
-    @emitter.emit 'updateCount', {index: @get('index'), newCount: 1}
+    @emitter.emit 'updateCount', {index: @get('index'), count: 1}
 
   events:
     # Dismiss on click, escape, and scroll
@@ -74,7 +78,7 @@ class ItemView extends EmitterView
 
     # Handle lineItem removals
     'click button.sub': ->
-      @destroy() if @get 'index' != 0
+      @destroy() if @get('index') > 0
 
     'click button.add': ->
       @emitter.emit 'newItem'
@@ -86,12 +90,12 @@ class ItemView extends EmitterView
       quantity.append $('<option/>').attr('value', i).text(i)
 
   updateQuantity: (e) ->
-    @emitter.emit 'updateCount', {index: @get('index'), newCount: parseInt $(e.currentTarget).val(), 10}
+    @emitter.emit 'updateCount', {index: @get('index'), count: parseInt $(e.currentTarget).val(), 10}
 
   destroy: ->
     @unbind()
-    @emit 'removeItem', @get 'index'
-    @$el.animate {opacity: "toggle"}, 500, 'swing', => @$el.remove()
+    @emitter.emit 'removeItem', @get 'index'
+    @$el.animate {height: "0px", opacity: "toggle"}, 100, 'swing', => @$el.remove()
 
 module.exports =
   CategoryView: CategoryView
