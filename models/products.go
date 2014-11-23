@@ -44,10 +44,10 @@ type Product struct {
 	HeaderImage Image
 
 	ImageIds []string
-	Images   []Image `datastore:"-"`
+	Images   []Image
 
 	VariantIds []string
-	Variants   []ProductVariant `datastore:"-"`
+	Variants   []ProductVariant
 }
 
 func (p *Product) Save(c *gin.Context) error {
@@ -132,6 +132,11 @@ func (p Product) DisplayPrice() string {
 }
 
 func (p Product) MinPrice() int64 {
+	// nil Product
+	if len(p.Variants) == 0 {
+		return 0
+	}
+
 	min := p.Variants[0].Price
 
 	for _, v := range p.Variants {
