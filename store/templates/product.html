@@ -4,15 +4,13 @@
 {% block meta %}
 <meta property="og:site_name" content="{{ siteTitle }}">
 <meta property="og:title" content="{{ siteTitle }}">
-<meta property="og:url" content="https://store.skullysystems.com/products/skully-ar-1">
+<meta property="og:url" content="{{ moduleUrl("store") }}/products/{{ product.Slug }}">
 <meta property="og:type" content="product">
 <meta property="og:description" content="{{ product.Description }}">
-<meta property="og:image" content="http://static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544a2657e4b0ff95316b8ea0/1414145975053/?format=1000w">
 <meta itemprop="name" content="{{ product.Title }}">
-<meta itemprop="url" content="https://store.skullysystems.com/products/skully-ar-1">
+<meta itemprop="url" content="{{ moduleUrl("store") }}/products/{{ product.Slug }}">
 <meta itemprop="description" content="{{ product.Description }}">
 <meta itemprop="thumbnailUrl" content="{{ product.DisplayImage().Url }}">
-<meta itemprop="image" content="http://static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544a2657e4b0ff95316b8ea0/1414145975053/?format=1000w">
 {% endblock %}
 
 {% block content_header %}
