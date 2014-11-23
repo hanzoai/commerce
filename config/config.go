@@ -150,6 +150,7 @@ func Get() *Config {
 
 var config = Get()
 
+// Expose global config.
 var DemoMode = config.DemoMode
 var IsDevelopment = config.IsDevelopment
 var IsProduction = config.IsProduction
@@ -157,6 +158,7 @@ var AutoCompileAssets = config.AutoCompileAssets
 var RootDir = config.RootDir
 var StaticUrl = config.StaticUrl
 var Stripe = config.Stripe
+var SiteTitle = config.SiteTitle
 
 func PrefixFor(moduleName string) string {
 	return config.PrefixFor(moduleName)
