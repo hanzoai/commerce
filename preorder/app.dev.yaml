@@ -1,4 +1,4 @@
-application: crowdstart-io-dev
+application: crowdstart-io
 module: preorder
 
 runtime: go

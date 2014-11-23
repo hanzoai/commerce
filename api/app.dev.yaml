@@ -1,4 +1,4 @@
-application: crowdstart-io-dev
+application: crowdstart-io
 module: api
 
 runtime: go
@@ -6,5 +6,5 @@ api_version: go1
 threadsafe: true
 
 handlers:
-- url: /v1/.*
+- url: /api/.*
   script: _go_app
