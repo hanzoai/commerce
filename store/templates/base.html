@@ -11,7 +11,7 @@
     <base href=".">
     <meta charset="utf-8">
 
-    <title>SKULLY AR-1 {% block title %}{% endblock %}</title>
+    <title>{% block title %} {{ siteTitle }} {% endblock %}</title>
 
     {% block canonical_link %}
     <link rel="canonical" href="{{ moduleUrl("store") }}">
@@ -59,11 +59,11 @@
                     </li>
 
                     <li class="external-link">
-                        <a href="http://blog.www.skullysystems.com/" target="_blank"><span>BLOG</span></a>
+                      <a href="http://blog.skullysystems.com/" target="_blank"><span>BLOG</span></a>
                     </li>
 
                     <li class="page-collection">
-                        <a href="http://www.skullysystems.com/faq/"><span>FAQ</span></a>
+                      <a href="http://www.skullysystems.com/faq/"><span>FAQ</span></a>
                     </li>
 
                     <li class="page-collection">
@@ -71,7 +71,7 @@
                     </li>
 
                     <li class="external-link">
-                        <a href="http://forum.www.skullysystems.com/" target="_blank"><span>FORUM</span></a>
+                      <a href="http://forum.skullysystems.com/" target="_blank"><span>FORUM</span></a>
                     </li>
 
                     <li class="external-link">
@@ -79,7 +79,7 @@
                           class="title-button"
                         onclick="_gaq.push([&#39;_trackEvent&#39;,
                         &#39;CTA_Button&#39;, &#39;click&#39;,
-                      &#39;topBnr_cta&#39;, 0]);" href="/products/ar-1">GET
+                        &#39;topBnr_cta&#39;, 0]);" href="{{ moduleUrl("store") }}/products/ar-1">GET
                       YOUR AR-1</a>
                     </li>
 
@@ -99,7 +99,7 @@
 
                         <h1 data-content-field="site-title" class="site-title">
                           <a href="http://www.skullysystems.com/" id="top">
-			    <img src="{{ staticUrl }}/img/skully.png" alt="SKULLY AR-1">
+			    <img src="{{ staticUrl }}/skully/img/skully.png" alt="SKULLY AR-1">
                           </a>
                         </h1>
 
@@ -117,7 +117,7 @@
                                         </li>
 
                                         <li class="external-link">
-                                            <a href="http://blog.www.skullysystems.com/" target="_blank"><span>BLOG</span></a>
+                                            <a href="http://blog.skullysystems.com/" target="_blank"><span>BLOG</span></a>
                                         </li>
 
                                         <li class="page-collection">
@@ -125,15 +125,15 @@
                                         </li>
 
                                         <li class="external-link">
-                                            <a href="http://forum.www.skullysystems.com/" target="_blank"><span>FORUM</span></a>
+                                            <a href="http://forum.skullysystems.com/" target="_blank"><span>FORUM</span></a>
                                         </li>
 
                                         <li class="page-collection">
-                                            <a href="/"><span>STORE</span></a>
+                                          <a href=" {{ moduleUrl("store") }} "><span>STORE</span></a>
                                         </li>
 
                                         <li class="external-link">
-                                            <a href="/products/ar-1"><span></span></a><a class="title-button" onclick="_gaq.push([&#39;_trackEvent&#39;, &#39;CTA_Button&#39;, &#39;click&#39;, &#39;topBnr_cta&#39;, 0]);" href="/products/ar-1">GET YOUR AR-1</a>
+                                          <a href="{{ moduleUrl("store")}}/products/ar-1"><span></span></a><a class="title-button" onclick="_gaq.push([&#39;_trackEvent&#39;, &#39;CTA_Button&#39;, &#39;click&#39;, &#39;topBnr_cta&#39;, 0]);" href="{{ moduleUrl("store") }}/products/ar-1">GET YOUR AR-1</a>
                                         </li>
 
                                     </ul>
@@ -152,7 +152,7 @@
 
                 <!--CART HOVER-->
                 <div class="sqs-cart-dropzone fixed-cart" style="margin-top: 70px; top: 80px;">
-                  <a href="/cart">
+                  <a href="{{ moduleUrl("store") }}/cart">
                     <div class="yui3-widget sqs-widget sqs-pill-shopping-cart" style="visibility: visible; opacity: 1;">
                       <div class="sqs-pill-shopping-cart-content dark">
                         <div class="icon"></div>
