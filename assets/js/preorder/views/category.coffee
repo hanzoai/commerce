@@ -12,8 +12,9 @@ class CategoryView extends EmitterView
   itemDefaults: {}
   itemViews: []
 
-  template:"#-template"
+  template:"#category-template"
   bindings:
+    title:      'span.title'
     counts:     'span.counter' #array of counts
     total:      'span.total' #total number of things in category, SHOULD NOT CHANGE
 
@@ -27,6 +28,8 @@ class CategoryView extends EmitterView
     @emitter.on 'removeItem', => @removeItem.apply(@, arguments)
 
   formatters:
+    title: (v)->
+      return v + ' '
     counts: (v) ->
       count = (@get 'counts').reduce ((sum, n)-> return sum + n), 0
       if count != @get 'total'
