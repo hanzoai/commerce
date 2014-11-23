@@ -14,3 +14,62 @@ handlers:
 - url: /.*
   script: _go_app
   secure: always
+
+- url: /humans.txt
+  static_files: ../static/humans.txt
+  upload: ../static/humans.txt
+
+- url: /robots.txt
+  static_files: ../static/robots.txt
+  upload: ../static/robots.txt
+
+- url: /apple-touch-icon.png
+  static_files: ../static/apple-touch-icon.png
+  upload: ../static/apple-touch-icon.png
+
+- url: /apple-touch-icon-precomposed.png
+  static_files: ../static/apple-touch-icon-precomposed.png
+  upload: ../static/apple-touch-icon-precomposed.png
+
+pagespeed:
+  enabled_rewriters:
+    # HTML
+    - ProxyCss
+    - ProxyImages
+    - ProxyJs
+    - ConvertMetaTags
+    - InlineCss
+    - InlineJs
+    - InlineImages
+    - InlinePreviewImages
+    - CollapseWhitespace
+    - CombineHeads
+    - ElideAttributes
+    - RemoveComments
+    - RemoveQuotes
+    - LeftTrimUrls
+
+    # css
+    - CombineCss
+    - MoveCssToHead
+    - MinifyCss
+
+    # images
+    - WebpOptimization
+    # - ImageConvertToJpeg
+    # - ImageRecompressJpeg
+    - ImageProgressiveJpeg
+    - ImageRecompressPng
+    - ImageStripMetadata
+    - ImageStripColorProfile
+    # - ImageResize
+    # - LazyloadImages
+    - ImageAddDimensions
+
+    # js
+    - CombineJs
+    - JsOptimize
+    - DeferJs
+
+  disabled_rewriters:
+    - FlushSubresources
