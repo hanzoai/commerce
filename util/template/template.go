@@ -1,10 +1,11 @@
 package template
 
 import (
+	"os"
+
 	"crowdstart.io/config"
 	"github.com/flosch/pongo2"
 	"github.com/gin-gonic/gin"
-	"os"
 )
 
 var cwd, _ = os.Getwd()
@@ -25,11 +26,13 @@ func Render(c *gin.Context, path string, pairs ...interface{}) (err error) {
 	// Create context from pairs
 	ctx := pongo2.Context{}
 
+	conf := config.Get()
+
 	// Default context
-	ctx["staticUrl"] = config.StaticUrl
-	ctx["siteTitle"] = config.SiteTitle
+	ctx["staticUrl"] = conf.StaticUrl
+	ctx["siteTitle"] = conf.SiteTitle
 	ctx["moduleUrl"] = func(moduleName string) string {
-		return config.ModuleUrl(moduleName)
+		return conf.ModuleUrl(moduleName)
 	}
 
 	for i := 0; i < len(pairs); i = i + 2 {

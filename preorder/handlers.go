@@ -54,7 +54,12 @@ func GetPreorder(c *gin.Context) {
 	}
 	allProductsJSON := json.Encode(productsMap)
 
-	template.Render(c, "preorder.html", "user", user, "userJSON", userJSON, "contributionsJSON", contributionsJSON, "allProductsJSON", allProductsJSON)
+	template.Render(c, "preorder.html",
+		"user", user,
+		"userJSON", userJSON,
+		"contributionsJSON", contributionsJSON,
+		"allProductsJSON", allProductsJSON,
+	)
 }
 
 func SavePreorder(c *gin.Context) {
@@ -70,7 +75,9 @@ func SavePreorder(c *gin.Context) {
 	db.GetKey("user", form.User.Email, user)
 
 	// Update user from form
-	user.PasswordHash = form.User.PasswordHash
+	if !user.HasPassword() {
+		user.PasswordHash = form.User.PasswordHash
+	}
 	user.Phone = form.User.Phone
 	user.FirstName = form.User.FirstName
 	user.LastName = form.User.LastName
