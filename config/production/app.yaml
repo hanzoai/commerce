@@ -15,3 +15,46 @@ handlers:
 
 - url: /*
   static_dir: static
+
+pagespeed:
+    enabled_rewriters:
+    # HTML
+    - ProxyCss
+    - ProxyImages
+    - ProxyJs
+    - ConvertMetaTags
+    - InlineCss
+    - InlineJs
+    - InlineImages
+    - InlinePreviewImages - default
+    - CollapseWhitespace
+    - CombineHeads
+    - ElideAttributes
+    - RemoveComments
+    - RemoveQuotes
+    - LeftTrimUrls
+
+    # css
+    - CombineCss - default
+    - MoveCssToHead - default
+    - MinifyCss
+
+    # images
+    - WebpOptimization
+    # - ImageConvertToJpeg
+    - ImageRecompressJpeg
+    - ImageProgressiveJpeg
+    - ImageRecompressPng
+    - ImageStripMetadata
+    - ImageStripColorProfile
+    # - ImageResize
+    # - LazyloadImages
+    - ImageAddDimensions
+
+    # js
+    - CombineJs - default
+    - JsOptimize - default
+    - DeferJs
+
+    disabled_rewriters:
+    - FlushSubresources
