@@ -1,0 +1,5 @@
+application: crowdstart-io
+
+dispatch:
+  - url: "secure.crowdstart.io/*"
+    module: checkout

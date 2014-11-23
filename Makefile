@@ -17,15 +17,15 @@ modules 	    = crowdstart.io/api \
 
 gae_token 	    = 1/DLPZCHjjCkiegGp0SiIvkWmtZcUNl15JlOg4qB0-1r0MEudVrK5jSpoR30zcRFq6
 
-gae_development = config/dev/dispatch.yaml \
+gae_development = config/development/app.yaml \
+				  config/development/dispatch.yaml \
 				  api/app.dev.yaml \
 				  checkout/app.dev.yaml \
-				  config/dev/app.yaml \
 				  platform/app.dev.yaml \
 				  preorder/app.dev.yaml \
 				  store/app.dev.yaml
 
-gae_production  = config/prod \
+gae_production  = config/production \
 				  api \
 				  checkout \
 			      platform \
