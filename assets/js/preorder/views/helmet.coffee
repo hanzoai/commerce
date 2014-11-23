@@ -14,23 +14,26 @@ class HelmetItemView extends Views.ItemView
                 'select.color    @name'
                 'select.size     @name'
                 'select.quantity @name'
-                'button.sub']
+                'button.sub      @text']
 
   formatters:
     index: (v, selector) ->
       switch selector
         when 'input.sku @name'
-          "#{v}.Variant.SKU"
+          "Order.Items.#{v}.Variant.SKU"
         when 'input.slug @name'
-          "#{v}.Product.Slug"
+          "Order.Items.#{v}.Product.Slug"
         when 'select.color @name'
-          "#{v}.Color"
+          "Order.Items.#{v}.Color"
         when 'select.size @name'
-          "#{v}.Size"
+          "Order.Items.#{v}.Size"
         when 'select.quantity @name'
-          "#{v}.Quantity"
-        when 'button.sub'
-          return if v != 0 then '-' else ''
+          "Order.Items.#{v}.Quantity"
+        when 'button.sub @text'
+          if v > 1
+            '-'
+          else
+            ''
 
 class HelmetView extends Views.CategoryView
   template: '#helmet-template'
