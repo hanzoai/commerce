@@ -77,6 +77,10 @@ h3.underline {
   margin-bottom: 10px
 }
 
+.shipping h3 {
+  margin-bottom: 10px
+}
+
 .form {
   margin-top: 20px;
   position: relative;
@@ -101,19 +105,36 @@ h3.underline {
   text-indent: 20px
 }
 
-.shipping input.city {
-  width: 220px
+.shipping.us input.city {
+  width: 270px
+}
+
+.shipping.intl input.city {
+  width: 225px
 }
 
 .shipping select.state {
   width: 60px;
   text-indent: 5px;
-  margin: 0 20px
+  margin-left: 20px
+}
+
+.shipping input.state {
+  width: 100px;
+  margin-left: 20px
+}
+
+.shipping.us .intl-only {
+  display: none
+}
+
+.shipping.intl .us-only {
+  display: none
 }
 
 .shipping input.postal_code {
-  width: 175px;
-  right: 0px;
+  width: 125px;
+  right: -2px;
   position: absolute
 }
 
@@ -228,7 +249,7 @@ input.fix {
 }
 
 .hats .form {
-  width: 160px;
+  width: 156px;
   display: inline-block;
 }
 
