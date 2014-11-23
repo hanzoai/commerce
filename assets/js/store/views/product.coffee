@@ -1,5 +1,5 @@
 View = require 'mvstar/lib/view'
-{getVariant} = require '../../utils/product'
+{getVariant} = require '../../utils/products'
 
 cart = app.get 'cart'
 
