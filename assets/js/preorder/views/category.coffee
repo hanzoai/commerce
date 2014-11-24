@@ -13,8 +13,8 @@ class CategoryView extends ViewEmitter
   bindings:
     title:  'span.title'
     counts: ['span.counter'
-            '.counter-validation @value']# array of counts
-    total:  'span.total'   # total number of things in category, SHOULD NOT CHANGE
+            '.counter-validation @value']  # array of counts
+    total:  'span.total'  # total number of things in category, SHOULD NOT CHANGE
 
   constructor: ->
     super
@@ -106,10 +106,10 @@ class ItemView extends ViewEmitter
       quantity.append $('<option/>').attr('value', i).text(i)
     return
 
-  updateQuantity: (e) ->
+  updateQuantity: (e, el) ->
     @emit 'updateCount',
       index: (@get 'index')
-      count: parseInt $(e.currentTarget).val(), 10
+      count: parseInt $(el).val(), 10
 
   destroy: ->
     @unbind()

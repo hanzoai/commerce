@@ -18,46 +18,21 @@ window.app = app = new PreorderApp()
 
 app.route()
 
-$(document).ready ->
-  displayErrors = (errors) ->
-    $('.errors').html('') # Clear any existing errors
-    for error in errors
-      $('#' + error.id).addClass 'fix'
-      $('#' + error.id).parent().find('.quantity').addClass 'fix'
+displayErrors = (errors = {}) ->
+  $('.errors').html('') # Clear any existing errors
+  for error in errors
+    $('#' + error.id).addClass 'fix'
+    $('#' + error.id).parent().find('.quantity').addClass 'fix'
 
-      # Append error message
-      view = new ErrorView()
-      view.set 'message', error.message
-      view.set 'link',    '#' + error.id
-      view.render()
+    # Append error message
+    view = new ErrorView()
+    view.set 'message', error.message
+    view.set 'link',    '#' + error.id
+    view.render()
 
-      $('.errors').append view.el
+    $('.errors').append view.el
 
-  if PreorderData.hasPassword
-    $('.shipping, .perk, .item, .submitter').show()
-  else
-    $('.password-form').show()
-    $('.password-form .submit').on 'click', ->
-      errors = []
-      if $('#password').val().length < 6
-        errors.push {
-          message: 'Your password must be atleast 6 characters long.'
-          id: 'password'
-        }
-
-      if $('#password_confirm').val() != $('#password').val()
-        errors.push {
-          message: 'The passwords you typed in do not match.'
-          id: 'password_confirm'
-        }
-
-      if errors.length == 0
-        $('.shipping, .perk, .item, .submitter').show()
-        $('.password-form').hide()
-        $.scrollTop(0)
-
-      displayErrors(errors)
-
+setupValidation = ->
   # Form validation
   validator = new FormValidator 'skully', [
       name: 'email'
@@ -117,3 +92,44 @@ $(document).ready ->
     return window.gearTotal == parseInt value, 10 #set in routes/order
   ).setMessage('check_hat_counter', "Your hat choices don't match your preorder.")
 
+showPreorderForm = ->
+  $('.password-form').hide()
+  $('.shipping, .perk, .item, .submitter').show()
+  setupValidation()
+  displayErrors()
+  $(window).scrollTop 0
+
+# Disable enter
+$('form').on 'keypress', (e) -> e.keyCode isnt 13
+
+$(document).ready ->
+  # prevent password form from submitting
+  $('.password-form .submit').on 'submit', (e) -> false
+
+  # Already visited, saved password
+  # TODO: Enable passwords again
+  # return showPreorderForm() if PreorderData.hasPassword
+  return showPreorderForm()
+
+  # New account
+  $('.password-form').show()
+  $('.password-form .submit').on 'click', (e) ->
+    errors = []
+
+    if $('#password').val().length < 6
+      errors.push
+        message: 'Your password must be at least 6 characters long.'
+        id: 'password'
+
+    if $('#password_confirm').val() != $('#password').val()
+      errors.push
+        message: 'The passwords you typed do not match.'
+        id: 'password_confirm'
+
+    # Show form if user managed to type a password (it's tough).
+    if errors.length
+      displayErrors errors
+    else
+      showPreorderForm()
+
+    false
