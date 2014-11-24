@@ -2,8 +2,6 @@ View         = require 'mvstar/lib/view'
 LineItemView = require './line-item'
 util         = require '../util'
 
-cart = app.get 'cart'
-
 class CartView extends View
   el: '.sqs-fullpage-shopping-cart-content'
   bindings:
@@ -16,10 +14,12 @@ class CartView extends View
     $('.cart-container tbody').html ''
     index = 0
 
-    @set 'quantity', cart.quantity
-    @set 'subtotal', cart.subtotal
+    cart = app.get 'cart'
 
-    for sku, item of cart.items()
+    @set 'quantity', cart.get 'quantity'
+    @set 'subtotal', cart.get 'subtotal'
+
+    for sku, item of cart.getProducts()
       item.index = ++index
       view = new LineItemView state: item
       window.view = view

@@ -1,8 +1,6 @@
 View = require 'mvstar/lib/view'
 util = require '../util'
 
-cart = app.get 'cart'
-
 class CartHover extends View
   el: '.fixed-cart'
 
@@ -17,6 +15,8 @@ class CartHover extends View
     suffix:   (v) -> if v > 1 then 'items' else 'item'
 
   listen: ->
+    cart = app.get 'cart'
+
     # listen to cart changes
     cart.on 'quantity', (quantity) =>
       @set 'quantity', quantity
@@ -26,8 +26,8 @@ class CartHover extends View
       @set 'subtotal', subtotal
 
     # set initial values
-    @set 'quantity', cart.quantity
-    @set 'suffix',   cart.quantity
-    @set 'subtotal', cart.subtotal
+    @set 'quantity', cart.get 'quantity'
+    @set 'suffix',   cart.get 'quantity'
+    @set 'subtotal', cart.get 'subtotal'
 
 module.exports = CartHover

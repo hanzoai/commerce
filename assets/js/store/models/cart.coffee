@@ -1,0 +1,84 @@
+ModelEmitter = require 'mvstar/lib/model-emitter'
+
+validNum = (v) ->
+  typeof v is 'number'
+
+neverBelowZero = (v) ->
+  if v < 0 then 0 else v
+
+class Cart extends ModelEmitter
+  cookieName: 'SKULLYCart'
+
+  defaults:
+    subtotal: 0
+    quantity: 0
+    products: {}
+
+  validators:
+    quantity: validNum
+    subtotal: validNum
+
+  transforms:
+    quantity: neverBelowZero
+    subtotal: neverBelowZero
+
+  fetch: ->
+    state = (JSON.parse $.cookie @cookieName) ? {}
+    @update state
+    state
+
+  save: ->
+    $.cookie @cookieName, (JSON.stringify @state),
+      path: '/'
+      expires: 30
+    @state
+
+  set: (k, v) ->
+    @emit k, v
+    super
+
+  getProduct: (sku) ->
+    @state.products[sku]
+
+  getProducts: ->
+    @state.products
+
+  setProduct: (sku, product) ->
+    @state.products[sku] = product
+    @save()
+
+  addProduct: (sku, product) ->
+    # update quantity and subtotal
+    quantity = @get 'quantity'
+    subtotal = @get 'subtotal'
+    @set 'quantity', quantity + product.quantity
+    @set 'subtotal', subtotal + (product.quantity * product.price)
+
+    # save new item to cart
+    unless @state.products[sku]?
+      return @setProduct sku, product
+
+    # update quantity of product in cart
+    @state.products[sku].quantity += product.quantity
+    @save()
+
+  removeProduct: (sku) ->
+    product = @state.products[sku]
+
+    quantity = @get 'quantity'
+    subtotal = @get 'subtotal'
+    @set 'quantity', quantity - product.quantity
+    @set 'subtotal', subtotal - (product.quantity * product.price)
+
+    delete @state.products[sku]
+    @save()
+
+  clear: ->
+    $.removeCookie @cookieName
+    @state = {}
+    @setDefaults()
+    @set 'quantity', 0
+    @set 'subtotal', 0
+    @save()
+
+module.exports = Cart
