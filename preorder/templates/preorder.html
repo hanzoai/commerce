@@ -19,10 +19,6 @@ var AllProducts = {{ allProductsJSON | safe}};
 {% endblock %}
 
 {% block content %}
-  <div class="instructions">
-    <p>Please enter your shipping and size information below to claim your pre-orders of the AR-1 and apparel package from our Indiegogo campaign.</p>
-  </div>
-
   <form id="skully" action="save" method="post">
     <div class="narrow center shipping us">
       <div class="form"></div>
@@ -52,7 +48,18 @@ var AllProducts = {{ allProductsJSON | safe}};
 {% block script %}
 <script id="shipping-template" type="text/template">
 <div>
-    <h3>Account for <span class="email"></></h2>
+    <h2>Welcome, <span class="first_name"></span><h2>
+    <h3>Editing pre-order for <span class="email"></span></h3>
+
+    <div class="instructions">
+        <p>
+            Please enter your shipping and size information below to claim your
+            pre-orders of the AR-1 and apparel package from our Indiegogo
+            campaign.
+        </p>
+        <br>
+    </div>
+
     <input id="email" name="User.Email" class="email" type="hidden" placeholder="Email Address ex. info@skullysystems.com">
     <input id="first_name" name="User.FirstName" class="first_name" type="text" placeholder="First Name ex. SKULLY">
     <input id="last_name" name="User.LastName" class="last_name" type="text" placeholder="Last Name ex. Systems">

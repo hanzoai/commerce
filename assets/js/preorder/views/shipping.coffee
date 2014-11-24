@@ -16,7 +16,8 @@ class ShippingView extends View
   bindings:
     Email:     ['#email          @value'
                 'span.email      @text']
-    FirstName:  '#first_name     @value'
+    FirstName: ['#first_name     @value'
+                '.first_name     @text']
     LastName:   '#last_name      @value'
     Phone:      '#phone          @value'
     Line1:      '#address1       @value'
