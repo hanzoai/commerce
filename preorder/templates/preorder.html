@@ -20,25 +20,29 @@ var AllProducts = {{ allProductsJSON | safe}};
 
 {% block content %}
   <form id="skully" action="save" method="post">
+    <div class="narrow center password-form">
+        <div class="form">
+            <input id="password" name="Password" class="password" type="password" placeholder="Password, minimum 6 character">
+            <input id="password_confirm" name="PasswordConfirm" class="password" type="password" placeholder="Type in your password again">
+            <div class="errors"></div>
+            <button type="button" class="submit">Next</button>
+        </div>
+    </div>
     <div class="narrow center shipping us">
       <div class="form"></div>
     </div>
 
     <div class="narrow center perk"></div>
-    <div id="ar1" class="narrow center item ar1"></div>
-    <div class="narrow center item apparel"></div>
+    <div class="narrow center item helmet"></div>
+    <div class="narrow center item gear"></div>
     <div class="narrow center item hats"></div>
-    <div class="narrow center content-centered submit">
+    <div class="narrow center content-centered submitter">
+      <div class="errors"></div>
       <span>Please ensure above information is correct before submitting.</span>
       <br>
-      <div id="errors"></div>
       <br>
-      <input type="submit" value="Save">
+      <input type="submit" class="submit" value="Save">
     </div>
-  </form>
-  <form id="password">
-    <input id="password" name="Password" class="password" type="password" placeholder="Password, minimum 6 character">
-    <input id="password_confirm" name="PasswordConfirm" class="password" type="password" placeholder="Type in your password again">
   </form>
 </div>
 {% endblock %}
@@ -59,8 +63,6 @@ var AllProducts = {{ allProductsJSON | safe}};
     </div>
     <input id="token" name="Token.Id" type="hidden" value="{{tokenId}}">
     <input id="email" name="User.Email" class="email" type="hidden" placeholder="Email Address ex. info@skullysystems.com">
-    <input name="Password" type="hidden">
-    <input name="PasswordConfirm" type="hidden">
     <input id="first_name" name="User.FirstName" class="first_name" type="text" placeholder="First Name ex. SKULLY">
     <input id="last_name" name="User.LastName" class="last_name" type="text" placeholder="Last Name ex. Systems">
     <input id="phone" name="User.Phone" class="phone" type="text" placeholder="Phone Number ex. 5-555-555-5555">
@@ -148,6 +150,7 @@ var AllProducts = {{ allProductsJSON | safe}};
 
 <script id="category-template" type="text/template">
 <div>
+    <input class="counter-validation" value=0>
     <div class="content-centered">
         <h3><span class="title"></span> (<span class="counter"></span>/<span class="total"></span>)</h3>
     </div>
@@ -157,6 +160,7 @@ var AllProducts = {{ allProductsJSON | safe}};
 
 <script id="hat-template" type="text/template">
 <div>
+    <input class="counter-validation" value=0>
     <div class="text">Select your hat size </span> (<span class="counter"></span>/<span class="total"></span>):</div>
     <div class="form"></div>
 </div>
@@ -164,7 +168,7 @@ var AllProducts = {{ allProductsJSON | safe}};
 
 <script id="helmet-item-template" type="text/template">
 <div class="row variant">
-    <button type="button" class="sub"></button type="button">
+    <button type="button" class="sub"></button>
     <input name="N.SKU" class="sku" type="hidden" value="">
     <input name="N.Slug" class="slug" type="hidden" value="ar-1">
     <select name="N.Color" class="color">
@@ -180,13 +184,13 @@ var AllProducts = {{ allProductsJSON | safe}};
     </select>
     <select name="Order.Items.N.Quantity" class="quantity">
     </select>
-    <button type="button" class="add">+</button type="button">
+    <button type="button" class="add">+</button>
 </div>
 </script>
 
-<script id="apparel-item-template" type="text/template">
+<script id="gear-item-template" type="text/template">
 <div class="row variant">
-    <button type="button" class="sub"></button type="button">
+    <button type="button" class="sub"></button>
     <input name="N.SKU" class="sku" type="hidden" value="">
     <input name="N.Slug" class="slug" type="hidden" value="t-shirt">
     <select name="N.Style" class="style">
@@ -201,13 +205,13 @@ var AllProducts = {{ allProductsJSON | safe}};
     </select>
     <select class="quantity" name="N.Quantity">
     </select>
-    <button type="button" class="add">+</button type="button">
+    <button type="button" class="add">+</button>
 </div>
 </script>
 
 <script id="hat-item-template" type="text/template">
 <div class="row variant">
-    <button type="button" class="sub"></button type="button">
+    <button type="button" class="sub"></button>
     <input name="N.SKU" class="sku" type="hidden" value="">
     <input name="N.Slug" class="slug" type="hidden" value="hat">
     <select id="size" name="N.Size" class="size">
@@ -218,7 +222,7 @@ var AllProducts = {{ allProductsJSON | safe}};
     </select>
     <select class="quantity" name="N.Quantity">
     </select>
-    <button type="button" class="add">+</button type="button">
+    <button type="button" class="add">+</button>
 </div>
 </script>
 

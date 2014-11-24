@@ -19,21 +19,44 @@ window.app = app = new PreorderApp()
 app.route()
 
 $(document).ready ->
-  # Ensure that perk count matches configured perks
-  $('.submit input[type=submit]').on 'click', ->
-    # Clear any existing errors
-    $('#errors').html('')
+  displayErrors = (errors) ->
+    $('.errors').html('') # Clear any existing errors
+    for error in errors
+      $('#' + error.id).addClass 'fix'
+      $('#' + error.id).parent().find('.quantity').addClass 'fix'
 
-    perkCount  = ($('.counter').map (i,v) -> $(v).text()).toArray().join ''
-    totalPerks = ($('.total').map (i,v) -> $(v).text()).toArray().join ''
-
-    if perkCount != totalPerks
+      # Append error message
       view = new ErrorView()
-      view.set 'message', "Your configured perks don't match your preorder."
-      view.set 'link',    '#ar1'
+      view.set 'message', error.message
+      view.set 'link',    '#' + error.id
       view.render()
-      $('#errors').append view.el
-      return false
+
+      $('.errors').append view.el
+
+  if PreorderData.hasPassword
+    $('.shipping, .perk, .item, .submitter').show()
+  else
+    $('.password-form').show()
+    $('.password-form .submit').on 'click', ->
+      errors = []
+      if $('#password').val().length < 6
+        errors.push {
+          message: 'Your password must be atleast 6 characters long.'
+          id: 'password'
+        }
+
+      if $('#password_confirm').val() != $('#password').val()
+        errors.push {
+          message: 'The passwords you typed in do not match.'
+          id: 'password_confirm'
+        }
+
+      if errors.length == 0
+        $('.shipping, .perk, .item, .submitter').show()
+        $('.password-form').hide()
+        $.scrollTop(0)
+
+      displayErrors(errors)
 
   # Form validation
   validator = new FormValidator 'skully', [
@@ -67,18 +90,30 @@ $(document).ready ->
     ,
       name: 'postal_code'
       display: 'postal code'
-      rules: 'required|numeric_dash'
-  ], (errors, event) ->
-    for error in errors
-      $('#' + error.id).addClass 'fix'
-
-      # Append error message
-      view = new ErrorView()
-      view.set 'message', error.message
-      view.set 'link',    '#' + error.id
-      view.render()
-
-      $('#errors').append view.el
+      rules: 'required|alpha_dash'
+    ,
+      name: 'helmet-counter'
+      rules: 'callback_check_helmet_counter'
+    ,
+      name: 'gear-counter'
+      rules: 'callback_check_gear_counter'
+    ,
+      name: 'hat-counter'
+      rules: 'callback_check_hat_counter'
+  ], displayErrors
 
   validator.registerCallback 'numeric_dash', (value) ->
     (new RegExp /^[\d\-\s]+$/).test value
+
+  validator.registerCallback('check_helmet_counter', (value) ->
+    return window.helmetTotal == parseInt value, 10 #set in routes/order
+  ).setMessage('check_helmet_counter', "Your helmet choices don't match your preorder.")
+
+  validator.registerCallback('check_gear_counter', (value) ->
+    return window.gearTotal == parseInt value, 10 #set in routes/order
+  ).setMessage('check_gear_counter', "Your gear choices don't match your preorder.")
+
+  validator.registerCallback('check_hat_counter', (value) ->
+    return window.gearTotal == parseInt value, 10 #set in routes/order
+  ).setMessage('check_hat_counter', "Your hat choices don't match your preorder.")
+
