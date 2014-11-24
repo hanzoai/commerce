@@ -18,7 +18,7 @@ class ProductView extends View
     inner.append '<div class="yui3-widget sqs-spin light"></div>'
     inner.append '<div class="status-text">Adding...</div>'
 
-    app.get('cart').add
+    app.get('cart').addProduct variant.SKU,
       sku:      variant.SKU
       color:    variant.Color
       img:      currentProduct.Images[0].Url
