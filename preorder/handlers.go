@@ -104,11 +104,11 @@ func SavePreorder(c *gin.Context) {
 
 	order.Total = order.Subtotal + order.Tax
 
-	err := order.Save(c) // Saves the nested structs in the order
-	if err != nil {
-		c.Fail(500, err)
-		return
-	}
+	// err := order.Save(c) // Saves the nested structs in the order
+	// if err != nil {
+	// 	c.Fail(500, err)
+	// 	return
+	// }
 
 	var key string
 
