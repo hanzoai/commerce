@@ -34,24 +34,24 @@ handlers:
 pagespeed:
   enabled_rewriters:
     # HTML
-    - ProxyCss
-    - ProxyImages
-    - ProxyJs
-    - ConvertMetaTags
-    - InlineCss
-    - InlineJs
-    - InlineImages
-    - InlinePreviewImages
+    # - ProxyCss
+    # - ProxyImages
+    # - ProxyJs
+    # - ConvertMetaTags
+    # - InlineCss
+    # - InlineJs
+    # - InlineImages
+    # - InlinePreviewImages
     - CollapseWhitespace
-    - CombineHeads
+    # - CombineHeads
     - ElideAttributes
     - RemoveComments
     - RemoveQuotes
     - LeftTrimUrls
 
     # css
-    - CombineCss
-    - MoveCssToHead
+    # - CombineCss
+    # - MoveCssToHead
     - MinifyCss
 
     # images
@@ -67,9 +67,9 @@ pagespeed:
     - ImageAddDimensions
 
     # js
-    - CombineJs
-    - JsOptimize
-    - DeferJs
+    # - CombineJs
+    # - JsOptimize
+    # - DeferJs
 
   disabled_rewriters:
     - FlushSubresources
