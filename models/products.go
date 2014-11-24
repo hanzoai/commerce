@@ -201,6 +201,7 @@ type ProductVariant struct {
 	Weight     int
 	Dimensions string
 	Color      string
+	Style      string
 	Size       string
 }
 
