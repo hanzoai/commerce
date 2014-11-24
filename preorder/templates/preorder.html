@@ -25,11 +25,9 @@ var AllProducts = {{ allProductsJSON | safe}};
     </div>
 
     <div class="narrow center perk"></div>
-    <div class="narrow center item ar1"></div>
-    <div class="break-65"></div>
+    <div id="ar1" class="narrow center item ar1"></div>
     <div class="narrow center item apparel"></div>
     <div class="narrow center item hats"></div>
-    <div class="break-65"></div>
     <div class="narrow center content-centered submit">
       <span>Please ensure above information is correct before submitting.</span>
       <br>
@@ -141,18 +139,17 @@ var AllProducts = {{ allProductsJSON | safe}};
         Perk description here. Blah blah blah. Please follow format of
         original perk cards with estimated shipping date down at the
         bottom. Expand box to accomodate texts if necessary.
-        </p>
+        </pre>
         <br/>
         <p class="p2">Estimated Delivery: May 2015 (etc)</p>
     </div>
-    <div class="break-65"></div>
 </div>
 </script>
 
 <script id="category-template" type="text/template">
 <div>
     <div class="content-centered">
-        <h3 class="underline"><span class="title"></span><span>(</span><span class="counter"></span><span class="total"></span></h3>
+        <h3><span class="title"></span> (<span class="counter"></span>/<span class="total"></span>)</h3>
     </div>
     <div class="form"></div>
 </div>
@@ -160,7 +157,7 @@ var AllProducts = {{ allProductsJSON | safe}};
 
 <script id="hat-template" type="text/template">
 <div>
-    <div class="text">Select your hat size </span><span>(</span><span class="counter"></span><span class="total"></span>:</div>
+    <div class="text">Select your hat size </span> (<span class="counter"></span>/<span class="total"></span>):</div>
     <div class="form"></div>
 </div>
 </script>

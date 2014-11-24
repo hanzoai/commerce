@@ -21,10 +21,24 @@ app.set 'variants', (require './variants')
 
 app.route()
 
-$('.submit input[type=submit]').on 'click', ->
-  false
-
 $(document).ready ->
+  # Ensure that perk count matches configured perks
+  $('.submit input[type=submit]').on 'click', ->
+    # Clear any existing errors
+    $('#errors').html('')
+
+    perkCount  = ($('.counter').map (i,v) -> $(v).text()).toArray().join ''
+    totalPerks = ($('.total').map (i,v) -> $(v).text()).toArray().join ''
+
+    if perkCount != totalPerks
+      view = new ErrorView()
+      view.set 'message', "Your configured perks don't match your preorder."
+      view.set 'link',    '#ar1'
+      view.render()
+      $('#errors').append view.el
+      return false
+
+  # Form validation
   validator = new FormValidator 'skully', [
       name: 'email'
       rules: 'required|valid_email'
@@ -58,8 +72,6 @@ $(document).ready ->
       display: 'postal code'
       rules: 'required|numeric_dash'
   ], (errors, event) ->
-    $('#errors').html('')  # Clear any existing errors
-
     for error in errors
       $('#' + error.id).addClass 'fix'
 
