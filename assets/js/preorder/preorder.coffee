@@ -97,7 +97,6 @@ showPreorderForm = ->
   $('.shipping, .perk, .item, .submitter').show()
   setupValidation()
   displayErrors()
-  $(window).scrollTop 0
 
 # Disable enter
 $('form').on 'keypress', (e) -> e.keyCode isnt 13
@@ -107,9 +106,7 @@ $(document).ready ->
   $('.password-form .submit').on 'submit', (e) -> false
 
   # Already visited, saved password
-  # TODO: Enable passwords again
-  # return showPreorderForm() if PreorderData.hasPassword
-  return showPreorderForm()
+  return showPreorderForm() if PreorderData.hasPassword
 
   # New account
   $('.password-form').show()
