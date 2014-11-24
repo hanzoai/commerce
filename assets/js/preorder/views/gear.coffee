@@ -1,5 +1,7 @@
 {CategoryView, ItemView} = require './category'
 
+products = require '../../utils/products'
+
 class GearItemView extends ItemView
   template: '#gear-item-template'
 
@@ -54,7 +56,8 @@ class GearItemView extends ItemView
       @set 'sku', variant.SKU
 
     'change select.size': (e, el) ->
-      color = @get 'color'
+      color = 'Black'
+      style = @get 'style'
       size  = $(el).val()
       slug  = @get 'slug'
 
@@ -63,6 +66,7 @@ class GearItemView extends ItemView
       variant = products.getVariant slug,
         Color: color
         Size:  size
+        Style: style
 
       @set 'sku', variant.SKU
 
@@ -71,7 +75,7 @@ class GearView extends CategoryView
   itemDefaults:
     sku:      'SKULLY-TSHIRT-MEN-M'
     slug:     't-shirt'
-    style:    "Men's Shirt"
+    style:    "Men's T-Shirt"
     quantity: 1
     size:     'M'
   name: 'gear'
