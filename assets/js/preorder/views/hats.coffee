@@ -2,13 +2,6 @@
 
 products = require '../../utils/products'
 
-events = ItemView::events
-
-events['change select.size'] = (e, el) ->
-  size = $(el).val()
-  variant = products.getVariant (@get 'slug'), Size: size
-  @set 'sku', variant.SKU
-
 class HatsItemView extends ItemView
   template: '#hat-item-template'
 
@@ -44,7 +37,12 @@ class HatsItemView extends ItemView
           else
             ''
 
-  events: events
+  events: $.extend {}, ItemView::events,
+    'change select.size': (e, el) ->
+      size = $(el).val()
+      variant = products.getVariant (@get 'slug'), Size: size
+      @set 'sku', variant.SKU
+
 
 class HatsView extends CategoryView
   template: '#hat-template'

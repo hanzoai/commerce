@@ -1,36 +1,6 @@
 {CategoryView, ItemView} = require './category'
 products = require '../../utils/products'
 
-events = ItemView::events
-
-events['change select.color'] = (e, el) ->
-  color   = $(el).val()
-  @set 'color', color
-
-  size    = @get 'size'
-  slug    = @get 'slug'
-
-  console.log slug, color, size
-  variant = products.getVariant slug,
-    Color: color
-    Size:  size
-
-  @set 'sku', variant.SKU
-
-events['change select.size'] = (e, el) ->
-  size    = $(el).val()
-  @set 'size', size
-
-  color   = @get 'color'
-  slug    = @get 'slug'
-
-  console.log slug, color, size
-  variant = products.getVariant slug,
-    Color: color
-    Size:  size
-
-  @set 'sku', variant.SKU
-
 class HelmetItemView extends ItemView
   template: '#helmet-item-template'
 
@@ -66,7 +36,34 @@ class HelmetItemView extends ItemView
           else
             ''
 
-  events: events
+  events: $.extend {}, ItemView::events,
+    'change select.color': (e, el) ->
+      color   = $(el).val()
+      @set 'color', color
+
+      size    = @get 'size'
+      slug    = @get 'slug'
+
+      console.log slug, color, size
+      variant = products.getVariant slug,
+        Color: color
+        Size:  size
+
+      @set 'sku', variant.SKU
+
+    'change select.size': (e, el) ->
+      size    = $(el).val()
+      @set 'size', size
+
+      color   = @get 'color'
+      slug    = @get 'slug'
+
+      console.log slug, color, size
+      variant = products.getVariant slug,
+        Color: color
+        Size:  size
+
+      @set 'sku', variant.SKU
 
 class HelmetView extends CategoryView
   ItemView: HelmetItemView
@@ -81,5 +78,7 @@ class HelmetView extends CategoryView
   constructor: ->
     super
     @set 'title', 'Skully AR-1 color & size'
+
+window.HelmetItemView = HelmetItemView
 
 module.exports = HelmetView
