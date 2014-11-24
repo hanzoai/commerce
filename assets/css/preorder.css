@@ -7,7 +7,13 @@ body, p {
 
 /*Perk description*/
 .p1 {
-  background-color: #232323;
+  background-color: rgb(38, 38, 38);
+  padding: 10px;
+}
+
+.p2 {
+  padding: 10px 10px 10px 10px;
+  background-color: rgb(28, 28, 28);
 }
 
 nav.social-icons > .bounce .large {
@@ -69,12 +75,11 @@ h2 {
 
 h3 {
   font-size: 22px;
-  text-transform: uppercase
+  text-transform: uppercase;
 }
 
 h3.underline {
   border-bottom: 3px solid rgb(61, 61, 61);
-  margin-bottom: 10px
 }
 
 .shipping h3 {
@@ -103,6 +108,8 @@ h3.underline {
   height: 45px;
   margin-bottom: 15px;
   text-indent: 20px
+  -webkit-appearance: none;
+  -webkit-border-radius: 0px;
 }
 
 .shipping.us input.city {
@@ -168,8 +175,8 @@ h3.underline {
 }
 
 .item select.size {
-  width: 60px;
-  margin-left: 20px;
+  width: 65px;
+  margin-left: 13px;
   text-indent: 5px
 }
 
@@ -268,4 +275,19 @@ input.fix {
 .social-icons {
   display:flex;
   justify-content:space-between;
+}
+
+select, input {
+  border: 0px;
+  outline: none;
+  /* Prefixed box-sizing rules necessary for older browsers */
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+  /* Remove select styling */
+  appearance: none;
+  -webkit-appearance: none;
+  /* Font size must the 16px or larger to prevent iOS page zoom on focus */
+  font-size:1em;
+  padding: 5px 15px;
 }

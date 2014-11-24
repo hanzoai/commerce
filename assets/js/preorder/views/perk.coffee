@@ -10,6 +10,9 @@ class PerkView extends View
     count:             'h3 span.count'
 
   formatters:
+    EstimatedDelivery: (v) ->
+      "Estimated Delivery: #{v}"
+
     count: (v) ->
       if v > 1
         " [x#{v}]"
