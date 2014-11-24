@@ -1,6 +1,6 @@
 PerkView = require '../views/perk'
 HelmetView = require '../views/helmet'
-ApparelView = require '../views/apparel'
+GearView = require '../views/gear'
 HatsView    = require '../views/hats'
 ShippingView = require '../views/shipping'
 EventEmitter = require 'mvstar/lib/event-emitter'
@@ -36,17 +36,17 @@ exports.displayHelmets = ->
     view.render()
     view.bind()
     view.newItem()
-    $('.item.ar1').append view.$el
+    $('.item.helmet').append view.$el
   return
 
 exports.displayApparel = ->
   console.log 'displaying apparel'
   if window.gearTotal > 0
-    view = new ApparelView {state: {total: window.gearTotal}, emitter: new EventEmitter }
+    view = new GearView {state: {total: window.gearTotal}, emitter: new EventEmitter }
     view.render()
     view.bind()
     view.newItem()
-    $('.item.apparel').append view.$el
+    $('.item.gear').append view.$el
   return
 
 exports.displayHats = ->
