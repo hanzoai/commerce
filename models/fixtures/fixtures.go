@@ -253,6 +253,13 @@ func Install(db *datastore.Datastore) {
 			Price: 1999 * 100,
 		},
 		ProductVariant{
+			SKU:   "SKULLY-TSHIRT-MEN-XXXL",
+			Style: "Men's T-Shirt",
+			Size:  "XXXL",
+			Color: "Black",
+			Price: 1999 * 100,
+		},
+		ProductVariant{
 			SKU:   "SKULLY-TSHIRT-WOMEN-XS",
 			Style: "Women's T-Shirt",
 			Size:  "XS",
@@ -284,13 +291,6 @@ func Install(db *datastore.Datastore) {
 			SKU:   "SKULLY-TSHIRT-WOMEN-XL",
 			Style: "Women's T-Shirt",
 			Size:  "XL",
-			Color: "Black",
-			Price: 1999 * 100,
-		},
-		ProductVariant{
-			SKU:   "SKULLY-TSHIRT-WOMEN-XXL",
-			Style: "Women's T-Shirt",
-			Size:  "XXL",
 			Color: "Black",
 			Price: 1999 * 100,
 		},
