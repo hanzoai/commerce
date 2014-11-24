@@ -44,7 +44,7 @@ func Render(c *gin.Context, path string, pairs ...interface{}) (err error) {
 	}
 
 	// Set content type
-	c.Writer.Header().Set("Content-Type", "text/html")
+	c.Writer.Header().Set("Content-Type", "text/html; charset=utf-8")
 
 	return
 }
