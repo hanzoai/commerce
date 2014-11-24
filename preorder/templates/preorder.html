@@ -20,6 +20,13 @@ var AllProducts = {{ allProductsJSON | safe}};
 
 {% block content %}
   <form id="skully" action="save" method="post">
+    <div class="narrow center password-form">
+        <div class="form">
+            <input id="password" name="Password" class="password" type="password" placeholder="Password, minimum 6 character">
+            <input id="password_confirm" name="PasswordConfirm" class="password" type="password" placeholder="Type in your password again">
+            <button type="button" class="submit">Next</button>
+        </div>
+    </div>
     <div class="narrow center shipping us">
       <div class="form"></div>
     </div>
@@ -29,17 +36,13 @@ var AllProducts = {{ allProductsJSON | safe}};
     <div class="break-65"></div>
     <div class="narrow center item gear"></div>
     <div class="narrow center item hats"></div>
-    <div class="narrow center content-centered submit">
+    <div class="narrow center content-centered submitter">
+      <div class="errors"></div>
       <span>Please ensure above information is correct before submitting.</span>
       <br>
-      <div id="errors"></div>
       <br>
-      <input type="submit" value="Save">
+      <input type="submit" class="submit" value="Save">
     </div>
-  </form>
-  <form id="password">
-    <input id="password" name="Password" class="password" type="password" placeholder="Password, minimum 6 character">
-    <input id="password_confirm" name="PasswordConfirm" class="password" type="password" placeholder="Type in your password again">
   </form>
 </div>
 {% endblock %}
@@ -165,7 +168,7 @@ var AllProducts = {{ allProductsJSON | safe}};
 
 <script id="helmet-item-template" type="text/template">
 <div class="row variant">
-    <button type="button" class="sub"></button type="button">
+    <button type="button" class="sub"></button>
     <input name="N.SKU" class="sku" type="hidden" value="">
     <input name="N.Slug" class="slug" type="hidden" value="">
     <select name="N.Color" class="color">
@@ -181,13 +184,13 @@ var AllProducts = {{ allProductsJSON | safe}};
     </select>
     <select class="quantity" name="N.Quantity">
     </select>
-    <button type="button" class="add">+</button type="button">
+    <button type="button" class="add">+</button>
 </div>
 </script>
 
 <script id="gear-item-template" type="text/template">
 <div class="row variant">
-    <button type="button" class="sub"></button type="button">
+    <button type="button" class="sub"></button>
     <input name="N.SKU" class="sku" type="hidden" value="">
     <input name="N.Slug" class="slug" type="hidden" value="">
     <select name="N.Style" class="style">
@@ -202,13 +205,13 @@ var AllProducts = {{ allProductsJSON | safe}};
     </select>
     <select class="quantity" name="N.Quantity">
     </select>
-    <button type="button" class="add">+</button type="button">
+    <button type="button" class="add">+</button>
 </div>
 </script>
 
 <script id="hat-item-template" type="text/template">
 <div class="row variant">
-    <button type="button" class="sub"></button type="button">
+    <button type="button" class="sub"></button>
     <select id="size" name="N.Size" class="size">
         <option value="S">S</option>
         <option value="M" selected="selected">M</option>
@@ -217,7 +220,7 @@ var AllProducts = {{ allProductsJSON | safe}};
     </select>
     <select class="quantity" name="N.Quantity">
     </select>
-    <button type="button" class="add">+</button type="button">
+    <button type="button" class="add">+</button>
 </div>
 </script>
 
