@@ -2,12 +2,12 @@ View        = require 'mvstar/lib/view'
 ViewEmitter = require 'mvstar/lib/view-emitter'
 
 class CategoryView extends ViewEmitter
-  index: 0
-  ItemView: View
+  ItemView:     View
+  index:        0
   itemDefaults: {}
-  itemViews: []
+  itemViews:    []
 
-  template:"#category-template"
+  template: '#category-template'
 
   bindings:
     title:  'span.title'
@@ -22,6 +22,7 @@ class CategoryView extends ViewEmitter
   formatters:
     title: (v)->
       return v + ' '
+
     counts: (v) ->
       count = (@get 'counts').reduce ((sum, n)-> return sum + n), 0
       if count != @get 'total'
@@ -29,6 +30,7 @@ class CategoryView extends ViewEmitter
       else
         @el.find('span.counter').removeClass 'bad'
       return count
+
     total: (v) ->
       return '/' + v + ')'
 
@@ -37,23 +39,27 @@ class CategoryView extends ViewEmitter
     counts[data.index] = data.count
     @set 'counts', counts
 
-    #cancel bubbling
-    return false
+    return false  # cancel bubbling
 
   newItem: ->
     @index++
 
+    # Create new view instance
     itemView = new @ItemView
       total: @get 'total'
       state: $.extend({index: @index}, @itemDefaults)
 
+    # Listen to events on ItemView
     itemView.on 'newItem',     => @newItem.apply @, arguments
     itemView.on 'removeItem',  => @removeItem.apply @, arguments
     itemView.on 'updateCount', => @updateCount.apply @, arguments
+
+    # Set initial count
     @updateCount
       index: itemView.get('index')
       count: 1
 
+    # Render and bind events
     itemView.render()
     itemView.bind()
     @itemViews[@index] = itemView
@@ -89,9 +95,10 @@ class ItemView extends ViewEmitter
 
   render: ->
     super
-    quantity = @el.find('.quantity')
+    quantity = @el.find '.quantity'
     for i in [1..@total]
       quantity.append $('<option/>').attr('value', i).text(i)
+    return
 
   updateQuantity: (e) ->
     @emit 'updateCount',

@@ -45,10 +45,11 @@ func LiveReload() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Next()
 		// If 200 and text/html content-type inject bebop script for live reload
-		if c.Writer.Status() == 200 && c.Writer.Header().Get("Content-Type") == "text/html" {
-			c.Writer.Write([]byte("<!-- Live reload via bebop -->"))
-			c.Writer.Write([]byte("<script src=\"http://localhost:1987/bebop-client/bebop.js\"></script>"))
-			c.Writer.Write([]byte("<script>(new Bebop({port: 1987})).connect()</script>"))
+		if c.Writer.Status() == 200 && c.Writer.Header().Get("Content-Type") == "text/html; charset=utf-8" {
+			injectScript := []byte(`<!-- Live reload via bebop -->
+<script src="http://localhost:1987/bebop-client/bebop.js"></script>
+<script>(new Bebop({port: 1987})).connect()</script>`)
+			c.Writer.Write(injectScript)
 		}
 	}
 }
