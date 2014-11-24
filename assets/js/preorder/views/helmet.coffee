@@ -1,6 +1,6 @@
-Views = require './category'
+{CategoryView, ItemView} = require './category'
 
-class HelmetItemView extends Views.ItemView
+class HelmetItemView extends ItemView
   template: '#helmet-item-template'
 
   bindings:
@@ -35,7 +35,7 @@ class HelmetItemView extends Views.ItemView
           else
             ''
 
-class HelmetView extends Views.CategoryView
+class HelmetView extends CategoryView
   ItemView: HelmetItemView
   itemDefaults:
     sku: ''
