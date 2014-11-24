@@ -70,13 +70,13 @@ export GOPATH  := $(gopath)
 all: deps assets test
 
 assets: deps-js
-	$(requisite) $(requisite_opts) -g
+	$(requisite) $(requisite_opts) -g -s
 
 assets-watch: deps-js
-	$(requisite) $(requisite_opts) -g -w
+	$(requisite) $(requisite_opts) -g -s -w
 
 autocompile-assets:
-	$(requisite) $(requisite_opts) -g
+	$(requisite) $(requisite_opts) -g -s
 
 build: deps
 	goapp build $(modules)
