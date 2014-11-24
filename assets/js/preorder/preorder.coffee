@@ -22,6 +22,14 @@ app.set 'variants', (require './variants')
 app.route()
 
 $(document).ready ->
+  if PreorderData.hasPassword
+    $('.shipping, .perk, .item, .submitter').show()
+  else
+    $('.password-form').show()
+    $('.password-form .submit').on 'click', ->
+      $('.shipping, .perk, .item, .submitter').show()
+      $('.password-form').hide()
+
   # Form validation
   validator = new FormValidator 'skully', [
       name: 'email'
@@ -65,7 +73,7 @@ $(document).ready ->
       name: 'hat-counter'
       rules: 'callback_check_hat_counter'
   ], (errors, event) ->
-    $('#errors').html('') # Clear any existing errors
+    $('.errors').html('') # Clear any existing errors
     for error in errors
       $('#' + error.id).addClass 'fix'
       $('#' + error.id).parent().find('.quantity').addClass 'fix'
@@ -76,7 +84,7 @@ $(document).ready ->
       view.set 'link',    '#' + error.id
       view.render()
 
-      $('#errors').append view.el
+      $('.errors').append view.el
 
   validator.registerCallback 'numeric_dash', (value) ->
     (new RegExp /^[\d\-\s]+$/).test value
