@@ -38,13 +38,12 @@ class HelmetItemView extends ItemView
 
   events: $.extend {}, ItemView::events,
     'change select.color': (e, el) ->
-      color   = $(el).val()
+      color = $(el).val()
+      size  = @get 'size'
+      slug  = @get 'slug'
+
       @set 'color', color
 
-      size    = @get 'size'
-      slug    = @get 'slug'
-
-      console.log slug, color, size
       variant = products.getVariant slug,
         Color: color
         Size:  size
@@ -52,13 +51,12 @@ class HelmetItemView extends ItemView
       @set 'sku', variant.SKU
 
     'change select.size': (e, el) ->
-      size    = $(el).val()
+      color = @get 'color'
+      size  = $(el).val()
+      slug  = @get 'slug'
+
       @set 'size', size
 
-      color   = @get 'color'
-      slug    = @get 'slug'
-
-      console.log slug, color, size
       variant = products.getVariant slug,
         Color: color
         Size:  size
