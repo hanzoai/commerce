@@ -21,11 +21,19 @@ var AllProducts = {{ allProductsJSON | safe}};
 {% block content %}
   <form id="skully" action="save" method="post">
     <div class="narrow center password-form">
+
+        <div class="instructions">
+            <p>
+                Please enter a password for your account. This will allow you
+                to edit your preorder later.
+            </p>
+        </div>
+
         <div class="form">
             <input id="password" name="Password" class="password" type="password" placeholder="Password, minimum 6 character">
             <input id="password_confirm" name="PasswordConfirm" class="password" type="password" placeholder="Type in your password again">
             <div class="errors"></div>
-            <button type="button" class="submit">Next</button>
+            <button type="button" class="next-button submit">Next</button>
         </div>
     </div>
     <div class="narrow center shipping us">
@@ -182,7 +190,7 @@ var AllProducts = {{ allProductsJSON | safe}};
         <option value="XL">XL</option>
         <option value="XXL">XXL</option>
     </select>
-    <select name="Order.Items.N.Quantity" class="quantity">
+    <select name="N.Quantity" class="quantity">
     </select>
     <button type="button" class="add">+</button>
 </div>
@@ -203,7 +211,7 @@ var AllProducts = {{ allProductsJSON | safe}};
         <option value="L">L</option>
         <option value="XL">XL</option>
     </select>
-    <select class="quantity" name="N.Quantity">
+    <select name="N.Quantity" class="quantity">
     </select>
     <button type="button" class="add">+</button>
 </div>
@@ -220,7 +228,7 @@ var AllProducts = {{ allProductsJSON | safe}};
         <option value="L">L</option>
         <option value="XL">XL</option>
     </select>
-    <select class="quantity" name="N.Quantity">
+    <select name="N.Quantity" class="quantity">
     </select>
     <button type="button" class="add">+</button>
 </div>
