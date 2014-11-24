@@ -1,3 +1,10 @@
+# Determine if selected options match variant
+optionsMatch = (options, variant) ->
+  for option, value of options
+    if variant[option] != value
+      return false
+  true
+
 # determin variant selected for product
 exports.getVariant = (options, slug) ->
   if slug?
@@ -5,12 +12,9 @@ exports.getVariant = (options, slug) ->
   else
     variants = currentProduct.Variants
 
-  # Determine if selected options match variant
-  optionsMatch = (options, variant) ->
-    for option, value of options
-      if variant[option] != value
-        return false
-    true
+  console.log 'getVariant', options, variants
+  window.options = options
+  window.variants = variants
 
   # Figure out SKU, all options match match variant
   for variant in variants
