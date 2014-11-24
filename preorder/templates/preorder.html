@@ -25,9 +25,9 @@ var AllProducts = {{ allProductsJSON | safe}};
     </div>
 
     <div class="narrow center perk"></div>
-    <div id="ar1" class="narrow center item ar1"></div>
+    <div class="narrow center item helmet"></div>
     <div class="break-65"></div>
-    <div class="narrow center item apparel"></div>
+    <div class="narrow center item gear"></div>
     <div class="narrow center item hats"></div>
     <div class="break-65"></div>
     <div class="narrow center content-centered submit">
@@ -149,6 +149,7 @@ var AllProducts = {{ allProductsJSON | safe}};
 
 <script id="category-template" type="text/template">
 <div>
+    <input class="counter-validation" value=0>
     <div class="content-centered">
         <h3><span class="title"></span> (<span class="counter"></span>/<span class="total"></span>)</h3>
     </div>
@@ -158,6 +159,7 @@ var AllProducts = {{ allProductsJSON | safe}};
 
 <script id="hat-template" type="text/template">
 <div>
+    <input class="counter-validation" value=0>
     <div class="text">Select your hat size </span> (<span class="counter"></span>/<span class="total"></span>):</div>
     <div class="form"></div>
 </div>
@@ -185,7 +187,7 @@ var AllProducts = {{ allProductsJSON | safe}};
 </div>
 </script>
 
-<script id="apparel-item-template" type="text/template">
+<script id="gear-item-template" type="text/template">
 <div class="row variant">
     <button type="button" class="sub"></button type="button">
     <input name="N.SKU" class="sku" type="hidden" value="">
@@ -223,7 +225,7 @@ var AllProducts = {{ allProductsJSON | safe}};
 
 <script id="error-template" type="text/template">
 <div class="error-container">
-    <a class="error-link">
+    <a class="error-link"">
         <span class="error-message"></span>
     </a>
 </div>
