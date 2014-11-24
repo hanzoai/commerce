@@ -64,5 +64,5 @@ exports.initializeShipping = ->
   view = new ShippingView {state: $.extend {}, PreorderData.user, PreorderData.user.ShippingAddress }
   view.render()
   view.bind()
-  $('#skully .form').append(view.$el)
+  $('#skully .shipping .form').append(view.$el)
   return
