@@ -1,5 +1,7 @@
 {CategoryView, ItemView} = require './category'
 
+products = require '../../utils/products'
+
 class HatsItemView extends ItemView
   template: '#hat-item-template'
 
@@ -34,6 +36,12 @@ class HatsItemView extends ItemView
             '-'
           else
             ''
+
+  events:
+    'change select.size': (e, el) ->
+      size = $(el).val()
+      variant = products.getVariant (@get 'slug'), Size: size
+      @set 'sku', variant.SKU
 
 class HatsView extends CategoryView
   template: '#hat-template'
