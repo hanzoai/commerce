@@ -31,9 +31,6 @@ class CategoryView extends ViewEmitter
         @el.find('span.counter').removeClass 'bad'
       return count
 
-    total: (v) ->
-      return '/' + v + ')'
-
   updateCount: (data) ->
     counts = @get 'counts'
     counts[data.index] = data.count
