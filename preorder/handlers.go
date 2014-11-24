@@ -56,7 +56,7 @@ func GetPreorder(c *gin.Context) {
 
 	template.Render(c, "preorder.html",
 		"user", user,
-		"token", token,
+		"tokenId", token.Id,
 		"userJSON", userJSON,
 		"contributionsJSON", contributionsJSON,
 		"allProductsJSON", allProductsJSON,
@@ -75,11 +75,11 @@ func SavePreorder(c *gin.Context) {
 	user := new(models.User)
 	db.GetKey("user", form.User.Email, user)
 
-	token := new(models.InviteToken)
-	db.GetKey("invite-token", form.Token.Id, token)
-
 	// shenanigans
-	if token.Email != user.Email {
+	tokens := getTokens(c, user.Email)
+	if len(tokens) < 1 {
+		return
+	} else if tokens[0].Id != form.Token.Id {
 		return
 	}
 
