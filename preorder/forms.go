@@ -13,6 +13,7 @@ type PreorderForm struct {
 	Password        string
 	PasswordConfirm string
 	ShippingAddress models.Address
+	Token           models.InviteToken
 }
 
 func (f *PreorderForm) Parse(c *gin.Context) error {
