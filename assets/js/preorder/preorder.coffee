@@ -32,6 +32,9 @@ displayErrors = (errors = {}) ->
 
     $('.errors').append view.el
 
+    $('.loading-spinner').removeClass('loading-spinner')
+
+
 setupValidation = ->
   # Form validation
   validator = new FormValidator 'skully', [
@@ -127,6 +130,12 @@ $(document).ready ->
     if errors.length
       displayErrors errors
     else
-      showPreorderForm()
+      $('.next-spinner').addClass('loading-spinner')
+      setTimeout(->
+        showPreorderForm()
+      , 500)
 
     false
+  $('input.submit').on 'click', ->
+    $('.save-spinner').addClass('loading-spinner')
+
