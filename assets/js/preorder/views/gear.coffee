@@ -71,9 +71,9 @@ class GearItemView extends ItemView
       # switch options
       $select = @el.find 'select.size'
       if style == "Men's T-Shirt"
-        $.select.html().append $menSize
+        $select.html('').append $menSize
       else
-        $.select.html().append $womenSize
+        $select.html('').append $womenSize
 
       # force size to get set again
       @set 'size', (@get 'size')
