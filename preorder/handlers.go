@@ -56,6 +56,7 @@ func GetPreorder(c *gin.Context) {
 
 	template.Render(c, "preorder.html",
 		"user", user,
+		"token", token,
 		"userJSON", userJSON,
 		"contributionsJSON", contributionsJSON,
 		"allProductsJSON", allProductsJSON,
@@ -73,6 +74,14 @@ func SavePreorder(c *gin.Context) {
 	// Get user from datastore
 	user := new(models.User)
 	db.GetKey("user", form.User.Email, user)
+
+	token := new(models.InviteToken)
+	db.GetKey("invite-token", form.Token.Id, token)
+
+	// shenanigans
+	if token.Email != user.Email {
+		return
+	}
 
 	// Update user from form
 	if !user.HasPassword() {
@@ -111,6 +120,7 @@ func SavePreorder(c *gin.Context) {
 	// }
 
 	var key string
+	var err error
 
 	if len(user.OrdersIds) > 0 {
 		key = user.OrdersIds[0]
