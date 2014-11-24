@@ -180,12 +180,12 @@ var AllProducts = {{ allProductsJSON | safe}};
     <input name="N.SKU" class="sku" type="hidden" value="">
     <input name="N.Slug" class="slug" type="hidden" value="ar-1">
     <select name="N.Color" class="color">
-        <option value="Matte Black">Matte Black</option>
+        <option value="Matte Black" selected>Matte Black</option>
         <option value="Gloss White">Gloss White</option>
     </select>
     <select name="N.Size" class="size">
         <option value="S">S</option>
-        <option value="M" selected="selected">M</option>
+        <option value="M" selected>M</option>
         <option value="L">L</option>
         <option value="XL">XL</option>
         <option value="XXL">XXL</option>
@@ -202,16 +202,17 @@ var AllProducts = {{ allProductsJSON | safe}};
     <input name="N.SKU" class="sku" type="hidden" value="">
     <input name="N.Slug" class="slug" type="hidden" value="t-shirt">
     <select name="N.Style" class="style">
-        <option value="Men's T-Shirt">Men's T-Shirt</option>
+        <option value="Men's T-Shirt" selected>Men's T-Shirt</option>
         <option value="Women's T-Shirt">Women's T-Shirt</option>
     </select>
     <select name="N.Size" class="size">
         <option value="XS">XS</option>
         <option value="S">S</option>
-        <option value="M" selected="selected">M</option>
+        <option value="M" selected>M</option>
         <option value="L">L</option>
         <option value="XL">XL</option>
         <option value="XXL">XXL</option>
+        <option value="XXXL">XXXL</option>
     </select>
     <select name="N.Quantity" class="quantity">
     </select>
@@ -226,7 +227,7 @@ var AllProducts = {{ allProductsJSON | safe}};
     <input name="N.Slug" class="slug" type="hidden" value="hat">
     <select id="size" name="N.Size" class="size">
         <option value="S">S</option>
-        <option value="M" selected="selected">M</option>
+        <option value="M" selected>M</option>
         <option value="L">L</option>
         <option value="XL">XL</option>
     </select>
