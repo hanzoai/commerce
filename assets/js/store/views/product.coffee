@@ -44,7 +44,7 @@ class ProductView extends View
 
   # Get selected options
   getSelectedOptions: ->
-    options = []
+    options = {}
     missing = []
 
     $('.variant-option').each (i, v) ->
@@ -57,6 +57,7 @@ class ProductView extends View
         return
       return
 
+    console.log options, missing
     return [options, missing]
 
   # get currently selected variant or show an alert
