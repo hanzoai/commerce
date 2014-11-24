@@ -69,6 +69,7 @@ class HelmetView extends CategoryView
     quantity: 1
     color:    'Matte Black'
     size:     'S'
+  name: 'helmet'
 
   constructor: ->
     super

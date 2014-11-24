@@ -1,7 +1,7 @@
 {CategoryView, ItemView} = require './category'
 
-class ApparelItemView extends ItemView
-  template: '#apparel-item-template'
+class GearItemView extends ItemView
+  template: '#gear-item-template'
 
   bindings:
     sku:        'input.sku       @value'
@@ -36,16 +36,17 @@ class ApparelItemView extends ItemView
           else
             ''
 
-class ApparelView extends CategoryView
-  ItemView: ApparelItemView
+class GearView extends CategoryView
+  ItemView: GearItemView
   itemDefaults:
     sku: ''
     slug: ''
     quantity: 1
     size: ''
+  name: 'gear'
 
   constructor: ->
     super
-    @set 'title', 'Skully Nation Apparel color & size'
+    @set 'title', 'Skully Nation Gear color & size'
 
-module.exports = ApparelView
+module.exports = GearView
