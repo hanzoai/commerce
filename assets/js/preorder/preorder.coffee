@@ -107,9 +107,7 @@ $(document).ready ->
   $('.password-form .submit').on 'submit', (e) -> false
 
   # Already visited, saved password
-  # TODO: Enable passwords again
-  # return showPreorderForm() if PreorderData.hasPassword
-  return showPreorderForm()
+  return showPreorderForm() if PreorderData.hasPassword
 
   # New account
   $('.password-form').show()
