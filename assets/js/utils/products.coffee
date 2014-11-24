@@ -1,7 +1,6 @@
 # Determine if selected options match variant
 optionsMatch = (options, variant) ->
   for option, value of options
-    console.log option, value
     if variant[option] != value
       return false
   true
@@ -17,10 +16,6 @@ exports.getVariant = (slug, options) ->
     variants = AllProducts[slug].Variants
   else
     variants = currentProduct.Variants
-
-  console.log 'getVariant', options, variants
-  window.options = options
-  window.variants = variants
 
   # Figure out SKU, all options match match variant
   for variant in variants
