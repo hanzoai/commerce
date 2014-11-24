@@ -6,12 +6,14 @@ class CategoryView extends ViewEmitter
   index:        0
   itemDefaults: {}
   itemViews:    []
+  name:         'category'
 
   template: '#category-template'
 
   bindings:
     title:  'span.title'
-    counts: 'span.counter' # array of counts
+    counts: ['span.counter'
+            '.counter-validation @value']# array of counts
     total:  'span.total'   # total number of things in category, SHOULD NOT CHANGE
 
   constructor: ->
@@ -30,6 +32,12 @@ class CategoryView extends ViewEmitter
       else
         @el.find('span.counter').removeClass 'bad'
       return count
+
+  render: ->
+    super
+    name = @name + '-counter'
+    @$el.find('.counter-validation').attr('name', name).attr('id', name)
+    @$el.find('a.local-link').attr('name', name)
 
   updateCount: (data) ->
     counts = @get 'counts'
