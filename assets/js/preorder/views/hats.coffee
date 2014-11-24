@@ -43,5 +43,6 @@ class HatsView extends CategoryView
     slug: ''
     quantity: 1
     size: ''
+  name: 'hat'
 
 module.exports = HatsView
