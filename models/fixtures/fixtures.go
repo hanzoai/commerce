@@ -218,6 +218,13 @@ func Install(db *datastore.Datastore) {
 	// T-Shirts
 	variants = []ProductVariant{
 		ProductVariant{
+			SKU:   "SKULLY-TSHIRT-MEN-XS",
+			Style: "Men's T-Shirt",
+			Size:  "XS",
+			Color: "Black",
+			Price: 1999 * 100,
+		},
+		ProductVariant{
 			SKU:   "SKULLY-TSHIRT-MEN-S",
 			Style: "Men's T-Shirt",
 			Size:  "S",
