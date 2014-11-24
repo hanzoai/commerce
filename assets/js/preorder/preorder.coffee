@@ -3,7 +3,7 @@ routes   = require './routes'
 
 class PreorderApp extends App
   start: ->
-    super
+    @route()
 
 window.app = app = new PreorderApp()
 
@@ -11,15 +11,12 @@ window.app = app = new PreorderApp()
 app.set 'variants', (require './variants')
 
 app.routes =
-  '/preorder/order/:token': [
+  '/:prefix?/order/:token': [
     routes.order.initializeShipping
     routes.order.displayPerks
     routes.order.displayHelmets
     routes.order.displayApparel
     routes.order.displayHats
-  ]
-  '*': [
-    (-> console.log 'global')
   ]
 
 app.start()
