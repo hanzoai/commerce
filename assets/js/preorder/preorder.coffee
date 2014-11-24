@@ -1,5 +1,6 @@
-App      = require 'mvstar/lib/app'
-routes   = require './routes'
+App       = require 'mvstar/lib/app'
+routes    = require './routes'
+window.ErrorView = require './views/error'
 
 class PreorderApp extends App
   start: ->
@@ -22,63 +23,52 @@ app.routes =
 app.start()
 
 $(document).ready ->
-
-  $(".submit input[type=submit]").on "click", ->
-    ret = true
-
-    # there used to be mroe stuff here
-    ret = validateCount() and ret
-    ret
-
-  validator = new FormValidator "skully", [
-    {
-      name: "email"
-      rules: "required|valid_email"
-    }
-    {
-      name: "password"
-      rules: "required|min_length[6]"
-    }
-    {
-      name: "password_confirm"
-      display: "password confirmation"
-      rules: "required|matches[password]"
-    }
-    {
-      name: "first_name"
-      display: "first name"
-      rules: "required"
-    }
-    {
-      name: "last_name"
-      display: "last name"
-      rules: "required"
-    }
-    {
-      name: "phone"
-      rules: "callback_numeric_dash"
-    }
-    {
-      name: "address1"
-      display: "address"
-      rules: "required"
-    }
-    {
-      name: "city"
-      rules: "required"
-    }
-    {
-      name: "postal_code"
-      display: "postal code"
-      rules: "required|numeric_dash"
-    }
+  validator = new FormValidator 'skully', [
+      name: 'email'
+      rules: 'required|valid_email'
+    ,
+      name: 'password'
+      rules: 'required|min_length[6]'
+    ,
+      name: 'password_confirm'
+      display: 'password confirmation'
+      rules: 'required|matches[password]'
+    ,
+      name: 'first_name'
+      display: 'first name'
+      rules: 'required'
+    ,
+      name: 'last_name'
+      display: 'last name'
+      rules: 'required'
+    ,
+      name: 'phone'
+      rules: 'callback_numeric_dash'
+    ,
+      name: 'address1'
+      display: 'address'
+      rules: 'required'
+    ,
+      name: 'city'
+      rules: 'required'
+    ,
+      name: 'postal_code'
+      display: 'postal code'
+      rules: 'required|numeric_dash'
   ], (errors, event) ->
-    i = 0
+    # Clear any existing errors
+    $('#errors').html('')
 
-    while i < errors.length
-      $("#" + errors[i].id).addClass "fix"
-      i++
-    return
+    for error in errors
+      $('#' + error.id).addClass 'fix'
 
-  validator.registerCallback "numeric_dash", (value) ->
+      # Append error message
+      view = new ErrorView()
+      view.set 'message', error.message
+      view.set 'link',    '#' + error.id
+      view.render()
+
+      $('#errors').append view.el
+
+  validator.registerCallback 'numeric_dash', (value) ->
     (new RegExp(/^[\d\-\s]+$/)).test value
