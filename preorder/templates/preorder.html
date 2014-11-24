@@ -33,7 +33,7 @@ var AllProducts = {{ allProductsJSON | safe}};
             <input id="password" name="Password" class="password" type="password" placeholder="Password, minimum 6 character">
             <input id="password_confirm" name="PasswordConfirm" class="password" type="password" placeholder="Type in your password again">
             <div class="errors"></div>
-            <button type="button" class="next-button submit">Next</button>
+            <button type="button" class="next-button submit">Next<span id="next-spinner"></span></button>
         </div>
     </div>
     <div class="narrow center shipping us">
@@ -49,7 +49,7 @@ var AllProducts = {{ allProductsJSON | safe}};
       <span>Please ensure above information is correct before submitting.</span>
       <br>
       <br>
-      <input type="submit" class="submit" value="Save">
+      <input type="submit" class="submit" value="Save"><span id="save-spinner"></input>
     </div>
   </form>
 </div>
