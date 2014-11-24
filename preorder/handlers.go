@@ -95,15 +95,22 @@ func SavePreorder(c *gin.Context) {
 	order := form.Order
 
 	for i, lineItem := range order.Items {
+		if i == 0 {
+			continue
+		}
 		// Fetch Variant for LineItem from datastore
 		if err := db.GetKey("variant", lineItem.SKU(), &lineItem.Variant); err != nil {
 			c.Fail(500, err)
+			log.Debug("Getting variant failed")
+			log.Debug("SKU", lineItem.SKU())
 			return
 		}
 
 		// Fetch Product for LineItem from datastore
 		if err := db.GetKey("product", lineItem.Slug(), &lineItem.Product); err != nil {
 			c.Fail(500, err)
+			log.Debug("Getting product failed")
+			log.Debug("Slug", lineItem.Slug())
 			return
 		}
 
