@@ -6,6 +6,18 @@ validNum = (v) ->
 neverBelowZero = (v) ->
   if v < 0 then 0 else v
 
+cookies =
+  get: (name) ->
+    try
+      state = (JSON.parse $.cookie name) ? {}
+    catch
+      {}
+
+  set: (name, state, path, expires) ->
+    $.cookie name, (JSON.stringify state),
+      path:    path
+      expires: expires
+
 class Cart extends ModelEmitter
   cookieName: 'SKULLYCart'
 
@@ -23,15 +35,10 @@ class Cart extends ModelEmitter
     subtotal: neverBelowZero
 
   fetch: ->
-    state = (JSON.parse $.cookie @cookieName) ? {}
-    @update state
-    state
+    @update cookies.get @cookieName
 
   save: ->
-    $.cookie @cookieName, (JSON.stringify @state),
-      path: '/'
-      expires: 30
-    @state
+    cookies.set @cookieName, @state, '/', 30
 
   set: (k, v) ->
     @emit k, v
