@@ -47,10 +47,11 @@ class HatsView extends CategoryView
   template: '#hat-template'
   ItemView: HatsItemView
   itemDefaults:
-    sku: ''
-    slug: ''
+    slug:     'hat'
+    sku:      'SKULLY-HAT-M'
     quantity: 1
-    size: ''
+    size:     'M'
+
   name: 'hat'
 
 module.exports = HatsView
