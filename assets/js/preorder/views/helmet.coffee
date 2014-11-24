@@ -64,11 +64,11 @@ class HelmetItemView extends ItemView
 class HelmetView extends CategoryView
   ItemView: HelmetItemView
   itemDefaults:
-    sku:      'AR-1-BLACK-S'
+    sku:      'AR-1-BLACK-M'
     slug:     'ar-1'
     quantity: 1
     color:    'Matte Black'
-    size:     'S'
+    size:     'M'
   name: 'helmet'
 
   constructor: ->
