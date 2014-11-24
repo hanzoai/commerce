@@ -1,6 +1,21 @@
 {CategoryView, ItemView} = require './category'
+View = require 'mvstar/lib/view'
 
 products = require '../../utils/products'
+
+$menSize = $('''<option value="XS">XS</option>
+                <option value="S">S</option>
+                <option value="M">M</option>
+                <option value="L">L</option>
+                <option value="XL">XL</option>
+                <option value="XXL">XXL</option>
+                <option value="XXXL">XXXL</option>''')
+
+$womenSize = $('''<option value="XS">XS</option>
+                  <option value="S">S</option>
+                  <option value="M">M</option>
+                  <option value="L">L</option>
+                  <option value="XL">XL</option>''')
 
 class GearItemView extends ItemView
   template: '#gear-item-template'
@@ -52,6 +67,16 @@ class GearItemView extends ItemView
         Color: color
         Size:  size
         Style: style
+
+      # switch options
+      $select = @el.find 'select.size'
+      if style == "Men's T-Shirt"
+        $select.html('').append $menSize
+      else
+        $select.html('').append $womenSize
+
+      # force size to get set again
+      @set 'size', (@get 'size')
 
       @set 'sku', variant.SKU
 
