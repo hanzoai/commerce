@@ -45,6 +45,8 @@ tools = github.com/nsf/gocode \
 mtime_file_watcher = https://gist.githubusercontent.com/zeekay/d92deea5091849d79782/raw/a2f43b902afef21a2a53f4ca529975a28b20d943/mtime_file_watcher.py
 
 # static assets, requisite javascript from assets -> static
+bebop = node_modules/.bin/bebop
+
 requisite 	   = node_modules/.bin/requisite
 requisite_opts = assets/js/store/store.coffee \
 		         assets/js/preorder/preorder.coffee \
@@ -53,7 +55,8 @@ requisite_opts = assets/js/store/store.coffee \
 		         -o static/js/preorder.js \
 		         -o static/js/checkout.js \
 
-bebop = node_modules/.bin/bebop
+stylus 		   = node_modules/.bin/stylus
+stylus_opts    = assets/css/preorder/preorder.styl -o static/css
 
 # find command differs between bsd/linux thus the two versions
 ifeq ($(os), "linux")
@@ -69,28 +72,36 @@ export GOPATH  := $(gopath)
 
 all: deps assets test
 
-assets: deps-js
+assets: deps-assets compile-css compile-js
+
+compile-js:
 	$(requisite) $(requisite_opts) -g -s
 
-assets-watch: deps-js
-	$(requisite) $(requisite_opts) -g -s -w
+compile-css:
+	$(stylus) $(stylus_opts)
 
-autocompile-assets:
-	$(requisite) $(requisite_opts) -g -s
+live-reload: assets
+	$(bebop)
 
 build: deps
 	goapp build $(modules)
 
-node_modules/.bin/requisite:
-	npm install requisite
+node_modules/.bin/bebop:
+	npm install bebop@latest
 
-deps-js: node_modules/.bin/requisite
+node_modules/.bin/requisite:
+	npm install requisite@latest
+
+node_modules/.bin/stylus:
+	npm install stylus@latest
+
+deps-assets: node_modules/.bin/bebop node_modules/.bin/requisite node_modules/.bin/stylus
 	npm install
 
 deps-go: .sdk
 	gpm install || curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.1/bin/gpm | bash
 
-deps: deps-go deps-js
+deps: deps-go deps-assets
 
 install: install-deps
 	goapp install $(modules) $(packages)
@@ -120,9 +131,6 @@ serve-clear-datastore:
 serve-no-restart:
 	$(sdk_path)/dev_appserver.py --datastore_path=~/.gae_datastore.bin --automatic_restart=false $(gae_development)
 
-live-reload: autocompile-assets
-	$(bebop)
-
 tools:
 	goapp get $(tools) && \
 	goapp install $(tools) && \
@@ -145,4 +153,4 @@ deploy-appengine: assets
 	done; \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update_dispatch config/production
 
-.PHONY: all assets assets-watch autocompile-assets build deploy deps deps-js deps-go serve test tools
+.PHONY: all assets compile-css compile-js live-reload build deploy deps deps-assets deps-go serve test tools
