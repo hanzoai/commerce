@@ -97,7 +97,6 @@ showPreorderForm = ->
   $('.shipping, .perk, .item, .submitter').show()
   setupValidation()
   displayErrors()
-  $(window).scrollTop 0
 
 # Disable enter
 $('form').on 'keypress', (e) -> e.keyCode isnt 13
