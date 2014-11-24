@@ -22,7 +22,6 @@ app.set 'variants', (require './variants')
 app.route()
 
 $('.submit input[type=submit]').on 'click', ->
-  false
 
 $(document).ready ->
   validator = new FormValidator 'skully', [
