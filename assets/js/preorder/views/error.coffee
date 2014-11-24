@@ -1,13 +1,7 @@
 View = require 'mvstar/lib/view'
 
 class ErrorView extends View
-  html: '''
-  <div class="error-container">
-    <a class="error-link">
-      <span class="error-message"></span>
-    </a>
-  </div>
-  '''
+  template: '#error-template'
 
   bindings:
     message: '.error-message @text'
