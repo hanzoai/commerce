@@ -22,19 +22,6 @@ app.set 'variants', (require './variants')
 app.route()
 
 $(document).ready ->
-  # Ensure that perk count matches configured perks
-  $('.submit input[type=submit]').on 'click', ->
-    perkCount  = ($('.counter').map (i,v) -> $(v).text()).toArray().join ''
-    totalPerks = ($('.total').map (i,v) -> $(v).text()).toArray().join ''
-
-    if perkCount != totalPerks
-      view = new ErrorView()
-      view.set 'message', "Your configured perks don't match your preorder."
-      view.set 'link',    '#ar1'
-      view.render()
-      $('#errors').append view.el
-      return false
-
   # Form validation
   validator = new FormValidator 'skully', [
       name: 'email'
@@ -67,12 +54,21 @@ $(document).ready ->
     ,
       name: 'postal_code'
       display: 'postal code'
-      rules: 'required|numeric_dash'
+      rules: 'required|alpha_dash'
+    ,
+      name: 'helmet-counter'
+      rules: 'callback_check_helmet_counter'
+    ,
+      name: 'gear-counter'
+      rules: 'callback_check_gear_counter'
+    ,
+      name: 'hat-counter'
+      rules: 'callback_check_hat_counter'
   ], (errors, event) ->
-    $('#errors').html('')  # Clear any existing errors
-
+    $('#errors').html('') # Clear any existing errors
     for error in errors
       $('#' + error.id).addClass 'fix'
+      $('#' + error.id).parent().find('.quantity').addClass 'fix'
 
       # Append error message
       view = new ErrorView()
@@ -84,3 +80,16 @@ $(document).ready ->
 
   validator.registerCallback 'numeric_dash', (value) ->
     (new RegExp /^[\d\-\s]+$/).test value
+
+  validator.registerCallback('check_helmet_counter', (value) ->
+    return window.helmetTotal == parseInt value, 10 #set in routes/order
+  ).setMessage('check_helmet_counter', "Your helmet choices don't match your preorder.")
+
+  validator.registerCallback('check_gear_counter', (value) ->
+    return window.gearTotal == parseInt value, 10 #set in routes/order
+  ).setMessage('check_gear_counter', "Your gear choices don't match your preorder.")
+
+  validator.registerCallback('check_hat_counter', (value) ->
+    return window.gearTotal == parseInt value, 10 #set in routes/order
+  ).setMessage('check_hat_counter', "Your hat choices don't match your preorder.")
+
