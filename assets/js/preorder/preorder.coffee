@@ -1,6 +1,6 @@
 App       = require 'mvstar/lib/app'
+ErrorView = require './views/error'
 routes    = require './routes'
-window.ErrorView = require './views/error'
 
 class PreorderApp extends App
   prefix: '/:preorder?'
@@ -15,9 +15,6 @@ class PreorderApp extends App
     ]
 
 window.app = app = new PreorderApp()
-
-# Store variant options for later
-app.set 'variants', (require './variants')
 
 app.route()
 
