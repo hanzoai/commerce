@@ -57,7 +57,8 @@ func run(cmd string, opts ...interface{}) string {
 	proc.Stderr = cmdOutput
 
 	if err := proc.Run(); err != nil {
-		log.Fatalln(err)
+		log.Fatalf("Failed to run %s, %v", cmd, err)
+		fmt.Print(out)
 	}
 
 	out := string(cmdOutput.Bytes())
