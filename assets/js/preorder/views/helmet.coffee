@@ -1,6 +1,36 @@
 {CategoryView, ItemView} = require './category'
 products = require '../../utils/products'
 
+events = ItemView::events
+
+events['change select.color'] = (e, el) ->
+  color   = $(el).val()
+  @set 'color', color
+
+  size    = @get 'size'
+  slug    = @get 'slug'
+
+  console.log slug, color, size
+  variant = products.getVariant slug,
+    Color: color
+    Size:  size
+
+  @set 'sku', variant.SKU
+
+events['change select.size'] = (e, el) ->
+  size    = $(el).val()
+  @set 'size', size
+
+  color   = @get 'color'
+  slug    = @get 'slug'
+
+  console.log slug, color, size
+  variant = products.getVariant slug,
+    Color: color
+    Size:  size
+
+  @set 'sku', variant.SKU
+
 class HelmetItemView extends ItemView
   template: '#helmet-item-template'
 
@@ -36,30 +66,7 @@ class HelmetItemView extends ItemView
           else
             ''
 
-  events:
-    'change select.color': (e, el) ->
-      color   = $(el).val()
-      size    = @get 'size'
-      slug    = @get 'slug'
-      variant = products.getVariant slug,
-        Color: color
-        Size:  size
-
-      @set 'sku', variant.SKU
-      console.log variant
-
-    'change select.size': (e, el) ->
-      color   = @get 'color'
-      size    = $(el).val()
-      slug    = @get 'slug'
-      console.log color, size, slug
-
-      variant = products.getVariant slug,
-        Color: color
-        Size:  size
-
-      @set 'sku', variant.SKU
-      console.log variant
+  events: events
 
 class HelmetView extends CategoryView
   ItemView: HelmetItemView
