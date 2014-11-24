@@ -2,25 +2,25 @@ App = require 'mvstar/lib/app'
 routes = require './routes'
 
 class StoreApp extends App
+  prefix: '/:store?'
+
   routes:
-    '/:prefix?/cart': [
+    '/cart': [
       routes.cart.hideHover
       routes.cart.setupView
     ]
 
-    '/:prefix?/products/:slug': [
+    '/products/:slug': [
       routes.cart.setupHover
       routes.products.gallery
       routes.products.setupView
     ]
 
-    '/:prefix?/products/ar-1': [
+    '/products/ar-1': [
       routes.products.customizeAr1
     ]
 
-    '/:prefix?': [
-      routes.cart.setupHover
-    ]
+    '/:prefix?': routes.cart.setupHover
 
     '*': routes.cart.click
 

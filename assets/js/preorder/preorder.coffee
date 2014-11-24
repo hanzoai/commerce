@@ -3,24 +3,26 @@ routes    = require './routes'
 window.ErrorView = require './views/error'
 
 class PreorderApp extends App
-  start: ->
-    @route()
+  prefix: '/:preorder?'
+
+  routes:
+    '/order/:token': [
+      routes.order.initializeShipping
+      routes.order.displayPerks
+      routes.order.displayHelmets
+      routes.order.displayApparel
+      routes.order.displayHats
+    ]
 
 window.app = app = new PreorderApp()
 
 # Store variant options for later
 app.set 'variants', (require './variants')
 
-app.routes =
-  '/:prefix?/order/:token': [
-    routes.order.initializeShipping
-    routes.order.displayPerks
-    routes.order.displayHelmets
-    routes.order.displayApparel
-    routes.order.displayHats
-  ]
+app.route()
 
-app.start()
+$('.submit input[type=submit]').on 'click', ->
+  false
 
 $(document).ready ->
   validator = new FormValidator 'skully', [
@@ -56,8 +58,7 @@ $(document).ready ->
       display: 'postal code'
       rules: 'required|numeric_dash'
   ], (errors, event) ->
-    # Clear any existing errors
-    $('#errors').html('')
+    $('#errors').html('')  # Clear any existing errors
 
     for error in errors
       $('#' + error.id).addClass 'fix'
@@ -71,4 +72,4 @@ $(document).ready ->
       $('#errors').append view.el
 
   validator.registerCallback 'numeric_dash', (value) ->
-    (new RegExp(/^[\d\-\s]+$/)).test value
+    (new RegExp /^[\d\-\s]+$/).test value
