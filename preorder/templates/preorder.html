@@ -35,8 +35,11 @@ var AllProducts = {{ allProductsJSON | safe}};
     <div class="narrow center item hats"></div>
     <div class="break-65"></div>
     <div class="narrow center content-centered submit">
-      <span>Please check to see if the above information is correct before submitting.</span>
-      <input type="submit" value="SUBMIT">
+      <span>Please ensure above information is correct before submitting.</span>
+      <br>
+      <div id="errors"></div>
+      <br>
+      <input type="submit" value="Save">
     </div>
   </form>
   <form id="password">
@@ -116,6 +119,7 @@ var AllProducts = {{ allProductsJSON | safe}};
     <input id="country" name="ShippingAddress.Country" class="country intl-only" type="text" placeholder="Country">
 </div>
 </script>
+
 <script id="perk-template" type="text/template">
 <div class="instance">
     <div class="content-centered">
@@ -135,6 +139,7 @@ var AllProducts = {{ allProductsJSON | safe}};
     <div class="break-65"></div>
 </div>
 </script>
+
 <script id="category-template" type="text/template">
 <div>
     <div class="content-centered">
@@ -143,12 +148,14 @@ var AllProducts = {{ allProductsJSON | safe}};
     <div class="form"></div>
 </div>
 </script>
+
 <script id="hat-template" type="text/template">
 <div>
     <div class="text">Select your hat size </span><span>(</span><span class="counter"></span><span class="total"></span>:</div>
     <div class="form"></div>
 </div>
 </script>
+
 <script id="helmet-item-template" type="text/template">
 <div class="row variant">
     <button type="button" class="sub"></button type="button">
@@ -170,6 +177,7 @@ var AllProducts = {{ allProductsJSON | safe}};
     <button type="button" class="add">+</button type="button">
 </div>
 </script>
+
 <script id="apparel-item-template" type="text/template">
 <div class="row variant">
     <button type="button" class="sub"></button type="button">
@@ -190,6 +198,7 @@ var AllProducts = {{ allProductsJSON | safe}};
     <button type="button" class="add">+</button type="button">
 </div>
 </script>
+
 <script id="hat-item-template" type="text/template">
 <div class="row variant">
     <button type="button" class="sub"></button type="button">
@@ -204,5 +213,6 @@ var AllProducts = {{ allProductsJSON | safe}};
     <button type="button" class="add">+</button type="button">
 </div>
 </script>
+
 <script src="{{ staticUrl }}/js/preorder.js" type="text/javascript"></script>
 {% endblock %}
