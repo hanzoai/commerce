@@ -1,39 +1,46 @@
 App = require 'mvstar/lib/app'
-
-class StoreApp extends App
-  start: ->
-    super
-    $.cookie.json = true
-
-window.app = app = new StoreApp cookieName: 'SKULLYSystemsCart'
-
 routes = require './routes'
 
-# Store cart for later
-app.set 'cart',  (require './cart')
-app.set 'alert', new (require './views/alert')
-  nextTo: '.sqs-add-to-cart-button'
+class StoreApp extends App
+  routes:
+    '/:prefix?/cart': [
+      routes.cart.hideHover
+      routes.cart.setupView
+    ]
 
-app.routes =
-  '/:prefix?/cart': [
-    routes.cart.hideHover
-    routes.cart.setupView
-  ]
+    '/:prefix?/products/:slug': [
+      routes.cart.setupHover
+      routes.products.gallery
+      routes.products.setupView
+    ]
 
-  '/:prefix?/products/:slug': [
-    routes.cart.setupHover
-    routes.products.gallery
-    routes.products.setupView
-  ]
+    '/:prefix?/products/ar-1': [
+      routes.products.customizeAr1
+    ]
 
-  '/:prefix?/products/ar-1': [
-    routes.products.customizeAr1
-  ]
+    '/:prefix?': [
+      routes.cart.setupHover
+    ]
 
-  '/:prefix?': [
-    routes.cart.setupHover
-  ]
+    '*': routes.cart.click
 
-  '*': routes.cart.click
+  start: ->
+    # create cart and fetch state from cookie
+    cart = new (require './models/cart')
+    cart.fetch()
 
+    # Alert popup
+    alert = new (require './views/alert')
+      nextTo: '.sqs-add-to-cart-button'
+
+    # store cart/alert so they can be easily accessed from views
+    @set 'cart', cart
+    @set 'alert', alert
+
+    # trigger route callbacks
+    @route()
+
+window.app = app = new StoreApp()
+
+# let us begin
 app.start()
