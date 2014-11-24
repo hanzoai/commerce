@@ -1,4 +1,5 @@
 {CategoryView, ItemView} = require './category'
+products = require '../../utils/products'
 
 class HelmetItemView extends ItemView
   template: '#helmet-item-template'
@@ -35,14 +36,39 @@ class HelmetItemView extends ItemView
           else
             ''
 
+  events:
+    'change select.color': (e, el) ->
+      color   = $(el).val()
+      size    = @get 'size'
+      slug    = @get 'slug'
+      variant = products.getVariant slug,
+        Color: color
+        Size:  size
+
+      @set 'sku', variant.SKU
+      console.log variant
+
+    'change select.size': (e, el) ->
+      color   = @get 'color'
+      size    = $(el).val()
+      slug    = @get 'slug'
+      console.log color, size, slug
+
+      variant = products.getVariant slug,
+        Color: color
+        Size:  size
+
+      @set 'sku', variant.SKU
+      console.log variant
+
 class HelmetView extends CategoryView
   ItemView: HelmetItemView
   itemDefaults:
-    sku: ''
-    slug: ''
+    sku:      'AR-1-BLACK-S'
+    slug:     'ar-1'
     quantity: 1
-    color: ''
-    size: ''
+    color:    'Matte Black'
+    size:     'S'
 
   constructor: ->
     super

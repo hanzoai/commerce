@@ -1,11 +1,9 @@
-PerkView = require '../views/perk'
-HelmetView = require '../views/helmet'
-ApparelView = require '../views/apparel'
-HatsView    = require '../views/hats'
+PerkView     = require '../views/perk'
+HelmetView   = require '../views/helmet'
+ApparelView  = require '../views/apparel'
+HatsView     = require '../views/hats'
 ShippingView = require '../views/shipping'
 EventEmitter = require 'mvstar/lib/event-emitter'
-
-exports.setupView = ->
 
 exports.displayPerks = ->
   console.log 'displaying perks'

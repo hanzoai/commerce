@@ -122,13 +122,13 @@ install-deps:
 	# curl  $(mtime_file_watcher) > $(sdk_path)/google/appengine/tools/devappserver2/mtime_file_watcher.py && \
 	# pip install watchdog
 
-serve:
+serve: assets
 	$(sdk_path)/dev_appserver.py --datastore_path=~/.gae_datastore.bin $(gae_development)
 
-serve-clear-datastore:
+serve-clear-datastore: assets
 	$(sdk_path)/dev_appserver.py --datastore_path=~/.gae_datastore.bin --clear_datastore=true $(gae_development)
 
-serve-no-restart:
+serve-no-restart: assets
 	$(sdk_path)/dev_appserver.py --datastore_path=~/.gae_datastore.bin --automatic_restart=false $(gae_development)
 
 tools:

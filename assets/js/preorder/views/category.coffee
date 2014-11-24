@@ -36,8 +36,6 @@ class CategoryView extends ViewEmitter
     counts[data.index] = data.count
     @set 'counts', counts
 
-    return false  # cancel bubbling
-
   newItem: ->
     @index++
 
@@ -82,6 +80,9 @@ class ItemView extends ViewEmitter
   events:
     # Dismiss on click, escape, and scroll
     'change select.quantity': 'updateQuantity'
+
+    'change select': ->
+      @el.find
 
     # Handle lineItem removals
     'click button.sub': ->
