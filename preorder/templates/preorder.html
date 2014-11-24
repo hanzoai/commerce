@@ -214,5 +214,13 @@ var AllProducts = {{ allProductsJSON | safe}};
 </div>
 </script>
 
+<script id="error-template" type="text/template">
+<div class="error-container">
+    <a class="error-link">
+        <span class="error-message"></span>
+    </a>
+</div>
+</script>
+
 <script src="{{ staticUrl }}/js/preorder.js" type="text/javascript"></script>
 {% endblock %}
