@@ -5,7 +5,7 @@ products = require '../../utils/products'
 
 $menSize = $('''<option value="XS">XS</option>
                 <option value="S">S</option>
-                <option value="M">M</option>
+                <option value="M" selected>M</option>
                 <option value="L">L</option>
                 <option value="XL">XL</option>
                 <option value="XXL">XXL</option>
@@ -13,7 +13,7 @@ $menSize = $('''<option value="XS">XS</option>
 
 $womenSize = $('''<option value="XS">XS</option>
                   <option value="S">S</option>
-                  <option value="M">M</option>
+                  <option value="M" selected>M</option>
                   <option value="L">L</option>
                   <option value="XL">XL</option>''')
 
@@ -63,17 +63,19 @@ class GearItemView extends ItemView
 
       @set 'style', style
 
-      variant = products.getVariant slug,
-        Color: color
-        Size:  size
-        Style: style
-
       # switch options
       $select = @el.find 'select.size'
       if style == "Men's T-Shirt"
         $select.html('').append $menSize
       else
         $select.html('').append $womenSize
+        if size == "XXL" || size =="XXXL"
+          size = "M"
+
+      variant = products.getVariant slug,
+        Color: color
+        Size:  size
+        Style: style
 
       # force size to get set again
       @set 'size', (@get 'size')
