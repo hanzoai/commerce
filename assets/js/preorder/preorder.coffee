@@ -57,6 +57,7 @@ $(document).ready ->
       if errors.length == 0
         $('.shipping, .perk, .item, .submitter').show()
         $('.password-form').hide()
+        $.scrollTop(0)
 
       displayErrors(errors)
 
