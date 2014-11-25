@@ -24,9 +24,6 @@ displayErrors = (errors = {}) ->
 setupValidation = ->
   # Form validation
   validator = new FormValidator 'skully', [
-      name: 'email'
-      rules: 'required|valid_email'
-    ,
       name: 'password'
       rules: 'required|min_length[6]'
     ,
