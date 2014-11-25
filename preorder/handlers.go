@@ -52,6 +52,8 @@ func GetPreorder(c *gin.Context) {
 		log.Panic("Failed to find contributions: %v", err, c)
 	}
 
+	log.Debug("Contributions: %v", contributions)
+
 	userJSON := json.Encode(user)
 	contributionsJSON := json.Encode(contributions)
 
