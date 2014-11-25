@@ -47,6 +47,7 @@ exports.displayHelmets = ->
       variants[variant.SKU] = variant
 
     first = true
+    hasItem = false
 
     # Restore order
     for item in PreorderData.existingOrder.Items
@@ -61,6 +62,9 @@ exports.displayHelmets = ->
         if first
           view.set 'color', variants[item.SKU].Color
           first = false
+        hasItem = true
+
+    view.newTime() unless hasItem
 
   $('.item.helmet').append view.$el
 
@@ -82,6 +86,7 @@ exports.displayApparel = ->
     for variant in AllProducts['t-shirt'].Variants
       variants[variant.SKU] = variant
 
+    hasItem = false
     # Restore order
     for item in PreorderData.existingOrder.Items
       if item.Slug == 't-shirt'
@@ -92,6 +97,9 @@ exports.displayApparel = ->
         itemView.set 'style',    variants[item.SKU].Style
         itemView.set 'size',     variants[item.SKU].Size
         itemView.updateQuantity()
+        hasItem = true
+
+    view.newTime() unless hasItem
 
   $('.item.gear').append view.$el
 
@@ -113,6 +121,7 @@ exports.displayHats = ->
     for variant in AllProducts['hat'].Variants
       variants[variant.SKU] = variant
 
+    hasItem = false
     # Restore order
     for item in PreorderData.existingOrder.Items
       if item.Slug == 'hat'
@@ -122,6 +131,10 @@ exports.displayHats = ->
         itemView.set 'sku',      item.SKU
         itemView.set 'size',     variants[item.SKU].Size
         itemView.updateQuantity()
+        hasItem = true
+
+    view.newTime() unless hasItem
+
 
   $('.item.hats').append view.$el
 
