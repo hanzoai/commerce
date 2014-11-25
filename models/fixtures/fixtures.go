@@ -1,6 +1,7 @@
 package fixtures
 
 import (
+	"appengine"
 	"appengine/delay"
 	"encoding/csv"
 	"os"
@@ -15,8 +16,9 @@ import (
 	. "crowdstart.io/models"
 )
 
-var All = delay.Func("install-all-fixtures", func(db *datastore.Datastore) {
+var All = delay.Func("install-all-fixtures", func(c appengine.Context) {
 	log.Debug("Loading fixtures...")
+	db := datastore.New(c)
 
 	pwhash, _ := bcrypt.GenerateFromPassword([]byte("password"), 12)
 
