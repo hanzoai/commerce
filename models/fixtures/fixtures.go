@@ -472,6 +472,7 @@ func Install(db *datastore.Datastore) {
 		city := strings.Title(strings.ToLower(row[14]))
 
 		perkId := row[1]
+		pledgeId := row[2]
 
 		// Create token
 		token := new(InviteToken)
@@ -481,14 +482,14 @@ func Install(db *datastore.Datastore) {
 
 		// Save contribution
 		contribution := Contribution{
-			Id:            row[2],
+			Id:            pledgeId,
 			Perk:          perks[perkId],
 			Status:        row[3],
 			FundingDate:   row[4],
 			PaymentMethod: row[5],
 			Email:         email,
 		}
-		db.PutKey("contribution", row[2], &contribution)
+		db.PutKey("contribution", pledgeId, &contribution)
 
 		// Create user
 		user := new(User)
