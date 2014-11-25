@@ -18,10 +18,11 @@ import (
 const apiKey = "wJ3LGLp5ZOUZlSH8wwqmTg"
 const root = "http://mandrillapp.com/api/1.0"
 
-var html = func() string {
+// Escapes special chars in the html
+func GetHtml(filename string) string {
 	wd, _ := os.Getwd()
 	log.Info(wd)
-	b, err := ioutil.ReadFile("../../resources/confirmation_email.html")
+	b, err := ioutil.ReadFile(filename)
 	if err != nil {
 		log.Panic(err.Error())
 		return ""
@@ -31,7 +32,7 @@ var html = func() string {
 	s = strings.Replace(s, "\n", "", -1)
 	s = strings.Replace(s, "\t", "", -1)
 	return s
-}()
+}
 
 // PingMandrill checks if our credentials/url are okay
 // Returns true if Mandrill replies with  a 200 OK
@@ -60,7 +61,7 @@ func PingMandrill(ctx appengine.Context) bool {
 	return res.StatusCode == 200
 }
 
-func SendMail(ctx appengine.Context, from_name, from_email, to_name, to_email, subject string) error {
+func SendMail(ctx appengine.Context, from_name, from_email, to_name, to_email, subject, html string) error {
 	url := root + "/messages/send.json"
 	log.Debug(url)
 
