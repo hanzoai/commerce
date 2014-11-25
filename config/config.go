@@ -64,7 +64,7 @@ func Defaults() *Config {
 	config.Hosts = make(map[string]string, 10)
 	config.Prefixes = make(map[string]string, 10)
 	config.RootDir, _ = filepath.Abs(cwd + "/../..")
-	config.SiteTitle = "Crowdstart"
+	config.SiteTitle = "SKULLY"
 	config.DemoMode = demoMode
 	return config
 }
