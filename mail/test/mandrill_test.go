@@ -40,10 +40,15 @@ func TestSendMail(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := appengine.NewContext(req)
-
-	err = mail.SendMail(ctx, "from_name", "dev@hanzo.ai", "to_name",
+	html := mail.GetHtml("../templates/confirmation_email.html")
+	err = mail.SendMail(ctx,
+		"from_name",
 		"dev@hanzo.ai",
-		"test")
+		"to_name",
+		"dev@hanzo.ai",
+		"test",
+		html,
+	)
 
 	if err != nil {
 		t.Error(err)

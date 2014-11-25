@@ -5,6 +5,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"appengine/delay"
+
 	"crowdstart.io/auth"
 	"crowdstart.io/datastore"
 	"crowdstart.io/mail"
@@ -88,6 +90,9 @@ func hasToken(tokens []models.InviteToken, id string) bool {
 	return false
 }
 
+var confirmationHtml = mail.GetHtml("../mail/templates/confirmation_email")
+var sendConfirmation = delay.Func("sendConfirmation", mail.SendMail)
+
 func SavePreorder(c *gin.Context) {
 	form := new(PreorderForm)
 	if err := form.Parse(c); err != nil {
@@ -114,9 +119,8 @@ func SavePreorder(c *gin.Context) {
 	log.Debug("Found token")
 
 	// Update user's password if this is the first time saving.
-	firstTime := !user.HasPassword()
 
-	if firstTime {
+	if !user.HasPassword() {
 		user.PasswordHash = form.User.PasswordHash
 	}
 
@@ -178,11 +182,14 @@ func SavePreorder(c *gin.Context) {
 	}
 
 	// ctx appengine.Context, from_name, from_email, to_name, to_email, subject string
-	go mail.SendMail(c,
+	ctx := mail.AppengineCtx(c)
+	sendConfirmation.Call(ctx, ctx,
 		"SKULLY",
 		"noreply@skullysystems.com",
+		user.Name(),
 		user.Email,
 		"Thank you for updating your preorder information",
+		confirmationHtml,
 	)
 	c.Redirect(301, "../thanks")
 }
