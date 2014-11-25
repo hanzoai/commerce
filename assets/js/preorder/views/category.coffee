@@ -45,6 +45,9 @@ class CategoryView extends ViewEmitter
     @set 'counts', counts
 
   newItem: ->
+    if @el.find('.form').children().length == @get 'total'
+      return
+
     @index++
 
     # Create new view instance
@@ -52,9 +55,12 @@ class CategoryView extends ViewEmitter
       total: @get 'total'
       state: $.extend({index: @index}, @itemDefaults)
 
+    @firstItemView = itemView unless @firstItemView?
+
     # Listen to events on ItemView
     itemView.on 'newItem',     => @newItem.apply @, arguments
     itemView.on 'removeItem',  => @removeItem.apply @, arguments
+    itemView.on 'updateCount', => @updateCount.apply @, arguments
     itemView.on 'updateCount', => @updateCount.apply @, arguments
 
     # Set initial count
@@ -64,9 +70,15 @@ class CategoryView extends ViewEmitter
 
     # Render and bind events
     itemView.render()
+    if @index == 1
+      itemView.$el.find('button.sub').remove()
+
     itemView.bind()
     @itemViews[@index] = itemView
     @el.find('.form:first').append itemView.$el
+
+    if @el.find('.form').children().length == @get 'total'
+      itemView.$el.find('button.add').remove()
 
     return false  # cancel bubbling
 
@@ -94,7 +106,7 @@ class ItemView extends ViewEmitter
 
     # Handle lineItem removals
     'click button.sub': ->
-      @destroy() if @get('index') > 0
+      @destroy()
 
     'click button.add': ->
       @emit 'newItem'
@@ -104,7 +116,6 @@ class ItemView extends ViewEmitter
     quantity = @el.find '.quantity'
     for i in [1..@total]
       quantity.append $('<option/>').attr('value', i).text(i)
-    return
 
   updateQuantity: (e, el) ->
     @emit 'updateCount',
