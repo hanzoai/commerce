@@ -1,6 +1,8 @@
 package preorder
 
 import (
+	"errors"
+
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/auth"
@@ -19,7 +21,7 @@ func GetPreorder(c *gin.Context) {
 	token := new(models.InviteToken)
 	db.GetKey("invite-token", c.Params.ByName("token"), token)
 
-	// Redirect to login if token is expired or userd
+	// Redirect to login if token is expired or used
 	if token.Expired || token.Used {
 		c.Redirect(301, "/")
 		return
@@ -34,12 +36,23 @@ func GetPreorder(c *gin.Context) {
 		return
 	}
 
+	// If user has password, they've previously edited the preorder
+	order := new(models.Order)
+	if user.HasPassword() {
+		if err := db.GetKey("order", user.Email, order); err != nil {
+			log.Error("Failed to fetch order for user: %v", err, c)
+			c.Redirect(301, "../")
+		}
+	}
+	orderJSON := json.Encode(order)
+
 	// Find all of a user's contributions
-	contributions := new([]models.Contribution)
-	if _, err := db.Query("contribution").Filter("Email =", user.Email).GetAll(db.Context, contributions); err != nil {
+	var contributions []models.Contribution
+	if _, err := db.Query("contribution").Filter("Email =", user.Email).GetAll(db.Context, &contributions); err != nil {
 		log.Panic("Failed to find contributions: %v", err, c)
 	}
 
+	log.Debug("Contributions: %v", contributions)
 	userJSON := json.Encode(user)
 	contributionsJSON := json.Encode(contributions)
 
@@ -55,12 +68,23 @@ func GetPreorder(c *gin.Context) {
 	allProductsJSON := json.Encode(productsMap)
 
 	template.Render(c, "preorder.html",
-		"user", user,
 		"tokenId", token.Id,
-		"userJSON", userJSON,
-		"contributionsJSON", contributionsJSON,
+		"user", user,
 		"allProductsJSON", allProductsJSON,
+		"contributionsJSON", contributionsJSON,
+		"orderJSON", orderJSON,
+		"userJSON", userJSON,
 	)
+}
+
+// hasToken checks whether any of the tokens have the id
+func hasToken(tokens []models.InviteToken, id string) bool {
+	for _, token := range tokens {
+		if token.Id == id {
+			return true
+		}
+	}
+	return false
 }
 
 func SavePreorder(c *gin.Context) {
@@ -71,83 +95,81 @@ func SavePreorder(c *gin.Context) {
 	}
 
 	db := datastore.New(c)
+
 	// Get user from datastore
 	user := new(models.User)
 	db.GetKey("user", form.User.Email, user)
 
-	// shenanigans
+	// Ensure that token matches email
 	tokens := getTokens(c, user.Email)
 	if len(tokens) < 1 {
+		c.Fail(500, errors.New("Failed to find pre-order token."))
 		return
-	} else if tokens[0].Id != form.Token.Id {
+	} else if !hasToken(tokens, form.Token.Id) {
+		c.Fail(500, errors.New("Token not valid for user email."))
 		return
 	}
 
-	// Update user from form
+	log.Debug("Found token")
+
+	// Update user's password if this is the first time saving.
 	if !user.HasPassword() {
 		user.PasswordHash = form.User.PasswordHash
 	}
+
+	// Update user information
 	user.Phone = form.User.Phone
 	user.FirstName = form.User.FirstName
 	user.LastName = form.User.LastName
 	user.ShippingAddress = form.ShippingAddress
+	log.Debug("User: %v", user)
 
 	order := form.Order
+	order.ShippingAddress = form.ShippingAddress
+	log.Debug("ShippingAddress: %v", user)
 
 	for i, lineItem := range order.Items {
-		if i == 0 {
-			continue
-		}
+		log.Debug("Fetching variant for %v", lineItem.SKU())
+
 		// Fetch Variant for LineItem from datastore
 		if err := db.GetKey("variant", lineItem.SKU(), &lineItem.Variant); err != nil {
+			log.Error("Failed to find variant for: %v", lineItem.SKU(), c)
 			c.Fail(500, err)
-			log.Error("Getting variant failed", err)
-			log.Info("SKU", lineItem.SKU())
-			return
 		}
 
 		// Fetch Product for LineItem from datastore
 		if err := db.GetKey("product", lineItem.Slug(), &lineItem.Product); err != nil {
+			log.Error("Failed to find product for: %v", lineItem.Slug(), c)
 			c.Fail(500, err)
-			log.Error("Getting product failed", err)
-			log.Info("Slug", lineItem.Slug())
-			return
 		}
 
+		// Set SKU so we can deserialize later
+		lineItem.SKU_ = lineItem.SKU()
+		lineItem.Slug_ = lineItem.Slug()
+
+		// Update item in order
 		order.Items[i] = lineItem
+
+		// Update subtotal
 		order.Subtotal += lineItem.Price()
 	}
 
+	// Update Total
 	order.Total = order.Subtotal + order.Tax
 
-	// err := order.Save(c) // Saves the nested structs in the order
-	// if err != nil {
-	// 	c.Fail(500, err)
-	// 	return
-	// }
-
-	var key string
-	var err error
-
-	if len(user.OrdersIds) > 0 {
-		key = user.OrdersIds[0]
-		_, err = db.PutKey("order", key, &order)
-		log.Debug("Previous orders found")
-	} else {
-		user.OrdersIds = make([]string, 1)
-		key, err = db.Put("order", &order)
-		log.Debug("No previous order found")
-	}
+	// Save order
+	log.Debug("Saving order: %v", order)
+	_, err := db.PutKey("order", user.Email, &order)
 	if err != nil {
-		log.Error("Error while writing order", err)
+		log.Error("Error saving order", err)
 		c.Fail(500, err)
 		return
 	}
-	user.OrdersIds[0] = key
+
 	// Save user back to database
 	_, err = db.PutKey("user", user.Email, user)
 	if err != nil {
-		log.Error("Error while writing user", err)
+		log.Error("Error saving user information", err)
 		c.Fail(500, err)
 		return
 	}
@@ -160,6 +182,9 @@ func Thanks(c *gin.Context) {
 }
 
 func Index(c *gin.Context) {
+	template.Render(c, "login.html")
+	return
+
 	if !auth.IsLoggedIn(c) {
 		template.Render(c, "login.html")
 	} else {

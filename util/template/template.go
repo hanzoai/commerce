@@ -14,8 +14,10 @@ func TemplateSet() *pongo2.TemplateSet {
 	set := pongo2.NewSet("default")
 	set.Debug = config.IsDevelopment
 
-	set.Globals["staticUrl"] = config.StaticUrl
+	set.Globals["isDevelopment"] = config.IsDevelopment
+	set.Globals["isProduction"] = config.IsProduction
 	set.Globals["siteTitle"] = config.SiteTitle
+	set.Globals["staticUrl"] = config.StaticUrl
 	set.Globals["moduleUrl"] = func(moduleName string) string {
 		return config.ModuleUrl(moduleName)
 	}

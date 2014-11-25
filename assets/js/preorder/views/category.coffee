@@ -1,6 +1,8 @@
 View        = require 'mvstar/lib/view'
 ViewEmitter = require 'mvstar/lib/view-emitter'
 
+_index = 0
+
 class CategoryView extends ViewEmitter
   ItemView:     View
   index:        0
@@ -45,12 +47,16 @@ class CategoryView extends ViewEmitter
     @set 'counts', counts
 
   newItem: ->
-    @index++
+    _index++
+    if @el.find('.form').children().length == @get 'total'
+      return
 
     # Create new view instance
     itemView = new @ItemView
       total: @get 'total'
-      state: $.extend({index: @index}, @itemDefaults)
+      state: $.extend({index: _index}, @itemDefaults)
+
+    @firstItemView = itemView unless @firstItemView?
 
     # Listen to events on ItemView
     itemView.on 'newItem',     => @newItem.apply @, arguments
@@ -59,16 +65,24 @@ class CategoryView extends ViewEmitter
 
     # Set initial count
     @updateCount
-      index: itemView.get('index')
+      index: itemView.get 'index'
       count: 1
 
     # Render and bind events
     itemView.render()
     itemView.bind()
+
     @itemViews[@index] = itemView
     @el.find('.form:first').append itemView.$el
 
-    return false  # cancel bubbling
+    itemCount = @el.find('.form').children().length
+    if itemCount == 1
+      itemView.$el.find('button.sub').remove()
+
+    if itemCount == @get 'total'
+      itemView.$el.find('button.add').remove()
+
+    itemView
 
   removeItem: (index) ->
     counts = @get 'counts'
@@ -94,7 +108,7 @@ class ItemView extends ViewEmitter
 
     # Handle lineItem removals
     'click button.sub': ->
-      @destroy() if @get('index') > 0
+      @destroy()
 
     'click button.add': ->
       @emit 'newItem'
@@ -104,12 +118,11 @@ class ItemView extends ViewEmitter
     quantity = @el.find '.quantity'
     for i in [1..@total]
       quantity.append $('<option/>').attr('value', i).text(i)
-    return
 
-  updateQuantity: (e, el) ->
+  updateQuantity: () ->
     @emit 'updateCount',
       index: (@get 'index')
-      count: parseInt $(el).val(), 10
+      count: parseInt @el.find('.quantity').val(), 10
 
   destroy: ->
     @unbind()
