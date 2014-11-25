@@ -58,9 +58,10 @@ type Perk struct {
 }
 
 type Contribution struct {
+	Id            string
+	Email         string
 	Perk          Perk
 	FundingDate   string
 	PaymentMethod string
 	Status        string
-	Email         string
 }
