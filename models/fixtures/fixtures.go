@@ -436,6 +436,11 @@ func Install(db *datastore.Datastore) {
 		},
 	})
 
+	// No longer updating Production this way as it clobbers existing settings.
+	if config.IsProduction {
+		return
+	}
+
 	csvfile, err := os.Open("resources/contributions.csv")
 	defer csvfile.Close()
 	if err != nil {
