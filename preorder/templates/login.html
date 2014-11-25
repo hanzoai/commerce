@@ -20,7 +20,7 @@ Login &mdash; {{ siteTitle }}</title>
 	</div>
 
 	<div class="narrow center content-centered submit">
-	  <input type="submit" class="btn bg-olive btn-block" value="EDIT PRE-ORDER"></input>
+	  <input type="submit" class="submit" value="EDIT PRE-ORDER"></input>
 	</div>
     </form>
 
@@ -28,3 +28,14 @@ Login &mdash; {{ siteTitle }}</title>
 
 </div>
 {% endblock %}
+
+{% block script %}
+<script type="text/javascript">
+    $(document).ready(function()->{
+        $('input[type=submit]').on('submit', function() {
+            $(this).addClass('loading-spinner');
+        });
+    });
+</script>
+{% endblock %}
+
