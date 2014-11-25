@@ -416,16 +416,6 @@ func Install(db *datastore.Datastore) {
 		},
 	})
 
-	// Try to import existing contributors, but only if we have yet to
-	// count, err := db.Query("contribution").KeysOnly().Count(db.Context)
-	// log.Debug("Contributions persisted: %v", count)
-	// if count > 0 {
-	// 	return
-	// }
-	// if err != nil {
-	// 	log.Fatal("Failed to query for contributions: %v", err)
-	// }
-
 	csvfile, err := os.Open("resources/contributions.csv")
 	defer csvfile.Close()
 	if err != nil {
@@ -447,14 +437,14 @@ func Install(db *datastore.Datastore) {
 	// Payment Method     5                 Shipping Zip/Postal Code 16
 	//	                                    Shipping Country         17
 	for i := 0; true; i++ {
-		// Loop until exhausted
-		row, err := reader.Read()
-		if err != nil {
+		// Only save first 100 in production
+		if config.IsDevelopment && i > 25 {
 			break
 		}
 
-		// Only save first 100 in production
-		if config.IsDevelopment && i > 25 {
+		// Loop until exhausted
+		row, err := reader.Read()
+		if err != nil {
 			break
 		}
 
@@ -491,13 +481,14 @@ func Install(db *datastore.Datastore) {
 
 		// Save contribution
 		contribution := Contribution{
+			Id:            row[2],
 			Perk:          perks[perkId],
 			Status:        row[3],
 			FundingDate:   row[4],
 			PaymentMethod: row[5],
 			Email:         email,
 		}
-		db.Put("contribution", &contribution)
+		db.PutKey("contribution", row[2], &contribution)
 
 		// Create user
 		user := new(User)
