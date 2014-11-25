@@ -56,7 +56,7 @@ requisite_opts = assets/js/store/store.coffee \
 		         -o static/js/checkout.js \
 
 stylus 		   = node_modules/.bin/stylus
-stylus_opts    = assets/css/preorder/preorder.styl -o static/css
+stylus_opts    = assets/css/preorder/preorder.styl -o static/css assets/css/store/store.styl -o static/css
 
 # find command differs between bsd/linux thus the two versions
 ifeq ($(os), "linux")
@@ -74,8 +74,13 @@ all: deps assets test
 
 assets: deps-assets compile-css compile-js
 
+assets-minified: deps-assets compile-css compile-minified-js
+
 compile-js:
 	$(requisite) $(requisite_opts) -g -s
+
+compile-minified-js:
+	$(requisite) $(requisite_opts) -g -s -m
 
 compile-css:
 	$(stylus) $(stylus_opts)
@@ -123,13 +128,13 @@ install-deps:
 	# pip install watchdog
 
 serve: assets
-	$(sdk_path)/dev_appserver.py --datastore_path=~/.gae_datastore.bin $(gae_development)
+	$(sdk_path)/dev_appserver.py --host=0.0.0.0 --datastore_path=~/.gae_datastore.bin $(gae_development)
 
 serve-clear-datastore: assets
-	$(sdk_path)/dev_appserver.py --datastore_path=~/.gae_datastore.bin --clear_datastore=true $(gae_development)
+	$(sdk_path)/dev_appserver.py --host=0.0.0.0 --datastore_path=~/.gae_datastore.bin --clear_datastore=true $(gae_development)
 
 serve-no-restart: assets
-	$(sdk_path)/dev_appserver.py --datastore_path=~/.gae_datastore.bin --automatic_restart=false $(gae_development)
+	$(sdk_path)/dev_appserver.py --host=0.0.0.0 --datastore_path=~/.gae_datastore.bin --automatic_restart=false $(gae_development)
 
 tools:
 	goapp get $(tools) && \
@@ -145,12 +150,20 @@ bench: build
 deploy: test
 	go run scripts/deploy.go
 
-deploy-appengine: assets
+deploy-appengine: assets-minified
 	for module in $(gae_production); do \
-		$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) rollback $$module; \
-		$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update $$module; \
-		$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) set_default_version $$module; \
+		$(sdk_path)/appcfg.py --skip_sdk_update_check rollback $$module; \
+		$(sdk_path)/appcfg.py --skip_sdk_update_check update $$module; \
+		$(sdk_path)/appcfg.py --skip_sdk_update_check set_default_version $$module; \
 	done; \
-	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update_dispatch config/production
+	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/production
+
+deploy-appengine-ci: assets-minified
+	for module in $(gae_production); do \
+		$(sdk_path)/appcfg.py --skip_sdk_update_check rollback $$module; \
+		$(sdk_path)/appcfg.py --skip_sdk_update_check update $$module; \
+		$(sdk_path)/appcfg.py --skip_sdk_update_check set_default_version $$module; \
+	done; \
+	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/production
 
 .PHONY: all assets compile-css compile-js live-reload build deploy deps deps-assets deps-go serve test tools

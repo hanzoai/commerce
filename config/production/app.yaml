@@ -10,23 +10,31 @@ inbound_services:
 - warmup
 
 handlers:
-- url: /_ah/*
+- url: /install-fixtures
   script: _go_app
+  login: required
+  secure: always
+
+- url: /_ah/queue/go/delay
+  script: _go_app
+  login: admin
 
 - url: /*
   static_dir: static
+  http_headers:
+    Access-Control-Allow-Origin: "*"
 
 pagespeed:
   enabled_rewriters:
     # HTML
-    - ProxyCss
-    - ProxyImages
-    - ProxyJs
+    # - ProxyCss
+    # - ProxyImages
+    # - ProxyJs
     - ConvertMetaTags
-    - InlineCss
-    - InlineJs
-    - InlineImages
-    - InlinePreviewImages
+    # - InlineCss
+    # - InlineJs
+    # - InlineImages
+    # - InlinePreviewImages
     - CollapseWhitespace
     - CombineHeads
     - ElideAttributes
@@ -35,16 +43,16 @@ pagespeed:
     - LeftTrimUrls
 
     # css
-    - CombineCss
-    - MoveCssToHead
+    # - CombineCss
+    # - MoveCssToHead
     - MinifyCss
 
     # images
     - WebpOptimization
     # - ImageConvertToJpeg
     # - ImageRecompressJpeg
-    - ImageProgressiveJpeg
-    - ImageRecompressPng
+    # - ImageProgressiveJpeg
+    # - ImageRecompressPng
     - ImageStripMetadata
     - ImageStripColorProfile
     # - ImageResize
@@ -52,9 +60,9 @@ pagespeed:
     - ImageAddDimensions
 
     # js
-    - CombineJs
-    - JsOptimize
-    - DeferJs
+    # - CombineJs
+    # - JsOptimize
+    # - DeferJs
 
   disabled_rewriters:
     - FlushSubresources
