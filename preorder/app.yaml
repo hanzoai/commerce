@@ -11,10 +11,6 @@ automatic_scaling:
   min_idle_instances: 1
 
 handlers:
-- url: /.*
-  script: _go_app
-  secure: always
-
 - url: /humans.txt
   static_files: static/humans.txt
   upload: static/humans.txt
@@ -22,6 +18,10 @@ handlers:
 - url: /robots.txt
   static_files: static/robots.txt
   upload: static/robots.txt
+
+- url: /.*
+  script: _go_app
+  secure: always
 
 pagespeed:
   enabled_rewriters:
