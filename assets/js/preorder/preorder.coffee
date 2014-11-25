@@ -40,9 +40,6 @@ setupValidation = ->
       display: 'last name'
       rules: 'required'
     ,
-      name: 'phone'
-      rules: 'callback_numeric_dash'
-    ,
       name: 'address1'
       display: 'address'
       rules: 'required'
