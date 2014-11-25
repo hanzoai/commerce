@@ -67,22 +67,20 @@ func Init() {
 		}
 
 		ctx := appengine.NewContext(c.Request)
-
-		// Start install-fixtures task
 		installFixtures.Call(ctx)
 
-		conf := config.Get()
-
 		// Recompile static assets
-		if conf.AutoCompileAssets {
+		if config.AutoCompileAssets {
 			exec.Run("make assets")
 		}
 	})
 
 	router.GET("/install-fixtures", func(c *gin.Context) {
 		ctx := appengine.NewContext(c.Request)
-		db := datastore.New(ctx)
-		fixtures.Install(db)
-		c.String(200, "Fixtures installed")
+
+		// Start install-fixtures task
+		installFixtures.Call(ctx)
+
+		c.String(200, "Fixtures installing...")
 	})
 }
