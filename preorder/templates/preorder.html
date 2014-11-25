@@ -9,10 +9,14 @@ Pre-order &mdash; {{ siteTitle }}
 var False = false;
 var True = true;
 var PreorderData = {
-    user: {{ userJSON | safe }},
+    hasPassword: {{ user.HasPassword() | safe }},
     contributions: {{ contributionsJSON | safe }},
-    hasPassword: {{ user.HasPassword() | safe }}
+    user: {{ userJSON | safe }},
 };
+
+{% if orderJSON %}
+PreorderData.existingOrder = {{ orderJSON | safe }};
+{% endif %}
 
 var AllProducts = {{ allProductsJSON | safe}};
 </script>
