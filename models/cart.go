@@ -13,11 +13,13 @@ import (
 
 type LineItem struct {
 	FieldMapMixin
-	Product      Product
-	Variant      ProductVariant
-	Description  string `schema:"-"`
-	DiscountAmnt int64  `schema:"-"`
-	LineNo       int    `schema:"-"`
+	SKU_         string         `json:"SKU"`
+	Slug_        string         `json:"Slug"`
+	Product      Product        `datastore:"-"`
+	Variant      ProductVariant `datastore:"-"`
+	Description  string         `schema:"-"`
+	DiscountAmnt int64          `schema:"-"`
+	LineNo       int            `schema:"-"`
 	Quantity     int
 	UOM          string `schema:"-"`
 	// Material     string
@@ -107,7 +109,7 @@ type Order struct {
 	Total           int64 `schema:"-"`
 
 	ItemIds []string
-	Items   []LineItem `datastore:"-"`
+	Items   []LineItem
 
 	StripeToken string `schema:"-"`
 	Campaign    Campaign

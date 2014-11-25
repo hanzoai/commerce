@@ -9,6 +9,14 @@ inbound_services:
 - warmup
 
 handlers:
+- url: /install-fixtures
+  script: _go_app
+  login: required
+  secure: always
+
+- url: /_ah/queue/go/delay
+  script: _go_app
+  login: admin
 - url: /assets/*
   static_dir: ../../assets
 
