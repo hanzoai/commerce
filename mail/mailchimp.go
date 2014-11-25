@@ -48,7 +48,7 @@ type Content struct {
 }
 
 // CampaignContent returns
-func CampaignContent(campaignId string) (Content, error) {
+func CampaignContent(c *gin.Context, campaignId string) (content Content, err error) {
 	url := root + "/campaigns/content.json"
 
 	body := []byte(fmt.Sprintf(`{"apikey": "%s", "cid": "%s"}`, apiKey, campaignId))
@@ -56,24 +56,24 @@ func CampaignContent(campaignId string) (Content, error) {
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
 	if err != nil {
 		log.Panic(err.Error())
-		return err
+		return content, err
 	}
 
+	ctx := appengineCtx(c)
 	client := urlfetch.Client(ctx)
 	res, err := client.Do(req)
 	defer res.Body.Close()
 	if err != nil {
 		log.Panic(err.Error())
-		return err
+		return content, err
 	}
 
 	bodyRes, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		log.Panic(err.Error())
-		return err
+		return content, err
 	}
 
-	var content Content
 	dec := json.NewDecoder(bytes.NewReader(bodyRes))
 	err = dec.Decode(&content)
 
