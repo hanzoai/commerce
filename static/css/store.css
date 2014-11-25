@@ -1,0 +1,18 @@
+body {
+  font-family: 'proxima-nova', sans-serif;
+  font-size: 15px;
+  line-height: 1.6em;
+  letter-spacing: 0px;
+  font-weight: 400;
+  font-style: normal;
+}
+.header {
+  width: 100%;
+  position: fixed;
+  top: 0px;
+  left: 0px;
+  background-color: #000;
+}
+.title-nav-wrapper {
+  padding: 2px 21px;
+}
