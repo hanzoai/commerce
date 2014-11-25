@@ -21,7 +21,7 @@ func GetPreorder(c *gin.Context) {
 	token := new(models.InviteToken)
 	db.GetKey("invite-token", c.Params.ByName("token"), token)
 
-	// Redirect to login if token is expired or userd
+	// Redirect to login if token is expired or used
 	if token.Expired || token.Used {
 		c.Redirect(301, "/")
 		return
@@ -169,6 +169,8 @@ func Thanks(c *gin.Context) {
 }
 
 func Index(c *gin.Context) {
+	template.Render(c, "login.html")
+
 	if !auth.IsLoggedIn(c) {
 		template.Render(c, "login.html")
 	} else {
