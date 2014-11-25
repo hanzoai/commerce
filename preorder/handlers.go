@@ -1,6 +1,8 @@
 package preorder
 
 import (
+	"errors"
+
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/auth"
@@ -89,10 +91,14 @@ func SavePreorder(c *gin.Context) {
 	// Ensure that token matches email
 	tokens := getTokens(c, user.Email)
 	if len(tokens) < 1 {
+		c.Fail(500, errors.New("Failed to find pre-order token."))
 		return
 	} else if tokens[0].Id != form.Token.Id {
+		c.Fail(500, errors.New("Token not valid for user email."))
 		return
 	}
+
+	log.Debug("Found token")
 
 	// Update user's password if this is the first time saving.
 	if !user.HasPassword() {
@@ -106,20 +112,18 @@ func SavePreorder(c *gin.Context) {
 	order := form.Order
 
 	for i, lineItem := range order.Items {
+		log.Debug("Fetching variant for %v", lineItem.SKU())
+
 		// Fetch Variant for LineItem from datastore
 		if err := db.GetKey("variant", lineItem.SKU(), &lineItem.Variant); err != nil {
+			log.Error("Failed to find variant for: %v", lineItem.SKU(), c)
 			c.Fail(500, err)
-			log.Error("Getting variant failed", err)
-			log.Info("SKU", lineItem.SKU())
-			return
 		}
 
 		// Fetch Product for LineItem from datastore
 		if err := db.GetKey("product", lineItem.Slug(), &lineItem.Product); err != nil {
+			log.Error("Failed to find product for: %v", lineItem.Slug(), c)
 			c.Fail(500, err)
-			log.Error("Getting product failed", err)
-			log.Info("Slug", lineItem.Slug())
-			return
 		}
 
 		// Set SKU so we can deserialize later
@@ -137,6 +141,7 @@ func SavePreorder(c *gin.Context) {
 	order.Total = order.Subtotal + order.Tax
 
 	// Save order
+	log.Debug("Saving order: %v", order)
 	_, err := db.PutKey("order", user.Email, &order)
 	if err != nil {
 		log.Error("Error saving order", err)
