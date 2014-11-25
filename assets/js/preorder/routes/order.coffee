@@ -123,7 +123,9 @@ exports.displayHats = ->
 
 exports.initializeShipping = ->
   console.log 'initializing shipping'
-  view = new ShippingView {state: $.extend {}, PreorderData.user, PreorderData.user.ShippingAddress }
+  view = new ShippingView
+    state: $.extend {}, PreorderData.user, PreorderData.user.ShippingAddress
+  console.log 'country', view.get 'country'
   view.render()
   view.bind()
   $('#skully .shipping .form').append(view.$el)
