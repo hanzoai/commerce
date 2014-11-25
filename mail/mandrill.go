@@ -1,10 +1,38 @@
 package mail
 
 import (
+	"bytes"
 	"fmt"
+	"log"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
+
+const apiKey = ""
+const root = "mandrill.com"
+
+func PingMandrill(c *gin.Context) {
+	url := root + "/users/ping.json"
+	ctx := appengineCtx(c)
+
+	body := []byte(fmt.Sprintf(`{"key": "%s"}`, apiKey))
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
+	if err != nil {
+		log.Panic(err.Error())
+		return false
+	}
+
+	client := urlfetch.Client(ctx)
+	res, err := client.Do(req)
+	defer res.Body.Close()
+	if err != nil {
+		log.Panic(err.Error())
+		return false
+	}
+
+	return res.StatusCode == 200
+}
 
 func SendMail(c *gin.Context, from_name, from_email, to_name, to_email, subject, html string) error {
 	j := fmt.Sprintf(`{
