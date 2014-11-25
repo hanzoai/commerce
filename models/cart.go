@@ -13,7 +13,8 @@ import (
 
 type LineItem struct {
 	FieldMapMixin
-	SKU_         string
+	SKU_         string         `json:"SKU"`
+	Slug_        string         `json:"Slug"`
 	Product      Product        `datastore:"-"`
 	Variant      ProductVariant `datastore:"-"`
 	Description  string         `schema:"-"`
