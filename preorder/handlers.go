@@ -41,6 +41,7 @@ func GetPreorder(c *gin.Context) {
 	if user.HasPassword() {
 		if err := db.GetKey("order", user.Email, order); err != nil {
 			log.Error("Failed to fetch order for user: %v", err, c)
+			c.Redirect(301, "../")
 		}
 	}
 	orderJSON := json.Encode(order)
@@ -108,6 +109,7 @@ func SavePreorder(c *gin.Context) {
 	user.FirstName = form.User.FirstName
 	user.LastName = form.User.LastName
 	user.ShippingAddress = form.ShippingAddress
+	log.Debug("User: %v", user)
 
 	order := form.Order
 
