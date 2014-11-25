@@ -17,7 +17,9 @@ displayErrors = (errors = {}) ->
     $('.errors').append view.el
 
     $('.loading-spinner').removeClass('loading-spinner')
-
+  setTimeout(->
+    $('.submit').removeAttr('disabled')
+  , 10)
 
 setupValidation = ->
   # Form validation
