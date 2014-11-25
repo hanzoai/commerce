@@ -1,6 +1,7 @@
 package fixtures
 
 import (
+	"appengine"
 	"appengine/delay"
 	"encoding/csv"
 	"os"
@@ -12,8 +13,9 @@ import (
 	. "crowdstart.io/models"
 )
 
-var International = delay.Func("install-international-fixtures", func(db *datastore.Datastore) {
+var International = delay.Func("install-international-fixtures", func(c appengine.Context) {
 	log.Debug("Installing international fixtures...")
+	db := datastore.New(c)
 
 	csvfile, err := os.Open("resources/contributions-old-international-perk.csv")
 	defer csvfile.Close()
