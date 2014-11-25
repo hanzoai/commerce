@@ -49,16 +49,19 @@ exports.displayHelmets = ->
     first = true
 
     # Restore order
-    for item in PreorderData.existingOrder.Items
-      if item.Slug == 'ar-1'
-        itemView = view.newItem()
-        itemView.set 'quantity', item.Quantity
-        itemView.set 'sku',      item.SKU
-        itemView.set 'color',    variants[item.SKU].Color
-        itemView.set 'size',     variants[item.SKU].Size
-        if first
-          view.set 'color', variants[item.SKU].Color
-          first = false
+    if PreorderData.existingOrder.Items?
+      for item in PreorderData.existingOrder.Items
+        if item.Slug == 'ar-1'
+          itemView = view.newItem()
+          itemView.set 'quantity', item.Quantity
+          itemView.set 'sku',      item.SKU
+          itemView.set 'color',    variants[item.SKU].Color
+          itemView.set 'size',     variants[item.SKU].Size
+          itemView.updateQuantity()
+
+          if first
+            view.set 'color', variants[item.SKU].Color
+            first = false
 
   $('.item.helmet').append view.$el
 
@@ -81,14 +84,16 @@ exports.displayApparel = ->
       variants[variant.SKU] = variant
 
     # Restore order
-    for item in PreorderData.existingOrder.Items
-      if item.Slug == 't-shirt'
-        console.log item
-        itemView = view.newItem()
-        itemView.set 'quantity', item.Quantity
-        itemView.set 'sku',      item.SKU
-        itemView.set 'style',    variants[item.SKU].Style
-        itemView.set 'size',     variants[item.SKU].Size
+    if PreorderData.existingOrder.Items?
+      for item in PreorderData.existingOrder.Items
+        if item.Slug == 't-shirt'
+          console.log item
+          itemView = view.newItem()
+          itemView.set 'quantity', item.Quantity
+          itemView.set 'sku',      item.SKU
+          itemView.set 'style',    variants[item.SKU].Style
+          itemView.set 'size',     variants[item.SKU].Size
+          itemView.updateQuantity()
 
   $('.item.gear').append view.$el
 
@@ -111,13 +116,15 @@ exports.displayHats = ->
       variants[variant.SKU] = variant
 
     # Restore order
-    for item in PreorderData.existingOrder.Items
-      if item.Slug == 'hat'
-        console.log item
-        itemView = view.newItem()
-        itemView.set 'quantity', item.Quantity
-        itemView.set 'sku',      item.SKU
-        itemView.set 'size',     variants[item.SKU].Size
+    if PreorderData.existingOrder.Items?
+      for item in PreorderData.existingOrder.Items
+        if item.Slug == 'hat'
+          console.log item
+          itemView = view.newItem()
+          itemView.set 'quantity', item.Quantity
+          itemView.set 'sku',      item.SKU
+          itemView.set 'size',     variants[item.SKU].Size
+          itemView.updateQuantity()
 
   $('.item.hats').append view.$el
 
