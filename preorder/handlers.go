@@ -112,6 +112,8 @@ func SavePreorder(c *gin.Context) {
 	log.Debug("User: %v", user)
 
 	order := form.Order
+	order.ShippingAddress = form.ShippingAddress
+	log.Debug("ShippingAddress: %v", user)
 
 	for i, lineItem := range order.Items {
 		log.Debug("Fetching variant for %v", lineItem.SKU())
