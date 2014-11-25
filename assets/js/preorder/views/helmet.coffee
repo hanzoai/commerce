@@ -14,8 +14,7 @@ class HelmetItemView extends ItemView
                 'input.slug      @name'
                 'select.color    @name'
                 'select.size     @name'
-                'select.quantity @name'
-                'button.sub      @text']
+                'select.quantity @name']
 
   formatters:
     index: (v, selector) ->
@@ -30,11 +29,6 @@ class HelmetItemView extends ItemView
           "Order.Items.#{v}.Size"
         when 'select.quantity @name'
           "Order.Items.#{v}.Quantity"
-        when 'button.sub @text'
-          if v > 1
-            '-'
-          else
-            ''
 
   events: $.extend {}, ItemView::events,
     'change select.color': (e, el) ->
