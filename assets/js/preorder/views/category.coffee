@@ -1,6 +1,8 @@
 View        = require 'mvstar/lib/view'
 ViewEmitter = require 'mvstar/lib/view-emitter'
 
+_index = 0
+
 class CategoryView extends ViewEmitter
   ItemView:     View
   index:        0
@@ -45,12 +47,12 @@ class CategoryView extends ViewEmitter
     @set 'counts', counts
 
   newItem: ->
-    @index++
+    _index++
 
     # Create new view instance
     itemView = new @ItemView
       total: @get 'total'
-      state: $.extend({index: @index}, @itemDefaults)
+      state: $.extend({index: _index}, @itemDefaults)
 
     # Listen to events on ItemView
     itemView.on 'newItem',     => @newItem.apply @, arguments
@@ -59,7 +61,7 @@ class CategoryView extends ViewEmitter
 
     # Set initial count
     @updateCount
-      index: itemView.get('index')
+      index: itemView.get 'index'
       count: 1
 
     # Render and bind events
@@ -67,8 +69,7 @@ class CategoryView extends ViewEmitter
     itemView.bind()
     @itemViews[@index] = itemView
     @el.find('.form:first').append itemView.$el
-
-    return false  # cancel bubbling
+    itemView
 
   removeItem: (index) ->
     counts = @get 'counts'
