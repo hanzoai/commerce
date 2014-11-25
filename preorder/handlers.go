@@ -2,6 +2,7 @@ package preorder
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -96,6 +97,9 @@ func SavePreorder(c *gin.Context) {
 
 	db := datastore.New(c)
 
+	// removes whitespace
+	form.User.Email = strings.TrimSpace(form.User.Email)
+
 	// Get user from datastore
 	user := new(models.User)
 	db.GetKey("user", form.User.Email, user)
@@ -113,7 +117,11 @@ func SavePreorder(c *gin.Context) {
 	log.Debug("Found token")
 
 	// Update user's password if this is the first time saving.
-	if !user.HasPassword() {
+	// Checks if the both passwords on the form are equal
+	// And if the password is at least 6 chars long
+	if !user.HasPassword() &&
+		form.Password == form.PasswordConfirm &&
+		len(form.Password) > 6 {
 		user.PasswordHash = form.User.PasswordHash
 	}
 	user.Phone = form.User.Phone
