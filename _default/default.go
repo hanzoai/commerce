@@ -69,7 +69,7 @@ func Init() {
 		ctx := appengine.NewContext(c.Request)
 
 		// Start install-fixtures task
-		installFixtures.Call(ctx)
+		go installFixtures.Call(ctx)
 
 		conf := config.Get()
 
