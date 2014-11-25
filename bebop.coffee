@@ -1,8 +1,8 @@
 fs   = require 'fs'
 path = require 'path'
 
-requisite = 'node_files/.bin/requisite'
-stylus    = 'node_files/.bin/stylus'
+requisite = 'node_modules/.bin/requisite'
+stylus    = 'node_modules/.bin/stylus'
 
 files =
   checkout:
@@ -46,22 +46,29 @@ module.exports =
 
       if /^js\//.test src
         # compile everything
-        input  = (v.in for k,v of files).join ' '
-        output = ('-o ' + v.out for k,v of files).join ' '
+        output = []
+        input = []
+        for _, settings of files
+          if settings.js?
+            input.push settings.js.in
+            output.push settings.js.out
 
         return "#{requisite} #{input} #{output} -g -s"
 
     styl: (src) ->
       # try to just optimize module changed
       if /^css\/checkout/.test src
-        return "#{files.checkout.css.in} -o #{files.checkout.css.out}"
+        return "#{stylus} #{files.checkout.css.in} -o #{files.checkout.css.out}"
       if /^css\/preorder/.test src
-        return "#{files.preorder.css.in} -o #{files.preorder.css.out}"
+        return "#{stylus} #{files.preorder.css.in} -o #{files.preorder.css.out}"
       if /^css\/store/.test src
-        return "#{files.store.css.in} -o #{files.store.css.out}"
+        return "#{stylus} #{files.store.css.in} -o #{files.store.css.out}"
 
       if /^css\//.test src
         # compile everything
-        input  = (v.in for k,v of files).join ' '
+        input = []
+        for _, settings of files
+          if settings.css?.in?
+            input.push settings.css.in
 
         return "#{stylus} #{input} -o static/css/"
