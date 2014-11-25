@@ -38,7 +38,9 @@ exports.displayHelmets = ->
   view.bind()
 
   # First time through, no existing order, use defaults
-  unless PreorderData.hasPassword or (not PreorderData.existingOrder.Items?)
+  if (not PreorderData.hasPassword) or
+     (not PreorderData.existingOrder.Items?) or
+     (PreorderData.existingOrder.length == 0)
     view.newItem()
   else
     # Get variants
@@ -78,7 +80,9 @@ exports.displayApparel = ->
   view.render()
   view.bind()
 
-  unless PreorderData.hasPassword or (not PreorderData.existingOrder.Items?)
+  if (not PreorderData.hasPassword) or
+     (not PreorderData.existingOrder.Items?) or
+     (PreorderData.existingOrder.length == 0)
     view.newItem()
   else
     # Get variants
@@ -113,7 +117,9 @@ exports.displayHats = ->
   view.render()
   view.bind()
 
-  unless PreorderData.hasPassword or (not PreorderData.existingOrder.Items?)
+  if (not PreorderData.hasPassword) or
+     (not PreorderData.existingOrder.Items?) or
+     (PreorderData.existingOrder.length == 0)
     view.newItem()
   else
     # Get variants
