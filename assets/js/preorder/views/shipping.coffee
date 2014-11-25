@@ -20,8 +20,7 @@ swapInternationalOptions = do ->
 class ShippingView extends View
   template: '#shipping-template'
   bindings:
-    Email:     ['#email          @value'
-                'span.email      @text']
+    Email:      'span.email      @text'
     FirstName: ['#first_name     @value'
                 '.first_name     @text']
     LastName:   '#last_name      @value'
