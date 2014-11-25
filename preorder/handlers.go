@@ -78,8 +78,8 @@ func GetPreorder(c *gin.Context) {
 }
 
 // hasToken checks whether any of the tokens have the id
-func hasToken(tokens []models.Token, id string) bool {
-	for i, token := range tokens {
+func hasToken(tokens []models.InviteToken, id string) bool {
+	for _, token := range tokens {
 		if token.Id == id {
 			return true
 		}
