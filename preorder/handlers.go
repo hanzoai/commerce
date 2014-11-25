@@ -169,6 +169,8 @@ func Thanks(c *gin.Context) {
 }
 
 func Index(c *gin.Context) {
+	template.Render(c, "login.html")
+
 	if !auth.IsLoggedIn(c) {
 		template.Render(c, "login.html")
 	} else {
