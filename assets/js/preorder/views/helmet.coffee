@@ -14,8 +14,7 @@ class HelmetItemView extends ItemView
                 'input.slug      @name'
                 'select.color    @name'
                 'select.size     @name'
-                'select.quantity @name'
-                'button.sub      @text']
+                'select.quantity @name']
 
   formatters:
     index: (v, selector) ->
@@ -30,11 +29,6 @@ class HelmetItemView extends ItemView
           "Order.Items.#{v}.Size"
         when 'select.quantity @name'
           "Order.Items.#{v}.Quantity"
-        when 'button.sub @text'
-          if v > 1
-            '-'
-          else
-            ''
 
   events: $.extend {}, ItemView::events,
     'change select.color': (e, el) ->
@@ -49,6 +43,7 @@ class HelmetItemView extends ItemView
         Size:  size
 
       @set 'sku', variant.SKU
+      @emit 'updateColor', color
 
     'change select.size': (e, el) ->
       color = @get 'color'
@@ -64,6 +59,7 @@ class HelmetItemView extends ItemView
       @set 'sku', variant.SKU
 
 class HelmetView extends CategoryView
+  template: '#helmet-template'
   ItemView: HelmetItemView
   itemDefaults:
     sku:      'AR-1-BLACK-M'
@@ -73,9 +69,36 @@ class HelmetView extends CategoryView
     size:     'M'
   name: 'helmet'
 
+
+  bindings: $.extend {}, HelmetView::bindings,
+    color: 'div.thumbnail @src'
+
+  formatters: $.extend {}, HelmetView::formatters,
+    color: (v, selector)->
+      if v == "Matte Black"
+        @$el.find('div.thumbnail .black').animate({opacity: 1})
+        @$el.find('div.thumbnail .white').animate({opacity: 0})
+      else
+        @$el.find('div.thumbnail .white').animate({opacity: 1})
+        @$el.find('div.thumbnail .black').animate({opacity: 0})
+      ''
+
   constructor: ->
     super
     @set 'title', 'Skully AR-1 color & size'
+    @set 'color', 'Matte Black'
+
+  render: ->
+    super
+    @$el.find('div.thumbnail .black').css('background-image', 'url(' + StaticPath + '/img/matteblackar1.jpg)')
+    @$el.find('div.thumbnail .white').css('background-image', 'url(' + StaticPath + '/img/glossywhitear1.jpg)')
+
+  newItem: ->
+    isFirstItem = !@firstItemView
+    itemView = super
+    if isFirstItem
+      @firstItemView.on('updateColor', (color)=> @set 'color', color)
+    itemView
 
 window.HelmetItemView = HelmetItemView
 

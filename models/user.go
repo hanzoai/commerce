@@ -33,7 +33,7 @@ func (u User) Name() string {
 }
 
 func (u User) HasPassword() bool {
-	return u.PasswordHash != nil
+	return len(u.PasswordHash) != 0
 }
 
 func (u User) Validate(req *http.Request, errs binding.Errors) binding.Errors {

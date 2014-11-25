@@ -7,26 +7,34 @@ Login &mdash; {{ siteTitle }}</title>
 {% block content %}
 <div class="narrow center content-centered">
     <form action="" method="post">
-	<div class="form body bg-gray">
-	    <div class="form-group">
-		<input type="text" name="Email" class="email form-control" placeholder="Email"/>
-	    </div>
-	    <div class="form-group">
-		<input type="password" name="Password" class="password form-control" placeholder="Password"/>
-	    </div>
-	    <!-- <div class="form-group"> -->
-	    <!--     <input type="checkbox" name="Remember"/> Remember me -->
-	    <!-- </div> -->
-	</div>
+        <div class="form body">
+            <div class="form-group">
+            <input type="text" name="Email" class="email form-control" placeholder="Email"/>
+            </div>
+            <div class="form-group">
+            <input type="password" name="Password" class="password form-control" placeholder="Password"/>
+            </div>
+            <!-- <div class="form-group"> -->
+            <!--     <input type="checkbox" name="Remember"/> Remember me -->
+            <!-- </div> -->
+        </div>
 
-	<div class="narrow center content-centered submit">
-	  <input type="submit" class="btn bg-olive btn-block" value="EDIT PRE-ORDER"></input>
-	    <!-- <p><a href="#">I forgot my password</a></p> -->
-	    <!-- <a href="register" class="text-center">Register a new membership</a> -->
-	</div>
+        {% if message %}<div class="errors">{{ message }}</div>{% endif %}
+
+        <div class="narrow center content-centered submit">
+          <input type="submit" class="submit" value="EDIT PRE-ORDER"></input>
+        </div>
     </form>
-
-    {% if message %}<div style="margin-top:-30px">{{ message }}</div>{% endif %}
-
 </div>
 {% endblock %}
+
+{% block script %}
+<script type="text/javascript">
+    $(document).ready(function() {
+        $('input[type=submit]').on('submit', function() {
+            $(this).addClass('loading-spinner');
+        });
+    });
+</script>
+{% endblock %}
+
