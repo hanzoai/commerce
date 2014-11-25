@@ -62,7 +62,6 @@ class CategoryView extends ViewEmitter
     itemView.on 'newItem',     => @newItem.apply @, arguments
     itemView.on 'removeItem',  => @removeItem.apply @, arguments
     itemView.on 'updateCount', => @updateCount.apply @, arguments
-    itemView.on 'updateCount', => @updateCount.apply @, arguments
 
     # Set initial count
     @updateCount
@@ -120,10 +119,10 @@ class ItemView extends ViewEmitter
     for i in [1..@total]
       quantity.append $('<option/>').attr('value', i).text(i)
 
-  updateQuantity: (e, el) ->
+  updateQuantity: () ->
     @emit 'updateCount',
       index: (@get 'index')
-      count: parseInt $(el).val(), 10
+      count: parseInt @el.find('.quantity').val(), 10
 
   destroy: ->
     @unbind()
