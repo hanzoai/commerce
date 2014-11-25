@@ -1,21 +1,33 @@
 fs   = require 'fs'
 path = require 'path'
 
-requisite = 'node_modules/.bin/requisite'
-stylus    = 'node_modules/.bin/stylus'
+requisite = 'node_files/.bin/requisite'
+stylus    = 'node_files/.bin/stylus'
 
-modules =
+files =
   checkout:
-    in:  'assets/js/checkout/checkout.coffee'
-    out: 'static/js/checkout.js'
+    js:
+      in:  'assets/js/checkout/checkout.coffee'
+      out: 'static/js/checkout.js'
+    css:
+      in:  'assets/css/checkout/checkout.styl'
+      out: 'static/css'
 
   preorder:
-    in:  'assets/js/preorder/preorder.coffee'
-    out: 'static/js/preorder.js'
+    js:
+      in:  'assets/js/preorder/preorder.coffee'
+      out: 'static/js/preorder.js'
+    css:
+      in:  'assets/css/preorder/preorder.styl'
+      out: 'static/css'
 
   store:
-    in:  'assets/js/store/store.coffee'
-    out: 'static/js/store.js'
+    js:
+      in:  'assets/js/store/store.coffee'
+      out: 'static/js/store.js'
+    css:
+      in:  'assets/css/store/store.styl'
+      out: 'static/css'
 
 module.exports =
   cwd: process.cwd() + '/assets'
@@ -26,21 +38,30 @@ module.exports =
     coffee: (src) ->
       # try to just optimize module changed
       if /^js\/checkout/.test src
-        return "#{requisite} #{modules.checkout.in} -o #{modules.checkout.out} -g -s"
+        return "#{requisite} #{files.checkout.js.in} -o #{files.checkout.js.out} -g -s"
       if /^js\/preorder/.test src
-        return "#{requisite} #{modules.preorder.in} -o #{modules.preorder.out} -g -s"
+        return "#{requisite} #{files.preorder.js.in} -o #{files.preorder.js.out} -g -s"
       if /^js\/store/.test src
-        return "#{requisite} #{modules.store.in} -o #{modules.store.out} -g -s"
+        return "#{requisite} #{files.store.js.in} -o #{files.store.js.out} -g -s"
 
       if /^js\//.test src
         # compile everything
-        input  = (v.in for k,v of modules).join ' '
-        output = ('-o ' + v.out for k,v of modules).join ' '
-
-        console.log input
-        console.log output
+        input  = (v.in for k,v of files).join ' '
+        output = ('-o ' + v.out for k,v of files).join ' '
 
         return "#{requisite} #{input} #{output} -g -s"
 
     styl: (src) ->
-      "#{stylus} assets/css/preorder/preorder.styl -o static/css/"
+      # try to just optimize module changed
+      if /^css\/checkout/.test src
+        return "#{files.checkout.css.in} -o #{files.checkout.css.out}"
+      if /^css\/preorder/.test src
+        return "#{files.preorder.css.in} -o #{files.preorder.css.out}"
+      if /^css\/store/.test src
+        return "#{files.store.css.in} -o #{files.store.css.out}"
+
+      if /^css\//.test src
+        # compile everything
+        input  = (v.in for k,v of files).join ' '
+
+        return "#{stylus} #{input} -o static/css/"
