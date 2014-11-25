@@ -49,6 +49,7 @@ class HelmetItemView extends ItemView
         Size:  size
 
       @set 'sku', variant.SKU
+      @emit 'updateColor', color
 
     'change select.size': (e, el) ->
       color = @get 'color'
@@ -64,6 +65,7 @@ class HelmetItemView extends ItemView
       @set 'sku', variant.SKU
 
 class HelmetView extends CategoryView
+  template: '#helmet-template'
   ItemView: HelmetItemView
   itemDefaults:
     sku:      'AR-1-BLACK-M'
@@ -73,9 +75,30 @@ class HelmetView extends CategoryView
     size:     'M'
   name: 'helmet'
 
+
+  bindings: $.extend {}, HelmetView::bindings,
+    color: 'div.thumbnail @src'
+
+  formatters: $.extend {}, HelmetView::formatters,
+    color: (v, selector)->
+      if v == "Matte Black"
+        @$el.find('div.thumbnail .black').animate({opacity: 1})
+        @$el.find('div.thumbnail .white').animate({opacity: 0})
+      else
+        @$el.find('div.thumbnail .white').animate({opacity: 1})
+        @$el.find('div.thumbnail .black').animate({opacity: 0})
+      ''
+
   constructor: ->
     super
     @set 'title', 'Skully AR-1 color & size'
+    @set 'color', 'Matte Black'
+
+  newItem: ->
+    isFirstItem = !@firstItemView
+    super
+    if isFirstItem
+      @firstItemView.on('updateColor', (color)=> @set 'color', color)
 
 window.HelmetItemView = HelmetItemView
 
