@@ -12,7 +12,8 @@ class HatsItemView extends ItemView
     size:       'select.size     @value'
     index:     ['input.sku       @name'
                 'input.slug      @name'
-                'select.size     @name']
+                'select.size     @name'
+                'select.quantity @name']
 
   formatters:
     index: (v, selector) ->
