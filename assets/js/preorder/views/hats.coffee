@@ -12,9 +12,7 @@ class HatsItemView extends ItemView
     size:       'select.size     @value'
     index:     ['input.sku       @name'
                 'input.slug      @name'
-                'select.size     @name'
-                'select.quantity @name'
-                'button.sub      @text']
+                'select.size     @name']
 
   formatters:
     index: (v, selector) ->
@@ -31,11 +29,6 @@ class HatsItemView extends ItemView
           "Order.Items.#{v}.Size"
         when 'select.quantity @name'
           "Order.Items.#{v}.Quantity"
-        when 'button.sub @text'
-          if v > 1
-            '-'
-          else
-            ''
 
   events: $.extend {}, ItemView::events,
     'change select.size': (e, el) ->
