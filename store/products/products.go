@@ -24,3 +24,11 @@ func Get(c *gin.Context) {
 
 	template.Render(c, "product.html", "product", product)
 }
+
+func Store(c *gin.Context) {
+	db := datastore.New(c)
+	var products []models.Product
+	db.Query("product").GetAll(db.Context, &products)
+
+	template.Render(c, "store.html", "products", products)
+}

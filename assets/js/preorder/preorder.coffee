@@ -48,7 +48,7 @@ setupValidation = ->
     ,
       name: 'postal_code'
       display: 'postal code'
-      rules: 'required|alpha_dash'
+      rules: 'required'
     ,
       name: 'helmet-counter'
       rules: 'callback_check_helmet_counter'
