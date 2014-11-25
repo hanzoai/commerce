@@ -29,33 +29,92 @@ exports.displayPerks = ->
 
 exports.displayHelmets = ->
   console.log 'displaying helmets'
-  if window.helmetTotal > 0
-    view = new HelmetView {state: {total: window.helmetTotal}, emitter: new EventEmitter }
-    view.render()
-    view.bind()
+  return unless window.helmetTotal > 0
+
+  view = new HelmetView
+    state:
+      total: window.helmetTotal
+  view.render()
+  view.bind()
+
+  # First time through, no existing order, use defaults
+  unless PreorderData.hasPassword
     view.newItem()
-    $('.item.helmet').append view.$el
-  return
+  else
+    # Get variants
+    variants = {}
+    for variant in AllProducts['ar-1'].Variants
+      variants[variant.SKU] = variant
+
+    # Restore order
+    for item in PreorderData.existingOrder.Items
+      if item.Slug == 'ar-1'
+        itemView = view.newItem()
+        itemView.set 'quantity', item.Quantity
+        itemView.set 'sku',      item.SKU
+        itemView.set 'color',    variants[item.SKU].Color
+        itemView.set 'size',     variants[item.SKU].Size
+
+  $('.item.helmet').append view.$el
 
 exports.displayApparel = ->
   console.log 'displaying apparel'
-  if window.gearTotal > 0
-    view = new GearView {state: {total: window.gearTotal}, emitter: new EventEmitter }
-    view.render()
-    view.bind()
+  return unless window.gearTotal > 0
+
+  view = new GearView
+    state:
+      total: window.gearTotal
+  view.render()
+  view.bind()
+
+  unless PreorderData.hasPassword
     view.newItem()
-    $('.item.gear').append view.$el
-  return
+  else
+    # Get variants
+    variants = {}
+    for variant in AllProducts['t-shirt'].Variants
+      variants[variant.SKU] = variant
+
+    # Restore order
+    for item in PreorderData.existingOrder.Items
+      if item.Slug == 't-shirt'
+        console.log item
+        itemView = view.newItem()
+        itemView.set 'quantity', item.Quantity
+        itemView.set 'sku',      item.SKU
+        itemView.set 'style',    variants[item.SKU].Style
+        itemView.set 'size',     variants[item.SKU].Size
+
+  $('.item.gear').append view.$el
 
 exports.displayHats = ->
-  if window.gearTotal > 0
-    console.log 'displaying hats'
-    view = new HatsView {state: {total: window.gearTotal}, emitter: new EventEmitter }
-    view.render()
-    view.bind()
+  console.log 'displaying hats'
+  return unless window.gearTotal > 0
+
+  view = new HatsView
+    state:
+      total: window.gearTotal
+  view.render()
+  view.bind()
+
+  unless PreorderData.hasPassword
     view.newItem()
-    $('.item.hats').append view.$el
-  return
+  else
+    # Get variants
+    variants = {}
+    for variant in AllProducts['hat'].Variants
+      variants[variant.SKU] = variant
+
+    # Restore order
+    for item in PreorderData.existingOrder.Items
+      if item.Slug == 'hat'
+        console.log item
+        itemView = view.newItem()
+        itemView.set 'quantity', item.Quantity
+        itemView.set 'sku',      item.SKU
+        itemView.set 'size',     variants[item.SKU].Size
+
+  $('.item.hats').append view.$el
 
 exports.initializeShipping = ->
   console.log 'initializing shipping'
