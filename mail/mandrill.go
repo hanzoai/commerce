@@ -28,6 +28,8 @@ var html = func() string {
 	}
 
 	s := strings.Replace(string(b), `"`, `\"`, -1)
+	s = strings.Replace(s, "\n", "", -1)
+	s = strings.Replace(s, "\t", "", -1)
 	return s
 }()
 
