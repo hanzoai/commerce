@@ -162,6 +162,19 @@ func (d *Datastore) Delete(key string) error {
 	return nds.Delete(d.Context, k)
 }
 
+func (d *Datastore) DeleteMulti(keys []string) error {
+	_keys := make([]*Key, 0)
+	for _, key := range keys {
+		k, err := DecodeKey(key)
+		_keys = append(_keys, k)
+		if err != nil {
+			log.Error("%v", err, d.Context)
+			return err
+		}
+	}
+	return nds.DeleteMulti(d.Context, _keys)
+}
+
 func (d *Datastore) Query(kind string) *Query {
 	return NewQuery(kind)
 }
