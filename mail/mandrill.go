@@ -9,14 +9,16 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"appengine/urlfetch"
+
 	"crowdstart.io/util/log"
 )
 
 const apiKey = "wJ3LGLp5ZOUZlSH8wwqmTg"
 const root = "http://mandrillapp.com/api/1.0"
 
-const html = func() string {
-	b, err := ioutil.ReadAll("resources/confirmation_email.html")
+var html = func() string {
+	b, err := ioutil.ReadFile("resources/confirmation_email.html")
 	if err != nil {
 		log.Panic(err.Error())
 		return ""
@@ -96,12 +98,13 @@ func SendMail(c *gin.Context, from_name, from_email, to_name, to_email, subject 
 		"noreply@skullysystems.com",
 	)
 
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(j))
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(j)))
 	if err != nil {
 		log.Panic(err.Error())
 		return err
 	}
 
+	ctx := appengineCtx(c)
 	client := urlfetch.Client(ctx)
 	res, err := client.Do(req)
 	defer res.Body.Close()
@@ -113,6 +116,6 @@ func SendMail(c *gin.Context, from_name, from_email, to_name, to_email, subject 
 	if res.StatusCode == 200 {
 		return nil
 	} else {
-		errors.New("Email not sent")
+		return errors.New("Email not sent")
 	}
 }
