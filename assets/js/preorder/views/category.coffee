@@ -71,15 +71,16 @@ class CategoryView extends ViewEmitter
 
     # Render and bind events
     itemView.render()
-    if _index == 1
-      itemView.$el.find('button.sub').remove()
-
     itemView.bind()
 
     @itemViews[@index] = itemView
     @el.find('.form:first').append itemView.$el
 
-    if @el.find('.form').children().length == @get 'total'
+    itemCount = @el.find('.form').children().length
+    if itemCount == 1
+      itemView.$el.find('button.sub').remove()
+
+    if itemCount == @get 'total'
       itemView.$el.find('button.add').remove()
 
     itemView
