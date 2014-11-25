@@ -2,6 +2,7 @@ package _default
 
 import (
 	"appengine"
+	"appengine/delay"
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/fixtures"
@@ -55,8 +56,13 @@ func Init() {
 	// Warmup: install fixtures, etc.
 	router.GET("/_ah/warmup", func(c *gin.Context) {
 		ctx := appengine.NewContext(c.Request)
-		db := datastore.New(ctx)
-		fixtures.Install(db)
+
+		// Delay fixture install so it has time to complete.
+		installFixtures := delay.Func("install-fixtures", func(c appengine.Context) {
+			db := datastore.New(c)
+			fixtures.Install(db)
+		})
+		installFixtures.Call(ctx)
 
 		conf := config.Get()
 
