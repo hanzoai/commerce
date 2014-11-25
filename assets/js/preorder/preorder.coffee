@@ -2,22 +2,6 @@ App       = require 'mvstar/lib/app'
 ErrorView = require './views/error'
 routes    = require './routes'
 
-class PreorderApp extends App
-  prefix: '/:preorder?'
-
-  routes:
-    '/order/:token': [
-      routes.order.initializeShipping
-      routes.order.displayPerks
-      routes.order.displayHelmets
-      routes.order.displayApparel
-      routes.order.displayHats
-    ]
-
-window.app = app = new PreorderApp()
-
-app.route()
-
 displayErrors = (errors = {}) ->
   $('.errors').html('') # Clear any existing errors
   for error in errors
@@ -108,6 +92,23 @@ showPreorderForm = ->
 $('form').on 'keypress', (e) -> e.keyCode isnt 13
 
 $(document).ready ->
+  class PreorderApp extends App
+
+    prefix: '/:preorder?'
+
+    routes:
+      '/order/:token': [
+        routes.order.initializeShipping
+        routes.order.displayPerks
+        routes.order.displayHelmets
+        routes.order.displayApparel
+        routes.order.displayHats
+      ]
+
+  window.app = app = new PreorderApp()
+
+  app.route()
+
   # prevent password form from submitting
   $('.password-form .submit').on 'submit', (e) -> false
 
