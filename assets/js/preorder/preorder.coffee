@@ -101,12 +101,18 @@ showPreorderForm = ->
   setupValidation()
   displayErrors()
 
+  $('form#skully').on 'submit', ->
+    $('input.submit').attr('disabled', 'disabled')
+
 # Disable enter
 $('form').on 'keypress', (e) -> e.keyCode isnt 13
 
 $(document).ready ->
   # prevent password form from submitting
   $('.password-form .submit').on 'submit', (e) -> false
+
+  $('input.submit').on 'click', ->
+    $('.save-spinner').addClass('loading-spinner')
 
   # Already visited, saved password
   if PreorderData.hasPassword
@@ -138,6 +144,3 @@ $(document).ready ->
       , 500)
 
     false
-  $('input.submit').on 'click', ->
-    $('.save-spinner').addClass('loading-spinner')
-
