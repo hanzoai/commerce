@@ -46,6 +46,8 @@ exports.displayHelmets = ->
     for variant in AllProducts['ar-1'].Variants
       variants[variant.SKU] = variant
 
+    first = true
+
     # Restore order
     for item in PreorderData.existingOrder.Items
       if item.Slug == 'ar-1'
@@ -54,6 +56,9 @@ exports.displayHelmets = ->
         itemView.set 'sku',      item.SKU
         itemView.set 'color',    variants[item.SKU].Color
         itemView.set 'size',     variants[item.SKU].Size
+        if first
+          view.set 'color', variants[item.SKU].Color
+          first = false
 
   $('.item.helmet').append view.$el
 
