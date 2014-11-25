@@ -62,7 +62,14 @@ func Init() {
 
 		// Recompile static assets
 		if conf.AutoCompileAssets {
-			exec.Run("make autocompile-assets")
+			exec.Run("make assets")
 		}
+	})
+
+	router.GET("/install-fixtures", func(c *gin.Context) {
+		ctx := appengine.NewContext(c.Request)
+		db := datastore.New(ctx)
+		fixtures.Install(db)
+		c.String(200, "Fixtures installed")
 	})
 }
