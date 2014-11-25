@@ -12,7 +12,9 @@ import (
 const apiKey = ""
 const root = "mandrill.com"
 
-func PingMandrill(c *gin.Context) {
+// PingMandrill checks if our credentials/url are okay
+// Returns true if Mandrill replies with  a 200 OK
+func PingMandrill(c *gin.Context) bool {
 	url := root + "/users/ping.json"
 	ctx := appengineCtx(c)
 
