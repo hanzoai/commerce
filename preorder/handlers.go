@@ -116,6 +116,9 @@ func SavePreorder(c *gin.Context) {
 			return
 		}
 
+		// Set SKU so we can deserialize later
+		lineItem.SKU_ = lineItem.SKU()
+
 		// Update item in order
 		order.Items[i] = lineItem
 
