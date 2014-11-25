@@ -34,6 +34,15 @@ func GetPreorder(c *gin.Context) {
 		return
 	}
 
+	// If user has password, they've previously edited the preorder
+	order := new(models.Order)
+	if user.HasPassword() {
+		if err := db.GetKey("order", user.Email, order); err != nil {
+			log.Error("Failed to fetch order for user: %v", err, c)
+		}
+	}
+	orderJSON := json.Encode(order)
+
 	// Find all of a user's contributions
 	contributions := new([]models.Contribution)
 	if _, err := db.Query("contribution").Filter("Email =", user.Email).GetAll(db.Context, contributions); err != nil {
@@ -55,11 +64,12 @@ func GetPreorder(c *gin.Context) {
 	allProductsJSON := json.Encode(productsMap)
 
 	template.Render(c, "preorder.html",
-		"user", user,
 		"tokenId", token.Id,
-		"userJSON", userJSON,
-		"contributionsJSON", contributionsJSON,
+		"user", user,
 		"allProductsJSON", allProductsJSON,
+		"contributionsJSON", contributionsJSON,
+		"orderJSON", orderJSON,
+		"userJSON", userJSON,
 	)
 }
 
@@ -114,6 +124,7 @@ func SavePreorder(c *gin.Context) {
 
 		// Set SKU so we can deserialize later
 		lineItem.SKU_ = lineItem.SKU()
+		lineItem.Slug_ = lineItem.Slug()
 
 		// Update item in order
 		order.Items[i] = lineItem
