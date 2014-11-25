@@ -2,22 +2,6 @@ App       = require 'mvstar/lib/app'
 ErrorView = require './views/error'
 routes    = require './routes'
 
-class PreorderApp extends App
-  prefix: '/:preorder?'
-
-  routes:
-    '/order/:token': [
-      routes.order.initializeShipping
-      routes.order.displayPerks
-      routes.order.displayHelmets
-      routes.order.displayApparel
-      routes.order.displayHats
-    ]
-
-window.app = app = new PreorderApp()
-
-app.route()
-
 displayErrors = (errors = {}) ->
   $('.errors').html('') # Clear any existing errors
   for error in errors
@@ -32,12 +16,14 @@ displayErrors = (errors = {}) ->
 
     $('.errors').append view.el
 
+    $('.loading-spinner').removeClass('loading-spinner')
+  setTimeout(->
+    $('.submit').removeAttr('disabled')
+  , 10)
+
 setupValidation = ->
   # Form validation
   validator = new FormValidator 'skully', [
-      name: 'email'
-      rules: 'required|valid_email'
-    ,
       name: 'password'
       rules: 'required|min_length[6]'
     ,
@@ -53,9 +39,6 @@ setupValidation = ->
       display: 'last name'
       rules: 'required'
     ,
-      name: 'phone'
-      rules: 'callback_numeric_dash'
-    ,
       name: 'address1'
       display: 'address'
       rules: 'required'
@@ -65,7 +48,7 @@ setupValidation = ->
     ,
       name: 'postal_code'
       display: 'postal code'
-      rules: 'required|alpha_dash'
+      rules: 'required'
     ,
       name: 'helmet-counter'
       rules: 'callback_check_helmet_counter'
@@ -98,15 +81,40 @@ showPreorderForm = ->
   setupValidation()
   displayErrors()
 
+  $('form#skully').on 'submit', ->
+    $('input.submit').attr('disabled', 'disabled')
+
 # Disable enter
 $('form').on 'keypress', (e) -> e.keyCode isnt 13
 
 $(document).ready ->
+  class PreorderApp extends App
+
+    prefix: '/:preorder?'
+
+    routes:
+      '/order/:token': [
+        routes.order.initializeShipping
+        routes.order.displayPerks
+        routes.order.displayHelmets
+        routes.order.displayApparel
+        routes.order.displayHats
+      ]
+
+  window.app = app = new PreorderApp()
+
+  app.route()
+
   # prevent password form from submitting
   $('.password-form .submit').on 'submit', (e) -> false
 
+  $('input.submit').on 'click', ->
+    $('.save-spinner').addClass('loading-spinner')
+
   # Already visited, saved password
-  return showPreorderForm() if PreorderData.hasPassword
+  if PreorderData.hasPassword
+    $('.password-form').remove()
+    return showPreorderForm()
 
   # New account
   $('.password-form').show()
@@ -127,6 +135,9 @@ $(document).ready ->
     if errors.length
       displayErrors errors
     else
-      showPreorderForm()
+      $('.next-spinner').addClass('loading-spinner')
+      setTimeout(->
+        showPreorderForm()
+      , 500)
 
     false

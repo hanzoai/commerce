@@ -2,6 +2,7 @@ package _default
 
 import (
 	"appengine"
+	"appengine/delay"
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/fixtures"
@@ -9,6 +10,12 @@ import (
 	"crowdstart.io/util/router"
 	"github.com/gin-gonic/gin"
 )
+
+// Delay fixture install so it has time to complete.
+var installFixtures = delay.Func("install-fixtures", func(c appengine.Context) {
+	db := datastore.New(c)
+	fixtures.Install(db)
+})
 
 func Init() {
 	router := router.New("default")
@@ -54,15 +61,26 @@ func Init() {
 
 	// Warmup: install fixtures, etc.
 	router.GET("/_ah/warmup", func(c *gin.Context) {
-		ctx := appengine.NewContext(c.Request)
-		db := datastore.New(ctx)
-		fixtures.Install(db)
+		if config.IsProduction {
+			c.String(500, "Not utilized in production")
+			return
+		}
 
-		conf := config.Get()
+		ctx := appengine.NewContext(c.Request)
+		installFixtures.Call(ctx)
 
 		// Recompile static assets
-		if conf.AutoCompileAssets {
-			exec.Run("make autocompile-assets")
+		if config.AutoCompileAssets {
+			exec.Run("make assets")
 		}
+	})
+
+	router.GET("/install-fixtures", func(c *gin.Context) {
+		ctx := appengine.NewContext(c.Request)
+
+		// Start install-fixtures task
+		installFixtures.Call(ctx)
+
+		c.String(200, "Fixtures installing...")
 	})
 }
