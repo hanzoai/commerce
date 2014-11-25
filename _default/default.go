@@ -11,6 +11,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// Delay fixture install so it has time to complete.
+var installFixtures = delay.Func("install-fixtures", func(c appengine.Context) {
+	db := datastore.New(c)
+	fixtures.Install(db)
+})
+
 func Init() {
 	router := router.New("default")
 
@@ -57,11 +63,7 @@ func Init() {
 	router.GET("/_ah/warmup", func(c *gin.Context) {
 		ctx := appengine.NewContext(c.Request)
 
-		// Delay fixture install so it has time to complete.
-		installFixtures := delay.Func("install-fixtures", func(c appengine.Context) {
-			db := datastore.New(c)
-			fixtures.Install(db)
-		})
+		// Start install-fixtures task
 		installFixtures.Call(ctx)
 
 		conf := config.Get()
