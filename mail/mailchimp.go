@@ -1,4 +1,4 @@
-package mailchimp
+package mail
 
 import (
 	"bytes"
