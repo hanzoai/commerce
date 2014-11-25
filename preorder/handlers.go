@@ -77,6 +77,16 @@ func GetPreorder(c *gin.Context) {
 	)
 }
 
+// hasToken checks whether any of the tokens have the id
+func hasToken(tokens []models.Token, id string) bool {
+	for i, token := range tokens {
+		if token.Id == id {
+			return true
+		}
+	}
+	return false
+}
+
 func SavePreorder(c *gin.Context) {
 	form := new(PreorderForm)
 	if err := form.Parse(c); err != nil {
@@ -95,7 +105,7 @@ func SavePreorder(c *gin.Context) {
 	if len(tokens) < 1 {
 		c.Fail(500, errors.New("Failed to find pre-order token."))
 		return
-	} else if tokens[0].Id != form.Token.Id {
+	} else if !hasToken(tokens, form.Token.Id) {
 		c.Fail(500, errors.New("Token not valid for user email."))
 		return
 	}
