@@ -83,7 +83,7 @@ func SendMail(c *gin.Context, from_name, from_email, to_name, to_email, subject 
             "skully, preorder"
         ]
     },
-    "async": false,
+    "async": true,
     "ip_pool": "Main Pool"
 }`,
 		apiKey,
