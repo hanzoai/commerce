@@ -7,6 +7,7 @@ import (
 
 	"crowdstart.io/auth"
 	"crowdstart.io/datastore"
+	"crowdstart.io/mail"
 	"crowdstart.io/models"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
@@ -113,7 +114,9 @@ func SavePreorder(c *gin.Context) {
 	log.Debug("Found token")
 
 	// Update user's password if this is the first time saving.
-	if !user.HasPassword() {
+	firstTime := !user.HasPassword()
+
+	if firstTime {
 		user.PasswordHash = form.User.PasswordHash
 	}
 
@@ -174,6 +177,13 @@ func SavePreorder(c *gin.Context) {
 		return
 	}
 
+	// ctx appengine.Context, from_name, from_email, to_name, to_email, subject string
+	go mail.SendMail(c,
+		"SKULLY",
+		"noreply@skullysystems.com",
+		user.Email,
+		"Thank you for updating your preorder information",
+	)
 	c.Redirect(301, "../thanks")
 }
 
