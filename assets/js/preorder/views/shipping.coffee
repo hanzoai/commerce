@@ -1,15 +1,21 @@
 View = require 'mvstar/lib/view'
 
 # Swaps international shipping options if outside US.
-swapInternationalOptions = (v) ->
-  if v == 'United States'
-    @el.find('intl-only').remove()
-    $('.shipping').addClass 'us'
-    $('.shipping').removeClass 'intl'
-  else
-    @el.find('us-only').remove()
-    $('.shipping').addClass 'intl'
-    $('.shipping').removeClass 'us'
+swapInternationalOptions = do ->
+  swapped = false
+
+  (v) ->
+    return if swapped
+
+    if v == 'United States'
+      @el.find('.intl-only').remove()
+      $('.shipping').addClass 'us'
+      $('.shipping').removeClass 'intl'
+    else
+      @el.find('.us-only').remove()
+      $('.shipping').addClass 'intl'
+      $('.shipping').removeClass 'us'
+    swapped = true
 
 class ShippingView extends View
   template: '#shipping-template'
@@ -28,8 +34,5 @@ class ShippingView extends View
     PostalCode: '#postal_code    @value'
     Country:   ['#country        @value'
                 swapInternationalOptions]
-  events:
-    'change #country': (e, el) ->
-      @set 'Country', $(el).val()
 
 module.exports = ShippingView
