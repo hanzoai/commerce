@@ -47,13 +47,12 @@ func GetPreorder(c *gin.Context) {
 	orderJSON := json.Encode(order)
 
 	// Find all of a user's contributions
-	contributions := new([]models.Contribution)
-	if _, err := db.Query("contribution").Filter("Email =", user.Email).GetAll(db.Context, contributions); err != nil {
+	var contributions []models.Contribution
+	if _, err := db.Query("contribution").Filter("Email =", user.Email).GetAll(db.Context, &contributions); err != nil {
 		log.Panic("Failed to find contributions: %v", err, c)
 	}
 
 	log.Debug("Contributions: %v", contributions)
-
 	userJSON := json.Encode(user)
 	contributionsJSON := json.Encode(contributions)
 
