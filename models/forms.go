@@ -4,6 +4,7 @@ import (
 	"code.google.com/p/go.crypto/bcrypt"
 	"crowdstart.io/util/form"
 	"github.com/gin-gonic/gin"
+	"strings"
 )
 
 type LoginForm struct {
@@ -16,7 +17,13 @@ func (f *LoginForm) PasswordHash() ([]byte, error) {
 }
 
 func (f *LoginForm) Parse(c *gin.Context) error {
-	return form.Parse(c, f)
+	if err := form.Parse(c, f); err != nil {
+		return err
+	}
+
+	f.Email = strings.ToLower(f.Email)
+
+	return nil
 }
 
 type RegistrationForm struct {
