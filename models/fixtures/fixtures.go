@@ -69,7 +69,7 @@ var perks = map[string]Perk{
 		Id:                "2210221",
 		Title:             "International SKULLY AR-1",
 		Description:       "Includes international shipping. Get 1 SKULLY AR-1 Motorcycle helmet at our international launch price. Sizes S-XXL in Matte Black or Gloss White.",
-		Price:             "$1,599 USD",
+		Price:             "$1,599 USD ($100 refund at shipment)",
 		EstimatedDelivery: "May 2015",
 		HelmetQuantity:    1,
 		GearQuantity:      1,
