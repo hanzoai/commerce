@@ -61,6 +61,11 @@ func Init() {
 
 	// Warmup: install fixtures, etc.
 	router.GET("/_ah/warmup", func(c *gin.Context) {
+		if config.IsProduction {
+			c.String(500, "Not utilized in production")
+			return
+		}
+
 		ctx := appengine.NewContext(c.Request)
 
 		// Start install-fixtures task
