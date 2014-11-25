@@ -35,4 +35,15 @@ class ShippingView extends View
     Country:   ['#country        @value'
                 swapInternationalOptions]
 
+  formatters:
+    FirstName: (v, selector) ->
+      switch selector
+        when '#first_name @value'
+          v
+        when '.first_name @text'
+          if v != ''
+            ', ' + v
+          else
+            ''
+
 module.exports = ShippingView
