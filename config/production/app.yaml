@@ -57,7 +57,7 @@ pagespeed:
 
     # js
     # - CombineJs
-    - JsOptimize
+    # - JsOptimize
     # - DeferJs
 
   disabled_rewriters:
