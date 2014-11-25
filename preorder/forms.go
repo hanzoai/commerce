@@ -1,7 +1,6 @@
 package preorder
 
 import (
-	"errors"
 	"strings"
 
 	"github.com/gin-gonic/gin"
