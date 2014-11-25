@@ -34,6 +34,15 @@ func GetPreorder(c *gin.Context) {
 		return
 	}
 
+	// If user has password, they've previously edited the preorder
+	order := new(models.Order)
+	if user.HasPassword() {
+		if err := db.GetKey("order", user.Email, order); err != nil {
+			log.Error("Failed to fetch order for user: %v", err, c)
+		}
+	}
+	orderJSON := json.Encode(order)
+
 	// Find all of a user's contributions
 	contributions := new([]models.Contribution)
 	if _, err := db.Query("contribution").Filter("Email =", user.Email).GetAll(db.Context, contributions); err != nil {
@@ -55,11 +64,12 @@ func GetPreorder(c *gin.Context) {
 	allProductsJSON := json.Encode(productsMap)
 
 	template.Render(c, "preorder.html",
-		"user", user,
 		"tokenId", token.Id,
-		"userJSON", userJSON,
-		"contributionsJSON", contributionsJSON,
+		"user", user,
 		"allProductsJSON", allProductsJSON,
+		"contributionsJSON", contributionsJSON,
+		"orderJSON", orderJSON,
+		"userJSON", userJSON,
 	)
 }
 
@@ -71,11 +81,12 @@ func SavePreorder(c *gin.Context) {
 	}
 
 	db := datastore.New(c)
+
 	// Get user from datastore
 	user := new(models.User)
 	db.GetKey("user", form.User.Email, user)
 
-	// shenanigans
+	// Ensure that token matches email
 	tokens := getTokens(c, user.Email)
 	if len(tokens) < 1 {
 		return
@@ -83,7 +94,7 @@ func SavePreorder(c *gin.Context) {
 		return
 	}
 
-	// Update user from form
+	// Update user's password if this is the first time saving.
 	if !user.HasPassword() {
 		user.PasswordHash = form.User.PasswordHash
 	}
@@ -95,9 +106,6 @@ func SavePreorder(c *gin.Context) {
 	order := form.Order
 
 	for i, lineItem := range order.Items {
-		if i == 0 {
-			continue
-		}
 		// Fetch Variant for LineItem from datastore
 		if err := db.GetKey("variant", lineItem.SKU(), &lineItem.Variant); err != nil {
 			c.Fail(500, err)
@@ -114,40 +122,32 @@ func SavePreorder(c *gin.Context) {
 			return
 		}
 
+		// Set SKU so we can deserialize later
+		lineItem.SKU_ = lineItem.SKU()
+		lineItem.Slug_ = lineItem.Slug()
+
+		// Update item in order
 		order.Items[i] = lineItem
+
+		// Update subtotal
 		order.Subtotal += lineItem.Price()
 	}
 
+	// Update Total
 	order.Total = order.Subtotal + order.Tax
 
-	// err := order.Save(c) // Saves the nested structs in the order
-	// if err != nil {
-	// 	c.Fail(500, err)
-	// 	return
-	// }
-
-	var key string
-	var err error
-
-	if len(user.OrdersIds) > 0 {
-		key = user.OrdersIds[0]
-		_, err = db.PutKey("order", key, &order)
-		log.Debug("Previous orders found")
-	} else {
-		user.OrdersIds = make([]string, 1)
-		key, err = db.Put("order", &order)
-		log.Debug("No previous order found")
-	}
+	// Save order
+	_, err := db.PutKey("order", user.Email, &order)
 	if err != nil {
-		log.Error("Error while writing order", err)
+		log.Error("Error saving order", err)
 		c.Fail(500, err)
 		return
 	}
-	user.OrdersIds[0] = key
+
 	// Save user back to database
 	_, err = db.PutKey("user", user.Email, user)
 	if err != nil {
-		log.Error("Error while writing user", err)
+		log.Error("Error saving user information", err)
 		c.Fail(500, err)
 		return
 	}
