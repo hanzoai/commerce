@@ -15,7 +15,7 @@ handlers:
   login: required
   secure: always
 
-- url: /_ah/.*
+- url: /_ah/queue/go/delay
   script: _go_app
   login: admin
 
