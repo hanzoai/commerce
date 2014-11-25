@@ -74,6 +74,8 @@ all: deps assets test
 
 assets: deps-assets compile-css compile-js
 
+assets-minified: deps-assets compile-css compile-minified-js
+
 compile-js:
 	$(requisite) $(requisite_opts) -g -s
 
@@ -148,12 +150,20 @@ bench: build
 deploy: test
 	go run scripts/deploy.go
 
-deploy-appengine: assets
+deploy-appengine: assets-minified
 	for module in $(gae_production); do \
-		$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) rollback $$module; \
-		$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update $$module; \
-		$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) set_default_version $$module; \
+		$(sdk_path)/appcfg.py --skip_sdk_update_check rollback $$module; \
+		$(sdk_path)/appcfg.py --skip_sdk_update_check update $$module; \
+		$(sdk_path)/appcfg.py --skip_sdk_update_check set_default_version $$module; \
 	done; \
-	$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update_dispatch config/production
+	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/production
+
+deploy-appengine-ci: assets-minified
+	for module in $(gae_production); do \
+		$(sdk_path)/appcfg.py --skip_sdk_update_check rollback $$module; \
+		$(sdk_path)/appcfg.py --skip_sdk_update_check update $$module; \
+		$(sdk_path)/appcfg.py --skip_sdk_update_check set_default_version $$module; \
+	done; \
+	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/production
 
 .PHONY: all assets compile-css compile-js live-reload build deploy deps deps-assets deps-go serve test tools
