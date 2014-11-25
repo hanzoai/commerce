@@ -25,15 +25,15 @@ func (f *PreorderForm) Parse(c *gin.Context) error {
 		return err
 	}
 
-	// Checks if the both passwords on the form are equal
-	if f.Password != f.PasswordConfirm {
-		return errors.New("Password and password confirmation are not equal")
-	}
+	// // Checks if the both passwords on the form are equal
+	// if f.Password != f.PasswordConfirm {
+	// 	return errors.New("Password and password confirmation are not equal")
+	// }
 
-	// And if the password is at least 6 chars long
-	if len(f.Password) < 6 {
-		return errors.New("Password is less than 6 characters long")
-	}
+	// // And if the password is at least 6 chars long
+	// if len(f.Password) < 6 {
+	// 	return errors.New("Password is less than 6 characters long")
+	// }
 
 	// removes whitespace
 	f.User.Email = strings.TrimSpace(f.User.Email)
