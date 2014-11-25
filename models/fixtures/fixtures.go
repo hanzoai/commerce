@@ -417,14 +417,14 @@ func Install(db *datastore.Datastore) {
 	})
 
 	// Try to import existing contributors, but only if we have yet to
-	count, err := db.Query("contribution").KeysOnly().Count(db.Context)
-	log.Debug("Contributions persisted: %v", count)
-	if count > 0 {
-		return
-	}
-	if err != nil {
-		log.Fatal("Failed to query for contributions: %v", err)
-	}
+	// count, err := db.Query("contribution").KeysOnly().Count(db.Context)
+	// log.Debug("Contributions persisted: %v", count)
+	// if count > 0 {
+	// 	return
+	// }
+	// if err != nil {
+	// 	log.Fatal("Failed to query for contributions: %v", err)
+	// }
 
 	csvfile, err := os.Open("resources/contributions.csv")
 	defer csvfile.Close()
