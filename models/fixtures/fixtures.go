@@ -15,6 +15,26 @@ import (
 )
 
 var perks = map[string]Perk{
+	"2210257": Perk{
+		Id:                "2210257",
+		Title:             "Speed Demon SKULLY AR-1",
+		Description:       "One of the first 25 riders to get a SKULLY AR-1 Motorcycle helmet at an unbeatable price. Free shipping to the United States. Sizes S-XXL in Matte Black or Gloss White.",
+		Price:             "$1,299 USD",
+		EstimatedDelivery: "May 2015",
+		HelmetQuantity:    1,
+		GearQuantity:      1,
+	},
+
+	"2238897": Perk{
+		Id:                "2238897",
+		Title:             "Speed Demon SKULLY AR-1",
+		Description:       "One of the first 25 riders to get a SKULLY AR-1 Motorcycle helmet at an unbeatable price. Free shipping to the United States. Sizes S-XXL in Matte Black or Gloss White.",
+		Price:             "$1,299 USD",
+		EstimatedDelivery: "May 2015",
+		HelmetQuantity:    1,
+		GearQuantity:      1,
+	},
+
 	"2123732": Perk{
 		Id:                "2123732",
 		Title:             "SKULLY AR-1",
