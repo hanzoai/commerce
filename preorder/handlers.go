@@ -114,7 +114,7 @@ func SavePreorder(c *gin.Context) {
 
 	// Update user's password if this is the first time saving.
 	if !user.HasPassword() {
-		user.PasswordHash = form.User.PasswordHash
+		form.Password == form.PasswordConfirm
 	}
 	user.Phone = form.User.Phone
 	user.FirstName = form.User.FirstName
