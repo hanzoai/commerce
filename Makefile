@@ -128,13 +128,13 @@ install-deps:
 	# pip install watchdog
 
 serve: assets
-	$(sdk_path)/dev_appserver.py --datastore_path=~/.gae_datastore.bin $(gae_development)
+	$(sdk_path)/dev_appserver.py --host=0.0.0.0 --datastore_path=~/.gae_datastore.bin $(gae_development)
 
 serve-clear-datastore: assets
-	$(sdk_path)/dev_appserver.py --datastore_path=~/.gae_datastore.bin --clear_datastore=true $(gae_development)
+	$(sdk_path)/dev_appserver.py --host=0.0.0.0 --datastore_path=~/.gae_datastore.bin --clear_datastore=true $(gae_development)
 
 serve-no-restart: assets
-	$(sdk_path)/dev_appserver.py --datastore_path=~/.gae_datastore.bin --automatic_restart=false $(gae_development)
+	$(sdk_path)/dev_appserver.py --host=0.0.0.0 --datastore_path=~/.gae_datastore.bin --automatic_restart=false $(gae_development)
 
 tools:
 	goapp get $(tools) && \
