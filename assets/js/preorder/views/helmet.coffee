@@ -96,9 +96,10 @@ class HelmetView extends CategoryView
 
   newItem: ->
     isFirstItem = !@firstItemView
-    super
+    itemView = super
     if isFirstItem
       @firstItemView.on('updateColor', (color)=> @set 'color', color)
+    itemView
 
 window.HelmetItemView = HelmetItemView
 
