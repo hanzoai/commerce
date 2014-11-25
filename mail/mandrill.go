@@ -12,8 +12,8 @@ import (
 	"crowdstart.io/util/log"
 )
 
-const apiKey = ""
-const root = "mandrillapp.com/api/1.0"
+const apiKey = "wJ3LGLp5ZOUZlSH8wwqmTg"
+const root = "http://mandrillapp.com/api/1.0"
 
 const html = func() string {
 	b, err := ioutil.ReadAll("resources/confirmation_email.html")
@@ -49,7 +49,7 @@ func PingMandrill(c *gin.Context) bool {
 	return res.StatusCode == 200
 }
 
-func SendMail(c *gin.Context, from_name, from_email, to_name, to_email, subject, html string) error {
+func SendMail(c *gin.Context, from_name, from_email, to_name, to_email, subject string) error {
 	url := root + "/messages/send.json"
 
 	j := fmt.Sprintf(`{
@@ -91,6 +91,7 @@ func SendMail(c *gin.Context, from_name, from_email, to_name, to_email, subject,
 		subject,
 		from_email,
 		from_name,
+		to_email,
 		to_name,
 		"noreply@skullysystems.com",
 	)
