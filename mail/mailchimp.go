@@ -15,14 +15,13 @@ import (
 	"crowdstart.io/util/log"
 )
 
-func appengineCtx(c *gin.Context) appengine.Context {
+func AppengineCtx(c *gin.Context) appengine.Context {
 	return appengine.NewContext(c.Request)
 }
 
 // Ping is a helper function for checking if our info is correct
-func Ping(c *gin.Context) bool {
+func Ping(ctx appengine.Context) bool {
 	url := root + "/helper/ping.json"
-	ctx := appengineCtx(c)
 
 	body := []byte(fmt.Sprintf(`{"apikey": "%s", "msg": "ping"}`, apiKey))
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
@@ -48,7 +47,7 @@ type Content struct {
 }
 
 // CampaignContent returns
-func CampaignContent(c *gin.Context, campaignId string) (content Content, err error) {
+func CampaignContent(ctx appengine.Context, campaignId string) (content Content, err error) {
 	url := root + "/campaigns/content.json"
 
 	body := []byte(fmt.Sprintf(`{"apikey": "%s", "cid": "%s"}`, apiKey, campaignId))
@@ -59,7 +58,6 @@ func CampaignContent(c *gin.Context, campaignId string) (content Content, err er
 		return content, err
 	}
 
-	ctx := appengineCtx(c)
 	client := urlfetch.Client(ctx)
 	res, err := client.Do(req)
 	defer res.Body.Close()
