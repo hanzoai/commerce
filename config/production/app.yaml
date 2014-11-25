@@ -15,6 +15,10 @@ handlers:
   login: required
   secure: always
 
+- url: /_ah/.*
+  script: _go_app
+  login: admin
+
 - url: /*
   static_dir: static
   http_headers:
