@@ -2,15 +2,28 @@ package mail
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
-	"log"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
+	"crowdstart.io/util/log"
 )
 
 const apiKey = ""
 const root = "mandrill.com"
+
+const html = func() string {
+	b, err := ioutil.ReadAll("resources/email_reply.html")
+	if err != nil {
+		log.Panic(err.Error())
+		return ""
+	}
+
+	return string(b)
+}()
 
 // PingMandrill checks if our credentials/url are okay
 // Returns true if Mandrill replies with  a 200 OK
@@ -37,6 +50,8 @@ func PingMandrill(c *gin.Context) bool {
 }
 
 func SendMail(c *gin.Context, from_name, from_email, to_name, to_email, subject, html string) error {
+	url := root + "/messages/send.json"
+
 	j := fmt.Sprintf(`{
     "key": "%s",
     "message": {
@@ -80,4 +95,23 @@ func SendMail(c *gin.Context, from_name, from_email, to_name, to_email, subject,
 		"noreply@skullysystems.com",
 	)
 
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(j))
+	if err != nil {
+		log.Panic(err.Error())
+		return err
+	}
+
+	client := urlfetch.Client(ctx)
+	res, err := client.Do(req)
+	defer res.Body.Close()
+	if err != nil {
+		log.Panic(err.Error())
+		return err
+	}
+
+	if res.StatusCode == 200 {
+		return nil
+	} else {
+		errors.New("Email not sent")
+	}
 }
