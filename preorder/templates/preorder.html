@@ -13,6 +13,7 @@ var PreorderData = {
     contributions: {{ contributionsJSON | safe }},
     user: {{ userJSON | safe }},
 };
+var StaticPath = '{{ staticUrl }}';
 
 {% if orderJSON %}
 PreorderData.existingOrder = {{ orderJSON | safe }};

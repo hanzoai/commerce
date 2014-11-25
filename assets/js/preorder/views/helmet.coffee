@@ -88,6 +88,11 @@ class HelmetView extends CategoryView
     @set 'title', 'Skully AR-1 color & size'
     @set 'color', 'Matte Black'
 
+  render: ->
+    super
+    @$el.find('div.thumbnail .black').css('background-image', 'url(' + StaticPath + '/img/matteblackar1.jpg)')
+    @$el.find('div.thumbnail .white').css('background-image', 'url(' + StaticPath + '/img/glossywhitear1.jpg)')
+
   newItem: ->
     isFirstItem = !@firstItemView
     itemView = super
