@@ -13,10 +13,10 @@ import (
 )
 
 const apiKey = ""
-const root = "mandrill.com"
+const root = "mandrillapp.com/api/1.0"
 
 const html = func() string {
-	b, err := ioutil.ReadAll("resources/email_reply.html")
+	b, err := ioutil.ReadAll("resources/confirmation_email.html")
 	if err != nil {
 		log.Panic(err.Error())
 		return ""
