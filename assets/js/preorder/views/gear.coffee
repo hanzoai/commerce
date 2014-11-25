@@ -30,8 +30,7 @@ class GearItemView extends ItemView
                 'input.slug      @name'
                 'select.style    @name'
                 'select.size     @name'
-                'select.quantity @name'
-                'button.sub      @text']
+                'select.quantity @name']
 
   formatters:
     index: (v, selector) ->
@@ -48,11 +47,6 @@ class GearItemView extends ItemView
           "Order.Items.#{v}.Size"
         when 'select.quantity @name'
           "Order.Items.#{v}.Quantity"
-        when 'button.sub @text'
-          if v > 1
-            '-'
-          else
-            ''
 
   events: $.extend {}, ItemView::events,
     'change select.style': (e, el) ->
