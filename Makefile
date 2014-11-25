@@ -74,6 +74,8 @@ all: deps assets test
 
 assets: deps-assets compile-css compile-js
 
+assets-minified: deps-assets compile-css compile-minified-js
+
 compile-js:
 	$(requisite) $(requisite_opts) -g -s
 
@@ -148,7 +150,7 @@ bench: build
 deploy: test
 	go run scripts/deploy.go
 
-deploy-appengine: assets
+deploy-appengine: assets-minified
 	for module in $(gae_production); do \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) rollback $$module; \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2_refresh_token=$(gae_token) update $$module; \
