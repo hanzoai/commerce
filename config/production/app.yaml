@@ -17,6 +17,8 @@ handlers:
 
 - url: /*
   static_dir: static
+  http_headers:
+    Access-Control-Allow-Origin: "*"
 
 pagespeed:
   enabled_rewriters:
