@@ -1,10 +1,14 @@
 package preorder
 
 import (
+	"errors"
+	"strings"
+
+	"github.com/gin-gonic/gin"
+
 	"crowdstart.io/auth"
 	"crowdstart.io/models"
 	"crowdstart.io/util/form"
-	"github.com/gin-gonic/gin"
 )
 
 type PreorderForm struct {
@@ -20,6 +24,19 @@ func (f *PreorderForm) Parse(c *gin.Context) error {
 	if err := form.Parse(c, f); err != nil {
 		return err
 	}
+
+	// Checks if the both passwords on the form are equal
+	if form.Password != form.PasswordConfirm {
+		return errors.New("Password and password confirmation are not equal")
+	}
+
+	// And if the password is at least 6 chars long
+	if len(form.Password) < 6 {
+		return errors.New(500, "Password is less than 6 characters long")
+	}
+
+	// removes whitespace
+	form.User.Email = strings.TrimSpace(form.User.Email)
 
 	// Schema creates the Order.Items slice sized to whatever is the largest
 	// index form item. This creates a slice with a huge number of nil structs,
