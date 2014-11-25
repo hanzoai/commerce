@@ -15,9 +15,6 @@ import (
 	"crowdstart.io/util/log"
 )
 
-const apiKey = ""
-const root = "us2.api.mailchimp.com/2.0"
-
 func appengineCtx(c *gin.Context) appengine.Context {
 	return appengine.NewContext(c.Request)
 }
