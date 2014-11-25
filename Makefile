@@ -77,6 +77,9 @@ assets: deps-assets compile-css compile-js
 compile-js:
 	$(requisite) $(requisite_opts) -g -s
 
+compile-minified-js:
+	$(requisite) $(requisite_opts) -g -s -m
+
 compile-css:
 	$(stylus) $(stylus_opts)
 
