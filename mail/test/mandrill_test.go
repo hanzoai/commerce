@@ -42,7 +42,7 @@ func TestSendMail(t *testing.T) {
 	ctx := appengine.NewContext(req)
 
 	err = mail.SendMail(ctx, "from_name", "dev@hanzo.ai", "to_name",
-		"marvel.j.mathew@gmail.com",
+		"dev@hanzo.ai",
 		"test")
 
 	if err != nil {
