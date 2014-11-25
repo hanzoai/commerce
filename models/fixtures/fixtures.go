@@ -491,13 +491,14 @@ func Install(db *datastore.Datastore) {
 
 		// Save contribution
 		contribution := Contribution{
+			Id:            row[2],
 			Perk:          perks[perkId],
 			Status:        row[3],
 			FundingDate:   row[4],
 			PaymentMethod: row[5],
 			Email:         email,
 		}
-		db.Put("contribution", &contribution)
+		db.PutKey("contribution", row[2], &contribution)
 
 		// Create user
 		user := new(User)
