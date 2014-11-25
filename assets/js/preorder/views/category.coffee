@@ -75,6 +75,7 @@ class CategoryView extends ViewEmitter
       itemView.$el.find('button.sub').remove()
 
     itemView.bind()
+
     @itemViews[@index] = itemView
     @el.find('.form:first').append itemView.$el
 
