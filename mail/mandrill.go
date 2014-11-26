@@ -27,10 +27,13 @@ func GetHtml(filename string) string {
 		log.Panic(err.Error())
 		return ""
 	}
-
-	s := strings.Replace(string(b), `"`, `\"`, -1)
-	s = strings.Replace(s, "\n", "", -1)
-	s = strings.Replace(s, "\t", "", -1)
+	return string(b)
+	s := string(b)
+	//s = strings.Replace(s, `\`, `\\`, -1)
+	s = strings.Replace(s, "\n", " ", -1)
+	s = strings.Replace(s, `"`, `\"`, -1)
+	//s = strings.Replace(s, "\t", "", -1)
+	//s = strings.Replace(s, " ", "", -1)
 	return s
 }
 
@@ -61,14 +64,35 @@ func PingMandrill(ctx appengine.Context) bool {
 	return res.StatusCode == 200
 }
 
-func SendMail(ctx appengine.Context, from_name, from_email, to_name, to_email, subject, html string) error {
+func SendMail(
+	ctx appengine.Context,
+	from_name, from_email, to_name, to_email, subject, template string,
+	vars map[string]string) error {
+	t.Fail()
+	// Convert the map of vars to a byte buffer of a json string
+	var varsJson bytes.Buffer
+	func() {
+		i := 0
+		varsJson.WriteString("[")
+		for k, v := range vars {
+			if i != 0 {
+				varsJson.WriteString(",")
+			}
+			varsJson.WriteString(fmt.Sprintf(`{ "name" : "%s", "content" : "%s"}`, k, v))
+			i += 1
+		}
+		varsJson.WriteString("]")
+	}()
+
 	url := root + "/messages/send.json"
 	log.Debug(url)
 
-	j := fmt.Sprintf(`{
+	j := fmt.Sprintf(`
+{
     "key": "%s",
+    "template_name": "Preorder confirmation",
     "message": {
-        "html": "%s",
+        "html": "%s"
         "subject": "%s",
         "from_email": "%s",
         "from_name": "%s",
@@ -82,33 +106,34 @@ func SendMail(ctx appengine.Context, from_name, from_email, to_name, to_email, s
         "headers": {
             "Reply-To": "%s"
         },
-        "important": true,
+        "important": false,
         "track_opens": true,
         "track_clicks": true,
-        "auto_text": null,
-        "auto_html": null,
-        "inline_css": "",
-        "url_strip_qs": "",
-        "preserve_recipients": "",
-        "view_content_link": "",
+        "preserve_recipients": true,
+        "merge": true,
         "merge_language": "mailchimp",
-        "tags": [
-            "skully, preorder"
+        "merge_vars": [
+            {
+                "rcpt": "%s",
+                "vars": %s
+            }
         ]
     },
     "async": true,
     "ip_pool": "Main Pool"
 }`,
 		apiKey,
-		html,
+		template,
 		subject,
 		from_email,
 		from_name,
 		to_email,
 		to_name,
 		"noreply@skullysystems.com",
+		to_email,
+		varsJson.String(),
 	)
-	log.Debug(j)
+	log.Info(j)
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(j)))
 	if err != nil {
