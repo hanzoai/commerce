@@ -6,7 +6,6 @@ import (
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
-	"crowdstart.io/models"
 	"crowdstart.io/stripe"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
@@ -55,15 +54,15 @@ func checkout(c *gin.Context) {
 	order.Total = order.Subtotal + order.Tax
 
 	// Pass in user model so we have token to use.
-	user := new(models.User)
-	err := db.GetKey("user", "skully", &user)
-	if err != nil {
-		log.Error(err.Error())
-		formError(c, err)
-		return
-	}
+	// user := new(models.User)
+	// err := db.GetKey("user", "skully", &user)
+	// if err != nil {
+	// 	log.Error(err.Error())
+	// 	formError(c, err)
+	// 	return
+	// }
 
-	template.Render(c, "checkout.html", "order", order, "user", &user, "config", config.Get())
+	template.Render(c, "checkout.html", "order", order /*"user", &user,*/, "config", config.Get())
 }
 
 func authorize(c *gin.Context) {
