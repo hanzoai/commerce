@@ -7,6 +7,22 @@ body {
   font-weight: 400;
   font-style: normal;
 }
+select,
+input {
+  font-size: 100%;
+}
+a:link {
+  text-decoration: none;
+}
+a:visited {
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: none;
+}
+a:active {
+  text-decoration: none;
+}
 .header {
   width: 100%;
   position: fixed;
@@ -53,7 +69,6 @@ body {
   font-family: "proxima-nova";
   font-size: 0.85em;
   text-transform: uppercase;
-  text-decoration: none;
   letter-spacing: 2px;
   font-weight: 400;
   font-style: normal;
@@ -110,6 +125,7 @@ h2 {
 .content {
   width: 75%;
   margin: 0 auto;
+  display: table;
 }
 .item {
   padding: 10px 0;
@@ -140,15 +156,8 @@ h2 {
 .product-text .product-body .product-description {
   margin-bottom: 20px;
 }
-.product-text .product-body .product-config {
-  position: relative;
-}
 .product-text .product-body .product-config label {
   display: block;
-}
-.product-text .product-body .product-config select,
-.product-text .product-body .product-config input {
-  font-size: 1.2em;
 }
 .product-text .product-body .product-config select {
   margin-bottom: 15px;
@@ -159,6 +168,9 @@ h2 {
 }
 .product-text .product-body .product-config input .quantity {
   float: left;
+}
+.product-text .product-body .product-config .col-1-3 {
+  height: 100px;
 }
 .product-text .product-body .product-config .add-to-cart {
   background-color: #272727;
@@ -176,6 +188,96 @@ h2 {
 .item {
   border-top: 1px solid #cbcbcb;
 }
+.footer {
+  width: 100%;
+  background-color: #171717;
+  position: relative;
+  display: table;
+}
+.footer .top-link {
+  display: block;
+  background-color: #fff;
+  width: 50px;
+  height: 50px;
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+  -webkit-border-radius: 50%;
+  border-radius: 50%;
+  position: absolute;
+  left: 50%;
+  margin-left: -25px;
+  top: -25px;
+  padding-top: 2px;
+}
+.footer .top-link a {
+  display: block;
+  font-weight: 600;
+  letter-spacing: 2px;
+  font-size: 12px;
+  text-align: center;
+  line-height: 1;
+  color: #363636;
+  padding-left: 2px;
+  padding-top: 4px;
+}
+.footer .top-link .text {
+  text-transform: uppercase;
+}
+.footer .top-link .top-arrow {
+  display: block;
+  width: 16px;
+  height: 10px;
+  margin: 4px auto 6px;
+}
+.footer .footer-content {
+  margin: 0px auto;
+  padding: 37px 8%;
+  color: #fff;
+  max-width: 960px;
+}
+.footer .footer-content .grid {
+  display: table;
+  width: 100%;
+}
+.footer .footer-content .social {
+  display: table;
+  width: 100%;
+}
+.footer .footer-content .social .social-icons {
+  float: right;
+}
+.footer .footer-content .social .social-icons a {
+  width: 36px;
+  height: 36px;
+  background-color: #fff;
+  border-radius: 18px;
+  display: inline-block;
+  position: relative;
+  margin-left: 9px;
+}
+.footer .footer-content .social .social-icons a img {
+  width: 38px;
+  height: 38px;
+  position: absolute;
+  left: -1px;
+  top: -1px;
+}
+.footer .footer-content .footer-nav {
+  display: table;
+  width: 100%;
+}
+.footer .footer-content .footer-nav .links {
+  float: right;
+}
+.footer .footer-content .footer-nav .links p {
+  text-align: right;
+  margin: 15px 0;
+}
+.footer .footer-content .footer-nav .links a {
+  color: #fff;
+  text-decoration: underline;
+}
 @media all and (min-width: 600px) {
   .col-1-3 {
     display: inline;
@@ -186,6 +288,11 @@ h2 {
     display: inline;
     float: left;
     width: 66%;
+  }
+  .col-1-2 {
+    display: inline;
+    float: left;
+    width: 50%;
   }
 }
 @media all and (min-width: 1000px) {
