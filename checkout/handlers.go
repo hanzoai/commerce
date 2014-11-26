@@ -1,41 +1,50 @@
 package checkout
 
 import (
+	"github.com/gin-gonic/gin"
+
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models"
 	"crowdstart.io/stripe"
+	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
-	"github.com/gin-gonic/gin"
 )
+
+// Renders the checkout page with an error message
+func formError(c *gin.Context, err error) {
+	template.Render(c, "checkout.html",
+		"message", "There was an error while processing your order.",
+	)
+}
 
 func checkout(c *gin.Context) {
 	form := new(CheckoutForm)
-
 	if err := form.Parse(c); err != nil {
-		c.Fail(500, err)
+		log.Error(err.Error())
+		formError(c, err)
 		return
 	}
 
-	ctx := middleware.GetAppEngine(c)
 	db := datastore.New(c)
 
 	order := form.Order
 
-	ctx.Infof("Order: %#v", order)
+	log.Info("Processing order. %#v", order)
 
 	for i, lineItem := range order.Items {
-
 		// Fetch Variant for LineItem from datastore
 		if err := db.GetKey("variant", lineItem.SKU(), &lineItem.Variant); err != nil {
-			c.Fail(500, err)
+			log.Error(err.Error())
+			formError(c, err)
 			return
 		}
 
 		// Fetch Product for LineItem from datastore
 		if err := db.GetKey("product", lineItem.Slug(), &lineItem.Product); err != nil {
-			c.Fail(500, err)
+			log.Error(err.Error())
+			formError(c, err)
 			return
 		}
 
@@ -47,7 +56,12 @@ func checkout(c *gin.Context) {
 
 	// Pass in user model so we have token to use.
 	user := new(models.User)
-	db.GetKey("user", "skully", &user)
+	err := db.GetKey("user", "skully", &user)
+	if err != nil {
+		log.Error(err.Error())
+		formError(c, err)
+		return
+	}
 
 	template.Render(c, "checkout.html", "order", order, "user", &user, "config", config.Get())
 }
@@ -55,15 +69,15 @@ func checkout(c *gin.Context) {
 func authorize(c *gin.Context) {
 	form := new(AuthorizeForm)
 	if err := form.Parse(c); err != nil {
-		c.Fail(500, err)
+		log.Error(err.Error())
+		formError(c, err)
 		return
 	}
 
 	db := datastore.New(c)
 	order := form.Order
 
-	ctx := middleware.GetAppEngine(c)
-	ctx.Infof("%#v", order.Items)
+	log.Info("Authorizing order. Items: %#v", order.Items)
 
 	for i, lineItem := range order.Items {
 		// TODO: Figure out why this happens
@@ -71,23 +85,26 @@ func authorize(c *gin.Context) {
 			continue
 		}
 
-		ctx.Infof("SKU: %#v", lineItem.SKU())
+		log.Debug("SKU: %#v", lineItem.SKU())
 
 		// Fetch Variant for LineItem from datastore
 		if err := db.GetKey("variant", lineItem.SKU(), &lineItem.Variant); err != nil {
-			c.Fail(500, err)
+			log.Error(err.Error())
+			formError(c, err)
 			return
 		}
 
-		ctx.Debugf("%#v", lineItem)
+		log.Debug("Line item: %#v", lineItem)
 		order.Items[i] = lineItem
 		order.Subtotal += lineItem.Price()
 	}
 
+	ctx := middleware.GetAppEngine(c)
 	_, err := stripe.Charge(ctx, order)
 
 	if err != nil {
-		c.Fail(500, err)
+		log.Error(err.Error())
+		formError(c, err)
 	}
 }
 
