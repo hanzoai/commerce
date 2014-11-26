@@ -1,4 +1,5 @@
 body {
+  color: #2e2e2e;
   font-family: 'proxima-nova', sans-serif;
   font-size: 15px;
   line-height: 1.6em;
@@ -13,8 +14,8 @@ body {
   left: 0px;
   background-color: #000;
 }
-.title-nav-wrapper {
-  padding: 2px 21px;
+.title-nav {
+  padding: 2px 100px;
   max-width: 1200px;
   font-size: 15px;
   display: table;
@@ -25,12 +26,15 @@ body {
   -moz-box-sizing: border-box;
   box-sizing: border-box;
 }
+.title-nav .logo {
+  display: block;
+  margin-bottom: 3px;
+}
 .nav {
   display: table-cell;
   width: 70%;
   text-align: right;
   vertical-align: middle;
-  text-align: right;
 }
 .nav .links {
   margin: 0;
@@ -54,4 +58,46 @@ body {
   font-weight: 400;
   font-style: normal;
   line-height: 2em;
+}
+.nav .links .link a.current {
+  color: #c2c2c2;
+}
+.nav .links .link a.big {
+  display: block;
+  background: #d70404;
+  font-size: 15px;
+  padding: 12px 30px;
+  text-align: center;
+  margin: auto;
+  max-width: 350px;
+  line-height: 1em;
+  letter-spacing: 0px;
+  font-weight: 400;
+  font-style: normal;
+}
+.content-header {
+  margin-top: 80px;
+  width: 100%;
+  text-align: center;
+}
+.content-header h1 {
+  font-family: "Michroma";
+  font-size: 2.2em;
+  line-height: 1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  letter-spacing: 2px;
+  font-weight: 400;
+  font-style: normal;
+  max-width: 100%;
+  display: inline-block;
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 36px 0;
+}
+.content {
+  width: 85%;
+  margin: 0 auto;
 }
