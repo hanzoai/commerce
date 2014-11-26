@@ -28,6 +28,8 @@ a:active
   top 0px
   left 0px
   background-color #000
+  display block
+  z-index 10
 
 .title-nav
   padding 2px 100px
@@ -127,9 +129,26 @@ h2
 
 .product-viewer
   text-align center
-  .thumbnail
-    width 90%
+  .preview-background
     max-width 600px
+    background-size contain
+    width 90%
+  .preview
+    max-width 600px
+    width 100%
+
+  .gallery
+    .thumbnail
+      max-width 40px
+      max-height 40px
+      margin 0 5px
+      padding 5px
+      border 1px solid #fff
+      float left
+    .thumbnail.selected
+      border-color #c2c2c2
+    .thumbnail:hover
+      border-color rgb(39,39,39)
 
 .product-text
   margin-top 50px
