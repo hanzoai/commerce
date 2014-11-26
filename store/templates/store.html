@@ -84,7 +84,56 @@
       <!--CONTENT-->
       <section class="content">
         {% block content %}
-
+        <div class="item">
+          <div class="product-viewer">
+            <img class="thumbnail" src="{{ staticUrl }}/img/glossywhitear1.jpg">
+          </div>
+          <div class="product-text">
+            <div class="product-title">
+              <h1 class="product-name">Skully AR-1</h1>
+              <h2 class="product-cost">$1499.00</h2>
+            </div>
+            <div class="product-body">
+              <div class="product-description">
+                <p>Sleep nap hide when guests come over has closed
+                  eyes but still sees you rub face on everything, but chase ball
+                  of string and hunt anything that moves, for always hungry.
+                  Behind the couch. Who's the baby sleep on keyboard pooping
+                  rainbow while flying in a toasted bread costume in space but
+                  throwup on your pillow. Run in circles intently stare at the
+                  same spot, and under the bed eat grass, throw it back up so
+                  love to play with owner's hair tie.</p>
+              </div>
+              <div class="product-config">
+                <label for="color">Color:</label>
+                <select name="color">
+                  <option selected disabled>Select Color</option>
+                  <option value="Matte Black">Matte Black</option>
+                  <option value="Glossy White">Glossy White</option>
+                </select>
+                <label for="size">Size:</label>
+                <select name="size">
+                  <option selected disabled>Select Size</option>
+                  <option value="S">S</option>
+                  <option value="M">M</option>
+                  <option value="L">L</option>
+                  <option value="XL">XL</option>
+                </select>
+                <div class="grid">
+                  <div class="col-2-3">
+                    <label for="quantity">Quantity:</label>
+                    <input name="quantity" type="number" min="0" value="1">
+                  </div>
+                  <div class="col-1-3">
+                    <div class="add-to-cart">
+                      <span>Add to Cart</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
         {% endblock %}
       </section>
     </div>
