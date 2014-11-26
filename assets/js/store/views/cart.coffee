@@ -27,7 +27,7 @@ class CartView extends View
       view.bind()
       $('.cart-container tbody').append view.$el
 
-    cart.on 'subtotal', (subtotal) =>
-      @set 'subtotal', subtotal
+    cart.on 'subtotal', (v) =>
+      @set 'subtotal', v
 
 module.exports = CartView
