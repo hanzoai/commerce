@@ -73,24 +73,107 @@ body
   margin-top 80px
   width 100%
   text-align center
-
   h1
-    font-family "Michroma"
-    font-size 2.2em
-    line-height 1em
-    text-transform uppercase
-    text-decoration none
-    letter-spacing 2px
-    font-weight 400
-    font-style normal
-    max-width 100%
-    display inline-block
-    -webkit-box-sizing border-box
-    -moz-box-sizing border-box
-    box-sizing border-box
-    margin 0
     padding 36px 0
 
+h1
+  font-family "Michroma"
+  font-size 2.2em
+  line-height 1em
+  text-transform uppercase
+  text-decoration none
+  letter-spacing 2px
+  font-weight 400
+  font-style normal
+  max-width 100%
+  display inline-block
+
+h2
+  font-family "Michroma"
+  font-size 1.2em
+  line-height 1em
+  text-transform uppercase
+  text-decoration none
+  letter-spacing 2px
+  font-weight 400
+  font-style normal
+  max-width 100%
+  display inline-block
+
 .content
-  width 85%
+  width 75%
   margin 0 auto
+
+// Not part of the outer frame
+.item
+  padding 10px 0
+
+.product-viewer
+  text-align center
+  .thumbnail
+    width 90%
+    max-width 600px
+
+.product-text
+  margin-top 50px
+  .product-title
+    width 100%
+    display inline-block
+    .product-name
+      width 65%
+    .product-cost
+      display inline-block
+  .product-body
+    padding 20px 10px 0 70px
+    .product-description
+      margin-bottom 20px
+    .product-config
+      position relative
+      label
+        display block
+      select, input
+        font-size 1.2em
+      select
+        margin-bottom 15px
+
+      input
+        width 120px
+        text-indent 5px
+        .quantity
+          float left
+
+      .add-to-cart
+        background-color rgb(39,39,39)
+        color white
+        text-transform uppercase
+        display block
+        position absolute
+        float left
+        font-size 1em
+        min-width 100px
+        text-align center
+        padding 15px 50px
+        margin-top 15px
+
+.item
+  border-top 1px solid rgb(203,203,203)
+
+@media all and ( min-width: 1000px )
+  .col-1-3
+    display inline
+    float left
+    width 33%
+  .col-2-3
+    display inline
+    float left
+    width 66%
+  .product-viewer
+    width 50%
+    display inline
+    float left
+  .product-text
+    width 50%
+    display inline
+    float left
+
+
