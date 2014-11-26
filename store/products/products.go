@@ -13,10 +13,11 @@ func List(c *gin.Context) {
 	db := datastore.New(c)
 	var products []models.Product
 
-	// Something is seriously wrong. i.e. products not loaded into db
 	_, err := db.Query("product").GetAll(db.Context, &products)
 	if err != nil {
+		// Something is seriously wrong. i.e. products not loaded into db
 		log.Panic(err.Error())
+		return
 	}
 
 	template.Render(c, "list.html", "products", products)
@@ -40,7 +41,13 @@ func Get(c *gin.Context) {
 func Store(c *gin.Context) {
 	db := datastore.New(c)
 	var products []models.Product
-	db.Query("product").GetAll(db.Context, &products)
+
+	_, err := db.Query("product").GetAll(db.Context, &products)
+	if err != nil {
+		// Something is seriously wrong. i.e. products not loaded into db
+		log.Panic(err.Error())
+		return
+	}
 
 	template.Render(c, "store.html", "products", products)
 }
