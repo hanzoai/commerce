@@ -2,19 +2,29 @@ package config
 
 import (
 	"appengine"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"crowdstart.io/util/log"
 )
 
 var demoMode = true
 var cachedConfig *Config
+
+// CWD is set to config/development due to how we split development/production
+// app.yaml files so we need to check two places for config.json based on which
+// module is trying to load it.
+var cwd, _ = os.Getwd()
+var configFileLocations = []string{cwd + "/../config.json", cwd + "/../../config.json"}
 
 type Config struct {
 	DemoMode          bool
 	IsDevelopment     bool
 	IsProduction      bool
 	AutoCompileAssets bool
+	AutoLoadFixtures  bool
 	RootDir           string
 	StaticUrl         string
 	SiteTitle         string
@@ -52,14 +62,23 @@ func (c Config) ModuleUrl(moduleName string, args ...interface{}) string {
 	}
 
 	// Strip trailing slash
-	url = strings.TrimRight(url, "/")
+	return strings.TrimRight(url, "/")
+}
 
-	return url
+// Load configuration from JSON file
+func (c *Config) Load(fileName string) {
+	file, err := os.Open(fileName)
+	if err != nil {
+		log.Panic("Failed to open configuration file: %v", err)
+	}
+	decoder := json.NewDecoder(file)
+	if err = decoder.Decode(c); err != nil {
+		log.Panic("Failed to decode configuration file: %v", err)
+	}
 }
 
 // Default settings
 func Defaults() *Config {
-	cwd, _ := os.Getwd()
 	config := new(Config)
 	config.Hosts = make(map[string]string, 10)
 	config.Prefixes = make(map[string]string, 10)
@@ -72,9 +91,11 @@ func Defaults() *Config {
 // Development settings
 func Development() *Config {
 	config := Defaults()
+
 	config.IsDevelopment = true
 
 	config.AutoCompileAssets = false
+	config.AutoLoadFixtures = true
 
 	config.Prefixes["default"] = "/"
 	config.Prefixes["api"] = "/api/"
@@ -145,6 +166,14 @@ func Get() *Config {
 		cachedConfig = Production()
 	}
 
+	// Allow local config file to override settings
+
+	for _, configFile := range configFileLocations {
+		if _, err := os.Stat(configFile); err == nil {
+			cachedConfig.Load(configFile)
+		}
+	}
+
 	return cachedConfig
 }
 
@@ -155,6 +184,7 @@ var DemoMode = config.DemoMode
 var IsDevelopment = config.IsDevelopment
 var IsProduction = config.IsProduction
 var AutoCompileAssets = config.AutoCompileAssets
+var AutoLoadFixtures = config.AutoLoadFixtures
 var RootDir = config.RootDir
 var StaticUrl = config.StaticUrl
 var Stripe = config.Stripe
