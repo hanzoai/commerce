@@ -18,12 +18,12 @@ class CartHover extends View
     cart = app.get 'cart'
 
     # listen to cart changes
-    cart.on 'quantity', (quantity) =>
-      @set 'quantity', quantity
-      @set 'suffix', quantity
+    cart.on 'quantity', (v) =>
+      @set 'quantity', v
+      @set 'suffix', v
 
-    cart.on 'subtotal', (subtotal) =>
-      @set 'subtotal', subtotal
+    cart.on 'subtotal', (v) =>
+      @set 'subtotal', v
 
     # set initial values
     @set 'quantity', cart.get 'quantity'

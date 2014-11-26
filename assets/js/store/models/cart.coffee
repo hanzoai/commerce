@@ -1,7 +1,8 @@
 ModelEmitter = require 'mvstar/lib/model-emitter'
 
 validNum = (v) ->
-  typeof v is 'number'
+  # yes javascript YES YESSSSS YESSsssssssss
+  typeof v == 'number' and not isNaN v
 
 neverBelowZero = (v) ->
   if v < 0 then 0 else v
@@ -17,6 +18,7 @@ cookies =
     $.cookie name, (JSON.stringify state),
       path:    path
       expires: expires
+
 
 class Cart extends ModelEmitter
   cookieName: 'SKULLYCart'
@@ -41,8 +43,9 @@ class Cart extends ModelEmitter
     cookies.set @cookieName, @state, '/', 30
 
   set: (k, v) ->
-    @emit k, v
     super
+    @emit k, v
+    console.log 'cart:', k, v
 
   getProduct: (sku) ->
     @state.products[sku]
@@ -50,20 +53,45 @@ class Cart extends ModelEmitter
   getProducts: ->
     @state.products
 
-  setProduct: (sku, product) ->
+  _setProduct: (sku, product) ->
     @state.products[sku] = product
     @save()
 
-  addProduct: (sku, product) ->
-    # update quantity and subtotal
+  setProduct: (sku, product) ->
+    product = $.extend {}, product
     quantity = @get 'quantity'
     subtotal = @get 'subtotal'
-    @set 'quantity', quantity + product.quantity
-    @set 'subtotal', subtotal + (product.quantity * product.price)
+
+    unless @state.products[sku]?
+      console.log 'new sku'
+      # new sku
+      @set 'quantity', quantity + product.quantity
+      @set 'subtotal', subtotal + (product.quantity * product.price)
+      @_setProduct sku, product
+    else
+      console.log 'update existing'
+      # update based on existing sku
+      _product = @state.products[sku]
+      console.log product, _product
+      quantityDiff = product.quantity - _product.quantity
+      subtotalDiff = (product.quantity * product.price) - (_product.quantity * _product.price)
+      console.log 'quantityDiff', quantityDiff, 'subtotalDiff', subtotalDiff
+      @set 'quantity', quantity + quantityDiff
+      @set 'subtotal', subtotal + subtotalDiff
+      @_setProduct sku, product
+
+  addProduct: (sku, product) ->
+    product = $.extend {}, product
+    # update quantity and subtotal
+    quantity = (@get 'quantity') + product.quantity
+    subtotal = (@get 'subtotal') + (product.quantity * product.price)
+
+    @set 'quantity', quantity
+    @set 'subtotal', subtotal
 
     # save new item to cart
     unless @state.products[sku]?
-      return @setProduct sku, product
+      return @_setProduct sku, product
 
     # update quantity of product in cart
     @state.products[sku].quantity += product.quantity
@@ -71,6 +99,9 @@ class Cart extends ModelEmitter
 
   removeProduct: (sku) ->
     product = @state.products[sku]
+
+    product.quantity ?= 0
+    product.price    ?= 0
 
     quantity = @get 'quantity'
     subtotal = @get 'subtotal'
