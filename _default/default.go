@@ -2,11 +2,14 @@ package _default
 
 import (
 	"appengine"
+
+	"github.com/gin-gonic/gin"
+
 	"crowdstart.io/config"
 	"crowdstart.io/models/fixtures"
 	"crowdstart.io/util/exec"
+	"crowdstart.io/util/log"
 	"crowdstart.io/util/router"
-	"github.com/gin-gonic/gin"
 )
 
 func Init() {
@@ -52,14 +55,21 @@ func Init() {
 	})
 
 	// Warmup: install fixtures, etc.
+	// Only used in development
 	router.GET("/_ah/warmup", func(c *gin.Context) {
 		if config.IsProduction {
 			c.String(200, "Not utilized in production")
 			return
 		}
 
-		ctx := appengine.NewContext(c.Request)
-		fixtures.All.Call(ctx)
+		// Current settings
+		log.Debug("%#v", config.Get())
+
+		// Automatically load fixtures
+		if config.AutoLoadFixtures {
+			ctx := appengine.NewContext(c.Request)
+			fixtures.All.Call(ctx)
+		}
 
 		// Recompile static assets
 		if config.AutoCompileAssets {
