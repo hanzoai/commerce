@@ -43,16 +43,50 @@
   </head>
   <body>
     <!--WRAPPER-->
-    <div class="site-wrapper">
+    <div class="site">
       <!--HEADER-->
-      <div class="header-wrapper">
-        <header class="header">
-          <div class="title-nav-wrapper">
-            <a href="http://www.skullysystems.com/">
-              <img src="{{ staticUrl }}/img/skully.png" alt="SKULLY AR-1">
-            </a>
-        </header>
-      </div>
+      <header class="header">
+        <div class="title-nav">
+          <a href="http://www.skullysystems.com/">
+            <img class="logo" src="{{ staticUrl }}/img/skully.png" alt="SKULLY AR-1">
+          </a>
+          <nav class="nav">
+            <ul class="links">
+              <li class="link">
+                <a href="http://www.skullysystems.com/">HOME</a>
+              </li>
+              <li class="link">
+                <a href="http://blog.skullysystems.com/">BLOG</a>
+              </li>
+              <li class="link">
+                <a href="http://www.skullysystems.com/career">CAREER</a>
+              </li>
+              <li class="link">
+                <a href="http://www.skullysystems.com/faq/">FAQ</a>
+              </li>
+              <li class="link">
+                <a href="http://forum.skullysystems.com/">FORUM</a>
+              </li>
+              <li class="link">
+                <a class="current" href="/store/">STORE</a>
+              </li>
+              <li class="link">
+                <a class="big" href="/store/products/ar-1">GET YOUR AR-1</a>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </header>
+      <!--CONTENT HEADER-->
+      <section class="content-header">
+        {% block content_header %}<h1>Get the Gear</h1>{% endblock %}
+      </section>
+      <!--CONTENT-->
+      <section class="content">
+        {% block content %}
+
+        {% endblock %}
+      </section>
     </div>
   </body>
 </html>
