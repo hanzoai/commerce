@@ -26,6 +26,14 @@
 
     <link rel="stylesheet" type="text/css" href="{{ staticUrl }}/css/reset.css">
     <link rel="stylesheet" type="text/css" href="{{ staticUrl }}/css/store.css">
+    <!--Mail Chimp-->
+    <link href="//cdn-images.mailchimp.com/embedcode/slim-081711.css" rel="stylesheet" type="text/css">
+    <style type="text/css">
+      #mc_embed_signup{clear:left; font:14px Helvetica,Arial,sans-serif; }
+      /* Add your own MailChimp form style overrides in your site stylesheet or in this style block.
+         We recommend moving this block and the preceding CSS link to the HEAD of your HTML file. */
+    </style>
+
     {% block css %}{% endblock %}
 
     <!--FONTS-->
@@ -46,6 +54,7 @@
     <div class="site">
       <!--HEADER-->
       <header class="header">
+        <a id="top">
         <div class="title-nav">
           <a href="http://www.skullysystems.com/">
             <img class="logo" src="{{ staticUrl }}/img/skully.png" alt="SKULLY AR-1">
@@ -136,6 +145,74 @@
         </div>
         {% endblock %}
       </section>
+      <footer class="footer">
+        <div class="top-link">
+          <a href="#top">
+            <img class="top-arrow" src="{{ staticUrl }}/img/upchevron.png">
+            <span class="text">
+              Top
+            </span>
+          </a>
+        </div>
+        <div class="footer-content">
+          <div class="grid">
+            <div class="col-1-2">
+              <div class="mail-chimp">
+                <div id="mc_embed_signup">
+                  <form action="//skullysystems.us3.list-manage.com/subscribe/post?u=bc1d6c276527db0df1053fc13&amp;id=ae4e853b80" method="post" id="mc-embedded-subscribe-form" name="mc-embedded-subscribe-form" class="validate" target="_blank" novalidate="">
+                    <label for="mce-EMAIL">Get the latest from the SKULLY Team</label>
+                    <input type="email" value="" name="EMAIL" class="email" id="mce-EMAIL" placeholder="email address" required="">
+                    <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
+                    <div style="position: absolute; left: -5000px;"><input type="text" name="b_bc1d6c276527db0df1053fc13_ae4e853b80" tabindex="-1" value=""></div>
+                    <div class="clear"><input type="submit" value="Subscribe" name="subscribe" id="mc-embedded-subscribe" class="button"></div>
+                  </form>
+                </div>
+              </div>
+            </div>
+            <div class="col-1-2">
+              <nav class="social">
+                <div class="social-icons">
+                  <a href="https://www.facebook.com/skullysystems" target="_blank" title="Skully Helmets, Inc" class="social-facebook">
+                    <img src="{{ staticUrl }}/img/social/facebook.png">
+                  </a>
+                  <a href="http://www.twitter.com/skullysystems" target="_blank" title="SKULLY HELMETS" class="social-twitter">
+                    <img src="{{ staticUrl }}/img/social/twitter.png">
+                  </a>
+                  <a href="http://www.youtube.com/channel/UCgGXkEJ5S_MmQCSoBnusr1Q" target="_blank" title="SKULLY" class="social-youtube">
+                    <img src="{{ staticUrl }}/img/social/youtube.png">
+                  </a>
+                  <a href="http://www.instagram.com/skullysystems" target="_blank" title="Skully Helmets" class="social-instagram">
+                    <img src="{{ staticUrl }}/img/social/instagram.png">
+                  </a>
+                  <a href="https://plus.google.com/112776474651298122010/posts" target="_blank" title="Marcus Weller" class="social-google">
+                    <img src="{{ staticUrl }}/img/social/google%20+.png">
+                  </a>
+                  <a href="https://www.linkedin.com/company/3233339?trk=vsrp_companies_res_name&amp;trkInfo=VSRPsearchId%3A637198571407629012548%2CVSRPtargetId%3A3233339%2CVSRPcmpt%3Aprimary" target="_blank" title="Marcus Weller, PhD" class="social-linkedin">
+                    <img src="{{ staticUrl }}/img/social/linkedin.png">
+                  </a>
+                </div>
+              </nav>
+              <nav class="footer-nav">
+                <div class="links">
+                  <p>&nbsp;</p>
+                  <p>
+                    <a href="/news">News</a>
+                    <span>&nbsp; | &nbsp;</span>
+                    <a target="_blank" href="http://skullysystems.forumchitchat.com/post/skully-ar1-referral-program-7033017">Referral Program</a>
+                  </p>
+                  <p class="text-align-right">
+                    <a href="/privacy-policy">Privacy</a>
+                    <span>&nbsp;| &nbsp;</span>
+                    <a href="/press">Press</a>
+                    <span>&nbsp;| &nbsp;</span>
+                    <a href="/contact-us">Contact</a>
+                  </p>
+                </div>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   </body>
 </html>
