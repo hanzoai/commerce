@@ -40,14 +40,18 @@ func TestSendMail(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := appengine.NewContext(req)
-	html := mail.GetHtml("../templates/confirmation_email.html")
+	html := mail.GetHtml("../templates/confirmation_email_escaped.html")
 	err = mail.SendMail(ctx,
 		"from_name",
-		"dev@hanzo.ai",
+		"noreply@skullysystems.com",
 		"to_name",
-		"dev@hanzo.ai",
+		"marvel.j.mathew@gmail.com",
 		"test",
 		html,
+		map[string]string{
+			"*|SUBJECT|*":   "Test email",
+			"*|FirstName|*": "Marvel",
+		},
 	)
 
 	if err != nil {
