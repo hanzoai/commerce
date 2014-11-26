@@ -160,6 +160,11 @@ h2 {
 .product-viewer .gallery .thumbnail:hover {
   border-color: #272727;
 }
+@media all and (min-width: 1000px) {
+  body .product-text .product-body {
+    padding-left: 70px;
+  }
+}
 .product-text {
   margin-top: 50px;
 }
@@ -174,7 +179,7 @@ h2 {
   display: inline-block;
 }
 .product-text .product-body {
-  padding: 20px 10px 0 70px;
+  padding: 20px 10px 0 0px;
 }
 .product-text .product-body .product-description {
   margin-bottom: 20px;
