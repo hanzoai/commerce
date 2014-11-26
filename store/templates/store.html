@@ -98,9 +98,22 @@
           <div class="product-viewer">
             {% for image in product.Images %}
             {% if forloop.First %}
-            <img class="thumbnail" src="{{ image.Url }}" alt="{{ image.Alt }}">
+            <div class="preview-background" style="background-image:url({{ image.Url }})">
+              <img class="preview" src="{{ image.Url }}" alt="{{ image.Alt }}">
+            </div>
             {% endif %}
             {% endfor %}
+            {% if product.Images | length > 1 %}
+            <div class="gallery">
+              {% for image in product.Images %}
+              {% if forloop.First %}
+              <img class="thumbnail selected" src="{{ image.Url }}" alt="{{ image.Alt }}">
+              {% else %}
+              <img class="thumbnail" src="{{ image.Url }}" alt="{{ image.Alt }}">
+              {% endif %}
+              {% endfor %}
+            </div>
+            {% endif %}
           </div>
           <div class="product-text">
             <div class="product-title">
