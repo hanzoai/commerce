@@ -29,6 +29,8 @@ a:active {
   top: 0px;
   left: 0px;
   background-color: #000;
+  display: block;
+  z-index: 10;
 }
 .title-nav {
   padding: 2px 100px;
@@ -135,9 +137,28 @@ h2 {
 .product-viewer {
   text-align: center;
 }
-.product-viewer .thumbnail {
-  width: 90%;
+.product-viewer .preview-background {
   max-width: 600px;
+  background-size: contain;
+  width: 90%;
+}
+.product-viewer .preview {
+  max-width: 600px;
+  width: 100%;
+}
+.product-viewer .gallery .thumbnail {
+  max-width: 40px;
+  max-height: 40px;
+  margin: 0 5px;
+  padding: 5px;
+  border: 1px solid #fff;
+  float: left;
+}
+.product-viewer .gallery .thumbnail.selected {
+  border-color: #c2c2c2;
+}
+.product-viewer .gallery .thumbnail:hover {
+  border-color: #272727;
 }
 .product-text {
   margin-top: 50px;
