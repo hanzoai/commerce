@@ -2,11 +2,14 @@ package _default
 
 import (
 	"appengine"
+
+	"github.com/gin-gonic/gin"
+
 	"crowdstart.io/config"
 	"crowdstart.io/models/fixtures"
 	"crowdstart.io/util/exec"
+	"crowdstart.io/util/log"
 	"crowdstart.io/util/router"
-	"github.com/gin-gonic/gin"
 )
 
 func Init() {
@@ -58,6 +61,9 @@ func Init() {
 			c.String(200, "Not utilized in production")
 			return
 		}
+
+		// Current settings
+		log.Debug("%#v", config.Get())
 
 		// Automatically load fixtures
 		if config.AutoLoadFixtures {
