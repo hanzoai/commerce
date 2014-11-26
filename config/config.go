@@ -15,6 +15,7 @@ type Config struct {
 	IsDevelopment     bool
 	IsProduction      bool
 	AutoCompileAssets bool
+	AutoLoadFixtures  bool
 	RootDir           string
 	StaticUrl         string
 	SiteTitle         string
@@ -72,9 +73,14 @@ func Defaults() *Config {
 // Development settings
 func Development() *Config {
 	config := Defaults()
-	config.IsDevelopment = true
 
+	config.IsDevelopment = true
 	config.AutoCompileAssets = false
+
+	// Allow fixture loading to be disabled
+	if os.Getenv("NOFIXTURES") != "" {
+		config.AutoLoadFixtures = true
+	}
 
 	config.Prefixes["default"] = "/"
 	config.Prefixes["api"] = "/api/"
@@ -155,6 +161,7 @@ var DemoMode = config.DemoMode
 var IsDevelopment = config.IsDevelopment
 var IsProduction = config.IsProduction
 var AutoCompileAssets = config.AutoCompileAssets
+var AutoLoadFixtures = config.AutoLoadFixtures
 var RootDir = config.RootDir
 var StaticUrl = config.StaticUrl
 var Stripe = config.Stripe
