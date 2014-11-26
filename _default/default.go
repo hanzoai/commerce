@@ -52,14 +52,18 @@ func Init() {
 	})
 
 	// Warmup: install fixtures, etc.
+	// Only used in development
 	router.GET("/_ah/warmup", func(c *gin.Context) {
 		if config.IsProduction {
 			c.String(200, "Not utilized in production")
 			return
 		}
 
-		ctx := appengine.NewContext(c.Request)
-		fixtures.All.Call(ctx)
+		// Automatically load fixtures
+		if config.AutoLoadFixtures {
+			ctx := appengine.NewContext(c.Request)
+			fixtures.All.Call(ctx)
+		}
 
 		// Recompile static assets
 		if config.AutoCompileAssets {
