@@ -65,12 +65,12 @@ func GetPreorder(c *gin.Context) {
 	for _, product := range products {
 		productsMap[product.Slug] = product
 	}
-	allProductsJSON := json.Encode(productsMap)
+	productsJSON := json.Encode(productsMap)
 
 	template.Render(c, "preorder.html",
 		"tokenId", token.Id,
 		"user", user,
-		"allProductsJSON", allProductsJSON,
+		"productsJSON", productsJSON,
 		"contributionsJSON", contributionsJSON,
 		"orderJSON", orderJSON,
 		"userJSON", userJSON,

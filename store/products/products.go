@@ -6,6 +6,7 @@ import (
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
+	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
 )
@@ -21,7 +22,17 @@ func List(c *gin.Context) {
 		return
 	}
 
-	template.Render(c, "list.html", "products", products)
+	// Create map of slug -> product
+	productsMap := make(map[string]models.Product)
+	for _, product := range products {
+		productsMap[product.Slug] = product
+	}
+	productsJSON := json.Encode(productsMap)
+
+	template.Render(c, "list.html",
+		"products", products,
+		"productsJSON", productsJSON,
+	)
 }
 
 func Get(c *gin.Context) {
