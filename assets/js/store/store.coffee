@@ -5,29 +5,19 @@ class StoreApp extends App
   prefix: '/:store?'
 
   routes:
-    '/cart': [
-      routes.cart.hideHover
-      routes.cart.setupView
-    ]
-
-    '/products/:slug': [
-      routes.cart.setupHover
-      routes.products.gallery
-      routes.products.setupViews
-    ]
-
-    '/products/ar-1': [
-      routes.products.customizeAr1
-    ]
-
-    '/:prefix?': routes.cart.setupHover
-
-    '/store': [
+    '/': [
       routes.cart.setupHover
       routes.products.setupViews
       routes.store.gallery
       routes.store.setupStylesAndSizes
     ]
+
+    '/cart': [
+      routes.cart.hideHover
+      routes.cart.setupViews
+    ]
+
+    '/:prefix?': routes.cart.setupHover
 
     '*': routes.cart.click
 
