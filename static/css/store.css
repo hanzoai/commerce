@@ -157,7 +157,7 @@ h2 {
 }
 @media all and (min-width: 1000px) {
   body .product-text .product-body {
-    padding-left: 70px;
+    padding-left: 20px;
   }
 }
 .product-text {
