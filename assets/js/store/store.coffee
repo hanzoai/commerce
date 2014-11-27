@@ -7,7 +7,7 @@ class StoreApp extends App
   routes:
     '/': [
       routes.cart.setupHover
-      routes.products.setupViews
+      routes.store.setupViews
       routes.store.gallery
       routes.store.setupStyles
     ]
@@ -40,4 +40,4 @@ class StoreApp extends App
 window.app = app = new StoreApp()
 
 # let us begin
-app.start()
+$(document).ready -> app.start()
