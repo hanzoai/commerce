@@ -1,3 +1,13 @@
+exports.setupViews = ->
+  console.log 'store#setupViews'
+  for div in $('.add-to-cart')
+    do (div) ->
+      console.log 'product'
+      view = new ProductView el: $(div)
+      window.view = view
+      app.views.push view
+      view.bind()
+
 # Simple thumbnail gallery
 exports.gallery = ->
   fading = false
