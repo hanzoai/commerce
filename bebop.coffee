@@ -1,8 +1,8 @@
 fs   = require 'fs'
 path = require 'path'
 
-requisite = 'node_modules/.bin/requisite'
-stylus    = 'node_modules/.bin/stylus'
+requisite        = 'node_modules/.bin/requisite'
+stylus           = 'node_modules/.bin/stylus'
 
 files =
   checkout:
@@ -30,21 +30,23 @@ files =
       out: 'static/css'
 
 module.exports =
-  cwd: process.cwd() + '/assets'
+  cwd: process.cwd()
 
-  forceReload: true
+  exclude: [
+    /config\/production\/static/
+  ]
 
   compilers:
     coffee: (src) ->
       # try to just optimize module changed
-      if /^js\/checkout/.test src
+      if /^assets\/js\/checkout/.test src
         return "#{requisite} #{files.checkout.js.in} -o #{files.checkout.js.out} -g -s"
-      if /^js\/preorder/.test src
+      if /^assets\/js\/preorder/.test src
         return "#{requisite} #{files.preorder.js.in} -o #{files.preorder.js.out} -g -s"
-      if /^js\/store/.test src
+      if /^assets\/js\/store/.test src
         return "#{requisite} #{files.store.js.in} -o #{files.store.js.out} -g -s"
 
-      if /^js\//.test src
+      if /^assets\/js\//.test src
         # compile everything
         output = []
         input = []
@@ -57,14 +59,14 @@ module.exports =
 
     styl: (src) ->
       # try to just optimize module changed
-      if /^css\/checkout/.test src
+      if /^assets\/css\/checkout/.test src
         return "#{stylus} #{files.checkout.css.in} -o #{files.checkout.css.out}"
-      if /^css\/preorder/.test src
+      if /^assets\/css\/preorder/.test src
         return "#{stylus} #{files.preorder.css.in} -o #{files.preorder.css.out}"
-      if /^css\/store/.test src
+      if /^assets\/css\/store/.test src
         return "#{stylus} #{files.store.css.in} -o #{files.store.css.out}"
 
-      if /^css\//.test src
+      if /^assets\/css\//.test src
         # compile everything
         input = []
         for _, settings of files
