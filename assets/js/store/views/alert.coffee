@@ -1,7 +1,7 @@
 View = require 'mvstar/lib/view'
 
 class AlertView extends View
-  el: '.sqs-widgets-confirmation.alert'
+  el: '.alert-dialog'
 
   constructor: (opts = {}) ->
     super
@@ -11,9 +11,9 @@ class AlertView extends View
     @set 'title',     (opts.title   ? 'title')
 
   bindings:
-    title:   '.title'
-    message: '.message'
-    confirm: '.confirmation-button'
+    title:   '.alert-title'
+    message: '.alert-message'
+    confirm: '.alert-confirmation-button'
 
   events:
     # Dismiss on click, escape, and scroll
