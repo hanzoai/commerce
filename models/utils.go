@@ -22,5 +22,5 @@ func DisplayPrice(price int64) string {
 
 // Non-breaking hyphens in title
 func DisplayTitle(title string) string {
-	return strings.Replace("-", title, "&#8209;", -1)
+	return strings.Replace(title, "-", "&#8209;", -1)
 }
