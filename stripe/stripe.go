@@ -29,8 +29,10 @@ func Charge(ctx appengine.Context, token string, order *models.Order) (string, e
 
 	charge, err := sc.Charges.New(params)
 
-	// Charges and tokens are recorded regardless of success/failure
-	order.Charges = append(order.Charges, charge)
+	// Charges and tokens are recorded regardless of success/failure.
+	// It doesn't record whether each charge/token is success or failure.
+	// It should be possible to query the stripe api for this though.
+	order.Charges = append(order.Charges, *charge)
 	order.StripeTokens = append(order.StripeTokens, token)
 
 	return charge.ID, err
