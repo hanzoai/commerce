@@ -104,7 +104,7 @@ func Development() *Config {
 	config.Prefixes["default"] = "/"
 	config.Prefixes["api"] = "/api/"
 	config.Prefixes["checkout"] = "/checkout/"
-	config.Prefixes["platform"] = "/platform/"
+	config.Prefixes["platform"] = "/admin/"
 	config.Prefixes["preorder"] = "/preorder/"
 	config.Prefixes["store"] = "/store/"
 
