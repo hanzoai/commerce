@@ -9,6 +9,7 @@ import (
 	"github.com/mholt/binding"
 
 	"crowdstart.io/datastore"
+	"crowdstart.io/util/log"
 )
 
 type LineItem struct {
@@ -136,6 +137,29 @@ type Order struct {
 	Cancelled bool // represents whether the order has been cancelled
 	Shipped   bool
 	// ShippingOption  ShippingOption
+}
+
+func (order *Order) Process(c *gin.Context) error {
+	db := datastore.New(c)
+	for i, lineItem := range order.Items {
+		// Fetch Variant for LineItem from datastore
+		if err := db.GetKey("variant", lineItem.SKU(), &lineItem.Variant); err != nil {
+			log.Error(err.Error())
+			return err
+		}
+
+		// Fetch Product for LineItem from datastore
+		if err := db.GetKey("product", lineItem.Slug(), &lineItem.Product); err != nil {
+			log.Error(err.Error())
+			return err
+		}
+
+		order.Items[i] = lineItem
+		order.Subtotal += lineItem.Price()
+	}
+
+	order.Total = order.Subtotal + order.Tax
+	return nil
 }
 
 func (o *Order) Save(c *gin.Context) error {
