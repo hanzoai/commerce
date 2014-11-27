@@ -65,6 +65,10 @@ func (c Config) ModuleUrl(moduleName string, args ...interface{}) string {
 	return strings.TrimRight(url, "/")
 }
 
+func (c Config) UrlFor(moduleName string, path string, args ...interface{}) string {
+	return c.ModuleUrl(moduleName, args...) + path
+}
+
 // Load configuration from JSON file
 func (c *Config) Load(fileName string) {
 	file, err := os.Open(fileName)
@@ -137,7 +141,7 @@ func Production() *Config {
 	config.Hosts["default"] = "static.crowdstart.io"
 	config.Hosts["api"] = "api.crowdstart.io"
 	config.Hosts["checkout"] = "secure.crowdstart.io"
-	config.Hosts["platform"] = "platform.crowdstart.io"
+	config.Hosts["platform"] = "admin.crowdstart.io"
 	config.Hosts["preorder"] = "preorder.crowdstart.io"
 	config.Hosts["store"] = "store.crowdstart.io"
 
@@ -197,4 +201,8 @@ func PrefixFor(moduleName string) string {
 // Return full url to module
 func ModuleUrl(moduleName string, args ...interface{}) string {
 	return config.ModuleUrl(moduleName, args...)
+}
+
+func UrlFor(moduleName string, path string, args ...interface{}) string {
+	return config.UrlFor(moduleName, path, args...)
 }
