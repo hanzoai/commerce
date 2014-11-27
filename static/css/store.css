@@ -140,6 +140,7 @@ h2 {
 .product-viewer .preview-background {
   max-width: 600px;
   background-size: contain;
+  background-repeat: no-repeat;
   width: 90%;
 }
 .product-viewer .preview {
