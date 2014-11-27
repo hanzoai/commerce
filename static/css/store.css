@@ -155,12 +155,6 @@ h2 {
   border: 1px solid #fff;
   float: left;
 }
-.product-viewer .gallery .thumbnail.selected {
-  border-color: #c2c2c2;
-}
-.product-viewer .gallery .thumbnail:hover {
-  border-color: #272727;
-}
 @media all and (min-width: 1000px) {
   body .product-text .product-body {
     padding-left: 70px;
@@ -205,8 +199,7 @@ h2 {
   background-color: #272727;
   color: #fff;
   text-transform: uppercase;
-  display: block;
-  float: left;
+  float: right;
   font-size: 1em;
   min-width: 100px;
   text-align: center;
