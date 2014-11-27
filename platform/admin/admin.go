@@ -23,7 +23,7 @@ type TokenData struct {
 
 // Index
 func Index(c *gin.Context) {
-	template.Render(c, "index.html")
+	c.Redirect(301, config.UrlFor("platform", "/dashboard"))
 }
 
 // Register

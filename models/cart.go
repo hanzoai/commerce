@@ -113,8 +113,8 @@ type Order struct {
 	Items   []LineItem
 
 	// Slices in order to record failed tokens/charges
-	StripeTokens []string        `schema:"-"`
-	Charges      []stripe.Charge `schema:"-"`
+	StripeTokens []string         `schema:"-"`
+	Charges      []*stripe.Charge `schema:"-"`
 
 	Campaign Campaign
 
