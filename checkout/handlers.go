@@ -53,16 +53,7 @@ func checkout(c *gin.Context) {
 
 	order.Total = order.Subtotal + order.Tax
 
-	// Pass in user model so we have token to use.
-	// user := new(models.User)
-	// err := db.GetKey("user", "skully", &user)
-	// if err != nil {
-	// 	log.Error(err.Error())
-	// 	formError(c, err)
-	// 	return
-	// }
-
-	template.Render(c, "checkout.html", "order", order /*"user", &user,*/, "config", config.Get())
+	template.Render(c, "checkout.html", "order", order, "config", config.Get())
 }
 
 func authorize(c *gin.Context) {
@@ -70,6 +61,7 @@ func authorize(c *gin.Context) {
 	if err := form.Parse(c); err != nil {
 		log.Error(err.Error())
 		formError(c, err)
+		log.Debug("Account %#v", form.Order.Account)
 		return
 	}
 
@@ -99,7 +91,7 @@ func authorize(c *gin.Context) {
 	}
 
 	ctx := middleware.GetAppEngine(c)
-	_, err := stripe.Charge(ctx, order)
+	charge, err := stripe.Charge(ctx, &order, token)
 
 	if err != nil {
 		log.Error(err.Error())
