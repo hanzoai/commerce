@@ -309,6 +309,11 @@ h2 {
   color: #fff;
   text-decoration: underline;
 }
+.cart-hover {
+  position: fixed;
+  height: 96px;
+  width: 504px;
+}
 @media all and (min-width: 600px) {
   .col-1-2 {
     display: inline;
