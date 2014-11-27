@@ -5,10 +5,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/gin-gonic/gin"
+
 	"crowdstart.io/middleware"
 	"crowdstart.io/models"
 	"crowdstart.io/util/form"
-	"github.com/gin-gonic/gin"
+	"crowdstart.io/util/log"
 )
 
 type CheckoutForm struct {
@@ -44,6 +46,7 @@ type AuthorizeForm struct {
 
 func (f *AuthorizeForm) Parse(c *gin.Context) error {
 	if err := form.Parse(c, f); err != nil {
+		log.Panic("Parsing AuthorizeForm %s", err)
 		return err
 	}
 
@@ -56,8 +59,15 @@ func (f *AuthorizeForm) Parse(c *gin.Context) error {
 		return errors.New("Invalid expiry")
 	}
 
-	month, _ := strconv.Atoi(parts[0])
-	year, _ := strconv.Atoi(parts[1])
+	month, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return errors.New("Invalid month")
+	}
+
+	year, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return errors.New("Invalid year")
+	}
 
 	f.Order.Account.Month = month
 	f.Order.Account.Year = year
@@ -101,12 +111,15 @@ func (f AuthorizeForm) Validate() (errs []string) {
 	if f.Order.ShippingAddress.Country == "" {
 		errs = append(errs, "Country is required")
 	}
-	if len(string(f.Order.Account.CVV2)) < 3 {
-		errs = append(errs, "Confirmation code is required.")
-	}
-	if len(f.Order.Account.Expiry) != 4 {
-		errs = append(errs, "Invalid expiry")
-	}
+	/*
+		if len(string(f.Order.Account.CVV2)) < 3 {
+			errs = append(errs, "Confirmation code is required.")
+		}
+		if len(f.Order.Account.Expiry) != 4 {
+			log.Debug(f.Order.Account.Expiry)
+			errs = append(errs, "Invalid expiry")
+		}
+	*/
 
 	return errs
 }
