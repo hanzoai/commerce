@@ -15,7 +15,7 @@ class LineItemView extends View
     img:        'img.thumbnail   @src'
     sku:        'input.sku       @value'
     slug:       'input.slug      @value'
-    name:       'a.title'
+    name:       'div.title'
     desc:       'div.desc'
     price:      '.price .money'
     quantity:   '.quantity input @value'
