@@ -17,10 +17,11 @@ class ProductView extends View
 
     quantity = parseInt @el.find('select[name=quantity]').val(), 10
 
-    inner = $('.sqs-add-to-cart-button-inner')
+    inner = @el.find 'span'
     inner.html ''
-    inner.append '<div class="yui3-widget sqs-spin light"></div>'
-    inner.append '<div class="status-text">Adding...</div>'
+    inner.append '<div class="loading-spinner" style="float:left"></div>'
+    inner.append '<div class="add-to-cart-adding-text" style="float:right">Adding...</div>'
+
 
     product = allProducts[@slug]
 
@@ -34,18 +35,16 @@ class ProductView extends View
       size:     variant.Size
       slug:     @slug
 
-    setTimeout ->
-      $('.status-text').text('Added!').fadeOut 500, ->
+    setTimeout =>
+      @el.find('span').text('Added!').fadeOut 500, =>
         inner.html 'Add to Cart'
+        @el.find('span').fadeIn()
     , 500
 
+    # Flash cart hover
     setTimeout ->
-      # Flash cart hover
-      $('.sqs-pill-shopping-cart-content').animate opacity: 0.85, 400, ->
-        # Update cart hover
-        # updateCartHover cart
-
-        $('.sqs-pill-shopping-cart-content').animate opacity: 1, 300
+      $('.cart-hover').animate opacity: 1, 400, ->
+        $('.cart-hover').animate opacity: 0.9, 300
     , 300
 
   # Get selected options
