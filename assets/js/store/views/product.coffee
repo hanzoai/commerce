@@ -2,7 +2,7 @@ View = require 'mvstar/lib/view'
 products = require '../../utils/products'
 
 class ProductView extends View
-  el: '.sqs-add-to-cart-button'
+  el: '.add-to-cart'
 
   events:
     click: -> @addToCart()
