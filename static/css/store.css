@@ -311,8 +311,34 @@ h2 {
 }
 .cart-hover {
   position: fixed;
-  height: 96px;
-  width: 504px;
+  height: 48px;
+  width: 250px;
+  background-image: linear-gradient(#1e1e1e, #040404);
+  top: 73px;
+  right: 6px;
+  border-top: 1px solid #000;
+  border-radius: 45px;
+  display: table;
+}
+.cart-hover a {
+  color: #fff;
+  display: table-cell;
+  vertical-align: middle;
+  padding: 0 25px 0 22px;
+}
+.cart-hover .cart-icon {
+  float: left;
+  width: 20px;
+  padding-top: 2px;
+}
+.cart-hover .cart-details {
+  margin-left: 15px;
+  float: left;
+  padding-top: 1px;
+}
+.cart-hover .cart-subtotal {
+  float: right;
+  padding-top: 1px;
 }
 @media all and (min-width: 600px) {
   .col-1-2 {
