@@ -177,12 +177,19 @@ a:active {
   font-style: normal;
 }
 .content-header {
-  margin-top: 80px;
-  width: 100%;
+  margin: 80px auto 0 auto;
+  width: 70%;
   text-align: center;
+  position: relative;
 }
 .content-header h1 {
   padding: 36px 0;
+}
+.content-header .breadcrumb {
+  display: block;
+  position: absolute;
+  z-index: 1;
+  left: 0px;
 }
 h1 {
   font-family: "Michroma";
@@ -214,7 +221,7 @@ h2 {
   display: table;
   max-width: 1000px;
 }
-.item {
+section > .item {
   display: table;
   width: 100%;
   padding: 10px 0;
@@ -296,7 +303,7 @@ h2 {
   margin-top: 15px;
   cursor: pointer;
 }
-.item {
+.sep-top {
   border-top: 1px solid #cbcbcb;
 }
 .footer {
@@ -420,6 +427,24 @@ h2 {
 .cart-hover .cart-subtotal {
   float: right;
   padding-top: 1px;
+}
+.cart table {
+  width: 100%;
+}
+.cart td {
+  vertical-align: middle;
+}
+.cart td.item-desc {
+  text-align: left;
+}
+.cart td.item-image {
+  width: 150px;
+}
+.cart td.item-image .thumbnail {
+  max-width: 100px;
+}
+.cart td.quantity select {
+  margin-left: 10px;
 }
 @media all and (min-width: 600px) {
   .col-1-2 {
