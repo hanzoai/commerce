@@ -79,7 +79,7 @@ class LineItemView extends View
     quantity = neverBelowOne quantity
 
     cart = app.get 'cart'
-    if (cart.get 'quantity') + quantity > 99
+    if (cart.getProduct @state.sku).quantity + quantity > 10
       console.log 'TOO MANY THINGS IN CART'
       return
 

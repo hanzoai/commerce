@@ -27,9 +27,9 @@ class ProductView extends View
 
     # Refuse to add more than 99 items to the cart
     cart = app.get 'cart'
-    if (cart.get 'quantity') + quantity > 99
+    if (cart.getProduct variant.SKU)?.quantity + quantity > 10
       setTimeout =>
-        @el.find('span').text('Cart is full!').fadeOut 500, =>
+        @el.find('span').text("Too many in cart").fadeOut 1000, =>
           inner.html 'Add to Cart'
           @el.find('span').fadeIn()
       , 500
