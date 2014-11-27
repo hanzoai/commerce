@@ -3,15 +3,15 @@ LineItemView = require './line-item'
 util         = require '../util'
 
 class CartView extends View
-  el: '.sqs-fullpage-shopping-cart-content'
+  el: '.cart-hover'
   bindings:
-    subtotal: '.subtotal .price span'
+    subtotal: '.subtotal .price .money'
 
   formatters:
     subtotal: (v) -> util.formatCurrency v
 
   render: ->
-    $('.cart-container tbody').html ''
+    $('.cart-content tbody').html ''
     index = 0
 
     cart = app.get 'cart'
@@ -25,7 +25,7 @@ class CartView extends View
       window.view = view
       view.render()
       view.bind()
-      $('.cart-container tbody').append view.$el
+      $('.cart-content tbody').append view.$el
 
     cart.on 'subtotal', (v) =>
       @set 'subtotal', v

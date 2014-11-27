@@ -3,9 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
+    "bebop": "^1.1.16",
     "grunt": "^0.4.5",
     "kouto-swiss": "^0.11.5",
-    "mvstar": "^0.1.14",
+    "mvstar": "^0.1.18",
     "uglify-js": "^2.4.15"
   }
 }
