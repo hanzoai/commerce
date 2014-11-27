@@ -42,15 +42,14 @@ class LineItemView extends View
           "Order.Items.#{v}.Variant.SKU"
         when 'input.slug @name'
           "Order.Items.#{v}.Product.Slug"
-        when '.quantity input @name'
+        when '.quantity select @name'
           "Order.Items.#{v}.Quantity"
 
     price: (v) ->
       util.formatCurrency v
 
   events:
-    'change .quantity input': 'updateQuantity'
-    'click .quantity input': 'updateQuantity'
+    'change .quantity select': 'updateQuantity'
 
     # 'keypress .quantity input': (e, el) ->
     #   @set el
