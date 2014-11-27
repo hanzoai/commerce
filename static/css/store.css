@@ -218,6 +218,7 @@ h2 {
   text-align: center;
   padding: 15px 20px;
   margin-top: 15px;
+  cursor: pointer;
 }
 .item {
   border-top: 1px solid #cbcbcb;
