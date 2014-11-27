@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block json %}
+<script>
+var allProducts = {{ productsJSON | safe }};
+</script>
+{% endblock %}
+
+{% block content_header %}
+<!-- <div class="banner-image content-fill" style="overflow: hidden;"> -->
+<!--   <img data-src="{{ staticUrl }}/skully/img/140810-Hero-V37-Exports.Still046.jpg" data-image="{{ staticUrl }}/skully/img/140810-Hero-V37-Exports.Still046.jpg" data-image-dimensions="1000x562" data-image-focal-point="0.5433884297520661,0.15441176470588236" alt="140810 Hero V37 Exports" class="" src="{{ staticUrl }}/skully/img/140810-Hero-V37-Exports.Still046.jpg?format=1500w" style="top: 0px; left: 0px; width: 1044px; height: 587px; position: relative; transform: translate3d(0px, 0px, 0px);" data-image-resolution="1500w"> -->
+<!-- </div> -->
+
+<!-- <div class="title-desc-wrapper has-main-image" data-content-field="main-image"> -->
+<!--     <div class="title-desc-inner" data-collection-id="544a2657e4b0ff95316b8ea0"> -->
+<!--         <h1 class="page-title" data-shrink-original-size="33" style="letter-spacing: 0.212121212121212em;">STORE</h1> -->
+<!--         <br> -->
+<!--         <1!-- <div class="page-desc"><p>Pre-order now and become part of SKULLY Nation.</p></div> --1> -->
+<!--     </div> -->
+<!-- </div> -->
+<h1>Get the Gear</h1>
+{% endblock %}
+
+{% block content %}
+{% for product in products %}
+<div class="item sep-top">
+
+  <div class="product-viewer">
+    {% for image in product.Images %}
+        {% if forloop.First %}
+        <div class="preview-background" style="background-image:url({{ image.Url }})">
+          <img class="preview" src="{{ image.Url }}" alt="{{ image.Alt }}">
+        </div>
+        {% endif %}
+    {% endfor %}
+
+    {% if product.Images | length > 1 %}
+    <div class="gallery">
+      {% for image in product.Images %}
+      {% if forloop.First %}
+      <img class="thumbnail selected" src="{{ image.Url }}" alt="{{ image.Alt }}">
+      {% else %}
+      <img class="thumbnail" src="{{ image.Url }}" alt="{{ image.Alt }}">
+      {% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="product-text" data-slug="{{ product.Slug }}">
+    <div class="product-title">
+      <h1 class="product-name">{{ product.DisplayTitle()|safe }}</h1>
+      <h2 class="product-cost">${{ product.DisplayPrice() }}</h2>
+    </div>
+
+    <div class="product-body">
+      <div class="product-description">
+        <p>{{ product.Excerpt }}</p>
+        <p>Goblet, mouthfeel malt amber barley attenuation? brew kettle
+        terminal gravity. krausen bottom fermenting yeast barleywine
+        lambic conditioning trappist alcohol. pub seidel acid rest, "
+        amber lagering hydrometer." bottle conditioning hefe ester hard
+        cider, gravity! barley enzymes, bottom fermenting yeast,
+        brewhouse lager lauter tun lauter.</p>
+      </div>
+
+      <div class="product-config">
+        {% if product.VariantOptions("Style") %}
+        <label for="style">Style:</label>
+        <select name="Style" class="style">
+          {% for style in product.VariantOptions("Style") %}
+          <option value="{{ style }}">{{ style }}</option>
+          {% endfor %}
+        </select>
+        {% endif %}
+
+        {% if product.VariantOptions("Color") %}
+        <label for="color">Color:</label>
+        <select name="Color" class="color">
+          {% for color in product.VariantOptions("Color") %}
+          <option value="{{ color }}">{{ color }}</option>
+          {% endfor %}
+        </select>
+        {% endif %}
+
+        {% if product.VariantOptions("Size") %}
+        <label for="size">Size:</label>
+        <select name="Size" class="size">
+          {% for size in product.VariantOptions("Size") %}
+          <option value="{{ size }}">{{ size }}</option>
+          {% endfor %}
+        </select>
+        {% endif %}
+
+        <div class="quantity-checkout">
+          <div class="quantity">
+            <label for="quantity">Quantity:</label>
+            <select name="quantity">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+                <option value="7">7</option>
+                <option value="8">8</option>
+                <option value="9">9</option>
+                <option value="10">10</option>
+            </select>
+          </div>
+
+          <div class="checkout-options">
+            <div class="add-to-cart">
+              <span>Add to Cart</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% endblock %}
