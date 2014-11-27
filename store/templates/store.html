@@ -52,32 +52,40 @@
   <body>
     <!--WRAPPER-->
     <div class="site">
+
       <!--HEADER-->
       <header class="header">
         <div class="title-nav">
           <a href="http://www.skullysystems.com/">
             <img class="logo" src="{{ staticUrl }}/img/skully.png" alt="SKULLY AR-1">
           </a>
+
           <nav class="nav">
             <ul class="links">
               <li class="link">
                 <a href="http://www.skullysystems.com/">HOME</a>
               </li>
+
               <li class="link">
                 <a href="http://blog.skullysystems.com/">BLOG</a>
               </li>
+
               <li class="link">
                 <a href="http://www.skullysystems.com/career">CAREER</a>
               </li>
+
               <li class="link">
                 <a href="http://www.skullysystems.com/faq/">FAQ</a>
               </li>
+
               <li class="link">
                 <a href="http://forum.skullysystems.com/">FORUM</a>
               </li>
+
               <li class="link">
                 <a class="current" href="/store/">STORE</a>
               </li>
+
               <li class="link">
                 <a class="big" href="/store/products/ar-1">GET YOUR AR-1</a>
               </li>
@@ -85,17 +93,22 @@
           </nav>
         </div>
       </header>
+
       <!--CONTENT HEADER-->
       <a id="top"></a>
+
       <section class="content-header">
         {% block content_header %}<h1>Get the Gear</h1>{% endblock %}
       </section>
+
       <!--CONTENT-->
       <section class="content">
+
         {% block content %}
         {% for product in products %}
         <div class="item">
           <div class="product-viewer">
+
             {% for image in product.Images %}
             {% if forloop.First %}
             <div class="preview-background" style="background-image:url({{ image.Url }})">
@@ -103,8 +116,10 @@
             </div>
             {% endif %}
             {% endfor %}
+
             {% if product.Images | length > 1 %}
             <div class="gallery">
+
               {% for image in product.Images %}
               {% if forloop.First %}
               <img class="thumbnail selected" src="{{ image.Url }}" alt="{{ image.Alt }}">
@@ -112,14 +127,18 @@
               <img class="thumbnail" src="{{ image.Url }}" alt="{{ image.Alt }}">
               {% endif %}
               {% endfor %}
+
             </div>
             {% endif %}
+
           </div>
+
           <div class="product-text">
             <div class="product-title">
               <h1 class="product-name">{{ product.Title }}</h1>
               <h2 class="product-cost">${{ product.DisplayPrice() }}</h2>
             </div>
+
             <div class="product-body">
               <div class="product-description">
                 <p>{{ product.Excerpt }}</p>
@@ -130,6 +149,7 @@
                 cider, gravity! barley enzymes, bottom fermenting yeast,
                 brewhouse lager lauter tun lauter.</p>
               </div>
+
               <div class="product-config">
                 {% if product.VariantOptions("Color") | length > 0 %}
                 <label for="color">Color:</label>
@@ -140,6 +160,7 @@
                   {% endfor %}
                 </select>
                 {% endif %}
+
                 {% if product.VariantOptions("Size") | length > 0 %}
                 <label for="size">Size:</label>
                 <select name="size">
@@ -149,11 +170,13 @@
                   {% endfor %}
                 </select>
                 {% endif %}
+
                 <div class="grid">
                   <div class="col-2-3">
                     <label for="quantity">Quantity:</label>
                     <input name="quantity" type="number" min="0" value="1">
                   </div>
+
                   <div class="col-1-3">
                     <div class="add-to-cart">
                       <span>Add to Cart</span>
@@ -166,7 +189,9 @@
         </div>
         {% endfor %}
         {% endblock %}
+
       </section>
+
       <footer class="footer">
         <div class="top-link">
           <a href="#top">
@@ -176,6 +201,7 @@
             </span>
           </a>
         </div>
+
         <div class="footer-content">
           <div class="grid">
             <div class="col-1-2">
@@ -191,37 +217,46 @@
                 </div>
               </div>
             </div>
+
             <div class="col-1-2">
               <nav class="social">
                 <div class="social-icons">
                   <a href="https://www.facebook.com/skullysystems" target="_blank" title="Skully Helmets, Inc" class="social-facebook">
                     <img src="{{ staticUrl }}/img/social/facebook.png">
                   </a>
+
                   <a href="http://www.twitter.com/skullysystems" target="_blank" title="SKULLY HELMETS" class="social-twitter">
                     <img src="{{ staticUrl }}/img/social/twitter.png">
                   </a>
+
                   <a href="http://www.youtube.com/channel/UCgGXkEJ5S_MmQCSoBnusr1Q" target="_blank" title="SKULLY" class="social-youtube">
                     <img src="{{ staticUrl }}/img/social/youtube.png">
                   </a>
+
                   <a href="http://www.instagram.com/skullysystems" target="_blank" title="Skully Helmets" class="social-instagram">
                     <img src="{{ staticUrl }}/img/social/instagram.png">
                   </a>
+
                   <a href="https://plus.google.com/112776474651298122010/posts" target="_blank" title="Marcus Weller" class="social-google">
                     <img src="{{ staticUrl }}/img/social/google%20+.png">
                   </a>
+
                   <a href="https://www.linkedin.com/company/3233339?trk=vsrp_companies_res_name&amp;trkInfo=VSRPsearchId%3A637198571407629012548%2CVSRPtargetId%3A3233339%2CVSRPcmpt%3Aprimary" target="_blank" title="Marcus Weller, PhD" class="social-linkedin">
                     <img src="{{ staticUrl }}/img/social/linkedin.png">
                   </a>
                 </div>
               </nav>
+
               <nav class="footer-nav">
                 <div class="links">
                   <p>&nbsp;</p>
+
                   <p>
                     <a href="/news">News</a>
                     <span>&nbsp; | &nbsp;</span>
                     <a target="_blank" href="http://skullysystems.forumchitchat.com/post/skully-ar1-referral-program-7033017">Referral Program</a>
                   </p>
+
                   <p class="text-align-right">
                     <a href="/privacy-policy">Privacy</a>
                     <span>&nbsp;| &nbsp;</span>
