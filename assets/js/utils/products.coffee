@@ -11,9 +11,9 @@ exports.getVariant = (slug, options) ->
   unless options?
     [options, slug] = [slug, null]
 
-  # If we get a slug we're on preorder page and need to use AllProducts
+  # If we get a slug we're on preorder page and need to use allProducts
   if slug?
-    variants = AllProducts[slug].Variants
+    variants = allProducts[slug].Variants
   else
     variants = currentProduct.Variants
 

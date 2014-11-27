@@ -1,6 +1,9 @@
+ProductView = require '../views/product'
+
 exports.setupViews = ->
   console.log 'store#setupViews'
-  for div in $('.add-to-cart')
+  console.log 'hi'
+  for div in $('.product-text')
     do (div) ->
       console.log 'product'
       view = new ProductView el: $(div)
@@ -62,3 +65,14 @@ exports.setupStylesAndSizes =->
           option = $(@)
           option.remove() if option.val() == 'XXL' || option.val() == 'XXXL'
 
+# Swap AR-1 helmets when color selected
+exports.customizeAr1 = ->
+  $slides = ($(i) for i in $('#productSlideshow .slide img'))
+
+  $('[data-variant-option-name=Color]').change ->
+    if $(@).val() is "Black"
+      $slides[0].fadeIn()
+      $slides[1].fadeOut()
+    else
+      $slides[1].fadeIn()
+      $slides[0].fadeOut()
