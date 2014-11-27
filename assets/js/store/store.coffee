@@ -9,12 +9,12 @@ class StoreApp extends App
       routes.cart.setupHover
       routes.store.setupViews
       routes.store.gallery
-      routes.store.setupStyles
+      routes.store.setupStylesAndSizes
     ]
 
     '/cart': [
       routes.cart.hideHover
-      routes.cart.setupView
+      routes.cart.setupViews
     ]
 
     '/:prefix?': routes.cart.setupHover
