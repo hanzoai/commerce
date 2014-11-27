@@ -3,9 +3,9 @@ LineItemView = require './line-item'
 util         = require '../util'
 
 class CartView extends View
-  el: '.cart-hover'
+  el: '.shopping-cart'
   bindings:
-    subtotal: '.subtotal .price .money'
+    subtotal: '.subtotal .money'
 
   formatters:
     subtotal: (v) -> util.formatCurrency v
