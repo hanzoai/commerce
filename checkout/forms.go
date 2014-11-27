@@ -42,6 +42,8 @@ type AuthorizeForm struct {
 	Order         models.Order
 	RawExpiry     string
 	ShipToBilling bool
+
+	StripeToken string
 }
 
 func (f *AuthorizeForm) Parse(c *gin.Context) error {
@@ -110,6 +112,10 @@ func (f AuthorizeForm) Validate() (errs []string) {
 	}
 	if f.Order.ShippingAddress.Country == "" {
 		errs = append(errs, "Country is required")
+	}
+
+	if f.StripeToken == "" {
+		errs = append(errs, "Invalid stripe token")
 	}
 	/*
 		if len(string(f.Order.Account.CVV2)) < 3 {
