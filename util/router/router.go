@@ -18,6 +18,8 @@ func New(moduleName string) *gin.RouterGroup {
 		log.Panic("Unable to determine prefix for module: '%s'", moduleName)
 	}
 
+	log.Debug("Using prefix %s for module %s", prefix, moduleName)
+
 	router.Use(middleware.ErrorHandler())
 	router.Use(middleware.NotFoundHandler())
 	router.Use(middleware.AddHost())

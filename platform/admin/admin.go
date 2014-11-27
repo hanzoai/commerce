@@ -1,12 +1,12 @@
 package admin
 
 import (
-	"log"
+	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/auth"
 	"crowdstart.io/config"
+	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
-	"github.com/gin-gonic/gin"
 )
 
 type TokenData struct {
@@ -23,7 +23,9 @@ type TokenData struct {
 
 // Index
 func Index(c *gin.Context) {
-	c.Redirect(301, config.UrlFor("platform", "/dashboard"))
+	url := config.UrlFor("platform", "/dashboard")
+	log.Debug("Redirecting to %s", url)
+	c.Redirect(301, url)
 }
 
 // Register
@@ -44,11 +46,11 @@ func Login(c *gin.Context) {
 // Post login form
 func SubmitLogin(c *gin.Context) {
 	if err := auth.VerifyUser(c); err == nil {
-		log.Println("Success")
+		log.Debug("Success")
 		c.Redirect(301, "dashboard")
 	} else {
-		log.Println("Failure")
-		log.Printf("%#v", err)
+		log.Debug("Failure")
+		log.Debug("%#v", err)
 		c.Redirect(301, "login")
 	}
 }

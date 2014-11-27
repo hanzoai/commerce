@@ -20,11 +20,11 @@ var All = delay.Func("install-all-fixtures", func(c appengine.Context) {
 	log.Debug("Loading fixtures...")
 	db := datastore.New(c)
 
-	pwhash, _ := bcrypt.GenerateFromPassword([]byte("password"), 12)
+	pwhash, _ := bcrypt.GenerateFromPassword([]byte("Victory1!"), 12)
 
 	// Default User (SKULLY)
-	db.PutKey("user", "skully", &User{
-		Id:           "skully",
+	db.PutKey("user", "dev@hanzo.ai", &User{
+		Id:           "dev@hanzo.ai",
 		FirstName:    "Mitchell",
 		LastName:     "Weller",
 		Email:        "dev@hanzo.ai",
