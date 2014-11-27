@@ -33,6 +33,7 @@ class StoreApp extends App
     # store cart/alert so they can be easily accessed from views
     @set 'cart', cart
     @set 'alert', alert
+    @set 'maxQuantityPerProduct', 10
 
     # trigger route callbacks
     @route()
