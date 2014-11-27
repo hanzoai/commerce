@@ -1,8 +1,6 @@
 package checkout
 
-import (
-	"crowdstart.io/util/router"
-)
+import "crowdstart.io/util/router"
 
 func init() {
 	router := router.New("checkout")

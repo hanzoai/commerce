@@ -1,28 +1,37 @@
 package stripe
 
 import (
-	"appengine"
-	"appengine/urlfetch"
-	"crowdstart.io/models"
 	"github.com/stripe/stripe-go"
 	"github.com/stripe/stripe-go/client"
 	"github.com/stripe/stripe-go/currency"
+
+	"appengine"
+	"appengine/urlfetch"
+
+	"crowdstart.io/config"
+	"crowdstart.io/models"
 )
 
-func Charge(ctx appengine.Context, order models.Order) (string, error) {
+func Charge(ctx appengine.Context, token string, order *models.Order) (string, error) {
 	backend := stripe.NewInternalBackend(urlfetch.Client(ctx), "")
 
+	// Stripe advises using client-level methods
+	// in a concurrent context
 	sc := &client.API{}
-	sc.Init(order.Campaign.StripeKey, backend) // TODO grab this from datastore
+	sc.Init(config.Get().Stripe.APISecret, backend)
 
 	params := &stripe.ChargeParams{
 		Amount:   uint64(order.Total),
 		Currency: currency.USD,
-		Card:     &stripe.CardParams{Token: order.StripeToken},
+		Card:     &stripe.CardParams{Token: token},
 		Desc:     order.Description(),
 	}
 
 	charge, err := sc.Charges.New(params)
-	
+
+	// Charges and tokens are recorded regardless of success/failure
+	order.Charges = append(order.Charges, charge)
+	order.StripeTokens = append(order.StripeTokens, token)
+
 	return charge.ID, err
 }
