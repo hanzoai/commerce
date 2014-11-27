@@ -77,11 +77,6 @@ class LineItemView extends View
       quantity = 1
     quantity = neverBelowOne quantity
 
-    cart = app.get 'cart'
-    if (cart.getProduct @state.sku).quantity + quantity > (app.get 'maxQuantityPerProduct')
-      console.log 'TOO MANY THINGS IN CART'
-      return
-
     # Since this is LITERALLY the object in the cart, it fucks up tremendously
     # unless we clone our state object.
     @state = $.extend {}, @state
