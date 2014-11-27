@@ -128,6 +128,7 @@ h2 {
   width: 75%;
   margin: 0 auto;
   display: table;
+  max-width: 1000px;
 }
 .item {
   display: table;
@@ -353,11 +354,10 @@ h2 {
 @media all and (min-width: 1000px) {
   .product-viewer {
     width: 50%;
-    display: inline;
-    float: left;
+    display: table-cell;
+    vertical-align: middle;
   }
   .product-text {
-    width: 50%;
     display: inline;
     float: left;
   }
