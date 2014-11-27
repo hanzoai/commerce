@@ -81,16 +81,17 @@
       </header>
 
       <!--CONTENT HEADER-->
-      <section class="content-header">
+      <section class="content-header {% block content_header_width_class %}{% endblock %}">
         {% block content_header %}{% endblock %}
       </section>
 
       <!--CONTENT-->
-      <section class="content">
+      <section class="content {% block content_width_class %}{% endblock %}">
         {% block content %}
         {% endblock %}
       </section>
 
+      <!--FOOTER-->
       <footer class="footer">
         <div class="top-link">
           <a href="#">
