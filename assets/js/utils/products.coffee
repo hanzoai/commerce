@@ -17,6 +17,8 @@ exports.getVariant = (slug, options) ->
   else
     variants = currentProduct.Variants
 
+  console.log options, variants
+
   # Figure out SKU, all options match match variant
   for variant in variants
     return variant if optionsMatch options, variant
