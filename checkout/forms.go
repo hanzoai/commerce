@@ -1,10 +1,6 @@
 package checkout
 
 import (
-	"errors"
-	"strconv"
-	"strings"
-
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/middleware"
@@ -54,26 +50,6 @@ func (f *AuthorizeForm) Parse(c *gin.Context) error {
 
 	ctx := middleware.GetAppEngine(c)
 	ctx.Debugf("%v", f.RawExpiry)
-
-	// Parse raw expiry
-	parts := strings.Split(f.RawExpiry, " / ")
-	if len(parts) != 2 {
-		return errors.New("Invalid expiry")
-	}
-
-	month, err := strconv.Atoi(parts[0])
-	if err != nil {
-		return errors.New("Invalid month")
-	}
-
-	year, err := strconv.Atoi(parts[1])
-	if err != nil {
-		return errors.New("Invalid year")
-	}
-
-	f.Order.Account.Month = month
-	f.Order.Account.Year = year
-	f.Order.Account.Expiry = strings.Join(parts, "")
 
 	if f.ShipToBilling {
 		f.Order.ShippingAddress = f.Order.BillingAddress
