@@ -2,31 +2,37 @@ View = require 'mvstar/lib/view'
 products = require '../../utils/products'
 
 class ProductView extends View
-  el: '.add-to-cart'
+  el: '.product-text'
+
+  constructor: ->
+    super
+    @slug = @el.data 'slug'
 
   events:
-    click: -> @addToCart()
+    'click .add-to-cart': 'addToCart'
 
   addToCart: ->
     unless (variant = @getVariant())?
       return
 
-    quantity = parseInt $("#quantity").val(), 10
+    quantity = parseInt $('input[name=quantity]').val(), 10
 
     inner = $('.sqs-add-to-cart-button-inner')
     inner.html ''
     inner.append '<div class="yui3-widget sqs-spin light"></div>'
     inner.append '<div class="status-text">Adding...</div>'
 
+    product = allProducts[@slug]
+
     app.get('cart').addProduct variant.SKU,
       sku:      variant.SKU
       color:    variant.Color
-      img:      currentProduct.Images[0].Url
-      name:     currentProduct.Title
+      img:      product.Images[0].Url
+      name:     product.Title
       price:    parseInt(variant.Price, 10) * 0.0001
       quantity: quantity
       size:     variant.Size
-      slug:     currentProduct.Slug
+      slug:     @slug
 
     setTimeout ->
       $('.status-text').text('Added!').fadeOut 500, ->
@@ -47,14 +53,12 @@ class ProductView extends View
     options = {}
     missing = []
 
-    $('.variant-option').each (i, v) ->
-      $(v).find('select').each (i, v) ->
-        $select = $(v)
-        name = $select.data('variant-option-name')
-        value = $select.val()
-        options[name] = value
-        missing.push name if value is 'none'
-        return
+    @el.find('select').each (i, v) ->
+      $select = $(v)
+      name = $select.attr('name')
+      value = $select.val()
+      options[name] = value
+      missing.push name if value is 'none'
       return
 
     console.log options, missing
@@ -73,6 +77,6 @@ class ProductView extends View
         confirm: 'Okay'
       return
 
-    products.getVariant options
+    products.getVariant @slug, options
 
 module.exports = ProductView
