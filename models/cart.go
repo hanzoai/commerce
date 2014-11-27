@@ -7,7 +7,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/mholt/binding"
-	stripe "github.com/stripe/stripe-go"
 
 	"crowdstart.io/datastore"
 )
@@ -97,6 +96,22 @@ type PaymentAccount struct {
 	Type   string `schema:"-"`
 }
 
+type Charge struct {
+	ID             string
+	Live           bool
+	Paid           bool
+	Desc           string
+	Email          string
+	Amount         uint64
+	FailMsg        string
+	Created        int64
+	Refunded       bool
+	Captured       bool
+	FailCode       string
+	Statement      string
+	AmountRefunded uint64
+}
+
 type Order struct {
 	FieldMapMixin
 	Account         PaymentAccount
@@ -113,8 +128,8 @@ type Order struct {
 	Items   []LineItem
 
 	// Slices in order to record failed tokens/charges
-	StripeTokens []string        `schema:"-"`
-	Charges      []stripe.Charge `schema:"-"`
+	StripeTokens []string `schema:"-"`
+	Charges      []Charge `schema:"-"`
 
 	Campaign Campaign
 
