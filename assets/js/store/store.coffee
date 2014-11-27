@@ -5,19 +5,16 @@ class StoreApp extends App
   prefix: '/:store?'
 
   routes:
+    '/': [
+      routes.cart.setupHover
+      routes.store.setupViews
+      routes.store.gallery
+      routes.store.setupStylesAndSizes
+    ]
+
     '/cart': [
       routes.cart.hideHover
       routes.cart.setupView
-    ]
-
-    '/products/:slug': [
-      routes.cart.setupHover
-      routes.products.gallery
-      routes.products.setupView
-    ]
-
-    '/products/ar-1': [
-      routes.products.customizeAr1
     ]
 
     '/:prefix?': routes.cart.setupHover
@@ -43,4 +40,4 @@ class StoreApp extends App
 window.app = app = new StoreApp()
 
 # let us begin
-app.start()
+$(document).ready -> app.start()
