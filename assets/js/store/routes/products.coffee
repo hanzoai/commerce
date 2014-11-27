@@ -1,10 +1,12 @@
 ProductView = require '../views/product'
 
 # setup view
-exports.setupView = ->
-  view = new ProductView()
-  app.views.push view
-  view.bind()
+exports.setupViews = ->
+  $('.add-to-cart').each (i, v) ->
+    view = new ProductView el: v
+    window.view = view
+    app.views.push view
+    view.bind()
 
 # Product gallery image switching
 exports.gallery = ->
