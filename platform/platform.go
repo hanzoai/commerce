@@ -23,7 +23,6 @@ func init() {
 	router.GET("/profile", middleware.LoginRequired(), admin.Profile)
 	router.POST("/profile", admin.SubmitProfile)
 
-	router.GET("/dashboard", middleware.LoginRequired(), admin.Dashboard)
 	router.GET("/connect", middleware.LoginRequired(), admin.Connect)
 
 	router.GET("/stripe/callback", middleware.LoginRequired(), admin.StripeCallback)

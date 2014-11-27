@@ -10,7 +10,7 @@ dispatch:
   - url: "*/checkout/*"
     module: checkout
 
-  - url: "*/platform/*"
+  - url: "*/admin/*"
     module: platform
 
   - url: "*/preorder/*"
