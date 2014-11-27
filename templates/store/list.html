@@ -21,6 +21,10 @@ var allProducts = {{ productsJSON | safe }};
 <h1>Get the Gear</h1>
 {% endblock %}
 
+{% block content_header_width_class %}store-width{% endblock %}
+
+{% block content_width_class %}store-width{% endblock %}
+
 {% block content %}
 {% for product in products %}
 <div class="item sep-top">
