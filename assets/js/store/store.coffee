@@ -14,7 +14,7 @@ class StoreApp extends App
 
     '/cart': [
       routes.cart.hideHover
-      routes.cart.setupViews
+      routes.cart.setupView
     ]
 
     '/:prefix?': routes.cart.setupHover

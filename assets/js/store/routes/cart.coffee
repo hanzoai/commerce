@@ -3,7 +3,7 @@ exports.click = ->
     window.location = '/cart'
 
 exports.hideHover = ->
-  $(".cart-hover").hide()
+  $('.cart-hover').hide()
 
 exports.setupHover = ->
   view = new (require '../views/cart-hover')
