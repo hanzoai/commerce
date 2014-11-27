@@ -70,6 +70,7 @@ func authorize(c *gin.Context) {
 	if err := form.Parse(c); err != nil {
 		log.Error(err.Error())
 		formError(c, err)
+		log.Debug("Account %#v", form.Order.Account)
 		return
 	}
 
