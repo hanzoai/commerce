@@ -29,3 +29,25 @@ exports.gallery = ->
             fading = false
             preview.css
               "background-image": 'url(' + src + ')'
+
+exports.setupStyles =->
+  $(document).ready ->
+    $('.style').on 'change', ->
+      style = $(@)
+      config = style.parent()
+
+      size = config.find('.size')
+
+      if style.val() == "Men's T-Shirt"
+        hasOptions = false
+        size.find('option').each ->
+          option = $(@)
+          hasOptions = true if option.val() == 'XXL' || option.val() == 'XXXL'
+        if !hasOptions
+          size.append $('<option value="XXL">XXL</option>')
+          size.append $('<option value="XXXL">XXXL</option>')
+      else if style.val() =="Women's T-Shirt"
+        size.find('option').each ->
+          option = $(@)
+          option.remove() if option.val() == 'XXL' || option.val() == 'XXXL'
+
