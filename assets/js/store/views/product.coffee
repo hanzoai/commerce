@@ -25,7 +25,17 @@ class ProductView extends View
 
     product = allProducts[@slug]
 
-    app.get('cart').addProduct variant.SKU,
+    # Refuse to add more than 99 items to the cart
+    cart = app.get 'cart'
+    if (cart.getProduct variant.SKU)?.quantity + quantity > (app.get 'maxQuantityPerProduct')
+      setTimeout =>
+        @el.find('span').text("Too many in cart").fadeOut 1000, =>
+          inner.html 'Add to Cart'
+          @el.find('span').fadeIn()
+      , 500
+      return
+
+    cart.addProduct variant.SKU,
       sku:      variant.SKU
       color:    variant.Color
       img:      product.Images[0].Url

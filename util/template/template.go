@@ -18,8 +18,13 @@ func TemplateSet() *pongo2.TemplateSet {
 	set.Globals["isProduction"] = config.IsProduction
 	set.Globals["siteTitle"] = config.SiteTitle
 	set.Globals["staticUrl"] = config.StaticUrl
+
 	set.Globals["moduleUrl"] = func(moduleName string) string {
 		return config.ModuleUrl(moduleName)
+	}
+
+	set.Globals["urlFor"] = func(moduleName string, path string) string {
+		return config.UrlFor(moduleName, path)
 	}
 
 	return set
