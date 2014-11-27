@@ -261,7 +261,7 @@
         <div id="form-wrapper" class="right-column-wrapper">
             <div class="yui3-widget sqs-widget sqs-checkout-form">
                 <div class="sqs-checkout-form-content">
-                    <form id="form">
+                    <form id="form" action="authorize" method="POST">
                         {% for item in order.Items %}
                         <input type="hidden" name="Order.Items.{{ forloop.Counter }}.Product.Slug" value="{{ item.Slug() }}">
                         <input type="hidden" name="Order.Items.{{ forloop.Counter }}.Variant.SKU" value="{{ item.SKU() }}">

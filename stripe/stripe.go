@@ -10,6 +10,7 @@ import (
 
 	"crowdstart.io/config"
 	"crowdstart.io/models"
+	"crowdstart.io/util/log"
 )
 
 func Charge(ctx appengine.Context, token string, order *models.Order) (string, error) {
@@ -20,6 +21,7 @@ func Charge(ctx appengine.Context, token string, order *models.Order) (string, e
 	sc := &client.API{}
 	sc.Init(config.Get().Stripe.APISecret, backend)
 
+	log.Debug("Amount: %d ", order.Total)
 	params := &stripe.ChargeParams{
 		Amount:   uint64(order.Total),
 		Currency: currency.USD,
