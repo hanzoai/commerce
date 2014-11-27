@@ -34,6 +34,9 @@ module.exports =
 
   exclude: [
     /config\/production\/static/
+    /\.go$/
+    /\.yaml$/
+    /config.json$/
   ]
 
   compilers:
