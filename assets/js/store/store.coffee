@@ -24,6 +24,7 @@ class StoreApp extends App
 
     '/store': [
       routes.store.gallery
+      routes.store.setupStyles
     ]
 
     '*': routes.cart.click
