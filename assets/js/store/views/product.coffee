@@ -25,7 +25,7 @@ class ProductView extends View
 
     product = allProducts[@slug]
 
-    app.get('cart').addProduct @slug,
+    app.get('cart').addProduct variant.SKU,
       sku:      variant.SKU
       color:    variant.Color
       img:      product.Images[0].Url
