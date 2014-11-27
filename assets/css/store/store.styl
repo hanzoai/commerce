@@ -160,6 +160,8 @@ h2
       width 65%
     .product-cost
       display inline-block
+      margin 12px 15px 0 0
+      float right
   .product-body
     padding 20px 10px 0 0px
     .product-description
@@ -176,8 +178,16 @@ h2
         .quantity
           float left
 
-      .col-1-3
+      .checkout-options
         height 100px
+        display inline
+        float left
+        width 33%
+
+      .quantity
+        display inline
+        float left
+        width 66%
 
       .add-to-cart
         background-color rgb(39,39,39)
@@ -187,7 +197,7 @@ h2
         font-size 1em
         min-width 100px
         text-align center
-        padding 15px 50px
+        padding 15px 20px
         margin-top 15px
 
 .item
@@ -272,14 +282,6 @@ h2
 // GRIDDING
 
 @media all and ( min-width: 600px )
-  .col-1-3
-    display inline
-    float left
-    width 33%
-  .col-2-3
-    display inline
-    float left
-    width 66%
   .col-1-2
     display inline
     float left
