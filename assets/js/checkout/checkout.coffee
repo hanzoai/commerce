@@ -64,9 +64,9 @@ showPaymentOptions = $.debounce(250, ->
 $requiredVisible.on "keyup", showPaymentOptions
 $("#form").card
   container: "#card-wrapper"
-  numberInput: "input[name=\"Order.Account.Number\"]"
-  expiryInput: "input[name=\"RawExpiry\"]"
-  cvcInput: "input[name=\"Order.Account.CVV2\"]"
+  numberInput: "#cardNumber"
+  expiryInput: "#expiry"
+  cvcInput: "#cvcInput"
   nameInput: "input[name=\"User.FirstName\"], input[name=\"User.LastName\"]"
 
 $("input[name=\"ShipToBilling\"]").change ->
