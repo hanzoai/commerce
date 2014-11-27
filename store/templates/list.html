@@ -42,7 +42,7 @@
 
   <div class="product-text">
     <div class="product-title">
-      <h1 class="product-name">{{ product.Title }}</h1>
+      <h1 class="product-name">{{ product.DisplayTitle()|safe }}</h1>
       <h2 class="product-cost">${{ product.DisplayPrice() }}</h2>
     </div>
 
