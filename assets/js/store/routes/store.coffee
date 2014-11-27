@@ -30,8 +30,9 @@ exports.gallery = ->
             preview.css
               "background-image": 'url(' + src + ')'
 
-exports.setupStyles =->
+exports.setupStylesAndSizes =->
   $(document).ready ->
+    $('.size').val('M')
     $('.style').on 'change', ->
       style = $(@)
       config = style.parent()
