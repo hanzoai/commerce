@@ -4,7 +4,7 @@ var $form = $("form#stripeForm");
 var $cardNumber = $('input#cardNumber');
 var $expiry = $('input#expiry');
 var $cvc = $('input#cvcInput');
-var $stripeToken = $('input#stripeToken');
+var $token = $('input[name="TokenId"]');
 
 // Setting this to true won't help against server-side checks. :)
 csio.approved = false;
@@ -57,7 +57,8 @@ var stripeResponseHandler = function(status, response) {
     } else {
         csio.approved = true;
         var token = response.id;
-        $stripeToken.val(token);
+        $token.val(token);
+        
         authorizeMessage.text('Card approved. Ready when you are.');
     }
 };
@@ -66,15 +67,30 @@ var stripeResponseHandler = function(status, response) {
 function stripeRunner() {
     var card = validateCard();
     if (card.success) {
-        $form.find('input[data-stripe="number"]').val(card.number);
-        $form.find('input[data-stripe="cvc"]').val(card.cvc);
-        $form.find('input[data-stripe="exp-month"]').val(card.month);
-        $form.find('input[data-stripe="exp-year"]').val(card.year);
-
         Stripe.card.createToken($form, stripeResponseHandler);
     }
 }
 
-$cardNumber.change(stripeRunner);
-$expiry.change(stripeRunner);
-$cvc.change(stripeRunner);
+function relayer() {
+    var card = validateCard();
+    if (card.success) {
+        $form.find('input[data-stripe="number"]').val(card.number);
+        $form.find('input[data-stripe="cvc"]').val(card.cvc);
+        $form.find('input[data-stripe="exp-month"]').val(card.month);
+        $form.find('input[data-stripe="exp-year"]').val(card.year);
+    }
+}
+
+$cardNumber.change(relayer);
+$expiry.change(relayer);
+$cvc.change(relayer);
+
+$(document).ready(function(){
+    $('#form').submit(function(event) {
+        if (!csio.approved) {
+            stripeRunner();
+            return false;
+        }
+        return true;
+    });
+});
