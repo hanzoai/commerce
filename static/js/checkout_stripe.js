@@ -48,18 +48,20 @@ var validateCard = function() {
     };
 };
 
-var authorizeMessage = $('#authorize-message');
+var $authorizeMessage = $('#authorize-message');
 
 // Callback for createToken
 var stripeResponseHandler = function(status, response) {
+    $authorizeMessage.removeClass("error");
     if (response.error) {
-        authorizeMessage.text(response.error.message);
+        $authorizeMessage.text(response.error.message);
+        $authorizeMessage.addClass("error");
     } else {
         csio.approved = true;
         var token = response.id;
         $token.val(token);
         
-        authorizeMessage.text('Card approved. Ready when you are.');
+        $authorizeMessage.text('Card approved. Ready when you are.');
     }
 };
 
