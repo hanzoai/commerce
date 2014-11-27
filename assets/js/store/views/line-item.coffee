@@ -18,10 +18,10 @@ class LineItemView extends View
     name:       'div.title'
     desc:       'div.desc'
     price:      '.price .money'
-    quantity:   '.quantity input @value'
+    quantity:   '.quantity select @value'
     index:     ['input.sku       @name'
                 'input.slug      @name'
-                '.quantity input @name']
+                '.quantity select @name']
 
   computed:
     desc: (color, size) -> [color, size]
@@ -42,15 +42,14 @@ class LineItemView extends View
           "Order.Items.#{v}.Variant.SKU"
         when 'input.slug @name'
           "Order.Items.#{v}.Product.Slug"
-        when '.quantity input @name'
+        when '.quantity select @name'
           "Order.Items.#{v}.Quantity"
 
     price: (v) ->
       util.formatCurrency v
 
   events:
-    'change .quantity input': 'updateQuantity'
-    'click .quantity input': 'updateQuantity'
+    'change .quantity select': 'updateQuantity'
 
     # 'keypress .quantity input': (e, el) ->
     #   @set el
