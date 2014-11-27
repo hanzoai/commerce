@@ -97,8 +97,8 @@ type PaymentAccount struct {
 }
 
 type Charge struct {
-	Live           bool
 	ID             string
+	Live           bool
 	Paid           bool
 	Desc           string
 	Email          string
