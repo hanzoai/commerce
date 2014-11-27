@@ -1,15 +1,9 @@
 <!DOCTYPE html>
-<html lang="en-US" class="yui3-js-enabled js flexbox canvas canvastext webgl no-touch geolocation postmessage websqldatabase indexeddb hashchange history draganddrop websockets rgba hsla multiplebgs backgroundsize borderimage borderradius boxshadow textshadow opacity cssanimations csscolumns cssgradients cssreflections csstransforms csstransforms3d csstransitions fontface video audio localstorage sessionstorage webworkers applicationcache svg inlinesvg smil svgclippaths squarespace-cameron wf-futurapt-n4-active wf-proximanova-i1-active wf-proximanova-i3-active wf-proximanova-i4-active wf-proximanova-i6-active wf-proximanova-i7-active wf-proximanova-n1-active wf-proximanova-n3-active wf-proximanova-n4-active wf-proximanova-n6-active wf-proximanova-n7-active wf-active">
-<div id="yui3-css-stamp" style="position: absolute !important; visibility: hidden !important"></div>
-<head>
+<html lang="en-US">
+  <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-
-    <base href=".">
-
     <title>{% block title %} {{ siteTitle }} {% endblock %}</title>
 
     {% block canonical_link %}
@@ -23,262 +17,160 @@
     <meta itemprop="name" content="{{ product.Title }}">
     <meta itemprop="url" content="{{ moduleUrl("store") }}">
     {% endblock %}
+
     <link rel="shortcut icon" type="image/x-icon" href="{{ staticUrl }}/favicon.ico">
 
-    <!--[if gte IE 9]>
-    <link rel="stylesheet" type="text/css" href="{{ staticUrl }}/css/ie9.css"/>
-    <![endif]-->
     <!--[if lt IE 9]>
     <script src="{{ staticUrl }}/js/html5-shiv.js"></script>
-    <link rel="stylesheet" type="text/css" href="{{ staticUrl }}/css/ie.css"/>
     <![endif]-->
-    <!--[if !IE]> -->
-    <link rel="stylesheet" type="text/css" href="{{ staticUrl }}/css/site.css">
-    <!-- <![endif]-->
+
+    <link rel="stylesheet" type="text/css" href="{{ staticUrl }}/css/reset.css">
+    <link rel="stylesheet" type="text/css" href="{{ staticUrl }}/css/store.css">
+    <!--Mail Chimp-->
+    <link href="//cdn-images.mailchimp.com/embedcode/slim-081711.css" rel="stylesheet" type="text/css">
+    <style type="text/css">
+      #mc_embed_signup{clear:left; font:14px Helvetica,Arial,sans-serif; }
+      /* Add your own MailChimp form style overrides in your site stylesheet or in this style block.
+         We recommend moving this block and the preceding CSS link to the HEAD of your HTML file. */
+    </style>
+
+    {% block css %}{% endblock %}
 
     <!--FONTS-->
     <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Michroma:400,400italic,700normal,700italic|PT+Serif:400,400italic,700normal,700italic"/>
     <script src="//use.typekit.net/uye2ojv.js"></script>
     <script type="text/javascript">try{Typekit.load();}catch(e){}</script>
 
-    {% block css %}{% endblock %}
-
-</head>
-
-<body id="item-544a2657e4b0ff95316b8ea0" class="gallery-design-slideshow aspect-ratio-auto lightbox-style-dark gallery-navigation-bullets gallery-info-overlay-show-on-hover gallery-arrow-style-no-background gallery-show-arrows gallery-auto-crop    event-excerpts event-list-date event-list-time event-list-address event-icalgcal-links  parallax-scrolling hide-parallax-nav fixed-header  title--description-alignment-center title--description-position-over-image title-background first-index-image-fullscreen index-image-height-two-thirds underline-body-links blog-layout-columns blog-width-full    product-list-titles-under product-list-alignment-center product-item-size-11-square product-image-auto-crop product-gallery-size-11-square product-gallery-auto-crop show-product-price show-product-item-nav product-social-sharing   opentable-style-dark newsletter-style-dark small-button-style-solid small-button-shape-square medium-button-style-solid medium-button-shape-square large-button-style-solid large-button-shape-square button-style-default button-corner-style-square native-currency-code-usd view-item collection-544a257de4b015b5ef71847c collection-layout-default collection-type-products mobile-style-available has-nav loaded">
-
-    <!--MOBILE NAVIGATION-->
-    <div id="mobileNav" data-content-field="navigation-mobileNav">
-        <nav class="main-nav">
-            <div class="nav-wrapper">
-                <ul class="cf">
-                    <li class="index-collection folder">
-                        <a href="http://www.skullysystems.com/"><span>HOME</span></a>
-                    </li>
-
-                    <li class="external-link">
-                      <a href="http://blog.skullysystems.com/" target="_blank"><span>BLOG</span></a>
-                    </li>
-
-                    <li class="page-collection">
-                      <a href="http://www.skullysystems.com/faq/"><span>FAQ</span></a>
-                    </li>
-
-                    <li class="page-collection">
-                      <a href="{{ moduleUrl("store") }}/"><span>STORE</span></a>
-                    </li>
-
-                    <li class="external-link">
-                      <a href="http://forum.skullysystems.com/" target="_blank"><span>FORUM</span></a>
-                    </li>
-
-                    <li class="external-link">
-                      <a href="{{ moduleUrl("store") }}/products/ar-1"><span></span></a><a
-                          class="title-button"
-                        onclick="_gaq.push([&#39;_trackEvent&#39;,
-                        &#39;CTA_Button&#39;, &#39;click&#39;,
-                        &#39;topBnr_cta&#39;, 0]);" href="{{ moduleUrl("store") }}/products/ar-1">GET
-                      YOUR AR-1</a>
-                    </li>
-
-                </ul>
-            </div>
-        </nav>
-    </div>
-
-    <!--WRAPPER-->
-    <div class="site-wrapper">
-        <div class="site-inner-wrapper">
-
-          <!--HEADER-->
-            <div id="header-wrapper" style="padding-top: 67px;">
-                <header id="header">
-                    <div class="title-nav-wrapper">
-
-                        <h1 data-content-field="site-title" class="site-title">
-                          <a href="http://www.skullysystems.com/" id="top">
-			    <img src="{{ staticUrl }}/skully/img/skully.png" alt="SKULLY AR-1">
-                          </a>
-                        </h1>
-
-                        <a class="icon-menu" id="mobileMenu"></a>
-
-                        <!--MAIN NAVIGATION-->
-                        <div id="desktopNav" data-content-field="navigation-desktopNav">
-
-                            <nav class="main-nav">
-                                <div class="nav-wrapper">
-                                    <ul class="cf">
-
-                                        <li class="index-collection folder">
-                                            <a href="http://www.skullysystems.com/"><span>HOME</span></a>
-                                        </li>
-
-                                        <li class="external-link">
-                                            <a href="http://blog.skullysystems.com/" target="_blank"><span>BLOG</span></a>
-                                        </li>
-
-                                        <li class="page-collection">
-                                            <a href="http://www.skullysystems.com/faq/"><span>FAQ</span></a>
-                                        </li>
-
-                                        <li class="external-link">
-                                            <a href="http://forum.skullysystems.com/" target="_blank"><span>FORUM</span></a>
-                                        </li>
-
-                                        <li class="page-collection">
-                                          <a href="{{ moduleUrl("store") }}/"><span>STORE</span></a>
-                                        </li>
-
-                                        <li class="external-link">
-                                          <a href="{{ moduleUrl("store")}}/products/ar-1"><span></span></a><a class="title-button" onclick="_gaq.push([&#39;_trackEvent&#39;, &#39;CTA_Button&#39;, &#39;click&#39;, &#39;topBnr_cta&#39;, 0]);" href="{{ moduleUrl("store") }}/products/ar-1">GET YOUR AR-1</a>
-                                        </li>
-
-                                    </ul>
-                                </div>
-                            </nav>
-
-                        </div>
-                    </div>
-                </header>
-
-                {% block content_header %}{% endblock %}
-            </div>
-
-            <!--CONTENT-->
-            <section id="content-wrapper">
-
-                <!--CART HOVER-->
-                <div class="sqs-cart-dropzone fixed-cart" style="margin-top: 70px; top: 80px;">
-                  <a href="{{ moduleUrl("store") }}/cart">
-                    <div class="yui3-widget sqs-widget sqs-pill-shopping-cart" style="visibility: visible; opacity: 1;">
-                      <div class="sqs-pill-shopping-cart-content dark">
-                        <div class="icon"></div>
-
-                        <div class="details">
-                          Cart&nbsp;-&nbsp;
-                            <span class="total-quantity">0</span>
-                            <span class="suffix">item</span>
-                        </div>
-
-                        <span class="subtotal">
-                          <span class="price"><span class="sqs-money-native">0.00</span></span>
-                        </span>
-                      </div>
-                    </div>
-                  </a>
-                </div>
-
-                <div class="content">
-                    <div class="content-inner" data-content-field="main-content">
-                      {% block content %}{% endblock %}
-                    </div>
-                </div>
-
-            </section>
-
-            <!--FOOTER-->
-            <footer id="footer">
-                <div class="back-to-top-link">
-                  <a href="#top"><span class="arrow"></span>Top</a>
-                </div>
-
-                <div class="footer-wrapper">
-                    <div class="sqs-layout sqs-grid-12 columns-12" data-layout-label="Footer Content" data-type="block-field" data-updated-on="1409729151942" id="footerBlocks">
-                        <div class="row sqs-row">
-                            <div class="col sqs-col-12 span-12">
-                                <div class="row sqs-row">
-                                    <div class="col sqs-col-5 span-5">
-                                        <div class="sqs-block code-block sqs-block-code" data-block-type="23">
-                                            <div class="sqs-block-content">
-                                                <!-- Begin MailChimp Signup Form -->
-                                                <div id="mc_embed_signup">
-                                                    <form action="//skullysystems.us3.list-manage.com/subscribe/post?u=bc1d6c276527db0df1053fc13&amp;id=ae4e853b80" method="post" id="mc-embedded-subscribe-form" name="mc-embedded-subscribe-form" class="validate" target="_blank" novalidate="">
-                                                        <label for="mce-EMAIL">Get the latest from the SKULLY Team</label>
-                                                        <input type="email" value="" name="EMAIL" class="email" id="mce-EMAIL" placeholder="email address" required="">
-                                                        <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
-                                                        <div style="position: absolute; left: -5000px;">
-                                                            <input type="text" name="b_bc1d6c276527db0df1053fc13_ae4e853b80" tabindex="-1" value="">
-                                                        </div>
-                                                        <div class="clear">
-                                                            <input type="submit" value="Subscribe" name="subscribe" id="mc-embedded-subscribe" class="button">
-                                                        </div>
-                                                    </form>
-                                                </div>
-
-                                                <!--End mc_embed_signup-->
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col sqs-col-3 span-3">
-                                        <div class="sqs-block spacer-block sqs-block-spacer sized vsize-1" data-block-type="21">
-                                            <div class="sqs-block-content">&nbsp;</div>
-                                        </div>
-                                    </div>
-                                    <div class="col sqs-col-4 span-4">
-                                      <div class="sqs-block socialaccountlinks-v2-block sqs-block-socialaccountlinks-v2" data-block-type="54">
-                                            <div class="sqs-block-content">
-                                                <nav class="social-account-list social-icon-style-round social-icon-size-large social-icon-alignment-right social-icon-color-white">
-
-                                                    <a href="http://www.facebook.com/SkullyHelmets" target="_blank" title="Skully Helmets, Inc" class="social-facebook"></a>
-
-                                                    <a href="http://twitter.com/SkullyHelmets" target="_blank" title="SKULLY HELMETS" class="social-twitter"></a>
-
-                                                    <a href="http://www.youtube.com/channel/UCgGXkEJ5S_MmQCSoBnusr1Q" target="_blank" title="SKULLY" class="social-youtube"></a>
-
-                                                    <a href="http://instagram.com/skullyhelmets" target="_blank" title="Skully Helmets" class="social-instagram"></a>
-
-                                                    <a href="http://plus.google.com/112776474651298122010/posts" target="_blank" title="Marcus Weller" class="social-google"></a>
-
-                                                    <a href="http://www.linkedin.com/company/3233339?trk=vsrp_companies_res_name&amp;trkInfo=VS…chId%3A637198571407629012548%2CVSRPtargetId%3A3233339%2CVSRPcmpt%3Aprimary" target="_blank" title="Marcus Weller, PhD" class="social-linkedin"></a>
-
-
-                                                </nav>
-                                            </div>
-                                        </div>
-                                        <div class="sqs-block html-block sqs-block-html" data-block-type="2">
-                                            <div class="sqs-block-content">
-                                                <p class="text-align-right">&nbsp;</p>
-                                                <p class="text-align-right"><a href="/news">News</a><span>&nbsp; | &nbsp;</span><a target="_blank" href="skullysystems.forumchitchat.com/post/skully-ar1-referral-program-7033017">Referral Program</a>
-                                                </p>
-                                                <p class="text-align-right"><a href="/privacy-policy">Privacy</a> &nbsp;| &nbsp;<a href="/press">Press</a> &nbsp;| &nbsp;<a href="/contact-us">Contact</a>
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </footer>
-        </div>
-    </div>
-
-    <!--DIALOG-->
-    <div class="yui3-widget sqs-widget sqs-widgets-confirmation alert" style="display:none; width: 350px">
-      <div class="sqs-widgets-confirmation-content clear">
-        <div class="title"></div>
-          <div class="message"></div>
-          <div class="buttons">
-            <div class="confirmation-button no-frame confirm" tabindex="3"></div>
-          </div>
-      </div>
-    </div>
-
-
-    <!--SCRIPTS-->
-    <script type="text/javascript" src="{{ staticUrl }}/js/yui-min.js"></script>
-    <script type="text/javascript" src="{{ staticUrl }}/js/yui-throttle-min.js"></script>
-    <script type="text/javascript" src="{{ staticUrl }}/js/common.js"></script>
-    <script>
-        window.Y = YUI();
-        Squarespace.load(window);
-    </script>
-    <script type="text/javascript" src="{{ staticUrl }}/js/parallax.js"></script>
+    <!--JS-->
     <script type="text/javascript" src="{{ staticUrl }}/js/jquery.min.js"></script>
     <script type="text/javascript" src="{{ staticUrl }}/js/jquery.ba-throttle-debounce.min.js"></script>
     <script type="text/javascript" src="{{ staticUrl }}/js/jquery.cookie.min.js"></script>
+
+    <!--OUR JS-->
     <script type="text/javascript" src="{{ staticUrl }}/js/store.js"></script>
-    {% block js %}{% endblock %}
+  </head>
+  <body>
+    <!--WRAPPER-->
+    <div class="site">
+
+      <!--HEADER-->
+      <header class="header">
+        <div class="title-nav">
+          <a href="http://www.skullysystems.com/">
+            <img class="logo" src="{{ staticUrl }}/img/skully.png" alt="SKULLY AR-1">
+          </a>
+          <nav class="nav">
+            <ul class="links">
+              <li class="link">
+                <a href="http://www.skullysystems.com/">HOME</a>
+              </li>
+              <li class="link">
+                <a href="http://blog.skullysystems.com/">BLOG</a>
+              </li>
+              <li class="link">
+                <a href="http://www.skullysystems.com/career">CAREER</a>
+              </li>
+              <li class="link">
+                <a href="http://www.skullysystems.com/faq/">FAQ</a>
+              </li>
+              <li class="link">
+                <a href="http://forum.skullysystems.com/">FORUM</a>
+              </li>
+              <li class="link">
+                <a class="current" href="/store/">STORE</a>
+              </li>
+              <li class="link">
+                <a class="big" href="/store/products/ar-1">GET YOUR AR-1</a>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </header>
+
+      <!--CONTENT HEADER-->
+      <a id="top"></a>
+      <section class="content-header">
+        {% block content_header %}<h1>Get the Gear</h1>{% endblock %}
+      </section>
+
+      <!--CONTENT-->
+      <section class="content">
+        {% block content %}
+        {% endblock %}
+      </section>
+
+      <footer class="footer">
+        <div class="top-link">
+          <a href="#top">
+            <img class="top-arrow" src="{{ staticUrl }}/img/upchevron.png">
+            <span class="text">
+              Top
+            </span>
+          </a>
+        </div>
+
+        <div class="footer-content">
+          <div class="grid">
+            <div class="col-1-2">
+              <div class="mail-chimp">
+                <div id="mc_embed_signup">
+                  <form action="//skullysystems.us3.list-manage.com/subscribe/post?u=bc1d6c276527db0df1053fc13&amp;id=ae4e853b80" method="post" id="mc-embedded-subscribe-form" name="mc-embedded-subscribe-form" class="validate" target="_blank" novalidate="">
+                    <label for="mce-EMAIL">Get the latest from the SKULLY Team</label>
+                    <input type="email" value="" name="EMAIL" class="email" id="mce-EMAIL" placeholder="email address" required="">
+                    <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups -->
+                    <div style="position: absolute; left: -5000px;"><input type="text" name="b_bc1d6c276527db0df1053fc13_ae4e853b80" tabindex="-1" value=""></div>
+                    <div class="clear"><input type="submit" value="Subscribe" name="subscribe" id="mc-embedded-subscribe" class="button"></div>
+                  </form>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-1-2">
+              <nav class="social">
+                <div class="social-icons">
+                  <a href="https://www.facebook.com/skullysystems" target="_blank" title="Skully Helmets, Inc" class="social-facebook">
+                    <img src="{{ staticUrl }}/img/social/facebook.png">
+                  </a>
+                  <a href="http://www.twitter.com/skullysystems" target="_blank" title="SKULLY HELMETS" class="social-twitter">
+                    <img src="{{ staticUrl }}/img/social/twitter.png">
+                  </a>
+                  <a href="http://www.youtube.com/channel/UCgGXkEJ5S_MmQCSoBnusr1Q" target="_blank" title="SKULLY" class="social-youtube">
+                    <img src="{{ staticUrl }}/img/social/youtube.png">
+                  </a>
+                  <a href="http://www.instagram.com/skullysystems" target="_blank" title="Skully Helmets" class="social-instagram">
+                    <img src="{{ staticUrl }}/img/social/instagram.png">
+                  </a>
+                  <a href="https://plus.google.com/112776474651298122010/posts" target="_blank" title="Marcus Weller" class="social-google">
+                    <img src="{{ staticUrl }}/img/social/google%20+.png">
+                  </a>
+                  <a href="https://www.linkedin.com/company/3233339?trk=vsrp_companies_res_name&amp;trkInfo=VSRPsearchId%3A637198571407629012548%2CVSRPtargetId%3A3233339%2CVSRPcmpt%3Aprimary" target="_blank" title="Marcus Weller, PhD" class="social-linkedin">
+                    <img src="{{ staticUrl }}/img/social/linkedin.png">
+                  </a>
+                </div>
+              </nav>
+
+              <nav class="footer-nav">
+                <div class="links">
+                  <p>&nbsp;</p>
+                  <p>
+                    <a href="/news">News</a>
+                    <span>&nbsp; | &nbsp;</span>
+                    <a target="_blank" href="http://skullysystems.forumchitchat.com/post/skully-ar1-referral-program-7033017">Referral Program</a>
+                  </p>
+
+                  <p class="text-align-right">
+                    <a href="/privacy-policy">Privacy</a>
+                    <span>&nbsp;| &nbsp;</span>
+                    <a href="/press">Press</a>
+                    <span>&nbsp;| &nbsp;</span>
+                    <a href="/contact-us">Contact</a>
+                  </p>
+                </div>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+  </body>
 </html>
