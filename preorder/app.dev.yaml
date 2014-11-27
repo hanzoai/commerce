@@ -6,5 +6,5 @@ api_version: go1
 threadsafe: true
 
 handlers:
-- url: /preorder/.*
+- url: /.*
   script: _go_app
