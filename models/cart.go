@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/mholt/binding"
+	stripe "github.com/stripe/stripe-go"
 
 	"crowdstart.io/datastore"
 )
@@ -111,8 +112,11 @@ type Order struct {
 	ItemIds []string
 	Items   []LineItem
 
-	StripeToken string `schema:"-"`
-	Campaign    Campaign
+	// Slices in order to record failed tokens/charges
+	StripeTokens []string        `schema:"-"`
+	Charges      []stripe.Charge `schema:"-"`
+
+	Campaign Campaign
 
 	Cancelled bool // represents whether the order has been cancelled
 	Shipped   bool
