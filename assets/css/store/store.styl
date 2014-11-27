@@ -120,6 +120,7 @@ h2
   width 75%
   margin 0 auto
   display table
+  max-width 1000px
 
 // Not part of the outer frame
 .item
@@ -310,7 +311,7 @@ h2
     float right
     padding-top 1px
 
-// GRIDDING
+// MEDIA QUERIES
 
 @media all and ( min-width: 600px )
   .col-1-2
@@ -320,10 +321,9 @@ h2
 @media all and ( min-width: 1000px )
   .product-viewer
     width 50%
-    display inline
-    float left
+    display table-cell
+    vertical-align middle
   .product-text
-    width 50%
     display inline
     float left
 
