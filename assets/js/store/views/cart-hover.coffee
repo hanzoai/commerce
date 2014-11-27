@@ -2,12 +2,12 @@ View = require 'mvstar/lib/view'
 util = require '../util'
 
 class CartHover extends View
-  el: '.fixed-cart'
+  el: '.cart-hover'
 
   bindings:
-    quantity: '.total-quantity'
-    subtotal: '.subtotal .price span'
-    suffix:   '.details span.suffix'
+    quantity: '.cart-total-quantity'
+    subtotal: '.cart-price span'
+    suffix:   '.cart-suffix'
 
   formatters:
     quantity: (v) -> util.humanizeNumber v

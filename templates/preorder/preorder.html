@@ -19,7 +19,7 @@ var StaticPath = '{{ staticUrl }}';
 PreorderData.existingOrder = {{ orderJSON | safe }};
 {% endif %}
 
-var AllProducts = {{ allProductsJSON | safe}};
+var allProducts = {{ productsJSON | safe}};
 </script>
 {% endblock %}
 

@@ -20,7 +20,6 @@ type Campaign struct {
 	VideoOverlayUrl string
 	ImageUrl        string
 	Description     string
-	StripeKey       string
 	Backers         int
 	Raised          int64
 	Thumbnail       string
@@ -41,7 +40,8 @@ type Campaign struct {
 	}
 	PayPalConnected bool
 	PayPalApiKeys   string
-	StripeToken     string `schema:"-"`
+	StripeKey       string
+	StripeToken     string
 	GoogleAnalytics string
 	FacebookTag     string
 	Links           []string
