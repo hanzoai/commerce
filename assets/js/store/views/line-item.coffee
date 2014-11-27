@@ -64,8 +64,7 @@ class LineItemView extends View
 
     # Handle lineItem removals
     'click .remove-item': ->
-      cart = app.get('cart')
-      cart.removeProduct @state.sku
+      (app.get 'cart').removeProduct @state.sku
       @destroy()
 
   updateQuantity: (e, el) ->
@@ -79,7 +78,7 @@ class LineItemView extends View
     quantity = neverBelowOne quantity
 
     cart = app.get 'cart'
-    if (cart.getProduct @state.sku).quantity + quantity > 10
+    if (cart.getProduct @state.sku).quantity + quantity > (app.get 'maxQuantityPerProduct')
       console.log 'TOO MANY THINGS IN CART'
       return
 
@@ -92,8 +91,7 @@ class LineItemView extends View
 
 
     # Update line item
-    cart = app.get 'cart'
-    cart.setProduct @state.sku, @state
+    (app.get 'cart').setProduct @state.sku, @state
 
   destroy: ->
     @unbind()
