@@ -45,7 +45,7 @@ exports.displayHelmets = ->
   else
     # Get variants
     variants = {}
-    for variant in AllProducts['ar-1'].Variants
+    for variant in allProducts['ar-1'].Variants
       variants[variant.SKU] = variant
 
     first = true
@@ -87,7 +87,7 @@ exports.displayApparel = ->
   else
     # Get variants
     variants = {}
-    for variant in AllProducts['t-shirt'].Variants
+    for variant in allProducts['t-shirt'].Variants
       variants[variant.SKU] = variant
 
     hasItem = false
@@ -124,7 +124,7 @@ exports.displayHats = ->
   else
     # Get variants
     variants = {}
-    for variant in AllProducts['hat'].Variants
+    for variant in allProducts['hat'].Variants
       variants[variant.SKU] = variant
 
     hasItem = false
