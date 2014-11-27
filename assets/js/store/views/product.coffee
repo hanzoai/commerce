@@ -15,7 +15,8 @@ class ProductView extends View
     unless (variant = @getVariant())?
       return
 
-    quantity = parseInt $('input[name=quantity]').val(), 10
+    quantity = parseInt @el.find('select[name=quantity]').val(), 10
+    console.log quantity
 
     inner = $('.sqs-add-to-cart-button-inner')
     inner.html ''
