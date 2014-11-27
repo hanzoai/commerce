@@ -26,7 +26,7 @@ class StoreApp extends App
       routes.cart.setupHover
       routes.products.setupViews
       routes.store.gallery
-      routes.store.setupStyles
+      routes.store.setupStylesAndSizes
     ]
 
     '*': routes.cart.click
