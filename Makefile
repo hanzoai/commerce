@@ -72,7 +72,7 @@ endif
 export GOROOT  := $(goroot)
 export GOPATH  := $(gopath)
 
-all: deps assets test
+all: deps assets test install
 
 assets: deps-assets compile-css compile-js
 
