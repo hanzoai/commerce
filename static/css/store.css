@@ -154,6 +154,7 @@ h2 {
   padding: 5px;
   border: 1px solid #fff;
   float: left;
+  cursor: pointer;
 }
 @media all and (min-width: 1000px) {
   body .product-text .product-body {
