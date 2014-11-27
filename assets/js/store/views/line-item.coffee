@@ -18,10 +18,10 @@ class LineItemView extends View
     name:       'div.title'
     desc:       'div.desc'
     price:      '.price .money'
-    quantity:   '.quantity input @value'
+    quantity:   '.quantity select @value'
     index:     ['input.sku       @name'
                 'input.slug      @name'
-                '.quantity input @name']
+                '.quantity select @name']
 
   computed:
     desc: (color, size) -> [color, size]
