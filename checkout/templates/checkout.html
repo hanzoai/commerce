@@ -406,8 +406,7 @@
                                                class="field-element pulse-warnable"
                                                placeholder="Zip / Postal" type="text"
                                                spellcheck="false"
-                                               maxlength="9"
-                                               onkeypress="return event.charCode >= 48 && event.charCode <= 57"> <!--http://stackoverflow.com/a/469362-->
+                                               maxlength="9></input> <!--http://stackoverflow.com/a/469362-->
                                     </div>
 
                                     <div style="clear:both;"></div>
@@ -598,7 +597,7 @@
                                         <!-- Card Number -->
                                         <div id="card-number" data-label="Card Number" class="field required">
                                           <label>Card Number</label>
-                                          <input class="field-element pulse-warnable" type="text" size="20" autocomplete="off" placeholder="Credit Card Number" name="Order.Account.Number" value="" id="cardNumber">
+                                          <input class="field-element pulse-warnable" type="text" size="20" autocomplete="off" placeholder="Credit Card Number" name="" value="" id="cardNumber">
                                           </div>
 
 
@@ -606,12 +605,12 @@
                                         <div id="expiry-cvc">
                                           <div id="card-expiry-year" data-label="Exp. Yr." class="field required">
                                             <label>Expiry</label>
-                                            <input class="field-element pulse-warnable" type="text" size="5" maxlength="7" autocomplete="off" placeholder="Expiry" value="" name="RawExpiry" style="width:66px" id="expiry">
+                                            <input class="field-element pulse-warnable" type="text" size="5" maxlength="7" autocomplete="off" placeholder="Expiry" value="" name="" style="width:66px" id="expiry">
                                             </div>
                                             <!-- CVC -->
                                             <div id="cvc" data-label="CVC" class="field required">
                                               <label>CVC</label>
-                                              <input id="cvcInput" class="field-element pulse-warnable" type="text" size="4" autocomplete="off" placeholder="CVC" value="" name="Order.Account.CVV2" data-stripe="cvc">
+                                              <input id="cvcInput" class="field-element pulse-warnable" type="text" size="4" autocomplete="off" placeholder="CVC" value="" name="" data-stripe="cvc">
                                             </div>
                                         </div>
                                       </div>
@@ -632,10 +631,11 @@
                                     <div class="btn-container" style="text-align: center;">
                                       <input type="submit" value="Place order" class="button submit-button continue-button" style="width:100%"></input>
                                     </div>
+
+                                    <input name="StripeToken" type="hidden">
                                   </form>
 
                                     <!-- hidden field to convey the Stripe Token so we may submit the charge -->
-                                    <!-- <input name="StripeToken" type="hidden"> -->
 
                                     <!-- optional hidden fields -->
 
@@ -698,11 +698,11 @@
     </div>
 
     <span class='payment-errors' style="display:none;"></span>
-    <form id="stripeForm"  action="/checkout/authorize" method="POST" accept-charset="UTF-8" enctype="application/x-www-form-urlencoded; charset=utf-8">
+    <form id="stripeForm" action="" method="POST" accept-charset="UTF-8" enctype="application/x-www-form-urlencoded; charset=utf-8">
       <input type="hidden" data-stripe="number"/>
-      <input type="hidden"  data-stripe="cvc"/>
-      <input type="hidden"  data-stripe="exp-month"/>
-      <input type="hidden"  data-stripe="exp-year"/>
+      <input type="hidden" data-stripe="cvc"/>
+      <input type="hidden" data-stripe="exp-month"/>
+      <input type="hidden" data-stripe="exp-year"/>
     </form>
 
     <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
@@ -710,14 +710,7 @@
     <script type="text/javascript" src="{{ staticUrl }}/js/card.js"></script>
     <script type="text/javascript" src="https://js.stripe.com/v2/"></script>
     <script type="text/javascript">
-        Stripe.setPublishableKey('{{ config.Stripe.APIKey }}')
-
-        $(document).ready(function(){
-            $('#form').submit(function(event) {
-                $('#stripeForm').submit();
-                return false;
-            });
-        });
+        Stripe.setPublishableKey('{{ config.Stripe.APIKey }}');
     </script>
     <script type="text/javascript" src="{{ staticUrl }}/js/checkout_stripe.js"></script>
     <script type="text/javascript" src="{{ staticUrl }}/js/checkout.js"></script>
