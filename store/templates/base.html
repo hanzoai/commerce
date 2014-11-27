@@ -183,10 +183,9 @@
     </div>
 
     <!--CART HOVER-->
-    <div class="cart-hover" style="display:none">
+    <div class="cart-hover">
       <a href="{{ moduleUrl("store") }}/cart">
-        <div class="cart-icon"></div>
-
+        <img class="cart-icon" src="{{ staticUrl }}/img/cart.png">
         <div class="cart-details">
           Cart&nbsp;-&nbsp;
             <span class="cart-total-quantity">0</span>
@@ -194,7 +193,7 @@
         </div>
 
         <span class="cart-subtotal">
-          <span class="cart-price"><span class="money">0.00</span></span>
+          <span class="cart-price">$<span class="money">0.00</span></span>
         </span>
       </a>
     </div>
