@@ -91,7 +91,7 @@ func authorize(c *gin.Context) {
 	}
 
 	ctx := middleware.GetAppEngine(c)
-	charge, err := stripe.Charge(ctx, &order, stripe.token)
+	_, err := stripe.Charge(ctx, form.StripeToken, &order)
 
 	if err != nil {
 		log.Error(err.Error())
