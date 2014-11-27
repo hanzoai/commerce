@@ -3,7 +3,7 @@ LineItemView = require './line-item'
 util         = require '../util'
 
 class CartView extends View
-  el: '.sqs-fullpage-shopping-cart-content'
+  el: '.cart-hover'
   bindings:
     subtotal: '.subtotal .price span'
 
