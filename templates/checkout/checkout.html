@@ -709,8 +709,8 @@
     <script type="text/javascript" src="{{ staticUrl }}/js/jquery.ba-throttle-debounce.min.js"></script>
     <script type="text/javascript" src="{{ staticUrl }}/js/card.js"></script>
     <script type="text/javascript" src="https://js.stripe.com/v2/"></script>
-    <script type="text/javascript">
-        Stripe.setPublishableKey('{{ config.Stripe.APIKey }}');
+    <script type="text/javascript">      
+      Stripe.setPublishableKey('{{ config.Stripe.APIKey }}');
     </script>
     <script type="text/javascript" src="{{ staticUrl }}/js/checkout_stripe.js"></script>
     <script type="text/javascript" src="{{ staticUrl }}/js/checkout.js"></script>
