@@ -13,7 +13,7 @@ class StoreApp extends App
     '/products/:slug': [
       routes.cart.setupHover
       routes.products.gallery
-      routes.products.setupView
+      routes.products.setupViews
     ]
 
     '/products/ar-1': [
@@ -24,7 +24,7 @@ class StoreApp extends App
 
     '/store': [
       routes.cart.setupHover
-      routes.products.setupView
+      routes.products.setupViews
       routes.store.gallery
       routes.store.setupStyles
     ]
