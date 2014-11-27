@@ -17,7 +17,7 @@ class LineItemView extends View
     slug:       'input.slug      @value'
     name:       'a.title'
     desc:       'div.desc'
-    price:      '.price span'
+    price:      '.price .money'
     quantity:   '.quantity input @value'
     index:     ['input.sku       @name'
                 'input.slug      @name'

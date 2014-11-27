@@ -23,7 +23,7 @@ var allProducts = {{ productsJSON | safe }};
 
 {% block content %}
 {% for product in products %}
-<div class="item">
+<div class="item sep-top">
 
   <div class="product-viewer">
     {% for image in product.Images %}
