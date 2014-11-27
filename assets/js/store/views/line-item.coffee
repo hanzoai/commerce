@@ -64,8 +64,7 @@ class LineItemView extends View
 
     # Handle lineItem removals
     'click .remove-item': ->
-      cart = app.get('cart')
-      cart.removeProduct @state.sku
+      (app.get 'cart').removeProduct @state.sku
       @destroy()
 
   updateQuantity: (e, el) ->
@@ -85,9 +84,9 @@ class LineItemView extends View
     # Update quantity
     @set 'quantity', quantity
 
+
     # Update line item
-    cart = app.get 'cart'
-    cart.setProduct @state.sku, @state
+    (app.get 'cart').setProduct @state.sku, @state
 
   destroy: ->
     @unbind()
