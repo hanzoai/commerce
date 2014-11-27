@@ -1,9 +1,9 @@
 exports.click = ->
-  $('.fixed-cart').click ->
+  $('.cart-hover').click ->
     window.location = '/cart'
 
 exports.hideHover = ->
-  $(".fixed-cart").hide()
+  $(".cart-hover").hide()
 
 exports.setupHover = ->
   view = new (require '../views/cart-hover')

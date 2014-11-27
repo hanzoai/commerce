@@ -23,6 +23,8 @@ class StoreApp extends App
     '/:prefix?': routes.cart.setupHover
 
     '/store': [
+      routes.cart.setupHover
+      routes.products.setupView
       routes.store.gallery
       routes.store.setupStyles
     ]
