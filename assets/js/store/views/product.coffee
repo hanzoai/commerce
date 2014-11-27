@@ -16,7 +16,6 @@ class ProductView extends View
       return
 
     quantity = parseInt @el.find('select[name=quantity]').val(), 10
-    console.log quantity
 
     inner = $('.sqs-add-to-cart-button-inner')
     inner.html ''
@@ -25,7 +24,7 @@ class ProductView extends View
 
     product = allProducts[@slug]
 
-    app.get('cart').addProduct variant.SKU,
+    app.get('cart').addProduct @slug,
       sku:      variant.SKU
       color:    variant.Color
       img:      product.Images[0].Url
@@ -57,12 +56,13 @@ class ProductView extends View
     @el.find('select').each (i, v) ->
       $select = $(v)
       name = $select.attr('name')
+      return if name == 'quantity'  # Not variant option
+
       value = $select.val()
       options[name] = value
       missing.push name if value is 'none'
       return
 
-    console.log options, missing
     return [options, missing]
 
   # get currently selected variant or show an alert
