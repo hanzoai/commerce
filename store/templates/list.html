@@ -58,19 +58,33 @@
       </div>
 
       <div class="product-config">
-        {% if product.VariantOptions("Color") | length > 0 %}
+        {% if product.VariantOptions("Style") %}
+        <label for="style">Style:</label>
+        <select name="style" class="style">
+          {% if product.VariantOptions("Style") | length > 1 %}
+          <option selected disabled>Select Style</option>
+          {% endif %}
+          {% for style in product.VariantOptions("Style") %}
+          <option value="{{ style }}">{{ style }}</option>
+          {% endfor %}
+        </select>
+        {% endif %}
+
+        {% if product.VariantOptions("Color") %}
         <label for="color">Color:</label>
-        <select name="color">
+        <select name="color" class="color">
+          {% if product.VariantOptions("Color") | length > 1 %}
           <option selected disabled>Select Color</option>
+          {% endif %}
           {% for color in product.VariantOptions("Color") %}
           <option value="{{ color }}">{{ color }}</option>
           {% endfor %}
         </select>
         {% endif %}
 
-        {% if product.VariantOptions("Size") | length > 0 %}
+        {% if product.VariantOptions("Size") %}
         <label for="size">Size:</label>
-        <select name="size">
+        <select name="size" class="size">
           <option selected disabled>Select Size</option>
           {% for size in product.VariantOptions("Size") %}
           <option value="{{ size }}">{{ size }}</option>
