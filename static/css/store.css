@@ -155,12 +155,6 @@ h2 {
   border: 1px solid #fff;
   float: left;
 }
-.product-viewer .gallery .thumbnail.selected {
-  border-color: #c2c2c2;
-}
-.product-viewer .gallery .thumbnail:hover {
-  border-color: #272727;
-}
 @media all and (min-width: 1000px) {
   body .product-text .product-body {
     padding-left: 70px;
@@ -178,6 +172,8 @@ h2 {
 }
 .product-text .product-title .product-cost {
   display: inline-block;
+  margin: 12px 15px 0 0;
+  float: right;
 }
 .product-text .product-body {
   padding: 20px 10px 0 0px;
@@ -198,19 +194,26 @@ h2 {
 .product-text .product-body .product-config input .quantity {
   float: left;
 }
-.product-text .product-body .product-config .col-1-3 {
+.product-text .product-body .product-config .checkout-options {
   height: 100px;
+  display: inline;
+  float: left;
+  width: 33%;
+}
+.product-text .product-body .product-config .quantity {
+  display: inline;
+  float: left;
+  width: 66%;
 }
 .product-text .product-body .product-config .add-to-cart {
   background-color: #272727;
   color: #fff;
   text-transform: uppercase;
-  display: block;
-  float: left;
+  float: right;
   font-size: 1em;
   min-width: 100px;
   text-align: center;
-  padding: 15px 50px;
+  padding: 15px 20px;
   margin-top: 15px;
 }
 .item {
@@ -307,16 +310,6 @@ h2 {
   text-decoration: underline;
 }
 @media all and (min-width: 600px) {
-  .col-1-3 {
-    display: inline;
-    float: left;
-    width: 33%;
-  }
-  .col-2-3 {
-    display: inline;
-    float: left;
-    width: 66%;
-  }
   .col-1-2 {
     display: inline;
     float: left;
