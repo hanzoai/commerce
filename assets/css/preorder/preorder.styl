@@ -1,6 +1,14 @@
 @import "node_modules/kouto-swiss"
 @import "spinner"
 
+* {
+  outline: 0
+}
+
+:focus {
+  outline: 0
+}
+
 body,
 p
   font-family: "proxima-nova", sans-serif
@@ -271,6 +279,9 @@ input
   /* Font size must the 16px or larger to prevent iOS page zoom on focus */
   font-size: 1em
   padding: 5px 15px
+
+select
+  cursor: pointer
 
 input.counter-validation
   width:0px
