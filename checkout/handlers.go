@@ -12,7 +12,7 @@ import (
 )
 
 // Renders the checkout page with an error message
-func formError(c *gin.Context, err error) {
+func formError(c *gin.Context) {
 	template.Render(c, "checkout.html",
 		"message", "There was an error while processing your order.",
 	)
@@ -22,7 +22,7 @@ func checkout(c *gin.Context) {
 	form := new(CheckoutForm)
 	if err := form.Parse(c); err != nil {
 		log.Error(err.Error())
-		formError(c, err)
+		formError(c)
 		return
 	}
 
@@ -36,14 +36,14 @@ func checkout(c *gin.Context) {
 		// Fetch Variant for LineItem from datastore
 		if err := db.GetKey("variant", lineItem.SKU(), &lineItem.Variant); err != nil {
 			log.Error(err.Error())
-			formError(c, err)
+			formError(c)
 			return
 		}
 
 		// Fetch Product for LineItem from datastore
 		if err := db.GetKey("product", lineItem.Slug(), &lineItem.Product); err != nil {
 			log.Error(err.Error())
-			formError(c, err)
+			formError(c)
 			return
 		}
 
@@ -60,7 +60,7 @@ func authorize(c *gin.Context) {
 	form := new(AuthorizeForm)
 	if err := form.Parse(c); err != nil {
 		log.Error(err.Error())
-		formError(c, err)
+		formError(c)
 		log.Debug("Account %#v", form.Order.Account)
 		return
 	}
@@ -81,7 +81,7 @@ func authorize(c *gin.Context) {
 		// Fetch Variant for LineItem from datastore
 		if err := db.GetKey("variant", lineItem.SKU(), &lineItem.Variant); err != nil {
 			log.Error(err.Error())
-			formError(c, err)
+			formError(c)
 			return
 		}
 
@@ -95,7 +95,7 @@ func authorize(c *gin.Context) {
 
 	if err != nil {
 		log.Error(err.Error())
-		formError(c, err)
+		formError(c)
 	}
 }
 
