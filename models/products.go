@@ -2,32 +2,16 @@ package models
 
 import (
 	"fmt"
-	"math"
 	"net/http"
 	"reflect"
-	"strconv"
-	"strings"
 	"time"
 
-	humanize "github.com/dustin/go-humanize"
 	"github.com/gin-gonic/gin"
 	"github.com/mholt/binding"
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/util/json"
 )
-
-func FloatPrice(price int64) float64 {
-	return math.Floor(float64(price)*100+0.5) / 1000000
-}
-
-func DisplayPrice(price int64) string {
-	f := strconv.FormatFloat(FloatPrice(price), 'f', 2, 64)
-	bits := strings.Split(f, ".")
-	decimal := bits[1]
-	integer, _ := strconv.ParseInt(bits[0], 10, 64)
-	return humanize.Comma(integer) + "." + decimal
-}
 
 type Product struct {
 	FieldMapMixin
@@ -118,6 +102,10 @@ func (p *Product) loadVariants(c *gin.Context) error {
 
 func (p Product) JSON() string {
 	return json.Encode(&p)
+}
+
+func (p Product) DisplayTitle() string {
+	return DisplayTitle(p.Title)
 }
 
 func (p Product) DisplayImage() Image {
