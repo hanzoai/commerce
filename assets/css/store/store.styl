@@ -120,6 +120,7 @@ h2
   width 75%
   margin 0 auto
   display table
+  max-width 1000px
 
 // Not part of the outer frame
 .item
@@ -146,6 +147,7 @@ h2
       padding 5px
       border 1px solid #fff
       float left
+      cursor pointer
 
 @media all and ( min-width: 1000px )
   body .product-text .product-body
@@ -173,8 +175,9 @@ h2
         margin-bottom 15px
 
       input
-        width 120px
+        width 80px
         text-indent 5px
+        text-align right
         .quantity
           float left
 
@@ -286,7 +289,7 @@ h2
   width 250px
   background-image linear-gradient(rgb(30,30,30), rgb(4,4,4))
   top 79px
-  right 6px
+  right 18px
   border-top 1px solid #000
   border-radius 45px
   display table
@@ -308,7 +311,7 @@ h2
     float right
     padding-top 1px
 
-// GRIDDING
+// MEDIA QUERIES
 
 @media all and ( min-width: 600px )
   .col-1-2
@@ -318,10 +321,9 @@ h2
 @media all and ( min-width: 1000px )
   .product-viewer
     width 50%
-    display inline
-    float left
+    display table-cell
+    vertical-align middle
   .product-text
-    width 50%
     display inline
     float left
 
