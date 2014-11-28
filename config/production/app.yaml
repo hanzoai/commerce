@@ -6,6 +6,9 @@ runtime: go
 api_version: go1
 threadsafe: true
 
+builtins:
+- remote_api: on
+
 inbound_services:
 - warmup
 

@@ -204,7 +204,7 @@ func Index(c *gin.Context) {
 
 func Login(c *gin.Context) {
 	// Parse login form
-	f := new(models.LoginForm)
+	f := new(auth.LoginForm)
 	if err := f.Parse(c); err != nil {
 		template.Render(c, "login.html", "message", "The email or password you entered is incorrect.")
 		return
