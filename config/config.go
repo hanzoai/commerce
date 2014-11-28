@@ -30,7 +30,12 @@ type Config struct {
 	SiteTitle         string
 	Prefixes          map[string]string
 	Hosts             map[string]string
-	Stripe            struct {
+	Salesforce        struct {
+		ConsumerKey    string
+		ConsumerSecret string
+		CallbackURL    string
+	}
+	Stripe struct {
 		ClientId    string
 		APIKey      string
 		APISecret   string
@@ -117,6 +122,11 @@ func Development() *Config {
 
 	config.StaticUrl = "/static"
 
+	// TODO: Create dev versions somehow
+	config.Salesforce.ConsumerKey = "3MVG9xOCXq4ID1uElRYWhpUWjXSbiTVg4WO6q9DvWdvBjQ_DFlwSc7jZ9AbY3z9Jv_V29W7xq1nPjTYQhYJqF"
+	config.Salesforce.ConsumerSecret = "3811316853831925498"
+	config.Salesforce.CallbackURL = "https://admin.crowdstart.io/salesforce/callback"
+
 	config.Stripe.ClientId = "ca_53yyPzxlPsdAtzMEIuS2mXYDp4FFXLmm"
 	config.Stripe.APIKey = "pk_test_ucSTeAAtkSXVEg713ir40UhX"
 	config.Stripe.APISecret = ""
@@ -149,6 +159,10 @@ func Production() *Config {
 
 	// Only use production credentials if demo mode is off.
 	if !config.DemoMode {
+		config.Salesforce.ConsumerKey = "3MVG9xOCXq4ID1uElRYWhpUWjXSbiTVg4WO6q9DvWdvBjQ_DFlwSc7jZ9AbY3z9Jv_V29W7xq1nPjTYQhYJqF"
+		config.Salesforce.ConsumerSecret = "3811316853831925498"
+		config.Salesforce.CallbackURL = "https://admin.crowdstart.io/salesforce/callback"
+
 		config.Stripe.ClientId = "ca_53yyRUNpMtTRUgMlVlLAM3vllY1AVybU"
 		config.Stripe.APIKey = "pk_live_APr2mdiUblcOO4c2qTeyQ3hq"
 		config.Stripe.APISecret = ""
@@ -191,6 +205,7 @@ var AutoCompileAssets = config.AutoCompileAssets
 var AutoLoadFixtures = config.AutoLoadFixtures
 var RootDir = config.RootDir
 var StaticUrl = config.StaticUrl
+var Salesforce = config.Salesforce
 var Stripe = config.Stripe
 var SiteTitle = config.SiteTitle
 

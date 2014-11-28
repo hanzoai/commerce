@@ -9,6 +9,7 @@ import (
 	"crowdstart.io/util/log"
 )
 
+// Load order from checkout form
 type CheckoutForm struct {
 	Order models.Order
 }
@@ -18,21 +19,25 @@ func (f *CheckoutForm) Parse(c *gin.Context) error {
 		return err
 	}
 
-	// Nasty shit. Please fix.
-	if len(f.Order.Items) < 2 {
-		return nil
+	// Schema creates the Order.Items slice sized to whatever is the largest
+	// index form item. This creates a slice with a huge number of nil structs,
+	// so we create a new slice of items and use that instead.
+	items := make([]models.LineItem, 0)
+	for _, lineItem := range f.Order.Items {
+		if lineItem.SKU() != "" {
+			items = append(items, lineItem)
+		}
 	}
-
-	// For some reason gorilla/schema deserializes an extra nil lineItem,
-	// we need to remove this.
-	if f.Order.Items[0].SKU() == "" {
-		slice := make([]models.LineItem, 0)
-		f.Order.Items = append(slice, f.Order.Items[1:]...)
-	}
+	f.Order.Items = items
 
 	return nil
 }
 
+func (f CheckoutForm) Validate() (errs []string) {
+	return errs
+}
+
+// Charge after successful authorization
 type AuthorizeForm struct {
 	User          models.User
 	Order         models.Order
@@ -93,15 +98,21 @@ func (f AuthorizeForm) Validate() (errs []string) {
 	if f.StripeToken == "" {
 		errs = append(errs, "Invalid stripe token")
 	}
-	/*
-		if len(string(f.Order.Account.CVV2)) < 3 {
-			errs = append(errs, "Confirmation code is required.")
-		}
-		if len(f.Order.Account.Expiry) != 4 {
-			log.Debug(f.Order.Account.Expiry)
-			errs = append(errs, "Invalid expiry")
-		}
-	*/
+
+	// if len(string(f.Order.Account.CVV2)) < 3 {
+	// 	errs = append(errs, "Confirmation code is required.")
+	// }
+	// if len(f.Order.Account.Expiry) != 4 {
+	// 	log.Debug(f.Order.Account.Expiry)
+	// 	errs = append(errs, "Invalid expiry")
+	// }
+
+	// log.Info("Processing order. %#v", form.Order)
+	// err := form.Order.Process(c)
+	// if err != nil {
+	// 	log.Error(err.Error())
+	// 	return
+	// }
 
 	return errs
 }
