@@ -169,6 +169,11 @@ deploy-appengine-ci: assets-minified
 	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/production
 
 datastore-export:
-	bulkloader.py --download --url http://default.crowdstart.io/_ah/remote_api --config_file config/production/bulkloader.yaml --kind $$kind --filename $$kind.csv
+	bulkloader.py --download \
+				  --url http://default.crowdstart.io/_ah/remote_api \
+				  --config_file config/production/bulkloader.yaml \
+				  --log_file /tmp/bulkloader \
+				  --kind $$kind \
+				  --filename $$kind.csv
 
 .PHONY: all assets compile-css compile-js live-reload build deploy deps deps-assets deps-go serve test tools
