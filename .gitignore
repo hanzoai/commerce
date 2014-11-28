@@ -14,3 +14,5 @@ static/css/checkout.css
 static/css/preorder.css
 static/css/store.css
 config.json
+*.sql3
+*.csv
