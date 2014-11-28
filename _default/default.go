@@ -2,6 +2,7 @@ package _default
 
 import (
 	"appengine"
+	_ "appengine/remote_api"
 
 	"github.com/gin-gonic/gin"
 
