@@ -25,16 +25,12 @@ func checkout(c *gin.Context) {
 		return
 	}
 
-	order := form.Order
-
-	log.Info("Processing order. %#v", order)
-	err := order.Process(c)
-	if err != nil {
-		log.Error(err.Error())
-		return
-	}
-
-	template.Render(c, "checkout.html", "order", order, "config", config.Get())
+	// TODO: VALIDATE PLZ GOD
+	errs := form.Validate()
+	template.Render(c, "checkout.html",
+		"order", form.Order,
+		"config", config.Get(),
+		"errors", errs)
 }
 
 func authorize(c *gin.Context) {
