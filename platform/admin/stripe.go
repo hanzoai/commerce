@@ -20,7 +20,7 @@ import (
 	"appengine/urlfetch"
 )
 
-type Token struct {
+type stripeToken struct {
 	AccessToken          string `json:"access_token"`
 	Error                string `json:"error"`
 	ErrorDescription     string `json:"error_description"`
@@ -73,7 +73,7 @@ func StripeCallback(c *gin.Context) {
 		return
 	}
 
-	token := new(Token)
+	token := new(stripeToken)
 
 	// try and extract the json struct
 	if err := json.Unmarshal(jsonBlob, token); err != nil {
