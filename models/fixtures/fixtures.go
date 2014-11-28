@@ -34,8 +34,8 @@ var All = delay.Func("install-all-fixtures", func(c appengine.Context) {
 	})
 
 	// Default Campaign (SKULLY)
-	db.PutKey("campaign", "skully", &Campaign{
-		Id:    "skully",
+	db.PutKey("campaign", "dev@hanzo.ai", &Campaign{
+		Id:    "dev@hanzo.ai",
 		Title: "SKULLY AR-1",
 	})
 
