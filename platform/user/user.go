@@ -53,7 +53,7 @@ func DisplayOrders(c *gin.Context) {
 	template.Render(c, "index.html", "orders", o)
 }
 
-func NewUser(c *gin.Context, f models.RegistrationForm) error {
+func NewUser(c *gin.Context, f auth.RegistrationForm) error {
 	m := f.User
 	db := datastore.New(c)
 	q := db.Query(kind).

@@ -34,7 +34,7 @@ func GetUser(c *gin.Context) (user *models.User) {
 
 // Validates a form and inserts a new user into the datastore
 // Checks if the Email and Id are unique, and calculates a hash for the password
-func NewUser(c *gin.Context, f models.RegistrationForm) error {
+func NewUser(c *gin.Context, f RegistrationForm) error {
 	m := f.User
 	db := datastore.New(c)
 

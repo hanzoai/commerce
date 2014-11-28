@@ -1,10 +1,13 @@
-package models
+package auth
 
 import (
-	"code.google.com/p/go.crypto/bcrypt"
-	"crowdstart.io/util/form"
-	"github.com/gin-gonic/gin"
 	"strings"
+
+	"code.google.com/p/go.crypto/bcrypt"
+	"github.com/gin-gonic/gin"
+
+	"crowdstart.io/models"
+	"crowdstart.io/util/form"
 )
 
 type LoginForm struct {
@@ -27,7 +30,7 @@ func (f *LoginForm) Parse(c *gin.Context) error {
 }
 
 type RegistrationForm struct {
-	User     User
+	User     models.User
 	Password string
 }
 
