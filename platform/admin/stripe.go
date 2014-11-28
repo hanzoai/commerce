@@ -86,9 +86,6 @@ func StripeCallback(c *gin.Context) {
 		return
 	}
 
-	// Success
-	template.Render(c, "stripe/success.html", "token", token.AccessToken)
-
 	// Update the user
 	campaign := new(models.Campaign)
 
@@ -101,7 +98,9 @@ func StripeCallback(c *gin.Context) {
 	}
 
 	// Get user instance
-	db.GetKey("campaign", email, campaign)
+	if err := db.GetKey("campaign", email, campaign); err != nil {
+		log.Panic("Unable to get campaign from database: %v", err)
+	}
 
 	// Update stripe data
 	campaign.Stripe.AccessToken = token.AccessToken
@@ -113,5 +112,10 @@ func StripeCallback(c *gin.Context) {
 	campaign.Stripe.UserId = token.StripeUserId
 
 	// Update in datastore
-	db.PutKey("campaign", "skully", campaign)
+	if _, err := db.PutKey("campaign", email, campaign); err != nil {
+		log.Panic("Failed to update campaign: %v", err)
+	}
+
+	// Success
+	template.Render(c, "stripe/success.html", "token", token.AccessToken)
 }
