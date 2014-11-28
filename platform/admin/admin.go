@@ -9,18 +9,6 @@ import (
 	"crowdstart.io/util/template"
 )
 
-type TokenData struct {
-	Access_token           string
-	Error                  string
-	Error_description      string
-	Livemode               bool
-	Refresh_token          string
-	Scope                  string
-	Stripe_publishable_key string
-	Stripe_user_id         string
-	Token_type             string
-}
-
 // Index
 func Index(c *gin.Context) {
 	url := config.UrlFor("platform", "/dashboard")
