@@ -32,7 +32,7 @@ func TestNewUser(t *testing.T) {
 	c := &gin.Context{}
 	c.Set("appengine", ctx)
 
-	f := models.RegistrationForm{
+	f := auth.RegistrationForm{
 		User:     mockRegForm.User,
 		Password: mockRegForm.Password,
 	}
