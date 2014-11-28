@@ -40,8 +40,15 @@ type Campaign struct {
 	}
 	PayPalConnected bool
 	PayPalApiKeys   string
-	StripeKey       string
-	StripeToken     string
+	Stripe          struct {
+		AccessToken    string
+		Livemode       bool
+		PublishableKey string
+		RefreshToken   string
+		Scope          string
+		TokenType      string
+		UserId         string
+	}
 	GoogleAnalytics string
 	FacebookTag     string
 	Links           []string
@@ -49,19 +56,19 @@ type Campaign struct {
 
 type Perk struct {
 	Id                string
-	Title             string
 	Description       string
-	Price             string
 	EstimatedDelivery string
-	HelmetQuantity    int
 	GearQuantity      int
+	HelmetQuantity    int
+	Price             string
+	Title             string
 }
 
 type Contribution struct {
 	Id            string
 	Email         string
-	Perk          Perk
 	FundingDate   string
 	PaymentMethod string
+	Perk          Perk
 	Status        string
 }
