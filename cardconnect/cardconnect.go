@@ -89,7 +89,7 @@ func Authorize(ctx appengine.Context, order models.Order, user models.User) (are
 			DiscountAmnt: v.DiscountAmnt,
 			LineNo:       v.LineNo,
 			Quantity:     v.Quantity,
-			UOM:          v.UOM,
+			// UOM:          v.UOM,
 		}
 	}
 
