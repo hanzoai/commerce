@@ -3,6 +3,7 @@ package checkout
 import (
 	"github.com/gin-gonic/gin"
 
+	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models"
 	"crowdstart.io/util/form"
@@ -14,28 +15,54 @@ type CheckoutForm struct {
 	Order models.Order
 }
 
+// Parse form
 func (f *CheckoutForm) Parse(c *gin.Context) error {
 	if err := form.Parse(c, f); err != nil {
 		return err
 	}
 
-	// Schema creates the Order.Items slice sized to whatever is the largest
-	// index form item. This creates a slice with a huge number of nil structs,
-	// so we create a new slice of items and use that instead.
-	items := make([]models.LineItem, 0)
-	for _, lineItem := range f.Order.Items {
-		if lineItem.SKU() != "" {
-			items = append(items, lineItem)
-		}
-	}
-	f.Order.Items = items
+	// Fix order
+	form.SchemaFix(&f.Order)
 
 	return nil
 }
 
-func (f CheckoutForm) Validate() (errs []string) {
-	return errs
+// Populate form with data from database
+func (f *CheckoutForm) Populate(c *gin.Context) {
+	db := datastore.New(c)
+
+	// TODO: Optimize this, multiget, use caching.
+	for i, item := range f.Order.Items {
+		log.Debug("Fetching variant for %v", item.SKU())
+
+		// Fetch Variant for LineItem from datastore
+		if err := db.GetKey("variant", item.SKU(), &item.Variant); err != nil {
+			log.Error("Failed to find variant for: %v", item.SKU(), c)
+			c.Fail(500, err)
+		}
+
+		// Fetch Product for LineItem from datastore
+		if err := db.GetKey("product", item.Slug(), &item.Product); err != nil {
+			log.Error("Failed to find product for: %v", item.Slug(), c)
+			c.Fail(500, err)
+		}
+
+		// Set SKU so we can deserialize later
+		item.SKU_ = item.SKU()
+		item.Slug_ = item.Slug()
+
+		// Update item in order
+		f.Order.Items[i] = item
+
+		// Update subtotal
+		f.Order.Subtotal += item.Price()
+	}
+
+	// Update grand total
+	f.Order.Total = f.Order.Subtotal + f.Order.Tax
 }
+
+func (f CheckoutForm) Validate(c *gin.Context) {}
 
 // Charge after successful authorization
 type AuthorizeForm struct {
