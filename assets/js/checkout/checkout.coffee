@@ -4,9 +4,6 @@ require 'card'
 # class CardView extends View
 #   el: '.sqs-checkout-form-payment'
 
-# Globals
-window.csio = window.csio or {}
-
 # Validation helper
 validation =
   isEmpty: (str) ->
@@ -118,14 +115,6 @@ $expiry = $("input#expiry")
 $cvc = $("input#cvcInput")
 $token = $("input[name=\"TokenId\"]")
 
-# Setting this to true won't help against server-side checks. :)
-csio.approved = false
-
-# For disabling credit card inputs.
-# To be used right before form submission.
-csio.disable = ($ele) ->
-  $ele.disable = true
-  return
 
 # Checks each input and does dumb checks to see if it might be a valid card
 validateCard = ->
@@ -152,17 +141,19 @@ validateCard = ->
 $authorizeMessage = $("#authorize-message")
 
 # Callback for createToken
-stripeResponseHandler = (status, response) ->
-  $authorizeMessage.removeClass "error"
-  if response.error
-    $authorizeMessage.text response.error.message
-    $authorizeMessage.addClass "error"
-  else
-    csio.approved = true
-    token = response.id
-    $token.val token
-    $authorizeMessage.text "Card approved. Ready when you are."
-  return
+stripeResponseHandler = do ->
+  app.set 'approved', false
+  (status, response) ->
+    $authorizeMessage.removeClass "error"
+    if response.error
+      $authorizeMessage.text response.error.message
+      $authorizeMessage.addClass "error"
+    else
+      app.set 'approved', true
+      token = response.id
+      $token.val token
+      $authorizeMessage.text "Card approved. Ready when you are."
+    return
 
 # Copies validated card values into the hidden form for Stripe.js
 stripeRunner = ->
@@ -185,7 +176,7 @@ $cvc.change relayer
 
 $(document).ready ->
   $("#form").submit (event) ->
-    unless csio.approved
+    unless app.get('approved')
       stripeRunner()
       return false
     true
