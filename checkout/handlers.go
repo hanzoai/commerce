@@ -5,7 +5,7 @@ import (
 
 	"crowdstart.io/config"
 	"crowdstart.io/middleware"
-	"crowdstart.io/stripe"
+	"crowdstart.io/thirdparty/stripe"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
 )
