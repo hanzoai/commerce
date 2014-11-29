@@ -140,7 +140,8 @@ type Order struct {
 	// ShippingOption  ShippingOption
 
 	// TODO: Deprecate and remove from existing data so we can update production
-	Campaign Campaign
+	Campaign    Campaign
+	StripeToken string
 }
 
 func (order *Order) Process(c *gin.Context) error {
