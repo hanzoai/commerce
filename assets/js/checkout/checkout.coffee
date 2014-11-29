@@ -1,3 +1,4 @@
+require 'card'
 # View = require './view'
 
 # class CardView extends View
@@ -109,3 +110,83 @@ updateTax = $.debounce 250, ->
 
 $state.change updateTax
 $city.on "keyup", updateTax
+
+
+$form = $("form#stripeForm")
+$cardNumber = $("input#cardNumber")
+$expiry = $("input#expiry")
+$cvc = $("input#cvcInput")
+$token = $("input[name=\"TokenId\"]")
+
+# Setting this to true won't help against server-side checks. :)
+csio.approved = false
+
+# For disabling credit card inputs.
+# To be used right before form submission.
+csio.disable = ($ele) ->
+  $ele.disable = true
+  return
+
+# Checks each input and does dumb checks to see if it might be a valid card
+validateCard = ->
+  fail = success: false
+  cardNumber = $cardNumber.val()
+  return fail  if cardNumber.length < 10
+  rawExpiry = $expiry.val().replace(/\s/g, "")
+  arr = rawExpiry.split("/")
+  month = arr[0]
+  year = arr[1]
+
+  return fail  unless month.length is 2
+  return fail  unless year.length is 2
+  cvc = $cvc.val()
+
+  return fail  if cvc.length < 3
+
+  success: true
+  number: cardNumber
+  month: month
+  year: year
+  cvc: cvc
+
+$authorizeMessage = $("#authorize-message")
+
+# Callback for createToken
+stripeResponseHandler = (status, response) ->
+  $authorizeMessage.removeClass "error"
+  if response.error
+    $authorizeMessage.text response.error.message
+    $authorizeMessage.addClass "error"
+  else
+    csio.approved = true
+    token = response.id
+    $token.val token
+    $authorizeMessage.text "Card approved. Ready when you are."
+  return
+
+# Copies validated card values into the hidden form for Stripe.js
+stripeRunner = ->
+  card = validateCard()
+  Stripe.card.createToken $form, stripeResponseHandler  if card.success
+  return
+
+relayer = ->
+  card = validateCard()
+  if card.success
+    $form.find("input[data-stripe=\"number\"]").val card.number
+    $form.find("input[data-stripe=\"cvc\"]").val card.cvc
+    $form.find("input[data-stripe=\"exp-month\"]").val card.month
+    $form.find("input[data-stripe=\"exp-year\"]").val card.year
+  return
+
+$cardNumber.change relayer
+$expiry.change relayer
+$cvc.change relayer
+
+$(document).ready ->
+  $("#form").submit (event) ->
+    unless csio.approved
+      stripeRunner()
+      return false
+    true
+  return
