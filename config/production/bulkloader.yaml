@@ -228,7 +228,7 @@ transformers:
     columns: from_header
   property_map:
     - property: __key__
-      external_name: key
+      external_name: Id
       export_transform: transform.key_id_or_name_as_string
 
     - property: Email
@@ -241,8 +241,8 @@ transformers:
       import_transform: transform.regexp_bool('true', re.IGNORECASE)
 
     - property: Id
-      external_name: Id
-      # Type: String Stats: 1941 properties of this type in this kind.
+      external_name: Unique Preorder Link
+      export_transform: 'lambda x: "preorder.skullysystems.com/order/" + x'
 
     - property: Used
       external_name: Used
