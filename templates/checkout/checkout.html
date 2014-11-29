@@ -1,8 +1,12 @@
 {% extends "base.html" %}
 
+{% block css %}
+<link rel="stylesheet" type="text/css" href="{{ staticUrl }}/css/checkout.css">
+{% endblock %}
+
 {% block content_header %}
-<a class="breadcrumb" href="{{ moduleUrl(" store ") }}/cart/">
-    <span class="back-arrow">&#8592;</span><span>BACK TO CART</span>
+<a class="breadcrumb" href="{{ moduleUrl("store") }}/cart/">
+    <span class="back-arrow">&#8592;</span><span>BACK</span>
 </a>
 <h1>Secure Checkout</h1>
 {% endblock %}
@@ -29,7 +33,8 @@
                     {% for item in order.Items %}
                     <tr>
                         <td class="item">
-                            <div class="item-image"><img src="{{ item.Product.DisplayImage().Url }}">
+                            <div class="item-image">
+                                <img src="{{ item.Product.DisplayImage().Url }}">
                             </div>
                         </td>
                         <td>
