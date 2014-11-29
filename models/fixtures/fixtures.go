@@ -392,14 +392,15 @@ var All = delay.Func("install-all-fixtures", func(c appengine.Context) {
 
 		city := strings.Title(strings.ToLower(row[14]))
 
+		tokenId := row[0]
 		perkId := row[1]
 		pledgeId := row[2]
 
 		// Create token
 		token := new(InviteToken)
-		token.Id = row[0]
+		token.Id = tokenId
 		token.Email = email
-		db.PutKey("invite-token", token.Id, token)
+		db.PutKey("invite-token", tokenId, token)
 
 		// Save contribution
 		contribution := Contribution{
