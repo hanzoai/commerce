@@ -59,6 +59,7 @@ type Campaign struct {
 
 	// TODO: Deprecated, please remove eventually
 	StripeToken string
+	StripeKey   string
 }
 
 type Perk struct {
