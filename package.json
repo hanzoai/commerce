@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "bebop": "^1.1.16",
+    "card": "^0.1.4",
     "grunt": "^0.4.5",
     "kouto-swiss": "^0.11.5",
     "mvstar": "^0.1.18",
