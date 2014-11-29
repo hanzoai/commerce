@@ -163,53 +163,53 @@ func (order *Order) Process(c *gin.Context) error {
 	return nil
 }
 
-func (o *Order) Save(c *gin.Context) error {
-	return o.saveItems(c)
-}
+// func (o *Order) Save(c *gin.Context) error {
+// 	return o.saveItems(c)
+// }
 
-// TODO Run this in a transaction
-func (o *Order) saveItems(c *gin.Context) error {
-	o.ItemIds = make([]string, len(o.Items))
-	genItems := make([]interface{}, len(o.Items))
-	for i, item := range o.Items {
-		err := item.Product.Save(c)
-		if err != nil {
-			return err
-		}
-		genItems[i] = interface{}(item)
-	}
+// // TODO Run this in a transaction
+// func (o *Order) saveItems(c *gin.Context) error {
+// 	o.ItemIds = make([]string, len(o.Items))
+// 	genItems := make([]interface{}, len(o.Items))
+// 	for i, item := range o.Items {
+// 		err := item.Product.Save(c)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		genItems[i] = interface{}(item)
+// 	}
 
-	db := datastore.New(c)
-	keys, err := db.PutMulti("variant", genItems)
-	o.ItemIds = keys
+// 	db := datastore.New(c)
+// 	keys, err := db.PutMulti("variant", genItems)
+// 	o.ItemIds = keys
 
-	return err
-}
+// 	return err
+// }
 
-func (o *Order) Load(c *gin.Context) error {
-	return o.loadItems(c)
-}
+// func (o *Order) Load(c *gin.Context) error {
+// 	return o.loadItems(c)
+// }
 
-func (o *Order) loadItems(c *gin.Context) error {
-	db := datastore.New(c)
-	genItems := make([]interface{}, len(o.ItemIds))
-	err := db.GetKeyMulti("line-item", o.ItemIds, genItems)
+// func (o *Order) loadItems(c *gin.Context) error {
+// 	db := datastore.New(c)
+// 	genItems := make([]interface{}, len(o.ItemIds))
+// 	err := db.GetKeyMulti("line-item", o.ItemIds, genItems)
 
-	if err != nil {
-		return err
-	}
+// 	if err != nil {
+// 		return err
+// 	}
 
-	o.Items = make([]LineItem, len(genItems))
-	for i, item := range genItems {
-		o.Items[i] = item.(LineItem)
-		err = o.Items[i].Product.Load(c)
-		if err != nil {
-			return err
-		}
-	}
+// 	o.Items = make([]LineItem, len(genItems))
+// 	for i, item := range genItems {
+// 		o.Items[i] = item.(LineItem)
+// 		err = o.Items[i].Product.Load(c)
+// 		if err != nil {
+// 			return err
+// 		}
+// 	}
 
-	return err
-}
+// 	return err
+// }
 
 func (o Order) DisplaySubtotal() string {
 	return DisplayPrice(o.Subtotal)
