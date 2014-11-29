@@ -15,6 +15,7 @@
 <div class="checkout sep-top">
     <div class="order-information">
         <div class="cart-content col-1-2">
+            <h2>Order Summary</h2>
             <table>
                 <thead>
                     <tr>
@@ -25,6 +26,36 @@
                     </tr>
                 </thead>
                 <tbody>
+                    {% for item in order.Items %}
+                    <tr>
+                        <td class="item">
+                            <input type="hidden" value="{{ item.Slug() }}">
+                            <input type="hidden" value="{{ item.SKU() }}">
+                            <div class="item-image"><img src="{{ item.Product.DisplayImage().Url }}"></div>
+                        </td>
+                        <td>
+                            <div class="item-desc">
+                                <div>
+                                {{ item.Product.Title }}
+                                </div>
+
+                                <div class="variant-info">
+                                {{ item.Variant.Color }} / {{ item.Variant.Size }}
+                                </div>
+                            </div>
+                        </td>
+
+                        <td class="quantity">
+                            <div>
+                                {{ item.Quantity }}
+                            </div>
+                        </td>
+
+                        <td class="price">
+                            <span class="money">{{ item.DisplayPrice() }}</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
                 </tbody>
             </table>
         </div>
