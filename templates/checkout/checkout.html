@@ -1,32 +1,7 @@
 {% extends "base.html" %}
 
 {% block css %}
-<link rel="stylesheet" type="text/css" href="{{ staticUrl }}/css/card.css">
-<link rel="stylesheet" type="text/css" href="{{ staticUrl }}/css/shake.css">
-<style id="checkout-page-styles">
-  #sqs-standard-checkout .sqs-checkout-form-section fieldset .field.error.required input, #sqs-standard-checkout .sqs-checkout-form-section fieldset .field.error.required select {
-  border: 2px solid #d70404;
-  }
-
-    #form-wrapper > div:nth-child(2) {
-        /*Shipping details.*/
-
-        display: none;
-    }
-    #sqs-standard-checkout {
-        background: #f3f3f3;
-    }
-    #sqs-standard-checkout .button {
-        background: #222;
-    }
-    .sqs-system-error {
-        display: none !important;
-    }
-    div.dialog-screen-overlay.sqs-system-error-overlay {
-        display: none !important;
-        z-index: -1 !important;
-    }
-</style>
+<link rel="stylesheet" type="text/css" href="{{ staticUrl }}/css/checkout.css">
 {% endblock %}
 
 {% block content %}
@@ -72,12 +47,12 @@
 
     <!-- CART/COUPON SUMMARIES -->
     <div id="summary-wrapper" class="right-column-wrapper">
-        <div id="cart-summary" class="sqs-card">
-            <div class="yui3-widget sqs-widget yui3-tableshoppingcart sqs-checkout-shopping-cart">
-                <div class="sqs-checkout-shopping-cart-content single-item">
+        <div id="cart-summary" class="card">
+            <div class="yui3-widget widget yui3-tableshoppingcart checkout-shopping-cart">
+                <div class="checkout-shopping-cart-content single-item">
                     <div class="loading-spinner">
-                        <div class="yui3-widget sqs-spin dark" style="height: 50px; width: 50px;">
-                            <div class="sqs-spin-content yui3-widget-content-expanded"></div>
+                        <div class="yui3-widget spin dark" style="height: 50px; width: 50px;">
+                            <div class="spin-content yui3-widget-content-expanded"></div>
                         </div>
                     </div>
 
@@ -113,7 +88,7 @@
                                     <div>{{ item.Quantity }}</div>
                                 </td>
 
-                                <td class="price"><span class="sqs-money-native">{{ item.DisplayPrice() }}</span>
+                                <td class="price"><span class="money-native">{{ item.DisplayPrice() }}</span>
                                 </td>
 
                                 <td class="remove">
@@ -125,31 +100,31 @@
                     </table>
 
                     <div class="subtotal total">
-                        <div class="price"><span class="sqs-money-native">{{ order.DisplaySubtotal() }}</span>
+                        <div class="price"><span class="money-native">{{ order.DisplaySubtotal() }}</span>
                         </div>
                         <div class="label">Subtotal</div>
                     </div>
 
                     <div class="tax total">
-                        <div class="price"><span class="sqs-money-native">{{ order.DisplayTax() }}</span>
+                        <div class="price"><span class="money-native">{{ order.DisplayTax() }}</span>
                         </div>
                         <div class="label">Tax</div>
                     </div>
 
                     <div class="shipping total" hidden="hidden" style="display: none;">
-                        <div class="price"><span class="sqs-money-native">{{ order.Shipping }}</span>
+                        <div class="price"><span class="money-native">{{ order.Shipping }}</span>
                         </div>
                         <div class="label">Shipping</div>
                     </div>
 
                     <div class="discounts total" hidden="hidden" style="display: none;">
-                        <div class="price">- <span class="sqs-money-native">{{ order.Discounts }}</span>
+                        <div class="price">- <span class="money-native">{{ order.Discounts }}</span>
                         </div>
                         <div class="label">Discounts</div>
                     </div>
 
                     <div class="grand-total total">
-                        <div class="price"><span class="sqs-money-native">{{ order.DisplayTotal() }}</span>
+                        <div class="price"><span class="money-native">{{ order.DisplayTotal() }}</span>
                         </div>
                         <div class="label">Grand Total</div>
                     </div>
@@ -165,9 +140,9 @@
             </div>
         </div>
 
-        <div id="coupon-summary" class="sqs-card  hidden">
-            <div class="yui3-widget sqs-widget sqs-checkout-coupon-list">
-                <div class="sqs-checkout-coupon-list-content">
+        <div id="coupon-summary" class="card  hidden">
+            <div class="yui3-widget widget checkout-coupon-list">
+                <div class="checkout-coupon-list-content">
                     <div class="title">Coupons</div>
 
                     <fieldset>
@@ -189,8 +164,8 @@
 
                             <!-- List -->
                             <div class="coupon-list">
-                                <div class="yui3-widget sqs-widget sqs-data-widget sqs-dialog-field sqs-list data-state-loaded">
-                                    <div class="sqs-list-content">
+                                <div class="yui3-widget widget data-widget dialog-field list data-state-loaded">
+                                    <div class="list-content">
                                         <div class="controls">
                                             <button class="add-item" type="button" hidden="hidden" style="display: none;">Add Item</button>
                                         </div>
@@ -208,8 +183,8 @@
 
                             <!-- No Longer Valid Coupons -->
                             <div class="invalid-coupon-list hidden">
-                                <div class="yui3-widget sqs-widget sqs-data-widget sqs-dialog-field sqs-list data-state-loaded">
-                                    <div class="sqs-list-content">
+                                <div class="yui3-widget widget data-widget dialog-field list data-state-loaded">
+                                    <div class="list-content">
                                         <div class="controls">
                                             <button class="add-item" type="button" hidden="hidden" style="display: none;">Add Item</button>
                                         </div>
@@ -231,8 +206,8 @@
 
     <!-- CHECKOUT FORM -->
     <div id="form-wrapper" class="right-column-wrapper">
-        <div class="yui3-widget sqs-widget sqs-checkout-form">
-            <div class="sqs-checkout-form-content">
+        <div class="yui3-widget widget checkout-form">
+            <div class="checkout-form-content">
                 <form id="form" action="authorize" method="POST">
                     {% for item in order.Items %}
                     <input type="hidden" name="Order.Items.{{ forloop.Counter }}.Product.Slug" value="{{ item.Slug() }}">
@@ -240,8 +215,8 @@
                     <input type="hidden" name="Order.Items.{{ forloop.Counter }}.Quantity" value="{{ item.Quantity }}" >
                     {% endfor %}
 
-                    <div class="yui3-widget sqs-widget sqs-checkout-form-section sqs-card sqs-checkout-form-address sqs-checkout-form-billing editing">
-                        <div class="sqs-checkout-form-billing-content">
+                    <div class="yui3-widget widget checkout-form-section card checkout-form-address checkout-form-billing editing">
+                        <div class="checkout-form-billing-content">
                             <div class="title">Billing Info<a class="edit-button">edit</a>
                             </div>
 
@@ -271,11 +246,11 @@
                                 <!-- Billing Address 1 -->
                                 <div id="billing-address-1" data-label="Address Line 1" class="field required" style="">
                                     <label>Address Line 1</label>
-                                    <input name="Order.BillingAddress.Line1" class="field-element address-line1 pulse-warnable sqs-scroll-ac-input" placeholder="Address Line 1" x-autocompletetype="address-line1" type="text" spellcheck="false" maxlength="50" aria-autocomplete="list" aria-expanded="false" autocomplete="on" value>
-                                    <div class="yui3-widget yui3-aclist sqs-scroll-ac yui3-widget-positioned sqs-scroll-ac-hidden" aria-hidden="true" style="left: 0px; top: 40.796875px;">
-                                        <div class="sqs-scroll-ac-content sqs-google-places-autocomplete-mixin">
-                                            <div class="sqs-scroll-ac-scroll-container" hidden="hidden" style="display: none;">
-                                                <ul class="sqs-scroll-ac-list" role="listbox"></ul>
+                                    <input name="Order.BillingAddress.Line1" class="field-element address-line1 pulse-warnable scroll-ac-input" placeholder="Address Line 1" x-autocompletetype="address-line1" type="text" spellcheck="false" maxlength="50" aria-autocomplete="list" aria-expanded="false" autocomplete="on" value>
+                                    <div class="yui3-widget yui3-aclist scroll-ac yui3-widget-positioned scroll-ac-hidden" aria-hidden="true" style="left: 0px; top: 40.796875px;">
+                                        <div class="scroll-ac-content google-places-autocomplete-mixin">
+                                            <div class="scroll-ac-scroll-container" hidden="hidden" style="display: none;">
+                                                <ul class="scroll-ac-list" role="listbox"></ul>
                                                 <div class="google-required-elements">
                                                     <div class="google-attributions"></div>
                                                     <div class="powered-by-google"></div>
@@ -283,7 +258,7 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="sqs-scroll-ac-aria" aria-live="polite" role="status"></div>
+                                    <div class="scroll-ac-aria" aria-live="polite" role="status"></div>
                                 </div>
 
 
@@ -397,8 +372,8 @@
                     </div>
 
 
-                    <div class="yui3-widget sqs-widget sqs-checkout-form-section sqs-card sqs-checkout-form-address sqs-checkout-form-shipping"">
-                        <div class="sqs-checkout-form-shipping-content empty-shipping-options">
+                    <div class="yui3-widget widget checkout-form-section card checkout-form-address checkout-form-shipping"">
+                        <div class="checkout-form-shipping-content empty-shipping-options">
                             <div class="title">Shipping Options<a class="edit-button">edit</a>
                             </div>
 
@@ -424,11 +399,11 @@
                                     <!-- Shipping Address 1 -->
                                     <div id="shipping-address-1" data-label="Address Line 1" class="field address required">
                                         <label>Address Line 1</label>
-                                        <input name="Order.ShippingAddress.Line1" class="field-element address-line1 pulse-warnable sqs-scroll-ac-input" type="text" x-autocompletetype="address-line1" placeholder="Address Line 1" spellcheck="false" maxlength="50" aria-autocomplete="list" aria-expanded="false" autocomplete="on">
-                                        <div class="yui3-widget yui3-aclist sqs-scroll-ac yui3-widget-positioned sqs-scroll-ac-hidden" aria-hidden="true" style="left: 0px; top: 0px;">
-                                            <div class="sqs-scroll-ac-content sqs-google-places-autocomplete-mixin">
-                                                <div class="sqs-scroll-ac-scroll-container" hidden="hidden" style="display: none;">
-                                                    <ul class="sqs-scroll-ac-list" id="yui_3_17_2_1_1414184167898_702" role="listbox"></ul>
+                                        <input name="Order.ShippingAddress.Line1" class="field-element address-line1 pulse-warnable scroll-ac-input" type="text" x-autocompletetype="address-line1" placeholder="Address Line 1" spellcheck="false" maxlength="50" aria-autocomplete="list" aria-expanded="false" autocomplete="on">
+                                        <div class="yui3-widget yui3-aclist scroll-ac yui3-widget-positioned scroll-ac-hidden" aria-hidden="true" style="left: 0px; top: 0px;">
+                                            <div class="scroll-ac-content google-places-autocomplete-mixin">
+                                                <div class="scroll-ac-scroll-container" hidden="hidden" style="display: none;">
+                                                    <ul class="scroll-ac-list" id="yui_3_17_2_1_1414184167898_702" role="listbox"></ul>
                                                     <div class="google-required-elements">
                                                         <div class="google-attributions"></div>
                                                         <div class="powered-by-google"></div>
@@ -436,7 +411,7 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="sqs-scroll-ac-aria" aria-live="polite" role="status"></div>
+                                        <div class="scroll-ac-aria" aria-live="polite" role="status"></div>
                                     </div>
                                     <!-- Shipping Address 2 -->
                                     <div id="shipping-address-2" data-label="Address Line 2" class="field address">
@@ -525,7 +500,7 @@
 
                                 <!-- Shipping Options -->
                                 <div id="shipping-options">
-                                    <div class="yui3-widget sqs-widget sqs-checkout-form-shipping-options">
+                                    <div class="yui3-widget widget checkout-form-shipping-options">
 
                                     </div>
                                 </div>
@@ -539,8 +514,8 @@
                         </div>
             </div>
 
-            <div class="yui3-widget sqs-widget sqs-checkout-form-section sqs-card sqs-checkout-form-payment">
-              <div class="sqs-checkout-form-payment-content">
+            <div class="yui3-widget widget checkout-form-section card checkout-form-payment">
+              <div class="checkout-form-payment-content">
                             <div class="title">
                               <a class="edit-button">edit</a>
 
@@ -641,8 +616,8 @@
 </div>
 
     <div class="absolute-cart-box">
-        <div class="yui3-widget sqs-widget sqs-pill-shopping-cart" style="visibility: visible; opacity: 1;">
-            <div class="sqs-pill-shopping-cart-content dark">
+        <div class="yui3-widget widget pill-shopping-cart" style="visibility: visible; opacity: 1;">
+            <div class="pill-shopping-cart-content dark">
                 <div class="icon"></div>
 
                 <div class="details">
@@ -652,14 +627,14 @@
             </div>
 
             <span class="subtotal">
-                <span class="price"><span class="sqs-money-native">0.00</span></span>
+                <span class="price"><span class="money-native">0.00</span></span>
             </span>
         </div>
     </div>
 </div>
 
-<div class="yui3-widget sqs-widget sqs-modal-lightbox" hidden="hidden" style="display: none;">
-    <div class="sqs-modal-lightbox-content">
+<div class="yui3-widget widget modal-lightbox" hidden="hidden" style="display: none;">
+    <div class="modal-lightbox-content">
         <div class="lightbox-background"></div>
         <div class="lightbox-inner">
             <div class="lightbox-content" style="margin-top: 318px; margin-bottom: 318px;">
@@ -679,11 +654,9 @@
 {% endblock %}
 
 {% block js %}
-<script type="text/javascript" src="{{ staticUrl }}/js/card.js"></script>
 <script type="text/javascript" src="https://js.stripe.com/v2/"></script>
 <script type="text/javascript">
   Stripe.setPublishableKey('{{ config.Stripe.APIKey }}');
 </script>
-<script type="text/javascript" src="{{ staticUrl }}/js/checkout_stripe.js"></script>
 <script type="text/javascript" src="{{ staticUrl }}/js/checkout.js"></script>
 {% endblock %}
