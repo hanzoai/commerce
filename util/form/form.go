@@ -21,7 +21,7 @@ func Parse(c *gin.Context, form interface{}) error {
 }
 
 // TODO: Make this go away
-func SchemaFix(order models.Order) {
+func SchemaFix(order *models.Order) {
 	// Schema creates the Order.Items slice sized to whatever is the largest
 	// index form item. This creates a slice with a huge number of nil structs,
 	// so we create a new slice of items and use that instead.
