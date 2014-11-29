@@ -134,6 +134,7 @@ type Order struct {
 
 	// Need to save campaign id
 	CampaignId string
+	Campaign   Campaign
 
 	Cancelled bool
 	Shipped   bool
