@@ -176,5 +176,7 @@ datastore-export:
 				  --config_file config/production/bulkloader.yaml \
 				  --db_filename /tmp/bulkloader-db \
 				  --log_file /tmp/bulkloader-log \
+				  --result_db_filename /tmp/bulkloader-result \
 				  --kind $$kind \
-				  --filename _export/$$kind.csv
+				  --filename _export/$$kind.csv && \
+	rm -rf /tmp/bulkloader.db /tmp/bulkloader.log /tmp/bulkloader-result.db
