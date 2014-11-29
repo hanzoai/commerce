@@ -18,6 +18,7 @@ func formError(c *gin.Context) {
 }
 
 func checkout(c *gin.Context) {
+	// Parse checkout form
 	form := new(CheckoutForm)
 	if err := form.Parse(c); err != nil {
 		log.Error(err.Error())
@@ -25,12 +26,17 @@ func checkout(c *gin.Context) {
 		return
 	}
 
-	// TODO: VALIDATE PLZ GOD
-	errs := form.Validate()
+	// Populate with data from DB
+	form.Populate(c)
+
+	// Validate form
+	form.Validate(c)
+
+	// Render order for checkout page
 	template.Render(c, "checkout.html",
 		"order", form.Order,
 		"config", config.Get(),
-		"errors", errs)
+	)
 }
 
 func authorize(c *gin.Context) {
