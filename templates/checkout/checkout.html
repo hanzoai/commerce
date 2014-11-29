@@ -1,47 +1,43 @@
-{% extends "base.html" %} {% block css %}
-<link rel="stylesheet" type="text/css" href="{{ staticUrl }}/css/checkout.css">{% endblock %} {% block content %} <!-- NOTIFICATION BANNERS -->
-<!-- <div id="test-mode-banner" class="notification-banner"> -->
-<!--     <span class="standard-message"> -->
-<!--     <strong>Store Not Live</strong>&nbsp;&nbsp; -->
-<!--     <span>Test all the features of your store without charging a real credit card.</span> -->
-<!--     </span> -->
-<!--     <span class="override-message"> -->
-<!--     <strong>Test Mode Override</strong>&nbsp;&nbsp; -->
-<!--     <span>This order will be placed in Test Mode.</span> -->
-<!--     </span> -->
-<!-- </div> -->
- <!-- <div id="payments-not-connected-banner" class="notification-banner"> -->
-<!--     <strong>Payments Not Connected</strong>&nbsp;&nbsp; -->
-<!--     <span>This store has not yet set-up payments. Checkout is disabled.</span> -->
-<!-- </div> -->
- <!-- <div id="design-mode-banner" class="notification-banner"> -->
-<!--     <strong>Style Mode</strong>&nbsp;&nbsp; -->
-<!--     <span>You are designing a sample checkout page. Checkout is disabled.</span> -->
-<!-- </div> -->
- <!-- MAIN CHECKOUT PAGE -->
+{% extends "base.html" %}
 
-<div id="checkout-page" style="opacity: 1;" class="fadeable-plugged">
-  <!-- LOGO -->
+{% block content_header %}
+<a class="breadcrumb" href="{{ moduleUrl("store") }}/cart/">
+    <span class="back-arrow">&#8592;</span><span>BACK TO CART</span>
+</a>
+<h1>Secure Checkout</h1>
+{% endblock %}
 
-  <div id="store-logo">
-    <h1><a href="http://www.skullysystems.com/"><span class="site-title">SECURE CHECKOUT</span></a></h1>
+{% block content_header_width_class %}checkout-width{% endblock %}
 
-    <h4><a href="/cart"><span class="back-arrow">←</span> BACK TO CART</a></h4>
-  </div><!-- CART/COUPON SUMMARIES -->
+{% block content_width_class %}checkout-width{% endblock %}
 
+{% block content %}
+<div class="checkout sep-top">
+    <div class="order-information">
+        <div class="cart-content col-1-2">
+            <table>
+                <thead>
+                    <tr>
+                        <td class="item">Item</td>
+                        <td></td>
+                        <td class="quantity">Quantity</td>
+                        <td class="price">Price</td>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+    </div>
   <div id="summary-wrapper" class="right-column-wrapper">
     <div id="cart-summary" class="card">
       <div class="yui3-widget widget yui3-tableshoppingcart checkout-shopping-cart">
         <div class="checkout-shopping-cart-content single-item">
           <div class="loading-spinner">
-            <div class="yui3-widget spin dark" style="height: 50px; width: 50px;">
-              <div class="spin-content yui3-widget-content-expanded"></div>
-            </div>
           </div>
 
           <div class="title">
-            Order Summary
-          </div>{% for item in order.Items %} <input type="hidden" value="{{ item.Slug() }}"><input type="hidden" value="{{ item.SKU() }}">{% endfor %}
+            Order Summary</div>{% for item in order.Items %} <input type="hidden" value="{{ item.Slug() }}"><input type="hidden" value="{{ item.SKU() }}">{% endfor %}
 
           <table>
             <thead>
@@ -93,8 +89,7 @@
             </div>
 
             <div class="label">
-              Subtotal
-            </div>
+              Subtotal</div>
           </div>
 
           <div class="tax total">
@@ -103,8 +98,7 @@
             </div>
 
             <div class="label">
-              Tax
-            </div>
+              Tax</div>
           </div>
 
           <div class="shipping total" hidden="hidden" style="display: none;">
@@ -113,8 +107,7 @@
             </div>
 
             <div class="label">
-              Shipping
-            </div>
+              Shipping</div>
           </div>
 
           <div class="discounts total" hidden="hidden" style="display: none;">
@@ -123,8 +116,7 @@
             </div>
 
             <div class="label">
-              Discounts
-            </div>
+              Discounts</div>
           </div>
 
           <div class="grand-total total">
@@ -133,8 +125,7 @@
             </div>
 
             <div class="label">
-              Grand Total
-            </div>
+              Grand Total</div>
           </div>{% if order.Empty() %}
 
           <div class="empty-message">
@@ -148,8 +139,7 @@
       <div class="yui3-widget widget checkout-coupon-list">
         <div class="checkout-coupon-list-content">
           <div class="title">
-            Coupons
-          </div>
+            Coupons</div>
 
           <fieldset>
             <div class="field">
@@ -161,8 +151,7 @@
                 </div><!-- Redeem Button -->
 
                 <div class="button redeem-coupon">
-                  Redeem
-                </div>
+                  Redeem</div>
               </div><!-- List -->
 
               <div class="coupon-list">
@@ -265,9 +254,7 @@
                 <div id="billing-country" data-label="Country" class="field country required">
                   <label>Country</label> <select name="Order.BillingAddress.Country" class="field-element pulse-warnable" x-autocompletetype="country-name" value="">
                     <option value="United States">
-                      United States
-                    </option>
-                  </select>
+                      United States</option>                  </select>
                 </div><!-- City -->
 
                 <div id="billing-city" data-label="City" class="field city required">
@@ -276,222 +263,60 @@
 
                 <div id="billing-state" data-label="State/Province" class="field state required">
                   <label>State/Province</label> <select name="Order.BillingAddress.State" class="field-element pulse-warnable" x-autocompletetype="state" value="">
-                    <option value="AL">
-                      AL
-                    </option>
-
-                    <option value="AK">
-                      AK
-                    </option>
-
-                    <option value="AZ">
-                      AZ
-                    </option>
-
-                    <option value="AR">
-                      AR
-                    </option>
-
-                    <option value="CA">
-                      CA
-                    </option>
-
-                    <option value="CO">
-                      CO
-                    </option>
-
-                    <option value="CT">
-                      CT
-                    </option>
-
-                    <option value="DE">
-                      DE
-                    </option>
-
-                    <option value="FL">
-                      FL
-                    </option>
-
-                    <option value="GA">
-                      GA
-                    </option>
-
-                    <option value="HI">
-                      HI
-                    </option>
-
-                    <option value="ID">
-                      ID
-                    </option>
-
-                    <option value="IL">
-                      IL
-                    </option>
-
-                    <option value="IN">
-                      IN
-                    </option>
-
-                    <option value="IA">
-                      IA
-                    </option>
-
-                    <option value="KS">
-                      KS
-                    </option>
-
-                    <option value="KY">
-                      KY
-                    </option>
-
-                    <option value="LA">
-                      LA
-                    </option>
-
-                    <option value="ME">
-                      ME
-                    </option>
-
-                    <option value="MD">
-                      MD
-                    </option>
-
-                    <option value="MA">
-                      MA
-                    </option>
-
-                    <option value="MI">
-                      MI
-                    </option>
-
-                    <option value="MN">
-                      MN
-                    </option>
-
-                    <option value="MS">
-                      MS
-                    </option>
-
-                    <option value="MO">
-                      MO
-                    </option>
-
-                    <option value="MT">
-                      MT
-                    </option>
-
-                    <option value="NE">
-                      NE
-                    </option>
-
-                    <option value="NV">
-                      NV
-                    </option>
-
-                    <option value="NH">
-                      NH
-                    </option>
-
-                    <option value="NJ">
-                      NJ
-                    </option>
-
-                    <option value="NM">
-                      NM
-                    </option>
-
-                    <option value="NY">
-                      NY
-                    </option>
-
-                    <option value="NC">
-                      NC
-                    </option>
-
-                    <option value="ND">
-                      ND
-                    </option>
-
-                    <option value="OH">
-                      OH
-                    </option>
-
-                    <option value="OK">
-                      OK
-                    </option>
-
-                    <option value="OR">
-                      OR
-                    </option>
-
-                    <option value="PA">
-                      PA
-                    </option>
-
-                    <option value="RI">
-                      RI
-                    </option>
-
-                    <option value="SC">
-                      SC
-                    </option>
-
-                    <option value="SD">
-                      SD
-                    </option>
-
-                    <option value="TN">
-                      TN
-                    </option>
-
-                    <option value="TX">
-                      TX
-                    </option>
-
-                    <option value="UT">
-                      UT
-                    </option>
-
-                    <option value="VT">
-                      VT
-                    </option>
-
-                    <option value="VA">
-                      VA
-                    </option>
-
-                    <option value="WA">
-                      WA
-                    </option>
-
-                    <option value="DC">
-                      DC
-                    </option>
-
-                    <option value="WV">
-                      WV
-                    </option>
-
-                    <option value="WI">
-                      WI
-                    </option>
-
-                    <option value="WY">
-                      WY
-                    </option>
-
-                    <option value="AA">
-                      AA
-                    </option>
-
-                    <option value="AE">
-                      AE
-                    </option>
-
-                    <option value="AP">
-                      AP
-                    </option>
-                  </select>
+                    <option value="AL">AL</option>
+                    <option value="AK">AK</option>
+                    <option value="AZ">AZ</option>
+                    <option value="AR">AR</option>
+                    <option value="CA">CA</option>
+                    <option value="CO">CO</option>
+                    <option value="CT">CT</option>
+                    <option value="DE">DE</option>
+                    <option value="FL">FL</option>
+                    <option value="GA">GA</option>
+                    <option value="HI">HI</option>
+                    <option value="ID">ID</option>
+                    <option value="IL">IL</option>
+                    <option value="IN">IN</option>
+                    <option value="IA">IA</option>
+                    <option value="KS">KS</option>
+                    <option value="KY">KY</option>
+                    <option value="LA">LA</option>
+                    <option value="ME">ME</option>
+                    <option value="MD">MD</option>
+                    <option value="MA">MA</option>
+                    <option value="MI">MI</option>
+                    <option value="MN">MN</option>
+                    <option value="MS">MS</option>
+                    <option value="MO">MO</option>
+                    <option value="MT">MT</option>
+                    <option value="NE">NE</option>
+                    <option value="NV">NV</option>
+                    <option value="NH">NH</option>
+                    <option value="NJ">NJ</option>
+                    <option value="NM">NM</option>
+                    <option value="NY">NY</option>
+                    <option value="NC">NC</option>
+                    <option value="ND">ND</option>
+                    <option value="OH">OH</option>
+                    <option value="OK">OK</option>
+                    <option value="OR">OR</option>
+                    <option value="PA">PA</option>
+                    <option value="RI">RI</option>
+                    <option value="SC">SC</option>
+                    <option value="SD">SD</option>
+                    <option value="TN">TN</option>
+                    <option value="TX">TX</option>
+                    <option value="UT">UT</option>
+                    <option value="VT">VT</option>
+                    <option value="VA">VA</option>
+                    <option value="WA">WA</option>
+                    <option value="DC">DC</option>
+                    <option value="WV">WV</option>
+                    <option value="WI">WI</option>
+                    <option value="WY">WY</option>
+                    <option value="AA">AA</option>
+                    <option value="AE">AE</option>
+                    <option value="AP">AP</option>                  </select>
                 </div><!-- Zip Code -->
 
                 <div id="billing-zip" data-label="Zip Code" class="field zip required">
@@ -565,9 +390,7 @@
                   <div id="shipping-country" data-label="Country" class="field country required">
                     <label>Country</label> <select name="Order.ShippingAddress.Country" class="field-element pulse-warnable" x-autocompletetype="country-name">
                       <option value="United States">
-                        United States
-                      </option>
-                    </select>
+                        United States</option>                    </select>
                   </div><!-- City -->
 
                   <div id="shipping-city" data-label="City" class="field city required">
@@ -576,222 +399,61 @@
 
                   <div id="shipping-state" data-label="State/Province" class="field state required">
                     <label>State/Province</label> <select name="Order.ShippingAddress.State" class="field-element pulse-warnable" x-autocompletetype="state">
-                      <option value="AL">
-                        AL
-                      </option>
-
-                      <option value="AK">
-                        AK
-                      </option>
-
-                      <option value="AZ">
-                        AZ
-                      </option>
-
-                      <option value="AR">
-                        AR
-                      </option>
-
-                      <option value="CA">
-                        CA
-                      </option>
-
-                      <option value="CO">
-                        CO
-                      </option>
-
-                      <option value="CT">
-                        CT
-                      </option>
-
-                      <option value="DE">
-                        DE
-                      </option>
-
-                      <option value="FL">
-                        FL
-                      </option>
-
-                      <option value="GA">
-                        GA
-                      </option>
-
-                      <option value="HI">
-                        HI
-                      </option>
-
-                      <option value="ID">
-                        ID
-                      </option>
-
-                      <option value="IL">
-                        IL
-                      </option>
-
-                      <option value="IN">
-                        IN
-                      </option>
-
-                      <option value="IA">
-                        IA
-                      </option>
-
-                      <option value="KS">
-                        KS
-                      </option>
-
-                      <option value="KY">
-                        KY
-                      </option>
-
-                      <option value="LA">
-                        LA
-                      </option>
-
-                      <option value="ME">
-                        ME
-                      </option>
-
-                      <option value="MD">
-                        MD
-                      </option>
-
-                      <option value="MA">
-                        MA
-                      </option>
-
-                      <option value="MI">
-                        MI
-                      </option>
-
-                      <option value="MN">
-                        MN
-                      </option>
-
-                      <option value="MS">
-                        MS
-                      </option>
-
-                      <option value="MO">
-                        MO
-                      </option>
-
-                      <option value="MT">
-                        MT
-                      </option>
-
-                      <option value="NE">
-                        NE
-                      </option>
-
-                      <option value="NV">
-                        NV
-                      </option>
-
-                      <option value="NH">
-                        NH
-                      </option>
-
-                      <option value="NJ">
-                        NJ
-                      </option>
-
-                      <option value="NM">
-                        NM
-                      </option>
-
-                      <option value="NY">
-                        NY
-                      </option>
-
-                      <option value="NC">
-                        NC
-                      </option>
-
-                      <option value="ND">
-                        ND
-                      </option>
-
-                      <option value="OH">
-                        OH
-                      </option>
-
-                      <option value="OK">
-                        OK
-                      </option>
-
-                      <option value="OR">
-                        OR
-                      </option>
-
-                      <option value="PA">
-                        PA
-                      </option>
-
-                      <option value="RI">
-                        RI
-                      </option>
-
-                      <option value="SC">
-                        SC
-                      </option>
-
-                      <option value="SD">
-                        SD
-                      </option>
-
-                      <option value="TN">
-                        TN
-                      </option>
-
-                      <option value="TX">
-                        TX
-                      </option>
-
-                      <option value="UT">
-                        UT
-                      </option>
-
-                      <option value="VT">
-                        VT
-                      </option>
-
-                      <option value="VA">
-                        VA
-                      </option>
-
-                      <option value="WA">
-                        WA
-                      </option>
-
-                      <option value="DC">
-                        DC
-                      </option>
-
-                      <option value="WV">
-                        WV
-                      </option>
-
-                      <option value="WI">
-                        WI
-                      </option>
-
-                      <option value="WY">
-                        WY
-                      </option>
-
-                      <option value="AA">
-                        AA
-                      </option>
-
-                      <option value="AE">
-                        AE
-                      </option>
-
-                      <option value="AP">
-                        AP
-                      </option>
-                    </select>
+                      <option value="AL">AL</option>
+                      <option value="AK">AK</option>
+                      <option value="AZ">AZ</option>
+                      <option value="AR">AR</option>
+                      <option value="CA">CA</option>
+                      <option value="CO">CO</option>
+                      <option value="CT">CT</option>
+                      <option value="DE">DE</option>
+                      <option value="FL">FL</option>
+                      <option value="GA">GA</option>
+                      <option value="HI">HI</option>
+                      <option value="ID">ID</option>
+                      <option value="IL">IL</option>
+                      <option value="IN">IN</option>
+                      <option value="IA">IA</option>
+                      <option value="KS">KS</option>
+                      <option value="KY">KY</option>
+                      <option value="LA">LA</option>
+                      <option value="ME">ME</option>
+                      <option value="MD">MD</option>
+                      <option value="MA">MA</option>
+                      <option value="MI">MI</option>
+                      <option value="MN">MN</option>
+                      <option value="MS">MS</option>
+                      <option value="MO">MO</option>
+                      <option value="MT">MT</option>
+                      <option value="NE">NE</option>
+                      <option value="NV">NV</option>
+                      <option value="NH">NH</option>
+                      <option value="NJ">NJ</option>
+                      <option value="NM">NM</option>
+                      <option value="NY">NY</option>
+                      <option value="NC">NC</option>
+                      <option value="ND">ND</option>
+                      <option value="OH">OH</option>
+                      <option value="OK">OK</option>
+                      <option value="OR">OR</option>
+                      <option value="PA">PA</option>
+                      <option value="RI">RI</option>
+                      <option value="SC">SC</option>
+                      <option value="SD">SD</option>
+                      <option value="TN">TN</option>
+                      <option value="TX">TX</option>
+                      <option value="UT">UT</option>
+                      <option value="VT">VT</option>
+                      <option value="VA">VA</option>
+                      <option value="WA">WA</option>
+                      <option value="DC">DC</option>
+                      <option value="WV">WV</option>
+                      <option value="WI">WI</option>
+                      <option value="WY">WY</option>
+                      <option value="AA">AA</option>
+                      <option value="AE">AE</option>
+                      <option value="AP">AP</option>
+                  </select>
                   </div><!-- Zip Code -->
 
                   <div id="shipping-zip" data-label="Zip Code" class="field zip required">
@@ -814,8 +476,7 @@
               <div class="title">
                 <a class="edit-button">edit</a>
 
-                <div class="cards"><img src="{{ staticUrl }}/img/discover.png"> <img src="{{ staticUrl }}/img/mastercard.png"> <img src="{{ staticUrl }}/img/visa.png"> <img src="{{ staticUrl }}/img/americanexpress.png"></div>Secure Payment
-              </div>
+                <div class="cards"><img src="{{ staticUrl }}/img/discover.png"> <img src="{{ staticUrl }}/img/mastercard.png"> <img src="{{ staticUrl }}/img/visa.png"> <img src="{{ staticUrl }}/img/americanexpress.png"></div>Secure Payment</div>
 
               <fieldset style="display:none;" data-stage="3">
                 <div style="display:block; text-align:center; margin-bottom: 5%;">
@@ -887,7 +548,6 @@
       <div class="lightbox-inner">
         <div class="lightbox-content" style="margin-top: 318px; margin-bottom: 318px;">
           <div class="lightbox-close">
-            ×
           </div>
         </div>
       </div>
@@ -896,9 +556,13 @@
 
   <form id="stripeForm" action="" method="post" accept-charset="UTF-8" enctype="application/x-www-form-urlencoded; charset=utf-8" name="stripeForm">
     <input type="hidden" data-stripe="number"> <input type="hidden" data-stripe="cvc"> <input type="hidden" data-stripe="exp-month"> <input type="hidden" data-stripe="exp-year">
-  </form>{% endblock %} {% block js %} <script type="text/javascript" src="https://js.stripe.com/v2/">
+</form>
+{% endblock %}
+
+{% block js %}
+<script type="text/javascript" src="https://js.stripe.com/v2/">
 </script> <script type="text/javascript">
 Stripe.setPublishableKey('{{ config.Stripe.APIKey }}');
-  </script> <script type="text/javascript" src="{{ staticUrl }}/js/checkout.js">
-</script> {% endblock %}
-</div>
+</script>
+{% endblock %}
+
