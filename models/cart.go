@@ -118,6 +118,7 @@ type Order struct {
 	Account         PaymentAccount
 	BillingAddress  Address
 	CreatedAt       time.Time `schema:"-"`
+	UpdatedAt       time.Time `schema:"-"`
 	Id              string    `schema:"-"`
 	Shipping        int64     `schema:"-"`
 	ShippingAddress Address
