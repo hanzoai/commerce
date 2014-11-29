@@ -469,15 +469,15 @@ transformers:
 
     - property: Items.Quantity
       external_name: Items.Quantity
-      export_transform: "lambda x: ','.join(map(str, x)) if type(x) is list else x if x else ''"
+      export_transform: "lambda x: ', '.join(map(str, x)) if type(x) is list else x if x else ''"
 
     - property: Items.SKU_
       external_name: Items.SKU
-      export_transform: "lambda x: ','.join(x) if type(x) is list else x if x else ''"
+      export_transform: "lambda x: ', '.join(x) if type(x) is list else x if x else ''"
 
     - property: Items.Slug_
       external_name: Items.Slug
-      export_transform: "lambda x: ','.join(x) if type(x) is list else x if x else ''"
+      export_transform: "lambda x: ', '.join(x) if type(x) is list else x if x else ''"
 
     # - property: Items.UOM
     #   external_name: Items.UOM
@@ -517,9 +517,9 @@ transformers:
       # Type: Integer Stats: 912 properties of this type in this kind.
       import_transform: transform.none_if_empty(int)
 
-    - property: StripeToken
-      external_name: StripeToken
-      # Type: String Stats: 912 properties of this type in this kind.
+    # - property: StripeToken
+    #   external_name: StripeToken
+    #   # Type: String Stats: 912 properties of this type in this kind.
 
     - property: Subtotal
       external_name: Subtotal
