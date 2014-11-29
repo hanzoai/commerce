@@ -29,7 +29,7 @@ class ProductView extends View
     cart = app.get 'cart'
     if (cart.getProduct variant.SKU)?.quantity + quantity > (app.get 'maxQuantityPerProduct')
       setTimeout =>
-        @el.find('span').text("Too many in cart").fadeOut 1000, =>
+        @el.find('span').text("Too Many").fadeOut 1000, =>
           inner.html 'Add to Cart'
           @el.find('span').fadeIn()
       , 500
