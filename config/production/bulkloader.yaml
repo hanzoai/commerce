@@ -21,6 +21,7 @@ python_preamble:
 - import: google.appengine.ext.db
 - import: google.appengine.api.datastore
 - import: google.appengine.api.users
+- import: bulkloader_helper
 
 transformers:
 - kind: campaign
@@ -469,15 +470,15 @@ transformers:
 
     - property: Items.Quantity
       external_name: Items.Quantity
-      export_transform: "lambda x: ', '.join(map(str, x)) if type(x) is list else x if x else ''"
+      export_transform: bulkloader_helper.list_num_to_str
 
     - property: Items.SKU_
       external_name: Items.SKU
-      export_transform: "lambda x: ', '.join(x) if type(x) is list else x if x else ''"
+      export_transform: bulkloader_helper.list_skus_to_str
 
     - property: Items.Slug_
       external_name: Items.Slug
-      export_transform: "lambda x: ', '.join(x) if type(x) is list else x if x else ''"
+      export_transform: bulkloader_helper.list_to_str
 
     # - property: Items.UOM
     #   external_name: Items.UOM
@@ -488,29 +489,29 @@ transformers:
       # Type: Boolean Stats: 912 properties of this type in this kind.
       import_transform: transform.regexp_bool('true', re.IGNORECASE)
 
-    - property: ShippingAddress.City
-      external_name: ShippingAddress.City
-      # Type: String Stats: 912 properties of this type in this kind.
+    # - property: ShippingAddress.City
+    #   external_name: ShippingAddress.City
+    #   # Type: String Stats: 912 properties of this type in this kind.
 
-    - property: ShippingAddress.Country
-      external_name: ShippingAddress.Country
-      # Type: String Stats: 912 properties of this type in this kind.
+    # - property: ShippingAddress.Country
+    #   external_name: ShippingAddress.Country
+    #   # Type: String Stats: 912 properties of this type in this kind.
 
-    - property: ShippingAddress.Line1
-      external_name: ShippingAddress.Line1
-      # Type: String Stats: 912 properties of this type in this kind.
+    # - property: ShippingAddress.Line1
+    #   external_name: ShippingAddress.Line1
+    #   # Type: String Stats: 912 properties of this type in this kind.
 
-    - property: ShippingAddress.Line2
-      external_name: ShippingAddress.Line2
-      # Type: String Stats: 912 properties of this type in this kind.
+    # - property: ShippingAddress.Line2
+    #   external_name: ShippingAddress.Line2
+    #   # Type: String Stats: 912 properties of this type in this kind.
 
-    - property: ShippingAddress.PostalCode
-      external_name: ShippingAddress.PostalCode
-      # Type: String Stats: 912 properties of this type in this kind.
+    # - property: ShippingAddress.PostalCode
+    #   external_name: ShippingAddress.PostalCode
+    #   # Type: String Stats: 912 properties of this type in this kind.
 
-    - property: ShippingAddress.State
-      external_name: ShippingAddress.State
-      # Type: String Stats: 912 properties of this type in this kind.
+    # - property: ShippingAddress.State
+    #   external_name: ShippingAddress.State
+    #   # Type: String Stats: 912 properties of this type in this kind.
 
     - property: Shipping
       external_name: Shipping
@@ -536,6 +537,11 @@ transformers:
       # Type: Integer Stats: 912 properties of this type in this kind.
       import_transform: transform.none_if_empty(int)
 
+      # GENERATED:
+      # Generate Preorder information from Items.SKU and Items.Quantity columns
+    - property: Preorder
+      external_name: Preorder
+      export_transform: bulkloader_helper.generate_preorder
 
 - kind: product
   connector: csv
@@ -706,17 +712,17 @@ transformers:
       external_name: Email
       # Type: String Stats: 1903 properties of this type in this kind.
 
-    - property: FirstName
-      external_name: FirstName
-      # Type: String Stats: 1903 properties of this type in this kind.
-
     - property: Id
       external_name: Id
       # Type: String Stats: 1903 properties of this type in this kind.
 
+    - property: FirstName
+      external_name: FirstName
+      export_transform: bulkloader_helper.na_if_none
+
     - property: LastName
       external_name: LastName
-      # Type: String Stats: 1903 properties of this type in this kind.
+      export_transform: bulkloader_helper.na_if_none
 
     - property: PasswordHash
       external_name: PasswordHash
@@ -736,6 +742,7 @@ transformers:
       external_name: ShippingAddress.Country
       # Type: String Stats: 1903 properties of this type in this kind.
 
+      # Type: String Stats: 1903 properties of this type in this kind.
     - property: ShippingAddress.Line1
       external_name: ShippingAddress.Line1
       # Type: String Stats: 1903 properties of this type in this kind.
@@ -751,6 +758,12 @@ transformers:
     - property: ShippingAddress.State
       external_name: ShippingAddress.State
       # Type: String Stats: 1903 properties of this type in this kind.
+
+    # GENERATED:
+      # Type: String Stats: 1903 properties of this type in this kind.
+    - property: ShippingAddress.Lines
+      external_name: ShippingAddress.Lines
+      export_transform: bulkloader_helper.join_address_lines
 
 
 - kind: variant
