@@ -23,8 +23,7 @@ type LineItem struct {
 	LineNo       int
 	Quantity     int
 
-	// TODO: Deprecated UOM but unable to remove yet
-	UOM string `schema:"-"`
+	// UOM string `schema:"-"`
 	// UPC          string
 	// Material     string
 	// NetAmnt      string
@@ -140,10 +139,6 @@ type Order struct {
 	Cancelled bool
 	Shipped   bool
 	// ShippingOption  ShippingOption
-
-	// TODO: Deprecate and remove from existing data so we can update production
-	Campaign    Campaign
-	StripeToken string
 }
 
 func (order *Order) Process(c *gin.Context) error {
