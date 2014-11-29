@@ -724,11 +724,11 @@ transformers:
       external_name: LastName
       export_transform: bulkloader_helper.na_if_none
 
-    - property: PasswordHash
-      external_name: PasswordHash
-      # Type: Blob Stats: 1903 properties of this type in this kind.
-      import_transform: transform.blobproperty_from_base64
-      export_transform: base64.b64encode
+    # - property: PasswordHash
+    #   external_name: PasswordHash
+    #   # Type: Blob Stats: 1903 properties of this type in this kind.
+    #   import_transform: transform.blobproperty_from_base64
+    #   export_transform: base64.b64encode
 
     - property: Phone
       external_name: Phone
