@@ -18,15 +18,15 @@ type LineItem struct {
 	Slug_        string         `json:"Slug"`
 	Product      Product        `datastore:"-"`
 	Variant      ProductVariant `datastore:"-"`
-	Description  string         `schema:"-"`
-	DiscountAmnt int64          `schema:"-"`
-	LineNo       int            `schema:"-"`
+	Description  string
+	DiscountAmnt int64
+	LineNo       int
 	Quantity     int
-	UOM          string `schema:"-"`
+	// UOM          string `schema:"-"`
+	// UPC          string
 	// Material     string
 	// NetAmnt      string
 	// TaxAmnt      string
-	// UPC          string
 }
 
 func (li LineItem) Price() int64 {
@@ -117,25 +117,25 @@ type Order struct {
 	FieldMapMixin
 	Account         PaymentAccount
 	BillingAddress  Address
+	ShippingAddress Address
 	CreatedAt       time.Time `schema:"-"`
 	UpdatedAt       time.Time `schema:"-"`
 	Id              string    `schema:"-"`
 	Shipping        int64     `schema:"-"`
-	ShippingAddress Address
-	Subtotal        int64 `schema:"-"`
-	Tax             int64 `schema:"-"`
-	Total           int64 `schema:"-"`
+	Subtotal        int64     `schema:"-"`
+	Tax             int64     `schema:"-"`
+	Total           int64     `schema:"-"`
 
-	ItemIds []string
-	Items   []LineItem
+	Items []LineItem
 
 	// Slices in order to record failed tokens/charges
 	StripeTokens []string `schema:"-"`
 	Charges      []Charge `schema:"-"`
 
-	Campaign Campaign
+	// Need to save campaign id
+	CampaignId string
 
-	Cancelled bool // represents whether the order has been cancelled
+	Cancelled bool
 	Shipped   bool
 	// ShippingOption  ShippingOption
 }
