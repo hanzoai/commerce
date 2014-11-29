@@ -1,7 +1,29 @@
-.authorizeMessage {
-  text-align: center;
-}
+@import "card"
+@import "shake"
 
-.error {
-  color: red;  
-}
+.authorizeMessage
+  text-align: center
+
+.error
+  color: red
+
+#standard-checkout .checkout-form-section fieldset .field.error.required input,
+#standard-checkout .checkout-form-section fieldset .field.error.required select
+  border: 2px solid #d70404
+
+#form-wrapper > div:nth-child(2)
+  /*Shipping details.*/
+  display: none
+
+#standard-checkout
+  background: #f3f3f3
+
+#standard-checkout .button
+  background: #222
+
+.system-error
+  display: none !important
+
+div.dialog-screen-overlay.system-error-overlay
+  display: none !important
+  z-index: -1 !important
