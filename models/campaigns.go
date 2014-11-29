@@ -56,6 +56,9 @@ type Campaign struct {
 	GoogleAnalytics string
 	FacebookTag     string
 	Links           []string
+
+	// TODO: Deprecated, please remove eventually
+	StripeToken string
 }
 
 type Perk struct {
