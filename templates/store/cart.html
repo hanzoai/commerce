@@ -13,40 +13,39 @@
 
 {% block content %}
 <div class="shopping-cart">
-    <div class="cart-content">
-        <form action="/checkout/" method="POST" accept-charset="UTF-8" enctype="application/x-www-form-urlencoded; charset=utf-8">
-        <table>
-            <thead>
-                <tr>
-                    <td class="item">Item</td>
-                    <td></td>
-                    <td class="quantity">Quantity</td>
-                    <td class="price">Price</td>
-                    <td></td>
-                </tr>
-            </thead>
-            <tbody>
-            </tbody>
-        </table>
+    <form action="/checkout/" method="POST" accept-charset="UTF-8" enctype="application/x-www-form-urlencoded; charset=utf-8">
+        <div class="cart-content">
+            <table>
+                <thead>
+                    <tr>
+                        <td class="item">Item</td>
+                        <td></td>
+                        <td class="quantity">Quantity</td>
+                        <td class="price">Price</td>
+                        <td></td>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
 
-        <div class="subtotal sep-top">
-            <span class="label">Subtotal</span>
-            <span class="price">
-                <span>$</span><span class="money"></span>
-            </span>
+            <div class="subtotal sep-top">
+                <span class="label">Subtotal</span>
+                <span class="price">
+                    <span>$</span><span class="money"></span>
+                </span>
+            </div>
+
+            <div class="checkout">
+                <button type="submit" class="checkout-button">Check out</button>
+            </div>
         </div>
 
-        <div class="checkout">
-            <input type="submit" value="CHECKOUT" class="checkout-button">
+        <div class="empty-message">
+            <p>Your shopping cart is empty.</p>
+            <p><a href="{{ moduleUrl("store") }}/">Continue Shopping</a></p>
         </div>
-
-        </form>
-    </div>
-
-    <div class="empty-message">
-        <p>You have nothing in your shopping cart.</p>
-        <p><a href="{{ moduleUrl("store") }}/">Continue Shopping</a></p>
-    </div>
+    </form>
 </div>
 
 <script id="line-item-template" type="text/template">

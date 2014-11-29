@@ -8,6 +8,12 @@ body
   letter-spacing 0px
   font-weight 400
   font-style normal
+  background-color #171717
+
+.site
+  background-color #FFF
+  position absolute
+  width 100%
 
 select, input
   font-size 100%
@@ -129,83 +135,18 @@ h2
   margin 0 auto
   display table
 
-// STORE
-store-width
-  max-width 1000px
-
-section > .item
-    display table
-    width 100%
-    padding 10px 0
-
-  .product-viewer
-    text-align center
-    .preview-background
-      max-width 600px
-      background-size contain
-      background-repeat no-repeat
-      width 90%
-    .preview
-      max-width 600px
-      width 100%
-
-    .gallery
-      .thumbnail
-        max-width 40px
-        max-height 40px
-        margin 0 5px
-        padding 5px
-        border 1px solid #fff
-        float left
-        cursor pointer
-
-@media all and ( min-width: 1000px )
-  body .product-text .product-body
-    padding-left 20px
-
-.product-text
-  margin-top 50px
-  .product-title
-    width 100%
-    display inline-block
-    .product-name
-      width 65%
-    .product-cost
-      display inline-block
-      margin 12px 11px 0 0
-      float right
-  .product-body
-    padding 20px 10px 0 0px
-    .product-description
-      margin-bottom 20px
-    .product-config
-      label
-        display block
-      select
-        margin-bottom 15px
-
-      .checkout-options
-        height 100px
-        display inline
-        float left
-        width 33%
-
-      .quantity
-        display inline
-        float left
-        width 66%
-
-      .add-to-cart
-        background-color rgb(39,39,39)
-        color white
-        text-transform uppercase
-        float right
-        font-size 1em
-        min-width 100px
-        text-align center
-        padding 15px 20px
-        margin-top 15px
-        cursor pointer
+button
+  background-color rgb(39,39,39)
+  color white
+  text-transform uppercase
+  float right
+  font-size 1em
+  min-width 100px
+  text-align center
+  padding 15px 20px
+  margin-top 15px
+  cursor pointer
+  border 0px
 
 .sep-top
   border-top 1px solid rgb(203,203,203)
@@ -286,6 +227,82 @@ section > .item
           color #fff
           text-decoration underline
 
+// STORE
+store-width
+  max-width 1000px
+
+section > .item
+    display table
+    width 100%
+    padding 10px 0
+
+  .product-viewer
+    text-align center
+    .preview-background
+      max-width 600px
+      background-size contain
+      background-repeat no-repeat
+      width 90%
+    .preview
+      max-width 600px
+      width 100%
+
+    .gallery
+      .thumbnail
+        max-width 40px
+        max-height 40px
+        margin 0 5px
+        padding 5px
+        border 1px solid #fff
+        float left
+        cursor pointer
+
+.empty-message
+  text-align center
+  display none
+
+@media all and ( min-width: 1000px )
+  body .product-text .product-body
+    padding-left 20px
+
+.product-text
+  margin-top 50px
+  .product-title
+    width 100%
+    display inline-block
+    .product-name
+      width 65%
+    .product-cost
+      display inline-block
+      margin 12px 11px 0 0
+      float right
+  .product-body
+    padding 20px 10px 0 0px
+    .product-description
+      margin-bottom 20px
+    .product-config
+      label
+        display block
+      select
+        margin-bottom 15px
+
+      .checkout-options
+        height 100px
+        display inline
+        float left
+        width 33%
+
+      .quantity
+        display inline
+        float left
+        width 66%
+
+      button.add-to-cart
+        .loading-spinner
+          height 10px
+          width 10px
+          margin-right 10px
+
 // CART HOVER
 .cart-hover
   position fixed
@@ -344,6 +361,7 @@ section > .item
       text-align center
       .remove-item
         cursor pointer
+  margin-bottom 50px
 
   .subtotal
     text-align right
@@ -353,6 +371,10 @@ section > .item
       padding 20px
     .price
       padding-right 25px
+
+  .checkout
+    display table
+    width 100%
 
 // MEDIA QUERIES
 
