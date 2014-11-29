@@ -128,6 +128,7 @@ func SavePreorder(c *gin.Context) {
 	order.ShippingAddress = form.ShippingAddress
 	log.Debug("ShippingAddress: %v", user)
 
+	// TODO: Optimize this, multiget, use caching.
 	for i, lineItem := range order.Items {
 		log.Debug("Fetching variant for %v", lineItem.SKU())
 
