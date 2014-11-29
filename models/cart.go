@@ -22,7 +22,9 @@ type LineItem struct {
 	DiscountAmnt int64
 	LineNo       int
 	Quantity     int
-	// UOM          string `schema:"-"`
+
+	// TODO: Deprecated UOM but unable to remove yet
+	UOM string `schema:"-"`
 	// UPC          string
 	// Material     string
 	// NetAmnt      string
