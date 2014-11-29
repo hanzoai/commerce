@@ -134,11 +134,13 @@ type Order struct {
 
 	// Need to save campaign id
 	CampaignId string
-	Campaign   Campaign
 
 	Cancelled bool
 	Shipped   bool
 	// ShippingOption  ShippingOption
+
+	// TODO: Deprecate and remove from existing data so we can update production
+	Campaign Campaign
 }
 
 func (order *Order) Process(c *gin.Context) error {
