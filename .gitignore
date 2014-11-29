@@ -5,14 +5,13 @@ data/
 npm-debug.log
 .datastore.bin
 
-static/css/preorder.css
-
-static/js/checkout.js
-static/js/preorder.js
-static/js/store.js
+config/production/bulkloader_helper.pyc
 static/css/checkout.css
 static/css/preorder.css
 static/css/store.css
+static/js/checkout.js
+static/js/preorder.js
+static/js/store.js
 config.json
 *.sql3
 *.csv
