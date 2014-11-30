@@ -36,7 +36,7 @@ func List(c *gin.Context) {
 }
 
 func Get(c *gin.Context) {
-	c.Redirect(301, config.ModuleUrl("store"))
+	c.Redirect(301, config.UrlFor("store"))
 
 	// Redirec to store cuz SKULLY.
 	// db := datastore.New(c)
