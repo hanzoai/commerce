@@ -3,7 +3,7 @@ package products
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/config"
+	// "crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
 	"crowdstart.io/util/json"
@@ -36,19 +36,19 @@ func List(c *gin.Context) {
 }
 
 func Get(c *gin.Context) {
-	c.Redirect(301, config.UrlFor("store"))
+	// c.Redirect(301, config.UrlFor("store"))
 
-	// Redirec to store cuz SKULLY.
-	// db := datastore.New(c)
-	// slug := c.Params.ByName("slug")
+	// Redirect to store cuz SKULLY.
+	db := datastore.New(c)
+	slug := c.Params.ByName("slug")
 
-	// product := new(models.Product)
-	// err := db.GetKey("product", slug, product)
-	// if err != nil { // Invalid slug
-	// 	log.Error(err.Error())
-	// 	template.Render(c, "error/404.html")
-	// 	return
-	// }
+	product := new(models.Product)
+	err := db.GetKey("product", slug, product)
+	if err != nil { // Invalid slug
+		log.Error(err.Error())
+		template.Render(c, "error/404.html")
+		return
+	}
 
-	// template.Render(c, "product.html", "product", product)
+	template.Render(c, "product.html", "product", product)
 }

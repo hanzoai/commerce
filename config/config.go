@@ -61,20 +61,12 @@ func (c Config) UrlFor(moduleName string, args ...string) (url string) {
 	}
 
 	// First extra argument assumed to be a path, second is root domain to use.
-	for i, arg := range args {
-		switch i {
-		case 0:
-			// Join path part to url
-			url = path.Join(url, arg)
-			// Add back any trimmed /
-			if string(arg[len(arg)-1]) == "/" {
-				url = url + "/"
-			}
-		case 1:
-			// If module is hosted, return relative to that root domain.
-			if arg != "" {
-				url = strings.Replace(url, "crowdstart.io", arg, 1)
-			}
+	for _, arg := range args {
+		// Join path part to url
+		url = path.Join(url, arg)
+		// Add back any trimmed /
+		if string(arg[len(arg)-1]) == "/" {
+			url = url + "/"
 		}
 	}
 
