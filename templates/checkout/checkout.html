@@ -45,9 +45,9 @@
                         </td>
 
                         <td class="quantity">
-                            <div>
+                            <span>
                                 {{ item.Quantity }}
-                            </div>
+                            </span>
                         </td>
 
                         <td class="price">
@@ -57,6 +57,47 @@
                     {% endfor %}
                 </tbody>
             </table>
+
+            <table class="totals">
+                <tbody>
+                    <tr class="subtotal">
+                        <td class="label"colspan="3">
+                            <span>Subtotal</span>
+                        </td>
+                        <td class="value">
+                            <span>$</span><span>{{ order.DisplaySubtotal() }}<span>
+                        </td>
+                    </tr>
+
+                    <tr class="tax">
+                        <td class="label"colspan="3">
+                            <span>Tax</span>
+                        </td>
+                        <td class="value">
+                            <span>$</span><span>{{ order.DisplayTax() }}<span>
+                        </td>
+                    </tr>
+
+                    <tr class="shipping">
+                        <td class="label"colspan="3">
+                            <span>Shipping</span>
+                        </td>
+                        <td class="value">
+                            <span>$</span><span>{{ order.Shipping }}<span>
+                        </td>
+                    </tr>
+
+                    <tr class="grand-total">
+                        <td class="label"colspan="3">
+                            <span>Grand Total</span>
+                        </td>
+                        <td class="value">
+                            <span>$</span><span>{{ order.DisplayTotal() }}<span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
         </div>
     </div>
 
