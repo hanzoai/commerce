@@ -69,62 +69,7 @@
 
                     <div id="billing-state" class="field state required">
                         <label>State/Province</label>
-                        <select name="Order.BillingAddress.State" x-autocompletetype="state" value="">
-                            <option value="AL">AL</option>
-                            <option value="AK">AK</option>
-                            <option value="AZ">AZ</option>
-                            <option value="AR">AR</option>
-                            <option value="CA">CA</option>
-                            <option value="CO">CO</option>
-                            <option value="CT">CT</option>
-                            <option value="DE">DE</option>
-                            <option value="FL">FL</option>
-                            <option value="GA">GA</option>
-                            <option value="HI">HI</option>
-                            <option value="ID">ID</option>
-                            <option value="IL">IL</option>
-                            <option value="IN">IN</option>
-                            <option value="IA">IA</option>
-                            <option value="KS">KS</option>
-                            <option value="KY">KY</option>
-                            <option value="LA">LA</option>
-                            <option value="ME">ME</option>
-                            <option value="MD">MD</option>
-                            <option value="MA">MA</option>
-                            <option value="MI">MI</option>
-                            <option value="MN">MN</option>
-                            <option value="MS">MS</option>
-                            <option value="MO">MO</option>
-                            <option value="MT">MT</option>
-                            <option value="NE">NE</option>
-                            <option value="NV">NV</option>
-                            <option value="NH">NH</option>
-                            <option value="NJ">NJ</option>
-                            <option value="NM">NM</option>
-                            <option value="NY">NY</option>
-                            <option value="NC">NC</option>
-                            <option value="ND">ND</option>
-                            <option value="OH">OH</option>
-                            <option value="OK">OK</option>
-                            <option value="OR">OR</option>
-                            <option value="PA">PA</option>
-                            <option value="RI">RI</option>
-                            <option value="SC">SC</option>
-                            <option value="SD">SD</option>
-                            <option value="TN">TN</option>
-                            <option value="TX">TX</option>
-                            <option value="UT">UT</option>
-                            <option value="VT">VT</option>
-                            <option value="VA">VA</option>
-                            <option value="WA">WA</option>
-                            <option value="DC">DC</option>
-                            <option value="WV">WV</option>
-                            <option value="WI">WI</option>
-                            <option value="WY">WY</option>
-                            <option value="AA">AA</option>
-                            <option value="AE">AE</option>
-                            <option value="AP">AP</option>
-                        </select>
+                        <input name="Order.BillingAddress.State" placeholder="State/Province" type="text" spellcheck="false" x-autocompletetype="state" value="">
                     </div>
                     <!-- Zip Code -->
 
@@ -137,9 +82,7 @@
 
                     <div id="billing-country" class="field country required">
                         <label>Country</label>
-                        <select name="Order.BillingAddress.Country" x-autocompletetype="country-name" value="">
-                            <option value="United States">United States</option>
-                        </select>
+                        <input name="Order.BillingAddress.Country" type="text" spellcheck="false" placeholder="Country" x-autocompletetype="country-name" value="">
                     </div>
                     <!-- Phone -->
 
@@ -151,6 +94,131 @@
 
                     <div class="btn-container" style="text-align: center;">
                         <!--<input type="submit" value="Continue" class="button continue-button" style="width:100%"></input>-->
+                    </div>
+                </fieldset>
+            </div>
+
+            <div class="shipping-information">
+                <h2>Shipping Info</h2>
+                <div class="options">
+                    <input name="ShipToBilling" type="checkbox" checked>
+                    <label>Ship to Billing Address</label>
+                </div>
+
+                <fieldset style="display:none">
+                    <!-- Shipping Address 1 -->
+
+                    <div id="shipping-address-1" class="field required">
+                        <label>Address Line 1</label>
+                        <input name="Order.ShippingAddress.Line1" placeholder="Address Line 1" x-autocompletetype="address-line1" type="text" spellcheck="false" maxlength="50" aria-autocomplete="list" aria-expanded="false" autocomplete="on" value="">
+                    </div>
+                    <!-- Shipping Address 2 -->
+
+                    <div id="shipping-address-2" class="field">
+                        <label>Address Line 2</label>
+                        <input name="Order.ShippingAddress.Line2" placeholder="Address Line 2" type="text" x-autocompletetype="address-line2" spellcheck="false" maxlength="50" value="">
+                    </div>
+                    <!-- City -->
+
+                    <div id="shipping-city" class="field city required">
+                        <label>City</label>
+                        <input name="Order.ShippingAddress.City" placeholder="City" type="text" spellcheck="false" maxlength="30" value="">
+                    </div>
+                    <!-- State/Province -->
+
+                    <div id="shipping-state" class="field state required">
+                        <label>State/Province</label>
+                        <input name="Order.ShippingAddress.State" placeholder="State/Province" type="text" spellcheck="false" x-autocompletetype="state" value="">
+                    </div>
+                    <!-- Zip Code -->
+
+                    <div id="shipping-zip" class="field zip required">
+                        <label>Zip / Postal</label>
+                        <input name="Order.ShippingAddress.PostalCode" placeholder="Zip / Postal" type="text" spellcheck="false" maxlength="9">
+                        <!--http://stackoverflow.com/a/469362-->
+                    </div>
+                    <!-- Country -->
+
+                    <div id="shipping-country" class="field country required">
+                        <label>Country</label>
+                        <input name="Order.ShippingAddress.Country" type="text" spellcheck="false" placeholder="Country" x-autocompletetype="country-name" value="">
+                    </div>
+                    <!-- Continue -->
+
+                    <div class="btn-container" style="text-align: center;">
+                        <!--<input type="submit" value="Continue" class="button continue-button" style="width:100%"></input>-->
+                    </div>
+                </fieldset>
+            </div>
+
+            <div class="payment-information">
+                <h2>Secure Payment</h2>
+                <div class="title">
+                    <div class="cards">
+                        <img src="{{ urlFor("/img/discover.png") }}">
+                        <img src="{{ urlFor("/img/mastercard.png") }}">
+                        <img src="{{ urlFor("/img/visa.png") }}">
+                        <img src="{{ urlFor("/img/americanexpress.png") }}">
+                    </div>
+                </div>
+
+                <fieldset>
+                    <div style="display:block; text-align:center; margin-bottom: 5%;">
+                        <div id="card-wrapper"></div>
+                    </div>
+                    <!-- Credit Card -->
+
+                    <div class="credit-card">
+                        <!-- Name -->
+                        <div class="card-name field required">
+                            <label>Name As It Appears On Card</lable>
+                            <input type="text" name="cardHolderName" placeholder="Name">
+                        </div>
+                        <!-- Card Number -->
+
+                        <div class="card-number field required">
+                            <label>Card Number</label>
+                            <input type="text" size="20" autocomplete="off" placeholder="Credit Card Number" name="" value="" id="cardNumber">
+                        </div>
+
+                        <div class="expiry-cvc">
+                            <!-- CVC -->
+
+                            <div class="card-cvc field required">
+                                <label>CVC</label>
+                                <input name="cvc" type="text" size="4" autocomplete="off" placeholder="CVC" value="" name="" data-stripe="cvc">
+                            </div>
+                            <!-- Expiration -->
+
+                            <div class="card-expiry-month field required">
+                                <label>Expiration</label>
+                                <input type="text" size="2" maxlength="2"
+                                autocomplete="off" placeholder="MM"
+                                value="" name="expiry-month">
+                            </div>
+
+                            <div class="card-expiry-year field required">
+                                <label>&nbsp;</label>
+                                <input type="text" size="4" maxlength="4"
+                                autocomplete="off" placeholder="YYYY" value=""
+                                name="expiry-year">
+                            </div>
+
+                        </div>
+                        <!-- Secure payment conditions -->
+
+                        <div id="comfort" style="display:none;">
+                            All transactions are secure and encrypted, and we never store your credit card information. Payments are processed through Stripe. Payment information is also governed by <a target="_blank" href="https://stripe.com/privacy">Stripe's privacy policy</a>.
+                        </div>
+                        <!-- Authorize message display -->
+
+                        <div class="authorizeMessage" id="authorize-message"></div>
+                        <!-- Place Order -->
+
+                        <div class="btn-container" style="text-align: center;">
+                            <button type="submit">Place Order</button>
+                        </div>
+
                     </div>
                 </fieldset>
             </div>
@@ -238,223 +306,6 @@
         </table>
 
     </div>
-    <!-- CHECKOUT FORM -->
-
-    <div id="form-wrapper" class="right-column-wrapper">
-        <div class="yui3-widget widget checkout-form">
-            <div class="checkout-form-content">
-                    <div class="yui3-widget widget checkout-form-section card checkout-form-address checkout-form-shipping">
-                        <div class="checkout-form-shipping-content empty-shipping-options">
-                            <div class="title">
-                                Shipping Options<a class="edit-button">edit</a>
-                            </div>
-
-                            <div id="ship-to-billing" class="check-element active">
-                                <input name="ShipToBilling" id="ShipToBilling" type="checkbox" checked="checked">
-                                <label for="ShipToBilling">Shipping address same as billing address</label>
-                            </div>
-
-                            <fieldset id="shippingInfo" data-stage="2" style="display:none;">
-                                <!-- Ship to Billing Address -->
-                                <!-- Shipping Address -->
-
-                                <div id="shipping-address-wrapper" class="show-overflow">
-                                    <!-- First Name -->
-                                    <!-- <div id="shipping-first-name" class="field first-name required">
-                                        <label>First Name</label>
-                                        <input name="Order.ShippingUser.FirstName" placeholder="First Name" x-autocompletetype="given-name" type="text" spellcheck="false" maxlength="30">
-                                    </div> -->
-                                    <!-- Last Name -->
-                                    <!-- <div id="shipping-last-name" class="field last-name required">
-                                        <label>Last Name</label>
-                                        <input name="Order.ShippingUser.LastName" placeholder="Last Name" x-autocompletetype="surname" type="text" spellcheck="false" maxlength="30">
-                                    </div> -->
-                                    <!-- Shipping Address 1 -->
-
-                                    <div id="shipping-address-1" class="field address required">
-                                        <label>Address Line 1</label>
-                                        <input name="Order.ShippingAddress.Line1" class="field-element address-line1 pulse-warnable scroll-ac-input" type="text" x-autocompletetype="address-line1" placeholder="Address Line 1" spellcheck="false" maxlength="50" aria-autocomplete="list" aria-expanded="false" autocomplete="on">
-
-                                        <div class="yui3-widget yui3-aclist scroll-ac yui3-widget-positioned scroll-ac-hidden" aria-hidden="true" style="left: 0px; top: 0px;">
-                                            <div class="scroll-ac-content google-places-autocomplete-mixin">
-                                                <div class="scroll-ac-scroll-container" hidden="hidden" style="display: none;">
-                                                    <ul class="scroll-ac-list" id="yui_3_17_2_1_1414184167898_702" role="listbox"></ul>
-
-                                                    <div class="google-required-elements">
-                                                        <div class="google-attributions"></div>
-
-                                                        <div class="powered-by-google"></div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div class="scroll-ac-aria" aria-live="polite" role="status"></div>
-                                    </div>
-                                    <!-- Shipping Address 2 -->
-
-                                    <div id="shipping-address-2" class="field address">
-                                        <label>Address Line 2</label>
-                                        <input name="Order.ShippingAddress.Line2" class="field-element address-line2 pulse-warnable" type="text" placeholder="Address Line 2" x-autocompletetype="address-line2" spellcheck="false" maxlength="50">
-                                    </div>
-                                    <!-- Country -->
-
-                                    <div id="shipping-country" class="field country required">
-                                        <label>Country</label>
-                                        <select name="Order.ShippingAddress.Country" x-autocompletetype="country-name">
-                                            <option value="United States">
-                                                United States</option>
-                                        </select>
-                                    </div>
-                                    <!-- City -->
-
-                                    <div id="shipping-city" class="field city required">
-                                        <label>City</label>
-                                        <input name="Order.ShippingAddress.City" placeholder="City" x-autocompletetype="city" type="text" spellcheck="false" maxlength="30">
-                                    </div>
-                                    <!-- State/Province -->
-
-                                    <div id="shipping-state" class="field state required">
-                                        <label>State/Province</label>
-                                        <select name="Order.ShippingAddress.State" x-autocompletetype="state">
-                                            <option value="AL">AL</option>
-                                            <option value="AK">AK</option>
-                                            <option value="AZ">AZ</option>
-                                            <option value="AR">AR</option>
-                                            <option value="CA">CA</option>
-                                            <option value="CO">CO</option>
-                                            <option value="CT">CT</option>
-                                            <option value="DE">DE</option>
-                                            <option value="FL">FL</option>
-                                            <option value="GA">GA</option>
-                                            <option value="HI">HI</option>
-                                            <option value="ID">ID</option>
-                                            <option value="IL">IL</option>
-                                            <option value="IN">IN</option>
-                                            <option value="IA">IA</option>
-                                            <option value="KS">KS</option>
-                                            <option value="KY">KY</option>
-                                            <option value="LA">LA</option>
-                                            <option value="ME">ME</option>
-                                            <option value="MD">MD</option>
-                                            <option value="MA">MA</option>
-                                            <option value="MI">MI</option>
-                                            <option value="MN">MN</option>
-                                            <option value="MS">MS</option>
-                                            <option value="MO">MO</option>
-                                            <option value="MT">MT</option>
-                                            <option value="NE">NE</option>
-                                            <option value="NV">NV</option>
-                                            <option value="NH">NH</option>
-                                            <option value="NJ">NJ</option>
-                                            <option value="NM">NM</option>
-                                            <option value="NY">NY</option>
-                                            <option value="NC">NC</option>
-                                            <option value="ND">ND</option>
-                                            <option value="OH">OH</option>
-                                            <option value="OK">OK</option>
-                                            <option value="OR">OR</option>
-                                            <option value="PA">PA</option>
-                                            <option value="RI">RI</option>
-                                            <option value="SC">SC</option>
-                                            <option value="SD">SD</option>
-                                            <option value="TN">TN</option>
-                                            <option value="TX">TX</option>
-                                            <option value="UT">UT</option>
-                                            <option value="VT">VT</option>
-                                            <option value="VA">VA</option>
-                                            <option value="WA">WA</option>
-                                            <option value="DC">DC</option>
-                                            <option value="WV">WV</option>
-                                            <option value="WI">WI</option>
-                                            <option value="WY">WY</option>
-                                            <option value="AA">AA</option>
-                                            <option value="AE">AE</option>
-                                            <option value="AP">AP</option>
-                                        </select>
-                                    </div>
-                                    <!-- Zip Code -->
-
-                                    <div id="shipping-zip" class="field zip required">
-                                        <label>Zip / Postal</label>
-                                        <input name="Order.ShippingAddress.PostalCode" x-autocompletetype="postal-code" placeholder="Zip / Postal" type="text" spellcheck="false" maxlength="10">
-                                    </div>
-                                </div>
-                                <!-- Shipping Options -->
-
-                                <div id="shipping-options">
-                                    <div class="yui3-widget widget checkout-form-shipping-options"></div>
-                                </div>
-                                <!-- Continue -->
-                                <!-- <div class="btn-container"> -->
-                                <!--     <div class="button continue-button configure-shipping-button">Configure Shipping Options</div> -->
-                                <!-- </div> -->
-                            </fieldset>
-                        </div>
-                    </div>
-
-                    <div class="yui3-widget widget checkout-form-section card checkout-form-payment">
-                        <div class="checkout-form-payment-content">
-                            <div class="title">
-                                <a class="edit-button">edit</a>
-
-                                <div class="cards"><img src="{{ urlFor("/img/discover.png") }}"> <img src="{{ urlFor("/img/mastercard.png") }}"> <img src="{{ urlFor("/img/visa.png") }}"> <img src="{{ urlFor("/img/americanexpress.png") }}">
-                                </div>Secure Payment</div>
-
-                            <fieldset style="display:none;" data-stage="3">
-                                <div style="display:block; text-align:center; margin-bottom: 5%;">
-                                    <div id="card-wrapper"></div>
-                                </div>
-                                <!-- Credit Card -->
-
-                                <div id="credit-card">
-                                    <!-- Name -->
-                                    <!-- <input name="cardHolderName" type="hidden">-->
-                                    <!-- Card Number -->
-
-                                    <div id="card-number" class="field required">
-                                        <label>Card Number</label>
-                                        <input type="text" size="20" autocomplete="off" placeholder="Credit Card Number" name="" value="" id="cardNumber">
-                                    </div>
-                                    <!-- Expiry/CVC -->
-
-                                    <div id="expiry-cvc">
-                                        <div id="card-expiry-year" class="field required">
-                                            <label>Expiry</label>
-                                            <input type="text" size="5" maxlength="7" autocomplete="off" placeholder="Expiry" value="" name="" style="width:66px" id="expiry">
-                                        </div>
-                                        <!-- CVC -->
-
-                                        <div id="cvc" class="field required">
-                                            <label>CVC</label>
-                                            <input id="cvcInput" type="text" size="4" autocomplete="off" placeholder="CVC" value="" name="" data-stripe="cvc">
-                                        </div>
-                                    </div>
-                                </div>
-                            </fieldset>
-                            <!-- end #credit-card -->
-                            <!-- Secure payment conditions -->
-
-                            <div id="comfort" style="display:none;">
-                                All transactions are secure and encrypted, and we never store your credit card information. Payments are processed through Stripe. Payment information is also governed by <a target="_blank" href="https://stripe.com/privacy">Stripe's privacy policy</a>.
-                            </div>
-                            <!-- Authorize message display -->
-
-                            <div class="authorizeMessage" id="authorize-message"></div>
-                            <!-- Place Order -->
-
-                            <div class="btn-container" style="text-align: center;">
-                                <input type="submit" value="Place order" class="button submit-button continue-button" style="width:100%">
-                            </div>
-                            <input name="StripeToken" type="hidden">
-                        </div>
-                    </div>
-                </form>
-                <!-- hidden field to convey the Stripe Token so we may submit the charge -->
-                <!-- optional hidden fields -->
-            </div>
-        </div>
-    </div>
 </div>
 <!-- POLICIES -->
 
@@ -465,32 +316,6 @@
     <a href="javascript:void(0)" id="privacyPolicy" class="store-policy-link" title="Privacy Policy" data-property="privacyPolicy" hidden="hidden" style="display: none;">Privacy Policy</a>
     <!-- Return Policy -->
     <a href="javascript:void(0)" id="returnPolicy" class="store-policy-link" title="Return Policy" data-property="returnPolicy" hidden="hidden" style="display: none;">Return Policy</a>
-</div>
-
-<div class="absolute-cart-box">
-    <div class="yui3-widget widget pill-shopping-cart" style="visibility: visible; opacity: 1;">
-        <div class="pill-shopping-cart-content dark">
-            <div class="icon"></div>
-
-            <div class="details">
-                Cart&nbsp;-&nbsp; <span class="total-quantity">1</span> <span class="suffix">item</span>
-            </div><span class="subtotal"><span class="price"><span class="money-native">0.00</span></span>
-            </span>
-        </div>
-    </div>
-
-    <div class="yui3-widget widget modal-lightbox" hidden="hidden" style="display: none;">
-        <div class="modal-lightbox-content">
-            <div class="lightbox-background"></div>
-
-            <div class="lightbox-inner">
-                <div class="lightbox-content" style="margin-top: 318px; margin-bottom: 318px;">
-                    <div class="lightbox-close">
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 
 <form id="stripeForm" action="" method="post" accept-charset="UTF-8" enctype="application/x-www-form-urlencoded; charset=utf-8" name="stripeForm">

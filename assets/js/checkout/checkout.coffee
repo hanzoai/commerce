@@ -68,7 +68,7 @@ $("#form").card
   nameInput: "input[name=\"User.FirstName\"], input[name=\"User.LastName\"]"
 
 $("input[name=\"ShipToBilling\"]").change ->
-  shipping = $("#shippingInfo")
+  shipping = $(".shipping-information fieldset")
   if @checked
     shipping.fadeOut 500
     setTimeout (->
