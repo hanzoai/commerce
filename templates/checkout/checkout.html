@@ -23,8 +23,7 @@
             <table>
                 <thead>
                     <tr>
-                        <td class="item">Item</td>
-                        <td></td>
+                        <td class="item" colspan="2">Item</td>
                         <td class="quantity">Quantity</td>
                         <td class="price">Price</td>
                     </tr>
@@ -32,20 +31,16 @@
                 <tbody>
                     {% for item in order.Items %}
                     <tr>
-                        <td class="item">
-                            <div class="item-image">
-                                <img src="{{ item.Product.DisplayImage().Url }}">
-                            </div>
+                        <td class="item-image">
+                            <img src="{{ item.Product.DisplayImage().Url }}">
                         </td>
-                        <td>
-                            <div class="item-desc">
-                                <div>
-                                    {{ item.Product.Title }}
-                                </div>
+                        <td class="item-desc">
+                            <div class="product-title">
+                                {{ item.Product.Title }}
+                            </div>
 
-                                <div class="variant-info">
-                                    {{ item.Variant.Color }} / {{ item.Variant.Size }}
-                                </div>
+                            <div class="variant-info">
+                                {{ item.Variant.Color }} / {{ item.Variant.Size }}
                             </div>
                         </td>
 
@@ -56,7 +51,7 @@
                         </td>
 
                         <td class="price">
-                            <span class="money">{{ item.DisplayPrice() }}</span>
+                            <span>$</span><span class="money">{{ item.DisplayPrice() }}</span>
                         </td>
                     </tr>
                     {% endfor %}
