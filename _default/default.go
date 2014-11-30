@@ -64,7 +64,7 @@ func Init() {
 		}
 
 		// Current settings
-		log.Debug("%#v", config.Get())
+		log.Dump(config.Get())
 
 		// Automatically load fixtures
 		if config.AutoLoadFixtures {
