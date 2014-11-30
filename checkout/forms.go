@@ -65,7 +65,7 @@ func (f *CheckoutForm) Populate(c *gin.Context) {
 func (f CheckoutForm) Validate(c *gin.Context) {}
 
 // Charge after successful authorization
-type AuthorizeForm struct {
+type ChargeForm struct {
 	User          models.User
 	Order         models.Order
 	RawExpiry     string
@@ -74,9 +74,9 @@ type AuthorizeForm struct {
 	StripeToken string
 }
 
-func (f *AuthorizeForm) Parse(c *gin.Context) error {
+func (f *ChargeForm) Parse(c *gin.Context) error {
 	if err := form.Parse(c, f); err != nil {
-		log.Panic("Parsing AuthorizeForm %s", err)
+		log.Panic("Unable to parse form: %v", err)
 		return err
 	}
 
@@ -90,7 +90,7 @@ func (f *AuthorizeForm) Parse(c *gin.Context) error {
 	return nil
 }
 
-func (f AuthorizeForm) Validate() (errs []string) {
+func (f ChargeForm) Validate() (errs []string) {
 	if f.Order.BillingAddress.Line1 == "" {
 		errs = append(errs, "Address line 1 is required")
 	}
