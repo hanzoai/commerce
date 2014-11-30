@@ -2,9 +2,11 @@ package log
 
 import (
 	"appengine"
+	"log"
+
+	"github.com/davecgh/go-spew/spew"
 	"github.com/gin-gonic/gin"
 	"github.com/zeekay/go-logging"
-	"log"
 )
 
 // Custom logger
@@ -85,6 +87,11 @@ func New() *Logger {
 }
 
 var std = New()
+
+func Dump(args ...interface{}) {
+	dump := spew.Sdump(args...)
+	std.Debug("\n%s", dump)
+}
 
 func Debug(format string, args ...interface{}) {
 	args = std.setContext(args...)
