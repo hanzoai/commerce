@@ -1,12 +1,11 @@
 .dropdown
   color: #fff
   display: inline-block
-  height: 20px
 
 .dropdown label,
 .dropdown ul li
   display: block
-  padding: 15px 20px
+  padding: 12px 18px
   text-align: left
 
 .dropdown label:hover,
@@ -14,20 +13,35 @@
   color: white
   cursor: pointer
 
+.dropdown li
+  font-family: "proxima-nova"
+  text-transform: uppercase
+  letter-spacing: 2px
+  font-weight: 400
+  font-style: normal
+  line-height: 2em
+
 .dropdown label
   z-index: 2
+  font-family: "proxima-nova"
+  font-size: 0.85em
+  text-transform: uppercase
+  letter-spacing: 2px
+  font-weight: 400
+  font-style: normal
+  line-height: 2em
 
 .dropdown input
   display: none
 
 .dropdown input ~ ul
-  width: 129px
   position: absolute
   visibility: hidden
   opacity: 0
-  top: 40px
+  width: 130px
   z-index: 1
   background: #333
+  margin-top: -10px
 
 .dropdown input:checked + label
   color: white
@@ -36,8 +50,8 @@
 .dropdown input:checked ~ ul
   visibility: visible
   opacity: 1
-  top: 57px
   position: absolute
+  margin-top: 0px
 
 .animate
   transition: all .3s
