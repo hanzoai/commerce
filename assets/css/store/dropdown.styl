@@ -1,0 +1,44 @@
+.dropdown
+  color: #fff
+  display: inline-block
+  height: 20px
+
+.dropdown label,
+.dropdown ul li
+  display: block
+  padding: 15px 20px
+  text-align: left
+
+.dropdown label:hover,
+.dropdown ul li:hover
+  color: white
+  cursor: pointer
+
+.dropdown label
+  z-index: 2
+
+.dropdown input
+  display: none
+
+.dropdown input ~ ul
+  width: 129px
+  position: absolute
+  visibility: hidden
+  opacity: 0
+  top: 40px
+  z-index: 1
+  background: #333
+
+.dropdown input:checked + label
+  color: white
+  background: #222
+
+.dropdown input:checked ~ ul
+  visibility: visible
+  opacity: 1
+  top: 57px
+  position: absolute
+
+.animate
+  transition: all .3s
+  backface-visibility: hidden
