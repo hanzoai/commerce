@@ -109,9 +109,10 @@ $city.on "keyup", updateTax
 
 
 $form = $("form#stripeForm")
-$cardNumber = $("input#cardNumber")
-$expiry = $("input#expiry")
-$cvc = $("input#cvcInput")
+$cardNumber = $("#stripe-number")
+$expiryMonth = $("#stripe-expiry-month")
+$expiryYear = $("#stripe-expiry-year")
+$cvc = $("#stripe-cvc")
 $token = $("input[name=\"TokenId\"]")
 
 # Checks each input and does dumb checks to see if it might be a valid card
@@ -119,13 +120,11 @@ validateCard = ->
   fail = success: false
   cardNumber = $cardNumber.val()
   return fail  if cardNumber.length < 10
-  rawExpiry = $expiry.val().replace(/\s/g, "")
-  arr = rawExpiry.split("/")
-  month = arr[0]
-  year = arr[1]
+  month = $expiryMonth.val()
+  year = $expiryYear.val()
 
-  return fail  unless month.length is 2
-  return fail  unless year.length is 2
+  return fail unless month.length is 2
+  return fail unless year.length is 4
   cvc = $cvc.val()
 
   return fail  if cvc.length < 3
@@ -156,20 +155,21 @@ stripeResponseHandler = do ->
 # Copies validated card values into the hidden form for Stripe.js
 stripeRunner = ->
   card = validateCard()
-  Stripe.card.createToken $form, stripeResponseHandler  if card.success
+  Stripe.card.createToken $form, stripeResponseHandler if card.success
   return
 
 relayer = ->
   card = validateCard()
   if card.success
-    $form.find("input[data-stripe=\"number\"]").val card.number
-    $form.find("input[data-stripe=\"cvc\"]").val card.cvc
-    $form.find("input[data-stripe=\"exp-month\"]").val card.month
-    $form.find("input[data-stripe=\"exp-year\"]").val card.year
+    $form.find('input[data-stripe="number"]').val card.number
+    $form.find('input[data-stripe="cvc"]').val card.cvc
+    $form.find('input[data-stripe="exp-month"]').val card.month
+    $form.find('input[data-stripe="exp-year"]').val card.year
   return
 
 $cardNumber.change relayer
-$expiry.change relayer
+$expiryMonth.change relayer
+$expiryYear.change relayer
 $cvc.change relayer
 
 $(document).ready ->
