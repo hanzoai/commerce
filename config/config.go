@@ -52,26 +52,27 @@ func (c Config) UrlFor(moduleName string, args ...string) (url string) {
 	if host, ok := c.Hosts[moduleName]; ok {
 		// Use host + prefix to build url root to path in given module
 		url = host + c.Prefixes[moduleName]
+		args = append([]string{url}, args...)
 	} else {
-		// Static path passed as `moduleName`: we'll add it to stack of args to
-		// do the rest of our processing and set root to `c.StaticUrl`.
 		url = c.StaticUrl
-		arg := []string{moduleName} // First argument to append must be slice
-		args = append(arg, args...)
+		args = append([]string{url, moduleName}, args...)
 	}
 
-	// First extra argument assumed to be a path, second is root domain to use.
-	for _, arg := range args {
-		// Join path part to url
-		url = path.Join(url, arg)
-		// Add back any trimmed /
-		if string(arg[len(arg)-1]) == "/" {
+	// Join all parts of the path
+	url = path.Join(args...)
+
+	// Strip leading slash and replace with protocol relative leading "//".
+	url = "//" + strings.TrimLeft(url, "/")
+
+	// Add back ending "/" if trimmed.
+	if len(args) > 0 {
+		last := args[len(args)-1]
+		if string(last[len(last)-1]) == "/" {
 			url = url + "/"
 		}
 	}
 
-	// Strip leading slash and replace with protocol relative leading "//"
-	return "//" + strings.TrimLeft(url, "/")
+	return url
 }
 
 // Load configuration from JSON file
