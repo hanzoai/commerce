@@ -9,7 +9,6 @@ import (
 	"crowdstart.io/config"
 	"crowdstart.io/models/fixtures"
 	"crowdstart.io/util/exec"
-	"crowdstart.io/util/log"
 	"crowdstart.io/util/router"
 )
 
@@ -62,9 +61,6 @@ func Init() {
 			c.String(200, "Not utilized in production")
 			return
 		}
-
-		// Current settings
-		log.Dump(config.Get())
 
 		// Automatically load fixtures
 		if config.AutoLoadFixtures {
