@@ -41,20 +41,21 @@ label
 
 +html5-inputs()
   input: aqua 60%
+  box-sizing border-box
 
 // CHECKOUT
 .checkout-width
   max-width 1000px
 
 .checkout
-  table
+  display table
   width 100%
+  margin-bottom 50px
 
 h2
   padding 30px 0
 
 .cart-content
-  margin-bottom 50px
   table
     td
       vertical-align middle
@@ -99,3 +100,50 @@ h2
     label
       .field
         width 50%
+
+.shipping-information
+  .options
+    margin-bottom 30px
+    margin-left 30px
+    display inline-block
+
+.payment-information
+  .cards
+    text-align center
+  .credit-card
+    width 350px
+    text-align center
+    margin 0 auto
+
+    button
+      width 100%
+
+    .field
+      width 100%
+      text-align left
+
+    input
+      display block
+      width 100%
+      box-sizing border-box
+
+    label
+      display block
+      width 100%
+
+    .expiry-cvc
+      .field
+        width 32.5%
+        display inline-block
+        input
+          width 90%
+
+      .card-expiry-year
+        input
+          width 100%
+
+.policy-information
+  width 100%
+  text-align center
+  a
+    padding 20px
