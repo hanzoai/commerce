@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"strings"
 
 	"crowdstart.io/config"
 	"crowdstart.io/middleware"
@@ -13,12 +14,12 @@ import (
 func New(moduleName string) *gin.RouterGroup {
 	router := gin.New()
 
-	prefix := config.Prefixes[moduleName]
+	prefix := strings.TrimSpace(config.Prefixes[moduleName])
 	if prefix == "" {
 		log.Panic("Unable to determine prefix for module: '%s'", moduleName)
 	}
 
-	log.Debug("Using prefix %s for module %s", prefix, moduleName)
+	log.Info("Using prefix %s for module %s", prefix, moduleName)
 
 	router.Use(middleware.ErrorHandler())
 	router.Use(middleware.NotFoundHandler())
