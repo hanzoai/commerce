@@ -8,25 +8,25 @@
     <title>{% block title %}{{ siteTitle }}{% endblock %}</title>
 
     {% block canonical_link %}
-    <link rel="canonical" href="{{ moduleUrl(" store ") }}">
+    <link rel="canonical" href="{{ urlFor("store") }}">
     {% endblock %}
 
     {% block meta %}
     <meta property="og:site_name" content="{{ siteTitle }}">
     <meta property="og:title" content="{{ siteTitle }}">
-    <meta property="og:url" content="{{ moduleUrl(" store ") }}">
+    <meta property="og:url" content="{{ urlFor("store") }}">
     <meta itemprop="name" content="{{ product.Title }}">
-    <meta itemprop="url" content="{{ moduleUrl(" store ") }}">
+    <meta itemprop="url" content="{{ urlFor("store") }}">
     {% endblock %}
 
-    <link rel="shortcut icon" type="image/x-icon" href="{{ staticUrl }}/favicon.ico">
+    <link rel="shortcut icon" type="image/x-icon" href="{{ urlFor("/favicon.ico") }}">
 
     <!--[if lt IE 9]>
-    <script src="{{ staticUrl }}/js/html5-shiv.js"></script>
+    <script src="{{ urlFor("/js/html5-shiv.js") }}></script>
     <![endif]-->
 
-    <link rel="stylesheet" type="text/css" href="{{ staticUrl }}/css/reset.css">
-    <link rel="stylesheet" type="text/css" href="{{ staticUrl }}/css/store.css">
+    <link rel="stylesheet" type="text/css" href="{{ urlFor("/css/reset.css") }}">
+    <link rel="stylesheet" type="text/css" href="{{ urlFor("/css/store.css") }}">
 
     <!--Mail Chimp-->
     <link href="//cdn-images.mailchimp.com/embedcode/slim-081711.css" rel="stylesheet" type="text/css">
@@ -61,7 +61,7 @@
         <header class="header">
             <div class="title-nav">
                 <a href="http://www.skullysystems.com/">
-                    <img class="logo" src="{{ staticUrl }}/img/skully.png" alt="SKULLY AR-1">
+                    <img class="logo" src="{{ urlFor("/img/skully.png") }}" alt="SKULLY AR-1">
                 </a>
 
                 <nav class="nav">
@@ -89,11 +89,11 @@
                         </li>
 
                         <li class="link">
-                            <a class="current" href="/store/">STORE</a>
+                            <a class="current" href="{{ urlFor("store") }}">STORE</a>
                         </li>
 
                         <li class="link">
-                            <a class="big" href="/store/products/ar-1">GET YOUR AR-1</a>
+                            <a class="big" href="{{ urlFor("store", "/products/ar-1") }}">GET YOUR AR-1</a>
                         </li>
                     </ul>
                 </nav>
@@ -114,7 +114,7 @@
         <footer class="footer">
             <div class="top-link">
                 <a href="#">
-                    <img class="top-arrow" src="{{ staticUrl }}/img/upchevron.png">
+                    <img class="top-arrow" src="{{ urlFor("/img/upchevron.png") }}">
                     <span class="text">
               Top
             </span>
@@ -145,22 +145,22 @@
                         <nav class="social">
                             <div class="social-icons">
                                 <a href="https://www.facebook.com/skullysystems" target="_blank" title="Skully Helmets, Inc" class="social-facebook">
-                                    <img src="{{ staticUrl }}/img/social/facebook.png">
+                                    <img src="{{ urlFor("/img/social/facebook.png") }}">
                                 </a>
                                 <a href="http://www.twitter.com/skullysystems" target="_blank" title="SKULLY HELMETS" class="social-twitter">
-                                    <img src="{{ staticUrl }}/img/social/twitter.png">
+                                    <img src="{{ urlFor("/img/social/twitter.png") }}">
                                 </a>
                                 <a href="http://www.youtube.com/channel/UCgGXkEJ5S_MmQCSoBnusr1Q" target="_blank" title="SKULLY" class="social-youtube">
-                                    <img src="{{ staticUrl }}/img/social/youtube.png">
+                                    <img src="{{ urlFor("/img/social/youtube.png") }}">
                                 </a>
                                 <a href="http://www.instagram.com/skullysystems" target="_blank" title="Skully Helmets" class="social-instagram">
-                                    <img src="{{ staticUrl }}/img/social/instagram.png">
+                                    <img src="{{ urlFor("/img/social/instagram.png") }}">
                                 </a>
                                 <a href="https://plus.google.com/112776474651298122010/posts" target="_blank" title="Marcus Weller" class="social-google">
-                                    <img src="{{ staticUrl }}/img/social/google%20+.png">
+                                    <img src="{{ urlFor("/img/social/google%20+.png") }}">
                                 </a>
                                 <a href="https://www.linkedin.com/company/3233339?trk=vsrp_companies_res_name&amp;trkInfo=VSRPsearchId%3A637198571407629012548%2CVSRPtargetId%3A3233339%2CVSRPcmpt%3Aprimary" target="_blank" title="Marcus Weller, PhD" class="social-linkedin">
-                                    <img src="{{ staticUrl }}/img/social/linkedin.png">
+                                    <img src="{{ urlFor("/img/social/linkedin.png") }}">
                                 </a>
                             </div>
                         </nav>
@@ -200,8 +200,8 @@
 
     <!--CART HOVER-->
     <div class="cart-hover">
-        <a href="{{ moduleUrl(" store ") }}/cart">
-            <img class="cart-icon" src="{{ staticUrl }}/img/cart.png">
+        <a href="{{ urlFor("store", "/cart") }}">
+            <img class="cart-icon" src="{{ urlFor("/img/cart.png") }}">
             <div class="cart-details">
                 Cart&nbsp;-&nbsp;
                 <span class="cart-total-quantity">0</span>
@@ -217,12 +217,12 @@
     {% block json %}{% endblock %}
 
     <!--JS-->
-    <script type="text/javascript" src="{{ staticUrl }}/js/jquery.min.js"></script>
-    <script type="text/javascript" src="{{ staticUrl }}/js/jquery.ba-throttle-debounce.min.js"></script>
-    <script type="text/javascript" src="{{ staticUrl }}/js/jquery.cookie.min.js"></script>
+    <script type="text/javascript" src="{{ urlFor("/js/jquery.min.js") }}"></script>
+    <script type="text/javascript" src="{{ urlFor("/js/jquery.ba-throttle-debounce.min.js") }}"></script>
+    <script type="text/javascript" src="{{ urlFor("/js/jquery.cookie.min.js") }}"></script>
 
     <!--OUR JS-->
-    <script type="text/javascript" src="{{ staticUrl }}/js/store.js"></script>
+    <script type="text/javascript" src="{{ urlFor("/js/store.js") }}"></script>
 
     {% block js %}{% endblock %}
 

@@ -4,6 +4,7 @@ import (
 	"appengine"
 	"encoding/json"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -44,34 +45,41 @@ type Config struct {
 	}
 }
 
-// Return routing prefix for module
-func (c Config) PrefixFor(moduleName string) string {
-	return c.Prefixes[moduleName]
-}
+// Return url to static file, module or path rooted in a module
+func (c Config) UrlFor(moduleName string, args ...string) (url string) {
+	// If we find `moduleName`, we'll use that as root, otherwise assume we
+	// were passed a static file as `moduleName`.
+	if host, ok := c.Hosts[moduleName]; ok {
+		// Use host + prefix to build url root to path in given module
+		url = host + c.Prefixes[moduleName]
+	} else {
+		// Static path passed as `moduleName`: we'll add it to stack of args to
+		// do the rest of our processing and set root to `c.StaticUrl`.
+		url = c.StaticUrl
+		arg := []string{moduleName} // First argument to append must be slice
+		args = append(arg, args...)
+	}
 
-// Return full url to module
-func (c Config) ModuleUrl(moduleName string, args ...interface{}) string {
-
-	// Build protocol-relative URL for module.
-	url := "//" + c.Hosts[moduleName] + c.PrefixFor(moduleName)
-
+	// First extra argument assumed to be a path, second is root domain to use.
 	for i, arg := range args {
 		switch i {
 		case 0:
-			domain := arg.(string)
+			// Join path part to url
+			url = path.Join(url, arg)
+			// Add back any trimmed /
+			if string(arg[len(arg)-1]) == "/" {
+				url = url + "/"
+			}
+		case 1:
 			// If module is hosted, return relative to that root domain.
-			if domain != "" {
-				url = strings.Replace(url, "crowdstart.io", domain, 1)
+			if arg != "" {
+				url = strings.Replace(url, "crowdstart.io", arg, 1)
 			}
 		}
 	}
 
-	// Strip trailing slash
-	return strings.TrimRight(url, "/")
-}
-
-func (c Config) UrlFor(moduleName string, path string, args ...interface{}) string {
-	return c.ModuleUrl(moduleName, args...) + path
+	// Strip leading slash and replace with protocol relative leading "//"
+	return "//" + strings.TrimLeft(url, "/")
 }
 
 // Load configuration from JSON file
@@ -120,7 +128,7 @@ func Development() *Config {
 	config.Hosts["preorder"] = "localhost:8080"
 	config.Hosts["store"] = "localhost:8080"
 
-	config.StaticUrl = "/static"
+	config.StaticUrl = "localhost:8080/static"
 
 	// TODO: Create dev versions somehow
 	config.Salesforce.ConsumerKey = "3MVG9xOCXq4ID1uElRYWhpUWjXSbiTVg4WO6q9DvWdvBjQ_DFlwSc7jZ9AbY3z9Jv_V29W7xq1nPjTYQhYJqF"
@@ -130,8 +138,8 @@ func Development() *Config {
 	config.Stripe.ClientId = "ca_53yyPzxlPsdAtzMEIuS2mXYDp4FFXLmm"
 	config.Stripe.APIKey = "pk_test_ucSTeAAtkSXVEg713ir40UhX"
 	config.Stripe.APISecret = ""
-	config.Stripe.RedirectURL = "http:" + config.ModuleUrl("platform") + "/stripe/callback"
-	config.Stripe.WebhookURL = "http:" + config.ModuleUrl("platform") + "/stripe/hook"
+	config.Stripe.RedirectURL = "http:" + config.UrlFor("platform", "/stripe/callback")
+	config.Stripe.WebhookURL = "http:" + config.UrlFor("platform", "/stripe/hook")
 	return config
 }
 
@@ -166,8 +174,8 @@ func Production() *Config {
 		config.Stripe.ClientId = "ca_53yyRUNpMtTRUgMlVlLAM3vllY1AVybU"
 		config.Stripe.APIKey = "pk_live_APr2mdiUblcOO4c2qTeyQ3hq"
 		config.Stripe.APISecret = ""
-		config.Stripe.RedirectURL = "https:" + config.ModuleUrl("platform") + "/stripe/callback"
-		config.Stripe.WebhookURL = "https:" + config.ModuleUrl("platform") + "/stripe/hook"
+		config.Stripe.RedirectURL = "https:" + config.UrlFor("platform", "/stripe/callback")
+		config.Stripe.WebhookURL = "https:" + config.UrlFor("platform", "/stripe/hook")
 	}
 
 	return config
@@ -204,20 +212,12 @@ var IsProduction = config.IsProduction
 var AutoCompileAssets = config.AutoCompileAssets
 var AutoLoadFixtures = config.AutoLoadFixtures
 var RootDir = config.RootDir
+var Prefixes = config.Prefixes
 var StaticUrl = config.StaticUrl
 var Salesforce = config.Salesforce
 var Stripe = config.Stripe
 var SiteTitle = config.SiteTitle
 
-func PrefixFor(moduleName string) string {
-	return config.PrefixFor(moduleName)
-}
-
-// Return full url to module
-func ModuleUrl(moduleName string, args ...interface{}) string {
-	return config.ModuleUrl(moduleName, args...)
-}
-
-func UrlFor(moduleName string, path string, args ...interface{}) string {
-	return config.UrlFor(moduleName, path, args...)
+func UrlFor(moduleName string, args ...string) string {
+	return config.UrlFor(moduleName, args...)
 }

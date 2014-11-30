@@ -4,11 +4,11 @@
 {% block meta %}
 <meta property="og:site_name" content="{{ siteTitle }}">
 <meta property="og:title" content="{{ siteTitle }}">
-<meta property="og:url" content="{{ moduleUrl("store") }}/products/{{ product.Slug }}">
+<meta property="og:url" content="{{ urlFor("store", "/products/", product.Slug) }}">
 <meta property="og:type" content="product">
 <meta property="og:description" content="{{ product.Description }}">
 <meta itemprop="name" content="{{ product.Title }}">
-<meta itemprop="url" content="{{ moduleUrl("store") }}/products/{{ product.Slug }}">
+<meta itemprop="url" content="{{ urlFor("store") }}/products/{{ product.Slug }}">
 <meta itemprop="description" content="{{ product.Description }}">
 <meta itemprop="thumbnailUrl" content="{{ product.DisplayImage().Url }}">
 {% endblock %}
@@ -34,7 +34,7 @@
 {% block content %}
 <div id="productWrapper" class="product hentry post-type-store-item">
     <div id="productNav">
-        <a href="{{ moduleUrl("store") }}/products">
+        <a href="{{ urlFor("store") }}/products">
             <span class="back-arrow">&#8592;</span> Back to Store
         </a>
     </div>
