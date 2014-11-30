@@ -59,7 +59,7 @@ stylus 		   = node_modules/.bin/stylus
 stylus_opts    = assets/css/preorder/preorder.styl \
 				 assets/css/store/store.styl \
 				 assets/css/checkout/checkout.styl \
-				 -o static/css -u autoprefixer-stylus -c
+				 -o static/css -u autoprefixer-stylus -u csso-stylus -c
 
 # find command differs between bsd/linux thus the two versions
 ifeq ($(os), "linux")
