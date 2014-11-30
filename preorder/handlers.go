@@ -136,12 +136,14 @@ func SavePreorder(c *gin.Context) {
 		if err := db.GetKey("variant", lineItem.SKU(), &lineItem.Variant); err != nil {
 			log.Error("Failed to find variant for: %v", lineItem.SKU(), c)
 			c.Fail(500, err)
+			return
 		}
 
 		// Fetch Product for LineItem from datastore
 		if err := db.GetKey("product", lineItem.Slug(), &lineItem.Product); err != nil {
 			log.Error("Failed to find product for: %v", lineItem.Slug(), c)
 			c.Fail(500, err)
+			return
 		}
 
 		// Set SKU so we can deserialize later

@@ -4,7 +4,6 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/datastore"
-	"crowdstart.io/middleware"
 	"crowdstart.io/models"
 	"crowdstart.io/util/form"
 	"crowdstart.io/util/log"
@@ -21,45 +20,14 @@ func (f *CheckoutForm) Parse(c *gin.Context) error {
 		return err
 	}
 
-	// Fix order
-	form.SchemaFix(&f.Order)
+	form.SchemaFix(&f.Order) // Fuck you schema
 
 	return nil
 }
 
 // Populate form with data from database
-func (f *CheckoutForm) Populate(c *gin.Context) {
-	db := datastore.New(c)
-
-	// TODO: Optimize this, multiget, use caching.
-	for i, item := range f.Order.Items {
-		log.Debug("Fetching variant for %v", item.SKU())
-
-		// Fetch Variant for LineItem from datastore
-		if err := db.GetKey("variant", item.SKU(), &item.Variant); err != nil {
-			log.Error("Failed to find variant for: %v", item.SKU(), c)
-			c.Fail(500, err)
-		}
-
-		// Fetch Product for LineItem from datastore
-		if err := db.GetKey("product", item.Slug(), &item.Product); err != nil {
-			log.Error("Failed to find product for: %v", item.Slug(), c)
-			c.Fail(500, err)
-		}
-
-		// Set SKU so we can deserialize later
-		item.SKU_ = item.SKU()
-		item.Slug_ = item.Slug()
-
-		// Update item in order
-		f.Order.Items[i] = item
-
-		// Update subtotal
-		f.Order.Subtotal += item.Price()
-	}
-
-	// Update grand total
-	f.Order.Total = f.Order.Subtotal + f.Order.Tax
+func (f *CheckoutForm) Populate(db *datastore.Datastore) error {
+	return f.Order.Populate(db)
 }
 
 func (f CheckoutForm) Validate(c *gin.Context) {}
@@ -80,8 +48,7 @@ func (f *ChargeForm) Parse(c *gin.Context) error {
 		return err
 	}
 
-	ctx := middleware.GetAppEngine(c)
-	ctx.Debugf("%v", f.RawExpiry)
+	form.SchemaFix(&f.Order) // Fuck you schema
 
 	if f.ShipToBilling {
 		f.Order.ShippingAddress = f.Order.BillingAddress
