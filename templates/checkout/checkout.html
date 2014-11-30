@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
 {% block css %}
-<link rel="stylesheet" type="text/css" href="{{ staticUrl }}/css/checkout.css">
+<link rel="stylesheet" type="text/css" href="{{ urlFor("/css/checkout.css") }}">
 {% endblock %}
 
 {% block content_header %}
-<a class="breadcrumb" href="{{ moduleUrl("store") }}/cart/">
+<a class="breadcrumb" href="{{ urlFor("store") }}/cart/">
     <span class="back-arrow">&#8592;</span><span>BACK</span>
 </a>
 <h1>Secure Checkout</h1>
@@ -398,7 +398,7 @@
                             <div class="title">
                                 <a class="edit-button">edit</a>
 
-                                <div class="cards"><img src="{{ staticUrl }}/img/discover.png"> <img src="{{ staticUrl }}/img/mastercard.png"> <img src="{{ staticUrl }}/img/visa.png"> <img src="{{ staticUrl }}/img/americanexpress.png">
+                                <div class="cards"><img src="{{ urlFor("/img/discover.png") }}"> <img src="{{ urlFor("/img/mastercard.png") }}"> <img src="{{ urlFor("/img/visa.png") }}"> <img src="{{ urlFor("/img/americanexpress.png") }}">
                                 </div>Secure Payment</div>
 
                             <fieldset style="display:none;" data-stage="3">
@@ -504,5 +504,5 @@
 {% block js %}
 <script type="text/javascript" src="https://js.stripe.com/v2/"></script>
 <script type="text/javascript">Stripe.setPublishableKey('{{ config.Stripe.APIKey }}');</script>
-<script type="text/javascript" src="{{ staticUrl }}/js/checkout.js"></script>
+<script type="text/javascript" src="{{ urlFor("/js/checkout.js") }}"></script>
 {% endblock %}
