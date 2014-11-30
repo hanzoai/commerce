@@ -3,14 +3,15 @@ package preorder
 import (
 	"errors"
 
-	"github.com/gin-gonic/gin"
-
 	"appengine/delay"
+
+	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/auth"
 	"crowdstart.io/datastore"
-	"crowdstart.io/mail"
+	"crowdstart.io/middleware"
 	"crowdstart.io/models"
+	mail "crowdstart.io/thirdparty/mandrill"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
@@ -182,7 +183,7 @@ func SavePreorder(c *gin.Context) {
 	}
 
 	// ctx appengine.Context, from_name, from_email, to_name, to_email, subject string
-	ctx := mail.AppengineCtx(c)
+	ctx := middleware.GetAppEngine(c)
 	sendConfirmation.Call(ctx, ctx,
 		"SKULLY",
 		"noreply@skullysystems.com",
