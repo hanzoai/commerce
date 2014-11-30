@@ -47,7 +47,6 @@ func checkout(c *gin.Context) {
 
 // Charge a successful authorization
 func charge(c *gin.Context) {
-	log.Debug("Request")
 	form := new(ChargeForm)
 	if err := form.Parse(c); err != nil {
 		log.Error(err.Error())
