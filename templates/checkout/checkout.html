@@ -172,13 +172,16 @@
                         <!-- Name -->
                         <div class="card-name field required">
                             <label>Name As It Appears On Card</lable>
-                            <input type="text" name="cardHolderName" placeholder="Name">
+                            <input type="text" name="Stripe.Name"
+                            id="stripe-name" placeholder="Name">
                         </div>
                         <!-- Card Number -->
 
                         <div class="card-number field required">
                             <label>Card Number</label>
-                            <input type="text" size="20" autocomplete="off" placeholder="Credit Card Number" name="" value="" id="cardNumber">
+                            <input type="text" size="20" autocomplete="off"
+                            placeholder="Credit Card Number" name="Stripe.Number" value=""
+                            id="stripe-number">
                         </div>
 
                         <div class="expiry-cvc">
@@ -186,7 +189,9 @@
 
                             <div class="card-cvc field required">
                                 <label>CVC</label>
-                                <input name="cvc" type="text" size="4" autocomplete="off" placeholder="CVC" value="" name="" data-stripe="cvc">
+                                <input type="text" size="4"
+                                autocomplete="off" placeholder="CVC" value=""
+                                name="Stripe.CVC" id="stripe-cvc">
                             </div>
                             <!-- Expiration -->
 
@@ -194,14 +199,15 @@
                                 <label>Expiration</label>
                                 <input type="text" size="2" maxlength="2"
                                 autocomplete="off" placeholder="MM"
-                                value="" name="expiry-month">
+                                value="" name="Stripe.ExpiryMonth"
+                                id="stripe-expiry-month">
                             </div>
 
                             <div class="card-expiry-year field required">
                                 <label>&nbsp;</label>
                                 <input type="text" size="4" maxlength="4"
                                 autocomplete="off" placeholder="YYYY" value=""
-                                name="expiry-year">
+                                name="Stripe.ExpiryYear" id="stripe-expiry-year">
                             </div>
 
                         </div>
@@ -281,7 +287,7 @@
                         <span>Tax</span>
                     </td>
                     <td class="value">
-                        <span>$</span><span>{{ order.DisplayTax() }}<span>
+                        <span>$</span><span class="price">{{ order.DisplayTax() }}<span>
                     </td>
                 </tr>
 
@@ -290,7 +296,7 @@
                         <span>Shipping</span>
                     </td>
                     <td class="value">
-                        <span>$</span><span>{{ order.Shipping }}<span>
+                        <span>$</span><span class="price">{{ order.Shipping }}<span>
                     </td>
                 </tr>
 
@@ -299,7 +305,7 @@
                         <span>Grand Total</span>
                     </td>
                     <td class="value">
-                        <span>$</span><span>{{ order.DisplayTotal() }}<span>
+                        <span>$</span><span class="price">{{ order.DisplayTotal() }}<span>
                     </td>
                 </tr>
             </tbody>
