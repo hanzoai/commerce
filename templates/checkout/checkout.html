@@ -18,7 +18,7 @@
 {% block content %}
 <div class="checkout sep-top">
     <div class="order-information col-1-2">
-        <form id="form" action="authorize" method="post" name="form">
+        <form id="form" action="{{ urlFor("checkout", "/charge") }}" method="post" name="form">
             {% for item in order.Items %}
                 <input type="hidden" name="Order.Items.{{ forloop.Counter }}.Product.Slug" value="{{ item.Slug() }}">
                 <input type="hidden" name="Order.Items.{{ forloop.Counter }}.Variant.SKU" value="{{ item.SKU() }}">
