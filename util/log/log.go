@@ -67,6 +67,9 @@ func (b AppengineBackend) Log(level logging.Level, calldepth int, record *loggin
 func New() *Logger {
 	log := new(Logger)
 
+	// Set spew to output tab indented dumps
+	spew.Config.Indent = "  "
+
 	// Backend that is appengine-aware
 	backend := new(AppengineBackend)
 	log.appengineBackend = backend
@@ -90,7 +93,7 @@ var std = New()
 
 func Dump(args ...interface{}) {
 	dump := spew.Sdump(args...)
-	std.Debug("\n%s", dump)
+	std.Dump("\n%s", dump)
 }
 
 func Debug(format string, args ...interface{}) {
