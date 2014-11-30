@@ -41,7 +41,6 @@ $("#form").submit (e) ->
     ), 500
   return
 
-
 # Show payment options when first half is competed.
 $requiredVisible = $("div:visible.required > input")
 showPaymentOptions = $.debounce(250, ->
@@ -52,7 +51,7 @@ showPaymentOptions = $.debounce(250, ->
   while i < $requiredVisible.length
     return  if $requiredVisible[i].value is ""
     i++
-  fieldset = $("div.sqs-checkout-form-payment-content > fieldset")
+  fieldset = $("div.payment-information > fieldset")
   fieldset.css "display", "block"
   fieldset.css "opacity", "0"
   fieldset.fadeTo 1000, 1
@@ -62,10 +61,10 @@ showPaymentOptions = $.debounce(250, ->
 $requiredVisible.on "keyup", showPaymentOptions
 $("#form").card
   container: "#card-wrapper"
-  numberInput: "#cardNumber"
-  expiryInput: "#expiry"
-  cvcInput: "#cvcInput"
-  nameInput: "input[name=\"User.FirstName\"], input[name=\"User.LastName\"]"
+  numberInput: "#stripe-number"
+  expiryInput: "#stripe-expiry-month, #stripe-expiry-year"
+  cvcInput: "#stripe-cvc"
+  nameInput: "#stripe-name"
 
 $("input[name=\"ShipToBilling\"]").change ->
   shipping = $(".shipping-information fieldset")
@@ -82,21 +81,21 @@ $("input[name=\"ShipToBilling\"]").change ->
 
 
 # Update tax display
-$state = $("select[name=\"Order.BillingAddress.State\"]")
+$state = $("input[name=\"Order.BillingAddress.State\"]")
 $city = $("input[name=\"Order.BillingAddress.City\"]")
-$tax = $("div.tax.total > div.price > span")
-$total = $("div.grand-total.total > div.price > span")
-$subtotal = $("div.subtotal.total > div.price > span")
+$tax = $("div.tax .price")
+$total = $("div.grand-total .price")
+$subtotal = $("div.subtotal .price")
 
 updateTax = $.debounce 250, ->
   city = $city.val()
-  state = $state.val()
+  state = $state.val().toUpperCase()
   tax = 0
   total = 0
   subtotal = parseFloat($subtotal.text().replace(",", ""))
 
   # Add CA tax
-  tax += subtotal * 0.075  if state is "CA"
+  tax += subtotal * 0.075  if state is "CA" or (/california/i).test(state)
 
   # Add SF county tax
   tax += subtotal * 0.0125  if state is "CA" and (/san francisco/i).test(city)
@@ -114,7 +113,6 @@ $cardNumber = $("input#cardNumber")
 $expiry = $("input#expiry")
 $cvc = $("input#cvcInput")
 $token = $("input[name=\"TokenId\"]")
-
 
 # Checks each input and does dumb checks to see if it might be a valid card
 validateCard = ->
