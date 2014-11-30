@@ -17,6 +17,12 @@ func formError(c *gin.Context) {
 	)
 }
 
+// Redirect to store on GET
+func index(c *gin.Context) {
+	c.Redirect(301, config.UrlFor("store", "/cart"))
+}
+
+// Display checkout form
 func checkout(c *gin.Context) {
 	// Parse checkout form
 	form := new(CheckoutForm)
@@ -39,9 +45,10 @@ func checkout(c *gin.Context) {
 	)
 }
 
-func authorize(c *gin.Context) {
+// Charge a successful authorization
+func charge(c *gin.Context) {
 	log.Debug("Request")
-	form := new(AuthorizeForm)
+	form := new(ChargeForm)
 	if err := form.Parse(c); err != nil {
 		log.Error(err.Error())
 		formError(c)
@@ -56,7 +63,7 @@ func authorize(c *gin.Context) {
 		return
 	}
 
-	log.Info("Authorizing order. Items: %#v", order.Items)
+	log.Info("Charging order. Items: %#v", order.Items)
 	ctx := middleware.GetAppEngine(c)
 	_, err = stripe.Charge(ctx, form.StripeToken, &order)
 
@@ -66,6 +73,7 @@ func authorize(c *gin.Context) {
 	}
 }
 
+// Success
 func complete(c *gin.Context) {
 	template.Render(c, "checkout-complete.html")
 }
