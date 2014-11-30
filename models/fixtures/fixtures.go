@@ -123,13 +123,13 @@ var All = delay.Func("install-all-fixtures", func(c appengine.Context) {
 		Images: []Image{
 			Image{
 				Alt: "blackhelmet_store_1000px.jpg",
-				Url: config.StaticUrl + "/img/products/blackhelmet_store_1000px.jpg",
+				Url: config.UrlFor("/img/products/blackhelmet_store_1000px.jpg"),
 				X:   1000,
 				Y:   1000,
 			},
 			Image{
 				Alt: "whitehelmet_store_1000px.jpg",
-				Url: config.StaticUrl + "/img/products/whitehelmet_store_1000px.jpg",
+				Url: config.UrlFor("/img/products/whitehelmet_store_1000px.jpg"),
 				X:   1000,
 				Y:   1000,
 			},
