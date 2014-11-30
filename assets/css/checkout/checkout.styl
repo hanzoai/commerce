@@ -52,25 +52,41 @@ label
 
 .cart-content
   margin-bottom 50px
+  table
+    td
+      vertical-align middle
+      padding-right 10px
 
-  td
-    vertical-align middle
-    padding-right 10px
-
-  td.item-image
-    width 100px
-    padding 0px
-    img
+    td.item-image
       width 100px
+      padding 0px
+      img
+        width 100px
 
-  td.item-desc
-    text-align center
+    td.item-desc
+      text-align center
 
-  .item-desc
-    border-left 0px
+    .item-desc
+      border-left 0px
 
-  .quantity
-    text-align right
+    .quantity
+      text-align right
 
-  .price
-    text-align right
+    .price
+      text-align right
+
+    td.label
+      width 90%
+      text-align right
+
+    td.value
+      text-align right
+
+  table.totals
+    float right
+    width 200px
+    border 0
+    tr:not(:last-child)
+      td
+        border-top 0
+        background-color #fff
