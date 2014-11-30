@@ -1,8 +1,8 @@
 fs   = require 'fs'
 path = require 'path'
 
-requisite        = 'node_modules/.bin/requisite'
-stylus           = 'node_modules/.bin/stylus'
+requisite  = 'node_modules/.bin/requisite'
+stylus     = 'node_modules/.bin/stylus -u autoprefixer-stylus --sourcemap --sourcemap-inline'
 
 files =
   checkout:
