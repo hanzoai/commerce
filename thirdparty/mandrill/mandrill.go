@@ -1,4 +1,4 @@
-package mail
+package mandrill
 
 import (
 	"bytes"
@@ -39,7 +39,7 @@ func GetHtml(filename string) string {
 
 // PingMandrill checks if our credentials/url are okay
 // Returns true if Mandrill replies with  a 200 OK
-func PingMandrill(ctx appengine.Context) bool {
+func Ping(ctx appengine.Context) bool {
 	url := root + "/users/ping.json"
 	log.Debug(url)
 
@@ -68,12 +68,10 @@ func SendMail(
 	ctx appengine.Context,
 	from_name, from_email, to_name, to_email, subject, template string,
 	vars map[string]string) error {
-	t.Fail()
 	// Convert the map of vars to a byte buffer of a json string
-	var varsJson bytes.Buffer
+	varsJson := bytes.NewBufferString("[")
 	func() {
 		i := 0
-		varsJson.WriteString("[")
 		for k, v := range vars {
 			if i != 0 {
 				varsJson.WriteString(",")
