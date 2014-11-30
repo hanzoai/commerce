@@ -17,14 +17,15 @@ func TemplateSet() *pongo2.TemplateSet {
 	set.Globals["isDevelopment"] = config.IsDevelopment
 	set.Globals["isProduction"] = config.IsProduction
 	set.Globals["siteTitle"] = config.SiteTitle
-	set.Globals["staticUrl"] = config.StaticUrl
 
-	set.Globals["moduleUrl"] = func(moduleName string) string {
-		return config.ModuleUrl(moduleName)
+	set.Globals["urlFor"] = func(moduleName string, args ...string) string {
+		return config.UrlFor(moduleName, args...)
 	}
 
-	set.Globals["urlFor"] = func(moduleName string, path string) string {
-		return config.UrlFor(moduleName, path)
+	// DEPRECATED: Remove as soon as all templates are updated to use `urlFor`.
+	set.Globals["staticUrl"] = config.StaticUrl
+	set.Globals["moduleUrl"] = func(moduleName string, args ...string) string {
+		return config.UrlFor(moduleName, args...)
 	}
 
 	return set
