@@ -4,18 +4,12 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/config"
+	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
 	"crowdstart.io/thirdparty/stripe"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
 )
-
-// Renders the checkout page with an error message
-func formError(c *gin.Context) {
-	template.Render(c, "checkout.html",
-		"message", "There was an error while processing your order.",
-	)
-}
 
 // Redirect to store on GET
 func index(c *gin.Context) {
@@ -27,13 +21,19 @@ func checkout(c *gin.Context) {
 	// Parse checkout form
 	form := new(CheckoutForm)
 	if err := form.Parse(c); err != nil {
-		log.Error(err.Error())
-		formError(c)
+		log.Error("Failed to parse form: %v", err)
+		c.Fail(500, err)
 		return
 	}
 
+	db := datastore.New(c)
+
 	// Populate with data from DB
-	form.Populate(c)
+	if err := form.Populate(db); err != nil {
+		log.Error("Failed to populate order with information from datastore: %v", err)
+		c.Fail(500, err)
+		return
+	}
 
 	// Validate form
 	form.Validate(c)
@@ -49,26 +49,26 @@ func checkout(c *gin.Context) {
 func charge(c *gin.Context) {
 	form := new(ChargeForm)
 	if err := form.Parse(c); err != nil {
-		log.Error(err.Error())
-		formError(c)
-		log.Debug("Account %#v", form.Order.Account)
+		log.Error("Failed to parse form: %v", err)
+		c.Fail(500, err)
 		return
 	}
 
-	order := form.Order
-	err := order.Process(c)
-	if err != nil {
-		log.Error(err.Error())
-		return
-	}
-
-	log.Info("Charging order. Items: %#v", order.Items)
 	ctx := middleware.GetAppEngine(c)
-	_, err = stripe.Charge(ctx, form.StripeToken, &order)
+	db := datastore.New(ctx)
 
-	if err != nil {
+	if err := form.Order.Populate(db); err != nil {
+		log.Error("Failed to repopulate order information from datastore: %v", err)
+		log.Dump(form.Order)
+		c.Fail(500, err)
+		return
+	}
+
+	log.Debug("Charging order: %#v", form.Order)
+	if _, err := stripe.Charge(ctx, form.StripeToken, &form.Order); err != nil {
 		log.Error(err.Error())
-		formError(c)
+		c.Fail(500, err)
+		return
 	}
 }
 
