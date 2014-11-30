@@ -3,6 +3,7 @@ package models
 import (
 	"bytes"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -64,6 +65,17 @@ func (li LineItem) Validate(req *http.Request, errs binding.Errors) binding.Erro
 	}
 
 	return errs
+}
+
+// Displays nice "/" delimited variant information.
+func (li LineItem) DisplayShortDescription() string {
+	opts := []string{}
+	for _, opt := range []string{li.Variant.Color, li.Variant.Style, li.Variant.Size} {
+		if opt != "" {
+			opts = append(opts, opt)
+		}
+	}
+	return strings.Join(opts, " / ")
 }
 
 type Cart struct {
