@@ -13,7 +13,7 @@ import (
 func New(moduleName string) *gin.RouterGroup {
 	router := gin.New()
 
-	prefix := config.PrefixFor(moduleName)
+	prefix := config.Prefixes[moduleName]
 	if prefix == "" {
 		log.Panic("Unable to determine prefix for module: '%s'", moduleName)
 	}
