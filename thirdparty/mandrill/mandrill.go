@@ -11,14 +11,117 @@ import (
 	"appengine"
 	"appengine/urlfetch"
 
+	"crowdstart.io/config"
+	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 )
 
 const apiKey = "wJ3LGLp5ZOUZlSH8wwqmTg"
 const root = "http://mandrillapp.com/api/1.0"
 
-// Escapes special chars in the html
-func GetHtml(filename string) string {
+type GlobalMergeVars struct {
+	Name    string `json:"name"`
+	Content string `json:"content"`
+}
+
+type MergeVars struct {
+	Rcpt string `json:"rcpt"`
+	Vars []struct {
+		Name    string `json:"name"`
+		Content string `json:"content"`
+	} `json:"vars"`
+}
+
+type Recipient struct {
+	Email string `json:"email"`
+	Name  string `json:"name"`
+	Type  string `json:"type"`
+}
+
+type SendTemplateReq struct {
+	Key             string `json:"key"`
+	TemplateName    string `json:"template_name"`
+	TemplateContent []struct {
+		Name    string `json:"name"`
+		Content string `json:"content"`
+	} `json:"template_content"`
+	Message struct {
+		Html      string      `json:"html"`
+		Text      string      `json:"text"`
+		Subject   string      `json:"subject"`
+		FromEmail string      `json:"from_email"`
+		FromName  string      `json:"from_name"`
+		To        []Recipient `json:"to"`
+		Headers   struct {
+			ReplyTo string `json:"Reply-To"`
+		} `json:"headers"`
+		Important bool `json:"important"`
+		// TrackOpens         interface{} `json:"track_opens"`
+		// TrackClicks        interface{} `json:"track_clicks"`
+		// AutoText           interface{} `json:"auto_text"`
+		// AutoHtml           interface{} `json:"auto_html"`
+		// InlineCss          interface{} `json:"inline_css"`
+		// UrlStripQs         interface{} `json:"url_strip_qs"`
+		// PreserveRecipients interface{} `json:"preserve_recipients"`
+		// ViewContentLink    interface{} `json:"view_content_link"`
+		BccAddress string `json:"bcc_address"`
+		// TrackingDomain     interface{} `json:"tracking_domain"`
+		// SigningDomain    interface{} `json:"signing_domain"`
+		// ReturnPathDomain interface{} `json:"return_path_domain"`
+		Merge           bool              `json:"merge"`
+		MergeLanguage   string            `json:"merge_language"`
+		GlobalMergeVars []GlobalMergeVars `json:"global_merge_vars"`
+		MergeVars       []MergeVars       `json:"merge_vars"`
+		Tags            []string          `json:"tags"`
+		// Subaccount      string            `json:"subaccount"`
+		// GoogleAnalyticsDomains  []string `json:"google_analytics_domains"`
+		// GoogleAnalyticsCampaign string   `json:"google_analytics_campaign"`
+		Metadata struct {
+			Website string `json:"website"`
+		} `json:"metadata"`
+		RecipientMetadata []struct {
+			Rcpt   string `json:"rcpt"`
+			Values struct {
+				UserId int `json:"user_id"`
+			} `json:"values"`
+		} `json:"recipient_metadata"`
+		Attachments []struct {
+			Type    string `json:"type"`
+			Name    string `json:"name"`
+			Content string `json:"content"`
+		} `json:"attachments"`
+		Images []struct {
+			Type    string `json:"type"`
+			Name    string `json:"name"`
+			Content string `json:"content"`
+		} `json:"images"`
+	} `json:"message"`
+	Async  bool   `json:"async"`
+	IpPool string `json:"ip_pool"`
+	SendAt string `json:"send_at"`
+}
+
+func (r *SendTemplateReq) AddRecipient(email, name string) {
+	recp := Recipient{
+		Email: email,
+		Name:  name,
+		Type:  "to",
+	}
+
+	r.Message.To = append(r.Message.To, recp)
+}
+
+func NewSendTemplateReq() *SendTemplateReq {
+	req := new(SendTemplateReq)
+	req.Async = true
+	req.IpPool = "Main Pool"
+	req.Key = config.Mandrill.ApiKey
+
+	return req
+}
+
+// Gets the content of a template
+func GetTemplate(filename string) string {
 	wd, _ := os.Getwd()
 	log.Info(wd)
 	b, err := ioutil.ReadFile(filename)
@@ -26,32 +129,7 @@ func GetHtml(filename string) string {
 		log.Panic(err.Error())
 		return ""
 	}
-
-	// http://stackoverflow.com/a/16652683
-	o := bytes.NewBufferString("")
-	for _, c := range string(b) {
-		switch c {
-		case '\\', '"':
-			o.WriteRune('\\')
-			o.WriteRune(c)
-		case '\b':
-			o.WriteString(`\b`)
-		case '\t':
-			o.WriteString(`\t`)
-		case '\n':
-			o.WriteString(`\n`)
-		case '\f':
-			o.WriteString(`\f`)
-		case '\r':
-			o.WriteString(`\r`)
-		case '%': // For string formatting to not break.
-			o.WriteString("%%")
-		default:
-			o.WriteRune(c)
-		}
-	}
-
-	return o.String()
+	return string(b)
 }
 
 // PingMandrill checks if our credentials/url are okay
@@ -81,95 +159,35 @@ func Ping(ctx appengine.Context) bool {
 	return res.StatusCode == 200
 }
 
-func SendMail(
-	ctx appengine.Context,
-	from_name, from_email, to_name, to_email, subject, template string,
-	vars map[string]string) error {
+func SendMail(ctx appengine.Context, req *SendTemplateReq) error {
 	// Convert the map of vars to a byte buffer of a json string
-	varsJson := bytes.NewBufferString("[")
-	func() {
-		i := 0
-		for k, v := range vars {
-			if i != 0 {
-				varsJson.WriteString(",")
-			}
-			varsJson.WriteString(fmt.Sprintf(`{ "name" : "%s", "content" : "%s"}`, k, v))
-			i += 1
-		}
-		varsJson.WriteString("]")
-	}()
 
 	url := root + "/messages/send.json"
 	log.Debug(url)
 
-	j := fmt.Sprintf(`
-{
-    "key": "%s",
-    "template_name": "Preorder confirmation",
-    "message": {
-        "html": "%s",
-        "subject": "%s",
-        "from_email": "%s",
-        "from_name": "%s",
-        "to": [
-            {
-                "email": "%s",
-                "name": "%s",
-                "type": "to"
-            }
-        ],
-        "headers": {
-            "Reply-To": "%s"
-        },
-        "important": false,
-        "track_opens": true,
-        "track_clicks": true,
-        "preserve_recipients": true,
-        "merge": true,
-        "merge_language": "mailchimp",
-        "merge_vars": [
-            {
-                "rcpt": "%s",
-                "vars": %s
-            }
-        ]
-    },
-    "async": true,
-    "ip_pool": "Main Pool"
-}`,
-		apiKey,
-		template,
-		subject,
-		from_email,
-		from_name,
-		to_email,
-		to_name,
-		"noreply@skullysystems.com",
-		to_email,
-		varsJson.String(),
-	)
-	log.Info(j)
+	j := json.Encode(req)
+	log.Debug(j)
 
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(j)))
+	hreq, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(j)))
 	if err != nil {
 		log.Panic(err.Error())
 		return err
 	}
 
 	client := urlfetch.Client(ctx)
-	res, err := client.Do(req)
+	res, err := client.Do(hreq)
 	defer res.Body.Close()
 	if err != nil {
 		log.Panic(err.Error())
 		return err
 	}
 
+	b, _ := ioutil.ReadAll(res.Body)
+	log.Debug(string(b))
+	log.Debug(apiKey)
+
 	if res.StatusCode == 200 {
 		return nil
-	} else {
-		b, _ := ioutil.ReadAll(res.Body)
-		log.Debug(string(b))
-		log.Debug(apiKey)
-		return errors.New("Email not sent")
 	}
+	return errors.New("Email not sent")
 }
