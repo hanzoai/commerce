@@ -10,6 +10,3 @@ handlers:
 - url: /.*
   script: _go_app
   login: required
-
-env_variables:
-  ENV: staging

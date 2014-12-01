@@ -814,4 +814,3 @@ transformers:
       external_name: Weight
       # Type: Integer Stats: 27 properties of this type in this kind.
       import_transform: transform.none_if_empty(int)
-
