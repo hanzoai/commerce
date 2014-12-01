@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/auth"
+	"crowdstart.io/config"
 )
 
 // Automatically get App Engine context.
@@ -28,7 +29,7 @@ func AddHost() gin.HandlerFunc {
 func LoginRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if !auth.IsLoggedIn(c) {
-			c.Redirect(301, "/user/login")
+			c.Redirect(301, config.UrlFor("platform", "/login"))
 		}
 	}
 }
