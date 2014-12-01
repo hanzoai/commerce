@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block css %}
+<link rel="stylesheet" type="text/css" href="{{ urlFor("/css/checkout.css") }}">
+{% endblock %}
+
+{% block content_header %}
+<a class="breadcrumb" href="{{ urlFor("store") }}/cart/">
+    <span class="back-arrow">&#8592;</span><span>BACK</span>
+</a>
+<h1>Thank you</h1>
+{% endblock %}
+
+{% block content_header_width_class %}checkout-width{% endblock %}
+
+{% block content_width_class %}checkout-width{% endblock %}
+
+{% block content %}
+<p>
+Thank you for your order.
+</p>
+{% endblock %}
+
+{% block js %}
+{% endblock %}
