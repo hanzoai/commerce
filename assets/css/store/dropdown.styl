@@ -1,58 +1,56 @@
-.dropdown
-  color: #fff
-  display: inline-block
-
-.dropdown label,
-.dropdown ul li
-  display: block
-  padding: 12px 18px
-  text-align: left
-
-.dropdown label:hover,
-.dropdown ul li:hover
-  color: white
-  cursor: pointer
-
-.dropdown li
-  font-family: "proxima-nova"
-  text-transform: uppercase
-  letter-spacing: 2px
-  font-weight: 400
-  font-style: normal
-  line-height: 2em
-
-.dropdown label
-  z-index: 2
-  font-family: "proxima-nova"
-  font-size: 0.85em
-  text-transform: uppercase
-  letter-spacing: 2px
-  font-weight: 400
-  font-style: normal
-  line-height: 2em
-
-.dropdown input
-  display: none
-
-.dropdown input ~ ul
-  position: absolute
-  visibility: hidden
-  opacity: 0
-  width: 130px
-  z-index: 1
-  background: #333
-  margin-top: -10px
-
-.dropdown input:checked + label
-  color: white
-  background: #222
-
-.dropdown input:checked ~ ul
-  visibility: visible
-  opacity: 1
-  position: absolute
-  margin-top: 0px
-
-.animate
+animate()
   transition: all .3s
   backface-visibility: hidden
+
+dropdown()
+   label,
+   ul li
+    display: block
+    padding: 12px 18px
+    text-align: left
+    animate()
+
+   label:hover,
+   ul li:hover
+    color: white
+    cursor: pointer
+
+   li
+    font-family: "proxima-nova"
+    text-transform: uppercase
+    letter-spacing: 2px
+    font-weight: 400
+    font-style: normal
+    line-height: 2em
+
+   label
+    z-index: 2
+    font-family: "proxima-nova"
+    font-size: 0.85em
+    text-transform: uppercase
+    letter-spacing: 2px
+    font-weight: 400
+    font-style: normal
+    line-height: 2em
+
+   input
+    display: none
+
+   input ~ ul
+    position: absolute
+    visibility: hidden
+    opacity: 0
+    width: 130px
+    z-index: 1
+    background: #333
+    margin-top: -10px
+
+   input:checked + label
+    color: white
+    background: #222
+
+   input:checked ~ ul
+    visibility: visible
+    opacity: 1
+    position: absolute
+    margin-top: 0px

@@ -66,22 +66,33 @@
 
                 <nav class="nav">
                     <ul class="links">
-                        <li class="dropdown link">
-                            <input id="dropdown-toggle" type="checkbox">
-                            <label for="dropdown-toggle" class="animate">COMMUNITY</label>
+                        <li class="link">
+                            <a class="current" href="{{ urlFor("store") }}">STORE</a>
+                        </li>
 
-                            <ul class="animate">
-                                <li class="animate">
+                        <li class="community-dropdown link">
+                            <input id="community-toggle" type="checkbox">
+                            <label for="community-toggle">COMMUNITY</label>
+
+                            <ul>
+                                <li>
                                     <a href="http://blog.skullysystems.com/">BLOG</a>
                                 </li>
-                                <li class="animate">
+                                <li>
                                     <a href="http://forum.skullysystems.com/">FORUM</a>
                                 </li>
                             </ul>
                         </li>
 
-                        <li class="link">
-                            <a href="http://www.skullysystems.com/career">CAREER</a>
+                        <li class="team-dropdown link">
+                            <input id="team-toggle" type="checkbox">
+                            <label for="team-toggle">TEAM</label>
+
+                            <ul>
+                                <li>
+                                    <a href="http://www.skullysystems.com/career">CAREER</a>
+                                </li>
+                            </ul>
                         </li>
 
                         <li class="link">
@@ -89,11 +100,7 @@
                         </li>
 
                         <li class="link">
-                            <a class="current" href="{{ urlFor("store") }}">STORE</a>
-                        </li>
-
-                        <li class="link">
-                            <a class="big" href="{{ urlFor("store", "/products/ar-1") }}">GET YOUR AR-1</a>
+                            <a class="big" href="{{ urlFor("store", "/sign-in") }}">SIGN IN</a>
                         </li>
                     </ul>
                 </nav>
