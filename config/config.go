@@ -25,6 +25,7 @@ type Config struct {
 	DemoMode          bool
 	IsDevelopment     bool
 	IsProduction      bool
+	IsStaging         bool
 	AutoCompileAssets bool
 	AutoLoadFixtures  bool
 	RootDir           string
@@ -180,18 +181,42 @@ func Production() *Config {
 	return config
 }
 
+// Staging Settings
+func Staging() *Config {
+	config := Production()
+
+	config.IsProduction = false
+	config.IsStaging = true
+
+	config.Hosts["default"] = "static.staging.crowdstart.io"
+	config.Hosts["api"] = "api.staging.crowdstart.io"
+	config.Hosts["checkout"] = "secure.staging.crowdstart.io"
+	config.Hosts["platform"] = "admin.staging.crowdstart.io"
+	config.Hosts["preorder"] = "preorder.staging.crowdstart.io"
+	config.Hosts["store"] = "store.staging.crowdstart.io"
+
+	config.StaticUrl = "//static.staging.crowdstart.io"
+	return config
+}
+
 // Get current config object
 func Get() *Config {
 	if cachedConfig != nil {
 		return cachedConfig
 	}
 
-	log.Debug("Enviroment: %v", os.Environ())
-
 	if appengine.IsDevAppServer() {
 		cachedConfig = Development()
 	} else {
-		cachedConfig = Production()
+		// TODO: This is a total hack, probably can't rely on this.
+		// Use PWD to determine appid, if s~crowdstart-io-staging is in PWD,
+		// then we're in staging enviroment.
+		pwd := os.Getenv("PWD")
+		if strings.Contains(pwd, "s~crowdstart-io-staging") {
+			cachedConfig = Staging()
+		} else {
+			cachedConfig = Production()
+		}
 	}
 
 	// Allow local config file to override settings
@@ -210,6 +235,7 @@ var config = Get()
 var DemoMode = config.DemoMode
 var IsDevelopment = config.IsDevelopment
 var IsProduction = config.IsProduction
+var IsStaging = config.IsStaging
 var AutoCompileAssets = config.AutoCompileAssets
 var AutoLoadFixtures = config.AutoLoadFixtures
 var RootDir = config.RootDir
