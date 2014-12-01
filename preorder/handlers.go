@@ -91,8 +91,7 @@ func hasToken(tokens []models.InviteToken, id string) bool {
 	return false
 }
 
-var confirmationHtml = mail.GetTemplate("../mail/templates/confirmation_email")
-var sendConfirmation = delay.Func("sendConfirmation", mail.SendMail)
+var sendConfirmation = delay.Func("sendConfirmation", mail.SendTemplate)
 
 func SavePreorder(c *gin.Context) {
 	form := new(PreorderForm)
@@ -187,14 +186,25 @@ func SavePreorder(c *gin.Context) {
 
 	// ctx appengine.Context, from_name, from_email, to_name, to_email, subject string
 	ctx := middleware.GetAppEngine(c)
-	sendConfirmation.Call(ctx, ctx,
-		"SKULLY",
-		"noreply@skullysystems.com",
-		user.Name(),
-		user.Email,
-		"Thank you for updating your preorder information",
-		confirmationHtml,
-	)
+	// sendConfirmation.Call(ctx, ctx,
+	// 	"SKULLY",
+	// 	"noreply@skullysystems.com",
+	// 	user.Name(),
+	// 	user.Email,
+	// 	"Thank you for updating your preorder information",
+	// 	confirmationHtml,
+	// )
+
+	req := mail.NewSendTemplateReq()
+	req.AddRecipient(user.Email, user.Name())
+
+	req.Message.Subject = "Preorder information changed"
+	req.Message.FromEmail = "noreply@skullysystems.com"
+	req.Message.FromName = "SKULLY"
+	req.TemplateName = "preorder-confirmation-template"
+
+	sendConfirmation.Call(ctx, ctx, &req)
+
 	c.Redirect(301, "../thanks")
 }
 
