@@ -70,6 +70,12 @@ else
 	test_modules = $(shell find . -maxdepth 3 -mindepth 2 -name '*_test.go' -print0 | xargs -0 -n1 dirname | sort --unique | sed -e 's/.\//crowdstart.io\//')
 endif
 
+ifeq ($(v), 1)
+	verbose = -v
+else
+	verbose =
+endif
+
 export GOROOT  := $(goroot)
 export GOPATH  := $(gopath)
 
@@ -148,10 +154,10 @@ tools:
 	gocode set lib-path "$(gopath_pkg_path):$(goroot_pkg_path)"
 
 test:
-	goapp test -timeout 60s $(test_modules)
+	goapp test -timeout 60s $(test_modules) $(verbose)
 
 bench: build
-	goapp test -timeout 60s $(test_modules) --bench=.
+	goapp test -timeout 60s $(test_modules) $(verbose) --bench=.
 
 deploy: test
 	go run scripts/deploy.go
