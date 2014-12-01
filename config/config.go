@@ -185,6 +185,9 @@ func Get() *Config {
 	if cachedConfig != nil {
 		return cachedConfig
 	}
+
+	log.Debug("Enviroment: %v", os.Environ())
+
 	if appengine.IsDevAppServer() {
 		cachedConfig = Development()
 	} else {
@@ -192,7 +195,6 @@ func Get() *Config {
 	}
 
 	// Allow local config file to override settings
-
 	for _, configFile := range configFileLocations {
 		if _, err := os.Stat(configFile); err == nil {
 			cachedConfig.Load(configFile)
