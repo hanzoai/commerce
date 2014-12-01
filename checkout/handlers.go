@@ -72,6 +72,15 @@ func charge(c *gin.Context) {
 		return
 	}
 
+	// Save order
+	log.Debug("Saving order.")
+	if _, err := db.Put("order", &form.Order); err != nil {
+		log.Error("Error saving order", err)
+		c.Fail(500, err)
+		return
+	}
+
+	log.Debug("Checkout complete!")
 	c.Redirect(301, config.UrlFor("checkout", "/complete"))
 }
 
