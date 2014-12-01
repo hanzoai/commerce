@@ -10,9 +10,14 @@ class CartHover extends View
     suffix:   '.cart-suffix'
 
   formatters:
-    quantity: (v) -> util.humanizeNumber v
     subtotal: (v) -> util.formatCurrency v
     suffix:   (v) -> if v > 1 then 'items' else 'item'
+    quantity: (v) ->
+      @showCart() if v > 0
+      util.humanizeNumber v
+
+  showCart: ->
+    @el.animate {opacity: 1}, 400, 'swing'
 
   listen: ->
     cart = app.get 'cart'
@@ -26,8 +31,9 @@ class CartHover extends View
       @set 'subtotal', v
 
     # set initial values
-    @set 'quantity', cart.get 'quantity'
-    @set 'suffix',   cart.get 'quantity'
+    quantity = cart.get 'quantity'
+    @set 'quantity', quantity
+    @set 'suffix',   quantity
     @set 'subtotal', cart.get 'subtotal'
 
 module.exports = CartHover
