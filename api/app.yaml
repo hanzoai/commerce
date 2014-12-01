@@ -14,6 +14,3 @@ handlers:
 - url: /v1/.*
   script: _go_app
   login: required
-
-env_variables:
-  ENV: production
