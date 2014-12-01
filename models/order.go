@@ -124,18 +124,18 @@ type PaymentAccount struct {
 
 type Charge struct {
 	ID             string
-	Live           bool
-	Paid           bool
+	Captured       bool
+	Created        int64
 	Desc           string
 	Email          string
-	Amount         uint64
-	FailMsg        string
-	Created        int64
-	Refunded       bool
-	Captured       bool
 	FailCode       string
+	FailMsg        string
+	Live           bool
+	Paid           bool
+	Refunded       bool
 	Statement      string
-	AmountRefunded uint64
+	Amount         int64
+	AmountRefunded int64
 }
 
 type ShippingOption struct {

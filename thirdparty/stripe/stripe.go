@@ -37,18 +37,19 @@ func Charge(ctx appengine.Context, token string, order *models.Order) (string, e
 	// It should be possible to query the stripe api for this though.
 	charge := models.Charge{
 		stripeCharge.ID,
-		stripeCharge.Live,
-		stripeCharge.Paid,
+		stripeCharge.Captured,
+		stripeCharge.Created,
 		stripeCharge.Desc,
 		stripeCharge.Email,
-		stripeCharge.Amount,
-		stripeCharge.FailMsg,
-		stripeCharge.Created,
-		stripeCharge.Refunded,
-		stripeCharge.Captured,
 		stripeCharge.FailCode,
+		stripeCharge.FailMsg,
+		stripeCharge.Live,
+		stripeCharge.Paid,
+		stripeCharge.Refunded,
 		stripeCharge.Statement,
-		stripeCharge.AmountRefunded,
+		// TODO: Figure out if this is dangerous
+		int64(stripeCharge.Amount),
+		int64(stripeCharge.AmountRefunded),
 	}
 
 	order.Charges = append(order.Charges, charge)
