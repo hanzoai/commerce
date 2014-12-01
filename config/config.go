@@ -1,12 +1,13 @@
 package config
 
 import (
-	"appengine"
 	"encoding/json"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
+
+	"appengine"
 
 	"crowdstart.io/util/log"
 )
@@ -42,6 +43,10 @@ type Config struct {
 		APISecret   string
 		RedirectURL string
 		WebhookURL  string
+	}
+
+	Mandrill struct {
+		ApiKey string
 	}
 }
 
@@ -95,6 +100,7 @@ func Defaults() *Config {
 	config.RootDir, _ = filepath.Abs(cwd + "/../..")
 	config.SiteTitle = "SKULLY"
 	config.DemoMode = demoMode
+	config.Mandrill.ApiKey = "wJ3LGLp5ZOUZlSH8wwqmTg"
 	return config
 }
 
@@ -210,6 +216,7 @@ var StaticUrl = config.StaticUrl
 var Salesforce = config.Salesforce
 var Stripe = config.Stripe
 var SiteTitle = config.SiteTitle
+var Mandrill = config.Mandrill
 
 func UrlFor(moduleName string, args ...string) string {
 	return config.UrlFor(moduleName, args...)
