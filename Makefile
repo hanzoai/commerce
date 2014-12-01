@@ -1,21 +1,21 @@
-pwd 			= $(shell pwd)
-os		        = $(shell uname | tr '[A-Z]' '[a-z]')
+pwd				= $(shell pwd)
+os				= $(shell uname | tr '[A-Z]' '[a-z]')
 platform        = $(os)_amd64
-sdk 	        = go_appengine_sdk_$(platform)-1.9.15
+sdk				= go_appengine_sdk_$(platform)-1.9.15
 sdk_path        = $(pwd)/.sdk
 goroot          = $(sdk_path)/goroot
 gopath          = $(sdk_path)/gopath
 goroot_pkg_path = $(goroot)/pkg/$(platform)_appengine/
 gopath_pkg_path = $(gopath)/pkg/$(platform)_appengine/
 
-deps 		    = $(shell cat Godeps | cut -d ' ' -f 1)
-modules 	    = crowdstart.io/api \
+deps			= $(shell cat Godeps | cut -d ' ' -f 1)
+modules			= crowdstart.io/api \
 				  crowdstart.io/checkout \
 				  crowdstart.io/platform \
 				  crowdstart.io/preorder \
 				  crowdstart.io/store
 
-gae_token 	    = 1/DLPZCHjjCkiegGp0SiIvkWmtZcUNl15JlOg4qB0-1r0MEudVrK5jSpoR30zcRFq6
+gae_token		= 1/DLPZCHjjCkiegGp0SiIvkWmtZcUNl15JlOg4qB0-1r0MEudVrK5jSpoR30zcRFq6
 
 gae_development = config/development/app.yaml \
 				  config/development/dispatch.yaml \
@@ -25,10 +25,17 @@ gae_development = config/development/app.yaml \
 				  preorder/app.dev.yaml \
 				  store/app.dev.yaml
 
+gae_staging  = config/staging \
+			   api/app.staging.yaml \
+			   checkout/app.staging.yaml \
+			   platform/app.staging.yaml \
+			   preorder/app.staging.yaml \
+			   store/app.staging.yaml
+
 gae_production  = config/production \
 				  api \
 				  checkout \
-			      platform \
+				  platform \
 				  preorder \
 				  store
 
@@ -47,15 +54,15 @@ mtime_file_watcher = https://gist.githubusercontent.com/zeekay/d92deea5091849d79
 # static assets, requisite javascript from assets -> static
 bebop = node_modules/.bin/bebop
 
-requisite 	   = node_modules/.bin/requisite
+requisite	   = node_modules/.bin/requisite
 requisite_opts = assets/js/store/store.coffee \
-		         assets/js/preorder/preorder.coffee \
-		         assets/js/checkout/checkout.coffee \
-		         -o static/js/store.js \
-		         -o static/js/preorder.js \
-		         -o static/js/checkout.js -m
+				 assets/js/preorder/preorder.coffee \
+				 assets/js/checkout/checkout.coffee \
+				 -o static/js/store.js \
+				 -o static/js/preorder.js \
+				 -o static/js/checkout.js -m
 
-stylus 		   = node_modules/.bin/stylus
+stylus		   = node_modules/.bin/stylus
 stylus_opts    = assets/css/preorder/preorder.styl \
 				 assets/css/store/store.styl \
 				 assets/css/checkout/checkout.styl \
@@ -63,10 +70,10 @@ stylus_opts    = assets/css/preorder/preorder.styl \
 
 # find command differs between bsd/linux thus the two versions
 ifeq ($(os), "linux")
-	packages 	 = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' -printf '%h\n' | sort -u | sed -e 's/.\//crowdstart.io\//')
+	packages	 = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' -printf '%h\n' | sort -u | sed -e 's/.\//crowdstart.io\//')
 	test_modules = $(shell find . -maxdepth 4 -mindepth 3 -name '*_test.go' -printf '%h\n' | sort -u | sed -e 's/.\//crowdstart.io\//')
 else
-	packages 	 = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' -print0 | xargs -0 -n1 dirname | sort --unique | sed -e 's/.\//crowdstart.io\//')
+	packages	 = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' -print0 | xargs -0 -n1 dirname | sort --unique | sed -e 's/.\//crowdstart.io\//')
 	test_modules = $(shell find . -maxdepth 4 -mindepth 2 -name '*_test.go' -print0 | xargs -0 -n1 dirname | sort --unique | sed -e 's/.\//crowdstart.io\//')
 endif
 
@@ -169,6 +176,13 @@ deploy-appengine: assets-minified
 		$(sdk_path)/appcfg.py --skip_sdk_update_check set_default_version $$module; \
 	done; \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/production
+
+deploy-appengine-staging: assets-minified
+	for module in $(gae_staging); do \
+		$(sdk_path)/appcfg.py --skip_sdk_update_check rollback $$module; \
+		$(sdk_path)/appcfg.py --skip_sdk_update_check update $$module; \
+	done; \
+	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/staging
 
 deploy-appengine-ci: assets-minified
 	for module in $(gae_production); do \

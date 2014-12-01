@@ -1,0 +1,17 @@
+application: crowdstart-io-staging
+
+dispatch:
+  - url: "static-staging.crowdstart.io/*"
+    module: default
+
+  - url: "secure-staging.crowdstart.io/*"
+    module: checkout
+
+  - url: "platform-staging.crowdstart.io/*"
+    module: platform
+
+  - url: "preorder-staging.crowdstart.io/*"
+    module: preorder
+
+  - url: "store-staging.crowdstart.io/*"
+    module: store

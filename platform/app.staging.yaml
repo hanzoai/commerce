@@ -1,5 +1,6 @@
-application: crowdstart-io
-module: preorder
+application: crowdstart-io-staging
+module: platform
+version: v1
 
 runtime: go
 api_version: go1
@@ -8,6 +9,7 @@ threadsafe: true
 handlers:
 - url: /.*
   script: _go_app
+  login: required
 
 env_variables:
-  ENV: development
+  ENV: staging
