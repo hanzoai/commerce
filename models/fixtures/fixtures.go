@@ -108,12 +108,18 @@ var All = delay.Func("install-all-fixtures", func(c appengine.Context) {
 	}
 
 	db.PutKey("product", "ar-1", &Product{
-		Slug:        "ar-1",
-		Title:       "SKULLY AR-1",
-		Headline:    "The World's smartest helmet.",
-		Excerpt:     "The World's smartest helmet, featuring a state-of-the-art head-up display, GPS and bluetooth.",
-		Description: "",
-		Variants:    variants,
+		Slug:     "ar-1",
+		Title:    "SKULLY AR-1",
+		Headline: "The World's smartest helmet.",
+		Excerpt:  "The World's smartest motorcycle helmet.",
+		Description: `The world’s smartest motorcycle helmet. SKULLY AR-1 is a light, high-quality,
+					  and full-faced motorcycle helmet equipped with a wide-angle rearview camera and
+					  transparent heads up display (HUD). With its live rearview feed and ability to
+					  provide telemetry and rider data such as speed, GPS directions, fuel*, and
+					  more, the SKULLY AR-1 not only eliminates blind spots, but allows the rider to
+					  focus on what matters most: the road ahead. SKULLY AR-1: Ride safer, look
+					  badass.`,
+		Variants: variants,
 		HeaderImage: Image{
 			Alt: "SKULLY AR-1",
 			Url: "//static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/544a257de4b015b5ef71847c/544a2657e4b0ff95316b8ea0/1414359306658/",
@@ -229,10 +235,14 @@ var All = delay.Func("install-all-fixtures", func(c appengine.Context) {
 	}
 
 	db.PutKey("product", "t-shirt", &Product{
-		Slug:        "t-shirt",
-		Title:       "SKULLY T-shirt",
-		Description: "",
-		Variants:    variants,
+		Slug:    "t-shirt",
+		Title:   "SKULLY T-shirt",
+		Excerpt: "Rock your SKULLY Nation pride with our official Team SKULLY t-shirt.",
+		Description: `Rock your SKULLY Nation pride with our official Team SKULLY t-shirt, the
+					  perfect way to rep your status as a rebel innovator and modern badass. Our
+					  premium quality tee comes in all sizes, with fits for both the dapper male and
+					  stylish female rider.`,
+		Variants: variants,
 		HeaderImage: Image{
 			Alt: "SKULLY T-SHIRT",
 			Url: "//static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/t/544011e7e4b0ea72c07a5fec/1413485036166/140919%20CoverPhoto5.jpg",
@@ -282,10 +292,14 @@ var All = delay.Func("install-all-fixtures", func(c appengine.Context) {
 	}
 
 	db.PutKey("product", "hat", &Product{
-		Slug:        "hat",
-		Title:       "SKULLY Hat",
-		Description: "",
-		Variants:    variants,
+		Slug:    "hat",
+		Title:   "SKULLY Hat",
+		Excerpt: "Look like a badass in our official SKULLY embroidered 6-panel flexible fitted cap.",
+		Description: `Look like a badass in our official SKULLY embroidered 6-panel flexible fitted
+					  cap, a hat designed with your comfort in mind. The pro-stitching on the crown
+					  will see your SKULLY hat through rain or shine, while its 6 embroidered eyelets
+					  will keep your dome well-ventilated and cool.`,
+		Variants: variants,
 		HeaderImage: Image{
 			Alt: "SKULLY HAT",
 			Url: "//static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/t/544011e7e4b0ea72c07a5fec/1413485036166/140919%20CoverPhoto5.jpg",
@@ -317,10 +331,15 @@ var All = delay.Func("install-all-fixtures", func(c appengine.Context) {
 	}
 
 	db.PutKey("product", "stickers", &Product{
-		Slug:        "stickers",
-		Title:       "SKULLY Stickers",
-		Description: "",
-		Variants:    variants,
+		Slug:    "stickers",
+		Title:   "SKULLY Stickers",
+		Excerpt: "No laptop or motorcycle is complete without a premium vinyl SKULLY sticker stretched across it.",
+		Description: `No laptop, motorcycle, or forehead is complete without a premium vinyl SKULLY
+					 sticker stretched across it (okay, maybe not your forehead). Slap these babies
+					 on your helmets, tablets, even your desk, and enjoy the flood of comments that
+					 will quickly follow when your fellow rebel innovators recognize you as part of
+					 the SKULLY Nation elite.`,
+		Variants: variants,
 		HeaderImage: Image{
 			Alt: "SKULLY STICKERS",
 			Url: "//static.squarespace.com/static/53dd2a15e4b06cbe07110bd5/t/53f0cd31e4b05292018da5e2/1408290101751/motorcyclist.jpg",
