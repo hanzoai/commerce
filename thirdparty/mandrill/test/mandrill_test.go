@@ -6,10 +6,10 @@ import (
 	"appengine"
 	"appengine/aetest"
 
-	"crowdstart.io/mail"
+	mail "crowdstart.io/thirdparty/mandrill"
 )
 
-func TestPingMandrill(t *testing.T) {
+func TestPing(t *testing.T) {
 	instance, err := aetest.NewInstance(nil)
 	if err != nil {
 		t.Fatal(err)
@@ -22,7 +22,7 @@ func TestPingMandrill(t *testing.T) {
 	}
 	ctx := appengine.NewContext(req)
 
-	if !mail.PingMandrill(ctx) {
+	if !mail.Ping(ctx) {
 		t.Error("Ping failed")
 	}
 }
@@ -43,11 +43,12 @@ func TestSendMail(t *testing.T) {
 	html := mail.GetHtml("../templates/confirmation_email.html")
 	err = mail.SendMail(ctx,
 		"from_name",
-		"dev@hanzo.ai",
+		"noreply@skullysystems.com",
 		"to_name",
 		"dev@hanzo.ai",
 		"test",
 		html,
+		nil,
 	)
 
 	if err != nil {
