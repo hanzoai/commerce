@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"strings"
 
 	"appengine"
 	"appengine/urlfetch"
@@ -27,14 +26,32 @@ func GetHtml(filename string) string {
 		log.Panic(err.Error())
 		return ""
 	}
-	return string(b)
-	s := string(b)
-	//s = strings.Replace(s, `\`, `\\`, -1)
-	s = strings.Replace(s, "\n", " ", -1)
-	s = strings.Replace(s, `"`, `\"`, -1)
-	//s = strings.Replace(s, "\t", "", -1)
-	//s = strings.Replace(s, " ", "", -1)
-	return s
+
+	// http://stackoverflow.com/a/16652683
+	o := bytes.NewBufferString("")
+	for _, c := range string(b) {
+		switch c {
+		case '\\', '"':
+			o.WriteRune('\\')
+			o.WriteRune(c)
+		case '\b':
+			o.WriteString(`\b`)
+		case '\t':
+			o.WriteString(`\t`)
+		case '\n':
+			o.WriteString(`\n`)
+		case '\f':
+			o.WriteString(`\f`)
+		case '\r':
+			o.WriteString(`\r`)
+		case '%': // For string formatting to not break.
+			o.WriteString("%%")
+		default:
+			o.WriteRune(c)
+		}
+	}
+
+	return o.String()
 }
 
 // PingMandrill checks if our credentials/url are okay
@@ -90,7 +107,7 @@ func SendMail(
     "key": "%s",
     "template_name": "Preorder confirmation",
     "message": {
-        "html": "%s"
+        "html": "%s",
         "subject": "%s",
         "from_email": "%s",
         "from_name": "%s",
