@@ -4,9 +4,9 @@ import (
 	"appengine"
 	"log"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/gin-gonic/gin"
 	"github.com/zeekay/go-logging"
+	// "github.com/davecgh/go-spew/spew"
 )
 
 // Custom logger
@@ -67,9 +67,6 @@ func (b AppengineBackend) Log(level logging.Level, calldepth int, record *loggin
 func New() *Logger {
 	log := new(Logger)
 
-	// Set spew to output tab indented dumps
-	spew.Config.Indent = "  "
-
 	// Backend that is appengine-aware
 	backend := new(AppengineBackend)
 	log.appengineBackend = backend
@@ -92,8 +89,9 @@ func New() *Logger {
 var std = New()
 
 func Dump(args ...interface{}) {
-	dump := spew.Sdump(args...)
-	std.Dump("\n%s", dump)
+	// spew.Config.Indent = "  "
+	// dump := spew.Sdump(args...)
+	// std.Dump("\n%s", dump)
 }
 
 func Debug(format string, args ...interface{}) {
