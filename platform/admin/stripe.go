@@ -119,3 +119,8 @@ func StripeCallback(c *gin.Context) {
 	// Success
 	template.Render(c, "stripe/success.html", "token", token.AccessToken)
 }
+
+// StripeCallback Stripe End Points
+func StripeWebhook(c *gin.Context) {
+	c.String(200, "ok")
+}
