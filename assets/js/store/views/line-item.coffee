@@ -1,6 +1,13 @@
 View = require 'mvstar/lib/view'
 util = require '../util'
 
+validNum = (v) ->
+  # yes javascript YES YESSSSS YESSsssssssss
+  typeof v == 'number' and not isNaN v
+
+neverBelowOne = (v) ->
+  if v < 1 then 1 else v
+
 class LineItemView extends View
   template: '#line-item-template'
 
@@ -8,13 +15,13 @@ class LineItemView extends View
     img:        'img.thumbnail   @src'
     sku:        'input.sku       @value'
     slug:       'input.slug      @value'
-    name:       'a.title'
+    name:       'div.title'
     desc:       'div.desc'
-    price:      '.price span'
-    quantity:   '.quantity input @value'
+    price:      '.price .money'
+    quantity:   '.quantity select @value'
     index:     ['input.sku       @name'
                 'input.slug      @name'
-                '.quantity input @name']
+                '.quantity select @name']
 
   computed:
     desc: (color, size) -> [color, size]
@@ -35,48 +42,51 @@ class LineItemView extends View
           "Order.Items.#{v}.Variant.SKU"
         when 'input.slug @name'
           "Order.Items.#{v}.Product.Slug"
-        when '.quantity input @name'
+        when '.quantity select @name'
           "Order.Items.#{v}.Quantity"
 
     price: (v) ->
       util.formatCurrency v
 
   events:
-    # Dismiss on click, escape, and scroll
-    'change .quantity input': 'updateQuantity'
+    'change .quantity select': 'updateQuantity'
+
+    # 'keypress .quantity input': (e, el) ->
+    #   @set el
 
     # Prevent user pressing enter
-    'keypress input,select': (e) ->
+    'keypress input,select': (e, el) ->
       if e.keyCode isnt 13
         true
       else
-        @updateQuantity(e)
+        @updateQuantity e, el
         false
 
     # Handle lineItem removals
     'click .remove-item': ->
-      cart = app.get('cart')
-      cart.removeProduct @state.sku
+      (app.get 'cart').removeProduct @state.sku
       @destroy()
 
-  updateQuantity: (e) ->
-    el = $(e.currentTarget)
-    e.preventDefault()
-    e.stopPropagation()
-
+  updateQuantity: (e, el) ->
     # Get quantity
-    quantity = parseInt(el.val(), 10)
+    quantity = parseInt $(el).val(), 10
+    console.log e, el, quantity
 
-    # Prevent less than one quantity
-    if quantity < 1 || isNaN quantity
+    # ensure sane input
+    unless validNum quantity
       quantity = 1
+    quantity = neverBelowOne quantity
+
+    # Since this is LITERALLY the object in the cart, it fucks up tremendously
+    # unless we clone our state object.
+    @state = $.extend {}, @state
 
     # Update quantity
     @set 'quantity', quantity
 
+
     # Update line item
-    cart = app.get('cart')
-    cart.setProduct @state.sku, @state
+    (app.get 'cart').setProduct @state.sku, @state
 
   destroy: ->
     @unbind()

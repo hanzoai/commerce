@@ -32,7 +32,7 @@ func IsLoggedIn(c *gin.Context) bool {
 
 func VerifyUser(c *gin.Context) error {
 	// Parse login form
-	f := new(models.LoginForm)
+	f := new(LoginForm)
 	if err := f.Parse(c); err != nil {
 		return err
 	}

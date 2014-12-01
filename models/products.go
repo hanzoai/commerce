@@ -2,32 +2,14 @@ package models
 
 import (
 	"fmt"
-	"math"
 	"net/http"
 	"reflect"
-	"strconv"
-	"strings"
 	"time"
 
-	humanize "github.com/dustin/go-humanize"
-	"github.com/gin-gonic/gin"
 	"github.com/mholt/binding"
 
-	"crowdstart.io/datastore"
 	"crowdstart.io/util/json"
 )
-
-func FloatPrice(price int64) float64 {
-	return math.Floor(float64(price)*100+0.5) / 1000000
-}
-
-func DisplayPrice(price int64) string {
-	f := strconv.FormatFloat(FloatPrice(price), 'f', 2, 64)
-	bits := strings.Split(f, ".")
-	decimal := bits[1]
-	integer, _ := strconv.ParseInt(bits[0], 10, 64)
-	return humanize.Comma(integer) + "." + decimal
-}
 
 type Product struct {
 	FieldMapMixin
@@ -43,81 +25,17 @@ type Product struct {
 	AddLabel    string // Pre-order now or Add to cart
 	HeaderImage Image
 
-	ImageIds []string
-	Images   []Image
+	Images []Image
 
-	VariantIds []string
-	Variants   []ProductVariant
-}
-
-func (p *Product) Save(c *gin.Context) error {
-	return p.saveVariants(c)
-}
-
-// TODO Implement this
-func (p *Product) saveImages(c *gin.Context) error {
-	return nil
-}
-
-func (p *Product) saveVariants(c *gin.Context) error {
-	p.VariantIds = make([]string, len(p.Variants))
-	genVars := make([]interface{}, len(p.Variants))
-	for i, variant := range p.Variants {
-		p.VariantIds[i] = variant.Id
-		genVars[i] = interface{}(variant)
-	}
-
-	db := datastore.New(c)
-
-	_, err := db.PutKeyMulti("variant", p.VariantIds, genVars)
-	return err
-}
-
-func (p *Product) Load(c *gin.Context) error {
-	err := p.loadImages(c)
-	if err != nil {
-		return err
-	}
-
-	return p.loadVariants(c)
-}
-
-func (p *Product) loadImages(c *gin.Context) error {
-	db := datastore.New(c)
-	var genImages []interface{}
-	err := db.GetKeyMulti("image", p.ImageIds, genImages)
-
-	if err != nil {
-		return err
-	}
-
-	p.Images = make([]Image, len(genImages))
-	for i, image := range genImages {
-		p.Images[i] = image.(Image)
-	}
-
-	return err
-}
-
-func (p *Product) loadVariants(c *gin.Context) error {
-	db := datastore.New(c)
-	var genVariants []interface{}
-	err := db.GetKeyMulti("variant", p.VariantIds, genVariants)
-
-	if err != nil {
-		return err
-	}
-
-	p.Variants = make([]ProductVariant, len(genVariants))
-	for i, variant := range genVariants {
-		p.Variants[i] = variant.(ProductVariant)
-	}
-
-	return err
+	Variants []ProductVariant
 }
 
 func (p Product) JSON() string {
 	return json.Encode(&p)
+}
+
+func (p Product) DisplayTitle() string {
+	return DisplayTitle(p.Title)
 }
 
 func (p Product) DisplayImage() Image {

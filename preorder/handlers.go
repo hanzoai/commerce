@@ -69,12 +69,12 @@ func GetPreorder(c *gin.Context) {
 	for _, product := range products {
 		productsMap[product.Slug] = product
 	}
-	allProductsJSON := json.Encode(productsMap)
+	productsJSON := json.Encode(productsMap)
 
 	template.Render(c, "preorder.html",
 		"tokenId", token.Id,
 		"user", user,
-		"allProductsJSON", allProductsJSON,
+		"productsJSON", productsJSON,
 		"contributionsJSON", contributionsJSON,
 		"orderJSON", orderJSON,
 		"userJSON", userJSON,
@@ -136,6 +136,7 @@ func SavePreorder(c *gin.Context) {
 	order.ShippingAddress = form.ShippingAddress
 	log.Debug("ShippingAddress: %v", user)
 
+	// TODO: Optimize this, multiget, use caching.
 	for i, lineItem := range order.Items {
 		log.Debug("Fetching variant for %v", lineItem.SKU())
 
@@ -143,12 +144,14 @@ func SavePreorder(c *gin.Context) {
 		if err := db.GetKey("variant", lineItem.SKU(), &lineItem.Variant); err != nil {
 			log.Error("Failed to find variant for: %v", lineItem.SKU(), c)
 			c.Fail(500, err)
+			return
 		}
 
 		// Fetch Product for LineItem from datastore
 		if err := db.GetKey("product", lineItem.Slug(), &lineItem.Product); err != nil {
 			log.Error("Failed to find product for: %v", lineItem.Slug(), c)
 			c.Fail(500, err)
+			return
 		}
 
 		// Set SKU so we can deserialize later
@@ -206,12 +209,7 @@ func Index(c *gin.Context) {
 	if !auth.IsLoggedIn(c) {
 		template.Render(c, "login.html")
 	} else {
-		user, err := auth.GetUser(c)
-		if err != nil {
-			log.Error("Error getting user", err)
-			template.Render(c, "login.html", "message", "A server side error occurred")
-			return
-		}
+		user := auth.GetUser(c)
 		tokens := getTokens(c, user.Email)
 
 		// Complain if user doesn't have any tokens
@@ -227,7 +225,7 @@ func Index(c *gin.Context) {
 
 func Login(c *gin.Context) {
 	// Parse login form
-	f := new(models.LoginForm)
+	f := new(auth.LoginForm)
 	if err := f.Parse(c); err != nil {
 		template.Render(c, "login.html", "message", "The email or password you entered is incorrect.")
 		return

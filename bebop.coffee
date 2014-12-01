@@ -1,8 +1,8 @@
 fs   = require 'fs'
 path = require 'path'
 
-requisite = 'node_files/.bin/requisite'
-stylus    = 'node_files/.bin/stylus'
+requisite  = 'node_modules/.bin/requisite'
+stylus     = 'node_modules/.bin/stylus -u autoprefixer-stylus --sourcemap --sourcemap-inline'
 
 files =
   checkout:
@@ -30,38 +30,50 @@ files =
       out: 'static/css'
 
 module.exports =
-  cwd: process.cwd() + '/assets'
+  cwd: process.cwd()
 
-  forceReload: true
+  exclude: [
+    /config\/production\/static/
+    /\.go$/
+    /\.yaml$/
+    /config.json$/
+  ]
 
   compilers:
     coffee: (src) ->
       # try to just optimize module changed
-      if /^js\/checkout/.test src
+      if /^assets\/js\/checkout/.test src
         return "#{requisite} #{files.checkout.js.in} -o #{files.checkout.js.out} -g -s"
-      if /^js\/preorder/.test src
+      if /^assets\/js\/preorder/.test src
         return "#{requisite} #{files.preorder.js.in} -o #{files.preorder.js.out} -g -s"
-      if /^js\/store/.test src
+      if /^assets\/js\/store/.test src
         return "#{requisite} #{files.store.js.in} -o #{files.store.js.out} -g -s"
 
-      if /^js\//.test src
+      if /^assets\/js\//.test src
         # compile everything
-        input  = (v.in for k,v of files).join ' '
-        output = ('-o ' + v.out for k,v of files).join ' '
+        output = []
+        input = []
+        for _, settings of files
+          if settings.js?
+            input.push settings.js.in
+            output.push settings.js.out
 
         return "#{requisite} #{input} #{output} -g -s"
 
     styl: (src) ->
       # try to just optimize module changed
-      if /^css\/checkout/.test src
-        return "#{files.checkout.css.in} -o #{files.checkout.css.out}"
-      if /^css\/preorder/.test src
-        return "#{files.preorder.css.in} -o #{files.preorder.css.out}"
-      if /^css\/store/.test src
-        return "#{files.store.css.in} -o #{files.store.css.out}"
+      if /^assets\/css\/checkout/.test src
+        return "#{stylus} #{files.checkout.css.in} -o #{files.checkout.css.out}"
+      if /^assets\/css\/preorder/.test src
+        return "#{stylus} #{files.preorder.css.in} -o #{files.preorder.css.out}"
+      if /^assets\/css\/store/.test src
+        return "#{stylus} #{files.store.css.in} -o #{files.store.css.out}"
 
-      if /^css\//.test src
+      if /^assets\/css\//.test src
         # compile everything
-        input  = (v.in for k,v of files).join ' '
+        input = []
+        for _, settings of files
+          if settings.css?.in?
+            input.push settings.css.in
 
         return "#{stylus} #{input} -o static/css/"

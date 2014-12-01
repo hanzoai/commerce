@@ -53,10 +53,13 @@ requisite_opts = assets/js/store/store.coffee \
 		         assets/js/checkout/checkout.coffee \
 		         -o static/js/store.js \
 		         -o static/js/preorder.js \
-		         -o static/js/checkout.js \
+		         -o static/js/checkout.js -m
 
 stylus 		   = node_modules/.bin/stylus
-stylus_opts    = assets/css/preorder/preorder.styl -o static/css assets/css/store/store.styl -o static/css
+stylus_opts    = assets/css/preorder/preorder.styl \
+				 assets/css/store/store.styl \
+				 assets/css/checkout/checkout.styl \
+				 -o static/css -u autoprefixer-stylus -u csso-stylus -c
 
 # find command differs between bsd/linux thus the two versions
 ifeq ($(os), "linux")
@@ -67,10 +70,16 @@ else
 	test_modules = $(shell find . -maxdepth 4 -mindepth 2 -name '*_test.go' -print0 | xargs -0 -n1 dirname | sort --unique | sed -e 's/.\//crowdstart.io\//')
 endif
 
+ifeq ($(v), 1)
+	verbose = -v
+else
+	verbose =
+endif
+
 export GOROOT  := $(goroot)
 export GOPATH  := $(gopath)
 
-all: deps assets test
+all: deps assets test install
 
 assets: deps-assets compile-css compile-js
 
@@ -128,13 +137,16 @@ install-deps:
 	# pip install watchdog
 
 serve: assets
-	$(sdk_path)/dev_appserver.py --host=0.0.0.0 --datastore_path=~/.gae_datastore.bin $(gae_development)
+	$(sdk_path)/dev_appserver.py --datastore_path=~/.gae_datastore.bin $(gae_development)
 
 serve-clear-datastore: assets
-	$(sdk_path)/dev_appserver.py --host=0.0.0.0 --datastore_path=~/.gae_datastore.bin --clear_datastore=true $(gae_development)
+	$(sdk_path)/dev_appserver.py --datastore_path=~/.gae_datastore.bin --clear_datastore=true $(gae_development)
 
 serve-no-restart: assets
-	$(sdk_path)/dev_appserver.py --host=0.0.0.0 --datastore_path=~/.gae_datastore.bin --automatic_restart=false $(gae_development)
+	$(sdk_path)/dev_appserver.py --datastore_path=~/.gae_datastore.bin --automatic_restart=false $(gae_development)
+
+serve-public: assets
+	$(sdk_path)/dev_appserver.py --host=0.0.0.0 --datastore_path=~/.gae_datastore.bin $(gae_development)
 
 tools:
 	goapp get $(tools) && \
@@ -142,10 +154,10 @@ tools:
 	gocode set lib-path "$(gopath_pkg_path):$(goroot_pkg_path)"
 
 test:
-	goapp test -timeout 60s $(test_modules)
+	goapp test -timeout 60s $(test_modules) $(verbose)
 
 bench: build
-	goapp test -timeout 60s $(test_modules) --bench=.
+	goapp test -timeout 60s $(test_modules) $(verbose) --bench=.
 
 deploy: test
 	go run scripts/deploy.go
@@ -166,4 +178,15 @@ deploy-appengine-ci: assets-minified
 	done; \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/production
 
-.PHONY: all assets compile-css compile-js live-reload build deploy deps deps-assets deps-go serve test tools
+# Usage: make datastore-export kind=user
+datastore-export:
+	mkdir -p _export/ && \
+	bulkloader.py --download \
+				  --url http://default.crowdstart.io/_ah/remote_api \
+				  --config_file config/production/bulkloader.yaml \
+				  --db_filename /tmp/bulkloader-db \
+				  --log_file /tmp/bulkloader-log \
+				  --result_db_filename /tmp/bulkloader-result \
+				  --kind $$kind \
+				  --filename _export/$$kind.csv && \
+	rm -rf /tmp/bulkloader.db /tmp/bulkloader.log /tmp/bulkloader-result.db

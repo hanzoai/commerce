@@ -7,16 +7,30 @@ import (
 	"net/url"
 	"strings"
 
+	"crowdstart.io/auth"
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models"
+	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
 
 	"github.com/gin-gonic/gin"
 
 	"appengine/urlfetch"
 )
+
+type stripeToken struct {
+	AccessToken          string `json:"access_token"`
+	Error                string `json:"error"`
+	ErrorDescription     string `json:"error_description"`
+	Livemode             bool   `json:"livemode"`
+	RefreshToken         string `json:"refresh_token"`
+	Scope                string `json:"scope"`
+	StripePublishableKey string `json:"stripe_publishable_key"`
+	StripeUserId         string `json:"stripe_user_id"`
+	TokenType            string `json:"token_type"`
+}
 
 // StripeCallback Stripe End Points
 func StripeCallback(c *gin.Context) {
@@ -59,7 +73,7 @@ func StripeCallback(c *gin.Context) {
 		return
 	}
 
-	token := new(TokenData)
+	token := new(stripeToken)
 
 	// try and extract the json struct
 	if err := json.Unmarshal(jsonBlob, token); err != nil {
@@ -72,20 +86,41 @@ func StripeCallback(c *gin.Context) {
 		return
 	}
 
-	// Success
-	template.Render(c, "stripe/success.html", "token", token.Access_token)
-
 	// Update the user
 	campaign := new(models.Campaign)
 
 	db := datastore.New(ctx)
 
-	// Get user instance
-	db.GetKey("campaign", "skully", campaign)
+	// Get user
+	email, err := auth.GetEmail(c)
+	if err != nil {
+		log.Panic("Unable to get email from session: %v", err)
+	}
 
-	// Update  stripe token
-	campaign.StripeToken = token.Access_token
+	// Get user instance
+	if err := db.GetKey("campaign", email, campaign); err != nil {
+		log.Panic("Unable to get campaign from database: %v", err)
+	}
+
+	// Update stripe data
+	campaign.Stripe.AccessToken = token.AccessToken
+	campaign.Stripe.Livemode = token.Livemode
+	campaign.Stripe.PublishableKey = token.StripePublishableKey
+	campaign.Stripe.RefreshToken = token.RefreshToken
+	campaign.Stripe.Scope = token.Scope
+	campaign.Stripe.TokenType = token.TokenType
+	campaign.Stripe.UserId = token.StripeUserId
 
 	// Update in datastore
-	db.PutKey("campaign", "skully", campaign)
+	if _, err := db.PutKey("campaign", email, campaign); err != nil {
+		log.Panic("Failed to update campaign: %v", err)
+	}
+
+	// Success
+	template.Render(c, "stripe/success.html", "token", token.AccessToken)
+}
+
+// StripeCallback Stripe End Points
+func StripeWebhook(c *gin.Context) {
+	c.String(200, "ok")
 }
