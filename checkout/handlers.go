@@ -86,5 +86,5 @@ func charge(c *gin.Context) {
 
 // Success
 func complete(c *gin.Context) {
-	template.Render(c, "checkout-complete.html")
+	template.Render(c, "complete.html")
 }
