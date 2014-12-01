@@ -2,32 +2,38 @@ View = require 'mvstar/lib/view'
 util = require '../util'
 
 class CartHover extends View
-  el: '.fixed-cart'
+  el: '.cart-hover'
 
   bindings:
-    quantity: '.total-quantity'
-    subtotal: '.subtotal .price span'
-    suffix:   '.details span.suffix'
+    quantity: '.cart-total-quantity'
+    subtotal: '.cart-price span'
+    suffix:   '.cart-suffix'
 
   formatters:
-    quantity: (v) -> util.humanizeNumber v
     subtotal: (v) -> util.formatCurrency v
     suffix:   (v) -> if v > 1 then 'items' else 'item'
+    quantity: (v) ->
+      @showCart() if v > 0
+      util.humanizeNumber v
+
+  showCart: ->
+    @el.animate {opacity: 1}, 400, 'swing'
 
   listen: ->
     cart = app.get 'cart'
 
     # listen to cart changes
-    cart.on 'quantity', (quantity) =>
-      @set 'quantity', quantity
-      @set 'suffix', quantity
+    cart.on 'quantity', (v) =>
+      @set 'quantity', v
+      @set 'suffix', v
 
-    cart.on 'subtotal', (subtotal) =>
-      @set 'subtotal', subtotal
+    cart.on 'subtotal', (v) =>
+      @set 'subtotal', v
 
     # set initial values
-    @set 'quantity', cart.get 'quantity'
-    @set 'suffix',   cart.get 'quantity'
+    quantity = cart.get 'quantity'
+    @set 'quantity', quantity
+    @set 'suffix',   quantity
     @set 'subtotal', cart.get 'subtotal'
 
 module.exports = CartHover

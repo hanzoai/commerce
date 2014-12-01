@@ -14,8 +14,6 @@ func init() {
 	router.GET("/products", products.List)
 	router.GET("/products/:slug", products.Get)
 
-	router.GET("/store", products.Store)
-
 	// Cart
 	router.GET("/cart", cart.Get)
 }

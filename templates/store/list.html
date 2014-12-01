@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block json %}
+<script>
+var allProducts = {{ productsJSON | safe }};
+</script>
+{% endblock %}
+
+{% block content_header %}
+<h1>Get the Gear</h1>
+{% endblock %}
+
+{% block content_header_width_class %}store-width{% endblock %}
+
+{% block content_width_class %}store-width{% endblock %}
+
+{% block content %}
+{% for product in products %}
+<div class="item sep-top">
+
+  <div class="product-viewer">
+    {% for image in product.Images %}
+        {% if forloop.First %}
+        <div class="preview-background" style="background-image:url({{ image.Url }})">
+          <img class="preview" src="{{ image.Url }}" alt="{{ image.Alt }}">
+        </div>
+        {% endif %}
+    {% endfor %}
+
+    {% if product.Images | length > 1 %}
+    <div class="gallery">
+      {% for image in product.Images %}
+      {% if forloop.First %}
+      <img class="thumbnail selected" src="{{ image.Url }}" alt="{{ image.Alt }}">
+      {% else %}
+      <img class="thumbnail" src="{{ image.Url }}" alt="{{ image.Alt }}">
+      {% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="product-text" data-slug="{{ product.Slug }}">
+    <div class="product-title">
+      <h1 class="product-name">{{ product.DisplayTitle()|safe }}</h1>
+      <h2 class="product-cost">${{ product.DisplayPrice() }}</h2>
+    </div>
+
+    <div class="product-body">
+      <div class="product-description">
+        <p>{{ product.Excerpt }}</p>
+        <p>Goblet, mouthfeel malt amber barley attenuation? brew kettle
+        terminal gravity. krausen bottom fermenting yeast barleywine
+        lambic conditioning trappist alcohol. pub seidel acid rest, "
+        amber lagering hydrometer." bottle conditioning hefe ester hard
+        cider, gravity! barley enzymes, bottom fermenting yeast,
+        brewhouse lager lauter tun lauter.</p>
+      </div>
+
+      <div class="product-config">
+        {% if product.VariantOptions("Style") %}
+        <label for="style">Style:</label>
+        <select name="Style" class="style">
+          {% for style in product.VariantOptions("Style") %}
+          <option value="{{ style }}">{{ style }}</option>
+          {% endfor %}
+        </select>
+        {% endif %}
+
+        {% if product.VariantOptions("Color") %}
+        <label for="color">Color:</label>
+        <select name="Color" class="color">
+          {% for color in product.VariantOptions("Color") %}
+          <option value="{{ color }}">{{ color }}</option>
+          {% endfor %}
+        </select>
+        {% endif %}
+
+        {% if product.VariantOptions("Size") %}
+        <label for="size">Size:</label>
+        <select name="Size" class="size">
+          {% for size in product.VariantOptions("Size") %}
+          <option value="{{ size }}">{{ size }}</option>
+          {% endfor %}
+        </select>
+        {% endif %}
+
+        <div class="quantity-checkout">
+          <div class="quantity">
+            <label for="quantity">Quantity:</label>
+            <select name="quantity">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+                <option value="7">7</option>
+                <option value="8">8</option>
+                <option value="9">9</option>
+                <option value="10">10</option>
+            </select>
+          </div>
+
+          <div class="checkout-options">
+              <button class="add-to-cart"><span>Add to Cart</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% endblock %}

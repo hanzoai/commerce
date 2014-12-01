@@ -1,0 +1,165 @@
+@import "node_modules/axis/axis"
+@import "card"
+@import "shake"
+
+.authorizeMessage
+  text-align: center
+
+.error
+  color: red
+
+#standard-checkout .checkout-form-section fieldset .field.error.required input,
+#standard-checkout .checkout-form-section fieldset .field.error.required select
+  border: 2px solid #d70404
+
+#form-wrapper > div:nth-child(2)
+  /*Shipping details.*/
+  display: none
+
+#standard-checkout
+  background: #f3f3f3
+
+#standard-checkout .button
+  background: #222
+
+.system-error
+  display: none !important
+
+div.dialog-screen-overlay.system-error-overlay
+  display: none !important
+  z-index: -1 !important
+
+// Play with a few axis features
+table
+  table(striped: false)
+  border: none
+
+label
+  label()
+
+.field
+  field: right 90%
+
++html5-inputs()
+  input: aqua 60%
+  box-sizing border-box
+
+// CHECKOUT
+.checkout-width
+  max-width 1000px
+
+.checkout
+  display table
+  width 100%
+  margin-bottom 50px
+
+h2
+  width: 100%
+  padding 30px 0
+
+.cart-content
+  table
+    td
+      vertical-align middle
+      padding-right 10px
+
+    td.item-image
+      width 100px
+      padding 0px
+      img
+        width 100px
+
+    td.item-desc
+      text-align center
+
+    .item-desc
+      border-left 0px
+
+    .quantity
+      text-align right
+
+    .price
+      text-align right
+
+    td.label
+      width 90%
+      text-align right
+
+    td.value
+      text-align right
+
+  table.totals
+    float right
+    width 200px
+    border 0
+    tr:not(:last-child)
+      td
+        border-top 0
+        background-color #fff
+
+.order-information
+  .billing-information
+    label
+      .field
+        width 50%
+
+.shipping-information
+  .options
+    margin-bottom 30px
+    margin-left 30px
+    display inline-block
+
+.payment-information
+  h2
+    width 90%
+  .cards
+    text-align center
+  .credit-card
+    width 350px
+    text-align center
+    margin 0 auto
+
+    button
+      width 100%
+
+    .field
+      width 100%
+      text-align left
+
+    input
+      display block
+      width 100%
+      box-sizing border-box
+
+    label
+      display block
+      width 100%
+
+    .expiry-cvc
+      .field
+        width 32.5%
+        display inline-block
+        input
+          width 90%
+
+      .card-expiry-year
+        input
+          width 100%
+
+.policy-information
+  padding-top: 55px
+  clear: both
+  width 100%
+  text-align center
+  a
+    padding 20px
+
+.payment-title
+  float: left
+  width: 45%
+
+.payment-cards
+  float: right
+
+.payment-cards img
+  margin-bottom: -5px
