@@ -8,7 +8,6 @@ import (
 	"github.com/mholt/binding"
 
 	"crowdstart.io/datastore"
-	"crowdstart.io/util/log"
 )
 
 type Order struct {
@@ -38,10 +37,6 @@ type Order struct {
 	// ShippingOption  ShippingOption
 }
 
-func (o Order) DisplaySubtotal() string {
-	return DisplayPrice(o.Subtotal)
-}
-
 func (o Order) Description() string {
 	buffer := bytes.NewBufferString("")
 
@@ -54,12 +49,20 @@ func (o Order) Description() string {
 	return buffer.String()
 }
 
+func (o Order) DisplaySubtotal() string {
+	return DisplayPrice(o.Subtotal)
+}
+
 func (o Order) DisplayTax() string {
 	return DisplayPrice(o.Tax)
 }
 
 func (o Order) DisplayTotal() string {
 	return DisplayPrice(o.Total)
+}
+
+func (o Order) DecimalTotal() int64 {
+	return int64(FloatPrice(o.Total))
 }
 
 // Use binding to validate that there are no errors
@@ -84,9 +87,6 @@ func (o Order) Validate(req *http.Request, errs binding.Errors) binding.Errors {
 func (o *Order) Populate(db *datastore.Datastore) error {
 	// TODO: Optimize this, multiget, use caching.
 	for i, item := range o.Items {
-		log.Debug("Fetching variant for:")
-		log.Dump(item.Variant)
-
 		// Fetch Variant for LineItem from datastore
 		if err := db.GetKey("variant", item.SKU(), &item.Variant); err != nil {
 			return err
@@ -111,4 +111,45 @@ func (o *Order) Populate(db *datastore.Datastore) error {
 	// Update grand total
 	o.Total = o.Subtotal + o.Tax
 	return nil
+}
+
+type PaymentAccount struct {
+	CVV2   int
+	Month  int
+	Year   int
+	Expiry string
+	Number string
+	Type   string `schema:"-"`
+}
+
+type Charge struct {
+	ID             string
+	Live           bool
+	Paid           bool
+	Desc           string
+	Email          string
+	Amount         uint64
+	FailMsg        string
+	Created        int64
+	Refunded       bool
+	Captured       bool
+	FailCode       string
+	Statement      string
+	AmountRefunded uint64
+}
+
+type ShippingOption struct {
+	Name  string
+	Price int64
+}
+
+func (so ShippingOption) Validate(req *http.Request, errs binding.Errors) binding.Errors {
+	if so.Name == "" {
+		errs = append(errs, binding.Error{
+			FieldNames:     []string{"Name"},
+			Classification: "InputError",
+			Message:        "Shipping option has no name.",
+		})
+	}
+	return errs
 }

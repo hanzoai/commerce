@@ -113,7 +113,7 @@ $cardNumber = $("#stripe-number")
 $expiryMonth = $("#stripe-expiry-month")
 $expiryYear = $("#stripe-expiry-year")
 $cvc = $("#stripe-cvc")
-$token = $("input[name=\"TokenId\"]")
+$token = $("input[name=\"StripeToken\"]")
 
 # Checks each input and does dumb checks to see if it might be a valid card
 validateCard = ->

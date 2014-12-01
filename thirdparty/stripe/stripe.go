@@ -19,11 +19,12 @@ func Charge(ctx appengine.Context, token string, order *models.Order) (string, e
 	// Stripe advises using client-level methods
 	// in a concurrent context
 	sc := &client.API{}
-	sc.Init(config.Get().Stripe.APISecret, backend)
+	sc.Init(config.Stripe.APISecret, backend)
 
-	log.Debug("Amount: %d ", order.Total)
+	log.Debug("Token: %v, Amount: %v", token, order.Total)
+
 	params := &stripe.ChargeParams{
-		Amount:   uint64(order.Total),
+		Amount:   uint64(order.DecimalTotal()),
 		Currency: currency.USD,
 		Card:     &stripe.CardParams{Token: token},
 		Desc:     order.Description(),
