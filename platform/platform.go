@@ -12,6 +12,8 @@ func init() {
 
 	router.GET("/", admin.Index)
 
+	router.GET("/dashboard", middleware.LoginRequired(), admin.Dashboard)
+
 	router.GET("/login", admin.Login)
 	router.POST("/login", admin.SubmitLogin)
 	router.GET("/logout", admin.Logout)
@@ -22,8 +24,12 @@ func init() {
 	router.GET("/profile", middleware.LoginRequired(), admin.Profile)
 	router.POST("/profile", admin.SubmitProfile)
 
-	router.GET("/dashboard", middleware.LoginRequired(), admin.Dashboard)
 	router.GET("/connect", middleware.LoginRequired(), admin.Connect)
 
+	// Callback for stripe connect
 	router.GET("/stripe/callback", middleware.LoginRequired(), admin.StripeCallback)
+
+	// Stripe webhook, we don't do anything with this atm.
+	router.GET("/stripe/hook", admin.StripeWebhook)
+	router.POST("/stripe/hook", admin.StripeWebhook)
 }

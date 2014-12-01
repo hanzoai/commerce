@@ -1,67 +1,52 @@
 package checkout
 
 import (
-	"errors"
-	"strconv"
-	"strings"
+	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/middleware"
+	"crowdstart.io/datastore"
 	"crowdstart.io/models"
 	"crowdstart.io/util/form"
-	"github.com/gin-gonic/gin"
+	"crowdstart.io/util/log"
 )
 
+// Load order from checkout form
 type CheckoutForm struct {
 	Order models.Order
 }
 
+// Parse form
 func (f *CheckoutForm) Parse(c *gin.Context) error {
 	if err := form.Parse(c, f); err != nil {
 		return err
 	}
 
-	// Nasty shit. Please fix.
-	if len(f.Order.Items) < 2 {
-		return nil
-	}
-
-	// For some reason gorilla/schema deserializes an extra nil lineItem,
-	// we need to remove this.
-	if f.Order.Items[0].SKU() == "" {
-		slice := make([]models.LineItem, 0)
-		f.Order.Items = append(slice, f.Order.Items[1:]...)
-	}
+	form.SchemaFix(&f.Order) // Fuck you schema
 
 	return nil
 }
 
-type AuthorizeForm struct {
-	User          models.User
-	Order         models.Order
-	RawExpiry     string
-	ShipToBilling bool
+// Populate form with data from database
+func (f *CheckoutForm) Populate(db *datastore.Datastore) error {
+	return f.Order.Populate(db)
 }
 
-func (f *AuthorizeForm) Parse(c *gin.Context) error {
+func (f CheckoutForm) Validate(c *gin.Context) {}
+
+// Charge after successful authorization
+type ChargeForm struct {
+	User          models.User
+	Order         models.Order
+	ShipToBilling bool
+	StripeToken   string
+}
+
+func (f *ChargeForm) Parse(c *gin.Context) error {
 	if err := form.Parse(c, f); err != nil {
+		log.Panic("Unable to parse form: %v", err)
 		return err
 	}
 
-	ctx := middleware.GetAppEngine(c)
-	ctx.Debugf("%v", f.RawExpiry)
-
-	// Parse raw expiry
-	parts := strings.Split(f.RawExpiry, " / ")
-	if len(parts) != 2 {
-		return errors.New("Invalid expiry")
-	}
-
-	month, _ := strconv.Atoi(parts[0])
-	year, _ := strconv.Atoi(parts[1])
-
-	f.Order.Account.Month = month
-	f.Order.Account.Year = year
-	f.Order.Account.Expiry = strings.Join(parts, "")
+	form.SchemaFix(&f.Order) // Fuck you schema
 
 	if f.ShipToBilling {
 		f.Order.ShippingAddress = f.Order.BillingAddress
@@ -70,7 +55,7 @@ func (f *AuthorizeForm) Parse(c *gin.Context) error {
 	return nil
 }
 
-func (f AuthorizeForm) Validate() (errs []string) {
+func (f ChargeForm) Validate() (errs []string) {
 	if f.Order.BillingAddress.Line1 == "" {
 		errs = append(errs, "Address line 1 is required")
 	}
@@ -101,12 +86,25 @@ func (f AuthorizeForm) Validate() (errs []string) {
 	if f.Order.ShippingAddress.Country == "" {
 		errs = append(errs, "Country is required")
 	}
-	if len(string(f.Order.Account.CVV2)) < 3 {
-		errs = append(errs, "Confirmation code is required.")
+
+	if f.StripeToken == "" {
+		errs = append(errs, "Invalid stripe token")
 	}
-	if len(f.Order.Account.Expiry) != 4 {
-		errs = append(errs, "Invalid expiry")
-	}
+
+	// if len(string(f.Order.Account.CVV2)) < 3 {
+	// 	errs = append(errs, "Confirmation code is required.")
+	// }
+	// if len(f.Order.Account.Expiry) != 4 {
+	// 	log.Debug(f.Order.Account.Expiry)
+	// 	errs = append(errs, "Invalid expiry")
+	// }
+
+	// log.Info("Processing order. %#v", form.Order)
+	// err := form.Order.Process(c)
+	// if err != nil {
+	// 	log.Error(err.Error())
+	// 	return
+	// }
 
 	return errs
 }

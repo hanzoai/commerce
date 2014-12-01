@@ -6,14 +6,21 @@ runtime: go
 api_version: go1
 threadsafe: true
 
+builtins:
+- remote_api: on
+
 inbound_services:
 - warmup
 
 handlers:
-- url: /install-fixtures
+- url: /fixtures/.*
   script: _go_app
   login: required
   secure: always
+
+- url: /_ah/remote_api
+  script: _go_app
+  login: admin
 
 - url: /_ah/queue/go/delay
   script: _go_app
