@@ -73,6 +73,3 @@ pagespeed:
 
   disabled_rewriters:
     - FlushSubresources
-
-env_variables:
-  ENV: production

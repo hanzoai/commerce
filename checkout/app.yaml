@@ -15,6 +15,3 @@ handlers:
   script: _go_app
   secure: always
   login: required
-
-env_variables:
-  ENV: production
