@@ -2,56 +2,63 @@ animate()
   transition: all .3s
   backface-visibility: hidden
 
+font-stack()
+  font-family: "proxima-nova"
+  font-size: 0.85em
+  text-transform: uppercase
+  letter-spacing: 2px
+  font-weight: 400
+  font-style: normal
+  line-height: 2em
+
 dropdown()
-   label,
-   ul li
-    display: block
-    padding: 12px 18px
-    text-align: left
-    animate()
+  a, a:visited
+    color:white
+    font-stack()
 
-   label:hover,
-   ul li:hover
-    color: white
-    cursor: pointer
+  label,
+  ul li
+   display: block
+   padding: 12px 18px
+   text-align: left
+   animate()
 
-   li
-    font-family: "proxima-nova"
-    text-transform: uppercase
-    letter-spacing: 2px
-    font-weight: 400
-    font-style: normal
-    line-height: 2em
+  label:hover,
+  ul li:hover
+   color: white
+   cursor: pointer
 
-   label
-    z-index: 2
-    font-family: "proxima-nova"
-    font-size: 0.85em
-    text-transform: uppercase
-    letter-spacing: 2px
-    font-weight: 400
-    font-style: normal
-    line-height: 2em
+  li
+   font-family: "proxima-nova"
+   text-transform: uppercase
+   letter-spacing: 2px
+   font-weight: 400
+   font-style: normal
+   line-height: 2em
 
-   input
-    display: none
+  label
+   z-index: 2
+   font-stack()
 
-   input ~ ul
-    position: absolute
-    visibility: hidden
-    opacity: 0
-    width: 130px
-    z-index: 1
-    background: #333
-    margin-top: -10px
+  input
+   display: none
 
-   input:checked + label
-    color: white
-    background: #222
+  input ~ ul
+   position: absolute
+   visibility: hidden
+   opacity: 0
+   width: 130px
+   z-index: 1
+   background: #333
+   margin-top: -10px
 
-   input:checked ~ ul
-    visibility: visible
-    opacity: 1
-    position: absolute
-    margin-top: 0px
-    animate()
+  input:checked + label
+   color: white
+   background: #222
+
+  input:checked ~ ul
+   visibility: visible
+   opacity: 1
+   position: absolute
+   margin-top: 0px
+   animate()
