@@ -61,8 +61,8 @@ func (o Order) DisplayTotal() string {
 	return DisplayPrice(o.Total)
 }
 
-func (o Order) DecimalTotal() int64 {
-	return int64(FloatPrice(o.Total))
+func (o Order) DecimalTotal() uint64 {
+	return uint64(FloatPrice(o.Total) * 100)
 }
 
 // Use binding to validate that there are no errors
