@@ -1,27 +1,35 @@
-application: crowdstart-io
-module: preorder
+application: crowdstart-io-staging
+module: default
 version: v1
 
 runtime: go
 api_version: go1
 threadsafe: true
 
-instance_class: F2
-automatic_scaling:
-  min_idle_instances: 1
+builtins:
+- remote_api: on
+
+inbound_services:
+- warmup
 
 handlers:
-- url: /humans.txt
-  static_files: static/humans.txt
-  upload: static/humans.txt
-
-- url: /robots.txt
-  static_files: static/robots.txt
-  upload: static/robots.txt
-
-- url: /.*
+- url: /fixtures/.*
   script: _go_app
+  login: required
   secure: always
+
+- url: /_ah/remote_api
+  script: _go_app
+  login: admin
+
+- url: /_ah/queue/go/delay
+  script: _go_app
+  login: admin
+
+- url: /*
+  static_dir: static
+  http_headers:
+    Access-Control-Allow-Origin: "*"
 
 pagespeed:
   enabled_rewriters:
@@ -35,7 +43,7 @@ pagespeed:
     # - InlineImages
     # - InlinePreviewImages
     - CollapseWhitespace
-    # - CombineHeads
+    - CombineHeads
     - ElideAttributes
     - RemoveComments
     - RemoveQuotes
@@ -50,8 +58,8 @@ pagespeed:
     - WebpOptimization
     # - ImageConvertToJpeg
     # - ImageRecompressJpeg
-    - ImageProgressiveJpeg
-    - ImageRecompressPng
+    # - ImageProgressiveJpeg
+    # - ImageRecompressPng
     - ImageStripMetadata
     - ImageStripColorProfile
     # - ImageResize
@@ -67,4 +75,4 @@ pagespeed:
     - FlushSubresources
 
 env_variables:
-  ENV: production
+  ENV: staging

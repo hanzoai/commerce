@@ -1,14 +1,10 @@
-application: crowdstart-io
-module: preorder
+application: crowdstart-io-staging
+module: store
 version: v1
 
 runtime: go
 api_version: go1
 threadsafe: true
-
-instance_class: F2
-automatic_scaling:
-  min_idle_instances: 1
 
 handlers:
 - url: /humans.txt
@@ -19,31 +15,39 @@ handlers:
   static_files: static/robots.txt
   upload: static/robots.txt
 
+- url: /apple-touch-icon.png
+  static_files: static/apple-touch-icon.png
+  upload: static/apple-touch-icon.png
+
+- url: /apple-touch-icon-precomposed.png
+  static_files: static/apple-touch-icon-precomposed.png
+  upload: static/apple-touch-icon-precomposed.png
+
 - url: /.*
   script: _go_app
-  secure: always
+  login: required
 
 pagespeed:
   enabled_rewriters:
     # HTML
-    # - ProxyCss
-    # - ProxyImages
-    # - ProxyJs
+    - ProxyCss
+    - ProxyImages
+    - ProxyJs
     - ConvertMetaTags
-    # - InlineCss
-    # - InlineJs
-    # - InlineImages
-    # - InlinePreviewImages
+    - InlineCss
+    - InlineJs
+    - InlineImages
+    - InlinePreviewImages
     - CollapseWhitespace
-    # - CombineHeads
+    - CombineHeads
     - ElideAttributes
     - RemoveComments
     - RemoveQuotes
     - LeftTrimUrls
 
     # css
-    # - CombineCss
-    # - MoveCssToHead
+    - CombineCss
+    - MoveCssToHead
     - MinifyCss
 
     # images
@@ -59,12 +63,12 @@ pagespeed:
     - ImageAddDimensions
 
     # js
-    # - CombineJs
-    # - JsOptimize
-    # - DeferJs
+    - CombineJs
+    - JsOptimize
+    - DeferJs
 
   disabled_rewriters:
     - FlushSubresources
 
 env_variables:
-  ENV: production
+  ENV: staging
