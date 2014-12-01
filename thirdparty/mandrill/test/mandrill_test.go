@@ -41,6 +41,10 @@ func TestSendTemplate(t *testing.T) {
 	ctx := appengine.NewContext(areq)
 
 	req := mail.NewSendTemplateReq()
+	// req.AddRecipient("dev@hanzo.ai", "Zach Kelling")
+	// req.AddRecipient("dev@hanzo.ai", "Michael W")
+	// req.AddRecipient("dev@hanzo.ai", "Marvel Mathew")
+	// req.AddRecipient("dev@hanzo.ai", "David Tai")
 	req.AddRecipient("dev@hanzo.ai", "Test Mandrill")
 
 	req.Message.Subject = "Test subject"
