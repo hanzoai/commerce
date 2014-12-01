@@ -26,5 +26,10 @@ func init() {
 
 	router.GET("/connect", middleware.LoginRequired(), admin.Connect)
 
+	// Callback for stripe connect
 	router.GET("/stripe/callback", middleware.LoginRequired(), admin.StripeCallback)
+
+	// Stripe webhook, we don't do anything with this atm.
+	router.GET("/stripe/hook", admin.StripeWebhook)
+	router.POST("/stripe/hook", admin.StripeWebhook)
 }
