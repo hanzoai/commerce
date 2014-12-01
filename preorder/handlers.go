@@ -91,7 +91,7 @@ func hasToken(tokens []models.InviteToken, id string) bool {
 	return false
 }
 
-var confirmationHtml = mail.GetHtml("../mail/templates/confirmation_email")
+var confirmationHtml = mail.GetTemplate("../mail/templates/confirmation_email")
 var sendConfirmation = delay.Func("sendConfirmation", mail.SendMail)
 
 func SavePreorder(c *gin.Context) {
