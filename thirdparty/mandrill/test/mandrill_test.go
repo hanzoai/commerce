@@ -35,21 +35,19 @@ func TestSendMail(t *testing.T) {
 	}
 	defer instance.Close()
 
-	req, err := instance.NewRequest("", "", nil)
+	areq, err := instance.NewRequest("", "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx := appengine.NewContext(req)
-	html := mail.GetHtml("../templates/confirmation_email.html")
-	err = mail.SendMail(ctx,
-		"from_name",
-		"noreply@skullysystems.com",
-		"to_name",
-		"dev@hanzo.ai",
-		"test",
-		html,
-		nil,
-	)
+	ctx := appengine.NewContext(areq)
+	//html := mail.GetTemplate("../templates/confirmation_email.html")
+	req := mail.NewSendTemplateReq()
+	req.AddRecipient("dev@hanzo.ai", "marvel")
+	req.Message.Subject = "Test email"
+	req.Message.FromEmail = "noreply@skullysystems.com"
+	req.Message.FromName = "asdjhkashdkjasdnjk1"
+	req.TemplateName = "preorder-confirmation-template"
+	err = mail.SendMail(ctx, req)
 
 	if err != nil {
 		t.Error(err)
