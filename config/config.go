@@ -127,7 +127,7 @@ func Development() *Config {
 	config.Hosts["preorder"] = "localhost:8080"
 	config.Hosts["store"] = "localhost:8080"
 
-	config.StaticUrl = "localhost:8080/static"
+	config.StaticUrl = "//localhost:8080/static"
 
 	// TODO: Create dev versions somehow
 	config.Salesforce.ConsumerKey = "3MVG9xOCXq4ID1uElRYWhpUWjXSbiTVg4WO6q9DvWdvBjQ_DFlwSc7jZ9AbY3z9Jv_V29W7xq1nPjTYQhYJqF"
