@@ -64,12 +64,15 @@ func charge(c *gin.Context) {
 		return
 	}
 
-	log.Debug("Charging order: %#v", form.Order)
+	log.Debug("Charging order.")
+	log.Dump(form.Order)
 	if _, err := stripe.Charge(ctx, form.StripeToken, &form.Order); err != nil {
-		log.Error(err.Error())
+		log.Error("Stripe Charge failed: %v", err)
 		c.Fail(500, err)
 		return
 	}
+
+	c.Redirect(301, config.UrlFor("checkout", "/complete"))
 }
 
 // Success

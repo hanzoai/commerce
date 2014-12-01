@@ -36,10 +36,8 @@ func (f CheckoutForm) Validate(c *gin.Context) {}
 type ChargeForm struct {
 	User          models.User
 	Order         models.Order
-	RawExpiry     string
 	ShipToBilling bool
-
-	StripeToken string
+	StripeToken   string
 }
 
 func (f *ChargeForm) Parse(c *gin.Context) error {
