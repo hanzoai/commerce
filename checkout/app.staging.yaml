@@ -1,14 +1,10 @@
-application: crowdstart-io
+application: crowdstart-io-staging
 module: checkout
 version: v1
 
 runtime: go
 api_version: go1
 threadsafe: true
-
-instance_class: F2
-automatic_scaling:
-  min_idle_instances: 1
 
 handlers:
 - url: /.*
@@ -17,4 +13,4 @@ handlers:
   login: required
 
 env_variables:
-  ENV: production
+  ENV: staging
