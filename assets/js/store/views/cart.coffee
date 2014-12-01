@@ -3,20 +3,27 @@ LineItemView = require './line-item'
 util         = require '../util'
 
 class CartView extends View
-  el: '.sqs-fullpage-shopping-cart-content'
+  el: '.shopping-cart'
   bindings:
-    subtotal: '.subtotal .price span'
+    subtotal: '.subtotal .money'
 
   formatters:
     subtotal: (v) -> util.formatCurrency v
 
   render: ->
-    $('.cart-container tbody').html ''
+    $('.cart-content tbody').html ''
     index = 0
 
     cart = app.get 'cart'
 
-    @set 'quantity', cart.get 'quantity'
+    cart.on 'subtotal', (v) =>
+      @set 'subtotal', v
+
+    cart.on 'quantity', (v) =>
+      if v == 0
+        @el.find('.cart-content').animate {opacity: 0, height: '0px'}, 500
+        @el.find('.empty-message').fadeIn(500)
+
     @set 'subtotal', cart.get 'subtotal'
 
     for sku, item of cart.getProducts()
@@ -25,9 +32,10 @@ class CartView extends View
       window.view = view
       view.render()
       view.bind()
-      $('.cart-container tbody').append view.$el
+      $('.cart-content tbody').append view.$el
 
-    cart.on 'subtotal', (subtotal) =>
-      @set 'subtotal', subtotal
+    if cart.get('quantity') == 0
+      @el.find('.cart-content').hide()
+      @el.find('.empty-message').show()
 
 module.exports = CartView

@@ -26,6 +26,9 @@ $ make tools
 You can then use `make serve` to run the local development server and `make
 test` to run tests.
 
+You can create a local `config.json` file containing configuration variables to
+customize settings locally (for instance to disable the auto fixture loading).
+
 ## Deployment
 We use [codeship](http://codeship.io) for continuous integration and deployment.
 Pushing to master will (in the case of a successful test run) deploy the project
