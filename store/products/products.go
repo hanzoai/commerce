@@ -3,7 +3,7 @@ package products
 import (
 	"github.com/gin-gonic/gin"
 
-	// "crowdstart.io/config"
+	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
 	"crowdstart.io/util/json"
@@ -18,7 +18,7 @@ func List(c *gin.Context) {
 	_, err := db.Query("product").GetAll(db.Context, &products)
 	if err != nil {
 		// Something is seriously wrong. i.e. products not loaded into db
-		log.Panic(err.Error())
+		log.Panic("Unable to fetch all products from database: %v", err)
 		return
 	}
 
@@ -36,16 +36,16 @@ func List(c *gin.Context) {
 }
 
 func Get(c *gin.Context) {
-	// c.Redirect(301, config.UrlFor("store"))
-
 	// Redirect to store cuz SKULLY.
+	c.Redirect(301, config.UrlFor("store"))
+	return
+
 	db := datastore.New(c)
 	slug := c.Params.ByName("slug")
 
 	product := new(models.Product)
-	err := db.GetKey("product", slug, product)
-	if err != nil { // Invalid slug
-		log.Error(err.Error())
+	if err := db.GetKey("product", slug, product); err != nil {
+		log.Error("Invalid slug: %v", err)
 		template.Render(c, "error/404.html")
 		return
 	}
