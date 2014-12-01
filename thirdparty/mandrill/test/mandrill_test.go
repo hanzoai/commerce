@@ -28,7 +28,6 @@ func TestPing(t *testing.T) {
 }
 
 func TestSendTemplate(t *testing.T) {
-	// t.Skip("for now")
 	instance, err := aetest.NewInstance(nil)
 	if err != nil {
 		t.Fatal(err)
@@ -40,15 +39,15 @@ func TestSendTemplate(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := appengine.NewContext(areq)
-	//html := mail.GetTemplate("../templates/confirmation_email.html")
-	req := mail.NewSendTemplateReq()
-	req.AddRecipient("dev@hanzo.ai", "marvel")
-	req.AddRecipient("dev@hanzo.ai", "zach")
 
-	req.Message.Subject = "Test email"
+	req := mail.NewSendTemplateReq()
+	req.AddRecipient("dev@hanzo.ai", "Test Mandrill")
+
+	req.Message.Subject = "Test subject"
 	req.Message.FromEmail = "noreply@skullysystems.com"
-	req.Message.FromName = "asdjhkashdkjasdnjk1"
+	req.Message.FromName = "Tester"
 	req.TemplateName = "preorder-confirmation-template"
+
 	err = mail.SendTemplate(ctx, &req)
 
 	if err != nil {
@@ -57,7 +56,6 @@ func TestSendTemplate(t *testing.T) {
 }
 
 func TestSend(t *testing.T) {
-	// t.Skip("for now")
 	instance, err := aetest.NewInstance(nil)
 	if err != nil {
 		t.Fatal(err)
@@ -69,16 +67,16 @@ func TestSend(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := appengine.NewContext(areq)
+
 	html := mail.GetTemplate("../templates/confirmation_email.html")
 	req := mail.NewSendReq()
-	req.AddRecipient("dev@hanzo.ai", "marvel")
-	req.AddRecipient("dev@hanzo.ai", "zach")
+	req.AddRecipient("dev@hanzo.ai", "Test Mandrill")
 
-	req.Message.Subject = "Test email"
+	req.Message.Subject = "Test subject"
 	req.Message.FromEmail = "noreply@skullysystems.com"
-	req.Message.FromName = "asdjhkashdkjasdnjk1"
+	req.Message.FromName = "Tester"
 	req.Message.Html = html
-	//req.TemplateName = "preorder-confirmation-template"
+
 	err = mail.Send(ctx, &req)
 
 	if err != nil {
