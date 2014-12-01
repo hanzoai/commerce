@@ -24,7 +24,10 @@ Thank you for your order.
 {% block js %}
 <script type="text/javascript" src="{{ urlFor("/js/checkout.js") }}"></script>
 <script>
-    // Clear cart
-    app.get('cart').clear()
+$(document).ready(function() {
+    var cart = app.get('cart');
+    cart.fetch()
+    cart.clear()
+})
 </script>
 {% endblock %}
