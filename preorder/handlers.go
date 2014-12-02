@@ -20,7 +20,6 @@ import (
 // GET /:token
 func GetPreorder(c *gin.Context) {
 	db := datastore.New(c)
-
 	// Fetch token
 	token := new(models.InviteToken)
 	db.GetKey("invite-token", c.Params.ByName("token"), token)
