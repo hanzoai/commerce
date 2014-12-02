@@ -91,13 +91,13 @@ func StripeCallback(c *gin.Context) {
 
 	db := datastore.New(ctx)
 
-	// Get user
+	// Get email from the session
 	email, err := auth.GetEmail(c)
 	if err != nil {
 		log.Panic("Unable to get email from session: %v", err)
 	}
 
-	// Get user instance
+	// Get campaign using the email
 	if err := db.GetKey("campaign", email, campaign); err != nil {
 		log.Panic("Unable to get campaign from database: %v", err)
 	}
