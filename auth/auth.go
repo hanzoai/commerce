@@ -59,11 +59,11 @@ func VerifyUser(c *gin.Context) error {
 	}
 
 	// Set the loginKey value to the user id
-	return Login(c, loginKey, f.Email)
+	return Login(c, f.Email)
 }
 
 func Login(c *gin.Context, email string) error {
-	return Set(c, loginKey email)
+	return Set(c, loginKey, email)
 }
 
 func Logout(c *gin.Context) {
