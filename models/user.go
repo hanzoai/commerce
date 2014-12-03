@@ -27,7 +27,16 @@ type User struct {
 	Campaigns       []Campaign `schema:"-" datastore:"-"`
 	PasswordHash    []byte     `schema:"-" json:"-"`
 
-	FBAccessToken string
+	Facebook struct {
+		AccessToken string `json:"-"`
+		UserId 		 	string `json:"id"`
+		FirstName  	string `json:"first_name"` `datastore:"-"`
+		LastName 	 	string `json:"last_name"` `datastore:"-"`
+		MiddleName 	string `json:"middle_name"`
+		Name 			 	string `json:"name"`
+		NameFormat 	string `json:"name_format"` // For Chinese, Japanese, and Korean names. Possibly used in the future.
+		Email 			string `json:"email"` `datastore:"-"`
+	}
 }
 
 func (u User) Name() string {
