@@ -26,12 +26,9 @@ func DisplayOrders(c *gin.Context) {
 		return
 	}
 
-	db := datastore.New(c)
-	m := new(models.User)
-	err = db.GetKey(kind, key, m)
-	if err != nil {
-		c.Fail(500, err)
-		return
+	user := auth.GetUser(c)
+	if user == nil {
+		log.Panic("User was not found")
 	}
 
 	orders := make([]interface{}, len(m.OrdersIds))
@@ -40,6 +37,9 @@ func DisplayOrders(c *gin.Context) {
 	}
 
 	err = db.GetMulti(m.OrdersIds, orders)
+	if err != nil {
+		log.Panic("Error while retrieving orders", err)
+	}
 
 	o := make([]models.Order, len(orders))
 	for i, v := range orders {
