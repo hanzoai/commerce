@@ -356,6 +356,11 @@ var All = delay.Func("install-all-fixtures", func(c appengine.Context) {
 		},
 	})
 
+	if count, _ := db.Query("user").Count(c); count > 1 {
+		log.Debug("Contributor fixtures already loaded, skipping.")
+		return
+	}
+
 	csvfile, err := os.Open("resources/contributions.csv")
 	defer csvfile.Close()
 	if err != nil {
