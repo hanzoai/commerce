@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"net/url"
 	"encoding/json"
+	"math/rand"
+	"io/ioutil"
+	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -39,7 +43,9 @@ const appId = ""
 const base = "localhost:8080"
 
 // URL to Callback
-const redirectUri = url.QueryEscape(base + "/auth/facebook")
+var redirectUri = url.QueryEscape(base + "/auth/facebook")
+
+const graphVersion = "v2.2"
 
 func Callback(c *gin.Context) {
 	req := c.Request
@@ -68,7 +74,10 @@ func Callback(c *gin.Context) {
 	ctx := middleware.GetAppEngine(c)
 	client := urlfetch.Client(ctx)
 
-	res, err := client.Do("GET", fmt.Sprintf("/v2.2/me&access_token=%s", accessToken))
+	req = http.NewRequest("GET",
+	 fmt.Sprintf("http://graph.facebook.com/%s/me&access_token=%s", graphVersion, accessToken))
+
+	res, err := client.Do(req)
 	if err != nil {
 		log.Panic("Graph API not available", err)
 	}
@@ -124,4 +133,33 @@ func LoginUser(c *gin.Context) {
 	if err != nil {
 		log.Panic("loginReq failed.", err)
 	}
+}
+
+func IsAccessTokenExpired(c *gin.Context) bool {
+	user := GetUser(c)
+	if user == nil {
+		return true
+	}
+
+	if user.Facebook.AccessToken == "" {
+		return true
+	}
+
+	ctx := middleware.GetAppEngine(c)
+	client :- urlfetch.Client(ctx)
+
+	res, err := client.Do("GET", fmt.Sprintf("http://graph.facebook.com/v2.2/me/permission?access_token=%s", user.Facebook.AccessToken))
+	defer res.Body.Close()
+	if err != nil {
+		log.Panic("Checking permissions using the Graph API failed", err)
+	}
+
+	jsonBlob, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		log.Panic("Error reading the permissions response", err)
+	}
+
+	j := string(jsonBlob)
+	
+	return strings.Contains(j, "public_profile") 
 }
