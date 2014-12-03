@@ -18,7 +18,7 @@ type Product struct {
 	Title       string
 	Headline    string
 	Excerpt     string
-	Description string
+	Description string `datastore:",noindex"`
 	Released    time.Time
 	Available   bool
 	Stocked     int
