@@ -19,36 +19,6 @@ func Login(c *gin.Context) {
 	}
 }
 
-func DisplayOrders(c *gin.Context) {
-	key, err := auth.Get(c, "login-key")
-	if err != nil {
-		c.Fail(500, err)
-		return
-	}
-
-	user := auth.GetUser(c)
-	if user == nil {
-		log.Panic("User was not found")
-	}
-
-	orders := make([]interface{}, len(m.OrdersIds))
-	for i, v := range orders {
-		orders[i] = interface{}(v)
-	}
-
-	err = db.GetMulti(m.OrdersIds, orders)
-	if err != nil {
-		log.Panic("Error while retrieving orders", err)
-	}
-
-	o := make([]models.Order, len(orders))
-	for i, v := range orders {
-		o[i] = v.(models.Order)
-	}
-
-	template.Render(c, "index.html", "orders", o)
-}
-
 func NewUser(c *gin.Context, f auth.RegistrationForm) error {
 	m := f.User
 	db := datastore.New(c)

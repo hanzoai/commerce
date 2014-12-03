@@ -11,56 +11,30 @@ import (
 	"appengine"
 )
 
-// Gets the orders associated with a user's email.
-func Orders(ctx appengine.Context, email string) ([]models.Order, error) {
-	db := datastore.New(ctx)
+func DisplayOrders(c *gin.Context) {
+	user := auth.GetUser(c)
+	if user == nil {
+		log.Panic("User was not found")
+	}
 
-	var user models.User
-	err := db.GetKey("user", email, user)
+	orders := make([]interface{}, len(m.OrdersIds))
+	for i, v := range orders {
+		orders[i] = interface{}(v)
+	}
+
+	err = db.GetMulti(m.OrdersIds, orders)
 	if err != nil {
-		return nil, err
+		log.Panic("Error while retrieving orders", err)
 	}
 
-	rawOrders := make([]interface{}, len(user.OrdersIds))
-	err = db.GetKeyMulti("order", user.OrdersIds, rawOrders)
-	if err != nil {
-		return nil, err
+	o := make([]models.Order, len(orders))
+	for i, v := range orders {
+		o[i] = v.(models.Order)
 	}
 
-	if rawOrders == nil {
-		return nil, errors.New("No orders found")
-	}
-
-	orders := make([]models.Order, len(rawOrders))
-
-	for i := range orders {
-		orders[i] = rawOrders[i].(models.Order)
-	}
-
-	return orders, nil
-}
-
-func ListOrders(c *gin.Context) {
-	email, err := auth.GetEmail(c)
-	if err != nil {
-		return
-	}
-	ctx := c.MustGet("appengine").(appengine.Context)
-	orders, err := Orders(ctx, email)
-
-	if err != nil {
-
-	}
-
-	// TODO Figure out a way to separately display pending orders and completed orders.
-	var pendingOrders []models.Order
-	for _, order := range orders {
-		if !order.Cancelled && !order.Shipped {
-			pendingOrders = append(pendingOrders, order)
-		}
-	}
-
-	// Render the template using filtered orders
+	// TODO: Filter shipped and pending orders
+	// and pass into template.Render
+	template.Render(c, "index.html", "orders", o)
 }
 
 func ModifyOrder(c *gin.Context) {
