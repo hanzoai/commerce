@@ -46,33 +46,20 @@ func DisplayOrders(c *gin.Context) {
 		o[i] = v.(models.Order)
 	}
 
-	if err != nil {
-		c.Fail(500, err)
-		return
-	}
 	template.Render(c, "index.html", "orders", o)
 }
 
 func NewUser(c *gin.Context, f auth.RegistrationForm) error {
 	m := f.User
 	db := datastore.New(c)
-	q := db.Query(kind).
-		Filter("Email =", m.Email).
-		Limit(1)
 
-	var admins [1]models.User
-	_, err := q.GetAll(db.Context, &admins)
-
-	if err != nil {
+	user := new(models.User)
+	db.GetKey("user", m.Email, user)
+	if user == nil {
+		m.PasswordHash, _ = f.PasswordHash()
+		_, err := db.Put("user", m)
 		return err
 	}
 
-	m.PasswordHash, _ = f.PasswordHash()
-
-	if len(admins) == 1 {
-		return errors.New("Email is already registered")
-	} else {
-		_, err := db.Put("admin", m)
-		return err
-	}
+	return errors.New("Email is already registered")
 }
