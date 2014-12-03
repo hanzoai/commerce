@@ -1,19 +1,17 @@
 package facebook
 
 import (
-	"errors"
 	"fmt"
-	"net/http"
 	"net/url"
+	"encoding/json"
 
-	"code.google.com/p/goauth2/oauth"
 	"github.com/gin-gonic/gin"
-	fb "github.com/huandu/facebook"
 
 	"crowdstart.io/auth"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models"
 	"crowdstart.io/util/log"
+	"crowdstart.io/datastore"
 
 	"appengine/urlfetch"
 )
@@ -25,7 +23,8 @@ The OAuth stuff in this package is modelled after platform/admin/stripe.go
 // state is an arbitrary string which should be sent in order
 // to prevent CSRF.
 // http://stackoverflow.com/a/22892986
-const state = func() string {
+var state = func() string {
+	n := 16
 	b := make([]rune, n)
 	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 	for i := range b {
@@ -37,10 +36,10 @@ const state = func() string {
 const appId = ""
 
 // Grab this from the config (depending on if in production or not).
-const root = "localhost:8080"
+const base = "localhost:8080"
 
 // URL to Callback
-const redirectUri = net.QueryEscape("http://" + root + "/auth/facebook")
+const redirectUri = url.QueryEscape(base + "/auth/facebook")
 
 func Callback(c *gin.Context) {
 	req := c.Request
@@ -58,13 +57,59 @@ func Callback(c *gin.Context) {
 	accessToken := req.URL.Query().Get("access_token")
 	if accessToken == "" {
 		log.Panic("There is no access token")
-		return
 	}
 
-	user = models.User{}
+	resState := req.URL.Query().Get("state")
+	if state != resState {
+		log.Panic("CSRF attempt \n\tExpected: %s \nt\tActual: %s",
+			state, resState)
+	}
+
+	ctx := middleware.GetAppEngine(c)
+	client := urlfetch.Client(ctx)
+
+	res, err := client.Do("GET", fmt.Sprintf("/v2.2/me&access_token=%s", accessToken))
+	if err != nil {
+		log.Panic("Graph API not available", err)
+	}
+
+	jsonBlob, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		log.Panic("Error reading from Graph API", err)
+	}
+
+	var user models.User
+	err = json.Unmarshal(jsonBlob, &user.Facebook)
+	if err != nil {
+		log.Panic("Error parsing Graph API JSON response", err)
+	}
+
+	db := datastore.New(ctx)
+
+	existingUser := new(models.User)
+	db.GetKey("user", user.Email, existingUser)
+
+	if existingUser == nil {
+		existingUser = user
+	}
+	existingUser.FirstName = user.Facebook.FirstName
+	existingUser.LastName = user.Facebook.LastName
+	existingUser.Email = user.Facebook.Email
+
+	_, err := db.PutKey("user", existingUser.Email, user)
+	if err != nil {
+		log.Panic("Error creating user using Facebook", err)
+	}
+
+	err = auth.Login(c, user.Email)
+	if err != nil {
+		log.Panic("Error while setting session", err)
+	}
+
+	c.Redirect(301, "/")
 }
 
-func Login(c *gin.Context) {
+func LoginUser(c *gin.Context) {
 	url := fmt.Sprintf(
 		"https://www.facebook.com/dialog/oauth?client_id=%s&redirect_uri=%s&state=%s&scope=%s,%s&response_type=%s",
 		appId, redirectUri, state,
@@ -74,7 +119,8 @@ func Login(c *gin.Context) {
 	ctx := middleware.GetAppEngine(c)
 	client := urlfetch.Client(ctx)
 
-	loginReq, err := client.Do("GET", url)
+	res, err := client.Do("GET", url)
+	defer res.Body.Close()
 	if err != nil {
 		log.Panic("loginReq failed.", err)
 	}
