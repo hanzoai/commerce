@@ -26,6 +26,8 @@ type User struct {
 	Email           string
 	Campaigns       []Campaign `schema:"-" datastore:"-"`
 	PasswordHash    []byte     `schema:"-" json:"-"`
+
+	FBAccessToken string
 }
 
 func (u User) Name() string {
