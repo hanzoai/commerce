@@ -30,12 +30,12 @@ type User struct {
 	Facebook struct {
 		AccessToken string `json:"-"`
 		UserId 		 	string `json:"id"`
-		FirstName  	string `json:"first_name"` `datastore:"-"`
-		LastName 	 	string `json:"last_name"` `datastore:"-"`
+		FirstName  	string `json:"first_name" datastore:"-"`
+		LastName 	 	string `json:"last_name" datastore:"-"`
 		MiddleName 	string `json:"middle_name"`
 		Name 			 	string `json:"name"`
 		NameFormat 	string `json:"name_format"` // For Chinese, Japanese, and Korean names. Possibly used in the future.
-		Email 			string `json:"email"` `datastore:"-"`
+		Email 			string `json:"email" datastore:"-"`
 	}
 }
 
