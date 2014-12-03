@@ -30,6 +30,14 @@ func IsLoggedIn(c *gin.Context) bool {
 	return err == nil && value != ""
 }
 
+func IsFacebookUser(c *gin.Context) bool {
+	user := GetUser(c)
+	if user  == nil {
+		return false
+	}
+	return user.Facebook.AccessToken != "" // Checks if AccessToken is set
+}
+
 func VerifyUser(c *gin.Context) error {
 	// Parse login form
 	f := new(LoginForm)
@@ -51,7 +59,11 @@ func VerifyUser(c *gin.Context) error {
 	}
 
 	// Set the loginKey value to the user id
-	return Set(c, loginKey, f.Email)
+	return Login(c, loginKey, f.Email)
+}
+
+func Login(c *gin.Context, email string) error {
+	return Set(c, loginKey email)
 }
 
 func Logout(c *gin.Context) {
