@@ -199,6 +199,21 @@ func Staging() *Config {
 	return config
 }
 
+// Staging Settings
+func Skully() *Config {
+	config := Production()
+
+	config.Hosts["default"] = "static.skullysystems.com"
+	config.Hosts["api"] = "api.skullysystems.com"
+	config.Hosts["checkout"] = "secure.skullysystems.com"
+	config.Hosts["platform"] = "platform.skullysystems.com"
+	config.Hosts["preorder"] = "preorder.skullysystems.com"
+	config.Hosts["store"] = "store.skullysystems.com"
+
+	config.StaticUrl = "//static.skullysystems.com"
+	return config
+}
+
 // Get current config object
 func Get() *Config {
 	if cachedConfig != nil {
@@ -214,6 +229,8 @@ func Get() *Config {
 		pwd := os.Getenv("PWD")
 		if strings.Contains(pwd, "s~crowdstart-io-staging") {
 			cachedConfig = Staging()
+		} else if strings.Contains(pwd, "s~skully-crowdstart") {
+			cachedConfig = Skully()
 		} else {
 			cachedConfig = Production()
 		}
