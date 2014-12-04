@@ -79,4 +79,4 @@ exports.customizeAr1 = ->
 
 exports.menu = ->
   $('.menu-icon').click ->
-    $('.site').toggleClass('mobile')
+    $('body').toggleClass('mobile')

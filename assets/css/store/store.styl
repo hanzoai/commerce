@@ -114,46 +114,47 @@ a:active
       width 0
       display none
 
-  .site.mobile
-    left -80%
-
-    .header
+  body.mobile
+    .site
       left -80%
 
-      .nav
-        overflow visible
+      .header
+        left -80%
 
-        .links
-          width 100%
-          display block
-          position fixed
-          top 0px
-          left 20%
-          width 80%
-          height 100%
-          background-color #000
+        .nav
+          overflow visible
 
-          > li
+          .links
+            width 100%
             display block
-            width 100%
-            text-align center
-            padding 20px
-            box-sizing border-box
+            position fixed
+            top 0px
+            left 20%
+            width 80%
+            height 100%
+            background-color #000
 
-            label
+            > li
+              display block
+              width 100%
               text-align center
-              padding 0px
-
-          > li.link a.big
               padding 20px
-              margin-top 20px
+              box-sizing border-box
 
-          li ul
-            position initial
-            width 100%
+              label
+                text-align center
+                padding 0px
 
-            li
-              text-align center
+            > li.link a.big
+                padding 20px
+                margin-top 20px
+
+            li ul
+              position initial
+              width 100%
+
+              li
+                text-align center
 
 @media all and ( min-width: 700px )
   .nav
@@ -432,6 +433,7 @@ section > .item
   border-radius 45px
   display table
   opacity 0.9
+  transition right .3s ease 0s
   a
     color #fff
     display table-cell
@@ -448,6 +450,9 @@ section > .item
   .cart-subtotal
     float right
     padding-top 1px
+
+body.mobile .cart-hover
+  right 105%
 
 // SHOPPING CART
 .cart-width
