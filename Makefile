@@ -32,11 +32,11 @@ gae_staging  = config/staging \
 			   preorder/app.staging.yaml \
 			   store/app.staging.yaml
 
-gae_skully  = config/staging \
-			  api/app.staging.yaml \
-			  checkout/app.staging.yaml \
-			  preorder/app.staging.yaml \
-			  store/app.staging.yaml
+gae_skully  = config/skully \
+			  api/app.skully.yaml \
+			  checkout/app.skully.yaml \
+			  preorder/app.skully.yaml \
+			  store/app.skully.yaml
 
 gae_production  = config/production \
 				  api \
