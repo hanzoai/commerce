@@ -9,3 +9,6 @@ dispatch:
 
   - url: "preorder.skullysystems.com/*"
     module: preorder
+
+  - url: "preorder.skully.co/*"
+    module: preorder
