@@ -10,6 +10,7 @@ class StoreApp extends App
       routes.store.setupViews
       routes.store.gallery
       routes.store.setupStylesAndSizes
+      routes.store.menu
     ]
 
     '/cart': [
