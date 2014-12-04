@@ -10,7 +10,6 @@ class StoreApp extends App
       routes.store.setupViews
       routes.store.gallery
       routes.store.setupStylesAndSizes
-      routes.store.menu
     ]
 
     '/cart': [
@@ -20,7 +19,10 @@ class StoreApp extends App
 
     '/:prefix?': routes.cart.setupHover
 
-    '*': routes.cart.click
+    '*': [
+      routes.cart.click
+      routes.store.menu
+    ]
 
   start: ->
     # create cart and fetch state from cookie
