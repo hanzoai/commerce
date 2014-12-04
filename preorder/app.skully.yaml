@@ -1,0 +1,67 @@
+application: skully-crowdstart
+module: preorder
+version: v1
+
+runtime: go
+api_version: go1
+threadsafe: true
+
+instance_class: F2
+automatic_scaling:
+  min_idle_instances: 1
+
+handlers:
+- url: /humans.txt
+  static_files: static/humans.txt
+  upload: static/humans.txt
+
+- url: /robots.txt
+  static_files: static/robots.txt
+  upload: static/robots.txt
+
+- url: /.*
+  script: _go_app
+  secure: always
+
+pagespeed:
+  enabled_rewriters:
+    # HTML
+    # - ProxyCss
+    # - ProxyImages
+    # - ProxyJs
+    - ConvertMetaTags
+    # - InlineCss
+    # - InlineJs
+    # - InlineImages
+    # - InlinePreviewImages
+    - CollapseWhitespace
+    # - CombineHeads
+    - ElideAttributes
+    - RemoveComments
+    - RemoveQuotes
+    - LeftTrimUrls
+
+    # css
+    # - CombineCss
+    # - MoveCssToHead
+    - MinifyCss
+
+    # images
+    - WebpOptimization
+    # - ImageConvertToJpeg
+    # - ImageRecompressJpeg
+    - ImageProgressiveJpeg
+    - ImageRecompressPng
+    - ImageStripMetadata
+    - ImageStripColorProfile
+    # - ImageResize
+    # - LazyloadImages
+    - ImageAddDimensions
+
+    # js
+    # - CombineJs
+    # - JsOptimize
+    # - DeferJs
+
+  disabled_rewriters:
+    - FlushSubresources
