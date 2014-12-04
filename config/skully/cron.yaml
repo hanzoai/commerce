@@ -1,0 +1,5 @@
+cron:
+- description: Datastore backup
+  url: /_ah/datastore_admin/backup.create?name=automated_backup-&kind=user&kind=order&kind=contribution&kind=product&kind=campaign&filesystem=gs&gs_bucket_name=skully-crowdstart-backup
+  schedule: every 12 hours
+  target: ah-builtin-python-bundle
