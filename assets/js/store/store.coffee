@@ -7,9 +7,9 @@ class StoreApp extends App
   routes:
     '/': [
       routes.cart.setupHover
-      routes.store.setupViews
       routes.store.gallery
       routes.store.setupStylesAndSizes
+      routes.store.setupViews
     ]
 
     '/cart': [
