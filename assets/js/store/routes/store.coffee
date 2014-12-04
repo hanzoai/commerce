@@ -76,3 +76,7 @@ exports.customizeAr1 = ->
     else
       $slides[1].fadeIn()
       $slides[0].fadeOut()
+
+exports.menu = ->
+  $('.menu-icon').click ->
+    $('.site').toggleClass('mobile')
