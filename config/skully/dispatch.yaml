@@ -1,0 +1,11 @@
+application: skully-crowdstart
+
+dispatch:
+  - url: "store.skullysystems.com/*"
+    module: store
+
+  - url: "secure.skullysystems.com/*"
+    module: checkout
+
+  - url: "preorder.skullysystems.com/*"
+    module: preorder

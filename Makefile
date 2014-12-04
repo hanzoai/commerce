@@ -32,6 +32,12 @@ gae_staging  = config/staging \
 			   preorder/app.staging.yaml \
 			   store/app.staging.yaml
 
+gae_skully  = config/staging \
+			  api/app.staging.yaml \
+			  checkout/app.staging.yaml \
+			  preorder/app.staging.yaml \
+			  store/app.staging.yaml
+
 gae_production  = config/production \
 				  api \
 				  checkout \
@@ -183,6 +189,13 @@ deploy-appengine-staging: assets-minified
 		$(sdk_path)/appcfg.py --skip_sdk_update_check update $$module; \
 	done; \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/staging
+
+deploy-appengine-skully: assets-minified
+	for module in $(gae_skully); do \
+		$(sdk_path)/appcfg.py --skip_sdk_update_check rollback $$module; \
+		$(sdk_path)/appcfg.py --skip_sdk_update_check update $$module; \
+	done; \
+	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/skully
 
 deploy-appengine-ci: assets-minified
 	for module in $(gae_production); do \
