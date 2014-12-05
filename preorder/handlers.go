@@ -3,15 +3,12 @@ package preorder
 import (
 	"errors"
 
-	"appengine/delay"
-
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/auth"
+	"crowdstart.io/config"
 	"crowdstart.io/datastore"
-	"crowdstart.io/middleware"
 	"crowdstart.io/models"
-	mail "crowdstart.io/thirdparty/mandrill"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
@@ -90,8 +87,6 @@ func hasToken(tokens []models.InviteToken, id string) bool {
 	}
 	return false
 }
-
-var sendConfirmation = delay.Func("sendConfirmation", mail.SendTemplate)
 
 func SavePreorder(c *gin.Context) {
 	form := new(PreorderForm)
@@ -185,7 +180,8 @@ func SavePreorder(c *gin.Context) {
 	}
 
 	// ctx appengine.Context, from_name, from_email, to_name, to_email, subject string
-	ctx := middleware.GetAppEngine(c)
+	// ctx := middleware.GetAppEngine(c)
+
 	// sendConfirmation.Call(ctx, ctx,
 	// 	"SKULLY",
 	// 	"noreply@skullysystems.com",
@@ -195,17 +191,17 @@ func SavePreorder(c *gin.Context) {
 	// 	confirmationHtml,
 	// )
 
-	req := mail.NewSendTemplateReq()
-	req.AddRecipient(user.Email, user.Name())
+	// req := mail.NewSendTemplateReq()
+	// req.AddRecipient(user.Email, user.Name())
 
-	req.Message.Subject = "Preorder information changed"
-	req.Message.FromEmail = "noreply@skullysystems.com"
-	req.Message.FromName = "SKULLY"
-	req.TemplateName = "preorder-confirmation-template"
+	// req.Message.Subject = "Preorder information changed"
+	// req.Message.FromEmail = "noreply@skullysystems.com"
+	// req.Message.FromName = "SKULLY"
+	// req.TemplateName = "preorder-confirmation-template"
 
-	sendConfirmation.Call(ctx, ctx, &req)
+	// sendConfirmation.Call(ctx, ctx, &req)
 
-	c.Redirect(301, "../thanks")
+	c.Redirect(301, config.UrlFor("preorder", "/thanks"))
 }
 
 func Thanks(c *gin.Context) {
