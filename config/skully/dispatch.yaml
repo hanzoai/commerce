@@ -1,6 +1,9 @@
 application: skully-crowdstart
 
 dispatch:
+  - url: "static.skullysystems.com/*"
+    module: default
+
   - url: "store.skullysystems.com/*"
     module: store
 
@@ -8,7 +11,4 @@ dispatch:
     module: checkout
 
   - url: "preorder.skullysystems.com/*"
-    module: preorder
-
-  - url: "preorder.skully.co/*"
     module: preorder
