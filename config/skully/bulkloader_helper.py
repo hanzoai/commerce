@@ -19,11 +19,22 @@ def list_to_str(value):
         return value
     return ''
 
+
 def list_skus_to_str(value):
     """
     Strip `SKULLY-` prefix from SKUs.
     """
     return list_to_str(value).replace('SKULLY-', '')
+
+
+def na_if_none(value):
+    """
+    Return N/A instead of empty string.
+    """
+    if not value:
+        return 'N/A'
+    return value
+
 
 def generate_preorder(value, bulkload_state):
     """
@@ -52,18 +63,38 @@ def join_address_lines(value, bulkload_state):
     """
     row = bulkload_state.current_dictionary
     if 'ShippingAddress.Line1' not in row or 'ShippingAddress.Line2' not in row:
-        return ''
+        return u''
 
-    line1 = row['ShippingAddress.Line1'] or ''
-    line2 = row['ShippingAddress.Line2'] or ''
+    line1 = row.get('ShippingAddress.Line1', u'')
+    line2 = row.get('ShippingAddress.Line2', u'')
 
-    return (line1 + ' ' + line2).strip()
+    return u' '.join([line1, line2]).strip()
 
 
-def na_if_none(value):
+def generate_shipping_address(value, bulkload_state):
     """
-    Return N/A instead of empty string.
+    Generates preorder information from Items.SKU_ and Items.Quantity.
     """
-    if not value:
-        return 'N/A'
-    return value
+    row = bulkload_state.current_dictionary
+    address = []
+    keys = {
+        'line1':      'ShippingAddress.Lines',
+        'line2':      'ShippingAddress.Line2',
+        'city':       'ShippingAddress.City',
+        'state':      'ShippingAddress.State',
+        'postal_code':'ShippingAddress.PostalCode',
+        'country':    'ShippingAddress.Country',
+    }
+
+    get = lambda key: row.get(keys[key], u'')
+
+    if keys['line1'] not in row and keys['line2'] not in row:
+        return u''
+
+    # Add Street address
+    address.append(u'{0} {1}'.format(get('line1'), get('line2')))
+    # Add City, State, zip line
+    address.append(u'{0}, {1} {2}'.format(get('city'), get('state'), get('postal_code')))
+    # Add country
+    address.append(get('country'))
+    return '\n'.join([line.strip() for line in address if line])
