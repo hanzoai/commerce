@@ -489,29 +489,29 @@ transformers:
       # Type: Boolean Stats: 912 properties of this type in this kind.
       import_transform: transform.regexp_bool('true', re.IGNORECASE)
 
-    # - property: ShippingAddress.City
-    #   external_name: ShippingAddress.City
-    #   # Type: String Stats: 912 properties of this type in this kind.
+    - property: ShippingAddress.City
+      external_name: ShippingAddress.City
+      # Type: String Stats: 912 properties of this type in this kind.
 
-    # - property: ShippingAddress.Country
-    #   external_name: ShippingAddress.Country
-    #   # Type: String Stats: 912 properties of this type in this kind.
+    - property: ShippingAddress.Country
+      external_name: ShippingAddress.Country
+      # Type: String Stats: 912 properties of this type in this kind.
 
-    # - property: ShippingAddress.Line1
-    #   external_name: ShippingAddress.Line1
-    #   # Type: String Stats: 912 properties of this type in this kind.
+    - property: ShippingAddress.Line1
+      external_name: ShippingAddress.Line1
+      # Type: String Stats: 912 properties of this type in this kind.
 
-    # - property: ShippingAddress.Line2
-    #   external_name: ShippingAddress.Line2
-    #   # Type: String Stats: 912 properties of this type in this kind.
+    - property: ShippingAddress.Line2
+      external_name: ShippingAddress.Line2
+      # Type: String Stats: 912 properties of this type in this kind.
 
-    # - property: ShippingAddress.PostalCode
-    #   external_name: ShippingAddress.PostalCode
-    #   # Type: String Stats: 912 properties of this type in this kind.
+    - property: ShippingAddress.PostalCode
+      external_name: ShippingAddress.PostalCode
+      # Type: String Stats: 912 properties of this type in this kind.
 
-    # - property: ShippingAddress.State
-    #   external_name: ShippingAddress.State
-    #   # Type: String Stats: 912 properties of this type in this kind.
+    - property: ShippingAddress.State
+      external_name: ShippingAddress.State
+      # Type: String Stats: 912 properties of this type in this kind.
 
     - property: Shipping
       external_name: Shipping
@@ -542,6 +542,10 @@ transformers:
     - property: Preorder
       external_name: Preorder
       export_transform: bulkloader_helper.generate_preorder
+
+    - property: ShippingAddress
+      external_name: ShippingAddress
+      export_transform: bulkloader_helper.generate_shipping_address
 
 - kind: product
   connector: csv
@@ -760,10 +764,13 @@ transformers:
       # Type: String Stats: 1903 properties of this type in this kind.
 
     # GENERATED:
-      # Type: String Stats: 1903 properties of this type in this kind.
     - property: ShippingAddress.Lines
       external_name: ShippingAddress.Lines
       export_transform: bulkloader_helper.join_address_lines
+
+    - property: ShippingAddress
+      external_name: ShippingAddress
+      export_transform: bulkloader_helper.generate_shipping_address
 
 
 - kind: variant
