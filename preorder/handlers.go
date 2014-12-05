@@ -14,8 +14,14 @@ import (
 	"crowdstart.io/util/template"
 )
 
-// GET /:token
+// GET /order/:token
 func GetPreorder(c *gin.Context) {
+	// For testing Stackdriver
+	// if c.Params.ByName("token") == "test-token" {
+	// 	c.Fail(500, errors.New("Test error"))
+	// 	return
+	// }
+
 	db := datastore.New(c)
 
 	// Fetch token
@@ -78,16 +84,7 @@ func GetPreorder(c *gin.Context) {
 	)
 }
 
-// hasToken checks whether any of the tokens have the id
-func hasToken(tokens []models.InviteToken, id string) bool {
-	for _, token := range tokens {
-		if token.Id == id {
-			return true
-		}
-	}
-	return false
-}
-
+// POST /order/save
 func SavePreorder(c *gin.Context) {
 	form := new(PreorderForm)
 	if err := form.Parse(c); err != nil {
@@ -204,10 +201,12 @@ func SavePreorder(c *gin.Context) {
 	c.Redirect(301, config.UrlFor("preorder", "/thanks"))
 }
 
+// GET /thanks
 func Thanks(c *gin.Context) {
 	template.Render(c, "thanks.html")
 }
 
+// GET /
 func Index(c *gin.Context) {
 	template.Render(c, "login.html")
 	return
@@ -229,6 +228,7 @@ func Index(c *gin.Context) {
 	}
 }
 
+// POST /
 func Login(c *gin.Context) {
 	// Parse login form
 	f := new(auth.LoginForm)
@@ -252,6 +252,16 @@ func Login(c *gin.Context) {
 	} else {
 		template.Render(c, "login.html", "message", "No pre-orders found for your account")
 	}
+}
+
+// hasToken checks whether any of the tokens have the id
+func hasToken(tokens []models.InviteToken, id string) bool {
+	for _, token := range tokens {
+		if token.Id == id {
+			return true
+		}
+	}
+	return false
 }
 
 func getTokens(c *gin.Context, email string) []models.InviteToken {
