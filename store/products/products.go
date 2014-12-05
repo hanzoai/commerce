@@ -12,6 +12,12 @@ import (
 )
 
 func List(c *gin.Context) {
+	// Temporary redirect while store is under construction.
+	if c.MustGet("host") == "store.skullysystems.com" {
+		c.Redirect(301, "http://www.skullysystems.com/store")
+		return
+	}
+
 	db := datastore.New(c)
 	var products []models.Product
 
