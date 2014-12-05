@@ -31,6 +31,31 @@ handlers:
   http_headers:
     Access-Control-Allow-Origin: "*"
 
+- url: /font/(.*\.woff)
+  static_files: static/font/\1
+  upload: static/font/(.*\.woff)
+  mime_type: application/font-woff
+
+- url: /font/(.*\.svg)
+  static_files: static/font/\1
+  upload: static/font/(.*\.svg)
+  mime_type: image/svg+xml
+
+- url: /font/(.*\.eot)
+  static_files: static/font/\1
+  upload: static/font/(.*\.eot)
+  mime_type: application/vnd.ms-fontobject
+
+- url: /font/(.*\.ttf)
+  static_files: static/font/\1
+  upload: static/font/(.*\.ttf)
+  mime_type: application/x-font-ttf
+
+- url: /font/(.*\.otf)
+  static_files: static/font/\1
+  upload: static/font/(.*\.otf)
+  mime_type: application/x-font-otf
+
 pagespeed:
   enabled_rewriters:
     # HTML
