@@ -66,7 +66,7 @@ requisite_opts = assets/js/store/store.coffee \
 				 assets/js/checkout/checkout.coffee \
 				 -o static/js/store.js \
 				 -o static/js/preorder.js \
-				 -o static/js/checkout.js -m
+				 -o static/js/checkout.js -m --strip-debug
 
 stylus		   = node_modules/.bin/stylus
 stylus_opts    = assets/css/preorder/preorder.styl \
