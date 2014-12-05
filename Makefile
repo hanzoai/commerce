@@ -209,11 +209,11 @@ deploy-appengine-ci: assets-minified
 datastore-export:
 	mkdir -p _export/ && \
 	bulkloader.py --download \
-				  --url http://default.crowdstart.io/_ah/remote_api \
-				  --config_file config/production/bulkloader.yaml \
-				  --db_filename /tmp/bulkloader-db \
-				  --log_file /tmp/bulkloader-log \
-				  --result_db_filename /tmp/bulkloader-result \
+				  --url http://static.skullysystems.com/_ah/remote_api \
+				  --config_file config/skully/bulkloader.yaml \
+				  --db_filename /tmp/bulkloader-$$kind.db \
+				  --log_file /tmp/bulkloader-$$kind.log \
+				  --result_db_filename /tmp/bulkloader-result-$$kind.db \
 				  --kind $$kind \
 				  --filename _export/$$kind.csv && \
-	rm -rf /tmp/bulkloader.db /tmp/bulkloader.log /tmp/bulkloader-result.db
+	rm -rf /tmp/bulkloader-$$kind.db /tmp/bulkloader-$$kind.log /tmp/bulkloader-result-$$kind.db
