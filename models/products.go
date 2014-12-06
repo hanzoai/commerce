@@ -19,6 +19,7 @@ type ProductListing struct {
 	Excerpt              string
 	Description          string `datastore:",noindex"`
 	CheckOutInstructions string `datastore:",noindex"`
+	Disabled             bool
 
 	Images []Image
 
@@ -42,7 +43,7 @@ type Product struct {
 	Description          string `datastore:",noindex"`
 	CheckOutInstructions string `datastore:",noindex"`
 	Released             time.Time
-	Available            bool
+	Disabled             bool
 	Stocked              int
 	AddLabel             string // Pre-order now or Add to cart
 	HeaderImage          Image
