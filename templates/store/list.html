@@ -16,15 +16,15 @@ var allProducts = {{ productsJSON | safe }};
 
 {% block content %}
 {% for product in products %}
+{% if !product.Disabled %}
 <div class="item sep-top">
-
   <div class="product-viewer">
     {% for image in product.Images %}
-        {% if forloop.First %}
-        <div class="preview-background" style="background-image:url({{ image.Url }})">
-          <img class="preview" src="{{ image.Url }}" alt="{{ image.Alt }}">
-        </div>
-        {% endif %}
+      {% if forloop.First %}
+      <div class="preview-background" style="background-image:url({{ image.Url }})">
+        <img class="preview" src="{{ image.Url }}" alt="{{ image.Alt }}">
+      </div>
+      {% endif %}
     {% endfor %}
 
     {% if product.Images | length > 1 %}
@@ -104,5 +104,6 @@ var allProducts = {{ productsJSON | safe }};
     </div>
   </div>
 </div>
+{% endif %}
 {% endfor %}
 {% endblock %}
