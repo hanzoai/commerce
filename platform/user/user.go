@@ -4,7 +4,6 @@ import (
 	"crowdstart.io/auth"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
-	"crowdstart.io/util/template"
 	"errors"
 	"github.com/gin-gonic/gin"
 )
