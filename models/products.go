@@ -11,38 +11,18 @@ import (
 	"crowdstart.io/util/json"
 )
 
-type ProductDisplayer struct {
-	Id          string
-	Slug        string
-	Title       string
-	Headline    string
-	Excerpt     string
-	Description string `datastore:",noindex"`
-	Released    time.Time
-	Available   bool
-	Stocked     int
-	AddLabel    string
-	HeaderImage Image
-
-	Images []Image
-}
-
 type ProductListing struct {
-	Id          string
-	Slug        string
-	Title       string
-	Headline    string
-	Excerpt     string
-	Description string `datastore:",noindex"`
-	Released    time.Time
-	Available   bool
-	Stocked     int
-	AddLabel    string
-	HeaderImage Image
+	Id                   string
+	Slug                 string
+	Title                string
+	Headline             string
+	Excerpt              string
+	Description          string `datastore:",noindex"`
+	CheckOutInstructions string `datastore:",noindex"`
 
 	Images []Image
 
-	Products []ProductConfig
+	ProductConfigs []ProductConfig
 }
 
 type ProductConfig struct {
@@ -51,19 +31,21 @@ type ProductConfig struct {
 	Quantity int    //number of products of optional variant type
 }
 
+//Prune down since Product Listing has a lot of this info now
 type Product struct {
 	FieldMapMixin
-	Id          string
-	Slug        string
-	Title       string
-	Headline    string
-	Excerpt     string
-	Description string `datastore:",noindex"`
-	Released    time.Time
-	Available   bool
-	Stocked     int
-	AddLabel    string // Pre-order now or Add to cart
-	HeaderImage Image
+	Id                   string
+	Slug                 string
+	Title                string
+	Headline             string
+	Excerpt              string
+	Description          string `datastore:",noindex"`
+	CheckOutInstructions string `datastore:",noindex"`
+	Released             time.Time
+	Available            bool
+	Stocked              int
+	AddLabel             string // Pre-order now or Add to cart
+	HeaderImage          Image
 
 	Images []Image
 
