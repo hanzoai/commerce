@@ -142,6 +142,58 @@ var All = delay.Func("install-all-fixtures", func(c appengine.Context) {
 		},
 	})
 
+	// Cards
+	variants = []ProductVariant{
+		ProductVariant{
+			SKU:   "CARD-WINTER2014PROMO",
+			Price: 0,
+		},
+	}
+
+	for _, v := range variants {
+		db.PutKey("variant", v.SKU, &v)
+	}
+
+	db.PutKey("product", "card-winter2014promo", &Product{
+		Slug:     "card-winter2014promo",
+		Title:    "SKULLY X-mas Card",
+		Variants: variants,
+		Images: []Image{ // replace with real one, zach
+			Image{
+				Alt: "whitehelmet_store_1000px.jpg",
+				Url: config.UrlFor("/img/products/whitehelmet_store_1000px.jpg"),
+				X:   1000,
+				Y:   1000,
+			},
+		},
+	})
+
+	// Dogtags
+	variants = []ProductVariant{
+		ProductVariant{
+			SKU:   "DOGTAG-WINTER2014PROMO",
+			Price: 0,
+		},
+	}
+
+	for _, v := range variants {
+		db.PutKey("variant", v.SKU, &v)
+	}
+
+	db.PutKey("product", "dogtag-winter2014promo", &Product{
+		Slug:     "dogtag-winter2014promo",
+		Title:    "SKULLY X-mas Dogtag",
+		Variants: variants,
+		Images: []Image{ // replace with real one, zach
+			Image{
+				Alt: "whitehelmet_store_1000px.jpg",
+				Url: config.UrlFor("/img/products/whitehelmet_store_1000px.jpg"),
+				X:   1000,
+				Y:   1000,
+			},
+		},
+	})
+
 	// T-Shirts
 	variants = []ProductVariant{
 		ProductVariant{
@@ -355,6 +407,51 @@ var All = delay.Func("install-all-fixtures", func(c appengine.Context) {
 			},
 		},
 	})
+
+	// Product Listings
+
+	db.PutKey("productlisting", "ar-1-winter2014promo", &ProductListing{
+		Slug:     "ar-1-winter2014promo",
+		Title:    "SKULLY AR-1",
+		Headline: "The World's smartest helmet.",
+		Excerpt:  "The World's smartest motorcycle helmet.",
+		Description: `The world’s smartest motorcycle helmet. SKULLY AR-1 is a light, high-quality,
+					  and full-faced motorcycle helmet equipped with a wide-angle rearview camera and
+					  transparent heads up display (HUD). With its live rearview feed and ability to
+					  provide telemetry and rider data such as speed, GPS directions, fuel*, and
+					  more, the SKULLY AR-1 not only eliminates blind spots, but allows the rider to
+					  focus on what matters most: the road ahead. SKULLY AR-1: Ride safer, look
+					  badass.
+
+					  *Pre-Order during the holiday season for a FREE LIMITED EDITION SKULLY AR-1 dogtag & XMAS Card`,
+		CheckOutInstructions: "*FREE dogtag & X-mas card added at checkout",
+		Images: []Image{
+			Image{
+				Alt: "blackhelmet_store_1000px.jpg",
+				Url: config.UrlFor("/img/products/blackhelmet_store_1000px.jpg"),
+				X:   1000,
+				Y:   1000,
+			},
+			Image{
+				Alt: "whitehelmet_store_1000px.jpg",
+				Url: config.UrlFor("/img/products/whitehelmet_store_1000px.jpg"),
+				X:   1000,
+				Y:   1000,
+			},
+		},
+		ProductConfigs: []ProductConfig{
+			ProductConfig{
+				Product:  "card-winter2014promo",
+				Quantity: 1,
+			},
+			ProductConfig{
+				Product:  "dogtag-winter2014promo",
+				Quantity: 1,
+			},
+		},
+	})
+
+	// Users
 
 	if count, _ := db.Query("user").Count(c); count > 1 {
 		log.Debug("Contributor fixtures already loaded, skipping.")
