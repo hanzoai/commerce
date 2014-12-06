@@ -1,10 +1,13 @@
 package user
 
 import (
+	"errors"
+
 	"github.com/gin-gonic/gin"
 
 	"appengine"
 
+	"crowdstart.io/auth"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
 	"crowdstart.io/util/form"
@@ -35,6 +38,19 @@ func ModifyOrder(c *gin.Context) {
 // Extracts the orderId from the url and removes it from the datastore.
 func RemoveOrder(c *gin.Context) {
 	id := c.Request.URL.Query().Get("orderId")
+	user := auth.GetUser(c)
+
+	hasOrder := false
+	for _, _id := range user.OrdersIds {
+		if _id == id {
+			hasOrder = true
+			break
+		}
+	}
+	if !hasOrder {
+		c.Fail(500, errors.New("Invalid order id"))
+	}
+
 	db := datastore.New(c)
 
 	err := db.RunInTransaction(func(c appengine.Context) error {
