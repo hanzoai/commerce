@@ -35,8 +35,28 @@ func List(c *gin.Context) {
 	}
 	productsJSON := json.Encode(productsMap)
 
+	productListing := new(models.ProductListing)
+
+	err = db.GetKey("productlisting", "ar-1-winter2014promo", productListing)
+	if err != nil {
+		// Something is seriously wrong. i.e. products not loaded into db
+		log.Panic("Unable to fetch all product listings from database: %v", err)
+		return
+	}
+
+	productListingProduct := new(models.Product)
+
+	err = db.GetKey("product", productListing.GetProductSlug(), productListingProduct)
+	if err != nil {
+		// Something is seriously wrong. i.e. products not loaded into db
+		log.Panic("Unable to fetch all product listings from database: %v", err)
+		return
+	}
+
 	template.Render(c, "list.html",
 		"products", products,
+		"productListingProduct", productListingProduct,
+		"productsListing", productListing,
 		"productsJSON", productsJSON,
 	)
 }
