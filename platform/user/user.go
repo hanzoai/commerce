@@ -1,11 +1,13 @@
 package user
 
 import (
+	"errors"
+
+	"github.com/gin-gonic/gin"
+
 	"crowdstart.io/auth"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
-	"errors"
-	"github.com/gin-gonic/gin"
 )
 
 const kind = "user"
