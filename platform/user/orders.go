@@ -1,9 +1,6 @@
 package user
 
 import (
-	"errors"
-
-	"crowdstart.io/auth"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
 	"github.com/gin-gonic/gin"
@@ -12,34 +9,11 @@ import (
 )
 
 func DisplayOrders(c *gin.Context) {
-	user := auth.GetUser(c)
-	if user == nil {
-		log.Panic("User was not found")
-	}
-
-	orders := make([]interface{}, len(m.OrdersIds))
-	for i, v := range orders {
-		orders[i] = interface{}(v)
-	}
-
-	err = db.GetMulti(m.OrdersIds, orders)
-	if err != nil {
-		log.Panic("Error while retrieving orders", err)
-	}
-
-	o := make([]models.Order, len(orders))
-	for i, v := range orders {
-		o[i] = v.(models.Order)
-	}
-
-	// TODO: Filter shipped and pending orders
-	// and pass into template.Render
-	template.Render(c, "index.html", "orders", o)
 }
 
 func ModifyOrder(c *gin.Context) {
-
-	// id := c.Request.URL.Query().Get("orderId")
+	f := new(OrderForm)
+	f.Parse(c)
 }
 
 // Extracts the Order.Id from the url and removes it from the datastore.
