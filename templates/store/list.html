@@ -15,9 +15,97 @@ var allProducts = {{ productsJSON | safe }};
 {% block content_width_class %}store-width{% endblock %}
 
 {% block content %}
+<div class="item sep-top product-listing">
+  <div class="product-viewer">
+    {% for image in productListingProduct.Images %}
+      {% if forloop.First %}
+      <div class="preview-background" style="background-image:url({{ image.Url }})">
+        <img class="preview" src="{{ image.Url }}" alt="{{ image.Alt }}">
+      </div>
+      {% endif %}
+    {% endfor %}
+
+    {% if productListingProduct.Images | length > 1 %}
+    <div class="gallery">
+      {% for image in productListingProduct.Images %}
+      {% if forloop.First %}
+      <img class="thumbnail selected" src="{{ image.Url }}" alt="{{ image.Alt }}">
+      {% else %}
+      <img class="thumbnail" src="{{ image.Url }}" alt="{{ image.Alt }}">
+      {% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="product-text" data-slug="{{ productListingProduct.Slug }}">
+    <div class="product-title">
+      <h1 class="product-name">{{ productListingProduct.DisplayTitle()|safe }}</h1>
+      <h2 class="product-cost">${{ productListingProduct.DisplayPrice() }}</h2>
+    </div>
+
+    <div class="product-body">
+      <div class="product-description">
+        <p>{{ productListingProduct.Description }}</p>
+      </div>
+
+      <div class="product-config">
+        {% if productListingProduct.VariantOptions("Style") %}
+        <label for="style">Style:</label>
+        <select name="Style" class="style">
+          {% for style in productListingProduct.VariantOptions("Style") %}
+          <option value="{{ style }}">{{ style }}</option>
+          {% endfor %}
+        </select>
+        {% endif %}
+
+        {% if productListingProduct.VariantOptions("Color") %}
+        <label for="color">Color:</label>
+        <select name="Color" class="color">
+          {% for color in productListingProduct.VariantOptions("Color") %}
+          <option value="{{ color }}">{{ color }}</option>
+          {% endfor %}
+        </select>
+        {% endif %}
+
+        {% if productListingProduct.VariantOptions("Size") %}
+        <label for="size">Size:</label>
+        <select name="Size" class="size">
+          {% for size in productListingProduct.VariantOptions("Size") %}
+          <option value="{{ size }}">{{ size }}</option>
+          {% endfor %}
+        </select>
+        {% endif %}
+
+        <div class="quantity-checkout">
+          <div class="quantity">
+            <label for="quantity">Quantity:</label>
+            <select name="quantity">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+                <option value="7">7</option>
+                <option value="8">8</option>
+                <option value="9">9</option>
+                <option value="10">10</option>
+            </select>
+          </div>
+
+          <div class="checkout-options">
+              <button class="add-to-cart"><span>Add to Cart</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% for product in products %}
 {% if !product.Disabled %}
-<div class="item sep-top">
+<div class="item sep-top product">
   <div class="product-viewer">
     {% for image in product.Images %}
       {% if forloop.First %}

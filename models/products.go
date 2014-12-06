@@ -26,6 +26,10 @@ type ProductListing struct {
 	ProductConfigs []ProductConfig
 }
 
+func (p ProductListing) GetProductSlug() string {
+	return p.ProductConfigs[0].Product
+}
+
 type ProductConfig struct {
 	Product  string //product id
 	Variant  string //optional variant sku
