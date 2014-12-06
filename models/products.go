@@ -11,6 +11,46 @@ import (
 	"crowdstart.io/util/json"
 )
 
+type ProductDisplayer struct {
+	Id          string
+	Slug        string
+	Title       string
+	Headline    string
+	Excerpt     string
+	Description string `datastore:",noindex"`
+	Released    time.Time
+	Available   bool
+	Stocked     int
+	AddLabel    string
+	HeaderImage Image
+
+	Images []Image
+}
+
+type ProductListing struct {
+	Id          string
+	Slug        string
+	Title       string
+	Headline    string
+	Excerpt     string
+	Description string `datastore:",noindex"`
+	Released    time.Time
+	Available   bool
+	Stocked     int
+	AddLabel    string
+	HeaderImage Image
+
+	Images []Image
+
+	Products []ProductConfig
+}
+
+type ProductConfig struct {
+	Product  string //product id
+	Variant  string //optional variant sku
+	Quantity int    //number of products of optional variant type
+}
+
 type Product struct {
 	FieldMapMixin
 	Id          string
