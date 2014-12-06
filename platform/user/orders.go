@@ -1,22 +1,38 @@
 package user
 
 import (
-	"crowdstart.io/datastore"
-	"crowdstart.io/models"
 	"github.com/gin-gonic/gin"
 
 	"appengine"
+
+	"crowdstart.io/datastore"
+	"crowdstart.io/models"
+	"crowdstart.io/util/form"
 )
 
 func DisplayOrders(c *gin.Context) {
+
 }
 
 func ModifyOrder(c *gin.Context) {
-	f := new(OrderForm)
-	f.Parse(c)
+	o := new(models.Order)
+	err := form.Parse(c, o)
+	if err != nil {
+		c.Fail(500, err)
+		return
+	}
+
+	db := datastore.New(c)
+	_, err = db.Update(o.Id, o)
+	if err != nil {
+		c.Fail(500, err)
+		return
+	}
+
+	c.JSON(200, o)
 }
 
-// Extracts the Order.Id from the url and removes it from the datastore.
+// Extracts the orderId from the url and removes it from the datastore.
 func RemoveOrder(c *gin.Context) {
 	id := c.Request.URL.Query().Get("orderId")
 	db := datastore.New(c)
@@ -31,7 +47,7 @@ func RemoveOrder(c *gin.Context) {
 		}
 
 		order.Cancelled = true
-		_, err = db.Update(id, order)
+		_, err = db.PutKey("order", id, order)
 		return err
 	}, nil)
 
