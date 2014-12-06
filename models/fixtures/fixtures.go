@@ -444,11 +444,17 @@ var All = delay.Func("install-all-fixtures", func(c appengine.Context) {
 		},
 		ProductConfigs: []ProductConfig{
 			ProductConfig{
+				Product:  "ar-1",
+				Quantity: 1,
+			},
+			ProductConfig{
 				Product:  "card-winter2014promo",
+				Variant:  "CARD-WINTER2014PROMO",
 				Quantity: 1,
 			},
 			ProductConfig{
 				Product:  "dogtag-winter2014promo",
+				Variant:  "DOGTAG-WINTER2014PROMO",
 				Quantity: 1,
 			},
 		},
