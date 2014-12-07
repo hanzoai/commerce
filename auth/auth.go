@@ -51,7 +51,13 @@ func VerifyUser(c *gin.Context) error {
 	}
 
 	// Set the loginKey value to the user id
-	return Set(c, loginKey, f.Email)
+	return Login(c, user.Email)
+}
+
+// Login should only be used in exceptional circumstances.
+// Use VerifyUser when possible.
+func Login(c *gin.Context, email string) error {
+	return Set(c, loginKey, email)
 }
 
 func Logout(c *gin.Context) {
