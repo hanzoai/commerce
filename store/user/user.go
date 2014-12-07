@@ -46,8 +46,8 @@ func SubmitRegister(c *gin.Context) {
 
 	db := datastore.New(c)
 	existingUser := new(models.User)
-	db.GetKey("user", f.User.Email, existingUser)
-	if existingUser != nil {
+	err = db.GetKey("user", f.User.Email, existingUser)
+	if err == nil {
 		template.Render(c, "register.html", "error", "Email has been used already.")
 		return
 	}
