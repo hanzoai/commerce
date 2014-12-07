@@ -40,7 +40,7 @@ func List(c *gin.Context) {
 	err = db.GetKey("productlisting", "ar-1-winter2014promo", productListing)
 	if err != nil {
 		// Something is seriously wrong. i.e. products not loaded into db
-		log.Panic("Unable to fetch all product listings from database: %v", err)
+		log.Panic("Unable to fetch product listing from database: %v", err)
 		return
 	}
 
@@ -49,15 +49,17 @@ func List(c *gin.Context) {
 	err = db.GetKey("product", productListing.GetProductSlug(), productListingProduct)
 	if err != nil {
 		// Something is seriously wrong. i.e. products not loaded into db
-		log.Panic("Unable to fetch all product listings from database: %v", err)
+		log.Panic("Unable to fetch product listing product from database: %v", err)
 		return
 	}
 
+	log.Debug("%v", productListing)
+
 	template.Render(c, "list.html",
 		"products", products,
-		"productListingProduct", productListingProduct,
-		"productsListing", productListing,
 		"productsJSON", productsJSON,
+		"productListing", productListing,
+		"productListingProduct", productListingProduct,
 	)
 }
 

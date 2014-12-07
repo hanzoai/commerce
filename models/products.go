@@ -30,6 +30,10 @@ func (p ProductListing) GetProductSlug() string {
 	return p.ProductConfigs[0].Product
 }
 
+func (p ProductListing) GetDescriptionParagraphs() []string {
+	return SplitParagraph(p.Description)
+}
+
 type ProductConfig struct {
 	Product  string //product id
 	Variant  string //optional variant sku
