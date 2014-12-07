@@ -17,7 +17,7 @@ var allProducts = {{ productsJSON | safe }};
 {% block content %}
 <div class="item sep-top product-listing">
   <div class="product-viewer">
-    {% for image in productListingProduct.Images %}
+    {% for image in productListing.Images %}
       {% if forloop.First %}
       <div class="preview-background" style="background-image:url({{ image.Url }})">
         <img class="preview" src="{{ image.Url }}" alt="{{ image.Alt }}">
@@ -25,9 +25,9 @@ var allProducts = {{ productsJSON | safe }};
       {% endif %}
     {% endfor %}
 
-    {% if productListingProduct.Images | length > 1 %}
+    {% if productListing.Images | length > 1 %}
     <div class="gallery">
-      {% for image in productListingProduct.Images %}
+      {% for image in productListing.Images %}
       {% if forloop.First %}
       <img class="thumbnail selected" src="{{ image.Url }}" alt="{{ image.Alt }}">
       {% else %}
@@ -38,15 +38,20 @@ var allProducts = {{ productsJSON | safe }};
     {% endif %}
   </div>
 
-  <div class="product-text" data-slug="{{ productListingProduct.Slug }}">
+  <div class="product-text" data-slug="{{ productListing.Slug }}">
     <div class="product-title">
-      <h1 class="product-name">{{ productListingProduct.DisplayTitle()|safe }}</h1>
+      <h1 class="product-name">{{ productListing.Title|safe }}</h1>
       <h2 class="product-cost">${{ productListingProduct.DisplayPrice() }}</h2>
     </div>
 
     <div class="product-body">
       <div class="product-description">
-        <p>{{ productListingProduct.Description }}</p>
+        {% for p in productListing.GetDescriptionParagraphs() %}
+        {% if !forloop.First %}
+        <br />
+        {% endif %}
+        <p>{{ p }}</p>
+        {% endfor %}
       </div>
 
       <div class="product-config">
