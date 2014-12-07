@@ -1,6 +1,7 @@
 package store
 
 import (
+	"crowdstart.io/middleware"
 	"crowdstart.io/store/cart"
 	"crowdstart.io/store/products"
 	"crowdstart.io/store/user"
@@ -24,4 +25,7 @@ func init() {
 
 	router.GET("/register", user.Register)
 	router.POST("/register", user.SubmitRegister)
+
+	router.GET("/profile", user.Profile, middleware.LoginRequired())
+	router.POST("/profile", user.SaveProfile, middleware.LoginRequired())
 }
