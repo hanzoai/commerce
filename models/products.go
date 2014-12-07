@@ -26,8 +26,13 @@ type ProductListing struct {
 	ProductConfigs []ProductConfig
 }
 
-func (p ProductListing) GetProductSlug() string {
-	return p.ProductConfigs[0].Product
+func (p ProductListing) GetProductSlugs() []string {
+	productConfigs := p.ProductConfigs
+	slugs := make([]string, len(productConfigs), len(productConfigs))
+	for i, productConfig := range productConfigs {
+		slugs[i] = productConfig.Product
+	}
+	return slugs
 }
 
 func (p ProductListing) GetDescriptionParagraphs() []string {
