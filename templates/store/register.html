@@ -6,29 +6,32 @@
 
 {% block css %}
 <style>
-  div.field {
-    display: block;
-  }
-  div.error {
-      text-color: red;
-  }
+    div.field {
+        display: block;
+    }
+    div.error {
+        text-color: red;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<form action="{{ urlFor("store", "/register") }}" method="post">
-  <div class="field">
-    <label for="email">Email</label>
-    <input id="email" type="text" name="User.Email" placeholder="email address"></div>
-  <div class="field">
-    <label for="password">Password</label>
-    <input id="password" type="password" name="Password" placeholder="*****">
-  </div>
-  <div class="field">
-    <label for="passwordConfirm">Confirm password</label>
-    <input id="passwordConfirm" type="password" name="PasswordConfirm" placeholder="******">
-  </div>
-  <div class="error">{{ error }}</div>
-  <div><input type="submit" value="Register"></div>
+<form action="{{ urlFor(" store ", "/register ") }}" method="post">
+    <div class="field">
+        <label for="email">Email</label>
+        <input id="email" type="text" name="User.Email" placeholder="email address">
+    </div>
+    <div class="field">
+        <label for="password">Password</label>
+        <input id="password" type="password" name="Password" placeholder="&bull;&bull;&bull;">
+    </div>
+    <div class="field">
+        <label for="passwordConfirm">Confirm password</label>
+        <input id="passwordConfirm" type="password" name="PasswordConfirm" placeholder="&bull;&bull;&bull;">
+    </div>
+    <div class="error">{{ error }}</div>
+    <div>
+        <input type="submit" value="Register">
+    </div>
 </form>
 {% endblock %}
