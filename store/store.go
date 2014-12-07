@@ -21,4 +21,7 @@ func init() {
 	router.GET("/login", user.Login)
 	router.GET("/logout", user.Logout)
 	router.POST("/login", user.SubmitLogin)
+
+	router.GET("/register", user.Register)
+	router.POST("/register", user.SubmitRegister)
 }
