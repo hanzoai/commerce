@@ -13,13 +13,16 @@ import (
 
 // GET /login
 func Login(c *gin.Context) {
+	if auth.IsLoggedIn(c) {
+		c.Redirect(302, config.UrlFor("store", "/profile"))
+	}
 	template.Render(c, "login.html")
 }
 
 // POST /login
 func SubmitLogin(c *gin.Context) {
 	if err := auth.VerifyUser(c); err == nil {
-		c.Redirect(300, config.UrlFor("store", "/profile"))
+		c.Redirect(302, config.UrlFor("store", "/profile"))
 	} else {
 		template.Render(c, "login.html",
 			"error", "Invalid email or password",
@@ -33,10 +36,13 @@ func Logout(c *gin.Context) {
 	if err != nil {
 		log.Panic("Error while logging out \n%v", err)
 	}
-	c.Redirect(300, config.UrlFor("store"))
+	c.Redirect(302, config.UrlFor("store"))
 }
 
 func Register(c *gin.Context) {
+	if auth.IsLoggedIn(c) {
+		c.Redirect(302, config.UrlFor("store", "/profile"))
+	}
 	template.Render(c, "register.html")
 }
 
@@ -75,5 +81,5 @@ func SubmitRegister(c *gin.Context) {
 		log.Panic("Error while setting session cookie %v", err)
 	}
 
-	c.Redirect(300, config.UrlFor("store"))
+	c.Redirect(302, config.UrlFor("store"))
 }
