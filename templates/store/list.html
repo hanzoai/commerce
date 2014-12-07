@@ -41,7 +41,7 @@ var allProducts = {{ productsJSON | safe }};
   <div class="product-text" data-slug="{{ productListing.Slug }}">
     <div class="product-title">
       <h1 class="product-name">{{ productListing.Title|safe }}</h1>
-      <h2 class="product-cost">${{ productListingProduct.DisplayPrice() }}</h2>
+      <h2 class="product-cost">${{ productListingProducts.0.DisplayPrice() }}</h2>
     </div>
 
     <div class="product-body">
@@ -55,28 +55,28 @@ var allProducts = {{ productsJSON | safe }};
       </div>
 
       <div class="product-config">
-        {% if productListingProduct.VariantOptions("Style") %}
+        {% if productListingProducts.0.VariantOptions("Style") %}
         <label for="style">Style:</label>
         <select name="Style" class="style">
-          {% for style in productListingProduct.VariantOptions("Style") %}
+          {% for style in productListingProducts.0.VariantOptions("Style") %}
           <option value="{{ style }}">{{ style }}</option>
           {% endfor %}
         </select>
         {% endif %}
 
-        {% if productListingProduct.VariantOptions("Color") %}
+        {% if productListingProducts.0.VariantOptions("Color") %}
         <label for="color">Color:</label>
         <select name="Color" class="color">
-          {% for color in productListingProduct.VariantOptions("Color") %}
+          {% for color in productListingProducts.0.VariantOptions("Color") %}
           <option value="{{ color }}">{{ color }}</option>
           {% endfor %}
         </select>
         {% endif %}
 
-        {% if productListingProduct.VariantOptions("Size") %}
+        {% if productListingProducts.0.VariantOptions("Size") %}
         <label for="size">Size:</label>
         <select name="Size" class="size">
-          {% for size in productListingProduct.VariantOptions("Size") %}
+          {% for size in productListingProducts.0.VariantOptions("Size") %}
           <option value="{{ size }}">{{ size }}</option>
           {% endfor %}
         </select>
