@@ -10,6 +10,7 @@ exports.setupViews = ->
       window.view = view
       app.views.push view
       view.bind()
+      view.render()
 
 # Simple thumbnail gallery
 exports.gallery = ->
