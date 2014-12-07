@@ -29,7 +29,10 @@ func SubmitLogin(c *gin.Context) {
 
 // GET /logout
 func Logout(c *gin.Context) {
-	auth.Logout(c)
+	err := auth.Logout(c)
+	if err != nil {
+		log.Panic("Error while logging out \n%v", err)
+	}
 	c.Redirect(300, config.UrlFor("store"))
 }
 
@@ -45,8 +48,10 @@ func SubmitRegister(c *gin.Context) {
 	}
 
 	db := datastore.New(c)
-	existingUser := new(models.User)
-	err = db.GetKey("user", f.User.Email, existingUser)
+
+	log.Debug("Checking if user exists")
+	var existingUser models.User
+	err = db.GetKey("user", f.User.Email, &existingUser)
 	if err == nil {
 		template.Render(c, "register.html", "error", "Email has been used already.")
 		return
@@ -58,15 +63,17 @@ func SubmitRegister(c *gin.Context) {
 		log.Panic("Error generating password hash \n%v", err)
 	}
 
-	_, err = db.PutKey("user", f.User.Email, f.User)
+	log.Debug("Saving user")
+	_, err = db.PutKey("user", f.User.Email, &f.User)
 	if err != nil {
 		log.Panic("Error while saving user \n%v", err)
 	}
 
+	log.Debug("Login user")
 	err = auth.Login(c, f.User.Email)
 	if err != nil {
 		log.Panic("Error while setting session cookie %v", err)
 	}
 
-	c.Redirect(300, config.UrlFor("store", "/profile"))
+	c.Redirect(300, config.UrlFor("store"))
 }
