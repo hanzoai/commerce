@@ -15,7 +15,7 @@ import (
 func Profile(c *gin.Context) {
 	user := auth.GetUser(c)
 	userJson := json.Encode(user)
-	template.Render(c, "profile.html", "user", userJson)
+	template.Render(c, "profile.html", "user", user, "userJson", userJson)
 }
 
 func SaveProfile(c *gin.Context) {
