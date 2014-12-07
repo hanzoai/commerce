@@ -60,29 +60,31 @@ func (d *Datastore) GetKey(kind, key string, value interface{}) error {
 	return nil
 }
 
-func (d *Datastore) GetMulti(keys []string, values []interface{}) error {
+func (d *Datastore) GetMulti(keys []string, vals interface{}) error {
 	_keys := make([]*Key, len(keys))
 
-	for _, v := range keys {
-		if key, err := DecodeKey(v); err != nil {
+	for i, key := range keys {
+		if k, err := DecodeKey(key); err != nil {
 			log.Error("%v", err, d.Context)
 			return err
 		} else {
-			_keys = append(_keys, key)
+			_keys[i] = k
 		}
 	}
 
-	return nds.GetMulti(d.Context, _keys, values)
+	return nds.GetMulti(d.Context, _keys, vals)
 }
 
-func (d *Datastore) GetKeyMulti(kind string, keys []string, values []interface{}) error {
+func (d *Datastore) GetKeyMulti(kind string, keys []string, vals interface{}) error {
 	_keys := make([]*Key, len(keys))
 
-	for _, v := range keys {
-		_keys = append(_keys, NewKey(d.Context, kind, v, 0, nil))
+	for i, key := range keys {
+		_keys[i] = NewKey(d.Context, kind, key, 0, nil)
 	}
 
-	return nds.GetMulti(d.Context, _keys, values)
+	log.Debug("_keys: %v", _keys)
+
+	return nds.GetMulti(d.Context, _keys, vals)
 }
 
 func (d *Datastore) Put(kind string, src interface{}) (string, error) {
