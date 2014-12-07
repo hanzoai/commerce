@@ -2,49 +2,15 @@ package middleware
 
 import (
 	"appengine"
-	"errors"
 	"fmt"
 	"net/http"
 	"runtime"
-	"sync"
 
-	"github.com/getsentry/raven-go"
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
 )
-
-var once sync.Once
-var sentryDsn = "https://4daf3e86c2744df4b932abbe4eb48aa8:27fa30055d9747e795ca05d5ffb96f0c@app.getsentry.com/32164"
-var client *raven.Client
-
-// Logs errors to sentry
-func logToSentry(c *gin.Context, ctx appengine.Context, stack string) {
-
-	// Only capture to sentry in production
-	if appengine.IsDevAppServer() {
-		return
-	}
-
-	// Get client
-	once.Do(func() {
-		client, err := raven.NewClient(sentryDsn, map[string]string{})
-		if err != nil {
-			ctx.Errorf("Unable to create Sentry client: %v, %v", client, err)
-		}
-	})
-
-	// Send request
-	flags := map[string]string{
-		"endpoint": c.Request.RequestURI,
-	}
-
-	if client != nil {
-		packet := raven.NewPacket(stack, raven.NewException(errors.New(stack), raven.NewStacktrace(2, 3, nil)))
-		client.Capture(packet, flags)
-	}
-}
 
 // Not needed?
 func getStack() string {
@@ -86,10 +52,9 @@ func handleError(c *gin.Context, stack string) {
 
 	ctx := GetAppEngine(c)
 	log.Error(stack, ctx)
-	logToSentry(c, ctx, stack)
 }
 
-// Serve custom 500 error page and log to sentry in production.
+// Serve custom 500 error page and log errors
 func ErrorHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// On panic
