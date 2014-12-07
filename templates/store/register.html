@@ -4,11 +4,27 @@
 <h2>Register</h2>
 {% endblock %}
 
+{% block css %}
+<style>
+  div.field {
+    display: block;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <form>
-  <input type="text" name="User.Email">
-  <input type="password" name="Password">
-  <input type="password" name="PasswordConfirm">
-  <input type="submit" value="Register">
+  <div class="field">
+    <label for="email">Email</label>
+    <input id="email" type="text" name="User.Email" placeholder="email address"></div>
+  <div class="field">
+    <label for="password">Password</label>
+    <input id="password" type="password" name="Password" placeholder="*****">
+  </div>
+  <div class="field">
+    <label for="passwordConfirm">Confirm password</label>
+    <input id="passwordConfirm" type="password" name="PasswordConfirm" placeholder="******">
+  </div>
+  <div><input type="submit" value="Register"></div>
 </form>
 {% endblock %}
