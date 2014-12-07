@@ -10,21 +10,23 @@
 <div>
     <form action="{{ urlFor("store", "/login") }}" method="post">
         <div>
-            <div>
-                <input type="text" name="Email" placeholder="Email" />
+            <div class="field">
+                <label for="email">Email</label>
+                <input type="text" id="email" name="Email" placeholder="abc@example.com" />
             </div>
+            <div class="field">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="Password" placeholder="&bull;&bull;&bull;" />
+            </div>
+
             <div>
-                <input type="password" name="Password" placeholder="Password" />
+                <input type="submit" value="Login">
             </div>
         </div>
 
         {% if error %}
         <div class="errors">{{ error }}</div>
         {% endif %}
-
-        <div class="btn-container">
-            <button type="submit">Login</button>
-        </div>
     </form>
 </div>
 {% endblock %}
