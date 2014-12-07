@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/mholt/binding"
@@ -12,6 +13,7 @@ import (
 )
 
 type ProductListing struct {
+	FieldMapMixin
 	Id                   string
 	Slug                 string
 	Title                string
@@ -35,14 +37,20 @@ func (p ProductListing) GetProductSlugs() []string {
 	return slugs
 }
 
+func (p ProductListing) GetProductSlugsString() string {
+	return strings.Join(p.GetProductSlugs(), " ")
+}
+
 func (p ProductListing) GetDescriptionParagraphs() []string {
 	return SplitParagraph(p.Description)
 }
 
 type ProductConfig struct {
-	Product  string //product id
-	Variant  string //optional variant sku
-	Quantity int    //number of products of optional variant type
+	FieldMapMixin
+	Product         string //product id
+	Variant         string //optional variant sku
+	Quantity        int    //number of products of optional variant type
+	PriceAdjustment int    //cost adjustment for individual product in package
 }
 
 //Prune down since Product Listing has a lot of this info now
@@ -57,6 +65,7 @@ type Product struct {
 	CheckOutInstructions string `datastore:",noindex"`
 	Released             time.Time
 	Disabled             bool
+	Available            bool
 	Stocked              int
 	AddLabel             string // Pre-order now or Add to cart
 	HeaderImage          Image
