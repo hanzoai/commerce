@@ -1,15 +1,13 @@
 package config
 
 import (
+	"appengine"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
-
-	"appengine"
-
-	"crowdstart.io/util/log"
 )
 
 var demoMode = true
@@ -33,6 +31,7 @@ type Config struct {
 	SiteTitle         string
 	Prefixes          map[string]string
 	Hosts             map[string]string
+	SentryDSN         string
 	Salesforce        struct {
 		ConsumerKey    string
 		ConsumerSecret string
@@ -45,7 +44,6 @@ type Config struct {
 		RedirectURL string
 		WebhookURL  string
 	}
-
 	Mandrill struct {
 		ApiKey string
 	}
@@ -85,11 +83,11 @@ func (c Config) UrlFor(moduleName string, args ...string) (url string) {
 func (c *Config) Load(fileName string) {
 	file, err := os.Open(fileName)
 	if err != nil {
-		log.Panic("Failed to open configuration file: %v", err)
+		panic(fmt.Sprintf("Failed to open configuration file: %v", err))
 	}
 	decoder := json.NewDecoder(file)
 	if err = decoder.Decode(c); err != nil {
-		log.Panic("Failed to decode configuration file: %v", err)
+		panic(fmt.Sprintf("Failed to decode configuration file: %v", err))
 	}
 }
 
@@ -109,6 +107,7 @@ func Defaults() *Config {
 func Development() *Config {
 	config := Defaults()
 
+	config.SentryDSN = "https://4daf3e86c2744df4b932abbe4eb48aa8:27fa30055d9747e795ca05d5ffb96f0c@app.getsentry.com/32164"
 	config.IsDevelopment = true
 
 	config.AutoCompileAssets = false
@@ -146,6 +145,8 @@ func Development() *Config {
 // Production Settings
 func Production() *Config {
 	config := Defaults()
+
+	config.SentryDSN = "https://4daf3e86c2744df4b932abbe4eb48aa8:27fa30055d9747e795ca05d5ffb96f0c@app.getsentry.com/32164"
 
 	config.IsProduction = true
 
@@ -249,19 +250,20 @@ func Get() *Config {
 var config = Get()
 
 // Expose global config.
+var AutoCompileAssets = config.AutoCompileAssets
+var AutoLoadFixtures = config.AutoLoadFixtures
 var DemoMode = config.DemoMode
 var IsDevelopment = config.IsDevelopment
 var IsProduction = config.IsProduction
 var IsStaging = config.IsStaging
-var AutoCompileAssets = config.AutoCompileAssets
-var AutoLoadFixtures = config.AutoLoadFixtures
-var RootDir = config.RootDir
-var Prefixes = config.Prefixes
-var StaticUrl = config.StaticUrl
-var Salesforce = config.Salesforce
-var Stripe = config.Stripe
-var SiteTitle = config.SiteTitle
 var Mandrill = config.Mandrill
+var Prefixes = config.Prefixes
+var RootDir = config.RootDir
+var Salesforce = config.Salesforce
+var SentryDSN = config.SentryDSN
+var SiteTitle = config.SiteTitle
+var StaticUrl = config.StaticUrl
+var Stripe = config.Stripe
 
 func UrlFor(moduleName string, args ...string) string {
 	return config.UrlFor(moduleName, args...)

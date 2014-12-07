@@ -7,6 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/zeekay/go-logging"
 	// "github.com/davecgh/go-spew/spew"
+
+	"crowdstart.io/thirdparty/sentry"
 )
 
 // Custom logger
@@ -25,8 +27,9 @@ func (l *Logger) setContext(args ...interface{}) []interface{} {
 
 	switch ctx := ctx.(type) {
 	case *gin.Context:
-		c := ctx.MustGet("appengine").(appengine.Context)
-		l.appengineBackend.context = c
+		appengineContext := ctx.MustGet("appengine").(appengine.Context)
+		l.appengineBackend.context = appengineContext
+		l.appengineBackend.requestURI = ctx.Request.RequestURI
 		args = args[:len(args)-1]
 	case appengine.Context:
 		l.appengineBackend.context = ctx
@@ -40,7 +43,8 @@ func (l *Logger) setContext(args ...interface{}) []interface{} {
 
 // Custom logger backend that knows about AppEngine
 type AppengineBackend struct {
-	context appengine.Context
+	context    appengine.Context
+	requestURI string
 }
 
 func (b AppengineBackend) Log(level logging.Level, calldepth int, record *logging.Record) error {
@@ -50,8 +54,10 @@ func (b AppengineBackend) Log(level logging.Level, calldepth int, record *loggin
 		switch level {
 		case logging.WARNING:
 			b.context.Warningf(formatted)
-		case logging.ERROR:
+		case logging.ERROR, logging.CRITICAL:
 			b.context.Errorf(formatted)
+			// Asynchronously log to sentry.
+			sentry.CaptureException.Call(b.context, b.requestURI, formatted)
 		case logging.INFO:
 			b.context.Infof(formatted)
 		default:
