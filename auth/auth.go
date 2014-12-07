@@ -60,7 +60,6 @@ func Login(c *gin.Context, email string) error {
 	return Set(c, loginKey, email)
 }
 
-func Logout(c *gin.Context) {
-	Delete(c, loginKey)
-	c.Redirect(301, "/user/login")
+func Logout(c *gin.Context) error {
+	return Delete(c, loginKey)
 }
