@@ -8,8 +8,41 @@ class ProductView extends View
     super
     @slug = @el.data 'slug'
 
+  bindings:
+    productListing: '.product-cost .money'
+
+  formatters:
+    productListing: (v)->
+      cost = 0
+      for config in v.ProductConfigs
+
+        product = allProducts[config.Product]
+        if !product
+          break
+
+        variants = product.Variants
+        if !variants
+          break
+
+        if config.Variant != ''
+          variant = variants.some (val)->
+            if val.Id == config.variant
+              cost += variant.Price
+              return true
+            return false
+        else
+          cost += variants.reduce (last, current)->
+            return Math.min(last, current.Price)
+          , Number.MAX_VALUE
+      @cost = cost
+      return (cost/10000).toFixed(2) + ""
+
   events:
     'click .add-to-cart': 'addToCart'
+
+  render: ->
+    @set 'productListing', allProductListings[@slug]
+    super
 
   addToCart: ->
     unless (variant = @getVariant())?
@@ -22,8 +55,7 @@ class ProductView extends View
     inner.append '<div class="loading-spinner" style="float:left"></div>'
     inner.append '<div class="add-to-cart-adding-text" style="float:right">Adding...</div>'
 
-
-    product = allProducts[@slug]
+    productListing = @get 'productListing'
 
     # Refuse to add more than 99 items to the cart
     cart = app.get 'cart'
