@@ -11,6 +11,7 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
 	"crowdstart.io/util/form"
+	"crowdstart.io/util/json"
 	"crowdstart.io/util/template"
 )
 
@@ -43,9 +44,9 @@ func DisplayOrders(c *gin.Context) {
 	}
 
 	template.Render(c, "platform/user/orders.html",
-		"cancelled", cancelled,
-		"shipped", shipped,
-		"pending", pending,
+		"cancelled", json.Encode(cancelled),
+		"shipped", json.Encode(shipped),
+		"pending", json.Encode(pending),
 	)
 }
 

@@ -8,15 +8,18 @@ import (
 	"crowdstart.io/auth"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
+	"crowdstart.io/util/template"
 )
 
 const kind = "user"
 
 func Login(c *gin.Context) {
 	if err := auth.VerifyUser(c); err == nil {
-		// Success
+		c.Redirect(300, "/user/")
 	} else {
-		c.Fail(401, err)
+		template.Render(c, "platform/user/login.html",
+			"error", "Invalid email or password",
+		)
 	}
 }
 
