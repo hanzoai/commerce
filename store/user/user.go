@@ -10,7 +10,7 @@ import (
 
 // GET /login
 func Login(c *gin.Context) {
-	template.Render(c, "store/login.html")
+	template.Render(c, "login.html")
 }
 
 // POST /login
@@ -18,7 +18,7 @@ func SubmitLogin(c *gin.Context) {
 	if err := auth.VerifyUser(c); err == nil {
 		c.Redirect(300, config.UrlFor("store", "/profile"))
 	} else {
-		template.Render(c, "store/login.html",
+		template.Render(c, "login.html",
 			"error", "Invalid email or password",
 		)
 	}
