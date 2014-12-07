@@ -26,7 +26,7 @@ func HashPassword(password string) []byte {
 }
 
 func IsLoggedIn(c *gin.Context) bool {
-	value, err := Get(c, loginKey)
+	value, err := GetEmail(c)
 	return err == nil && value != ""
 }
 
