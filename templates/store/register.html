@@ -9,11 +9,14 @@
   div.field {
     display: block;
   }
+  div.error {
+      text-color: red;
+  }
 </style>
 {% endblock %}
 
 {% block content %}
-<form>
+<form action="{{ urlFor("store", "/register") }}" method="post">
   <div class="field">
     <label for="email">Email</label>
     <input id="email" type="text" name="User.Email" placeholder="email address"></div>
@@ -25,6 +28,7 @@
     <label for="passwordConfirm">Confirm password</label>
     <input id="passwordConfirm" type="password" name="PasswordConfirm" placeholder="******">
   </div>
+  <div class="error">{{ error }}</div>
   <div><input type="submit" value="Register"></div>
 </form>
 {% endblock %}
