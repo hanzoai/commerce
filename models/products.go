@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/mholt/binding"
@@ -11,19 +12,63 @@ import (
 	"crowdstart.io/util/json"
 )
 
+type ProductListing struct {
+	FieldMapMixin
+	Id                   string
+	Slug                 string
+	Title                string
+	Headline             string
+	Excerpt              string
+	Description          string `datastore:",noindex"`
+	CheckOutInstructions string `datastore:",noindex"`
+	Disabled             bool
+
+	Images []Image
+
+	ProductConfigs []ProductConfig
+}
+
+func (p ProductListing) GetProductSlugs() []string {
+	productConfigs := p.ProductConfigs
+	slugs := make([]string, len(productConfigs), len(productConfigs))
+	for i, productConfig := range productConfigs {
+		slugs[i] = productConfig.Product
+	}
+	return slugs
+}
+
+func (p ProductListing) GetProductSlugsString() string {
+	return strings.Join(p.GetProductSlugs(), " ")
+}
+
+func (p ProductListing) GetDescriptionParagraphs() []string {
+	return SplitParagraph(p.Description)
+}
+
+type ProductConfig struct {
+	FieldMapMixin
+	Product         string //product id
+	Variant         string //optional variant sku
+	Quantity        int    //number of products of optional variant type
+	PriceAdjustment int    //cost adjustment for individual product in package
+}
+
+//Prune down since Product Listing has a lot of this info now
 type Product struct {
 	FieldMapMixin
-	Id          string
-	Slug        string
-	Title       string
-	Headline    string
-	Excerpt     string
-	Description string `datastore:",noindex"`
-	Released    time.Time
-	Available   bool
-	Stocked     int
-	AddLabel    string // Pre-order now or Add to cart
-	HeaderImage Image
+	Id                   string
+	Slug                 string
+	Title                string
+	Headline             string
+	Excerpt              string
+	Description          string `datastore:",noindex"`
+	CheckOutInstructions string `datastore:",noindex"`
+	Released             time.Time
+	Disabled             bool
+	Available            bool
+	Stocked              int
+	AddLabel             string // Pre-order now or Add to cart
+	HeaderImage          Image
 
 	Images []Image
 
