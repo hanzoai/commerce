@@ -19,45 +19,44 @@ func List(c *gin.Context) {
 	}
 
 	db := datastore.New(c)
-	var products []models.Product
 
-	if _, err := db.Query("product").GetAll(db.Context, &products); err != nil {
+	productListings := make([]*models.ProductListing, 1)
+	productListings[0] = new(models.ProductListing)
+
+	if err := db.GetKeyMulti("productlisting", []string{"ar-1-winter2014promo"}, productListings); err != nil {
+		// Something is seriously wrong. i.e. products not loaded into db
+		log.Panic("Unable to fetch product listing from database: %v", err)
+	}
+
+	productListingsMap := make(map[string]*models.ProductListing)
+	for _, productListing := range productListings {
+		productListingsMap[productListing.Slug] = productListing
+	}
+	productListingsJSON := json.Encode(productListingsMap)
+
+	slugs := productListings[0].GetProductSlugs()
+	products := make([]*models.Product, len(slugs))
+	for i, _ := range slugs {
+		products[i] = new(models.Product)
+	}
+
+	if err := db.GetKeyMulti("product", slugs, products); err != nil {
 		// Something is seriously wrong. i.e. products not loaded into db
 		log.Panic("Unable to fetch all products from database: %v", err)
 	}
 
 	// Create map of slug -> product
-	productsMap := make(map[string]models.Product)
+	productsMap := make(map[string]*models.Product)
 	for _, product := range products {
 		productsMap[product.Slug] = product
 	}
 	productsJSON := json.Encode(productsMap)
 
-	productListing := new(models.ProductListing)
-
-	if err := db.GetKey("productlisting", "ar-1-winter2014promo", productListing); err != nil {
-		// Something is seriously wrong. i.e. products not loaded into db
-		log.Panic("Unable to fetch product listing from database: %v", err)
-	}
-
-	slugs := productListing.GetProductSlugs()
-	_products := make([]*models.Product, len(slugs))
-	for i, _ := range slugs {
-		_products[i] = new(models.Product)
-	}
-
-	if err := db.GetKeyMulti("product", slugs, _products); err != nil {
-		// Something is seriously wrong. i.e. products not loaded into db
-		log.Panic("Unable to fetch product listing product from database: %v", err)
-	}
-	log.Debug("product Listing products: %v", _products)
-
-	log.Debug("%v", productListing)
-
 	template.Render(c, "list.html",
+		"productListings", productListings,
+		"productListingsJSON", productListingsJSON,
 		"products", products,
 		"productsJSON", productsJSON,
-		"productListing", productListing,
 	)
 }
 
