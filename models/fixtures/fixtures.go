@@ -20,16 +20,30 @@ var All = delay.Func("install-all-fixtures", func(c appengine.Context) {
 	log.Debug("Loading fixtures...")
 	db := datastore.New(c)
 
+	if appengine.IsDevAppServer() {
+		// Add default test user
+		pwhash, _ := bcrypt.GenerateFromPassword([]byte("password"), 12)
+
+		db.PutKey("user", "test@test.com", &User{
+			Id:           "test@test.com",
+			FirstName:    "Test",
+			LastName:     "User",
+			Email:        "test@test.com",
+			Phone:        "(123) 456-7890",
+			PasswordHash: pwhash,
+		})
+	}
+
+	// TODO: Stop doing this in production
+	// Add SKULLY user
 	pwhash, _ := bcrypt.GenerateFromPassword([]byte("Victory1!"), 12)
 
-	// Default User (SKULLY)
 	db.PutKey("user", "dev@hanzo.ai", &User{
 		Id:           "dev@hanzo.ai",
 		FirstName:    "Mitchell",
 		LastName:     "Weller",
 		Email:        "dev@hanzo.ai",
 		Phone:        "(123) 456-7890",
-		OrdersIds:    []string{},
 		PasswordHash: pwhash,
 	})
 
