@@ -97,8 +97,15 @@ func (d *Datastore) Put(kind string, src interface{}) (string, error) {
 	return k.Encode(), nil
 }
 
-func (d *Datastore) PutKey(kind string, key string, src interface{}) (string, error) {
-	k := NewKey(d.Context, kind, key, 0, nil)
+func (d *Datastore) PutKey(kind string, key interface{}, src interface{}) (string, error) {
+	var k *Key
+	switch v := key.(type) {
+	case string:
+		k = NewKey(d.Context, kind, v, 0, nil)
+	case *Key:
+		k = v
+	}
+
 	k, err := nds.Put(d.Context, k, src)
 	if err != nil {
 		log.Error("%v", err, d.Context)
