@@ -1,6 +1,8 @@
 package checkout
 
 import (
+	"time"
+
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/config"
@@ -53,6 +55,8 @@ func charge(c *gin.Context) {
 		c.Fail(500, err)
 		return
 	}
+
+	form.Order.CreatedAt = time.Now()
 
 	ctx := middleware.GetAppEngine(c)
 	db := datastore.New(ctx)
