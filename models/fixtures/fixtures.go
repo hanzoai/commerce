@@ -156,7 +156,7 @@ var All = delay.Func("install-all-fixtures", func(c appengine.Context) {
 
 	db.PutKey("product", "card-winter2014promo", &Product{
 		Slug:     "card-winter2014promo",
-		Title:    "BONUS: SKULLY Xmas Card",
+		Title:    "SKULLY Xmas Card",
 		Variants: variants,
 		Images: []Image{ // replace with real one, zach
 			Image{
@@ -182,7 +182,7 @@ var All = delay.Func("install-all-fixtures", func(c appengine.Context) {
 
 	db.PutKey("product", "dogtag-winter2014promo", &Product{
 		Slug:     "dogtag-winter2014promo",
-		Title:    "BONUS: Limited Edition SKULLY dog tag",
+		Title:    "Limited Edition SKULLY dog tag",
 		Variants: variants,
 		Images: []Image{ // replace with real one, zach
 			Image{
@@ -420,6 +420,8 @@ var All = delay.Func("install-all-fixtures", func(c appengine.Context) {
 					  more, the SKULLY AR-1 not only eliminates blind spots, but allows the rider to
 					  focus on what matters most: the road ahead. SKULLY AR-1: Ride safer, look
 					  badass.
+
+					  Estimated Delivery: JULY 2015
 
 					  *Pre-Order during the holiday season for a FREE LIMITED EDITION SKULLY AR-1 dog tag & XMAS Card`,
 		Images: []Image{
