@@ -7,7 +7,7 @@ import (
 
 	"appengine"
 
-	"crowdstart.io/auth"
+	// "crowdstart.io/auth"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
 	"crowdstart.io/util/form"
@@ -16,14 +16,14 @@ import (
 )
 
 func DisplayOrders(c *gin.Context) {
-	user := auth.GetUser(c)
-	db := datastore.New(c)
+	// user := auth.GetUser(c)
+	// db := datastore.New(c)
 	var orders []interface{}
-	err := db.GetKeyMulti("order", user.OrdersIds, orders)
-	if err != nil {
-		c.Fail(500, err)
-		return
-	}
+	// err := db.GetKeyMulti("order", user.OrdersIds, orders)
+	// if err != nil {
+	// 	c.Fail(500, err)
+	// 	return
+	// }
 
 	var cancelled []models.Order
 	var shipped []models.Order
@@ -71,15 +71,15 @@ func ModifyOrder(c *gin.Context) {
 // Extracts the orderId from the url and removes it from the datastore.
 func RemoveOrder(c *gin.Context) {
 	id := c.Request.URL.Query().Get("orderId")
-	user := auth.GetUser(c)
+	// user := auth.GetUser(c)
 
 	hasOrder := false
-	for _, _id := range user.OrdersIds {
-		if _id == id {
-			hasOrder = true
-			break
-		}
-	}
+	// for _, _id := range user.OrdersIds {
+	// 	if _id == id {
+	// 		hasOrder = true
+	// 		break
+	// 	}
+	// }
 	if !hasOrder {
 		c.Fail(500, errors.New("Invalid order id"))
 	}

@@ -24,11 +24,53 @@
     <div class="order-information col-1-2">
         <form id="form" action="{{ urlFor("checkout", "/charge") }}" method="post" name="form">
             {% for item in order.Items %}
-                <input type="hidden" name="Order.Items.{{ forloop.Counter }}.Product.Slug" value="{{ item.Slug() }}">
-                <input type="hidden" name="Order.Items.{{ forloop.Counter }}.Variant.SKU" value="{{ item.SKU() }}">
-                <input type="hidden" name="Order.Items.{{ forloop.Counter }}.Quantity" value="{{ item.Quantity }}">
+            <input type="hidden" name="Order.Items.{{ forloop.Counter }}.Product.Slug" value="{{ item.Slug() }}">
+            <input type="hidden" name="Order.Items.{{ forloop.Counter }}.Variant.SKU" value="{{ item.SKU() }}">
+            <input type="hidden" name="Order.Items.{{ forloop.Counter }}.Quantity" value="{{ item.Quantity }}">
             {% endfor %}
 
+            {% if error %}
+            <div class="error">{{ error }}</div>
+            {% endif %}
+
+            {% if loggedIn %}
+            <div class="user-information">
+                <h2>Login or Register</h2>
+                <fieldset class="login">
+                    <div class="field">
+                        <label for="email">Email</label>
+                        <input type="text" id="email" name="Email" placeholder="abc@example.com" />
+                    </div>
+                    <div class="field">
+                        <label for="password">Password</label>
+                        <input type="password" name="Password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;" />
+                    </div>
+
+                    <div class="buttons">
+                        <button type="button">Register</button>
+                        <button type="submit">Login</button>
+                    </div>
+                </fieldset>
+                <fieldset class="register">
+                    <div class="field">
+                        <label for="ConfirmEmail">Email</label>
+                        <input type="text" id="ConfirmEmail" name="ConfirmEmail" placeholder="abc@example.com" />
+                    </div>
+                    <div class="field">
+                        <label for="RegisterPassword">Password</label>
+                        <input type="password" id="RegisterPassword" name="RegisterPassword" placeholder="Minimum 6 characters" />
+                    </div>
+                    <div class="field">
+                        <label for="ConfirmPassword">Retype Password</label>
+                        <input type="password" id="ConfirmPassword" name="ConfirmPassword" placeholder="Type in your password again" />
+                    </div>
+                    <div class="buttons">
+                        <button type="submit">Register</button>
+                        <button type="button">Login</button>
+                    </div>
+                </fieldset>
+            </div>
+            {% else %}
             <div class="billing-information">
                 <h2>Billing Info</h2>
 
@@ -210,6 +252,7 @@
                     </div>
                 </fieldset>
             </div>
+            {% endif %}
             <input type="hidden" name="StripeToken">
         </form>
     </div>
