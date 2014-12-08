@@ -1,3 +1,5 @@
+util = require '../store/util'
+
 require 'card'
 # View = require './view'
 
@@ -13,107 +15,130 @@ validation =
     pattern = new RegExp(/^[+a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/i)
     pattern.test email
 
-$("div.field").on "click", ->
-  $(this).removeClass "error"
+$('div.field').on 'click', ->
+  $(this).removeClass 'error'
   return
 
-$("#form").submit (e) ->
-  empty = $("div:visible.required > input").filter(->
-    $(this).val() is ""
-  )
-  email = $("input[name=\"User.Email\"]")
-  unless validation.isEmail(email.val())
-    console.log validation.isEmail(email.text())
+$('#form').submit (e) ->
+  empty = $('div:visible.required > input').filter ->
+    $(this).val() is ''
+
+  email = $('input[name="User.Email"]')
+  unless validation.isEmail email.val()
+    console.log validation.isEmail email.text()
     e.preventDefault()
-    email.parent().addClass "error"
-    email.parent().addClass "shake"
+    email.parent().addClass 'error'
+    email.parent().addClass 'shake'
     setTimeout (->
-      email.parent().removeClass "shake"
+      email.parent().removeClass 'shake'
       return
     ), 500
   if empty.length > 0
     e.preventDefault()
-    empty.parent().addClass "error"
-    empty.parent().addClass "shake"
+    empty.parent().addClass 'error'
+    empty.parent().addClass 'shake'
     setTimeout (->
-      empty.parent().removeClass "shake"
+      empty.parent().removeClass 'shake'
       return
     ), 500
   return
 
 # Show payment options when first half is competed.
-$requiredVisible = $("div:visible.required > input")
-showPaymentOptions = $.debounce(250, ->
-
+$requiredVisible = $('div:visible.required > input')
+showPaymentOptions = $.debounce 250, ->
   # Check if all required inputs are filled
   i = 0
 
   while i < $requiredVisible.length
     return  if $requiredVisible[i].value is ""
     i++
-  fieldset = $("div.payment-information > fieldset")
-  fieldset.css "display", "block"
-  fieldset.css "opacity", "0"
+  fieldset = $('div.payment-information > fieldset')
+  fieldset.css 'display', 'block'
+  fieldset.css 'opacity', '0'
   fieldset.fadeTo 1000, 1
-  $requiredVisible.off "keyup", showPaymentOptions
+  $requiredVisible.off 'keyup', showPaymentOptions
   return
-)
-$requiredVisible.on "keyup", showPaymentOptions
-$("#form").card
-  container: "#card-wrapper"
-  numberInput: "#stripe-number"
-  expiryInput: "#stripe-expiry-month, #stripe-expiry-year"
-  cvcInput: "#stripe-cvc"
-  nameInput: "#stripe-name"
 
-$("input[name=\"ShipToBilling\"]").change ->
-  shipping = $(".shipping-information fieldset")
+$requiredVisible.on 'keyup', showPaymentOptions
+$('#form').card
+  container: '#card-wrapper'
+  numberInput: '#stripe-number'
+  expiryInput: '#stripe-expiry-month, #stripe-expiry-year'
+  cvcInput: '#stripe-cvc'
+  nameInput: '#stripe-name'
+
+$('input[name="ShipToBilling"]').change ->
+  shipping = $('.shipping-information fieldset')
   if @checked
     shipping.fadeOut 500
-    setTimeout (->
-      shipping.css "display", "none"
+    setTimeout ->
+      shipping.css 'display', 'none'
       return
-    ), 500
+    , 500
   else
     shipping.fadeIn 500
-    shipping.css "display", "block"
+    shipping.css 'display', 'block'
   return
 
 
 # Update tax display
-$state = $("input[name=\"Order.BillingAddress.State\"]")
-$city = $("input[name=\"Order.BillingAddress.City\"]")
-$tax = $("div.tax .price")
-$total = $("div.grand-total .price")
-$subtotal = $("div.subtotal .price")
+$state    = $('input[name="Order.BillingAddress.State"]')
+$city     = $('input[name="Order.BillingAddress.City"]')
+
+$subtotal = $('span.subtotal')
+$tax      = $('span.tax')
+$shipping = $('span.shipping')
+$total    = $('span.grand-total')
+$country  = $('input[name="Order.BillingAddress.Country"]')
 
 updateTax = $.debounce 250, ->
-  city = $city.val()
-  state = $state.val().toUpperCase()
-  tax = 0
-  total = 0
-  subtotal = parseFloat($subtotal.text().replace(",", ""))
+  city     = $city.val().trim()
+  state    = $state.val().trim()
+  subtotal = parseFloat $subtotal.text().replace ',', ''
+  shipping = parseFloat $shipping.text().replace ',', ''
+  tax      = 0
+  total    = 0
 
-  # Add CA tax
-  tax += subtotal * 0.075  if state is "CA" or (/california/i).test(state)
+  if (/^ca$|^cali/i).test state
+    # Add CA tax
+    tax += subtotal * 0.075
+    # Add SF county tax
+    tax += subtotal * 0.0125 if (/san francisco/i).test city
 
-  # Add SF county tax
-  tax += subtotal * 0.0125  if state is "CA" and (/san francisco/i).test(city)
   total = subtotal + tax
-  $tax.text tax.toFixed(2)
-  $total.text total.toFixed(2)
+  $tax.text util.humanizeNumber tax.toFixed 2
+  $total.text util.humanizeNumber total.toFixed 2
   return
 
 $state.change updateTax
-$city.on "keyup", updateTax
+$city.on 'keyup', updateTax
 
+# Update shipping display
+updateShipping = $.debounce 250, ->
+  country  = $country.val().trim().replace ' ', ''
+  subtotal = parseFloat $subtotal.text().replace ',', ''
+  tax      = parseFloat $tax.text().replace ',', ''
+  shipping = 0
+  total    = 0
 
-$form = $("form#stripeForm")
-$cardNumber = $("#stripe-number")
-$expiryMonth = $("#stripe-expiry-month")
-$expiryYear = $("#stripe-expiry-year")
-$cvc = $("#stripe-cvc")
-$token = $("input[name=\"StripeToken\"]")
+  unless (/^usa$|^us$|unitedstates$|unitedstatesofamerica/i).test country
+    shipping = 100.00
+  else
+    shipping = 0
+
+  total = subtotal + tax + shipping
+  $shipping.text util.humanizeNumber shipping.toFixed 2
+  $total.text util.humanizeNumber total.toFixed 2
+  return
+
+$country.change updateShipping
+
+$form = $('form#stripeForm')
+$cardNumber = $('#stripe-number')
+$expiryMonth = $('#stripe-expiry-month')
+$expiryYear = $('#stripe-expiry-year')
+$cvc = $('#stripe-cvc')
+$token = $('input[name="StripeToken"]')
 
 # Checks each input and does dumb checks to see if it might be a valid card
 validateCard = ->
