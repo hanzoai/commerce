@@ -15,34 +15,58 @@ validation =
     pattern = new RegExp(/^[+a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/i)
     pattern.test email
 
-$('div.field').on 'click', ->
-  $(this).removeClass 'error'
-  return
+validateForm = ->
+  $('#error-message').text ''
+  console.log 'validating form'
 
-$('#form').submit (e) ->
+  valid = true
+  errors = []
+
+  # Get all inputs that are visible and empty
   empty = $('div:visible.required > input').filter ->
-    $(this).val() is ''
+    validation.isEmpty $(@).val()
+
+  window.empty = empty
 
   email = $('input[name="User.Email"]')
   unless validation.isEmail email.val()
-    console.log validation.isEmail email.text()
-    e.preventDefault()
+    valid = false
     email.parent().addClass 'error'
     email.parent().addClass 'shake'
-    setTimeout (->
+    setTimeout ->
       email.parent().removeClass 'shake'
       return
-    ), 500
+    , 500
+    $('#error-message').text "Please fill out: #{}"
+
   if empty.length > 0
-    e.preventDefault()
+    valid = false
     empty.parent().addClass 'error'
     empty.parent().addClass 'shake'
-    setTimeout (->
+    setTimeout ->
       empty.parent().removeClass 'shake'
       return
-    ), 500
-  return
+    , 500
 
+  unless valid
+    # display errors
+    labels = (label.trim() for label in empty.parent().text().split('\n') when label.trim())
+    $('#error-message').text "Please check: #{labels.join ', '}."
+
+    # scroll to first error
+    location.href = '#' + empty[0].id
+    pos = $(window).scrollTop() - 100 # save position
+    location.hash = '' # clear hash
+    $(window).scrollTop pos
+
+  return valid
+
+# Remove error class from field that has been edited or clicked on
+clearError = -> $(@).removeClass 'error'
+$('div.field').on 'click', clearError
+$('div.field').on 'change', clearError
+
+# Create credit card fanciness: https://github.com/jessepollak/card
 $('#form').card
   container:   '#card-wrapper'
   numberInput: '#stripe-number'
@@ -118,45 +142,32 @@ $state.change updateShippingAndTax
 $city.on 'keyup', updateShippingAndTax
 $country.change updateShippingAndTax
 
-$stripeForm = $('form#stripeForm')
-$cardNumber = $('#stripe-number')
-$expiryMonth = $('#stripe-expiry-month')
-$expiryYear = $('#stripe-expiry-year')
-$cvc = $('#stripe-cvc')
-$token = $('input[name="StripeToken"]')
-
-$authorizeMessage = $('#authorize-message')
-
-# Callback for createToken
-stripeResponseHandler = do ->
+# Authorize with stripe
+stripeAuthorize = do ->
   app.set 'approved', false
+
   (status, response) ->
-    $authorizeMessage.removeClass 'error'
+    console.log 'Got response from stripe', response
     if response.error
-      $authorizeMessage.text response.error.message
-      $authorizeMessage.addClass 'error'
+      $('#error-message').text response.error.message
     else
       app.set 'approved', true
       token = response.id
-      $token.val token
-      $('#form').submit()
+      $('input[name="StripeToken"]').val token
+      # $form.submit()
     return
 
-updateStripeForm = ->
-  $stripeForm.find('input[data-stripe="number"]').val card.number
-  $stripeForm.find('input[data-stripe="cvc"]').val card.cvc
-  $stripeForm.find('input[data-stripe="exp-month"]').val card.month
-  $stripeForm.find('input[data-stripe="exp-year"]').val card.year
-
-$cardNumber.change updateStripeForm
-$expiryMonth.change updateStripeForm
-$expiryYear.change updateStripeForm
-$cvc.change updateStripeForm
-
 $(document).ready ->
-  $('#form').submit (event) ->
-    unless app.get('approved')
-      Stripe.card.createToken $form, stripeResponseHandler
+  $form = $('#form')
+  $form.submit (e) ->
+    # Do basic authorization
+    unless validateForm()
       return false
+
+    # Do stripe authorization
+    unless app.get 'approved'
+      Stripe.card.createToken $form, stripeAuthorize
+      return false
+
+    # This should only happen when form is manually from `stripeAuthorize`
     true
-  return
