@@ -1,8 +1,9 @@
 package user
 
 import (
+	"github.com/gin-gonic/gin"
+
 	"crowdstart.io/util/form"
-	"crowdstart.io/models"
 )
 
 type ForgotPasswordForm struct {
