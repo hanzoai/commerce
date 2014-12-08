@@ -13,7 +13,10 @@ import (
 )
 
 func Profile(c *gin.Context) {
-	user := auth.GetUser(c)
+	user, err := auth.GetUser(c)
+	if err != nil {
+		log.Panic("GetUser Error: %v", err)
+	}
 	userJson := json.Encode(user)
 	template.Render(c, "profile.html", "user", user, "userJson", userJson)
 }
@@ -25,7 +28,7 @@ func SaveProfile(c *gin.Context) {
 		log.Panic("Error parsing user \n%v", err)
 	}
 
-	user := auth.GetUser(c)
+	user, err := auth.GetUser(c)
 	log.Debug("Email: %#v", user)
 	if err != nil {
 		log.Panic("Error getting logged in user from the datastore \n%v", err)
