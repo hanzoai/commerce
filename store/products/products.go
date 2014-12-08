@@ -20,21 +20,21 @@ func List(c *gin.Context) {
 
 	db := datastore.New(c)
 
-	productListings := make([]*models.ProductListing, 1)
-	productListings[0] = new(models.ProductListing)
+	listings := make([]*models.Listing, 1)
+	listings[0] = new(models.Listing)
 
-	if err := db.GetKeyMulti("productlisting", []string{"ar-1-winter2014promo"}, productListings); err != nil {
+	if err := db.GetKeyMulti("listing", []string{"ar-1-winter2014promo"}, listings); err != nil {
 		// Something is seriously wrong. i.e. products not loaded into db
 		log.Panic("Unable to fetch product listing from database: %v", err)
 	}
 
-	productListingsMap := make(map[string]*models.ProductListing)
-	for _, productListing := range productListings {
-		productListingsMap[productListing.Slug] = productListing
+	listingsMap := make(map[string]*models.Listing)
+	for _, listing := range listings {
+		listingsMap[listing.SKU] = listing
 	}
-	productListingsJSON := json.Encode(productListingsMap)
+	listingsJSON := json.Encode(listingsMap)
 
-	slugs := productListings[0].GetProductSlugs()
+	slugs := listings[0].GetProductSlugs()
 	products := make([]*models.Product, len(slugs))
 	for i, _ := range slugs {
 		products[i] = new(models.Product)
@@ -53,8 +53,8 @@ func List(c *gin.Context) {
 	productsJSON := json.Encode(productsMap)
 
 	template.Render(c, "list.html",
-		"productListings", productListings,
-		"productListingsJSON", productListingsJSON,
+		"listings", listings,
+		"listingsJSON", listingsJSON,
 		"products", products,
 		"productsJSON", productsJSON,
 	)
