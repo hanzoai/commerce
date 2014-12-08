@@ -53,13 +53,14 @@ class ProductView extends View
     unless (variant = @getVariant(slug))?
       return
 
+    listingSKU = listing.SKU + variant.SKU
+
     quantity = parseInt @el.find('select[name=quantity]').val(), 10
 
     product = allProducts[slug]
-
     childProducts = []
     rootProduct =
-      listingSKU: listing.SKU
+      listingSKU: listingSKU
       sku:      variant.SKU
       color:    variant.Color
       img:      product.Images[0].Url
@@ -102,7 +103,7 @@ class ProductView extends View
       return
 
     # for each listing SKU, we list the product configuration
-    cart.addProduct listing.SKU, rootProduct
+    cart.addProduct listingSKU, rootProduct
 
     setTimeout =>
       @el.find('.add-to-cart span').text('Added!').fadeOut 500, =>
