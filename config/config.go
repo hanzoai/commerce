@@ -228,6 +228,8 @@ func Skully() *Config {
 	config.Mandrill.FromName = "SKULLY"
 	config.Mandrill.FromEmail = "noreply@skullysystems.com"
 
+	config.DemoMode = false
+
 	return config
 }
 
