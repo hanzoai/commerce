@@ -9,6 +9,7 @@ import (
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
+	"crowdstart.io/thirdparty/mandrill"
 	"crowdstart.io/thirdparty/stripe"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
@@ -101,6 +102,9 @@ func charge(c *gin.Context) {
 	user.BillingAddress = form.Order.BillingAddress
 	user.ShippingAddress = form.Order.ShippingAddress
 	db.PutKey("user", user.Email, user)
+
+	// Send confirmation email
+	mandrill.SendTemplateAsync.Call(ctx, "confirmation-order", user.Email, user.Name())
 
 	log.Debug("Checkout complete!")
 	c.Redirect(301, config.UrlFor("checkout", "/complete"))
