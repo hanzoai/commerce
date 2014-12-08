@@ -3,7 +3,7 @@
 {% block json %}
 <script>
 var allProducts = {{ productsJSON | safe }};
-var allProductListings = {{ productListingsJSON | safe }};
+var allListings = {{ listingsJSON | safe }};
 </script>
 {% endblock %}
 
@@ -16,11 +16,11 @@ var allProductListings = {{ productListingsJSON | safe }};
 {% block content_width_class %}store-width{% endblock %}
 
 {% block content %}
-{% for productListing in productListings %}
-{% if !productListing.Disabled %}
+{% for listing in listings %}
+{% if !listing.Disabled %}
 <div class="item sep-top product-listing">
   <div class="product-viewer">
-    {% for image in productListing.Images %}
+    {% for image in listing.Images %}
       {% if forloop.First %}
       <div class="preview-background" style="background-image:url({{ image.Url }})">
         <img class="preview" src="{{ image.Url }}" alt="{{ image.Alt }}">
@@ -28,9 +28,9 @@ var allProductListings = {{ productListingsJSON | safe }};
       {% endif %}
     {% endfor %}
 
-    {% if productListing.Images | length > 1 %}
+    {% if listing.Images | length > 1 %}
     <div class="gallery">
-      {% for image in productListing.Images %}
+      {% for image in listing.Images %}
       {% if forloop.First %}
       <img class="thumbnail selected" src="{{ image.Url }}" alt="{{ image.Alt }}">
       {% else %}
@@ -41,15 +41,15 @@ var allProductListings = {{ productListingsJSON | safe }};
     {% endif %}
   </div>
 
-  <div class="product-text" data-slug="{{ productListing.Slug }}">
+  <div class="product-text" data-sku="{{ listing.SKU }}">
     <div class="product-title">
-      <h1 class="product-name">{{ productListing.Title|safe }}</h1>
+      <h1 class="product-name">{{ listing.Title|safe }}</h1>
       <h2 class="product-cost"><span>$</span><span class="money"></span></h2>
     </div>
 
     <div class="product-body">
       <div class="product-description">
-        {% for p in productListing.GetDescriptionParagraphs() %}
+        {% for p in listing.GetDescriptionParagraphs() %}
         {% if !forloop.First %}
         <br />
         {% endif %}
