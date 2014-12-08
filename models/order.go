@@ -18,10 +18,13 @@ type Order struct {
 	CreatedAt       time.Time `schema:"-"`
 	UpdatedAt       time.Time `schema:"-"`
 	Id              string    `schema:"-"`
-	Shipping        int64     `schema:"-"`
-	Subtotal        int64     `schema:"-"`
-	Tax             int64     `schema:"-"`
-	Total           int64     `schema:"-"`
+	Email           string    `schema:"-"`
+
+	// TODO: Recalculate Shipping/Tax on server
+	Shipping int64
+	Tax      int64
+	Subtotal int64 `schema:"-"`
+	Total    int64 `schema:"-"`
 
 	Items []LineItem
 
