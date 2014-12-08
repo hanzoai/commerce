@@ -46,6 +46,7 @@ func GetPreorder(c *gin.Context) {
 	// If user has password, they've previously edited the preorder
 	order := new(models.Order)
 	if user.HasPassword() {
+		// TODO: Filter on Email
 		if err := db.GetKey("order", user.Email, order); err != nil {
 			log.Error("Failed to fetch order for user: %v", err, c)
 			c.Redirect(301, "../")
@@ -157,9 +158,11 @@ func SavePreorder(c *gin.Context) {
 	}
 
 	// Update Total
-	order.Total = order.Subtotal + order.Tax
+	order.Total = order.Subtotal + order.Shipping + order.Tax
+	order.Email = user.Email
 
 	// Save order
+	// TODO: Need to not putkey on email, but reuse order id
 	log.Debug("Saving order: %v", order)
 	_, err := db.PutKey("order", user.Email, &order)
 	if err != nil {
@@ -214,7 +217,7 @@ func Index(c *gin.Context) {
 	if !auth.IsLoggedIn(c) {
 		template.Render(c, "login.html")
 	} else {
-		user := auth.GetUser(c)
+		user, _ := auth.GetUser(c)
 		tokens := getTokens(c, user.Email)
 
 		// Complain if user doesn't have any tokens
