@@ -54,8 +54,6 @@ func checkout(c *gin.Context) {
 // Charge a successful authorization
 // LoginRequired
 func charge(c *gin.Context) {
-	user := auth.GetUser(c)
-
 	form := new(ChargeForm)
 	if err := form.Parse(c); err != nil {
 		log.Error("Failed to parse form: %v", err)
@@ -68,6 +66,7 @@ func charge(c *gin.Context) {
 	ctx := middleware.GetAppEngine(c)
 	db := datastore.New(ctx)
 
+	// Populate
 	if err := form.Order.Populate(db); err != nil {
 		log.Error("Failed to repopulate order information from datastore: %v", err)
 		log.Dump(form.Order)
@@ -75,6 +74,7 @@ func charge(c *gin.Context) {
 		return
 	}
 
+	// Charging order
 	log.Debug("Charging order.")
 	log.Dump(form.Order)
 	if _, err := stripe.Charge(ctx, form.StripeToken, &form.Order); err != nil {
@@ -85,18 +85,18 @@ func charge(c *gin.Context) {
 
 	// Save order
 	log.Debug("Saving order.")
-	key, err := db.Put("order", &form.Order)
+	_, err := db.Put("order", &form.Order)
 	if err != nil {
 		log.Error("Error saving order", err)
 		c.Fail(500, err)
 		return
 	}
 
-	// Add order to user;
-	user.OrdersIds = append(user.OrdersIds, key)
-	if _, err = db.PutKey("user", user.Email, user); err != nil {
-		log.Panic("Saving user after adding order failed \n%v", err)
-	}
+	// Update user information
+	user := auth.GetUser(c)
+	user.BillingAddress = form.Order.BillingAddress
+	user.ShippingAddress = form.Order.ShippingAddress
+	db.PutKey("user", user.Email, user)
 
 	log.Debug("Checkout complete!")
 	c.Redirect(301, config.UrlFor("checkout", "/complete"))
