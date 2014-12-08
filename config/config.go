@@ -8,6 +8,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"log"
 )
 
 var demoMode = true
@@ -17,7 +18,13 @@ var cachedConfig *Config
 // app.yaml files so we need to check two places for config.json based on which
 // module is trying to load it.
 var cwd, _ = os.Getwd()
-var configFileLocations = []string{cwd + "/../config.json", cwd + "/../../config.json"}
+var configFileLocations = []string{
+	cwd + "/../../../../config.json",
+	cwd + "/../../../config.json",
+	cwd + "/../../config.json",
+	cwd + "/../config.json",
+	cwd + "/config.json",
+}
 
 type Config struct {
 	DemoMode          bool
@@ -248,11 +255,15 @@ func Get() *Config {
 	}
 
 	// Allow local config file to override settings
+	log.Printf("looking for config in: %#v", configFileLocations)
 	for _, configFile := range configFileLocations {
 		if _, err := os.Stat(configFile); err == nil {
+			log.Printf("Using config: %v", configFile)
 			cachedConfig.Load(configFile)
 		}
 	}
+
+	log.Printf("%#v", cachedConfig)
 
 	return cachedConfig
 }
