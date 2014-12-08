@@ -17,7 +17,7 @@ func init() {
 	router.POST("/", checkout)
 
 	// Charge
-	router.POST("/charge", loginRequired, charge)
+	router.POST("/charge", charge)
 
 	// Complete
 	router.GET("/complete", loginRequired, complete)
