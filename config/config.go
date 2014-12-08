@@ -46,6 +46,8 @@ type Config struct {
 	}
 	Mandrill struct {
 		ApiKey string
+		FromEmail string
+		FromName string
 	}
 }
 
@@ -99,7 +101,6 @@ func Defaults() *Config {
 	config.RootDir, _ = filepath.Abs(cwd + "/../..")
 	config.SiteTitle = "SKULLY"
 	config.DemoMode = demoMode
-	config.Mandrill.ApiKey = "wJ3LGLp5ZOUZlSH8wwqmTg"
 	return config
 }
 
@@ -165,6 +166,8 @@ func Production() *Config {
 
 	config.StaticUrl = "//static.crowdstart.io"
 
+	config.Mandrill.APIKey = "wJ3LGLp5ZOUZlSH8wwqmTg"
+
 	// Only use production credentials if demo mode is off.
 	if !config.DemoMode {
 		config.Salesforce.ConsumerKey = "3MVG9xOCXq4ID1uElRYWhpUWjXSbiTVg4WO6q9DvWdvBjQ_DFlwSc7jZ9AbY3z9Jv_V29W7xq1nPjTYQhYJqF"
@@ -196,6 +199,11 @@ func Staging() *Config {
 	config.Hosts["store"] = "store.staging.crowdstart.io"
 
 	config.StaticUrl = "//static.staging.crowdstart.io"
+
+	config.StaticUrl = "//static.skullysystems.com"
+	config.Mandrill.FromName = "SKULLY"
+	config.Mandrill.FromEmail = "noreply@skullysystems.com"
+
 	return config
 }
 
@@ -211,6 +219,9 @@ func Skully() *Config {
 	config.Hosts["store"] = "store.skullysystems.com"
 
 	config.StaticUrl = "//static.skullysystems.com"
+	config.Mandrill.FromName = "SKULLY"
+	config.Mandrill.FromEmail = "noreply@skullysystems.com"
+
 	return config
 }
 
