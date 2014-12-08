@@ -85,4 +85,31 @@
         </td>
     </tr>
 </script>
+
+<script id="line-subitem-template" type="text/template">
+    <tr class="subitem">
+        <input class='slug' type="hidden" name="Order.Items.1.Product.Slug" value="{{ item.Slug() }}">
+        <input class='sku' type="hidden" name="Order.Items.1.Variant.SKU" value="{{ item.SKU() }}">
+        <td class="item-image">
+            <img class="thumbnail" src="{{ item.Product.DisplayImage().Url }}?format=100w">
+        </td>
+
+        <td class="item-desc">
+            <div class="title">{{ item.Product.Title }}</div>
+            <div class="desc">{{ item.Product.Color }}&nbsp;/&nbsp;{{ item.Product.Size }}</div>
+        </td>
+
+        <td class="quantity">
+            <span class="text"></span>
+            <input name="Order.Items.1.Quantity" type="hidden" value="">
+        </td>
+
+        <td class="price">
+            <span>$</span><span class="money"></span><span class="free">FREE</span>
+        </td>
+
+        <td class="remove">
+        </td>
+    </tr>
+</script>
 {% endblock %}
