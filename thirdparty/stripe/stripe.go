@@ -28,6 +28,7 @@ func Charge(ctx appengine.Context, token string, order *models.Order) (string, e
 		Currency: currency.USD,
 		Card:     &stripe.CardParams{Token: token},
 		Desc:     order.Description(),
+		Fee:      order.DecimalFee(),
 	}
 
 	stripeCharge, err := sc.Charges.New(params)
