@@ -1,8 +1,6 @@
 package auth
 
 import (
-	"errors"
-
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/sessions"
 
@@ -44,8 +42,9 @@ func Get(c *gin.Context, key string) (string, error) {
 
 	value, ok := session.Values[key].(string)
 	if !ok {
-		log.Debug("Value doesn't exist")
-		return "", errors.New("Value doesn't exist at " + key)
+		err := KeyError{key}
+		log.Debug(err)
+		return "", err
 	}
 	return value, SaveSession(c, session)
 }
