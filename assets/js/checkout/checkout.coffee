@@ -91,47 +91,41 @@ $shipping = $('span.shipping')
 $total    = $('span.grand-total')
 $country  = $('input[name="Order.BillingAddress.Country"]')
 
-updateTax = $.debounce 250, ->
+updateShippingAndTax = $.debounce 250, ->
+  country  = $country.val().trim().replace ' ', ''
   city     = $city.val().trim()
   state    = $state.val().trim()
+
   subtotal = parseFloat $subtotal.text().replace ',', ''
-  shipping = parseFloat $shipping.text().replace ',', ''
+  shipping = 0
   tax      = 0
   total    = 0
 
-  if (/^ca$|^cali/i).test state
-    # Add CA tax
-    tax += subtotal * 0.075
-    # Add SF county tax
-    tax += subtotal * 0.0125 if (/san francisco/i).test city
-
-  total = subtotal + tax
-  $tax.text util.humanizeNumber tax.toFixed 2
-  $total.text util.humanizeNumber total.toFixed 2
-  return
-
-$state.change updateTax
-$city.on 'keyup', updateTax
-
-# Update shipping display
-updateShipping = $.debounce 250, ->
-  country  = $country.val().trim().replace ' ', ''
-  subtotal = parseFloat $subtotal.text().replace ',', ''
-  tax      = parseFloat $tax.text().replace ',', ''
-  shipping = 0
-  total    = 0
-
+  # Update shipping
   unless (/^usa$|^us$|unitedstates$|unitedstatesofamerica/i).test country
     shipping = 100.00
   else
     shipping = 0
 
-  total = subtotal + tax + shipping
+  # Update tax
+  if ((/^usa$|^us$|unitedstates$|unitedstatesofamerica/i).test country) and
+     (/^ca$|^cali/i).test state
+    # Add CA tax
+    tax += subtotal * 0.075
+    # Add SF county tax
+    tax += subtotal * 0.0125 if (/san francisco/i).test city
+  else
+    tax = 0
+
+  total = subtotal + shipping + tax
   $shipping.text util.humanizeNumber shipping.toFixed 2
+  $tax.text util.humanizeNumber tax.toFixed 2
   $total.text util.humanizeNumber total.toFixed 2
   return
 
-$country.change updateShipping
+$state.change updateShippingAndTax
+$city.on 'keyup', updateShippingAndTax
+$country.change updateShippingAndTax
 
 $form = $('form#stripeForm')
 $cardNumber = $('#stripe-number')
