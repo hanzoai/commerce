@@ -24,8 +24,6 @@ func (l *Logger) setContext(args ...interface{}) []interface{} {
 		return args
 	}
 
-	log.Println(args)
-
 	// Appengine context is last argument
 	ctx := args[len(args)-1]
 
@@ -41,8 +39,6 @@ func (l *Logger) setContext(args ...interface{}) []interface{} {
 	default:
 		l.appengineBackend.context = nil
 	}
-
-	log.Println(args)
 
 	// Last/second to last argument MIGHT be an error
 	if len(args) > 0 {
