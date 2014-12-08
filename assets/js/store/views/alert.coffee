@@ -57,12 +57,12 @@ class AlertView extends View
     @render()
     @bind()
     @position()
-    @$el.fadeIn(200)
+    @$el.finish().fadeIn(200)
 
   # hide alert box
   dismiss: ->
     @unbind()
-    @$el.fadeOut 200, => @$el.css top: -1000
+    @$el.finish().fadeOut 200, => @$el.css top: -1000
 
   # update position relative to thing this should be next to
   position: ->
