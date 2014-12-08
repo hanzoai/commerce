@@ -57,6 +57,10 @@ func (o Order) DisplayTax() string {
 	return DisplayPrice(o.Tax)
 }
 
+func (o Order) DisplayShipping() string {
+	return DisplayPrice(o.Shipping)
+}
+
 func (o Order) DisplayTotal() string {
 	return DisplayPrice(o.Total)
 }
@@ -109,7 +113,7 @@ func (o *Order) Populate(db *datastore.Datastore) error {
 	}
 
 	// Update grand total
-	o.Total = o.Subtotal + o.Tax
+	o.Total = o.Subtotal + o.Tax + o.Shipping
 	return nil
 }
 

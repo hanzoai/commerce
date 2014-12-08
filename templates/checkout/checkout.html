@@ -30,70 +30,64 @@
 
                 <fieldset>
                     <!-- First Name -->
-
                     <div id="billing-first-name" class="field first-name required">
                         <label for="User.FirstName">First Name</label>
                         <input id="User.FirstName" name="User.FirstName" placeholder="First Name" x-autocompletetype="given-name" type="text" spellcheck="false" maxlength="30" value="">
                     </div>
-                    <!-- Last Name -->
 
+                    <!-- Last Name -->
                     <div id="billing-last-name" class="field last-name required">
                         <label for="User.LastName">Last Name</label>
                         <input id="User.LastName" name="User.LastName" placeholder="Last Name" x-autocompletetype="surname" type="text" spellcheck="false" maxlength="30" value="">
                     </div>
-                    <!-- Email Address -->
 
+                    <!-- Email Address -->
                     <div id="email" class="field email required">
                         <label for="User.Email">Email Address</label>
                         <input id="User.Email" name="User.Email" placeholder="Email" x-autocompletetype="email" type="text" spellcheck="false" maxlength="50" value="">
                     </div>
-                    <!-- Billing Address 1 -->
 
+                    <!-- Billing Address 1 -->
                     <div id="billing-address-1" class="field required">
                         <label for="Order.BillingAddress.Line1">Address Line 1</label>
                         <input id="Order.BillingAddress.Line1" name="Order.BillingAddress.Line1" placeholder="Address Line 1" x-autocompletetype="address-line1" type="text" spellcheck="false" maxlength="50" aria-autocomplete="list" aria-expanded="false" autocomplete="on" value="">
                     </div>
-                    <!-- Billing Address 2 -->
 
+                    <!-- Billing Address 2 -->
                     <div id="billing-address-2" class="field">
                         <label for="Order.BillingAddress.Line2">Address Line 2</label>
                         <input id="Order.BillingAddress.Line2" name="Order.BillingAddress.Line2" placeholder="Address Line 2" type="text" x-autocompletetype="address-line2" spellcheck="false" maxlength="50" value="">
                     </div>
-                    <!-- City -->
 
+                    <!-- City -->
                     <div id="billing-city" class="field city required">
                         <label for="Order.BillingAddress.City">City</label>
                         <input id="Order.BillingAddress.City" name="Order.BillingAddress.City" placeholder="City" type="text" spellcheck="false" maxlength="30" value="">
                     </div>
-                    <!-- State/Province -->
 
+                    <!-- State/Province -->
                     <div id="billing-state" class="field state required">
                         <label for="Order.BillingAddress.State">State/Province</label>
                         <input id="Order.BillingAddress.State" name="Order.BillingAddress.State" placeholder="State/Province" type="text" spellcheck="false" x-autocompletetype="state" value="">
                     </div>
-                    <!-- Zip Code -->
 
+                    <!-- Zip Code -->
                     <div id="billing-zip" class="field zip required">
                         <label for="Order.BillingAddress.PostalCode">Zip / Postal</label>
                         <input id="Order.BillingAddress.PostalCode" name="Order.BillingAddress.PostalCode" placeholder="Zip / Postal" type="text" spellcheck="false" maxlength="9">
                         <!--http://stackoverflow.com/a/469362-->
                     </div>
-                    <!-- Country -->
 
+                    <!-- Country -->
                     <div id="billing-country" class="field country required">
                         <label for="Order.BillingAddress.Country">Country</label>
                         <input id="Order.BillingAddress.Country" name="Order.BillingAddress.Country" type="text" spellcheck="false" placeholder="Country" x-autocompletetype="country-name" value="">
                     </div>
-                    <!-- Phone -->
 
+                    <!-- Phone -->
                     <div id="phone" class="field phone required">
                         <label for="User.Phone">Phone Number</label>
                         <input id="User.Phone" name="User.Phone" placeholder="(424)-424-4200" x-autocompletetype="phone" type="text" spellcheck="false" maxlength="20" value="">
-                    </div>
-                    <!-- Continue -->
-
-                    <div class="btn-container" style="text-align: center;">
-                        <!--<input type="submit" value="Continue" class="button continue-button" style="width:100%"></input>-->
                     </div>
                 </fieldset>
             </div>
@@ -107,46 +101,40 @@
 
                 <fieldset style="display:none">
                     <!-- Shipping Address 1 -->
-
                     <div id="shipping-address-1" class="field required">
                         <label for="Order.ShippingAddress.Line1">Address Line 1</label>
                         <input id="Order.ShippingAddress.Line1" name="Order.ShippingAddress.Line1" placeholder="Address Line 1" x-autocompletetype="address-line1" type="text" spellcheck="false" maxlength="50" aria-autocomplete="list" aria-expanded="false" autocomplete="on" value="">
                     </div>
-                    <!-- Shipping Address 2 -->
 
+                    <!-- Shipping Address 2 -->
                     <div id="shipping-address-2" class="field">
                         <label for="Order.ShippingAddress.Line2">Address Line 2</label>
                         <input id="Order.ShippingAddress.Line2" name="Order.ShippingAddress.Line2" placeholder="Address Line 2" type="text" x-autocompletetype="address-line2" spellcheck="false" maxlength="50" value="">
                     </div>
-                    <!-- City -->
 
+                    <!-- City -->
                     <div id="shipping-city" class="field city required">
                         <label for="Order.ShippingAddress.City">City</label>
                         <input id="Order.ShippingAddress.City" name="Order.ShippingAddress.City" placeholder="City" type="text" spellcheck="false" maxlength="30" value="">
                     </div>
-                    <!-- State/Province -->
 
+                    <!-- State/Province -->
                     <div id="shipping-state" class="field state required">
                         <label for="Order.ShippingAddress.State">State/Province</label>
                         <input id="Order.ShippingAddress.State" name="Order.ShippingAddress.State" placeholder="State/Province" type="text" spellcheck="false" x-autocompletetype="state" value="">
                     </div>
-                    <!-- Zip Code -->
 
+                    <!-- Zip Code -->
                     <div id="shipping-zip" class="field zip required">
                         <label for="Order.ShippingAddress.PostalCode">Zip / Postal</label>
                         <input id="Order.ShippingAddress.PostalCode" name="Order.ShippingAddress.PostalCode" placeholder="Zip / Postal" type="text" spellcheck="false" maxlength="9">
                         <!--http://stackoverflow.com/a/469362-->
                     </div>
+
                     <!-- Country -->
-
                     <div id="shipping-country" class="field country required">
-                        <label for="Order.ShippingAddress.Country" >Country</label>
+                        <label for="Order.ShippingAddress.Country">Country</label>
                         <input id="Order.ShippingAddress.Country" name="Order.ShippingAddress.Country" type="text" spellcheck="false" placeholder="Country" x-autocompletetype="country-name" value="">
-                    </div>
-                    <!-- Continue -->
-
-                    <div class="btn-container" style="text-align: center;">
-                        <!--<input type="submit" value="Continue" class="button continue-button" style="width:100%"></input>-->
                     </div>
                 </fieldset>
             </div>
@@ -166,17 +154,18 @@
                     <div style="display:block; text-align:center; margin-bottom: 5%;">
                         <div id="card-wrapper"></div>
                     </div>
-                    <!-- Credit Card -->
 
+                    <!-- Credit Card -->
                     <div class="credit-card">
+
                         <!-- Name -->
                         <div class="card-name field required">
                             <label for="stripe-name">Name As It Appears On Card</lable>
                             <input type="text"
                             id="stripe-name" placeholder="Name">
                         </div>
-                        <!-- Card Number -->
 
+                        <!-- Card Number -->
                         <div class="card-number field required">
                             <label for="stripe-number">Card Number</label>
                             <input type="text" size="20" autocomplete="off"
@@ -186,15 +175,14 @@
 
                         <div class="expiry-cvc">
                             <!-- CVC -->
-
                             <div class="card-cvc field required">
                                 <label for="stripe-cvc">CVC</label>
                                 <input type="text" size="4"
                                 autocomplete="off" placeholder="CVC" value=""
                                 id="stripe-cvc">
                             </div>
-                            <!-- Expiration -->
 
+                            <!-- Expiration -->
                             <div class="card-expiry-month field required">
                                 <label for="stripe-expiry-month">Expiration</label>
                                 <input type="text" size="2" maxlength="2"
@@ -202,6 +190,7 @@
                                 value="" id="stripe-expiry-month">
                             </div>
 
+                            <!-- Year -->
                             <div class="card-expiry-year field required">
                                 <label for="stripe-expiry-year">&nbsp;</label>
                                 <input type="text" size="4" maxlength="4"
@@ -210,16 +199,16 @@
                             </div>
 
                         </div>
-                        <!-- Secure payment conditions -->
 
+                        <!-- Secure payment conditions -->
                         <div id="comfort" style="display:none;">
                             All transactions are secure and encrypted, and we never store your credit card information. Payments are processed through Stripe. Payment information is also governed by <a target="_blank" href="https://stripe.com/privacy">Stripe's privacy policy</a>.
                         </div>
+
                         <!-- Authorize message display -->
-
                         <div class="authorizeMessage" id="authorize-message"></div>
-                        <!-- Place Order -->
 
+                        <!-- Place Order -->
                         <div class="btn-container" style="text-align: center;">
                             <button type="submit">Place Order</button>
                         </div>
@@ -296,7 +285,7 @@
                         <span>Shipping</span>
                     </td>
                     <td class="value">
-                        <span>$</span><span class="price shipping">{{ order.Shipping }}<span>
+                        <span>$</span><span class="price shipping">{{ order.DisplayShipping() }}<span>
                     </td>
                 </tr>
 
