@@ -22,7 +22,7 @@ div.error {
 {% endblock %}
 
 {% block content %}
-<div>
+<div class="login">
     <form action="{{ urlFor("store", "/login") }}" method="post">
         <div>
             <div class="field">
@@ -31,7 +31,7 @@ div.error {
             </div>
             <div class="field">
                 <label for="password">Password</label>
-                <input type="password" id="password" name="Password" placeholder="&bull;&bull;&bull;" />
+                <input type="password" id="password" name="Password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;" />
             </div>
 
             <div>
