@@ -44,14 +44,16 @@ func GetPreorder(c *gin.Context) {
 	}
 
 	// If user has password, they've previously edited the preorder
+	orderJSON := "{}"
 	order := new(models.Order)
 	if user.HasPassword() {
+		// TODO: Filter on Email
 		if err := db.GetKey("order", user.Email, order); err != nil {
 			log.Error("Failed to fetch order for user: %v", err, c)
-			c.Redirect(301, "../")
+		} else {
+			orderJSON = json.Encode(order)
 		}
 	}
-	orderJSON := json.Encode(order)
 
 	// Find all of a user's contributions
 	var contributions []models.Contribution
@@ -157,9 +159,11 @@ func SavePreorder(c *gin.Context) {
 	}
 
 	// Update Total
-	order.Total = order.Subtotal + order.Tax
+	order.Total = order.Subtotal + order.Shipping + order.Tax
+	order.Email = user.Email
 
 	// Save order
+	// TODO: Need to not putkey on email, but reuse order id
 	log.Debug("Saving order: %v", order)
 	_, err := db.PutKey("order", user.Email, &order)
 	if err != nil {
@@ -214,7 +218,7 @@ func Index(c *gin.Context) {
 	if !auth.IsLoggedIn(c) {
 		template.Render(c, "login.html")
 	} else {
-		user := auth.GetUser(c)
+		user, _ := auth.GetUser(c)
 		tokens := getTokens(c, user.Email)
 
 		// Complain if user doesn't have any tokens
@@ -245,6 +249,7 @@ func Login(c *gin.Context) {
 	}
 
 	tokens := getTokens(c, f.Email)
+	log.Debug("Tokens: %v", tokens)
 	// Complain if user doesn't have any tokens
 	if len(tokens) > 0 {
 		// Redirect to order page as they have a valid token

@@ -125,19 +125,40 @@ func Dump(args ...interface{}) {
 	// std.Dump("\n%s", dump)
 }
 
-func Debug(format string, args ...interface{}) {
-	args = std.setContext(args...)
-	std.Debug(format, args...)
+func Debug(formatOrError interface{}, args ...interface{}) {
+	switch v := formatOrError.(type) {
+	case error:
+		args = append([]interface{}{v}, args...)
+		args = std.setContext(args...)
+		std.Debug("%s", args...)
+	case string:
+		args = std.setContext(args...)
+		std.Debug(v, args...)
+	}
 }
 
-func Info(format string, args ...interface{}) {
-	args = std.setContext(args...)
-	std.Info(format, args...)
+func Info(formatOrError interface{}, args ...interface{}) {
+	switch v := formatOrError.(type) {
+	case error:
+		args = append([]interface{}{v}, args...)
+		args = std.setContext(args...)
+		std.Info("%s", args...)
+	case string:
+		args = std.setContext(args...)
+		std.Info(v, args...)
+	}
 }
 
-func Warn(format string, args ...interface{}) {
-	args = std.setContext(args...)
-	std.Warning(format, args...)
+func Warn(formatOrError interface{}, args ...interface{}) {
+	switch v := formatOrError.(type) {
+	case error:
+		args = append([]interface{}{v}, args...)
+		args = std.setContext(args...)
+		std.Warning("%s", args...)
+	case string:
+		args = std.setContext(args...)
+		std.Warning(v, args...)
+	}
 }
 
 func Error(formatOrError interface{}, args ...interface{}) {
