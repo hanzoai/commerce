@@ -41,3 +41,54 @@ func DisplayOrders(c *gin.Context) {
 		"orders", orders,
 	)
 }
+
+type CancelOrderStatus struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+}
+
+func CancelOrder(c *gin.Context) {
+	orderId := c.Request.URL.Query().Get("id")
+	user := auth.GetUser(c)
+
+	exists := user.Email == orderId // For SKULLY preorder
+	if !exists {
+		for _, id := range user.OrdersIds {
+			if id == orderId {
+				exists = true
+				break
+			}
+		}
+	}
+
+	if !exists {
+		log.Panic("Invalid order id")
+	}
+
+	db := datastore.New(c)
+
+	order := new(models.Order)
+	err := db.GetKey("user", orderId, order)
+	if err != nil {
+		log.Panic("Error while retrieving order \n%v", err)
+	}
+
+	if order.Shipped {
+		c.JSON(200, CancelOrderStatus{false, "The order has already been shipped."})
+		return
+	}
+
+	if order.Cancelled {
+		c.JSON(200, CancelOrderStatus{false, "The order has already been cancelled."})
+		return
+	}
+
+	order.Cancelled = true
+	_, err = db.PutKey("user", orderId, order)
+	if err != nil {
+		c.JSON(500, CancelOrderStatus{false, "Error occurred while cancelling."})
+		log.Panic("Erroring while saving order \n%v", err)
+	}
+
+	c.JSON(200, CancelOrderStatus{true, "The order is cancelled."})
+}
