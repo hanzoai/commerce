@@ -11,7 +11,10 @@ import (
 )
 
 func DisplayOrders(c *gin.Context) {
-	user := auth.GetUser(c)
+	user, err := auth.GetUser(c)
+	if err == nil {
+		log.Panic("Error getting logged in user from the datastore \n%v", err)
+	}
 	db := datastore.New(c)
 
 	var genOrders []interface{}
@@ -29,7 +32,7 @@ func DisplayOrders(c *gin.Context) {
 	// SKULLY Preorder
 	// Searches for an order where the user's email is the key
 	preorder := new(models.Order)
-	err := db.GetKey("order", user.Email, preorder)
+	err = db.GetKey("order", user.Email, preorder)
 	if err == nil {
 		preorder.Preorder = true
 		orders = append(orders, *preorder)
