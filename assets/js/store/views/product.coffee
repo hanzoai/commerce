@@ -4,10 +4,6 @@ products = require '../../utils/products'
 class ProductView extends View
   el: '.product-text'
 
-  constructor: ->
-    super
-    @slug = @el.data 'slug'
-
   bindings:
     productListing: '.product-cost .money'
 
@@ -27,7 +23,7 @@ class ProductView extends View
         if config.Variant != ''
           variant = variants.some (val)->
             if val.Id == config.variant
-              cost += variant.Price
+              cost += parseInt(variant.Price, 10)
               return true
             return false
         else
@@ -35,12 +31,13 @@ class ProductView extends View
             return Math.min(last, current.Price)
           , Number.MAX_VALUE
       @cost = cost
-      return (cost/10000).toFixed(2) + ""
+      return (cost * .0001).toFixed(2) + ""
 
   events:
     'click .add-to-cart': 'addToCart'
 
   render: ->
+    @slug = @el.data 'slug'
     @set 'productListing', allProductListings[@slug]
     super
 

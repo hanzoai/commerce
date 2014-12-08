@@ -12,24 +12,21 @@ import (
 	"crowdstart.io/util/json"
 )
 
-type ProductListing struct {
+type Listing struct {
 	FieldMapMixin
-	Id                   string
-	Slug                 string
-	Title                string
-	Headline             string
-	Excerpt              string
-	Description          string `datastore:",noindex"`
-	CheckOutInstructions string `datastore:",noindex"`
-	Disabled             bool
+	Id          string
+	SKU         string
+	Title       string
+	Description string `datastore:",noindex"`
+	Disabled    bool
 
 	Images []Image
 
-	ProductConfigs []ProductConfig
+	Configs []Config
 }
 
-func (p ProductListing) GetProductSlugs() []string {
-	productConfigs := p.ProductConfigs
+func (p Listing) GetProductSlugs() []string {
+	productConfigs := p.Configs
 	slugs := make([]string, len(productConfigs), len(productConfigs))
 	for i, productConfig := range productConfigs {
 		slugs[i] = productConfig.Product
@@ -37,15 +34,15 @@ func (p ProductListing) GetProductSlugs() []string {
 	return slugs
 }
 
-func (p ProductListing) GetProductSlugsString() string {
+func (p Listing) GetProductSlugsString() string {
 	return strings.Join(p.GetProductSlugs(), " ")
 }
 
-func (p ProductListing) GetDescriptionParagraphs() []string {
+func (p Listing) GetDescriptionParagraphs() []string {
 	return SplitParagraph(p.Description)
 }
 
-type ProductConfig struct {
+type Config struct {
 	FieldMapMixin
 	Product         string //product id
 	Variant         string //optional variant sku
@@ -56,19 +53,17 @@ type ProductConfig struct {
 //Prune down since Product Listing has a lot of this info now
 type Product struct {
 	FieldMapMixin
-	Id                   string
-	Slug                 string
-	Title                string
-	Headline             string
-	Excerpt              string
-	Description          string `datastore:",noindex"`
-	CheckOutInstructions string `datastore:",noindex"`
-	Released             time.Time
-	Disabled             bool
-	Available            bool
-	Stocked              int
-	AddLabel             string // Pre-order now or Add to cart
-	HeaderImage          Image
+	Id          string
+	Slug        string
+	Title       string
+	Headline    string
+	Excerpt     string
+	Description string `datastore:",noindex"`
+	Released    time.Time
+	Available   bool
+	Stocked     int
+	AddLabel    string // Pre-order now or Add to cart
+	HeaderImage Image
 
 	Images []Image
 
