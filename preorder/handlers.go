@@ -12,6 +12,7 @@ import (
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
+	"crowdstart.io/thirdparty/mandrill"
 )
 
 // GET /order/:token
@@ -179,27 +180,8 @@ func SavePreorder(c *gin.Context) {
 		return
 	}
 
-	// ctx appengine.Context, from_name, from_email, to_name, to_email, subject string
-	// ctx := middleware.GetAppEngine(c)
-
-	// sendConfirmation.Call(ctx, ctx,
-	// 	"SKULLY",
-	// 	"noreply@skullysystems.com",
-	// 	user.Name(),
-	// 	user.Email,
-	// 	"Thank you for updating your preorder information",
-	// 	confirmationHtml,
-	// )
-
-	// req := mail.NewSendTemplateReq()
-	// req.AddRecipient(user.Email, user.Name())
-
-	// req.Message.Subject = "Preorder information changed"
-	// req.Message.FromEmail = "noreply@skullysystems.com"
-	// req.Message.FromName = "SKULLY"
-	// req.TemplateName = "preorder-confirmation-template"
-
-	// sendConfirmation.Call(ctx, ctx, &req)
+	ctx := middleware.GetAppEngine(c)
+	mandrill.SendTemplateAsync.Call(ctx, "preorder-confirmation-template", user.Email, user.Name())
 
 	c.Redirect(301, config.UrlFor("preorder", "/thanks"))
 }
