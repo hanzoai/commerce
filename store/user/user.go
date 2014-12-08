@@ -7,8 +7,8 @@ import (
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
-	"crowdstart.io/middleware"
 	"crowdstart.io/util/log"
+	"crowdstart.io/middleware"
 	"crowdstart.io/util/template"
 	"crowdstart.io/thirdparty/mandrill"
 )
@@ -33,10 +33,11 @@ func ForgotPassword(c *gin.Context) {
 }
 
 // POST /forgotpassword
-func ForgotPassword(c *gin.Context) {
+func SubmitForgotPassword(c *gin.Context) {
 	ctx := middleware.GetAppEngine(c)
 
-	form, err := ForgotPasswordForm(c)
+	form := new(ForgotPasswordForm)
+	err := form.Parse(c)
 	if err != nil {
 		template.Render(c, "forgotpassword.html",
 			"error", "Please enter your email.")
@@ -45,14 +46,14 @@ func ForgotPassword(c *gin.Context) {
 
 	db := datastore.New(ctx)
 	var user models.User
-	err := db.GetKey("user", form.Email, &user)
+	err = db.GetKey("user", form.Email, &user)
 	if err != nil {
 		template.Render(c, "forgotpassword.html",
 			"error", "No account associated with that email.")
 		return
 	}
 
-	mandrill.SendTemplateAsync(ctx, "forgotten-password", user.Email, user.Name())
+	mandrill.SendTemplateAsync.Call(ctx, "forgotten-password", user.Email, user.Name())
 
 	template.Render(c, "forgotpassword-email-sent.html")
 }
