@@ -51,9 +51,9 @@ type Config struct {
 		WebhookURL  string
 	}
 	Mandrill struct {
-		APIKey string
+		APIKey    string
 		FromEmail string
-		FromName string
+		FromName  string
 	}
 }
 
@@ -218,9 +218,9 @@ func Skully() *Config {
 	config := Production()
 
 	config.Hosts["default"] = "static.skullysystems.com"
-	config.Hosts["api"] = "api.skullysystems.com"
+	config.Hosts["api"] = "invalid.skullysystems.com" // Setting platform to API temporarily.
 	config.Hosts["checkout"] = "secure.skullysystems.com"
-	config.Hosts["platform"] = "platform.skullysystems.com"
+	config.Hosts["platform"] = "api.skullysystems.com"
 	config.Hosts["preorder"] = "preorder.skullysystems.com"
 	config.Hosts["store"] = "store.skullysystems.com"
 
