@@ -92,9 +92,9 @@ class ProductView extends View
 
     listing = @get 'listing'
 
-    # Refuse to add more than 99 items to the cart
+    # Refuse to add product to cart if total in cart would exceed maxQuantityPerProduct.
     cart = app.get 'cart'
-    if (cart.getProduct variant.SKU)?.quantity + quantity > (app.get 'maxQuantityPerProduct')
+    if (cart.getProduct listingSKU)?.quantity + quantity > (app.get 'maxQuantityPerProduct')
       setTimeout =>
         @el.find('.add-to-cart span').text("Too Many").fadeOut 1000, =>
           inner.html 'Add to Cart'
