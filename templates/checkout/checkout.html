@@ -278,7 +278,7 @@
                         <span>Subtotal</span>
                     </td>
                     <td class="value">
-                        <span>$</span><span>{{ order.DisplaySubtotal() }}<span>
+                        <span>$</span><span class="price subtotal">{{ order.DisplaySubtotal() }}<span>
                     </td>
                 </tr>
 
@@ -287,7 +287,7 @@
                         <span>Tax</span>
                     </td>
                     <td class="value">
-                        <span>$</span><span class="price">{{ order.DisplayTax() }}<span>
+                        <span>$</span><span class="price tax">{{ order.DisplayTax() }}<span>
                     </td>
                 </tr>
 
@@ -296,7 +296,7 @@
                         <span>Shipping</span>
                     </td>
                     <td class="value">
-                        <span>$</span><span class="price">{{ order.Shipping }}<span>
+                        <span>$</span><span class="price shipping">{{ order.Shipping }}<span>
                     </td>
                 </tr>
 
@@ -305,7 +305,7 @@
                         <span>Grand Total</span>
                     </td>
                     <td class="value">
-                        <span>$</span><span class="price">{{ order.DisplayTotal() }}<span>
+                        <span>$</span><span class="price grand-total">{{ order.DisplayTotal() }}<span>
                     </td>
                 </tr>
             </tbody>
