@@ -156,7 +156,7 @@ var All = delay.Func("install-all-fixtures", func(c appengine.Context) {
 
 	db.PutKey("product", "card-winter2014promo", &Product{
 		Slug:     "card-winter2014promo",
-		Title:    "SKULLY X-mas Card",
+		Title:    "BONUS: SKULLY Xmas Card",
 		Variants: variants,
 		Images: []Image{ // replace with real one, zach
 			Image{
@@ -182,7 +182,7 @@ var All = delay.Func("install-all-fixtures", func(c appengine.Context) {
 
 	db.PutKey("product", "dogtag-winter2014promo", &Product{
 		Slug:     "dogtag-winter2014promo",
-		Title:    "SKULLY X-mas Dogtag",
+		Title:    "BONUS: Limited Edition SKULLY dog tag",
 		Variants: variants,
 		Images: []Image{ // replace with real one, zach
 			Image{
@@ -421,7 +421,7 @@ var All = delay.Func("install-all-fixtures", func(c appengine.Context) {
 					  focus on what matters most: the road ahead. SKULLY AR-1: Ride safer, look
 					  badass.
 
-					  *Pre-Order during the holiday season for a FREE LIMITED EDITION SKULLY AR-1 dogtag & XMAS Card`,
+					  *Pre-Order during the holiday season for a FREE LIMITED EDITION SKULLY AR-1 dog tag & XMAS Card`,
 		Images: []Image{
 			Image{
 				Alt: "blackhelmet_store_1000px.jpg",

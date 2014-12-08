@@ -47,7 +47,7 @@ type Config struct {
 	Product         string //product id
 	Variant         string //optional variant sku
 	Quantity        int    //number of products of optional variant type
-	PriceAdjustment int    //cost adjustment for individual product in package
+	PriceAdjustment int    //cost adjustment for individual product in package (subtracted from actual price)
 }
 
 //Prune down since Product Listing has a lot of this info now

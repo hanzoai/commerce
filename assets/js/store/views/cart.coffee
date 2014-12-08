@@ -21,18 +21,21 @@ class CartView extends View
 
     cart.on 'quantity', (v) =>
       if v == 0
-        @el.find('.cart-content').animate {opacity: 0, height: '0px'}, 500
+        @el.find('.cart-content').animate {opacity: 0, height: '0px'}, 500, -> $(@).remove()
         @el.find('.empty-message').fadeIn(500)
 
     @set 'subtotal', cart.get 'subtotal'
 
     for sku, item of cart.getProducts()
       item.index = ++index
+      if item.children?
+        for child in item.children
+          child.index = ++index
       view = new LineItemView state: item
       window.view = view
+      $('.cart-content tbody').append view.$el
       view.render()
       view.bind()
-      $('.cart-content tbody').append view.$el
 
     if cart.get('quantity') == 0
       @el.find('.cart-content').hide()
