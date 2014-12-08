@@ -11,7 +11,7 @@ import (
 	. "crowdstart.io/models"
 )
 
-var OrderMigration = delay.Func("order-migration", func(c appengine.Context) {
+var AddEmailToOrders = delay.Func("add-email-to-orders-migration", func(c appengine.Context) {
 	log.Debug("Migrating orders")
 	db := datastore.New(c)
 	q := db.Query("order")
