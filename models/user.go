@@ -19,8 +19,7 @@ type User struct {
 	FirstName       string
 	LastName        string
 	Phone           string
-	OrdersIds       []string `schema:"-" json:"-"`
-	Cart            Cart     `datastore:"-" json:"-"`
+	Cart            Cart `datastore:"-" json:"-"`
 	BillingAddress  Address
 	ShippingAddress Address
 	Email           string

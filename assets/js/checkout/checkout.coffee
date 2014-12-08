@@ -43,23 +43,6 @@ $('#form').submit (e) ->
     ), 500
   return
 
-# Show payment options when first half is competed.
-$requiredVisible = $('div:visible.required > input')
-showPaymentOptions = $.debounce 250, ->
-  # Check if all required inputs are filled
-  i = 0
-
-  while i < $requiredVisible.length
-    return  if $requiredVisible[i].value is ""
-    i++
-  fieldset = $('div.payment-information > fieldset')
-  fieldset.css 'display', 'block'
-  fieldset.css 'opacity', '0'
-  fieldset.fadeTo 1000, 1
-  $requiredVisible.off 'keyup', showPaymentOptions
-  return
-
-$requiredVisible.on 'keyup', showPaymentOptions
 $('#form').card
   container:   '#card-wrapper'
   numberInput: '#stripe-number'
@@ -135,32 +118,12 @@ $state.change updateShippingAndTax
 $city.on 'keyup', updateShippingAndTax
 $country.change updateShippingAndTax
 
-$form = $('form#stripeForm')
+$stripeForm = $('form#stripeForm')
 $cardNumber = $('#stripe-number')
 $expiryMonth = $('#stripe-expiry-month')
 $expiryYear = $('#stripe-expiry-year')
 $cvc = $('#stripe-cvc')
 $token = $('input[name="StripeToken"]')
-
-# Checks each input and does dumb checks to see if it might be a valid card
-validateCard = ->
-  fail = success: false
-  cardNumber = $cardNumber.val()
-  return fail if cardNumber.length < 10
-  month = $expiryMonth.val()
-  year = $expiryYear.val()
-
-  return fail unless month.length is 2
-  return fail unless year.length is 4
-  cvc = $cvc.val()
-
-  return fail  if cvc.length < 3
-
-  success: true
-  number:  cardNumber
-  month:   month
-  year:    year
-  cvc:     cvc
 
 $authorizeMessage = $('#authorize-message')
 
@@ -176,33 +139,24 @@ stripeResponseHandler = do ->
       app.set 'approved', true
       token = response.id
       $token.val token
-      $authorizeMessage.text 'Card approved. Ready when you are.'
+      $('#form').submit()
     return
 
-# Copies validated card values into the hidden form for Stripe.js
-stripeRunner = ->
-  card = validateCard()
-  Stripe.card.createToken $form, stripeResponseHandler if card.success
-  return
+updateStripeForm = ->
+  $stripeForm.find('input[data-stripe="number"]').val card.number
+  $stripeForm.find('input[data-stripe="cvc"]').val card.cvc
+  $stripeForm.find('input[data-stripe="exp-month"]').val card.month
+  $stripeForm.find('input[data-stripe="exp-year"]').val card.year
 
-relayer = ->
-  card = validateCard()
-  if card.success
-    $form.find('input[data-stripe="number"]').val card.number
-    $form.find('input[data-stripe="cvc"]').val card.cvc
-    $form.find('input[data-stripe="exp-month"]').val card.month
-    $form.find('input[data-stripe="exp-year"]').val card.year
-  return
-
-$cardNumber.change relayer
-$expiryMonth.change relayer
-$expiryYear.change relayer
-$cvc.change relayer
+$cardNumber.change updateStripeForm
+$expiryMonth.change updateStripeForm
+$expiryYear.change updateStripeForm
+$cvc.change updateStripeForm
 
 $(document).ready ->
   $('#form').submit (event) ->
     unless app.get('approved')
-      stripeRunner()
+      Stripe.card.createToken $form, stripeResponseHandler
       return false
     true
   return
