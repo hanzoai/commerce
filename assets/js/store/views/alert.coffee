@@ -31,7 +31,6 @@ class AlertView extends View
   show: (opts = {}) ->
     (@set 'title',   opts.title)   if opts.title?
     (@set 'message', opts.message) if opts.message?
-    (@set 'title',   opts.title)   if opts.title?
 
     @render()
     @bind()
