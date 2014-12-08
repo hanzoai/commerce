@@ -61,11 +61,19 @@ showPaymentOptions = $.debounce 250, ->
 
 $requiredVisible.on 'keyup', showPaymentOptions
 $('#form').card
-  container: '#card-wrapper'
+  container:   '#card-wrapper'
   numberInput: '#stripe-number'
   expiryInput: '#stripe-expiry-month, #stripe-expiry-year'
-  cvcInput: '#stripe-cvc'
-  nameInput: '#stripe-name'
+  cvcInput:    '#stripe-cvc'
+  nameInput:   '#stripe-name'
+
+  formatting: true
+
+  values:
+      number: '•••• •••• •••• ••••',
+      name: 'Full Name',
+      expiry: '••/••••',
+      cvc: '•••'
 
 $('input[name="ShipToBilling"]').change ->
   shipping = $('.shipping-information fieldset')
@@ -138,7 +146,7 @@ $token = $('input[name="StripeToken"]')
 validateCard = ->
   fail = success: false
   cardNumber = $cardNumber.val()
-  return fail  if cardNumber.length < 10
+  return fail if cardNumber.length < 10
   month = $expiryMonth.val()
   year = $expiryYear.val()
 
@@ -149,26 +157,26 @@ validateCard = ->
   return fail  if cvc.length < 3
 
   success: true
-  number: cardNumber
-  month: month
-  year: year
-  cvc: cvc
+  number:  cardNumber
+  month:   month
+  year:    year
+  cvc:     cvc
 
-$authorizeMessage = $("#authorize-message")
+$authorizeMessage = $('#authorize-message')
 
 # Callback for createToken
 stripeResponseHandler = do ->
   app.set 'approved', false
   (status, response) ->
-    $authorizeMessage.removeClass "error"
+    $authorizeMessage.removeClass 'error'
     if response.error
       $authorizeMessage.text response.error.message
-      $authorizeMessage.addClass "error"
+      $authorizeMessage.addClass 'error'
     else
       app.set 'approved', true
       token = response.id
       $token.val token
-      $authorizeMessage.text "Card approved. Ready when you are."
+      $authorizeMessage.text 'Card approved. Ready when you are.'
     return
 
 # Copies validated card values into the hidden form for Stripe.js
@@ -192,7 +200,7 @@ $expiryYear.change relayer
 $cvc.change relayer
 
 $(document).ready ->
-  $("#form").submit (event) ->
+  $('#form').submit (event) ->
     unless app.get('approved')
       stripeRunner()
       return false
