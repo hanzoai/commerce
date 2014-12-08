@@ -18,6 +18,11 @@ handlers:
   login: required
   secure: always
 
+- url: /migrations/.*
+  script: _go_app
+  login: required
+  secure: always
+
 - url: /_ah/remote_api
   script: _go_app
   login: admin
