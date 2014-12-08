@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %} SKULLY Store Login {% endblock %}
+
+{% block content_header %}
+<h2>Login</h2>
+{% endblock %}
+
+{% block content %}
+<div>
+    <form action="{{ urlFor("store", "/login") }}" method="post">
+        <div>
+            <div class="field">
+                <label for="email">Email</label>
+                <input type="text" id="email" name="Email" placeholder="abc@example.com" />
+            </div>
+            <div class="field">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="Password" placeholder="&bull;&bull;&bull;" />
+            </div>
+
+            <div>
+                <input type="submit" value="Login">
+            </div>
+        </div>
+
+        {% if error %}
+        <div class="errors">{{ error }}</div>
+        {% endif %}
+    </form>
+</div>
+{% endblock %}

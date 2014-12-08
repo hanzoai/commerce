@@ -3,9 +3,11 @@ package template
 import (
 	"os"
 
-	"crowdstart.io/config"
 	"github.com/flosch/pongo2"
 	"github.com/gin-gonic/gin"
+
+	"crowdstart.io/config"
+	"crowdstart.io/util/log"
 )
 
 var cwd, _ = os.Getwd()
@@ -35,13 +37,12 @@ var templateSet = TemplateSet()
 
 func Render(c *gin.Context, path string, pairs ...interface{}) (err error) {
 	// All templates are expected to be in templates dir
-	path = cwd + "/templates/" + path
+	templatePath := cwd + "/templates/" + path
 
 	// Get template from cache
-	template, err := templateSet.FromCache(path)
+	template, err := templateSet.FromCache(templatePath)
 	if err != nil {
-		c.Fail(500, err)
-		return err
+		log.Panic("Unable to find template: %v\n\n%v", path, err)
 	}
 
 	// Create context from pairs
@@ -53,8 +54,7 @@ func Render(c *gin.Context, path string, pairs ...interface{}) (err error) {
 
 	// Render template
 	if err := template.ExecuteWriter(ctx, c.Writer); err != nil {
-		c.Fail(500, err)
-		return err
+		log.Panic("Unable to render template: %v\n\n%v", path, err)
 	}
 
 	// Set content type
