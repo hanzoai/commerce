@@ -73,6 +73,10 @@ func (o Order) DecimalTotal() uint64 {
 	return uint64(FloatPrice(o.Total) * 100)
 }
 
+func (o Order) DecimalFee() uint64 {
+	return uint64(FloatPrice(o.Total) * 100 * 0.2)
+}
+
 // Use binding to validate that there are no errors
 func (o Order) Validate(req *http.Request, errs binding.Errors) binding.Errors {
 	if len(o.Items) == 0 {
