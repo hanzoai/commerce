@@ -23,9 +23,12 @@ handlers:
   static_files: static/apple-touch-icon-precomposed.png
   upload: static/apple-touch-icon-precomposed.png
 
+- url: /_ah/queue/go/delay
+  script: _go_app
+  login: admin
+
 - url: /.*
   script: _go_app
-  login: required
 
 pagespeed:
   enabled_rewriters:
