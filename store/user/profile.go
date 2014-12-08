@@ -10,6 +10,7 @@ import (
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
+	"crowdstart.io/thirdparty/mandrill"
 )
 
 func Profile(c *gin.Context) {
@@ -30,6 +31,8 @@ func SaveProfile(c *gin.Context) {
 
 	user, err := auth.GetUser(c)
 	log.Debug("Email: %#v", user)
+	mandrill.SendTemplateAsync(ctx, "account-change-confirmation", user.Email, user.Name())
+
 	if err != nil {
 		log.Panic("Error getting logged in user from the datastore \n%v", err)
 	}
