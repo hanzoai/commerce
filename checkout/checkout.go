@@ -10,7 +10,6 @@ func init() {
 
 	// Middleware
 	router.Use(middleware.CheckLogin())
-	loginRequired := middleware.LoginRequired("store")
 
 	// Checkout
 	router.GET("/", index)
@@ -20,5 +19,5 @@ func init() {
 	router.POST("/charge", charge)
 
 	// Complete
-	router.GET("/complete", loginRequired, complete)
+	router.GET("/complete", complete)
 }
