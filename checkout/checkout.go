@@ -8,11 +8,17 @@ import (
 func init() {
 	router := router.New("checkout")
 
+	// Middleware
+	router.Use(middleware.CheckLogin())
 	loginRequired := middleware.LoginRequired("store")
-	checkLogin := middleware.CheckLogin()
 
-	router.GET("/", checkLogin, index)
-	router.POST("/", checkLogin, checkout)
+	// Checkout
+	router.GET("/", index)
+	router.POST("/", checkout)
+
+	// Charge
 	router.POST("/charge", loginRequired, charge)
+
+	// Complete
 	router.GET("/complete", loginRequired, complete)
 }
