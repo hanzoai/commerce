@@ -60,13 +60,13 @@ mtime_file_watcher = https://gist.githubusercontent.com/zeekay/d92deea5091849d79
 # static assets, requisite javascript from assets -> static
 bebop = node_modules/.bin/bebop
 
-requisite	   = node_modules/.bin/requisite
+requisite	   = node_modules/.bin/requisite -s -g
 requisite_opts = assets/js/store/store.coffee \
 				 assets/js/preorder/preorder.coffee \
 				 assets/js/checkout/checkout.coffee \
 				 -o static/js/store.js \
 				 -o static/js/preorder.js \
-				 -o static/js/checkout.js  -s -g
+				 -o static/js/checkout.js
 requisite_opts_minify = -m --strip-debug
 
 
@@ -108,7 +108,7 @@ compile-js-min:
 	$(requisite) $(requisite_opts) $(requisite_opts_min)
 
 compile-css:
-	$(stylus) $(stylus_opts)
+	$(stylus) $(stylus_opts) --sourcemap --sourcemap-inline
 
 compile-css-min:
 	$(stylus) $(stylus_opts) $(stylus_opts_min)
