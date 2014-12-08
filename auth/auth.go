@@ -26,7 +26,7 @@ func HashPassword(password string) []byte {
 }
 
 func IsLoggedIn(c *gin.Context) bool {
-	value, err := Get(c, loginKey)
+	value, err := GetEmail(c)
 	return err == nil && value != ""
 }
 
@@ -51,10 +51,15 @@ func VerifyUser(c *gin.Context) error {
 	}
 
 	// Set the loginKey value to the user id
-	return Set(c, loginKey, f.Email)
+	return Login(c, user.Email)
 }
 
-func Logout(c *gin.Context) {
-	Delete(c, loginKey)
-	c.Redirect(301, "/user/login")
+// Login should only be used in exceptional circumstances.
+// Use VerifyUser when possible.
+func Login(c *gin.Context, email string) error {
+	return Set(c, loginKey, email)
+}
+
+func Logout(c *gin.Context) error {
+	return Delete(c, loginKey)
 }
