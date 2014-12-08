@@ -48,6 +48,10 @@ func Render(c *gin.Context, path string, pairs ...interface{}) (err error) {
 	// Create context from pairs
 	ctx := pongo2.Context{}
 
+	// Add logged in info, if set on session
+	loggedIn, _ := c.Get("logged-in")
+	ctx["loggedIn"] = loggedIn.(bool)
+
 	for i := 0; i < len(pairs); i = i + 2 {
 		ctx[pairs[i].(string)] = pairs[i+1]
 	}
