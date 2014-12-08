@@ -11,14 +11,15 @@ import (
 func init() {
 	router := router.New("store")
 
+	// Middleware
+	router.Use(middleware.CheckLogin())
 	loginRequired := middleware.LoginRequired("store")
 	logoutRequired := middleware.LogoutRequired("store")
-	checkLogin := middleware.CheckLogin()
 
 	// Products
-	router.GET("/", checkLogin, products.List)
-	router.GET("/products", checkLogin, products.List)
-	router.GET("/products/:slug", checkLogin, products.Get)
+	router.GET("/", products.List)
+	router.GET("/products", products.List)
+	router.GET("/products/:slug", products.Get)
 
 	// Cart
 	router.GET("/cart", cart.Get)
