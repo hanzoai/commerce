@@ -32,6 +32,7 @@ type Order struct {
 	// Need to save campaign id
 	CampaignId string
 
+	Preorder  bool
 	Cancelled bool
 	Shipped   bool
 	// ShippingOption  ShippingOption
