@@ -11,8 +11,8 @@ validation =
     pattern.test email
 
 validateForm = ->
-  $('#error-message').text ''
-  console.log 'validating form'
+  $errors = $('#error-message')
+  $errors.text ''
 
   valid = true
   errors = []
@@ -32,7 +32,7 @@ validateForm = ->
       email.parent().removeClass 'shake'
       return
     , 500
-    $('#error-message').text "Please fill out: #{}"
+    errors.push "Invalid email."
 
   if empty.length > 0
     valid = false
@@ -42,11 +42,13 @@ validateForm = ->
       empty.parent().removeClass 'shake'
       return
     , 500
+    missing = (v.trim() for v in empty.parent().text().split('\n') when v.trim())
+    errors.push "Missing #{missing.join ', '}."
 
   unless valid
     # display errors
-    labels = (label.trim() for label in empty.parent().text().split('\n') when label.trim())
-    $('#error-message').text "Please check: #{labels.join ', '}."
+    for error in errors
+      $errors.append $("<p>#{error}</p>")
 
     # scroll to first error
     location.href = '#' + empty[0].id
