@@ -170,10 +170,14 @@ $(document).ready ->
               $billingInfo.find('#billing-zip input').val(address.postalCode)
               $billingInfo.find('#billing-country input').val(address.country)
               app.set 'validBillingAddress', true
-              $form.submit()
+              setTimeout ->
+                $form.submit()
+              , 10
             cancel:  'No'
             onCancel: ->
               $('#error-message').text 'We could not verify your billing address.  Please try again.'
+          return true
+      $billingInfo.find('input').addClass('error')
       $('#error-message').text 'We could not verify your billing address.  Please try again.'
 
   validateShipping = do ->
@@ -204,10 +208,14 @@ $(document).ready ->
               $shippingInfo.find('#shipping-zip input').val(address.postalCode)
               $shippingInfo.find('#shipping-country input').val(address.country)
               app.set 'validShippingAddress', true
-              $form.submit()
+              setTimeout ->
+                $form.submit()
+              , 10
             cancel:  'No'
             onCancel: ->
               $('#error-message').text 'We could not verify your shipping address.  Please try again.'
+          return true
+      $shippingInfo.find('input').addClass('error')
       $('#error-message').text 'We could not verify your shipping address.  Please try again.'
 
   # Create credit card fanciness: https://github.com/jessepollak/card
@@ -245,7 +253,7 @@ $(document).ready ->
       $('#error-message').text 'Please validate your billing address'
       return false
 
-    if !$('input[name="ShipToshipping"]').is(':checked') && !app.get('validShippingAddress')
+    if !$('input[name="ShipToBilling"]').is(':checked') && !app.get('validShippingAddress')
       $shippingInfo = $('.shipping-information')
       address = new validator.Address
         street:     $shippingInfo.find('#shipping-address-1 input').val()
