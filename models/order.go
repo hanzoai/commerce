@@ -2,6 +2,7 @@ package models
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -36,6 +37,26 @@ type Order struct {
 	Cancelled bool
 	Shipped   bool
 	// ShippingOption  ShippingOption
+}
+
+func (o Order) When() string {
+	duration := time.Since(o.CreatedAt)
+
+	hours := duration.Hours()
+	if hours > 0 && hours < 24 {
+		return fmt.Sprintf("%d hours ago", hours)
+	}
+
+	if hours >= 24 {
+		return o.CreatedAt.Format(time.RubyDate)
+	}
+
+	minutes := duration.Minutes()
+	if hours > 0 {
+		return fmt.Sprintf("%d minutes ago", minutes)
+	}
+
+	return fmt.Sprintf("%d seconds ago", duration.Seconds())
 }
 
 func (o Order) Description() string {
