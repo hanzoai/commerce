@@ -5,12 +5,13 @@ import (
 	"crowdstart.io/util/router"
 )
 
+var loginRequired = middleware.LoginRequired("checkout")
+
 func init() {
 	router := router.New("checkout")
-	router.Use(middleware.LoginRequired("checkout"))
 
 	router.GET("/", index)
 	router.POST("/", checkout)
-	router.POST("/charge", charge)
-	router.GET("/complete", complete)
+	router.POST("/charge", loginRequired, charge)
+	router.GET("/complete", loginRequired, complete)
 }
