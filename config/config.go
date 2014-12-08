@@ -45,7 +45,7 @@ type Config struct {
 		WebhookURL  string
 	}
 	Mandrill struct {
-		ApiKey string
+		APIKey string
 		FromEmail string
 		FromName string
 	}
