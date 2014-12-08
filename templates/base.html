@@ -78,8 +78,8 @@
                             <a class="current" href="{{ urlFor("store") }}">STORE</a>
                         </li>
 
-                        <li class="community-dropdown">
-                            <input id="community-toggle" type="checkbox">
+                        <li class="dropdown community-dropdown">
+                            <input id="community-toggle" class="dropdown-toggle" type="checkbox">
                             <label for="community-toggle">COMMUNITY</label>
 
                             <ul>
@@ -92,8 +92,8 @@
                             </ul>
                         </li>
 
-                        <li class="team-dropdown">
-                            <input id="team-toggle" type="checkbox">
+                        <li class="dropdown team-dropdown">
+                            <input id="team-toggle" class="dropdown-toggle" type="checkbox">
                             <label for="team-toggle">TEAM</label>
 
                             <ul>
@@ -107,9 +107,28 @@
                             <a href="http://www.skullysystems.com/faq/">FAQ</a>
                         </li>
 
+                        {% if !loggedIn %}
                         <li class="link">
                             <a class="big" href="{{ urlFor("store", "/login") }}">SIGN IN</a>
                         </li>
+                        {% else %}
+                        <li class="dropdown account-dropdown">
+                            <input id="account-toggle" class="dropdown-toggle" type="checkbox">
+                            <label for="account-toggle">ACCOUNT</label>
+                            <ul>
+                                <li>
+                                    <a href="{{ urlFor("store", "/profile") }}">PROFILE</a>
+                                </li>
+                                <li>
+                                    <a href="{{ urlFor("store", "/orders") }}">ORDERS</a>
+                                </li>
+                                <li>
+                                    <a href="{{ urlFor("store", "/logout") }}">LOGOUT</a>
+                                </li>
+                            </ul>
+                        </li>
+                        {% endif %}
+
                     </ul>
                 </nav>
             </div>
