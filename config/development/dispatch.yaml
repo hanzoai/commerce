@@ -1,9 +1,6 @@
 application: crowdstart-io
 
 dispatch:
-  - url: "*/_ah/queue/go/delay"
-    module: default
-
   - url: "*/api/*"
     module: api
 
