@@ -82,8 +82,6 @@ func (d *Datastore) GetKeyMulti(kind string, keys []string, vals interface{}) er
 		_keys[i] = NewKey(d.Context, kind, key, 0, nil)
 	}
 
-	log.Debug("_keys: %v", _keys)
-
 	return nds.GetMulti(d.Context, _keys, vals)
 }
 

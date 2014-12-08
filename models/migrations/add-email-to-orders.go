@@ -24,12 +24,13 @@ var AddEmailToOrders = delay.Func("add-email-to-orders-migration", func(c appeng
 		}
 
 		if err != nil {
-			c.Errorf("fetching next Order: %v", err)
-			break
+			log.Error("Error fetching order")
 		}
 
 		log.Debug("key: %v", k.StringID())
 		o.Email = k.StringID()
-		db.PutKey("order", k, &o)
+		if _, err := db.PutKey("order", k, &o); err != nil {
+			log.Debug("Error savin order: %v")
+		}
 	}
 })

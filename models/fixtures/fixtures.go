@@ -484,7 +484,7 @@ var All = delay.Func("install-all-fixtures", func(c appengine.Context) {
 
 	// Users
 
-	if count, _ := db.Query("user").Count(c); count > 1 {
+	if count, _ := db.Query("user").Count(c); count > 10 {
 		log.Debug("Contributor fixtures already loaded, skipping.")
 		return
 	}
