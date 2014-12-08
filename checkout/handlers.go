@@ -35,6 +35,9 @@ func checkout(c *gin.Context) {
 		return
 	}
 
+	// Merge duplicate line items.
+	form.Merge(c)
+
 	// Validate form
 	form.Validate(c)
 
