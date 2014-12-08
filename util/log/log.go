@@ -8,6 +8,7 @@ import (
 	"github.com/zeekay/go-logging"
 	// "github.com/davecgh/go-spew/spew"
 
+	"crowdstart.io/config"
 	"crowdstart.io/thirdparty/sentry"
 )
 
@@ -23,6 +24,9 @@ func (l *Logger) setContext(args ...interface{}) []interface{} {
 		return args
 	}
 
+	log.Println(args)
+
+	// Appengine context is last argument
 	ctx := args[len(args)-1]
 
 	switch ctx := ctx.(type) {
@@ -38,6 +42,15 @@ func (l *Logger) setContext(args ...interface{}) []interface{} {
 		l.appengineBackend.context = nil
 	}
 
+	log.Println(args)
+
+	// Last/second to last argument MIGHT be an error
+	if len(args) > 0 {
+		if err, ok := args[len(args)-1].(error); ok {
+			l.appengineBackend.error = err
+		}
+	}
+
 	return args
 }
 
@@ -45,6 +58,20 @@ func (l *Logger) setContext(args ...interface{}) []interface{} {
 type AppengineBackend struct {
 	context    appengine.Context
 	requestURI string
+	error      error
+}
+
+func logToSentry(ctx appengine.Context, formatted, requestURI string, err error) {
+	// Log to sentry asynchronously
+	if config.SentryDSN != "" {
+		if err != nil {
+			exc := sentry.NewException(err)
+			sentry.CaptureException.Call(ctx, requestURI, exc)
+		} else {
+			exc := sentry.NewExceptionFromStack(formatted)
+			sentry.CaptureException.Call(ctx, requestURI, exc)
+		}
+	}
 }
 
 func (b AppengineBackend) Log(level logging.Level, calldepth int, record *logging.Record) error {
@@ -54,10 +81,12 @@ func (b AppengineBackend) Log(level logging.Level, calldepth int, record *loggin
 		switch level {
 		case logging.WARNING:
 			b.context.Warningf(formatted)
-		case logging.ERROR, logging.CRITICAL:
+		case logging.ERROR:
 			b.context.Errorf(formatted)
-			// Asynchronously log to sentry.
-			sentry.CaptureException.Call(b.context, b.requestURI, formatted)
+			logToSentry(b.context, formatted, b.requestURI, b.error)
+		case logging.CRITICAL:
+			b.context.Criticalf(formatted)
+			logToSentry(b.context, formatted, b.requestURI, b.error)
 		case logging.INFO:
 			b.context.Infof(formatted)
 		default:
@@ -115,17 +144,38 @@ func Warn(format string, args ...interface{}) {
 	std.Warning(format, args...)
 }
 
-func Error(format string, args ...interface{}) {
-	args = std.setContext(args...)
-	std.Error(format, args...)
+func Error(formatOrError interface{}, args ...interface{}) {
+	switch v := formatOrError.(type) {
+	case error:
+		args = append([]interface{}{v}, args...)
+		args = std.setContext(args...)
+		std.Error("%s", args...)
+	case string:
+		args = std.setContext(args...)
+		std.Error(v, args...)
+	}
 }
 
-func Fatal(format string, args ...interface{}) {
-	args = std.setContext(args...)
-	std.Fatalf(format, args...)
+func Fatal(formatOrError interface{}, args ...interface{}) {
+	switch v := formatOrError.(type) {
+	case error:
+		args = append([]interface{}{v}, args...)
+		args = std.setContext(args...)
+		std.Fatalf("%s", args...)
+	case string:
+		args = std.setContext(args...)
+		std.Fatalf(v, args...)
+	}
 }
 
-func Panic(format string, args ...interface{}) {
-	args = std.setContext(args...)
-	std.Panicf(format, args...)
+func Panic(formatOrError interface{}, args ...interface{}) {
+	switch v := formatOrError.(type) {
+	case error:
+		args = append([]interface{}{v}, args...)
+		args = std.setContext(args...)
+		std.Panicf("%s", args...)
+	case string:
+		args = std.setContext(args...)
+		std.Panicf(v, args...)
+	}
 }

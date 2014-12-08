@@ -7,11 +7,13 @@ import (
 	"bytes"
 	"compress/zlib"
 	"encoding/base64"
+	"encoding/gob"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"github.com/getsentry/raven-go"
 
@@ -19,6 +21,16 @@ import (
 )
 
 const userAgent = "appengine-go-raven/1.0"
+
+func init() {
+	gob.Register(raven.Exception{})
+	gob.Register(raven.StacktraceFrame{})
+}
+
+type SerializedException struct {
+	Exception raven.Exception
+	Frames    []raven.StacktraceFrame
+}
 
 // Copied verbatim from raven-go
 func serializedPacket(packet *raven.Packet) (r io.Reader, contentType string) {
@@ -68,22 +80,69 @@ func (t *AppEngineTransport) Send(url, authHeader string, packet *raven.Packet) 
 	return nil
 }
 
-// Do this asynchronously, no need to delay request.
-var CaptureException = delay.Func("log-to-sentry", func(ctx appengine.Context, requestURI, stack string) {
-	if appengine.IsDevAppServer() {
-		return // Don't log to sentry during local development.
-	}
-
+func NewClient(ctx appengine.Context) (client *raven.Client, err error) {
 	// NOTE: Creates a weird worker thread processing buffer of requests, we'll close
 	// immediately after capturing this packet.
-	client, err := raven.NewClient(config.SentryDSN, map[string]string{})
+	client, err = raven.NewClient(config.SentryDSN, map[string]string{})
 	if err != nil {
 		ctx.Errorf("Unable to create Sentry client: %v, %v", client, err)
-		return
+		return client, err
 	}
 
 	// Replace default net/http transport with our app engine transport.
 	client.Transport = &AppEngineTransport{ctx}
+	return client, err
+}
+
+// Create raven.Exception from error
+func NewException(err error) SerializedException {
+	exc := raven.NewException(err, raven.NewStacktrace(9, 3, nil))
+	return serializeException(exc)
+}
+
+// Create raven.Exception from string stack
+func NewExceptionFromStack(stack string) SerializedException {
+	lines := strings.Split(stack, "\n")
+	err := errors.New(lines[0])
+	exc := raven.NewException(err, raven.NewStacktrace(2, 3, nil))
+	return serializeException(exc)
+}
+
+// Serialize exception into something that can be gob encoded
+func serializeException(exception *raven.Exception) SerializedException {
+	numFrames := len(exception.Stacktrace.Frames)
+	exc := SerializedException{}
+	exc.Exception = *exception
+	exc.Frames = make([]raven.StacktraceFrame, numFrames)
+
+	for i := 0; i < numFrames; i++ {
+		exc.Frames[i] = *exception.Stacktrace.Frames[i]
+	}
+	return exc
+}
+
+// Deserialized our specialized SerializedException type
+func deserializeException(exception SerializedException) *raven.Exception {
+	numFrames := len(exception.Frames)
+	exc := &exception.Exception
+	exc.Stacktrace = &raven.Stacktrace{}
+	exc.Stacktrace.Frames = make([]*raven.StacktraceFrame, numFrames)
+
+	var b bool
+
+	for i := 0; i < numFrames; i++ {
+		frame := &exception.Frames[i]
+		frame.InApp = &b
+		exc.Stacktrace.Frames[i] = frame
+	}
+	return exc
+}
+
+var CaptureException = delay.Func("sentry-capture-exception", func(ctx appengine.Context, requestURI string, serialized SerializedException) {
+	client, err := NewClient(ctx)
+	if err != nil {
+		return
+	}
 
 	// Send request
 	flags := map[string]string{
@@ -91,7 +150,8 @@ var CaptureException = delay.Func("log-to-sentry", func(ctx appengine.Context, r
 	}
 
 	// Capture error
-	packet := raven.NewPacket(stack, raven.NewException(errors.New(stack), raven.NewStacktrace(2, 3, nil)))
+	exc := deserializeException(serialized)
+	packet := raven.NewPacket(exc.Value, exc)
 	client.Capture(packet, flags)
 
 	// Destroy client
