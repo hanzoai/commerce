@@ -91,8 +91,7 @@ func charge(c *gin.Context) {
 
 	// Add order to user;
 	user.OrdersIds = append(user.OrdersIds, key)
-	_, err = db.PutKey("user", user.Email, user)
-	if err != nil {
+	if _, err = db.PutKey("user", user.Email, user); err != nil {
 		log.Panic("Saving user after adding order failed \n%v", err)
 	}
 
