@@ -1,8 +1,11 @@
 package checkout
 
 import (
+	"time"
+
 	"github.com/gin-gonic/gin"
 
+	"crowdstart.io/auth"
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
@@ -49,13 +52,18 @@ func checkout(c *gin.Context) {
 }
 
 // Charge a successful authorization
+// LoginRequired
 func charge(c *gin.Context) {
+	user := auth.GetUser(c)
+
 	form := new(ChargeForm)
 	if err := form.Parse(c); err != nil {
 		log.Error("Failed to parse form: %v", err)
 		c.Fail(500, err)
 		return
 	}
+
+	form.Order.CreatedAt = time.Now()
 
 	ctx := middleware.GetAppEngine(c)
 	db := datastore.New(ctx)
@@ -77,10 +85,17 @@ func charge(c *gin.Context) {
 
 	// Save order
 	log.Debug("Saving order.")
-	if _, err := db.Put("order", &form.Order); err != nil {
+	key, err := db.Put("order", &form.Order)
+	if err != nil {
 		log.Error("Error saving order", err)
 		c.Fail(500, err)
 		return
+	}
+
+	// Add order to user;
+	user.OrdersIds = append(user.OrdersIds, key)
+	if _, err = db.PutKey("user", user.Email, user); err != nil {
+		log.Panic("Saving user after adding order failed \n%v", err)
 	}
 
 	log.Debug("Checkout complete!")
