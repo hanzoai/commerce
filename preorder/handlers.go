@@ -8,11 +8,12 @@ import (
 	"crowdstart.io/auth"
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
+	"crowdstart.io/middleware"
 	"crowdstart.io/models"
+	"crowdstart.io/thirdparty/mandrill"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
-	"crowdstart.io/thirdparty/mandrill"
 )
 
 // GET /order/:token
