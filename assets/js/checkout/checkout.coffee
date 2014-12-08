@@ -1,10 +1,5 @@
 util = require '../store/util'
-
 require 'card'
-# View = require './view'
-
-# class CardView extends View
-#   el: '.sqs-checkout-form-payment'
 
 # Validation helper
 validation =
@@ -66,21 +61,6 @@ clearError = -> $(@).removeClass 'error'
 $('div.field').on 'click', clearError
 $('div.field').on 'change', clearError
 
-# Create credit card fanciness: https://github.com/jessepollak/card
-$('#form').card
-  container:   '#card-wrapper'
-  numberInput: '#stripe-number'
-  expiryInput: '#stripe-expiry-month, #stripe-expiry-year'
-  cvcInput:    '#stripe-cvc'
-  nameInput:   '#stripe-name'
-
-  formatting: true
-
-  values:
-      number: '•••• •••• •••• ••••',
-      name: 'Full Name',
-      expiry: '••/••••',
-      cvc: '•••'
 
 $('input[name="ShipToBilling"]').change ->
   shipping = $('.shipping-information fieldset')
@@ -142,23 +122,41 @@ $state.change updateShippingAndTax
 $city.on 'keyup', updateShippingAndTax
 $country.change updateShippingAndTax
 
-# Authorize with stripe
-stripeAuthorize = do ->
-  app.set 'approved', false
-
-  (status, response) ->
-    console.log 'Got response from stripe', response
-    if response.error
-      $('#error-message').text response.error.message
-    else
-      app.set 'approved', true
-      token = response.id
-      $('input[name="StripeToken"]').val token
-      # $form.submit()
-    return
-
 $(document).ready ->
   $form = $('#form')
+
+  # Authorize with stripe
+  stripeAuthorize = do ->
+    app.set 'approved', false
+
+    (status, response) ->
+      console.log 'Got response from stripe', response
+      if response.error
+        $('#error-message').text response.error.message
+      else
+        app.set 'approved', true
+        token = response.id
+        $('input[name="StripeToken"]').val token
+        $form.submit()
+      return
+
+  # Create credit card fanciness: https://github.com/jessepollak/card
+  $form.card
+    container:   '#card-wrapper'
+    numberInput: '#stripe-number'
+    expiryInput: '#stripe-expiry-month, #stripe-expiry-year'
+    cvcInput:    '#stripe-cvc'
+    nameInput:   '#stripe-name'
+
+    formatting: true
+
+    values:
+        number: '•••• •••• •••• ••••',
+        name: 'Full Name',
+        expiry: '••/••••',
+        cvc: '•••'
+
+  # Handle form submission
   $form.submit (e) ->
     # Do basic authorization
     unless validateForm()
