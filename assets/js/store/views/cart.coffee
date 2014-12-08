@@ -31,6 +31,7 @@ class CartView extends View
       if item.children?
         for child in item.children
           child.index = ++index
+
       view = new LineItemView state: item
       window.view = view
       $('.cart-content tbody').append view.$el
