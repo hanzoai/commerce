@@ -13,5 +13,5 @@ dispatch:
   - url: "preorder.skullysystems.com/*"
     module: preorder
 
-  - url: "store.skullysystems.com/admin/*"
-    module: admin
+  - url: "api.skullysystems.com/*"
+    module: platform
