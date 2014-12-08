@@ -22,13 +22,16 @@ func init() {
 	// Cart
 	router.GET("/cart", cart.Get)
 
+	// Login
 	router.GET("/login", logoutRequired, user.Login)
 	router.POST("/login", logoutRequired, user.SubmitLogin)
 	router.GET("/logout", user.Logout)
 
+	// Register
 	router.GET("/register", logoutRequired, user.Register)
 	router.POST("/register", logoutRequired, user.SubmitRegister)
 
+	// Profile
 	router.GET("/profile", loginRequired, user.Profile)
 	router.POST("/profile", loginRequired, user.SaveProfile)
 }
