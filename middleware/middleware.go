@@ -29,15 +29,17 @@ func AddHost() gin.HandlerFunc {
 // Updates session with login information, does not require it
 func CheckLogin() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Set("logged-in", auth.IsLoggedIn(c))
+		loggedIn := auth.IsLoggedIn(c)
+		log.Debug("loggedIn: %v", loggedIn)
+		c.Set("logged-in", loggedIn)
 	}
 }
 
 // Require login to view route
 func LoginRequired(moduleName string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		_loggedIn, err := c.Get("logged-in")
-		loggedIn := _loggedIn.(bool)
+		v, err := c.Get("logged-in")
+		loggedIn, _ := v.(bool)
 
 		if err != nil {
 			loggedIn = auth.IsLoggedIn(c)
@@ -55,8 +57,8 @@ func LoginRequired(moduleName string) gin.HandlerFunc {
 // Required to be logged out to view
 func LogoutRequired(moduleName string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		_loggedIn, err := c.Get("logged-in")
-		loggedIn := _loggedIn.(bool)
+		v, err := c.Get("logged-in")
+		loggedIn, _ := v.(bool)
 
 		if err != nil {
 			loggedIn = auth.IsLoggedIn(c)
