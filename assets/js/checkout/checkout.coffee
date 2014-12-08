@@ -26,20 +26,20 @@ validateForm = ->
   email = $('input[name="User.Email"]')
   unless validation.isEmail email.val()
     valid = false
-    email.parent().addClass 'error'
-    email.parent().addClass 'shake'
+    email.addClass 'error'
+    email.addClass 'shake'
     setTimeout ->
-      email.parent().removeClass 'shake'
+      email.removeClass 'shake'
       return
     , 500
     errors.push "Invalid email."
 
   if empty.length > 0
     valid = false
-    empty.parent().addClass 'error'
-    empty.parent().addClass 'shake'
+    empty.addClass 'error'
+    empty.addClass 'shake'
     setTimeout ->
-      empty.parent().removeClass 'shake'
+      empty.removeClass 'shake'
       return
     , 500
     missing = (v.trim() for v in empty.parent().text().split('\n') when v.trim())
@@ -60,8 +60,8 @@ validateForm = ->
 
 # Remove error class from field that has been edited or clicked on
 clearError = -> $(@).removeClass 'error'
-$('div.field').on 'click', clearError
-$('div.field').on 'change', clearError
+$('div.field input').on 'click', clearError
+$('div.field input').on 'change', clearError
 
 
 $('input[name="ShipToBilling"]').change ->
@@ -153,10 +153,10 @@ $(document).ready ->
     formatting: true
 
     values:
-        number: '•••• •••• •••• ••••',
-        name: 'Full Name',
-        expiry: '••/••••',
-        cvc: '•••'
+      number: '•••• •••• •••• ••••',
+      name: 'Full Name',
+      expiry: '••/••••',
+      cvc: '•••'
 
   # Handle form submission
   $form.submit (e) ->
