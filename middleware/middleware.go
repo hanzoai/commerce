@@ -7,6 +7,7 @@ import (
 
 	"crowdstart.io/auth"
 	"crowdstart.io/config"
+	"crowdstart.io/util/log"
 )
 
 // Automatically get App Engine context.
@@ -26,18 +27,20 @@ func AddHost() gin.HandlerFunc {
 }
 
 // Login Required middleware
-func LoginRequired() gin.HandlerFunc {
+func LoginRequired(moduleName string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if !auth.IsLoggedIn(c) {
-			c.Redirect(301, config.UrlFor("platform", "/login"))
+			log.Debug("Redirecting to login page")
+			c.Redirect(302, config.UrlFor(moduleName, "/login"))
+			c.Abort(302)
 		}
 	}
 }
 
-func LoggedOutRequired() gin.HandlerFunc {
+func LogoutRequired(moduleName string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if auth.IsLoggedIn(c) {
-			c.Redirect(301, "/")
+			c.Redirect(302, config.UrlFor(moduleName, "/profile"))
 		}
 	}
 }
