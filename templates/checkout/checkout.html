@@ -73,8 +73,8 @@
 
                     <!-- Zip Code -->
                     <div id="billing-zip" class="field zip required">
-                        <label for="Order.BillingAddress.PostalCode">Zip / Postal</label>
-                        <input id="Order.BillingAddress.PostalCode" name="Order.BillingAddress.PostalCode" placeholder="Zip / Postal" type="text" spellcheck="false" maxlength="9">
+                        <label for="Order.BillingAddress.PostalCode">Zip/Postal</label>
+                        <input id="Order.BillingAddress.PostalCode" name="Order.BillingAddress.PostalCode" placeholder="Zip/Postal" type="text" spellcheck="false" maxlength="9">
                         <!--http://stackoverflow.com/a/469362-->
                     </div>
 
@@ -126,8 +126,8 @@
 
                     <!-- Zip Code -->
                     <div id="shipping-zip" class="field zip required">
-                        <label for="Order.ShippingAddress.PostalCode">Zip / Postal</label>
-                        <input id="Order.ShippingAddress.PostalCode" name="Order.ShippingAddress.PostalCode" placeholder="Zip / Postal" type="text" spellcheck="false" maxlength="9">
+                        <label for="Order.ShippingAddress.PostalCode">Zip/Postal</label>
+                        <input id="Order.ShippingAddress.PostalCode" name="Order.ShippingAddress.PostalCode" placeholder="Zip/Postal" type="text" spellcheck="false" maxlength="9">
                         <!--http://stackoverflow.com/a/469362-->
                     </div>
 
@@ -161,43 +161,33 @@
                         <!-- Name -->
                         <div class="card-name field required">
                             <label for="stripe-name">Name As It Appears On Card</lable>
-                            <input type="text"
-                            id="stripe-name" placeholder="Name">
+                            <input type="text" id="stripe-name" placeholder="Name">
                         </div>
 
                         <!-- Card Number -->
                         <div class="card-number field required">
                             <label for="stripe-number">Card Number</label>
-                            <input type="text" size="20" autocomplete="off"
-                            placeholder="Credit Card Number" value=""
-                            id="stripe-number">
+                            <input type="text" size="20" autocomplete="off" placeholder="Credit Card Number" value="" id="stripe-number" data-stripe="number">
                         </div>
 
                         <div class="expiry-cvc">
                             <!-- CVC -->
                             <div class="card-cvc field required">
                                 <label for="stripe-cvc">CVC</label>
-                                <input type="text" size="4"
-                                autocomplete="off" placeholder="CVC" value=""
-                                id="stripe-cvc">
+                                <input type="text" size="4" autocomplete="off" placeholder="CVC" value="" id="stripe-cvc" data-stripe="cvc">
                             </div>
 
                             <!-- Expiration -->
                             <div class="card-expiry-month field required">
                                 <label for="stripe-expiry-month">Expiration</label>
-                                <input type="text" size="2" maxlength="2"
-                                autocomplete="off" placeholder="MM"
-                                value="" id="stripe-expiry-month">
+                                <input type="text" size="2" maxlength="2" autocomplete="off" placeholder="MM" value="" id="stripe-expiry-month" data-stripe="exp-month">
                             </div>
 
                             <!-- Year -->
                             <div class="card-expiry-year field required">
                                 <label for="stripe-expiry-year">&nbsp;</label>
-                                <input type="text" size="4" maxlength="4"
-                                autocomplete="off" placeholder="YYYY" value=""
-                                id="stripe-expiry-year">
+                                <input type="text" size="4" maxlength="4" autocomplete="off" placeholder="YYYY" value="" id="stripe-expiry-year" data-stripe="exp-year">
                             </div>
-
                         </div>
 
                         <!-- Secure payment conditions -->
@@ -205,8 +195,8 @@
                             All transactions are secure and encrypted, and we never store your credit card information. Payments are processed through Stripe. Payment information is also governed by <a target="_blank" href="https://stripe.com/privacy">Stripe's privacy policy</a>.
                         </div>
 
-                        <!-- Authorize message display -->
-                        <div class="authorizeMessage" id="authorize-message"></div>
+                        <!-- Authorization error message display -->
+                        <div id="error-message" class="error-message error"></div>
 
                         <!-- Place Order -->
                         <div class="btn-container" style="text-align: center;">
@@ -312,13 +302,6 @@
         <a href="javascript:void(0)" id="returnPolicy" class="store-policy-link" title="Return Policy">Return Policy</a>
     </div>
 </div>
-
-<form id="stripeForm" action="" method="post" accept-charset="UTF-8" enctype="application/x-www-form-urlencoded; charset=utf-8" name="stripeForm">
-    <input type="hidden" data-stripe="number">
-    <input type="hidden" data-stripe="cvc">
-    <input type="hidden" data-stripe="exp-month">
-    <input type="hidden" data-stripe="exp-year">
-</form>
 {% endblock %}
 
 {% block js %}
