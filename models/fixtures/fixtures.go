@@ -32,6 +32,30 @@ var All = delay.Func("install-all-fixtures", func(c appengine.Context) {
 			Phone:        "(123) 456-7890",
 			PasswordHash: pwhash,
 		})
+
+		// Create token
+		token := new(InviteToken)
+		token.Id = "test-token"
+		token.Email = "test@test.com"
+		db.PutKey("invite-token", "test-token", token)
+
+		// Save contribution
+		contribution := Contribution{
+			Id:            "test",
+			Perk:          perks["2267279"],
+			Status:        "Unfulfilled",
+			FundingDate:   "1983-06-30",
+			PaymentMethod: "PayPal",
+			Email:         "test@test.com",
+		}
+		db.PutKey("contribution", "test", &contribution)
+
+		order := Order{
+			Id:       "test-order",
+			Email:    "test@test.com",
+			Preorder: true,
+		}
+		db.PutKey("order", "test@test.com", order)
 	}
 
 	// TODO: Stop doing this in production
@@ -460,7 +484,7 @@ var All = delay.Func("install-all-fixtures", func(c appengine.Context) {
 
 	// Users
 
-	if count, _ := db.Query("user").Count(c); count > 1 {
+	if count, _ := db.Query("user").Count(c); count > 10 {
 		log.Debug("Contributor fixtures already loaded, skipping.")
 		return
 	}
