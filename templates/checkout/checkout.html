@@ -33,6 +33,7 @@
             <div class="error">{{ error }}</div>
             {% endif %}
 
+            {% if !loggedIn %}
             <div class="contact-information">
                 <h2>Contact</h2>
                 <fieldset class="login">
@@ -48,6 +49,7 @@
                     </div>
                 </fieldset>
             </div>
+            {% endif %}
             <div class="billing-information">
                 <h2>Billing</h2>
 

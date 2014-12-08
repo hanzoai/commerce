@@ -93,7 +93,11 @@ func charge(c *gin.Context) {
 	}
 
 	// Update user information
-	user := auth.GetUser(c)
+	user, err := auth.GetUser(c)
+	if err != nil {
+		user = &form.User
+	}
+
 	user.BillingAddress = form.Order.BillingAddress
 	user.ShippingAddress = form.Order.ShippingAddress
 	db.PutKey("user", user.Email, user)
