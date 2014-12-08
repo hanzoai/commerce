@@ -1,5 +1,6 @@
 util = require '../store/util'
 require 'card'
+validator = require 'address-validator/src/validator'
 
 # Validation helper
 validation =
@@ -62,7 +63,6 @@ validateForm = ->
 clearError = -> $(@).removeClass 'error'
 $('div.field input').on 'click', clearError
 $('div.field input').on 'change', clearError
-
 
 $('input[name="ShipToBilling"]').change ->
   shipping = $('.shipping-information fieldset')
@@ -142,6 +142,74 @@ $(document).ready ->
         $form.submit()
       return
 
+  validateBilling = do ->
+    $billingInfo = $('.billing-information')
+    $billingInfo.find('input').change ->
+      app.set 'validBillingAddress', false
+    app.set 'validBillingAddress', false
+    (err, exact, inexact) ->
+      console.log 'Got response from google', arguments
+      if !err?
+        if exact? && exact.length > 0
+          address = exact[0]
+        else if inexact? && inexact.length > 0
+          address = inexact[0]
+
+        if address?
+          alert = app.get 'alert'
+          alert.show
+            cover: true
+            nextTo: $('.billing-information fieldset')
+            title: 'Is this your street address?'
+            message: address.toString()
+            confirm: 'Yes'
+            onConfirm: ->
+              $billingInfo.find('#billing-address-1 input').val(address.streetNumber + ' ' + address.street)
+              $billingInfo.find('#billing-city input').val(address.city)
+              $billingInfo.find('#billing-state input').val(address.state)
+              $billingInfo.find('#billing-zip input').val(address.postalCode)
+              $billingInfo.find('#billing-country input').val(address.country)
+              app.set 'validBillingAddress', true
+              $form.submit()
+            cancel:  'No'
+            onCancel: ->
+              $('#error-message').text 'We could not verify your billing address.  Please try again.'
+      $('#error-message').text 'We could not verify your billing address.  Please try again.'
+
+  validateShipping = do ->
+    $shippingInfo = $('.shipping-information')
+    $shippingInfo.find('input').change ->
+      app.set 'validShippingAddress', false
+    app.set 'validShippingAddress', false
+    (err, exact, inexact) ->
+      console.log 'Got response from google', arguments
+      if !err?
+        if exact? && exact.length > 0
+          address = exact[0]
+        else if inexact? && inexact.length > 0
+          address = inexact[0]
+
+        if address?
+          alert = app.get 'alert'
+          alert.show
+            cover: true
+            nextTo: $('.shipping-information fieldset')
+            title: 'Is this your street address?'
+            message: address.toString()
+            confirm: 'Yes'
+            onConfirm: ->
+              $shippingInfo.find('#shipping-address-1 input').val(address.streetNumber + ' ' + address.street)
+              $shippingInfo.find('#shipping-city input').val(address.city)
+              $shippingInfo.find('#shipping-state input').val(address.state)
+              $shippingInfo.find('#shipping-zip input').val(address.postalCode)
+              $shippingInfo.find('#shipping-country input').val(address.country)
+              app.set 'validShippingAddress', true
+              $form.submit()
+            cancel:  'No'
+            onCancel: ->
+              $('#error-message').text 'We could not verify your shipping address.  Please try again.'
+      $('#error-message').text 'We could not verify your shipping address.  Please try again.'
+
   # Create credit card fanciness: https://github.com/jessepollak/card
   $form.card
     container:   '#card-wrapper'
@@ -162,6 +230,32 @@ $(document).ready ->
   $form.submit (e) ->
     # Do basic authorization
     unless validateForm()
+      return false
+
+    unless app.get 'validBillingAddress'
+      $billingInfo = $('.billing-information')
+      address = new validator.Address
+        street:     $billingInfo.find('#billing-address-1 input').val()
+        city:       $billingInfo.find('#billing-city input').val()
+        state:      $billingInfo.find('#billing-state input').val()
+        postalCode: $billingInfo.find('#billing-zip input').val()
+        country:    $billingInfo.find('#billing-country input').val()
+      validator.validate(address, validator.match.streetAddress, validateBilling)
+      location.href = "#billing-address"
+      $('#error-message').text 'Please validate your billing address'
+      return false
+
+    if !$('input[name="ShipToshipping"]').is(':checked') && !app.get('validShippingAddress')
+      $shippingInfo = $('.shipping-information')
+      address = new validator.Address
+        street:     $shippingInfo.find('#shipping-address-1 input').val()
+        city:       $shippingInfo.find('#shipping-city input').val()
+        state:      $shippingInfo.find('#shipping-state input').val()
+        postalCode: $shippingInfo.find('#shipping-zip input').val()
+        country:    $shippingInfo.find('#shipping-country input').val()
+      validator.validate(address, validator.match.streetAddress, validateShipping)
+      location.href = "#shipping-address"
+      $('#error-message').text 'Please validate your shipping address'
       return false
 
     # Do stripe authorization
