@@ -22,12 +22,73 @@ func (f *CheckoutForm) Parse(c *gin.Context) error {
 
 	form.SchemaFix(&f.Order) // Fuck you schema
 
+	// Merge and sort products, client can submit form with products duplicated (bonus items).
+	items := make([]models.LineItem, 0)
+	bonus := make([]models.LineItem, 0)
+	itemMap := make(map[string]int)
+	bonusMap := make(map[string]int)
+	for i, item := range f.Order.Items {
+		if item.Price() > 0 {
+			if index, ok := itemMap[item.SKU()]; ok {
+				items[index].Quantity += item.Quantity
+			} else {
+				itemMap[item.SKU()] = i
+				items = append(items, item)
+			}
+		} else {
+			if index, ok := bonusMap[item.SKU()]; ok {
+				bonus[index].Quantity += item.Quantity
+			} else {
+				bonusMap[item.SKU()] = i
+				bonus = append(bonus, item)
+			}
+		}
+	}
+
+	// Append bonus items to end of lineitem slice
+	items = append(items, bonus...)
+
+	// Update Order.Items
+	f.Order.Items = items
+
 	return nil
 }
 
 // Populate form with data from database
 func (f *CheckoutForm) Populate(db *datastore.Datastore) error {
 	return f.Order.Populate(db)
+}
+
+// Merge line items in form
+func (f *CheckoutForm) Merge(c *gin.Context) {
+	// Merge and sort products, client can submit form with products duplicated (bonus items).
+	items := make([]models.LineItem, 0)
+	bonus := make([]models.LineItem, 0)
+	itemMap := make(map[string]int)
+	bonusMap := make(map[string]int)
+	for i, item := range f.Order.Items {
+		if item.Price() > 0 {
+			if index, ok := itemMap[item.SKU()]; ok {
+				items[index].Quantity += item.Quantity
+			} else {
+				itemMap[item.SKU()] = i
+				items = append(items, item)
+			}
+		} else {
+			if index, ok := bonusMap[item.SKU()]; ok {
+				bonus[index].Quantity += item.Quantity
+			} else {
+				bonusMap[item.SKU()] = i
+				bonus = append(bonus, item)
+			}
+		}
+	}
+
+	// Append bonus items to end of lineitem slice
+	items = append(items, bonus...)
+
+	// Update Order.Items
+	f.Order.Items = items
 }
 
 func (f CheckoutForm) Validate(c *gin.Context) {}

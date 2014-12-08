@@ -25,20 +25,14 @@ class LineSubItemView extends View
                 '.quantity input @name']
 
   computed:
-    desc: (color, size) -> [color, size]
+    desc: (color, size) -> (v for v in [color, size] when v)
 
   watching:
     desc: ['color', 'size']
 
   formatters:
     desc: (v) ->
-      if v.length > 1
-        val = v.join ' / '
-        if val == ' / '
-          return ''
-        return val
-      else
-        v.join ''
+      v.join ' / '
 
     quantity: (v)->
       v *= @get 'multiplier'
@@ -49,7 +43,7 @@ class LineSubItemView extends View
           "Order.Items.#{v}.Variant.SKU"
         when 'input.slug @name'
           "Order.Items.#{v}.Product.Slug"
-        when '.quantity select @name'
+        when '.quantity input @name'
           "Order.Items.#{v}.Quantity"
 
     price: (v) ->
