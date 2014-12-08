@@ -264,7 +264,11 @@
                     </td>
 
                     <td class="price">
-                        <span>$</span><span class="money">{{ item.DisplayPrice() }}</span>
+                        {% if item.Price > 0 %}
+                            <span>$</span><span class="money">{{ item.DisplayPrice() }}</span>
+                        {% else %}
+                            <span>FREE</span>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}
