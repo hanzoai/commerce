@@ -38,8 +38,8 @@ func CheckLogin() gin.HandlerFunc {
 // Require login to view route
 func LoginRequired(moduleName string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		_loggedIn, err := c.Get("logged-in")
-		loggedIn := _loggedIn.(bool)
+		v, err := c.Get("logged-in")
+		loggedIn, _ := v.(bool)
 
 		if err != nil {
 			loggedIn = auth.IsLoggedIn(c)
@@ -57,8 +57,8 @@ func LoginRequired(moduleName string) gin.HandlerFunc {
 // Required to be logged out to view
 func LogoutRequired(moduleName string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		_loggedIn, err := c.Get("logged-in")
-		loggedIn := _loggedIn.(bool)
+		v, err := c.Get("logged-in")
+		loggedIn, _ := v.(bool)
 
 		if err != nil {
 			loggedIn = auth.IsLoggedIn(c)
