@@ -6,41 +6,38 @@ import (
 	"crowdstart.io/auth"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
-	"crowdstart.io/util/json"
+	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
 )
 
 func DisplayOrders(c *gin.Context) {
 	user := auth.GetUser(c)
 	db := datastore.New(c)
-	var orders []interface{}
-	err := db.GetKeyMulti("order", user.OrdersIds, orders)
+
+	var genOrders []interface{}
+	err := db.GetKeyMulti("order", user.OrdersIds, genOrders)
 	if err != nil {
 		c.Fail(500, err)
 		return
 	}
 
-	var cancelled []models.Order
-	var shipped []models.Order
-	var pending []models.Order
+	orders := make([]models.Order, len(genOrders))
+	for i, order := range genOrders {
+		orders[i] = order.(models.Order)
+	}
 
-	for _, o := range orders {
-		order := o.(models.Order)
-		switch {
-		case order.Shipped:
-			shipped = append(shipped, order)
-
-		case order.Cancelled:
-			cancelled = append(cancelled, order)
-
-		default:
-			pending = append(pending, order)
-		}
+	// SKULLY Preorder
+	// Searches for an order where the user's email is the key
+	preorder := new(models.Order)
+	err = db.GetKey("order", user.Email, preorder)
+	if err == nil {
+		preorder.Preorder = true
+		orders = append(orders, *preorder)
+	} else {
+		log.Debug("User doesn't have a preorder. %s", user.Email)
 	}
 
 	template.Render(c, "orders.html",
-		"cancelled", json.Encode(cancelled),
-		"shipped", json.Encode(shipped),
-		"pending", json.Encode(pending),
+		"orders", orders,
 	)
 }
