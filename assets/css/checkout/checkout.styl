@@ -34,11 +34,31 @@ div.dialog-screen-overlay.system-error-overlay
 
 // Play with a few axis features
 table
-  table(striped: false)
+  // table(striped: false)
   border: none
+
+th
+  border-bottom: 1px solid #ddd
+  border-top: 0px
+  text-align: left
+  padding: 5px
+
+td
+  padding: 5px
+  border-top: 1px solid #eee
+  border-bottom: 1px solid #eee
+  border-left: 0px
+  border-right: 0px
+  font-size: 12px
+
+tr.total td
+  border-bottom: 0px
 
 label
   label()
+
+form
+  form()
 
 .field
   field: right 90%
@@ -46,6 +66,10 @@ label
 +html5-inputs()
   input: aqua 60%
   box-sizing border-box
+  border-radius: 0px
+  padding: 8px
+  border: 1px solid #ddd
+  margin: 8px
 
 // CHECKOUT
 .checkout-width
@@ -68,9 +92,9 @@ h2
 
     td.item-image
       width 100px
-      padding 0px
+      padding 10px
       img
-        width 100px
+        width 50px
 
     td.item-desc
       text-align center
