@@ -213,6 +213,7 @@
         </div>
     </div>
 
+    {% block cart_hover %}
     <!--CART HOVER-->
     <div class="cart-hover" style="opacity:0">
         <a href="{{ urlFor("store", "/cart") }}">
@@ -228,6 +229,7 @@
             </span>
         </a>
     </div>
+    {% endblock %}
 
     {% block json %}{% endblock %}
 
