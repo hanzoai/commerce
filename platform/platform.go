@@ -6,11 +6,11 @@ import (
 	"crowdstart.io/util/router"
 )
 
-var loginRequired = middleware.LoginRequired("platform")
-
 // Defines the routes for the platform
 func init() {
 	router := router.New("platform")
+
+	loginRequired := middleware.LoginRequired("platform")
 
 	router.GET("/", admin.Index)
 
