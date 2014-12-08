@@ -46,6 +46,7 @@ func checkout(c *gin.Context) {
 
 	// Render order for checkout page
 	template.Render(c, "checkout.html",
+		"loggedIn", auth.IsLoggedIn(c),
 		"order", form.Order,
 		"config", config.Get(),
 	)
