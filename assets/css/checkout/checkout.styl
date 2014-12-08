@@ -3,61 +3,64 @@
 @import "shake"
 
 .authorizeMessage
-  text-align: center
+  text-align center
 
 .error-message
-  margin-top: 10px
+  margin-top 10px
 
 .error-message p
-  text-align: left
-  font-size: 12px
-  margin-bottom: 5px
+  text-align left
+  font-size 12px
+  margin-bottom 5px
 
 .error
-  color: red
+  color red
+
+input.error
+  border-color red !important
 
 #standard-checkout .checkout-form-section fieldset .field.error.required input,
 #standard-checkout .checkout-form-section fieldset .field.error.required select
-  border: 2px solid #d70404
+  border 2px solid #d70404
 
 #form-wrapper > div:nth-child(2)
   /*Shipping details.*/
-  display: none
+  display none
 
 #standard-checkout
-  background: #f3f3f3
+  background #f3f3f3
 
 #standard-checkout .button
-  background: #222
+  background #222
 
 .system-error
-  display: none !important
+  display none !important
 
 div.dialog-screen-overlay.system-error-overlay
-  display: none !important
-  z-index: -1 !important
+  display none !important
+  z-index -1 !important
 
 // Play with a few axis features
 table
   // table(striped: false)
-  border: none
+  border none
 
 th
-  border-bottom: 1px solid #ddd
-  border-top: 0px
-  text-align: left
-  padding: 5px
+  border-bottom 1px solid #ddd
+  border-top 0px
+  text-align left
+  padding 5px
 
 td
-  padding: 5px
-  border-top: 1px solid #eee
-  border-bottom: 1px solid #eee
-  border-left: 0px
-  border-right: 0px
-  font-size: 12px
+  padding 5px
+  border-top 1px solid #eee
+  border-bottom 1px solid #eee
+  border-left 0px
+  border-right 0px
+  font-size 12px
 
 tr.total td
-  border-bottom: 0px
+  border-bottom 0px
 
 label
   label()
@@ -66,10 +69,13 @@ form
   form()
 
 .field
-  field: right 90%
+  field: center 95%
+
+  label
+    display none
 
 +html5-inputs()
-  input: aqua 60%
+  input: aqua 90%
   box-sizing border-box
   border-radius: 0px
   padding: 8px
