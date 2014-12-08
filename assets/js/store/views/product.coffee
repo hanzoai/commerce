@@ -68,7 +68,7 @@ class ProductView extends View
       price:    (parseInt(variant.Price, 10) - parseInt(listing.Configs[0].PriceAdjustment, 10)) * 0.0001
       quantity: quantity
       size:     variant.Size
-      slug:     product.slug
+      slug:     product.Slug
       children: childProducts
 
     for i in [1..listing.Configs.length-1]
@@ -83,7 +83,7 @@ class ProductView extends View
         price:    (parseInt(variant.Price, 10) - parseInt(config.PriceAdjustment, 10)) * 0.0001
         multiplier: config.Quantity
         size:     variant.Size
-        slug:     product.slug
+        slug:     product.Slug
 
     inner = @el.find '.add-to-cart span'
     inner.html ''
