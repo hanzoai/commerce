@@ -29,7 +29,9 @@ func AddHost() gin.HandlerFunc {
 // Updates session with login information, does not require it
 func CheckLogin() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Set("logged-in", auth.IsLoggedIn(c))
+		loggedIn := auth.IsLoggedIn(c)
+		log.Debug("loggedIn: %v", loggedIn)
+		c.Set("logged-in", loggedIn)
 	}
 }
 
