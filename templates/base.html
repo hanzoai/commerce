@@ -64,14 +64,22 @@
                     <img class="logo" src="{{ urlFor("/img/skully.png") }}" alt="SKULLY AR-1">
                 </a>
 
+                <div class="mobile-nav">
+                    <div class="menu-icon">
+                        <div class="bar bar1"></div>
+                        <div class="bar bar2"></div>
+                        <div class="bar bar3"></div>
+                    </div>
+                </div>
+
                 <nav class="nav">
                     <ul class="links">
                         <li class="link">
                             <a class="current" href="{{ urlFor("store") }}">STORE</a>
                         </li>
 
-                        <li class="community-dropdown">
-                            <input id="community-toggle" type="checkbox">
+                        <li class="dropdown community-dropdown">
+                            <input id="community-toggle" class="dropdown-toggle" type="checkbox">
                             <label for="community-toggle">COMMUNITY</label>
 
                             <ul>
@@ -84,8 +92,8 @@
                             </ul>
                         </li>
 
-                        <li class="team-dropdown">
-                            <input id="team-toggle" type="checkbox">
+                        <li class="dropdown team-dropdown">
+                            <input id="team-toggle" class="dropdown-toggle" type="checkbox">
                             <label for="team-toggle">TEAM</label>
 
                             <ul>
@@ -99,9 +107,28 @@
                             <a href="http://www.skullysystems.com/faq/">FAQ</a>
                         </li>
 
+                        {% if !loggedIn %}
                         <li class="link">
-                            <a class="big" href="{{ urlFor("store", "/sign-in") }}">SIGN IN</a>
+                            <a class="big" href="{{ urlFor("store", "/login") }}">SIGN IN</a>
                         </li>
+                        {% else %}
+                        <li class="dropdown account-dropdown">
+                            <input id="account-toggle" class="dropdown-toggle" type="checkbox">
+                            <label for="account-toggle">ACCOUNT</label>
+                            <ul>
+                                <li>
+                                    <a href="{{ urlFor("store", "/profile") }}">PROFILE</a>
+                                </li>
+                                <li>
+                                    <a href="{{ urlFor("store", "/orders") }}">ORDERS</a>
+                                </li>
+                                <li>
+                                    <a href="{{ urlFor("store", "/logout") }}">LOGOUT</a>
+                                </li>
+                            </ul>
+                        </li>
+                        {% endif %}
+
                     </ul>
                 </nav>
             </div>
@@ -197,14 +224,16 @@
     </div>
 
     <!--DIALOG-->
-    <div class="alert-dialog" style="display:none; width: 350px">
+    <div class="alert-dialog" style="display:none">
         <div class="alert-title"></div>
         <div class="alert-message"></div>
         <div class="alert-buttons">
-            <div class="alert-confirmation-button"></div>
+            <button type="button" class="alert-confirmation-button"></button>
+            <button type="button" class="alert-cancel-button"></button>
         </div>
     </div>
 
+    {% block cart_hover %}
     <!--CART HOVER-->
     <div class="cart-hover" style="opacity:0">
         <a href="{{ urlFor("store", "/cart") }}">
@@ -220,6 +249,7 @@
             </span>
         </a>
     </div>
+    {% endblock %}
 
     {% block json %}{% endblock %}
 

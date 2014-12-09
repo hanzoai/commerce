@@ -3,74 +3,87 @@ package user
 import (
 	"errors"
 
-	"crowdstart.io/auth"
-	"crowdstart.io/datastore"
-	"crowdstart.io/models"
 	"github.com/gin-gonic/gin"
 
 	"appengine"
+
+	// "crowdstart.io/auth"
+	"crowdstart.io/datastore"
+	"crowdstart.io/models"
+	"crowdstart.io/util/form"
+	"crowdstart.io/util/json"
+	"crowdstart.io/util/template"
 )
 
-// Gets the orders associated with a user's email.
-func Orders(ctx appengine.Context, email string) ([]models.Order, error) {
-	db := datastore.New(ctx)
+func DisplayOrders(c *gin.Context) {
+	// user := auth.GetUser(c)
+	// db := datastore.New(c)
+	var orders []interface{}
+	// err := db.GetKeyMulti("order", user.OrdersIds, orders)
+	// if err != nil {
+	// 	c.Fail(500, err)
+	// 	return
+	// }
 
-	var user models.User
-	err := db.GetKey("user", email, user)
-	if err != nil {
-		return nil, err
-	}
+	var cancelled []models.Order
+	var shipped []models.Order
+	var pending []models.Order
 
-	rawOrders := make([]interface{}, len(user.OrdersIds))
-	err = db.GetKeyMulti("order", user.OrdersIds, rawOrders)
-	if err != nil {
-		return nil, err
-	}
+	for _, o := range orders {
+		order := o.(models.Order)
+		switch {
+		case order.Shipped:
+			shipped = append(shipped, order)
 
-	if rawOrders == nil {
-		return nil, errors.New("No orders found")
-	}
+		case order.Cancelled:
+			cancelled = append(cancelled, order)
 
-	orders := make([]models.Order, len(rawOrders))
-
-	for i := range orders {
-		orders[i] = rawOrders[i].(models.Order)
-	}
-
-	return orders, nil
-}
-
-func ListOrders(c *gin.Context) {
-	email, err := auth.GetEmail(c)
-	if err != nil {
-		return
-	}
-	ctx := c.MustGet("appengine").(appengine.Context)
-	orders, err := Orders(ctx, email)
-
-	if err != nil {
-
-	}
-
-	// TODO Figure out a way to separately display pending orders and completed orders.
-	var pendingOrders []models.Order
-	for _, order := range orders {
-		if !order.Cancelled && !order.Shipped {
-			pendingOrders = append(pendingOrders, order)
+		default:
+			pending = append(pending, order)
 		}
 	}
 
-	// Render the template using filtered orders
+	template.Render(c, "platform/user/orders.html",
+		"cancelled", json.Encode(cancelled),
+		"shipped", json.Encode(shipped),
+		"pending", json.Encode(pending),
+	)
 }
 
 func ModifyOrder(c *gin.Context) {
+	o := new(models.Order)
+	err := form.Parse(c, o)
+	if err != nil {
+		c.Fail(500, err)
+		return
+	}
 
-	// id := c.Request.URL.Query().Get("orderId")
+	db := datastore.New(c)
+	_, err = db.Update(o.Id, o)
+	if err != nil {
+		c.Fail(500, err)
+		return
+	}
+
+	c.JSON(200, o)
 }
 
-// Extracts the Order.Id from the url and removes it from the datastore.
+// Extracts the orderId from the url and removes it from the datastore.
 func RemoveOrder(c *gin.Context) {
 	id := c.Request.URL.Query().Get("orderId")
+	// user := auth.GetUser(c)
+
+	hasOrder := false
+	// for _, _id := range user.OrdersIds {
+	// 	if _id == id {
+	// 		hasOrder = true
+	// 		break
+	// 	}
+	// }
+	if !hasOrder {
+		c.Fail(500, errors.New("Invalid order id"))
+	}
+
 	db := datastore.New(c)
 
 	err := db.RunInTransaction(func(c appengine.Context) error {
@@ -83,7 +96,7 @@ func RemoveOrder(c *gin.Context) {
 		}
 
 		order.Cancelled = true
-		_, err = db.Update(id, order)
+		_, err = db.PutKey("order", id, order)
 		return err
 	}, nil)
 
