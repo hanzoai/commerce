@@ -1,6 +1,7 @@
 package checkout
 
 import (
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -20,12 +21,13 @@ import (
 var stripePublishableKey string
 var stripeAccessToken string
 
-// Redirect to store on GET
+// GET /
 func index(c *gin.Context) {
+	// Redirect to store on GET
 	c.Redirect(301, config.UrlFor("store", "/cart"))
 }
 
-// Display checkout form
+// POST /
 func checkout(c *gin.Context) {
 	// Parse checkout form
 	form := new(CheckoutForm)
@@ -60,14 +62,8 @@ func checkout(c *gin.Context) {
 		}
 	}
 
-	var user models.User
-	if auth.IsLoggedIn(c) {
-		_user, err := auth.GetUser(c)
-		user = *_user
-		if err != nil {
-			log.Panic("Error retrieving user \n%v", err)
-		}
-	}
+	// Try to get user from datastore based on email in session.
+	user, _ := auth.GetUser(c)
 
 	// Render order for checkout page
 	template.Render(c, "checkout.html",
@@ -78,7 +74,7 @@ func checkout(c *gin.Context) {
 }
 
 // Charge a successful authorization
-// LoginRequired
+// POST /charge
 func charge(c *gin.Context) {
 	form := new(ChargeForm)
 	if err := form.Parse(c); err != nil {
@@ -106,9 +102,19 @@ func charge(c *gin.Context) {
 		log.Debug("Using form.User", c)
 		user = &form.User
 	}
+	log.Debug("User: %v", user)
 
 	// Set email for order
 	form.Order.Email = user.Email
+
+	// Set test mode, minimum stripe transaction
+	if strings.Contains(user.Email, "@verus.io") {
+		form.Order.Test = true
+		form.Order.Shipping = 0
+		form.Order.Tax = 0
+		form.Order.Subtotal = 50
+		form.Order.Total = 50
+	}
 
 	// Save order
 	log.Debug("Saving order...", c)
@@ -118,10 +124,12 @@ func charge(c *gin.Context) {
 		return
 	}
 
-	log.Debug("Saving user...", c)
+	log.Debug("Updating and saving user...", c)
 	user.BillingAddress = form.Order.BillingAddress
 	user.ShippingAddress = form.Order.ShippingAddress
-
+	user.Phone = form.User.Phone
+	user.FirstName = form.User.FirstName
+	user.LastName = form.User.LastName
 	if _, err := db.PutKey("user", user.Email, user); err != nil {
 		log.Error("Error saving order", err, c)
 		c.Fail(500, err)
