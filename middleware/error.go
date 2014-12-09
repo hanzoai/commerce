@@ -19,7 +19,7 @@ func displayError(c *gin.Context, stack string) {
 	// Trim beginning of stacktrace
 	lines := strings.Split(stack, "\n")
 	msg := lines[0]
-	lines = append([]string{msg + "\n"}, lines[11:]...)
+	lines = append([]string{msg + "\n"}, lines[5:]...)
 	stack = strings.Join(lines, "\n")
 
 	if appengine.IsDevAppServer() {
