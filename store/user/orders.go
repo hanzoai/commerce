@@ -11,30 +11,24 @@ import (
 )
 
 func DisplayOrders(c *gin.Context) {
-	user := auth.GetUser(c)
-	db := datastore.New(c)
+	email, err := auth.GetEmail(c)
+	if err == nil {
+		log.Panic("Error getting logged in user from the datastore \n%v", err)
+	}
 
+	db := datastore.New(c)
 	var genOrders []interface{}
-	err := db.GetKeyMulti("order", user.OrdersIds, genOrders)
+	_, err = db.Query("order").
+		Filter("Email =", email).
+		GetAll(db.Context, genOrders)
+
 	if err != nil {
-		c.Fail(500, err)
-		return
+		log.Panic("Error retrieving orders associated with the user's email", err)
 	}
 
 	orders := make([]models.Order, len(genOrders))
-	for i, order := range genOrders {
-		orders[i] = order.(models.Order)
-	}
-
-	// SKULLY Preorder
-	// Searches for an order where the user's email is the key
-	preorder := new(models.Order)
-	err = db.GetKey("order", user.Email, preorder)
-	if err == nil {
-		preorder.Preorder = true
-		orders = append(orders, *preorder)
-	} else {
-		log.Debug("User doesn't have a preorder. %s", user.Email)
+	for i, o := range genOrders {
+		orders[i] = o.(models.Order)
 	}
 
 	template.Render(c, "orders.html",
@@ -49,28 +43,21 @@ type CancelOrderStatus struct {
 
 func CancelOrder(c *gin.Context) {
 	orderId := c.Request.URL.Query().Get("id")
-	user := auth.GetUser(c)
 
-	exists := user.Email == orderId // For SKULLY preorder
-	if !exists {
-		for _, id := range user.OrdersIds {
-			if id == orderId {
-				exists = true
-				break
-			}
-		}
-	}
-
-	if !exists {
-		log.Panic("Invalid order id")
+	email, err := auth.GetEmail(c)
+	if err != nil {
+		log.Panic("Error retrieving user \n%v", err)
 	}
 
 	db := datastore.New(c)
 
 	order := new(models.Order)
-	err := db.GetKey("user", orderId, order)
-	if err != nil {
+	if err := db.GetKey("order", orderId, order); err != nil {
 		log.Panic("Error while retrieving order \n%v", err)
+	}
+
+	if order.Email != email {
+		log.Panic("Email associated with order does not match the email retrieved from the session \nSessionEmail: %s \n%#v", email, order)
 	}
 
 	if order.Shipped {

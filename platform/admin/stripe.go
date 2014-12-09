@@ -48,7 +48,7 @@ func StripeCallback(c *gin.Context) {
 	client := urlfetch.Client(ctx)
 
 	data := url.Values{}
-	data.Set("client_secret", config.Get().Stripe.APISecret)
+	data.Set("client_secret", config.Stripe.APISecret)
 	data.Add("code", code)
 	data.Add("grant_type", "authorization_code")
 
@@ -82,7 +82,7 @@ func StripeCallback(c *gin.Context) {
 
 	// Stripe returned an error
 	if token.Error != "" {
-		template.Render(c, "adminlte/connect.html", "error", token.Error, "clientid", config.Get().Stripe.ClientId)
+		template.Render(c, "adminlte/connect.html", "error", token.Error, "clientid", config.Stripe.ClientId)
 		return
 	}
 

@@ -20,24 +20,73 @@ var All = delay.Func("install-all-fixtures", func(c appengine.Context) {
 	log.Debug("Loading fixtures...")
 	db := datastore.New(c)
 
+	if appengine.IsDevAppServer() {
+		// Add default test user
+		pwhash, _ := bcrypt.GenerateFromPassword([]byte("password"), 12)
+
+		db.PutKey("user", "test@test.com", &User{
+			Id:           "test@test.com",
+			FirstName:    "Test",
+			LastName:     "User",
+			Email:        "test@test.com",
+			Phone:        "(123) 456-7890",
+			PasswordHash: pwhash,
+		})
+
+		// Create token
+		token := new(InviteToken)
+		token.Id = "test-token"
+		token.Email = "test@test.com"
+		db.PutKey("invite-token", "test-token", token)
+
+		// Save contribution
+		contribution := Contribution{
+			Id:            "test",
+			Perk:          perks["2267279"],
+			Status:        "Unfulfilled",
+			FundingDate:   "1983-06-30",
+			PaymentMethod: "PayPal",
+			Email:         "test@test.com",
+		}
+		db.PutKey("contribution", "test", &contribution)
+
+		order := Order{
+			Id:       "test-order",
+			Email:    "test@test.com",
+			Preorder: true,
+		}
+		db.PutKey("order", "test@test.com", &order)
+	}
+
+	// TODO: Stop doing this in production
+	// Add SKULLY user
 	pwhash, _ := bcrypt.GenerateFromPassword([]byte("Victory1!"), 12)
 
-	// Default User (SKULLY)
 	db.PutKey("user", "dev@hanzo.ai", &User{
 		Id:           "dev@hanzo.ai",
 		FirstName:    "Mitchell",
 		LastName:     "Weller",
 		Email:        "dev@hanzo.ai",
 		Phone:        "(123) 456-7890",
-		OrdersIds:    []string{},
 		PasswordHash: pwhash,
 	})
 
 	// Default Campaign (SKULLY)
-	db.PutKey("campaign", "dev@hanzo.ai", &Campaign{
+	campaign := Campaign{
 		Id:    "dev@hanzo.ai",
 		Title: "SKULLY AR-1",
-	})
+	}
+
+	// Hardcode stripe test credentials
+	if appengine.IsDevAppServer() {
+		campaign.Stripe.AccessToken = "sk_test_eyQyQYZlwLcKxM9LoxLKg61y"
+		campaign.Stripe.PublishableKey = "pk_test_IkyRgPrDxa5SRvEP1XKpJann"
+		campaign.Stripe.RefreshToken = "rt_5E65oPVEYWwIAqBWpW64RfefExYPVAvt4Pu9YeEBPJn9AECa"
+		campaign.Stripe.UserId = "acct_14lSsRCSRlllXCwP"
+	}
+
+	// Save campaign
+	db.PutKey("campaign", "dev@hanzo.ai", &campaign)
 
 	// AR-1
 	variants := []ProductVariant{
@@ -136,6 +185,58 @@ var All = delay.Func("install-all-fixtures", func(c appengine.Context) {
 			Image{
 				Alt: "whitehelmet_store_1000px.jpg",
 				Url: config.UrlFor("/img/products/whitehelmet_store_1000px.jpg"),
+				X:   1000,
+				Y:   1000,
+			},
+		},
+	})
+
+	// Cards
+	variants = []ProductVariant{
+		ProductVariant{
+			SKU:   "CARD-WINTER2014PROMO",
+			Price: 0,
+		},
+	}
+
+	for _, v := range variants {
+		db.PutKey("variant", v.SKU, &v)
+	}
+
+	db.PutKey("product", "card-winter2014promo", &Product{
+		Slug:     "card-winter2014promo",
+		Title:    "SKULLY Xmas Card",
+		Variants: variants,
+		Images: []Image{ // replace with real one, zach
+			Image{
+				Alt: "whitehelmet_store_1000px.jpg",
+				Url: config.UrlFor("/img/products/skullyhhsquare.jpg"),
+				X:   1000,
+				Y:   1000,
+			},
+		},
+	})
+
+	// Dogtags
+	variants = []ProductVariant{
+		ProductVariant{
+			SKU:   "DOGTAG-WINTER2014PROMO",
+			Price: 0,
+		},
+	}
+
+	for _, v := range variants {
+		db.PutKey("variant", v.SKU, &v)
+	}
+
+	db.PutKey("product", "dogtag-winter2014promo", &Product{
+		Slug:     "dogtag-winter2014promo",
+		Title:    "Limited Edition SKULLY dog tag",
+		Variants: variants,
+		Images: []Image{ // replace with real one, zach
+			Image{
+				Alt: "whitehelmet_store_1000px.jpg",
+				Url: config.UrlFor("/img/products/skullydogtags.png"),
 				X:   1000,
 				Y:   1000,
 			},
@@ -356,7 +457,57 @@ var All = delay.Func("install-all-fixtures", func(c appengine.Context) {
 		},
 	})
 
-	if count, _ := db.Query("user").Count(c); count > 1 {
+	// Product Listings
+
+	db.PutKey("listing", "ar-1-winter2014promo", &Listing{
+		SKU:   "ar-1-winter2014promo",
+		Title: "SKULLY AR-1",
+		Description: `The world’s smartest motorcycle helmet. SKULLY AR-1 is a light, high-quality,
+					  and full-faced motorcycle helmet equipped with a wide-angle rearview camera and
+					  transparent heads up display (HUD). With its live rearview feed and ability to
+					  provide telemetry and rider data such as speed, GPS directions, fuel*, and
+					  more, the SKULLY AR-1 not only eliminates blind spots, but allows the rider to
+					  focus on what matters most: the road ahead. SKULLY AR-1: Ride safer, look
+					  badass.
+
+					  Estimated Delivery: JULY 2015
+
+					  *Pre-Order during the holiday season for a FREE LIMITED EDITION SKULLY AR-1 dog tag & XMAS Card`,
+		Images: []Image{
+			Image{
+				Alt: "blackhelmet_store_1000px.jpg",
+				Url: config.UrlFor("/img/products/blackhelmet_store_1000px.jpg"),
+				X:   1000,
+				Y:   1000,
+			},
+			Image{
+				Alt: "whitehelmet_store_1000px.jpg",
+				Url: config.UrlFor("/img/products/whitehelmet_store_1000px.jpg"),
+				X:   1000,
+				Y:   1000,
+			},
+		},
+		Configs: []Config{
+			Config{
+				Product:  "ar-1",
+				Quantity: 1,
+			},
+			Config{
+				Product:  "card-winter2014promo",
+				Variant:  "CARD-WINTER2014PROMO",
+				Quantity: 1,
+			},
+			Config{
+				Product:  "dogtag-winter2014promo",
+				Variant:  "DOGTAG-WINTER2014PROMO",
+				Quantity: 1,
+			},
+		},
+	})
+
+	// Users
+
+	if count, _ := db.Query("user").Count(c); count > 10 {
 		log.Debug("Contributor fixtures already loaded, skipping.")
 		return
 	}
