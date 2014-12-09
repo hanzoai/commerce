@@ -281,10 +281,14 @@ $(document).ready ->
         url: $form.attr 'action'
         type: "POST"
         data: $form.serializeArray()
-        success: ->
+        dataType: "json"
+        success: (data) ->
+          console.log data
           window.location.replace 'complete/'
-        error: ->
-          $('#error-message').text 'We were unable to charge your card. Please review your information and try again later.'
+        error: (xhr) ->
+          message  =  xhr?.responseJSON?.message  # try to use server provided error message
+          message ?= 'We were unable to charge your card. Please review your information and try again later.'
+          $('#error-message').text message
           $form.find('.loading-spinner').remove()
           lock = false
 
