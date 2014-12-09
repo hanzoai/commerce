@@ -16,9 +16,9 @@
 {% block content_header %}
 <div class="banner-image content-fill" style="overflow: hidden;">
   {% if product.HeaderImage.Url %}
-  <img data-src="{{ product.HeaderImage.Url }}" data-image="{{ product.HeaderImage.Url }}" data-image-dimensions="{{ image.Dimensions() }}" data-image-focal-point="0.5,0.5" alt="{{ product.HeaderImage.Alt }}" src="{{ product.HeaderImage.Url }}?format=1500w" style="top: -216px; left: 0px; width: 1440px; height: 810px; position: relative; transform: translate3d(0px, 0px, 0px);" data-image-resolution="1500w">
+  <img data-src="{{ product.HeaderImage.Url }}" data-image="{{ product.HeaderImage.Url }}" data-image-dimensions="{{ image.Dimensions() }}" data-image-focal-point="0.5,0.5" alt="{{ product.HeaderImage.Alt }}" src="{{ product.HeaderImage.Url }}" style="top: -216px; left: 0px; width: 1440px; height: 810px; position: relative; transform: translate3d(0px, 0px, 0px);" data-image-resolution="1500w">
   {% else %}
-  <img data-src="{{ product.DisplayImage().Url }}" data-image="{{ product.DisplayImage().Url }}" data-image-dimensions="{{ image.Dimensions() }}" data-image-focal-point="0.5,0.5" alt="{{ product.DisplayImage().Alt }}" src="{{ product.DisplayImage().Url }}?format=1500w" style="top: -216px; left: 0px; width: 1440px; height: 810px; position: relative; transform: translate3d(0px, 0px, 0px);" data-image-resolution="1500w">
+  <img data-src="{{ product.DisplayImage().Url }}" data-image="{{ product.DisplayImage().Url }}" data-image-dimensions="{{ image.Dimensions() }}" data-image-focal-point="0.5,0.5" alt="{{ product.DisplayImage().Alt }}" src="{{ product.DisplayImage().Url }}" style="top: -216px; left: 0px; width: 1440px; height: 810px; position: relative; transform: translate3d(0px, 0px, 0px);" data-image-resolution="1500w">
   {% endif %}
 </div>
 
@@ -51,7 +51,7 @@
                         {% for image in product.Images %}
                             <div class="slide sqs-gallery-design-stacked-slide" data-type="image" style="z-index: 889;">
                                 {% if forloop.First %}
-                                <img data-load="false" data-src="{{ image.Url }}" data-image="{{ image.Url }}" data-image-dimensions="{{ image.Dimensions() }}" data-image-focal-point="0.5,0.5" alt="{{ image.Alt }}" class="loaded" src="{{ image.Url }}?format=1500w&amp;storage=local" data-image-resolution="1500w" style="top: 0px; left: 0px; width: 610px; height: 610px; position: relative;">
+                                <img data-load="false" data-src="{{ image.Url }}" data-image="{{ image.Url }}" data-image-dimensions="{{ image.Dimensions() }}" data-image-focal-point="0.5,0.5" alt="{{ image.Alt }}" class="loaded" src="{{ image.Url }}" data-image-resolution="1500w" style="top: 0px; left: 0px; width: 610px; height: 610px; position: relative;">
                                 {% else %}
                                 <img data-load="false" data-src="{{ image.Url }}" data-image="{{ image.Url }}" data-image-dimensions="{{ image.Dimensions() }}" data-image-focal-point="0.5,0.5" alt="{{ image.Alt }}" class="loaded" src="{{ image.Url }}?format=1500w&amp;storage=local" data-image-resolution="1500w" style="display: none; top: 0px; left: 0px; width: 610px; height: 610px; position: relative;">
                                 {% endif %}
