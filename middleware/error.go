@@ -4,7 +4,6 @@ import (
 	"appengine"
 	"fmt"
 	"runtime"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -17,10 +16,10 @@ func displayError(c *gin.Context, stack string) {
 	c.Abort(500)
 
 	// Trim beginning of stacktrace
-	lines := strings.Split(stack, "\n")
-	msg := lines[0]
-	lines = append([]string{msg + "\n"}, lines[5:]...)
-	stack = strings.Join(lines, "\n")
+	// lines := strings.Split(stack, "\n")
+	// msg := lines[0]
+	// lines = append([]string{msg + "\n"}, lines[5:]...)
+	// stack = strings.Join(lines, "\n")
 
 	if appengine.IsDevAppServer() {
 		c.Writer.Write([]byte(`<html>
