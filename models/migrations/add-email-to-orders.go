@@ -25,10 +25,13 @@ var AddEmailToOrders = delay.Func("add-email-to-orders-migration", func(c appeng
 			break
 		}
 
-		// Error
 		if err != nil {
-			log.Warn("Error fetching order: %v", err, c)
 			continue
+		}
+
+		// Error, ignore field mismatch
+		if _, ok := err.(*ErrFieldMismatch); !ok {
+			log.Error("Error fetching order: %v", err, c)
 		}
 
 		// Update user
