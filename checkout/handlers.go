@@ -60,10 +60,20 @@ func checkout(c *gin.Context) {
 		}
 	}
 
+	var user models.User
+	if auth.IsLoggedIn(c) {
+		_user, err := auth.GetUser(c)
+		user = *_user
+		if err != nil {
+			log.Panic("Error retrieving user \n%v", err)
+		}
+	}
+
 	// Render order for checkout page
 	template.Render(c, "checkout.html",
 		"order", form.Order,
 		"stripePublishableKey", stripePublishableKey,
+		"user", user,
 	)
 }
 
