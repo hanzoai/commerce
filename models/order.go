@@ -54,7 +54,8 @@ func (o Order) When() string {
 	}
 
 	if hours >= 24 {
-		return o.CreatedAt.Format(time.RubyDate)
+		year, month, day := o.CreatedAt.Date()
+		return fmt.Sprintf("%s %s, %s", day, month.String(), year)
 	}
 
 	minutes := int(duration.Minutes())
