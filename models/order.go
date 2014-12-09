@@ -147,6 +147,7 @@ type Charge struct {
 	Email          string
 	FailCode       string
 	FailMsg        string
+	FailType       string
 	Live           bool
 	Paid           bool
 	Refunded       bool
