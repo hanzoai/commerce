@@ -240,31 +240,31 @@ $(document).ready ->
     unless validateForm()
       return false
 
-    unless app.get 'validBillingAddress'
-      $billingInfo = $('.billing-information')
-      address = new validator.Address
-        street:     $billingInfo.find('#billing-address-1 input').val()
-        city:       $billingInfo.find('#billing-city input').val()
-        state:      $billingInfo.find('#billing-state input').val()
-        postalCode: $billingInfo.find('#billing-zip input').val()
-        country:    $billingInfo.find('#billing-country input').val()
-      validator.validate(address, validator.match.streetAddress, validateBilling)
-      location.href = "#billing-address"
-      $('#error-message').text 'Please validate your billing address'
-      return false
+    # unless app.get 'validBillingAddress'
+    #   $billingInfo = $('.billing-information')
+    #   address = new validator.Address
+    #     street:     $billingInfo.find('#billing-address-1 input').val()
+    #     city:       $billingInfo.find('#billing-city input').val()
+    #     state:      $billingInfo.find('#billing-state input').val()
+    #     postalCode: $billingInfo.find('#billing-zip input').val()
+    #     country:    $billingInfo.find('#billing-country input').val()
+    #   validator.validate(address, validator.match.streetAddress, validateBilling)
+    #   location.href = "#billing-address"
+    #   $('#error-message').text 'Please validate your billing address'
+    #   return false
 
-    if !$('input[name="ShipToBilling"]').is(':checked') && !app.get('validShippingAddress')
-      $shippingInfo = $('.shipping-information')
-      address = new validator.Address
-        street:     $shippingInfo.find('#shipping-address-1 input').val()
-        city:       $shippingInfo.find('#shipping-city input').val()
-        state:      $shippingInfo.find('#shipping-state input').val()
-        postalCode: $shippingInfo.find('#shipping-zip input').val()
-        country:    $shippingInfo.find('#shipping-country input').val()
-      validator.validate(address, validator.match.streetAddress, validateShipping)
-      location.href = "#shipping-address"
-      $('#error-message').text 'Please validate your shipping address'
-      return false
+    # if !$('input[name="ShipToBilling"]').is(':checked') && !app.get('validShippingAddress')
+    #   $shippingInfo = $('.shipping-information')
+    #   address = new validator.Address
+    #     street:     $shippingInfo.find('#shipping-address-1 input').val()
+    #     city:       $shippingInfo.find('#shipping-city input').val()
+    #     state:      $shippingInfo.find('#shipping-state input').val()
+    #     postalCode: $shippingInfo.find('#shipping-zip input').val()
+    #     country:    $shippingInfo.find('#shipping-country input').val()
+    #   validator.validate(address, validator.match.streetAddress, validateShipping)
+    #   location.href = "#shipping-address"
+    #   $('#error-message').text 'Please validate your shipping address'
+    #   return false
 
     # Do stripe authorization
     unless app.get 'approved'
