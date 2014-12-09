@@ -22,11 +22,13 @@ func Charge(ctx appengine.Context, accessToken string, authorizationToken string
 	log.Debug("Token: %v, Amount: %v", authorizationToken, order.Total, ctx)
 
 	params := &stripe.ChargeParams{
-		Amount:   order.DecimalTotal(),
-		Fee:      order.DecimalFee(),
-		Currency: currency.USD,
-		Card:     &stripe.CardParams{Token: authorizationToken},
-		Desc:     order.Description(),
+		Amount:    order.DecimalTotal(),
+		Fee:       order.DecimalFee(),
+		Currency:  currency.USD,
+		Card:      &stripe.CardParams{Token: authorizationToken},
+		Desc:      order.Description(),
+		Email:     order.Email,
+		Statement: "SKULLY",
 	}
 
 	// Force test when email is test@test.com
