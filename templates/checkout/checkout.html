@@ -319,6 +319,6 @@
 
 {% block js %}
 <script type="text/javascript" src="https://js.stripe.com/v2/"></script>
-<script type="text/javascript">Stripe.setPublishableKey('{{ config.Stripe.APIKey }}');</script>
+<script type="text/javascript">Stripe.setPublishableKey('{{ StripeAPIKey }}');</script>
 <script type="text/javascript" src="{{ urlFor("/js/checkout.js") }}"></script>
 {% endblock %}
