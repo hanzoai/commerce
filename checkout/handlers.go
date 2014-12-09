@@ -1,6 +1,7 @@
 package checkout
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -118,11 +119,14 @@ func charge(c *gin.Context) {
 
 	// Save order
 	log.Debug("Saving order...", c)
-	if _, err := db.Put("order", &form.Order); err != nil {
+	key, err := db.Put("order", &form.Order)
+	if err != nil {
 		log.Error("Error saving order", err, c)
 		c.Fail(500, err)
 		return
 	}
+	_key, _ := db.DecodeKey(key)
+	orderId := _key.IntID()
 
 	log.Debug("Updating and saving user...", c)
 	user.BillingAddress = form.Order.BillingAddress
@@ -158,7 +162,10 @@ func charge(c *gin.Context) {
 	}
 
 	// Send order confirmation email
-	mandrill.SendTemplateAsync.Call(ctx, "order-confirmation", user.Email, user.Name())
+	mandrill.SendTemplateAsync.Call(ctx, "order-confirmation",
+		user.Email,
+		user.Name(),
+		fmt.Sprintf("SKULLY Systems Order confirmation #%v", orderId))
 
 	log.Debug("Checkout complete!", c)
 	c.Redirect(301, config.UrlFor("checkout", "/complete"))
