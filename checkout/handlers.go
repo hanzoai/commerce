@@ -133,7 +133,7 @@ func charge(c *gin.Context) {
 	// Charging order
 	log.Debug("Charging order...", c)
 	log.Debug("API Key: %v, Token: %v", stripeAccessToken, form.StripeToken)
-	if charge, err := stripe.Charge(ctx, stripeAccessToken, form.StripeToken, &form.Order); err != nil {
+	if charge, err := stripe.Charge(ctx, stripeAccessToken, form.StripeToken, &form.Order, user); err != nil {
 		log.Error("Stripe Charge failed: %v", err, c)
 		if charge.FailMsg != "" {
 			c.JSON(400, gin.H{"message": charge.FailMsg}) // client error
