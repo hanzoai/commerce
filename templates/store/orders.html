@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content_header  %}
+<h2>Orders</h2>
+{% endblock %}
+
+{% block css %}
+<style>
+
+</style>
+{% endblock %}
+
+{% block content %}
+<ul class="orders">
+    {% for order in orders %}
+    <li class="order">
+        <span class="description">
+            {{ order.Description() }}
+        </span>
+
+        <span class="time">
+            {{ order.When() }}
+        </span>
+
+        <span class="type">
+            {% if order.Preorder %}
+            Preorder
+            {% endif %}
+        </span>
+
+        <span class="status">
+            {% if order.Shipped %}
+            Shipped
+            {% endif %}
+
+            {% if order.Cancelled %}
+            Cancelled
+            {% endif %}
+        </span>
+    </li>
+    {% endfor %}
+</ul>
+{% endblock %}

@@ -173,10 +173,8 @@ func Ping(ctx appengine.Context) bool {
 func SendTemplate(ctx appengine.Context, req *SendTemplateReq) error {
 	// Convert the map of vars to a byte buffer of a json string
 	url := root + "/messages/send-template.json"
-	log.Debug(url)
 
 	j := json.Encode(req)
-	log.Debug(j)
 
 	hreq, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(j)))
 	if err != nil {
@@ -234,12 +232,13 @@ func Send(ctx appengine.Context, req *SendReq) error {
 	return errors.New("Email not sent")
 }
 
-var SendTemplateAsync = delay.Func("send-template-email", func(ctx appengine.Context, templateName, email, name string)  {
+var SendTemplateAsync = delay.Func("send-template-email", func(ctx appengine.Context, templateName, toEmail, toName, subject string) {
 	req := NewSendTemplateReq()
-	req.AddRecipient(email, name)
+	req.AddRecipient(toEmail, toName)
 
 	req.Message.FromEmail = config.Mandrill.FromEmail
 	req.Message.FromName = config.Mandrill.FromName
+	req.Message.Subject = subject
 	req.TemplateName = templateName
 
 	// Send template

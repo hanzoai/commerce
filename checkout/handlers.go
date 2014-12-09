@@ -1,6 +1,8 @@
 package checkout
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -13,6 +15,7 @@ import (
 	"crowdstart.io/thirdparty/mandrill"
 	"crowdstart.io/thirdparty/stripe"
 	"crowdstart.io/util/log"
+	"crowdstart.io/util/rand"
 	"crowdstart.io/util/template"
 )
 
@@ -20,12 +23,13 @@ import (
 var stripePublishableKey string
 var stripeAccessToken string
 
-// Redirect to store on GET
+// GET /
 func index(c *gin.Context) {
+	// Redirect to store on GET
 	c.Redirect(301, config.UrlFor("store", "/cart"))
 }
 
-// Display checkout form
+// POST /
 func checkout(c *gin.Context) {
 	// Parse checkout form
 	form := new(CheckoutForm)
@@ -60,19 +64,23 @@ func checkout(c *gin.Context) {
 		}
 	}
 
+	// Try to get user from datastore based on email in session.
+	user, _ := auth.GetUser(c)
+
 	// Render order for checkout page
 	template.Render(c, "checkout.html",
 		"order", form.Order,
 		"stripePublishableKey", stripePublishableKey,
+		"user", user,
 	)
 }
 
 // Charge a successful authorization
-// LoginRequired
+// POST /charge
 func charge(c *gin.Context) {
 	form := new(ChargeForm)
 	if err := form.Parse(c); err != nil {
-		log.Error("Failed to parse form: %v", err)
+		log.Error("Failed to parse form: %v", err, c)
 		c.Fail(500, err)
 		return
 	}
@@ -85,9 +93,29 @@ func charge(c *gin.Context) {
 	// Populate
 	if err := form.Order.Populate(db); err != nil {
 		log.Error("Failed to repopulate order information from datastore: %v", err)
-		log.Dump(form.Order)
 		c.Fail(500, err)
 		return
+	}
+
+	// Update user information
+	log.Debug("Trying to get user from session...", c)
+	user, err := auth.GetUser(c)
+	if err != nil {
+		log.Debug("Using form.User", c)
+		user = &form.User
+	}
+	log.Debug("User: %#v", user)
+
+	// Set email for order
+	form.Order.Email = user.Email
+
+	// Set test mode, minimum stripe transaction
+	if strings.Contains(user.Email, "@verus.io") {
+		form.Order.Test = true
+		form.Order.Shipping = 0
+		form.Order.Tax = 0
+		form.Order.Subtotal = 50 * 100 // 50 cents is Stripe's
+		form.Order.Total = 50 * 100    // minimum transaction amount.
 	}
 
 	// Get access token
@@ -103,36 +131,63 @@ func charge(c *gin.Context) {
 	}
 
 	// Charging order
-	log.Debug("Charging order.")
-	log.Dump(form.Order)
+	log.Debug("Charging order...", c)
 	log.Debug("API Key: %v, Token: %v", stripeAccessToken, form.StripeToken)
-	if _, err := stripe.Charge(ctx, stripeAccessToken, form.StripeToken, &form.Order); err != nil {
-		log.Error("Stripe Charge failed: %v", err)
-		c.Fail(500, err)
+	if charge, err := stripe.Charge(ctx, stripeAccessToken, form.StripeToken, &form.Order, user); err != nil {
+		if charge.FailMsg != "" {
+			// client error
+			log.Warn("Stripe declined charge: %v", err, c)
+			c.JSON(400, gin.H{"message": charge.FailMsg})
+		} else {
+			// internal error
+			log.Error("Stripe charge failed: %v", err, c)
+			c.JSON(500, gin.H{})
+		}
 		return
 	}
 
 	// Save order
-	log.Debug("Saving order.")
-	_, err := db.Put("order", &form.Order)
+	log.Debug("Saving order...", c)
+	encodedKey, err := db.Put("order", &form.Order)
 	if err != nil {
-		log.Error("Error saving order", err)
+		log.Error("Failed to save order", err, c)
+		c.Fail(500, err)
+		return
+	}
+	key, _ := db.DecodeKey(encodedKey)
+	orderId := key.IntID()
+
+	log.Debug("Updating and saving user...", c)
+
+	user.BillingAddress = form.Order.BillingAddress
+	user.ShippingAddress = form.Order.ShippingAddress
+	user.Phone = form.User.Phone
+	user.FirstName = form.User.FirstName
+	user.LastName = form.User.LastName
+	if _, err := db.PutKey("user", user.Email, user); err != nil {
+		log.Error("Failed to save user: %v", err, c)
 		c.Fail(500, err)
 		return
 	}
 
-	// Update user information
-	user := auth.GetUser(c)
+	log.Debug("Saving invite token...", c)
+	invite := new(models.InviteToken)
+	invite.Id = rand.ShortId()
+	invite.Email = user.Email
+	if _, err := db.PutKey("invite-token", invite.Id, invite); err != nil {
+		log.Error("Failed to save invite-token: %v", err, c)
+		c.Fail(500, err)
+		return
+	}
 
-	user.BillingAddress = form.Order.BillingAddress
-	user.ShippingAddress = form.Order.ShippingAddress
-	db.PutKey("user", user.Email, user)
+	// Send order confirmation email
+	mandrill.SendTemplateAsync.Call(ctx, "order-confirmation",
+		user.Email,
+		user.Name(),
+		fmt.Sprintf("SKULLY Systems Order confirmation #%v", orderId))
 
-	// Send confirmation email
-	mandrill.SendTemplateAsync.Call(ctx, "confirmation-order", user.Email, user.Name())
-
-	log.Debug("Checkout complete!")
-	c.Redirect(301, config.UrlFor("checkout", "/complete"))
+	log.Debug("Checkout complete!", c)
+	c.JSON(200, gin.H{"inviteId": invite.Id, "orderId": orderId})
 }
 
 // Success
