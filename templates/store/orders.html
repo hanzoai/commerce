@@ -14,18 +14,18 @@
 <ul class="orders">
     {% for order in orders %}
     <li class="order">
+        <span class="type">
+            {% if order.Preorder %}
+            Preorder
+            {% endif %}
+        </span>
+
         <span class="description">
             {{ order.Description() }}
         </span>
 
         <span class="time">
             {{ order.When() }}
-        </span>
-
-        <span class="type">
-            {% if order.Preorder %}
-            Preorder
-            {% endif %}
         </span>
 
         <span class="status">
