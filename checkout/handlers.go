@@ -9,6 +9,7 @@ import (
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
+	"crowdstart.io/models"
 	"crowdstart.io/thirdparty/mandrill"
 	"crowdstart.io/thirdparty/stripe"
 	"crowdstart.io/util/log"
@@ -45,10 +46,14 @@ func checkout(c *gin.Context) {
 	// Validate form
 	form.Validate(c)
 
+	// Get API Key.
+	var campaign models.Campaign
+	db.GetKey("campaign", "dev@hanzo.ai", &campaign)
+
 	// Render order for checkout page
 	template.Render(c, "checkout.html",
 		"order", form.Order,
-		"config", config.Get(),
+		"StripeAPIKey", campaign.StripeAPIKey,
 	)
 }
 
