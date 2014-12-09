@@ -59,6 +59,9 @@ type Config struct {
 
 // Return url to static file, module or path rooted in a module
 func (c Config) UrlFor(moduleName string, args ...string) (url string) {
+	// Trim whitespace
+	moduleName = strings.TrimSpace(moduleName)
+
 	// If we find `moduleName`, we'll use that as root, otherwise assume we
 	// were passed a static file as `moduleName`.
 	if host, ok := c.Hosts[moduleName]; ok {
