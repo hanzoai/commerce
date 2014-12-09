@@ -112,8 +112,8 @@ func charge(c *gin.Context) {
 		form.Order.Test = true
 		form.Order.Shipping = 0
 		form.Order.Tax = 0
-		form.Order.Subtotal = 50
-		form.Order.Total = 50
+		form.Order.Subtotal = 50 * 100 // 50 cents is Stripe's
+		form.Order.Total = 50 * 100    // minimum transaction amount.
 	}
 
 	// Save order
