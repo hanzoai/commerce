@@ -18,6 +18,8 @@ func TemplateSet() *pongo2.TemplateSet {
 
 	set.Globals["isDevelopment"] = config.IsDevelopment
 	set.Globals["isProduction"] = config.IsProduction
+	set.Globals["isStaging"] = config.IsStaging
+
 	set.Globals["siteTitle"] = config.SiteTitle
 
 	set.Globals["urlFor"] = func(moduleName string, args ...string) string {
