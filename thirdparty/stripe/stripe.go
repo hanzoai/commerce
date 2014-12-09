@@ -13,28 +13,50 @@ import (
 	"crowdstart.io/util/log"
 )
 
-func Charge(ctx appengine.Context, accessToken string, authorizationToken string, order *models.Order) (*models.Charge, error) {
+func Charge(ctx appengine.Context, accessToken string, authorizationToken string, order *models.Order, user *models.User) (*models.Charge, error) {
 	backend := stripe.NewInternalBackend(urlfetch.Client(ctx), "")
-	// Stripe advises using client-level methods
-	// in a concurrent context
+
+	// Stripe advises using client-level methods in a concurrent context
 	sc := &client.API{}
 	sc.Init(accessToken, backend)
 
-	params := &stripe.ChargeParams{
+	// Create a charge for us to persist stripe data to
+	charge := new(models.Charge)
+
+	// Create a card
+	card := &stripe.CardParams{Token: authorizationToken}
+
+	if user.Stripe.CustomerId == "" {
+		// Create new customer
+		customerParams := &stripe.CustomerParams{
+			Desc:  user.Name(),
+			Email: user.Email,
+			Card:  card,
+		}
+
+		if customer, err := sc.Customers.New(customerParams); err != nil {
+			log.Warn("Failed to create Stripe customer: %v", err)
+			return charge, err
+		} else {
+			// Update user with stripe customer ID so we can charge for them later
+			user.Stripe.CustomerId = customer.ID
+		}
+	}
+
+	// Create charge
+	chargeParams := &stripe.ChargeParams{
 		Amount:    order.DecimalTotal(),
 		Fee:       order.DecimalFee(),
 		Currency:  currency.USD,
-		Card:      &stripe.CardParams{Token: authorizationToken},
+		Customer:  user.Stripe.CustomerId,
 		Desc:      order.Description(),
 		Email:     order.Email,
 		Statement: "SKULLY SYSTEMS", // Max 15 characters
+		Card:      card,
 	}
 
-	log.Debug("Params: %#v", params)
-
-	stripeCharge, err := sc.Charges.New(params)
-
-	charge := new(models.Charge)
+	log.Debug("chargeParams: %#v", chargeParams)
+	stripeCharge, err := sc.Charges.New(chargeParams)
 
 	// Charges and tokens are recorded regardless of success/failure.
 	// It doesn't record whether each charge/token is success or failure.
