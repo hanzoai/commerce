@@ -19,8 +19,6 @@ func Charge(ctx appengine.Context, accessToken string, authorizationToken string
 	sc := &client.API{}
 	sc.Init(accessToken, backend)
 
-	log.Debug("Token: %v, Amount: %v", authorizationToken, order.Total, ctx)
-
 	params := &stripe.ChargeParams{
 		Amount:    order.DecimalTotal(),
 		Fee:       order.DecimalFee(),
@@ -30,6 +28,8 @@ func Charge(ctx appengine.Context, accessToken string, authorizationToken string
 		Email:     order.Email,
 		Statement: "SKULLY SYSTEMS", // Max 15 characters
 	}
+
+	log.Debug("Params: %#v", params)
 
 	stripeCharge, err := sc.Charges.New(params)
 
