@@ -25,22 +25,27 @@ func New(ctx interface{}) (d *Datastore) {
 	return d
 }
 
-func (d *Datastore) Get(key string, value interface{}) error {
-	k, err := DecodeKey(key)
+func (d *Datastore) DecodeKey(encodedKey string) (*Key, error) {
+	key, err := DecodeKey(encodedKey)
 	if err != nil {
-		if _, ok := err.(*ErrFieldMismatch); ok {
-			// Ignore any field mismatch errors.
-			log.Warn("Field mismatch when getting %v: %v", key, err, d.Context)
-			err = nil
-		} else {
-			log.Error("Failed to get %v: %v", key, err, d.Context)
-			return err
-		}
+		log.Warn("Unable to decode key: %v", encodedKey)
+	}
+	return key, err
+}
+
+func (d *Datastore) Get(key string, value interface{}) error {
+	k, err := d.DecodeKey(key)
+	if err != nil {
+		return err
 	}
 
 	err = nds.Get(d.Context, k, value)
-	if err != nil {
-		log.Error("%v", err, d.Context)
+	if _, ok := err.(*ErrFieldMismatch); ok {
+		// Ignore any field mismatch errors.
+		log.Warn("Field mismatch when getting %v: %v", key, err, d.Context)
+		err = nil
+	} else {
+		log.Warn("Failed to get %v: %v", key, err, d.Context)
 	}
 	return err
 }
@@ -53,7 +58,7 @@ func (d *Datastore) GetKey(kind, key string, value interface{}) error {
 			log.Warn("Field mismatch when getting kind %v, key %v: %v", kind, key, err, d.Context)
 			err = nil
 		} else {
-			log.Error("Failed to get kind %v, key %v: %v", kind, key, err, d.Context)
+			log.Warn("Failed to get kind %v, key %v: %v", kind, key, err, d.Context)
 			return err
 		}
 	}
@@ -64,8 +69,7 @@ func (d *Datastore) GetMulti(keys []string, vals interface{}) error {
 	_keys := make([]*Key, len(keys))
 
 	for i, key := range keys {
-		if k, err := DecodeKey(key); err != nil {
-			log.Error("%v", err, d.Context)
+		if k, err := d.DecodeKey(key); err != nil {
 			return err
 		} else {
 			_keys[i] = k
@@ -89,7 +93,7 @@ func (d *Datastore) Put(kind string, src interface{}) (string, error) {
 	k := NewIncompleteKey(d.Context, kind, nil)
 	k, err := nds.Put(d.Context, k, src)
 	if err != nil {
-		log.Error("%v", err, d.Context)
+		log.Warn("%v", err, d.Context)
 		return "", err
 	}
 	return k.Encode(), nil
@@ -106,7 +110,7 @@ func (d *Datastore) PutKey(kind string, key interface{}, src interface{}) (strin
 
 	k, err := nds.Put(d.Context, k, src)
 	if err != nil {
-		log.Error("%v", err, d.Context)
+		log.Warn("%v, %v, %v, %#v", err, kind, k, src, d.Context)
 		return "", err
 	}
 	return k.Encode(), nil
@@ -122,7 +126,7 @@ func (d *Datastore) PutMulti(kind string, srcs []interface{}) (keys []string, er
 
 	_keys, err = nds.PutMulti(d.Context, _keys, srcs)
 	if err != nil {
-		log.Error("%v", err, d.Context)
+		log.Warn("%v", err, d.Context)
 		return keys, err
 	}
 
@@ -144,7 +148,7 @@ func (d *Datastore) PutKeyMulti(kind string, keys []string, srcs []interface{}) 
 
 	_keys, err := nds.PutMulti(d.Context, _keys, srcs)
 	if err != nil {
-		log.Error("%v", err, d.Context)
+		log.Warn("%v", err, d.Context)
 		return keys, err
 	}
 
@@ -158,24 +162,22 @@ func (d *Datastore) PutKeyMulti(kind string, keys []string, srcs []interface{}) 
 func (d *Datastore) Update(key string, src interface{}) (string, error) {
 	log.Warn("DEPRECATED. DOES NOTHING PUT DOES NOT.", d.Context)
 
-	k, err := DecodeKey(key)
+	k, err := d.DecodeKey(key)
 	if err != nil {
-		log.Error("%v", err, d.Context)
 		return "", err
 	}
 
 	k, err = nds.Put(d.Context, k, src)
 	if err != nil {
-		log.Error("%v", err, d.Context)
+		log.Warn("%v", err, d.Context)
 		return "", err
 	}
 	return k.Encode(), nil
 }
 
 func (d *Datastore) Delete(key string) error {
-	k, err := DecodeKey(key)
+	k, err := d.DecodeKey(key)
 	if err != nil {
-		log.Error("%v", err, d.Context)
 		return err
 	}
 	return nds.Delete(d.Context, k)
@@ -184,10 +186,10 @@ func (d *Datastore) Delete(key string) error {
 func (d *Datastore) DeleteMulti(keys []string) error {
 	_keys := make([]*Key, 0)
 	for _, key := range keys {
-		k, err := DecodeKey(key)
+		k, err := d.DecodeKey(key)
 		_keys = append(_keys, k)
 		if err != nil {
-			log.Error("%v", err, d.Context)
+			log.Warn("%v", err, d.Context)
 			return err
 		}
 	}

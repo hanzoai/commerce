@@ -22,27 +22,18 @@ exports.gallery = ->
         thumbnail = $(@)
         gallery = thumbnail.parent()
         viewer = gallery.parent()
-        preview = viewer.find '.preview-background'
-        overlay = viewer.find '.preview'
-
-        src = thumbnail.attr 'src'
-        alt = thumbnail.attr 'alt'
+        images = viewer.find '.preview'
 
         gallery.children().removeClass 'selected'
         thumbnail.addClass 'selected'
 
-        preview.css
-          "background-image": 'url(' + overlay.attr('src') + ')'
-        overlay.css
-          opacity: 0
-        overlay.attr
-          src: src
-        overlay.animate
-          opacity: 1
-          , 300, 'swing', ->
-            fading = false
-            preview.css
-              "background-image": 'url(' + src + ')'
+        i = $(@).index()
+        images.hide()
+        $(images[i]).show()
+
+        setTimeout ->
+          fading = false
+        , 300
 
 exports.setupStylesAndSizes =->
   $(document).ready ->
