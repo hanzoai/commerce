@@ -47,6 +47,7 @@ var redirectUri = url.QueryEscape(base + "/auth/facebook")
 
 const graphVersion = "v2.2"
 
+// TODO Expose a route to this.
 func Callback(c *gin.Context) {
 	req := c.Request
 	e := req.URL.Query().Get("error")
@@ -74,11 +75,9 @@ func Callback(c *gin.Context) {
 	ctx := middleware.GetAppEngine(c)
 	client := urlfetch.Client(ctx)
 
-	req, err := http.NewRequest(
-		"GET",
-		fmt.Sprintf("http://graph.facebook.com/%s/me&access_token=%s", graphVersion, accessToken),
-		nil,
-	)
+	url := fmt.Sprintf("http://graph.facebook.com/%s/me&access_token=%s", graphVersion, accessToken)
+	req, err := http.NewRequest("GET", url, nil)
+
 	if err != nil {
 		log.Panic("Error while creating a http request \n%v", err)
 	}
