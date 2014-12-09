@@ -102,7 +102,7 @@ func charge(c *gin.Context) {
 		log.Debug("Using form.User", c)
 		user = &form.User
 	}
-	log.Debug("User: %v", user)
+	log.Debug("User: %#v", user)
 
 	// Set email for order
 	form.Order.Email = user.Email
