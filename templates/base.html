@@ -258,6 +258,7 @@
 
     {% block js %}{% endblock %}
 
+    {% if isProduction %}
     <!-- GA -->
     <script>
         (function(i, s, o, g, r, a, m) {
@@ -275,6 +276,7 @@
         ga('create', 'UA-48365795-8', 'auto');
         ga('send', 'pageview');
     </script>
+    {% endif %}
 </body>
 
 </html>
