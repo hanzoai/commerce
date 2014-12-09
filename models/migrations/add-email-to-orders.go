@@ -27,7 +27,7 @@ var AddEmailToOrders = delay.Func("add-email-to-orders-migration", func(c appeng
 
 		// Error
 		if err != nil {
-			log.Error("Error fetching order: %v", c)
+			log.Error("Error fetching order: %v", err, c)
 			continue
 		}
 
@@ -35,7 +35,7 @@ var AddEmailToOrders = delay.Func("add-email-to-orders-migration", func(c appeng
 		if o.Email == "" {
 			o.Email = k.StringID()
 			if _, err := db.PutKey("order", k, &o); err != nil {
-				log.Error("Error savin order: %v", c)
+				log.Error("Failed to update order: %v", err, c)
 			}
 		}
 	}
