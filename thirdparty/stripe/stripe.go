@@ -3,7 +3,6 @@ package stripe
 import (
 	"appengine"
 	"appengine/urlfetch"
-	"strings"
 
 	"github.com/stripe/stripe-go"
 	"github.com/stripe/stripe-go/client"
@@ -30,14 +29,6 @@ func Charge(ctx appengine.Context, accessToken string, authorizationToken string
 		Desc:      order.Description(),
 		Email:     order.Email,
 		Statement: "SKULLY",
-	}
-
-	// Force test when email is @verus.io
-	if (strings.Contains(order.Email, "@verus.io")) || (order.Test) {
-		log.Debug("Charging in test mode", ctx)
-		order.Test = true
-		params.Amount = 50 // Minium stripe charge
-		params.Fee = 1
 	}
 
 	stripeCharge, err := sc.Charges.New(params)
