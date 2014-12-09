@@ -10,6 +10,7 @@ exports.setupViews = ->
       window.view = view
       app.views.push view
       view.bind()
+      view.render()
 
 # Simple thumbnail gallery
 exports.gallery = ->
@@ -21,27 +22,18 @@ exports.gallery = ->
         thumbnail = $(@)
         gallery = thumbnail.parent()
         viewer = gallery.parent()
-        preview = viewer.find '.preview-background'
-        overlay = viewer.find '.preview'
-
-        src = thumbnail.attr 'src'
-        alt = thumbnail.attr 'alt'
+        images = viewer.find '.preview'
 
         gallery.children().removeClass 'selected'
         thumbnail.addClass 'selected'
 
-        preview.css
-          "background-image": 'url(' + overlay.attr('src') + ')'
-        overlay.css
-          opacity: 0
-        overlay.attr
-          src: src
-        overlay.animate
-          opacity: 1
-          , 300, 'swing', ->
-            fading = false
-            preview.css
-              "background-image": 'url(' + src + ')'
+        i = $(@).index()
+        images.hide()
+        $(images[i]).show()
+
+        setTimeout ->
+          fading = false
+        , 300
 
 exports.setupStylesAndSizes =->
   $(document).ready ->
@@ -76,3 +68,7 @@ exports.customizeAr1 = ->
     else
       $slides[1].fadeIn()
       $slides[0].fadeOut()
+
+exports.menu = ->
+  $('.menu-icon').click ->
+    $('body').toggleClass('mobile')

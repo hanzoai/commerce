@@ -18,6 +18,8 @@ func TemplateSet() *pongo2.TemplateSet {
 
 	set.Globals["isDevelopment"] = config.IsDevelopment
 	set.Globals["isProduction"] = config.IsProduction
+	set.Globals["isStaging"] = config.IsStaging
+
 	set.Globals["siteTitle"] = config.SiteTitle
 
 	set.Globals["urlFor"] = func(moduleName string, args ...string) string {
@@ -47,6 +49,11 @@ func Render(c *gin.Context, path string, pairs ...interface{}) (err error) {
 
 	// Create context from pairs
 	ctx := pongo2.Context{}
+
+	// Add logged in info, if set on session
+	v, err := c.Get("logged-in")
+	loggedIn, _ := v.(bool)
+	ctx["loggedIn"] = loggedIn
 
 	for i := 0; i < len(pairs); i = i + 2 {
 		ctx[pairs[i].(string)] = pairs[i+1]
