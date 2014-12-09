@@ -3,7 +3,6 @@ package middleware
 import (
 	"appengine"
 	"fmt"
-	"log"
 	"runtime"
 	"strings"
 
@@ -40,10 +39,10 @@ func displayError(c *gin.Context, stack string) {
 
 		<pre>` + stack + "</pre></body></html>"))
 	} else {
+		ctx := c.MustGet("appengine").(appengine.Context)
+		ctx.Errorf("500: %v", stack)
 		template.Render(c, "error/500.html")
 	}
-
-	log.Println(stack)
 }
 
 // Serve custom 500 error page and log errors
