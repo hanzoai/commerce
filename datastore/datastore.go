@@ -25,22 +25,27 @@ func New(ctx interface{}) (d *Datastore) {
 	return d
 }
 
+func (d *Datastore) DecodeKey(encodedKey string) (*Key, error) {
+	key, err := DecodeKey(encodedKey)
+	if err != nil {
+		log.Warn("Unable to decode key: %v", encodedKey)
+	}
+	return key, err
+}
+
 func (d *Datastore) Get(key string, value interface{}) error {
 	k, err := DecodeKey(key)
 	if err != nil {
-		if _, ok := err.(*ErrFieldMismatch); ok {
-			// Ignore any field mismatch errors.
-			log.Warn("Field mismatch when getting %v: %v", key, err, d.Context)
-			err = nil
-		} else {
-			log.Warn("Failed to get %v: %v", key, err, d.Context)
-			return err
-		}
+		return err
 	}
 
 	err = nds.Get(d.Context, k, value)
-	if err != nil {
-		log.Warn("%v", err, d.Context)
+	if _, ok := err.(*ErrFieldMismatch); ok {
+		// Ignore any field mismatch errors.
+		log.Warn("Field mismatch when getting %v: %v", key, err, d.Context)
+		err = nil
+	} else {
+		log.Warn("Failed to get %v: %v", key, err, d.Context)
 	}
 	return err
 }
