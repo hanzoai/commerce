@@ -6,7 +6,9 @@ import (
 	"crowdstart.io/auth"
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
+	"crowdstart.io/middleware"
 	"crowdstart.io/models"
+	"crowdstart.io/thirdparty/mandrill"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
 )
@@ -19,12 +21,41 @@ func Login(c *gin.Context) {
 // POST /login
 func SubmitLogin(c *gin.Context) {
 	if err := auth.VerifyUser(c); err == nil {
-		c.Redirect(301, config.UrlFor("store", "/profile"))
+		c.Redirect(302, config.UrlFor("store", "/profile"))
 	} else {
-		template.Render(c, "login.html",
-			"error", "Invalid email or password",
-		)
+		template.Render(c, "login.html", "error", "Invalid email or password")
 	}
+}
+
+// GET /forgotpassword
+func ForgotPassword(c *gin.Context) {
+	template.Render(c, "forgot-password.html")
+}
+
+// POST /forgotpassword
+func SubmitForgotPassword(c *gin.Context) {
+	ctx := middleware.GetAppEngine(c)
+
+	form := new(ForgotPasswordForm)
+	err := form.Parse(c)
+	if err != nil {
+		template.Render(c, "forgot-password.html",
+			"error", "Please enter your email.")
+		return
+	}
+
+	db := datastore.New(ctx)
+	var user models.User
+	err = db.GetKey("user", form.Email, &user)
+	if err != nil {
+		template.Render(c, "forgot-password.html",
+			"error", "No account associated with that email.")
+		return
+	}
+
+	mandrill.SendTemplateAsync.Call(ctx, "forgotten-password", user.Email, user.Name())
+
+	template.Render(c, "forgot-password-sent.html")
 }
 
 // GET /logout
@@ -33,7 +64,7 @@ func Logout(c *gin.Context) {
 	if err != nil {
 		log.Panic("Error while logging out \n%v", err)
 	}
-	c.Redirect(300, config.UrlFor("store"))
+	c.Redirect(302, config.UrlFor("store"))
 }
 
 func Register(c *gin.Context) {
@@ -75,5 +106,5 @@ func SubmitRegister(c *gin.Context) {
 		log.Panic("Error while setting session cookie %v", err)
 	}
 
-	c.Redirect(300, config.UrlFor("store"))
+	c.Redirect(302, config.UrlFor("store"))
 }

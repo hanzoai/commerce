@@ -3,6 +3,7 @@
 {% block json %}
 <script>
 var allProducts = {{ productsJSON | safe }};
+var allListings = {{ listingsJSON | safe }};
 </script>
 {% endblock %}
 
@@ -15,21 +16,23 @@ var allProducts = {{ productsJSON | safe }};
 {% block content_width_class %}store-width{% endblock %}
 
 {% block content %}
-{% for product in products %}
-<div class="item sep-top">
-
+{% for listing in listings %}
+{% if !listing.Disabled %}
+<div class="item sep-top product-listing">
   <div class="product-viewer">
-    {% for image in product.Images %}
-        {% if forloop.First %}
-        <div class="preview-background" style="background-image:url({{ image.Url }})">
-          <img class="preview" src="{{ image.Url }}" alt="{{ image.Alt }}">
-        </div>
-        {% endif %}
-    {% endfor %}
+    <div class="preview-background">
+      {% for image in listing.Images %}
+      {% if forloop.First %}
+      <img class="preview" src="{{ image.Url }}" alt="{{ image.Alt }}">
+      {% else %}
+      <img style="display:none" class="preview" src="{{ image.Url }}" alt="{{ image.Alt }}">
+      {% endif %}
+      {% endfor %}
+    </div>
 
-    {% if product.Images | length > 1 %}
+    {% if listing.Images | length > 1 %}
     <div class="gallery">
-      {% for image in product.Images %}
+      {% for image in listing.Images %}
       {% if forloop.First %}
       <img class="thumbnail selected" src="{{ image.Url }}" alt="{{ image.Alt }}">
       {% else %}
@@ -40,46 +43,45 @@ var allProducts = {{ productsJSON | safe }};
     {% endif %}
   </div>
 
-  <div class="product-text" data-slug="{{ product.Slug }}">
+  <div class="product-text" data-sku="{{ listing.SKU }}">
     <div class="product-title">
-      <h1 class="product-name">{{ product.DisplayTitle()|safe }}</h1>
-      <h2 class="product-cost">${{ product.DisplayPrice() }}</h2>
+      <h1 class="product-name">{{ listing.Title|safe }}</h1>
+      <h2 class="product-cost"><span>$</span><span class="money"></span></h2>
     </div>
 
     <div class="product-body">
       <div class="product-description">
-        <p>{{ product.Excerpt }}</p>
-        <p>Goblet, mouthfeel malt amber barley attenuation? brew kettle
-        terminal gravity. krausen bottom fermenting yeast barleywine
-        lambic conditioning trappist alcohol. pub seidel acid rest, "
-        amber lagering hydrometer." bottle conditioning hefe ester hard
-        cider, gravity! barley enzymes, bottom fermenting yeast,
-        brewhouse lager lauter tun lauter.</p>
+        {% for p in listing.GetDescriptionParagraphs() %}
+        {% if !forloop.First %}
+        <br />
+        {% endif %}
+        <p>{{ p }}</p>
+        {% endfor %}
       </div>
 
       <div class="product-config">
-        {% if product.VariantOptions("Style") %}
+        {% if products.0.VariantOptions("Style") %}
         <label for="style">Style:</label>
         <select name="Style" class="style">
-          {% for style in product.VariantOptions("Style") %}
+          {% for style in products.0.VariantOptions("Style") %}
           <option value="{{ style }}">{{ style }}</option>
           {% endfor %}
         </select>
         {% endif %}
 
-        {% if product.VariantOptions("Color") %}
+        {% if products.0.VariantOptions("Color") %}
         <label for="color">Color:</label>
         <select name="Color" class="color">
-          {% for color in product.VariantOptions("Color") %}
+          {% for color in products.0.VariantOptions("Color") %}
           <option value="{{ color }}">{{ color }}</option>
           {% endfor %}
         </select>
         {% endif %}
 
-        {% if product.VariantOptions("Size") %}
+        {% if products.0.VariantOptions("Size") %}
         <label for="size">Size:</label>
         <select name="Size" class="size">
-          {% for size in product.VariantOptions("Size") %}
+          {% for size in products.0.VariantOptions("Size") %}
           <option value="{{ size }}">{{ size }}</option>
           {% endfor %}
         </select>
@@ -110,5 +112,6 @@ var allProducts = {{ productsJSON | safe }};
     </div>
   </div>
 </div>
+{% endif %}
 {% endfor %}
 {% endblock %}

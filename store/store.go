@@ -8,11 +8,13 @@ import (
 	"crowdstart.io/util/router"
 )
 
-var loginRequired = middleware.LoginRequired("store")
-var logoutRequired = middleware.LogoutRequired("store")
-
 func init() {
 	router := router.New("store")
+
+	// Middleware
+	router.Use(middleware.CheckLogin())
+	loginRequired := middleware.LoginRequired("store")
+	logoutRequired := middleware.LogoutRequired("store")
 
 	// Products
 	router.GET("/", products.List)
@@ -26,6 +28,8 @@ func init() {
 	router.GET("/login", logoutRequired, user.Login)
 	router.POST("/login", logoutRequired, user.SubmitLogin)
 	router.GET("/logout", user.Logout)
+	router.GET("/forgot-password", user.ForgotPassword)
+	router.POST("/forgot-password", user.SubmitForgotPassword)
 
 	// Register
 	router.GET("/register", logoutRequired, user.Register)
