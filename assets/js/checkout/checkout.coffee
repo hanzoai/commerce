@@ -25,15 +25,16 @@ validateForm = ->
   window.empty = empty
 
   email = $('input[name="User.Email"]')
-  unless validation.isEmail email.val()
-    valid = false
-    email.addClass 'error'
-    email.addClass 'shake'
-    setTimeout ->
-      email.removeClass 'shake'
-      return
-    , 500
-    errors.push "Invalid email."
+  if email.length != 0
+    unless validation.isEmail email.val()
+      valid = false
+      email.addClass 'error'
+      email.addClass 'shake'
+      setTimeout ->
+        email.removeClass 'shake'
+        return
+      , 500
+      errors.push "Invalid email."
 
   if empty.length > 0
     valid = false
