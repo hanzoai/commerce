@@ -67,7 +67,7 @@ requisite_opts = assets/js/store/store.coffee \
 				 -o static/js/store.js \
 				 -o static/js/preorder.js \
 				 -o static/js/checkout.js
-requisite_opts_minify = -m --strip-debug
+requisite_opts_min = -m --strip-debug
 
 
 stylus		   = node_modules/.bin/stylus
@@ -75,7 +75,7 @@ stylus_opts    = assets/css/preorder/preorder.styl \
 				 assets/css/store/store.styl \
 				 assets/css/checkout/checkout.styl \
 				 -o static/css -u autoprefixer-stylus
-stylus_opts_minify = -u csso-stylus -c
+stylus_opts_min = -u csso-stylus -c
 
 # find command differs between bsd/linux thus the two versions
 ifeq ($(os), "linux")
