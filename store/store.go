@@ -28,8 +28,8 @@ func init() {
 	router.GET("/login", logoutRequired, user.Login)
 	router.POST("/login", logoutRequired, user.SubmitLogin)
 	router.GET("/logout", user.Logout)
-	router.GET("/forgotpassword", user.ForgotPassword)
-	router.POST("/forgotpassword", user.SubmitForgotPassword)
+	router.GET("/forgot-password", user.ForgotPassword)
+	router.POST("/forgot-password", user.SubmitForgotPassword)
 
 	// Register
 	router.GET("/register", logoutRequired, user.Register)

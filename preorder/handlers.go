@@ -200,7 +200,11 @@ func Index(c *gin.Context) {
 	if !auth.IsLoggedIn(c) {
 		template.Render(c, "login.html")
 	} else {
-		user := auth.GetUser(c)
+		user, err := auth.GetUser(c)
+		if err != nil {
+			log.Panic("Error retrieving user \n%v", err)
+		}
+
 		tokens := getTokens(c, user.Email)
 
 		// Complain if user doesn't have any tokens
