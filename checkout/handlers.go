@@ -46,14 +46,14 @@ func checkout(c *gin.Context) {
 	// Validate form
 	form.Validate(c)
 
-	// Get API Key.
+	// Get PublishableKey Key.
 	var campaign models.Campaign
 	db.GetKey("campaign", "dev@hanzo.ai", &campaign)
 
 	// Render order for checkout page
 	template.Render(c, "checkout.html",
 		"order", form.Order,
-		"StripeAPIKey", campaign.StripeAPIKey,
+		"stripePublishableKey", campaign.Stripe.PublishableKey,
 	)
 }
 
@@ -80,10 +80,14 @@ func charge(c *gin.Context) {
 		return
 	}
 
+	// Get access token
+	var campaign models.Campaign
+	db.GetKey("campaign", "dev@hanzo.ai", &campaign)
+
 	// Charging order
 	log.Debug("Charging order.")
 	log.Dump(form.Order)
-	if _, err := stripe.Charge(ctx, form.StripeToken, &form.Order); err != nil {
+	if _, err := stripe.Charge(ctx, campaign.Stripe.AccessToken, form.StripeToken, &form.Order); err != nil {
 		log.Error("Stripe Charge failed: %v", err)
 		c.Fail(500, err)
 		return

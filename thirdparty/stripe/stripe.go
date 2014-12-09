@@ -8,25 +8,24 @@ import (
 	"appengine"
 	"appengine/urlfetch"
 
-	"crowdstart.io/config"
 	"crowdstart.io/models"
 	"crowdstart.io/util/log"
 )
 
-func Charge(ctx appengine.Context, token string, order *models.Order) (string, error) {
+func Charge(ctx appengine.Context, accessToken string, authorizationToken string, order *models.Order) (string, error) {
 	backend := stripe.NewInternalBackend(urlfetch.Client(ctx), "")
 
 	// Stripe advises using client-level methods
 	// in a concurrent context
 	sc := &client.API{}
-	sc.Init(config.Stripe.APISecret, backend)
+	sc.Init(accessToken, backend)
 
-	log.Debug("Token: %v, Amount: %v", token, order.Total)
+	log.Debug("Token: %v, Amount: %v", authorizationToken, order.Total)
 
 	params := &stripe.ChargeParams{
 		Amount:   order.DecimalTotal(),
 		Currency: currency.USD,
-		Card:     &stripe.CardParams{Token: token},
+		Card:     &stripe.CardParams{Token: authorizationToken},
 		Desc:     order.Description(),
 		Fee:      order.DecimalFee(),
 	}
@@ -54,7 +53,7 @@ func Charge(ctx appengine.Context, token string, order *models.Order) (string, e
 	}
 
 	order.Charges = append(order.Charges, charge)
-	order.StripeTokens = append(order.StripeTokens, token)
+	order.StripeTokens = append(order.StripeTokens, authorizationToken)
 
 	return charge.ID, err
 }
