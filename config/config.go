@@ -230,6 +230,18 @@ func Skully() *Config {
 
 	config.DemoMode = false
 
+	// Only use production credentials if demo mode is off.
+	if !config.DemoMode {
+		config.Salesforce.ConsumerKey = "3MVG9xOCXq4ID1uElRYWhpUWjXSbiTVg4WO6q9DvWdvBjQ_DFlwSc7jZ9AbY3z9Jv_V29W7xq1nPjTYQhYJqF"
+		config.Salesforce.ConsumerSecret = "3811316853831925498"
+		config.Salesforce.CallbackURL = "https://admin.crowdstart.io/salesforce/callback"
+
+		config.Stripe.ClientId = "ca_REDACTED"
+		config.Stripe.APIKey = "pk_live_REDACTED"
+		config.Stripe.APISecret = ""
+		config.Stripe.RedirectURL = "https:" + config.UrlFor("platform", "/stripe/callback")
+		config.Stripe.WebhookURL = "https:" + config.UrlFor("platform", "/stripe/hook")
+	}
 	return config
 }
 
