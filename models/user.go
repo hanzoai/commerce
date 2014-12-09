@@ -25,6 +25,9 @@ type User struct {
 	Email           string
 	Campaigns       []Campaign `schema:"-" datastore:"-"`
 	PasswordHash    []byte     `schema:"-" json:"-"`
+	Stripe          struct {
+		CustomerId string
+	}
 }
 
 func (u User) Name() string {
