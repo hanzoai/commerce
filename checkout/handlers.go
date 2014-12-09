@@ -16,7 +16,9 @@ import (
 	"crowdstart.io/util/template"
 )
 
+// Cache stripe keys
 var stripePublishableKey string
+var stripeAccessToken string
 
 // Redirect to store on GET
 func index(c *gin.Context) {
@@ -89,13 +91,21 @@ func charge(c *gin.Context) {
 	}
 
 	// Get access token
-	var campaign models.Campaign
-	db.GetKey("campaign", "dev@hanzo.ai", &campaign)
+	if stripeAccessToken == "" {
+		var campaign models.Campaign
+		if err := db.GetKey("campaign", "dev@hanzo.ai", &campaign); err != nil {
+			log.Error("Unable to get stripe access token: %v", err)
+			c.Fail(500, err)
+			return
+		} else {
+			stripeAccessToken = campaign.Stripe.AccessToken
+		}
+	}
 
 	// Charging order
 	log.Debug("Charging order.")
 	log.Dump(form.Order)
-	if _, err := stripe.Charge(ctx, campaign.Stripe.AccessToken, form.StripeToken, &form.Order); err != nil {
+	if _, err := stripe.Charge(ctx, stripeAccessToken, form.StripeToken, &form.Order); err != nil {
 		log.Error("Stripe Charge failed: %v", err)
 		c.Fail(500, err)
 		return
