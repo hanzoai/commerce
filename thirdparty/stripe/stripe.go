@@ -28,7 +28,7 @@ func Charge(ctx appengine.Context, accessToken string, authorizationToken string
 		Card:      &stripe.CardParams{Token: authorizationToken},
 		Desc:      order.Description(),
 		Email:     order.Email,
-		Statement: "WWW.SKULLYSYSTEMS.COM",
+		Statement: "SKULLY SYSTEMS", // Max 15 characters
 	}
 
 	stripeCharge, err := sc.Charges.New(params)
