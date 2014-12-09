@@ -72,7 +72,7 @@ func (o Order) Description() string {
 	buffer := bytes.NewBufferString("")
 
 	for i, item := range o.Items {
-		if i > 1 {
+		if i > 0 {
 			buffer.WriteString(", ")
 		}
 		buffer.WriteString(item.SKU())
