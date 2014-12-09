@@ -114,4 +114,12 @@ var perks = map[string]Perk{
 		HelmetQuantity:    20,
 		GearQuantity:      20,
 	},
+	"WINTER2014PROMO": Perk{
+		Id:                "WINTER2014PROMO",
+		Title:             "AR-1 HOLIDAY PREORDER",
+		Description:       "Get 1 SKULLY AR-1 Motorcycle helmet, a LIMITED EDITION Holiday dogtag, and downloadable X-mas card. Free shipping to the United States. Sizes S-XXL in Matte Black or Gloss White.",
+		Price:             "$1,499 USD",
+		EstimatedDelivery: "HELMET May 2015, DOGTAG: December 2014, XMAS CARD: Downloadable",
+		HelmetQuantity:    1,
+	},
 }

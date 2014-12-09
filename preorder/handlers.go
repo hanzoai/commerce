@@ -3,22 +3,27 @@ package preorder
 import (
 	"errors"
 
-	"appengine/delay"
-
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/auth"
+	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models"
-	mail "crowdstart.io/thirdparty/mandrill"
+	"crowdstart.io/thirdparty/mandrill"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
 )
 
-// GET /:token
+// GET /order/:token
 func GetPreorder(c *gin.Context) {
+	// For testing Stackdriver
+	// if c.Params.ByName("token") == "test-token" {
+	// 	c.Fail(500, errors.New("Test error"))
+	// 	return
+	// }
+
 	db := datastore.New(c)
 	// Fetch token
 	token := new(models.InviteToken)
@@ -40,14 +45,16 @@ func GetPreorder(c *gin.Context) {
 	}
 
 	// If user has password, they've previously edited the preorder
+	orderJSON := "{}"
 	order := new(models.Order)
 	if user.HasPassword() {
+		// TODO: Filter on Email
 		if err := db.GetKey("order", user.Email, order); err != nil {
 			log.Error("Failed to fetch order for user: %v", err, c)
-			c.Redirect(301, "../")
+		} else {
+			orderJSON = json.Encode(order)
 		}
 	}
-	orderJSON := json.Encode(order)
 
 	// Find all of a user's contributions
 	var contributions []models.Contribution
@@ -80,18 +87,7 @@ func GetPreorder(c *gin.Context) {
 	)
 }
 
-// hasToken checks whether any of the tokens have the id
-func hasToken(tokens []models.InviteToken, id string) bool {
-	for _, token := range tokens {
-		if token.Id == id {
-			return true
-		}
-	}
-	return false
-}
-
-var sendConfirmation = delay.Func("sendConfirmation", mail.SendTemplate)
-
+// POST /order/save
 func SavePreorder(c *gin.Context) {
 	form := new(PreorderForm)
 	if err := form.Parse(c); err != nil {
@@ -164,9 +160,11 @@ func SavePreorder(c *gin.Context) {
 	}
 
 	// Update Total
-	order.Total = order.Subtotal + order.Tax
+	order.Total = order.Subtotal + order.Shipping + order.Tax
+	order.Email = user.Email
 
 	// Save order
+	// TODO: Need to not putkey on email, but reuse order id
 	log.Debug("Saving order: %v", order)
 	_, err := db.PutKey("order", user.Email, &order)
 	if err != nil {
@@ -183,34 +181,18 @@ func SavePreorder(c *gin.Context) {
 		return
 	}
 
-	// ctx appengine.Context, from_name, from_email, to_name, to_email, subject string
 	ctx := middleware.GetAppEngine(c)
-	// sendConfirmation.Call(ctx, ctx,
-	// 	"SKULLY",
-	// 	"noreply@skullysystems.com",
-	// 	user.Name(),
-	// 	user.Email,
-	// 	"Thank you for updating your preorder information",
-	// 	confirmationHtml,
-	// )
+	mandrill.SendTemplateAsync.Call(ctx, "preorder-confirmation-template", user.Email, user.Name())
 
-	req := mail.NewSendTemplateReq()
-	req.AddRecipient(user.Email, user.Name())
-
-	req.Message.Subject = "Preorder information changed"
-	req.Message.FromEmail = "noreply@skullysystems.com"
-	req.Message.FromName = "SKULLY"
-	req.TemplateName = "preorder-confirmation-template"
-
-	sendConfirmation.Call(ctx, ctx, &req)
-
-	c.Redirect(301, "../thanks")
+	c.Redirect(301, config.UrlFor("preorder", "/thanks"))
 }
 
+// GET /thanks
 func Thanks(c *gin.Context) {
 	template.Render(c, "thanks.html")
 }
 
+// GET /
 func Index(c *gin.Context) {
 	template.Render(c, "login.html")
 	return
@@ -232,6 +214,7 @@ func Index(c *gin.Context) {
 	}
 }
 
+// POST /
 func Login(c *gin.Context) {
 	// Parse login form
 	f := new(auth.LoginForm)
@@ -248,6 +231,7 @@ func Login(c *gin.Context) {
 	}
 
 	tokens := getTokens(c, f.Email)
+	log.Debug("Tokens: %v", tokens)
 	// Complain if user doesn't have any tokens
 	if len(tokens) > 0 {
 		// Redirect to order page as they have a valid token
@@ -255,6 +239,16 @@ func Login(c *gin.Context) {
 	} else {
 		template.Render(c, "login.html", "message", "No pre-orders found for your account")
 	}
+}
+
+// hasToken checks whether any of the tokens have the id
+func hasToken(tokens []models.InviteToken, id string) bool {
+	for _, token := range tokens {
+		if token.Id == id {
+			return true
+		}
+	}
+	return false
 }
 
 func getTokens(c *gin.Context, email string) []models.InviteToken {

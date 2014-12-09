@@ -15,91 +15,98 @@
 
 {% block content_width_class %}checkout-width{% endblock %}
 
+{% block cart_hover %}
+<!-- CART HOVER DISABLED -->
+{% endblock %}
+
 {% block content %}
 <div class="checkout sep-top">
     <div class="order-information col-1-2">
         <form id="form" action="{{ urlFor("checkout", "/charge") }}" method="post" name="form">
             {% for item in order.Items %}
-                <input type="hidden" name="Order.Items.{{ forloop.Counter }}.Product.Slug" value="{{ item.Slug() }}">
-                <input type="hidden" name="Order.Items.{{ forloop.Counter }}.Variant.SKU" value="{{ item.SKU() }}">
-                <input type="hidden" name="Order.Items.{{ forloop.Counter }}.Quantity" value="{{ item.Quantity }}">
+            <input type="hidden" name="Order.Items.{{ forloop.Counter }}.Product.Slug" value="{{ item.Slug() }}">
+            <input type="hidden" name="Order.Items.{{ forloop.Counter }}.Variant.SKU" value="{{ item.SKU() }}">
+            <input type="hidden" name="Order.Items.{{ forloop.Counter }}.Quantity" value="{{ item.Quantity }}">
             {% endfor %}
 
+            {% if error %}
+            <div class="error">{{ error }}</div>
+            {% endif %}
+
+            {% if !loggedIn %}
+            <div class="contact-information">
+                <h2>Contact</h2>
+                <fieldset class="login">
+                    <!-- Email Address -->
+                    <div id="email" class="field email required">
+                        <label for="User.Email">Email Address</label>
+                        <input id="User.Email" name="User.Email" placeholder="Email ex. contact@skullysystems.com" x-autocompletetype="email" type="text" spellcheck="false" maxlength="50" value="">
+                    </div>
+                    <!-- Phone -->
+                    <div id="phone" class="field phone required">
+                        <label for="User.Phone">Phone Number</label>
+                        <input id="User.Phone" name="User.Phone" placeholder="Phone ex. 5-555-555-5555" x-autocompletetype="phone" type="text" spellcheck="false" maxlength="20" value="">
+                    </div>
+                </fieldset>
+            </div>
+            {% endif %}
             <div class="billing-information">
-                <h2>Billing Info</h2>
+                <h2>Billing</h2>
 
                 <fieldset>
                     <!-- First Name -->
-
                     <div id="billing-first-name" class="field first-name required">
                         <label for="User.FirstName">First Name</label>
-                        <input id="User.FirstName" name="User.FirstName" placeholder="First Name" x-autocompletetype="given-name" type="text" spellcheck="false" maxlength="30" value="">
+                        <input id="User.FirstName" name="User.FirstName" placeholder="First Name ex. SKULLY" x-autocompletetype="given-name" type="text" spellcheck="false" maxlength="30" value="">
                     </div>
-                    <!-- Last Name -->
 
+                    <!-- Last Name -->
                     <div id="billing-last-name" class="field last-name required">
                         <label for="User.LastName">Last Name</label>
-                        <input id="User.LastName" name="User.LastName" placeholder="Last Name" x-autocompletetype="surname" type="text" spellcheck="false" maxlength="30" value="">
+                        <input id="User.LastName" name="User.LastName" placeholder="Last Name ex. Systems" x-autocompletetype="surname" type="text" spellcheck="false" maxlength="30" value="">
                     </div>
-                    <!-- Email Address -->
 
-                    <div id="email" class="field email required">
-                        <label for="User.Email">Email Address</label>
-                        <input id="User.Email" name="User.Email" placeholder="Email" x-autocompletetype="email" type="text" spellcheck="false" maxlength="50" value="">
-                    </div>
                     <!-- Billing Address 1 -->
-
                     <div id="billing-address-1" class="field required">
                         <label for="Order.BillingAddress.Line1">Address Line 1</label>
-                        <input id="Order.BillingAddress.Line1" name="Order.BillingAddress.Line1" placeholder="Address Line 1" x-autocompletetype="address-line1" type="text" spellcheck="false" maxlength="50" aria-autocomplete="list" aria-expanded="false" autocomplete="on" value="">
+                        <input id="Order.BillingAddress.Line1" name="Order.BillingAddress.Line1" placeholder="Address ex. 555 3rd Street" x-autocompletetype="address-line1" type="text" spellcheck="false" maxlength="50" aria-autocomplete="list" aria-expanded="false" autocomplete="on" value="">
                     </div>
-                    <!-- Billing Address 2 -->
 
+                    <!-- Billing Address 2 -->
                     <div id="billing-address-2" class="field">
                         <label for="Order.BillingAddress.Line2">Address Line 2</label>
-                        <input id="Order.BillingAddress.Line2" name="Order.BillingAddress.Line2" placeholder="Address Line 2" type="text" x-autocompletetype="address-line2" spellcheck="false" maxlength="50" value="">
+                        <input id="Order.BillingAddress.Line2" name="Order.BillingAddress.Line2" placeholder="Address 2 ex. Suite 3, Apt#" type="text" x-autocompletetype="address-line2" spellcheck="false" maxlength="50" value="">
                     </div>
-                    <!-- City -->
 
+                    <!-- Billing City -->
                     <div id="billing-city" class="field city required">
                         <label for="Order.BillingAddress.City">City</label>
-                        <input id="Order.BillingAddress.City" name="Order.BillingAddress.City" placeholder="City" type="text" spellcheck="false" maxlength="30" value="">
+                        <input id="Order.BillingAddress.City" name="Order.BillingAddress.City" placeholder="City ex. San Francisco" type="text" spellcheck="false" maxlength="30" value="">
                     </div>
-                    <!-- State/Province -->
 
+                    <!-- Billing Address State/Province -->
                     <div id="billing-state" class="field state required">
                         <label for="Order.BillingAddress.State">State/Province</label>
-                        <input id="Order.BillingAddress.State" name="Order.BillingAddress.State" placeholder="State/Province" type="text" spellcheck="false" x-autocompletetype="state" value="">
+                        <input id="Order.BillingAddress.State" name="Order.BillingAddress.State" placeholder="State/Province ex. California" type="text" spellcheck="false" x-autocompletetype="state" value="">
                     </div>
-                    <!-- Zip Code -->
 
+                    <!-- Billing Address Zip Code -->
                     <div id="billing-zip" class="field zip required">
-                        <label for="Order.BillingAddress.PostalCode">Zip / Postal</label>
-                        <input id="Order.BillingAddress.PostalCode" name="Order.BillingAddress.PostalCode" placeholder="Zip / Postal" type="text" spellcheck="false" maxlength="9">
+                        <label for="Order.BillingAddress.PostalCode">Zip/Postal</label>
+                        <input id="Order.BillingAddress.PostalCode" name="Order.BillingAddress.PostalCode" placeholder="Zip/Postal Code ex. 94140" type="text" spellcheck="false" maxlength="9">
                         <!--http://stackoverflow.com/a/469362-->
                     </div>
-                    <!-- Country -->
 
+                    <!-- Billing Address Country -->
                     <div id="billing-country" class="field country required">
                         <label for="Order.BillingAddress.Country">Country</label>
-                        <input id="Order.BillingAddress.Country" name="Order.BillingAddress.Country" type="text" spellcheck="false" placeholder="Country" x-autocompletetype="country-name" value="">
-                    </div>
-                    <!-- Phone -->
-
-                    <div id="phone" class="field phone required">
-                        <label for="User.Phone">Phone Number</label>
-                        <input id="User.Phone" name="User.Phone" placeholder="(424)-424-4200" x-autocompletetype="phone" type="text" spellcheck="false" maxlength="20" value="">
-                    </div>
-                    <!-- Continue -->
-
-                    <div class="btn-container" style="text-align: center;">
-                        <!--<input type="submit" value="Continue" class="button continue-button" style="width:100%"></input>-->
+                        <input id="Order.BillingAddress.Country" name="Order.BillingAddress.Country" type="text" spellcheck="false" placeholder="Country ex. United States" x-autocompletetype="country-name" value="United States">
                     </div>
                 </fieldset>
             </div>
 
             <div class="shipping-information">
-                <h2>Shipping Info</h2>
+                <h2>Shipping</h2>
                 <div class="options">
                     <input id="ShipToBilling" name="ShipToBilling" type="checkbox" checked>
                     <label for="ShipToBilling">Ship to Billing Address</label>
@@ -107,46 +114,40 @@
 
                 <fieldset style="display:none">
                     <!-- Shipping Address 1 -->
-
                     <div id="shipping-address-1" class="field required">
                         <label for="Order.ShippingAddress.Line1">Address Line 1</label>
-                        <input id="Order.ShippingAddress.Line1" name="Order.ShippingAddress.Line1" placeholder="Address Line 1" x-autocompletetype="address-line1" type="text" spellcheck="false" maxlength="50" aria-autocomplete="list" aria-expanded="false" autocomplete="on" value="">
+                        <input id="Order.ShippingAddress.Line1" name="Order.ShippingAddress.Line1" placeholder="Address ex. 555 3rd Street" x-autocompletetype="address-line1" type="text" spellcheck="false" maxlength="50" aria-autocomplete="list" aria-expanded="false" autocomplete="on" value="">
                     </div>
-                    <!-- Shipping Address 2 -->
 
+                    <!-- Shipping Address 2 -->
                     <div id="shipping-address-2" class="field">
                         <label for="Order.ShippingAddress.Line2">Address Line 2</label>
-                        <input id="Order.ShippingAddress.Line2" name="Order.ShippingAddress.Line2" placeholder="Address Line 2" type="text" x-autocompletetype="address-line2" spellcheck="false" maxlength="50" value="">
+                        <input id="Order.ShippingAddress.Line2" name="Order.ShippingAddress.Line2" placeholder="Address 2 ex. Suite 3, Apt#" type="text" x-autocompletetype="address-line2" spellcheck="false" maxlength="50" value="">
                     </div>
-                    <!-- City -->
 
+                    <!-- Shipping City -->
                     <div id="shipping-city" class="field city required">
                         <label for="Order.ShippingAddress.City">City</label>
-                        <input id="Order.ShippingAddress.City" name="Order.ShippingAddress.City" placeholder="City" type="text" spellcheck="false" maxlength="30" value="">
+                        <input id="Order.ShippingAddress.City" name="Order.ShippingAddress.City" placeholder="City ex. San Francisco" type="text" spellcheck="false" maxlength="30" value="">
                     </div>
-                    <!-- State/Province -->
 
+                    <!-- Shipping Address State/Province -->
                     <div id="shipping-state" class="field state required">
                         <label for="Order.ShippingAddress.State">State/Province</label>
-                        <input id="Order.ShippingAddress.State" name="Order.ShippingAddress.State" placeholder="State/Province" type="text" spellcheck="false" x-autocompletetype="state" value="">
+                        <input id="Order.ShippingAddress.State" name="Order.ShippingAddress.State" placeholder="State/Province ex. California" type="text" spellcheck="false" x-autocompletetype="state" value="">
                     </div>
-                    <!-- Zip Code -->
 
+                    <!-- Shipping Address Zip Code -->
                     <div id="shipping-zip" class="field zip required">
-                        <label for="Order.ShippingAddress.PostalCode">Zip / Postal</label>
-                        <input id="Order.ShippingAddress.PostalCode" name="Order.ShippingAddress.PostalCode" placeholder="Zip / Postal" type="text" spellcheck="false" maxlength="9">
+                        <label for="Order.ShippingAddress.PostalCode">Zip/Postal</label>
+                        <input id="Order.ShippingAddress.PostalCode" name="Order.ShippingAddress.PostalCode" placeholder="Zip/Postal ex. 94140" type="text" spellcheck="false" maxlength="9">
                         <!--http://stackoverflow.com/a/469362-->
                     </div>
-                    <!-- Country -->
 
+                    <!-- Shipping Address Country -->
                     <div id="shipping-country" class="field country required">
-                        <label for="Order.ShippingAddress.Country" >Country</label>
-                        <input id="Order.ShippingAddress.Country" name="Order.ShippingAddress.Country" type="text" spellcheck="false" placeholder="Country" x-autocompletetype="country-name" value="">
-                    </div>
-                    <!-- Continue -->
-
-                    <div class="btn-container" style="text-align: center;">
-                        <!--<input type="submit" value="Continue" class="button continue-button" style="width:100%"></input>-->
+                        <label for="Order.ShippingAddress.Country">Country</label>
+                        <input id="Order.ShippingAddress.Country" name="Order.ShippingAddress.Country" type="text" spellcheck="false" placeholder="Country ex. United States" x-autocompletetype="country-name" value="United States">
                     </div>
                 </fieldset>
             </div>
@@ -166,60 +167,51 @@
                     <div style="display:block; text-align:center; margin-bottom: 5%;">
                         <div id="card-wrapper"></div>
                     </div>
-                    <!-- Credit Card -->
 
+                    <!-- Credit Card -->
                     <div class="credit-card">
+
                         <!-- Name -->
                         <div class="card-name field required">
-                            <label for="stripe-name">Name As It Appears On Card</lable>
-                            <input type="text"
-                            id="stripe-name" placeholder="Name">
+                            <label for="stripe-name">Name As It Appears On Card</label>
+                            <input type="text" id="stripe-name" placeholder="ex. SKULLY Systems">
                         </div>
-                        <!-- Card Number -->
 
+                        <!-- Card Number -->
                         <div class="card-number field required">
                             <label for="stripe-number">Card Number</label>
-                            <input type="text" size="20" autocomplete="off"
-                            placeholder="Credit Card Number" value=""
-                            id="stripe-number">
+                            <input type="text" size="20" autocomplete="off" placeholder="Credit Card Number" value="" id="stripe-number" data-stripe="number">
                         </div>
 
                         <div class="expiry-cvc">
                             <!-- CVC -->
-
                             <div class="card-cvc field required">
                                 <label for="stripe-cvc">CVC</label>
-                                <input type="text" size="4"
-                                autocomplete="off" placeholder="CVC" value=""
-                                id="stripe-cvc">
+                                <input type="text" size="4" autocomplete="off" placeholder="CVC" value="" id="stripe-cvc" data-stripe="cvc">
                             </div>
-                            <!-- Expiration -->
 
+                            <!-- Expiration -->
                             <div class="card-expiry-month field required">
                                 <label for="stripe-expiry-month">Expiration</label>
-                                <input type="text" size="2" maxlength="2"
-                                autocomplete="off" placeholder="MM"
-                                value="" id="stripe-expiry-month">
+                                <input type="text" size="2" maxlength="2" autocomplete="off" placeholder="MM" value="" id="stripe-expiry-month" data-stripe="exp-month">
                             </div>
 
+                            <!-- Year -->
                             <div class="card-expiry-year field required">
                                 <label for="stripe-expiry-year">&nbsp;</label>
-                                <input type="text" size="4" maxlength="4"
-                                autocomplete="off" placeholder="YYYY" value=""
-                                id="stripe-expiry-year">
+                                <input type="text" size="4" maxlength="4" autocomplete="off" placeholder="YYYY" value="" id="stripe-expiry-year" data-stripe="exp-year">
                             </div>
-
                         </div>
-                        <!-- Secure payment conditions -->
 
+                        <!-- Secure payment conditions -->
                         <div id="comfort" style="display:none;">
                             All transactions are secure and encrypted, and we never store your credit card information. Payments are processed through Stripe. Payment information is also governed by <a target="_blank" href="https://stripe.com/privacy">Stripe's privacy policy</a>.
                         </div>
-                        <!-- Authorize message display -->
 
-                        <div class="authorizeMessage" id="authorize-message"></div>
+                        <!-- Authorization error message display -->
+                        <div id="error-message" class="error-message error"></div>
+
                         <!-- Place Order -->
-
                         <div class="btn-container" style="text-align: center;">
                             <button type="submit">Place Order</button>
                         </div>
@@ -236,9 +228,9 @@
         <table>
             <thead>
                 <tr>
-                    <td class="item" colspan="2">Item</td>
-                    <td class="quantity">Quantity</td>
-                    <td class="price">Price</td>
+                    <th class="item" colspan="2">Item</th>
+                    <th class="quantity">Quantity</th>
+                    <th class="price">Price</th>
                 </tr>
             </thead>
             <tbody>
@@ -264,44 +256,48 @@
                     </td>
 
                     <td class="price">
-                        <span>$</span><span class="money">{{ item.DisplayPrice() }}</span>
+                        {% if item.Price > 0 %}
+                            <span>$</span><span class="money">{{ item.DisplayPrice() }}</span>
+                        {% else %}
+                            <span>FREE</span>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}
 
-                <tr>
-                    <td class="label"colspan="3">
+                <tr class="subtotal">
+                    <td class="label" colspan="3">
                         <span>Subtotal</span>
                     </td>
                     <td class="value">
-                        <span>$</span><span>{{ order.DisplaySubtotal() }}<span>
+                        <span>$</span><span class="price subtotal">{{ order.DisplaySubtotal() }}<span>
                     </td>
                 </tr>
 
-                <tr>
-                    <td class="label"colspan="3">
+                <tr class="tax">
+                    <td class="label" colspan="3">
                         <span>Tax</span>
                     </td>
                     <td class="value">
-                        <span>$</span><span class="price">{{ order.DisplayTax() }}<span>
+                        <span>$</span><span class="price tax">{{ order.DisplayTax() }}<span>
                     </td>
                 </tr>
 
-                <tr>
-                    <td class="label"colspan="3">
+                <tr class="shipping">
+                    <td class="label" colspan="3">
                         <span>Shipping</span>
                     </td>
                     <td class="value">
-                        <span>$</span><span class="price">{{ order.Shipping }}<span>
+                        <span>$</span><span class="price shipping">{{ order.DisplayShipping() }}<span>
                     </td>
                 </tr>
 
-                <tr>
-                    <td class="label"colspan="3">
-                        <span>Grand Total</span>
+                <tr class="total">
+                    <td class="label" colspan="3">
+                        <span>Total</span>
                     </td>
                     <td class="value">
-                        <span>$</span><span class="price">{{ order.DisplayTotal() }}<span>
+                        <span>$</span><span class="price grand-total">{{ order.DisplayTotal() }}<span>
                     </td>
                 </tr>
             </tbody>
@@ -319,17 +315,10 @@
         <a href="javascript:void(0)" id="returnPolicy" class="store-policy-link" title="Return Policy">Return Policy</a>
     </div>
 </div>
-
-<form id="stripeForm" action="" method="post" accept-charset="UTF-8" enctype="application/x-www-form-urlencoded; charset=utf-8" name="stripeForm">
-    <input type="hidden" data-stripe="number">
-    <input type="hidden" data-stripe="cvc">
-    <input type="hidden" data-stripe="exp-month">
-    <input type="hidden" data-stripe="exp-year">
-</form>
 {% endblock %}
 
 {% block js %}
 <script type="text/javascript" src="https://js.stripe.com/v2/"></script>
-<script type="text/javascript">Stripe.setPublishableKey('{{ config.Stripe.APIKey }}');</script>
+<script type="text/javascript">Stripe.setPublishableKey('{{ stripePublishableKey }}');</script>
 <script type="text/javascript" src="{{ urlFor("/js/checkout.js") }}"></script>
 {% endblock %}

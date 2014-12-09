@@ -8,6 +8,7 @@ import (
 
 	"crowdstart.io/config"
 	"crowdstart.io/models/fixtures"
+	"crowdstart.io/models/migrations"
 	"crowdstart.io/util/exec"
 	"crowdstart.io/util/router"
 )
@@ -92,6 +93,14 @@ func Init() {
 		c.String(200, "Fixtures installing...")
 	})
 
+	router.GET("/fixtures/products", func(c *gin.Context) {
+		ctx := appengine.NewContext(c.Request)
+
+		fixtures.Products.Call(ctx)
+
+		c.String(200, "Fixtures installing...")
+	})
+
 	router.GET("/fixtures/test", func(c *gin.Context) {
 		ctx := appengine.NewContext(c.Request)
 
@@ -99,5 +108,13 @@ func Init() {
 		fixtures.Test.Call(ctx)
 
 		c.String(200, "Fixtures installing...")
+	})
+
+	router.GET("/migrations/add-email-to-orders", func(c *gin.Context) {
+		ctx := appengine.NewContext(c.Request)
+
+		migrations.AddEmailToOrders.Call(ctx)
+
+		c.String(200, "Migrating orders...")
 	})
 }
