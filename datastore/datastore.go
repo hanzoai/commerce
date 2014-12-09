@@ -34,7 +34,7 @@ func (d *Datastore) DecodeKey(encodedKey string) (*Key, error) {
 }
 
 func (d *Datastore) Get(key string, value interface{}) error {
-	k, err := DecodeKey(key)
+	k, err := d.DecodeKey(key)
 	if err != nil {
 		return err
 	}
@@ -69,8 +69,7 @@ func (d *Datastore) GetMulti(keys []string, vals interface{}) error {
 	_keys := make([]*Key, len(keys))
 
 	for i, key := range keys {
-		if k, err := DecodeKey(key); err != nil {
-			log.Warn("%v", err, d.Context)
+		if k, err := d.DecodeKey(key); err != nil {
 			return err
 		} else {
 			_keys[i] = k
@@ -163,9 +162,8 @@ func (d *Datastore) PutKeyMulti(kind string, keys []string, srcs []interface{}) 
 func (d *Datastore) Update(key string, src interface{}) (string, error) {
 	log.Warn("DEPRECATED. DOES NOTHING PUT DOES NOT.", d.Context)
 
-	k, err := DecodeKey(key)
+	k, err := d.DecodeKey(key)
 	if err != nil {
-		log.Warn("%v", err, d.Context)
 		return "", err
 	}
 
@@ -178,9 +176,8 @@ func (d *Datastore) Update(key string, src interface{}) (string, error) {
 }
 
 func (d *Datastore) Delete(key string) error {
-	k, err := DecodeKey(key)
+	k, err := d.DecodeKey(key)
 	if err != nil {
-		log.Warn("%v", err, d.Context)
 		return err
 	}
 	return nds.Delete(d.Context, k)
@@ -189,7 +186,7 @@ func (d *Datastore) Delete(key string) error {
 func (d *Datastore) DeleteMulti(keys []string) error {
 	_keys := make([]*Key, 0)
 	for _, key := range keys {
-		k, err := DecodeKey(key)
+		k, err := d.DecodeKey(key)
 		_keys = append(_keys, k)
 		if err != nil {
 			log.Warn("%v", err, d.Context)
