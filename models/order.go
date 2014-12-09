@@ -72,11 +72,10 @@ func (o Order) Description() string {
 
 	for i, item := range o.Items {
 		if i > 1 {
-			buffer.WriteString(",")
-			buffer.WriteString(" ")
+			buffer.WriteString(", ")
 		}
 		buffer.WriteString(item.SKU())
-		buffer.WriteString(" ")
+		buffer.WriteString(" x")
 		buffer.WriteString(string(item.Quantity))
 	}
 	return buffer.String()
