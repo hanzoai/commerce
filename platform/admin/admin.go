@@ -66,5 +66,5 @@ func Dashboard(c *gin.Context) {
 
 // Admin Payment Connectors
 func Connect(c *gin.Context) {
-	template.Render(c, "adminlte/connect.html", "clientid", config.Get().Stripe.ClientId, "error", "")
+	template.Render(c, "adminlte/connect.html", "clientid", config.Stripe.ClientId, "error", "")
 }
