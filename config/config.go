@@ -59,6 +59,9 @@ type Config struct {
 
 // Return url to static file, module or path rooted in a module
 func (c Config) UrlFor(moduleName string, args ...string) (url string) {
+	// Trim whitespace
+	moduleName = strings.TrimSpace(moduleName)
+
 	// If we find `moduleName`, we'll use that as root, otherwise assume we
 	// were passed a static file as `moduleName`.
 	if host, ok := c.Hosts[moduleName]; ok {
@@ -107,6 +110,8 @@ func Defaults() *Config {
 	config.RootDir, _ = filepath.Abs(cwd + "/../..")
 	config.SiteTitle = "SKULLY"
 	config.DemoMode = demoMode
+	config.Mandrill.FromName = "Admin"
+	config.Mandrill.FromEmail = "admin@crowdstart.io"
 	return config
 }
 
@@ -205,10 +210,6 @@ func Staging() *Config {
 	config.Hosts["store"] = "store.staging.crowdstart.io"
 
 	config.StaticUrl = "//static.staging.crowdstart.io"
-
-	config.StaticUrl = "//static.skullysystems.com"
-	config.Mandrill.FromName = "SKULLY"
-	config.Mandrill.FromEmail = "noreply@skullysystems.com"
 
 	return config
 }

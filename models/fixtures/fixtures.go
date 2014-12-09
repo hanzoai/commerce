@@ -55,7 +55,7 @@ var All = delay.Func("install-all-fixtures", func(c appengine.Context) {
 			Email:    "test@test.com",
 			Preorder: true,
 		}
-		db.PutKey("order", "test@test.com", order)
+		db.PutKey("order", "test@test.com", &order)
 	}
 
 	// TODO: Stop doing this in production
@@ -72,10 +72,21 @@ var All = delay.Func("install-all-fixtures", func(c appengine.Context) {
 	})
 
 	// Default Campaign (SKULLY)
-	db.PutKey("campaign", "dev@hanzo.ai", &Campaign{
+	campaign := Campaign{
 		Id:    "dev@hanzo.ai",
 		Title: "SKULLY AR-1",
-	})
+	}
+
+	// Hardcode stripe test credentials
+	if appengine.IsDevAppServer() {
+		campaign.Stripe.AccessToken = "sk_test_eyQyQYZlwLcKxM9LoxLKg61y"
+		campaign.Stripe.PublishableKey = "pk_test_IkyRgPrDxa5SRvEP1XKpJann"
+		campaign.Stripe.RefreshToken = "rt_5E65oPVEYWwIAqBWpW64RfefExYPVAvt4Pu9YeEBPJn9AECa"
+		campaign.Stripe.UserId = "acct_14lSsRCSRlllXCwP"
+	}
+
+	// Save campaign
+	db.PutKey("campaign", "dev@hanzo.ai", &campaign)
 
 	// AR-1
 	variants := []ProductVariant{

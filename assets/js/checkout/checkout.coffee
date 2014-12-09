@@ -32,7 +32,6 @@ validateForm = ->
       email.addClass 'shake'
       setTimeout ->
         email.removeClass 'shake'
-        return
       , 500
       errors.push "Invalid email."
 
@@ -236,6 +235,8 @@ $(document).ready ->
       expiry: '••/••••',
       cvc: '•••'
 
+
+  lock = false
   # Handle form submission
   $form.submit (e) ->
     # Do basic authorization
@@ -273,5 +274,27 @@ $(document).ready ->
       Stripe.card.createToken $form, stripeAuthorize
       return false
 
-    # This should only happen when form is manually from `stripeAuthorize`
-    true
+    if !lock
+      lock = true
+      $form.find('.btn-container button').append '<div class="loading-spinner" style="float:left"></div>'
+      $.ajax
+        url: $form.attr 'action'
+        type: "POST"
+        data: $form.serializeArray()
+        dataType: "json"
+        success: (data) ->
+          console.log data
+          window.location.replace 'complete/'
+        error: (xhr) ->
+          # important to force a new authorization, assuming user wants to edit card details
+          app.set 'approved', false
+
+          # try to use server provided error message
+          message  =  xhr?.responseJSON?.message
+          message ?= 'We were unable to charge your card. Please review your information and try again later.'
+
+          $('#error-message').text message
+          $form.find('.loading-spinner').remove()
+          lock = false
+
+    false

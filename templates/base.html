@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en-US">
-
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta charset="utf-8">
@@ -45,15 +44,9 @@
     <!--FONTS-->
     <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Michroma:400,400italic,700normal,700italic|PT+Serif:400,400italic,700normal,700italic" />
     <script src="//use.typekit.net/uye2ojv.js"></script>
-    <script type="text/javascript">
-        try {
-            Typekit.load();
-        } catch (e) {}
-    </script>
+    <script type="text/javascript">try {Typekit.load();} catch (e) {}</script>
 </head>
-
 <body>
-
     <!--WRAPPER-->
     <div class="site">
 
@@ -119,9 +112,9 @@
                                 <li>
                                     <a href="{{ urlFor("store", "/profile") }}">PROFILE</a>
                                 </li>
-                                <li>
+                                <!--<li>
                                     <a href="{{ urlFor("store", "/orders") }}">ORDERS</a>
-                                </li>
+                                </li>-->
                                 <li>
                                     <a href="{{ urlFor("store", "/logout") }}">LOGOUT</a>
                                 </li>
@@ -201,19 +194,14 @@
 
                         <nav class="footer-nav">
                             <div class="links">
-                                <p>&nbsp;</p>
                                 <p>
-                                    <a href="/news">News</a>
-                                    <span>&nbsp; | &nbsp;</span>
-                                    <a target="_blank" href="http://skullysystems.forumchitchat.com/post/skully-ar1-referral-program-7033017">Referral Program</a>
-                                </p>
-
-                                <p class="text-align-right">
-                                    <a href="/privacy-policy">Privacy</a>
+                                    <a href="http://www.skullysystems.com/news">News</a>
                                     <span>&nbsp;| &nbsp;</span>
-                                    <a href="/press">Press</a>
+                                    <a href="http://www.skullysystems.com/press">Press</a>
                                     <span>&nbsp;| &nbsp;</span>
-                                    <a href="/contact-us">Contact</a>
+                                    <a href="http://www.skullysystems.com/privacy-policy">Privacy</a>
+                                    <span>&nbsp;| &nbsp;</span>
+                                    <a href="http://www.skullysystems.com/contact-us">Contact</a>
                                 </p>
                             </div>
                         </nav>
@@ -263,23 +251,17 @@
 
     {% block js %}{% endblock %}
 
+    {% if isProduction %}
     <!-- GA -->
     <script>
-        (function(i, s, o, g, r, a, m) {
-            i['GoogleAnalyticsObject'] = r;
-            i[r] = i[r] || function() {
-                (i[r].q = i[r].q || []).push(arguments)
-            }, i[r].l = 1 * new Date();
-            a = s.createElement(o),
-                m = s.getElementsByTagName(o)[0];
-            a.async = 1;
-            a.src = g;
-            m.parentNode.insertBefore(a, m)
-        })(window, document, 'script', '//www.google-analytics.com/analytics.js', 'ga');
+        (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+        })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
 
         ga('create', 'UA-48365795-8', 'auto');
         ga('send', 'pageview');
     </script>
+    {% endif %}
 </body>
-
 </html>

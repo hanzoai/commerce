@@ -1,3 +1,4 @@
+@import "node_modules/axis/axis"
 @import "../preorder/spinner"
 @import "dropdown"
 
@@ -67,7 +68,7 @@ a:active
 .links
   transition width .5s ease 0s
 
-@media all and ( max-width: 700px )
+@media all and ( max-width: 1000px )
   .title-nav
     padding-left 21px
     padding-right 21px
@@ -156,7 +157,7 @@ a:active
               li
                 text-align center
 
-@media all and ( min-width: 700px )
+@media all and ( min-width: 1000px )
   .nav
     display table-cell
     width 70%
@@ -358,14 +359,17 @@ section > .item
     text-align center
     .preview-background
       max-width 600px
+      max-height 600px
       background-size contain
       background-repeat no-repeat
       width 90%
     .preview
       max-width 600px
       width 100%
+      transition opacity .3s ease 0s
 
     .gallery
+
       .thumbnail
         max-width 40px
         max-height 40px
@@ -555,34 +559,8 @@ body.mobile .cart-hover
     img
       width 40px
 
-// LOGIN
-.login
-  margin-bottom 50px
-  .form
-    width 250px
-    text-align center
-    margin 0 auto
-    .field
-      text-align right
-
-    button
-      float none
-
-// REGISTER
-.register
-  margin-bottom 50px
-  .form
-    width 400px
-    text-align center
-    margin 0 auto
-    .field
-      text-align right
-
-    button
-      float none
-
-// REGISTER
-.profile
+// LOGIN, REGISTER, PROFILE
+.login, .register, .profile
   margin-bottom 50px
   .form
     width 300px
@@ -590,6 +568,9 @@ body.mobile .cart-hover
     margin 0 auto
     .field
       text-align right
+      padding 5px
+      label
+        padding 10px
 
     button
       float none
