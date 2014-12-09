@@ -1,6 +1,8 @@
 package checkout
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -9,17 +11,25 @@ import (
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
+	"crowdstart.io/models"
+	"crowdstart.io/thirdparty/mandrill"
 	"crowdstart.io/thirdparty/stripe"
 	"crowdstart.io/util/log"
+	"crowdstart.io/util/rand"
 	"crowdstart.io/util/template"
 )
 
-// Redirect to store on GET
+// Cache stripe keys
+var stripePublishableKey string
+var stripeAccessToken string
+
+// GET /
 func index(c *gin.Context) {
+	// Redirect to store on GET
 	c.Redirect(301, config.UrlFor("store", "/cart"))
 }
 
-// Display checkout form
+// POST /
 func checkout(c *gin.Context) {
 	// Parse checkout form
 	form := new(CheckoutForm)
@@ -38,24 +48,39 @@ func checkout(c *gin.Context) {
 		return
 	}
 
+	// Merge duplicate line items.
+	form.Merge(c)
+
 	// Validate form
 	form.Validate(c)
+
+	// Get PublishableKey Key.
+	if stripePublishableKey == "" {
+		var campaign models.Campaign
+		if err := db.GetKey("campaign", "dev@hanzo.ai", &campaign); err != nil {
+			log.Error(err, c)
+		} else {
+			stripePublishableKey = campaign.Stripe.PublishableKey
+		}
+	}
+
+	// Try to get user from datastore based on email in session.
+	user, _ := auth.GetUser(c)
 
 	// Render order for checkout page
 	template.Render(c, "checkout.html",
 		"order", form.Order,
-		"config", config.Get(),
+		"stripePublishableKey", stripePublishableKey,
+		"user", user,
 	)
 }
 
 // Charge a successful authorization
-// LoginRequired
+// POST /charge
 func charge(c *gin.Context) {
-	user := auth.GetUser(c)
-
 	form := new(ChargeForm)
 	if err := form.Parse(c); err != nil {
-		log.Error("Failed to parse form: %v", err)
+		log.Error("Failed to parse form: %v", err, c)
 		c.Fail(500, err)
 		return
 	}
@@ -65,38 +90,103 @@ func charge(c *gin.Context) {
 	ctx := middleware.GetAppEngine(c)
 	db := datastore.New(ctx)
 
+	// Populate
 	if err := form.Order.Populate(db); err != nil {
 		log.Error("Failed to repopulate order information from datastore: %v", err)
-		log.Dump(form.Order)
 		c.Fail(500, err)
 		return
 	}
 
-	log.Debug("Charging order.")
-	log.Dump(form.Order)
-	if _, err := stripe.Charge(ctx, form.StripeToken, &form.Order); err != nil {
-		log.Error("Stripe Charge failed: %v", err)
-		c.Fail(500, err)
+	// Update user information
+	log.Debug("Trying to get user from session...", c)
+	user, err := auth.GetUser(c)
+	if err != nil {
+		log.Debug("Using form.User", c)
+		user = &form.User
+	}
+	log.Debug("User: %#v", user)
+
+	// Set email for order
+	form.Order.Email = user.Email
+
+	// Set test mode, minimum stripe transaction
+	if strings.Contains(user.Email, "@verus.io") {
+		form.Order.Test = true
+		form.Order.Shipping = 0
+		form.Order.Tax = 0
+		form.Order.Subtotal = 50 * 100 // 50 cents is Stripe's
+		form.Order.Total = 50 * 100    // minimum transaction amount.
+	}
+
+	// Get access token
+	if stripeAccessToken == "" {
+		var campaign models.Campaign
+		if err := db.GetKey("campaign", "dev@hanzo.ai", &campaign); err != nil {
+			log.Error("Unable to get stripe access token: %v", err)
+			c.Fail(500, err)
+			return
+		} else {
+			stripeAccessToken = campaign.Stripe.AccessToken
+		}
+	}
+
+	// Charging order
+	log.Debug("Charging order...", c)
+	log.Debug("API Key: %v, Token: %v", stripeAccessToken, form.StripeToken)
+	if charge, err := stripe.Charge(ctx, stripeAccessToken, form.StripeToken, &form.Order, user); err != nil {
+		if charge.FailMsg != "" {
+			// client error
+			log.Warn("Stripe declined charge: %v", err, c)
+			c.JSON(400, gin.H{"message": charge.FailMsg})
+		} else {
+			// internal error
+			log.Error("Stripe charge failed: %v", err, c)
+			c.JSON(500, gin.H{})
+		}
 		return
 	}
 
 	// Save order
-	log.Debug("Saving order.")
-	key, err := db.Put("order", &form.Order)
+	log.Debug("Saving order...", c)
+	encodedKey, err := db.Put("order", &form.Order)
 	if err != nil {
-		log.Error("Error saving order", err)
+		log.Error("Failed to save order", err, c)
+		c.Fail(500, err)
+		return
+	}
+	key, _ := db.DecodeKey(encodedKey)
+	orderId := key.IntID()
+
+	log.Debug("Updating and saving user...", c)
+	user.BillingAddress = form.Order.BillingAddress
+	user.ShippingAddress = form.Order.ShippingAddress
+	user.Phone = form.User.Phone
+	user.FirstName = form.User.FirstName
+	user.LastName = form.User.LastName
+	if _, err := db.PutKey("user", user.Email, user); err != nil {
+		log.Error("Failed to save user: %v", err, c)
 		c.Fail(500, err)
 		return
 	}
 
-	// Add order to user;
-	user.OrdersIds = append(user.OrdersIds, key)
-	if _, err = db.PutKey("user", user.Email, user); err != nil {
-		log.Panic("Saving user after adding order failed \n%v", err)
+	log.Debug("Saving invite token...", c)
+	invite := new(models.InviteToken)
+	invite.Id = rand.ShortId()
+	invite.Email = user.Email
+	if _, err := db.PutKey("invite-token", invite.Id, invite); err != nil {
+		log.Error("Failed to save invite-token: %v", err, c)
+		c.Fail(500, err)
+		return
 	}
 
-	log.Debug("Checkout complete!")
-	c.Redirect(301, config.UrlFor("checkout", "/complete"))
+	// Send order confirmation email
+	mandrill.SendTemplateAsync.Call(ctx, "order-confirmation",
+		user.Email,
+		user.Name(),
+		fmt.Sprintf("SKULLY Systems Order confirmation #%v", orderId))
+
+	log.Debug("Checkout complete!", c)
+	c.JSON(200, gin.H{"inviteId": invite.Id, "orderId": orderId})
 }
 
 // Success

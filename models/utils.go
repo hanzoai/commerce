@@ -2,6 +2,7 @@ package models
 
 import (
 	"math"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -23,4 +24,8 @@ func DisplayPrice(price int64) string {
 // Non-breaking hyphens in title
 func DisplayTitle(title string) string {
 	return strings.Replace(title, "-", "&#8209;", -1)
+}
+
+func SplitParagraph(text string) []string {
+	return regexp.MustCompile("\\n\\s*\\n").Split(text, -1)
 }
