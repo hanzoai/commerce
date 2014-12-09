@@ -105,6 +105,7 @@ func charge(c *gin.Context) {
 	// Charging order
 	log.Debug("Charging order.")
 	log.Dump(form.Order)
+	log.Debug("API Key: %v, Token: %v", stripeAccessToken, form.StripeToken)
 	if _, err := stripe.Charge(ctx, stripeAccessToken, form.StripeToken, &form.Order); err != nil {
 		log.Error("Stripe Charge failed: %v", err)
 		c.Fail(500, err)
