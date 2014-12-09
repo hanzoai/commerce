@@ -25,8 +25,8 @@ type Listing struct {
 	Configs []Config
 }
 
-func (p Listing) GetProductSlugs() []string {
-	productConfigs := p.Configs
+func (l Listing) GetProductSlugs() []string {
+	productConfigs := l.Configs
 	slugs := make([]string, len(productConfigs), len(productConfigs))
 	for i, productConfig := range productConfigs {
 		slugs[i] = productConfig.Product
@@ -34,12 +34,16 @@ func (p Listing) GetProductSlugs() []string {
 	return slugs
 }
 
-func (p Listing) GetProductSlugsString() string {
-	return strings.Join(p.GetProductSlugs(), " ")
+func (l Listing) GetProductSlugsString() string {
+	return strings.Join(l.GetProductSlugs(), " ")
 }
 
-func (p Listing) GetDescriptionParagraphs() []string {
-	return SplitParagraph(p.Description)
+func (l Listing) GetDescriptionParagraphs() []string {
+	return SplitParagraph(l.Description)
+}
+
+func (l Listing) DisplayTitle() string {
+	return DisplayTitle(l.Title)
 }
 
 type Config struct {
@@ -50,7 +54,7 @@ type Config struct {
 	PriceAdjustment int    //cost adjustment for individual product in package (subtracted from actual price)
 }
 
-//Prune down since Product Listing has a lot of this info now
+// Prune down since Product Listing has a lot of this info now
 type Product struct {
 	FieldMapMixin
 	Id          string
