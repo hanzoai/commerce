@@ -93,6 +93,14 @@ func Init() {
 		c.String(200, "Fixtures installing...")
 	})
 
+	router.GET("/fixtures/products", func(c *gin.Context) {
+		ctx := appengine.NewContext(c.Request)
+
+		fixtures.Products.Call(ctx)
+
+		c.String(200, "Fixtures installing...")
+	})
+
 	router.GET("/fixtures/test", func(c *gin.Context) {
 		ctx := appengine.NewContext(c.Request)
 
