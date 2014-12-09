@@ -13,7 +13,7 @@
 
 {% block content %}
 <div class="shopping-cart">
-    <form action="{{ urlFor("checkout" ) }}" method="POST" accept-charset="UTF-8" enctype="application/x-www-form-urlencoded; charset=utf-8">
+    <form action="{% if isProduction || isStaging %}https:{% endif %}{{ urlFor("checkout") }}" method="POST" accept-charset="UTF-8" enctype="application/x-www-form-urlencoded; charset=utf-8">
         <div class="cart-content">
             <table>
                 <thead>
