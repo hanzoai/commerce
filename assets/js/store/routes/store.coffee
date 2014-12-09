@@ -10,6 +10,7 @@ exports.setupViews = ->
       window.view = view
       app.views.push view
       view.bind()
+      view.render()
 
 # Simple thumbnail gallery
 exports.gallery = ->
@@ -76,3 +77,7 @@ exports.customizeAr1 = ->
     else
       $slides[1].fadeIn()
       $slides[0].fadeOut()
+
+exports.menu = ->
+  $('.menu-icon').click ->
+    $('body').toggleClass('mobile')

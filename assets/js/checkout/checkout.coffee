@@ -1,8 +1,6 @@
+util = require '../store/util'
 require 'card'
-# View = require './view'
-
-# class CardView extends View
-#   el: '.sqs-checkout-form-payment'
+validator = require 'address-validator/src/validator'
 
 # Validation helper
 validation =
@@ -13,169 +11,267 @@ validation =
     pattern = new RegExp(/^[+a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/i)
     pattern.test email
 
-$("div.field").on "click", ->
-  $(this).removeClass "error"
-  return
+validateForm = ->
+  $errors = $('#error-message')
+  $errors.text ''
 
-$("#form").submit (e) ->
-  empty = $("div:visible.required > input").filter(->
-    $(this).val() is ""
-  )
-  email = $("input[name=\"User.Email\"]")
-  unless validation.isEmail(email.val())
-    console.log validation.isEmail(email.text())
-    e.preventDefault()
-    email.parent().addClass "error"
-    email.parent().addClass "shake"
-    setTimeout (->
-      email.parent().removeClass "shake"
-      return
-    ), 500
+  valid = true
+  errors = []
+
+  # Get all inputs that are visible and empty
+  empty = $('div:visible.required > input').filter ->
+    validation.isEmpty $(@).val()
+
+  window.empty = empty
+
+  email = $('input[name="User.Email"]')
+  if email.length != 0
+    unless validation.isEmail email.val()
+      valid = false
+      email.addClass 'error'
+      email.addClass 'shake'
+      setTimeout ->
+        email.removeClass 'shake'
+        return
+      , 500
+      errors.push "Invalid email."
+
   if empty.length > 0
-    e.preventDefault()
-    empty.parent().addClass "error"
-    empty.parent().addClass "shake"
-    setTimeout (->
-      empty.parent().removeClass "shake"
+    valid = false
+    empty.addClass 'error'
+    empty.addClass 'shake'
+    setTimeout ->
+      empty.removeClass 'shake'
       return
-    ), 500
-  return
+    , 500
+    missing = (v.trim() for v in empty.parent().text().split('\n') when v.trim())
+    errors.push "Missing #{missing.join ', '}."
 
-# Show payment options when first half is competed.
-$requiredVisible = $("div:visible.required > input")
-showPaymentOptions = $.debounce(250, ->
+  unless valid
+    # display errors
+    for error in errors
+      $errors.append $("<p>#{error}</p>")
 
-  # Check if all required inputs are filled
-  i = 0
+    # scroll to first error
+    if empty.length > 0
+      location.href = '#' + empty[0].id
+      pos = $(window).scrollTop() - 100 # save position
+      location.hash = '' # clear hash
+      $(window).scrollTop pos
 
-  while i < $requiredVisible.length
-    return  if $requiredVisible[i].value is ""
-    i++
-  fieldset = $("div.payment-information > fieldset")
-  fieldset.css "display", "block"
-  fieldset.css "opacity", "0"
-  fieldset.fadeTo 1000, 1
-  $requiredVisible.off "keyup", showPaymentOptions
-  return
-)
-$requiredVisible.on "keyup", showPaymentOptions
-$("#form").card
-  container: "#card-wrapper"
-  numberInput: "#stripe-number"
-  expiryInput: "#stripe-expiry-month, #stripe-expiry-year"
-  cvcInput: "#stripe-cvc"
-  nameInput: "#stripe-name"
+  return valid
 
-$("input[name=\"ShipToBilling\"]").change ->
-  shipping = $(".shipping-information fieldset")
+# Remove error class from field that has been edited or clicked on
+clearError = -> $(@).removeClass 'error'
+$('div.field input').on 'click', clearError
+$('div.field input').on 'change', clearError
+
+$('input[name="ShipToBilling"]').change ->
+  shipping = $('.shipping-information fieldset')
   if @checked
     shipping.fadeOut 500
-    setTimeout (->
-      shipping.css "display", "none"
+    setTimeout ->
+      shipping.css 'display', 'none'
       return
-    ), 500
+    , 500
   else
     shipping.fadeIn 500
-    shipping.css "display", "block"
+    shipping.css 'display', 'block'
   return
 
 
 # Update tax display
-$state = $("input[name=\"Order.BillingAddress.State\"]")
-$city = $("input[name=\"Order.BillingAddress.City\"]")
-$tax = $("div.tax .price")
-$total = $("div.grand-total .price")
-$subtotal = $("div.subtotal .price")
+$state    = $('input[name="Order.BillingAddress.State"]')
+$city     = $('input[name="Order.BillingAddress.City"]')
 
-updateTax = $.debounce 250, ->
-  city = $city.val()
-  state = $state.val().toUpperCase()
-  tax = 0
-  total = 0
-  subtotal = parseFloat($subtotal.text().replace(",", ""))
+$subtotal = $('span.subtotal')
+$tax      = $('span.tax')
+$shipping = $('span.shipping')
+$total    = $('span.grand-total')
+$country  = $('input[name="Order.BillingAddress.Country"]')
 
-  # Add CA tax
-  tax += subtotal * 0.075  if state is "CA" or (/california/i).test(state)
+updateShippingAndTax = $.debounce 250, ->
+  country  = $country.val().trim().replace ' ', ''
+  city     = $city.val().trim()
+  state    = $state.val().trim()
 
-  # Add SF county tax
-  tax += subtotal * 0.0125  if state is "CA" and (/san francisco/i).test(city)
-  total = subtotal + tax
-  $tax.text tax.toFixed(2)
-  $total.text total.toFixed(2)
+  subtotal = parseFloat $subtotal.text().replace ',', ''
+  shipping = 0
+  tax      = 0
+  total    = 0
+
+  # Update shipping
+  unless (/^usa$|^us$|unitedstates$|unitedstatesofamerica/i).test country
+    shipping = 100.00
+  else
+    shipping = 0
+
+  # Update tax
+  if ((/^usa$|^us$|unitedstates$|unitedstatesofamerica/i).test country) and
+     (/^ca$|^cali/i).test state
+    # Add CA tax
+    tax += subtotal * 0.075
+    # Add SF county tax
+    tax += subtotal * 0.0125 if (/san francisco/i).test city
+  else
+    tax = 0
+
+  total = subtotal + shipping + tax
+  $shipping.text util.humanizeNumber shipping.toFixed 2
+  $tax.text util.humanizeNumber tax.toFixed 2
+  $total.text util.humanizeNumber total.toFixed 2
   return
 
-$state.change updateTax
-$city.on "keyup", updateTax
-
-
-$form = $("form#stripeForm")
-$cardNumber = $("#stripe-number")
-$expiryMonth = $("#stripe-expiry-month")
-$expiryYear = $("#stripe-expiry-year")
-$cvc = $("#stripe-cvc")
-$token = $("input[name=\"StripeToken\"]")
-
-# Checks each input and does dumb checks to see if it might be a valid card
-validateCard = ->
-  fail = success: false
-  cardNumber = $cardNumber.val()
-  return fail  if cardNumber.length < 10
-  month = $expiryMonth.val()
-  year = $expiryYear.val()
-
-  return fail unless month.length is 2
-  return fail unless year.length is 4
-  cvc = $cvc.val()
-
-  return fail  if cvc.length < 3
-
-  success: true
-  number: cardNumber
-  month: month
-  year: year
-  cvc: cvc
-
-$authorizeMessage = $("#authorize-message")
-
-# Callback for createToken
-stripeResponseHandler = do ->
-  app.set 'approved', false
-  (status, response) ->
-    $authorizeMessage.removeClass "error"
-    if response.error
-      $authorizeMessage.text response.error.message
-      $authorizeMessage.addClass "error"
-    else
-      app.set 'approved', true
-      token = response.id
-      $token.val token
-      $authorizeMessage.text "Card approved. Ready when you are."
-    return
-
-# Copies validated card values into the hidden form for Stripe.js
-stripeRunner = ->
-  card = validateCard()
-  Stripe.card.createToken $form, stripeResponseHandler if card.success
-  return
-
-relayer = ->
-  card = validateCard()
-  if card.success
-    $form.find('input[data-stripe="number"]').val card.number
-    $form.find('input[data-stripe="cvc"]').val card.cvc
-    $form.find('input[data-stripe="exp-month"]').val card.month
-    $form.find('input[data-stripe="exp-year"]').val card.year
-  return
-
-$cardNumber.change relayer
-$expiryMonth.change relayer
-$expiryYear.change relayer
-$cvc.change relayer
+$state.change updateShippingAndTax
+$city.on 'keyup', updateShippingAndTax
+$country.change updateShippingAndTax
 
 $(document).ready ->
-  $("#form").submit (event) ->
-    unless app.get('approved')
-      stripeRunner()
+  $form = $('#form')
+
+  # Authorize with stripe
+  stripeAuthorize = do ->
+    app.set 'approved', false
+
+    (status, response) ->
+      console.log 'Got response from stripe', response
+      if response.error
+        $('#error-message').text response.error.message
+      else
+        app.set 'approved', true
+        token = response.id
+        $('input[name="StripeToken"]').val token
+        $form.submit()
+      return
+
+  validateBilling = do ->
+    $billingInfo = $('.billing-information')
+    $billingInfo.find('input').change ->
+      app.set 'validBillingAddress', false
+    app.set 'validBillingAddress', false
+    (err, exact, inexact) ->
+      console.log 'Got response from google', arguments
+      if !err?
+        if exact? && exact.length > 0
+          address = exact[0]
+        else if inexact? && inexact.length > 0
+          address = inexact[0]
+
+        if address?
+          alert = app.get 'alert'
+          alert.show
+            cover: true
+            nextTo: $('.billing-information fieldset')
+            title: 'Is this your street address?'
+            message: address.toString()
+            confirm: 'Yes'
+            onConfirm: ->
+              $billingInfo.find('#billing-address-1 input').val(address.streetNumber + ' ' + address.street)
+              $billingInfo.find('#billing-city input').val(address.city)
+              $billingInfo.find('#billing-state input').val(address.state)
+              $billingInfo.find('#billing-zip input').val(address.postalCode)
+              $billingInfo.find('#billing-country input').val(address.country)
+              app.set 'validBillingAddress', true
+              setTimeout ->
+                $form.submit()
+              , 10
+            cancel:  'No'
+            onCancel: ->
+              $('#error-message').text 'We could not verify your billing address.  Please try again.'
+          return true
+      $billingInfo.find('input').addClass('error')
+      $('#error-message').text 'We could not verify your billing address.  Please try again.'
+
+  validateShipping = do ->
+    $shippingInfo = $('.shipping-information')
+    $shippingInfo.find('input').change ->
+      app.set 'validShippingAddress', false
+    app.set 'validShippingAddress', false
+    (err, exact, inexact) ->
+      console.log 'Got response from google', arguments
+      if !err?
+        if exact? && exact.length > 0
+          address = exact[0]
+        else if inexact? && inexact.length > 0
+          address = inexact[0]
+
+        if address?
+          alert = app.get 'alert'
+          alert.show
+            cover: true
+            nextTo: $('.shipping-information fieldset')
+            title: 'Is this your street address?'
+            message: address.toString()
+            confirm: 'Yes'
+            onConfirm: ->
+              $shippingInfo.find('#shipping-address-1 input').val(address.streetNumber + ' ' + address.street)
+              $shippingInfo.find('#shipping-city input').val(address.city)
+              $shippingInfo.find('#shipping-state input').val(address.state)
+              $shippingInfo.find('#shipping-zip input').val(address.postalCode)
+              $shippingInfo.find('#shipping-country input').val(address.country)
+              app.set 'validShippingAddress', true
+              setTimeout ->
+                $form.submit()
+              , 10
+            cancel:  'No'
+            onCancel: ->
+              $('#error-message').text 'We could not verify your shipping address.  Please try again.'
+          return true
+      $shippingInfo.find('input').addClass('error')
+      $('#error-message').text 'We could not verify your shipping address.  Please try again.'
+
+  # Create credit card fanciness: https://github.com/jessepollak/card
+  $form.card
+    container:   '#card-wrapper'
+    numberInput: '#stripe-number'
+    expiryInput: '#stripe-expiry-month, #stripe-expiry-year'
+    cvcInput:    '#stripe-cvc'
+    nameInput:   '#stripe-name'
+
+    formatting: true
+
+    values:
+      number: '•••• •••• •••• ••••',
+      name: 'Full Name',
+      expiry: '••/••••',
+      cvc: '•••'
+
+  # Handle form submission
+  $form.submit (e) ->
+    # Do basic authorization
+    unless validateForm()
       return false
+
+    # unless app.get 'validBillingAddress'
+    #   $billingInfo = $('.billing-information')
+    #   address = new validator.Address
+    #     street:     $billingInfo.find('#billing-address-1 input').val()
+    #     city:       $billingInfo.find('#billing-city input').val()
+    #     state:      $billingInfo.find('#billing-state input').val()
+    #     postalCode: $billingInfo.find('#billing-zip input').val()
+    #     country:    $billingInfo.find('#billing-country input').val()
+    #   validator.validate(address, validator.match.streetAddress, validateBilling)
+    #   location.href = "#billing-address"
+    #   $('#error-message').text 'Please validate your billing address'
+    #   return false
+
+    # if !$('input[name="ShipToBilling"]').is(':checked') && !app.get('validShippingAddress')
+    #   $shippingInfo = $('.shipping-information')
+    #   address = new validator.Address
+    #     street:     $shippingInfo.find('#shipping-address-1 input').val()
+    #     city:       $shippingInfo.find('#shipping-city input').val()
+    #     state:      $shippingInfo.find('#shipping-state input').val()
+    #     postalCode: $shippingInfo.find('#shipping-zip input').val()
+    #     country:    $shippingInfo.find('#shipping-country input').val()
+    #   validator.validate(address, validator.match.streetAddress, validateShipping)
+    #   location.href = "#shipping-address"
+    #   $('#error-message').text 'Please validate your shipping address'
+    #   return false
+
+    # Do stripe authorization
+    unless app.get 'approved'
+      Stripe.card.createToken $form, stripeAuthorize
+      return false
+
+    # This should only happen when form is manually from `stripeAuthorize`
     true
-  return

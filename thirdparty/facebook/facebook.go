@@ -1,21 +1,21 @@
 package facebook
 
 import (
-	"fmt"
-	"net/url"
 	"encoding/json"
-	"math/rand"
+	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/auth"
+	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models"
 	"crowdstart.io/util/log"
-	"crowdstart.io/datastore"
 
 	"appengine/urlfetch"
 )
@@ -74,8 +74,14 @@ func Callback(c *gin.Context) {
 	ctx := middleware.GetAppEngine(c)
 	client := urlfetch.Client(ctx)
 
-	req = http.NewRequest("GET",
-	 fmt.Sprintf("http://graph.facebook.com/%s/me&access_token=%s", graphVersion, accessToken))
+	req, err := http.NewRequest(
+		"GET",
+		fmt.Sprintf("http://graph.facebook.com/%s/me&access_token=%s", graphVersion, accessToken),
+		nil,
+	)
+	if err != nil {
+		log.Panic("Error while creating a http request \n%v", err)
+	}
 
 	res, err := client.Do(req)
 	if err != nil {
@@ -87,7 +93,7 @@ func Callback(c *gin.Context) {
 		log.Panic("Error reading from Graph API", err)
 	}
 
-	var user models.User
+	user := new(models.User)
 	err = json.Unmarshal(jsonBlob, &user.Facebook)
 	if err != nil {
 		log.Panic("Error parsing Graph API JSON response", err)
@@ -105,7 +111,7 @@ func Callback(c *gin.Context) {
 	existingUser.LastName = user.Facebook.LastName
 	existingUser.Email = user.Facebook.Email
 
-	_, err := db.PutKey("user", existingUser.Email, user)
+	_, err = db.PutKey("user", existingUser.Email, user)
 	if err != nil {
 		log.Panic("Error creating user using Facebook", err)
 	}
@@ -128,7 +134,12 @@ func LoginUser(c *gin.Context) {
 	ctx := middleware.GetAppEngine(c)
 	client := urlfetch.Client(ctx)
 
-	res, err := client.Do("GET", url)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		log.Panic("Error while creating a http request \n%v", err)
+	}
+
+	res, err := client.Do(req)
 	defer res.Body.Close()
 	if err != nil {
 		log.Panic("loginReq failed.", err)
@@ -136,7 +147,7 @@ func LoginUser(c *gin.Context) {
 }
 
 func IsAccessTokenExpired(c *gin.Context) bool {
-	user := GetUser(c)
+	user := auth.GetUser(c)
 	if user == nil {
 		return true
 	}
@@ -146,9 +157,15 @@ func IsAccessTokenExpired(c *gin.Context) bool {
 	}
 
 	ctx := middleware.GetAppEngine(c)
-	client :- urlfetch.Client(ctx)
+	client := urlfetch.Client(ctx)
 
-	res, err := client.Do("GET", fmt.Sprintf("http://graph.facebook.com/v2.2/me/permission?access_token=%s", user.Facebook.AccessToken))
+	url := fmt.Sprintf("http://graph.facebook.com/v2.2/me/permission?access_token=%s", user.Facebook.AccessToken)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		log.Panic("Error while creating an http request \n%v", err)
+	}
+
+	res, err := client.Do(req)
 	defer res.Body.Close()
 	if err != nil {
 		log.Panic("Checking permissions using the Graph API failed", err)
@@ -160,6 +177,6 @@ func IsAccessTokenExpired(c *gin.Context) bool {
 	}
 
 	j := string(jsonBlob)
-	
-	return strings.Contains(j, "public_profile") 
+
+	return strings.Contains(j, "public_profile")
 }

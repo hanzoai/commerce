@@ -32,6 +32,12 @@ gae_staging  = config/staging \
 			   preorder/app.staging.yaml \
 			   store/app.staging.yaml
 
+gae_skully  = config/skully \
+			  api/app.skully.yaml \
+			  checkout/app.skully.yaml \
+			  preorder/app.skully.yaml \
+			  store/app.skully.yaml
+
 gae_production  = config/production \
 				  api \
 				  checkout \
@@ -54,19 +60,22 @@ mtime_file_watcher = https://gist.githubusercontent.com/zeekay/d92deea5091849d79
 # static assets, requisite javascript from assets -> static
 bebop = node_modules/.bin/bebop
 
-requisite	   = node_modules/.bin/requisite
+requisite	   = node_modules/.bin/requisite -s -g
 requisite_opts = assets/js/store/store.coffee \
 				 assets/js/preorder/preorder.coffee \
 				 assets/js/checkout/checkout.coffee \
 				 -o static/js/store.js \
 				 -o static/js/preorder.js \
-				 -o static/js/checkout.js -m
+				 -o static/js/checkout.js
+requisite_opts_min = -m --strip-debug
+
 
 stylus		   = node_modules/.bin/stylus
 stylus_opts    = assets/css/preorder/preorder.styl \
 				 assets/css/store/store.styl \
 				 assets/css/checkout/checkout.styl \
-				 -o static/css -u autoprefixer-stylus -u csso-stylus -c
+				 -o static/css -u autoprefixer-stylus
+stylus_opts_min = -u csso-stylus -c
 
 # find command differs between bsd/linux thus the two versions
 ifeq ($(os), "linux")
@@ -90,16 +99,19 @@ all: deps assets test install
 
 assets: deps-assets compile-css compile-js
 
-assets-minified: deps-assets compile-css compile-minified-js
+assets-min: deps-assets compile-css-min compile-js-min
 
 compile-js:
-	$(requisite) $(requisite_opts) -g -s
+	$(requisite) $(requisite_opts)
 
-compile-minified-js:
-	$(requisite) $(requisite_opts) -g -s -m
+compile-js-min:
+	$(requisite) $(requisite_opts) $(requisite_opts_min)
 
 compile-css:
-	$(stylus) $(stylus_opts)
+	$(stylus) $(stylus_opts) --sourcemap --sourcemap-inline
+
+compile-css-min:
+	$(stylus) $(stylus_opts) $(stylus_opts_min)
 
 live-reload: assets
 	$(bebop)
@@ -169,7 +181,7 @@ bench: build
 deploy: test
 	go run scripts/deploy.go
 
-deploy-appengine: assets-minified
+deploy-appengine: assets-min
 	for module in $(gae_production); do \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check rollback $$module; \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check update $$module; \
@@ -177,12 +189,19 @@ deploy-appengine: assets-minified
 	done; \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/production
 
-deploy-appengine-staging: assets-minified
+deploy-appengine-staging: assets-min
 	for module in $(gae_staging); do \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check rollback $$module; \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check update $$module; \
 	done; \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/staging
+
+deploy-appengine-skully: assets-min
+	for module in $(gae_skully); do \
+		$(sdk_path)/appcfg.py --skip_sdk_update_check rollback $$module; \
+		$(sdk_path)/appcfg.py --skip_sdk_update_check update $$module; \
+	done; \
+	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/skully
 
 deploy-appengine-ci: assets-minified
 	for module in $(gae_production); do \
@@ -196,11 +215,11 @@ deploy-appengine-ci: assets-minified
 datastore-export:
 	mkdir -p _export/ && \
 	bulkloader.py --download \
-				  --url http://default.crowdstart.io/_ah/remote_api \
-				  --config_file config/production/bulkloader.yaml \
-				  --db_filename /tmp/bulkloader-db \
-				  --log_file /tmp/bulkloader-log \
-				  --result_db_filename /tmp/bulkloader-result \
+				  --url http://static.skullysystems.com/_ah/remote_api \
+				  --config_file config/skully/bulkloader.yaml \
+				  --db_filename /tmp/bulkloader-$$kind.db \
+				  --log_file /tmp/bulkloader-$$kind.log \
+				  --result_db_filename /tmp/bulkloader-result-$$kind.db \
 				  --kind $$kind \
 				  --filename _export/$$kind.csv && \
-	rm -rf /tmp/bulkloader.db /tmp/bulkloader.log /tmp/bulkloader-result.db
+	rm -rf /tmp/bulkloader-$$kind.db /tmp/bulkloader-$$kind.log /tmp/bulkloader-result-$$kind.db

@@ -15,3 +15,4 @@ static/js/store.js
 config.json
 *.sql3
 *.csv
+*.pyc
