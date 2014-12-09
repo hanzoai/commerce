@@ -27,6 +27,7 @@ func (f *CheckoutForm) Parse(c *gin.Context) error {
 	bonus := make([]models.LineItem, 0)
 	itemMap := make(map[string]int)
 	bonusMap := make(map[string]int)
+
 	for i, item := range f.Order.Items {
 		if item.Price() > 0 {
 			if index, ok := itemMap[item.SKU()]; ok {
