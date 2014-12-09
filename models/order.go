@@ -3,6 +3,7 @@ package models
 import (
 	"bytes"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/mholt/binding"
@@ -76,7 +77,7 @@ func (o Order) Description() string {
 		}
 		buffer.WriteString(item.SKU())
 		buffer.WriteString(" x")
-		buffer.WriteString(string(item.Quantity))
+		buffer.WriteString(strconv.Itoa(item.Quantity))
 	}
 	return buffer.String()
 }
