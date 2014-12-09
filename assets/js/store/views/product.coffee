@@ -63,7 +63,7 @@ class ProductView extends View
       listingSKU: listingSKU
       sku:      variant.SKU
       color:    variant.Color
-      img:      product.Images[0].Url
+      img:      product.Images?[0]?.Url
       name:     product.Title
       price:    (parseInt(variant.Price, 10) - parseInt(listing.Configs[0].PriceAdjustment, 10)) * 0.0001
       quantity: quantity
@@ -78,7 +78,7 @@ class ProductView extends View
       childProducts.push
         sku:      variant.SKU
         color:    variant.Color
-        img:      product.Images[0].Url
+        img:      product.Images?[0]?.Url
         name:     product.Title
         price:    (parseInt(variant.Price, 10) - parseInt(config.PriceAdjustment, 10)) * 0.0001
         multiplier: config.Quantity
