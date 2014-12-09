@@ -18,10 +18,13 @@ type Order struct {
 	CreatedAt       time.Time `schema:"-"`
 	UpdatedAt       time.Time `schema:"-"`
 	Id              string    `schema:"-"`
-	Shipping        int64     `schema:"-"`
-	Subtotal        int64     `schema:"-"`
-	Tax             int64     `schema:"-"`
-	Total           int64     `schema:"-"`
+	Email           string    `schema:"-"`
+
+	// TODO: Recalculate Shipping/Tax on server
+	Shipping int64
+	Tax      int64
+	Subtotal int64 `schema:"-"`
+	Total    int64 `schema:"-"`
 
 	Items []LineItem
 
@@ -32,9 +35,12 @@ type Order struct {
 	// Need to save campaign id
 	CampaignId string
 
+	Preorder  bool
 	Cancelled bool
 	Shipped   bool
 	// ShippingOption  ShippingOption
+
+	Test bool
 }
 
 func (o Order) Description() string {
@@ -57,12 +63,20 @@ func (o Order) DisplayTax() string {
 	return DisplayPrice(o.Tax)
 }
 
+func (o Order) DisplayShipping() string {
+	return DisplayPrice(o.Shipping)
+}
+
 func (o Order) DisplayTotal() string {
 	return DisplayPrice(o.Total)
 }
 
 func (o Order) DecimalTotal() uint64 {
 	return uint64(FloatPrice(o.Total) * 100)
+}
+
+func (o Order) DecimalFee() uint64 {
+	return uint64(FloatPrice(o.Total) * 100 * 0.2)
 }
 
 // Use binding to validate that there are no errors
@@ -109,7 +123,7 @@ func (o *Order) Populate(db *datastore.Datastore) error {
 	}
 
 	// Update grand total
-	o.Total = o.Subtotal + o.Tax
+	o.Total = o.Subtotal + o.Tax + o.Shipping
 	return nil
 }
 

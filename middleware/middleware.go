@@ -7,6 +7,7 @@ import (
 
 	"crowdstart.io/auth"
 	"crowdstart.io/config"
+	"crowdstart.io/util/log"
 )
 
 // Automatically get App Engine context.
@@ -25,19 +26,47 @@ func AddHost() gin.HandlerFunc {
 	}
 }
 
-// Login Required middleware
-func LoginRequired() gin.HandlerFunc {
+// Updates session with login information, does not require it
+func CheckLogin() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if !auth.IsLoggedIn(c) {
-			c.Redirect(301, config.UrlFor("platform", "/login"))
+		loggedIn := auth.IsLoggedIn(c)
+		log.Debug("loggedIn: %v", loggedIn)
+		c.Set("logged-in", loggedIn)
+	}
+}
+
+// Require login to view route
+func LoginRequired(moduleName string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		v, err := c.Get("logged-in")
+		loggedIn, _ := v.(bool)
+
+		if err != nil {
+			loggedIn = auth.IsLoggedIn(c)
+			c.Set("logged-in", loggedIn)
+		}
+
+		if !loggedIn {
+			log.Debug("Redirecting to login page")
+			c.Redirect(302, config.UrlFor(moduleName, "/login"))
+			c.Abort(302)
 		}
 	}
 }
 
-func LoggedOutRequired() gin.HandlerFunc {
+// Required to be logged out to view
+func LogoutRequired(moduleName string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if auth.IsLoggedIn(c) {
-			c.Redirect(301, "/")
+		v, err := c.Get("logged-in")
+		loggedIn, _ := v.(bool)
+
+		if err != nil {
+			loggedIn = auth.IsLoggedIn(c)
+			c.Set("logged-in", loggedIn)
+		}
+
+		if loggedIn {
+			c.Redirect(302, config.UrlFor(moduleName, "/profile"))
 		}
 	}
 }

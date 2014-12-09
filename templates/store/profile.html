@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content_header %}
+    <h1>Profile</h1>
+{% endblock %}
+
+{% block css %}
+
+{% endblock %}
+
+{% block content %}
+<div class="profile">
+    <form action="{{ config.UrlFor("store", "/profile") }}" method="POST">
+        <div class="form">
+            <div class="field">
+                <label for="firstName">First name</label>
+                <input id="firstName" name="FirstName" value="{{ user.FirstName }}">
+            </div>
+
+            <div class="field">
+                <label for="lastName">Last name</label>
+                <input id="lastName" name="LastName" value="{{ user.LastName }}">
+            </div>
+
+            <div class="field">
+                <label for="phone">Phone</label>
+                <input id="phone" name="Phone" value="{{ user.Phone }}">
+            </div>
+
+            <div>
+                <button type="submit">Save</button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -2,67 +2,24 @@ package middleware
 
 import (
 	"appengine"
-	"errors"
 	"fmt"
-	"net/http"
 	"runtime"
-	"sync"
 
-	"github.com/getsentry/raven-go"
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
 )
 
-var once sync.Once
-var sentryDsn = "https://4daf3e86c2744df4b932abbe4eb48aa8:27fa30055d9747e795ca05d5ffb96f0c@app.getsentry.com/32164"
-var client *raven.Client
-
-// Logs errors to sentry
-func logToSentry(c *gin.Context, ctx appengine.Context, stack string) {
-
-	// Only capture to sentry in production
-	if appengine.IsDevAppServer() {
-		return
-	}
-
-	// Get client
-	once.Do(func() {
-		client, err := raven.NewClient(sentryDsn, map[string]string{})
-		if err != nil {
-			ctx.Errorf("Unable to create Sentry client: %v, %v", client, err)
-		}
-	})
-
-	// Send request
-	flags := map[string]string{
-		"endpoint": c.Request.RequestURI,
-	}
-
-	if client != nil {
-		packet := raven.NewPacket(stack, raven.NewException(errors.New(stack), raven.NewStacktrace(2, 3, nil)))
-		client.Capture(packet, flags)
-	}
-}
-
-// Not needed?
-func getStack() string {
-	buf := make([]byte, 32)
-	for {
-		n := runtime.Stack(buf, false)
-		if n < len(buf) {
-			break
-		}
-		buf = make([]byte, len(buf)*2)
-	}
-	return string(buf)
-}
-
 // Show our error page & log it out
-func handleError(c *gin.Context, stack string) {
+func displayError(c *gin.Context, stack string) {
 	c.Writer.Header().Set("Content-Type", "text/html; charset=utf-8")
-	c.Writer.WriteHeader(http.StatusInternalServerError)
+	c.Abort(500)
+
+	// Trim beginning of stacktrace
+	// lines := strings.Split(stack, "\n")
+	// msg := lines[0]
+	// lines = append([]string{msg + "\n"}, lines[5:]...)
+	// stack = strings.Join(lines, "\n")
 
 	if appengine.IsDevAppServer() {
 		c.Writer.Write([]byte(`<html>
@@ -81,24 +38,22 @@ func handleError(c *gin.Context, stack string) {
 
 		<pre>` + stack + "</pre></body></html>"))
 	} else {
+		ctx := c.MustGet("appengine").(appengine.Context)
+		ctx.Errorf("500: %v", stack)
 		template.Render(c, "error/500.html")
 	}
-
-	ctx := GetAppEngine(c)
-	log.Error(stack, ctx)
-	logToSentry(c, ctx, stack)
 }
 
-// Serve custom 500 error page and log to sentry in production.
+// Serve custom 500 error page and log errors
 func ErrorHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// On panic
 		defer func() {
-			if rval := recover(); rval != nil {
-				errstr := fmt.Sprint(rval)
-				trace := make([]byte, 1024*16)
+			if r := recover(); r != nil {
+				errstr := fmt.Sprint(r)
+				trace := make([]byte, 1024*8)
 				runtime.Stack(trace, false)
-				handleError(c, errstr+"\n\n"+string(trace))
+				displayError(c, errstr+"\n\n"+string(trace))
 			}
 		}()
 
@@ -106,9 +61,10 @@ func ErrorHandler() gin.HandlerFunc {
 
 		// When someone calls c.Fail(500)
 		if !c.Writer.Written() && c.Writer.Status() == 500 {
-			stack := fmt.Sprint(c.LastError())
+			err := c.LastError()
+			stack := fmt.Sprint(err)
 			// stack = stack + "\n" + getStack()
-			handleError(c, stack)
+			displayError(c, stack)
 		}
 	}
 }

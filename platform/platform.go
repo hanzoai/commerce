@@ -10,9 +10,11 @@ import (
 func init() {
 	router := router.New("platform")
 
+	loginRequired := middleware.LoginRequired("platform")
+
 	router.GET("/", admin.Index)
 
-	router.GET("/dashboard", middleware.LoginRequired(), admin.Dashboard)
+	router.GET("/dashboard", loginRequired, admin.Dashboard)
 
 	router.GET("/login", admin.Login)
 	router.POST("/login", admin.SubmitLogin)
@@ -21,13 +23,13 @@ func init() {
 	router.GET("/register", admin.Register)
 	router.POST("/register", admin.SubmitRegister)
 
-	router.GET("/profile", middleware.LoginRequired(), admin.Profile)
+	router.GET("/profile", loginRequired, admin.Profile)
 	router.POST("/profile", admin.SubmitProfile)
 
-	router.GET("/connect", middleware.LoginRequired(), admin.Connect)
+	router.GET("/connect", loginRequired, admin.Connect)
 
 	// Callback for stripe connect
-	router.GET("/stripe/callback", middleware.LoginRequired(), admin.StripeCallback)
+	router.GET("/stripe/callback", loginRequired, admin.StripeCallback)
 
 	// Stripe webhook, we don't do anything with this atm.
 	router.GET("/stripe/hook", admin.StripeWebhook)

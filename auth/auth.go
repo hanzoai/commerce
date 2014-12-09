@@ -26,13 +26,13 @@ func HashPassword(password string) []byte {
 }
 
 func IsLoggedIn(c *gin.Context) bool {
-	value, err := Get(c, loginKey)
+	value, err := GetEmail(c)
 	return err == nil && value != ""
 }
 
 func IsFacebookUser(c *gin.Context) bool {
 	user := GetUser(c)
-	if user  == nil {
+	if user == nil {
 		return false
 	}
 	return user.Facebook.AccessToken != "" // Checks if AccessToken is set
@@ -62,11 +62,12 @@ func VerifyUser(c *gin.Context) error {
 	return Login(c, f.Email)
 }
 
+// Login should only be used in exceptional circumstances.
+// Use VerifyUser when possible.
 func Login(c *gin.Context, email string) error {
 	return Set(c, loginKey, email)
 }
 
-func Logout(c *gin.Context) {
-	Delete(c, loginKey)
-	c.Redirect(301, "/user/login")
+func Logout(c *gin.Context) error {
+	return Delete(c, loginKey)
 }
