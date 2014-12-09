@@ -55,7 +55,7 @@ var All = delay.Func("install-all-fixtures", func(c appengine.Context) {
 			Email:    "test@test.com",
 			Preorder: true,
 		}
-		db.PutKey("order", "test@test.com", order)
+		db.PutKey("order", "test@test.com", &order)
 	}
 
 	// TODO: Stop doing this in production

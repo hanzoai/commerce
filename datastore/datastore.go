@@ -106,7 +106,7 @@ func (d *Datastore) PutKey(kind string, key interface{}, src interface{}) (strin
 
 	k, err := nds.Put(d.Context, k, src)
 	if err != nil {
-		log.Error("%v", err, d.Context)
+		log.Error("%v, %v, %v, %#v", err, kind, k, src, d.Context)
 		return "", err
 	}
 	return k.Encode(), nil
