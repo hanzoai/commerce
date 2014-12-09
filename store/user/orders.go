@@ -10,25 +10,19 @@ import (
 	"crowdstart.io/util/template"
 )
 
-func DisplayOrders(c *gin.Context) {
+func ListOrders(c *gin.Context) {
 	email, err := auth.GetEmail(c)
-	if err == nil {
-		log.Panic("Error getting logged in user from the datastore \n%v", err)
+	if err != nil {
+		log.Panic("Error getting email from the session \n%v", err)
 	}
 
 	db := datastore.New(c)
-	var genOrders []interface{}
+	var orders []models.Order
 	_, err = db.Query("order").
 		Filter("Email =", email).
-		GetAll(db.Context, genOrders)
-
+		GetAll(db.Context, &orders)
 	if err != nil {
 		log.Panic("Error retrieving orders associated with the user's email", err)
-	}
-
-	orders := make([]models.Order, len(genOrders))
-	for i, o := range genOrders {
-		orders[i] = o.(models.Order)
 	}
 
 	template.Render(c, "orders.html",
@@ -41,6 +35,7 @@ type CancelOrderStatus struct {
 	Message string `json:"message"`
 }
 
+// Do not route to this.
 func CancelOrder(c *gin.Context) {
 	orderId := c.Request.URL.Query().Get("id")
 
