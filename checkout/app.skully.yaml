@@ -11,6 +11,10 @@ automatic_scaling:
   min_idle_instances: 1
 
 handlers:
+- url: /_ah/queue/go/delay
+  script: _go_app
+  login: admin
+
 - url: /.*
   script: _go_app
   secure: always
