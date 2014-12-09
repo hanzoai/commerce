@@ -53,10 +53,11 @@ validateForm = ->
       $errors.append $("<p>#{error}</p>")
 
     # scroll to first error
-    location.href = '#' + empty[0].id
-    pos = $(window).scrollTop() - 100 # save position
-    location.hash = '' # clear hash
-    $(window).scrollTop pos
+    if empty.length > 0
+      location.href = '#' + empty[0].id
+      pos = $(window).scrollTop() - 100 # save position
+      location.hash = '' # clear hash
+      $(window).scrollTop pos
 
   return valid
 
