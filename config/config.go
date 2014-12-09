@@ -1,15 +1,13 @@
 package config
 
 import (
+	"appengine"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
-
-	"appengine"
-
-	"crowdstart.io/util/log"
 )
 
 var demoMode = true
@@ -19,7 +17,13 @@ var cachedConfig *Config
 // app.yaml files so we need to check two places for config.json based on which
 // module is trying to load it.
 var cwd, _ = os.Getwd()
-var configFileLocations = []string{cwd + "/../config.json", cwd + "/../../config.json"}
+var configFileLocations = []string{
+	cwd + "/../../../../config.json",
+	cwd + "/../../../config.json",
+	cwd + "/../../config.json",
+	cwd + "/../config.json",
+	cwd + "/config.json",
+}
 
 type Config struct {
 	DemoMode          bool
@@ -33,6 +37,7 @@ type Config struct {
 	SiteTitle         string
 	Prefixes          map[string]string
 	Hosts             map[string]string
+	SentryDSN         string
 	Salesforce        struct {
 		ConsumerKey    string
 		ConsumerSecret string
@@ -45,9 +50,10 @@ type Config struct {
 		RedirectURL string
 		WebhookURL  string
 	}
-
 	Mandrill struct {
-		ApiKey string
+		APIKey    string
+		FromEmail string
+		FromName  string
 	}
 }
 
@@ -85,11 +91,11 @@ func (c Config) UrlFor(moduleName string, args ...string) (url string) {
 func (c *Config) Load(fileName string) {
 	file, err := os.Open(fileName)
 	if err != nil {
-		log.Panic("Failed to open configuration file: %v", err)
+		panic(fmt.Sprintf("Failed to open configuration file: %v", err))
 	}
 	decoder := json.NewDecoder(file)
 	if err = decoder.Decode(c); err != nil {
-		log.Panic("Failed to decode configuration file: %v", err)
+		panic(fmt.Sprintf("Failed to decode configuration file: %v", err))
 	}
 }
 
@@ -101,7 +107,6 @@ func Defaults() *Config {
 	config.RootDir, _ = filepath.Abs(cwd + "/../..")
 	config.SiteTitle = "SKULLY"
 	config.DemoMode = demoMode
-	config.Mandrill.ApiKey = "wJ3LGLp5ZOUZlSH8wwqmTg"
 	return config
 }
 
@@ -147,6 +152,8 @@ func Development() *Config {
 func Production() *Config {
 	config := Defaults()
 
+	config.SentryDSN = "https://4daf3e86c2744df4b932abbe4eb48aa8:27fa30055d9747e795ca05d5ffb96f0c@app.getsentry.com/32164"
+
 	config.IsProduction = true
 
 	config.Prefixes["default"] = "/"
@@ -164,6 +171,8 @@ func Production() *Config {
 	config.Hosts["store"] = "store.crowdstart.io"
 
 	config.StaticUrl = "//static.crowdstart.io"
+
+	config.Mandrill.APIKey = "wJ3LGLp5ZOUZlSH8wwqmTg"
 
 	// Only use production credentials if demo mode is off.
 	if !config.DemoMode {
@@ -196,6 +205,43 @@ func Staging() *Config {
 	config.Hosts["store"] = "store.staging.crowdstart.io"
 
 	config.StaticUrl = "//static.staging.crowdstart.io"
+
+	config.StaticUrl = "//static.skullysystems.com"
+	config.Mandrill.FromName = "SKULLY"
+	config.Mandrill.FromEmail = "noreply@skullysystems.com"
+
+	return config
+}
+
+// Staging Settings
+func Skully() *Config {
+	config := Production()
+
+	config.Hosts["default"] = "static.skullysystems.com"
+	config.Hosts["api"] = "invalid.skullysystems.com" // Setting platform to API temporarily.
+	config.Hosts["checkout"] = "secure.skullysystems.com"
+	config.Hosts["platform"] = "api.skullysystems.com"
+	config.Hosts["preorder"] = "preorder.skullysystems.com"
+	config.Hosts["store"] = "store.skullysystems.com"
+
+	config.StaticUrl = "//static.skullysystems.com"
+	config.Mandrill.FromName = "SKULLY"
+	config.Mandrill.FromEmail = "noreply@skullysystems.com"
+
+	config.DemoMode = false
+
+	// Only use production credentials if demo mode is off.
+	if !config.DemoMode {
+		config.Salesforce.ConsumerKey = "3MVG9xOCXq4ID1uElRYWhpUWjXSbiTVg4WO6q9DvWdvBjQ_DFlwSc7jZ9AbY3z9Jv_V29W7xq1nPjTYQhYJqF"
+		config.Salesforce.ConsumerSecret = "3811316853831925498"
+		config.Salesforce.CallbackURL = "https://admin.crowdstart.io/salesforce/callback"
+
+		config.Stripe.ClientId = "ca_53yyRUNpMtTRUgMlVlLAM3vllY1AVybU"
+		config.Stripe.APIKey = "pk_live_APr2mdiUblcOO4c2qTeyQ3hq"
+		config.Stripe.APISecret = ""
+		config.Stripe.RedirectURL = "https:" + config.UrlFor("platform", "/stripe/callback")
+		config.Stripe.WebhookURL = "https:" + config.UrlFor("platform", "/stripe/hook")
+	}
 	return config
 }
 
@@ -214,6 +260,8 @@ func Get() *Config {
 		pwd := os.Getenv("PWD")
 		if strings.Contains(pwd, "s~crowdstart-io-staging") {
 			cachedConfig = Staging()
+		} else if strings.Contains(pwd, "s~skully-crowdstart") {
+			cachedConfig = Skully()
 		} else {
 			cachedConfig = Production()
 		}
@@ -232,19 +280,20 @@ func Get() *Config {
 var config = Get()
 
 // Expose global config.
+var AutoCompileAssets = config.AutoCompileAssets
+var AutoLoadFixtures = config.AutoLoadFixtures
 var DemoMode = config.DemoMode
 var IsDevelopment = config.IsDevelopment
 var IsProduction = config.IsProduction
 var IsStaging = config.IsStaging
-var AutoCompileAssets = config.AutoCompileAssets
-var AutoLoadFixtures = config.AutoLoadFixtures
-var RootDir = config.RootDir
-var Prefixes = config.Prefixes
-var StaticUrl = config.StaticUrl
-var Salesforce = config.Salesforce
-var Stripe = config.Stripe
-var SiteTitle = config.SiteTitle
 var Mandrill = config.Mandrill
+var Prefixes = config.Prefixes
+var RootDir = config.RootDir
+var Salesforce = config.Salesforce
+var SentryDSN = config.SentryDSN
+var SiteTitle = config.SiteTitle
+var StaticUrl = config.StaticUrl
+var Stripe = config.Stripe
 
 func UrlFor(moduleName string, args ...string) string {
 	return config.UrlFor(moduleName, args...)
