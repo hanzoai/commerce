@@ -1,12 +1,13 @@
 package stripe
 
 import (
+	"appengine"
+	"appengine/urlfetch"
+	"strings"
+
 	"github.com/stripe/stripe-go"
 	"github.com/stripe/stripe-go/client"
 	"github.com/stripe/stripe-go/currency"
-
-	"appengine"
-	"appengine/urlfetch"
 
 	"crowdstart.io/models"
 	"crowdstart.io/util/log"
@@ -31,12 +32,12 @@ func Charge(ctx appengine.Context, accessToken string, authorizationToken string
 		Statement: "SKULLY",
 	}
 
-	// Force test when email is test@test.com
-	if (order.Email == "test@test.com") || (order.Test) {
+	// Force test when email is @verus.io
+	if (strings.Contains(order.Email, "@verus.io")) || (order.Test) {
 		log.Debug("Charging in test mode", ctx)
 		order.Test = true
-		params.Amount = 100
-		params.Fee = 2
+		params.Amount = 50 // Minium stripe charge
+		params.Fee = 1
 	}
 
 	stripeCharge, err := sc.Charges.New(params)
