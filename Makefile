@@ -95,8 +95,9 @@ endif
 export GOROOT  := $(goroot)
 export GOPATH  := $(gopath)
 
-all: deps assets test install
+all: test install
 
+# ASSETS
 assets: deps-assets compile-css compile-js
 
 assets-min: deps-assets compile-css-min compile-js-min
@@ -113,11 +114,18 @@ compile-css:
 compile-css-min:
 	$(stylus) $(stylus_opts) $(stylus_opts_min)
 
-live-reload: assets
-	$(bebop)
-
-build: deps
+# BUILD
+build: deps assets
 	goapp build $(modules)
+
+# DEPS
+deps: deps-assets deps-go
+
+# DEPS JS/CSS
+deps-assets: node_modules node_modules/.bin/bebop node_modules/.bin/requisite node_modules/.bin/stylus
+
+node_modules:
+	npm install
 
 node_modules/.bin/bebop:
 	npm install bebop@latest
@@ -128,19 +136,11 @@ node_modules/.bin/requisite:
 node_modules/.bin/stylus:
 	npm install stylus@latest
 
-deps-assets: node_modules/.bin/bebop node_modules/.bin/requisite node_modules/.bin/stylus
-	npm install
+# DEPS GO
+deps-go: .sdk .godeps
 
-deps-go: .sdk
+.godeps:
 	gpm install || curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.1/bin/gpm | bash
-
-deps: deps-go deps-assets
-
-install: install-deps
-	goapp install $(modules) $(packages)
-
-install-deps:
-	goapp install $(deps)
 
 .sdk:
 	wget https://storage.googleapis.com/appengine-sdks/featured/$(sdk).zip && \
@@ -155,6 +155,14 @@ install-deps:
 	# curl  $(mtime_file_watcher) > $(sdk_path)/google/appengine/tools/devappserver2/mtime_file_watcher.py && \
 	# pip install watchdog
 
+# INSTALL
+install: install-deps
+	goapp install $(modules) $(packages)
+
+install-deps:
+	goapp install $(deps)
+
+# DEV SERVER
 serve: assets
 	$(sdk_path)/dev_appserver.py --datastore_path=~/.gae_datastore.bin $(gae_development)
 
@@ -167,17 +175,24 @@ serve-no-restart: assets
 serve-public: assets
 	$(sdk_path)/dev_appserver.py --host=0.0.0.0 --datastore_path=~/.gae_datastore.bin $(gae_development)
 
+# LIVE RELOAD SERVER
+live-reload: assets
+	$(bebop)
+
+# GOLANG TOOLS
 tools:
 	goapp get $(tools) && \
 	goapp install $(tools) && \
 	gocode set lib-path "$(gopath_pkg_path):$(goroot_pkg_path)"
 
+# TEST/ BENCH
 test:
 	goapp test -timeout 60s $(test_modules) $(verbose)
 
-bench: build
+bench:
 	goapp test -timeout 60s $(test_modules) $(verbose) --bench=.
 
+# DEPLOY
 deploy: test
 	go run scripts/deploy.go
 
@@ -211,7 +226,7 @@ deploy-appengine-ci: assets-minified
 	done; \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/production
 
-# Usage: make datastore-export kind=user
+# EXPORT / Usage: make datastore-export kind=user
 datastore-export:
 	mkdir -p _export/ && \
 	bulkloader.py --download \
