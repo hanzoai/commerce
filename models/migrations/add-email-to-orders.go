@@ -27,7 +27,7 @@ var AddEmailToOrders = delay.Func("add-email-to-orders-migration", func(c appeng
 
 		// Error
 		if err != nil {
-			log.Error("Error fetching order: %v", err, c)
+			log.Warn("Error fetching order: %v", err, c)
 			continue
 		}
 
