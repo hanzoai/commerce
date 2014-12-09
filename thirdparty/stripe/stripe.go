@@ -14,13 +14,12 @@ import (
 
 func Charge(ctx appengine.Context, accessToken string, authorizationToken string, order *models.Order) (string, error) {
 	backend := stripe.NewInternalBackend(urlfetch.Client(ctx), "")
-
 	// Stripe advises using client-level methods
 	// in a concurrent context
 	sc := &client.API{}
 	sc.Init(accessToken, backend)
 
-	log.Debug("Token: %v, Amount: %v", authorizationToken, order.Total)
+	log.Debug("Token: %v, Amount: %v", authorizationToken, order.Total, ctx)
 
 	params := &stripe.ChargeParams{
 		Amount:   order.DecimalTotal(),
@@ -30,8 +29,10 @@ func Charge(ctx appengine.Context, accessToken string, authorizationToken string
 		Desc:     order.Description(),
 	}
 
-	// If test in form, do not charge full amount.
-	if order.Test {
+	// Force test when email is test@test.com
+	if (order.Email == "test@test.com") || (order.Test) {
+		log.Debug("Charging in test mode", ctx)
+		order.Test = true
 		params.Amount = 100
 		params.Fee = 2
 	}
