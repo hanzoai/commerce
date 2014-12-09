@@ -12,6 +12,7 @@ import (
 )
 
 func List(c *gin.Context) {
+	log.Warn("WHAT IN LIST")
 	db := datastore.New(c)
 
 	listings := make([]*models.Listing, 1)
