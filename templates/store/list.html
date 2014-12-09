@@ -45,7 +45,7 @@ var allListings = {{ listingsJSON | safe }};
 
   <div class="product-text" data-sku="{{ listing.SKU }}">
     <div class="product-title">
-      <h1 class="product-name">{{ listing.Title|safe }}</h1>
+      <h1 class="product-name">{{ listing.DisplayTitle()|safe }}</h1>
       <h2 class="product-cost"><span>$</span><span class="money"></span></h2>
     </div>
 
