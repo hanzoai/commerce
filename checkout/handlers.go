@@ -72,7 +72,7 @@ func checkout(c *gin.Context) {
 func charge(c *gin.Context) {
 	form := new(ChargeForm)
 	if err := form.Parse(c); err != nil {
-		log.Error("Failed to parse form: %v", err)
+		log.Error("Failed to parse form: %v", err, c)
 		c.Fail(500, err)
 		return
 	}
@@ -85,7 +85,35 @@ func charge(c *gin.Context) {
 	// Populate
 	if err := form.Order.Populate(db); err != nil {
 		log.Error("Failed to repopulate order information from datastore: %v", err)
-		log.Dump(form.Order)
+		c.Fail(500, err)
+		return
+	}
+
+	// Update user information
+	log.Debug("Trying to get user from session...", c)
+	user, err := auth.GetUser(c)
+	if err != nil {
+		log.Debug("Using form.User", c)
+		user = &form.User
+	}
+
+	// Set email for order
+	form.Order.Email = user.Email
+
+	// Save order
+	log.Debug("Saving order...", c)
+	if _, err := db.Put("order", &form.Order); err != nil {
+		log.Error("Error saving order", err, c)
+		c.Fail(500, err)
+		return
+	}
+
+	log.Debug("Saving user...", c)
+	user.BillingAddress = form.Order.BillingAddress
+	user.ShippingAddress = form.Order.ShippingAddress
+
+	if _, err := db.PutKey("user", user.Email, user); err != nil {
+		log.Error("Error saving order", err, c)
 		c.Fail(500, err)
 		return
 	}
@@ -103,38 +131,18 @@ func charge(c *gin.Context) {
 	}
 
 	// Charging order
-	log.Debug("Charging order.")
-	log.Dump(form.Order)
+	log.Debug("Charging order...", c)
 	log.Debug("API Key: %v, Token: %v", stripeAccessToken, form.StripeToken)
 	if _, err := stripe.Charge(ctx, stripeAccessToken, form.StripeToken, &form.Order); err != nil {
-		log.Error("Stripe Charge failed: %v", err)
+		log.Error("Stripe Charge failed: %v", err, c)
 		c.Fail(500, err)
 		return
 	}
-
-	// Save order
-	log.Debug("Saving order.")
-	_, err := db.Put("order", &form.Order)
-	if err != nil {
-		log.Error("Error saving order", err)
-		c.Fail(500, err)
-		return
-	}
-
-	// Update user information
-	user, err := auth.GetUser(c)
-	if err != nil {
-		user = &form.User
-	}
-
-	user.BillingAddress = form.Order.BillingAddress
-	user.ShippingAddress = form.Order.ShippingAddress
-	db.PutKey("user", user.Email, user)
 
 	// Send confirmation email
 	mandrill.SendTemplateAsync.Call(ctx, "confirmation-order", user.Email, user.Name())
 
-	log.Debug("Checkout complete!")
+	log.Debug("Checkout complete!", c)
 	c.Redirect(301, config.UrlFor("checkout", "/complete"))
 }
 
