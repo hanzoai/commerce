@@ -18,7 +18,7 @@ cookies =
     $.cookie name, (JSON.stringify state),
       path:    path
       expires: expires
-
+      domain: (location.hostname.replace 'store.', '').replace 'checkout.', ''
 
 class Cart extends ModelEmitter
   cookieName: 'SKULLYCart'
