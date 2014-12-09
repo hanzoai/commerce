@@ -146,9 +146,9 @@ func LoginUser(c *gin.Context) {
 }
 
 func IsAccessTokenExpired(c *gin.Context) bool {
-	user := auth.GetUser(c)
-	if user == nil {
-		return true
+	user, err := auth.GetUser(c)
+	if err != nil {
+		log.Panic("Error while retrieving user \n%v", err)
 	}
 
 	if user.Facebook.AccessToken == "" {

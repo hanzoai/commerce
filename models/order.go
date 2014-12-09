@@ -2,7 +2,9 @@ package models
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/mholt/binding"
@@ -43,16 +45,24 @@ type Order struct {
 	Test bool
 }
 
-func (o Order) Description() string {
-	buffer := bytes.NewBufferString("")
+func (o Order) When() string {
+	duration := time.Since(o.CreatedAt)
 
-	for _, i := range o.Items {
-		buffer.WriteString(i.Description)
-		buffer.WriteString(" ")
-		buffer.WriteString(string(i.Quantity))
-		buffer.WriteString("\n")
+	hours := duration.Hours()
+	if hours > 0 && hours < 24 {
+		return fmt.Sprintf("%d hours ago", hours)
 	}
-	return buffer.String()
+
+	if hours >= 24 {
+		return o.CreatedAt.Format(time.RubyDate)
+	}
+
+	minutes := duration.Minutes()
+	if hours > 0 {
+		return fmt.Sprintf("%d minutes ago", minutes)
+	}
+
+	return fmt.Sprintf("%d seconds ago", duration.Seconds())
 }
 
 func (o Order) DisplaySubtotal() string {
@@ -76,7 +86,21 @@ func (o Order) DecimalTotal() uint64 {
 }
 
 func (o Order) DecimalFee() uint64 {
-	return uint64(FloatPrice(o.Total) * 100 * 0.2)
+	return uint64(FloatPrice(o.Total) * 100 * 0.02)
+}
+
+func (o Order) Description() string {
+	buffer := bytes.NewBufferString("")
+
+	for i, item := range o.Items {
+		if i > 0 {
+			buffer.WriteString(", ")
+		}
+		buffer.WriteString(item.SKU())
+		buffer.WriteString(" x")
+		buffer.WriteString(strconv.Itoa(item.Quantity))
+	}
+	return buffer.String()
 }
 
 // Use binding to validate that there are no errors
@@ -144,6 +168,7 @@ type Charge struct {
 	Email          string
 	FailCode       string
 	FailMsg        string
+	FailType       string
 	Live           bool
 	Paid           bool
 	Refunded       bool

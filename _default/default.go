@@ -9,6 +9,7 @@ import (
 	"crowdstart.io/config"
 	"crowdstart.io/models/fixtures"
 	"crowdstart.io/models/migrations"
+	_ "crowdstart.io/thirdparty/mandrill"
 	"crowdstart.io/util/exec"
 	"crowdstart.io/util/router"
 )
