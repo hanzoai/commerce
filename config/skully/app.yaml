@@ -6,6 +6,10 @@ runtime: go
 api_version: go1
 threadsafe: true
 
+instance_class: F4
+automatic_scaling:
+  min_idle_instances: 1
+
 builtins:
 - remote_api: on
 
