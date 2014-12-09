@@ -234,12 +234,13 @@ func Send(ctx appengine.Context, req *SendReq) error {
 	return errors.New("Email not sent")
 }
 
-var SendTemplateAsync = delay.Func("send-template-email", func(ctx appengine.Context, templateName string, email string, name string) {
+var SendTemplateAsync = delay.Func("send-template-email", func(ctx appengine.Context, templateName, toEmail, toName, subject string) {
 	req := NewSendTemplateReq()
-	req.AddRecipient(email, name)
+	req.AddRecipient(toEmail, toName)
 
 	req.Message.FromEmail = config.Mandrill.FromEmail
 	req.Message.FromName = config.Mandrill.FromName
+	req.Message.Subject = subject
 	req.TemplateName = templateName
 
 	// Send template
