@@ -76,7 +76,7 @@ func (o Order) DecimalTotal() uint64 {
 }
 
 func (o Order) DecimalFee() uint64 {
-	return uint64(FloatPrice(o.Total) * 100 * 0.2)
+	return uint64(FloatPrice(o.Total) * 100 * 0.02)
 }
 
 // Use binding to validate that there are no errors
