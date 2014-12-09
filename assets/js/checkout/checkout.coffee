@@ -281,12 +281,11 @@ $(document).ready ->
         url: $form.attr 'action'
         type: "POST"
         data: $form.serializeArray()
-        success: ()->
-          window.location.replace('complete/')
-        error: ()->
-          $('#error-message').text 'Sorry, we could not charge this card please try a different credit card.'
+        success: ->
+          window.location.replace 'complete/'
+        error: ->
+          $('#error-message').text 'We were unable to charge your card. Please review your information and try again later.'
           $form.find('.loading-spinner').remove()
           lock = false
 
-    # This should only happen when form is manually from `stripeAuthorize`
     false
