@@ -157,8 +157,8 @@ func charge(c *gin.Context) {
 		return
 	}
 
-	// Send confirmation email
-	mandrill.SendTemplateAsync.Call(ctx, "confirmation-order", user.Email, user.Name())
+	// Send order confirmation email
+	mandrill.SendTemplateAsync.Call(ctx, "order-confirmation", user.Email, user.Name())
 
 	log.Debug("Checkout complete!", c)
 	c.Redirect(301, config.UrlFor("checkout", "/complete"))
