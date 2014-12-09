@@ -107,6 +107,8 @@ func Defaults() *Config {
 	config.RootDir, _ = filepath.Abs(cwd + "/../..")
 	config.SiteTitle = "SKULLY"
 	config.DemoMode = demoMode
+	config.Mandrill.FromName = "Admin"
+	config.Mandrill.FromEmail = "admin@crowdstart.io"
 	return config
 }
 
@@ -205,10 +207,6 @@ func Staging() *Config {
 	config.Hosts["store"] = "store.staging.crowdstart.io"
 
 	config.StaticUrl = "//static.staging.crowdstart.io"
-
-	config.StaticUrl = "//static.skullysystems.com"
-	config.Mandrill.FromName = "SKULLY"
-	config.Mandrill.FromEmail = "noreply@skullysystems.com"
 
 	return config
 }
