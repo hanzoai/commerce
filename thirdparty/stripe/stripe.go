@@ -30,6 +30,12 @@ func Charge(ctx appengine.Context, accessToken string, authorizationToken string
 		Desc:     order.Description(),
 	}
 
+	// If test in form, do not charge full amount.
+	if order.Test {
+		params.Amount = 100
+		params.Fee = 2
+	}
+
 	stripeCharge, err := sc.Charges.New(params)
 
 	// Charges and tokens are recorded regardless of success/failure.
