@@ -16,6 +16,8 @@ import (
 	"crowdstart.io/util/template"
 )
 
+var stripePublishableKey string
+
 // Redirect to store on GET
 func index(c *gin.Context) {
 	c.Redirect(301, config.UrlFor("store", "/cart"))
@@ -47,13 +49,19 @@ func checkout(c *gin.Context) {
 	form.Validate(c)
 
 	// Get PublishableKey Key.
-	var campaign models.Campaign
-	db.GetKey("campaign", "dev@hanzo.ai", &campaign)
+	if stripePublishableKey == "" {
+		var campaign models.Campaign
+		if err := db.GetKey("campaign", "dev@hanzo.ai", &campaign); err != nil {
+			log.Error(err, c)
+		} else {
+			stripePublishableKey = campaign.Stripe.PublishableKey
+		}
+	}
 
 	// Render order for checkout page
 	template.Render(c, "checkout.html",
 		"order", form.Order,
-		"stripePublishableKey", campaign.Stripe.PublishableKey,
+		"stripePublishableKey", stripePublishableKey,
 	)
 }
 
