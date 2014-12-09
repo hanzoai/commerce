@@ -6,6 +6,7 @@ import (
 	"encoding/csv"
 	"os"
 	"strings"
+	"time"
 
 	"code.google.com/p/go.crypto/bcrypt"
 
@@ -51,9 +52,10 @@ var All = delay.Func("install-all-fixtures", func(c appengine.Context) {
 		db.PutKey("contribution", "test", &contribution)
 
 		order := Order{
-			Id:       "test-order",
-			Email:    "test@test.com",
-			Preorder: true,
+			Id:        "test-order",
+			CreatedAt: time.Now(),
+			Email:     "test@test.com",
+			Preorder:  true,
 		}
 		db.PutKey("order", "test@test.com", &order)
 	}
