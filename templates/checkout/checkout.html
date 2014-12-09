@@ -40,12 +40,12 @@
                     <!-- Email Address -->
                     <div id="email" class="field email required">
                         <label for="User.Email">Email Address</label>
-                        <input id="User.Email" name="User.Email" placeholder="Email ex. contact@skullysystems.com" x-autocompletetype="email" type="text" spellcheck="false" maxlength="50" value="">
+                        <input id="User.Email" name="User.Email" placeholder="Email ex. contact@skullysystems.com" x-autocompletetype="email" type="text" spellcheck="false" maxlength="50" value="{{ user.Email }}">
                     </div>
                     <!-- Phone -->
                     <div id="phone" class="field phone required">
                         <label for="User.Phone">Phone Number</label>
-                        <input id="User.Phone" name="User.Phone" placeholder="Phone ex. 5-555-555-5555" x-autocompletetype="phone" type="text" spellcheck="false" maxlength="20" value="">
+                        <input id="User.Phone" name="User.Phone" placeholder="Phone ex. 5-555-555-5555" x-autocompletetype="phone" type="text" spellcheck="false" maxlength="20" value="{{ user.Phone  }}">
                     </div>
                 </fieldset>
             </div>
@@ -58,50 +58,50 @@
                     <!-- First Name -->
                     <div id="billing-first-name" class="field first-name required">
                         <label for="User.FirstName">First Name</label>
-                        <input id="User.FirstName" name="User.FirstName" placeholder="First Name ex. SKULLY" x-autocompletetype="given-name" type="text" spellcheck="false" maxlength="30" value="">
+                        <input id="User.FirstName" name="User.FirstName" placeholder="First Name ex. SKULLY" x-autocompletetype="given-name" type="text" spellcheck="false" maxlength="30" value="{{ user.FirstName }}">
                     </div>
 
                     <!-- Last Name -->
                     <div id="billing-last-name" class="field last-name required">
                         <label for="User.LastName">Last Name</label>
-                        <input id="User.LastName" name="User.LastName" placeholder="Last Name ex. Systems" x-autocompletetype="surname" type="text" spellcheck="false" maxlength="30" value="">
+                        <input id="User.LastName" name="User.LastName" placeholder="Last Name ex. Systems" x-autocompletetype="surname" type="text" spellcheck="false" maxlength="30" value="{{ user.LastName }}">
                     </div>
 
                     <!-- Billing Address 1 -->
                     <div id="billing-address-1" class="field required">
                         <label for="Order.BillingAddress.Line1">Address Line 1</label>
-                        <input id="Order.BillingAddress.Line1" name="Order.BillingAddress.Line1" placeholder="Address ex. 555 3rd Street" x-autocompletetype="address-line1" type="text" spellcheck="false" maxlength="50" aria-autocomplete="list" aria-expanded="false" autocomplete="on" value="">
+                        <input id="Order.BillingAddress.Line1" name="Order.BillingAddress.Line1" placeholder="Address ex. 555 3rd Street" x-autocompletetype="address-line1" type="text" spellcheck="false" maxlength="50" aria-autocomplete="list" aria-expanded="false" autocomplete="on" value="{{ user.BillingAddress.Line1 }}">
                     </div>
 
                     <!-- Billing Address 2 -->
                     <div id="billing-address-2" class="field">
                         <label for="Order.BillingAddress.Line2">Address Line 2</label>
-                        <input id="Order.BillingAddress.Line2" name="Order.BillingAddress.Line2" placeholder="Address 2 ex. Suite 3, Apt#" type="text" x-autocompletetype="address-line2" spellcheck="false" maxlength="50" value="">
+                        <input id="Order.BillingAddress.Line2" name="Order.BillingAddress.Line2" placeholder="Address 2 ex. Suite 3, Apt#" type="text" x-autocompletetype="address-line2" spellcheck="false" maxlength="50" value="{{ user.BillingAddress.Line2 }}">
                     </div>
 
                     <!-- Billing City -->
                     <div id="billing-city" class="field city required">
                         <label for="Order.BillingAddress.City">City</label>
-                        <input id="Order.BillingAddress.City" name="Order.BillingAddress.City" placeholder="City ex. San Francisco" type="text" spellcheck="false" maxlength="30" value="">
+                        <input id="Order.BillingAddress.City" name="Order.BillingAddress.City" placeholder="City ex. San Francisco" type="text" spellcheck="false" maxlength="30" value="{{ user.BillingAddress.City }}">
                     </div>
 
                     <!-- Billing Address State/Province -->
                     <div id="billing-state" class="field state required">
                         <label for="Order.BillingAddress.State">State/Province</label>
-                        <input id="Order.BillingAddress.State" name="Order.BillingAddress.State" placeholder="State/Province ex. California" type="text" spellcheck="false" x-autocompletetype="state" value="">
+                        <input id="Order.BillingAddress.State" name="Order.BillingAddress.State" placeholder="State/Province ex. California" type="text" spellcheck="false" x-autocompletetype="state" value="{{ user.BillingAddress.State  }}">
                     </div>
 
                     <!-- Billing Address Zip Code -->
                     <div id="billing-zip" class="field zip required">
                         <label for="Order.BillingAddress.PostalCode">Zip/Postal</label>
-                        <input id="Order.BillingAddress.PostalCode" name="Order.BillingAddress.PostalCode" placeholder="Zip/Postal Code ex. 94140" type="text" spellcheck="false" maxlength="9">
+                        <input id="Order.BillingAddress.PostalCode" name="Order.BillingAddress.PostalCode" placeholder="Zip/Postal Code ex. 94140" type="text" spellcheck="false" maxlength="9" value="{{ user.BillingAddress.PostalCode }}">
                         <!--http://stackoverflow.com/a/469362-->
                     </div>
 
                     <!-- Billing Address Country -->
                     <div id="billing-country" class="field country required">
                         <label for="Order.BillingAddress.Country">Country</label>
-                        <input id="Order.BillingAddress.Country" name="Order.BillingAddress.Country" type="text" spellcheck="false" placeholder="Country ex. United States" x-autocompletetype="country-name" value="United States">
+                        <input id="Order.BillingAddress.Country" name="Order.BillingAddress.Country" type="text" spellcheck="false" placeholder="Country ex. United States" x-autocompletetype="country-name" value="{% if user.BillingAddress.Country %} {{ user.BillingAddress.Country }} {% else %} {{ "United States" }} {% endif %}">
                     </div>
                 </fieldset>
             </div>
