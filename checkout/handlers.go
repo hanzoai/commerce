@@ -135,20 +135,24 @@ func charge(c *gin.Context) {
 	log.Debug("API Key: %v, Token: %v", stripeAccessToken, form.StripeToken)
 	if charge, err := stripe.Charge(ctx, stripeAccessToken, form.StripeToken, &form.Order); err != nil {
 		log.Error("Stripe Charge failed: %v", err, c)
-		c.JSON(500, gin.H{"message": charge.FailMsg, "charge": charge})
+		if charge.FailMsg != "" {
+			c.JSON(400, gin.H{"message": charge.FailMsg}) // client error
+		} else {
+			c.JSON(500, gin.H{}) // internal error
+		}
 		return
 	}
 
 	// Save order
 	log.Debug("Saving order...", c)
-	key, err := db.Put("order", &form.Order)
+	encodedKey, err := db.Put("order", &form.Order)
 	if err != nil {
 		log.Error("Failed to save order", err, c)
 		c.Fail(500, err)
 		return
 	}
-	_key, _ := db.DecodeKey(key)
-	orderId := _key.IntID()
+	key, _ := db.DecodeKey(encodedKey)
+	orderId := key.IntID()
 
 	log.Debug("Updating and saving user...", c)
 	user.BillingAddress = form.Order.BillingAddress
