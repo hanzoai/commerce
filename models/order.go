@@ -43,18 +43,6 @@ type Order struct {
 	Test bool
 }
 
-func (o Order) Description() string {
-	buffer := bytes.NewBufferString("")
-
-	for _, i := range o.Items {
-		buffer.WriteString(i.Description)
-		buffer.WriteString(" ")
-		buffer.WriteString(string(i.Quantity))
-		buffer.WriteString("\n")
-	}
-	return buffer.String()
-}
-
 func (o Order) DisplaySubtotal() string {
 	return DisplayPrice(o.Subtotal)
 }
@@ -77,6 +65,21 @@ func (o Order) DecimalTotal() uint64 {
 
 func (o Order) DecimalFee() uint64 {
 	return uint64(FloatPrice(o.Total) * 100 * 0.02)
+}
+
+func (o Order) Description() string {
+	buffer := bytes.NewBufferString("")
+
+	for i, item := range o.Items {
+		if i > 1 {
+			buffer.WriteString(",")
+			buffer.WriteString(" ")
+		}
+		buffer.WriteString(item.SKU())
+		buffer.WriteString(" ")
+		buffer.WriteString(string(item.Quantity))
+	}
+	return buffer.String()
 }
 
 // Use binding to validate that there are no errors
