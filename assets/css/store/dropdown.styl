@@ -19,13 +19,13 @@ dropdown()
   label,
   ul li
    display: block
-   padding: 12px 18px
+   padding: 15px 10px
    text-align: left
    animate()
 
   label:hover,
   ul li:hover
-   color: white
+   color: #c2c2c2
    cursor: pointer
 
   li
@@ -34,7 +34,7 @@ dropdown()
    letter-spacing: 2px
    font-weight: 400
    font-style: normal
-   line-height: 2em
+   line-height: 1.5em
 
   label
    z-index: 2
@@ -47,18 +47,20 @@ dropdown()
    position: absolute
    visibility: hidden
    opacity: 0
-   width: 130px
+   width: 120px
    z-index: 1
-   background: #333
+   background: #222
    margin-top: -10px
+   height 0px
 
   input:checked + label
    color: white
-   background: #222
+   // background: #222
 
   input:checked ~ ul
    visibility: visible
    opacity: 1
    position: absolute
-   margin-top: 0px
+   margin-top: 5px
+   height auto
    animate()

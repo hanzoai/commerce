@@ -19,13 +19,15 @@ type User struct {
 	FirstName       string
 	LastName        string
 	Phone           string
-	OrdersIds       []string `schema:"-" json:"-"`
-	Cart            Cart     `datastore:"-" json:"-"`
+	Cart            Cart `datastore:"-" json:"-"`
 	BillingAddress  Address
 	ShippingAddress Address
 	Email           string
 	Campaigns       []Campaign `schema:"-" datastore:"-"`
 	PasswordHash    []byte     `schema:"-" json:"-"`
+	Stripe          struct {
+		CustomerId string
+	}
 }
 
 func (u User) Name() string {
