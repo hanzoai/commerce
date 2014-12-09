@@ -31,9 +31,9 @@ func IsLoggedIn(c *gin.Context) bool {
 }
 
 func IsFacebookUser(c *gin.Context) bool {
-	user := GetUser(c)
-	if user == nil {
-		return false
+	user, err := GetUser(c)
+	if err != nil {
+		log.Panic("Error while retrieving user \n%v", err)
 	}
 	return user.Facebook.AccessToken != "" // Checks if AccessToken is set
 }
