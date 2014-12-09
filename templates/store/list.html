@@ -20,13 +20,15 @@ var allListings = {{ listingsJSON | safe }};
 {% if !listing.Disabled %}
 <div class="item sep-top product-listing">
   <div class="product-viewer">
-    {% for image in listing.Images %}
+    <div class="preview-background">
+      {% for image in listing.Images %}
       {% if forloop.First %}
-      <div class="preview-background" style="background-image:url({{ image.Url }})">
-        <img class="preview" src="{{ image.Url }}" alt="{{ image.Alt }}">
-      </div>
+      <img class="preview" src="{{ image.Url }}" alt="{{ image.Alt }}">
+      {% else %}
+      <img style="display:none" class="preview" src="{{ image.Url }}" alt="{{ image.Alt }}">
       {% endif %}
-    {% endfor %}
+      {% endfor %}
+    </div>
 
     {% if listing.Images | length > 1 %}
     <div class="gallery">
