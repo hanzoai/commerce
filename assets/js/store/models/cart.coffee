@@ -15,10 +15,14 @@ cookies =
       {}
 
   set: (name, state, path, expires) ->
+    domain = null
+    unless location.hostname is 'localhost'
+      domain = (location.hostname.replace 'store.', '').replace 'checkout.', ''
+
     $.cookie name, (JSON.stringify state),
-      path:    path
+      domain:  domain
       expires: expires
-      domain: (location.hostname.replace 'store.', '').replace 'checkout.', ''
+      path:    path
 
 class Cart extends ModelEmitter
   cookieName: 'SKULLYCart'
