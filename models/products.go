@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/mholt/binding"
@@ -11,6 +12,45 @@ import (
 	"crowdstart.io/util/json"
 )
 
+type Listing struct {
+	FieldMapMixin
+	Id          string
+	SKU         string
+	Title       string
+	Description string `datastore:",noindex"`
+	Disabled    bool
+
+	Images []Image
+
+	Configs []Config
+}
+
+func (p Listing) GetProductSlugs() []string {
+	productConfigs := p.Configs
+	slugs := make([]string, len(productConfigs), len(productConfigs))
+	for i, productConfig := range productConfigs {
+		slugs[i] = productConfig.Product
+	}
+	return slugs
+}
+
+func (p Listing) GetProductSlugsString() string {
+	return strings.Join(p.GetProductSlugs(), " ")
+}
+
+func (p Listing) GetDescriptionParagraphs() []string {
+	return SplitParagraph(p.Description)
+}
+
+type Config struct {
+	FieldMapMixin
+	Product         string //product id
+	Variant         string //optional variant sku
+	Quantity        int    //number of products of optional variant type
+	PriceAdjustment int    //cost adjustment for individual product in package (subtracted from actual price)
+}
+
+//Prune down since Product Listing has a lot of this info now
 type Product struct {
 	FieldMapMixin
 	Id          string

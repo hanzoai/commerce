@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"appengine"
+	"appengine/delay"
 	"appengine/urlfetch"
 
 	"crowdstart.io/config"
@@ -16,7 +17,6 @@ import (
 	"crowdstart.io/util/log"
 )
 
-const apiKey = "wJ3LGLp5ZOUZlSH8wwqmTg"
 const root = "http://mandrillapp.com/api/1.0"
 
 type GlobalMergeVars struct {
@@ -118,7 +118,7 @@ func (r *SendReq) AddRecipient(email, name string) {
 func NewSendReq() (req SendReq) {
 	req.Async = true
 	req.IpPool = "Main Pool"
-	req.Key = config.Mandrill.ApiKey
+	req.Key = config.Mandrill.APIKey
 	req.Message.MergeLanguage = "mailchimp"
 	req.Message.AutoHtml = true
 	req.Message.Merge = true
@@ -149,7 +149,7 @@ func Ping(ctx appengine.Context) bool {
 	url := root + "/users/ping.json"
 	log.Debug(url)
 
-	str := fmt.Sprintf(`{"key": "%s"}`, apiKey)
+	str := fmt.Sprintf(`{"key": "%s"}`, config.Mandrill.APIKey)
 	log.Debug(str)
 	body := []byte(str)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
@@ -173,10 +173,8 @@ func Ping(ctx appengine.Context) bool {
 func SendTemplate(ctx appengine.Context, req *SendTemplateReq) error {
 	// Convert the map of vars to a byte buffer of a json string
 	url := root + "/messages/send-template.json"
-	log.Debug(url)
 
 	j := json.Encode(req)
-	log.Debug(j)
 
 	hreq, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(j)))
 	if err != nil {
@@ -194,7 +192,7 @@ func SendTemplate(ctx appengine.Context, req *SendTemplateReq) error {
 
 	b, _ := ioutil.ReadAll(res.Body)
 	log.Debug(string(b))
-	log.Debug(apiKey)
+	log.Debug(config.Mandrill.APIKey)
 
 	if res.StatusCode == 200 {
 		return nil
@@ -226,10 +224,25 @@ func Send(ctx appengine.Context, req *SendReq) error {
 
 	b, _ := ioutil.ReadAll(res.Body)
 	log.Debug(string(b))
-	log.Debug(apiKey)
+	log.Debug(config.Mandrill.APIKey)
 
 	if res.StatusCode == 200 {
 		return nil
 	}
 	return errors.New("Email not sent")
 }
+
+var SendTemplateAsync = delay.Func("send-template-email", func(ctx appengine.Context, templateName, toEmail, toName, subject string) {
+	req := NewSendTemplateReq()
+	req.AddRecipient(toEmail, toName)
+
+	req.Message.FromEmail = config.Mandrill.FromEmail
+	req.Message.FromName = config.Mandrill.FromName
+	req.Message.Subject = subject
+	req.TemplateName = templateName
+
+	// Send template
+	if err := SendTemplate(ctx, &req); err != nil {
+		log.Error(err)
+	}
+})

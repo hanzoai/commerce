@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/mholt/binding"
@@ -19,10 +20,13 @@ type Order struct {
 	CreatedAt       time.Time `schema:"-"`
 	UpdatedAt       time.Time `schema:"-"`
 	Id              string    `schema:"-"`
-	Shipping        int64     `schema:"-"`
-	Subtotal        int64     `schema:"-"`
-	Tax             int64     `schema:"-"`
-	Total           int64     `schema:"-"`
+	Email           string    `schema:"-"`
+
+	// TODO: Recalculate Shipping/Tax on server
+	Shipping int64
+	Tax      int64
+	Subtotal int64 `schema:"-"`
+	Total    int64 `schema:"-"`
 
 	Items []LineItem
 
@@ -37,6 +41,8 @@ type Order struct {
 	Cancelled bool
 	Shipped   bool
 	// ShippingOption  ShippingOption
+
+	Test bool
 }
 
 func (o Order) When() string {
@@ -59,18 +65,6 @@ func (o Order) When() string {
 	return fmt.Sprintf("%d seconds ago", duration.Seconds())
 }
 
-func (o Order) Description() string {
-	buffer := bytes.NewBufferString("")
-
-	for _, i := range o.Items {
-		buffer.WriteString(i.Description)
-		buffer.WriteString(" ")
-		buffer.WriteString(string(i.Quantity))
-		buffer.WriteString("\n")
-	}
-	return buffer.String()
-}
-
 func (o Order) DisplaySubtotal() string {
 	return DisplayPrice(o.Subtotal)
 }
@@ -79,12 +73,34 @@ func (o Order) DisplayTax() string {
 	return DisplayPrice(o.Tax)
 }
 
+func (o Order) DisplayShipping() string {
+	return DisplayPrice(o.Shipping)
+}
+
 func (o Order) DisplayTotal() string {
 	return DisplayPrice(o.Total)
 }
 
 func (o Order) DecimalTotal() uint64 {
 	return uint64(FloatPrice(o.Total) * 100)
+}
+
+func (o Order) DecimalFee() uint64 {
+	return uint64(FloatPrice(o.Total) * 100 * 0.02)
+}
+
+func (o Order) Description() string {
+	buffer := bytes.NewBufferString("")
+
+	for i, item := range o.Items {
+		if i > 0 {
+			buffer.WriteString(", ")
+		}
+		buffer.WriteString(item.SKU())
+		buffer.WriteString(" x")
+		buffer.WriteString(strconv.Itoa(item.Quantity))
+	}
+	return buffer.String()
 }
 
 // Use binding to validate that there are no errors
@@ -131,7 +147,7 @@ func (o *Order) Populate(db *datastore.Datastore) error {
 	}
 
 	// Update grand total
-	o.Total = o.Subtotal + o.Tax
+	o.Total = o.Subtotal + o.Tax + o.Shipping
 	return nil
 }
 
@@ -152,6 +168,7 @@ type Charge struct {
 	Email          string
 	FailCode       string
 	FailMsg        string
+	FailType       string
 	Live           bool
 	Paid           bool
 	Refunded       bool

@@ -16,22 +16,22 @@ func GetEmail(c *gin.Context) (string, error) {
 }
 
 // Retrieves user instance from database using email stored in session.
-func GetUser(c *gin.Context) *models.User {
-	email, err := GetEmail(c)
-	log.Debug("Email %v", email)
-	if err != nil {
-		log.Panic("Error retrieving email: %v", err)
-	}
-
-	db := datastore.New(c)
+func GetUser(c *gin.Context) (*models.User, error) {
 	user := new(models.User)
-	log.Debug("%v, %v, %v", kind, email, user)
-	if err = db.GetKey(kind, email, user); err != nil {
-		log.Panic("Unable to fetch user from database: %v", err)
+	db := datastore.New(c)
+
+	email, err := GetEmail(c)
+	if err != nil {
+		log.Warn("Error retrieving email: %v", err)
+		return user, err
 	}
 
-	log.Debug("%#v", user)
-	return user
+	if err = db.GetKey(kind, email, user); err != nil {
+		log.Warn("Unable to fetch user from database: %v", err)
+		return user, err
+	}
+
+	return user, err
 }
 
 // Validates a form and inserts a new user into the datastore

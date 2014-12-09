@@ -1,7 +1,7 @@
 fs   = require 'fs'
 path = require 'path'
 
-requisite  = 'node_modules/.bin/requisite'
+requisite  = 'node_modules/.bin/requisite -s -g'
 stylus     = 'node_modules/.bin/stylus -u autoprefixer-stylus --sourcemap --sourcemap-inline'
 
 files =
@@ -34,6 +34,8 @@ module.exports =
 
   exclude: [
     /config\/production\/static/
+    /config\/staging\/static/
+    /config\/skully\/static/
     /\.go$/
     /\.yaml$/
     /config.json$/
@@ -43,11 +45,11 @@ module.exports =
     coffee: (src) ->
       # try to just optimize module changed
       if /^assets\/js\/checkout/.test src
-        return "#{requisite} #{files.checkout.js.in} -o #{files.checkout.js.out} -g -s"
+        return "#{requisite} #{files.checkout.js.in} -o #{files.checkout.js.out}"
       if /^assets\/js\/preorder/.test src
-        return "#{requisite} #{files.preorder.js.in} -o #{files.preorder.js.out} -g -s"
+        return "#{requisite} #{files.preorder.js.in} -o #{files.preorder.js.out}"
       if /^assets\/js\/store/.test src
-        return "#{requisite} #{files.store.js.in} -o #{files.store.js.out} -g -s"
+        return "#{requisite} #{files.store.js.in} -o #{files.store.js.out}"
 
       if /^assets\/js\//.test src
         # compile everything
@@ -58,7 +60,7 @@ module.exports =
             input.push settings.js.in
             output.push settings.js.out
 
-        return "#{requisite} #{input} #{output} -g -s"
+        return "#{requisite} #{input} #{output}"
 
     styl: (src) ->
       # try to just optimize module changed

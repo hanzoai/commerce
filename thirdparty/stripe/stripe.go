@@ -1,59 +1,89 @@
 package stripe
 
 import (
+	"appengine"
+	"appengine/urlfetch"
+
 	"github.com/stripe/stripe-go"
 	"github.com/stripe/stripe-go/client"
 	"github.com/stripe/stripe-go/currency"
 
-	"appengine"
-	"appengine/urlfetch"
-
-	"crowdstart.io/config"
 	"crowdstart.io/models"
+	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 )
 
-func Charge(ctx appengine.Context, token string, order *models.Order) (string, error) {
+func Charge(ctx appengine.Context, accessToken string, authorizationToken string, order *models.Order, user *models.User) (*models.Charge, error) {
 	backend := stripe.NewInternalBackend(urlfetch.Client(ctx), "")
 
-	// Stripe advises using client-level methods
-	// in a concurrent context
+	// Stripe advises using client-level methods in a concurrent context
 	sc := &client.API{}
-	sc.Init(config.Stripe.APISecret, backend)
+	sc.Init(accessToken, backend)
 
-	log.Debug("Token: %v, Amount: %v", token, order.Total)
+	// Create a charge for us to persist stripe data to
+	charge := new(models.Charge)
 
-	params := &stripe.ChargeParams{
-		Amount:   order.DecimalTotal(),
-		Currency: currency.USD,
-		Card:     &stripe.CardParams{Token: token},
-		Desc:     order.Description(),
+	// Create a card
+	card := &stripe.CardParams{Token: authorizationToken}
+
+	if user.Stripe.CustomerId == "" {
+		// Create new customer
+		customerParams := &stripe.CustomerParams{
+			Desc:  user.Name(),
+			Email: user.Email,
+			Card:  card,
+		}
+
+		if customer, err := sc.Customers.New(customerParams); err != nil {
+			log.Warn("Failed to create Stripe customer: %v", err)
+			return charge, err
+		} else {
+			// Update user with stripe customer ID so we can charge for them later
+			user.Stripe.CustomerId = customer.ID
+		}
 	}
 
-	stripeCharge, err := sc.Charges.New(params)
+	// Create charge
+	chargeParams := &stripe.ChargeParams{
+		Amount:    order.DecimalTotal(),
+		Fee:       order.DecimalFee(),
+		Currency:  currency.USD,
+		Customer:  user.Stripe.CustomerId,
+		Desc:      order.Description(),
+		Email:     order.Email,
+		Statement: "SKULLY SYSTEMS", // Max 15 characters
+		Card:      card,
+	}
+
+	log.Debug("chargeParams: %#v", chargeParams)
+	stripeCharge, err := sc.Charges.New(chargeParams)
 
 	// Charges and tokens are recorded regardless of success/failure.
 	// It doesn't record whether each charge/token is success or failure.
-	// It should be possible to query the stripe api for this though.
-	charge := models.Charge{
-		stripeCharge.ID,
-		stripeCharge.Captured,
-		stripeCharge.Created,
-		stripeCharge.Desc,
-		stripeCharge.Email,
-		stripeCharge.FailCode,
-		stripeCharge.FailMsg,
-		stripeCharge.Live,
-		stripeCharge.Paid,
-		stripeCharge.Refunded,
-		stripeCharge.Statement,
-		// TODO: Figure out if this is dangerous
-		int64(stripeCharge.Amount),
-		int64(stripeCharge.AmountRefunded),
+	if err != nil {
+		// &stripe.Error{Type:"card_error", Msg:"Your card was declined.", Code:"card_declined", Param:"", HTTPStatusCode:402}
+		stripeErr, ok := err.(*stripe.Error)
+		if ok {
+			charge.FailCode = json.Encode(stripeErr.Code)
+			charge.FailMsg = stripeErr.Msg
+			charge.FailType = json.Encode(stripeErr.Type)
+		}
+	} else {
+		charge.ID = stripeCharge.ID
+		charge.Captured = stripeCharge.Captured
+		charge.Created = stripeCharge.Created
+		charge.Desc = stripeCharge.Desc
+		charge.Email = stripeCharge.Email
+		charge.Live = stripeCharge.Live
+		charge.Paid = stripeCharge.Paid
+		charge.Refunded = stripeCharge.Refunded
+		charge.Statement = stripeCharge.Statement
+		charge.Amount = int64(stripeCharge.Amount)
+		charge.AmountRefunded = int64(stripeCharge.AmountRefunded)
 	}
 
-	order.Charges = append(order.Charges, charge)
-	order.StripeTokens = append(order.StripeTokens, token)
+	order.Charges = append(order.Charges, *charge)
+	order.StripeTokens = append(order.StripeTokens, authorizationToken)
 
-	return charge.ID, err
+	return charge, err
 }
