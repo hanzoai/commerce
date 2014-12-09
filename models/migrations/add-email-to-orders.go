@@ -19,14 +19,19 @@ var AddEmailToOrders = delay.Func("add-email-to-orders-migration", func(c appeng
 	for {
 		var o Order
 		k, err := t.Next(&o)
+
+		// Done
 		if err == Done {
-			break // No further entities match the query.
+			break
 		}
 
+		// Error
 		if err != nil {
-			log.Error("Error fetching order")
+			log.Error("Error fetching order: %v", c)
+			continue
 		}
 
+		// Update user
 		if o.Email == "" {
 			o.Email = k.StringID()
 			if _, err := db.PutKey("order", k, &o); err != nil {
