@@ -196,7 +196,13 @@ var All = delay.Func("install-all-fixtures", func(c appengine.Context) {
 		Slug:     "card-winter2014promo",
 		Title:    "SKULLY Xmas Card",
 		Variants: variants,
-		Images:   []Image{ // replace with real one, zach
+		Images: []Image{ // replace with real one, zach
+			Image{
+				Alt: "whitehelmet_store_1000px.jpg",
+				Url: config.UrlFor("/img/products/skullyhhsquare.jpg"),
+				X:   1000,
+				Y:   1000,
+			},
 		},
 	})
 
@@ -216,7 +222,13 @@ var All = delay.Func("install-all-fixtures", func(c appengine.Context) {
 		Slug:     "dogtag-winter2014promo",
 		Title:    "Limited Edition SKULLY dog tag",
 		Variants: variants,
-		Images:   []Image{ // replace with real one, zach
+		Images: []Image{ // replace with real one, zach
+			Image{
+				Alt: "whitehelmet_store_1000px.jpg",
+				Url: config.UrlFor("/img/products/skullydogtags.png"),
+				X:   1000,
+				Y:   1000,
+			},
 		},
 	})
 
