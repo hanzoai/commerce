@@ -23,10 +23,8 @@ func Charge(ctx appengine.Context, accessToken string, authorizationToken string
 	log.Debug("Token: %v, Amount: %v", authorizationToken, order.Total)
 
 	params := &stripe.ChargeParams{
-		// Amount:   order.DecimalTotal(),
-		// Fee:      order.DecimalFee(),
-		Amount:   100,
-		Fee:      02,
+		Amount:   order.DecimalTotal(),
+		Fee:      order.DecimalFee(),
 		Currency: currency.USD,
 		Card:     &stripe.CardParams{Token: authorizationToken},
 		Desc:     order.Description(),
