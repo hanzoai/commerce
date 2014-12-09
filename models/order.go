@@ -39,6 +39,8 @@ type Order struct {
 	Cancelled bool
 	Shipped   bool
 	// ShippingOption  ShippingOption
+
+	Test bool
 }
 
 func (o Order) Description() string {
