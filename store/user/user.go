@@ -29,7 +29,7 @@ func SubmitLogin(c *gin.Context) {
 
 // GET /forgotpassword
 func ForgotPassword(c *gin.Context) {
-	template.Render(c, "forgotpassword.html")
+	template.Render(c, "forgot-password.html")
 }
 
 // POST /forgotpassword
@@ -39,7 +39,7 @@ func SubmitForgotPassword(c *gin.Context) {
 	form := new(ForgotPasswordForm)
 	err := form.Parse(c)
 	if err != nil {
-		template.Render(c, "forgotpassword.html",
+		template.Render(c, "forgot-password.html",
 			"error", "Please enter your email.")
 		return
 	}
@@ -48,14 +48,14 @@ func SubmitForgotPassword(c *gin.Context) {
 	var user models.User
 	err = db.GetKey("user", form.Email, &user)
 	if err != nil {
-		template.Render(c, "forgotpassword.html",
+		template.Render(c, "forgot-password.html",
 			"error", "No account associated with that email.")
 		return
 	}
 
 	mandrill.SendTemplateAsync.Call(ctx, "forgotten-password", user.Email, user.Name())
 
-	template.Render(c, "forgotpassword-email-sent.html")
+	template.Render(c, "forgot-password-sent.html")
 }
 
 // GET /logout
