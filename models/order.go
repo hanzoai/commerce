@@ -48,7 +48,7 @@ type Order struct {
 func (o Order) When() string {
 	duration := time.Since(o.CreatedAt)
 
-	hours := duration.Hours()
+	hours := int(duration.Hours())
 	if hours > 0 && hours < 24 {
 		return fmt.Sprintf("%d hours ago", hours)
 	}
@@ -57,12 +57,12 @@ func (o Order) When() string {
 		return o.CreatedAt.Format(time.RubyDate)
 	}
 
-	minutes := duration.Minutes()
+	minutes := int(duration.Minutes())
 	if hours > 0 {
 		return fmt.Sprintf("%d minutes ago", minutes)
 	}
 
-	return fmt.Sprintf("%d seconds ago", duration.Seconds())
+	return fmt.Sprintf("%d seconds ago", int(duration.Seconds()))
 }
 
 func (o Order) DisplaySubtotal() string {
