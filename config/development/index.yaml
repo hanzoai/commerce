@@ -1,6 +1,6 @@
 indexes:
 
-- kind: Order
+- kind: order
   ancestor: no
   properties:
   - name: Email
