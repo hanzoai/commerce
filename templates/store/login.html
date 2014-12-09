@@ -14,17 +14,21 @@ div.error {
 {% endblock %}
 
 {% block content_header %}
-<h2>Login</h2>
+<h1>Login</h1>
 {% endblock %}
 
 {% block cart_hover %}
 <!-- CART HOVER DISABLED -->
 {% endblock %}
 
+{% block content_header_width_class %}login-width{% endblock %}
+
+{% block content_width_class %}login-width{% endblock %}
+
 {% block content %}
 <div class="login">
     <form action="{{ urlFor("store", "/login") }}" method="post">
-        <div>
+        <div class="form">
             <div class="field">
                 <label for="email">Email</label>
                 <input type="text" id="email" name="Email" placeholder="abc@example.com" />
@@ -35,7 +39,7 @@ div.error {
             </div>
 
             <div>
-                <input type="submit" value="Login">
+                <button type="submit">Login</button>
             </div>
         </div>
 
