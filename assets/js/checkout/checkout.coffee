@@ -32,7 +32,6 @@ validateForm = ->
       email.addClass 'shake'
       setTimeout ->
         email.removeClass 'shake'
-        return
       , 500
       errors.push "Invalid email."
 
@@ -236,6 +235,8 @@ $(document).ready ->
       expiry: '••/••••',
       cvc: '•••'
 
+
+  lock = false
   # Handle form submission
   $form.submit (e) ->
     # Do basic authorization
@@ -273,5 +274,19 @@ $(document).ready ->
       Stripe.card.createToken $form, stripeAuthorize
       return false
 
+    if !lock
+      lock = true
+      $form.find('.btn-container button').append '<div class="loading-spinner" style="float:left"></div>'
+      $.ajax
+        url: $form.attr 'action'
+        type: "POST"
+        data: $form.serializeArray()
+        success: ()->
+          window.location.replace('complete/')
+        error: ()->
+          $('#error-message').text 'Sorry, we could not charge this card please try a different credit card.'
+          $form.find('.loading-spinner').remove()
+          lock = false
+
     # This should only happen when form is manually from `stripeAuthorize`
-    true
+    false
