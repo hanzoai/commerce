@@ -173,10 +173,8 @@ func Ping(ctx appengine.Context) bool {
 func SendTemplate(ctx appengine.Context, req *SendTemplateReq) error {
 	// Convert the map of vars to a byte buffer of a json string
 	url := root + "/messages/send-template.json"
-	log.Debug(url)
 
 	j := json.Encode(req)
-	log.Debug(j)
 
 	hreq, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(j)))
 	if err != nil {
