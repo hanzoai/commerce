@@ -19,18 +19,27 @@ var AddEmailToOrders = delay.Func("add-email-to-orders-migration", func(c appeng
 	for {
 		var o Order
 		k, err := t.Next(&o)
+
+		// Done
 		if err == Done {
-			break // No further entities match the query.
+			break
 		}
 
 		if err != nil {
-			log.Error("Error fetching order")
+			continue
 		}
 
-		log.Debug("key: %v", k.StringID())
-		o.Email = k.StringID()
-		if _, err := db.PutKey("order", k, &o); err != nil {
-			log.Debug("Error savin order: %v")
+		// Error, ignore field mismatch
+		if _, ok := err.(*ErrFieldMismatch); !ok {
+			log.Error("Error fetching order: %v", err, c)
+		}
+
+		// Update user
+		if o.Email == "" {
+			o.Email = k.StringID()
+			if _, err := db.PutKey("order", k, &o); err != nil {
+				log.Error("Failed to update order: %v", err, c)
+			}
 		}
 	}
 })
