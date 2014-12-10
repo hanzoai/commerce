@@ -1,16 +1,11 @@
 package preorder
 
 import (
-	"errors"
-
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/auth"
-	"crowdstart.io/config"
 	"crowdstart.io/datastore"
-	"crowdstart.io/middleware"
 	"crowdstart.io/models"
-	"crowdstart.io/thirdparty/mandrill"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
@@ -142,8 +137,8 @@ func SaveMultiPreorder(c *gin.Context) {
 	user.ShippingAddress = form.ShippingAddress
 	log.Debug("User: %v", user)
 
-	loadVariants()
-	loadProducts()
+	loadVariants(c)
+	loadProducts(c)
 
 	orders := form.Orders
 	for i, order := range orders {
@@ -163,110 +158,10 @@ func SaveMultiPreorder(c *gin.Context) {
 			order.Items[i] = item
 		}
 		order.Total = order.Subtotal + order.Shipping + order.Tax
-		order.Email user.Email
+		order.Email = user.Email
 
 		orders[i] = order
 	}
-}
-
-// POST /order/save
-func SavePreorder(c *gin.Context) {
-	form := new(PreorderForm)
-	if err := form.Parse(c); err != nil {
-		c.Fail(500, err)
-		return
-	}
-
-	db := datastore.New(c)
-
-	// Get user from datastore
-	user := new(models.User)
-	db.GetKey("user", form.User.Email, user)
-
-	// Ensure that token matches email
-	tokens := getTokens(c, user.Email)
-	if len(tokens) < 1 {
-		c.Fail(500, errors.New("Failed to find pre-order token."))
-		return
-	} else if !hasToken(tokens, form.Token.Id) {
-		c.Fail(500, errors.New("Token not valid for user email."))
-		return
-	}
-
-	log.Debug("Found token")
-
-	// Update user's password if this is the first time saving.
-
-	if !user.HasPassword() {
-		user.PasswordHash = form.User.PasswordHash
-	}
-
-	// Update user information
-	user.Phone = form.User.Phone
-	user.FirstName = form.User.FirstName
-	user.LastName = form.User.LastName
-	user.ShippingAddress = form.ShippingAddress
-	log.Debug("User: %v", user)
-
-	order := form.Order
-	order.ShippingAddress = form.ShippingAddress
-	log.Debug("ShippingAddress: %v", user)
-
-	// TODO: Optimize this, multiget, use caching.
-	for i, lineItem := range order.Items {
-		log.Debug("Fetching variant for %v", lineItem.SKU())
-
-		// Fetch Variant for LineItem from datastore
-		if err := db.GetKey("variant", lineItem.SKU(), &lineItem.Variant); err != nil {
-			log.Error("Failed to find variant for: %v", lineItem.SKU(), c)
-			c.Fail(500, err)
-			return
-		}
-
-		// Fetch Product for LineItem from datastore
-		if err := db.GetKey("product", lineItem.Slug(), &lineItem.Product); err != nil {
-			log.Error("Failed to find product for: %v", lineItem.Slug(), c)
-			c.Fail(500, err)
-			return
-		}
-
-		// Set SKU so we can deserialize later
-		lineItem.SKU_ = lineItem.SKU()
-		lineItem.Slug_ = lineItem.Slug()
-
-		// Update item in order
-		order.Items[i] = lineItem
-
-		// Update subtotal
-		order.Subtotal += lineItem.Price()
-	}
-
-	// Update Total
-	order.Total = order.Subtotal + order.Shipping + order.Tax
-	order.Email = user.Email
-
-	// Save order
-	// TODO: Need to not putkey on email, but reuse order id
-	log.Debug("Saving order: %v", order)
-	_, err := db.PutKey("order", user.Email, &order)
-	if err != nil {
-		log.Error("Error saving order", err)
-		c.Fail(500, err)
-		return
-	}
-
-	// Save user back to database
-	_, err = db.PutKey("user", user.Email, user)
-	if err != nil {
-		log.Error("Error saving user information", err)
-		c.Fail(500, err)
-		return
-	}
-
-	ctx := middleware.GetAppEngine(c)
-	mandrill.SendTemplateAsync.Call(ctx, "preorder-confirmation-template", user.Email, user.Name())
-
-	c.Redirect(301, config.UrlFor("preorder", "/thanks"))
 }
 
 // GET /thanks
