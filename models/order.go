@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	humanize "github.com/dustin/go-humanize"
 	"github.com/mholt/binding"
 
 	"crowdstart.io/datastore"
@@ -48,22 +49,12 @@ type Order struct {
 func (o Order) When() string {
 	duration := time.Since(o.CreatedAt)
 
-	hours := int(duration.Hours())
-	if hours > 0 && hours < 24 {
-		return fmt.Sprintf("%d hours ago", hours)
-	}
-
-	if hours >= 24 {
+	if duration.Hours() > 24 {
 		year, month, day := o.CreatedAt.Date()
 		return fmt.Sprintf("%s %s, %s", day, month.String(), year)
 	}
 
-	minutes := int(duration.Minutes())
-	if hours > 0 {
-		return fmt.Sprintf("%d minutes ago", minutes)
-	}
-
-	return fmt.Sprintf("%d seconds ago", int(duration.Seconds()))
+	return humanize.Time(o.CreatedAt)
 }
 
 func (o Order) DisplaySubtotal() string {
