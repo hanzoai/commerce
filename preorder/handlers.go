@@ -17,6 +17,85 @@ import (
 )
 
 // GET /order/:token
+// GetMultiPreorder should:
+//	1) extract an invite-token from the url.
+//	2) retrieve the invite-token from the datastore.
+//  3) use the email from the invite-token to search for orders associated with it.
+//  4) if there is
+var productsJSON string
+
+func GetMultiPreorder(c *gin.Context) {
+	db := datastore.New(c)
+
+	// Load from datastore only once
+	if productsJSON == "" {
+		// Get all products
+		var products []models.Product
+		db.Query("product").GetAll(db.Context, &products)
+
+		// Create map of slug -> product
+		productsMap := make(map[string]models.Product)
+		for _, product := range products {
+			productsMap[product.Slug] = product
+		}
+		productsJSON = json.Encode(productsMap)
+	}
+
+	token := new(models.InviteToken)
+	if err := db.GetKey("invite-token", c.Params.ByName("token"), token); err != nil {
+		log.Panic("Unable to retrieve invite-token \nToken: %s \nError: %v", c.Params.ByName("token"), err)
+	}
+	if token.Expired || token.Used {
+		c.Redirect(301, "/")
+		return
+	}
+
+	user := new(models.User)
+	if err := db.GetKey("user", token.Email, user); err != nil {
+		log.Panic("Unable to retrieve user. \nEmail: %s \nError: %v", token.Email, err)
+	}
+
+	ordersJSON := "[]"
+	var orders []models.Order
+	if user.HasPassword() {
+		_, err := db.Query("order").
+			Filter("Email =", user.Email).
+			GetAll(db.Context, &orders)
+		if err != nil {
+			log.Panic("No orders found for Email: %s", user.Email)
+		}
+	}
+
+	var contributions []models.Contribution
+	if _, err := db.Query("contribution").
+		Filter("Email =", user.Email).
+		GetAll(db.Context, &contributions); err != nil {
+		log.Panic("Failed to find contributions: %v", err, c)
+	}
+	log.Debug("Contributions: %v", contributions)
+
+	userJSON := json.Encode(user)
+	contributionsJSON := json.Encode(contributions)
+
+	indiegogoPreorder := new(models.Order)
+	err := db.GetKey("order", user.Email, indiegogoPreorder)
+	if err == nil {
+		indiegogoPreorder.Preorder = true
+		orders = append(orders, *indiegogoPreorder)
+		ordersJSON = json.Encode(orders)
+	}
+
+	template.Render(c, "preorder.html",
+		"tokenId", token.Id,
+		"user", user,
+		"productsJSON", productsJSON,
+		"contributionsJSON", contributionsJSON,
+		"ordersJSON", ordersJSON,
+		"userJSON", userJSON,
+	)
+}
+
+// GET /order/:token
 func GetPreorder(c *gin.Context) {
 	// For testing Stackdriver
 	// if c.Params.ByName("token") == "test-token" {
@@ -29,7 +108,6 @@ func GetPreorder(c *gin.Context) {
 	// Fetch token
 	token := new(models.InviteToken)
 	db.GetKey("invite-token", c.Params.ByName("token"), token)
-
 	// Redirect to login if token is expired or used
 	if token.Expired || token.Used {
 		c.Redirect(301, "/")
@@ -62,8 +140,8 @@ func GetPreorder(c *gin.Context) {
 	if _, err := db.Query("contribution").Filter("Email =", user.Email).GetAll(db.Context, &contributions); err != nil {
 		log.Panic("Failed to find contributions: %v", err, c)
 	}
-
 	log.Debug("Contributions: %v", contributions)
+
 	userJSON := json.Encode(user)
 	contributionsJSON := json.Encode(contributions)
 
