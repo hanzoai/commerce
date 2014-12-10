@@ -232,7 +232,7 @@ $(document).ready ->
     values:
       number: '•••• •••• •••• ••••',
       name: 'Full Name',
-      expiry: '••/••••',
+      expiry: '••/••',
       cvc: '•••'
 
 
