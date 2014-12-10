@@ -4,12 +4,15 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/auth"
+	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
 )
 
+// GET store./orders
+// LoginRequired
 func ListOrders(c *gin.Context) {
 	email, err := auth.GetEmail(c)
 	if err != nil {
@@ -17,6 +20,7 @@ func ListOrders(c *gin.Context) {
 	}
 
 	db := datastore.New(c)
+
 	var orders []models.Order
 	_, err = db.Query("order").
 		Filter("Email =", email).
@@ -25,8 +29,18 @@ func ListOrders(c *gin.Context) {
 		log.Panic("Error retrieving orders associated with the user's email", err)
 	}
 
+	var tokens []models.InviteToken
+	_, err = db.Query("invite-token").
+		Filter("Email =", email).
+		Limit(1).
+		GetAll(db.Context, &tokens)
+
+	preorderLocation := config.UrlFor("preorder") + "/" + tokens[0].Id
+	log.Debug(preorderLocation)
+
 	template.Render(c, "orders.html",
 		"orders", orders,
+		"preorderLocation",
 	)
 }
 
@@ -36,6 +50,7 @@ type CancelOrderStatus struct {
 }
 
 // Do not route to this.
+// May be useful in the future
 func CancelOrder(c *gin.Context) {
 	orderId := c.Request.URL.Query().Get("id")
 
