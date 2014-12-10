@@ -14,7 +14,6 @@ div.error {
 {% endblock %}
 
 {% block content_header %}
-<h1>Login</h1>
 {% endblock %}
 
 {% block cart_hover %}
@@ -27,25 +26,64 @@ div.error {
 
 {% block content %}
 <div class="login">
-    <form action="{{ urlFor("store", "/login") }}" method="post">
-        <div class="form">
+     <div class="register-form user-form col-1-2">
+         <form action="{{ urlFor ("store", "/register") }}" method="post">
+            <div class="user-form-header">
+                <h2>New to Skully?</h2>
+                <p>Sign up to join the SKULLY NATION</p>
+            </div>
+
+            {% if registerError %}
+            <div class="error">{{ registerError }}</div>
+            {% endif %}
+
             <div class="field">
-                <label for="email">Email</label>
-                <input type="text" id="email" name="Email" placeholder="abc@example.com" />
+                <div class="left col-1-2">
+                    <input type="text" id="firstName" name="FirstName" placeholder="First Name" />
+                </div>
+                <div class="right col-1-2">
+                    <input type="text" id="lastName" name="LastName" placeholder="Last Name" />
+                </div>
             </div>
             <div class="field">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="Password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;" />
+                <input type="text" id="email" name="Email" placeholder="Email" />
+            </div>
+            <div class="field">
+                <input type="password" id="password" name="Password" placeholder="Password minimum 6 characters" />
+            </div>
+            <div class="field">
+                <input type="password" id="confirmPassword"  placeholder="Re-type your password" />
+            </div>
+
+            <div>
+                <button type="submit">Register</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="login-form user-form col-1-2">
+        <form action="{{ urlFor("store", "/login") }}" method="post">
+
+            <div class="user-form-header">
+                <h2>Returning Customer?</h2>
+                <p>Login to get the latest updates on your preorder</p>
+            </div>
+
+            {% if loginError %}
+            <div class="error">{{ loginError }}</div>
+            {% endif %}
+
+            <div class="field">
+                <input type="text" id="email" name="Email" placeholder="Email" />
+            </div>
+            <div class="field">
+                <input type="password" id="password" name="Password" placeholder="Password" />
             </div>
 
             <div>
                 <button type="submit">Login</button>
             </div>
-        </div>
-
-        {% if error %}
-        <div class="error">{{ error }}</div>
-        {% endif %}
-    </form>
+        </form>
+     </div>
 </div>
 {% endblock %}

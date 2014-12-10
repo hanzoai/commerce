@@ -47,7 +47,6 @@ a:active
   transition left .3s ease 0s
 
 .title-nav
-  padding 0px 130px !important
   max-width 1200px
   font-size 15px
   display table
@@ -158,6 +157,9 @@ a:active
                 text-align center
 
 @media all and ( min-width: 1000px )
+  .title-nav
+    padding 0px 130px !important
+
   .nav
     display table-cell
     width 70%
@@ -560,20 +562,55 @@ body.mobile .cart-hover
       width 40px
 
 // LOGIN, REGISTER, PROFILE
-.login, .register, .profile
-  margin-bottom 50px
-  .form
-    width 300px
-    text-align center
-    margin 0 auto
-    .field
-      text-align right
-      padding 5px
-      label
-        padding 10px
+.content
+  .login
+    width 100%
+    max-width 800px
+    display table
+    margin 50px auto
 
-    button
-      float none
+    .register-form
+      padding-right 5%
+      border-right 1px solid #555
+
+    .login-form
+      padding-left 5%
+
+    .user-form form > div
+      margin 20px 0
+      width 100%
+      display table
+
+      .left
+        box-sizing border-box
+        padding-right 10px
+
+      .right
+        box-sizing border-box
+        padding-left 10px
+
+    .user-form
+      padding-bottom 10px
+
+      .user-form-header
+        min-height 80px
+
+        h2
+          min-height 50px
+
+      box-sizing border-box
+
+      +html5-inputs()
+        input: aqua 100%
+        font-family inherit
+        box-sizing border-box
+        border-radius: 0px
+        padding: 8px
+        border: 1px solid #ddd
+
+      button
+        width:100%
+        margin 0
 
 // MEDIA QUERIES
 @media all and ( min-width: 600px )
