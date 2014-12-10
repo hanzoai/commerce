@@ -34,13 +34,16 @@ func ListOrders(c *gin.Context) {
 		Filter("Email =", email).
 		Limit(1).
 		GetAll(db.Context, &tokens)
+	if len(tokens) != 1 {
+		log.Panic("No tokens found for %s", email)
+	}
 
-	preorderLocation := config.UrlFor("preorder") + "/" + tokens[0].Id
+	preorderLocation := config.UrlFor("preorder") + "order/" + tokens[0].Id
 	log.Debug(preorderLocation)
 
 	template.Render(c, "orders.html",
 		"orders", orders,
-		"preorderLocation",
+		"preorderLocation", preorderLocation,
 	)
 }
 
