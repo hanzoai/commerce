@@ -29,6 +29,7 @@ func loadProducts(c *gin.Context) {
 		db.Query("product").GetAll(db.Context, &products)
 
 		// Create map of slug -> product
+		productsMap = make(map[string]models.Product)
 		for _, product := range products {
 			productsMap[product.Slug] = product
 		}
@@ -38,6 +39,7 @@ func loadProducts(c *gin.Context) {
 
 func loadVariants(c *gin.Context) {
 	if variantsMap == nil {
+		variantsMap = make(map[string]models.ProductVariant)
 		db := datastore.New(c)
 		var variants []models.ProductVariant
 		db.Query("variant").GetAll(db.Context, &variants)
