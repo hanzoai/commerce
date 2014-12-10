@@ -1,5 +1,6 @@
 @import "node_modules/axis/axis"
 @import "node_modules/jeet/stylus/jeet"
+@import "node_modules/rupture/rupture"
 
 @import "../preorder/spinner"
 @import "dropdown"
@@ -30,6 +31,26 @@ bbox()
   input
     width: 100%
     bbox()
+
+// Stack first/last name below 600px
++below(750px)
+  .left
+    padding: 0
+    stack()
+    margin-bottom: 20px
+  .right
+    padding: 0
+    stack()
+
+// Rotate login divider column
++below(600px)
+  .content .login .register-form
+    border-right: 0 !important
+    padding-right: 0 !important
+    border-bottom: 1px solid #555
+
+  .content .login .user-form
+    padding-left: 0 !important
 
 body
   color rgb(46,46,46)
