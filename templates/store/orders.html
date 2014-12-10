@@ -1,51 +1,64 @@
 {% extends "base.html" %}
 
-{% block content_header  %}
-<h2>Orders</h2>
+{% block content_header %}
+<section class="content-header store-width">
+<h1>Orders</h1>
+</section>
 {% endblock %}
 
 {% block css %}
 <style>
-    li.order > span {
-        min-width: 200px;
+    .orderTable {
+        margin-bottom: 50px;
     }
-    .type > a:link {
-        color: blue;
+    td {
+        padding-top: 30px;
     }
-    .type > a:visited {
-        color: blue;
+    .description {
+        max-width: 300px;
+        padding-right: 20px;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<ul class="orders">
-    {% for order in orders %}
-    <li class="order">
-        <span class="type">
-            {% if order.Preorder %}
-            <a href="{{ preorderLocation }}">Preorder</a>
-            {% endif %}
-        </span>
+<section class="content store-width">
 
-        <span class="description">
-            {{ order.Description() }}
-        </span>
+    <div class="shopping-cart">
+        <form action="//localhost:8080/checkout/" method="POST" accept-charset="UTF-8" enctype="application/x-www-form-urlencoded; charset=utf-8">
+            <div class="cart-content" style="text-align: center;">
+                <table class="orderTable">
+                    <thead>
+                        <tr>
+                            <td></td>
+                            <td>Price</td>
+                            <td>Delivery date</td>
+                            <td></td>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in orders %}
+                        <tr class="row sep-top sep-bottom">
+                            <td class="description">
+                                {% for item in order.Items %}
+                                <div>{{ item.DisplayShortDescription() }} {{ item.SKU_ }} {# {{ item.Slug_ }}#}  x {{ item.Quantity }}</div>
+                                {% endfor %}
+                            </td>
+                            <td>{{ order.DisplayTotal() }}</td>
+                            <td>May 2015</td>
+                            <td>{{ order.DisplayCreatedAt() }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
 
-        <span class="time">
-            {{ order.When() }}
-        </span>
+                <div  style="text-align:center;">
+                    <button style="float: none;">Edit preorders</button>
+                </div>
+                <div class="sep-top" style="margin-top: 10px;">
+            </div>
+        </form>
+    </div>
 
-        <span class="status">
-            {% if order.Shipped %}
-            Shipped
-            {% endif %}
-
-            {% if order.Cancelled %}
-            Cancelled
-            {% endif %}
-        </span>
-    </li>
-    {% endfor %}
-</ul>
+</section>
 {% endblock %}
