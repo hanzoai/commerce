@@ -23,23 +23,39 @@ import (
 //  3) use the email from the invite-token to search for orders associated with it.
 //  4) if there is
 var productsJSON string
+var productsMap map[string]models.Product
+var variantsMap map[string]models.ProductVariant
 
-func GetMultiPreorder(c *gin.Context) {
-	db := datastore.New(c)
-
-	// Load from datastore only once
-	if productsJSON == "" {
+func loadProducts(c *gin.Context) {
+	if productsJSON == "" || productsMap == nil {
+		db := datastore.New(c)
 		// Get all products
 		var products []models.Product
 		db.Query("product").GetAll(db.Context, &products)
 
 		// Create map of slug -> product
-		productsMap := make(map[string]models.Product)
 		for _, product := range products {
 			productsMap[product.Slug] = product
 		}
 		productsJSON = json.Encode(productsMap)
 	}
+}
+
+func loadVariants(c *gin.Context) {
+	if variantsMap == nil {
+		db := datastore.New(c)
+		var variants []models.ProductVariant
+		db.Query("variant").GetAll(db.Context, &variants)
+		for _, variant := range variants {
+			variantsMap[variant.SKU] = variant
+		}
+	}
+}
+
+func GetMultiPreorder(c *gin.Context) {
+	db := datastore.New(c)
+
+	loadProducts(c)
 
 	token := new(models.InviteToken)
 	if err := db.GetKey("invite-token", c.Params.ByName("token"), token); err != nil {
@@ -55,7 +71,6 @@ func GetMultiPreorder(c *gin.Context) {
 		log.Panic("Unable to retrieve user. \nEmail: %s \nError: %v", token.Email, err)
 	}
 
-	ordersJSON := "[]"
 	var orders []models.Order
 	if user.HasPassword() {
 		_, err := db.Query("order").
@@ -77,9 +92,9 @@ func GetMultiPreorder(c *gin.Context) {
 	userJSON := json.Encode(user)
 	contributionsJSON := json.Encode(contributions)
 
+	ordersJSON := "[]"
 	indiegogoPreorder := new(models.Order)
-	err := db.GetKey("order", user.Email, indiegogoPreorder)
-	if err == nil {
+	if err := db.GetKey("order", user.Email, indiegogoPreorder); err == nil {
 		indiegogoPreorder.Preorder = true
 		orders = append(orders, *indiegogoPreorder)
 		ordersJSON = json.Encode(orders)
@@ -95,75 +110,63 @@ func GetMultiPreorder(c *gin.Context) {
 	)
 }
 
-// GET /order/:token
-func GetPreorder(c *gin.Context) {
-	// For testing Stackdriver
-	// if c.Params.ByName("token") == "test-token" {
-	// 	c.Fail(500, errors.New("Test error"))
-	// 	return
-	// }
+// POST /order/save
+func SaveMultiPreorder(c *gin.Context) {
+	form := new(PreorderForm)
+	if err := form.Parse(c); err != nil {
+		log.Panic("Error parsing preorder form \n%v", err)
+	}
 
 	db := datastore.New(c)
 
-	// Fetch token
-	token := new(models.InviteToken)
-	db.GetKey("invite-token", c.Params.ByName("token"), token)
-	// Redirect to login if token is expired or used
-	if token.Expired || token.Used {
-		c.Redirect(301, "/")
-		return
-	}
-
-	// Should use token to lookup email
 	user := new(models.User)
-	if err := db.GetKey("user", token.Email, user); err != nil {
-		log.Error("Failed to fetch user: %v", err, c)
-		// Bad token
-		c.Redirect(301, "../")
-		return
+	if err := db.GetKey("user", form.User.Email, user); err != nil {
+		log.Panic("Error retrieving user \n%v", err)
 	}
 
-	// If user has password, they've previously edited the preorder
-	orderJSON := "{}"
-	order := new(models.Order)
-	if user.HasPassword() {
-		// TODO: Filter on Email
-		if err := db.GetKey("order", user.Email, order); err != nil {
-			log.Error("Failed to fetch order for user: %v", err, c)
-		} else {
-			orderJSON = json.Encode(order)
+	tokens := getTokens(c, user.Email)
+	if len(tokens) < 1 {
+		log.Panic("Failed to find preorder token")
+	} else if !hasToken(tokens, form.Token.Id) {
+		log.Panic("Token not valid for user email")
+	}
+
+	if !user.HasPassword() {
+		user.PasswordHash = form.User.PasswordHash
+	}
+
+	// Update user information
+	user.Phone = form.User.Phone
+	user.FirstName = form.User.FirstName
+	user.LastName = form.User.LastName
+	user.ShippingAddress = form.ShippingAddress
+	log.Debug("User: %v", user)
+
+	loadVariants()
+	loadProducts()
+
+	orders := form.Orders
+	for i, order := range orders {
+		order.ShippingAddress = form.ShippingAddress
+		for i, item := range order.Items {
+			if variant, ok := variantsMap[item.SKU_]; ok {
+				item.Variant = variant
+			} else {
+				log.Panic("Invalid variant \nSKU: %s", item.SKU_)
+			}
+
+			if product, ok := productsMap[item.Slug_]; ok {
+				item.Product = product
+			} else {
+				log.Panic("Invalid product \nSlug_: %s", item.Slug_)
+			}
+			order.Items[i] = item
 		}
+		order.Total = order.Subtotal + order.Shipping + order.Tax
+		order.Email user.Email
+
+		orders[i] = order
 	}
-
-	// Find all of a user's contributions
-	var contributions []models.Contribution
-	if _, err := db.Query("contribution").Filter("Email =", user.Email).GetAll(db.Context, &contributions); err != nil {
-		log.Panic("Failed to find contributions: %v", err, c)
-	}
-	log.Debug("Contributions: %v", contributions)
-
-	userJSON := json.Encode(user)
-	contributionsJSON := json.Encode(contributions)
-
-	// Get all products
-	var products []models.Product
-	db.Query("product").GetAll(db.Context, &products)
-
-	// Create map of slug -> product
-	productsMap := make(map[string]models.Product)
-	for _, product := range products {
-		productsMap[product.Slug] = product
-	}
-	productsJSON := json.Encode(productsMap)
-
-	template.Render(c, "preorder.html",
-		"tokenId", token.Id,
-		"user", user,
-		"productsJSON", productsJSON,
-		"contributionsJSON", contributionsJSON,
-		"orderJSON", orderJSON,
-		"userJSON", userJSON,
-	)
 }
 
 // POST /order/save
