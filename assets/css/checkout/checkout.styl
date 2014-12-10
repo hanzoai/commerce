@@ -1,4 +1,6 @@
 @import "node_modules/axis/axis"
+@import "node_modules/jeet/stylus/jeet"
+@import "node_modules/rupture/rupture"
 @import "card"
 @import "shake"
 
@@ -69,18 +71,19 @@ form
   form()
 
 .field
-  field: center 95%
+  field: left 100%
 
   label
     display none
 
 +html5-inputs()
-  input: aqua 90%
+  input: aqua 100%
   box-sizing border-box
   border-radius: 0px
   padding: 8px
   border: 1px solid #ddd
-  margin: 5px
+  margin: 5px 0
+  font-size: 90%
 
 // CHECKOUT
 .checkout-width
@@ -96,6 +99,11 @@ h2
   padding 30px 0
 
 .cart-content
+  col(1/2, gutter: 0)
+
+  +below(750px)
+    stack()
+
   table
     td
       vertical-align middle
@@ -135,6 +143,11 @@ h2
         border-top 0
         background-color #fff
 
+.information
+  width: 90%
+  +below(750px)
+    width: 100%
+
 .user-information
   .register
     display none
@@ -144,12 +157,19 @@ h2
       float none
 
 .order-information
+  col(1/2, gutter: 0)
+
+  +below(750px)
+    stack()
+
   .billing-information
     label
       .field
         width 50%
 
 .shipping-information
+  h2
+    width: auto
   .options
     margin-bottom 30px
     margin-left 30px
@@ -161,7 +181,6 @@ h2
   .cards
     text-align center
   .credit-card
-    width 350px
     text-align center
     margin 0 auto
 
@@ -181,31 +200,36 @@ h2
       display block
       width 100%
 
+    .card-number
+      col(1/2, gutter: 3)
+      text-align left
+
+      +below(600px)
+        stack()
+
     .expiry-cvc
+      col(1/2, gutter: 3)
       .field
-        width 32.5%
-        display inline-block
+        col(3/10 1/2, gutter: 1.5)
+        text-align left
+
         input
           width 90%
 
+      .field.card-cvc
+        col(4/10 1/2, gutter: 1.5)
+
       .card-expiry-year
         input
-          width 100%
+          width: 100%
+
+      +below(600px)
+        stack()
 
 .policy-information
   padding-top: 55px
   clear: both
-  width 100%
-  text-align center
+  width: 100%
+  text-align: center
   a
-    padding 20px
-
-.payment-title
-  float: left
-  width: 45%
-
-.payment-cards
-  float: right
-
-.payment-cards img
-  margin-bottom: -5px
+    padding: 20px
