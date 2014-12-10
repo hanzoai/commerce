@@ -46,7 +46,7 @@ type Order struct {
 	Test bool
 }
 
-func (o Order) When() string {
+func (o Order) DisplayCreatedAt() string {
 	duration := time.Since(o.CreatedAt)
 
 	if duration.Hours() > 24 {
