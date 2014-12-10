@@ -1,132 +1,120 @@
 package preorder
 
 import (
+	"errors"
+
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/auth"
+	"crowdstart.io/config"
 	"crowdstart.io/datastore"
+	"crowdstart.io/middleware"
 	"crowdstart.io/models"
+	"crowdstart.io/thirdparty/mandrill"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
 )
 
 // GET /order/:token
-// GetMultiPreorder should:
-//	1) extract an invite-token from the url.
-//	2) retrieve the invite-token from the datastore.
-//  3) use the email from the invite-token to search for orders associated with it.
-//  4) if there is
-var productsJSON string
-var productsMap map[string]models.Product
-var variantsMap map[string]models.ProductVariant
+func GetPreorder(c *gin.Context) {
+	// For testing Stackdriver
+	// if c.Params.ByName("token") == "test-token" {
+	// 	c.Fail(500, errors.New("Test error"))
+	// 	return
+	// }
 
-func loadProducts(c *gin.Context) {
-	if productsJSON == "" || productsMap == nil {
-		db := datastore.New(c)
-		// Get all products
-		var products []models.Product
-		db.Query("product").GetAll(db.Context, &products)
-
-		// Create map of slug -> product
-		productsMap = make(map[string]models.Product)
-		for _, product := range products {
-			productsMap[product.Slug] = product
-		}
-		productsJSON = json.Encode(productsMap)
-	}
-}
-
-func loadVariants(c *gin.Context) {
-	if variantsMap == nil {
-		variantsMap = make(map[string]models.ProductVariant)
-		db := datastore.New(c)
-		var variants []models.ProductVariant
-		db.Query("variant").GetAll(db.Context, &variants)
-		for _, variant := range variants {
-			variantsMap[variant.SKU] = variant
-		}
-	}
-}
-
-func GetMultiPreorder(c *gin.Context) {
 	db := datastore.New(c)
 
-	loadProducts(c)
-
+	// Fetch token
 	token := new(models.InviteToken)
-	if err := db.GetKey("invite-token", c.Params.ByName("token"), token); err != nil {
-		log.Panic("Unable to retrieve invite-token \nToken: %s \nError: %v", c.Params.ByName("token"), err)
-	}
+	db.GetKey("invite-token", c.Params.ByName("token"), token)
+
+	// Redirect to login if token is expired or used
 	if token.Expired || token.Used {
 		c.Redirect(301, "/")
 		return
 	}
 
+	// Should use token to lookup email
 	user := new(models.User)
 	if err := db.GetKey("user", token.Email, user); err != nil {
-		log.Panic("Unable to retrieve user. \nEmail: %s \nError: %v", token.Email, err)
+		log.Error("Failed to fetch user: %v", err, c)
+		// Bad token
+		c.Redirect(301, "../")
+		return
 	}
 
-	var orders []models.Order
+	// If user has password, they've previously edited the preorder
+	orderJSON := "{}"
+	order := new(models.Order)
 	if user.HasPassword() {
-		_, err := db.Query("order").
-			Filter("Email =", user.Email).
-			GetAll(db.Context, &orders)
-		if err != nil {
-			log.Panic("No orders found for Email: %s", user.Email)
+		// TODO: Filter on Email
+		if err := db.GetKey("order", user.Email, order); err != nil {
+			log.Error("Failed to fetch order for user: %v", err, c)
+		} else {
+			orderJSON = json.Encode(order)
 		}
 	}
 
+	// Find all of a user's contributions
 	var contributions []models.Contribution
-	if _, err := db.Query("contribution").
-		Filter("Email =", user.Email).
-		GetAll(db.Context, &contributions); err != nil {
+	if _, err := db.Query("contribution").Filter("Email =", user.Email).GetAll(db.Context, &contributions); err != nil {
 		log.Panic("Failed to find contributions: %v", err, c)
 	}
-	log.Debug("Contributions: %v", contributions)
 
+	log.Debug("Contributions: %v", contributions)
 	userJSON := json.Encode(user)
 	contributionsJSON := json.Encode(contributions)
 
-	ordersJSON := "[]"
-	indiegogoPreorder := new(models.Order)
-	if err := db.GetKey("order", user.Email, indiegogoPreorder); err == nil {
-		indiegogoPreorder.Preorder = true
-		orders = append(orders, *indiegogoPreorder)
-		ordersJSON = json.Encode(orders)
+	// Get all products
+	var products []models.Product
+	db.Query("product").GetAll(db.Context, &products)
+
+	// Create map of slug -> product
+	productsMap := make(map[string]models.Product)
+	for _, product := range products {
+		productsMap[product.Slug] = product
 	}
+	productsJSON := json.Encode(productsMap)
 
 	template.Render(c, "preorder.html",
 		"tokenId", token.Id,
 		"user", user,
 		"productsJSON", productsJSON,
 		"contributionsJSON", contributionsJSON,
-		"ordersJSON", ordersJSON,
+		"orderJSON", orderJSON,
 		"userJSON", userJSON,
 	)
 }
 
 // POST /order/save
-func SaveMultiPreorder(c *gin.Context) {
+func SavePreorder(c *gin.Context) {
 	form := new(PreorderForm)
 	if err := form.Parse(c); err != nil {
-		log.Panic("Error parsing preorder form \n%v", err)
+		c.Fail(500, err)
+		return
 	}
 
 	db := datastore.New(c)
 
+	// Get user from datastore
 	user := new(models.User)
-	if err := db.GetKey("user", form.User.Email, user); err != nil {
-		log.Panic("Error retrieving user \n%v", err)
-	}
+	db.GetKey("user", form.User.Email, user)
 
+	// Ensure that token matches email
 	tokens := getTokens(c, user.Email)
 	if len(tokens) < 1 {
-		log.Panic("Failed to find preorder token")
+		c.Fail(500, errors.New("Failed to find pre-order token."))
+		return
 	} else if !hasToken(tokens, form.Token.Id) {
-		log.Panic("Token not valid for user email")
+		c.Fail(500, errors.New("Token not valid for user email."))
+		return
 	}
+
+	log.Debug("Found token")
+
+	// Update user's password if this is the first time saving.
 
 	if !user.HasPassword() {
 		user.PasswordHash = form.User.PasswordHash
@@ -139,31 +127,65 @@ func SaveMultiPreorder(c *gin.Context) {
 	user.ShippingAddress = form.ShippingAddress
 	log.Debug("User: %v", user)
 
-	loadVariants(c)
-	loadProducts(c)
+	order := form.Order
+	order.ShippingAddress = form.ShippingAddress
+	log.Debug("ShippingAddress: %v", user)
 
-	orders := form.Orders
-	for i, order := range orders {
-		order.ShippingAddress = form.ShippingAddress
-		for i, item := range order.Items {
-			if variant, ok := variantsMap[item.SKU_]; ok {
-				item.Variant = variant
-			} else {
-				log.Panic("Invalid variant \nSKU: %s", item.SKU_)
-			}
+	// TODO: Optimize this, multiget, use caching.
+	for i, lineItem := range order.Items {
+		log.Debug("Fetching variant for %v", lineItem.SKU())
 
-			if product, ok := productsMap[item.Slug_]; ok {
-				item.Product = product
-			} else {
-				log.Panic("Invalid product \nSlug_: %s", item.Slug_)
-			}
-			order.Items[i] = item
+		// Fetch Variant for LineItem from datastore
+		if err := db.GetKey("variant", lineItem.SKU(), &lineItem.Variant); err != nil {
+			log.Error("Failed to find variant for: %v", lineItem.SKU(), c)
+			c.Fail(500, err)
+			return
 		}
-		order.Total = order.Subtotal + order.Shipping + order.Tax
-		order.Email = user.Email
 
-		orders[i] = order
+		// Fetch Product for LineItem from datastore
+		if err := db.GetKey("product", lineItem.Slug(), &lineItem.Product); err != nil {
+			log.Error("Failed to find product for: %v", lineItem.Slug(), c)
+			c.Fail(500, err)
+			return
+		}
+
+		// Set SKU so we can deserialize later
+		lineItem.SKU_ = lineItem.SKU()
+		lineItem.Slug_ = lineItem.Slug()
+
+		// Update item in order
+		order.Items[i] = lineItem
+
+		// Update subtotal
+		order.Subtotal += lineItem.Price()
 	}
+
+	// Update Total
+	order.Total = order.Subtotal + order.Shipping + order.Tax
+	order.Email = user.Email
+
+	// Save order
+	// TODO: Need to not putkey on email, but reuse order id
+	log.Debug("Saving order: %v", order)
+	_, err := db.PutKey("order", user.Email, &order)
+	if err != nil {
+		log.Error("Error saving order", err)
+		c.Fail(500, err)
+		return
+	}
+
+	// Save user back to database
+	_, err = db.PutKey("user", user.Email, user)
+	if err != nil {
+		log.Error("Error saving user information", err)
+		c.Fail(500, err)
+		return
+	}
+
+	ctx := middleware.GetAppEngine(c)
+	mandrill.SendTemplateAsync.Call(ctx, "preorder-confirmation-template", user.Email, user.Name())
+
+	c.Redirect(301, config.UrlFor("preorder", "/thanks"))
 }
 
 // GET /thanks
