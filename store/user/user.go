@@ -23,7 +23,7 @@ func SubmitLogin(c *gin.Context) {
 	if err := auth.VerifyUser(c); err == nil {
 		c.Redirect(302, config.UrlFor("store", "/profile"))
 	} else {
-		template.Render(c, "login.html", "error", "Invalid email or password")
+		template.Render(c, "login.html", "loginError", "Invalid email or password")
 	}
 }
 
@@ -75,7 +75,8 @@ func SubmitRegister(c *gin.Context) {
 	f := new(auth.RegistrationForm)
 	err := f.Parse(c)
 	if err != nil {
-		log.Panic("Error parsing user \n%v", err)
+		template.Render(c, "login.html", "registerError", "An error has occured on this page.")
+		return
 	}
 
 	db := datastore.New(c)
@@ -84,7 +85,7 @@ func SubmitRegister(c *gin.Context) {
 	var existingUser models.User
 	err = db.GetKey("user", f.User.Email, &existingUser)
 	if err == nil {
-		template.Render(c, "register.html", "error", "Email has been used already.")
+		template.Render(c, "login.html", "registerError", "An account already exists for this email.")
 		return
 	}
 

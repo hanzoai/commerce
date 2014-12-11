@@ -17,6 +17,11 @@ class StoreApp extends App
       routes.cart.setupView
     ]
 
+    '/login': [
+      routes.store.setupFormValidation('#loginForm')
+      routes.store.setupFormValidation('#registerForm')
+    ]
+
     '/:prefix?': routes.cart.setupHover
 
     '*': [
