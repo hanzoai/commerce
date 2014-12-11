@@ -1,7 +1,6 @@
 package models
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -24,11 +23,6 @@ type LineItem struct {
 	// Material     string
 	// NetAmnt      string
 	// TaxAmnt      string
-}
-
-// TODO Come up with a better name
-func (li LineItem) Display() string {
-	return fmt.Sprintf("%s / %s / %s x %d", li.Variant.Color, li.Variant.Style, li.Variant.Size, li.Quantity)
 }
 
 func (li LineItem) Price() int64 {

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	humanize "github.com/dustin/go-humanize"
+	"github.com/gin-gonic/gin"
 	"github.com/mholt/binding"
 
 	"crowdstart.io/datastore"
@@ -44,6 +45,34 @@ type Order struct {
 	// ShippingOption  ShippingOption
 
 	Test bool
+}
+
+var variantsMap map[string]ProductVariant
+var productsMap map[string]Product
+
+func (o Order) LoadVariantsProducts(c *gin.Context) {
+	if variantsMap == nil || productsMap == nil {
+		db := datastore.New(c)
+
+		variantsMap = make(map[string]ProductVariant)
+		var variants []ProductVariant
+		db.Query("variant").GetAll(db.Context, &variants)
+		for _, variant := range variants {
+			variantsMap[variant.SKU] = variant
+		}
+
+		productsMap = make(map[string]Product)
+		var products []Product
+		db.Query("product").GetAll(db.Context, &products)
+		for _, product := range products {
+			productsMap[product.Slug] = product
+		}
+	}
+
+	for i, item := range o.Items {
+		o.Items[i].Product = productsMap[item.Slug()]
+		o.Items[i].Variant = variantsMap[item.SKU()]
+	}
 }
 
 func (o Order) DisplayCreatedAt() string {
