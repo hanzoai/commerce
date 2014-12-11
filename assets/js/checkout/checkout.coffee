@@ -1,15 +1,7 @@
 util = require '../store/util'
 require 'card'
 validator = require 'address-validator/src/validator'
-
-# Validation helper
-validation =
-  isEmpty: (str) ->
-    str.trim().length is 0
-
-  isEmail: (email) ->
-    pattern = new RegExp(/^[+a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/i)
-    pattern.test email
+validation = require '../utils/validation'
 
 validateForm = ->
   $errors = $('#error-message')
