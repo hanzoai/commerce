@@ -1,4 +1,40 @@
 ProductView = require '../views/product'
+Validation = require '../../utils/validation'
+
+exports.setupFormValidation = (formId)->
+  ->
+    console.log("ROuTE")
+    $form = $(formId)
+    $form.submit ->
+      valid = true
+      errors = []
+
+      # Get all inputs that are visible and empty
+      empty = $form.find('div:visible.required > input').filter ->
+        Validation.isEmpty $(@).val()
+
+      email = $(formId).find('input[name="Email"]')
+      if email.length != 0
+        unless Validation.isEmail email.val()
+          valid = false
+          Validation.error(email)
+          errors.push "Invalid email."
+
+      if empty.length > 0
+        valid = false
+        Validation.error(empty)
+        missing = (v.trim() for v in empty.parent().text().split('\n') when v.trim())
+        errors.push "Missing #{missing.join ', '}."
+
+      unless valid
+        $errors = $form.find('.errors')
+        $errors.text ''
+
+        # display errors
+        for error in errors
+          $errors.append $("<p>#{error}</p>")
+
+      return valid
 
 exports.setupViews = ->
   console.log 'store#setupViews'
