@@ -29,17 +29,21 @@ func ListOrders(c *gin.Context) {
 		log.Panic("Error retrieving orders associated with the user's email", err)
 	}
 
-	preorder := new(models.Order)
-	if err := db.GetKey("order", email, preorder); err == nil {
-		z := len(orders) - 1
-		if z < 0 {
-			orders = make([]models.Order, 1)
-			orders[0] = *preorder
-		} else {
-			orders = append(orders[:z], orders[z+1:]...)
-			orders = append(orders, *preorder)
-		}
+	for i := range orders {
+		orders[i].LoadVariantsProducts(c)
 	}
+	/*
+		preorder := new(models.Order)
+		if err := db.GetKey("order", email, preorder); err == nil {
+			z := len(orders) - 1
+			if z < 0 {
+				orders = make([]models.Order, 1)
+				orders[0] = *preorder
+			} else {
+				orders = append(orders[:z], orders[z+1:]...)
+				orders = append(orders, *preorder)
+			}
+		}*/
 
 	var tokens []models.InviteToken
 	_, err = db.Query("invite-token").
