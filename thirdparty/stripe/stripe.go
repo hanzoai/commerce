@@ -1,9 +1,10 @@
 package stripe
 
 import (
+	"time"
+
 	"appengine"
 	"appengine/urlfetch"
-	"time"
 
 	"github.com/stripe/stripe-go"
 	"github.com/stripe/stripe-go/client"
