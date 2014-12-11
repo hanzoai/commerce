@@ -4,7 +4,6 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/auth"
-	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
 	"crowdstart.io/util/log"
@@ -50,16 +49,15 @@ func ListOrders(c *gin.Context) {
 		Filter("Email =", email).
 		Limit(1).
 		GetAll(db.Context, &tokens)
-	if len(tokens) != 1 {
-		log.Panic("No tokens found for %s", email)
-	}
 
-	preorderLocation := config.UrlFor("preorder") + "order/" + tokens[0].Id
-	log.Debug(preorderLocation)
+	tokenId := ""
+	if len(tokens) > 0 {
+		tokenId = tokens[0].Id
+	}
 
 	template.Render(c, "orders.html",
 		"orders", orders,
-		"preorderLocation", preorderLocation,
+		"tokenId", tokenId,
 	)
 }
 
