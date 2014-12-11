@@ -1,10 +1,13 @@
-@import "../mixin/normalize"
 @import "node_modules/axis/axis"
+@import "../mixin/normalize"
 @import "../mixin/quill"
-
+@import "../mixin/reset"
 @import "../theme/forms"
 @import "../preorder/spinner"
 @import "dropdown"
+
+normalize()
+reset()
 
 form
   form-error(red)
