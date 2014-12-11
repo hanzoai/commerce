@@ -34,12 +34,14 @@ div.error {
                 <p>Login to get the latest updates on your preorder</p>
             </div>
 
-            <div class="error">{{ loginError }}</div>
+            <div class="errors error">{{ loginError }}</div>
 
             <div class="field required">
+                <label>Email</label>
                 <input type="text" id="email" name="Email" placeholder="Email" />
             </div>
             <div class="field required">
+                <label>Password</label>
                 <input type="password" id="password" name="Password" placeholder="Password" />
             </div>
 
@@ -58,26 +60,31 @@ div.error {
                 <p>Sign up to join the SKULLY NATION</p>
             </div>
 
-            <div class="error">{{ registerError }}</div>
+            <div class="errors error">{{ registerError }}</div>
 
-            <div class="field required">
-                <div class="left">
+            <div class="field">
+                <div class="left required">
+                    <label>First Name</label>
                     <input type="text" id="firstName" name="FirstName" placeholder="First Name" />
                 </div>
-                <div class="right">
+                <div class="right required">
+                    <label>Last Name</label>
                     <input type="text" id="lastName" name="LastName" placeholder="Last Name" />
                 </div>
             </div>
 
             <div class="field required">
+                <label>Email</label>
                 <input type="text" id="email" name="Email" placeholder="Email" />
             </div>
 
             <div class="field required">
+                <label>Password</label>
                 <input type="password" id="password" name="Password" placeholder="Password minimum 6 characters" />
             </div>
 
             <div class="field required">
+                <label>Re-typed password</label>
                 <input type="password" id="confirmPassword"  placeholder="Re-type your password" />
             </div>
 
