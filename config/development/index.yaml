@@ -1,0 +1,9 @@
+indexes:
+
+- kind: order
+  ancestor: no
+  properties:
+  - name: Email
+    direction: desc
+  - name: CreatedAt
+    direction: desc

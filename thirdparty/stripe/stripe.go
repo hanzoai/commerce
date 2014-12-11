@@ -1,6 +1,8 @@
 package stripe
 
 import (
+	"time"
+
 	"appengine"
 	"appengine/urlfetch"
 
@@ -14,7 +16,9 @@ import (
 )
 
 func Charge(ctx appengine.Context, accessToken string, authorizationToken string, order *models.Order, user *models.User) (*models.Charge, error) {
-	backend := stripe.NewInternalBackend(urlfetch.Client(ctx), "")
+	c := urlfetch.Client(ctx)
+	c.Transport = &urlfetch.Transport{Context: ctx, Deadline: time.Duration(10) * time.Second} // Update deadline to 10 seconds
+	backend := stripe.NewInternalBackend(c, "")
 
 	// Stripe advises using client-level methods in a concurrent context
 	sc := &client.API{}
