@@ -6,11 +6,10 @@ runtime: go
 api_version: go1
 threadsafe: true
 
+instance_class: F4
+
 builtins:
 - remote_api: on
-
-inbound_services:
-- warmup
 
 handlers:
 - url: /fixtures/.*
@@ -22,6 +21,10 @@ handlers:
   script: _go_app
   login: required
   secure: always
+
+- url: /_ah/warmup
+  script: _go_app
+  login: admin
 
 - url: /_ah/remote_api
   script: _go_app
