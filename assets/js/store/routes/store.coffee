@@ -23,8 +23,11 @@ exports.setupFormValidation = (formId)->
       if empty.length > 0
         valid = false
         Validation.error(empty)
-        missing = (v.trim() for v in empty.parent().text().split('\n') when v.trim())
-        errors.push "Missing #{missing.join ', '}."
+        missing = (v.toLowerCase().trim() for v in empty.parent().text().split('\n') when v.trim())
+        if missing.length > 1
+          errors.push "Please enter your #{missing.slice(0, -1).join(', ') + (if missing.length == 1 then '' else ',') + " and " + missing.slice(-1)}."
+        else
+          errors.push "Please enter your #{missing[0]}"
 
       unless valid
         $errors = $form.find('.errors')
