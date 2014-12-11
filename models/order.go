@@ -50,7 +50,7 @@ type Order struct {
 var variantsMap map[string]ProductVariant
 var productsMap map[string]Product
 
-func (o Order) LoadVariantsProducts(c *gin.Context) {
+func (o *Order) LoadVariantsProducts(c *gin.Context) {
 	if variantsMap == nil || productsMap == nil {
 		db := datastore.New(c)
 
@@ -70,8 +70,8 @@ func (o Order) LoadVariantsProducts(c *gin.Context) {
 	}
 
 	for i, item := range o.Items {
-		o.Items[i].Product = productsMap[item.Slug()]
-		o.Items[i].Variant = variantsMap[item.SKU()]
+		o.Items[i].Product = productsMap[item.Slug_]
+		o.Items[i].Variant = variantsMap[item.SKU_]
 	}
 }
 
