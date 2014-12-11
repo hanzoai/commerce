@@ -21,6 +21,88 @@
 
 {% block content %}
 <div class="checkout sep-top">
+    <div class="cart-content">
+        <h2>Order Summary</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th class="item" colspan="2">Item</th>
+                    <th class="quantity">Quantity</th>
+                    <th class="price">Price</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in order.Items %}
+                <tr>
+                    <td class="item-image">
+                        <img src="{{ item.Product.DisplayImage().Url }}">
+                    </td>
+                    <td class="item-desc">
+                        <div class="product-title">
+                            {{ item.Product.Title }}
+                        </div>
+
+                        <div class="variant-info">
+                            {{ item.DisplayShortDescription() }}
+                        </div>
+                    </td>
+
+                    <td class="quantity">
+                        <span>
+                            {{ item.Quantity }}
+                        </span>
+                    </td>
+
+                    <td class="price">
+                        {% if item.Price > 0 %}
+                            <span>$</span><span class="money">{{ item.DisplayPrice() }}</span>
+                        {% else %}
+                            <span>FREE</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+
+                <tr class="subtotal">
+                    <td class="label" colspan="3">
+                        <span>Subtotal</span>
+                    </td>
+                    <td class="value">
+                        <span>$</span><span class="price subtotal">{{ order.DisplaySubtotal() }}<span>
+                    </td>
+                </tr>
+
+                <tr class="tax">
+                    <td class="label" colspan="3">
+                        <span>Tax</span>
+                    </td>
+                    <td class="value">
+                        <span>$</span><span class="price tax">{{ order.DisplayTax() }}<span>
+                    </td>
+                </tr>
+
+                <tr class="shipping">
+                    <td class="label" colspan="3">
+                        <span>Shipping</span>
+                    </td>
+                    <td class="value">
+                        <span>$</span><span class="price shipping">{{ order.DisplayShipping() }}<span>
+                    </td>
+                </tr>
+
+                <tr class="total">
+                    <td class="label" colspan="3">
+                        <span>Total</span>
+                    </td>
+                    <td class="value">
+                        <span>$</span><span class="price grand-total">{{ order.DisplayTotal() }}<span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+    </div>
+
     <div class="order-information">
         <form id="form" action="{{ urlFor("checkout", "/charge") }}" method="post" name="form">
             {% for item in order.Items %}
@@ -218,87 +300,6 @@
         </form>
     </div>
 
-    <div class="cart-content">
-        <h2>Order Summary</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th class="item" colspan="2">Item</th>
-                    <th class="quantity">Quantity</th>
-                    <th class="price">Price</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in order.Items %}
-                <tr>
-                    <td class="item-image">
-                        <img src="{{ item.Product.DisplayImage().Url }}">
-                    </td>
-                    <td class="item-desc">
-                        <div class="product-title">
-                            {{ item.Product.Title }}
-                        </div>
-
-                        <div class="variant-info">
-                            {{ item.DisplayShortDescription() }}
-                        </div>
-                    </td>
-
-                    <td class="quantity">
-                        <span>
-                            {{ item.Quantity }}
-                        </span>
-                    </td>
-
-                    <td class="price">
-                        {% if item.Price > 0 %}
-                            <span>$</span><span class="money">{{ item.DisplayPrice() }}</span>
-                        {% else %}
-                            <span>FREE</span>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-
-                <tr class="subtotal">
-                    <td class="label" colspan="3">
-                        <span>Subtotal</span>
-                    </td>
-                    <td class="value">
-                        <span>$</span><span class="price subtotal">{{ order.DisplaySubtotal() }}<span>
-                    </td>
-                </tr>
-
-                <tr class="tax">
-                    <td class="label" colspan="3">
-                        <span>Tax</span>
-                    </td>
-                    <td class="value">
-                        <span>$</span><span class="price tax">{{ order.DisplayTax() }}<span>
-                    </td>
-                </tr>
-
-                <tr class="shipping">
-                    <td class="label" colspan="3">
-                        <span>Shipping</span>
-                    </td>
-                    <td class="value">
-                        <span>$</span><span class="price shipping">{{ order.DisplayShipping() }}<span>
-                    </td>
-                </tr>
-
-                <tr class="total">
-                    <td class="label" colspan="3">
-                        <span>Total</span>
-                    </td>
-                    <td class="value">
-                        <span>$</span><span class="price grand-total">{{ order.DisplayTotal() }}<span>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-
-    </div>
     <!-- POLICIES -->
 
     <div class="policy-information">
