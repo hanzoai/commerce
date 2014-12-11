@@ -38,4 +38,6 @@ func init() {
 	// Profile
 	router.GET("/profile", loginRequired, user.Profile)
 	router.POST("/profile", loginRequired, user.SaveProfile)
+
+	router.GET("/orders", loginRequired, user.ListOrders)
 }
