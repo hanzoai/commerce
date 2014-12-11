@@ -2,10 +2,13 @@ package models
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
+	humanize "github.com/dustin/go-humanize"
+	"github.com/gin-gonic/gin"
 	"github.com/mholt/binding"
 
 	"crowdstart.io/datastore"
@@ -42,6 +45,45 @@ type Order struct {
 	// ShippingOption  ShippingOption
 
 	Test bool
+}
+
+var variantsMap map[string]ProductVariant
+var productsMap map[string]Product
+
+func (o *Order) LoadVariantsProducts(c *gin.Context) {
+	if variantsMap == nil || productsMap == nil {
+		db := datastore.New(c)
+
+		variantsMap = make(map[string]ProductVariant)
+		var variants []ProductVariant
+		db.Query("variant").GetAll(db.Context, &variants)
+		for _, variant := range variants {
+			variantsMap[variant.SKU] = variant
+		}
+
+		productsMap = make(map[string]Product)
+		var products []Product
+		db.Query("product").GetAll(db.Context, &products)
+		for _, product := range products {
+			productsMap[product.Slug] = product
+		}
+	}
+
+	for i, item := range o.Items {
+		o.Items[i].Product = productsMap[item.Slug_]
+		o.Items[i].Variant = variantsMap[item.SKU_]
+	}
+}
+
+func (o Order) DisplayCreatedAt() string {
+	duration := time.Since(o.CreatedAt)
+
+	if duration.Hours() > 24 {
+		year, month, day := o.CreatedAt.Date()
+		return fmt.Sprintf("%s %s, %s", day, month.String(), year)
+	}
+
+	return humanize.Time(o.CreatedAt)
 }
 
 func (o Order) DisplaySubtotal() string {

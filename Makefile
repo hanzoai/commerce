@@ -200,34 +200,34 @@ deploy-appengine: assets-min
 	for module in $(gae_production); do \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check rollback $$module; \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check update $$module; \
-		$(sdk_path)/appcfg.py --skip_sdk_update_check update_indexes $$module; \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check set_default_version $$module; \
 	done; \
+	$(sdk_path)/appcfg.py --skip_sdk_update_check update_indexes config/production; \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/production
 
 deploy-appengine-staging: assets-min
 	for module in $(gae_staging); do \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check rollback $$module; \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check update $$module; \
-		$(sdk_path)/appcfg.py --skip_sdk_update_check update_indexes $$module; \
 	done; \
+	$(sdk_path)/appcfg.py --skip_sdk_update_check update_indexes config/staging; \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/staging
 
 deploy-appengine-skully: assets-min
 	for module in $(gae_skully); do \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check rollback $$module; \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check update $$module; \
-		$(sdk_path)/appcfg.py --skip_sdk_update_check update_indexes $$module; \
 	done; \
+	$(sdk_path)/appcfg.py --skip_sdk_update_check update_indexes config/skully; \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/skully
 
 deploy-appengine-ci: assets-minified
 	for module in $(gae_production); do \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check rollback $$module; \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check update $$module; \
-		$(sdk_path)/appcfg.py --skip_sdk_update_check update_indexes $$module; \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check set_default_version $$module; \
 	done; \
+	$(sdk_path)/appcfg.py --skip_sdk_update_check update_indexes config/production; \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/production
 
 # EXPORT / Usage: make datastore-export kind=user
