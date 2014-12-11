@@ -79,7 +79,8 @@ func (b AppengineBackend) Log(level logging.Level, calldepth int, record *loggin
 			b.context.Warningf(formatted)
 		case logging.ERROR:
 			b.context.Errorf(formatted)
-			logToSentry(b.context, formatted, b.requestURI, b.error)
+			// TODO: Clean up code base to make this feasible
+			// logToSentry(b.context, formatted, b.requestURI, b.error)
 		case logging.CRITICAL:
 			b.context.Criticalf(formatted)
 			logToSentry(b.context, formatted, b.requestURI, b.error)
