@@ -39,7 +39,7 @@ var state = func() string {
 
 const appId = ""
 
-// Grab this from the config (depending on if in production or not).
+// TODO Grab this from the config (depending on if in production or not).
 const base = "localhost:8080"
 
 // URL to Callback
