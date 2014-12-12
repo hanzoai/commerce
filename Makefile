@@ -149,9 +149,9 @@ node_modules/.bin/stylus:
 	npm install stylus@latest
 
 # DEPS GO
-deps-go: .sdk .godeps
+deps-go: .sdk .sdk/gopath/src/github.com
 
-.godeps:
+.sdk/gopath/src/github.com:
 	gpm install || curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.1/bin/gpm | bash
 
 .sdk:
