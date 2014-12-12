@@ -7,9 +7,6 @@ dispatch:
   - url: "static.staging.crowdstart.io/*"
     module: default
 
-  - url: "secure.staging.crowdstart.io/*"
-    module: checkout
-
   - url: "platform.staging.crowdstart.io/*"
     module: platform
 
@@ -19,7 +16,7 @@ dispatch:
   - url: "store.staging.crowdstart.io/*"
     module: store
 
-  - url: "secure-staging.crowdstart.io/*"
+  - url: "checkout-staging.crowdstart.io/*"
     module: checkout
 
   - url: "default-staging.crowdstart.io/*"
@@ -27,3 +24,9 @@ dispatch:
 
   - url: "platform-staging.crowdstart.io/*"
     module: platform
+
+  - url: "preorder-staging.crowdstart.io/*"
+    module: preorder
+
+  - url: "store-staging.crowdstart.io/*"
+    module: store
