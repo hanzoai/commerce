@@ -55,7 +55,7 @@ tools = github.com/nsf/gocode \
         github.com/jstemmer/gotags
 
 # replacement file watcher for the dev appengine
-mtime_file_watcher = https://gist.githubusercontent.com/zeekay/5eba991c39426ca42cbb/raw/67b001ce82058bb81909cdbc9b50ab977869ff41/mtime_file_watcher.py
+mtime_file_watcher = https://gist.githubusercontent.com/zeekay/5eba991c39426ca42cbb/raw/80e2695aa4a47c44febabe70d6066a6d9d827038/mtime_file_watcher.py
 
 # static assets, requisite javascript from assets -> static
 bebop = node_modules/.bin/bebop
