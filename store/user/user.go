@@ -69,21 +69,22 @@ func Logout(c *gin.Context) {
 }
 
 func Register(c *gin.Context) {
-	template.Render(c, "register.html")
+	c.Redirect(302, config.UrlFor("store/login"))
+	//	template.Render(c, "register.html")
 }
 
 func SubmitRegister(c *gin.Context) {
 	f := new(auth.RegistrationForm)
 	err := f.Parse(c)
 	if err != nil {
-		template.Render(c, "login.html", "registerError", "An error has occured on this page.")
+		template.Render(c, "login.html", "registerError", "An error has occured, please try again later.")
 		return
 	}
 
-	log.Debug("Register Validation")
-
 	// Validation
 	user := f.User
+	log.Debug("Register Validation for %v", user)
+	log.Debug("Form is %v", f)
 	if !val.Check(user.FirstName).Exists().IsValid {
 		log.Debug("Form posted without first name")
 		template.Render(c, "login.html", "registerError", "Please enter a first name.")
@@ -96,7 +97,7 @@ func SubmitRegister(c *gin.Context) {
 		return
 	}
 
-	if !val.Check(user.LastName).IsEmail().IsValid {
+	if !val.Check(user.Email).IsEmail().IsValid {
 		log.Debug("Form posted invalid email")
 		template.Render(c, "login.html", "registerError", "Please enter a valid email.")
 		return
