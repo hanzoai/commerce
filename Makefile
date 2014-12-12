@@ -55,7 +55,7 @@ tools = github.com/nsf/gocode \
         github.com/jstemmer/gotags
 
 # replacement file watcher for the dev appengine
-mtime_file_watcher = https://gist.githubusercontent.com/zeekay/5eba991c39426ca42cbb/raw/67b001ce82058bb81909cdbc9b50ab977869ff41/mtime_file_watcher.py
+mtime_file_watcher = https://gist.githubusercontent.com/zeekay/5eba991c39426ca42cbb/raw/80e2695aa4a47c44febabe70d6066a6d9d827038/mtime_file_watcher.py
 
 # static assets, requisite javascript from assets -> static
 bebop = node_modules/.bin/bebop
@@ -107,7 +107,7 @@ endif
 export GOROOT  := $(goroot)
 export GOPATH  := $(gopath)
 
-all: test install
+all: deps test install
 
 # ASSETS
 assets: deps-assets compile-css compile-js
@@ -166,16 +166,16 @@ install-deps:
 
 # DEV SERVER
 serve: assets
-	$(sdk_path)/dev_appserver.py --datastore_path=~/.gae_datastore.bin $(gae_development)
+	$(sdk_path)/dev_appserver.py --skip_sdk_update_check --datastore_path=~/.gae_datastore.bin $(gae_development)
 
 serve-clear-datastore: assets
-	$(sdk_path)/dev_appserver.py --datastore_path=~/.gae_datastore.bin --clear_datastore=true $(gae_development)
+	$(sdk_path)/dev_appserver.py --skip_sdk_update_check --datastore_path=~/.gae_datastore.bin --clear_datastore=true $(gae_development)
 
 serve-no-restart: assets
-	$(sdk_path)/dev_appserver.py --datastore_path=~/.gae_datastore.bin --automatic_restart=false $(gae_development)
+	$(sdk_path)/dev_appserver.py --skip_sdk_update_check --datastore_path=~/.gae_datastore.bin --automatic_restart=false $(gae_development)
 
 serve-public: assets
-	$(sdk_path)/dev_appserver.py --host=0.0.0.0 --datastore_path=~/.gae_datastore.bin $(gae_development)
+	$(sdk_path)/dev_appserver.py --skip_sdk_update_check --host=0.0.0.0 --datastore_path=~/.gae_datastore.bin $(gae_development)
 
 # LIVE RELOAD SERVER
 live-reload: assets
