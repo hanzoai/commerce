@@ -3,8 +3,11 @@ Validation = require '../../utils/validation'
 
 exports.setupFormValidation = (formId)->
   ->
-    console.log("ROuTE")
+    minimumPasswordLength = 6
     $form = $(formId)
+    $form.find('input, select, textarea').click ->
+      $(@).removeClass('error')
+
     $form.submit ->
       valid = true
       errors = []
@@ -13,19 +16,33 @@ exports.setupFormValidation = (formId)->
       empty = $form.find('div:visible.required > input').filter ->
         Validation.isEmpty $(@).val()
 
-      email = $(formId).find('input[name="Email"]')
+      email = $form.find('input[name="User.Email"]')
       if email.length != 0
         unless Validation.isEmail email.val()
           valid = false
-          Validation.error(email)
+          Validation.error email
           errors.push "Invalid email."
+
+      password = $form.find('input[name="Password"]')
+      if password.length != 0
+        if !Validation.isPassword password.val(), minimumPasswordLength
+          valid = false
+          Validation.error password
+          errors.push "Password must be at least #{minimumPasswordLength} characters long"
+        else
+          confirmPassword = $form.find('input[name="ConfirmPassword"]')
+          if confirmPassword.length != 0
+            unless Validation.passwordsMatch(password.val(), confirmPassword.val())
+              valid = false
+              Validation.error confirmPassword
+              errors.push "Passwords must match"
 
       if empty.length > 0
         valid = false
-        Validation.error(empty)
+        Validation.error empty
         missing = (v.toLowerCase().trim() for v in empty.parent().text().split('\n') when v.trim())
         if missing.length > 1
-          errors.push "Please enter your #{missing.slice(0, -1).join(', ') + (if missing.length == 1 then '' else ',') + " and " + missing.slice(-1)}."
+          errors.push "Please enter your #{missing.slice(0, -1).join(', ') + (if missing.length == 2 then '' else ',') + " and " + missing.slice(-1)}."
         else
           errors.push "Please enter your #{missing[0]}"
 
