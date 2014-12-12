@@ -31,6 +31,11 @@ handlers:
   script: _go_app
   login: admin
 
+- url: /assets/*
+  static_dir: assets
+  http_headers:
+    Access-Control-Allow-Origin: "*"
+
 - url: /*
   static_dir: static
   http_headers:
