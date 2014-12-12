@@ -11,6 +11,7 @@ import (
 	"crowdstart.io/thirdparty/mandrill"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
+	"crowdstart.io/util/val"
 )
 
 // GET /login
@@ -79,6 +80,34 @@ func SubmitRegister(c *gin.Context) {
 		return
 	}
 
+	log.Debug("Register Validation")
+
+	// Validation
+	user := f.User
+	if !val.Check(user.FirstName).Exists().IsValid {
+		log.Debug("Form posted without first name")
+		template.Render(c, "login.html", "registerError", "Please enter a first name.")
+		return
+	}
+
+	if !val.Check(user.LastName).Exists().IsValid {
+		log.Debug("Form posted without last name")
+		template.Render(c, "login.html", "registerError", "Please enter a last name.")
+		return
+	}
+
+	if !val.Check(user.LastName).IsEmail().IsValid {
+		log.Debug("Form posted invalid email")
+		template.Render(c, "login.html", "registerError", "Please enter a valid email.")
+		return
+	}
+
+	if !val.Check(f.Password).IsPassword().IsValid {
+		log.Debug("Form posted invalid password")
+		template.Render(c, "login.html", "registerError", "Password Must be atleast 6 characters long.")
+		return
+	}
+
 	db := datastore.New(c)
 
 	log.Debug("Checking if user exists")
@@ -92,18 +121,21 @@ func SubmitRegister(c *gin.Context) {
 	f.User.Id = f.User.Email
 	f.User.PasswordHash, err = f.PasswordHash()
 	if err != nil {
+		template.Render(c, "login.html", "registerError", "An error has occured, please try again later.")
 		log.Panic("Error generating password hash \n%v", err)
 	}
 
 	log.Debug("Saving user")
 	_, err = db.PutKey("user", f.User.Email, &f.User)
 	if err != nil {
+		template.Render(c, "login.html", "registerError", "An error has occured, please try again later.")
 		log.Panic("Error while saving user \n%v", err)
 	}
 
 	log.Debug("Login user")
 	err = auth.Login(c, f.User.Email)
 	if err != nil {
+		template.Render(c, "login.html", "registerError", "An error has occured, please try again later.")
 		log.Panic("Error while setting session cookie %v", err)
 	}
 
