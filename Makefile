@@ -235,7 +235,8 @@ deploy-appengine-ci: assets-minified
 # EXPORT / Usage: make datastore-export kind=user
 datastore-export:
 	mkdir -p _export/ && \
-	bulkloader.py --download \
+	bulkloader.py --skip_sdk_update_check
+				  --download \
 				  --url http://static.skullysystems.com/_ah/remote_api \
 				  --config_file config/skully/bulkloader.yaml \
 				  --db_filename /tmp/bulkloader-$$kind.db \
