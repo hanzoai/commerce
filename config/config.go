@@ -202,14 +202,14 @@ func Staging() *Config {
 	config.IsProduction = false
 	config.IsStaging = true
 
-	config.Hosts["default"] = "static.staging.crowdstart.io"
-	config.Hosts["api"] = "api.staging.crowdstart.io"
+	config.Hosts["default"] = "default-staging.crowdstart.io"
+	config.Hosts["api"] = "api-staging.crowdstart.io"
 	config.Hosts["checkout"] = "checkout-staging.crowdstart.io"
-	config.Hosts["platform"] = "admin.staging.crowdstart.io"
-	config.Hosts["preorder"] = "preorder.staging.crowdstart.io"
-	config.Hosts["store"] = "store.staging.crowdstart.io"
+	config.Hosts["platform"] = "platform-staging.crowdstart.io"
+	config.Hosts["preorder"] = "preorder-staging.crowdstart.io"
+	config.Hosts["store"] = "store-staging.crowdstart.io"
 
-	config.StaticUrl = "//static.staging.crowdstart.io"
+	config.StaticUrl = "//static-staging.crowdstart.io"
 
 	return config
 }
@@ -259,7 +259,7 @@ func Get() *Config {
 		// Use PWD to determine appid, if s~crowdstart-io-staging is in PWD,
 		// then we're in staging enviroment.
 		pwd := os.Getenv("PWD")
-		if strings.Contains(pwd, "s~crowdstart-io-staging") {
+		if strings.Contains(pwd, "s~crowdstart-staging") {
 			cachedConfig = Staging()
 		} else if strings.Contains(pwd, "s~skully-crowdstart") {
 			cachedConfig = Skully()
