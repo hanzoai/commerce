@@ -134,19 +134,10 @@ build: deps assets
 deps: deps-assets deps-go
 
 # DEPS JS/CSS
-deps-assets: node_modules node_modules/.bin/bebop node_modules/.bin/requisite node_modules/.bin/stylus
+deps-assets: node_modules
 
 node_modules:
 	npm install
-
-node_modules/.bin/bebop:
-	npm install bebop@latest
-
-node_modules/.bin/requisite:
-	npm install requisite@latest
-
-node_modules/.bin/stylus:
-	npm install stylus@latest
 
 # DEPS GO
 deps-go: .sdk .sdk/gopath/src/github.com
