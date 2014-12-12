@@ -1,21 +1,21 @@
 pwd				= $(shell pwd)
 os				= $(shell uname | tr '[A-Z]' '[a-z]')
 platform        = $(os)_amd64
-sdk				= go_appengine_sdk_$(platform)-1.9.15
+sdk				= go_appengine_sdk_$(platform)-1.9.17
 sdk_path        = $(pwd)/.sdk
 goroot          = $(sdk_path)/goroot
 gopath          = $(sdk_path)/gopath
 goroot_pkg_path = $(goroot)/pkg/$(platform)_appengine/
 gopath_pkg_path = $(gopath)/pkg/$(platform)_appengine/
 
-deps			= $(shell cat Godeps | cut -d ' ' -f 1)
-modules			= crowdstart.io/api \
-				  crowdstart.io/checkout \
-				  crowdstart.io/platform \
-				  crowdstart.io/preorder \
-				  crowdstart.io/store
+deps	= $(shell cat Godeps | cut -d ' ' -f 1)
+modules	= crowdstart.io/api \
+		  crowdstart.io/checkout \
+		  crowdstart.io/platform \
+		  crowdstart.io/preorder \
+		  crowdstart.io/store
 
-gae_token		= 1/DLPZCHjjCkiegGp0SiIvkWmtZcUNl15JlOg4qB0-1r0MEudVrK5jSpoR30zcRFq6
+gae_token = 1/DLPZCHjjCkiegGp0SiIvkWmtZcUNl15JlOg4qB0-1r0MEudVrK5jSpoR30zcRFq6
 
 gae_development = config/development/app.yaml \
 				  config/development/dispatch.yaml \
@@ -25,25 +25,25 @@ gae_development = config/development/app.yaml \
 				  preorder/app.dev.yaml \
 				  store/app.dev.yaml
 
-gae_staging  = config/staging \
-			   api/app.staging.yaml \
-			   checkout/app.staging.yaml \
-			   platform/app.staging.yaml \
-			   preorder/app.staging.yaml \
-			   store/app.staging.yaml
+gae_staging = config/staging \
+			  api/app.staging.yaml \
+			  checkout/app.staging.yaml \
+			  platform/app.staging.yaml \
+			  preorder/app.staging.yaml \
+			  store/app.staging.yaml
 
-gae_skully  = config/skully \
-			  api/app.skully.yaml \
-			  checkout/app.skully.yaml \
-			  preorder/app.skully.yaml \
-			  store/app.skully.yaml
+gae_skully = config/skully \
+			 api/app.skully.yaml \
+			 checkout/app.skully.yaml \
+			 preorder/app.skully.yaml \
+			 store/app.skully.yaml
 
-gae_production  = config/production \
-				  api \
-				  checkout \
-				  platform \
-				  preorder \
-				  store
+gae_production = config/production \
+				 api \
+				 checkout \
+				 platform \
+				 preorder \
+				 store
 
 tools = github.com/nsf/gocode \
         code.google.com/p/go.tools/cmd/goimports \
@@ -69,23 +69,35 @@ requisite_opts = assets/js/store/store.coffee \
 				 -o static/js/checkout.js
 requisite_opts_min = -m --strip-debug
 
-
-stylus		   = node_modules/.bin/stylus
-stylus_opts    = assets/css/preorder/preorder.styl \
-				 assets/css/store/store.styl \
-				 assets/css/checkout/checkout.styl \
-				 -o static/css -u autoprefixer-stylus
+stylus		= node_modules/.bin/stylus
+stylus_opts = assets/css/preorder/preorder.styl \
+		      assets/css/store/store.styl \
+		      assets/css/checkout/checkout.styl \
+		      -o static/css -u autoprefixer-stylus
 stylus_opts_min = -u csso-stylus -c
 
+sdk_install = wget https://storage.googleapis.com/appengine-sdks/featured/$(sdk).zip && \
+			  unzip $(sdk).zip && \
+			  mv go_appengine $(sdk_path) && \
+			  rm $(sdk).zip && \
+			  mkdir -p $(sdk_path)/gopath/src && \
+			  mkdir -p $(sdk_path)/gopath/bin && \
+			  ln -s $(shell pwd) $(sdk_path)/gopath/src/crowdstart.io
+
 # find command differs between bsd/linux thus the two versions
-ifeq ($(os), "linux")
+ifeq ($(os), linux)
 	packages	 = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' -printf '%h\n' | sort -u | sed -e 's/.\//crowdstart.io\//')
 	test_modules = $(shell find . -maxdepth 4 -mindepth 3 -name '*_test.go' -printf '%h\n' | sort -u | sed -e 's/.\//crowdstart.io\//')
 else
 	packages	 = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' -print0 | xargs -0 -n1 dirname | sort --unique | sed -e 's/.\//crowdstart.io\//')
 	test_modules = $(shell find . -maxdepth 4 -mindepth 2 -name '*_test.go' -print0 | xargs -0 -n1 dirname | sort --unique | sed -e 's/.\//crowdstart.io\//')
+	sdk_install_extra = && echo '\#!/usr/bin/env bash\ngoapp $$@' > $(sdk_path)/gopath/bin/go \
+						&& chmod +x $(sdk_path)/gopath/bin/go \
+						&& curl  $(mtime_file_watcher) > $(sdk_path)/google/appengine/tools/devappserver2/mtime_file_watcher.py \
+						&& pip install macfsevents --upgrade
 endif
 
+# set v=1 to enable verbose mode
 ifeq ($(v), 1)
 	verbose = -v
 else
@@ -95,7 +107,7 @@ endif
 export GOROOT  := $(goroot)
 export GOPATH  := $(gopath)
 
-all: test install
+all: deps test install
 
 # ASSETS
 assets: deps-assets compile-css compile-js
@@ -137,23 +149,13 @@ node_modules/.bin/stylus:
 	npm install stylus@latest
 
 # DEPS GO
-deps-go: .sdk .godeps
+deps-go: .sdk .sdk/gopath/src/github.com
 
-.godeps:
+.sdk/gopath/src/github.com:
 	gpm install || curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.1/bin/gpm | bash
 
 .sdk:
-	wget https://storage.googleapis.com/appengine-sdks/featured/$(sdk).zip && \
-	unzip $(sdk).zip && \
-	mv go_appengine $(sdk_path) && \
-	rm $(sdk).zip && \
-	mkdir -p $(sdk_path)/gopath/src && \
-	mkdir -p $(sdk_path)/gopath/bin && \
-	ln -s $(shell pwd) $(sdk_path)/gopath/src/crowdstart.io && \
-	echo '#!/usr/bin/env bash\ngoapp $$@' > $(sdk_path)/gopath/bin/go && \
-	chmod +x $(sdk_path)/gopath/bin/go && \
-	curl  $(mtime_file_watcher) > $(sdk_path)/google/appengine/tools/devappserver2/mtime_file_watcher.py && \
-	pip install macfsevents
+	$(sdk_install) $(sdk_install_extra)
 
 # INSTALL
 install: install-deps
@@ -164,16 +166,16 @@ install-deps:
 
 # DEV SERVER
 serve: assets
-	$(sdk_path)/dev_appserver.py --datastore_path=~/.gae_datastore.bin $(gae_development)
+	$(sdk_path)/dev_appserver.py --skip_sdk_update_check --datastore_path=~/.gae_datastore.bin $(gae_development)
 
 serve-clear-datastore: assets
-	$(sdk_path)/dev_appserver.py --datastore_path=~/.gae_datastore.bin --clear_datastore=true $(gae_development)
+	$(sdk_path)/dev_appserver.py --skip_sdk_update_check --datastore_path=~/.gae_datastore.bin --clear_datastore=true $(gae_development)
 
 serve-no-restart: assets
-	$(sdk_path)/dev_appserver.py --datastore_path=~/.gae_datastore.bin --automatic_restart=false $(gae_development)
+	$(sdk_path)/dev_appserver.py --skip_sdk_update_check --datastore_path=~/.gae_datastore.bin --automatic_restart=false $(gae_development)
 
 serve-public: assets
-	$(sdk_path)/dev_appserver.py --host=0.0.0.0 --datastore_path=~/.gae_datastore.bin $(gae_development)
+	$(sdk_path)/dev_appserver.py --skip_sdk_update_check --host=0.0.0.0 --datastore_path=~/.gae_datastore.bin $(gae_development)
 
 # LIVE RELOAD SERVER
 live-reload: assets
@@ -233,7 +235,8 @@ deploy-appengine-ci: assets-minified
 # EXPORT / Usage: make datastore-export kind=user
 datastore-export:
 	mkdir -p _export/ && \
-	bulkloader.py --download \
+	bulkloader.py --skip_sdk_update_check
+				  --download \
 				  --url http://static.skullysystems.com/_ah/remote_api \
 				  --config_file config/skully/bulkloader.yaml \
 				  --db_filename /tmp/bulkloader-$$kind.db \
