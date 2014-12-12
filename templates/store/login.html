@@ -38,7 +38,7 @@ div.error {
 
             <div class="field required">
                 <label>Email</label>
-                <input type="text" id="email" name="Email" placeholder="Email" />
+                <input type="text" id="email" name="User.Email" placeholder="Email"/>
             </div>
             <div class="field required">
                 <label>Password</label>
@@ -65,17 +65,17 @@ div.error {
             <div class="field">
                 <div class="left required">
                     <label>First Name</label>
-                    <input type="text" id="firstName" name="FirstName" placeholder="First Name" />
+                    <input type="text" id="firstName" name="User.FirstName" placeholder="First Name" value="{{ User.FirstName }}"/>
                 </div>
                 <div class="right required">
                     <label>Last Name</label>
-                    <input type="text" id="lastName" name="LastName" placeholder="Last Name" />
+                    <input type="text" id="lastName" name="User.LastName" placeholder="Last Name" value="{{ User.LastName }}"/>
                 </div>
             </div>
 
             <div class="field required">
                 <label>Email</label>
-                <input type="text" id="email" name="Email" placeholder="Email" />
+                <input type="text" id="email" name="User.Email" placeholder="Email" value="{{ User.Email }}"/>
             </div>
 
             <div class="field required">
@@ -85,7 +85,7 @@ div.error {
 
             <div class="field required">
                 <label>Re-typed password</label>
-                <input type="password" id="confirmPassword"  placeholder="Re-type your password" />
+                <input type="password" id="confirmPassword" name="ConfirmPassword" placeholder="Re-type your password" />
             </div>
 
             <div>
