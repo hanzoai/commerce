@@ -55,7 +55,7 @@ tools = github.com/nsf/gocode \
         github.com/jstemmer/gotags
 
 # replacement file watcher for the dev appengine
-mtime_file_watcher = https://gist.githubusercontent.com/zeekay/d92deea5091849d79782/raw/a2f43b902afef21a2a53f4ca529975a28b20d943/mtime_file_watcher.py
+mtime_file_watcher = https://gist.githubusercontent.com/zeekay/5eba991c39426ca42cbb/raw/67b001ce82058bb81909cdbc9b50ab977869ff41/mtime_file_watcher.py
 
 # static assets, requisite javascript from assets -> static
 bebop = node_modules/.bin/bebop
@@ -151,9 +151,9 @@ deps-go: .sdk .godeps
 	mkdir -p $(sdk_path)/gopath/bin && \
 	ln -s $(shell pwd) $(sdk_path)/gopath/src/crowdstart.io && \
 	echo '#!/usr/bin/env bash\ngoapp $$@' > $(sdk_path)/gopath/bin/go && \
-	chmod +x $(sdk_path)/gopath/bin/go
-	# curl  $(mtime_file_watcher) > $(sdk_path)/google/appengine/tools/devappserver2/mtime_file_watcher.py && \
-	# pip install watchdog
+	chmod +x $(sdk_path)/gopath/bin/go && \
+	curl  $(mtime_file_watcher) > $(sdk_path)/google/appengine/tools/devappserver2/mtime_file_watcher.py && \
+	pip install macfsevents
 
 # INSTALL
 install: install-deps
