@@ -204,7 +204,7 @@ func Staging() *Config {
 
 	config.Hosts["default"] = "static.staging.crowdstart.io"
 	config.Hosts["api"] = "api.staging.crowdstart.io"
-	config.Hosts["checkout"] = "secure.staging.crowdstart.io"
+	config.Hosts["checkout"] = "secure-staging.crowdstart.io"
 	config.Hosts["platform"] = "admin.staging.crowdstart.io"
 	config.Hosts["preorder"] = "preorder.staging.crowdstart.io"
 	config.Hosts["store"] = "store.staging.crowdstart.io"
