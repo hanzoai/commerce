@@ -198,7 +198,7 @@ deploy-appengine: assets-min
 	$(sdk_path)/appcfg.py --skip_sdk_update_check update_indexes config/production; \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/production
 
-deploy-appengine-staging: assets-min
+deploy-appengine-staging: assets
 	for module in $(gae_staging); do \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check rollback $$module; \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check update $$module; \
