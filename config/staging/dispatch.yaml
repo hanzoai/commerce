@@ -21,3 +21,9 @@ dispatch:
 
   - url: "secure-staging.crowdstart.io/*"
     module: checkout
+
+  - url: "default-staging.crowdstart.io/*"
+    module: default
+
+  - url: "platform-staging.crowdstart.io/*"
+    module: platform
