@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block name %}Connect{% endblock %}
+{% block desc %}to your payment processing account.{% endblock %}
+
+{% block css %}
+<link rel="stylesheet" type="text/css" href="{{ staticUrl }}/css/stripe.css"/>
+{% endblock %}
+
+{% block content %}
+<a href="https://connect.stripe.com/oauth/authorize?response_type=code&client_id={{ StripeClientId }}&scope=read_write&state=movetoserver&stripe_landing=login&redirect_uri={{ StripeRedirectURL }}" class="stripe-connect"><span>Connect with Stripe</span></a>
+{% if error != "" %}
+<h3>Your stripe account was not successfully be connected.  Please try again.</h3>
+<p>
+  {{ error }}
+</p>
+{% endif %}
+{% endblock %}
+
+{% block js %}
+{% endblock %}
