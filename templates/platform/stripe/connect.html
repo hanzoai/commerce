@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "../adminlte/base.html" %}
 
 {% block name %}Connect{% endblock %}
 {% block desc %}to your payment processing account.{% endblock %}
@@ -9,7 +9,7 @@
 
 {% block content %}
 <a href="https://connect.stripe.com/oauth/authorize?response_type=code&client_id={{ StripeClientId }}&scope=read_write&state=movetoserver&stripe_landing=login&redirect_uri={{ StripeRedirectURL }}" class="stripe-connect"><span>Connect with Stripe</span></a>
-{% if error != "" %}
+{% if error && error != "" %}
 <h3>Your stripe account was not successfully be connected.  Please try again.</h3>
 <p>
   {{ error }}
