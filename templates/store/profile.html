@@ -15,7 +15,7 @@
 {% block content %}
 <div class="profile">
     <form action="{{ config.UrlFor("store", "/profile") }}" method="POST">
-        <div class="form">
+        <div id="profileForm" class="form">
             <div class="field">
                 <label for="firstName">First name</label>
                 <input id="firstName" name="FirstName" value="{{ user.FirstName }}">
