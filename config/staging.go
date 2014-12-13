@@ -16,5 +16,11 @@ func Staging() *Config {
 
 	config.StaticUrl = "//static-dot-crowdstart-staging.appspot.com"
 
+	config.Stripe.ClientId = "ca_53yyPzxlPsdAtzMEIuS2mXYDp4FFXLmm"
+	config.Stripe.APIKey = "pk_test_ucSTeAAtkSXVEg713ir40UhX"
+	config.Stripe.APISecret = ""
+	config.Stripe.RedirectURL = "https:" + config.UrlFor("platform", "/stripe/callback")
+	config.Stripe.WebhookURL = "https:" + config.UrlFor("platform", "/stripe/hook")
+
 	return config
 }
