@@ -1,23 +1,29 @@
 package fixtures
 
 import (
-	"appengine"
-	"appengine/delay"
 	"encoding/csv"
 	"os"
 	"strings"
 
+	"appengine"
+	"appengine/delay"
+
+	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/util/log"
 
 	. "crowdstart.io/models"
 )
 
-var Test = delay.Func("install-test-fixtures", func(c appengine.Context) {
-	log.Debug("Installing test fixtures...")
+var contributors = delay.Func("fixtures-contributors", func(c appengine.Context) {
 	db := datastore.New(c)
 
-	csvfile, err := os.Open("resources/contributions-test.csv")
+	if count, _ := db.Query("user").Count(c); count > 10 {
+		log.Debug("Contributor fixtures already loaded, skipping.")
+		return
+	}
+
+	csvfile, err := os.Open("resources/contributions.csv")
 	defer csvfile.Close()
 	if err != nil {
 		log.Fatal("Failed to open CSV File: %v", err)
@@ -38,6 +44,11 @@ var Test = delay.Func("install-test-fixtures", func(c appengine.Context) {
 	// Payment Method     5                 Shipping Zip/Postal Code 16
 	//	                                    Shipping Country         17
 	for i := 0; true; i++ {
+		// Only save first 25 in development
+		if config.IsDevelopment && i > 25 {
+			break
+		}
+
 		// Loop until exhausted
 		row, err := reader.Read()
 		if err != nil {
@@ -67,14 +78,15 @@ var Test = delay.Func("install-test-fixtures", func(c appengine.Context) {
 
 		city := strings.Title(strings.ToLower(row[14]))
 
+		tokenId := row[0]
 		perkId := row[1]
 		pledgeId := row[2]
 
 		// Create token
 		token := new(InviteToken)
-		token.Id = row[0]
+		token.Id = tokenId
 		token.Email = email
-		db.PutKey("invite-token", token.Id, token)
+		db.PutKey("invite-token", tokenId, token)
 
 		// Save contribution
 		contribution := Contribution{
@@ -106,7 +118,12 @@ var Test = delay.Func("install-test-fixtures", func(c appengine.Context) {
 		user.ShippingAddress = address
 		user.BillingAddress = address
 
-		db.PutKey("user", user.Email, user)
+		// No longer updating user information in production, as it would clobber any customized information.
+		if config.IsProduction {
+			return
+		} else {
+			db.PutKey("user", user.Email, user)
+		}
 
 		log.Debug("User %#v", user)
 		log.Debug("InviteToken: %#v", token)
