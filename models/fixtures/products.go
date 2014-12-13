@@ -11,7 +11,7 @@ import (
 	. "crowdstart.io/models"
 )
 
-var Products = delay.Func("install-products", func(c appengine.Context) {
+var products = delay.Func("install-products", func(c appengine.Context) {
 	log.Debug("Loading fixtures...")
 	db := datastore.New(c)
 
