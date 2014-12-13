@@ -34,7 +34,7 @@ type stripeToken struct {
 
 // Admin Payment Connectors
 func Connect(c *gin.Context) {
-	template.Render(c, "adminlte/connect.html",
+	template.Render(c, "stripe/connect.html",
 		"StripeClientId", config.Stripe.ClientId,
 		"StripeRedirectURL", config.Stripe.RedirectURL)
 }
