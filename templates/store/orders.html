@@ -4,59 +4,44 @@
 </section>
 {% endblock %}
 
-{% block css %}
-<style>
-    .orderTable {
-        min-width: 100%;
-        margin-bottom: 10px;
-    }
-    td {
-        padding-top: 30px;
-    }
-    .description {
-        max-width: 300px;
-        padding-right: 20px;
-    }
-</style>
-{% endblock %}
+{% block content_header_width_class %}cart-width{% endblock %}
+
+{% block content_width_class %}cart-width{% endblock %}
 
 {% block content %}
-<section class="content store-width">
-
-    <div class="shopping-cart">
-        <div class="cart-content" style="text-align: center;">
-            <table class="orderTable">
-                <thead>
-                    <tr>
-                        <td></td>
-                        <td>Price</td>
-                        <td>Delivery date</td>
-                        <td></td>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for order in orders %}
-                    <tr class="row sep-top sep-bottom">
-                        <td class="description">
-                            {% for item in order.Items %}
-                            <div>{{ item.DisplayShortDescription() }} x {{ item.Quantity }}</div>
-                            {% endfor %}
-                        </td>
-                        <td>{{ order.DisplayTotal() }}</td>
-                        <td>May 2015</td>
-                        <td>{{ order.DisplayCreatedAt() }}</td>
-                    </tr>
+<div class="shopping-cart">
+    <table class="orderTable">
+        <thead>
+            <tr>
+                <td>Order Id</td>
+                <td>Summary</td>
+                <td>Price</td>
+                <td>Delivery date</td>
+                <td>Order Creation</td>
+            </tr>
+        </thead>
+        <tbody>
+            {% for order in orders %}
+            <tr class="row sep-top">
+                <td>{{ order.Id }}</td>
+                <td class="description">
+                    {% for item in order.Items %}
+                    <p>{{ item.DisplayShortDescription() }} x {{ item.Quantity }}</p>
                     {% endfor %}
-                </tbody>
-            </table>
-            {% if tokenId %}
-            <div style="text-align:center;">
-                <button style="float: none;" onclick="location.href='{{ urlFor("preorder", "/order/", tokenId) }}'">Edit preorders</button>
-            </div>
-            {% endif %}
-            <div class="sep-top" style="margin-top: 10px;">
-            </div>
-        </div>
-
-</section>
+                </td>
+                <td>
+                    <span>$</span><span class="money">{{ order.DisplayTotal()}}</span>
+                </td>
+                <td><p>June 2015</p><p>Downloadable</p><p>December 2014</p></td>
+                <td>{{ order.DisplayCreatedAt() }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% if tokenId %}
+    <div class="options sep-top">
+        <button onclick="location.href='{{ urlFor("preorder", "/order/", tokenId) }}'">Edit preorders</button>
+    </div>
+    {% endif %}
+</div>
 {% endblock %}
