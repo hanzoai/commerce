@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
 )
 
@@ -28,8 +27,8 @@ var configFileLocations = []string{
 type Config struct {
 	DemoMode          bool
 	IsDevelopment     bool
-	IsProduction      bool
 	IsStaging         bool
+	IsProduction      bool
 	AutoCompileAssets bool
 	AutoLoadFixtures  bool
 	RootDir           string
@@ -102,150 +101,6 @@ func (c *Config) Load(fileName string) {
 	}
 }
 
-// Default settings
-func Defaults() *Config {
-	config := new(Config)
-	config.Hosts = make(map[string]string, 10)
-	config.Prefixes = make(map[string]string, 10)
-	config.RootDir, _ = filepath.Abs(cwd + "/../..")
-	config.SiteTitle = "SKULLY"
-	config.DemoMode = demoMode
-	config.Mandrill.FromName = "Admin"
-	config.Mandrill.FromEmail = "admin@crowdstart.io"
-	return config
-}
-
-// Development settings
-func Development() *Config {
-	config := Defaults()
-
-	config.IsDevelopment = true
-
-	config.AutoCompileAssets = false
-	config.AutoLoadFixtures = true
-
-	config.Prefixes["default"] = "/"
-	config.Prefixes["api"] = "/api/"
-	config.Prefixes["checkout"] = "/checkout/"
-	config.Prefixes["platform"] = "/admin/"
-	config.Prefixes["preorder"] = "/preorder/"
-	config.Prefixes["store"] = "/store/"
-
-	config.Hosts["default"] = "localhost:8080"
-	config.Hosts["api"] = "localhost:8080"
-	config.Hosts["checkout"] = "localhost:8080"
-	config.Hosts["platform"] = "localhost:8080"
-	config.Hosts["preorder"] = "localhost:8080"
-	config.Hosts["store"] = "localhost:8080"
-
-	config.StaticUrl = "//localhost:8080/static"
-
-	// TODO: Create dev versions somehow
-	config.Salesforce.ConsumerKey = "3MVG9xOCXq4ID1uElRYWhpUWjXSbiTVg4WO6q9DvWdvBjQ_DFlwSc7jZ9AbY3z9Jv_V29W7xq1nPjTYQhYJqF"
-	config.Salesforce.ConsumerSecret = "3811316853831925498"
-	config.Salesforce.CallbackURL = "https://admin.crowdstart.io/salesforce/callback"
-
-	config.Stripe.ClientId = "ca_53yyPzxlPsdAtzMEIuS2mXYDp4FFXLmm"
-	config.Stripe.APIKey = "pk_test_ucSTeAAtkSXVEg713ir40UhX"
-	config.Stripe.APISecret = ""
-	config.Stripe.RedirectURL = "http:" + config.UrlFor("platform", "/stripe/callback")
-	config.Stripe.WebhookURL = "http:" + config.UrlFor("platform", "/stripe/hook")
-	return config
-}
-
-// Production Settings
-func Production() *Config {
-	config := Defaults()
-
-	config.SentryDSN = "https://4daf3e86c2744df4b932abbe4eb48aa8:27fa30055d9747e795ca05d5ffb96f0c@app.getsentry.com/32164"
-
-	config.IsProduction = true
-
-	config.Prefixes["default"] = "/"
-	config.Prefixes["api"] = "/"
-	config.Prefixes["checkout"] = "/"
-	config.Prefixes["platform"] = "/"
-	config.Prefixes["preorder"] = "/"
-	config.Prefixes["store"] = "/"
-
-	config.Hosts["default"] = "static.crowdstart.io"
-	config.Hosts["api"] = "api.crowdstart.io"
-	config.Hosts["checkout"] = "secure.crowdstart.io"
-	config.Hosts["platform"] = "admin.crowdstart.io"
-	config.Hosts["preorder"] = "preorder.crowdstart.io"
-	config.Hosts["store"] = "store.crowdstart.io"
-
-	config.StaticUrl = "//static.crowdstart.io"
-
-	config.Mandrill.APIKey = "wJ3LGLp5ZOUZlSH8wwqmTg"
-
-	// Only use production credentials if demo mode is off.
-	if !config.DemoMode {
-		config.Salesforce.ConsumerKey = "3MVG9xOCXq4ID1uElRYWhpUWjXSbiTVg4WO6q9DvWdvBjQ_DFlwSc7jZ9AbY3z9Jv_V29W7xq1nPjTYQhYJqF"
-		config.Salesforce.ConsumerSecret = "3811316853831925498"
-		config.Salesforce.CallbackURL = "https://admin.crowdstart.io/salesforce/callback"
-
-		config.Stripe.ClientId = "ca_53yyRUNpMtTRUgMlVlLAM3vllY1AVybU"
-		config.Stripe.APIKey = "pk_live_APr2mdiUblcOO4c2qTeyQ3hq"
-		config.Stripe.APISecret = ""
-		config.Stripe.RedirectURL = "https:" + config.UrlFor("platform", "/stripe/callback")
-		config.Stripe.WebhookURL = "https:" + config.UrlFor("platform", "/stripe/hook")
-	}
-
-	return config
-}
-
-// Staging Settings
-func Staging() *Config {
-	config := Production()
-
-	config.IsProduction = false
-	config.IsStaging = true
-
-	config.Hosts["default"] = "static.staging.crowdstart.io"
-	config.Hosts["api"] = "api.staging.crowdstart.io"
-	config.Hosts["checkout"] = "checkout-staging.crowdstart.io"
-	config.Hosts["platform"] = "admin.staging.crowdstart.io"
-	config.Hosts["preorder"] = "preorder.staging.crowdstart.io"
-	config.Hosts["store"] = "store.staging.crowdstart.io"
-
-	config.StaticUrl = "//static.staging.crowdstart.io"
-
-	return config
-}
-
-// Staging Settings
-func Skully() *Config {
-	config := Production()
-
-	config.Hosts["default"] = "static.skullysystems.com"
-	config.Hosts["api"] = "invalid.skullysystems.com" // Setting platform to API temporarily.
-	config.Hosts["checkout"] = "secure.skullysystems.com"
-	config.Hosts["platform"] = "api.skullysystems.com"
-	config.Hosts["preorder"] = "preorder.skullysystems.com"
-	config.Hosts["store"] = "store.skullysystems.com"
-
-	config.StaticUrl = "//static.skullysystems.com"
-	config.Mandrill.FromName = "SKULLY"
-	config.Mandrill.FromEmail = "noreply@skullysystems.com"
-
-	config.DemoMode = false
-
-	// Only use production credentials if demo mode is off.
-	if !config.DemoMode {
-		config.Salesforce.ConsumerKey = "3MVG9xOCXq4ID1uElRYWhpUWjXSbiTVg4WO6q9DvWdvBjQ_DFlwSc7jZ9AbY3z9Jv_V29W7xq1nPjTYQhYJqF"
-		config.Salesforce.ConsumerSecret = "3811316853831925498"
-		config.Salesforce.CallbackURL = "https://admin.crowdstart.io/salesforce/callback"
-
-		config.Stripe.ClientId = "ca_53yyRUNpMtTRUgMlVlLAM3vllY1AVybU"
-		config.Stripe.APIKey = "pk_live_APr2mdiUblcOO4c2qTeyQ3hq"
-		config.Stripe.APISecret = ""
-		config.Stripe.RedirectURL = "https:" + config.UrlFor("platform", "/stripe/callback")
-		config.Stripe.WebhookURL = "https:" + config.UrlFor("platform", "/stripe/hook")
-	}
-	return config
-}
-
 // Get current config object
 func Get() *Config {
 	if cachedConfig != nil {
@@ -259,7 +114,7 @@ func Get() *Config {
 		// Use PWD to determine appid, if s~crowdstart-io-staging is in PWD,
 		// then we're in staging enviroment.
 		pwd := os.Getenv("PWD")
-		if strings.Contains(pwd, "s~crowdstart-io-staging") {
+		if strings.Contains(pwd, "s~crowdstart-staging") {
 			cachedConfig = Staging()
 		} else if strings.Contains(pwd, "s~skully-crowdstart") {
 			cachedConfig = Skully()

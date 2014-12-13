@@ -63,8 +63,3 @@ func SubmitProfile(c *gin.Context) {
 func Dashboard(c *gin.Context) {
 	template.Render(c, "adminlte/dashboard.html")
 }
-
-// Admin Payment Connectors
-func Connect(c *gin.Context) {
-	template.Render(c, "adminlte/connect.html", "clientid", config.Stripe.ClientId, "error", "")
-}
