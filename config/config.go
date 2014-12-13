@@ -202,14 +202,14 @@ func Staging() *Config {
 	config.IsProduction = false
 	config.IsStaging = true
 
-	config.Hosts["default"] = "default-staging.crowdstart.io"
-	config.Hosts["api"] = "api-staging.crowdstart.io"
-	config.Hosts["checkout"] = "checkout-staging.crowdstart.io"
-	config.Hosts["platform"] = "platform-staging.crowdstart.io"
-	config.Hosts["preorder"] = "preorder-staging.crowdstart.io"
-	config.Hosts["store"] = "store-staging.crowdstart.io"
+	config.Hosts["default"] = "default-dot-crowdstart-staging.appspot.com"
+	config.Hosts["api"] = "api-dot-crowdstart-staging.appspot.com"
+	config.Hosts["checkout"] = "checkout-dot-crowdstart-staging.appspot.com"
+	config.Hosts["platform"] = "platform-dot-crowdstart-staging.appspot.com"
+	config.Hosts["preorder"] = "preorder-dot-crowdstart-staging.appspot.com"
+	config.Hosts["store"] = "store-dot-crowdstart-staging.appspot.com"
 
-	config.StaticUrl = "//static-staging.crowdstart.io"
+	config.StaticUrl = "//static-dot-crowdstart-staging.appspot.com"
 
 	return config
 }
