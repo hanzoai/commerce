@@ -34,7 +34,6 @@ class StoreApp extends App
     '/:prefix?': routes.cart.setupHover
 
     '*': [
-      routes.cart.click
       routes.store.menu
     ]
 
