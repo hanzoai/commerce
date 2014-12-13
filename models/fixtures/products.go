@@ -134,7 +134,7 @@ var Products = delay.Func("install-products", func(c appengine.Context) {
 		Slug:     "card-winter2014promo",
 		Title:    "SKULLY Xmas Card",
 		Variants: variants,
-		Images: []Image{ // replace with real one, zach
+		Images: []Image{
 			Image{
 				Alt: "whitehelmet_store_1000px.jpg",
 				Url: config.UrlFor("/img/products/skullyhhsquare.jpg"),
@@ -160,7 +160,7 @@ var Products = delay.Func("install-products", func(c appengine.Context) {
 		Slug:     "dogtag-winter2014promo",
 		Title:    "Limited Edition SKULLY dog tag",
 		Variants: variants,
-		Images: []Image{ // replace with real one, zach
+		Images: []Image{
 			Image{
 				Alt: "whitehelmet_store_1000px.jpg",
 				Url: config.UrlFor("/img/products/skullydogtags.png"),
