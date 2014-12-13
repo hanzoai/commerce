@@ -1,7 +1,3 @@
-exports.click = ->
-  $('.cart-hover').click ->
-    window.location = '/cart'
-
 exports.hideHover = ->
   $('.cart-hover').hide()
 
