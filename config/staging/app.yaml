@@ -31,11 +31,6 @@ handlers:
   script: _go_app
   login: admin
 
-- url: /*
-  static_dir: static
-  http_headers:
-    Access-Control-Allow-Origin: "*"
-
 - url: /assets/css/(.*\.styl)
   static_files: assets/css/\1
   upload: assets/css/(.*\.style)
@@ -70,6 +65,11 @@ handlers:
   static_files: static/font/\1
   upload: static/font/(.*\.otf)
   mime_type: application/x-font-otf
+
+- url: /*
+  static_dir: static
+  http_headers:
+    Access-Control-Allow-Origin: "*"
 
 pagespeed:
   enabled_rewriters:
