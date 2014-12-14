@@ -17,22 +17,31 @@ func ForgotPassword(c *gin.Context) {
 
 // POST /forgotpassword
 func SubmitForgotPassword(c *gin.Context) {
-	ctx := middleware.GetAppEngine(c)
-
 	form := new(ForgotPasswordForm)
-	err := form.Parse(c)
-	if err != nil {
+	if err := form.Parse(c); err != nil {
 		template.Render(c, "forgot-password.html",
 			"error", "Please enter your email.")
 		return
 	}
 
+	ctx := middleware.GetAppEngine(c)
 	db := datastore.New(ctx)
-	var user models.User
-	err = db.GetKey("user", form.Email, &user)
-	if err != nil {
+
+	// Lookup email
+	user := new(models.User)
+	if err := db.GetKey("user", form.Email, user); err != nil {
 		template.Render(c, "forgot-password.html",
 			"error", "No account associated with that email.")
+		return
+	}
+
+	// Save reset token
+	token := new(models.Token)
+	token.Email = user.Email
+	token.GenerateId()
+	if _, err := db.PutKey("reset-token", token.Id, token); err != nil {
+		template.Render(c, "forgot-password.html",
+			"error", "Failed to create reset token, please try again later.")
 		return
 	}
 
