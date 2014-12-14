@@ -137,10 +137,32 @@ exports.menu = ->
     $('body').toggleClass('mobile')
 
 exports.toggleDropdown = ->
+  _id = null
   $('.dropdown-toggle').click ->
-    id = $(@).attr('id')
+    $el = $(@)
+    id = $el.attr 'id'
+
+    if id == _id
+      $el.attr 'checked', false
+      _id = null
+      return
+    else
+      $el.attr 'checked', true
+      _id = id
+
+    # Only one menu should be active at a time.
     $('.dropdown-toggle')
       .filter (v) ->
         $(@).attr('id') isnt id
       .each ->
         $(@).attr 'checked', false
+
+    # Hide menu when clicked away from.
+    first = true
+    $(document.body).on 'click.dropdown', ->
+      if first
+        first = false
+        return
+
+      $("##{id}").attr 'checked', false
+      $(document.body).off 'click.dropdown'
