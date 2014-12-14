@@ -27,7 +27,8 @@ The OAuth stuff in this package is modelled after platform/admin/stripe.go
 // state is an arbitrary string which should be sent in order
 // to prevent CSRF.
 // http://stackoverflow.com/a/22892986
-var state = func() string {
+// Issues may arise when multiple instances are deployed.
+/*var state = func() string {
 	n := 16
 	b := make([]rune, n)
 	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
@@ -35,7 +36,10 @@ var state = func() string {
 		b[i] = letters[rand.Intn(len(letters))]
 	}
 	return string(b)
-}()
+}()*/
+
+// TODO Create a way to change state without invalidating previous CSRF tokens
+const state = "a17381zxncm,nzxcm, -SADs;d'asd2aj~^&*^!@*&%#!^ajkdhas"
 
 const appId = ""
 
