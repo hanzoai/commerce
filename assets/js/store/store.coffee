@@ -37,6 +37,7 @@ class StoreApp extends App
 
     '*': [
       routes.store.menu
+      routes.store.toggleDropdown
     ]
 
   start: ->
