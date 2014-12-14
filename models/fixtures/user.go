@@ -28,7 +28,7 @@ var testUsers = delay.Func("fixtures-test-users", func(c appengine.Context) {
 	})
 
 	// Create token
-	token := new(InviteToken)
+	token := new(Token)
 	token.Id = "test-token"
 	token.Email = "test@test.com"
 	db.PutKey("invite-token", "test-token", token)
