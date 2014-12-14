@@ -66,7 +66,7 @@ exports.displayHelmets = ->
           first = false
         hasItem = true
 
-    view.newTime() unless hasItem
+    view.newItem() unless hasItem
 
   $('.item.helmet').append view.$el
 
@@ -103,7 +103,7 @@ exports.displayApparel = ->
         itemView.updateQuantity()
         hasItem = true
 
-    view.newTime() unless hasItem
+    view.newItem() unless hasItem
 
   $('.item.gear').append view.$el
 
@@ -139,7 +139,7 @@ exports.displayHats = ->
         itemView.updateQuantity()
         hasItem = true
 
-    view.newTime() unless hasItem
+    view.newItem() unless hasItem
 
 
   $('.item.hats').append view.$el
