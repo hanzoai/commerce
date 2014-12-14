@@ -33,12 +33,19 @@ module.exports =
   cwd: process.cwd()
 
   exclude: [
+    /checkout\/static/
+    /platform\/static/
+    /preorder\/static/
+    /store\/static/
+    /config\/production\/assets/
     /config\/production\/static/
-    /config\/staging\/static/
+    /config\/skully\/assets/
     /config\/skully\/static/
+    /config\/staging\/assets/
+    /config\/staging\/static/
+    /config.json$/
     /\.go$/
     /\.yaml$/
-    /config.json$/
   ]
 
   compilers:
@@ -52,15 +59,14 @@ module.exports =
         return "#{requisite} #{files.store.js.in} -o #{files.store.js.out}"
 
       if /^assets\/js\//.test src
-        # compile everything
         output = []
         input = []
         for _, settings of files
           if settings.js?
             input.push settings.js.in
-            output.push settings.js.out
+            output.push "-o #{settings.js.out}"
 
-        return "#{requisite} #{input} #{output}"
+        return "#{requisite} #{input.join ' '} #{output.join ' '}"
 
     styl: (src) ->
       # try to just optimize module changed
@@ -78,4 +84,4 @@ module.exports =
           if settings.css?.in?
             input.push settings.css.in
 
-        return "#{stylus} #{input} -o static/css/"
+        return "#{stylus} #{input.join ' '} -o static/css/"
