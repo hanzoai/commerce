@@ -1,11 +1,12 @@
 package fixtures
 
 import (
-	"appengine"
-	"appengine/delay"
 	"encoding/csv"
 	"os"
 	"strings"
+
+	"appengine"
+	"appengine/delay"
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/util/log"
@@ -13,7 +14,7 @@ import (
 	. "crowdstart.io/models"
 )
 
-var International = delay.Func("install-international-fixtures", func(c appengine.Context) {
+var international = delay.Func("fixtures-international", func(c appengine.Context) {
 	log.Debug("Installing international fixtures...")
 	db := datastore.New(c)
 
@@ -54,7 +55,7 @@ var International = delay.Func("install-international-fixtures", func(c appengin
 		// Save contribution
 		contribution := Contribution{
 			Id:            pledgeId,
-			Perk:          perks[perkId],
+			Perk:          Perks[perkId],
 			Status:        row[3],
 			FundingDate:   row[4],
 			PaymentMethod: row[5],

@@ -1,4 +1,4 @@
-application: crowdstart-io-staging
+application: crowdstart-staging
 module: preorder
 version: v1
 

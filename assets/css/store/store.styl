@@ -1,6 +1,19 @@
 @import "node_modules/axis/axis"
+@import "../mixin/normalize"
+@import "../mixin/quill"
+@import "../mixin/reset"
+@import "../theme/forms"
 @import "../preorder/spinner"
 @import "dropdown"
+
+normalize()
+reset()
+
+form
+  form-error(red)
+
+.container
+  width: 100%
 
 body
   color rgb(46,46,46)
@@ -47,7 +60,6 @@ a:active
   transition left .3s ease 0s
 
 .title-nav
-  padding 0px 130px !important
   max-width 1200px
   font-size 15px
   display table
@@ -158,6 +170,9 @@ a:active
                 text-align center
 
 @media all and ( min-width: 1000px )
+  .title-nav
+    padding 0px 130px !important
+
   .nav
     display table-cell
     width 70%
@@ -269,6 +284,13 @@ button
 
 .sep-top
   border-top 1px solid rgb(203,203,203)
+
+.sep-bot
+  border-bottom 1px solid rgb(203,203,203)
+
+.success
+  color: blue
+  text-align: center
 
 .footer
   width 100%
@@ -485,31 +507,34 @@ body.mobile .cart-hover
   max-width 800px
 
 .shopping-cart
-  form
-    table
-      width 100%
-    td
-      vertical-align middle
-    td.item-desc
-      text-align left
-    td.item-image
-      width 150px
-      .thumbnail
-        padding 10px
-        max-width 100px
-    td.quantity
-      max-width 15%
-      select
-        margin-left 10px
-    td.price
-      text-align right
-      width 100px
-    td.remove
-      width 60px
-      text-align center
-      .remove-item
-        cursor pointer
   margin-bottom 50px
+
+  .no-history
+    text-align: center
+
+  table
+    width 100%
+  td
+    vertical-align middle
+  td.item-desc
+    text-align left
+  td.item-image
+    width 150px
+    .thumbnail
+      padding 10px
+      max-width 100px
+  td.quantity
+    max-width 15%
+    select
+      margin-left 10px
+  td.price
+    text-align right
+    width 100px
+  td.remove
+    width 60px
+    text-align center
+    .remove-item
+      cursor pointer
 
   .subtotal
     text-align right
@@ -520,9 +545,12 @@ body.mobile .cart-hover
     .price
       padding-right 25px
 
-  .checkout
+  .options
     display table
     width 100%
+
+.checkout-button
+  margin-bottom: 50px
 
 .shopping-cart
   tr.subitem
@@ -544,6 +572,9 @@ body.mobile .cart-hover
       .free
         display none
 
+  .orderTable
+    margin-bottom: 20px
+
 // THANK YOU
 .thankyou-width
   width 600px
@@ -559,28 +590,161 @@ body.mobile .cart-hover
     img
       width 40px
 
-// LOGIN, REGISTER, PROFILE
-.login, .register, .profile
-  margin-bottom 50px
-  .form
-    width 300px
-    text-align center
-    margin 0 auto
-    .field
-      text-align right
-      padding 5px
-      label
-        padding 10px
+// LOGIN, REGISTER, RECOVER
+.login-width
+  max-width 900px
 
-    button
-      float none
+.recover-width
+  max-width 300px
+
+.recover-sent-width
+  max-width 600px
+
+.content
+  div.recover-sent
+    div
+      margin-top 20px
+      width 100%
+      display table
+
+
+  div.recover, div.recover-sent
+    h2
+      text-align: center
+      width: 100%
+
+    .user-form:first-child
+      padding-right: 0
+
+    .user-form:last-child
+      padding-left: 0
+      border: 0
+
+      label
+        display: block
+
+  .login, .recover, .recover-sent
+    width 100%
+    display table
+    margin 20px auto 30px auto
+
+    .user-form:first-child
+      padding-right 5%
+
+    .user-form:last-child
+      border-left 1px solid #555
+      padding-left 5%
+
+    // Rotate login divider column
+    +below(600px)
+      .user-form
+        padding-right: 0 !important
+        padding-left: 0 !important
+
+      .user-form:last-child
+        border: 0 !important
+
+      .divider
+        width 110%
+        position relative
+        left -5%
+        border-top: 1px solid #555
+
+    .user-form form > div
+      margin-top 20px
+      width 100%
+      display table
+
+    .login-form
+
+      .options
+        margin: 5px 0
+
+      .password-options
+        input
+          margin-right: 10px
+        a
+          float: right
+
+    .user-form
+      padding-bottom 10px
+
+      .errors
+        margin: 0
+
+      label
+        display: none
+
+      .left
+        col(1/2)
+        padding-right: 10px
+        bbox()
+        input
+          width: 100%
+          bbox()
+
+      .right
+        col(1/2)
+        padding-left: 10px
+        bbox()
+        input
+          width: 100%
+          bbox()
+
+      // Stack first/last name below 600px
+      +below(750px)
+        .left
+          padding: 0
+          stack()
+          margin-bottom: 20px
+        .right
+          padding: 0
+          stack()
+
+      .user-form-header
+        min-height 80px
+
+        h2
+          min-height 50px
+
+      box-sizing border-box
+
+      +html5-inputs()
+        input: aqua 100%
+        font-family inherit
+        box-sizing border-box
+        border-radius: 0px
+        padding: 8px
+        border: 1px solid #ddd
+
+      button
+        width:100%
+        margin 0
+
+// PROFILE
+
+.profile-width
+  max-width: 800px
+
+.profile
+  form
+    named-form()
+
+    label
+      padding 5px 0
+
+    +html5-inputs()
+      input: aqua 100%
+      font-family inherit
+      box-sizing border-box
+      border-radius: 0px
+      padding: 8px
+      border: 1px solid #ddd
 
 // MEDIA QUERIES
 @media all and ( min-width: 600px )
   .col-1-2
-    display inline
-    float left
-    width 50%
+     col(1/2)
 @media all and ( min-width: 1000px )
   .product-viewer
     width 50%

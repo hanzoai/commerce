@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/sessions"
 
+	"crowdstart.io/config"
 	"crowdstart.io/util/log"
 )
 
@@ -11,6 +12,15 @@ const secret = "askjaakjl12"
 const sessionName = "logged-in-" + kind
 
 var store = sessions.NewCookieStore([]byte(secret))
+
+func init() {
+	store.Options = &sessions.Options{
+		Domain:   config.CookieDomain,
+		Path:     "/",
+		MaxAge:   86400 * 7,
+		HttpOnly: true,
+	}
+}
 
 func SaveSession(c *gin.Context, session *sessions.Session) error {
 	return session.Save(c.Request, c.Writer)
