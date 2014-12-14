@@ -57,22 +57,3 @@ type Campaign struct {
 	FacebookTag     string
 	Links           []string
 }
-
-type Perk struct {
-	Id                string
-	Description       string
-	EstimatedDelivery string
-	GearQuantity      int
-	HelmetQuantity    int
-	Price             string
-	Title             string
-}
-
-type Contribution struct {
-	Id            string
-	Email         string
-	FundingDate   string
-	PaymentMethod string
-	Perk          Perk
-	Status        string
-}

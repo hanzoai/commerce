@@ -36,7 +36,7 @@ var testUsers = delay.Func("fixtures-test-users", func(c appengine.Context) {
 	// Save contribution
 	contribution := Contribution{
 		Id:            "test",
-		Perk:          perks["2267279"],
+		Perk:          Perks["2267279"],
 		Status:        "Unfulfilled",
 		FundingDate:   "1983-06-30",
 		PaymentMethod: "PayPal",

@@ -2,6 +2,7 @@ package checkout
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -175,6 +176,17 @@ func charge(c *gin.Context) {
 	invite.Email = user.Email
 	if _, err := db.PutKey("invite-token", invite.Id, invite); err != nil {
 		log.Error("Failed to save invite-token: %v", err, c)
+		c.Fail(500, err)
+		return
+	}
+
+	log.Debug("Saving contribution...", c)
+	contribution := new(models.Contribution)
+	contribution.Id = strconv.Itoa(int(orderId))
+	contribution.Email = user.Email
+	contribution.Perk = models.Perks["WINTER2014PROMO"]
+	if _, err := db.PutKey("contribution", contribution.Id, contribution); err != nil {
+		log.Error("Failed to save contribution: %v", err, c)
 		c.Fail(500, err)
 		return
 	}
