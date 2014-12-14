@@ -17,6 +17,8 @@ func TemplateSet() *pongo2.TemplateSet {
 	set := pongo2.NewSet("default")
 	set.Debug = config.IsDevelopment
 
+	set.Globals["config"] = config.Get()
+
 	set.Globals["isDevelopment"] = config.IsDevelopment
 	set.Globals["isProduction"] = config.IsProduction
 	set.Globals["isStaging"] = config.IsStaging

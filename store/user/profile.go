@@ -8,7 +8,6 @@ import (
 	"crowdstart.io/middleware"
 	"crowdstart.io/models"
 	"crowdstart.io/thirdparty/mandrill"
-	"crowdstart.io/util/form"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
@@ -25,35 +24,71 @@ func Profile(c *gin.Context) {
 	template.Render(c, "profile.html", "user", user, "userJson", userJson)
 }
 
-func SaveProfile(c *gin.Context) {
-	modifiedUser := new(models.User)
-	err := form.Parse(c, modifiedUser)
-	if err != nil {
-		log.Panic("Error parsing user \n%v", err)
+func updateContact(c *gin.Context, user *models.User) {
+	form := new(ContactForm)
+	if err := form.Parse(c); err != nil {
+		log.Panic("Failed to save user profile: %v", err)
 	}
 
+	// Update information from form.
+	user.Phone = form.User.Phone
+	user.FirstName = form.User.FirstName
+	user.LastName = form.User.LastName
+}
+
+func updateBilling(c *gin.Context, user *models.User) {
+	form := new(BillingForm)
+	if err := form.Parse(c); err != nil {
+		log.Panic("Failed to save user billing information: %v", err)
+	}
+
+	user.BillingAddress = form.BillingAddress
+}
+
+func updatePassword(c *gin.Context, user *models.User) {
+	form := new(ChangePasswordForm)
+	if err := form.Parse(c); err != nil {
+		log.Panic("Failed to update user password: %v", err)
+	}
+
+	if err := auth.CompareHashAndPassword(user.PasswordHash, form.Password); err != nil {
+		log.Panic("Password is incorrect: %v", err)
+	}
+
+	if form.NewPassword == form.ConfirmPassword {
+		user.PasswordHash = auth.HashPassword(form.NewPassword)
+	} else {
+		log.Panic("Passwords do not match.")
+	}
+}
+
+func SaveProfile(c *gin.Context) {
+	// Get user from datastore using session
 	user, err := auth.GetUser(c)
-	log.Debug("Email: %#v", user)
+	if err != nil {
+		log.Panic("Failed to retrieve user from datastore using session: %v", err)
+	}
 
+	// Parse proper form
+	formName := c.Params.ByName("form")
+	switch formName {
+	case "change-contact":
+		updateContact(c, user)
+	case "change-billing":
+		updateBilling(c, user)
+	case "change-password":
+		updatePassword(c, user)
+	}
+
+	// Update user
+	db := datastore.New(c)
+	if _, err = db.PutKey("user", user.Email, user); err != nil {
+		log.Panic("Failed to save user: %v", err)
+	}
+
+	// Send email notifying of changes
 	ctx := middleware.GetAppEngine(c)
-
 	mandrill.SendTemplateAsync.Call(ctx, "account-change-confirmation", user.Email, user.Name(), "Your account information has been changed.")
 
-	if err != nil {
-		log.Panic("Error getting logged in user from the datastore \n%v", err)
-	}
-
-	user.Phone = modifiedUser.Phone
-	user.BillingAddress = modifiedUser.BillingAddress
-	user.FirstName = modifiedUser.FirstName
-	user.LastName = modifiedUser.LastName
-
-	db := datastore.New(c)
-	_, err = db.PutKey("user", user.Email, user)
-	if err != nil {
-		log.Panic("Error saving the user \n%v", err)
-	}
-
-	userJson := json.Encode(user)
-	template.Render(c, "profile.html", "user", user, "userJson", userJson)
+	template.Render(c, "profile.html", "user", user)
 }
