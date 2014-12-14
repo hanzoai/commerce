@@ -254,10 +254,10 @@ var SendTemplateAsync = delay.Func("send-template-email", func(ctx appengine.Con
 		req.AddMergeVar(v)
 	}
 
-	log.Debug("Sending email to %s", toEmail)
+	log.Debug("Sending email to %s", toEmail, ctx)
 
 	// Send template
 	if err := SendTemplate(ctx, &req); err != nil {
-		log.Error(err, ctx)
+		log.Error("Failed to send email: %v", err, ctx)
 	}
 })
