@@ -55,7 +55,7 @@ var international = delay.Func("fixtures-international", func(c appengine.Contex
 		// Save contribution
 		contribution := Contribution{
 			Id:            pledgeId,
-			Perk:          perks[perkId],
+			Perk:          Perks[perkId],
 			Status:        row[3],
 			FundingDate:   row[4],
 			PaymentMethod: row[5],
