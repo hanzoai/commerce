@@ -20,6 +20,8 @@ func Profile(c *gin.Context) {
 		log.Panic("GetUser Error: %v", err)
 	}
 	userJson := json.Encode(user)
+
+	log.Debug("Loading Profile %v", user)
 	template.Render(c, "profile.html", "user", user, "userJson", userJson)
 }
 
