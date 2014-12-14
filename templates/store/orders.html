@@ -10,6 +10,7 @@
 
 {% block content %}
 <div class="shopping-cart">
+    {% if orders | length > 0 %}
     <table class="orderTable">
         <thead>
             <tr>
@@ -42,6 +43,9 @@
     <div class="options sep-top">
         <button onclick="location.href='{{ urlFor("preorder", "/order/", tokenId) }}'">Edit preorders</button>
     </div>
+    {% endif %}
+    {% else %}
+    <div class="no-history">You have no order history.</div>
     {% endif %}
 </div>
 {% endblock %}
