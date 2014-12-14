@@ -19,17 +19,14 @@ import (
 
 const root = "http://mandrillapp.com/api/1.0"
 
-type GlobalMergeVars struct {
+type Var struct {
 	Name    string `json:"name"`
 	Content string `json:"content"`
 }
 
-type MergeVars struct {
+type RcptMergeVars struct {
 	Rcpt string `json:"rcpt"`
-	Vars []struct {
-		Name    string `json:"name"`
-		Content string `json:"content"`
-	} `json:"vars"`
+	Vars []Var  `json:"vars"`
 }
 
 type Recipient struct {
@@ -47,9 +44,11 @@ type SendReq struct {
 		FromEmail string      `json:"from_email"`
 		FromName  string      `json:"from_name"`
 		To        []Recipient `json:"to"`
+
 		// Headers   struct {
 		// 	ReplyTo string `json:"Reply-To"`
 		// } `json:"headers"`
+
 		// Important bool `json:"important"`
 		// TrackOpens         interface{} `json:"track_opens"`
 		// TrackClicks        interface{} `json:"track_clicks"`
@@ -63,28 +62,34 @@ type SendReq struct {
 		// TrackingDomain     interface{} `json:"tracking_domain"`
 		// SigningDomain    interface{} `json:"signing_domain"`
 		// ReturnPathDomain interface{} `json:"return_path_domain"`
-		Merge         bool   `json:"merge"`
-		MergeLanguage string `json:"merge_language"`
-		// GlobalMergeVars []GlobalMergeVars `json:"global_merge_vars"`
-		// MergeVars       []MergeVars       `json:"merge_vars"`
+
+		Merge         bool            `json:"merge"`
+		MergeLanguage string          `json:"merge_language"`
+		MergeVars     []Var           `json:"global_merge_vars"`
+		RcptMergeVars []RcptMergeVars `json:"merge_vars"`
+
 		// Tags []string `json:"tags"`
 		// Subaccount      string            `json:"subaccount"`
 		// GoogleAnalyticsDomains  []string `json:"google_analytics_domains"`
 		// GoogleAnalyticsCampaign string   `json:"google_analytics_campaign"`
+
 		// Metadata struct {
 		//	Website string `json:"website"`
 		// } `json:"metadata"`
+
 		// RecipientMetadata []struct {
 		// 	Rcpt   string `json:"rcpt"`
 		// 	Values struct {
 		// 		UserId int `json:"user_id"`
 		// 	} `json:"values"`
 		// } `json:"recipient_metadata"`
+
 		// Attachments []struct {
 		// 	Type    string `json:"type"`
 		// 	Name    string `json:"name"`
 		// 	Content string `json:"content"`
 		// } `json:"attachments"`
+
 		// Images []struct {
 		// 	Type    string `json:"type"`
 		// 	Name    string `json:"name"`
@@ -96,6 +101,20 @@ type SendReq struct {
 	// SendAt string `json:"send_at"`
 }
 
+func (r *SendReq) AddRecipient(email, name string) {
+	rcpt := Recipient{
+		Email: email,
+		Name:  name,
+		Type:  "to",
+	}
+
+	r.Message.To = append(r.Message.To, rcpt)
+}
+
+func (r *SendReq) AddMergeVar(v Var) {
+	r.Message.MergeVars = append(r.Message.MergeVars, v)
+}
+
 type SendTemplateReq struct {
 	SendReq
 	TemplateName    string `json:"template_name"`
@@ -103,16 +122,6 @@ type SendTemplateReq struct {
 		Name    string `json:"name"`
 		Content string `json:"content"`
 	} `json:"template_content"`
-}
-
-func (r *SendReq) AddRecipient(email, name string) {
-	recp := Recipient{
-		Email: email,
-		Name:  name,
-		Type:  "to",
-	}
-
-	r.Message.To = append(r.Message.To, recp)
 }
 
 func NewSendReq() (req SendReq) {
@@ -227,7 +236,7 @@ func Send(ctx appengine.Context, req *SendReq) error {
 	return errors.New("Failed to send email.")
 }
 
-var SendTemplateAsync = delay.Func("send-template-email", func(ctx appengine.Context, templateName, toEmail, toName, subject string) {
+var SendTemplateAsync = delay.Func("send-template-email", func(ctx appengine.Context, templateName, toEmail, toName, subject string, vars ...Var) {
 	req := NewSendTemplateReq()
 	req.AddRecipient(toEmail, toName)
 
@@ -235,6 +244,10 @@ var SendTemplateAsync = delay.Func("send-template-email", func(ctx appengine.Con
 	req.Message.FromName = config.Mandrill.FromName
 	req.Message.Subject = subject
 	req.TemplateName = templateName
+
+	for _, v := range vars {
+		req.AddMergeVar(v)
+	}
 
 	log.Debug("Sending email to %s", toEmail)
 
