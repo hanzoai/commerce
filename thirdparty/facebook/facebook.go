@@ -39,9 +39,13 @@ The OAuth stuff in this package is modelled after platform/admin/stripe.go
 }()*/
 
 // TODO Create a way to change state without invalidating previous CSRF tokens
+// Possibly TTL kv store?
 const state = "a17381zxncm,nzxcm, -SADs;d'asd2aj~^&*^!@*&%#!^ajkdhas"
 
-const appId = ""
+const appId = "739937846096416"
+
+// Not sure if this is necessary yet
+const appSecret = "eb737a205043f4cc73b2e7107c162a36"
 
 // TODO Grab this from the config (depending on if in production or not).
 const base = "localhost:8080"
