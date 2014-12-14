@@ -2,6 +2,7 @@ package preorder
 
 import (
 	"errors"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 
@@ -45,16 +46,29 @@ func GetPreorder(c *gin.Context) {
 		return
 	}
 
-	// If user has password, they've previously edited the preorder
+	// Get orders by email
+	var orders []models.Order
+	keys, err := db.Query("order").
+		Filter("Email =", user.Email).
+		GetAll(db.Context, &orders)
+
+	if err != nil {
+		log.Panic("Error retrieving orders associated with the user's email", err)
+	}
+
+	for i := range orders {
+		orders[i].LoadVariantsProducts(c)
+		orders[i].Id = strconv.Itoa(int(keys[i].IntID()))
+	}
+
+	orderId := ""
 	orderJSON := "{}"
-	order := new(models.Order)
-	if user.HasPassword() {
-		// TODO: Filter on Email
-		if err := db.GetKey("order", user.Email, order); err != nil {
-			log.Error("Failed to fetch order for user: %v", err, c)
-		} else {
-			orderJSON = json.Encode(order)
-		}
+
+	// TODO: Make this work for multiple orders? Tie token to each order?
+	if len(orders) != 0 {
+		order := orders[0]
+		orderId = order.Id
+		orderJSON = json.Encode(order)
 	}
 
 	// Find all of a user's contributions
@@ -84,6 +98,7 @@ func GetPreorder(c *gin.Context) {
 		"productsJSON", productsJSON,
 		"contributionsJSON", contributionsJSON,
 		"orderJSON", orderJSON,
+		"orderId", orderId,
 		"userJSON", userJSON,
 	)
 }
@@ -96,7 +111,8 @@ func SavePreorder(c *gin.Context) {
 		return
 	}
 
-	db := datastore.New(c)
+	ctx := middleware.GetAppEngine(c)
+	db := datastore.New(ctx)
 
 	// Get user from datastore
 	user := new(models.User)
@@ -137,14 +153,14 @@ func SavePreorder(c *gin.Context) {
 
 		// Fetch Variant for LineItem from datastore
 		if err := db.GetKey("variant", lineItem.SKU(), &lineItem.Variant); err != nil {
-			log.Error("Failed to find variant for: %v", lineItem.SKU(), c)
+			log.Error("Failed to find variant for: %v", lineItem.SKU(), ctx)
 			c.Fail(500, err)
 			return
 		}
 
 		// Fetch Product for LineItem from datastore
 		if err := db.GetKey("product", lineItem.Slug(), &lineItem.Product); err != nil {
-			log.Error("Failed to find product for: %v", lineItem.Slug(), c)
+			log.Error("Failed to find product for: %v", lineItem.Slug(), ctx)
 			c.Fail(500, err)
 			return
 		}
@@ -165,25 +181,39 @@ func SavePreorder(c *gin.Context) {
 	order.Email = user.Email
 
 	// Save order
-	// TODO: Need to not putkey on email, but reuse order id
 	log.Debug("Saving order: %v", order)
-	_, err := db.PutKey("order", user.Email, &order)
-	if err != nil {
-		log.Error("Error saving order", err)
-		c.Fail(500, err)
-		return
+	if order.Id != "" {
+		log.Debug("Using OrderId: %v", order.Id)
+		key, err := strconv.Atoi(order.Id)
+		if err != nil {
+			log.Error("Invalid Order.Id: %v", err, ctx)
+			c.Fail(500, err)
+			return
+		}
+
+		// Retrieve existing order and update things we care about
+		if _, err := db.PutKey("order", key, &order); err != nil {
+			log.Error("Error saving order: %v", err, ctx)
+			c.Fail(500, err)
+			return
+		}
+	} else {
+		log.Debug("No order Id found")
+		if _, err := db.Put("order", &order); err != nil {
+			log.Error("Error saving order: %v", err, ctx)
+			c.Fail(500, err)
+			return
+		}
 	}
 
 	// Save user back to database
-	_, err = db.PutKey("user", user.Email, user)
-	if err != nil {
-		log.Error("Error saving user information", err)
+	if _, err := db.PutKey("user", user.Email, user); err != nil {
+		log.Error("Error saving user information", err, ctx)
 		c.Fail(500, err)
 		return
 	}
 
-	ctx := middleware.GetAppEngine(c)
-	mandrill.SendTemplateAsync.Call(ctx, "preorder-confirmation-template", user.Email, user.Name())
+	mandrill.SendTemplateAsync.Call(ctx, "preorder-confirmation-template", user.Email, user.Name(), "Preorder information saved")
 
 	c.Redirect(301, config.UrlFor("preorder", "/thanks"))
 }
