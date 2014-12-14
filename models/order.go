@@ -21,8 +21,8 @@ type Order struct {
 	ShippingAddress Address
 	CreatedAt       time.Time `schema:"-"`
 	UpdatedAt       time.Time `schema:"-"`
-	Id              string    `schema:"-"`
-	Email           string    `schema:"-"`
+	Id              string
+	Email           string
 
 	// TODO: Recalculate Shipping/Tax on server
 	Shipping int64
