@@ -80,7 +80,7 @@ func (o Order) DisplayCreatedAt() string {
 
 	if duration.Hours() > 24 {
 		year, month, day := o.CreatedAt.Date()
-		return fmt.Sprintf("%s %s, %s", day, month.String(), year)
+		return fmt.Sprintf("%s %s, %s", month.String(), strconv.Itoa(day), strconv.Itoa(year))
 	}
 
 	return humanize.Time(o.CreatedAt)
