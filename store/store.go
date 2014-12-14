@@ -28,8 +28,12 @@ func init() {
 	router.GET("/login", logoutRequired, user.Login)
 	router.POST("/login", logoutRequired, user.SubmitLogin)
 	router.GET("/logout", user.Logout)
-	router.GET("/forgot-password", user.ForgotPassword)
-	router.POST("/forgot-password", user.SubmitForgotPassword)
+
+	// Password Reset
+	router.GET("/password-reset", user.PasswordReset)
+	router.POST("/password-reset", user.PasswordResetSubmit)
+	router.GET("/password-reset/:token", user.PasswordResetConfirm)
+	router.POST("/password-reset/:token", user.PasswordResetConfirmSubmit)
 
 	// Register
 	router.GET("/register", logoutRequired, user.Register)
