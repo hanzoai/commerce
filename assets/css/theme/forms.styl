@@ -7,3 +7,29 @@ form-error(color)
 
   input.error, select.error, textarea.error
     border-color: color !important
+
+named-form()
+  h2
+    margin-top: 30px
+
+  fieldset
+    margin-top: 30px
+    margin-bottom: 10px
+
+  fieldset > div
+    display: table
+    width: 100%
+    margin-bottom: 20px
+
+    *
+      float: left
+
+  label
+    col(2/5)
+
+  input, select, textarea
+    width: 60%
+    min-width: 150px
+    max-width: 300px
+
+
