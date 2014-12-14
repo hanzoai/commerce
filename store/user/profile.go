@@ -5,13 +5,13 @@ import (
 
 	"crowdstart.io/auth"
 	"crowdstart.io/datastore"
-	"crowdstart.io/models"
 	"crowdstart.io/middleware"
+	"crowdstart.io/models"
+	"crowdstart.io/thirdparty/mandrill"
 	"crowdstart.io/util/form"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
-	"crowdstart.io/thirdparty/mandrill"
 )
 
 func Profile(c *gin.Context) {
@@ -20,6 +20,8 @@ func Profile(c *gin.Context) {
 		log.Panic("GetUser Error: %v", err)
 	}
 	userJson := json.Encode(user)
+
+	log.Debug("Loading Profile %v", user)
 	template.Render(c, "profile.html", "user", user, "userJson", userJson)
 }
 
