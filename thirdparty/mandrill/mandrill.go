@@ -2,6 +2,7 @@ package mandrill
 
 import (
 	"bytes"
+	"encoding/gob"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -18,6 +19,10 @@ import (
 )
 
 const root = "http://mandrillapp.com/api/1.0"
+
+func init() {
+	gob.Register(Var{})
+}
 
 type Var struct {
 	Name    string `json:"name"`
