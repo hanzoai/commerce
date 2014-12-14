@@ -91,7 +91,7 @@ var contributors = delay.Func("fixtures-contributors", func(c appengine.Context)
 		// Save contribution
 		contribution := Contribution{
 			Id:            pledgeId,
-			Perk:          perks[perkId],
+			Perk:          Perks[perkId],
 			Status:        row[3],
 			FundingDate:   row[4],
 			PaymentMethod: row[5],
