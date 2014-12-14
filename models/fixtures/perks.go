@@ -121,5 +121,6 @@ var perks = map[string]Perk{
 		Price:             "$1,499 USD",
 		EstimatedDelivery: "HELMET May 2015, DOGTAG: December 2014, XMAS CARD: Downloadable",
 		HelmetQuantity:    1,
+		GearQuantity:      0,
 	},
 }
