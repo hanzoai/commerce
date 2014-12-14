@@ -34,15 +34,18 @@ module.exports =
 
   exclude: [
     /checkout\/static/
-    /store\/static/
-    /preorder\/static/
     /platform\/static/
+    /preorder\/static/
+    /store\/static/
+    /config\/production\/assets/
     /config\/production\/static/
+    /config\/skully\/assets/
     /config\/skully\/static/
+    /config\/staging\/assets/
     /config\/staging\/static/
+    /config.json$/
     /\.go$/
     /\.yaml$/
-    /config.json$/
   ]
 
   compilers:
