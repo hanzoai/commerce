@@ -50,7 +50,7 @@ func PasswordResetSubmit(c *gin.Context) {
 		user.Name(),
 		"Recover your password",
 		mandrill.Var{"RESET_CODE", token.Id},
-		mandrill.Var{"RESET_URL", config.UrlFor("store", "/password-reset/", token.Id)})
+		mandrill.Var{"RESET_URL", "https:" + config.UrlFor("store", "/password-reset/", token.Id)})
 
 	template.Render(c, "password-reset-sent.html")
 }
@@ -65,11 +65,11 @@ func PasswordResetConfirm(c *gin.Context) {
 	err := db.GetKey("reset-token", tokenId, token)
 	if err != nil {
 		log.Warn("Invalid reset token: %v", err)
-		template.Render(c, "password-reset-confirm.html", "error", "Invalid password reset token.")
+		template.Render(c, "password-reset-confirm.html", "invalidCode", true)
 		return
 	}
 
-	template.Render(c, "password-reset-confirm.html")
+	template.Render(c, "password-reset-confirm.html", "email", token.Email)
 }
 
 // POST /password-reset/:token
@@ -83,14 +83,14 @@ func PasswordResetConfirmSubmit(c *gin.Context) {
 	err := db.GetKey("reset-token", tokenId, token)
 	if err != nil {
 		log.Warn("Invalid reset token: %v", err)
-		template.Render(c, "password-reset-confirm.html", "error", "Invalid password reset token.")
+		template.Render(c, "password-reset-confirm.html", "invalidCode", true)
 		return
 	}
 
 	// Lookup user by email
 	user := new(models.User)
 	if err := db.GetKey("user", token.Email, user); err != nil {
-		template.Render(c, "password-reset-confirm.html", "error", "No account associated with that email.")
+		template.Render(c, "password-reset-confirm.html", "invalidEmail", true)
 		return
 	}
 
