@@ -580,11 +580,41 @@ body.mobile .cart-hover
     img
       width 40px
 
-// LOGIN, REGISTER, PROFILE
+// LOGIN, REGISTER, RECOVER
+.login-width
+  max-width 900px
+
+.recover-width
+  max-width 300px
+
+.recover-sent-width
+  max-width 600px
+
 .content
-  .login
+  div.recover-sent
+    div
+      margin-top 20px
+      width 100%
+      display table
+
+
+  div.recover, div.recover-sent
+    h2
+      text-align: center
+      width: 100%
+
+    .user-form:first-child
+      padding-right: 0
+
+    .user-form:last-child
+      padding-left: 0
+      border: 0
+
+      label
+        display: block
+
+  .login, .recover, .recover-sent
     width 100%
-    max-width 900px
     display table
     margin 20px auto 30px auto
 
@@ -611,12 +641,26 @@ body.mobile .cart-hover
         border-top: 1px solid #555
 
     .user-form form > div
-      margin 20px 0
+      margin-top 20px
       width 100%
       display table
 
+    .login-form
+
+      .options
+        margin: 5px 0
+
+      .password-options
+        input
+          margin-right: 10px
+        a
+          float: right
+
     .user-form
       padding-bottom 10px
+
+      .errors
+        margin: 0
 
       label
         display: none
@@ -666,6 +710,26 @@ body.mobile .cart-hover
       button
         width:100%
         margin 0
+
+// PROFILE
+
+.profile-width
+  max-width: 800px
+
+.profile
+  form
+    named-form()
+
+    label
+      padding 5px 0
+
+    +html5-inputs()
+      input: aqua 100%
+      font-family inherit
+      box-sizing border-box
+      border-radius: 0px
+      padding: 8px
+      border: 1px solid #ddd
 
 // MEDIA QUERIES
 @media all and ( min-width: 600px )
