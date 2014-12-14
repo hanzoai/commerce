@@ -23,6 +23,13 @@ exports.setupFormValidation = (formId)->
           Validation.error email
           errors.push "Invalid email."
 
+      oldPassword = $form.find('input[name="OldPassword"]')
+      if oldPassword.length != 0
+        if !Validation.isPassword oldPassword.val(), minimumPasswordLength
+          valid = false
+          Validation.error oldPassword
+          errors.push "Password must be at least #{minimumPasswordLength} characters long"
+
       password = $form.find('input[name="Password"]')
       if password.length != 0
         if !Validation.isPassword password.val(), minimumPasswordLength

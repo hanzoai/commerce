@@ -51,12 +51,12 @@ func updatePassword(c *gin.Context, user *models.User) {
 		log.Panic("Failed to update user password: %v", err)
 	}
 
-	if err := auth.CompareHashAndPassword(user.PasswordHash, form.Password); err != nil {
+	if err := auth.CompareHashAndPassword(user.PasswordHash, form.OldPassword); err != nil {
 		log.Panic("Password is incorrect: %v", err)
 	}
 
-	if form.NewPassword == form.ConfirmPassword {
-		user.PasswordHash = auth.HashPassword(form.NewPassword)
+	if form.Password == form.ConfirmPassword {
+		user.PasswordHash = auth.HashPassword(form.Password)
 	} else {
 		log.Panic("Passwords do not match.")
 	}
@@ -90,5 +90,5 @@ func SaveProfile(c *gin.Context) {
 	ctx := middleware.GetAppEngine(c)
 	mandrill.SendTemplateAsync.Call(ctx, "account-change-confirmation", user.Email, user.Name(), "Your account information has been changed.")
 
-	template.Render(c, "profile.html", "user", user)
+	template.Render(c, "profile.html", "user", user, "success", true)
 }
