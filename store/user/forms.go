@@ -36,8 +36,8 @@ func (f *BillingForm) Parse(c *gin.Context) error {
 
 // User profile form (change password)
 type ChangePasswordForm struct {
+	OldPassword     string
 	Password        string
-	NewPassword     string
 	ConfirmPassword string
 }
 
