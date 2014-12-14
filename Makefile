@@ -55,7 +55,7 @@ tools = github.com/nsf/gocode \
         github.com/jstemmer/gotags
 
 # replacement file watcher for the dev appengine
-mtime_file_watcher = https://gist.githubusercontent.com/zeekay/5eba991c39426ca42cbb/raw/80e2695aa4a47c44febabe70d6066a6d9d827038/mtime_file_watcher.py
+mtime_file_watcher = https://gist.githubusercontent.com/zeekay/5eba991c39426ca42cbb/raw/235f107b7ed081719103a4259dddd0e568d12480/mtime_file_watcher.py
 
 # static assets, requisite javascript from assets -> static
 bebop = node_modules/.bin/bebop
@@ -83,6 +83,10 @@ sdk_install = wget https://storage.googleapis.com/appengine-sdks/featured/$(sdk)
 			  mkdir -p $(sdk_path)/gopath/src && \
 			  mkdir -p $(sdk_path)/gopath/bin && \
 			  ln -s $(shell pwd) $(sdk_path)/gopath/src/crowdstart.io
+
+dev_appserver = $(sdk_path)/dev_appserver.py --skip_sdk_update_check \
+											 --datastore_path=~/.gae_datastore.bin \
+											 --dev_appserver_log_level=error
 
 # find command differs between bsd/linux thus the two versions
 ifeq ($(os), linux)
@@ -157,16 +161,13 @@ install-deps:
 
 # DEV SERVER
 serve: assets
-	$(sdk_path)/dev_appserver.py --skip_sdk_update_check --datastore_path=~/.gae_datastore.bin $(gae_development)
+	$(dev_appserver) $(gae_development)
 
 serve-clear-datastore: assets
-	$(sdk_path)/dev_appserver.py --skip_sdk_update_check --datastore_path=~/.gae_datastore.bin --clear_datastore=true $(gae_development)
-
-serve-no-restart: assets
-	$(sdk_path)/dev_appserver.py --skip_sdk_update_check --datastore_path=~/.gae_datastore.bin --automatic_restart=false $(gae_development)
+	$(dev_appserver) --clear_datastore=true $(gae_development)
 
 serve-public: assets
-	$(sdk_path)/dev_appserver.py --skip_sdk_update_check --host=0.0.0.0 --datastore_path=~/.gae_datastore.bin $(gae_development)
+	$(dev_appserver) --host=0.0.0.0 $(gae_development)
 
 # LIVE RELOAD SERVER
 live-reload: assets
