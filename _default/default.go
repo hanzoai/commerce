@@ -1,14 +1,13 @@
 package _default
 
 import (
-	"net/http"
-
 	"appengine"
 	_ "appengine/remote_api"
 
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/config"
+	"crowdstart.io/middleware"
 	"crowdstart.io/models/fixtures"
 	"crowdstart.io/models/migrations"
 	_ "crowdstart.io/thirdparty/mandrill"
@@ -44,9 +43,12 @@ func Init() {
 	}
 
 	// Development routes
-	fs := http.FileServer(http.Dir("static"))
-	http.Handle("/static/", http.StripPrefix("/static/", fs))
 
+	// Static assets
+	router.GET("/static/*file", middleware.Static("static/"))
+	router.GET("/assets/*file", middleware.Static("assets/"))
+
+	// Development index links to modules
 	router.GET("/", func(c *gin.Context) {
 		c.Writer.Header().Set("Content-Type", "text/html; charset=utf-8")
 		c.Writer.WriteHeader(200)
@@ -95,5 +97,4 @@ func Init() {
 			exec.Run("make assets")
 		}
 	})
-
 }
