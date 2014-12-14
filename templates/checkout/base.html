@@ -1,1 +1,268 @@
-../base.html
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <title>{% block title %}{{ siteTitle }}{% endblock %}</title>
+
+    {% block canonical_link %}
+    <link rel="canonical" href="{{ urlFor("store") }}">
+    {% endblock %}
+
+    {% block meta %}
+    <meta property="og:site_name" content="{{ siteTitle }}">
+    <meta property="og:title" content="{{ siteTitle }}">
+    <meta property="og:url" content="{{ urlFor("store") }}">
+    <meta itemprop="name" content="{{ product.Title }}">
+    <meta itemprop="url" content="{{ urlFor("store") }}">
+    {% endblock %}
+
+    <link rel="shortcut icon" type="image/x-icon" href="{{ urlFor("/favicon.ico") }}">
+
+    <!--[if lt IE 9]>
+    <script src="{{ urlFor("/js/html5-shiv.js") }}></script>
+    <![endif]-->
+
+    <link rel="stylesheet" type="text/css" href="{{ urlFor("/css/store.css") }}">
+
+    <!--Mail Chimp-->
+    <link href="//cdn-images.mailchimp.com/embedcode/slim-081711.css" rel="stylesheet" type="text/css">
+
+    <style type="text/css">
+        #mc_embed_signup {
+            clear: left;
+            font: 14px Helvetica, Arial, sans-serif;
+        }
+        /* Add your own MailChimp form style overrides in your site stylesheet or in this style block.
+         We recommend moving this block and the preceding CSS link to the HEAD of your HTML file. */
+    </style>
+
+    {% block css %}{% endblock %}
+
+    <!--FONTS-->
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Michroma:400,400italic,700normal,700italic|PT+Serif:400,400italic,700normal,700italic" />
+    <script src="//use.typekit.net/uye2ojv.js"></script>
+    <script type="text/javascript">try {Typekit.load();} catch (e) {}</script>
+</head>
+<body>
+    <!--WRAPPER-->
+    <div class="site {% block site_class %}{% endblock %}" style="{% block site_style %}{% endblock %}">
+        <!--HEADER-->
+        <header class="header">
+            <div class="title-nav">
+                <a href="http://www.skullysystems.com/">
+                    <img class="logo" src="{{ urlFor("/img/skully.png") }}" alt="SKULLY AR-1">
+                </a>
+
+                <div class="mobile-nav">
+                    <div class="menu-icon">
+                        <div class="bar bar1"></div>
+                        <div class="bar bar2"></div>
+                        <div class="bar bar3"></div>
+                    </div>
+                </div>
+
+                <nav class="nav">
+                    <ul class="links">
+                        <li class="link">
+                            <a class="current" href="{{ urlFor("store") }}">STORE</a>
+                        </li>
+
+                        <li class="dropdown community-dropdown">
+                            <input id="community-toggle" class="dropdown-toggle" type="checkbox">
+                            <label for="community-toggle">COMMUNITY</label>
+
+                            <ul>
+                                <li>
+                                    <a href="http://blog.skullysystems.com/">BLOG</a>
+                                </li>
+                                <li>
+                                    <a href="http://forum.skullysystems.com/">FORUM</a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <li class="dropdown team-dropdown">
+                            <input id="team-toggle" class="dropdown-toggle" type="checkbox">
+                            <label for="team-toggle">TEAM</label>
+
+                            <ul>
+                                <li>
+                                    <a href="http://www.skullysystems.com/careers">CAREERS</a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <li class="link">
+                            <a href="http://www.skullysystems.com/faq/">FAQ</a>
+                        </li>
+
+                        {% if !loggedIn %}
+                        <li class="link">
+                            <a class="big" href="{{ urlFor("store", "/login") }}">SIGN IN</a>
+                        </li>
+                        {% else %}
+                        <li class="dropdown account-dropdown">
+                            <input id="account-toggle" class="dropdown-toggle" type="checkbox">
+                            <label for="account-toggle">ACCOUNT</label>
+                            <ul>
+                                <li>
+                                    <a href="{{ urlFor("store", "/profile") }}">PROFILE</a>
+                                </li>
+                                <li>
+                                    <a href="{{ urlFor("store", "/orders") }}">ORDERS</a>
+                                </li>
+                                <li>
+                                    <a href="{{ urlFor("store", "/logout") }}">LOGOUT</a>
+                                </li>
+
+                            </ul>
+                        </li>
+                        {% endif %}
+
+                    </ul>
+                </nav>
+            </div>
+        </header>
+
+        <!--CONTENT HEADER-->
+        <section class="content-header {% block content_header_width_class %}{% endblock %}">
+            {% block content_header %}{% endblock %}
+        </section>
+
+        <!--CONTENT-->
+        <section class="content {% block content_width_class %}{% endblock %}">
+            {% block content %}{% endblock %}
+        </section>
+
+        <!--FOOTER-->
+        <footer class="footer">
+            <div class="top-link">
+                <a href="#">
+                    <img class="top-arrow" src="{{ urlFor("/img/upchevron.png") }}">
+                    <span class="text">
+              Top
+            </span>
+                </a>
+            </div>
+
+            <div class="footer-content">
+                <div class="grid">
+                    <div class="col-1-2">
+                        <div class="mail-chimp">
+                            <div id="mc_embed_signup">
+                                <form action="//skullysystems.us3.list-manage.com/subscribe/post?u=bc1d6c276527db0df1053fc13&amp;id=ae4e853b80" method="post" id="mc-embedded-subscribe-form" name="mc-embedded-subscribe-form" class="validate" target="_blank" novalidate="">
+                                    <label for="mce-EMAIL">Get the latest from the SKULLY Team</label>
+                                    <input type="email" value="" name="EMAIL" class="email" id="mce-EMAIL" placeholder="email address" required="">
+                                    <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups -->
+                                    <div style="position: absolute; left: -5000px;">
+                                        <input type="text" name="b_bc1d6c276527db0df1053fc13_ae4e853b80" tabindex="-1" value="">
+                                    </div>
+                                    <div class="clear">
+                                        <input type="submit" value="Subscribe" name="subscribe" id="mc-embedded-subscribe" class="button">
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-1-2">
+                        <nav class="social">
+                            <div class="social-icons">
+                                <a href="https://www.facebook.com/skullysystems" target="_blank" title="Skully Helmets, Inc" class="social-facebook">
+                                    <img src="{{ urlFor("/img/social/facebook.png") }}">
+                                </a>
+                                <a href="http://www.twitter.com/skullysystems" target="_blank" title="SKULLY HELMETS" class="social-twitter">
+                                    <img src="{{ urlFor("/img/social/twitter.png") }}">
+                                </a>
+                                <a href="http://www.youtube.com/channel/UCgGXkEJ5S_MmQCSoBnusr1Q" target="_blank" title="SKULLY" class="social-youtube">
+                                    <img src="{{ urlFor("/img/social/youtube.png") }}">
+                                </a>
+                                <a href="http://www.instagram.com/skullysystems" target="_blank" title="Skully Helmets" class="social-instagram">
+                                    <img src="{{ urlFor("/img/social/instagram.png") }}">
+                                </a>
+                                <a href="https://plus.google.com/112776474651298122010/posts" target="_blank" title="Marcus Weller" class="social-google">
+                                    <img src="{{ urlFor("/img/social/google-plus.png") }}">
+                                </a>
+                                <a href="https://www.linkedin.com/company/3233339?trk=vsrp_companies_res_name&amp;trkInfo=VSRPsearchId%3A637198571407629012548%2CVSRPtargetId%3A3233339%2CVSRPcmpt%3Aprimary" target="_blank" title="Marcus Weller, PhD" class="social-linkedin">
+                                    <img src="{{ urlFor("/img/social/linkedin.png") }}">
+                                </a>
+                            </div>
+                        </nav>
+
+                        <nav class="footer-nav">
+                            <div class="links">
+                                <p>
+                                    <a href="http://www.skullysystems.com/news">News</a>
+                                    <span>&nbsp;| &nbsp;</span>
+                                    <a href="http://www.skullysystems.com/press">Press</a>
+                                    <span>&nbsp;| &nbsp;</span>
+                                    <a href="http://www.skullysystems.com/privacy-policy">Privacy</a>
+                                    <span>&nbsp;| &nbsp;</span>
+                                    <a href="http://www.skullysystems.com/contact-us">Contact</a>
+                                </p>
+                            </div>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!--DIALOG-->
+    <div class="alert-dialog" style="display:none">
+        <div class="alert-title"></div>
+        <div class="alert-message"></div>
+        <div class="alert-buttons">
+            <button type="button" class="alert-confirmation-button"></button>
+            <button type="button" class="alert-cancel-button"></button>
+        </div>
+    </div>
+
+    {% block cart_hover %}
+    <!--CART HOVER-->
+    <div class="cart-hover" style="opacity:0">
+        <a href="{{ urlFor("store", "/cart") }}">
+            <img class="cart-icon" src="{{ urlFor("/img/cart.png") }}">
+            <div class="cart-details">
+                Cart&nbsp;-&nbsp;
+                <span class="cart-total-quantity">0</span>
+                <span class="cart-suffix">item</span>
+            </div>
+
+            <span class="cart-subtotal">
+          <span class="cart-price">$<span class="money">0.00</span></span>
+            </span>
+        </a>
+    </div>
+    {% endblock %}
+
+    {% block json %}{% endblock %}
+
+    <!--JS-->
+    <script type="text/javascript" src="{{ urlFor("/js/jquery.min.js") }}"></script>
+    <script type="text/javascript" src="{{ urlFor("/js/jquery.ba-throttle-debounce.min.js") }}"></script>
+    <script type="text/javascript" src="{{ urlFor("/js/jquery.cookie.min.js") }}"></script>
+
+    <!--OUR JS-->
+    <script type="text/javascript" src="{{ urlFor("/js/store.js") }}"></script>
+
+    {% block js %}{% endblock %}
+
+    {% if isProduction %}
+    <!-- GA -->
+    <script>
+        (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+        })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+        ga('create', 'UA-48365795-8', 'auto', {'allowLinker': true});
+        ga('require', 'linker');
+        ga('linker:autoLink', ['store.skullysystems.com']);
+        ga('send', 'pageview');
+    </script>
+    {% endif %}
+</body>
+</html>
