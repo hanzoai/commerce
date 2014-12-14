@@ -54,7 +54,7 @@ func SubmitForgotPassword(c *gin.Context) {
 		return
 	}
 
-	mandrill.SendTemplateAsync.Call(ctx, "forgotten-password", user.Email, user.Name())
+	mandrill.SendTemplateAsync.Call(ctx, "password-recovery", user.Email, user.Name())
 
 	template.Render(c, "forgot-password-sent.html")
 }
