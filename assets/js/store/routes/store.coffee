@@ -135,3 +135,12 @@ exports.customizeAr1 = ->
 exports.menu = ->
   $('.menu-icon').click ->
     $('body').toggleClass('mobile')
+
+exports.toggleDropdown = ->
+  $('.dropdown-toggle').click ->
+    id = $(@).attr('id')
+    $('.dropdown-toggle')
+      .filter (v) ->
+        $(@).attr('id') isnt id
+      .each ->
+        $(@).attr 'checked', false
