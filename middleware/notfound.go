@@ -1,10 +1,12 @@
 package middleware
 
 import (
-	"appengine"
+	"net/http"
+
 	"crowdstart.io/util/template"
 	"github.com/gin-gonic/gin"
-	"net/http"
+
+	"appengine"
 )
 
 // Serve custom 404 page.
@@ -17,7 +19,7 @@ func NotFoundHandler() gin.HandlerFunc {
 			c.Writer.WriteHeader(http.StatusNotFound)
 
 			if appengine.IsDevAppServer() {
-				c.Writer.Write([]byte("<head><style>body{font-family:monospace; margin:20px}</style><h4>404 Not Found (crowdstart/1.0.0)</h1><p>No matching handlers found.</p>"))
+				c.Writer.Write([]byte("<head><style>body{font-family:monospace; margin:20px}</style><h4>404 Not Found (crowdstart/1.0.0)</h1><p>No such file or directory.</p>"))
 			} else {
 				template.Render(c, "error/404.html")
 			}

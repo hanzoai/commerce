@@ -18,11 +18,13 @@ handlers:
 - url: /fixtures/.*
   script: _go_app
 
-- url: /assets/*
-  static_dir: ../../assets
+- url: /assets/.*
+  script: _go_app
+  # static_dir: ../../assets
 
-- url: /static/*
-  static_dir: ../../static
+- url: /static/.*
+  script: _go_app
+  # static_dir: ../../static
 
 - url: /humans.txt
   static_files: ../../static/humans.txt
