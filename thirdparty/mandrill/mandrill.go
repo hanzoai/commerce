@@ -147,10 +147,8 @@ func GetTemplate(filename string) string {
 // Returns true if Mandrill replies with  a 200 OK
 func Ping(ctx appengine.Context) bool {
 	url := root + "/users/ping.json"
-	log.Debug(url)
 
 	str := fmt.Sprintf(`{"key": "%s"}`, config.Mandrill.APIKey)
-	log.Debug(str)
 	body := []byte(str)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
 	if err != nil {
@@ -166,7 +164,6 @@ func Ping(ctx appengine.Context) bool {
 		return false
 	}
 
-	log.Debug(res.Status)
 	return res.StatusCode == 200
 }
 
@@ -191,22 +188,20 @@ func SendTemplate(ctx appengine.Context, req *SendTemplateReq) error {
 	}
 
 	b, _ := ioutil.ReadAll(res.Body)
-	log.Debug(string(b))
-	log.Debug(config.Mandrill.APIKey)
+	log.Dump("Response from Mandrill: %v", b)
 
 	if res.StatusCode == 200 {
 		return nil
 	}
-	return errors.New("Email not sent")
+
+	return errors.New("Failed to send email.")
 }
 
 func Send(ctx appengine.Context, req *SendReq) error {
 	// Convert the map of vars to a byte buffer of a json string
 	url := root + "/messages/send.json"
-	log.Debug(url)
 
 	j := json.Encode(req)
-	log.Debug(j)
 
 	hreq, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(j)))
 	if err != nil {
@@ -223,13 +218,13 @@ func Send(ctx appengine.Context, req *SendReq) error {
 	}
 
 	b, _ := ioutil.ReadAll(res.Body)
-	log.Debug(string(b))
-	log.Debug(config.Mandrill.APIKey)
+	log.Dump("Response from Mandrill: %v", b)
 
 	if res.StatusCode == 200 {
 		return nil
 	}
-	return errors.New("Email not sent")
+
+	return errors.New("Failed to send email.")
 }
 
 var SendTemplateAsync = delay.Func("send-template-email", func(ctx appengine.Context, templateName, toEmail, toName, subject string) {
@@ -240,6 +235,8 @@ var SendTemplateAsync = delay.Func("send-template-email", func(ctx appengine.Con
 	req.Message.FromName = config.Mandrill.FromName
 	req.Message.Subject = subject
 	req.TemplateName = templateName
+
+	log.Debug("Sending email to %s", toEmail)
 
 	// Send template
 	if err := SendTemplate(ctx, &req); err != nil {
