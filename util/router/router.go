@@ -3,8 +3,9 @@ package router
 import (
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"strings"
+
+	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/config"
 	"crowdstart.io/middleware"
@@ -21,6 +22,7 @@ func New(moduleName string) *gin.RouterGroup {
 
 	log.Info("Using prefix %s for module %s", prefix, moduleName)
 
+	router.Use(middleware.Logger())
 	router.Use(middleware.ErrorHandler())
 	router.Use(middleware.NotFoundHandler())
 	router.Use(middleware.AddHost())
