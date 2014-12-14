@@ -11,6 +11,8 @@ func Skully() *Config {
 	config.Hosts["preorder"] = "preorder.skullysystems.com"
 	config.Hosts["store"] = "store.skullysystems.com"
 
+	config.CookieDomain = "skullysystems.com"
+
 	config.StaticUrl = "//static.skullysystems.com"
 	config.Mandrill.FromName = "SKULLY"
 	config.Mandrill.FromEmail = "noreply@skullysystems.com"
