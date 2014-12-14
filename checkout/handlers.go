@@ -2,6 +2,7 @@ package checkout
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -15,7 +16,6 @@ import (
 	"crowdstart.io/thirdparty/mandrill"
 	"crowdstart.io/thirdparty/stripe"
 	"crowdstart.io/util/log"
-	"crowdstart.io/util/rand"
 	"crowdstart.io/util/template"
 )
 
@@ -133,7 +133,8 @@ func charge(c *gin.Context) {
 	// Charging order
 	log.Debug("Charging order...", c)
 	log.Debug("API Key: %v, Token: %v", stripeAccessToken, form.StripeToken)
-	if charge, err := stripe.Charge(ctx, stripeAccessToken, form.StripeToken, &form.Order, user); err != nil {
+	charge, err := stripe.Charge(ctx, stripeAccessToken, form.StripeToken, &form.Order, user)
+	if err != nil {
 		if charge.FailMsg != "" {
 			// client error
 			log.Warn("Stripe declined charge: %v", err, c)
@@ -143,6 +144,27 @@ func charge(c *gin.Context) {
 			log.Error("Stripe charge failed: %v", err, c)
 			c.JSON(500, gin.H{})
 		}
+	}
+
+	// We'll update user even if charge failed, this ensures consistent profile
+	// data and stripe customer consistency.
+	log.Debug("Updating and saving user...", c)
+
+	user.BillingAddress = form.Order.BillingAddress
+	user.ShippingAddress = form.Order.ShippingAddress
+	user.Phone = form.User.Phone
+	user.FirstName = form.User.FirstName
+	user.LastName = form.User.LastName
+	if _, err := db.PutKey("user", user.Email, user); err != nil {
+		log.Error("Failed to save user: %v", err, c)
+		if charge.Captured {
+			c.Fail(500, err)
+		}
+		return
+	}
+
+	// If charge failed, bail out here
+	if !charge.Captured {
 		return
 	}
 
@@ -157,25 +179,25 @@ func charge(c *gin.Context) {
 	key, _ := db.DecodeKey(encodedKey)
 	orderId := key.IntID()
 
-	log.Debug("Updating and saving user...", c)
-
-	user.BillingAddress = form.Order.BillingAddress
-	user.ShippingAddress = form.Order.ShippingAddress
-	user.Phone = form.User.Phone
-	user.FirstName = form.User.FirstName
-	user.LastName = form.User.LastName
-	if _, err := db.PutKey("user", user.Email, user); err != nil {
-		log.Error("Failed to save user: %v", err, c)
+	// Generate invite for preorder site.
+	log.Debug("Saving invite token...", c)
+	invite := new(models.Token)
+	invite.GenerateId()
+	invite.Email = user.Email
+	if _, err := db.PutKey("invite-token", invite.Id, invite); err != nil {
+		log.Error("Failed to save invite-token: %v", err, c)
 		c.Fail(500, err)
 		return
 	}
 
-	log.Debug("Saving invite token...", c)
-	invite := new(models.InviteToken)
-	invite.Id = rand.ShortId()
-	invite.Email = user.Email
-	if _, err := db.PutKey("invite-token", invite.Id, invite); err != nil {
-		log.Error("Failed to save invite-token: %v", err, c)
+	// Save contribution for preorder site.
+	log.Debug("Saving contribution...", c)
+	contribution := new(models.Contribution)
+	contribution.Id = strconv.Itoa(int(orderId))
+	contribution.Email = user.Email
+	contribution.Perk = models.Perks["WINTER2014PROMO"]
+	if _, err := db.PutKey("contribution", contribution.Id, contribution); err != nil {
+		log.Error("Failed to save contribution: %v", err, c)
 		c.Fail(500, err)
 		return
 	}

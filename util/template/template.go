@@ -6,6 +6,7 @@ import (
 	"github.com/flosch/pongo2"
 	"github.com/gin-gonic/gin"
 
+	"crowdstart.io/auth"
 	"crowdstart.io/config"
 	"crowdstart.io/util/log"
 )
@@ -15,6 +16,8 @@ var cwd, _ = os.Getwd()
 func TemplateSet() *pongo2.TemplateSet {
 	set := pongo2.NewSet("default")
 	set.Debug = config.IsDevelopment
+
+	set.Globals["config"] = config.Get()
 
 	set.Globals["isDevelopment"] = config.IsDevelopment
 	set.Globals["isProduction"] = config.IsProduction
@@ -51,9 +54,7 @@ func Render(c *gin.Context, path string, pairs ...interface{}) (err error) {
 	ctx := pongo2.Context{}
 
 	// Add logged in info, if set on session
-	v, err := c.Get("logged-in")
-	loggedIn, _ := v.(bool)
-	ctx["loggedIn"] = loggedIn
+	ctx["loggedIn"] = auth.IsLoggedIn(c)
 
 	for i := 0; i < len(pairs); i = i + 2 {
 		ctx[pairs[i].(string)] = pairs[i+1]
