@@ -5,13 +5,13 @@ import (
 
 	"crowdstart.io/auth"
 	"crowdstart.io/datastore"
-	"crowdstart.io/models"
 	"crowdstart.io/middleware"
+	"crowdstart.io/models"
+	"crowdstart.io/thirdparty/mandrill"
 	"crowdstart.io/util/form"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
-	"crowdstart.io/thirdparty/mandrill"
 )
 
 func Profile(c *gin.Context) {
@@ -35,15 +35,14 @@ func SaveProfile(c *gin.Context) {
 
 	ctx := middleware.GetAppEngine(c)
 
-	mandrill.SendTemplateAsync.Call(ctx, "account-change-confirmation", user.Email, user.Name())
+	mandrill.SendTemplateAsync.Call(ctx, "account-change-confirmation", user.Email, user.Name(), "Your account information has been changed.")
 
 	if err != nil {
 		log.Panic("Error getting logged in user from the datastore \n%v", err)
 	}
 
 	user.Phone = modifiedUser.Phone
-	user.BillingAddress.Line1 = modifiedUser.BillingAddress.Line1
-	user.BillingAddress.Line2 = modifiedUser.BillingAddress.Line2
+	user.BillingAddress = modifiedUser.BillingAddress
 	user.FirstName = modifiedUser.FirstName
 	user.LastName = modifiedUser.LastName
 
