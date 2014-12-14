@@ -104,6 +104,10 @@ func (d *Datastore) PutKey(kind string, key interface{}, src interface{}) (strin
 	switch v := key.(type) {
 	case string:
 		k = NewKey(d.Context, kind, v, 0, nil)
+	case int64:
+		k = NewKey(d.Context, kind, "", v, nil)
+	case int:
+		k = NewKey(d.Context, kind, "", int64(v), nil)
 	case *Key:
 		k = v
 	}
@@ -138,25 +142,34 @@ func (d *Datastore) PutMulti(kind string, srcs []interface{}) (keys []string, er
 	return keys, nil
 }
 
-func (d *Datastore) PutKeyMulti(kind string, keys []string, srcs []interface{}) ([]string, error) {
+func (d *Datastore) PutKeyMulti(kind string, keys []interface{}, srcs []interface{}) ([]*Key, error) {
 	nkeys := len(srcs)
 	_keys := make([]*Key, nkeys)
 
 	for i := 0; i < nkeys; i++ {
-		_keys[i] = NewKey(d.Context, kind, keys[i], 0, nil)
+		switch v := keys[i].(type) {
+		case string:
+			_keys[i] = NewKey(d.Context, kind, v, 0, nil)
+		case int64:
+			_keys[i] = NewKey(d.Context, kind, "", v, nil)
+		case int:
+			_keys[i] = NewKey(d.Context, kind, "", int64(v), nil)
+		case *Key:
+			_keys[i] = v
+		}
 	}
 
 	_keys, err := nds.PutMulti(d.Context, _keys, srcs)
 	if err != nil {
 		log.Warn("%v", err, d.Context)
-		return keys, err
+		return _keys, err
 	}
 
 	for i := 0; i < nkeys; i++ {
 		keys[i] = _keys[i].Encode()
 	}
 
-	return keys, nil
+	return _keys, nil
 }
 
 func (d *Datastore) Update(key string, src interface{}) (string, error) {
