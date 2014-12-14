@@ -1,12 +1,13 @@
 package config
 
 import (
-	"appengine"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path"
 	"strings"
+
+	"appengine"
 )
 
 var demoMode = true
@@ -32,6 +33,7 @@ type Config struct {
 	AutoCompileAssets bool
 	AutoLoadFixtures  bool
 	RootDir           string
+	CookieDomain      string
 	StaticUrl         string
 	SiteTitle         string
 	Prefixes          map[string]string
@@ -138,6 +140,7 @@ var config = Get()
 // Expose global config.
 var AutoCompileAssets = config.AutoCompileAssets
 var AutoLoadFixtures = config.AutoLoadFixtures
+var CookieDomain = config.CookieDomain
 var DemoMode = config.DemoMode
 var IsDevelopment = config.IsDevelopment
 var IsProduction = config.IsProduction
