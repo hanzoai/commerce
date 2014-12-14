@@ -258,6 +258,6 @@ var SendTemplateAsync = delay.Func("send-template-email", func(ctx appengine.Con
 
 	// Send template
 	if err := SendTemplate(ctx, &req); err != nil {
-		log.Error(err)
+		log.Error(err, ctx)
 	}
 })
