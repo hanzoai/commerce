@@ -22,5 +22,7 @@ func Staging() *Config {
 	config.Stripe.RedirectURL = "https:" + config.UrlFor("platform", "/stripe/callback")
 	config.Stripe.WebhookURL = "https:" + config.UrlFor("platform", "/stripe/hook")
 
+	config.Mandrill.APIKey = "wJ3LGLp5ZOUZlSH8wwqmTg"
+
 	return config
 }
