@@ -27,23 +27,30 @@ func Charge(ctx appengine.Context, accessToken string, authorizationToken string
 	// Create a charge for us to persist stripe data to
 	charge := new(models.Charge)
 
-	// Create a card
+	// card
 	card := &stripe.CardParams{Token: authorizationToken}
+
+	// customer params
+	customerParams := &stripe.CustomerParams{
+		Desc:  user.Name(),
+		Email: user.Email,
+		Card:  card,
+	}
 
 	if user.Stripe.CustomerId == "" {
 		// Create new customer
-		customerParams := &stripe.CustomerParams{
-			Desc:  user.Name(),
-			Email: user.Email,
-			Card:  card,
-		}
-
 		if customer, err := sc.Customers.New(customerParams); err != nil {
-			log.Warn("Failed to create Stripe customer: %v", err)
+			log.Error("Failed to create Stripe customer: %v", err, ctx)
 			return charge, err
 		} else {
 			// Update user with stripe customer ID so we can charge for them later
 			user.Stripe.CustomerId = customer.ID
+		}
+	} else {
+		// Update stripe
+		if _, err := sc.Customers.Update(user.Stripe.CustomerId, customerParams); err != nil {
+			log.Error("Failed to update Stripe customer: %v", err, ctx)
+			return charge, err
 		}
 	}
 
@@ -56,7 +63,6 @@ func Charge(ctx appengine.Context, accessToken string, authorizationToken string
 		Desc:      order.Description(),
 		Email:     order.Email,
 		Statement: "SKULLY SYSTEMS", // Max 15 characters
-		Card:      card,
 	}
 
 	log.Debug("chargeParams: %#v", chargeParams)
@@ -65,7 +71,6 @@ func Charge(ctx appengine.Context, accessToken string, authorizationToken string
 	// Charges and tokens are recorded regardless of success/failure.
 	// It doesn't record whether each charge/token is success or failure.
 	if err != nil {
-		// &stripe.Error{Type:"card_error", Msg:"Your card was declined.", Code:"card_declined", Param:"", HTTPStatusCode:402}
 		stripeErr, ok := err.(*stripe.Error)
 		if ok {
 			charge.FailCode = json.Encode(stripeErr.Code)
