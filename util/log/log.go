@@ -1,8 +1,10 @@
 package log
 
 import (
-	"appengine"
 	"log"
+	"strings"
+
+	"appengine"
 
 	"github.com/gin-gonic/gin"
 	"github.com/zeekay/go-logging"
@@ -90,6 +92,12 @@ func (b AppengineBackend) Log(level logging.Level, calldepth int, record *loggin
 			b.context.Debugf(formatted)
 		}
 	} else {
+		// Hack to make INFO level less verbose
+		if level == logging.INFO {
+			parts := strings.Split(formatted, " ")
+			parts = append([]string{"INFO"}, parts[3:]...)
+			formatted = strings.Join(parts, " ")
+		}
 		log.Println(formatted)
 	}
 
