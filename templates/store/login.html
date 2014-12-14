@@ -40,20 +40,22 @@ div.error {
                 <label>Email</label>
                 <input type="text" id="email" name="Email" placeholder="Email"/>
             </div>
+
             <div class="field required">
                 <label>Password</label>
                 <input type="password" id="password" name="Password" placeholder="Password" />
             </div>
 
-            <div>
+            <div class="options password-options">
+                <input type="checkbox" id="remember-me" name="RememberMe" value="true" checked />
+                <span class="remember">Remember Me</span>
+                <a href="{{ urlFor("store", "forgot-password") }}">Forgot Password?</a>
+            </div>
+
+            <div class="options">
                 <button type="submit">Login</button>
             </div>
         </form>
-
-        <input type="checkbox" id="remember-me" name="RememberMe" value="true" checked />
-        <span>Remember Me</span>
-        &nbsp;·&nbsp;
-        <a href="{{ urlFor("store", "forgot-password") }}">Forgot Password?</a>
     </div>
 
     <div class="divider"></div>
