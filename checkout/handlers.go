@@ -16,7 +16,6 @@ import (
 	"crowdstart.io/thirdparty/mandrill"
 	"crowdstart.io/thirdparty/stripe"
 	"crowdstart.io/util/log"
-	"crowdstart.io/util/rand"
 	"crowdstart.io/util/template"
 )
 
@@ -171,8 +170,8 @@ func charge(c *gin.Context) {
 	}
 
 	log.Debug("Saving invite token...", c)
-	invite := new(models.InviteToken)
-	invite.Id = rand.ShortId()
+	invite := new(models.Token)
+	invite.GenerateId()
 	invite.Email = user.Email
 	if _, err := db.PutKey("invite-token", invite.Id, invite); err != nil {
 		log.Error("Failed to save invite-token: %v", err, c)

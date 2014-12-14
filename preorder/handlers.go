@@ -27,7 +27,7 @@ func GetPreorder(c *gin.Context) {
 	db := datastore.New(c)
 
 	// Fetch token
-	token := new(models.InviteToken)
+	token := new(models.Token)
 	db.GetKey("invite-token", c.Params.ByName("token"), token)
 
 	// Redirect to login if token is expired or used
@@ -243,7 +243,7 @@ func Login(c *gin.Context) {
 }
 
 // hasToken checks whether any of the tokens have the id
-func hasToken(tokens []models.InviteToken, id string) bool {
+func hasToken(tokens []models.Token, id string) bool {
 	for _, token := range tokens {
 		if token.Id == id {
 			return true
@@ -252,13 +252,13 @@ func hasToken(tokens []models.InviteToken, id string) bool {
 	return false
 }
 
-func getTokens(c *gin.Context, email string) []models.InviteToken {
+func getTokens(c *gin.Context, email string) []models.Token {
 	db := datastore.New(c)
 
 	// Look up tokens for this user
 	log.Debug("Searching for valid token for: %v", email, c)
 
-	tokens := make([]models.InviteToken, 0)
+	tokens := make([]models.Token, 0)
 	if _, err := db.Query("invite-token").Filter("Email =", email).GetAll(db.Context, &tokens); err != nil {
 		log.Panic("Failed to query for tokens: %v", err, c)
 	}
