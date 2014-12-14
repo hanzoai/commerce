@@ -35,7 +35,7 @@ func ErrorLoggerT(typ uint32) gin.HandlerFunc {
 	}
 }
 
-func logger(c *gin.Context) {
+func Log(c *gin.Context) {
 	// Start timer
 	start := time.Now()
 
@@ -60,7 +60,7 @@ func logger(c *gin.Context) {
 }
 
 func Logger() gin.HandlerFunc {
-	return logger
+	return Log
 }
 
 func colorForStatus(code int) string {
