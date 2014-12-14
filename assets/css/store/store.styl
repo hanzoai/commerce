@@ -580,7 +580,7 @@ body.mobile .cart-hover
     img
       width 40px
 
-// LOGIN, REGISTER, PROFILE
+// LOGIN, REGISTER
 .content
   .login
     width 100%
@@ -666,6 +666,26 @@ body.mobile .cart-hover
       button
         width:100%
         margin 0
+
+// PROFILE
+
+.profile-width
+  max-width: 800px
+
+.profile
+  form
+    named-form()
+
+    label
+      padding 5px 0
+
+    +html5-inputs()
+      input: aqua 100%
+      font-family inherit
+      box-sizing border-box
+      border-radius: 0px
+      padding: 8px
+      border: 1px solid #ddd
 
 // MEDIA QUERIES
 @media all and ( min-width: 600px )

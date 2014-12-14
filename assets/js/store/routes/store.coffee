@@ -16,7 +16,7 @@ exports.setupFormValidation = (formId)->
       empty = $form.find('div:visible.required > input').filter ->
         Validation.isEmpty $(@).val()
 
-      email = $form.find('input[name="User.Email"]')
+      email = $form.find('input[name="User.Email"], input[name="Email"]')
       if email.length != 0
         unless Validation.isEmail email.val()
           valid = false
