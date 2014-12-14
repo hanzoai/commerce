@@ -36,7 +36,7 @@ func ListOrders(c *gin.Context) {
 		orders[i].Id = strconv.Itoa(int(keys[i].IntID()))
 	}
 
-	var tokens []models.InviteToken
+	var tokens []models.Token
 	_, err = db.Query("invite-token").
 		Filter("Email =", email).
 		Limit(1).
