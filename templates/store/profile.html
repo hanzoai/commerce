@@ -4,37 +4,110 @@
     <h1>Profile</h1>
 {% endblock %}
 
-{% block css %}
-
-{% endblock %}
-
 {% block cart_hover %}
 <!-- CART HOVER DISABLED -->
 {% endblock %}
 
+{% block content_header_width_class %}profile-width{% endblock %}
+
+{% block content_width_class %}profile-width{% endblock %}
+
 {% block content %}
-<div class="profile">
-    <form action="{{ config.UrlFor("store", "/profile") }}" method="POST">
-        <div id="profileForm" class="form">
-            <div class="field">
-                <label for="firstName">First name</label>
-                <input id="firstName" name="FirstName" value="{{ user.FirstName }}">
-            </div>
+<div class="profile sep-top">
+    <div id="profileForm" class="form">
+        <form action="{{ config.UrlFor("store", "/profile") }}" method="POST">
+            <h2>Contact</h2>
+            <fieldset>
+                <div class="field">
+                    <label>Email</label>
+                    <span>{{ user.Email }}</span>
+                </div>
 
-            <div class="field">
-                <label for="lastName">Last name</label>
-                <input id="lastName" name="LastName" value="{{ user.LastName }}">
-            </div>
+                <div class="field">
+                    <label for="firstName">First Name</label>
+                    <input id="firstName" name="User.FirstName" type="text" value="{{ user.FirstName }}">
+                </div>
 
-            <div class="field">
-                <label for="phone">Phone</label>
-                <input id="phone" name="Phone" value="{{ user.Phone }}">
-            </div>
+                <div class="field">
+                    <label for="lastName">Last Name</label>
+                    <input id="lastName" name="User.LastName" type="text" value="{{ user.LastName }}">
+                </div>
 
-            <div>
-                <button type="submit">Save</button>
-            </div>
-        </div>
-    </form>
+                <div class="field">
+                    <label for="phone">Phone</label>
+                    <input id="phone" name="User.Phone" type="text" value="{{ user.Phone }}">
+                </div>
+
+                <div class="options">
+                    <button type="submit">Save</button>
+                </div>
+            </fieldset>
+        </form>
+    </div>
+    <div id="changePasswordForm" class="form">
+        <form action="{{ config.UrlFor("store", "/change-password") }}" method="POST">
+            <h2>Change Password</h2>
+            <fieldset>
+                <div class="field">
+                    <label for="password">Password</label>
+                    <input id="password" name="Password" type="password">
+                </div>
+
+                <div class="field">
+                    <label for="newPassword">New Password</label>
+                    <input id="newPassword" name="NewPassword" type="password">
+                </div>
+
+                <div class="field">
+                    <label for="phone">Confirm Password</label>
+                    <input id="confirmPassword" name="ConfirmPassword" type="password">
+                </div>
+
+                <div class="options">
+                    <button type="submit">Change</button>
+                </div>
+            </fieldset>
+        </form>
+    </div>
+    <div id="changeBilling" class="form">
+        <form action="{{ config.UrlFor("store", "/change-billing") }}" method="POST">
+            <h2>Billing</h2>
+            <fieldset>
+                <div class="field">
+                    <label for="address1">Address 1</label>
+                    <input id="address1" name="User.BillingAddress.Line1" type="text" value="{{ User.BillingAddress.Line1 }}">
+                </div>
+
+                <div class="field">
+                    <label for="address2">Address 2</label>
+                    <input id="address2" name="User.BillingAddress.Line2" type="text" value="{{ User.BillingAddress.Line2 }}">
+                </div>
+
+                <div class="field">
+                    <label for="city">City</label>
+                    <input id="city" name="User.BillingAddress.City" type="text" value="{{ User.BillingAddress.City }}">
+                </div>
+
+                <div class="field">
+                    <label for="state">State</label>
+                    <input id="state" name="User.BillingAddress.State" type="text" value="{{ User.BillingAddress.State }}">
+                </div>
+
+                <div class="field">
+                    <label for="postalcode">ZIP/Postal Code</label>
+                    <input id="postalcode" name="User.BillingAddress.PostalCode" type="text" value="{{ User.BillingAddress.PostalCode }}">
+                </div>
+
+                <div class="field">
+                    <label for="country">Country</label>
+                    <input id="country" name="User.BillingAddress.Country" type="text" value="{{ User.BillingAddress.Country }}">
+                </div>
+
+                <div class="options">
+                    <button type="submit">Update</button>
+                </div>
+            </fieldset>
+        </form>
+    </div>
 </div>
 {% endblock %}
