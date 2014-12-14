@@ -1,6 +1,8 @@
 package user
 
 import (
+	"strconv"
+
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/auth"
@@ -10,29 +12,44 @@ import (
 	"crowdstart.io/util/template"
 )
 
-func DisplayOrders(c *gin.Context) {
+// GET store./orders
+// LoginRequired
+func ListOrders(c *gin.Context) {
 	email, err := auth.GetEmail(c)
-	if err == nil {
-		log.Panic("Error getting logged in user from the datastore \n%v", err)
+	if err != nil {
+		log.Panic("Error getting email from the session \n%v", err)
 	}
 
 	db := datastore.New(c)
-	var genOrders []interface{}
-	_, err = db.Query("order").
+
+	var orders []models.Order
+	keys, err := db.Query("order").
 		Filter("Email =", email).
-		GetAll(db.Context, genOrders)
+		GetAll(db.Context, &orders)
 
 	if err != nil {
 		log.Panic("Error retrieving orders associated with the user's email", err)
 	}
 
-	orders := make([]models.Order, len(genOrders))
-	for i, o := range genOrders {
-		orders[i] = o.(models.Order)
+	for i := range orders {
+		orders[i].LoadVariantsProducts(c)
+		orders[i].Id = strconv.Itoa(int(keys[i].IntID()))
+	}
+
+	var tokens []models.Token
+	_, err = db.Query("invite-token").
+		Filter("Email =", email).
+		Limit(1).
+		GetAll(db.Context, &tokens)
+
+	tokenId := ""
+	if len(tokens) > 0 {
+		tokenId = tokens[0].Id
 	}
 
 	template.Render(c, "orders.html",
 		"orders", orders,
+		"tokenId", tokenId,
 	)
 }
 
@@ -41,6 +58,8 @@ type CancelOrderStatus struct {
 	Message string `json:"message"`
 }
 
+// Do not route to this.
+// May be useful in the future
 func CancelOrder(c *gin.Context) {
 	orderId := c.Request.URL.Query().Get("id")
 

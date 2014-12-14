@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"time"
 
+	humanize "github.com/dustin/go-humanize"
+	"github.com/gin-gonic/gin"
 	"github.com/mholt/binding"
 
 	"crowdstart.io/datastore"
@@ -19,8 +21,8 @@ type Order struct {
 	ShippingAddress Address
 	CreatedAt       time.Time `schema:"-"`
 	UpdatedAt       time.Time `schema:"-"`
-	Id              string    `schema:"-"`
-	Email           string    `schema:"-"`
+	Id              string
+	Email           string
 
 	// TODO: Recalculate Shipping/Tax on server
 	Shipping int64
@@ -45,24 +47,43 @@ type Order struct {
 	Test bool
 }
 
-func (o Order) When() string {
+var variantsMap map[string]ProductVariant
+var productsMap map[string]Product
+
+func (o *Order) LoadVariantsProducts(c *gin.Context) {
+	if variantsMap == nil || productsMap == nil {
+		db := datastore.New(c)
+
+		variantsMap = make(map[string]ProductVariant)
+		var variants []ProductVariant
+		db.Query("variant").GetAll(db.Context, &variants)
+		for _, variant := range variants {
+			variantsMap[variant.SKU] = variant
+		}
+
+		productsMap = make(map[string]Product)
+		var products []Product
+		db.Query("product").GetAll(db.Context, &products)
+		for _, product := range products {
+			productsMap[product.Slug] = product
+		}
+	}
+
+	for i, item := range o.Items {
+		o.Items[i].Product = productsMap[item.Slug_]
+		o.Items[i].Variant = variantsMap[item.SKU_]
+	}
+}
+
+func (o Order) DisplayCreatedAt() string {
 	duration := time.Since(o.CreatedAt)
 
-	hours := duration.Hours()
-	if hours > 0 && hours < 24 {
-		return fmt.Sprintf("%d hours ago", hours)
+	if duration.Hours() > 24 {
+		year, month, day := o.CreatedAt.Date()
+		return fmt.Sprintf("%s %s, %s", month.String(), strconv.Itoa(day), strconv.Itoa(year))
 	}
 
-	if hours >= 24 {
-		return o.CreatedAt.Format(time.RubyDate)
-	}
-
-	minutes := duration.Minutes()
-	if hours > 0 {
-		return fmt.Sprintf("%d minutes ago", minutes)
-	}
-
-	return fmt.Sprintf("%d seconds ago", duration.Seconds())
+	return humanize.Time(o.CreatedAt)
 }
 
 func (o Order) DisplaySubtotal() string {
