@@ -1,4 +1,4 @@
-application: crowdstart-io-staging
+application: crowdstart-staging
 module: default
 version: v1
 
@@ -30,6 +30,41 @@ handlers:
 - url: /_ah/queue/go/delay
   script: _go_app
   login: admin
+
+- url: /assets/css/(.*\.styl)
+  static_files: assets/css/\1
+  upload: assets/css/(.*\.style)
+  mime_type: application/stylus
+
+- url: /assets/js/(.*\.coffee)
+  static_files: assets/js/\1
+  upload: assets/js/(.*\.coffee)
+  mime_type: application/coffee-script
+
+- url: /font/(.*\.woff)
+  static_files: static/font/\1
+  upload: static/font/(.*\.woff)
+  mime_type: application/font-woff
+
+- url: /font/(.*\.svg)
+  static_files: static/font/\1
+  upload: static/font/(.*\.svg)
+  mime_type: image/svg+xml
+
+- url: /font/(.*\.eot)
+  static_files: static/font/\1
+  upload: static/font/(.*\.eot)
+  mime_type: application/vnd.ms-fontobject
+
+- url: /font/(.*\.ttf)
+  static_files: static/font/\1
+  upload: static/font/(.*\.ttf)
+  mime_type: application/x-font-ttf
+
+- url: /font/(.*\.otf)
+  static_files: static/font/\1
+  upload: static/font/(.*\.otf)
+  mime_type: application/x-font-otf
 
 - url: /*
   static_dir: static

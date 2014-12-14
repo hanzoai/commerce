@@ -1,10 +1,16 @@
-package fixtures
+package models
 
-import (
-	. "crowdstart.io/models"
-)
+type Perk struct {
+	Id                string
+	Description       string
+	EstimatedDelivery string
+	GearQuantity      int
+	HelmetQuantity    int
+	Price             string
+	Title             string
+}
 
-var perks = map[string]Perk{
+var Perks = map[string]Perk{
 	"2210257": Perk{
 		Id:                "2210257",
 		Title:             "Speed Demon SKULLY AR-1",
@@ -121,5 +127,6 @@ var perks = map[string]Perk{
 		Price:             "$1,499 USD",
 		EstimatedDelivery: "HELMET May 2015, DOGTAG: December 2014, XMAS CARD: Downloadable",
 		HelmetQuantity:    1,
+		GearQuantity:      0,
 	},
 }

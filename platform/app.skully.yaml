@@ -11,6 +11,9 @@ automatic_scaling:
   min_idle_instances: 1
 
 handlers:
+- url: /stripe/callback
+  script: _go_app
+
 - url: /.*
   script: _go_app
   login: required

@@ -1,4 +1,67 @@
 ProductView = require '../views/product'
+Validation = require '../../utils/validation'
+
+exports.setupFormValidation = (formId)->
+  ->
+    minimumPasswordLength = 6
+    $form = $(formId)
+    $form.find('input, select, textarea').click ->
+      $(@).removeClass('error')
+
+    $form.submit ->
+      valid = true
+      errors = []
+
+      # Get all inputs that are visible and empty
+      empty = $form.find('div:visible.required > input').filter ->
+        Validation.isEmpty $(@).val()
+
+      email = $form.find('input[name="User.Email"], input[name="Email"]')
+      if email.length != 0
+        unless Validation.isEmail email.val()
+          valid = false
+          Validation.error email
+          errors.push "Invalid email."
+
+      oldPassword = $form.find('input[name="OldPassword"]')
+      if oldPassword.length != 0
+        if !Validation.isPassword oldPassword.val(), minimumPasswordLength
+          valid = false
+          Validation.error oldPassword
+          errors.push "Password must be at least #{minimumPasswordLength} characters long"
+
+      password = $form.find('input[name="Password"]')
+      if password.length != 0
+        if !Validation.isPassword password.val(), minimumPasswordLength
+          valid = false
+          Validation.error password
+          errors.push "Password must be at least #{minimumPasswordLength} characters long"
+        else
+          confirmPassword = $form.find('input[name="ConfirmPassword"]')
+          if confirmPassword.length != 0
+            unless Validation.passwordsMatch(password.val(), confirmPassword.val())
+              valid = false
+              Validation.error confirmPassword
+              errors.push "Passwords must match"
+
+      if empty.length > 0
+        valid = false
+        Validation.error empty
+        missing = (v.toLowerCase().trim() for v in empty.parent().text().split('\n') when v.trim())
+        if missing.length > 1
+          errors.push "Please enter your #{missing.slice(0, -1).join(', ') + (if missing.length == 2 then '' else ',') + " and " + missing.slice(-1)}."
+        else
+          errors.push "Please enter your #{missing[0]}"
+
+      unless valid
+        $errors = $form.find('.errors')
+        $errors.text ''
+
+        # display errors
+        for error in errors
+          $errors.append $("<p>#{error}</p>")
+
+      return valid
 
 exports.setupViews = ->
   console.log 'store#setupViews'
@@ -72,3 +135,34 @@ exports.customizeAr1 = ->
 exports.menu = ->
   $('.menu-icon').click ->
     $('body').toggleClass('mobile')
+
+exports.toggleDropdown = ->
+  _id = null
+  $('.dropdown-toggle').click ->
+    $el = $(@)
+    id = $el.attr 'id'
+
+    if id == _id
+      $el.attr 'checked', false
+      _id = null
+      return
+    else
+      $el.attr 'checked', true
+      _id = id
+
+    # Only one menu should be active at a time.
+    $('.dropdown-toggle')
+      .filter (v) ->
+        $(@).attr('id') isnt id
+      .each ->
+        $(@).attr 'checked', false
+
+    # Hide menu when clicked away from.
+    first = true
+    $(document.body).on 'click.dropdown', ->
+      if first
+        first = false
+        return
+
+      $("##{id}").attr 'checked', false
+      $(document.body).off 'click.dropdown'
