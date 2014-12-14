@@ -1,21 +1,21 @@
 pwd				= $(shell pwd)
 os				= $(shell uname | tr '[A-Z]' '[a-z]')
 platform        = $(os)_amd64
-sdk				= go_appengine_sdk_$(platform)-1.9.15
+sdk				= go_appengine_sdk_$(platform)-1.9.17
 sdk_path        = $(pwd)/.sdk
 goroot          = $(sdk_path)/goroot
 gopath          = $(sdk_path)/gopath
 goroot_pkg_path = $(goroot)/pkg/$(platform)_appengine/
 gopath_pkg_path = $(gopath)/pkg/$(platform)_appengine/
 
-deps			= $(shell cat Godeps | cut -d ' ' -f 1)
-modules			= crowdstart.io/api \
-				  crowdstart.io/checkout \
-				  crowdstart.io/platform \
-				  crowdstart.io/preorder \
-				  crowdstart.io/store
+deps	= $(shell cat Godeps | cut -d ' ' -f 1)
+modules	= crowdstart.io/api \
+		  crowdstart.io/checkout \
+		  crowdstart.io/platform \
+		  crowdstart.io/preorder \
+		  crowdstart.io/store
 
-gae_token		= 1/DLPZCHjjCkiegGp0SiIvkWmtZcUNl15JlOg4qB0-1r0MEudVrK5jSpoR30zcRFq6
+gae_token = 1/DLPZCHjjCkiegGp0SiIvkWmtZcUNl15JlOg4qB0-1r0MEudVrK5jSpoR30zcRFq6
 
 gae_development = config/development/app.yaml \
 				  config/development/dispatch.yaml \
@@ -25,25 +25,25 @@ gae_development = config/development/app.yaml \
 				  preorder/app.dev.yaml \
 				  store/app.dev.yaml
 
-gae_staging  = config/staging \
-			   api/app.staging.yaml \
-			   checkout/app.staging.yaml \
-			   platform/app.staging.yaml \
-			   preorder/app.staging.yaml \
-			   store/app.staging.yaml
+gae_staging = config/staging \
+			  api/app.staging.yaml \
+			  checkout/app.staging.yaml \
+			  platform/app.staging.yaml \
+			  preorder/app.staging.yaml \
+			  store/app.staging.yaml
 
-gae_skully  = config/skully \
-			  api/app.skully.yaml \
-			  checkout/app.skully.yaml \
-			  preorder/app.skully.yaml \
-			  store/app.skully.yaml
+gae_skully = config/skully \
+			 api/app.skully.yaml \
+			 checkout/app.skully.yaml \
+			 preorder/app.skully.yaml \
+			 store/app.skully.yaml
 
-gae_production  = config/production \
-				  api \
-				  checkout \
-				  platform \
-				  preorder \
-				  store
+gae_production = config/production \
+				 api \
+				 checkout \
+				 platform \
+				 preorder \
+				 store
 
 tools = github.com/nsf/gocode \
         code.google.com/p/go.tools/cmd/goimports \
@@ -55,7 +55,7 @@ tools = github.com/nsf/gocode \
         github.com/jstemmer/gotags
 
 # replacement file watcher for the dev appengine
-mtime_file_watcher = https://gist.githubusercontent.com/zeekay/d92deea5091849d79782/raw/a2f43b902afef21a2a53f4ca529975a28b20d943/mtime_file_watcher.py
+mtime_file_watcher = https://gist.githubusercontent.com/zeekay/5eba991c39426ca42cbb/raw/235f107b7ed081719103a4259dddd0e568d12480/mtime_file_watcher.py
 
 # static assets, requisite javascript from assets -> static
 bebop = node_modules/.bin/bebop
@@ -69,23 +69,39 @@ requisite_opts = assets/js/store/store.coffee \
 				 -o static/js/checkout.js
 requisite_opts_min = -m --strip-debug
 
-
-stylus		   = node_modules/.bin/stylus
-stylus_opts    = assets/css/preorder/preorder.styl \
-				 assets/css/store/store.styl \
-				 assets/css/checkout/checkout.styl \
-				 -o static/css -u autoprefixer-stylus
+stylus		= node_modules/.bin/stylus
+stylus_opts = assets/css/preorder/preorder.styl \
+		      assets/css/store/store.styl \
+		      assets/css/checkout/checkout.styl \
+		      -o static/css -u autoprefixer-stylus
 stylus_opts_min = -u csso-stylus -c
 
+sdk_install = wget https://storage.googleapis.com/appengine-sdks/featured/$(sdk).zip && \
+			  unzip $(sdk).zip && \
+			  mv go_appengine $(sdk_path) && \
+			  rm $(sdk).zip && \
+			  mkdir -p $(sdk_path)/gopath/src && \
+			  mkdir -p $(sdk_path)/gopath/bin && \
+			  ln -s $(shell pwd) $(sdk_path)/gopath/src/crowdstart.io
+
+dev_appserver = $(sdk_path)/dev_appserver.py --skip_sdk_update_check \
+											 --datastore_path=~/.gae_datastore.bin \
+											 --dev_appserver_log_level=error
+
 # find command differs between bsd/linux thus the two versions
-ifeq ($(os), "linux")
+ifeq ($(os), linux)
 	packages	 = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' -printf '%h\n' | sort -u | sed -e 's/.\//crowdstart.io\//')
 	test_modules = $(shell find . -maxdepth 4 -mindepth 3 -name '*_test.go' -printf '%h\n' | sort -u | sed -e 's/.\//crowdstart.io\//')
 else
 	packages	 = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' -print0 | xargs -0 -n1 dirname | sort --unique | sed -e 's/.\//crowdstart.io\//')
 	test_modules = $(shell find . -maxdepth 4 -mindepth 2 -name '*_test.go' -print0 | xargs -0 -n1 dirname | sort --unique | sed -e 's/.\//crowdstart.io\//')
+	sdk_install_extra = && echo '\#!/usr/bin/env bash\ngoapp $$@' > $(sdk_path)/gopath/bin/go \
+						&& chmod +x $(sdk_path)/gopath/bin/go \
+						&& curl  $(mtime_file_watcher) > $(sdk_path)/google/appengine/tools/devappserver2/mtime_file_watcher.py \
+						&& pip install macfsevents --upgrade
 endif
 
+# set v=1 to enable verbose mode
 ifeq ($(v), 1)
 	verbose = -v
 else
@@ -95,7 +111,7 @@ endif
 export GOROOT  := $(goroot)
 export GOPATH  := $(gopath)
 
-all: test install
+all: deps test install
 
 # ASSETS
 assets: deps-assets compile-css compile-js
@@ -122,38 +138,19 @@ build: deps assets
 deps: deps-assets deps-go
 
 # DEPS JS/CSS
-deps-assets: node_modules node_modules/.bin/bebop node_modules/.bin/requisite node_modules/.bin/stylus
+deps-assets: node_modules
 
 node_modules:
 	npm install
 
-node_modules/.bin/bebop:
-	npm install bebop@latest
-
-node_modules/.bin/requisite:
-	npm install requisite@latest
-
-node_modules/.bin/stylus:
-	npm install stylus@latest
-
 # DEPS GO
-deps-go: .sdk .godeps
+deps-go: .sdk .sdk/gopath/src/github.com
 
-.godeps:
+.sdk/gopath/src/github.com:
 	gpm install || curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.1/bin/gpm | bash
 
 .sdk:
-	wget https://storage.googleapis.com/appengine-sdks/featured/$(sdk).zip && \
-	unzip $(sdk).zip && \
-	mv go_appengine $(sdk_path) && \
-	rm $(sdk).zip && \
-	mkdir -p $(sdk_path)/gopath/src && \
-	mkdir -p $(sdk_path)/gopath/bin && \
-	ln -s $(shell pwd) $(sdk_path)/gopath/src/crowdstart.io && \
-	echo '#!/usr/bin/env bash\ngoapp $$@' > $(sdk_path)/gopath/bin/go && \
-	chmod +x $(sdk_path)/gopath/bin/go
-	# curl  $(mtime_file_watcher) > $(sdk_path)/google/appengine/tools/devappserver2/mtime_file_watcher.py && \
-	# pip install watchdog
+	$(sdk_install) $(sdk_install_extra)
 
 # INSTALL
 install: install-deps
@@ -164,16 +161,13 @@ install-deps:
 
 # DEV SERVER
 serve: assets
-	$(sdk_path)/dev_appserver.py --datastore_path=~/.gae_datastore.bin $(gae_development)
+	$(dev_appserver) $(gae_development)
 
 serve-clear-datastore: assets
-	$(sdk_path)/dev_appserver.py --datastore_path=~/.gae_datastore.bin --clear_datastore=true $(gae_development)
-
-serve-no-restart: assets
-	$(sdk_path)/dev_appserver.py --datastore_path=~/.gae_datastore.bin --automatic_restart=false $(gae_development)
+	$(dev_appserver) --clear_datastore=true $(gae_development)
 
 serve-public: assets
-	$(sdk_path)/dev_appserver.py --host=0.0.0.0 --datastore_path=~/.gae_datastore.bin $(gae_development)
+	$(dev_appserver) --host=0.0.0.0 $(gae_development)
 
 # LIVE RELOAD SERVER
 live-reload: assets
@@ -196,26 +190,29 @@ bench:
 deploy: test
 	go run scripts/deploy.go
 
-deploy-appengine: assets-min
+deploy-production: assets-min
 	for module in $(gae_production); do \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check rollback $$module; \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check update $$module; \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check set_default_version $$module; \
 	done; \
+	$(sdk_path)/appcfg.py --skip_sdk_update_check update_indexes config/production; \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/production
 
-deploy-appengine-staging: assets-min
+deploy-staging: assets
 	for module in $(gae_staging); do \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check rollback $$module; \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check update $$module; \
 	done; \
+	$(sdk_path)/appcfg.py --skip_sdk_update_check update_indexes config/staging; \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/staging
 
-deploy-appengine-skully: assets-min
+deploy-skully: assets-min
 	for module in $(gae_skully); do \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check rollback $$module; \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check update $$module; \
 	done; \
+	$(sdk_path)/appcfg.py --skip_sdk_update_check update_indexes config/skully; \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/skully
 
 deploy-appengine-ci: assets-minified
@@ -224,6 +221,7 @@ deploy-appengine-ci: assets-minified
 		$(sdk_path)/appcfg.py --skip_sdk_update_check update $$module; \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check set_default_version $$module; \
 	done; \
+	$(sdk_path)/appcfg.py --skip_sdk_update_check update_indexes config/production; \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/production
 
 # EXPORT / Usage: make datastore-export kind=user

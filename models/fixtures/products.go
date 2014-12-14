@@ -11,7 +11,7 @@ import (
 	. "crowdstart.io/models"
 )
 
-var Products = delay.Func("install-products", func(c appengine.Context) {
+var products = delay.Func("install-products", func(c appengine.Context) {
 	log.Debug("Loading fixtures...")
 	db := datastore.New(c)
 
@@ -91,7 +91,7 @@ var Products = delay.Func("install-products", func(c appengine.Context) {
 		Description: `The world’s smartest motorcycle helmet. SKULLY AR-1 is a light, high-quality,
 					  and full-faced motorcycle helmet equipped with a wide-angle rearview camera and
 					  transparent heads up display (HUD). With its live rearview feed and ability to
-					  provide telemetry and rider data such as speed, GPS directions, fuel*, and
+					  provide telemetry and rider data such as speed, GPS directions, fuel, and
 					  more, the SKULLY AR-1 not only eliminates blind spots, but allows the rider to
 					  focus on what matters most: the road ahead. SKULLY AR-1: Ride safer, look
 					  badass.`,
@@ -134,7 +134,7 @@ var Products = delay.Func("install-products", func(c appengine.Context) {
 		Slug:     "card-winter2014promo",
 		Title:    "SKULLY Xmas Card",
 		Variants: variants,
-		Images: []Image{ // replace with real one, zach
+		Images: []Image{
 			Image{
 				Alt: "whitehelmet_store_1000px.jpg",
 				Url: config.UrlFor("/img/products/skullyhhsquare.jpg"),
@@ -160,7 +160,7 @@ var Products = delay.Func("install-products", func(c appengine.Context) {
 		Slug:     "dogtag-winter2014promo",
 		Title:    "Limited Edition SKULLY dog tag",
 		Variants: variants,
-		Images: []Image{ // replace with real one, zach
+		Images: []Image{
 			Image{
 				Alt: "whitehelmet_store_1000px.jpg",
 				Url: config.UrlFor("/img/products/skullydogtags.png"),
@@ -392,7 +392,7 @@ var Products = delay.Func("install-products", func(c appengine.Context) {
 		Description: `The world’s smartest motorcycle helmet. SKULLY AR-1 is a light, high-quality,
 					  and full-faced motorcycle helmet equipped with a wide-angle rearview camera and
 					  transparent heads up display (HUD). With its live rearview feed and ability to
-					  provide telemetry and rider data such as speed, GPS directions, fuel*, and
+					  provide telemetry and rider data such as speed, GPS directions, fuel, and
 					  more, the SKULLY AR-1 not only eliminates blind spots, but allows the rider to
 					  focus on what matters most: the road ahead. SKULLY AR-1: Ride safer, look
 					  badass.
