@@ -83,7 +83,7 @@ var contributors = delay.Func("fixtures-contributors", func(c appengine.Context)
 		pledgeId := row[2]
 
 		// Create token
-		token := new(InviteToken)
+		token := new(Token)
 		token.Id = tokenId
 		token.Email = email
 		db.PutKey("invite-token", tokenId, token)
@@ -125,7 +125,7 @@ var contributors = delay.Func("fixtures-contributors", func(c appengine.Context)
 			db.PutKey("user", user.Email, user)
 		}
 
-		log.Debug("User %#v", user)
-		log.Debug("InviteToken: %#v", token)
+		log.Debug("User: %#v", user)
+		log.Debug("Token: %#v", token)
 	}
 })
