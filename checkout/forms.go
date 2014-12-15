@@ -118,10 +118,14 @@ func (f *ChargeForm) Parse(c *gin.Context) error {
 	return nil
 }
 
-func (f ChargeForm) Validate(c *gin.Context) []string {
+func (f *ChargeForm) Sanitize() {
+	val.SanitizeUser(&f.User)
+}
+
+func (f *ChargeForm) Validate() []string {
 	var errs []string
-	errs = val.ValidateUser(c, &f.User, errs)
-	errs = val.ValidateAddress(c, &f.Order.BillingAddress, errs)
-	errs = val.ValidateAddress(c, &f.Order.ShippingAddress, errs)
+	errs = val.ValidateUser(&f.User, errs)
+	errs = val.ValidateAddress(&f.Order.BillingAddress, errs)
+	errs = val.ValidateAddress(&f.Order.ShippingAddress, errs)
 	return errs
 }

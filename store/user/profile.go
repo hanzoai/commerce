@@ -1,8 +1,6 @@
 package user
 
 import (
-	"strings"
-
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/auth"
@@ -33,14 +31,17 @@ func updateContact(c *gin.Context, user *models.User) bool {
 		log.Panic("Failed to save user profile: %v", err)
 	}
 
-	if valid := val.AjaxUser(c, &form.User); !valid {
+	val.SanitizeUser(&form.User)
+	if errs := form.Validate(); len(errs) > 0 {
+		log.Debug("Billing info is incorrect. %v", errs)
+		c.JSON(400, gin.H{"message": errs})
 		return false
 	}
 
 	// Update information from form.
 	user.Phone = form.User.Phone
-	user.FirstName = strings.Title(form.User.FirstName)
-	user.LastName = strings.Title(form.User.LastName)
+	user.FirstName = form.User.FirstName
+	user.LastName = form.User.LastName
 
 	return true
 }
@@ -51,7 +52,9 @@ func updateBilling(c *gin.Context, user *models.User) bool {
 		log.Panic("Failed to save user billing information: %v", err)
 	}
 
-	if valid := val.AjaxAddress(c, &form.BillingAddress); !valid {
+	if errs := form.Validate(); len(errs) > 0 {
+		log.Debug("Billing info is incorrect. %v", errs)
+		c.JSON(400, gin.H{"message": errs})
 		return false
 	}
 
@@ -66,17 +69,23 @@ func updatePassword(c *gin.Context, user *models.User) bool {
 	}
 
 	if err := auth.CompareHashAndPassword(user.PasswordHash, form.OldPassword); err != nil {
-		log.Panic("Password is incorrect: %v", err)
+		log.Debug("Old password is incorrect.")
+		c.JSON(400, gin.H{"message": "Old password is incorrect."})
+		return false
 	}
 
 	if form.Password == form.ConfirmPassword {
-		if valid := val.AjaxPassword(c, &form.Password); !valid {
+		if errs := form.Validate(); len(errs) > 0 {
+			log.Debug("Password is incorrect. %v", errs)
+			c.JSON(400, gin.H{"message": errs})
 			return false
 		}
 
 		user.PasswordHash = auth.HashPassword(form.Password)
 	} else {
-		log.Panic("Passwords do not match.")
+		log.Debug("Passwords do not match.")
+		c.JSON(400, gin.H{"message": "Passwords do not match."})
+		return false
 	}
 
 	return true
