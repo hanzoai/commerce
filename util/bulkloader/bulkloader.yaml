@@ -384,11 +384,11 @@ transformers:
       external_name: Charges.Statement
       # Type: String Stats: 1 properties of this type in this kind.
 
-    - property: CreatedAt
-      external_name: CreatedAt
-      # Type: Date/Time Stats: 1 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
-      export_transform: transform.export_date_time('%Y-%m-%dT%H:%M:%S')
+    # - property: CreatedAt
+    #   external_name: CreatedAt
+    #   # Type: Date/Time Stats: 1 properties of this type in this kind.
+    #   import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+    #   export_transform: transform.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Email
       external_name: Email
@@ -480,11 +480,11 @@ transformers:
       # Type: Integer Stats: 1 properties of this type in this kind.
       import_transform: transform.none_if_empty(int)
 
-    - property: UpdatedAt
-      external_name: UpdatedAt
-      # Type: Date/Time Stats: 1 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
-      export_transform: transform.export_date_time('%Y-%m-%dT%H:%M:%S')
+    # - property: UpdatedAt
+    #   external_name: UpdatedAt
+    #   # Type: Date/Time Stats: 1 properties of this type in this kind.
+    #   import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+    #   export_transform: transform.export_date_time('%Y-%m-%dT%H:%M:%S')
 
       # GENERATED:
     - property: Items.SKU_
