@@ -70,3 +70,29 @@ func Render(c *gin.Context, path string, pairs ...interface{}) (err error) {
 
 	return
 }
+
+func RenderString(path string, pairs ...interface{}) string {
+	// All templates are expected to be in templates dir
+	templatePath := cwd + "/templates/" + path
+
+	// Get template from cache
+	template, err := templateSet.FromCache(templatePath)
+	if err != nil {
+		log.Panic("Unable to find template: %v\n\n%v", path, err)
+	}
+
+	// Create context from pairs
+	ctx := pongo2.Context{}
+
+	for i := 0; i < len(pairs); i = i + 2 {
+		ctx[pairs[i].(string)] = pairs[i+1]
+	}
+
+	// Render template
+	out, err := template.Execute(ctx)
+	if err != nil {
+		log.Panic("Unable to render template: %v\n\n%v", path, err)
+	}
+
+	return out
+}
