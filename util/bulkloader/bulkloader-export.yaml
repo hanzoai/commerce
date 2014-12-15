@@ -506,16 +506,18 @@ transformers:
 
       # GENERATED:
     - property: Items.SKU_
-      external_name: Items.SKU
-      export_transform: bulkloader_helper.list_skus_to_str
+      external_name: Items.SKU_
+      # export_transform: bulkloader_helper.list_skus_to_str
+      import_transform: bulkloader_helper.transform_eval
 
     - property: Items.Slug_
-      external_name: Items.Slug
+      external_name: Items.Slug_
+      # import_transform: bulkloader_helper.transform_eval
       export_transform: bulkloader_helper.list_to_str
 
     - property: PreorderDescription
       external_name: PreorderDescription
-      export_transform: bulkloader_helper.generate_preorder
+      export_transform: bulkloader_helper.generate_preorder_description
 
     - property: ShippingAddress
       external_name: ShippingAddress
