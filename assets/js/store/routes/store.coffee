@@ -84,9 +84,11 @@ exports.setupFormValidation = (formId, ajax=false)->
 
               # try to use server provided error message
               message  =  xhr?.responseJSON?.message
+              if typeof message == "object" && message.length > 0
+                message = '<p>' + message.join('</p><p>') + '</p>'
               message ?= 'An error has occured. Please review your information and try again later.'
 
-              $('.errors').text message
+              $form.find('.errors').html message
               $form.find('.loading-spinner').remove()
               lock = false
 
