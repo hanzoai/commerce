@@ -52,29 +52,14 @@ func PasswordResetSubmit(c *gin.Context) {
 	//	mandrill.Var{"RESET_CODE", token.Id},
 	//	mandrill.Var{"RESET_URL", "https:" + config.UrlFor("store", "/password-reset/", token.Id)})
 
+	resetUrl := "https:" + config.UrlFor("store", "/password-reset/", token.Id)
 	mandrill.SendTemplateAsync.Call(ctx, "transactional-template",
 		user.Email,
 		user.Name(),
 		"Recover your password",
-		mandrill.Var{"BODY", `
-			<tr>
-				<td class="mcnTextContent" style="padding-top: 9px;padding-right: 18px;padding-bottom: 9px;padding-left: 18px;mso-table-lspace: 0pt;mso-table-rspace: 0pt;-ms-text-size-adjust: 100%;-webkit-text-size-adjust: 100%;color: #363535;font-family: Helvetica;font-size: 14px;line-height: 150%;text-align: left;" valign="top">
-					<p dir="ltr" id="docs-internal-guid-789e1b20-490f-0919-5d38-af92c1b402ef" style="margin: 1em 0;padding: 0;-ms-text-size-adjust: 100%;-webkit-text-size-adjust: 100%;color: #363535;font-family: Helvetica;font-size: 14px;line-height: 150%;">
-					HOLA
-					</p>
-				</td>
-			</tr>
-			<tr>
-				<td class="mcnTextContent" style="padding-top: 9px;padding-right: 18px;padding-bottom: 9px;padding-left: 18px;mso-table-lspace: 0pt;mso-table-rspace: 0pt;-ms-text-size-adjust: 100%;-webkit-text-size-adjust: 100%;color: #363535;font-family: Helvetica;font-size: 14px;line-height: 150%;text-align: left;" valign="top">
-					<p dir="ltr" id="docs-internal-guid-789e1b20-490f-0919-5d38-af92c1b402ef" style="margin: 1em 0;padding: 0;-ms-text-size-adjust: 100%;-webkit-text-size-adjust: 100%;color: #363535;font-family: Helvetica;font-size: 14px;line-height: 150%;">
-					HOLA 2
-					</p>
-				</td>
-			</tr>
-			`})
-
-	// mandrill.Var{"RESET_CODE", token.Id},
-	// mandrill.Var{"RESET_URL", "https:" + config.UrlFor("store", "/password-reset/", token.Id)})
+		mandrill.Var{
+			"BODY",
+			template.RenderString("email/password-reset.html", "resetUrl", resetUrl)})
 
 	template.Render(c, "password-reset-sent.html")
 }
