@@ -228,10 +228,10 @@ deploy-appengine-ci: assets-minified
 datastore-export:
 	mkdir -p _export/ && \
 	bulkloader.py --download \
-				  --bandwidth_limit 1073741824 \
-				  --batch_size 250 \
-				  --rps_limit 9001 \
-				  --http_limit 250 \
+				  --bandwidth_limit 1000000000 \
+				  --rps_limit 10000 \
+				  --batch_size 100 \
+				  --http_limit 200 \
 				  --url https://datastore-admin-dot-crowdstart-staging.appspot.com/_ah/remote_api \
 				  --config_file util/bulkloader/bulkloader.yaml \
 				  --db_filename /tmp/bulkloader-$$kind.db \
@@ -239,6 +239,18 @@ datastore-export:
 				  --result_db_filename /tmp/bulkloader-result-$$kind.db \
 				  --kind $$kind \
 				  --filename _export/$$kind.csv && \
+	rm -rf /tmp/bulkloader-$$kind.db /tmp/bulkloader-$$kind.log /tmp/bulkloader-result-$$kind.db
+
+# IMPORT / Usage: make datastore-import kind=user file=user.csv
+datastore-import:
+	appcfg.py upload_data --bandwidth_limit 1000000000 \
+				          --rps_limit 10000 \
+				          --batch_size 100 \
+				          --http_limit 200 \
+				          --url https://datastore-admin-dot-crowdstart-staging.appspot.com/_ah/remote_api \
+				          --config_file util/bulkloader/bulkloader.yaml \
+				          --kind $$kind \
+				          --filename $$file && \
 	rm -rf /tmp/bulkloader-$$kind.db /tmp/bulkloader-$$kind.log /tmp/bulkloader-result-$$kind.db
 
 # Generate config for use with datastore-export target
