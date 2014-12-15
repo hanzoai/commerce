@@ -2,7 +2,6 @@ package router
 
 import (
 	"net/http"
-
 	"strings"
 
 	"github.com/gin-gonic/gin"
