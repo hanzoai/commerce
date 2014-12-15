@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <title>{{ siteTitle }}</title>
+
+    <link rel="canonical" href="{{ urlFor("store") }}">
+
+    <meta property="og:site_name" content="{{ siteTitle }}">
+    <meta property="og:title" content="{{ siteTitle }}">
+    <meta property="og:url" content="{{ urlFor("store") }}">
+    <meta itemprop="name" content="SKULLY Card">
+    <meta itemprop="url" content="{{ urlFor("store") }}">
+
+    <link rel="shortcut icon" type="image/x-icon" href="{{ urlFor("/favicon.ico") }}">
+
+    <!--[if lt IE 9]>
+    <script src="{{ urlFor("/js/html5-shiv.js") }}></script>
+    <![endif]-->
+
+    <link rel="stylesheet" type="text/css" href="{{ urlFor("/css/store.css") }}">
+
+    <!--FONTS-->
+    <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Michroma" />
+    <script src="//use.typekit.net/uye2ojv.js"></script>
+    <script type="text/javascript">try {Typekit.load();} catch (e) {}</script>
+
+    <script type="text/javascript" src="{{ urlFor("/js/jquery.min.js") }}"></script>
+</head>
+<body>
+  <div style="font-family:michroma;display:table;top:">SKULLY</div>
+  <img id="card" src="{{ urlFor("img/skullycard.jpg") }}">
+  <script type="text/javascript">
+    $(document).ready(function(){
+      var canvas = document.createElement('canvas');
+      var ctx = canvas.getContext('2d')
+
+      var img = document.getElementById('card');
+
+      img.onload = function() {
+        var link = document.createElement('link');
+        link.href = "//fonts.googleapis.com/css?family=Michroma";
+        link.rel = "stylesheet";
+        link.type = "text/css";
+        link.onload = function() {
+          setTimeout(function() {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+
+            // Draw Text
+            var fontSize = 150;
+            ctx.font = 'bold ' + fontSize + 'px "Michroma"';
+            ctx.fillStyle = "#FFF";
+
+            // Default Left Value
+            var x = 175;
+
+            // Max width of text
+            var maxWidth = 780;
+            var name = "Zach Kelling";
+            name = name.toUpperCase()
+            // May not work in old IE
+            try {
+              var width = ctx.measureText(name).width;
+              while(width > maxWidth) {
+                fontSize-=0.5;
+                ctx.font = 'bold ' + fontSize + 'px "Michroma"';
+                width = ctx.measureText(name).width;
+              }
+            } catch (e) {
+
+            }
+            ctx.fillText(name, x, 483 + fontSize * 0.8);
+
+            img.src = canvas.toDataURL();
+            img.onload = null;
+          }, 10)
+        };
+        $('head').append(link);
+      };
+    });
+  </script>
+</body>
+</html>
