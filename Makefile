@@ -224,15 +224,39 @@ deploy-appengine-ci: assets-minified
 	$(sdk_path)/appcfg.py --skip_sdk_update_check update_indexes config/production; \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/production
 
+datastore_admin_url = https://datastore-admin-dot-crowdstart-staging.appspot.com/_ah/remote_api
+# datastore_admin_url = https://datastore-admin-dot-skully-crowdstart.appspot.com/_ah/remote_api
+
 # EXPORT / Usage: make datastore-export kind=user
 datastore-export:
 	mkdir -p _export/ && \
 	bulkloader.py --download \
-				  --url http://static.skullysystems.com/_ah/remote_api \
-				  --config_file config/skully/bulkloader.yaml \
+				  --bandwidth_limit 1000000000 \
+				  --rps_limit 10000 \
+				  --batch_size 250 \
+				  --http_limit 200 \
+				  --url $(datastore_admin_url) \
+				  --config_file util/bulkloader/bulkloader-export.yaml \
 				  --db_filename /tmp/bulkloader-$$kind.db \
 				  --log_file /tmp/bulkloader-$$kind.log \
 				  --result_db_filename /tmp/bulkloader-result-$$kind.db \
 				  --kind $$kind \
 				  --filename _export/$$kind.csv && \
 	rm -rf /tmp/bulkloader-$$kind.db /tmp/bulkloader-$$kind.log /tmp/bulkloader-result-$$kind.db
+
+# IMPORT / Usage: make datastore-import kind=user file=user.csv
+datastore-import:
+	appcfg.py upload_data --bandwidth_limit 1000000000 \
+				          --rps_limit 10000 \
+				          --batch_size 250 \
+				          --http_limit 200 \
+				  	      --url $(datastore_admin_url) \
+				          --config_file util/bulkloader/bulkloader-import.yaml \
+				          --kind $$kind \
+				          --filename $$file \
+				  		  --log_file /tmp/bulkloader-upload-$$kind.log && \
+	rm -rf /tmp/bulkloader-upload-$$kind.log
+
+# Generate config for use with datastore-export target
+datastore-export-config:
+	bulkloader.py --create_config --url=$(datastore_admin_url) --filename=bulkloader.yaml
