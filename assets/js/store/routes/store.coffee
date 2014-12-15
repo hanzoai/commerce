@@ -1,14 +1,16 @@
 ProductView = require '../views/product'
 Validation = require '../../utils/validation'
 
-exports.setupFormValidation = (formId)->
+exports.setupFormValidation = (formId, ajax=false)->
   ->
     minimumPasswordLength = 6
+    lock = false
     $form = $(formId)
     $form.find('input, select, textarea').click ->
       $(@).removeClass('error')
 
     $form.submit ->
+      $form.find('.success').hide()
       valid = true
       errors = []
 
@@ -53,13 +55,42 @@ exports.setupFormValidation = (formId)->
         else
           errors.push "Please enter your #{missing[0]}"
 
-      unless valid
+      if !valid
         $errors = $form.find('.errors')
         $errors.text ''
 
         # display errors
         for error in errors
           $errors.append $("<p>#{error}</p>")
+
+      else if ajax
+        if !lock
+          lock = true
+          $form.find('button[type=submit]').append '<div class="loading-spinner" style="float:left"></div>'
+          $.ajax
+            url: $form.attr 'action'
+            type: "POST"
+            data: $form.serializeArray()
+            dataType: "json"
+            success: (data) ->
+              console.log data
+              $form.find('.success').show()
+              $form.find('.loading-spinner').remove()
+              $('.errors').text ""
+              lock = false
+            error: (xhr) ->
+              # important to force a new authorization, assuming user wants to edit card details
+              app.set 'approved', false
+
+              # try to use server provided error message
+              message  =  xhr?.responseJSON?.message
+              message ?= 'An error has occured. Please review your information and try again later.'
+
+              $('.errors').text message
+              $form.find('.loading-spinner').remove()
+              lock = false
+
+        return false
 
       return valid
 
