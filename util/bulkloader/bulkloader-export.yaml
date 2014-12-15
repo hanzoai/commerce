@@ -512,8 +512,8 @@ transformers:
 
     - property: Items.Slug_
       external_name: Items.Slug_
-      # import_transform: bulkloader_helper.transform_eval
-      export_transform: bulkloader_helper.list_to_str
+      # export_transform: bulkloader_helper.list_to_str
+      import_transform: bulkloader_helper.transform_eval
 
     - property: PreorderDescription
       external_name: PreorderDescription
