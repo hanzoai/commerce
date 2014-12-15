@@ -228,6 +228,10 @@ deploy-appengine-ci: assets-minified
 datastore-export:
 	mkdir -p _export/ && \
 	bulkloader.py --download \
+				  --bandwidth_limit 1073741824 \
+				  --batch_size 250 \
+				  --rps_limit 9001 \
+				  --http_limit 250 \
 				  --url https://datastore-admin-dot-crowdstart-staging.appspot.com/_ah/remote_api \
 				  --config_file util/bulkloader/bulkloader.yaml \
 				  --db_filename /tmp/bulkloader-$$kind.db \
