@@ -17,6 +17,7 @@ import (
 	"crowdstart.io/thirdparty/stripe"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
+	"crowdstart.io/util/val"
 )
 
 // Cache stripe keys
@@ -98,10 +99,7 @@ func charge(c *gin.Context) {
 	}
 
 	// Validation
-	// if val.Check(form.User.Email).Exists().IsValid {
-	// 	if !val.Check(form.User.Email).IsEmail().IsValid {
-	// 	}
-	// }
+	val.SanitizeUser(&form.User)
 
 	// Update user information
 	log.Debug("Trying to get user from session...", c)
@@ -111,6 +109,18 @@ func charge(c *gin.Context) {
 		user = &form.User
 	}
 	log.Debug("User: %#v", user)
+
+	if valid := val.AjaxUser(c, user); !valid {
+		return
+	}
+
+	if valid := val.AjaxAddress(c, &form.Order.BillingAddress); !valid {
+		return
+	}
+
+	if valid := val.AjaxAddress(c, &form.Order.ShippingAddress); !valid {
+		return
+	}
 
 	// Set email for order
 	form.Order.Email = user.Email

@@ -3,6 +3,9 @@ package val
 import (
 	"strings"
 
+	"github.com/gin-gonic/gin"
+
+	"crowdstart.io/models"
 	"crowdstart.io/util/log"
 )
 
@@ -52,4 +55,80 @@ func (s *StringValidationContext) Contains(str string) *StringValidationContext 
 	s.IsValid = s.IsValid && (strings.Contains(s.value, str))
 	log.Debug("%v contains %v is %v", s.value, str, s.IsValid)
 	return s
+}
+
+func AjaxUser(c *gin.Context, user *models.User) bool {
+	if !Check(user.FirstName).Exists().IsValid {
+		log.Debug("Form posted without first name")
+
+		// c.JSON(400, gin.H{"message": "Please enter a first name."})
+		c.JSON(400, gin.H{"message": "Please enter a first name."})
+		return false
+	}
+
+	if !Check(user.LastName).Exists().IsValid {
+		log.Debug("Form posted without last name")
+		//c.JSON(400, gin.H{"message": "Please enter a last name."})
+		c.JSON(400, gin.H{"message": "Please enter a last name."})
+		return false
+	}
+
+	if !Check(user.Phone).Exists().IsValid {
+		log.Debug("Form posted without phone number")
+		//c.JSON(400, gin.H{"message": "Please enter a phone number."})
+		c.JSON(400, gin.H{"message": "Please enter a phone number."})
+		return false
+	}
+
+	return true
+}
+
+func SanitizeUser(user *models.User) {
+	user.Email = strings.ToLower(strings.TrimSpace(user.Email))
+	user.FirstName = strings.Title(user.FirstName)
+	user.LastName = strings.Title(user.LastName)
+}
+
+func AjaxAddress(c *gin.Context, address *models.Address) bool {
+	if !Check(address.Line1).Exists().IsValid {
+		log.Debug("Form posted without address")
+		c.JSON(400, gin.H{"message": "Please enter an address."})
+		return false
+	}
+
+	if !Check(address.City).Exists().IsValid {
+		log.Debug("Form posted without city")
+		c.JSON(400, gin.H{"message": "Please enter a city."})
+		return false
+	}
+
+	if !Check(address.State).Exists().IsValid {
+		log.Debug("Form posted without state")
+		c.JSON(400, gin.H{"message": "Please enter a state."})
+		return false
+	}
+
+	if !Check(address.PostalCode).Exists().IsValid {
+		log.Debug("Form posted without postal code")
+		c.JSON(400, gin.H{"message": "Please enter a zip/postal code."})
+		return false
+	}
+
+	if !Check(address.Country).Exists().IsValid {
+		log.Debug("Form posted without country")
+		c.JSON(400, gin.H{"message": "Please enter a country."})
+		return false
+	}
+
+	return true
+}
+
+func AjaxPassword(c *gin.Context, password *string) bool {
+	if !Check(*password).IsPassword().IsValid {
+		log.Debug("Form posted invalid password")
+		c.JSON(400, gin.H{"message": "Password Must be atleast 6 characters long."})
+		return false
+	}
+
+	return true
 }

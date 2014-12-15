@@ -33,26 +33,7 @@ func updateContact(c *gin.Context, user *models.User) bool {
 		log.Panic("Failed to save user profile: %v", err)
 	}
 
-	fUser := form.User
-	if !val.Check(fUser.FirstName).Exists().IsValid {
-		log.Debug("Form posted without first name")
-
-		// c.JSON(400, gin.H{"message": "Please enter a first name."})
-		c.JSON(400, gin.H{"message": "Please enter a first name."})
-		return false
-	}
-
-	if !val.Check(fUser.LastName).Exists().IsValid {
-		log.Debug("Form posted without last name")
-		//c.JSON(400, gin.H{"message": "Please enter a last name."})
-		c.JSON(400, gin.H{"message": "Please enter a last name."})
-		return false
-	}
-
-	if !val.Check(fUser.Phone).Exists().IsValid {
-		log.Debug("Form posted without phone number")
-		//c.JSON(400, gin.H{"message": "Please enter a phone number."})
-		c.JSON(400, gin.H{"message": "Please enter a phone number."})
+	if valid := val.AjaxUser(c, &form.User); !valid {
 		return false
 	}
 
@@ -70,34 +51,7 @@ func updateBilling(c *gin.Context, user *models.User) bool {
 		log.Panic("Failed to save user billing information: %v", err)
 	}
 
-	billingAddress := form.BillingAddress
-	if !val.Check(billingAddress.Line1).Exists().IsValid {
-		log.Debug("Form posted without address")
-		c.JSON(400, gin.H{"message": "Please enter an address."})
-		return false
-	}
-
-	if !val.Check(billingAddress.City).Exists().IsValid {
-		log.Debug("Form posted without city")
-		c.JSON(400, gin.H{"message": "Please enter a city."})
-		return false
-	}
-
-	if !val.Check(billingAddress.State).Exists().IsValid {
-		log.Debug("Form posted without state")
-		c.JSON(400, gin.H{"message": "Please enter a state."})
-		return false
-	}
-
-	if !val.Check(billingAddress.PostalCode).Exists().IsValid {
-		log.Debug("Form posted without postal code")
-		c.JSON(400, gin.H{"message": "Please enter a zip/postal code."})
-		return false
-	}
-
-	if !val.Check(billingAddress.Country).Exists().IsValid {
-		log.Debug("Form posted without country")
-		c.JSON(400, gin.H{"message": "Please enter a country."})
+	if valid := val.AjaxAddress(c, &form.BillingAddress); !valid {
 		return false
 	}
 
@@ -116,9 +70,7 @@ func updatePassword(c *gin.Context, user *models.User) bool {
 	}
 
 	if form.Password == form.ConfirmPassword {
-		if !val.Check(form.Password).IsPassword().IsValid {
-			log.Debug("Form posted invalid password")
-			c.JSON(400, gin.H{"message": "Password Must be atleast 6 characters long."})
+		if valid := val.AjaxPassword(c, &form.Password); !valid {
 			return false
 		}
 
