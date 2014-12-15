@@ -76,6 +76,9 @@ func SubmitRegister(c *gin.Context) {
 		return
 	}
 
+	//Santitization
+	val.SanitizeUser(&f.User)
+
 	db := datastore.New(c)
 
 	log.Debug("Checking if user exists")

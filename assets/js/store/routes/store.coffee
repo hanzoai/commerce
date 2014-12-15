@@ -1,14 +1,16 @@
 ProductView = require '../views/product'
 Validation = require '../../utils/validation'
 
-exports.setupFormValidation = (formId)->
+exports.setupFormValidation = (formId, ajax=false)->
   ->
     minimumPasswordLength = 6
+    lock = false
     $form = $(formId)
     $form.find('input, select, textarea').click ->
       $(@).removeClass('error')
 
     $form.submit ->
+      $form.find('.success').hide()
       valid = true
       errors = []
 
@@ -28,21 +30,21 @@ exports.setupFormValidation = (formId)->
         if !Validation.isPassword oldPassword.val(), minimumPasswordLength
           valid = false
           Validation.error oldPassword
-          errors.push "Password must be at least #{minimumPasswordLength} characters long"
+          errors.push "Password must be at least #{minimumPasswordLength} characters long."
 
       password = $form.find('input[name="Password"]')
       if password.length != 0
         if !Validation.isPassword password.val(), minimumPasswordLength
           valid = false
           Validation.error password
-          errors.push "Password must be at least #{minimumPasswordLength} characters long"
+          errors.push "Password must be at least #{minimumPasswordLength} characters long."
         else
           confirmPassword = $form.find('input[name="ConfirmPassword"]')
           if confirmPassword.length != 0
             unless Validation.passwordsMatch(password.val(), confirmPassword.val())
               valid = false
               Validation.error confirmPassword
-              errors.push "Passwords must match"
+              errors.push "Passwords must match."
 
       if empty.length > 0
         valid = false
@@ -51,15 +53,44 @@ exports.setupFormValidation = (formId)->
         if missing.length > 1
           errors.push "Please enter your #{missing.slice(0, -1).join(', ') + (if missing.length == 2 then '' else ',') + " and " + missing.slice(-1)}."
         else
-          errors.push "Please enter your #{missing[0]}"
+          errors.push "Please enter your #{missing[0]}."
 
-      unless valid
+      if !valid
         $errors = $form.find('.errors')
         $errors.text ''
 
         # display errors
         for error in errors
           $errors.append $("<p>#{error}</p>")
+
+      else if ajax
+        if !lock
+          lock = true
+          $form.find('button[type=submit]').append '<div class="loading-spinner" style="float:left"></div>'
+          $.ajax
+            url: $form.attr 'action'
+            type: "POST"
+            data: $form.serializeArray()
+            dataType: "json"
+            success: (data) ->
+              console.log data
+              $form.find('.success').show()
+              $form.find('.loading-spinner').remove()
+              $('.errors').text ""
+              lock = false
+            error: (xhr) ->
+              # important to force a new authorization, assuming user wants to edit card details
+              app.set 'approved', false
+
+              # try to use server provided error message
+              message  =  xhr?.responseJSON?.message
+              message ?= 'An error has occured. Please review your information and try again later.'
+
+              $('.errors').text message
+              $form.find('.loading-spinner').remove()
+              lock = false
+
+        return false
 
       return valid
 
