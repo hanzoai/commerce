@@ -141,3 +141,10 @@ def export_date_time(format):
             return '2014-08-10T00:00:01'
 
     return export_date_time_lambda
+
+
+def transform_eval(value):
+    """Coerces a stringified list of ints into a list of ints."""
+    if value == '' or value is None or value == []:
+        return None
+    return eval(value)
