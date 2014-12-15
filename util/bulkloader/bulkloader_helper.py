@@ -1,3 +1,6 @@
+import datetime
+
+
 def list_num_to_str(value):
     """
     Convert a list of ints into comma-joined str.
@@ -28,18 +31,14 @@ def list_skus_to_str(value):
 
 
 def na_if_none(value):
-    """
-    Return N/A instead of empty string.
-    """
+    """Return N/A instead of empty string."""
     if not value:
         return 'N/A'
     return value
 
 
 def generate_preorder(value, bulkload_state):
-    """
-    Generates preorder information from Items.SKU_ and Items.Quantity.
-    """
+    """Generates preorder information from Items.SKU_ and Items.Quantity."""
     row = bulkload_state.current_dictionary
     if 'Items.SKU' not in row or 'Items.Quantity' not in row:
         return ''
@@ -58,9 +57,7 @@ def generate_preorder(value, bulkload_state):
 
 
 def join_address_lines(value, bulkload_state):
-    """
-    Generates preorder information from Items.SKU_ and Items.Quantity.
-    """
+    """Generates preorder information from Items.SKU_ and Items.Quantity."""
     row = bulkload_state.current_dictionary
     if 'ShippingAddress.Line1' not in row or 'ShippingAddress.Line2' not in row:
         return u''
@@ -72,18 +69,16 @@ def join_address_lines(value, bulkload_state):
 
 
 def generate_shipping_address(value, bulkload_state):
-    """
-    Generates preorder information from Items.SKU_ and Items.Quantity.
-    """
+    """Generates preorder information from Items.SKU_ and Items.Quantity."""
     row = bulkload_state.current_dictionary
     address = []
     keys = {
-        'line1':      'ShippingAddress.Lines',
-        'line2':      'ShippingAddress.Line2',
-        'city':       'ShippingAddress.City',
-        'state':      'ShippingAddress.State',
-        'postal_code':'ShippingAddress.PostalCode',
-        'country':    'ShippingAddress.Country',
+        'line1': 'ShippingAddress.Lines',
+        'line2': 'ShippingAddress.Line2',
+        'city': 'ShippingAddress.City',
+        'state': 'ShippingAddress.State',
+        'postal_code': 'ShippingAddress.PostalCode',
+        'country': 'ShippingAddress.Country',
     }
 
     get = lambda key: row.get(keys[key], u'')
@@ -94,7 +89,55 @@ def generate_shipping_address(value, bulkload_state):
     # Add Street address
     address.append(u'{0} {1}'.format(get('line1'), get('line2')))
     # Add City, State, zip line
-    address.append(u'{0}, {1} {2}'.format(get('city'), get('state'), get('postal_code')))
+    address.append(
+        u'{0}, {1} {2}'.format(
+            get('city'),
+            get('state'),
+            get('postal_code')))
     # Add country
     address.append(get('country'))
     return '\n'.join([line.strip() for line in address if line])
+
+
+def import_date_time(format, _strptime=None):
+    """
+    A wrapper around strptime. Also returns None if the input is empty.
+
+    Args:
+      format: Format string for strptime.
+
+    Returns:
+      Single argument method which parses a string into a datetime using format.
+    """
+
+    if not _strptime:
+        _strptime = datetime.datetime.strptime
+
+    def import_date_time_lambda(value):
+        if not value:
+            return None
+        return _strptime(value, format)
+
+    return import_date_time_lambda
+
+
+def export_date_time(format):
+    """
+    A wrapper around strftime. Also returns '' if the input is None.
+
+    Args:
+      format: Format string for strftime.
+
+    Returns:
+      Single argument method which convers a datetime into a string using format.
+    """
+
+    def export_date_time_lambda(value):
+        if not value:
+            return '2014-08-10T00:00:01'
+        try:
+            return datetime.datetime.strftime(value, format)
+        except:
+            return '2014-08-10T00:00:01'
+
+    return export_date_time_lambda
