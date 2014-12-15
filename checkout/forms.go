@@ -7,6 +7,7 @@ import (
 	"crowdstart.io/models"
 	"crowdstart.io/util/form"
 	"crowdstart.io/util/log"
+	"crowdstart.io/util/val"
 )
 
 // Load order from checkout form
@@ -117,56 +118,14 @@ func (f *ChargeForm) Parse(c *gin.Context) error {
 	return nil
 }
 
-func (f ChargeForm) Validate() (errs []string) {
-	if f.Order.BillingAddress.Line1 == "" {
-		errs = append(errs, "Address line 1 is required")
-	}
-	if f.Order.BillingAddress.City == "" {
-		errs = append(errs, "City is required")
-	}
-	if f.Order.BillingAddress.State == "" {
-		errs = append(errs, "State is required")
-	}
-	if f.Order.BillingAddress.PostalCode == "" {
-		errs = append(errs, "Postal code is required")
-	}
-	if f.Order.BillingAddress.Country == "" {
-		errs = append(errs, "Country is required")
-	}
-	if f.Order.ShippingAddress.Line1 == "" {
-		errs = append(errs, "Address line 1 is required")
-	}
-	if f.Order.ShippingAddress.City == "" {
-		errs = append(errs, "City is required")
-	}
-	if f.Order.ShippingAddress.State == "" {
-		errs = append(errs, "State is required")
-	}
-	if f.Order.ShippingAddress.PostalCode == "" {
-		errs = append(errs, "Postal code is required")
-	}
-	if f.Order.ShippingAddress.Country == "" {
-		errs = append(errs, "Country is required")
-	}
+func (f *ChargeForm) Sanitize() {
+	val.SanitizeUser(&f.User)
+}
 
-	if f.StripeToken == "" {
-		errs = append(errs, "Invalid stripe token")
-	}
-
-	// if len(string(f.Order.Account.CVV2)) < 3 {
-	// 	errs = append(errs, "Confirmation code is required.")
-	// }
-	// if len(f.Order.Account.Expiry) != 4 {
-	// 	log.Debug(f.Order.Account.Expiry)
-	// 	errs = append(errs, "Invalid expiry")
-	// }
-
-	// log.Info("Processing order. %#v", form.Order)
-	// err := form.Order.Process(c)
-	// if err != nil {
-	// 	log.Error(err.Error())
-	// 	return
-	// }
-
+func (f *ChargeForm) Validate() []string {
+	var errs []string
+	errs = val.ValidateUser(&f.User, errs)
+	errs = val.ValidateAddress(&f.Order.BillingAddress, errs)
+	errs = val.ValidateAddress(&f.Order.ShippingAddress, errs)
 	return errs
 }
