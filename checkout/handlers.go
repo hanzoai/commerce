@@ -86,6 +86,7 @@ func charge(c *gin.Context) {
 	}
 
 	form.Order.CreatedAt = time.Now()
+	form.Order.UpdatedAt = form.Order.CreatedAt
 
 	ctx := middleware.GetAppEngine(c)
 	db := datastore.New(ctx)
@@ -94,6 +95,13 @@ func charge(c *gin.Context) {
 	if err := form.Order.Populate(db); err != nil {
 		log.Error("Failed to repopulate order information from datastore: %v", err)
 		c.Fail(500, err)
+		return
+	}
+
+	// Validation
+	form.Sanitize()
+	if errs := form.Validate(); len(errs) > 0 {
+		c.JSON(400, gin.H{"message": errs})
 		return
 	}
 
@@ -108,6 +116,8 @@ func charge(c *gin.Context) {
 
 	// Set email for order
 	form.Order.Email = user.Email
+	form.Order.CampaignId = "dev@hanzo.ai"
+	form.Order.Preorder = true
 
 	// Set test mode, minimum stripe transaction
 	if strings.Contains(user.Email, "@verus.io") {

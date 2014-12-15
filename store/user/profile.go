@@ -11,6 +11,7 @@ import (
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
+	"crowdstart.io/util/val"
 )
 
 func Profile(c *gin.Context) {
@@ -25,42 +26,70 @@ func Profile(c *gin.Context) {
 	template.Render(c, "profile.html", "user", user, "userJson", userJson)
 }
 
-func updateContact(c *gin.Context, user *models.User) {
+func updateContact(c *gin.Context, user *models.User) bool {
 	form := new(ContactForm)
 	if err := form.Parse(c); err != nil {
 		log.Panic("Failed to save user profile: %v", err)
+	}
+
+	val.SanitizeUser(&form.User)
+	if errs := form.Validate(); len(errs) > 0 {
+		log.Debug("Billing info is incorrect. %v", errs)
+		c.JSON(400, gin.H{"message": errs})
+		return false
 	}
 
 	// Update information from form.
 	user.Phone = form.User.Phone
 	user.FirstName = form.User.FirstName
 	user.LastName = form.User.LastName
+
+	return true
 }
 
-func updateBilling(c *gin.Context, user *models.User) {
+func updateBilling(c *gin.Context, user *models.User) bool {
 	form := new(BillingForm)
 	if err := form.Parse(c); err != nil {
 		log.Panic("Failed to save user billing information: %v", err)
 	}
 
+	if errs := form.Validate(); len(errs) > 0 {
+		log.Debug("Billing info is incorrect. %v", errs)
+		c.JSON(400, gin.H{"message": errs})
+		return false
+	}
+
 	user.BillingAddress = form.BillingAddress
+	return true
 }
 
-func updatePassword(c *gin.Context, user *models.User) {
+func updatePassword(c *gin.Context, user *models.User) bool {
 	form := new(ChangePasswordForm)
 	if err := form.Parse(c); err != nil {
 		log.Panic("Failed to update user password: %v", err)
 	}
 
 	if err := auth.CompareHashAndPassword(user.PasswordHash, form.OldPassword); err != nil {
-		log.Panic("Password is incorrect: %v", err)
+		log.Debug("Old password is incorrect.")
+		c.JSON(400, gin.H{"message": "Old password is incorrect."})
+		return false
 	}
 
 	if form.Password == form.ConfirmPassword {
+		if errs := form.Validate(); len(errs) > 0 {
+			log.Debug("Password is incorrect. %v", errs)
+			c.JSON(400, gin.H{"message": errs})
+			return false
+		}
+
 		user.PasswordHash = auth.HashPassword(form.Password)
 	} else {
-		log.Panic("Passwords do not match.")
+		log.Debug("Passwords do not match.")
+		c.JSON(400, gin.H{"message": "Passwords do not match."})
+		return false
 	}
+
+	return true
 }
 
 func SaveProfile(c *gin.Context) {
@@ -74,11 +103,17 @@ func SaveProfile(c *gin.Context) {
 	formName := c.Params.ByName("form")
 	switch formName {
 	case "change-contact":
-		updateContact(c, user)
+		if valid := updateContact(c, user); !valid {
+			return
+		}
 	case "change-billing":
-		updateBilling(c, user)
+		if valid := updateBilling(c, user); !valid {
+			return
+		}
 	case "change-password":
-		updatePassword(c, user)
+		if valid := updatePassword(c, user); !valid {
+			return
+		}
 	}
 
 	// Update user
@@ -91,5 +126,5 @@ func SaveProfile(c *gin.Context) {
 	ctx := middleware.GetAppEngine(c)
 	mandrill.SendTemplateAsync.Call(ctx, "account-change-confirmation", user.Email, user.Name(), "Your account information has been changed.")
 
-	template.Render(c, "profile.html", "user", user, "success", true)
+	c.JSON(200, gin.H{"success": true})
 }
