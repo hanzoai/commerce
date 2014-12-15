@@ -261,32 +261,32 @@ transformers:
       external_name: Key
       export_transform: transform.key_id_or_name_as_string
 
-    - property: Account.CVV2
-      external_name: Account.CVV2
-      # Type: Integer Stats: 1 properties of this type in this kind.
-      import_transform: transform.none_if_empty(int)
+    # - property: Account.CVV2
+    #   external_name: Account.CVV2
+    #   # Type: Integer Stats: 1 properties of this type in this kind.
+    #   import_transform: transform.none_if_empty(int)
 
-    - property: Account.Expiry
-      external_name: Account.Expiry
-      # Type: String Stats: 1 properties of this type in this kind.
+    # - property: Account.Expiry
+    #   external_name: Account.Expiry
+    #   # Type: String Stats: 1 properties of this type in this kind.
 
-    - property: Account.Month
-      external_name: Account.Month
-      # Type: Integer Stats: 1 properties of this type in this kind.
-      import_transform: transform.none_if_empty(int)
+    # - property: Account.Month
+    #   external_name: Account.Month
+    #   # Type: Integer Stats: 1 properties of this type in this kind.
+    #   import_transform: transform.none_if_empty(int)
 
-    - property: Account.Number
-      external_name: Account.Number
-      # Type: String Stats: 1 properties of this type in this kind.
+    # - property: Account.Number
+    #   external_name: Account.Number
+    #   # Type: String Stats: 1 properties of this type in this kind.
 
-    - property: Account.Type
-      external_name: Account.Type
-      # Type: String Stats: 1 properties of this type in this kind.
+    # - property: Account.Type
+    #   external_name: Account.Type
+    #   # Type: String Stats: 1 properties of this type in this kind.
 
-    - property: Account.Year
-      external_name: Account.Year
-      # Type: Integer Stats: 1 properties of this type in this kind.
-      import_transform: transform.none_if_empty(int)
+    # - property: Account.Year
+    #   external_name: Account.Year
+    #   # Type: Integer Stats: 1 properties of this type in this kind.
+    #   import_transform: transform.none_if_empty(int)
 
     - property: BillingAddress.City
       external_name: BillingAddress.City
@@ -408,106 +408,80 @@ transformers:
 
     - property: Items.Description
       external_name: Items.Description
-      # Type: String Stats: 3 properties of this type in this kind.
       import_transform: bulkloader_helper.transform_eval
 
     - property: Items.DiscountAmnt
       external_name: Items.DiscountAmnt
-      # Type: Integer Stats: 3 properties of this type in this kind.
-      # import_transform: transform.none_if_empty(int)
       import_transform: bulkloader_helper.transform_eval
 
     - property: Items.LineNo
       external_name: Items.LineNo
-      # Type: Integer Stats: 3 properties of this type in this kind.
-      # import_transform: transform.none_if_empty(int)
       import_transform: bulkloader_helper.transform_eval
 
     - property: Items.Quantity
       external_name: Items.Quantity
-      # Type: Integer Stats: 3 properties of this type in this kind.
-      # import_transform: transform.none_if_empty(int)
       import_transform: bulkloader_helper.transform_eval
 
     - property: Preorder
       external_name: Preorder
-      # Type: Boolean Stats: 1 properties of this type in this kind.
       import_transform: transform.regexp_bool('true', re.IGNORECASE)
 
     - property: Shipped
       external_name: Shipped
-      # Type: Boolean Stats: 1 properties of this type in this kind.
       import_transform: transform.regexp_bool('true', re.IGNORECASE)
 
     - property: ShippingAddress.City
       external_name: ShippingAddress.City
-      # Type: String Stats: 1 properties of this type in this kind.
 
     - property: ShippingAddress.Country
       external_name: ShippingAddress.Country
-      # Type: String Stats: 1 properties of this type in this kind.
 
     - property: ShippingAddress.Line1
       external_name: ShippingAddress.Line1
-      # Type: String Stats: 1 properties of this type in this kind.
 
     - property: ShippingAddress.Line2
       external_name: ShippingAddress.Line2
-      # Type: String Stats: 1 properties of this type in this kind.
 
     - property: ShippingAddress.PostalCode
       external_name: ShippingAddress.PostalCode
-      # Type: String Stats: 1 properties of this type in this kind.
 
     - property: ShippingAddress.State
       external_name: ShippingAddress.State
-      # Type: String Stats: 1 properties of this type in this kind.
 
     - property: Shipping
       external_name: Shipping
-      # Type: Integer Stats: 1 properties of this type in this kind.
       import_transform: transform.none_if_empty(int)
 
     - property: Subtotal
       external_name: Subtotal
-      # Type: Integer Stats: 1 properties of this type in this kind.
       import_transform: transform.none_if_empty(int)
 
     - property: Tax
       external_name: Tax
-      # Type: Integer Stats: 1 properties of this type in this kind.
       import_transform: transform.none_if_empty(int)
 
     - property: Test
       external_name: Test
-      # Type: Boolean Stats: 1 properties of this type in this kind.
       import_transform: transform.regexp_bool('true', re.IGNORECASE)
 
     - property: Total
       external_name: Total
-      # Type: Integer Stats: 1 properties of this type in this kind.
       import_transform: transform.none_if_empty(int)
 
     - property: CreatedAt
       external_name: CreatedAt
-      # Type: Date/Time Stats: 1 properties of this type in this kind.
       import_transform: bulkloader_helper.import_date_time('%Y-%m-%dT%H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: UpdatedAt
       external_name: UpdatedAt
-      # Type: Date/Time Stats: 1 properties of this type in this kind.
       import_transform: bulkloader_helper.import_date_time('%Y-%m-%dT%H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Items.SKU_
       external_name: Items.SKU_
-      # export_transform: bulkloader_helper.list_skus_to_str
       import_transform: bulkloader_helper.transform_eval
 
     - property: Items.Slug_
       external_name: Items.Slug_
-      # export_transform: bulkloader_helper.list_to_str
       import_transform: bulkloader_helper.transform_eval
 
 - kind: product
