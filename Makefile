@@ -233,7 +233,7 @@ datastore-export:
 				  --batch_size 100 \
 				  --http_limit 200 \
 				  --url https://datastore-admin-dot-crowdstart-staging.appspot.com/_ah/remote_api \
-				  --config_file util/bulkloader/bulkloader.yaml \
+				  --config_file util/bulkloader/bulkloader-export.yaml \
 				  --db_filename /tmp/bulkloader-$$kind.db \
 				  --log_file /tmp/bulkloader-$$kind.log \
 				  --result_db_filename /tmp/bulkloader-result-$$kind.db \
@@ -248,7 +248,7 @@ datastore-import:
 				          --batch_size 100 \
 				          --http_limit 200 \
 				          --url https://datastore-admin-dot-crowdstart-staging.appspot.com/_ah/remote_api \
-				          --config_file util/bulkloader/bulkloader.yaml \
+				          --config_file util/bulkloader/bulkloader-import.yaml \
 				          --kind $$kind \
 				          --filename $$file && \
 	rm -rf /tmp/bulkloader-$$kind.db /tmp/bulkloader-$$kind.log /tmp/bulkloader-result-$$kind.db
