@@ -60,27 +60,42 @@ func (s *StringValidationContext) Contains(str string) *StringValidationContext 
 func AjaxUser(c *gin.Context, user *models.User) bool {
 	if !Check(user.FirstName).Exists().IsValid {
 		log.Debug("Form posted without first name")
-
-		// c.JSON(400, gin.H{"message": "Please enter a first name."})
 		c.JSON(400, gin.H{"message": "Please enter a first name."})
 		return false
 	}
 
 	if !Check(user.LastName).Exists().IsValid {
 		log.Debug("Form posted without last name")
-		//c.JSON(400, gin.H{"message": "Please enter a last name."})
 		c.JSON(400, gin.H{"message": "Please enter a last name."})
 		return false
 	}
 
 	if !Check(user.Phone).Exists().IsValid {
 		log.Debug("Form posted without phone number")
-		//c.JSON(400, gin.H{"message": "Please enter a phone number."})
 		c.JSON(400, gin.H{"message": "Please enter a phone number."})
 		return false
 	}
 
 	return true
+}
+
+func ValidateUser(c *gin.Context, user *models.User, errs []string) []string {
+	if !Check(user.FirstName).Exists().IsValid {
+		log.Debug("Form posted without first name")
+		errs = append(errs, "Please enter a first name.")
+	}
+
+	if !Check(user.LastName).Exists().IsValid {
+		log.Debug("Form posted without last name")
+		errs = append(errs, "Please enter a last name.")
+	}
+
+	if !Check(user.Phone).Exists().IsValid {
+		log.Debug("Form posted without phone number")
+		errs = append(errs, "Please enter a phone number.")
+	}
+
+	return errs
 }
 
 func SanitizeUser(user *models.User) {
@@ -121,6 +136,34 @@ func AjaxAddress(c *gin.Context, address *models.Address) bool {
 	}
 
 	return true
+}
+
+func ValidateAddress(c *gin.Context, address *models.Address, errs []string) []string {
+	if !Check(address.Line1).Exists().IsValid {
+		log.Debug("Form posted without address")
+		errs = append(errs, "Please enter an address.")
+	}
+
+	if !Check(address.City).Exists().IsValid {
+		log.Debug("Form posted without city")
+		errs = append(errs, "Please enter a city.")
+	}
+
+	if !Check(address.State).Exists().IsValid {
+		log.Debug("Form posted without state")
+		errs = append(errs, "Please enter a state.")
+	}
+
+	if !Check(address.PostalCode).Exists().IsValid {
+		log.Debug("Form posted without postal code")
+		errs = append(errs, "Please enter a zip/postal code.")
+	}
+
+	if !Check(address.Country).Exists().IsValid {
+		log.Debug("Form posted without country")
+		errs = append(errs, "Please enter a country.")
+	}
+	return errs
 }
 
 func AjaxPassword(c *gin.Context, password *string) bool {
