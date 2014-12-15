@@ -66,10 +66,11 @@ func ValidateUser(user *models.User, errs []string) []string {
 		errs = append(errs, "Please enter a last name.")
 	}
 
-	if !Check(user.Phone).Exists().IsValid {
-		log.Debug("Form posted without phone number")
-		errs = append(errs, "Please enter a phone number.")
-	}
+	// Do we care?
+	// if !Check(user.Phone).Exists().IsValid {
+	// 	log.Debug("Form posted without phone number")
+	// 	errs = append(errs, "Please enter a phone number.")
+	// }
 
 	return errs
 }
