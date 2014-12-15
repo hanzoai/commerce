@@ -2,6 +2,7 @@ package store
 
 import (
 	"crowdstart.io/middleware"
+	"crowdstart.io/store/card"
 	"crowdstart.io/store/cart"
 	"crowdstart.io/store/products"
 	"crowdstart.io/store/user"
@@ -44,4 +45,7 @@ func init() {
 	router.POST("/profile/:form", loginRequired, user.SaveProfile)
 
 	router.GET("/orders", loginRequired, user.ListOrders)
+
+	// Card
+	router.GET("/card", loginRequired, card.GetCard)
 }
