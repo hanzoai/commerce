@@ -258,7 +258,7 @@ transformers:
     columns: from_header
   property_map:
     - property: __key__
-      external_name: key
+      external_name: Key
       export_transform: transform.key_id_or_name_as_string
 
     - property: Account.CVV2
