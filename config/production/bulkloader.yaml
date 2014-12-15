@@ -258,220 +258,235 @@ transformers:
     columns: from_header
   property_map:
     - property: __key__
-      external_name: Email
+      external_name: Id
       export_transform: transform.key_id_or_name_as_string
 
-    # - property: Account.CVV2
-    #   external_name: Account.CVV2
-    #   # Type: Integer Stats: 912 properties of this type in this kind.
-    #   import_transform: transform.none_if_empty(int)
+    - property: Account.CVV2
+      external_name: Account.CVV2
+      # Type: Integer Stats: 1 properties of this type in this kind.
+      import_transform: transform.none_if_empty(int)
 
-    # - property: Account.Expiry
-    #   external_name: Account.Expiry
-    #   # Type: String Stats: 912 properties of this type in this kind.
+    - property: Account.Expiry
+      external_name: Account.Expiry
+      # Type: String Stats: 1 properties of this type in this kind.
 
-    # - property: Account.Month
-    #   external_name: Account.Month
-    #   # Type: Integer Stats: 912 properties of this type in this kind.
-    #   import_transform: transform.none_if_empty(int)
+    - property: Account.Month
+      external_name: Account.Month
+      # Type: Integer Stats: 1 properties of this type in this kind.
+      import_transform: transform.none_if_empty(int)
 
-    # - property: Account.Number
-    #   external_name: Account.Number
-    #   # Type: String Stats: 912 properties of this type in this kind.
+    - property: Account.Number
+      external_name: Account.Number
+      # Type: String Stats: 1 properties of this type in this kind.
 
-    # - property: Account.Type
-    #   external_name: Account.Type
-    #   # Type: String Stats: 912 properties of this type in this kind.
+    - property: Account.Type
+      external_name: Account.Type
+      # Type: String Stats: 1 properties of this type in this kind.
 
-    # - property: Account.Year
-    #   external_name: Account.Year
-    #   # Type: Integer Stats: 912 properties of this type in this kind.
-    #   import_transform: transform.none_if_empty(int)
+    - property: Account.Year
+      external_name: Account.Year
+      # Type: Integer Stats: 1 properties of this type in this kind.
+      import_transform: transform.none_if_empty(int)
 
-    # - property: BillingAddress.City
-    #   external_name: BillingAddress.City
-    #   # Type: String Stats: 912 properties of this type in this kind.
+    - property: BillingAddress.City
+      external_name: BillingAddress.City
+      # Type: String Stats: 1 properties of this type in this kind.
 
-    # - property: BillingAddress.Country
-    #   external_name: BillingAddress.Country
-    #   # Type: String Stats: 912 properties of this type in this kind.
+    - property: BillingAddress.Country
+      external_name: BillingAddress.Country
+      # Type: String Stats: 1 properties of this type in this kind.
 
-    # - property: BillingAddress.Line1
-    #   external_name: BillingAddress.Line1
-    #   # Type: String Stats: 912 properties of this type in this kind.
+    - property: BillingAddress.Line1
+      external_name: BillingAddress.Line1
+      # Type: String Stats: 1 properties of this type in this kind.
 
-    # - property: BillingAddress.Line2
-    #   external_name: BillingAddress.Line2
-    #   # Type: String Stats: 912 properties of this type in this kind.
+    - property: BillingAddress.Line2
+      external_name: BillingAddress.Line2
+      # Type: String Stats: 1 properties of this type in this kind.
 
-    # - property: BillingAddress.PostalCode
-    #   external_name: BillingAddress.PostalCode
-    #   # Type: String Stats: 912 properties of this type in this kind.
+    - property: BillingAddress.PostalCode
+      external_name: BillingAddress.PostalCode
+      # Type: String Stats: 1 properties of this type in this kind.
 
-    # - property: BillingAddress.State
-    #   external_name: BillingAddress.State
-    #   # Type: String Stats: 912 properties of this type in this kind.
+    - property: BillingAddress.State
+      external_name: BillingAddress.State
+      # Type: String Stats: 1 properties of this type in this kind.
 
-    # - property: Campaign.Approved
-    #   external_name: Campaign.Approved
-    #   # Type: Boolean Stats: 912 properties of this type in this kind.
-    #   import_transform: transform.regexp_bool('true', re.IGNORECASE)
-
-    # - property: Campaign.Backers
-    #   external_name: Campaign.Backers
-    #   # Type: Integer Stats: 912 properties of this type in this kind.
-    #   import_transform: transform.none_if_empty(int)
-
-    # - property: Campaign.Category
-    #   external_name: Campaign.Category
-    #   # Type: Integer Stats: 912 properties of this type in this kind.
-    #   import_transform: transform.none_if_empty(int)
-
-    # - property: Campaign.Description
-    #   external_name: Campaign.Description
-    #   # Type: String Stats: 912 properties of this type in this kind.
-
-    # - property: Campaign.Enabled
-    #   external_name: Campaign.Enabled
-    #   # Type: Boolean Stats: 912 properties of this type in this kind.
-    #   import_transform: transform.regexp_bool('true', re.IGNORECASE)
-
-    # - property: Campaign.FacebookTag
-    #   external_name: Campaign.FacebookTag
-    #   # Type: String Stats: 912 properties of this type in this kind.
-
-    # - property: Campaign.Fundee.BusinessName
-    #   external_name: Campaign.Fundee.BusinessName
-    #   # Type: String Stats: 912 properties of this type in this kind.
-
-    # - property: Campaign.Fundee.Country
-    #   external_name: Campaign.Fundee.Country
-    #   # Type: String Stats: 912 properties of this type in this kind.
-
-    # - property: Campaign.Fundee.DBA
-    #   external_name: Campaign.Fundee.DBA
-    #   # Type: String Stats: 912 properties of this type in this kind.
-
-    # - property: Campaign.Fundee.Owner
-    #   external_name: Campaign.Fundee.Owner
-    #   # Type: String Stats: 912 properties of this type in this kind.
-
-    # - property: Campaign.Fundee.PrimaryContactPhone
-    #   external_name: Campaign.Fundee.PrimaryContactPhone
-    #   # Type: String Stats: 912 properties of this type in this kind.
-
-    # - property: Campaign.Fundee.PrimaryContact
-    #   external_name: Campaign.Fundee.PrimaryContact
-    #   # Type: String Stats: 912 properties of this type in this kind.
-
-    # - property: Campaign.Fundee.TaxId
-    #   external_name: Campaign.Fundee.TaxId
-    #   # Type: String Stats: 912 properties of this type in this kind.
-
-    # - property: Campaign.Fundee.Website
-    #   external_name: Campaign.Fundee.Website
-    #   # Type: String Stats: 912 properties of this type in this kind.
-
-    # - property: Campaign.GoogleAnalytics
-    #   external_name: Campaign.GoogleAnalytics
-    #   # Type: String Stats: 912 properties of this type in this kind.
-
-    # - property: Campaign.Id
-    #   external_name: Campaign.Id
-    #   # Type: String Stats: 912 properties of this type in this kind.
-
-    # - property: Campaign.ImageUrl
-    #   external_name: Campaign.ImageUrl
-    #   # Type: String Stats: 912 properties of this type in this kind.
-
-    # - property: Campaign.OriginalUrl
-    #   external_name: Campaign.OriginalUrl
-    #   # Type: String Stats: 912 properties of this type in this kind.
-
-    # - property: Campaign.PayPalApiKeys
-    #   external_name: Campaign.PayPalApiKeys
-    #   # Type: String Stats: 912 properties of this type in this kind.
-
-    # - property: Campaign.PayPalConnected
-    #   external_name: Campaign.PayPalConnected
-    #   # Type: Boolean Stats: 912 properties of this type in this kind.
-    #   import_transform: transform.regexp_bool('true', re.IGNORECASE)
-
-    # - property: Campaign.PitchMedia
-    #   external_name: Campaign.PitchMedia
-    #   # Type: String Stats: 912 properties of this type in this kind.
-
-    # - property: Campaign.Raised
-    #   external_name: Campaign.Raised
-    #   # Type: Integer Stats: 912 properties of this type in this kind.
-    #   import_transform: transform.none_if_empty(int)
-
-    # - property: Campaign.StoreUrl
-    #   external_name: Campaign.StoreUrl
-    #   # Type: String Stats: 912 properties of this type in this kind.
-
-    # - property: Campaign.StripeKey
-    #   external_name: Campaign.StripeKey
-    #   # Type: String Stats: 912 properties of this type in this kind.
-
-    # - property: Campaign.StripeToken
-    #   external_name: Campaign.StripeToken
-    #   # Type: String Stats: 912 properties of this type in this kind.
-
-    # - property: Campaign.Tagline
-    #   external_name: Campaign.Tagline
-    #   # Type: String Stats: 912 properties of this type in this kind.
-
-    # - property: Campaign.Thumbnail
-    #   external_name: Campaign.Thumbnail
-    #   # Type: String Stats: 912 properties of this type in this kind.
-
-    # - property: Campaign.Title
-    #   external_name: Campaign.Title
-    #   # Type: String Stats: 912 properties of this type in this kind.
-
-    # - property: Campaign.VideoOverlayUrl
-    #   external_name: Campaign.VideoOverlayUrl
-    #   # Type: String Stats: 912 properties of this type in this kind.
-
-    # - property: Campaign.VideoUrl
-    #   external_name: Campaign.VideoUrl
-    #   # Type: String Stats: 912 properties of this type in this kind.
+    - property: CampaignId
+      external_name: CampaignId
+      # Type: String Stats: 1 properties of this type in this kind.
 
     - property: Cancelled
       external_name: Cancelled
-      # Type: Boolean Stats: 912 properties of this type in this kind.
+      # Type: Boolean Stats: 1 properties of this type in this kind.
       import_transform: transform.regexp_bool('true', re.IGNORECASE)
 
-    # TODO: Make this work
-    # - property: CreatedAt
-    #   external_name: CreatedAt
-    #   # Type: Date/Time Stats: 912 properties of this type in this kind.
-    #   import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
-    #   export_transform: transform.export_date_time('%Y-%m-%dT%H:%M:%S')
+    - property: Charges.AmountRefunded
+      external_name: Charges.AmountRefunded
+      # Type: Integer Stats: 1 properties of this type in this kind.
+      import_transform: transform.none_if_empty(int)
 
-    # - property: Id
-    #   external_name: Id
-    #   # Type: String Stats: 912 properties of this type in this kind.
+    - property: Charges.Amount
+      external_name: Charges.Amount
+      # Type: Integer Stats: 1 properties of this type in this kind.
+      import_transform: transform.none_if_empty(int)
 
-    # - property: Items.Description
-    #   external_name: Items.Description
-    #   # Type: String Stats: 2711 properties of this type in this kind.
+    - property: Charges.Captured
+      external_name: Charges.Captured
+      # Type: Boolean Stats: 1 properties of this type in this kind.
+      import_transform: transform.regexp_bool('true', re.IGNORECASE)
 
-    # - property: Items.DiscountAmnt
-    #   external_name: Items.DiscountAmnt
-    #   # Type: Integer Stats: 2711 properties of this type in this kind.
-    #   import_transform: transform.none_if_empty(int)
+    - property: Charges.Created
+      external_name: Charges.Created
+      # Type: Integer Stats: 1 properties of this type in this kind.
+      import_transform: transform.none_if_empty(int)
 
-    # - property: Items.LineNo
-    #   external_name: Items.LineNo
-    #   # Type: Integer Stats: 2711 properties of this type in this kind.
-    #   import_transform: transform.none_if_empty(int)
+    - property: Charges.Desc
+      external_name: Charges.Desc
+      # Type: String Stats: 1 properties of this type in this kind.
+
+    - property: Charges.Email
+      external_name: Charges.Email
+      # Type: String Stats: 1 properties of this type in this kind.
+
+    - property: Charges.FailCode
+      external_name: Charges.FailCode
+      # Type: String Stats: 1 properties of this type in this kind.
+
+    - property: Charges.FailMsg
+      external_name: Charges.FailMsg
+      # Type: String Stats: 1 properties of this type in this kind.
+
+    - property: Charges.FailType
+      external_name: Charges.FailType
+      # Type: String Stats: 1 properties of this type in this kind.
+
+    - property: Charges.ID
+      external_name: Charges.ID
+      # Type: String Stats: 1 properties of this type in this kind.
+
+    - property: Charges.Live
+      external_name: Charges.Live
+      # Type: Boolean Stats: 1 properties of this type in this kind.
+      import_transform: transform.regexp_bool('true', re.IGNORECASE)
+
+    - property: Charges.Paid
+      external_name: Charges.Paid
+      # Type: Boolean Stats: 1 properties of this type in this kind.
+      import_transform: transform.regexp_bool('true', re.IGNORECASE)
+
+    - property: Charges.Refunded
+      external_name: Charges.Refunded
+      # Type: Boolean Stats: 1 properties of this type in this kind.
+      import_transform: transform.regexp_bool('true', re.IGNORECASE)
+
+    - property: Charges.Statement
+      external_name: Charges.Statement
+      # Type: String Stats: 1 properties of this type in this kind.
+
+    - property: CreatedAt
+      external_name: CreatedAt
+      # Type: Date/Time Stats: 1 properties of this type in this kind.
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: transform.export_date_time('%Y-%m-%dT%H:%M:%S')
+
+    - property: Email
+      external_name: Email
+      # Type: String Stats: 1 properties of this type in this kind.
+
+    - property: Id
+      external_name: Id
+      # Type: String Stats: 1 properties of this type in this kind.
+
+    - property: Items.Description
+      external_name: Items.Description
+      # Type: String Stats: 3 properties of this type in this kind.
+
+    - property: Items.DiscountAmnt
+      external_name: Items.DiscountAmnt
+      # Type: Integer Stats: 3 properties of this type in this kind.
+      import_transform: transform.none_if_empty(int)
+
+    - property: Items.LineNo
+      external_name: Items.LineNo
+      # Type: Integer Stats: 3 properties of this type in this kind.
+      import_transform: transform.none_if_empty(int)
 
     - property: Items.Quantity
       external_name: Items.Quantity
-      export_transform: bulkloader_helper.list_num_to_str
+      # Type: Integer Stats: 3 properties of this type in this kind.
+      import_transform: transform.none_if_empty(int)
 
+    - property: Preorder
+      external_name: Preorder
+      # Type: Boolean Stats: 1 properties of this type in this kind.
+      import_transform: transform.regexp_bool('true', re.IGNORECASE)
+
+    - property: Shipped
+      external_name: Shipped
+      # Type: Boolean Stats: 1 properties of this type in this kind.
+      import_transform: transform.regexp_bool('true', re.IGNORECASE)
+
+    - property: ShippingAddress.City
+      external_name: ShippingAddress.City
+      # Type: String Stats: 1 properties of this type in this kind.
+
+    - property: ShippingAddress.Country
+      external_name: ShippingAddress.Country
+      # Type: String Stats: 1 properties of this type in this kind.
+
+    - property: ShippingAddress.Line1
+      external_name: ShippingAddress.Line1
+      # Type: String Stats: 1 properties of this type in this kind.
+
+    - property: ShippingAddress.Line2
+      external_name: ShippingAddress.Line2
+      # Type: String Stats: 1 properties of this type in this kind.
+
+    - property: ShippingAddress.PostalCode
+      external_name: ShippingAddress.PostalCode
+      # Type: String Stats: 1 properties of this type in this kind.
+
+    - property: ShippingAddress.State
+      external_name: ShippingAddress.State
+      # Type: String Stats: 1 properties of this type in this kind.
+
+    - property: Shipping
+      external_name: Shipping
+      # Type: Integer Stats: 1 properties of this type in this kind.
+      import_transform: transform.none_if_empty(int)
+
+    - property: StripeTokens
+      external_name: StripeTokens
+      # Type: String Stats: 1 properties of this type in this kind.
+
+    - property: Subtotal
+      external_name: Subtotal
+      # Type: Integer Stats: 1 properties of this type in this kind.
+      import_transform: transform.none_if_empty(int)
+
+    - property: Tax
+      external_name: Tax
+      # Type: Integer Stats: 1 properties of this type in this kind.
+      import_transform: transform.none_if_empty(int)
+
+    - property: Test
+      external_name: Test
+      # Type: Boolean Stats: 1 properties of this type in this kind.
+      import_transform: transform.regexp_bool('true', re.IGNORECASE)
+
+    - property: Total
+      external_name: Total
+      # Type: Integer Stats: 1 properties of this type in this kind.
+      import_transform: transform.none_if_empty(int)
+
+    - property: UpdatedAt
+      external_name: UpdatedAt
+      # Type: Date/Time Stats: 1 properties of this type in this kind.
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: transform.export_date_time('%Y-%m-%dT%H:%M:%S')
+
+      # GENERATED:
     - property: Items.SKU_
       external_name: Items.SKU
       export_transform: bulkloader_helper.list_skus_to_str
@@ -480,67 +495,8 @@ transformers:
       external_name: Items.Slug
       export_transform: bulkloader_helper.list_to_str
 
-    # - property: Items.UOM
-    #   external_name: Items.UOM
-    #   # Type: String Stats: 2711 properties of this type in this kind.
-
-    - property: Shipped
-      external_name: Shipped
-      # Type: Boolean Stats: 912 properties of this type in this kind.
-      import_transform: transform.regexp_bool('true', re.IGNORECASE)
-
-    # - property: ShippingAddress.City
-    #   external_name: ShippingAddress.City
-    #   # Type: String Stats: 912 properties of this type in this kind.
-
-    # - property: ShippingAddress.Country
-    #   external_name: ShippingAddress.Country
-    #   # Type: String Stats: 912 properties of this type in this kind.
-
-    # - property: ShippingAddress.Line1
-    #   external_name: ShippingAddress.Line1
-    #   # Type: String Stats: 912 properties of this type in this kind.
-
-    # - property: ShippingAddress.Line2
-    #   external_name: ShippingAddress.Line2
-    #   # Type: String Stats: 912 properties of this type in this kind.
-
-    # - property: ShippingAddress.PostalCode
-    #   external_name: ShippingAddress.PostalCode
-    #   # Type: String Stats: 912 properties of this type in this kind.
-
-    # - property: ShippingAddress.State
-    #   external_name: ShippingAddress.State
-    #   # Type: String Stats: 912 properties of this type in this kind.
-
-    - property: Shipping
-      external_name: Shipping
-      # Type: Integer Stats: 912 properties of this type in this kind.
-      import_transform: transform.none_if_empty(int)
-
-    # - property: StripeToken
-    #   external_name: StripeToken
-    #   # Type: String Stats: 912 properties of this type in this kind.
-
-    - property: Subtotal
-      external_name: Subtotal
-      # Type: Integer Stats: 912 properties of this type in this kind.
-      import_transform: transform.none_if_empty(int)
-
-    - property: Tax
-      external_name: Tax
-      # Type: Integer Stats: 912 properties of this type in this kind.
-      import_transform: transform.none_if_empty(int)
-
-    - property: Total
-      external_name: Total
-      # Type: Integer Stats: 912 properties of this type in this kind.
-      import_transform: transform.none_if_empty(int)
-
-      # GENERATED:
-      # Generate Preorder information from Items.SKU and Items.Quantity columns
-    - property: Preorder
-      external_name: Preorder
+    - property: PreorderDescription
+      external_name: PreorderDescription
       export_transform: bulkloader_helper.generate_preorder
 
 - kind: product

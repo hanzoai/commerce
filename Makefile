@@ -236,3 +236,7 @@ datastore-export:
 				  --kind $$kind \
 				  --filename _export/$$kind.csv && \
 	rm -rf /tmp/bulkloader-$$kind.db /tmp/bulkloader-$$kind.log /tmp/bulkloader-result-$$kind.db
+
+# Generate config for use with datastore-export target
+datastore-export-config:
+	bulkloader.py --create_config --url=https://datastore-admin-dot-crowdstart-staging.appspot.com/_ah/remote_api --filename=bulkloader.yaml
