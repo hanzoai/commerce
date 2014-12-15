@@ -30,21 +30,21 @@ exports.setupFormValidation = (formId, ajax=false)->
         if !Validation.isPassword oldPassword.val(), minimumPasswordLength
           valid = false
           Validation.error oldPassword
-          errors.push "Password must be at least #{minimumPasswordLength} characters long"
+          errors.push "Password must be at least #{minimumPasswordLength} characters long."
 
       password = $form.find('input[name="Password"]')
       if password.length != 0
         if !Validation.isPassword password.val(), minimumPasswordLength
           valid = false
           Validation.error password
-          errors.push "Password must be at least #{minimumPasswordLength} characters long"
+          errors.push "Password must be at least #{minimumPasswordLength} characters long."
         else
           confirmPassword = $form.find('input[name="ConfirmPassword"]')
           if confirmPassword.length != 0
             unless Validation.passwordsMatch(password.val(), confirmPassword.val())
               valid = false
               Validation.error confirmPassword
-              errors.push "Passwords must match"
+              errors.push "Passwords must match."
 
       if empty.length > 0
         valid = false
@@ -53,7 +53,7 @@ exports.setupFormValidation = (formId, ajax=false)->
         if missing.length > 1
           errors.push "Please enter your #{missing.slice(0, -1).join(', ') + (if missing.length == 2 then '' else ',') + " and " + missing.slice(-1)}."
         else
-          errors.push "Please enter your #{missing[0]}"
+          errors.push "Please enter your #{missing[0]}."
 
       if !valid
         $errors = $form.find('.errors')
