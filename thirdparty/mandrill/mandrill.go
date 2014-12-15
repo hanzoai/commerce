@@ -241,14 +241,14 @@ func Send(ctx appengine.Context, req *SendReq) error {
 	return errors.New("Failed to send email.")
 }
 
-var SendTemplateAsync = delay.Func("send-template-email", func(ctx appengine.Context, templateName, toEmail, toName, subject string, vars ...Var) {
+var SendTemplateAsync = delay.Func("send-template-email", func(ctx appengine.Context, template, toEmail, toName, subject string, vars ...Var) {
 	req := NewSendTemplateReq()
 	req.AddRecipient(toEmail, toName)
 
 	req.Message.FromEmail = config.Mandrill.FromEmail
 	req.Message.FromName = config.Mandrill.FromName
 	req.Message.Subject = subject
-	req.TemplateName = templateName
+	req.TemplateName = template
 
 	for _, v := range vars {
 		req.AddMergeVar(v)
