@@ -1,8 +1,6 @@
 package user
 
 import (
-	"strings"
-
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/auth"
@@ -79,9 +77,7 @@ func SubmitRegister(c *gin.Context) {
 	}
 
 	//Santitization
-	f.User.Email = strings.ToLower(strings.TrimSpace(f.User.Email))
-	f.User.FirstName = strings.Title(f.User.FirstName)
-	f.User.LastName = strings.Title(f.User.LastName)
+	val.SanitizeUser(&f.User)
 
 	db := datastore.New(c)
 
