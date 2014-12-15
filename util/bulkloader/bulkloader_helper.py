@@ -37,27 +37,27 @@ def na_if_none(value):
     return value
 
 
-def generate_preorder(value, bulkload_state):
+def generate_preorder_description(value, bulkload_state):
     """Generates preorder information from Items.SKU_ and Items.Quantity."""
     row = bulkload_state.current_dictionary
-    if 'Items.SKU' not in row or 'Items.Quantity' not in row:
+    if 'Items.SKU_' not in row or 'Items.Quantity_' not in row:
         return ''
 
-    skus = row['Items.SKU']
-    qtys = row['Items.Quantity']
+    skus = row['Items.SKU_']
+    qtys = row['Items.Quantity_']
 
     if not skus or not qtys:
         return ''
 
     # Regenerate lists from transformed Items.SKU, Items.Quantity
-    skus = [sku.strip() for sku in skus.split(',') if sku]
-    qtys = [qty.strip() for qty in qtys.split(',') if qty]
+    # skus = [sku.strip() for sku in skus.split(',') if sku]
+    # qtys = [qty.strip() for qty in qtys.split(',') if qty]
 
     return ', '.join(['%s: %s' % order for order in zip(skus, qtys)])
 
 
 def join_address_lines(value, bulkload_state):
-    """Generates preorder information from Items.SKU_ and Items.Quantity."""
+    """Join address lines to create a single address line."""
     row = bulkload_state.current_dictionary
     if 'ShippingAddress.Line1' not in row or 'ShippingAddress.Line2' not in row:
         return u''
@@ -69,16 +69,16 @@ def join_address_lines(value, bulkload_state):
 
 
 def generate_shipping_address(value, bulkload_state):
-    """Generates preorder information from Items.SKU_ and Items.Quantity."""
+    """Generates shipping address."""
     row = bulkload_state.current_dictionary
     address = []
     keys = {
-        'line1': 'ShippingAddress.Lines',
-        'line2': 'ShippingAddress.Line2',
-        'city': 'ShippingAddress.City',
-        'state': 'ShippingAddress.State',
+        'line1':       'ShippingAddress.Lines',
+        'line2':       'ShippingAddress.Line2',
+        'city':        'ShippingAddress.City',
+        'state':       'ShippingAddress.State',
         'postal_code': 'ShippingAddress.PostalCode',
-        'country': 'ShippingAddress.Country',
+        'country':     'ShippingAddress.Country',
     }
 
     get = lambda key: row.get(keys[key], u'')
