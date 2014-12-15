@@ -80,8 +80,8 @@ func SubmitRegister(c *gin.Context) {
 
 	//Santitization
 	f.User.Email = strings.ToLower(strings.TrimSpace(f.User.Email))
-	f.User.FirstName = strings.ToTitle(f.User.FirstName)
-	f.User.LastName = strings.ToTitle(f.User.LastName)
+	f.User.FirstName = strings.Title(f.User.FirstName)
+	f.User.LastName = strings.Title(f.User.LastName)
 
 	db := datastore.New(c)
 
