@@ -97,6 +97,12 @@ func charge(c *gin.Context) {
 		return
 	}
 
+	// Validation
+	// if val.Check(form.User.Email).Exists().IsValid {
+	// 	if !val.Check(form.User.Email).IsEmail().IsValid {
+	// 	}
+	// }
+
 	// Update user information
 	log.Debug("Trying to get user from session...", c)
 	user, err := auth.GetUser(c)
