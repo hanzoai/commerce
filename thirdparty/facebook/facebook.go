@@ -1,22 +1,18 @@
 package facebook
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	//	"math/rand"
-	"net/http"
 	"net/url"
-	"strings"
 
 	"github.com/gin-gonic/gin"
+	fb "github.com/huandu/facebook"
 
 	"crowdstart.io/auth"
 	"crowdstart.io/datastore"
-	"crowdstart.io/middleware"
 	"crowdstart.io/models"
 	"crowdstart.io/util/log"
 
+	"appengine"
 	"appengine/urlfetch"
 )
 
@@ -44,18 +40,28 @@ const state = "a17381zxncm,nzxcm, -SADs;d'asd2aj~^&*^!@*&%#!^ajkdhas"
 
 const appId = "739937846096416"
 
-// Not sure if this is necessary yet
-const appSecret = "eb737a205043f4cc73b2e7107c162a36"
-
 // TODO Grab this from the config (depending on if in production or not).
-const base = "localhost:8080"
+const base = "24.79.105.138:8080/store"
 
 // URL to Callback
+// TODO use UrlFor
 var redirectUri = url.QueryEscape(base + "/auth/facebook")
 
 const graphVersion = "v2.2"
 
-// TODO Expose a route to this.
+var app *fb.App
+
+func newSession(c *gin.Context, accessToken string) *fb.Session {
+	if app == nil {
+		app = fb.New(appId, "eb737a205043f4cc73b2e7107c162a36")
+		app.RedirectUri = "localhost" // Not useful yet
+	}
+	session := app.Session(accessToken)
+	session.HttpClient = urlfetch.Client(appengine.NewContext(c.Request))
+	return session
+}
+
+// GET /auth/callback
 func Callback(c *gin.Context) {
 	req := c.Request
 	e := req.URL.Query().Get("error")
@@ -74,39 +80,27 @@ func Callback(c *gin.Context) {
 		log.Panic("There is no access token")
 	}
 
-	resState := req.URL.Query().Get("state")
-	if state != resState {
+	if resState := req.URL.Query().Get("state"); state != resState {
 		log.Panic("CSRF attempt \n\tExpected: %s \nt\tActual: %s",
 			state, resState)
 	}
 
-	ctx := middleware.GetAppEngine(c)
-	client := urlfetch.Client(ctx)
-
-	url := fmt.Sprintf("http://graph.facebook.com/%s/me&access_token=%s", graphVersion, accessToken)
-	req, err := http.NewRequest("GET", url, nil)
-
-	if err != nil {
-		log.Panic("Error while creating a http request \n%v", err)
+	session := newSession(c, accessToken)
+	if err := session.Validate(); err != nil {
+		log.Panic("AccessToken is invalid %s", session.AccessToken())
 	}
 
-	res, err := client.Do(req)
+	me, err := session.Get("/me", nil)
 	if err != nil {
-		log.Panic("Graph API not available", err)
-	}
-
-	jsonBlob, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		log.Panic("Error reading from Graph API", err)
+		log.Panic("Error accessing Graph API with accessToken", err)
 	}
 
 	user := new(models.User)
-	err = json.Unmarshal(jsonBlob, &user.Facebook)
-	if err != nil {
-		log.Panic("Error parsing Graph API JSON response", err)
+	if err := me.Decode(&user.Facebook); err != nil {
+		log.Panic("Error parsing /me response", err)
 	}
 
-	db := datastore.New(ctx)
+	db := datastore.New(c)
 
 	existingUser := new(models.User)
 	db.GetKey("user", user.Email, existingUser)
@@ -123,14 +117,10 @@ func Callback(c *gin.Context) {
 		log.Panic("Error creating user using Facebook", err)
 	}
 
-	err = auth.Login(c, user.Email)
-	if err != nil {
-		log.Panic("Error while setting session", err)
-	}
-
-	c.Redirect(301, "/")
+	c.String(200, "Request processed")
 }
 
+// GET /auth
 func LoginUser(c *gin.Context) {
 	url := fmt.Sprintf(
 		"https://www.facebook.com/dialog/oauth?client_id=%s&redirect_uri=%s&state=%s&scope=%s,%s&response_type=%s",
@@ -138,52 +128,19 @@ func LoginUser(c *gin.Context) {
 		"email", "public_profile",
 		"token",
 	)
-	ctx := middleware.GetAppEngine(c)
-	client := urlfetch.Client(ctx)
 
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		log.Panic("Error while creating a http request \n%v", err)
+	if auth.IsLoggedIn(c) {
+		user, _ := auth.GetUser(c)
+		if user.Facebook.AccessToken != "" {
+			session := newSession(c, user.Facebook.AccessToken)
+			if err := session.Validate(); err == nil {
+				// Token is still valid
+				auth.Login(c, user.Email)
+				c.Redirect(301, "/profile")
+				return
+			}
+		}
 	}
 
-	res, err := client.Do(req)
-	defer res.Body.Close()
-	if err != nil {
-		log.Panic("loginReq failed.", err)
-	}
-}
-
-func IsAccessTokenExpired(c *gin.Context) bool {
-	user, err := auth.GetUser(c)
-	if err != nil {
-		log.Panic("Error while retrieving user \n%v", err)
-	}
-
-	if user.Facebook.AccessToken == "" {
-		return true
-	}
-
-	ctx := middleware.GetAppEngine(c)
-	client := urlfetch.Client(ctx)
-
-	url := fmt.Sprintf("http://graph.facebook.com/v2.2/me/permission?access_token=%s", user.Facebook.AccessToken)
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		log.Panic("Error while creating an http request \n%v", err)
-	}
-
-	res, err := client.Do(req)
-	defer res.Body.Close()
-	if err != nil {
-		log.Panic("Checking permissions using the Graph API failed", err)
-	}
-
-	jsonBlob, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		log.Panic("Error reading the permissions response", err)
-	}
-
-	j := string(jsonBlob)
-
-	return strings.Contains(j, "public_profile")
+	c.Redirect(301, url)
 }
