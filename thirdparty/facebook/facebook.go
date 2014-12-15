@@ -27,7 +27,7 @@ const base = "24.79.105.138:8080/store"
 
 // URL to Callback
 // TODO use UrlFor
-var redirectUri = url.QueryEscape(base + "/auth/facebook")
+var redirectUri = url.QueryEscape("http://" + base + "/auth")
 
 const graphVersion = "v2.2"
 
@@ -105,10 +105,9 @@ func Callback(c *gin.Context) {
 // GET /auth
 func LoginUser(c *gin.Context) {
 	url := fmt.Sprintf(
-		"https://www.facebook.com/dialog/oauth?client_id=%s&redirect_uri=%s&state=%s&scope=%s,%s&response_type=%s",
-		appId, redirectUri, state,
-		"email", "public_profile",
-		"token",
+		"https://www.facebook.com/dialog/oauth?client_id=%s&redirect_uri=%s",
+		appId,
+		redirectUri,
 	)
 
 	if auth.IsLoggedIn(c) {
