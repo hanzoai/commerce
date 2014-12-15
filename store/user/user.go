@@ -1,6 +1,8 @@
 package user
 
 import (
+	"strings"
+
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/auth"
@@ -75,6 +77,11 @@ func SubmitRegister(c *gin.Context) {
 		template.Render(c, "login.html", "registerError", "Password Must be atleast 6 characters long.")
 		return
 	}
+
+	//Santitization
+	f.User.Email = strings.ToLower(strings.TrimSpace(f.User.Email))
+	f.User.FirstName = strings.ToTitle(f.User.FirstName)
+	f.User.LastName = strings.ToTitle(f.User.LastName)
 
 	db := datastore.New(c)
 
