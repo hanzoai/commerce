@@ -27,7 +27,7 @@ func Profile(c *gin.Context) {
 	template.Render(c, "profile.html", "user", user, "userJson", userJson)
 }
 
-func updateContact(c *gin.Context, user *models.User) {
+func updateContact(c *gin.Context, user *models.User) bool {
 	form := new(ContactForm)
 	if err := form.Parse(c); err != nil {
 		log.Panic("Failed to save user profile: %v", err)
@@ -36,29 +36,35 @@ func updateContact(c *gin.Context, user *models.User) {
 	fUser := form.User
 	if !val.Check(fUser.FirstName).Exists().IsValid {
 		log.Debug("Form posted without first name")
-		template.Render(c, "profile.html", "changeContactError", "Please enter a first name.")
-		return
+
+		// c.JSON(400, gin.H{"message": "Please enter a first name."})
+		c.JSON(400, gin.H{"message": "Please enter a first name."})
+		return false
 	}
 
 	if !val.Check(fUser.LastName).Exists().IsValid {
 		log.Debug("Form posted without last name")
-		template.Render(c, "profile.html", "changeContactError", "Please enter a last name.")
-		return
+		//c.JSON(400, gin.H{"message": "Please enter a last name."})
+		c.JSON(400, gin.H{"message": "Please enter a last name."})
+		return false
 	}
 
 	if !val.Check(fUser.Phone).Exists().IsValid {
 		log.Debug("Form posted without phone number")
-		template.Render(c, "profile.html", "changeContactError", "Please enter a phone number.")
-		return
+		//c.JSON(400, gin.H{"message": "Please enter a phone number."})
+		c.JSON(400, gin.H{"message": "Please enter a phone number."})
+		return false
 	}
 
 	// Update information from form.
 	user.Phone = form.User.Phone
 	user.FirstName = strings.Title(form.User.FirstName)
 	user.LastName = strings.Title(form.User.LastName)
+
+	return true
 }
 
-func updateBilling(c *gin.Context, user *models.User) {
+func updateBilling(c *gin.Context, user *models.User) bool {
 	form := new(BillingForm)
 	if err := form.Parse(c); err != nil {
 		log.Panic("Failed to save user billing information: %v", err)
@@ -67,38 +73,39 @@ func updateBilling(c *gin.Context, user *models.User) {
 	billingAddress := form.BillingAddress
 	if !val.Check(billingAddress.Line1).Exists().IsValid {
 		log.Debug("Form posted without address")
-		template.Render(c, "profile.html", "changeContactError", "Please enter an address.")
-		return
+		c.JSON(400, gin.H{"message": "Please enter an address."})
+		return false
 	}
 
 	if !val.Check(billingAddress.City).Exists().IsValid {
 		log.Debug("Form posted without city")
-		template.Render(c, "profile.html", "changeContactError", "Please enter a city.")
-		return
+		c.JSON(400, gin.H{"message": "Please enter a city."})
+		return false
 	}
 
 	if !val.Check(billingAddress.State).Exists().IsValid {
 		log.Debug("Form posted without state")
-		template.Render(c, "profile.html", "changeContactError", "Please enter a state.")
-		return
+		c.JSON(400, gin.H{"message": "Please enter a state."})
+		return false
 	}
 
 	if !val.Check(billingAddress.PostalCode).Exists().IsValid {
 		log.Debug("Form posted without postal code")
-		template.Render(c, "profile.html", "changeContactError", "Please enter a zip/postal code.")
-		return
+		c.JSON(400, gin.H{"message": "Please enter a zip/postal code."})
+		return false
 	}
 
 	if !val.Check(billingAddress.Country).Exists().IsValid {
 		log.Debug("Form posted without country")
-		template.Render(c, "profile.html", "changeContactError", "Please enter a country.")
-		return
+		c.JSON(400, gin.H{"message": "Please enter a country."})
+		return false
 	}
 
 	user.BillingAddress = form.BillingAddress
+	return true
 }
 
-func updatePassword(c *gin.Context, user *models.User) {
+func updatePassword(c *gin.Context, user *models.User) bool {
 	form := new(ChangePasswordForm)
 	if err := form.Parse(c); err != nil {
 		log.Panic("Failed to update user password: %v", err)
@@ -111,14 +118,16 @@ func updatePassword(c *gin.Context, user *models.User) {
 	if form.Password == form.ConfirmPassword {
 		if !val.Check(form.Password).IsPassword().IsValid {
 			log.Debug("Form posted invalid password")
-			template.Render(c, "profile.html", "registerError", "Password Must be atleast 6 characters long.")
-			return
+			c.JSON(400, gin.H{"message": "Password Must be atleast 6 characters long."})
+			return false
 		}
 
 		user.PasswordHash = auth.HashPassword(form.Password)
 	} else {
 		log.Panic("Passwords do not match.")
 	}
+
+	return true
 }
 
 func SaveProfile(c *gin.Context) {
@@ -132,11 +141,17 @@ func SaveProfile(c *gin.Context) {
 	formName := c.Params.ByName("form")
 	switch formName {
 	case "change-contact":
-		updateContact(c, user)
+		if valid := updateContact(c, user); !valid {
+			return
+		}
 	case "change-billing":
-		updateBilling(c, user)
+		if valid := updateBilling(c, user); !valid {
+			return
+		}
 	case "change-password":
-		updatePassword(c, user)
+		if valid := updatePassword(c, user); !valid {
+			return
+		}
 	}
 
 	// Update user
@@ -149,5 +164,5 @@ func SaveProfile(c *gin.Context) {
 	ctx := middleware.GetAppEngine(c)
 	mandrill.SendTemplateAsync.Call(ctx, "account-change-confirmation", user.Email, user.Name(), "Your account information has been changed.")
 
-	template.Render(c, "profile.html", "user", user, "success", true)
+	c.JSON(200, gin.H{"success": true})
 }

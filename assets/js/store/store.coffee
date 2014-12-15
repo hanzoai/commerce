@@ -28,9 +28,9 @@ class StoreApp extends App
     ]
 
     '/profile': [
-      routes.store.setupFormValidation('#profileForm')
-      routes.store.setupFormValidation('#changePasswordForm')
-      routes.store.setupFormValidation('#changeBillingForm')
+      routes.store.setupFormValidation('#profileForm', true)
+      routes.store.setupFormValidation('#changePasswordForm', true)
+      routes.store.setupFormValidation('#changeBillingForm', true)
     ]
 
     '/:prefix?': routes.cart.setupHover
