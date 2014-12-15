@@ -499,6 +499,10 @@ transformers:
       external_name: PreorderDescription
       export_transform: bulkloader_helper.generate_preorder
 
+    - property: ShippingAddress
+      external_name: ShippingAddress
+      export_transform: bulkloader_helper.generate_shipping_address
+
 - kind: product
   connector: csv
   connector_options:
@@ -716,13 +720,10 @@ transformers:
       # Type: String Stats: 1903 properties of this type in this kind.
 
     # GENERATED:
-      # Type: String Stats: 1903 properties of this type in this kind.
     - property: ShippingAddress.Lines
       external_name: ShippingAddress.Lines
       export_transform: bulkloader_helper.join_address_lines
 
-    # GENERATED:
-      # Type: String Stats: 1903 properties of this type in this kind.
     - property: ShippingAddress
       external_name: ShippingAddress
       export_transform: bulkloader_helper.generate_shipping_address
