@@ -20,7 +20,6 @@ type User struct {
 	PasswordHash    []byte     `schema:"-" json:"-"`
 
 	Facebook struct {
-		State       string `json:"-"`
 		AccessToken string `json:"-"`
 		UserId      string `json:"id"`
 		FirstName   string `json:"first_name" datastore:"-"`
