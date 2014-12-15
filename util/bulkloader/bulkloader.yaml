@@ -324,65 +324,79 @@ transformers:
     - property: Charges.AmountRefunded
       external_name: Charges.AmountRefunded
       # Type: Integer Stats: 1 properties of this type in this kind.
-      import_transform: transform.none_if_empty(int)
+      # import_transform: transform.none_if_empty(int)
+      import_transform: bulkloader_helper.transform_eval
 
     - property: Charges.Amount
       external_name: Charges.Amount
       # Type: Integer Stats: 1 properties of this type in this kind.
-      import_transform: transform.none_if_empty(int)
+      # import_transform: transform.none_if_empty(int)
+      import_transform: bulkloader_helper.transform_eval
 
     - property: Charges.Captured
       external_name: Charges.Captured
       # Type: Boolean Stats: 1 properties of this type in this kind.
-      import_transform: transform.regexp_bool('true', re.IGNORECASE)
+      # import_transform: transform.regexp_bool('true', re.IGNORECASE)
+      import_transform: bulkloader_helper.transform_eval
 
     - property: Charges.Created
       external_name: Charges.Created
       # Type: Integer Stats: 1 properties of this type in this kind.
-      import_transform: transform.none_if_empty(int)
+      # import_transform: transform.none_if_empty(int)
+      import_transform: bulkloader_helper.transform_eval
 
     - property: Charges.Desc
       external_name: Charges.Desc
       # Type: String Stats: 1 properties of this type in this kind.
+      import_transform: bulkloader_helper.transform_eval
 
     - property: Charges.Email
       external_name: Charges.Email
       # Type: String Stats: 1 properties of this type in this kind.
+      import_transform: bulkloader_helper.transform_eval
 
     - property: Charges.FailCode
       external_name: Charges.FailCode
       # Type: String Stats: 1 properties of this type in this kind.
+      import_transform: bulkloader_helper.transform_eval
 
     - property: Charges.FailMsg
       external_name: Charges.FailMsg
       # Type: String Stats: 1 properties of this type in this kind.
+      import_transform: bulkloader_helper.transform_eval
 
     - property: Charges.FailType
       external_name: Charges.FailType
       # Type: String Stats: 1 properties of this type in this kind.
+      import_transform: bulkloader_helper.transform_eval
 
     - property: Charges.ID
       external_name: Charges.ID
       # Type: String Stats: 1 properties of this type in this kind.
+      import_transform: bulkloader_helper.transform_eval
 
     - property: Charges.Live
       external_name: Charges.Live
       # Type: Boolean Stats: 1 properties of this type in this kind.
-      import_transform: transform.regexp_bool('true', re.IGNORECASE)
+      # import_transform: transform.regexp_bool('true', re.IGNORECASE)
+      import_transform: bulkloader_helper.transform_eval
 
     - property: Charges.Paid
       external_name: Charges.Paid
       # Type: Boolean Stats: 1 properties of this type in this kind.
-      import_transform: transform.regexp_bool('true', re.IGNORECASE)
+      # import_transform: transform.regexp_bool('true', re.IGNORECASE)
+      import_transform: bulkloader_helper.transform_eval
 
     - property: Charges.Refunded
       external_name: Charges.Refunded
       # Type: Boolean Stats: 1 properties of this type in this kind.
-      import_transform: transform.regexp_bool('true', re.IGNORECASE)
+      # import_transform: transform.regexp_bool('true', re.IGNORECASE)
+      import_transform: bulkloader_helper.transform_eval
 
     - property: Charges.Statement
       external_name: Charges.Statement
       # Type: String Stats: 1 properties of this type in this kind.
+      import_transform: bulkloader_helper.transform_eval
 
     - property: Email
       external_name: Email
@@ -395,21 +409,25 @@ transformers:
     - property: Items.Description
       external_name: Items.Description
       # Type: String Stats: 3 properties of this type in this kind.
+      import_transform: bulkloader_helper.transform_eval
 
     - property: Items.DiscountAmnt
       external_name: Items.DiscountAmnt
       # Type: Integer Stats: 3 properties of this type in this kind.
-      import_transform: transform.none_if_empty(int)
+      # import_transform: transform.none_if_empty(int)
+      import_transform: bulkloader_helper.transform_eval
 
     - property: Items.LineNo
       external_name: Items.LineNo
       # Type: Integer Stats: 3 properties of this type in this kind.
-      import_transform: transform.none_if_empty(int)
+      # import_transform: transform.none_if_empty(int)
+      import_transform: bulkloader_helper.transform_eval
 
     - property: Items.Quantity
       external_name: Items.Quantity
       # Type: Integer Stats: 3 properties of this type in this kind.
-      import_transform: transform.none_if_empty(int)
+      # import_transform: transform.none_if_empty(int)
+      import_transform: bulkloader_helper.transform_eval
 
     - property: Preorder
       external_name: Preorder
