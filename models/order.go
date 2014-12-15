@@ -16,7 +16,7 @@ import (
 
 type Order struct {
 	FieldMapMixin
-	Account         PaymentAccount
+	// Account         PaymentAccount
 	BillingAddress  Address
 	ShippingAddress Address
 	CreatedAt       time.Time `schema:"-"`

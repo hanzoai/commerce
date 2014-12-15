@@ -86,6 +86,7 @@ func charge(c *gin.Context) {
 	}
 
 	form.Order.CreatedAt = time.Now()
+	form.Order.UpdatedAt = form.Order.CreatedAt
 
 	ctx := middleware.GetAppEngine(c)
 	db := datastore.New(ctx)
@@ -115,6 +116,8 @@ func charge(c *gin.Context) {
 
 	// Set email for order
 	form.Order.Email = user.Email
+	form.Order.CampaignId = "dev@hanzo.ai"
+	form.Order.Preorder = true
 
 	// Set test mode, minimum stripe transaction
 	if strings.Contains(user.Email, "@verus.io") {
