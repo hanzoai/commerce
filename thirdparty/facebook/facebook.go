@@ -31,7 +31,22 @@ var appId = config.Facebook.AppId
 
 var appSecret = config.Facebook.AppSecret
 
-var redirectUri = url.QueryEscape(config.UrlFor("store", "/auth/facebook_callback"))
+var _redirectUri string
+var redirectUri = func(c *gin.Context) string {
+	if config.IsDevelopment && _redirectUri == "" {
+		client := urlfetch.Client(middleware.GetAppEngine(c))
+		req, _ := http.NewRequest("GET", "http://checkip.amazonaws.com", nil)
+		res, _ := client.Do(req)
+		defer res.Body.Close()
+		b, _ := ioutil.ReadAll(res.Body)
+		ip := string(b)
+		ip = ip[0 : len(ip)-1]
+		_redirectUri = "http://" + ip + ":8080/store/auth/facebook_callback"
+	} else if config.IsProduction && _redirectUri == "" {
+		_redirectUri = url.QueryEscape("http://" + config.UrlFor("store", "/auth/facebook_callback/"))
+	}
+	return _redirectUri
+}
 
 var graphVersion = config.Facebook.GraphVersion
 
@@ -151,7 +166,7 @@ func LoginUser(c *gin.Context) {
 	url := fmt.Sprintf(
 		"https://www.facebook.com/dialog/oauth?client_id=%s&state=%s&redirect_uri=%s&response_type=%s&scope=%s",
 		appId, state,
-		redirectUri, "code",
+		redirectUri(c), "code",
 		"email",
 	)
 
@@ -176,7 +191,7 @@ func LoginUser(c *gin.Context) {
 func exchangeCode(c *gin.Context, code string) (token string, err error) {
 	endpoint := fmt.Sprintf(
 		"https://graph.facebook.com/oauth/access_token?client_id=%s&redirect_uri=%s&client_secret=%s&code=%s",
-		appId, redirectUri, appSecret, code,
+		appId, redirectUri(c), appSecret, code,
 	)
 	log.Debug(endpoint)
 	client := urlfetch.Client(middleware.GetAppEngine(c))
