@@ -35,5 +35,10 @@ func Development() *Config {
 	config.Stripe.APISecret = ""
 	config.Stripe.RedirectURL = "http:" + config.UrlFor("platform", "/stripe/callback")
 	config.Stripe.WebhookURL = "http:" + config.UrlFor("platform", "/stripe/hook")
+
+	config.Facebook.AppId = "739937846096416"
+	config.Facebook.AppSecret = "eb737a205043f4cc73b2e7107c162a36"
+	config.Facebook.GraphVersion = "v2.2"
+
 	return config
 }
