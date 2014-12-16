@@ -300,7 +300,8 @@ $(document).ready ->
         data: $form.serializeArray()
         dataType: "json"
         success: (data) ->
-          console.log data
+          # track checkout complete
+          window._fbq?.push ['track', '6018312014122', {value: $('.price.grand-total').text(), currency: 'USD'}]
           window.location.replace 'complete/'
         error: (xhr) ->
           # important to force a new authorization, assuming user wants to edit card details
