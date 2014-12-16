@@ -42,22 +42,67 @@ renderGiftCard = (img, canvas) ->
   ctx.fillText toName, 520, 1115 + fontSize * 0.8
   canvas.toDataURL()
 
+setActiveCard = (showGift) ->
+  if showGift
+    hideImg = $('#SkullyCard')
+    showImg = $('#GiftCard')
+    $('.recipient').show()
+  else
+    hideImg = $('#GiftCard')
+    showImg = $('#SkullyCard')
+    $('.recipient').hide()
+
+  spinner = $('.loading-spinner')
+
+  hideImg.addClass 'hidden'
+  spinner.removeClass 'hidden'
+  setTimeout ->
+    hideImg.addClass 'none'
+    spinner.addClass 'hidden'
+    showImg.removeClass 'none'
+    showImg.removeClass 'hidden'
+  , 301
+
 exports.renderCards = ->
+  showGift = false
   WebFont.load
     google:
       families: ["Michroma"]
 
     active: ->
-      canvas = document.createElement("canvas")
-      img1 = $("<img>").attr("src", window.cardName)
-      img2 = $("<img>").attr("src", window.giftCardName)
+      canvas = $('<canvas>')[0]
+      img1 = $('<img>').attr 'src', window.cardName
+      img2 = $('<img>').attr 'src', window.giftCardName
       img1.load ->
-        $("#SkullyCard").attr("src", renderSkullyCard(img1[0], canvas)).removeClass("hidden").removeClass "none"
-        $(".placeholder").addClass "none"
-        $(".loading-spinner").addClass "hidden"
+        $('#SkullyCard').attr('src', renderSkullyCard(img1[0], canvas)).removeClass('hidden').removeClass 'none'
+        $('.placeholder').addClass 'none'
+        $('.loading-spinner').addClass 'hidden'
 
       img2.load ->
-        $("#GiftCard").attr "src", renderGiftCard(img2[0], canvas)
-        $(".placeholder").addClass "none"
-        $(".loading-spinner").addClass "hidden"
+        $('#GiftCard').attr 'src', renderGiftCard(img2[0], canvas)
+        $('.placeholder').addClass 'none'
+        $('.loading-spinner').addClass 'hidden'
+
+      $('.is-gift input[type=radio]').click ->
+        setActiveCard(showGift = $(@).val() == 'Yes')
+
+      recipientId = 0
+      $('input[name="Recipient"').keydown ->
+        spinner = $('.loading-spinner')
+        spinner.removeClass 'hidden'
+
+        clearTimeout(recipientId)
+        recipientId = setTimeout =>
+          spinner.addClass 'hidden'
+          window.toName = $(@).val()
+          $('#GiftCard').attr 'src', renderGiftCard(img2[0], canvas)
+        , 300
+
+      $('.download').click ->
+        link = $('<a>')
+        link.attr 'download', 'skullycard.png'
+        link.attr 'href', if showGift then $('#GiftCard').attr('src') else $('#SkullyCard').attr('src')
+        link[0].click()
+
+
 
