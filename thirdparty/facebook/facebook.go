@@ -31,12 +31,7 @@ var appId = config.Facebook.AppId
 
 var appSecret = config.Facebook.AppSecret
 
-// TODO Grab this from the config (depending on if in production or not).
-const base = "store.skullsystems.com"
-
-// URL to Callback
-// TODO use UrlFor
-var redirectUri = url.QueryEscape("http://" + base + "/auth/facebook_callback/")
+var redirectUri = url.QueryEscape(config.UrlFor("store", "/auth/facebook_callback"))
 
 var graphVersion = config.Facebook.GraphVersion
 
