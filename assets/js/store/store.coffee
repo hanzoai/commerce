@@ -22,6 +22,8 @@ class StoreApp extends App
       routes.store.setupFormValidation('#registerForm')
     ]
 
+    '/card': routes.card.renderCards
+
     '/register': [
       routes.store.setupFormValidation('#loginForm')
       routes.store.setupFormValidation('#registerForm')
