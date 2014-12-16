@@ -86,9 +86,14 @@ class Cart extends ModelEmitter
 
   addProduct: (sku, product) ->
     product = $.extend {}, product
+
     # update quantity and subtotal
+    price    = product.quantity * product.price
     quantity = (@get 'quantity') + product.quantity
-    subtotal = (@get 'subtotal') + (product.quantity * product.price)
+    subtotal = (@get 'subtotal') + price
+
+    # track add to cart conversion
+    window._fbq?.push ['track', '6018312116522', {'value': price.toFixed(), 'currency':'USD'}]
 
     @set 'quantity', quantity
     @set 'subtotal', subtotal
