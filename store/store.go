@@ -46,6 +46,6 @@ func init() {
 
 	router.GET("/orders", loginRequired, user.ListOrders)
 
-	router.GET("/auth", facebook.LoginUser)
-	router.GET("/auth/facebook", facebook.Callback)
+	router.GET("/auth/facebook", facebook.LoginUser)
+	router.GET("/auth/facebook_callback", facebook.Callback)
 }

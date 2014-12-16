@@ -1,5 +1,3 @@
-code.google.com/p/go.crypto/bcrypt
-github.com/dustin/go-humanize master
 github.com/flosch/pongo2 master
 github.com/getsentry/raven-go master
 github.com/gin-gonic/gin app_engine
@@ -11,4 +9,4 @@ github.com/qedus/nds master
 github.com/stripe/stripe-go master
 github.com/zeekay/go-logging master
 github.com/davecgh/go-spew/spew master
-github.com/huandu/facebook master
+github.com/marvelm/facebook appengine
