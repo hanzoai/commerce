@@ -248,8 +248,6 @@
     <!--OUR JS-->
     <script type="text/javascript" src="{{ urlFor("/js/store.js") }}"></script>
 
-    {% block js %}{% endblock %}
-
     {% if isProduction %}
     <!-- Google Analytics -->
     <script>
@@ -280,5 +278,6 @@
     </script>
     {% endif %}
 
+    {% block js %}{% endblock %}
 </body>
 </html>
