@@ -110,6 +110,8 @@
             <input type="hidden" name="Order.Items.{{ forloop.Counter }}.Variant.SKU" value="{{ item.SKU() }}">
             <input type="hidden" name="Order.Items.{{ forloop.Counter }}.Quantity" value="{{ item.Quantity }}">
             {% endfor %}
+            <input type="hidden" name="Order.Shipping" value="0">
+            <input type="hidden" name="Order.Tax" value="0">
 
             {% if error %}
             <div class="error">{{ error }}</div>
