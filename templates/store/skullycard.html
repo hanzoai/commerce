@@ -1,117 +1,48 @@
-<!DOCTYPE html>
-<html lang="en-US">
-<head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-    <title>{{ siteTitle }}</title>
+{% extends "base.html" %}
 
-    <link rel="canonical" href="{{ urlFor("store") }}">
+{% block content_header %}
+<a class="breadcrumb" href="{{ urlFor("store") }}">
+    <span class="back-arrow">&#8592;</span><span>BACK</span>
+</a>
+<h1>Get Your Xmas Card</h1>
+{% endblock %}
 
-    <meta property="og:site_name" content="{{ siteTitle }}">
-    <meta property="og:title" content="{{ siteTitle }}">
-    <meta property="og:url" content="{{ urlFor("store") }}">
-    <meta itemprop="name" content="SKULLY Card">
-    <meta itemprop="url" content="{{ urlFor("store") }}">
+{% block jsglobals %}
+<script type="text/javascript">
+  window.userName = "{{ user.FirstName }} {{ user.LastName }}";
+  window.toName = "";
+  window.cardName = "{{ urlFor("img/skullycard.png") }}";
+  window.giftCardName = "{{ urlFor("img/skullygiftcard.png") }}";
+</script>
+{% endblock %}
 
-    <link rel="shortcut icon" type="image/x-icon" href="{{ urlFor("/favicon.ico") }}">
+{% block content_header_width_class %}card-editor-width{% endblock %}
 
-    <!--[if lt IE 9]>
-    <script src="{{ urlFor("/js/html5-shiv.js") }}></script>
-    <![endif]-->
+{% block content_width_class %}card-editor-width{% endblock %}
 
-    <link rel="stylesheet" type="text/css" href="{{ urlFor("/css/store.css") }}">
-
-    <!--FONTS-->
-    <script src="//use.typekit.net/uye2ojv.js"></script>
-    <script type="text/javascript">try {Typekit.load();} catch (e) {}</script>
-
-    <script type="text/javascript" src="{{ urlFor("/js/jquery.min.js") }}"></script>
-    <script src="//ajax.googleapis.com/ajax/libs/webfont/1.5.6/webfont.js"></script>
-</head>
-<body>
-  <img id="SkullyCard" style="opacity:0;" src="{{ urlFor("img/skullycard.png") }}">
-  <img id="GiftCard" style="opacity:0;" src="{{ urlFor("img/skullygiftcard.png") }}">
-  <script type="text/javascript">
-    function renderImgToCanvas(img, canvas) {
-      canvas.width = img.width;
-      canvas.height = img.height;
-
-      var ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0);
-    }
-
-    function getFontSize(text, ctx) {
-      // Draw Text
-      var fontSize = 300;
-      ctx.font = 'bold ' + fontSize + 'px Michroma';
-      ctx.fillStyle = "#FFF";
-
-      // Max width of text
-      var maxWidth = 1980;
-      // May not work in old IE
-      try {
-        var width = ctx.measureText(text).width;
-        while(width > maxWidth) {
-          fontSize-=0.5;
-          ctx.font = 'bold ' + fontSize + 'px Michroma';
-          width = ctx.measureText(text).width;
-        }
-      } catch (e) {
-      }
-
-      return fontSize;
-    }
-
-    function renderCanvasToImage(canvas, img) {
-      img.src = canvas.toDataURL();
-      img.width = 1024;
-      img.onload = null;
-      img.style.opacity = 1;
-    }
-
-    function renderSkullyCard(img, canvas) {
-      var name = "{{ user.FirstName }} {{ user.LastName }}".toUpperCase();
-      var ctx = canvas.getContext('2d');
-
-      renderImgToCanvas(img, canvas);
-      var fontSize = getFontSize(name, ctx);
-
-      ctx.fillText(name, 520, 1115 + fontSize * 0.8);
-
-      renderCanvasToImage(canvas, img);
-    }
-
-    function renderGiftCard(img, canvas) {
-      var fromName = "SKULLY".toUpperCase();
-      var toName = "{{ user.FirstName }} {{ user.LastName }}".toUpperCase();
-      var ctx = canvas.getContext('2d');
-
-      renderImgToCanvas(img, canvas);
-
-      var fontSize = getFontSize(fromName, ctx);
-      ctx.fillText(fromName, 520, 680 + fontSize * 0.8);
-
-      fontSize = getFontSize(toName, ctx);
-      ctx.fillText(toName, 520, 1115 + fontSize * 0.8);
-
-      renderCanvasToImage(canvas, img);
-    }
-
-    WebFont.load({
-      google: {
-          families: ["Michroma"],
-      },
-      active: function() {
-        var canvas = document.createElement('canvas');
-
-        var img1 = document.getElementById('SkullyCard');
-        var img2 = document.getElementById('GiftCard');
-
-        renderSkullyCard(img1, canvas);
-        renderGiftCard(img2, canvas);
-      },
-    });
-  </script>
-</body>
-</html>
+{% block content %}
+<div class="card-editor">
+  <div class="editor-options">
+    <h2>Card Options</h2>
+    <fieldset>
+      <div class="is-gift">
+        <label for="IsGift">Is this a gift?</label>
+        <span><input type="radio" name="IsGift" value="Yes"><span>Yes</span></span>
+        <span><input type="radio" name="IsGift" value="No" checked><span>No</span></span>
+      </div>
+      <div class="recipient">
+        <label for="Recipient">Who is this for?</label>
+        <input name="Recipient" placeholder="ex. Mom">
+      </div>
+    </fieldset>
+  </div>
+  <div class="card-preview" class="">
+    <div class="preview-area">
+      <div class="loading-spinner"></div>
+      <img class="placeholder hidden" src="{{ urlFor("img/skullycard.png") }}">
+      <img id="SkullyCard" class="hidden none" src="">
+      <img id="GiftCard" class="hidden none" src="">
+    </div>
+  </div>
+</div>
+{% endblock %}

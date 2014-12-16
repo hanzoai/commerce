@@ -741,6 +741,71 @@ body.mobile .cart-hover
       padding: 8px
       border: 1px solid #ddd
 
+// CARD
+.card-editor-width
+  max-width: 1000px
+
+.card-editor
+  display: table
+  margin-bottom: 50px
+
+  .editor-options
+    rcol(1/2)
+    named-form()
+    padding-left: 20px
+    bbox()
+
+    h2
+      margin-top: 0
+
+    div.is-gift
+      > span
+        width: 100%
+      input[type="radio"]
+        margin-right: 10px
+
+    +below(1000px)
+      stack()
+      padding-left: 0
+
+  .card-preview
+    padding-right: 20px
+    rcol(1/2)
+    bbox()
+
+    +below(1000px)
+      stack()
+      padding-right: 0
+
+    .preview-area
+      max-width: 1000px
+      max-height: 750px
+      position: relative
+      background-color: #555
+
+      img
+        display: block
+        width: 100%
+        transition opacity .3s ease 0s
+
+      .loading-spinner
+        border: 20px solid #fff
+        border-right-color: transparent
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        margin-top: -45px;
+        margin-left: -45px;
+        width: 50px;
+        height: 50px;
+        transition opacity .3s ease 0s
+
+      .hidden
+        opacity: 0
+
+      .none
+        display: none
+
 // MEDIA QUERIES
 @media all and ( min-width: 600px )
   .col-1-2
