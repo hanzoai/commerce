@@ -40,30 +40,11 @@
 
 {% block js %}
 <script type="text/javascript" src="{{ urlFor("/js/checkout.js") }}"></script>
-
-<!-- Facebook Conversion Code for Checkout complete -->
-<script>
-(function() {
-  var _fbq = window._fbq || (window._fbq = []);
-  if (!_fbq.loaded) {
-    var fbds = document.createElement('script');
-    fbds.async = true;
-    fbds.src = '//connect.facebook.net/en_US/fbds.js';
-    var s = document.getElementsByTagName('script')[0];
-    s.parentNode.insertBefore(fbds, s);
-    _fbq.loaded = true;
-  }
-})();
-window._fbq = window._fbq || [];
-</script>
-
 <script>
 $(document).ready(function() {
     var cart = app.get('cart');
-    subtotal = cart.get('subtotal');
     cart.fetch();
     cart.clear();
-    window._fbq.push(['track', '6018312014122', {'value': subtotal.toFixed(2), 'currency':'USD'}]);
 })
 </script>
 {% endblock %}
