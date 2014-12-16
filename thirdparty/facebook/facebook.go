@@ -27,9 +27,9 @@ import (
 // TODO Create a way to change state without invalidating previous CSRF tokens
 // Possibly TTL kv store?
 
-const appId = "739937846096416"
+var appId = config.Facebook.AppId
 
-const appSecret = "eb737a205043f4cc73b2e7107c162a36"
+var appSecret = config.Facebook.AppSecret
 
 // TODO Grab this from the config (depending on if in production or not).
 const base = "store.skullsystems.com"
@@ -38,7 +38,7 @@ const base = "store.skullsystems.com"
 // TODO use UrlFor
 var redirectUri = url.QueryEscape("http://" + base + "/auth/facebook_callback/")
 
-const graphVersion = "v2.2"
+var graphVersion = config.Facebook.GraphVersion
 
 var app *fb.App
 
