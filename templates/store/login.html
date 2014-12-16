@@ -27,35 +27,40 @@ div.error {
 {% block content %}
 <div class="login">
     <div class="login-form user-form col-1-2">
-        <form id="loginForm" action="{{ urlFor("store", "/login") }}" method="post">
+    <form id="loginForm" action="{{ urlFor("store", "/login") }}" method="post">
 
-            <div class="user-form-header">
-                <h2>Returning Customer?</h2>
-                <p>Login to get the latest updates on your preorder.</p>
-            </div>
+        <div class="user-form-header">
+            <h2>Returning Customer?</h2>
+            <p>Login to get the latest updates on your preorder.</p>
+        </div>
 
-            <div class="errors error">{{ loginError }}</div>
+        <div class="errors error">{{ loginError }}</div>
 
-            <div class="field required">
-                <label>Email</label>
-                <input type="text" id="email" name="Email" placeholder="Email"/>
-            </div>
+        <div class="field required">
+            <label>Email</label>
+            <input type="text" id="email" name="Email" placeholder="Email"/>
+        </div>
 
-            <div class="field required">
-                <label>Password</label>
-                <input type="password" id="password" name="Password" placeholder="Password" />
-            </div>
+        <div class="field required">
+            <label>Password</label>
+            <input type="password" id="password" name="Password" placeholder="Password" />
+        </div>
 
-            <div class="options password-options">
-                <input type="checkbox" id="remember-me" name="RememberMe" value="true" checked />
-                <span class="remember">Remember Me</span>
-                <a href="{{ urlFor("store", "password-reset") }}">Forgot Password?</a>
-            </div>
+        <div class="options password-options">
+            <input type="checkbox" id="remember-me" name="RememberMe" value="true" checked />
+            <span class="remember">Remember Me</span>
+            <a href="{{ urlFor("store", "password-reset") }}">Forgot Password?</a>
+        </div>
 
-            <div class="options">
-                <button type="submit">Login</button>
-            </div>
-        </form>
+        <div class="options">
+            <button type="submit">Login</button>
+        </div>
+    </form>
+
+    <div> OR </div>
+
+    <div> <a href="{{ urlFor("store", "/auth/facebook") }}"><img src="/static/img/social/facebook-login.png"></a></div>
+
     </div>
 
     <div class="divider"></div>
