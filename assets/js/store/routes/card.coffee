@@ -87,7 +87,7 @@ exports.renderCards = ->
         setActiveCard(showGift = $(@).val() == 'Yes')
 
       recipientId = 0
-      $('input[name="Recipient"').keydown ->
+      $('input[name="Recipient"]').keydown ->
         spinner = $('.loading-spinner')
         spinner.removeClass 'hidden'
 
