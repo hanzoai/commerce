@@ -115,7 +115,7 @@ var allListings = {{ listingsJSON | safe }};
 {% endif %}
 {% endfor %}
 
-{{ if isProduction }}
+{% if isProduction %}
 <!-- Facebook -->
 <script>(function() {
   var _fbq = window._fbq || (window._fbq = []);
@@ -133,5 +133,5 @@ window._fbq = window._fbq || [];
 window._fbq.push(['track', 'PixelInitialized', {}]);
 </script>
 <noscript><img height="1" width="1" alt="" style="display:none" src="https://www.facebook.com/tr?id=552096258229612&amp;ev=PixelInitialized" /></noscript>
-{{ endif }}
+{% endif %}
 {% endblock %}
