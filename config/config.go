@@ -56,6 +56,11 @@ type Config struct {
 		FromEmail string
 		FromName  string
 	}
+	Facebook struct {
+		AppId        string
+		AppSecret    string
+		GraphVersion string
+	}
 }
 
 // Return url to static file, module or path rooted in a module
@@ -153,6 +158,7 @@ var SentryDSN = config.SentryDSN
 var SiteTitle = config.SiteTitle
 var StaticUrl = config.StaticUrl
 var Stripe = config.Stripe
+var Facebook = config.Facebook
 
 func UrlFor(moduleName string, args ...string) string {
 	return config.UrlFor(moduleName, args...)
