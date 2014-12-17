@@ -16,14 +16,14 @@ func Development() *Config {
 	config.Prefixes["preorder"] = "/preorder/"
 	config.Prefixes["store"] = "/store/"
 
-	config.Hosts["default"] = "localhost:8080"
-	config.Hosts["api"] = "localhost:8080"
-	config.Hosts["checkout"] = "localhost:8080"
-	config.Hosts["platform"] = "localhost:8080"
-	config.Hosts["preorder"] = "localhost:8080"
-	config.Hosts["store"] = "localhost:8080"
+	config.Hosts["default"] = ""
+	config.Hosts["api"] = ""
+	config.Hosts["checkout"] = ""
+	config.Hosts["platform"] = ""
+	config.Hosts["preorder"] = ""
+	config.Hosts["store"] = ""
 
-	config.StaticUrl = "//localhost:8080/static"
+	config.StaticUrl = "/static"
 
 	// TODO: Create dev versions somehow
 	config.Salesforce.ConsumerKey = "3MVG9xOCXq4ID1uElRYWhpUWjXSbiTVg4WO6q9DvWdvBjQ_DFlwSc7jZ9AbY3z9Jv_V29W7xq1nPjTYQhYJqF"
