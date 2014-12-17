@@ -109,8 +109,16 @@ func charge(c *gin.Context) {
 	log.Debug("Trying to get user from session...", c)
 	user, err := auth.GetUser(c)
 	if err != nil {
-		log.Debug("Using form.User", c)
-		user = &form.User
+		// see if this is a returning user
+		log.Debug("User is not logged in")
+		returningUser := new(models.User)
+		if err := db.GetKey("user", form.User.Email, returningUser); err != nil {
+			log.Debug("Using form.User", c)
+			user = &form.User
+		} else {
+			log.Debug("Returning User")
+			user = returningUser
+		}
 	}
 	log.Debug("User: %#v", user)
 
