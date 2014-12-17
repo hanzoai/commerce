@@ -212,10 +212,10 @@ func charge(c *gin.Context) {
 	}
 
 	// Send order confirmation email
-	mandrill.SendTemplateAsync.Call(ctx, "order-confirmation",
+	mandrill.SendTransactional.Call(ctx, "email/order-confirmation.html",
 		user.Email,
 		user.Name(),
-		fmt.Sprintf("SKULLY Systems Order confirmation #%v", orderId))
+		fmt.Sprintf("SKULLY Order confirmation #%v", orderId))
 
 	log.Debug("Checkout complete!", c)
 	c.JSON(200, gin.H{"inviteId": invite.Id, "orderId": orderId})
