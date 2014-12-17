@@ -31,5 +31,8 @@ func Skully() *Config {
 		config.Stripe.RedirectURL = "https:" + config.UrlFor("platform", "/stripe/callback")
 		config.Stripe.WebhookURL = "https:" + config.UrlFor("platform", "/stripe/hook")
 	}
+
+	config.Google.APIKey = "AIza_REDACTED"
+
 	return config
 }
