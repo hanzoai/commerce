@@ -1,15 +1,18 @@
+ratio = 0.4
+
 renderImgToCanvas = (img, canvas) ->
-  canvas.width = img.width
-  canvas.height = img.height
-  ctx = canvas.getContext("2d")
+  canvas.width = img.width * ratio
+  canvas.height = img.height * ratio
+  ctx = canvas.getContext('2d')
+  ctx.scale ratio, ratio
   ctx.drawImage img, 0, 0
   return
 
 getFontSize = (text, ctx) ->
   # Draw Text
   fontSize = 300
-  ctx.font = "bold " + fontSize + "px Michroma"
-  ctx.fillStyle = "#FFF"
+  ctx.font = 'bold ' + fontSize + 'px Michroma'
+  ctx.fillStyle = '#FFF'
 
   # Max width of text
   maxWidth = 1980
@@ -19,13 +22,14 @@ getFontSize = (text, ctx) ->
     width = ctx.measureText(text).width
     while width > maxWidth
       fontSize -= 0.5
-      ctx.font = "bold " + fontSize + "px Michroma"
+      ctx.font = 'bold ' + fontSize + 'px Michroma'
       width = ctx.measureText(text).width
   fontSize
 
 renderSkullyCard = (img, canvas) ->
   name = window.userName.toUpperCase()
-  ctx = canvas.getContext("2d")
+  ctx = canvas.getContext('2d')
+  ctx.scale ratio, ratio
   renderImgToCanvas img, canvas
   fontSize = getFontSize(name, ctx)
   ctx.fillText name, 520, 1115 + fontSize * 0.8
@@ -34,7 +38,8 @@ renderSkullyCard = (img, canvas) ->
 renderGiftCard = (img, canvas) ->
   fromName = window.userName.toUpperCase()
   toName = window.toName.toUpperCase()
-  ctx = canvas.getContext("2d")
+  ctx = canvas.getContext('2d')
+  ctx.scale ratio, ratio
   renderImgToCanvas img, canvas
   fontSize = getFontSize(fromName, ctx)
   ctx.fillText fromName, 520, 680 + fontSize * 0.8
@@ -46,11 +51,11 @@ setActiveCard = (showGift) ->
   if showGift
     hideImg = $('#SkullyCard')
     showImg = $('#GiftCard')
-    $('.recipient').show()
+    $('.recipient').removeClass 'hidden'
   else
     hideImg = $('#GiftCard')
     showImg = $('#SkullyCard')
-    $('.recipient').hide()
+    $('.recipient').addClass 'hidden'
 
   spinner = $('.loading-spinner')
 
@@ -71,8 +76,10 @@ exports.renderCards = ->
 
     active: ->
       canvas = $('<canvas>')[0]
+      # Half the size of the rendering
       img1 = $('<img>').attr 'src', window.cardName
       img2 = $('<img>').attr 'src', window.giftCardName
+      imgBack = $('<img>').attr 'src', window.cardBack
       img1.load ->
         $('#SkullyCard').attr('src', renderSkullyCard(img1[0], canvas)).removeClass('hidden').removeClass 'none'
         $('.placeholder').addClass 'none'
@@ -101,7 +108,24 @@ exports.renderCards = ->
       $('.download').click ->
         link = $('<a>')
         link.attr 'download', 'skullycard.png'
-        link.attr 'href', if showGift then $('#GiftCard').attr('src') else $('#SkullyCard').attr('src')
+        img = (if showGift then $('#GiftCard') else $('#SkullyCard'))[0]
+
+        # render the downloadable image with card back
+        width = img1[0].width * ratio
+        height = img1[0].height * ratio
+
+        bufferCanvas = $('<canvas>')[0]
+        bufferCanvas.width = width
+        bufferCanvas.height = height * 2
+
+        ctx = bufferCanvas.getContext('2d')
+        ctx.drawImage img, 0, height
+        ctx.scale ratio, ratio
+        ctx.translate width / ratio, height / ratio
+        ctx.rotate Math.PI
+        ctx.drawImage imgBack[0], 0, 0
+
+        link.attr 'href', bufferCanvas.toDataURL()
         link[0].click()
 
 
