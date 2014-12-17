@@ -57,6 +57,9 @@ type Config struct {
 		FromEmail string
 		FromName  string
 	}
+	Google struct {
+		APIKey string
+	}
 }
 
 // Return url to static file, module or path rooted in a module
