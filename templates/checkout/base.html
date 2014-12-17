@@ -20,8 +20,10 @@
 
     <link rel="shortcut icon" type="image/x-icon" href="{{ urlFor("/favicon.ico") }}">
 
-    <!--[if lt IE 9]>
-    <script src="{{ urlFor("/js/html5-shiv.js") }}></script>
+    <!--[if lt IE 11]>
+    <script src="{{ urlFor("/js/es5-shim.min.js") }}"></script>
+    <script src="{{ urlFor("/js/html5-shim.min.js") }}"></script>
+    <script src="{{ urlFor("/js/respond.min.js") }}"></script>
     <![endif]-->
 
     <link rel="stylesheet" type="text/css" href="{{ urlFor("/css/store.css") }}">
