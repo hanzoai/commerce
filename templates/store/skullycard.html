@@ -13,6 +13,7 @@
   window.toName = "";
   window.cardName = "{{ urlFor("img/skullycard.png") }}";
   window.giftCardName = "{{ urlFor("img/skullygiftcard.png") }}";
+  window.cardBack = "{{ urlFor("img/skullycardback.png") }}";
 </script>
 {% endblock %}
 
@@ -23,19 +24,35 @@
 {% block content %}
 <div class="card-editor">
   <div class="editor-options">
-    <h2>Card Options</h2>
     <fieldset>
+      <h2>Card Options</h2>
       <div class="is-gift">
         <label for="IsGift">Is this a gift?</label>
         <span><input type="radio" name="IsGift" value="Yes"><span>Yes</span></span>
         <span><input type="radio" name="IsGift" value="No" checked><span>No</span></span>
       </div>
-      <div class="recipient" style="display:none">
+      <div class="recipient hidden">
         <label for="Recipient">Who is this for?</label>
         <input name="Recipient" placeholder="ex. Mom">
       </div>
+      <h2>Instructions</h2>
+      <div>
+        <p>Click download to save, then print it out and fold in half.</p>
+      </div>
       <div>
         <button class="download" type="button">Download</button>
+      </div>
+      <h2>Share</h2>
+      <div class="social-icons">
+          <a href="https://www.facebook.com/skullysystems" target="_blank" title="Skully Helmets, Inc" class="social-facebook">
+              <img src="{{ urlFor("/img/social/facebook.png") }}">
+          </a>
+          <a href="http://www.twitter.com/skullysystems" target="_blank" title="SKULLY HELMETS" class="social-twitter">
+              <img src="{{ urlFor("/img/social/twitter.png") }}">
+          </a>
+          <a href="https://plus.google.com/112776474651298122010/posts" target="_blank" title="Marcus Weller" class="social-google">
+              <img src="{{ urlFor("/img/social/google-plus.png") }}">
+          </a>
       </div>
     </fieldset>
   </div>
