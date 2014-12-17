@@ -114,10 +114,10 @@ func PasswordResetConfirmSubmit(c *gin.Context) {
 	}
 
 	// Notify user of password reset
-	mandrill.SendTemplateAsync.Call(ctx, "password-updated",
+	mandrill.SendTransactional.Call(ctx, "email/password-updated.html",
 		user.Email,
 		user.Name(),
-		"Your password has been updated.")
+		"SKULLY password changed")
 
 	// Redirect to profile
 	c.Redirect(302, config.UrlFor("store", "/profile"))
