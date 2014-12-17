@@ -23,6 +23,7 @@ func Staging() *Config {
 	config.Stripe.WebhookURL = "https:" + config.UrlFor("platform", "/stripe/hook")
 
 	config.Mandrill.APIKey = "wJ3LGLp5ZOUZlSH8wwqmTg"
+	config.Google.APIKey = "AIzaSyAOPY7nU-UlNRLvZz9D_j2Qm6SBMUvk83w"
 
 	return config
 }
