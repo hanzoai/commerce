@@ -73,8 +73,14 @@ stylus		= node_modules/.bin/stylus
 stylus_opts = assets/css/preorder/preorder.styl \
 		      assets/css/store/store.styl \
 		      assets/css/checkout/checkout.styl \
-		      -o static/css -u autoprefixer-stylus
+		      -o static/css
 stylus_opts_min = -u csso-stylus -c
+
+autoprefixer = node_modules/.bin/autoprefixer
+autoprefixer_opts = -b 'ie > 8, firefox > 24, chrome > 30, safari > 6, opera > 17, ios > 6, android > 4' \
+					static/css/checkout.css \
+					static/css/preorder.css \
+					static/css/store.css
 
 sdk_install = wget https://storage.googleapis.com/appengine-sdks/featured/$(sdk).zip && \
 			  unzip $(sdk).zip && \
@@ -125,10 +131,11 @@ compile-js-min:
 	$(requisite) $(requisite_opts) $(requisite_opts_min)
 
 compile-css:
-	$(stylus) $(stylus_opts) --sourcemap --sourcemap-inline
+	$(stylus) $(stylus_opts) -u autoprefixer-stylus --sourcemap --sourcemap-inline
 
 compile-css-min:
-	$(stylus) $(stylus_opts) $(stylus_opts_min)
+	$(stylus) $(stylus_opts) $(stylus_opts_min) && $(autoprefixer) $(autoprefixer_opts)
+
 
 # BUILD
 build: deps assets
