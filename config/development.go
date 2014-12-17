@@ -9,6 +9,8 @@ func Development() *Config {
 	config.AutoCompileAssets = false
 	config.AutoLoadFixtures = true
 
+	config.Protocol = "/" // Localhost
+
 	config.Prefixes["default"] = "/"
 	config.Prefixes["api"] = "/api/"
 	config.Prefixes["checkout"] = "/checkout/"
