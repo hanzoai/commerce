@@ -37,5 +37,8 @@ func Development() *Config {
 	config.Stripe.APISecret = ""
 	config.Stripe.RedirectURL = "http:" + config.UrlFor("platform", "/stripe/callback")
 	config.Stripe.WebhookURL = "http:" + config.UrlFor("platform", "/stripe/hook")
+
+	config.Google.APIKey = "AIza_REDACTED"
+
 	return config
 }
