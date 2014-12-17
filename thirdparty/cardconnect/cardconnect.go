@@ -1,15 +1,17 @@
 package cardconnect
 
 import (
-	"appengine"
-	"appengine/urlfetch"
 	"bytes"
-	"crowdstart.io/models"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
 	"net/http"
+
+	"crowdstart.io/models"
+
+	"appengine"
+	"appengine/urlfetch"
 )
 
 var baseUrl = "https://fts.prinpay.com:6443/cardconnect/rest" // 496160873888-CardConnect - USD - NORTH
@@ -94,17 +96,17 @@ func Authorize(ctx appengine.Context, order models.Order, user models.User) (are
 	}
 
 	areq := AuthorizationReq{
-		Account:  order.Account.Number,
-		AcctType: order.Account.Type,
-		Address:  order.BillingAddress.Line(),
-		Amount:   order.Total,
-		CVV2:     order.Account.CVV2,
+		// Account:  order.Account.Number,
+		// AcctType: order.Account.Type,
+		Address: order.BillingAddress.Line(),
+		Amount:  order.Total,
+		// CVV2:     order.Account.CVV2,
 		City:     order.BillingAddress.City,
 		Country:  order.BillingAddress.Country,
 		Currency: "USD",
 		Ecomind:  "E",
 		Email:    user.Email,
-		Expiry:   order.Account.Expiry,
+		// Expiry:   order.Account.Expiry,
 		MerchId:  496160873888,
 		Name:     user.Name(),
 		OrderId:  order.Id,
