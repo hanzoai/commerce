@@ -34,6 +34,7 @@ type Config struct {
 	AutoLoadFixtures  bool
 	RootDir           string
 	CookieDomain      string
+	Protocol          string
 	StaticUrl         string
 	SiteTitle         string
 	Prefixes          map[string]string
@@ -78,7 +79,7 @@ func (c Config) UrlFor(moduleName string, args ...string) (url string) {
 	url = path.Join(args...)
 
 	// Strip leading slash and replace with protocol relative leading "//".
-	url = "//" + strings.TrimLeft(url, "/")
+	url = c.Protocol + strings.TrimLeft(url, "/")
 
 	// Add back ending "/" if trimmed.
 	if len(args) > 0 {
