@@ -755,13 +755,22 @@ body.mobile .cart-hover
     padding-left: 20px
     bbox()
 
+    fieldset
+      margin-top: 0
+
     label
       width: 100%
 
     h2
       margin-top: 0
 
+    div.recipient
+      col(1/2)
+      display: block
+      transition opacity .3s ease 0s
+
     div.is-gift
+      col(1/2)
       > span
         width: 100%
       input[type="radio"]
@@ -803,11 +812,15 @@ body.mobile .cart-hover
         height: 50px;
         transition opacity .3s ease 0s
 
-      .hidden
-        opacity: 0
+  .hidden
+    opacity: 0 !important
 
-      .none
-        display: none
+  .none
+    display: none !important
+
+  button
+    margin-top: 0px
+    transition: opacity .3s ease 0s
 
 // MEDIA QUERIES
 @media all and ( min-width: 600px )
