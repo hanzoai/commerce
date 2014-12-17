@@ -76,6 +76,7 @@ a:active
 
   > a
     display table
+    float: left
 
 .links
   transition width .5s ease 0s
@@ -127,6 +128,9 @@ a:active
       width 0
       display none
 
+      a.big
+        display block
+
   body.mobile
     .site
       left -80%
@@ -158,7 +162,7 @@ a:active
                 text-align center
                 padding 0px
 
-            > li.link a.big
+              > li.link a.big
                 padding 20px
                 margin-top 20px
 
@@ -168,6 +172,10 @@ a:active
 
               li
                 text-align center
+
+// for IE 8
+.nav .link, .nav a.big
+  display: inline
 
 @media all and ( min-width: 1000px )
   .title-nav
@@ -194,6 +202,9 @@ a:active
         display inline-block
         padding 10px
 
+        a.big
+          display block
+
 .nav .links .link
   a
     color #fff
@@ -212,7 +223,6 @@ a:active
     color #c2c2c2
 
   a.big
-    display block
     background #d70404
     font-size 15px
     padding 12px 30px
@@ -453,7 +463,8 @@ section > .item
   position fixed
   height 48px
   width 280px
-  background-image linear-gradient(rgb(30,30,30), rgb(4,4,4))
+  background-image: linear-gradient(rgb(30,30,30), rgb(4,4,4))
+  background-color: rgb(4,4,4)
   top 96px
   right 15px
   border-top 1px solid #000
