@@ -41,6 +41,7 @@
     </table>
     {% if tokenId %}
     <div class="options sep-top">
+        <button style="margin-left: 20px" onclick="location.href='{{ urlFor("store", "/card/") }}'">Download holiday card</button>
         <button onclick="location.href='{{ urlFor("preorder", "/order/", tokenId) }}'">Edit preorders</button>
     </div>
     {% endif %}
