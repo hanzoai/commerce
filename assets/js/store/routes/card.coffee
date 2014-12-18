@@ -152,26 +152,20 @@ exports.renderCards = ->
         ctx.drawImage imgBack[0], 0, 0
 
         bufferCanvas.toBlob (blob) ->
-          console.log blob
-          filename  = 'skully-xmas-card.png'
-          formData = new FormData()
-          formData.append 'file', blob, filename
-
-          objectName = "skully-xmas-card-#{Math.random().toString(36).slice(2)}.png"
-          console.log objectName
+          filename = "skully-xmas-card/#{Math.random().toString(36).slice(2)}/skully-xmas-card.png"
 
           $.ajax
             method: 'POST'
-            url: "https://www.googleapis.com/upload/storage/v1/b/#{GCS_BUCKET}/o?uploadType=media&name=#{objectName}&key=#{GCS_API_KEY}"
+            url: "https://www.googleapis.com/upload/storage/v1/b/#{GCS_BUCKET}/o?uploadType=media&name=#{filename}&key=#{GCS_API_KEY}"
             processData: false
             contentType: false
-            data: formData
+            data: blob
             headers:
               'Content-Type': "image/png"
               'Content-Length': blob.size
             success: ->
               console.log arguments
-              console.log "https://storage.cloud.google.com/#{GCS_BUCKET}/#{objectName}"
+              console.log "https://storage.cloud.google.com/#{GCS_BUCKET}/#{filename}"
               $('.share-options').fadeIn()
             error: ->
               console.log arguments
