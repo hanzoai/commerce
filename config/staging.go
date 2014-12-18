@@ -23,7 +23,9 @@ func Staging() *Config {
 	config.Stripe.WebhookURL = "https:" + config.UrlFor("platform", "/stripe/hook")
 
 	config.Mandrill.APIKey = "wJ3LGLp5ZOUZlSH8wwqmTg"
+
 	config.Google.APIKey = "AIza_REDACTED"
+	config.Google.Bucket.ImageUploads = "crowdstart-staging-image-uploads"
 
 	return config
 }
