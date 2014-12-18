@@ -13,6 +13,11 @@ import (
 	"crowdstart.io/util/template"
 )
 
+// GET /create-password
+func CreatePassword(c *gin.Context) {
+	template.Render(c, "create-password.html")
+}
+
 // GET /password-reset
 func PasswordReset(c *gin.Context) {
 	template.Render(c, "password-reset.html")

@@ -31,6 +31,7 @@ func init() {
 	router.GET("/logout", user.Logout)
 
 	// Password Reset
+	router.GET("/create-password", user.CreatePassword)
 	router.GET("/password-reset", user.PasswordReset)
 	router.POST("/password-reset", user.PasswordResetSubmit)
 	router.GET("/password-reset/:token", user.PasswordResetConfirm)
