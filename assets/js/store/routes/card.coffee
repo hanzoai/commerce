@@ -110,28 +110,32 @@ exports.renderCards = ->
           $giftCard.attr 'src', renderGiftCard(img2[0], canvas)
         , 300
 
-      $('.download').click ->
-        link =  document.createElement('a')
-        link.download = 'skullycard.png'
-        img = (if showGift then $giftCard else $skullyCard)[0]
+      $('.download').click do ->
+        # cache link and append to DOM for more reliable file download triggering.
+        $link = $('<a>')
+        $link.attr 'download', 'skullycard.png'
+        $(document.body).append $link
 
-        # render the downloadable image with card back
-        width = img1[0].width * ratio
-        height = img1[0].height * ratio
+        ->
+          img = (if showGift then $giftCard else $skullyCard)[0]
 
-        bufferCanvas = $('<canvas>')[0]
-        bufferCanvas.width = width
-        bufferCanvas.height = height * 2
+          # render the downloadable image with card back
+          width = img1[0].width * ratio
+          height = img1[0].height * ratio
 
-        ctx = bufferCanvas.getContext('2d')
-        ctx.drawImage img, 0, height
-        ctx.scale ratio, ratio
-        ctx.translate width / ratio, height / ratio
-        ctx.rotate Math.PI
-        ctx.drawImage imgBack[0], 0, 0
+          bufferCanvas = $('<canvas>')[0]
+          bufferCanvas.width = width
+          bufferCanvas.height = height * 2
 
-        link.href = bufferCanvas.toDataURL()
-        link.click()
+          ctx = bufferCanvas.getContext('2d')
+          ctx.drawImage img, 0, height
+          ctx.scale ratio, ratio
+          ctx.translate width / ratio, height / ratio
+          ctx.rotate Math.PI
+          ctx.drawImage imgBack[0], 0, 0
+
+          $link.attr 'href', bufferCanvas.toDataURL()
+          $link.get(0).click()
 
       $('.share').click ->
         img = (if showGift then $giftCard else $skullyCard)[0]
