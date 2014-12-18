@@ -40,7 +40,7 @@ func Charge(ctx appengine.Context, accessToken string, authorizationToken string
 	if user.Stripe.CustomerId == "" {
 		// Create new customer
 		if customer, err := sc.Customers.New(customerParams); err != nil {
-			log.Error("Failed to create Stripe customer: %v", err, ctx)
+			log.Warn("Failed to create Stripe customer: %v", err, ctx)
 			return charge, err
 		} else {
 			// Update user with stripe customer ID so we can charge for them later
@@ -49,7 +49,7 @@ func Charge(ctx appengine.Context, accessToken string, authorizationToken string
 	} else {
 		// Update stripe
 		if _, err := sc.Customers.Update(user.Stripe.CustomerId, customerParams); err != nil {
-			log.Error("Failed to update Stripe customer: %v", err, ctx)
+			log.Warn("Failed to update Stripe customer: %v", err, ctx)
 			return charge, err
 		}
 	}
