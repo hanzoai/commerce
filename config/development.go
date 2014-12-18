@@ -39,6 +39,7 @@ func Development() *Config {
 	config.Stripe.WebhookURL = "http:" + config.UrlFor("platform", "/stripe/hook")
 
 	config.Google.APIKey = "AIzaSyAOPY7nU-UlNRLvZz9D_j2Qm6SBMUvk83w"
+	config.Google.Bucket.ImageUploads = "crowdstart-staging-image-uploads"
 
 	return config
 }

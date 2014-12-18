@@ -59,6 +59,9 @@ type Config struct {
 	}
 	Google struct {
 		APIKey string
+		Bucket struct {
+			ImageUploads string
+		}
 	}
 }
 
@@ -146,6 +149,7 @@ var AutoCompileAssets = config.AutoCompileAssets
 var AutoLoadFixtures = config.AutoLoadFixtures
 var CookieDomain = config.CookieDomain
 var DemoMode = config.DemoMode
+var Google = config.Google
 var IsDevelopment = config.IsDevelopment
 var IsProduction = config.IsProduction
 var IsStaging = config.IsStaging
