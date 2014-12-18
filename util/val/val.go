@@ -32,7 +32,7 @@ func (s *StringValidationContext) IsPassword() *StringValidationContext {
 
 func (s *StringValidationContext) StringBeforeString(a string, b string) *StringValidationContext {
 	s.Contains(a).Contains(b)
-	s.IsValid = s.IsValid && (strings.Index(s.value, a) < strings.Index(s.value, b))
+	s.IsValid = s.IsValid && (strings.Index(s.value, a) < strings.LastIndex(s.value, b))
 	return s
 }
 
