@@ -1,5 +1,17 @@
 {% extends "base.html" %}
 
+{% block meta %}
+<meta property="og:site_name" content="SKULLY AR-1 Store">
+<meta property="og:title" content="SKULLY AR-1" />
+<meta property="og:type" content="product" />
+<meta property="og:url" content="{{ urlFor("store") }}">
+<meta property="og:price:amount" content="1499.00" />
+<meta property="og:price:currency" content="USD" />
+
+<meta itemprop="name" content="SKULLY AR-1">
+<meta itemprop="url" content="{{ urlFor("store") }}">
+{% endblock %}
+
 {% block json %}
 <script>
 var allProducts = {{ productsJSON | safe }};
