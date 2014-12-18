@@ -107,12 +107,12 @@ exports.renderCards = ->
         recipientId = setTimeout =>
           spinner.addClass 'hidden'
           window.toName = $(@).val()
-          $('#GiftCard').attr 'src', renderGiftCard(img2[0], canvas)
+          $giftCard.attr 'src', renderGiftCard(img2[0], canvas)
         , 300
 
       $('.download').click ->
-        link = $('<a>')
-        link.attr 'download', 'skullycard.png'
+        link =  document.createElement('a')
+        link.download = 'skullycard.png'
         img = (if showGift then $giftCard else $skullyCard)[0]
 
         # render the downloadable image with card back
@@ -130,8 +130,8 @@ exports.renderCards = ->
         ctx.rotate Math.PI
         ctx.drawImage imgBack[0], 0, 0
 
-        link.attr 'href', bufferCanvas.toDataURL()
-        link[0].click()
+        link.href = bufferCanvas.toDataURL()
+        link.click()
 
       $('.share').click ->
         img = (if showGift then $giftCard else $skullyCard)[0]
@@ -142,14 +142,12 @@ exports.renderCards = ->
 
         bufferCanvas = $('<canvas>')[0]
         bufferCanvas.width = width
-        bufferCanvas.height = height * 2
+        bufferCanvas.height = height
 
         ctx = bufferCanvas.getContext('2d')
-        ctx.drawImage img, 0, height
-        ctx.scale ratio, ratio
-        ctx.translate width / ratio, height / ratio
-        ctx.rotate Math.PI
-        ctx.drawImage imgBack[0], 0, 0
+        ctx.drawImage img, 0, 0
+
+        $('.share span').prepend('<div class="loading-spinner"></div>')
 
         bufferCanvas.toBlob (blob) ->
           filename = "skully-xmas-card/#{Math.random().toString(36).slice(2)}/skully-xmas-card.png"
@@ -164,11 +162,12 @@ exports.renderCards = ->
               'Content-Type': "image/png"
               'Content-Length': blob.size
             success: ->
-              console.log arguments
               $('.share-link').val "https://storage.googleapis.com/#{GCS_BUCKET}/#{filename}"
               $('.share-options').fadeIn()
               $('.share-link').click ->
                 $(@).select()
 
+              $('.share .loading-spinner').remove()
+
             error: ->
-              console.log arguments
+              $('.share .loading-spinner').remove()

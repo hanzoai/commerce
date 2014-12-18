@@ -26,6 +26,14 @@
 {% block content %}
 <script></script>
 <div class="card-editor">
+  <div class="card-preview" class="">
+    <div class="preview-area">
+      <div class="loading-spinner"></div>
+      <img class="placeholder hidden" src="{{ urlFor("img/skullycard.png") }}">
+      <img id="skully-card" class="hidden none" src="">
+      <img id="gift-card" class="hidden none" src="">
+    </div>
+  </div>
 
   <div class="editor-options">
     <fieldset>
@@ -50,8 +58,8 @@
       </div>
 
       <div>
-        <button class="download" type="button">Download</button>
-        <button class="share" style="margin-left:10px" type="button">Share</button>
+        <button class="download" type="button"><span>Download</span></button>
+        <button class="share" style="margin-left:10px" type="button"><span>Share</span></button>
       </div>
 
       <div class="share-options" style="display:none">
@@ -71,15 +79,6 @@
       </div>
 
     </fieldset>
-  </div>
-
-  <div class="card-preview" class="">
-    <div class="preview-area">
-      <div class="loading-spinner"></div>
-      <img class="placeholder hidden" src="{{ urlFor("img/skullycard.png") }}">
-      <img id="skully-card" class="hidden none" src="">
-      <img id="gift-card" class="hidden none" src="">
-    </div>
   </div>
 </div>
 {% endblock %}
