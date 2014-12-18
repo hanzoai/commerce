@@ -156,7 +156,7 @@ exports.renderCards = ->
 
           $.ajax
             method: 'POST'
-            url: "https://www.googleapis.com/upload/storage/v1/b/#{GCS_BUCKET}/o?uploadType=media&name=#{filename}&key=#{GCS_API_KEY}"
+            url: "https://www.googleapis.com/upload/storage/v1/b/#{GCS_BUCKET}/o?uploadType=media&name=#{filename}&predefinedAcl=publicRead&key=#{GCS_API_KEY}"
             processData: false
             contentType: false
             data: blob
@@ -165,8 +165,10 @@ exports.renderCards = ->
               'Content-Length': blob.size
             success: ->
               console.log arguments
-              console.log "https://storage.cloud.google.com/#{GCS_BUCKET}/#{filename}"
+              $('.share-link').val "https://storage.googleapis.com/#{GCS_BUCKET}/#{filename}"
               $('.share-options').fadeIn()
+              $('.share-link').click ->
+                $(@).select()
+
             error: ->
               console.log arguments
-
