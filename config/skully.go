@@ -33,6 +33,7 @@ func Skully() *Config {
 	}
 
 	config.Google.APIKey = "AIza_REDACTED"
+	config.Google.Bucket.ImageUploads = "skully-image-uploads"
 
 	return config
 }

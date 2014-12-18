@@ -1,4 +1,8 @@
-ratio = 0.4
+toBlob = require('blueimp-canvas-to-blob/js/canvas-to-blob') # canvas.toBlob polyfill
+
+ratio       = 0.4
+$skullyCard = $('#skully-card')
+$giftCard   = $('#gift-card')
 
 renderImgToCanvas = (img, canvas) ->
   canvas.width = img.width * ratio
@@ -49,12 +53,12 @@ renderGiftCard = (img, canvas) ->
 
 setActiveCard = (showGift) ->
   if showGift
-    hideImg = $('#SkullyCard')
-    showImg = $('#GiftCard')
+    hideImg = $skullyCard
+    showImg = $giftCard
     $('.recipient').removeClass 'hidden'
   else
-    hideImg = $('#GiftCard')
-    showImg = $('#SkullyCard')
+    hideImg = $giftCard
+    showImg = $skullyCard
     $('.recipient').addClass 'hidden'
 
   spinner = $('.loading-spinner')
@@ -80,13 +84,14 @@ exports.renderCards = ->
       img1 = $('<img>').attr 'src', window.cardName
       img2 = $('<img>').attr 'src', window.giftCardName
       imgBack = $('<img>').attr 'src', window.cardBack
+
       img1.load ->
-        $('#SkullyCard').attr('src', renderSkullyCard(img1[0], canvas)).removeClass('hidden').removeClass 'none'
+        $skullyCard.attr('src', renderSkullyCard(img1[0], canvas)).removeClass('hidden').removeClass 'none'
         $('.placeholder').addClass 'none'
         $('.loading-spinner').addClass 'hidden'
 
       img2.load ->
-        $('#GiftCard').attr 'src', renderGiftCard(img2[0], canvas)
+        $giftCard.attr 'src', renderGiftCard(img2[0], canvas)
         $('.placeholder').addClass 'none'
         $('.loading-spinner').addClass 'hidden'
 
@@ -108,7 +113,7 @@ exports.renderCards = ->
       $('.download').click ->
         link = $('<a>')
         link.attr 'download', 'skullycard.png'
-        img = (if showGift then $('#GiftCard') else $('#SkullyCard'))[0]
+        img = (if showGift then $giftCard else $skullyCard)[0]
 
         # render the downloadable image with card back
         width = img1[0].width * ratio
@@ -128,5 +133,46 @@ exports.renderCards = ->
         link.attr 'href', bufferCanvas.toDataURL()
         link[0].click()
 
+      $('.share').click ->
+        img = (if showGift then $giftCard else $skullyCard)[0]
 
+        # render the downloadable image with card back
+        width = img1[0].width * ratio
+        height = img1[0].height * ratio
+
+        bufferCanvas = $('<canvas>')[0]
+        bufferCanvas.width = width
+        bufferCanvas.height = height * 2
+
+        ctx = bufferCanvas.getContext('2d')
+        ctx.drawImage img, 0, height
+        ctx.scale ratio, ratio
+        ctx.translate width / ratio, height / ratio
+        ctx.rotate Math.PI
+        ctx.drawImage imgBack[0], 0, 0
+
+        bufferCanvas.toBlob (blob) ->
+          console.log blob
+          filename  = 'skully-xmas-card.png'
+          formData = new FormData()
+          formData.append 'file', blob, filename
+
+          objectName = "skully-xmas-card-#{Math.random().toString(36).slice(2)}.png"
+          console.log objectName
+
+          $.ajax
+            method: 'POST'
+            url: "https://www.googleapis.com/upload/storage/v1/b/#{GCS_BUCKET}/o?uploadType=media&name=#{objectName}&key=#{GCS_API_KEY}"
+            processData: false
+            contentType: false
+            data: formData
+            headers:
+              'Content-Type': "image/png"
+              'Content-Length': blob.size
+            success: ->
+              console.log arguments
+              console.log "https://storage.cloud.google.com/#{GCS_BUCKET}/#{objectName}"
+              $('.share-options').fadeIn()
+            error: ->
+              console.log arguments
 
