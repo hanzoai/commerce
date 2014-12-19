@@ -44,8 +44,8 @@ def generate_preorder_description(value, bulkload_state):
     if 'Items.SKU_' not in row or 'Items.Quantity' not in row:
         return ''
 
-    skus = row['Items.SKU_']
-    qtys = row['Items.Quantity']
+    skus = eval(row['Items.SKU_'] or 'None')
+    qtys = eval(row['Items.Quantity'] or 'None')
 
     if not skus or not qtys:
         return ''
