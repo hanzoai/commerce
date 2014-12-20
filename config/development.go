@@ -30,7 +30,7 @@ func Development() *Config {
 	// TODO: Create dev versions somehow
 	config.Salesforce.ConsumerKey = "3MVG9xOCXq4ID1uElRYWhpUWjXSbiTVg4WO6q9DvWdvBjQ_DFlwSc7jZ9AbY3z9Jv_V29W7xq1nPjTYQhYJqF"
 	config.Salesforce.ConsumerSecret = "3811316853831925498"
-	config.Salesforce.CallbackURL = "https://admin.crowdstart.io/salesforce/callback"
+	config.Salesforce.CallbackURL = "https:" + config.UrlFor("platform", "/salesforce/callback")
 
 	config.Stripe.ClientId = "ca_53yyPzxlPsdAtzMEIuS2mXYDp4FFXLmm"
 	config.Stripe.APIKey = "pk_test_ucSTeAAtkSXVEg713ir40UhX"
