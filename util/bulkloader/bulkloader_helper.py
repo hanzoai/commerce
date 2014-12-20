@@ -40,18 +40,15 @@ def na_if_none(value):
 def generate_preorder_description(value, bulkload_state):
     """Generates preorder information from Items.SKU_ and Items.Quantity."""
     row = bulkload_state.current_dictionary
-    if 'Items.SKU_' not in row or 'Items.Quantity_' not in row:
+
+    if 'Items.SKU_' not in row or 'Items.Quantity' not in row:
         return ''
 
-    skus = row['Items.SKU_']
-    qtys = row['Items.Quantity_']
+    skus = eval(row['Items.SKU_'] or 'None')
+    qtys = eval(row['Items.Quantity'] or 'None')
 
     if not skus or not qtys:
         return ''
-
-    # Regenerate lists from transformed Items.SKU, Items.Quantity
-    # skus = [sku.strip() for sku in skus.split(',') if sku]
-    # qtys = [qty.strip() for qty in qtys.split(',') if qty]
 
     return ', '.join(['%s: %s' % order for order in zip(skus, qtys)])
 
