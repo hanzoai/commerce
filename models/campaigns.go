@@ -41,8 +41,10 @@ type Campaign struct {
 	PayPalConnected bool
 	PayPalApiKeys   string
 	Salesforce      struct {
-		AccessToken string
-		IssuedAt    string
+		AccessToken  string
+		RefreshToken string
+		IssuedAt     string
+		Signature    string
 	}
 	Stripe struct {
 		AccessToken    string
