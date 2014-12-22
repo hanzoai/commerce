@@ -45,7 +45,7 @@ func SalesforceCallback(c *gin.Context) {
 	data.Set("client_secret", config.Salesforce.ConsumerSecret)
 	data.Add("redirect_uri", config.Salesforce.CallbackURL)
 
-	tokenReq, err := http.NewRequest("POST", "https://connect.stripe.com/oauth/token", strings.NewReader(data.Encode()))
+	tokenReq, err := http.NewRequest("POST", "https://login.salesforce.com/services/oauth2/token", strings.NewReader(data.Encode()))
 	if err != nil {
 		c.Fail(500, err)
 		return
@@ -66,12 +66,12 @@ func SalesforceCallback(c *gin.Context) {
 		return
 	}
 
-	log.Warn("JSON BLOB %v", jsonBlob)
 	token := new(salesforceToken)
 
 	// try and extract the json struct
 	if err := json.Unmarshal(jsonBlob, token); err != nil {
 		c.Fail(500, err)
+		return
 	}
 
 	// Salesforce does not Error ;)
