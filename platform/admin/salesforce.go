@@ -99,6 +99,8 @@ func SalesforceCallback(c *gin.Context) {
 	// Update Salesforce data
 	campaign.Salesforce.AccessToken = token.AccessToken
 	campaign.Salesforce.RefreshToken = token.RefreshToken
+	campaign.Salesforce.InstanceUrl = token.InstanceUrl
+	campaign.Salesforce.Id = token.Id
 	campaign.Salesforce.IssuedAt = token.IssuedAt
 	campaign.Salesforce.Signature = token.Signature
 
