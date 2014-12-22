@@ -21,21 +21,18 @@ import (
 )
 
 type salesforceToken struct {
-	AccessToken string `json:"access_token"`
-	IssuedAt    string `json:"issued_at"`
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	InstanceUrl  string `json:"instance_url"`
+	Id           string `json:"id"`
+	IssuedAt     string `json:"issued_at"`
+	Signature    string `json:"signature"`
 }
 
-// SalesforceCallback Salesforce End Points
+// Salesforce End Points
 func SalesforceCallback(c *gin.Context) {
 	req := c.Request
 	code := req.URL.Query().Get("code")
-	errStr := req.URL.Query().Get("error")
-
-	// Failed to get back authorization code from Salesforce
-	if errStr != "" {
-		template.Render(c, "stripe/failure.html", "error", errStr)
-		return
-	}
 
 	ctx := middleware.GetAppEngine(c)
 	client := urlfetch.Client(ctx)
@@ -46,7 +43,7 @@ func SalesforceCallback(c *gin.Context) {
 	data.Add("grant_type", "authorization_code")
 	data.Set("client_id", config.Salesforce.ConsumerKey)
 	data.Set("client_secret", config.Salesforce.ConsumerSecret)
-	data.Add("redirect_uri", "authorization_code")
+	data.Add("redirect_uri", config.Salesforce.CallbackURL)
 
 	tokenReq, err := http.NewRequest("POST", "https://connect.stripe.com/oauth/token", strings.NewReader(data.Encode()))
 	if err != nil {
@@ -76,7 +73,7 @@ func SalesforceCallback(c *gin.Context) {
 		c.Fail(500, err)
 	}
 
-	// Salesforce returned an error
+	// Salesforce does not Error ;)
 	// if token.Error != "" {
 	// 	template.Render(c, "adminlte/connect.html", "error", token.Error)
 	// 	return
@@ -98,9 +95,11 @@ func SalesforceCallback(c *gin.Context) {
 		log.Panic("Unable to get campaign from database: %v", err)
 	}
 
-	// Update stripe data
+	// Update Salesforce data
 	campaign.Salesforce.AccessToken = token.AccessToken
+	campaign.Salesforce.RefreshToken = token.RefreshToken
 	campaign.Salesforce.IssuedAt = token.IssuedAt
+	campaign.Salesforce.Signature = token.Signature
 
 	// Update in datastore
 	if _, err := db.PutKey("campaign", email, campaign); err != nil {

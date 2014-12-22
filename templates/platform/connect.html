@@ -17,7 +17,7 @@
     </div>
     {% if stripeError && stripeError != "" %}
     <div class="row">
-        <h3>Your stripe account was not successfully be connected.  Please try again.</h3>
+        <h3>Your Stripe account was not successfully be connected.  Please try again.</h3>
         <p>
           {{ stripeError }}
         </p>
@@ -29,6 +29,14 @@
     <div class="row">
         <a class="btn btn-default" href="https://login.salesforce.com/services/oauth2/authorize?response_type=code&client_id={{ salesforce.ConsumerKey }}&redirect_uri={{ salesforce.CallbackURL }}">Connect with Salesforce</a>
     </div>
+    {% if salesforceError && salesforceError != "" %}
+    <div class="row">
+        <h3>Your Salesforce account was not successfully be connected.  Please try again.</h3>
+        <p>
+          {{ salesforceError }}
+        </p>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
 
