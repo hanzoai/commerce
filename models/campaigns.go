@@ -43,6 +43,8 @@ type Campaign struct {
 	Salesforce      struct {
 		AccessToken  string
 		RefreshToken string
+		InstanceUrl  string
+		Id           string
 		IssuedAt     string
 		Signature    string
 	}
