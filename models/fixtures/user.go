@@ -84,7 +84,14 @@ var skullyCampaign = delay.Func("fixtures-skully-campaign", func(c appengine.Con
 		campaign.Stripe.PublishableKey = "pk_test_IkyRgPrDxa5SRvEP1XKpJann"
 		campaign.Stripe.RefreshToken = "rt_5E65oPVEYWwIAqBWpW64RfefExYPVAvt4Pu9YeEBPJn9AECa"
 		campaign.Stripe.UserId = "acct_14lSsRCSRlllXCwP"
-	}
 
+		// And sales force test credentials
+		campaign.Salesforce.AccessToken = "00DU0000000MGvt!AREAQGrgoTKiB6GznZ78e6gUFnBqelu3ACey4QP6o5SUxfI5IuAK3Ng5GuYZStYSyslLdaTPcm5FOHBOjG_Ke1ORqTFx4F_U"
+		campaign.Salesforce.RefreshToken = "5Aep861ikNsOLQGnbp74xiVo8YsSB.C3pr13Ap4bZm4gkEn0F7fCBpsfsZSUdBt45uDT4nPQuosABt2aALURCfn"
+		campaign.Salesforce.Id = "https://login.salesforce.com/id/00DU0000000MGvtMAG/005U0000003d6VyIAI"
+		campaign.Salesforce.IssuedAt = "1419290491161"
+		campaign.Salesforce.InstanceUrl = "https://na12.salesforce.com"
+		campaign.Salesforce.Signature = "Mps97vB+74lSDjKRRGeRFJ4scvxm3dhUvaVv8gfQT6E="
+	}
 	db.PutKey("campaign", "dev@hanzo.ai", &campaign)
 })
