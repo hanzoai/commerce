@@ -9,7 +9,7 @@ func Development() *Config {
 	config.AutoCompileAssets = false
 	config.AutoLoadFixtures = true
 
-	config.Protocol = "/" // Localhost
+	config.Protocol = "//localhost:8080/" // Localhost
 
 	config.Prefixes["default"] = "/"
 	config.Prefixes["api"] = "/api/"
