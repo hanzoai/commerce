@@ -66,6 +66,7 @@ func SalesforceCallback(c *gin.Context) {
 		return
 	}
 
+	log.Warn("JSON BLOB %v", jsonBlob)
 	token := new(salesforceToken)
 
 	// try and extract the json struct
@@ -107,5 +108,5 @@ func SalesforceCallback(c *gin.Context) {
 	}
 
 	// Success
-	template.Render(c, "stripe/success.html", "token", token.AccessToken)
+	template.Render(c, "salesforce/success.html", "token", token.AccessToken)
 }
