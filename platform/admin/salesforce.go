@@ -38,6 +38,8 @@ func SalesforceCallback(c *gin.Context) {
 	client := urlfetch.Client(ctx)
 
 	// http://www.salesforce.com/us/developer/docs/api_rest/index_Left.htm#StartTopic=Content/quickstart.htm
+	// Below one is the secret good documentation
+	// https://www.salesforce.com/us/developer/docs/api_rest/Content/intro_understanding_web_server_oauth_flow.htm
 	data := url.Values{}
 	data.Add("code", code)
 	data.Add("grant_type", "authorization_code")
