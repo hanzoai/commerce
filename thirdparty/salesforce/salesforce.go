@@ -18,11 +18,12 @@ import (
 )
 
 var LoginUrl = "https://login.salesforce.com/services/oauth2/token"
-var DescribePath = "/services/data/v29.0/"
+var DescribePath = "/services/data/v26.0/"
+var SObjectDescribePath = DescribePath + "sobjects/"
 
 type Api struct {
-	Tokens   SalesforceTokens
-	JsonBlob string
+	Tokens       SalesforceTokens
+	LastJsonBlob string
 }
 
 type SalesforceTokens struct {
@@ -59,6 +60,45 @@ type DescribeResponse struct {
 	ErrorCode string `json:"errorCode"`
 }
 
+type SObjectUrls struct {
+	SObject     string `json:"sobject"`
+	Describe    string `json:"describe"`
+	RowTemplate string `json:"rowTemplate"`
+}
+
+type SObject struct {
+	Name        string `json:"name"`
+	Label       string `json:"label"`
+	KeyPrefix   string `json:"keyPrefix"`
+	LabelPlural string `json:"labelPlural"`
+
+	Urls SObjectUrls `json:"urls"`
+
+	// grammatically annoying bools
+	Custom              bool `json:"custom"`
+	Layoutable          bool `json:"layoutable"`
+	Activateable        bool `json:"activateable"`
+	Searchable          bool `json:"searchable"`
+	Updateable          bool `json:"updateable"`
+	Createable          bool `json:"createable"`
+	DeprecatedAndHidden bool `json:"deprecatedAndHidden"`
+	CustomSetting       bool `json:"customSetting"`
+	Deletable           bool `json:"deletable"`
+	FeedEnable          bool `json:"feedEnabled"`
+	Mergeable           bool `json:"mergeable"`
+	Queryable           bool `json:"queryable"`
+	Replicateable       bool `json:"replicateable"`
+	Retrieveable        bool `json:"retrieveable"`
+	Undeleteable        bool `json:"undeleteable"`
+	Triggerable         bool `json:"triggerable"`
+}
+
+type SObjectDescribeResponse struct {
+	Encoding     string    `json:"encoding"`
+	MaxBatchSize string    `json:"maxBatchSize"`
+	SObjects     []SObject `json:"sobjects"`
+}
+
 func (a *Api) request(method, url string, params *url.Values) (*http.Request, error) {
 	req, err := http.NewRequest(method, url, strings.NewReader(params.Encode()))
 	if err != nil {
@@ -67,11 +107,6 @@ func (a *Api) request(method, url string, params *url.Values) (*http.Request, er
 	}
 	req.Header.Add("Authorization", "Bearer "+a.Tokens.AccessToken)
 
-	return req, err
-}
-
-func (a *Api) get(url string, params *url.Values) (*http.Request, error) {
-	req, err := a.request("GET", url, params)
 	return req, err
 }
 
@@ -96,7 +131,9 @@ func Init(c *gin.Context, accessToken, refreshToken, instanceUrl, id, issuedAt, 
 
 	response := make([]DescribeResponse, 1, 1)
 
-	Describe(api, client, response)
+	if err := Describe(api, client, response); err != nil {
+		return nil, err
+	}
 
 	if len(response) == 0 || response[0].ErrorCode != "" {
 		if err := Refresh(c, refreshToken, &api.Tokens); err != nil {
@@ -113,30 +150,57 @@ func Init(c *gin.Context, accessToken, refreshToken, instanceUrl, id, issuedAt, 
 		}
 	}
 
+	var response2 SObjectDescribeResponse
+	if err := SObjectDescribe(api, client, &response2); err != nil {
+		return api, err
+	}
+
 	return api, nil
 }
 
-func Describe(api *Api, client *http.Client, response []DescribeResponse) error {
+func request(api *Api, client *http.Client, method, path string) ([]byte, error) {
 	params := url.Values{}
-	req, err := api.get(api.Tokens.InstanceUrl+DescribePath, &params)
+	req, err := api.request(method, api.Tokens.InstanceUrl+path, &params)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	res, err := client.Do(req)
 	defer res.Body.Close()
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	jsonBlob, err := ioutil.ReadAll(res.Body)
 	if err != nil {
+		return nil, err
+	}
+
+	api.LastJsonBlob = string(jsonBlob[:])
+
+	return jsonBlob, nil
+}
+
+func SObjectDescribe(api *Api, client *http.Client, response *SObjectDescribeResponse) error {
+	jsonBlob, err := request(api, client, "GET", SObjectDescribePath)
+	if err != nil {
 		return err
 	}
 
-	api.JsonBlob = string(jsonBlob[:])
+	if err := json.Unmarshal(jsonBlob, response); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func Describe(api *Api, client *http.Client, response []DescribeResponse) error {
+	jsonBlob, err := request(api, client, "GET", DescribePath)
+	if err != nil {
+		return err
+	}
 
 	//It could be a single response...
 	singleResponse := DescribeResponse{}
