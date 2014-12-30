@@ -94,16 +94,16 @@ func Init(c *gin.Context, accessToken, refreshToken, instanceUrl, id, issuedAt, 
 			IssuedAt:     issuedAt,
 			Signature:    signature}})
 
-	response := make([]DescribeResponse, 0, 0)
+	response := make([]DescribeResponse, 1, 1)
 
-	Describe(api, client, &response)
+	Describe(api, client, response)
 
 	if len(response) == 0 || response[0].ErrorCode != "" {
 		if err := Refresh(c, refreshToken, &api.Tokens); err != nil {
 			return nil, err
 		}
 
-		err := Describe(api, client, &response)
+		err := Describe(api, client, response)
 		if err != nil {
 			return nil, err
 		}
@@ -116,7 +116,7 @@ func Init(c *gin.Context, accessToken, refreshToken, instanceUrl, id, issuedAt, 
 	return api, nil
 }
 
-func Describe(api *Api, client *http.Client, response *[]DescribeResponse) error {
+func Describe(api *Api, client *http.Client, response []DescribeResponse) error {
 	params := url.Values{}
 	req, err := api.get(api.Tokens.InstanceUrl+DescribePath, &params)
 
@@ -138,9 +138,17 @@ func Describe(api *Api, client *http.Client, response *[]DescribeResponse) error
 
 	api.JsonBlob = string(jsonBlob[:])
 
-	if err := json.Unmarshal(jsonBlob, response); err != nil {
+	//It could be a single response...
+	singleResponse := DescribeResponse{}
+	if err := json.Unmarshal(jsonBlob, &singleResponse); err != nil {
+		//Or multiple because the API hates you when it spits out errors...
+		if err2 := json.Unmarshal(jsonBlob, &response); err != nil {
+			return err2
+		}
 		return err
 	}
+
+	response[0] = singleResponse
 
 	return nil
 }
