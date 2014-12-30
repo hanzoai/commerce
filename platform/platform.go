@@ -37,4 +37,6 @@ func init() {
 
 	// Salesfoce connect
 	router.GET("/salesforce/callback", loginRequired, admin.SalesforceCallback)
+
+	router.GET("/salesforce/test", loginRequired, admin.TestSalesforceConnection)
 }
