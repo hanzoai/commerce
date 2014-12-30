@@ -139,6 +139,6 @@ func TestSalesforceConnection(c *gin.Context) {
 		return
 	}
 
-	log.Info("YAY %v", api.JsonBlob)
-	c.String(200, fmt.Sprintf("YAY: %v", api))
+	log.Info("YAY %v", api.LastJsonBlob)
+	c.String(200, fmt.Sprintf("YAY: %v %v", api))
 }
