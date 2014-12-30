@@ -86,12 +86,12 @@ var skullyCampaign = delay.Func("fixtures-skully-campaign", func(c appengine.Con
 		campaign.Stripe.UserId = "acct_14lSsRCSRlllXCwP"
 
 		// And sales force test credentials
-		campaign.Salesforce.AccessToken = "00DU0000000MGvt!AREAQGrgoTKiB6GznZ78e6gUFnBqelu3ACey4QP6o5SUxfI5IuAK3Ng5GuYZStYSyslLdaTPcm5FOHBOjG_Ke1ORqTFx4F_U"
-		campaign.Salesforce.RefreshToken = "5Aep861ikNsOLQGnbp74xiVo8YsSB.C3pr13Ap4bZm4gkEn0F7fCBpsfsZSUdBt45uDT4nPQuosABt2aALURCfn"
+		campaign.Salesforce.AccessToken = "00DU0000000MGvt!AREAQMbkerxOcdnyQQFHsAuTP.q412qTRvv7nFWiAksEacNHzX7cws1eFxEY5AePOG4OPMR5P9y_Vkg.ssXFVSRo2CJbQTEH"
+		campaign.Salesforce.RefreshToken = "5Aep861ikNsOLQGnbp74xiVo8YsSB.C3pr13Ap4bZm4gkEn0F5dOKAbVmust.JP7_FAqP6_u3qX.853X90EWlPN"
 		campaign.Salesforce.Id = "https://login.salesforce.com/id/00DU0000000MGvtMAG/005U0000003d6VyIAI"
-		campaign.Salesforce.IssuedAt = "1419290491161"
+		campaign.Salesforce.IssuedAt = "1419371438825"
 		campaign.Salesforce.InstanceUrl = "https://na12.salesforce.com"
-		campaign.Salesforce.Signature = "Mps97vB+74lSDjKRRGeRFJ4scvxm3dhUvaVv8gfQT6E="
+		campaign.Salesforce.Signature = "rlPQYeDpBtCsTHgMroLFVFh1KFUNCDpxF/+sEXf9BUE="
 	}
 	db.PutKey("campaign", "dev@hanzo.ai", &campaign)
 })

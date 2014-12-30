@@ -14,20 +14,12 @@ import (
 	"crowdstart.io/models"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
+	"crowdstart.io/thirdparty/salesforce"
 
 	"github.com/gin-gonic/gin"
 
 	"appengine/urlfetch"
 )
-
-type salesforceToken struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	InstanceUrl  string `json:"instance_url"`
-	Id           string `json:"id"`
-	IssuedAt     string `json:"issued_at"`
-	Signature    string `json:"signature"`
-}
 
 // Salesforce End Points
 func SalesforceCallback(c *gin.Context) {
@@ -42,12 +34,12 @@ func SalesforceCallback(c *gin.Context) {
 	// https://www.salesforce.com/us/developer/docs/api_rest/Content/intro_understanding_web_server_oauth_flow.htm
 	data := url.Values{}
 	data.Add("code", code)
-	data.Add("grant_type", "authorization_code")
+	data.Set("grant_type", "authorization_code")
 	data.Set("client_id", config.Salesforce.ConsumerKey)
 	data.Set("client_secret", config.Salesforce.ConsumerSecret)
-	data.Add("redirect_uri", config.Salesforce.CallbackURL)
+	data.Set("redirect_uri", config.Salesforce.CallbackURL)
 
-	tokenReq, err := http.NewRequest("POST", "https://login.salesforce.com/services/oauth2/token", strings.NewReader(data.Encode()))
+	tokenReq, err := http.NewRequest("POST", salesforce.LoginUrl, strings.NewReader(data.Encode()))
 	if err != nil {
 		c.Fail(500, err)
 		return
@@ -68,7 +60,7 @@ func SalesforceCallback(c *gin.Context) {
 		return
 	}
 
-	token := new(salesforceToken)
+	token := new(salesforce.SalesforceTokens)
 
 	// try and extract the json struct
 	if err := json.Unmarshal(jsonBlob, token); err != nil {
@@ -113,4 +105,38 @@ func SalesforceCallback(c *gin.Context) {
 
 	// Success
 	template.Render(c, "salesforce/success.html", "token", token.AccessToken)
+}
+
+func TestSalesforceConnection(c *gin.Context) {
+	// Get user
+	email, err := auth.GetEmail(c)
+	if err != nil {
+		log.Panic("Unable to get email from session: %v", err)
+	}
+
+	ctx := middleware.GetAppEngine(c)
+	db := datastore.New(ctx)
+
+	campaign := new(models.Campaign)
+
+	// Get user instance
+	if err := db.GetKey("campaign", email, campaign); err != nil {
+		log.Panic("Unable to get campaign from database: %v", err)
+	}
+
+	api, err := salesforce.Init(
+		c,
+		campaign.Salesforce.AccessToken,
+		campaign.Salesforce.RefreshToken,
+		campaign.Salesforce.InstanceUrl,
+		campaign.Salesforce.Id,
+		campaign.Salesforce.IssuedAt,
+		campaign.Salesforce.Signature)
+
+	if err != nil {
+		log.Panic("Unable to log in: %v", err)
+		return
+	}
+
+	api.DescribeAccount()
 }
