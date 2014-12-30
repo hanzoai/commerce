@@ -12,9 +12,9 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models"
+	"crowdstart.io/thirdparty/salesforce"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
-	"crowdstart.io/thirdparty/salesforce"
 
 	"github.com/gin-gonic/gin"
 
@@ -138,5 +138,5 @@ func TestSalesforceConnection(c *gin.Context) {
 		return
 	}
 
-	api.DescribeAccount()
+	log.Info("YAY %v", api.JsonBlob)
 }
