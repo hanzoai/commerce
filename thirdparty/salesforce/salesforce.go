@@ -2,6 +2,7 @@ package salesforce
 
 import (
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -20,30 +21,39 @@ var LoginUrl = "https://login.salesforce.com/services/oauth2/token"
 var DescribePath = "/services/data/v29.0/"
 
 type Api struct {
-	Tokens SalesforceTokens
+	Tokens   SalesforceTokens
+	JsonBlob string
 }
 
 type SalesforceTokens struct {
-	AccessToken string `json:"access_token"`
+	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
-	InstanceUrl string `json:"instance_url"`
-	Id          string `json:"id"`
-	IssuedAt    string `json:"issued_at"`
-	Signature   string `json:"signature"`
+	InstanceUrl  string `json:"instance_url"`
+	Id           string `json:"id"`
+	IssuedAt     string `json:"issued_at"`
+	Signature    string `json:"signature"`
+
+	ErrorDescription string `json:"error_description"`
+	Error            string `json:"error"`
 }
 
-func (a *Api) request(method, url string, params *url.Values) (*http.Request, error){
+type DescribeResponse struct {
+	Message   string `json:"message"`
+	ErrorCode string `json:"errorCode"`
+}
+
+func (a *Api) request(method, url string, params *url.Values) (*http.Request, error) {
 	req, err := http.NewRequest(method, url, strings.NewReader(params.Encode()))
 	if err != nil {
 		log.Error("Could not create request: %v", err)
 		return nil, err
 	}
-	req.Header.Add("Authorization", "Bearer " + a.Tokens.AccessToken)
+	req.Header.Add("Authorization", "Bearer "+a.Tokens.AccessToken)
 
 	return req, err
 }
 
-func (a *Api) get(url string, params *url.Values) (*http.Request, error){
+func (a *Api) get(url string, params *url.Values) (*http.Request, error) {
 	req, err := a.request("GET", url, params)
 	return req, err
 }
@@ -56,27 +66,69 @@ func getClient(c *gin.Context) *http.Client {
 }
 
 func Init(c *gin.Context, accessToken, refreshToken, instanceUrl, id, issuedAt, signature string) (*Api, error) {
-	ctx := middleware.GetAppEngine(c)
-	client := urlfetch.Client(ctx)
+	client := getClient(c)
 
 	api := &(Api{
 		Tokens: SalesforceTokens{
-			AccessToken: accessToken,
+			AccessToken:  accessToken,
 			RefreshToken: refreshToken,
-			InstanceUrl: instanceUrl,
-			Id: id,
-			IssuedAt: issuedAt,
-			Signature: signature}})
+			InstanceUrl:  instanceUrl,
+			Id:           id,
+			IssuedAt:     issuedAt,
+			Signature:    signature}})
 
-	params := url.Values{}
-	if req, err := api.get(api.Tokens.InstanceUrl + DescribePath, params); err != nil {
+	response := make([]DescribeResponse, 0, 0)
 
+	Describe(api, client, &response)
+
+	if len(response) == 0 || response[0].ErrorCode != "" {
+		if err := Refresh(c, refreshToken, &api.Tokens); err != nil {
+			return nil, err
+		}
+
+		err := Describe(api, client, &response)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(response) == 0 || response[0].ErrorCode != "" {
+			return nil, errors.New("Nothing to decode")
+		}
 	}
 
 	return api, nil
 }
 
-func Refresh(c *gin.Context, refreshToken string) (*SalesforceTokens, error) {
+func Describe(api *Api, client *http.Client, response *[]DescribeResponse) error {
+	params := url.Values{}
+	req, err := api.get(api.Tokens.InstanceUrl+DescribePath, &params)
+
+	if err != nil {
+		return err
+	}
+
+	res, err := client.Do(req)
+	defer res.Body.Close()
+
+	if err != nil {
+		return err
+	}
+
+	jsonBlob, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return err
+	}
+
+	api.JsonBlob = string(jsonBlob[:])
+
+	if err := json.Unmarshal(jsonBlob, response); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func Refresh(c *gin.Context, refreshToken string, tokens *SalesforceTokens) error {
 	ctx := middleware.GetAppEngine(c)
 	client := urlfetch.Client(ctx)
 
@@ -90,7 +142,7 @@ func Refresh(c *gin.Context, refreshToken string) (*SalesforceTokens, error) {
 	tokenReq, err := http.NewRequest("POST", LoginUrl, strings.NewReader(data.Encode()))
 	if err != nil {
 		log.Error("Could not create request: %v", err)
-		return nil, err
+		return err
 	}
 
 	log.Debug("Trying to send request %v with params %v", tokenReq, data)
@@ -100,27 +152,29 @@ func Refresh(c *gin.Context, refreshToken string) (*SalesforceTokens, error) {
 	defer res.Body.Close()
 	if err != nil {
 		log.Error("Could not post a Refresh Token: %v", err)
-		return nil, err
+		return err
 	}
 
 	// decode the json
 	jsonBlob, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		log.Error("Could not decode jsonblob: %v", err)
-		return nil, err
+		return err
 	}
 
-	token := new(SalesforceTokens)
 	log.Debug("Trying to unmarshal jsonBlob: %s", jsonBlob)
 
 	// try and extract the json struct
-	if err := json.Unmarshal(jsonBlob, token); err != nil {
+	if err := json.Unmarshal(jsonBlob, tokens); err != nil {
 		log.Error("Could not unmarshal jsonBlob: %v", err)
-		return nil, err
+		return err
 	}
 
-	log.Debug("New Access Token:%v", token.AccessToken)
+	if tokens.Error != "" {
+		return errors.New(tokens.ErrorDescription)
+	}
 
-	return token, nil
+	log.Debug("New Access Token:%v", tokens.AccessToken)
+
+	return nil
 }
-
