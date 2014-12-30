@@ -38,6 +38,23 @@ type SalesforceTokens struct {
 }
 
 type DescribeResponse struct {
+	SObjects     string `json:"sobjects"`
+	Connect      string `json:"connect"`
+	Query        string `json:"query"`
+	Theme        string `json:"theme"`
+	QueryAll     string `json:"queryAll"`
+	Tooling      string `json:"tooling"`
+	Chatter      string `json:"chatter"`
+	Analytics    string `json:"analytics"`
+	Recent       string `json:"recent"`
+	Commerce     string `json:"commerce"`
+	Licensing    string `json:"licensing"`
+	Identity     string `json:"identity"`
+	FlexiPage    string `json:"flexiPage"`
+	Search       string `json:"search"`
+	QuickActions string `json:"quickActions"`
+	AppMenu      string `json:"appMenu"`
+
 	Message   string `json:"message"`
 	ErrorCode string `json:"errorCode"`
 }
