@@ -2,6 +2,7 @@ package admin
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -139,4 +140,5 @@ func TestSalesforceConnection(c *gin.Context) {
 	}
 
 	log.Info("YAY %v", api.JsonBlob)
+	c.String(200, fmt.Sprintf("YAY: %v", api))
 }
