@@ -15,13 +15,30 @@ import (
 	"crowdstart.io/models"
 	"crowdstart.io/thirdparty/mandrill"
 	"crowdstart.io/thirdparty/stripe"
+	"crowdstart.io/util/cache"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
 )
 
-// Cache stripe keys
-var stripePublishableKey string
-var stripeAccessToken string
+// Helper to get campaign
+func getCampaign(args ...interface{}) models.Campaign {
+	c := args[0].(*gin.Context)
+	db := args[1].(*datastore.Datastore)
+	var campaign models.Campaign
+	if err := db.GetKey("campaign", "dev@hanzo.ai", &campaign); err != nil {
+		log.Error(err, c)
+	}
+	return campaign
+}
+
+// Cache stripe publishable key, access token for a minute each
+var getStripePublishableKey = cache.Memoize(func(args ...interface{}) interface{} {
+	return getCampaign(args...).Stripe.PublishableKey
+}, 60)
+
+var getStripeAccessToken = cache.Memoize(func(args ...interface{}) interface{} {
+	return getCampaign(args...).Stripe.AccessToken
+}, 60)
 
 // GET /
 func index(c *gin.Context) {
@@ -55,14 +72,7 @@ func checkout(c *gin.Context) {
 	form.Validate(c)
 
 	// Get PublishableKey Key.
-	if stripePublishableKey == "" {
-		var campaign models.Campaign
-		if err := db.GetKey("campaign", "dev@hanzo.ai", &campaign); err != nil {
-			log.Error(err, c)
-		} else {
-			stripePublishableKey = campaign.Stripe.PublishableKey
-		}
-	}
+	stripePublishableKey := getStripePublishableKey(c, db).(string)
 
 	// Try to get user from datastore based on email in session.
 	user, _ := auth.GetUser(c)
@@ -137,16 +147,7 @@ func charge(c *gin.Context) {
 	}
 
 	// Get access token
-	if stripeAccessToken == "" {
-		var campaign models.Campaign
-		if err := db.GetKey("campaign", "dev@hanzo.ai", &campaign); err != nil {
-			log.Error("Unable to get stripe access token: %v", err)
-			c.Fail(500, err)
-			return
-		} else {
-			stripeAccessToken = campaign.Stripe.AccessToken
-		}
-	}
+	stripeAccessToken := getStripePublishableKey(c, db).(string)
 
 	// Charging order
 	log.Debug("Charging order...", c)
