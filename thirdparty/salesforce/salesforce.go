@@ -3,6 +3,7 @@ package salesforce
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -18,8 +19,9 @@ import (
 )
 
 var LoginUrl = "https://login.salesforce.com/services/oauth2/token"
-var DescribePath = "/services/data/v26.0/"
+var DescribePath = "/services/data/v29.0/"
 var SObjectDescribePath = DescribePath + "sobjects/"
+var ContactQueryPath = DescribePath + "query/?q=SELECT+Id+from+Contact+where+Contact.Email+=+%27%v%27"
 
 type Api struct {
 	Tokens       SalesforceTokens
@@ -99,6 +101,83 @@ type SObjectDescribeResponse struct {
 	SObjects     []SObject `json:"sobjects"`
 }
 
+type Attribute struct {
+	Type string `json:"type"`
+	Url  string `json:"url"`
+}
+
+type ContactQueryAttributes struct {
+	Id         string    `json:"Id"`
+	Attributes Attribute `json:"attributes"`
+}
+
+type ContactQueryResponse struct {
+	TotalSize int                      `json:"totalSize"`
+	Done      bool                     `json:"done"`
+	Records   []ContactQueryAttributes `json:"attributes"`
+}
+
+type ContactResponse struct {
+	Attributes                   Attribute `json:"attributes"`
+	Id                           string    `json:"Id"`
+	IsDeleted                    bool      `json:"IsDeleted"`
+	MasterRecordId               string    `json:"MasterRecordId"`
+	AccountId                    string    `json:"AccountId"`
+	LastName                     string    `json:"LastName"`
+	FirstName                    string    `json:"FirstName"`
+	Salutation                   string    `json:"Salutation"`
+	Name                         string    `json:"Name"`
+	MailingStreet                string    `json:"MailingStreet"`
+	MailingCity                  string    `json:"MailingCity"`
+	MailingState                 string    `json:"MailingState"`
+	MailingPostalCode            string    `json:"MailingPostalCode"`
+	MailingCountry               string    `json:"MailingCountry"`
+	MailingStateCode             string    `json:"MailingStateCode"`
+	MailingCountryCode           string    `json:"MailingCountryCode"`
+	MailingLatitude              string    `json:"MailingLatitude"`
+	MailingLongitude             string    `json:"MailingLongitude"`
+	Phone                        string    `json:"Phone"`
+	Fax                          string    `json:"Fax"`
+	MobilePhone                  string    `json:"MobilePhone"`
+	ReportsToId                  string    `json:"ReportsToId"`
+	Email                        string    `json:"tremallo@yahoo.com"`
+	Title                        string    `json:"Title"`
+	Department                   string    `json:"Department"`
+	OwnerId                      string    `json:"OwnerId"`
+	CreatedDate                  string    `json:"CreatedDate"`
+	CreatedById                  string    `json:"CreatedById"`
+	LastModifiedDate             string    `json:"LastModifiedDate"`
+	LastModifiedById             string    `json:"LastModifiedById"`
+	SystemModstamp               string    `json:"SystemModstamp"`
+	LastActivityDate             string    `json:"LastActivityDate"`
+	LastCURequestDate            string    `json:"LastCURequestDate"`
+	LastCUUpdateDate             string    `json:"LastCUUpdateDate"`
+	LastViewedDate               string    `json:"LastViewedDate"`
+	LastReferencedDate           string    `json:"LastReferencedDate"`
+	EmailBouncedReason           string    `json:"EmailBouncedReason"`
+	EmailBouncedDate             string    `json:"EmailBouncedDate"`
+	IsEmailBounced               bool      `json:"IsEmailBounced"`
+	JigsawContactId              string    `json:"JigsawContactId"`
+	ZendeskLastSyncDateC         string    `json:"Zendesk__Last_Sync_Date__c"`
+	ZendeskLastSyncStatusC       string    `json:"Zendesk__Last_Sync_Status__c"`
+	ZendeskResultC               string    `json:"Zendesk__Result__c"`
+	ZendeskTagsC                 string    `json:"Zendesk__Tags__c"`
+	ZendeskZendeskOutofSyncC     string    `json:"Zendesk__Zendesk_OutofSync__c"`
+	ZendeskZendeskOldTagsC       string    `json:"Zendesk__Zendesk_oldTags__c"`
+	ZendeskIsCreatedUpdatedFlagC string    `json:"Zendesk__isCreatedUpdatedFlag__c"`
+	ZendeskNotesC                string    `json:"Zendesk__notes__c"`
+	ZendeskZendeskIdC            string    `json:"Zendesk__zendesk_id__c"`
+	UniquePreorderLinC           string    `json:"Unique_Preorder_Link__c"`
+	FullfillmentStatusC          string    `json:"Fulfillment_Status__c"`
+	PreorderC                    string    `json:"Preorder__c"`
+	ShippingAddressC             string    `json:"Shipping_Address__c"`
+	ShippingCityC                string    `json:"Shipping_City__c"`
+	ShippingStateC               string    `json:"Shipping_State__c"`
+	ShippingPostalZipC           string    `json:"Shipping_Postal_Zip__c"`
+	ShippingCountryC             string    `json:"Shipping_Country__c"`
+	MC4SFMCSubscriberC           string    `json:"MC4SF__MC_Subscriber__c"`
+}
+
 func (a *Api) request(method, url string, params *url.Values) (*http.Request, error) {
 	req, err := http.NewRequest(method, url, strings.NewReader(params.Encode()))
 	if err != nil {
@@ -118,8 +197,6 @@ func getClient(c *gin.Context) *http.Client {
 }
 
 func Init(c *gin.Context, accessToken, refreshToken, instanceUrl, id, issuedAt, signature string) (*Api, error) {
-	client := getClient(c)
-
 	api := &(Api{
 		Tokens: SalesforceTokens{
 			AccessToken:  accessToken,
@@ -131,7 +208,7 @@ func Init(c *gin.Context, accessToken, refreshToken, instanceUrl, id, issuedAt, 
 
 	response := make([]DescribeResponse, 1, 1)
 
-	if err := Describe(api, client, response); err != nil {
+	if err := Describe(api, c, response); err != nil {
 		return nil, err
 	}
 
@@ -140,7 +217,7 @@ func Init(c *gin.Context, accessToken, refreshToken, instanceUrl, id, issuedAt, 
 			return nil, err
 		}
 
-		err := Describe(api, client, response)
+		err := Describe(api, c, response)
 		if err != nil {
 			return nil, err
 		}
@@ -150,15 +227,12 @@ func Init(c *gin.Context, accessToken, refreshToken, instanceUrl, id, issuedAt, 
 		}
 	}
 
-	var response2 SObjectDescribeResponse
-	if err := SObjectDescribe(api, client, &response2); err != nil {
-		return api, err
-	}
-
 	return api, nil
 }
 
-func request(api *Api, client *http.Client, method, path string) ([]byte, error) {
+func request(api *Api, c *gin.Context, method, path string) ([]byte, error) {
+	client := getClient(c)
+
 	params := url.Values{}
 	req, err := api.request(method, api.Tokens.InstanceUrl+path, &params)
 
@@ -183,8 +257,44 @@ func request(api *Api, client *http.Client, method, path string) ([]byte, error)
 	return jsonBlob, nil
 }
 
-func SObjectDescribe(api *Api, client *http.Client, response *SObjectDescribeResponse) error {
-	jsonBlob, err := request(api, client, "GET", SObjectDescribePath)
+func GetContactByEmail(api *Api, c *gin.Context, email string) ([]ContactResponse, error) {
+	jsonBlob, err := request(api, c, "GET", fmt.Sprintf(ContactQueryPath, email))
+	if err != nil {
+		return nil, err
+	}
+
+	contactQueryResponse := new(ContactQueryResponse)
+
+	if err := json.Unmarshal(jsonBlob, contactQueryResponse); err != nil {
+		return nil, err
+	}
+
+	length := len(contactQueryResponse.Records)
+	if length == 0 {
+		return nil, errors.New("No records found")
+	}
+
+	response := make([]ContactResponse, length, length)
+	for i, record := range contactQueryResponse.Records {
+		jsonBlob, err = request(api, c, "GET", record.Attributes.Url)
+		if err != nil {
+			return nil, err
+		}
+
+		contactResponse := ContactResponse{}
+
+		if err := json.Unmarshal(jsonBlob, &contactResponse); err != nil {
+			return nil, err
+		}
+
+		response[i] = contactResponse
+	}
+
+	return response, err
+}
+
+func SObjectDescribe(api *Api, c *gin.Context, response *SObjectDescribeResponse) error {
+	jsonBlob, err := request(api, c, "GET", SObjectDescribePath)
 	if err != nil {
 		return err
 	}
@@ -196,8 +306,8 @@ func SObjectDescribe(api *Api, client *http.Client, response *SObjectDescribeRes
 	return nil
 }
 
-func Describe(api *Api, client *http.Client, response []DescribeResponse) error {
-	jsonBlob, err := request(api, client, "GET", DescribePath)
+func Describe(api *Api, c *gin.Context, response []DescribeResponse) error {
+	jsonBlob, err := request(api, c, "GET", DescribePath)
 	if err != nil {
 		return err
 	}
