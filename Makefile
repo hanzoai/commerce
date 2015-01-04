@@ -56,6 +56,7 @@ tools = github.com/nsf/gocode \
 
 # replacement file watcher for the dev appengine
 mtime_file_watcher = https://gist.githubusercontent.com/zeekay/5eba991c39426ca42cbb/raw/235f107b7ed081719103a4259dddd0e568d12480/mtime_file_watcher.py
+python_279_patch = https://gist.githubusercontent.com/zeekay/fc8e648dcd5d0ad35c92/raw/274da33842e43a8836dac6de9ee9627420fe7d14/appengine-sdk-python-2.7.9.patch
 
 # static assets, requisite javascript from assets -> static
 bebop = node_modules/.bin/bebop
@@ -104,6 +105,7 @@ else
 	sdk_install_extra = && echo '\#!/usr/bin/env bash\ngoapp $$@' > $(sdk_path)/gopath/bin/go \
 						&& chmod +x $(sdk_path)/gopath/bin/go \
 						&& curl  $(mtime_file_watcher) > $(sdk_path)/google/appengine/tools/devappserver2/mtime_file_watcher.py \
+						&& curl  $(python_279_patch) | patch -p0 \
 						&& pip install macfsevents --upgrade
 endif
 
