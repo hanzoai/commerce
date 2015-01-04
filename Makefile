@@ -54,9 +54,9 @@ tools = github.com/nsf/gocode \
         github.com/kisielk/errcheck \
         github.com/jstemmer/gotags
 
-# replacement file watcher for the dev appengine
+# Various patches for SDK
 mtime_file_watcher = https://gist.githubusercontent.com/zeekay/5eba991c39426ca42cbb/raw/235f107b7ed081719103a4259dddd0e568d12480/mtime_file_watcher.py
-python_279_patch = https://gist.githubusercontent.com/zeekay/fc8e648dcd5d0ad35c92/raw/274da33842e43a8836dac6de9ee9627420fe7d14/appengine-sdk-python-2.7.9.patch
+python_279_patch = https://gist.githubusercontent.com/zeekay/fc8e648dcd5d0ad35c92/raw/557e4080a96e572d3ba95e3c6279d1dac9e965fe/appengine-sdk-python-2.7.9.patch
 
 # static assets, requisite javascript from assets -> static
 bebop = node_modules/.bin/bebop
