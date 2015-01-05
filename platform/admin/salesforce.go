@@ -145,21 +145,20 @@ func TestSalesforceConnection(c *gin.Context) {
 
 	// Please don't actually mail anything to this
 	newContact := salesforce.Contact{
-		FirstName: "Test",
-		LastName:  "User",
-		Name:      "Please do not mail anything to this test user.",
+		FirstName: "Test User",
+		LastName:  "Please do not mail anything to this test user.",
 		Phone:     "555-5555",
 		Email:     "TestUser@verus.com",
 
 		MailingStreet:      "1600 Pennsylvania Avenue",
 		MailingCity:        "Northwest",
-		MailingState:       "Washington D.C.",
+		MailingState:       "District of Columbia",
 		MailingPostalCode:  "20500",
 		MailingCountryCode: "US",
 
 		ShippingAddressC:   "1600 Pennsylvania Avenue",
 		ShippingCityC:      "Northwest",
-		ShippingStateC:     "Washington D.C.",
+		ShippingStateC:     "District of Columbia",
 		ShippingPostalZipC: "20500",
 		ShippingCountryC:   "US",
 	}
