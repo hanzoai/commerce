@@ -26,16 +26,9 @@ var ContactQueryPath = DescribePath + "query/?q=SELECT+Id+from+Contact+where+Con
 var ContactUpsertUsingEmailPath = SObjectDescribePath + "Contact/CrowdstartId__c/%v"
 
 // Salesforce Structs
-type SalesforceTokens struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	InstanceUrl  string `json:"instance_url"`
-	Id           string `json:"id"`
-	IssuedAt     string `json:"issued_at"`
-	Signature    string `json:"signature"`
-
-	ErrorDescription string `json:"error_description"`
-	Error            string `json:"error"`
+type SalesforceError struct {
+	Message   string `json:"message"`
+	ErrorCode string `json:"errorCode"`
 }
 
 type DescribeResponse struct {
@@ -188,7 +181,25 @@ type Contact struct {
 	MC4SFMCSubscriberC           string `json:"MC4SF__MC_Subscriber__c,omitempty"`
 }
 
+type UpsertResponse struct {
+	Id      string            `json:"id"`
+	Success bool              `json:"success"`
+	Errors  []SalesforceError `json:"errors"`
+}
+
 // Api Data Container
+type SalesforceTokens struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	InstanceUrl  string `json:"instance_url"`
+	Id           string `json:"id"`
+	IssuedAt     string `json:"issued_at"`
+	Signature    string `json:"signature"`
+
+	ErrorDescription string `json:"error_description"`
+	Error            string `json:"error"`
+}
+
 type Api struct {
 	Tokens       SalesforceTokens
 	LastQuery    *http.Request
@@ -306,6 +317,16 @@ func UpsertContactByEmail(api *Api, c *gin.Context, contact *Contact) error {
 	}
 
 	api.LastJsonBlob = string(jsonBlob[:])
+
+	response := UpsertResponse{}
+
+	if err := json.Unmarshal(jsonBlob, &response); err != nil {
+		return err
+	}
+
+	if !response.Success {
+		return errors.New(response.Errors[0].Message)
+	}
 
 	return nil
 }
