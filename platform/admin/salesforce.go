@@ -139,6 +139,43 @@ func TestSalesforceConnection(c *gin.Context) {
 		return
 	}
 
-	log.Info("YAY %v", api.LastJsonBlob)
-	c.String(200, fmt.Sprintf("YAY: %v %v", api))
+	log.Info("Describe Success %v", api.LastJsonBlob)
+
+	displayString := fmt.Sprintf("Describe Success %v\n", api.LastJsonBlob)
+
+	// Please don't actually mail anything to this
+	newContact := salesforce.Contact{
+		FirstName: "Test",
+		LastName:  "User",
+		Name:      "Please do not mail anything to this test user.",
+		Phone:     "555-5555",
+		Email:     "TestUser@verus.com",
+
+		MailingStreet:      "1600 Pennsylvania Avenue",
+		MailingCity:        "Northwest",
+		MailingState:       "Washington D.C.",
+		MailingPostalCode:  "20500",
+		MailingCountryCode: "US",
+
+		ShippingAddressC:   "1600 Pennsylvania Avenue",
+		ShippingCityC:      "Northwest",
+		ShippingStateC:     "Washington D.C.",
+		ShippingPostalZipC: "20500",
+		ShippingCountryC:   "US",
+	}
+
+	if err = salesforce.UpsertContactByEmail(api, c, &newContact); err != nil {
+		log.Panic("Unable to upsert: %v", err)
+	}
+
+	displayString += fmt.Sprintf("Upsert Success %v\n", api.LastJsonBlob)
+
+	_, err = salesforce.GetContactByEmail(api, c, newContact.Email)
+	if err != nil {
+		log.Panic("Unable to query: %v", err)
+	}
+
+	displayString += fmt.Sprintf("Query Success %v\n", api.LastJsonBlob)
+
+	c.String(200, displayString)
 }
