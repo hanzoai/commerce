@@ -116,70 +116,76 @@ type ContactQueryResponse struct {
 }
 
 type Contact struct {
+	// Don't manually specify these
+
 	// Response Only Fields
-	Attributes     Attribute `json:"attributes"`
-	Id             string    `json:"Id"`
-	IsDeleted      bool      `json:"IsDeleted"`
-	MasterRecordId string    `json:"MasterRecordId"`
-	AccountId      string    `json:"AccountId"`
+	Attributes     Attribute `json:"attributes,omitempty"`
+	Id             string    `json:"Id,omitempty"`
+	IsDeleted      bool      `json:"IsDeleted,omitempty"`
+	MasterRecordId string    `json:"MasterRecordId,omitempty"`
+	AccountId      string    `json:"AccountId,omitempty"`
 
 	// Unique External Id, currently using email (max length 255)
-	CrowdstartIdC string `json:"CrowdstartId__C"`
+	CrowdstartIdC string `json:"CrowdstartId__C,omitempty"`
+
+	// Read Only
+	Name             string `json:"Name,omitempty"`
+	CreatedById      string `json:"CreatedById,omitempty"`
+	LastModifiedById string `json:"LastModifiedById,omitempty"`
+
+	// You can manually specify these
 
 	// Data Fields
-	LastName                     string `json:"LastName"`
-	FirstName                    string `json:"FirstName"`
-	Salutation                   string `json:"Salutation"`
-	Name                         string `json:"Name"`
-	MailingStreet                string `json:"MailingStreet"`
-	MailingCity                  string `json:"MailingCity"`
-	MailingState                 string `json:"MailingState"`
-	MailingPostalCode            string `json:"MailingPostalCode"`
-	MailingCountry               string `json:"MailingCountry"`
-	MailingStateCode             string `json:"MailingStateCode"`
-	MailingCountryCode           string `json:"MailingCountryCode"`
-	MailingLatitude              string `json:"MailingLatitude"`
-	MailingLongitude             string `json:"MailingLongitude"`
-	Phone                        string `json:"Phone"`
-	Fax                          string `json:"Fax"`
-	MobilePhone                  string `json:"MobilePhone"`
-	ReportsToId                  string `json:"ReportsToId"`
-	Email                        string `json:"Email"`
-	Title                        string `json:"Title"`
-	Department                   string `json:"Department"`
-	OwnerId                      string `json:"OwnerId"`
-	CreatedDate                  string `json:"CreatedDate"`
-	CreatedById                  string `json:"CreatedById"`
-	LastModifiedDate             string `json:"LastModifiedDate"`
-	LastModifiedById             string `json:"LastModifiedById"`
-	SystemModstamp               string `json:"SystemModstamp"`
-	LastActivityDate             string `json:"LastActivityDate"`
-	LastCURequestDate            string `json:"LastCURequestDate"`
-	LastCUUpdateDate             string `json:"LastCUUpdateDate"`
-	LastViewedDate               string `json:"LastViewedDate"`
-	LastReferencedDate           string `json:"LastReferencedDate"`
-	EmailBouncedReason           string `json:"EmailBouncedReason"`
-	EmailBouncedDate             string `json:"EmailBouncedDate"`
-	IsEmailBounced               bool   `json:"IsEmailBounced"`
-	JigsawContactId              string `json:"JigsawContactId"`
-	ZendeskLastSyncDateC         string `json:"Zendesk__Last_Sync_Date__c"`
-	ZendeskLastSyncStatusC       string `json:"Zendesk__Last_Sync_Status__c"`
-	ZendeskResultC               string `json:"Zendesk__Result__c"`
-	ZendeskTagsC                 string `json:"Zendesk__Tags__c"`
-	ZendeskZendeskOutofSyncC     string `json:"Zendesk__Zendesk_OutofSync__c"`
-	ZendeskZendeskOldTagsC       string `json:"Zendesk__Zendesk_oldTags__c"`
-	ZendeskIsCreatedUpdatedFlagC string `json:"Zendesk__isCreatedUpdatedFlag__c"`
-	ZendeskNotesC                string `json:"Zendesk__notes__c"`
-	ZendeskZendeskIdC            string `json:"Zendesk__zendesk_id__c"`
-	UniquePreorderLinC           string `json:"Unique_Preorder_Link__c"`
-	FullfillmentStatusC          string `json:"Fulfillment_Status__c"`
-	PreorderC                    string `json:"Preorder__c"`
-	ShippingAddressC             string `json:"Shipping_Address__c"`
-	ShippingCityC                string `json:"Shipping_City__c"`
-	ShippingStateC               string `json:"Shipping_State__c"`
-	ShippingPostalZipC           string `json:"Shipping_Postal_Zip__c"`
-	ShippingCountryC             string `json:"Shipping_Country__c"`
-	MC4SFMCSubscriberC           string `json:"MC4SF__MC_Subscriber__c"`
+	LastName                     string `json:"LastName,omitempty"`
+	FirstName                    string `json:"FirstName,omitempty"`
+	Salutation                   string `json:"Salutation,omitempty"`
+	MailingStreet                string `json:"MailingStreet,omitempty"`
+	MailingCity                  string `json:"MailingCity,omitempty"`
+	MailingState                 string `json:"MailingState,omitempty"`
+	MailingPostalCode            string `json:"MailingPostalCode,omitempty"`
+	MailingCountry               string `json:"MailingCountry,omitempty"`
+	MailingStateCode             string `json:"MailingStateCode,omitempty"`
+	MailingCountryCode           string `json:"MailingCountryCode,omitempty"`
+	MailingLatitude              string `json:"MailingLatitude,omitempty"`
+	MailingLongitude             string `json:"MailingLongitude,omitempty"`
+	Phone                        string `json:"Phone,omitempty"`
+	Fax                          string `json:"Fax,omitempty"`
+	MobilePhone                  string `json:"MobilePhone,omitempty"`
+	ReportsToId                  string `json:"ReportsToId,omitempty"`
+	Email                        string `json:"Email,omitempty"`
+	Title                        string `json:"Title,omitempty"`
+	Department                   string `json:"Department,omitempty"`
+	OwnerId                      string `json:"OwnerId,omitempty"`
+	CreatedDate                  string `json:"CreatedDate,omitempty"`
+	LastModifiedDate             string `json:"LastModifiedDate,omitempty"`
+	SystemModstamp               string `json:"SystemModstamp,omitempty"`
+	LastActivityDate             string `json:"LastActivityDate,omitempty"`
+	LastCURequestDate            string `json:"LastCURequestDate,omitempty"`
+	LastCUUpdateDate             string `json:"LastCUUpdateDate,omitempty"`
+	LastViewedDate               string `json:"LastViewedDate,omitempty"`
+	LastReferencedDate           string `json:"LastReferencedDate,omitempty"`
+	EmailBouncedReason           string `json:"EmailBouncedReason,omitempty"`
+	EmailBouncedDate             string `json:"EmailBouncedDate,omitempty"`
+	IsEmailBounced               bool   `json:"IsEmailBounced,omitempty"`
+	JigsawContactId              string `json:"JigsawContactId,omitempty"`
+	ZendeskLastSyncDateC         string `json:"Zendesk__Last_Sync_Date__c,omitempty"`
+	ZendeskLastSyncStatusC       string `json:"Zendesk__Last_Sync_Status__c,omitempty"`
+	ZendeskResultC               string `json:"Zendesk__Result__c,omitempty"`
+	ZendeskTagsC                 string `json:"Zendesk__Tags__c,omitempty"`
+	ZendeskZendeskOutofSyncC     string `json:"Zendesk__Zendesk_OutofSync__c,omitempty"`
+	ZendeskZendeskOldTagsC       string `json:"Zendesk__Zendesk_oldTags__c,omitempty"`
+	ZendeskIsCreatedUpdatedFlagC string `json:"Zendesk__isCreatedUpdatedFlag__c,omitempty"`
+	ZendeskNotesC                string `json:"Zendesk__notes__c,omitempty"`
+	ZendeskZendeskIdC            string `json:"Zendesk__zendesk_id__c,omitempty"`
+	UniquePreorderLinC           string `json:"Unique_Preorder_Link__c,omitempty"`
+	FullfillmentStatusC          string `json:"Fulfillment_Status__c,omitempty"`
+	PreorderC                    string `json:"Preorder__c,omitempty"`
+	ShippingAddressC             string `json:"Shipping_Address__c,omitempty"`
+	ShippingCityC                string `json:"Shipping_City__c,omitempty"`
+	ShippingStateC               string `json:"Shipping_State__c,omitempty"`
+	ShippingPostalZipC           string `json:"Shipping_Postal_Zip__c,omitempty"`
+	ShippingCountryC             string `json:"Shipping_Country__c,omitempty"`
+	MC4SFMCSubscriberC           string `json:"MC4SF__MC_Subscriber__c,omitempty"`
 }
 
 // Api Data Container
@@ -283,8 +289,6 @@ func UpsertContactByEmail(api *Api, c *gin.Context, contact *Contact) error {
 	if contact.Email == "" {
 		errors.New("Email is required")
 	}
-
-	contact.CrowdstartIdC = contact.Email
 
 	contactBytes, err := json.Marshal(contact)
 	if err != nil {
