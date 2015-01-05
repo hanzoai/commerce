@@ -141,7 +141,7 @@ func TestSalesforceConnection(c *gin.Context) {
 
 	log.Info("Describe Success %v", api.LastJsonBlob)
 
-	displayString := fmt.Sprintf("Describe Success %v\n", api.LastJsonBlob)
+	displayString := fmt.Sprintf("Describe Success %v\n%v\n", api.LastQuery, api.LastJsonBlob)
 
 	// Please don't actually mail anything to this
 	newContact := salesforce.Contact{
@@ -168,14 +168,14 @@ func TestSalesforceConnection(c *gin.Context) {
 		log.Panic("Unable to upsert: %v", err)
 	}
 
-	displayString += fmt.Sprintf("Upsert Success %v\n", api.LastJsonBlob)
+	displayString += fmt.Sprintf("Upsert Success %v\n%v\n", api.LastQuery, api.LastJsonBlob)
 
 	_, err = salesforce.GetContactByEmail(api, c, newContact.Email)
 	if err != nil {
 		log.Panic("Unable to query: %v", err)
 	}
 
-	displayString += fmt.Sprintf("Query Success %v\n", api.LastJsonBlob)
+	displayString += fmt.Sprintf("Query Success %v\n%v\n", api.LastQuery, api.LastJsonBlob)
 
 	c.String(200, displayString)
 }

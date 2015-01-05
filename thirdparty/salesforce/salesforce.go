@@ -22,8 +22,8 @@ import (
 var LoginUrl = "https://login.salesforce.com/services/oauth2/token"
 var DescribePath = "/services/data/v29.0/"
 var SObjectDescribePath = DescribePath + "sobjects/"
-var ContactQueryPath = DescribePath + "query/?q=SELECT+Id+from+Contact+where+Contact.Email+=+%27%v%27"
-var ContactUpsertUsingEmailPath = SObjectDescribePath + "Contact/Email/%v"
+var ContactQueryPath = DescribePath + "query/?q=SELECT+Id+from+Contact+where+Contact.Email+=+"
+var ContactUpsertUsingEmailPath = SObjectDescribePath + "Contact/CrowdstartId__c/%v"
 
 // Salesforce Structs
 type SalesforceTokens struct {
@@ -123,6 +123,9 @@ type Contact struct {
 	MasterRecordId string    `json:"MasterRecordId"`
 	AccountId      string    `json:"AccountId"`
 
+	// Unique External Id, currently using email (max length 255)
+	CrowdstartIdC string `json:"CrowdstartId__C"`
+
 	// Data Fields
 	LastName                     string `json:"LastName"`
 	FirstName                    string `json:"FirstName"`
@@ -141,7 +144,7 @@ type Contact struct {
 	Fax                          string `json:"Fax"`
 	MobilePhone                  string `json:"MobilePhone"`
 	ReportsToId                  string `json:"ReportsToId"`
-	Email                        string `json:"tremallo@yahoo.com"`
+	Email                        string `json:"Email"`
 	Title                        string `json:"Title"`
 	Department                   string `json:"Department"`
 	OwnerId                      string `json:"OwnerId"`
@@ -182,16 +185,19 @@ type Contact struct {
 // Api Data Container
 type Api struct {
 	Tokens       SalesforceTokens
+	LastQuery    *http.Request
 	LastJsonBlob string
 }
 
 func (a *Api) request(method, url string, data string) (*http.Request, error) {
 	req, err := http.NewRequest(method, url, strings.NewReader(data))
+
 	if err != nil {
 		log.Error("Could not create request: %v", err)
 		return nil, err
 	}
 	req.Header.Set("Authorization", "Bearer "+a.Tokens.AccessToken)
+	a.LastQuery = req
 
 	return req, err
 }
@@ -278,6 +284,8 @@ func UpsertContactByEmail(api *Api, c *gin.Context, contact *Contact) error {
 		errors.New("Email is required")
 	}
 
+	contact.CrowdstartIdC = contact.Email
+
 	contactBytes, err := json.Marshal(contact)
 	if err != nil {
 		return err
@@ -285,9 +293,10 @@ func UpsertContactByEmail(api *Api, c *gin.Context, contact *Contact) error {
 
 	contactJSON := string(contactBytes[:])
 
-	path := fmt.Sprintf(ContactUpsertUsingEmailPath, url.QueryEscape(contact.Email))
+	// strings.Replace required to bypass broken Salesforce period parsing
+	path := fmt.Sprintf(ContactUpsertUsingEmailPath, strings.Replace(contact.Email, ".", "_", -1))
 
-	jsonBlob, err := request(api, c, "POST", path, map[string]string{"Content-Type": "application/json"}, contactJSON)
+	jsonBlob, err := request(api, c, "PATCH", path, map[string]string{"Content-Type": "application/json"}, contactJSON)
 	if err != nil {
 		return err
 	}
@@ -298,7 +307,8 @@ func UpsertContactByEmail(api *Api, c *gin.Context, contact *Contact) error {
 }
 
 func GetContactByEmail(api *Api, c *gin.Context, email string) ([]Contact, error) {
-	path := fmt.Sprintf(ContactQueryPath, url.QueryEscape(email))
+	// Not the safest thing in the world
+	path := ContactQueryPath + "%27" + email + "%27"
 
 	jsonBlob, err := request(api, c, "GET", path, map[string]string{}, "")
 	if err != nil {
@@ -312,9 +322,6 @@ func GetContactByEmail(api *Api, c *gin.Context, email string) ([]Contact, error
 	}
 
 	length := len(contactQueryResponse.Records)
-	if length == 0 {
-		return nil, errors.New("No records found")
-	}
 
 	response := make([]Contact, length, length)
 	for i, record := range contactQueryResponse.Records {
@@ -362,9 +369,9 @@ func Describe(api *Api, c *gin.Context, response []DescribeResponse) error {
 			return err2
 		}
 		return err
+	} else {
+		response[0] = singleResponse
 	}
-
-	response[0] = singleResponse
 
 	return nil
 }
