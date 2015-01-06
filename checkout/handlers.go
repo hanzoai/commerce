@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"appengine"
 	. "appengine/datastore"
 	"appengine/delay"
 
@@ -207,7 +208,7 @@ func charge(c *gin.Context) {
 	}
 
 	// Get access token
-	stripeAccessToken := getStripePublishableKey(c, db).(string)
+	stripeAccessToken := getStripeAccessToken(c, db).(string)
 
 	// Charging order
 	log.Debug("Charging order...", c)
@@ -278,7 +279,6 @@ func charge(c *gin.Context) {
 			salesforceTokens.Signature)
 
 		if err != nil {
-			log.Debug("Could not synchronize with salesforce.")
 			contact := salesforce.Contact{
 				LastName:           user.LastName,
 				FirstName:          user.FirstName,
@@ -292,7 +292,9 @@ func charge(c *gin.Context) {
 			}
 
 			// Launch a synchronization task
-			salesforce.UpsertContact(api, &contact)
+			salesforceUpsertTask.Call(appengine.NewContext(c.Request), c, api, &contact)
+		} else {
+			log.Debug("Could not synchronize with salesforce.")
 		}
 	}
 
