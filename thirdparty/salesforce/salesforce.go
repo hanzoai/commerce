@@ -15,7 +15,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"appengine/delay"
 	"appengine/urlfetch"
 )
 
@@ -129,12 +128,6 @@ func request(api *Api, method, path string, headers map[string]string, data stri
 
 	return jsonBlob, nil
 }
-
-var UpsertContactTask = delay.Func("SaveContact", func(api *Api, contact *Contact) {
-	if err := UpsertContact(api, contact); err != nil {
-		log.Panic("UpsertContactTask failed: %v", err)
-	}
-})
 
 func UpsertContact(api *Api, contact *Contact) error {
 	if contact.Email == "" {
