@@ -14,6 +14,7 @@ import (
 	"crowdstart.io/middleware"
 	"crowdstart.io/models"
 	"crowdstart.io/thirdparty/mandrill"
+	"crowdstart.io/thirdparty/salesforce"
 	"crowdstart.io/thirdparty/stripe"
 	"crowdstart.io/util/cache"
 	"crowdstart.io/util/log"
@@ -38,6 +39,10 @@ var getStripePublishableKey = cache.Memoize(func(args ...interface{}) interface{
 
 var getStripeAccessToken = cache.Memoize(func(args ...interface{}) interface{} {
 	return getCampaign(args...).Stripe.AccessToken
+}, 60)
+
+var getSalesforceTokens = cache.Memoize(func(args ...interface{}) interface{} {
+	return getCampaign(args...).Salesforce
 }, 60)
 
 // GET /
@@ -196,6 +201,40 @@ func charge(c *gin.Context) {
 	}
 	key, _ := db.DecodeKey(encodedKey)
 	orderId := key.IntID()
+
+	// Synchronize Salesforce
+	salesforceTokens := getSalesforceTokens(c, db).(struct {
+		AccessToken  string
+		RefreshToken string
+		InstanceUrl  string
+		Id           string
+		IssuedAt     string
+		Signature    string
+	})
+
+	api, err := salesforce.Init(
+		c,
+		salesforceTokens.AccessToken,
+		salesforceTokens.RefreshToken,
+		salesforceTokens.InstanceUrl,
+		salesforceTokens.Id,
+		salesforceTokens.IssuedAt,
+		salesforceTokens.Signature)
+
+	contact := salesforce.Contact{
+		LastName:           user.LastName,
+		FirstName:          user.FirstName,
+		Phone:              user.Phone,
+		Email:              user.Email,
+		ShippingAddressC:   user.ShippingAddress.Line1 + user.ShippingAddress.Line2,
+		ShippingCityC:      user.ShippingAddress.City,
+		ShippingStateC:     user.ShippingAddress.State,
+		ShippingPostalZipC: user.ShippingAddress.PostalCode,
+		ShippingCountryC:   user.ShippingAddress.Country,
+	}
+
+	// Launch a synchronization task
+	salesforce.UpsertContact(api, &contact)
 
 	// Generate invite for preorder site.
 	log.Debug("Saving invite token...", c)
