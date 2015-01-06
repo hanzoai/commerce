@@ -124,14 +124,14 @@ func StripeCallback(c *gin.Context) {
 }
 
 type Event struct {
+	ApiVersion      string  `json:"api_version"`
+	Created         float64 `json:"created"`
 	ID              string  `json:"id"`
 	Livemode        bool    `json:"livemode"`
 	Object          string  `json:"object"`
 	PendingWebhooks float64 `json:"pending_webhooks"`
 	Request         string  `json:"request"`
 	Type            string  `json:"type"`
-	ApiVersion      string  `json:"api_version"`
-	Created         float64 `json:"created"`
 }
 
 type RefundEvent struct {
@@ -188,7 +188,7 @@ func Refund(c *gin.Context) {
 			break
 		}
 	}
-	order.Cancelled = true // TODO verify if this is the required behaviour
+	order.Refunded = true // TODO verify if this is the required behaviour
 
 	if _, err := db.PutKey("order", keys[0], order); err != nil {
 		c.String(500, "Error saving order")
