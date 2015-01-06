@@ -80,8 +80,8 @@ var skullyCampaign = delay.Func("fixtures-skully-campaign", func(c appengine.Con
 
 	// Hardcode stripe test credentials
 	if appengine.IsDevAppServer() {
-		campaign.Stripe.AccessToken = "sk_test_eyQyQYZlwLcKxM9LoxLKg61y"
-		campaign.Stripe.PublishableKey = "pk_test_IkyRgPrDxa5SRvEP1XKpJann"
+		campaign.Stripe.AccessToken = ""
+		campaign.Stripe.PublishableKey = "pk_test_ucSTeAAtkSXVEg713ir40UhX"
 		campaign.Stripe.RefreshToken = "rt_5E65oPVEYWwIAqBWpW64RfefExYPVAvt4Pu9YeEBPJn9AECa"
 		campaign.Stripe.UserId = "acct_14lSsRCSRlllXCwP"
 
