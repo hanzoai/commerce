@@ -35,6 +35,7 @@ func init() {
 	router.GET("/stripe/hook", admin.StripeWebhook)
 	router.POST("/stripe/hook", admin.StripeWebhook)
 
+	router.POST("/stripe/refund", admin.Refund)
 	// Salesfoce connect
 	router.GET("/salesforce/callback", loginRequired, admin.SalesforceCallback)
 

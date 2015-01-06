@@ -7,6 +7,10 @@ import (
 	"net/url"
 	"strings"
 
+	"appengine/urlfetch"
+
+	"github.com/gin-gonic/gin"
+
 	"crowdstart.io/auth"
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
@@ -14,10 +18,6 @@ import (
 	"crowdstart.io/models"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
-
-	"github.com/gin-gonic/gin"
-
-	"appengine/urlfetch"
 )
 
 type stripeToken struct {
@@ -123,7 +123,73 @@ func StripeCallback(c *gin.Context) {
 	template.Render(c, "stripe/success.html", "token", token.AccessToken)
 }
 
+type RefundEvent struct {
+	ApiVersion string  `json:"api_version"`
+	Created    float64 `json:"created"`
+	Data       struct {
+		Object struct {
+			Amount             float64     `json:"amount"`
+			BalanceTransaction string      `json:"balance_transaction"`
+			Charge             string      `json:"charge"`
+			Created            float64     `json:"created"`
+			Currency           string      `json:"currency"`
+			ID                 string      `json:"id"`
+			Object             string      `json:"object"`
+			Reason             string      `json:"reason"`
+			ReceiptNumber      interface{} `json:"receipt_number"`
+		} `json:"object"`
+	} `json:"data"`
+	ID              string  `json:"id"`
+	Livemode        bool    `json:"livemode"`
+	Object          string  `json:"object"`
+	PendingWebhooks float64 `json:"pending_webhooks"`
+	Request         string  `json:"request"`
+	Type            string  `json:"type"`
+}
+
 // StripeCallback Stripe End Points
 func StripeWebhook(c *gin.Context) {
+	c.String(200, "ok")
+}
+
+// Refund endpoint
+func Refund(c *gin.Context) {
+	refundEvt := new(RefundEvent)
+	if !c.Bind(refundEvt) {
+		c.String(500, "Error parsing json")
+		return
+	}
+	chargeId := refundEvt.Data.Object.Charge
+
+	db := datastore.New(c)
+	var orders []models.Order
+	keys, err := db.Query("order").
+		Filter("Charges.ID =", chargeId).
+		Limit(1).
+		GetAll(db.Context, &orders)
+	if err != nil {
+		c.String(500, "Unable to find order")
+		return
+	}
+
+	if len(orders) < 1 {
+		c.String(500, "Unable to find order")
+		return
+	}
+
+	order := orders[0]
+	for i := range order.Charges {
+		if order.Charges[i].ID == chargeId {
+			order.Charges[i].Refunded = true
+			break
+		}
+	}
+	order.Cancelled = true // TODO verify if this is the required behaviour
+
+	if _, err := db.PutKey("order", keys[0], order); err != nil {
+		c.String(500, "Error saving order")
+		return
+	}
+
 	c.String(200, "ok")
 }
