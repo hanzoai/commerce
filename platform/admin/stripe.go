@@ -123,10 +123,20 @@ func StripeCallback(c *gin.Context) {
 	template.Render(c, "stripe/success.html", "token", token.AccessToken)
 }
 
+type Event struct {
+	ID              string  `json:"id"`
+	Livemode        bool    `json:"livemode"`
+	Object          string  `json:"object"`
+	PendingWebhooks float64 `json:"pending_webhooks"`
+	Request         string  `json:"request"`
+	Type            string  `json:"type"`
+	ApiVersion      string  `json:"api_version"`
+	Created         float64 `json:"created"`
+}
+
 type RefundEvent struct {
-	ApiVersion string  `json:"api_version"`
-	Created    float64 `json:"created"`
-	Data       struct {
+	Event
+	Data struct {
 		Object struct {
 			Amount             float64     `json:"amount"`
 			BalanceTransaction string      `json:"balance_transaction"`
@@ -139,12 +149,6 @@ type RefundEvent struct {
 			ReceiptNumber      interface{} `json:"receipt_number"`
 		} `json:"object"`
 	} `json:"data"`
-	ID              string  `json:"id"`
-	Livemode        bool    `json:"livemode"`
-	Object          string  `json:"object"`
-	PendingWebhooks float64 `json:"pending_webhooks"`
-	Request         string  `json:"request"`
-	Type            string  `json:"type"`
 }
 
 // StripeCallback Stripe End Points
