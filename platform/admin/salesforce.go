@@ -163,13 +163,13 @@ func TestSalesforceConnection(c *gin.Context) {
 		ShippingCountryC:   "US",
 	}
 
-	if err = salesforce.UpsertContactByEmail(api, c, &newContact); err != nil {
+	if err = salesforce.UpsertContactByEmail(api, &newContact); err != nil {
 		log.Panic("Unable to upsert: %v", err)
 	}
 
 	displayString += fmt.Sprintf("Upsert Success %v\n%v\n", api.LastQuery, api.LastJsonBlob)
 
-	_, err = salesforce.GetContactByEmail(api, c, newContact.Email)
+	_, err = salesforce.GetContactByEmail(api, newContact.Email)
 	if err != nil {
 		log.Panic("Unable to query: %v", err)
 	}
