@@ -6,6 +6,9 @@ import (
 	"strings"
 	"time"
 
+	. "appengine/datastore"
+	"appengine/delay"
+
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/auth"
@@ -44,6 +47,58 @@ var getStripeAccessToken = cache.Memoize(func(args ...interface{}) interface{} {
 var getSalesforceTokens = cache.Memoize(func(args ...interface{}) interface{} {
 	return getCampaign(args...).Salesforce
 }, 60)
+
+// Deferred Tasks
+// This function upserts a contact into salesforce
+var salesforceUpsertTask = delay.Func("SalesforceUpsert", func(c *gin.Context, api *salesforce.Api, contact *salesforce.Contact) {
+	// The email is required as it is the external ID used in salesforce
+	if contact.Email == "" {
+		log.Panic("Email is required for upsert")
+	}
+
+	db := datastore.New(c)
+
+	// Query out all orders (since preorder is stored as a single string)
+	var orders []models.Order
+	_, err := db.Query("order").
+		Filter("Email =", contact.Email).
+		GetAll(db.Context, &orders)
+
+	// Ignore any field mismatch errors.
+	if err != nil {
+		if _, ok := err.(*ErrFieldMismatch); ok {
+			log.Warn("Field mismatch when getting order", db.Context)
+			err = nil
+		} else {
+			log.Panic("Error retrieving orders associated with the user's email", err)
+		}
+	}
+
+	// Query out any preorder order items and sum different skus up for totals
+	items := make(map[string]int)
+
+	for _, order := range orders {
+		if order.Preorder {
+			for _, item := range order.Items {
+				items[item.SKU_] = items[item.SKU_] + item.Quantity
+			}
+		}
+	}
+
+	// Stringify
+	preorders := ""
+
+	for key, item := range items {
+		preorders += fmt.Sprintf("%s: %d", key, item)
+	}
+
+	// Assign to contact and synchronize
+	contact.PreorderC = preorders
+
+	if err := salesforce.UpsertContact(api, contact); err != nil {
+		log.Panic("UpsertContactTask failed: %v", err)
+	}
+})
 
 // GET /
 func index(c *gin.Context) {
@@ -212,29 +267,34 @@ func charge(c *gin.Context) {
 		Signature    string
 	})
 
-	api, err := salesforce.Init(
-		c,
-		salesforceTokens.AccessToken,
-		salesforceTokens.RefreshToken,
-		salesforceTokens.InstanceUrl,
-		salesforceTokens.Id,
-		salesforceTokens.IssuedAt,
-		salesforceTokens.Signature)
+	if salesforceTokens.AccessToken != "" {
+		api, err := salesforce.Init(
+			c,
+			salesforceTokens.AccessToken,
+			salesforceTokens.RefreshToken,
+			salesforceTokens.InstanceUrl,
+			salesforceTokens.Id,
+			salesforceTokens.IssuedAt,
+			salesforceTokens.Signature)
 
-	contact := salesforce.Contact{
-		LastName:           user.LastName,
-		FirstName:          user.FirstName,
-		Phone:              user.Phone,
-		Email:              user.Email,
-		ShippingAddressC:   user.ShippingAddress.Line1 + user.ShippingAddress.Line2,
-		ShippingCityC:      user.ShippingAddress.City,
-		ShippingStateC:     user.ShippingAddress.State,
-		ShippingPostalZipC: user.ShippingAddress.PostalCode,
-		ShippingCountryC:   user.ShippingAddress.Country,
+		if err != nil {
+			log.Debug("Could not synchronize with salesforce.")
+			contact := salesforce.Contact{
+				LastName:           user.LastName,
+				FirstName:          user.FirstName,
+				Phone:              user.Phone,
+				Email:              user.Email,
+				ShippingAddressC:   user.ShippingAddress.Line1 + user.ShippingAddress.Line2,
+				ShippingCityC:      user.ShippingAddress.City,
+				ShippingStateC:     user.ShippingAddress.State,
+				ShippingPostalZipC: user.ShippingAddress.PostalCode,
+				ShippingCountryC:   user.ShippingAddress.Country,
+			}
+
+			// Launch a synchronization task
+			salesforce.UpsertContact(api, &contact)
+		}
 	}
-
-	// Launch a synchronization task
-	salesforce.UpsertContact(api, &contact)
 
 	// Generate invite for preorder site.
 	log.Debug("Saving invite token...", c)
