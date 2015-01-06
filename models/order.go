@@ -42,6 +42,7 @@ type Order struct {
 	Preorder  bool
 	Cancelled bool
 	Shipped   bool
+	Refunded  bool
 	// ShippingOption  ShippingOption
 
 	Test bool
