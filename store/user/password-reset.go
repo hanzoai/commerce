@@ -13,6 +13,11 @@ import (
 	"crowdstart.io/util/template"
 )
 
+// GET /create-password
+func CreatePassword(c *gin.Context) {
+	template.Render(c, "create-password.html")
+}
+
 // GET /password-reset
 func PasswordReset(c *gin.Context) {
 	template.Render(c, "password-reset.html")
@@ -45,21 +50,12 @@ func PasswordResetSubmit(c *gin.Context) {
 		return
 	}
 
-	// mandrill.SendTemplateAsync.Call(ctx, "password-reset",
-	//	user.Email,
-	//	user.Name(),
-	//	"Recover your password",
-	//	mandrill.Var{"RESET_CODE", token.Id},
-	//	mandrill.Var{"RESET_URL", "https:" + config.UrlFor("store", "/password-reset/", token.Id)})
-
 	resetUrl := "https:" + config.UrlFor("store", "/password-reset/", token.Id)
-	mandrill.SendTemplateAsync.Call(ctx, "transactional-template",
+	mandrill.SendTransactional.Call(ctx, "email/password-reset.html",
 		user.Email,
 		user.Name(),
 		"Recover your password",
-		mandrill.Var{
-			"BODY",
-			template.RenderString("email/password-reset.html", "resetUrl", resetUrl)})
+		"resetUrl", resetUrl)
 
 	template.Render(c, "password-reset-sent.html")
 }
@@ -123,10 +119,10 @@ func PasswordResetConfirmSubmit(c *gin.Context) {
 	}
 
 	// Notify user of password reset
-	mandrill.SendTemplateAsync.Call(ctx, "password-updated",
+	mandrill.SendTransactional.Call(ctx, "email/password-updated.html",
 		user.Email,
 		user.Name(),
-		"Your password has been updated.")
+		"SKULLY password changed")
 
 	// Redirect to profile
 	c.Redirect(302, config.UrlFor("store", "/profile"))
