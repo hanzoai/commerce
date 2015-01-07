@@ -1,7 +1,8 @@
-util = require '../store/util'
-require 'card'
-validator = require 'address-validator/src/validator'
+card       = require 'card'
+validator  = require 'address-validator/src/validator'
+
 validation = require '../utils/validation'
+util       = require '../store/util'
 
 validateForm = ->
   $errors = $('#error-message')
@@ -70,16 +71,29 @@ $('input[name="ShipToBilling"]').change ->
     shipping.css 'display', 'block'
   return
 
-
 # Update tax display
 $state    = $('input[name="Order.BillingAddress.State"]')
 $city     = $('input[name="Order.BillingAddress.City"]')
+$country  = $('input[name="Order.BillingAddress.Country"]')
 
 $subtotal = $('span.subtotal')
 $tax      = $('span.tax')
 $shipping = $('span.shipping')
 $total    = $('span.grand-total')
-$country  = $('input[name="Order.BillingAddress.Country"]')
+
+# Hidden inputs
+$taxHidden      = $('input[name="Order.Tax"]')
+$shippingHidden = $('input[name="Order.Shipping"]')
+
+# Hack to get helmet total
+ar1Quantity = 0
+$('input')
+  .filter (i,v) ->
+    $(v).val() == 'ar-1'
+  .each (i,v) ->
+    name = $(v).attr('name').replace 'Product.Slug', 'Quantity'
+    selector = "input[name='#{name}']"
+    ar1Quantity += parseInt $(selector).val(), 10
 
 updateShippingAndTax = $.debounce 250, ->
   country  = $country.val().trim().replace ' ', ''
@@ -93,7 +107,7 @@ updateShippingAndTax = $.debounce 250, ->
 
   # Update shipping
   unless (/^usa$|^us$|unitedstates$|unitedstatesofamerica/i).test country
-    shipping = 100.00
+    shipping = 100.00 * ar1Quantity
   else
     shipping = 0
 
@@ -111,6 +125,11 @@ updateShippingAndTax = $.debounce 250, ->
   $shipping.text util.humanizeNumber shipping.toFixed 2
   $tax.text util.humanizeNumber tax.toFixed 2
   $total.text util.humanizeNumber total.toFixed 2
+
+  # Update hidden form
+  $shippingHidden.val Math.ceil (shipping * 10000 )
+  $taxHidden.val Math.ceil (tax * 10000)
+
   return
 
 $state.change updateShippingAndTax
@@ -175,9 +194,12 @@ $(document).ready ->
 
   validateShipping = do ->
     $shippingInfo = $('.shipping-information')
+
     $shippingInfo.find('input').change ->
       app.set 'validShippingAddress', false
+
     app.set 'validShippingAddress', false
+
     (err, exact, inexact) ->
       console.log 'Got response from google', arguments
       if !err?
@@ -207,8 +229,10 @@ $(document).ready ->
             cancel:  'No'
             onCancel: ->
               $('#error-message').text 'We could not verify your shipping address.  Please try again.'
+
           return true
-      $shippingInfo.find('input').addClass('error')
+
+      $shippingInfo.find('input').addClass 'error'
       $('#error-message').text 'We could not verify your shipping address.  Please try again.'
 
   # Create credit card fanciness: https://github.com/jessepollak/card
@@ -229,6 +253,7 @@ $(document).ready ->
 
 
   lock = false
+
   # Handle form submission
   $form.submit (e) ->
     # Do basic authorization
@@ -275,7 +300,8 @@ $(document).ready ->
         data: $form.serializeArray()
         dataType: "json"
         success: (data) ->
-          console.log data
+          # track checkout complete
+          window._fbq?.push ['track', '6018312014122', {value: $('.price.grand-total').text(), currency: 'USD'}]
           window.location.replace 'complete/'
         error: (xhr) ->
           # important to force a new authorization, assuming user wants to edit card details

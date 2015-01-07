@@ -2,6 +2,7 @@ package admin
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -12,6 +13,7 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models"
+	"crowdstart.io/thirdparty/salesforce"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
 
@@ -20,35 +22,25 @@ import (
 	"appengine/urlfetch"
 )
 
-type salesforceToken struct {
-	AccessToken string `json:"access_token"`
-	IssuedAt    string `json:"issued_at"`
-}
-
-// SalesforceCallback Salesforce End Points
+// Salesforce End Points
 func SalesforceCallback(c *gin.Context) {
 	req := c.Request
 	code := req.URL.Query().Get("code")
-	errStr := req.URL.Query().Get("error")
-
-	// Failed to get back authorization code from Salesforce
-	if errStr != "" {
-		template.Render(c, "stripe/failure.html", "error", errStr)
-		return
-	}
 
 	ctx := middleware.GetAppEngine(c)
 	client := urlfetch.Client(ctx)
 
 	// http://www.salesforce.com/us/developer/docs/api_rest/index_Left.htm#StartTopic=Content/quickstart.htm
+	// Below one is the secret good documentation
+	// https://www.salesforce.com/us/developer/docs/api_rest/Content/intro_understanding_web_server_oauth_flow.htm
 	data := url.Values{}
 	data.Add("code", code)
-	data.Add("grant_type", "authorization_code")
+	data.Set("grant_type", "authorization_code")
 	data.Set("client_id", config.Salesforce.ConsumerKey)
 	data.Set("client_secret", config.Salesforce.ConsumerSecret)
-	data.Add("redirect_uri", "authorization_code")
+	data.Set("redirect_uri", config.Salesforce.CallbackURL)
 
-	tokenReq, err := http.NewRequest("POST", "https://connect.stripe.com/oauth/token", strings.NewReader(data.Encode()))
+	tokenReq, err := http.NewRequest("POST", salesforce.LoginUrl, strings.NewReader(data.Encode()))
 	if err != nil {
 		c.Fail(500, err)
 		return
@@ -69,14 +61,15 @@ func SalesforceCallback(c *gin.Context) {
 		return
 	}
 
-	token := new(salesforceToken)
+	token := new(salesforce.SalesforceTokens)
 
 	// try and extract the json struct
 	if err := json.Unmarshal(jsonBlob, token); err != nil {
 		c.Fail(500, err)
+		return
 	}
 
-	// Salesforce returned an error
+	// Salesforce does not Error ;)
 	// if token.Error != "" {
 	// 	template.Render(c, "adminlte/connect.html", "error", token.Error)
 	// 	return
@@ -98,9 +91,13 @@ func SalesforceCallback(c *gin.Context) {
 		log.Panic("Unable to get campaign from database: %v", err)
 	}
 
-	// Update stripe data
+	// Update Salesforce data
 	campaign.Salesforce.AccessToken = token.AccessToken
+	campaign.Salesforce.RefreshToken = token.RefreshToken
+	campaign.Salesforce.InstanceUrl = token.InstanceUrl
+	campaign.Salesforce.Id = token.Id
 	campaign.Salesforce.IssuedAt = token.IssuedAt
+	campaign.Salesforce.Signature = token.Signature
 
 	// Update in datastore
 	if _, err := db.PutKey("campaign", email, campaign); err != nil {
@@ -108,5 +105,76 @@ func SalesforceCallback(c *gin.Context) {
 	}
 
 	// Success
-	template.Render(c, "stripe/success.html", "token", token.AccessToken)
+	template.Render(c, "salesforce/success.html", "token", token.AccessToken)
+}
+
+func TestSalesforceConnection(c *gin.Context) {
+	// Get user
+	email, err := auth.GetEmail(c)
+	if err != nil {
+		log.Panic("Unable to get email from session: %v", err)
+	}
+
+	ctx := middleware.GetAppEngine(c)
+	db := datastore.New(ctx)
+
+	campaign := new(models.Campaign)
+
+	// Get user instance
+	if err := db.GetKey("campaign", email, campaign); err != nil {
+		log.Panic("Unable to get campaign from database: %v", err)
+	}
+
+	api, err := salesforce.Init(
+		c,
+		campaign.Salesforce.AccessToken,
+		campaign.Salesforce.RefreshToken,
+		campaign.Salesforce.InstanceUrl,
+		campaign.Salesforce.Id,
+		campaign.Salesforce.IssuedAt,
+		campaign.Salesforce.Signature)
+
+	if err != nil {
+		log.Panic("Unable to log in: %v", err)
+		return
+	}
+
+	log.Info("Describe Success %v", api.LastJsonBlob)
+
+	displayString := fmt.Sprintf("Describe Success %v\n%v\n", api.LastQuery, api.LastJsonBlob)
+
+	// Please don't actually mail anything to this
+	newContact := salesforce.Contact{
+		FirstName: "Test User",
+		LastName:  "Please do not mail anything to this test user.",
+		Phone:     "555-5555",
+		Email:     "TestUser@verus.com",
+
+		MailingStreet:      "1600 Pennsylvania Avenue",
+		MailingCity:        "Northwest",
+		MailingState:       "District of Columbia",
+		MailingPostalCode:  "20500",
+		MailingCountryCode: "US",
+
+		ShippingAddressC:   "1600 Pennsylvania Avenue",
+		ShippingCityC:      "Northwest",
+		ShippingStateC:     "District of Columbia",
+		ShippingPostalZipC: "20500",
+		ShippingCountryC:   "US",
+	}
+
+	if err = salesforce.UpsertContact(api, &newContact); err != nil {
+		log.Panic("Unable to upsert: %v", err)
+	}
+
+	displayString += fmt.Sprintf("Upsert Success %v\n%v\n", api.LastQuery, api.LastJsonBlob)
+
+	_, err = salesforce.GetContactByEmail(api, newContact.Email)
+	if err != nil {
+		log.Panic("Unable to query: %v", err)
+	}
+
+	displayString += fmt.Sprintf("Query Success %v\n%v\n", api.LastQuery, api.LastJsonBlob)
+
+	c.String(200, displayString)
 }

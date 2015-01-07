@@ -18,7 +18,7 @@ func Index(c *gin.Context) {
 
 // Register
 func Register(c *gin.Context) {
-	template.Render(c, "adminlte/register.html")
+	template.Render(c, "register.html")
 }
 
 // Post registration form
@@ -28,7 +28,7 @@ func SubmitRegister(c *gin.Context) {
 
 // Render login form
 func Login(c *gin.Context) {
-	template.Render(c, "adminlte/login.html")
+	template.Render(c, "login.html")
 }
 
 // Post login form
@@ -61,5 +61,12 @@ func SubmitProfile(c *gin.Context) {
 
 // Admin Dashboard
 func Dashboard(c *gin.Context) {
-	template.Render(c, "adminlte/dashboard.html")
+	template.Render(c, "dashboard.html")
+}
+
+// Admin Payment Connectors
+func Connect(c *gin.Context) {
+	template.Render(c, "connect.html",
+		"stripe", config.Stripe,
+		"salesforce", config.Salesforce)
 }

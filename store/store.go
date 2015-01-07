@@ -2,6 +2,7 @@ package store
 
 import (
 	"crowdstart.io/middleware"
+	"crowdstart.io/store/card"
 	"crowdstart.io/store/cart"
 	"crowdstart.io/store/products"
 	"crowdstart.io/store/user"
@@ -31,6 +32,7 @@ func init() {
 	router.GET("/logout", user.Logout)
 
 	// Password Reset
+	router.GET("/create-password", user.CreatePassword)
 	router.GET("/password-reset", user.PasswordReset)
 	router.POST("/password-reset", user.PasswordResetSubmit)
 	router.GET("/password-reset/:token", user.PasswordResetConfirm)
@@ -48,4 +50,7 @@ func init() {
 
 	router.GET("/auth/facebook", facebook.LoginUser)
 	router.GET("/auth/facebook_callback", facebook.Callback)
+
+	// Card
+	router.GET("/card", loginRequired, card.GetCard)
 }
