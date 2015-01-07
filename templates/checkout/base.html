@@ -21,7 +21,9 @@
     <link rel="shortcut icon" type="image/x-icon" href="{{ urlFor("/favicon.ico") }}">
 
     <!--[if lt IE 9]>
-    <script src="{{ urlFor("/js/html5-shiv.js") }}></script>
+    <script src="{{ urlFor("/js/es5-shim.min.js") }}"></script>
+    <script src="{{ urlFor("/js/html5-shim.min.js") }}"></script>
+    <script src="{{ urlFor("/js/respond.min.js") }}"></script>
     <![endif]-->
 
     <link rel="stylesheet" type="text/css" href="{{ urlFor("/css/store.css") }}">
@@ -244,6 +246,7 @@
     <script type="text/javascript" src="{{ urlFor("/js/jquery.min.js") }}"></script>
     <script type="text/javascript" src="{{ urlFor("/js/jquery.ba-throttle-debounce.min.js") }}"></script>
     <script type="text/javascript" src="{{ urlFor("/js/jquery.cookie.min.js") }}"></script>
+    <script type="text/javascript" src="{{ urlFor("/js/jquery-placeholder.js") }}"></script>
 
     <!--OUR JS-->
     <script type="text/javascript" src="{{ urlFor("/js/store.js") }}"></script>
@@ -251,17 +254,32 @@
     {% block js %}{% endblock %}
 
     {% if isProduction %}
-    <!-- GA -->
+    <!-- Google Analytics -->
     <script>
-        (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-        })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
 
-        ga('create', 'UA-48365795-8', 'auto', {'allowLinker': true});
-        ga('require', 'linker');
-        ga('linker:autoLink', ['store.skullysystems.com', 'www.skullysystems.com', 'preorder.skullysystems.com']);
-        ga('send', 'pageview');
+    ga('create', 'UA-48365795-8', 'auto', {'allowLinker': true});
+    ga('require', 'linker');
+    ga('linker:autoLink', ['store.skullysystems.com', 'www.skullysystems.com', 'preorder.skullysystems.com']);
+    ga('send', 'pageview');
+    </script>
+
+    <!-- Facebook Conversion Code -->
+    <script>
+    (function() {
+      var _fbq = window._fbq || (window._fbq = []);
+      if (!_fbq.loaded) {
+        var fbds = document.createElement('script');
+        fbds.async = true;
+        fbds.src = '//connect.facebook.net/en_US/fbds.js';
+        var s = document.getElementsByTagName('script')[0];
+        s.parentNode.insertBefore(fbds, s);
+        _fbq.loaded = true;
+      }
+    })();
     </script>
     {% endif %}
 </body>

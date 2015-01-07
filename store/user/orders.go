@@ -3,6 +3,8 @@ package user
 import (
 	"strconv"
 
+	. "appengine/datastore"
+
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/auth"
@@ -27,8 +29,14 @@ func ListOrders(c *gin.Context) {
 		Filter("Email =", email).
 		GetAll(db.Context, &orders)
 
+	// Ignore any field mismatch errors.
 	if err != nil {
-		log.Panic("Error retrieving orders associated with the user's email", err)
+		if _, ok := err.(*ErrFieldMismatch); ok {
+			log.Warn("Field mismatch when getting order", db.Context)
+			err = nil
+		} else {
+			log.Panic("Error retrieving orders associated with the user's email", err)
+		}
 	}
 
 	for i := range orders {

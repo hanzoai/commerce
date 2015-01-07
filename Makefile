@@ -54,8 +54,9 @@ tools = github.com/nsf/gocode \
         github.com/kisielk/errcheck \
         github.com/jstemmer/gotags
 
-# replacement file watcher for the dev appengine
+# Various patches for SDK
 mtime_file_watcher = https://gist.githubusercontent.com/zeekay/5eba991c39426ca42cbb/raw/235f107b7ed081719103a4259dddd0e568d12480/mtime_file_watcher.py
+python_279_patch = https://gist.githubusercontent.com/zeekay/fc8e648dcd5d0ad35c92/raw/557e4080a96e572d3ba95e3c6279d1dac9e965fe/appengine-sdk-python-2.7.9.patch
 
 # static assets, requisite javascript from assets -> static
 bebop = node_modules/.bin/bebop
@@ -73,8 +74,14 @@ stylus		= node_modules/.bin/stylus
 stylus_opts = assets/css/preorder/preorder.styl \
 		      assets/css/store/store.styl \
 		      assets/css/checkout/checkout.styl \
-		      -o static/css -u autoprefixer-stylus
+		      -o static/css
 stylus_opts_min = -u csso-stylus -c
+
+autoprefixer = node_modules/.bin/autoprefixer
+autoprefixer_opts = -b 'ie > 8, firefox > 24, chrome > 30, safari > 6, opera > 17, ios > 6, android > 4' \
+					static/css/checkout.css \
+					static/css/preorder.css \
+					static/css/store.css
 
 sdk_install = wget https://storage.googleapis.com/appengine-sdks/featured/$(sdk).zip && \
 			  unzip $(sdk).zip && \
@@ -98,6 +105,7 @@ else
 	sdk_install_extra = && echo '\#!/usr/bin/env bash\ngoapp $$@' > $(sdk_path)/gopath/bin/go \
 						&& chmod +x $(sdk_path)/gopath/bin/go \
 						&& curl  $(mtime_file_watcher) > $(sdk_path)/google/appengine/tools/devappserver2/mtime_file_watcher.py \
+						&& curl  $(python_279_patch) | patch -p0 \
 						&& pip install macfsevents --upgrade
 endif
 
@@ -125,10 +133,11 @@ compile-js-min:
 	$(requisite) $(requisite_opts) $(requisite_opts_min)
 
 compile-css:
-	$(stylus) $(stylus_opts) --sourcemap --sourcemap-inline
+	$(stylus) $(stylus_opts) -u autoprefixer-stylus --sourcemap --sourcemap-inline
 
 compile-css-min:
-	$(stylus) $(stylus_opts) $(stylus_opts_min)
+	$(stylus) $(stylus_opts) $(stylus_opts_min) && $(autoprefixer) $(autoprefixer_opts)
+
 
 # BUILD
 build: deps assets

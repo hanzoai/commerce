@@ -124,7 +124,7 @@ func SaveProfile(c *gin.Context) {
 
 	// Send email notifying of changes
 	ctx := middleware.GetAppEngine(c)
-	mandrill.SendTemplateAsync.Call(ctx, "account-change-confirmation", user.Email, user.Name(), "Your account information has been changed.")
+	mandrill.SendTransactional.Call(ctx, "email/account-change.html", user.Email, user.Name(), "SKULLY account changed")
 
 	c.JSON(200, gin.H{"success": true})
 }

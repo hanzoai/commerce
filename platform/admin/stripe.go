@@ -32,13 +32,6 @@ type stripeToken struct {
 	TokenType            string `json:"token_type"`
 }
 
-// Admin Payment Connectors
-func Connect(c *gin.Context) {
-	template.Render(c, "stripe/connect.html",
-		"StripeClientId", config.Stripe.ClientId,
-		"StripeRedirectURL", config.Stripe.RedirectURL)
-}
-
 // StripeCallback Stripe End Points
 func StripeCallback(c *gin.Context) {
 	req := c.Request
@@ -89,10 +82,10 @@ func StripeCallback(c *gin.Context) {
 
 	// Stripe returned an error
 	if token.Error != "" {
-		template.Render(c, "stripe/connect.html",
-			"error", token.Error,
-			"StripeClientId", config.Stripe.ClientId,
-			"StripeRedirectURL", config.Stripe.RedirectURL)
+		template.Render(c, "connect.html",
+			"stripeError", token.Error,
+			"stripe", config.Stripe,
+			"salesforce", config.Salesforce)
 		return
 	}
 
