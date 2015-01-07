@@ -6,7 +6,7 @@ github.com/gorilla/sessions master
 github.com/jmcvetta/napping master
 github.com/mholt/binding master
 github.com/qedus/nds master
-github.com/stripe/stripe-go master
+github.com/stripe/stripe-go 4b8db50fd4ced3a165d9632aeb2ceb451b02e99d
 github.com/zeekay/go-logging master
 github.com/davecgh/go-spew/spew master
 github.com/marvelm/facebook appengine
