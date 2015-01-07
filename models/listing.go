@@ -17,6 +17,7 @@ type Listing struct {
 	Title       string
 	Description string `datastore:",noindex"`
 	Disabled    bool
+	SoldOut     bool
 	Perk        Perk
 
 	Images []Image
