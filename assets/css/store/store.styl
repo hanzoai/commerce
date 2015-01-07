@@ -399,6 +399,16 @@ section > .item
       background-size contain
       background-repeat no-repeat
       width 90%
+      position: relative
+
+      .sold-out
+        position: absolute;
+        width: 100%;
+        top: 35%;
+        color: #d70404;
+        font-size: 700%;
+        line-height: 100%;
+
     .preview
       max-width 600px
       width 100%
@@ -438,22 +448,28 @@ section > .item
     padding 20px 10px 0 0px
     .product-description
       margin-bottom 20px
-    .product-config
+    .product-config, .notify-instock
       label
         display block
-      select
+      input, select
         margin-bottom 15px
 
-      .checkout-options
+      .checkout-options, .notify-me
         height 100px
         display inline
         float left
         width 33%
 
-      .quantity
+      .quantity, .email
         display inline
         float left
         width 66%
+
+      .email
+        input
+          width: 100%
+          margin-top: 10px
+          max-width: 200px
 
       button.add-to-cart
         min-width 150px
