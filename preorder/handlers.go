@@ -212,7 +212,10 @@ func SavePreorder(c *gin.Context) {
 		return
 	}
 
-	mandrill.SendTemplateAsync.Call(ctx, "preorder-confirmation-template", user.Email, user.Name(), "Preorder information saved")
+	mandrill.SendTransactional.Call(ctx, "email/preorder-updated.html",
+		user.Email,
+		user.Name(),
+		"SKULLY preorder information updated")
 
 	c.Redirect(301, config.UrlFor("preorder", "/thanks"))
 }
