@@ -34,7 +34,7 @@ var allListings = {{ listingsJSON | safe }};
   <div class="product-viewer">
     <div class="preview-background">
       {% if listing.SoldOut %}
-      <div class="sold-out">SOLD OUT</div>
+      <img class="sold-out" src="{{ urlFor("img/soldout.png") }}" alt="Sold Out">
       {% endif %}
       {% for image in listing.Images %}
       {% if forloop.First %}
