@@ -153,14 +153,20 @@ type RefundEvent struct {
 
 // StripeCallback Stripe End Points
 func StripeWebhook(c *gin.Context) {
-	c.String(200, "ok")
+	event := new(Event)
+	if !c.Bind(event) {
+		c.String(500, "Error parsing event json")
+	}
+	switch event.Type {
+	case "charge.refunded":
+		refund(c)
+	}
 }
 
-// Refund endpoint
-func Refund(c *gin.Context) {
+func refund(c *gin.Context) {
 	refundEvt := new(RefundEvent)
 	if !c.Bind(refundEvt) {
-		c.String(500, "Error parsing json")
+		c.String(500, "Error parsing refund json")
 		return
 	}
 	chargeId := refundEvt.Data.Object.Charge
