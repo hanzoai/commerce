@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"crowdstart.io/auth"
 	"crowdstart.io/config"
@@ -164,17 +165,26 @@ func TestSalesforceConnection(c *gin.Context) {
 	}
 
 	if err = salesforce.UpsertContact(api, &newContact); err != nil {
-		log.Panic("Unable to upsert: %v", err)
+		log.Panic("Unable to upsert: %v %v", err, api.LastJsonBlob)
 	}
 
 	displayString += fmt.Sprintf("Upsert Success %v\n%v\n", api.LastQuery, api.LastJsonBlob)
 
 	_, err = salesforce.GetContactByEmail(api, newContact.Email)
 	if err != nil {
-		log.Panic("Unable to query: %v", err)
+		log.Panic("Unable to query: %v %v", err, api.LastJsonBlob)
 	}
 
 	displayString += fmt.Sprintf("Query Success %v\n%v\n", api.LastQuery, api.LastJsonBlob)
+
+	now := time.Now()
+
+	_, err = salesforce.GetUpdatedContacts(api, now.Add(-15*time.Minute), now)
+	if err != nil {
+		log.Panic("Unable to get updated contacts: %v %v", err, api.LastJsonBlob)
+	}
+
+	displayString += fmt.Sprintf("UpdatedResponses Success %v\n%v\n", api.LastQuery, api.LastJsonBlob)
 
 	c.String(200, displayString)
 }
