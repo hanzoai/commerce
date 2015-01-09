@@ -138,68 +138,148 @@ type RefundEvent struct {
 	Event
 	Data struct {
 		Object struct {
-			Amount             float64     `json:"amount"`
-			BalanceTransaction string      `json:"balance_transaction"`
-			Charge             string      `json:"charge"`
-			Created            float64     `json:"created"`
-			Currency           string      `json:"currency"`
-			ID                 string      `json:"id"`
-			Object             string      `json:"object"`
-			Reason             string      `json:"reason"`
-			ReceiptNumber      interface{} `json:"receipt_number"`
+			Amount             float64 `json:"amount"`
+			AmountRefunded     float64 `json:"amount_refunded"`
+			BalanceTransaction string  `json:"balance_transaction"`
+			Captured           bool    `json:"captured"`
+			Card               struct {
+				AddressCity       string `json:"address_city"`
+				AddressCountry    string `json:"address_country"`
+				AddressLine1      string `json:"address_line1"`
+				AddressLine1Check string `json:"address_line1_check"`
+				AddressLine2      string `json:"address_line2"`
+				AddressState      string `json:"address_state"`
+				AddressZip        string `json:"address_zip"`
+				AddressZipCheck   string `json:"address_zip_check"`
+				Brand             string `json:"brand"`
+				Country           string `json:"country"`
+				Customer          string `json:"customer"`
+				CvcCheck          string `json:"cvc_check"`
+				// DynamicLast4      interface{} `json:"dynamic_last4"`
+				ExpMonth    float64 `json:"exp_month"`
+				ExpYear     float64 `json:"exp_year"`
+				Fingerprint string  `json:"fingerprint"`
+				Funding     string  `json:"funding"`
+				ID          string  `json:"id"`
+				Last4       string  `json:"last4"`
+				Name        string  `json:"name"`
+				Object      string  `json:"object"`
+			} `json:"card"`
+			Created     float64 `json:"created"`
+			Currency    string  `json:"currency"`
+			Customer    string  `json:"customer"`
+			Description string  `json:"description"`
+			// Dispute        interface{} `json:"dispute"`
+			// FailureCode    interface{} `json:"failure_code"`
+			// FailureMessage interface{} `json:"failure_message"`
+			Fee float64 `json:"fee"`
+			// FraudDetails   struct{}    `json:"fraud_details"`
+			ID string `json:"id"`
+			// Invoice        interface{} `json:"invoice"`
+			Livemode bool `json:"livemode"`
+			// Metadata       struct{}    `json:"metadata"`
+			Object       string `json:"object"`
+			Paid         bool   `json:"paid"`
+			ReceiptEmail string `json:"receipt_email"`
+			// ReceiptNumber  interface{} `json:"receipt_number"`
+			Refunded bool `json:"refunded"`
+			Refunds  struct {
+				Data []struct {
+					Amount             float64 `json:"amount"`
+					BalanceTransaction string  `json:"balance_transaction"`
+					Charge             string  `json:"charge"`
+					Created            float64 `json:"created"`
+					Currency           string  `json:"currency"`
+					ID                 string  `json:"id"`
+					// Metadata           struct{}    `json:"metadata"`
+					Object string `json:"object"`
+					// Reason             interface{} `json:"reason"`
+					ReceiptNumber string `json:"receipt_number"`
+				} `json:"data"`
+				HasMore    bool    `json:"has_more"`
+				Object     string  `json:"object"`
+				TotalCount float64 `json:"total_count"`
+				URL        string  `json:"url"`
+			} `json:"refunds"`
+			// Shipping             interface{} `json:"shipping"`
+			StatementDescription string `json:"statement_description"`
+			StatementDescriptor  string `json:"statement_descriptor"`
 		} `json:"object"`
 	} `json:"data"`
 }
 
 // StripeCallback Stripe End Points
 func StripeWebhook(c *gin.Context) {
-	event := new(Event)
-	if !c.Bind(event) {
-		c.String(500, "Error parsing event json")
-	}
-	switch event.Type {
-	case "charge.refunded":
-		refund(c)
+	data, err := ioutil.ReadAll(c.Request.Body)
+	log.Info("%#v", err)
+	log.Info("%#v", string(data[:]))
+
+	if c.Request.Method == "POST" {
+		event := new(Event)
+		if err := json.Unmarshal(data, event); err != nil {
+			c.String(500, "Error parsing event json")
+			return
+		}
+		if !event.Livemode {
+			c.String(200, event.Type)
+			return
+		}
+
+		switch event.Type {
+		case "charge.refunded":
+			refund(c, data)
+		}
 	}
 }
 
-func refund(c *gin.Context) {
+func refund(c *gin.Context, data []byte) {
 	refundEvt := new(RefundEvent)
-	if !c.Bind(refundEvt) {
+
+	err := json.Unmarshal(data, refundEvt)
+	if err != nil {
+		log.Debug(err)
+		log.Debug(len(data))
 		c.String(500, "Error parsing refund json")
 		return
 	}
-	chargeId := refundEvt.Data.Object.Charge
 
-	db := datastore.New(c)
-	var orders []models.Order
-	keys, err := db.Query("order").
-		Filter("Charges.ID =", chargeId).
-		Limit(1).
-		GetAll(db.Context, &orders)
-	if err != nil {
-		c.String(500, "Unable to find order")
-		return
-	}
+	// if !c.Bind(refundEvt) {
+	// 	c.String(500, "Error parsing refund json")
+	// 	return
+	// }
+	if refundEvt.Data.Object.Refunded {
+		for _, charge := range refundEvt.Data.Object.Refunds.Data {
+			db := datastore.New(c)
+			chargeId := charge.ID
+			var orders []models.Order
+			keys, err := db.Query("order").
+				Filter("Charges.ID =", chargeId).
+				Limit(1).
+				GetAll(db.Context, &orders)
+			if err != nil {
+				c.String(500, "Unable to find order")
+				continue
+			}
+			if len(orders) < 1 {
+				c.String(500, "Unable to find order")
+				continue
+			}
 
-	if len(orders) < 1 {
-		c.String(500, "Unable to find order")
-		return
-	}
+			order := orders[0]
+			for i := range order.Charges {
+				if order.Charges[i].ID == chargeId {
+					order.Charges[i].Refunded = true
+					break
+				}
+			}
 
-	order := orders[0]
-	for i := range order.Charges {
-		if order.Charges[i].ID == chargeId {
-			order.Charges[i].Refunded = true
-			break
+			order.Refunded = true // TODO verify if this is the required behaviour
+
+			if _, err := db.PutKey("order", keys[0], order); err != nil {
+				c.String(500, "Error saving order")
+				continue
+			}
+			c.String(200, "ok")
 		}
 	}
-	order.Refunded = true // TODO verify if this is the required behaviour
-
-	if _, err := db.PutKey("order", keys[0], order); err != nil {
-		c.String(500, "Error saving order")
-		return
-	}
-
-	c.String(200, "ok")
 }
