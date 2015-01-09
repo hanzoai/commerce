@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"crowdstart.io/config"
 	"crowdstart.io/middleware"
@@ -131,7 +132,7 @@ func request(api *Api, method, path string, headers map[string]string, data stri
 
 func UpsertContact(api *Api, contact *Contact) error {
 	if contact.Email == "" {
-		errors.New("Email is required")
+		errors.New("Email is required for upsert")
 	}
 
 	contactBytes, err := json.Marshal(contact)
@@ -164,6 +165,40 @@ func UpsertContact(api *Api, contact *Contact) error {
 	return nil
 }
 
+func GetUpdatedContacts(api *Api, start, end time.Time) (*UpdatedRecordsResponse, error) {
+	path := fmt.Sprintf(ContactsUpdatedPath, start.Format(time.RFC3339), end.Format(time.RFC3339))
+
+	jsonBlob, err := request(api, "GET", path, map[string]string{}, "")
+	if err != nil {
+		return nil, err
+	}
+
+	response := new(UpdatedRecordsResponse)
+
+	if err := json.Unmarshal(jsonBlob, &response); err != nil {
+		return nil, err
+	}
+
+	return response, err
+}
+
+func GetContact(api *Api, id string) (*Contact, error) {
+	path := fmt.Sprintf(ContactPath, id)
+
+	jsonBlob, err := request(api, "GET", path, map[string]string{}, "")
+	if err != nil {
+		return nil, err
+	}
+
+	response := new(Contact)
+
+	if err := json.Unmarshal(jsonBlob, &response); err != nil {
+		return nil, err
+	}
+
+	return response, err
+}
+
 func GetContactByEmail(api *Api, email string) ([]Contact, error) {
 	// Not the safest thing in the world
 	path := ContactQueryPath + "%27" + email + "%27"
@@ -183,18 +218,11 @@ func GetContactByEmail(api *Api, email string) ([]Contact, error) {
 
 	response := make([]Contact, length, length)
 	for i, record := range queryResponse.Records {
-		jsonBlob, err = request(api, "GET", record.Attributes.Url, map[string]string{}, "")
+		contactResponse, err := GetContact(api, record.Id)
 		if err != nil {
 			return nil, err
 		}
-
-		contactResponse := Contact{}
-
-		if err := json.Unmarshal(jsonBlob, &contactResponse); err != nil {
-			return nil, err
-		}
-
-		response[i] = contactResponse
+		response[i] = *contactResponse
 	}
 
 	return response, err
