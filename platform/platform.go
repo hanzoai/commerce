@@ -32,7 +32,6 @@ func init() {
 	router.GET("/stripe/callback", loginRequired, admin.StripeCallback)
 
 	// Stripe webhook, we don't do anything with this atm.
-	router.GET("/stripe/hook", admin.StripeWebhook)
 	router.POST("/stripe/hook", admin.StripeWebhook)
 
 	// Salesfoce connect
