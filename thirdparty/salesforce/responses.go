@@ -89,3 +89,8 @@ type UpsertResponse struct {
 	Success bool              `json:"success"`
 	Errors  []SalesforceError `json:"errors"`
 }
+
+type UpdatedRecordsResponse struct {
+	Ids []string `json:"id"`
+	LatestDateCovered string `json:"latestDateCovered"`
+}
