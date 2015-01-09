@@ -126,6 +126,7 @@ func TestSalesforceConnection(c *gin.Context) {
 		log.Panic("Unable to get campaign from database: %v", err)
 	}
 
+	// Test Connecting to Salesforce
 	api, err := salesforce.Init(
 		c,
 		campaign.Salesforce.AccessToken,
@@ -144,6 +145,7 @@ func TestSalesforceConnection(c *gin.Context) {
 
 	displayString := fmt.Sprintf("Describe Success %v\n%v\n", api.LastQuery, api.LastJsonBlob)
 
+	// Test Upsert
 	// Please don't actually mail anything to this
 	newContact := salesforce.Contact{
 		FirstName: "Test User",
@@ -170,6 +172,7 @@ func TestSalesforceConnection(c *gin.Context) {
 
 	displayString += fmt.Sprintf("Upsert Success %v\n%v\n", api.LastQuery, api.LastJsonBlob)
 
+	// Test GET Query using Email
 	_, err = salesforce.GetContactByEmail(api, newContact.Email)
 	if err != nil {
 		log.Panic("Unable to query: %v %v", err, api.LastJsonBlob)
@@ -179,6 +182,7 @@ func TestSalesforceConnection(c *gin.Context) {
 
 	now := time.Now()
 
+	// Test to see if salesforce reports back that we upserted a user
 	_, err = salesforce.GetUpdatedContacts(api, now.Add(-15*time.Minute), now)
 	if err != nil {
 		log.Panic("Unable to get updated contacts: %v %v", err, api.LastJsonBlob)
