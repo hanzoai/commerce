@@ -93,7 +93,7 @@ func Init(c *gin.Context, accessToken, refreshToken, instanceUrl, id, issuedAt, 
 		}
 
 		if len(response) == 0 || response[0].ErrorCode != "" {
-			return nil, errors.New("Nothing to decode")
+			return nil, errors.New(fmt.Sprintf("Nothing to decode or Error: %v", api.LastJsonBlob))
 		}
 	}
 
