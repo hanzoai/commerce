@@ -135,10 +135,17 @@ type Event struct {
 	Type            string  `json:"type"`
 }
 
-type RefundEvent struct {
+type RefundedEvent struct {
 	Event
 	Data struct {
-		Object stripe.Charge `json:"object"`
+		Charge stripe.Charge `json:"object"`
+	} `json:"data"`
+}
+
+type AccountUpdatedEvent struct {
+	Event
+	Data struct {
+		Account stripe.Account `json:"object"`
 	} `json:"data"`
 }
 
@@ -161,28 +168,22 @@ func StripeWebhook(c *gin.Context) {
 
 		switch event.Type {
 		case "charge.refunded":
-			refund(c, data)
+			refunded(c, data)
+		case "account.updated":
+			accountUpdated(c, data)
 		}
 	}
 }
 
-func refund(c *gin.Context, data []byte) {
-	refundEvt := new(RefundEvent)
-
-	err := json.Unmarshal(data, refundEvt)
-	if err != nil {
-		log.Debug(err)
-		log.Debug(len(data))
+func refunded(c *gin.Context, data []byte) {
+	refundEvt := new(RefundedEvent)
+	if err := json.Unmarshal(data, refundEvt); err != nil {
 		c.String(500, "Error parsing refund json")
-		return
+		log.Panic(err)
 	}
 
-	// if !c.Bind(refundEvt) {
-	// 	c.String(500, "Error parsing refund json")
-	// 	return
-	// }
-	if refundEvt.Data.Object.Refunded {
-		for _, charge := range refundEvt.Data.Object.Refunds.Data {
+	if refundEvt.Data.Charge.Refunded {
+		for _, charge := range refundEvt.Data.Charge.Refunds.Data {
 			db := datastore.New(c)
 			chargeId := charge.ID
 			var orders []models.Order
@@ -216,4 +217,34 @@ func refund(c *gin.Context, data []byte) {
 			c.String(200, "ok")
 		}
 	}
+}
+
+func accountUpdated(c *gin.Context, data []byte) {
+	event := new(AccountUpdatedEvent)
+	if err := json.Unmarshal(data, event); err != nil {
+		c.String(500, "Error parsing account json")
+		log.Panic(err)
+	}
+	customerId := event.Data.Account.ID
+	db := datastore.New(c)
+
+	user := new(models.User)
+	key, err := db.Query("user").
+		Filter("Stripe.CustomerId =", customerId).
+		Run(db.Context).
+		Next(user)
+	if err != nil {
+		c.String(500, "Error retrieving user")
+		log.Panic(err)
+	}
+
+	user.Stripe.Account = event.Data.Account
+
+	_, err = db.PutKey("user", key, user)
+	if err != nil {
+		c.String(500, "Error saving user")
+		log.Panic(err)
+	}
+
+	c.String(200, "ok")
 }
