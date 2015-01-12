@@ -4,6 +4,8 @@ import (
 	"net/http"
 
 	"github.com/mholt/binding"
+
+	stripe "crowdstart.io/thirdparty/stripe/models"
 )
 
 type User struct {
@@ -19,7 +21,10 @@ type User struct {
 	Campaigns       []Campaign `schema:"-" datastore:"-"`
 	PasswordHash    []byte     `schema:"-" json:"-"`
 	Stripe          struct {
+		// Use CustomerId instead of Account.ID because the latter is currently only
+		// set when the user updates their details via Stripe
 		CustomerId string
+		Account    stripe.Account
 	}
 }
 
