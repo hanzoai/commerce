@@ -4,38 +4,36 @@
 @import "colors"
 @import "quill"
 
-*
-  bbox()
+// Custom stuff
+.site
+  width: 100%
+  background-color theme-less-dark
 
-.debug
-  border: 1px solid black !important
-  *
-    border: 1px solid black !important
+.content
+  max-width:1200px
+  width: 80%
+  margin: 0 auto
 
-.nav-links
-  menu(left)
+.campaigns
+  width: 100%
+  min-height:1000px
 
-.nav-search
-  search(right)
+.campaign-panel
+  col(1/4, cycle:4, gutter: 3)
+  background-color: primer
+  margin-bottom: 20px
+  border-radius: 6px
+
+  +below(1000px)
+    col(1/2, cycle:2, gutter: 3)
+
+  +below(600px)
+    col(1)
+
+  h4
+    text-align: center
 
 // Flat UI Derived Stuff
-body
-  background-color primer
-  font-family: Lato,Helvetica,Arial,sans-serif
-  font-size: 18px
-  line-height: 1.72222
-  color: theme-dark-text
-
-b, strong
-  font-weight: 700
-
-a
-  color: theme-light
-  text-decoration: none
-  transition: 0.25s
-
-a:hover
-  color: theme-lighter
 
 //missing media
 .nav-bar
