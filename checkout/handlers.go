@@ -22,6 +22,7 @@ import (
 	"crowdstart.io/thirdparty/stripe"
 	"crowdstart.io/util/cache"
 	"crowdstart.io/util/log"
+	"crowdstart.io/util/queries"
 	"crowdstart.io/util/template"
 )
 
@@ -161,6 +162,7 @@ func charge(c *gin.Context) {
 
 	ctx := middleware.GetAppEngine(c)
 	db := datastore.New(ctx)
+	q := queries.New(ctx)
 
 	// Populate
 	if err := form.Order.Populate(db); err != nil {
@@ -183,8 +185,9 @@ func charge(c *gin.Context) {
 		// see if this is a returning user
 		log.Debug("User is not logged in")
 		returningUser := new(models.User)
-		if err := db.GetKey("user", form.User.Email, returningUser); err != nil {
+		if err = q.GetUserByEmail(form.User.Email, returningUser); err != nil {
 			log.Debug("Using form.User", c)
+			user.Id = db.EncodeId("user", db.AllocateId("user"))
 			user = &form.User
 		} else {
 			log.Debug("Returning User")
@@ -234,7 +237,7 @@ func charge(c *gin.Context) {
 	user.Phone = form.User.Phone
 	user.FirstName = form.User.FirstName
 	user.LastName = form.User.LastName
-	if _, err := db.PutKey("user", user.Email, user); err != nil {
+	if err := q.UpsertUser(user); err != nil {
 		log.Error("Failed to save user: %v", err, c)
 		if charge.Captured {
 			c.Fail(500, err)

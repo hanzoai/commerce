@@ -14,6 +14,7 @@ import (
 	"crowdstart.io/thirdparty/mandrill"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
+	"crowdstart.io/util/queries"
 	"crowdstart.io/util/template"
 )
 
@@ -26,6 +27,7 @@ func GetPreorder(c *gin.Context) {
 	// }
 
 	db := datastore.New(c)
+	q := queries.New(c)
 
 	// Fetch token
 	token := new(models.Token)
@@ -39,7 +41,7 @@ func GetPreorder(c *gin.Context) {
 
 	// Should use token to lookup email
 	user := new(models.User)
-	if err := db.GetKey("user", token.Email, user); err != nil {
+	if err := q.GetUserByEmail(token.Email, user); err != nil {
 		log.Error("Failed to fetch user: %v", err, c)
 		// Bad token
 		c.Redirect(301, "../")
@@ -113,10 +115,14 @@ func SavePreorder(c *gin.Context) {
 
 	ctx := middleware.GetAppEngine(c)
 	db := datastore.New(ctx)
+	q := queries.New(ctx)
 
 	// Get user from datastore
 	user := new(models.User)
-	db.GetKey("user", form.User.Email, user)
+	if err := q.GetUserByEmail(form.User.Email, user); err != nil {
+		c.Fail(500, errors.New("Failed to find user."))
+		return
+	}
 
 	// Ensure that token matches email
 	tokens := getTokens(c, user.Email)
@@ -207,7 +213,7 @@ func SavePreorder(c *gin.Context) {
 	}
 
 	// Save user back to database
-	if _, err := db.PutKey("user", user.Email, user); err != nil {
+	if err := q.UpsertUser(user); err != nil {
 		log.Error("Error saving user information", err, ctx)
 		c.Fail(500, err)
 		return
