@@ -50,10 +50,10 @@ var testUsers = delay.Func("fixtures-test-users", func(c appengine.Context) {
 	order := Order{
 		Id:        "test-order",
 		CreatedAt: time.Now(),
-		Email:     "test@test.com",
+		UserId:    user.Id,
 		Preorder:  true,
 	}
-	db.PutKey("order", "test@test.com", &order)
+	db.PutKey("order", order.Id, &order)
 })
 
 var skullyUser = delay.Func("fixtures-skully-user", func(c appengine.Context) {
