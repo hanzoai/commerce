@@ -27,7 +27,6 @@ func GetPreorder(c *gin.Context) {
 	// }
 
 	db := datastore.New(c)
-	q := queries.New(c)
 
 	// Fetch token
 	token := new(models.Token)
@@ -41,7 +40,7 @@ func GetPreorder(c *gin.Context) {
 
 	// Should use token to lookup email
 	user := new(models.User)
-	if err := q.GetUserByEmail(token.Email, user); err != nil {
+	if err := db.Get(token.UserId, user); err != nil {
 		log.Error("Failed to fetch user: %v", err, c)
 		// Bad token
 		c.Redirect(301, "../")
