@@ -4,7 +4,9 @@ import (
 	"code.google.com/p/go.crypto/bcrypt"
 	"github.com/gin-gonic/gin"
 
+	"crowdstart.io/models"
 	"crowdstart.io/util/log"
+	"crowdstart.io/util/queries"
 )
 
 // const sessionName = "crowdstartLogin"
@@ -35,12 +37,15 @@ func VerifyUser(c *gin.Context) error {
 		return err
 	}
 
-	user, err := GetUser(c)
+	q := queries.New(c)
 
-	if err != nil {
+	// Get user from database
+	user := new(models.User)
+	if err := q.GetUserByEmail(f.Email, user); err != nil {
 		return err
 	}
 
+	log.Debug("%v = %v", user, f.Password)
 	// Compare form password with saved hash
 	if err := CompareHashAndPassword(user.PasswordHash, f.Password); err != nil {
 		return err
