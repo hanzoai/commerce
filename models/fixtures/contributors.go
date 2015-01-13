@@ -84,23 +84,6 @@ var contributors = delay.Func("fixtures-contributors", func(c appengine.Context)
 		perkId := row[1]
 		pledgeId := row[2]
 
-		// Create token
-		token := new(Token)
-		token.Id = tokenId
-		token.Email = email
-		db.PutKey("invite-token", tokenId, token)
-
-		// Save contribution
-		contribution := Contribution{
-			Id:            pledgeId,
-			Perk:          Perks[perkId],
-			Status:        row[3],
-			FundingDate:   row[4],
-			PaymentMethod: row[5],
-			Email:         email,
-		}
-		db.PutKey("contribution", pledgeId, &contribution)
-
 		// Create user
 		user := new(User)
 		user.Email = email
@@ -120,11 +103,32 @@ var contributors = delay.Func("fixtures-contributors", func(c appengine.Context)
 		user.BillingAddress = address
 
 		// No longer updating user information in production, as it would clobber any customized information.
-		if config.IsProduction {
-			return
-		} else {
+		if !config.IsProduction {
+			// user.id Is set during upsert
 			q.UpsertUser(user)
+		} else {
+			err := q.GetUserByEmail(user.Email, user)
+			if err != nil {
+				log.Warn("User could not be retrieved %v", user.Email)
+			}
 		}
+
+		// Create token
+		token := new(Token)
+		token.Id = tokenId
+		token.UserId = user.Id
+		db.PutKey("invite-token", tokenId, token)
+
+		// Save contribution
+		contribution := Contribution{
+			Id:            pledgeId,
+			Perk:          Perks[perkId],
+			Status:        row[3],
+			FundingDate:   row[4],
+			PaymentMethod: row[5],
+			Email:         email,
+		}
+		db.PutKey("contribution", pledgeId, &contribution)
 
 		log.Debug("User: %#v", user)
 		log.Debug("Token: %#v", token)

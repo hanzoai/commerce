@@ -305,7 +305,7 @@ func charge(c *gin.Context) {
 	log.Debug("Saving invite token...", c)
 	invite := new(models.Token)
 	invite.GenerateId()
-	invite.Email = user.Email
+	invite.UserId = user.Id
 	if _, err := db.PutKey("invite-token", invite.Id, invite); err != nil {
 		log.Error("Failed to save invite-token: %v", err, c)
 		c.Fail(500, err)

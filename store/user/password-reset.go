@@ -45,7 +45,7 @@ func PasswordResetSubmit(c *gin.Context) {
 
 	// Save reset token
 	token := new(models.Token)
-	token.Email = user.Email
+	token.UserId = user.Id
 	token.GenerateId()
 	if _, err := db.PutKey("reset-token", token.Id, token); err != nil {
 		template.Render(c, "password-reset.html", "error", "Failed to create reset token, please try again later.")
@@ -76,7 +76,15 @@ func PasswordResetConfirm(c *gin.Context) {
 		return
 	}
 
-	template.Render(c, "password-reset-confirm.html", "email", token.Email)
+	user := new(models.User)
+	err = db.Get(token.UserId, user)
+	if err != nil {
+		log.Warn("Reset token has invalid UserId: %v", err)
+		template.Render(c, "password-reset-confirm.html", "invalidCode", true)
+		return
+	}
+
+	template.Render(c, "password-reset-confirm.html", "email", user.Email)
 }
 
 // POST /password-reset/:token
@@ -97,7 +105,7 @@ func PasswordResetConfirmSubmit(c *gin.Context) {
 
 	// Lookup user by email
 	user := new(models.User)
-	if err := q.GetUserByEmail(token.Email, user); err != nil {
+	if err := db.Get(token.UserId, user); err != nil {
 		template.Render(c, "password-reset-confirm.html", "invalidEmail", true)
 		return
 	}
