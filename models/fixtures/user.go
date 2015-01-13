@@ -43,7 +43,7 @@ var testUsers = delay.Func("fixtures-test-users", func(c appengine.Context) {
 		Status:        "Unfulfilled",
 		FundingDate:   "1983-06-30",
 		PaymentMethod: "PayPal",
-		Email:         "test@test.com",
+		UserId:        user.Id,
 	}
 	db.PutKey("contribution", "test", &contribution)
 
