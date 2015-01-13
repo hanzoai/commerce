@@ -10,16 +10,18 @@ import (
 
 	"crowdstart.io/datastore"
 	. "crowdstart.io/models"
+
+	"crowdstart.io/util/queries"
 )
 
 var testUsers = delay.Func("fixtures-test-users", func(c appengine.Context) {
 	db := datastore.New(c)
+	q := queries.New(c)
 
 	// Add default test user
 	pwhash, _ := bcrypt.GenerateFromPassword([]byte("password"), 12)
 
-	db.PutKey("user", "test@test.com", &User{
-		Id:           "test@test.com",
+	q.UpsertUser(&User{
 		FirstName:    "Test",
 		LastName:     "User",
 		Email:        "test@test.com",
@@ -54,13 +56,12 @@ var testUsers = delay.Func("fixtures-test-users", func(c appengine.Context) {
 })
 
 var skullyUser = delay.Func("fixtures-skully-user", func(c appengine.Context) {
-	db := datastore.New(c)
+	q := queries.New(c)
 
 	// Add SKULLY user
 	pwhash, _ := bcrypt.GenerateFromPassword([]byte("Victory1!"), 12)
 
-	db.PutKey("user", "dev@hanzo.ai", &User{
-		Id:           "dev@hanzo.ai",
+	q.UpsertUser(&User{
 		FirstName:    "Mitchell",
 		LastName:     "Weller",
 		Email:        "dev@hanzo.ai",
