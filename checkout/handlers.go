@@ -316,7 +316,7 @@ func charge(c *gin.Context) {
 	log.Debug("Saving contribution...", c)
 	contribution := new(models.Contribution)
 	contribution.Id = strconv.Itoa(int(orderId))
-	contribution.Email = user.Email
+	contribution.UserId = user.Id
 	contribution.Perk = models.Perks["WINTER2014PROMO"]
 	if _, err := db.PutKey("contribution", contribution.Id, contribution); err != nil {
 		log.Error("Failed to save contribution: %v", err, c)

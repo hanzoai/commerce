@@ -126,7 +126,7 @@ var contributors = delay.Func("fixtures-contributors", func(c appengine.Context)
 			Status:        row[3],
 			FundingDate:   row[4],
 			PaymentMethod: row[5],
-			Email:         email,
+			UserId:        user.Id,
 		}
 		db.PutKey("contribution", pledgeId, &contribution)
 

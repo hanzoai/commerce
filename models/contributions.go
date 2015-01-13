@@ -2,7 +2,7 @@ package models
 
 type Contribution struct {
 	Id            string
-	Email         string
+	UserId        string
 	FundingDate   string
 	PaymentMethod string
 	Perk          Perk
