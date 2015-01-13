@@ -10,6 +10,7 @@ import (
 	"crowdstart.io/models"
 	"crowdstart.io/thirdparty/mandrill"
 	"crowdstart.io/util/log"
+	"crowdstart.io/util/queries"
 	"crowdstart.io/util/template"
 )
 
@@ -33,10 +34,11 @@ func PasswordResetSubmit(c *gin.Context) {
 
 	ctx := middleware.GetAppEngine(c)
 	db := datastore.New(ctx)
+	q := queries.New(ctx)
 
 	// Lookup email
 	user := new(models.User)
-	if err := db.GetKey("user", form.Email, user); err != nil {
+	if err := q.GetUserByEmail(form.Email, user); err != nil {
 		template.Render(c, "password-reset.html", "error", "No account associated with that email.")
 		return
 	}
@@ -81,6 +83,7 @@ func PasswordResetConfirm(c *gin.Context) {
 func PasswordResetConfirmSubmit(c *gin.Context) {
 	ctx := middleware.GetAppEngine(c)
 	db := datastore.New(ctx)
+	q := queries.New(ctx)
 	tokenId := c.Params.ByName("token")
 
 	// Verify token is valid.
@@ -94,7 +97,7 @@ func PasswordResetConfirmSubmit(c *gin.Context) {
 
 	// Lookup user by email
 	user := new(models.User)
-	if err := db.GetKey("user", token.Email, user); err != nil {
+	if err := q.GetUserByEmail(token.Email, user); err != nil {
 		template.Render(c, "password-reset-confirm.html", "invalidEmail", true)
 		return
 	}
@@ -114,7 +117,7 @@ func PasswordResetConfirmSubmit(c *gin.Context) {
 	}
 
 	// Update user
-	if _, err = db.PutKey("user", user.Email, user); err != nil {
+	if err = q.UpsertUser(user); err != nil {
 		log.Panic("Failed to save user: %v", err)
 	}
 
