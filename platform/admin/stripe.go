@@ -135,10 +135,10 @@ type Event struct {
 	Type            string  `json:"type"`
 }
 
-type RefundedEvent struct {
+type ChargeEvent struct {
 	Event
 	Data struct {
-		Charge stripe.Charge `json:"object"`
+		Charge models.Charge `json:"object"`
 	} `json:"data"`
 }
 
@@ -152,8 +152,8 @@ type AccountUpdatedEvent struct {
 // StripeCallback Stripe End Points
 func StripeWebhook(c *gin.Context) {
 	data, err := ioutil.ReadAll(c.Request.Body)
-	log.Info("%#v", err)
-	log.Info("%#v", string(data[:]))
+	log.Debug("%#v", err)
+	log.Debug("%#v", string(data[:]))
 
 	if c.Request.Method == "POST" {
 		event := new(Event)
@@ -167,56 +167,48 @@ func StripeWebhook(c *gin.Context) {
 		}
 
 		switch event.Type {
+		case "charge.succeeded":
 		case "charge.refunded":
-			refunded(c, data)
+		case "charge.failed":
+		case "charge.captured":
+		case "charge.updated":
+			chargeModified(c, data)
+
 		case "account.updated":
 			accountUpdated(c, data)
 		}
 	}
 }
 
-func refunded(c *gin.Context, data []byte) {
-	refundEvt := new(RefundedEvent)
-	if err := json.Unmarshal(data, refundEvt); err != nil {
-		c.String(500, "Error parsing refund json")
+func chargeModified(c *gin.Context, data []byte) {
+	chargeEvt := new(ChargeEvent)
+	if err := json.Unmarshal(data, chargeEvt); err != nil {
+		c.String(500, "Error parsing charge json")
+		log.Panic(err)
+	}
+	charge := chargeEvt.Data.Charge
+
+	db := datastore.New(c)
+	order := new(models.Order)
+	key, err := db.Query("order").Filter("Charges.ID =", charge.ID).Run(db.Context).Next(order)
+	if err != nil {
+		c.String(500, "Error retrieving order by charge id")
 		log.Panic(err)
 	}
 
-	if refundEvt.Data.Charge.Refunded {
-		for _, charge := range refundEvt.Data.Charge.Refunds.Data {
-			db := datastore.New(c)
-			chargeId := charge.ID
-			var orders []models.Order
-			keys, err := db.Query("order").
-				Filter("Charges.ID =", chargeId).
-				Limit(1).
-				GetAll(db.Context, &orders)
-			if err != nil {
-				c.String(500, "Unable to find order")
-				continue
-			}
-			if len(orders) < 1 {
-				c.String(500, "Unable to find order")
-				continue
-			}
-
-			order := orders[0]
-			for i := range order.Charges {
-				if order.Charges[i].ID == chargeId {
-					order.Charges[i].Refunded = true
-					break
-				}
-			}
-
-			order.Refunded = true // TODO verify if this is the required behaviour
-
-			if _, err := db.PutKey("order", keys[0], order); err != nil {
-				c.String(500, "Error saving order")
-				continue
-			}
-			c.String(200, "ok")
+	for i := range order.Charges {
+		if order.Charges[i].ID == charge.ID {
+			order.Charges[i] = charge
+			break
 		}
 	}
+
+	if _, err := db.PutKey("order", key, order); err != nil {
+		c.String(500, "Error saving order")
+		log.Panic(err)
+	}
+
+	c.String(200, "ok")
 }
 
 func accountUpdated(c *gin.Context, data []byte) {
