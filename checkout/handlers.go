@@ -54,7 +54,7 @@ var getSalesforceTokens = cache.Memoize(func(args ...interface{}) interface{} {
 // This function upserts a contact into salesforce
 var salesforceUpsertTask = delay.Func("SalesforceUpsert", func(c *gin.Context, api *salesforce.Api, contact *salesforce.Contact) {
 	// The email is required as it is the external ID used in salesforce
-	if contact.Email == "" {
+	if contact.UserId == "" {
 		log.Panic("Email is required for upsert")
 	}
 
@@ -63,7 +63,7 @@ var salesforceUpsertTask = delay.Func("SalesforceUpsert", func(c *gin.Context, a
 	// Query out all orders (since preorder is stored as a single string)
 	var orders []models.Order
 	_, err := db.Query("order").
-		Filter("Email =", contact.Email).
+		Filter("UserId =", contact.UserId).
 		GetAll(db.Context, &orders)
 
 	// Ignore any field mismatch errors.
@@ -197,7 +197,7 @@ func charge(c *gin.Context) {
 	log.Debug("User: %#v", user)
 
 	// Set email for order
-	form.Order.Email = user.Email
+	form.Order.UserId = user.Id
 	form.Order.CampaignId = "dev@hanzo.ai"
 	form.Order.Preorder = true
 
@@ -283,6 +283,8 @@ func charge(c *gin.Context) {
 
 		if err != nil {
 			contact := salesforce.Contact{
+				UserId: user.Id,
+
 				LastName:           user.LastName,
 				FirstName:          user.FirstName,
 				Phone:              user.Phone,
