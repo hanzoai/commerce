@@ -23,13 +23,13 @@ func New(ctx interface{}) *Client {
 // Find a User By Email is one of the most common operations, it used to be that
 // Users were keyed by email but this made changing email a huge hassle
 func (c *Client) GetUserByEmail(email string, user *models.User) error {
-	users := make([]*models.User, 1)
+	users := make([]*models.User, 0)
 
 	_, err := c.Datastore.
 		Query("user").
 		Filter("Email=", email).
 		Limit(1).
-		GetAll(c.Datastore.Context, users)
+		GetAll(c.Datastore.Context, &users)
 
 	if err != nil {
 		log.Warn("Unable to fetch user from database: %v", err)
@@ -40,7 +40,7 @@ func (c *Client) GetUserByEmail(email string, user *models.User) error {
 		return errors.New("No users using " + email)
 	}
 
-	user = users[0]
+	*user = *users[0]
 	return nil
 }
 
@@ -50,8 +50,17 @@ func (c *Client) GetUserByEmail(email string, user *models.User) error {
 // key string
 func (c *Client) UpsertUser(user *models.User) error {
 	if user.Id == "" {
-		id := c.Datastore.AllocateId("user")
-		user.Id = c.Datastore.EncodeId("user", id)
+		_user := new(models.User)
+		// We check is the User already exists if it comes in with no id
+		c.GetUserByEmail(user.Email, _user)
+		if _user.Id == "" {
+			id := c.Datastore.AllocateId("user")
+			user.Id = c.Datastore.EncodeId("user", id)
+			log.Debug("UpsertUser doing Insert")
+		} else {
+			user.Id = _user.Id
+			log.Debug("UpsertUser doing Update")
+		}
 	}
 
 	k, err := c.Datastore.DecodeKey(user.Id)
