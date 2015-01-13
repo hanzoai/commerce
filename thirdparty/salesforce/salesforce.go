@@ -131,8 +131,8 @@ func request(api *Api, method, path string, headers map[string]string, data stri
 }
 
 func UpsertContact(api *Api, contact *Contact) error {
-	if contact.Email == "" {
-		errors.New("Email is required for upsert")
+	if contact.UserId == "" {
+		errors.New("UserId is required for upsert")
 	}
 
 	contactBytes, err := json.Marshal(contact)
@@ -143,7 +143,7 @@ func UpsertContact(api *Api, contact *Contact) error {
 	contactJSON := string(contactBytes[:])
 
 	// strings.Replace required to bypass broken Salesforce period parsing
-	path := fmt.Sprintf(ContactUpsertUsingEmailPath, strings.Replace(contact.Email, ".", "_", -1))
+	path := fmt.Sprintf(ContactUpsertUsingEmailPath, strings.Replace(contact.UserId, ".", "_", -1))
 
 	jsonBlob, err := request(api, "PATCH", path, map[string]string{"Content-Type": "application/json"}, contactJSON)
 	if err != nil {
