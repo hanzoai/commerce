@@ -5,8 +5,6 @@ import (
 
 	"crowdstart.io/auth"
 	"crowdstart.io/config"
-	"crowdstart.io/datastore"
-	"crowdstart.io/models"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
 	"crowdstart.io/util/val"
@@ -79,28 +77,15 @@ func SubmitRegister(c *gin.Context) {
 	//Santitization
 	val.SanitizeUser(&f.User)
 
-	db := datastore.New(c)
-
-	log.Debug("Checking if user exists")
-	var existingUser models.User
-	err = db.GetKey("user", f.User.Email, &existingUser)
-	if err == nil {
+	err = auth.NewUser(c, f)
+	if err.Error() == "Email is already registered" {
 		template.Render(c, "login.html", "registerError", "An account already exists for this email.")
 		return
 	}
 
-	f.User.Id = f.User.Email
-	f.User.PasswordHash, err = f.PasswordHash()
 	if err != nil {
 		template.Render(c, "login.html", "registerError", "An error has occured, please try again later.")
 		log.Panic("Error generating password hash \n%v", err)
-	}
-
-	log.Debug("Saving user")
-	_, err = db.PutKey("user", f.User.Email, &f.User)
-	if err != nil {
-		template.Render(c, "login.html", "registerError", "An error has occured, please try again later.")
-		log.Panic("Error while saving user \n%v", err)
 	}
 
 	log.Debug("Login user")
