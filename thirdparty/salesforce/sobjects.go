@@ -21,6 +21,9 @@ type Contact struct {
 
 	// You can manually specify these
 
+	// Special User Id field set for upserts only, never encoded
+	UserId string `json:"-"`
+
 	// Data Fields
 	LastName           string `json:"LastName,omitempty"`
 	FirstName          string `json:"FirstName,omitempty"`

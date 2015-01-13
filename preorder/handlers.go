@@ -50,7 +50,7 @@ func GetPreorder(c *gin.Context) {
 	// Get orders by email
 	var orders []models.Order
 	keys, err := db.Query("order").
-		Filter("Email =", user.Email).
+		Filter("UserId =", user.Id).
 		GetAll(db.Context, &orders)
 
 	if err != nil {
@@ -74,7 +74,7 @@ func GetPreorder(c *gin.Context) {
 
 	// Find all of a user's contributions
 	var contributions []models.Contribution
-	if _, err := db.Query("contribution").Filter("Email =", user.Email).GetAll(db.Context, &contributions); err != nil {
+	if _, err := db.Query("contribution").Filter("UserId =", user.Id).GetAll(db.Context, &contributions); err != nil {
 		log.Panic("Failed to find contributions: %v", err, c)
 	}
 
@@ -124,7 +124,7 @@ func SavePreorder(c *gin.Context) {
 	}
 
 	// Ensure that token matches email
-	tokens := getTokens(c, user.Email)
+	tokens := getTokens(c, user.Id)
 	if len(tokens) < 1 {
 		c.Fail(500, errors.New("Failed to find pre-order token."))
 		return
@@ -183,7 +183,7 @@ func SavePreorder(c *gin.Context) {
 
 	// Update Total
 	order.Total = order.Subtotal + order.Shipping + order.Tax
-	order.Email = user.Email
+	order.UserId = user.Id
 
 	// Save order
 	log.Debug("Saving order: %v", order)
@@ -240,7 +240,7 @@ func Index(c *gin.Context) {
 		template.Render(c, "login.html")
 	} else {
 		user, _ := auth.GetUser(c)
-		tokens := getTokens(c, user.Email)
+		tokens := getTokens(c, user.Id)
 
 		// Complain if user doesn't have any tokens
 		if len(tokens) > 0 {
@@ -269,7 +269,12 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	tokens := getTokens(c, f.Email)
+	user, err := auth.GetUser(c)
+	if err != nil {
+		template.Render(c, "login.html", "message", "An error has occured, please try logging in again.")
+	}
+
+	tokens := getTokens(c, user.Id)
 	log.Debug("Tokens: %v", tokens)
 	// Complain if user doesn't have any tokens
 	if len(tokens) > 0 {
@@ -290,14 +295,14 @@ func hasToken(tokens []models.Token, id string) bool {
 	return false
 }
 
-func getTokens(c *gin.Context, email string) []models.Token {
+func getTokens(c *gin.Context, userId string) []models.Token {
 	db := datastore.New(c)
 
 	// Look up tokens for this user
-	log.Debug("Searching for valid token for: %v", email, c)
+	log.Debug("Searching for valid token for: %v", userId, c)
 
 	tokens := make([]models.Token, 0)
-	if _, err := db.Query("invite-token").Filter("Email =", email).GetAll(db.Context, &tokens); err != nil {
+	if _, err := db.Query("invite-token").Filter("UserId =", userId).GetAll(db.Context, &tokens); err != nil {
 		log.Panic("Failed to query for tokens: %v", err, c)
 	}
 
