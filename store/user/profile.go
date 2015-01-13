@@ -4,12 +4,12 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/auth"
-	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models"
 	"crowdstart.io/thirdparty/mandrill"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
+	"crowdstart.io/util/queries"
 	"crowdstart.io/util/template"
 	"crowdstart.io/util/val"
 )
@@ -116,8 +116,8 @@ func SaveProfile(c *gin.Context) {
 	}
 
 	// Update user
-	db := datastore.New(c)
-	if _, err = db.PutKey("user", user.Email, user); err != nil {
+	q := queries.New(c)
+	if err = q.UpsertUser(user); err != nil {
 		log.Panic("Failed to save user: %v", err)
 	}
 

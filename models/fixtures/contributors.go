@@ -11,12 +11,14 @@ import (
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/util/log"
+	"crowdstart.io/util/queries"
 
 	. "crowdstart.io/models"
 )
 
 var contributors = delay.Func("fixtures-contributors", func(c appengine.Context) {
 	db := datastore.New(c)
+	q := queries.New(c)
 
 	if count, _ := db.Query("user").Count(c); count > 10 {
 		log.Debug("Contributor fixtures already loaded, skipping.")
@@ -101,7 +103,6 @@ var contributors = delay.Func("fixtures-contributors", func(c appengine.Context)
 
 		// Create user
 		user := new(User)
-		user.Id = email
 		user.Email = email
 		user.FirstName = firstName
 		user.LastName = lastName
@@ -122,7 +123,7 @@ var contributors = delay.Func("fixtures-contributors", func(c appengine.Context)
 		if config.IsProduction {
 			return
 		} else {
-			db.PutKey("user", user.Email, user)
+			q.UpsertUser(user)
 		}
 
 		log.Debug("User: %#v", user)
