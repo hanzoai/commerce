@@ -39,7 +39,7 @@ func TestNewUser(t *testing.T) {
 		Password: mockRegForm.Password,
 	}
 
-	err = auth.NewUser(c, f)
+	err = auth.NewUser(c, &f)
 	if err != nil {
 		t.Error(err)
 	}
