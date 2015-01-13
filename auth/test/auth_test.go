@@ -1,15 +1,17 @@
 package test
 
 import (
-	"appengine/aetest"
 	"bytes"
+	"errors"
+	"reflect"
+	"testing"
+
 	"crowdstart.io/auth"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
-	"errors"
 	"github.com/gin-gonic/gin"
-	"reflect"
-	"testing"
+
+	"appengine/aetest"
 )
 
 var mockRegForm = struct {
@@ -45,7 +47,7 @@ func TestNewUser(t *testing.T) {
 
 	db := datastore.New(ctx)
 	var user models.User
-	err = db.GetKey("user", mockRegForm.User.Id, user)
+	err = db.Get(mockRegForm.User.Id, user)
 	if err != nil {
 		t.Error(err)
 	}
