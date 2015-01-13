@@ -47,7 +47,7 @@ func (c *Client) GetUserByEmail(email string, user *models.User) error {
 // Upserts
 
 // Upserting a User is non trivial since we have to assign its Id to the encoded
-// key string
+// key strings.  It also sets the Id if it is not set for insert.
 func (c *Client) UpsertUser(user *models.User) error {
 	if user.Id == "" {
 		_user := new(models.User)
