@@ -21,18 +21,19 @@ var testUsers = delay.Func("fixtures-test-users", func(c appengine.Context) {
 	// Add default test user
 	pwhash, _ := bcrypt.GenerateFromPassword([]byte("password"), 12)
 
-	q.UpsertUser(&User{
+	user := &User{
 		FirstName:    "Test",
 		LastName:     "User",
 		Email:        "test@test.com",
 		Phone:        "(123) 456-7890",
 		PasswordHash: pwhash,
-	})
+	}
+	q.UpsertUser(user)
 
 	// Create token
 	token := new(Token)
 	token.Id = "test-token"
-	token.Email = "test@test.com"
+	token.UserId = user.Id
 	db.PutKey("invite-token", "test-token", token)
 
 	// Save contribution
