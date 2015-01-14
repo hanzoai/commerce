@@ -78,7 +78,7 @@ func SubmitRegister(c *gin.Context) {
 	val.SanitizeUser(&f.User)
 
 	err = auth.NewUser(c, f)
-	if err.Error() == "Email is already registered" {
+	if err != nil && err.Error() == "Email is already registered" {
 		template.Render(c, "login.html", "registerError", "An account already exists for this email.")
 		return
 	}
