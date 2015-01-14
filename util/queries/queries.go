@@ -25,6 +25,8 @@ func New(ctx interface{}) *Client {
 func (c *Client) GetUserByEmail(email string, user *models.User) error {
 	users := make([]*models.User, 0)
 
+	log.Debug("Searching for user '%v'", email)
+
 	_, err := c.Datastore.
 		Query("user").
 		Filter("Email=", email).
@@ -32,12 +34,14 @@ func (c *Client) GetUserByEmail(email string, user *models.User) error {
 		GetAll(c.Datastore.Context, &users)
 
 	if err != nil {
-		log.Warn("Unable to fetch user from database: %v", err)
+		log.Warn("Unable to fetch user from database: '%v'", err)
 		return err
 	}
 
+	log.Debug("%d Users Found", len(users))
+
 	if len(users) == 0 {
-		return errors.New("No users using " + email)
+		return errors.New("No users using '" + email + "'")
 	}
 
 	*user = *users[0]
