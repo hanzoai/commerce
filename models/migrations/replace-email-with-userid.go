@@ -81,21 +81,19 @@ var replaceEmailWithUserId = delay.Func("migrate-replace-email-with-userid", fun
 			break
 		}
 
+		// Error, ignore field mismatch
 		if err != nil {
-			continue
+			log.Error("Error fetching user: %v\n%v", u.Email, err)
 		}
 
-		// Error, ignore field mismatch
-		if _, ok := err.(*ErrFieldMismatch); !ok {
-			log.Error("Error fetching user: %v", err, c)
-		}
+		// Delete old User record
+		log.Info("Deleting Key %v", k)
+		db.Delete(k.Encode())
 
 		// Empty the ID so Upsert auto generates it
 		u.Id = ""
 		q.UpsertUser(&u)
-
-		// Delete old User record
-		db.Delete(k.Encode())
+		log.Info("Upserting Encoded Key %v", u.Id)
 	}
 
 	log.Debug("Migrating contributions")
@@ -111,12 +109,8 @@ var replaceEmailWithUserId = delay.Func("migrate-replace-email-with-userid", fun
 			break
 		}
 
-		if err != nil {
-			continue
-		}
-
 		// Error, ignore field mismatch
-		if _, ok := err.(*ErrFieldMismatch); !ok {
+		if _, ok := err.(*ErrFieldMismatch); ok {
 			log.Error("Contribution appears to be Updated: %v", err, c)
 			break
 		}
@@ -124,7 +118,7 @@ var replaceEmailWithUserId = delay.Func("migrate-replace-email-with-userid", fun
 		// Get the corresponding user
 		var u User
 		if err = q.GetUserByEmail(oCon.Email, &u); err != nil {
-			log.Error("Could not look up user: %v\n%v", u, err)
+			log.Error("Could not look up user: %v\n%v", oCon.Email, err)
 			break
 		}
 
@@ -138,7 +132,7 @@ var replaceEmailWithUserId = delay.Func("migrate-replace-email-with-userid", fun
 			Status:        oCon.Status,
 		}
 
-		db.PutKey("contribution", k, con)
+		db.PutKey("contribution", k, &con)
 	}
 
 	log.Debug("Migrating tokens")
@@ -159,7 +153,7 @@ var replaceEmailWithUserId = delay.Func("migrate-replace-email-with-userid", fun
 		}
 
 		// Error, ignore field mismatch
-		if _, ok := err.(*ErrFieldMismatch); !ok {
+		if _, ok := err.(*ErrFieldMismatch); ok {
 			log.Error("Token appears to be Updated: %v", err, c)
 			break
 		}
@@ -167,7 +161,7 @@ var replaceEmailWithUserId = delay.Func("migrate-replace-email-with-userid", fun
 		// Get the corresponding user
 		var u User
 		if err = q.GetUserByEmail(oTo.Email, &u); err != nil {
-			log.Error("Could not look up user: %v\n%v", u, err)
+			log.Error("Could not look up user: %v\n%v", oTo.Email, err)
 			break
 		}
 
@@ -179,7 +173,7 @@ var replaceEmailWithUserId = delay.Func("migrate-replace-email-with-userid", fun
 			Expired: oTo.Expired,
 		}
 
-		db.PutKey("token", k, to)
+		db.PutKey("token", k, &to)
 	}
 
 	log.Debug("Migrating orders")
@@ -200,7 +194,7 @@ var replaceEmailWithUserId = delay.Func("migrate-replace-email-with-userid", fun
 		}
 
 		// Error, ignore field mismatch
-		if _, ok := err.(*ErrFieldMismatch); !ok {
+		if _, ok := err.(*ErrFieldMismatch); ok {
 			log.Error("Order appears to be Updated: %v", err, c)
 			break
 		}
@@ -208,7 +202,7 @@ var replaceEmailWithUserId = delay.Func("migrate-replace-email-with-userid", fun
 		// Get the corresponding user
 		var u User
 		if err = q.GetUserByEmail(oO.Email, &u); err != nil {
-			log.Error("Could not look up user: %v\n%v", u, err)
+			log.Error("Could not look up user: %v\n%v", oO.Email, err)
 			break
 		}
 
@@ -234,6 +228,6 @@ var replaceEmailWithUserId = delay.Func("migrate-replace-email-with-userid", fun
 			Test:            oO.Test,
 		}
 
-		db.PutKey("order", k, o)
+		db.PutKey("order", k, &o)
 	}
 })
