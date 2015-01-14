@@ -107,22 +107,24 @@ var replaceEmailWithUserId = delay.Func("migrate-replace-email-with-userid", fun
 		var oCon OldContribution
 		k, err := t.Next(&oCon)
 
-		//Done
-		if err == Done {
-			break
-		}
+		if err != nil {
+			//Done
+			if err == Done {
+				break
+			}
 
-		// Error, ignore field mismatch
-		if _, ok := err.(*ErrFieldMismatch); ok {
-			log.Error("Contribution appears to be Updated: %v", err, c)
-			break
+			// Error, ignore field mismatch
+			if _, ok := err.(*ErrFieldMismatch); ok {
+				log.Error("Contribution appears to be Updated: %v", err, c)
+				continue
+			}
 		}
 
 		// Get the corresponding user
 		var u User
 		if err = q.GetUserByEmail(oCon.Email, &u); err != nil {
 			log.Error("Could not look up user: %v\n%v", oCon.Email, err)
-			break
+			continue
 		}
 
 		// Update to new record and replace old one
@@ -146,19 +148,17 @@ var replaceEmailWithUserId = delay.Func("migrate-replace-email-with-userid", fun
 		var oTo OldToken
 		k, err := t.Next(&oTo)
 
-		//Done
-		if err == Done {
-			break
-		}
-
 		if err != nil {
-			continue
-		}
+			//Done
+			if err == Done {
+				break
+			}
 
-		// Error, ignore field mismatch
-		if _, ok := err.(*ErrFieldMismatch); ok {
-			log.Error("Token appears to be Updated: %v", err, c)
-			break
+			// Error, ignore field mismatch
+			if _, ok := err.(*ErrFieldMismatch); ok {
+				log.Error("Token appears to be Updated: %v", err, c)
+				continue
+			}
 		}
 
 		// Get the corresponding user
@@ -187,19 +187,17 @@ var replaceEmailWithUserId = delay.Func("migrate-replace-email-with-userid", fun
 		var oO OldOrder
 		k, err := t.Next(&oO)
 
-		//Done
-		if err == Done {
-			break
-		}
-
 		if err != nil {
-			continue
-		}
+			//Done
+			if err == Done {
+				break
+			}
 
-		// Error, ignore field mismatch
-		if _, ok := err.(*ErrFieldMismatch); ok {
-			log.Error("Order appears to be Updated: %v", err, c)
-			break
+			// Error, ignore field mismatch
+			if _, ok := err.(*ErrFieldMismatch); ok {
+				log.Error("Order appears to be Updated: %v", err, c)
+				continue
+			}
 		}
 
 		// Get the corresponding user
