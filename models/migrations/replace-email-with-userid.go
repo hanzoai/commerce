@@ -84,7 +84,7 @@ var replaceEmailWithUserId = delay.Func("migrate-replace-email-with-userid", fun
 
 			// Ignore field mismatch, otherwise skip record
 			if _, ok := err.(*ErrFieldMismatch); !ok {
-				log.Error("Error fetching user: %v", err, c)
+				log.Error("Error fetching user: %v\n%v", k, err)
 				continue
 			}
 		}
@@ -94,9 +94,17 @@ var replaceEmailWithUserId = delay.Func("migrate-replace-email-with-userid", fun
 		db.Delete(k.Encode())
 
 		// Empty the ID so Upsert auto generates it
-		u.Id = ""
-		q.UpsertUser(&u)
-		log.Info("Upserting Encoded Key %v", u.Id)
+
+		id := db.AllocateId("user")
+
+		u.Id = db.EncodeId("user", id)
+		newK, err := db.DecodeKey(u.Id)
+		if err != nil {
+			log.Error("Could not decode key: %v", newK)
+		}
+
+		db.PutKey("user", newK, &u)
+		log.Info("Inserting Encoded Key %v", u.Id)
 	}
 
 	log.Debug("Migrating contributions")
@@ -107,22 +115,24 @@ var replaceEmailWithUserId = delay.Func("migrate-replace-email-with-userid", fun
 		var oCon OldContribution
 		k, err := t.Next(&oCon)
 
-		//Done
-		if err == Done {
-			break
-		}
+		if err != nil {
+			//Done
+			if err == Done {
+				break
+			}
 
-		// Error, ignore field mismatch
-		if _, ok := err.(*ErrFieldMismatch); ok {
-			log.Error("Contribution appears to be Updated: %v", err, c)
-			break
+			// Error, ignore field mismatch
+			if _, ok := err.(*ErrFieldMismatch); ok {
+				log.Error("Contribution appears to be Updated: %v", err, c)
+				continue
+			}
 		}
 
 		// Get the corresponding user
 		var u User
 		if err = q.GetUserByEmail(oCon.Email, &u); err != nil {
 			log.Error("Could not look up user: %v\n%v", oCon.Email, err)
-			break
+			continue
 		}
 
 		// Update to new record and replace old one
@@ -146,19 +156,17 @@ var replaceEmailWithUserId = delay.Func("migrate-replace-email-with-userid", fun
 		var oTo OldToken
 		k, err := t.Next(&oTo)
 
-		//Done
-		if err == Done {
-			break
-		}
-
 		if err != nil {
-			continue
-		}
+			//Done
+			if err == Done {
+				break
+			}
 
-		// Error, ignore field mismatch
-		if _, ok := err.(*ErrFieldMismatch); ok {
-			log.Error("Token appears to be Updated: %v", err, c)
-			break
+			// Error, ignore field mismatch
+			if _, ok := err.(*ErrFieldMismatch); ok {
+				log.Error("Token appears to be Updated: %v", err, c)
+				continue
+			}
 		}
 
 		// Get the corresponding user
@@ -187,19 +195,17 @@ var replaceEmailWithUserId = delay.Func("migrate-replace-email-with-userid", fun
 		var oO OldOrder
 		k, err := t.Next(&oO)
 
-		//Done
-		if err == Done {
-			break
-		}
-
 		if err != nil {
-			continue
-		}
+			//Done
+			if err == Done {
+				break
+			}
 
-		// Error, ignore field mismatch
-		if _, ok := err.(*ErrFieldMismatch); ok {
-			log.Error("Order appears to be Updated: %v", err, c)
-			break
+			// Error, ignore field mismatch
+			if _, ok := err.(*ErrFieldMismatch); ok {
+				log.Error("Order appears to be Updated: %v", err, c)
+				continue
+			}
 		}
 
 		// Get the corresponding user
