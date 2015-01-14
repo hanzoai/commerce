@@ -84,7 +84,7 @@ var replaceEmailWithUserId = delay.Func("migrate-replace-email-with-userid", fun
 
 			// Ignore field mismatch, otherwise skip record
 			if _, ok := err.(*ErrFieldMismatch); !ok {
-				log.Error("Error fetching user: %v", err, c)
+				log.Error("Error fetching user: %v\n%v", k, err)
 				continue
 			}
 		}
@@ -94,9 +94,17 @@ var replaceEmailWithUserId = delay.Func("migrate-replace-email-with-userid", fun
 		db.Delete(k.Encode())
 
 		// Empty the ID so Upsert auto generates it
-		u.Id = ""
-		q.UpsertUser(&u)
-		log.Info("Upserting Encoded Key %v", u.Id)
+
+		id := db.AllocateId("user")
+
+		u.Id = db.EncodeId("user", id)
+		newK, err := db.DecodeKey(u.Id)
+		if err != nil {
+			log.Error("Could not decode key: %v", newK)
+		}
+
+		db.PutKey("user", newK, &u)
+		log.Info("Inserting Encoded Key %v", u.Id)
 	}
 
 	log.Debug("Migrating contributions")
