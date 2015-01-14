@@ -190,6 +190,9 @@ func StripeWebhook(c *gin.Context) {
 
 		case "account.updated":
 			accountUpdated(c, data)
+
+		case "ping":
+			c.String(200, "pong")
 		}
 	}
 }
