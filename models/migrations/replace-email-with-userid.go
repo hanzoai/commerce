@@ -76,14 +76,15 @@ var replaceEmailWithUserId = delay.Func("migrate-replace-email-with-userid", fun
 		var u User
 		k, err := t.Next(&u)
 
-		//Done
+		// Done
 		if err == Done {
 			break
 		}
 
 		// Error, ignore field mismatch
-		if err != nil {
-			log.Error("Error fetching user: %v\n%v", u.Email, err)
+		if _, ok := err.(*ErrFieldMismatch); !ok {
+			log.Error("Error fetching user: %v", err, c)
+			continue
 		}
 
 		// Delete old User record
