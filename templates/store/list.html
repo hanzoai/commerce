@@ -74,6 +74,7 @@ var allListings = {{ listingsJSON | safe }};
         {% endfor %}
       </div>
 
+      {% if !listing.SoldOut %}
       <div class="product-config">
         {% if products.0.VariantOptions("Style") %}
         <label for="style">Style:</label>
@@ -124,6 +125,23 @@ var allListings = {{ listingsJSON | safe }};
           </div>
         </div>
       </div>
+      {% else %}
+      <div class="notify-instock">
+        <form action="//skullysystems.us3.list-manage.com/subscribe/post?u=bc1d6c276527db0df1053fc13&amp;id=ae4e853b80" method="post" id="mc-embedded-subscribe-form" name="mc-embedded-subscribe-form" class="validate" target="_blank" novalidate="">
+          <div class="email">
+            <label for="mce-EMAIL">Be the first to know about the next preorder opportunity</label>
+            <input type="email" value="" name="EMAIL" id="mce-EMAIL" placeholder="email address" required="">
+            <!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups -->
+            <div style="position: absolute; left: -5000px;">
+              <input type="text" name="b_bc1d6c276527db0df1053fc13_ae4e853b80" tabindex="-1" value="">
+            </div>
+          </div>
+          <div class="notify-me">
+            <button type="submit" value="Subscribe" name="subscribe" id="mc-embedded-subscribe"><span>Notify Me</span></button>
+          </div>
+        </form>
+      </div>
+      {% endif %}
     </div>
   </div>
 </div>
