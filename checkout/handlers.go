@@ -218,6 +218,7 @@ func charge(c *gin.Context) {
 	log.Debug("API Key: %v, Token: %v", stripeAccessToken, form.StripeToken)
 	charge, err := stripe.Charge(ctx, stripeAccessToken, form.StripeToken, &form.Order, user)
 	if err != nil {
+		log.Warn("stripe error %v", err)
 		if charge.FailMsg != "" {
 			// client error
 			log.Warn("Stripe declined charge: %v", err, c)
