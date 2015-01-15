@@ -101,7 +101,7 @@ var replaceEmailWithUserIdUserOnly = delay.Func("migrate-replace-email-with-user
 			// Empty the ID so Upsert auto generates it
 			id, _, err = datastore.AllocateIDs(tc, "user", nil, 1)
 			if err != nil {
-				log.Error("Could not get Key %v", err, tc)
+				log.Error("Could not allocate Key %v", err, tc)
 				return err
 			}
 
@@ -111,7 +111,7 @@ var replaceEmailWithUserIdUserOnly = delay.Func("migrate-replace-email-with-user
 			log.Info("Inserting Key", id, tc)
 
 			if _, err = datastore.Put(tc, newK, &u); err != nil {
-				log.Error("Could not Put User %v", newK, tc)
+				log.Error("Could not Put User %v because %v", newK, err, tc)
 				return err
 			}
 
@@ -120,7 +120,7 @@ var replaceEmailWithUserIdUserOnly = delay.Func("migrate-replace-email-with-user
 			// Delete old User record
 			log.Info("Deleting Key %v", k, tc)
 			if err != datastore.Delete(tc, k) {
-				log.Error("Could not Delete User %v", newK, tc)
+				log.Error("Could not Delete User %v because %v", k, err, tc)
 			}
 
 			return err
