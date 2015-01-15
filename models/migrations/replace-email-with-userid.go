@@ -64,6 +64,53 @@ type OldOrder struct {
 	Test bool
 }
 
+var replaceEmailWithUserIdUserOnly = delay.Func("migrate-replace-email-with-userid-user-only", func(c appengine.Context) {
+	db := datastore.New(c)
+
+	log.Debug("Migrating users")
+
+	t := db.Query("user").Run(c)
+
+	var ks []string
+
+	for {
+		var u User
+		k, err := t.Next(&u)
+
+		if err != nil {
+			// Done
+			if err == Done {
+				break
+			}
+
+			// Ignore field mismatch, otherwise skip record
+			if _, ok := err.(*ErrFieldMismatch); !ok {
+				log.Error("Error fetching user: %v\n%v", k, err)
+				continue
+			}
+		}
+
+		// Empty the ID so Upsert auto generates it
+
+		id := db.AllocateId("user")
+
+		u.Id = db.EncodeId("user", id)
+		newK, err := db.DecodeKey(u.Id)
+		if err != nil {
+			log.Error("Could not decode key: %v", newK)
+		}
+
+		db.PutKey("user", newK, &u)
+		log.Info("Inserting Encoded Key %v", u.Id)
+
+		ks = append(ks, k.Encode())
+	}
+
+	// Delete old User record
+	log.Info("Deleting %d Keys", len(ks))
+	db.DeleteMulti(ks)
+})
+
 var replaceEmailWithUserId = delay.Func("migrate-replace-email-with-userid", func(c appengine.Context) {
 	db := datastore.New(c)
 	q := queries.New(c)
