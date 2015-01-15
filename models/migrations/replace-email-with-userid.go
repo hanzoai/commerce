@@ -67,7 +67,7 @@ type OldOrder struct {
 var replaceEmailWithUserIdUserOnly = delay.Func("migrate-replace-email-with-userid-user-only", func(c appengine.Context) {
 	db := datastore.New(c)
 
-	log.Debug("Migrating users")
+	log.Debug("Migrating users", c)
 
 	t := db.Query("user").Run(c)
 
@@ -85,7 +85,7 @@ var replaceEmailWithUserIdUserOnly = delay.Func("migrate-replace-email-with-user
 
 			// Ignore field mismatch, otherwise skip record
 			if _, ok := err.(*ErrFieldMismatch); !ok {
-				log.Error("Error fetching user: %v\n%v", k, err)
+				log.Error("Error fetching user: %v\n%v", k, err, c)
 				continue
 			}
 		}
@@ -97,17 +97,17 @@ var replaceEmailWithUserIdUserOnly = delay.Func("migrate-replace-email-with-user
 		u.Id = db.EncodeId("user", id)
 		newK, err := db.DecodeKey(u.Id)
 		if err != nil {
-			log.Error("Could not decode key: %v", newK)
+			log.Error("Could not decode key: %v", newK, c)
 		}
 
 		db.PutKey("user", newK, &u)
-		log.Info("Inserting Encoded Key %v", u.Id)
+		log.Info("Inserting Encoded Key %v", u.Id, c)
 
 		ks = append(ks, k.Encode())
 	}
 
 	// Delete old User record
-	log.Info("Deleting %d Keys", len(ks))
+	log.Info("Deleting %d Keys", len(ks), c)
 	db.DeleteMulti(ks)
 })
 
@@ -115,7 +115,7 @@ var replaceEmailWithUserId = delay.Func("migrate-replace-email-with-userid", fun
 	db := datastore.New(c)
 	q := queries.New(c)
 
-	log.Debug("Migrating users")
+	log.Debug("Migrating users", c)
 
 	t := db.Query("user").Run(c)
 
@@ -131,13 +131,13 @@ var replaceEmailWithUserId = delay.Func("migrate-replace-email-with-userid", fun
 
 			// Ignore field mismatch, otherwise skip record
 			if _, ok := err.(*ErrFieldMismatch); !ok {
-				log.Error("Error fetching user: %v\n%v", k, err)
+				log.Error("Error fetching user: %v\n%v", k, err, c)
 				continue
 			}
 		}
 
 		// Delete old User record
-		log.Info("Deleting Key %v", k)
+		log.Info("Deleting Key %v", k, c)
 		db.Delete(k.Encode())
 
 		// Empty the ID so Upsert auto generates it
@@ -147,14 +147,14 @@ var replaceEmailWithUserId = delay.Func("migrate-replace-email-with-userid", fun
 		u.Id = db.EncodeId("user", id)
 		newK, err := db.DecodeKey(u.Id)
 		if err != nil {
-			log.Error("Could not decode key: %v", newK)
+			log.Error("Could not decode key: %v", newK, c)
 		}
 
 		db.PutKey("user", newK, &u)
-		log.Info("Inserting Encoded Key %v", u.Id)
+		log.Info("Inserting Encoded Key %v", u.Id, c)
 	}
 
-	log.Debug("Migrating contributions")
+	log.Debug("Migrating contributions", c)
 
 	t = db.Query("contribution").Run(c)
 
@@ -178,7 +178,7 @@ var replaceEmailWithUserId = delay.Func("migrate-replace-email-with-userid", fun
 		// Get the corresponding user
 		var u User
 		if err = q.GetUserByEmail(oCon.Email, &u); err != nil {
-			log.Error("Could not look up user: %v\n%v", oCon.Email, err)
+			log.Error("Could not look up user: %v\n%v", oCon.Email, err, c)
 			continue
 		}
 
@@ -195,7 +195,7 @@ var replaceEmailWithUserId = delay.Func("migrate-replace-email-with-userid", fun
 		db.PutKey("contribution", k, &con)
 	}
 
-	log.Debug("Migrating tokens")
+	log.Debug("Migrating tokens", c)
 
 	t = db.Query("token").Run(c)
 
@@ -219,7 +219,7 @@ var replaceEmailWithUserId = delay.Func("migrate-replace-email-with-userid", fun
 		// Get the corresponding user
 		var u User
 		if err = q.GetUserByEmail(oTo.Email, &u); err != nil {
-			log.Error("Could not look up user: %v\n%v", oTo.Email, err)
+			log.Error("Could not look up user: %v\n%v", oTo.Email, err, c)
 			break
 		}
 
@@ -234,7 +234,7 @@ var replaceEmailWithUserId = delay.Func("migrate-replace-email-with-userid", fun
 		db.PutKey("token", k, &to)
 	}
 
-	log.Debug("Migrating orders")
+	log.Debug("Migrating orders", c)
 
 	t = db.Query("order").Run(c)
 
@@ -258,7 +258,7 @@ var replaceEmailWithUserId = delay.Func("migrate-replace-email-with-userid", fun
 		// Get the corresponding user
 		var u User
 		if err = q.GetUserByEmail(oO.Email, &u); err != nil {
-			log.Error("Could not look up user: %v\n%v", oO.Email, err)
+			log.Error("Could not look up user: %v\n%v", oO.Email, err, c)
 			break
 		}
 
