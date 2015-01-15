@@ -31,4 +31,5 @@ func init() {
 	// Add email to orders
 	addMigration("add-email-to-orders", addEmailToOrders)
 	addMigration("replace-email-with-userid", replaceEmailWithUserId)
+	addMigration("replace-email-with-userid-user-only", replaceEmailWithUserIdUserOnly)
 }
