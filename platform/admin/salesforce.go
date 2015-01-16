@@ -142,7 +142,6 @@ func TestSalesforceConnection(c *gin.Context) {
 	}
 
 	log.Info("Describe Success %v", api.LastJsonBlob)
-
 	displayString := fmt.Sprintf("Describe Success %v\n%v\n", api.LastQuery, api.LastJsonBlob)
 
 	// Test Upsert
@@ -153,17 +152,17 @@ func TestSalesforceConnection(c *gin.Context) {
 		Phone:     "555-5555",
 		Email:     "TestUser@verus.com",
 
-		MailingStreet:      "1600 Pennsylvania Avenue",
-		MailingCity:        "Northwest",
-		MailingState:       "District of Columbia",
-		MailingPostalCode:  "20500",
-		MailingCountryCode: "US",
+		MailingStreet:     "1600 Pennsylvania Avenue",
+		MailingCity:       "Northwest",
+		MailingState:      "District of Columbia",
+		MailingPostalCode: "20500",
+		MailingCountry:    "United States",
 
 		ShippingAddressC:   "1600 Pennsylvania Avenue",
 		ShippingCityC:      "Northwest",
 		ShippingStateC:     "District of Columbia",
 		ShippingPostalZipC: "20500",
-		ShippingCountryC:   "US",
+		ShippingCountryC:   "United States",
 	}
 
 	if err = salesforce.UpsertContact(api, &newContact); err != nil {

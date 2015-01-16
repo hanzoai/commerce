@@ -33,14 +33,15 @@ type SalesforceTokens struct {
 }
 
 type Api struct {
-	Tokens       SalesforceTokens
-	LastQuery    *http.Request
-	LastJsonBlob string
-	Client       *http.Client
+	Tokens         SalesforceTokens
+	LastQuery      *http.Request
+	LastStatusCode int
+	LastJsonBlob   string
+	Client         *http.Client
 }
 
 func (a *Api) request(method, url string, data string) (*http.Request, error) {
-	log.Debug("Salesforce %v Request to %v using %v", method, url, data)
+	log.Debug("Salesforce %v Request to %v with data %v", method, url, data)
 	req, err := http.NewRequest(method, url, strings.NewReader(data))
 
 	if err != nil {
@@ -120,11 +121,13 @@ func request(api *Api, method, path string, headers map[string]string, data stri
 
 	defer res.Body.Close()
 
+	log.Debug("Returned with status %v", res.Status)
 	jsonBlob, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
 	}
 
+	api.LastStatusCode = res.StatusCode
 	api.LastJsonBlob = string(jsonBlob[:])
 
 	return jsonBlob, nil
@@ -150,11 +153,18 @@ func UpsertContact(api *Api, contact *Contact) error {
 		return err
 	}
 
-	api.LastJsonBlob = string(jsonBlob[:])
+	if len(jsonBlob) == 0 {
+		if api.LastStatusCode == 201 || api.LastStatusCode == 204 {
+			return nil
+		} else {
+			return errors.New(fmt.Sprintf("Request returned unexpected status code %v", api.LastStatusCode))
+		}
+	}
 
 	response := UpsertResponse{}
 
 	if err := json.Unmarshal(jsonBlob, &response); err != nil {
+		log.Debug("Could not unmarshal json blob %v", jsonBlob)
 		return err
 	}
 
@@ -163,6 +173,7 @@ func UpsertContact(api *Api, contact *Contact) error {
 	}
 
 	return nil
+
 }
 
 func GetUpdatedContacts(api *Api, start, end time.Time) (*UpdatedRecordsResponse, error) {
