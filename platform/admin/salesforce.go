@@ -113,7 +113,7 @@ func TestSalesforceConnection(c *gin.Context) {
 	// Get user
 	email, err := auth.GetEmail(c)
 	if err != nil {
-		log.Panic("Unable to get email from session: %v", err)
+		log.Panic("Unable to get email from session: %v", err, c)
 	}
 
 	ctx := middleware.GetAppEngine(c)
@@ -123,7 +123,7 @@ func TestSalesforceConnection(c *gin.Context) {
 
 	// Get user instance
 	if err := db.GetKey("campaign", email, campaign); err != nil {
-		log.Panic("Unable to get campaign from database: %v", err)
+		log.Panic("Unable to get campaign from database: %v", err, c)
 	}
 
 	// Test Connecting to Salesforce
@@ -137,7 +137,7 @@ func TestSalesforceConnection(c *gin.Context) {
 		campaign.Salesforce.Signature)
 
 	if err != nil {
-		log.Panic("Unable to log in: %v", err)
+		log.Panic("Unable to log in: %v", err, c)
 		return
 	}
 
@@ -175,10 +175,10 @@ func TestSalesforceConnection(c *gin.Context) {
 	// Test GET Query using Email
 	_, err = salesforce.GetContactByEmail(api, newContact.Email)
 	if err != nil {
-		log.Panic("Unable to query: %v %v", err, api.LastJsonBlob)
+		log.Panic("Unable to query: %v %v", err, api.LastJsonBlob, c)
 	}
 
-	displayString += fmt.Sprintf("Query Success %v\n%v\n", api.LastQuery, api.LastJsonBlob)
+	displayString += fmt.Sprintf("Query Success %v\n%v\n", api.LastQuery, api.LastJsonBlob, c)
 
 	now := time.Now()
 
