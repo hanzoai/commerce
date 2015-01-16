@@ -40,6 +40,7 @@ type Api struct {
 }
 
 func (a *Api) request(method, url string, data string) (*http.Request, error) {
+	log.Debug("Salesforce %v Request to %v using %v", method, url, data)
 	req, err := http.NewRequest(method, url, strings.NewReader(data))
 
 	if err != nil {
