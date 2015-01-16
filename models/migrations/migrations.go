@@ -5,6 +5,11 @@ import (
 	"appengine/delay"
 )
 
+type MigrationStatus struct {
+	Cursor string
+	Done   bool
+}
+
 var migrations = make(map[string][]*delay.Function)
 
 // Add new migration
