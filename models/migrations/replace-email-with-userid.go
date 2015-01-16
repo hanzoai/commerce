@@ -62,19 +62,36 @@ type OldOrder struct {
 }
 
 var replaceEmailWithUserIdUserOnly = delay.Func("migrate-replace-email-with-userid-user-only", func(c appengine.Context) {
-	log.Info("Migrating Users", c)
-
-	t := datastore.NewQuery("user").Run(c)
-
-	// Keys to batch delete
 	var u User
 	var id int64
-	var k, newK *datastore.Key
+	var k, mk, newK *datastore.Key
+	var cur datastore.Cursor
 	var err error
 	var ok bool
+	var t *datastore.Iterator
+	var m MigrationStatus
+
+	log.Info("Migrating Users", c)
+
+	// Try to get cursor if it exists
+	mk = datastore.NewKey(c, "migrations", "migrate-replace-email-with-userid-user-on", 0, nil)
+	if err = datastore.Get(c, mk, &m); err != nil {
+		log.Warn("No Preexisting Cursor found", c)
+		t = datastore.NewQuery("user").Run(c)
+	} else if m.Done {
+		//Migration Complete
+		log.Info("Migration was Completed", c)
+		return
+	} else if cur, err = datastore.DecodeCursor(m.Cursor); err != nil {
+		log.Info("Preexisting Cursor is corrupt", c)
+		t = datastore.NewQuery("user").Run(c)
+	} else {
+		log.Info("Resuming from Preexisting Cursor", c)
+		t = datastore.NewQuery("user").Start(cur).Run(c)
+	}
 
 	for {
-		// Report memory stats
+		// Iterate Cursor
 		k, err = t.Next(&u)
 
 		if err != nil {
@@ -87,13 +104,27 @@ var replaceEmailWithUserIdUserOnly = delay.Func("migrate-replace-email-with-user
 			if _, ok = err.(*datastore.ErrFieldMismatch); !ok {
 				log.Error("Error fetching user: %v\n%v", k, err, c)
 				continue
+			} else {
+				break
 			}
 		}
 
 		// Skip if we've already performed this
-		if u.Id != u.Email {
+		if u.Id != "" && u.Id != u.Email {
 			log.Info("Skipping Migrated User %v", u.Id, c)
 			continue
+		}
+
+		// Save Migration point for resume
+		log.Info("Updating Migration Cursor", c)
+
+		mk = datastore.NewKey(c, "migrations", "migrate-replace-email-with-userid-user-on", 0, nil)
+
+		if cur, err = t.Cursor(); err != nil {
+			log.Warn("Could not get Cursor because %v", cur, c)
+		} else {
+			// It doesn't matter if cursor suceeds or not I guess
+			datastore.Put(c, mk, &MigrationStatus{Cursor: cur.String(), Done: false})
 		}
 
 		log.Info("Migrating Key %v", u.Id, c)
@@ -101,31 +132,32 @@ var replaceEmailWithUserIdUserOnly = delay.Func("migrate-replace-email-with-user
 			// Empty the ID so Upsert auto generates it
 			id, _, err = datastore.AllocateIDs(tc, "user", nil, 1)
 			if err != nil {
-				log.Error("Could not allocate Key %v", err, tc)
+				log.Error("Could not allocate Key  because %v", err, tc)
 				return err
 			}
 
 			newK = datastore.NewKey(tc, "user", "", id, nil)
 			u.Id = newK.Encode()
 
-			log.Info("Inserting Key", id, tc)
+			log.Info("Inserting Key %v", newK, tc)
 
 			if _, err = datastore.Put(tc, newK, &u); err != nil {
-				log.Error("Could not Put User %v because %v", newK, err, tc)
+				log.Error("Could not Put User because %v", err, tc)
 				return err
 			}
 
-			log.Info("Deleting Key %v", k.StringID(), tc)
-
 			// Delete old User record
 			log.Info("Deleting Key %v", k, tc)
-			if err != datastore.Delete(tc, k) {
+			if err = datastore.Delete(tc, k); err != nil {
 				log.Error("Could not Delete User %v because %v", k, err, tc)
 			}
 
 			return err
-		}, nil)
+		}, &datastore.TransactionOptions{XG: true})
 	}
+
+	log.Info("Migration Completed", c)
+	datastore.Put(c, mk, &MigrationStatus{Cursor: cur.String(), Done: true})
 })
 
 var replaceEmailWithUserId = delay.Func("migrate-replace-email-with-userid", func(c appengine.Context) {
