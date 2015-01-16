@@ -15,6 +15,32 @@ import (
 	"crowdstart.io/util/log"
 )
 
+// createStripeCustomer create a new stripe customer and assigns the customer id to the Crowdstart user.
+func createStripeCustomer(ctx appengine.Context, sc *client.API, user *models.User, customerParams *stripe.CustomerParams) error {
+	if customer, err := sc.Customers.New(customerParams); err != nil {
+		log.Warn("Failed to create Stripe customer: %v", err, ctx)
+		return err
+	} else {
+		// Update user with stripe customer ID so we can charge for them later
+		user.Stripe.CustomerId = customer.ID
+	}
+	return nil
+}
+
+// updateStripeCustomer updates a Crowdstart user's stripe account.
+// If this fails, then it tries to create a new stripe customer and assigns the customer id to the Crowdstart user.
+func updateStripeCustomer(ctx appengine.Context, sc *client.API, user *models.User, customerParams *stripe.CustomerParams) error {
+	if _, err := sc.Customers.Update(user.Stripe.CustomerId, customerParams); err != nil {
+		log.Warn("Failed to update Stripe customer, attempting to create a new Stripe customer: %v", err, ctx)
+		if err2 := createStripeCustomer(ctx, sc, user, customerParams); err2 != nil {
+			log.Warn("Failed to create Stripe customer: %v", err, ctx)
+			return err2
+		}
+		return nil
+	}
+	return nil
+}
+
 func Charge(ctx appengine.Context, accessToken string, authorizationToken string, order *models.Order, user *models.User) (*models.Charge, error) {
 	c := urlfetch.Client(ctx)
 	c.Transport = &urlfetch.Transport{Context: ctx, Deadline: time.Duration(10) * time.Second} // Update deadline to 10 seconds
@@ -39,17 +65,12 @@ func Charge(ctx appengine.Context, accessToken string, authorizationToken string
 
 	if user.Stripe.CustomerId == "" {
 		// Create new customer
-		if customer, err := sc.Customers.New(customerParams); err != nil {
-			log.Warn("Failed to create Stripe customer: %v", err, ctx)
+		if err := createStripeCustomer(ctx, sc, user, customerParams); err != nil {
 			return charge, err
-		} else {
-			// Update user with stripe customer ID so we can charge for them later
-			user.Stripe.CustomerId = customer.ID
 		}
 	} else {
 		// Update stripe
-		if _, err := sc.Customers.Update(user.Stripe.CustomerId, customerParams); err != nil {
-			log.Warn("Failed to update Stripe customer: %v", err, ctx)
+		if err := updateStripeCustomer(ctx, sc, user, customerParams); err != nil {
 			return charge, err
 		}
 	}
