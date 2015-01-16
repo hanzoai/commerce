@@ -15,24 +15,27 @@ import (
 	"crowdstart.io/util/log"
 )
 
-// createStripeCustomer create a new stripe customer and assigns the customer id to the Crowdstart user.
-func createStripeCustomer(ctx appengine.Context, sc *client.API, user *models.User, customerParams *stripe.CustomerParams) error {
-	if customer, err := sc.Customers.New(customerParams); err != nil {
+// Create a new stripe customer and assign id to user model.
+func createStripeCustomer(ctx appengine.Context, sc *client.API, user *models.User, params *stripe.CustomerParams) error {
+	customer, err := sc.Customers.New(params)
+
+	if err != nil {
 		log.Warn("Failed to create Stripe customer: %v", err, ctx)
 		return err
-	} else {
-		// Update user with stripe customer ID so we can charge for them later
-		user.Stripe.CustomerId = customer.ID
 	}
+
+	// Update user model with stripe customer ID so we can charge for them later
+	user.Stripe.CustomerId = customer.ID
+
 	return nil
 }
 
-// updateStripeCustomer updates a Crowdstart user's stripe account.
-// If this fails, then it tries to create a new stripe customer and assigns the customer id to the Crowdstart user.
-func updateStripeCustomer(ctx appengine.Context, sc *client.API, user *models.User, customerParams *stripe.CustomerParams) error {
-	if _, err := sc.Customers.Update(user.Stripe.CustomerId, customerParams); err != nil {
+// Update corresponding Stripe customer for this user. If that fails, try to
+// create a new customer.
+func updateStripeCustomer(ctx appengine.Context, sc *client.API, user *models.User, params *stripe.CustomerParams) error {
+	if _, err := sc.Customers.Update(user.Stripe.CustomerId, params); err != nil {
 		log.Warn("Failed to update Stripe customer, attempting to create a new Stripe customer: %v", err, ctx)
-		return createStripeCustomer(ctx, sc, user, customerParams)
+		return createStripeCustomer(ctx, sc, user, params)
 	}
 	return nil
 }
@@ -60,12 +63,12 @@ func Charge(ctx appengine.Context, accessToken string, authorizationToken string
 	}
 
 	if user.Stripe.CustomerId == "" {
-		// Create new customer
+		// Create new Stripe customer
 		if err := createStripeCustomer(ctx, sc, user, customerParams); err != nil {
 			return charge, err
 		}
 	} else {
-		// Update stripe
+		// Update Stripe customer
 		if err := updateStripeCustomer(ctx, sc, user, customerParams); err != nil {
 			return charge, err
 		}
