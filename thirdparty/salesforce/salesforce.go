@@ -104,13 +104,12 @@ func request(api *Api, method, path string, headers map[string]string, data stri
 	client := api.Client
 
 	req, err := api.request(method, api.Tokens.InstanceUrl+path, data)
+	if err != nil {
+		return nil, err
+	}
 
 	for key, value := range headers {
 		req.Header.Set(key, value)
-	}
-
-	if err != nil {
-		return nil, err
 	}
 
 	res, err := client.Do(req)
