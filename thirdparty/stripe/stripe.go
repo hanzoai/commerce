@@ -32,11 +32,7 @@ func createStripeCustomer(ctx appengine.Context, sc *client.API, user *models.Us
 func updateStripeCustomer(ctx appengine.Context, sc *client.API, user *models.User, customerParams *stripe.CustomerParams) error {
 	if _, err := sc.Customers.Update(user.Stripe.CustomerId, customerParams); err != nil {
 		log.Warn("Failed to update Stripe customer, attempting to create a new Stripe customer: %v", err, ctx)
-		if err2 := createStripeCustomer(ctx, sc, user, customerParams); err2 != nil {
-			log.Warn("Failed to create Stripe customer: %v", err, ctx)
-			return err2
-		}
-		return nil
+		return createStripeCustomer(ctx, sc, user, customerParams)
 	}
 	return nil
 }
