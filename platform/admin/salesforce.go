@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"crowdstart.io/auth"
 	"crowdstart.io/config"
@@ -112,7 +113,7 @@ func TestSalesforceConnection(c *gin.Context) {
 	// Get user
 	email, err := auth.GetEmail(c)
 	if err != nil {
-		log.Panic("Unable to get email from session: %v", err)
+		log.Panic("Unable to get email from session: %v", err, c)
 	}
 
 	ctx := middleware.GetAppEngine(c)
@@ -122,9 +123,10 @@ func TestSalesforceConnection(c *gin.Context) {
 
 	// Get user instance
 	if err := db.GetKey("campaign", email, campaign); err != nil {
-		log.Panic("Unable to get campaign from database: %v", err)
+		log.Panic("Unable to get campaign from database: %v", err, c)
 	}
 
+	// Test Connecting to Salesforce
 	api, err := salesforce.Init(
 		c,
 		campaign.Salesforce.AccessToken,
@@ -135,14 +137,14 @@ func TestSalesforceConnection(c *gin.Context) {
 		campaign.Salesforce.Signature)
 
 	if err != nil {
-		log.Panic("Unable to log in: %v", err)
+		log.Panic("Unable to log in: %v", err, c)
 		return
 	}
 
 	log.Info("Describe Success %v", api.LastJsonBlob)
-
 	displayString := fmt.Sprintf("Describe Success %v\n%v\n", api.LastQuery, api.LastJsonBlob)
 
+	// Test Upsert
 	// Please don't actually mail anything to this
 	newContact := salesforce.Contact{
 		FirstName: "Test User",
@@ -150,31 +152,42 @@ func TestSalesforceConnection(c *gin.Context) {
 		Phone:     "555-5555",
 		Email:     "TestUser@verus.com",
 
-		MailingStreet:      "1600 Pennsylvania Avenue",
-		MailingCity:        "Northwest",
-		MailingState:       "District of Columbia",
-		MailingPostalCode:  "20500",
-		MailingCountryCode: "US",
+		MailingStreet:     "1600 Pennsylvania Avenue",
+		MailingCity:       "Northwest",
+		MailingState:      "District of Columbia",
+		MailingPostalCode: "20500",
+		MailingCountry:    "United States",
 
 		ShippingAddressC:   "1600 Pennsylvania Avenue",
 		ShippingCityC:      "Northwest",
 		ShippingStateC:     "District of Columbia",
 		ShippingPostalZipC: "20500",
-		ShippingCountryC:   "US",
+		ShippingCountryC:   "United States",
 	}
 
 	if err = salesforce.UpsertContact(api, &newContact); err != nil {
-		log.Panic("Unable to upsert: %v", err)
+		log.Panic("Unable to upsert: %v %v", err, api.LastJsonBlob)
 	}
 
 	displayString += fmt.Sprintf("Upsert Success %v\n%v\n", api.LastQuery, api.LastJsonBlob)
 
+	// Test GET Query using Email
 	_, err = salesforce.GetContactByEmail(api, newContact.Email)
 	if err != nil {
-		log.Panic("Unable to query: %v", err)
+		log.Panic("Unable to query: %v %v", err, api.LastJsonBlob, c)
 	}
 
-	displayString += fmt.Sprintf("Query Success %v\n%v\n", api.LastQuery, api.LastJsonBlob)
+	displayString += fmt.Sprintf("Query Success %v\n%v\n", api.LastQuery, api.LastJsonBlob, c)
+
+	now := time.Now()
+
+	// Test to see if salesforce reports back that we upserted a user
+	_, err = salesforce.GetUpdatedContacts(api, now.Add(-15*time.Minute), now)
+	if err != nil {
+		log.Panic("Unable to get updated contacts: %v %v", err, api.LastJsonBlob)
+	}
+
+	displayString += fmt.Sprintf("UpdatedResponses Success %v\n%v\n", api.LastQuery, api.LastJsonBlob)
 
 	c.String(200, displayString)
 }

@@ -13,6 +13,7 @@ func init() {
 	loginRequired := middleware.LoginRequired("platform")
 
 	router.GET("/", admin.Index)
+	router.GET("/theme/", admin.ThemeSample)
 
 	router.GET("/dashboard", loginRequired, admin.Dashboard)
 

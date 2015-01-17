@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="UTF-8">
+    <meta content='width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no' name='viewport'>
+    <title>{{ config.SiteTitle }} | Dashboard</title>
+
+    <!--CSS-->
+    <link rel="stylesheet" type="text/css" href="{{ urlFor("/css/theme.css") }}">
+    {% block css %}{% endblock %}
+
+    <!--JS-->
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+    <script src="{{ urlFor("/js/es5-shim.min.js") }}"></script>
+    <script src="{{ urlFor("/js/html5-shim.min.js") }}"></script>
+    <script src="{{ urlFor("/js/respond.min.js") }}"></script>
+    <![endif]-->
+    {% block js %}{% endblock %}
+
+    <!--FONT-->
+    <link href="//cdnjs.cloudflare.com/ajax/libs/font-awesome/4.1.0/css/font-awesome.min.css" rel="stylesheet" type="text/css" />
+    {% block font %}{% endblock %}
+  </head>
+  <body>
+    <!--WRAPPER-->
+    <div class="site {% block site_class %}{% endblock %}" style="{% block site_style %}{% endblock %}">
+      <!--HEADER-->
+      <header class="header nav-bar">
+        <a class="nav-brand" href="sample.html">Crowdstart</a>
+        <ul class="nav-links">
+          <li>
+            <a href="#fakeLink">Menu Item</a>
+            <span class="nav-new"></span>
+          </li>
+          <li class="dropdown open">
+            <a href="#">Open Menu
+              <b class="caret"></b>
+            </a>
+            <ul class="dropdown-menu">
+              <li><a href="#">Action</a></li>
+              <li><a href="#">Another action</a></li>
+              <li><a href="#">Something else here</a></li>
+              <li class="divider"></li>
+              <li><a href="#">Separated link</a></li>
+            </ul>
+          </li>
+          <li class="dropdown">
+            <a href="#">Close Menu
+              <b class="caret"></b>
+            </a>
+            <ul class="dropdown-menu">
+              <li><a href="#">Action</a></li>
+              <li><a href="#">Another action</a></li>
+              <li><a href="#">Something else here</a></li>
+              <li class="divider"></li>
+              <li><a href="#">Separated link</a></li>
+            </ul>
+          </li>
+          <li>
+            <a href="#fakeLink">About Us</a>
+          </li>
+        </ul>
+        <form class="nav-form nav-search" action="#" role="search">
+          <div class="form-group">
+            <div class="input-group">
+              <input class="form-control" id="navbarInput-01" type="search" placeholder="Search">
+              <span class="input-group-btn">
+                <button type="submit" class="btn">
+                  <span class="fa fa-search"></span>
+                </button>
+              </span>
+            </div>
+          </div>
+        </form>
+      </header>
+
+      <!--CONTENT-->
+      <section class="content">
+        <div class="campaigns">
+          <div class="campaign-panel">
+            <h4>Campaign</h4>
+          </div>
+          <div class="campaign-panel">
+            <h4>Campaign</h4>
+          </div>
+          <div class="campaign-panel">
+            <h4>Campaign</h4>
+          </div>
+          <div class="campaign-panel">
+            <h4>Campaign</h4>
+          </div>
+          <div class="campaign-panel">
+            <h4>Campaign</h4>
+          </div>
+          <div class="campaign-panel">
+            <h4>Campaign</h4>
+          </div>
+          <div class="campaign-panel">
+            <h4>Campaign</h4>
+          </div>
+          <div class="campaign-panel">
+            <h4>Campaign</h4>
+          </div>
+        </div>
+      </section>
+
+      <!--FOOTER-->
+      <footer class="footer">
+      </footer>
+    </div>
+  </body>
+</html>
+
