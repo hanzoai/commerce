@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"crowdstart.io/config"
 	"crowdstart.io/middleware"
@@ -32,13 +33,15 @@ type SalesforceTokens struct {
 }
 
 type Api struct {
-	Tokens       SalesforceTokens
-	LastQuery    *http.Request
-	LastJsonBlob string
-	Client       *http.Client
+	Tokens         SalesforceTokens
+	LastQuery      *http.Request
+	LastStatusCode int
+	LastJsonBlob   string
+	Client         *http.Client
 }
 
 func (a *Api) request(method, url string, data string) (*http.Request, error) {
+	log.Debug("Salesforce %v Request to %v with data %v", method, url, data)
 	req, err := http.NewRequest(method, url, strings.NewReader(data))
 
 	if err != nil {
@@ -92,7 +95,7 @@ func Init(c *gin.Context, accessToken, refreshToken, instanceUrl, id, issuedAt, 
 		}
 
 		if len(response) == 0 || response[0].ErrorCode != "" {
-			return nil, errors.New("Nothing to decode")
+			return nil, errors.New(fmt.Sprintf("Nothing to decode or Error: %v", api.LastJsonBlob))
 		}
 	}
 
@@ -103,13 +106,12 @@ func request(api *Api, method, path string, headers map[string]string, data stri
 	client := api.Client
 
 	req, err := api.request(method, api.Tokens.InstanceUrl+path, data)
+	if err != nil {
+		return nil, err
+	}
 
 	for key, value := range headers {
 		req.Header.Set(key, value)
-	}
-
-	if err != nil {
-		return nil, err
 	}
 
 	res, err := client.Do(req)
@@ -119,11 +121,13 @@ func request(api *Api, method, path string, headers map[string]string, data stri
 
 	defer res.Body.Close()
 
+	log.Debug("Returned with status %v", res.Status)
 	jsonBlob, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
 	}
 
+	api.LastStatusCode = res.StatusCode
 	api.LastJsonBlob = string(jsonBlob[:])
 
 	return jsonBlob, nil
@@ -131,7 +135,7 @@ func request(api *Api, method, path string, headers map[string]string, data stri
 
 func UpsertContact(api *Api, contact *Contact) error {
 	if contact.Email == "" {
-		errors.New("Email is required")
+		errors.New("Email is required for upsert")
 	}
 
 	contactBytes, err := json.Marshal(contact)
@@ -149,11 +153,18 @@ func UpsertContact(api *Api, contact *Contact) error {
 		return err
 	}
 
-	api.LastJsonBlob = string(jsonBlob[:])
+	if len(jsonBlob) == 0 {
+		if api.LastStatusCode == 201 || api.LastStatusCode == 204 {
+			return nil
+		} else {
+			return errors.New(fmt.Sprintf("Request returned unexpected status code %v", api.LastStatusCode))
+		}
+	}
 
 	response := UpsertResponse{}
 
 	if err := json.Unmarshal(jsonBlob, &response); err != nil {
+		log.Debug("Could not unmarshal json blob %v", jsonBlob)
 		return err
 	}
 
@@ -162,6 +173,41 @@ func UpsertContact(api *Api, contact *Contact) error {
 	}
 
 	return nil
+
+}
+
+func GetUpdatedContacts(api *Api, start, end time.Time) (*UpdatedRecordsResponse, error) {
+	path := fmt.Sprintf(ContactsUpdatedPath, start.Format(time.RFC3339), end.Format(time.RFC3339))
+
+	jsonBlob, err := request(api, "GET", path, map[string]string{}, "")
+	if err != nil {
+		return nil, err
+	}
+
+	response := new(UpdatedRecordsResponse)
+
+	if err := json.Unmarshal(jsonBlob, &response); err != nil {
+		return nil, err
+	}
+
+	return response, err
+}
+
+func GetContact(api *Api, id string) (*Contact, error) {
+	path := fmt.Sprintf(ContactPath, id)
+
+	jsonBlob, err := request(api, "GET", path, map[string]string{}, "")
+	if err != nil {
+		return nil, err
+	}
+
+	response := new(Contact)
+
+	if err := json.Unmarshal(jsonBlob, &response); err != nil {
+		return nil, err
+	}
+
+	return response, err
 }
 
 func GetContactByEmail(api *Api, email string) ([]Contact, error) {
@@ -183,18 +229,11 @@ func GetContactByEmail(api *Api, email string) ([]Contact, error) {
 
 	response := make([]Contact, length, length)
 	for i, record := range queryResponse.Records {
-		jsonBlob, err = request(api, "GET", record.Attributes.Url, map[string]string{}, "")
+		contactResponse, err := GetContact(api, record.Id)
 		if err != nil {
 			return nil, err
 		}
-
-		contactResponse := Contact{}
-
-		if err := json.Unmarshal(jsonBlob, &contactResponse); err != nil {
-			return nil, err
-		}
-
-		response[i] = contactResponse
+		response[i] = *contactResponse
 	}
 
 	return response, err
