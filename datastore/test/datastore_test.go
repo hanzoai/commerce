@@ -125,6 +125,7 @@ func TestMultiCRUD(t *testing.T) {
 	for i := 0; i < len(oPut); i++ {
 		oPut[i] = interface{}(TestStruct{"i"})
 	}
+	t.Log(oPut)
 	keys, err := db.PutMulti(kind, oPut)
 	if err != nil {
 		t.Error(err)

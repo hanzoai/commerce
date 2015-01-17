@@ -123,6 +123,7 @@ func (d *Datastore) PutKey(kind string, key interface{}, src interface{}) (strin
 func (d *Datastore) PutMulti(kind string, srcs []interface{}) (keys []string, err error) {
 	nkeys := len(srcs)
 	_keys := make([]*Key, nkeys)
+	log.Info(srcs)
 
 	for i := 0; i < nkeys; i++ {
 		_keys[i] = NewIncompleteKey(d.Context, kind, nil)
