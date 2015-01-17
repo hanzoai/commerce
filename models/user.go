@@ -26,6 +26,7 @@ type User struct {
 		CustomerId string
 		Account    stripe.Account
 	}
+	//Metadata		map[string]Metadata
 }
 
 func (u User) Name() string {
