@@ -168,10 +168,10 @@ func TestSalesforceConnection(c *gin.Context) {
 
 	// Test to see if salesforce reports back that we upserted a user
 	ids := new([]string)
-	if err = client.GetUpdatedContacts(now.Add(-15*time.Minute), now, ids); err != nil {
+	if err = client.GetUpdatedContacts(now.Add(-15*time.Minute), now.Add(15*time.Minute), ids); err != nil {
 		log.Panic("Getting Updated Contacts Failed: %v, %v", err, string(client.LastBody[:]), c)
 	}
-	log.Info("Get Updated Contacts Success %v", ids, c)
+	log.Info("Get Updated Contacts Success %v, %v", string(client.LastBody[:]), ids, c)
 
 	c.String(200, "Success!")
 }
