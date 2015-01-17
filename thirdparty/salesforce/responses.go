@@ -101,6 +101,6 @@ type UpsertResponse struct {
 }
 
 type UpdatedRecordsResponse struct {
-	Ids               []string `json:"id"`
+	Ids               []string `json:"ids"`
 	LatestDateCovered string   `json:"latestDateCovered"`
 }
