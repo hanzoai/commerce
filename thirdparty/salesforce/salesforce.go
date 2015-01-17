@@ -188,10 +188,6 @@ func (a *Api) Refresh() error {
 	return nil
 }
 
-func getId(id string) string {
-	return strings.Replace(id, ".", "_", -1)
-}
-
 func (a *Api) Push(object interface{}) error {
 	c := a.Context
 
@@ -206,16 +202,8 @@ func (a *Api) Push(object interface{}) error {
 			return errors.New("Id is required for Upsert")
 		}
 
-		contact := Contact{
-			LastName:           v.LastName,
-			FirstName:          v.FirstName,
-			Phone:              v.Phone,
-			ShippingAddressC:   v.ShippingAddress.Line1 + " " + v.ShippingAddress.Line2,
-			ShippingCityC:      v.ShippingAddress.City,
-			ShippingStateC:     v.ShippingAddress.State,
-			ShippingPostalZipC: v.ShippingAddress.PostalCode,
-			ShippingCountryC:   v.ShippingAddress.Country,
-		}
+		contact := Contact{}
+		contact.FromUser(v)
 
 		log.Debug("Converting to Contact: %v", contact, c)
 		contactBytes, err := json.Marshal(&contact)
@@ -225,7 +213,7 @@ func (a *Api) Push(object interface{}) error {
 
 		contactJSON := string(contactBytes[:])
 
-		path := fmt.Sprintf(ContactExternalIdPath, getId(v.Id))
+		path := fmt.Sprintf(ContactExternalIdPath, v.Id)
 
 		log.Info("Upserting Contact: %v", contact, c)
 		if err = a.request("PATCH", path, contactJSON, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
@@ -288,25 +276,9 @@ func (a *Api) Pull(id string, object interface{}) error {
 		}
 
 		log.Debug("Getting Contact: %v", contact, c)
+
 		log.Info("Converting to User", c)
-
-		v.LastName = contact.LastName
-		v.FirstName = contact.FirstName
-		v.Phone = contact.Phone
-
-		lines := strings.Split(contact.ShippingAddressC, "/")
-
-		//
-		v.ShippingAddress.Line1 = lines[0]
-		if len(lines) > 1 {
-			v.ShippingAddress.Line2 = strings.Join(lines[1:], "/")
-		}
-
-		v.ShippingAddress.City = contact.ShippingCityC
-		v.ShippingAddress.State = contact.ShippingStateC
-		v.ShippingAddress.PostalCode = contact.ShippingPostalZipC
-		v.ShippingAddress.Country = contact.ShippingCountryC
-
+		contact.ToUser(v)
 	default:
 		return errors.New("Invalid Type")
 	}
@@ -314,20 +286,55 @@ func (a *Api) Pull(id string, object interface{}) error {
 	return nil
 }
 
-func (a *Api) GetUpdatedContacts(start, end time.Time, ids *[]string) error {
-	path := fmt.Sprintf(ContactsUpdatedPath, start.Format(time.RFC3339), end.Format(time.RFC3339))
+func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
+	c := a.Context
 
-	if err := a.request("GET", path, "", nil, true); err != nil {
-		return err
+	switch v := objects.(type) {
+	case *[]*models.User:
+		log.Info("Getting Updated Users", c)
+		path := fmt.Sprintf(ContactsUpdatedPath, start.Format(time.RFC3339), end.Format(time.RFC3339))
+
+		if err := a.request("GET", path, "", nil, true); err != nil {
+			return err
+		}
+
+		response := new(UpdatedRecordsResponse)
+
+		if err := json.Unmarshal(a.LastBody, &response); err != nil {
+			return err
+		}
+
+		users := make([]*models.User, 0)
+
+		for _, id := range response.Ids {
+			log.Info("Getting Contact for ")
+			path := fmt.Sprintf(ContactPath, id)
+			if err := a.request("GET", path, "", nil, true); err != nil {
+				log.Warn("Failed to Get Contact for %v", id, c)
+				continue
+			}
+
+			contact := new(Contact)
+			if err := json.Unmarshal(a.LastBody, contact); err != nil {
+				log.Warn("Could not unmarshal: %v", string(a.LastBody[:]), c)
+				continue
+			}
+			log.Debug("Getting Contact: %v", contact, c)
+
+			log.Info("Converting to User", c)
+			user := new(models.User)
+			contact.ToUser(user)
+			log.Info("User %v", user, contact, c)
+
+			users = append(users, user)
+		}
+
+		log.Info("Pulled %v Users", len(users))
+		*v = users
+
+	default:
+		return errors.New("Invalid Type")
 	}
-
-	response := new(UpdatedRecordsResponse)
-
-	if err := json.Unmarshal(a.LastBody, &response); err != nil {
-		return err
-	}
-
-	*ids = response.Ids
 
 	return nil
 }
