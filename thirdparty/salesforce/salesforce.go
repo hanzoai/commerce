@@ -11,7 +11,9 @@ import (
 	"time"
 
 	"crowdstart.io/config"
+	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
+	"crowdstart.io/models"
 	"crowdstart.io/util/log"
 
 	"github.com/gin-gonic/gin"
@@ -19,39 +21,17 @@ import (
 	"appengine/urlfetch"
 )
 
-// Api Data Container
-type SalesforceTokens struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	InstanceUrl  string `json:"instance_url"`
-	Id           string `json:"id"`
-	IssuedAt     string `json:"issued_at"`
-	Signature    string `json:"signature"`
-
-	ErrorDescription string `json:"error_description"`
-	Error            string `json:"error"`
-}
-
 type Api struct {
-	Tokens         SalesforceTokens
-	LastQuery      *http.Request
+	LastRequest  *http.Request
+	LastResponse *http.Response
+
 	LastStatusCode int
-	LastJsonBlob   string
-	Client         *http.Client
-}
+	LastBody       []byte
+	Context        *gin.Context
 
-func (a *Api) request(method, url string, data string) (*http.Request, error) {
-	log.Debug("Salesforce %v Request to %v with data %v", method, url, data)
-	req, err := http.NewRequest(method, url, strings.NewReader(data))
+	Campaign *models.Campaign
 
-	if err != nil {
-		log.Error("Could not create request: %v", err)
-		return nil, err
-	}
-	req.Header.Set("Authorization", "Bearer "+a.Tokens.AccessToken)
-	a.LastQuery = req
-
-	return req, err
+	Update bool
 }
 
 // Get the HttpClient from the Gin context
@@ -62,218 +42,90 @@ func getClient(c *gin.Context) *http.Client {
 	return client
 }
 
-func Init(c *gin.Context, accessToken, refreshToken, instanceUrl, id, issuedAt, signature string) (*Api, error) {
-	// Load Data into API
-	api := &(Api{
-		Tokens: SalesforceTokens{
-			AccessToken:  accessToken,
-			RefreshToken: refreshToken,
-			InstanceUrl:  instanceUrl,
-			Id:           id,
-			IssuedAt:     issuedAt,
-			Signature:    signature},
-		Client: getClient(c)})
+// Request sends HTTP requests to Salesforce
+func (a *Api) request(method, path, data string, headers *map[string]string, retry bool) error {
+	c := a.Context
+	client := getClient(c)
+	url := a.Campaign.Salesforce.InstanceUrl + path
 
-	// Hit the topmost RESTful endpoint to test if credentials work
-	response := make([]DescribeResponse, 1, 1)
-
-	if err := Describe(api, response); err != nil {
-		return nil, err
-	}
-
-	// If the endpoint has and error, try again after refreshing credentials
-	if len(response) == 0 || response[0].ErrorCode != "" {
-		// Try to get new API tokens by using the refresh token
-		if err := Refresh(c, refreshToken, &api.Tokens); err != nil {
-			return nil, err
-		}
-
-		// Try to hit the endpoint again
-		err := Describe(api, response)
-		if err != nil {
-			return nil, err
-		}
-
-		if len(response) == 0 || response[0].ErrorCode != "" {
-			return nil, errors.New(fmt.Sprintf("Nothing to decode or Error: %v", api.LastJsonBlob))
-		}
-	}
-
-	return api, nil
-}
-
-func request(api *Api, method, path string, headers map[string]string, data string) ([]byte, error) {
-	client := api.Client
-
-	req, err := api.request(method, api.Tokens.InstanceUrl+path, data)
+	log.Info("Creating a Request to %v to %v", method, url, c)
+	req, err := http.NewRequest(method, url, strings.NewReader(data))
 	if err != nil {
-		return nil, err
+		log.Error("Could not create Request: %v", err)
+		return err
 	}
 
-	for key, value := range headers {
-		req.Header.Set(key, value)
+	req.Header.Set("Authorization", "Bearer "+a.Campaign.Salesforce.AccessToken)
+	if headers != nil {
+		for key, value := range *headers {
+			req.Header.Set(key, value)
+		}
+		log.Info("Setting Headers %v", req.Header, c)
 	}
+
+	a.LastRequest = req
+
+	log.Info("Sending Request", c)
 
 	res, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		log.Error("Request has failed: %v", err, c)
+		return err
 	}
-
 	defer res.Body.Close()
 
-	log.Debug("Returned with status %v", res.Status)
-	jsonBlob, err := ioutil.ReadAll(res.Body)
+	log.Info("Decoding Response", c)
+
+	a.LastResponse = res
+
+	log.Info("Decoding Body", c)
+	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return nil, err
-	}
-
-	api.LastStatusCode = res.StatusCode
-	api.LastJsonBlob = string(jsonBlob[:])
-
-	return jsonBlob, nil
-}
-
-func UpsertContact(api *Api, contact *Contact) error {
-	if contact.Email == "" {
-		errors.New("Email is required for upsert")
-	}
-
-	contactBytes, err := json.Marshal(contact)
-	if err != nil {
+		log.Error("Could not read Response Body: %v", err, c)
 		return err
 	}
 
-	contactJSON := string(contactBytes[:])
+	a.LastStatusCode = res.StatusCode
+	a.LastBody = body
 
-	// strings.Replace required to bypass broken Salesforce period parsing
-	path := fmt.Sprintf(ContactUpsertUsingEmailPath, strings.Replace(contact.Email, ".", "_", -1))
-
-	jsonBlob, err := request(api, "PATCH", path, map[string]string{"Content-Type": "application/json"}, contactJSON)
-	if err != nil {
-		return err
+	if len(body) == 0 {
+		log.Warn("The Response has no Body", c)
+		return nil
 	}
 
-	if len(jsonBlob) == 0 {
-		if api.LastStatusCode == 201 || api.LastStatusCode == 204 {
-			return nil
-		} else {
-			return errors.New(fmt.Sprintf("Request returned unexpected status code %v", api.LastStatusCode))
+	responses := make([]SalesforceError, 1)
+
+	log.Info("Try Decoding any Errors in the Response", c)
+	if err = json.Unmarshal(body, &responses); err != nil {
+		log.Info("No Errors in the Response", c)
+		return nil
+	}
+
+	if retry {
+		log.Info("Encountered Error '%v: %v'", responses[0].ErrorCode, responses[0].Message, c)
+		if responses[0].ErrorCode == "INVALID_SESSION_ID" {
+			log.Info("Refreshing Token", c)
+			if err := a.Refresh(); err != nil {
+				return errors.New(fmt.Sprintf("%v: %v", responses[0].ErrorCode, responses[0].Message))
+			}
+			return a.request(method, path, data, headers, false)
 		}
 	}
-
-	response := UpsertResponse{}
-
-	if err := json.Unmarshal(jsonBlob, &response); err != nil {
-		log.Debug("Could not unmarshal json blob %v", jsonBlob)
-		return err
-	}
-
-	if !response.Success {
-		return errors.New(response.Errors[0].Message)
-	}
-
-	return nil
-
+	return errors.New(fmt.Sprintf("%v, %v", string(a.LastBody[:]), err, c))
 }
 
-func GetUpdatedContacts(api *Api, start, end time.Time) (*UpdatedRecordsResponse, error) {
-	path := fmt.Sprintf(ContactsUpdatedPath, start.Format(time.RFC3339), end.Format(time.RFC3339))
-
-	jsonBlob, err := request(api, "GET", path, map[string]string{}, "")
-	if err != nil {
-		return nil, err
+// New creates an API from a Context and Campaign
+func New(c *gin.Context, campaign *models.Campaign, update bool) *Api {
+	return &Api{
+		Campaign: campaign,
+		Context:  c,
+		Update:   update,
 	}
-
-	response := new(UpdatedRecordsResponse)
-
-	if err := json.Unmarshal(jsonBlob, &response); err != nil {
-		return nil, err
-	}
-
-	return response, err
 }
 
-func GetContact(api *Api, id string) (*Contact, error) {
-	path := fmt.Sprintf(ContactPath, id)
-
-	jsonBlob, err := request(api, "GET", path, map[string]string{}, "")
-	if err != nil {
-		return nil, err
-	}
-
-	response := new(Contact)
-
-	if err := json.Unmarshal(jsonBlob, &response); err != nil {
-		return nil, err
-	}
-
-	return response, err
-}
-
-func GetContactByEmail(api *Api, email string) ([]Contact, error) {
-	// Not the safest thing in the world
-	path := ContactQueryPath + "%27" + email + "%27"
-
-	jsonBlob, err := request(api, "GET", path, map[string]string{}, "")
-	if err != nil {
-		return nil, err
-	}
-
-	queryResponse := new(QueryResponse)
-
-	if err := json.Unmarshal(jsonBlob, queryResponse); err != nil {
-		return nil, err
-	}
-
-	length := len(queryResponse.Records)
-
-	response := make([]Contact, length, length)
-	for i, record := range queryResponse.Records {
-		contactResponse, err := GetContact(api, record.Id)
-		if err != nil {
-			return nil, err
-		}
-		response[i] = *contactResponse
-	}
-
-	return response, err
-}
-
-func SObjectDescribe(api *Api, response *SObjectDescribeResponse) error {
-	jsonBlob, err := request(api, "GET", SObjectDescribePath, map[string]string{}, "")
-	if err != nil {
-		return err
-	}
-
-	if err := json.Unmarshal(jsonBlob, response); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func Describe(api *Api, response []DescribeResponse) error {
-	jsonBlob, err := request(api, "GET", DescribePath, map[string]string{}, "")
-	if err != nil {
-		return err
-	}
-
-	//It could be a single response...
-	singleResponse := DescribeResponse{}
-	if err := json.Unmarshal(jsonBlob, &singleResponse); err != nil {
-		//Or multiple because the API hates you when it spits out errors...
-		if err2 := json.Unmarshal(jsonBlob, &response); err != nil {
-			return err2
-		}
-		return err
-	} else {
-		response[0] = singleResponse
-	}
-
-	return nil
-}
-
-func Refresh(c *gin.Context, refreshToken string, tokens *SalesforceTokens) error {
+// Refresh refreshes the Salesforce tokens and saves them to database
+func (a *Api) Refresh() error {
+	c := a.Context
 	ctx := middleware.GetAppEngine(c)
 	client := urlfetch.Client(ctx)
 
@@ -282,44 +134,238 @@ func Refresh(c *gin.Context, refreshToken string, tokens *SalesforceTokens) erro
 	data.Add("grant_type", "refresh_token")
 	data.Set("client_id", config.Salesforce.ConsumerKey)
 	data.Set("client_secret", config.Salesforce.ConsumerSecret)
-	data.Set("refresh_token", refreshToken)
+	data.Set("refresh_token", a.Campaign.Salesforce.RefreshToken)
 
+	log.Info("Posting to the Refresh API", c)
 	tokenReq, err := http.NewRequest("POST", LoginUrl, strings.NewReader(data.Encode()))
 	if err != nil {
-		log.Error("Could not create request: %v", err)
+		log.Error("Could not create request: %v", err, c)
 		return err
 	}
-
-	log.Debug("Trying to send request %v with params %v", tokenReq, data)
 
 	// try to post to refresh token API
 	res, err := client.Do(tokenReq)
-	defer res.Body.Close()
 	if err != nil {
-		log.Error("Could not post a Refresh Token: %v", err)
+		log.Error("Request Failed: %v", err, c)
 		return err
 	}
+	defer res.Body.Close()
 
 	// decode the json
 	jsonBlob, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		log.Error("Could not decode jsonblob: %v", err)
+		log.Error("Could not decode Body: %v", err, c)
 		return err
 	}
 
-	log.Debug("Trying to unmarshal jsonBlob: %s", jsonBlob)
+	response := new(SalesforceTokenResponse)
 
+	log.Info("Trying to unmarshal Body: %s", jsonBlob)
 	// try and extract the json struct
-	if err := json.Unmarshal(jsonBlob, tokens); err != nil {
-		log.Error("Could not unmarshal jsonBlob: %v", err)
+	if err = json.Unmarshal(jsonBlob, response); err != nil {
+		log.Error("Could not unmarshal: %v", err, c)
 		return err
 	}
 
-	if tokens.Error != "" {
-		return errors.New(tokens.ErrorDescription)
+	if response.Error != "" {
+		log.Error("%v: %v", response.Error, response.ErrorDescription, c)
+		return errors.New(fmt.Sprintf("%v: %v", response.Error, response.ErrorDescription))
 	}
 
-	log.Debug("New Access Token:%v", tokens.AccessToken)
+	log.Debug("New Access Token: %v", response.AccessToken, c)
+	a.Campaign.Salesforce.AccessToken = response.AccessToken
+	a.Campaign.Salesforce.InstanceUrl = response.InstanceUrl
+	a.Campaign.Salesforce.Id = response.Id
+	a.Campaign.Salesforce.IssuedAt = response.IssuedAt
+	a.Campaign.Salesforce.Signature = response.Signature
+
+	log.Info("Updating Campaign", c)
+	if a.Update {
+		db := datastore.New(c)
+		db.PutKey("campaign", a.Campaign.Id, a.Campaign)
+	}
+
+	return nil
+}
+
+func getId(id string) string {
+	return strings.Replace(id, ".", "_", -1)
+}
+
+func (a *Api) Push(object interface{}) error {
+	c := a.Context
+
+	if object == nil {
+		return errors.New("Cannot Push nil object")
+	}
+
+	switch v := object.(type) {
+	case *models.User:
+		log.Info("Upserting User", c)
+		if v.Id == "" {
+			return errors.New("Id is required for Upsert")
+		}
+
+		contact := Contact{
+			LastName:           v.LastName,
+			FirstName:          v.FirstName,
+			Phone:              v.Phone,
+			ShippingAddressC:   v.ShippingAddress.Line1 + " " + v.ShippingAddress.Line2,
+			ShippingCityC:      v.ShippingAddress.City,
+			ShippingStateC:     v.ShippingAddress.State,
+			ShippingPostalZipC: v.ShippingAddress.PostalCode,
+			ShippingCountryC:   v.ShippingAddress.Country,
+		}
+
+		log.Debug("Converting to Contact: %v", contact, c)
+		contactBytes, err := json.Marshal(&contact)
+		if err != nil {
+			return err
+		}
+
+		contactJSON := string(contactBytes[:])
+
+		path := fmt.Sprintf(ContactExternalIdPath, getId(v.Id))
+
+		log.Info("Upserting Contact: %v", contact, c)
+		if err = a.request("PATCH", path, contactJSON, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
+			return err
+		}
+
+	default:
+		return errors.New("Invalid Type")
+	}
+
+	if len(a.LastBody) == 0 {
+		if a.LastStatusCode == 201 || a.LastStatusCode == 204 {
+			log.Error("Upsert returned %v", a.LastStatusCode, c)
+			return nil
+		} else {
+			return errors.New(fmt.Sprintf("Request returned unexpected status code %v", a.LastStatusCode))
+		}
+	}
+
+	response := new(UpsertResponse)
+
+	if err := json.Unmarshal(a.LastBody, response); err != nil {
+		log.Error("Could not unmarshal: %v", string(a.LastBody[:]), c)
+		return err
+	}
+
+	if !response.Success {
+		log.Error("Upsert Failed: %v: %v", response.Errors[0].ErrorCode, response.Errors[0].Message, c)
+		return errors.New(fmt.Sprintf("%v: %v", response.Errors[0].ErrorCode, response.Errors[0].Message))
+	}
+
+	return nil
+}
+
+func (a *Api) Pull(id string, object interface{}) error {
+	c := a.Context
+
+	if object == nil {
+		return errors.New("Cannot Pull nil object")
+	}
+
+	switch v := object.(type) {
+	case *models.User:
+		log.Info("Getting User", c)
+		if id == "" {
+			return errors.New("Id is required for Get")
+		}
+
+		path := fmt.Sprintf(ContactExternalIdPath, id)
+
+		if err := a.request("GET", path, "", nil, true); err != nil {
+			return err
+		}
+
+		contact := new(Contact)
+
+		if err := json.Unmarshal(a.LastBody, contact); err != nil {
+			log.Error("Could not unmarshal: %v", string(a.LastBody[:]), c)
+			return err
+		}
+
+		log.Debug("Getting Contact: %v", contact, c)
+		log.Info("Converting to User", c)
+
+		v.LastName = contact.LastName
+		v.FirstName = contact.FirstName
+		v.Phone = contact.Phone
+
+		lines := strings.Split(contact.ShippingAddressC, "/")
+
+		//
+		v.ShippingAddress.Line1 = lines[0]
+		if len(lines) > 1 {
+			v.ShippingAddress.Line2 = strings.Join(lines[1:], "/")
+		}
+
+		v.ShippingAddress.City = contact.ShippingCityC
+		v.ShippingAddress.State = contact.ShippingStateC
+		v.ShippingAddress.PostalCode = contact.ShippingPostalZipC
+		v.ShippingAddress.Country = contact.ShippingCountryC
+
+	default:
+		return errors.New("Invalid Type")
+	}
+
+	return nil
+}
+
+func (a *Api) GetUpdatedContacts(start, end time.Time, ids *[]string) error {
+	path := fmt.Sprintf(ContactsUpdatedPath, start.Format(time.RFC3339), end.Format(time.RFC3339))
+
+	if err := a.request("GET", path, "", nil, true); err != nil {
+		return err
+	}
+
+	response := new(UpdatedRecordsResponse)
+
+	if err := json.Unmarshal(a.LastBody, &response); err != nil {
+		return err
+	}
+
+	ids = &response.Ids
+
+	return nil
+}
+
+func (a *Api) SObjectDescribe(api *Api, response *SObjectDescribeResponse) error {
+	c := a.Context
+
+	if err := api.request("GET", SObjectDescribePath, "", nil, true); err != nil {
+		return err
+	}
+
+	if err := json.Unmarshal(a.LastBody, response); err != nil {
+		log.Error("Could not unmarshal: %v", string(a.LastBody[:]), c)
+		return err
+	}
+
+	return nil
+}
+
+func (a *Api) Describe(response *DescribeResponse) error {
+	c := a.Context
+
+	if err := a.request("GET", DescribePath, "", nil, true); err != nil {
+		return err
+	}
+
+	//It could be a single response...
+	if err := json.Unmarshal(a.LastBody, response); err != nil {
+		//Or multiple because the API hates you when it spits out errors...
+		var errResponse *[]SalesforceError
+		if err2 := json.Unmarshal(a.LastBody, errResponse); err2 != nil {
+			log.Error("Could not unmarshal: %v", string(a.LastBody[:]), c)
+			return err2
+		} else {
+			log.Error("%v: %v", (*errResponse)[0].ErrorCode, (*errResponse)[0].Message, c)
+		}
+		return err
+	}
 
 	return nil
 }
