@@ -327,7 +327,7 @@ func (a *Api) GetUpdatedContacts(start, end time.Time, ids *[]string) error {
 		return err
 	}
 
-	ids = &response.Ids
+	*ids = response.Ids
 
 	return nil
 }
