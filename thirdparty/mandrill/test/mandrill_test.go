@@ -5,16 +5,12 @@ import (
 
 	"appengine"
 	"appengine/aetest"
-	"crowdstart.io/config"
 
+	"crowdstart.io/config"
 	mail "crowdstart.io/thirdparty/mandrill"
 )
 
 func TestPing(t *testing.T) {
-	if config.Mandrill.APIKey == "" {
-		t.Skip()
-	}
-
 	instance, err := aetest.NewInstance(nil)
 	if err != nil {
 		t.Fatal(err)
@@ -33,10 +29,6 @@ func TestPing(t *testing.T) {
 }
 
 func TestSendTemplate(t *testing.T) {
-	if config.Mandrill.APIKey == "" {
-		t.Skip()
-	}
-
 	instance, err := aetest.NewInstance(nil)
 	if err != nil {
 		t.Fatal(err)
@@ -62,7 +54,6 @@ func TestSendTemplate(t *testing.T) {
 	req.TemplateName = "preorder-confirmation-template"
 
 	err = mail.SendTemplate(ctx, &req)
-
 	if err != nil {
 		t.Error(err)
 	}
