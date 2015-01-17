@@ -51,10 +51,10 @@ var getSalesforceTokens = cache.Memoize(func(args ...interface{}) interface{} {
 
 // Deferred Tasks
 // This function upserts a contact into salesforce
-var salesforceUpsertTask = delay.Func("SalesforceUpsert", func(c *gin.Context, api *salesforce.Api, contact *salesforce.Contact) {
+var salesforceUpsertTask = delay.Func("SalesforceUpsert", func(c *gin.Context, client *salesforce.Api, user *models.User) {
 	// The email is required as it is the external ID used in salesforce
-	if contact.Email == "" {
-		log.Panic("Email is required for upsert")
+	if user.Id == "" {
+		log.Panic("Id is required for upsert")
 	}
 
 	db := datastore.New(c)
@@ -62,16 +62,15 @@ var salesforceUpsertTask = delay.Func("SalesforceUpsert", func(c *gin.Context, a
 	// Query out all orders (since preorder is stored as a single string)
 	var orders []models.Order
 	_, err := db.Query("order").
-		Filter("Email =", contact.Email).
+		Filter("Email =", user.Email).
 		GetAll(db.Context, &orders)
 
 	// Ignore any field mismatch errors.
 	if err != nil {
 		if _, ok := err.(*ErrFieldMismatch); ok {
-			log.Warn("Field mismatch when getting order", db.Context)
-			err = nil
+			log.Warn("Field mismatch when getting order", db.Context, c)
 		} else {
-			log.Panic("Error retrieving orders associated with the user's email", err)
+			log.Panic("Error retrieving orders associated with the user's email", err, c)
 		}
 	}
 
@@ -94,10 +93,10 @@ var salesforceUpsertTask = delay.Func("SalesforceUpsert", func(c *gin.Context, a
 	}
 
 	// Assign to contact and synchronize
-	contact.PreorderC = preorders
+	// contact.PreorderC = preorders
 
-	if err := salesforce.UpsertContact(api, contact); err != nil {
-		log.Panic("UpsertContactTask failed: %v", err)
+	if err := client.Push(user); err != nil {
+		log.Panic("UpsertContactTask failed: %v", err, c)
 	}
 })
 
@@ -269,30 +268,11 @@ func charge(c *gin.Context) {
 	})
 
 	if salesforceTokens.AccessToken != "" {
-		api, err := salesforce.Init(
-			c,
-			salesforceTokens.AccessToken,
-			salesforceTokens.RefreshToken,
-			salesforceTokens.InstanceUrl,
-			salesforceTokens.Id,
-			salesforceTokens.IssuedAt,
-			salesforceTokens.Signature)
-
 		if err != nil {
-			contact := salesforce.Contact{
-				LastName:           user.LastName,
-				FirstName:          user.FirstName,
-				Phone:              user.Phone,
-				Email:              user.Email,
-				ShippingAddressC:   user.ShippingAddress.Line1 + user.ShippingAddress.Line2,
-				ShippingCityC:      user.ShippingAddress.City,
-				ShippingStateC:     user.ShippingAddress.State,
-				ShippingPostalZipC: user.ShippingAddress.PostalCode,
-				ShippingCountryC:   user.ShippingAddress.Country,
-			}
-
 			// Launch a synchronization task
-			salesforceUpsertTask.Call(appengine.NewContext(c.Request), c, api, &contact)
+			campaign := getCampaign(c, db)
+			client := salesforce.New(c, &campaign, true)
+			salesforceUpsertTask.Call(appengine.NewContext(c.Request), c, client, &user)
 		} else {
 			log.Debug("Could not synchronize with salesforce.")
 		}

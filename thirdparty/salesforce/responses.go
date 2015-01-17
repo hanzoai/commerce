@@ -1,5 +1,18 @@
 package salesforce
 
+// Api Data Container
+type SalesforceTokenResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	InstanceUrl  string `json:"instance_url"`
+	Id           string `json:"id"`
+	IssuedAt     string `json:"issued_at"`
+	Signature    string `json:"signature"`
+
+	ErrorDescription string `json:"error_description"`
+	Error            string `json:"error"`
+}
+
 // Salesforce Structs
 // These represent non-sobject responses received from salesforce
 type SalesforceError struct {
@@ -24,9 +37,6 @@ type DescribeResponse struct {
 	Search       string `json:"search"`
 	QuickActions string `json:"quickActions"`
 	AppMenu      string `json:"appMenu"`
-
-	Message   string `json:"message"`
-	ErrorCode string `json:"errorCode"`
 }
 
 type SObjectUrls struct {
@@ -91,6 +101,6 @@ type UpsertResponse struct {
 }
 
 type UpdatedRecordsResponse struct {
-	Ids []string `json:"id"`
-	LatestDateCovered string `json:"latestDateCovered"`
+	Ids               []string `json:"id"`
+	LatestDateCovered string   `json:"latestDateCovered"`
 }
