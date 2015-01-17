@@ -1,5 +1,11 @@
 package salesforce
 
+import (
+	"strings"
+
+	"crowdstart.io/models"
+)
+
 //SObject Definitions
 type Contact struct {
 	// Don't manually specify these
@@ -74,4 +80,37 @@ type Contact struct {
 	ShippingPostalZipC           string `json:"Shipping_Postal_Zip__c,omitempty"`
 	ShippingCountryC             string `json:"Shipping_Country__c,omitempty"`
 	MC4SFMCSubscriberC           string `json:"MC4SF__MC_Subscriber__c,omitempty"`
+}
+
+func (c *Contact) FromUser(u *models.User) {
+	c.LastName = u.LastName
+	c.FirstName = u.FirstName
+	c.Email = u.Email
+	c.Phone = u.Phone
+	c.ShippingAddressC = u.ShippingAddress.Line1 + " " + u.ShippingAddress.Line2
+	c.ShippingCityC = u.ShippingAddress.City
+	c.ShippingStateC = u.ShippingAddress.State
+	c.ShippingPostalZipC = u.ShippingAddress.PostalCode
+	c.ShippingCountryC = u.ShippingAddress.Country
+}
+
+func (c *Contact) ToUser(u *models.User) {
+	u.Id = c.CrowdstartIdC
+	u.Email = c.Email
+	u.LastName = c.LastName
+	u.FirstName = c.FirstName
+	u.Phone = c.Phone
+
+	lines := strings.Split(c.ShippingAddressC, "/")
+
+	//
+	u.ShippingAddress.Line1 = lines[0]
+	if len(lines) > 1 {
+		u.ShippingAddress.Line2 = strings.Join(lines[1:], "/")
+	}
+
+	u.ShippingAddress.City = c.ShippingCityC
+	u.ShippingAddress.State = c.ShippingStateC
+	u.ShippingAddress.PostalCode = c.ShippingPostalZipC
+	u.ShippingAddress.Country = c.ShippingCountryC
 }
