@@ -21,7 +21,7 @@ type User struct {
 	Stripe          struct {
 		CustomerId string
 	}
-	//Metadata		map[string]Metadata
+	Metadata		map[string]Metadata
 }
 
 func (u User) Name() string {
