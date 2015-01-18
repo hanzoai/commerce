@@ -155,9 +155,7 @@ build: deps assets
 deps: deps-assets deps-go
 
 # DEPS JS/CSS
-deps-assets: node_modules
-
-node_modules:
+deps-assets:
 	npm install
 
 # DEPS GO
