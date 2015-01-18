@@ -161,9 +161,7 @@ node_modules:
 	npm install
 
 # DEPS GO
-deps-go: .sdk .sdk/gopath/src/github.com
-
-.sdk/gopath/src/github.com:
+deps-go: .sdk
 	gpm install || curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.1/bin/gpm | bash
 
 .sdk:
