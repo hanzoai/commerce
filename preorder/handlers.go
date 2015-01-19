@@ -12,6 +12,7 @@ import (
 	"crowdstart.io/middleware"
 	"crowdstart.io/models"
 	"crowdstart.io/thirdparty/mandrill"
+	"crowdstart.io/thirdparty/salesforce"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
@@ -211,6 +212,17 @@ func SavePreorder(c *gin.Context) {
 		log.Error("Error saving user information", err, ctx)
 		c.Fail(500, err)
 		return
+	}
+
+	// Look up campaign to see if we need to sync with salesforce
+	campaign := models.Campaign{}
+	if err := db.GetKey("campaign", "dev@hanzo.ai", &campaign); err != nil {
+		log.Error(err, c)
+	}
+
+	log.Debug("Synchronize with salesforce if '%v' != ''", campaign.Salesforce.AccessToken)
+	if campaign.Salesforce.AccessToken != "" {
+		salesforce.CallUpsertTask(db.Context, &campaign, user)
 	}
 
 	mandrill.SendTransactional.Call(ctx, "email/preorder-updated.html",

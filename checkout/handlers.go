@@ -6,8 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"appengine"
-
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/auth"
@@ -218,8 +216,7 @@ func charge(c *gin.Context) {
 		if err != nil {
 			// Launch a synchronization task
 			campaign := getCampaign(c, db)
-			client := salesforce.New(c, &campaign, true)
-			salesforce.UpsertTask.Call(appengine.NewContext(c.Request), c, client, &user)
+			salesforce.CallUpsertTask(ctx, &campaign, user)
 		} else {
 			log.Debug("Could not synchronize with salesforce.")
 		}
