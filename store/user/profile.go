@@ -62,6 +62,22 @@ func updateBilling(c *gin.Context, user *models.User) bool {
 	return true
 }
 
+func updateMetadata(c *gin.Context, user *models.User) bool {
+	form := new(MetadataForm)
+	if err := form.Parse(c); err != nil {
+		log.Panic("Failed to save user metadata information: %v", err)
+	}
+
+	if errs := form.Validate(); len(errs) > 0 {
+		log.Debug("Billing info is incorrect. %v", errs)
+		c.JSON(400, gin.H{"message": errs})
+		return false
+	}
+
+	user.Metadata = form.Metadata
+	return true
+}
+
 func updatePassword(c *gin.Context, user *models.User) bool {
 	form := new(ChangePasswordForm)
 	if err := form.Parse(c); err != nil {
@@ -111,6 +127,10 @@ func SaveProfile(c *gin.Context) {
 		}
 	case "change-password":
 		if valid := updatePassword(c, user); !valid {
+			return
+		}
+	case "change-info":
+		if valid := updateMetadata(c, user); !valid {
 			return
 		}
 	}
