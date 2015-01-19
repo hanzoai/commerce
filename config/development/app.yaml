@@ -18,6 +18,9 @@ handlers:
 - url: /fixtures/.*
   script: _go_app
 
+- url: /jobs/.*
+  script: _go_app
+
 # DEPRECTATED in production, for consistent local logging.
 # - url: /assets/*
 #   static_dir: ../../assets

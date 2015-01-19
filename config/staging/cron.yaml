@@ -3,4 +3,3 @@ cron:
   url: /jobs/sync-salesforce
   schedule: every 15 minutes
   target: default
-

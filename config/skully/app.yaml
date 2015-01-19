@@ -22,6 +22,10 @@ handlers:
   login: required
   secure: always
 
+- url: /jobs/.*
+  script: _go_app
+  login: admin
+
 - url: /_ah/warmup
   script: _go_app
   login: admin
