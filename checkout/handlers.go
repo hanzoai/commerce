@@ -7,8 +7,6 @@ import (
 	"time"
 
 	"appengine"
-	. "appengine/datastore"
-	"appengine/delay"
 
 	"github.com/gin-gonic/gin"
 
@@ -48,57 +46,6 @@ var getStripeAccessToken = cache.Memoize(func(args ...interface{}) interface{} {
 var getSalesforceTokens = cache.Memoize(func(args ...interface{}) interface{} {
 	return getCampaign(args...).Salesforce
 }, 60)
-
-// Deferred Tasks
-// This function upserts a contact into salesforce
-var salesforceUpsertTask = delay.Func("SalesforceUpsert", func(c *gin.Context, client *salesforce.Api, user *models.User) {
-	// The email is required as it is the external ID used in salesforce
-	if user.Id == "" {
-		log.Panic("Id is required for upsert")
-	}
-
-	db := datastore.New(c)
-
-	// Query out all orders (since preorder is stored as a single string)
-	var orders []models.Order
-	_, err := db.Query("order").
-		Filter("Email =", user.Email).
-		GetAll(db.Context, &orders)
-
-	// Ignore any field mismatch errors.
-	if err != nil {
-		if _, ok := err.(*ErrFieldMismatch); ok {
-			log.Warn("Field mismatch when getting order", db.Context, c)
-		} else {
-			log.Panic("Error retrieving orders associated with the user's email", err, c)
-		}
-	}
-
-	// Query out any preorder order items and sum different skus up for totals
-	items := make(map[string]int)
-
-	for _, order := range orders {
-		if order.Preorder {
-			for _, item := range order.Items {
-				items[item.SKU_] = items[item.SKU_] + item.Quantity
-			}
-		}
-	}
-
-	// Stringify
-	preorders := ""
-
-	for key, item := range items {
-		preorders += fmt.Sprintf("%s: %d", key, item)
-	}
-
-	// Assign to contact and synchronize
-	// contact.PreorderC = preorders
-
-	if err := client.Push(user); err != nil {
-		log.Panic("UpsertContactTask failed: %v", err, c)
-	}
-})
 
 // GET /
 func index(c *gin.Context) {
@@ -272,7 +219,7 @@ func charge(c *gin.Context) {
 			// Launch a synchronization task
 			campaign := getCampaign(c, db)
 			client := salesforce.New(c, &campaign, true)
-			salesforceUpsertTask.Call(appengine.NewContext(c.Request), c, client, &user)
+			salesforce.UpsertTask.Call(appengine.NewContext(c.Request), c, client, &user)
 		} else {
 			log.Debug("Could not synchronize with salesforce.")
 		}

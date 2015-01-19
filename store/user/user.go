@@ -110,5 +110,11 @@ func SubmitRegister(c *gin.Context) {
 		log.Panic("Error while setting session cookie %v", err)
 	}
 
+	campaign := new(models.Campaign)
+	//Synchronize with Salesforce
+	if err := db.GetKey("campaign", "dev@hanzo.ai", &campaign); err != nil {
+		log.Error(err, c)
+	}
+
 	c.Redirect(302, config.UrlFor("store"))
 }
