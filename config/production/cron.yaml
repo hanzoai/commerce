@@ -3,3 +3,7 @@ cron:
   url: /_ah/datastore_admin/backup.create?name=automated_backup_&kind=user&kind=order&kind=contribution&kind=product&kind=campaign&filesystem=gs&gs_bucket_name=crowdstart-io-datastore
   schedule: every 12 hours
   target: ah-builtin-python-bundle
+- description: Update from Salesforce
+  url: /salesforce/sync
+  schedule: every 15 minutes
+  target: platform

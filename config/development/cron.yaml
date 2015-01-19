@@ -1,0 +1,6 @@
+cron:
+- description: Update from Salesforce
+  url: /salesforce/sync
+  schedule: every 15 minutes
+  target: platform
+
