@@ -108,6 +108,47 @@ func SalesforceCallback(c *gin.Context) {
 	template.Render(c, "salesforce/success.html", "token", token.AccessToken)
 }
 
+func SalesforcePullLatest(c *gin.Context) {
+	// Get user
+	email, err := auth.GetEmail(c)
+	if err != nil {
+		log.Panic("Unable to get email from session: %v", err, c)
+	}
+
+	ctx := middleware.GetAppEngine(c)
+	db := datastore.New(ctx)
+
+	campaign := new(models.Campaign)
+
+	// Get user instance
+	if err = db.GetKey("campaign", email, campaign); err != nil {
+		log.Panic("Unable to get campaign from database: %v", err, c)
+	}
+
+	client := salesforce.New(ctx, campaign, true)
+
+	now := time.Now()
+
+	// Get recently updated users
+	users := new([]*models.User)
+	// We check 15 minutes into the future in case salesforce clocks (logs based on the minute updated) is slightly out of sync with google's
+	if err = client.PullUpdated(now.Add(-20*time.Minute), now, users); err != nil {
+		log.Panic("Getting Updated Contacts Failed: %v, %v", err, string(client.LastBody[:]), c)
+	}
+
+	log.Info("Updating %v Users", len(*users), c)
+	for _, user := range *users {
+		if _, err := db.PutKey("user", user.Id, user); err != nil {
+			log.Panic("User '%v' could not be updated", user.Id, c)
+			continue
+		} else {
+			log.Info("User '%v' was successfully updated", user.Id, c)
+		}
+	}
+
+	c.String(200, "Success!")
+}
+
 func TestSalesforceConnection(c *gin.Context) {
 	// Get user
 	email, err := auth.GetEmail(c)
@@ -173,48 +214,6 @@ func TestSalesforceConnection(c *gin.Context) {
 		log.Panic("Getting Updated Contacts Failed: %v, %v", err, string(client.LastBody[:]), c)
 	}
 	log.Info("Get Updated Contacts Success %v, %v", string(client.LastBody[:]), updatedUsers, c)
-
-	c.String(200, "Success!")
-}
-
-func TestSalesforcePullLatest(c *gin.Context) {
-	// Get user
-	email, err := auth.GetEmail(c)
-	if err != nil {
-		log.Panic("Unable to get email from session: %v", err, c)
-	}
-
-	ctx := middleware.GetAppEngine(c)
-	db := datastore.New(ctx)
-
-	campaign := new(models.Campaign)
-
-	// Get user instance
-	if err = db.GetKey("campaign", email, campaign); err != nil {
-		log.Panic("Unable to get campaign from database: %v", err, c)
-	}
-
-	client := salesforce.New(ctx, campaign, true)
-
-	now := time.Now()
-
-	// Get recently updated users
-	users := new([]*models.User)
-	// We check 15 minutes into the future in case salesforce clocks (logs based on the minute updated) is slightly out of sync with google's
-	if err = client.PullUpdated(now.Add(-15*time.Minute), now.Add(15*time.Minute), users); err != nil {
-		log.Panic("Getting Updated Contacts Failed: %v, %v", err, string(client.LastBody[:]), c)
-	}
-	log.Info("Get Updated Contacts Success %v, %v", string(client.LastBody[:]), users, c)
-
-	log.Info("Updating %v Users", len(*users), c)
-	for _, user := range *users {
-		if _, err := db.PutKey("user", user.Id, user); err != nil {
-			log.Panic("User '%v' could not be inserted", user.Id, c)
-			continue
-		} else {
-			log.Info("User '%v' was successfully inserted", user.Id, c)
-		}
-	}
 
 	c.String(200, "Success!")
 }
