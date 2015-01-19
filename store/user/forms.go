@@ -84,6 +84,10 @@ func (f *MetadataForm) Parse(c *gin.Context) error {
 		return err
 	}
 
+	if f.Metadata == nil {
+		f.Metadata = make(map[string]models.Datum)
+	}
+
 	// Create Metadata from the HTML 'name' element and the values in the inputs.
 	for key,value := range c.Request.Form {
 		if len(value) > 0 {

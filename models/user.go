@@ -21,7 +21,7 @@ type User struct {
 	Stripe          struct {
 		CustomerId string
 	}
-	Metadata		Metadata
+	Metadata		Metadata `datastore:"-"`
 }
 
 func (u User) Name() string {
