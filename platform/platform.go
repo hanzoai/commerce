@@ -40,5 +40,5 @@ func init() {
 	router.GET("/salesforce/callback", loginRequired, admin.SalesforceCallback)
 
 	router.GET("/salesforce/test", loginRequired, admin.TestSalesforceConnection)
-	router.GET("/salesforce/sync", loginRequired, admin.SalesforcePullLatest)
+	router.GET("/salesforce/sync", admin.SalesforcePullLatest)
 }
