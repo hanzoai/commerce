@@ -9,18 +9,18 @@ import (
 // Flexible collection of datum
 type Metadata map[string]Datum
 
-func (m Metadata) Load(c <-chan datastore.Property) error {
+func (m *Metadata) Load(c <-chan datastore.Property) error {
 	// Loop over properties stored and rebuild map
 	for p := range c {
-		m[p.Name] = p.Value.(Datum)
+		(*m)[p.Name] = p.Value.(Datum)
 	}
 	return nil
 }
 
-func (m Metadata) Save(c chan<- datastore.Property) error {
+func (m *Metadata) Save(c chan<- datastore.Property) error {
 	defer close(c)
 	// Loop over key, value pairs in instance and feed into datastore
-	for k, v := range m {
+	for k, v := range *m {
 		c <- datastore.Property {
 			Name: k,
 			Value: v,
