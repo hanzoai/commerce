@@ -126,7 +126,7 @@ func TestSalesforceConnection(c *gin.Context) {
 	}
 
 	// Test Connecting to Salesforce
-	client := salesforce.New(c, campaign, true)
+	client := salesforce.New(ctx, campaign, true)
 
 	describeResponse := new(salesforce.DescribeResponse)
 	if err = client.Describe(describeResponse); err != nil {
@@ -194,7 +194,7 @@ func TestSalesforcePullLatest(c *gin.Context) {
 		log.Panic("Unable to get campaign from database: %v", err, c)
 	}
 
-	client := salesforce.New(c, campaign, true)
+	client := salesforce.New(ctx, campaign, true)
 
 	now := time.Now()
 
