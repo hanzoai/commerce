@@ -4,7 +4,6 @@ cron:
   schedule: every 12 hours
   target: ah-builtin-python-bundle
 - description: Update from Salesforce
-  url: /salesforce/sync
+  url: /jobs/sync-salesforce
   schedule: every 15 minutes
-  target: platform
-
+  target: default

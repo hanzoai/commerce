@@ -1,16 +1,19 @@
 package salesforce
 
 import (
+	"time"
+
 	"appengine"
 
 	"appengine/delay"
 
+	"crowdstart.io/datastore"
 	"crowdstart.io/models"
 	"crowdstart.io/util/log"
 )
 
 // Deferred Tasks
-// UpsertTask upsert a contact into salesforce
+// UpsertTask upserts a contact into salesforce
 var UpsertTask = delay.Func("SalesforceUpsert", func(c appengine.Context, campaign models.Campaign, user models.User) error {
 	log.Info("Try to synchronize with salesforce", c)
 
@@ -53,9 +56,50 @@ var UpsertTask = delay.Func("SalesforceUpsert", func(c appengine.Context, campai
 	return nil
 })
 
+// PullUpdatedTask gets recently(20 minutes ago) updated Contact and upserts them as Users
+var PullUpdatedTask = delay.Func("SalesforceUpsert", func(c appengine.Context) error {
+	db := datastore.New(c)
+
+	campaign := new(models.Campaign)
+
+	// Get user instance
+	if err := db.GetKey("campaign", "dev@hanzo.ai", campaign); err != nil {
+		log.Error("Unable to get campaign from database: %v", err, c)
+		return err
+	}
+
+	client := New(c, campaign, true)
+
+	now := time.Now()
+
+	// Get recently updated users
+	users := new([]*models.User)
+	// We check 15 minutes into the future in case salesforce clocks (logs based on the minute updated) is slightly out of sync with google's
+	if err := client.PullUpdated(now.Add(-20*time.Minute), now, users); err != nil {
+		log.Error("Getting Updated Contacts Failed: %v, %v", err, string(client.LastBody[:]), c)
+		return err
+	}
+
+	log.Info("Updating %v Users from Salesforce", len(*users), c)
+	for _, user := range *users {
+		if _, err := db.PutKey("user", user.Id, user); err != nil {
+			log.Error("User '%v' could not be updated, %v", user.Id, err, c)
+			return err
+		} else {
+			log.Info("User '%v' was successfully updated", user.Id, c)
+		}
+	}
+	return nil
+})
+
 // Wrappers to deferred function calls for type sanity
 // CallUpsertTask calls the task queue delay function with the passed in params
 // Values are used instead of pointers since we envoke a RPC
 func CallUpsertTask(c appengine.Context, campaign *models.Campaign, user *models.User) {
 	UpsertTask.Call(c, *campaign, *user)
+}
+
+// CallPullUpdatedTask calls the task queue delay function with the passed in params
+func CallPullUpdatedTask(c appengine.Context) {
+	PullUpdatedTask.Call(c)
 }
