@@ -10,9 +10,12 @@ import (
 	"crowdstart.io/middleware"
 	"crowdstart.io/models/fixtures"
 	"crowdstart.io/models/migrations"
-	_ "crowdstart.io/thirdparty/mandrill"
 	"crowdstart.io/util/exec"
 	"crowdstart.io/util/router"
+
+	// Imported for side-effect of having tasks registered.
+	_ "crowdstart.io/thirdparty/mandrill"
+	_ "crowdstart.io/thirdparty/salesforce"
 )
 
 func Init() {
