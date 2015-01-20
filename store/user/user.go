@@ -5,6 +5,9 @@ import (
 
 	"crowdstart.io/auth"
 	"crowdstart.io/config"
+	"crowdstart.io/datastore"
+	"crowdstart.io/models"
+	"crowdstart.io/thirdparty/salesforce"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
 	"crowdstart.io/util/val"
@@ -95,5 +98,16 @@ func SubmitRegister(c *gin.Context) {
 		log.Panic("Error while setting session cookie %v", err)
 	}
 
+	// Look up campaign to see if we need to sync with salesforce
+	db := datastore.New(c)
+	campaign := models.Campaign{}
+	if err := db.GetKey("campaign", "dev@hanzo.ai", &campaign); err != nil {
+		log.Error(err, c)
+	}
+
+	log.Debug("Synchronize with salesforce if '%v' != ''", campaign.Salesforce.AccessToken)
+	if campaign.Salesforce.AccessToken != "" {
+		salesforce.CallUpsertTask(db.Context, &campaign, &f.User)
+	}
 	c.Redirect(302, config.UrlFor("store"))
 }
