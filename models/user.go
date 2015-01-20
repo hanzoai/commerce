@@ -21,7 +21,7 @@ type User struct {
 	Stripe          struct {
 		CustomerId string
 	}
-	Metadata		Metadata `datastore:"-"`
+	Metadata		[]Datum
 }
 
 func (u User) Name() string {
@@ -30,6 +30,15 @@ func (u User) Name() string {
 
 func (u User) HasPassword() bool {
 	return len(u.PasswordHash) != 0
+}
+
+func (u User) GetMetadataValue(key string) Datum {
+	for index,datum := range u.Metadata {
+		if datum.Key == key {
+			return u.Metadata[index]
+		}
+	}
+	return Datum{}
 }
 
 func (u User) Validate(req *http.Request, errs binding.Errors) binding.Errors {
