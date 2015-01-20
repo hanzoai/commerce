@@ -10,6 +10,7 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
 	"crowdstart.io/util/log"
+	"crowdstart.io/util/queries"
 )
 
 // Deferred Tasks
@@ -50,7 +51,8 @@ var UpsertTask = delay.Func("SalesforceUpsert", func(c appengine.Context, campai
 	// contact.PreorderC = preorders
 
 	if err := client.Push(&user); err != nil {
-		log.Panic("UpsertContactTask failed: %v", err, c)
+		log.Error("UpsertContactTask failed: %v", err, c)
+		return err
 	}
 
 	return nil
@@ -59,6 +61,7 @@ var UpsertTask = delay.Func("SalesforceUpsert", func(c appengine.Context, campai
 // PullUpdatedTask gets recently(20 minutes ago) updated Contact and upserts them as Users
 var PullUpdatedTask = delay.Func("SalesforceUpsert", func(c appengine.Context) error {
 	db := datastore.New(c)
+	q := queries.New(c)
 
 	campaign := new(models.Campaign)
 
@@ -82,7 +85,7 @@ var PullUpdatedTask = delay.Func("SalesforceUpsert", func(c appengine.Context) e
 
 	log.Info("Updating %v Users from Salesforce", len(*users), c)
 	for _, user := range *users {
-		if _, err := db.PutKey("user", user.Id, user); err != nil {
+		if err := q.UpsertUser(user); err != nil {
 			log.Error("User '%v' could not be updated, %v", user.Id, err, c)
 			return err
 		} else {
@@ -96,10 +99,14 @@ var PullUpdatedTask = delay.Func("SalesforceUpsert", func(c appengine.Context) e
 // CallUpsertTask calls the task queue delay function with the passed in params
 // Values are used instead of pointers since we envoke a RPC
 func CallUpsertTask(c appengine.Context, campaign *models.Campaign, user *models.User) {
+	log.Info("Trying to dispatch task.", c)
 	UpsertTask.Call(c, *campaign, *user)
+	log.Info("Task dispatched.", c)
 }
 
 // CallPullUpdatedTask calls the task queue delay function with the passed in params
 func CallPullUpdatedTask(c appengine.Context) {
+	log.Info("Trying to dispatch task.", c)
 	PullUpdatedTask.Call(c)
+	log.Info("Task dispatched.", c)
 }
