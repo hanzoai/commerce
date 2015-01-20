@@ -76,7 +76,7 @@ func (f *ResetPasswordConfirmForm) Parse(c *gin.Context) error {
 
 // User profile form (metadata)
 type MetadataForm struct {
-	Metadata models.Metadata // Not on HTML form directly; generated when parsed
+	Metadata []models.Datum // Not on HTML form directly; generated when parsed
 }
 
 func (f *MetadataForm) Parse(c *gin.Context) error {
@@ -84,14 +84,10 @@ func (f *MetadataForm) Parse(c *gin.Context) error {
 		return err
 	}
 
-	if f.Metadata == nil {
-		f.Metadata = make(map[string]models.Datum)
-	}
-
 	// Create Metadata from the HTML 'name' element and the values in the inputs.
 	for key,value := range c.Request.Form {
 		if len(value) > 0 {
-			f.Metadata[key] = models.Datum{Value: value[0]}
+			f.Metadata = append(f.Metadata, models.Datum{Key: key, Value: value[0]})
 		}
 	}
 	return nil
