@@ -32,7 +32,7 @@ func (u User) HasPassword() bool {
 	return len(u.PasswordHash) != 0
 }
 
-func (u User) GetMetadataValue(key string) Datum {
+func (u User) GetMetadata(key string) Datum {
 	for index,datum := range u.Metadata {
 		if datum.Key == key {
 			return u.Metadata[index]
