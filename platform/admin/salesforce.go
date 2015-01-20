@@ -2,7 +2,6 @@ package admin
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -62,7 +61,7 @@ func SalesforceCallback(c *gin.Context) {
 		return
 	}
 
-	token := new(salesforce.SalesforceTokens)
+	token := new(salesforce.SalesforceTokenResponse)
 
 	// try and extract the json struct
 	if err := json.Unmarshal(jsonBlob, token); err != nil {
@@ -109,11 +108,11 @@ func SalesforceCallback(c *gin.Context) {
 	template.Render(c, "salesforce/success.html", "token", token.AccessToken)
 }
 
-func TestSalesforceConnection(c *gin.Context) {
+func SalesforcePullLatest(c *gin.Context) {
 	// Get user
 	email, err := auth.GetEmail(c)
 	if err != nil {
-		log.Panic("Unable to get email from session: %v", err)
+		log.Panic("Unable to get email from session: %v", err, c)
 	}
 
 	ctx := middleware.GetAppEngine(c)
@@ -122,73 +121,99 @@ func TestSalesforceConnection(c *gin.Context) {
 	campaign := new(models.Campaign)
 
 	// Get user instance
-	if err := db.GetKey("campaign", email, campaign); err != nil {
-		log.Panic("Unable to get campaign from database: %v", err)
+	if err = db.GetKey("campaign", email, campaign); err != nil {
+		log.Panic("Unable to get campaign from database: %v", err, c)
+	}
+
+	client := salesforce.New(ctx, campaign, true)
+
+	now := time.Now()
+
+	// Get recently updated users
+	users := new([]*models.User)
+	// We check 15 minutes into the future in case salesforce clocks (logs based on the minute updated) is slightly out of sync with google's
+	if err = client.PullUpdated(now.Add(-20*time.Minute), now, users); err != nil {
+		log.Panic("Getting Updated Contacts Failed: %v, %v", err, string(client.LastBody[:]), c)
+	}
+
+	log.Info("Updating %v Users", len(*users), c)
+	for _, user := range *users {
+		if _, err := db.PutKey("user", user.Id, user); err != nil {
+			log.Panic("User '%v' could not be updated", user.Id, c)
+			continue
+		} else {
+			log.Info("User '%v' was successfully updated", user.Id, c)
+		}
+	}
+
+	c.String(200, "Success!")
+}
+
+func TestSalesforceConnection(c *gin.Context) {
+	// Get user
+	email, err := auth.GetEmail(c)
+	if err != nil {
+		log.Panic("Unable to get email from session: %v", err, c)
+	}
+
+	ctx := middleware.GetAppEngine(c)
+	db := datastore.New(ctx)
+
+	campaign := new(models.Campaign)
+
+	// Get user instance
+	if err = db.GetKey("campaign", email, campaign); err != nil {
+		log.Panic("Unable to get campaign from database: %v", err, c)
 	}
 
 	// Test Connecting to Salesforce
-	api, err := salesforce.Init(
-		c,
-		campaign.Salesforce.AccessToken,
-		campaign.Salesforce.RefreshToken,
-		campaign.Salesforce.InstanceUrl,
-		campaign.Salesforce.Id,
-		campaign.Salesforce.IssuedAt,
-		campaign.Salesforce.Signature)
+	client := salesforce.New(ctx, campaign, true)
 
-	if err != nil {
-		log.Panic("Unable to log in: %v", err)
-		return
+	describeResponse := new(salesforce.DescribeResponse)
+	if err = client.Describe(describeResponse); err != nil {
+		log.Panic("Describe Failed %v, %v", err, string(client.LastBody[:]), c)
 	}
-
-	log.Info("Describe Success %v", api.LastJsonBlob)
-
-	displayString := fmt.Sprintf("Describe Success %v\n%v\n", api.LastQuery, api.LastJsonBlob)
+	log.Info("Describe Success %v", describeResponse, c)
 
 	// Test Upsert
 	// Please don't actually mail anything to this
-	newContact := salesforce.Contact{
+	user := models.User{
+		Id:        "TestId",
 		FirstName: "Test User",
 		LastName:  "Please do not mail anything to this test user.",
 		Phone:     "555-5555",
 		Email:     "TestUser@verus.com",
-
-		MailingStreet:      "1600 Pennsylvania Avenue",
-		MailingCity:        "Northwest",
-		MailingState:       "District of Columbia",
-		MailingPostalCode:  "20500",
-		MailingCountryCode: "US",
-
-		ShippingAddressC:   "1600 Pennsylvania Avenue",
-		ShippingCityC:      "Northwest",
-		ShippingStateC:     "District of Columbia",
-		ShippingPostalZipC: "20500",
-		ShippingCountryC:   "US",
+		ShippingAddress: models.Address{
+			Line1:      "1600 Pennsylvania Avenue",
+			Line2:      "Suite 202",
+			City:       "Northwest",
+			State:      "District of Columbia",
+			PostalCode: "20500",
+			Country:    "United States",
+		},
 	}
 
-	if err = salesforce.UpsertContact(api, &newContact); err != nil {
-		log.Panic("Unable to upsert: %v %v", err, api.LastJsonBlob)
+	if err = client.Push(&user); err != nil {
+		log.Panic("Upsert Failed: %v, %v", err, string(client.LastBody[:]), c)
 	}
-
-	displayString += fmt.Sprintf("Upsert Success %v\n%v\n", api.LastQuery, api.LastJsonBlob)
+	log.Info("Upsert Success %v", user, c)
 
 	// Test GET Query using Email
-	_, err = salesforce.GetContactByEmail(api, newContact.Email)
-	if err != nil {
-		log.Panic("Unable to query: %v %v", err, api.LastJsonBlob)
+	user2 := models.User{}
+	if err = client.Pull(user.Id, &user2); err != nil {
+		log.Panic("Get Failed: %v, %v", err, string(client.LastBody[:]), c)
 	}
-
-	displayString += fmt.Sprintf("Query Success %v\n%v\n", api.LastQuery, api.LastJsonBlob)
+	log.Info("Get Success %v", user2, c)
 
 	now := time.Now()
 
 	// Test to see if salesforce reports back that we upserted a user
-	_, err = salesforce.GetUpdatedContacts(api, now.Add(-15*time.Minute), now)
-	if err != nil {
-		log.Panic("Unable to get updated contacts: %v %v", err, api.LastJsonBlob)
+	updatedUsers := new([]*models.User)
+	// We check 15 minutes into the future in case salesforce clocks (logs based on the minute updated) is slightly out of sync with google's
+	if err = client.PullUpdated(now.Add(-15*time.Minute), now.Add(15*time.Minute), updatedUsers); err != nil {
+		log.Panic("Getting Updated Contacts Failed: %v, %v", err, string(client.LastBody[:]), c)
 	}
+	log.Info("Get Updated Contacts Success %v, %v", string(client.LastBody[:]), updatedUsers, c)
 
-	displayString += fmt.Sprintf("UpdatedResponses Success %v\n%v\n", api.LastQuery, api.LastJsonBlob)
-
-	c.String(200, displayString)
+	c.String(200, "Success!")
 }

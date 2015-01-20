@@ -414,7 +414,7 @@ var products = delay.Func("install-products", func(c appengine.Context) {
 				Y:   1000,
 			},
 		},
-		SoldOut: true,
+		//SoldOut: true,
 		Configs: []Config{
 			Config{
 				Product:  "ar-1",
