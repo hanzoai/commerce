@@ -118,6 +118,13 @@ else
 	verbose =
 endif
 
+# set production=1 to set datastore export/import target to use production
+ifeq ($(production), 1)
+	datastore_admin_url = https://datastore-admin-dot-skully-crowdstart.appspot.com/_ah/remote_api
+else
+	datastore_admin_url = https://datastore-admin-dot-crowdstart-staging.appspot.com/_ah/remote_api
+endif
+
 export GOROOT  := $(goroot)
 export GOPATH  := $(gopath)
 
@@ -148,15 +155,11 @@ build: deps assets
 deps: deps-assets deps-go
 
 # DEPS JS/CSS
-deps-assets: node_modules
-
-node_modules:
+deps-assets:
 	npm install
 
 # DEPS GO
-deps-go: .sdk .sdk/gopath/src/github.com
-
-.sdk/gopath/src/github.com:
+deps-go: .sdk
 	gpm install || curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.1/bin/gpm | bash
 
 .sdk:
@@ -233,9 +236,6 @@ deploy-appengine-ci: assets-minified
 	done; \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check update_indexes config/production; \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/production
-
-datastore_admin_url = https://datastore-admin-dot-crowdstart-staging.appspot.com/_ah/remote_api
-# datastore_admin_url = https://datastore-admin-dot-skully-crowdstart.appspot.com/_ah/remote_api
 
 # EXPORT / Usage: make datastore-export kind=user
 datastore-export:
