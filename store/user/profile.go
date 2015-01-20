@@ -69,7 +69,7 @@ func updateMetadata(c *gin.Context, user *models.User) bool {
 	}
 
 	if errs := form.Validate(); len(errs) > 0 {
-		log.Debug("Billing info is incorrect. %v", errs)
+		log.Debug("Metadata info is incorrect. %v", errs)
 		c.JSON(400, gin.H{"message": errs})
 		return false
 	}
