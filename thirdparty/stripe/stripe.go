@@ -15,6 +15,31 @@ import (
 	"crowdstart.io/util/log"
 )
 
+// Create a new stripe customer and assign id to user model.
+func createStripeCustomer(ctx appengine.Context, sc *client.API, user *models.User, params *stripe.CustomerParams) error {
+	customer, err := sc.Customers.New(params)
+
+	if err != nil {
+		log.Warn("Failed to create Stripe customer: %v", err, ctx)
+		return err
+	}
+
+	// Update user model with stripe customer ID so we can charge for them later
+	user.Stripe.CustomerId = customer.ID
+
+	return nil
+}
+
+// Update corresponding Stripe customer for this user. If that fails, try to
+// create a new customer.
+func updateStripeCustomer(ctx appengine.Context, sc *client.API, user *models.User, params *stripe.CustomerParams) error {
+	if _, err := sc.Customers.Update(user.Stripe.CustomerId, params); err != nil {
+		log.Warn("Failed to update Stripe customer, attempting to create a new Stripe customer: %v", err, ctx)
+		return createStripeCustomer(ctx, sc, user, params)
+	}
+	return nil
+}
+
 func Charge(ctx appengine.Context, accessToken string, authorizationToken string, order *models.Order, user *models.User) (*models.Charge, error) {
 	c := urlfetch.Client(ctx)
 	c.Transport = &urlfetch.Transport{Context: ctx, Deadline: time.Duration(10) * time.Second} // Update deadline to 10 seconds
@@ -38,18 +63,13 @@ func Charge(ctx appengine.Context, accessToken string, authorizationToken string
 	}
 
 	if user.Stripe.CustomerId == "" {
-		// Create new customer
-		if customer, err := sc.Customers.New(customerParams); err != nil {
-			log.Warn("Failed to create Stripe customer: %v", err, ctx)
+		// Create new Stripe customer
+		if err := createStripeCustomer(ctx, sc, user, customerParams); err != nil {
 			return charge, err
-		} else {
-			// Update user with stripe customer ID so we can charge for them later
-			user.Stripe.CustomerId = customer.ID
 		}
 	} else {
-		// Update stripe
-		if _, err := sc.Customers.Update(user.Stripe.CustomerId, customerParams); err != nil {
-			log.Warn("Failed to update Stripe customer: %v", err, ctx)
+		// Update Stripe customer
+		if err := updateStripeCustomer(ctx, sc, user, customerParams); err != nil {
 			return charge, err
 		}
 	}
