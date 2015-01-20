@@ -69,6 +69,6 @@ func NewUser(c *gin.Context, f RegistrationForm) error {
 
 	m.PasswordHash, err = f.PasswordHash()
 
-	_, err = db.Put(kind, m)
+	_, err = db.PutKey(kind, m.Id, &m)
 	return err
 }
