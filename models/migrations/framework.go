@@ -1,36 +1,84 @@
 package migrations
 
+import (
+	"appengine"
+	"appengine/datastore"
+
+	"crowdstart.io/util/log"
+)
+
 type MigrationStatus struct {
 	Cursor string
 	Done   bool
 }
 
-// type delayFn func(c appengine.Context)
-// type delayIterFn func(c appengine.Context, iter *datastore.Iterator)
-// type migrationFn func(iter *datastore.Iterator)
+type migrationFn func(appengine.Context)
+type transactionFn func(appengine.Context, *datastore.Key, interface{}) error
 
-// func newMigration(c appengine.Context, name, table string) delayIterFn {
-// 	log.Info("Migrating "+table, c)
+func newMigration(name, table string, object interface{}, fn transactionFn) migrationFn {
+	return func(c appengine.Context) {
+		log.Info("Migrating "+table, c)
 
-// 	var t *datastore.Iterator
+		var t *datastore.Iterator
+		var m MigrationStatus
+		var cur datastore.Cursor
 
-// 	// Try to get cursor if it exists
-// 	mk = datastore.NewKey(c, "migrations", name, 0, nil)
-// 	if err = datastore.Get(c, mk, &m); err != nil {
-// 		log.Warn("No Preexisting Cursor found", c)
-// 		t = datastore.NewQuery(table).Run(c)
-// 	} else if m.Done {
-// 		//Migration Complete
-// 		log.Info("Migration was Completed", c)
-// 		return
-// 	} else if cur, err = datastore.DecodeCursor(m.Cursor); err != nil {
-// 		log.Info("Preexisting Cursor is corrupt", c)
-// 		t = datastore.NewQuery(table).Run(c)
-// 	} else {
-// 		log.Info("Resuming from Preexisting Cursor", c)
-// 		t = datastore.NewQuery(table).Start(cur).Run(c)
-// 	}
+		// Try to get cursor if it exists
+		mk := datastore.NewKey(c, "migration", name, 0, nil)
+		if err := datastore.Get(c, mk, &m); err != nil {
+			log.Warn("No Preexisting Cursor found", c)
+			t = datastore.NewQuery(table).Run(c)
+		} else if m.Done {
+			//Migration Complete
+			log.Info("Migration was Completed", c)
+			return
+		} else if cur, err = datastore.DecodeCursor(m.Cursor); err != nil {
+			log.Info("Preexisting Cursor is corrupt", c)
+			t = datastore.NewQuery(table).Run(c)
+		} else {
+			log.Info("Resuming from Preexisting Cursor", c)
+			t = datastore.NewQuery(table).Start(cur).Run(c)
+		}
 
-// 	return func(c appengine.Context, iter *datastore.Iterator) {
-// 	}
-// }
+		for {
+			// Iterate Cursor
+			k, err := t.Next(object)
+
+			if err != nil {
+				// Done
+				if err == datastore.Done {
+					break
+				}
+
+				// Ignore field mismatch, otherwise skip record
+				if _, ok := err.(*datastore.ErrFieldMismatch); !ok {
+					log.Warn("Field Mismatch fetching user: %v\n%v", err, object, c)
+					continue
+				} else {
+					log.Error("Error fetching user: %v\n%v", err, object, c)
+					break
+				}
+			}
+
+			// Save Migration point for resume
+			log.Info("Updating Migration Cursor", c)
+
+			mk = datastore.NewKey(c, "migration", name, 0, nil)
+
+			if cur, err = t.Cursor(); err != nil {
+				log.Warn("Could not get Cursor because %v", cur, c)
+			} else {
+				// It doesn't matter if cursor suceeds or not I guess
+				datastore.Put(c, mk, &MigrationStatus{Cursor: cur.String(), Done: false})
+			}
+
+			log.Info("Migrating Key %v", k, c)
+			datastore.RunInTransaction(c, func(tc appengine.Context) error {
+				return fn(c, k, object)
+			}, &datastore.TransactionOptions{XG: true})
+		}
+
+		log.Info("Migration Completed", c)
+		datastore.Put(c, mk, &MigrationStatus{Cursor: cur.String(), Done: true})
+	}
+}
