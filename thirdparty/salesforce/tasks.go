@@ -15,7 +15,7 @@ import (
 
 // Deferred Tasks
 // UpsertTask upserts a contact into salesforce
-var UpsertTask = delay.Func("SalesforceUpsert", func(c appengine.Context, campaign models.Campaign, user models.User) {
+var UpsertTask = delay.Func("SalesforceUpsertTask", func(c appengine.Context, campaign models.Campaign, user models.User) {
 	log.Info("Try to synchronize with salesforce", c)
 
 	client := New(c, &campaign, true)
@@ -56,7 +56,7 @@ var UpsertTask = delay.Func("SalesforceUpsert", func(c appengine.Context, campai
 })
 
 // PullUpdatedTask gets recently(20 minutes ago) updated Contact and upserts them as Users
-var PullUpdatedTask = delay.Func("PullUpdatedTask", func(c appengine.Context) {
+var PullUpdatedTask = delay.Func("SalesforcePullUpdatedTask", func(c appengine.Context) {
 	db := datastore.New(c)
 	q := queries.New(c)
 
