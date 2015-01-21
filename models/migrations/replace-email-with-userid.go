@@ -1,6 +1,7 @@
 package migrations
 
 import (
+	"errors"
 	"time"
 
 	"appengine"
@@ -8,6 +9,7 @@ import (
 	"appengine/delay"
 
 	"crowdstart.io/util/log"
+	"crowdstart.io/util/queries"
 
 	. "crowdstart.io/models"
 )
@@ -61,278 +63,160 @@ type OldOrder struct {
 	Test bool
 }
 
-var replaceEmailWithUserIdUserOnly = delay.Func("migrate-replace-email-with-userid-user-only", func(c appengine.Context) {
-	var u User
-	var id int64
-	var k, mk, newK *datastore.Key
-	var cur datastore.Cursor
-	var err error
-	var ok bool
-	var t *datastore.Iterator
-	var m MigrationStatus
+var replaceEmailWithUserIdForUser = delay.Func(
+	"migrate-replace-email-with-userid-for-user",
+	newMigration(
+		"migration-replace-email-with-userid-for-user",
+		"user",
+		new(User),
+		func(c appengine.Context, k *datastore.Key, object interface{}) error {
+			switch u := object.(type) {
+			case *User:
+				if u.Id != u.Email && u.Id != "" {
+					log.Info("Do not need to Migrate Key %v", k, c)
+					return nil
+				}
 
-	log.Info("Migrating Users", c)
+				// Empty the ID so Upsert auto generates it
+				id, _, err := datastore.AllocateIDs(c, "user", nil, 1)
+				if err != nil {
+					log.Error("Could not allocate Key  because %v", err, c)
+					return err
+				}
 
-	// Try to get cursor if it exists
-	mk = datastore.NewKey(c, "migrations", "migrate-replace-email-with-userid-user-on", 0, nil)
-	if err = datastore.Get(c, mk, &m); err != nil {
-		log.Warn("No Preexisting Cursor found", c)
-		t = datastore.NewQuery("user").Run(c)
-	} else if m.Done {
-		//Migration Complete
-		log.Info("Migration was Completed", c)
-		return
-	} else if cur, err = datastore.DecodeCursor(m.Cursor); err != nil {
-		log.Info("Preexisting Cursor is corrupt", c)
-		t = datastore.NewQuery("user").Run(c)
-	} else {
-		log.Info("Resuming from Preexisting Cursor", c)
-		t = datastore.NewQuery("user").Start(cur).Run(c)
-	}
+				newK := datastore.NewKey(c, "user", "", id, nil)
+				u.Id = newK.Encode()
 
-	for {
-		// Iterate Cursor
-		k, err = t.Next(&u)
+				log.Info("Inserting Key %v", newK, c)
 
-		if err != nil {
-			// Done
-			if err == datastore.Done {
-				break
-			}
+				if _, err := datastore.Put(c, newK, &u); err != nil {
+					log.Error("Could not Put User because %v", err, c)
+					return err
+				}
 
-			// Ignore field mismatch, otherwise skip record
-			if _, ok = err.(*datastore.ErrFieldMismatch); !ok {
-				log.Error("Error fetching user: %v\n%v", k, err, c)
-				continue
-			} else {
-				break
-			}
-		}
+				// Delete old User record
+				log.Info("Deleting Key %v", k, c)
+				if err = datastore.Delete(c, k); err != nil {
+					log.Error("Could not Delete User %v because %v", k, err, c)
+				}
 
-		// Skip if we've already performed this
-		if u.Id != "" && u.Id != u.Email {
-			log.Info("Skipping Migrated User %v", u.Id, c)
-			continue
-		}
-
-		// Save Migration point for resume
-		log.Info("Updating Migration Cursor", c)
-
-		mk = datastore.NewKey(c, "migrations", "migrate-replace-email-with-userid-user-on", 0, nil)
-
-		if cur, err = t.Cursor(); err != nil {
-			log.Warn("Could not get Cursor because %v", cur, c)
-		} else {
-			// It doesn't matter if cursor suceeds or not I guess
-			datastore.Put(c, mk, &MigrationStatus{Cursor: cur.String(), Done: false})
-		}
-
-		log.Info("Migrating Key %v", u.Id, c)
-		datastore.RunInTransaction(c, func(tc appengine.Context) error {
-			// Empty the ID so Upsert auto generates it
-			id, _, err = datastore.AllocateIDs(tc, "user", nil, 1)
-			if err != nil {
-				log.Error("Could not allocate Key  because %v", err, tc)
 				return err
 			}
 
-			newK = datastore.NewKey(tc, "user", "", id, nil)
-			u.Id = newK.Encode()
+			return errors.New("Invalid type, required: *User")
+		}))
 
-			log.Info("Inserting Key %v", newK, tc)
+var replaceEmailWithUserIdForContribution = delay.Func(
+	"migrate-replace-email-with-userid-for-contribution",
+	newMigration(
+		"migration-replace-email-with-userid-for-contribution",
+		"contribution",
+		new(OldContribution),
+		func(c appengine.Context, k *datastore.Key, object interface{}) error {
+			switch oCon := object.(type) {
+			case *OldContribution:
+				// Get the corresponding user
+				q := queries.New(c)
 
-			if _, err = datastore.Put(tc, newK, &u); err != nil {
-				log.Error("Could not Put User because %v", err, tc)
-				return err
+				var u User
+				if err := q.GetUserByEmail(oCon.Email, &u); err != nil {
+					log.Warn("Could not look up user: %v\n%v", oCon.Email, err, c)
+					return nil
+				}
+
+				// 	// Update to new record and replace old one
+				con := Contribution{
+					Id:            oCon.Id,
+					UserId:        u.Id,
+					FundingDate:   oCon.FundingDate,
+					PaymentMethod: oCon.PaymentMethod,
+					Perk:          oCon.Perk,
+					Status:        oCon.Status,
+				}
+
+				log.Info("Upserting Key %v", k, c)
+				datastore.Put(c, k, &con)
 			}
 
-			// Delete old User record
-			log.Info("Deleting Key %v", k, tc)
-			if err = datastore.Delete(tc, k); err != nil {
-				log.Error("Could not Delete User %v because %v", k, err, tc)
+			return errors.New("Invalid type, required: *OldContribution")
+		}))
+
+var replaceEmailWithUserIdForToken = delay.Func(
+	"migrate-replace-email-with-userid-for-token",
+	newMigration(
+		"migration-replace-email-with-userid-for-token",
+		"token",
+		new(OldToken),
+		func(c appengine.Context, k *datastore.Key, object interface{}) error {
+			switch oTo := object.(type) {
+			case *OldToken:
+				// Get the corresponding user
+				q := queries.New(c)
+
+				var u User
+				if err := q.GetUserByEmail(oTo.Email, &u); err != nil {
+					log.Warn("Could not look up user: %v\n%v", oTo.Email, err, c)
+					return nil
+				}
+
+				// 	// Update to new record and replace old one
+				to := Token{
+					Id:      oTo.Id,
+					UserId:  u.Id,
+					Used:    oTo.Used,
+					Expired: oTo.Expired,
+				}
+
+				log.Info("Upserting Key %v", k, c)
+				datastore.Put(c, k, &to)
 			}
 
-			return err
-		}, &datastore.TransactionOptions{XG: true})
-	}
+			return errors.New("Invalid type, required: *OldToken")
+		}))
 
-	log.Info("Migration Completed", c)
-	datastore.Put(c, mk, &MigrationStatus{Cursor: cur.String(), Done: true})
-})
+var replaceEmailWithUserIdForOrder = delay.Func(
+	"migrate-replace-email-with-userid-for-order",
+	newMigration(
+		"migration-replace-email-with-userid-for-order",
+		"order",
+		new(OldOrder),
+		func(c appengine.Context, k *datastore.Key, object interface{}) error {
+			switch oO := object.(type) {
+			case *OldOrder:
+				// Get the corresponding user
+				q := queries.New(c)
 
-var replaceEmailWithUserId = delay.Func("migrate-replace-email-with-userid", func(c appengine.Context) {
-	// db := datastore.New(c)
-	// q := queries.New(c)
+				var u User
+				if err := q.GetUserByEmail(oO.Email, &u); err != nil {
+					log.Warn("Could not look up user: %v\n%v", oO.Email, err, c)
+					return nil
+				}
 
-	// log.Info("Migrating users", c)
+				// 	// Update to new record and replace old one
+				o := Order{
+					BillingAddress:  oO.BillingAddress,
+					ShippingAddress: oO.ShippingAddress,
+					CreatedAt:       oO.CreatedAt,
+					UpdatedAt:       oO.UpdatedAt,
+					Id:              oO.Id,
+					UserId:          u.Id,
+					Shipping:        oO.Shipping,
+					Tax:             oO.Tax,
+					Subtotal:        oO.Subtotal,
+					Total:           oO.Total,
+					Items:           oO.Items,
+					StripeTokens:    oO.StripeTokens,
+					Charges:         oO.Charges,
+					CampaignId:      oO.CampaignId,
+					Preorder:        oO.Preorder,
+					Cancelled:       oO.Cancelled,
+					Shipped:         oO.Shipped,
+					Test:            oO.Test,
+				}
 
-	// t := db.Query("user").Run(c)
+				log.Info("Upserting Key %v", k, c)
+				datastore.Put(c, k, &o)
+			}
 
-	// for {
-	// 	var u User
-	// 	k, err := t.Next(&u)
-
-	// 	if err != nil {
-	// 		// Done
-	// 		if err == Done {
-	// 			break
-	// 		}
-
-	// 		// Ignore field mismatch, otherwise skip record
-	// 		if _, ok := err.(*ErrFieldMismatch); !ok {
-	// 			log.Error("Error fetching user: %v\n%v", k, err, c)
-	// 			continue
-	// 		}
-	// 	}
-
-	// 	// Delete old User record
-	// 	log.Info("Deleting Key %v", k, c)
-	// 	db.Delete(k.Encode())
-
-	// 	// Empty the ID so Upsert auto generates it
-
-	// 	id := db.AllocateId("user")
-
-	// 	u.Id = db.EncodeId("user", id)
-	// 	newK, err := db.DecodeKey(u.Id)
-	// 	if err != nil {
-	// 		log.Error("Could not decode key: %v", newK, c)
-	// 	}
-
-	// 	db.PutKey("user", newK, &u)
-	// 	log.Info("Inserting Encoded Key %v", u.Id, c)
-	// }
-
-	// log.Info("Migrating contributions", c)
-
-	// t = db.Query("contribution").Run(c)
-
-	// for {
-	// 	var oCon OldContribution
-	// 	k, err := t.Next(&oCon)
-
-	// 	if err != nil {
-	// 		//Done
-	// 		if err == Done {
-	// 			break
-	// 		}
-
-	// 		// Error, ignore field mismatch
-	// 		if _, ok := err.(*ErrFieldMismatch); ok {
-	// 			log.Error("Contribution appears to be Updated: %v", err, c)
-	// 			continue
-	// 		}
-	// 	}
-
-	// 	// Get the corresponding user
-	// 	var u User
-	// 	if err = q.GetUserByEmail(oCon.Email, &u); err != nil {
-	// 		log.Error("Could not look up user: %v\n%v", oCon.Email, err, c)
-	// 		continue
-	// 	}
-
-	// 	// Update to new record and replace old one
-	// 	con := Contribution{
-	// 		Id:            oCon.Id,
-	// 		UserId:        u.Id,
-	// 		FundingDate:   oCon.FundingDate,
-	// 		PaymentMethod: oCon.PaymentMethod,
-	// 		Perk:          oCon.Perk,
-	// 		Status:        oCon.Status,
-	// 	}
-
-	// 	db.PutKey("contribution", k, &con)
-	// }
-
-	// log.Info("Migrating tokens", c)
-
-	// t = db.Query("token").Run(c)
-
-	// for {
-	// 	var oTo OldToken
-	// 	k, err := t.Next(&oTo)
-
-	// 	if err != nil {
-	// 		//Done
-	// 		if err == Done {
-	// 			break
-	// 		}
-
-	// 		// Error, ignore field mismatch
-	// 		if _, ok := err.(*ErrFieldMismatch); ok {
-	// 			log.Error("Token appears to be Updated: %v", err, c)
-	// 			continue
-	// 		}
-	// 	}
-
-	// 	// Get the corresponding user
-	// 	var u User
-	// 	if err = q.GetUserByEmail(oTo.Email, &u); err != nil {
-	// 		log.Error("Could not look up user: %v\n%v", oTo.Email, err, c)
-	// 		break
-	// 	}
-
-	// 	// Update to new record and replace old one
-	// 	to := Token{
-	// 		Id:      oTo.Id,
-	// 		UserId:  u.Id,
-	// 		Used:    oTo.Used,
-	// 		Expired: oTo.Expired,
-	// 	}
-
-	// 	db.PutKey("token", k, &to)
-	// }
-
-	// log.Info("Migrating orders", c)
-
-	// t = db.Query("order").Run(c)
-
-	// for {
-	// 	var oO OldOrder
-	// 	k, err := t.Next(&oO)
-
-	// 	if err != nil {
-	// 		//Done
-	// 		if err == Done {
-	// 			break
-	// 		}
-
-	// 		// Error, ignore field mismatch
-	// 		if _, ok := err.(*ErrFieldMismatch); ok {
-	// 			log.Error("Order appears to be Updated: %v", err, c)
-	// 			continue
-	// 		}
-	// 	}
-
-	// 	// Get the corresponding user
-	// 	var u User
-	// 	if err = q.GetUserByEmail(oO.Email, &u); err != nil {
-	// 		log.Error("Could not look up user: %v\n%v", oO.Email, err, c)
-	// 		break
-	// 	}
-
-	// 	// Update to new record and replace old one
-	// 	o := Order{
-	// 		BillingAddress:  oO.BillingAddress,
-	// 		ShippingAddress: oO.ShippingAddress,
-	// 		CreatedAt:       oO.CreatedAt,
-	// 		UpdatedAt:       oO.UpdatedAt,
-	// 		Id:              oO.Id,
-	// 		UserId:          u.Id,
-	// 		Shipping:        oO.Shipping,
-	// 		Tax:             oO.Tax,
-	// 		Subtotal:        oO.Subtotal,
-	// 		Total:           oO.Total,
-	// 		Items:           oO.Items,
-	// 		StripeTokens:    oO.StripeTokens,
-	// 		Charges:         oO.Charges,
-	// 		CampaignId:      oO.CampaignId,
-	// 		Preorder:        oO.Preorder,
-	// 		Cancelled:       oO.Cancelled,
-	// 		Shipped:         oO.Shipped,
-	// 		Test:            oO.Test,
-	// 	}
-
-	// 	db.PutKey("order", k, &o)
-	// }
-})
+			return errors.New("Invalid type, required: *OldOrder")
+		}))
