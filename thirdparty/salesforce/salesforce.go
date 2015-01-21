@@ -223,7 +223,7 @@ func (a *Api) Push(object interface{}) error {
 
 	if len(a.LastBody) == 0 {
 		if a.LastStatusCode == 201 || a.LastStatusCode == 204 {
-			log.Error("Upsert returned %v", a.LastStatusCode, c)
+			log.Info("Upsert returned %v", a.LastStatusCode, c)
 			return nil
 		} else {
 			return errors.New(fmt.Sprintf("Request returned unexpected status code %v", a.LastStatusCode))
