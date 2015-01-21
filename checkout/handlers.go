@@ -207,23 +207,12 @@ func charge(c *gin.Context) {
 	orderId := key.IntID()
 
 	// Synchronize Salesforce
-	salesforceTokens := getSalesforceTokens(c, db).(struct {
-		AccessToken  string
-		RefreshToken string
-		InstanceUrl  string
-		Id           string
-		IssuedAt     string
-		Signature    string
-	})
+	salesforceTokens := getSalesforceTokens(c, db).(models.SalesforceTokens)
 
 	if salesforceTokens.AccessToken != "" {
-		if err != nil {
-			// Launch a synchronization task
-			campaign := getCampaign(c, db)
-			salesforce.CallUpsertTask(ctx, &campaign, user)
-		} else {
-			log.Debug("Could not synchronize with salesforce.")
-		}
+		// Launch a synchronization task
+		campaign := getCampaign(c, db)
+		salesforce.CallUpsertTask(ctx, &campaign, user)
 	}
 
 	// Generate invite for preorder site.

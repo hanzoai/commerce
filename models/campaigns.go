@@ -8,6 +8,15 @@ const (
 	Music
 )
 
+type SalesforceTokens struct {
+	AccessToken  string
+	RefreshToken string
+	InstanceUrl  string
+	Id           string
+	IssuedAt     string
+	Signature    string
+}
+
 type Campaign struct {
 	Id              string
 	Approved        bool
@@ -40,15 +49,8 @@ type Campaign struct {
 	}
 	PayPalConnected bool
 	PayPalApiKeys   string
-	Salesforce      struct {
-		AccessToken  string
-		RefreshToken string
-		InstanceUrl  string
-		Id           string
-		IssuedAt     string
-		Signature    string
-	}
-	Stripe struct {
+	Salesforce      SalesforceTokens
+	Stripe          struct {
 		AccessToken    string
 		Livemode       bool
 		PublishableKey string
