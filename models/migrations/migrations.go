@@ -30,6 +30,11 @@ var Run = delay.Func("run-migration", func(c appengine.Context, name string) {
 func init() {
 	// Add email to orders
 	addMigration("add-email-to-orders", addEmailToOrders)
-	addMigration("replace-email-with-userid", replaceEmailWithUserId)
-	addMigration("replace-email-with-userid-user-only", replaceEmailWithUserIdUserOnly)
+
+	addMigration("replace-email-with-userid-for-user", replaceEmailWithUserIdForUser)
+
+	// The next 3 depend on replace-email-with-userid-for-user
+	addMigration("replace-email-with-userid-for-contribution", replaceEmailWithUserIdForContribution)
+	addMigration("replace-email-with-userid-for-token", replaceEmailWithUserIdForToken)
+	addMigration("replace-email-with-userid-for-order", replaceEmailWithUserIdForOrder)
 }
