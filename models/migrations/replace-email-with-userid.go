@@ -89,7 +89,7 @@ var replaceEmailWithUserIdForUser = delay.Func(
 
 				log.Info("Inserting Key %v", newK, c)
 
-				if _, err := datastore.Put(c, newK, &u); err != nil {
+				if _, err := datastore.Put(c, newK, u); err != nil {
 					log.Error("Could not Put User because %v", err, c)
 					return err
 				}
