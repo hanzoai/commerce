@@ -15,7 +15,7 @@ import (
 
 // Deferred Tasks
 // UpsertTask upserts a contact into salesforce
-var UpsertTask = delay.Func("SalesforceUpsert", func(c appengine.Context, campaign models.Campaign, user models.User) error {
+var UpsertTask = delay.Func("SalesforceUpsert", func(c appengine.Context, campaign models.Campaign, user models.User) {
 	log.Info("Try to synchronize with salesforce", c)
 
 	client := New(c, &campaign, true)
@@ -51,14 +51,12 @@ var UpsertTask = delay.Func("SalesforceUpsert", func(c appengine.Context, campai
 	// contact.PreorderC = preorders
 
 	if err := client.Push(&user); err != nil {
-		log.Panic("UpsertContactTask failed: %v", err, c)
+		log.Panic("UpsertContactTask failed: %v", c)
 	}
-
-	return nil
 })
 
 // PullUpdatedTask gets recently(20 minutes ago) updated Contact and upserts them as Users
-var PullUpdatedTask = delay.Func("SalesforceUpsert", func(c appengine.Context) error {
+var PullUpdatedTask = delay.Func("PullUpdatedTask", func(c appengine.Context) {
 	db := datastore.New(c)
 	q := queries.New(c)
 
@@ -66,8 +64,7 @@ var PullUpdatedTask = delay.Func("SalesforceUpsert", func(c appengine.Context) e
 
 	// Get user instance
 	if err := db.GetKey("campaign", "dev@hanzo.ai", campaign); err != nil {
-		log.Error("Unable to get campaign from database: %v", err, c)
-		return err
+		log.Panic("Unable to get campaign from database: %v", err, c)
 	}
 
 	client := New(c, campaign, true)
@@ -78,20 +75,17 @@ var PullUpdatedTask = delay.Func("SalesforceUpsert", func(c appengine.Context) e
 	users := new([]*models.User)
 	// We check 15 minutes into the future in case salesforce clocks (logs based on the minute updated) is slightly out of sync with google's
 	if err := client.PullUpdated(now.Add(-20*time.Minute), now, users); err != nil {
-		log.Error("Getting Updated Contacts Failed: %v, %v", err, string(client.LastBody[:]), c)
-		return err
+		log.Panic("Getting Updated Contacts Failed: %v, %v", err, string(client.LastBody[:]), c)
 	}
 
 	log.Info("Updating %v Users from Salesforce", len(*users), c)
 	for _, user := range *users {
 		if err := q.UpsertUser(user); err != nil {
-			log.Error("User '%v' could not be updated, %v", user.Id, err, c)
-			return err
+			log.Panic("User '%v' could not be updated, %v", user.Id, err, c)
 		} else {
 			log.Info("User '%v' was successfully updated", user.Id, c)
 		}
 	}
-	return nil
 })
 
 // Wrappers to deferred function calls for type sanity
