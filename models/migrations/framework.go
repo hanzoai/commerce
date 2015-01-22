@@ -1,6 +1,8 @@
 package migrations
 
 import (
+	"runtime/debug"
+
 	"appengine"
 	"appengine/datastore"
 
@@ -22,10 +24,13 @@ func newMigration(name, table string, object interface{}, fn transactionFn) migr
 		var t *datastore.Iterator
 		var m MigrationStatus
 		var cur datastore.Cursor
+		var k, mk *datastore.Key
+		var err error
+		var ok bool
 
 		// Try to get cursor if it exists
-		mk := datastore.NewKey(c, "migration", name, 0, nil)
-		if err := datastore.Get(c, mk, &m); err != nil {
+		mk = datastore.NewKey(c, "migration", name, 0, nil)
+		if err = datastore.Get(c, mk, &m); err != nil {
 			log.Warn("No Preexisting Cursor found", c)
 			t = datastore.NewQuery(table).Run(c)
 		} else if m.Done {
@@ -42,7 +47,7 @@ func newMigration(name, table string, object interface{}, fn transactionFn) migr
 
 		for {
 			// Iterate Cursor
-			k, err := t.Next(object)
+			k, err = t.Next(object)
 
 			if err != nil {
 				// Done
@@ -51,12 +56,9 @@ func newMigration(name, table string, object interface{}, fn transactionFn) migr
 				}
 
 				// Ignore field mismatch, otherwise skip record
-				if _, ok := err.(*datastore.ErrFieldMismatch); !ok {
-					log.Warn("Field Mismatch fetching user: %v\n%v", err, object, c)
-					continue
-				} else {
+				if _, ok = err.(*datastore.ErrFieldMismatch); !ok {
 					log.Error("Error fetching user: %v\n%v", err, object, c)
-					break
+					continue
 				}
 			}
 
@@ -76,6 +78,8 @@ func newMigration(name, table string, object interface{}, fn transactionFn) migr
 			datastore.RunInTransaction(c, func(tc appengine.Context) error {
 				return fn(c, k, object)
 			}, &datastore.TransactionOptions{XG: true})
+
+			debug.FreeOSMemory()
 		}
 
 		log.Info("Migration Completed", c)
