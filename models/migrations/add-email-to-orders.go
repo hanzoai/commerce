@@ -12,7 +12,8 @@ import (
 	. "crowdstart.io/models"
 )
 
-var addEmailToOrders = delay.Func("migrate-add-email-to-orders", func(c appengine.Context) {
+// Originally referenced User by  Email, now uses User ID,
+var addEmailToOrders = delay.Func("migrate-add-userid-to-orders", func(c appengine.Context) {
 	log.Debug("Migrating orders")
 	db := datastore.New(c)
 	q := db.Query("order")
@@ -36,8 +37,8 @@ var addEmailToOrders = delay.Func("migrate-add-email-to-orders", func(c appengin
 		}
 
 		// Update user
-		if o.Email == "" {
-			o.Email = k.StringID()
+		if o.UserId == "" {
+			o.UserId = db.EncodeId("user", k.IntID())
 			if _, err := db.PutKey("order", k, &o); err != nil {
 				log.Error("Failed to update order: %v", err, c)
 			}

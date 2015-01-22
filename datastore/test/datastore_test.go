@@ -1,13 +1,64 @@
 package test
 
 import (
-	"appengine/aetest"
-	"crowdstart.io/datastore"
+	"errors"
 	"testing"
+
+	"crowdstart.io/datastore"
+
+	"appengine/aetest"
 )
 
 type TestStruct struct {
 	Field string
+}
+
+func TestId(t *testing.T) {
+	t.Skip()
+	ctx, _ := aetest.NewContext(nil)
+	defer ctx.Close()
+	db := datastore.New(ctx)
+
+	id := db.AllocateId("test")
+
+	if id == 0 {
+		t.Logf("Id is not valid, Expected ID to be non-0")
+		t.Fail()
+	}
+
+	id1 := db.EncodeId("test", int64(12345))
+	if id1 == "" {
+		t.Logf("Encoding did not work")
+		t.Fail()
+	}
+
+	id2 := db.EncodeId("test", int(12345))
+	if id2 == "" {
+		t.Logf("Encoding did not work")
+		t.Fail()
+	}
+
+	id3 := db.EncodeId("test", "12345")
+	if id3 == "" {
+		t.Logf("Encoding did not work")
+		t.Fail()
+	}
+
+	if id1 != id2 {
+		t.Logf("Ids 1 & 2 should be equal. \n\t Expected: %#v \n\t Actual: %#v", id1, id2)
+		t.Fail()
+	}
+
+	if id2 != id3 {
+		t.Logf("Ids 2 & 3 should be equal. \n\t Expected: %#v \n\t Actual: %#v", id2, id3)
+		t.Fail()
+	}
+
+	err := db.EncodeId("test", errors.New(""))
+	if err != "" {
+		t.Logf("EncodeId accepted invalid type")
+		t.Fail()
+	}
 }
 
 func TestCRUD(t *testing.T) {
@@ -70,14 +121,19 @@ func TestKeyCRUD(t *testing.T) {
 	defer ctx.Close()
 	db := datastore.New(ctx)
 
-	key := "testkey"
+	id := db.AllocateId("test")
 	oPut := TestStruct{"hjaks"}
 
-	t.Logf("The key is %s", key)
+	t.Logf("The key has id %d", id)
 
-	key, err := db.PutKey("test", key, oPut)
+	key, err := db.PutKey("test", id, oPut)
 	if err != nil {
 		t.Error(err)
+	}
+
+	key2, _ := db.DecodeKey(key)
+	if key2.IntID() != id {
+		t.Logf("Keys do not match \n\t Expected: %d, \n\t Actual: %d", id, key2.IntID())
 	}
 
 	var oGet TestStruct
