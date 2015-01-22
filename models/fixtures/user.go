@@ -10,27 +10,30 @@ import (
 
 	"crowdstart.io/datastore"
 	. "crowdstart.io/models"
+
+	"crowdstart.io/util/queries"
 )
 
 var testUsers = delay.Func("fixtures-test-users", func(c appengine.Context) {
 	db := datastore.New(c)
+	q := queries.New(c)
 
 	// Add default test user
 	pwhash, _ := bcrypt.GenerateFromPassword([]byte("password"), 12)
 
-	db.PutKey("user", "test@test.com", &User{
-		Id:           "test@test.com",
+	user := &User{
 		FirstName:    "Test",
 		LastName:     "User",
 		Email:        "test@test.com",
 		Phone:        "(123) 456-7890",
 		PasswordHash: pwhash,
-	})
+	}
+	q.UpsertUser(user)
 
 	// Create token
 	token := new(Token)
 	token.Id = "test-token"
-	token.Email = "test@test.com"
+	token.UserId = user.Id
 	db.PutKey("invite-token", "test-token", token)
 
 	// Save contribution
@@ -40,27 +43,26 @@ var testUsers = delay.Func("fixtures-test-users", func(c appengine.Context) {
 		Status:        "Unfulfilled",
 		FundingDate:   "1983-06-30",
 		PaymentMethod: "PayPal",
-		Email:         "test@test.com",
+		UserId:        user.Id,
 	}
 	db.PutKey("contribution", "test", &contribution)
 
 	order := Order{
 		Id:        "test-order",
 		CreatedAt: time.Now(),
-		Email:     "test@test.com",
+		UserId:    user.Id,
 		Preorder:  true,
 	}
-	db.PutKey("order", "test@test.com", &order)
+	db.PutKey("order", order.Id, &order)
 })
 
 var skullyUser = delay.Func("fixtures-skully-user", func(c appengine.Context) {
-	db := datastore.New(c)
+	q := queries.New(c)
 
 	// Add SKULLY user
 	pwhash, _ := bcrypt.GenerateFromPassword([]byte("Victory1!"), 12)
 
-	db.PutKey("user", "dev@hanzo.ai", &User{
-		Id:           "dev@hanzo.ai",
+	q.UpsertUser(&User{
 		FirstName:    "Mitchell",
 		LastName:     "Weller",
 		Email:        "dev@hanzo.ai",

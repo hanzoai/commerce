@@ -11,6 +11,7 @@ import (
 	"crowdstart.io/thirdparty/salesforce"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
+	"crowdstart.io/util/queries"
 	"crowdstart.io/util/template"
 	"crowdstart.io/util/val"
 )
@@ -129,7 +130,8 @@ func SaveProfile(c *gin.Context) {
 	}
 
 	// Update user
-	if _, err = db.PutKey("user", user.Email, user); err != nil {
+	q := queries.New(c)
+	if err = q.UpsertUser(user); err != nil {
 		log.Panic("Failed to save user: %v", err)
 	}
 
