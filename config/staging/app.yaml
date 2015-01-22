@@ -3,8 +3,10 @@ module: default
 version: v1
 
 runtime: go
-api_version: go1
+api_version: go1.4beta
 threadsafe: true
+
+instance_class: F4
 
 builtins:
 - remote_api: on
