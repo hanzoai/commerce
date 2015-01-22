@@ -31,10 +31,14 @@ func init() {
 	// Add email to orders
 	addMigration("add-email-to-orders", addEmailToOrders)
 
+	// Replace email with user id
 	addMigration("replace-email-with-userid-for-user", replaceEmailWithUserIdForUser)
 
 	// The next 3 depend on replace-email-with-userid-for-user
 	addMigration("replace-email-with-userid-for-contribution", replaceEmailWithUserIdForContribution)
-	addMigration("replace-email-with-userid-for-token", replaceEmailWithUserIdForToken)
+	addMigration("replace-email-with-userid-for-invite-token", replaceEmailWithUserIdForInviteToken)
 	addMigration("replace-email-with-userid-for-order", replaceEmailWithUserIdForOrder)
+
+	// Create a Entity set of all broken orders
+	addMigration("list-broken-orders", listBrokenOrders)
 }
