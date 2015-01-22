@@ -75,15 +75,18 @@ func Charge(ctx appengine.Context, accessToken string, authorizationToken string
 	}
 
 	// Create charge
+	log.Debug("Creating charge")
 	chargeParams := &stripe.ChargeParams{
 		Amount:    order.DecimalTotal(),
 		Fee:       order.DecimalFee(),
 		Currency:  currency.USD,
 		Customer:  user.Stripe.CustomerId,
 		Desc:      order.Description(),
-		Email:     order.Email,
+		Email:     user.Email,
 		Statement: "SKULLY SYSTEMS", // Max 15 characters
 	}
+	chargeParams.Meta = make(map[string]string)
+	chargeParams.Meta["UserId"] = user.Id
 
 	log.Debug("chargeParams: %#v", chargeParams)
 	stripeCharge, err := sc.Charges.New(chargeParams)

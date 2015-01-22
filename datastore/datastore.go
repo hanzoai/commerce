@@ -1,6 +1,9 @@
 package datastore
 
 import (
+	"errors"
+	"strconv"
+
 	"appengine"
 	. "appengine/datastore"
 
@@ -23,6 +26,28 @@ func New(ctx interface{}) (d *Datastore) {
 		d = &Datastore{c}
 	}
 	return d
+}
+
+func (d *Datastore) EncodeId(kind string, id interface{}) string {
+	var _id int64
+	switch v := id.(type) {
+	case string:
+		maybeId, err := strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			log.Warn("EncodeId was passed an string that could not be parsed to int64 %v", v)
+			return ""
+		}
+		_id = maybeId
+	case int64:
+		_id = v
+	case int:
+		_id = int64(v)
+	default:
+		log.Warn("EncodeId was passed an invalid type %v", v)
+		return ""
+	}
+
+	return NewKey(d.Context, kind, "", _id, nil).Encode()
 }
 
 func (d *Datastore) DecodeKey(encodedKey string) (*Key, error) {
@@ -110,6 +135,8 @@ func (d *Datastore) PutKey(kind string, key interface{}, src interface{}) (strin
 		k = NewKey(d.Context, kind, "", int64(v), nil)
 	case *Key:
 		k = v
+	default:
+		return "", errors.New("Invalid key type")
 	}
 
 	k, err := nds.Put(d.Context, k, src)
@@ -156,6 +183,8 @@ func (d *Datastore) PutKeyMulti(kind string, keys []interface{}, srcs []interfac
 			_keys[i] = NewKey(d.Context, kind, "", int64(v), nil)
 		case *Key:
 			_keys[i] = v
+		default:
+			return _keys, errors.New("Invalid key type")
 		}
 	}
 
@@ -207,6 +236,14 @@ func (d *Datastore) DeleteMulti(keys []string) error {
 		}
 	}
 	return nds.DeleteMulti(d.Context, _keys)
+}
+
+func (d *Datastore) AllocateId(kind string) int64 {
+	low, _, err := AllocateIDs(d.Context, kind, nil, 1)
+	if err != nil {
+		return 0
+	}
+	return low
 }
 
 func (d *Datastore) Query(kind string) *Query {
