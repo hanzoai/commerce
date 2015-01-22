@@ -87,15 +87,12 @@ var replaceEmailWithUserIdForUser = delay.Func(
 				newK := datastore.NewKey(c, "user", "", id, nil)
 				u.Id = newK.Encode()
 
-				log.Info("Inserting Key %v", newK, c)
-
 				if _, err := datastore.Put(c, newK, u); err != nil {
 					log.Error("Could not Put User because %v", err, c)
 					return err
 				}
 
 				// Delete old User record
-				log.Info("Deleting Key %v", k, c)
 				if err = datastore.Delete(c, k); err != nil {
 					log.Error("Could not Delete User %v because %v", k, err, c)
 				}
@@ -134,18 +131,17 @@ var replaceEmailWithUserIdForContribution = delay.Func(
 					Status:        oCon.Status,
 				}
 
-				log.Info("Upserting Key %v", k, c)
 				datastore.Put(c, k, &con)
 			}
 
 			return errors.New("Invalid type, required: *OldContribution")
 		}))
 
-var replaceEmailWithUserIdForToken = delay.Func(
-	"migrate-replace-email-with-userid-for-token",
+var replaceEmailWithUserIdForInviteToken = delay.Func(
+	"migrate-replace-email-with-userid-for-invite-token",
 	newMigration(
-		"migration-replace-email-with-userid-for-token",
-		"token",
+		"migration-replace-email-with-userid-for-invite-token",
+		"invite-token",
 		new(OldToken),
 		func(c appengine.Context, k *datastore.Key, object interface{}) error {
 			switch oTo := object.(type) {
@@ -167,7 +163,6 @@ var replaceEmailWithUserIdForToken = delay.Func(
 					Expired: oTo.Expired,
 				}
 
-				log.Info("Upserting Key %v", k, c)
 				datastore.Put(c, k, &to)
 			}
 
@@ -187,9 +182,11 @@ var replaceEmailWithUserIdForOrder = delay.Func(
 				q := queries.New(c)
 
 				var u User
+				bad := false
 				if err := q.GetUserByEmail(oO.Email, &u); err != nil {
-					log.Warn("Could not look up user: %v\n%v", oO.Email, err, c)
-					return nil
+					log.Warn("Order is Dangling or Broken %v\n%v", oO.Email, err, c)
+					u.Id = "Broken"
+					bad = true
 				}
 
 				// 	// Update to new record and replace old one
@@ -214,8 +211,12 @@ var replaceEmailWithUserIdForOrder = delay.Func(
 					Test:            oO.Test,
 				}
 
-				log.Info("Upserting Key %v", k, c)
-				datastore.Put(c, k, &o)
+				if bad {
+					newK := datastore.NewKey(c, "broken-order", k.StringID(), k.IntID(), nil)
+					datastore.Put(c, newK, &o)
+				} else {
+					datastore.Put(c, k, &o)
+				}
 			}
 
 			return errors.New("Invalid type, required: *OldOrder")
