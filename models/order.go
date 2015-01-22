@@ -22,7 +22,7 @@ type Order struct {
 	CreatedAt       time.Time `schema:"-"`
 	UpdatedAt       time.Time `schema:"-"`
 	Id              string
-	Email           string
+	UserId          string
 
 	// TODO: Recalculate Shipping/Tax on server
 	Shipping int64

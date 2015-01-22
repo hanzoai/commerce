@@ -9,9 +9,9 @@ dispatch:
 
   - url: "*/admin/*"
     module: platform
+
   - url: "*/platform/*"
     module: platform
-
 
   - url: "*/preorder/*"
     module: preorder
