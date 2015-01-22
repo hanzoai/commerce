@@ -92,10 +92,14 @@ var PullUpdatedTask = delay.Func("SalesforcePullUpdatedTask", func(c appengine.C
 // CallUpsertTask calls the task queue delay function with the passed in params
 // Values are used instead of pointers since we envoke a RPC
 func CallUpsertTask(c appengine.Context, campaign *models.Campaign, user *models.User) {
+	log.Info("Trying to dispatch task.", c)
 	UpsertTask.Call(c, *campaign, *user)
+	log.Info("Task dispatched.", c)
 }
 
 // CallPullUpdatedTask calls the task queue delay function with the passed in params
 func CallPullUpdatedTask(c appengine.Context) {
+	log.Info("Trying to dispatch task.", c)
 	PullUpdatedTask.Call(c)
+	log.Info("Task dispatched.", c)
 }
