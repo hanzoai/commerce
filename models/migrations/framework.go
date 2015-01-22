@@ -26,7 +26,6 @@ func newMigration(name, table string, object interface{}, fn transactionFn) migr
 		var cur datastore.Cursor
 		var k, mk *datastore.Key
 		var err error
-		var ok bool
 
 		// Try to get cursor if it exists
 		mk = datastore.NewKey(c, "migration", name, 0, nil)
@@ -56,15 +55,13 @@ func newMigration(name, table string, object interface{}, fn transactionFn) migr
 				}
 
 				// Ignore field mismatch, otherwise skip record
-				if _, ok = err.(*datastore.ErrFieldMismatch); !ok {
-					log.Error("Error fetching user: %v\n%v", err, object, c)
+				if err != nil {
+					log.Error("Error fetching user: %v\n%v", k, err, c)
 					continue
 				}
 			}
 
 			// Save Migration point for resume
-			log.Info("Updating Migration Cursor", c)
-
 			mk = datastore.NewKey(c, "migration", name, 0, nil)
 
 			if cur, err = t.Cursor(); err != nil {
