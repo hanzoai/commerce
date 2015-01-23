@@ -10,27 +10,30 @@ import (
 
 	"crowdstart.io/datastore"
 	. "crowdstart.io/models"
+
+	"crowdstart.io/util/queries"
 )
 
 var testUsers = delay.Func("fixtures-test-users", func(c appengine.Context) {
 	db := datastore.New(c)
+	q := queries.New(c)
 
 	// Add default test user
 	pwhash, _ := bcrypt.GenerateFromPassword([]byte("password"), 12)
 
-	db.PutKey("user", "test@test.com", &User{
-		Id:           "test@test.com",
+	user := &User{
 		FirstName:    "Test",
 		LastName:     "User",
 		Email:        "test@test.com",
 		Phone:        "(123) 456-7890",
 		PasswordHash: pwhash,
-	})
+	}
+	q.UpsertUser(user)
 
 	// Create token
 	token := new(Token)
 	token.Id = "test-token"
-	token.Email = "test@test.com"
+	token.UserId = user.Id
 	db.PutKey("invite-token", "test-token", token)
 
 	// Save contribution
@@ -40,27 +43,26 @@ var testUsers = delay.Func("fixtures-test-users", func(c appengine.Context) {
 		Status:        "Unfulfilled",
 		FundingDate:   "1983-06-30",
 		PaymentMethod: "PayPal",
-		Email:         "test@test.com",
+		UserId:        user.Id,
 	}
 	db.PutKey("contribution", "test", &contribution)
 
 	order := Order{
 		Id:        "test-order",
 		CreatedAt: time.Now(),
-		Email:     "test@test.com",
+		UserId:    user.Id,
 		Preorder:  true,
 	}
-	db.PutKey("order", "test@test.com", &order)
+	db.PutKey("order", order.Id, &order)
 })
 
 var skullyUser = delay.Func("fixtures-skully-user", func(c appengine.Context) {
-	db := datastore.New(c)
+	q := queries.New(c)
 
 	// Add SKULLY user
 	pwhash, _ := bcrypt.GenerateFromPassword([]byte("Victory1!"), 12)
 
-	db.PutKey("user", "dev@hanzo.ai", &User{
-		Id:           "dev@hanzo.ai",
+	q.UpsertUser(&User{
 		FirstName:    "Mitchell",
 		LastName:     "Weller",
 		Email:        "dev@hanzo.ai",
@@ -86,11 +88,11 @@ var skullyCampaign = delay.Func("fixtures-skully-campaign", func(c appengine.Con
 		campaign.Stripe.UserId = "acct_14lSsRCSRlllXCwP"
 
 		// And sales force test credentials
-		campaign.Salesforce.AccessToken = "00DU0000000MGvt!AREAQGYKLfUdd85R8MyNpSWElcacGbL1d7.Z1ZmXfswfqbLY2q82CArizIcGgk_uqhLr43vDuK_.cp28IcdAnkGA_CiIesra"
-		campaign.Salesforce.RefreshToken = "5Aep861ikNsOLQGnbp74xiVo8YsSB.C3pr13Ap4bZm4gkEn0F7rF2X3J49AMiNBbqmKA0rqQgNrl8kuTNEnEhlK"
-		campaign.Salesforce.Id = "https://login.salesforce.com/id/00DU0000000MGvtMAG/005U0000003d6VyIAI"
+		campaign.Salesforce.AccessToken = "00Do0000000d5HA!ARcAQJcOeDSNWRwRKX4wulUB8q5tHc.VzBh2DevtaQuCOBkbmz6bcQcK4rTJUWGEUmuJukww3KUyuYc0MWxdpvr8ZxWtzK2z"
+		campaign.Salesforce.RefreshToken = "5Aep861LNDQReieQSK6OvPpwG_C1z9MoX7qJR8huC9h.oOQm.eW2gfv6sfo9AUJgTUNnH4Tx3qBz9XtZGK2j1oS"
+		campaign.Salesforce.Id = "ttps://login.salesforce.com/id/00Do0000000d5HAEAY/005o0000001VCsiAAG"
 		campaign.Salesforce.IssuedAt = "1419371438825"
-		campaign.Salesforce.InstanceUrl = "https://na12.salesforce.com"
+		campaign.Salesforce.InstanceUrl = "https://na17.salesforce.com"
 		campaign.Salesforce.Signature = "RO086wMIGu1bLlXgjtMtAk4JGSd8k2/yb5tKRGq/No8="
 	}
 	db.PutKey("campaign", "dev@hanzo.ai", &campaign)
