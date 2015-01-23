@@ -6,7 +6,7 @@ import (
 
 type Token struct {
 	Id      string
-	Email   string
+	UserId  string
 	Used    bool
 	Expired bool
 }

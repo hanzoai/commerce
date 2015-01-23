@@ -29,6 +29,7 @@ func (l *Logger) setContext(args ...interface{}) []interface{} {
 	// Appengine context is last argument
 	ctx := args[len(args)-1]
 
+	// Set AppEngine context on logging backend if we have one
 	switch ctx := ctx.(type) {
 	case *gin.Context:
 		appengineContext := ctx.MustGet("appengine").(appengine.Context)
