@@ -10,24 +10,23 @@ import (
 	"strings"
 	"time"
 
+	"appengine"
+
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
-	"crowdstart.io/middleware"
 	"crowdstart.io/models"
 	"crowdstart.io/util/log"
-
-	"github.com/gin-gonic/gin"
 
 	"appengine/urlfetch"
 )
 
 type Api struct {
-	LastRequest  *http.Request
-	LastResponse *http.Response
+	lastRequest  *http.Request
+	lastResponse *http.Response
 
 	LastStatusCode int
 	LastBody       []byte
-	Context        *gin.Context
+	Context        appengine.Context
 
 	Campaign *models.Campaign
 
@@ -35,9 +34,8 @@ type Api struct {
 }
 
 // Get the HttpClient from the Gin context
-func getClient(c *gin.Context) *http.Client {
-	ctx := middleware.GetAppEngine(c)
-	client := urlfetch.Client(ctx)
+func getClient(c appengine.Context) *http.Client {
+	client := urlfetch.Client(c)
 
 	return client
 }
@@ -63,7 +61,7 @@ func (a *Api) request(method, path, data string, headers *map[string]string, ret
 		log.Info("Setting Headers %v", req.Header, c)
 	}
 
-	a.LastRequest = req
+	a.lastRequest = req
 
 	log.Info("Sending Request", c)
 
@@ -76,7 +74,7 @@ func (a *Api) request(method, path, data string, headers *map[string]string, ret
 
 	log.Info("Decoding Response", c)
 
-	a.LastResponse = res
+	a.lastResponse = res
 
 	log.Info("Decoding Body", c)
 	body, err := ioutil.ReadAll(res.Body)
@@ -115,7 +113,7 @@ func (a *Api) request(method, path, data string, headers *map[string]string, ret
 }
 
 // New creates an API from a Context and Campaign
-func New(c *gin.Context, campaign *models.Campaign, update bool) *Api {
+func New(c appengine.Context, campaign *models.Campaign, update bool) *Api {
 	return &Api{
 		Campaign: campaign,
 		Context:  c,
@@ -126,8 +124,7 @@ func New(c *gin.Context, campaign *models.Campaign, update bool) *Api {
 // Refresh refreshes the Salesforce tokens and saves them to database
 func (a *Api) Refresh() error {
 	c := a.Context
-	ctx := middleware.GetAppEngine(c)
-	client := urlfetch.Client(ctx)
+	client := urlfetch.Client(c)
 
 	// https://help.salesforce.com/HTViewHelpDoc?id=remoteaccess_oauth_refresh_token_flow.htm&language=en_US
 	data := url.Values{}
@@ -213,7 +210,7 @@ func (a *Api) Push(object interface{}) error {
 
 		contactJSON := string(contactBytes[:])
 
-		path := fmt.Sprintf(ContactExternalIdPath, v.Id)
+		path := fmt.Sprintf(ContactExternalIdPath, strings.Replace(v.Id, ".", "_", -1))
 
 		log.Info("Upserting Contact: %v", contact, c)
 		if err = a.request("PATCH", path, contactJSON, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
@@ -226,7 +223,7 @@ func (a *Api) Push(object interface{}) error {
 
 	if len(a.LastBody) == 0 {
 		if a.LastStatusCode == 201 || a.LastStatusCode == 204 {
-			log.Error("Upsert returned %v", a.LastStatusCode, c)
+			log.Info("Upsert returned %v", a.LastStatusCode, c)
 			return nil
 		} else {
 			return errors.New(fmt.Sprintf("Request returned unexpected status code %v", a.LastStatusCode))
