@@ -13,6 +13,7 @@ func init() {
 	loginRequired := middleware.LoginRequired("platform")
 
 	router.GET("/", admin.Index)
+	router.GET("/theme/", admin.ThemeSample)
 
 	router.GET("/dashboard", loginRequired, admin.Dashboard)
 
@@ -32,11 +33,11 @@ func init() {
 	router.GET("/stripe/callback", loginRequired, admin.StripeCallback)
 
 	// Stripe webhook, we don't do anything with this atm.
-	router.GET("/stripe/hook", admin.StripeWebhook)
 	router.POST("/stripe/hook", admin.StripeWebhook)
 
 	// Salesfoce connect
 	router.GET("/salesforce/callback", loginRequired, admin.SalesforceCallback)
 
 	router.GET("/salesforce/test", loginRequired, admin.TestSalesforceConnection)
+	router.GET("/salesforce/sync", admin.SalesforcePullLatest)
 }

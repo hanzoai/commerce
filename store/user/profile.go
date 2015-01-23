@@ -8,8 +8,10 @@ import (
 	"crowdstart.io/middleware"
 	"crowdstart.io/models"
 	"crowdstart.io/thirdparty/mandrill"
+	"crowdstart.io/thirdparty/salesforce"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
+	"crowdstart.io/util/queries"
 	"crowdstart.io/util/template"
 	"crowdstart.io/util/val"
 )
@@ -94,6 +96,7 @@ func updatePassword(c *gin.Context, user *models.User) bool {
 
 func SaveProfile(c *gin.Context) {
 	// Get user from datastore using session
+	db := datastore.New(c)
 	user, err := auth.GetUser(c)
 	if err != nil {
 		log.Panic("Failed to retrieve user from datastore using session: %v", err)
@@ -105,6 +108,17 @@ func SaveProfile(c *gin.Context) {
 	case "change-contact":
 		if valid := updateContact(c, user); !valid {
 			return
+		} else {
+			// Look up campaign to see if we need to sync with salesforce
+			campaign := models.Campaign{}
+			if err := db.GetKey("campaign", "dev@hanzo.ai", &campaign); err != nil {
+				log.Error(err, c)
+			}
+
+			log.Debug("Synchronize with salesforce if '%v' != ''", campaign.Salesforce.AccessToken)
+			if campaign.Salesforce.AccessToken != "" {
+				salesforce.CallUpsertTask(db.Context, &campaign, user)
+			}
 		}
 	case "change-billing":
 		if valid := updateBilling(c, user); !valid {
@@ -117,8 +131,8 @@ func SaveProfile(c *gin.Context) {
 	}
 
 	// Update user
-	db := datastore.New(c)
-	if _, err = db.PutKey("user", user.Email, user); err != nil {
+	q := queries.New(c)
+	if err = q.UpsertUser(user); err != nil {
 		log.Panic("Failed to save user: %v", err)
 	}
 
