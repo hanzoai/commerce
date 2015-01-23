@@ -1,12 +1,12 @@
 package user
 
 import (
-	"github.com/gin-gonic/gin"
-	"github.com/mholt/binding"
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models"
 	"crowdstart.io/util/json"
+	"github.com/gin-gonic/gin"
+	"github.com/mholt/binding"
 )
 
 func Get(c *gin.Context) {
