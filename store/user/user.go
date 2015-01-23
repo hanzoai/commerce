@@ -7,6 +7,7 @@ import (
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
+	"crowdstart.io/thirdparty/salesforce"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
 	"crowdstart.io/util/val"
@@ -79,28 +80,15 @@ func SubmitRegister(c *gin.Context) {
 	//Santitization
 	val.SanitizeUser(&f.User)
 
-	db := datastore.New(c)
-
-	log.Debug("Checking if user exists")
-	var existingUser models.User
-	err = db.GetKey("user", f.User.Email, &existingUser)
-	if err == nil {
+	err = auth.NewUser(c, f)
+	if err != nil && err.Error() == "Email is already registered" {
 		template.Render(c, "login.html", "registerError", "An account already exists for this email.")
 		return
 	}
 
-	f.User.Id = f.User.Email
-	f.User.PasswordHash, err = f.PasswordHash()
 	if err != nil {
 		template.Render(c, "login.html", "registerError", "An error has occured, please try again later.")
 		log.Panic("Error generating password hash \n%v", err)
-	}
-
-	log.Debug("Saving user")
-	_, err = db.PutKey("user", f.User.Email, &f.User)
-	if err != nil {
-		template.Render(c, "login.html", "registerError", "An error has occured, please try again later.")
-		log.Panic("Error while saving user \n%v", err)
 	}
 
 	log.Debug("Login user")
@@ -110,5 +98,16 @@ func SubmitRegister(c *gin.Context) {
 		log.Panic("Error while setting session cookie %v", err)
 	}
 
+	// Look up campaign to see if we need to sync with salesforce
+	db := datastore.New(c)
+	campaign := models.Campaign{}
+	if err := db.GetKey("campaign", "dev@hanzo.ai", &campaign); err != nil {
+		log.Error(err, c)
+	}
+
+	log.Debug("Synchronize with salesforce if '%v' != ''", campaign.Salesforce.AccessToken)
+	if campaign.Salesforce.AccessToken != "" {
+		salesforce.CallUpsertTask(db.Context, &campaign, &f.User)
+	}
 	c.Redirect(302, config.UrlFor("store"))
 }

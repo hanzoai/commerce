@@ -1,69 +1,55 @@
 package test
 
 import (
-	"appengine/aetest"
-	"bytes"
+	"errors"
+	"reflect"
+	"testing"
+
 	"crowdstart.io/auth"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
-	"errors"
 	"github.com/gin-gonic/gin"
-	"reflect"
-	"testing"
+
+	"appengine/aetest"
 )
 
-var mockRegForm = struct {
-	User     models.User
-	Password string
-}{
-	models.User{Id: "AzureDiamond"},
-	"hunter2",
-}
+const kind = "user"
 
 func TestNewUser(t *testing.T) {
 	t.Skip()
-	println("ctx")
 	ctx, err := aetest.NewContext(nil)
+	defer ctx.Close()
 	if err != nil {
 		t.Error(err)
-		t.Fail()
 	}
 
 	c := &gin.Context{}
 	c.Set("appengine", ctx)
 
-	f := auth.RegistrationForm{
-		User:     mockRegForm.User,
-		Password: mockRegForm.Password,
+	regForm := auth.RegistrationForm{
+		User:     models.User{Email: "e@example.com"},
+		Password: "hunter2",
 	}
+	regForm.User.Id = regForm.User.Email
 
-	err = auth.NewUser(c, f)
+	err = auth.NewUser(c, &regForm)
 	if err != nil {
 		t.Error(err)
 	}
-	println("New user")
 
 	db := datastore.New(ctx)
-	var user models.User
-	err = db.GetKey("user", mockRegForm.User.Id, user)
+	user := new(models.User)
+	err = db.GetKey(kind, regForm.User.Email, user)
 	if err != nil {
 		t.Error(err)
 	}
-	println("Get user")
 
-	if reflect.DeepEqual(user, models.User{}) {
+	if reflect.DeepEqual(*user, models.User{}) {
 		t.Error(errors.New("User is empty"))
-		t.Fail()
 	}
 
-	if user.Id != mockRegForm.User.Id {
-		t.Logf("User id is not valid \n\tExpected: %s \n\tActual: %s", mockRegForm.User.Id, user.Id)
-		t.Fail()
-	}
-
-	hash, _ := f.PasswordHash()
-	if !bytes.Equal(user.PasswordHash, hash) {
-		t.Logf("User password hash is not valid \n\tExpected: %s \n\tActual: %s", user.PasswordHash, hash)
+	if user.Id != regForm.User.Id {
+		t.Logf("User id is not valid \n\tExpected: %s \n\tActual: %s", regForm.User.Id, user.Id)
 		t.Fail()
 	}
 }

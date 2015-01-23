@@ -70,3 +70,8 @@ func Connect(c *gin.Context) {
 		"stripe", config.Stripe,
 		"salesforce", config.Salesforce)
 }
+
+// Theme Testing
+func ThemeSample(c *gin.Context) {
+	template.Render(c, "sample.html")
+}
