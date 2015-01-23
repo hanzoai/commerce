@@ -1,17 +1,17 @@
 package test
 
 import (
+	"bytes"
 	"errors"
 	"reflect"
 	"testing"
 
-	"appengine/aetest"
-
-	"github.com/gin-gonic/gin"
-
 	"crowdstart.io/auth"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
+	"github.com/gin-gonic/gin"
+
+	"appengine/aetest"
 )
 
 const kind = "user"

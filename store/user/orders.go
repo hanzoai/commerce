@@ -17,7 +17,7 @@ import (
 // GET store./orders
 // LoginRequired
 func ListOrders(c *gin.Context) {
-	email, err := auth.GetEmail(c)
+	user, err := auth.GetUser(c)
 	if err != nil {
 		log.Panic("Error getting email from the session \n%v", err)
 	}
@@ -26,7 +26,7 @@ func ListOrders(c *gin.Context) {
 
 	var orders []models.Order
 	keys, err := db.Query("order").
-		Filter("Email =", email).
+		Filter("UserId =", user.Id).
 		GetAll(db.Context, &orders)
 
 	// Ignore any field mismatch errors.
@@ -46,7 +46,7 @@ func ListOrders(c *gin.Context) {
 
 	var tokens []models.Token
 	_, err = db.Query("invite-token").
-		Filter("Email =", email).
+		Filter("UserId =", user.Id).
 		Limit(1).
 		GetAll(db.Context, &tokens)
 
@@ -71,7 +71,7 @@ type CancelOrderStatus struct {
 func CancelOrder(c *gin.Context) {
 	orderId := c.Request.URL.Query().Get("id")
 
-	email, err := auth.GetEmail(c)
+	user, err := auth.GetUser(c)
 	if err != nil {
 		log.Panic("Error retrieving user \n%v", err)
 	}
@@ -83,8 +83,8 @@ func CancelOrder(c *gin.Context) {
 		log.Panic("Error while retrieving order \n%v", err)
 	}
 
-	if order.Email != email {
-		log.Panic("Email associated with order does not match the email retrieved from the session \nSessionEmail: %s \n%#v", email, order)
+	if order.UserId != user.Id {
+		log.Panic("Email associated with order does not match the UserId retrieved from the session \nSessionUserId: %s \n%#v", user.Id, order)
 	}
 
 	if order.Shipped {
