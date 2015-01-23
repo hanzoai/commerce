@@ -1,6 +1,7 @@
 package test
 
 import (
+	"errors"
 	"testing"
 
 	"appengine/aetest"
@@ -9,139 +10,194 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"errors"
-
 	"crowdstart.io/datastore"
 	"crowdstart.io/util/log"
 )
 
-type TestStruct struct {
+var (
+	ctx aetest.Context
+	db  *datastore.Datastore
+)
+
+type Entity struct {
 	Field string
 }
 
 func TestDatastore(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "SuiteSuiteSuite")
+	RunSpecs(t, "Datastore test suite")
 }
 
-func TestId(t *testing.T) {
-	t.Skip()
-	ctx, _ := aetest.NewContext(nil)
-	defer ctx.Close()
-	db := datastore.New(ctx)
+// Setup appengine context and datastore before tests
+var _ = BeforeSuite(func() {
+	var err error
+	ctx, err = aetest.NewContext(&aetest.Options{StronglyConsistentDatastore: true})
+	Expect(err).NotTo(HaveOccurred())
+	db = datastore.New(ctx)
+})
 
-	id := db.AllocateId("test")
+// Tear-down appengine context
+var _ = AfterSuite(func() {
+	err := ctx.Close()
+	Expect(err).NotTo(HaveOccurred())
+})
 
-	if id == 0 {
-		t.Logf("Id is not valid, Expected ID to be non-0")
-		t.Fail()
-	}
+var _ = Describe("EncodeId", func() {
+	Context("Allocate id", func() {
+		It("should be non-zero", func() {
+			id := db.AllocateId("test")
+			Expect(id).NotTo(Equal(0))
+		})
+	})
 
-	id1 := db.EncodeId("test", int64(12345))
-	if id1 == "" {
-		t.Logf("Encoding did not work")
-		t.Fail()
-	}
+	Context("Encoding int64", func() {
+		It("should not be an empty string", func() {
+			id := db.EncodeId("test", int64(12345))
+			Expect(id).NotTo(Equal(""))
+		})
+	})
 
-	id2 := db.EncodeId("test", int(12345))
-	if id2 == "" {
-		t.Logf("Encoding did not work")
-		t.Fail()
-	}
+	Context("Encoding int", func() {
+		It("should not be an empty string", func() {
+			id := db.EncodeId("test", int(12345))
+			Expect(id).NotTo(Equal(""))
+		})
+	})
 
-	id3 := db.EncodeId("test", "12345")
-	if id3 == "" {
-		t.Logf("Encoding did not work")
-		t.Fail()
-	}
+	Context("Encoding string", func() {
+		It("should not be an empty string", func() {
+			id := db.EncodeId("test", "12345")
+			Expect(id).NotTo(Equal(""))
+		})
+	})
 
-	if id1 != id2 {
-		t.Logf("Ids 1 & 2 should be equal. \n\t Expected: %#v \n\t Actual: %#v", id1, id2)
-		t.Fail()
-	}
+	Context("Encoded int64 and int", func() {
+		It("should be the same", func() {
+			id1 := db.EncodeId("test", int64(12345))
+			id2 := db.EncodeId("test", int(12345))
+			Expect(id1).To(Equal(id2))
+		})
+	})
 
-	if id2 != id3 {
-		t.Logf("Ids 2 & 3 should be equal. \n\t Expected: %#v \n\t Actual: %#v", id2, id3)
-		t.Fail()
-	}
+	Context("Encoded int and string", func() {
+		It("should be the same", func() {
+			id1 := db.EncodeId("test", int(12345))
+			id2 := db.EncodeId("test", "12345")
+			Expect(id1).To(Equal(id2))
+		})
+	})
 
-	err := db.EncodeId("test", errors.New(""))
-	if err != "" {
-		t.Logf("EncodeId accepted invalid type")
-		t.Fail()
-	}
-}
+	Context("Encoding bad types", func() {
+		It("should error", func() {
+			err := db.EncodeId("test", errors.New(""))
+			Expect(err).To(Equal(""))
+			Expect(err).NotTo(Equal(0))
+		})
+	})
+})
 
-var _ = Describe("Get", func() {
-	log.Info("Describe")
-
-	var (
-		ctx aetest.Context
-		db  *datastore.Datastore
-	)
-	entity := TestStruct{"test-get-field"}
+var _ = Describe("Datastore.Get", func() {
+	entity := &Entity{"test-get-field"}
 	kind := "test-get"
+	var key string
 
-	BeforeEach(func() {
-		log.Info("BeforeEach")
-
-		var err error
-		ctx, err = aetest.NewContext(nil)
-		Expect(err).NotTo(HaveOccurred())
-		db = datastore.New(ctx)
-	})
-
-	AfterEach(func() {
-		log.Info("AfterEach")
-
-		err := ctx.Close()
-		Expect(err).NotTo(HaveOccurred())
-	})
-
-	Context("With the wrapper's put", func() {
-		log.Info("Context")
-
-		It("should not be empty", func() {
-			log.Info("It")
-
-			key, err := db.Put(kind, &entity)
+	Context("When storing entity with Datastore.Put", func() {
+		BeforeEach(func() {
+			var err error
+			key, err = db.Put(kind, entity)
 			Expect(err).NotTo(HaveOccurred())
+		})
 
-			var retrievedEntity TestStruct
-			err = db.Get(key, &retrievedEntity)
+		It("Retrieved entity should not be empty", func() {
+			retrievedEntity := &Entity{}
+			err := db.Get(key, retrievedEntity)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(retrievedEntity).ToNot(BeZero())
 		})
 
-		It("should equal what was inserted", func() {
-			key, err := db.Put(kind, &entity)
-			Expect(err).NotTo(HaveOccurred())
-
-			var retrievedEntity TestStruct
-			err = db.Get(key, &retrievedEntity)
+		It("Retrieved entity should equal what was inserted", func() {
+			retrievedEntity := &Entity{}
+			err := db.Get(key, retrievedEntity)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(retrievedEntity).To(Equal(entity))
 		})
 	})
 
-	Context("With appengine's datastore.put", func() {
-		log.Info("Context 2")
-
-		var retrievedEntity TestStruct
+	Context("When storing entity with appengine/datastore", func() {
+		retrievedEntity := &Entity{}
 		BeforeEach(func() {
 			key := gaed.NewKey(ctx, kind, "key", 0, nil)
-			_, err := gaed.Put(ctx, key, &entity)
+			_, err := gaed.Put(ctx, key, entity)
 			Expect(err).ToNot(HaveOccurred())
 
-			err = db.Get(key.Encode(), &retrievedEntity)
+			err = db.Get(key.Encode(), retrievedEntity)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("should not be empty", func() {
+		It("Retrieved entity should not be empty", func() {
 			Expect(retrievedEntity).ToNot(BeZero())
 		})
-		It("should equal what was inserted", func() {
+
+		It("Retrieved entity should equal what was inserted", func() {
 			Expect(retrievedEntity).To(Equal(entity))
+		})
+	})
+})
+
+var _ = Describe("Put", func() {
+	kind := "test-put"
+
+	Context("With the wrapper's get", func() {
+		It("should store entity successfully", func() {
+			a := &Entity{"test-wrapper-put"}
+			b := &Entity{}
+
+			// Store entity
+			key, err := db.Put(kind, a)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Try to retrieve entity
+			err = db.Get(key, b)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(a).To(Equal(b))
+			log.Debug("fucking a: %v, fucking b: %v", a, b)
+		})
+	})
+
+	Context("With appengine's datastore.Get", func() {
+		It("should be the same", func() {
+			a := &Entity{"test-appengine-put"}
+			b := &Entity{}
+
+			// Store entity
+			key, err := db.Put(kind, a)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Try to retrieve entity
+			_key, err := db.DecodeKey(key)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = gaed.Get(ctx, _key, b)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(a).To(Equal(b))
+		})
+	})
+
+	Context("With the query api", func() {
+		It("should be the same", func() {
+			a := &Entity{"test-query-put"}
+			b := &Entity{}
+			// Store entity
+			_, err := db.Put(kind, a)
+			Expect(err).NotTo(HaveOccurred())
+			_, err = db.Query(kind).
+				Filter("Field =", a.Field).
+				Run(ctx).
+				Next(b)
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(a).To(Equal(b))
 		})
 	})
 })
