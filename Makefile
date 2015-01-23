@@ -49,7 +49,7 @@ tools = github.com/nsf/gocode \
         code.google.com/p/go.tools/cmd/goimports \
         code.google.com/p/rog-go/exp/cmd/godef \
         code.google.com/p/go.tools/cmd/oracle \
-        code.google.com/p/go.tools/cmd/gorename \
+        golang.org/x/tools/cmd/gorename \
         github.com/golang/lint/golint \
         github.com/kisielk/errcheck \
         github.com/jstemmer/gotags
@@ -73,6 +73,7 @@ requisite_opts_min = -m --strip-debug
 stylus		= node_modules/.bin/stylus
 stylus_opts = assets/css/preorder/preorder.styl \
 		      assets/css/store/store.styl \
+		      assets/css/theme/theme.styl \
 		      assets/css/checkout/checkout.styl \
 		      -o static/css
 stylus_opts_min = -u csso-stylus -c
@@ -81,7 +82,8 @@ autoprefixer = node_modules/.bin/autoprefixer
 autoprefixer_opts = -b 'ie > 8, firefox > 24, chrome > 30, safari > 6, opera > 17, ios > 6, android > 4' \
 					static/css/checkout.css \
 					static/css/preorder.css \
-					static/css/store.css
+					static/css/store.css \
+					static/css/theme.css
 
 sdk_install = wget https://storage.googleapis.com/appengine-sdks/featured/$(sdk).zip && \
 			  unzip $(sdk).zip && \
@@ -116,6 +118,13 @@ else
 	verbose =
 endif
 
+# set production=1 to set datastore export/import target to use production
+ifeq ($(production), 1)
+	datastore_admin_url = https://datastore-admin-dot-skully-crowdstart.appspot.com/_ah/remote_api
+else
+	datastore_admin_url = https://datastore-admin-dot-crowdstart-staging.appspot.com/_ah/remote_api
+endif
+
 export GOROOT  := $(goroot)
 export GOPATH  := $(gopath)
 
@@ -138,7 +147,6 @@ compile-css:
 compile-css-min:
 	$(stylus) $(stylus_opts) $(stylus_opts_min) && $(autoprefixer) $(autoprefixer_opts)
 
-
 # BUILD
 build: deps assets
 	goapp build $(modules)
@@ -147,15 +155,11 @@ build: deps assets
 deps: deps-assets deps-go
 
 # DEPS JS/CSS
-deps-assets: node_modules
-
-node_modules:
+deps-assets:
 	npm install
 
 # DEPS GO
-deps-go: .sdk .sdk/gopath/src/github.com
-
-.sdk/gopath/src/github.com:
+deps-go: .sdk
 	gpm install || curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.1/bin/gpm | bash
 
 .sdk:
@@ -232,9 +236,6 @@ deploy-appengine-ci: assets-minified
 	done; \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check update_indexes config/production; \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/production
-
-datastore_admin_url = https://datastore-admin-dot-crowdstart-staging.appspot.com/_ah/remote_api
-# datastore_admin_url = https://datastore-admin-dot-skully-crowdstart.appspot.com/_ah/remote_api
 
 # EXPORT / Usage: make datastore-export kind=user
 datastore-export:

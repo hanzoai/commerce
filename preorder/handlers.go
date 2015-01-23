@@ -12,8 +12,10 @@ import (
 	"crowdstart.io/middleware"
 	"crowdstart.io/models"
 	"crowdstart.io/thirdparty/mandrill"
+	"crowdstart.io/thirdparty/salesforce"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
+	"crowdstart.io/util/queries"
 	"crowdstart.io/util/template"
 )
 
@@ -38,7 +40,7 @@ func GetPreorder(c *gin.Context) {
 
 	// Should use token to lookup email
 	user := new(models.User)
-	if err := db.GetKey("user", token.Email, user); err != nil {
+	if err := db.Get(token.UserId, user); err != nil {
 		log.Error("Failed to fetch user: %v", err, c)
 		// Bad token
 		c.Redirect(301, "../")
@@ -48,7 +50,7 @@ func GetPreorder(c *gin.Context) {
 	// Get orders by email
 	var orders []models.Order
 	keys, err := db.Query("order").
-		Filter("Email =", user.Email).
+		Filter("UserId =", user.Id).
 		GetAll(db.Context, &orders)
 
 	if err != nil {
@@ -72,7 +74,7 @@ func GetPreorder(c *gin.Context) {
 
 	// Find all of a user's contributions
 	var contributions []models.Contribution
-	if _, err := db.Query("contribution").Filter("Email =", user.Email).GetAll(db.Context, &contributions); err != nil {
+	if _, err := db.Query("contribution").Filter("UserId =", user.Id).GetAll(db.Context, &contributions); err != nil {
 		log.Panic("Failed to find contributions: %v", err, c)
 	}
 
@@ -112,13 +114,17 @@ func SavePreorder(c *gin.Context) {
 
 	ctx := middleware.GetAppEngine(c)
 	db := datastore.New(ctx)
+	q := queries.New(ctx)
 
 	// Get user from datastore
 	user := new(models.User)
-	db.GetKey("user", form.User.Email, user)
+	if err := q.GetUserByEmail(form.User.Email, user); err != nil {
+		c.Fail(500, errors.New("Failed to find user."))
+		return
+	}
 
 	// Ensure that token matches email
-	tokens := getTokens(c, user.Email)
+	tokens := getTokens(c, user.Id)
 	if len(tokens) < 1 {
 		c.Fail(500, errors.New("Failed to find pre-order token."))
 		return
@@ -177,7 +183,7 @@ func SavePreorder(c *gin.Context) {
 
 	// Update Total
 	order.Total = order.Subtotal + order.Shipping + order.Tax
-	order.Email = user.Email
+	order.UserId = user.Id
 
 	// Save order
 	log.Debug("Saving order: %v", order)
@@ -206,10 +212,21 @@ func SavePreorder(c *gin.Context) {
 	}
 
 	// Save user back to database
-	if _, err := db.PutKey("user", user.Email, user); err != nil {
+	if err := q.UpsertUser(user); err != nil {
 		log.Error("Error saving user information", err, ctx)
 		c.Fail(500, err)
 		return
+	}
+
+	// Look up campaign to see if we need to sync with salesforce
+	campaign := models.Campaign{}
+	if err := db.GetKey("campaign", "dev@hanzo.ai", &campaign); err != nil {
+		log.Error(err, c)
+	}
+
+	log.Debug("Synchronize with salesforce if '%v' != ''", campaign.Salesforce.AccessToken)
+	if campaign.Salesforce.AccessToken != "" {
+		salesforce.CallUpsertTask(db.Context, &campaign, user)
 	}
 
 	mandrill.SendTransactional.Call(ctx, "email/preorder-updated.html",
@@ -233,12 +250,8 @@ func Index(c *gin.Context) {
 	if !auth.IsLoggedIn(c) {
 		template.Render(c, "login.html")
 	} else {
-		user, err := auth.GetUser(c)
-		if err != nil {
-			log.Panic("Error retrieving user \n%v", err)
-		}
-
-		tokens := getTokens(c, user.Email)
+		user, _ := auth.GetUser(c)
+		tokens := getTokens(c, user.Id)
 
 		// Complain if user doesn't have any tokens
 		if len(tokens) > 0 {
@@ -267,7 +280,12 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	tokens := getTokens(c, f.Email)
+	user, err := auth.GetUser(c)
+	if err != nil {
+		template.Render(c, "login.html", "message", "An error has occured, please try logging in again.")
+	}
+
+	tokens := getTokens(c, user.Id)
 	log.Debug("Tokens: %v", tokens)
 	// Complain if user doesn't have any tokens
 	if len(tokens) > 0 {
@@ -288,14 +306,14 @@ func hasToken(tokens []models.Token, id string) bool {
 	return false
 }
 
-func getTokens(c *gin.Context, email string) []models.Token {
+func getTokens(c *gin.Context, userId string) []models.Token {
 	db := datastore.New(c)
 
 	// Look up tokens for this user
-	log.Debug("Searching for valid token for: %v", email, c)
+	log.Debug("Searching for valid token for: %v", userId, c)
 
 	tokens := make([]models.Token, 0)
-	if _, err := db.Query("invite-token").Filter("Email =", email).GetAll(db.Context, &tokens); err != nil {
+	if _, err := db.Query("invite-token").Filter("UserId =", userId).GetAll(db.Context, &tokens); err != nil {
 		log.Panic("Failed to query for tokens: %v", err, c)
 	}
 

@@ -29,6 +29,14 @@ files =
       in:  'assets/css/store/store.styl'
       out: 'static/css'
 
+  theme:
+    # js:
+    #   in:  'assets/js/theme/theme.coffee'
+    #   out: 'static/js/theme.js'
+    css:
+      in:  'assets/css/theme/theme.styl'
+      out: 'static/css'
+
 module.exports =
   cwd: process.cwd()
 
@@ -37,6 +45,7 @@ module.exports =
     /platform\/static/
     /preorder\/static/
     /store\/static/
+    /theme\/static/
     /config\/production\/assets/
     /config\/production\/static/
     /config\/skully\/assets/
@@ -76,6 +85,8 @@ module.exports =
         return "#{stylus} #{files.preorder.css.in} -o #{files.preorder.css.out}"
       if /^assets\/css\/store/.test src
         return "#{stylus} #{files.store.css.in} -o #{files.store.css.out}"
+      if /^assets\/css\/theme/.test src
+        return "#{stylus} #{files.theme.css.in} -o #{files.theme.css.out}"
 
       if /^assets\/css\//.test src
         # compile everything
