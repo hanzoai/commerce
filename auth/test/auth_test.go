@@ -1,7 +1,6 @@
 package test
 
 import (
-	"bytes"
 	"errors"
 	"reflect"
 	"testing"
@@ -33,7 +32,7 @@ func TestNewUser(t *testing.T) {
 	}
 	regForm.User.Id = regForm.User.Email
 
-	err = auth.NewUser(c, regForm)
+	err = auth.NewUser(c, &regForm)
 	if err != nil {
 		t.Error(err)
 	}

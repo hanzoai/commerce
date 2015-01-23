@@ -9,11 +9,10 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"crowdstart.io/datastore"
-	"crowdstart.io/util/log"
 	"errors"
 
 	"crowdstart.io/datastore"
+	"crowdstart.io/util/log"
 )
 
 type TestStruct struct {
@@ -108,7 +107,7 @@ var _ = Describe("Get", func() {
 			key, err := db.Put(kind, &entity)
 			Expect(err).NotTo(HaveOccurred())
 
-			va{ retrievedEntity TestStruct
+			var retrievedEntity TestStruct
 			err = db.Get(key, &retrievedEntity)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(retrievedEntity).ToNot(BeZero())
@@ -145,3 +144,4 @@ var _ = Describe("Get", func() {
 			Expect(retrievedEntity).To(Equal(entity))
 		})
 	})
+})
