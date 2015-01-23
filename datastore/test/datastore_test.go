@@ -19,7 +19,7 @@ type TestStruct struct {
 
 func TestDatastore(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "SuiteSuiteSuite")
+	RunSpecs(t, "Datastore test suite")
 }
 
 var _ = Describe("EncodeId", func() {
@@ -34,10 +34,11 @@ var _ = Describe("EncodeId", func() {
 		db = datastore.New(ctx)
 	})
 	AfterEach(func() {
-		ctx.Close()
+		err := ctx.Close()
+		Expect(err).NotTo(HaveOccurred())
 	})
 	
-	Context("Allocated id", func() {
+	Context("Allocate id", func() {
 		It("should be non-zero", func() {
 			id := db.AllocateId("test")
 			Expect(id).NotTo(Equal(0))
@@ -146,6 +147,65 @@ var _ = Describe("Get", func() {
 			Expect(retrievedEntity).ToNot(BeZero())
 		})
 		It("should equal what was inserted", func() {
+			Expect(retrievedEntity).To(Equal(entity))
+		})
+	})
+})
+
+var _ = Describe("Put", func() {
+	var (
+		ctx aetest.Context
+		db  *datastore.Datastore
+	)
+	entity := TestStruct{"test-put-field"}
+	kind := "test-put"
+	
+	var key string
+	BeforeEach(func() {
+		var err error
+		ctx, err = aetest.NewContext(&aetest.Options{StronglyConsistentDatastore: true})
+		Expect(err).NotTo(HaveOccurred())
+		db = datastore.New(ctx)
+		
+		key, err = db.Put(kind, &entity)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(key).NotTo(BeZero())
+	})
+	AfterEach(func() {
+		err := ctx.Close()
+		Expect(err).NotTo(HaveOccurred())
+	})
+	
+	Context("With the wrapper's get", func() {
+		It("should be the same", func() {
+			var retrievedEntity TestStruct
+			err := db.Get(key, &retrievedEntity)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(retrievedEntity).To(Equal(entity))
+		})
+	})
+	
+	Context("With appengine's datastore.Get", func() {
+		It("should be the same", func() {
+			_key, err := db.DecodeKey(key)
+			Expect(err).NotTo(HaveOccurred())
+			
+			var retrievedEntity TestStruct
+			err = gaed.Get(ctx, _key, &retrievedEntity)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(retrievedEntity).To(Equal(entity))
+		})
+	})
+	
+	Context("With the query api", func() {
+		It("should be the same", func() {
+			var retrievedEntity TestStruct
+			_, err := db.Query(kind).
+				Filter("Field =", entity.Field).
+				Run(ctx).
+				Next(&retrievedEntity)
+				
+			Expect(err).NotTo(HaveOccurred())
 			Expect(retrievedEntity).To(Equal(entity))
 		})
 	})
