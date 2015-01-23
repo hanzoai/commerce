@@ -17,7 +17,8 @@ import (
 const kind = "user"
 
 func TestNewUser(t *testing.T) {
-	ctx, err := aetest.NewContext(&aetest.Options{StronglyConsistentDatastore: true})
+	t.Skip()
+	ctx, err := aetest.NewContext(nil)
 	defer ctx.Close()
 	if err != nil {
 		t.Error(err)
