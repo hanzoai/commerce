@@ -155,15 +155,11 @@ build: deps assets
 deps: deps-assets deps-go
 
 # DEPS JS/CSS
-deps-assets: node_modules
-
-node_modules:
+deps-assets:
 	npm install
 
 # DEPS GO
-deps-go: .sdk .sdk/gopath/src/github.com
-
-.sdk/gopath/src/github.com:
+deps-go: .sdk
 	gpm install || curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.1/bin/gpm | bash
 
 .sdk:

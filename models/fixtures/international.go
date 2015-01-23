@@ -10,6 +10,7 @@ import (
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/util/log"
+	"crowdstart.io/util/queries"
 
 	. "crowdstart.io/models"
 )
@@ -17,6 +18,7 @@ import (
 var international = delay.Func("fixtures-international", func(c appengine.Context) {
 	log.Debug("Installing international fixtures...")
 	db := datastore.New(c)
+	q := queries.New(c)
 
 	csvfile, err := os.Open("resources/contributions-old-international-perk.csv")
 	defer csvfile.Close()
@@ -45,6 +47,12 @@ var international = delay.Func("fixtures-international", func(c appengine.Contex
 			break
 		}
 
+		user := new(User)
+		err = q.GetUserByEmail(user.Email, user)
+		if err != nil {
+			log.Warn("User could not be retrieved %v", user.Email)
+		}
+
 		// Normalize various bits
 		email := row[8]
 		email = strings.ToLower(email)
@@ -59,7 +67,7 @@ var international = delay.Func("fixtures-international", func(c appengine.Contex
 			Status:        row[3],
 			FundingDate:   row[4],
 			PaymentMethod: row[5],
-			Email:         email,
+			UserId:        user.Id,
 		}
 		db.PutKey("contribution", pledgeId, &contribution)
 	}
