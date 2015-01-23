@@ -68,12 +68,14 @@ func (d *Datastore) Get(key string, value interface{}) error {
 
 	// Try to retrieve entity using nds, which transparently uses memcache if possible
 	err = nds.Get(d.Context, k, value)
-	if _, ok := err.(*ErrFieldMismatch); ok {
-		// Ignore any field mismatch errors.
-		log.Warn("Field mismatch when getting %v: %v", key, err, d.Context)
-		err = nil
-	} else {
-		log.Warn("Failed to get %v: %v", key, err, d.Context)
+	if err != nil {
+		if _, ok := err.(*ErrFieldMismatch); ok {
+			// Ignore any field mismatch errors.
+			log.Warn("Field mismatch when getting %v: %v", key, err, d.Context)
+			err = nil
+		} else {
+			log.Warn("Failed to get %v: %v", key, err, d.Context)
+		}
 	}
 	return err
 }
