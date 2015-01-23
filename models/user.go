@@ -23,10 +23,10 @@ type User struct {
 	Facebook        struct {
 		AccessToken string `facebook:"-"`
 		UserId      string `facebook:"id"`
-		FirstName   string `facebook:"first_name" datastore:"-"`
-		LastName    string `facebook:"last_name" datastore:"-"`
+		FirstName   string `facebook:"first_name"`
+		LastName    string `facebook:"last_name"`
 		MiddleName  string `facebook:"middle_name"`
-		Name        string `facebook:"name"`
+		Name        string `facebook:"name" datastore:"-"`
 		NameFormat  string `facebook:"name_format"` // For Chinese, Japanese, and Korean names. Possibly used in the future.
 		Email       string `facebook:"email" datastore:"-"`
 		Verified    bool   `facebook:"verified" datastore:"-"`
