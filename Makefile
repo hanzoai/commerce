@@ -100,11 +100,10 @@ dev_appserver = $(sdk_path)/dev_appserver.py --skip_sdk_update_check \
 # find command differs between bsd/linux thus the two versions
 ifeq ($(os), linux)
 	packages	 = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' -printf '%h\n' | sort -u | sed -e 's/.\//crowdstart.io\//')
-	test_modules = $(shell find . -maxdepth 4 -mindepth 3 -name '*_test.go' -printf '%h\n' | sort -u | sed -e 's/.\//crowdstart.io\//')
 else
 	packages	 = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' -print0 | xargs -0 -n1 dirname | sort --unique | sed -e 's/.\//crowdstart.io\//')
-	test_modules = $(shell find . -maxdepth 4 -mindepth 2 -name '*_test.go' -print0 | xargs -0 -n1 dirname | sort --unique | sed -e 's/.\//crowdstart.io\//')
 	sdk_install_extra = && echo '\#!/usr/bin/env bash\ngoapp $$@' > $(sdk_path)/gopath/bin/go \
+						&& rm -rf $(sdk_path)/demos \
 						&& chmod +x $(sdk_path)/gopath/bin/go \
 						&& curl  $(mtime_file_watcher) > $(sdk_path)/google/appengine/tools/devappserver2/mtime_file_watcher.py \
 						&& curl  $(python_279_patch) | patch -p0 \
