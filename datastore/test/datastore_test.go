@@ -1,16 +1,27 @@
 package test
 
 import (
-	"errors"
 	"testing"
 
-	"crowdstart.io/datastore"
-
 	"appengine/aetest"
+	gaed "appengine/datastore"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+
+	"errors"
+
+	"crowdstart.io/datastore"
+	"crowdstart.io/util/log"
 )
 
 type TestStruct struct {
 	Field string
+}
+
+func TestDatastore(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "SuiteSuiteSuite")
 }
 
 func TestId(t *testing.T) {
@@ -61,243 +72,76 @@ func TestId(t *testing.T) {
 	}
 }
 
-func TestCRUD(t *testing.T) {
-	t.Skip()
-	ctx, _ := aetest.NewContext(nil)
-	defer ctx.Close()
-	db := datastore.New(ctx)
+var _ = Describe("Get", func() {
+	log.Info("Describe")
 
-	oPut := TestStruct{"eqhwikas"}
-	key, err := db.Put("test", oPut)
-	if err != nil {
-		t.Error(err)
-	}
+	var (
+		ctx aetest.Context
+		db  *datastore.Datastore
+	)
+	entity := TestStruct{"test-get-field"}
+	kind := "test-get"
 
-	var oGet TestStruct
-	err = db.Get(key, oGet)
+	BeforeEach(func() {
+		log.Info("BeforeEach")
 
-	if err != nil {
-		t.Error(err)
-	}
+		var err error
+		ctx, err = aetest.NewContext(nil)
+		Expect(err).NotTo(HaveOccurred())
+		db = datastore.New(ctx)
+	})
 
-	if oGet != oPut {
-		t.Logf("Object is not valid. \n\t Expected: %#v \n\t Actual: %#v", oPut, oGet)
-		t.Fail()
-	}
+	AfterEach(func() {
+		log.Info("AfterEach")
 
-	oModified := TestStruct{"jaks"}
-	key, err = db.Put(key, oModified)
-	if err != nil {
-		t.Error(err)
-	}
+		err := ctx.Close()
+		Expect(err).NotTo(HaveOccurred())
+	})
 
-	err = db.Get(key, oGet)
-	if err != nil {
-		t.Error(err)
-	}
+	Context("With the wrapper's put", func() {
+		log.Info("Context")
 
-	if oModified != oGet {
-		t.Logf("Object is not valid. \n\t Expected: %#v \n\t Actual: %#v", oModified, oGet)
-		t.Fail()
-	}
+		It("should not be empty", func() {
+			log.Info("It")
 
-	err = db.Delete(key)
+			key, err := db.Put(kind, &entity)
+			Expect(err).NotTo(HaveOccurred())
 
-	if err != nil {
-		t.Error(err)
-	}
+			var retrievedEntity TestStruct
+			err = db.Get(key, &retrievedEntity)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(retrievedEntity).ToNot(BeZero())
+		})
 
-	err = db.Get(key, oGet)
-	if err == nil {
-		t.Logf("db.Get worked even though the entry was removed \n\t %#v", oGet)
-		t.Fail()
-	}
-}
+		It("should equal what was inserted", func() {
+			key, err := db.Put(kind, &entity)
+			Expect(err).NotTo(HaveOccurred())
 
-// Tests all the Key functions
-func TestKeyCRUD(t *testing.T) {
-	t.Skip()
-	ctx, _ := aetest.NewContext(nil)
-	defer ctx.Close()
-	db := datastore.New(ctx)
+			var retrievedEntity TestStruct
+			err = db.Get(key, &retrievedEntity)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(retrievedEntity).To(Equal(entity))
+		})
+	})
 
-	id := db.AllocateId("test")
-	oPut := TestStruct{"hjaks"}
+	Context("With appengine's datastore.put", func() {
+		log.Info("Context 2")
 
-	t.Logf("The key has id %d", id)
+		var retrievedEntity TestStruct
+		BeforeEach(func() {
+			key := gaed.NewKey(ctx, kind, "key", 0, nil)
+			_, err := gaed.Put(ctx, key, &entity)
+			Expect(err).ToNot(HaveOccurred())
 
-	key, err := db.PutKey("test", id, oPut)
-	if err != nil {
-		t.Error(err)
-	}
+			err = db.Get(key.Encode(), &retrievedEntity)
+			Expect(err).ToNot(HaveOccurred())
+		})
 
-	key2, _ := db.DecodeKey(key)
-	if key2.IntID() != id {
-		t.Logf("Keys do not match \n\t Expected: %d, \n\t Actual: %d", id, key2.IntID())
-	}
-
-	var oGet TestStruct
-	err = db.GetKey("test", key, oGet)
-	if err != nil {
-		t.Error(err)
-	}
-	if oGet != oPut {
-		t.Logf("Object is not valid. \n\t Expected: %#v \n\t Actual: %#v", oPut, oGet)
-		t.Fail()
-	}
-
-	oModified := TestStruct{"jaks"}
-	key, err = db.Put(key, oModified)
-	if err != nil {
-		t.Error(err)
-	}
-
-	err = db.GetKey("test", key, oGet)
-	if err != nil {
-		t.Error(err)
-	}
-	if oGet != oModified {
-		t.Logf("Object is not valid. \n\t Expected: %#v \n\t Actual: %#v", oModified, oGet)
-		t.Fail()
-	}
-
-	err = db.Delete(key)
-
-	if err != nil {
-		t.Error(err)
-	}
-
-	err = db.GetKey("test", key, oGet)
-	if err == nil {
-		t.Logf("Deletion of key did not work \n\t %#v", oGet)
-		t.Fail()
-	}
-}
-
-func TestMultiCRUD(t *testing.T) {
-	t.Skip()
-	var oPut []interface{}
-	for i := 0; i < 10; i++ {
-		oPut[i] = TestStruct{string(i * 2)}
-	}
-
-	ctx, _ := aetest.NewContext(nil)
-	defer ctx.Close()
-	db := datastore.New(ctx)
-
-	keys, err := db.PutMulti("test", oPut)
-	if err != nil {
-		t.Error(err)
-	}
-
-	if len(keys) != len(oPut) {
-		t.Logf("Wrong number of keys returned \n\t Expected: %d \n\t Actual: %d", len(oPut), len(keys))
-		t.Fail()
-	}
-
-	var oGet []interface{}
-	err = db.GetMulti(keys, oGet)
-	if err != nil {
-		t.Error(err)
-	}
-
-	empty := TestStruct{}
-	for i := 0; i < len(oGet); i++ {
-		if oGet[i] == empty {
-			t.Logf("Some objects are empty \n\t Expected: %#v \n\t Actual: %#v", oPut, oGet)
-			t.Fail()
-			break
-		}
-	}
-
-	// Update
-	var oModified []interface{}
-	var _keys []string
-	for i := 0; i < 10; i++ {
-		oModified[i] = TestStruct{string(i * 3)}
-	}
-	for i := range keys {
-		key, err := db.Put(keys[i], oModified[i])
-		_keys = append(_keys, key)
-		if err != nil {
-			t.Error(err)
-		}
-	}
-
-	keys = _keys
-
-	err = db.GetMulti(keys, oGet)
-	if err != nil {
-		t.Error(err)
-	}
-
-	if !identicalSlices(oGet, oModified) {
-		t.Logf("Update of multiple keys did not work \n\t Expected: %#v \n\t Actual: %#v", oModified, oGet)
-		t.Fail()
-	}
-
-	// Delete
-	for i := range keys {
-		err = db.Delete(keys[i])
-		if err != nil {
-			t.Error(err)
-		}
-	}
-
-	err = db.GetMulti(keys, oGet)
-	if err == nil {
-		t.Logf("Deletion of multiple keys did not work. \n\t %#v", oGet)
-		t.Fail()
-	}
-}
-
-func identicalSlices(x, y []interface{}) bool {
-	if len(x) != len(y) {
-		return false
-	}
-
-	for i := range x {
-		if x[i] != y[i] {
-			return false
-		}
-	}
-
-	return true
-}
-
-func TestEqualSlices(t *testing.T) {
-	t.Skip()
-	equalA := make([]interface{}, 10)
-	equalB := make([]interface{}, 10)
-
-	for i := range equalA {
-		equalA[i] = string(i)
-		equalB[i] = string(i)
-	}
-
-	if res := identicalSlices(equalA, equalB); !res {
-		t.Logf("Comparison of identical slices \n\t Expected: %#v \n\t Actual: %#v", true, res)
-		t.Fail()
-	}
-
-	diffLengthA := make([]interface{}, 2)
-	diffLengthB := make([]interface{}, 1)
-
-	if res := identicalSlices(diffLengthA, diffLengthB); res {
-		t.Logf("Comparison of slices with different lengths \n\t Expected: %#v \n\t Actual: %#v", false, res)
-		t.Fail()
-	}
-
-	diffA := make([]interface{}, 10)
-	diffB := make([]interface{}, 10)
-
-	for i := range diffA {
-		diffA[i] = string(i + 1)
-		diffB[i] = string(i)
-	}
-
-	if res := identicalSlices(diffA, diffB); !res {
-		t.Logf("Comparison of slices with different elements \n\t Expected: %#v \n\t Actual: %#v", false, res)
-		t.Fail()
-	}
-}
+		It("should not be empty", func() {
+			Expect(retrievedEntity).ToNot(BeZero())
+		})
+		It("should equal what was inserted", func() {
+			Expect(retrievedEntity).To(Equal(entity))
+		})
+	})
+})
