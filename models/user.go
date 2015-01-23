@@ -4,6 +4,8 @@ import (
 	"net/http"
 
 	"github.com/mholt/binding"
+
+	stripe "crowdstart.io/thirdparty/stripe/models"
 )
 
 type User struct {
@@ -18,8 +20,7 @@ type User struct {
 	Email           string
 	Campaigns       []Campaign `schema:"-" datastore:"-"`
 	PasswordHash    []byte     `schema:"-" json:"-"`
-
-	Facebook struct {
+	Facebook        struct {
 		AccessToken string `facebook:"-"`
 		UserId      string `facebook:"id"`
 		FirstName   string `facebook:"first_name" datastore:"-"`
@@ -32,8 +33,12 @@ type User struct {
 	}
 
 	Stripe struct {
+		// Use CustomerId instead of Account.ID because the latter is currently only
+		// set when the user updates their details via Stripe
 		CustomerId string
+		Account    stripe.Account
 	}
+	//Metadata		map[string]Metadata
 }
 
 func (u User) Name() string {
