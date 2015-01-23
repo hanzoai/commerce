@@ -12,3 +12,4 @@ github.com/davecgh/go-spew/spew master
 github.com/huandu/facebook master
 github.com/onsi/gomega master
 github.com/onsi/ginkgo/ginkgo master
+github.com/dustin/go-humanize master
