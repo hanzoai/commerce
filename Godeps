@@ -13,3 +13,4 @@ github.com/huandu/facebook master
 github.com/onsi/gomega master
 github.com/onsi/ginkgo/ginkgo master
 github.com/dustin/go-humanize master
+code.google.com/p/go.crypto/bcrypt master
