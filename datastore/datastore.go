@@ -33,12 +33,15 @@ func (d *Datastore) DecodeKey(encodedKey string) (*Key, error) {
 	return key, err
 }
 
+// Gets an entity using an encoded key representation
 func (d *Datastore) Get(key string, value interface{}) error {
+	// Decode encoded key
 	k, err := d.DecodeKey(key)
 	if err != nil {
 		return err
 	}
 
+	// Try to retrieve entity using nds, which transparently uses memcache if possible
 	err = nds.Get(d.Context, k, value)
 	if _, ok := err.(*ErrFieldMismatch); ok {
 		// Ignore any field mismatch errors.
@@ -50,8 +53,12 @@ func (d *Datastore) Get(key string, value interface{}) error {
 	return err
 }
 
+// Gets an entity by literal datastore key of string type
 func (d *Datastore) GetKey(kind, key string, value interface{}) error {
+	// construct key manually using literal value and kind
 	k := NewKey(d.Context, kind, key, 0, nil)
+
+	// Try to retrieve entity using nds, which transparently uses memcache if possible
 	if err := nds.Get(d.Context, k, value); err != nil {
 		if _, ok := err.(*ErrFieldMismatch); ok {
 			// Ignore any field mismatch errors.
@@ -89,6 +96,7 @@ func (d *Datastore) GetKeyMulti(kind string, keys []string, vals interface{}) er
 	return nds.GetMulti(d.Context, _keys, vals)
 }
 
+// Puts entity, returning encoded key
 func (d *Datastore) Put(kind string, src interface{}) (string, error) {
 	k := NewIncompleteKey(d.Context, kind, nil)
 	k, err := nds.Put(d.Context, k, src)
