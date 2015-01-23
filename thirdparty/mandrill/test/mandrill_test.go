@@ -11,6 +11,9 @@ import (
 )
 
 func TestPing(t *testing.T) {
+	if config.Mandrill.APIKey == "" {
+		t.Skip()
+	}
 	instance, err := aetest.NewInstance(nil)
 	if err != nil {
 		t.Fatal(err)
@@ -29,6 +32,10 @@ func TestPing(t *testing.T) {
 }
 
 func TestSendTemplate(t *testing.T) {
+	if config.Mandrill.APIKey == "" {
+		t.Skip()
+	}
+
 	instance, err := aetest.NewInstance(nil)
 	if err != nil {
 		t.Fatal(err)
