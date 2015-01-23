@@ -19,13 +19,12 @@ var (
 	db  *datastore.Datastore
 )
 
-type TestStruct struct {
+type Entity struct {
 	Field string
 }
 
 func TestDatastore(t *testing.T) {
 	RegisterFailHandler(Fail)
-	log.Debug("1")
 	RunSpecs(t, "Datastore test suite")
 }
 
@@ -35,7 +34,6 @@ var _ = BeforeSuite(func() {
 	ctx, err = aetest.NewContext(&aetest.Options{StronglyConsistentDatastore: true})
 	Expect(err).NotTo(HaveOccurred())
 	db = datastore.New(ctx)
-	log.Debug("Hi")
 })
 
 // Tear-down appengine context
@@ -93,100 +91,113 @@ var _ = Describe("EncodeId", func() {
 		It("should error", func() {
 			err := db.EncodeId("test", errors.New(""))
 			Expect(err).To(Equal(""))
+			Expect(err).NotTo(Equal(0))
 		})
 	})
 })
 
-var _ = Describe("Get", func() {
-	entity := TestStruct{"test-get-field"}
+var _ = Describe("Datastore.Get", func() {
+	entity := &Entity{"test-get-field"}
 	kind := "test-get"
 	var key string
 
-	Context("With the wrapper's put", func() {
+	Context("When storing entity with Datastore.Put", func() {
 		BeforeEach(func() {
 			var err error
-			key, err = db.Put(kind, &entity)
+			key, err = db.Put(kind, entity)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("should not be empty", func() {
-			var retrievedEntity TestStruct
-			err := db.Get(key, &retrievedEntity)
+		It("Retrieved entity should not be empty", func() {
+			retrievedEntity := &Entity{}
+			err := db.Get(key, retrievedEntity)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(retrievedEntity).ToNot(BeZero())
 		})
 
-		It("should equal what was inserted", func() {
-			var retrievedEntity TestStruct
-			err := db.Get(key, &retrievedEntity)
+		It("Retrieved entity should equal what was inserted", func() {
+			retrievedEntity := &Entity{}
+			err := db.Get(key, retrievedEntity)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(retrievedEntity).To(Equal(entity))
 		})
 	})
 
-	Context("With appengine's datastore.put", func() {
-		var retrievedEntity TestStruct
+	Context("When storing entity with appengine/datastore", func() {
+		retrievedEntity := &Entity{}
 		BeforeEach(func() {
 			key := gaed.NewKey(ctx, kind, "key", 0, nil)
-			_, err := gaed.Put(ctx, key, &entity)
+			_, err := gaed.Put(ctx, key, entity)
 			Expect(err).ToNot(HaveOccurred())
 
-			err = db.Get(key.Encode(), &retrievedEntity)
+			err = db.Get(key.Encode(), retrievedEntity)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		It("should not be empty", func() {
+		It("Retrieved entity should not be empty", func() {
 			Expect(retrievedEntity).ToNot(BeZero())
 		})
-		It("should equal what was inserted", func() {
+
+		It("Retrieved entity should equal what was inserted", func() {
 			Expect(retrievedEntity).To(Equal(entity))
 		})
 	})
 })
 
 var _ = Describe("Put", func() {
-	entity := TestStruct{"test-put-field"}
 	kind := "test-put"
 
-	var key string
-	BeforeEach(func() {
-		var err error
-		key, err = db.Put(kind, &entity)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(key).NotTo(BeZero())
-	})
-
 	Context("With the wrapper's get", func() {
-		It("should be the same", func() {
-			var retrievedEntity TestStruct
-			err := db.Get(key, &retrievedEntity)
+		It("should store entity successfully", func() {
+			a := &Entity{"test-wrapper-put"}
+			b := &Entity{}
+
+			// Store entity
+			key, err := db.Put(kind, a)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(retrievedEntity).To(Equal(entity))
+
+			// Try to retrieve entity
+			err = db.Get(key, b)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(a).To(Equal(b))
+			log.Debug("fucking a: %v, fucking b: %v", a, b)
 		})
 	})
 
 	Context("With appengine's datastore.Get", func() {
 		It("should be the same", func() {
+			a := &Entity{"test-appengine-put"}
+			b := &Entity{}
+
+			// Store entity
+			key, err := db.Put(kind, a)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Try to retrieve entity
 			_key, err := db.DecodeKey(key)
 			Expect(err).NotTo(HaveOccurred())
 
-			var retrievedEntity TestStruct
-			err = gaed.Get(ctx, _key, &retrievedEntity)
+			err = gaed.Get(ctx, _key, b)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(retrievedEntity).To(Equal(entity))
+			Expect(a).To(Equal(b))
 		})
 	})
 
 	Context("With the query api", func() {
 		It("should be the same", func() {
-			var retrievedEntity TestStruct
-			_, err := db.Query(kind).
-				Filter("Field =", entity.Field).
+			a := &Entity{"test-query-put"}
+			b := &Entity{}
+			// Store entity
+			_, err := db.Put(kind, a)
+			Expect(err).NotTo(HaveOccurred())
+			_, err = db.Query(kind).
+				Filter("Field =", a.Field).
 				Run(ctx).
-				Next(&retrievedEntity)
+				Next(b)
 
 			Expect(err).NotTo(HaveOccurred())
-			Expect(retrievedEntity).To(Equal(entity))
+			Expect(a).To(Equal(b))
 		})
 	})
 })
