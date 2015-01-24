@@ -11,7 +11,6 @@ import (
 	. "github.com/onsi/gomega"
 
 	"crowdstart.io/datastore"
-	"crowdstart.io/util/log"
 )
 
 var (
@@ -161,7 +160,6 @@ var _ = Describe("Put", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(a).To(Equal(b))
-			log.Debug("fucking a: %v, fucking b: %v", a, b)
 		})
 	})
 
