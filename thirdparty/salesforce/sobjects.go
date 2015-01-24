@@ -15,54 +15,52 @@ type Contact struct {
 	Id             string    `json:"Id,omitempty"`
 	IsDeleted      bool      `json:"IsDeleted,omitempty"`
 	MasterRecordId string    `json:"MasterRecordId,omitempty"`
-	AccountId      string    `json:"AccountId,omitempty"`
 
 	// Unique External Id, currently using email (max length 255)
 	CrowdstartIdC string `json:"CrowdstartId__C,omitempty"`
 
 	// Read Only
 	Name             string `json:"Name,omitempty"`
+	AccountId        string `json:AccountId,omitempty`
 	CreatedById      string `json:"CreatedById,omitempty"`
 	LastModifiedById string `json:"LastModifiedById,omitempty"`
 
 	// You can manually specify these
 
-	// Special User Id field set for upserts only, never encoded
-	UserId string `json:"-"`
-
 	// Data Fields
-	LastName           string `json:"LastName,omitempty"`
-	FirstName          string `json:"FirstName,omitempty"`
-	Salutation         string `json:"Salutation,omitempty"`
-	MailingStreet      string `json:"MailingStreet,omitempty"`
-	MailingCity        string `json:"MailingCity,omitempty"`
-	MailingState       string `json:"MailingState,omitempty"`
-	MailingPostalCode  string `json:"MailingPostalCode,omitempty"`
-	MailingCountry     string `json:"MailingCountry,omitempty"`
-	MailingStateCode   string `json:"MailingStateCode,omitempty"`
-	MailingCountryCode string `json:"MailingCountryCode,omitempty"`
-	MailingLatitude    string `json:"MailingLatitude,omitempty"`
-	MailingLongitude   string `json:"MailingLongitude,omitempty"`
-	Phone              string `json:"Phone,omitempty"`
-	Fax                string `json:"Fax,omitempty"`
-	MobilePhone        string `json:"MobilePhone,omitempty"`
-	ReportsToId        string `json:"ReportsToId,omitempty"`
-	Email              string `json:"Email,omitempty"`
-	Title              string `json:"Title,omitempty"`
-	Department         string `json:"Department,omitempty"`
-	OwnerId            string `json:"OwnerId,omitempty"`
-	CreatedDate        string `json:"CreatedDate,omitempty"`
-	LastModifiedDate   string `json:"LastModifiedDate,omitempty"`
-	SystemModstamp     string `json:"SystemModstamp,omitempty"`
-	LastActivityDate   string `json:"LastActivityDate,omitempty"`
-	LastCURequestDate  string `json:"LastCURequestDate,omitempty"`
-	LastCUUpdateDate   string `json:"LastCUUpdateDate,omitempty"`
-	LastViewedDate     string `json:"LastViewedDate,omitempty"`
-	LastReferencedDate string `json:"LastReferencedDate,omitempty"`
-	EmailBouncedReason string `json:"EmailBouncedReason,omitempty"`
-	EmailBouncedDate   string `json:"EmailBouncedDate,omitempty"`
-	IsEmailBounced     bool   `json:"IsEmailBounced,omitempty"`
-	JigsawContactId    string `json:"JigsawContactId,omitempty"`
+	LastName           string  `json:"LastName,omitempty"`
+	FirstName          string  `json:"FirstName,omitempty"`
+	Salutation         string  `json:"Salutation,omitempty"`
+	MailingStreet      string  `json:"MailingStreet,omitempty"`
+	MailingCity        string  `json:"MailingCity,omitempty"`
+	MailingState       string  `json:"MailingState,omitempty"`
+	MailingPostalCode  string  `json:"MailingPostalCode,omitempty"`
+	MailingCountry     string  `json:"MailingCountry,omitempty"`
+	MailingStateCode   string  `json:"MailingStateCode,omitempty"`
+	MailingCountryCode string  `json:"MailingCountryCode,omitempty"`
+	MailingLatitude    string  `json:"MailingLatitude,omitempty"`
+	MailingLongitude   string  `json:"MailingLongitude,omitempty"`
+	Phone              string  `json:"Phone,omitempty"`
+	Fax                string  `json:"Fax,omitempty"`
+	MobilePhone        string  `json:"MobilePhone,omitempty"`
+	ReportsToId        string  `json:"ReportsToId,omitempty"`
+	Email              string  `json:"Email,omitempty"`
+	Title              string  `json:"Title,omitempty"`
+	Department         string  `json:"Department,omitempty"`
+	OwnerId            string  `json:"OwnerId,omitempty"`
+	CreatedDate        string  `json:"CreatedDate,omitempty"`
+	LastModifiedDate   string  `json:"LastModifiedDate,omitempty"`
+	SystemModstamp     string  `json:"SystemModstamp,omitempty"`
+	LastActivityDate   string  `json:"LastActivityDate,omitempty"`
+	LastCURequestDate  string  `json:"LastCURequestDate,omitempty"`
+	LastCUUpdateDate   string  `json:"LastCUUpdateDate,omitempty"`
+	LastViewedDate     string  `json:"LastViewedDate,omitempty"`
+	LastReferencedDate string  `json:"LastReferencedDate,omitempty"`
+	EmailBouncedReason string  `json:"EmailBouncedReason,omitempty"`
+	EmailBouncedDate   string  `json:"EmailBouncedDate,omitempty"`
+	IsEmailBounced     bool    `json:"IsEmailBounced,omitempty"`
+	JigsawContactId    string  `json:"JigsawContactId,omitempty"`
+	Account            Account `json:"Account,omitempty"`
 
 	// Skully Custom fields
 	ZendeskLastSyncDateC         string `json:"Zendesk__Last_Sync_Date__c,omitempty"`
@@ -90,11 +88,8 @@ func (c *Contact) FromUser(u *models.User) {
 	c.FirstName = u.FirstName
 	c.Email = u.Email
 	c.Phone = u.Phone
-	c.ShippingAddressC = u.ShippingAddress.Line1 + " " + u.ShippingAddress.Line2
-	c.ShippingCityC = u.ShippingAddress.City
-	c.ShippingStateC = u.ShippingAddress.State
-	c.ShippingPostalZipC = u.ShippingAddress.PostalCode
-	c.ShippingCountryC = u.ShippingAddress.Country
+
+	c.Account = Account{CrowdstartIdC: u.Id}
 }
 
 func (c *Contact) ToUser(u *models.User) {
@@ -103,17 +98,127 @@ func (c *Contact) ToUser(u *models.User) {
 	u.LastName = c.LastName
 	u.FirstName = c.FirstName
 	u.Phone = c.Phone
+}
 
-	lines := strings.Split(c.ShippingAddressC, "/")
+type Account struct {
+	// Don't manually specify these
 
-	//
+	// Response Only Fields
+	Attributes     Attribute `json:"attributes,omitempty"`
+	Id             string    `json:"Id,omitempty"`
+	IsDeleted      bool      `json:"IsDeleted,omitempty"`
+	MasterRecordId string    `json:"MasterRecordId,omitempty"`
+
+	// Unique External Id, currently using email (max length 255)
+	CrowdstartIdC string `json:"CrowdstartId__C,omitempty"`
+
+	// Read Only
+	CreatedById      string `json:"CreatedById,omitempty"`
+	LastModifiedById string `json:"LastModifiedById,omitempty"`
+
+	// You can manually specify these
+	// Data Fields
+	Name               string `json:"Name,omitempty"`
+	Type               string `json:"Type,omitempty"`
+	ParentId           string `json:"ParentId,omitempty"`
+	BillingStreet      string `json:"BillingStreet,omitempty"`
+	BillingCity        string `json:"BillingCity,omitempty"`
+	BillingState       string `json:"BillingState,omitempty"`
+	BillingPostalCode  string `json:"BillingPostalCode,omitempty"`
+	BillingCountry     string `json:"BillingCountry,omitempty"`
+	BillingLatitude    string `json:"BillingLatitude,omitempty"`
+	BillingLongitude   string `json:"BillingLongitude,omitempty"`
+	ShippingStreet     string `json:"ShippingStreet,omitempty"`
+	ShippingCity       string `json:"ShippingCity,omitempty"`
+	ShippingState      string `json:"ShippingState,omitempty"`
+	ShippingPostalCode string `json:"ShippingPostalCode,omitempty"`
+	ShippingCountry    string `json:"ShippingCountry,omitempty"`
+	ShippingLatitude   string `json:"ShippingLatitude,omitempty"`
+	ShippingLongitude  string `json:"ShippingLongitude,omitempty"`
+	Phone              string `json:"Phone,omitempty"`
+	Fax                string `json:"Fax,omitempty"`
+	AccountNumber      string `json:"AccountNumber,omitempty"`
+	Website            string `json:"Website,omitempty"`
+	Sic                string `json:"Sic,omitempty"`
+	Industry           string `json:"Industry,omitempty"`
+	AnnualRevenue      string `json:"AnnualRevenue,omitempty"`
+	NumberOfEmployees  string `json:"NumberOfEmployees,omitempty"`
+	Ownership          string `json:"Ownership,omitempty"`
+	TickerSymbol       string `json:"TickerSymbol,omitempty"`
+	Description        string `json:"Description,omitempty"`
+	Rating             string `json:"Rating,omitempty"`
+	Site               string `json:"Site,omitempty"`
+	OwnerId            string `json:"OwnerId,omitempty"`
+	CreatedDate        string `json:"CreatedDate,omitempty"`
+	LastModifiedDate   string `json:"LastModifiedDate,omitempty"`
+	SystemModstamp     string `json:"SystemModstamp,omitempty"`
+	LastActivityDate   string `json:"LastActivityDate,omitempty"`
+	LastViewedDate     string `json:"LastViewedDate,omitempty"`
+	LastReferencedDate string `json:"LastReferencedDate,omitempty"`
+	Jigsaw             string `json:"Jigsaw,omitempty"`
+	JigsawCompanyId    string `json:"JigsawCompanyId,omitempty"`
+	CleanStatus        string `json:"CleanStatus,omitempty"`
+	AccountSource      string `json:"AccountSource,omitempty"`
+	DunsNumber         string `json:"DunsNumber,omitempty"`
+	Tradestyle         string `json:"Tradestyle,omitempty"`
+	NaicsCode          string `json:"NaicsCode,omitempty"`
+	NaicsDesc          string `json:"NaicsDesc,omitempty"`
+	YearStarted        string `json:"YearStarted,omitempty"`
+	SicDesc            string `json:"SicDesc,omitempty"`
+	DandbCompanyId     string `json:"DandbCompanyId,omitempty"`
+	CustomerPriorityC  string `json:"CustomerPriority__c,omitempty"`
+	SlaC               string `json:"SLA__c,omitempty"`
+	ActiveC            string `json:"Active__c,omitempty"`
+	NumberofLocationsC string `json:"NumberofLocations__c,omitempty"`
+	UpsellOpportunityC string `json:"UpsellOpportunity__c,omitempty"`
+	SLASerialNumberC   string `json:"SLASerialNumber__c,omitempty"`
+	SLAExpirationDateC string `json:"SLAExpirationDate__c,omitempty"`
+	Account            string `json:"Account,omitempty"`
+	Master             string `json:"Master,omitempty"`
+}
+
+func (a *Account) FromUser(u *models.User) {
+	a.Name = u.Name()
+	a.BillingStreet = u.BillingAddress.Line1 + "/" + u.BillingAddress.Line2
+	a.BillingCity = u.BillingAddress.City
+	a.BillingState = u.BillingAddress.State
+	a.BillingPostalCode = u.BillingAddress.PostalCode
+	a.BillingCountry = u.BillingAddress.Country
+
+	a.ShippingStreet = u.ShippingAddress.Line1 + "/" + u.ShippingAddress.Line2
+	a.ShippingCity = u.ShippingAddress.City
+	a.ShippingState = u.ShippingAddress.State
+	a.ShippingPostalCode = u.ShippingAddress.PostalCode
+	a.ShippingCountry = u.ShippingAddress.Country
+}
+
+func (a *Account) ToUser(u *models.User) {
+	u.Id = a.CrowdstartIdC
+	u.Phone = a.Phone
+
+	lines := strings.Split(a.ShippingStreet, "/")
+
+	// Split Street line / to recover our data
 	u.ShippingAddress.Line1 = lines[0]
 	if len(lines) > 1 {
 		u.ShippingAddress.Line2 = strings.Join(lines[1:], "/")
 	}
 
-	u.ShippingAddress.City = c.ShippingCityC
-	u.ShippingAddress.State = c.ShippingStateC
-	u.ShippingAddress.PostalCode = c.ShippingPostalZipC
-	u.ShippingAddress.Country = c.ShippingCountryC
+	u.ShippingAddress.City = a.ShippingCity
+	u.ShippingAddress.State = a.ShippingState
+	u.ShippingAddress.PostalCode = a.ShippingPostalCode
+	u.ShippingAddress.Country = a.ShippingCountry
+
+	lines = strings.Split(a.BillingStreet, "/")
+
+	// Split Street line / to recover our data
+	u.BillingAddress.Line1 = lines[0]
+	if len(lines) > 1 {
+		u.BillingAddress.Line2 = strings.Join(lines[1:], "/")
+	}
+
+	u.BillingAddress.City = a.BillingCity
+	u.BillingAddress.State = a.BillingState
+	u.BillingAddress.PostalCode = a.BillingPostalCode
+	u.BillingAddress.Country = a.BillingCountry
 }

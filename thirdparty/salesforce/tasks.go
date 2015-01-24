@@ -51,7 +51,7 @@ var UpsertTask = delay.Func("SalesforceUpsertTask", func(c appengine.Context, ca
 	// contact.PreorderC = preorders
 
 	if err := client.Push(&user); err != nil {
-		log.Panic("UpsertContactTask failed: %v", c)
+		log.Panic("UpsertContactTask failed: %v", err, c)
 	}
 })
 

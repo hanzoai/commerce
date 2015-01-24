@@ -198,6 +198,21 @@ func (a *Api) Push(object interface{}) error {
 		if v.Id == "" {
 			return errors.New("Id is required for Upsert")
 		}
+		account := Account{}
+		account.FromUser(v)
+		accountBytes, err := json.Marshal(&account)
+		if err != nil {
+			return err
+		}
+
+		log.Debug("Converting to Account: %v", account, c)
+		accountJSON := string(accountBytes[:])
+		path := fmt.Sprintf(AccountExternalIdPath, strings.Replace(v.Id, ".", "_", -1))
+
+		log.Info("Upserting Account: %v", account, c)
+		if err = a.request("PATCH", path, accountJSON, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
+			return err
+		}
 
 		contact := Contact{}
 		contact.FromUser(v)
@@ -209,8 +224,7 @@ func (a *Api) Push(object interface{}) error {
 		}
 
 		contactJSON := string(contactBytes[:])
-
-		path := fmt.Sprintf(ContactExternalIdPath, strings.Replace(v.Id, ".", "_", -1))
+		path = fmt.Sprintf(ContactExternalIdPath, strings.Replace(v.Id, ".", "_", -1))
 
 		log.Info("Upserting Contact: %v", contact, c)
 		if err = a.request("PATCH", path, contactJSON, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
@@ -272,6 +286,19 @@ func (a *Api) Pull(id string, object interface{}) error {
 			return err
 		}
 
+		path = fmt.Sprintf(AccountExternalIdPath, id)
+
+		if err := a.request("GET", path, "", nil, true); err != nil {
+			return err
+		}
+
+		account := new(Account)
+
+		if err := json.Unmarshal(a.LastBody, account); err != nil {
+			log.Error("Could not unmarshal: %v", string(a.LastBody[:]), c)
+			return err
+		}
+
 		log.Debug("Getting Contact: %v", contact, c)
 
 		log.Info("Converting to User", c)
@@ -316,11 +343,28 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
 				log.Warn("Could not unmarshal: %v", string(a.LastBody[:]), c)
 				continue
 			}
+
+			path = fmt.Sprintf(AccountPath, contact.AccountId)
+			if err := a.request("GET", path, "", nil, true); err != nil {
+				log.Warn("Failed to Get Account for %v", id, c)
+				continue
+			}
+
+			account := new(Account)
+			if err := json.Unmarshal(a.LastBody, account); err != nil {
+				log.Warn("Could not unmarshal: %v", string(a.LastBody[:]), c)
+				continue
+			}
+
 			log.Debug("Getting Contact: %v", contact, c)
+			log.Debug("Getting Account: %v", account, c)
 
 			log.Info("Converting to User", c)
+
 			user := new(models.User)
 			contact.ToUser(user)
+			account.ToUser(user)
+
 			log.Info("User %v", user, contact, c)
 
 			users = append(users, user)
