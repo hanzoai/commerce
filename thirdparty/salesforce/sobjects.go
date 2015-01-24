@@ -280,7 +280,7 @@ type Order struct {
 	ActivatedById          string  `json:"ActivatedById,omitempty"`
 	StatusCode             string  `json:"StatusCode,omitempty"`
 	OrderNumber            string  `json:"OrderNumber,omitempty"`
-	TotalAmount            string  `json:"TotalAmount,omitempty"`
+	TotalAmount            float64 `json:"TotalAmount,omitempty"`
 	CreatedDate            string  `json:"CreatedDate,omitempty"`
 	SystemModstamp         string  `json:"SystemModstamp,omitempty"`
 	LastViewedDate         string  `json:"LastViewedDate,omitempty"`
@@ -293,7 +293,7 @@ type Order struct {
 }
 
 func (o *Order) FromOrder(order *models.Order) {
-	o.PoDate = order.CreatedAt.Format(time.RFC3339)
+	o.EffectiveDate = order.CreatedAt.Format(time.RFC3339)
 
 	o.BillingStreet = order.BillingAddress.Line1 + "/" + order.BillingAddress.Line2
 	o.BillingCity = order.BillingAddress.City
@@ -306,6 +306,8 @@ func (o *Order) FromOrder(order *models.Order) {
 	o.ShippingState = order.ShippingAddress.State
 	o.ShippingPostalCode = order.ShippingAddress.PostalCode
 	o.ShippingCountry = order.ShippingAddress.Country
+	o.Status = "Draft"
+	//o.TotalAmount = float64(order.Total) / 100.00
 
 	//SKU
 	desc := ""
@@ -319,7 +321,7 @@ func (o *Order) FromOrder(order *models.Order) {
 func (o *Order) ToOrder(order *models.Order) error {
 	lines := strings.Split(o.ShippingStreet, "/")
 
-	created, err := time.Parse(time.RFC3339, o.PoDate)
+	created, err := time.Parse(time.RFC3339, o.EffectiveDate)
 	if err != nil {
 		return err
 	}
