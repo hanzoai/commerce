@@ -186,7 +186,8 @@ func StripeWebhook(c *gin.Context) {
 		case "charge.dispute.closed":
 		case "charge.dispute.funds_withdrawn":
 		case "charge.dispute.funds_reinstated":
-			chargeDisputed(c, data)
+			c.String(501, "Dispute events are temporarily disabled")
+			// chargeDisputed(c, data)
 
 		case "account.updated":
 			accountUpdated(c, data)
@@ -228,36 +229,36 @@ func chargeModified(c *gin.Context, data []byte) {
 	c.String(200, "ok")
 }
 
-func chargeDisputed(c *gin.Context, data []byte) {
-	event := new(DisputeEvent)
-	if err := json.Unmarshal(data, event); err != nil {
-		c.String(500, "Error parsing dispute json")
-		log.Panic(err)
-	}
-	dispute := event.Data.Dispute
+// func chargeDisputed(c *gin.Context, data []byte) {
+// 	event := new(DisputeEvent)
+// 	if err := json.Unmarshal(data, event); err != nil {
+// 		c.String(500, "Error parsing dispute json")
+// 		log.Panic(err)
+// 	}
+// 	dispute := event.Data.Dispute
 
-	db := datastore.New(c)
-	order := new(models.Order)
-	key, err := db.Query("order").Filter("Charges.ID =", dispute.Charge).Run(db.Context).Next(order)
-	if err != nil {
-		c.String(500, "Error retrieving order")
-		log.Panic(err)
-	}
+// 	db := datastore.New(c)
+// 	order := new(models.Order)
+// 	key, err := db.Query("order").Filter("Charges.ID =", dispute.Charge).Run(db.Context).Next(order)
+// 	if err != nil {
+// 		c.String(500, "Error retrieving order")
+// 		log.Panic(err)
+// 	}
 
-	for i, charge := range order.Charges {
-		if charge.ID == dispute.Charge {
-			order.Charges[i].Dispute = dispute
-			break
-		}
-	}
+// 	for i, charge := range order.Charges {
+// 		if charge.ID == dispute.Charge {
+// 			order.Charges[i].Dispute = dispute
+// 			break
+// 		}
+// 	}
 
-	if _, err := db.PutKey("order", key, order); err != nil {
-		c.String(500, "Error saving order")
-		log.Panic(err)
-	}
+// 	if _, err := db.PutKey("order", key, order); err != nil {
+// 		c.String(500, "Error saving order")
+// 		log.Panic(err)
+// 	}
 
-	c.String(200, "ok")
-}
+// 	c.String(200, "ok")
+// }
 
 func accountUpdated(c *gin.Context, data []byte) {
 	event := new(AccountUpdatedEvent)
