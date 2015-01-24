@@ -107,7 +107,7 @@ func SubmitRegister(c *gin.Context) {
 
 	log.Debug("Synchronize with salesforce if '%v' != ''", campaign.Salesforce.AccessToken)
 	if campaign.Salesforce.AccessToken != "" {
-		salesforce.CallUpsertTask(db.Context, &campaign, &f.User)
+		salesforce.CallUpsertUserTask(db.Context, &campaign, &f.User)
 	}
 	c.Redirect(302, config.UrlFor("store"))
 }
