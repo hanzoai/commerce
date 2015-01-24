@@ -276,4 +276,4 @@ datastore-import:
 datastore-export-config:
 	bulkloader.py --create_config --url=$(datastore_admin_url) --filename=bulkloader.yaml
 
-.PHONY: all test
+.PHONY: all datastore-import datastore-export datastore-config deploy deploy-staging deploy-skully deploy-production deps test test-integration
