@@ -313,6 +313,7 @@ func (o *Order) FromOrder(order *models.Order) {
 		desc += i.SKU_ + "," + strconv.Itoa(i.Quantity) + "\n"
 	}
 	o.Description = desc
+	o.Account.CrowdstartIdC = order.UserId
 }
 
 func (o *Order) ToOrder(order *models.Order) error {
