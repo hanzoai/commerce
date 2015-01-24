@@ -244,12 +244,12 @@ func chargeDisputed(c *gin.Context, data []byte) {
 		log.Panic(err)
 	}
 
-	for i, charge := range order.Charges {
-		if charge.ID == dispute.Charge {
-			order.Charges[i].Dispute = dispute
-			break
-		}
-	}
+	// for i, charge := range order.Charges {
+	// 	if charge.ID == dispute.Charge {
+	// 		order.Charges[i].Dispute = dispute
+	// 		break
+	// 	}
+	// }
 
 	if _, err := db.PutKey("order", key, order); err != nil {
 		c.String(500, "Error saving order")
