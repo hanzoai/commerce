@@ -25,7 +25,7 @@ var UpsertUserTask = delay.Func("SalesforceUpsertUserTask", func(c appengine.Con
 	}
 })
 
-var UpsertOrderTask = delay.Func("SalesforceUpsertUserTask", func(c appengine.Context, campaign models.Campaign, order models.Order) {
+var UpsertOrderTask = delay.Func("SalesforceUpsertOrderTask", func(c appengine.Context, campaign models.Campaign, order models.Order) {
 
 	log.Info("Try to synchronize with salesforce", c)
 
