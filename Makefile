@@ -112,7 +112,7 @@ endif
 
 # set v=1 to enable verbose mode
 ifeq ($(v), 1)
-	verbose = -v
+	verbose = -v=true
 else
 	verbose =
 endif
@@ -193,10 +193,13 @@ tools:
 
 # TEST/ BENCH
 test:
-	goapp test -timeout 60s $(test_modules) $(verbose)
+	ginkgo -r=true -p=true -progress=true $(verbose) -skipMeasurements=true
+
+test-watch:
+	ginkgo watch -r=true -p=true -progress=true $(verbose) -skipMeasurements=true
 
 bench:
-	goapp test -timeout 60s $(test_modules) $(verbose) --bench=.
+	ginkgo -r=true -p=true -progress=true $(verbose)
 
 # DEPLOY
 deploy: test
