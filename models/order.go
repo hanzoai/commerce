@@ -12,7 +12,6 @@ import (
 	"github.com/mholt/binding"
 
 	"crowdstart.io/datastore"
-	stripe "crowdstart.io/thirdparty/stripe/models"
 )
 
 type Order struct {
@@ -53,12 +52,12 @@ var variantsMap map[string]ProductVariant
 var productsMap map[string]Product
 
 func (o Order) Disputes(disputedCharges []Charge, disputed bool) {
-	for _, charge := range o.Charges {
-		if charge.Dispute.Status != "" {
-			disputedCharges = append(disputedCharges, charge)
-		}
-	}
-	disputed = len(disputedCharges) > 0
+	// for _, charge := range o.Charges {
+	// 	if charge.Dispute.Status != "" {
+	// 		disputedCharges = append(disputedCharges, charge)
+	// 	}
+	// }
+	// disputed = len(disputedCharges) > 0
 }
 
 func (o *Order) LoadVariantsProducts(c *gin.Context) {
@@ -207,7 +206,7 @@ type Charge struct {
 	Statement      string
 	Amount         int64
 	AmountRefunded int64
-	Dispute        stripe.Dispute
+	//Dispute        stripe.Dispute
 }
 
 type ShippingOption struct {
