@@ -1,7 +1,9 @@
 package salesforce
 
 import (
+	"strconv"
 	"strings"
+	"time"
 
 	"crowdstart.io/models"
 )
@@ -194,7 +196,6 @@ func (a *Account) FromUser(u *models.User) {
 
 func (a *Account) ToUser(u *models.User) {
 	u.Id = a.CrowdstartIdC
-	u.Phone = a.Phone
 
 	lines := strings.Split(a.ShippingStreet, "/")
 
@@ -221,4 +222,149 @@ func (a *Account) ToUser(u *models.User) {
 	u.BillingAddress.State = a.BillingState
 	u.BillingAddress.PostalCode = a.BillingPostalCode
 	u.BillingAddress.Country = a.BillingCountry
+}
+
+type Order struct {
+	// Don't manually specify these
+
+	// Response Only Fields
+	Attributes     Attribute `json:"attributes,omitempty"`
+	Id             string    `json:"Id,omitempty"`
+	IsDeleted      bool      `json:"IsDeleted,omitempty"`
+	MasterRecordId string    `json:"MasterRecordId,omitempty"`
+
+	// Unique External Id, currently using email (max length 255)
+	CrowdstartIdC string `json:"CrowdstartId__C,omitempty"`
+
+	// Read Only
+	CreatedById      string `json:"CreatedById,omitempty"`
+	LastModifiedById string `json:"LastModifiedById,omitempty"`
+	AccountId        string `json:"AccountId,omitempty"`
+
+	// You can manually specify these
+	// Data Fields
+	Account                Account `json:"Account,omitempty"`
+	Pricebook2Id           string  `json:"Pricebook2Id,omitempty"`
+	OriginalOrderId        string  `json:"OriginalOrderId,omitempty"`
+	EffectiveDate          string  `json:"EffectiveDate,omitempty"`
+	EndDate                string  `json:"EndDate,omitempty"`
+	IsReductionOrder       string  `json:"IsReductionOrder,omitempty"`
+	Status                 string  `json:"Status,omitempty"`
+	Description            string  `json:"Description,omitempty"`
+	CustomerAuthorizedById string  `json:"CustomerAuthorizedById,omitempty"`
+	CustomerAuthorizedDate string  `json:"CustomerAuthorizedDate,omitempty"`
+	CompanyAuthorizedById  string  `json:"CompanyAuthorizedById,omitempty"`
+	CompanyAuthorizedDate  string  `json:"CompanyAuthorizedDate,omitempty"`
+	Type                   string  `json:"Type,omitempty"`
+	BillingStreet          string  `json:"BillingStreet,omitempty"`
+	BillingCity            string  `json:"BillingCity,omitempty"`
+	BillingState           string  `json:"BillingState,omitempty"`
+	BillingPostalCode      string  `json:"BillingPostalCode,omitempty"`
+	BillingCountry         string  `json:"BillingCountry,omitempty"`
+	BillingLatitude        string  `json:"BillingLatitude,omitempty"`
+	BillingLongitude       string  `json:"BillingLongitude,omitempty"`
+	ShippingStreet         string  `json:"ShippingStreet,omitempty"`
+	ShippingCity           string  `json:"ShippingCity,omitempty"`
+	ShippingState          string  `json:"ShippingState,omitempty"`
+	ShippingPostalCode     string  `json:"ShippingPostalCode,omitempty"`
+	ShippingCountry        string  `json:"ShippingCountry,omitempty"`
+	ShippingLatitude       string  `json:"ShippingLatitude,omitempty"`
+	ShippingLongitude      string  `json:"ShippingLongitude,omitempty"`
+	Name                   string  `json:"Name,omitempty"`
+	PoDate                 string  `json:"PoDate,omitempty"`
+	PoNumber               string  `json:"PoNumber,omitempty"`
+	OrderReferenceNumber   string  `json:"OrderReferenceNumber,omitempty"`
+	BillToContactId        string  `json:"BillToContactId,omitempty"`
+	ShipToContactId        string  `json:"ShipToContactId,omitempty"`
+	ActivatedDate          string  `json:"ActivatedDate,omitempty"`
+	ActivatedById          string  `json:"ActivatedById,omitempty"`
+	StatusCode             string  `json:"StatusCode,omitempty"`
+	OrderNumber            string  `json:"OrderNumber,omitempty"`
+	TotalAmount            string  `json:"TotalAmount,omitempty"`
+	CreatedDate            string  `json:"CreatedDate,omitempty"`
+	SystemModstamp         string  `json:"SystemModstamp,omitempty"`
+	LastViewedDate         string  `json:"LastViewedDate,omitempty"`
+	LastReferencedDate     string  `json:"LastReferencedDate,omitempty"`
+	Order                  string  `json:"Order,omitempty"`
+	Master                 string  `json:"Master,omitempty"`
+
+	// We don't use contracts
+	ContractId string `json:"ContractId,omitempty"`
+}
+
+func (o *Order) FromOrder(order *models.Order) {
+	o.PoDate = order.CreatedAt.Format(time.RFC3339)
+
+	o.BillingStreet = order.BillingAddress.Line1 + "/" + order.BillingAddress.Line2
+	o.BillingCity = order.BillingAddress.City
+	o.BillingState = order.BillingAddress.State
+	o.BillingPostalCode = order.BillingAddress.PostalCode
+	o.BillingCountry = order.BillingAddress.Country
+
+	o.ShippingStreet = order.ShippingAddress.Line1 + "/" + order.ShippingAddress.Line2
+	o.ShippingCity = order.ShippingAddress.City
+	o.ShippingState = order.ShippingAddress.State
+	o.ShippingPostalCode = order.ShippingAddress.PostalCode
+	o.ShippingCountry = order.ShippingAddress.Country
+
+	//SKU
+	desc := ""
+	for _, i := range order.Items {
+		desc += i.SKU_ + "," + strconv.Itoa(i.Quantity) + "\n"
+	}
+	o.Description = desc
+}
+
+func (o *Order) ToOrder(order *models.Order) error {
+	lines := strings.Split(o.ShippingStreet, "/")
+
+	created, err := time.Parse(time.RFC3339, o.PoDate)
+	if err != nil {
+		return err
+	}
+
+	order.CreatedAt = created
+
+	// Split Street line / to recover our data
+	order.ShippingAddress.Line1 = lines[0]
+	if len(lines) > 1 {
+		order.ShippingAddress.Line2 = strings.Join(lines[1:], "/")
+	}
+
+	order.ShippingAddress.City = o.ShippingCity
+	order.ShippingAddress.State = o.ShippingState
+	order.ShippingAddress.PostalCode = o.ShippingPostalCode
+	order.ShippingAddress.Country = o.ShippingCountry
+
+	lines = strings.Split(o.BillingStreet, "/")
+
+	// Split Street line / to recover our data
+	order.BillingAddress.Line1 = lines[0]
+	if len(lines) > 1 {
+		order.BillingAddress.Line2 = strings.Join(lines[1:], "/")
+	}
+
+	order.BillingAddress.City = o.BillingCity
+	order.BillingAddress.State = o.BillingState
+	order.BillingAddress.PostalCode = o.BillingPostalCode
+	order.BillingAddress.Country = o.BillingCountry
+
+	lIs := strings.Split(o.Description, "\n")
+
+	//Decode order info in the form of SKU,quantity\n
+	order.Items = make([]models.LineItem, len(lIs))
+	for _, lI := range lIs {
+		t := strings.Split(lI, ",")
+		if len(t) == 2 {
+			if q, err := strconv.ParseInt(t[1], 10, 64); err == nil {
+				lineItem := models.LineItem{
+					SKU_:     t[0],
+					Quantity: int(q),
+				}
+				order.Items = append(order.Items, lineItem)
+			}
+		}
+	}
+
+	return nil
 }
