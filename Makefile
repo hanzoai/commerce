@@ -193,13 +193,16 @@ tools:
 
 # TEST/ BENCH
 test:
+	ginkgo -r=true -p=true -progress=true $(verbose) -skipMeasurements=true -skipPackage=integration
+
+test-integration:
 	ginkgo -r=true -p=true -progress=true $(verbose) -skipMeasurements=true
 
 test-watch:
-	ginkgo watch -r=true -p=true -progress=true $(verbose) -skipMeasurements=true
+	ginkgo watch -r=true -p=true -progress=true $(verbose) -skipMeasurements=true -skipPackage=integration
 
 bench:
-	ginkgo -r=true -p=true -progress=true $(verbose)
+	ginkgo -r=true -p=true -progress=true $(verbose) -skipPackage=integration
 
 # DEPLOY
 deploy: test
@@ -272,3 +275,5 @@ datastore-import:
 # Generate config for use with datastore-export target
 datastore-export-config:
 	bulkloader.py --create_config --url=$(datastore_admin_url) --filename=bulkloader.yaml
+
+.PHONY: all test
