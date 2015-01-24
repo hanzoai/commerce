@@ -23,7 +23,7 @@ type Contact struct {
 
 	// Read Only
 	Name             string `json:"Name,omitempty"`
-	AccountId        string `json:AccountId,omitempty`
+	AccountId        string `json:"AccountId,omitempty"`
 	CreatedById      string `json:"CreatedById,omitempty"`
 	LastModifiedById string `json:"LastModifiedById,omitempty"`
 
