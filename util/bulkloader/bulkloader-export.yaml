@@ -666,87 +666,73 @@ transformers:
 
     - property: BillingAddress.City
       external_name: BillingAddress.City
-      # Type: String Stats: 1903 properties of this type in this kind.
 
     - property: BillingAddress.Country
       external_name: BillingAddress.Country
-      # Type: String Stats: 1903 properties of this type in this kind.
 
     - property: BillingAddress.Line1
       external_name: BillingAddress.Line1
-      # Type: String Stats: 1903 properties of this type in this kind.
 
     - property: BillingAddress.Line2
       external_name: BillingAddress.Line2
-      # Type: String Stats: 1903 properties of this type in this kind.
 
     - property: BillingAddress.PostalCode
       external_name: BillingAddress.PostalCode
-      # Type: String Stats: 1903 properties of this type in this kind.
 
     - property: BillingAddress.State
       external_name: BillingAddress.State
-      # Type: String Stats: 1903 properties of this type in this kind.
 
     - property: Email
       external_name: Email
-      # Type: String Stats: 1903 properties of this type in this kind.
 
     - property: Id
       external_name: Id
-      # Type: String Stats: 1903 properties of this type in this kind.
 
     - property: FirstName
       external_name: FirstName
-      export_transform: bulkloader_helper.na_if_none
+      export_transform: bulkloader_helper.empty_string_if_none
 
     - property: LastName
       external_name: LastName
-      export_transform: bulkloader_helper.na_if_none
+      export_transform: bulkloader_helper.empty_string_if_none
 
-    # - property: PasswordHash
-    #   external_name: PasswordHash
-    #   # Type: Blob Stats: 1903 properties of this type in this kind.
-    #   import_transform: transform.blobproperty_from_base64
-    #   export_transform: base64.b64encode
+    - property: PasswordHash
+      external_name: PasswordHash
+      import_transform: transform.blobproperty_from_base64
+      export_transform: base64.b64encode
 
     - property: Phone
       external_name: Phone
-      # Type: String Stats: 1903 properties of this type in this kind.
 
     - property: ShippingAddress.City
       external_name: ShippingAddress.City
-      # Type: String Stats: 1903 properties of this type in this kind.
 
     - property: ShippingAddress.Country
       external_name: ShippingAddress.Country
-      # Type: String Stats: 1903 properties of this type in this kind.
 
-      # Type: String Stats: 1903 properties of this type in this kind.
     - property: ShippingAddress.Line1
       external_name: ShippingAddress.Line1
-      # Type: String Stats: 1903 properties of this type in this kind.
 
     - property: ShippingAddress.Line2
       external_name: ShippingAddress.Line2
-      # Type: String Stats: 1903 properties of this type in this kind.
 
     - property: ShippingAddress.PostalCode
       external_name: ShippingAddress.PostalCode
-      # Type: String Stats: 1903 properties of this type in this kind.
 
     - property: ShippingAddress.State
       external_name: ShippingAddress.State
-      # Type: String Stats: 1903 properties of this type in this kind.
+
+    - property: Stripe.CustomerId
+      external_name: Stripe.CustomerId
 
     # GENERATED:
-    - property: ShippingAddress.Lines
-      external_name: ShippingAddress.Lines
-      export_transform: bulkloader_helper.join_address_lines
+    # - property: ShippingAddress.Lines
+    #   external_name: ShippingAddress.Lines
+    #   export_transform: bulkloader_helper.join_address_lines
 
-    - property: ShippingAddress
-      external_name: ShippingAddress
-      export_transform: bulkloader_helper.generate_shipping_address
+    # - property: ShippingAddress
+    #   external_name: ShippingAddress
+    #   export_transform: bulkloader_helper.generate_shipping_address
 
 
 - kind: variant

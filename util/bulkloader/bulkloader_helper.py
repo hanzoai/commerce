@@ -37,6 +37,13 @@ def na_if_none(value):
     return value
 
 
+def empty_string_if_none(value):
+    """Return '' instead of None."""
+    if not value:
+        return ''
+    return value
+
+
 def generate_preorder_description(value, bulkload_state):
     """Generates preorder information from Items.SKU_ and Items.Quantity."""
     row = bulkload_state.current_dictionary
