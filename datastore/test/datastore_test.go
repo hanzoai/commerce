@@ -4,13 +4,13 @@ import (
 	"errors"
 	"testing"
 
-	"appengine/aetest"
 	gaed "appengine/datastore"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
 	"crowdstart.io/datastore"
+	"github.com/zeekay/aetest"
 )
 
 var (
