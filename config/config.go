@@ -26,25 +26,29 @@ var configFileLocations = []string{
 }
 
 type Config struct {
-	DemoMode          bool
-	IsDevelopment     bool
-	IsStaging         bool
-	IsProduction      bool
 	AutoCompileAssets bool
 	AutoLoadFixtures  bool
-	RootDir           string
 	CookieDomain      string
+	DatastoreWarn     bool
+	DemoMode          bool
+	IsDevelopment     bool
+	IsProduction      bool
+	IsStaging         bool
 	Protocol          string
-	StaticUrl         string
-	SiteTitle         string
-	Prefixes          map[string]string
-	Hosts             map[string]string
+	RootDir           string
 	SentryDSN         string
-	Salesforce        struct {
+	SiteTitle         string
+	StaticUrl         string
+
+	Prefixes map[string]string
+	Hosts    map[string]string
+
+	Salesforce struct {
 		ConsumerKey    string
 		ConsumerSecret string
 		CallbackURL    string
 	}
+
 	Stripe struct {
 		ClientId    string
 		APIKey      string
@@ -52,11 +56,13 @@ type Config struct {
 		RedirectURL string
 		WebhookURL  string
 	}
+
 	Mandrill struct {
 		APIKey    string
 		FromEmail string
 		FromName  string
 	}
+
 	Google struct {
 		APIKey string
 		Bucket struct {
@@ -148,6 +154,7 @@ var config = Get()
 var AutoCompileAssets = config.AutoCompileAssets
 var AutoLoadFixtures = config.AutoLoadFixtures
 var CookieDomain = config.CookieDomain
+var DatastoreWarn = config.DatastoreWarn
 var DemoMode = config.DemoMode
 var Google = config.Google
 var IsDevelopment = config.IsDevelopment

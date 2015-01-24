@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/qedus/nds"
 
+	"crowdstart.io/config"
 	"crowdstart.io/util/log"
 )
 
@@ -27,10 +28,10 @@ func (d *Datastore) warn(fmtOrError interface{}, args ...interface{}) {
 func New(ctx interface{}) (d *Datastore) {
 	switch ctx := ctx.(type) {
 	case appengine.Context:
-		d = &Datastore{ctx, true}
+		d = &Datastore{ctx, config.DatastoreWarn}
 	case *gin.Context:
 		c := ctx.MustGet("appengine").(appengine.Context)
-		d = &Datastore{c, true}
+		d = &Datastore{c, config.DatastoreWarn}
 	}
 	return d
 }
