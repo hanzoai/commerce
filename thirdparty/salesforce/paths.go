@@ -13,3 +13,8 @@ var AccountBasePath = SObjectDescribePath + "Account/"
 var AccountPath = AccountBasePath + "%v/"
 var AccountExternalIdPath = AccountBasePath + "CrowdstartId__c/%v"
 var AccountsUpdatedPath = AccountBasePath + "updated/?start=%v&end=%v"
+
+var OrderBasePath = SObjectDescribePath + "Order/"
+var OrderPath = OrderBasePath + "%v/"
+var OrderExternalIdPath = OrderBasePath + "CrowdstartId__c/%v"
+var OrdersUpdatedPath = OrderBasePath + "updated/?start=%v&end=%v"

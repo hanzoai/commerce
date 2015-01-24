@@ -231,6 +231,29 @@ func (a *Api) Push(object interface{}) error {
 			return err
 		}
 
+	case *models.Order:
+		log.Info("Upserting Order", c)
+		if v.Id == "" {
+			return errors.New("Id is required for Upsert")
+		}
+
+		order := Order{}
+		order.FromOrder(v)
+
+		log.Debug("Converting to Order: %v", order, c)
+		orderBytes, err := json.Marshal(&order)
+		if err != nil {
+			return err
+		}
+
+		orderJSON := string(orderBytes[:])
+		path := fmt.Sprintf(OrderExternalIdPath, strings.Replace(v.Id, ".", "_", -1))
+
+		log.Info("Upserting Order: %v", order, c)
+		if err = a.request("PATCH", path, orderJSON, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
+			return err
+		}
+
 	default:
 		return errors.New("Invalid Type")
 	}
