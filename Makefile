@@ -196,7 +196,7 @@ test:
 	ginkgo -r=true -p=true -progress=true $(verbose) -skipMeasurements=true -skipPackage=integration
 
 test-integration:
-	ginkgo -r=true -p=true -progress=true $(verbose) -skipMeasurements=true
+	ginkgo -r=true -p=true -progress=true $(verbose) -skipMeasurements=true -focus=integration
 
 test-watch:
 	ginkgo watch -r=true -p=true -progress=true $(verbose) -skipMeasurements=true -skipPackage=integration
