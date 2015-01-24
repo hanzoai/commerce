@@ -87,6 +87,15 @@ var _ = Describe("EncodeId", func() {
 	})
 
 	Context("Encoding bad types", func() {
+		// Since this is testing a negative case, we disable warning
+		// temporarily.
+		BeforeEach(func() {
+			db.Warn = false
+		})
+		AfterEach(func() {
+			db.Warn = true
+		})
+
 		It("should error", func() {
 			err := db.EncodeId("test", errors.New(""))
 			Expect(err).To(Equal(""))
