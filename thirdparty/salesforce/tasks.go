@@ -15,43 +15,24 @@ import (
 
 // Deferred Tasks
 // UpsertTask upserts a contact into salesforce
-var UpsertTask = delay.Func("SalesforceUpsertTask", func(c appengine.Context, campaign models.Campaign, user models.User) {
+var UpsertUserTask = delay.Func("SalesforceUpsertUserTask", func(c appengine.Context, campaign models.Campaign, user models.User) {
 	log.Info("Try to synchronize with salesforce", c)
 
 	client := New(c, &campaign, true)
 
-	//db := datastore.New(c)
-	// Query out all orders (since preorder is stored as a single string)
-	// var orders []models.Order
-	// if _, err := db.Query("order").
-	// 	Filter("Email =", user.Email).
-	// 	GetAll(db.Context, &orders); err != nil {
-	// 	log.Panic("Error retrieving orders associated with the user's email", err, c)
-	// }
-
-	// // Query out any preorder order items and sum different skus up for totals
-	// items := make(map[string]int)
-
-	// for _, order := range orders {
-	// 	if order.Preorder {
-	// 		for _, item := range order.Items {
-	// 			items[item.SKU_] = items[item.SKU_] + item.Quantity
-	// 		}
-	// 	}
-	// }
-
-	// // Stringify
-	// preorders := ""
-
-	// for key, item := range items {
-	// 	preorders += fmt.Sprintf("%s: %d", key, item)
-	// }
-
-	// // Assign to contact and synchronize
-	// contact.PreorderC = preorders
-
 	if err := client.Push(&user); err != nil {
-		log.Panic("UpsertContactTask failed: %v", c)
+		log.Panic("UpsertUserTask failed: %v", err, c)
+	}
+})
+
+var UpsertOrderTask = delay.Func("SalesforceUpsertOrderTask", func(c appengine.Context, campaign models.Campaign, order models.Order) {
+
+	log.Info("Try to synchronize with salesforce", c)
+
+	client := New(c, &campaign, true)
+
+	if err := client.Push(&order); err != nil {
+		log.Panic("UpsertOrderTask failed: %v", err, c)
 	}
 })
 
@@ -89,11 +70,18 @@ var PullUpdatedTask = delay.Func("SalesforcePullUpdatedTask", func(c appengine.C
 })
 
 // Wrappers to deferred function calls for type sanity
-// CallUpsertTask calls the task queue delay function with the passed in params
+// CallUpsertUserTask calls the task queue delay function with the passed in params
 // Values are used instead of pointers since we envoke a RPC
-func CallUpsertTask(c appengine.Context, campaign *models.Campaign, user *models.User) {
+func CallUpsertUserTask(c appengine.Context, campaign *models.Campaign, user *models.User) {
 	log.Info("Trying to dispatch task.", c)
-	UpsertTask.Call(c, *campaign, *user)
+	UpsertUserTask.Call(c, *campaign, *user)
+	log.Info("Task dispatched.", c)
+}
+
+// CallUpsertOrderTask calls the task queue delay function with the passed in params
+func CallUpsertOrderTask(c appengine.Context, campaign *models.Campaign, order *models.Order) {
+	log.Info("Trying to dispatch task.", c)
+	UpsertOrderTask.Call(c, *campaign, *order)
 	log.Info("Task dispatched.", c)
 }
 
