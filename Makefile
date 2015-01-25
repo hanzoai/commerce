@@ -257,7 +257,9 @@ datastore-export:
 				  --result_db_filename /tmp/bulkloader-result-$$kind.db \
 				  --kind $$kind \
 				  --filename _export/$$kind.csv && \
-	rm -rf /tmp/bulkloader-$$kind.db /tmp/bulkloader-$$kind.log /tmp/bulkloader-result-$$kind.db
+	rm -rf /tmp/bulkloader-$$kind.db \
+		   /tmp/bulkloader-$$kind.log \
+		   /tmp/bulkloader-result-$$kind.db
 
 # IMPORT / Usage: make datastore-import kind=user file=user.csv
 datastore-import:
@@ -274,6 +276,12 @@ datastore-import:
 
 # Generate config for use with datastore-export target
 datastore-export-config:
-	bulkloader.py --create_config --url=$(datastore_admin_url) --filename=bulkloader.yaml
+	bulkloader.py --create_config \
+			      --url=$(datastore_admin_url) \
+				  --filename=bulkloader.yaml
 
-.PHONY: all datastore-import datastore-export datastore-config deploy deploy-staging deploy-skully deploy-production deps test test-integration
+.PHONY: all bench build compile-js compile-js-min compile-css compile-css-min \
+	datastore-import datastore-export datastore-config deploy \
+	deploy-staging deploy-skully deploy-production deps deps-assets \
+	deps-go live-reload serve serve-clear-datastore serve-public test \
+	test-integration test-watch tools
