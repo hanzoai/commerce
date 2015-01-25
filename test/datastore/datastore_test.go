@@ -13,19 +13,16 @@ import (
 	"github.com/zeekay/aetest"
 )
 
+func TestDatastore(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Datastore test suite")
+
+}
+
 var (
 	ctx aetest.Context
 	db  *datastore.Datastore
 )
-
-type Entity struct {
-	Field string
-}
-
-func TestDatastore(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Datastore test suite")
-}
 
 // Setup appengine context and datastore before tests
 var _ = BeforeSuite(func() {
@@ -104,6 +101,10 @@ var _ = Describe("EncodeId", func() {
 	})
 })
 
+type Entity struct {
+	Field string
+}
+
 var _ = Describe("Datastore.Get", func() {
 	entity := &Entity{"test-get-field"}
 	kind := "test-get"
@@ -155,7 +156,7 @@ var _ = Describe("Datastore.Get", func() {
 var _ = Describe("Put", func() {
 	kind := "test-put"
 
-	Context("With the wrapper's get", func() {
+	Context("With Datastore.Get", func() {
 		It("should store entity successfully", func() {
 			a := &Entity{"test-wrapper-put"}
 			b := &Entity{}
@@ -205,6 +206,37 @@ var _ = Describe("Put", func() {
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(a).To(Equal(b))
+		})
+	})
+})
+
+var _ = Describe("Datastore.GetKey", func() {
+	kind := "entity"
+	Context("With Datastore.PutKey", func() {
+		It("should be the same", func() {
+			key := "test-datastore-getkey_"
+			a := &Entity{"test-datastore-getkey"}
+			_, err := db.PutKey(kind, key, a)
+			Expect(err).ToNot(HaveOccurred())
+
+			b := &Entity{}
+			err = db.GetKey(kind, key, b)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(b).To(Equal(a))
+		})
+	})
+
+	Context("With appengine's datastore.Put", func() {
+		It("should be the same", func() {
+			a := &Entity{"test-appengine-put"}
+			key := gaed.NewKey(ctx, kind, "test-key", 0, nil)
+			_, err := gaed.Put(ctx, key, a)
+			Expect(err).ToNot(HaveOccurred())
+
+			b := &Entity{}
+			err = db.GetKey(kind, "test-key", b)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(b).To(Equal(a))
 		})
 	})
 })
