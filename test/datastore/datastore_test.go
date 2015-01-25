@@ -211,7 +211,7 @@ var _ = Describe("Put", func() {
 })
 
 var _ = Describe("Datastore.GetKey", func() {
-	kind := "entity"
+	kind := "datastore-getkey-test"
 	Context("With Datastore.PutKey", func() {
 		It("should be the same", func() {
 			key := "test-datastore-getkey_"
@@ -235,6 +235,38 @@ var _ = Describe("Datastore.GetKey", func() {
 
 			b := &Entity{}
 			err = db.GetKey(kind, "test-key", b)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(b).To(Equal(a))
+		})
+	})
+})
+
+var _ = Describe("Datastore.PutKey", func() {
+	kind := "datastore-putkey-test"
+	Context("With Datastore.GetKey", func() {
+		It("should be the same", func() {
+			a := &Entity{"test-datastore"}
+			key := "test-datastore-putkey-getkey"
+			_, err := db.PutKey(kind, key, a)
+			Expect(err).ToNot(HaveOccurred())
+
+			b := &Entity{}
+			err = db.GetKey(kind, key, b)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(b).To(Equal(a))
+		})
+	})
+
+	Context("With appengine's datastore.Get", func() {
+		It("should be the same", func() {
+			a := &Entity{"test-datastore"}
+			key := "test-datastore-putkey-getkey"
+			_, err := db.PutKey(kind, key, a)
+			Expect(err).ToNot(HaveOccurred())
+
+			b := &Entity{}
+			aKey := gaed.NewKey(ctx, kind, key, 0, nil)
+			err = gaed.Get(ctx, aKey, b)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(b).To(Equal(a))
 		})
