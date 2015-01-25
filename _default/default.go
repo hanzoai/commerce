@@ -49,6 +49,13 @@ func Init() {
 		c.String(200, "Running job...")
 	})
 
+	router.GET("/jobs/", func(c *gin.Context) {
+		ctx := appengine.NewContext(c.Request)
+		salesforce.CallPullUpdatedTask(ctx)
+
+		c.String(200, "Running job...")
+	})
+
 	if config.IsProduction {
 		return
 	}
