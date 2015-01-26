@@ -370,4 +370,81 @@ var _ = Describe("Datastore.PutMulti", func() {
 			Expect(c).To(HaveLen(len(a)))
 		})
 	})
+
+	Context("With appengine's datastore.GetMulti", func() {
+		It("should be the same", func() {
+			a := make([]Entity, 10)
+			b := make([]interface{}, len(a))
+			for i, _ := range a {
+				entity := Entity{str(i)}
+				a[i] = entity
+				b[i] = &entity
+			}
+			keys := func() []*gaed.Key {
+				keys, err := db.PutMulti(kind, b)
+				Expect(err).ToNot(HaveOccurred())
+
+				_keys := make([]*gaed.Key, len(keys))
+				for i, key := range keys {
+					_keys[i], err = gaed.DecodeKey(key)
+					Expect(err).ToNot(HaveOccurred())
+				}
+				return _keys
+			}()
+
+			c := make([]Entity, len(a))
+			err := gaed.GetMulti(ctx, keys, c)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(c).To(Equal(a))
+			Expect(c).To(HaveLen(len(a)))
+		})
+	})
+})
+
+var _ = Describe("Datastore.GetKeyMulti", func() {
+	kind := "datastore-GetMultiKey-test"
+
+	Context("With Datastore.PutKey", func() {
+		It("should be the same", func() {
+			a := make([]Entity, 10)
+			keys := make([]string, len(a))
+			for i, _ := range a {
+				a[i].Field = str(i)
+				keys[i] = a[i].Field
+				_, err := db.PutKey(kind, a[i].Field, &a[i])
+				Expect(err).ToNot(HaveOccurred())
+			}
+
+			b := make([]Entity, len(a))
+			err := db.GetKeyMulti(kind, keys, b)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(b).To(Equal(a))
+		})
+	})
+
+	Context("With appengine's datastore.PutMulti", func() {
+		It("should be the same", func() {
+			a := make([]Entity, 10)
+			keys := func() []string {
+				for i, _ := range a {
+					entity := Entity{str(i)}
+					a[i] = entity
+				}
+				_keys := make([]string, len(a))
+				keys := make([]*gaed.Key, len(a))
+				for i := 30; i < 30+len(a); i++ {
+					keys[i-30] = gaed.NewKey(ctx, kind, str(i), 0, nil)
+					_keys[i-30] = str(i)
+				}
+				_, err := gaed.PutMulti(ctx, keys, a)
+				Expect(err).ToNot(HaveOccurred())
+				return _keys
+			}()
+
+			c := make([]Entity, len(a))
+			err := db.GetKeyMulti(kind, keys, c)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(c).To(Equal(a))
+		})
+	})
 })
