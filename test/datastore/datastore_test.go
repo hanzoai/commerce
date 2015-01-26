@@ -2,6 +2,7 @@ package test
 
 import (
 	"errors"
+	"strconv"
 	"testing"
 
 	gaed "appengine/datastore"
@@ -103,6 +104,10 @@ var _ = Describe("EncodeId", func() {
 
 type Entity struct {
 	Field string
+}
+
+func str(i int) string {
+	return strconv.Itoa(i)
 }
 
 var _ = Describe("Datastore.Get", func() {
@@ -269,6 +274,57 @@ var _ = Describe("Datastore.PutKey", func() {
 			err = gaed.Get(ctx, aKey, b)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(b).To(Equal(a))
+		})
+	})
+})
+
+var _ = Describe("Datastore.GetMulti", func() {
+	kind := "datastore-putkey-test"
+	Context("With Datastore.PutMulti", func() {
+		It("should be the same", func() {
+			a := make([]Entity, 10)
+			b := make([]interface{}, len(a))
+			for i, _ := range a {
+				entity := Entity{str(i)}
+				a[i] = entity
+				b[i] = &entity
+			}
+			keys, err := db.PutMulti(kind, b)
+			Expect(err).ToNot(HaveOccurred())
+
+			c := make([]Entity, len(a))
+			err = db.GetMulti(keys, c)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(c).To(Equal(a))
+			Expect(c).To(HaveLen(len(a)))
+		})
+	})
+
+	Context("With appengine's datastore.PutMulti", func() {
+		It("should be the same", func() {
+			a := make([]Entity, 10)
+			keys := func() []string {
+				keys := make([]*gaed.Key, len(a))
+				for i, _ := range keys {
+					a[i].Field = str(i)
+					aKey := gaed.NewKey(ctx, kind, str(i), 0, nil)
+					keys[i] = aKey
+				}
+				_, err := gaed.PutMulti(ctx, keys, a)
+				Expect(err).ToNot(HaveOccurred())
+
+				strKeys := make([]string, len(keys))
+				for i, key := range keys {
+					strKeys[i] = key.Encode()
+				}
+				return strKeys
+			}()
+
+			b := make([]Entity, 10)
+			err := db.GetMulti(keys, b)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(b).To(Equal(a))
+			Expect(b).To(HaveLen(len(a)))
 		})
 	})
 })
