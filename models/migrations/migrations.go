@@ -41,4 +41,5 @@ func init() {
 
 	// Create a Entity set of all broken orders
 	addMigration("list-broken-orders", listBrokenOrders)
+	addMigration("fix-email", fixEmail)
 }
