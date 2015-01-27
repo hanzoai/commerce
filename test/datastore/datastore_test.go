@@ -448,3 +448,28 @@ var _ = Describe("Datastore.GetKeyMulti", func() {
 		})
 	})
 })
+
+var _ = Describe("Datastore.PutKeyMulti", func() {
+	kind := "datastore-PutKeyMulti-test"
+	Context("With Datastore.GetKeyMulti", func() {
+		It("should be the same", func() {
+			a := make([]Entity, 3)
+			b := make([]interface{}, len(a))
+			keys := make([]string, len(a))
+			_keys := make([]interface{}, len(a))
+			for i, _ := range a {
+				a[i].Field = str(i)
+				b[i] = &a[i]
+				keys[i] = a[i].Field
+				_keys[i] = keys[i]
+			}
+			_, err := db.PutKeyMulti(kind, _keys, b)
+			Expect(err).ToNot(HaveOccurred())
+
+			c := make([]Entity, len(keys))
+			err = db.GetKeyMulti(kind, keys, c)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(c).To(Equal(a))
+		})
+	})
+})
