@@ -1,6 +1,8 @@
 package user
 
 import (
+	"time"
+
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/auth"
@@ -131,6 +133,7 @@ func SaveProfile(c *gin.Context) {
 
 	// Update user
 	q := queries.New(c)
+	user.LastUpdated = time.Now()
 	if err = q.UpsertUser(user); err != nil {
 		log.Panic("Failed to save user: %v", err)
 	}
