@@ -123,11 +123,9 @@ func (d *Datastore) GetMulti(keys []string, vals interface{}) error {
 
 func (d *Datastore) GetKeyMulti(kind string, keys []string, vals interface{}) error {
 	_keys := make([]*Key, len(keys))
-
 	for i, key := range keys {
 		_keys[i] = NewKey(d.Context, kind, key, 0, nil)
 	}
-
 	return nds.GetMulti(d.Context, _keys, vals)
 }
 
