@@ -2,7 +2,6 @@ package auth
 
 import (
 	"errors"
-	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -37,8 +36,6 @@ func GetUser(c *gin.Context) (*models.User, error) {
 // Checks if the Email and Id are unique, and calculates a hash for the password
 func NewUser(c *gin.Context, f *RegistrationForm) error {
 	m := f.User
-	m.LastUpdated = time.Now()
-	m.CreatedAt = m.LastUpdated
 	db := datastore.New(c)
 	q := queries.New(c)
 
