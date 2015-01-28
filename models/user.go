@@ -28,6 +28,7 @@ type User struct {
 		Account    stripe.Account
 	}
 	LastUpdated time.Time
+	CreatedAt   time.Time
 	//Metadata		map[string]Metadata
 }
 
