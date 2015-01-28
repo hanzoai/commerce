@@ -38,6 +38,7 @@ func GetUser(c *gin.Context) (*models.User, error) {
 func NewUser(c *gin.Context, f *RegistrationForm) error {
 	m := f.User
 	m.LastUpdated = time.Now()
+	m.CreatedAt = m.LastUpdated
 	db := datastore.New(c)
 	q := queries.New(c)
 
