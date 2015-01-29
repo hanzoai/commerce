@@ -194,7 +194,6 @@ func (a *Api) Push(object interface{}) error {
 
 	switch v := object.(type) {
 	case *models.User:
-		log.Info("Upserting User", c)
 		if v.Id == "" {
 			return errors.New("Id is required for Upsert")
 		}
@@ -205,7 +204,6 @@ func (a *Api) Push(object interface{}) error {
 			return err
 		}
 
-		log.Debug("Converting to Account: %v", account, c)
 		accountJSON := string(accountBytes[:])
 		path := fmt.Sprintf(AccountExternalIdPath, strings.Replace(v.Id, ".", "_", -1))
 
@@ -217,7 +215,6 @@ func (a *Api) Push(object interface{}) error {
 		contact := Contact{}
 		contact.FromUser(v)
 
-		log.Debug("Converting to Contact: %v", contact, c)
 		contactBytes, err := json.Marshal(&contact)
 		if err != nil {
 			return err
