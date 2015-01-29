@@ -62,7 +62,7 @@ func Init() {
 
 	router.GET("/jobs/import-users-to-salesforce", func(c *gin.Context) {
 		ctx := appengine.NewContext(c.Request)
-		salesforce.CallImportUsersTask(ctx)
+		salesforce.ImportUsers(ctx)
 
 		c.String(200, "Running job...")
 	})
