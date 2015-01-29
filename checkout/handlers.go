@@ -207,13 +207,17 @@ func charge(c *gin.Context) {
 	key, _ := db.DecodeKey(encodedKey)
 	orderId := key.IntID()
 
+	// Set the id as we use it to update salesforce
+	form.Order.Id = key.Encode()
+
 	// Synchronize Salesforce
 	salesforceTokens := getSalesforceTokens(c, db).(models.SalesforceTokens)
 
 	if salesforceTokens.AccessToken != "" {
 		// Launch a synchronization task
 		campaign := getCampaign(c, db)
-		salesforce.CallUpsertTask(ctx, &campaign, user)
+		salesforce.CallUpsertUserTask(ctx, &campaign, user)
+		salesforce.CallUpsertOrderTask(ctx, &campaign, &form.Order)
 	}
 
 	// Generate invite for preorder site.
