@@ -2,6 +2,7 @@ package log
 
 import (
 	"log"
+	"net/http"
 	"strings"
 
 	"appengine"
@@ -35,9 +36,11 @@ func (l *Logger) setContext(args ...interface{}) []interface{} {
 		appengineContext := ctx.MustGet("appengine").(appengine.Context)
 		l.appengineBackend.context = appengineContext
 		l.appengineBackend.requestURI = ctx.Request.RequestURI
+		l.appengineBackend.detectVerbose()
 		args = args[:len(args)-1]
 	case appengine.Context:
 		l.appengineBackend.context = ctx
+		l.appengineBackend.detectVerbose()
 		args = args[:len(args)-1]
 	default:
 		l.appengineBackend.context = nil
@@ -56,55 +59,94 @@ func (l *Logger) setContext(args ...interface{}) []interface{} {
 // Custom logger backend that knows about AppEngine
 type AppengineBackend struct {
 	context    appengine.Context
-	requestURI string
 	error      error
+	requestURI string
+	verbose    bool
 }
 
-func logToSentry(ctx appengine.Context, formatted, requestURI string, err error) {
-	// Log to sentry asynchronously
-	if config.SentryDSN != "" {
-		if err != nil {
-			exc := sentry.NewException(err)
-			sentry.CaptureException.Call(ctx, requestURI, exc)
-		} else {
-			exc := sentry.NewExceptionFromStack(formatted)
-			sentry.CaptureException.Call(ctx, requestURI, exc)
-		}
+// Try and detect verbose flag set on request, we only log DEBUG level in
+// production if verbose=1 is added as a query param.
+func (b AppengineBackend) detectVerbose() {
+	if b.context == nil {
+		return
 	}
+
+	// Check query for v=1 param
+	url := b.context.Request().(http.Request).URL
+	if strings.Contains(url.RawQuery, "v=1") {
+		b.verbose = true
+	}
+	return
 }
 
-func (b AppengineBackend) Log(level logging.Level, calldepth int, record *logging.Record) error {
-	formatted := record.Formatted(calldepth + 2)
+func (b AppengineBackend) Verbose() bool {
+	return appengine.IsDevAppServer() || b.verbose
+}
 
-	if b.context != nil {
-		switch level {
-		case logging.WARNING:
-			b.context.Warningf(formatted)
-		case logging.ERROR:
-			b.context.Errorf(formatted)
-			// TODO: Clean up code base to make this feasible
-			// logToSentry(b.context, formatted, b.requestURI, b.error)
-		case logging.CRITICAL:
-			b.context.Criticalf(formatted)
-			logToSentry(b.context, formatted, b.requestURI, b.error)
-		case logging.INFO:
-			b.context.Infof(formatted)
-		default:
+// Log implementation for local dev server only.
+func (b AppengineBackend) logToDevServer(level logging.Level, formatted string) error {
+	if level == logging.INFO {
+		// Hack to make INFO level less verbose
+		parts := strings.Split(formatted, " ")
+		parts = append([]string{"INFO"}, parts[3:]...)
+		formatted = strings.Join(parts, " ")
+	}
+
+	log.Println(formatted)
+
+	return nil
+}
+
+// Log implementation that uses App Engine's logging methods
+func (b AppengineBackend) logToAppEngine(level logging.Level, formatted string) error {
+	switch level {
+	case logging.WARNING:
+		b.context.Warningf(formatted)
+	case logging.ERROR:
+		b.context.Errorf(formatted)
+		// TODO: Clean up code base to make this feasible
+		// b.logToSentry(level, formatted)
+	case logging.CRITICAL:
+		b.context.Criticalf(formatted)
+		// b.logToSentry(level, formatted)
+	case logging.INFO:
+		b.context.Infof(formatted)
+	default:
+		if b.Verbose() {
 			b.context.Debugf(formatted)
 		}
-	} else {
-		// Hack to make INFO level less verbose
-		if level == logging.INFO {
-			parts := strings.Split(formatted, " ")
-			parts = append([]string{"INFO"}, parts[3:]...)
-			formatted = strings.Join(parts, " ")
-		}
-		log.Println(formatted)
 	}
 
 	return nil
 }
 
+func (b AppengineBackend) logToSentry(level logging.Level, formatted string) {
+	// Log to sentry asynchronously
+	if config.SentryDSN != "" {
+		if b.error != nil {
+			exc := sentry.NewException(b.error)
+			sentry.CaptureException.Call(b.context, b.requestURI, exc)
+		} else {
+			exc := sentry.NewExceptionFromStack(formatted)
+			sentry.CaptureException.Call(b.context, b.requestURI, exc)
+		}
+	}
+}
+
+// Log method that customizes logging behavior for AppEngine dev server / production
+func (b AppengineBackend) Log(level logging.Level, calldepth int, record *logging.Record) error {
+	// Create formatted log output
+	formatted := record.Formatted(calldepth + 2)
+
+	// Log using App Engine backend if we have a context, otherwise dev server
+	if b.context != nil {
+		return b.logToAppEngine(level, formatted)
+	} else {
+		return b.logToDevServer(level, formatted)
+	}
+}
+
+// Create a new App Engine-aware logger
 func New() *Logger {
 	log := new(Logger)
 
@@ -116,8 +158,8 @@ func New() *Logger {
 	plainFormatter := logging.MustStringFormatter("%{shortfile} %{longfunc} %{message}")
 	colorFormatter := logging.MustStringFormatter("%{color}%{level:.5s} %{shortfile} %{longfunc} %{color:reset}%{message}")
 
+	// Use plain formatter for production logging, color for dev server
 	defaultBackend := logging.NewBackendFormatter(backend, plainFormatter)
-
 	if appengine.IsDevAppServer() {
 		defaultBackend = logging.NewBackendFormatter(backend, colorFormatter)
 	}
