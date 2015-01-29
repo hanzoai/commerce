@@ -46,7 +46,7 @@ func (a *Api) request(method, path, data string, headers *map[string]string, ret
 	client := getClient(c)
 	url := a.Campaign.Salesforce.InstanceUrl + path
 
-	log.Info("Creating a Request to %v to %v", method, url, c)
+	log.Debug("Creating a Request to %v to %v", method, url, c)
 	req, err := http.NewRequest(method, url, strings.NewReader(data))
 	if err != nil {
 		log.Error("Could not create Request: %v", err)
@@ -58,12 +58,12 @@ func (a *Api) request(method, path, data string, headers *map[string]string, ret
 		for key, value := range *headers {
 			req.Header.Set(key, value)
 		}
-		log.Info("Setting Headers %v", req.Header, c)
+		log.Debug("Setting Headers %v", req.Header, c)
 	}
 
 	a.lastRequest = req
 
-	log.Info("Sending Request", c)
+	log.Debug("Sending Request", c)
 
 	res, err := client.Do(req)
 	if err != nil {
@@ -72,11 +72,11 @@ func (a *Api) request(method, path, data string, headers *map[string]string, ret
 	}
 	defer res.Body.Close()
 
-	log.Info("Decoding Response", c)
+	log.Debug("Decoding Response", c)
 
 	a.lastResponse = res
 
-	log.Info("Decoding Body", c)
+	log.Debug("Decoding Body", c)
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		log.Error("Could not read Response Body: %v", err, c)
@@ -93,16 +93,16 @@ func (a *Api) request(method, path, data string, headers *map[string]string, ret
 
 	responses := make([]SalesforceError, 1)
 
-	log.Info("Try Decoding any Errors in the Response", c)
+	log.Debug("Try Decoding any Errors in the Response", c)
 	if err = json.Unmarshal(body, &responses); err != nil {
-		log.Info("No Errors in the Response", c)
+		log.Debug("No Errors in the Response", c)
 		return nil
 	}
 
 	if retry {
-		log.Info("Encountered Error '%v: %v'", responses[0].ErrorCode, responses[0].Message, c)
+		log.Debug("Encountered Error '%v: %v'", responses[0].ErrorCode, responses[0].Message, c)
 		if responses[0].ErrorCode == "INVALID_SESSION_ID" {
-			log.Info("Refreshing Token", c)
+			log.Debug("Refreshing Token", c)
 			if err := a.Refresh(); err != nil {
 				return errors.New(fmt.Sprintf("%v: %v", responses[0].ErrorCode, responses[0].Message))
 			}
@@ -133,7 +133,7 @@ func (a *Api) Refresh() error {
 	data.Set("client_secret", config.Salesforce.ConsumerSecret)
 	data.Set("refresh_token", a.Campaign.Salesforce.RefreshToken)
 
-	log.Info("Posting to the Refresh API", c)
+	log.Debug("Posting to the Refresh API", c)
 	tokenReq, err := http.NewRequest("POST", LoginUrl, strings.NewReader(data.Encode()))
 	if err != nil {
 		log.Error("Could not create request: %v", err, c)
@@ -157,7 +157,7 @@ func (a *Api) Refresh() error {
 
 	response := new(SalesforceTokenResponse)
 
-	log.Info("Trying to unmarshal Body: %s", jsonBlob)
+	log.Debug("Trying to unmarshal Body: %s", jsonBlob)
 	// try and extract the json struct
 	if err = json.Unmarshal(jsonBlob, response); err != nil {
 		log.Error("Could not unmarshal: %v", err, c)
@@ -176,7 +176,7 @@ func (a *Api) Refresh() error {
 	a.Campaign.Salesforce.IssuedAt = response.IssuedAt
 	a.Campaign.Salesforce.Signature = response.Signature
 
-	log.Info("Updating Campaign", c)
+	log.Debug("Updating Campaign", c)
 	if a.Update {
 		db := datastore.New(c)
 		db.PutKey("campaign", a.Campaign.Id, a.Campaign)
@@ -207,7 +207,7 @@ func (a *Api) Push(object interface{}) error {
 		accountJSON := string(accountBytes[:])
 		path := fmt.Sprintf(AccountExternalIdPath, strings.Replace(v.Id, ".", "_", -1))
 
-		log.Info("Upserting Account: %v", account, c)
+		log.Debug("Upserting Account: %v", account, c)
 		if err = a.request("PATCH", path, accountJSON, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
 			return err
 		}
@@ -223,13 +223,13 @@ func (a *Api) Push(object interface{}) error {
 		contactJSON := string(contactBytes[:])
 		path = fmt.Sprintf(ContactExternalIdPath, strings.Replace(v.Id, ".", "_", -1))
 
-		log.Info("Upserting Contact: %v", contact, c)
+		log.Debug("Upserting Contact: %v", contact, c)
 		if err = a.request("PATCH", path, contactJSON, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
 			return err
 		}
 
 	case *models.Order:
-		log.Info("Upserting Order", c)
+		log.Debug("Upserting Order", c)
 		if v.Id == "" {
 			return errors.New("Id is required for Upsert")
 		}
@@ -246,7 +246,7 @@ func (a *Api) Push(object interface{}) error {
 		orderJSON := string(orderBytes[:])
 		path := fmt.Sprintf(OrderExternalIdPath, strings.Replace(v.Id, ".", "_", -1))
 
-		log.Info("Upserting Order: %v", order, c)
+		log.Debug("Upserting Order: %v", order, c)
 		if err = a.request("PATCH", path, orderJSON, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
 			return err
 		}
@@ -257,7 +257,7 @@ func (a *Api) Push(object interface{}) error {
 
 	if len(a.LastBody) == 0 {
 		if a.LastStatusCode == 201 || a.LastStatusCode == 204 {
-			log.Info("Upsert returned %v", a.LastStatusCode, c)
+			log.Debug("Upsert returned %v", a.LastStatusCode, c)
 			return nil
 		} else {
 			return errors.New(fmt.Sprintf("Request returned unexpected status code %v", a.LastStatusCode))
@@ -288,7 +288,7 @@ func (a *Api) Pull(id string, object interface{}) error {
 
 	switch v := object.(type) {
 	case *models.User:
-		log.Info("Getting User", c)
+		log.Debug("Getting User", c)
 		if id == "" {
 			return errors.New("Id is required for Get")
 		}
@@ -321,7 +321,7 @@ func (a *Api) Pull(id string, object interface{}) error {
 
 		log.Debug("Getting Contact: %v", contact, c)
 
-		log.Info("Converting to User", c)
+		log.Debug("Converting to User", c)
 		contact.ToUser(v)
 	default:
 		return errors.New("Invalid Type")
@@ -335,7 +335,7 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
 
 	switch v := objects.(type) {
 	case *[]*models.User:
-		log.Info("Getting Updated Users", c)
+		log.Debug("Getting Updated Users", c)
 		path := fmt.Sprintf(ContactsUpdatedPath, start.Format(time.RFC3339), end.Format(time.RFC3339))
 
 		if err := a.request("GET", path, "", nil, true); err != nil {
@@ -351,7 +351,7 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
 		users := make([]*models.User, 0)
 
 		for _, id := range response.Ids {
-			log.Info("Getting Contact for ")
+			log.Debug("Getting Contact for ")
 			path := fmt.Sprintf(ContactPath, id)
 			if err := a.request("GET", path, "", nil, true); err != nil {
 				log.Warn("Failed to Get Contact for %v", id, c)
@@ -379,18 +379,18 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
 			log.Debug("Getting Contact: %v", contact, c)
 			log.Debug("Getting Account: %v", account, c)
 
-			log.Info("Converting to User", c)
+			log.Debug("Converting to User", c)
 
 			user := new(models.User)
 			contact.ToUser(user)
 			account.ToUser(user)
 
-			log.Info("User %v", user, contact, c)
+			log.Debug("User %v", user, contact, c)
 
 			users = append(users, user)
 		}
 
-		log.Info("Pulled %v Users", len(users))
+		log.Debug("Pulled %v Users", len(users))
 		*v = users
 
 	default:
