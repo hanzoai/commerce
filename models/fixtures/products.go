@@ -414,7 +414,8 @@ var products = delay.Func("install-products", func(c appengine.Context) {
 				Y:   1000,
 			},
 		},
-		//SoldOut: true,
+		Disabled: true,
+		SoldOut:  true,
 		Configs: []Config{
 			Config{
 				Product:  "ar-1",
@@ -428,6 +429,43 @@ var products = delay.Func("install-products", func(c appengine.Context) {
 			Config{
 				Product:  "dogtag-winter2014promo",
 				Variant:  "DOGTAG-WINTER2014PROMO",
+				Quantity: 1,
+			},
+		},
+	})
+
+	// Product Listings
+
+	db.PutKey("listing", "ar-1", &Listing{
+		SKU:   "ar-1",
+		Title: "SKULLY AR-1",
+		Description: `The world’s smartest motorcycle helmet. SKULLY AR-1 is a light, high-quality,
+					  and full-faced motorcycle helmet equipped with a wide-angle rearview camera and
+					  transparent heads up display (HUD). With its live rearview feed and ability to
+					  provide telemetry and rider data such as speed, GPS directions, fuel, and
+					  more, the SKULLY AR-1 not only eliminates blind spots, but allows the rider to
+					  focus on what matters most: the road ahead. SKULLY AR-1: Ride safer, look
+					  badass.
+
+					  Estimated Delivery: JULY 2015`,
+		Images: []Image{
+			Image{
+				Alt: "blackhelmet_store_1000px.jpg",
+				Url: config.UrlFor("/img/products/blackhelmet_store_1000px.jpg"),
+				X:   1000,
+				Y:   1000,
+			},
+			Image{
+				Alt: "whitehelmet_store_1000px.jpg",
+				Url: config.UrlFor("/img/products/whitehelmet_store_1000px.jpg"),
+				X:   1000,
+				Y:   1000,
+			},
+		},
+		SoldOut: true,
+		Configs: []Config{
+			Config{
+				Product:  "ar-1",
 				Quantity: 1,
 			},
 		},
