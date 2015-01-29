@@ -10,20 +10,28 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/qedus/nds"
 
+	"crowdstart.io/config"
 	"crowdstart.io/util/log"
 )
 
 type Datastore struct {
 	Context appengine.Context
+	Warn    bool
+}
+
+func (d *Datastore) warn(fmtOrError interface{}, args ...interface{}) {
+	if d.Warn {
+		log.Warn(fmtOrError, args...)
+	}
 }
 
 func New(ctx interface{}) (d *Datastore) {
 	switch ctx := ctx.(type) {
 	case appengine.Context:
-		d = &Datastore{ctx}
+		d = &Datastore{ctx, config.DatastoreWarn}
 	case *gin.Context:
 		c := ctx.MustGet("appengine").(appengine.Context)
-		d = &Datastore{c}
+		d = &Datastore{c, config.DatastoreWarn}
 	}
 	return d
 }
@@ -34,7 +42,7 @@ func (d *Datastore) EncodeId(kind string, id interface{}) string {
 	case string:
 		maybeId, err := strconv.ParseInt(v, 10, 64)
 		if err != nil {
-			log.Warn("EncodeId was passed an string that could not be parsed to int64 %v", v)
+			d.warn("EncodeId was passed an string that could not be parsed to int64 %v", v)
 			return ""
 		}
 		_id = maybeId
@@ -43,7 +51,7 @@ func (d *Datastore) EncodeId(kind string, id interface{}) string {
 	case int:
 		_id = int64(v)
 	default:
-		log.Warn("EncodeId was passed an invalid type %v", v)
+		d.warn("EncodeId was passed an invalid type %v", v)
 		return ""
 	}
 
@@ -53,7 +61,7 @@ func (d *Datastore) EncodeId(kind string, id interface{}) string {
 func (d *Datastore) DecodeKey(encodedKey string) (*Key, error) {
 	key, err := DecodeKey(encodedKey)
 	if err != nil {
-		log.Warn("Unable to decode key: %v", encodedKey)
+		d.warn("Unable to decode key: %v", encodedKey)
 	}
 	return key, err
 }
@@ -68,12 +76,14 @@ func (d *Datastore) Get(key string, value interface{}) error {
 
 	// Try to retrieve entity using nds, which transparently uses memcache if possible
 	err = nds.Get(d.Context, k, value)
-	if _, ok := err.(*ErrFieldMismatch); ok {
-		// Ignore any field mismatch errors.
-		log.Warn("Field mismatch when getting %v: %v", key, err, d.Context)
-		err = nil
-	} else {
-		log.Warn("Failed to get %v: %v", key, err, d.Context)
+	if err != nil {
+		if _, ok := err.(*ErrFieldMismatch); ok {
+			// Ignore any field mismatch errors.
+			d.warn("Field mismatch when getting %v: %v", key, err, d.Context)
+			err = nil
+		} else {
+			d.warn("Failed to get %v: %v", key, err, d.Context)
+		}
 	}
 	return err
 }
@@ -87,10 +97,10 @@ func (d *Datastore) GetKey(kind, key string, value interface{}) error {
 	if err := nds.Get(d.Context, k, value); err != nil {
 		if _, ok := err.(*ErrFieldMismatch); ok {
 			// Ignore any field mismatch errors.
-			log.Warn("Field mismatch when getting kind %v, key %v: %v", kind, key, err, d.Context)
+			d.warn("Field mismatch when getting kind %v, key %v: %v", kind, key, err, d.Context)
 			err = nil
 		} else {
-			log.Warn("Failed to get kind %v, key %v: %v", kind, key, err, d.Context)
+			d.warn("Failed to get kind %v, key %v: %v", kind, key, err, d.Context)
 			return err
 		}
 	}
@@ -126,7 +136,7 @@ func (d *Datastore) Put(kind string, src interface{}) (string, error) {
 	k := NewIncompleteKey(d.Context, kind, nil)
 	k, err := nds.Put(d.Context, k, src)
 	if err != nil {
-		log.Warn("%v", err, d.Context)
+		d.warn("%v", err, d.Context)
 		return "", err
 	}
 	return k.Encode(), nil
@@ -149,7 +159,7 @@ func (d *Datastore) PutKey(kind string, key interface{}, src interface{}) (strin
 
 	k, err := nds.Put(d.Context, k, src)
 	if err != nil {
-		log.Warn("%v, %v, %v, %#v", err, kind, k, src, d.Context)
+		d.warn("%v, %v, %v, %#v", err, kind, k, src, d.Context)
 		return "", err
 	}
 	return k.Encode(), nil
@@ -166,7 +176,7 @@ func (d *Datastore) PutMulti(kind string, srcs []interface{}) (keys []string, er
 
 	_keys, err = nds.PutMulti(d.Context, _keys, srcs)
 	if err != nil {
-		log.Warn("%v", err, d.Context)
+		d.warn("%v", err, d.Context)
 		return keys, err
 	}
 
@@ -199,7 +209,7 @@ func (d *Datastore) PutKeyMulti(kind string, keys []interface{}, srcs []interfac
 
 	_keys, err := nds.PutMulti(d.Context, _keys, srcs)
 	if err != nil {
-		log.Warn("%v", err, d.Context)
+		d.warn("%v", err, d.Context)
 		return _keys, err
 	}
 
@@ -211,7 +221,7 @@ func (d *Datastore) PutKeyMulti(kind string, keys []interface{}, srcs []interfac
 }
 
 func (d *Datastore) Update(key string, src interface{}) (string, error) {
-	log.Warn("DEPRECATED. DOES NOTHING PUT DOES NOT.", d.Context)
+	d.warn("DEPRECATED. DOES NOTHING PUT DOES NOT.", d.Context)
 
 	k, err := d.DecodeKey(key)
 	if err != nil {
@@ -220,7 +230,7 @@ func (d *Datastore) Update(key string, src interface{}) (string, error) {
 
 	k, err = nds.Put(d.Context, k, src)
 	if err != nil {
-		log.Warn("%v", err, d.Context)
+		d.warn("%v", err, d.Context)
 		return "", err
 	}
 	return k.Encode(), nil
@@ -240,7 +250,7 @@ func (d *Datastore) DeleteMulti(keys []string) error {
 		k, err := d.DecodeKey(key)
 		_keys = append(_keys, k)
 		if err != nil {
-			log.Warn("%v", err, d.Context)
+			d.warn("%v", err, d.Context)
 			return err
 		}
 	}

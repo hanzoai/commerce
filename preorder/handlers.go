@@ -226,7 +226,8 @@ func SavePreorder(c *gin.Context) {
 
 	log.Debug("Synchronize with salesforce if '%v' != ''", campaign.Salesforce.AccessToken)
 	if campaign.Salesforce.AccessToken != "" {
-		salesforce.CallUpsertTask(db.Context, &campaign, user)
+		salesforce.CallUpsertUserTask(db.Context, &campaign, user)
+		salesforce.CallUpsertOrderTask(db.Context, &campaign, &order)
 	}
 
 	mandrill.SendTransactional.Call(ctx, "email/preorder-updated.html",
