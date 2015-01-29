@@ -181,13 +181,13 @@ type Account struct {
 
 func (a *Account) FromUser(u *models.User) {
 	a.Name = u.Name()
-	a.BillingStreet = u.BillingAddress.Line1 + "/" + u.BillingAddress.Line2
+	a.BillingStreet = u.BillingAddress.Line1 + "\n" + u.BillingAddress.Line2
 	a.BillingCity = u.BillingAddress.City
 	a.BillingState = u.BillingAddress.State
 	a.BillingPostalCode = u.BillingAddress.PostalCode
 	a.BillingCountry = u.BillingAddress.Country
 
-	a.ShippingStreet = u.ShippingAddress.Line1 + "/" + u.ShippingAddress.Line2
+	a.ShippingStreet = u.ShippingAddress.Line1 + "\n" + u.ShippingAddress.Line2
 	a.ShippingCity = u.ShippingAddress.City
 	a.ShippingState = u.ShippingAddress.State
 	a.ShippingPostalCode = u.ShippingAddress.PostalCode
@@ -199,7 +199,7 @@ func (a *Account) ToUser(u *models.User) {
 
 	lines := strings.Split(a.ShippingStreet, "\n")
 
-	// Split Street line / to recover our data
+	// Split Street line \n to recover our data
 	u.ShippingAddress.Line1 = lines[0]
 	if len(lines) > 1 {
 		u.ShippingAddress.Line2 = strings.Join(lines[1:], "\n")
@@ -212,7 +212,7 @@ func (a *Account) ToUser(u *models.User) {
 
 	lines = strings.Split(a.BillingStreet, "\n")
 
-	// Split Street line / to recover our data
+	// Split Street line \n to recover our data
 	u.BillingAddress.Line1 = lines[0]
 	if len(lines) > 1 {
 		u.BillingAddress.Line2 = strings.Join(lines[1:], "\n")
@@ -328,7 +328,7 @@ func (o *Order) ToOrder(order *models.Order) error {
 
 	order.CreatedAt = created
 
-	// Split Street line / to recover our data
+	// Split Street line \n to recover our data
 	order.ShippingAddress.Line1 = lines[0]
 	if len(lines) > 1 {
 		order.ShippingAddress.Line2 = strings.Join(lines[1:], "\n")
@@ -341,7 +341,7 @@ func (o *Order) ToOrder(order *models.Order) error {
 
 	lines = strings.Split(o.BillingStreet, "\n")
 
-	// Split Street line / to recover our data
+	// Split Street line \n to recover our data
 	order.BillingAddress.Line1 = lines[0]
 	if len(lines) > 1 {
 		order.BillingAddress.Line2 = strings.Join(lines[1:], "\n")
