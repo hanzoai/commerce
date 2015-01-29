@@ -17,3 +17,4 @@ config.json
 *.sql3
 *.csv
 *.pyc
+*.test

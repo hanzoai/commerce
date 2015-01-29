@@ -100,11 +100,10 @@ dev_appserver = $(sdk_path)/dev_appserver.py --skip_sdk_update_check \
 # find command differs between bsd/linux thus the two versions
 ifeq ($(os), linux)
 	packages	 = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' -printf '%h\n' | sort -u | sed -e 's/.\//crowdstart.io\//')
-	test_modules = $(shell find . -maxdepth 4 -mindepth 3 -name '*_test.go' -printf '%h\n' | sort -u | sed -e 's/.\//crowdstart.io\//')
 else
 	packages	 = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' -print0 | xargs -0 -n1 dirname | sort --unique | sed -e 's/.\//crowdstart.io\//')
-	test_modules = $(shell find . -maxdepth 4 -mindepth 2 -name '*_test.go' -print0 | xargs -0 -n1 dirname | sort --unique | sed -e 's/.\//crowdstart.io\//')
 	sdk_install_extra = && echo '\#!/usr/bin/env bash\ngoapp $$@' > $(sdk_path)/gopath/bin/go \
+						&& rm -rf $(sdk_path)/demos \
 						&& chmod +x $(sdk_path)/gopath/bin/go \
 						&& curl  $(mtime_file_watcher) > $(sdk_path)/google/appengine/tools/devappserver2/mtime_file_watcher.py \
 						&& curl  $(python_279_patch) | patch -p0 \
@@ -113,7 +112,7 @@ endif
 
 # set v=1 to enable verbose mode
 ifeq ($(v), 1)
-	verbose = -v
+	verbose = -v=true
 else
 	verbose =
 endif
@@ -194,10 +193,16 @@ tools:
 
 # TEST/ BENCH
 test:
-	goapp test -timeout 60s $(test_modules) $(verbose)
+	ginkgo -r=true -p=true -progress=true $(verbose) -skipMeasurements=true -skipPackage=integration
+
+test-integration:
+	ginkgo -r=true -p=true -progress=true $(verbose) -skipMeasurements=true -focus=integration
+
+test-watch:
+	ginkgo watch -r=true -p=true -progress=true $(verbose) -skipMeasurements=true -skipPackage=integration
 
 bench:
-	goapp test -timeout 60s $(test_modules) $(verbose) --bench=.
+	ginkgo -r=true -p=true -progress=true $(verbose) -skipPackage=integration
 
 # DEPLOY
 deploy: test
@@ -252,7 +257,9 @@ datastore-export:
 				  --result_db_filename /tmp/bulkloader-result-$$kind.db \
 				  --kind $$kind \
 				  --filename _export/$$kind.csv && \
-	rm -rf /tmp/bulkloader-$$kind.db /tmp/bulkloader-$$kind.log /tmp/bulkloader-result-$$kind.db
+	rm -rf /tmp/bulkloader-$$kind.db \
+		   /tmp/bulkloader-$$kind.log \
+		   /tmp/bulkloader-result-$$kind.db
 
 # IMPORT / Usage: make datastore-import kind=user file=user.csv
 datastore-import:
@@ -269,4 +276,12 @@ datastore-import:
 
 # Generate config for use with datastore-export target
 datastore-export-config:
-	bulkloader.py --create_config --url=$(datastore_admin_url) --filename=bulkloader.yaml
+	bulkloader.py --create_config \
+			      --url=$(datastore_admin_url) \
+				  --filename=bulkloader.yaml
+
+.PHONY: all bench build compile-js compile-js-min compile-css compile-css-min \
+	datastore-import datastore-export datastore-config deploy \
+	deploy-staging deploy-skully deploy-production deps deps-assets \
+	deps-go live-reload serve serve-clear-datastore serve-public test \
+	test-integration test-watch tools
