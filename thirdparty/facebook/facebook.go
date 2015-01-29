@@ -18,21 +18,19 @@ import (
 
 	"crowdstart.io/auth"
 	"crowdstart.io/config"
-	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models"
 	"crowdstart.io/util/log"
+	"crowdstart.io/util/queries"
 )
-
-// TODO Create a way to change state without invalidating previous CSRF tokens
-// Possibly TTL kv store?
 
 var appId = config.Facebook.AppId
 
 var appSecret = config.Facebook.AppSecret
 
 var _redirectUri string
-var redirectUri = func(c *gin.Context) string {
+
+func redirectUri(c *gin.Context) string {
 	if config.IsDevelopment && _redirectUri == "" {
 		client := urlfetch.Client(middleware.GetAppEngine(c))
 		req, _ := http.NewRequest("GET", "http://checkip.amazonaws.com", nil)
@@ -55,7 +53,9 @@ var app *fb.App
 func newSession(c *gin.Context, accessToken string) *fb.Session {
 	if app == nil {
 		app = fb.New(appId, appSecret)
-		app.RedirectUri = "localhost" // Not useful yet
+		// RedirectUri is not useful yet, because this instance is not being
+		// used for authenticating users (ie exchanging code for access tokens).
+		app.RedirectUri = "localhost"
 	}
 	session := app.Session(accessToken)
 	session.HttpClient = urlfetch.Client(appengine.NewContext(c.Request))
@@ -63,7 +63,6 @@ func newSession(c *gin.Context, accessToken string) *fb.Session {
 }
 
 // GET /auth/facebook_callback
-// TODO exchange code for accessToken
 func Callback(c *gin.Context) {
 	req := c.Request
 	e := req.URL.Query().Get("error")
@@ -112,15 +111,15 @@ func Callback(c *gin.Context) {
 
 	if user.Facebook.Verified {
 		log.Debug("Verified")
-		db := datastore.New(c)
-		db.GetKey("user", user.Email, user)
 
 		user.FirstName = user.Facebook.FirstName
 		user.LastName = user.Facebook.LastName
 		user.Email = user.Facebook.Email
 
-		if _, err := db.PutKey("user", user.Email, user); err != nil {
-			log.Panic("Error creating user using Facebook", err)
+		q := queries.New(c)
+		if err := q.UpsertUser(user); err != nil {
+			log.Debug("Failed to upsert user")
+			return
 		}
 
 		if err := auth.Login(c, user.Email); err != nil {
@@ -150,7 +149,7 @@ func CSRFToken(c *gin.Context) string {
 
 	item := &memcache.Item{
 		Key:        token,
-		Value:      []byte(""),
+		Value:      []byte(token),
 		Expiration: 3 * time.Minute,
 	}
 
