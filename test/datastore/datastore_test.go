@@ -102,6 +102,18 @@ var _ = Describe("EncodeId", func() {
 	})
 })
 
+var _ = Describe("Datastore.DecodeKey", func() {
+	kind := "decodekey-test"
+	Context("Key encoded with appengine", func() {
+		It("should be the same", func() {
+			key := gaed.NewKey(ctx, kind, "decodekey-testkey", 0, nil)
+			decodedKey, err := db.DecodeKey(key.Encode())
+			Expect(err).ToNot(HaveOccurred())
+			Expect(decodedKey).To(Equal(key))
+		})
+	})
+})
+
 type Entity struct {
 	Field string
 }
