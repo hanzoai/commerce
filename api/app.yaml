@@ -6,6 +6,9 @@ runtime: go
 api_version: go1
 threadsafe: true
 
+automatic_scaling:
+  max_concurrent_requests: 100
+
 instance_class: F2
 automatic_scaling:
   min_idle_instances: 1
