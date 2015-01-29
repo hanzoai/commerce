@@ -30,6 +30,8 @@ var appSecret = config.Facebook.AppSecret
 
 var _redirectUri string
 
+// Sets _redirectUri as necessary for dev machines
+// Uses config.UrlFor in production and staging.
 func redirectUri(c *gin.Context) string {
 	if config.IsDevelopment && _redirectUri == "" {
 		client := urlfetch.Client(middleware.GetAppEngine(c))
@@ -40,7 +42,7 @@ func redirectUri(c *gin.Context) string {
 		ip := string(b)
 		ip = ip[0 : len(ip)-1]
 		_redirectUri = "http://" + ip + ":8080/store/auth/facebook_callback"
-	} else if config.IsProduction && _redirectUri == "" {
+	} else if (config.IsProduction || config.IsStaging) && _redirectUri == "" {
 		_redirectUri = url.QueryEscape("http://" + config.UrlFor("store", "/auth/facebook_callback/"))
 	}
 	return _redirectUri
@@ -53,9 +55,7 @@ var app *fb.App
 func newSession(c *gin.Context, accessToken string) *fb.Session {
 	if app == nil {
 		app = fb.New(appId, appSecret)
-		// RedirectUri is not useful yet, because this instance is not being
-		// used for authenticating users (ie exchanging code for access tokens).
-		app.RedirectUri = "localhost"
+		app.RedirectUri = redirectUri(c)
 	}
 	session := app.Session(accessToken)
 	session.HttpClient = urlfetch.Client(appengine.NewContext(c.Request))
