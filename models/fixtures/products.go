@@ -434,8 +434,6 @@ var products = delay.Func("install-products", func(c appengine.Context) {
 		},
 	})
 
-	// Product Listings
-
 	db.PutKey("listing", "ar-1", &Listing{
 		SKU:   "ar-1",
 		Title: "SKULLY AR-1",
