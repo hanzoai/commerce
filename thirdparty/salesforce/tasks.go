@@ -1,65 +1,207 @@
 package salesforce
 
 import (
+	"runtime/debug"
 	"time"
 
 	"appengine"
-
+	"appengine/datastore"
 	"appengine/delay"
 
-	"crowdstart.io/datastore"
+	ds "crowdstart.io/datastore"
+
 	"crowdstart.io/models"
+	"crowdstart.io/models/migrations"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/queries"
 )
 
 // Deferred Tasks
-// UpsertTask upserts a contact into salesforce
-var UpsertTask = delay.Func("SalesforceUpsertTask", func(c appengine.Context, campaign models.Campaign, user models.User) {
-	log.Info("Try to synchronize with salesforce", c)
+// UpsertUserTask upserts a contact into salesforce
+var UpsertUserTask = delay.Func("SalesforceUpsertUserTask", func(c appengine.Context, campaign models.Campaign, user models.User) {
+	if campaign.Salesforce.AccessToken != "" {
+		log.Info("Try to synchronize with salesforce", c)
 
-	client := New(c, &campaign, true)
+		client := New(c, &campaign, true)
 
-	//db := datastore.New(c)
-	// Query out all orders (since preorder is stored as a single string)
-	// var orders []models.Order
-	// if _, err := db.Query("order").
-	// 	Filter("Email =", user.Email).
-	// 	GetAll(db.Context, &orders); err != nil {
-	// 	log.Panic("Error retrieving orders associated with the user's email", err, c)
-	// }
+		if err := client.Push(&user); err != nil {
+			log.Panic("UpsertUserTask failed: %v", err, c)
+		}
+	}
+})
 
-	// // Query out any preorder order items and sum different skus up for totals
-	// items := make(map[string]int)
+// UpsertOrderTask upserts users into salesforce
+var UpsertOrderTask = delay.Func("SalesforceUpsertOrderTask", func(c appengine.Context, campaign models.Campaign, order models.Order) {
+	if campaign.Salesforce.AccessToken != "" {
+		log.Info("Try to synchronize with salesforce", c)
 
-	// for _, order := range orders {
-	// 	if order.Preorder {
-	// 		for _, item := range order.Items {
-	// 			items[item.SKU_] = items[item.SKU_] + item.Quantity
-	// 		}
-	// 	}
-	// }
+		client := New(c, &campaign, true)
 
-	// // Stringify
-	// preorders := ""
+		if err := client.Push(&order); err != nil {
+			log.Panic("UpsertOrderTask failed: %v", err, c)
+		}
+	}
+})
 
-	// for key, item := range items {
-	// 	preorders += fmt.Sprintf("%s: %d", key, item)
-	// }
+// ImportUsersTask upserts all users into salesforce
+var ImportUsersTask = delay.Func("SalesforceImportUsersTask", func(c appengine.Context) {
+	db := ds.New(c)
+	campaign := models.Campaign{}
 
-	// // Assign to contact and synchronize
-	// contact.PreorderC = preorders
+	// Get user instance
+	if err := db.GetKey("campaign", "dev@hanzo.ai", &campaign); err != nil {
+		log.Panic("Unable to get campaign from database: %v", err, c)
+	}
 
-	if err := client.Push(&user); err != nil {
-		log.Panic("UpsertContactTask failed: %v", c)
+	if campaign.Salesforce.AccessToken != "" {
+		var t *datastore.Iterator
+		var m migrations.MigrationStatus
+		var cur datastore.Cursor
+		var k, mk *datastore.Key
+		var err error
+		var user models.User
+
+		name := "SalesforceImportUsersTask"
+		client := New(c, &campaign, true)
+
+		log.Info("Try to import into salesforce", c)
+
+		// Try to get cursor if it exists
+		mk = datastore.NewKey(c, "migration", name, 0, nil)
+		if err = datastore.Get(c, mk, &m); err != nil {
+			log.Warn("No Preexisting Cursor found", c)
+			t = datastore.NewQuery("user").Run(c)
+		} else if m.Done {
+			//Migration Complete
+			log.Info("Import was Completed", c)
+			return
+		} else if cur, err = datastore.DecodeCursor(m.Cursor); err != nil {
+			log.Info("Preexisting Cursor is corrupt", c)
+			t = datastore.NewQuery("user").Run(c)
+		} else {
+			log.Info("Resuming from Preexisting Cursor", c)
+			t = datastore.NewQuery("user").Start(cur).Run(c)
+		}
+
+		for {
+			// Iterate Cursor
+			k, err = t.Next(&user)
+
+			if err != nil {
+				// Done
+				if err == datastore.Done {
+					break
+				}
+
+				// Ignore field mismatch, otherwise skip record
+				if err != nil {
+					log.Error("Error fetching user: %v\n%v", k, err, c)
+					continue
+				}
+			}
+
+			// Save Migration point for resume
+			mk = datastore.NewKey(c, "migration", name, 0, nil)
+
+			if cur, err = t.Cursor(); err != nil {
+				log.Warn("Could not get Cursor because %v", cur, c)
+			} else {
+				// It doesn't matter if cursor suceeds or not I guess
+				datastore.Put(c, mk, &migrations.MigrationStatus{Cursor: cur.String(), Done: false})
+			}
+
+			log.Info("Import Key %v", k, c)
+			client.Push(&user)
+
+			debug.FreeOSMemory()
+		}
+
+		log.Info("Import Completed", c)
+		datastore.Put(c, mk, &migrations.MigrationStatus{Cursor: cur.String(), Done: true})
+	}
+})
+
+// ImportOrdersTask upserts all orders into salesforce
+var ImportOrdersTask = delay.Func("SalesforceImportOrdersTask", func(c appengine.Context) {
+	db := ds.New(c)
+	campaign := models.Campaign{}
+
+	// Get user instance
+	if err := db.GetKey("campaign", "dev@hanzo.ai", &campaign); err != nil {
+		log.Panic("Unable to get campaign from database: %v", err, c)
+	}
+
+	if campaign.Salesforce.AccessToken != "" {
+		var t *datastore.Iterator
+		var m migrations.MigrationStatus
+		var cur datastore.Cursor
+		var k, mk *datastore.Key
+		var err error
+		var order models.Order
+
+		name := "SalesforceImportOrdersTask"
+		client := New(c, &campaign, true)
+
+		log.Info("Try to import into salesforce", c)
+
+		// Try to get cursor if it exists
+		mk = datastore.NewKey(c, "migration", name, 0, nil)
+		if err = datastore.Get(c, mk, &m); err != nil {
+			log.Warn("No Preexisting Cursor found", c)
+			t = datastore.NewQuery("order").Run(c)
+		} else if m.Done {
+			//Migration Complete
+			log.Info("Import was Completed", c)
+			return
+		} else if cur, err = datastore.DecodeCursor(m.Cursor); err != nil {
+			log.Info("Preexisting Cursor is corrupt", c)
+			t = datastore.NewQuery("order").Run(c)
+		} else {
+			log.Info("Resuming from Preexisting Cursor", c)
+			t = datastore.NewQuery("order").Start(cur).Run(c)
+		}
+
+		for {
+			// Iterate Cursor
+			k, err = t.Next(&order)
+
+			if err != nil {
+				// Done
+				if err == datastore.Done {
+					break
+				}
+
+				// Ignore field mismatch, otherwise skip record
+				if err != nil {
+					log.Error("Error fetching order: %v\n%v", k, err, c)
+					continue
+				}
+			}
+
+			// Save Migration point for resume
+			mk = datastore.NewKey(c, "migration", name, 0, nil)
+
+			if cur, err = t.Cursor(); err != nil {
+				log.Warn("Could not get Cursor because %v", cur, c)
+			} else {
+				// It doesn't matter if cursor suceeds or not I guess
+				datastore.Put(c, mk, &migrations.MigrationStatus{Cursor: cur.String(), Done: false})
+			}
+
+			log.Info("Import Key %v", k, c)
+			client.Push(&order)
+
+			debug.FreeOSMemory()
+		}
+
+		log.Info("Import Completed", c)
+		datastore.Put(c, mk, &migrations.MigrationStatus{Cursor: cur.String(), Done: true})
 	}
 })
 
 // PullUpdatedTask gets recently(20 minutes ago) updated Contact and upserts them as Users
 var PullUpdatedTask = delay.Func("SalesforcePullUpdatedTask", func(c appengine.Context) {
-	db := datastore.New(c)
-	q := queries.New(c)
-
+	db := ds.New(c)
 	campaign := new(models.Campaign)
 
 	// Get user instance
@@ -67,39 +209,55 @@ var PullUpdatedTask = delay.Func("SalesforcePullUpdatedTask", func(c appengine.C
 		log.Panic("Unable to get campaign from database: %v", err, c)
 	}
 
-	client := New(c, campaign, true)
+	if campaign.Salesforce.AccessToken != "" {
+		log.Info("Try to synchronize from updated salesforce list", c)
 
-	now := time.Now()
+		q := queries.New(c)
+		client := New(c, campaign, true)
 
-	// Get recently updated users
-	users := new([]*models.User)
-	// We check 15 minutes into the future in case salesforce clocks (logs based on the minute updated) is slightly out of sync with google's
-	if err := client.PullUpdated(now.Add(-20*time.Minute), now, users); err != nil {
-		log.Panic("Getting Updated Contacts Failed: %v, %v", err, string(client.LastBody[:]), c)
-	}
+		now := time.Now()
 
-	log.Info("Updating %v Users from Salesforce", len(*users), c)
-	for _, user := range *users {
-		if err := q.UpsertUser(user); err != nil {
-			log.Panic("User '%v' could not be updated, %v", user.Id, err, c)
-		} else {
-			log.Info("User '%v' was successfully updated", user.Id, c)
+		// Get recently updated users
+		users := new([]*models.User)
+		// We check 15 minutes into the future in case salesforce clocks (logs based on the minute updated) is slightly out of sync with google's
+		if err := client.PullUpdated(now.Add(-20*time.Minute), now, users); err != nil {
+			log.Panic("Getting Updated Contacts Failed: %v, %v", err, string(client.LastBody[:]), c)
+		}
+
+		log.Info("Updating %v Users from Salesforce", len(*users), c)
+		for _, user := range *users {
+			if err := q.UpsertUser(user); err != nil {
+				log.Panic("User '%v' could not be updated, %v", user.Id, err, c)
+			} else {
+				log.Info("User '%v' was successfully updated", user.Id, c)
+			}
 		}
 	}
 })
 
 // Wrappers to deferred function calls for type sanity
-// CallUpsertTask calls the task queue delay function with the passed in params
+// CallUpsertUserTask calls the task queue delay function with the passed in params
 // Values are used instead of pointers since we envoke a RPC
-func CallUpsertTask(c appengine.Context, campaign *models.Campaign, user *models.User) {
-	log.Info("Trying to dispatch task.", c)
-	UpsertTask.Call(c, *campaign, *user)
-	log.Info("Task dispatched.", c)
+func CallUpsertUserTask(c appengine.Context, campaign *models.Campaign, user *models.User) {
+	UpsertUserTask.Call(c, *campaign, *user)
+}
+
+// CallUpsertOrderTask calls the task queue delay function with the passed in params
+func CallUpsertOrderTask(c appengine.Context, campaign *models.Campaign, order *models.Order) {
+	UpsertOrderTask.Call(c, *campaign, *order)
 }
 
 // CallPullUpdatedTask calls the task queue delay function with the passed in params
 func CallPullUpdatedTask(c appengine.Context) {
-	log.Info("Trying to dispatch task.", c)
 	PullUpdatedTask.Call(c)
-	log.Info("Task dispatched.", c)
+}
+
+// CallImportUsersTask calls the task queue delay function with the passed in params
+func CallImportUsersTask(c appengine.Context) {
+	ImportUsersTask.Call(c)
+}
+
+// CallImportOrdersTask calls the task queue delay function with the passed in params
+func CallImportOrdersTask(c appengine.Context) {
+	ImportOrdersTask.Call(c)
 }

@@ -117,7 +117,7 @@ func SaveProfile(c *gin.Context) {
 
 			log.Debug("Synchronize with salesforce if '%v' != ''", campaign.Salesforce.AccessToken)
 			if campaign.Salesforce.AccessToken != "" {
-				salesforce.CallUpsertTask(db.Context, &campaign, user)
+				salesforce.CallUpsertUserTask(db.Context, &campaign, user)
 			}
 		}
 	case "change-billing":
