@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"appengine/datastore"
+
 	"crowdstart.io/models"
 )
 
@@ -87,7 +89,15 @@ type Contact struct {
 
 func (c *Contact) FromUser(u *models.User) {
 	c.LastName = u.LastName
+	if c.LastName == "" {
+		c.LastName = "-"
+	}
+
 	c.FirstName = u.FirstName
+	if c.FirstName == "" {
+		c.FirstName = "-"
+	}
+
 	c.Email = u.Email
 	c.Phone = u.Phone
 
@@ -97,8 +107,17 @@ func (c *Contact) FromUser(u *models.User) {
 func (c *Contact) ToUser(u *models.User) {
 	u.Id = c.CrowdstartIdC
 	u.Email = c.Email
+
 	u.LastName = c.LastName
+	if u.LastName == "-" {
+		u.LastName = ""
+	}
+
 	u.FirstName = c.FirstName
+	if u.FirstName == "-" {
+		u.FirstName = ""
+	}
+
 	u.Phone = c.Phone
 }
 
@@ -180,7 +199,12 @@ type Account struct {
 }
 
 func (a *Account) FromUser(u *models.User) {
-	a.Name = u.Name()
+	if key, err := datastore.DecodeKey(u.Id); err == nil {
+		a.Name = strconv.FormatInt(key.IntID(), 10)
+	} else {
+		// This should never happen
+	}
+
 	a.BillingStreet = u.BillingAddress.Line1 + "\n" + u.BillingAddress.Line2
 	a.BillingCity = u.BillingAddress.City
 	a.BillingState = u.BillingAddress.State
