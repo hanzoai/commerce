@@ -246,9 +246,14 @@ func chargeDisputed(c *gin.Context, data []byte) {
 
 	for i, charge := range order.Charges {
 		if charge.ID == dispute.Charge {
-			order.Charges[i].Dispute = dispute
+			order.Charges[i].Disputed = false
 			break
 		}
+	}
+
+	if _, err := db.Put("dispute", &dispute); err != nil {
+		c.String(500, "Error saving dispute")
+		log.Panic(err)
 	}
 
 	if _, err := db.PutKey("order", key, order); err != nil {

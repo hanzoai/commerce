@@ -2,6 +2,7 @@ package _default
 
 import (
 	"appengine"
+	"appengine/datastore"
 	_ "appengine/remote_api"
 
 	"github.com/gin-gonic/gin"
@@ -44,7 +45,31 @@ func Init() {
 
 	router.GET("/jobs/sync-salesforce", func(c *gin.Context) {
 		ctx := appengine.NewContext(c.Request)
-		salesforce.CallPullUpdatedTask(ctx)
+
+		// Check status of salesforce import
+		m := migrations.MigrationStatus{}
+		mk := datastore.NewKey(ctx, "migration", "SalesforceImportUsersTask", 0, nil)
+		if err := datastore.Get(ctx, mk, &m); err != nil {
+			// If we get an error, then no migration has been done and it is okay to sync
+			salesforce.CallPullUpdatedTask(ctx)
+		} else if m.Done {
+			// If migration is done, then sync
+			salesforce.CallPullUpdatedTask(ctx)
+		}
+
+		c.String(200, "Running job...")
+	})
+
+	router.GET("/jobs/import-users-to-salesforce", func(c *gin.Context) {
+		ctx := appengine.NewContext(c.Request)
+		salesforce.CallImportUsersTask(ctx)
+
+		c.String(200, "Running job...")
+	})
+
+	router.GET("/jobs/import-orders-to-salesforce", func(c *gin.Context) {
+		ctx := appengine.NewContext(c.Request)
+		salesforce.CallImportOrdersTask(ctx)
 
 		c.String(200, "Running job...")
 	})
