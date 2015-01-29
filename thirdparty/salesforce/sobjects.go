@@ -197,12 +197,12 @@ func (a *Account) FromUser(u *models.User) {
 func (a *Account) ToUser(u *models.User) {
 	u.Id = a.CrowdstartIdC
 
-	lines := strings.Split(a.ShippingStreet, "/")
+	lines := strings.Split(a.ShippingStreet, "\n")
 
 	// Split Street line / to recover our data
 	u.ShippingAddress.Line1 = lines[0]
 	if len(lines) > 1 {
-		u.ShippingAddress.Line2 = strings.Join(lines[1:], "/")
+		u.ShippingAddress.Line2 = strings.Join(lines[1:], "\n")
 	}
 
 	u.ShippingAddress.City = a.ShippingCity
@@ -210,12 +210,12 @@ func (a *Account) ToUser(u *models.User) {
 	u.ShippingAddress.PostalCode = a.ShippingPostalCode
 	u.ShippingAddress.Country = a.ShippingCountry
 
-	lines = strings.Split(a.BillingStreet, "/")
+	lines = strings.Split(a.BillingStreet, "\n")
 
 	// Split Street line / to recover our data
 	u.BillingAddress.Line1 = lines[0]
 	if len(lines) > 1 {
-		u.BillingAddress.Line2 = strings.Join(lines[1:], "/")
+		u.BillingAddress.Line2 = strings.Join(lines[1:], "\n")
 	}
 
 	u.BillingAddress.City = a.BillingCity
@@ -319,7 +319,7 @@ func (o *Order) FromOrder(order *models.Order) {
 }
 
 func (o *Order) ToOrder(order *models.Order) error {
-	lines := strings.Split(o.ShippingStreet, "/")
+	lines := strings.Split(o.ShippingStreet, "\n")
 
 	created, err := time.Parse(time.RFC3339, o.EffectiveDate)
 	if err != nil {
@@ -339,7 +339,7 @@ func (o *Order) ToOrder(order *models.Order) error {
 	order.ShippingAddress.PostalCode = o.ShippingPostalCode
 	order.ShippingAddress.Country = o.ShippingCountry
 
-	lines = strings.Split(o.BillingStreet, "/")
+	lines = strings.Split(o.BillingStreet, "\n")
 
 	// Split Street line / to recover our data
 	order.BillingAddress.Line1 = lines[0]
