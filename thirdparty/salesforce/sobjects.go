@@ -295,13 +295,13 @@ type Order struct {
 func (o *Order) FromOrder(order *models.Order) {
 	o.EffectiveDate = order.CreatedAt.Format(time.RFC3339)
 
-	o.BillingStreet = order.BillingAddress.Line1 + "/" + order.BillingAddress.Line2
+	o.BillingStreet = order.BillingAddress.Line1 + "\n" + order.BillingAddress.Line2
 	o.BillingCity = order.BillingAddress.City
 	o.BillingState = order.BillingAddress.State
 	o.BillingPostalCode = order.BillingAddress.PostalCode
 	o.BillingCountry = order.BillingAddress.Country
 
-	o.ShippingStreet = order.ShippingAddress.Line1 + "/" + order.ShippingAddress.Line2
+	o.ShippingStreet = order.ShippingAddress.Line1 + "\n" + order.ShippingAddress.Line2
 	o.ShippingCity = order.ShippingAddress.City
 	o.ShippingState = order.ShippingAddress.State
 	o.ShippingPostalCode = order.ShippingAddress.PostalCode
@@ -331,7 +331,7 @@ func (o *Order) ToOrder(order *models.Order) error {
 	// Split Street line / to recover our data
 	order.ShippingAddress.Line1 = lines[0]
 	if len(lines) > 1 {
-		order.ShippingAddress.Line2 = strings.Join(lines[1:], "/")
+		order.ShippingAddress.Line2 = strings.Join(lines[1:], "\n")
 	}
 
 	order.ShippingAddress.City = o.ShippingCity
@@ -344,7 +344,7 @@ func (o *Order) ToOrder(order *models.Order) error {
 	// Split Street line / to recover our data
 	order.BillingAddress.Line1 = lines[0]
 	if len(lines) > 1 {
-		order.BillingAddress.Line2 = strings.Join(lines[1:], "/")
+		order.BillingAddress.Line2 = strings.Join(lines[1:], "\n")
 	}
 
 	order.BillingAddress.City = o.BillingCity
