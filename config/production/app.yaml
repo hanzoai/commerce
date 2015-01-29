@@ -6,6 +6,9 @@ runtime: go
 api_version: go1
 threadsafe: true
 
+automatic_scaling:
+  max_concurrent_requests: 100
+
 builtins:
 - remote_api: on
 
