@@ -3,7 +3,6 @@ package salesforce
 import (
 	"encoding/gob"
 	"errors"
-	"runtime/debug"
 	"time"
 
 	"appengine"
@@ -13,7 +12,6 @@ import (
 	ds "crowdstart.io/datastore"
 
 	"crowdstart.io/models"
-	"crowdstart.io/models/migrations"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/parallel"
 	"crowdstart.io/util/queries"
@@ -37,6 +35,26 @@ func (ui UserImporter) Execute(c appengine.Context, key *datastore.Key, object i
 
 	client := New(c, &ui.Campaign, true)
 	client.Push(u)
+	return nil
+}
+
+type OrderImporter struct {
+	Campaign models.Campaign
+}
+
+func (ui OrderImporter) NewObject() interface{} {
+	return new(models.Order)
+}
+
+func (ui OrderImporter) Execute(c appengine.Context, key *datastore.Key, object interface{}) error {
+	var ok bool
+	var o *models.Order
+	if o, ok = object.(*models.Order); !ok {
+		return errors.New("Object should be of type 'order'")
+	}
+
+	client := New(c, &ui.Campaign, true)
+	client.Push(o)
 	return nil
 }
 
@@ -87,8 +105,8 @@ func ImportUsers(c appengine.Context) {
 	}
 }
 
-// ImportOrdersTask upserts all orders into salesforce
-var ImportOrdersTask = delay.Func("SalesforceImportOrdersTask", func(c appengine.Context) {
+// ImportOrders upserts all orders into salesforce
+func ImportOrders(c appengine.Context) {
 	db := ds.New(c)
 	campaign := models.Campaign{}
 
@@ -98,72 +116,9 @@ var ImportOrdersTask = delay.Func("SalesforceImportOrdersTask", func(c appengine
 	}
 
 	if campaign.Salesforce.AccessToken != "" {
-		var t *datastore.Iterator
-		var m migrations.MigrationStatus
-		var cur datastore.Cursor
-		var k, mk *datastore.Key
-		var err error
-		var order models.Order
-
-		name := "SalesforceImportOrdersTask"
-		client := New(c, &campaign, true)
-
-		log.Info("Try to import into salesforce", c)
-
-		// Try to get cursor if it exists
-		mk = datastore.NewKey(c, "migration", name, 0, nil)
-		if err = datastore.Get(c, mk, &m); err != nil {
-			log.Warn("No Preexisting Cursor found", c)
-			t = datastore.NewQuery("order").Run(c)
-		} else if m.Done {
-			//Migration Complete
-			log.Info("Import was Completed", c)
-			return
-		} else if cur, err = datastore.DecodeCursor(m.Cursor); err != nil {
-			log.Info("Preexisting Cursor is corrupt", c)
-			t = datastore.NewQuery("order").Run(c)
-		} else {
-			log.Info("Resuming from Preexisting Cursor", c)
-			t = datastore.NewQuery("order").Start(cur).Run(c)
-		}
-
-		for {
-			// Iterate Cursor
-			k, err = t.Next(&order)
-
-			if err != nil {
-				// Done
-				if err == datastore.Done {
-					break
-				}
-
-				// Ignore field mismatch, otherwise skip record
-				if err != nil {
-					log.Error("Error fetching order: %v\n%v", k, err, c)
-					continue
-				}
-			}
-
-			// Save Migration point for resume
-			mk = datastore.NewKey(c, "migration", name, 0, nil)
-
-			if cur, err = t.Cursor(); err != nil {
-				log.Warn("Could not get Cursor because %v", cur, c)
-			} else {
-				// It doesn't matter if cursor suceeds or not I guess
-				datastore.Put(c, mk, &migrations.MigrationStatus{Cursor: cur.String(), Done: false})
-			}
-
-			log.Info("Import Key %v", k, c)
-			client.Push(&order)
-
-			debug.FreeOSMemory()
-		}
-
-		log.Info("Import Completed", c)
-		datastore.Put(c, mk, &migrations.MigrationStatus{Cursor: cur.String(), Done: true})
+		parallel.DatastoreJob(c, "user", 100, OrderImporter{Campaign: campaign})
 	}
-})
+}
 
 // PullUpdatedTask gets recently(20 minutes ago) updated Contact and upserts them as Users
 var PullUpdatedTask = delay.Func("SalesforcePullUpdatedTask", func(c appengine.Context) {
@@ -216,9 +171,4 @@ func CallUpsertOrderTask(c appengine.Context, campaign *models.Campaign, order *
 // CallPullUpdatedTask calls the task queue delay function with the passed in params
 func CallPullUpdatedTask(c appengine.Context) {
 	PullUpdatedTask.Call(c)
-}
-
-// CallImportOrdersTask calls the task queue delay function with the passed in params
-func CallImportOrdersTask(c appengine.Context) {
-	ImportOrdersTask.Call(c)
 }
