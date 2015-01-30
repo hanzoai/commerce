@@ -2,7 +2,6 @@ package log
 
 import (
 	"log"
-	"net/http"
 	"strings"
 
 	"appengine"
@@ -71,12 +70,16 @@ func (b AppengineBackend) detectVerbose() {
 		return
 	}
 
-	// Check query for v=1 param
-	url := b.context.Request().(http.Request).URL
-	if strings.Contains(url.RawQuery, "v=1") {
-		b.verbose = true
-	}
+	// Force verbose for now
+	b.verbose = true
 	return
+
+	// // Check query for v=1 param
+	// if strings.Contains(b.requestURI, "v=1") {
+	// 	b.verbose = true
+	// }
+
+	// return
 }
 
 func (b AppengineBackend) Verbose() bool {
