@@ -4,6 +4,7 @@ data/
 .sdk
 npm-debug.log
 .datastore.bin
+.sql3-journal
 
 config/production/bulkloader_helper.pyc
 static/css/checkout.css
