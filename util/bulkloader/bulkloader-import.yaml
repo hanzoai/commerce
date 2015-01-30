@@ -623,7 +623,8 @@ transformers:
   property_map:
     - property: __key__
       external_name: key
-      export_transform: transform.none_if_empty(long)
+      export_transform: transform.key_id_or_name_as_string
+      import_transform: transform.create_foreign_key('user', key_is_id=True)
 
     - property: BillingAddress.City
       external_name: BillingAddress.City
