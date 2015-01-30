@@ -19,7 +19,7 @@ type User struct {
 	ShippingAddress Address
 	Email           string
 	Campaigns       []Campaign `schema:"-" datastore:"-"`
-	PasswordHash    []byte     `schema:"-" json:"-"`
+	PasswordHash    []byte     `schema:"-" datastore:",noindex" json:"-"`
 	Stripe          struct {
 		// Use CustomerId instead of Account.ID because the latter is currently only
 		// set when the user updates their details via Stripe
