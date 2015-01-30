@@ -11,6 +11,12 @@ body {
   font-style: normal;
 }
 
+@media(max-width: 600px) {
+  body {
+    font-size: 12px;
+  }
+}
+
 h1, h2, h3 {
   font-family: "Michroma";
   line-height: 1em;
@@ -30,7 +36,10 @@ h3 {
 a { }
 a:hover { }
 p { }
-.jvcontainer { }
+.jvcontainer {
+  max-width: 780px;
+  width: auto;
+}
 .jvheader { }
 .jvcontent { }
 
@@ -49,6 +58,12 @@ p { }
 .backlink { }
 .btn { }
 .sendjobvite { }
+
+@media(max-width: 600px) {
+  .joblocation {
+    display: none;
+  }
+}
 
 /* APPLY */
 .jvapply { }
@@ -72,6 +87,18 @@ p { }
 
 /* EMAIL SIGIN UP CONFIRMATION */
 .jvnotifyconfirm { }
+
+.jvapply textarea {
+  width: auto;
+  max-width: 450px;
+}
+
+@media(max-width: 600px) {
+  .jvapply textarea {
+    width: auto;
+    max-width: 300px;
+  }
+}
 
 input:focus, textarea:focus {
   box-shadow: 0 0 5px rgba(127,219,255,.7);
