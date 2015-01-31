@@ -624,6 +624,7 @@ transformers:
     - property: __key__
       external_name: key
       export_transform: transform.key_id_or_name_as_string
+      import_transform: transform.create_foreign_key('user', key_is_id=True)
 
     - property: BillingAddress.City
       external_name: BillingAddress.City
@@ -668,7 +669,7 @@ transformers:
     - property: PasswordHash
       external_name: PasswordHash
       # Type: Blob Stats: 1903 properties of this type in this kind.
-      import_transform: transform.blobproperty_from_base64
+      import_transform: transform.bytestring_from_base64
       export_transform: base64.b64encode
 
     - property: Phone
