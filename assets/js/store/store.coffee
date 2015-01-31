@@ -33,6 +33,7 @@ class StoreApp extends App
       routes.store.setupFormValidation('#profileForm', true)
       routes.store.setupFormValidation('#changePasswordForm', true)
       routes.store.setupFormValidation('#changeBillingForm', true)
+      routes.store.setupFormValidation('#changeInfoForm', true)
     ]
 
     '/:prefix?': routes.cart.setupHover
