@@ -1,44 +1,41 @@
 package migrations
 
 import (
+	"reflect"
+
 	"appengine"
 	"appengine/delay"
+
+	"crowdstart.io/util/log"
 )
 
-type simpleFn func(appengine.Context)
-
-var migrations = make(map[string][]*delay.Function)
-var migrationFns = make(map[string][]*simpleFn)
+var migrations = make(map[string][]interface{})
 
 // Add new migration
 func addMigration(name string, fns ...interface{}) {
 	// Create slice for migration set
 	if _, ok := migrations[name]; !ok {
-		migrations[name] = make([]*delay.Function, 0)
-		migrationFns[name] = make([]*simpleFn, 0)
+		migrations[name] = make([]interface{}, 0)
 	}
 
 	// Append migration
 	for _, fn := range fns {
-		switch v := fn.(type) {
-		case *delay.Function:
-			migrations[name] = append(migrations[name], v)
-		case *simpleFn:
-			migrationFns[name] = append(migrationFns[name], v)
-		}
+		migrations[name] = append(migrations[name], fn)
 	}
 }
 
 // Run migrations
 var Run = delay.Func("run-migration", func(c appengine.Context, name string) {
-	dfns := migrations[name]
-	for _, dfn := range dfns {
-		dfn.Call(c)
-	}
-
-	fns := migrationFns[name]
+	fns := migrations[name]
 	for _, fn := range fns {
-		(*fn)(c)
+		switch v := fn.(type) {
+		case *delay.Function:
+			v.Call(c)
+		case func(appengine.Context):
+			v(c)
+		default:
+			log.Error("Couldn't execute %v", reflect.ValueOf(v).Type(), c)
+		}
 	}
 })
 
@@ -60,4 +57,5 @@ func init() {
 
 	// Misc clean up
 	addMigration("fix-email", fixEmail)
+	addMigration("fix-order-ids", fixOrderIds)
 }
