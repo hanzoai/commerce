@@ -4,6 +4,7 @@ package queries
 
 import (
 	"errors"
+	"time"
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
@@ -60,9 +61,12 @@ func (c *Client) UpsertUser(user *models.User) error {
 		if _user.Id == "" {
 			id := c.Datastore.AllocateId("user")
 			user.Id = c.Datastore.EncodeId("user", id)
+			user.CreatedAt = time.Now()
+			user.LastUpdated = user.CreatedAt
 			log.Debug("UpsertUser doing Insert")
 		} else {
 			user.Id = _user.Id
+			user.LastUpdated = time.Now()
 			log.Debug("UpsertUser doing Update")
 		}
 	}

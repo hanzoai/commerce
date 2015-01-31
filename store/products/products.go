@@ -17,7 +17,7 @@ func List(c *gin.Context) {
 	listings := make([]*models.Listing, 1)
 	listings[0] = new(models.Listing)
 
-	if err := db.GetKeyMulti("listing", []string{"ar-1-winter2014promo"}, listings); err != nil {
+	if err := db.GetKeyMulti("listing", []string{"ar-1"}, listings); err != nil {
 		// Something is seriously wrong. i.e. products not loaded into db
 		log.Panic("Unable to fetch product listing from database: %v", err)
 	}
