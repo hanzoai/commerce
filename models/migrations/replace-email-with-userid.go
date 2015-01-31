@@ -1,6 +1,7 @@
 package migrations
 
 import (
+	"encoding/gob"
 	"errors"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	"appengine/delay"
 
 	"crowdstart.io/util/log"
+	"crowdstart.io/util/parallel"
 	"crowdstart.io/util/queries"
 
 	. "crowdstart.io/models"
@@ -169,55 +171,72 @@ var replaceEmailWithUserIdForInviteToken = delay.Func(
 			return errors.New("Invalid type, required: *OldToken")
 		}))
 
-var replaceEmailWithUserIdForOrder = delay.Func(
-	"migrate-replace-email-with-userid-for-order",
-	newMigration(
-		"migration-replace-email-with-userid-for-order",
-		"order",
-		new(OldOrder),
-		func(c appengine.Context, k *datastore.Key, object interface{}) error {
-			switch oO := object.(type) {
-			case *OldOrder:
-				// Get the corresponding user
-				q := queries.New(c)
+type orderIdReplacer struct {
+	SomeString string
+}
 
-				var u User
-				bad := false
-				if err := q.GetUserByEmail(oO.Email, &u); err != nil {
-					log.Warn("Order is Dangling or Broken %v\n%v", oO.Email, err, c)
-					u.Id = "Broken"
-					bad = true
-				}
+func (f orderIdReplacer) NewObject() interface{} {
+	return new(OldOrder)
+}
 
-				// 	// Update to new record and replace old one
-				o := Order{
-					BillingAddress:  oO.BillingAddress,
-					ShippingAddress: oO.ShippingAddress,
-					CreatedAt:       oO.CreatedAt,
-					UpdatedAt:       oO.UpdatedAt,
-					Id:              oO.Id,
-					UserId:          u.Id,
-					Shipping:        oO.Shipping,
-					Tax:             oO.Tax,
-					Subtotal:        oO.Subtotal,
-					Total:           oO.Total,
-					Items:           oO.Items,
-					StripeTokens:    oO.StripeTokens,
-					Charges:         oO.Charges,
-					CampaignId:      oO.CampaignId,
-					Preorder:        oO.Preorder,
-					Cancelled:       oO.Cancelled,
-					Shipped:         oO.Shipped,
-					Test:            oO.Test,
-				}
+func (f orderIdReplacer) Execute(c appengine.Context, key *datastore.Key, object interface{}) error {
+	var ok bool
+	var oO *OldOrder
+	if oO, ok = object.(*OldOrder); !ok {
+		return errors.New("Object should be of type 'order'")
+	}
 
-				if bad {
-					newK := datastore.NewKey(c, "broken-order", k.StringID(), k.IntID(), nil)
-					datastore.Put(c, newK, &o)
-				} else {
-					datastore.Put(c, k, &o)
-				}
-			}
+	// Get the corresponding user
+	q := queries.New(c)
 
-			return errors.New("Invalid type, required: *OldOrder")
-		}))
+	var u User
+	bad := false
+	if err := q.GetUserByEmail(oO.Email, &u); err != nil {
+		log.Warn("Order is Dangling or Broken %v\n%v", oO.Email, err, c)
+		u.Id = "Broken"
+		bad = true
+	}
+
+	o := Order{
+		BillingAddress:  oO.BillingAddress,
+		ShippingAddress: oO.ShippingAddress,
+		CreatedAt:       oO.CreatedAt,
+		UpdatedAt:       oO.UpdatedAt,
+		Id:              key.Encode(),
+		UserId:          u.Id,
+		Shipping:        oO.Shipping,
+		Tax:             oO.Tax,
+		Subtotal:        oO.Subtotal,
+		Total:           oO.Total,
+		Items:           oO.Items,
+		StripeTokens:    oO.StripeTokens,
+		Charges:         oO.Charges,
+		CampaignId:      oO.CampaignId,
+		Preorder:        oO.Preorder,
+		Cancelled:       oO.Cancelled,
+		Shipped:         oO.Shipped,
+		Test:            oO.Test,
+	}
+
+	if bad {
+		newK := datastore.NewKey(c, "broken-order", key.StringID(), key.IntID(), nil)
+		datastore.Put(c, newK, &o)
+	} else {
+		datastore.Put(c, key, &o)
+	}
+
+	if _, err := datastore.Put(c, key, oO); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Gob registration
+func init() {
+	gob.Register(orderIdReplacer{})
+}
+
+func replaceEmailWithUserIdForOrder(c appengine.Context) {
+	parallel.DatastoreJob(c, "order", 50, orderIdReplacer{})
+}

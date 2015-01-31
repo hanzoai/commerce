@@ -1,28 +1,41 @@
 package migrations
 
 import (
+	"reflect"
+
 	"appengine"
 	"appengine/delay"
+
+	"crowdstart.io/util/log"
 )
 
-var migrations = make(map[string][]*delay.Function)
+var migrations = make(map[string][]interface{})
 
 // Add new migration
-func addMigration(name string, fns ...*delay.Function) {
+func addMigration(name string, fns ...interface{}) {
 	// Create slice for migration set
 	if _, ok := migrations[name]; !ok {
-		migrations[name] = make([]*delay.Function, 0)
+		migrations[name] = make([]interface{}, 0)
 	}
 
 	// Append migration
-	migrations[name] = append(migrations[name], fns...)
+	for _, fn := range fns {
+		migrations[name] = append(migrations[name], fn)
+	}
 }
 
 // Run migrations
 var Run = delay.Func("run-migration", func(c appengine.Context, name string) {
 	fns := migrations[name]
 	for _, fn := range fns {
-		fn.Call(c)
+		switch v := fn.(type) {
+		case *delay.Function:
+			v.Call(c)
+		case func(appengine.Context):
+			v(c)
+		default:
+			log.Error("Couldn't execute %v", reflect.ValueOf(v).Type(), c)
+		}
 	}
 })
 
@@ -41,5 +54,8 @@ func init() {
 
 	// Create a Entity set of all broken orders
 	addMigration("list-broken-orders", listBrokenOrders)
+
+	// Misc clean up
 	addMigration("fix-email", fixEmail)
+	addMigration("fix-order-ids", fixOrderIds)
 }
