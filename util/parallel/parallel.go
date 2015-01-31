@@ -19,9 +19,9 @@ var datastoreWorker = delay.Func("ParallelDatastoreWorker", func(c appengine.Con
 	var k *datastore.Key
 	var err error
 	t := datastore.NewQuery(kind).Offset(offset).Limit(limit).Run(c)
-	object := cont.NewObject()
 
 	for {
+		object := cont.NewObject()
 		if k, err = t.Next(object); err != nil {
 			// Done
 			if err == datastore.Done {
