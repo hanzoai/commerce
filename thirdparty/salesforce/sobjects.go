@@ -342,56 +342,56 @@ func (o *Order) FromOrder(order *models.Order) {
 	o.Account.CrowdstartIdC = order.UserId
 }
 
-func (o *Order) ToOrder(order *models.Order) error {
-	lines := strings.Split(o.ShippingStreet, "\n")
+// func (o *Order) ToOrder(order *models.Order) error {
+// 	lines := strings.Split(o.ShippingStreet, "\n")
 
-	created, err := time.Parse(time.RFC3339, o.EffectiveDate)
-	if err != nil {
-		return err
-	}
+// 	created, err := time.Parse(time.RFC3339, o.EffectiveDate)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	order.CreatedAt = created
+// 	order.CreatedAt = created
 
-	// Split Street line \n to recover our data
-	order.ShippingAddress.Line1 = lines[0]
-	if len(lines) > 1 {
-		order.ShippingAddress.Line2 = strings.Join(lines[1:], "\n")
-	}
+// 	// Split Street line \n to recover our data
+// 	order.ShippingAddress.Line1 = lines[0]
+// 	if len(lines) > 1 {
+// 		order.ShippingAddress.Line2 = strings.Join(lines[1:], "\n")
+// 	}
 
-	order.ShippingAddress.City = o.ShippingCity
-	order.ShippingAddress.State = o.ShippingState
-	order.ShippingAddress.PostalCode = o.ShippingPostalCode
-	order.ShippingAddress.Country = o.ShippingCountry
+// 	order.ShippingAddress.City = o.ShippingCity
+// 	order.ShippingAddress.State = o.ShippingState
+// 	order.ShippingAddress.PostalCode = o.ShippingPostalCode
+// 	order.ShippingAddress.Country = o.ShippingCountry
 
-	lines = strings.Split(o.BillingStreet, "\n")
+// 	lines = strings.Split(o.BillingStreet, "\n")
 
-	// Split Street line \n to recover our data
-	order.BillingAddress.Line1 = lines[0]
-	if len(lines) > 1 {
-		order.BillingAddress.Line2 = strings.Join(lines[1:], "\n")
-	}
+// 	// Split Street line \n to recover our data
+// 	order.BillingAddress.Line1 = lines[0]
+// 	if len(lines) > 1 {
+// 		order.BillingAddress.Line2 = strings.Join(lines[1:], "\n")
+// 	}
 
-	order.BillingAddress.City = o.BillingCity
-	order.BillingAddress.State = o.BillingState
-	order.BillingAddress.PostalCode = o.BillingPostalCode
-	order.BillingAddress.Country = o.BillingCountry
+// 	order.BillingAddress.City = o.BillingCity
+// 	order.BillingAddress.State = o.BillingState
+// 	order.BillingAddress.PostalCode = o.BillingPostalCode
+// 	order.BillingAddress.Country = o.BillingCountry
 
-	lIs := strings.Split(o.Description, "\n")
+// 	lIs := strings.Split(o.Description, "\n")
 
-	//Decode order info in the form of SKU,quantity\n
-	order.Items = make([]models.LineItem, len(lIs))
-	for _, lI := range lIs {
-		t := strings.Split(lI, ",")
-		if len(t) == 2 {
-			if q, err := strconv.ParseInt(t[1], 10, 64); err == nil {
-				lineItem := models.LineItem{
-					SKU_:     t[0],
-					Quantity: int(q),
-				}
-				order.Items = append(order.Items, lineItem)
-			}
-		}
-	}
+// 	//Decode order info in the form of SKU,quantity\n
+// 	order.Items = make([]models.LineItem, len(lIs))
+// 	for _, lI := range lIs {
+// 		t := strings.Split(lI, ",")
+// 		if len(t) == 2 {
+// 			if q, err := strconv.ParseInt(t[1], 10, 64); err == nil {
+// 				lineItem := models.LineItem{
+// 					SKU_:     t[0],
+// 					Quantity: int(q),
+// 				}
+// 				order.Items = append(order.Items, lineItem)
+// 			}
+// 		}
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
