@@ -59,7 +59,12 @@ func (d *Datastore) EncodeId(kind string, id interface{}) string {
 }
 
 func (d *Datastore) DecodeKey(encodedKey string) (*Key, error) {
-	key, err := DecodeKey(encodedKey)
+	_key, err := DecodeKey(encodedKey)
+
+	// Since key returned might have been created with a different app, we'll
+	// recreate the key to ensure it has a valid AppID.
+	key := NewKey(d.Context, _key.Kind(), _key.StringID(), _key.IntID(), nil)
+
 	if err != nil {
 		d.warn("Unable to decode key: %v", encodedKey)
 	}
@@ -123,11 +128,9 @@ func (d *Datastore) GetMulti(keys []string, vals interface{}) error {
 
 func (d *Datastore) GetKeyMulti(kind string, keys []string, vals interface{}) error {
 	_keys := make([]*Key, len(keys))
-
 	for i, key := range keys {
 		_keys[i] = NewKey(d.Context, kind, key, 0, nil)
 	}
-
 	return nds.GetMulti(d.Context, _keys, vals)
 }
 
