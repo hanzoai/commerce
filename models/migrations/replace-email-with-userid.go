@@ -238,5 +238,5 @@ func init() {
 }
 
 func replaceEmailWithUserIdForOrder(c appengine.Context) {
-	parallel.DatastoreJob(c, "order", 50, orderIdFixer{})
+	parallel.DatastoreJob(c, "order", 50, orderIdReplacer{})
 }
