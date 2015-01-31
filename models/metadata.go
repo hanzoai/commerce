@@ -2,23 +2,25 @@ package models
 
 import (
 	"net/http"
-
 	"github.com/mholt/binding"
 )
 
-type Metadata struct {
+
+// A single piece of metadata
+type Datum struct {
+	Key   string
 	Type  string
 	Value string
 }
 
-func (m Metadata) Validate(req *http.Request, errs binding.Errors) binding.Errors {
+func (m Datum) Validate(req *http.Request, errs binding.Errors) binding.Errors {
 	// Type and Value cannot be the empty string.
 
-	if m.Type == "" {
+	if m.Key == "" {
 		errs = append(errs, binding.Error{
-			FieldNames:     []string{"Type"},
+			FieldNames:     []string{"Key"},
 			Classification: "InputError",
-			Message:        "Type cannot be empty.",
+			Message:        "Key cannot be empty.",
 		})
 	}
 
