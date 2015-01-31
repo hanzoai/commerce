@@ -40,5 +40,5 @@ func init() {
 }
 
 func fixOrderIds(c appengine.Context) {
-	parallel.DatastoreJob(c, "order", 30, orderIdFixer{})
+	parallel.DatastoreJob(c, "order", 50, orderIdFixer{})
 }
