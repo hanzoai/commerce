@@ -2,6 +2,7 @@ package models
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/mholt/binding"
 
@@ -26,6 +27,8 @@ type User struct {
 		CustomerId string
 		Account    stripe.Account
 	}
+	LastUpdated time.Time
+	CreatedAt   time.Time
 	//Metadata		map[string]Metadata
 }
 
