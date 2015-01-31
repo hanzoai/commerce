@@ -40,6 +40,7 @@ type OldOrder struct {
 	CreatedAt       time.Time `schema:"-"`
 	UpdatedAt       time.Time `schema:"-"`
 	Id              string
+	UserId          string
 	Email           string
 
 	// TODO: Recalculate Shipping/Tax on server
@@ -204,6 +205,7 @@ func (f orderIdReplacer) Execute(c appengine.Context, key *datastore.Key, object
 		UpdatedAt:       oO.UpdatedAt,
 		Id:              key.Encode(),
 		UserId:          u.Id,
+		Email:           oO.Email,
 		Shipping:        oO.Shipping,
 		Tax:             oO.Tax,
 		Subtotal:        oO.Subtotal,
@@ -220,12 +222,12 @@ func (f orderIdReplacer) Execute(c appengine.Context, key *datastore.Key, object
 
 	if bad {
 		newK := datastore.NewKey(c, "broken-order", key.StringID(), key.IntID(), nil)
-		datastore.Put(c, newK, &o)
-	} else {
-		datastore.Put(c, key, &o)
+		if _, err := datastore.Put(c, newK, &o); err != nil {
+			return err
+		}
 	}
 
-	if _, err := datastore.Put(c, key, oO); err != nil {
+	if _, err := datastore.Put(c, key, &o); err != nil {
 		return err
 	}
 
