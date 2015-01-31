@@ -9,13 +9,13 @@ import (
 )
 
 // Continuation stores context information for execution
-type Continuation interface {
+type SerializableClosure interface {
 	// NewObject should return pointer to an instance of the object
 	NewObject() interface{}
 	Execute(appengine.Context, *datastore.Key, interface{}) error
 }
 
-var datastoreWorker = delay.Func("ParallelDatastoreWorker", func(c appengine.Context, kind string, offset, limit int, cont Continuation) {
+var datastoreWorker = delay.Func("ParallelDatastoreWorker", func(c appengine.Context, kind string, offset, limit int, cont SerializableClosure) {
 	var k *datastore.Key
 	var err error
 	t := datastore.NewQuery(kind).Offset(offset).Limit(limit).Run(c)
@@ -39,7 +39,7 @@ var datastoreWorker = delay.Func("ParallelDatastoreWorker", func(c appengine.Con
 })
 
 // NewDatastoreJob initializes Ceiling[Count(kind)/limit] workers.
-func DatastoreJob(c appengine.Context, kind string, limit int, cont Continuation) error {
+func DatastoreJob(c appengine.Context, kind string, limit int, cont SerializableClosure) error {
 	var total int
 	var err error
 
