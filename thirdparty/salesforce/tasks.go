@@ -61,6 +61,7 @@ func (ui OrderImporter) Execute(c appengine.Context, key *datastore.Key, object 
 // Gob registration
 func init() {
 	gob.Register(UserImporter{})
+	gob.Register(OrderImporter{})
 }
 
 // Deferred Tasks
@@ -110,13 +111,13 @@ func ImportOrders(c appengine.Context) {
 	db := ds.New(c)
 	campaign := models.Campaign{}
 
-	// Get user instance
+	// Get order instance
 	if err := db.GetKey("campaign", "dev@hanzo.ai", &campaign); err != nil {
 		log.Panic("Unable to get campaign from database: %v", err, c)
 	}
 
 	if campaign.Salesforce.AccessToken != "" {
-		parallel.DatastoreJob(c, "user", 100, OrderImporter{Campaign: campaign})
+		parallel.DatastoreJob(c, "order", 100, OrderImporter{Campaign: campaign})
 	}
 }
 
