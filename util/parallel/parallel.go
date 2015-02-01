@@ -90,12 +90,16 @@ func DatastoreFunc(name string, w interface{}) *delay.Function {
 		log.Panic("Function requires atleast 3 parameters")
 	}
 
+	if argNum > 4 {
+		log.Panic("Function only takes 3 or 4 parameters")
+	}
+
 	if t.In(0) != contextType {
 		log.Panic("First argument must be an appengine.Context")
 	}
 
 	if t.In(1) != keyType {
-		log.Panic("First argument must be a *datastore.Key")
+		log.Panic("Second argument must be a *datastore.Key")
 	}
 
 	objectType := t.In(2)
