@@ -27,9 +27,9 @@ type User struct {
 		CustomerId string
 		Account    stripe.Account
 	}
-	LastUpdated time.Time
-	CreatedAt   time.Time
-	Metadata		[]Datum
+	UpdatedAt time.Time
+	CreatedAt time.Time
+	Metadata  []Datum
 }
 
 func (u User) Name() string {
@@ -41,7 +41,7 @@ func (u User) HasPassword() bool {
 }
 
 func (u User) GetMetadata(key string) Datum {
-	for index,datum := range u.Metadata {
+	for index, datum := range u.Metadata {
 		if datum.Key == key {
 			return u.Metadata[index]
 		}
