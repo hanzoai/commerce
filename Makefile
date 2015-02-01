@@ -159,7 +159,7 @@ deps-assets:
 
 # DEPS GO
 deps-go: .sdk
-	gpm install || curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.1/bin/gpm | bash
+	gpm install || curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.2/bin/gpm | bash
 
 .sdk:
 	$(sdk_install) $(sdk_install_extra)
