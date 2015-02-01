@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"errors"
+
 	"code.google.com/p/go.crypto/bcrypt"
 	"github.com/gin-gonic/gin"
 
@@ -54,6 +56,10 @@ func VerifyUser(c *gin.Context) error {
 	}
 
 	log.Debug("%v = %v", user, f.Password)
+	if !user.HasPassword() {
+		return errors.New("User likely registered via Facebook")
+	}
+
 	// Compare form password with saved hash
 	if err := CompareHashAndPassword(user.PasswordHash, f.Password); err != nil {
 		return err
