@@ -331,7 +331,7 @@ func (o *Order) FromOrder(order *models.Order) {
 	o.ShippingPostalCode = order.ShippingAddress.PostalCode
 	o.ShippingCountry = order.ShippingAddress.Country
 	o.Status = "Draft"
-	//o.TotalAmount = float64(order.Total) / 100.00
+	o.TotalAmount = float64(order.Total) / 1000.0
 
 	//SKU
 	desc := ""
