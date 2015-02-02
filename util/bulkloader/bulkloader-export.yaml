@@ -261,33 +261,6 @@ transformers:
       external_name: Key
       export_transform: transform.key_id_or_name_as_string
 
-    - property: Account.CVV2
-      external_name: Account.CVV2
-      # Type: Integer Stats: 1 properties of this type in this kind.
-      import_transform: transform.none_if_empty(int)
-
-    - property: Account.Expiry
-      external_name: Account.Expiry
-      # Type: String Stats: 1 properties of this type in this kind.
-
-    - property: Account.Month
-      external_name: Account.Month
-      # Type: Integer Stats: 1 properties of this type in this kind.
-      import_transform: transform.none_if_empty(int)
-
-    - property: Account.Number
-      external_name: Account.Number
-      # Type: String Stats: 1 properties of this type in this kind.
-
-    - property: Account.Type
-      external_name: Account.Type
-      # Type: String Stats: 1 properties of this type in this kind.
-
-    - property: Account.Year
-      external_name: Account.Year
-      # Type: Integer Stats: 1 properties of this type in this kind.
-      import_transform: transform.none_if_empty(int)
-
     - property: BillingAddress.City
       external_name: BillingAddress.City
       # Type: String Stats: 1 properties of this type in this kind.
@@ -398,6 +371,12 @@ transformers:
       # Type: String Stats: 1 properties of this type in this kind.
       import_transform: bulkloader_helper.transform_eval
 
+    - property: CreatedAt
+      external_name: CreatedAt
+      # Type: Date/Time Stats: 1 properties of this type in this kind.
+      import_transform: bulkloader_helper.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
+
     - property: Email
       external_name: Email
       # Type: String Stats: 1 properties of this type in this kind.
@@ -427,6 +406,16 @@ transformers:
       external_name: Items.Quantity
       # Type: Integer Stats: 3 properties of this type in this kind.
       # import_transform: transform.none_if_empty(int)
+      import_transform: bulkloader_helper.transform_eval
+
+    - property: Items.SKU_
+      external_name: Items.SKU_
+      # export_transform: bulkloader_helper.list_skus_to_str
+      import_transform: bulkloader_helper.transform_eval
+
+    - property: Items.Slug_
+      external_name: Items.Slug_
+      # export_transform: bulkloader_helper.list_to_str
       import_transform: bulkloader_helper.transform_eval
 
     - property: Preorder
@@ -492,36 +481,24 @@ transformers:
       # Type: Integer Stats: 1 properties of this type in this kind.
       import_transform: transform.none_if_empty(int)
 
-    - property: CreatedAt
-      external_name: CreatedAt
-      # Type: Date/Time Stats: 1 properties of this type in this kind.
-      import_transform: bulkloader_helper.import_date_time('%Y-%m-%dT%H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
-
     - property: UpdatedAt
       external_name: UpdatedAt
       # Type: Date/Time Stats: 1 properties of this type in this kind.
       import_transform: bulkloader_helper.import_date_time('%Y-%m-%dT%H:%M:%S')
       export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
+    - property: UserId
+      external_name: UserId
+      # Type: String Stats: 51 properties of this type in this kind.
+
       # GENERATED:
-    - property: Items.SKU_
-      external_name: Items.SKU_
-      # export_transform: bulkloader_helper.list_skus_to_str
-      import_transform: bulkloader_helper.transform_eval
+    # - property: PreorderDescription
+    #   external_name: PreorderDescription
+    #   export_transform: bulkloader_helper.generate_preorder_description
 
-    - property: Items.Slug_
-      external_name: Items.Slug_
-      # export_transform: bulkloader_helper.list_to_str
-      import_transform: bulkloader_helper.transform_eval
-
-    - property: PreorderDescription
-      external_name: PreorderDescription
-      export_transform: bulkloader_helper.generate_preorder_description
-
-    - property: ShippingAddress
-      external_name: ShippingAddress
-      export_transform: bulkloader_helper.generate_shipping_address
+    # - property: ShippingAddress
+    #   external_name: ShippingAddress
+    #   export_transform: bulkloader_helper.generate_shipping_address
 
 - kind: product
   connector: csv
