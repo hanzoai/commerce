@@ -256,7 +256,7 @@ datastore-export:
 				  --log_file /tmp/bulkloader-$$kind.log \
 				  --result_db_filename /tmp/bulkloader-result-$$kind.db \
 				  --kind $$kind \
-				  --filename _export/$$kind.csv && \
+				  --filename _export/$$kind-`date +"%Y-%m-%d"`.csv && \
 	rm -rf /tmp/bulkloader-$$kind.db \
 		   /tmp/bulkloader-$$kind.log \
 		   /tmp/bulkloader-result-$$kind.db
