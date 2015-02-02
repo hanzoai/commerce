@@ -67,6 +67,17 @@ type Contact struct {
 	Account            Account `json:"Account,omitempty"`
 
 	// Skully Custom fields
+	UniquePreorderLinkC string `json:"Unique_Preorder_Link__c,omitempty"`
+	FullfillmentStatusC string `json:"Fulfillment_Status__c,omitempty"`
+	PreorderC           string `json:"Preorder__c,omitempty"`
+	ShippingAddressC    string `json:"Shipping_Address__c,omitempty"`
+	ShippingCityC       string `json:"Shipping_City__c,omitempty"`
+	ShippingStateC      string `json:"Shipping_State__c,omitempty"`
+	ShippingPostalZipC  string `json:"Shipping_Postal_Zip__c,omitempty"`
+	ShippingCountryC    string `json:"Shipping_Country__c,omitempty"`
+	MC4SFMCSubscriberC  string `json:"MC4SF__MC_Subscriber__c,omitempty"`
+
+	// Zendesk Custom fields
 	ZendeskLastSyncDateC         string `json:"Zendesk__Last_Sync_Date__c,omitempty"`
 	ZendeskLastSyncStatusC       string `json:"Zendesk__Last_Sync_Status__c,omitempty"`
 	ZendeskResultC               string `json:"Zendesk__Result__c,omitempty"`
@@ -76,15 +87,6 @@ type Contact struct {
 	ZendeskIsCreatedUpdatedFlagC string `json:"Zendesk__isCreatedUpdatedFlag__c,omitempty"`
 	ZendeskNotesC                string `json:"Zendesk__notes__c,omitempty"`
 	ZendeskZendeskIdC            string `json:"Zendesk__zendesk_id__c,omitempty"`
-	UniquePreorderLinkC          string `json:"Unique_Preorder_Link__c,omitempty"`
-	FullfillmentStatusC          string `json:"Fulfillment_Status__c,omitempty"`
-	PreorderC                    string `json:"Preorder__c,omitempty"`
-	ShippingAddressC             string `json:"Shipping_Address__c,omitempty"`
-	ShippingCityC                string `json:"Shipping_City__c,omitempty"`
-	ShippingStateC               string `json:"Shipping_State__c,omitempty"`
-	ShippingPostalZipC           string `json:"Shipping_Postal_Zip__c,omitempty"`
-	ShippingCountryC             string `json:"Shipping_Country__c,omitempty"`
-	MC4SFMCSubscriberC           string `json:"MC4SF__MC_Subscriber__c,omitempty"`
 }
 
 func (c *Contact) FromUser(u *models.User) {
@@ -196,6 +198,19 @@ type Account struct {
 	SLAExpirationDateC string `json:"SLAExpirationDate__c,omitempty"`
 	Account            string `json:"Account,omitempty"`
 	Master             string `json:"Master,omitempty"`
+
+	// Zendesk integration items
+	ZendeskCreatedUpdatedFlagC    string `json:"Zendesk__createdUpdatedFlag__c"`
+	ZendeskDomainMappingC         string `json:"Zendesk__Domain_Mapping__c"`
+	ZendeskLastSyncDataC          string `json:"Zendesk__Last_Sync_Date__c"`
+	ZendeskLastSyncStatusC        string `json:"Zendesk__Last_Sync_Status__c"`
+	ZendeskNotesC                 string `json:"Zendesk__Notes__c"`
+	ZendeskTagsC                  string `json:"Zendesk__Tags__c"`
+	ZendeskZendeskOldTagsC        string `json:"Zendesk__Zendesk_oldTags__c"`
+	ZendeskZendeskOutofSyncC      string `json:"Zendesk__Zendesk_OutofSync__c"`
+	ZendeskZendeskOrganizationC   string `json:"Zendesk__Zendesk_Organization__c"`
+	ZendeskZendeskOrganizationIdC string `json:"Zendesk__Zendesk_Organization_Id__c"`
+	ZendeskZendeskResultC         string `json:"Zendesk__Result__c"`
 }
 
 func (a *Account) FromUser(u *models.User) {
