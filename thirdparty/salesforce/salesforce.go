@@ -335,7 +335,7 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
 
 	switch v := objects.(type) {
 	case *[]*models.User:
-		log.Debug("Getting Updated Users", c)
+		log.Debug("Getting Updated Contacts", c)
 		path := fmt.Sprintf(ContactsUpdatedPath, start.Format(time.RFC3339), end.Format(time.RFC3339))
 
 		if err := a.request("GET", path, "", nil, true); err != nil {
@@ -348,7 +348,10 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
 			return err
 		}
 
-		users := make([]*models.User, 0)
+		var user *models.User
+		var ok bool
+
+		users := make(map[string]*models.User)
 
 		for _, id := range response.Ids {
 			log.Debug("Getting Contact for ")
@@ -364,7 +367,36 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
 				continue
 			}
 
-			path = fmt.Sprintf(AccountPath, contact.AccountId)
+			// We key based on accountId because it is common to both contacts and accounts
+			if user, ok = users[contact.AccountId]; !ok {
+				user = new(models.User)
+				users[contact.AccountId] = user
+			}
+
+			log.Debug("Getting Contact: %v %v", contact, user, c)
+			contact.ToUser(user)
+		}
+
+		log.Debug("Getting Updated Accounts", c)
+		path = fmt.Sprintf(AccountsUpdatedPath, start.Format(time.RFC3339), end.Format(time.RFC3339))
+
+		if err := a.request("GET", path, "", nil, true); err != nil {
+			return err
+		}
+
+		response = new(UpdatedRecordsResponse)
+
+		if err := json.Unmarshal(a.LastBody, &response); err != nil {
+			return err
+		}
+
+		for _, id := range response.Ids {
+			if user, ok = users[id]; !ok {
+				user = new(models.User)
+				users[id] = user
+			}
+
+			path = fmt.Sprintf(AccountPath, id)
 			if err := a.request("GET", path, "", nil, true); err != nil {
 				log.Warn("Failed to Get Account for %v", id, c)
 				continue
@@ -376,23 +408,21 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
 				continue
 			}
 
-			log.Debug("Getting Contact: %v", contact, c)
 			log.Debug("Getting Account: %v", account, c)
 
-			log.Debug("Converting to User", c)
-
-			user := new(models.User)
-			contact.ToUser(user)
 			account.ToUser(user)
-
-			log.Debug("User %v", user, contact, c)
-
-			users = append(users, user)
 		}
 
-		log.Debug("Pulled %v Users", len(users))
-		*v = users
+		log.Debug("Pulled %v Users %v", len(users), c)
+		userSlice := make([]*models.User, len(users))
 
+		i := 0
+		for _, u := range users {
+			userSlice[i] = u
+			i++
+		}
+
+		*v = userSlice
 	default:
 		return errors.New("Invalid Type")
 	}
