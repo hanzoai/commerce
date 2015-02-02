@@ -61,13 +61,16 @@ func (d *Datastore) EncodeId(kind string, id interface{}) string {
 func (d *Datastore) DecodeKey(encodedKey string) (*Key, error) {
 	_key, err := DecodeKey(encodedKey)
 
+	// If unable to return key, bail out
+	if err != nil {
+		d.warn("Unable to decode key: %v", encodedKey)
+		return _key, err
+	}
+
 	// Since key returned might have been created with a different app, we'll
 	// recreate the key to ensure it has a valid AppID.
 	key := NewKey(d.Context, _key.Kind(), _key.StringID(), _key.IntID(), nil)
 
-	if err != nil {
-		d.warn("Unable to decode key: %v", encodedKey)
-	}
 	return key, err
 }
 
