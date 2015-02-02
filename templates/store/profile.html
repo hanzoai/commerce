@@ -111,5 +111,23 @@
             </div>
         </fieldset>
     </form>
+
+    <form id="changeInfoForm" action="{{ urlFor("store", "/profile/change-info") }}" method="POST">
+        <h2>Info</h2>
+        <div class="success">Profile updated successfully.</div>
+        <div class="errors error">{{ changeBillingError }}</div>
+
+        <fieldset>
+            <div class="field">
+              <label for="birthday">Birthday</label>
+              <input id="birthday" name="Birthday" type="text" placeholder="Birthday ex. 1/1/1900" value="{{ user.GetMetadata("birthday").Value }}">
+            </div>
+
+            <div class="options">
+                <button type="submit">Update</button>
+            </div>
+        </fieldset>
+    </form>
+
 </div>
 {% endblock %}
