@@ -676,7 +676,7 @@ transformers:
     - property: PasswordHash
       external_name: PasswordHash
       import_transform: transform.blobproperty_from_base64
-      export_transform: base64.b64encode
+      export_transform: bulkloader_helper.base64_encode_else_none
 
     - property: Phone
       external_name: Phone
