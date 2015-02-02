@@ -275,7 +275,7 @@ datastore-import:
 	rm -rf /tmp/bulkloader-upload-$$kind.log
 
 # Generate config for use with datastore-export target
-datastore-export-config:
+datastore-config:
 	bulkloader.py --create_config \
 			      --url=$(datastore_admin_url) \
 				  --filename=bulkloader.yaml
