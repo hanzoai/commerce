@@ -10,10 +10,11 @@ import (
 	"appengine/delay"
 
 	ds "crowdstart.io/datastore"
+	"crowdstart.io/datastore/parallel"
 
 	"crowdstart.io/models"
 	"crowdstart.io/util/log"
-	"crowdstart.io/util/parallel"
+	oldparallel "crowdstart.io/util/parallel"
 	"crowdstart.io/util/queries"
 )
 
@@ -92,7 +93,7 @@ var UpsertOrderTask = delay.Func("SalesforceUpsertOrderTask", func(c appengine.C
 })
 
 // UpsertOrderTask upserts users into salesforce
-var ImportUsersTask = parallel.DatastoreFunc("SalesforceImportUsersTask", func(c appengine.Context, key *datastore.Key, user models.User, campaign models.Campaign) {
+var ImportUsersTask = parallel.Task("SalesforceImportUsersTask", func(c appengine.Context, key *datastore.Key, user models.User, campaign models.Campaign) {
 	client := New(c, &campaign, true)
 	client.Push(&user)
 })
@@ -108,7 +109,7 @@ func ImportUsers(c appengine.Context) {
 	}
 
 	if campaign.Salesforce.AccessToken != "" {
-		parallel.DatastoreCall(c, "user", 100, ImportUsersTask, campaign)
+		parallel.Run(c, "user", 100, ImportUsersTask, campaign)
 	}
 }
 
@@ -123,7 +124,7 @@ func ImportOrders(c appengine.Context) {
 	}
 
 	if campaign.Salesforce.AccessToken != "" {
-		parallel.DatastoreJob(c, "order", 100, OrderImporter{Campaign: campaign})
+		oldparallel.DatastoreJob(c, "order", 100, OrderImporter{Campaign: campaign})
 	}
 }
 
