@@ -91,6 +91,12 @@ var UpsertOrderTask = delay.Func("SalesforceUpsertOrderTask", func(c appengine.C
 	}
 })
 
+// UpsertOrderTask upserts users into salesforce
+var ImportUsersTask = parallel.DatastoreFunc("SalesforceImportUsersTask", func(c appengine.Context, key *datastore.Key, user models.User, campaign models.Campaign) {
+	client := New(c, &campaign, true)
+	client.Push(&user)
+})
+
 // ImportUsers upserts all users into salesforce
 func ImportUsers(c appengine.Context) {
 	db := ds.New(c)
@@ -102,7 +108,7 @@ func ImportUsers(c appengine.Context) {
 	}
 
 	if campaign.Salesforce.AccessToken != "" {
-		parallel.DatastoreJob(c, "user", 100, UserImporter{Campaign: campaign})
+		parallel.DatastoreCall(c, "user", 100, ImportUsersTask, campaign)
 	}
 }
 
