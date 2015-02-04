@@ -41,13 +41,16 @@ type Order struct {
 	// Need to save campaign id
 	CampaignId string
 
-	Confirmed bool // Whether or not an imported preorder has been confirmed by customer
-	Cancelled bool
-	Preorder  bool
-	Refunded  bool
-	Shipped   bool
+	// Basic status flags for order
+	Cancelled   bool
+	Preorder    bool
+	Refunded    bool
+	Shipped     bool
+	Unconfirmed bool // True only if preorder has not be confirmed by customer
 
-	Dispute struct {
+	// Dispute details
+	Disputed bool
+	Dispute  struct {
 		Status string
 		Reason string
 	}
