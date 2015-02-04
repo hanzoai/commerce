@@ -17,7 +17,9 @@ import (
 
 type Order struct {
 	FieldMapMixin
+
 	// Account         PaymentAccount
+
 	BillingAddress  Address
 	ShippingAddress Address
 	CreatedAt       time.Time `schema:"-"`
@@ -43,6 +45,7 @@ type Order struct {
 
 	// Basic status flags for order
 	Cancelled   bool
+	Locked      bool
 	Preorder    bool
 	Refunded    bool
 	Shipped     bool
@@ -57,7 +60,7 @@ type Order struct {
 
 	// ShippingOption  ShippingOption
 
-	Test bool
+	Test bool // Not a real transaction
 }
 
 var variantsMap map[string]ProductVariant
