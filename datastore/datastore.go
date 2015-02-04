@@ -74,8 +74,16 @@ func (d *Datastore) KeyFromInt(kind string, id interface{}) *Key {
 	return NewKey(d.Context, kind, "", _id, nil)
 }
 
+// Return an encoded key from an id representation
 func (d *Datastore) EncodeId(kind string, id interface{}) string {
-	return d.KeyFromInt(kind, id).Encode()
+	key := d.KeyFromInt(kind, id)
+
+	// If we KeyFromInt returns an incomplete key, return empty string.
+	if key.IntID() == 0 {
+		return ""
+	}
+
+	return key.Encode()
 }
 
 func (d *Datastore) DecodeKey(encodedKey string) (*Key, error) {
