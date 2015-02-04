@@ -54,6 +54,8 @@ func GetPreorder(c *gin.Context) {
 		Filter("UserId =", user.Id).
 		GetAll(db.Context, &orders)
 
+	// Query will not error when number of entities returned by query is zero.
+	// We continue based on the assumption that when saving that will create an actual order.
 	if err != nil {
 		log.Panic("Error retrieving orders associated with the user's email", err)
 	}
