@@ -173,54 +173,44 @@ transformers:
 
     - property: Email
       external_name: Email
-      # Type: String Stats: 1864 properties of this type in this kind.
 
     - property: FundingDate
       external_name: FundingDate
-      # Type: String Stats: 1864 properties of this type in this kind.
 
     - property: Id
       external_name: Id
-      # Type: String Stats: 1864 properties of this type in this kind.
 
     - property: PaymentMethod
       external_name: PaymentMethod
-      # Type: String Stats: 1864 properties of this type in this kind.
 
     - property: Perk.Description
       external_name: Perk.Description
-      # Type: String Stats: 1864 properties of this type in this kind.
 
     - property: Perk.EstimatedDelivery
       external_name: Perk.EstimatedDelivery
-      # Type: String Stats: 1864 properties of this type in this kind.
 
     - property: Perk.GearQuantity
       external_name: Perk.GearQuantity
-      # Type: Integer Stats: 1864 properties of this type in this kind.
       import_transform: transform.none_if_empty(int)
 
     - property: Perk.HelmetQuantity
       external_name: Perk.HelmetQuantity
-      # Type: Integer Stats: 1864 properties of this type in this kind.
       import_transform: transform.none_if_empty(int)
 
     - property: Perk.Id
       external_name: Perk.Id
-      # Type: String Stats: 1864 properties of this type in this kind.
 
     - property: Perk.Price
       external_name: Perk.Price
-      # Type: String Stats: 1864 properties of this type in this kind.
 
     - property: Perk.Title
       external_name: Perk.Title
-      # Type: String Stats: 1864 properties of this type in this kind.
 
     - property: Status
       external_name: Status
-      # Type: String Stats: 1864 properties of this type in this kind.
 
+    - property: UserId
+      external_name: UserId
 
 - kind: invite-token
   connector: csv
