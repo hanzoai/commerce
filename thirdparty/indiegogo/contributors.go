@@ -36,7 +36,7 @@ func ImportCSV(db *datastore.Datastore, filename string) {
 	// Funding Date       4  Perk       10  Shipping State/Province  15
 	// Payment Method     5                 Shipping Zip/Postal Code 16
 	for i := 0; true; i++ {
-		// Only save first 25 in development
+		// Only import first 25 in development
 		if config.IsDevelopment && i > 25 {
 			break
 		}
@@ -107,6 +107,8 @@ func ImportCSV(db *datastore.Datastore, filename string) {
 		token := new(Token)
 		token.Id = tokenId
 		token.UserId = user.Id
+		token.Email = user.Email
+
 		db.PutKey("invite-token", tokenId, token)
 
 		// Save contribution
