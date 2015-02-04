@@ -95,9 +95,9 @@ var _ = Describe("EncodeId", func() {
 		})
 
 		It("should error", func() {
-			err := db.EncodeId("test", errors.New(""))
-			Expect(err).To(Equal(""))
-			Expect(err).NotTo(Equal(0))
+			key := db.EncodeId("test", errors.New(""))
+			Expect(key).To(Equal(""))
+			Expect(key).NotTo(Equal(0))
 		})
 	})
 })
