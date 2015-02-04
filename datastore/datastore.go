@@ -36,14 +36,30 @@ func New(ctx interface{}) (d *Datastore) {
 	return d
 }
 
-func (d *Datastore) EncodeId(kind string, id interface{}) string {
+// Return *Key from either string or int id.
+func (d *Datastore) KeyFromId(kind string, id interface{}) *Key {
+	switch v := id.(type) {
+	case string:
+		return NewKey(d.Context, kind, v, 0, nil)
+	case int64:
+		return NewKey(d.Context, kind, "", v, nil)
+	case int:
+		return NewKey(d.Context, kind, "", int64(v), nil)
+	default:
+		d.warn("EncodeId was passed an invalid type %v", v)
+		return NewIncompleteKey(d.Context, kind, nil)
+	}
+}
+
+// Return *Key from int id (potentially a string int id).
+func (d *Datastore) KeyFromInt(kind string, id interface{}) *Key {
 	var _id int64
 	switch v := id.(type) {
 	case string:
 		maybeId, err := strconv.ParseInt(v, 10, 64)
 		if err != nil {
 			d.warn("EncodeId was passed an string that could not be parsed to int64 %v", v)
-			return ""
+			return NewIncompleteKey(d.Context, kind, nil)
 		}
 		_id = maybeId
 	case int64:
@@ -52,10 +68,14 @@ func (d *Datastore) EncodeId(kind string, id interface{}) string {
 		_id = int64(v)
 	default:
 		d.warn("EncodeId was passed an invalid type %v", v)
-		return ""
+		return NewIncompleteKey(d.Context, kind, nil)
 	}
 
-	return NewKey(d.Context, kind, "", _id, nil).Encode()
+	return NewKey(d.Context, kind, "", _id, nil)
+}
+
+func (d *Datastore) EncodeId(kind string, id interface{}) string {
+	return d.KeyFromInt(kind, id).Encode()
 }
 
 func (d *Datastore) DecodeKey(encodedKey string) (*Key, error) {
