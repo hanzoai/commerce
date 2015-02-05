@@ -16,9 +16,11 @@ import (
 	"crowdstart.io/util/router"
 
 	// Imported for side-effect of having tasks registered.
-	_ "crowdstart.io/test/datastore/parallel"
 	_ "crowdstart.io/thirdparty/mandrill"
 	_ "crowdstart.io/thirdparty/salesforce"
+
+	// Only used in tests
+	_ "crowdstart.io/test/datastore/parallel/worker"
 )
 
 func Init() {

@@ -124,8 +124,13 @@ else
 	datastore_admin_url = https://datastore-admin-dot-crowdstart-staging.appspot.com/_ah/remote_api
 endif
 
-export GOROOT  := $(goroot)
-export GOPATH  := $(gopath)
+test_filter := $(filter)
+ifdef test_filter
+	test_filter=-focus=$(filter)
+endif
+
+export GOROOT := $(goroot)
+export GOPATH := $(gopath)
 
 all: deps test install
 
@@ -193,16 +198,16 @@ tools:
 
 # TEST/ BENCH
 test:
-	ginkgo -r=true -p=true -progress=true $(verbose) -skipMeasurements=true -skipPackage=integration
+	ginkgo -r=true -p=true -progress=true $(verbose) -skipMeasurements=true -skipPackage=integration $(test_filter)
 
 test-integration:
-	ginkgo -r=true -p=true -progress=true $(verbose) -skipMeasurements=true -focus=integration
+	ginkgo -r=true -p=true -progress=true $(verbose) -skipMeasurements=true -focus=integration $(test_filter)
 
 test-watch:
-	ginkgo watch -r=true -p=true -progress=true $(verbose) -skipMeasurements=true -skipPackage=integration
+	ginkgo watch -r=true -p=true -progress=true $(verbose) -skipMeasurements=true -skipPackage=integration $(test_filter)
 
 bench:
-	ginkgo -r=true -p=true -progress=true $(verbose) -skipPackage=integration
+	ginkgo -r=true -p=true -progress=true $(verbose) -skipPackage=integration $(test_filter)
 
 # DEPLOY
 deploy: test
