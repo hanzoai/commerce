@@ -198,13 +198,13 @@ tools:
 
 # TEST/ BENCH
 test:
-	ginkgo -r=true -p=true -progress=true $(verbose) -skipMeasurements=true -skipPackage=integration $(test_filter)
+	ginkgo -r=true -progress=true $(verbose) -skipMeasurements=true -skipPackage=integration $(test_filter)
 
 test-integration:
 	ginkgo -r=true -p=true -progress=true $(verbose) -skipMeasurements=true -focus=integration $(test_filter)
 
 test-watch:
-	ginkgo watch -r=true -p=true -progress=true $(verbose) -skipMeasurements=true -skipPackage=integration $(test_filter)
+	ginkgo watch -r=true -progress=true $(verbose) -skipMeasurements=true -skipPackage=integration $(test_filter)
 
 bench:
 	ginkgo -r=true -p=true -progress=true $(verbose) -skipPackage=integration $(test_filter)
