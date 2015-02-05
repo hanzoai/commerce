@@ -4,18 +4,17 @@ import (
 	"testing"
 	"time"
 
-	"appengine/datastore"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"crowdstart.io/util/log"
-	"crowdstart.io/util/parallel"
+	"crowdstart.io/datastore"
+	"crowdstart.io/datastore/parallel"
 	"github.com/zeekay/aetest"
 )
 
 var (
 	ctx aetest.Context
+	db  *datastore.Datastore
 )
 
 type TestCounter struct {
@@ -31,10 +30,10 @@ func TestParallel(t *testing.T) {
 var _ = BeforeSuite(func() {
 	var err error
 	ctx, err = aetest.NewContext(&aetest.Options{StronglyConsistentDatastore: true})
+	db := datastore.New(ctx)
 
 	for i := 0; i < 100; i++ {
-		k := datastore.NewIncompleteKey(ctx, "parallel-test", nil)
-		datastore.Put(ctx, k, &TestCounter{})
+		db.Put("test-counter", &TestCounter{})
 	}
 
 	Expect(err).NotTo(HaveOccurred())
@@ -46,25 +45,26 @@ var _ = AfterSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 })
 
-var TestWorker = parallel.Task(func(db *datastore.Datastore, k datastore.Key, model TestCounter) {
+// Define a new worker with parallel.Task
+var TestWorker = parallel.Task("test-worker", func(db *datastore.Datastore, k datastore.Key, model TestCounter) {
 	model.Count = model.Count + 1
-	db.Put(k, model)
+	db.PutKey("test-counter", k, model)
 })
 
-var _ = Describe("Launch Parallel Tasks", func() {
-	Context("Datastore Job", func() {
-		It("should put dispatch 10 jobs (count: 10)", func() {
-			parallel.DatastoreJob(ctx, "parallel-test", 10, &TestRunner{})
+var _ = Describe("datastore.parallel", func() {
+	Context("parallel.Run", func() {
+		It("should put dispatch 10 workers to process 100 entities", func() {
+			parallel.Run(ctx, "parallel-test", 10, TestWorker)
 
-			time.Sleep(1 * time.Second)
+			time.Sleep(10 * time.Second)
 
-			tcs := make([]TestCounter, 0)
-			datastore.NewQuery("parallel-test").GetAll(ctx, &tcs)
+			var tcs []TestCounter
+			db.Query("test-counter").GetAll(ctx, &tcs)
 
-			log.Debug("Length %v", len(tcs), ctx)
-			Expect(len(tcs)).To(Equal(10))
+			Expect(len(tcs)).To(Equal(100))
+
 			for _, tc := range tcs {
-				Expect(tc.Count).To(Equal(0 /*1*/))
+				Expect(tc.Count).To(Equal(1))
 			}
 		})
 	})
