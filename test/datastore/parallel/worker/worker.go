@@ -11,7 +11,7 @@ type Model struct {
 }
 
 // Define a new worker with parallel.Task
-var TaskPlus1 = parallel.Task("test-worker", func(db *datastore.Datastore, k datastore.Key, model Model, variadicPlaceholder interface{}) {
+var TaskPlus1 = parallel.Task("test-worker", func(db *datastore.Datastore, k datastore.Key, model Model) {
 	model.Count = model.Count + 1
 	log.Warn("Working On Object %v, %v", k, model)
 	db.PutKey("test-model", k, &model)
