@@ -7,7 +7,7 @@ func Development() *Config {
 	config.IsDevelopment = true
 
 	config.AutoCompileAssets = false
-	config.AutoLoadFixtures = true
+	config.AutoLoadFixtures = false
 	config.DatastoreWarn = true
 
 	config.Protocol = "//localhost:8080/" // Localhost
