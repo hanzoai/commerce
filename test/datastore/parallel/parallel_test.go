@@ -7,11 +7,12 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"crowdstart.io/datastore"
-	"crowdstart.io/datastore/parallel"
-
 	// "github.com/zeekay/aetest"
 	"github.com/mzimmerman/appenginetesting"
+
+	"crowdstart.io/datastore"
+	"crowdstart.io/datastore/parallel"
+	"crowdstart.io/test/datastore/parallel/worker"
 )
 
 var (
@@ -19,13 +20,10 @@ var (
 	db  *datastore.Datastore
 )
 
-type TestCounter struct {
-	Count int
-}
-
 func TestParallel(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "datastore.parallel test suite")
+
 	ctx, _ = appenginetesting.NewContext(&appenginetesting.Options{
 		Debug:   appenginetesting.LogDebug,
 		Testing: t,
@@ -36,13 +34,10 @@ func TestParallel(t *testing.T) {
 var _ = BeforeSuite(func() {
 	var err error
 
-	Expect(err).NotTo(HaveOccurred())
-
-	// ctx, err = aetest.NewContext(&aetest.Options{StronglyConsistentDatastore: true})
 	db := datastore.New(ctx)
 
 	for i := 0; i < 100; i++ {
-		db.Put("test-counter", &TestCounter{})
+		_, err = db.Put("test-model", &worker.Model{})
 	}
 
 	Expect(err).NotTo(HaveOccurred())
@@ -56,17 +51,17 @@ var _ = AfterSuite(func() {
 var _ = Describe("datastore.parallel", func() {
 	Context("parallel.Run", func() {
 		It("should put dispatch 10 workers to process 100 entities", func() {
-			parallel.Run(ctx, "parallel-test", 10, TestWorker)
+			parallel.Run(ctx, "parallel-test", 10, worker.Task)
 
 			time.Sleep(1000000 * time.Second)
 
-			var tcs []TestCounter
-			db.Query("test-counter").GetAll(ctx, &tcs)
+			var models []worker.Model
+			db.Query("test-model").GetAll(ctx, &models)
 
-			Expect(len(tcs)).To(Equal(100))
+			Expect(len(models)).To(Equal(100))
 
-			for _, tc := range tcs {
-				Expect(tc.Count).To(Equal(1))
+			for _, model := range models {
+				Expect(model.Count).To(Equal(1))
 			}
 		})
 	})
