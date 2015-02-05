@@ -94,8 +94,8 @@ var UpsertOrderTask = delay.Func("SalesforceUpsertOrderTask", func(c appengine.C
 })
 
 // UpsertOrderTask upserts users into salesforce
-var ImportUsersTask = parallel.Task("sf-import-user-task", func(c appengine.Context, key datastore.Key, user models.User, campaign models.Campaign) {
-	client := New(c, &campaign, true)
+var ImportUsersTask = parallel.Task("sf-import-user-task", func(db *datastore.Datastore, key datastore.Key, user models.User, campaign models.Campaign) {
+	client := New(db.Context, &campaign, true)
 	client.Push(&user)
 })
 
