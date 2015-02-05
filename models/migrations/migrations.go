@@ -6,6 +6,7 @@ import (
 	"appengine"
 	"appengine/delay"
 
+	"crowdstart.io/models/migrations/tasks"
 	"crowdstart.io/util/log"
 )
 
@@ -43,6 +44,7 @@ var Run = delay.Func("run-migration", func(c appengine.Context, name string) {
 func init() {
 	// Add email to orders
 	addMigration("add-email-to-orders", addEmailToOrders)
+	addMigration("add-email-to-contribution", tasks.AddEmailToContribution)
 
 	// Replace email with user id
 	addMigration("replace-email-with-userid-for-user", replaceEmailWithUserIdForUser)
