@@ -5,9 +5,6 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-
 	// "github.com/zeekay/aetest"
 	"github.com/mzimmerman/appenginetesting"
 
@@ -22,10 +19,6 @@ var (
 )
 
 func TestParallel(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "datastore/parallel test suite")
-	// defer GinkgoRecover()
-
 	ctx, err := appenginetesting.NewContext(&appenginetesting.Options{
 		AppId:   "crowdstart-io",
 		Debug:   appenginetesting.LogChild,
@@ -42,27 +35,35 @@ func TestParallel(t *testing.T) {
 	}
 	defer ctx.Close()
 
+	// Wait for devappserver to spin up.
+	time.Sleep(30 * time.Second)
+
 	db := datastore.New(ctx)
 
 	// Prepoulate database with 100 entities
-	for i := 0; i < 100; i++ {
-		_, err = db.Put("test-model", &worker.Model{})
+	for i := 0; i < 10; i++ {
+		if _, err = db.Put("test-model", &worker.Model{}); err != nil {
+			t.FailNow()
+		}
 	}
-	Expect(err).NotTo(HaveOccurred())
 
 	// Run task in parallel
-	parallel.Run(ctx, "test-model", 10, worker.Task)
+	parallel.Run(ctx, "test-model", 2, worker.Task)
 
 	// Wait foreverrrr
-	time.Sleep(1 * time.Second)
+	time.Sleep(10 * time.Second)
 
 	// Check if our entities have been updated
 	var models []worker.Model
 	db.Query("test-model").GetAll(ctx, &models)
 
-	Expect(len(models)).To(Equal(100))
+	if len(models) != 10 {
+		t.FailNow()
+	}
 
 	for _, model := range models {
-		Expect(model.Count).To(Equal(2))
+		if model.Count != 1 {
+			t.FailNow()
+		}
 	}
 }
