@@ -37,9 +37,11 @@ func TestParallel(t *testing.T) {
 
 	// Prepoulate database with 100 entities
 	for i := 0; i < 10; i++ {
-		if _, err = db.Put("test-model", &worker.Model{}); err != nil {
+		model := &worker.Model{}
+		if key, err := db.Put("test-model", model); err != nil {
 			t.Fatalf("Failed to insert initial models: %v", err)
 		}
+		db.GetKey("test-model", key, model)
 	}
 
 	// Run task in parallel
