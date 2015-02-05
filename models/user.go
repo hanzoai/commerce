@@ -122,6 +122,8 @@ func (u *User) Insert(db *datastore.Datastore) error {
 	id := db.AllocateId("user")
 	k := db.KeyFromId("user", id)
 
+	log.Debug("Inserting New User with key %v", k)
+
 	u.Id = k.Encode()
 	u.CreatedAt = time.Now()
 	u.UpdatedAt = u.CreatedAt
