@@ -8,14 +8,11 @@ import (
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/util/log"
-	"crowdstart.io/util/queries"
 
 	. "crowdstart.io/models"
 )
 
 func ImportCSV(db *datastore.Datastore, filename string) {
-	q := queries.New(db.Context)
-
 	csvfile, err := os.Open("resources/contributions.csv")
 	defer csvfile.Close()
 	if err != nil {
@@ -94,13 +91,7 @@ func ImportCSV(db *datastore.Datastore, filename string) {
 
 		// No longer updating user information in production, as it would clobber any customized information.
 		if !config.IsProduction {
-			// user.id Is set during upsert
-			q.UpsertUser(user)
-		} else {
-			err := q.GetUserByEmail(user.Email, user)
-			if err != nil {
-				log.Warn("User could not be retrieved %v", user.Email)
-			}
+			user.Upsert(db)
 		}
 
 		// Create token
