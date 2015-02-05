@@ -6,7 +6,7 @@ import (
 	"time"
 
 	// "github.com/zeekay/aetest"
-	"github.com/mzimmerman/appenginetesting"
+	"github.com/davidtai/appenginetesting"
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/datastore/parallel"
@@ -31,17 +31,15 @@ func TestParallel(t *testing.T) {
 	defer ctx.Close()
 
 	// Wait for devappserver to spin up.
-	time.Sleep(20 * time.Second)
+	time.Sleep(1 * time.Second)
 
 	db := datastore.New(ctx)
 
 	// Prepoulate database with 100 entities
 	for i := 0; i < 10; i++ {
 		model := &worker.Model{}
-		if key, err := db.Put("test-model", model); err != nil {
+		if _, err := db.Put("test-model", model); err != nil {
 			t.Fatalf("Failed to insert initial models: %v", err)
-		} else {
-			db.GetKey("test-model", key, model)
 		}
 	}
 
@@ -49,7 +47,7 @@ func TestParallel(t *testing.T) {
 	parallel.Run(ctx, "test-model", 2, worker.Task)
 
 	// Wait foreverrrr
-	time.Sleep(10 * time.Second)
+	//	time.Sleep(1 * time.Second)
 
 	// Check if our entities have been updated
 	var models []worker.Model
@@ -58,12 +56,16 @@ func TestParallel(t *testing.T) {
 		t.Fatalf("Unable to GetAll models: %v", err)
 	}
 
+	t.Logf("Able To Get All Models")
+
 	if len(models) != 10 {
 		t.Fatalf("10 models not inserted into datastore: %v", len(models))
 	}
 
+	t.Logf("There are 10 Light Bulbs")
+
 	for _, model := range models {
-		if model.Count != 1 {
+		if model.Count == 1 {
 			t.Fatalf("Model.Count is incorrect.")
 		}
 	}
