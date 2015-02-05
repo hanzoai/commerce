@@ -19,6 +19,9 @@ import (
 	_ "crowdstart.io/thirdparty/mandrill"
 	_ "crowdstart.io/thirdparty/salesforce"
 
+	// Migrations
+	_ "crowdstart.io/models/migrations/tasks"
+
 	// Only used in tests
 	_ "crowdstart.io/test/datastore/parallel/worker"
 )
