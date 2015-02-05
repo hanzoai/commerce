@@ -76,7 +76,12 @@ func Task(name string, workerFunc interface{}) *delay.Function {
 			}
 
 			// Build arguments for workerFunc
-			in := []reflect.Value{reflect.ValueOf(db), reflect.ValueOf(key), reflect.Indirect(reflect.ValueOf(entityPtr)), reflect.ValueOf(args)}
+			in := []reflect.Value{reflect.ValueOf(db), reflect.ValueOf(key), reflect.Indirect(reflect.ValueOf(entityPtr))}
+
+			// Append variadic args
+			for _, arg := range args {
+				in = append(in, reflect.ValueOf(arg))
+			}
 
 			// Run our worker func with this entity
 			workerFuncValue.Call(in)
