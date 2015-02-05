@@ -40,8 +40,9 @@ func TestParallel(t *testing.T) {
 		model := &worker.Model{}
 		if key, err := db.Put("test-model", model); err != nil {
 			t.Fatalf("Failed to insert initial models: %v", err)
+		} else {
+			db.GetKey("test-model", key, model)
 		}
-		db.GetKey("test-model", key, model)
 	}
 
 	// Run task in parallel
