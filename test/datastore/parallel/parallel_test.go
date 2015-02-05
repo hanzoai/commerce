@@ -13,11 +13,6 @@ import (
 	"crowdstart.io/test/datastore/parallel/worker"
 )
 
-var (
-	ctx *appenginetesting.Context
-	db  *datastore.Datastore
-)
-
 func TestParallel(t *testing.T) {
 	ctx, err := appenginetesting.NewContext(&appenginetesting.Options{
 		AppId:   "crowdstart-io",
@@ -31,19 +26,19 @@ func TestParallel(t *testing.T) {
 		},
 	})
 	if err != nil {
-		t.Fatalf("NewContext: %v", err)
+		t.Fatalf("Failed to create appengine context: %v", err)
 	}
 	defer ctx.Close()
 
 	// Wait for devappserver to spin up.
-	time.Sleep(30 * time.Second)
+	time.Sleep(20 * time.Second)
 
 	db := datastore.New(ctx)
 
 	// Prepoulate database with 100 entities
 	for i := 0; i < 10; i++ {
 		if _, err = db.Put("test-model", &worker.Model{}); err != nil {
-			t.FailNow()
+			t.Fatalf("Failed to insert initial models: %v", err)
 		}
 	}
 
@@ -55,15 +50,20 @@ func TestParallel(t *testing.T) {
 
 	// Check if our entities have been updated
 	var models []worker.Model
-	db.Query("test-model").GetAll(ctx, &models)
+	q := db.Query("test-model")
+
+	_, err = db.Query("test-model").GetAll(db.Context, &models)
+	if err != nil {
+		t.Fatalf("Unable to GetAll models: %v", err)
+	}
 
 	if len(models) != 10 {
-		t.FailNow()
+		t.Fatalf("10 models not inserted into datastore: %v", len(models))
 	}
 
 	for _, model := range models {
 		if model.Count != 1 {
-			t.FailNow()
+			t.Fatalf("Model.Count is incorrect.")
 		}
 	}
 }
