@@ -6,16 +6,17 @@ import (
 	"time"
 
 	"appengine"
-	"appengine/datastore"
 	"appengine/delay"
 
-	ds "crowdstart.io/datastore"
-	"crowdstart.io/datastore/parallel"
+	aeds "appengine/datastore"
 
+	"crowdstart.io/datastore"
+	"crowdstart.io/datastore/parallel"
 	"crowdstart.io/models"
 	"crowdstart.io/util/log"
-	oldparallel "crowdstart.io/util/parallel"
 	"crowdstart.io/util/queries"
+
+	oldparallel "crowdstart.io/util/parallel"
 )
 
 // Continuation Types for parallel library
@@ -27,7 +28,7 @@ func (ui UserImporter) NewObject() interface{} {
 	return new(models.User)
 }
 
-func (ui UserImporter) Execute(c appengine.Context, key *datastore.Key, object interface{}) error {
+func (ui UserImporter) Execute(c appengine.Context, key *aeds.Key, object interface{}) error {
 	var ok bool
 	var u *models.User
 	if u, ok = object.(*models.User); !ok {
@@ -47,7 +48,7 @@ func (ui OrderImporter) NewObject() interface{} {
 	return new(models.Order)
 }
 
-func (ui OrderImporter) Execute(c appengine.Context, key *datastore.Key, object interface{}) error {
+func (ui OrderImporter) Execute(c appengine.Context, key *aeds.Key, object interface{}) error {
 	var ok bool
 	var o *models.Order
 	if o, ok = object.(*models.Order); !ok {
@@ -93,14 +94,14 @@ var UpsertOrderTask = delay.Func("SalesforceUpsertOrderTask", func(c appengine.C
 })
 
 // UpsertOrderTask upserts users into salesforce
-var ImportUsersTask = parallel.Task("SalesforceImportUsersTask", func(c appengine.Context, key *datastore.Key, user models.User, campaign models.Campaign) {
+var ImportUsersTask = parallel.Task("SalesforceImportUsersTask", func(c appengine.Context, key *aeds.Key, user models.User, campaign models.Campaign) {
 	client := New(c, &campaign, true)
 	client.Push(&user)
 })
 
 // ImportUsers upserts all users into salesforce
 func ImportUsers(c appengine.Context) {
-	db := ds.New(c)
+	db := datastore.New(c)
 	campaign := models.Campaign{}
 
 	// Get user instance
@@ -115,7 +116,7 @@ func ImportUsers(c appengine.Context) {
 
 // ImportOrders upserts all orders into salesforce
 func ImportOrders(c appengine.Context) {
-	db := ds.New(c)
+	db := datastore.New(c)
 	campaign := models.Campaign{}
 
 	// Get order instance
@@ -130,7 +131,7 @@ func ImportOrders(c appengine.Context) {
 
 // PullUpdatedTask gets recently(20 minutes ago) updated Contact and upserts them as Users
 var PullUpdatedTask = delay.Func("SalesforcePullUpdatedTask", func(c appengine.Context) {
-	db := ds.New(c)
+	db := datastore.New(c)
 	campaign := new(models.Campaign)
 
 	// Get user instance
