@@ -75,8 +75,6 @@ func TestParallel(t *testing.T) {
 }
 
 func TestParallelExtraParams(t *testing.T) {
-	t.Skip()
-
 	//Spin up an appengine dev server with the default module
 	ctx, err := appenginetesting.NewContext(&appenginetesting.Options{
 		AppId:   "crowdstart-io",
