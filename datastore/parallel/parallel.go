@@ -49,9 +49,6 @@ func Task(name string, workerFunc interface{}) *delay.Function {
 	workerFuncValue := reflect.ValueOf(workerFunc)
 
 	return delay.Func(name, func(c appengine.Context, kind string, offset, limit int, args ...interface{}) {
-		var k *aeds.Key
-		var err error
-
 		// Run query to get results for this batch of entities
 		db := datastore.New(c)
 		t := db.Query(kind).Offset(offset).Limit(limit).Run(c)
@@ -59,18 +56,27 @@ func Task(name string, workerFunc interface{}) *delay.Function {
 		// Loop over entities passing them into workerFunc one at a time
 		for {
 			entityPtr := reflect.New(entityType).Interface()
-			if _, err = t.Next(entityPtr); err != nil {
+			key, err := t.Next(entityPtr)
+
+			if err != nil {
 				// Done iterating
 				if err == datastore.Done {
 					break
 				}
 
-				log.Error("datastore.parallel worker encountered error: %v", err, c)
-				continue
+				// Check if genuine error occurred
+				if _, ok := err.(*aeds.ErrFieldMismatch); !ok {
+					log.Error("datastore.parallel worker encountered error: %v", err, c)
+					continue
+				}
+
+				// Ignore field mismatch
+				log.Warn("Field mismatch when getting %v: %v", key, err, c)
+				err = nil
 			}
 
 			// Build arguments for workerFunc
-			in := []reflect.Value{reflect.ValueOf(db), reflect.ValueOf(k), reflect.Indirect(reflect.ValueOf(entityPtr)), reflect.ValueOf(args)}
+			in := []reflect.Value{reflect.ValueOf(db), reflect.ValueOf(key), reflect.Indirect(reflect.ValueOf(entityPtr)), reflect.ValueOf(args)}
 
 			// Run our worker func with this entity
 			workerFuncValue.Call(in)
