@@ -4,80 +4,95 @@ import (
 	"reflect"
 
 	"appengine"
-	"appengine/datastore"
 	"appengine/delay"
 
+	aeds "appengine/datastore"
+
+	"crowdstart.io/datastore"
 	"crowdstart.io/util/log"
 )
 
+// Precompute a few common types
 var (
-	// precomputed types
-	contextType = reflect.TypeOf((*appengine.Context)(nil)).Elem()
-	keyType     = reflect.TypeOf((**datastore.Key)(nil)).Elem()
+	datastoreType = reflect.TypeOf((**datastore.Datastore)(nil)).Elem()
+	keyType       = reflect.TypeOf((*datastore.Key)(nil)).Elem()
 )
 
-// Creates a new parallel datastore task
-func Task(name string, w interface{}) *delay.Function {
-	t := reflect.TypeOf(w)
+// Creates a new parallel datastore worker task, which will operate on a single
+// entity of a given kind at a time (but all of them eventually, in parallel).
+func Task(name string, workerFunc interface{}) *delay.Function {
+	// Check type of worker func to ensure it matches required signature.
+	t := reflect.TypeOf(workerFunc)
+
+	// Ensure that workerFunc is actually a func
 	if t.Kind() != reflect.Func {
-		log.Panic("Function is required for third parameter")
+		log.Panic("Function is required for second parameter")
 	}
 
+	// workerFunc should be a function that takes at least three arguments
 	argNum := t.NumIn()
 	if argNum < 3 {
-		log.Panic("Function requires atleast 3 parameters")
+		log.Panic("Function requires at least three arguments")
 	}
 
-	if argNum > 4 {
-		log.Panic("Function only takes 3 or 4 parameters")
+	// check workerFunc's first argument
+	if t.In(0) != datastoreType {
+		log.Panic("First argument must be an datastore.Datastore")
 	}
 
-	if t.In(0) != contextType {
-		log.Panic("First argument must be an appengine.Context")
-	}
-
+	// check workerFunc's second argument
 	if t.In(1) != keyType {
-		log.Panic("Second argument must be a *datastore.Key")
+		log.Panic("Second argument must be datastore.Key")
 	}
 
-	objectType := t.In(2)
-	v := reflect.ValueOf(w)
+	entityType := t.In(2)
+	workerFuncValue := reflect.ValueOf(workerFunc)
 
-	return delay.Func(name, func(c appengine.Context, kind string, offset, limit int, metadata interface{}) {
-		var k *datastore.Key
+	return delay.Func(name, func(c appengine.Context, kind string, offset, limit int, args ...interface{}) {
+		var k *aeds.Key
 		var err error
-		t := datastore.NewQuery(kind).Offset(offset).Limit(limit).Run(c)
 
+		// Run query to get results for this batch of entities
+		db := datastore.New(c)
+		t := db.Query(kind).Offset(offset).Limit(limit).Run(c)
+
+		// Loop over entities passing them into workerFunc one at a time
 		for {
-			objectPtr := reflect.New(objectType).Interface()
-			if _, err = t.Next(objectPtr); err != nil {
-				// Done
+			entityPtr := reflect.New(entityType).Interface()
+			if _, err = t.Next(entityPtr); err != nil {
+				// Done iterating
 				if err == datastore.Done {
 					break
 				}
 
-				log.Error("Datastore worker encountered error: %v", err, c)
+				log.Error("datastore.parallel worker encountered error: %v", err, c)
 				continue
 			}
 
-			in := []reflect.Value{reflect.ValueOf(c), reflect.ValueOf(k), reflect.Indirect(reflect.ValueOf(objectPtr)), reflect.ValueOf(metadata)}
-			v.Call(in)
+			// Build arguments for workerFunc
+			in := []reflect.Value{reflect.ValueOf(db), reflect.ValueOf(k), reflect.Indirect(reflect.ValueOf(entityPtr)), reflect.ValueOf(args)}
+
+			// Run our worker func with this entity
+			workerFuncValue.Call(in)
 		}
 	})
 }
 
 // Executes parallel task
-func Run(c appengine.Context, kind string, limit int, fn *delay.Function, metadata interface{}) error {
+func Run(c appengine.Context, kind string, batchSize int, fn *delay.Function, args ...interface{}) error {
 	var total int
 	var err error
 
-	if total, err = datastore.NewQuery(kind).Count(c); err != nil {
+	if total, err = aeds.NewQuery(kind).Count(c); err != nil {
 		log.Error("Could not get count of %v because %v", kind, err, c)
 		return err
 	}
 
-	for offset := 0; offset < total; offset += limit {
-		fn.Call(c, kind, offset, limit, metadata)
+	for offset := 0; offset < total; offset += batchSize {
+		// prepend variadic arguments for `delay.Function.Call` with `kind`, `offset`, `batchSize`.
+		args := append([]interface{}{kind, offset, batchSize}, args)
+
+		fn.Call(c, args...)
 	}
 
 	return nil

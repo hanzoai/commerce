@@ -5,7 +5,8 @@ import (
 	"strconv"
 
 	"appengine"
-	. "appengine/datastore"
+
+	aeds "appengine/datastore"
 
 	"github.com/gin-gonic/gin"
 	"github.com/qedus/nds"
@@ -14,15 +15,30 @@ import (
 	"crowdstart.io/util/log"
 )
 
+// Alias datastore.Key with our Key interface
+type Key interface {
+	AppID() string
+	Encode() string
+	Equal(o *aeds.Key) bool
+	GobDecode(buf []byte) error
+	GobEncode() ([]byte, error)
+	Incomplete() bool
+	IntID() int64
+	Kind() string
+	MarshalJSON() ([]byte, error)
+	Namespace() string
+	Parent() *aeds.Key
+	String() string
+	StringID() string
+	UnmarshalJSON(buf []byte) error
+}
+
+// Alias Done error
+var Done = aeds.Done
+
 type Datastore struct {
 	Context appengine.Context
 	Warn    bool
-}
-
-func (d *Datastore) warn(fmtOrError interface{}, args ...interface{}) {
-	if d.Warn {
-		log.Warn(fmtOrError, args...)
-	}
 }
 
 func New(ctx interface{}) (d *Datastore) {
@@ -36,30 +52,37 @@ func New(ctx interface{}) (d *Datastore) {
 	return d
 }
 
-// Return *Key from either string or int id.
-func (d *Datastore) KeyFromId(kind string, id interface{}) *Key {
-	switch v := id.(type) {
-	case string:
-		return NewKey(d.Context, kind, v, 0, nil)
-	case int64:
-		return NewKey(d.Context, kind, "", v, nil)
-	case int:
-		return NewKey(d.Context, kind, "", int64(v), nil)
-	default:
-		d.warn("EncodeId was passed an invalid type %v", v)
-		return NewIncompleteKey(d.Context, kind, nil)
+// Private method for logging selectively
+func (d *Datastore) warn(fmtOrError interface{}, args ...interface{}) {
+	if d.Warn {
+		log.Warn(fmtOrError, args...)
 	}
 }
 
-// Return *Key from int id (potentially a string int id).
-func (d *Datastore) KeyFromInt(kind string, id interface{}) *Key {
+// Return Key from either string or int id.
+func (d *Datastore) KeyFromId(kind string, id interface{}) Key {
+	switch v := id.(type) {
+	case string:
+		return aeds.NewKey(d.Context, kind, v, 0, nil)
+	case int64:
+		return aeds.NewKey(d.Context, kind, "", v, nil)
+	case int:
+		return aeds.NewKey(d.Context, kind, "", int64(v), nil)
+	default:
+		d.warn("EncodeId was passed an invalid type %v", v)
+		return aeds.NewIncompleteKey(d.Context, kind, nil)
+	}
+}
+
+// Return Key from int id (potentially a string int id).
+func (d *Datastore) KeyFromInt(kind string, id interface{}) Key {
 	var _id int64
 	switch v := id.(type) {
 	case string:
 		maybeId, err := strconv.ParseInt(v, 10, 64)
 		if err != nil {
 			d.warn("EncodeId was passed an string that could not be parsed to int64 %v", v)
-			return NewIncompleteKey(d.Context, kind, nil)
+			return aeds.NewIncompleteKey(d.Context, kind, nil)
 		}
 		_id = maybeId
 	case int64:
@@ -68,10 +91,10 @@ func (d *Datastore) KeyFromInt(kind string, id interface{}) *Key {
 		_id = int64(v)
 	default:
 		d.warn("EncodeId was passed an invalid type %v", v)
-		return NewIncompleteKey(d.Context, kind, nil)
+		return aeds.NewIncompleteKey(d.Context, kind, nil)
 	}
 
-	return NewKey(d.Context, kind, "", _id, nil)
+	return aeds.NewKey(d.Context, kind, "", _id, nil)
 }
 
 // Return an encoded key from an id representation
@@ -86,8 +109,8 @@ func (d *Datastore) EncodeId(kind string, id interface{}) string {
 	return key.Encode()
 }
 
-func (d *Datastore) DecodeKey(encodedKey string) (*Key, error) {
-	_key, err := DecodeKey(encodedKey)
+func (d *Datastore) DecodeKey(encodedKey string) (*aeds.Key, error) {
+	_key, err := aeds.DecodeKey(encodedKey)
 
 	// If unable to return key, bail out
 	if err != nil {
@@ -97,7 +120,7 @@ func (d *Datastore) DecodeKey(encodedKey string) (*Key, error) {
 
 	// Since key returned might have been created with a different app, we'll
 	// recreate the key to ensure it has a valid AppID.
-	key := NewKey(d.Context, _key.Kind(), _key.StringID(), _key.IntID(), nil)
+	key := aeds.NewKey(d.Context, _key.Kind(), _key.StringID(), _key.IntID(), nil)
 
 	return key, err
 }
@@ -113,7 +136,7 @@ func (d *Datastore) Get(key string, value interface{}) error {
 	// Try to retrieve entity using nds, which transparently uses memcache if possible
 	err = nds.Get(d.Context, k, value)
 	if err != nil {
-		if _, ok := err.(*ErrFieldMismatch); ok {
+		if _, ok := err.(*aeds.ErrFieldMismatch); ok {
 			// Ignore any field mismatch errors.
 			d.warn("Field mismatch when getting %v: %v", key, err, d.Context)
 			err = nil
@@ -127,11 +150,11 @@ func (d *Datastore) Get(key string, value interface{}) error {
 // Gets an entity by literal datastore key of string type
 func (d *Datastore) GetKey(kind, key string, value interface{}) error {
 	// construct key manually using literal value and kind
-	k := NewKey(d.Context, kind, key, 0, nil)
+	k := aeds.NewKey(d.Context, kind, key, 0, nil)
 
 	// Try to retrieve entity using nds, which transparently uses memcache if possible
 	if err := nds.Get(d.Context, k, value); err != nil {
-		if _, ok := err.(*ErrFieldMismatch); ok {
+		if _, ok := err.(*aeds.ErrFieldMismatch); ok {
 			// Ignore any field mismatch errors.
 			d.warn("Field mismatch when getting kind %v, key %v: %v", kind, key, err, d.Context)
 			err = nil
@@ -144,7 +167,7 @@ func (d *Datastore) GetKey(kind, key string, value interface{}) error {
 }
 
 func (d *Datastore) GetMulti(keys []string, vals interface{}) error {
-	_keys := make([]*Key, len(keys))
+	_keys := make([]*aeds.Key, len(keys))
 
 	for i, key := range keys {
 		if k, err := d.DecodeKey(key); err != nil {
@@ -158,16 +181,16 @@ func (d *Datastore) GetMulti(keys []string, vals interface{}) error {
 }
 
 func (d *Datastore) GetKeyMulti(kind string, keys []string, vals interface{}) error {
-	_keys := make([]*Key, len(keys))
+	_keys := make([]*aeds.Key, len(keys))
 	for i, key := range keys {
-		_keys[i] = NewKey(d.Context, kind, key, 0, nil)
+		_keys[i] = aeds.NewKey(d.Context, kind, key, 0, nil)
 	}
 	return nds.GetMulti(d.Context, _keys, vals)
 }
 
 // Puts entity, returning encoded key
 func (d *Datastore) Put(kind string, src interface{}) (string, error) {
-	k := NewIncompleteKey(d.Context, kind, nil)
+	k := aeds.NewIncompleteKey(d.Context, kind, nil)
 	k, err := nds.Put(d.Context, k, src)
 	if err != nil {
 		d.warn("%v", err, d.Context)
@@ -177,15 +200,15 @@ func (d *Datastore) Put(kind string, src interface{}) (string, error) {
 }
 
 func (d *Datastore) PutKey(kind string, key interface{}, src interface{}) (string, error) {
-	var k *Key
+	var k *aeds.Key
 	switch v := key.(type) {
 	case string:
-		k = NewKey(d.Context, kind, v, 0, nil)
+		k = aeds.NewKey(d.Context, kind, v, 0, nil)
 	case int64:
-		k = NewKey(d.Context, kind, "", v, nil)
+		k = aeds.NewKey(d.Context, kind, "", v, nil)
 	case int:
-		k = NewKey(d.Context, kind, "", int64(v), nil)
-	case *Key:
+		k = aeds.NewKey(d.Context, kind, "", int64(v), nil)
+	case *aeds.Key:
 		k = v
 	default:
 		return "", errors.New("Invalid key type")
@@ -201,11 +224,11 @@ func (d *Datastore) PutKey(kind string, key interface{}, src interface{}) (strin
 
 func (d *Datastore) PutMulti(kind string, srcs []interface{}) (keys []string, err error) {
 	nkeys := len(srcs)
-	_keys := make([]*Key, nkeys)
+	_keys := make([]*aeds.Key, nkeys)
 	log.Info(srcs)
 
 	for i := 0; i < nkeys; i++ {
-		_keys[i] = NewIncompleteKey(d.Context, kind, nil)
+		_keys[i] = aeds.NewIncompleteKey(d.Context, kind, nil)
 	}
 
 	_keys, err = nds.PutMulti(d.Context, _keys, srcs)
@@ -222,19 +245,19 @@ func (d *Datastore) PutMulti(kind string, srcs []interface{}) (keys []string, er
 	return keys, nil
 }
 
-func (d *Datastore) PutKeyMulti(kind string, keys []interface{}, srcs []interface{}) ([]*Key, error) {
+func (d *Datastore) PutKeyMulti(kind string, keys []interface{}, srcs []interface{}) ([]*aeds.Key, error) {
 	nkeys := len(srcs)
-	_keys := make([]*Key, nkeys)
+	_keys := make([]*aeds.Key, nkeys)
 
 	for i := 0; i < nkeys; i++ {
 		switch v := keys[i].(type) {
 		case string:
-			_keys[i] = NewKey(d.Context, kind, v, 0, nil)
+			_keys[i] = aeds.NewKey(d.Context, kind, v, 0, nil)
 		case int64:
-			_keys[i] = NewKey(d.Context, kind, "", v, nil)
+			_keys[i] = aeds.NewKey(d.Context, kind, "", v, nil)
 		case int:
-			_keys[i] = NewKey(d.Context, kind, "", int64(v), nil)
-		case *Key:
+			_keys[i] = aeds.NewKey(d.Context, kind, "", int64(v), nil)
+		case *aeds.Key:
 			_keys[i] = v
 		default:
 			return _keys, errors.New("Invalid key type")
@@ -279,7 +302,7 @@ func (d *Datastore) Delete(key string) error {
 }
 
 func (d *Datastore) DeleteMulti(keys []string) error {
-	_keys := make([]*Key, 0)
+	_keys := make([]*aeds.Key, 0)
 	for _, key := range keys {
 		k, err := d.DecodeKey(key)
 		_keys = append(_keys, k)
@@ -292,17 +315,17 @@ func (d *Datastore) DeleteMulti(keys []string) error {
 }
 
 func (d *Datastore) AllocateId(kind string) int64 {
-	low, _, err := AllocateIDs(d.Context, kind, nil, 1)
+	low, _, err := aeds.AllocateIDs(d.Context, kind, nil, 1)
 	if err != nil {
 		return 0
 	}
 	return low
 }
 
-func (d *Datastore) Query(kind string) *Query {
-	return NewQuery(kind)
+func (d *Datastore) Query(kind string) *aeds.Query {
+	return aeds.NewQuery(kind)
 }
 
-func (d *Datastore) RunInTransaction(f func(tc appengine.Context) error, opts *TransactionOptions) error {
+func (d *Datastore) RunInTransaction(f func(tc appengine.Context) error, opts *aeds.TransactionOptions) error {
 	return nds.RunInTransaction(d.Context, f, opts)
 }
