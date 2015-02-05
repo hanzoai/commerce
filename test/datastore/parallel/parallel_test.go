@@ -1,11 +1,9 @@
 package test
 
 import (
-	"encoding/gob"
 	"testing"
 	"time"
 
-	"appengine"
 	"appengine/datastore"
 
 	. "github.com/onsi/ginkgo"
@@ -24,32 +22,9 @@ type TestCounter struct {
 	Count int
 }
 
-type TestRunner struct {
-	Count     int
-	Something string
-}
-
-func (t TestRunner) NewObject() interface{} {
-	return TestCounter{Count: t.Count}
-}
-
-func (t TestRunner) Execute(c appengine.Context, key *datastore.Key, object interface{}) error {
-	t.Count++
-	tc := TestCounter{Count: t.Count}
-	datastore.Put(ctx, key, tc)
-
-	log.Debug("Setting Counter to %v", t.Count, ctx)
-
-	return nil
-}
-
-func init() {
-	gob.Register(TestRunner{})
-}
-
 func TestParallel(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Parallel test suite")
+	RunSpecs(t, "datastore.parallel test suite")
 }
 
 // Setup appengine context before tests
@@ -57,7 +32,7 @@ var _ = BeforeSuite(func() {
 	var err error
 	ctx, err = aetest.NewContext(&aetest.Options{StronglyConsistentDatastore: true})
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 100; i++ {
 		k := datastore.NewIncompleteKey(ctx, "parallel-test", nil)
 		datastore.Put(ctx, k, &TestCounter{})
 	}
@@ -67,18 +42,19 @@ var _ = BeforeSuite(func() {
 
 // Tear-down appengine context
 var _ = AfterSuite(func() {
-	tcs := make([]TestCounter, 0)
-	ks, _ := datastore.NewQuery("parallel-test").GetAll(ctx, &tcs)
-	datastore.DeleteMulti(ctx, ks)
-
 	err := ctx.Close()
 	Expect(err).NotTo(HaveOccurred())
 })
 
+var TestWorker = parallel.Task(func(db *datastore.Datastore, k datastore.Key, model TestCounter) {
+	model.Count = model.Count + 1
+	db.Put(k, model)
+})
+
 var _ = Describe("Launch Parallel Tasks", func() {
 	Context("Datastore Job", func() {
-		It("should put dispatch 10 jobs (count: 1)", func() {
-			parallel.DatastoreJob(ctx, "parallel-test", 1, &TestRunner{})
+		It("should put dispatch 10 jobs (count: 10)", func() {
+			parallel.DatastoreJob(ctx, "parallel-test", 10, &TestRunner{})
 
 			time.Sleep(1 * time.Second)
 

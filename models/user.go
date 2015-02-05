@@ -11,8 +11,6 @@ import (
 	"crowdstart.io/util/log"
 
 	stripe "crowdstart.io/thirdparty/stripe/models"
-
-	aeds "appengine/datastore"
 )
 
 var (
@@ -105,7 +103,7 @@ func (u *User) GetByEmail(db *datastore.Datastore, email string) error {
 	_, err := t.Next(u)
 
 	// Return error if no user found.
-	if err == aeds.Done {
+	if err == datastore.Done {
 		return UserNotFound
 	}
 
