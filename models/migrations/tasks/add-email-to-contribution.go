@@ -10,5 +10,5 @@ var AddEmailToContribution = parallel.Task("add-email-to-contribution", func(db 
 	user := new(models.User)
 	db.Get(contribution.UserId, user)
 	contribution.Email = user.Email
-	db.PutKey("contribution", key, contribution)
+	db.PutKey("contribution", key, &contribution)
 })
