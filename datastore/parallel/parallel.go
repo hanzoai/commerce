@@ -37,7 +37,7 @@ func Task(name string, workerFunc interface{}) *delay.Function {
 
 	// check workerFunc's first argument
 	if t.In(0) != datastoreType {
-		log.Panic("First argument must be an datastore.Datastore")
+		log.Panic("First argument must be datastore.Datastore: %v", t)
 	}
 
 	// check workerFunc's second argument
