@@ -24,7 +24,7 @@ var (
 func TestParallel(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "datastore/parallel test suite")
-	defer GinkgoRecover()
+	// defer GinkgoRecover()
 
 	ctx, err := appenginetesting.NewContext(&appenginetesting.Options{
 		AppId:   "crowdstart-io",
@@ -63,6 +63,6 @@ func TestParallel(t *testing.T) {
 	Expect(len(models)).To(Equal(100))
 
 	for _, model := range models {
-		Expect(model.Count).To(Equal(1))
+		Expect(model.Count).To(Equal(2))
 	}
 }
