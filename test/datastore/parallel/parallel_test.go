@@ -50,8 +50,6 @@ func TestParallel(t *testing.T) {
 
 	// Check if our entities have been updated
 	var models []worker.Model
-	q := db.Query("test-model")
-
 	_, err = db.Query("test-model").GetAll(db.Context, &models)
 	if err != nil {
 		t.Fatalf("Unable to GetAll models: %v", err)
