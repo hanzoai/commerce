@@ -277,34 +277,34 @@ func (d *Datastore) GetKeyMulti(kind string, keys interface{}, vals interface{})
 }
 
 // Puts entity, returning encoded key
-func (d *Datastore) Put(kind string, src interface{}) (string, error) {
-	k := aeds.NewIncompleteKey(d.Context, kind, nil)
-	k, err := nds.Put(d.Context, k, src)
+func (d *Datastore) Put(kind string, src interface{}) (*aeds.Key, error) {
+	key := aeds.NewIncompleteKey(d.Context, kind, nil)
+	key, err := nds.Put(d.Context, key, src)
 	if err != nil {
-		d.warn("%v", err, d.Context)
-		return "", err
+		d.warn("Unable to put (%v, %v): %v", kind, src, err, d.Context)
+		return key, err
 	}
-	return k.Encode(), nil
+	return key, nil
 }
 
-func (d *Datastore) PutKey(kind string, key interface{}, src interface{}) (string, error) {
+func (d *Datastore) PutKey(kind string, key interface{}, src interface{}) (*aeds.Key, error) {
 	_key, err := d.keyOrKindKey(kind, key)
 
 	// Invalid key, bail out.
 	if err != nil {
 		d.warn("Invalid key: unable to put (%v, %v, %v): %v", kind, key, src, err)
-		return "", err
+		return _key, err
 	}
 
 	_key, err = nds.Put(d.Context, _key, src)
 	if err != nil {
 		d.warn("%v, %v, %v, %#v", err, kind, _key, src, d.Context)
-		return "", err
+		return _key, err
 	}
-	return _key.Encode(), nil
+	return _key, nil
 }
 
-func (d *Datastore) PutMulti(kind string, srcs []interface{}) (keys []string, err error) {
+func (d *Datastore) PutMulti(kind string, srcs []interface{}) (keys []*aeds.Key, err error) {
 	nkeys := len(srcs)
 	_keys := make([]*aeds.Key, nkeys)
 	log.Info(srcs)
@@ -319,12 +319,7 @@ func (d *Datastore) PutMulti(kind string, srcs []interface{}) (keys []string, er
 		return keys, err
 	}
 
-	keys = make([]string, nkeys)
-	for i := 0; i < nkeys; i++ {
-		keys[i] = _keys[i].Encode()
-	}
-
-	return keys, nil
+	return _keys, nil
 }
 
 func (d *Datastore) PutKeyMulti(kind string, keys []interface{}, srcs []interface{}) ([]*aeds.Key, error) {
