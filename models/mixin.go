@@ -1,6 +1,8 @@
 package models
 
 import (
+	"reflect"
+
 	"crowdstart.io/datastore"
 )
 
@@ -11,27 +13,56 @@ type Entity interface {
 
 // Mixin methods for models
 type Model interface {
-	Key() (datastore.Key, error)
-	Put(*datastore.Datastore) error
-	Get(*datastore.Datastore, ...interface{}) error
+	Key() datastore.Key
+	SetKey(key interface{}) error
+	Put() error
+	Get(args ...interface{}) error
 }
 
 type model struct {
 	Entity
 	key datastore.Key
+	db  *datastore.Datastore
 }
 
-func (m *model) Key() (key datastore.Key, err error) {
-	return m.key, nil
+func (m *model) Key() (key datastore.Key) {
+	// Create a new incomplete key for this new entity
+	if m.key == nil {
+		m.key = m.db.NewIncompleteKey(m.Entity.Kind(), nil)
+	}
+
+	return m.key
 }
 
-func (m *model) Put(db *datastore.Datastore) error {
-	key, err := db.Put(m.Key())
+func (m *model) SetKey(key interface{}) error {
+	switch v := key.(type) {
+	case datastore.Key:
+		m.key = v
+	case string:
+		if key, err := m.db.DecodeKey(v); err != nil {
+			return err
+		} else {
+			m.key = key
+		}
+	case reflect.Value:
+		return m.SetKey(v.Interface())
+	case nil:
+		m.Key()
+		return nil
+	default:
+		return datastore.InvalidKey
+	}
+
+	return nil
+}
+
+func (m *model) Put() error {
+	key, err := m.db.Put(m.Key(), m.Entity)
 	m.key = key
 	return err
 }
 
-func (m *model) Get(db *datastore.Datastore, args ...interface{}) error {
+func (m *model) Get(args ...interface{}) error {
 	var key datastore.Key
 
 	if len(args) == 1 {
@@ -41,14 +72,15 @@ func (m *model) Get(db *datastore.Datastore, args ...interface{}) error {
 		key = m.key
 	}
 
-	db.Get(key, m.Entity)
+	m.db.Get(key, m.Entity)
 
 	return nil
 }
 
 // Use NewModel inside of a model implementing entity
-func NewModel(e Entity) *model {
+func NewModel(db *datastore.Datastore, e Entity) *model {
 	m := new(model)
+	m.db = db
 	m.Entity = e
 	return m
 }
@@ -63,9 +95,9 @@ func (u *EUser) Kind() string {
 	return "user"
 }
 
-func NewEUser() *EUser {
+func NewEUser(db *datastore.Datastore) *EUser {
 	user := new(EUser)
-	user.Model = NewModel(user)
+	user.Model = NewModel(db, user)
 	// Set any other defaults
 	// ...
 	return user
