@@ -205,7 +205,7 @@ func charge(c *gin.Context) {
 		c.Fail(500, err)
 		return
 	}
-	key, _ := db.DecodeKey(encodedKey)
+	key, _ = db.DecodeKey(encodedKey)
 	orderId := key.IntID()
 
 	// Set the id as we use it to update salesforce
