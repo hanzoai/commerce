@@ -3,15 +3,16 @@ package test
 import (
 	"testing"
 
-	"github.com/gin-gonic/gin"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	"github.com/gin-gonic/gin"
+	"github.com/zeekay/aetest"
 
 	"crowdstart.io/auth"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
 	"crowdstart.io/util/log"
-	"github.com/zeekay/aetest"
 )
 
 func TestDatastore(t *testing.T) {
