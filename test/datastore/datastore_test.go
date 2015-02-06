@@ -16,8 +16,7 @@ import (
 
 func TestDatastore(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Datastore test suite")
-
+	RunSpecs(t, "datastore")
 }
 
 var (
