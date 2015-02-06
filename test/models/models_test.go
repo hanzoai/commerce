@@ -11,6 +11,11 @@ import (
 	"github.com/zeekay/aetest"
 )
 
+func TestDatastore(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "models")
+}
+
 var (
 	ctx aetest.Context
 	db  *datastore.Datastore
@@ -29,11 +34,6 @@ var _ = AfterSuite(func() {
 	err := ctx.Close()
 	Expect(err).NotTo(HaveOccurred())
 })
-
-func TestDatastore(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "models")
-}
 
 type User struct {
 	mixin.Model `datastore:"-"`
