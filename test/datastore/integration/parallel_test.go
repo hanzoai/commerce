@@ -5,12 +5,12 @@ import (
 	"testing"
 	"time"
 
-	// "github.com/zeekay/aetest"
 	"github.com/davidtai/appenginetesting"
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/datastore/parallel"
 	"crowdstart.io/test/datastore/integration/worker"
+	"crowdstart.io/util/log"
 )
 
 func checkCountValue(t *testing.T, models []worker.Model, v int) {
@@ -22,6 +22,8 @@ func checkCountValue(t *testing.T, models []worker.Model, v int) {
 }
 
 func TestParallel(t *testing.T) {
+	log.SetVerbose(testing.Verbose())
+
 	//Spin up an appengine dev server with the default module
 	ctx, err := appenginetesting.NewContext(&appenginetesting.Options{
 		AppId:      "crowdstart-io",
