@@ -60,7 +60,8 @@ type Order struct {
 
 	// ShippingOption  ShippingOption
 
-	Test bool // Not a real transaction
+	Test    bool // Not a real transaction
+	Version int  // Versioning for struct
 }
 
 var variantsMap map[string]ProductVariant
