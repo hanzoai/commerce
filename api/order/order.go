@@ -1,11 +1,11 @@
 package order
 
 import (
-	"github.com/gin-gonic/gin"
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models"
 	"crowdstart.io/util/json"
+	"github.com/gin-gonic/gin"
 )
 
 func Get(c *gin.Context) {
@@ -37,7 +37,7 @@ func Add(c *gin.Context) {
 		ctx.Errorf("[Api.Order.Add] %v", err)
 		c.JSON(500, gin.H{"status": "unable to save order"})
 	} else {
-		order.Id = key
+		order.Id = key.Encode()
 		c.JSON(200, order)
 	}
 }
