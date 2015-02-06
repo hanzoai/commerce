@@ -198,7 +198,7 @@ tools:
 
 # TEST/ BENCH
 test:
-	ginkgo -r=true -progress=true $(verbose) -skipMeasurements=true -skipPackage=integration $(test_filter)
+	ginkgo -r=true -p=true -progress=true $(verbose) -skipMeasurements=true -skipPackage=integration $(test_filter)
 
 test-integration:
 	ginkgo -r=true -p=true -progress=true $(verbose) -skipMeasurements=true -focus=integration $(test_filter)
