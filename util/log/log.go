@@ -18,6 +18,15 @@ import (
 type Logger struct {
 	logging.Logger
 	appengineBackend *AppengineBackend
+	verbose          bool
+}
+
+func (l *Logger) SetVerbose(verbose bool) {
+	l.verbose = verbose
+}
+
+func (l *Logger) Verbose() bool {
+	return l.verbose
 }
 
 // Process args, setting app engine context if passed one.
@@ -181,6 +190,10 @@ func Dump(args ...interface{}) {
 }
 
 func Debug(formatOrError interface{}, args ...interface{}) {
+	if !std.Verbose() {
+		return
+	}
+
 	switch v := formatOrError.(type) {
 	case error:
 		args = append([]interface{}{v}, args...)
@@ -193,6 +206,10 @@ func Debug(formatOrError interface{}, args ...interface{}) {
 }
 
 func Info(formatOrError interface{}, args ...interface{}) {
+	if !std.Verbose() {
+		return
+	}
+
 	switch v := formatOrError.(type) {
 	case error:
 		args = append([]interface{}{v}, args...)
@@ -250,4 +267,12 @@ func Panic(formatOrError interface{}, args ...interface{}) {
 		args = std.setContext(args...)
 		std.Panicf(v, args...)
 	}
+}
+
+func SetVerbose(verbose bool) {
+	std.SetVerbose(verbose)
+}
+
+func Verbose() bool {
+	return std.Verbose()
 }

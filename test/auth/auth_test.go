@@ -10,10 +10,12 @@ import (
 	"crowdstart.io/auth"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
+	"crowdstart.io/util/log"
 	"github.com/zeekay/aetest"
 )
 
 func TestDatastore(t *testing.T) {
+	log.SetVerbose(testing.Verbose())
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "auth")
 }
