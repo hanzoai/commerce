@@ -34,20 +34,24 @@ type Key interface {
 }
 
 // Alias Done error
-var Done = aeds.Done
+var (
+	Done       = aeds.Done
+	InvalidKey = errors.New("Invalid key")
+)
 
 type Datastore struct {
-	Context appengine.Context
-	Warn    bool
+	Context             appengine.Context
+	IgnoreFieldMismatch bool
+	Warn                bool
 }
 
 func New(ctx interface{}) (d *Datastore) {
 	switch ctx := ctx.(type) {
 	case appengine.Context:
-		d = &Datastore{ctx, config.DatastoreWarn}
+		d = &Datastore{ctx, config.DatastoreWarn, true}
 	case *gin.Context:
 		c := ctx.MustGet("appengine").(appengine.Context)
-		d = &Datastore{c, config.DatastoreWarn}
+		d = &Datastore{c, config.DatastoreWarn, true}
 	}
 	return d
 }
@@ -57,6 +61,23 @@ func (d *Datastore) warn(fmtOrError interface{}, args ...interface{}) {
 	if d.Warn {
 		log.Warn(fmtOrError, args...)
 	}
+}
+
+// Helper to ignore tedious field mismatch errors (but warn appropriately
+// during development)
+func (d *Datastore) ignoreFieldMismatch(err error) error {
+	// Ignore nil error or `IgnoreFieldMismatch` is disabled
+	if err == nil || !d.IgnoreFieldMismatch {
+		return nil
+	}
+
+	if _, ok := err.(*aeds.ErrFieldMismatch); ok {
+		// Ignore any field mismatch errors.
+		d.warn("Field mismatch: %v", err, d.Context)
+		return nil
+	}
+
+	return err
 }
 
 // Return Key from either string or int id.
@@ -134,45 +155,47 @@ func (d *Datastore) DecodeKey(encodedKey string) (*aeds.Key, error) {
 	return key, err
 }
 
-// Gets an entity using an encoded key representation
-func (d *Datastore) Get(key string, value interface{}) error {
-	// Decode encoded key
-	k, err := d.DecodeKey(key)
-	if err != nil {
-		return err
+// Gets an entity using datastore.Key or encoded Key
+func (d *Datastore) Get(key interface{}, value interface{}) (err error) {
+	var _key *aeds.Key
+
+	// Get datastore.Key if necessary
+	switch v := key.(type) {
+	case string:
+		_key, err = d.DecodeKey(v)
+		if err != nil {
+			return err
+		}
+	case *aeds.Key:
+		_key = v
+	default:
+		return InvalidKey
 	}
 
 	// Try to retrieve entity using nds, which transparently uses memcache if possible
-	err = nds.Get(d.Context, k, value)
-	if err != nil {
-		if _, ok := err.(*aeds.ErrFieldMismatch); ok {
-			// Ignore any field mismatch errors.
-			d.warn("Field mismatch when getting %v: %v", key, err, d.Context)
-			err = nil
-		} else {
-			d.warn("Failed to get %v: %v", key, err, d.Context)
-		}
-	}
-	return err
+	return d.ignoreFieldMismatch(nds.Get(d.Context, _key, value))
 }
 
 // Gets an entity by literal datastore key of string type
-func (d *Datastore) GetKey(kind, key string, value interface{}) error {
-	// construct key manually using literal value and kind
-	k := aeds.NewKey(d.Context, kind, key, 0, nil)
+func (d *Datastore) GetKey(kind string, key interface{}, value interface{}) error {
+	var _key *aeds.Key
+
+	// Try to construct a datastore key from whatever we were given as a key
+	switch v := key.(type) {
+	case string:
+		_key = aeds.NewKey(d.Context, kind, v, 0, nil)
+	case int64:
+		_key = aeds.NewKey(d.Context, kind, "", v, nil)
+	case int:
+		_key = aeds.NewKey(d.Context, kind, "", int64(v), nil)
+	case *aeds.Key:
+		_key = v
+	default:
+		return InvalidKey
+	}
 
 	// Try to retrieve entity using nds, which transparently uses memcache if possible
-	if err := nds.Get(d.Context, k, value); err != nil {
-		if _, ok := err.(*aeds.ErrFieldMismatch); ok {
-			// Ignore any field mismatch errors.
-			d.warn("Field mismatch when getting kind %v, key %v: %v", kind, key, err, d.Context)
-			err = nil
-		} else {
-			d.warn("Failed to get kind %v, key %v: %v", kind, key, err, d.Context)
-			return err
-		}
-	}
-	return nil
+	return d.ignoreFieldMismatch(nds.Get(d.Context, _key, value))
 }
 
 func (d *Datastore) GetMulti(keys []string, vals interface{}) error {
