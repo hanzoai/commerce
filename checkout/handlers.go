@@ -142,6 +142,7 @@ func charge(c *gin.Context) {
 
 	// Set email for order
 	form.Order.UserId = user.Id
+	form.Order.Email = user.Email
 	form.Order.CampaignId = "dev@hanzo.ai"
 	form.Order.Preorder = true
 
@@ -224,6 +225,7 @@ func charge(c *gin.Context) {
 	invite := new(models.Token)
 	invite.GenerateId()
 	invite.UserId = user.Id
+	invite.Email = user.Email
 	if _, err := db.PutKey("invite-token", invite.Id, invite); err != nil {
 		log.Error("Failed to save invite-token: %v", err, c)
 		c.Fail(500, err)
@@ -235,6 +237,7 @@ func charge(c *gin.Context) {
 	contribution := new(models.Contribution)
 	contribution.Id = strconv.Itoa(int(orderId))
 	contribution.UserId = user.Id
+	contribution.Email = user.Email
 	contribution.Perk = models.Perks["WINTER2014PROMO"]
 	if _, err := db.PutKey("contribution", contribution.Id, contribution); err != nil {
 		log.Error("Failed to save contribution: %v", err, c)
