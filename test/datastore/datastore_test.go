@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"testing"
 
-	gaed "appengine/datastore"
+	aeds "appengine/datastore"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -106,7 +106,7 @@ var _ = Describe("Datastore.DecodeKey", func() {
 	kind := "decodekey-test"
 	Context("Key encoded with appengine", func() {
 		It("should be the same", func() {
-			key := gaed.NewKey(ctx, kind, "decodekey-testkey", 0, nil)
+			key := aeds.NewKey(ctx, kind, "decodekey-testkey", 0, nil)
 			decodedKey, err := db.DecodeKey(key.Encode())
 			Expect(err).ToNot(HaveOccurred())
 			Expect(decodedKey).To(Equal(key))
@@ -125,7 +125,7 @@ func str(i int) string {
 var _ = Describe("Datastore.Get", func() {
 	entity := &Entity{"test-get-field"}
 	kind := "test-get"
-	var key string
+	var key *aeds.Key
 
 	Context("When storing entity with Datastore.Put", func() {
 		BeforeEach(func() {
@@ -152,8 +152,8 @@ var _ = Describe("Datastore.Get", func() {
 	Context("When storing entity with appengine/datastore", func() {
 		retrievedEntity := &Entity{}
 		BeforeEach(func() {
-			key := gaed.NewKey(ctx, kind, "key", 0, nil)
-			_, err := gaed.Put(ctx, key, entity)
+			key := aeds.NewKey(ctx, kind, "key", 0, nil)
+			_, err := aeds.Put(ctx, key, entity)
 			Expect(err).ToNot(HaveOccurred())
 
 			err = db.Get(key.Encode(), retrievedEntity)
@@ -199,11 +199,7 @@ var _ = Describe("Put", func() {
 			key, err := db.Put(kind, a)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Try to retrieve entity
-			_key, err := db.DecodeKey(key)
-			Expect(err).NotTo(HaveOccurred())
-
-			err = gaed.Get(ctx, _key, b)
+			err = aeds.Get(ctx, key, b)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(a).To(Equal(b))
 		})
@@ -246,8 +242,8 @@ var _ = Describe("Datastore.GetKey", func() {
 	Context("With appengine's datastore.Put", func() {
 		It("should be the same", func() {
 			a := &Entity{"test-appengine-put"}
-			key := gaed.NewKey(ctx, kind, "test-key", 0, nil)
-			_, err := gaed.Put(ctx, key, a)
+			key := aeds.NewKey(ctx, kind, "test-key", 0, nil)
+			_, err := aeds.Put(ctx, key, a)
 			Expect(err).ToNot(HaveOccurred())
 
 			b := &Entity{}
@@ -282,8 +278,8 @@ var _ = Describe("Datastore.PutKey", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			b := &Entity{}
-			aKey := gaed.NewKey(ctx, kind, key, 0, nil)
-			err = gaed.Get(ctx, aKey, b)
+			aKey := aeds.NewKey(ctx, kind, key, 0, nil)
+			err = aeds.Get(ctx, aKey, b)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(b).To(Equal(a))
 		})
@@ -316,13 +312,13 @@ var _ = Describe("Datastore.GetMulti", func() {
 		It("should be the same", func() {
 			a := make([]Entity, 10)
 			keys := func() []string {
-				keys := make([]*gaed.Key, len(a))
+				keys := make([]*aeds.Key, len(a))
 				for i, _ := range keys {
 					a[i].Field = str(i)
-					aKey := gaed.NewKey(ctx, kind, str(i), 0, nil)
+					aKey := aeds.NewKey(ctx, kind, str(i), 0, nil)
 					keys[i] = aKey
 				}
-				_, err := gaed.PutMulti(ctx, keys, a)
+				_, err := aeds.PutMulti(ctx, keys, a)
 				Expect(err).ToNot(HaveOccurred())
 
 				strKeys := make([]string, len(keys))
@@ -392,20 +388,11 @@ var _ = Describe("Datastore.PutMulti", func() {
 				a[i] = entity
 				b[i] = &entity
 			}
-			keys := func() []*gaed.Key {
-				keys, err := db.PutMulti(kind, b)
-				Expect(err).ToNot(HaveOccurred())
-
-				_keys := make([]*gaed.Key, len(keys))
-				for i, key := range keys {
-					_keys[i], err = gaed.DecodeKey(key)
-					Expect(err).ToNot(HaveOccurred())
-				}
-				return _keys
-			}()
+			keys, err := db.PutMulti(kind, b)
+			Expect(err).ToNot(HaveOccurred())
 
 			c := make([]Entity, len(a))
-			err := gaed.GetMulti(ctx, keys, c)
+			err = aeds.GetMulti(ctx, keys, c)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(c).To(Equal(a))
 			Expect(c).To(HaveLen(len(a)))
@@ -443,12 +430,12 @@ var _ = Describe("Datastore.GetKeyMulti", func() {
 					a[i] = entity
 				}
 				_keys := make([]string, len(a))
-				keys := make([]*gaed.Key, len(a))
+				keys := make([]*aeds.Key, len(a))
 				for i := 30; i < 30+len(a); i++ {
-					keys[i-30] = gaed.NewKey(ctx, kind, str(i), 0, nil)
+					keys[i-30] = aeds.NewKey(ctx, kind, str(i), 0, nil)
 					_keys[i-30] = str(i)
 				}
-				_, err := gaed.PutMulti(ctx, keys, a)
+				_, err := aeds.PutMulti(ctx, keys, a)
 				Expect(err).ToNot(HaveOccurred())
 				return _keys
 			}()
