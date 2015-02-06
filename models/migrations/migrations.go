@@ -51,6 +51,11 @@ func init() {
 		parallel.Run(c, "contribution", 100, tasks.AddEmailToContribution)
 	})
 
+	// Add missing orders for each contributors
+	addMigration("add-missing-orders", func(c appengine.Context) {
+		parallel.Run(c, "contribution", 50, tasks.AddMissingOrders)
+	})
+
 	// Replace email with user id
 	addMigration("replace-email-with-userid-for-user", replaceEmailWithUserIdForUser)
 
