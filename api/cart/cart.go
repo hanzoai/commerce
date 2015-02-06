@@ -1,16 +1,16 @@
 package cart
 
 import (
-	"github.com/gin-gonic/gin"
-	"github.com/mholt/binding"
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models"
 	"crowdstart.io/util/json"
+	"github.com/gin-gonic/gin"
+	"github.com/mholt/binding"
 )
 
 func Get(c *gin.Context) {
-	d  := datastore.New(c)
+	d := datastore.New(c)
 	id := c.Params.ByName("id")
 
 	var cart models.Cart
@@ -43,7 +43,7 @@ func Add(c *gin.Context) {
 		ctx.Errorf("[Api.Cart.Add] %v", err)
 		c.JSON(500, gin.H{"status": "unable to save cart"})
 	} else {
-		cart.Id = key
+		cart.Id = key.Encode()
 		c.JSON(200, cart)
 	}
 }
