@@ -171,6 +171,19 @@ func (d *Datastore) keyOrEncodedKey(key interface{}) (_key *aeds.Key, err error)
 	}
 }
 
+// Return either an incomplete key if passed just the kind, or key
+func (d *Datastore) keyOrKind(keyOrKind interface{}) (_key *aeds.Key, err error) {
+	// Try to construct a datastore key from whatever we were given as a key
+	switch v := keyOrKind.(type) {
+	case string:
+		return aeds.NewIncompleteKey(d.Context, v, nil), nil
+	case *aeds.Key:
+		return v, nil
+	default:
+		return _key, InvalidKey
+	}
+}
+
 // Helper func to get key for `datastore.GetKey/datastore.GetKeyMulti`
 func (d *Datastore) keyOrKindKey(kind string, key interface{}) (_key *aeds.Key, err error) {
 	// Try to construct a datastore key from whatever we were given as a key
@@ -277,11 +290,15 @@ func (d *Datastore) GetKeyMulti(kind string, keys interface{}, vals interface{})
 }
 
 // Puts entity, returning encoded key
-func (d *Datastore) Put(kind string, src interface{}) (*aeds.Key, error) {
-	key := aeds.NewIncompleteKey(d.Context, kind, nil)
-	key, err := nds.Put(d.Context, key, src)
+func (d *Datastore) Put(keyOrKind interface{}, src interface{}) (*aeds.Key, error) {
+	key, err := d.keyOrKind(keyOrKind)
 	if err != nil {
-		d.warn("Unable to put (%v, %v): %v", kind, src, err, d.Context)
+		return key, err
+	}
+
+	key, err = nds.Put(d.Context, key, src)
+	if err != nil {
+		d.warn("Unable to put (%v, %v): %v", keyOrKind, src, err, d.Context)
 		return key, err
 	}
 	return key, nil
