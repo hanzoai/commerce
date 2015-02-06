@@ -132,8 +132,8 @@ func (d *Datastore) EncodeId(kind string, id interface{}) string {
 }
 
 // Wrap new key funcs
-func (d *Datastore) NewIncompleteKey(kind string, parent Key) *aeds.Key {
-	return aeds.NewIncompleteKey(d.Context, kind, parent.(*aeds.Key))
+func (d *Datastore) NewIncompleteKey(kind string, parent *aeds.Key) *aeds.Key {
+	return aeds.NewIncompleteKey(d.Context, kind, parent)
 }
 
 func (d *Datastore) NewKey(kind, stringID string, intID int64, parent Key) *aeds.Key {
