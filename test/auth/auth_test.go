@@ -13,6 +13,11 @@ import (
 	"github.com/zeekay/aetest"
 )
 
+func TestDatastore(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "auth")
+}
+
 const kind = "user"
 
 var (
@@ -20,11 +25,6 @@ var (
 	db  *datastore.Datastore
 	c   *gin.Context
 )
-
-func TestDatastore(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Datastore test suite")
-}
 
 var _ = BeforeSuite(func() {
 	var err error
