@@ -48,10 +48,10 @@ func Task(name string, workerFunc interface{}) *delay.Function {
 	entityType := t.In(2)
 	workerFuncValue := reflect.ValueOf(workerFunc)
 
-	return delay.Func(name, func(c appengine.Context, kind string, offset, limit int, args ...interface{}) {
+	return delay.Func(name, func(c appengine.Context, kind string, offset, batchSize int, args ...interface{}) {
 		// Run query to get results for this batch of entities
 		db := datastore.New(c)
-		t := db.Query(kind).Offset(offset).Limit(limit).Run(c)
+		t := db.Query(kind).Offset(offset).Limit(batchSize).Run(c)
 
 		// Loop over entities passing them into workerFunc one at a time
 		for {
