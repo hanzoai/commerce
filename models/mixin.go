@@ -12,8 +12,8 @@ type Entity interface {
 // Mixin methods for models
 type Model interface {
 	Key() (datastore.Key, error)
-	Put() error
-	Get() error
+	Put(*datastore.Datastore) error
+	Get(*datastore.Datastore, ...interface{}) error
 }
 
 type model struct {
@@ -22,14 +22,26 @@ type model struct {
 }
 
 func (m *model) Key() (key datastore.Key, err error) {
-	return key, nil
+	return m.key, nil
 }
 
-func (m *model) Put() error {
-	return nil
+func (m *model) Put(db *datastore.Datastore) error {
+	key, err := db.Put(m.Key())
+	m.key = key
+	return err
 }
 
-func (m *model) Get() error {
+func (m *model) Get(db *datastore.Datastore, args ...interface{}) error {
+	var key datastore.Key
+
+	if len(args) == 1 {
+		key = args[0].(datastore.Key)
+	} else {
+		key = m.key
+	}
+
+	db.Get(key, m.Entity)
+
 	return nil
 }
 
