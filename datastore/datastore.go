@@ -183,6 +183,8 @@ func (d *Datastore) keyOrKindKey(kind string, key interface{}) (_key *aeds.Key, 
 		_key = aeds.NewKey(d.Context, kind, "", int64(v), nil)
 	case *aeds.Key:
 		_key = v
+	case nil:
+		_key = aeds.NewIncompleteKey(d.Context, kind, nil)
 	case reflect.Value:
 		return d.keyOrKindKey(kind, v.Interface())
 	default:
