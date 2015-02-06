@@ -42,7 +42,7 @@ func Add(c *gin.Context) {
 		ctx.Errorf("[Api.User.Add] %v", err)
 		c.JSON(500, gin.H{"status": "unable to save user"})
 	} else {
-		user.Id = key
+		user.Id = key.Encode()
 		c.JSON(200, user)
 	}
 }
