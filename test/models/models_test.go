@@ -6,12 +6,15 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"github.com/zeekay/aetest"
+
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
-	"github.com/zeekay/aetest"
+	"crowdstart.io/util/log"
 )
 
 func TestDatastore(t *testing.T) {
+	log.SetVerbose(testing.Verbose())
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "models")
 }
