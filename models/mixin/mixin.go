@@ -1,4 +1,4 @@
-package models
+package mixin
 
 import (
 	"reflect"
@@ -83,22 +83,4 @@ func NewModel(db *datastore.Datastore, e Entity) *model {
 	m.db = db
 	m.Entity = e
 	return m
-}
-
-// Usage
-type EUser struct {
-	Model
-	Name string
-}
-
-func (u *EUser) Kind() string {
-	return "user"
-}
-
-func NewEUser(db *datastore.Datastore) *EUser {
-	user := new(EUser)
-	user.Model = NewModel(db, user)
-	// Set any other defaults
-	// ...
-	return user
 }
