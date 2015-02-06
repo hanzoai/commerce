@@ -157,22 +157,22 @@ func (d *Datastore) DecodeKey(encodedKey string) (*aeds.Key, error) {
 }
 
 // Helper func to get key for `datastore.Get/datastore.GetMulti`
-func (d *Datastore) keyForGet(key interface{}) (_key *aeds.Key, err error) {
+func (d *Datastore) keyOrEncodedKey(key interface{}) (_key *aeds.Key, err error) {
 	// Get datastore.Key if necessary
 	switch v := key.(type) {
-	case string:
-		return d.DecodeKey(v)
 	case *aeds.Key:
 		return v, nil
+	case string:
+		return d.DecodeKey(v)
 	case reflect.Value:
-		return d.keyForGet(v.Interface())
+		return d.keyOrEncodedKey(v.Interface())
 	default:
 		return _key, InvalidKey
 	}
 }
 
 // Helper func to get key for `datastore.GetKey/datastore.GetKeyMulti`
-func (d *Datastore) keyForGetKey(kind string, key interface{}) (_key *aeds.Key, err error) {
+func (d *Datastore) keyOrKindKey(kind string, key interface{}) (_key *aeds.Key, err error) {
 	// Try to construct a datastore key from whatever we were given as a key
 	switch v := key.(type) {
 	case string:
@@ -184,7 +184,7 @@ func (d *Datastore) keyForGetKey(kind string, key interface{}) (_key *aeds.Key, 
 	case *aeds.Key:
 		_key = v
 	case reflect.Value:
-		return d.keyForGetKey(kind, v.Interface())
+		return d.keyOrKindKey(kind, v.Interface())
 	default:
 		return _key, InvalidKey
 	}
@@ -194,7 +194,7 @@ func (d *Datastore) keyForGetKey(kind string, key interface{}) (_key *aeds.Key, 
 
 // Gets an entity using datastore.Key or encoded Key
 func (d *Datastore) Get(key interface{}, value interface{}) error {
-	_key, err := d.keyForGet(key)
+	_key, err := d.keyOrEncodedKey(key)
 
 	// Invalid key, bail out.
 	if err != nil {
@@ -208,7 +208,7 @@ func (d *Datastore) Get(key interface{}, value interface{}) error {
 
 // Gets an entity by literal datastore key of string type
 func (d *Datastore) GetKey(kind string, key interface{}, value interface{}) error {
-	_key, err := d.keyForGetKey(kind, key)
+	_key, err := d.keyOrKindKey(kind, key)
 
 	// Invalid key, bail out.
 	if err != nil {
@@ -236,7 +236,7 @@ func (d *Datastore) GetMulti(keys interface{}, vals interface{}) error {
 	_keys := make([]*aeds.Key, nkeys)
 
 	for i := 0; i < nkeys; i++ {
-		key, err := d.keyForGet(slice.Index(i))
+		key, err := d.keyOrEncodedKey(slice.Index(i))
 		if err != nil {
 			d.warn("Invalid key: unable to get %v: %v", key, err)
 			return err
@@ -263,7 +263,7 @@ func (d *Datastore) GetKeyMulti(kind string, keys interface{}, vals interface{})
 	_keys := make([]*aeds.Key, nkeys)
 
 	for i := 0; i < nkeys; i++ {
-		key, err := d.keyForGetKey(kind, slice.Index(i))
+		key, err := d.keyOrKindKey(kind, slice.Index(i))
 		if err != nil {
 			d.warn("Invalid key: unable to get %v: %v", key, err)
 			return err
@@ -286,26 +286,20 @@ func (d *Datastore) Put(kind string, src interface{}) (string, error) {
 }
 
 func (d *Datastore) PutKey(kind string, key interface{}, src interface{}) (string, error) {
-	var k *aeds.Key
-	switch v := key.(type) {
-	case string:
-		k = aeds.NewKey(d.Context, kind, v, 0, nil)
-	case int64:
-		k = aeds.NewKey(d.Context, kind, "", v, nil)
-	case int:
-		k = aeds.NewKey(d.Context, kind, "", int64(v), nil)
-	case *aeds.Key:
-		k = v
-	default:
-		return "", errors.New("Invalid key type")
-	}
+	_key, err := d.keyOrKindKey(kind, key)
 
-	k, err := nds.Put(d.Context, k, src)
+	// Invalid key, bail out.
 	if err != nil {
-		d.warn("%v, %v, %v, %#v", err, kind, k, src, d.Context)
+		d.warn("Invalid key: unable to put (%v, %v, %v): %v", kind, key, src, err)
 		return "", err
 	}
-	return k.Encode(), nil
+
+	_key, err = nds.Put(d.Context, _key, src)
+	if err != nil {
+		d.warn("%v, %v, %v, %#v", err, kind, _key, src, d.Context)
+		return "", err
+	}
+	return _key.Encode(), nil
 }
 
 func (d *Datastore) PutMulti(kind string, srcs []interface{}) (keys []string, err error) {
@@ -336,17 +330,12 @@ func (d *Datastore) PutKeyMulti(kind string, keys []interface{}, srcs []interfac
 	_keys := make([]*aeds.Key, nkeys)
 
 	for i := 0; i < nkeys; i++ {
-		switch v := keys[i].(type) {
-		case string:
-			_keys[i] = aeds.NewKey(d.Context, kind, v, 0, nil)
-		case int64:
-			_keys[i] = aeds.NewKey(d.Context, kind, "", v, nil)
-		case int:
-			_keys[i] = aeds.NewKey(d.Context, kind, "", int64(v), nil)
-		case *aeds.Key:
-			_keys[i] = v
-		default:
-			return _keys, errors.New("Invalid key type")
+		key := keys[i]
+		if _key, err := d.keyOrKindKey(kind, key); err != nil {
+			d.warn("Invalid key: unable to put (%v, %v, %v): %v", kind, key, srcs[i], err)
+			return _keys, err
+		} else {
+			_keys[i] = _key
 		}
 	}
 
