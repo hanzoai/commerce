@@ -120,6 +120,7 @@ var Perks = map[string]Perk{
 		HelmetQuantity:    20,
 		GearQuantity:      20,
 	},
+
 	"WINTER2014PROMO": Perk{
 		Id:                "WINTER2014PROMO",
 		Title:             "AR-1 HOLIDAY PREORDER",
