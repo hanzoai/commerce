@@ -6,8 +6,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"time"
-
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
 	"github.com/zeekay/aetest"
@@ -34,7 +32,7 @@ var _ = AfterSuite(func() {
 
 func TestDatastore(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "models test suite")
+	RunSpecs(t, "models")
 }
 
 type User struct {
@@ -52,15 +50,33 @@ func NewUser(db *datastore.Datastore) *User {
 	return user
 }
 
-var _ = Describe("mixin", func() {
-	It("should work", func() {
-		// Usage
-		user := NewUser(db)
-		user.Name = "Justin"
-		user.Put()
-		time.Sleep(10 * time.Second)
-		user2 := new(User)
-		db.Get(user.Key(), user2)
-		Expect(user2.Name).To(Equal(user.Name))
+var _ = Describe("models/mixin", func() {
+	Context("Model.Put", func() {
+		It("should save entity to datastore", func() {
+			// Create a new user and store using Model mixin
+			user := NewUser(db)
+			user.Name = "Justin"
+			user.Put()
+
+			// Manually retrieve to ensure it was saved properly
+			user2 := new(User)
+			db.Get(user.Key(), user2)
+			Expect(user2.Name).To(Equal(user.Name))
+		})
+	})
+
+	Context("Model.Get", func() {
+		It("should retrieve entity from datastore", func() {
+			// Manually create a new user and store in datastore
+			user := new(User)
+			user.Name = "Dustin"
+			key, err := db.Put("user", user)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Retrieve user from datastore using Model mixin
+			user2 := NewUser(db)
+			user2.Get(key)
+			Expect(user2.Name).To(Equal(user.Name))
+		})
 	})
 })
