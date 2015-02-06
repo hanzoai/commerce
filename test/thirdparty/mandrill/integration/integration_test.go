@@ -4,7 +4,8 @@ import (
 	"testing"
 
 	"appengine"
-	"appengine/aetest"
+
+	"github.com/zeekay/aetest"
 
 	"crowdstart.io/config"
 	mail "crowdstart.io/thirdparty/mandrill"
