@@ -10,7 +10,7 @@ import (
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/datastore/parallel"
-	"crowdstart.io/test/datastore/parallel/worker"
+	"crowdstart.io/test/datastore/integration/worker"
 )
 
 func checkCountValue(t *testing.T, models []worker.Model, v int) {
