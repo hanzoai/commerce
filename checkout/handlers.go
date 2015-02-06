@@ -198,7 +198,8 @@ func charge(c *gin.Context) {
 
 	// Save order
 	log.Debug("Saving order...", c)
-	encodedKey, err := db.Put("order", &form.Order)
+	key, err := db.Put("order", &form.Order)
+	encodedKey := key.Encode()
 	if err != nil {
 		log.Error("Failed to save order", err, c)
 		c.Fail(500, err)
