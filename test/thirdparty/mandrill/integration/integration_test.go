@@ -9,9 +9,11 @@ import (
 
 	"crowdstart.io/config"
 	mail "crowdstart.io/thirdparty/mandrill"
+	"crowdstart.io/util/log"
 )
 
 func TestPing(t *testing.T) {
+	log.SetVerbose(testing.Verbose())
 	if config.Mandrill.APIKey == "" {
 		t.Skip()
 	}
