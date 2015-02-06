@@ -7,6 +7,7 @@ goroot          = $(sdk_path)/goroot
 gopath          = $(sdk_path)/gopath
 goroot_pkg_path = $(goroot)/pkg/$(platform)_appengine/
 gopath_pkg_path = $(gopath)/pkg/$(platform)_appengine/
+current_date 	= $(shell date +"%Y-%m-%d")
 
 deps	= $(shell cat Godeps | cut -d ' ' -f 1)
 modules	= crowdstart.io/api \
@@ -119,10 +120,11 @@ endif
 
 # set production=1 to set datastore export/import target to use production
 ifeq ($(production), 1)
-	datastore_admin_url = https://datastore-admin-dot-skully-crowdstart.appspot.com/_ah/remote_api
+	datastore_app_id = skully-crowdstart
 else
-	datastore_admin_url = https://datastore-admin-dot-crowdstart-staging.appspot.com/_ah/remote_api
+	datastore_app_id = crowdstart-staging
 endif
+datastore_admin_url = https://datastore-admin-dot-$(datastore_app_id).appspot.com/_ah/remote_api
 
 test_filter := $(filter)
 ifdef test_filter
@@ -261,7 +263,7 @@ datastore-export:
 				  --log_file /tmp/bulkloader-$$kind.log \
 				  --result_db_filename /tmp/bulkloader-result-$$kind.db \
 				  --kind $$kind \
-				  --filename _export/$$kind-`date +"%Y-%m-%d"`.csv && \
+				  --filename _export/$$kind-$(datastore_app_id)-$(current_date).csv && \
 	rm -rf /tmp/bulkloader-$$kind.db \
 		   /tmp/bulkloader-$$kind.log \
 		   /tmp/bulkloader-result-$$kind.db
