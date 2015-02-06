@@ -2,6 +2,7 @@ package datastore
 
 import (
 	"errors"
+	"reflect"
 	"strconv"
 
 	"appengine"
@@ -163,6 +164,8 @@ func (d *Datastore) keyForGet(key interface{}) (_key *aeds.Key, err error) {
 		return d.DecodeKey(v)
 	case *aeds.Key:
 		return v, nil
+	case reflect.Value:
+		return d.keyForGet(v.Interface())
 	default:
 		return _key, InvalidKey
 	}
@@ -180,6 +183,8 @@ func (d *Datastore) keyForGetKey(kind string, key interface{}) (_key *aeds.Key, 
 		_key = aeds.NewKey(d.Context, kind, "", int64(v), nil)
 	case *aeds.Key:
 		_key = v
+	case reflect.Value:
+		return d.keyForGetKey(kind, v.Interface())
 	default:
 		return _key, InvalidKey
 	}
@@ -215,13 +220,23 @@ func (d *Datastore) GetKey(kind string, key interface{}, value interface{}) erro
 	return d.ignoreFieldMismatch(nds.Get(d.Context, _key, value))
 }
 
-// Same as Get, but works for multiple key/vals
-func (d *Datastore) GetMulti(keys []interface{}, vals interface{}) error {
-	nkeys := len(keys)
+// Same as Get, but works for multiple key/vals, keys can be slice of any type
+// accepted by Get
+func (d *Datastore) GetMulti(keys interface{}, vals interface{}) error {
+	var slice reflect.Value
+
+	switch reflect.TypeOf(keys).Kind() {
+	case reflect.Slice:
+		slice = reflect.ValueOf(keys)
+	default:
+		return errors.New("Keys must be a slice.")
+	}
+
+	nkeys := slice.Len()
 	_keys := make([]*aeds.Key, nkeys)
 
 	for i := 0; i < nkeys; i++ {
-		key, err := d.keyForGet(keys[i])
+		key, err := d.keyForGet(slice.Index(i))
 		if err != nil {
 			d.warn("Invalid key: unable to get %v: %v", key, err)
 			return err
@@ -232,13 +247,23 @@ func (d *Datastore) GetMulti(keys []interface{}, vals interface{}) error {
 	return nds.GetMulti(d.Context, _keys, vals)
 }
 
-// Same as GetKey, but works for multiple key/vals
-func (d *Datastore) GetKeyMulti(kind string, keys []string, vals interface{}) error {
-	nkeys := len(keys)
+// Same as GetKey, but works for multiple key/vals, keys can be slice of any
+// type accepted by GetKey
+func (d *Datastore) GetKeyMulti(kind string, keys interface{}, vals interface{}) error {
+	var slice reflect.Value
+
+	switch reflect.TypeOf(keys).Kind() {
+	case reflect.Slice:
+		slice = reflect.ValueOf(keys)
+	default:
+		return errors.New("Keys must be a slice.")
+	}
+
+	nkeys := slice.Len()
 	_keys := make([]*aeds.Key, nkeys)
 
 	for i := 0; i < nkeys; i++ {
-		key, err := d.keyForGetKey(kind, keys[i])
+		key, err := d.keyForGetKey(kind, slice.Index(i))
 		if err != nil {
 			d.warn("Invalid key: unable to get %v: %v", key, err)
 			return err
