@@ -155,31 +155,21 @@ func (d *Datastore) DecodeKey(encodedKey string) (*aeds.Key, error) {
 	return key, err
 }
 
-// Gets an entity using datastore.Key or encoded Key
-func (d *Datastore) Get(key interface{}, value interface{}) (err error) {
-	var _key *aeds.Key
-
+// Helper func to get key for `datastore.Get/datastore.GetMulti`
+func (d *Datastore) keyForGet(key interface{}) (_key *aeds.Key, err error) {
 	// Get datastore.Key if necessary
 	switch v := key.(type) {
 	case string:
-		_key, err = d.DecodeKey(v)
-		if err != nil {
-			return err
-		}
+		return d.DecodeKey(v)
 	case *aeds.Key:
-		_key = v
+		return v, nil
 	default:
-		return InvalidKey
+		return _key, InvalidKey
 	}
-
-	// Try to retrieve entity using nds, which transparently uses memcache if possible
-	return d.ignoreFieldMismatch(nds.Get(d.Context, _key, value))
 }
 
-// Gets an entity by literal datastore key of string type
-func (d *Datastore) GetKey(kind string, key interface{}, value interface{}) error {
-	var _key *aeds.Key
-
+// Helper func to get key for `datastore.GetKey/datastore.GetKeyMulti`
+func (d *Datastore) keyForGetKey(kind string, key interface{}) (_key *aeds.Key, err error) {
 	// Try to construct a datastore key from whatever we were given as a key
 	switch v := key.(type) {
 	case string:
@@ -191,32 +181,71 @@ func (d *Datastore) GetKey(kind string, key interface{}, value interface{}) erro
 	case *aeds.Key:
 		_key = v
 	default:
-		return InvalidKey
+		return _key, InvalidKey
+	}
+
+	return _key, nil
+}
+
+// Gets an entity using datastore.Key or encoded Key
+func (d *Datastore) Get(key interface{}, value interface{}) error {
+	_key, err := d.keyForGet(key)
+
+	// Invalid key, bail out.
+	if err != nil {
+		d.warn("Invalid key: unable to get %v: %v", key, err)
+		return err
 	}
 
 	// Try to retrieve entity using nds, which transparently uses memcache if possible
 	return d.ignoreFieldMismatch(nds.Get(d.Context, _key, value))
 }
 
-func (d *Datastore) GetMulti(keys []string, vals interface{}) error {
-	_keys := make([]*aeds.Key, len(keys))
+// Gets an entity by literal datastore key of string type
+func (d *Datastore) GetKey(kind string, key interface{}, value interface{}) error {
+	_key, err := d.keyForGetKey(kind, key)
 
-	for i, key := range keys {
-		if k, err := d.DecodeKey(key); err != nil {
+	// Invalid key, bail out.
+	if err != nil {
+		d.warn("Invalid key: unable to get (%v, %v): %v", kind, key, err)
+		return err
+	}
+
+	// Try to retrieve entity using nds, which transparently uses memcache if possible
+	return d.ignoreFieldMismatch(nds.Get(d.Context, _key, value))
+}
+
+// Same as Get, but works for multiple key/vals
+func (d *Datastore) GetMulti(keys []interface{}, vals interface{}) error {
+	nkeys := len(keys)
+	_keys := make([]*aeds.Key, nkeys)
+
+	for i := 0; i < nkeys; i++ {
+		key, err := d.keyForGet(keys[i])
+		if err != nil {
+			d.warn("Invalid key: unable to get %v: %v", key, err)
 			return err
-		} else {
-			_keys[i] = k
 		}
+		_keys[i] = key
 	}
 
 	return nds.GetMulti(d.Context, _keys, vals)
 }
 
+// Same as GetKey, but works for multiple key/vals
 func (d *Datastore) GetKeyMulti(kind string, keys []string, vals interface{}) error {
-	_keys := make([]*aeds.Key, len(keys))
-	for i, key := range keys {
-		_keys[i] = aeds.NewKey(d.Context, kind, key, 0, nil)
+	nkeys := len(keys)
+	_keys := make([]*aeds.Key, nkeys)
+
+	for i := 0; i < nkeys; i++ {
+		key, err := d.keyForGetKey(kind, keys[i])
+		if err != nil {
+			d.warn("Invalid key: unable to get %v: %v", key, err)
+			return err
+		}
+		_keys[i] = key
 	}
+
 	return nds.GetMulti(d.Context, _keys, vals)
 }
 
