@@ -36,6 +36,7 @@ func (m *model) Get(db *datastore.Datastore, args ...interface{}) error {
 
 	if len(args) == 1 {
 		key = args[0].(datastore.Key)
+		m.key = key
 	} else {
 		key = m.key
 	}
@@ -45,6 +46,7 @@ func (m *model) Get(db *datastore.Datastore, args ...interface{}) error {
 	return nil
 }
 
+// Use NewModel inside of a model implementing entity
 func NewModel(e Entity) *model {
 	m := new(model)
 	m.Entity = e
@@ -64,5 +66,7 @@ func (u *EUser) Kind() string {
 func NewEUser() *EUser {
 	user := new(EUser)
 	user.Model = NewModel(user)
+	// Set any other defaults
+	// ...
 	return user
 }
