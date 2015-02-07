@@ -179,7 +179,7 @@ func (a *Api) Refresh() error {
 	log.Debug("Updating Campaign", c)
 	if a.Update {
 		db := datastore.New(c)
-		db.PutKey("campaign", a.Campaign.Id, a.Campaign)
+		db.PutKind("campaign", a.Campaign.Id, a.Campaign)
 	}
 
 	return nil

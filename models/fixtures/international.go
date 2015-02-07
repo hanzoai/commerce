@@ -69,6 +69,6 @@ var international = delay.Func("fixtures-international", func(c appengine.Contex
 			PaymentMethod: row[5],
 			UserId:        user.Id,
 		}
-		db.PutKey("contribution", pledgeId, &contribution)
+		db.PutKind("contribution", pledgeId, &contribution)
 	}
 })
