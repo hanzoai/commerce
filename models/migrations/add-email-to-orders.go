@@ -2,14 +2,12 @@ package migrations
 
 import (
 	"appengine"
+	. "appengine/datastore"
 	"appengine/delay"
 
 	"crowdstart.io/datastore"
-	"crowdstart.io/util/log"
-
-	. "appengine/datastore"
-
 	. "crowdstart.io/models"
+	"crowdstart.io/util/log"
 )
 
 // Originally referenced User by  Email, now uses User ID,
@@ -39,7 +37,7 @@ var addEmailToOrders = delay.Func("migrate-add-userid-to-orders", func(c appengi
 		// Update user
 		if o.UserId == "" {
 			o.UserId = db.EncodeId("user", k.IntID())
-			if _, err := db.PutKey("order", k, &o); err != nil {
+			if _, err := db.PutKind("order", k, &o); err != nil {
 				log.Error("Failed to update order: %v", err, c)
 			}
 		}

@@ -63,7 +63,7 @@ func Get(c *gin.Context) {
 	slug := c.Params.ByName("slug")
 
 	product := new(models.Product)
-	if err := db.GetKey("product", slug, product); err != nil {
+	if err := db.GetKind("product", slug, product); err != nil {
 		log.Error("Invalid slug: %v", err)
 		template.Render(c, "error/404.html")
 		return

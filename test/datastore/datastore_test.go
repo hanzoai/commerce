@@ -225,17 +225,17 @@ var _ = Describe("Put", func() {
 	})
 })
 
-var _ = Describe("Datastore.GetKey", func() {
+var _ = Describe("Datastore.GetKind", func() {
 	kind := "datastore-getkey-test"
-	Context("With Datastore.PutKey", func() {
+	Context("With Datastore.PutKind", func() {
 		It("should be the same", func() {
 			key := "test-datastore-getkey_"
 			a := &Entity{"test-datastore-getkey"}
-			_, err := db.PutKey(kind, key, a)
+			_, err := db.PutKind(kind, key, a)
 			Expect(err).ToNot(HaveOccurred())
 
 			b := &Entity{}
-			err = db.GetKey(kind, key, b)
+			err = db.GetKind(kind, key, b)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(b).To(Equal(a))
 		})
@@ -249,24 +249,24 @@ var _ = Describe("Datastore.GetKey", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			b := &Entity{}
-			err = db.GetKey(kind, "test-key", b)
+			err = db.GetKind(kind, "test-key", b)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(b).To(Equal(a))
 		})
 	})
 })
 
-var _ = Describe("Datastore.PutKey", func() {
+var _ = Describe("Datastore.PutKind", func() {
 	kind := "datastore-putkey-test"
-	Context("With Datastore.GetKey", func() {
+	Context("With Datastore.GetKind", func() {
 		It("should be the same", func() {
 			a := &Entity{"test-datastore"}
 			key := "test-datastore-putkey-getkey"
-			_, err := db.PutKey(kind, key, a)
+			_, err := db.PutKind(kind, key, a)
 			Expect(err).ToNot(HaveOccurred())
 
 			b := &Entity{}
-			err = db.GetKey(kind, key, b)
+			err = db.GetKind(kind, key, b)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(b).To(Equal(a))
 		})
@@ -276,7 +276,7 @@ var _ = Describe("Datastore.PutKey", func() {
 		It("should be the same", func() {
 			a := &Entity{"test-datastore"}
 			key := "test-datastore-putkey-getkey"
-			_, err := db.PutKey(kind, key, a)
+			_, err := db.PutKind(kind, key, a)
 			Expect(err).ToNot(HaveOccurred())
 
 			b := &Entity{}
@@ -405,14 +405,14 @@ var _ = Describe("Datastore.PutMulti", func() {
 var _ = Describe("Datastore.GetKeyMulti", func() {
 	kind := "datastore-GetMultiKey-test"
 
-	Context("With Datastore.PutKey", func() {
+	Context("With Datastore.PutKind", func() {
 		It("should be the same", func() {
 			a := make([]Entity, 10)
 			keys := make([]string, len(a))
 			for i, _ := range a {
 				a[i].Field = str(i)
 				keys[i] = a[i].Field
-				_, err := db.PutKey(kind, a[i].Field, &a[i])
+				_, err := db.PutKind(kind, a[i].Field, &a[i])
 				Expect(err).ToNot(HaveOccurred())
 			}
 
