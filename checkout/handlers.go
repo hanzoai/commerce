@@ -27,7 +27,7 @@ func getCampaign(args ...interface{}) models.Campaign {
 	c := args[0].(*gin.Context)
 	db := args[1].(*datastore.Datastore)
 	var campaign models.Campaign
-	if err := db.GetKey("campaign", "dev@hanzo.ai", &campaign); err != nil {
+	if err := db.GetKind("campaign", "dev@hanzo.ai", &campaign); err != nil {
 		log.Error(err, c)
 	}
 	return campaign
@@ -227,7 +227,7 @@ func charge(c *gin.Context) {
 	invite.GenerateId()
 	invite.UserId = user.Id
 	invite.Email = user.Email
-	if _, err := db.PutKey("invite-token", invite.Id, invite); err != nil {
+	if _, err := db.PutKind("invite-token", invite.Id, invite); err != nil {
 		log.Error("Failed to save invite-token: %v", err, c)
 		c.Fail(500, err)
 		return
@@ -240,7 +240,7 @@ func charge(c *gin.Context) {
 	contribution.UserId = user.Id
 	contribution.Email = user.Email
 	contribution.Perk = models.Perks["WINTER2014PROMO"]
-	if _, err := db.PutKey("contribution", contribution.Id, contribution); err != nil {
+	if _, err := db.PutKind("contribution", contribution.Id, contribution); err != nil {
 		log.Error("Failed to save contribution: %v", err, c)
 		c.Fail(500, err)
 		return
