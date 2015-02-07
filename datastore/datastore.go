@@ -184,7 +184,7 @@ func (d *Datastore) keyOrKind(keyOrKind interface{}) (_key *aeds.Key, err error)
 	}
 }
 
-// Helper func to get key for `datastore.GetKey/datastore.GetKeyMulti`
+// Helper func to get key for `datastore.GetKind/datastore.GetKeyMulti`
 func (d *Datastore) keyOrKindKey(kind string, key interface{}) (_key *aeds.Key, err error) {
 	// Try to construct a datastore key from whatever we were given as a key
 	switch v := key.(type) {
@@ -222,7 +222,7 @@ func (d *Datastore) Get(key interface{}, value interface{}) error {
 }
 
 // Gets an entity by literal datastore key of string type
-func (d *Datastore) GetKey(kind string, key interface{}, value interface{}) error {
+func (d *Datastore) GetKind(kind string, key interface{}, value interface{}) error {
 	_key, err := d.keyOrKindKey(kind, key)
 
 	// Invalid key, bail out.
@@ -304,7 +304,7 @@ func (d *Datastore) Put(keyOrKind interface{}, src interface{}) (*aeds.Key, erro
 	return key, nil
 }
 
-func (d *Datastore) PutKey(kind string, key interface{}, src interface{}) (*aeds.Key, error) {
+func (d *Datastore) PutKind(kind string, key interface{}, src interface{}) (*aeds.Key, error) {
 	_key, err := d.keyOrKindKey(kind, key)
 
 	// Invalid key, bail out.

@@ -34,7 +34,7 @@ var testUsers = delay.Func("fixtures-test-users", func(c appengine.Context) {
 	token := new(Token)
 	token.Id = "test-token"
 	token.UserId = user.Id
-	db.PutKey("invite-token", "test-token", token)
+	db.PutKind("invite-token", "test-token", token)
 
 	// Save contribution
 	contribution := Contribution{
@@ -45,7 +45,7 @@ var testUsers = delay.Func("fixtures-test-users", func(c appengine.Context) {
 		PaymentMethod: "PayPal",
 		UserId:        user.Id,
 	}
-	db.PutKey("contribution", "test", &contribution)
+	db.PutKind("contribution", "test", &contribution)
 
 	order := Order{
 		Id:        "test-order",
@@ -53,7 +53,7 @@ var testUsers = delay.Func("fixtures-test-users", func(c appengine.Context) {
 		UserId:    user.Id,
 		Preorder:  true,
 	}
-	db.PutKey("order", order.Id, &order)
+	db.PutKind("order", order.Id, &order)
 })
 
 var skullyUser = delay.Func("fixtures-skully-user", func(c appengine.Context) {
@@ -95,5 +95,5 @@ var skullyCampaign = delay.Func("fixtures-skully-campaign", func(c appengine.Con
 		campaign.Salesforce.InstanceUrl = "https://na17.salesforce.com"
 		campaign.Salesforce.Signature = "RO086wMIGu1bLlXgjtMtAk4JGSd8k2/yb5tKRGq/No8="
 	}
-	db.PutKey("campaign", "dev@hanzo.ai", &campaign)
+	db.PutKind("campaign", "dev@hanzo.ai", &campaign)
 })

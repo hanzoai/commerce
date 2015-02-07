@@ -31,7 +31,7 @@ func GetPreorder(c *gin.Context) {
 
 	// Fetch token
 	token := new(models.Token)
-	db.GetKey("invite-token", c.Params.ByName("token"), token)
+	db.GetKind("invite-token", c.Params.ByName("token"), token)
 
 	// Redirect to login if token is expired or used
 	if token.Expired || token.Used {
@@ -160,14 +160,14 @@ func SavePreorder(c *gin.Context) {
 		log.Debug("Fetching variant for %v", lineItem.SKU())
 
 		// Fetch Variant for LineItem from datastore
-		if err := db.GetKey("variant", lineItem.SKU(), &lineItem.Variant); err != nil {
+		if err := db.GetKind("variant", lineItem.SKU(), &lineItem.Variant); err != nil {
 			log.Error("Failed to find variant for: %v", lineItem.SKU(), ctx)
 			c.Fail(500, err)
 			return
 		}
 
 		// Fetch Product for LineItem from datastore
-		if err := db.GetKey("product", lineItem.Slug(), &lineItem.Product); err != nil {
+		if err := db.GetKind("product", lineItem.Slug(), &lineItem.Product); err != nil {
 			log.Error("Failed to find product for: %v", lineItem.Slug(), ctx)
 			c.Fail(500, err)
 			return
@@ -200,7 +200,7 @@ func SavePreorder(c *gin.Context) {
 		}
 
 		// Retrieve existing order and update things we care about
-		if _, err := db.PutKey("order", key, &order); err != nil {
+		if _, err := db.PutKind("order", key, &order); err != nil {
 			log.Error("Error saving order: %v", err, ctx)
 			c.Fail(500, err)
 			return
@@ -223,7 +223,7 @@ func SavePreorder(c *gin.Context) {
 
 	// Look up campaign to see if we need to sync with salesforce
 	campaign := models.Campaign{}
-	if err := db.GetKey("campaign", "dev@hanzo.ai", &campaign); err != nil {
+	if err := db.GetKind("campaign", "dev@hanzo.ai", &campaign); err != nil {
 		log.Error(err, c)
 	}
 
