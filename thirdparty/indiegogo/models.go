@@ -2,9 +2,12 @@ package indiegogo
 
 import (
 	"strings"
+	"time"
 
 	. "crowdstart.io/models"
 )
+
+const indiegogoLayout = "2006-01-02 15:04 -0700"
 
 // Represents a row in an Indiegogo CSV
 type Row struct {
@@ -12,7 +15,7 @@ type Row struct {
 	PerkID            string
 	PledgeID          string
 	FulfillmentStatus string
-	FundingDate       string
+	FundingDate       time.Time
 	PaymentMethod     string
 	Appearance        string
 	Name              string
@@ -33,7 +36,6 @@ func NewRow(row []string) Row {
 		PerkID:            row[1],
 		PledgeID:          row[2],
 		FulfillmentStatus: row[3],
-		FundingDate:       row[4],
 		PaymentMethod:     row[5],
 		Appearance:        row[6],
 		Name:              row[7],
@@ -44,6 +46,9 @@ func NewRow(row []string) Row {
 		FirstName:         "",
 		LastName:          "",
 	}
+
+	date, _ := time.Parse(indiegogoLayout, row[4])
+	r.FundingDate = date
 
 	address := Address{
 		Line1:      row[12],
