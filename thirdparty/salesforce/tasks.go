@@ -105,7 +105,7 @@ func ImportUsers(c appengine.Context) {
 	campaign := models.Campaign{}
 
 	// Get user instance
-	if err := db.GetKey("campaign", "dev@hanzo.ai", &campaign); err != nil {
+	if err := db.GetKind("campaign", "dev@hanzo.ai", &campaign); err != nil {
 		log.Panic("Unable to get campaign from database: %v", err, c)
 	}
 
@@ -120,7 +120,7 @@ func ImportOrders(c appengine.Context) {
 	campaign := models.Campaign{}
 
 	// Get order instance
-	if err := db.GetKey("campaign", "dev@hanzo.ai", &campaign); err != nil {
+	if err := db.GetKind("campaign", "dev@hanzo.ai", &campaign); err != nil {
 		log.Panic("Unable to get campaign from database: %v", err, c)
 	}
 
@@ -135,7 +135,7 @@ var PullUpdatedTask = delay.Func("SalesforcePullUpdatedTask", func(c appengine.C
 	campaign := new(models.Campaign)
 
 	// Get user instance
-	if err := db.GetKey("campaign", "dev@hanzo.ai", campaign); err != nil {
+	if err := db.GetKind("campaign", "dev@hanzo.ai", campaign); err != nil {
 		log.Panic("Unable to get campaign from database: %v", err, c)
 	}
 
