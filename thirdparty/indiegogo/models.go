@@ -27,7 +27,7 @@ type Row struct {
 	LastName  string
 }
 
-func NewRow(row []string, err error) (Row, error) {
+func NewRow(row []string) Row {
 	r := Row{
 		TokenID:           row[0],
 		PerkID:            row[1],
@@ -76,5 +76,5 @@ func NewRow(row []string, err error) (Row, error) {
 
 	r.ShippingAddress = address
 
-	return r, nil
+	return r
 }

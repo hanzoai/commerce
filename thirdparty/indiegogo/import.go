@@ -3,19 +3,27 @@ package indiegogo
 import (
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
+	"crowdstart.io/util/csv"
 
 	. "crowdstart.io/models"
 )
 
 func ImportCSV(db *datastore.Datastore, filename string) {
-	for row := range IterateCSV(filename) {
+	for record := range csv.Iterator(filename) {
+		if config.IsDevelopment && record.Index > 25 {
+			break // Only import first 25 in development
+		}
+
+		// Parse Row
+		r := NewRow(record.Row)
+
 		// Create user
 		user := &User{
-			Email:           row.Email,
-			FirstName:       row.FirstName,
-			LastName:        row.LastName,
-			ShippingAddress: row.ShippingAddress,
-			BillingAddress:  row.ShippingAddress,
+			Email:           r.Email,
+			FirstName:       r.FirstName,
+			LastName:        r.LastName,
+			ShippingAddress: r.ShippingAddress,
+			BillingAddress:  r.ShippingAddress,
 		}
 
 		// No longer updating user information in production, as it would clobber any customized information.
@@ -25,7 +33,7 @@ func ImportCSV(db *datastore.Datastore, filename string) {
 
 		// Create token
 		token := &Token{
-			Id:     row.TokenID,
+			Id:     r.TokenID,
 			UserId: user.Id,
 			Email:  user.Email,
 		}
@@ -34,13 +42,13 @@ func ImportCSV(db *datastore.Datastore, filename string) {
 
 		// Save contribution
 		contribution := &Contribution{
-			Id:            row.PledgeID,
-			Perk:          Perks[row.PerkID],
-			Status:        row.FulfillmentStatus,
-			FundingDate:   row.FundingDate,
-			PaymentMethod: row.PaymentMethod,
+			Id:            r.PledgeID,
+			Perk:          Perks[r.PerkID],
+			Status:        r.FulfillmentStatus,
+			FundingDate:   r.FundingDate,
+			PaymentMethod: r.PaymentMethod,
 			UserId:        user.Id,
 		}
-		db.PutKind("contribution", row.PledgeID, contribution)
+		db.PutKind("contribution", r.PledgeID, contribution)
 	}
 }
