@@ -7,8 +7,8 @@ import (
 	. "crowdstart.io/models"
 )
 
-func CSVImport(db *datastore.Datastore, filename string) {
-	for row := range CSVIterator(filename) {
+func ImportCSV(db *datastore.Datastore, filename string) {
+	for row := range IterateCSV(filename) {
 		// Create user
 		user := &User{
 			Email:           row.Email,
