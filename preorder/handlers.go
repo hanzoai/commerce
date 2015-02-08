@@ -3,6 +3,7 @@ package preorder
 import (
 	"errors"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -152,6 +153,7 @@ func SavePreorder(c *gin.Context) {
 	log.Debug("User: %v", user)
 
 	order := form.Order
+	order.UpdatedAt = time.Now()
 	order.ShippingAddress = form.ShippingAddress
 	log.Debug("ShippingAddress: %v", user)
 
