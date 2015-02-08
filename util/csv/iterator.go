@@ -16,6 +16,7 @@ func Iterator(filename string) <-chan Record {
 	ch := make(chan Record)
 
 	go func() {
+		// Open CSV file
 		csvfile, err := os.Open(filename)
 		defer csvfile.Close()
 		if err != nil {
