@@ -178,6 +178,7 @@ func New() *Logger {
 
 	multiBackend := logging.SetBackend(defaultBackend)
 	log.SetBackend(multiBackend)
+	log.SetVerbose(true) // defaults to true, override in tests with testing.Verbose()
 	return log
 }
 
