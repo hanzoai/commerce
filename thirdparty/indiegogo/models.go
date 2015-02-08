@@ -7,7 +7,7 @@ import (
 )
 
 // Represents a row in an Indiegogo CSV
-type Record struct {
+type Row struct {
 	TokenID           string // NOTE: This was manually added.
 	PerkID            string
 	PledgeID          string
@@ -27,8 +27,8 @@ type Record struct {
 	LastName  string
 }
 
-func NewRecord(row []string, err error) (Record, error) {
-	r := Record{
+func NewRow(row []string, err error) (Row, error) {
+	r := Row{
 		TokenID:           row[0],
 		PerkID:            row[1],
 		PledgeID:          row[2],

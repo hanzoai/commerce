@@ -8,8 +8,8 @@ import (
 	"crowdstart.io/util/log"
 )
 
-func CSVIterator(filename string) <-chan Record {
-	ch := make(chan Record)
+func CSVIterator(filename string) <-chan Row {
+	ch := make(chan Row)
 
 	go func() {
 		csvfile, err := os.Open(filename)
@@ -31,7 +31,7 @@ func CSVIterator(filename string) <-chan Record {
 			}
 
 			// Loop until exhausted
-			row, err := NewRecord(reader.Read())
+			row, err := NewRow(reader.Read())
 			if err != nil {
 				break
 			}
