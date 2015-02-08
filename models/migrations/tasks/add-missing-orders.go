@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"strconv"
 	"time"
 
 	"crowdstart.io/datastore"
@@ -46,7 +47,7 @@ var AddMissingOrders = parallel.Task("add-missing-orders-from-contribution", fun
 			order.Items[1].Slug_ == "hat" &&
 			order.Items[0].Quantity == contribution.Perk.GearQuantity &&
 			order.Items[1].Quantity == contribution.Perk.GearQuantity {
-
+			foundIndex = i
 		} else if order.Items[0].Slug_ == "ar-1" &&
 			order.Items[1].Slug_ == "t-shirt" &&
 			order.Items[2].Slug_ == "hat" &&
@@ -62,7 +63,12 @@ var AddMissingOrders = parallel.Task("add-missing-orders-from-contribution", fun
 	if foundIndex != -1 {
 		// Update the email for book keeping
 		orders[foundIndex].Email = contribution.Email
-		db.PutKind("order", keys[foundIndex], &orders[foundIndex])
+		db.Delete(keys[foundIndex])
+		if id, err := strconv.Atoi(contribution.Id); err != nil {
+			db.PutKind("order", keys[foundIndex], &orders[foundIndex])
+		} else {
+			db.PutKind("order", id, &orders[foundIndex])
+		}
 	} else {
 		user := new(models.User)
 		db.Get(contribution.UserId, user)
@@ -94,6 +100,10 @@ var AddMissingOrders = parallel.Task("add-missing-orders-from-contribution", fun
 		order.CreatedAt = time.Now()
 		order.UpdatedAt = order.CreatedAt
 
-		db.Put("order", order)
+		if id, err := strconv.Atoi(contribution.Id); err != nil {
+			db.Put("order", order)
+		} else {
+			db.PutKind("order", id, order)
+		}
 	}
 })
