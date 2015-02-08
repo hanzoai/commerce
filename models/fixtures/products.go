@@ -80,10 +80,10 @@ var products = delay.Func("install-products", func(c appengine.Context) {
 	}
 
 	for _, v := range variants {
-		db.PutKey("variant", v.SKU, &v)
+		db.PutKind("variant", v.SKU, &v)
 	}
 
-	db.PutKey("product", "ar-1", &Product{
+	db.PutKind("product", "ar-1", &Product{
 		Slug:     "ar-1",
 		Title:    "SKULLY AR-1",
 		Headline: "The World's smartest helmet.",
@@ -127,10 +127,10 @@ var products = delay.Func("install-products", func(c appengine.Context) {
 	}
 
 	for _, v := range variants {
-		db.PutKey("variant", v.SKU, &v)
+		db.PutKind("variant", v.SKU, &v)
 	}
 
-	db.PutKey("product", "card-winter2014promo", &Product{
+	db.PutKind("product", "card-winter2014promo", &Product{
 		Slug:     "card-winter2014promo",
 		Title:    "SKULLY Xmas Card",
 		Variants: variants,
@@ -153,10 +153,10 @@ var products = delay.Func("install-products", func(c appengine.Context) {
 	}
 
 	for _, v := range variants {
-		db.PutKey("variant", v.SKU, &v)
+		db.PutKind("variant", v.SKU, &v)
 	}
 
-	db.PutKey("product", "dogtag-winter2014promo", &Product{
+	db.PutKind("product", "dogtag-winter2014promo", &Product{
 		Slug:     "dogtag-winter2014promo",
 		Title:    "Limited Edition SKULLY dog tag",
 		Variants: variants,
@@ -259,10 +259,10 @@ var products = delay.Func("install-products", func(c appengine.Context) {
 	}
 
 	for _, v := range variants {
-		db.PutKey("variant", v.SKU, &v)
+		db.PutKind("variant", v.SKU, &v)
 	}
 
-	db.PutKey("product", "t-shirt", &Product{
+	db.PutKind("product", "t-shirt", &Product{
 		Slug:    "t-shirt",
 		Title:   "SKULLY T-shirt",
 		Excerpt: "Rock your SKULLY Nation pride with our official Team SKULLY t-shirt.",
@@ -316,10 +316,10 @@ var products = delay.Func("install-products", func(c appengine.Context) {
 	}
 
 	for _, v := range variants {
-		db.PutKey("variant", v.SKU, &v)
+		db.PutKind("variant", v.SKU, &v)
 	}
 
-	db.PutKey("product", "hat", &Product{
+	db.PutKind("product", "hat", &Product{
 		Slug:    "hat",
 		Title:   "SKULLY Hat",
 		Excerpt: "Look like a badass in our official SKULLY embroidered 6-panel flexible fitted cap.",
@@ -355,10 +355,10 @@ var products = delay.Func("install-products", func(c appengine.Context) {
 	}
 
 	for _, v := range variants {
-		db.PutKey("variant", v.SKU, &v)
+		db.PutKind("variant", v.SKU, &v)
 	}
 
-	db.PutKey("product", "stickers", &Product{
+	db.PutKind("product", "stickers", &Product{
 		Slug:    "stickers",
 		Title:   "SKULLY Stickers",
 		Excerpt: "No laptop or motorcycle is complete without a premium vinyl SKULLY sticker stretched across it.",
@@ -386,7 +386,7 @@ var products = delay.Func("install-products", func(c appengine.Context) {
 
 	// Product Listings
 
-	db.PutKey("listing", "ar-1-winter2014promo", &Listing{
+	db.PutKind("listing", "ar-1-winter2014promo", &Listing{
 		SKU:   "ar-1-winter2014promo",
 		Title: "SKULLY AR-1",
 		Description: `The world’s smartest motorcycle helmet. SKULLY AR-1 is a light, high-quality,
@@ -434,7 +434,7 @@ var products = delay.Func("install-products", func(c appengine.Context) {
 		},
 	})
 
-	db.PutKey("listing", "ar-1", &Listing{
+	db.PutKind("listing", "ar-1", &Listing{
 		SKU:   "ar-1",
 		Title: "SKULLY AR-1",
 		Description: `The world’s smartest motorcycle helmet. SKULLY AR-1 is a light, high-quality,
