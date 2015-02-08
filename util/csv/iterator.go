@@ -1,15 +1,19 @@
-package indiegogo
+package csv
 
 import (
 	"encoding/csv"
 	"os"
 
-	"crowdstart.io/config"
 	"crowdstart.io/util/log"
 )
 
-func IterateCSV(filename string) <-chan Row {
-	ch := make(chan Row)
+type Record struct {
+	Index int
+	Row   []string
+}
+
+func Iterator(filename string) <-chan Record {
+	ch := make(chan Record)
 
 	go func() {
 		csvfile, err := os.Open(filename)
@@ -24,24 +28,19 @@ func IterateCSV(filename string) <-chan Row {
 		// Skip header
 		reader.Read()
 
+		// Consume CSV
 		for i := 0; true; i++ {
-			// Only import first 25 in development
-			if config.IsDevelopment && i > 25 {
-				break
-			}
-
 			// Loop until exhausted
-			row, err := NewRow(reader.Read())
+			row, err := reader.Read()
+
+			// Break on error
 			if err != nil {
 				break
 			}
 
-			ch <- row
-
+			ch <- Record{i, row}
 		}
-
 		close(ch)
 	}()
-
 	return ch
 }
