@@ -8,7 +8,7 @@ import (
 	"crowdstart.io/util/log"
 )
 
-func CSVIterator(filename string) <-chan Row {
+func IterateCSV(filename string) <-chan Row {
 	ch := make(chan Row)
 
 	go func() {
