@@ -27,7 +27,7 @@ func TestParallel(t *testing.T) {
 	//Spin up an appengine dev server with the default module
 	ctx, err := appenginetesting.NewContext(&appenginetesting.Options{
 		AppId:      "crowdstart-io",
-		Debug:      appenginetesting.LogChild,
+		Debug:      appenginetesting.LogWarning,
 		Testing:    t,
 		TaskQueues: []string{"default"},
 		Modules: []appenginetesting.ModuleConfig{
