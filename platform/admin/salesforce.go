@@ -127,7 +127,7 @@ func SalesforcePullLatest(c *gin.Context) {
 
 	client := salesforce.New(ctx, campaign, true)
 
-	now := time.Now().UTC()
+	now := time.Now()
 
 	// Get recently updated users
 	users := new([]*models.User)
@@ -205,7 +205,7 @@ func TestSalesforceConnection(c *gin.Context) {
 	}
 	log.Info("Get Success %v", user2, c)
 
-	now := time.Now().UTC()
+	now := time.Now()
 
 	// Test to see if salesforce reports back that we upserted a user
 	updatedUsers := new([]*models.User)
