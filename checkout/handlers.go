@@ -101,7 +101,7 @@ func charge(c *gin.Context) {
 		return
 	}
 
-	form.Order.CreatedAt = time.Now()
+	form.Order.CreatedAt = time.Now().UTC()
 	form.Order.UpdatedAt = form.Order.CreatedAt
 
 	ctx := middleware.GetAppEngine(c)
