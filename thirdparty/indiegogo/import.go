@@ -41,14 +41,14 @@ func ImportCSV(db *datastore.Datastore, filename string) {
 		db.PutKind("invite-token", token.Id, token)
 
 		// Save contribution
-		contribution := &Contribution{
-			Id:            r.PledgeID,
-			Perk:          Perks[r.PerkID],
-			Status:        r.FulfillmentStatus,
-			FundingDate:   r.FundingDate,
-			PaymentMethod: r.PaymentMethod,
-			UserId:        user.Id,
-		}
-		db.PutKind("contribution", r.PledgeID, contribution)
+		// contribution := &Contribution{
+		// 	Id:            r.PledgeID,
+		// 	Perk:          Perks[r.PerkID],
+		// 	Status:        r.FulfillmentStatus,
+		// 	FundingDate:   r.FundingDate,
+		// 	PaymentMethod: r.PaymentMethod,
+		// 	UserId:        user.Id,
+		// }
+		// db.PutKind("contribution", r.PledgeID, contribution)
 	}
 }
