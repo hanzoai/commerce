@@ -126,7 +126,7 @@ func (u *User) Insert(db *datastore.Datastore) error {
 	u.CreatedAt = time.Now()
 	u.UpdatedAt = u.CreatedAt
 
-	_, err := db.PutKey("user", k, u)
+	_, err := db.PutKind("user", k, u)
 	return err
 }
 
@@ -137,7 +137,7 @@ func (u *User) upsert(db *datastore.Datastore) error {
 		return err
 	}
 
-	_, err = db.PutKey("user", k, u)
+	_, err = db.PutKind("user", k, u)
 	return err
 }
 

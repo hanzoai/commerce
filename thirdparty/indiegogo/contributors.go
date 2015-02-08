@@ -100,7 +100,7 @@ func ImportCSV(db *datastore.Datastore, filename string) {
 		token.UserId = user.Id
 		token.Email = user.Email
 
-		db.PutKey("invite-token", tokenId, token)
+		db.PutKind("invite-token", tokenId, token)
 
 		// Save contribution
 		contribution := Contribution{
@@ -111,7 +111,7 @@ func ImportCSV(db *datastore.Datastore, filename string) {
 			PaymentMethod: row[5],
 			UserId:        user.Id,
 		}
-		db.PutKey("contribution", pledgeId, &contribution)
+		db.PutKind("contribution", pledgeId, &contribution)
 
 		log.Debug("User: %#v", user)
 		log.Debug("Token: %#v", token)
