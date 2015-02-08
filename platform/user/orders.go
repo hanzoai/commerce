@@ -19,7 +19,7 @@ func DisplayOrders(c *gin.Context) {
 	// user := auth.GetUser(c)
 	// db := datastore.New(c)
 	var orders []interface{}
-	// err := db.GetKeyMulti("order", user.OrdersIds, orders)
+	// err := db.GetKindMulti("order", user.OrdersIds, orders)
 	// if err != nil {
 	// 	c.Fail(500, err)
 	// 	return
@@ -90,13 +90,13 @@ func RemoveOrder(c *gin.Context) {
 		db := datastore.New(c)
 
 		var order models.Order
-		err := db.GetKey("order", id, order)
+		err := db.GetKind("order", id, order)
 		if err != nil {
 			return err
 		}
 
 		order.Cancelled = true
-		_, err = db.PutKey("order", id, order)
+		_, err = db.PutKind("order", id, order)
 		return err
 	}, nil)
 

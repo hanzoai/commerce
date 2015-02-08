@@ -173,12 +173,12 @@ func (o *Order) Populate(db *datastore.Datastore) error {
 	// TODO: Optimize this, multiget, use caching.
 	for i, item := range o.Items {
 		// Fetch Variant for LineItem from datastore
-		if err := db.GetKey("variant", item.SKU(), &item.Variant); err != nil {
+		if err := db.GetKind("variant", item.SKU(), &item.Variant); err != nil {
 			return err
 		}
 
 		// Fetch Product for LineItem from datastore
-		if err := db.GetKey("product", item.Slug(), &item.Product); err != nil {
+		if err := db.GetKind("product", item.Slug(), &item.Product); err != nil {
 			return err
 		}
 

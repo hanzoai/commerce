@@ -184,7 +184,7 @@ func (d *Datastore) keyOrKind(keyOrKind interface{}) (_key *aeds.Key, err error)
 	}
 }
 
-// Helper func to get key for `datastore.GetKey/datastore.GetKeyMulti`
+// Helper func to get key for `datastore.GetKind/datastore.GetKindMulti`
 func (d *Datastore) keyOrKindKey(kind string, key interface{}) (_key *aeds.Key, err error) {
 	// Try to construct a datastore key from whatever we were given as a key
 	switch v := key.(type) {
@@ -222,7 +222,7 @@ func (d *Datastore) Get(key interface{}, value interface{}) error {
 }
 
 // Gets an entity by literal datastore key of string type
-func (d *Datastore) GetKey(kind string, key interface{}, value interface{}) error {
+func (d *Datastore) GetKind(kind string, key interface{}, value interface{}) error {
 	_key, err := d.keyOrKindKey(kind, key)
 
 	// Invalid key, bail out.
@@ -262,9 +262,9 @@ func (d *Datastore) GetMulti(keys interface{}, vals interface{}) error {
 	return nds.GetMulti(d.Context, _keys, vals)
 }
 
-// Same as GetKey, but works for multiple key/vals, keys can be slice of any
-// type accepted by GetKey
-func (d *Datastore) GetKeyMulti(kind string, keys interface{}, vals interface{}) error {
+// Same as GetKind, but works for multiple key/vals, keys can be slice of any
+// type accepted by GetKind
+func (d *Datastore) GetKindMulti(kind string, keys interface{}, vals interface{}) error {
 	var slice reflect.Value
 
 	switch reflect.TypeOf(keys).Kind() {
@@ -304,7 +304,7 @@ func (d *Datastore) Put(keyOrKind interface{}, src interface{}) (*aeds.Key, erro
 	return key, nil
 }
 
-func (d *Datastore) PutKey(kind string, key interface{}, src interface{}) (*aeds.Key, error) {
+func (d *Datastore) PutKind(kind string, key interface{}, src interface{}) (*aeds.Key, error) {
 	_key, err := d.keyOrKindKey(kind, key)
 
 	// Invalid key, bail out.
@@ -339,7 +339,7 @@ func (d *Datastore) PutMulti(kind string, srcs []interface{}) (keys []*aeds.Key,
 	return _keys, nil
 }
 
-func (d *Datastore) PutKeyMulti(kind string, keys []interface{}, srcs []interface{}) ([]*aeds.Key, error) {
+func (d *Datastore) PutKindMulti(kind string, keys []interface{}, srcs []interface{}) ([]*aeds.Key, error) {
 	nkeys := len(srcs)
 	_keys := make([]*aeds.Key, nkeys)
 

@@ -8,6 +8,10 @@ import (
 	"strings"
 	"time"
 
+	"appengine/urlfetch"
+
+	"github.com/gin-gonic/gin"
+
 	"crowdstart.io/auth"
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
@@ -16,10 +20,6 @@ import (
 	"crowdstart.io/thirdparty/salesforce"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
-
-	"github.com/gin-gonic/gin"
-
-	"appengine/urlfetch"
 )
 
 // Salesforce End Points
@@ -87,7 +87,7 @@ func SalesforceCallback(c *gin.Context) {
 	}
 
 	// Get user instance
-	if err := db.GetKey("campaign", email, campaign); err != nil {
+	if err := db.GetKind("campaign", email, campaign); err != nil {
 		log.Panic("Unable to get campaign from database: %v", err)
 	}
 
@@ -100,7 +100,7 @@ func SalesforceCallback(c *gin.Context) {
 	campaign.Salesforce.Signature = token.Signature
 
 	// Update in datastore
-	if _, err := db.PutKey("campaign", email, campaign); err != nil {
+	if _, err := db.PutKind("campaign", email, campaign); err != nil {
 		log.Panic("Failed to update campaign: %v", err)
 	}
 
@@ -121,7 +121,7 @@ func SalesforcePullLatest(c *gin.Context) {
 	campaign := new(models.Campaign)
 
 	// Get user instance
-	if err = db.GetKey("campaign", email, campaign); err != nil {
+	if err = db.GetKind("campaign", email, campaign); err != nil {
 		log.Panic("Unable to get campaign from database: %v", err, c)
 	}
 
@@ -138,7 +138,7 @@ func SalesforcePullLatest(c *gin.Context) {
 
 	log.Info("Updating %v Users", len(*users), c)
 	for _, user := range *users {
-		if _, err := db.PutKey("user", user.Id, user); err != nil {
+		if _, err := db.PutKind("user", user.Id, user); err != nil {
 			log.Panic("User '%v' could not be updated", user.Id, c)
 			continue
 		} else {
@@ -162,7 +162,7 @@ func TestSalesforceConnection(c *gin.Context) {
 	campaign := new(models.Campaign)
 
 	// Get user instance
-	if err = db.GetKey("campaign", email, campaign); err != nil {
+	if err = db.GetKind("campaign", email, campaign); err != nil {
 		log.Panic("Unable to get campaign from database: %v", err, c)
 	}
 
