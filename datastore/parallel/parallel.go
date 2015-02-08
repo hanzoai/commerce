@@ -4,9 +4,8 @@ import (
 	"reflect"
 
 	"appengine"
-	"appengine/delay"
-
 	aeds "appengine/datastore"
+	"appengine/delay"
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/util/log"
