@@ -2,6 +2,7 @@ package auth
 
 import (
 	"errors"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -20,6 +21,7 @@ func GetEmail(c *gin.Context) (string, error) {
 func GetUser(c *gin.Context) (*models.User, error) {
 	q := queries.New(c)
 	user := new(models.User)
+	user.CreatedAt = time.Now()
 
 	email, err := GetEmail(c)
 	if err != nil {
