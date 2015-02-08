@@ -101,7 +101,7 @@ func SubmitRegister(c *gin.Context) {
 	// Look up campaign to see if we need to sync with salesforce
 	db := datastore.New(c)
 	campaign := models.Campaign{}
-	if err := db.GetKey("campaign", "dev@hanzo.ai", &campaign); err != nil {
+	if err := db.GetKind("campaign", "dev@hanzo.ai", &campaign); err != nil {
 		log.Error(err, c)
 	}
 

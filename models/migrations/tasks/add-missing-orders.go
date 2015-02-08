@@ -62,7 +62,7 @@ var AddMissingOrders = parallel.Task("add-missing-orders-from-contribution", fun
 	if foundIndex != -1 {
 		// Update the email for book keeping
 		orders[foundIndex].Email = contribution.Email
-		db.PutKey("order", keys[foundIndex], &orders[foundIndex])
+		db.PutKind("order", keys[foundIndex], &orders[foundIndex])
 	} else {
 		user := new(models.User)
 		db.Get(contribution.UserId, user)

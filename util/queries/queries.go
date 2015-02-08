@@ -76,6 +76,6 @@ func (c *Client) UpsertUser(user *models.User) error {
 		return err
 	}
 
-	_, err = c.Datastore.PutKey("user", k, user)
+	_, err = c.Datastore.PutKind("user", k, user)
 	return err
 }
