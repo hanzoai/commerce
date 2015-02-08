@@ -7,7 +7,7 @@ import (
 	. "crowdstart.io/models"
 )
 
-const indiegogoLayout = "2006-01-02 15:04 -0700"
+const igTimeLayout = "2006-01-02 15:04:05 -0700"
 
 // Represents a row in an Indiegogo CSV
 type Row struct {
@@ -31,6 +31,11 @@ type Row struct {
 }
 
 func NewRow(row []string) Row {
+	// Trim all strings to start
+	for i, s := range row {
+		row[i] = strings.TrimSpace(s)
+	}
+
 	r := Row{
 		TokenID:           row[0],
 		PerkID:            row[1],
@@ -47,9 +52,6 @@ func NewRow(row []string) Row {
 		LastName:          "",
 	}
 
-	date, _ := time.Parse(indiegogoLayout, row[4])
-	r.FundingDate = date
-
 	address := Address{
 		Line1:      row[12],
 		Line2:      row[13],
@@ -59,6 +61,13 @@ func NewRow(row []string) Row {
 		Country:    row[17],
 	}
 
+	// Try to parse funding date
+	if date, err := time.Parse(igTimeLayout, row[4]); err != nil {
+		r.FundingDate = time.Now().UTC()
+	} else {
+		r.FundingDate = date.UTC()
+	}
+
 	// Normalize various bits
 	r.Email = strings.ToLower(r.Email)
 
@@ -66,10 +75,10 @@ func NewRow(row []string) Row {
 	name := strings.SplitN(r.ShippingName, " ", 2)
 
 	if len(name) > 0 {
-		r.FirstName = strings.Title(strings.ToLower(name[0]))
+		r.FirstName = strings.TrimSpace(strings.Title(strings.ToLower(name[0])))
 	}
 	if len(name) > 1 {
-		r.LastName = strings.Title(strings.ToLower(name[1]))
+		r.LastName = strings.TrimSpace(strings.Title(strings.ToLower(name[1])))
 	}
 
 	// Da fuq, Indiegogo?
