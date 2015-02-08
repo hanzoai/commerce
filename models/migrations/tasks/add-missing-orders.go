@@ -63,6 +63,11 @@ var AddMissingOrders = parallel.Task("add-missing-orders-from-contribution", fun
 	if foundIndex != -1 {
 		// Update the email for book keeping
 		orders[foundIndex].Email = contribution.Email
+		if orders[foundIndex].CreatedAt, err = time.Parse("2006-01-02 15:04:05 -0700", contribution.FundingDate); err != nil {
+			orders[foundIndex].CreatedAt = time.Now()
+		}
+		log.Warn("%v %v", err, orders[foundIndex].CreatedAt)
+
 		db.Delete(keys[foundIndex])
 		if id, err := strconv.Atoi(contribution.Id); err != nil {
 			db.PutKind("order", keys[foundIndex], &orders[foundIndex])
@@ -97,8 +102,11 @@ var AddMissingOrders = parallel.Task("add-missing-orders-from-contribution", fun
 				models.LineItem{Slug_: "hat", Quantity: contribution.Perk.GearQuantity},
 			}
 		}
-		order.CreatedAt = time.Now()
-		order.UpdatedAt = order.CreatedAt
+		if order.CreatedAt, err = time.Parse("2006-01-02 15:04:05-0700", contribution.FundingDate); err != nil {
+			order.CreatedAt = time.Now()
+		}
+
+		order.UpdatedAt = time.Now()
 
 		if id, err := strconv.Atoi(contribution.Id); err != nil {
 			db.Put("order", order)
