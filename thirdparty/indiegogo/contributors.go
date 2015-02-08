@@ -12,6 +12,28 @@ import (
 	. "crowdstart.io/models"
 )
 
+type IndiegogoRow struct {
+	// Name					 Index
+	TokenID              string //  0  NOTE: This was manually added.
+	PerkID               string //  1
+	PledgeID             string //  2
+	FulfillmentStatus    string //  3
+	FundingDate          string //  4
+	PaymentMethod        string //  5
+	Appearance           string //  6
+	Name                 string //  7
+	Email                string //  8
+	Amount               string //  9
+	Perk                 string // 10
+	ShippingName         string // 11
+	ShippingAddressLine1 string // 12
+	ShippingAddressLine2 string // 13
+	ShippingCity         string // 14
+	ShippingState        string // 15
+	ShippingPostalCode   string // 16
+	ShippingCountry      string // 17
+}
+
 func ImportCSV(db *datastore.Datastore, filename string) {
 	csvfile, err := os.Open("resources/contributions.csv")
 	defer csvfile.Close()
