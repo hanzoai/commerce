@@ -382,12 +382,14 @@ func (d *Datastore) Update(key string, src interface{}) (string, error) {
 	return k.Encode(), nil
 }
 
-func (d *Datastore) Delete(key string) error {
-	k, err := d.DecodeKey(key)
+func (d *Datastore) Delete(key interface{}) error {
+	_key, err := d.keyOrEncodedKey(key)
 	if err != nil {
+		d.warn("Invalid key: unable to get %v: %v", key, err)
 		return err
 	}
-	return nds.Delete(d.Context, k)
+
+	return nds.Delete(d.Context, _key)
 }
 
 func (d *Datastore) DeleteMulti(keys []string) error {
