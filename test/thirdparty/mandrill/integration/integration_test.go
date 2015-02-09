@@ -59,7 +59,7 @@ func TestSendTemplate(t *testing.T) {
 	req.AddRecipient("dev@hanzo.ai", "Test Mandrill")
 
 	req.Message.Subject = "Test subject"
-	req.Message.FromEmail = "noreply@skullysystems.com"
+	req.Message.FromEmail = "dev@hanzo.ai"
 	req.Message.FromName = "Tester"
 	req.TemplateName = "preorder-confirmation-template"
 
@@ -91,7 +91,7 @@ func TestSend(t *testing.T) {
 	req.AddRecipient("dev@hanzo.ai", "Test Mandrill")
 
 	req.Message.Subject = "Test subject"
-	req.Message.FromEmail = "noreply@skullysystems.com"
+	req.Message.FromEmail = "dev@hanzo.ai"
 	req.Message.FromName = "Tester"
 	req.Message.Html = html
 
