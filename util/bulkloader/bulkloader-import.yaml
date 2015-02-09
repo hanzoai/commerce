@@ -258,9 +258,8 @@ transformers:
     columns: from_header
   property_map:
     - property: __key__
-      external_name: key
-      export_transform: transform.key_id_or_name_as_string
-      import_transform: transform.create_foreign_key('user', key_is_id=True)
+      external_name: Key
+      import_transform: transform.create_foreign_key('order', key_is_id=True)
 
     - property: BillingAddress.City
       external_name: BillingAddress.City
