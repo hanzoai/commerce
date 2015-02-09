@@ -169,7 +169,7 @@ exports.renderCards = ->
               shareLink = "https://storage.googleapis.com/#{GCS_BUCKET}/#{filename}"
               $('.share-link').val shareLink
               $('.social-icons .social-facebook').attr('href', "http://www.facebook.com/share.php?u=#{shareLink}")
-              $('.social-icons .social-twitter').attr('href', "http://twitter.com/?status=Guess+who+is+getting+a+SKULLY?+%40skullysystems+%23skullyxmas+http%3A%2F%2Fstore.skullysystems.com+#{shareLink}")
+              $('.social-icons .social-twitter').attr('href', "http://twitter.com/?status=Guess+who+is+getting+a+SKULLY?+%40skullysystems+%23skullyxmas+http%3A%2F%2Fstore.skully.com+#{shareLink}")
               $('.social-icons .social-google').attr('href', "http://plus.google.com/share?url=#{shareLink}")
               $('.share-options').fadeIn()
               $('.share-link').click ->
