@@ -352,81 +352,49 @@ transformers:
 
     - property: Charges.Refunded
       external_name: Charges.Refunded
-      # Type: Boolean Stats: 1 properties of this type in this kind.
-      # import_transform: transform.regexp_bool('true', re.IGNORECASE)
-      import_transform: bulkloader_helper.transform_eval
 
     - property: Charges.Statement
       external_name: Charges.Statement
-      # Type: String Stats: 1 properties of this type in this kind.
-      import_transform: bulkloader_helper.transform_eval
 
     - property: CreatedAt
       external_name: CreatedAt
-      # Type: Date/Time Stats: 1 properties of this type in this kind.
-      import_transform: bulkloader_helper.import_date_time('%Y-%m-%dT%H:%M:%S')
       export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Email
       external_name: Email
-      # Type: String Stats: 1 properties of this type in this kind.
 
     - property: Id
       external_name: Id
-      # Type: String Stats: 1 properties of this type in this kind.
 
     - property: Items.Description
       external_name: Items.Description
-      # Type: String Stats: 3 properties of this type in this kind.
-      import_transform: bulkloader_helper.transform_eval
 
     - property: Items.DiscountAmnt
       external_name: Items.DiscountAmnt
-      # Type: Integer Stats: 3 properties of this type in this kind.
-      # import_transform: transform.none_if_empty(int)
-      import_transform: bulkloader_helper.transform_eval
 
     - property: Items.LineNo
       external_name: Items.LineNo
-      # Type: Integer Stats: 3 properties of this type in this kind.
-      # import_transform: transform.none_if_empty(int)
-      import_transform: bulkloader_helper.transform_eval
 
     - property: Items.Quantity
       external_name: Items.Quantity
-      # Type: Integer Stats: 3 properties of this type in this kind.
-      # import_transform: transform.none_if_empty(int)
-      import_transform: bulkloader_helper.transform_eval
 
     - property: Items.SKU_
       external_name: Items.SKU_
-      # export_transform: bulkloader_helper.list_skus_to_str
-      import_transform: bulkloader_helper.transform_eval
 
     - property: Items.Slug_
       external_name: Items.Slug_
-      # export_transform: bulkloader_helper.list_to_str
-      import_transform: bulkloader_helper.transform_eval
 
     - property: Locked
       external_name: Locked
-      # Type: Boolean Stats: 1 properties of this type in this kind.
-      import_transform: transform.regexp_bool('true', re.IGNORECASE)
 
     - property: Preorder
       external_name: Preorder
-      # Type: Boolean Stats: 1 properties of this type in this kind.
-      import_transform: transform.regexp_bool('true', re.IGNORECASE)
 
     - property: Refunded
       external_name: Refunded
-      # Type: Boolean Stats: 1 properties of this type in this kind.
-      import_transform: transform.regexp_bool('true', re.IGNORECASE)
 
     - property: Shipped
       external_name: Shipped
-      # Type: Boolean Stats: 1 properties of this type in this kind.
-      import_transform: transform.regexp_bool('true', re.IGNORECASE)
 
     - property: ShippingAddress.City
       external_name: ShippingAddress.City
@@ -457,10 +425,6 @@ transformers:
       # Type: Integer Stats: 1 properties of this type in this kind.
       import_transform: transform.none_if_empty(int)
 
-    - property: StripeTokens
-      external_name: StripeTokens
-      # Type: String Stats: 1 properties of this type in this kind.
-
     - property: Subtotal
       external_name: Subtotal
       # Type: Integer Stats: 1 properties of this type in this kind.
@@ -483,13 +447,9 @@ transformers:
 
     - property: Unconfirmed
       external_name: Unconfirmed
-      # Type: Boolean Stats: 1 properties of this type in this kind.
-      import_transform: transform.regexp_bool('true', re.IGNORECASE)
 
     - property: UpdatedAt
       external_name: UpdatedAt
-      # Type: Date/Time Stats: 1 properties of this type in this kind.
-      import_transform: bulkloader_helper.import_date_time('%Y-%m-%dT%H:%M:%S')
       export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: UserId
