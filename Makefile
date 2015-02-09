@@ -1,4 +1,4 @@
-wd				= $(shell pwd)
+pwd				= $(shell pwd)
 os				= $(shell uname | tr '[A-Z]' '[a-z]')
 platform        = $(os)_amd64
 sdk				= go_appengine_sdk_$(platform)-1.9.17
