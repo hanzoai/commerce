@@ -1,4 +1,4 @@
-application: crowdstart-skully
+application: crowdstart-staging
 module: datastore-admin
 version: v1
 
