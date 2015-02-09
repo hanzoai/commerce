@@ -36,6 +36,7 @@ gae_staging = config/staging \
 gae_skully = config/skully \
 			 api/app.skully.yaml \
 			 checkout/app.skully.yaml \
+			 platform/app.skully.yaml \
 			 preorder/app.skully.yaml \
 			 store/app.skully.yaml
 
