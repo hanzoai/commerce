@@ -1,4 +1,4 @@
-pwd				= $(shell pwd)
+wd				= $(shell pwd)
 os				= $(shell uname | tr '[A-Z]' '[a-z]')
 platform        = $(os)_amd64
 sdk				= go_appengine_sdk_$(platform)-1.9.17
@@ -120,7 +120,7 @@ endif
 
 # set production=1 to set datastore export/import target to use production
 ifeq ($(production), 1)
-	datastore_app_id = skully-crowdstart
+	datastore_app_id = crowdstart-skully
 else
 	datastore_app_id = crowdstart-staging
 endif

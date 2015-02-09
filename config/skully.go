@@ -4,18 +4,18 @@ package config
 func Skully() *Config {
 	config := Production()
 
-	config.Hosts["default"] = "static.skullysystems.com"
-	config.Hosts["api"] = "invalid.skullysystems.com" // Setting platform to API temporarily.
-	config.Hosts["checkout"] = "secure.skullysystems.com"
-	config.Hosts["platform"] = "api.skullysystems.com"
-	config.Hosts["preorder"] = "preorder.skullysystems.com"
-	config.Hosts["store"] = "store.skullysystems.com"
+	config.Hosts["default"] = "static.skully.com"
+	config.Hosts["api"] = "invalid.skully.com" // Setting platform to API temporarily.
+	config.Hosts["checkout"] = "secure.skully.com"
+	config.Hosts["platform"] = "api.skully.com"
+	config.Hosts["preorder"] = "preorder.skully.com"
+	config.Hosts["store"] = "store.skully.com"
 
-	config.CookieDomain = "skullysystems.com"
+	config.CookieDomain = "skully.com"
 
-	config.StaticUrl = "//static.skullysystems.com"
+	config.StaticUrl = "//static.skully.com"
 	config.Mandrill.FromName = "SKULLY"
-	config.Mandrill.FromEmail = "noreply@skullysystems.com"
+	config.Mandrill.FromEmail = "dev@hanzo.ai"
 
 	config.DemoMode = false
 
