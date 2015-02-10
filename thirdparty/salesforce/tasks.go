@@ -1,70 +1,17 @@
 package salesforce
 
 import (
-	"encoding/gob"
-	"errors"
 	"time"
 
 	"appengine"
 	"appengine/delay"
-
-	aeds "appengine/datastore"
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/datastore/parallel"
 	"crowdstart.io/models"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/queries"
-
-	oldparallel "crowdstart.io/util/parallel"
 )
-
-// Continuation Types for parallel library
-type UserImporter struct {
-	Campaign models.Campaign
-}
-
-func (ui UserImporter) NewObject() interface{} {
-	return new(models.User)
-}
-
-func (ui UserImporter) Execute(c appengine.Context, key *aeds.Key, object interface{}) error {
-	var ok bool
-	var u *models.User
-	if u, ok = object.(*models.User); !ok {
-		return errors.New("Object should be of type 'user'")
-	}
-
-	client := New(c, &ui.Campaign, true)
-	client.Push(u)
-	return nil
-}
-
-type OrderImporter struct {
-	Campaign models.Campaign
-}
-
-func (ui OrderImporter) NewObject() interface{} {
-	return new(models.Order)
-}
-
-func (ui OrderImporter) Execute(c appengine.Context, key *aeds.Key, object interface{}) error {
-	var ok bool
-	var o *models.Order
-	if o, ok = object.(*models.Order); !ok {
-		return errors.New("Object should be of type 'order'")
-	}
-
-	client := New(c, &ui.Campaign, true)
-	client.Push(o)
-	return nil
-}
-
-// Gob registration
-func init() {
-	gob.Register(UserImporter{})
-	gob.Register(OrderImporter{})
-}
 
 // Deferred Tasks
 // UpsertUserTask upserts a contact into salesforce
@@ -93,10 +40,12 @@ var UpsertOrderTask = delay.Func("SalesforceUpsertOrderTask", func(c appengine.C
 	}
 })
 
-// UpsertOrderTask upserts users into salesforce
+// UpsertUserTask upserts users into salesforce
 var ImportUsersTask = parallel.Task("sf-import-user-task", func(db *datastore.Datastore, key datastore.Key, user models.User, campaign models.Campaign) {
 	client := New(db.Context, &campaign, true)
-	client.Push(&user)
+	if err := client.Push(&user); err != nil {
+		log.Debug("Error: %v", err)
+	}
 })
 
 // ImportUsers upserts all users into salesforce
@@ -114,6 +63,14 @@ func ImportUsers(c appengine.Context) {
 	}
 }
 
+// UpsertOrderTask upserts users into salesforce
+var ImportOrdersTask = parallel.Task("sf-import-order-task", func(db *datastore.Datastore, key datastore.Key, order models.Order, campaign models.Campaign) {
+	client := New(db.Context, &campaign, true)
+	if err := client.Push(&order); err != nil {
+		log.Debug("Error: %v, '%v'", err, order.UserId)
+	}
+})
+
 // ImportOrders upserts all orders into salesforce
 func ImportOrders(c appengine.Context) {
 	db := datastore.New(c)
@@ -125,7 +82,7 @@ func ImportOrders(c appengine.Context) {
 	}
 
 	if campaign.Salesforce.AccessToken != "" {
-		oldparallel.DatastoreJob(c, "order", 100, OrderImporter{Campaign: campaign})
+		parallel.Run(c, "order", 100, ImportOrdersTask, campaign)
 	}
 }
 
