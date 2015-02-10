@@ -12,6 +12,3 @@ dispatch:
 
   - url: "preorder.skully.com/*"
     module: preorder
-
-  - url: "api.skully.com/*"
-    module: platform
