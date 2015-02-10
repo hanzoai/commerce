@@ -31,13 +31,11 @@ func init() {
 
 	// Stripe connect
 	router.GET("/stripe/callback", loginRequired, admin.StripeCallback)
-
-	// Stripe webhook, we don't do anything with this atm.
 	router.POST("/stripe/hook", admin.StripeWebhook)
+	router.GET("/stripe/sync", admin.StripeSync)
 
 	// Salesfoce connect
 	router.GET("/salesforce/callback", loginRequired, admin.SalesforceCallback)
-
 	router.GET("/salesforce/test", loginRequired, admin.TestSalesforceConnection)
 	router.GET("/salesforce/sync", admin.SalesforcePullLatest)
 }
