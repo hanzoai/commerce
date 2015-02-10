@@ -1,6 +1,8 @@
 package stripe
 
 import (
+	"fmt"
+	"net/http"
 	"time"
 
 	"appengine"
@@ -10,10 +12,58 @@ import (
 	"github.com/stripe/stripe-go/client"
 	"github.com/stripe/stripe-go/currency"
 
+	"crowdstart.io/datastore"
+	"crowdstart.io/datastore/parallel"
 	"crowdstart.io/models"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 )
+
+/*
+Warning
+Due to the fact that `CampaignId`s are currently missing in all the orders,
+this function assumes that every order is associated with the only campaign.
+
+TODO: Run a migration to set `CampaignId` in all orders.
+*/
+var SynchronizeCharges = parallel.Task("synchronize-charges", func(db *datastore.Datastore, key datastore.Key, o models.Order, campaign models.Campaign) error {
+	for i, charge := range o.Charges {
+		client := urlfetch.Client(db.Context)
+		url := fmt.Sprintf("https://api.stripe.com/v1/charges/%s", charge.ID)
+		chargeReq, err := http.NewRequest("POST", url, nil)
+		if err != nil {
+			return err
+		}
+		chargeReq.Header.Add("Authorization", "Basic "+campaign.Stripe.AccessToken)
+
+		res, err := client.Do(chargeReq)
+		defer res.Body.Close()
+		if err != nil {
+			return err
+		}
+
+		updatedCharge := new(models.Charge)
+		if err := json.Decode(res.Body, updatedCharge); err != nil {
+			return err
+		}
+		o.Charges[i] = *updatedCharge
+	}
+
+	for _, charge := range o.Charges {
+		if charge.Disputed {
+			o.Locked = true
+		}
+		if charge.Refunded {
+			o.Refunded = true
+			o.Cancelled = true
+		}
+	}
+
+	if _, err := db.PutKind("order", key, &o); err != nil {
+		return err
+	}
+	return nil
+})
 
 // Create a new stripe customer and assign id to user model.
 func createStripeCustomer(ctx appengine.Context, sc *client.API, user *models.User, params *stripe.CustomerParams) error {
