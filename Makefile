@@ -102,17 +102,19 @@ dev_appserver = $(sdk_path)/dev_appserver.py --skip_sdk_update_check \
 											 --datastore_path=~/.gae_datastore.bin \
 											 --dev_appserver_log_level=error
 
+sdk_install_extra = echo '\#!/usr/bin/env bash\ngoapp $$@' > $(sdk_path)/gopath/bin/go \
+					&& chmod +x $(sdk_path)/gopath/bin/go \
+					&& rm -rf $(sdk_path)/demos \
+					&& curl $(python_279_patch) | patch -p0
+
 # find command differs between bsd/linux thus the two versions
 ifeq ($(os), linux)
-	packages	 = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' -printf '%h\n' | sort -u | sed -e 's/.\//crowdstart.io\//')
+	packages = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' -printf '%h\n' | sort -u | sed -e 's/.\//crowdstart.io\//')
 else
-	packages	 = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' -print0 | xargs -0 -n1 dirname | sort --unique | sed -e 's/.\//crowdstart.io\//')
-	sdk_install_extra = && echo '\#!/usr/bin/env bash\ngoapp $$@' > $(sdk_path)/gopath/bin/go \
-						&& rm -rf $(sdk_path)/demos \
-						&& chmod +x $(sdk_path)/gopath/bin/go \
-						&& curl  $(mtime_file_watcher) > $(sdk_path)/google/appengine/tools/devappserver2/mtime_file_watcher.py \
-						&& curl  $(python_279_patch) | patch -p0 \
-						&& pip install macfsevents --upgrade
+	packages = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' -print0 | xargs -0 -n1 dirname | sort --unique | sed -e 's/.\//crowdstart.io\//')
+	sdk_install_extra := $(sdk_install_extra) \
+						 && curl  $(mtime_file_watcher) > $(sdk_path)/google/appengine/tools/devappserver2/mtime_file_watcher.py \
+						 && pip install macfsevents --upgrade
 endif
 
 # set v=1 to enable verbose mode
@@ -173,7 +175,7 @@ deps-go: .sdk .sdk/gopath/bin/ginkgo
 	gpm install || curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.2/bin/gpm | bash
 
 .sdk:
-	$(sdk_install) $(sdk_install_extra)
+	$(sdk_install) && $(sdk_install_extra)
 
 .sdk/gopath/bin/ginkgo:
 	$(goapp) get -u github.com/onsi/ginkgo/ginkgo && $(goapp) install github.com/onsi/ginkgo/ginkgo
