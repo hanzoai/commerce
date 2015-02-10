@@ -9,6 +9,9 @@ goroot_pkg_path = $(goroot)/pkg/$(platform)_appengine/
 gopath_pkg_path = $(gopath)/pkg/$(platform)_appengine/
 current_date 	= $(shell date +"%Y-%m-%d")
 
+goapp           = $(sdk_path)/goapp
+ginkgo 			= $(gopath)/bin/ginkgo
+
 deps	= $(shell cat Godeps | cut -d ' ' -f 1)
 modules	= crowdstart.io/api \
 		  crowdstart.io/checkout \
@@ -156,7 +159,7 @@ compile-css-min:
 
 # BUILD
 build: deps assets
-	goapp build $(modules)
+	$(goapp) build $(modules)
 
 # DEPS
 deps: deps-assets deps-go
@@ -166,18 +169,21 @@ deps-assets:
 	npm install
 
 # DEPS GO
-deps-go: .sdk
+deps-go: .sdk .sdk/gopath/bin/ginkgo
 	gpm install || curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.2/bin/gpm | bash
 
 .sdk:
 	$(sdk_install) $(sdk_install_extra)
 
+.sdk/gopath/bin/ginkgo:
+	$(goapp) get -u github.com/onsi/ginkgo/ginkgo && $(goapp) install github.com/onsi/ginkgo/ginkgo
+
 # INSTALL
 install: install-deps
-	goapp install $(modules) $(packages)
+	$(goapp) install $(modules) $(packages)
 
 install-deps:
-	goapp install $(deps)
+	$(goapp) install $(deps)
 
 # DEV SERVER
 serve: assets
@@ -195,22 +201,22 @@ live-reload: assets
 
 # GOLANG TOOLS
 tools:
-	goapp get $(tools) && \
-	goapp install $(tools) && \
-	gocode set lib-path "$(gopath_pkg_path):$(goroot_pkg_path)"
+	$(goapp) get $(tools) && \
+	$(goapp) install $(tools) && \
+	$(gopath)/bin/gocode set lib-path "$(gopath_pkg_path):$(goroot_pkg_path)"
 
 # TEST/ BENCH
 test:
-	ginkgo -r=true -p=true -progress=true $(verbose) -skipMeasurements=true -skipPackage=integration $(test_filter)
+	$(ginkgo) -r=true -p=true -progress=true $(verbose) -skipMeasurements=true -skipPackage=integration $(test_filter)
 
 test-integration:
-	ginkgo -r=true -p=true -progress=true $(verbose) -skipMeasurements=true -focus=integration
+	$(ginkgo) -r=true -p=true -progress=true $(verbose) -skipMeasurements=true -focus=integration
 
 test-watch:
-	ginkgo watch -r=true -progress=true $(verbose) -skipMeasurements=true -skipPackage=integration $(test_filter)
+	$(ginkgo) watch -r=true -progress=true $(verbose) -skipMeasurements=true -skipPackage=integration $(test_filter)
 
 bench:
-	ginkgo -r=true -p=true -progress=true $(verbose) -skipPackage=integration $(test_filter)
+	$(ginkgo) -r=true -p=true -progress=true $(verbose) -skipPackage=integration $(test_filter)
 
 # DEPLOY
 deploy: test
@@ -289,7 +295,7 @@ datastore-config:
 				  --filename=bulkloader.yaml
 
 .PHONY: all bench build compile-js compile-js-min compile-css compile-css-min \
-	datastore-import datastore-export datastore-config deploy \
-	deploy-staging deploy-skully deploy-production deps deps-assets \
-	deps-go live-reload serve serve-clear-datastore serve-public test \
-	test-integration test-watch tools
+	datastore-import datastore-export datastore-config deploy deploy-staging \
+	deploy-skully deploy-production deps deps-assets deps-go live-reload \
+	serve serve-clear-datastore serve-public test test-integration test-watch \
+	tools
