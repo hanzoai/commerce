@@ -332,6 +332,7 @@ func (a *Api) Pull(id string, object interface{}) error {
 
 func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
 	c := a.Context
+	db := datastore.New(c)
 
 	switch v := objects.(type) {
 	case *[]*models.User:
@@ -370,6 +371,7 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
 			// We key based on accountId because it is common to both contacts and accounts
 			if user, ok = users[contact.AccountId]; !ok {
 				user = new(models.User)
+				db.Get(contact.CrowdstartIdC, user)
 				users[contact.AccountId] = user
 			}
 
@@ -391,11 +393,6 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
 		}
 
 		for _, id := range response.Ids {
-			if user, ok = users[id]; !ok {
-				user = new(models.User)
-				users[id] = user
-			}
-
 			path = fmt.Sprintf(AccountPath, id)
 			if err := a.request("GET", path, "", nil, true); err != nil {
 				log.Warn("Failed to Get Account for %v", id, c)
@@ -408,8 +405,13 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
 				continue
 			}
 
-			log.Debug("Getting Account: %v", account, c)
+			if user, ok = users[id]; !ok {
+				user = new(models.User)
+				db.Get(account.CrowdstartIdC, user)
+				users[id] = user
+			}
 
+			log.Debug("Getting Account: %v", account, c)
 			account.ToUser(user)
 		}
 
