@@ -327,6 +327,20 @@ type Order struct {
 	Order                  string  `json:"Order,omitempty"`
 	Master                 string  `json:"Master,omitempty"`
 
+	// Custom Crowdstart fields
+	Cancelled   bool    `json:"Cancelled__c,omitempty"`
+	Disputed    bool    `json:"Disputed__c,omitempty"`
+	Locked      bool    `json:"Locked__c,omitempty"`
+	PaymentId   string  `json:"PaymentId__c,omitempty"`
+	PaymentType string  `json:"PaymentType__c,omitempty"`
+	Preorder    bool    `json:"Preorder__c,omitempty"`
+	Refunded    bool    `json:"Refunded__c,omitempty"`
+	Shipped     bool    `json:"Shipped__c,omitempty"`
+	Shipping    float64 `json:"Shipping__c,omitempty"`
+	Subtotal    float64 `json:"Subtotal__c,omitempty"`
+	Tax         float64 `json:"Tax__c,omitempty"`
+	Unconfirmed bool    `json:"Unconfirmed__c"`
+
 	// We don't use contracts
 	ContractId string `json:"ContractId,omitempty"`
 }
@@ -345,15 +359,40 @@ func (o *Order) FromOrder(order *models.Order) {
 	o.ShippingState = order.ShippingAddress.State
 	o.ShippingPostalCode = order.ShippingAddress.PostalCode
 	o.ShippingCountry = order.ShippingAddress.Country
-	o.Status = "Draft"
+
+	o.Status = "Draft" // SF Required
+
+	// Payment Information
 	o.TotalAmount = float64(order.Total) / 1000.0
+	o.Shipping = float64(order.Shipping) / 1000.0
+	o.Subtotal = float64(order.Subtotal) / 1000.0
+	o.Tax = float64(order.Tax) / 1000.0
+
+	if len(order.Charges) > 0 {
+		o.PaymentType = "Stripe"
+		o.PaymentId = order.Charges[0].ID
+	}
+
+	// Status Flags
+	o.Cancelled = order.Cancelled
+	o.Disputed = order.Disputed
+	o.Locked = order.Locked
+	o.Preorder = order.Preorder
+	o.Refunded = order.Refunded
+	o.Shipped = order.Shipped
+	o.Unconfirmed = order.Unconfirmed
 
 	//SKU
 	desc := ""
 	for _, i := range order.Items {
 		desc += i.SKU_ + "," + strconv.Itoa(i.Quantity) + "\n"
 	}
+
 	o.Description = desc
+	if name, err := datastore.DecodeKey(order.Id); err == nil {
+		o.Name = strconv.Itoa(int(name.IntID()))
+	}
+
 	o.Account.CrowdstartIdC = order.UserId
 }
 
