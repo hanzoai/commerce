@@ -172,7 +172,7 @@ deps-assets:
 
 # DEPS GO
 deps-go: .sdk .sdk/gopath/bin/ginkgo
-	gpm install || curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.2/bin/gpm | bash
+	PATH=$(sdk_path):$$PATH gpm install || curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.2/bin/gpm | bash
 
 .sdk:
 	$(sdk_install) && $(sdk_install_extra)
