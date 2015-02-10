@@ -10,7 +10,8 @@ gopath_pkg_path = $(gopath)/pkg/$(platform)_appengine/
 current_date 	= $(shell date +"%Y-%m-%d")
 
 goapp           = $(sdk_path)/goapp
-ginkgo 			= $(gopath)/bin/ginkgo
+gpm             = GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(sdk_path)/gpm
+ginkgo          = GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(gopath)/bin/ginkgo
 
 deps	= $(shell cat Godeps | cut -d ' ' -f 1)
 modules	= crowdstart.io/api \
@@ -102,19 +103,15 @@ dev_appserver = $(sdk_path)/dev_appserver.py --skip_sdk_update_check \
 											 --datastore_path=~/.gae_datastore.bin \
 											 --dev_appserver_log_level=error
 
-sdk_install_extra = echo '\#!/usr/bin/env bash\ngoapp $$@' > $(sdk_path)/gopath/bin/go \
-					&& chmod +x $(sdk_path)/gopath/bin/go \
-					&& rm -rf $(sdk_path)/demos \
-					&& curl $(python_279_patch) | patch -p0
+sdk_install_extra = rm -rf $(sdk_path)/demos && curl $(python_279_patch) | patch -p0
 
 # find command differs between bsd/linux thus the two versions
 ifeq ($(os), linux)
 	packages = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' -printf '%h\n' | sort -u | sed -e 's/.\//crowdstart.io\//')
 else
 	packages = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' -print0 | xargs -0 -n1 dirname | sort --unique | sed -e 's/.\//crowdstart.io\//')
-	sdk_install_extra := $(sdk_install_extra) \
-						 && curl  $(mtime_file_watcher) > $(sdk_path)/google/appengine/tools/devappserver2/mtime_file_watcher.py \
-						 && pip install macfsevents --upgrade
+	sdk_install_extra := $(sdk_install_extra) && curl $(mtime_file_watcher) > $(sdk_path)/google/appengine/tools/devappserver2/mtime_file_watcher.py \
+										  	  && pip install macfsevents --upgrade
 endif
 
 # set v=1 to enable verbose mode
@@ -171,14 +168,23 @@ deps-assets:
 	npm install
 
 # DEPS GO
-deps-go: .sdk .sdk/gopath/bin/ginkgo
-	PATH=$(sdk_path):$$PATH gpm install || curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.2/bin/gpm | bash
+deps-go: .sdk .sdk/go .sdk/gpm .sdk/gopath/bin/ginkgo
+	$(gpm) install
 
 .sdk:
 	$(sdk_install) && $(sdk_install_extra)
 
+.sdk/go:
+	echo '#!/usr/bin/env bash' > $(sdk_path)/go && \
+    echo '$(sdk_path)/goapp $$@' >> $(sdk_path)/go && \
+    chmod +x $(sdk_path)/go
+
+.sdk/gpm:
+	curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.2/bin/gpm > .sdk/gpm \
+                                                            && chmod +x .sdk/gpm
 .sdk/gopath/bin/ginkgo:
-	$(goapp) get -u github.com/onsi/ginkgo/ginkgo && $(goapp) install github.com/onsi/ginkgo/ginkgo
+	$(goapp) get -u github.com/onsi/ginkgo/ginkgo && \
+	$(goapp) install github.com/onsi/ginkgo/ginkgo
 
 # INSTALL
 install: install-deps
