@@ -1,16 +1,15 @@
 package stripe
 
 import (
-	"fmt"
-	"net/http"
 	"time"
 
 	"appengine"
 	"appengine/urlfetch"
 
-	"github.com/stripe/stripe-go"
-	"github.com/stripe/stripe-go/client"
+	stripe "github.com/stripe/stripe-go"
+	sClient "github.com/stripe/stripe-go/client"
 	"github.com/stripe/stripe-go/currency"
+	"github.com/stripe/stripe-go/dispute"
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/datastore/parallel"
@@ -19,6 +18,17 @@ import (
 	"crowdstart.io/util/log"
 )
 
+func NewApiClient(ctx appengine.Context, accessToken string) *sClient.API {
+	c := urlfetch.Client(ctx)
+	c.Transport = &urlfetch.Transport{Context: ctx, Deadline: time.Duration(10) * time.Second} // Update deadline to 10 seconds
+	backend := stripe.NewInternalBackend(c, "")
+
+	// Stripe advises using client-level methods in a concurrent context
+	sc := &sClient.API{}
+	sc.Init(accessToken, backend)
+	return sc
+}
+
 /*
 Warning
 Due to the fact that `CampaignId`s are currently missing in all the orders,
@@ -26,36 +36,46 @@ this function assumes that every order is associated with the only campaign.
 
 TODO: Run a migration to set `CampaignId` in all orders.
 */
+
 var SynchronizeCharges = parallel.Task("synchronize-charges", func(db *datastore.Datastore, key datastore.Key, o models.Order, campaign models.Campaign) error {
+	sc := NewApiClient(db.Context, campaign.Stripe.AccessToken)
+
+	description := o.Description()
 	for i, charge := range o.Charges {
-		client := urlfetch.Client(db.Context)
-		url := fmt.Sprintf("https://api.stripe.com/v1/charges/%s", charge.ID)
-		chargeReq, err := http.NewRequest("POST", url, nil)
-		if err != nil {
-			return err
-		}
-		chargeReq.Header.Add("Authorization", "Basic "+campaign.Stripe.AccessToken)
-
-		res, err := client.Do(chargeReq)
-		defer res.Body.Close()
+		updatedCharge, err := sc.Charges.Get(charge.ID, nil)
 		if err != nil {
 			return err
 		}
 
-		updatedCharge := new(models.Charge)
-		if err := json.Decode(res.Body, updatedCharge); err != nil {
-			return err
+		if updatedCharge.Desc != description {
+			params := &stripe.ChargeParams{Desc: description}
+			var err error
+			updatedCharge, err = sc.Charges.Update(charge.ID, params)
+			if err != nil {
+				return err
+			}
 		}
-		o.Charges[i] = *updatedCharge
-	}
+		o.Charges[i] = models.Charge{
+			ID:             updatedCharge.ID,
+			Captured:       updatedCharge.Captured,
+			Created:        updatedCharge.Created,
+			Desc:           updatedCharge.Desc,
+			Email:          updatedCharge.Email,
+			FailCode:       updatedCharge.FailCode,
+			FailMsg:        updatedCharge.FailMsg,
+			Live:           updatedCharge.Live,
+			Paid:           updatedCharge.Paid,
+			Refunded:       updatedCharge.Refunded,
+			Statement:      updatedCharge.Statement,
+			Amount:         int64(updatedCharge.Amount), // TODO: Check if this is necessary.
+			AmountRefunded: int64(updatedCharge.AmountRefunded),
+		}
 
-	for _, charge := range o.Charges {
-		if charge.Disputed {
-			o.Locked = true
-		}
-		if charge.Refunded {
-			o.Refunded = true
-			o.Cancelled = true
+		if updatedCharge.Dispute != nil {
+			o.Disputed = true
+			if updatedCharge.Dispute.Status != dispute.Won {
+				o.Locked = true
+			}
 		}
 	}
 
@@ -66,7 +86,7 @@ var SynchronizeCharges = parallel.Task("synchronize-charges", func(db *datastore
 })
 
 // Create a new stripe customer and assign id to user model.
-func createStripeCustomer(ctx appengine.Context, sc *client.API, user *models.User, params *stripe.CustomerParams) error {
+func createStripeCustomer(ctx appengine.Context, sc *sClient.API, user *models.User, params *stripe.CustomerParams) error {
 	customer, err := sc.Customers.New(params)
 
 	if err != nil {
@@ -82,7 +102,7 @@ func createStripeCustomer(ctx appengine.Context, sc *client.API, user *models.Us
 
 // Update corresponding Stripe customer for this user. If that fails, try to
 // create a new customer.
-func updateStripeCustomer(ctx appengine.Context, sc *client.API, user *models.User, params *stripe.CustomerParams) error {
+func updateStripeCustomer(ctx appengine.Context, sc *sClient.API, user *models.User, params *stripe.CustomerParams) error {
 	if _, err := sc.Customers.Update(user.Stripe.CustomerId, params); err != nil {
 		log.Warn("Failed to update Stripe customer, attempting to create a new Stripe customer: %v", err, ctx)
 		return createStripeCustomer(ctx, sc, user, params)
@@ -91,13 +111,7 @@ func updateStripeCustomer(ctx appengine.Context, sc *client.API, user *models.Us
 }
 
 func Charge(ctx appengine.Context, accessToken string, authorizationToken string, order *models.Order, user *models.User) (*models.Charge, error) {
-	c := urlfetch.Client(ctx)
-	c.Transport = &urlfetch.Transport{Context: ctx, Deadline: time.Duration(10) * time.Second} // Update deadline to 10 seconds
-	backend := stripe.NewInternalBackend(c, "")
-
-	// Stripe advises using client-level methods in a concurrent context
-	sc := &client.API{}
-	sc.Init(accessToken, backend)
+	sc := NewApiClient(ctx, accessToken)
 
 	// Create a charge for us to persist stripe data to
 	charge := new(models.Charge)
