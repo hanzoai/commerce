@@ -65,23 +65,3 @@ type Dispute struct {
 	Reason             string   `json:"reason"`
 	Status             string   `json:"status"`
 }
-
-var DisputeStatuses = struct {
-	WarningNeedsResponse string
-	WarningUnderReview   string
-	NeedsResponse        string
-	ResponseDisabled     string
-	UnderReview          string
-	ChargeRefunded       string
-	Won                  string
-	Lost                 string
-}{
-	"warning_needs_response",
-	"warning_under_review",
-	"needs_response",
-	"response_disable",
-	"under_review",
-	"charge_refunded",
-	"won",
-	"lost",
-}
