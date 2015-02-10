@@ -3,6 +3,7 @@ package platform
 import (
 	"crowdstart.io/middleware"
 	"crowdstart.io/platform/admin"
+	"crowdstart.io/thirdparty/stripe"
 	"crowdstart.io/util/router"
 )
 
@@ -31,7 +32,7 @@ func init() {
 
 	// Stripe connect
 	router.GET("/stripe/callback", loginRequired, admin.StripeCallback)
-	router.POST("/stripe/hook", admin.StripeWebhook)
+	router.POST("/stripe/hook", stripe.StripeWebhook)
 	router.GET("/stripe/sync", admin.StripeSync)
 
 	// Salesfoce connect
