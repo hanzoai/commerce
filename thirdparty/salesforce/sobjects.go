@@ -1,6 +1,7 @@
 package salesforce
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -200,17 +201,17 @@ type Account struct {
 	Master             string `json:"Master,omitempty"`
 
 	// Zendesk integration items
-	ZendeskCreatedUpdatedFlagC    string `json:"Zendesk__createdUpdatedFlag__c"`
-	ZendeskDomainMappingC         string `json:"Zendesk__Domain_Mapping__c"`
-	ZendeskLastSyncDataC          string `json:"Zendesk__Last_Sync_Date__c"`
-	ZendeskLastSyncStatusC        string `json:"Zendesk__Last_Sync_Status__c"`
-	ZendeskNotesC                 string `json:"Zendesk__Notes__c"`
-	ZendeskTagsC                  string `json:"Zendesk__Tags__c"`
-	ZendeskZendeskOldTagsC        string `json:"Zendesk__Zendesk_oldTags__c"`
-	ZendeskZendeskOutofSyncC      string `json:"Zendesk__Zendesk_OutofSync__c"`
-	ZendeskZendeskOrganizationC   string `json:"Zendesk__Zendesk_Organization__c"`
-	ZendeskZendeskOrganizationIdC string `json:"Zendesk__Zendesk_Organization_Id__c"`
-	ZendeskZendeskResultC         string `json:"Zendesk__Result__c"`
+	ZendeskCreatedUpdatedFlagC    string `json:"Zendesk__createdUpdatedFlag__c,omitempty"`
+	ZendeskDomainMappingC         string `json:"Zendesk__Domain_Mapping__c,omitempty"`
+	ZendeskLastSyncDataC          string `json:"Zendesk__Last_Sync_Date__c,omitempty"`
+	ZendeskLastSyncStatusC        string `json:"Zendesk__Last_Sync_Status__c,omitempty"`
+	ZendeskNotesC                 string `json:"Zendesk__Notes__c,omitempty"`
+	ZendeskTagsC                  string `json:"Zendesk__Tags__c,omitempty"`
+	ZendeskZendeskOldTagsC        string `json:"Zendesk__Zendesk_oldTags__c,omitempty"`
+	ZendeskZendeskOutofSyncC      string `json:"Zendesk__Zendesk_OutofSync__c,omitempty"`
+	ZendeskZendeskOrganizationC   string `json:"Zendesk__Zendesk_Organization__c,omitempty"`
+	ZendeskZendeskOrganizationIdC string `json:"Zendesk__Zendesk_Organization_Id__c,omitempty"`
+	ZendeskZendeskResultC         string `json:"Zendesk__Result__c,omitempty"`
 }
 
 func (a *Account) FromUser(u *models.User) {
@@ -319,7 +320,7 @@ type Order struct {
 	ActivatedById          string  `json:"ActivatedById,omitempty"`
 	StatusCode             string  `json:"StatusCode,omitempty"`
 	OrderNumber            string  `json:"OrderNumber,omitempty"`
-	TotalAmount            float64 `json:"TotalAmount,omitempty"`
+	TotalAmount            string  `json:"TotalAmount,omitempty"`
 	CreatedDate            string  `json:"CreatedDate,omitempty"`
 	SystemModstamp         string  `json:"SystemModstamp,omitempty"`
 	LastViewedDate         string  `json:"LastViewedDate,omitempty"`
@@ -328,18 +329,18 @@ type Order struct {
 	Master                 string  `json:"Master,omitempty"`
 
 	// Custom Crowdstart fields
-	Cancelled   bool    `json:"Cancelled__c,omitempty"`
-	Disputed    bool    `json:"Disputed__c,omitempty"`
-	Locked      bool    `json:"Locked__c,omitempty"`
-	PaymentId   string  `json:"PaymentId__c,omitempty"`
-	PaymentType string  `json:"PaymentType__c,omitempty"`
-	Preorder    bool    `json:"Preorder__c,omitempty"`
-	Refunded    bool    `json:"Refunded__c,omitempty"`
-	Shipped     bool    `json:"Shipped__c,omitempty"`
-	Shipping    float64 `json:"Shipping__c,omitempty"`
-	Subtotal    float64 `json:"Subtotal__c,omitempty"`
-	Tax         float64 `json:"Tax__c,omitempty"`
-	Unconfirmed bool    `json:"Unconfirmed__c"`
+	Cancelled   bool   `json:"Cancelled__c,omitempty"`
+	Disputed    bool   `json:"Disputed__c,omitempty"`
+	Locked      bool   `json:"Locked__c,omitempty"`
+	PaymentId   string `json:"PaymentId__c,omitempty"`
+	PaymentType string `json:"PaymentType__c,omitempty"`
+	Preorder    bool   `json:"Preorder__c,omitempty"`
+	Refunded    bool   `json:"Refunded__c,omitempty"`
+	Shipped     bool   `json:"Shipped__c,omitempty"`
+	Shipping    string `json:"Shipping__c,omitempty"`
+	Subtotal    string `json:"Subtotal__c,omitempty"`
+	Tax         string `json:"Tax__c,omitempty"`
+	Unconfirmed bool   `json:"Unconfirmed__c"`
 
 	// We don't use contracts
 	ContractId string `json:"ContractId,omitempty"`
@@ -363,10 +364,9 @@ func (o *Order) FromOrder(order *models.Order) {
 	o.Status = "Draft" // SF Required
 
 	// Payment Information
-	o.TotalAmount = float64(order.Total) / 1000.0
-	o.Shipping = float64(order.Shipping) / 1000.0
-	o.Subtotal = float64(order.Subtotal) / 1000.0
-	o.Tax = float64(order.Tax) / 1000.0
+	o.Shipping = fmt.Sprintf("%.2f", float64(order.Shipping)/1000.0)
+	o.Subtotal = fmt.Sprintf("%.2f", float64(order.Subtotal)/1000.0)
+	o.Tax = fmt.Sprintf("%.2f", float64(order.Tax)/1000.0)
 
 	if len(order.Charges) > 0 {
 		o.PaymentType = "Stripe"
@@ -390,7 +390,7 @@ func (o *Order) FromOrder(order *models.Order) {
 
 	o.Description = desc
 	if name, err := datastore.DecodeKey(order.Id); err == nil {
-		o.Name = strconv.Itoa(int(name.IntID()))
+		o.Name = strconv.FormatInt(name.IntID(), 10)
 	}
 
 	o.Account.CrowdstartIdC = order.UserId
