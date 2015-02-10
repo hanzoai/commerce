@@ -1,17 +1,17 @@
 pwd				= $(shell pwd)
 os				= $(shell uname | tr '[A-Z]' '[a-z]')
-platform        = $(os)_amd64
+platform		= $(os)_amd64
 sdk				= go_appengine_sdk_$(platform)-1.9.17
-sdk_path        = $(pwd)/.sdk
-goroot          = $(sdk_path)/goroot
-gopath          = $(sdk_path)/gopath
+sdk_path		= $(pwd)/.sdk
+goroot			= $(sdk_path)/goroot
+gopath			= $(sdk_path)/gopath
 goroot_pkg_path = $(goroot)/pkg/$(platform)_appengine/
 gopath_pkg_path = $(gopath)/pkg/$(platform)_appengine/
-current_date 	= $(shell date +"%Y-%m-%d")
+current_date	= $(shell date +"%Y-%m-%d")
 
-goapp           = $(sdk_path)/goapp
-gpm             = GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(sdk_path)/gpm
-ginkgo          = GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(gopath)/bin/ginkgo
+goapp			= $(sdk_path)/goapp
+gpm				= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(sdk_path)/gpm
+ginkgo			= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(gopath)/bin/ginkgo
 
 deps	= $(shell cat Godeps | cut -d ' ' -f 1)
 modules	= crowdstart.io/api \
@@ -52,13 +52,13 @@ gae_production = config/production \
 				 store
 
 tools = github.com/nsf/gocode \
-        code.google.com/p/go.tools/cmd/goimports \
-        code.google.com/p/rog-go/exp/cmd/godef \
-        code.google.com/p/go.tools/cmd/oracle \
-        golang.org/x/tools/cmd/gorename \
-        github.com/golang/lint/golint \
-        github.com/kisielk/errcheck \
-        github.com/jstemmer/gotags
+		code.google.com/p/go.tools/cmd/goimports \
+		code.google.com/p/rog-go/exp/cmd/godef \
+		code.google.com/p/go.tools/cmd/oracle \
+		golang.org/x/tools/cmd/gorename \
+		github.com/golang/lint/golint \
+		github.com/kisielk/errcheck \
+		github.com/jstemmer/gotags
 
 # Various patches for SDK
 mtime_file_watcher = https://gist.githubusercontent.com/zeekay/5eba991c39426ca42cbb/raw/235f107b7ed081719103a4259dddd0e568d12480/mtime_file_watcher.py
@@ -78,10 +78,10 @@ requisite_opts_min = -m --strip-debug
 
 stylus		= node_modules/.bin/stylus
 stylus_opts = assets/css/preorder/preorder.styl \
-		      assets/css/store/store.styl \
-		      assets/css/theme/theme.styl \
-		      assets/css/checkout/checkout.styl \
-		      -o static/css
+			  assets/css/store/store.styl \
+			  assets/css/theme/theme.styl \
+			  assets/css/checkout/checkout.styl \
+			  -o static/css
 stylus_opts_min = -u csso-stylus -c
 
 autoprefixer = node_modules/.bin/autoprefixer
@@ -111,7 +111,7 @@ ifeq ($(os), linux)
 else
 	packages = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' -print0 | xargs -0 -n1 dirname | sort --unique | sed -e 's/.\//crowdstart.io\//')
 	sdk_install_extra := $(sdk_install_extra) && curl $(mtime_file_watcher) > $(sdk_path)/google/appengine/tools/devappserver2/mtime_file_watcher.py \
-										  	  && pip install macfsevents --upgrade
+											  && pip install macfsevents --upgrade
 endif
 
 # set v=1 to enable verbose mode
@@ -176,12 +176,12 @@ deps-go: .sdk .sdk/go .sdk/gpm .sdk/gopath/bin/ginkgo
 
 .sdk/go:
 	echo '#!/usr/bin/env bash' > $(sdk_path)/go && \
-    echo '$(sdk_path)/goapp $$@' >> $(sdk_path)/go && \
-    chmod +x $(sdk_path)/go
+	echo '$(sdk_path)/goapp $$@' >> $(sdk_path)/go && \
+	chmod +x $(sdk_path)/go
 
 .sdk/gpm:
 	curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.2/bin/gpm > .sdk/gpm \
-                                                            && chmod +x .sdk/gpm
+															&& chmod +x .sdk/gpm
 .sdk/gopath/bin/ginkgo:
 	$(goapp) get -u github.com/onsi/ginkgo/ginkgo && \
 	$(goapp) install github.com/onsi/ginkgo/ginkgo
@@ -287,20 +287,20 @@ datastore-export:
 # IMPORT / Usage: make datastore-import kind=user file=user.csv
 datastore-import:
 	appcfg.py upload_data --bandwidth_limit 1000000000 \
-				          --rps_limit 10000 \
-				          --batch_size 250 \
-				          --http_limit 200 \
-				  	      --url $(datastore_admin_url) \
-				          --config_file util/bulkloader/bulkloader-import.yaml \
-				          --kind $$kind \
-				          --filename $$file \
-				  		  --log_file /tmp/bulkloader-upload-$$kind.log && \
+						  --rps_limit 10000 \
+						  --batch_size 250 \
+						  --http_limit 200 \
+						  --url $(datastore_admin_url) \
+						  --config_file util/bulkloader/bulkloader-import.yaml \
+						  --kind $$kind \
+						  --filename $$file \
+						  --log_file /tmp/bulkloader-upload-$$kind.log && \
 	rm -rf /tmp/bulkloader-upload-$$kind.log
 
 # Generate config for use with datastore-export target
 datastore-config:
 	bulkloader.py --create_config \
-			      --url=$(datastore_admin_url) \
+				  --url=$(datastore_admin_url) \
 				  --filename=bulkloader.yaml
 
 .PHONY: all bench build compile-js compile-js-min compile-css compile-css-min \
