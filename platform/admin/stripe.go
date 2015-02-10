@@ -2,11 +2,15 @@ package admin
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
 
+	"appengine"
+	gaed "appengine/datastore"
 	"appengine/urlfetch"
 
 	"github.com/gin-gonic/gin"
@@ -18,6 +22,7 @@ import (
 	"crowdstart.io/models"
 	stripe "crowdstart.io/thirdparty/stripe/models"
 	"crowdstart.io/util/log"
+	"crowdstart.io/util/parallel"
 	"crowdstart.io/util/template"
 )
 
@@ -31,6 +36,74 @@ type stripeToken struct {
 	StripePublishableKey string `json:"stripe_publishable_key"`
 	StripeUserId         string `json:"stripe_user_id"`
 	TokenType            string `json:"token_type"`
+}
+
+type chargeSynchronizer struct {
+}
+
+func (cs chargeSynchronizer) NewObject() interface{} {
+	return new(models.Order)
+}
+
+/*
+Warning
+Due to the fact that `CampaignId`s are currently missing in all the orders,
+this function assumes that every order is associated with the only campaign.
+
+TODO: Run a migration to set `CampaignId` in all orders.
+*/
+func (cs chargeSynchronizer) Execute(ctx appengine.Context, key *gaed.Key, object interface{}) error {
+	var ok bool
+	var o *models.Order
+	if o, ok = object.(*models.Order); !ok {
+		return errors.New("Object should be of type 'order'")
+	}
+
+	campaign := new(models.Campaign)
+	if _, err := gaed.NewQuery("campaign").Run(ctx).Next(campaign); err != nil {
+		return err
+	}
+
+	updatedCharges := make([]models.Charge, 0)
+	for _, charge := range o.Charges {
+		client := urlfetch.Client(ctx)
+		url := fmt.Sprintf("https://api.stripe.com/v1/charges/%s", charge.ID)
+		chargeReq, err := http.NewRequest("POST", url, nil)
+		if err != nil {
+			return err
+		}
+		chargeReq.Header.Add("Authorization", "Basic "+campaign.Stripe.AccessToken)
+
+		res, err := client.Do(chargeReq)
+		if err != nil {
+			return err
+		}
+		defer res.Body.Close()
+
+		blob, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return err
+		}
+
+		updatedCharge := new(models.Charge)
+		if err := json.Unmarshal(blob, updatedCharge); err != nil {
+			return err
+		}
+		updatedCharges = append(updatedCharges, *updatedCharge)
+	}
+
+	o.Charges = updatedCharges
+	if _, err := gaed.Put(ctx, key, o); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func StripeSync(c *gin.Context) {
+	ctx := appengine.NewContext(c.Request)
+	parallel.DatastoreJob(ctx, "order", 10, chargeSynchronizer{})
+	c.String(200, "Synchronizing charges")
 }
 
 // StripeCallback Stripe End Points
