@@ -110,8 +110,9 @@ ifeq ($(os), linux)
 	packages = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' -printf '%h\n' | sort -u | sed -e 's/.\//crowdstart.io\//')
 else
 	packages = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' -print0 | xargs -0 -n1 dirname | sort --unique | sed -e 's/.\//crowdstart.io\//')
-	sdk_install_extra := $(sdk_install_extra) && curl $(mtime_file_watcher) > $(sdk_path)/google/appengine/tools/devappserver2/mtime_file_watcher.py \
-											  && pip install macfsevents --upgrade
+	sdk_install_extra := $(sdk_install_extra) && \
+						 curl $(mtime_file_watcher) > $(sdk_path)/google/appengine/tools/devappserver2/mtime_file_watcher.py && \
+						 pip install macfsevents --upgrade
 endif
 
 # set v=1 to enable verbose mode
@@ -180,8 +181,9 @@ deps-go: .sdk .sdk/go .sdk/gpm .sdk/gopath/bin/ginkgo
 	chmod +x $(sdk_path)/go
 
 .sdk/gpm:
-	curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.2/bin/gpm > .sdk/gpm \
-															&& chmod +x .sdk/gpm
+	curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.2/bin/gpm > .sdk/gpm && \
+	chmod +x .sdk/gpm
+
 .sdk/gopath/bin/ginkgo:
 	$(goapp) get -u github.com/onsi/ginkgo/ginkgo && \
 	$(goapp) install github.com/onsi/ginkgo/ginkgo
