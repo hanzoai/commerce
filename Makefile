@@ -217,6 +217,9 @@ test-integration:
 test-watch:
 	$(ginkgo) watch -r=true -progress=true $(verbose) -skipMeasurements=true -skipPackage=integration $(test_filter)
 
+test-ci:
+	$(ginkgo) -r=true --randomizeAllSpecs --randomizeSuites --failOnPending --cover --trace --compilers=2
+
 bench:
 	$(ginkgo) -r=true -p=true -progress=true $(verbose) -skipPackage=integration $(test_filter)
 
