@@ -5,11 +5,12 @@ func Skully() *Config {
 	config := Production()
 
 	config.Hosts["default"] = "static.skully.com"
-	config.Hosts["api"] = "invalid.skully.com" // Setting platform to API temporarily.
-	config.Hosts["checkout"] = "secure.skully.com"
-	config.Hosts["platform"] = "api.skully.com"
-	config.Hosts["preorder"] = "preorder.skully.com"
 	config.Hosts["store"] = "store.skully.com"
+	config.Hosts["checkout"] = "secure.skully.com"
+	config.Hosts["preorder"] = "preorder.skully.com"
+
+	config.Hosts["api"] = "api-dot-crowdstart-skully.appspot.com"
+	config.Hosts["platform"] = "platform-dot-crowdstart-skully.appspot.com"
 
 	config.CookieDomain = "skully.com"
 
