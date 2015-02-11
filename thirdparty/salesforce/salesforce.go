@@ -41,12 +41,12 @@ func getClient(c appengine.Context) *http.Client {
 }
 
 // Request sends HTTP requests to Salesforce
-func (a *Api) request(method, path, data string, headers *map[string]string, retry bool) error {
+func (a *Api) Request(method, path, data string, headers *map[string]string, retry bool) error {
 	c := a.Context
 	client := getClient(c)
 	url := a.Campaign.Salesforce.InstanceUrl + path
 
-	log.Debug("Creating a Request to %v to %v", method, url, c)
+	log.Debug("Creating a.Request to %v to %v", method, url, c)
 	req, err := http.NewRequest(method, url, strings.NewReader(data))
 	if err != nil {
 		log.Error("Could not create Request: %v", err)
@@ -106,7 +106,7 @@ func (a *Api) request(method, path, data string, headers *map[string]string, ret
 			if err := a.Refresh(); err != nil {
 				return errors.New(fmt.Sprintf("%v: %v", responses[0].ErrorCode, responses[0].Message))
 			}
-			return a.request(method, path, data, headers, false)
+			return a.Request(method, path, data, headers, false)
 		}
 	}
 	return errors.New(fmt.Sprintf("%v, %v", string(a.LastBody[:]), err, c))
@@ -197,59 +197,25 @@ func (a *Api) Push(object interface{}) error {
 		if v.Id == "" {
 			return errors.New("Id is required for Upsert")
 		}
+
 		account := Account{}
-		account.FromUser(v)
-		accountBytes, err := json.Marshal(&account)
-		if err != nil {
+		if err := account.Push(a, v); err != nil {
 			return err
 		}
-
-		accountJSON := string(accountBytes[:])
-		path := fmt.Sprintf(AccountExternalIdPath, strings.Replace(v.Id, ".", "_", -1))
-
 		log.Debug("Upserting Account: %v", account, c)
-		if err = a.request("PATCH", path, accountJSON, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
-			return err
-		}
 
 		contact := Contact{}
-		contact.FromUser(v)
-
-		contactBytes, err := json.Marshal(&contact)
-		if err != nil {
+		if err := contact.Push(a, v); err != nil {
 			return err
 		}
-
-		contactJSON := string(contactBytes[:])
-		path = fmt.Sprintf(ContactExternalIdPath, strings.Replace(v.Id, ".", "_", -1))
-
 		log.Debug("Upserting Contact: %v", contact, c)
-		if err = a.request("PATCH", path, contactJSON, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
-			return err
-		}
 
 	case *models.Order:
-		log.Debug("Upserting Order", c)
-		if v.Id == "" {
-			return errors.New("Id is required for Upsert")
-		}
-
 		order := Order{}
-		order.FromOrder(v)
-
-		log.Debug("Converting to Order: %v", order, c)
-		orderBytes, err := json.Marshal(&order)
-		if err != nil {
+		if err := order.Push(a, v); err != nil {
 			return err
 		}
-
-		orderJSON := string(orderBytes[:])
-		path := fmt.Sprintf(OrderExternalIdPath, strings.Replace(v.Id, ".", "_", -1))
-
 		log.Debug("Upserting Order: %v", order, c)
-		if err = a.request("PATCH", path, orderJSON, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
-			return err
-		}
 
 	default:
 		return errors.New("Invalid Type")
@@ -293,36 +259,12 @@ func (a *Api) Pull(id string, object interface{}) error {
 			return errors.New("Id is required for Get")
 		}
 
-		path := fmt.Sprintf(ContactExternalIdPath, id)
-
-		if err := a.request("GET", path, "", nil, true); err != nil {
-			return err
-		}
-
 		contact := new(Contact)
-
-		if err := json.Unmarshal(a.LastBody, contact); err != nil {
-			log.Error("Could not unmarshal: %v", string(a.LastBody[:]), c)
-			return err
-		}
-
-		path = fmt.Sprintf(AccountExternalIdPath, id)
-
-		if err := a.request("GET", path, "", nil, true); err != nil {
-			return err
-		}
+		contact.Pull(a, id, v)
 
 		account := new(Account)
+		account.Pull(a, id, v)
 
-		if err := json.Unmarshal(a.LastBody, account); err != nil {
-			log.Error("Could not unmarshal: %v", string(a.LastBody[:]), c)
-			return err
-		}
-
-		log.Debug("Getting Contact: %v", contact, c)
-
-		log.Debug("Converting to User", c)
-		contact.ToUser(v)
 	default:
 		return errors.New("Invalid Type")
 	}
@@ -339,7 +281,7 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
 		log.Debug("Getting Updated Contacts", c)
 		path := fmt.Sprintf(ContactsUpdatedPath, start.Format(time.RFC3339), end.Format(time.RFC3339))
 
-		if err := a.request("GET", path, "", nil, true); err != nil {
+		if err := a.Request("GET", path, "", nil, true); err != nil {
 			return err
 		}
 
@@ -357,7 +299,7 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
 		for _, id := range response.Ids {
 			log.Debug("Getting Contact for ")
 			path := fmt.Sprintf(ContactPath, id)
-			if err := a.request("GET", path, "", nil, true); err != nil {
+			if err := a.Request("GET", path, "", nil, true); err != nil {
 				log.Warn("Failed to Get Contact for %v", id, c)
 				continue
 			}
@@ -382,7 +324,7 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
 		log.Debug("Getting Updated Accounts", c)
 		path = fmt.Sprintf(AccountsUpdatedPath, start.Format(time.RFC3339), end.Format(time.RFC3339))
 
-		if err := a.request("GET", path, "", nil, true); err != nil {
+		if err := a.Request("GET", path, "", nil, true); err != nil {
 			return err
 		}
 
@@ -394,7 +336,7 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
 
 		for _, id := range response.Ids {
 			path = fmt.Sprintf(AccountPath, id)
-			if err := a.request("GET", path, "", nil, true); err != nil {
+			if err := a.Request("GET", path, "", nil, true); err != nil {
 				log.Warn("Failed to Get Account for %v", id, c)
 				continue
 			}
@@ -432,10 +374,10 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
 	return nil
 }
 
-func (a *Api) SObjectDescribe(api *Api, response *SObjectDescribeResponse) error {
+func (a *Api) SObjectDescribe(response *SObjectDescribeResponse) error {
 	c := a.Context
 
-	if err := api.request("GET", SObjectDescribePath, "", nil, true); err != nil {
+	if err := a.Request("GET", SObjectDescribePath, "", nil, true); err != nil {
 		return err
 	}
 
@@ -450,7 +392,7 @@ func (a *Api) SObjectDescribe(api *Api, response *SObjectDescribeResponse) error
 func (a *Api) Describe(response *DescribeResponse) error {
 	c := a.Context
 
-	if err := a.request("GET", DescribePath, "", nil, true); err != nil {
+	if err := a.Request("GET", DescribePath, "", nil, true); err != nil {
 		return err
 	}
 
