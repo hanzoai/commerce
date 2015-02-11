@@ -125,7 +125,7 @@ func (c *Contact) ToUser(u *models.User) {
 	u.Phone = c.Phone
 }
 
-func (c *Contact) Push(api *Api, u *models.User) error {
+func (c *Contact) Push(api SalesforceClient, u *models.User) error {
 	c.FromUser(u)
 
 	bytes, err := json.Marshal(c)
@@ -134,23 +134,23 @@ func (c *Contact) Push(api *Api, u *models.User) error {
 	}
 
 	path := fmt.Sprintf(ContactExternalIdPath, strings.Replace(u.Id, ".", "_", -1))
-	json := string(bytes[:])
+	data := string(bytes[:])
 
-	if err = api.Request("PATCH", path, json, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
+	if err = api.Request("PATCH", path, data, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (c *Contact) Pull(api *Api, id string, u *models.User) error {
+func (c *Contact) Pull(api SalesforceClient, id string, u *models.User) error {
 	path := fmt.Sprintf(ContactExternalIdPath, id)
 
 	if err := api.Request("GET", path, "", nil, true); err != nil {
 		return err
 	}
 
-	if err := json.Unmarshal(api.LastBody, c); err != nil {
+	if err := json.Unmarshal(api.GetBody(), c); err != nil {
 		return err
 	}
 
@@ -298,7 +298,7 @@ func (a *Account) ToUser(u *models.User) {
 	u.BillingAddress.Country = a.BillingCountry
 }
 
-func (a *Account) Push(api *Api, u *models.User) error {
+func (a *Account) Push(api SalesforceClient, u *models.User) error {
 	a.FromUser(u)
 
 	bytes, err := json.Marshal(a)
@@ -307,23 +307,23 @@ func (a *Account) Push(api *Api, u *models.User) error {
 	}
 
 	path := fmt.Sprintf(AccountExternalIdPath, strings.Replace(u.Id, ".", "_", -1))
-	json := string(bytes[:])
+	data := string(bytes[:])
 
-	if err = api.Request("PATCH", path, json, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
+	if err = api.Request("PATCH", path, data, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (a *Account) Pull(api *Api, id string, u *models.User) error {
+func (a *Account) Pull(api SalesforceClient, id string, u *models.User) error {
 	path := fmt.Sprintf(AccountExternalIdPath, id)
 
 	if err := api.Request("GET", path, "", nil, true); err != nil {
 		return err
 	}
 
-	if err := json.Unmarshal(api.LastBody, a); err != nil {
+	if err := json.Unmarshal(api.GetBody(), a); err != nil {
 		return err
 	}
 
@@ -463,7 +463,7 @@ func (o *Order) FromOrder(order *models.Order) {
 	o.Account.CrowdstartIdC = order.UserId
 }
 
-func (o *Order) Push(api *Api, or *models.Order) error {
+func (o *Order) Push(api SalesforceClient, or *models.Order) error {
 	o.FromOrder(or)
 
 	bytes, err := json.Marshal(o)
@@ -472,9 +472,9 @@ func (o *Order) Push(api *Api, or *models.Order) error {
 	}
 
 	path := fmt.Sprintf(OrderExternalIdPath, strings.Replace(o.Id, ".", "_", -1))
-	json := string(bytes[:])
+	data := string(bytes[:])
 
-	if err = api.Request("PATCH", path, json, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
+	if err = api.Request("PATCH", path, data, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
 		return err
 	}
 
