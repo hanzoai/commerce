@@ -1,6 +1,7 @@
 package salesforce
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -122,6 +123,39 @@ func (c *Contact) ToUser(u *models.User) {
 	}
 
 	u.Phone = c.Phone
+}
+
+func (c *Contact) Push(api *Api, u *models.User) error {
+	c.FromUser(u)
+
+	bytes, err := json.Marshal(c)
+	if err != nil {
+		return err
+	}
+
+	path := fmt.Sprintf(ContactExternalIdPath, strings.Replace(u.Id, ".", "_", -1))
+	json := string(bytes[:])
+
+	if err = api.Request("PATCH", path, json, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Contact) Pull(api *Api, id string, u *models.User) error {
+	path := fmt.Sprintf(ContactExternalIdPath, id)
+
+	if err := api.Request("GET", path, "", nil, true); err != nil {
+		return err
+	}
+
+	if err := json.Unmarshal(api.LastBody, c); err != nil {
+		return err
+	}
+
+	c.ToUser(u)
+	return nil
 }
 
 type Account struct {
@@ -264,6 +298,39 @@ func (a *Account) ToUser(u *models.User) {
 	u.BillingAddress.Country = a.BillingCountry
 }
 
+func (a *Account) Push(api *Api, u *models.User) error {
+	a.FromUser(u)
+
+	bytes, err := json.Marshal(a)
+	if err != nil {
+		return err
+	}
+
+	path := fmt.Sprintf(AccountExternalIdPath, strings.Replace(u.Id, ".", "_", -1))
+	json := string(bytes[:])
+
+	if err = api.Request("PATCH", path, json, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (a *Account) Pull(api *Api, id string, u *models.User) error {
+	path := fmt.Sprintf(AccountExternalIdPath, id)
+
+	if err := api.Request("GET", path, "", nil, true); err != nil {
+		return err
+	}
+
+	if err := json.Unmarshal(api.LastBody, a); err != nil {
+		return err
+	}
+
+	a.ToUser(u)
+	return nil
+}
+
 type Order struct {
 	// Don't manually specify these
 
@@ -394,6 +461,24 @@ func (o *Order) FromOrder(order *models.Order) {
 	}
 
 	o.Account.CrowdstartIdC = order.UserId
+}
+
+func (o *Order) Push(api *Api, or *models.Order) error {
+	o.FromOrder(or)
+
+	bytes, err := json.Marshal(o)
+	if err != nil {
+		return err
+	}
+
+	path := fmt.Sprintf(OrderExternalIdPath, strings.Replace(o.Id, ".", "_", -1))
+	json := string(bytes[:])
+
+	if err = api.Request("PATCH", path, json, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // func (o *Order) ToOrder(order *models.Order) error {
