@@ -20,6 +20,11 @@ import (
 	"appengine/urlfetch"
 )
 
+type SalesforceClient interface {
+	GetBody() []byte
+	Request(string, string, string, *map[string]string, bool) error
+}
+
 type Api struct {
 	lastRequest  *http.Request
 	lastResponse *http.Response
@@ -38,6 +43,10 @@ func getClient(c appengine.Context) *http.Client {
 	client := urlfetch.Client(c)
 
 	return client
+}
+
+func (a *Api) GetBody() []byte {
+	return a.LastBody
 }
 
 // Request sends HTTP requests to Salesforce
