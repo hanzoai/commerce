@@ -32,7 +32,7 @@ func NewApiClient(ctx appengine.Context, accessToken string) *sClient.API {
 /*
 Warning
 Due to the fact that `CampaignId`s are currently missing in all the orders,
-this function assumes that every order is associated with the only campaign.
+this function assumes that every order is associated with the only campaign (SKULLY).
 
 TODO: Run a migration to set `CampaignId` in all orders.
 */
