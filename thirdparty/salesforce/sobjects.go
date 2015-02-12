@@ -12,9 +12,18 @@ import (
 	"crowdstart.io/models"
 )
 
+type SalesforceSyncable interface {
+	Push(SalesforceClient) error
+	PullId(SalesforceClient, string) error
+	PullExternalId(SalesforceClient, string) error
+}
+
+// Convert to Generic SalesforceSerializeable in future
 type UserSerializeable interface {
-	UserId() string
-	ToUser(u *models.User)
+	SetExternalId(string)
+	ExternalId() string
+	Read(*models.User)
+	Write(*models.User)
 }
 
 //SObject Definitions
@@ -96,7 +105,8 @@ type Contact struct {
 	ZendeskZendeskIdC            string `json:"Zendesk__zendesk_id__c,omitempty"`
 }
 
-func (c *Contact) FromUser(u *models.User) {
+func (c *Contact) Read(u *models.User) {
+	c.CrowdstartIdC = u.Id
 	c.LastName = u.LastName
 	if c.LastName == "" {
 		c.LastName = "-"
@@ -113,7 +123,7 @@ func (c *Contact) FromUser(u *models.User) {
 	c.Account = Account{CrowdstartIdC: u.Id}
 }
 
-func (c Contact) ToUser(u *models.User) {
+func (c *Contact) Write(u *models.User) {
 	u.Id = c.CrowdstartIdC
 	u.Email = c.Email
 
@@ -130,26 +140,16 @@ func (c Contact) ToUser(u *models.User) {
 	u.Phone = c.Phone
 }
 
-func (c Contact) UserId() string {
+func (c *Contact) SetExternalId(id string) {
+	c.CrowdstartIdC = id
+}
+
+func (c *Contact) ExternalId() string {
 	return c.CrowdstartIdC
 }
 
-func (c *Contact) Push(api SalesforceClient, u *models.User) error {
-	c.FromUser(u)
-
-	bytes, err := json.Marshal(c)
-	if err != nil {
-		return err
-	}
-
-	path := fmt.Sprintf(ContactExternalIdPath, strings.Replace(u.Id, ".", "_", -1))
-	data := string(bytes[:])
-
-	if err = api.Request("PATCH", path, data, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
-		return err
-	}
-
-	return nil
+func (c *Contact) Push(api SalesforceClient) error {
+	return push(api, ContactExternalIdPath, c)
 }
 func (c *Contact) PullExternalId(api SalesforceClient, id string) error {
 	return pull(api, ContactExternalIdPath, id, c)
@@ -249,7 +249,9 @@ type Account struct {
 	ZendeskZendeskResultC         string `json:"Zendesk__Result__c,omitempty"`
 }
 
-func (a *Account) FromUser(u *models.User) {
+func (a *Account) Read(u *models.User) {
+	a.CrowdstartIdC = u.Id
+
 	if key, err := datastore.DecodeKey(u.Id); err == nil {
 		a.Name = strconv.FormatInt(key.IntID(), 10)
 	} else {
@@ -269,7 +271,7 @@ func (a *Account) FromUser(u *models.User) {
 	a.ShippingCountry = u.ShippingAddress.Country
 }
 
-func (a Account) ToUser(u *models.User) {
+func (a *Account) Write(u *models.User) {
 	u.Id = a.CrowdstartIdC
 
 	lines := strings.Split(a.ShippingStreet, "\n")
@@ -299,26 +301,16 @@ func (a Account) ToUser(u *models.User) {
 	u.BillingAddress.Country = a.BillingCountry
 }
 
-func (a Account) UserId() string {
+func (a *Account) SetExternalId(id string) {
+	a.CrowdstartIdC = id
+}
+
+func (a *Account) ExternalId() string {
 	return a.CrowdstartIdC
 }
 
-func (a *Account) Push(api SalesforceClient, u *models.User) error {
-	a.FromUser(u)
-
-	bytes, err := json.Marshal(a)
-	if err != nil {
-		return err
-	}
-
-	path := fmt.Sprintf(AccountExternalIdPath, strings.Replace(u.Id, ".", "_", -1))
-	data := string(bytes[:])
-
-	if err = api.Request("PATCH", path, data, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
-		return err
-	}
-
-	return nil
+func (a *Account) Push(api SalesforceClient) error {
+	return push(api, AccountExternalIdPath, a)
 }
 
 func (a *Account) PullExternalId(api SalesforceClient, id string) error {
@@ -534,13 +526,34 @@ func (o *Order) Push(api SalesforceClient, or *models.Order) error {
 // }
 
 // Helper functions
-func pull(api SalesforceClient, path, id string, object interface{}) error {
+func push(api SalesforceClient, p string, us UserSerializeable) error {
+	id := us.ExternalId()
+
+	// nee to set UserId to blank to prevent serialization
+	us.SetExternalId("")
+	bytes, err := json.Marshal(us)
+	if err != nil {
+		return err
+	}
+	us.SetExternalId(id)
+
+	path := fmt.Sprintf(p, strings.Replace(id, ".", "_", -1))
+	data := string(bytes[:])
+
+	if err = api.Request("PATCH", path, data, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func pull(api SalesforceClient, path, id string, us UserSerializeable) error {
 	p := fmt.Sprintf(path, id)
 	if err := api.Request("GET", p, "", nil, true); err != nil {
 		return err
 	}
 
-	return json.Unmarshal(api.GetBody(), object)
+	return json.Unmarshal(api.GetBody(), us)
 }
 
 func getUpdated(api *Api, p string, start, end time.Time, response *UpdatedRecordsResponse) error {
