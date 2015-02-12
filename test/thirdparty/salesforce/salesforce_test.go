@@ -12,6 +12,7 @@ import (
 
 	"github.com/zeekay/aetest"
 
+	"crowdstart.io/datastore"
 	"crowdstart.io/models"
 	"crowdstart.io/thirdparty/salesforce"
 	"crowdstart.io/util/log"
@@ -23,12 +24,26 @@ func TestSalesforce(t *testing.T) {
 	RunSpecs(t, "salesforce")
 }
 
-type MockUserSerializeable struct {
-	Id string
+type MockSObjectSerializeable struct {
+	Id        string
+	FirstName string
 }
 
-func (us MockUserSerializeable) Write() {
+func (s *MockSObjectSerializeable) SetExternalId(id string) {
+	s.Id = id
+}
 
+func (s *MockSObjectSerializeable) ExternalId() string {
+	return s.Id
+}
+
+// Only update the first name field
+func (s *MockSObjectSerializeable) Write(u *models.User) {
+	u.FirstName = s.FirstName
+}
+
+func (s *MockSObjectSerializeable) Read(u *models.User) {
+	s.FirstName = u.FirstName
 }
 
 type ClientParams struct {
@@ -36,7 +51,7 @@ type ClientParams struct {
 	Path    string
 	Data    string
 	Headers map[string]string
-	Body    []byte
+	Bodies  [][]byte
 }
 
 type MockSalesforceClient struct {
@@ -54,7 +69,11 @@ func (a *MockSalesforceClient) Request(method, path, data string, headers *map[s
 }
 
 func (a MockSalesforceClient) GetBody() []byte {
-	return a.Params.Body
+	bodies := a.Params.Bodies
+
+	var body []byte
+	body, a.Params.Bodies = bodies[0], bodies[1:]
+	return body
 }
 
 var (
@@ -188,9 +207,12 @@ var _ = Describe("User (de)serialization", func() {
 			refContact.Read(&user)
 
 			// Set the bodies to be decoded
-			params.Body, _ = json.Marshal(refAccount)
+			body1, _ := json.Marshal(refAccount)
+			body2, _ := json.Marshal(refContact)
+
+			params.Bodies = append(params.Bodies, body1, body2)
+
 			account.PullExternalId(&client, "Id")
-			params.Body, _ = json.Marshal(refContact)
 			contact.PullExternalId(&client, "Id")
 
 			// Referenced and Decoded values should be equal
@@ -213,18 +235,97 @@ var _ = Describe("User (de)serialization", func() {
 			refContact.Read(&user)
 
 			// Set the bodies to be decoded
-			params.Body, _ = json.Marshal(refAccount)
+			body1, _ := json.Marshal(refAccount)
+			body2, _ := json.Marshal(refContact)
+
+			params.Bodies = append(params.Bodies, body1, body2)
+
 			account.PullId(&client, "Id")
-			params.Body, _ = json.Marshal(refContact)
 			contact.PullId(&client, "Id")
 
 			// Referenced and Decoded values should be equal
 			Expect(reflect.DeepEqual(account, refAccount)).To(Equal(true))
 			Expect(reflect.DeepEqual(contact, refContact)).To(Equal(true))
 		})
+	})
 
-		It("PullUpdated", func() {
+	Context("Salesforce API", func() {
+		It("PullUpdated with nothing in the DB", func() {
+			db := datastore.New(ctx)
 
+			response := salesforce.UpdatedRecordsResponse{
+				Ids: []string{"NOT IN THE DB"},
+			}
+
+			users := make(map[string]*models.User)
+			salesforce.ProcessUpdatedSObjects(db,
+				&response,
+				users,
+				func(id string) salesforce.SObjectSerializeable {
+					s := new(MockSObjectSerializeable)
+					s.Id = "NOT IN THE DB"
+					s.FirstName = "SOME NAME"
+					return s
+				})
+
+			u, ok := users["NOT IN THE DB"]
+			Expect(ok).To(Equal(true))
+
+			// Only the FirstName is updated for the MockSObjectSerializeable
+			// FirstName should therefore be the only set field
+			refUser := models.User{FirstName: "SOME NAME"}
+
+			Expect(reflect.DeepEqual(&refUser, u)).To(Equal(true))
+		})
+
+		It("PullUpdated with something in the DB", func() {
+			db := datastore.New(ctx)
+			key := db.NewKey("user", "Id", 0, nil)
+			id := key.Encode()
+
+			// PullUpdated will update a record in db, so add a record to the db that is slightly different than the master user
+			someUser := models.User{
+				Id:              user.Id,
+				FirstName:       "Bad First Name",
+				LastName:        user.LastName,
+				Phone:           user.Phone,
+				Email:           user.Email,
+				BillingAddress:  user.BillingAddress,
+				ShippingAddress: user.ShippingAddress,
+			}
+
+			// Insert into DB
+			db.Put(key, &someUser)
+
+			response := salesforce.UpdatedRecordsResponse{
+				Ids: []string{id},
+			}
+
+			users := make(map[string]*models.User)
+			salesforce.ProcessUpdatedSObjects(db,
+				&response,
+				users,
+				func(id string) salesforce.SObjectSerializeable {
+					s := new(MockSObjectSerializeable)
+					s.Id = id
+					// Set the First Name to the one used by the master user
+					s.FirstName = user.FirstName
+					return s
+				})
+
+			// The updated user should look identical to the master user
+			u, ok := users[id]
+			Expect(ok).To(Equal(true))
+
+			// The Datastore initializes these values differently so set them to what they should be
+			u.Cart = user.Cart
+			u.Campaigns = user.Campaigns
+			u.PasswordHash = user.PasswordHash
+			u.UpdatedAt = user.UpdatedAt
+			u.CreatedAt = user.CreatedAt
+			u.Metadata = user.Metadata
+
+			Expect(reflect.DeepEqual(&user, u)).To(Equal(true))
 		})
 	})
 })
