@@ -284,6 +284,26 @@ func (a *Api) Pull(id string, object interface{}) error {
 	return nil
 }
 
+func (a *Api) processUpdatedUserRecords(db *datastore.Datastore, response *UpdatedRecordsResponse, users map[string]*models.User, createFn func(string) UserSerializeable) {
+	var ok bool
+
+	for _, id := range response.Ids {
+		us := createFn(id)
+
+		var user *models.User
+
+		// We key based on accountId because it is common to both contacts and accounts
+		userId := us.UserId()
+		if user, ok = users[userId]; !ok {
+			user = new(models.User)
+			db.Get(userId, user)
+			users[userId] = user
+		}
+
+		us.ToUser(user)
+	}
+}
+
 func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
 	c := a.Context
 	db := datastore.New(c)
@@ -293,30 +313,22 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
 		log.Debug("Getting Updated Contacts", c)
 
 		response := UpdatedRecordsResponse{}
-
 		if err := GetUpdatedContacts(a, start, end, &response); err != nil {
 			return err
 		}
 
-		var user *models.User
-		var ok bool
-
 		users := make(map[string]*models.User)
 
-		for _, id := range response.Ids {
-			contact := new(Contact)
-			contact.PullId(a, id)
+		a.processUpdatedUserRecords(db,
+			&response,
+			users,
+			func(id string) UserSerializeable {
+				contact := new(Contact)
+				contact.PullId(a, id)
 
-			// We key based on accountId because it is common to both contacts and accounts
-			if user, ok = users[contact.AccountId]; !ok {
-				user = new(models.User)
-				db.Get(contact.CrowdstartIdC, user)
-				users[contact.AccountId] = user
-			}
-
-			log.Debug("Getting Contact: %v", contact, c)
-			contact.ToUser(user)
-		}
+				log.Debug("Getting Contact: %v", contact, c)
+				return contact
+			})
 
 		log.Debug("Getting Updated Accounts", c)
 
@@ -325,19 +337,16 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
 			return err
 		}
 
-		for _, id := range response.Ids {
-			account := new(Account)
-			account.PullId(a, id)
+		a.processUpdatedUserRecords(db,
+			&response,
+			users,
+			func(id string) UserSerializeable {
+				account := new(Account)
+				account.PullId(a, id)
 
-			if user, ok = users[id]; !ok {
-				user = new(models.User)
-				db.Get(account.CrowdstartIdC, user)
-				users[id] = user
-			}
-
-			log.Debug("Getting Account: %v", account, c)
-			account.ToUser(user)
-		}
+				log.Debug("Getting Contact: %v", account, c)
+				return account
+			})
 
 		log.Debug("Pulled %v Users %v", len(users), c)
 		userSlice := make([]*models.User, len(users))

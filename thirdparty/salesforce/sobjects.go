@@ -12,6 +12,11 @@ import (
 	"crowdstart.io/models"
 )
 
+type UserSerializeable interface {
+	UserId() string
+	ToUser(u *models.User)
+}
+
 //SObject Definitions
 type Contact struct {
 	// Don't manually specify these
@@ -108,7 +113,7 @@ func (c *Contact) FromUser(u *models.User) {
 	c.Account = Account{CrowdstartIdC: u.Id}
 }
 
-func (c *Contact) ToUser(u *models.User) {
+func (c Contact) ToUser(u *models.User) {
 	u.Id = c.CrowdstartIdC
 	u.Email = c.Email
 
@@ -123,6 +128,10 @@ func (c *Contact) ToUser(u *models.User) {
 	}
 
 	u.Phone = c.Phone
+}
+
+func (c Contact) UserId() string {
+	return c.CrowdstartIdC
 }
 
 func (c *Contact) Push(api SalesforceClient, u *models.User) error {
@@ -260,7 +269,7 @@ func (a *Account) FromUser(u *models.User) {
 	a.ShippingCountry = u.ShippingAddress.Country
 }
 
-func (a *Account) ToUser(u *models.User) {
+func (a Account) ToUser(u *models.User) {
 	u.Id = a.CrowdstartIdC
 
 	lines := strings.Split(a.ShippingStreet, "\n")
@@ -288,6 +297,10 @@ func (a *Account) ToUser(u *models.User) {
 	u.BillingAddress.State = a.BillingState
 	u.BillingAddress.PostalCode = a.BillingPostalCode
 	u.BillingAddress.Country = a.BillingCountry
+}
+
+func (a Account) UserId() string {
+	return a.CrowdstartIdC
 }
 
 func (a *Account) Push(api SalesforceClient, u *models.User) error {
