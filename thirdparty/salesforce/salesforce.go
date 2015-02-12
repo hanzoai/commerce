@@ -208,19 +208,22 @@ func (a *Api) Push(object interface{}) error {
 		}
 
 		account := Account{}
-		if err := account.Push(a, v); err != nil {
+		account.Read(v)
+		if err := account.Push(a); err != nil {
 			return err
 		}
 		log.Debug("Upserting Account: %v", account, c)
 
 		contact := Contact{}
-		if err := contact.Push(a, v); err != nil {
+		contact.Read(v)
+		if err := contact.Push(a); err != nil {
 			return err
 		}
 		log.Debug("Upserting Contact: %v", contact, c)
 
 	case *models.Order:
 		order := Order{}
+		order.FromOrder(v)
 		if err := order.Push(a, v); err != nil {
 			return err
 		}
@@ -274,34 +277,14 @@ func (a *Api) Pull(id string, object interface{}) error {
 		account := new(Account)
 		account.PullExternalId(a, id)
 
-		contact.ToUser(v)
-		account.ToUser(v)
+		contact.Write(v)
+		account.Write(v)
 
 	default:
 		return errors.New("Invalid Type")
 	}
 
 	return nil
-}
-
-func (a *Api) processUpdatedUserRecords(db *datastore.Datastore, response *UpdatedRecordsResponse, users map[string]*models.User, createFn func(string) UserSerializeable) {
-	var ok bool
-
-	for _, id := range response.Ids {
-		us := createFn(id)
-
-		var user *models.User
-
-		// We key based on accountId because it is common to both contacts and accounts
-		userId := us.UserId()
-		if user, ok = users[userId]; !ok {
-			user = new(models.User)
-			db.Get(userId, user)
-			users[userId] = user
-		}
-
-		us.ToUser(user)
-	}
 }
 
 func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
@@ -319,7 +302,7 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
 
 		users := make(map[string]*models.User)
 
-		a.processUpdatedUserRecords(db,
+		ProcessUpdatedUserRecords(db,
 			&response,
 			users,
 			func(id string) UserSerializeable {
@@ -337,7 +320,7 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
 			return err
 		}
 
-		a.processUpdatedUserRecords(db,
+		ProcessUpdatedUserRecords(db,
 			&response,
 			users,
 			func(id string) UserSerializeable {
@@ -401,4 +384,25 @@ func (a *Api) Describe(response *DescribeResponse) error {
 	}
 
 	return nil
+}
+
+//Helper Functions
+func ProcessUpdatedUserRecords(db *datastore.Datastore, response *UpdatedRecordsResponse, users map[string]*models.User, createFn func(string) UserSerializeable) {
+	var ok bool
+
+	for _, id := range response.Ids {
+		us := createFn(id)
+
+		var user *models.User
+
+		// We key based on accountId because it is common to both contacts and accounts
+		userId := us.ExternalId()
+		if user, ok = users[userId]; !ok {
+			user = new(models.User)
+			db.Get(userId, user)
+			users[userId] = user
+		}
+
+		us.Write(user)
+	}
 }

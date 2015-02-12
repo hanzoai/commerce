@@ -23,6 +23,14 @@ func TestSalesforce(t *testing.T) {
 	RunSpecs(t, "salesforce")
 }
 
+type MockUserSerializeable struct {
+	Id string
+}
+
+func (us MockUserSerializeable) Write() {
+
+}
+
 type ClientParams struct {
 	Verb    string
 	Path    string
@@ -35,7 +43,7 @@ type MockSalesforceClient struct {
 	Params *ClientParams
 }
 
-func (a MockSalesforceClient) Request(method, path, data string, headers *map[string]string, retry bool) error {
+func (a *MockSalesforceClient) Request(method, path, data string, headers *map[string]string, retry bool) error {
 	a.Params.Verb = method
 	a.Params.Path = path
 	a.Params.Data = data
@@ -97,34 +105,32 @@ var _ = Describe("User (de)serialization", func() {
 		It("Should work", func() {
 			// Contact and Account should serialize and then deserialze to the original object
 			contact := salesforce.Contact{}
-			contact.FromUser(&user)
-
-			// CrowdstartIdC should never be set as it causes SF to reject the request
-			Expect(contact.CrowdstartIdC).To(Equal(""))
-			contact.CrowdstartIdC = "Id"
+			contact.Read(&user)
 
 			account := salesforce.Account{}
-			account.FromUser(&user)
-
-			// CrowdstartIdC should never be set as it causes SF to reject the request
-			Expect(account.CrowdstartIdC).To(Equal(""))
-			account.CrowdstartIdC = "Id"
+			account.Read(&user)
 
 			u := models.User{}
-			contact.ToUser(&u)
-			account.ToUser(&u)
+			contact.Write(&u)
+			account.Write(&u)
 
 			Expect(reflect.DeepEqual(user, u)).To(Equal(true))
 		})
 
-		It("Contact should return a CrowdstartIdC as UserId", func() {
+		It("Contact should treat CrowdstartIdC as ExternalId", func() {
 			contact := salesforce.Contact{CrowdstartIdC: "1234"}
-			Expect(contact.CrowdstartIdC).To(Equal(contact.UserId()))
+			Expect(contact.CrowdstartIdC).To(Equal(contact.ExternalId()))
+
+			contact.SetExternalId("4321")
+			Expect("4321").To(Equal(contact.CrowdstartIdC))
 		})
 
-		It("Account should return a CrowdstartIdC as UserId", func() {
+		It("Account should treat CrowdstartIdC as ExternalId", func() {
 			account := salesforce.Account{CrowdstartIdC: "1234"}
-			Expect(account.CrowdstartIdC).To(Equal(account.UserId()))
+			Expect(account.CrowdstartIdC).To(Equal(account.ExternalId()))
+
+			account.SetExternalId("4321")
+			Expect("4321").To(Equal(account.CrowdstartIdC))
 		})
 	})
 
@@ -132,7 +138,10 @@ var _ = Describe("User (de)serialization", func() {
 		It("Push Contact", func() {
 			client := MockSalesforceClient{Params: params}
 			contact := salesforce.Contact{}
-			contact.Push(client, &user)
+			contact.Read(&user)
+			contact.Push(&client)
+			// blank out the CrowdstartIdC since it is never serialized
+			contact.CrowdstartIdC = ""
 
 			// Verify that the client received the correct inputs
 			Expect(params.Verb).To(Equal("PATCH"))
@@ -149,7 +158,10 @@ var _ = Describe("User (de)serialization", func() {
 		It("Push Account", func() {
 			client := MockSalesforceClient{Params: params}
 			account := salesforce.Account{}
-			account.Push(client, &user)
+			account.Read(&user)
+			account.Push(&client)
+			// blank out the CrowdstartIdC since it is never serialized
+			account.CrowdstartIdC = ""
 
 			// Verify that the client received the correct inputs
 			Expect(params.Verb).To(Equal("PATCH"))
@@ -170,18 +182,16 @@ var _ = Describe("User (de)serialization", func() {
 
 			// Create reference objects for testing from user
 			refAccount := salesforce.Account{}
-			refAccount.CrowdstartIdC = "Id"
-			refAccount.FromUser(&user)
+			refAccount.Read(&user)
 
 			refContact := salesforce.Contact{}
-			refContact.CrowdstartIdC = "Id"
-			refContact.FromUser(&user)
+			refContact.Read(&user)
 
 			// Set the bodies to be decoded
 			params.Body, _ = json.Marshal(refAccount)
-			account.PullExternalId(client, "Id")
+			account.PullExternalId(&client, "Id")
 			params.Body, _ = json.Marshal(refContact)
-			contact.PullExternalId(client, "Id")
+			contact.PullExternalId(&client, "Id")
 
 			// Referenced and Decoded values should be equal
 			Expect(reflect.DeepEqual(account, refAccount)).To(Equal(true))
@@ -196,21 +206,25 @@ var _ = Describe("User (de)serialization", func() {
 			// Create reference objects for testing from user
 			refAccount := salesforce.Account{}
 			refAccount.CrowdstartIdC = "Id"
-			refAccount.FromUser(&user)
+			refAccount.Read(&user)
 
 			refContact := salesforce.Contact{}
 			refContact.CrowdstartIdC = "Id"
-			refContact.FromUser(&user)
+			refContact.Read(&user)
 
 			// Set the bodies to be decoded
 			params.Body, _ = json.Marshal(refAccount)
-			account.PullId(client, "Id")
+			account.PullId(&client, "Id")
 			params.Body, _ = json.Marshal(refContact)
-			contact.PullId(client, "Id")
+			contact.PullId(&client, "Id")
 
 			// Referenced and Decoded values should be equal
 			Expect(reflect.DeepEqual(account, refAccount)).To(Equal(true))
 			Expect(reflect.DeepEqual(contact, refContact)).To(Equal(true))
+		})
+
+		It("PullUpdated", func() {
+
 		})
 	})
 })
