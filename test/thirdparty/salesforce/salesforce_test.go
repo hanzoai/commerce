@@ -154,7 +154,7 @@ var _ = Describe("User (de)serialization", func() {
 			Expect(params.Headers).To(Equal(map[string]string{"Content-Type": "application/json"}))
 		})
 
-		It("Pull User", func() {
+		It("PullExternalId User", func() {
 			client := MockSalesforceClient{Params: params}
 			account := salesforce.Account{}
 			contact := salesforce.Contact{}
@@ -168,18 +168,40 @@ var _ = Describe("User (de)serialization", func() {
 			refContact.CrowdstartIdC = "Id"
 			refContact.FromUser(&user)
 
-			u := models.User{}
-
 			// Set the bodies to be decoded
 			params.Body, _ = json.Marshal(refAccount)
-			account.Pull(client, "Id", &u)
+			account.PullExternalId(client, "Id")
 			params.Body, _ = json.Marshal(refContact)
-			contact.Pull(client, "Id", &u)
+			contact.PullExternalId(client, "Id")
 
 			// Referenced and Decoded values should be equal
 			Expect(reflect.DeepEqual(account, refAccount)).To(Equal(true))
 			Expect(reflect.DeepEqual(contact, refContact)).To(Equal(true))
-			Expect(reflect.DeepEqual(u, user)).To(Equal(true))
+		})
+
+		It("PullId User", func() {
+			client := MockSalesforceClient{Params: params}
+			account := salesforce.Account{}
+			contact := salesforce.Contact{}
+
+			// Create reference objects for testing from user
+			refAccount := salesforce.Account{}
+			refAccount.CrowdstartIdC = "Id"
+			refAccount.FromUser(&user)
+
+			refContact := salesforce.Contact{}
+			refContact.CrowdstartIdC = "Id"
+			refContact.FromUser(&user)
+
+			// Set the bodies to be decoded
+			params.Body, _ = json.Marshal(refAccount)
+			account.PullId(client, "Id")
+			params.Body, _ = json.Marshal(refContact)
+			contact.PullId(client, "Id")
+
+			// Referenced and Decoded values should be equal
+			Expect(reflect.DeepEqual(account, refAccount)).To(Equal(true))
+			Expect(reflect.DeepEqual(contact, refContact)).To(Equal(true))
 		})
 	})
 })
