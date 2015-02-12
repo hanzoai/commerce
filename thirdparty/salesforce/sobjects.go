@@ -12,16 +12,23 @@ import (
 	"crowdstart.io/models"
 )
 
-type SalesforceSyncable interface {
+// For crowdstart models/mixins to be salesforce compatible in future
+type SObjectCompatible interface {
+	SetSalesforceId(string)
+	SalesforceId(string)
+	ExternalId(string)
+}
+
+type SObjectSyncable interface {
 	Push(SalesforceClient) error
 	PullId(SalesforceClient, string) error
 	PullExternalId(SalesforceClient, string) error
 }
 
-// Convert to Generic SalesforceSerializeable in future
-type UserSerializeable interface {
+type SObjectSerializeable interface {
 	SetExternalId(string)
 	ExternalId() string
+	// Should be SObjectCompatible in the future instead of models.User
 	Read(*models.User)
 	Write(*models.User)
 }
@@ -526,16 +533,16 @@ func (o *Order) Push(api SalesforceClient, or *models.Order) error {
 // }
 
 // Helper functions
-func push(api SalesforceClient, p string, us UserSerializeable) error {
-	id := us.ExternalId()
+func push(api SalesforceClient, p string, s SObjectSerializeable) error {
+	id := s.ExternalId()
 
 	// nee to set UserId to blank to prevent serialization
-	us.SetExternalId("")
-	bytes, err := json.Marshal(us)
+	s.SetExternalId("")
+	bytes, err := json.Marshal(s)
 	if err != nil {
 		return err
 	}
-	us.SetExternalId(id)
+	s.SetExternalId(id)
 
 	path := fmt.Sprintf(p, strings.Replace(id, ".", "_", -1))
 	data := string(bytes[:])
@@ -547,13 +554,13 @@ func push(api SalesforceClient, p string, us UserSerializeable) error {
 	return nil
 }
 
-func pull(api SalesforceClient, path, id string, us UserSerializeable) error {
+func pull(api SalesforceClient, path, id string, s SObjectSerializeable) error {
 	p := fmt.Sprintf(path, id)
 	if err := api.Request("GET", p, "", nil, true); err != nil {
 		return err
 	}
 
-	return json.Unmarshal(api.GetBody(), us)
+	return json.Unmarshal(api.GetBody(), s)
 }
 
 func getUpdated(api *Api, p string, start, end time.Time, response *UpdatedRecordsResponse) error {

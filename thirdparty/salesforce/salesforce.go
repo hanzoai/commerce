@@ -302,10 +302,10 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
 
 		users := make(map[string]*models.User)
 
-		ProcessUpdatedUserRecords(db,
+		ProcessUpdatedSObjects(db,
 			&response,
 			users,
-			func(id string) UserSerializeable {
+			func(id string) SObjectSerializeable {
 				contact := new(Contact)
 				contact.PullId(a, id)
 
@@ -320,10 +320,10 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
 			return err
 		}
 
-		ProcessUpdatedUserRecords(db,
+		ProcessUpdatedSObjects(db,
 			&response,
 			users,
-			func(id string) UserSerializeable {
+			func(id string) SObjectSerializeable {
 				account := new(Account)
 				account.PullId(a, id)
 
@@ -387,7 +387,7 @@ func (a *Api) Describe(response *DescribeResponse) error {
 }
 
 //Helper Functions
-func ProcessUpdatedUserRecords(db *datastore.Datastore, response *UpdatedRecordsResponse, users map[string]*models.User, createFn func(string) UserSerializeable) {
+func ProcessUpdatedSObjects(db *datastore.Datastore, response *UpdatedRecordsResponse, users map[string]*models.User, createFn func(string) SObjectSerializeable) {
 	var ok bool
 
 	for _, id := range response.Ids {
