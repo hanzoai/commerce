@@ -143,19 +143,22 @@ func (c *Contact) Push(api SalesforceClient, u *models.User) error {
 	return nil
 }
 
-func (c *Contact) Pull(api SalesforceClient, id string, u *models.User) error {
-	path := fmt.Sprintf(ContactExternalIdPath, id)
-
+func (c *Contact) pull(api SalesforceClient, path string) error {
 	if err := api.Request("GET", path, "", nil, true); err != nil {
 		return err
 	}
 
-	if err := json.Unmarshal(api.GetBody(), c); err != nil {
-		return err
-	}
+	return json.Unmarshal(api.GetBody(), c)
+}
 
-	c.ToUser(u)
-	return nil
+func (c *Contact) PullExternalId(api SalesforceClient, id string) error {
+	path := fmt.Sprintf(ContactExternalIdPath, id)
+	return c.pull(api, path)
+}
+
+func (c *Contact) PullId(api SalesforceClient, id string) error {
+	path := fmt.Sprintf(ContactPath, id)
+	return c.pull(api, path)
 }
 
 type Account struct {
@@ -316,19 +319,22 @@ func (a *Account) Push(api SalesforceClient, u *models.User) error {
 	return nil
 }
 
-func (a *Account) Pull(api SalesforceClient, id string, u *models.User) error {
-	path := fmt.Sprintf(AccountExternalIdPath, id)
-
+func (a *Account) pull(api SalesforceClient, path string) error {
 	if err := api.Request("GET", path, "", nil, true); err != nil {
 		return err
 	}
 
-	if err := json.Unmarshal(api.GetBody(), a); err != nil {
-		return err
-	}
+	return json.Unmarshal(api.GetBody(), a)
+}
 
-	a.ToUser(u)
-	return nil
+func (a *Account) PullExternalId(api SalesforceClient, id string) error {
+	path := fmt.Sprintf(AccountExternalIdPath, id)
+	return a.pull(api, path)
+}
+
+func (a *Account) PullId(api SalesforceClient, id string) error {
+	path := fmt.Sprintf(AccountPath, id)
+	return a.pull(api, path)
 }
 
 type Order struct {
