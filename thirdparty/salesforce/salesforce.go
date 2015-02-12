@@ -269,10 +269,13 @@ func (a *Api) Pull(id string, object interface{}) error {
 		}
 
 		contact := new(Contact)
-		contact.Pull(a, id, v)
+		contact.PullExternalId(a, id)
 
 		account := new(Account)
-		account.Pull(a, id, v)
+		account.PullExternalId(a, id)
+
+		contact.ToUser(v)
+		account.ToUser(v)
 
 	default:
 		return errors.New("Invalid Type")
@@ -306,18 +309,8 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
 		users := make(map[string]*models.User)
 
 		for _, id := range response.Ids {
-			log.Debug("Getting Contact for ")
-			path := fmt.Sprintf(ContactPath, id)
-			if err := a.Request("GET", path, "", nil, true); err != nil {
-				log.Warn("Failed to Get Contact for %v", id, c)
-				continue
-			}
-
 			contact := new(Contact)
-			if err := json.Unmarshal(a.LastBody, contact); err != nil {
-				log.Warn("Could not unmarshal: %v", string(a.LastBody[:]), c)
-				continue
-			}
+			contact.PullId(a, id)
 
 			// We key based on accountId because it is common to both contacts and accounts
 			if user, ok = users[contact.AccountId]; !ok {
@@ -326,7 +319,7 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
 				users[contact.AccountId] = user
 			}
 
-			log.Debug("Getting Contact: %v %v", contact, user, c)
+			log.Debug("Getting Contact: %v", contact, c)
 			contact.ToUser(user)
 		}
 
@@ -344,17 +337,8 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
 		}
 
 		for _, id := range response.Ids {
-			path = fmt.Sprintf(AccountPath, id)
-			if err := a.Request("GET", path, "", nil, true); err != nil {
-				log.Warn("Failed to Get Account for %v", id, c)
-				continue
-			}
-
 			account := new(Account)
-			if err := json.Unmarshal(a.LastBody, account); err != nil {
-				log.Warn("Could not unmarshal: %v", string(a.LastBody[:]), c)
-				continue
-			}
+			account.PullId(a, id)
 
 			if user, ok = users[id]; !ok {
 				user = new(models.User)
