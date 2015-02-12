@@ -114,8 +114,17 @@ var _ = Describe("User (de)serialization", func() {
 			contact.ToUser(&u)
 			account.ToUser(&u)
 
-			//log.Panic("%v ?= %v", u, user, ctx)
 			Expect(reflect.DeepEqual(user, u)).To(Equal(true))
+		})
+
+		It("Contact should return a CrowdstartIdC as UserId", func() {
+			contact := salesforce.Contact{CrowdstartIdC: "1234"}
+			Expect(contact.CrowdstartIdC).To(Equal(contact.UserId()))
+		})
+
+		It("Account should return a CrowdstartIdC as UserId", func() {
+			account := salesforce.Account{CrowdstartIdC: "1234"}
+			Expect(account.CrowdstartIdC).To(Equal(account.UserId()))
 		})
 	})
 
