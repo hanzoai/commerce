@@ -142,23 +142,12 @@ func (c *Contact) Push(api SalesforceClient, u *models.User) error {
 
 	return nil
 }
-
-func (c *Contact) pull(api SalesforceClient, path string) error {
-	if err := api.Request("GET", path, "", nil, true); err != nil {
-		return err
-	}
-
-	return json.Unmarshal(api.GetBody(), c)
-}
-
 func (c *Contact) PullExternalId(api SalesforceClient, id string) error {
-	path := fmt.Sprintf(ContactExternalIdPath, id)
-	return c.pull(api, path)
+	return pull(api, ContactExternalIdPath, id, c)
 }
 
 func (c *Contact) PullId(api SalesforceClient, id string) error {
-	path := fmt.Sprintf(ContactPath, id)
-	return c.pull(api, path)
+	return pull(api, ContactPath, id, c)
 }
 
 type Account struct {
@@ -319,22 +308,12 @@ func (a *Account) Push(api SalesforceClient, u *models.User) error {
 	return nil
 }
 
-func (a *Account) pull(api SalesforceClient, path string) error {
-	if err := api.Request("GET", path, "", nil, true); err != nil {
-		return err
-	}
-
-	return json.Unmarshal(api.GetBody(), a)
-}
-
 func (a *Account) PullExternalId(api SalesforceClient, id string) error {
-	path := fmt.Sprintf(AccountExternalIdPath, id)
-	return a.pull(api, path)
+	return pull(api, AccountExternalIdPath, id, a)
 }
 
 func (a *Account) PullId(api SalesforceClient, id string) error {
-	path := fmt.Sprintf(AccountPath, id)
-	return a.pull(api, path)
+	return pull(api, AccountPath, id, a)
 }
 
 type Order struct {
@@ -540,3 +519,35 @@ func (o *Order) Push(api SalesforceClient, or *models.Order) error {
 
 // 	return nil
 // }
+
+// Helper functions
+func pull(api SalesforceClient, path, id string, object interface{}) error {
+	p := fmt.Sprintf(path, id)
+	if err := api.Request("GET", p, "", nil, true); err != nil {
+		return err
+	}
+
+	return json.Unmarshal(api.GetBody(), object)
+}
+
+func getUpdated(api *Api, p string, start, end time.Time, response *UpdatedRecordsResponse) error {
+	path := fmt.Sprintf(p, start.Format(time.RFC3339), end.Format(time.RFC3339))
+
+	if err := api.Request("GET", path, "", nil, true); err != nil {
+		return err
+	}
+
+	if err := json.Unmarshal(api.LastBody, response); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func GetUpdatedContacts(api *Api, start, end time.Time, response *UpdatedRecordsResponse) error {
+	return getUpdated(api, ContactsUpdatedPath, start, end, response)
+}
+
+func GetUpdatedAccounts(api *Api, start, end time.Time, response *UpdatedRecordsResponse) error {
+	return getUpdated(api, AccountsUpdatedPath, start, end, response)
+}
