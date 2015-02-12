@@ -291,15 +291,10 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
 	switch v := objects.(type) {
 	case *[]*models.User:
 		log.Debug("Getting Updated Contacts", c)
-		path := fmt.Sprintf(ContactsUpdatedPath, start.Format(time.RFC3339), end.Format(time.RFC3339))
 
-		if err := a.Request("GET", path, "", nil, true); err != nil {
-			return err
-		}
+		response := UpdatedRecordsResponse{}
 
-		response := new(UpdatedRecordsResponse)
-
-		if err := json.Unmarshal(a.LastBody, &response); err != nil {
+		if err := GetUpdatedContacts(a, start, end, &response); err != nil {
 			return err
 		}
 
@@ -324,15 +319,9 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
 		}
 
 		log.Debug("Getting Updated Accounts", c)
-		path = fmt.Sprintf(AccountsUpdatedPath, start.Format(time.RFC3339), end.Format(time.RFC3339))
 
-		if err := a.Request("GET", path, "", nil, true); err != nil {
-			return err
-		}
-
-		response = new(UpdatedRecordsResponse)
-
-		if err := json.Unmarshal(a.LastBody, &response); err != nil {
+		response = UpdatedRecordsResponse{}
+		if err := GetUpdatedAccounts(a, start, end, &response); err != nil {
 			return err
 		}
 
