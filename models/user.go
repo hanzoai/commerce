@@ -19,6 +19,8 @@ var (
 
 type User struct {
 	FieldMapMixin
+	SalesforceSObject
+
 	Id              string `schema:"-" json:"-"`
 	FirstName       string
 	LastName        string
