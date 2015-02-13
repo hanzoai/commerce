@@ -113,6 +113,8 @@ func (p Product) Validate(req *http.Request, errs binding.Errors) binding.Errors
 
 type ProductVariant struct {
 	FieldMapMixin
+	SalesforceSObject
+
 	Id         string
 	SKU        string
 	Price      int64
