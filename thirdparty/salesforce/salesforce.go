@@ -207,7 +207,7 @@ func (a *Api) Refresh() error {
 	return nil
 }
 
-func (a *Api) Push(object interface{}) error {
+func (a *Api) Push(object SObjectCompatible) error {
 	c := a.Context
 
 	if object == nil {
@@ -278,7 +278,7 @@ func (a *Api) Push(object interface{}) error {
 	return nil
 }
 
-func (a *Api) Pull(id string, object interface{}) error {
+func (a *Api) Pull(id string, object SObjectCompatible) error {
 	c := a.Context
 
 	if object == nil {
@@ -313,7 +313,7 @@ func (a *Api) Pull(id string, object interface{}) error {
 	return nil
 }
 
-func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
+func (a *Api) PullUpdated(start, end time.Time, objects interface{} /*[]SObjectCompatible*/) error {
 	c := a.Context
 	db := datastore.New(c)
 
