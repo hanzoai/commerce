@@ -221,14 +221,19 @@ func (a *Api) Push(object interface{}) error {
 		}
 
 		account := Account{}
-		account.Read(v)
+		if err := account.Read(v); err != nil {
+			return err
+		}
 		if err := account.Push(a); err != nil {
 			return err
 		}
 		log.Debug("Upserting Account: %v", account, c)
 
 		contact := Contact{}
-		contact.Read(v)
+		if err := contact.Read(v); err != nil {
+			return err
+		}
+
 		if err := contact.Push(a); err != nil {
 			return err
 		}
@@ -236,7 +241,10 @@ func (a *Api) Push(object interface{}) error {
 
 	case *models.Order:
 		order := Order{}
-		order.FromOrder(v)
+		if err := order.Read(v); err != nil {
+			return err
+		}
+
 		if err := order.Push(a, v); err != nil {
 			return err
 		}
@@ -290,8 +298,13 @@ func (a *Api) Pull(id string, object interface{}) error {
 		account := new(Account)
 		account.PullExternalId(a, id)
 
-		contact.Write(v)
-		account.Write(v)
+		if err := contact.Write(v); err != nil {
+			return err
+		}
+
+		if err := account.Write(v); err != nil {
+			return err
+		}
 
 	default:
 		return ErrorInvalidType
@@ -315,7 +328,7 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
 
 		users := make(map[string]*models.User)
 
-		ProcessUpdatedSObjects(db,
+		if err := ProcessUpdatedSObjects(db,
 			&response,
 			users,
 			func(id string) SObjectSerializeable {
@@ -324,7 +337,9 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
 
 				log.Debug("Getting Contact: %v", contact, c)
 				return contact
-			})
+			}); err != nil {
+			return err
+		}
 
 		log.Debug("Getting Updated Accounts", c)
 
@@ -333,7 +348,7 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
 			return err
 		}
 
-		ProcessUpdatedSObjects(db,
+		if err := ProcessUpdatedSObjects(db,
 			&response,
 			users,
 			func(id string) SObjectSerializeable {
@@ -342,7 +357,9 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
 
 				log.Debug("Getting Contact: %v", account, c)
 				return account
-			})
+			}); err != nil {
+			return err
+		}
 
 		log.Debug("Pulled %v Users %v", len(users), c)
 		userSlice := make([]*models.User, len(users))
@@ -400,7 +417,7 @@ func (a *Api) Describe(response *DescribeResponse) error {
 }
 
 //Helper Functions
-func ProcessUpdatedSObjects(db *datastore.Datastore, response *UpdatedRecordsResponse, users map[string]*models.User, createFn func(string) SObjectSerializeable) {
+func ProcessUpdatedSObjects(db *datastore.Datastore, response *UpdatedRecordsResponse, users map[string]*models.User, createFn func(string) SObjectSerializeable) error {
 	var ok bool
 
 	for _, id := range response.Ids {
@@ -416,6 +433,10 @@ func ProcessUpdatedSObjects(db *datastore.Datastore, response *UpdatedRecordsRes
 			users[userId] = user
 		}
 
-		us.Write(user)
+		if err := us.Write(user); err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
