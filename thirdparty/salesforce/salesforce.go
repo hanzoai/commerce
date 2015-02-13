@@ -245,7 +245,7 @@ func (a *Api) Push(object SObjectCompatible) error {
 			return err
 		}
 
-		if err := order.Push(a, v); err != nil {
+		if err := order.Push(a); err != nil {
 			return err
 		}
 		log.Debug("Upserting Order: %v", order, c)
@@ -355,13 +355,13 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{} /*[]SObjectC
 				account := new(Account)
 				account.PullId(a, id)
 
-				log.Debug("Getting Contact: %v", account, c)
+				log.Debug("Getting Account: %v", account, c)
 				return account
 			}); err != nil {
 			return err
 		}
 
-		log.Debug("Pulled %v Users %v", len(users), c)
+		log.Debug("Pulled %v Users", len(users), c)
 		userSlice := make([]*models.User, len(users))
 
 		i := 0

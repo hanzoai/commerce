@@ -496,20 +496,32 @@ func (o *Order) Read(so SObjectCompatible) error {
 	return nil
 }
 
-func (o *Order) Push(api SalesforceClient, or *models.Order) error {
-	bytes, err := json.Marshal(o)
-	if err != nil {
-		return err
-	}
-
-	path := fmt.Sprintf(OrderExternalIdPath, strings.Replace(o.Id, ".", "_", -1))
-	data := string(bytes[:])
-
-	if err = api.Request("PATCH", path, data, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
-		return err
-	}
+func (o *Order) Write(so SObjectCompatible) error {
+	// order, ok := so.(*models.Order)
+	// if !ok {
+	// 	return ErrorOrderTypeRequired
+	// }
 
 	return nil
+}
+func (o *Order) SetExternalId(id string) {
+	o.CrowdstartIdC = id
+}
+
+func (o *Order) ExternalId() string {
+	return o.CrowdstartIdC
+}
+
+func (o *Order) Push(api SalesforceClient) error {
+	return push(api, OrderExternalIdPath, o)
+}
+
+func (o *Order) PullExternalId(api SalesforceClient, id string) error {
+	return pull(api, OrderExternalIdPath, id, o)
+}
+
+func (o *Order) PullId(api SalesforceClient, id string) error {
+	return pull(api, OrderPath, id, o)
 }
 
 // func (o *Order) ToOrder(order *models.Order) error {
@@ -565,6 +577,78 @@ func (o *Order) Push(api SalesforceClient, or *models.Order) error {
 
 // 	return nil
 // }
+
+type Product struct {
+	// Don't manually specify these
+
+	// Response Only Fields
+	Attributes     Attribute `json:"attributes,omitempty"`
+	Id             string    `json:"Id,omitempty"`
+	IsDeleted      bool      `json:"IsDeleted,omitempty"`
+	MasterRecordId string    `json:"MasterRecordId,omitempty"`
+
+	// Unique External Id, currently using email (max length 255)
+	CrowdstartIdC string `json:"CrowdstartId__C,omitempty"`
+
+	// Read Only
+	CreatedById      string `json:"CreatedById,omitempty"`
+	LastModifiedById string `json:"LastModifiedById,omitempty"`
+
+	// You can manually specify these
+	// Data Fields
+
+	Name        string `json:"Name,omitempty"`
+	Description string `json:"Description,omitempty"`
+	Code        string `json:"Code,omitempty"`
+	IsActive    bool   `json:"IsAction,omitempty"`
+	Family      string `json:"Family,omitempty"`
+}
+
+func (p *Product) Read(so SObjectCompatible) error {
+	v, ok := so.(*models.ProductVariant)
+	if !ok {
+		return ErrorUserTypeRequired
+	}
+
+	p.CrowdstartIdC = v.Id
+	p.Name = v.SKU
+	p.Code = v.SKU
+	p.IsActive = true
+
+	return nil
+}
+
+func (p *Product) Write(so SObjectCompatible) error {
+	v, ok := so.(*models.ProductVariant)
+	if !ok {
+		return ErrorUserTypeRequired
+	}
+
+	v.Id = p.CrowdstartIdC
+	v.SKU = p.Name
+
+	return nil
+}
+
+func (p *Product) SetExternalId(id string) {
+	p.CrowdstartIdC = id
+}
+
+func (p *Product) ExternalId() string {
+	return p.CrowdstartIdC
+}
+
+func (p *Product) Push(api SalesforceClient) error {
+	return push(api, ProductExternalIdPath, p)
+}
+
+func (p *Product) PullExternalId(api SalesforceClient, id string) error {
+	return pull(api, ProductExternalIdPath, id, p)
+}
+
+func (p *Product) PullId(api SalesforceClient, id string) error {
+	return pull(api, ProductPath, id, p)
+}
 
 // Helper functions
 func push(api SalesforceClient, p string, s SObjectSerializeable) error {
