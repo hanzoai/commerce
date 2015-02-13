@@ -1,13 +1,13 @@
 package models
 
 type SalesforceSObject struct {
-	Id string
+	_SalesforceId string
 }
 
 func (so *SalesforceSObject) SetSalesforceId(id string) {
-	so.Id = id
+	so._SalesforceId = id
 }
 
 func (so *SalesforceSObject) SalesforceId() string {
-	return so.Id
+	return so._SalesforceId
 }

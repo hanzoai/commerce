@@ -38,12 +38,18 @@ func (s *MockSObjectSerializeable) ExternalId() string {
 }
 
 // Only update the first name field
-func (s *MockSObjectSerializeable) Write(u *models.User) {
+func (s *MockSObjectSerializeable) Write(so salesforce.SObjectCompatible) error {
+	u := so.(*models.User)
 	u.FirstName = s.FirstName
+
+	return nil
 }
 
-func (s *MockSObjectSerializeable) Read(u *models.User) {
+func (s *MockSObjectSerializeable) Read(so salesforce.SObjectCompatible) error {
+	u := so.(*models.User)
 	s.FirstName = u.FirstName
+
+	return nil
 }
 
 type ClientParams struct {
@@ -252,9 +258,11 @@ var _ = Describe("User (de)serialization", func() {
 	Context("Salesforce API", func() {
 		It("PullUpdated with nothing in the DB", func() {
 			db := datastore.New(ctx)
+			key := db.NewKey("user", "NOT IN THE DB", 0, nil)
+			id := key.Encode()
 
 			response := salesforce.UpdatedRecordsResponse{
-				Ids: []string{"NOT IN THE DB"},
+				Ids: []string{id},
 			}
 
 			users := make(map[string]*models.User)
@@ -263,12 +271,12 @@ var _ = Describe("User (de)serialization", func() {
 				users,
 				func(id string) salesforce.SObjectSerializeable {
 					s := new(MockSObjectSerializeable)
-					s.Id = "NOT IN THE DB"
+					s.Id = id
 					s.FirstName = "SOME NAME"
 					return s
 				})
 
-			u, ok := users["NOT IN THE DB"]
+			u, ok := users[id]
 			Expect(ok).To(Equal(true))
 
 			// Only the FirstName is updated for the MockSObjectSerializeable
