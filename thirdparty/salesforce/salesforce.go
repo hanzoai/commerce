@@ -20,6 +20,18 @@ import (
 	"appengine/urlfetch"
 )
 
+var ErrorInvalidType = errors.New("Invalid Type")
+var ErrorRequiresId = errors.New("Requires Id")
+
+type ErrorUnexpectedStatusCode struct {
+	StatusCode int
+	Body       []byte
+}
+
+func (e *ErrorUnexpectedStatusCode) Error() string {
+	return fmt.Sprintf("Unexpected Status Code: %v\nBody: %v", e.StatusCode, e.Body)
+}
+
 type SalesforceClient interface {
 	GetBody() []byte
 	Request(string, string, string, *map[string]string, bool) error
@@ -100,7 +112,7 @@ func (a *Api) Request(method, path, data string, headers *map[string]string, ret
 		return nil
 	}
 
-	responses := make([]SalesforceError, 1)
+	responses := make([]ErrorFromSalesforce, 1)
 
 	log.Debug("Try Decoding any Errors in the Response", c)
 	if err = json.Unmarshal(body, &responses); err != nil {
@@ -113,12 +125,13 @@ func (a *Api) Request(method, path, data string, headers *map[string]string, ret
 		if responses[0].ErrorCode == "INVALID_SESSION_ID" {
 			log.Debug("Refreshing Token", c)
 			if err := a.Refresh(); err != nil {
-				return errors.New(fmt.Sprintf("%v: %v", responses[0].ErrorCode, responses[0].Message))
+				return &responses[0]
 			}
 			return a.Request(method, path, data, headers, false)
 		}
 	}
-	return errors.New(fmt.Sprintf("%v, %v", string(a.LastBody[:]), err, c))
+
+	return err
 }
 
 // New creates an API from a Context and Campaign
@@ -175,7 +188,7 @@ func (a *Api) Refresh() error {
 
 	if response.Error != "" {
 		log.Error("%v: %v", response.Error, response.ErrorDescription, c)
-		return errors.New(fmt.Sprintf("%v: %v", response.Error, response.ErrorDescription))
+		return &ErrorFromSalesforce{ErrorCode: response.Error, Message: response.ErrorDescription}
 	}
 
 	log.Debug("New Access Token: %v", response.AccessToken, c)
@@ -198,13 +211,13 @@ func (a *Api) Push(object interface{}) error {
 	c := a.Context
 
 	if object == nil {
-		return errors.New("Cannot Push nil object")
+		return ErrorInvalidType
 	}
 
 	switch v := object.(type) {
 	case *models.User:
 		if v.Id == "" {
-			return errors.New("Id is required for Upsert")
+			return ErrorRequiresId
 		}
 
 		account := Account{}
@@ -230,7 +243,7 @@ func (a *Api) Push(object interface{}) error {
 		log.Debug("Upserting Order: %v", order, c)
 
 	default:
-		return errors.New("Invalid Type")
+		return ErrorInvalidType
 	}
 
 	if len(a.LastBody) == 0 {
@@ -238,7 +251,7 @@ func (a *Api) Push(object interface{}) error {
 			log.Debug("Upsert returned %v", a.LastStatusCode, c)
 			return nil
 		} else {
-			return errors.New(fmt.Sprintf("Request returned unexpected status code %v", a.LastStatusCode))
+			return &ErrorUnexpectedStatusCode{StatusCode: a.LastStatusCode, Body: a.LastBody}
 		}
 	}
 
@@ -251,7 +264,7 @@ func (a *Api) Push(object interface{}) error {
 
 	if !response.Success {
 		log.Error("Upsert Failed: %v: %v", response.Errors[0].ErrorCode, response.Errors[0].Message, c)
-		return errors.New(fmt.Sprintf("%v: %v", response.Errors[0].ErrorCode, response.Errors[0].Message))
+		return &response.Errors[0]
 	}
 
 	return nil
@@ -261,14 +274,14 @@ func (a *Api) Pull(id string, object interface{}) error {
 	c := a.Context
 
 	if object == nil {
-		return errors.New("Cannot Pull nil object")
+		return ErrorInvalidType
 	}
 
 	switch v := object.(type) {
 	case *models.User:
 		log.Debug("Getting User", c)
 		if id == "" {
-			return errors.New("Id is required for Get")
+			return ErrorRequiresId
 		}
 
 		contact := new(Contact)
@@ -281,7 +294,7 @@ func (a *Api) Pull(id string, object interface{}) error {
 		account.Write(v)
 
 	default:
-		return errors.New("Invalid Type")
+		return ErrorInvalidType
 	}
 
 	return nil
@@ -342,7 +355,7 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
 
 		*v = userSlice
 	default:
-		return errors.New("Invalid Type")
+		return ErrorInvalidType
 	}
 
 	return nil
@@ -373,12 +386,12 @@ func (a *Api) Describe(response *DescribeResponse) error {
 	//It could be a single response...
 	if err := json.Unmarshal(a.LastBody, response); err != nil {
 		//Or multiple because the API hates you when it spits out errors...
-		var errResponse *[]SalesforceError
+		var errResponse *[]ErrorFromSalesforce
 		if err2 := json.Unmarshal(a.LastBody, errResponse); err2 != nil {
 			log.Error("Could not unmarshal: %v", string(a.LastBody[:]), c)
 			return err2
 		} else {
-			log.Error("%v: %v", (*errResponse)[0].ErrorCode, (*errResponse)[0].Message, c)
+			return &(*errResponse)[0]
 		}
 		return err
 	}
