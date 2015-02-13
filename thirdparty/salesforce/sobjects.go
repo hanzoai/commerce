@@ -2,6 +2,7 @@ package salesforce
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -12,11 +13,12 @@ import (
 	"crowdstart.io/models"
 )
 
+var ErrorUserTypeRequired = errors.New("Parameter needs to be of type User")
+
 // For crowdstart models/mixins to be salesforce compatible in future
 type SObjectCompatible interface {
 	SetSalesforceId(string)
-	SalesforceId(string)
-	ExternalId(string)
+	SalesforceId() string
 }
 
 type SObjectSyncable interface {
@@ -29,8 +31,8 @@ type SObjectSerializeable interface {
 	SetExternalId(string)
 	ExternalId() string
 	// Should be SObjectCompatible in the future instead of models.User
-	Read(*models.User)
-	Write(*models.User)
+	Read(SObjectCompatible) error
+	Write(SObjectCompatible) error
 }
 
 //SObject Definitions
@@ -112,7 +114,12 @@ type Contact struct {
 	ZendeskZendeskIdC            string `json:"Zendesk__zendesk_id__c,omitempty"`
 }
 
-func (c *Contact) Read(u *models.User) {
+func (c *Contact) Read(so SObjectCompatible) error {
+	u, ok := so.(*models.User)
+	if !ok {
+		return ErrorUserTypeRequired
+	}
+
 	c.CrowdstartIdC = u.Id
 	c.LastName = u.LastName
 	if c.LastName == "" {
@@ -128,9 +135,16 @@ func (c *Contact) Read(u *models.User) {
 	c.Phone = u.Phone
 
 	c.Account = Account{CrowdstartIdC: u.Id}
+
+	return nil
 }
 
-func (c *Contact) Write(u *models.User) {
+func (c *Contact) Write(so SObjectCompatible) error {
+	u, ok := so.(*models.User)
+	if !ok {
+		return ErrorUserTypeRequired
+	}
+
 	u.Id = c.CrowdstartIdC
 	u.Email = c.Email
 
@@ -145,6 +159,7 @@ func (c *Contact) Write(u *models.User) {
 	}
 
 	u.Phone = c.Phone
+	return nil
 }
 
 func (c *Contact) SetExternalId(id string) {
@@ -256,7 +271,12 @@ type Account struct {
 	ZendeskZendeskResultC         string `json:"Zendesk__Result__c,omitempty"`
 }
 
-func (a *Account) Read(u *models.User) {
+func (a *Account) Read(so SObjectCompatible) error {
+	u, ok := so.(*models.User)
+	if !ok {
+		return ErrorUserTypeRequired
+	}
+
 	a.CrowdstartIdC = u.Id
 
 	if key, err := datastore.DecodeKey(u.Id); err == nil {
@@ -276,9 +296,15 @@ func (a *Account) Read(u *models.User) {
 	a.ShippingState = u.ShippingAddress.State
 	a.ShippingPostalCode = u.ShippingAddress.PostalCode
 	a.ShippingCountry = u.ShippingAddress.Country
+	return nil
 }
 
-func (a *Account) Write(u *models.User) {
+func (a *Account) Write(so SObjectCompatible) error {
+	u, ok := so.(*models.User)
+	if !ok {
+		return ErrorUserTypeRequired
+	}
+
 	u.Id = a.CrowdstartIdC
 
 	lines := strings.Split(a.ShippingStreet, "\n")
@@ -306,6 +332,8 @@ func (a *Account) Write(u *models.User) {
 	u.BillingAddress.State = a.BillingState
 	u.BillingAddress.PostalCode = a.BillingPostalCode
 	u.BillingAddress.Country = a.BillingCountry
+
+	return nil
 }
 
 func (a *Account) SetExternalId(id string) {
