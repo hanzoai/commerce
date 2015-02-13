@@ -14,6 +14,7 @@ import (
 )
 
 var ErrorUserTypeRequired = errors.New("Parameter needs to be of type User")
+var ErrorOrderTypeRequired = errors.New("Parameter needs to be of type Order")
 
 // For crowdstart models/mixins to be salesforce compatible in future
 type SObjectCompatible interface {
@@ -438,7 +439,12 @@ type Order struct {
 	ContractId string `json:"ContractId,omitempty"`
 }
 
-func (o *Order) FromOrder(order *models.Order) {
+func (o *Order) Read(so SObjectCompatible) error {
+	order, ok := so.(*models.Order)
+	if !ok {
+		return ErrorOrderTypeRequired
+	}
+
 	o.EffectiveDate = order.CreatedAt.Format(time.RFC3339)
 
 	o.BillingStreet = order.BillingAddress.Line1 + "\n" + order.BillingAddress.Line2
@@ -486,11 +492,11 @@ func (o *Order) FromOrder(order *models.Order) {
 	}
 
 	o.Account.CrowdstartIdC = order.UserId
+
+	return nil
 }
 
 func (o *Order) Push(api SalesforceClient, or *models.Order) error {
-	o.FromOrder(or)
-
 	bytes, err := json.Marshal(o)
 	if err != nil {
 		return err
