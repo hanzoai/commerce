@@ -137,7 +137,11 @@ func (d *Datastore) NewIncompleteKey(kind string, parent *aeds.Key) *aeds.Key {
 }
 
 func (d *Datastore) NewKey(kind, stringID string, intID int64, parent Key) *aeds.Key {
-	return aeds.NewKey(d.Context, kind, stringID, intID, parent.(*aeds.Key))
+	if p, ok := parent.(*aeds.Key); ok {
+		return aeds.NewKey(d.Context, kind, stringID, intID, p)
+	} else {
+		return aeds.NewKey(d.Context, kind, stringID, intID, nil)
+	}
 }
 
 func (d *Datastore) DecodeKey(encodedKey string) (*aeds.Key, error) {

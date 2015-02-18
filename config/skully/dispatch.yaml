@@ -1,17 +1,14 @@
-application: skully-crowdstart
+application: crowdstart-skully
 
 dispatch:
-  - url: "static.skullysystems.com/*"
+  - url: "static.skully.com/*"
     module: default
 
-  - url: "store.skullysystems.com/*"
+  - url: "store.skully.com/*"
     module: store
 
-  - url: "secure.skullysystems.com/*"
+  - url: "secure.skully.com/*"
     module: checkout
 
-  - url: "preorder.skullysystems.com/*"
+  - url: "preorder.skully.com/*"
     module: preorder
-
-  - url: "api.skullysystems.com/*"
-    module: platform
