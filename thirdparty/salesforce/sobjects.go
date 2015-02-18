@@ -1,6 +1,9 @@
 package salesforce
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -9,6 +12,29 @@ import (
 
 	"crowdstart.io/models"
 )
+
+var ErrorUserTypeRequired = errors.New("Parameter needs to be of type User")
+var ErrorOrderTypeRequired = errors.New("Parameter needs to be of type Order")
+
+// For crowdstart models/mixins to be salesforce compatible in future
+type SObjectCompatible interface {
+	SetSalesforceId(string)
+	SalesforceId() string
+}
+
+type SObjectSyncable interface {
+	Push(SalesforceClient) error
+	PullId(SalesforceClient, string) error
+	PullExternalId(SalesforceClient, string) error
+}
+
+type SObjectSerializeable interface {
+	SetExternalId(string)
+	ExternalId() string
+	// Should be SObjectCompatible in the future instead of models.User
+	Read(SObjectCompatible) error
+	Write(SObjectCompatible) error
+}
 
 //SObject Definitions
 type Contact struct {
@@ -89,7 +115,13 @@ type Contact struct {
 	ZendeskZendeskIdC            string `json:"Zendesk__zendesk_id__c,omitempty"`
 }
 
-func (c *Contact) FromUser(u *models.User) {
+func (c *Contact) Read(so SObjectCompatible) error {
+	u, ok := so.(*models.User)
+	if !ok {
+		return ErrorUserTypeRequired
+	}
+
+	c.CrowdstartIdC = u.Id
 	c.LastName = u.LastName
 	if c.LastName == "" {
 		c.LastName = "-"
@@ -104,9 +136,16 @@ func (c *Contact) FromUser(u *models.User) {
 	c.Phone = u.Phone
 
 	c.Account = Account{CrowdstartIdC: u.Id}
+
+	return nil
 }
 
-func (c *Contact) ToUser(u *models.User) {
+func (c *Contact) Write(so SObjectCompatible) error {
+	u, ok := so.(*models.User)
+	if !ok {
+		return ErrorUserTypeRequired
+	}
+
 	u.Id = c.CrowdstartIdC
 	u.Email = c.Email
 
@@ -121,6 +160,26 @@ func (c *Contact) ToUser(u *models.User) {
 	}
 
 	u.Phone = c.Phone
+	return nil
+}
+
+func (c *Contact) SetExternalId(id string) {
+	c.CrowdstartIdC = id
+}
+
+func (c *Contact) ExternalId() string {
+	return c.CrowdstartIdC
+}
+
+func (c *Contact) Push(api SalesforceClient) error {
+	return push(api, ContactExternalIdPath, c)
+}
+func (c *Contact) PullExternalId(api SalesforceClient, id string) error {
+	return pull(api, ContactExternalIdPath, id, c)
+}
+
+func (c *Contact) PullId(api SalesforceClient, id string) error {
+	return pull(api, ContactPath, id, c)
 }
 
 type Account struct {
@@ -200,20 +259,27 @@ type Account struct {
 	Master             string `json:"Master,omitempty"`
 
 	// Zendesk integration items
-	ZendeskCreatedUpdatedFlagC    string `json:"Zendesk__createdUpdatedFlag__c"`
-	ZendeskDomainMappingC         string `json:"Zendesk__Domain_Mapping__c"`
-	ZendeskLastSyncDataC          string `json:"Zendesk__Last_Sync_Date__c"`
-	ZendeskLastSyncStatusC        string `json:"Zendesk__Last_Sync_Status__c"`
-	ZendeskNotesC                 string `json:"Zendesk__Notes__c"`
-	ZendeskTagsC                  string `json:"Zendesk__Tags__c"`
-	ZendeskZendeskOldTagsC        string `json:"Zendesk__Zendesk_oldTags__c"`
-	ZendeskZendeskOutofSyncC      string `json:"Zendesk__Zendesk_OutofSync__c"`
-	ZendeskZendeskOrganizationC   string `json:"Zendesk__Zendesk_Organization__c"`
-	ZendeskZendeskOrganizationIdC string `json:"Zendesk__Zendesk_Organization_Id__c"`
-	ZendeskZendeskResultC         string `json:"Zendesk__Result__c"`
+	ZendeskCreatedUpdatedFlagC    string `json:"Zendesk__createdUpdatedFlag__c,omitempty"`
+	ZendeskDomainMappingC         string `json:"Zendesk__Domain_Mapping__c,omitempty"`
+	ZendeskLastSyncDataC          string `json:"Zendesk__Last_Sync_Date__c,omitempty"`
+	ZendeskLastSyncStatusC        string `json:"Zendesk__Last_Sync_Status__c,omitempty"`
+	ZendeskNotesC                 string `json:"Zendesk__Notes__c,omitempty"`
+	ZendeskTagsC                  string `json:"Zendesk__Tags__c,omitempty"`
+	ZendeskZendeskOldTagsC        string `json:"Zendesk__Zendesk_oldTags__c,omitempty"`
+	ZendeskZendeskOutofSyncC      string `json:"Zendesk__Zendesk_OutofSync__c,omitempty"`
+	ZendeskZendeskOrganizationC   string `json:"Zendesk__Zendesk_Organization__c,omitempty"`
+	ZendeskZendeskOrganizationIdC string `json:"Zendesk__Zendesk_Organization_Id__c,omitempty"`
+	ZendeskZendeskResultC         string `json:"Zendesk__Result__c,omitempty"`
 }
 
-func (a *Account) FromUser(u *models.User) {
+func (a *Account) Read(so SObjectCompatible) error {
+	u, ok := so.(*models.User)
+	if !ok {
+		return ErrorUserTypeRequired
+	}
+
+	a.CrowdstartIdC = u.Id
+
 	if key, err := datastore.DecodeKey(u.Id); err == nil {
 		a.Name = strconv.FormatInt(key.IntID(), 10)
 	} else {
@@ -231,9 +297,15 @@ func (a *Account) FromUser(u *models.User) {
 	a.ShippingState = u.ShippingAddress.State
 	a.ShippingPostalCode = u.ShippingAddress.PostalCode
 	a.ShippingCountry = u.ShippingAddress.Country
+	return nil
 }
 
-func (a *Account) ToUser(u *models.User) {
+func (a *Account) Write(so SObjectCompatible) error {
+	u, ok := so.(*models.User)
+	if !ok {
+		return ErrorUserTypeRequired
+	}
+
 	u.Id = a.CrowdstartIdC
 
 	lines := strings.Split(a.ShippingStreet, "\n")
@@ -261,6 +333,28 @@ func (a *Account) ToUser(u *models.User) {
 	u.BillingAddress.State = a.BillingState
 	u.BillingAddress.PostalCode = a.BillingPostalCode
 	u.BillingAddress.Country = a.BillingCountry
+
+	return nil
+}
+
+func (a *Account) SetExternalId(id string) {
+	a.CrowdstartIdC = id
+}
+
+func (a *Account) ExternalId() string {
+	return a.CrowdstartIdC
+}
+
+func (a *Account) Push(api SalesforceClient) error {
+	return push(api, AccountExternalIdPath, a)
+}
+
+func (a *Account) PullExternalId(api SalesforceClient, id string) error {
+	return pull(api, AccountExternalIdPath, id, a)
+}
+
+func (a *Account) PullId(api SalesforceClient, id string) error {
+	return pull(api, AccountPath, id, a)
 }
 
 type Order struct {
@@ -319,7 +413,7 @@ type Order struct {
 	ActivatedById          string  `json:"ActivatedById,omitempty"`
 	StatusCode             string  `json:"StatusCode,omitempty"`
 	OrderNumber            string  `json:"OrderNumber,omitempty"`
-	TotalAmount            float64 `json:"TotalAmount,omitempty"`
+	TotalAmount            string  `json:"TotalAmount,omitempty"`
 	CreatedDate            string  `json:"CreatedDate,omitempty"`
 	SystemModstamp         string  `json:"SystemModstamp,omitempty"`
 	LastViewedDate         string  `json:"LastViewedDate,omitempty"`
@@ -327,11 +421,30 @@ type Order struct {
 	Order                  string  `json:"Order,omitempty"`
 	Master                 string  `json:"Master,omitempty"`
 
+	// Custom Crowdstart fields
+	Cancelled   bool   `json:"Cancelled__c,omitempty"`
+	Disputed    bool   `json:"Disputed__c,omitempty"`
+	Locked      bool   `json:"Locked__c,omitempty"`
+	PaymentId   string `json:"PaymentId__c,omitempty"`
+	PaymentType string `json:"PaymentType__c,omitempty"`
+	Preorder    bool   `json:"Preorder__c,omitempty"`
+	Refunded    bool   `json:"Refunded__c,omitempty"`
+	Shipped     bool   `json:"Shipped__c,omitempty"`
+	Shipping    string `json:"Shipping__c,omitempty"`
+	Subtotal    string `json:"Subtotal__c,omitempty"`
+	Tax         string `json:"Tax__c,omitempty"`
+	Unconfirmed bool   `json:"Unconfirmed__c"`
+
 	// We don't use contracts
 	ContractId string `json:"ContractId,omitempty"`
 }
 
-func (o *Order) FromOrder(order *models.Order) {
+func (o *Order) Read(so SObjectCompatible) error {
+	order, ok := so.(*models.Order)
+	if !ok {
+		return ErrorOrderTypeRequired
+	}
+
 	o.EffectiveDate = order.CreatedAt.Format(time.RFC3339)
 
 	o.BillingStreet = order.BillingAddress.Line1 + "\n" + order.BillingAddress.Line2
@@ -345,16 +458,58 @@ func (o *Order) FromOrder(order *models.Order) {
 	o.ShippingState = order.ShippingAddress.State
 	o.ShippingPostalCode = order.ShippingAddress.PostalCode
 	o.ShippingCountry = order.ShippingAddress.Country
-	o.Status = "Draft"
-	o.TotalAmount = float64(order.Total) / 1000.0
+
+	o.Status = "Draft" // SF Required
+
+	// Payment Information
+	o.Shipping = fmt.Sprintf("%.2f", float64(order.Shipping)/1000.0)
+	o.Subtotal = fmt.Sprintf("%.2f", float64(order.Subtotal)/1000.0)
+	o.Tax = fmt.Sprintf("%.2f", float64(order.Tax)/1000.0)
+
+	if len(order.Charges) > 0 {
+		o.PaymentType = "Stripe"
+		o.PaymentId = order.Charges[0].ID
+	}
+
+	// Status Flags
+	o.Cancelled = order.Cancelled
+	o.Disputed = order.Disputed
+	o.Locked = order.Locked
+	o.Preorder = order.Preorder
+	o.Refunded = order.Refunded
+	o.Shipped = order.Shipped
+	o.Unconfirmed = order.Unconfirmed
 
 	//SKU
 	desc := ""
 	for _, i := range order.Items {
 		desc += i.SKU_ + "," + strconv.Itoa(i.Quantity) + "\n"
 	}
+
 	o.Description = desc
+	if name, err := datastore.DecodeKey(order.Id); err == nil {
+		o.Name = strconv.FormatInt(name.IntID(), 10)
+	}
+
 	o.Account.CrowdstartIdC = order.UserId
+
+	return nil
+}
+
+func (o *Order) Push(api SalesforceClient, or *models.Order) error {
+	bytes, err := json.Marshal(o)
+	if err != nil {
+		return err
+	}
+
+	path := fmt.Sprintf(OrderExternalIdPath, strings.Replace(o.Id, ".", "_", -1))
+	data := string(bytes[:])
+
+	if err = api.Request("PATCH", path, data, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // func (o *Order) ToOrder(order *models.Order) error {
@@ -410,3 +565,56 @@ func (o *Order) FromOrder(order *models.Order) {
 
 // 	return nil
 // }
+
+// Helper functions
+func push(api SalesforceClient, p string, s SObjectSerializeable) error {
+	id := s.ExternalId()
+
+	// nee to set UserId to blank to prevent serialization
+	s.SetExternalId("")
+	bytes, err := json.Marshal(s)
+	if err != nil {
+		return err
+	}
+	s.SetExternalId(id)
+
+	path := fmt.Sprintf(p, strings.Replace(id, ".", "_", -1))
+	data := string(bytes[:])
+
+	if err = api.Request("PATCH", path, data, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func pull(api SalesforceClient, path, id string, s SObjectSerializeable) error {
+	p := fmt.Sprintf(path, id)
+	if err := api.Request("GET", p, "", nil, true); err != nil {
+		return err
+	}
+
+	return json.Unmarshal(api.GetBody(), s)
+}
+
+func getUpdated(api *Api, p string, start, end time.Time, response *UpdatedRecordsResponse) error {
+	path := fmt.Sprintf(p, start.Format(time.RFC3339), end.Format(time.RFC3339))
+
+	if err := api.Request("GET", path, "", nil, true); err != nil {
+		return err
+	}
+
+	if err := json.Unmarshal(api.LastBody, response); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func GetUpdatedContacts(api *Api, start, end time.Time, response *UpdatedRecordsResponse) error {
+	return getUpdated(api, ContactsUpdatedPath, start, end, response)
+}
+
+func GetUpdatedAccounts(api *Api, start, end time.Time, response *UpdatedRecordsResponse) error {
+	return getUpdated(api, AccountsUpdatedPath, start, end, response)
+}
