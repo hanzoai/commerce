@@ -17,6 +17,7 @@ import (
 
 type Order struct {
 	FieldMapMixin
+	SalesforceSObject
 
 	// Account         PaymentAccount
 
