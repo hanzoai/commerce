@@ -250,6 +250,16 @@ func (a *Api) Push(object SObjectCompatible) error {
 		}
 		log.Debug("Upserting Order: %v", order, c)
 
+	case *models.ProductVariant:
+		product := Product{}
+		if err := product.Read(v); err != nil {
+			return err
+		}
+
+		if err := product.Push(a); err != nil {
+			return err
+		}
+
 	default:
 		return ErrorInvalidType
 	}
@@ -269,6 +279,8 @@ func (a *Api) Push(object SObjectCompatible) error {
 		log.Error("Could not unmarshal: %v", string(a.LastBody[:]), c)
 		return err
 	}
+
+	object.SetSalesforceId(response.Id)
 
 	if !response.Success {
 		log.Error("Upsert Failed: %v: %v", response.Errors[0].ErrorCode, response.Errors[0].Message, c)

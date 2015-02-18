@@ -15,6 +15,7 @@ import (
 
 var ErrorUserTypeRequired = errors.New("Parameter needs to be of type User")
 var ErrorOrderTypeRequired = errors.New("Parameter needs to be of type Order")
+var ErrorShouldNotCall = errors.New("Function should not be called")
 
 // For crowdstart models/mixins to be salesforce compatible in future
 type SObjectCompatible interface {
@@ -46,7 +47,7 @@ type Contact struct {
 	IsDeleted      bool      `json:"IsDeleted,omitempty"`
 	MasterRecordId string    `json:"MasterRecordId,omitempty"`
 
-	// Unique External Id, currently using email (max length 255)
+	// Unique External Id, currently using Id (max length 255)
 	CrowdstartIdC string `json:"CrowdstartId__C,omitempty"`
 
 	// Read Only
@@ -191,7 +192,7 @@ type Account struct {
 	IsDeleted      bool      `json:"IsDeleted,omitempty"`
 	MasterRecordId string    `json:"MasterRecordId,omitempty"`
 
-	// Unique External Id, currently using email (max length 255)
+	// Unique External Id, currently using Id (max length 255)
 	CrowdstartIdC string `json:"CrowdstartId__C,omitempty"`
 
 	// Read Only
@@ -366,7 +367,7 @@ type Order struct {
 	IsDeleted      bool      `json:"IsDeleted,omitempty"`
 	MasterRecordId string    `json:"MasterRecordId,omitempty"`
 
-	// Unique External Id, currently using email (max length 255)
+	// Unique External Id, currently using Id (max length 255)
 	CrowdstartIdC string `json:"CrowdstartId__C,omitempty"`
 
 	// Read Only
@@ -437,6 +438,9 @@ type Order struct {
 
 	// We don't use contracts
 	ContractId string `json:"ContractId,omitempty"`
+
+	// Client Use Only
+	orderProducts []OrderProduct
 }
 
 func (o *Order) Read(so SObjectCompatible) error {
@@ -578,6 +582,72 @@ func (o *Order) PullId(api SalesforceClient, id string) error {
 // 	return nil
 // }
 
+type OrderProduct struct {
+	// Don't manually specify these
+
+	// Response Only Fields
+	Attributes     Attribute `json:"attributes,omitempty"`
+	Id             string    `json:"Id,omitempty"`
+	IsDeleted      bool      `json:"IsDeleted,omitempty"`
+	MasterRecordId string    `json:"MasterRecordId,omitempty"`
+
+	// Read Only
+	CreatedById        string `json:"CreatedById,omitempty"`
+	LastModifiedById   string `json:"LastModifiedById,omitempty"`
+	AccountId          string `json:"AccountId,omitempty"`
+	OrderProductNumber int64  `json:"OrderItemNumber,omitempty"`
+	ProductCode        string `json:"ProductCode,omitempty"`
+	ListPrice          string `json:"ListPrice,omitempty"`
+
+	// You can manually specify these
+	// Data Fields
+	AvailableQuantity    int64         `json:"AvailableQuantity,omitempty"`
+	EndDate              string        `json:"EndDate,omitempty"`
+	Description          string        `json:"Description,omitempty"`
+	Order                Order         `json:"Order,omitempty"`
+	OriginalOrderProduct *OrderProduct `json:"OriginalOrderItem,omitempty"`
+	Product              Product       `json:"Product2,omitempty"`
+	Quantity             int           `json:"Quantity,omitempty"`
+	StartDate            string        `json:"ServiceDate,omitempty"`
+	TotalPrice           string        `json:"TotalPrice,omitempty"`
+	UnitPrice            string        `json:"UnitPrice,omitempty"`
+}
+
+func (op *OrderProduct) Read(so SObjectCompatible) error {
+	li, ok := so.(*models.LineItem)
+	if !ok {
+		return ErrorUserTypeRequired
+	}
+
+	op.Quantity = li.Quantity
+	op.Product = Product{CrowdstartIdC: ""}
+
+	return nil
+}
+
+func (op *OrderProduct) Write(so SObjectCompatible) error {
+	return nil
+}
+
+func (op *OrderProduct) SetExternalId(id string) {
+}
+
+func (op *OrderProduct) ExternalId() string {
+	return ""
+}
+
+func (op *OrderProduct) Push(api SalesforceClient) error {
+	return push(api, OrderProductPath, op)
+}
+
+func (op *OrderProduct) PullExternalId(api SalesforceClient, id string) error {
+	return ErrorShouldNotCall
+}
+
+func (op *OrderProduct) PullId(api SalesforceClient, id string) error {
+	return ErrorShouldNotCall
+}
+
 type Product struct {
 	// Don't manually specify these
 
@@ -587,7 +657,7 @@ type Product struct {
 	IsDeleted      bool      `json:"IsDeleted,omitempty"`
 	MasterRecordId string    `json:"MasterRecordId,omitempty"`
 
-	// Unique External Id, currently using email (max length 255)
+	// Unique External Id, currently using Id (max length 255)
 	CrowdstartIdC string `json:"CrowdstartId__C,omitempty"`
 
 	// Read Only
@@ -596,11 +666,10 @@ type Product struct {
 
 	// You can manually specify these
 	// Data Fields
-
 	Name        string `json:"Name,omitempty"`
 	Description string `json:"Description,omitempty"`
-	Code        string `json:"Code,omitempty"`
-	IsActive    bool   `json:"IsAction,omitempty"`
+	ProductCode string `json:"ProductCode,omitempty"`
+	IsActive    bool   `json:"IsActive,omitempty"`
 	Family      string `json:"Family,omitempty"`
 }
 
@@ -612,7 +681,7 @@ func (p *Product) Read(so SObjectCompatible) error {
 
 	p.CrowdstartIdC = v.Id
 	p.Name = v.SKU
-	p.Code = v.SKU
+	p.ProductCode = v.SKU
 	p.IsActive = true
 
 	return nil
@@ -625,7 +694,7 @@ func (p *Product) Write(so SObjectCompatible) error {
 	}
 
 	v.Id = p.CrowdstartIdC
-	v.SKU = p.Name
+	v.SKU = p.ProductCode
 
 	return nil
 }
