@@ -19,7 +19,12 @@ var OrderPath = OrderBasePath + "%v/"
 var OrderExternalIdPath = OrderBasePath + "CrowdstartId__c/%v"
 var OrdersUpdatedPath = OrderBasePath + "updated/?start=%v&end=%v"
 
-var ProductBasePath = SObjectDescribePath + "Product/"
+var ProductBasePath = SObjectDescribePath + "Product2/"
 var ProductPath = ProductBasePath + "%v/"
 var ProductExternalIdPath = ProductBasePath + "CrowdstartId__c/%v"
 var ProductsUpdatedPath = ProductBasePath + "updated/?start=%v&end=%v"
+
+var OrderProductBasePath = SObjectDescribePath + "OrderProduct/"
+var OrderProductPath = OrderProductBasePath + "%v/"
+var OrderProductExternalIdPath = OrderProductBasePath + "CrowdstartId__c/%v"
+var OrderProductsUpdatedPath = OrderProductBasePath + "updated/?start=%v&end=%v"

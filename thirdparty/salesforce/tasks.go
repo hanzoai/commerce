@@ -105,7 +105,7 @@ func ImportProductVariant(c appengine.Context) {
 	}
 
 	if campaign.Salesforce.AccessToken != "" {
-		parallel.Run(c, "product", 100, ImportProductVariantsTask, campaign)
+		parallel.Run(c, "variant", 100, ImportProductVariantsTask, campaign)
 	}
 }
 
