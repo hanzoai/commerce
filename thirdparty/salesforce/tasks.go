@@ -87,15 +87,15 @@ func ImportOrders(c appengine.Context) {
 }
 
 // UpsertOrderTask upserts users into salesforce
-var ImportProductsTask = parallel.Task("sf-import-product-task", func(db *datastore.Datastore, key datastore.Key, product models.Product, campaign models.Campaign) {
+var ImportProductVariantsTask = parallel.Task("sf-import-product-task", func(db *datastore.Datastore, key datastore.Key, variant models.ProductVariant, campaign models.Campaign) {
 	client := New(db.Context, &campaign, true)
-	if err := client.Push(&product); err != nil {
-		log.Debug("Error: %v, '%v'", err, product.Id)
+	if err := client.Push(&variant); err != nil {
+		log.Debug("Error: %v, '%v'", err, variant.Id)
 	}
 })
 
 // ImportOrders upserts all orders into salesforce
-func ImportProduct(c appengine.Context) {
+func ImportProductVariant(c appengine.Context) {
 	db := datastore.New(c)
 	campaign := models.Campaign{}
 
@@ -105,7 +105,7 @@ func ImportProduct(c appengine.Context) {
 	}
 
 	if campaign.Salesforce.AccessToken != "" {
-		parallel.Run(c, "product", 100, ImportProductsTask, campaign)
+		parallel.Run(c, "product", 100, ImportProductVariantsTask, campaign)
 	}
 }
 
