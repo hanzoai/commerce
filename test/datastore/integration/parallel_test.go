@@ -45,7 +45,7 @@ func TestParallel(t *testing.T) {
 	defer ctx.Close()
 
 	// Wait for devappserver to spin up.
-	time.Sleep(1 * time.Second)
+	time.Sleep(5 * time.Second)
 
 	db := datastore.New(ctx)
 
@@ -60,7 +60,7 @@ func TestParallel(t *testing.T) {
 	// Run task in parallel
 	parallel.Run(ctx, "test-model", 2, worker.TaskPlus1)
 
-	time.Sleep(12 * time.Second)
+	time.Sleep(20 * time.Second)
 
 	// Check if our entities have been updated
 	var models []worker.Model
@@ -97,7 +97,7 @@ func TestParallelExtraParams(t *testing.T) {
 	defer ctx.Close()
 
 	// Wait for devappserver to spin up.
-	time.Sleep(1 * time.Second)
+	time.Sleep(5 * time.Second)
 
 	db := datastore.New(ctx)
 
@@ -112,7 +112,7 @@ func TestParallelExtraParams(t *testing.T) {
 	// Run task in parallel
 	parallel.Run(ctx, "test-model", 2, worker.TaskSetVal, 100)
 
-	time.Sleep(12 * time.Second)
+	time.Sleep(20 * time.Second)
 
 	// Check if our entities have been updated
 	var models []worker.Model

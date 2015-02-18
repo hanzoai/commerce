@@ -20,6 +20,23 @@ import (
 	"appengine/urlfetch"
 )
 
+var ErrorInvalidType = errors.New("Invalid Type")
+var ErrorRequiresId = errors.New("Requires Id")
+
+type ErrorUnexpectedStatusCode struct {
+	StatusCode int
+	Body       []byte
+}
+
+func (e *ErrorUnexpectedStatusCode) Error() string {
+	return fmt.Sprintf("Unexpected Status Code: %v\nBody: %v", e.StatusCode, e.Body)
+}
+
+type SalesforceClient interface {
+	GetBody() []byte
+	Request(string, string, string, *map[string]string, bool) error
+}
+
 type Api struct {
 	lastRequest  *http.Request
 	lastResponse *http.Response
@@ -40,13 +57,17 @@ func getClient(c appengine.Context) *http.Client {
 	return client
 }
 
+func (a *Api) GetBody() []byte {
+	return a.LastBody
+}
+
 // Request sends HTTP requests to Salesforce
-func (a *Api) request(method, path, data string, headers *map[string]string, retry bool) error {
+func (a *Api) Request(method, path, data string, headers *map[string]string, retry bool) error {
 	c := a.Context
 	client := getClient(c)
 	url := a.Campaign.Salesforce.InstanceUrl + path
 
-	log.Debug("Creating a Request to %v to %v", method, url, c)
+	log.Debug("Creating a.Request to %v to %v", method, url, c)
 	req, err := http.NewRequest(method, url, strings.NewReader(data))
 	if err != nil {
 		log.Error("Could not create Request: %v", err)
@@ -91,7 +112,7 @@ func (a *Api) request(method, path, data string, headers *map[string]string, ret
 		return nil
 	}
 
-	responses := make([]SalesforceError, 1)
+	responses := make([]ErrorFromSalesforce, 1)
 
 	log.Debug("Try Decoding any Errors in the Response", c)
 	if err = json.Unmarshal(body, &responses); err != nil {
@@ -104,12 +125,13 @@ func (a *Api) request(method, path, data string, headers *map[string]string, ret
 		if responses[0].ErrorCode == "INVALID_SESSION_ID" {
 			log.Debug("Refreshing Token", c)
 			if err := a.Refresh(); err != nil {
-				return errors.New(fmt.Sprintf("%v: %v", responses[0].ErrorCode, responses[0].Message))
+				return &responses[0]
 			}
-			return a.request(method, path, data, headers, false)
+			return a.Request(method, path, data, headers, false)
 		}
 	}
-	return errors.New(fmt.Sprintf("%v, %v", string(a.LastBody[:]), err, c))
+
+	return err
 }
 
 // New creates an API from a Context and Campaign
@@ -166,7 +188,7 @@ func (a *Api) Refresh() error {
 
 	if response.Error != "" {
 		log.Error("%v: %v", response.Error, response.ErrorDescription, c)
-		return errors.New(fmt.Sprintf("%v: %v", response.Error, response.ErrorDescription))
+		return &ErrorFromSalesforce{ErrorCode: response.Error, Message: response.ErrorDescription}
 	}
 
 	log.Debug("New Access Token: %v", response.AccessToken, c)
@@ -185,74 +207,51 @@ func (a *Api) Refresh() error {
 	return nil
 }
 
-func (a *Api) Push(object interface{}) error {
+func (a *Api) Push(object SObjectCompatible) error {
 	c := a.Context
 
 	if object == nil {
-		return errors.New("Cannot Push nil object")
+		return ErrorInvalidType
 	}
 
 	switch v := object.(type) {
 	case *models.User:
 		if v.Id == "" {
-			return errors.New("Id is required for Upsert")
+			return ErrorRequiresId
 		}
+
 		account := Account{}
-		account.FromUser(v)
-		accountBytes, err := json.Marshal(&account)
-		if err != nil {
+		if err := account.Read(v); err != nil {
 			return err
 		}
-
-		accountJSON := string(accountBytes[:])
-		path := fmt.Sprintf(AccountExternalIdPath, strings.Replace(v.Id, ".", "_", -1))
-
+		if err := account.Push(a); err != nil {
+			return err
+		}
 		log.Debug("Upserting Account: %v", account, c)
-		if err = a.request("PATCH", path, accountJSON, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
-			return err
-		}
 
 		contact := Contact{}
-		contact.FromUser(v)
-
-		contactBytes, err := json.Marshal(&contact)
-		if err != nil {
+		if err := contact.Read(v); err != nil {
 			return err
 		}
 
-		contactJSON := string(contactBytes[:])
-		path = fmt.Sprintf(ContactExternalIdPath, strings.Replace(v.Id, ".", "_", -1))
-
+		if err := contact.Push(a); err != nil {
+			return err
+		}
 		log.Debug("Upserting Contact: %v", contact, c)
-		if err = a.request("PATCH", path, contactJSON, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
-			return err
-		}
 
 	case *models.Order:
-		log.Debug("Upserting Order", c)
-		if v.Id == "" {
-			return errors.New("Id is required for Upsert")
-		}
-
 		order := Order{}
-		order.FromOrder(v)
-
-		log.Debug("Converting to Order: %v", order, c)
-		orderBytes, err := json.Marshal(&order)
-		if err != nil {
+		if err := order.Read(v); err != nil {
 			return err
 		}
 
-		orderJSON := string(orderBytes[:])
-		path := fmt.Sprintf(OrderExternalIdPath, strings.Replace(v.Id, ".", "_", -1))
-
+		if err := order.Push(a, v); err != nil {
+			return err
+		}
 		log.Debug("Upserting Order: %v", order, c)
-		if err = a.request("PATCH", path, orderJSON, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
-			return err
-		}
 
 	default:
-		return errors.New("Invalid Type")
+		return ErrorInvalidType
 	}
 
 	if len(a.LastBody) == 0 {
@@ -260,7 +259,7 @@ func (a *Api) Push(object interface{}) error {
 			log.Debug("Upsert returned %v", a.LastStatusCode, c)
 			return nil
 		} else {
-			return errors.New(fmt.Sprintf("Request returned unexpected status code %v", a.LastStatusCode))
+			return &ErrorUnexpectedStatusCode{StatusCode: a.LastStatusCode, Body: a.LastBody}
 		}
 	}
 
@@ -273,144 +272,93 @@ func (a *Api) Push(object interface{}) error {
 
 	if !response.Success {
 		log.Error("Upsert Failed: %v: %v", response.Errors[0].ErrorCode, response.Errors[0].Message, c)
-		return errors.New(fmt.Sprintf("%v: %v", response.Errors[0].ErrorCode, response.Errors[0].Message))
+		return &response.Errors[0]
 	}
 
 	return nil
 }
 
-func (a *Api) Pull(id string, object interface{}) error {
+func (a *Api) Pull(id string, object SObjectCompatible) error {
 	c := a.Context
 
 	if object == nil {
-		return errors.New("Cannot Pull nil object")
+		return ErrorInvalidType
 	}
 
 	switch v := object.(type) {
 	case *models.User:
 		log.Debug("Getting User", c)
 		if id == "" {
-			return errors.New("Id is required for Get")
-		}
-
-		path := fmt.Sprintf(ContactExternalIdPath, id)
-
-		if err := a.request("GET", path, "", nil, true); err != nil {
-			return err
+			return ErrorRequiresId
 		}
 
 		contact := new(Contact)
-
-		if err := json.Unmarshal(a.LastBody, contact); err != nil {
-			log.Error("Could not unmarshal: %v", string(a.LastBody[:]), c)
-			return err
-		}
-
-		path = fmt.Sprintf(AccountExternalIdPath, id)
-
-		if err := a.request("GET", path, "", nil, true); err != nil {
-			return err
-		}
+		contact.PullExternalId(a, id)
 
 		account := new(Account)
+		account.PullExternalId(a, id)
 
-		if err := json.Unmarshal(a.LastBody, account); err != nil {
-			log.Error("Could not unmarshal: %v", string(a.LastBody[:]), c)
+		if err := contact.Write(v); err != nil {
 			return err
 		}
 
-		log.Debug("Getting Contact: %v", contact, c)
+		if err := account.Write(v); err != nil {
+			return err
+		}
 
-		log.Debug("Converting to User", c)
-		contact.ToUser(v)
 	default:
-		return errors.New("Invalid Type")
+		return ErrorInvalidType
 	}
 
 	return nil
 }
 
-func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
+func (a *Api) PullUpdated(start, end time.Time, objects interface{} /*[]SObjectCompatible*/) error {
 	c := a.Context
+	db := datastore.New(c)
 
 	switch v := objects.(type) {
 	case *[]*models.User:
 		log.Debug("Getting Updated Contacts", c)
-		path := fmt.Sprintf(ContactsUpdatedPath, start.Format(time.RFC3339), end.Format(time.RFC3339))
 
-		if err := a.request("GET", path, "", nil, true); err != nil {
+		response := UpdatedRecordsResponse{}
+		if err := GetUpdatedContacts(a, start, end, &response); err != nil {
 			return err
 		}
-
-		response := new(UpdatedRecordsResponse)
-
-		if err := json.Unmarshal(a.LastBody, &response); err != nil {
-			return err
-		}
-
-		var user *models.User
-		var ok bool
 
 		users := make(map[string]*models.User)
 
-		for _, id := range response.Ids {
-			log.Debug("Getting Contact for ")
-			path := fmt.Sprintf(ContactPath, id)
-			if err := a.request("GET", path, "", nil, true); err != nil {
-				log.Warn("Failed to Get Contact for %v", id, c)
-				continue
-			}
+		if err := ProcessUpdatedSObjects(db,
+			&response,
+			users,
+			func(id string) SObjectSerializeable {
+				contact := new(Contact)
+				contact.PullId(a, id)
 
-			contact := new(Contact)
-			if err := json.Unmarshal(a.LastBody, contact); err != nil {
-				log.Warn("Could not unmarshal: %v", string(a.LastBody[:]), c)
-				continue
-			}
-
-			// We key based on accountId because it is common to both contacts and accounts
-			if user, ok = users[contact.AccountId]; !ok {
-				user = new(models.User)
-				users[contact.AccountId] = user
-			}
-
-			log.Debug("Getting Contact: %v %v", contact, user, c)
-			contact.ToUser(user)
+				log.Debug("Getting Contact: %v", contact, c)
+				return contact
+			}); err != nil {
+			return err
 		}
 
 		log.Debug("Getting Updated Accounts", c)
-		path = fmt.Sprintf(AccountsUpdatedPath, start.Format(time.RFC3339), end.Format(time.RFC3339))
 
-		if err := a.request("GET", path, "", nil, true); err != nil {
+		response = UpdatedRecordsResponse{}
+		if err := GetUpdatedAccounts(a, start, end, &response); err != nil {
 			return err
 		}
 
-		response = new(UpdatedRecordsResponse)
+		if err := ProcessUpdatedSObjects(db,
+			&response,
+			users,
+			func(id string) SObjectSerializeable {
+				account := new(Account)
+				account.PullId(a, id)
 
-		if err := json.Unmarshal(a.LastBody, &response); err != nil {
+				log.Debug("Getting Contact: %v", account, c)
+				return account
+			}); err != nil {
 			return err
-		}
-
-		for _, id := range response.Ids {
-			if user, ok = users[id]; !ok {
-				user = new(models.User)
-				users[id] = user
-			}
-
-			path = fmt.Sprintf(AccountPath, id)
-			if err := a.request("GET", path, "", nil, true); err != nil {
-				log.Warn("Failed to Get Account for %v", id, c)
-				continue
-			}
-
-			account := new(Account)
-			if err := json.Unmarshal(a.LastBody, account); err != nil {
-				log.Warn("Could not unmarshal: %v", string(a.LastBody[:]), c)
-				continue
-			}
-
-			log.Debug("Getting Account: %v", account, c)
-
-			account.ToUser(user)
 		}
 
 		log.Debug("Pulled %v Users %v", len(users), c)
@@ -424,16 +372,16 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
 
 		*v = userSlice
 	default:
-		return errors.New("Invalid Type")
+		return ErrorInvalidType
 	}
 
 	return nil
 }
 
-func (a *Api) SObjectDescribe(api *Api, response *SObjectDescribeResponse) error {
+func (a *Api) SObjectDescribe(response *SObjectDescribeResponse) error {
 	c := a.Context
 
-	if err := api.request("GET", SObjectDescribePath, "", nil, true); err != nil {
+	if err := a.Request("GET", SObjectDescribePath, "", nil, true); err != nil {
 		return err
 	}
 
@@ -448,21 +396,46 @@ func (a *Api) SObjectDescribe(api *Api, response *SObjectDescribeResponse) error
 func (a *Api) Describe(response *DescribeResponse) error {
 	c := a.Context
 
-	if err := a.request("GET", DescribePath, "", nil, true); err != nil {
+	if err := a.Request("GET", DescribePath, "", nil, true); err != nil {
 		return err
 	}
 
 	//It could be a single response...
 	if err := json.Unmarshal(a.LastBody, response); err != nil {
 		//Or multiple because the API hates you when it spits out errors...
-		var errResponse *[]SalesforceError
+		var errResponse *[]ErrorFromSalesforce
 		if err2 := json.Unmarshal(a.LastBody, errResponse); err2 != nil {
 			log.Error("Could not unmarshal: %v", string(a.LastBody[:]), c)
 			return err2
 		} else {
-			log.Error("%v: %v", (*errResponse)[0].ErrorCode, (*errResponse)[0].Message, c)
+			return &(*errResponse)[0]
 		}
 		return err
+	}
+
+	return nil
+}
+
+//Helper Functions
+func ProcessUpdatedSObjects(db *datastore.Datastore, response *UpdatedRecordsResponse, users map[string]*models.User, createFn func(string) SObjectSerializeable) error {
+	var ok bool
+
+	for _, id := range response.Ids {
+		us := createFn(id)
+
+		var user *models.User
+
+		// We key based on accountId because it is common to both contacts and accounts
+		userId := us.ExternalId()
+		if user, ok = users[userId]; !ok {
+			user = new(models.User)
+			db.Get(userId, user)
+			users[userId] = user
+		}
+
+		if err := us.Write(user); err != nil {
+			return err
+		}
 	}
 
 	return nil
