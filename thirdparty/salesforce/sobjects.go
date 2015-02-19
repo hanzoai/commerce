@@ -439,7 +439,7 @@ type Order struct {
 	// We don't use contracts
 	ContractId string `json:"ContractId,omitempty"`
 
-	// Client Use Only
+	// private data
 	orderProducts []OrderProduct
 }
 
@@ -463,7 +463,7 @@ func (o *Order) Read(so SObjectCompatible) error {
 	o.ShippingPostalCode = order.ShippingAddress.PostalCode
 	o.ShippingCountry = order.ShippingAddress.Country
 
-	o.Status = "Draft" // SF Required
+	o.Status = "Draft" // SF Rquired
 
 	// Payment Information
 	o.Shipping = fmt.Sprintf("%.2f", float64(order.Shipping)/1000.0)
@@ -485,17 +485,20 @@ func (o *Order) Read(so SObjectCompatible) error {
 	o.Unconfirmed = order.Unconfirmed
 
 	//SKU
-	desc := ""
-	for _, i := range order.Items {
-		desc += i.SKU_ + "," + strconv.Itoa(i.Quantity) + "\n"
+	o.orderProducts = make([]OrderProduct, len(order.Items))
+	for i, item := range order.Items {
+		orderProduct := OrderProduct{}
+		orderProduct.Read(&item)
+		orderProduct.Order = Order{CrowdstartIdC: o.Id}
+		o.orderProducts[i] = orderProduct
 	}
 
-	o.Description = desc
 	if name, err := datastore.DecodeKey(order.Id); err == nil {
 		o.Name = strconv.FormatInt(name.IntID(), 10)
 	}
 
 	o.Account.CrowdstartIdC = order.UserId
+	o.CrowdstartIdC = order.Id
 
 	return nil
 }
@@ -517,7 +520,17 @@ func (o *Order) ExternalId() string {
 }
 
 func (o *Order) Push(api SalesforceClient) error {
-	return push(api, OrderExternalIdPath, o)
+	if err := push(api, OrderExternalIdPath, o); err != nil {
+		return err
+	}
+
+	for _, orderProduct := range o.orderProducts {
+		if err := orderProduct.Push(api); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (o *Order) PullExternalId(api SalesforceClient, id string) error {
@@ -613,38 +626,38 @@ type OrderProduct struct {
 	UnitPrice            string        `json:"UnitPrice,omitempty"`
 }
 
-func (op *OrderProduct) Read(so SObjectCompatible) error {
-	li, ok := so.(*models.LineItem)
+func (o *OrderProduct) Read(so SObjectCompatible) error {
+	op, ok := so.(*models.LineItem)
 	if !ok {
-		return ErrorUserTypeRequired
+		return ErrorOrderTypeRequired
 	}
 
-	op.Quantity = li.Quantity
-	op.Product = Product{CrowdstartIdC: ""}
+	o.Quantity = op.Quantity
+	o.Product = Product{CrowdstartIdC: op.VariantId}
 
 	return nil
 }
 
-func (op *OrderProduct) Write(so SObjectCompatible) error {
+func (o *OrderProduct) Write(so SObjectCompatible) error {
 	return nil
 }
 
-func (op *OrderProduct) SetExternalId(id string) {
+func (o *OrderProduct) SetExternalId(id string) {
 }
 
-func (op *OrderProduct) ExternalId() string {
+func (o *OrderProduct) ExternalId() string {
 	return ""
 }
 
-func (op *OrderProduct) Push(api SalesforceClient) error {
-	return push(api, OrderProductPath, op)
+func (o *OrderProduct) Push(api SalesforceClient) error {
+	return push(api, OrderProductBasePath, o)
 }
 
-func (op *OrderProduct) PullExternalId(api SalesforceClient, id string) error {
+func (o *OrderProduct) PullExternalId(api SalesforceClient, id string) error {
 	return ErrorShouldNotCall
 }
 
-func (op *OrderProduct) PullId(api SalesforceClient, id string) error {
+func (o *OrderProduct) PullId(api SalesforceClient, id string) error {
 	return ErrorShouldNotCall
 }
 
@@ -731,10 +744,17 @@ func push(api SalesforceClient, p string, s SObjectSerializeable) error {
 	}
 	s.SetExternalId(id)
 
-	path := fmt.Sprintf(p, strings.Replace(id, ".", "_", -1))
+	// If no ID, then we must create a record instead of upsert
+	path := p
+	method := "POST"
+	if id != "" {
+		path = fmt.Sprintf(path, strings.Replace(id, ".", "_", -1))
+		method = "PATCH"
+	}
+
 	data := string(bytes[:])
 
-	if err = api.Request("PATCH", path, data, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
+	if err = api.Request(method, path, data, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
 		return err
 	}
 
