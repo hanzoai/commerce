@@ -88,12 +88,13 @@ var skullyCampaign = delay.Func("fixtures-skully-campaign", func(c appengine.Con
 		campaign.Stripe.UserId = "acct_14lSsRCSRlllXCwP"
 
 		// And sales force test credentials
-		campaign.Salesforce.AccessToken = "00Do0000000d5HA!ARcAQJcOeDSNWRwRKX4wulUB8q5tHc.VzBh2DevtaQuCOBkbmz6bcQcK4rTJUWGEUmuJukww3KUyuYc0MWxdpvr8ZxWtzK2z"
+		campaign.Salesforce.AccessToken = "00Do0000000d5HA!ARcAQAC4j9MdFY5T0jElLYZu_W_qn0IUZQVOrVPD6H9yhHvtL4HKpagHnfKptQlIeLyV0ndPuEcn7YjRhWPGYEIuI4osn.GC"
 		campaign.Salesforce.RefreshToken = "5Aep861LNDQReieQSK6OvPpwG_C1z9MoX7qJR8huC9h.oOQm.eW2gfv6sfo9AUJgTUNnH4Tx3qBz9XtZGK2j1oS"
 		campaign.Salesforce.Id = "ttps://login.salesforce.com/id/00Do0000000d5HAEAY/005o0000001VCsiAAG"
 		campaign.Salesforce.IssuedAt = "1419371438825"
 		campaign.Salesforce.InstanceUrl = "https://na17.salesforce.com"
 		campaign.Salesforce.Signature = "RO086wMIGu1bLlXgjtMtAk4JGSd8k2/yb5tKRGq/No8="
+		campaign.Salesforce.DefaultPriceBookId = "01so0000003EAuw"
 	}
 	db.PutKind("campaign", "dev@hanzo.ai", &campaign)
 })
