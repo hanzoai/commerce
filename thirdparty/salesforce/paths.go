@@ -24,7 +24,5 @@ var ProductPath = ProductBasePath + "%v/"
 var ProductExternalIdPath = ProductBasePath + "CrowdstartId__c/%v"
 var ProductsUpdatedPath = ProductBasePath + "updated/?start=%v&end=%v"
 
-var OrderProductBasePath = SObjectDescribePath + "OrderProduct/"
-var OrderProductPath = OrderProductBasePath + "%v/"
-var OrderProductExternalIdPath = OrderProductBasePath + "CrowdstartId__c/%v"
+var OrderProductBasePath = SObjectDescribePath + "OrderItem/"
 var OrderProductsUpdatedPath = OrderProductBasePath + "updated/?start=%v&end=%v"
