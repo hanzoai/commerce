@@ -485,12 +485,14 @@ func (o *Order) Read(so SObjectCompatible) error {
 	o.Unconfirmed = order.Unconfirmed
 
 	//SKU
-	o.orderProducts = make([]OrderProduct, len(order.Items))
-	for i, item := range order.Items {
-		orderProduct := OrderProduct{}
-		orderProduct.Read(&item)
-		orderProduct.Order = &Order{CrowdstartIdC: order.Id}
-		o.orderProducts[i] = orderProduct
+	if !o.Unconfirmed {
+		o.orderProducts = make([]OrderProduct, len(order.Items))
+		for i, item := range order.Items {
+			orderProduct := OrderProduct{}
+			orderProduct.Read(&item)
+			orderProduct.Order = &Order{CrowdstartIdC: order.Id}
+			o.orderProducts[i] = orderProduct
+		}
 	}
 
 	if name, err := datastore.DecodeKey(order.Id); err == nil {
