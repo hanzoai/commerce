@@ -13,6 +13,7 @@ import (
 
 	"crowdstart.io/datastore"
 	stripe "crowdstart.io/thirdparty/stripe/models"
+	"crowdstart.io/util/log"
 )
 
 type Order struct {
@@ -97,6 +98,7 @@ func (o *Order) LoadVariantsProducts(c interface{}) {
 	}
 
 	for i, item := range o.Items {
+		log.Warn("SKU %v, %v", item.SKU_, variantsMap[item.SKU_])
 		o.Items[i].Product = productsMap[item.Slug_]
 		o.Items[i].Variant = variantsMap[item.SKU_]
 		o.Items[i].VariantId = variantsMap[item.SKU_].Id

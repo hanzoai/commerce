@@ -261,6 +261,15 @@ func (a *Api) Push(object SObjectCompatible) error {
 			return err
 		}
 
+		pricebookEntry := PricebookEntry{PricebookId: a.Campaign.Salesforce.DefaultPriceBookId}
+		if err := pricebookEntry.Read(v); err != nil {
+			return err
+		}
+
+		if err := pricebookEntry.Push(a); err != nil {
+			return err
+		}
+
 	default:
 		return ErrorInvalidType
 	}
