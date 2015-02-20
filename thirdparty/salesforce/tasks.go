@@ -86,6 +86,29 @@ func ImportOrders(c appengine.Context) {
 	}
 }
 
+// UpsertOrderTask upserts users into salesforce
+var ImportProductVariantsTask = parallel.Task("sf-import-product-task", func(db *datastore.Datastore, key datastore.Key, variant models.ProductVariant, campaign models.Campaign) {
+	client := New(db.Context, &campaign, true)
+	if err := client.Push(&variant); err != nil {
+		log.Debug("Error: %v, '%v'", err, variant.Id)
+	}
+})
+
+// ImportOrders upserts all orders into salesforce
+func ImportProductVariant(c appengine.Context) {
+	db := datastore.New(c)
+	campaign := models.Campaign{}
+
+	// Get order instance
+	if err := db.GetKind("campaign", "dev@hanzo.ai", &campaign); err != nil {
+		log.Panic("Unable to get campaign from database: %v", err, c)
+	}
+
+	if campaign.Salesforce.AccessToken != "" {
+		parallel.Run(c, "variant", 100, ImportProductVariantsTask, campaign)
+	}
+}
+
 // PullUpdatedTask gets recently(20 minutes ago) updated Contact and upserts them as Users
 var PullUpdatedTask = delay.Func("SalesforcePullUpdatedTask", func(c appengine.Context) {
 	db := datastore.New(c)
