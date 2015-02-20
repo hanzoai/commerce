@@ -41,6 +41,9 @@ class ProductView extends View
 
   render: ->
     sku = @el.data 'sku'
+    console.log sku
+    listing = allListings[sku]
+    console.log listing
     @set 'listing', allListings[sku]
     super
 
@@ -71,8 +74,7 @@ class ProductView extends View
       slug:     product.Slug
       children: childProducts
 
-    for i in [1..listing.Configs.length-1]
-      config = listing.Configs[i]
+    for config in listing.Configs
       product = allProducts[config.Product]
       variant = products.getVariant(config.Product, {}) #supply blank options temporarily
       childProducts.push
