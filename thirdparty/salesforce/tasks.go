@@ -104,11 +104,11 @@ func ImportProductVariant(c appengine.Context) {
 		log.Panic("Unable to get campaign from database: %v", err, c)
 	}
 
-	if campaign.Salesforce.AccessToken != "" {
-		parallel.Run(c, "variant", 100, ImportProductVariantsTask, campaign)
-	} else {
-		log.Panic("Missing Salesforce Access Token: %v", campaign.Salesforce, c)
+	if campaign.Salesforce.AccessToken == "" {
+		log.Panic("Missing Salesforce Access Token: %#v", campaign.Salesforce, c)
 	}
+
+	parallel.Run(c, "variant", 100, ImportProductVariantsTask, campaign)
 }
 
 // PullUpdatedTask gets recently(20 minutes ago) updated Contact and upserts them as Users
