@@ -263,7 +263,7 @@ func (d *Datastore) GetMulti(keys interface{}, vals interface{}) error {
 		_keys[i] = key
 	}
 
-	return nds.GetMulti(d.Context, _keys, vals)
+	return d.ignoreFieldMismatch(nds.GetMulti(d.Context, _keys, vals))
 }
 
 // Same as GetKind, but works for multiple key/vals, keys can be slice of any
@@ -290,7 +290,7 @@ func (d *Datastore) GetKindMulti(kind string, keys interface{}, vals interface{}
 		_keys[i] = key
 	}
 
-	return nds.GetMulti(d.Context, _keys, vals)
+	return d.ignoreFieldMismatch(nds.GetMulti(d.Context, _keys, vals))
 }
 
 // Puts entity, returning encoded key
