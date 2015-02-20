@@ -379,6 +379,7 @@ type Order struct {
 	// You can manually specify these
 	// Data Fields
 	Account                *Account `json:"Account,omitempty"`
+	PricebookId            string   `json:"Pricebook2Id,omitempty"`
 	OriginalOrderId        string   `json:"OriginalOrderId,omitempty"`
 	EffectiveDate          string   `json:"EffectiveDate,omitempty"`
 	EndDate                string   `json:"EndDate,omitempty"`
@@ -434,6 +435,7 @@ type Order struct {
 	Shipping    string `json:"Shipping__c,omitempty"`
 	Subtotal    string `json:"Subtotal__c,omitempty"`
 	Tax         string `json:"Tax__c,omitempty"`
+	Total       string `json:"Total__c,omitempty"`
 	Unconfirmed bool   `json:"Unconfirmed__c,omitempty"`
 
 	// We don't use contracts
@@ -469,6 +471,7 @@ func (o *Order) Read(so SObjectCompatible) error {
 	o.Shipping = fmt.Sprintf("%.2f", float64(order.Shipping)/10000.0)
 	o.Subtotal = fmt.Sprintf("%.2f", float64(order.Subtotal)/10000.0)
 	o.Tax = fmt.Sprintf("%.2f", float64(order.Tax)/10000.0)
+	o.Total = fmt.Sprintf("%.2f", float64(order.Shipping+order.Subtotal+order.Tax)/10000.0)
 
 	if len(order.Charges) > 0 {
 		o.PaymentType = "Stripe"
@@ -636,6 +639,7 @@ func (o *OrderProduct) Read(so SObjectCompatible) error {
 
 	o.Quantity = li.Quantity
 	o.PricebookEntry = &PricebookEntry{CrowdstartIdC: li.VariantId}
+	o.UnitPrice = fmt.Sprintf("%.2f", float64(li.Variant.Price)/10000.0)
 
 	return nil
 }
