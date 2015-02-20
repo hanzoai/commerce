@@ -13,7 +13,7 @@ import (
 
 func insertVariants(db *datastore.Datastore, variants []ProductVariant) {
 	for _, v := range variants {
-		key := db.NewKey("variant", "", db.AllocateId("variant"), nil)
+		key := db.NewKey("variant", v.SKU, 0, nil)
 		v.Id = key.Encode()
 		db.Put(key, &v)
 	}
