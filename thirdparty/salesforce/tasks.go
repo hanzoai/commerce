@@ -90,14 +90,14 @@ func ImportOrders(c appengine.Context) {
 var ImportProductVariantsTask = parallel.Task("sf-import-product-task", func(db *datastore.Datastore, key datastore.Key, variant models.ProductVariant, campaign models.Campaign) {
 	client := New(db.Context, &campaign, true)
 	if err := client.Push(&variant); err != nil {
-		log.Debug("Error: %v, '%v'", err, variant.Id)
+		log.Error("Unable to update variant '%v': %v", variant.Id, err, db.Context)
 	}
 })
 
 // ImportOrders upserts all orders into salesforce
 func ImportProductVariant(c appengine.Context) {
 	db := datastore.New(c)
-	campaign := models.Campaign{}
+	var campaign models.Campaign
 
 	// Get order instance
 	if err := db.GetKind("campaign", "dev@hanzo.ai", &campaign); err != nil {
@@ -106,6 +106,8 @@ func ImportProductVariant(c appengine.Context) {
 
 	if campaign.Salesforce.AccessToken != "" {
 		parallel.Run(c, "variant", 100, ImportProductVariantsTask, campaign)
+	} else {
+		log.Panic("Missing Salesforce Access Token: %v", campaign.Salesforce, c)
 	}
 }
 
