@@ -2,7 +2,7 @@ package salesforce
 
 //Paths
 var LoginUrl = "https://login.salesforce.com/services/oauth2/token"
-var DescribePath = "/services/data/v29.0/"
+var DescribePath = "/services/data/v30.0/"
 var SObjectDescribePath = DescribePath + "sobjects/"
 var ContactBasePath = SObjectDescribePath + "Contact/"
 var ContactPath = ContactBasePath + "%v/"
@@ -18,3 +18,16 @@ var OrderBasePath = SObjectDescribePath + "Order/"
 var OrderPath = OrderBasePath + "%v/"
 var OrderExternalIdPath = OrderBasePath + "CrowdstartId__c/%v"
 var OrdersUpdatedPath = OrderBasePath + "updated/?start=%v&end=%v"
+
+var ProductBasePath = SObjectDescribePath + "Product2/"
+var ProductPath = ProductBasePath + "%v/"
+var ProductExternalIdPath = ProductBasePath + "CrowdstartId__c/%v"
+var ProductsUpdatedPath = ProductBasePath + "updated/?start=%v&end=%v"
+
+var PricebookEntryBasePath = SObjectDescribePath + "PricebookEntry/"
+var PricebookEntryPath = PricebookEntryBasePath + "%v/"
+var PricebookEntryExternalIdPath = PricebookEntryBasePath + "CrowdstartId__c/%v"
+var PricebookEntrysUpdatedPath = PricebookEntryBasePath + "updated/?start=%v&end=%v"
+
+var OrderProductBasePath = SObjectDescribePath + "OrderItem/"
+var OrderProductsUpdatedPath = OrderProductBasePath + "updated/?start=%v&end=%v"

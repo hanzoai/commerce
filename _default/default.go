@@ -2,7 +2,6 @@ package _default
 
 import (
 	"appengine"
-	"appengine/datastore"
 	_ "appengine/remote_api"
 
 	"github.com/gin-gonic/gin"
@@ -11,15 +10,14 @@ import (
 	"crowdstart.io/middleware"
 	"crowdstart.io/models/fixtures"
 	"crowdstart.io/models/migrations"
-	"crowdstart.io/thirdparty/salesforce"
 	"crowdstart.io/util/exec"
 	"crowdstart.io/util/router"
 
 	// Imported for side-effect of having tasks registered.
 	_ "crowdstart.io/thirdparty/mandrill"
-	_ "crowdstart.io/thirdparty/salesforce"
 
 	// Migrations
+	"crowdstart.io/_default/jobs"
 	_ "crowdstart.io/models/migrations/tasks"
 
 	// Only used in tests
@@ -49,33 +47,12 @@ func Init() {
 		c.String(200, "Running migration...")
 	})
 
-	router.GET("/jobs/sync-salesforce", func(c *gin.Context) {
+	router.GET("/jobs/:job", func(c *gin.Context) {
+		job := c.Params.ByName("job")
 		ctx := appengine.NewContext(c.Request)
 
-		// Check status of salesforce import
-		m := migrations.MigrationStatus{}
-		mk := datastore.NewKey(ctx, "migration", "SalesforceImportUsersTask", 0, nil)
-		if err := datastore.Get(ctx, mk, &m); err != nil {
-			// If we get an error, then no migration has been done and it is okay to sync
-			salesforce.CallPullUpdatedTask(ctx)
-		} else if m.Done {
-			// If migration is done, then sync
-			salesforce.CallPullUpdatedTask(ctx)
-		}
-
-		c.String(200, "Running job...")
-	})
-
-	router.GET("/jobs/import-users-to-salesforce", func(c *gin.Context) {
-		ctx := appengine.NewContext(c.Request)
-		salesforce.ImportUsers(ctx)
-
-		c.String(200, "Running job...")
-	})
-
-	router.GET("/jobs/import-orders-to-salesforce", func(c *gin.Context) {
-		ctx := appengine.NewContext(c.Request)
-		salesforce.ImportOrders(ctx)
+		// Call fixture task
+		jobs.Run.Call(ctx, job)
 
 		c.String(200, "Running job...")
 	})

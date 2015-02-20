@@ -240,15 +240,35 @@ func (a *Api) Push(object SObjectCompatible) error {
 		log.Debug("Upserting Contact: %v", contact, c)
 
 	case *models.Order:
-		order := Order{}
+		v.LoadVariantsProducts(c)
+		order := Order{PricebookId: a.Campaign.Salesforce.DefaultPriceBookId}
 		if err := order.Read(v); err != nil {
 			return err
 		}
 
-		if err := order.Push(a, v); err != nil {
+		if err := order.Push(a); err != nil {
 			return err
 		}
 		log.Debug("Upserting Order: %v", order, c)
+
+	case *models.ProductVariant:
+		product := Product{}
+		if err := product.Read(v); err != nil {
+			return err
+		}
+
+		if err := product.Push(a); err != nil {
+			return err
+		}
+
+		pricebookEntry := PricebookEntry{PricebookId: a.Campaign.Salesforce.DefaultPriceBookId}
+		if err := pricebookEntry.Read(v); err != nil {
+			return err
+		}
+
+		if err := pricebookEntry.Push(a); err != nil {
+			return err
+		}
 
 	default:
 		return ErrorInvalidType
@@ -355,13 +375,13 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{} /*[]SObjectC
 				account := new(Account)
 				account.PullId(a, id)
 
-				log.Debug("Getting Contact: %v", account, c)
+				log.Debug("Getting Account: %v", account, c)
 				return account
 			}); err != nil {
 			return err
 		}
 
-		log.Debug("Pulled %v Users %v", len(users), c)
+		log.Debug("Pulled %v Users", len(users), c)
 		userSlice := make([]*models.User, len(users))
 
 		i := 0
