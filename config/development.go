@@ -28,7 +28,7 @@ func Development() *Config {
 
 	config.StaticUrl = "/static"
 
-	config.Salesforce.CallbackURL = "https:" + config.UrlFor("platform", "/salesforce/callback")
+	config.Salesforce.CallbackURL = "http:" + config.UrlFor("platform", "/salesforce/callback")
 	config.Stripe.RedirectURL = "http:" + config.UrlFor("platform", "/stripe/callback")
 	config.Stripe.WebhookURL = "http:" + config.UrlFor("platform", "/stripe/hook")
 
