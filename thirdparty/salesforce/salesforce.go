@@ -241,7 +241,7 @@ func (a *Api) Push(object SObjectCompatible) error {
 
 	case *models.Order:
 		v.LoadVariantsProducts(c)
-		order := Order{}
+		order := Order{PricebookId: a.Campaign.Salesforce.DefaultPriceBookId}
 		if err := order.Read(v); err != nil {
 			return err
 		}
