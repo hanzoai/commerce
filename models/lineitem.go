@@ -9,8 +9,11 @@ import (
 
 type LineItem struct {
 	FieldMapMixin
-	SKU_         string         `json:"SKU"`
-	Slug_        string         `json:"Slug"`
+	SalesforceSObject
+
+	SKU_         string `json:"SKU"`
+	Slug_        string `json:"Slug"`
+	VariantId    string
 	Product      Product        `datastore:"-"`
 	Variant      ProductVariant `datastore:"-"`
 	Description  string
