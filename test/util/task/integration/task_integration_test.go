@@ -1,13 +1,10 @@
 package task_integration_test
 
 import (
-	"io/ioutil"
-	"net/http"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"appengine"
 	"appengine/memcache"
 
 	. "github.com/onsi/ginkgo"
@@ -16,6 +13,7 @@ import (
 	"github.com/zeekay/appenginetesting"
 
 	"crowdstart.io/util/log"
+	"crowdstart.io/util/test/httpclient"
 )
 
 func Test(t *testing.T) {
@@ -56,18 +54,10 @@ var _ = AfterSuite(func() {
 
 var _ = Describe("Run", func() {
 	It("Should call task successfully", func() {
-		// Get default module host
-		host, err := appengine.ModuleHostname(ctx, "default", "", "")
-		Expect(err).NotTo(HaveOccurred())
-
 		// Start task
-		url := "http://" + host + "/task/foo"
-		res, err := http.Get(url)
+		client := httpclient.New(ctx, "default")
 
-		defer res.Body.Close()
-		body, _ := ioutil.ReadAll(res.Body)
-		log.Debug("%v", string(body))
-
+		res, err := client.Get("/task/foo")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.StatusCode).To(Equal(200))
 
@@ -77,7 +67,6 @@ var _ = Describe("Run", func() {
 		// Check if memcache is set
 		foo, err := memcache.Get(ctx, "foo")
 		Expect(err).NotTo(HaveOccurred())
-
 		Expect(string(foo.Value)).To(Equal("bar"))
 	})
 })
