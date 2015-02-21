@@ -15,13 +15,7 @@ handlers:
 - url: /_ah/queue/go/delay
   script: _go_app
 
-- url: /migrations/.*
-  script: _go_app
-
-- url: /fixtures/.*
-  script: _go_app
-
-- url: /jobs/.*
+- url: /task/.*
   script: _go_app
 
 # DEPRECTATED in production, for consistent local logging.

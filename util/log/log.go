@@ -32,20 +32,19 @@ func (l *Logger) detectContext(ctx interface{}) {
 	switch ctx := ctx.(type) {
 	case *gin.Context:
 		// Get App Engine from session
-		context := ctx.MustGet("appengine").(appengine.Context)
+		l.appengineBackend.context = ctx.MustGet("appengine").(appengine.Context)
 
 		// Get verbose from session
-		verbose := false
 		if v, err := ctx.Get("verbose"); err != nil {
-			verbose = v.(bool)
+			if verbose, ok := v.(bool); ok {
+				l.verbose = verbose
+			}
 		}
 
 		// Request URI is useful for logging
-		requestURI := ctx.Request.RequestURI
-
-		l.appengineBackend.context = context
-		l.appengineBackend.requestURI = requestURI
-		l.appengineBackend.verbose = verbose
+		if ctx.Request != nil {
+			l.appengineBackend.requestURI = ctx.Request.RequestURI
+		}
 	case appengine.Context:
 		l.appengineBackend.context = ctx
 	default:
