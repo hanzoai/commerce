@@ -1,4 +1,4 @@
-package tasks
+package task
 
 import (
 	"reflect"
@@ -32,8 +32,6 @@ func Register(name string, fns ...interface{}) {
 
 // Run task
 func Run(ctx *gin.Context, name string, args ...interface{}) {
-	// c := appengine.NewContext(c.Request)
-
 	fns := tasks[name]
 	for _, fn := range fns {
 		switch v := fn.(type) {
@@ -43,6 +41,8 @@ func Run(ctx *gin.Context, name string, args ...interface{}) {
 			v(ctx, args...)
 		case func(*gin.Context):
 			v(ctx)
+		case func(appengine.Context):
+			v(middleware.GetAppEngine(ctx)) // TODO: Remove after updating older tasks.
 		default:
 			log.Error("Don't know how to call %v", reflect.ValueOf(v).Type(), ctx)
 		}

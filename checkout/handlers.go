@@ -13,7 +13,6 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models"
-	"crowdstart.io/thirdparty/salesforce"
 	"crowdstart.io/thirdparty/stripe"
 	"crowdstart.io/util/cache"
 	"crowdstart.io/util/log"
@@ -21,6 +20,7 @@ import (
 	"crowdstart.io/util/template"
 
 	mandrill "crowdstart.io/thirdparty/mandrill/tasks"
+	salesforce "crowdstart.io/thirdparty/salesforce/tasks"
 )
 
 // Helper to get campaign

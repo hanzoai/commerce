@@ -1,21 +1,23 @@
 package _default
 
 import (
-	_ "appengine/remote_api"
-
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/config"
 	"crowdstart.io/middleware"
 	"crowdstart.io/util/exec"
 	"crowdstart.io/util/router"
-	"crowdstart.io/util/tasks"
+	"crowdstart.io/util/task"
 
-	// Imported for side-effect of having tasks registered.
+	// Imported for side-effect, needed to enable remote api calls
+	_ "appengine/remote_api"
+
+	// Imported for side-effect, ensures tasks are registered
 	_ "crowdstart.io/models/fixtures/tasks"
 	_ "crowdstart.io/models/migrations/tasks"
 	_ "crowdstart.io/test/datastore/integration/tasks"
 	_ "crowdstart.io/thirdparty/mandrill/tasks"
+	_ "crowdstart.io/thirdparty/salesforce/tasks"
 )
 
 func Init() {
@@ -24,7 +26,7 @@ func Init() {
 	// Handler for HTTP registered tasks
 	router.GET("/task/:name", func(c *gin.Context) {
 		name := c.Params.ByName("name")
-		tasks.Run(c, name)
+		task.Run(c, name)
 		c.String(200, "Running task "+name)
 	})
 
@@ -78,7 +80,7 @@ func Init() {
 	router.GET("/_ah/warmup", func(c *gin.Context) {
 		// Automatically load fixtures
 		if config.AutoLoadFixtures {
-			tasks.Run(c, "fixtures-install-all")
+			task.Run(c, "fixtures-install-all")
 		}
 
 		// Recompile static assets
