@@ -147,13 +147,13 @@ func NewSendTemplateReq() (req SendTemplateReq) {
 func GetTemplate(filename string) string {
 	wd, _ := os.Getwd()
 	log.Info(wd)
-	b, err := ioutil.ReadFile(filename)
+	bytes, err := ioutil.ReadFile(filename)
 	if err != nil {
 		log.Panic(err.Error())
 		return ""
 	}
 
-	return string(b)
+	return string(bytes)
 }
 
 // PingMandrill checks if our credentials/url are okay
