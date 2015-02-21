@@ -6,6 +6,7 @@ import (
 	"crowdstart.io/config"
 	"crowdstart.io/middleware"
 	"crowdstart.io/util/exec"
+	"crowdstart.io/util/log"
 	"crowdstart.io/util/router"
 	"crowdstart.io/util/task"
 
@@ -19,6 +20,10 @@ import (
 	_ "crowdstart.io/thirdparty/mandrill/tasks"
 	_ "crowdstart.io/thirdparty/salesforce/tasks"
 )
+
+var Foo = task.Func("foo", func(c *gin.Context) {
+	log.Debug("In foo", c)
+})
 
 func Init() {
 	router := router.New("default")
@@ -80,7 +85,7 @@ func Init() {
 	router.GET("/_ah/warmup", func(c *gin.Context) {
 		// Automatically load fixtures
 		if config.AutoLoadFixtures {
-			task.Run(c, "fixtures-install-all")
+			task.Run(c, "fixtures-all")
 		}
 
 		// Recompile static assets
