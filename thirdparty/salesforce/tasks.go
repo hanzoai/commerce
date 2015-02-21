@@ -11,6 +11,7 @@ import (
 	"crowdstart.io/models"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/queries"
+	"crowdstart.io/util/tasks"
 )
 
 // Deferred Tasks
@@ -162,4 +163,11 @@ func CallUpsertOrderTask(c appengine.Context, campaign *models.Campaign, order *
 // CallPullUpdatedTask calls the task queue delay function with the passed in params
 func CallPullUpdatedTask(c appengine.Context) {
 	PullUpdatedTask.Call(c)
+}
+
+func init() {
+	tasks.Register("import-users-to-salesforce", ImportUsers)
+	tasks.Register("import-orders-to-salesforce", ImportOrders)
+	tasks.Register("import-product-variants-to-salesforce", ImportProductVariant)
+	tasks.Register("sync-salesforce", CallPullUpdatedTask)
 }
