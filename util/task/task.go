@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	registry    = make(map[string][]interface{})
+	Registry    = make(map[string][]interface{})
 	contextType = reflect.TypeOf((**gin.Context)(nil)).Elem()
 )
 
@@ -55,7 +55,7 @@ func NewTask(fn interface{}) *Task {
 // Register a new task
 func Register(name string, tasks ...interface{}) {
 	// Create slice for task set
-	_tasks, ok := registry[name]
+	_tasks, ok := Registry[name]
 
 	if !ok {
 		_tasks = make([]interface{}, 0)
@@ -64,12 +64,12 @@ func Register(name string, tasks ...interface{}) {
 	// Append tasks
 	_tasks = append(_tasks, tasks...)
 
-	registry[name] = _tasks
+	Registry[name] = _tasks
 }
 
 // Run task
 func Run(ctx *gin.Context, name string, args ...interface{}) {
-	tasks, ok := registry[name]
+	tasks, ok := Registry[name]
 
 	if !ok {
 		log.Panic("Unknown task: %v", name, ctx)
