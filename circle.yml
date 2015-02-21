@@ -1,0 +1,4 @@
+dependencies:
+  cache_directories:
+    - ".sdk"
+    - "node_modules"
