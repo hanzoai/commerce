@@ -8,7 +8,7 @@ import (
 	"github.com/zeekay/aetest"
 
 	"crowdstart.io/config"
-	mail "crowdstart.io/thirdparty/mandrill"
+	"crowdstart.io/thirdparty/mandrill"
 	"crowdstart.io/util/log"
 )
 
@@ -29,7 +29,7 @@ func TestPing(t *testing.T) {
 	}
 	ctx := appengine.NewContext(req)
 
-	if !mail.Ping(ctx) {
+	if !mandrill.Ping(ctx) {
 		t.Error("Ping failed")
 	}
 }
@@ -51,7 +51,7 @@ func TestSendTemplate(t *testing.T) {
 	}
 	ctx := appengine.NewContext(areq)
 
-	req := mail.NewSendTemplateReq()
+	req := mandrill.NewSendTemplateReq()
 	// req.AddRecipient("dev@hanzo.ai", "Zach Kelling")
 	// req.AddRecipient("dev@hanzo.ai", "Michael W")
 	// req.AddRecipient("dev@hanzo.ai", "Marvel Mathew")
@@ -63,7 +63,7 @@ func TestSendTemplate(t *testing.T) {
 	req.Message.FromName = "Tester"
 	req.TemplateName = "preorder-confirmation-template"
 
-	err = mail.SendTemplate(ctx, &req)
+	err = mandrill.SendTemplate(ctx, &req)
 	if err != nil {
 		t.Error(err)
 	}
@@ -86,8 +86,8 @@ func TestSend(t *testing.T) {
 	}
 	ctx := appengine.NewContext(areq)
 
-	html := mail.GetTemplate("../templates/confirmation_email.html")
-	req := mail.NewSendReq()
+	html := mandrill.GetTemplate("../templates/confirmation_email.html")
+	req := mandrill.NewSendReq()
 	req.AddRecipient("dev@hanzo.ai", "Test Mandrill")
 
 	req.Message.Subject = "Test subject"
@@ -95,7 +95,7 @@ func TestSend(t *testing.T) {
 	req.Message.FromName = "Tester"
 	req.Message.Html = html
 
-	err = mail.Send(ctx, &req)
+	err = mandrill.Send(ctx, &req)
 
 	if err != nil {
 		t.Error(err)
