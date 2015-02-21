@@ -1,60 +1,31 @@
 package _default
 
 import (
-	"appengine"
 	_ "appengine/remote_api"
 
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/config"
 	"crowdstart.io/middleware"
-	"crowdstart.io/models/fixtures"
-	"crowdstart.io/models/migrations"
 	"crowdstart.io/util/exec"
 	"crowdstart.io/util/router"
+	"crowdstart.io/util/tasks"
 
 	// Imported for side-effect of having tasks registered.
-	_ "crowdstart.io/thirdparty/mandrill"
-
-	// Migrations
-	"crowdstart.io/_default/jobs"
+	_ "crowdstart.io/models/fixtures/tasks"
 	_ "crowdstart.io/models/migrations/tasks"
-
-	// Only used in tests
-	_ "crowdstart.io/test/datastore/integration/worker"
+	_ "crowdstart.io/test/datastore/integration/tasks"
+	_ "crowdstart.io/thirdparty/mandrill/tasks"
 )
 
 func Init() {
 	router := router.New("default")
 
-	router.GET("/fixtures/:fixture", func(c *gin.Context) {
-		fixture := c.Params.ByName("fixture")
-		ctx := appengine.NewContext(c.Request)
-
-		// Call fixture task
-		fixtures.Install.Call(ctx, fixture)
-
-		c.String(200, "Fixtures installing...")
-	})
-
-	router.GET("/migrations/:migration", func(c *gin.Context) {
-		migration := c.Params.ByName("migration")
-		ctx := appengine.NewContext(c.Request)
-
-		// Call fixture task
-		migrations.Run.Call(ctx, migration)
-
-		c.String(200, "Running migration...")
-	})
-
-	router.GET("/jobs/:job", func(c *gin.Context) {
-		job := c.Params.ByName("job")
-		ctx := appengine.NewContext(c.Request)
-
-		// Call fixture task
-		jobs.Run.Call(ctx, job)
-
-		c.String(200, "Running job...")
+	// Handler for HTTP registered tasks
+	router.GET("/task/:name", func(c *gin.Context) {
+		name := c.Params.ByName("name")
+		tasks.Run(c, name)
+		c.String(200, "Running task "+name)
 	})
 
 	if config.IsProduction {
@@ -107,8 +78,7 @@ func Init() {
 	router.GET("/_ah/warmup", func(c *gin.Context) {
 		// Automatically load fixtures
 		if config.AutoLoadFixtures {
-			ctx := appengine.NewContext(c.Request)
-			fixtures.Install.Call(ctx, "all")
+			tasks.Run(c, "fixtures-install-all")
 		}
 
 		// Recompile static assets

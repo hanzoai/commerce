@@ -8,10 +8,11 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models"
-	"crowdstart.io/thirdparty/mandrill"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/queries"
 	"crowdstart.io/util/template"
+
+	mandrill "crowdstart.io/thirdparty/mandrill/tasks"
 )
 
 // GET /create-password
