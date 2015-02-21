@@ -61,18 +61,9 @@ func init() {
 		parallel.Run(c, "order", 50, tasks.AddIdToOrder)
 	})
 
-	// Replace email with user id
-	addMigration("replace-email-with-userid-for-user", replaceEmailWithUserIdForUser)
-
-	// The next 3 depend on replace-email-with-userid-for-user
-	addMigration("replace-email-with-userid-for-contribution", replaceEmailWithUserIdForContribution)
-	addMigration("replace-email-with-userid-for-invite-token", replaceEmailWithUserIdForInviteToken)
-	addMigration("replace-email-with-userid-for-order", replaceEmailWithUserIdForOrder)
-
 	// Create a Entity set of all broken orders
 	addMigration("list-broken-orders", listBrokenOrders)
 
 	// Misc clean up
 	addMigration("fix-email", fixEmail)
-	addMigration("fix-order-ids", fixOrderIds)
 }
