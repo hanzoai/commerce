@@ -10,26 +10,11 @@ import (
 	"crowdstart.io/util/task"
 )
 
-func TestDatastore(t *testing.T) {
+func Test(t *testing.T) {
 	log.SetVerbose(testing.Verbose())
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "util/task")
 }
-
-// var (
-// 	ctx aetest.Context
-// )
-
-// var _ = BeforeSuite(func() {
-// 	var err error
-// 	ctx, err = aetest.NewContext(&aetest.Options{StronglyConsistentDatastore: true})
-// 	Expect(err).ToNot(HaveOccurred())
-// })
-
-// var _ = AfterSuite(func() {
-// 	err := ctx.Close()
-// 	Expect(err).ToNot(HaveOccurred())
-// })
 
 type X struct {
 	x string
