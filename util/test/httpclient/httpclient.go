@@ -54,6 +54,6 @@ func (c *Client) determineBaseURL() {
 }
 
 func (c *Client) Get(url string) (res Response, err error) {
-	res.Response, err = http.Get(url)
+	res.Response, err = http.Get(c.baseURL + url)
 	return res, err
 }
