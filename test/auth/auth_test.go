@@ -15,7 +15,7 @@ import (
 	"crowdstart.io/util/log"
 )
 
-func TestDatastore(t *testing.T) {
+func Test(t *testing.T) {
 	log.SetVerbose(testing.Verbose())
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "auth")

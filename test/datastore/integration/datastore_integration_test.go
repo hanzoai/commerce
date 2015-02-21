@@ -5,6 +5,9 @@ import (
 	"testing"
 	"time"
 
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+
 	"github.com/zeekay/appenginetesting"
 
 	"crowdstart.io/datastore"
@@ -13,22 +16,25 @@ import (
 	"crowdstart.io/util/log"
 )
 
-func checkCountValue(t *testing.T, models []tasks.Model, v int) {
-	for _, model := range models {
-		if model.Count != v {
-			t.Fatalf("Model.Count is %v, not %v.", model.Count, v)
-		}
-	}
+func Test(t *testing.T) {
+	log.SetVerbose(testing.Verbose())
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "datastore/parallel")
 }
 
-func TestParallel(t *testing.T) {
-	log.SetVerbose(testing.Verbose())
+var (
+	ctx *appenginetesting.Context
+	db  *datastore.Datastore
+)
+
+var _ = BeforeSuite(func() {
+	var err error
 
 	//Spin up an appengine dev server with the default module
-	ctx, err := appenginetesting.NewContext(&appenginetesting.Options{
+	ctx, err = appenginetesting.NewContext(&appenginetesting.Options{
 		AppId:      "crowdstart-io",
 		Debug:      appenginetesting.LogWarning,
-		Testing:    t,
+		Testing:    GinkgoT(),
 		TaskQueues: []string{"default"},
 		Modules: []appenginetesting.ModuleConfig{
 			{
@@ -38,92 +44,67 @@ func TestParallel(t *testing.T) {
 		},
 	})
 
-	if err != nil {
-		t.Fatalf("Failed to create appengine context: %v", err)
-	}
-
-	defer ctx.Close()
+	Expect(err).NotTo(HaveOccurred())
 
 	// Wait for devappserver to spin up.
 	time.Sleep(5 * time.Second)
 
-	db := datastore.New(ctx)
+	db = datastore.New(ctx)
+})
 
-	// Prepoulate database with 100 entities
-	for i := 0; i < 10; i++ {
-		model := &tasks.Model{}
-		if _, err := db.Put("test-model", model); err != nil {
-			t.Fatalf("Failed to insert initial models: %v", err)
-		}
+// Tear-down appengine context
+var _ = AfterSuite(func() {
+	ctx.Close()
+})
+
+func checkCountValue(models []tasks.Model, v int) {
+	for _, model := range models {
+		Expect(model.Count).To(Equal(v))
 	}
-
-	// Run task in parallel
-	parallel.Run(ctx, "test-model", 2, tasks.TaskPlus1)
-
-	time.Sleep(20 * time.Second)
-
-	// Check if our entities have been updated
-	var models []tasks.Model
-	_, err = db.Query("test-model").GetAll(db.Context, &models)
-	if err != nil {
-		t.Fatalf("Unable to GetAll models: %v", err)
-	}
-
-	if len(models) != 10 {
-		t.Fatalf("10 models not inserted into datastore: %v", len(models))
-	}
-
-	checkCountValue(t, models, 1)
 }
 
-func TestParallelExtraParams(t *testing.T) {
-	//Spin up an appengine dev server with the default module
-	ctx, err := appenginetesting.NewContext(&appenginetesting.Options{
-		AppId:   "crowdstart-io",
-		Debug:   appenginetesting.LogChild,
-		Testing: t,
-		Modules: []appenginetesting.ModuleConfig{
-			{
-				Name: "default",
-				Path: filepath.Join("../../../config/test/app.yaml"),
-			},
-		},
+var _ = Describe("parallel", func() {
+	It("Should run tasks in parallel", func() {
+		// Prepoulate database with 10 entities
+		for i := 0; i < 10; i++ {
+			model := &tasks.Model{}
+			_, err := db.Put("plus-1", model)
+			Expect(err).NotTo(HaveOccurred())
+		}
+
+		// Run task in parallel
+		parallel.Run(ctx, "plus-1", 2, tasks.TaskPlus1)
+
+		time.Sleep(15 * time.Second)
+
+		// Check if our entities have been updated
+		var models []tasks.Model
+		_, err := db.Query("plus-1").GetAll(db.Context, &models)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(len(models)).To(Equal(10))
+		checkCountValue(models, 1)
 	})
+})
 
-	if err != nil {
-		t.Fatalf("Failed to create appengine context: %v", err)
-	}
-
-	defer ctx.Close()
-
-	// Wait for devappserver to spin up.
-	time.Sleep(5 * time.Second)
-
-	db := datastore.New(ctx)
-
-	// Prepoulate database with 100 entities
-	for i := 0; i < 10; i++ {
-		model := &tasks.Model{}
-		if _, err := db.Put("test-model", model); err != nil {
-			t.Fatalf("Failed to insert initial models: %v", err)
+var _ = Describe("parallel-optional-args", func() {
+	It("Should run tasks with optional arguments correctly.", func() {
+		// Prepoulate database with 10 entities
+		for i := 0; i < 10; i++ {
+			model := &tasks.Model{}
+			_, err := db.Put("set-val", model)
+			Expect(err).NotTo(HaveOccurred())
 		}
-	}
 
-	// Run task in parallel
-	parallel.Run(ctx, "test-model", 2, tasks.TaskSetVal, 100)
+		// Run task in parallel
+		parallel.Run(ctx, "set-val", 2, tasks.TaskSetVal, 100)
 
-	time.Sleep(20 * time.Second)
+		time.Sleep(15 * time.Second)
 
-	// Check if our entities have been updated
-	var models []tasks.Model
-	_, err = db.Query("test-model").GetAll(db.Context, &models)
-	if err != nil {
-		t.Fatalf("Unable to GetAll models: %v", err)
-	}
-
-	if len(models) != 10 {
-		t.Fatalf("10 models not inserted into datastore: %v", len(models))
-	}
-
-	checkCountValue(t, models, 100)
-}
+		// Check if our entities have been updated
+		var models2 []tasks.Model
+		_, err := db.Query("set-val").GetAll(db.Context, &models2)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(len(models2)).To(Equal(10))
+		checkCountValue(models2, 100)
+	})
+})
