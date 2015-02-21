@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/davidtai/appenginetesting"
+	"github.com/zeekay/appenginetesting"
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/datastore/parallel"
