@@ -1,4 +1,4 @@
-package integration
+package task_integration_test
 
 import (
 	"io/ioutil"
