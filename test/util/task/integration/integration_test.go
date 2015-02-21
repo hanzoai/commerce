@@ -13,7 +13,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/davidtai/appenginetesting"
+	"github.com/zeekay/appenginetesting"
 
 	"crowdstart.io/util/log"
 )
