@@ -21,7 +21,8 @@ type Response struct {
 	*http.Response
 }
 
-func (r *Response) Body() (body string, err error) {
+// Returns body as a string
+func (r *Response) Text() (body string, err error) {
 	defer r.Response.Body.Close()
 
 	if bytes, err := ioutil.ReadAll(r.Response.Body); err != nil {
