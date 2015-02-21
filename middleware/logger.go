@@ -35,30 +35,9 @@ func ErrorLoggerT(typ uint32) gin.HandlerFunc {
 	}
 }
 
-// Try and detect verbose flag set on request, we only log DEBUG level in
-// production if verbose=1 is added as a query param.
-func DetectVerbose(c *gin.Context) bool {
-	query := c.Request.URL.Query()
-
-	// We check for both v=true or verbose=true
-	param := query.Get("v")
-	if param == "" {
-		param = query.Get("verbose")
-	}
-
-	if param != "" && (param == "1" || param == "true") {
-		return true
-	}
-
-	return false
-}
-
 func Log(c *gin.Context) {
 	// Start timer
 	start := time.Now()
-
-	// Set verbose mode on context for logger.
-	c.Set("verbose", DetectVerbose(c))
 
 	// Process request
 	c.Next()

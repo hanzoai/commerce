@@ -31,6 +31,7 @@ func Init() {
 	// Handler for HTTP registered tasks
 	router.GET("/task/:name", func(c *gin.Context) {
 		name := c.Params.ByName("name")
+
 		task.Run(c, name)
 		c.String(200, "Running task "+name)
 	})
