@@ -1,4 +1,4 @@
-package salesforce
+package tasks
 
 import (
 	"time"
@@ -11,7 +11,9 @@ import (
 	"crowdstart.io/models"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/queries"
-	"crowdstart.io/util/tasks"
+	"crowdstart.io/util/task"
+
+	. "crowdstart.io/thirdparty/salesforce"
 )
 
 // Deferred Tasks
@@ -166,8 +168,8 @@ func CallPullUpdatedTask(c appengine.Context) {
 }
 
 func init() {
-	tasks.Register("import-users-to-salesforce", ImportUsers)
-	tasks.Register("import-orders-to-salesforce", ImportOrders)
-	tasks.Register("import-product-variants-to-salesforce", ImportProductVariant)
-	tasks.Register("sync-salesforce", CallPullUpdatedTask)
+	task.Register("import-users-to-salesforce", ImportUsers)
+	task.Register("import-orders-to-salesforce", ImportOrders)
+	task.Register("import-product-variants-to-salesforce", ImportProductVariant)
+	task.Register("sync-salesforce", CallPullUpdatedTask)
 }
