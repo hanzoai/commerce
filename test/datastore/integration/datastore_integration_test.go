@@ -1,4 +1,4 @@
-package integration
+package datastore_integration_test
 
 import (
 	"path/filepath"
