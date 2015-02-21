@@ -9,11 +9,11 @@ import (
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/datastore/parallel"
-	"crowdstart.io/test/datastore/integration/worker"
+	"crowdstart.io/test/datastore/integration/tasks"
 	"crowdstart.io/util/log"
 )
 
-func checkCountValue(t *testing.T, models []worker.Model, v int) {
+func checkCountValue(t *testing.T, models []tasks.Model, v int) {
 	for _, model := range models {
 		if model.Count != v {
 			t.Fatalf("Model.Count is %v, not %v.", model.Count, v)
@@ -51,19 +51,19 @@ func TestParallel(t *testing.T) {
 
 	// Prepoulate database with 100 entities
 	for i := 0; i < 10; i++ {
-		model := &worker.Model{}
+		model := &tasks.Model{}
 		if _, err := db.Put("test-model", model); err != nil {
 			t.Fatalf("Failed to insert initial models: %v", err)
 		}
 	}
 
 	// Run task in parallel
-	parallel.Run(ctx, "test-model", 2, worker.TaskPlus1)
+	parallel.Run(ctx, "test-model", 2, tasks.TaskPlus1)
 
 	time.Sleep(20 * time.Second)
 
 	// Check if our entities have been updated
-	var models []worker.Model
+	var models []tasks.Model
 	_, err = db.Query("test-model").GetAll(db.Context, &models)
 	if err != nil {
 		t.Fatalf("Unable to GetAll models: %v", err)
@@ -103,19 +103,19 @@ func TestParallelExtraParams(t *testing.T) {
 
 	// Prepoulate database with 100 entities
 	for i := 0; i < 10; i++ {
-		model := &worker.Model{}
+		model := &tasks.Model{}
 		if _, err := db.Put("test-model", model); err != nil {
 			t.Fatalf("Failed to insert initial models: %v", err)
 		}
 	}
 
 	// Run task in parallel
-	parallel.Run(ctx, "test-model", 2, worker.TaskSetVal, 100)
+	parallel.Run(ctx, "test-model", 2, tasks.TaskSetVal, 100)
 
 	time.Sleep(20 * time.Second)
 
 	// Check if our entities have been updated
-	var models []worker.Model
+	var models []tasks.Model
 	_, err = db.Query("test-model").GetAll(db.Context, &models)
 	if err != nil {
 		t.Fatalf("Unable to GetAll models: %v", err)
