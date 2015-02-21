@@ -1,4 +1,4 @@
-# crowdstart [ ![Codeship Status for verus-io/crowdstart](https://www.codeship.io/projects/6d197000-4232-0132-a221-0608fd86df6c/status)](https://www.codeship.io/projects/44348)
+# crowdstart [![Circle CI](https://circleci.com/gh/verus-io/crowdstart.svg?style=svg&circle-token=fbc175690392a3aa50b991100261397e56e8f29d)](https://circleci.com/gh/verus-io/crowdstart)
 Crowdfunding platform.
 
 ## Development
