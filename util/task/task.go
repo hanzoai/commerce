@@ -62,9 +62,7 @@ func Register(name string, tasks ...interface{}) {
 	}
 
 	// Append tasks
-	_tasks = append(_tasks, tasks...)
-
-	Registry[name] = _tasks
+	Registry[name] = append(_tasks, tasks...)
 }
 
 // Run task
