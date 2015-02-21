@@ -1,0 +1,44 @@
+application: crowdstart-io
+module: default
+
+runtime: go
+api_version: go1
+threadsafe: true
+
+automatic_scaling:
+  max_concurrent_requests: 100
+
+inbound_services:
+- warmup
+
+handlers:
+- url: /_ah/queue/go/delay
+  script: _go_app
+
+- url: /task/.*
+  script: _go_app
+
+- url: /assets/.*
+  script: _go_app
+
+- url: /static/.*
+  script: _go_app
+
+- url: /humans.txt
+  static_files: ../../static/humans.txt
+  upload: ../../static/humans.txt
+
+- url: /robots.txt
+  static_files: ../../static/robots.txt
+  upload: ../../static/robots.txt
+
+- url: /apple-touch-icon.png
+  static_files: ../../static/apple-touch-icon.png
+  upload: ../../static/apple-touch-icon.png
+
+- url: /apple-touch-icon-precomposed.png
+  static_files: ../../static/apple-touch-icon-precomposed.png
+  upload: ../../static/apple-touch-icon-precomposed.png
+
+- url: /*
+  script: _go_app

@@ -33,7 +33,7 @@ func TestParallel(t *testing.T) {
 		Modules: []appenginetesting.ModuleConfig{
 			{
 				Name: "default",
-				Path: filepath.Join("../../../config/development/app.yaml"),
+				Path: filepath.Join("../../../config/test/app.yaml"),
 			},
 		},
 	})
