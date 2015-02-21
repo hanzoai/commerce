@@ -12,13 +12,13 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models"
-	"crowdstart.io/thirdparty/salesforce"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/queries"
 	"crowdstart.io/util/template"
 
 	mandrill "crowdstart.io/thirdparty/mandrill/tasks"
+	salesforce "crowdstart.io/thirdparty/salesforce/tasks"
 )
 
 // GET /order/:token
