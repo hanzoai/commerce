@@ -24,11 +24,14 @@ var (
 
 // Setup appengine context
 var _ = BeforeSuite(func() {
-	var err error
-	ctx, err = ae.NewContext(ae.Options{
+	_ctx, err := ae.NewContext(ae.Options{
+		Modules:    []string{"default"},
 		TaskQueues: []string{"default"},
 	})
 	Expect(err).NotTo(HaveOccurred())
+
+	// Save reference to appengine.Context
+	ctx = _ctx
 
 	// Wait for task to run
 	time.Sleep(5 * time.Second)
