@@ -217,16 +217,16 @@ tools:
 
 # TEST/ BENCH
 test:
-	$(ginkgo) -r=true --randomizeAllSpecs -p=true -progress=true $(verbose) -skipMeasurements=true -skipPackage=integration $(test_filter)
+	@$(ginkgo) -r=true --randomizeAllSpecs -p=true -progress=true $(verbose) -skipMeasurements=true -skipPackage=integration $(test_filter)
 
 test-integration:
-	$(ginkgo) -r=true --randomizeAllSpecs -p=true -progress=true $(verbose)-skipMeasurements=true -focus=integration
+	@$(ginkgo) -r=true --randomizeAllSpecs -p=true -progress=true $(verbose)-skipMeasurements=true -focus=integration
 
 test-watch:
-	$(ginkgo) watch -r=true -progress=true $(verbose) -skipMeasurements=true -skipPackage=integration $(test_filter)
+	@$(ginkgo) watch -r=true -progress=true $(verbose) -skipMeasurements=true -skipPackage=integration $(test_filter)
 
 bench:
-	$(ginkgo) -r=true --randomizeAllSpecs -p=true -progress=true $(verbose) -skipPackage=integration $(test_filter)
+	@$(ginkgo) -r=true --randomizeAllSpecs -p=true -progress=true $(verbose) -skipPackage=integration $(test_filter)
 
 test-ci:
 	$(ginkgo) -r=true --randomizeAllSpecs --randomizeSuites --failOnPending --cover --trace --compilers=2
@@ -269,7 +269,7 @@ deploy-appengine-ci: assets-minified
 
 # EXPORT / Usage: make datastore-export kind=user
 datastore-export:
-	mkdir -p _export/ && \
+	@mkdir -p _export/ && \
 	bulkloader.py --download \
 				  --bandwidth_limit 1000000000 \
 				  --rps_limit 10000 \
@@ -288,7 +288,7 @@ datastore-export:
 
 # IMPORT / Usage: make datastore-import kind=user file=user.csv
 datastore-import:
-	appcfg.py upload_data --bandwidth_limit 1000000000 \
+	@appcfg.py upload_data --bandwidth_limit 1000000000 \
 						  --rps_limit 10000 \
 						  --batch_size 250 \
 						  --http_limit 200 \
@@ -301,7 +301,7 @@ datastore-import:
 
 # Generate config for use with datastore-export target
 datastore-config:
-	bulkloader.py --create_config \
+	@bulkloader.py --create_config \
 				  --url=$(datastore_admin_url) \
 				  --filename=bulkloader.yaml
 
