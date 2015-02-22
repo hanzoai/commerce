@@ -18,7 +18,7 @@ import (
 	"crowdstart.io/util/log"
 )
 
-func TestSalesforce(t *testing.T) {
+func Test(t *testing.T) {
 	log.SetVerbose(testing.Verbose())
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "salesforce")

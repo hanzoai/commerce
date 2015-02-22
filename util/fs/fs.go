@@ -1,18 +1,18 @@
 package fs
 
 import (
-	"log"
 	"io/ioutil"
+	"log"
 	"strings"
 )
 
-func ReadFile(path string) string {
+func ReadFile(path string) []byte {
 	dat, err := ioutil.ReadFile(path)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	return string(dat)
+	return dat
 }
 
 func SplitLines(s string) []string {
@@ -20,7 +20,7 @@ func SplitLines(s string) []string {
 }
 
 func ReadLines(path string) []string {
-	return SplitLines(ReadFile(path))
+	return SplitLines(string(ReadFile(path)))
 }
 
 func WriteFile(path string, data string) {
