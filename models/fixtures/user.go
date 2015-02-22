@@ -4,18 +4,19 @@ import (
 	"time"
 
 	"appengine"
-	"appengine/delay"
 
 	"code.google.com/p/go.crypto/bcrypt"
+	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/datastore"
 	. "crowdstart.io/models"
-
 	"crowdstart.io/util/queries"
+	"crowdstart.io/util/task"
 )
 
-var testUsers = delay.Func("fixtures-test-users", func(c appengine.Context) {
-	db := datastore.New(c)
+var testUsers = task.Func("fixtures-test-users", func(ctx *gin.Context) {
+	db := datastore.New(ctx)
+	c := db.Context
 	q := queries.New(c)
 
 	// Add default test user
@@ -56,7 +57,8 @@ var testUsers = delay.Func("fixtures-test-users", func(c appengine.Context) {
 	db.PutKind("order", order.Id, &order)
 })
 
-var skullyUser = delay.Func("fixtures-skully-user", func(c appengine.Context) {
+var skullyUser = task.Func("fixtures-skully-user", func(g *gin.Context) {
+	c := g.MustGet("appengine")
 	q := queries.New(c)
 
 	// Add SKULLY user
@@ -71,7 +73,7 @@ var skullyUser = delay.Func("fixtures-skully-user", func(c appengine.Context) {
 	})
 })
 
-var skullyCampaign = delay.Func("fixtures-skully-campaign", func(c appengine.Context) {
+var skullyCampaign = task.Func("fixtures-skully-campaign", func(c *gin.Context) {
 	db := datastore.New(c)
 
 	// Default Campaign (SKULLY)
