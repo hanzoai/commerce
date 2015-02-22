@@ -1,7 +1,6 @@
 package task_integration_test
 
 import (
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -10,41 +9,29 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/zeekay/appenginetesting"
-
-	"crowdstart.io/util/log"
+	"crowdstart.io/util/test/ae"
+	"crowdstart.io/util/test/ginkgo"
 	"crowdstart.io/util/test/httpclient"
 )
 
 func Test(t *testing.T) {
-	log.SetVerbose(testing.Verbose())
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "util/task/integration")
+	ginkgo.SetupTest("util/task/integration", t)
 }
 
 var (
-	ctx *appenginetesting.Context
+	ctx ae.Context
 )
 
-// Setup appengine context and datastore before tests
+// Setup appengine context
 var _ = BeforeSuite(func() {
 	var err error
-
-	//Spin up an appengine dev server with the default module
-	ctx, err = appenginetesting.NewContext(&appenginetesting.Options{
-		AppId:      "crowdstart-io",
-		Debug:      appenginetesting.LogWarning,
-		Testing:    GinkgoT(),
+	ctx, err = ae.NewContext(ae.Options{
 		TaskQueues: []string{"default"},
-		Modules: []appenginetesting.ModuleConfig{
-			{
-				Name: "default",
-				Path: filepath.Join("../../../../config/test/app.yaml"),
-			},
-		},
 	})
-
 	Expect(err).NotTo(HaveOccurred())
+
+	// Wait for task to run
+	time.Sleep(5 * time.Second)
 })
 
 // Tear-down appengine context
