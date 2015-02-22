@@ -8,10 +8,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/zeekay/go-logging"
-	// "github.com/davecgh/go-spew/spew"
 
-	"crowdstart.io/config"
-	"crowdstart.io/thirdparty/sentry"
+	// "github.com/davecgh/go-spew/spew"
 )
 
 // Custom logger
@@ -29,37 +27,56 @@ func (l *Logger) Verbose() bool {
 	return l.verbose
 }
 
-// Process args, setting app engine context if passed one.
-func (l *Logger) setContext(args ...interface{}) []interface{} {
-	if len(args) == 0 {
-		return args
-	}
-
-	// Appengine context is last argument
-	ctx := args[len(args)-1]
-
-	// Set AppEngine context on logging backend if we have one
+// Check if we've been pased a gin or app engine context
+func (l *Logger) detectContext(ctx interface{}) {
 	switch ctx := ctx.(type) {
 	case *gin.Context:
-		appengineContext := ctx.MustGet("appengine").(appengine.Context)
-		l.appengineBackend.context = appengineContext
-		l.appengineBackend.requestURI = ctx.Request.RequestURI
-		l.appengineBackend.detectVerbose()
-		args = args[:len(args)-1]
+		// Get App Engine from session
+		l.appengineBackend.context = ctx.MustGet("appengine").(appengine.Context)
+
+		// Get verbose from session
+		if v, err := ctx.Get("verbose"); err != nil {
+			if verbose, ok := v.(bool); ok {
+				l.verbose = verbose
+			}
+		}
+
+		// Request URI is useful for logging
+		if ctx.Request != nil {
+			l.appengineBackend.requestURI = ctx.Request.RequestURI
+		}
 	case appengine.Context:
 		l.appengineBackend.context = ctx
-		l.appengineBackend.detectVerbose()
-		args = args[:len(args)-1]
 	default:
 		l.appengineBackend.context = nil
 	}
+}
 
-	// Last/second to last argument MIGHT be an error
+// Check if error was passed as last argument
+func (l *Logger) detectError(args []interface{}) {
 	if len(args) > 0 {
 		if err, ok := args[len(args)-1].(error); ok {
 			l.appengineBackend.error = err
 		}
 	}
+}
+
+// Process args, setting app engine context if passed one.
+func (l *Logger) parseArgs(args ...interface{}) []interface{} {
+	if len(args) == 0 {
+		return args
+	}
+
+	// Check if we've been passed an App Engine or Gin context
+	l.detectContext(args[len(args)-1])
+
+	// Remove context from args if we were passed one
+	if l.appengineBackend.context != nil {
+		args = args[:len(args)-1]
+	}
+
+	// Last non-context argument might be an error.
+	l.detectError(args)
 
 	return args
 }
@@ -70,25 +87,6 @@ type AppengineBackend struct {
 	error      error
 	requestURI string
 	verbose    bool
-}
-
-// Try and detect verbose flag set on request, we only log DEBUG level in
-// production if verbose=1 is added as a query param.
-func (b AppengineBackend) detectVerbose() {
-	if b.context == nil {
-		return
-	}
-
-	// Force verbose for now
-	b.verbose = true
-	return
-
-	// // Check query for v=1 param
-	// if strings.Contains(b.requestURI, "v=1") {
-	// 	b.verbose = true
-	// }
-
-	// return
 }
 
 func (b AppengineBackend) Verbose() bool {
@@ -116,11 +114,8 @@ func (b AppengineBackend) logToAppEngine(level logging.Level, formatted string) 
 		b.context.Warningf(formatted)
 	case logging.ERROR:
 		b.context.Errorf(formatted)
-		// TODO: Clean up code base to make this feasible
-		// b.logToSentry(level, formatted)
 	case logging.CRITICAL:
 		b.context.Criticalf(formatted)
-		// b.logToSentry(level, formatted)
 	case logging.INFO:
 		b.context.Infof(formatted)
 	default:
@@ -130,19 +125,6 @@ func (b AppengineBackend) logToAppEngine(level logging.Level, formatted string) 
 	}
 
 	return nil
-}
-
-func (b AppengineBackend) logToSentry(level logging.Level, formatted string) {
-	// Log to sentry asynchronously
-	if config.SentryDSN != "" {
-		if b.error != nil {
-			exc := sentry.NewException(b.error)
-			sentry.CaptureException.Call(b.context, b.requestURI, exc)
-		} else {
-			exc := sentry.NewExceptionFromStack(formatted)
-			sentry.CaptureException.Call(b.context, b.requestURI, exc)
-		}
-	}
 }
 
 // Log method that customizes logging behavior for AppEngine dev server / production
@@ -184,10 +166,12 @@ func New() *Logger {
 
 var std = New()
 
-func Dump(args ...interface{}) {
-	// spew.Config.Indent = "  "
-	// dump := spew.Sdump(args...)
-	// std.Dump("\n%s", dump)
+func SetVerbose(verbose bool) {
+	std.SetVerbose(verbose)
+}
+
+func Verbose() bool {
+	return std.Verbose()
 }
 
 func Debug(formatOrError interface{}, args ...interface{}) {
@@ -195,13 +179,13 @@ func Debug(formatOrError interface{}, args ...interface{}) {
 		return
 	}
 
+	args = std.parseArgs(args...)
+
 	switch v := formatOrError.(type) {
 	case error:
 		args = append([]interface{}{v}, args...)
-		args = std.setContext(args...)
 		std.Debug("%s", args...)
 	case string:
-		args = std.setContext(args...)
 		std.Debug(v, args...)
 	}
 }
@@ -211,69 +195,69 @@ func Info(formatOrError interface{}, args ...interface{}) {
 		return
 	}
 
+	args = std.parseArgs(args...)
+
 	switch v := formatOrError.(type) {
 	case error:
 		args = append([]interface{}{v}, args...)
-		args = std.setContext(args...)
 		std.Info("%s", args...)
 	case string:
-		args = std.setContext(args...)
 		std.Info(v, args...)
 	}
 }
 
 func Warn(formatOrError interface{}, args ...interface{}) {
+	args = std.parseArgs(args...)
+
 	switch v := formatOrError.(type) {
 	case error:
 		args = append([]interface{}{v}, args...)
-		args = std.setContext(args...)
 		std.Warning("%s", args...)
 	case string:
-		args = std.setContext(args...)
 		std.Warning(v, args...)
 	}
 }
 
 func Error(formatOrError interface{}, args ...interface{}) {
+	args = std.parseArgs(args...)
+
 	switch v := formatOrError.(type) {
 	case error:
 		args = append([]interface{}{v}, args...)
-		args = std.setContext(args...)
 		std.Error("%s", args...)
 	case string:
-		args = std.setContext(args...)
 		std.Error(v, args...)
 	}
 }
 
 func Fatal(formatOrError interface{}, args ...interface{}) {
+	args = std.parseArgs(args...)
+
 	switch v := formatOrError.(type) {
 	case error:
 		args = append([]interface{}{v}, args...)
-		args = std.setContext(args...)
 		std.Fatalf("%s", args...)
 	case string:
-		args = std.setContext(args...)
 		std.Fatalf(v, args...)
 	}
 }
 
 func Panic(formatOrError interface{}, args ...interface{}) {
+	args = std.parseArgs(args...)
+
 	switch v := formatOrError.(type) {
 	case error:
 		args = append([]interface{}{v}, args...)
-		args = std.setContext(args...)
 		std.Panicf("%s", args...)
 	case string:
-		args = std.setContext(args...)
 		std.Panicf(v, args...)
 	}
 }
 
-func SetVerbose(verbose bool) {
-	std.SetVerbose(verbose)
-}
-
-func Verbose() bool {
-	return std.Verbose()
+// Since spew uses unsafe, we can't use it in production. As a result we leave
+// this commented out unless needed.
+func Dump(args ...interface{}) {
+	// spew.Config.Indent = "  "
+	// dump := spew.Sdump(args...)
+	// std.Dump("\n%s", dump)
 }

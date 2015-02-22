@@ -8,17 +8,16 @@ import (
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
+	"crowdstart.io/util/log"
 
 	"github.com/zeekay/aetest"
 )
 
-func TestModels(t *testing.T) {
+func Test(t *testing.T) {
+	log.SetVerbose(testing.Verbose())
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "user model")
-
 }
-
-// Pulled in by models_test.go
 
 var (
 	ctx aetest.Context

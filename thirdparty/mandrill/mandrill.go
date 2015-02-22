@@ -10,13 +10,11 @@ import (
 	"os"
 
 	"appengine"
-	"appengine/delay"
 	"appengine/urlfetch"
 
 	"crowdstart.io/config"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
-	"crowdstart.io/util/template"
 )
 
 const root = "http://mandrillapp.com/api/1.0"
@@ -149,13 +147,13 @@ func NewSendTemplateReq() (req SendTemplateReq) {
 func GetTemplate(filename string) string {
 	wd, _ := os.Getwd()
 	log.Info(wd)
-	b, err := ioutil.ReadFile(filename)
+	bytes, err := ioutil.ReadFile(filename)
 	if err != nil {
 		log.Panic(err.Error())
 		return ""
 	}
 
-	return string(b)
+	return string(bytes)
 }
 
 // PingMandrill checks if our credentials/url are okay
@@ -241,48 +239,3 @@ func Send(ctx appengine.Context, req *SendReq) error {
 
 	return errors.New("Failed to send email.")
 }
-
-var SendTemplateAsync = delay.Func("send-template-email", func(ctx appengine.Context, template, toEmail, toName, subject string, vars ...Var) {
-	req := NewSendTemplateReq()
-	req.AddRecipient(toEmail, toName)
-
-	req.Message.FromEmail = config.Mandrill.FromEmail
-	req.Message.FromName = config.Mandrill.FromName
-	req.Message.Subject = subject
-	req.TemplateName = template
-
-	for _, v := range vars {
-		req.AddMergeVar(v)
-	}
-
-	log.Debug("Sending email to %s", toEmail, ctx)
-
-	// Send template
-	if err := SendTemplate(ctx, &req); err != nil {
-		log.Error("Failed to send email: %v", err, ctx)
-	}
-})
-
-// Helper that will render a template and send it as body for
-// transactional-template email.
-var SendTransactional = delay.Func("send-template-email", func(ctx appengine.Context, templateName, toEmail, toName, subject string, args ...interface{}) {
-	req := NewSendTemplateReq()
-	req.AddRecipient(toEmail, toName)
-
-	req.Message.FromEmail = config.Mandrill.FromEmail
-	req.Message.FromName = config.Mandrill.FromName
-	req.Message.Subject = subject
-	req.TemplateName = "transactional-template"
-
-	log.Debug("Sending email to %s", toEmail, ctx)
-
-	// Render body
-	body := template.RenderString(templateName, args...)
-
-	req.AddMergeVar(Var{"BODY", body})
-
-	// Send template
-	if err := SendTemplate(ctx, &req); err != nil {
-		log.Error("Failed to send email: %v", err, ctx)
-	}
-})
