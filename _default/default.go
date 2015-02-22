@@ -6,7 +6,6 @@ import (
 	"crowdstart.io/config"
 	"crowdstart.io/middleware"
 	"crowdstart.io/util/exec"
-	"crowdstart.io/util/log"
 	"crowdstart.io/util/router"
 	"crowdstart.io/util/task"
 	"crowdstart.io/util/template"
@@ -20,10 +19,6 @@ import (
 	_ "crowdstart.io/thirdparty/mandrill/tasks"
 	_ "crowdstart.io/thirdparty/salesforce/tasks"
 )
-
-var Task = task.Func("foo", func(c *gin.Context) {
-	log.Debug("foo")
-})
 
 func Init() {
 	router := router.New("default")

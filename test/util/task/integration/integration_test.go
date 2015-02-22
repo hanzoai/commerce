@@ -47,7 +47,7 @@ func init() {
 			Expect(res.StatusCode).To(Equal(200))
 
 			// Wait for task to run
-			time.Sleep(1 * time.Second)
+			time.Sleep(2 * time.Second)
 
 			// Check if memcache is set
 			foo, err := memcache.Get(ctx, "foo")
