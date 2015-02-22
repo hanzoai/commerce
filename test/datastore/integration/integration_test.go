@@ -18,10 +18,7 @@ func Test(t *testing.T) {
 	ginkgo.Setup("datastore/integration", t)
 }
 
-var (
-	ctx ae.Context
-	db  *datastore.Datastore
-)
+var ctx ae.Context
 
 var _ = BeforeSuite(func() {
 	ctx = ae.NewContext(ae.Options{
@@ -30,9 +27,7 @@ var _ = BeforeSuite(func() {
 	})
 
 	// Wait for devappserver to spin up.
-	time.Sleep(2 * time.Second)
-
-	db = datastore.New(ctx)
+	time.Sleep(3 * time.Second)
 })
 
 var _ = AfterSuite(func() {
@@ -48,6 +43,8 @@ func checkCountValue(models []tasks.Model, v int) {
 var _ = Describe("datastore/parallel", func() {
 	Context("With task", func() {
 		It("Should run tasks in parallel", func() {
+			db := datastore.New(ctx)
+
 			// Prepoulate database with 10 entities
 			for i := 0; i < 10; i++ {
 				model := &tasks.Model{}
@@ -71,6 +68,8 @@ var _ = Describe("datastore/parallel", func() {
 
 	Context("With task taking optional argument", func() {
 		It("Should run tasks in parallel", func() {
+			db := datastore.New(ctx)
+
 			// Prepoulate database with 10 entities
 			for i := 0; i < 10; i++ {
 				model := &tasks.Model{}
