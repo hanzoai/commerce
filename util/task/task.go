@@ -2,6 +2,7 @@ package task
 
 import (
 	"reflect"
+	"sort"
 
 	"appengine"
 	"appengine/delay"
@@ -71,6 +72,7 @@ func Names() []string {
 	for k, _ := range Registry {
 		tasks = append(tasks, k)
 	}
+	sort.Strings(tasks)
 	return tasks
 }
 
