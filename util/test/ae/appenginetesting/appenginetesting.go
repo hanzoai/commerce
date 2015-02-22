@@ -6,7 +6,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	"github.com/zeekay/appenginetesting"
 
-	"crowdstart.io/util/test/ae/context"
 	"crowdstart.io/util/test/ae/options"
 )
 
@@ -29,7 +28,7 @@ func addModule(opts *appenginetesting.Options, moduleName string) {
 }
 
 // Create a new *appenginetesting.Context
-func New(opts options.Options) (context.Context, error) {
+func New(opts options.Options) (*appenginetesting.Context, error) {
 	// Convert options.Options into *appenginetesting.Options
 	_opts := &appenginetesting.Options{
 		AppId:      opts.AppId,

@@ -7,13 +7,13 @@ import (
 	"crowdstart.io/util/test/ae/options"
 )
 
-// Aliased for ease of use.
+// aliased for simplicity
 type Context context.Context
 
 func NewContext(opts Options) (Context, error) {
 	opts.SetDefaults()
 
-	if len(opts.TaskQueues) == 0 {
+	if len(opts.TaskQueues) > 0 {
 		return appenginetesting.New(options.Options(opts))
 	} else {
 		return aetest.New(options.Options(opts))
