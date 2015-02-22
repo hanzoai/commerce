@@ -9,6 +9,8 @@ import (
 
 // Create a new *aetest.Context
 func New(opts options.Options) (context.Context, error) {
+	opts.SetDefaults()
+
 	_opts := &aetest.Options{
 		StronglyConsistentDatastore: !opts.DisableStrongConsistency,
 	}
