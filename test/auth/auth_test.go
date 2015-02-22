@@ -21,12 +21,15 @@ func Test(t *testing.T) {
 const kind = "user"
 
 var (
-	ctx = ae.NewContext()
-	c   = gin.NewContext(ctx)
+	ctx ae.Context
 	db  *datastore.Datastore
 )
 
 func init() {
+	BeforeSuite(func() {
+		ctx = ae.NewContext()
+		db = datastore.New(ctx)
+	})
 	AfterSuite(func() {
 		ctx.Close()
 	})
@@ -34,6 +37,8 @@ func init() {
 	Describe("NewUser", func() {
 		Context("Registering with unique email", func() {
 			It("should not error", func() {
+				c := gin.NewContext(ctx)
+
 				regForm := auth.RegistrationForm{
 					User:     models.User{Email: "a@example.com"},
 					Password: "hunter2",
@@ -45,6 +50,8 @@ func init() {
 
 		Context("Query api get", func() {
 			It("should not error", func() {
+				c := gin.NewContext(ctx)
+
 				regForm := auth.RegistrationForm{
 					User:     models.User{Email: "b@example.com"},
 					Password: "hunter2",
@@ -61,6 +68,8 @@ func init() {
 
 		Context("Re-registering", func() {
 			It("should error", func() {
+				c := gin.NewContext(ctx)
+
 				regForm := auth.RegistrationForm{
 					User:     models.User{Email: "b@example.com"},
 					Password: "hunter2",
