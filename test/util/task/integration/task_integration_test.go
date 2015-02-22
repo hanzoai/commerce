@@ -29,7 +29,7 @@ func init() {
 		})
 
 		// Wait for task to run
-		time.Sleep(5 * time.Second)
+		time.Sleep(2 * time.Second)
 	})
 
 	// Tear-down appengine context
