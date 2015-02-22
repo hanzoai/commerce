@@ -19,7 +19,6 @@ type Client struct {
 }
 
 func (c *Client) determineBaseURL() {
-
 	moduleHost, err := getModuleHost(c.context, c.moduleName)
 	if err != nil {
 		log.Panic("Unable to get host for module '%v': %v", c.moduleName, err)

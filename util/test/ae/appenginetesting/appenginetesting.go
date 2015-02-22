@@ -29,6 +29,8 @@ func addModule(opts *appenginetesting.Options, moduleName string) {
 
 // Create a new *appenginetesting.Context
 func New(opts options.Options) (*appenginetesting.Context, error) {
+	opts.SetDefaults()
+
 	// Convert options.Options into *appenginetesting.Options
 	_opts := &appenginetesting.Options{
 		AppId:      opts.AppId,

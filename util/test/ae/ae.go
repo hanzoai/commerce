@@ -10,27 +10,29 @@ import (
 
 // aliased for simplicity
 type Context context.Context
+type Options options.Options
 
 func NewContext(opts ...Options) Context {
-	var opt Options
-	var ctx Context
-	var err error
+	var (
+		_opts options.Options
+		ctx   Context
+		err   error
+	)
 
+	// Parse options
 	switch len(opts) {
 	case 0:
-		opt = Options{}
-		opt.SetDefaults()
+		_opts = _opts
 	case 1:
-		opt = opts[0]
-		opt.SetDefaults()
+		_opts = options.Options(opts[0])
 	default:
 		log.Panic("At most one ae.Options argument may be supplied.")
 	}
 
-	if len(opt.TaskQueues) > 0 {
-		ctx, err = appenginetesting.New(options.Options(opt))
+	if _opts.PreferAppengineTesting || len(_opts.TaskQueues) > 0 {
+		ctx, err = appenginetesting.New(_opts)
 	} else {
-		ctx, err = aetest.New(options.Options(opt))
+		ctx, err = aetest.New(_opts)
 	}
 
 	// Blow up if we couldn't get a context.
