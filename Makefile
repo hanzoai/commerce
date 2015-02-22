@@ -196,8 +196,7 @@ deps-go: .sdk .sdk/go .sdk/gpm .sdk/gopath/bin/ginkgo
 	chmod +x .sdk/gpm
 
 .sdk/gopath/bin/ginkgo:
-	$(goapp) get -u github.com/onsi/ginkgo/ginkgo && \
-	$(goapp) install github.com/onsi/ginkgo/ginkgo
+	$(gpm) install && $(goapp) install github.com/onsi/ginkgo/ginkgo
 
 # INSTALL
 install: install-deps
