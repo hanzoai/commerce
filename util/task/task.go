@@ -3,6 +3,7 @@ package task
 import (
 	"reflect"
 	"sort"
+	"strconv"
 
 	"appengine"
 	"appengine/delay"
@@ -54,7 +55,7 @@ func NewTask(fn interface{}) *Task {
 }
 
 // Register a new task
-func Register(name string, tasks ...interface{}) {
+func Register(name string, tasks ...interface{}) int {
 	// Create slice for task set
 	_tasks, ok := Registry[name]
 
@@ -64,6 +65,8 @@ func Register(name string, tasks ...interface{}) {
 
 	// Append tasks
 	Registry[name] = append(_tasks, tasks...)
+
+	return len(Registry[name])
 }
 
 // Returns a slice of task names
@@ -84,8 +87,8 @@ func Run(ctx *gin.Context, name string, args ...interface{}) {
 		log.Panic("Unknown task: %v", name, ctx)
 	}
 
-	for _, task := range tasks {
-		switch v := task.(type) {
+	for i := 0; i < len(tasks); i++ {
+		switch v := tasks[i].(type) {
 		case *delay.Function:
 			v.Call(middleware.GetAppEngine(ctx), args...)
 		case func(*gin.Context, ...interface{}):
@@ -102,23 +105,35 @@ func Run(ctx *gin.Context, name string, args ...interface{}) {
 	}
 }
 
-// Creates a new parallel datastore worker task, which will operate on a single
-// entity of a given kind at a time (but all of them eventually, in parallel).
+// Creates a new delay.Func which will call our fn with gin.Context, etc.
 func Func(name string, fn interface{}) *delay.Function {
 	task := NewTask(fn)
 
+	// Automatically register task
+	n := Register(name, task)
+
+	// Increment name for delayFn if this is a duplicate func
+	if n > 1 {
+		name = name + "-" + strconv.Itoa(n)
+	}
+
 	// Create actual delay func
 	delayFn := delay.Func(name, func(c appengine.Context, args ...interface{}) {
-		ctx := new(gin.Context)
+		var (
+			err error
+			ctx *gin.Context
+		)
 
 		// If passed a context, use that
 		if len(args) > 0 {
-			if _ctx, ok := args[0].(*fakecontext.Context); ok {
-				ctx, _ = _ctx.Context()
+			if fakectx, ok := args[0].(*fakecontext.Context); ok {
+				ctx, err = fakectx.Context()
+				if err != nil {
+					log.Warn("Enable to create context: %v", err)
+				}
+				// Remove context from args
+				args = args[:len(args)-1]
 			}
-
-			// Remove context from args
-			args = args[:len(args)-1]
 		}
 
 		// Ensure App Engine context is set on gin Context
@@ -138,9 +153,6 @@ func Func(name string, fn interface{}) *delay.Function {
 
 	// Save reference to delay function for easy access from Task
 	task.DelayFn = delayFn
-
-	// Auto-register with HTTP handler
-	Register(name, task)
 
 	return delayFn
 }
