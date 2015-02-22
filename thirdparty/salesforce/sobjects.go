@@ -835,7 +835,7 @@ func push(api SalesforceClient, p string, s SObjectSerializeable) error {
 	}
 
 	data := string(bytes[:])
-	log.Warn("Pushing Json: %v", data)
+	log.Debug("Pushing Json: %v", data)
 
 	if err = api.Request(method, path, data, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
 		return err
