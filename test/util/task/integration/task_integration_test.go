@@ -15,7 +15,7 @@ import (
 )
 
 func Test(t *testing.T) {
-	ginkgo.SetupTest("util/task/integration", t)
+	ginkgo.Setup("util/task/integration", t)
 }
 
 var ctx ae.Context
@@ -23,14 +23,10 @@ var ctx ae.Context
 func init() {
 	// Setup appengine context
 	BeforeSuite(func() {
-		_ctx, err := ae.NewContext(ae.Options{
+		ctx = ae.NewContext(ae.Options{
 			Modules:    []string{"default"},
 			TaskQueues: []string{"default"},
 		})
-		Expect(err).NotTo(HaveOccurred())
-
-		// Save reference to appengine.Context
-		ctx = _ctx
 
 		// Wait for task to run
 		time.Sleep(5 * time.Second)
