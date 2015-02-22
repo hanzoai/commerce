@@ -3,8 +3,8 @@ package appenginetesting
 import (
 	"path/filepath"
 
+	"github.com/davidtai/appenginetesting"
 	. "github.com/onsi/ginkgo"
-	"github.com/zeekay/appenginetesting"
 
 	"crowdstart.io/util/test/ae/options"
 )
