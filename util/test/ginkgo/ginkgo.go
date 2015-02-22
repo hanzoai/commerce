@@ -9,7 +9,7 @@ import (
 	"crowdstart.io/util/log"
 )
 
-func SetupTest(suiteName string, t *testing.T) {
+func Setup(suiteName string, t *testing.T) {
 	log.SetVerbose(testing.Verbose())
 	gomega.RegisterFailHandler(ginkgo.Fail)
 	ginkgo.RunSpecs(t, suiteName)
