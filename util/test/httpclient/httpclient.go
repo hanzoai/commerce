@@ -52,7 +52,7 @@ func (c *Client) determineBaseURL() {
 	// Build URL
 	moduleHost, err := getModuleHost(c.context, c.moduleName)
 	if err != nil {
-		log.Panic("Unable to get host for module: %v", c.moduleName)
+		log.Panic("Unable to get host for module '%v': %v", c.moduleName, err)
 	}
 
 	c.baseURL = "http://" + moduleHost
