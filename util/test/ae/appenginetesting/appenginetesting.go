@@ -2,6 +2,7 @@ package appenginetesting
 
 import (
 	"path/filepath"
+	"runtime"
 
 	"github.com/davidtai/appenginetesting"
 	. "github.com/onsi/ginkgo"
@@ -9,21 +10,33 @@ import (
 	"crowdstart.io/util/test/ae/options"
 )
 
+var projectDir string
+
 // Add a module to options
 func addModule(opts *appenginetesting.Options, moduleName string) {
 	var modulePath string
 
-	if moduleName == "default" {
-		modulePath = filepath.Join("../../../../config/test/app.yaml")
-	} else {
-		modulePath = filepath.Join("../../../../config", moduleName, "/app.dev.yaml")
+	// Get absolute path to project root
+	if projectDir == "" {
+		_, filename, _, _ := runtime.Caller(1)
+		projectDir = filepath.Join(filepath.Dir(filename), "../../../../")
 	}
 
+	// Default module is treated a bit differently, it's in config/ along with
+	// relevant configuration.
+	if moduleName == "default" {
+		modulePath = filepath.Join(projectDir, "config/test/app.yaml")
+	} else {
+		modulePath = filepath.Join(projectDir, moduleName, "/app.dev.yaml")
+	}
+
+	// Create configuration for this module
 	config := appenginetesting.ModuleConfig{
 		Name: moduleName,
 		Path: modulePath,
 	}
 
+	// Append to modules
 	opts.Modules = append(opts.Modules, config)
 }
 

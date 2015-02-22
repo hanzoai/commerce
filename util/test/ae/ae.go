@@ -26,7 +26,7 @@ func NewContext(opts ...Options) Context {
 	case 1:
 		_opts = options.Options(opts[0])
 	default:
-		log.Panic("At most one ae.Options argument may be supplied.")
+		log.Fatal("At most one ae.Options argument may be supplied.")
 	}
 
 	if _opts.PreferAppengineTesting || len(_opts.TaskQueues) > 0 {
@@ -37,7 +37,7 @@ func NewContext(opts ...Options) Context {
 
 	// Blow up if we couldn't get a context.
 	if err != nil {
-		log.Panic("Unable to get ae.Context: %v", err)
+		log.Fatal("Failed to create context: %v", err)
 	}
 
 	return ctx

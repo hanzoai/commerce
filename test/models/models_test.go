@@ -6,36 +6,30 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/zeekay/aetest"
-
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
-	"crowdstart.io/util/log"
+	"crowdstart.io/util/test/ae"
+	"crowdstart.io/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {
-	log.SetVerbose(testing.Verbose())
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "models")
+	ginkgo.Setup("models", t)
 }
 
 var (
-	ctx aetest.Context
+	ctx ae.Context
 	db  *datastore.Datastore
 )
 
 // Setup appengine context and datastore before tests
 var _ = BeforeSuite(func() {
-	var err error
-	ctx, err = aetest.NewContext(&aetest.Options{StronglyConsistentDatastore: true})
-	Expect(err).NotTo(HaveOccurred())
+	ctx = ae.NewContext()
 	db = datastore.New(ctx)
 })
 
 // Tear-down appengine context
 var _ = AfterSuite(func() {
-	err := ctx.Close()
-	Expect(err).NotTo(HaveOccurred())
+	ctx.Close()
 })
 
 type User struct {
