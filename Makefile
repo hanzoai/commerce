@@ -223,7 +223,7 @@ test-integration:
 	$(ginkgo) -r=true --randomizeAllSpecs --randomizeSuites -p=true -progress=true $(verbose)-skipMeasurements=true -focus=integration
 
 test-watch:
-	$(ginkgo) watch -r=true --randomizeAllSpecs --randomizeSuites -progress=true $(verbose) -skipMeasurements=true -skipPackage=integration $(test_filter)
+	$(ginkgo) watch -r=true -progress=true $(verbose) -skipMeasurements=true -skipPackage=integration $(test_filter)
 
 test-ci:
 	$(ginkgo) -r=true --randomizeAllSpecs --randomizeSuites --failOnPending --cover --trace --compilers=2
