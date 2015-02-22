@@ -65,6 +65,15 @@ func Register(name string, tasks ...interface{}) {
 	Registry[name] = append(_tasks, tasks...)
 }
 
+// Returns a slice of task names
+func Names() []string {
+	tasks := make([]string, 0)
+	for k, _ := range Registry {
+		tasks = append(tasks, k)
+	}
+	return tasks
+}
+
 // Run task
 func Run(ctx *gin.Context, name string, args ...interface{}) {
 	tasks, ok := Registry[name]
