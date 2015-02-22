@@ -168,8 +168,8 @@ func CallPullUpdatedTask(c appengine.Context) {
 }
 
 func init() {
-	task.Register("import-users-to-salesforce", ImportUsers)
-	task.Register("import-orders-to-salesforce", ImportOrders)
-	task.Register("import-product-variants-to-salesforce", ImportProductVariant)
-	task.Register("sync-salesforce", CallPullUpdatedTask)
+	task.Register("salesforce-sync-users", ImportUsers)
+	task.Register("salesforce-sync-orders", ImportOrders)
+	task.Register("salesforce-sync-product-variants", ImportProductVariant)
+	task.Register("salesforce-sync-updated", CallPullUpdatedTask)
 }
