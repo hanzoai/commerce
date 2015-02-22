@@ -5,4 +5,23 @@ type Options struct {
 	DisableStrongConsistency bool
 	Modules                  []string
 	TaskQueues               []string
+	PreferAppengineTesting   bool
+}
+
+func (c *Options) SetDefaults() {
+	if c.AppId == "" {
+		c.AppId = "crowdstart-io"
+	}
+
+	if c.TaskQueues == nil {
+		c.TaskQueues = make([]string, 0)
+	}
+
+	if c.Modules == nil {
+		c.Modules = make([]string, 0)
+	}
+
+	if len(c.Modules) == 0 {
+		c.Modules = append(c.Modules, "default")
+	}
 }
