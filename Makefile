@@ -117,9 +117,9 @@ endif
 
 # set v=1 to enable verbose mode
 ifeq ($(v), 1)
-	verbose = -v=true
+	test_verbose = -v=true
 else
-	verbose =
+	test_verbose =
 endif
 
 # set production=1 to set datastore export/import target to use production
@@ -130,9 +130,9 @@ else
 endif
 datastore_admin_url = https://datastore-admin-dot-$(datastore_app_id).appspot.com/_ah/remote_api
 
-test_filter := $(filter)
-ifdef test_filter
-	test_filter=--focus=$(filter)
+test_focus := $(focus)
+ifdef test_focus
+	test_focus=--focus=$(focus)
 endif
 
 export GOROOT := $(goroot)
@@ -217,16 +217,16 @@ tools:
 
 # TEST/ BENCH
 test:
-	@$(ginkgo) -r=true --randomizeAllSpecs -p=true -progress=true $(verbose) -skipMeasurements=true -skipPackage=integration $(test_filter)
+	@$(ginkgo) -r=true --randomizeAllSpecs -p=true -progress=true -skipMeasurements=true -skipPackage=integration $(test_focus) $(test_verbose)
 
 test-integration:
-	@$(ginkgo) -r=true --randomizeAllSpecs -p=true -progress=true $(verbose)-skipMeasurements=true -focus=integration
+	@$(ginkgo) -r=true --randomizeAllSpecs -p=true -progress=true -skipMeasurements=true -focus=integration $(test_verbose)
 
 test-watch:
-	@$(ginkgo) watch -r=true -progress=true $(verbose) -skipMeasurements=true -skipPackage=integration $(test_filter)
+	@$(ginkgo) watch -r=true -progress=true -skipMeasurements=true -skipPackage=integration $(test_focus) $(test_verbose)
 
 bench:
-	@$(ginkgo) -r=true --randomizeAllSpecs -p=true -progress=true $(verbose) -skipPackage=integration $(test_filter)
+	@$(ginkgo) -r=true --randomizeAllSpecs -p=true -progress=true -skipPackage=integration $(test_focus) $(test_verbose)
 
 test-ci:
 	$(ginkgo) -r=true --randomizeAllSpecs --randomizeSuites --failOnPending --cover --trace --compilers=2
