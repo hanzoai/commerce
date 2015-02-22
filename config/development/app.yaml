@@ -15,6 +15,9 @@ handlers:
 - url: /_ah/queue/go/delay
   script: _go_app
 
+- url: /tasks
+  script: _go_app
+
 - url: /task/.*
   script: _go_app
 

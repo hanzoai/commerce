@@ -106,9 +106,21 @@ sdk_install_extra = rm -rf $(sdk_path)/demos
 
 # find command differs between bsd/linux thus the two versions
 ifeq ($(os), linux)
-	packages = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' -printf '%h\n' | sort -u | sed -e 's/.\//crowdstart.io\//')
+	packages = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' \
+			   				  -not -path "./.sdk/*" \
+			   				  -not -path "./test/*" \
+			   				  -not -path "./assets/*" \
+			   				  -not -path "./static/*" \
+			   				  -not -path "./node_modules/*" \
+			   				  -printf '%h\n' | sort -u | sed -e 's/.\//crowdstart.io\//')
 else
-	packages = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' -print0 | xargs -0 -n1 dirname | sort --unique | sed -e 's/.\//crowdstart.io\//')
+	packages = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' \
+			   				  -not -path "./.sdk/*" \
+			   				  -not -path "./test/*" \
+			   				  -not -path "./assets/*" \
+			   				  -not -path "./static/*" \
+			   				  -not -path "./node_modules/*" \
+			   				  -print0 | xargs -0 -n1 dirname | sort --unique | sed -e 's/.\//crowdstart.io\//')
 	sdk_install_extra := $(sdk_install_extra) && \
 						 curl $(mtime_file_watcher) > $(sdk_path)/google/appengine/tools/devappserver2/mtime_file_watcher.py && \
 						 pip install macfsevents --upgrade

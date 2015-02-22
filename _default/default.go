@@ -6,6 +6,7 @@ import (
 	"crowdstart.io/config"
 	"crowdstart.io/middleware"
 	"crowdstart.io/util/exec"
+	"crowdstart.io/util/log"
 	"crowdstart.io/util/router"
 	"crowdstart.io/util/task"
 	"crowdstart.io/util/template"
@@ -20,15 +21,26 @@ import (
 	_ "crowdstart.io/thirdparty/salesforce/tasks"
 )
 
+var Task = task.Func("foo", func(c *gin.Context) {
+	log.Debug("foo")
+})
+
 func Init() {
 	router := router.New("default")
 
 	// Handler for HTTP registered tasks
+	router.GET("/tasks", func(c *gin.Context) {
+		template.Render(c, "tasks.html", "tasks", task.Names())
+	})
+
+	router.GET("/task/", func(c *gin.Context) {
+		c.Redirect(301, "/tasks")
+	})
+
 	router.GET("/task/:name", func(c *gin.Context) {
 		name := c.Params.ByName("name")
-
 		task.Run(c, name)
-		c.String(200, "Running task "+name)
+		template.Render(c, "task-running.html", "task", name)
 	})
 
 	if config.IsProduction {
