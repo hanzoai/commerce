@@ -8,6 +8,7 @@ import (
 	"crowdstart.io/util/exec"
 	"crowdstart.io/util/router"
 	"crowdstart.io/util/task"
+	"crowdstart.io/util/template"
 
 	// Imported for side-effect, needed to enable remote api calls
 	_ "appengine/remote_api"
@@ -42,38 +43,7 @@ func Init() {
 
 	// Development index links to modules
 	router.GET("/", func(c *gin.Context) {
-		c.Writer.Header().Set("Content-Type", "text/html; charset=utf-8")
-		c.Writer.WriteHeader(200)
-		c.Writer.Write([]byte(`
-		<html>
-			<head>
-				<title>crowdstart</title>
-				<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-				<style>
-					body {
-						font-family:monospace;
-						margin:20px
-					}
-
-					ul {
-
-					}
-				</style>
-			</head>
-			<body>
-				<h4>200 ok (crowdstart/1.0.0)</h4>
-
-				<ul>
-					<li><a href="/api/">api</a></li>
-					<li><a href="/checkout/">checkout</a></li>
-					<li><a href="/platform/">platform</a></li>
-					<li><a href="/preorder/">preorder</a></li>
-					<li><a href="/store/">store</a></li>
-				</ul>
-
-				<a href="http://localhost:8000">admin</a>
-			</body>
-		</html>`))
+		template.Render(c, "index.html")
 	})
 
 	// Warmup: automatically install fixtures, etc.
