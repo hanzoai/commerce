@@ -3,6 +3,8 @@ package httpclient
 import (
 	"io/ioutil"
 	"net/http"
+
+	"crowdstart.io/util/log"
 )
 
 type Response struct {
@@ -10,14 +12,13 @@ type Response struct {
 }
 
 // Returns body as a string
-func (r *Response) Text() (body string, err error) {
+func (r *Response) Text() string {
 	defer r.Response.Body.Close()
 
 	if bytes, err := ioutil.ReadAll(r.Response.Body); err != nil {
-		return "", err
+		log.Error("Unable to read response body: %v", err)
+		return ""
 	} else {
-		body = string(bytes)
+		return string(bytes)
 	}
-
-	return body, err
 }
