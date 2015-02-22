@@ -8,7 +8,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"github.com/zeekay/appenginetesting"
+	"github.com/davidtai/appenginetesting"
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/datastore/parallel"
