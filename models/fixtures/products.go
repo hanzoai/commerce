@@ -1,14 +1,13 @@
 package fixtures
 
 import (
-	"appengine"
-	"appengine/delay"
+	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
-	"crowdstart.io/util/log"
-
 	. "crowdstart.io/models"
+	"crowdstart.io/util/log"
+	"crowdstart.io/util/task"
 )
 
 func insertVariants(db *datastore.Datastore, variants []ProductVariant) {
@@ -19,7 +18,7 @@ func insertVariants(db *datastore.Datastore, variants []ProductVariant) {
 	}
 }
 
-var products = delay.Func("install-products", func(c appengine.Context) {
+var products = task.Func("install-products", func(c *gin.Context) {
 	log.Debug("Loading fixtures...")
 	db := datastore.New(c)
 

@@ -69,6 +69,11 @@ func Register(name string, tasks ...interface{}) int {
 	return len(Registry[name])
 }
 
+// Remove tasks registered under a given name.
+func Unregister(name string) {
+	delete(Registry, name)
+}
+
 // Returns a slice of task names
 func Names() []string {
 	tasks := make([]string, 0)
