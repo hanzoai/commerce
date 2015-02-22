@@ -1,8 +1,8 @@
 package options
 
 type Options struct {
-	AppId                       string
-	Modules                     []string
-	StronglyConsistentDatastore bool
-	TaskQueues                  []string
+	AppId                    string
+	DisableStrongConsistency bool
+	Modules                  []string
+	TaskQueues               []string
 }

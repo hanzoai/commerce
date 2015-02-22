@@ -7,39 +7,35 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/gin-gonic/gin"
-	"github.com/zeekay/aetest"
 
 	"crowdstart.io/auth"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
-	"crowdstart.io/util/log"
+	"crowdstart.io/util/test/ae"
+	"crowdstart.io/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {
-	log.SetVerbose(testing.Verbose())
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "auth")
+	ginkgo.Setup("auth", t)
 }
 
 const kind = "user"
 
 var (
-	ctx aetest.Context
+	ctx ae.Context
 	db  *datastore.Datastore
 	c   *gin.Context
 )
 
 var _ = BeforeSuite(func() {
-	var err error
-	ctx, err = aetest.NewContext(&aetest.Options{StronglyConsistentDatastore: true})
-	Expect(err).ToNot(HaveOccurred())
+	ctx = ae.NewContext()
+
 	c = &gin.Context{}
 	c.Set("appengine", ctx)
 })
 
 var _ = AfterSuite(func() {
-	err := ctx.Close()
-	Expect(err).ToNot(HaveOccurred())
+	ctx.Close()
 })
 
 var _ = Describe("NewUser", func() {
