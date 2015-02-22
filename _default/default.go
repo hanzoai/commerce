@@ -1,60 +1,41 @@
 package _default
 
 import (
-	"appengine"
-	_ "appengine/remote_api"
-
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/config"
 	"crowdstart.io/middleware"
-	"crowdstart.io/models/fixtures"
-	"crowdstart.io/models/migrations"
 	"crowdstart.io/util/exec"
 	"crowdstart.io/util/router"
+	"crowdstart.io/util/task"
+	"crowdstart.io/util/template"
 
-	// Imported for side-effect of having tasks registered.
-	_ "crowdstart.io/thirdparty/mandrill"
+	// Imported for side-effect, needed to enable remote api calls
+	_ "appengine/remote_api"
 
-	// Migrations
-	"crowdstart.io/_default/jobs"
-	_ "crowdstart.io/models/migrations/tasks"
-
-	// Only used in tests
-	_ "crowdstart.io/test/datastore/integration/worker"
+	// Imported for side-effect, ensures tasks are registered
+	_ "crowdstart.io/models/fixtures"
+	_ "crowdstart.io/models/migrations"
+	_ "crowdstart.io/thirdparty/mandrill/tasks"
+	_ "crowdstart.io/thirdparty/salesforce/tasks"
 )
 
 func Init() {
 	router := router.New("default")
 
-	router.GET("/fixtures/:fixture", func(c *gin.Context) {
-		fixture := c.Params.ByName("fixture")
-		ctx := appengine.NewContext(c.Request)
-
-		// Call fixture task
-		fixtures.Install.Call(ctx, fixture)
-
-		c.String(200, "Fixtures installing...")
+	// Handler for HTTP registered tasks
+	router.GET("/tasks", func(c *gin.Context) {
+		template.Render(c, "tasks.html", "tasks", task.Names())
 	})
 
-	router.GET("/migrations/:migration", func(c *gin.Context) {
-		migration := c.Params.ByName("migration")
-		ctx := appengine.NewContext(c.Request)
-
-		// Call fixture task
-		migrations.Run.Call(ctx, migration)
-
-		c.String(200, "Running migration...")
+	router.GET("/task/", func(c *gin.Context) {
+		c.Redirect(301, "/tasks")
 	})
 
-	router.GET("/jobs/:job", func(c *gin.Context) {
-		job := c.Params.ByName("job")
-		ctx := appengine.NewContext(c.Request)
-
-		// Call fixture task
-		jobs.Run.Call(ctx, job)
-
-		c.String(200, "Running job...")
+	router.GET("/task/:name", func(c *gin.Context) {
+		name := c.Params.ByName("name")
+		task.Run(c, name)
+		template.Render(c, "task-running.html", "task", name)
 	})
 
 	if config.IsProduction {
@@ -69,46 +50,14 @@ func Init() {
 
 	// Development index links to modules
 	router.GET("/", func(c *gin.Context) {
-		c.Writer.Header().Set("Content-Type", "text/html; charset=utf-8")
-		c.Writer.WriteHeader(200)
-		c.Writer.Write([]byte(`
-		<html>
-			<head>
-				<title>crowdstart</title>
-				<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-				<style>
-					body {
-						font-family:monospace;
-						margin:20px
-					}
-
-					ul {
-
-					}
-				</style>
-			</head>
-			<body>
-				<h4>200 ok (crowdstart/1.0.0)</h4>
-
-				<ul>
-					<li><a href="/api/">api</a></li>
-					<li><a href="/checkout/">checkout</a></li>
-					<li><a href="/platform/">platform</a></li>
-					<li><a href="/preorder/">preorder</a></li>
-					<li><a href="/store/">store</a></li>
-				</ul>
-
-				<a href="http://localhost:8000">admin</a>
-			</body>
-		</html>`))
+		template.Render(c, "index.html")
 	})
 
 	// Warmup: automatically install fixtures, etc.
 	router.GET("/_ah/warmup", func(c *gin.Context) {
 		// Automatically load fixtures
 		if config.AutoLoadFixtures {
-			ctx := appengine.NewContext(c.Request)
-			fixtures.Install.Call(ctx, "all")
+			task.Run(c, "fixtures-all")
 		}
 
 		// Recompile static assets
