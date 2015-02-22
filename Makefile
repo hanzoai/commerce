@@ -217,19 +217,19 @@ tools:
 
 # TEST/ BENCH
 test:
-	$(ginkgo) -r=true --randomizeAllSpecs --randomizeSuites -p=true -progress=true $(verbose) -skipMeasurements=true -skipPackage=integration $(test_filter)
+	$(ginkgo) -r=true --randomizeAllSpecs -p=true -progress=true $(verbose) -skipMeasurements=true -skipPackage=integration $(test_filter)
 
 test-integration:
-	$(ginkgo) -r=true --randomizeAllSpecs --randomizeSuites -p=true -progress=true $(verbose)-skipMeasurements=true -focus=integration
+	$(ginkgo) -r=true --randomizeAllSpecs -p=true -progress=true $(verbose)-skipMeasurements=true -focus=integration
 
 test-watch:
 	$(ginkgo) watch -r=true -progress=true $(verbose) -skipMeasurements=true -skipPackage=integration $(test_filter)
 
+bench:
+	$(ginkgo) -r=true --randomizeAllSpecs -p=true -progress=true $(verbose) -skipPackage=integration $(test_filter)
+
 test-ci:
 	$(ginkgo) -r=true --randomizeAllSpecs --randomizeSuites --failOnPending --cover --trace --compilers=2
-
-bench:
-	$(ginkgo) -r=true --randomizeAllSpecs --randomizeSuites -p=true -progress=true $(verbose) -skipPackage=integration $(test_filter)
 
 # DEPLOY
 deploy: test
