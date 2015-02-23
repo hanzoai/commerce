@@ -4,7 +4,6 @@ import (
 	"log"
 	"testing"
 
-	"crowdstart.io/util/test/ae"
 	"github.com/gin-gonic/gin"
 
 	"appengine"
@@ -14,8 +13,6 @@ func New(ctx ...appengine.Context) *gin.Context {
 	var _ctx appengine.Context
 
 	switch len(ctx) {
-	case 0:
-		_ctx = ae.NewContext()
 	case 1:
 		_ctx = ctx[0]
 	default:
