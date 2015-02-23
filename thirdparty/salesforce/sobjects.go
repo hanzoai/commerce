@@ -18,6 +18,12 @@ var ErrorUserTypeRequired = errors.New("Parameter needs to be of type User")
 var ErrorOrderTypeRequired = errors.New("Parameter needs to be of type Order")
 var ErrorShouldNotCall = errors.New("Function should not be called")
 
+type Currency string
+
+func ToCurrency(centicents int64) Currency {
+	return Currency(fmt.Sprintf("%.2f", float64(centicents)/10000.0))
+}
+
 // For crowdstart models/mixins to be salesforce compatible in future
 type SObjectCompatible interface {
 	SetSalesforceId(string)
@@ -424,19 +430,19 @@ type Order struct {
 	Master               string `json:"Master,omitempty"`
 
 	// Custom Crowdstart fields
-	Cancelled   bool   `json:"Cancelled__c,omitempty"`
-	Disputed    bool   `json:"Disputed__c,omitempty"`
-	Locked      bool   `json:"Locked__c,omitempty"`
-	PaymentId   string `json:"PaymentId__c,omitempty"`
-	PaymentType string `json:"PaymentType__c,omitempty"`
-	Preorder    bool   `json:"Preorder__c,omitempty"`
-	Refunded    bool   `json:"Refunded__c,omitempty"`
-	Shipped     bool   `json:"Shipped__c,omitempty"`
-	Shipping    string `json:"Shipping__c,omitempty"`
-	Subtotal    string `json:"Subtotal__c,omitempty"`
-	Tax         string `json:"Tax__c,omitempty"`
-	Total       string `json:"Total__c,omitempty"`
-	Unconfirmed bool   `json:"Unconfirmed__c,omitempty"`
+	Cancelled   bool     `json:"Cancelled__c,omitempty"`
+	Disputed    bool     `json:"Disputed__c,omitempty"`
+	Locked      bool     `json:"Locked__c,omitempty"`
+	PaymentId   string   `json:"PaymentId__c,omitempty"`
+	PaymentType string   `json:"PaymentType__c,omitempty"`
+	Preorder    bool     `json:"Preorder__c,omitempty"`
+	Refunded    bool     `json:"Refunded__c,omitempty"`
+	Shipped     bool     `json:"Shipped__c,omitempty"`
+	Shipping    Currency `json:"Shipping__c,omitempty"`
+	Subtotal    Currency `json:"Subtotal__c,omitempty"`
+	Tax         Currency `json:"Tax__c,omitempty"`
+	Total       Currency `json:"Total__c,omitempty"`
+	Unconfirmed bool     `json:"Unconfirmed__c,omitempty"`
 
 	// We don't use contracts
 	ContractId string `json:"ContractId,omitempty"`
@@ -468,10 +474,10 @@ func (o *Order) Read(so SObjectCompatible) error {
 	o.Status = "Draft" // SF Rquired
 
 	// Payment Information
-	o.Shipping = fmt.Sprintf("%.2f", float64(order.Shipping)/10000.0)
-	o.Subtotal = fmt.Sprintf("%.2f", float64(order.Subtotal)/10000.0)
-	o.Tax = fmt.Sprintf("%.2f", float64(order.Tax)/10000.0)
-	o.Total = fmt.Sprintf("%.2f", float64(order.Shipping+order.Subtotal+order.Tax)/10000.0)
+	o.Shipping = ToCurrency(order.Shipping)
+	o.Subtotal = ToCurrency(order.Subtotal)
+	o.Tax = ToCurrency(order.Tax)
+	o.Total = ToCurrency(order.Shipping + order.Subtotal + order.Tax)
 
 	if len(order.Charges) > 0 {
 		o.PaymentType = "Stripe"
@@ -628,8 +634,8 @@ type OrderProduct struct {
 	PricebookEntry       *PricebookEntry `json:"PricebookEntry,omitempty"`
 	Quantity             int             `json:"Quantity,omitempty"`
 	StartDate            string          `json:"ServiceDate,omitempty"`
-	TotalPrice           string          `json:"TotalPrice,omitempty"`
-	UnitPrice            string          `json:"UnitPrice,omitempty"`
+	TotalPrice           Currency        `json:"TotalPrice,omitempty"`
+	UnitPrice            Currency        `json:"UnitPrice,omitempty"`
 }
 
 func (o *OrderProduct) Read(so SObjectCompatible) error {
@@ -640,7 +646,7 @@ func (o *OrderProduct) Read(so SObjectCompatible) error {
 
 	o.Quantity = li.Quantity
 	o.PricebookEntry = &PricebookEntry{CrowdstartIdC: li.VariantId}
-	o.UnitPrice = fmt.Sprintf("%.2f", float64(li.Variant.Price)/10000.0)
+	o.UnitPrice = ToCurrency(li.Variant.Price)
 
 	return nil
 }
@@ -765,7 +771,7 @@ type PricebookEntry struct {
 	CurrencyIsoCode  string   `json:"CurrencyIsoCode,omitempty"`
 	PricebookId      string   `json:"Pricebook2Id,omitempty"`
 	Product          *Product `json:"Product2,omitempty"`
-	UnitPrice        string   `json:"UnitPrice,omitempty"`
+	UnitPrice        Currency `json:"UnitPrice,omitempty"`
 	UseStandardPrice bool     `json:"UseStandardPrice,omitempty"`
 	IsActive         bool     `json:"IsActive,omitempty"`
 }
@@ -779,7 +785,7 @@ func (p *PricebookEntry) Read(so SObjectCompatible) error {
 	p.CrowdstartIdC = v.Id
 	p.Product = &Product{CrowdstartIdC: v.Id}
 	p.UseStandardPrice = false
-	p.UnitPrice = fmt.Sprintf("%.2f", float64(v.Price)/10000.0)
+	p.UnitPrice = ToCurrency(v.Price)
 	p.IsActive = true
 
 	return nil
