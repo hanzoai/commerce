@@ -54,5 +54,22 @@ func init() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(string(foo.Value)).To(Equal("bar"))
 		})
+
+		It("Should call nested tasks successfully", func() {
+			// Start task
+			client := httpclient.New(ctx, "default")
+
+			res, err := client.Get("/task/nested-baz")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(res.StatusCode).To(Equal(200))
+
+			// Wait for task to run
+			time.Sleep(8 * time.Second)
+
+			// Check if memcache is set
+			baz, err := memcache.Get(ctx, "baz")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(string(baz.Value)).To(Equal("qux"))
+		})
 	})
 }
