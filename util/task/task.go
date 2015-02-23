@@ -96,12 +96,14 @@ func Run(ctx *gin.Context, name string, args ...interface{}) {
 		switch v := tasks[i].(type) {
 		case *delay.Function:
 			v.Call(middleware.GetAppEngine(ctx), args...)
-		case func(*gin.Context, ...interface{}):
-			v(ctx, args...)
-		case func(*gin.Context):
-			v(ctx)
 		case func(appengine.Context):
 			v(middleware.GetAppEngine(ctx)) // TODO: Remove after updating older tasks.
+		case func(appengine.Context, ...interface{}):
+			v(middleware.GetAppEngine(ctx), args...)
+		case func(*gin.Context):
+			v(ctx)
+		case func(*gin.Context, ...interface{}):
+			v(ctx, args...)
 		case *Task:
 			v.DelayFn.Call(middleware.GetAppEngine(ctx), fakecontext.NewContext(ctx))
 		default:
