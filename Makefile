@@ -112,7 +112,6 @@ ifeq ($(os), linux)
 			   				  -not -path "./assets/*" \
 			   				  -not -path "./static/*" \
 			   				  -not -path "./node_modules/*" \
-			   				  -not -path "./util/test/*" \
 			   				  -printf '%h\n' | sort -u | sed -e 's/.\//crowdstart.io\//')
 else
 	packages = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' \
@@ -121,7 +120,6 @@ else
 			   				  -not -path "./assets/*" \
 			   				  -not -path "./static/*" \
 			   				  -not -path "./node_modules/*" \
-			   				  -not -path "./util/test/*" \
 			   				  -print0 | xargs -0 -n1 dirname | sort --unique | sed -e 's/.\//crowdstart.io\//')
 	sdk_install_extra := $(sdk_install_extra) && \
 						 curl $(mtime_file_watcher) > $(sdk_path)/google/appengine/tools/devappserver2/mtime_file_watcher.py && \
