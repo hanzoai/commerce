@@ -4,12 +4,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/datastore/parallel"
 	"crowdstart.io/test/datastore/integration/tasks"
+	"crowdstart.io/util/gincontext"
 	"crowdstart.io/util/test/ae"
 	"crowdstart.io/util/test/ginkgo"
 )
@@ -18,13 +20,18 @@ func Test(t *testing.T) {
 	ginkgo.Setup("datastore/integration", t)
 }
 
-var ctx ae.Context
+var (
+	c   *gin.Context
+	ctx ae.Context
+)
 
 var _ = BeforeSuite(func() {
 	ctx = ae.NewContext(ae.Options{
 		Modules:    []string{"default"},
 		TaskQueues: []string{"default"},
 	})
+
+	c = gincontext.New(ctx)
 
 	// Wait for devappserver to spin up.
 	time.Sleep(3 * time.Second)
@@ -53,7 +60,7 @@ var _ = Describe("datastore/parallel", func() {
 			}
 
 			// Run task in parallel
-			parallel.Run(ctx, "plus-1", 2, tasks.TaskPlus1)
+			parallel.Run(c, "plus-1", 2, tasks.TaskPlus1)
 
 			time.Sleep(12 * time.Second)
 
@@ -78,7 +85,7 @@ var _ = Describe("datastore/parallel", func() {
 			}
 
 			// Run task in parallel
-			parallel.Run(ctx, "set-val", 2, tasks.TaskSetVal, 100)
+			parallel.Run(c, "set-val", 2, tasks.TaskSetVal, 100)
 
 			time.Sleep(12 * time.Second)
 
