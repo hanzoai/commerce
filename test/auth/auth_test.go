@@ -9,8 +9,8 @@ import (
 	"crowdstart.io/auth"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
+	"crowdstart.io/util/gincontext"
 	"crowdstart.io/util/test/ae"
-	"crowdstart.io/util/test/gin"
 	"crowdstart.io/util/test/ginkgo"
 )
 
@@ -37,7 +37,7 @@ func init() {
 	Describe("NewUser", func() {
 		Context("Registering with unique email", func() {
 			It("should not error", func() {
-				c := gin.NewContext(ctx)
+				c := gincontext.New(ctx)
 
 				regForm := auth.RegistrationForm{
 					User:     models.User{Email: "a@example.com"},
@@ -50,7 +50,7 @@ func init() {
 
 		Context("Query api get", func() {
 			It("should not error", func() {
-				c := gin.NewContext(ctx)
+				c := gincontext.New(ctx)
 
 				regForm := auth.RegistrationForm{
 					User:     models.User{Email: "b@example.com"},
@@ -68,7 +68,7 @@ func init() {
 
 		Context("Re-registering", func() {
 			It("should error", func() {
-				c := gin.NewContext(ctx)
+				c := gincontext.New(ctx)
 
 				regForm := auth.RegistrationForm{
 					User:     models.User{Email: "b@example.com"},
