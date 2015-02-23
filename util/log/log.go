@@ -34,6 +34,8 @@ func (l *Logger) VerboseOverride() bool {
 
 // Check if we've been pased a gin or app engine context
 func (l *Logger) detectContext(ctx interface{}) {
+	l.verboseOverride = false
+
 	switch ctx := ctx.(type) {
 	case *gin.Context:
 		// Get App Engine from session
@@ -65,8 +67,6 @@ func (l *Logger) parseArgs(args ...interface{}) []interface{} {
 	if len(args) == 0 {
 		return args
 	}
-
-	l.verboseOverride = false
 
 	// Check if we've been passed an App Engine or Gin context
 	l.detectContext(args[len(args)-1])
@@ -176,7 +176,7 @@ func Verbose() bool {
 func Debug(formatOrError interface{}, args ...interface{}) {
 	args = std.parseArgs(args...)
 
-	if !std.VerboseOverride() || !std.Verbose() {
+	if !std.VerboseOverride() && !std.Verbose() {
 		std.Debug("No override or verbose not set on logger, not logging.")
 		return
 	}
