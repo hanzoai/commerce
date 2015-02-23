@@ -6,6 +6,8 @@ import (
 	"net/url"
 	"strings"
 
+	"appengine"
+
 	"github.com/gin-gonic/gin"
 	"github.com/julienschmidt/httprouter"
 
@@ -98,7 +100,7 @@ func (c *Context) cloneKeys(keys map[string]interface{}) {
 	}
 }
 
-func (c Context) Context() (ctx *gin.Context, err error) {
+func (c Context) Context(aectx ...appengine.Context) (ctx *gin.Context, err error) {
 	ctx = new(gin.Context)
 	ctx.Errors = ctx.Errors[0:0]
 	ctx.Keys = c.Keys
@@ -107,6 +109,12 @@ func (c Context) Context() (ctx *gin.Context, err error) {
 	if err != nil {
 		log.Warn("Failed to create Request from Request: %v", err)
 	}
+
+	// Set appengien context if we were passed one
+	if len(aectx) > 0 {
+		ctx.Set("appengine", aectx[0])
+	}
+
 	return ctx, err
 }
 
