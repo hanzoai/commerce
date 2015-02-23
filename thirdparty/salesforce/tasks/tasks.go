@@ -152,6 +152,42 @@ var PullUpdatedTask = delay.Func("SalesforcePullUpdatedTask", func(c appengine.C
 	}
 })
 
+// PullUpdatedTask gets recently(20 minutes ago) updated Contact and upserts them as Users
+var PullUpdatedSinceCleanUpTask = delay.Func("SalesforcePullUpdatedSinceCleanUpTask", func(c appengine.Context) {
+	db := datastore.New(c)
+	campaign := new(models.Campaign)
+
+	// Get user instance
+	if err := db.GetKind("campaign", "dev@hanzo.ai", campaign); err != nil {
+		log.Panic("Unable to get campaign from database: %v", err, c)
+	}
+
+	if campaign.Salesforce.AccessToken != "" {
+		log.Info("Try to synchronize from updated salesforce list", c)
+
+		q := queries.New(c)
+		client := New(c, campaign, true)
+
+		now := time.Now()
+
+		// Get recently updated users
+		users := new([]*models.User)
+		// We check 15 minutes into the future in case salesforce clocks (logs based on the minute updated) is slightly out of sync with google's
+		if err := client.PullUpdated(now.Add(-22*24*time.Hour), now, users); err != nil {
+			log.Panic("Getting Updated Contacts Failed: %v, %v", err, string(client.LastBody[:]), c)
+		}
+
+		log.Info("Updating %v Users from Salesforce", len(*users), c)
+		for _, user := range *users {
+			if err := q.UpsertUser(user); err != nil {
+				log.Panic("User '%v' could not be updated, %v", user.Id, err, c)
+			} else {
+				log.Info("User '%v' was successfully updated", user.Id, c)
+			}
+		}
+	}
+})
+
 // Wrappers to deferred function calls for type sanity
 // CallUpsertUserTask calls the task queue delay function with the passed in params
 // Values are used instead of pointers since we envoke a RPC
@@ -174,4 +210,5 @@ func init() {
 	task.Register("salesforce-sync-orders", ImportOrders)
 	task.Register("salesforce-sync-product-variants", ImportProductVariant)
 	task.Register("salesforce-sync-updated", CallPullUpdatedTask)
+	task.Register("salesforce-sync-updated-since-cleanup", PullUpdatedSinceCleanUpTask)
 }
