@@ -8,6 +8,7 @@ import (
 
 	"appengine"
 
+	"crowdstart.io/config"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 )
@@ -24,7 +25,8 @@ func (c *Client) determineBaseURL() {
 		log.Panic("Unable to get host for module '%v': %v", c.moduleName, err)
 	}
 
-	c.baseURL = "http://" + moduleHost
+	// With our current routing setup, any non-default module is prefixed
+	c.baseURL = "http://" + moduleHost + strings.TrimRight(config.Prefixes[c.moduleName], "/")
 }
 
 func (c *Client) Get(url string) (res Response, err error) {
