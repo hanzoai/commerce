@@ -1,7 +1,7 @@
 package migrations
 
 import (
-	"appengine"
+	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/datastore/parallel"
 	"crowdstart.io/models/migrations/tasks"
@@ -14,17 +14,17 @@ func init() {
 	task.Register("migrations-add-email-to-orders", addEmailToOrders)
 
 	// Add email back to contribution
-	task.Register("migrations-add-email-to-contribution", func(c appengine.Context) {
+	task.Register("migrations-add-email-to-contribution", func(c *gin.Context) {
 		parallel.Run(c, "contribution", 100, tasks.AddEmailToContribution)
 	})
 
 	// Add missing orders for each contributors
-	task.Register("migrations-add-missing-orders", func(c appengine.Context) {
+	task.Register("migrations-add-missing-orders", func(c *gin.Context) {
 		parallel.Run(c, "contribution", 50, tasks.AddMissingOrders)
 	})
 
 	// Add missing orders for each contributors
-	task.Register("migrations-add-id-to-order", func(c appengine.Context) {
+	task.Register("migrations-add-id-to-order", func(c *gin.Context) {
 		parallel.Run(c, "order", 50, tasks.AddIdToOrder)
 	})
 
