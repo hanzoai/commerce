@@ -7,10 +7,11 @@ import (
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
-	"crowdstart.io/thirdparty/salesforce"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
 	"crowdstart.io/util/val"
+
+	salesforce "crowdstart.io/thirdparty/salesforce/tasks"
 )
 
 // GET /login
