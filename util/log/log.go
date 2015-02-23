@@ -177,7 +177,6 @@ func Debug(formatOrError interface{}, args ...interface{}) {
 	args = std.parseArgs(args...)
 
 	if !std.VerboseOverride() && !std.Verbose() {
-		std.Debug("No override or verbose not set on logger, not logging.")
 		return
 	}
 
@@ -193,8 +192,7 @@ func Debug(formatOrError interface{}, args ...interface{}) {
 func Info(formatOrError interface{}, args ...interface{}) {
 	args = std.parseArgs(args...)
 
-	if !std.VerboseOverride() || !std.Verbose() {
-		std.Debug("No override or verbose not set on logger, not logging.")
+	if !std.VerboseOverride() && !std.Verbose() {
 		return
 	}
 
