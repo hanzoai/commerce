@@ -3,6 +3,7 @@ package test
 import (
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -21,6 +22,7 @@ func Test(t *testing.T) {
 const kind = "user"
 
 var (
+	c   *gin.Context
 	ctx ae.Context
 	db  *datastore.Datastore
 )
@@ -28,6 +30,7 @@ var (
 func init() {
 	BeforeSuite(func() {
 		ctx = ae.NewContext()
+		c = gincontext.New(ctx)
 		db = datastore.New(ctx)
 	})
 	AfterSuite(func() {
@@ -37,8 +40,6 @@ func init() {
 	Describe("NewUser", func() {
 		Context("Registering with unique email", func() {
 			It("should not error", func() {
-				c := gincontext.New(ctx)
-
 				regForm := auth.RegistrationForm{
 					User:     models.User{Email: "a@example.com"},
 					Password: "hunter2",
@@ -50,8 +51,6 @@ func init() {
 
 		Context("Query api get", func() {
 			It("should not error", func() {
-				c := gincontext.New(ctx)
-
 				regForm := auth.RegistrationForm{
 					User:     models.User{Email: "b@example.com"},
 					Password: "hunter2",
@@ -68,8 +67,6 @@ func init() {
 
 		Context("Re-registering", func() {
 			It("should error", func() {
-				c := gincontext.New(ctx)
-
 				regForm := auth.RegistrationForm{
 					User:     models.User{Email: "b@example.com"},
 					Password: "hunter2",
