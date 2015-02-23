@@ -4,19 +4,18 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 
 	"crowdstart.io/auth"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
 	"crowdstart.io/util/gincontext"
 	"crowdstart.io/util/test/ae"
-	"crowdstart.io/util/test/ginkgo"
+
+	. "crowdstart.io/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {
-	ginkgo.Setup("auth", t)
+	Setup("auth", t)
 }
 
 const kind = "user"
