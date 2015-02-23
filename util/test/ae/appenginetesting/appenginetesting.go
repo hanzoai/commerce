@@ -7,6 +7,7 @@ import (
 	"github.com/davidtai/appenginetesting"
 	. "github.com/onsi/ginkgo"
 
+	"crowdstart.io/util/log"
 	"crowdstart.io/util/test/ae/options"
 )
 
@@ -47,9 +48,15 @@ func New(opts options.Options) (*appenginetesting.Context, error) {
 	// Convert options.Options into *appenginetesting.Options
 	_opts := &appenginetesting.Options{
 		AppId:      opts.AppId,
-		Debug:      appenginetesting.LogWarning,
 		Testing:    GinkgoT(),
 		TaskQueues: opts.TaskQueues,
+	}
+
+	// Detect verbose
+	if log.Verbose() {
+		_opts.Debug = appenginetesting.LogChild
+	} else {
+		_opts.Debug = appenginetesting.LogWarning
 	}
 
 	// Add modules

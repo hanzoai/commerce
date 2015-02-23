@@ -128,7 +128,7 @@ endif
 
 # set v=1 to enable verbose mode
 ifeq ($(v), 1)
-	test_verbose = -v=true
+	test_verbose = -v=true -- -test.v=true
 else
 	test_verbose =
 endif
@@ -233,7 +233,7 @@ test-integration:
 	@$(ginkgo) -r=true --randomizeAllSpecs -p=true -progress=true -skipMeasurements=true -focus=integration $(test_verbose)
 
 test-watch:
-	@$(ginkgo) watch -r=true -progress=true -skipMeasurements=true -skipPackage=integration $(test_focus) $(test_verbose)
+	@$(ginkgo) watch -r=true -progress=true -skipMeasurements=true $(test_focus) $(test_verbose)
 
 bench:
 	@$(ginkgo) -r=true --randomizeAllSpecs -p=true -progress=true -skipPackage=integration $(test_focus) $(test_verbose)
