@@ -101,9 +101,7 @@ func Run(c appengine.Context, kind string, batchSize int, fn *delay.Function, ar
 	for offset := 0; offset < total; offset += batchSize {
 		// prepend variadic arguments for `delay.Function.Call` with `kind`, `offset`, `batchSize`.
 		args := append([]interface{}{kind, offset, batchSize}, args...)
-
 		fn.Call(c, args...)
 	}
-
 	return nil
 }
