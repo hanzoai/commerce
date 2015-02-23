@@ -767,6 +767,7 @@ type PricebookEntry struct {
 	Product          *Product `json:"Product2,omitempty"`
 	UnitPrice        string   `json:"UnitPrice,omitempty"`
 	UseStandardPrice bool     `json:"UseStandardPrice,omitempty"`
+	IsActive         bool     `json:"IsActive,omitempty"`
 }
 
 func (p *PricebookEntry) Read(so SObjectCompatible) error {
@@ -779,6 +780,7 @@ func (p *PricebookEntry) Read(so SObjectCompatible) error {
 	p.Product = &Product{CrowdstartIdC: v.Id}
 	p.UseStandardPrice = false
 	p.UnitPrice = fmt.Sprintf("%.2f", float64(v.Price)/10000.0)
+	p.IsActive = true
 
 	return nil
 }
