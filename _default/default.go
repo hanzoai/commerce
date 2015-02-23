@@ -23,7 +23,7 @@ import (
 
 var Foo = task.Func("foo", func(c *gin.Context) {
 	log.Debug("FOOOOOOOO", c)
-	log.Warn("verbose: %v", c.MustGet("verbose"))
+	log.Warn("verbose: %v", c.MustGet("verbose"), c)
 })
 
 func Init() {
