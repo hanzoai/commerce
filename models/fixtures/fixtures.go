@@ -18,7 +18,7 @@ func init() {
 	// Register all fixtures under a fixtures-all task name
 	for name, tasks := range task.Registry {
 		if strings.HasPrefix(name, "fixtures-") {
-			task.Register("fixtures-all", tasks)
+			task.Register("fixtures-all", tasks...)
 		}
 	}
 }

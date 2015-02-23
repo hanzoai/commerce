@@ -23,20 +23,8 @@ import (
 func Init() {
 	router := router.New("default")
 
-	// Handler for HTTP registered tasks
-	router.GET("/tasks", func(c *gin.Context) {
-		template.Render(c, "tasks.html", "tasks", task.Names())
-	})
-
-	router.GET("/task/", func(c *gin.Context) {
-		c.Redirect(301, "/tasks")
-	})
-
-	router.GET("/task/:name", func(c *gin.Context) {
-		name := c.Params.ByName("name")
-		task.Run(c, name)
-		template.Render(c, "task-running.html", "task", name)
-	})
+	// Setup routes for tasks
+	task.SetupRoutes(router)
 
 	if config.IsProduction {
 		return
