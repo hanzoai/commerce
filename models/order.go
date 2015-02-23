@@ -10,9 +10,9 @@ import (
 	humanize "github.com/dustin/go-humanize"
 	"github.com/gin-gonic/gin"
 	"github.com/mholt/binding"
+	stripe "github.com/stripe/stripe-go"
 
 	"crowdstart.io/datastore"
-	stripe "crowdstart.io/thirdparty/stripe/models"
 	"crowdstart.io/util/log"
 )
 
@@ -55,10 +55,7 @@ type Order struct {
 
 	// Dispute details
 	Disputed bool
-	Dispute  struct {
-		Status string
-		Reason string
-	}
+	Dispute  stripe.Dispute // Refactor to use []stripe.Dispute for multiple charges.
 
 	// ShippingOption  ShippingOption
 
