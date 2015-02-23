@@ -18,7 +18,7 @@ func insertVariants(db *datastore.Datastore, variants []ProductVariant) {
 	}
 }
 
-var products = task.Func("fixtures-install-products", func(c *gin.Context) {
+var products = task.Func("fixtures-products", func(c *gin.Context) {
 	log.Debug("Loading fixtures...")
 	db := datastore.New(c)
 
