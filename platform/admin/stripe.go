@@ -13,10 +13,9 @@ import (
 	"crowdstart.io/auth"
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
-	"crowdstart.io/datastore/parallel"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models"
-	"crowdstart.io/thirdparty/stripe"
+	"crowdstart.io/thirdparty/stripe/tasks"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/template"
 )
@@ -49,7 +48,7 @@ func StripeSync(c *gin.Context) {
 		return
 	}
 
-	parallel.Run(c, "order", 10, stripe.SynchronizeCharges, campaign)
+	tasks.SynchronizeCharges(c)
 	c.String(200, "Synchronising orders")
 }
 
