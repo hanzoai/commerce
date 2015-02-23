@@ -87,7 +87,7 @@ var _ = Describe("SynchronizeCharges", func() {
 			_, user := newUser("dev@hanzo.ai")
 
 			charge.Captured = true
-			charge.ID = "ch_15XOuYEIkPffEth5yhRqlUay"
+			charge.ID = "ch_15ZHJOCSRlllXCwPWFGgftzK"
 			charge.Email = user.Email
 
 			_, order = newOrder(user, charge)
@@ -106,7 +106,7 @@ var _ = Describe("SynchronizeCharges", func() {
 			_, user := newUser("dev@hanzo.ai")
 
 			charge := models.Charge{
-				ID:    "ch_15XcVJEIkPffEth5eRV81jW0",
+				ID:    "ch_15ZGKCCSRlllXCwPryrymFEH",
 				Email: user.Email,
 			}
 
