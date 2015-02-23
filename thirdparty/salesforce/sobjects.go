@@ -101,26 +101,26 @@ type Contact struct {
 	Account            Account `json:"Account,omitempty"`
 
 	// Skully Custom fields
-	UniquePreorderLinkC string `json:"Unique_Preorder_Link__c,omitempty"`
-	FullfillmentStatusC string `json:"Fulfillment_Status__c,omitempty"`
-	PreorderC           string `json:"Preorder__c,omitempty"`
-	ShippingAddressC    string `json:"Shipping_Address__c,omitempty"`
-	ShippingCityC       string `json:"Shipping_City__c,omitempty"`
-	ShippingStateC      string `json:"Shipping_State__c,omitempty"`
-	ShippingPostalZipC  string `json:"Shipping_Postal_Zip__c,omitempty"`
-	ShippingCountryC    string `json:"Shipping_Country__c,omitempty"`
-	MC4SFMCSubscriberC  string `json:"MC4SF__MC_Subscriber__c,omitempty"`
+	UniquePreorderLinkC string `json:"Unique_Preorder_Link__C,omitempty"`
+	FullfillmentStatusC string `json:"Fulfillment_Status__C,omitempty"`
+	PreorderC           string `json:"Preorder__C,omitempty"`
+	ShippingAddressC    string `json:"Shipping_Address__C,omitempty"`
+	ShippingCityC       string `json:"Shipping_City__C,omitempty"`
+	ShippingStateC      string `json:"Shipping_State__C,omitempty"`
+	ShippingPostalZipC  string `json:"Shipping_Postal_Zip__C,omitempty"`
+	ShippingCountryC    string `json:"Shipping_Country__C,omitempty"`
+	MC4SFMCSubscriberC  string `json:"MC4SF__MC_Subscriber__C,omitempty"`
 
 	// Zendesk Custom fields
-	ZendeskLastSyncDateC         string `json:"Zendesk__Last_Sync_Date__c,omitempty"`
-	ZendeskLastSyncStatusC       string `json:"Zendesk__Last_Sync_Status__c,omitempty"`
-	ZendeskResultC               string `json:"Zendesk__Result__c,omitempty"`
-	ZendeskTagsC                 string `json:"Zendesk__Tags__c,omitempty"`
-	ZendeskZendeskOutofSyncC     string `json:"Zendesk__Zendesk_OutofSync__c,omitempty"`
-	ZendeskZendeskOldTagsC       string `json:"Zendesk__Zendesk_oldTags__c,omitempty"`
-	ZendeskIsCreatedUpdatedFlagC string `json:"Zendesk__isCreatedUpdatedFlag__c,omitempty"`
-	ZendeskNotesC                string `json:"Zendesk__notes__c,omitempty"`
-	ZendeskZendeskIdC            string `json:"Zendesk__zendesk_id__c,omitempty"`
+	ZendeskLastSyncDateC         string `json:"Zendesk__Last_Sync_Date__C,omitempty"`
+	ZendeskLastSyncStatusC       string `json:"Zendesk__Last_Sync_Status__C,omitempty"`
+	ZendeskResultC               string `json:"Zendesk__Result__C,omitempty"`
+	ZendeskTagsC                 string `json:"Zendesk__Tags__C,omitempty"`
+	ZendeskZendeskOutofSyncC     string `json:"Zendesk__Zendesk_OutofSync__C,omitempty"`
+	ZendeskZendeskOldTagsC       string `json:"Zendesk__Zendesk_oldTags__C,omitempty"`
+	ZendeskIsCreatedUpdatedFlagC string `json:"Zendesk__isCreatedUpdatedFlag__C,omitempty"`
+	ZendeskNotesC                string `json:"Zendesk__notes__C,omitempty"`
+	ZendeskZendeskIdC            string `json:"Zendesk__zendesk_id__C,omitempty"`
 }
 
 func (c *Contact) Read(so SObjectCompatible) error {
@@ -256,28 +256,28 @@ type Account struct {
 	YearStarted        string `json:"YearStarted,omitempty"`
 	SicDesc            string `json:"SicDesc,omitempty"`
 	DandbCompanyId     string `json:"DandbCompanyId,omitempty"`
-	CustomerPriorityC  string `json:"CustomerPriority__c,omitempty"`
-	SlaC               string `json:"SLA__c,omitempty"`
-	ActiveC            string `json:"Active__c,omitempty"`
-	NumberofLocationsC string `json:"NumberofLocations__c,omitempty"`
-	UpsellOpportunityC string `json:"UpsellOpportunity__c,omitempty"`
-	SLASerialNumberC   string `json:"SLASerialNumber__c,omitempty"`
-	SLAExpirationDateC string `json:"SLAExpirationDate__c,omitempty"`
+	CustomerPriorityC  string `json:"CustomerPriority__C,omitempty"`
+	SlaC               string `json:"SLA__C,omitempty"`
+	ActiveC            string `json:"Active__C,omitempty"`
+	NumberofLocationsC string `json:"NumberofLocations__C,omitempty"`
+	UpsellOpportunityC string `json:"UpsellOpportunity__C,omitempty"`
+	SLASerialNumberC   string `json:"SLASerialNumber__C,omitempty"`
+	SLAExpirationDateC string `json:"SLAExpirationDate__C,omitempty"`
 	Account            string `json:"Account,omitempty"`
 	Master             string `json:"Master,omitempty"`
 
 	// Zendesk integration items
-	ZendeskCreatedUpdatedFlagC    string `json:"Zendesk__createdUpdatedFlag__c,omitempty"`
-	ZendeskDomainMappingC         string `json:"Zendesk__Domain_Mapping__c,omitempty"`
-	ZendeskLastSyncDataC          string `json:"Zendesk__Last_Sync_Date__c,omitempty"`
-	ZendeskLastSyncStatusC        string `json:"Zendesk__Last_Sync_Status__c,omitempty"`
-	ZendeskNotesC                 string `json:"Zendesk__Notes__c,omitempty"`
-	ZendeskTagsC                  string `json:"Zendesk__Tags__c,omitempty"`
-	ZendeskZendeskOldTagsC        string `json:"Zendesk__Zendesk_oldTags__c,omitempty"`
-	ZendeskZendeskOutofSyncC      string `json:"Zendesk__Zendesk_OutofSync__c,omitempty"`
-	ZendeskZendeskOrganizationC   string `json:"Zendesk__Zendesk_Organization__c,omitempty"`
-	ZendeskZendeskOrganizationIdC string `json:"Zendesk__Zendesk_Organization_Id__c,omitempty"`
-	ZendeskZendeskResultC         string `json:"Zendesk__Result__c,omitempty"`
+	ZendeskCreatedUpdatedFlagC    string `json:"Zendesk__CreatedUpdatedFlag__C,omitempty"`
+	ZendeskDomainMappingC         string `json:"Zendesk__Domain_Mapping__C,omitempty"`
+	ZendeskLastSyncDataC          string `json:"Zendesk__Last_Sync_Date__C,omitempty"`
+	ZendeskLastSyncStatusC        string `json:"Zendesk__Last_Sync_Status__C,omitempty"`
+	ZendeskNotesC                 string `json:"Zendesk__Notes__C,omitempty"`
+	ZendeskTagsC                  string `json:"Zendesk__Tags__C,omitempty"`
+	ZendeskZendeskOldTagsC        string `json:"Zendesk__Zendesk_oldTags__C,omitempty"`
+	ZendeskZendeskOutofSyncC      string `json:"Zendesk__Zendesk_OutofSync__C,omitempty"`
+	ZendeskZendeskOrganizationC   string `json:"Zendesk__Zendesk_Organization__C,omitempty"`
+	ZendeskZendeskOrganizationIdC string `json:"Zendesk__Zendesk_Organization_Id__C,omitempty"`
+	ZendeskZendeskResultC         string `json:"Zendesk__Result__C,omitempty"`
 }
 
 func (a *Account) Read(so SObjectCompatible) error {
@@ -430,19 +430,20 @@ type Order struct {
 	Master               string `json:"Master,omitempty"`
 
 	// Custom Crowdstart fields
-	Cancelled   bool     `json:"Cancelled__c,omitempty"`
-	Disputed    bool     `json:"Disputed__c,omitempty"`
-	Locked      bool     `json:"Locked__c,omitempty"`
-	PaymentId   string   `json:"PaymentId__c,omitempty"`
-	PaymentType string   `json:"PaymentType__c,omitempty"`
-	Preorder    bool     `json:"Preorder__c,omitempty"`
-	Refunded    bool     `json:"Refunded__c,omitempty"`
-	Shipped     bool     `json:"Shipped__c,omitempty"`
-	Shipping    Currency `json:"Shipping__c,omitempty"`
-	Subtotal    Currency `json:"Subtotal__c,omitempty"`
-	Tax         Currency `json:"Tax__c,omitempty"`
-	Total       Currency `json:"Total__c,omitempty"`
-	Unconfirmed bool     `json:"Unconfirmed__c,omitempty"`
+	CancelledC     bool     `json:"Cancelled__C,omitempty"`
+	DisputedC      bool     `json:"Disputed__C,omitempty"`
+	LockedC        bool     `json:"Locked__C,omitempty"`
+	PaymentIdC     string   `json:"PaymentId__C,omitempty"`
+	PaymentTypeC   string   `json:"PaymentType__C,omitempty"`
+	PreorderC      bool     `json:"Preorder__C,omitempty"`
+	RefundedC      bool     `json:"Refunded__C,omitempty"`
+	ShippedC       bool     `json:"Shipped__C,omitempty"`
+	ShippingC      Currency `json:"Shipping__C,omitempty"`
+	SubtotalC      Currency `json:"Subtotal__C,omitempty"`
+	TaxC           Currency `json:"Tax__C,omitempty"`
+	TotalC         Currency `json:"Total__C,omitempty"`
+	UnconfirmedC   bool     `json:"Unconfirmed__C,omitempty"`
+	OriginalEmailC string   `json:"OriginalEmail__C,omitempty"`
 
 	// We don't use contracts
 	ContractId string `json:"ContractId,omitempty"`
@@ -474,27 +475,27 @@ func (o *Order) Read(so SObjectCompatible) error {
 	o.Status = "Draft" // SF Rquired
 
 	// Payment Information
-	o.Shipping = ToCurrency(order.Shipping)
-	o.Subtotal = ToCurrency(order.Subtotal)
-	o.Tax = ToCurrency(order.Tax)
-	o.Total = ToCurrency(order.Shipping + order.Subtotal + order.Tax)
+	o.ShippingC = ToCurrency(order.Shipping)
+	o.SubtotalC = ToCurrency(order.Subtotal)
+	o.TaxC = ToCurrency(order.Tax)
+	o.TotalC = ToCurrency(order.Shipping + order.Subtotal + order.Tax)
 
 	if len(order.Charges) > 0 {
-		o.PaymentType = "Stripe"
-		o.PaymentId = order.Charges[0].ID
+		o.PaymentTypeC = "Stripe"
+		o.PaymentIdC = order.Charges[0].ID
 	}
 
 	// Status Flags
-	o.Cancelled = order.Cancelled
-	o.Disputed = order.Disputed
-	o.Locked = order.Locked
-	o.Preorder = order.Preorder
-	o.Refunded = order.Refunded
-	o.Shipped = order.Shipped
-	o.Unconfirmed = order.Unconfirmed
+	o.CancelledC = order.Cancelled
+	o.DisputedC = order.Disputed
+	o.LockedC = order.Locked
+	o.PreorderC = order.Preorder
+	o.RefundedC = order.Refunded
+	o.ShippedC = order.Shipped
+	o.UnconfirmedC = order.Unconfirmed
 
 	//SKU
-	if !o.Unconfirmed {
+	if !o.UnconfirmedC {
 		o.orderProducts = make([]OrderProduct, len(order.Items))
 		for i, item := range order.Items {
 			orderProduct := OrderProduct{}
@@ -511,6 +512,7 @@ func (o *Order) Read(so SObjectCompatible) error {
 
 	o.Account = &Account{CrowdstartIdC: order.UserId}
 	o.CrowdstartIdC = order.Id
+	o.OriginalEmailC = order.Email
 
 	return nil
 }
