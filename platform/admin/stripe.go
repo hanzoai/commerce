@@ -33,9 +33,24 @@ type stripeToken struct {
 	TokenType            string `json:"token_type"`
 }
 
+/*
+Warning
+Due to the fact that `CampaignId`s are currently missing in all the orders,
+this function assumes that every order is associated with the only campaign (SKULLY).
+
+TODO: Run a migration to set `CampaignId` in all orders.
+*/
 func StripeSync(c *gin.Context) {
 	ctx := middleware.GetAppEngine(c)
-	parallel.Run(ctx, "sync-orders", 10, stripe.SynchronizeCharges)
+	db := datastore.New(ctx)
+	campaign := new(models.Campaign)
+	_, err := db.Query("campaign").Run(ctx).Next(campaign)
+	if err != nil {
+		c.Error(err, nil)
+		return
+	}
+
+	parallel.Run(ctx, "order", 10, stripe.SynchronizeCharges, campaign)
 	c.String(200, "Synchronising orders")
 }
 
