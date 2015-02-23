@@ -177,11 +177,11 @@ func Verbose() bool {
 }
 
 func Debug(formatOrError interface{}, args ...interface{}) {
+	args = std.parseArgs(args...)
+
 	if !std.Verbose() {
 		return
 	}
-
-	args = std.parseArgs(args...)
 
 	switch v := formatOrError.(type) {
 	case error:
@@ -193,11 +193,11 @@ func Debug(formatOrError interface{}, args ...interface{}) {
 }
 
 func Info(formatOrError interface{}, args ...interface{}) {
+	args = std.parseArgs(args...)
+
 	if !std.Verbose() {
 		return
 	}
-
-	args = std.parseArgs(args...)
 
 	switch v := formatOrError.(type) {
 	case error:
