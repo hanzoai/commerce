@@ -41,16 +41,15 @@ this function assumes that every order is associated with the only campaign (SKU
 TODO: Run a migration to set `CampaignId` in all orders.
 */
 func StripeSync(c *gin.Context) {
-	ctx := middleware.GetAppEngine(c)
-	db := datastore.New(ctx)
+	db := datastore.New(c)
 	campaign := new(models.Campaign)
-	_, err := db.Query("campaign").Run(ctx).Next(campaign)
+	_, err := db.Query("campaign").Run(db.Context).Next(campaign)
 	if err != nil {
 		c.Error(err, nil)
 		return
 	}
 
-	parallel.Run(ctx, "order", 10, stripe.SynchronizeCharges, campaign)
+	parallel.Run(c, "order", 10, stripe.SynchronizeCharges, campaign)
 	c.String(200, "Synchronising orders")
 }
 
