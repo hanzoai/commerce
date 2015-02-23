@@ -29,15 +29,9 @@ func NewApiClient(ctx appengine.Context, accessToken string) *sClient.API {
 	return sc
 }
 
-/*
-Warning
-Due to the fact that `CampaignId`s are currently missing in all the orders,
-this function assumes that every order is associated with the only campaign (SKULLY).
-
-TODO: Run a migration to set `CampaignId` in all orders.
-*/
-
 var SynchronizeCharges = parallel.Task("synchronize-charges", func(db *datastore.Datastore, key datastore.Key, o models.Order, campaign models.Campaign) error {
+	println("Synchronising")
+	log.Info("Synchronising")
 	sc := NewApiClient(db.Context, campaign.Stripe.AccessToken)
 
 	description := o.Description()
