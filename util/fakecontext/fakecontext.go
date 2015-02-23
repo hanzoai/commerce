@@ -64,8 +64,8 @@ func (r Request) Request() (req *http.Request, err error) {
 	return req, nil
 }
 
-func NewRequest(r *http.Request) Request {
-	return Request{
+func NewRequest(r *http.Request) *Request {
+	return &Request{
 		Close:            r.Close,
 		ContentLength:    r.ContentLength,
 		Form:             r.Form,
@@ -87,7 +87,7 @@ func NewRequest(r *http.Request) Request {
 type Context struct {
 	Keys    map[string]interface{}
 	Params  httprouter.Params
-	Request Request
+	Request *Request
 }
 
 func (c *Context) cloneKeys(keys map[string]interface{}) {
@@ -125,7 +125,11 @@ func NewContext(c *gin.Context) *Context {
 	ctx.Params = c.Params
 
 	// Need to create request context, because c.Request cannot be gob-encoded
-	ctx.Request = NewRequest(c.Request)
+	if c.Request != nil {
+		ctx.Request = NewRequest(c.Request)
+	} else {
+		ctx.Request = &Request{}
+	}
 
 	// Clone keys, skipping app engine context (can't gob encode, also no point)
 	ctx.cloneKeys(c.Keys)
