@@ -9,10 +9,7 @@ import (
 	stripe "github.com/stripe/stripe-go"
 	sClient "github.com/stripe/stripe-go/client"
 	"github.com/stripe/stripe-go/currency"
-	"github.com/stripe/stripe-go/dispute"
 
-	"crowdstart.io/datastore"
-	"crowdstart.io/datastore/parallel"
 	"crowdstart.io/models"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
@@ -28,56 +25,6 @@ func NewApiClient(ctx appengine.Context, accessToken string) *sClient.API {
 	sc.Init(accessToken, backend)
 	return sc
 }
-
-var SynchronizeCharges = parallel.Task("synchronize-charges", func(db *datastore.Datastore, key datastore.Key, o models.Order, campaign models.Campaign) error {
-	println("Synchronising")
-	log.Info("Synchronising")
-	sc := NewApiClient(db.Context, campaign.Stripe.AccessToken)
-
-	description := o.Description()
-	for i, charge := range o.Charges {
-		updatedCharge, err := sc.Charges.Get(charge.ID, nil)
-		if err != nil {
-			return err
-		}
-
-		if updatedCharge.Desc != description {
-			params := &stripe.ChargeParams{Desc: description}
-			var err error
-			updatedCharge, err = sc.Charges.Update(charge.ID, params)
-			if err != nil {
-				return err
-			}
-		}
-		o.Charges[i] = models.Charge{
-			ID:             updatedCharge.ID,
-			Captured:       updatedCharge.Captured,
-			Created:        updatedCharge.Created,
-			Desc:           updatedCharge.Desc,
-			Email:          updatedCharge.Email,
-			FailCode:       updatedCharge.FailCode,
-			FailMsg:        updatedCharge.FailMsg,
-			Live:           updatedCharge.Live,
-			Paid:           updatedCharge.Paid,
-			Refunded:       updatedCharge.Refunded,
-			Statement:      updatedCharge.Statement,
-			Amount:         int64(updatedCharge.Amount), // TODO: Check if this is necessary.
-			AmountRefunded: int64(updatedCharge.AmountRefunded),
-		}
-
-		if updatedCharge.Dispute != nil {
-			o.Disputed = true
-			if updatedCharge.Dispute.Status != dispute.Won {
-				o.Locked = true
-			}
-		}
-	}
-
-	if _, err := db.PutKind("order", key, &o); err != nil {
-		return err
-	}
-	return nil
-})
 
 // Create a new stripe customer and assign id to user model.
 func createStripeCustomer(ctx appengine.Context, sc *sClient.API, user *models.User, params *stripe.CustomerParams) error {

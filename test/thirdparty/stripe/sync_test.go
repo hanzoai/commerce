@@ -1,59 +1,31 @@
 package test
 
 import (
-	"encoding/gob"
-	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/davidtai/appenginetesting"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-
-	. "github.com/jmcvetta/randutil"
-
+	"crowdstart.io/config"
 	"crowdstart.io/datastore"
-	"crowdstart.io/datastore/parallel"
 	"crowdstart.io/models"
-	"crowdstart.io/thirdparty/stripe"
-	"crowdstart.io/util/log"
 	"crowdstart.io/util/queries"
+	"crowdstart.io/util/test/ae"
+	. "crowdstart.io/util/test/ginkgo"
 )
 
 var (
-	ctx      *appenginetesting.Context
+	ctx      ae.Context
 	db       *datastore.Datastore
 	q        *queries.Client
 	campaign models.Campaign
 )
 
-func TestStripeSync(t *testing.T) {
-	var err error
-	ctx, err = appenginetesting.NewContext(&appenginetesting.Options{
-		AppId:      "crowdstart-io",
-		Debug:      appenginetesting.LogWarning,
-		Testing:    t,
-		TaskQueues: []string{"default"},
-		Modules: []appenginetesting.ModuleConfig{
-			{
-				Name: "default",
-				Path: filepath.Join("../../../config/development/app.yaml"),
-			},
-		},
-	})
-	if err != nil {
-		panic(err)
-	}
-	time.Sleep(1 * time.Second)
-
-	log.SetVerbose(testing.Verbose())
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "stripe-sync")
+func Test(t *testing.T) {
+	Setup("thirdparty/stripe", t)
 }
 
 var _ = BeforeSuite(func() {
-	gob.Register(models.Campaign{})
-
+	// gob.Register(models.Campaign{})
+	ctx = ae.NewContext()
 	db = datastore.New(ctx)
 	q = queries.New(ctx)
 
@@ -61,16 +33,18 @@ var _ = BeforeSuite(func() {
 	campaign.Creator.Email = campaign.Id
 	campaign.Stripe.UserId = "acct_something"
 	campaign.Stripe.Livemode = false
-	campaign.Stripe.AccessToken = "sk_test_oGcTBghcS1NvO1XSA3d9FLIP"
+	campaign.Stripe.AccessToken = config.Stripe.APISecret
 })
 
 var _ = AfterSuite(func() {
 	ctx.Close()
 })
 
-func New(user models.User, charge models.Charge) (models.Order, error) {
-	var order models.Order
-	order.Id, _ = String(6, Alphanumeric)
+func newOrder(user *models.User, charge models.Charge) (datastore.Key, *models.Order) {
+	order := new(models.Order)
+	key := db.AllocateIntKey("order")
+
+	order.Id = key.Encode()
 	order.UserId = user.Id
 	order.Email = user.Email
 	order.CampaignId = campaign.Id
@@ -84,36 +58,40 @@ func New(user models.User, charge models.Charge) (models.Order, error) {
 
 	charge.Amount = order.Total
 	order.Charges = append(order.Charges, charge)
-	_, err := db.PutKind("order", order.Id, &order)
+	_, err := db.Put(key, order)
 	Expect(err).ToNot(HaveOccurred())
 
-	return order, parallel.Run(ctx, "order", 2, stripe.SynchronizeCharges, campaign)
+	return key, order
+}
+
+func newUser(email string) (datastore.Key, *models.User) {
+	user := new(models.User)
+	key := db.AllocateIntKey("user")
+	user.Id = key.Encode()
+	user.Email = email
+
+	_, err := db.Put(key, user)
+	Expect(err).ToNot(HaveOccurred())
+
+	return key, user
 }
 
 var _ = Describe("SynchronizeCharges", func() {
 	var (
-		order  models.Order
+		order  *models.Order
 		charge models.Charge
 	)
+
 	Context("Running the task", func() {
-		It("should not error", func() {
-			var user models.User
-			user.Id, _ = String(6, Alphanumeric)
-			user.Email = "test@test.com"
-			db.PutKind("user", user.Id, &user)
+		It("Update orders with charges, using information from Stripe", func() {
+			_, user := newUser("dev@hanzo.ai")
 
 			charge.Captured = true
 			charge.ID = "ch_15XOuYEIkPffEth5yhRqlUay"
 			charge.Email = user.Email
 
-			var err error
-			order, err = New(user, charge)
-			Expect(err).ToNot(HaveOccurred())
-		})
-	})
+			_, order = newOrder(user, charge)
 
-	Context("The charge", func() {
-		It("should be different", func() {
 			var updatedCharge models.Charge
 			var updatedOrder models.Order
 			err := db.GetKind("order", order.Id, &updatedOrder)
@@ -124,26 +102,20 @@ var _ = Describe("SynchronizeCharges", func() {
 	})
 
 	Context("Disputed charge", func() {
-		It("should be marked", func() {
-			id, _ := String(6, Alphanumeric)
-			user := models.User{
-				Email: "test2@test.com",
-				Id:    id,
-			}
-			_, err := db.PutKind("user", user.Id, &user)
-			Expect(err).ToNot(HaveOccurred())
+		It("should be marked as disputed.", func() {
+			_, user := newUser("dev@hanzo.ai")
 
 			charge := models.Charge{
 				ID:    "ch_15XcVJEIkPffEth5eRV81jW0",
 				Email: user.Email,
 			}
-			order, err := New(user, charge)
-			Expect(err).ToNot(HaveOccurred())
+
+			key, _ := newOrder(user, charge)
 
 			time.Sleep(10 * time.Second)
 
-			var updatedOrder models.Order
-			err = db.GetKind("order", order.Id, &updatedOrder)
+			updatedOrder := new(models.Order)
+			err := db.Get(key, updatedOrder)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(updatedOrder.Disputed).To(Equal(true))
 		})
