@@ -233,7 +233,7 @@ test-integration:
 	@$(ginkgo) -r=true --randomizeAllSpecs -p=true -progress=true -skipMeasurements=true -focus=integration $(test_verbose)
 
 test-watch:
-	@$(ginkgo) watch -r=true -progress=true -skipMeasurements=true $(test_focus) $(test_verbose)
+	@$(ginkgo) watch -r=true -p=true -progress=true -skipMeasurements=true $(test_focus) $(test_verbose)
 
 bench:
 	@$(ginkgo) -r=true --randomizeAllSpecs -p=true -progress=true -skipPackage=integration $(test_focus) $(test_verbose)
