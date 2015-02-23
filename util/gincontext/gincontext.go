@@ -23,7 +23,7 @@ func New(ctx ...appengine.Context) *gin.Context {
 	c := new(gin.Context)
 	c.Set("appengine", _ctx)
 	c.Set("verbose", testing.Verbose())
-	c.Set("test", true)
+	c.Set("test", false)
 
 	return c
 }
