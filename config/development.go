@@ -28,16 +28,17 @@ func Development() *Config {
 
 	config.StaticUrl = "/static"
 
+	config.Salesforce.CallbackURL = "http:" + config.UrlFor("platform", "/salesforce/callback")
+	config.Stripe.RedirectURL = "http:" + config.UrlFor("platform", "/stripe/callback")
+	config.Stripe.WebhookURL = "http:" + config.UrlFor("platform", "/stripe/hook")
+
 	// TODO: Create dev versions somehow
 	config.Salesforce.ConsumerKey = "3MVG9xOCXq4ID1uElRYWhpUWjXYxIIlf_W1_MSDefMxTxdgMz5aMsZ7uvZ4n8zHI1wq6UREv2KE31Kes_Bq6D"
 	config.Salesforce.ConsumerSecret = "2354282251954184740"
-	config.Salesforce.CallbackURL = "https:" + config.UrlFor("platform", "/salesforce/callback")
 
 	config.Stripe.ClientId = "ca_53yyPzxlPsdAtzMEIuS2mXYDp4FFXLmm"
 	config.Stripe.APIKey = "pk_test_ucSTeAAtkSXVEg713ir40UhX"
 	config.Stripe.APISecret = ""
-	config.Stripe.RedirectURL = "http:" + config.UrlFor("platform", "/stripe/callback")
-	config.Stripe.WebhookURL = "http:" + config.UrlFor("platform", "/stripe/hook")
 
 	config.Google.APIKey = "AIzaSyAOPY7nU-UlNRLvZz9D_j2Qm6SBMUvk83w"
 	config.Google.Bucket.ImageUploads = "crowdstart-staging-image-uploads"
