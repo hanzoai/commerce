@@ -52,7 +52,14 @@ func Task(name string, workerFunc interface{}) *delay.Function {
 	return delay.Func(name, func(c appengine.Context, fc *fakecontext.Context, kind string, offset, batchSize int, args ...interface{}) {
 		// Run query to get results for this batch of entities
 		db := datastore.New(c)
-		t := db.Query(kind).Offset(offset).Limit(batchSize).Run(c)
+		q := db.Query(kind).Offset(offset).Limit(batchSize)
+
+		// Limit 1 if in test mode
+		if gc, err := fc.Context(); err == nil && gc.MustGet("test").(bool) {
+			q = q.Limit(1)
+		}
+
+		t := q.Run(c)
 
 		// Loop over entities passing them into workerFunc one at a time
 		for {
@@ -100,6 +107,11 @@ func Run(c *gin.Context, kind string, batchSize int, fn *delay.Function, args ..
 	if total, err = db.Query(kind).Count(db.Context); err != nil {
 		log.Error("Could not get count of %v because %v", kind, err, c)
 		return err
+	}
+
+	// Launch only 1 worker if in test mode
+	if c.MustGet("test").(bool) {
+		total = 1
 	}
 
 	for offset := 0; offset < total; offset += batchSize {
