@@ -1,6 +1,7 @@
 package task_integration_test
 
 import (
+	"net/url"
 	"testing"
 	"time"
 
@@ -42,7 +43,7 @@ func init() {
 			// Start task
 			client := httpclient.New(ctx, "default")
 
-			res, err := client.Get("/task/foo")
+			res, err := client.PostForm("/task/foo", url.Values{})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(res.StatusCode).To(Equal(200))
 
@@ -59,7 +60,7 @@ func init() {
 			// Start task
 			client := httpclient.New(ctx, "default")
 
-			res, err := client.Get("/task/nested-baz")
+			res, err := client.PostForm("/task/nested-baz", url.Values{})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(res.StatusCode).To(Equal(200))
 
