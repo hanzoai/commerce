@@ -13,6 +13,7 @@ import (
 	"crowdstart.io/middleware"
 	"crowdstart.io/util/fakecontext"
 	"crowdstart.io/util/log"
+	ginhelper "crowdstart.io/util/test/gin"
 )
 
 var (
@@ -112,6 +113,17 @@ func Run(ctx *gin.Context, name string, args ...interface{}) {
 	}
 }
 
+func getGinContext(c appengine.Context, fakectx *fakecontext.Context, ok bool) *gin.Context {
+	// If we have a fake context, try to use that
+	if ok {
+		if ctx, err := fakectx.Context(c); err == nil {
+			return ctx
+		}
+	}
+
+	return ginhelper.NewContext(c)
+}
+
 // Creates a new delay.Func which will call our fn with gin.Context, etc.
 func Func(name string, fn interface{}) *delay.Function {
 	task := NewTask(fn)
@@ -126,25 +138,23 @@ func Func(name string, fn interface{}) *delay.Function {
 
 	// Create actual delay func
 	delayFn := delay.Func(name, func(c appengine.Context, args ...interface{}) {
-		var (
-			err error
-			ctx *gin.Context
-		)
+		// Try to retrieve fake context from args
+		var fakectx *fakecontext.Context
+		var ok bool
 
-		// If passed a context, use that
+		// Check if we were passed a fakecontext
 		if len(args) > 0 {
-			if fakectx, ok := args[0].(*fakecontext.Context); ok {
-				ctx, err = fakectx.Context()
-				if err != nil {
-					log.Warn("Enable to create context: %v", err)
-				}
-				// Remove context from args
-				args = args[:len(args)-1]
-			}
+			fakectx, ok = args[0].(*fakecontext.Context)
 		}
 
-		// Ensure App Engine context is set on gin Context
-		ctx.Set("appengine", c)
+		// Remove fakecontext from args, if it exists
+		if ok {
+			args = args[:len(args)-1]
+		}
+
+		// Recreate gin context from fakecontext if possible, otherwise
+		// create a new one using this appengine context.
+		ctx := getGinContext(c, fakectx, ok)
 
 		// Build arguments for fn
 		in := []reflect.Value{reflect.ValueOf(ctx)}
