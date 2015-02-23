@@ -22,7 +22,7 @@ import (
 )
 
 var Foo = task.Func("foo", func(c *gin.Context) {
-	log.Debug("FOOOOOOOO")
+	log.Debug("FOOOOOOOO", c)
 })
 
 func Init() {
