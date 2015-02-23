@@ -90,7 +90,7 @@ type AppengineBackend struct {
 }
 
 func (b AppengineBackend) Verbose() bool {
-	return appengine.IsDevAppServer() || b.verbose
+	return b.verbose
 }
 
 // Log implementation for local dev server only.
@@ -117,7 +117,9 @@ func (b AppengineBackend) logToAppEngine(level logging.Level, formatted string) 
 	case logging.CRITICAL:
 		b.context.Criticalf(formatted)
 	case logging.INFO:
-		b.context.Infof(formatted)
+		if b.Verbose() {
+			b.context.Infof(formatted)
+		}
 	default:
 		if b.Verbose() {
 			b.context.Debugf(formatted)
@@ -160,7 +162,7 @@ func New() *Logger {
 
 	multiBackend := logging.SetBackend(defaultBackend)
 	log.SetBackend(multiBackend)
-	log.SetVerbose(true) // defaults to true, override in tests with testing.Verbose()
+	log.SetVerbose(appengine.IsDevAppServer())
 	return log
 }
 
