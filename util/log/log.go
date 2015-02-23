@@ -66,6 +66,8 @@ func (l *Logger) parseArgs(args ...interface{}) []interface{} {
 		return args
 	}
 
+	l.verboseOverride = false
+
 	// Check if we've been passed an App Engine or Gin context
 	l.detectContext(args[len(args)-1])
 
