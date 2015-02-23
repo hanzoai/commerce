@@ -1,17 +1,24 @@
 package fixtures
 
 import (
-	"appengine"
-	"appengine/delay"
+	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
-	"crowdstart.io/util/log"
-
 	. "crowdstart.io/models"
+	"crowdstart.io/util/log"
+	"crowdstart.io/util/task"
 )
 
-var products = delay.Func("install-products", func(c appengine.Context) {
+func insertVariants(db *datastore.Datastore, variants []ProductVariant) {
+	for _, v := range variants {
+		key := db.NewKey("variant", v.SKU, 0, nil)
+		v.Id = key.Encode()
+		db.Put(key, &v)
+	}
+}
+
+var products = task.Func("fixtures-products", func(c *gin.Context) {
 	log.Debug("Loading fixtures...")
 	db := datastore.New(c)
 
@@ -79,9 +86,7 @@ var products = delay.Func("install-products", func(c appengine.Context) {
 		},
 	}
 
-	for _, v := range variants {
-		db.PutKind("variant", v.SKU, &v)
-	}
+	insertVariants(db, variants)
 
 	db.PutKind("product", "ar-1", &Product{
 		Slug:     "ar-1",
@@ -126,9 +131,7 @@ var products = delay.Func("install-products", func(c appengine.Context) {
 		},
 	}
 
-	for _, v := range variants {
-		db.PutKind("variant", v.SKU, &v)
-	}
+	insertVariants(db, variants)
 
 	db.PutKind("product", "card-winter2014promo", &Product{
 		Slug:     "card-winter2014promo",
@@ -152,9 +155,7 @@ var products = delay.Func("install-products", func(c appengine.Context) {
 		},
 	}
 
-	for _, v := range variants {
-		db.PutKind("variant", v.SKU, &v)
-	}
+	insertVariants(db, variants)
 
 	db.PutKind("product", "dogtag-winter2014promo", &Product{
 		Slug:     "dogtag-winter2014promo",
@@ -258,9 +259,7 @@ var products = delay.Func("install-products", func(c appengine.Context) {
 		},
 	}
 
-	for _, v := range variants {
-		db.PutKind("variant", v.SKU, &v)
-	}
+	insertVariants(db, variants)
 
 	db.PutKind("product", "t-shirt", &Product{
 		Slug:    "t-shirt",
@@ -315,9 +314,7 @@ var products = delay.Func("install-products", func(c appengine.Context) {
 		},
 	}
 
-	for _, v := range variants {
-		db.PutKind("variant", v.SKU, &v)
-	}
+	insertVariants(db, variants)
 
 	db.PutKind("product", "hat", &Product{
 		Slug:    "hat",
@@ -354,9 +351,7 @@ var products = delay.Func("install-products", func(c appengine.Context) {
 		},
 	}
 
-	for _, v := range variants {
-		db.PutKind("variant", v.SKU, &v)
-	}
+	insertVariants(db, variants)
 
 	db.PutKind("product", "stickers", &Product{
 		Slug:    "stickers",
