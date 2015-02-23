@@ -17,6 +17,7 @@ type Logger struct {
 	logging.Logger
 	appengineBackend *AppengineBackend
 	verbose          bool
+	verboseOverride  bool
 }
 
 func (l *Logger) SetVerbose(verbose bool) {
@@ -27,19 +28,17 @@ func (l *Logger) Verbose() bool {
 	return l.verbose
 }
 
+func (l *Logger) VerboseOverride() bool {
+	return l.verboseOverride
+}
+
 // Check if we've been pased a gin or app engine context
 func (l *Logger) detectContext(ctx interface{}) {
 	switch ctx := ctx.(type) {
 	case *gin.Context:
 		// Get App Engine from session
 		l.appengineBackend.context = ctx.MustGet("appengine").(appengine.Context)
-
-		// Get verbose from session
-		if v, err := ctx.Get("verbose"); err != nil {
-			if verbose, ok := v.(bool); ok {
-				l.verbose = verbose
-			}
-		}
+		l.verboseOverride = ctx.MustGet("verbose").(bool)
 
 		// Request URI is useful for logging
 		if ctx.Request != nil {
@@ -117,13 +116,9 @@ func (b AppengineBackend) logToAppEngine(level logging.Level, formatted string) 
 	case logging.CRITICAL:
 		b.context.Criticalf(formatted)
 	case logging.INFO:
-		if b.Verbose() {
-			b.context.Infof(formatted)
-		}
+		b.context.Infof(formatted)
 	default:
-		if b.Verbose() {
-			b.context.Debugf(formatted)
-		}
+		b.context.Debugf(formatted)
 	}
 
 	return nil
@@ -179,7 +174,8 @@ func Verbose() bool {
 func Debug(formatOrError interface{}, args ...interface{}) {
 	args = std.parseArgs(args...)
 
-	if !std.Verbose() {
+	if !std.VerboseOverride() || !std.Verbose() {
+		std.Debug("No override or verbose not set on logger, not logging.")
 		return
 	}
 
@@ -195,7 +191,8 @@ func Debug(formatOrError interface{}, args ...interface{}) {
 func Info(formatOrError interface{}, args ...interface{}) {
 	args = std.parseArgs(args...)
 
-	if !std.Verbose() {
+	if !std.VerboseOverride() || !std.Verbose() {
+		std.Debug("No override or verbose not set on logger, not logging.")
 		return
 	}
 
