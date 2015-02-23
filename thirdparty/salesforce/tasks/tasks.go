@@ -173,7 +173,7 @@ var PullUpdatedSinceCleanUpTask = delay.Func("SalesforcePullUpdatedSinceCleanUpT
 		// Get recently updated users
 		users := new([]*models.User)
 		// We check 15 minutes into the future in case salesforce clocks (logs based on the minute updated) is slightly out of sync with google's
-		if err := client.PullUpdated(now.Add(-15*24*time.Hour), now, users); err != nil {
+		if err := client.PullUpdated(now.Add(-22*24*time.Hour), now, users); err != nil {
 			log.Panic("Getting Updated Contacts Failed: %v, %v", err, string(client.LastBody[:]), c)
 		}
 
