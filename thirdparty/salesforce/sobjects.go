@@ -11,10 +11,12 @@ import (
 	"appengine/datastore"
 
 	"crowdstart.io/models"
+	"crowdstart.io/util/log"
 )
 
 var ErrorUserTypeRequired = errors.New("Parameter needs to be of type User")
 var ErrorOrderTypeRequired = errors.New("Parameter needs to be of type Order")
+var ErrorShouldNotCall = errors.New("Function should not be called")
 
 // For crowdstart models/mixins to be salesforce compatible in future
 type SObjectCompatible interface {
@@ -46,7 +48,7 @@ type Contact struct {
 	IsDeleted      bool      `json:"IsDeleted,omitempty"`
 	MasterRecordId string    `json:"MasterRecordId,omitempty"`
 
-	// Unique External Id, currently using email (max length 255)
+	// Unique External Id, currently using Id (max length 255)
 	CrowdstartIdC string `json:"CrowdstartId__C,omitempty"`
 
 	// Read Only
@@ -191,7 +193,7 @@ type Account struct {
 	IsDeleted      bool      `json:"IsDeleted,omitempty"`
 	MasterRecordId string    `json:"MasterRecordId,omitempty"`
 
-	// Unique External Id, currently using email (max length 255)
+	// Unique External Id, currently using Id (max length 255)
 	CrowdstartIdC string `json:"CrowdstartId__C,omitempty"`
 
 	// Read Only
@@ -366,7 +368,7 @@ type Order struct {
 	IsDeleted      bool      `json:"IsDeleted,omitempty"`
 	MasterRecordId string    `json:"MasterRecordId,omitempty"`
 
-	// Unique External Id, currently using email (max length 255)
+	// Unique External Id, currently using Id (max length 255)
 	CrowdstartIdC string `json:"CrowdstartId__C,omitempty"`
 
 	// Read Only
@@ -376,50 +378,50 @@ type Order struct {
 
 	// You can manually specify these
 	// Data Fields
-	Account                Account `json:"Account,omitempty"`
-	Pricebook2Id           string  `json:"Pricebook2Id,omitempty"`
-	OriginalOrderId        string  `json:"OriginalOrderId,omitempty"`
-	EffectiveDate          string  `json:"EffectiveDate,omitempty"`
-	EndDate                string  `json:"EndDate,omitempty"`
-	IsReductionOrder       string  `json:"IsReductionOrder,omitempty"`
-	Status                 string  `json:"Status,omitempty"`
-	Description            string  `json:"Description,omitempty"`
-	CustomerAuthorizedById string  `json:"CustomerAuthorizedById,omitempty"`
-	CustomerAuthorizedDate string  `json:"CustomerAuthorizedDate,omitempty"`
-	CompanyAuthorizedById  string  `json:"CompanyAuthorizedById,omitempty"`
-	CompanyAuthorizedDate  string  `json:"CompanyAuthorizedDate,omitempty"`
-	Type                   string  `json:"Type,omitempty"`
-	BillingStreet          string  `json:"BillingStreet,omitempty"`
-	BillingCity            string  `json:"BillingCity,omitempty"`
-	BillingState           string  `json:"BillingState,omitempty"`
-	BillingPostalCode      string  `json:"BillingPostalCode,omitempty"`
-	BillingCountry         string  `json:"BillingCountry,omitempty"`
-	BillingLatitude        string  `json:"BillingLatitude,omitempty"`
-	BillingLongitude       string  `json:"BillingLongitude,omitempty"`
-	ShippingStreet         string  `json:"ShippingStreet,omitempty"`
-	ShippingCity           string  `json:"ShippingCity,omitempty"`
-	ShippingState          string  `json:"ShippingState,omitempty"`
-	ShippingPostalCode     string  `json:"ShippingPostalCode,omitempty"`
-	ShippingCountry        string  `json:"ShippingCountry,omitempty"`
-	ShippingLatitude       string  `json:"ShippingLatitude,omitempty"`
-	ShippingLongitude      string  `json:"ShippingLongitude,omitempty"`
-	Name                   string  `json:"Name,omitempty"`
-	PoDate                 string  `json:"PoDate,omitempty"`
-	PoNumber               string  `json:"PoNumber,omitempty"`
-	OrderReferenceNumber   string  `json:"OrderReferenceNumber,omitempty"`
-	BillToContactId        string  `json:"BillToContactId,omitempty"`
-	ShipToContactId        string  `json:"ShipToContactId,omitempty"`
-	ActivatedDate          string  `json:"ActivatedDate,omitempty"`
-	ActivatedById          string  `json:"ActivatedById,omitempty"`
-	StatusCode             string  `json:"StatusCode,omitempty"`
-	OrderNumber            string  `json:"OrderNumber,omitempty"`
-	TotalAmount            string  `json:"TotalAmount,omitempty"`
-	CreatedDate            string  `json:"CreatedDate,omitempty"`
-	SystemModstamp         string  `json:"SystemModstamp,omitempty"`
-	LastViewedDate         string  `json:"LastViewedDate,omitempty"`
-	LastReferencedDate     string  `json:"LastReferencedDate,omitempty"`
-	Order                  string  `json:"Order,omitempty"`
-	Master                 string  `json:"Master,omitempty"`
+	Account                *Account `json:"Account,omitempty"`
+	PricebookId            string   `json:"Pricebook2Id,omitempty"`
+	OriginalOrderId        string   `json:"OriginalOrderId,omitempty"`
+	EffectiveDate          string   `json:"EffectiveDate,omitempty"`
+	EndDate                string   `json:"EndDate,omitempty"`
+	IsReductionOrder       string   `json:"IsReductionOrder,omitempty"`
+	Status                 string   `json:"Status,omitempty"`
+	Description            string   `json:"Description,omitempty"`
+	CustomerAuthorizedById string   `json:"CustomerAuthorizedById,omitempty"`
+	CustomerAuthorizedDate string   `json:"CustomerAuthorizedDate,omitempty"`
+	CompanyAuthorizedById  string   `json:"CompanyAuthorizedById,omitempty"`
+	CompanyAuthorizedDate  string   `json:"CompanyAuthorizedDate,omitempty"`
+	Type                   string   `json:"Type,omitempty"`
+	BillingStreet          string   `json:"BillingStreet,omitempty"`
+	BillingCity            string   `json:"BillingCity,omitempty"`
+	BillingState           string   `json:"BillingState,omitempty"`
+	BillingPostalCode      string   `json:"BillingPostalCode,omitempty"`
+	BillingCountry         string   `json:"BillingCountry,omitempty"`
+	BillingLatitude        string   `json:"BillingLatitude,omitempty"`
+	BillingLongitude       string   `json:"BillingLongitude,omitempty"`
+	ShippingStreet         string   `json:"ShippingStreet,omitempty"`
+	ShippingCity           string   `json:"ShippingCity,omitempty"`
+	ShippingState          string   `json:"ShippingState,omitempty"`
+	ShippingPostalCode     string   `json:"ShippingPostalCode,omitempty"`
+	ShippingCountry        string   `json:"ShippingCountry,omitempty"`
+	ShippingLatitude       string   `json:"ShippingLatitude,omitempty"`
+	ShippingLongitude      string   `json:"ShippingLongitude,omitempty"`
+	Name                   string   `json:"Name,omitempty"`
+	PoDate                 string   `json:"PoDate,omitempty"`
+	PoNumber               string   `json:"PoNumber,omitempty"`
+	OrderReferenceNumber   string   `json:"OrderReferenceNumber,omitempty"`
+	BillToContactId        string   `json:"BillToContactId,omitempty"`
+	ShipToContactId        string   `json:"ShipToContactId,omitempty"`
+	ActivatedDate          string   `json:"ActivatedDate,omitempty"`
+	ActivatedById          string   `json:"ActivatedById,omitempty"`
+	StatusCode             string   `json:"StatusCode,omitempty"`
+	OrderNumber            string   `json:"OrderNumber,omitempty"`
+	TotalAmount            string   `json:"TotalAmount,omitempty"`
+	CreatedDate            string   `json:"CreatedDate,omitempty"`
+	SystemModstamp         string   `json:"SystemModstamp,omitempty"`
+	LastViewedDate         string   `json:"LastViewedDate,omitempty"`
+	LastReferencedDate     string   `json:"LastReferencedDate,omitempty"`
+	Order                  string   `json:"Order,omitempty"`
+	Master                 string   `json:"Master,omitempty"`
 
 	// Custom Crowdstart fields
 	Cancelled   bool   `json:"Cancelled__c,omitempty"`
@@ -433,10 +435,14 @@ type Order struct {
 	Shipping    string `json:"Shipping__c,omitempty"`
 	Subtotal    string `json:"Subtotal__c,omitempty"`
 	Tax         string `json:"Tax__c,omitempty"`
-	Unconfirmed bool   `json:"Unconfirmed__c"`
+	Total       string `json:"Total__c,omitempty"`
+	Unconfirmed bool   `json:"Unconfirmed__c,omitempty"`
 
 	// We don't use contracts
 	ContractId string `json:"ContractId,omitempty"`
+
+	// private data
+	orderProducts []OrderProduct
 }
 
 func (o *Order) Read(so SObjectCompatible) error {
@@ -459,12 +465,13 @@ func (o *Order) Read(so SObjectCompatible) error {
 	o.ShippingPostalCode = order.ShippingAddress.PostalCode
 	o.ShippingCountry = order.ShippingAddress.Country
 
-	o.Status = "Draft" // SF Required
+	o.Status = "Draft" // SF Rquired
 
 	// Payment Information
-	o.Shipping = fmt.Sprintf("%.2f", float64(order.Shipping)/1000.0)
-	o.Subtotal = fmt.Sprintf("%.2f", float64(order.Subtotal)/1000.0)
-	o.Tax = fmt.Sprintf("%.2f", float64(order.Tax)/1000.0)
+	o.Shipping = fmt.Sprintf("%.2f", float64(order.Shipping)/10000.0)
+	o.Subtotal = fmt.Sprintf("%.2f", float64(order.Subtotal)/10000.0)
+	o.Tax = fmt.Sprintf("%.2f", float64(order.Tax)/10000.0)
+	o.Total = fmt.Sprintf("%.2f", float64(order.Shipping+order.Subtotal+order.Tax)/10000.0)
 
 	if len(order.Charges) > 0 {
 		o.PaymentType = "Stripe"
@@ -481,35 +488,62 @@ func (o *Order) Read(so SObjectCompatible) error {
 	o.Unconfirmed = order.Unconfirmed
 
 	//SKU
-	desc := ""
-	for _, i := range order.Items {
-		desc += i.SKU_ + "," + strconv.Itoa(i.Quantity) + "\n"
+	if !o.Unconfirmed {
+		o.orderProducts = make([]OrderProduct, len(order.Items))
+		for i, item := range order.Items {
+			orderProduct := OrderProduct{}
+			orderProduct.Read(&item)
+			orderProduct.Order = &Order{CrowdstartIdC: order.Id}
+			o.orderProducts[i] = orderProduct
+		}
 	}
 
-	o.Description = desc
 	if name, err := datastore.DecodeKey(order.Id); err == nil {
 		o.Name = strconv.FormatInt(name.IntID(), 10)
 	}
 
-	o.Account.CrowdstartIdC = order.UserId
+	o.Account = &Account{CrowdstartIdC: order.UserId}
+	o.CrowdstartIdC = order.Id
 
 	return nil
 }
 
-func (o *Order) Push(api SalesforceClient, or *models.Order) error {
-	bytes, err := json.Marshal(o)
-	if err != nil {
+func (o *Order) Write(so SObjectCompatible) error {
+	// order, ok := so.(*models.Order)
+	// if !ok {
+	// 	return ErrorOrderTypeRequired
+	// }
+
+	return nil
+}
+func (o *Order) SetExternalId(id string) {
+	o.CrowdstartIdC = id
+}
+
+func (o *Order) ExternalId() string {
+	return o.CrowdstartIdC
+}
+
+func (o *Order) Push(api SalesforceClient) error {
+	if err := push(api, OrderExternalIdPath, o); err != nil {
 		return err
 	}
 
-	path := fmt.Sprintf(OrderExternalIdPath, strings.Replace(o.Id, ".", "_", -1))
-	data := string(bytes[:])
-
-	if err = api.Request("PATCH", path, data, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
-		return err
+	for _, orderProduct := range o.orderProducts {
+		if err := orderProduct.Push(api); err != nil {
+			return err
+		}
 	}
 
 	return nil
+}
+
+func (o *Order) PullExternalId(api SalesforceClient, id string) error {
+	return pull(api, OrderExternalIdPath, id, o)
+}
+
+func (o *Order) PullId(api SalesforceClient, id string) error {
+	return pull(api, OrderPath, id, o)
 }
 
 // func (o *Order) ToOrder(order *models.Order) error {
@@ -566,6 +600,220 @@ func (o *Order) Push(api SalesforceClient, or *models.Order) error {
 // 	return nil
 // }
 
+type OrderProduct struct {
+	// Don't manually specify these
+
+	// Response Only Fields
+	Attributes     Attribute `json:"attributes,omitempty"`
+	Id             string    `json:"Id,omitempty"`
+	IsDeleted      bool      `json:"IsDeleted,omitempty"`
+	MasterRecordId string    `json:"MasterRecordId,omitempty"`
+
+	// Read Only
+	CreatedById        string `json:"CreatedById,omitempty"`
+	LastModifiedById   string `json:"LastModifiedById,omitempty"`
+	AccountId          string `json:"AccountId,omitempty"`
+	OrderProductNumber int64  `json:"OrderItemNumber,omitempty"`
+	ProductCode        string `json:"ProductCode,omitempty"`
+	ListPrice          string `json:"ListPrice,omitempty"`
+
+	// You can manually specify these
+	// Data Fields
+	AvailableQuantity    int64           `json:"AvailableQuantity,omitempty"`
+	EndDate              string          `json:"EndDate,omitempty"`
+	Description          string          `json:"Description,omitempty"`
+	Order                *Order          `json:"Order,omitempty"`
+	OriginalOrderProduct *OrderProduct   `json:"OriginalOrderItem,omitempty"`
+	PricebookEntry       *PricebookEntry `json:"PricebookEntry,omitempty"`
+	Quantity             int             `json:"Quantity,omitempty"`
+	StartDate            string          `json:"ServiceDate,omitempty"`
+	TotalPrice           string          `json:"TotalPrice,omitempty"`
+	UnitPrice            string          `json:"UnitPrice,omitempty"`
+}
+
+func (o *OrderProduct) Read(so SObjectCompatible) error {
+	li, ok := so.(*models.LineItem)
+	if !ok {
+		return ErrorOrderTypeRequired
+	}
+
+	o.Quantity = li.Quantity
+	o.PricebookEntry = &PricebookEntry{CrowdstartIdC: li.VariantId}
+	o.UnitPrice = fmt.Sprintf("%.2f", float64(li.Variant.Price)/10000.0)
+
+	return nil
+}
+
+func (o *OrderProduct) Write(so SObjectCompatible) error {
+	return nil
+}
+
+func (o *OrderProduct) SetExternalId(id string) {
+}
+
+func (o *OrderProduct) ExternalId() string {
+	return ""
+}
+
+func (o *OrderProduct) Push(api SalesforceClient) error {
+	return push(api, OrderProductBasePath, o)
+}
+
+func (o *OrderProduct) PullExternalId(api SalesforceClient, id string) error {
+	return ErrorShouldNotCall
+}
+
+func (o *OrderProduct) PullId(api SalesforceClient, id string) error {
+	return ErrorShouldNotCall
+}
+
+type Product struct {
+	// Don't manually specify these
+
+	// Response Only Fields
+	Attributes     Attribute `json:"attributes,omitempty"`
+	Id             string    `json:"Id,omitempty"`
+	IsDeleted      bool      `json:"IsDeleted,omitempty"`
+	MasterRecordId string    `json:"MasterRecordId,omitempty"`
+
+	// Unique External Id, currently using Id (max length 255)
+	CrowdstartIdC string `json:"CrowdstartId__C,omitempty"`
+
+	// Read Only
+	CreatedById      string `json:"CreatedById,omitempty"`
+	LastModifiedById string `json:"LastModifiedById,omitempty"`
+
+	// You can manually specify these
+	// Data Fields
+	Name        string `json:"Name,omitempty"`
+	Description string `json:"Description,omitempty"`
+	ProductCode string `json:"ProductCode,omitempty"`
+	IsActive    bool   `json:"IsActive,omitempty"`
+	Family      string `json:"Family,omitempty"`
+
+	// private data
+	pricebook2Id string
+}
+
+func (p *Product) Read(so SObjectCompatible) error {
+	v, ok := so.(*models.ProductVariant)
+	if !ok {
+		return ErrorUserTypeRequired
+	}
+
+	p.CrowdstartIdC = v.Id
+	p.Name = v.SKU
+	p.ProductCode = v.SKU
+	p.IsActive = true
+
+	return nil
+}
+
+func (p *Product) Write(so SObjectCompatible) error {
+	v, ok := so.(*models.ProductVariant)
+	if !ok {
+		return ErrorUserTypeRequired
+	}
+
+	v.Id = p.CrowdstartIdC
+	v.SKU = p.ProductCode
+
+	return nil
+}
+
+func (p *Product) SetExternalId(id string) {
+	p.CrowdstartIdC = id
+}
+
+func (p *Product) ExternalId() string {
+	return p.CrowdstartIdC
+}
+
+func (p *Product) Push(api SalesforceClient) error {
+	return push(api, ProductExternalIdPath, p)
+}
+
+func (p *Product) PullExternalId(api SalesforceClient, id string) error {
+	return pull(api, ProductExternalIdPath, id, p)
+}
+
+func (p *Product) PullId(api SalesforceClient, id string) error {
+	return pull(api, ProductPath, id, p)
+}
+
+type PricebookEntry struct {
+	// Don't manually specify these
+
+	// Response Only Fields
+	Attributes     Attribute `json:"attributes,omitempty"`
+	Id             string    `json:"Id,omitempty"`
+	IsDeleted      bool      `json:"IsDeleted,omitempty"`
+	MasterRecordId string    `json:"MasterRecordId,omitempty"`
+
+	// Unique External Id, currently using Id (max length 255)
+	CrowdstartIdC string `json:"CrowdstartId__C,omitempty"`
+
+	// Read Only
+	CreatedById      string `json:"CreatedById,omitempty"`
+	LastModifiedById string `json:"LastModifiedById,omitempty"`
+	Name             string `json:"Name,omitempty"`
+	ProductCode      string `json:"ProductCode,omitempty"`
+
+	// You can manually specify these
+	// Data Fields
+	CurrencyIsoCode  string   `json:"CurrencyIsoCode,omitempty"`
+	PricebookId      string   `json:"Pricebook2Id,omitempty"`
+	Product          *Product `json:"Product2,omitempty"`
+	UnitPrice        string   `json:"UnitPrice,omitempty"`
+	UseStandardPrice bool     `json:"UseStandardPrice,omitempty"`
+}
+
+func (p *PricebookEntry) Read(so SObjectCompatible) error {
+	v, ok := so.(*models.ProductVariant)
+	if !ok {
+		return ErrorUserTypeRequired
+	}
+
+	p.CrowdstartIdC = v.Id
+	p.Product = &Product{CrowdstartIdC: v.Id}
+	p.UseStandardPrice = false
+	p.UnitPrice = fmt.Sprintf("%.2f", float64(v.Price)/10000.0)
+
+	return nil
+}
+
+func (p *PricebookEntry) Write(so SObjectCompatible) error {
+	v, ok := so.(*models.ProductVariant)
+	if !ok {
+		return ErrorUserTypeRequired
+	}
+
+	v.Id = p.CrowdstartIdC
+	//v.UnitPrice =
+
+	return nil
+}
+
+func (p *PricebookEntry) SetExternalId(id string) {
+	p.CrowdstartIdC = id
+}
+
+func (p *PricebookEntry) ExternalId() string {
+	return p.CrowdstartIdC
+}
+
+func (p *PricebookEntry) Push(api SalesforceClient) error {
+	return push(api, PricebookEntryExternalIdPath, p)
+}
+
+func (p *PricebookEntry) PullExternalId(api SalesforceClient, id string) error {
+	return pull(api, PricebookEntryExternalIdPath, id, p)
+}
+
+func (p *PricebookEntry) PullId(api SalesforceClient, id string) error {
+	return pull(api, PricebookEntryPath, id, p)
+}
+
 // Helper functions
 func push(api SalesforceClient, p string, s SObjectSerializeable) error {
 	id := s.ExternalId()
@@ -578,10 +826,18 @@ func push(api SalesforceClient, p string, s SObjectSerializeable) error {
 	}
 	s.SetExternalId(id)
 
-	path := fmt.Sprintf(p, strings.Replace(id, ".", "_", -1))
-	data := string(bytes[:])
+	// If no ID, then we must create a record instead of upsert
+	path := p
+	method := "POST"
+	if id != "" {
+		path = fmt.Sprintf(path, strings.Replace(id, ".", "_", -1))
+		method = "PATCH"
+	}
 
-	if err = api.Request("PATCH", path, data, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
+	data := string(bytes[:])
+	log.Warn("Pushing Json: %v", data, api.GetContext())
+
+	if err = api.Request(method, path, data, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
 		return err
 	}
 

@@ -3,11 +3,13 @@ package parallel
 import (
 	"reflect"
 
+	"github.com/gin-gonic/gin"
+
 	"appengine"
-	aeds "appengine/datastore"
 	"appengine/delay"
 
 	"crowdstart.io/datastore"
+	"crowdstart.io/util/fakecontext"
 	"crowdstart.io/util/log"
 )
 
@@ -47,10 +49,17 @@ func Task(name string, workerFunc interface{}) *delay.Function {
 	entityType := t.In(2)
 	workerFuncValue := reflect.ValueOf(workerFunc)
 
-	return delay.Func(name, func(c appengine.Context, kind string, offset, batchSize int, args ...interface{}) {
+	return delay.Func(name, func(c appengine.Context, fc *fakecontext.Context, kind string, offset, batchSize int, args ...interface{}) {
 		// Run query to get results for this batch of entities
 		db := datastore.New(c)
-		t := db.Query(kind).Offset(offset).Limit(batchSize).Run(c)
+		q := db.Query(kind).Offset(offset).Limit(batchSize)
+
+		// Limit 1 if in test mode
+		if gc, err := fc.Context(); err == nil && gc.MustGet("test").(bool) {
+			q = q.Limit(1)
+		}
+
+		t := q.Run(c)
 
 		// Loop over entities passing them into workerFunc one at a time
 		for {
@@ -64,7 +73,7 @@ func Task(name string, workerFunc interface{}) *delay.Function {
 				}
 
 				// Check if genuine error occurred
-				if _, ok := err.(*aeds.ErrFieldMismatch); !ok {
+				if db.SkipFieldMismatch(err) != nil {
 					log.Error("datastore.parallel worker encountered error: %v", err, c)
 					continue
 				}
@@ -89,19 +98,27 @@ func Task(name string, workerFunc interface{}) *delay.Function {
 }
 
 // Executes parallel task
-func Run(c appengine.Context, kind string, batchSize int, fn *delay.Function, args ...interface{}) error {
+func Run(c *gin.Context, kind string, batchSize int, fn *delay.Function, args ...interface{}) error {
 	var total int
 	var err error
 
-	if total, err = aeds.NewQuery(kind).Count(c); err != nil {
+	db := datastore.New(c)
+
+	if total, err = db.Query(kind).Count(db.Context); err != nil {
 		log.Error("Could not get count of %v because %v", kind, err, c)
 		return err
 	}
 
+	// Launch only 1 worker if in test mode
+	if c.MustGet("test").(bool) {
+		total = 1
+	}
+
 	for offset := 0; offset < total; offset += batchSize {
 		// prepend variadic arguments for `delay.Function.Call` with `kind`, `offset`, `batchSize`.
-		args := append([]interface{}{kind, offset, batchSize}, args...)
-		fn.Call(c, args...)
+		args := append([]interface{}{fakecontext.NewContext(c), kind, offset, batchSize}, args...)
+
+		fn.Call(db.Context, args...)
 	}
 	return nil
 }

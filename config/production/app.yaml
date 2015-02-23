@@ -16,19 +16,15 @@ inbound_services:
 - warmup
 
 handlers:
-- url: /fixtures/.*
-  script: _go_app
-  login: required
-  secure: always
-
-- url: /migrations/.*
-  script: _go_app
-  login: required
-  secure: always
-
-- url: /jobs/.*
+- url: /tasks
   script: _go_app
   login: admin
+  secure: always
+
+- url: /task/.*
+  script: _go_app
+  login: admin
+  secure: always
 
 - url: /_ah/remote_api
   script: _go_app

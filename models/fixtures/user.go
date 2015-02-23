@@ -4,18 +4,19 @@ import (
 	"time"
 
 	"appengine"
-	"appengine/delay"
 
 	"code.google.com/p/go.crypto/bcrypt"
+	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/datastore"
 	. "crowdstart.io/models"
-
 	"crowdstart.io/util/queries"
+	"crowdstart.io/util/task"
 )
 
-var testUsers = delay.Func("fixtures-test-users", func(c appengine.Context) {
-	db := datastore.New(c)
+var testUsers = task.Func("fixtures-test-users", func(ctx *gin.Context) {
+	db := datastore.New(ctx)
+	c := db.Context
 	q := queries.New(c)
 
 	// Add default test user
@@ -56,7 +57,8 @@ var testUsers = delay.Func("fixtures-test-users", func(c appengine.Context) {
 	db.PutKind("order", order.Id, &order)
 })
 
-var skullyUser = delay.Func("fixtures-skully-user", func(c appengine.Context) {
+var skullyUser = task.Func("fixtures-skully-user", func(g *gin.Context) {
+	c := g.MustGet("appengine")
 	q := queries.New(c)
 
 	// Add SKULLY user
@@ -71,7 +73,7 @@ var skullyUser = delay.Func("fixtures-skully-user", func(c appengine.Context) {
 	})
 })
 
-var skullyCampaign = delay.Func("fixtures-skully-campaign", func(c appengine.Context) {
+var skullyCampaign = task.Func("fixtures-skully-campaign", func(c *gin.Context) {
 	db := datastore.New(c)
 
 	// Default Campaign (SKULLY)
@@ -88,12 +90,13 @@ var skullyCampaign = delay.Func("fixtures-skully-campaign", func(c appengine.Con
 		campaign.Stripe.UserId = "acct_14lSsRCSRlllXCwP"
 
 		// And sales force test credentials
-		campaign.Salesforce.AccessToken = "00Do0000000d5HA!ARcAQJcOeDSNWRwRKX4wulUB8q5tHc.VzBh2DevtaQuCOBkbmz6bcQcK4rTJUWGEUmuJukww3KUyuYc0MWxdpvr8ZxWtzK2z"
+		campaign.Salesforce.AccessToken = "00Do0000000d5HA!ARcAQAC4j9MdFY5T0jElLYZu_W_qn0IUZQVOrVPD6H9yhHvtL4HKpagHnfKptQlIeLyV0ndPuEcn7YjRhWPGYEIuI4osn.GC"
 		campaign.Salesforce.RefreshToken = "5Aep861LNDQReieQSK6OvPpwG_C1z9MoX7qJR8huC9h.oOQm.eW2gfv6sfo9AUJgTUNnH4Tx3qBz9XtZGK2j1oS"
 		campaign.Salesforce.Id = "ttps://login.salesforce.com/id/00Do0000000d5HAEAY/005o0000001VCsiAAG"
 		campaign.Salesforce.IssuedAt = "1419371438825"
 		campaign.Salesforce.InstanceUrl = "https://na17.salesforce.com"
 		campaign.Salesforce.Signature = "RO086wMIGu1bLlXgjtMtAk4JGSd8k2/yb5tKRGq/No8="
+		campaign.Salesforce.DefaultPriceBookId = "01so0000003EAuw"
 	}
 	db.PutKind("campaign", "dev@hanzo.ai", &campaign)
 })
