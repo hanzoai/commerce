@@ -3,6 +3,8 @@ package tasks
 import (
 	"time"
 
+	"github.com/gin-gonic/gin"
+
 	"appengine"
 	"appengine/delay"
 
@@ -52,7 +54,7 @@ var ImportUsersTask = parallel.Task("sf-import-user-task", func(db *datastore.Da
 })
 
 // ImportUsers upserts all users into salesforce
-func ImportUsers(c appengine.Context) {
+func ImportUsers(c *gin.Context) {
 	db := datastore.New(c)
 	campaign := models.Campaign{}
 
@@ -75,7 +77,7 @@ var ImportOrdersTask = parallel.Task("sf-import-order-task", func(db *datastore.
 })
 
 // ImportOrders upserts all orders into salesforce
-func ImportOrders(c appengine.Context) {
+func ImportOrders(c *gin.Context) {
 	db := datastore.New(c)
 	campaign := models.Campaign{}
 
@@ -98,7 +100,7 @@ var ImportProductVariantsTask = parallel.Task("sf-import-product-task", func(db 
 })
 
 // ImportOrders upserts all orders into salesforce
-func ImportProductVariant(c appengine.Context) {
+func ImportProductVariant(c *gin.Context) {
 	db := datastore.New(c)
 	var campaign models.Campaign
 
