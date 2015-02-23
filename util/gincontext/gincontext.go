@@ -1,4 +1,4 @@
-package gin
+package gincontext
 
 import (
 	"log"
@@ -10,7 +10,7 @@ import (
 	"appengine"
 )
 
-func NewContext(ctx ...appengine.Context) *gin.Context {
+func New(ctx ...appengine.Context) *gin.Context {
 	var _ctx appengine.Context
 
 	switch len(ctx) {
