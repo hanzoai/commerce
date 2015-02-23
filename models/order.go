@@ -10,9 +10,9 @@ import (
 	humanize "github.com/dustin/go-humanize"
 	"github.com/gin-gonic/gin"
 	"github.com/mholt/binding"
-	stripe "github.com/stripe/stripe-go"
 
 	"crowdstart.io/datastore"
+	stripe "crowdstart.io/thirdparty/stripe/models"
 	"crowdstart.io/util/log"
 )
 

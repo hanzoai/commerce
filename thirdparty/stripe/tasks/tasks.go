@@ -10,6 +10,7 @@ import (
 	"crowdstart.io/datastore/parallel"
 	"crowdstart.io/models"
 	. "crowdstart.io/thirdparty/stripe"
+	stripeWrapperModels "crowdstart.io/thirdparty/stripe/models"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/task"
 )
@@ -50,7 +51,8 @@ var synchronizeCharges = parallel.Task("synchronize-charges", func(db *datastore
 		}
 
 		if updatedCharge.Dispute != nil {
-			o.Dispute = *updatedCharge.Dispute // TODO: Refactor for multiple charges.
+			// TODO: Refactor for multiple charges.
+			o.Dispute = stripeWrapperModels.ConvertDispute(*updatedCharge.Dispute)
 			o.Disputed = true
 			if updatedCharge.Dispute.Status != dispute.Won {
 				o.Locked = true
