@@ -41,9 +41,9 @@ var _ = AfterSuite(func() {
 })
 
 func newOrder(user *models.User, charge models.Charge) (datastore.Key, *models.Order) {
-	order := new(models.Order)
 	key := db.AllocateIntKey("order")
 
+	order := new(models.Order)
 	order.Id = key.Encode()
 	order.UserId = user.Id
 	order.Email = user.Email
@@ -77,20 +77,16 @@ func newUser(email string) (datastore.Key, *models.User) {
 }
 
 var _ = Describe("SynchronizeCharges", func() {
-	var (
-		order  *models.Order
-		charge models.Charge
-	)
-
 	Context("Running the task", func() {
 		It("Update orders with charges, using information from Stripe", func() {
 			_, user := newUser("dev@hanzo.ai")
 
+			var charge models.Charge
 			charge.Captured = true
 			charge.ID = "ch_15ZHJOCSRlllXCwPWFGgftzK"
 			charge.Email = user.Email
 
-			_, order = newOrder(user, charge)
+			_, order := newOrder(user, charge)
 
 			var updatedCharge models.Charge
 			var updatedOrder models.Order
