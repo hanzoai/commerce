@@ -12,8 +12,8 @@ import (
 
 	"crowdstart.io/middleware"
 	"crowdstart.io/util/fakecontext"
+	"crowdstart.io/util/gincontext"
 	"crowdstart.io/util/log"
-	ginhelper "crowdstart.io/util/test/gin"
 )
 
 var (
@@ -121,7 +121,7 @@ func getGinContext(c appengine.Context, fakectx *fakecontext.Context, ok bool) *
 		}
 	}
 
-	return ginhelper.NewContext(c)
+	return gincontext.New(c)
 }
 
 // Creates a new delay.Func which will call our fn with gin.Context, etc.
