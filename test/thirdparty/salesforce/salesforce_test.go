@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"appengine"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -18,7 +20,7 @@ import (
 	"crowdstart.io/util/log"
 )
 
-func TestSalesforce(t *testing.T) {
+func Test(t *testing.T) {
 	log.SetVerbose(testing.Verbose())
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "salesforce")
@@ -74,12 +76,16 @@ func (a *MockSalesforceClient) Request(method, path, data string, headers *map[s
 	return nil
 }
 
-func (a MockSalesforceClient) GetBody() []byte {
+func (a *MockSalesforceClient) GetBody() []byte {
 	bodies := a.Params.Bodies
 
 	var body []byte
 	body, a.Params.Bodies = bodies[0], bodies[1:]
 	return body
+}
+
+func (a *MockSalesforceClient) GetContext() appengine.Context {
+	return ctx
 }
 
 var (

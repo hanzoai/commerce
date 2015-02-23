@@ -66,7 +66,7 @@ func (d *Datastore) warn(fmtOrError interface{}, args ...interface{}) {
 
 // Helper to ignore tedious field mismatch errors (but warn appropriately
 // during development)
-func (d *Datastore) ignoreFieldMismatch(err error) error {
+func (d *Datastore) SkipFieldMismatch(err error) error {
 	// Ignore nil error or `IgnoreFieldMismatch` is disabled
 	if err == nil || !d.IgnoreFieldMismatch {
 		return nil
@@ -222,7 +222,7 @@ func (d *Datastore) Get(key interface{}, value interface{}) error {
 	}
 
 	// Try to retrieve entity using nds, which transparently uses memcache if possible
-	return d.ignoreFieldMismatch(nds.Get(d.Context, _key, value))
+	return d.SkipFieldMismatch(nds.Get(d.Context, _key, value))
 }
 
 // Gets an entity by literal datastore key of string type
@@ -236,7 +236,7 @@ func (d *Datastore) GetKind(kind string, key interface{}, value interface{}) err
 	}
 
 	// Try to retrieve entity using nds, which transparently uses memcache if possible
-	return d.ignoreFieldMismatch(nds.Get(d.Context, _key, value))
+	return d.SkipFieldMismatch(nds.Get(d.Context, _key, value))
 }
 
 // Same as Get, but works for multiple key/vals, keys can be slice of any type
@@ -263,7 +263,7 @@ func (d *Datastore) GetMulti(keys interface{}, vals interface{}) error {
 		_keys[i] = key
 	}
 
-	return nds.GetMulti(d.Context, _keys, vals)
+	return d.SkipFieldMismatch(nds.GetMulti(d.Context, _keys, vals))
 }
 
 // Same as GetKind, but works for multiple key/vals, keys can be slice of any
@@ -290,7 +290,7 @@ func (d *Datastore) GetKindMulti(kind string, keys interface{}, vals interface{}
 		_keys[i] = key
 	}
 
-	return nds.GetMulti(d.Context, _keys, vals)
+	return d.SkipFieldMismatch(nds.GetMulti(d.Context, _keys, vals))
 }
 
 // Puts entity, returning encoded key

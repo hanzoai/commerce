@@ -1,7 +1,7 @@
 pwd				= $(shell pwd)
 os				= $(shell uname | tr '[A-Z]' '[a-z]')
 platform		= $(os)_amd64
-sdk				= go_appengine_sdk_$(platform)-1.9.17
+sdk				= go_appengine_sdk_$(platform)-1.9.18
 sdk_path		= $(pwd)/.sdk
 goroot			= $(sdk_path)/goroot
 gopath			= $(sdk_path)/gopath
@@ -62,7 +62,6 @@ tools = github.com/nsf/gocode \
 
 # Various patches for SDK
 mtime_file_watcher = https://gist.githubusercontent.com/zeekay/5eba991c39426ca42cbb/raw/235f107b7ed081719103a4259dddd0e568d12480/mtime_file_watcher.py
-python_279_patch = https://gist.githubusercontent.com/zeekay/fc8e648dcd5d0ad35c92/raw/557e4080a96e572d3ba95e3c6279d1dac9e965fe/appengine-sdk-python-2.7.9.patch
 
 # static assets, requisite javascript from assets -> static
 bebop = node_modules/.bin/bebop
@@ -103,13 +102,25 @@ dev_appserver = $(sdk_path)/dev_appserver.py --skip_sdk_update_check \
 											 --datastore_path=~/.gae_datastore.bin \
 											 --dev_appserver_log_level=error
 
-sdk_install_extra = rm -rf $(sdk_path)/demos && curl $(python_279_patch) | patch -p0
+sdk_install_extra = rm -rf $(sdk_path)/demos
 
 # find command differs between bsd/linux thus the two versions
 ifeq ($(os), linux)
-	packages = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' -printf '%h\n' | sort -u | sed -e 's/.\//crowdstart.io\//')
+	packages = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' \
+			   				  -not -path "./.sdk/*" \
+			   				  -not -path "./test/*" \
+			   				  -not -path "./assets/*" \
+			   				  -not -path "./static/*" \
+			   				  -not -path "./node_modules/*" \
+			   				  -printf '%h\n' | sort -u | sed -e 's/.\//crowdstart.io\//')
 else
-	packages = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' -print0 | xargs -0 -n1 dirname | sort --unique | sed -e 's/.\//crowdstart.io\//')
+	packages = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' \
+			   				  -not -path "./.sdk/*" \
+			   				  -not -path "./test/*" \
+			   				  -not -path "./assets/*" \
+			   				  -not -path "./static/*" \
+			   				  -not -path "./node_modules/*" \
+			   				  -print0 | xargs -0 -n1 dirname | sort --unique | sed -e 's/.\//crowdstart.io\//')
 	sdk_install_extra := $(sdk_install_extra) && \
 						 curl $(mtime_file_watcher) > $(sdk_path)/google/appengine/tools/devappserver2/mtime_file_watcher.py && \
 						 pip install macfsevents --upgrade
@@ -117,9 +128,9 @@ endif
 
 # set v=1 to enable verbose mode
 ifeq ($(v), 1)
-	verbose = -v=true
+	test_verbose = -v=true -- -test.v=true
 else
-	verbose =
+	test_verbose =
 endif
 
 # set production=1 to set datastore export/import target to use production
@@ -130,9 +141,9 @@ else
 endif
 datastore_admin_url = https://datastore-admin-dot-$(datastore_app_id).appspot.com/_ah/remote_api
 
-test_filter := $(filter)
-ifdef test_filter
-	test_filter=-focus=$(filter)
+test_focus := $(focus)
+ifdef test_focus
+	test_focus=--focus=$(focus)
 endif
 
 export GOROOT := $(goroot)
@@ -185,8 +196,7 @@ deps-go: .sdk .sdk/go .sdk/gpm .sdk/gopath/bin/ginkgo
 	chmod +x .sdk/gpm
 
 .sdk/gopath/bin/ginkgo:
-	$(goapp) get -u github.com/onsi/ginkgo/ginkgo && \
-	$(goapp) install github.com/onsi/ginkgo/ginkgo
+	$(gpm) install && $(goapp) install github.com/onsi/ginkgo/ginkgo
 
 # INSTALL
 install: install-deps
@@ -217,19 +227,19 @@ tools:
 
 # TEST/ BENCH
 test:
-	$(ginkgo) -r=true -p=true -progress=true $(verbose) -skipMeasurements=true -skipPackage=integration $(test_filter)
+	@$(ginkgo) -r=true --randomizeAllSpecs -p=true -progress=true -skipMeasurements=true -skipPackage=integration $(test_focus) $(test_verbose)
 
 test-integration:
-	$(ginkgo) -r=true -p=true -progress=true $(verbose) -skipMeasurements=true -focus=integration
+	@$(ginkgo) -r=true --randomizeAllSpecs -p=true -progress=true -skipMeasurements=true -focus=integration $(test_verbose)
 
 test-watch:
-	$(ginkgo) watch -r=true -progress=true $(verbose) -skipMeasurements=true -skipPackage=integration $(test_filter)
+	@$(ginkgo) watch -r=true -p=true -progress=true -skipMeasurements=true $(test_focus) $(test_verbose)
+
+bench:
+	@$(ginkgo) -r=true --randomizeAllSpecs -p=true -progress=true -skipPackage=integration $(test_focus) $(test_verbose)
 
 test-ci:
 	$(ginkgo) -r=true --randomizeAllSpecs --randomizeSuites --failOnPending --cover --trace --compilers=2
-
-bench:
-	$(ginkgo) -r=true -p=true -progress=true $(verbose) -skipPackage=integration $(test_filter)
 
 # DEPLOY
 deploy: test
@@ -269,7 +279,7 @@ deploy-appengine-ci: assets-minified
 
 # EXPORT / Usage: make datastore-export kind=user
 datastore-export:
-	mkdir -p _export/ && \
+	@mkdir -p _export/ && \
 	bulkloader.py --download \
 				  --bandwidth_limit 1000000000 \
 				  --rps_limit 10000 \
@@ -288,7 +298,7 @@ datastore-export:
 
 # IMPORT / Usage: make datastore-import kind=user file=user.csv
 datastore-import:
-	appcfg.py upload_data --bandwidth_limit 1000000000 \
+	@appcfg.py upload_data --bandwidth_limit 1000000000 \
 						  --rps_limit 10000 \
 						  --batch_size 250 \
 						  --http_limit 200 \
@@ -301,7 +311,7 @@ datastore-import:
 
 # Generate config for use with datastore-export target
 datastore-config:
-	bulkloader.py --create_config \
+	@bulkloader.py --create_config \
 				  --url=$(datastore_admin_url) \
 				  --filename=bulkloader.yaml
 
