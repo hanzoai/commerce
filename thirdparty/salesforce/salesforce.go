@@ -34,6 +34,7 @@ func (e *ErrorUnexpectedStatusCode) Error() string {
 
 type SalesforceClient interface {
 	GetBody() []byte
+	GetContext() appengine.Context
 	Request(string, string, string, *map[string]string, bool) error
 }
 
@@ -59,6 +60,10 @@ func getClient(c appengine.Context) *http.Client {
 
 func (a *Api) GetBody() []byte {
 	return a.LastBody
+}
+
+func (a *Api) GetContext() appengine.Context {
+	return a.Context
 }
 
 // Request sends HTTP requests to Salesforce
