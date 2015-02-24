@@ -634,7 +634,7 @@ type OrderProduct struct {
 	Order                *Order          `json:"Order,omitempty"`
 	OriginalOrderProduct *OrderProduct   `json:"OriginalOrderItem,omitempty"`
 	PricebookEntry       *PricebookEntry `json:"PricebookEntry,omitempty"`
-	Quantity             int             `json:"Quantity,omitempty"`
+	Quantity             int64           `json:"Quantity,omitempty"`
 	StartDate            string          `json:"ServiceDate,omitempty"`
 	TotalPrice           Currency        `json:"TotalPrice,omitempty"`
 	UnitPrice            Currency        `json:"UnitPrice,omitempty"`
@@ -646,7 +646,7 @@ func (o *OrderProduct) Read(so SObjectCompatible) error {
 		return ErrorOrderTypeRequired
 	}
 
-	o.Quantity = li.Quantity
+	o.Quantity = int64(li.Quantity)
 	o.PricebookEntry = &PricebookEntry{CrowdstartIdC: li.VariantId}
 	o.UnitPrice = ToCurrency(li.Variant.Price)
 
