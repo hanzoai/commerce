@@ -26,9 +26,17 @@ func Test(t *testing.T) {
 	RunSpecs(t, "salesforce")
 }
 
+type MockSObjectTypes struct {
+	A string              `json:"String__C"`
+	B salesforce.Currency `json:"Currency__C"`
+	C bool                `json:"Bool__C"`
+	D string              `json:"D"`
+	E string
+}
+
 type MockSObjectSerializeable struct {
-	Id        string
-	FirstName string
+	Id        string `json:"Id__C"`
+	FirstName string `json:"FirstName__C"`
 }
 
 func (s *MockSObjectSerializeable) SetExternalId(id string) {
@@ -132,6 +140,20 @@ var _ = AfterSuite(func() {
 })
 
 var _ = Describe("User (de)serialization", func() {
+	Context("Metadata", func() {
+		It("Should find all sobject custom fields", func() {
+			metadata := salesforce.GetCustomFieldMetadata(MockSObjectTypes{})
+
+			Expect(len(metadata)).To(Equal(3))
+			Expect(metadata[0].Name).To(Equal("String"))
+			Expect(metadata[0].Type).To(Equal("TEXT(255)"))
+			Expect(metadata[1].Name).To(Equal("Currency"))
+			Expect(metadata[1].Type).To(Equal("CURRENCY(16,2)"))
+			Expect(metadata[2].Name).To(Equal("Bool"))
+			Expect(metadata[2].Type).To(Equal("CHECKBOX"))
+		})
+	})
+
 	Context("Account and Contact To/From User", func() {
 		It("Should work", func() {
 			// Contact and Account should serialize and then deserialze to the original object
