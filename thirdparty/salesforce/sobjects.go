@@ -534,6 +534,11 @@ func (o *Order) ExternalId() string {
 }
 
 func (o *Order) Push(api SalesforceClient) error {
+	// Easiest way of clearing out the old OrderItems
+	if err := del(api, OrderExternalIdPath, o.CrowdstartIdC); err != nil {
+		return err
+	}
+
 	if err := push(api, OrderExternalIdPath, o); err != nil {
 		return err
 	}
@@ -823,6 +828,15 @@ func (p *PricebookEntry) PullExternalId(api SalesforceClient, id string) error {
 
 func (p *PricebookEntry) PullId(api SalesforceClient, id string) error {
 	return pull(api, PricebookEntryPath, id, p)
+}
+
+func del(api SalesforceClient, path, id string) error {
+	p := fmt.Sprintf(path, id)
+	if err := api.Request("DELETE", p, "", nil, true); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Helper functions
