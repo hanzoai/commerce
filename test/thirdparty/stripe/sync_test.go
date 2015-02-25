@@ -4,15 +4,22 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gin-gonic/gin"
+
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
+	"crowdstart.io/thirdparty/stripe"
+	"crowdstart.io/thirdparty/stripe/tasks"
+	"crowdstart.io/util/gincontext"
+	"crowdstart.io/util/log"
 	"crowdstart.io/util/queries"
 	"crowdstart.io/util/test/ae"
 	. "crowdstart.io/util/test/ginkgo"
 )
 
 var (
+	c        *gin.Context
 	ctx      ae.Context
 	db       *datastore.Datastore
 	q        *queries.Client
@@ -25,9 +32,17 @@ func Test(t *testing.T) {
 
 var _ = BeforeSuite(func() {
 	// gob.Register(models.Campaign{})
-	ctx = ae.NewContext()
+	ctx = ae.NewContext(ae.Options{
+		Modules:    []string{"default"},
+		TaskQueues: []string{"default"},
+	})
+
+	time.Sleep(3 * time.Second)
+	log.Debug("Finished waiting for server to start")
+
 	db = datastore.New(ctx)
 	q = queries.New(ctx)
+	c = gincontext.New(ctx)
 
 	campaign.Id = "dev@hanzo.ai"
 	campaign.Creator.Email = campaign.Id
@@ -56,7 +71,6 @@ func newOrder(user *models.User, charge models.Charge) (datastore.Key, *models.O
 	order.Subtotal = 50 * 100
 	order.Total = 50 * 100
 
-	charge.Amount = order.Total
 	order.Charges = append(order.Charges, charge)
 	_, err := db.Put(key, order)
 	Expect(err).ToNot(HaveOccurred())
@@ -80,17 +94,19 @@ var _ = Describe("SynchronizeCharges", func() {
 	Context("Running the task", func() {
 		It("Update orders with charges, using information from Stripe", func() {
 			_, user := newUser("dev@hanzo.ai")
+			charge := models.Charge{
+				Captured: true,
+				ID:       "ch_15ZHJOCSRlllXCwPWFGgftzK",
+				Email:    user.Email,
+			}
+			key, order := newOrder(user, charge)
 
-			var charge models.Charge
-			charge.Captured = true
-			charge.ID = "ch_15ZHJOCSRlllXCwPWFGgftzK"
-			charge.Email = user.Email
-
-			_, order := newOrder(user, charge)
+			sc := stripe.NewApiClient(ctx, config.Stripe.APISecret)
+			tasks.SynchronizeCharge(db, key, *order, sc)
 
 			var updatedCharge models.Charge
 			var updatedOrder models.Order
-			err := db.GetKind("order", order.Id, &updatedOrder)
+			err := db.Get(key, &updatedOrder)
 			Expect(err).ToNot(HaveOccurred())
 			updatedCharge = order.Charges[0]
 			Expect(updatedCharge).ToNot(Equal(charge))
@@ -100,15 +116,14 @@ var _ = Describe("SynchronizeCharges", func() {
 	Context("Disputed charge", func() {
 		It("should be marked as disputed.", func() {
 			_, user := newUser("dev@hanzo.ai")
-
 			charge := models.Charge{
 				ID:    "ch_15ZGKCCSRlllXCwPryrymFEH",
 				Email: user.Email,
 			}
+			key, order := newOrder(user, charge)
 
-			key, _ := newOrder(user, charge)
-
-			time.Sleep(10 * time.Second)
+			sc := stripe.NewApiClient(ctx, config.Stripe.APISecret)
+			tasks.SynchronizeCharge(db, key, *order, sc)
 
 			updatedOrder := new(models.Order)
 			err := db.Get(key, updatedOrder)
