@@ -48,7 +48,7 @@ func StripeSync(c *gin.Context) {
 		return
 	}
 
-	tasks.SynchronizeCharges(c)
+	tasks.RunSynchronizeCharges(c)
 	c.String(200, "Synchronising orders")
 }
 

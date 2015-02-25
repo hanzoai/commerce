@@ -1,8 +1,11 @@
 package tasks
 
 import (
+	"appengine"
+
 	"github.com/gin-gonic/gin"
 	stripe "github.com/stripe/stripe-go"
+	"github.com/stripe/stripe-go/client"
 	"github.com/stripe/stripe-go/dispute"
 
 	"crowdstart.io/config"
@@ -10,19 +13,20 @@ import (
 	"crowdstart.io/datastore/parallel"
 	"crowdstart.io/models"
 	. "crowdstart.io/thirdparty/stripe"
-	stripeWrapperModels "crowdstart.io/thirdparty/stripe/models"
 	"crowdstart.io/util/log"
-	"crowdstart.io/util/task"
 )
 
-var synchronizeCharges = parallel.Task("synchronize-charges", func(db *datastore.Datastore, key datastore.Key, o models.Order, accessToken string) error {
+// This is a worker that processes one order at a time
+var synchronizeCharges = parallel.Task("synchronize-charges", SynchronizeCharge)
+
+func SynchronizeCharge(db *datastore.Datastore, key datastore.Key, o models.Order, sc *client.API) error {
 	log.Info("Synchronising")
-	sc := NewApiClient(db.Context, accessToken)
 
 	description := o.Description()
 	for i, charge := range o.Charges {
 		updatedCharge, err := sc.Charges.Get(charge.ID, nil)
 		if err != nil {
+			log.Error("Failed to get charges for %v: %v", charge.ID, err)
 			return err
 		}
 
@@ -52,7 +56,7 @@ var synchronizeCharges = parallel.Task("synchronize-charges", func(db *datastore
 
 		if updatedCharge.Dispute != nil {
 			// TODO: Refactor for multiple charges.
-			o.Dispute = stripeWrapperModels.ConvertDispute(*updatedCharge.Dispute)
+			// o.Dispute = stripeWrapperModels.ConvertDispute(*updatedCharge.Dispute)
 			o.Disputed = true
 			if updatedCharge.Dispute.Status != dispute.Won {
 				o.Locked = true
@@ -69,12 +73,13 @@ var synchronizeCharges = parallel.Task("synchronize-charges", func(db *datastore
 		return err
 	}
 	return nil
-})
+}
 
-func SynchronizeCharges(c *gin.Context) {
-	parallel.Run(c, "order", 100, synchronizeCharges, config.Stripe.APISecret)
+func RunSynchronizeCharges(c *gin.Context) {
+	ctx := c.MustGet("appengine").(appengine.Context)
+	sc := NewApiClient(ctx, config.Stripe.APISecret)
+	parallel.Run(c, "order", 100, synchronizeCharges, sc)
 }
 
 func init() {
-	task.Register("stripe-sync-orders", SynchronizeCharges)
 }
