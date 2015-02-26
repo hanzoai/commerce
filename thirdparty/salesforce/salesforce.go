@@ -226,9 +226,12 @@ func (a *Api) Push(object SObjectCompatible) error {
 
 	switch v := object.(type) {
 	case *models.User:
+
 		if v.Id == "" {
 			return ErrorRequiresId
 		}
+
+		log.Debug("Upserting Account", c)
 
 		account := Account{}
 		if err := account.Read(v); err != nil {
@@ -237,7 +240,8 @@ func (a *Api) Push(object SObjectCompatible) error {
 		if err := account.Push(a); err != nil {
 			return err
 		}
-		log.Debug("Upserting Account: %v", account, c)
+
+		log.Debug("Upserting Contact", c)
 
 		contact := Contact{}
 		if err := contact.Read(v); err != nil {
@@ -247,9 +251,10 @@ func (a *Api) Push(object SObjectCompatible) error {
 		if err := contact.Push(a); err != nil {
 			return err
 		}
-		log.Debug("Upserting Contact: %v", contact, c)
 
 	case *models.Order:
+		log.Debug("Upserting Order", c)
+
 		v.LoadVariantsProducts(c)
 		order := Order{PricebookId: a.Campaign.Salesforce.DefaultPriceBookId}
 		if err := order.Read(v); err != nil {
@@ -259,9 +264,10 @@ func (a *Api) Push(object SObjectCompatible) error {
 		if err := order.Push(a); err != nil {
 			return err
 		}
-		log.Debug("Upserting Order: %v", order, c)
 
 	case *models.ProductVariant:
+		log.Debug("Upserting Product", c)
+
 		product := Product{}
 		if err := product.Read(v); err != nil {
 			return err
@@ -270,6 +276,8 @@ func (a *Api) Push(object SObjectCompatible) error {
 		if err := product.Push(a); err != nil {
 			return err
 		}
+
+		log.Debug("Upserting PricebookEntry", c)
 
 		pricebookEntry := PricebookEntry{PricebookId: a.Campaign.Salesforce.DefaultPriceBookId}
 		if err := pricebookEntry.Read(v); err != nil {

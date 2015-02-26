@@ -973,10 +973,10 @@ func push(api SalesforceClient, p string, s SObjectSerializeable) error {
 	}
 
 	// Debug in production only
-	// log.Warn("Receiving Json: %v", string(api.GetBody()[:]), api.GetContext())
-
 	body := api.GetBody()
 	status := api.GetStatusCode()
+
+	log.Debug("Receiving Json: %v", string(body), api.GetContext())
 	if len(body) == 0 {
 		if status == 201 || status == 204 {
 			return nil

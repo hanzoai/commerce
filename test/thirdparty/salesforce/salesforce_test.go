@@ -35,6 +35,8 @@ type MockSObjectTypes struct {
 }
 
 type MockSObjectSerializeable struct {
+	salesforce.ModelReference
+
 	Id        string `json:"Id__C"`
 	FirstName string `json:"FirstName__C"`
 }
@@ -90,6 +92,10 @@ func (a *MockSalesforceClient) GetBody() []byte {
 	var body []byte
 	body, a.Params.Bodies = bodies[0], bodies[1:]
 	return body
+}
+
+func (a *MockSalesforceClient) GetStatusCode() int {
+	return 204
 }
 
 func (a *MockSalesforceClient) GetContext() appengine.Context {
@@ -189,6 +195,8 @@ var _ = Describe("User (de)serialization", func() {
 
 	Context("Push/Pull User", func() {
 		It("Push Contact", func() {
+			params.Bodies = append(params.Bodies, []byte{})
+
 			client := MockSalesforceClient{Params: params}
 			contact := salesforce.Contact{}
 			contact.Read(&user)
@@ -209,6 +217,8 @@ var _ = Describe("User (de)serialization", func() {
 		})
 
 		It("Push Account", func() {
+			params.Bodies = append(params.Bodies, []byte{})
+
 			client := MockSalesforceClient{Params: params}
 			account := salesforce.Account{}
 			account.Read(&user)
@@ -247,7 +257,9 @@ var _ = Describe("User (de)serialization", func() {
 			params.Bodies = append(params.Bodies, body1, body2)
 
 			account.PullExternalId(&client, "Id")
+			account.Ref = refAccount.Ref
 			contact.PullExternalId(&client, "Id")
+			contact.Ref = refContact.Ref
 
 			// Referenced and Decoded values should be equal
 			Expect(reflect.DeepEqual(account, refAccount)).To(Equal(true))
@@ -275,7 +287,9 @@ var _ = Describe("User (de)serialization", func() {
 			params.Bodies = append(params.Bodies, body1, body2)
 
 			account.PullId(&client, "Id")
+			account.Ref = refAccount.Ref
 			contact.PullId(&client, "Id")
+			contact.Ref = refContact.Ref
 
 			// Referenced and Decoded values should be equal
 			Expect(reflect.DeepEqual(account, refAccount)).To(Equal(true))
@@ -360,6 +374,7 @@ var _ = Describe("User (de)serialization", func() {
 			u.UpdatedAt = user.UpdatedAt
 			u.CreatedAt = user.CreatedAt
 			u.Metadata = user.Metadata
+			u.LastSync_ = user.LastSync_
 
 			Expect(reflect.DeepEqual(&user, u)).To(Equal(true))
 		})
