@@ -28,6 +28,10 @@ func ToCurrency(centicents int64) Currency {
 type SObjectCompatible interface {
 	SetSalesforceId(string)
 	SalesforceId() string
+	SetSalesforceId2(string)
+	SalesforceId2() string
+	SetLastSync()
+	LastSync() time.Time
 }
 
 type SObjectSyncable interface {
@@ -42,10 +46,82 @@ type SObjectSerializeable interface {
 	// Should be SObjectCompatible in the future instead of models.User
 	Read(SObjectCompatible) error
 	Write(SObjectCompatible) error
+
+	// SObjectCompatible proxies
+	SetSalesforceId(string)
+	SalesforceId() string
+	SetLastSync()
+	LastSync() time.Time
+}
+
+// Reference to the struct/datastore model for an SObject
+type ModelReference struct {
+	Ref SObjectCompatible
+}
+
+func (s *ModelReference) SetSalesforceId(id string) {
+	if s.Ref != nil {
+		s.Ref.SetSalesforceId(id)
+	}
+}
+
+func (s *ModelReference) SalesforceId() string {
+	if s.Ref != nil {
+		return s.Ref.SalesforceId()
+	}
+	return ""
+}
+
+func (s *ModelReference) SetLastSync() {
+	if s.Ref != nil {
+		s.Ref.SetLastSync()
+	}
+}
+
+func (s *ModelReference) LastSync() time.Time {
+	if s.Ref != nil {
+		return s.Ref.LastSync()
+	}
+
+	return time.Now()
+}
+
+// Also a reference like above but some of these structs/models refer to multiple sobjects
+type ModelSecondaryReference struct {
+	Ref SObjectCompatible
+}
+
+func (s *ModelSecondaryReference) SetSalesforceId(id string) {
+	if s.Ref != nil {
+		s.Ref.SetSalesforceId2(id)
+	}
+}
+
+func (s *ModelSecondaryReference) SalesforceId() string {
+	if s.Ref != nil {
+		return s.Ref.SalesforceId()
+	}
+	return ""
+}
+
+func (s *ModelSecondaryReference) SetLastSync() {
+	if s.Ref != nil {
+		s.Ref.SetLastSync()
+	}
+}
+
+func (s *ModelSecondaryReference) LastSync() time.Time {
+	if s.Ref != nil {
+		return s.Ref.LastSync()
+	}
+
+	return time.Now()
 }
 
 //SObject Definitions
 type Contact struct {
+	ModelSecondaryReference `json:"-"` // Struct this sobject refers to
+
 	// Don't manually specify these
 
 	// Response Only Fields
@@ -124,6 +200,8 @@ type Contact struct {
 }
 
 func (c *Contact) Read(so SObjectCompatible) error {
+	c.Ref = so
+
 	u, ok := so.(*models.User)
 	if !ok {
 		return ErrorUserTypeRequired
@@ -149,6 +227,8 @@ func (c *Contact) Read(so SObjectCompatible) error {
 }
 
 func (c *Contact) Write(so SObjectCompatible) error {
+	c.Ref = so
+
 	u, ok := so.(*models.User)
 	if !ok {
 		return ErrorUserTypeRequired
@@ -191,6 +271,8 @@ func (c *Contact) PullId(api SalesforceClient, id string) error {
 }
 
 type Account struct {
+	ModelReference `json:"-"` // Struct this sobject refers to
+
 	// Don't manually specify these
 
 	// Response Only Fields
@@ -281,6 +363,8 @@ type Account struct {
 }
 
 func (a *Account) Read(so SObjectCompatible) error {
+	a.Ref = so
+
 	u, ok := so.(*models.User)
 	if !ok {
 		return ErrorUserTypeRequired
@@ -309,6 +393,8 @@ func (a *Account) Read(so SObjectCompatible) error {
 }
 
 func (a *Account) Write(so SObjectCompatible) error {
+	a.Ref = so
+
 	u, ok := so.(*models.User)
 	if !ok {
 		return ErrorUserTypeRequired
@@ -366,6 +452,8 @@ func (a *Account) PullId(api SalesforceClient, id string) error {
 }
 
 type Order struct {
+	ModelReference `json:"-"` // Struct this sobject refers to
+
 	// Don't manually specify these
 
 	// Response Only Fields
@@ -453,6 +541,8 @@ type Order struct {
 }
 
 func (o *Order) Read(so SObjectCompatible) error {
+	o.Ref = so
+
 	order, ok := so.(*models.Order)
 	if !ok {
 		return ErrorOrderTypeRequired
@@ -518,6 +608,8 @@ func (o *Order) Read(so SObjectCompatible) error {
 }
 
 func (o *Order) Write(so SObjectCompatible) error {
+	o.Ref = so
+
 	// order, ok := so.(*models.Order)
 	// if !ok {
 	// 	return ErrorOrderTypeRequired
@@ -534,11 +626,9 @@ func (o *Order) ExternalId() string {
 }
 
 func (o *Order) Push(api SalesforceClient) error {
-	// Easiest way of clearing out the old OrderItems
-	if err := del(api, OrderExternalIdPath, o.CrowdstartIdC); err != nil {
-		return err
-	}
+	// Easiest way of clearing out the old OrderItems, ignore errors
 
+	del(api, OrderExternalIdPath, o.CrowdstartIdC)
 	if err := push(api, OrderExternalIdPath, o); err != nil {
 		return err
 	}
@@ -615,6 +705,8 @@ func (o *Order) PullId(api SalesforceClient, id string) error {
 // }
 
 type OrderProduct struct {
+	ModelReference `json:"-"` // Struct this sobject refers to
+
 	// Don't manually specify these
 
 	// Response Only Fields
@@ -646,6 +738,8 @@ type OrderProduct struct {
 }
 
 func (o *OrderProduct) Read(so SObjectCompatible) error {
+	o.Ref = so
+
 	li, ok := so.(*models.LineItem)
 	if !ok {
 		return ErrorOrderTypeRequired
@@ -659,6 +753,8 @@ func (o *OrderProduct) Read(so SObjectCompatible) error {
 }
 
 func (o *OrderProduct) Write(so SObjectCompatible) error {
+	o.Ref = so
+
 	return nil
 }
 
@@ -682,6 +778,8 @@ func (o *OrderProduct) PullId(api SalesforceClient, id string) error {
 }
 
 type Product struct {
+	ModelReference `json:"-"` // Struct this sobject refers to
+
 	// Don't manually specify these
 
 	// Response Only Fields
@@ -710,6 +808,8 @@ type Product struct {
 }
 
 func (p *Product) Read(so SObjectCompatible) error {
+	p.Ref = so
+
 	v, ok := so.(*models.ProductVariant)
 	if !ok {
 		return ErrorUserTypeRequired
@@ -724,6 +824,8 @@ func (p *Product) Read(so SObjectCompatible) error {
 }
 
 func (p *Product) Write(so SObjectCompatible) error {
+	p.Ref = so
+
 	v, ok := so.(*models.ProductVariant)
 	if !ok {
 		return ErrorUserTypeRequired
@@ -756,6 +858,8 @@ func (p *Product) PullId(api SalesforceClient, id string) error {
 }
 
 type PricebookEntry struct {
+	ModelSecondaryReference `json:"-"` // Struct this sobject refers to
+
 	// Don't manually specify these
 
 	// Response Only Fields
@@ -862,12 +966,37 @@ func push(api SalesforceClient, p string, s SObjectSerializeable) error {
 	data := string(bytes[:])
 	log.Debug("Pushing Json: %v", data, api.GetContext())
 
-	if err = api.Request(method, path, data, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
+	// Set the last sync date on the object
+	s.SetLastSync()
+	if err := api.Request(method, path, data, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
 		return err
 	}
 
 	// Debug in production only
 	// log.Warn("Receiving Json: %v", string(api.GetBody()[:]), api.GetContext())
+
+	body := api.GetBody()
+	status := api.GetStatusCode()
+	if len(body) == 0 {
+		if status == 201 || status == 204 {
+			return nil
+		} else {
+			return &ErrorUnexpectedStatusCode{StatusCode: status, Body: body}
+		}
+	}
+
+	response := new(UpsertResponse)
+
+	if err := json.Unmarshal(body, response); err != nil {
+		return err
+	}
+
+	if !response.Success {
+		return &response.Errors[0]
+	}
+
+	// Set the Id of the struct that the sobject refrences
+	s.SetSalesforceId(response.Id)
 
 	return nil
 }
@@ -881,14 +1010,14 @@ func pull(api SalesforceClient, path, id string, s SObjectSerializeable) error {
 	return json.Unmarshal(api.GetBody(), s)
 }
 
-func getUpdated(api *Api, p string, start, end time.Time, response *UpdatedRecordsResponse) error {
+func getUpdated(api SalesforceClient, p string, start, end time.Time, response *UpdatedRecordsResponse) error {
 	path := fmt.Sprintf(p, start.Format(time.RFC3339), end.Format(time.RFC3339))
 
 	if err := api.Request("GET", path, "", nil, true); err != nil {
 		return err
 	}
 
-	if err := json.Unmarshal(api.LastBody, response); err != nil {
+	if err := json.Unmarshal(api.GetBody(), response); err != nil {
 		return err
 	}
 
