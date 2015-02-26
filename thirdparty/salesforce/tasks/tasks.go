@@ -51,6 +51,9 @@ var ImportUsersTask = parallel.Task("sf-import-user-task", func(db *datastore.Da
 	if err := client.Push(&user); err != nil {
 		log.Debug("Error: %v", err)
 	}
+
+	// Pushes can update sync times and salesforce ids so update in datastore
+	db.Put(key, &user)
 })
 
 // ImportUsers upserts all users into salesforce
@@ -74,6 +77,9 @@ var ImportOrdersTask = parallel.Task("sf-import-order-task", func(db *datastore.
 	if err := client.Push(&order); err != nil {
 		log.Debug("Error: %v, '%v'", err, order.UserId)
 	}
+
+	// Pushes can update sync times and salesforce ids so update in datastore
+	db.Put(key, &order)
 })
 
 // ImportOrders upserts all orders into salesforce
@@ -97,6 +103,9 @@ var ImportProductVariantsTask = parallel.Task("sf-import-product-task", func(db 
 	if err := client.Push(&variant); err != nil {
 		log.Error("Unable to update variant '%v': %v", variant.Id, err, db.Context)
 	}
+
+	// Pushes can update sync times and salesforce ids so update in datastore
+	db.Put(key, &variant)
 })
 
 // ImportOrders upserts all orders into salesforce
