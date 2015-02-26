@@ -34,6 +34,7 @@ func (e *ErrorUnexpectedStatusCode) Error() string {
 
 type SalesforceClient interface {
 	GetBody() []byte
+	GetStatusCode() int
 	GetContext() appengine.Context
 	Request(string, string, string, *map[string]string, bool) error
 }
@@ -60,6 +61,10 @@ func getClient(c appengine.Context) *http.Client {
 
 func (a *Api) GetBody() []byte {
 	return a.LastBody
+}
+
+func (a *Api) GetStatusCode() int {
+	return a.LastStatusCode
 }
 
 func (a *Api) GetContext() appengine.Context {
@@ -277,27 +282,6 @@ func (a *Api) Push(object SObjectCompatible) error {
 
 	default:
 		return ErrorInvalidType
-	}
-
-	if len(a.LastBody) == 0 {
-		if a.LastStatusCode == 201 || a.LastStatusCode == 204 {
-			log.Debug("Upsert returned %v", a.LastStatusCode, c)
-			return nil
-		} else {
-			return &ErrorUnexpectedStatusCode{StatusCode: a.LastStatusCode, Body: a.LastBody}
-		}
-	}
-
-	response := new(UpsertResponse)
-
-	if err := json.Unmarshal(a.LastBody, response); err != nil {
-		log.Error("Could not unmarshal: %v", string(a.LastBody[:]), c)
-		return err
-	}
-
-	if !response.Success {
-		log.Error("Upsert Failed: %v: %v", response.Errors[0].ErrorCode, response.Errors[0].Message, c)
-		return &response.Errors[0]
 	}
 
 	return nil
