@@ -8,8 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"appengine/datastore"
+	aeds "appengine/datastore"
 
+	"crowdstart.io/datastore"
 	"crowdstart.io/models"
 	"crowdstart.io/util/log"
 )
@@ -34,7 +35,7 @@ type SObjectCompatible interface {
 	LastSync() time.Time
 }
 
-type SObjectSyncable interface {
+type SObject interface {
 	Push(SalesforceClient) error
 	PullId(SalesforceClient, string) error
 	PullExternalId(SalesforceClient, string) error
@@ -43,15 +44,28 @@ type SObjectSyncable interface {
 type SObjectSerializeable interface {
 	SetExternalId(string)
 	ExternalId() string
+
 	// Should be SObjectCompatible in the future instead of models.User
 	Read(SObjectCompatible) error
 	Write(SObjectCompatible) error
+}
+
+type SObjectSyncable interface {
+	SObjectSerializeable
 
 	// SObjectCompatible proxies
 	SetSalesforceId(string)
 	SalesforceId() string
 	SetLastSync()
 	LastSync() time.Time
+}
+
+type SObjectLoadable interface {
+	SObject
+	SObjectSyncable
+
+	LoadSalesforceId(*datastore.Datastore, string) SObjectCompatible
+	Load(*datastore.Datastore) SObjectCompatible
 }
 
 // Reference to the struct/datastore model for an SObject
@@ -259,6 +273,18 @@ func (c *Contact) ExternalId() string {
 	return c.CrowdstartIdC
 }
 
+func (c *Contact) Load(db *datastore.Datastore) SObjectCompatible {
+	c.Ref = new(models.User)
+	db.Get(c.ExternalId(), c.Ref)
+	return c.Ref
+}
+
+func (c *Contact) LoadSalesforceId(db *datastore.Datastore, id string) SObjectCompatible {
+	objects := make([]*models.User, 1)
+	db.Query("user").Filter("SecondarySalesforceId_=", id).Limit(1).GetAll(db.Context, objects)
+	return objects[0]
+}
+
 func (c *Contact) Push(api SalesforceClient) error {
 	return push(api, ContactExternalIdPath, c)
 }
@@ -372,7 +398,7 @@ func (a *Account) Read(so SObjectCompatible) error {
 
 	a.CrowdstartIdC = u.Id
 
-	if key, err := datastore.DecodeKey(u.Id); err == nil {
+	if key, err := aeds.DecodeKey(u.Id); err == nil {
 		a.Name = strconv.FormatInt(key.IntID(), 10)
 	} else {
 		// This should never happen
@@ -437,6 +463,18 @@ func (a *Account) SetExternalId(id string) {
 
 func (a *Account) ExternalId() string {
 	return a.CrowdstartIdC
+}
+
+func (a *Account) Load(db *datastore.Datastore) SObjectCompatible {
+	a.Ref = new(models.User)
+	db.Get(a.ExternalId(), a.Ref)
+	return a.Ref
+}
+
+func (a *Account) LoadSalesforceId(db *datastore.Datastore, id string) SObjectCompatible {
+	objects := make([]*models.User, 1)
+	db.Query("user").Filter("PrimarySalesforceId_=", id).Limit(1).GetAll(db.Context, objects)
+	return objects[0]
 }
 
 func (a *Account) Push(api SalesforceClient) error {
@@ -648,6 +686,12 @@ func (o *Order) PullExternalId(api SalesforceClient, id string) error {
 
 func (o *Order) PullId(api SalesforceClient, id string) error {
 	return pull(api, OrderPath, id, o)
+}
+
+func (o *Order) Load(db *datastore.Datastore) SObjectCompatible {
+	o.Ref = new(models.User)
+	db.Get(o.ExternalId(), o.Ref)
+	return o.Ref
 }
 
 // func (o *Order) ToOrder(order *models.Order) error {
@@ -944,7 +988,7 @@ func del(api SalesforceClient, path, id string) error {
 }
 
 // Helper functions
-func push(api SalesforceClient, p string, s SObjectSerializeable) error {
+func push(api SalesforceClient, p string, s SObjectSyncable) error {
 	id := s.ExternalId()
 
 	// nee to set UserId to blank to prevent serialization

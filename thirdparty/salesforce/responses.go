@@ -46,12 +46,12 @@ type DescribeResponse struct {
 }
 
 type SObjectUrls struct {
-	SObject     string `json:"sobject"`
-	Describe    string `json:"describe"`
-	RowTemplate string `json:"rowTemplate"`
+	SObjectMetadata string `json:"sobject"`
+	Describe        string `json:"describe"`
+	RowTemplate     string `json:"rowTemplate"`
 }
 
-type SObject struct {
+type SObjectMetaData struct {
 	Name        string `json:"name"`
 	Label       string `json:"label"`
 	KeyPrefix   string `json:"keyPrefix"`
