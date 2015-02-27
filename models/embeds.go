@@ -25,7 +25,8 @@ func (so *SalesforceSObject) SalesforceId2() string {
 }
 
 func (so *SalesforceSObject) SetLastSync() {
-	so.LastSync_ = time.Now()
+	// Add 1 more minute to the Last Sync date due to sf resolution being nearest minute
+	so.LastSync_ = time.Now().Add(1 * time.Minute)
 }
 
 func (so *SalesforceSObject) LastSync() time.Time {
