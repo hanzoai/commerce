@@ -280,8 +280,11 @@ func (c *Contact) Load(db *datastore.Datastore) SObjectCompatible {
 }
 
 func (c *Contact) LoadSalesforceId(db *datastore.Datastore, id string) SObjectCompatible {
-	objects := make([]*models.User, 1)
-	db.Query("user").Filter("SecondarySalesforceId_=", id).Limit(1).GetAll(db.Context, objects)
+	objects := make([]*models.User, 0)
+	db.Query("user").Filter("SecondarySalesforceId_=", id).Limit(1).GetAll(db.Context, &objects)
+	if len(objects) == 0 {
+		return nil
+	}
 	return objects[0]
 }
 
@@ -472,8 +475,11 @@ func (a *Account) Load(db *datastore.Datastore) SObjectCompatible {
 }
 
 func (a *Account) LoadSalesforceId(db *datastore.Datastore, id string) SObjectCompatible {
-	objects := make([]*models.User, 1)
-	db.Query("user").Filter("PrimarySalesforceId_=", id).Limit(1).GetAll(db.Context, objects)
+	objects := make([]*models.User, 0)
+	db.Query("user").Filter("PrimarySalesforceId_=", id).Limit(1).GetAll(db.Context, &objects)
+	if len(objects) == 0 {
+		return nil
+	}
 	return objects[0]
 }
 
