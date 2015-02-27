@@ -332,7 +332,6 @@ func (a *Api) Pull(id string, object SObjectCompatible) error {
 
 func (a *Api) PullUpdated(start, end time.Time, objects interface{} /*[]SObjectCompatible*/) error {
 	c := a.Context
-	db := datastore.New(c)
 
 	switch v := objects.(type) {
 	case *[]*models.User:
@@ -343,17 +342,14 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{} /*[]SObjectC
 			return err
 		}
 
-		users := make(map[string]*models.User)
+		users := make(map[string]SObjectCompatible)
 
-		if err := ProcessUpdatedSObjects(db,
+		if err := a.ProcessUpdatedSObjects(
 			&response,
+			start,
 			users,
-			func(id string) SObjectSerializeable {
-				contact := new(Contact)
-				contact.PullId(a, id)
-
-				log.Debug("Getting Contact: %v", contact, c)
-				return contact
+			func() SObjectLoadable {
+				return new(Contact)
 			}); err != nil {
 			return err
 		}
@@ -365,15 +361,12 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{} /*[]SObjectC
 			return err
 		}
 
-		if err := ProcessUpdatedSObjects(db,
+		if err := a.ProcessUpdatedSObjects(
 			&response,
+			start,
 			users,
-			func(id string) SObjectSerializeable {
-				account := new(Account)
-				account.PullId(a, id)
-
-				log.Debug("Getting Account: %v", account, c)
-				return account
+			func() SObjectLoadable {
+				return new(Account)
 			}); err != nil {
 			return err
 		}
@@ -383,7 +376,7 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{} /*[]SObjectC
 
 		i := 0
 		for _, u := range users {
-			userSlice[i] = u
+			userSlice[i] = u.(*models.User)
 			i++
 		}
 
@@ -434,23 +427,38 @@ func (a *Api) Describe(response *DescribeResponse) error {
 }
 
 //Helper Functions
-func ProcessUpdatedSObjects(db *datastore.Datastore, response *UpdatedRecordsResponse, users map[string]*models.User, createFn func(string) SObjectSerializeable) error {
-	var ok bool
-
+func (a *Api) ProcessUpdatedSObjects(response *UpdatedRecordsResponse, start time.Time, objects map[string]SObjectCompatible, createFn func() SObjectLoadable) error {
+	db := datastore.New(a.Context)
 	for _, id := range response.Ids {
-		us := createFn(id)
+		us := createFn()
+		object := us.LoadSalesforceId(db, id)
 
-		var user *models.User
-
-		// We key based on accountId because it is common to both contacts and accounts
-		userId := us.ExternalId()
-		if user, ok = users[userId]; !ok {
-			user = new(models.User)
-			db.Get(userId, user)
-			users[userId] = user
+		// ignore objects that have been updated locally since the start of the sync
+		if object != nil && object.LastSync().After(start) {
+			continue
 		}
 
-		if err := us.Write(user); err != nil {
+		us.PullId(a, id)
+
+		// We key based on accountId because it is common to both contacts and accounts
+		id := us.ExternalId()
+
+		// Use the CrowdstartId/Db Key to Index
+		usId := us.ExternalId()
+		// if Db Key is not in objects
+		if loadedObject, ok := objects[usId]; !ok {
+			// then use the object that was loaded if it exists
+			if object == nil {
+				// or load the object from the db using the Db Key
+				object = us.Load(db)
+			}
+			objects[id] = object
+		} else {
+			// Otherwise use the object from objects
+			object = loadedObject
+		}
+
+		if err := us.Write(object); err != nil {
 			return err
 		}
 	}
