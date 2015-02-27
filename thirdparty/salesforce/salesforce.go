@@ -344,7 +344,8 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{} /*[]SObjectC
 
 		users := make(map[string]SObjectCompatible)
 
-		if err := a.ProcessUpdatedSObjects(
+		if err := ProcessUpdatedSObjects(
+			a,
 			&response,
 			start,
 			users,
@@ -361,7 +362,8 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{} /*[]SObjectC
 			return err
 		}
 
-		if err := a.ProcessUpdatedSObjects(
+		if err := ProcessUpdatedSObjects(
+			a,
 			&response,
 			start,
 			users,
@@ -427,8 +429,8 @@ func (a *Api) Describe(response *DescribeResponse) error {
 }
 
 //Helper Functions
-func (a *Api) ProcessUpdatedSObjects(response *UpdatedRecordsResponse, start time.Time, objects map[string]SObjectCompatible, createFn func() SObjectLoadable) error {
-	db := datastore.New(a.Context)
+func ProcessUpdatedSObjects(api SalesforceClient, response *UpdatedRecordsResponse, start time.Time, objects map[string]SObjectCompatible, createFn func() SObjectLoadable) error {
+	db := datastore.New(api.GetContext())
 	for _, id := range response.Ids {
 		us := createFn()
 		object := us.LoadSalesforceId(db, id)
@@ -438,25 +440,26 @@ func (a *Api) ProcessUpdatedSObjects(response *UpdatedRecordsResponse, start tim
 			continue
 		}
 
-		us.PullId(a, id)
+		us.PullId(api, id)
 
 		// We key based on accountId because it is common to both contacts and accounts
-		id := us.ExternalId()
-
 		// Use the CrowdstartId/Db Key to Index
 		usId := us.ExternalId()
 		// if Db Key is not in objects
 		if loadedObject, ok := objects[usId]; !ok {
 			// then use the object that was loaded if it exists
+			//log.Warn("!Exist")
 			if object == nil {
 				// or load the object from the db using the Db Key
 				object = us.Load(db)
+				//log.Warn("Loading")
 			}
-			objects[id] = object
+			objects[usId] = object
 		} else {
 			// Otherwise use the object from objects
 			object = loadedObject
 		}
+		//log.Warn("Assign %v", object)
 
 		if err := us.Write(object); err != nil {
 			return err
