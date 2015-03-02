@@ -162,6 +162,41 @@ var PullUpdatedTask = delay.Func("SalesforcePullUpdatedTask", func(c appengine.C
 })
 
 // PullUpdatedTask gets recently(20 minutes ago) updated Contact and upserts them as Users
+var PullUpdatedOrdersTask = delay.Func("SalesforcePullUpdatedOrderTask", func(c appengine.Context) {
+	db := datastore.New(c)
+	campaign := new(models.Campaign)
+
+	// Get user instance
+	if err := db.GetKind("campaign", "dev@hanzo.ai", campaign); err != nil {
+		log.Panic("Unable to get campaign from database: %v", err, c)
+	}
+
+	if campaign.Salesforce.AccessToken != "" {
+		log.Info("Try to synchronize from updated salesforce list", c)
+
+		client := New(c, campaign, true)
+
+		now := time.Now()
+
+		// Get recently updated users
+		orders := new([]*models.Order)
+		// We check 15 minutes into the future in case salesforce clocks (logs based on the minute updated) is slightly out of sync with google's
+		if err := client.PullUpdated(now.Add(-20*time.Minute), now, orders); err != nil {
+			log.Panic("Getting Updated Contacts Failed: %v, %v", err, string(client.LastBody[:]), c)
+		}
+
+		log.Info("Updating %v Users from Salesforce", len(*orders), c)
+		for _, order := range *orders {
+			if _, err := db.Update(order.Id, order); err != nil {
+				log.Panic("User '%v' could not be updated, %v", order.Id, err, c)
+			} else {
+				log.Info("User '%v' was successfully updated", order.Id, c)
+			}
+		}
+	}
+})
+
+// PullUpdatedTask gets recently(20 minutes ago) updated Contact and upserts them as Users
 var PullUpdatedSinceCleanUpTask = delay.Func("SalesforcePullUpdatedSinceCleanUpTask", func(c appengine.Context) {
 	db := datastore.New(c)
 	campaign := new(models.Campaign)
@@ -209,15 +244,11 @@ func CallUpsertOrderTask(c appengine.Context, campaign *models.Campaign, order *
 	UpsertOrderTask.Call(c, *campaign, *order)
 }
 
-// CallPullUpdatedTask calls the task queue delay function with the passed in params
-func CallPullUpdatedTask(c appengine.Context) {
-	PullUpdatedTask.Call(c)
-}
-
 func init() {
 	task.Register("salesforce-sync-users", ImportUsers)
 	task.Register("salesforce-sync-orders", ImportOrders)
 	task.Register("salesforce-sync-product-variants", ImportProductVariant)
-	task.Register("salesforce-sync-updated", CallPullUpdatedTask)
+	task.Register("salesforce-sync-updated-users", PullUpdatedTask)
+	task.Register("salesforce-sync-updated-orders", PullUpdatedOrdersTask)
 	task.Register("salesforce-sync-updated-since-cleanup", PullUpdatedSinceCleanUpTask)
 }
