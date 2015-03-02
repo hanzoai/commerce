@@ -383,6 +383,40 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{} /*[]SObjectC
 		}
 
 		*v = userSlice
+
+	case *[]*models.Order:
+		log.Debug("Getting Updated Orders", c)
+
+		response := UpdatedRecordsResponse{}
+		if err := GetUpdatedOrders(a, start, end, &response); err != nil {
+			return err
+		}
+
+		orders := make(map[string]SObjectCompatible)
+
+		if err := ProcessUpdatedSObjects(
+			a,
+			&response,
+			start,
+			orders,
+			func() SObjectLoadable {
+				return new(Order)
+			}); err != nil {
+			return err
+		}
+
+		log.Debug("Pulled %v Users", len(orders), c)
+		orderSlice := make([]*models.Order, len(orders))
+
+		i := 0
+		for _, o := range orders {
+			orderSlice[i] = o.(*models.Order)
+			orderSlice[i].LoadVariantsProducts(c)
+			i++
+		}
+
+		*v = orderSlice
+
 	default:
 		return ErrorInvalidType
 	}
