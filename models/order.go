@@ -67,6 +67,7 @@ type Order struct {
 }
 
 var variantsMap map[string]ProductVariant
+var salesforceVariantsMap map[string]ProductVariant
 var productsMap map[string]Product
 
 func (o Order) DisputedCharges(c *gin.Context) (disputedCharges []Charge) {
@@ -79,14 +80,16 @@ func (o Order) DisputedCharges(c *gin.Context) (disputedCharges []Charge) {
 }
 
 func (o *Order) LoadVariantsProducts(c interface{}) {
-	if variantsMap == nil || productsMap == nil {
+	if variantsMap == nil || productsMap == nil || salesforceVariantsMap == nil {
 		db := datastore.New(c)
 
 		variantsMap = make(map[string]ProductVariant)
+		salesforceVariantsMap = make(map[string]ProductVariant)
 		var variants []ProductVariant
 		db.Query("variant").GetAll(db.Context, &variants)
 		for _, variant := range variants {
 			variantsMap[variant.SKU] = variant
+			salesforceVariantsMap[variant.SecondarySalesforceId_] = variant
 		}
 
 		productsMap = make(map[string]Product)
@@ -100,8 +103,14 @@ func (o *Order) LoadVariantsProducts(c interface{}) {
 	for i, item := range o.Items {
 		log.Warn("SKU %v, %v", item.SKU_, variantsMap[item.SKU_])
 		o.Items[i].Product = productsMap[item.Slug_]
-		o.Items[i].Variant = variantsMap[item.SKU_]
-		o.Items[i].VariantId = variantsMap[item.SKU_].Id
+
+		// We might need to look up using sf id
+		var ok bool
+		if o.Items[i].Variant, ok = variantsMap[item.SKU_]; !ok {
+			o.Items[i].Variant = salesforceVariantsMap[item.SecondarySalesforceId_]
+		}
+
+		o.Items[i].VariantId = o.Items[i].VariantId
 	}
 }
 

@@ -25,6 +25,11 @@ func ToCurrency(centicents int64) Currency {
 	return Currency(fmt.Sprintf("%.2f", float64(centicents)/10000.0))
 }
 
+func FromCurrency(dollars Currency) int64 {
+	f64, _ := strconv.ParseFloat(string(dollars), 64)
+	return int64(f64 * 10000.0)
+}
+
 // For crowdstart models/mixins to be salesforce compatible in future
 type SObjectCompatible interface {
 	SetSalesforceId(string)
@@ -41,16 +46,19 @@ type SObject interface {
 	PullExternalId(SalesforceClient, string) error
 }
 
-type SObjectSerializeable interface {
+type SObjectIDable interface {
 	SetExternalId(string)
 	ExternalId() string
+}
 
+type SObjectSerializeable interface {
 	// Should be SObjectCompatible in the future instead of models.User
 	Read(SObjectCompatible) error
 	Write(SObjectCompatible) error
 }
 
 type SObjectSyncable interface {
+	SObjectIDable
 	SObjectSerializeable
 
 	// SObjectCompatible proxies
@@ -495,6 +503,22 @@ func (a *Account) PullId(api SalesforceClient, id string) error {
 	return pull(api, AccountPath, id, a)
 }
 
+// Place Order metadata junk things
+type PlaceOrderWrapper struct {
+	TotalSize int64 `json:"totalSize"`
+	Done      bool  `json:"done"`
+}
+
+type PlaceOrderOrderWrapper struct {
+	PlaceOrderWrapper
+	Records []Order `json:records`
+}
+
+type PlaceOrderOrderProductWrapper struct {
+	PlaceOrderWrapper
+	Records []OrderProduct `json:records`
+}
+
 type Order struct {
 	ModelReference `json:"-"` // Struct this sobject refers to
 
@@ -580,6 +604,8 @@ type Order struct {
 	// We don't use contracts
 	ContractId string `json:"ContractId,omitempty"`
 
+	// PlaceOrder API requirement
+	OrderProducts *PlaceOrderOrderProductWrapper `json"OrderItems,omitempty`
 	// private data
 	orderProducts []OrderProduct
 }
@@ -632,7 +658,7 @@ func (o *Order) Read(so SObjectCompatible) error {
 	if !o.UnconfirmedC {
 		o.orderProducts = make([]OrderProduct, len(order.Items))
 		for i, item := range order.Items {
-			orderProduct := OrderProduct{}
+			orderProduct := OrderProduct{CrowdstartIdC: order.Id + fmt.Sprintf(":%d", i)}
 			orderProduct.Read(&item)
 			orderProduct.Order = &Order{CrowdstartIdC: order.Id}
 			o.orderProducts[i] = orderProduct
@@ -654,19 +680,99 @@ func (o *Order) Read(so SObjectCompatible) error {
 func (o *Order) Write(so SObjectCompatible) error {
 	o.Ref = so
 
-	// order, ok := so.(*models.Order)
-	// if !ok {
-	// 	return ErrorOrderTypeRequired
+	order, ok := so.(*models.Order)
+	if !ok {
+		return ErrorOrderTypeRequired
+	}
+
+	// We shouldn't update a read only value like this
+	// order.CreatedAt = time.Parse(time.RFC3339, o.EffectiveDate)
+
+	lines := strings.Split(o.BillingStreet, "\n")
+	order.BillingAddress.Line1 = lines[0]
+	if len(lines) > 1 {
+		order.BillingAddress.Line2 = strings.Join(lines[1:], "\n")
+	}
+
+	order.BillingAddress.City = o.BillingCity
+	order.BillingAddress.State = o.BillingState
+	order.BillingAddress.PostalCode = o.BillingPostalCode
+	order.BillingAddress.Country = o.BillingCountry
+
+	lines = strings.Split(o.ShippingStreet, "\n")
+	order.ShippingAddress.Line1 = lines[0]
+	if len(lines) > 1 {
+		order.ShippingAddress.Line2 = strings.Join(lines[1:], "\n")
+	}
+
+	order.ShippingAddress.City = o.ShippingCity
+	order.ShippingAddress.State = o.ShippingState
+	order.ShippingAddress.PostalCode = o.ShippingPostalCode
+	order.ShippingAddress.Country = o.ShippingCountry
+
+	// Payment Information
+	order.Shipping = FromCurrency(o.ShippingC)
+	order.Subtotal = FromCurrency(o.SubtotalC)
+	order.Tax = FromCurrency(o.TaxC)
+
+	// We shouldn't update a read only value like this
+	// if len(order.Charges) > 0 {
+	// 	o.PaymentTypeC = "Stripe"
+	// 	o.PaymentIdC = order.Charges[0].ID
 	// }
+
+	// Status Flags
+	order.Cancelled = o.CancelledC
+	order.Disputed = o.DisputedC
+	order.Locked = o.LockedC
+	order.Preorder = o.PreorderC
+	order.Refunded = o.RefundedC
+	order.Shipped = o.ShippedC
+	order.Unconfirmed = o.UnconfirmedC
+
+	//SKU
+	lineItems := make([]models.LineItem, len(o.orderProducts))
+	if !o.UnconfirmedC {
+		order.Items = lineItems
+		for i, op := range o.orderProducts {
+			op.Write(&lineItems[i])
+		}
+	}
+
+	// Skully salesforce is rejecting name
+	// if name, err := datastore.DecodeKey(order.Id); err == nil {
+	// 	o.Name = strconv.FormatInt(name.IntID(), 10)
+	// }
+
+	// We shouldn't update a read only value like this
+	// o.OriginalEmailC = order.Email
+
+	order.Id = o.CrowdstartIdC
 
 	return nil
 }
+
 func (o *Order) SetExternalId(id string) {
 	o.CrowdstartIdC = id
 }
 
 func (o *Order) ExternalId() string {
 	return o.CrowdstartIdC
+}
+
+func (o *Order) Load(db *datastore.Datastore) SObjectCompatible {
+	o.Ref = new(models.Order)
+	db.Get(o.ExternalId(), o.Ref)
+	return o.Ref
+}
+
+func (o *Order) LoadSalesforceId(db *datastore.Datastore, id string) SObjectCompatible {
+	objects := make([]*models.Order, 0)
+	db.Query("user").Filter("PrimarySalesforceId_=", id).Limit(1).GetAll(db.Context, &objects)
+	if len(objects) == 0 {
+		return nil
+	}
+	return objects[0]
 }
 
 func (o *Order) Push(api SalesforceClient) error {
@@ -686,73 +792,53 @@ func (o *Order) Push(api SalesforceClient) error {
 	return nil
 }
 
+var productCache map[string]Product
+
+func pullOrderProduct(api SalesforceClient, o *Order) error {
+	if productCache == nil {
+		productCache = make(map[string]Product)
+	}
+	// Get Order Products as well
+	poow := PlaceOrderOrderWrapper{}
+	if err := pull(api, PlaceOrderOrderPath, o.CrowdstartIdC, &poow); err != nil {
+		return err
+	}
+
+	if len(poow.Records) == 0 {
+		return nil
+	}
+
+	if poow.Records[0].OrderProducts == nil {
+		return nil
+	}
+
+	ops := poow.Records[0].OrderProducts.Records
+	o.orderProducts = ops
+	for _, op := range ops {
+		op.PullId(api, op.Id)
+		if op.PricebookEntryId {
+
+		}
+	}
+
+	return nil
+}
+
 func (o *Order) PullExternalId(api SalesforceClient, id string) error {
-	return pull(api, OrderExternalIdPath, id, o)
+	if err := pull(api, OrderExternalIdPath, id, o); err != nil {
+		return err
+	}
+
+	return pullOrderProduct(api, o)
 }
 
 func (o *Order) PullId(api SalesforceClient, id string) error {
-	return pull(api, OrderPath, id, o)
+	if err := pull(api, OrderPath, id, o); err != nil {
+		return err
+	}
+
+	return pullOrderProduct(api, o)
 }
-
-func (o *Order) Load(db *datastore.Datastore) SObjectCompatible {
-	o.Ref = new(models.User)
-	db.Get(o.ExternalId(), o.Ref)
-	return o.Ref
-}
-
-// func (o *Order) ToOrder(order *models.Order) error {
-// 	lines := strings.Split(o.ShippingStreet, "\n")
-
-// 	created, err := time.Parse(time.RFC3339, o.EffectiveDate)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	order.CreatedAt = created
-
-// 	// Split Street line \n to recover our data
-// 	order.ShippingAddress.Line1 = lines[0]
-// 	if len(lines) > 1 {
-// 		order.ShippingAddress.Line2 = strings.Join(lines[1:], "\n")
-// 	}
-
-// 	order.ShippingAddress.City = o.ShippingCity
-// 	order.ShippingAddress.State = o.ShippingState
-// 	order.ShippingAddress.PostalCode = o.ShippingPostalCode
-// 	order.ShippingAddress.Country = o.ShippingCountry
-
-// 	lines = strings.Split(o.BillingStreet, "\n")
-
-// 	// Split Street line \n to recover our data
-// 	order.BillingAddress.Line1 = lines[0]
-// 	if len(lines) > 1 {
-// 		order.BillingAddress.Line2 = strings.Join(lines[1:], "\n")
-// 	}
-
-// 	order.BillingAddress.City = o.BillingCity
-// 	order.BillingAddress.State = o.BillingState
-// 	order.BillingAddress.PostalCode = o.BillingPostalCode
-// 	order.BillingAddress.Country = o.BillingCountry
-
-// 	lIs := strings.Split(o.Description, "\n")
-
-// 	//Decode order info in the form of SKU,quantity\n
-// 	order.Items = make([]models.LineItem, len(lIs))
-// 	for _, lI := range lIs {
-// 		t := strings.Split(lI, ",")
-// 		if len(t) == 2 {
-// 			if q, err := strconv.ParseInt(t[1], 10, 64); err == nil {
-// 				lineItem := models.LineItem{
-// 					SKU_:     t[0],
-// 					Quantity: int(q),
-// 				}
-// 				order.Items = append(order.Items, lineItem)
-// 			}
-// 		}
-// 	}
-
-// 	return nil
-// }
 
 type OrderProduct struct {
 	ModelReference `json:"-"` // Struct this sobject refers to
@@ -764,6 +850,9 @@ type OrderProduct struct {
 	Id             string    `json:"Id,omitempty"`
 	IsDeleted      bool      `json:"IsDeleted,omitempty"`
 	MasterRecordId string    `json:"MasterRecordId,omitempty"`
+
+	// Unique External Id, currently using Id (max length 255)
+	CrowdstartIdC string `json:"CrowdstartId__C,omitempty"`
 
 	// Read Only
 	CreatedById        string `json:"CreatedById,omitempty"`
@@ -781,10 +870,14 @@ type OrderProduct struct {
 	Order                *Order          `json:"Order,omitempty"`
 	OriginalOrderProduct *OrderProduct   `json:"OriginalOrderItem,omitempty"`
 	PricebookEntry       *PricebookEntry `json:"PricebookEntry,omitempty"`
+	PricebookEntryId     string          `json:"PricebookEntryId,omitempty"`
 	Quantity             int64           `json:"Quantity,omitempty"`
 	StartDate            string          `json:"ServiceDate,omitempty"`
 	TotalPrice           Currency        `json:"TotalPrice,omitempty"`
 	UnitPrice            Currency        `json:"UnitPrice,omitempty"`
+
+	// Private data
+	product *Product
 }
 
 func (o *OrderProduct) Read(so SObjectCompatible) error {
@@ -805,6 +898,13 @@ func (o *OrderProduct) Read(so SObjectCompatible) error {
 func (o *OrderProduct) Write(so SObjectCompatible) error {
 	o.Ref = so
 
+	li, ok := so.(*models.LineItem)
+	if !ok {
+		return ErrorOrderTypeRequired
+	}
+
+	li.Quantity = int(o.Quantity)
+
 	return nil
 }
 
@@ -820,11 +920,11 @@ func (o *OrderProduct) Push(api SalesforceClient) error {
 }
 
 func (o *OrderProduct) PullExternalId(api SalesforceClient, id string) error {
-	return ErrorShouldNotCall
+	return pull(api, OrderProductPath, id, o)
 }
 
 func (o *OrderProduct) PullId(api SalesforceClient, id string) error {
-	return ErrorShouldNotCall
+	return pull(api, OrderProductExternalIdPath, id, o)
 }
 
 type Product struct {
@@ -852,9 +952,6 @@ type Product struct {
 	ProductCode string `json:"ProductCode,omitempty"`
 	IsActive    bool   `json:"IsActive,omitempty"`
 	Family      string `json:"Family,omitempty"`
-
-	// private data
-	pricebook2Id string
 }
 
 func (p *Product) Read(so SObjectCompatible) error {
@@ -1051,7 +1148,7 @@ func push(api SalesforceClient, p string, s SObjectSyncable) error {
 	return nil
 }
 
-func pull(api SalesforceClient, path, id string, s SObjectSerializeable) error {
+func pull(api SalesforceClient, path, id string, s interface{}) error {
 	p := fmt.Sprintf(path, id)
 	if err := api.Request("GET", p, "", nil, true); err != nil {
 		return err
@@ -1080,4 +1177,8 @@ func GetUpdatedContacts(api *Api, start, end time.Time, response *UpdatedRecords
 
 func GetUpdatedAccounts(api *Api, start, end time.Time, response *UpdatedRecordsResponse) error {
 	return getUpdated(api, AccountsUpdatedPath, start, end, response)
+}
+
+func GetUpdatedOrders(api *Api, start, end time.Time, response *UpdatedRecordsResponse) error {
+	return getUpdated(api, OrdersUpdatedPath, start, end, response)
 }
