@@ -19,3 +19,4 @@ config.json
 *.pyc
 *.test
 *.sql3-journal
+*.idea
