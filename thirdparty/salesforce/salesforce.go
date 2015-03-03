@@ -474,13 +474,19 @@ func ProcessUpdatedSObjects(api SalesforceClient, response *UpdatedRecordsRespon
 			continue
 		}
 
-		us.PullId(api, id)
+		if err := us.PullId(api, id); err != nil {
+			return err
+		}
 
 		// We key based on accountId because it is common to both contacts and accounts
 		// Use the CrowdstartId/Db Key to Index
 		usId := us.ExternalId()
+		//log.Warn("Looking Up Is '%v'", usId)
 		// if Db Key is not in objects
-		if loadedObject, ok := objects[usId]; !ok {
+		if loadedObject, ok := objects[usId]; ok {
+			// Otherwise use the object from objects
+			object = loadedObject
+		} else {
 			// then use the object that was loaded if it exists
 			//log.Warn("!Exist")
 			if object == nil {
@@ -489,9 +495,6 @@ func ProcessUpdatedSObjects(api SalesforceClient, response *UpdatedRecordsRespon
 				//log.Warn("Loading")
 			}
 			objects[usId] = object
-		} else {
-			// Otherwise use the object from objects
-			object = loadedObject
 		}
 		//log.Warn("Assign %v", object)
 

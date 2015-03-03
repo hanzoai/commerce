@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	humanize "github.com/dustin/go-humanize"
@@ -101,13 +102,27 @@ func (o *Order) LoadVariantsProducts(c interface{}) {
 	}
 
 	for i, item := range o.Items {
-		log.Warn("SKU %v, %v", item.SKU_, variantsMap[item.SKU_])
+		// We might need to derive Slug_ from Sku_
+		if item.Slug_ == "" && item.SKU_ != "" {
+			for slug, _ := range productsMap {
+				upperSKU := strings.ToUpper(item.SKU_)
+				upperSlug := strings.ToUpper(slug)
+				if strings.HasPrefix(upperSKU, upperSlug) {
+					// Remember that item is a copy and not the actual object
+					o.Items[i].Slug_ = slug
+					break
+				}
+			}
+			log.Warn("Slug was missing on line item, guessed slug is '%v' based on SKU '%v'", o.Items[i].Slug_, item.SKU_, c)
+		}
 		o.Items[i].Product = productsMap[item.Slug_]
 
 		// We might need to look up using sf id
 		var ok bool
 		if o.Items[i].Variant, ok = variantsMap[item.SKU_]; !ok {
-			o.Items[i].Variant = salesforceVariantsMap[item.SecondarySalesforceId_]
+			if o.Items[i].Variant, ok = salesforceVariantsMap[item.PrimarySalesforceId_]; !ok {
+				o.Items[i].Variant, ok = salesforceVariantsMap[item.SecondarySalesforceId_]
+			}
 		}
 
 		o.Items[i].VariantId = o.Items[i].VariantId
