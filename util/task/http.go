@@ -16,14 +16,15 @@ func SetupRoutes(router *gin.RouterGroup) {
 		c.Redirect(301, "/tasks")
 	})
 
+	router.GET("/execute-task/:name", func(c *gin.Context) {
+		name := c.Params.ByName("name")
+		Run(c, name)
+		template.Render(c, "task-running.html", "task", name)
+	})
+
 	router.GET("/task/:name", func(c *gin.Context) {
 		name := c.Params.ByName("name")
-		if b, err := c.Get("execute"); err == nil && b.(bool) {
-			Run(c, name)
-			template.Render(c, "task-running.html", "task", name)
-		} else {
-			template.Render(c, "task.html", "task", name)
-		}
+		template.Render(c, "task.html", "task", name)
 	})
 
 	router.POST("/task/:name", func(c *gin.Context) {
