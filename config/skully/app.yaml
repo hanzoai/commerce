@@ -25,6 +25,11 @@ handlers:
   login: admin
   secure: always
 
+- url: /execute-task/.*
+  script: _go_app
+  login: admin
+  secure: always
+
 - url: /_ah/warmup
   script: _go_app
   login: admin
