@@ -18,7 +18,12 @@ func SetupRoutes(router *gin.RouterGroup) {
 
 	router.GET("/task/:name", func(c *gin.Context) {
 		name := c.Params.ByName("name")
-		template.Render(c, "task.html", "task", name)
+		if b, err := c.Get("execute"); err == nil && b.(bool) {
+			Run(c, name)
+			template.Render(c, "task-running.html", "task", name)
+		} else {
+			template.Render(c, "task.html", "task", name)
+		}
 	})
 
 	router.POST("/task/:name", func(c *gin.Context) {
