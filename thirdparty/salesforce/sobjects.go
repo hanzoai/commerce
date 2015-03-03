@@ -270,7 +270,7 @@ func (c *Contact) Write(so SObjectCompatible) error {
 		return ErrorUserTypeRequired
 	}
 
-	so.SetSalesforceId(c.Id)
+	c.SetSalesforceId(c.Id)
 
 	u.Id = c.CrowdstartIdC
 	u.Email = c.Email
@@ -453,7 +453,7 @@ func (a *Account) Write(so SObjectCompatible) error {
 		return ErrorUserTypeRequired
 	}
 
-	so.SetSalesforceId(a.Id)
+	a.SetSalesforceId(a.Id)
 
 	u.Id = a.CrowdstartIdC
 
@@ -704,7 +704,7 @@ func (o *Order) Write(so SObjectCompatible) error {
 		return ErrorOrderTypeRequired
 	}
 
-	so.SetSalesforceId(o.Id)
+	o.SetSalesforceId(o.Id)
 
 	// We shouldn't update a read only value like this
 	// order.CreatedAt = time.Parse(time.RFC3339, o.EffectiveDate)
@@ -753,12 +753,10 @@ func (o *Order) Write(so SObjectCompatible) error {
 
 	//SKU
 	lineItems := make([]models.LineItem, len(o.orderProducts))
-	if !o.UnconfirmedC {
-		order.Items = lineItems
-		for i, op := range o.orderProducts {
-			lineItems[i] = models.LineItem{}
-			op.Write(&lineItems[i])
-		}
+	order.Items = lineItems
+	for i, op := range o.orderProducts {
+		lineItems[i] = models.LineItem{}
+		op.Write(&lineItems[i])
 	}
 
 	// Skully salesforce is rejecting name
