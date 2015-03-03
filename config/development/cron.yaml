@@ -1,6 +1,9 @@
 cron:
-- description: Update from Salesforce
-  url: /jobs/sync-salesforce
-  schedule: every 15 minutes
+- description: Update Users from Salesforce
+  url: /task/salesforce-sync-users?execute=1
+  schedule: every 20 minutes
   target: default
-
+- description: Update Orders from Salesforce
+  url: /task/salesforce-sync-orders?execute=1
+  schedule: every 20 minutes
+  target: default
