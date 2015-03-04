@@ -404,6 +404,8 @@ var _ = Describe("User (de)serialization", func() {
 					return so
 				})
 
+			log.Error("Users %v", user)
+
 			// The updated user should look identical to the master user
 			so, ok := users[user.Id]
 			Expect(ok).To(Equal(true))
