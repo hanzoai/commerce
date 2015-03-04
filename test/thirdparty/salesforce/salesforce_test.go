@@ -387,6 +387,8 @@ var _ = Describe("User (de)serialization", func() {
 			// Insert into DB
 			db.Put(key, &someUser)
 
+			time.Sleep(2 * time.Second)
+
 			response := salesforce.UpdatedRecordsResponse{
 				Ids: []string{"PrimarySalesforceId"},
 			}
@@ -404,7 +406,7 @@ var _ = Describe("User (de)serialization", func() {
 					return so
 				})
 
-			log.Warn("UserId %v\n\n Users %v", user.Id, users)
+			time.Sleep(2 * time.Second)
 
 			// The updated user should look identical to the master user
 			so, ok := users[user.Id]
