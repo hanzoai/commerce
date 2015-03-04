@@ -404,7 +404,7 @@ var _ = Describe("User (de)serialization", func() {
 					return so
 				})
 
-			log.Warn("Users %v", user)
+			log.Warn("UserId %v\n\n Users %v", user.Id, users)
 
 			// The updated user should look identical to the master user
 			so, ok := users[user.Id]
