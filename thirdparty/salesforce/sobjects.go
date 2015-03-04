@@ -457,12 +457,12 @@ func (a *Account) Write(so SObjectCompatible) error {
 
 	u.Id = a.CrowdstartIdC
 
-	lines := strings.Split(a.ShippingStreet, "\r\n")
+	lines := strings.Split(a.ShippingStreet, "\n")
 
 	// Split Street line \n to recover our data
-	u.ShippingAddress.Line1 = lines[0]
+	u.ShippingAddress.Line1 = strings.TrimSpace(lines[0])
 	if len(lines) > 1 {
-		u.ShippingAddress.Line2 = strings.Join(lines[1:], "\r\n")
+		u.ShippingAddress.Line2 = strings.TrimSpace(strings.Join(lines[1:], "\n"))
 	}
 
 	u.ShippingAddress.City = a.ShippingCity
@@ -470,12 +470,12 @@ func (a *Account) Write(so SObjectCompatible) error {
 	u.ShippingAddress.PostalCode = a.ShippingPostalCode
 	u.ShippingAddress.Country = a.ShippingCountry
 
-	lines = strings.Split(a.BillingStreet, "\r\n")
+	lines = strings.Split(a.BillingStreet, "\n")
 
 	// Split Street line \n to recover our data
-	u.BillingAddress.Line1 = lines[0]
+	u.BillingAddress.Line1 = strings.TrimSpace(lines[0])
 	if len(lines) > 1 {
-		u.BillingAddress.Line2 = strings.Join(lines[1:], "\r\n")
+		u.BillingAddress.Line2 = strings.TrimSpace(strings.Join(lines[1:], "\n"))
 	}
 
 	u.BillingAddress.City = a.BillingCity
