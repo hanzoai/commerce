@@ -33,7 +33,6 @@ func (c *Client) determineBaseURL() {
 }
 
 func (c *Client) Get(url string) (res Response, err error) {
-	println(c.baseURL + url)
 	res.Response, err = http.Get(c.baseURL + url)
 	return res, err
 }
