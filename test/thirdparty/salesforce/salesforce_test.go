@@ -345,7 +345,7 @@ var _ = Describe("User (de)serialization", func() {
 			}
 
 			users := make(map[string]salesforce.SObjectCompatible)
-			salesforce.ProcessUpdatedSObjects(
+			err := salesforce.ProcessUpdatedSObjects(
 				&client,
 				&response,
 				time.Now(),
@@ -356,6 +356,8 @@ var _ = Describe("User (de)serialization", func() {
 					so.ExpectedFirstName = "SOME NAME"
 					return so
 				})
+
+			Expect(err).ToNot(HaveOccurred())
 
 			u, ok := users[id]
 			Expect(ok).To(Equal(true))
@@ -392,7 +394,7 @@ var _ = Describe("User (de)serialization", func() {
 			}
 
 			users := make(map[string]salesforce.SObjectCompatible)
-			salesforce.ProcessUpdatedSObjects(
+			err := salesforce.ProcessUpdatedSObjects(
 				&client,
 				&response,
 				time.Now(),
@@ -403,6 +405,8 @@ var _ = Describe("User (de)serialization", func() {
 					so.ExpectedFirstName = user.FirstName
 					return so
 				})
+
+			Expect(err).ToNot(HaveOccurred())
 
 			log.Warn("Users %v", users)
 
