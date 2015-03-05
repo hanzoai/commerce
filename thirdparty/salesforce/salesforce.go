@@ -471,6 +471,7 @@ func ProcessUpdatedSObjects(api SalesforceClient, response *UpdatedRecordsRespon
 
 		// ignore objects that have been updated locally since the start of the sync
 		if object != nil && object.LastSync().After(start) {
+			//log.Debug("Looking Up Is '%v'", usId)
 			continue
 		}
 
@@ -481,22 +482,22 @@ func ProcessUpdatedSObjects(api SalesforceClient, response *UpdatedRecordsRespon
 		// We key based on accountId because it is common to both contacts and accounts
 		// Use the CrowdstartId/Db Key to Index
 		usId := us.ExternalId()
-		log.Warn("Looking Up Is '%v'", usId)
+		//log.Debug("Looking Up Is '%v'", usId)
 		// if Db Key is not in objects
 		if loadedObject, ok := objects[usId]; ok {
 			// Otherwise use the object from objects
 			object = loadedObject
 		} else {
 			// then use the object that was loaded if it exists
-			log.Warn("!Exist")
+			//log.Debug("!Exist")
 			if object == nil {
 				// or load the object from the db using the Db Key
 				object = us.Load(db)
-				log.Warn("Loading")
+				//log.Debug("Loading")
 			}
 			objects[usId] = object
 		}
-		log.Warn("Assign %v", object)
+		//log.Debug("Assign %v", object)
 
 		if err := us.Write(object); err != nil {
 			return err
