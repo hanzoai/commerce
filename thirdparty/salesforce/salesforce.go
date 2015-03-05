@@ -465,6 +465,7 @@ func (a *Api) Describe(response *DescribeResponse) error {
 //Helper Functions
 func ProcessUpdatedSObjects(api SalesforceClient, response *UpdatedRecordsResponse, start time.Time, objects map[string]SObjectCompatible, createFn func() SObjectLoadable) error {
 	db := datastore.New(api.GetContext())
+	log.Warn("Response to Process: %v", response.Ids)
 	for _, id := range response.Ids {
 		us := createFn()
 		object := us.LoadSalesforceId(db, id)
