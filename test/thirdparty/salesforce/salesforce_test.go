@@ -386,6 +386,8 @@ var _ = Describe("User (de)serialization", func() {
 				SalesforceSObject: user.SalesforceSObject,
 			}
 
+			someUser.LastSync_ = time.Now().Add(-1 * time.Hour)
+
 			// Insert into DB
 			db.Put(key, &someUser)
 
