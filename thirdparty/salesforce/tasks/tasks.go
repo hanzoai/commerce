@@ -71,7 +71,38 @@ func ImportUsers(c *gin.Context) {
 	}
 }
 
-// UpsertOrderTask upserts users into salesforce
+// UpsertMissingUserTask upserts users not synchronized into salesforce
+var ImportMissingUsersTask = parallel.Task("sf-import-missing-user-task", func(db *datastore.Datastore, key datastore.Key, user models.User, campaign models.Campaign) {
+	// Skip users with missing
+	if user.SalesforceId() != "" {
+		return
+	}
+
+	client := New(db.Context, &campaign, true)
+	if err := client.Push(&user); err != nil {
+		log.Debug("Error: %v", err)
+	}
+
+	// Pushes can update sync times and salesforce ids so update in datastore
+	db.Put(key, &user)
+})
+
+// ImportMissingUsers upserts all users not synchronized into salesforce
+func ImportMissingUsers(c *gin.Context) {
+	db := datastore.New(c)
+	campaign := models.Campaign{}
+
+	// Get user instance
+	if err := db.GetKind("campaign", "dev@hanzo.ai", &campaign); err != nil {
+		log.Panic("Unable to get campaign from database: %v", err, c)
+	}
+
+	if campaign.Salesforce.AccessToken != "" {
+		parallel.Run(c, "user", 100, ImportMissingUsersTask, campaign)
+	}
+}
+
+// UpsertOrderTask upserts orders into salesforce
 var ImportOrdersTask = parallel.Task("sf-import-order-task", func(db *datastore.Datastore, key datastore.Key, order models.Order, campaign models.Campaign) {
 	client := New(db.Context, &campaign, true)
 	if err := client.Push(&order); err != nil {
@@ -94,6 +125,37 @@ func ImportOrders(c *gin.Context) {
 
 	if campaign.Salesforce.AccessToken != "" {
 		parallel.Run(c, "order", 100, ImportOrdersTask, campaign)
+	}
+}
+
+// UpsertMissingOrderTask upserts orders not synchronized into salesforce
+var ImportMissingOrdersTask = parallel.Task("sf-import-missing-order-task", func(db *datastore.Datastore, key datastore.Key, order models.Order, campaign models.Campaign) {
+	// Skip orders with missing
+	if order.SalesforceId() != "" {
+		return
+	}
+
+	client := New(db.Context, &campaign, true)
+	if err := client.Push(&order); err != nil {
+		log.Debug("Error: %v, '%v'", err, order.UserId)
+	}
+
+	// Pushes can update sync times and salesforce ids so update in datastore
+	db.Put(key, &order)
+})
+
+// ImportMissingOrders upserts all orders not synchronized into salesforce
+func ImportMissingOrders(c *gin.Context) {
+	db := datastore.New(c)
+	campaign := models.Campaign{}
+
+	// Get order instance
+	if err := db.GetKind("campaign", "dev@hanzo.ai", &campaign); err != nil {
+		log.Panic("Unable to get campaign from database: %v", err, c)
+	}
+
+	if campaign.Salesforce.AccessToken != "" {
+		parallel.Run(c, "order", 100, ImportMissingOrdersTask, campaign)
 	}
 }
 
@@ -126,7 +188,7 @@ func ImportProductVariant(c *gin.Context) {
 }
 
 // PullUpdatedTask gets recently(20 minutes ago) updated Contact and upserts them as Users
-var PullUpdatedTask = delay.Func("SalesforcePullUpdatedTask", func(c appengine.Context) {
+var PullUpdatedUsersTask = delay.Func("SalesforcePullUpdatedUsersTask", func(c appengine.Context) {
 	db := datastore.New(c)
 	campaign := new(models.Campaign)
 
@@ -245,11 +307,50 @@ func CallUpsertOrderTask(c appengine.Context, campaign *models.Campaign, order *
 	UpsertOrderTask.Call(c, *campaign, *order)
 }
 
+// Get Salesforce Ids for every user
+
+// PopulateMissingUserSFIdsTask adds all missing salesforce ids for users
+var PopulateMissingUserSFIdsTask = parallel.Task("sf-populate-user-ids", func(db *datastore.Datastore, key datastore.Key, user models.User, campaign models.Campaign) {
+	if user.SalesforceId() != "" {
+		return
+	}
+
+	client := New(db.Context, &campaign, true)
+	blankUser := models.User{}
+	if err := client.Pull(user.Id, &blankUser); err != nil {
+		log.Debug("Error: %v", err)
+	}
+
+	user.SetSalesforceId(blankUser.SalesforceId())
+	user.SetSalesforceId2(blankUser.SalesforceId2())
+
+	// Pushes can update sync times and salesforce ids so update in datastore
+	db.Put(key, &user)
+})
+
+// PopulateMissingUserSFIds ensures all users have salesforce ids
+func PopulateMissingUserSFIds(c *gin.Context) {
+	db := datastore.New(c)
+	campaign := models.Campaign{}
+
+	// Get user instance
+	if err := db.GetKind("campaign", "dev@hanzo.ai", &campaign); err != nil {
+		log.Panic("Unable to get campaign from database: %v", err, c)
+	}
+
+	if campaign.Salesforce.AccessToken != "" {
+		parallel.Run(c, "user", 100, PopulateMissingUserSFIdsTask, campaign)
+	}
+}
+
 func init() {
 	task.Register("salesforce-sync-users", ImportUsers)
 	task.Register("salesforce-sync-orders", ImportOrders)
+	task.Register("salesforce-sync-missing-users", ImportMissingUsers)
+	task.Register("salesforce-sync-missing-orders", ImportMissingOrders)
 	task.Register("salesforce-sync-product-variants", ImportProductVariant)
-	task.Register("salesforce-sync-updated-users", PullUpdatedTask)
+	task.Register("salesforce-sync-updated-users", PullUpdatedUsersTask)
 	task.Register("salesforce-sync-updated-orders", PullUpdatedOrdersTask)
 	task.Register("salesforce-sync-updated-since-cleanup", PullUpdatedSinceCleanUpTask)
+	task.Register("salesforce-populate-missing-user-sf-ids", PopulateMissingUserSFIds)
 }
