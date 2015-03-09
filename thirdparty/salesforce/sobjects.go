@@ -929,7 +929,7 @@ func (o *OrderProduct) Read(so SObjectCompatible) error {
 	}
 
 	o.Quantity = float64(li.Quantity)
-	o.PricebookEntry = &ForeignKey{CrowdstartIdC: li.VariantId}
+	o.PricebookEntry = &ForeignKey{CrowdstartIdC: li.Variant.Id}
 	o.UnitPrice = ToCurrency(li.Variant.Price)
 
 	return nil
