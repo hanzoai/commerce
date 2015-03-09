@@ -359,12 +359,16 @@ var _ = Describe("User (de)serialization", func() {
 
 			Expect(err).ToNot(HaveOccurred())
 
-			u, ok := users[id]
+			so, ok := users[id]
+			Expect(ok).To(Equal(true))
+			u, ok := so.(*models.User)
 			Expect(ok).To(Equal(true))
 
 			// Only the FirstName is updated for the MockSObjectSerializeable
 			// FirstName should therefore be the only set field
 			refUser := models.User{FirstName: "SOME NAME"}
+			u.LastSync_ = refUser.LastSync_
+			u.SalesforceSObject = refUser.SalesforceSObject
 
 			Expect(reflect.DeepEqual(&refUser, u)).To(Equal(true))
 		})
