@@ -33,4 +33,9 @@ func init() {
 
 	// Misc clean up
 	task.Register("migrations-fix-email", fixEmail)
+
+	// Add missing orders for each contributors
+	task.Register("migrations-fix-indiegogo-order-price", func(c *gin.Context) {
+		parallel.Run(c, "contribution", 50, tasks.FixOrderPrice)
+	})
 }
