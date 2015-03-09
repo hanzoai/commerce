@@ -370,7 +370,7 @@ var _ = Describe("User (de)serialization", func() {
 			u.LastSync_ = refUser.LastSync_
 			u.SalesforceSObject = refUser.SalesforceSObject
 
-			log.Warn("%v\n\n%v")
+			log.Warn("%v\n\n%v", refUser, u)
 			Expect(reflect.DeepEqual(&refUser, u)).To(Equal(true))
 		})
 
