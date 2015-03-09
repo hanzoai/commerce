@@ -471,7 +471,8 @@ func ProcessUpdatedSObjects(api SalesforceClient, response *UpdatedRecordsRespon
 		object := us.LoadSalesforceId(db, id)
 
 		// ignore objects that have been updated locally since the start of the sync
-		if object != nil && object.LastSync().After(start) {
+		// !Before means !< means >=
+		if object != nil && !object.LastSync().Before(start) {
 			log.Debug("Skipping due to Time %v after %v", object.LastSync(), start)
 			continue
 		}
