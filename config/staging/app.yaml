@@ -3,7 +3,7 @@ module: default
 version: v1
 
 runtime: go
-api_version: go1.4beta
+api_version: go1
 threadsafe: true
 
 automatic_scaling:
