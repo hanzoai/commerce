@@ -21,6 +21,9 @@ handlers:
 - url: /task/.*
   script: _go_app
 
+- url: /execute-task/.*
+  script: _go_app
+
 # DEPRECTATED in production, for consistent local logging.
 # - url: /assets/*
 #   static_dir: ../../assets
