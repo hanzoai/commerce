@@ -15,6 +15,7 @@ import (
 
 var FixOrderPrice = parallel.Task("fix-order-price", func(db *datastore.Datastore, key datastore.Key, contribution models.Contribution) {
 	// Ignore winter promo stuff
+	log.Debug("Contribution Type '%v'", contribution.Perk.Id, db.Context)
 	if contribution.Perk.Id == "WINTER2014PROMO" {
 		return
 	}
@@ -29,6 +30,7 @@ var FixOrderPrice = parallel.Task("fix-order-price", func(db *datastore.Datastor
 	}
 
 	// Get Price from contribution
+	log.Debug("Decomposing Price '%v'", contribution.Perk.Price, db.Context)
 	price := contribution.Perk.Price
 	tokens := strings.Split(price, " ")
 
@@ -36,6 +38,7 @@ var FixOrderPrice = parallel.Task("fix-order-price", func(db *datastore.Datastor
 	price = strings.Replace(price, "$", "", -1)
 	price = strings.Replace(price, ",", "", -1)
 
+	log.Debug("Decomposed Price '%v'", price, db.Context)
 	// Convert dollar price to centicents
 	centicents, err := strconv.ParseInt(price, 10, 64)
 	if err != nil {
@@ -48,6 +51,6 @@ var FixOrderPrice = parallel.Task("fix-order-price", func(db *datastore.Datastor
 	for i, order := range orders {
 		order.Subtotal = centicents
 		order.UpdatedAt = time.Now()
-		db.PutKind("order", keys[i], order)
+		db.PutKind("order", keys[i], &order)
 	}
 })
