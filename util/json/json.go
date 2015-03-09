@@ -1,10 +1,10 @@
 package json
 
 import (
-	"fmt"
 	"encoding/json"
-	"io/ioutil"
+	"fmt"
 	"io"
+	"io/ioutil"
 )
 
 func Encode(value interface{}) string {

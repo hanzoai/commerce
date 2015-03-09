@@ -16,6 +16,12 @@ func SetupRoutes(router *gin.RouterGroup) {
 		c.Redirect(301, "/tasks")
 	})
 
+	router.GET("/execute-task/:name", func(c *gin.Context) {
+		name := c.Params.ByName("name")
+		Run(c, name)
+		template.Render(c, "task-running.html", "task", name)
+	})
+
 	router.GET("/task/:name", func(c *gin.Context) {
 		name := c.Params.ByName("name")
 		template.Render(c, "task.html", "task", name)
