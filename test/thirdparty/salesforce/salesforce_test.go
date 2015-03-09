@@ -370,6 +370,7 @@ var _ = Describe("User (de)serialization", func() {
 			u.LastSync_ = refUser.LastSync_
 			u.SalesforceSObject = refUser.SalesforceSObject
 
+			log.Warn("%v\n\n%v")
 			Expect(reflect.DeepEqual(&refUser, u)).To(Equal(true))
 		})
 
@@ -413,8 +414,6 @@ var _ = Describe("User (de)serialization", func() {
 				})
 
 			Expect(err).ToNot(HaveOccurred())
-
-			log.Warn("Users %v", users)
 
 			// The updated user should look identical to the master user
 			so, ok := users[user.Id]
