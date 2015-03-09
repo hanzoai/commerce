@@ -395,6 +395,7 @@ var _ = Describe("User (de)serialization", func() {
 
 			// Insert into DB
 			db.Put(key, &someUser)
+			defer db.Delete(key)
 
 			response := salesforce.UpdatedRecordsResponse{
 				Ids: []string{"PrimarySalesforceId"},
