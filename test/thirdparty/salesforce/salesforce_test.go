@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"appengine"
 
@@ -35,8 +36,12 @@ type MockSObjectTypes struct {
 }
 
 type MockSObjectSerializeable struct {
-	Id        string `json:"Id__C"`
-	FirstName string `json:"FirstName__C"`
+	salesforce.ModelReference
+
+	Id                string `json:"Id__C"`
+	FirstName         string `json:"FirstName__C"`
+	ExpectedId        string `json:"-",datastore:"-",schema:"-"`
+	ExpectedFirstName string `json:"-",datastore:"-",schema:"-"`
 }
 
 func (s *MockSObjectSerializeable) SetExternalId(id string) {
@@ -60,6 +65,34 @@ func (s *MockSObjectSerializeable) Read(so salesforce.SObjectCompatible) error {
 	s.FirstName = u.FirstName
 
 	return nil
+}
+
+func (s *MockSObjectSerializeable) Load(db *datastore.Datastore) salesforce.SObjectCompatible {
+	s.Ref = new(models.User)
+	db.Get(s.ExternalId(), s.Ref)
+	return s.Ref
+}
+
+func (s *MockSObjectSerializeable) Push(api salesforce.SalesforceClient) error {
+	return nil
+}
+func (s *MockSObjectSerializeable) PullExternalId(api salesforce.SalesforceClient, id string) error {
+	return nil
+}
+
+func (s *MockSObjectSerializeable) PullId(api salesforce.SalesforceClient, id string) error {
+	s.Id = s.ExpectedId
+	s.FirstName = s.ExpectedFirstName
+	return nil
+}
+
+func (s *MockSObjectSerializeable) LoadSalesforceId(db *datastore.Datastore, id string) salesforce.SObjectCompatible {
+	objects := make([]*models.User, 0)
+	db.Query("user").Filter("PrimarySalesforceId_=", id).Limit(1).GetAll(db.Context, &objects)
+	if len(objects) == 0 {
+		return nil
+	}
+	return objects[0]
 }
 
 type ClientParams struct {
@@ -90,6 +123,10 @@ func (a *MockSalesforceClient) GetBody() []byte {
 	var body []byte
 	body, a.Params.Bodies = bodies[0], bodies[1:]
 	return body
+}
+
+func (a *MockSalesforceClient) GetStatusCode() int {
+	return 204
 }
 
 func (a *MockSalesforceClient) GetContext() appengine.Context {
@@ -129,6 +166,9 @@ var _ = BeforeSuite(func() {
 			PostalCode: "PostalCode",
 			Country:    "Country",
 		},
+		SalesforceSObject: models.SalesforceSObject{
+			PrimarySalesforceId_: "PrimarySalesforceId",
+		},
 	}
 
 	params = new(ClientParams)
@@ -167,6 +207,8 @@ var _ = Describe("User (de)serialization", func() {
 			contact.Write(&u)
 			account.Write(&u)
 
+			u.SalesforceSObject = user.SalesforceSObject
+
 			Expect(reflect.DeepEqual(user, u)).To(Equal(true))
 		})
 
@@ -189,6 +231,8 @@ var _ = Describe("User (de)serialization", func() {
 
 	Context("Push/Pull User", func() {
 		It("Push Contact", func() {
+			params.Bodies = append(params.Bodies, []byte{})
+
 			client := MockSalesforceClient{Params: params}
 			contact := salesforce.Contact{}
 			contact.Read(&user)
@@ -209,6 +253,8 @@ var _ = Describe("User (de)serialization", func() {
 		})
 
 		It("Push Account", func() {
+			params.Bodies = append(params.Bodies, []byte{})
+
 			client := MockSalesforceClient{Params: params}
 			account := salesforce.Account{}
 			account.Read(&user)
@@ -247,7 +293,9 @@ var _ = Describe("User (de)serialization", func() {
 			params.Bodies = append(params.Bodies, body1, body2)
 
 			account.PullExternalId(&client, "Id")
+			account.Ref = refAccount.Ref
 			contact.PullExternalId(&client, "Id")
+			contact.Ref = refContact.Ref
 
 			// Referenced and Decoded values should be equal
 			Expect(reflect.DeepEqual(account, refAccount)).To(Equal(true))
@@ -275,7 +323,9 @@ var _ = Describe("User (de)serialization", func() {
 			params.Bodies = append(params.Bodies, body1, body2)
 
 			account.PullId(&client, "Id")
+			account.Ref = refAccount.Ref
 			contact.PullId(&client, "Id")
+			contact.Ref = refContact.Ref
 
 			// Referenced and Decoded values should be equal
 			Expect(reflect.DeepEqual(account, refAccount)).To(Equal(true))
@@ -288,69 +338,88 @@ var _ = Describe("User (de)serialization", func() {
 			db := datastore.New(ctx)
 			key := db.NewKey("user", "NOT IN THE DB", 0, nil)
 			id := key.Encode()
+			client := MockSalesforceClient{Params: params}
 
 			response := salesforce.UpdatedRecordsResponse{
-				Ids: []string{id},
+				Ids: []string{"PrimarySalesforceId"},
 			}
 
-			users := make(map[string]*models.User)
-			salesforce.ProcessUpdatedSObjects(db,
+			users := make(map[string]salesforce.SObjectCompatible)
+			err := salesforce.ProcessUpdatedSObjects(
+				&client,
 				&response,
+				time.Now(),
 				users,
-				func(id string) salesforce.SObjectSerializeable {
-					s := new(MockSObjectSerializeable)
-					s.Id = id
-					s.FirstName = "SOME NAME"
-					return s
+				func() salesforce.SObjectLoadable {
+					so := new(MockSObjectSerializeable)
+					so.ExpectedId = id
+					so.ExpectedFirstName = "SOME NAME"
+					return so
 				})
 
-			u, ok := users[id]
+			Expect(err).ToNot(HaveOccurred())
+
+			so, ok := users[id]
+			Expect(ok).To(Equal(true))
+			u, ok := so.(*models.User)
 			Expect(ok).To(Equal(true))
 
 			// Only the FirstName is updated for the MockSObjectSerializeable
 			// FirstName should therefore be the only set field
 			refUser := models.User{FirstName: "SOME NAME"}
+			u.LastSync_ = refUser.LastSync_
+			u.SalesforceSObject = refUser.SalesforceSObject
 
+			log.Warn("%v\n\n%v", refUser, u)
 			Expect(reflect.DeepEqual(&refUser, u)).To(Equal(true))
 		})
 
 		It("PullUpdated with something in the DB", func() {
 			db := datastore.New(ctx)
 			key := db.NewKey("user", "Id", 0, nil)
-			id := key.Encode()
+			client := MockSalesforceClient{Params: params}
 
 			// PullUpdated will update a record in db, so add a record to the db that is slightly different than the master user
 			someUser := models.User{
-				Id:              user.Id,
-				FirstName:       "Bad First Name",
-				LastName:        user.LastName,
-				Phone:           user.Phone,
-				Email:           user.Email,
-				BillingAddress:  user.BillingAddress,
-				ShippingAddress: user.ShippingAddress,
+				Id:                user.Id,
+				FirstName:         "Bad First Name",
+				LastName:          user.LastName,
+				Phone:             user.Phone,
+				Email:             user.Email,
+				BillingAddress:    user.BillingAddress,
+				ShippingAddress:   user.ShippingAddress,
+				SalesforceSObject: user.SalesforceSObject,
 			}
+
+			someUser.LastSync_ = time.Now().Add(-1 * time.Hour)
 
 			// Insert into DB
 			db.Put(key, &someUser)
+			defer db.Delete(key)
 
 			response := salesforce.UpdatedRecordsResponse{
-				Ids: []string{id},
+				Ids: []string{"PrimarySalesforceId"},
 			}
 
-			users := make(map[string]*models.User)
-			salesforce.ProcessUpdatedSObjects(db,
+			users := make(map[string]salesforce.SObjectCompatible)
+			err := salesforce.ProcessUpdatedSObjects(
+				&client,
 				&response,
+				time.Now(),
 				users,
-				func(id string) salesforce.SObjectSerializeable {
-					s := new(MockSObjectSerializeable)
-					s.Id = id
-					// Set the First Name to the one used by the master user
-					s.FirstName = user.FirstName
-					return s
+				func() salesforce.SObjectLoadable {
+					so := new(MockSObjectSerializeable)
+					so.ExpectedId = user.Id
+					so.ExpectedFirstName = user.FirstName
+					return so
 				})
 
+			Expect(err).ToNot(HaveOccurred())
+
 			// The updated user should look identical to the master user
-			u, ok := users[id]
+			so, ok := users[user.Id]
+			Expect(ok).To(Equal(true))
+			u, ok := so.(*models.User)
 			Expect(ok).To(Equal(true))
 
 			// The Datastore initializes these values differently so set them to what they should be
@@ -360,6 +429,8 @@ var _ = Describe("User (de)serialization", func() {
 			u.UpdatedAt = user.UpdatedAt
 			u.CreatedAt = user.CreatedAt
 			u.Metadata = user.Metadata
+			u.LastSync_ = user.LastSync_
+			u.SalesforceSObject = user.SalesforceSObject
 
 			Expect(reflect.DeepEqual(&user, u)).To(Equal(true))
 		})
