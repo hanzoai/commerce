@@ -72,6 +72,10 @@ var variantsMap map[string]ProductVariant
 var salesforceVariantsMap map[string]ProductVariant
 var productsMap map[string]Product
 
+func (o Order) EstimatedDeliveryHTML() string {
+	return "<div>" + strings.Replace(o.EstimatedDelivery, ",", "</div><div>", -1) + "</div>"
+}
+
 func (o Order) DisputedCharges(c *gin.Context) (disputedCharges []Charge) {
 	for _, charge := range o.Charges {
 		if charge.Disputed {
