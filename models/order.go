@@ -47,12 +47,13 @@ type Order struct {
 	CampaignId string
 
 	// Basic status flags for order
-	Cancelled   bool
-	Locked      bool
-	Preorder    bool
-	Refunded    bool
-	Shipped     bool
-	Unconfirmed bool // True only if preorder has not be confirmed by customer
+	Cancelled         bool
+	Locked            bool
+	Preorder          bool
+	Refunded          bool
+	Shipped           bool
+	Unconfirmed       bool // True only if preorder has not be confirmed by customer
+	EstimatedDelivery string
 
 	// Dispute details
 	Disputed bool
@@ -70,6 +71,10 @@ type Order struct {
 var variantsMap map[string]ProductVariant
 var salesforceVariantsMap map[string]ProductVariant
 var productsMap map[string]Product
+
+func (o Order) EstimatedDeliveryHTML() string {
+	return "<div>" + strings.Replace(o.EstimatedDelivery, ",", "</div><div>", -1) + "</div>"
+}
 
 func (o Order) DisputedCharges(c *gin.Context) (disputedCharges []Charge) {
 	for _, charge := range o.Charges {
