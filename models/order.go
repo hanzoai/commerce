@@ -47,12 +47,13 @@ type Order struct {
 	CampaignId string
 
 	// Basic status flags for order
-	Cancelled   bool
-	Locked      bool
-	Preorder    bool
-	Refunded    bool
-	Shipped     bool
-	Unconfirmed bool // True only if preorder has not be confirmed by customer
+	Cancelled         bool
+	Locked            bool
+	Preorder          bool
+	Refunded          bool
+	Shipped           bool
+	Unconfirmed       bool // True only if preorder has not be confirmed by customer
+	EstimatedDelivery string
 
 	// Dispute details
 	Disputed bool

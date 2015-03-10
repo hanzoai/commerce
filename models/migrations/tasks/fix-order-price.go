@@ -49,8 +49,11 @@ var FixOrderPrice = parallel.Task("fix-order-price", func(db *datastore.Datastor
 	centicents *= 10000
 
 	for i, order := range orders {
-		order.Subtotal = centicents
-		order.UpdatedAt = time.Now()
-		db.PutKind("order", keys[i], &order)
+		if id, err := strconv.Atoi(key.StringID()); err == nil && int64(id) == keys[i].IntID() {
+			order.Subtotal = centicents
+			order.UpdatedAt = time.Now()
+			db.PutKind("order", keys[i], &order)
+			return
+		}
 	}
 })
