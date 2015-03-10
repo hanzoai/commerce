@@ -409,8 +409,9 @@ var products = task.Func("fixtures-products", func(c *gin.Context) {
 				Y:   1000,
 			},
 		},
-		Disabled: true,
-		SoldOut:  true,
+		EstimatedDelivery: "July 2015",
+		Disabled:          true,
+		SoldOut:           true,
 		Configs: []Config{
 			Config{
 				Product:  "ar-1",
@@ -455,7 +456,8 @@ var products = task.Func("fixtures-products", func(c *gin.Context) {
 				Y:   1000,
 			},
 		},
-		SoldOut: true,
+		EstimatedDelivery: "July 2015",
+		SoldOut:           true,
 		Configs: []Config{
 			Config{
 				Product:  "ar-1",
