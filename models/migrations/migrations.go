@@ -24,6 +24,11 @@ func init() {
 	})
 
 	// Add missing orders for each contributors
+	task.Register("migrations-add-estimated-delivery-to-order", func(c *gin.Context) {
+		parallel.Run(c, "order", 50, tasks.AddEstimateDeliveryToOrder)
+	})
+
+	// Add missing orders for each contributors
 	task.Register("migrations-add-id-to-order", func(c *gin.Context) {
 		parallel.Run(c, "order", 50, tasks.AddIdToOrder)
 	})
