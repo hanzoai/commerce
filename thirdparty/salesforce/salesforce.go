@@ -253,6 +253,11 @@ func (a *Api) Push(object SObjectCompatible) error {
 		}
 
 	case *models.Order:
+
+		if v.Id == "" {
+			return ErrorRequiresId
+		}
+
 		log.Debug("Upserting Order", c)
 
 		v.LoadVariantsProducts(c)
@@ -266,6 +271,11 @@ func (a *Api) Push(object SObjectCompatible) error {
 		}
 
 	case *models.ProductVariant:
+
+		if v.Id == "" {
+			return ErrorRequiresId
+		}
+
 		log.Debug("Upserting Product", c)
 
 		product := Product{}
