@@ -19,6 +19,10 @@ type Client struct {
 	baseURL    string
 }
 
+func (c *Client) URL(path string) string {
+	return c.baseURL + path
+}
+
 func (c *Client) determineBaseURL() {
 	moduleHost, err := getModuleHost(c.context, c.moduleName)
 	if err != nil {
