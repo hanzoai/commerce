@@ -43,4 +43,9 @@ func init() {
 	task.Register("migrations-fix-indiegogo-order-price", func(c *gin.Context) {
 		parallel.Run(c, "contribution", 50, tasks.FixOrderPrice)
 	})
+
+	// Add missing orders for each contributors
+	task.Register("migraitons-generate-new-id-for-unsynced-orders", func(c *gin.Context) {
+		parallel.Run(c, "order", 50, tasks.GenerateNewIdForUnsyncedOrders)
+	})
 }
