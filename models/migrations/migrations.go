@@ -45,7 +45,7 @@ func init() {
 	})
 
 	// Add missing orders for each contributors
-	task.Register("migraitons-generate-new-id-for-unsynced-orders", func(c *gin.Context) {
+	task.Register("migrations-generate-new-id-for-unsynced-orders", func(c *gin.Context) {
 		parallel.Run(c, "order", 50, tasks.GenerateNewIdForUnsyncedOrders)
 	})
 }
