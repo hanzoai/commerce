@@ -10,12 +10,12 @@ import (
 type MediaType string
 
 const (
-	MediaTypeVideo      MediaType = "video"
-	MediaTypeImage                = "image"
-	MediaTypeLiveStream           = "livestream"
-	MediaTypeWebGL                = "webgl"
-	MediaTypeAudio                = "audio"
-	MediaTypeEmbed                = "embed"
+	MediaVideo      MediaType = "video"
+	MediaImage                = "image"
+	MediaLiveStream           = "livestream"
+	MediaWebGL                = "webgl"
+	MediaAudio                = "audio"
+	MediaEmbed                = "embed"
 )
 
 type Media struct {

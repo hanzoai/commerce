@@ -3,8 +3,10 @@ package variant
 import (
 	"net/http"
 
-	"crowdstart.io/models/mixin"
 	"github.com/mholt/binding"
+
+	"crowdstart.io/datastore"
+	"crowdstart.io/models/mixin"
 
 	. "crowdstart.io/models2"
 )
@@ -17,8 +19,8 @@ type Option struct {
 }
 
 type Variant struct {
-	mixin.Salesforce
 	*mixin.Model `datastore:"-"`
+	mixin.Salesforce
 
 	SKU  string
 	Name string
@@ -33,6 +35,16 @@ type Variant struct {
 	Dimensions string
 
 	Options []Option
+}
+
+func New(db *datastore.Datastore) *Variant {
+	v := new(Variant)
+	v.Model = mixin.NewModel(db, v)
+	return v
+}
+
+func (v Variant) Kind() string {
+	return "variant"
 }
 
 func (v Variant) Validate(req *http.Request, errs binding.Errors) binding.Errors {
