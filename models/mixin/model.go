@@ -14,25 +14,42 @@ type Entity interface {
 	Kind() string
 }
 
-// Model is our datastore mixin which adds serialization to/from Datastore,
-// JSON, etc.
+// Model is a datastore mixin which adds serialization to/from Datastore as
+// well as a few useful fields and extra methods (such as for JSON
+// serialization).
 type Model struct {
-	Id_       string    `json:"id" datastore:"-"`
+	Db     *datastore.Datastore `json:"-" datastore:"-"`
+	Entity Entity               `json:"-" datastore:"-"`
+
+	key datastore.Key
+
+	// Set by our mixin
+	Id_       string    `json:"id"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
 	// Flag used to specify that we're using a string key for this kind
 	StringKey_ bool `json:"-" datastore:"-"`
+}
 
-	Entity Entity `json:"-" datastore:"-"`
-	key    datastore.Key
-	db     *datastore.Datastore
+// Returns a new Model with minimum configuration.
+func NewModel(db *datastore.Datastore, entity Entity) Model {
+	return Model{Db: db, Entity: entity}
 }
 
 func (m *Model) Key() (key datastore.Key) {
 	// Create a new incomplete key for this new entity
 	if m.key == nil {
-		m.key = m.db.NewIncompleteKey(m.Entity.Kind(), nil)
+		kind := m.Entity.Kind()
+
+		if m.StringKey_ {
+			// Id_ will unfortunately not be set first time around...
+			m.key = m.Db.NewIncompleteKey(kind, nil)
+		} else {
+			// We can allocate an id in advance and ensure that Id_ is populated
+			id := m.Db.AllocateId(kind)
+			m.setKey(m.Db.NewKey(kind, "", id, nil))
+		}
 	}
 
 	return m.key
@@ -59,19 +76,19 @@ func (m *Model) SetKey(key interface{}) error {
 	case string:
 		if m.StringKey_ {
 			// We've declared this model uses string keys.
-			k = m.db.NewKey(m.Entity.Kind(), v, 0, nil)
+			k = m.Db.NewKey(m.Entity.Kind(), v, 0, nil)
 		} else {
 			// By default all keys are int ids, use atoi to convert to an int.
 			i, err := strconv.Atoi(v)
 			if err != nil {
 				return datastore.InvalidKey
 			}
-			k = m.db.NewKey(m.Entity.Kind(), "", int64(i), nil)
+			k = m.Db.NewKey(m.Entity.Kind(), "", int64(i), nil)
 		}
 	case int64:
-		k = m.db.NewKey(m.Entity.Kind(), "", v, nil)
+		k = m.Db.NewKey(m.Entity.Kind(), "", v, nil)
 	case int:
-		k = m.db.NewKey(m.Entity.Kind(), "", int64(v), nil)
+		k = m.Db.NewKey(m.Entity.Kind(), "", int64(v), nil)
 	case nil:
 		k = m.Key()
 	case reflect.Value:
@@ -95,10 +112,11 @@ func (m *Model) Put() error {
 	m.UpdatedAt = now
 
 	// Put entity into datastore
-	key, err := m.db.Put(m.Key(), m.Entity)
+	key, err := m.Db.Put(m.Key(), m.Entity)
 
 	// Update key
 	m.setKey(key)
+
 	return err
 }
 
@@ -109,22 +127,14 @@ func (m *Model) Get(args ...interface{}) error {
 		m.SetKey(args[0])
 	}
 
-	return m.db.Get(m.key, m.Entity)
+	return m.Db.Get(m.key, m.Entity)
 }
 
 func (m *Model) Query() datastore.Query {
-	return m.db.Query2(m.Entity.Kind())
+	return m.Db.Query2(m.Entity.Kind())
 }
 
 // Return JSON representation of model
 func (m *Model) JSON() string {
 	return json.Encode(&m)
-}
-
-// Use NewModel inside of a model implementing entity
-func NewModel(db *datastore.Datastore, e Entity) *Model {
-	m := new(Model)
-	m.db = db
-	m.Entity = e
-	return m
 }

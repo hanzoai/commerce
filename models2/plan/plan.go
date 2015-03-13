@@ -13,7 +13,7 @@ const (
 )
 
 type Plan struct {
-	*mixin.Model `datastore:"-"`
+	mixin.Model
 
 	Name        string
 	Description string
@@ -22,11 +22,11 @@ type Plan struct {
 }
 
 func New(db *datastore.Datastore) *Plan {
-	c := new(Plan)
-	c.Model = mixin.NewModel(db, c)
-	return c
+	p := new(Plan)
+	p.Model = mixin.Model{Db: db, Entity: p}
+	return p
 }
 
-func (c Plan) Kind() string {
+func (p Plan) Kind() string {
 	return "plan2"
 }
