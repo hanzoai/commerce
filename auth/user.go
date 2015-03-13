@@ -34,7 +34,7 @@ func GetUser(c *gin.Context) (*models.User, error) {
 
 // Validates a form and inserts a new user into the datastore
 // Checks if the Email and Id are unique, and calculates a hash for the password
-func NewUser(c *gin.Context, f *RegistrationForm) error {
+func NewUser(c *gin.Context, f *RegistrationForm) (*models.User, error) {
 	m := f.User
 	db := datastore.New(c)
 	q := queries.New(c)
@@ -47,21 +47,21 @@ func NewUser(c *gin.Context, f *RegistrationForm) error {
 
 	keys, err := qEmail.GetAll(db.Context, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	log.Debug("Checking if user exists")
 	if len(keys) > 0 {
-		return errors.New("Email is already registered")
+		return nil, errors.New("Email is already registered")
 	}
 
 	if m.PasswordHash, err = f.PasswordHash(); err != nil {
-		return err
+		return nil, err
 	}
 
 	if err = q.UpsertUser(&m); err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return &m, nil
 }
