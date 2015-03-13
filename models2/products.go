@@ -13,21 +13,37 @@ import (
 
 // Prune down since Product Listing has a lot of this info now
 type Product struct {
-	Id          string
-	Slug        string
-	Title       string
-	Headline    string
-	Excerpt     string
+	// Unique human readable id
+	Slug string
+
+	// Product Name
+	Name string
+
+	// Product headline
+	Headline string
+
+	// Product Excerpt
+	Excerpt string
+
+	// Product Description
 	Description string `datastore:",noindex"`
-	Released    time.Time
-	Available   bool
-	Stocked     int
-	AddLabel    string // Pre-order now or Add to cart
-	HeaderImage Image
 
-	Images []Image
+	// Product Media
+	HeaderImage Media
+	Media       []Media
 
-	Variants []ProductVariant
+	// When is the product available
+	AvailableBy time.Time
+
+	// Is this product for preorder
+	Preorder bool
+	AddLabel string // Pre-order now or Add to cart
+
+	// List of variants
+	Variants []Variant
+
+	// Reference to options used
+	Option []Option
 }
 
 func (p Product) JSON() string {
@@ -35,14 +51,16 @@ func (p Product) JSON() string {
 }
 
 func (p Product) DisplayTitle() string {
-	return DisplayTitle(p.Title)
+	return DisplayTitle(p.Name)
 }
 
-func (p Product) DisplayImage() Image {
-	if len(p.Images) > 0 {
-		return p.Images[0]
+func (p Product) DisplayImage() Media {
+	for _, media := range p.Media {
+		if media.Type == MediaTypeImage {
+			return media
+		}
 	}
-	return Image{}
+	return Media{}
 }
 
 func (p Product) DisplayPrice() string {
@@ -82,7 +100,7 @@ func (p Product) VariantOptions(name string) (options []string) {
 }
 
 func (p Product) Validate(req *http.Request, errs binding.Errors) binding.Errors {
-	if p.Title == "" {
+	if p.Name == "" {
 		errs = append(errs, binding.Error{
 			FieldNames:     []string{"Title"},
 			Classification: "InputError",
@@ -90,9 +108,9 @@ func (p Product) Validate(req *http.Request, errs binding.Errors) binding.Errors
 		})
 	}
 
-	if len(p.Images) > 0 {
-		for _, image := range p.Images {
-			errs = image.Validate(req, errs)
+	if len(p.Media) > 0 {
+		for _, media := range p.Media {
+			errs = media.Validate(req, errs)
 		}
 	}
 
@@ -110,51 +128,30 @@ func (p Product) Validate(req *http.Request, errs binding.Errors) binding.Errors
 	return errs
 }
 
-type ProductVariant struct {
-	SalesforceSObject
+type MediaType string
 
-	Id         string
-	SKU        string
-	Price      Cents
-	Stock      int
-	Weight     int
-	Dimensions string
-	Color      string
-	Style      string
-	Size       string
+const (
+	MediaTypeVideo      OrderStatus = "video"
+	MediaTypeImage                  = "image"
+	MediaTypeLiveStream             = "livestream"
+	MediaTypeWebGL                  = "webgl"
+	MediaTypeAudio                  = "audio"
+	MediaTypeEmbed                  = "embed"
+)
+
+type Media struct {
+	Type MediaType
+	Alt  string
+	Url  string
+	X    int
+	Y    int
 }
 
-func (pv ProductVariant) Validate(req *http.Request, errs binding.Errors) binding.Errors {
-	if pv.SKU == "" {
-		errs = append(errs, binding.Error{
-			FieldNames:     []string{"SKU"},
-			Classification: "InputError",
-			Message:        "Variant does not have a SKU",
-		})
-	}
-
-	if pv.Dimensions == "" {
-		errs = append(errs, binding.Error{
-			FieldNames:     []string{"Dimensions"},
-			Classification: "InputError",
-			Message:        "Variant has no given dimensions",
-		})
-	}
-	return errs
-}
-
-type Image struct {
-	Alt string
-	Url string
-	X   int
-	Y   int
-}
-
-func (i Image) Dimensions() string {
+func (i Media) Dimensions() string {
 	return fmt.Sprintf("%sx%s", i.X, i.Y)
 }
 
-func (i Image) Validate(req *http.Request, errs binding.Errors) binding.Errors {
+func (i Media) Validate(req *http.Request, errs binding.Errors) binding.Errors {
 	if i.Url == "" {
 		errs = append(errs, binding.Error{
 			FieldNames:     []string{"Url"},
