@@ -10,7 +10,7 @@ var mapping map[reflect.Type]string
 func init() {
 	mapping = make(map[reflect.Type]string)
 	mapping[reflect.TypeOf("")] = "TEXT(255)"
-	mapping[reflect.TypeOf(Currency(""))] = "CURRENCY(16,2)"
+	mapping[reflect.TypeOf(Currency(0.0))] = "CURRENCY(16,2)"
 	mapping[reflect.TypeOf(true)] = "CHECKBOX"
 }
 
