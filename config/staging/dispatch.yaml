@@ -1,23 +1,23 @@
 application: crowdstart-staging
 
 dispatch:
-  - url: "api.staging.crowdstart.io/*"
+  - url: "api-dot-crowdstart-staging.appspot.com/*"
     module: api
 
-  - url: "checkout.staging.crowdstart.io/*"
+  - url: "checkout-dot-crowdstart-staging.appspot.com/*"
     module: checkout
 
-  - url: "default.staging.crowdstart.io/*"
+  - url: "default-dot-crowdstart-staging.appspot.com/*"
     module: default
 
-  - url: "static.staging.crowdstart.io/*"
+  - url: "static-dot-crowdstart-staging.appspot.com/*"
     module: default
 
-  - url: "platform.staging.crowdstart.io/*"
+  - url: "platform-dot-crowdstart-staging.appspot.com/*"
     module: platform
 
-  - url: "preorder.staging.crowdstart.io/*"
+  - url: "preorder-dot-crowdstart-staging.appspot.com/*"
     module: preorder
 
-  - url: "store.staging.crowdstart.io/*"
+  - url: "store-dot-crowdstart-staging.appspot.com/*"
     module: store
