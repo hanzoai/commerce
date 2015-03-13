@@ -1,17 +1,20 @@
 package user
 
 import (
+	"github.com/gin-gonic/gin"
+	"github.com/mholt/binding"
+
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models"
 	"crowdstart.io/util/json"
-	"github.com/gin-gonic/gin"
-	"github.com/mholt/binding"
+	"crowdstart.io/util/log"
 )
 
 func Get(c *gin.Context) {
 	d := datastore.New(c)
-	id := c.Params.ByName("Id")
+	id := c.Params.ByName("id")
+	log.Debug("ID: %v", id)
 
 	var user models.User
 
