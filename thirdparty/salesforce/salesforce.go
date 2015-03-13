@@ -34,6 +34,7 @@ func (e *ErrorUnexpectedStatusCode) Error() string {
 
 type SalesforceClient interface {
 	GetBody() []byte
+	GetStatusCode() int
 	GetContext() appengine.Context
 	Request(string, string, string, *map[string]string, bool) error
 }
@@ -60,6 +61,10 @@ func getClient(c appengine.Context) *http.Client {
 
 func (a *Api) GetBody() []byte {
 	return a.LastBody
+}
+
+func (a *Api) GetStatusCode() int {
+	return a.LastStatusCode
 }
 
 func (a *Api) GetContext() appengine.Context {
@@ -221,9 +226,12 @@ func (a *Api) Push(object SObjectCompatible) error {
 
 	switch v := object.(type) {
 	case *models.User:
+
 		if v.Id == "" {
 			return ErrorRequiresId
 		}
+
+		log.Debug("Upserting Account", c)
 
 		account := Account{}
 		if err := account.Read(v); err != nil {
@@ -232,7 +240,8 @@ func (a *Api) Push(object SObjectCompatible) error {
 		if err := account.Push(a); err != nil {
 			return err
 		}
-		log.Debug("Upserting Account: %v", account, c)
+
+		log.Debug("Upserting Contact", c)
 
 		contact := Contact{}
 		if err := contact.Read(v); err != nil {
@@ -242,9 +251,15 @@ func (a *Api) Push(object SObjectCompatible) error {
 		if err := contact.Push(a); err != nil {
 			return err
 		}
-		log.Debug("Upserting Contact: %v", contact, c)
 
 	case *models.Order:
+
+		if v.Id == "" {
+			return ErrorRequiresId
+		}
+
+		log.Debug("Upserting Order", c)
+
 		v.LoadVariantsProducts(c)
 		order := Order{PricebookId: a.Campaign.Salesforce.DefaultPriceBookId}
 		if err := order.Read(v); err != nil {
@@ -254,9 +269,15 @@ func (a *Api) Push(object SObjectCompatible) error {
 		if err := order.Push(a); err != nil {
 			return err
 		}
-		log.Debug("Upserting Order: %v", order, c)
 
 	case *models.ProductVariant:
+
+		if v.Id == "" {
+			return ErrorRequiresId
+		}
+
+		log.Debug("Upserting Product", c)
+
 		product := Product{}
 		if err := product.Read(v); err != nil {
 			return err
@@ -265,6 +286,8 @@ func (a *Api) Push(object SObjectCompatible) error {
 		if err := product.Push(a); err != nil {
 			return err
 		}
+
+		log.Debug("Upserting PricebookEntry", c)
 
 		pricebookEntry := PricebookEntry{PricebookId: a.Campaign.Salesforce.DefaultPriceBookId}
 		if err := pricebookEntry.Read(v); err != nil {
@@ -277,27 +300,6 @@ func (a *Api) Push(object SObjectCompatible) error {
 
 	default:
 		return ErrorInvalidType
-	}
-
-	if len(a.LastBody) == 0 {
-		if a.LastStatusCode == 201 || a.LastStatusCode == 204 {
-			log.Debug("Upsert returned %v", a.LastStatusCode, c)
-			return nil
-		} else {
-			return &ErrorUnexpectedStatusCode{StatusCode: a.LastStatusCode, Body: a.LastBody}
-		}
-	}
-
-	response := new(UpsertResponse)
-
-	if err := json.Unmarshal(a.LastBody, response); err != nil {
-		log.Error("Could not unmarshal: %v", string(a.LastBody[:]), c)
-		return err
-	}
-
-	if !response.Success {
-		log.Error("Upsert Failed: %v: %v", response.Errors[0].ErrorCode, response.Errors[0].Message, c)
-		return &response.Errors[0]
 	}
 
 	return nil
@@ -340,7 +342,6 @@ func (a *Api) Pull(id string, object SObjectCompatible) error {
 
 func (a *Api) PullUpdated(start, end time.Time, objects interface{} /*[]SObjectCompatible*/) error {
 	c := a.Context
-	db := datastore.New(c)
 
 	switch v := objects.(type) {
 	case *[]*models.User:
@@ -351,17 +352,15 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{} /*[]SObjectC
 			return err
 		}
 
-		users := make(map[string]*models.User)
+		users := make(map[string]SObjectCompatible)
 
-		if err := ProcessUpdatedSObjects(db,
+		if err := ProcessUpdatedSObjects(
+			a,
 			&response,
+			start,
 			users,
-			func(id string) SObjectSerializeable {
-				contact := new(Contact)
-				contact.PullId(a, id)
-
-				log.Debug("Getting Contact: %v", contact, c)
-				return contact
+			func() SObjectLoadable {
+				return new(Contact)
 			}); err != nil {
 			return err
 		}
@@ -373,15 +372,13 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{} /*[]SObjectC
 			return err
 		}
 
-		if err := ProcessUpdatedSObjects(db,
+		if err := ProcessUpdatedSObjects(
+			a,
 			&response,
+			start,
 			users,
-			func(id string) SObjectSerializeable {
-				account := new(Account)
-				account.PullId(a, id)
-
-				log.Debug("Getting Account: %v", account, c)
-				return account
+			func() SObjectLoadable {
+				return new(Account)
 			}); err != nil {
 			return err
 		}
@@ -391,11 +388,45 @@ func (a *Api) PullUpdated(start, end time.Time, objects interface{} /*[]SObjectC
 
 		i := 0
 		for _, u := range users {
-			userSlice[i] = u
+			userSlice[i] = u.(*models.User)
 			i++
 		}
 
 		*v = userSlice
+
+	case *[]*models.Order:
+		log.Debug("Getting Updated Orders", c)
+
+		response := UpdatedRecordsResponse{}
+		if err := GetUpdatedOrders(a, start, end, &response); err != nil {
+			return err
+		}
+
+		orders := make(map[string]SObjectCompatible)
+
+		if err := ProcessUpdatedSObjects(
+			a,
+			&response,
+			start,
+			orders,
+			func() SObjectLoadable {
+				return new(Order)
+			}); err != nil {
+			return err
+		}
+
+		log.Debug("Pulled %v Users", len(orders), c)
+		orderSlice := make([]*models.Order, len(orders))
+
+		i := 0
+		for _, o := range orders {
+			orderSlice[i] = o.(*models.Order)
+			orderSlice[i].LoadVariantsProducts(c)
+			i++
+		}
+
+		*v = orderSlice
+
 	default:
 		return ErrorInvalidType
 	}
@@ -442,23 +473,45 @@ func (a *Api) Describe(response *DescribeResponse) error {
 }
 
 //Helper Functions
-func ProcessUpdatedSObjects(db *datastore.Datastore, response *UpdatedRecordsResponse, users map[string]*models.User, createFn func(string) SObjectSerializeable) error {
-	var ok bool
-
+func ProcessUpdatedSObjects(api SalesforceClient, response *UpdatedRecordsResponse, start time.Time, objects map[string]SObjectCompatible, createFn func() SObjectLoadable) error {
+	db := datastore.New(api.GetContext())
+	log.Debug("Response to Process: %v", response.Ids)
 	for _, id := range response.Ids {
-		us := createFn(id)
+		us := createFn()
+		object := us.LoadSalesforceId(db, id)
 
-		var user *models.User
-
-		// We key based on accountId because it is common to both contacts and accounts
-		userId := us.ExternalId()
-		if user, ok = users[userId]; !ok {
-			user = new(models.User)
-			db.Get(userId, user)
-			users[userId] = user
+		// ignore objects that have been updated locally since the start of the sync
+		// !Before means !< means >=
+		if object != nil && !object.LastSync().Before(start) {
+			log.Debug("Skipping due to Time %v after %v", object.LastSync(), start)
+			continue
 		}
 
-		if err := us.Write(user); err != nil {
+		if err := us.PullId(api, id); err != nil {
+			return err
+		}
+
+		// We key based on accountId because it is common to both contacts and accounts
+		// Use the CrowdstartId/Db Key to Index
+		usId := us.ExternalId()
+		log.Debug("Looking Up Is '%v'", usId)
+		// if Db Key is not in objects
+		if loadedObject, ok := objects[usId]; ok {
+			// Otherwise use the object from objects
+			object = loadedObject
+		} else {
+			// then use the object that was loaded if it exists
+			log.Debug("!Exist")
+			if object == nil {
+				// or load the object from the db using the Db Key
+				object = us.Load(db)
+				log.Debug("Loading")
+			}
+			objects[usId] = object
+		}
+		log.Debug("Assign %v", object)
+
+		if err := us.Write(object); err != nil {
 			return err
 		}
 	}

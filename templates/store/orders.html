@@ -31,9 +31,9 @@
                     {% endfor %}
                 </td>
                 <td>
-                    <span>$</span><span class="money">{{ order.DisplayTotal()}}</span>
+                    <span>$</span><span class="money">{{ order.DisplayTotal()}}&nbsp;</span>
                 </td>
-                <td><p>June 2015</p><p>Downloadable</p><p>December 2014</p></td>
+                <td>{{ order.EstimatedDeliveryHTML()|safe }}</td>
                 <td>{{ order.DisplayCreatedAt() }}</td>
             </tr>
             {% endfor %}

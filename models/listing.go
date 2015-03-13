@@ -12,13 +12,14 @@ type Config struct {
 
 type Listing struct {
 	FieldMapMixin
-	Id          string
-	SKU         string
-	Title       string
-	Description string `datastore:",noindex"`
-	Disabled    bool
-	SoldOut     bool
-	Perk        Perk
+	Id                string
+	SKU               string
+	Title             string
+	Description       string `datastore:",noindex"`
+	EstimatedDelivery string
+	Disabled          bool
+	SoldOut           bool
+	Perk              Perk
 
 	Images []Image
 
