@@ -19,7 +19,7 @@ type Option struct {
 }
 
 type Variant struct {
-	*mixin.Model `datastore:"-"`
+	mixin.Model
 	mixin.Salesforce
 
 	SKU  string
@@ -39,7 +39,7 @@ type Variant struct {
 
 func New(db *datastore.Datastore) *Variant {
 	v := new(Variant)
-	v.Model = mixin.NewModel(db, v)
+	v.Model = mixin.Model{Db: db, Entity: v}
 	return v
 }
 

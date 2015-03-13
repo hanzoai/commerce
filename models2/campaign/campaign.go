@@ -20,7 +20,7 @@ const (
 )
 
 type Campaign struct {
-	*mixin.Model `datastore:"-"`
+	mixin.Model
 
 	OrganizationId  string
 	Approved        bool
@@ -48,7 +48,7 @@ type Campaign struct {
 
 func New(db *datastore.Datastore) *Campaign {
 	c := new(Campaign)
-	c.Model = mixin.NewModel(db, c)
+	c.Model = mixin.Model{Db: db, Entity: c}
 	return c
 }
 
