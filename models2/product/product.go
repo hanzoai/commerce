@@ -1,18 +1,30 @@
-package models
+package product
 
 import (
-	"fmt"
 	"net/http"
 	"reflect"
 	"time"
 
 	"github.com/mholt/binding"
 
+	"crowdstart.io/models/mixin"
+	"crowdstart.io/models2/variant"
 	"crowdstart.io/util/json"
+
+	. "crowdstart.io/models2"
 )
+
+type Option struct {
+	// Ex. Size
+	Name string
+	// Ex. [S, M, L]
+	Values []string
+}
 
 // Prune down since Product Listing has a lot of this info now
 type Product struct {
+	*mixin.Model `datastore:"-"`
+
 	// Unique human readable id
 	Slug string
 
@@ -40,7 +52,7 @@ type Product struct {
 	AddLabel string // Pre-order now or Add to cart
 
 	// List of variants
-	Variants []Variant
+	Variants []variant.Variant
 
 	// Reference to options used
 	Option []Option
@@ -50,7 +62,7 @@ func (p Product) JSON() string {
 	return json.Encode(&p)
 }
 
-func (p Product) DisplayTitle() string {
+func (p Product) DisplayName() string {
 	return DisplayTitle(p.Name)
 }
 
@@ -124,40 +136,6 @@ func (p Product) Validate(req *http.Request, errs binding.Errors) binding.Errors
 		for _, v := range p.Variants {
 			errs = v.Validate(req, errs)
 		}
-	}
-	return errs
-}
-
-type MediaType string
-
-const (
-	MediaTypeVideo      OrderStatus = "video"
-	MediaTypeImage                  = "image"
-	MediaTypeLiveStream             = "livestream"
-	MediaTypeWebGL                  = "webgl"
-	MediaTypeAudio                  = "audio"
-	MediaTypeEmbed                  = "embed"
-)
-
-type Media struct {
-	Type MediaType
-	Alt  string
-	Url  string
-	X    int
-	Y    int
-}
-
-func (i Media) Dimensions() string {
-	return fmt.Sprintf("%sx%s", i.X, i.Y)
-}
-
-func (i Media) Validate(req *http.Request, errs binding.Errors) binding.Errors {
-	if i.Url == "" {
-		errs = append(errs, binding.Error{
-			FieldNames:     []string{"Url"},
-			Classification: "InputError",
-			Message:        "Image does not have a URL",
-		})
 	}
 	return errs
 }
