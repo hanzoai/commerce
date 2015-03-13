@@ -48,7 +48,7 @@ func init() {
 	router.GET("/token", token.List)
 	router.GET("/token/", token.List)
 	router.GET("/token/:id", token.Get)
-	// router.POST("/variant", variant.Add)
-	// router.PUT("/variant/:id", variant.Update)
-	// router.DELETE("/variant/:id", variant.Delete)
+	router.POST("/token", token.Add)
+	router.PUT("/token/:id", token.Update)
+	router.DELETE("/token/:id", token.Delete)
 }
