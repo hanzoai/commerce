@@ -30,4 +30,10 @@ var PricebookEntryExternalIdPath = PricebookEntryBasePath + "CrowdstartId__c/%v"
 var PricebookEntrysUpdatedPath = PricebookEntryBasePath + "updated/?start=%v&end=%v"
 
 var OrderProductBasePath = SObjectDescribePath + "OrderItem/"
+var OrderProductPath = OrderProductBasePath + "%v/"
+var OrderProductExternalIdPath = OrderProductBasePath + "CrowdstartId__c/%v"
 var OrderProductsUpdatedPath = OrderProductBasePath + "updated/?start=%v&end=%v"
+
+// These and only these are case sensitive...
+var PlaceOrderOrderBasePath = DescribePath + "commerce/sale/order/"
+var PlaceOrderOrderPath = PlaceOrderOrderBasePath + "%v/"
