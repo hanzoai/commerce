@@ -1,13 +1,24 @@
-package models
+package variant
 
 import (
 	"net/http"
 
+	"crowdstart.io/models/mixin"
 	"github.com/mholt/binding"
+
+	. "crowdstart.io/models2"
 )
 
+type Option struct {
+	// Ex. Size
+	Name string
+	// Ex. M
+	Value string
+}
+
 type Variant struct {
-	SalesforceSObject
+	mixin.Salesforce
+	*mixin.Model `datastore:"-"`
 
 	SKU  string
 	Name string
@@ -21,7 +32,7 @@ type Variant struct {
 	WeightUnit MassUnit
 	Dimensions string
 
-	Options []VariantOption
+	Options []Option
 }
 
 func (v Variant) Validate(req *http.Request, errs binding.Errors) binding.Errors {
