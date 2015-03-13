@@ -33,8 +33,8 @@ var _ = AfterSuite(func() {
 })
 
 type User struct {
-	*mixin.Model `datastore:"-"`
-	Name         string
+	mixin.Model
+	Name string
 }
 
 func (u *User) Kind() string {
@@ -42,9 +42,9 @@ func (u *User) Kind() string {
 }
 
 func NewUser(db *datastore.Datastore) *User {
-	user := new(User)
-	user.Model = mixin.NewModel(db, user)
-	return user
+	u := new(User)
+	u.Model = mixin.Model{Db: db, Entity: u}
+	return u
 }
 
 var _ = Describe("models/mixin", func() {
