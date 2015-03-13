@@ -12,6 +12,7 @@ import (
 type Organization struct {
 	mixin.Model
 
+	// Use Name as JWT "iss" param
 	Name       string
 	Owners     []string
 	Admins     []string
@@ -31,6 +32,16 @@ type Organization struct {
 	Plan struct {
 		PlanId    string
 		StartDate time.Time
+	}
+
+	Crowdstart struct {
+		// Use IssuedAt as JWT "iat" param
+		IssuedAt time.Time
+		// JWT secret
+		SecretKey string
+
+		// UseTokenId as JWT "jti" param, randomly generate upon generating a new key to expire all existing keys
+		TokenId string
 	}
 
 	Salesforce struct {
