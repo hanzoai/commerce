@@ -1,9 +1,18 @@
-package models
+package collection
 
-import "time"
+import (
+	"time"
+
+	"crowdstart.io/datastore"
+	"crowdstart.io/models/mixin"
+
+	. "crowdstart.io/models2"
+)
 
 // A collection of Products/Variants to be listed on a store
 type Collection struct {
+	*mixin.Model `datastore:"-"`
+
 	// Unique human readable identifier
 	Slug string
 
@@ -40,6 +49,16 @@ type Collection struct {
 	UpdatedAt time.Time
 
 	History []Event
+}
+
+func (c Collection) Kind() string {
+	return "collection"
+}
+
+func New(db *datastore.Datastore) *Collection {
+	c := new(Collection)
+	c.Model = mixin.NewModel(db, c)
+	return c
 }
 
 func (c Collection) GetDescriptionParagraphs() []string {
