@@ -23,7 +23,7 @@ type Option struct {
 
 // Prune down since Product Listing has a lot of this info now
 type Product struct {
-	*mixin.Model `datastore:"-"`
+	mixin.Model
 
 	// Unique human readable id
 	Slug string
@@ -60,7 +60,7 @@ type Product struct {
 
 func New(db *datastore.Datastore) *Product {
 	p := new(Product)
-	p.Model = mixin.NewModel(db, p)
+	p.Model = mixin.Model{Db: db, Entity: p}
 	return p
 }
 

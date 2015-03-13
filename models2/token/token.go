@@ -7,7 +7,7 @@ import (
 )
 
 type Token struct {
-	*mixin.Model `datastore:"-"`
+	mixin.Model
 
 	ShortId string
 	Email   string
@@ -18,8 +18,7 @@ type Token struct {
 
 func New(db *datastore.Datastore) *Token {
 	t := new(Token)
-	t.Model = mixin.NewModel(db, t)
-	// t.Model.StringKey_ = true
+	t.Model = mixin.Model{Db: db, Entity: t}
 	return t
 }
 

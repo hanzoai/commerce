@@ -16,7 +16,7 @@ const (
 )
 
 type Coupon struct {
-	*mixin.Model `datastore:"-"`
+	mixin.Model
 
 	// Possible values: flat, percent, free_shipping.
 	Type CouponType
@@ -57,7 +57,7 @@ type Coupon struct {
 
 func New(db *datastore.Datastore) *Coupon {
 	c := new(Coupon)
-	c.Model = mixin.NewModel(db, c)
+	c.Model = mixin.Model{Db: db, Entity: c}
 	return c
 }
 

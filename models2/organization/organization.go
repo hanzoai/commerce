@@ -10,7 +10,7 @@ import (
 )
 
 type Organization struct {
-	*mixin.Model `datastore:"-"`
+	mixin.Model
 
 	Name       string
 	Owners     []string
@@ -59,7 +59,7 @@ type Organization struct {
 
 func New(db *datastore.Datastore) *Organization {
 	o := new(Organization)
-	o.Model = mixin.NewModel(db, o)
+	o.Model = mixin.Model{Db: db, Entity: o}
 	return o
 }
 

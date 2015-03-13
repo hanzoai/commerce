@@ -21,7 +21,7 @@ var (
 )
 
 type User struct {
-	*mixin.Model
+	mixin.Model
 	mixin.Salesforce
 
 	FirstName       string
@@ -42,6 +42,16 @@ type User struct {
 	UpdatedAt time.Time
 	CreatedAt time.Time
 	Metadata  []Datum
+}
+
+func New(db *datastore.Datastore) *User {
+	u := new(User)
+	u.Model = mixin.Model{Db: db, Entity: u}
+	return u
+}
+
+func (u User) Kind() string {
+	return "user"
 }
 
 func (u User) Name() string {
