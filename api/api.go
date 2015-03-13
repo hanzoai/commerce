@@ -1,13 +1,15 @@
 package api
 
 import (
+	"github.com/gin-gonic/gin"
+
 	"crowdstart.io/api/cart"
 	"crowdstart.io/api/order"
 	"crowdstart.io/api/product"
+	"crowdstart.io/api/token"
 	"crowdstart.io/api/user"
 	"crowdstart.io/api/variant"
 	"crowdstart.io/util/router"
-	"github.com/gin-gonic/gin"
 )
 
 func init() {
@@ -42,4 +44,11 @@ func init() {
 	router.POST("/variant", variant.Add)
 	router.PUT("/variant/:id", variant.Update)
 	router.DELETE("/variant/:id", variant.Delete)
+
+	router.GET("/token", token.List)
+	router.GET("/token/", token.List)
+	router.GET("/token/:id", token.Get)
+	// router.POST("/variant", variant.Add)
+	// router.PUT("/variant/:id", variant.Update)
+	// router.DELETE("/variant/:id", variant.Delete)
 }

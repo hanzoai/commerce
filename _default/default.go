@@ -16,6 +16,7 @@ import (
 	// Imported for side-effect, ensures tasks are registered
 	_ "crowdstart.io/models/fixtures"
 	_ "crowdstart.io/models/migrations"
+	_ "crowdstart.io/models2/fixtures"
 	_ "crowdstart.io/thirdparty/mandrill/tasks"
 	_ "crowdstart.io/thirdparty/salesforce/tasks"
 )
