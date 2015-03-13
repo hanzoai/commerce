@@ -2,8 +2,6 @@ package models
 
 import "time"
 
-type Cents int
-
 type OrderStatus string
 
 const (
@@ -31,29 +29,6 @@ const (
 	FullfillmentFullfilled                      = "fullfilled"
 	FullfillmentProcessing                      = "processing"
 	FullfillmentFailed                          = "failed"
-)
-
-type CurrencyType string
-
-func (t CurrencyType) Symbol() string {
-	switch t {
-	case USD, AUD, CAD:
-		return "$"
-	case EUR:
-		return "€"
-	case GBP:
-		return "£"
-	}
-
-	return ""
-}
-
-const (
-	USD CurrencyType = "usd"
-	AUD              = "aud"
-	CAD              = "cad"
-	EUR              = "eur"
-	GBP              = "gbp"
 )
 
 type Buyer struct {
