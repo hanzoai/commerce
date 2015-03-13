@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"crowdstart.io/datastore"
-	"crowdstart.io/models/mixin"
+	"crowdstart.io/models2/mixin"
 	"crowdstart.io/util/test/ae"
 	"crowdstart.io/util/test/ginkgo"
 )
@@ -33,8 +33,8 @@ var _ = AfterSuite(func() {
 })
 
 type User struct {
-	mixin.Model `datastore:"-"`
-	Name        string
+	*mixin.Model `datastore:"-"`
+	Name         string
 }
 
 func (u *User) Kind() string {
