@@ -421,6 +421,10 @@ func (d *Datastore) Query(kind string) *aeds.Query {
 	return aeds.NewQuery(kind)
 }
 
+func (d *Datastore) Query2(kind string) Query {
+	return NewQuery(kind, d.Context)
+}
+
 func (d *Datastore) RunInTransaction(f func(tc appengine.Context) error, opts *aeds.TransactionOptions) error {
 	return nds.RunInTransaction(d.Context, f, opts)
 }
