@@ -32,7 +32,7 @@ type Buyer struct {
 }
 
 type Order struct {
-	*mixin.Model     `datastore:"-"`
+	mixin.Model
 	mixin.Salesforce `json:"-"`
 
 	// Associated campaign
@@ -131,7 +131,7 @@ type Order struct {
 
 func New(db *datastore.Datastore) *Order {
 	o := new(Order)
-	o.Model = mixin.NewModel(db, o)
+	o.Model = mixin.Model{Db: db, Entity: o}
 	return o
 }
 
