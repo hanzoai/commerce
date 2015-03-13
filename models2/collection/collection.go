@@ -11,7 +11,7 @@ import (
 
 // A collection of Products/Variants to be listed on a store
 type Collection struct {
-	*mixin.Model `datastore:"-"`
+	mixin.Model
 
 	// Unique human readable identifier
 	Slug string
@@ -53,7 +53,7 @@ type Collection struct {
 
 func New(db *datastore.Datastore) *Collection {
 	c := new(Collection)
-	c.Model = mixin.NewModel(db, c)
+	c.Model = mixin.Model{Db: db, Entity: c}
 	return c
 }
 
