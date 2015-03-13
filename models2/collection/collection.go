@@ -58,7 +58,7 @@ func New(db *datastore.Datastore) *Collection {
 }
 
 func (c Collection) Kind() string {
-	return "collection"
+	return "collection2"
 }
 
 func (c Collection) GetDescriptionParagraphs() []string {

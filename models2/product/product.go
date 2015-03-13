@@ -65,7 +65,7 @@ func New(db *datastore.Datastore) *Product {
 }
 
 func (p Product) Kind() string {
-	return "product"
+	return "product2"
 }
 
 func (p Product) DisplayName() string {

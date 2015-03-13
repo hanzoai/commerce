@@ -136,7 +136,7 @@ func New(db *datastore.Datastore) *Order {
 }
 
 func (o Order) Kind() string {
-	return "order"
+	return "order2"
 }
 
 // var variantsMap map[string]Variant
