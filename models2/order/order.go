@@ -1,4 +1,4 @@
-package models
+package order
 
 import (
 	"fmt"
@@ -6,15 +6,20 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize"
+
+	"crowdstart.io/datastore"
+	"crowdstart.io/models/mixin"
+
+	. "crowdstart.io/models2"
 )
 
 type OrderStatus string
 
 const (
-	OrderOpen      OrderStatus = "open"
-	OrderLocked                = "locked"
-	OrderCancelled             = "cancelled"
-	OrderCompleted             = "completed"
+	Open      OrderStatus = "open"
+	Locked                = "locked"
+	Cancelled             = "cancelled"
+	Completed             = "completed"
 )
 
 type Buyer struct {
@@ -27,7 +32,8 @@ type Buyer struct {
 }
 
 type Order struct {
-	SalesforceSObject `json:"-"`
+	*mixin.Model     `datastore:"-"`
+	mixin.Salesforce `json:"-"`
 
 	// Associated campaign
 	CampaignId string `json:"campaign_id"`
@@ -123,9 +129,19 @@ type Order struct {
 	Version int  // Versioning for struct
 }
 
-var variantsMap map[string]Variant
-var salesforceVariantsMap map[string]Variant
-var productsMap map[string]Product
+func (o Order) Kind() string {
+	return "order"
+}
+
+func New(db *datastore.Datastore) *Order {
+	o := new(Order)
+	o.Model = mixin.NewModel(db, o)
+	return o
+}
+
+// var variantsMap map[string]Variant
+// var salesforceVariantsMap map[string]Variant
+// var productsMap map[string]Product
 
 // func (o Order) EstimatedDeliveryHTML() string {
 // 	return "<div>" + strings.Replace(o.EstimatedDelivery, ",", "</div><div>", -1) + "</div>"
