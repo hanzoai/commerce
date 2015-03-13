@@ -129,14 +129,14 @@ type Order struct {
 	Version int  // Versioning for struct
 }
 
-func (o Order) Kind() string {
-	return "order"
-}
-
 func New(db *datastore.Datastore) *Order {
 	o := new(Order)
 	o.Model = mixin.NewModel(db, o)
 	return o
+}
+
+func (o Order) Kind() string {
+	return "order"
 }
 
 // var variantsMap map[string]Variant

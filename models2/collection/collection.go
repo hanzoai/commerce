@@ -51,14 +51,14 @@ type Collection struct {
 	History []Event
 }
 
-func (c Collection) Kind() string {
-	return "collection"
-}
-
 func New(db *datastore.Datastore) *Collection {
 	c := new(Collection)
 	c.Model = mixin.NewModel(db, c)
 	return c
+}
+
+func (c Collection) Kind() string {
+	return "collection"
 }
 
 func (c Collection) GetDescriptionParagraphs() []string {
