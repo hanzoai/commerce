@@ -16,8 +16,11 @@ type Discount struct {
 	// Discount amount (500 == 5.00% off or 1000 == $10 off)
 	Amount int
 
-	// Product this applies to
-	ProductId string
+	// Products this applies to
+	ProductIds []string
+
+	// Variants this applies to
+	VariantIds []string
 
 	// Whether to apply to all matching items, or just once.
 	Once bool
