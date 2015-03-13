@@ -114,26 +114,17 @@ type Order struct {
 	// Individual line items
 	Items []LineItem
 
-	// Fullfillment information
-	Fullfillment Fullfillment `json:"fullfillment"`
+	Adjustments []Adjustment
+
+	Discounts []Discount
 
 	Payments []Payment `json:"payments"`
 
-	// // Basic status flags for order
-	// Cancelled bool
-	// Refunded  bool
-	// Shipped   bool
+	// Fullfillment information
+	Fullfillment Fullfillment `json:"fullfillment"`
 
-	// EstimatedDelivery string
-
-	// // Dispute details
-	// Disputed bool
-	// Dispute  struct {
-	// 	Status string
-	// 	Reason string
-	// }
-
-	// // ShippingOption  ShippingOption
+	// Series of events that have occured relevant to this order
+	History []Event
 
 	Test    bool // Not a real transaction
 	Version int  // Versioning for struct

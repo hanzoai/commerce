@@ -21,6 +21,13 @@ const (
 	PayPal                = "paypal"
 )
 
+type Client struct {
+	Ip        string
+	UserAgent string
+	Language  string
+	Referer   string
+}
+
 type PaymentAccount struct {
 	Name string
 	Type PaymentGateway
@@ -81,6 +88,9 @@ type Payment struct {
 	CreatedAt time.Time
 
 	Status PaymentStatus
+
+	// Client's browser, associated info
+	Client Client
 
 	// Whether this was a transaction in production or a testing sandbox
 	Live bool
