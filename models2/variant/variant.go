@@ -44,7 +44,7 @@ func New(db *datastore.Datastore) *Variant {
 }
 
 func (v Variant) Kind() string {
-	return "variant"
+	return "variant2"
 }
 
 func (v Variant) Validate(req *http.Request, errs binding.Errors) binding.Errors {
