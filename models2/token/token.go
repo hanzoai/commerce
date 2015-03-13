@@ -1,4 +1,4 @@
-package models
+package token
 
 import (
 	"crowdstart.io/datastore"
@@ -19,6 +19,7 @@ type Token struct {
 func New(db *datastore.Datastore) *Token {
 	t := new(Token)
 	t.Model = mixin.NewModel(db, t)
+	// t.Model.StringKey_ = true
 	return t
 }
 
@@ -26,6 +27,7 @@ func (t Token) Kind() string {
 	return "token2"
 }
 
-func (t *Token) GenerateId() {
-	t.Id = rand.ShortId()
+func (t *Token) Generate() string {
+	t.ShortId = rand.ShortId()
+	return t.ShortId
 }
