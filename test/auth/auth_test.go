@@ -43,7 +43,8 @@ func init() {
 					User:     models.User{Email: "a@example.com"},
 					Password: "hunter2",
 				}
-				err := auth.NewUser(c, &regForm)
+				u, err := auth.NewUser(c, &regForm)
+				Expect(u.Id).ToNot(Equal(""))
 				Expect(err).ToNot(HaveOccurred())
 			})
 		})
@@ -72,7 +73,7 @@ func init() {
 				}
 				auth.NewUser(c, &regForm)
 
-				err := auth.NewUser(c, &regForm)
+				_, err := auth.NewUser(c, &regForm)
 				Expect(err).To(HaveOccurred())
 			})
 		})
