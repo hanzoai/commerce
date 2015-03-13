@@ -63,7 +63,6 @@ type PaymentAccount struct {
 }
 
 type Payment struct {
-	Id         string
 	CampaignId string
 
 	// Id for Stripe/Affirm

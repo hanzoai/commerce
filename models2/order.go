@@ -29,8 +29,6 @@ type Buyer struct {
 type Order struct {
 	SalesforceSObject `json:"-"`
 
-	Id string `json:"id"`
-
 	// Associated campaign
 	CampaignId string `json:"campaign_id"`
 
@@ -125,8 +123,8 @@ type Order struct {
 	Version int  // Versioning for struct
 }
 
-var variantsMap map[string]ProductVariant
-var salesforceVariantsMap map[string]ProductVariant
+var variantsMap map[string]Variant
+var salesforceVariantsMap map[string]Variant
 var productsMap map[string]Product
 
 // func (o Order) EstimatedDeliveryHTML() string {
