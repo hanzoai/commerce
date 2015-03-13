@@ -1,16 +1,11 @@
 package models
 
 import (
-	"bytes"
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/dustin/go-humanize"
-
-	"crowdstart.io/datastore"
-	"crowdstart.io/util/log"
 )
 
 type OrderStatus string
@@ -147,54 +142,54 @@ var productsMap map[string]Product
 // 	return disputedCharges
 // }
 
-func (o *Order) LoadVariantsProducts(c interface{}) {
-	if variantsMap == nil || productsMap == nil || salesforceVariantsMap == nil {
-		db := datastore.New(c)
+// func (o *Order) LoadVariantsProducts(c interface{}) {
+// 	if variantsMap == nil || productsMap == nil || salesforceVariantsMap == nil {
+// 		db := datastore.New(c)
 
-		variantsMap = make(map[string]ProductVariant)
-		salesforceVariantsMap = make(map[string]ProductVariant)
-		var variants []ProductVariant
-		db.Query("variant").GetAll(db.Context, &variants)
-		for _, variant := range variants {
-			variantsMap[variant.SKU] = variant
-			salesforceVariantsMap[variant.SecondarySalesforceId_] = variant
-		}
+// 		variantsMap = make(map[string]ProductVariant)
+// 		salesforceVariantsMap = make(map[string]ProductVariant)
+// 		var variants []ProductVariant
+// 		db.Query("variant").GetAll(db.Context, &variants)
+// 		for _, variant := range variants {
+// 			variantsMap[variant.SKU] = variant
+// 			salesforceVariantsMap[variant.SecondarySalesforceId_] = variant
+// 		}
 
-		productsMap = make(map[string]Product)
-		var products []Product
-		db.Query("product").GetAll(db.Context, &products)
-		for _, product := range products {
-			productsMap[product.Slug] = product
-		}
-	}
+// 		productsMap = make(map[string]Product)
+// 		var products []Product
+// 		db.Query("product").GetAll(db.Context, &products)
+// 		for _, product := range products {
+// 			productsMap[product.Slug] = product
+// 		}
+// 	}
 
-	for i, item := range o.Items {
-		// We might need to derive Slug_ from Sku_
-		if item.Slug_ == "" && item.SKU_ != "" {
-			for slug, _ := range productsMap {
-				upperSKU := strings.ToUpper(item.SKU_)
-				upperSlug := strings.ToUpper(slug)
-				if strings.HasPrefix(upperSKU, upperSlug) {
-					// Remember that item is a copy and not the actual object
-					o.Items[i].Slug_ = slug
-					break
-				}
-			}
-			log.Warn("Slug was missing on line item, guessed slug is '%v' based on SKU '%v'", o.Items[i].Slug_, item.SKU_, c)
-		}
-		o.Items[i].Product = productsMap[item.Slug_]
+// 	for i, item := range o.Items {
+// 		// We might need to derive Slug_ from Sku_
+// 		if item.Slug_ == "" && item.SKU_ != "" {
+// 			for slug, _ := range productsMap {
+// 				upperSKU := strings.ToUpper(item.SKU_)
+// 				upperSlug := strings.ToUpper(slug)
+// 				if strings.HasPrefix(upperSKU, upperSlug) {
+// 					// Remember that item is a copy and not the actual object
+// 					o.Items[i].Slug_ = slug
+// 					break
+// 				}
+// 			}
+// 			log.Warn("Slug was missing on line item, guessed slug is '%v' based on SKU '%v'", o.Items[i].Slug_, item.SKU_, c)
+// 		}
+// 		o.Items[i].Product = productsMap[item.Slug_]
 
-		// We might need to look up using sf id
-		var ok bool
-		if o.Items[i].Variant, ok = variantsMap[item.SKU_]; !ok {
-			if o.Items[i].Variant, ok = salesforceVariantsMap[item.PrimarySalesforceId_]; !ok {
-				o.Items[i].Variant, ok = salesforceVariantsMap[item.SecondarySalesforceId_]
-			}
-		}
+// 		// We might need to look up using sf id
+// 		var ok bool
+// 		if o.Items[i].Variant, ok = variantsMap[item.SKU_]; !ok {
+// 			if o.Items[i].Variant, ok = salesforceVariantsMap[item.PrimarySalesforceId_]; !ok {
+// 				o.Items[i].Variant, ok = salesforceVariantsMap[item.SecondarySalesforceId_]
+// 			}
+// 		}
 
-		o.Items[i].VariantId = o.Items[i].VariantId
-	}
-}
+// 		o.Items[i].VariantId = o.Items[i].VariantId
+// 	}
+// }
 
 func (o Order) DisplayCreatedAt() string {
 	duration := time.Since(o.CreatedAt)
@@ -231,19 +226,19 @@ func (o Order) DecimalFee() uint64 {
 	return uint64(FloatPrice(o.Total) * 100 * 0.02)
 }
 
-func (o Order) Description() string {
-	buffer := bytes.NewBufferString("")
+// func (o Order) Description() string {
+// 	buffer := bytes.NewBufferString("")
 
-	for i, item := range o.Items {
-		if i > 0 {
-			buffer.WriteString(", ")
-		}
-		buffer.WriteString(item.SKU())
-		buffer.WriteString(" x")
-		buffer.WriteString(strconv.Itoa(item.Quantity))
-	}
-	return buffer.String()
-}
+// 	for i, item := range o.Items {
+// 		if i > 0 {
+// 			buffer.WriteString(", ")
+// 		}
+// 		buffer.WriteString(item.SKU())
+// 		buffer.WriteString(" x")
+// 		buffer.WriteString(strconv.Itoa(item.Quantity))
+// 	}
+// 	return buffer.String()
+// }
 
 // Use binding to validate that there are no errors
 // func (o Order) Validate(req *http.Request, errs binding.Errors) binding.Errors {
@@ -262,33 +257,33 @@ func (o Order) Description() string {
 // 	return errs
 // }
 
-// Repopulate order with data from database, variant options, etc., and
-// recalculate totals.
-func (o *Order) Populate(db *datastore.Datastore) error {
-	// TODO: Optimize this, multiget, use caching.
-	for i, item := range o.Items {
-		// Fetch Variant for LineItem from datastore
-		if err := db.GetKind("variant", item.SKU(), &item.Variant); err != nil {
-			return err
-		}
+// // Repopulate order with data from database, variant options, etc., and
+// // recalculate totals.
+// func (o *Order) Populate(db *datastore.Datastore) error {
+// 	// TODO: Optimize this, multiget, use caching.
+// 	for i, item := range o.Items {
+// 		// Fetch Variant for LineItem from datastore
+// 		if err := db.GetKind("variant", item.SKU(), &item.Variant); err != nil {
+// 			return err
+// 		}
 
-		// Fetch Product for LineItem from datastore
-		if err := db.GetKind("product", item.Slug(), &item.Product); err != nil {
-			return err
-		}
+// 		// Fetch Product for LineItem from datastore
+// 		if err := db.GetKind("product", item.Slug(), &item.Product); err != nil {
+// 			return err
+// 		}
 
-		// Set SKU so we can deserialize later
-		item.SKU_ = item.SKU()
-		item.Slug_ = item.Slug()
+// 		// Set SKU so we can deserialize later
+// 		item.SKU_ = item.SKU()
+// 		item.Slug_ = item.Slug()
 
-		// Update item in order
-		o.Items[i] = item
+// 		// Update item in order
+// 		o.Items[i] = item
 
-		// Update subtotal
-		o.Subtotal += item.Price()
-	}
+// 		// Update subtotal
+// 		o.Subtotal += item.Price()
+// 	}
 
-	// Update grand total
-	o.Total = o.Subtotal + o.Tax + o.Shipping
-	return nil
-}
+// 	// Update grand total
+// 	o.Total = o.Subtotal + o.Tax + o.Shipping
+// 	return nil
+// }
