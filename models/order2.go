@@ -35,6 +35,19 @@ const (
 
 type CurrencyType string
 
+func (t CurrencyType) Symbol() string {
+	switch t {
+	case USD, AUD, CAD:
+		return "$"
+	case EUR:
+		return "€"
+	case GBP:
+		return "£"
+	}
+
+	return ""
+}
+
 const (
 	USD CurrencyType = "usd"
 	AUD              = "aud"
