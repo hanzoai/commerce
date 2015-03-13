@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/datastore"
+	"crowdstart.io/models/mixin"
 	"crowdstart.io/models2/token"
 	"crowdstart.io/util/log"
 )
@@ -28,12 +29,16 @@ func Get(c *gin.Context) {
 func List(c *gin.Context) {
 	db := datastore.New(c)
 
-	var tokens *[]token.Token
-	if _, err := token.New(db).Query().GetAll(tokens); err != nil {
+	tokens := make([]token.Token, 0)
+	if keys, err := token.New(db).Query().GetAll(&tokens); err != nil {
 		message := "Failed to retrieve tokens from datastore"
 		log.Debug(message, err, c)
 		c.JSON(500, gin.H{"status": message})
 	} else {
+		for i := 0; i < len(tokens); i++ {
+			tokens[i].Model = mixin.NewModel(db, tokens[i])
+			tokens[i].SetKey(keys[i])
+		}
 		c.JSON(200, tokens)
 	}
 }
