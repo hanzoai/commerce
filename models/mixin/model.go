@@ -37,6 +37,25 @@ func NewModel(db *datastore.Datastore, entity Entity) Model {
 	return Model{Db: db, Entity: entity}
 }
 
+// Helper to set Id_ correctly
+func (m *Model) setId() {
+	// Set ID to StringID first, if that is not set, then try the IntID A
+	// Datastore key can be either an int or string but not both
+	m.Id_ = m.key.StringID()
+	if m.Id_ == "" {
+		if id := m.key.IntID(); id != 0 {
+			m.Id_ = strconv.Itoa(int(id))
+		}
+	}
+}
+
+// Helper to set key + Id_
+func (m *Model) setKey(key datastore.Key) {
+	m.key = key
+	m.setId()
+}
+
+// Returns Key for this entity
 func (m *Model) Key() (key datastore.Key) {
 	// Create a new incomplete key for this new entity
 	if m.key == nil {
@@ -55,18 +74,15 @@ func (m *Model) Key() (key datastore.Key) {
 	return m.key
 }
 
-func (m *Model) setKey(key datastore.Key) {
-	// Set ID to StringID first, if that is not set, then try the IntID
-	// A Datastore key can be either an int or string but not both
-	m.key = key
-	m.Id_ = key.StringID()
+// Returns string key for entity
+func (m *Model) Id() string {
 	if m.Id_ == "" {
-		if id := key.IntID(); id != 0 {
-			m.Id_ = strconv.Itoa(int(id))
-		}
+		m.setId()
 	}
+	return m.Id_
 }
 
+// Set's key for entity.
 func (m *Model) SetKey(key interface{}) error {
 	var k datastore.Key
 
@@ -103,6 +119,7 @@ func (m *Model) SetKey(key interface{}) error {
 	return nil
 }
 
+// Put entity in datastore
 func (m *Model) Put() error {
 	// Set CreatedAt, UpdatedAt
 	now := time.Now()
@@ -120,6 +137,7 @@ func (m *Model) Put() error {
 	return err
 }
 
+// Get entity from datastore
 func (m *Model) Get(args ...interface{}) error {
 	// If a key is specified, try to use that, ignore nil keys (which would
 	// otherwise create a new incomplete key which makes no sense in this case.
@@ -130,15 +148,17 @@ func (m *Model) Get(args ...interface{}) error {
 	return m.Db.Get(m.key, m.Entity)
 }
 
+// Delete entity from Datastore
 func (m *Model) Delete() error {
 	return m.Db.Delete(m.key)
 }
 
+// Return a query for this entity kind
 func (m *Model) Query() datastore.Query {
 	return m.Db.Query2(m.Entity.Kind())
 }
 
-// Return JSON representation of model
+// Serialize entity to JSON string
 func (m *Model) JSON() string {
-	return json.Encode(&m)
+	return json.Encode(m.Entity)
 }
