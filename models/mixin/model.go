@@ -130,6 +130,10 @@ func (m *Model) Get(args ...interface{}) error {
 	return m.Db.Get(m.key, m.Entity)
 }
 
+func (m *Model) Delete() error {
+	return m.Db.Delete(m.key)
+}
+
 func (m *Model) Query() datastore.Query {
 	return m.Db.Query2(m.Entity.Kind())
 }
