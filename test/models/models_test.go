@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"crowdstart.io/datastore"
-	"crowdstart.io/models2/mixin"
+	"crowdstart.io/models/mixin"
 	"crowdstart.io/util/test/ae"
 	"crowdstart.io/util/test/ginkgo"
 )

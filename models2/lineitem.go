@@ -1,7 +1,9 @@
 package models
 
+import "crowdstart.io/models/mixin"
+
 type LineItem struct {
-	SalesforceSObject
+	mixin.Salesforce
 
 	ProductId   string
 	ProductName string
