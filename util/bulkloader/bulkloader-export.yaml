@@ -390,8 +390,14 @@ transformers:
     - property: Preorder
       external_name: Preorder
 
+    - property: PrimarySalesforceId_
+      external_name: PrimarySalesforceId_
+
     - property: Refunded
       external_name: Refunded
+
+    - property: SecondarySalesforceId_
+      external_name: SecondarySalesforceId_
 
     - property: Shipped
       external_name: Shipped

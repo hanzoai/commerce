@@ -1,12 +1,4 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-Salesforce.com Partner Web Services API Version 33.0
-Generated on 2015-02-23 04:49:33 +0000.
-
-Copyright 1999-2015 salesforce.com, inc.
-All Rights Reserved
--->
-
 <definitions targetNamespace="urn:partner.soap.sforce.com"
              xmlns="http://schemas.xmlsoap.org/wsdl/"
              xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
