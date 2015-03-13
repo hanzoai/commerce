@@ -7,9 +7,9 @@ import (
 
 	"github.com/mholt/binding"
 
+	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/models2/variant"
-	"crowdstart.io/util/json"
 
 	. "crowdstart.io/models2"
 )
@@ -58,8 +58,14 @@ type Product struct {
 	Option []Option
 }
 
-func (p Product) JSON() string {
-	return json.Encode(&p)
+func New(db *datastore.Datastore) *Product {
+	p := new(Product)
+	p.Model = mixin.NewModel(db, p)
+	return p
+}
+
+func (p Product) Kind() string {
+	return "product"
 }
 
 func (p Product) DisplayName() string {
@@ -68,7 +74,7 @@ func (p Product) DisplayName() string {
 
 func (p Product) DisplayImage() Media {
 	for _, media := range p.Media {
-		if media.Type == MediaTypeImage {
+		if media.Type == MediaImage {
 			return media
 		}
 	}

@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"crowdstart.io/datastore"
+	"crowdstart.io/util/json"
 )
 
 // Discrete instance of an entity
@@ -12,13 +13,22 @@ type Entity interface {
 	Kind() string
 }
 
+// Model is our datastore mixin which adds serialization to/from Datastore,
+// JSON, etc.
 type Model struct {
-	Id string `json:"id" datastore:"-"`
-
-	// Datastore Embedder
+	Id     string `json:"id" datastore:"-"`
 	Entity Entity `json:"-" datastore:"-"`
 	key    datastore.Key
 	db     *datastore.Datastore
+}
+
+func (m *Model) Key() (key datastore.Key) {
+	// Create a new incomplete key for this new entity
+	if m.key == nil {
+		m.key = m.db.NewIncompleteKey(m.Entity.Kind(), nil)
+	}
+
+	return m.key
 }
 
 func (m *Model) setKey(key datastore.Key) {
@@ -31,15 +41,6 @@ func (m *Model) setKey(key datastore.Key) {
 			m.Id = strconv.Itoa(int(id))
 		}
 	}
-}
-
-func (m *Model) Key() (key datastore.Key) {
-	// Create a new incomplete key for this new entity
-	if m.key == nil {
-		m.key = m.db.NewIncompleteKey(m.Entity.Kind(), nil)
-	}
-
-	return m.key
 }
 
 func (m *Model) SetKey(key interface{}) error {
@@ -82,6 +83,11 @@ func (m *Model) Get(args ...interface{}) error {
 	m.setKey(key)
 
 	return err
+}
+
+// Return JSON representation of model
+func (m *Model) JSON() string {
+	return json.Encode(&m)
 }
 
 // Use NewModel inside of a model implementing entity
