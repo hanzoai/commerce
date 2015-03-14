@@ -8,9 +8,8 @@ import (
 	"github.com/mholt/binding"
 
 	"crowdstart.io/datastore"
-	"crowdstart.io/util/log"
-
 	stripe "crowdstart.io/thirdparty/stripe/models"
+	"crowdstart.io/util/log"
 )
 
 var (
