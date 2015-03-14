@@ -20,6 +20,7 @@ var TaskPlus1 = parallel.Task("test-worker", func(db *datastore.Datastore, k dat
 
 // Define a new worker with parallel.Task
 var TaskSetVal = parallel.Task("test-worker2", func(db *datastore.Datastore, k datastore.Key, model Model, v int) {
+	println("Setting val")
 	model.Count = v
 	db.PutKind("set-val", k, &model)
 })
