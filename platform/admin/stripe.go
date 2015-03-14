@@ -101,8 +101,8 @@ func StripeCallback(c *gin.Context) {
 		log.Panic("Unable to get email from session: %v", err)
 	}
 
-	// Get campaign using the email
-	if err := db.GetKey("campaign", email, campaign); err != nil {
+	// Get user instance
+	if err := db.GetKind("campaign", email, campaign); err != nil {
 		log.Panic("Unable to get campaign from database: %v", err)
 	}
 
@@ -116,7 +116,7 @@ func StripeCallback(c *gin.Context) {
 	campaign.Stripe.UserId = token.StripeUserId
 
 	// Update in datastore
-	if _, err := db.PutKey("campaign", email, campaign); err != nil {
+	if _, err := db.PutKind("campaign", email, campaign); err != nil {
 		log.Panic("Failed to update campaign: %v", err)
 	}
 
@@ -220,7 +220,7 @@ func chargeModified(c *gin.Context, data []byte) {
 		}
 	}
 
-	if _, err := db.PutKey("order", key, order); err != nil {
+	if _, err := db.PutKind("order", key, order); err != nil {
 		c.String(500, "Error saving order")
 		log.Panic(err)
 	}
@@ -256,7 +256,7 @@ func chargeDisputed(c *gin.Context, data []byte) {
 		log.Panic(err)
 	}
 
-	if _, err := db.PutKey("order", key, order); err != nil {
+	if _, err := db.PutKind("order", key, order); err != nil {
 		c.String(500, "Error saving order")
 		log.Panic(err)
 	}
@@ -285,7 +285,7 @@ func accountUpdated(c *gin.Context, data []byte) {
 
 	user.Stripe.Account = event.Data.Account
 
-	_, err = db.PutKey("user", key, user)
+	_, err = db.PutKind("user", key, user)
 	if err != nil {
 		c.String(500, "Error saving user")
 		log.Panic(err)

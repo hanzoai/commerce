@@ -243,7 +243,7 @@ transformers:
 
     - property: Id
       external_name: Unique Preorder Link
-      export_transform: 'lambda x: "preorder.skullysystems.com/order/" + x'
+      export_transform: 'lambda x: "preorder.skully.com/order/" + x'
 
     - property: Used
       external_name: Used
@@ -259,34 +259,7 @@ transformers:
   property_map:
     - property: __key__
       external_name: Key
-      export_transform: transform.key_id_or_name_as_string
-
-    # - property: Account.CVV2
-    #   external_name: Account.CVV2
-    #   # Type: Integer Stats: 1 properties of this type in this kind.
-    #   import_transform: transform.none_if_empty(int)
-
-    # - property: Account.Expiry
-    #   external_name: Account.Expiry
-    #   # Type: String Stats: 1 properties of this type in this kind.
-
-    # - property: Account.Month
-    #   external_name: Account.Month
-    #   # Type: Integer Stats: 1 properties of this type in this kind.
-    #   import_transform: transform.none_if_empty(int)
-
-    # - property: Account.Number
-    #   external_name: Account.Number
-    #   # Type: String Stats: 1 properties of this type in this kind.
-
-    # - property: Account.Type
-    #   external_name: Account.Type
-    #   # Type: String Stats: 1 properties of this type in this kind.
-
-    # - property: Account.Year
-    #   external_name: Account.Year
-    #   # Type: Integer Stats: 1 properties of this type in this kind.
-    #   import_transform: transform.none_if_empty(int)
+      import_transform: transform.create_foreign_key('order', key_is_id=True)
 
     - property: BillingAddress.City
       external_name: BillingAddress.City
@@ -398,6 +371,10 @@ transformers:
       # Type: String Stats: 1 properties of this type in this kind.
       import_transform: bulkloader_helper.transform_eval
 
+    - property: CreatedAt
+      external_name: CreatedAt
+      import_transform: bulkloader_helper.import_date_time('%Y-%m-%dT%H:%M:%S')
+
     - property: Email
       external_name: Email
       # Type: String Stats: 1 properties of this type in this kind.
@@ -422,8 +399,24 @@ transformers:
       external_name: Items.Quantity
       import_transform: bulkloader_helper.transform_eval
 
+    - property: Items.SKU_
+      external_name: Items.SKU_
+      import_transform: bulkloader_helper.transform_eval
+
+    - property: Items.Slug_
+      external_name: Items.Slug_
+      import_transform: bulkloader_helper.transform_eval
+
+    - property: Locked
+      external_name: Locked
+      import_transform: transform.regexp_bool('true', re.IGNORECASE)
+
     - property: Preorder
       external_name: Preorder
+      import_transform: transform.regexp_bool('true', re.IGNORECASE)
+
+    - property: Refunded
+      external_name: Refunded
       import_transform: transform.regexp_bool('true', re.IGNORECASE)
 
     - property: Shipped
@@ -468,21 +461,17 @@ transformers:
       external_name: Total
       import_transform: transform.none_if_empty(int)
 
-    - property: CreatedAt
-      external_name: CreatedAt
-      import_transform: bulkloader_helper.import_date_time('%Y-%m-%dT%H:%M:%S')
+    - property: Unconfirmed
+      external_name: Unconfirmed
+      import_transform: transform.regexp_bool('true', re.IGNORECASE)
 
     - property: UpdatedAt
       external_name: UpdatedAt
       import_transform: bulkloader_helper.import_date_time('%Y-%m-%dT%H:%M:%S')
 
-    - property: Items.SKU_
-      external_name: Items.SKU_
-      import_transform: bulkloader_helper.transform_eval
+    - property: UserId
+      external_name: UserId
 
-    - property: Items.Slug_
-      external_name: Items.Slug_
-      import_transform: bulkloader_helper.transform_eval
 
 - kind: product
   connector: csv

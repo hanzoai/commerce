@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	humanize "github.com/dustin/go-humanize"
@@ -13,17 +14,22 @@ import (
 
 	"crowdstart.io/datastore"
 	stripe "crowdstart.io/thirdparty/stripe/models"
+	"crowdstart.io/util/log"
 )
 
 type Order struct {
 	FieldMapMixin
+	SalesforceSObject
+
 	// Account         PaymentAccount
+
 	BillingAddress  Address
 	ShippingAddress Address
 	CreatedAt       time.Time `schema:"-"`
 	UpdatedAt       time.Time `schema:"-"`
 	Id              string
 	UserId          string
+	Email           string
 
 	// TODO: Recalculate Shipping/Tax on server
 	Shipping int64
@@ -40,17 +46,35 @@ type Order struct {
 	// Need to save campaign id
 	CampaignId string
 
-	Preorder  bool
-	Cancelled bool
-	Shipped   bool
-	// Refunded  bool
+	// Basic status flags for order
+	Cancelled         bool
+	Locked            bool
+	Preorder          bool
+	Refunded          bool
+	Shipped           bool
+	Unconfirmed       bool // True only if preorder has not be confirmed by customer
+	EstimatedDelivery string
+
+	// Dispute details
+	Disputed bool
+	Dispute  struct {
+		Status string
+		Reason string
+	}
+
 	// ShippingOption  ShippingOption
 
-	Test bool
+	Test    bool // Not a real transaction
+	Version int  // Versioning for struct
 }
 
 var variantsMap map[string]ProductVariant
+var salesforceVariantsMap map[string]ProductVariant
 var productsMap map[string]Product
+
+func (o Order) EstimatedDeliveryHTML() string {
+	return "<div>" + strings.Replace(o.EstimatedDelivery, ",", "</div><div>", -1) + "</div>"
+}
 
 func (o Order) DisputedCharges(c *gin.Context) (disputedCharges []Charge) {
 	for _, charge := range o.Charges {
@@ -61,15 +85,17 @@ func (o Order) DisputedCharges(c *gin.Context) (disputedCharges []Charge) {
 	return disputedCharges
 }
 
-func (o *Order) LoadVariantsProducts(c *gin.Context) {
-	if variantsMap == nil || productsMap == nil {
+func (o *Order) LoadVariantsProducts(c interface{}) {
+	if variantsMap == nil || productsMap == nil || salesforceVariantsMap == nil {
 		db := datastore.New(c)
 
 		variantsMap = make(map[string]ProductVariant)
+		salesforceVariantsMap = make(map[string]ProductVariant)
 		var variants []ProductVariant
 		db.Query("variant").GetAll(db.Context, &variants)
 		for _, variant := range variants {
 			variantsMap[variant.SKU] = variant
+			salesforceVariantsMap[variant.SecondarySalesforceId_] = variant
 		}
 
 		productsMap = make(map[string]Product)
@@ -81,8 +107,30 @@ func (o *Order) LoadVariantsProducts(c *gin.Context) {
 	}
 
 	for i, item := range o.Items {
+		// We might need to derive Slug_ from Sku_
+		if item.Slug_ == "" && item.SKU_ != "" {
+			for slug, _ := range productsMap {
+				upperSKU := strings.ToUpper(item.SKU_)
+				upperSlug := strings.ToUpper(slug)
+				if strings.HasPrefix(upperSKU, upperSlug) {
+					// Remember that item is a copy and not the actual object
+					o.Items[i].Slug_ = slug
+					break
+				}
+			}
+			log.Warn("Slug was missing on line item, guessed slug is '%v' based on SKU '%v'", o.Items[i].Slug_, item.SKU_, c)
+		}
 		o.Items[i].Product = productsMap[item.Slug_]
-		o.Items[i].Variant = variantsMap[item.SKU_]
+
+		// We might need to look up using sf id
+		var ok bool
+		if o.Items[i].Variant, ok = variantsMap[item.SKU_]; !ok {
+			if o.Items[i].Variant, ok = salesforceVariantsMap[item.PrimarySalesforceId_]; !ok {
+				o.Items[i].Variant, ok = salesforceVariantsMap[item.SecondarySalesforceId_]
+			}
+		}
+
+		o.Items[i].VariantId = o.Items[i].VariantId
 	}
 }
 
@@ -158,12 +206,12 @@ func (o *Order) Populate(db *datastore.Datastore) error {
 	// TODO: Optimize this, multiget, use caching.
 	for i, item := range o.Items {
 		// Fetch Variant for LineItem from datastore
-		if err := db.GetKey("variant", item.SKU(), &item.Variant); err != nil {
+		if err := db.GetKind("variant", item.SKU(), &item.Variant); err != nil {
 			return err
 		}
 
 		// Fetch Product for LineItem from datastore
-		if err := db.GetKey("product", item.Slug(), &item.Product); err != nil {
+		if err := db.GetKind("product", item.Slug(), &item.Product); err != nil {
 			return err
 		}
 

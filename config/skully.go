@@ -4,18 +4,23 @@ package config
 func Skully() *Config {
 	config := Production()
 
-	config.Hosts["default"] = "static.skullysystems.com"
-	config.Hosts["api"] = "invalid.skullysystems.com" // Setting platform to API temporarily.
-	config.Hosts["checkout"] = "secure.skullysystems.com"
-	config.Hosts["platform"] = "api.skullysystems.com"
-	config.Hosts["preorder"] = "preorder.skullysystems.com"
-	config.Hosts["store"] = "store.skullysystems.com"
+	config.Hosts["default"] = "static.skully.com"
+	config.Hosts["checkout"] = "secure.skully.com"
+	config.Hosts["platform"] = "crowdstart.skully.com"
+	config.Hosts["preorder"] = "preorder.skully.com"
+	config.Hosts["store"] = "store.skully.com"
 
-	config.CookieDomain = "skullysystems.com"
+	config.Hosts["api"] = "api-dot-crowdstart-skully.appspot.com"
 
-	config.StaticUrl = "//static.skullysystems.com"
+	config.CookieDomain = "skully.com"
+
+	config.StaticUrl = "//static.skully.com"
 	config.Mandrill.FromName = "SKULLY"
-	config.Mandrill.FromEmail = "noreply@skullysystems.com"
+	config.Mandrill.FromEmail = "dev@hanzo.ai"
+
+	config.Salesforce.CallbackURL = "https:" + config.UrlFor("platform", "/salesforce/callback")
+	config.Stripe.RedirectURL = "https:" + config.UrlFor("platform", "/stripe/callback")
+	config.Stripe.WebhookURL = "https:" + config.UrlFor("platform", "/stripe/hook")
 
 	config.DemoMode = false
 
@@ -23,17 +28,14 @@ func Skully() *Config {
 	if !config.DemoMode {
 		config.Salesforce.ConsumerKey = "3MVG9xOCXq4ID1uElRYWhpUWjXSbiTVg4WO6q9DvWdvBjQ_DFlwSc7jZ9AbY3z9Jv_V29W7xq1nPjTYQhYJqF"
 		config.Salesforce.ConsumerSecret = "3811316853831925498"
-		config.Salesforce.CallbackURL = "https://admin.crowdstart.io/salesforce/callback"
 
 		config.Stripe.ClientId = "ca_REDACTED"
 		config.Stripe.APIKey = "pk_live_REDACTED"
 		config.Stripe.APISecret = ""
-		config.Stripe.RedirectURL = "https:" + config.UrlFor("platform", "/stripe/callback")
-		config.Stripe.WebhookURL = "https:" + config.UrlFor("platform", "/stripe/hook")
-	}
 
-	config.Google.APIKey = "AIza_REDACTED"
-	config.Google.Bucket.ImageUploads = "skully-image-uploads"
+		config.Google.APIKey = "AIza_REDACTED"
+		config.Google.Bucket.ImageUploads = "skully-images"
+	}
 
 	return config
 }
