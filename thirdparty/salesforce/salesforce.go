@@ -20,6 +20,25 @@ import (
 	"appengine/urlfetch"
 )
 
+var ErrorInvalidType = errors.New("Invalid Type")
+var ErrorRequiresId = errors.New("Requires Id")
+
+type ErrorUnexpectedStatusCode struct {
+	StatusCode int
+	Body       []byte
+}
+
+func (e *ErrorUnexpectedStatusCode) Error() string {
+	return fmt.Sprintf("Unexpected Status Code: %v\nBody: %v", e.StatusCode, e.Body)
+}
+
+type SalesforceClient interface {
+	GetBody() []byte
+	GetStatusCode() int
+	GetContext() appengine.Context
+	Request(string, string, string, *map[string]string, bool) error
+}
+
 type Api struct {
 	lastRequest  *http.Request
 	lastResponse *http.Response
@@ -40,13 +59,25 @@ func getClient(c appengine.Context) *http.Client {
 	return client
 }
 
+func (a *Api) GetBody() []byte {
+	return a.LastBody
+}
+
+func (a *Api) GetStatusCode() int {
+	return a.LastStatusCode
+}
+
+func (a *Api) GetContext() appengine.Context {
+	return a.Context
+}
+
 // Request sends HTTP requests to Salesforce
-func (a *Api) request(method, path, data string, headers *map[string]string, retry bool) error {
+func (a *Api) Request(method, path, data string, headers *map[string]string, retry bool) error {
 	c := a.Context
 	client := getClient(c)
 	url := a.Campaign.Salesforce.InstanceUrl + path
 
-	log.Debug("Creating a Request to %v to %v", method, url, c)
+	log.Debug("Creating a.Request to %v to %v", method, url, c)
 	req, err := http.NewRequest(method, url, strings.NewReader(data))
 	if err != nil {
 		log.Error("Could not create Request: %v", err)
@@ -91,7 +122,7 @@ func (a *Api) request(method, path, data string, headers *map[string]string, ret
 		return nil
 	}
 
-	responses := make([]SalesforceError, 1)
+	responses := make([]ErrorFromSalesforce, 1)
 
 	log.Debug("Try Decoding any Errors in the Response", c)
 	if err = json.Unmarshal(body, &responses); err != nil {
@@ -104,12 +135,13 @@ func (a *Api) request(method, path, data string, headers *map[string]string, ret
 		if responses[0].ErrorCode == "INVALID_SESSION_ID" {
 			log.Debug("Refreshing Token", c)
 			if err := a.Refresh(); err != nil {
-				return errors.New(fmt.Sprintf("%v: %v", responses[0].ErrorCode, responses[0].Message))
+				return &responses[0]
 			}
-			return a.request(method, path, data, headers, false)
+			return a.Request(method, path, data, headers, false)
 		}
 	}
-	return errors.New(fmt.Sprintf("%v, %v", string(a.LastBody[:]), err, c))
+
+	return err
 }
 
 // New creates an API from a Context and Campaign
@@ -166,7 +198,7 @@ func (a *Api) Refresh() error {
 
 	if response.Error != "" {
 		log.Error("%v: %v", response.Error, response.ErrorDescription, c)
-		return errors.New(fmt.Sprintf("%v: %v", response.Error, response.ErrorDescription))
+		return &ErrorFromSalesforce{ErrorCode: response.Error, Message: response.ErrorDescription}
 	}
 
 	log.Debug("New Access Token: %v", response.AccessToken, c)
@@ -179,231 +211,233 @@ func (a *Api) Refresh() error {
 	log.Debug("Updating Campaign", c)
 	if a.Update {
 		db := datastore.New(c)
-		db.PutKey("campaign", a.Campaign.Id, a.Campaign)
+		db.PutKind("campaign", a.Campaign.Id, a.Campaign)
 	}
 
 	return nil
 }
 
-func (a *Api) Push(object interface{}) error {
+func (a *Api) Push(object SObjectCompatible) error {
 	c := a.Context
 
 	if object == nil {
-		return errors.New("Cannot Push nil object")
+		return ErrorInvalidType
 	}
 
 	switch v := object.(type) {
 	case *models.User:
+
 		if v.Id == "" {
-			return errors.New("Id is required for Upsert")
+			return ErrorRequiresId
 		}
+
+		log.Debug("Upserting Account", c)
+
 		account := Account{}
-		account.FromUser(v)
-		accountBytes, err := json.Marshal(&account)
-		if err != nil {
+		if err := account.Read(v); err != nil {
+			return err
+		}
+		if err := account.Push(a); err != nil {
 			return err
 		}
 
-		accountJSON := string(accountBytes[:])
-		path := fmt.Sprintf(AccountExternalIdPath, strings.Replace(v.Id, ".", "_", -1))
-
-		log.Debug("Upserting Account: %v", account, c)
-		if err = a.request("PATCH", path, accountJSON, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
-			return err
-		}
+		log.Debug("Upserting Contact", c)
 
 		contact := Contact{}
-		contact.FromUser(v)
-
-		contactBytes, err := json.Marshal(&contact)
-		if err != nil {
+		if err := contact.Read(v); err != nil {
 			return err
 		}
 
-		contactJSON := string(contactBytes[:])
-		path = fmt.Sprintf(ContactExternalIdPath, strings.Replace(v.Id, ".", "_", -1))
-
-		log.Debug("Upserting Contact: %v", contact, c)
-		if err = a.request("PATCH", path, contactJSON, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
+		if err := contact.Push(a); err != nil {
 			return err
 		}
 
 	case *models.Order:
-		log.Debug("Upserting Order", c)
+
 		if v.Id == "" {
-			return errors.New("Id is required for Upsert")
+			return ErrorRequiresId
 		}
 
-		order := Order{}
-		order.FromOrder(v)
+		log.Debug("Upserting Order", c)
 
-		log.Debug("Converting to Order: %v", order, c)
-		orderBytes, err := json.Marshal(&order)
-		if err != nil {
+		v.LoadVariantsProducts(c)
+		order := Order{PricebookId: a.Campaign.Salesforce.DefaultPriceBookId}
+		if err := order.Read(v); err != nil {
 			return err
 		}
 
-		orderJSON := string(orderBytes[:])
-		path := fmt.Sprintf(OrderExternalIdPath, strings.Replace(v.Id, ".", "_", -1))
+		if err := order.Push(a); err != nil {
+			return err
+		}
 
-		log.Debug("Upserting Order: %v", order, c)
-		if err = a.request("PATCH", path, orderJSON, &map[string]string{"Content-Type": "application/json"}, true); err != nil {
+	case *models.ProductVariant:
+
+		if v.Id == "" {
+			return ErrorRequiresId
+		}
+
+		log.Debug("Upserting Product", c)
+
+		product := Product{}
+		if err := product.Read(v); err != nil {
+			return err
+		}
+
+		if err := product.Push(a); err != nil {
+			return err
+		}
+
+		log.Debug("Upserting PricebookEntry", c)
+
+		pricebookEntry := PricebookEntry{PricebookId: a.Campaign.Salesforce.DefaultPriceBookId}
+		if err := pricebookEntry.Read(v); err != nil {
+			return err
+		}
+
+		if err := pricebookEntry.Push(a); err != nil {
 			return err
 		}
 
 	default:
-		return errors.New("Invalid Type")
-	}
-
-	if len(a.LastBody) == 0 {
-		if a.LastStatusCode == 201 || a.LastStatusCode == 204 {
-			log.Debug("Upsert returned %v", a.LastStatusCode, c)
-			return nil
-		} else {
-			return errors.New(fmt.Sprintf("Request returned unexpected status code %v", a.LastStatusCode))
-		}
-	}
-
-	response := new(UpsertResponse)
-
-	if err := json.Unmarshal(a.LastBody, response); err != nil {
-		log.Error("Could not unmarshal: %v", string(a.LastBody[:]), c)
-		return err
-	}
-
-	if !response.Success {
-		log.Error("Upsert Failed: %v: %v", response.Errors[0].ErrorCode, response.Errors[0].Message, c)
-		return errors.New(fmt.Sprintf("%v: %v", response.Errors[0].ErrorCode, response.Errors[0].Message))
+		return ErrorInvalidType
 	}
 
 	return nil
 }
 
-func (a *Api) Pull(id string, object interface{}) error {
+func (a *Api) Pull(id string, object SObjectCompatible) error {
 	c := a.Context
 
 	if object == nil {
-		return errors.New("Cannot Pull nil object")
+		return ErrorInvalidType
 	}
 
 	switch v := object.(type) {
 	case *models.User:
 		log.Debug("Getting User", c)
 		if id == "" {
-			return errors.New("Id is required for Get")
-		}
-
-		path := fmt.Sprintf(ContactExternalIdPath, id)
-
-		if err := a.request("GET", path, "", nil, true); err != nil {
-			return err
+			return ErrorRequiresId
 		}
 
 		contact := new(Contact)
-
-		if err := json.Unmarshal(a.LastBody, contact); err != nil {
-			log.Error("Could not unmarshal: %v", string(a.LastBody[:]), c)
-			return err
-		}
-
-		path = fmt.Sprintf(AccountExternalIdPath, id)
-
-		if err := a.request("GET", path, "", nil, true); err != nil {
-			return err
-		}
+		contact.PullExternalId(a, id)
 
 		account := new(Account)
+		account.PullExternalId(a, id)
 
-		if err := json.Unmarshal(a.LastBody, account); err != nil {
-			log.Error("Could not unmarshal: %v", string(a.LastBody[:]), c)
+		if err := contact.Write(v); err != nil {
 			return err
 		}
 
-		log.Debug("Getting Contact: %v", contact, c)
+		if err := account.Write(v); err != nil {
+			return err
+		}
 
-		log.Debug("Converting to User", c)
-		contact.ToUser(v)
 	default:
-		return errors.New("Invalid Type")
+		return ErrorInvalidType
 	}
 
 	return nil
 }
 
-func (a *Api) PullUpdated(start, end time.Time, objects interface{}) error {
+func (a *Api) PullUpdated(start, end time.Time, objects interface{} /*[]SObjectCompatible*/) error {
 	c := a.Context
 
 	switch v := objects.(type) {
 	case *[]*models.User:
-		log.Debug("Getting Updated Users", c)
-		path := fmt.Sprintf(ContactsUpdatedPath, start.Format(time.RFC3339), end.Format(time.RFC3339))
+		log.Debug("Getting Updated Contacts", c)
 
-		if err := a.request("GET", path, "", nil, true); err != nil {
+		response := UpdatedRecordsResponse{}
+		if err := GetUpdatedContacts(a, start, end, &response); err != nil {
 			return err
 		}
 
-		response := new(UpdatedRecordsResponse)
+		users := make(map[string]SObjectCompatible)
 
-		if err := json.Unmarshal(a.LastBody, &response); err != nil {
+		if err := ProcessUpdatedSObjects(
+			a,
+			&response,
+			start,
+			users,
+			func() SObjectLoadable {
+				return new(Contact)
+			}); err != nil {
 			return err
 		}
 
-		users := make([]*models.User, 0)
+		log.Debug("Getting Updated Accounts", c)
 
-		for _, id := range response.Ids {
-			log.Debug("Getting Contact for ")
-			path := fmt.Sprintf(ContactPath, id)
-			if err := a.request("GET", path, "", nil, true); err != nil {
-				log.Warn("Failed to Get Contact for %v", id, c)
-				continue
-			}
-
-			contact := new(Contact)
-			if err := json.Unmarshal(a.LastBody, contact); err != nil {
-				log.Warn("Could not unmarshal: %v", string(a.LastBody[:]), c)
-				continue
-			}
-
-			path = fmt.Sprintf(AccountPath, contact.AccountId)
-			if err := a.request("GET", path, "", nil, true); err != nil {
-				log.Warn("Failed to Get Account for %v", id, c)
-				continue
-			}
-
-			account := new(Account)
-			if err := json.Unmarshal(a.LastBody, account); err != nil {
-				log.Warn("Could not unmarshal: %v", string(a.LastBody[:]), c)
-				continue
-			}
-
-			log.Debug("Getting Contact: %v", contact, c)
-			log.Debug("Getting Account: %v", account, c)
-
-			log.Debug("Converting to User", c)
-
-			user := new(models.User)
-			contact.ToUser(user)
-			account.ToUser(user)
-
-			log.Debug("User %v", user, contact, c)
-
-			users = append(users, user)
+		response = UpdatedRecordsResponse{}
+		if err := GetUpdatedAccounts(a, start, end, &response); err != nil {
+			return err
 		}
 
-		log.Debug("Pulled %v Users", len(users))
-		*v = users
+		if err := ProcessUpdatedSObjects(
+			a,
+			&response,
+			start,
+			users,
+			func() SObjectLoadable {
+				return new(Account)
+			}); err != nil {
+			return err
+		}
+
+		log.Debug("Pulled %v Users", len(users), c)
+		userSlice := make([]*models.User, len(users))
+
+		i := 0
+		for _, u := range users {
+			userSlice[i] = u.(*models.User)
+			i++
+		}
+
+		*v = userSlice
+
+	case *[]*models.Order:
+		log.Debug("Getting Updated Orders", c)
+
+		response := UpdatedRecordsResponse{}
+		if err := GetUpdatedOrders(a, start, end, &response); err != nil {
+			return err
+		}
+
+		orders := make(map[string]SObjectCompatible)
+
+		if err := ProcessUpdatedSObjects(
+			a,
+			&response,
+			start,
+			orders,
+			func() SObjectLoadable {
+				return new(Order)
+			}); err != nil {
+			return err
+		}
+
+		log.Debug("Pulled %v Users", len(orders), c)
+		orderSlice := make([]*models.Order, len(orders))
+
+		i := 0
+		for _, o := range orders {
+			orderSlice[i] = o.(*models.Order)
+			orderSlice[i].LoadVariantsProducts(c)
+			i++
+		}
+
+		*v = orderSlice
 
 	default:
-		return errors.New("Invalid Type")
+		return ErrorInvalidType
 	}
 
 	return nil
 }
 
-func (a *Api) SObjectDescribe(api *Api, response *SObjectDescribeResponse) error {
+func (a *Api) SObjectDescribe(response *SObjectDescribeResponse) error {
 	c := a.Context
 
-	if err := api.request("GET", SObjectDescribePath, "", nil, true); err != nil {
+	if err := a.Request("GET", SObjectDescribePath, "", nil, true); err != nil {
 		return err
 	}
 
@@ -418,21 +452,68 @@ func (a *Api) SObjectDescribe(api *Api, response *SObjectDescribeResponse) error
 func (a *Api) Describe(response *DescribeResponse) error {
 	c := a.Context
 
-	if err := a.request("GET", DescribePath, "", nil, true); err != nil {
+	if err := a.Request("GET", DescribePath, "", nil, true); err != nil {
 		return err
 	}
 
 	//It could be a single response...
 	if err := json.Unmarshal(a.LastBody, response); err != nil {
 		//Or multiple because the API hates you when it spits out errors...
-		var errResponse *[]SalesforceError
+		var errResponse *[]ErrorFromSalesforce
 		if err2 := json.Unmarshal(a.LastBody, errResponse); err2 != nil {
 			log.Error("Could not unmarshal: %v", string(a.LastBody[:]), c)
 			return err2
 		} else {
-			log.Error("%v: %v", (*errResponse)[0].ErrorCode, (*errResponse)[0].Message, c)
+			return &(*errResponse)[0]
 		}
 		return err
+	}
+
+	return nil
+}
+
+//Helper Functions
+func ProcessUpdatedSObjects(api SalesforceClient, response *UpdatedRecordsResponse, start time.Time, objects map[string]SObjectCompatible, createFn func() SObjectLoadable) error {
+	db := datastore.New(api.GetContext())
+	log.Debug("Response to Process: %v", response.Ids)
+	for _, id := range response.Ids {
+		us := createFn()
+		object := us.LoadSalesforceId(db, id)
+
+		// ignore objects that have been updated locally since the start of the sync
+		// !Before means !< means >=
+		if object != nil && !object.LastSync().Before(start) {
+			log.Debug("Skipping due to Time %v after %v", object.LastSync(), start)
+			continue
+		}
+
+		if err := us.PullId(api, id); err != nil {
+			return err
+		}
+
+		// We key based on accountId because it is common to both contacts and accounts
+		// Use the CrowdstartId/Db Key to Index
+		usId := us.ExternalId()
+		log.Debug("Looking Up Is '%v'", usId)
+		// if Db Key is not in objects
+		if loadedObject, ok := objects[usId]; ok {
+			// Otherwise use the object from objects
+			object = loadedObject
+		} else {
+			// then use the object that was loaded if it exists
+			log.Debug("!Exist")
+			if object == nil {
+				// or load the object from the db using the Db Key
+				object = us.Load(db)
+				log.Debug("Loading")
+			}
+			objects[usId] = object
+		}
+		log.Debug("Assign %v", object)
+
+		if err := us.Write(object); err != nil {
+			return err
+		}
 	}
 
 	return nil

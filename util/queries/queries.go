@@ -62,11 +62,11 @@ func (c *Client) UpsertUser(user *models.User) error {
 			id := c.Datastore.AllocateId("user")
 			user.Id = c.Datastore.EncodeId("user", id)
 			user.CreatedAt = time.Now()
-			user.LastUpdated = user.CreatedAt
+			user.UpdatedAt = user.CreatedAt
 			log.Debug("UpsertUser doing Insert")
 		} else {
 			user.Id = _user.Id
-			user.LastUpdated = time.Now()
+			user.UpdatedAt = time.Now()
 			log.Debug("UpsertUser doing Update")
 		}
 	}
@@ -76,6 +76,6 @@ func (c *Client) UpsertUser(user *models.User) error {
 		return err
 	}
 
-	_, err = c.Datastore.PutKey("user", k, user)
+	_, err = c.Datastore.PutKind("user", k, user)
 	return err
 }
