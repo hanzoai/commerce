@@ -19,3 +19,14 @@ config.json
 *.pyc
 *.test
 *.sql3-journal
+*.idea
+
+# CircleCI
+config/development/cron.yaml.orig
+test/datastore/datastore.coverprofile
+test/models/models.coverprofile
+test/models/user/user.coverprofile
+test/thirdparty/mandrill/integration/integration.coverprofile
+test/thirdparty/salesforce/salesforce.coverprofile
+test/util/task/integration/integration.coverprofile
+test/util/task/task.coverprofile
