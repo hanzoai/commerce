@@ -4,8 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/headzoo/surf"
-
 	"crowdstart.io/util/gincontext"
 	"crowdstart.io/util/task"
 	"crowdstart.io/util/test/ae"
@@ -67,51 +65,6 @@ var _ = Describe("Index", func() {
 
 var _ = Describe("Products", func() {
 	It("should be 200 OK", Get200("/products"))
-})
-
-var _ = Describe("Login", func() {
-	Context("With an existing user", func() {
-		It("should redirect to profile.", func() {
-			url := client.URL("/login")
-			b := surf.NewBrowser()
-
-			err := b.Open(url)
-			Expect(err).ToNot(HaveOccurred())
-
-			loginForm, err := b.Form("form#loginForm")
-			Expect(err).ToNot(HaveOccurred())
-
-			loginForm.Input("email", user.Email)
-			loginForm.Input("password", user.Password)
-			err = loginForm.Submit()
-			Expect(err).ToNot(HaveOccurred())
-
-			Expect(b.Url().String()).To(HaveSuffix("/profile"))
-		})
-	})
-
-	Context("With a nonexistent user", func() {
-		It("should error.", func() {
-			url := client.URL("/login")
-			b := surf.NewBrowser()
-
-			err := b.Open(url)
-			Expect(err).ToNot(HaveOccurred())
-
-			loginForm, err := b.Form("form#loginForm")
-			Expect(err).ToNot(HaveOccurred())
-
-			loginForm.Input("email", "asjdkas")
-			loginForm.Input("password", "asdjkasdj")
-			err = loginForm.Submit()
-			Expect(err).ToNot(HaveOccurred())
-
-			// Should not redirect.
-			Expect(b.Url().String()).To(HaveSuffix("/login"))
-
-			// TODO: Check error message receieved.
-		})
-	})
 })
 
 var _ = Describe("Create password", func() {
