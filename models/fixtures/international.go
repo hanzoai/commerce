@@ -5,19 +5,19 @@ import (
 	"os"
 	"strings"
 
-	"appengine"
-	"appengine/delay"
+	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/datastore"
+	. "crowdstart.io/models"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/queries"
-
-	. "crowdstart.io/models"
+	"crowdstart.io/util/task"
 )
 
-var international = delay.Func("fixtures-international", func(c appengine.Context) {
+var international = task.Func("fixtures-international", func(ctx *gin.Context) {
 	log.Debug("Installing international fixtures...")
-	db := datastore.New(c)
+	db := datastore.New(ctx)
+	c := db.Context
 	q := queries.New(c)
 
 	csvfile, err := os.Open("resources/contributions-old-international-perk.csv")
@@ -69,6 +69,6 @@ var international = delay.Func("fixtures-international", func(c appengine.Contex
 			PaymentMethod: row[5],
 			UserId:        user.Id,
 		}
-		db.PutKey("contribution", pledgeId, &contribution)
+		db.PutKind("contribution", pledgeId, &contribution)
 	}
 })
