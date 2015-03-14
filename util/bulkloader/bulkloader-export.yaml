@@ -173,54 +173,44 @@ transformers:
 
     - property: Email
       external_name: Email
-      # Type: String Stats: 1864 properties of this type in this kind.
 
     - property: FundingDate
       external_name: FundingDate
-      # Type: String Stats: 1864 properties of this type in this kind.
 
     - property: Id
       external_name: Id
-      # Type: String Stats: 1864 properties of this type in this kind.
 
     - property: PaymentMethod
       external_name: PaymentMethod
-      # Type: String Stats: 1864 properties of this type in this kind.
 
     - property: Perk.Description
       external_name: Perk.Description
-      # Type: String Stats: 1864 properties of this type in this kind.
 
     - property: Perk.EstimatedDelivery
       external_name: Perk.EstimatedDelivery
-      # Type: String Stats: 1864 properties of this type in this kind.
 
     - property: Perk.GearQuantity
       external_name: Perk.GearQuantity
-      # Type: Integer Stats: 1864 properties of this type in this kind.
       import_transform: transform.none_if_empty(int)
 
     - property: Perk.HelmetQuantity
       external_name: Perk.HelmetQuantity
-      # Type: Integer Stats: 1864 properties of this type in this kind.
       import_transform: transform.none_if_empty(int)
 
     - property: Perk.Id
       external_name: Perk.Id
-      # Type: String Stats: 1864 properties of this type in this kind.
 
     - property: Perk.Price
       external_name: Perk.Price
-      # Type: String Stats: 1864 properties of this type in this kind.
 
     - property: Perk.Title
       external_name: Perk.Title
-      # Type: String Stats: 1864 properties of this type in this kind.
 
     - property: Status
       external_name: Status
-      # Type: String Stats: 1864 properties of this type in this kind.
 
+    - property: UserId
+      external_name: UserId
 
 - kind: invite-token
   connector: csv
@@ -243,7 +233,7 @@ transformers:
 
     - property: Id
       external_name: Unique Preorder Link
-      export_transform: 'lambda x: "preorder.skullysystems.com/order/" + x'
+      export_transform: 'lambda x: "preorder.skully.com/order/" + x'
 
     - property: Used
       external_name: Used
@@ -260,33 +250,6 @@ transformers:
     - property: __key__
       external_name: Key
       export_transform: transform.key_id_or_name_as_string
-
-    - property: Account.CVV2
-      external_name: Account.CVV2
-      # Type: Integer Stats: 1 properties of this type in this kind.
-      import_transform: transform.none_if_empty(int)
-
-    - property: Account.Expiry
-      external_name: Account.Expiry
-      # Type: String Stats: 1 properties of this type in this kind.
-
-    - property: Account.Month
-      external_name: Account.Month
-      # Type: Integer Stats: 1 properties of this type in this kind.
-      import_transform: transform.none_if_empty(int)
-
-    - property: Account.Number
-      external_name: Account.Number
-      # Type: String Stats: 1 properties of this type in this kind.
-
-    - property: Account.Type
-      external_name: Account.Type
-      # Type: String Stats: 1 properties of this type in this kind.
-
-    - property: Account.Year
-      external_name: Account.Year
-      # Type: Integer Stats: 1 properties of this type in this kind.
-      import_transform: transform.none_if_empty(int)
 
     - property: BillingAddress.City
       external_name: BillingAddress.City
@@ -389,55 +352,55 @@ transformers:
 
     - property: Charges.Refunded
       external_name: Charges.Refunded
-      # Type: Boolean Stats: 1 properties of this type in this kind.
-      # import_transform: transform.regexp_bool('true', re.IGNORECASE)
-      import_transform: bulkloader_helper.transform_eval
 
     - property: Charges.Statement
       external_name: Charges.Statement
-      # Type: String Stats: 1 properties of this type in this kind.
-      import_transform: bulkloader_helper.transform_eval
+
+    - property: CreatedAt
+      external_name: CreatedAt
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Email
       external_name: Email
-      # Type: String Stats: 1 properties of this type in this kind.
 
     - property: Id
       external_name: Id
-      # Type: String Stats: 1 properties of this type in this kind.
 
     - property: Items.Description
       external_name: Items.Description
-      # Type: String Stats: 3 properties of this type in this kind.
-      import_transform: bulkloader_helper.transform_eval
 
     - property: Items.DiscountAmnt
       external_name: Items.DiscountAmnt
-      # Type: Integer Stats: 3 properties of this type in this kind.
-      # import_transform: transform.none_if_empty(int)
-      import_transform: bulkloader_helper.transform_eval
 
     - property: Items.LineNo
       external_name: Items.LineNo
-      # Type: Integer Stats: 3 properties of this type in this kind.
-      # import_transform: transform.none_if_empty(int)
-      import_transform: bulkloader_helper.transform_eval
 
     - property: Items.Quantity
       external_name: Items.Quantity
-      # Type: Integer Stats: 3 properties of this type in this kind.
-      # import_transform: transform.none_if_empty(int)
-      import_transform: bulkloader_helper.transform_eval
+
+    - property: Items.SKU_
+      external_name: Items.SKU_
+
+    - property: Items.Slug_
+      external_name: Items.Slug_
+
+    - property: Locked
+      external_name: Locked
 
     - property: Preorder
       external_name: Preorder
-      # Type: Boolean Stats: 1 properties of this type in this kind.
-      import_transform: transform.regexp_bool('true', re.IGNORECASE)
+
+    - property: PrimarySalesforceId_
+      external_name: PrimarySalesforceId_
+
+    - property: Refunded
+      external_name: Refunded
+
+    - property: SecondarySalesforceId_
+      external_name: SecondarySalesforceId_
 
     - property: Shipped
       external_name: Shipped
-      # Type: Boolean Stats: 1 properties of this type in this kind.
-      import_transform: transform.regexp_bool('true', re.IGNORECASE)
 
     - property: ShippingAddress.City
       external_name: ShippingAddress.City
@@ -468,10 +431,6 @@ transformers:
       # Type: Integer Stats: 1 properties of this type in this kind.
       import_transform: transform.none_if_empty(int)
 
-    - property: StripeTokens
-      external_name: StripeTokens
-      # Type: String Stats: 1 properties of this type in this kind.
-
     - property: Subtotal
       external_name: Subtotal
       # Type: Integer Stats: 1 properties of this type in this kind.
@@ -492,36 +451,25 @@ transformers:
       # Type: Integer Stats: 1 properties of this type in this kind.
       import_transform: transform.none_if_empty(int)
 
-    - property: CreatedAt
-      external_name: CreatedAt
-      # Type: Date/Time Stats: 1 properties of this type in this kind.
-      import_transform: bulkloader_helper.import_date_time('%Y-%m-%dT%H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
+    - property: Unconfirmed
+      external_name: Unconfirmed
 
     - property: UpdatedAt
       external_name: UpdatedAt
-      # Type: Date/Time Stats: 1 properties of this type in this kind.
-      import_transform: bulkloader_helper.import_date_time('%Y-%m-%dT%H:%M:%S')
       export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
+    - property: UserId
+      external_name: UserId
+      # Type: String Stats: 51 properties of this type in this kind.
+
       # GENERATED:
-    - property: Items.SKU_
-      external_name: Items.SKU_
-      # export_transform: bulkloader_helper.list_skus_to_str
-      import_transform: bulkloader_helper.transform_eval
+    # - property: PreorderDescription
+    #   external_name: PreorderDescription
+    #   export_transform: bulkloader_helper.generate_preorder_description
 
-    - property: Items.Slug_
-      external_name: Items.Slug_
-      # export_transform: bulkloader_helper.list_to_str
-      import_transform: bulkloader_helper.transform_eval
-
-    - property: PreorderDescription
-      external_name: PreorderDescription
-      export_transform: bulkloader_helper.generate_preorder_description
-
-    - property: ShippingAddress
-      external_name: ShippingAddress
-      export_transform: bulkloader_helper.generate_shipping_address
+    # - property: ShippingAddress
+    #   external_name: ShippingAddress
+    #   export_transform: bulkloader_helper.generate_shipping_address
 
 - kind: product
   connector: csv
@@ -699,7 +647,7 @@ transformers:
     - property: PasswordHash
       external_name: PasswordHash
       import_transform: transform.blobproperty_from_base64
-      export_transform: base64.b64encode
+      export_transform: bulkloader_helper.base64_encode_else_none
 
     - property: Phone
       external_name: Phone

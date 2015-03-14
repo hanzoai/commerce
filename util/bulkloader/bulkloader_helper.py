@@ -1,4 +1,5 @@
 import datetime
+import base64
 
 
 def list_num_to_str(value):
@@ -152,3 +153,10 @@ def transform_eval(value):
     if value == '' or value is None or value == []:
         return None
     return eval(value)
+
+def base64_encode_else_none(value):
+    """Base64 encodes value if not none."""
+    if value:
+        return base64.b64encode(value)
+    else:
+        return ''

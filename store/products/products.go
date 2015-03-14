@@ -17,7 +17,7 @@ func List(c *gin.Context) {
 	listings := make([]*models.Listing, 1)
 	listings[0] = new(models.Listing)
 
-	if err := db.GetKeyMulti("listing", []string{"ar-1"}, listings); err != nil {
+	if err := db.GetKindMulti("listing", []string{"ar-1"}, listings); err != nil {
 		// Something is seriously wrong. i.e. products not loaded into db
 		log.Panic("Unable to fetch product listing from database: %v", err)
 	}
@@ -34,7 +34,7 @@ func List(c *gin.Context) {
 		products[i] = new(models.Product)
 	}
 
-	if err := db.GetKeyMulti("product", slugs, products); err != nil {
+	if err := db.GetKindMulti("product", slugs, products); err != nil {
 		// Something is seriously wrong. i.e. products not loaded into db
 		log.Panic("Unable to fetch all products from database: %v", err)
 	}
@@ -63,7 +63,7 @@ func Get(c *gin.Context) {
 	slug := c.Params.ByName("slug")
 
 	product := new(models.Product)
-	if err := db.GetKey("product", slug, product); err != nil {
+	if err := db.GetKind("product", slug, product); err != nil {
 		log.Error("Invalid slug: %v", err)
 		template.Render(c, "error/404.html")
 		return

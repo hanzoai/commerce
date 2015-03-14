@@ -1,12 +1,17 @@
 pwd				= $(shell pwd)
 os				= $(shell uname | tr '[A-Z]' '[a-z]')
-platform        = $(os)_amd64
-sdk				= go_appengine_sdk_$(platform)-1.9.17
-sdk_path        = $(pwd)/.sdk
-goroot          = $(sdk_path)/goroot
-gopath          = $(sdk_path)/gopath
+platform		= $(os)_amd64
+sdk				= go_appengine_sdk_$(platform)-1.9.18
+sdk_path		= $(pwd)/.sdk
+goroot			= $(sdk_path)/goroot
+gopath			= $(sdk_path)/gopath
 goroot_pkg_path = $(goroot)/pkg/$(platform)_appengine/
 gopath_pkg_path = $(gopath)/pkg/$(platform)_appengine/
+current_date	= $(shell date +"%Y-%m-%d")
+
+goapp			= $(sdk_path)/goapp
+gpm				= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(sdk_path)/gpm
+ginkgo			= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(gopath)/bin/ginkgo
 
 deps	= $(shell cat Godeps | cut -d ' ' -f 1)
 modules	= crowdstart.io/api \
@@ -35,6 +40,7 @@ gae_staging = config/staging \
 gae_skully = config/skully \
 			 api/app.skully.yaml \
 			 checkout/app.skully.yaml \
+			 platform/app.skully.yaml \
 			 preorder/app.skully.yaml \
 			 store/app.skully.yaml
 
@@ -46,17 +52,16 @@ gae_production = config/production \
 				 store
 
 tools = github.com/nsf/gocode \
-        code.google.com/p/go.tools/cmd/goimports \
-        code.google.com/p/rog-go/exp/cmd/godef \
-        code.google.com/p/go.tools/cmd/oracle \
-        golang.org/x/tools/cmd/gorename \
-        github.com/golang/lint/golint \
-        github.com/kisielk/errcheck \
-        github.com/jstemmer/gotags
+		code.google.com/p/go.tools/cmd/goimports \
+		code.google.com/p/rog-go/exp/cmd/godef \
+		code.google.com/p/go.tools/cmd/oracle \
+		golang.org/x/tools/cmd/gorename \
+		github.com/golang/lint/golint \
+		github.com/kisielk/errcheck \
+		github.com/jstemmer/gotags
 
 # Various patches for SDK
 mtime_file_watcher = https://gist.githubusercontent.com/zeekay/5eba991c39426ca42cbb/raw/235f107b7ed081719103a4259dddd0e568d12480/mtime_file_watcher.py
-python_279_patch = https://gist.githubusercontent.com/zeekay/fc8e648dcd5d0ad35c92/raw/557e4080a96e572d3ba95e3c6279d1dac9e965fe/appengine-sdk-python-2.7.9.patch
 
 # static assets, requisite javascript from assets -> static
 bebop = node_modules/.bin/bebop
@@ -72,10 +77,10 @@ requisite_opts_min = -m --strip-debug
 
 stylus		= node_modules/.bin/stylus
 stylus_opts = assets/css/preorder/preorder.styl \
-		      assets/css/store/store.styl \
-		      assets/css/theme/theme.styl \
-		      assets/css/checkout/checkout.styl \
-		      -o static/css
+			  assets/css/store/store.styl \
+			  assets/css/theme/theme.styl \
+			  assets/css/checkout/checkout.styl \
+			  -o static/css
 stylus_opts_min = -u csso-stylus -c
 
 autoprefixer = node_modules/.bin/autoprefixer
@@ -97,35 +102,52 @@ dev_appserver = $(sdk_path)/dev_appserver.py --skip_sdk_update_check \
 											 --datastore_path=~/.gae_datastore.bin \
 											 --dev_appserver_log_level=error
 
+sdk_install_extra = rm -rf $(sdk_path)/demos
+
 # find command differs between bsd/linux thus the two versions
 ifeq ($(os), linux)
-	packages	 = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' -printf '%h\n' | sort -u | sed -e 's/.\//crowdstart.io\//')
+	packages = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' \
+			   				  -not -path "./.sdk/*" \
+			   				  -not -path "./test/*" \
+			   				  -not -path "./assets/*" \
+			   				  -not -path "./static/*" \
+			   				  -not -path "./node_modules/*" \
+			   				  -printf '%h\n' | sort -u | sed -e 's/.\//crowdstart.io\//')
 else
-	packages	 = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' -print0 | xargs -0 -n1 dirname | sort --unique | sed -e 's/.\//crowdstart.io\//')
-	sdk_install_extra = && echo '\#!/usr/bin/env bash\ngoapp $$@' > $(sdk_path)/gopath/bin/go \
-						&& rm -rf $(sdk_path)/demos \
-						&& chmod +x $(sdk_path)/gopath/bin/go \
-						&& curl  $(mtime_file_watcher) > $(sdk_path)/google/appengine/tools/devappserver2/mtime_file_watcher.py \
-						&& curl  $(python_279_patch) | patch -p0 \
-						&& pip install macfsevents --upgrade
+	packages = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' \
+			   				  -not -path "./.sdk/*" \
+			   				  -not -path "./test/*" \
+			   				  -not -path "./assets/*" \
+			   				  -not -path "./static/*" \
+			   				  -not -path "./node_modules/*" \
+			   				  -print0 | xargs -0 -n1 dirname | sort --unique | sed -e 's/.\//crowdstart.io\//')
+	sdk_install_extra := $(sdk_install_extra) && \
+						 curl $(mtime_file_watcher) > $(sdk_path)/google/appengine/tools/devappserver2/mtime_file_watcher.py && \
+						 pip install macfsevents --upgrade
 endif
 
 # set v=1 to enable verbose mode
 ifeq ($(v), 1)
-	verbose = -v=true
+	test_verbose = -v=true -- -test.v=true
 else
-	verbose =
+	test_verbose =
 endif
 
 # set production=1 to set datastore export/import target to use production
 ifeq ($(production), 1)
-	datastore_admin_url = https://datastore-admin-dot-skully-crowdstart.appspot.com/_ah/remote_api
+	datastore_app_id = crowdstart-skully
 else
-	datastore_admin_url = https://datastore-admin-dot-crowdstart-staging.appspot.com/_ah/remote_api
+	datastore_app_id = crowdstart-staging
+endif
+datastore_admin_url = https://datastore-admin-dot-$(datastore_app_id).appspot.com/_ah/remote_api
+
+test_focus := $(focus)
+ifdef test_focus
+	test_focus=--focus=$(focus)
 endif
 
-export GOROOT  := $(goroot)
-export GOPATH  := $(gopath)
+export GOROOT := $(goroot)
+export GOPATH := $(gopath)
 
 all: deps test install
 
@@ -148,7 +170,7 @@ compile-css-min:
 
 # BUILD
 build: deps assets
-	goapp build $(modules)
+	$(goapp) build $(modules)
 
 # DEPS
 deps: deps-assets deps-go
@@ -158,18 +180,30 @@ deps-assets:
 	npm install
 
 # DEPS GO
-deps-go: .sdk
-	gpm install || curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.1/bin/gpm | bash
+deps-go: .sdk .sdk/go .sdk/gpm .sdk/gopath/bin/ginkgo
+	$(gpm) install
 
 .sdk:
-	$(sdk_install) $(sdk_install_extra)
+	$(sdk_install) && $(sdk_install_extra)
+
+.sdk/go:
+	echo '#!/usr/bin/env bash' > $(sdk_path)/go && \
+	echo '$(sdk_path)/goapp $$@' >> $(sdk_path)/go && \
+	chmod +x $(sdk_path)/go
+
+.sdk/gpm:
+	curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.2/bin/gpm > .sdk/gpm && \
+	chmod +x .sdk/gpm
+
+.sdk/gopath/bin/ginkgo:
+	$(gpm) install && $(goapp) install github.com/onsi/ginkgo/ginkgo
 
 # INSTALL
 install: install-deps
-	goapp install $(modules) $(packages)
+	$(goapp) install $(modules) $(packages)
 
 install-deps:
-	goapp install $(deps)
+	$(goapp) install $(deps)
 
 # DEV SERVER
 serve: assets
@@ -187,22 +221,25 @@ live-reload: assets
 
 # GOLANG TOOLS
 tools:
-	goapp get $(tools) && \
-	goapp install $(tools) && \
-	gocode set lib-path "$(gopath_pkg_path):$(goroot_pkg_path)"
+	$(goapp) get $(tools) && \
+	$(goapp) install $(tools) && \
+	$(gopath)/bin/gocode set lib-path "$(gopath_pkg_path):$(goroot_pkg_path)"
 
 # TEST/ BENCH
 test:
-	ginkgo -r=true -p=true -progress=true $(verbose) -skipMeasurements=true -skipPackage=integration
+	@$(ginkgo) -r=true --randomizeAllSpecs -p=true -progress=true -skipMeasurements=true -skipPackage=integration $(test_focus) $(test_verbose)
 
 test-integration:
-	ginkgo -r=true -p=true -progress=true $(verbose) -skipMeasurements=true -focus=integration
+	@$(ginkgo) -r=true --randomizeAllSpecs -p=true -progress=true -skipMeasurements=true -focus=integration $(test_verbose)
 
 test-watch:
-	ginkgo watch -r=true -p=true -progress=true $(verbose) -skipMeasurements=true -skipPackage=integration
+	@$(ginkgo) watch -r=true -p=true -progress=true -skipMeasurements=true $(test_focus) $(test_verbose)
 
 bench:
-	ginkgo -r=true -p=true -progress=true $(verbose) -skipPackage=integration
+	@$(ginkgo) -r=true --randomizeAllSpecs -p=true -progress=true -skipPackage=integration $(test_focus) $(test_verbose)
+
+test-ci:
+	$(ginkgo) -r=true --randomizeAllSpecs --randomizeSuites --failOnPending --cover --trace --compilers=2
 
 # DEPLOY
 deploy: test
@@ -212,7 +249,6 @@ deploy-production: assets-min
 	for module in $(gae_production); do \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check rollback $$module; \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check update $$module; \
-		$(sdk_path)/appcfg.py --skip_sdk_update_check set_default_version $$module; \
 	done; \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check update_indexes config/production; \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/production
@@ -237,14 +273,13 @@ deploy-appengine-ci: assets-minified
 	for module in $(gae_production); do \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check rollback $$module; \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check update $$module; \
-		$(sdk_path)/appcfg.py --skip_sdk_update_check set_default_version $$module; \
 	done; \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check update_indexes config/production; \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/production
 
 # EXPORT / Usage: make datastore-export kind=user
 datastore-export:
-	mkdir -p _export/ && \
+	@mkdir -p _export/ && \
 	bulkloader.py --download \
 				  --bandwidth_limit 1000000000 \
 				  --rps_limit 10000 \
@@ -256,32 +291,32 @@ datastore-export:
 				  --log_file /tmp/bulkloader-$$kind.log \
 				  --result_db_filename /tmp/bulkloader-result-$$kind.db \
 				  --kind $$kind \
-				  --filename _export/$$kind.csv && \
+				  --filename _export/$$kind-$(datastore_app_id)-$(current_date).csv && \
 	rm -rf /tmp/bulkloader-$$kind.db \
 		   /tmp/bulkloader-$$kind.log \
 		   /tmp/bulkloader-result-$$kind.db
 
 # IMPORT / Usage: make datastore-import kind=user file=user.csv
 datastore-import:
-	appcfg.py upload_data --bandwidth_limit 1000000000 \
-				          --rps_limit 10000 \
-				          --batch_size 250 \
-				          --http_limit 200 \
-				  	      --url $(datastore_admin_url) \
-				          --config_file util/bulkloader/bulkloader-import.yaml \
-				          --kind $$kind \
-				          --filename $$file \
-				  		  --log_file /tmp/bulkloader-upload-$$kind.log && \
+	@appcfg.py upload_data --bandwidth_limit 1000000000 \
+						  --rps_limit 10000 \
+						  --batch_size 250 \
+						  --http_limit 200 \
+						  --url $(datastore_admin_url) \
+						  --config_file util/bulkloader/bulkloader-import.yaml \
+						  --kind $$kind \
+						  --filename $$file \
+						  --log_file /tmp/bulkloader-upload-$$kind.log && \
 	rm -rf /tmp/bulkloader-upload-$$kind.log
 
 # Generate config for use with datastore-export target
-datastore-export-config:
-	bulkloader.py --create_config \
-			      --url=$(datastore_admin_url) \
+datastore-config:
+	@bulkloader.py --create_config \
+				  --url=$(datastore_admin_url) \
 				  --filename=bulkloader.yaml
 
 .PHONY: all bench build compile-js compile-js-min compile-css compile-css-min \
-	datastore-import datastore-export datastore-config deploy \
-	deploy-staging deploy-skully deploy-production deps deps-assets \
-	deps-go live-reload serve serve-clear-datastore serve-public test \
-	test-integration test-watch tools
+	datastore-import datastore-export datastore-config deploy deploy-staging \
+	deploy-skully deploy-production deps deps-assets deps-go live-reload \
+	serve serve-clear-datastore serve-public test test-integration test-watch \
+	tools

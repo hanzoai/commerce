@@ -7,7 +7,7 @@ func Development() *Config {
 	config.IsDevelopment = true
 
 	config.AutoCompileAssets = false
-	config.AutoLoadFixtures = true
+	config.AutoLoadFixtures = false
 	config.DatastoreWarn = true
 
 	config.Protocol = "//localhost:8080/" // Localhost
@@ -28,16 +28,17 @@ func Development() *Config {
 
 	config.StaticUrl = "/static"
 
+	config.Salesforce.CallbackURL = "http:" + config.UrlFor("platform", "/salesforce/callback")
+	config.Stripe.RedirectURL = "http:" + config.UrlFor("platform", "/stripe/callback")
+	config.Stripe.WebhookURL = "http:" + config.UrlFor("platform", "/stripe/hook")
+
 	// TODO: Create dev versions somehow
 	config.Salesforce.ConsumerKey = "3MVG9xOCXq4ID1uElRYWhpUWjXYxIIlf_W1_MSDefMxTxdgMz5aMsZ7uvZ4n8zHI1wq6UREv2KE31Kes_Bq6D"
 	config.Salesforce.ConsumerSecret = "2354282251954184740"
-	config.Salesforce.CallbackURL = "https:" + config.UrlFor("platform", "/salesforce/callback")
 
 	config.Stripe.ClientId = "ca_53yyPzxlPsdAtzMEIuS2mXYDp4FFXLmm"
 	config.Stripe.APIKey = "pk_test_ucSTeAAtkSXVEg713ir40UhX"
 	config.Stripe.APISecret = ""
-	config.Stripe.RedirectURL = "http:" + config.UrlFor("platform", "/stripe/callback")
-	config.Stripe.WebhookURL = "http:" + config.UrlFor("platform", "/stripe/hook")
 
 	config.Facebook.AppId = "739937846096416"
 	config.Facebook.AppSecret = "eb737a205043f4cc73b2e7107c162a36"
