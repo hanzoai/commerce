@@ -6,8 +6,8 @@ import (
 	"appengine"
 	"appengine/urlfetch"
 
-	"github.com/stripe/stripe-go"
-	"github.com/stripe/stripe-go/client"
+	stripe "github.com/stripe/stripe-go"
+	sClient "github.com/stripe/stripe-go/client"
 	"github.com/stripe/stripe-go/currency"
 
 	"crowdstart.io/models"
@@ -15,8 +15,19 @@ import (
 	"crowdstart.io/util/log"
 )
 
+func NewApiClient(ctx appengine.Context, accessToken string) *sClient.API {
+	c := urlfetch.Client(ctx)
+	c.Transport = &urlfetch.Transport{Context: ctx, Deadline: time.Duration(10) * time.Second} // Update deadline to 10 seconds
+	backend := stripe.NewInternalBackend(c, "")
+
+	// Stripe advises using client-level methods in a concurrent context
+	sc := &sClient.API{}
+	sc.Init(accessToken, backend)
+	return sc
+}
+
 // Create a new stripe customer and assign id to user model.
-func createStripeCustomer(ctx appengine.Context, sc *client.API, user *models.User, params *stripe.CustomerParams) error {
+func createStripeCustomer(ctx appengine.Context, sc *sClient.API, user *models.User, params *stripe.CustomerParams) error {
 	customer, err := sc.Customers.New(params)
 
 	if err != nil {
@@ -32,7 +43,7 @@ func createStripeCustomer(ctx appengine.Context, sc *client.API, user *models.Us
 
 // Update corresponding Stripe customer for this user. If that fails, try to
 // create a new customer.
-func updateStripeCustomer(ctx appengine.Context, sc *client.API, user *models.User, params *stripe.CustomerParams) error {
+func updateStripeCustomer(ctx appengine.Context, sc *sClient.API, user *models.User, params *stripe.CustomerParams) error {
 	if _, err := sc.Customers.Update(user.Stripe.CustomerId, params); err != nil {
 		log.Warn("Failed to update Stripe customer, attempting to create a new Stripe customer: %v", err, ctx)
 		return createStripeCustomer(ctx, sc, user, params)
@@ -41,13 +52,7 @@ func updateStripeCustomer(ctx appengine.Context, sc *client.API, user *models.Us
 }
 
 func Charge(ctx appengine.Context, accessToken string, authorizationToken string, order *models.Order, user *models.User) (*models.Charge, error) {
-	c := urlfetch.Client(ctx)
-	c.Transport = &urlfetch.Transport{Context: ctx, Deadline: time.Duration(10) * time.Second} // Update deadline to 10 seconds
-	backend := stripe.NewInternalBackend(c, "")
-
-	// Stripe advises using client-level methods in a concurrent context
-	sc := &client.API{}
-	sc.Init(accessToken, backend)
+	sc := NewApiClient(ctx, accessToken)
 
 	// Create a charge for us to persist stripe data to
 	charge := new(models.Charge)

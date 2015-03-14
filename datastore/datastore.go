@@ -412,9 +412,15 @@ func (d *Datastore) DeleteMulti(keys []string) error {
 func (d *Datastore) AllocateId(kind string) int64 {
 	low, _, err := aeds.AllocateIDs(d.Context, kind, nil, 1)
 	if err != nil {
+		d.warn("Unable to allocate id for '%v': %v", kind, err)
 		return 0
 	}
 	return low
+}
+
+func (d *Datastore) AllocateIntKey(kind string) Key {
+	id := d.AllocateId(kind)
+	return aeds.NewKey(d.Context, kind, "", id, nil)
 }
 
 func (d *Datastore) Query(kind string) *aeds.Query {

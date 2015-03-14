@@ -120,6 +120,5 @@ func Run(c *gin.Context, kind string, batchSize int, fn *delay.Function, args ..
 
 		fn.Call(db.Context, args...)
 	}
-
 	return nil
 }
