@@ -81,7 +81,7 @@ func SubmitRegister(c *gin.Context) {
 	//Santitization
 	val.SanitizeUser(&f.User)
 
-	err = auth.NewUser(c, f)
+	u, err := auth.NewUser(c, f)
 	if err != nil && err.Error() == "Email is already registered" {
 		template.Render(c, "login.html", "registerError", "An account already exists for this email.")
 		return
@@ -106,9 +106,8 @@ func SubmitRegister(c *gin.Context) {
 		log.Error(err, c)
 	}
 
-	log.Debug("Synchronize with salesforce if '%v' != ''", campaign.Salesforce.AccessToken)
 	if campaign.Salesforce.AccessToken != "" {
-		salesforce.CallUpsertUserTask(db.Context, &campaign, &f.User)
+		salesforce.CallUpsertUserTask(db.Context, &campaign, u)
 	}
 	c.Redirect(302, config.UrlFor("store"))
 }
