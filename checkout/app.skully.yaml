@@ -1,4 +1,4 @@
-application: skully-crowdstart
+application: crowdstart-skully
 module: checkout
 version: v1
 

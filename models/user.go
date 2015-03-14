@@ -1,16 +1,26 @@
 package models
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
 	"github.com/mholt/binding"
 
+	"crowdstart.io/datastore"
+	"crowdstart.io/util/log"
+
 	stripe "crowdstart.io/thirdparty/stripe/models"
+)
+
+var (
+	UserNotFound = errors.New("User not found.")
 )
 
 type User struct {
 	FieldMapMixin
+	SalesforceSObject
+
 	Id              string `schema:"-" json:"-"`
 	FirstName       string
 	LastName        string
@@ -39,9 +49,9 @@ type User struct {
 		CustomerId string
 		Account    stripe.Account
 	}
-	LastUpdated time.Time
-	CreatedAt   time.Time
-	//Metadata		map[string]Metadata
+	UpdatedAt time.Time
+	CreatedAt time.Time
+	Metadata  []Datum
 }
 
 func (u User) Name() string {
@@ -50,6 +60,15 @@ func (u User) Name() string {
 
 func (u User) HasPassword() bool {
 	return len(u.PasswordHash) != 0
+}
+
+func (u User) GetMetadata(key string) Datum {
+	for index, datum := range u.Metadata {
+		if datum.Key == key {
+			return u.Metadata[index]
+		}
+	}
+	return Datum{}
 }
 
 func (u User) Validate(req *http.Request, errs binding.Errors) binding.Errors {
@@ -86,51 +105,80 @@ func (u User) Validate(req *http.Request, errs binding.Errors) binding.Errors {
 	return errs
 }
 
-type Address struct {
-	Line1      string
-	Line2      string
-	City       string
-	State      string
-	PostalCode string
-	Country    string
+// Populates current entity from datastore by Email.
+func (u *User) GetByEmail(db *datastore.Datastore, email string) error {
+	log.Debug("Searching for user '%v'", email)
+
+	// Build query to return user
+	q := db.Query("user").Filter("Email=", email).Limit(1)
+
+	// Run query, trying to return user
+	t := q.Run(db.Context)
+	_, err := t.Next(u)
+
+	// Return error if no user found.
+	if err == datastore.Done {
+		return UserNotFound
+	}
+
+	if err != nil {
+		log.Warn("Unable to fetch user from datastore: '%v'", err)
+		return err
+	}
+
+	return nil
 }
 
-func (a Address) Line() string {
-	return a.Line1 + " " + a.Line2
+// Insert new user
+func (u *User) Insert(db *datastore.Datastore) error {
+	id := db.AllocateId("user")
+	k := db.KeyFromId("user", id)
+
+	log.Debug("Inserting New User with key %v", k)
+
+	u.Id = k.Encode()
+	u.CreatedAt = time.Now()
+	u.UpdatedAt = u.CreatedAt
+
+	_, err := db.PutKind("user", k, u)
+	return err
 }
 
-func (a Address) Validate(req *http.Request, errs binding.Errors) binding.Errors {
-
-	if a.Line() == "" {
-		errs = append(errs, binding.Error{
-			FieldNames:     []string{"Street"},
-			Classification: "InputError",
-			Message:        "Address Street is required.",
-		})
+// Actual upsert method
+func (u *User) upsert(db *datastore.Datastore) error {
+	k, err := db.DecodeKey(u.Id)
+	if err != nil {
+		return err
 	}
 
-	if a.City == "" {
-		errs = append(errs, binding.Error{
-			FieldNames:     []string{"City"},
-			Classification: "InputError",
-			Message:        "Address City is required.",
-		})
+	_, err = db.PutKind("user", k, u)
+	return err
+}
+
+// Idempotent user upsert method.
+func (u *User) Upsert(db *datastore.Datastore) error {
+	// We have an ID, we can just upsert
+	if u.Id != "" {
+		return u.upsert(db)
 	}
 
-	if a.State == "" {
-		errs = append(errs, binding.Error{
-			FieldNames:     []string{"State"},
-			Classification: "InputError",
-			Message:        "Address State is required.",
-		})
+	// We don't have an ID, we need to figure out if this is a new user or not.
+	user := new(User)
+	err := user.GetByEmail(db, u.Email)
+
+	// if we can't find the user, insert new user
+	if err == UserNotFound {
+		return u.Insert(db)
 	}
 
-	if a.Country == "" {
-		errs = append(errs, binding.Error{
-			FieldNames:     []string{"Country"},
-			Classification: "InputError",
-			Message:        "Address Country is required.",
-		})
+	// Something bad happened, let's bail out
+	if err != nil {
+		return err
 	}
-	return errs
+
+	// Found user, set Id
+	u.Id = user.Id
+	u.UpdatedAt = time.Now()
+
+	return u.upsert(db)
 }

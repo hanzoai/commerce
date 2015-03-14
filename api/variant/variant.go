@@ -1,15 +1,15 @@
 package variant
 
 import (
-	"github.com/gin-gonic/gin"
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models"
 	"crowdstart.io/util/json"
+	"github.com/gin-gonic/gin"
 )
 
 func Get(c *gin.Context) {
-	d  := datastore.New(c)
+	d := datastore.New(c)
 	id := c.Params.ByName("id")
 
 	var variant models.ProductVariant
@@ -37,7 +37,7 @@ func Add(c *gin.Context) {
 		ctx.Errorf("[Api.Variant.Add] %v", err)
 		c.JSON(500, gin.H{"status": "unable to save product variant"})
 	} else {
-		variant.Id = key
+		variant.Id = key.Encode()
 		c.JSON(200, variant)
 	}
 }

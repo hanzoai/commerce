@@ -1,5 +1,7 @@
 package salesforce
 
+import "fmt"
+
 // Api Data Container
 type SalesforceTokenResponse struct {
 	AccessToken  string `json:"access_token"`
@@ -15,9 +17,13 @@ type SalesforceTokenResponse struct {
 
 // Salesforce Structs
 // These represent non-sobject responses received from salesforce
-type SalesforceError struct {
-	Message   string `json:"message"`
+type ErrorFromSalesforce struct {
 	ErrorCode string `json:"errorCode"`
+	Message   string `json:"message"`
+}
+
+func (e *ErrorFromSalesforce) Error() string {
+	return fmt.Sprintf("%v: %v", e.ErrorCode, e.Message)
 }
 
 type DescribeResponse struct {
@@ -40,12 +46,12 @@ type DescribeResponse struct {
 }
 
 type SObjectUrls struct {
-	SObject     string `json:"sobject"`
-	Describe    string `json:"describe"`
-	RowTemplate string `json:"rowTemplate"`
+	SObjectMetadata string `json:"sobject"`
+	Describe        string `json:"describe"`
+	RowTemplate     string `json:"rowTemplate"`
 }
 
-type SObject struct {
+type SObjectMetaData struct {
 	Name        string `json:"name"`
 	Label       string `json:"label"`
 	KeyPrefix   string `json:"keyPrefix"`
@@ -95,9 +101,9 @@ type QueryResponse struct {
 }
 
 type UpsertResponse struct {
-	Id      string            `json:"id"`
-	Success bool              `json:"success"`
-	Errors  []SalesforceError `json:"errors"`
+	Id      string                `json:"id"`
+	Success bool                  `json:"success"`
+	Errors  []ErrorFromSalesforce `json:"errors"`
 }
 
 type UpdatedRecordsResponse struct {

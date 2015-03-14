@@ -7,10 +7,11 @@ import (
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
-	"crowdstart.io/thirdparty/salesforce"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
 	"crowdstart.io/util/val"
+
+	salesforce "crowdstart.io/thirdparty/salesforce/tasks"
 )
 
 // GET /login
@@ -80,7 +81,7 @@ func SubmitRegister(c *gin.Context) {
 	//Santitization
 	val.SanitizeUser(&f.User)
 
-	err = auth.NewUser(c, f)
+	u, err := auth.NewUser(c, f)
 	if err != nil && err.Error() == "Email is already registered" {
 		template.Render(c, "login.html", "registerError", "An account already exists for this email.")
 		return
@@ -101,13 +102,12 @@ func SubmitRegister(c *gin.Context) {
 	// Look up campaign to see if we need to sync with salesforce
 	db := datastore.New(c)
 	campaign := models.Campaign{}
-	if err := db.GetKey("campaign", "dev@hanzo.ai", &campaign); err != nil {
+	if err := db.GetKind("campaign", "dev@hanzo.ai", &campaign); err != nil {
 		log.Error(err, c)
 	}
 
-	log.Debug("Synchronize with salesforce if '%v' != ''", campaign.Salesforce.AccessToken)
 	if campaign.Salesforce.AccessToken != "" {
-		salesforce.CallUpsertUserTask(db.Context, &campaign, &f.User)
+		salesforce.CallUpsertUserTask(db.Context, &campaign, u)
 	}
 	c.Redirect(302, config.UrlFor("store"))
 }

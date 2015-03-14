@@ -9,12 +9,13 @@ const (
 )
 
 type SalesforceTokens struct {
-	AccessToken  string
-	RefreshToken string
-	InstanceUrl  string
-	Id           string
-	IssuedAt     string
-	Signature    string
+	AccessToken        string
+	RefreshToken       string
+	InstanceUrl        string
+	Id                 string
+	IssuedAt           string
+	Signature          string
+	DefaultPriceBookId string
 }
 
 type Campaign struct {

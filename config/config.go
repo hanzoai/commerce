@@ -137,7 +137,7 @@ func Get() *Config {
 		pwd := os.Getenv("PWD")
 		if strings.Contains(pwd, "s~crowdstart-staging") {
 			cachedConfig = Staging()
-		} else if strings.Contains(pwd, "s~skully-crowdstart") {
+		} else if strings.Contains(pwd, "s~crowdstart-skully") {
 			cachedConfig = Skully()
 		} else {
 			cachedConfig = Production()

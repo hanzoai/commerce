@@ -13,13 +13,14 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models"
-	"crowdstart.io/thirdparty/mandrill"
-	"crowdstart.io/thirdparty/salesforce"
 	"crowdstart.io/thirdparty/stripe"
 	"crowdstart.io/util/cache"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/queries"
 	"crowdstart.io/util/template"
+
+	mandrill "crowdstart.io/thirdparty/mandrill/tasks"
+	salesforce "crowdstart.io/thirdparty/salesforce/tasks"
 )
 
 // Helper to get campaign
@@ -27,7 +28,7 @@ func getCampaign(args ...interface{}) models.Campaign {
 	c := args[0].(*gin.Context)
 	db := args[1].(*datastore.Datastore)
 	var campaign models.Campaign
-	if err := db.GetKey("campaign", "dev@hanzo.ai", &campaign); err != nil {
+	if err := db.GetKind("campaign", "dev@hanzo.ai", &campaign); err != nil {
 		log.Error(err, c)
 	}
 	return campaign
@@ -142,6 +143,7 @@ func charge(c *gin.Context) {
 
 	// Set email for order
 	form.Order.UserId = user.Id
+	form.Order.Email = user.Email
 	form.Order.CampaignId = "dev@hanzo.ai"
 	form.Order.Preorder = true
 
@@ -198,13 +200,14 @@ func charge(c *gin.Context) {
 
 	// Save order
 	log.Debug("Saving order...", c)
-	encodedKey, err := db.Put("order", &form.Order)
+	key, err := db.Put("order", &form.Order)
+	encodedKey := key.Encode()
 	if err != nil {
 		log.Error("Failed to save order", err, c)
 		c.Fail(500, err)
 		return
 	}
-	key, _ := db.DecodeKey(encodedKey)
+	key, _ = db.DecodeKey(encodedKey)
 	orderId := key.IntID()
 
 	// Set the id as we use it to update salesforce
@@ -225,7 +228,8 @@ func charge(c *gin.Context) {
 	invite := new(models.Token)
 	invite.GenerateId()
 	invite.UserId = user.Id
-	if _, err := db.PutKey("invite-token", invite.Id, invite); err != nil {
+	invite.Email = user.Email
+	if _, err := db.PutKind("invite-token", invite.Id, invite); err != nil {
 		log.Error("Failed to save invite-token: %v", err, c)
 		c.Fail(500, err)
 		return
@@ -236,8 +240,9 @@ func charge(c *gin.Context) {
 	contribution := new(models.Contribution)
 	contribution.Id = strconv.Itoa(int(orderId))
 	contribution.UserId = user.Id
+	contribution.Email = user.Email
 	contribution.Perk = models.Perks["WINTER2014PROMO"]
-	if _, err := db.PutKey("contribution", contribution.Id, contribution); err != nil {
+	if _, err := db.PutKind("contribution", contribution.Id, contribution); err != nil {
 		log.Error("Failed to save contribution: %v", err, c)
 		c.Fail(500, err)
 		return

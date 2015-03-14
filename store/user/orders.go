@@ -79,7 +79,7 @@ func CancelOrder(c *gin.Context) {
 	db := datastore.New(c)
 
 	order := new(models.Order)
-	if err := db.GetKey("order", orderId, order); err != nil {
+	if err := db.GetKind("order", orderId, order); err != nil {
 		log.Panic("Error while retrieving order \n%v", err)
 	}
 
@@ -98,7 +98,7 @@ func CancelOrder(c *gin.Context) {
 	}
 
 	order.Cancelled = true
-	_, err = db.PutKey("user", orderId, order)
+	_, err = db.PutKind("user", orderId, order)
 	if err != nil {
 		c.JSON(500, CancelOrderStatus{false, "Error occurred while cancelling."})
 		log.Panic("Erroring while saving order \n%v", err)
