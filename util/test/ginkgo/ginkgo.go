@@ -1,9 +1,12 @@
 package ginkgo
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/onsi/ginkgo"
+	"github.com/onsi/ginkgo/reporters"
 	"github.com/onsi/gomega"
 
 	"crowdstart.io/util/log"
@@ -12,7 +15,15 @@ import (
 func Setup(suiteName string, t *testing.T) {
 	log.SetVerbose(testing.Verbose())
 	gomega.RegisterFailHandler(ginkgo.Fail)
-	ginkgo.RunSpecs(t, suiteName)
+
+	// Write XML if on CI
+	xmldir := os.Getenv("CIRCLE_TEST_REPORTS")
+	if xmldir == "" {
+		ginkgo.RunSpecs(t, suiteName)
+	} else {
+		junitReporter := reporters.NewJUnitReporter(filepath.Join(xmldir, "junit.xml"))
+		ginkgo.RunSpecsWithDefaultAndCustomReporters(t, suiteName, []ginkgo.Reporter{junitReporter})
+	}
 }
 
 // Declarations for Ginkgo DSL
