@@ -42,6 +42,9 @@ func (at *AccessToken) accessToken() (string, error) {
 	token.Claims["iat"] = at.IssuedAt
 	token.Claims["jti"] = at.TokenId
 
+	// This sets the token to expire in a year
+	//token.Claims["exp"] = time.Now().Add(time.Hour * 24.0 * 365).Unix()
+
 	return token.SignedString(at.SecretKey)
 }
 
