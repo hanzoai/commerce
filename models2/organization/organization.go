@@ -11,7 +11,7 @@ import (
 
 type Organization struct {
 	mixin.Model
-	mixin.AccessTokener
+	mixin.AccessToken
 
 	Name       string
 	Owners     []string
@@ -61,7 +61,7 @@ type Organization struct {
 func New(db *datastore.Datastore) *Organization {
 	o := new(Organization)
 	o.Model = mixin.Model{Db: db, Entity: o}
-	o.AccessTokener = mixin.AccessTokener{Model: o}
+	o.AccessToken = mixin.AccessToken{Model: o}
 	return o
 }
 

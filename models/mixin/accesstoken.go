@@ -13,8 +13,9 @@ import (
 // Error for expired jti's
 var ErrorExpiredToken = errors.New("This token is expired.")
 
-// AccessTokener is a mixin for securing objects with an AccessToken
-type AccessTokener struct {
+// AccessToken is a mixin for securing objects with an AccessToken
+type AccessToken struct {
+	// Model is a struct with a Model mixin
 	Model model `json:"-" datastore:"-"`
 
 	// Use IssuedAt as JWT "iat" param
@@ -26,14 +27,14 @@ type AccessTokener struct {
 	TokenId string `json:"-"`
 }
 
-func (at *AccessTokener) GenerateAccessToken() (string, error) {
+func (at *AccessToken) GenerateAccessToken() (string, error) {
 	// Generate a new TokenId to invalidate previous key
 	at.TokenId = rand.ShortId()
 
 	return at.accessToken()
 }
 
-func (at *AccessTokener) accessToken() (string, error) {
+func (at *AccessToken) accessToken() (string, error) {
 	token := jwt.New(jwt.SigningMethodHS512)
 
 	// Use Key as JWT "iss" param
@@ -44,19 +45,26 @@ func (at *AccessTokener) accessToken() (string, error) {
 	return token.SignedString(at.SecretKey)
 }
 
-func GetWithAccessToken(accessToken string, at *AccessTokener) error {
+func (at *AccessToken) GetWithAccessToken(accessToken string) error {
 	m := at.Model
+
+	// jwt.Parse takes a function that returns the secret used to validate
+	// that we issued this accessToken using our secrets
 	t, err := jwt.Parse(accessToken, func(token *jwt.Token) (interface{}, error) {
+		// Load the Model using the issuer ("iss")
 		err2 := m.Get(token.Claims["iss"].(string))
+		// If we can't load the Model, that means the metadata is stale
 		if err2 != nil {
 			return nil, err2
 		}
 
+		// If the jti mismatches, then the token is expired
 		if token.Claims["jti"].(string) != at.TokenId {
 			return nil, ErrorExpiredToken
 		}
 
-		//log.Warn("iss %v, Key %v", token.Claims["iss"], at.SecretKey)
+		// Return the Model's secret key to get the validity
+		// of this token
 		return at.SecretKey, nil
 	})
 
