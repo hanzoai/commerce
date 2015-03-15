@@ -10,6 +10,9 @@ import (
 	"github.com/dgrijalva/jwt-go"
 )
 
+// Error for expired jti's
+var ErrorExpiredToken = errors.New("This token is expired.")
+
 // AccessTokener is a mixin for securing objects with an AccessToken
 type AccessTokener struct {
 	Model model `json:"-" datastore:"-"`
@@ -45,8 +48,16 @@ func GetWithAccessToken(accessToken string, at *AccessTokener) error {
 	m := at.Model
 	t, err := jwt.Parse(accessToken, func(token *jwt.Token) (interface{}, error) {
 		err2 := m.Get(token.Claims["iss"].(string))
+		if err2 != nil {
+			return nil, err2
+		}
+
+		if token.Claims["jti"].(string) != at.TokenId {
+			return nil, ErrorExpiredToken
+		}
+
 		//log.Warn("iss %v, Key %v", token.Claims["iss"], at.SecretKey)
-		return at.SecretKey, err2
+		return at.SecretKey, nil
 	})
 
 	if err != nil {
