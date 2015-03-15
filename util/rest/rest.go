@@ -16,6 +16,9 @@ var routes = make(map[string][]string)
 func Restify(router *gin.RouterGroup, entity mixin.Entity) {
 	model := new(mixin.Model)
 	model.Entity = entity
+	kind := model.Kind()
+
+	log.Debug("Generating routes for " + kind)
 
 	Get(router, model)
 	List(router, model)
@@ -44,7 +47,6 @@ func Get(router *gin.RouterGroup, model *mixin.Model) {
 		}
 	}
 
-	log.Debug("configuring GET for " + kind)
 	router.GET("/"+kind+"/:id", handler)
 }
 
