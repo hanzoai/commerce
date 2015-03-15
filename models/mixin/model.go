@@ -5,12 +5,14 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/gin-gonic/gin"
+
 	"crowdstart.io/datastore"
 	"crowdstart.io/util/json"
 )
 
 // Discrete instance of an entity
-type entity interface {
+type Entity interface {
 	Kind() string
 }
 
@@ -30,7 +32,7 @@ type model interface {
 // serialization).
 type Model struct {
 	Db     *datastore.Datastore `json:"-" datastore:"-"`
-	Entity entity               `json:"-" datastore:"-"`
+	Entity Entity               `json:"-" datastore:"-"`
 
 	key datastore.Key
 
@@ -41,6 +43,16 @@ type Model struct {
 
 	// Flag used to specify that we're using a string key for this kind
 	StringKey_ bool `json:"-" datastore:"-"`
+}
+
+// Return kind of entity
+func (m *Model) SetContext(c *gin.Context) {
+	m.Db = datastore.New(c)
+}
+
+// Return kind of entity
+func (m *Model) Kind() string {
+	return m.Entity.Kind()
 }
 
 // Helper to set Id_ correctly
@@ -127,6 +139,10 @@ func (m *Model) SetKey(key interface{}) error {
 
 // Put entity in datastore
 func (m *Model) Put() error {
+	return m.PutEntity(m.Entity)
+}
+
+func (m *Model) PutEntity(entity interface{}) error {
 	// Set CreatedAt, UpdatedAt
 	now := time.Now()
 	if m.key == nil {
@@ -135,7 +151,7 @@ func (m *Model) Put() error {
 	m.UpdatedAt = now
 
 	// Put entity into datastore
-	key, err := m.Db.Put(m.Key(), m.Entity)
+	key, err := m.Db.Put(m.Key(), entity)
 
 	// Update key
 	m.setKey(key)
@@ -152,6 +168,11 @@ func (m *Model) Get(args ...interface{}) error {
 	}
 
 	return m.Db.Get(m.key, m.Entity)
+}
+
+// Get entity in datastore
+func (m *Model) GetEntity(entity interface{}) error {
+	return m.Db.Get(m.key, entity)
 }
 
 // Delete entity from Datastore
