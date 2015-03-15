@@ -35,7 +35,7 @@ var _ = AfterSuite(func() {
 
 type User struct {
 	mixin.Model
-	mixin.AccessTokener
+	mixin.AccessToken
 
 	Name string
 }
@@ -47,7 +47,7 @@ func (u *User) Kind() string {
 func NewUser(db *datastore.Datastore) *User {
 	u := new(User)
 	u.Model = mixin.Model{Db: db, Entity: u}
-	u.AccessTokener = mixin.AccessTokener{Model: u}
+	u.AccessToken = mixin.AccessToken{Model: u}
 	return u
 }
 
@@ -81,7 +81,7 @@ var _ = Describe("models/mixin", func() {
 		})
 	})
 
-	Context("AccessTokener.GenerateAccessToken/GetWithAccessToken", func() {
+	Context("AccessToken.GenerateAccessToken/GetWithAccessToken", func() {
 		It("Should be able to create and validate AccessToken", func() {
 			// Create a new user and store using Model mixin
 			user := NewUser(db)
@@ -97,7 +97,7 @@ var _ = Describe("models/mixin", func() {
 
 			// Manually retrieve to ensure it was saved properly
 			user2 := NewUser(db)
-			err = mixin.GetWithAccessToken(tokenStr, &user2.AccessTokener)
+			err = user2.GetWithAccessToken(tokenStr)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(user2.Name).To(Equal(user.Name))
 		})
@@ -120,10 +120,10 @@ var _ = Describe("models/mixin", func() {
 
 			// Manually retrieve to ensure it was saved properly
 			user2 := NewUser(db)
-			err = mixin.GetWithAccessToken(invalidTokenStr, &user2.AccessTokener)
+			err = user2.GetWithAccessToken(invalidTokenStr)
 			Expect(err).To(HaveOccurred())
 
-			err = mixin.GetWithAccessToken(validTokenStr, &user2.AccessTokener)
+			err = user2.GetWithAccessToken(validTokenStr)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(user2.Name).To(Equal(user.Name))
