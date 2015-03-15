@@ -62,7 +62,7 @@ func (at *AccessToken) GetWithAccessToken(accessToken string) error {
 		}
 
 		// If the jti mismatches, then the token is expired
-		if token.Claims["jti"].(string) != at.TokenId {
+		if at.TokenId != "" && at.TokenId != token.Claims["jti"].(string) {
 			return nil, ErrorExpiredToken
 		}
 
