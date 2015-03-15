@@ -10,8 +10,19 @@ import (
 )
 
 // Discrete instance of an entity
-type Entity interface {
+type entity interface {
 	Kind() string
+}
+
+// Interface representing Model
+type model interface {
+	Key() (key datastore.Key)
+	Id() string
+	Put() error
+	Get(args ...interface{}) error
+	Delete() error
+	Query() datastore.Query
+	JSON() string
 }
 
 // Model is a datastore mixin which adds serialization to/from Datastore as
@@ -19,7 +30,7 @@ type Entity interface {
 // serialization).
 type Model struct {
 	Db     *datastore.Datastore `json:"-" datastore:"-"`
-	Entity Entity               `json:"-" datastore:"-"`
+	Entity entity               `json:"-" datastore:"-"`
 
 	key datastore.Key
 
@@ -30,11 +41,6 @@ type Model struct {
 
 	// Flag used to specify that we're using a string key for this kind
 	StringKey_ bool `json:"-" datastore:"-"`
-}
-
-// Returns a new Model with minimum configuration.
-func NewModel(db *datastore.Datastore, entity Entity) Model {
-	return Model{Db: db, Entity: entity}
 }
 
 // Helper to set Id_ correctly
