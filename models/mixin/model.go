@@ -5,8 +5,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gin-gonic/gin"
-
 	"crowdstart.io/datastore"
 	"crowdstart.io/util/json"
 )
@@ -45,9 +43,9 @@ type Model struct {
 	StringKey_ bool `json:"-" datastore:"-"`
 }
 
-// Return kind of entity
-func (m *Model) SetContext(c *gin.Context) {
-	m.Db = datastore.New(c)
+// Set's the appengine context to whatev
+func (m *Model) SetContext(ctx interface{}) {
+	m.Db = datastore.New(ctx)
 }
 
 // Return kind of entity

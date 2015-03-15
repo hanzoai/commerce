@@ -51,7 +51,7 @@ func New(db *datastore.Datastore) *User {
 }
 
 func (u User) Kind() string {
-	return "user"
+	return "user2"
 }
 
 func (u User) Name() string {
