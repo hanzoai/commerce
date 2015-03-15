@@ -101,5 +101,32 @@ var _ = Describe("models/mixin", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(user2.Name).To(Equal(user.Name))
 		})
+
+		It("Should be able to invalidate AccessToken by creating a new one", func() {
+			// Create a new user and store using Model mixin
+			user := NewUser(db)
+			user.Name = "Justin"
+			user.IssuedAt = time.Now()
+			user.SecretKey = []byte("AAA")
+
+			// Create the token for looking up
+			invalidTokenStr, err := user.GenerateAccessToken()
+			Expect(err).NotTo(HaveOccurred())
+
+			validTokenStr, err := user.GenerateAccessToken()
+			Expect(err).NotTo(HaveOccurred())
+
+			user.Put()
+
+			// Manually retrieve to ensure it was saved properly
+			user2 := NewUser(db)
+			err = mixin.GetWithAccessToken(invalidTokenStr, &user2.AccessTokener)
+			Expect(err).To(HaveOccurred())
+
+			err = mixin.GetWithAccessToken(validTokenStr, &user2.AccessTokener)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(user2.Name).To(Equal(user.Name))
+		})
 	})
 })
