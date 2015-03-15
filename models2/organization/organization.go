@@ -11,8 +11,8 @@ import (
 
 type Organization struct {
 	mixin.Model
+	mixin.AccessTokener
 
-	// Use Name as JWT "iss" param
 	Name       string
 	Owners     []string
 	Admins     []string
@@ -32,16 +32,6 @@ type Organization struct {
 	Plan struct {
 		PlanId    string
 		StartDate time.Time
-	}
-
-	Crowdstart struct {
-		// Use IssuedAt as JWT "iat" param
-		IssuedAt time.Time
-		// JWT secret
-		SecretKey string
-
-		// UseTokenId as JWT "jti" param, randomly generate upon generating a new key to expire all existing keys
-		TokenId string
 	}
 
 	Salesforce struct {
@@ -71,9 +61,10 @@ type Organization struct {
 func New(db *datastore.Datastore) *Organization {
 	o := new(Organization)
 	o.Model = mixin.Model{Db: db, Entity: o}
+	o.AccessTokener = mixin.AccessTokener{Model: o}
 	return o
 }
 
-func (o Organization) Kind() string {
+func (o *Organization) Kind() string {
 	return "organization2"
 }

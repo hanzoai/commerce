@@ -2,6 +2,7 @@ package test
 
 import (
 	"testing"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -34,6 +35,8 @@ var _ = AfterSuite(func() {
 
 type User struct {
 	mixin.Model
+	mixin.AccessTokener
+
 	Name string
 }
 
@@ -44,6 +47,7 @@ func (u *User) Kind() string {
 func NewUser(db *datastore.Datastore) *User {
 	u := new(User)
 	u.Model = mixin.Model{Db: db, Entity: u}
+	u.AccessTokener = mixin.AccessTokener{Model: u}
 	return u
 }
 
@@ -73,6 +77,28 @@ var _ = Describe("models/mixin", func() {
 			// Retrieve user from datastore using Model mixin
 			user2 := NewUser(db)
 			user2.Get(key)
+			Expect(user2.Name).To(Equal(user.Name))
+		})
+	})
+
+	Context("AccessTokener.GenerateAccessToken/GetWithAccessToken", func() {
+		It("Should be able to create and validate AccessToken", func() {
+			// Create a new user and store using Model mixin
+			user := NewUser(db)
+			user.Name = "Justin"
+			user.IssuedAt = time.Now()
+			user.SecretKey = []byte("AAA")
+
+			// Create the token for looking up
+			tokenStr, err := user.GenerateAccessToken()
+			Expect(err).NotTo(HaveOccurred())
+
+			user.Put()
+
+			// Manually retrieve to ensure it was saved properly
+			user2 := NewUser(db)
+			err = mixin.GetWithAccessToken(tokenStr, &user2.AccessTokener)
+			Expect(err).NotTo(HaveOccurred())
 			Expect(user2.Name).To(Equal(user.Name))
 		})
 	})
