@@ -16,6 +16,7 @@ type Organization struct {
 	mixin.AccessToken
 
 	Name       string
+	FullName   string
 	Owners     []string
 	Admins     []string
 	Moderators []string
