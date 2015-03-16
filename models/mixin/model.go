@@ -46,6 +46,11 @@ type Model struct {
 // Set's the appengine context to whatev
 func (m *Model) SetContext(ctx interface{}) {
 	m.Db = datastore.New(ctx)
+
+	// Update key if necessary
+	if m.key != nil {
+		m.setKey(m.Db.NewKey(m.Kind(), m.key.StringID(), m.key.IntID(), nil))
+	}
 }
 
 // Return kind of entity
