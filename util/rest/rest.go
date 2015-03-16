@@ -3,6 +3,8 @@ package rest
 import (
 	"reflect"
 
+	"appengine"
+
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/datastore"
@@ -13,12 +15,14 @@ import (
 )
 
 type Rest struct {
-	Kind       string
-	Get        gin.HandlerFunc
-	List       gin.HandlerFunc
-	Add        gin.HandlerFunc
-	Update     gin.HandlerFunc
-	Delete     gin.HandlerFunc
+	Kind   string
+	Get    gin.HandlerFunc
+	List   gin.HandlerFunc
+	Add    gin.HandlerFunc
+	Update gin.HandlerFunc
+	Delete gin.HandlerFunc
+
+	namespace  bool
 	entityType reflect.Type
 }
 
@@ -34,9 +38,23 @@ func (r *Rest) Init(entity mixin.Entity) {
 	r.Delete = r.delete
 }
 
-func New(entity mixin.Entity) *Rest {
+type Opts struct {
+	NoNamespace bool
+}
+
+func New(entity mixin.Entity, args ...interface{}) *Rest {
+	opts := Opts{}
+
+	if len(args) > 0 {
+		opts = args[0].(Opts)
+	}
+
 	r := new(Rest)
 	r.Init(entity)
+
+	// Options
+	r.namespace = !opts.NoNamespace
+
 	return r
 }
 
@@ -73,7 +91,15 @@ func (r Rest) newEntitySlice() interface{} {
 }
 
 func (r Rest) newModel(c *gin.Context) mixin.Model {
-	db := datastore.New(c)
+	var ctx appengine.Context
+
+	if r.namespace {
+		ctx = middleware.GetAppEngine(c)
+	} else {
+		ctx = middleware.GetNamespace(c)
+	}
+
+	db := datastore.New(ctx)
 	entity := r.newEntity().(mixin.Entity)
 	model := mixin.Model{Db: db, Entity: entity}
 	return model
