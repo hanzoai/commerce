@@ -1,10 +1,12 @@
 package organization
 
 import (
+	"errors"
 	"time"
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
+	"crowdstart.io/models2/user"
 
 	. "crowdstart.io/models2"
 )
@@ -67,4 +69,30 @@ func New(db *datastore.Datastore) *Organization {
 
 func (o Organization) Kind() string {
 	return "organization2"
+}
+
+func (o Organization) IsAdmin(user *user.User) bool {
+	for _, userId := range o.Admins {
+		if userId == user.Id() {
+			return true
+		}
+	}
+	return false
+}
+
+func (o Organization) IsOwner(user *user.User) bool {
+	for _, userId := range o.Owners {
+		if userId == user.Id() {
+			return true
+		}
+	}
+	return false
+}
+
+func (o Organization) GenerateAccessToken(user *user.User) (string, error) {
+	if o.IsOwner(user) || o.IsAdmin(user) {
+		return o.AccessToken.GenerateAccessToken()
+	} else {
+		return "", errors.New("User is not authorized to create a new access token.")
+	}
 }

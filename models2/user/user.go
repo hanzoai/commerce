@@ -106,14 +106,14 @@ func (u User) Validate(req *http.Request, errs binding.Errors) binding.Errors {
 }
 
 // Populates current entity from datastore by Email.
-func (u *User) GetByEmail(db *datastore.Datastore, email string) error {
+func (u *User) GetByEmail(email string) error {
 	log.Debug("Searching for user '%v'", email)
 
 	// Build query to return user
-	q := db.Query("user").Filter("Email=", email).Limit(1)
+	q := u.Query().Filter("Email=", email).Limit(1)
 
 	// Run query, trying to return user
-	t := q.Run(db.Context)
+	t := q.Run()
 	_, err := t.Next(u)
 
 	// Return error if no user found.
