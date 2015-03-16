@@ -7,6 +7,7 @@ import (
 
 	"crowdstart.io/auth"
 	"crowdstart.io/datastore"
+	"crowdstart.io/middleware"
 	"crowdstart.io/models2/organization"
 	"crowdstart.io/models2/user"
 	"crowdstart.io/util/json"
@@ -50,4 +51,22 @@ func getAccessToken(c *gin.Context, id, email, password string) {
 
 	// Return access token
 	json.Render(c, 200, gin.H{"status": "ok", "token": accessToken})
+}
+
+func deleteAccessToken(c *gin.Context) {
+	// Get organization for current access token
+	org := middleware.GetOrg(c)
+	org.TokenId = ""
+
+	if err := org.Put(); err != nil {
+		json.Fail(c, 500, "Unable to update organization", err)
+	}
+
+	// Save access token in cookie for ease of use during development
+	if appengine.IsDevAppServer() {
+		session.Delete(c, "access-token")
+	}
+
+	// Return access token
+	json.Render(c, 200, gin.H{"status": "ok"})
 }
