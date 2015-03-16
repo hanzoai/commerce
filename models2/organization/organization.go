@@ -65,6 +65,6 @@ func New(db *datastore.Datastore) *Organization {
 	return o
 }
 
-func (o *Organization) Kind() string {
+func (o Organization) Kind() string {
 	return "organization2"
 }
