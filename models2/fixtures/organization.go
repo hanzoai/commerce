@@ -3,13 +3,11 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"appengine"
-
 	"crowdstart.io/auth"
 	"crowdstart.io/datastore"
-	"crowdstart.io/middleware"
 	"crowdstart.io/models2/organization"
 	"crowdstart.io/models2/user"
+	"crowdstart.io/util/log"
 	"crowdstart.io/util/task"
 )
 
@@ -38,11 +36,13 @@ var _ = task.Func("models2-fixtures-organization", func(c *gin.Context) {
 	org.Put()
 
 	// Save into org's namespace
-	ctx := middleware.GetAppEngine(c)
-	ctx, _ = appengine.Namespace(ctx, org.Id())
-	org.SetContext(ctx)
-	org.Put()
+	if ctx, err := org.Namespace(c); err != nil {
+		log.Panic("Failed to get namespace: %v", err)
+	} else {
+		user.SetContext(ctx)
+		org.SetContext(ctx)
+	}
 
-	user.SetContext(ctx)
+	org.Put()
 	user.Put()
 })

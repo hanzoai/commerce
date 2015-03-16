@@ -302,7 +302,7 @@ func (d *Datastore) Put(keyOrKind interface{}, src interface{}) (*aeds.Key, erro
 
 	key, err = nds.Put(d.Context, key, src)
 	if err != nil {
-		d.warn("Unable to put (%v, %v): %v", keyOrKind, src, err, d.Context)
+		d.warn("Unable to put (%v, %#v): %v", keyOrKind, src, err, d.Context)
 		return key, err
 	}
 	return key, nil
@@ -313,7 +313,7 @@ func (d *Datastore) PutKind(kind string, key interface{}, src interface{}) (*aed
 
 	// Invalid key, bail out.
 	if err != nil {
-		d.warn("Invalid key: unable to put (%v, %v, %v): %v", kind, key, src, err)
+		d.warn("Invalid key: unable to put (%v, %v, %#v): %v", kind, key, src, err)
 		return _key, err
 	}
 
