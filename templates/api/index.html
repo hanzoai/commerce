@@ -26,6 +26,7 @@ button::-moz-focus-inner {
 }
 </style>
 
+<h4>access tokens</h4>
 <ul>
     <li>GET <a href="/api/access-token/{{ orgId }}?email={{ email }}&password={{ password }}">/api/access-token/{{ orgId }}</a></li>
     <li>POST <a href="/api/access-token/{{ orgId }}">/api/access-token/{{ orgId }}</a></li>
@@ -36,27 +37,28 @@ button::-moz-focus-inner {
     </li>
 </ul>
 
+<h4>payments</h4>
 <ul>
-  <li>POST <a href="/api/checkout?token={{ token }}">/api/checkout</a></li>
-  <li>POST <a href="/api/authorize?token={{ token }}">/api/authorize</a></li>
-  <li>POST <a href="/api/capture?token={{ token }}">/api/capture</a></li>
+  <li>POST <a href="/api/checkout">/api/checkout</a></li>
+  <li>POST <a href="/api/authorize">/api/authorize</a></li>
+  <li>POST <a href="/api/capture">/api/capture</a></li>
 </ul>
 
 {% for model in models %}
-<h3>{{ model.Kind() }} / {{ model.DisplayCount() }}</h3>
+<h4>{{ model.Kind() }} ({{ model.DisplayCount() }})</h4>
 <ul>
-    <li>GET <a href="/api/{{ model.Kind() }}/?token={{ token }}">/api/{{ model.Kind() }}</a></li>
-    <li>GET <a href="/api/{{ model.Kind() }}/{{ model.DisplayId() }}?token={{ token }}">/api/{{ model.Kind() }}/{{ model.DisplayId() }}</a></li>
-    <li>POST <a href="/api/{{ model.Kind() }}?token={{ token }}">/api/{{ model.Kind() }}</a></li>
-    <li>PUT <a href="/api/{{ model.Kind() }}?token={{ token }}">/api/{{ model.Kind() }}/{{ model.DisplayId() }}</a></li>
+    <li>GET <a href="/api/{{ model.Kind() }}/">/api/{{ model.Kind() }}</a></li>
+    <li>GET <a href="/api/{{ model.Kind() }}/{{ model.DisplayId() }}">/api/{{ model.Kind() }}/{{ model.DisplayId() }}</a></li>
+    <li>POST <a href="/api/{{ model.Kind() }}">/api/{{ model.Kind() }}</a></li>
+    <li>PUT <a href="/api/{{ model.Kind() }}">/api/{{ model.Kind() }}/{{ model.DisplayId() }}</a></li>
     <li>
-        <form method="POST" action="/api/{{ model.Kind() }}/{{ model.DisplayId() }}?token={{ token }}&_method=DELETE">
+        <form method="POST" action="/api/{{ model.Kind() }}/{{ model.DisplayId() }}&_method=DELETE">
          DELETE <button type="submit">/api/{{ model.Kind() }}/{{ model.DisplayId() }}</button>
         </form>
     </li>
 </ul>
 {% endfor %}
 
-<a href="http://localhost:8000?token={{ token }}">admin</a>
-<a href="/tasks?token={{ token }}">tasks</a>
+<a href="http://localhost:8000">admin</a>
+<a href="/tasks">tasks</a>
 {% endblock %}
