@@ -14,4 +14,5 @@ type Router interface {
 	PATCH(string, ...gin.HandlerFunc)
 	Use(...gin.HandlerFunc)
 	Group(string, ...gin.HandlerFunc) *gin.RouterGroup
+	Handle(string, string, []gin.HandlerFunc)
 }

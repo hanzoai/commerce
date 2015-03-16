@@ -14,6 +14,12 @@ import (
 	"crowdstart.io/util/log"
 )
 
+type route struct {
+	url      string
+	method   string
+	handlers []gin.HandlerFunc
+}
+
 type Rest struct {
 	Kind   string
 	Get    gin.HandlerFunc
@@ -22,6 +28,7 @@ type Rest struct {
 	Update gin.HandlerFunc
 	Delete gin.HandlerFunc
 
+	routes     map[string]route
 	namespace  bool
 	entityType reflect.Type
 }
@@ -29,6 +36,7 @@ type Rest struct {
 func (r *Rest) Init(entity mixin.Entity) {
 	r.Kind = entity.Kind()
 	r.entityType = reflect.ValueOf(entity).Type()
+	r.routes = make(map[string]route)
 
 	// Setup default handlers
 	r.Get = r.get
@@ -64,13 +72,49 @@ func (r Rest) Route(router Router) {
 	// Create group for our API routes and require Access token
 	group := router.Group("/"+r.Kind, middleware.TokenRequired())
 
-	// Add routes for defined handlers
-	group.GET("", r.List)
-	group.GET("/", r.List)
-	group.GET("/:id", r.Get)
-	group.POST("", r.Add)
-	group.PUT("/:id", r.Update)
-	group.DELETE("/:id", r.Delete)
+	// Add default routes
+	for _, route := range r.defaultRoutes() {
+		group.Handle(route.method, route.url, route.handlers)
+	}
+
+	for _, route := range r.routes {
+		group.Handle(route.method, route.url, route.handlers)
+	}
+}
+
+func (r Rest) defaultRoutes() []route {
+	return []route{
+		route{
+			method:   "GET",
+			url:      "",
+			handlers: []gin.HandlerFunc{r.List},
+		},
+		route{
+			method:   "GET",
+			url:      "/",
+			handlers: []gin.HandlerFunc{r.List},
+		},
+		route{
+			method:   "GET",
+			url:      "/:id",
+			handlers: []gin.HandlerFunc{r.Get},
+		},
+		route{
+			method:   "POST",
+			url:      "",
+			handlers: []gin.HandlerFunc{r.Add},
+		},
+		route{
+			method:   "PUT",
+			url:      "",
+			handlers: []gin.HandlerFunc{r.Update},
+		},
+		route{
+			method:   "DELETE",
+			url:      "",
+			handlers: []gin.HandlerFunc{r.Delete},
+		},
+	}
 }
 
 // retuns a new interface of this entity type
@@ -181,4 +225,48 @@ func (r Rest) delete(c *gin.Context) {
 	} else {
 		r.JSON(c, 201, model.Entity)
 	}
+}
+
+func (r Rest) Handle(method, url string, handlers []gin.HandlerFunc) {
+	r.routes[url] = route{
+		method:   method,
+		url:      url,
+		handlers: handlers,
+	}
+}
+
+func (r Rest) GET(url string, handlers ...gin.HandlerFunc) {
+	r.Handle("GET", url, handlers)
+}
+
+func (r Rest) POST(url string, handlers ...gin.HandlerFunc) {
+	r.Handle("POST", url, handlers)
+}
+
+func (r Rest) DELETE(url string, handlers ...gin.HandlerFunc) {
+	r.Handle("DELETE", url, handlers)
+}
+
+func (r Rest) PATCH(url string, handlers ...gin.HandlerFunc) {
+	r.Handle("PATCH", url, handlers)
+}
+
+func (r Rest) PUT(url string, handlers ...gin.HandlerFunc) {
+	r.Handle("PUT", url, handlers)
+}
+
+func (r Rest) HEAD(url string, handlers ...gin.HandlerFunc) {
+	r.Handle("HEAD", url, handlers)
+}
+
+func (r Rest) OPTIONS(url string, handlers ...gin.HandlerFunc) {
+	r.Handle("OPTIONS", url, handlers)
+}
+
+func (r Rest) LINK(url string, handlers ...gin.HandlerFunc) {
+	r.Handle("LINK", url, handlers)
+}
+
+func (r Rest) UNLINK(url string, handlers ...gin.HandlerFunc) {
+	r.Handle("UNLINK", url, handlers)
 }

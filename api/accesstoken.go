@@ -3,11 +3,14 @@ package api
 import (
 	"github.com/gin-gonic/gin"
 
+	"appengine"
+
 	"crowdstart.io/auth"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models2/organization"
 	"crowdstart.io/models2/user"
 	"crowdstart.io/util/json"
+	"crowdstart.io/util/session"
 )
 
 func getAccessToken(c *gin.Context, id, email, password string) {
@@ -38,6 +41,11 @@ func getAccessToken(c *gin.Context, id, email, password string) {
 	if err != nil {
 		json.Fail(c, 500, "Unable to generate access token", err)
 		return
+	}
+
+	// Save access token in cookie for ease of use during development
+	if appengine.IsDevAppServer() {
+		session.Set(c, "access-token", accessToken)
 	}
 
 	// Return access token
