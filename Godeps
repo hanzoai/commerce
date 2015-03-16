@@ -6,7 +6,6 @@ github.com/getsentry/raven-go master
 github.com/gin-gonic/gin app_engine
 github.com/gorilla/schema master
 github.com/gorilla/sessions master
-github.com/jmcvetta/napping master
 github.com/mholt/binding master
 github.com/onsi/ginkgo/ginkgo master
 github.com/onsi/gomega master
@@ -16,3 +15,4 @@ github.com/zeekay/aetest master
 github.com/zeekay/go-logging master
 github.com/davidtai/appenginetesting master
 github.com/dgrijalva/jwt-go master
+github.com/headzoo/surf master

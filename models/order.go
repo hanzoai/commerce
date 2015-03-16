@@ -57,10 +57,7 @@ type Order struct {
 
 	// Dispute details
 	Disputed bool
-	Dispute  struct {
-		Status string
-		Reason string
-	}
+	Dispute  stripe.Dispute // Refactor to use []stripe.Dispute for multiple charges.
 
 	// ShippingOption  ShippingOption
 
@@ -258,16 +255,16 @@ type Charge struct {
 	Disputed       bool
 }
 
-type Dispute stripe.Dispute
+// type Dispute stripe.Dispute
 
-func (charge Charge) Disputes(c *gin.Context) (disputes []Dispute, err error) {
-	db := datastore.New(c)
-	_, err = db.Query("dispute").
-		Filter("Charge =", charge.ID).
-		Order("Created").
-		GetAll(db.Context, &disputes)
-	return disputes, err
-}
+// func (charge Charge) Disputes(c *gin.Context) (disputes []Dispute, err error) {
+// 	db := datastore.New(c)
+// 	_, err = db.Query("dispute").
+// 		Filter("Charge =", charge.ID).
+// 		Order("Created").
+// 		GetAll(db.Context, &disputes)
+// 	return disputes, err
+// }
 
 type ShippingOption struct {
 	Name  string
