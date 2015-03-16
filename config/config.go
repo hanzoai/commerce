@@ -8,8 +8,6 @@ import (
 	"strings"
 
 	"appengine"
-
-	"crowdstart.io/util/log"
 )
 
 var demoMode = true
@@ -76,7 +74,6 @@ type Config struct {
 // Return url to static file, module or path rooted in a module
 func (c Config) UrlFor(moduleName string, args ...string) (url string) {
 	// Ignore the port number and the host during testing.
-	log.Info(moduleName)
 	if c.IsDevelopment && !strings.HasPrefix(moduleName, "/") {
 		if len(args) > 0 {
 			return "/" + moduleName + args[0]
