@@ -19,7 +19,7 @@ var ctx ae.Context
 // Setup appengine context
 var _ = BeforeSuite(func() {
 	ctx = ae.NewContext(ae.Options{
-		Modules:                []string{"api"},
+		Modules:                []string{"default"},
 		PreferAppengineTesting: true,
 	})
 
@@ -34,9 +34,9 @@ var _ = AfterSuite(func() {
 
 var _ = Describe("Restify", func() {
 	It("Should add add RESTful routes for given model", func() {
-		client := httpclient.New(ctx, "api")
+		client := httpclient.New(ctx, "default")
 
-		res, err := client.Get("/token2")
+		res, err := client.Get("/api/test-model")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.StatusCode).To(Equal(200))
 	})

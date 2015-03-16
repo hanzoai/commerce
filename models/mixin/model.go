@@ -20,7 +20,7 @@ type model interface {
 	Id() string
 	Put() error
 	Get(args ...interface{}) error
-	Delete() error
+	Delete(args ...interface{}) error
 	Query() datastore.Query
 	JSON() string
 }
@@ -49,7 +49,7 @@ func (m *Model) SetContext(ctx interface{}) {
 }
 
 // Return kind of entity
-func (m *Model) Kind() string {
+func (m Model) Kind() string {
 	return m.Entity.Kind()
 }
 
@@ -174,7 +174,12 @@ func (m *Model) GetEntity(entity interface{}) error {
 }
 
 // Delete entity from Datastore
-func (m *Model) Delete() error {
+func (m *Model) Delete(args ...interface{}) error {
+	// If a key is specified, try to use that, ignore nil keys (which would
+	// otherwise create a new incomplete key which makes no sense in this case.
+	if len(args) == 1 && args[0] != nil {
+		m.SetKey(args[0])
+	}
 	return m.Db.Delete(m.key)
 }
 
