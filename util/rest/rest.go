@@ -21,12 +21,13 @@ type route struct {
 }
 
 type Rest struct {
-	Kind   string
-	Get    gin.HandlerFunc
-	List   gin.HandlerFunc
-	Add    gin.HandlerFunc
-	Update gin.HandlerFunc
-	Delete gin.HandlerFunc
+	Kind           string
+	Get            gin.HandlerFunc
+	List           gin.HandlerFunc
+	Add            gin.HandlerFunc
+	Update         gin.HandlerFunc
+	Delete         gin.HandlerFunc
+	MethodOverride gin.HandlerFunc
 
 	routes     map[string]route
 	namespace  bool
@@ -44,6 +45,7 @@ func (r *Rest) Init(entity mixin.Entity) {
 	r.Add = r.add
 	r.Update = r.update
 	r.Delete = r.delete
+	r.MethodOverride = r.methodOverride
 }
 
 type Opts struct {
@@ -70,7 +72,7 @@ func (r Rest) Route(router Router) {
 	log.Debug("Registering routes for " + r.Kind)
 
 	// Create group for our API routes and require Access token
-	group := router.Group("/"+r.Kind, middleware.TokenRequired(), middleware.MethodOverride())
+	group := router.Group("/"+r.Kind, middleware.TokenRequired())
 
 	// Add default routes
 	for _, route := range r.defaultRoutes() {
@@ -105,13 +107,23 @@ func (r Rest) defaultRoutes() []route {
 			handlers: []gin.HandlerFunc{r.Add},
 		},
 		route{
+			method:   "POST",
+			url:      "/:id",
+			handlers: []gin.HandlerFunc{r.MethodOverride},
+		},
+		route{
+			method:   "PATCH",
+			url:      "/:id",
+			handlers: []gin.HandlerFunc{r.Update},
+		},
+		route{
 			method:   "PUT",
-			url:      "",
+			url:      "/:id",
 			handlers: []gin.HandlerFunc{r.Update},
 		},
 		route{
 			method:   "DELETE",
-			url:      "",
+			url:      "/:id",
 			handlers: []gin.HandlerFunc{r.Delete},
 		},
 	}
@@ -223,7 +235,27 @@ func (r Rest) delete(c *gin.Context) {
 		log.Error(message+": %v", err, c)
 		r.JSON(c, 500, gin.H{"status": message})
 	} else {
-		r.JSON(c, 201, model.Entity)
+		r.JSON(c, 201, gin.H{"status": "ok"})
+	}
+}
+
+var methodOverride = middleware.MethodOverride()
+
+// This should be handled by middleware
+func (r Rest) methodOverride(c *gin.Context) {
+
+	// Override request method
+	methodOverride(c)
+
+	switch c.Request.Method {
+	case "POST":
+		r.Update(c)
+	case "PUT":
+		r.Update(c)
+	case "PATCH":
+		r.Update(c)
+	case "DELETE":
+		r.Delete(c)
 	}
 }
 
