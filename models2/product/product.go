@@ -5,11 +5,14 @@ import (
 	"reflect"
 	"time"
 
+	aeds "appengine/datastore"
+
 	"github.com/mholt/binding"
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/models2/variant"
+	"crowdstart.io/util/gob"
 
 	. "crowdstart.io/models2"
 )
@@ -52,14 +55,52 @@ type Product struct {
 	AddLabel string // Pre-order now or Add to cart
 
 	// List of variants
-	Variants []variant.Variant
+	Variants  []variant.Variant `datastore:"-"`
+	Variants_ []byte            `json:"-"`
 
 	// Reference to options used
-	Option []Option
+	Options  []Option `datastore:"-"`
+	Options_ []byte   `json:"-"`
+}
+
+func (p *Product) Load(c <-chan aeds.Property) (err error) {
+	// Load properties
+	if err = aeds.LoadStruct(p, c); err != nil {
+		return err
+	}
+
+	// Deserialize gob encoded properties
+	p.Variants = make([]variant.Variant, 0)
+	p.Options = make([]Option, 0)
+
+	if len(p.Variants_) > 0 {
+		err = gob.Decode(p.Variants_, &p.Variants)
+	}
+
+	if len(p.Options_) > 0 {
+		err = gob.Decode(p.Options_, &p.Options)
+	}
+
+	return err
+}
+
+func (p *Product) Save(c chan<- aeds.Property) (err error) {
+	// Gob encode problematic properties
+	p.Variants_, err = gob.Encode(p.Variants)
+	p.Options_, err = gob.Encode(p.Options)
+
+	if err != nil {
+		return err
+	}
+
+	// Save properties
+	return aeds.SaveStruct(p, c)
 }
 
 func New(db *datastore.Datastore) *Product {
 	p := new(Product)
+	p.Variants = make([]variant.Variant, 0)
+	p.Options = make([]Option, 0)
 	p.Model = mixin.Model{Db: db, Entity: p}
 	return p
 }
@@ -144,4 +185,9 @@ func (p Product) Validate(req *http.Request, errs binding.Errors) binding.Errors
 		}
 	}
 	return errs
+}
+
+func init() {
+	gob.Register(variant.Variant{})
+	gob.Register(Option{})
 }
