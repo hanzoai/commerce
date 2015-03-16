@@ -118,7 +118,7 @@ func (r Rest) get(c *gin.Context) {
 
 	if err := model.Get(id); err != nil {
 		message := "Failed to retrieve " + r.Kind
-		log.Debug(message+": %v", err, c)
+		log.Error(message+": %v", err, c)
 		r.JSON(c, 500, gin.H{"status": message})
 	} else {
 		r.JSON(c, 200, model.Entity)
@@ -132,7 +132,7 @@ func (r Rest) list(c *gin.Context) {
 
 	if _, err := model.Query().GetAll(models); err != nil {
 		message := "Failed to list " + r.Kind
-		log.Debug(message+": %v", err, c)
+		log.Error(message+": %v", err, c)
 		r.JSON(c, 500, gin.H{"status": message})
 	} else {
 		r.JSON(c, 200, models)
@@ -146,10 +146,10 @@ func (r Rest) add(c *gin.Context) {
 
 	if err := model.Put(); err != nil {
 		message := "Failed to add " + r.Kind
-		log.Debug(message, err, c)
+		log.Error(message+": %v", err, c)
 		r.JSON(c, 500, gin.H{"status": message})
 	} else {
-		r.JSON(c, 200, model.Entity)
+		r.JSON(c, 201, model.Entity)
 	}
 }
 
@@ -162,10 +162,10 @@ func (r Rest) update(c *gin.Context) {
 
 	if err := model.Put(); err != nil {
 		message := "Failed to update " + r.Kind
-		log.Debug(message, err, c)
+		log.Error(message+": %v", err, c)
 		r.JSON(c, 500, gin.H{"status": message})
 	} else {
-		r.JSON(c, 200, model.Entity)
+		r.JSON(c, 201, model.Entity)
 	}
 }
 
@@ -173,4 +173,12 @@ func (r Rest) delete(c *gin.Context) {
 	id := c.Params.ByName("id")
 	model := r.newModel(c)
 	model.Delete(id)
+
+	if err := model.Delete(); err != nil {
+		message := "Failed to delete " + r.Kind
+		log.Error(message+": %v", err, c)
+		r.JSON(c, 500, gin.H{"status": message})
+	} else {
+		r.JSON(c, 201, model.Entity)
+	}
 }
