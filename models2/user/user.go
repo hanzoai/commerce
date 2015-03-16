@@ -107,7 +107,7 @@ func (u *User) GetByEmail(email string) error {
 	log.Debug("Searching for user '%v'", email)
 
 	// Build query to return user
-	_, ok, err := u.Query().Filter("Email=", email).First(u)
+	ok, err := u.Query().Filter("Email=", email).First()
 
 	if err != nil {
 		log.Warn("Unable to fetch user from datastore: '%v'", err)

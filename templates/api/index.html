@@ -1,9 +1,39 @@
 {% extends "base.html" %}
 
 {% block body %}
+<style>
+input[type="button"], input[type="button"]:focus, input[type="button"]:active,
+button, button:focus, button:active {
+    /* Remove all decorations to look like normal text */
+    background: none;
+    border: none;
+    display: inline;
+    font: inherit;
+    margin: 0;
+    padding: 0;
+    outline: none;
+    outline-offset: 0;
+    /* Additional styles to look like a link */
+    color: blue;
+    cursor: pointer;
+    text-decoration: underline;
+}
+/* Remove extra space inside buttons in Firefox */
+input[type="button"]::-moz-focus-inner,
+button::-moz-focus-inner {
+    border: none;
+    padding: 0;
+}
+</style>
+
 <ul>
     <li>GET <a href="/api/access-token/{{ orgId }}?email={{ email }}&password={{ password }}">/api/access-token/{{ orgId }}</a></li>
     <li>POST <a href="/api/access-token/{{ orgId }}">/api/access-token/{{ orgId }}</a></li>
+    <li>
+        <form method="POST" action="/api/access-token?_method=DELETE">
+            DELETE <button type="submit">/api/access-token</button>
+        </form>
+    </li>
 </ul>
 
 <ul>
@@ -12,13 +42,18 @@
   <li>POST <a href="/api/capture?token={{ token }}">/api/capture</a></li>
 </ul>
 
-{% for entity in entities %}
+{% for model in models %}
+<h3>{{ model.Kind() }} / {{ model.DisplayCount() }}</h3>
 <ul>
-    <li>GET <a href="/api/{{ entity.Kind() }}/?token={{ token }}">/api/{{ entity.Kind() }}</a></li>
-    <li>GET <a href="/api/{{ entity.Kind() }}/id?token={{ token }}">/api/{{ entity.Kind() }}/id</a></li>
-    <li>POST <a href="/api/{{ entity.Kind() }}?token={{ token }}">/api/{{ entity.Kind() }}</a></li>
-    <li>PATCH <a href="/api/{{ entity.Kind() }}?token={{ token }}">/api/{{ entity.Kind() }}/id</a></li>
-    <li>DELETE <a href="/api/{{ entity.Kind() }}?token={{ token }}">/api/{{ entity.Kind() }}/id</a></li>
+    <li>GET <a href="/api/{{ model.Kind() }}/?token={{ token }}">/api/{{ model.Kind() }}</a></li>
+    <li>GET <a href="/api/{{ model.Kind() }}/{{ model.DisplayId() }}?token={{ token }}">/api/{{ model.Kind() }}/{{ model.DisplayId() }}</a></li>
+    <li>POST <a href="/api/{{ model.Kind() }}?token={{ token }}">/api/{{ model.Kind() }}</a></li>
+    <li>PATCH <a href="/api/{{ model.Kind() }}?token={{ token }}">/api/{{ model.Kind() }}/{{ model.DisplayId() }}</a></li>
+    <li>
+        <form method="POST" action="/api/{{ model.Kind() }}/{{ model.DisplayId() }}?token={{ token }}&_method=DELETE">
+         DELETE <button type="submit">/api/{{ model.Kind() }}/{{ model.DisplayId() }}</button>
+        </form>
+    </li>
 </ul>
 {% endfor %}
 

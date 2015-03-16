@@ -70,7 +70,7 @@ func (r Rest) Route(router Router) {
 	log.Debug("Registering routes for " + r.Kind)
 
 	// Create group for our API routes and require Access token
-	group := router.Group("/"+r.Kind, middleware.TokenRequired())
+	group := router.Group("/"+r.Kind, middleware.TokenRequired(), middleware.MethodOverride())
 
 	// Add default routes
 	for _, route := range r.defaultRoutes() {
