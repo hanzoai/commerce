@@ -55,11 +55,13 @@ func (m Model) Kind() string {
 
 // Helper to set Id_ correctly
 func (m *Model) setId() {
+	key := m.Key()
+
 	// Set ID to StringID first, if that is not set, then try the IntID A
 	// Datastore key can be either an int or string but not both
-	m.Id_ = m.key.StringID()
+	m.Id_ = key.StringID()
 	if m.Id_ == "" {
-		if id := m.key.IntID(); id != 0 {
+		if id := key.IntID(); id != 0 {
 			m.Id_ = strconv.Itoa(int(id))
 		}
 	}
@@ -166,6 +168,26 @@ func (m *Model) Get(args ...interface{}) error {
 	}
 
 	return m.Db.Get(m.key, m.Entity)
+}
+
+// Get entity from datastore or create new one
+func (m *Model) GetOrCreate(filterStr string, value interface{}) error {
+	key, ok, err := m.Query().Filter(filterStr, value).First(m.Entity)
+
+	// Something bad happened
+	if err != nil {
+		return err
+	}
+
+	if ok {
+		// Found, save key
+		m.key = key
+	} else {
+		// Not found, save entity
+		m.Put()
+	}
+
+	return err
 }
 
 // Get entity in datastore

@@ -20,6 +20,7 @@ type Query interface {
 	Project(fieldNames ...string) Query
 	Run() *aeds.Iterator
 	Start(c aeds.Cursor) Query
+	First(dst interface{}) (*aeds.Key, bool, error)
 }
 
 type query struct {
@@ -99,4 +100,22 @@ func (q *query) Run() *aeds.Iterator {
 func (q *query) Start(c aeds.Cursor) Query {
 	q.Query = q.Query.Start(c)
 	return q
+}
+
+func (q *query) First(dst interface{}) (*aeds.Key, bool, error) {
+	t := q.Limit(1).Run()
+	key, err := t.Next(dst)
+
+	// Nothing found
+	if err == aeds.Done {
+		return key, false, nil
+	}
+
+	// Error!
+	if err != nil {
+		return key, false, err
+	}
+
+	// Success :)
+	return key, true, err
 }

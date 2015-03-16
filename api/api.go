@@ -3,8 +3,6 @@ package api
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/auth"
-	"crowdstart.io/datastore"
 	"crowdstart.io/models2/campaign"
 	"crowdstart.io/models2/coupon"
 	"crowdstart.io/models2/organization"
@@ -32,22 +30,7 @@ func init() {
 		email := query.Get("email")
 		password := query.Get("password")
 
-		db := datastore.New(c)
-		u := user.New(db)
-		u.GetByEmail(email)
-		if err := auth.CompareHashAndPassword(u.PasswordHash, password); err != nil {
-			c.Fail(401, err)
-		}
-
-		o := organization.New(db)
-		o.Get(id)
-
-		accessToken, err := o.GenerateAccessToken(u)
-		if err != nil {
-			c.Fail(500, err)
-		}
-
-		c.JSON(200, gin.H{"status": "ok", "token": accessToken})
+		authorize(c, id, email, password)
 	})
 
 	router.POST("/authorize/:id", func(c *gin.Context) {
@@ -56,22 +39,7 @@ func init() {
 		email := c.Request.Form.Get("email")
 		password := c.Request.Form.Get("password")
 
-		db := datastore.New(c)
-		u := user.New(db)
-		u.GetByEmail(email)
-		if err := auth.CompareHashAndPassword(u.PasswordHash, password); err != nil {
-			c.Fail(401, err)
-		}
-
-		o := organization.New(db)
-		o.Get(id)
-
-		accessToken, err := o.GenerateAccessToken(u)
-		if err != nil {
-			c.Fail(500, err)
-		}
-
-		c.JSON(200, gin.H{"status": "ok", "token": accessToken})
+		authorize(c, id, email, password)
 	})
 
 	rest.New(campaign.Campaign{}).Route(router)
