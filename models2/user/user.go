@@ -3,7 +3,6 @@ package user
 import (
 	"errors"
 	"net/http"
-	"time"
 
 	"github.com/mholt/binding"
 
@@ -39,9 +38,7 @@ type User struct {
 		Account    stripe.Account
 	}
 
-	UpdatedAt time.Time
-	CreatedAt time.Time
-	Metadata  []Datum
+	Metadata []Datum
 }
 
 func New(db *datastore.Datastore) *User {
@@ -110,20 +107,16 @@ func (u *User) GetByEmail(email string) error {
 	log.Debug("Searching for user '%v'", email)
 
 	// Build query to return user
-	q := u.Query().Filter("Email=", email).Limit(1)
-
-	// Run query, trying to return user
-	t := q.Run()
-	_, err := t.Next(u)
-
-	// Return error if no user found.
-	if err == datastore.Done {
-		return UserNotFound
-	}
+	_, ok, err := u.Query().Filter("Email=", email).First(u)
 
 	if err != nil {
 		log.Warn("Unable to fetch user from datastore: '%v'", err)
 		return err
+	}
+
+	// Return error if no user found.
+	if !ok {
+		return UserNotFound
 	}
 
 	return nil
