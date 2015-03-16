@@ -67,6 +67,7 @@ func init() {
 	router.POST("/capture", capture)
 
 	// Setup API routes
+	logApiRoutes(entities)
 	for _, entity := range entities {
 		rest.New(entity).Route(router)
 	}
