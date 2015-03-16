@@ -22,11 +22,11 @@ func init() {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
 
-	rest.Restify(router, new(campaign.Campaign))
-	rest.Restify(router, new(coupon.Coupon))
-	rest.Restify(router, new(organization.Organization))
-	rest.Restify(router, new(product.Product))
-	rest.Restify(router, new(token.Token))
-	rest.Restify(router, new(user.User))
-	rest.Restify(router, new(variant.Variant))
+	rest.New(campaign.Campaign{}).Route(router)
+	rest.New(coupon.Coupon{}).Route(router)
+	rest.New(organization.Organization{}).Route(router)
+	rest.New(product.Product{}).Route(router)
+	rest.New(token.Token{}).Route(router)
+	rest.New(user.User{}).Route(router)
+	rest.New(variant.Variant{}).Route(router)
 }
