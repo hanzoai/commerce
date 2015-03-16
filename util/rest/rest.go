@@ -77,6 +77,12 @@ func (r Rest) newModel(c *gin.Context) mixin.Model {
 	return model
 }
 
+func (r Rest) JSON(c *gin.Context, code int, body interface{}) {
+	c.Writer.Header().Set("Content-Type", "application/json")
+	c.Writer.WriteHeader(code)
+	c.Writer.Write(json.EncodeBytes(body))
+}
+
 func (r Rest) get(c *gin.Context) {
 	id := c.Params.ByName("id")
 
@@ -85,9 +91,9 @@ func (r Rest) get(c *gin.Context) {
 	if err := model.Get(id); err != nil {
 		message := "Failed to retrieve " + r.Kind
 		log.Debug(message+": %v", err, c)
-		c.JSON(500, gin.H{"status": message})
+		r.JSON(c, 500, gin.H{"status": message})
 	} else {
-		c.JSON(200, model.Entity)
+		r.JSON(c, 200, model.Entity)
 	}
 }
 
@@ -99,9 +105,9 @@ func (r Rest) list(c *gin.Context) {
 	if _, err := model.Query().GetAll(models); err != nil {
 		message := "Failed to list " + r.Kind
 		log.Debug(message+": %v", err, c)
-		c.JSON(500, gin.H{"status": message})
+		r.JSON(c, 500, gin.H{"status": message})
 	} else {
-		c.JSON(200, models)
+		r.JSON(c, 200, models)
 	}
 }
 
@@ -113,9 +119,9 @@ func (r Rest) add(c *gin.Context) {
 	if err := model.Put(); err != nil {
 		message := "Failed to add " + r.Kind
 		log.Debug(message, err, c)
-		c.JSON(500, gin.H{"status": message})
+		r.JSON(c, 500, gin.H{"status": message})
 	} else {
-		c.JSON(200, model.Entity)
+		r.JSON(c, 200, model.Entity)
 	}
 }
 
@@ -129,9 +135,9 @@ func (r Rest) update(c *gin.Context) {
 	if err := model.Put(); err != nil {
 		message := "Failed to update " + r.Kind
 		log.Debug(message, err, c)
-		c.JSON(500, gin.H{"status": message})
+		r.JSON(c, 500, gin.H{"status": message})
 	} else {
-		c.JSON(200, model.Entity)
+		r.JSON(c, 200, model.Entity)
 	}
 }
 
