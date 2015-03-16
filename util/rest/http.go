@@ -1,6 +1,8 @@
 package rest
 
 import (
+	"sort"
+
 	"github.com/gin-gonic/gin"
 
 	"appengine"
@@ -12,7 +14,15 @@ import (
 	"crowdstart.io/util/template"
 )
 
+type byKind []mixin.Entity
+
+func (e byKind) Len() int           { return len(e) }
+func (e byKind) Swap(i, j int)      { e[i], e[j] = e[j], e[i] }
+func (e byKind) Less(i, j int) bool { return e[i].Kind() < e[j].Kind() }
+
 func DebugIndex(entities []mixin.Entity) gin.HandlerFunc {
+	sort.Sort(byKind(entities))
+
 	return func(c *gin.Context) {
 		if !appengine.IsDevAppServer() {
 			c.Next()
@@ -31,17 +41,12 @@ func DebugIndex(entities []mixin.Entity) gin.HandlerFunc {
 		token := query.Get("token")
 
 		// Generate kind map
-		kinds := make(map[string]mixin.Entity, 0)
-		for _, entity := range entities {
-			kinds[entity.Kind()] = entity
-		}
-
 		template.Render(c, "index.html",
 			"orgId", org.Id(),
 			"email", "dev@hanzo.ai",
 			"password", "suchtees",
 			"token", token,
-			"kinds", kinds,
+			"entities", entities,
 		)
 
 		// Skip rest of handlers
