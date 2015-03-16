@@ -22,6 +22,8 @@ type Variant struct {
 	mixin.Model
 	mixin.Salesforce
 
+	ProductId string
+
 	SKU  string
 	Name string
 
@@ -39,6 +41,7 @@ type Variant struct {
 
 func New(db *datastore.Datastore) *Variant {
 	v := new(Variant)
+	v.Options = make([]Option, 0)
 	v.Model = mixin.Model{Db: db, Entity: v}
 	return v
 }

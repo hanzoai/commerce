@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block body %}
+<ul>
+    <li>GET <a href="/api/access-token/{{ orgId }}?email={{ email }}&password={{ password }}">/api/access-token/{{ orgId }}</a></li>
+    <li>POST <a href="/api/access-token/{{ orgId }}">/api/access-token/{{ orgId }}</a></li>
+</ul>
+
+<ul>
+  <li>POST <a href="/api/checkout?token={{ token }}">/api/checkout</a></li>
+  <li>POST <a href="/api/authorize?token={{ token }}">/api/authorize</a></li>
+  <li>POST <a href="/api/capture?token={{ token }}">/api/capture</a></li>
+</ul>
+
+{% for kind in kinds %}
+<ul>
+    <li>GET <a href="/api/{{ kind }}/?token={{ token }}">/api/{{ kind }}</a></li>
+    <li>GET <a href="/api/{{ kind }}/id?token={{ token }}">/api/{{ kind }}/id</a></li>
+    <li>POST <a href="/api/{{ kind }}?token={{ token }}">/api/{{ kind }}</a></li>
+    <li>PATCH <a href="/api/{{ kind }}?token={{ token }}">/api/{{ kind }}/id</a></li>
+    <li>DELETE <a href="/api/{{ kind }}?token={{ token }}">/api/{{ kind }}/id</a></li>
+</ul>
+{% endfor %}
+
+<a href="http://localhost:8000?token={{ token }}">admin</a>
+<a href="/tasks?token={{ token }}">tasks</a>
+{% endblock %}
