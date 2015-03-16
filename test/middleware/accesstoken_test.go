@@ -12,6 +12,7 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models2/organization"
+	"crowdstart.io/models2/user"
 	"crowdstart.io/util/gincontext"
 	"crowdstart.io/util/test/ae"
 
@@ -56,11 +57,15 @@ var _ = Describe("middleware/accesstoken", func() {
 
 			defer c.Set("appengine", ctx)
 
+			u := user.New(db)
+			u.Put()
+
 			// create an org
 			o := organization.New(db)
 			o.Name = "Justin"
 			o.IssuedAt = time.Now()
 			o.SecretKey = []byte("AAA")
+			o.Owners = []string{u.Id()}
 
 			// insert into db
 			o.Put()
@@ -68,11 +73,11 @@ var _ = Describe("middleware/accesstoken", func() {
 			id := o.Id()
 
 			// generate accessToken
-			tokenStr, err := o.GenerateAccessToken()
+			tokenStr, err := o.GenerateAccessToken(u)
 			Expect(err).NotTo(HaveOccurred())
 
 			// get the middleware func`
-			gFunc := middleware.RequiresOrgToken()
+			gFunc := middleware.TokenRequired()
 
 			// set the access token on the request header
 			c.Request.Header.Set("Authorization", tokenStr)
