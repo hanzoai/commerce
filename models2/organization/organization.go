@@ -4,6 +4,10 @@ import (
 	"errors"
 	"time"
 
+	"github.com/gin-gonic/gin"
+
+	"appengine"
+
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/models2/user"
@@ -96,4 +100,17 @@ func (o Organization) GenerateAccessToken(user *user.User) (string, error) {
 	} else {
 		return "", errors.New("User is not authorized to create a new access token.")
 	}
+}
+
+func (o Organization) Namespace(ctx interface{}) (appengine.Context, error) {
+	var _ctx appengine.Context
+
+	switch v := ctx.(type) {
+	case *gin.Context:
+		_ctx = v.MustGet("appengine").(appengine.Context)
+	case appengine.Context:
+		_ctx = v
+	}
+
+	return appengine.Namespace(_ctx, o.Id())
 }
