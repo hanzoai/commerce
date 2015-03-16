@@ -12,6 +12,8 @@ import (
 	stripeToken "github.com/stripe/stripe-go/token"
 
 	"crowdstart.io/models"
+	"crowdstart.io/models2/order"
+	"crowdstart.io/models2/user"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 )
@@ -27,6 +29,112 @@ func NewApiClient(ctx appengine.Context, accessToken string) *sClient.API {
 	sc := &sClient.API{}
 	sc.Init(accessToken, backend)
 	return sc
+}
+
+func NewToken(card *Card, pubKey string) (*stripe.Token, error) {
+	stripe.Key = pubKey
+	return stripeToken.New(&stripe.TokenParams{
+		Card: (*stripe.CardParams)(card),
+	})
+}
+
+// Create a new stripe customer and assign id to user model.
+func createStripeCustomer2(ctx appengine.Context, sc *sClient.API, user *user.User, params *stripe.CustomerParams) error {
+	customer, err := sc.Customers.New(params)
+
+	if err != nil {
+		log.Warn("Failed to create Stripe customer: %v", err, ctx)
+		return err
+	}
+
+	// Update user model with stripe customer ID so we can charge for them later
+	user.Stripe.CustomerId = customer.ID
+
+	return nil
+}
+
+// Update corresponding Stripe customer for this user. If that fails, try to
+// create a new customer.
+func updateStripeCustomer2(ctx appengine.Context, sc *sClient.API, user *user.User, params *stripe.CustomerParams) error {
+	if _, err := sc.Customers.Update(user.Stripe.CustomerId, params); err != nil {
+		log.Warn("Failed to update Stripe customer, attempting to create a new Stripe customer: %v", err, ctx)
+		return createStripeCustomer2(ctx, sc, user, params)
+	}
+	return nil
+}
+
+func Charge2(ctx appengine.Context, accessToken string, token *stripe.Token, order *order.Order, user *user.User) (*models.Charge, error) {
+	sc := NewApiClient(ctx, accessToken)
+
+	// Create a charge for us to persist stripe data to
+	charge := new(models.Charge)
+
+	// card
+	card := &stripe.CardParams{Token: token.ID}
+
+	// customer params
+	customerParams := &stripe.CustomerParams{
+		Desc:  user.Name(),
+		Email: user.Email,
+		Card:  card,
+	}
+
+	if user.Stripe.CustomerId == "" {
+		// Create new Stripe customer
+		if err := createStripeCustomer2(ctx, sc, user, customerParams); err != nil {
+			return charge, err
+		}
+	} else {
+		// Update Stripe customer
+		if err := updateStripeCustomer2(ctx, sc, user, customerParams); err != nil {
+			return charge, err
+		}
+	}
+
+	// Create charge
+	log.Debug("Creating charge")
+	chargeParams := &stripe.ChargeParams{
+		Amount:   order.DecimalTotal(),
+		Fee:      order.DecimalFee(),
+		Currency: currency.USD,
+		Customer: user.Stripe.CustomerId,
+		//Desc:      order.Description(),
+		Email:     user.Email,
+		Statement: "SKULLY SYSTEMS", // Max 15 characters
+	}
+	chargeParams.Meta = make(map[string]string)
+	chargeParams.Meta["UserId"] = user.Id()
+
+	log.Debug("chargeParams: %#v", chargeParams)
+	stripeCharge, err := sc.Charges.New(chargeParams)
+
+	// Charges and tokens are recorded regardless of success/failure.
+	// It doesn't record whether each charge/token is success or failure.
+	if err != nil {
+		stripeErr, ok := err.(*stripe.Error)
+		if ok {
+			charge.FailCode = json.Encode(stripeErr.Code)
+			charge.FailMsg = stripeErr.Msg
+			charge.FailType = json.Encode(stripeErr.Type)
+		}
+	} else {
+		charge.ID = stripeCharge.ID
+		charge.Captured = stripeCharge.Captured
+		charge.Created = stripeCharge.Created
+		charge.Desc = stripeCharge.Desc
+		charge.Email = stripeCharge.Email
+		charge.Live = stripeCharge.Live
+		charge.Paid = stripeCharge.Paid
+		charge.Refunded = stripeCharge.Refunded
+		charge.Statement = stripeCharge.Statement
+		charge.Amount = int64(stripeCharge.Amount)
+		charge.AmountRefunded = int64(stripeCharge.AmountRefunded)
+	}
+
+	//order.Payments = append(order.Charges, *charge)
+	//order.StripeTokens = append(order.StripeTokens, authorizationToken)
+
+	return charge, err
 }
 
 // Create a new stripe customer and assign id to user model.
@@ -52,13 +160,6 @@ func updateStripeCustomer(ctx appengine.Context, sc *sClient.API, user *models.U
 		return createStripeCustomer(ctx, sc, user, params)
 	}
 	return nil
-}
-
-func NewToken(card *Card, pubKey string) (*stripe.Token, error) {
-	stripe.Key = pubKey
-	return stripeToken.New(&stripe.TokenParams{
-		Card: (*stripe.CardParams)(card),
-	})
 }
 
 func Charge(ctx appengine.Context, accessToken string, authorizationToken string, order *models.Order, user *models.User) (*models.Charge, error) {
