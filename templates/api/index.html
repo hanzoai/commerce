@@ -12,13 +12,13 @@
   <li>POST <a href="/api/capture?token={{ token }}">/api/capture</a></li>
 </ul>
 
-{% for kind in kinds %}
+{% for entity in entities %}
 <ul>
-    <li>GET <a href="/api/{{ kind }}/?token={{ token }}">/api/{{ kind }}</a></li>
-    <li>GET <a href="/api/{{ kind }}/id?token={{ token }}">/api/{{ kind }}/id</a></li>
-    <li>POST <a href="/api/{{ kind }}?token={{ token }}">/api/{{ kind }}</a></li>
-    <li>PATCH <a href="/api/{{ kind }}?token={{ token }}">/api/{{ kind }}/id</a></li>
-    <li>DELETE <a href="/api/{{ kind }}?token={{ token }}">/api/{{ kind }}/id</a></li>
+    <li>GET <a href="/api/{{ entity.Kind() }}/?token={{ token }}">/api/{{ entity.Kind() }}</a></li>
+    <li>GET <a href="/api/{{ entity.Kind() }}/id?token={{ token }}">/api/{{ entity.Kind() }}/id</a></li>
+    <li>POST <a href="/api/{{ entity.Kind() }}?token={{ token }}">/api/{{ entity.Kind() }}</a></li>
+    <li>PATCH <a href="/api/{{ entity.Kind() }}?token={{ token }}">/api/{{ entity.Kind() }}/id</a></li>
+    <li>DELETE <a href="/api/{{ entity.Kind() }}?token={{ token }}">/api/{{ entity.Kind() }}/id</a></li>
 </ul>
 {% endfor %}
 
