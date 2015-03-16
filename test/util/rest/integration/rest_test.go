@@ -19,7 +19,8 @@ var ctx ae.Context
 // Setup appengine context
 var _ = BeforeSuite(func() {
 	ctx = ae.NewContext(ae.Options{
-		Modules: []string{"api"},
+		Modules:                []string{"api"},
+		PreferAppengineTesting: true,
 	})
 
 	// Wait for task to run
