@@ -13,7 +13,6 @@ import (
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/models2/organization"
 	"crowdstart.io/util/json"
-	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
 )
 
@@ -38,7 +37,6 @@ func newModel(db *datastore.Datastore, entity mixin.Entity) *model {
 func (m *model) DisplayId() string {
 	if m.id == "" {
 		if ok, _ := m.Model.Query().First(); ok {
-			log.Debug("%#v", m.Model.Entity)
 			m.id = m.Model.Id()
 		} else {
 			m.id = "<id>"
