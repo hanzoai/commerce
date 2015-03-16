@@ -40,6 +40,9 @@ type Config struct {
 	SiteTitle         string
 	StaticUrl         string
 
+	Secret      string
+	SessionName string
+
 	Prefixes map[string]string
 	Hosts    map[string]string
 
@@ -173,7 +176,9 @@ var Mandrill = config.Mandrill
 var Prefixes = config.Prefixes
 var RootDir = config.RootDir
 var Salesforce = config.Salesforce
+var Secret = config.Secret
 var SentryDSN = config.SentryDSN
+var SessionName = config.SessionName
 var SiteTitle = config.SiteTitle
 var StaticUrl = config.StaticUrl
 var Stripe = config.Stripe
