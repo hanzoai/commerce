@@ -48,7 +48,7 @@ button::-moz-focus-inner {
     <li>GET <a href="/api/{{ model.Kind() }}/?token={{ token }}">/api/{{ model.Kind() }}</a></li>
     <li>GET <a href="/api/{{ model.Kind() }}/{{ model.DisplayId() }}?token={{ token }}">/api/{{ model.Kind() }}/{{ model.DisplayId() }}</a></li>
     <li>POST <a href="/api/{{ model.Kind() }}?token={{ token }}">/api/{{ model.Kind() }}</a></li>
-    <li>PATCH <a href="/api/{{ model.Kind() }}?token={{ token }}">/api/{{ model.Kind() }}/{{ model.DisplayId() }}</a></li>
+    <li>PUT <a href="/api/{{ model.Kind() }}?token={{ token }}">/api/{{ model.Kind() }}/{{ model.DisplayId() }}</a></li>
     <li>
         <form method="POST" action="/api/{{ model.Kind() }}/{{ model.DisplayId() }}?token={{ token }}&_method=DELETE">
          DELETE <button type="submit">/api/{{ model.Kind() }}/{{ model.DisplayId() }}</button>
