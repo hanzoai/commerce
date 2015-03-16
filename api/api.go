@@ -3,6 +3,7 @@ package api
 import (
 	"github.com/gin-gonic/gin"
 
+	"crowdstart.io/middleware"
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/models2/campaign"
 	"crowdstart.io/models2/collection"
@@ -54,6 +55,10 @@ func init() {
 		password := c.Request.Form.Get("password")
 
 		getAccessToken(c, id, email, password)
+	})
+
+	router.DELETE("/access-token", middleware.TokenRequired(), func(c *gin.Context) {
+		deleteAccessToken(c)
 	})
 
 	// Authorization routes
