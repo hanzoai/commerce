@@ -42,11 +42,12 @@ func init() {
 		authorize(c, id, email, password)
 	})
 
+	// Namespaced by default
 	rest.New(campaign.Campaign{}).Route(router)
 	rest.New(coupon.Coupon{}).Route(router)
-	rest.New(organization.Organization{}).Route(router)
-	rest.New(product.Product{}).Route(router)
 	rest.New(token.Token{}).Route(router)
 	rest.New(user.User{}).Route(router)
+	rest.New(organization.Organization{}).Route(router)
+	rest.New(product.Product{}).Route(router)
 	rest.New(variant.Variant{}).Route(router)
 }
