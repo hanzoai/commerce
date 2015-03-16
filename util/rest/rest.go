@@ -5,137 +5,138 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 )
 
-var routes = make(map[string][]string)
-
-// Helper that sets up all normal routes
-func Restify(router *gin.RouterGroup, entity mixin.Entity) {
-	model := new(mixin.Model)
-	model.Entity = entity
-	kind := model.Kind()
-
-	log.Debug("Generating routes for " + kind)
-
-	Get(router, model)
-	List(router, model)
-	Add(router, model)
-	Update(router, model)
-	Delete(router, model)
+type Rest struct {
+	Kind       string
+	Get        gin.HandlerFunc
+	List       gin.HandlerFunc
+	Add        gin.HandlerFunc
+	Update     gin.HandlerFunc
+	Delete     gin.HandlerFunc
+	entityType reflect.Type
 }
 
-func Get(router *gin.RouterGroup, model *mixin.Model) {
-	entityType := reflect.Indirect(reflect.ValueOf(model.Entity)).Type()
-	kind := model.Kind()
+func (r *Rest) Init(entity mixin.Entity) {
+	r.Kind = entity.Kind()
+	r.entityType = reflect.ValueOf(entity).Type()
 
-	handler := func(c *gin.Context) {
-		id := c.Params.ByName("id")
-		model.SetContext(c)
-		model.SetKey(id)
-
-		entity := reflect.New(entityType).Interface()
-
-		if err := model.GetEntity(entity); err != nil {
-			message := "Failed to retrieve " + kind
-			log.Debug(message+": %v", err, c)
-			c.JSON(500, gin.H{"status": message})
-		} else {
-			c.JSON(200, entity)
-		}
-	}
-
-	router.GET("/"+kind+"/:id", handler)
+	// Setup default handlers
+	r.Get = r.get
+	r.List = r.list
+	r.Add = r.add
+	r.Update = r.update
+	r.Delete = r.delete
 }
 
-func List(router *gin.RouterGroup, model *mixin.Model) {
-	entityType := reflect.Indirect(reflect.ValueOf(model.Entity)).Type()
-	kind := model.Kind()
-
-	handler := func(c *gin.Context) {
-		model.SetContext(c)
-
-		// Create a slice
-		slice := reflect.MakeSlice(reflect.SliceOf(entityType), 0, 0)
-
-		// Create pointer to a slice value and set it to the slice
-		ptr := reflect.New(slice.Type())
-		ptr.Elem().Set(slice)
-
-		models := ptr.Interface()
-
-		if _, err := model.Query().GetAll(models); err != nil {
-			message := "Failed to list " + kind
-			log.Debug(message+": %v", err, c)
-			c.JSON(500, gin.H{"status": message})
-		} else {
-			c.JSON(200, models)
-		}
-	}
-
-	router.GET("/"+kind, handler)
-	router.GET("/"+kind+"/", handler)
+func New(entity mixin.Entity) *Rest {
+	r := new(Rest)
+	r.Init(entity)
+	return r
 }
 
-func Add(router *gin.RouterGroup, model *mixin.Model) {
-	entityType := reflect.Indirect(reflect.ValueOf(model.Entity)).Type()
-	kind := model.Kind()
+func (r Rest) Route(router *gin.RouterGroup) {
+	log.Debug("Registering routes for " + r.Kind)
 
-	handler := func(c *gin.Context) {
-		model.SetContext(c)
-		model.SetKey(nil)
+	prefix := "/" + r.Kind
 
-		entity := reflect.New(entityType).Interface()
-
-		if err := model.PutEntity(entity); err != nil {
-			message := "Failed to add " + kind
-			log.Debug(message, err, c)
-			c.JSON(500, gin.H{"status": message})
-		} else {
-			c.JSON(200, entity)
-		}
-
-	}
-	router.POST("/"+kind, handler)
+	// Add routes for defined handlers
+	router.GET(prefix, r.List)
+	router.GET(prefix+"/", r.List)
+	router.GET(prefix+"/:id", r.Get)
+	router.POST(prefix, r.Add)
+	router.PUT(prefix+"/:id", r.Update)
+	router.DELETE(prefix+"/:id", r.Delete)
 }
 
-func Update(router *gin.RouterGroup, model *mixin.Model) {
-	entityType := reflect.Indirect(reflect.ValueOf(model.Entity)).Type()
-	kind := model.Kind()
-
-	handler := func(c *gin.Context) {
-		model.SetContext(c)
-		id := c.Params.ByName("id")
-		model.SetKey(id)
-
-		entity := reflect.New(entityType).Interface()
-
-		model.GetEntity(entity)
-		json.Decode(c.Request.Body, entity)
-
-		if err := model.PutEntity(entity); err != nil {
-			message := "Failed to update " + kind
-			log.Debug(message, err, c)
-			c.JSON(500, gin.H{"status": message})
-		} else {
-			c.JSON(200, entity)
-		}
-	}
-
-	router.PUT("/"+kind+"/:id", handler)
+// retuns a new interface of this entity type
+func (r Rest) newEntity() interface{} {
+	return reflect.New(r.entityType).Interface()
 }
 
-func Delete(router *gin.RouterGroup, model *mixin.Model) {
-	kind := model.Kind()
+// helper which returns a slice which is compatible with this entity
+func (r Rest) newEntitySlice() interface{} {
+	// Create a slice
+	slice := reflect.MakeSlice(reflect.SliceOf(r.entityType), 0, 0)
 
-	handler := func(c *gin.Context) {
-		model.SetContext(c)
-		id := c.Params.ByName("id")
-		model.SetKey(id)
-		model.Delete()
+	// Create pointer to a slice value and set it to the slice
+	ptr := reflect.New(slice.Type())
+	ptr.Elem().Set(slice)
+
+	return ptr.Interface()
+}
+
+func (r Rest) newModel(c *gin.Context) mixin.Model {
+	db := datastore.New(c)
+	entity := r.newEntity().(mixin.Entity)
+	model := mixin.Model{Db: db, Entity: entity}
+	return model
+}
+
+func (r Rest) get(c *gin.Context) {
+	id := c.Params.ByName("id")
+
+	model := r.newModel(c)
+
+	if err := model.Get(id); err != nil {
+		message := "Failed to retrieve " + r.Kind
+		log.Debug(message+": %v", err, c)
+		c.JSON(500, gin.H{"status": message})
+	} else {
+		c.JSON(200, model.Entity)
 	}
+}
 
-	router.DELETE("/"+kind+"/:id", handler)
+func (r Rest) list(c *gin.Context) {
+	model := r.newModel(c)
+
+	models := r.newEntitySlice()
+
+	if _, err := model.Query().GetAll(models); err != nil {
+		message := "Failed to list " + r.Kind
+		log.Debug(message+": %v", err, c)
+		c.JSON(500, gin.H{"status": message})
+	} else {
+		c.JSON(200, models)
+	}
+}
+
+func (r Rest) add(c *gin.Context) {
+	model := r.newModel(c)
+
+	json.Decode(c.Request.Body, model.Entity)
+
+	if err := model.Put(); err != nil {
+		message := "Failed to add " + r.Kind
+		log.Debug(message, err, c)
+		c.JSON(500, gin.H{"status": message})
+	} else {
+		c.JSON(200, model.Entity)
+	}
+}
+
+func (r Rest) update(c *gin.Context) {
+	id := c.Params.ByName("id")
+
+	model := r.newModel(c)
+	model.Get(id)
+	json.Decode(c.Request.Body, model.Entity)
+
+	if err := model.Put(); err != nil {
+		message := "Failed to update " + r.Kind
+		log.Debug(message, err, c)
+		c.JSON(500, gin.H{"status": message})
+	} else {
+		c.JSON(200, model.Entity)
+	}
+}
+
+func (r Rest) delete(c *gin.Context) {
+	id := c.Params.ByName("id")
+	model := r.newModel(c)
+	model.Delete(id)
 }
