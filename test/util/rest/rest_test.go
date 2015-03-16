@@ -1,11 +1,14 @@
 package test
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"testing"
-	"time"
 
+	"github.com/gin-gonic/gin"
+
+	"crowdstart.io/util/rest"
 	"crowdstart.io/util/test/ae"
-	"crowdstart.io/util/test/httpclient"
 
 	. "crowdstart.io/util/test/ginkgo"
 )
@@ -18,13 +21,7 @@ var ctx ae.Context
 
 // Setup appengine context
 var _ = BeforeSuite(func() {
-	ctx = ae.NewContext(ae.Options{
-		Modules:                []string{"default"},
-		PreferAppengineTesting: true,
-	})
-
-	// Wait for task to run
-	time.Sleep(3 * time.Second)
+	ctx = ae.NewContext()
 })
 
 // Tear-down appengine context
@@ -32,12 +29,38 @@ var _ = AfterSuite(func() {
 	ctx.Close()
 })
 
-var _ = Describe("Restify", func() {
-	It("Should add add RESTful routes for given model", func() {
-		client := httpclient.New(ctx, "default")
+type Model struct {
+	Name string
+}
 
-		res, err := client.Get("/api/test-model")
-		Expect(err).NotTo(HaveOccurred())
-		Expect(res.StatusCode).To(Equal(200))
+func (m Model) Kind() string {
+	return "test-model"
+}
+
+func newRouter() *gin.Engine {
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("appengine", ctx)
+	})
+	return router
+}
+
+func request(router *gin.Engine, method, url string) *httptest.ResponseRecorder {
+	req, _ := http.NewRequest(method, url, nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	return w
+}
+
+var _ = Describe("New", func() {
+	It("Should create a new Rest object with CRUD routes", func() {
+		router := newRouter()
+
+		// Create routes for Model
+		rest := rest.New(Model{})
+		rest.Route(router)
+
+		w := request(router, "GET", "/test-model")
+		Expect(w.Code).To(Equal(200))
 	})
 })
