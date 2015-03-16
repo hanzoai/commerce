@@ -63,6 +63,18 @@ type Product struct {
 	Options_ []byte   `json:"-"`
 }
 
+func New(db *datastore.Datastore) *Product {
+	p := new(Product)
+	p.Variants = make([]variant.Variant, 0)
+	p.Options = make([]Option, 0)
+	p.Model = mixin.Model{Db: db, Entity: p}
+	return p
+}
+
+func (p Product) Kind() string {
+	return "product2"
+}
+
 func (p *Product) Load(c <-chan aeds.Property) (err error) {
 	// Load properties
 	if err = aeds.LoadStruct(p, c); err != nil {
@@ -95,18 +107,6 @@ func (p *Product) Save(c chan<- aeds.Property) (err error) {
 
 	// Save properties
 	return aeds.SaveStruct(p, c)
-}
-
-func New(db *datastore.Datastore) *Product {
-	p := new(Product)
-	p.Variants = make([]variant.Variant, 0)
-	p.Options = make([]Option, 0)
-	p.Model = mixin.Model{Db: db, Entity: p}
-	return p
-}
-
-func (p Product) Kind() string {
-	return "product2"
 }
 
 func (p Product) DisplayName() string {
