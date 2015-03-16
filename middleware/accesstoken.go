@@ -29,8 +29,14 @@ func RequiresOrgToken() gin.HandlerFunc {
 			c.Writer.Header().Set("Content-Type", "text/html; charset=utf-8")
 			c.Abort(500)
 		} else {
+			// set crowdstart org on gin Context
+			c.Set("crowdstart-org", o)
 			// Overwrite hte old appengine Context on gin Context
 			c.Set("appengine", c2)
 		}
 	}
+}
+
+func GetOrg(c *gin.Context) *organization.Organization {
+	return c.MustGet("crowdstart-org").(*organization.Organization)
 }
