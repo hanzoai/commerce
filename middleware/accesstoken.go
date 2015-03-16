@@ -8,6 +8,7 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models2/organization"
 	"crowdstart.io/util/json"
+	"crowdstart.io/util/session"
 )
 
 // Require login to view route
@@ -20,6 +21,11 @@ func TokenRequired() gin.HandlerFunc {
 		if accessToken == "" {
 			query := c.Request.URL.Query()
 			accessToken = query.Get("token")
+		}
+
+		// During development cookie may be set from development pages.
+		if appengine.IsDevAppServer() && accessToken == "" {
+			accessToken, _ = session.Get(c, "access-token")
 		}
 
 		// Bail if we still don't have an access token
