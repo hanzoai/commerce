@@ -84,8 +84,9 @@ var _ = Describe("middleware/accesstoken", func() {
 
 			// middleware generates namespaced appengine context
 			gFunc(c)
-			ctx2 := middleware.GetAppEngine(c)
 			org := middleware.GetOrg(c)
+			ctx2, err := org.Namespace(ctx)
+			Expect(err).NotTo(HaveOccurred())
 			Expect(ctx2).ToNot(Equal(ctx))
 			Expect(org).ToNot(Equal(nil))
 
