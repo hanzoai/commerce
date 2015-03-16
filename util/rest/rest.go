@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/datastore"
+	"crowdstart.io/middleware"
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
@@ -42,15 +43,16 @@ func New(entity mixin.Entity) *Rest {
 func (r Rest) Route(router Router) {
 	log.Debug("Registering routes for " + r.Kind)
 
-	prefix := "/" + r.Kind
+	// Create group for our API routes and require Access token
+	group := router.Group("/"+r.Kind, middleware.TokenRequired())
 
 	// Add routes for defined handlers
-	router.GET(prefix, r.List)
-	router.GET(prefix+"/", r.List)
-	router.GET(prefix+"/:id", r.Get)
-	router.POST(prefix, r.Add)
-	router.PUT(prefix+"/:id", r.Update)
-	router.DELETE(prefix+"/:id", r.Delete)
+	group.GET("", r.List)
+	group.GET("/", r.List)
+	group.GET("/:id", r.Get)
+	group.POST("", r.Add)
+	group.PUT("/:id", r.Update)
+	group.DELETE("/:id", r.Delete)
 }
 
 // retuns a new interface of this entity type
