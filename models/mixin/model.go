@@ -21,7 +21,7 @@ type model interface {
 	Put() error
 	Get(args ...interface{}) error
 	Delete(args ...interface{}) error
-	Query() datastore.Query
+	Query() *Query
 	JSON() string
 }
 
@@ -177,17 +177,14 @@ func (m *Model) Get(args ...interface{}) error {
 
 // Get entity from datastore or create new one
 func (m *Model) GetOrCreate(filterStr string, value interface{}) error {
-	key, ok, err := m.Query().Filter(filterStr, value).First(m.Entity)
+	ok, err := m.Query().Filter(filterStr, value).First()
 
 	// Something bad happened
 	if err != nil {
 		return err
 	}
 
-	if ok {
-		// Found, save key
-		m.key = key
-	} else {
+	if !ok {
 		// Not found, save entity
 		m.Put()
 	}
@@ -211,11 +208,31 @@ func (m *Model) Delete(args ...interface{}) error {
 }
 
 // Return a query for this entity kind
-func (m *Model) Query() datastore.Query {
-	return m.Db.Query2(m.Entity.Kind())
+func (m *Model) Query() *Query {
+	return &Query{m.Db.Query2(m.Entity.Kind()), m}
 }
 
 // Serialize entity to JSON string
 func (m *Model) JSON() string {
 	return json.Encode(m.Entity)
+}
+
+// Wrap Query so we don't need to pass in entity to First() and key is updated
+// properly.
+type Query struct {
+	datastore.Query
+	model *Model
+}
+
+func (q *Query) Filter(filterStr string, value interface{}) *Query {
+	q.Query = q.Query.Filter(filterStr, value)
+	return q
+}
+
+func (q *Query) First() (bool, error) {
+	key, ok, err := q.Query.First(q.model.Entity)
+	if ok {
+		q.model.setKey(key)
+	}
+	return ok, err
 }
