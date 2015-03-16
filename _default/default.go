@@ -19,6 +19,7 @@ import (
 	_ "crowdstart.io/models2/fixtures"
 	_ "crowdstart.io/thirdparty/mandrill/tasks"
 	_ "crowdstart.io/thirdparty/salesforce/tasks"
+	_ "crowdstart.io/thirdparty/stripe/tasks"
 )
 
 func Init() {
