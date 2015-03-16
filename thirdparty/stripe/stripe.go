@@ -9,11 +9,14 @@ import (
 	stripe "github.com/stripe/stripe-go"
 	sClient "github.com/stripe/stripe-go/client"
 	"github.com/stripe/stripe-go/currency"
+	stripeToken "github.com/stripe/stripe-go/token"
 
 	"crowdstart.io/models"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 )
+
+type Card stripe.CardParams
 
 func NewApiClient(ctx appengine.Context, accessToken string) *sClient.API {
 	c := urlfetch.Client(ctx)
@@ -49,6 +52,13 @@ func updateStripeCustomer(ctx appengine.Context, sc *sClient.API, user *models.U
 		return createStripeCustomer(ctx, sc, user, params)
 	}
 	return nil
+}
+
+func NewToken(card *Card, pubKey string) (*stripe.Token, error) {
+	stripe.Key = pubKey
+	return stripeToken.New(&stripe.TokenParams{
+		Card: (*stripe.CardParams)(card),
+	})
 }
 
 func Charge(ctx appengine.Context, accessToken string, authorizationToken string, order *models.Order, user *models.User) (*models.Charge, error) {

@@ -46,7 +46,7 @@ type Stub struct {
 }
 
 var _ = Describe("middleware/accesstoken", func() {
-	Context("accessToken.RequresOrgToken", func() {
+	Context("accessToken.RequiresOrgToken", func() {
 		It("should namespace based on org id", func() {
 			// add a dummy request
 			req, err := http.NewRequest("GET", "", nil)
@@ -80,7 +80,9 @@ var _ = Describe("middleware/accesstoken", func() {
 			// middleware generates namespaced appengine context
 			gFunc(c)
 			ctx2 := middleware.GetAppEngine(c)
+			org := middleware.GetOrg(c)
 			Expect(ctx2).ToNot(Equal(ctx))
+			Expect(org).ToNot(Equal(nil))
 
 			// make db from namespaced context
 			db2 := datastore.New(ctx2)
