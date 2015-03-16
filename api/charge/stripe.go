@@ -6,9 +6,7 @@ import (
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
-	"crowdstart.io/models2/campaign"
 	"crowdstart.io/models2/order"
-	"crowdstart.io/models2/organization"
 	"crowdstart.io/models2/user"
 	"crowdstart.io/thirdparty/stripe"
 	"crowdstart.io/util/json"
@@ -37,6 +35,8 @@ type CardUser struct {
 }
 
 func ChargeStripe(c *gin.Context) {
+	ctx := middleware.GetAppEngine(c)
+
 	d := datastore.New(c)
 
 	var cu CardUser
@@ -48,35 +48,25 @@ func ChargeStripe(c *gin.Context) {
 	var o order.Order
 
 	if err := d.Get(id, &o); err != nil {
-		ctx := middleware.GetAppEngine(c)
 		ctx.Errorf("[Api.Charge.Stripe] %v", err)
 		c.JSON(500, gin.H{"status": "unable to find order"})
 		return
 	}
 
-	var ca campaign.Campaign
-	if err := d.Get(o.CampaignId, &ca); err != nil {
-		ctx := middleware.GetAppEngine(c)
-		ctx.Errorf("[Api.Charge.Stripe] %v", err)
-		c.JSON(500, gin.H{"status": "unable to find order's campaign"})
-		return
-	}
-
-	var org organization.Organization
-	if err := d.Get(ca.OrganizationId, &org); err != nil {
-		ctx := middleware.GetAppEngine(c)
-		ctx.Errorf("[Api.Charge.Stripe] %v", err)
-		c.JSON(500, gin.H{"status": "unable to find order's organization"})
-		return
-	}
+	org := middleware.GetOrg(c)
 
 	var u user.User
 	if err := d.Get(o.UserId, &u); err != nil {
-		ctx := middleware.GetAppEngine(c)
 		ctx.Errorf("[Api.Charge.Stripe] %v", err)
 		c.JSON(500, gin.H{"status": "unable to find order's user"})
 		return
 	}
 
-	stripe.NewToken(&card, config.Stripe.APIKey)
+	if token, err := stripe.NewToken(&card, config.Stripe.APIKey); err != nil {
+		ctx.Errorf("[Api.Charge.Stripe] %v", err)
+		c.JSON(500, gin.H{"status": "unable to find order's user"})
+		return
+	} else {
+		stripe.Charge2(ctx, org.Stripe.AccessToken, token, &o, &u)
+	}
 }
