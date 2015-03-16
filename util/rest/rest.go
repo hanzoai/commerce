@@ -39,7 +39,7 @@ func New(entity mixin.Entity) *Rest {
 	return r
 }
 
-func (r Rest) Route(router *gin.RouterGroup) {
+func (r Rest) Route(router Router) {
 	log.Debug("Registering routes for " + r.Kind)
 
 	prefix := "/" + r.Kind
