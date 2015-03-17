@@ -11,7 +11,6 @@ import (
 	"crowdstart.io/middleware"
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/util/json"
-	"crowdstart.io/util/log"
 )
 
 type route struct {
@@ -171,9 +170,7 @@ func (r Rest) get(c *gin.Context) {
 	model := r.newModel(c)
 
 	if err := model.Get(id); err != nil {
-		message := "Failed to retrieve " + r.Kind
-		log.Error(message+": %v", err, c)
-		r.JSON(c, 500, gin.H{"status": message})
+		json.Fail(c, 500, "Failed to retrieve "+r.Kind, err)
 	} else {
 		r.JSON(c, 200, model.Entity)
 	}
@@ -185,9 +182,7 @@ func (r Rest) list(c *gin.Context) {
 	models := r.newEntitySlice()
 
 	if _, err := model.Query().GetAll(models); err != nil {
-		message := "Failed to list " + r.Kind
-		log.Error(message+": %v", err, c)
-		r.JSON(c, 500, gin.H{"status": message})
+		json.Fail(c, 500, "Failed to list "+r.Kind, err)
 	} else {
 		r.JSON(c, 200, models)
 	}
@@ -199,9 +194,7 @@ func (r Rest) add(c *gin.Context) {
 	json.Decode(c.Request.Body, model.Entity)
 
 	if err := model.Put(); err != nil {
-		message := "Failed to add " + r.Kind
-		log.Error(message+": %v", err, c)
-		r.JSON(c, 500, gin.H{"status": message})
+		json.Fail(c, 500, "Failed to add "+r.Kind, err)
 	} else {
 		r.JSON(c, 201, model.Entity)
 	}
@@ -215,9 +208,7 @@ func (r Rest) update(c *gin.Context) {
 	json.Decode(c.Request.Body, model.Entity)
 
 	if err := model.Put(); err != nil {
-		message := "Failed to update " + r.Kind
-		log.Error(message+": %v", err, c)
-		r.JSON(c, 500, gin.H{"status": message})
+		json.Fail(c, 500, "Failed to update "+r.Kind, err)
 	} else {
 		r.JSON(c, 201, model.Entity)
 	}
@@ -229,9 +220,7 @@ func (r Rest) delete(c *gin.Context) {
 	model.Delete(id)
 
 	if err := model.Delete(); err != nil {
-		message := "Failed to delete " + r.Kind
-		log.Error(message+": %v", err, c)
-		r.JSON(c, 500, gin.H{"status": message})
+		json.Fail(c, 500, "Failed to delete "+r.Kind, err)
 	} else {
 		r.JSON(c, 201, gin.H{"status": "ok"})
 	}
