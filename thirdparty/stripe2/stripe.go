@@ -88,10 +88,10 @@ func (c Client) NewCustomer(token string, buyer models.Buyer) (*Customer, error)
 }
 
 // Create new charge
-func (c Client) NewCharge(customerOrToken interface{}, amount models.Cents, currency models.CurrencyType) (*Charge, error) {
+func (c Client) NewCharge(customerOrToken interface{}, payment models.Payment) (*Charge, error) {
 	chargeParams := &stripe.ChargeParams{
-		Amount:    uint64(amount),
-		Currency:  stripe.Currency(currency),
+		Amount:    uint64(payment.Amount),
+		Currency:  stripe.Currency(payment.Currency),
 		Desc:      "Charge for test@example.com",
 		NoCapture: true,
 	}
