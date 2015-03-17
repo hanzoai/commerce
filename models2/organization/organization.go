@@ -19,50 +19,51 @@ type Organization struct {
 	mixin.Model
 	mixin.AccessToken
 
-	Name       string
-	FullName   string
-	Owners     []string
-	Admins     []string
-	Moderators []string
-	Enabled    bool
+	Name       string   `json:"name"`
+	FullName   string   `json:"fullName"`
+	Owners     []string `json:"owners"`
+	Admins     []string `json:"admins"`
+	Moderators []string `json:"moderators"`
+	Enabled    bool     `json:"enabled"`
 
-	BillingEmail string
-	Phone        string
-	Address      Address
-	Website      string
+	BillingEmail string  `json:"billingEmail"`
+	Phone        string  `json:"phone"`
+	Address      Address `json:"address"`
+	Website      string  `json:"website"`
 
-	Timezone string
+	Timezone string `json:"timezone"`
 
-	Country string
-	TaxId   string
+	Country string `json:"country"`
+	TaxId   string `json:"taxId"`
 
 	Plan struct {
-		PlanId    string
-		StartDate time.Time
+		PlanId    string    `json:"planId"`
+		StartDate time.Time `json:"startDate"`
 	}
 
 	Salesforce struct {
-		AccessToken        string
-		DefaultPriceBookId string
-		Id                 string // personalized login url
-		InstanceUrl        string
-		IssuedAt           string
-		RefreshToken       string
-		Signature          string
+		AccessToken        string `json:"accessToken"`
+		DefaultPriceBookId string `json:"defaultPriceBookId"`
+		// personalized login url
+		Id           string `json:"id"`
+		InstanceUrl  string `json:"instanceUrl"`
+		IssuedAt     string `json:"issuedAt"`
+		RefreshToken string `json:"refreshToken"`
+		Signature    string `json:"signature"`
 	}
 
 	Stripe struct {
-		AccessToken    string
-		Livemode       bool
-		PublishableKey string
-		RefreshToken   string
-		Scope          string
-		TokenType      string
-		UserId         string
+		AccessToken    string `json:"accessToken"`
+		Livemode       bool   `json:"livemode"`
+		PublishableKey string `json:"publishableKey"`
+		RefreshToken   string `json:"refreshToken"`
+		Scope          string `json:"scope"`
+		TokenType      string `json:"tokenType"`
+		UserId         string `json:"userId"`
 	}
 
-	GoogleAnalytics string
-	FacebookTag     string
+	GoogleAnalytics string `json:"googleAnalytics"`
+	FacebookTag     string `json:"facebookTag"`
 }
 
 func New(db *datastore.Datastore) *Organization {
