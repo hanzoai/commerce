@@ -13,12 +13,12 @@ const (
 	PaymentUnpaid                   = "unpaid"
 )
 
-type PaymentGateway string
+type PaymentType string
 
 const (
-	Stripe PaymentGateway = "stripe"
-	Affirm                = "affirm"
-	PayPal                = "paypal"
+	Stripe PaymentType = "stripe"
+	Affirm             = "affirm"
+	PayPal             = "paypal"
 )
 
 type Client struct {
@@ -31,7 +31,7 @@ type Client struct {
 type PaymentAccount struct {
 	Name string
 
-	Type PaymentGateway
+	Type PaymentType
 
 	Buyer Buyer
 
@@ -70,7 +70,9 @@ type PaymentAccount struct {
 
 type Payment struct {
 	// Payment source information
-	Source PaymentAccount
+	Account PaymentAccount
+
+	Currency CurrencyType
 
 	CampaignId string
 
@@ -87,8 +89,6 @@ type Payment struct {
 	// Affirm only.
 	CaptureId     string
 	TransactionId string
-
-	Gateway PaymentGateway
 
 	Amount         Cents
 	AmountRefunded Cents
