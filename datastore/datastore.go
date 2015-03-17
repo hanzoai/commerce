@@ -74,7 +74,7 @@ func (d *Datastore) SkipFieldMismatch(err error) error {
 
 	if _, ok := err.(*aeds.ErrFieldMismatch); ok {
 		// Ignore any field mismatch errors.
-		d.warn("Field mismatch: %v", err, d.Context)
+		d.warn("Ignoring field mismatch: %v", err, d.Context)
 		return nil
 	}
 
@@ -433,4 +433,22 @@ func (d *Datastore) Query2(kind string) Query {
 
 func (d *Datastore) RunInTransaction(f func(tc appengine.Context) error, opts *aeds.TransactionOptions) error {
 	return nds.RunInTransaction(d.Context, f, opts)
+}
+
+// Helper to ignore tedious field mismatch errors (but warn appropriately
+// during development)
+func IgnoreFieldMismatch(err error) error {
+	if err == nil {
+		// Ignore nil error
+		return nil
+	}
+
+	if _, ok := err.(*aeds.ErrFieldMismatch); ok {
+		// Ignore any field mismatch errors, but warn user (at least during development)
+		log.Warn("Ignoring field mismatch: %v", err)
+		return nil
+	}
+
+	// Any other errors we damn well need to know about!
+	return err
 }
