@@ -5,10 +5,13 @@ import (
 	"strconv"
 	"time"
 
+	aeds "appengine/datastore"
+
 	"github.com/dustin/go-humanize"
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
+	"crowdstart.io/util/gob"
 
 	. "crowdstart.io/models2"
 )
@@ -100,7 +103,8 @@ type Order struct {
 
 	Adjustments []Adjustment `json:"adjustments"`
 
-	Discounts []Discount `json:"discounts"`
+	Discounts  []Discount `json:"discounts" datastore:"-"`
+	Discounts_ []byte     `json:"-"`
 
 	Payments []Payment `json:"payments"`
 
@@ -122,6 +126,34 @@ func New(db *datastore.Datastore) *Order {
 
 func (o Order) Kind() string {
 	return "order2"
+}
+
+func (o *Order) Load(c <-chan aeds.Property) (err error) {
+	// Load properties
+	if err = aeds.LoadStruct(o, c); err != nil {
+		return err
+	}
+
+	// Deserialize gob encoded properties
+	o.Discounts = make([]Discount, 0)
+
+	if len(o.Discounts_) > 0 {
+		err = gob.Decode(o.Discounts_, &o.Discounts)
+	}
+
+	return err
+}
+
+func (o *Order) Save(c chan<- aeds.Property) (err error) {
+	// Gob encode problematic properties
+	o.Discounts_, err = gob.Encode(o.Discounts)
+
+	if err != nil {
+		return err
+	}
+
+	// Save properties
+	return aeds.SaveStruct(o, c)
 }
 
 func (o *Order) Tally() {
