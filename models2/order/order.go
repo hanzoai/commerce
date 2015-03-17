@@ -124,6 +124,22 @@ func (o Order) Kind() string {
 	return "order2"
 }
 
+func (o Order) Tally() {
+	subtotal := 0
+	for _, item := range o.Items {
+		subtotal += item.Quantity * int(item.Price)
+	}
+
+	shipping := 0
+	tax := 0
+	total := tax + shipping + subtotal
+
+	o.Shipping = Cents(shipping)
+	o.Tax = Cents(tax)
+	o.Subtotal = Cents(subtotal)
+	o.Total = Cents(total)
+}
+
 // var variantsMap map[string]Variant
 // var salesforceVariantsMap map[string]Variant
 // var productsMap map[string]Product
