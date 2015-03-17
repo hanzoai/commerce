@@ -126,7 +126,7 @@ func authorize(c *gin.Context) (*order.Order, error) {
 	// payment.Client =
 
 	// Create charge and associate with payment.
-	charge, err := client.NewCharge(customer, ar.Order.Total, ar.Order.Currency)
+	charge, err := client.NewCharge(customer, payment)
 	if err != nil {
 		return nil, err
 	}
