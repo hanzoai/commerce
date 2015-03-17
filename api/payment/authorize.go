@@ -57,6 +57,18 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	}
 	account.Stripe.CustomerId = customer.ID
 
+	// Get default source
+	card := customer.DefaultSource.Card
+	account.Stripe.CardId = card.ID
+	account.Stripe.Brand = string(card.Brand)
+	account.Stripe.LastFour = card.LastFour
+	account.Stripe.Expiration.Month = int(card.Month)
+	account.Stripe.Expiration.Year = int(card.Year)
+	account.Stripe.Country = card.Country
+	account.Stripe.Fingerprint = card.Fingerprint
+	account.Stripe.Type = string(card.Funding)
+	account.Stripe.CVCCheck = string(card.CVCCheck)
+
 	payment := models.Payment{}
 	payment.Status = "unpaid"
 	payment.Account = account
