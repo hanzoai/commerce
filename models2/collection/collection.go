@@ -20,7 +20,7 @@ type Collection struct {
 	Name string `json:"name"`
 
 	// Description of collection
-	Description string `datastore:",noindex"` `json:"description"`
+	Description string `datastore:",noindex" json:"description"`
 
 	// Image/Video/Other Media to show in a gallery
 	Media []Media `json:"media"`
