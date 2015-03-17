@@ -7,11 +7,10 @@ import (
 	"appengine/urlfetch"
 
 	"github.com/stripe/stripe-go"
-	"github.com/stripe/stripe-go/charge"
 	"github.com/stripe/stripe-go/client"
-	"github.com/stripe/stripe-go/token"
 
 	"crowdstart.io/models2"
+	"crowdstart.io/util/log"
 )
 
 type CardParams stripe.CardParams
@@ -19,18 +18,14 @@ type Charge stripe.Charge
 type Customer stripe.Customer
 type Token stripe.Token
 
-type Error stripe.Error
-
-func (e Error) Error() string {
-	return e.Msg
-}
-
 type Client struct {
 	*client.API
 	ctx appengine.Context
 }
 
-func New(ctx appengine.Context, publishableKey string) *Client {
+func New(ctx appengine.Context, accessToken string) *Client {
+	log.Debug("Using access token: %v", accessToken)
+
 	// Set HTTP Client for App engine
 	httpClient := urlfetch.Client(ctx)
 	httpClient.Transport = &urlfetch.Transport{
@@ -40,16 +35,28 @@ func New(ctx appengine.Context, publishableKey string) *Client {
 	stripe.SetHTTPClient(httpClient)
 
 	sc := &client.API{}
-	sc.Init(publishableKey, nil)
+	sc.Init(accessToken, nil)
 	return &Client{sc, ctx}
 }
 
 // Do authorization, return token
 func (c Client) Authorize(card *CardParams) (*Token, error) {
-	// Create a new token
-	t, err := token.New(&stripe.TokenParams{
+	t, err := c.API.Tokens.New(&stripe.TokenParams{
 		Card: (*stripe.CardParams)(card),
 	})
+
+	if err != nil {
+		stripeErr, ok := err.(*stripe.Error)
+		log.Debug(stripeErr)
+		if ok {
+			return nil, &Error{
+				Code:    string(stripeErr.Code),
+				Message: stripeErr.Msg,
+				Type:    string(stripeErr.Type),
+			}
+		}
+		return nil, &Error{Type: "unknown", Message: "Stripe: authorization failed."}
+	}
 
 	// Cast back to our token
 	return (*Token)(t), err
@@ -64,6 +71,18 @@ func (c Client) NewCustomer(token string, buyer models.Buyer) (*Customer, error)
 	params.SetSource(token)
 
 	customer, err := c.API.Customers.New(params)
+	if err != nil {
+		stripeErr, ok := err.(*stripe.Error)
+		log.Debug(stripeErr)
+		if ok {
+			return nil, &Error{
+				Code:    string(stripeErr.Code),
+				Message: stripeErr.Msg,
+				Type:    string(stripeErr.Type),
+			}
+		}
+		return nil, &Error{Type: "unknown", Message: "Stripe: failed to create customer"}
+	}
 
 	return (*Customer)(customer), err
 }
@@ -73,7 +92,8 @@ func (c Client) NewCharge(customerOrToken interface{}, amount models.Cents, curr
 	chargeParams := &stripe.ChargeParams{
 		Amount: uint64(amount),
 		// Currency: string(currency),
-		Desc: "Charge for test@example.com",
+		Desc:      "Charge for test@example.com",
+		NoCapture: true,
 	}
 
 	switch v := customerOrToken.(type) {
@@ -84,7 +104,19 @@ func (c Client) NewCharge(customerOrToken interface{}, amount models.Cents, curr
 	}
 
 	// Create charge
-	ch, err := charge.New(chargeParams)
+	ch, err := c.API.Charges.New(chargeParams)
+	if err != nil {
+		stripeErr, ok := err.(*stripe.Error)
+		log.Debug(stripeErr)
+		if ok {
+			return nil, &Error{
+				Code:    string(stripeErr.Code),
+				Message: stripeErr.Msg,
+				Type:    string(stripeErr.Type),
+			}
+		}
+		return nil, &Error{Type: "unknown", Message: "Stripe: charge failed"}
+	}
 
 	return (*Charge)(ch), err
 }

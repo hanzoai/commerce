@@ -5,10 +5,9 @@ import (
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
-	"crowdstart.io/thirdparty/stripe2"
-
 	"crowdstart.io/models2"
 	"crowdstart.io/models2/order"
+	"crowdstart.io/thirdparty/stripe2"
 	"crowdstart.io/util/json"
 )
 
@@ -97,20 +96,12 @@ func authorize(c *gin.Context) (*order.Order, error) {
 	}
 
 	// Get client we can use for API calls
-	client := stripe.New(ctx, org.Stripe.PublishableKey)
+	client := stripe.New(ctx, org.Stripe.AccessToken)
 
 	// Do authorization
 	token, err := client.Authorize(ar.Buyer.Card())
 	if err != nil {
-		stripeErr, ok := err.(*stripe.Error)
-		if ok {
-			return nil, AuthorizationFailed{
-				Code:    json.Encode(stripeErr.Code),
-				Message: stripeErr.Error(),
-				Type:    json.Encode(stripeErr.Type),
-			}
-		}
-		return nil, AuthorizationFailed{Type: "unknown", Message: "Unable to complete authorization."}
+		return nil, err
 	}
 
 	// Create account
@@ -121,7 +112,7 @@ func authorize(c *gin.Context) (*order.Order, error) {
 	// Create Stripe customer, which we will attach to our payment account.
 	customer, err := client.NewCustomer(token.ID, account.Buyer)
 	if err != nil {
-		return nil, FailedToCreateCustomer
+		return nil, err
 	}
 	account.Stripe.CustomerId = customer.ID
 
@@ -136,6 +127,9 @@ func authorize(c *gin.Context) (*order.Order, error) {
 
 	// Create charge and associate with payment.
 	charge, err := client.NewCharge(customer, ar.Order.Total, ar.Order.Currency)
+	if err != nil {
+		return nil, err
+	}
 	payment.ChargeId = charge.ID
 
 	// Create payment
