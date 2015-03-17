@@ -12,12 +12,44 @@ import (
 	"crowdstart.io/util/json"
 )
 
+type SourceType string
+
+const (
+	SourceCard   SourceType = "card"
+	SourcePayPal            = "paypal"
+	SourceAffirm            = "affirm"
+)
+
+type Source struct {
+	Type           SourceType `json:"type"`
+	Name           string     `json:"name"`
+	Number         string     `json:"number"`
+	Month          string     `json:"month"`
+	Year           string     `json:"year"`
+	CVC            string     `json:"cvc"`
+	models.Address `json:"address"`
+}
+
+func (s Source) Card() *stripe.CardParams {
+	card := stripe.CardParams{}
+	card.Name = s.Name
+	card.Number = s.Number
+	card.Month = s.Month
+	card.Year = s.Year
+	card.CVC = s.CVC
+	card.Address1 = s.Address.Line1
+	card.Address2 = s.Address.Line2
+	card.City = s.Address.City
+	card.State = s.Address.State
+	card.Zip = s.Address.PostalCode
+	card.Country = s.Address.Country
+	return &card
+}
+
 type AuthReq struct {
-	Card stripe.Card
-	// Paypal
-	// Affirm
-	Order *order.Order
-	Buyer models.Buyer
+	Source Source       `json:"source"`
+	Order  *order.Order `json:"order"`
+	Buyer  models.Buyer `json:"buyer"`
 }
 
 func authorize(c *gin.Context) (*order.Order, error) {
@@ -49,7 +81,7 @@ func authorize(c *gin.Context) (*order.Order, error) {
 	client := stripe.New(ctx, org.Stripe.PublishableKey)
 
 	// Do authorization
-	token, err := client.Authorize(&ar.Card)
+	token, err := client.Authorize(ar.Source.Card())
 	if err != nil {
 		return nil, AuthorizationFailed
 	}
