@@ -102,7 +102,15 @@ func authorize(c *gin.Context) (*order.Order, error) {
 	// Do authorization
 	token, err := client.Authorize(ar.Buyer.Card())
 	if err != nil {
-		return nil, AuthorizationFailed
+		stripeErr, ok := err.(*stripe.Error)
+		if ok {
+			return nil, AuthorizationFailed{
+				Code:    json.Encode(stripeErr.Code),
+				Message: stripeErr.Error(),
+				Type:    json.Encode(stripeErr.Type),
+			}
+		}
+		return nil, AuthorizationFailed{Type: "unknown", Message: "Unable to complete authorization."}
 	}
 
 	// Create account
