@@ -40,14 +40,14 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	log.Debug("Order: %#v", ar.Order)
 
 	// Do authorization
-	token, err := client.Authorize(ar.Buyer.Card())
+	token, err := client.Authorize(ar.Source.Card())
 	if err != nil {
 		return nil, err
 	}
 
 	// Create account
 	account := models.PaymentAccount{}
-	account.Buyer = ar.Buyer.Buyer()
+	account.Buyer = ar.Source.Buyer()
 	account.Type = "stripe"
 
 	// Create Stripe customer, which we will attach to our payment account.
