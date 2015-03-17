@@ -140,5 +140,8 @@ func authorize(c *gin.Context) (*order.Order, error) {
 	// Create payment
 	ar.Order.Payments = append(ar.Order.Payments, payment)
 
+	// Save order!
+	ar.Order.Put()
+
 	return ar.Order, nil
 }
