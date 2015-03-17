@@ -30,7 +30,12 @@ type Client struct {
 
 type PaymentAccount struct {
 	Name string
+
 	Type PaymentGateway
+
+	Buyer Buyer
+
+	UserId string // Optionally associated with a user
 
 	Country string
 
@@ -64,6 +69,9 @@ type PaymentAccount struct {
 }
 
 type Payment struct {
+	// Payment source information
+	Source PaymentAccount
+
 	CampaignId string
 
 	// Id for Stripe/Affirm
@@ -91,6 +99,9 @@ type Payment struct {
 
 	// Client's browser, associated info
 	Client Client
+
+	// Whether this payment has been captured or not
+	Captured bool
 
 	// Whether this was a transaction in production or a testing sandbox
 	Live bool
