@@ -1,7 +1,5 @@
 package models
 
-import "time"
-
 type PaymentStatus string
 
 const (
@@ -29,80 +27,79 @@ type Client struct {
 }
 
 type PaymentAccount struct {
-	Name string
+	Name string `json:"name"`
 
-	Type PaymentType
+	Type PaymentType `json:"type"`
 
-	Buyer Buyer
+	Buyer Buyer `json:"buyer"`
 
-	UserId string // Optionally associated with a user
+	// Optionally associated with a user
+	UserId string `json:"userId"`
 
-	Country string
+	Country string `json:"country"`
 
 	Affirm struct {
-		CheckoutToken string
+		CheckoutToken string `json:"checkoutToken"`
 	}
 
 	Stripe struct {
-		CustomerId string
-		ChargeId   string
-		CardType   string
-		Last4      string
+		CustomerId string `json:"customerId"`
+		ChargeId   string `json:"chargeId"`
+		CardType   string `json:"cardType"`
+		Last4      string `json:"last4"`
 		Expiration struct {
-			Month int
-			Year  int
+			Month int `json:"month"`
+			Year  int `json:"year"`
 		}
 	}
 
 	Paypal struct {
-		Email       string
-		SellerEmail string
-		RedirectUrl string
-		Ipn         string
+		Email       string `json:"email"`
+		SellerEmail string `json:"sellerEmail"`
+		RedirectUrl string `json:"redirectUrl"`
+		Ipn         string `json:"ipn"`
 
 		// Preapproval expiration date (Unix timestamp in milliseconds).
-		Ending int
+		Ending int `json:"ending"`
 
 		// Preapproval expiration date (ISO 8601 timestamp).
-		EndingDate string
+		EndingDate string `json:"endingDate"`
 	}
 }
 
 type Payment struct {
 	// Payment source information
-	Account PaymentAccount
+	Account PaymentAccount `json:"account"`
 
-	Currency CurrencyType
+	Currency CurrencyType `json:"currency"`
 
-	CampaignId string
+	CampaignId string `json:"campaignId"`
 
 	// Id for Stripe/Affirm
-	ChargeId string
+	ChargeId string `json:"chargeId"`
 
 	// Stripe only.
-	BalanceTransaction string
+	BalanceTransaction string `json:"balanceTransaction"`
 
 	// PayPal only.
-	PayKey         string
-	PreapprovalKey string
+	PayKey         string `json:"payKey"`
+	PreapprovalKey string `json:"preapprovalKey"`
 
 	// Affirm only.
-	CaptureId     string
-	TransactionId string
+	CaptureId     string `json:"captureId"`
+	TransactionId string `json:"transactionId"`
 
-	Amount         Cents
-	AmountRefunded Cents
+	Amount         Cents `json:"amount"`
+	AmountRefunded Cents `json:"amountRefunded"`
 
-	CreatedAt time.Time
-
-	Status PaymentStatus
+	Status PaymentStatus `json:"status"`
 
 	// Client's browser, associated info
-	Client Client
+	Client Client `json:"client"`
 
 	// Whether this payment has been captured or not
-	Captured bool
+	Captured bool `json:"captured"`
 
 	// Whether this was a transaction in production or a testing sandbox
-	Live bool
+	Live bool `json:"live"`
 }

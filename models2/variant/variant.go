@@ -13,30 +13,30 @@ import (
 
 type Option struct {
 	// Ex. Size
-	Name string
+	Name string `json:"name"`
 	// Ex. M
-	Value string
+	Value string `json:"value"`
 }
 
 type Variant struct {
 	mixin.Model
 	mixin.Salesforce
 
-	ProductId string
+	ProductId string `json:"productId"`
 
-	SKU  string
-	Name string
+	SKU  string `json:"sku"`
+	Name string `json:"name"`
 
-	Price Cents
+	Price Cents `json:"price"`
 
-	Inventory int
-	Sold      int
+	Inventory int `json:"inventory"`
+	Sold      int `json:"sold"`
 
-	Weight     float64
-	WeightUnit MassUnit
-	Dimensions string
+	Weight     float64  `json:"weight"`
+	WeightUnit MassUnit `json:"weightUnit"`
+	Dimensions string   `json:"dimensions"`
 
-	Options []Option
+	Options []Option `json:"options"`
 }
 
 func New(db *datastore.Datastore) *Variant {
