@@ -28,11 +28,11 @@ button::-moz-focus-inner {
 
 <h4>access tokens</h4>
 <ul>
-    <li>GET <a href="/api/access-token/{{ orgId }}?email={{ email }}&password={{ password }}">/api/access-token/{{ orgId }}</a></li>
-    <li>POST <a href="/api/access-token/{{ orgId }}">/api/access-token/{{ orgId }}</a></li>
+    <li>GET <a href="/api/access/{{ orgId }}?email={{ email }}&password={{ password }}">/api/access/{{ orgId }}</a></li>
+    <li>POST <a href="/api/access/{{ orgId }}">/api/access/{{ orgId }}</a></li>
     <li>
-        <form method="POST" action="/api/access-token?_method=DELETE">
-            DELETE <button type="submit">/api/access-token</button>
+        <form method="POST" action="/api/access?_method=DELETE">
+            DELETE <button type="submit">/api/access</button>
         </form>
     </li>
 </ul>
