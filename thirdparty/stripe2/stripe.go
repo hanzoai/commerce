@@ -50,7 +50,7 @@ func (c Client) Authorize(card *Card) (*Token, error) {
 }
 
 // Create new stripe customer
-func (c Client) NewCustomer(token string, card *Card, buyer *models.Buyer) (*Customer, error) {
+func (c Client) NewCustomer(token string, buyer models.Buyer) (*Customer, error) {
 	params := &stripe.CustomerParams{
 		Desc:  buyer.Name(),
 		Email: buyer.Email,
