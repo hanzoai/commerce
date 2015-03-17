@@ -23,22 +23,22 @@ type User struct {
 	mixin.Model
 	mixin.Salesforce
 
-	FirstName       string
-	LastName        string
-	Phone           string
-	BillingAddress  Address
-	ShippingAddress Address
-	Email           string
-	PasswordHash    []byte `schema:"-" datastore:",noindex" json:"-"`
+	FirstName       string  `json:"firstName"`
+	LastName        string  `json:"lastName"`
+	Phone           string  `json:"phone"`
+	BillingAddress  Address `json:"billingAddress"`
+	ShippingAddress Address `json:"shippingAddress"`
+	Email           string  `json:"email"`
+	PasswordHash    []byte  `schema:"-" datastore:",noindex" json:"passwordHash"`
 
 	Stripe struct {
 		// Use CustomerId instead of Account.ID because the latter is currently only
 		// set when the user updates their details via Stripe
-		CustomerId string
-		Account    stripe.Account
+		CustomerId string         `json:"customerId"`
+		Account    stripe.Account `json:"account"`
 	}
 
-	Metadata []Datum
+	Metadata []Datum `json:"metadata"`
 }
 
 func New(db *datastore.Datastore) *User {

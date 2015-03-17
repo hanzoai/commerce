@@ -9,11 +9,11 @@ import (
 type Token struct {
 	mixin.Model
 
-	ShortId string
-	Email   string
-	UserId  string
-	Used    bool
-	Expired bool
+	ShortId string `json:"shortId"`
+	Email   string `json:"email"`
+	UserId  string `json:"userId"`
+	Used    bool   `json:"used"`
+	Expired bool   `json:"expired"`
 }
 
 func New(db *datastore.Datastore) *Token {
