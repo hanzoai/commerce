@@ -124,12 +124,14 @@ func (o Order) Kind() string {
 	return "order2"
 }
 
-func (o Order) Tally() {
+func (o *Order) Tally() {
 	subtotal := 0
 	for _, item := range o.Items {
 		subtotal += item.Quantity * int(item.Price)
 	}
+	o.LineTotal = Cents(subtotal)
 
+	// TODO: Make this use shipping/tax information
 	shipping := 0
 	tax := 0
 	total := tax + shipping + subtotal
