@@ -1,10 +1,12 @@
 package store_integration_test
 
 import (
+	"bytes"
 	"testing"
 	"time"
 
 	"crowdstart.io/util/gincontext"
+	"crowdstart.io/util/log"
 	"crowdstart.io/util/task"
 	"crowdstart.io/util/test/ae"
 	. "crowdstart.io/util/test/ginkgo"
@@ -55,6 +57,10 @@ func Get200(path string) func() {
 	return func() {
 		res, err := client.Get(path)
 		Expect(err).ToNot(HaveOccurred())
+		buf := new(bytes.Buffer)
+		buf.ReadFrom(res.Body)
+		s := buf.String()
+		log.Warn(s)
 		Expect(res.StatusCode).To(Equal(200))
 	}
 }
