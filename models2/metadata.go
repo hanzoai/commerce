@@ -2,15 +2,15 @@ package models
 
 import (
 	"net/http"
+
 	"github.com/mholt/binding"
 )
 
-
 // A single piece of metadata
 type Datum struct {
-	Key   string
-	Type  string
-	Value string
+	Key   string `json:"key"`
+	Type  string `json:"type"`
+	Value string `json:"value"`
 }
 
 func (m Datum) Validate(req *http.Request, errs binding.Errors) binding.Errors {

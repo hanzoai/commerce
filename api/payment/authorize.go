@@ -20,36 +20,55 @@ const (
 	SourceAffirm            = "affirm"
 )
 
-type Source struct {
-	Type           SourceType `json:"type"`
-	Name           string     `json:"name"`
-	Number         string     `json:"number"`
-	Month          string     `json:"month"`
-	Year           string     `json:"year"`
-	CVC            string     `json:"cvc"`
-	models.Address `json:"address"`
+type Buyer struct {
+	Type SourceType `json:"type"`
+
+	// Buyer
+	Email     string         `json:"email"`
+	FirstName string         `json:"firstName"`
+	LastName  string         `json:"firstName"`
+	Company   string         `json:"company"`
+	Address   models.Address `json:"address"`
+	Notes     string         `json:"notes"`
+
+	// Card
+	Number string `json:"number"`
+	Month  string `json:"month"`
+	CVC    string `json:"cvc"`
+	Phone  string `json:"phone"`
+	Year   string `json:"year"`
 }
 
-func (s Source) Card() *stripe.CardParams {
+func (b Buyer) Card() *stripe.CardParams {
 	card := stripe.CardParams{}
-	card.Name = s.Name
-	card.Number = s.Number
-	card.Month = s.Month
-	card.Year = s.Year
-	card.CVC = s.CVC
-	card.Address1 = s.Address.Line1
-	card.Address2 = s.Address.Line2
-	card.City = s.Address.City
-	card.State = s.Address.State
-	card.Zip = s.Address.PostalCode
-	card.Country = s.Address.Country
+	card.Name = b.FirstName + " " + b.LastName
+	card.Number = b.Number
+	card.Month = b.Month
+	card.Year = b.Year
+	card.CVC = b.CVC
+	card.Address1 = b.Address.Line1
+	card.Address2 = b.Address.Line2
+	card.City = b.Address.City
+	card.State = b.Address.State
+	card.Zip = b.Address.PostalCode
+	card.Country = b.Address.Country
 	return &card
 }
 
+func (b Buyer) Buyer() models.Buyer {
+	buyer := models.Buyer{}
+	buyer.FirstName = b.FirstName
+	buyer.LastName = b.LastName
+	buyer.Email = b.Email
+	buyer.Phone = b.Phone
+	buyer.Company = b.Company
+	buyer.Notes = b.Notes
+	return buyer
+}
+
 type AuthReq struct {
-	Source Source       `json:"source"`
-	Order  *order.Order `json:"order"`
-	Buyer  models.Buyer `json:"buyer"`
+	Buyer Buyer        `json:"buyer"`
+	Order *order.Order `json:"order"`
 }
 
 func authorize(c *gin.Context) (*order.Order, error) {
@@ -81,14 +100,14 @@ func authorize(c *gin.Context) (*order.Order, error) {
 	client := stripe.New(ctx, org.Stripe.PublishableKey)
 
 	// Do authorization
-	token, err := client.Authorize(ar.Source.Card())
+	token, err := client.Authorize(ar.Buyer.Card())
 	if err != nil {
 		return nil, AuthorizationFailed
 	}
 
 	// Create account
 	account := models.PaymentAccount{}
-	account.Buyer = ar.Buyer
+	account.Buyer = ar.Buyer.Buyer()
 	account.Type = "stripe"
 
 	// Create Stripe customer, which we will attach to our payment account.
