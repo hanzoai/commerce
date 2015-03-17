@@ -2,26 +2,26 @@ package models
 
 type Discount struct {
 	// Possible values: flat, percent
-	Type string
+	Type string `json:"type"`
 
 	// Discount code applied.
-	Code string
+	Code string `json:"code"`
 
 	// Reasoning for price adjustment.
-	Reason string
+	Reason string `json:"reason"`
 
 	// Authorizer of price adjustment.
-	Issuer string
+	Issuer string `json:"issuer"`
 
 	// Discount amount (500 == 5.00% off or 1000 == $10 off)
-	Amount int
+	Amount int `json:"amount"`
 
 	// Products this applies to
-	ProductIds []string
+	ProductIds []string `json:"productIds"`
 
 	// Variants this applies to
-	VariantIds []string
+	VariantIds []string `json:"variantIds"`
 
 	// Whether to apply to all matching items, or just once.
-	Once bool
+	Once bool `json:"once"`
 }
