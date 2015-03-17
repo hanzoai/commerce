@@ -9,6 +9,7 @@ import (
 	"crowdstart.io/models2/order"
 	"crowdstart.io/thirdparty/stripe2"
 	"crowdstart.io/util/json"
+	"crowdstart.io/util/log"
 )
 
 type SourceType string
@@ -94,6 +95,10 @@ func authorize(c *gin.Context) (*order.Order, error) {
 	if err := json.Decode(c.Request.Body, &ar); err != nil {
 		return nil, FailedToDecodeRequestBody
 	}
+
+	// Update order totals
+	ar.Order.Tally()
+	log.Debug("Order: %#v", ar.Order)
 
 	// Get client we can use for API calls
 	client := stripe.New(ctx, org.Stripe.AccessToken)
