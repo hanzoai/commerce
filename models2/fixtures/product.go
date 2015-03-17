@@ -6,7 +6,6 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models2/organization"
 	"crowdstart.io/models2/product"
-	"crowdstart.io/util/log"
 	"crowdstart.io/util/task"
 )
 
@@ -18,11 +17,8 @@ var _ = task.Func("models2-fixtures-product", func(c *gin.Context) {
 	org.GetOrCreate("Name=", org.Name)
 
 	// Use org's namespace
-	if ctx, err := org.Namespace(c); err != nil {
-		log.Panic("Failed to get namespace: %v", err)
-	} else {
-		db = datastore.New(ctx)
-	}
+	ctx := org.Namespace(c)
+	db = datastore.New(ctx)
 
 	prod := product.New(db)
 	prod.Slug = "t-shirt"

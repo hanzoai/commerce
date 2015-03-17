@@ -20,9 +20,12 @@ type AuthReq struct {
 	Order *order.Order
 }
 
-func authorize(c *gin.Context) (o *order.Order, err error) {
+func authorize(c *gin.Context) (*order.Order, error) {
+	// Get organization for this user
+	org := middleware.GetOrg(c)
+	ctx := org.Namespace(c)
+
 	// Set up the db with the namespaced appengine context
-	ctx := middleware.GetNamespace(c)
 	db := datastore.New(ctx)
 
 	// Create AuthReq properly by calling order.New
@@ -31,28 +34,24 @@ func authorize(c *gin.Context) (o *order.Order, err error) {
 
 	// In case people are using the version of the api that takes
 	// existing orders Update order in request with id
-	id := c.Params.ByName("id")
-
-	if id != "" {
+	if id := c.Params.ByName("id"); id != "" {
 		if err := ar.Order.Get(id); err != nil {
 			return nil, OrderDoesNotExist
 		}
 	}
 
 	// Try decode request body
-	if err = json.Decode(c.Request.Body, &ar); err != nil {
+	if err := json.Decode(c.Request.Body, &ar); err != nil {
 		return nil, FailedToDecodeRequestBody
 	}
 
-	var token *stripe.Token
-	if token, err = stripe.NewToken(&ar.Card, config.Stripe.APIKey); err != nil {
+	token, err := stripe.NewToken(&ar.Card, config.Stripe.APIKey)
+	if err != nil {
 		return nil, AuthorizationFailed
 	}
 
-	org := middleware.GetOrg(c)
-
-	var customer *stripe.Customer
-	if customer, err = stripe.NewCustomer(ctx, org.Stripe.AccessToken, token.ID, &ar.Card, &ar.Order.Buyer); err != nil {
+	customer, err := stripe.NewCustomer(ctx, org.Stripe.AccessToken, token.ID, &ar.Card, &ar.Order.Buyer)
+	if err != nil {
 		return nil, FailedToCreateCustomer
 	}
 
