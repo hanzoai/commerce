@@ -41,7 +41,7 @@ type Product struct {
 	Excerpt string `json:"excerpt"`
 
 	// Product Description
-	Description string `datastore:",noindex"` `json:"description"`
+	Description string `datastore:",noindex" json:"description"`
 
 	// Product Media
 	HeaderImage Media `json:"headerImage"`
@@ -61,7 +61,7 @@ type Product struct {
 	Variants_ []byte            `json:"-"`
 
 	// Reference to options used
-	Options  []Option `datastore:"-"` `json:"options"`
+	Options  []Option `datastore:"-" json:"options"`
 	Options_ []byte   `json:"-"`
 }
 
