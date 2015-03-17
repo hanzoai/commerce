@@ -22,28 +22,28 @@ const (
 type Campaign struct {
 	mixin.Model
 
-	OrganizationId  string
-	Approved        bool
-	Enabled         bool
-	Category        Category
-	Title           string
-	Tagline         string
-	PitchMedia      string
-	VideoUrl        string
-	VideoOverlayUrl string
-	ImageUrl        string
-	Description     string
-	Backers         int
-	Raised          int64
-	Thumbnail       string
-	OriginalUrl     string
-	StoreUrl        string
-	ProductIds      []string `datastore:"-"`
-	MemberIds       []string `datastore:"-"`
+	OrganizationId  string   `json:"organizationId"`
+	Approved        bool     `json:"approved"`
+	Enabled         bool     `json:"enabled"`
+	Category        Category `json:"category"`
+	Title           string   `json:"title"`
+	Tagline         string   `json:"tagline"`
+	PitchMedia      string   `json:"pitchMedia"`
+	VideoUrl        string   `json:"videoUrl"`
+	VideoOverlayUrl string   `json:"videoOverlayUrl"`
+	ImageUrl        string   `json:"imageUrl"`
+	Description     string   `json:"Description"`
+	Backers         int      `json:"backers"`
+	Raised          int64    `json:"raised"`
+	Thumbnail       string   `json:"thumbnail"`
+	OriginalUrl     string   `json:"originalUrl"`
+	StoreUrl        string   `json:"storeUrl"`
+	ProductIds      []string `datastore:"-" json:"productIds"`
+	MemberIds       []string `datastore:"-" json:"memberIds"`
 
-	GoogleAnalytics string
-	FacebookTag     string
-	Links           []string
+	GoogleAnalytics string   `json:"googleAnalytics"`
+	FacebookTag     string   `json:"facebookTag"`
+	Links           []string `json:"links"`
 }
 
 func New(db *datastore.Datastore) *Campaign {
