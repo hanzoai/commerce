@@ -19,6 +19,12 @@ type Charge stripe.Charge
 type Customer stripe.Customer
 type Token stripe.Token
 
+type Error stripe.Error
+
+func (e Error) Error() string {
+	return e.Msg
+}
+
 type Client struct {
 	*client.API
 	ctx appengine.Context
