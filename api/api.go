@@ -64,14 +64,13 @@ func init() {
 
 	// Authorization routes
 	// One Step Payments
+	router.POST("/charge", middleware.TokenRequired(), payment.Charge)
 	router.POST("/order/:id/charge", middleware.TokenRequired(), payment.Charge)
-	router.POST("/order/charge", middleware.TokenRequired(), payment.Charge)
 
 	// Two Step Payments - "Auth & Capture"
+	router.POST("/authorize", middleware.TokenRequired(), payment.Authorize)
 	router.POST("/order/:id/authorize", middleware.TokenRequired(), payment.Authorize)
 	router.POST("/order/:id/capture", middleware.TokenRequired(), payment.Capture)
-
-	router.POST("/order/authorize", middleware.TokenRequired(), payment.Authorize)
 
 	// Setup API routes
 	logApiRoutes(entities)
