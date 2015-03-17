@@ -44,7 +44,7 @@ type Product struct {
 	Description string `datastore:",noindex" json:"description"`
 
 	// Product Media
-	HeaderImage Media `json:"headerImage"`
+	HeaderImage Media   `json:"headerImage"`
 	Media       []Media `json:"media"`
 
 	// When is the product available
@@ -57,7 +57,7 @@ type Product struct {
 	AddLabel string `json:"addLabel"`
 
 	// List of variants
-	Variants  []variant.Variant `datastore:"-"` `json:"variants"`
+	Variants  []variant.Variant `datastore:"-" json:"variants"`
 	Variants_ []byte            `json:"-"`
 
 	// Reference to options used
