@@ -5,27 +5,27 @@ import "crowdstart.io/models/mixin"
 type LineItem struct {
 	mixin.Salesforce
 
-	ProductId   string
-	ProductName string
-	ProductSlug string
+	ProductId   string `json:"productId"`
+	ProductName string `json:"productName"`
+	ProductSlug string `json:"productSlug"`
 
-	CollectionId string
+	CollectionId string `json:"collectionId"`
 
-	VariantId   string
-	VariantName string
-	VariantSKU  string
+	VariantId   string `json:"variantId"`
+	VariantName string `json:"variantName"`
+	VariantSKU  string `json:"variantSKU"`
 
 	// Unit price
-	Price Cents
+	Price Cents `json:"price"`
 
 	// Number of units
-	Quantity int
+	Quantity int `json:"quantity"`
 
 	// Unit weight
-	Weight int
+	Weight int `json:"weight"`
 
 	// Whether taxes apply to this line item
-	Taxable bool
+	Taxable bool `json:"taxable"`
 }
 
 func (li LineItem) TotalPrice() Cents {

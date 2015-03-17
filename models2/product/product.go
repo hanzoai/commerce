@@ -19,9 +19,9 @@ import (
 
 type Option struct {
 	// Ex. Size
-	Name string
+	Name string `json:"name"`
 	// Ex. [S, M, L]
-	Values []string
+	Values []string `json:"values"`
 }
 
 // Prune down since Product Listing has a lot of this info now
@@ -29,37 +29,39 @@ type Product struct {
 	mixin.Model
 
 	// Unique human readable id
-	Slug string
+	Slug string `json:"slug"`
 
 	// Product Name
-	Name string
+	Name string `json:"name"`
 
 	// Product headline
-	Headline string
+	Headline string `json:"headline"`
 
 	// Product Excerpt
-	Excerpt string
+	Excerpt string `json:"excerpt"`
 
 	// Product Description
-	Description string `datastore:",noindex"`
+	Description string `datastore:",noindex" json:"description"`
 
 	// Product Media
-	HeaderImage Media
-	Media       []Media
+	HeaderImage Media   `json:"headerImage"`
+	Media       []Media `json:"media"`
 
 	// When is the product available
-	AvailableBy time.Time
+	AvailableBy time.Time `json:"availableBy"`
 
 	// Is this product for preorder
-	Preorder bool
-	AddLabel string // Pre-order now or Add to cart
+	Preorder bool `json:"preorder"`
+
+	// Pre-order now or Add to cart
+	AddLabel string `json:"addLabel"`
 
 	// List of variants
-	Variants  []variant.Variant `datastore:"-"`
+	Variants  []variant.Variant `datastore:"-" json:"variants"`
 	Variants_ []byte            `json:"-"`
 
 	// Reference to options used
-	Options  []Option `datastore:"-"`
+	Options  []Option `datastore:"-" json:"options"`
 	Options_ []byte   `json:"-"`
 }
 
