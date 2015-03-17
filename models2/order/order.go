@@ -1,7 +1,6 @@
 package order
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -22,29 +21,6 @@ const (
 	Cancelled             = "cancelled"
 	Completed             = "completed"
 )
-
-var BuyerEmailOrPhoneRequired = errors.New("Buyer's Email or Phone is required.")
-
-type Buyer struct {
-	Email     string
-	FirstName string
-	LastName  string
-	Company   string
-	Phone     string
-	Notes     string
-}
-
-func (b Buyer) Name() string {
-	return b.FirstName + " " + b.LastName
-}
-
-func (b Buyer) Validate() (bool, []error) {
-	if b.Email != "" && b.Phone != "" {
-		return false, []error{BuyerEmailOrPhoneRequired}
-	}
-
-	return true, nil
-}
 
 type Order struct {
 	mixin.Model
@@ -118,9 +94,6 @@ type Order struct {
 
 	CreatedAt time.Time `schema:"-" json:"created_at"`
 	UpdatedAt time.Time `schema:"-" json:"updated_at"`
-
-	// Buyer information (billing information)
-	Buyer Buyer `json:"buyer"`
 
 	BillingAddress  Address `json:"billing_address"`
 	ShippingAddress Address `json:"shipping_address"`
