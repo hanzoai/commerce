@@ -1,9 +1,6 @@
 package models
 
-import "time"
-
 type Event struct {
-	Type      string
-	Desc      string
-	CreatedAt time.Time
+	Type string `json:"type"`
+	Desc string `json:"desc"`
 }
