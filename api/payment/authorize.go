@@ -3,12 +3,10 @@ package payment
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
-	"crowdstart.io/thirdparty/stripe"
+	"crowdstart.io/thirdparty/stripe2"
 
-	"crowdstart.io/models2"
 	"crowdstart.io/models2/order"
 	"crowdstart.io/util/json"
 )
@@ -45,26 +43,25 @@ func authorize(c *gin.Context) (*order.Order, error) {
 		return nil, FailedToDecodeRequestBody
 	}
 
-	// Try to get authorization token
-	token, err := stripe.NewToken(&ar.Card, config.Stripe.APIKey)
+	// Get client we can use for API calls
+	client := stripe.New(ctx, org.Stripe.PublishableKey)
+
+	// Do authorization
+	token, err := client.Authorize(&ar.Card)
 	if err != nil {
 		return nil, AuthorizationFailed
 	}
 
 	// Create new customer
-	customer, err := stripe.NewCustomer(ctx, org.Stripe.AccessToken, token.ID, &ar.Card, &ar.Order.Buyer)
+	customer, err := client.NewCustomer(token.ID, &ar.Card, &ar.Order.Buyer)
 	if err != nil {
 		return nil, FailedToCreateCustomer
 	}
 
-	p := models.PaymentAccount{}
-	p.Name = ar.Card.Name
-	p.Stripe.CustomerId = customer.ID
-	//p.Stripe.ChargeId = charge.ID
-	p.Stripe.CardType = string(token.Card.Brand)
-	p.Stripe.Last4 = token.Card.LastFour
-	p.Stripe.Expiration.Month = int(token.Card.Month)
-	p.Stripe.Expiration.Year = int(token.Card.Year)
+	// Create charge
+	charge, err := client.NewCharge(customer, ar.Order.Total, ar.Order.Currency)
+
+	// Create payment
 
 	return ar.Order, nil
 }
