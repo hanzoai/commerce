@@ -6,27 +6,24 @@ import (
 	"crowdstart.io/util/template"
 )
 
+// Setup handlers for HTTP registered tasks
 func SetupRoutes(router *gin.RouterGroup) {
-	// Handler for HTTP registered tasks
+	// Redirects
+	router.GET("/task", func(c *gin.Context) {
+		c.Redirect(301, "/tasks")
+	})
+
 	router.GET("/tasks", func(c *gin.Context) {
 		template.Render(c, "tasks.html", "tasks", Names())
 	})
 
-	router.GET("/task/", func(c *gin.Context) {
-		c.Redirect(301, "/tasks")
-	})
-
-	router.GET("/execute-task/:name", func(c *gin.Context) {
-		name := c.Params.ByName("name")
-		Run(c, name)
-		template.Render(c, "task-running.html", "task", name)
-	})
-
+	// Show task
 	router.GET("/task/:name", func(c *gin.Context) {
 		name := c.Params.ByName("name")
 		template.Render(c, "task.html", "task", name)
 	})
 
+	// Run task
 	router.POST("/task/:name", func(c *gin.Context) {
 		name := c.Params.ByName("name")
 		Run(c, name)
