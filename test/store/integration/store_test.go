@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"crowdstart.io/models2/fixtures"
+	"crowdstart.io/models/fixtures"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/test/ae"
 	. "crowdstart.io/util/test/ginkgo"
