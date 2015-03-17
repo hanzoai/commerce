@@ -19,40 +19,37 @@ type Coupon struct {
 	mixin.Model
 
 	// Possible values: flat, percent, free_shipping.
-	Type CouponType
+	Type CouponType `json:"type"`
 
 	// Coupon code (must be unique).
-	Code string
+	Code string `json:"code"`
 
-	CampaignId string
-
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	CampaignId string `json:"campaignId"`
 
 	// Range in which coupon is valid
-	StartDate time.Time
-	EndDate   time.Time
+	StartDate time.Time `json:"startDate"`
+	EndDate   time.Time `json:"endDate"`
 
 	// Possible values: order, product.
-	Filter string
+	Filter string `json:"filter"`
 
 	// Apply once or to every time
-	Once bool
+	Once bool `json:"once"`
 
 	// Product id for product-specific coupons.
-	ProductId string
+	ProductId string `json:"productId"`
 
 	// Whether coupon is valid.
-	Enabled bool
+	Enabled bool `json:"enabled"`
 
 	// Coupon amount. $5 should be 500 (prices in cents). 10% should be 10.
-	Amount int
+	Amount int `json:"amount"`
 
 	// Number of times coupon was redeemed.
-	Used int
+	Used int `json:"used"`
 
 	// List of buyer email addresses who have redeemed coupon.
-	Buyers []string
+	Buyers []string `json:"buyers"`
 }
 
 func New(db *datastore.Datastore) *Coupon {
