@@ -56,7 +56,7 @@ type Order struct {
 	Currency CurrencyType `json:"currency"`
 
 	// Seller notes
-	Notes string `json:"notes"`
+	Notes string `json:"notes,omitempty"`
 
 	// Type of order
 	Type string `json:"type"`
@@ -103,7 +103,7 @@ type Order struct {
 	// Individual line items
 	Items []LineItem `json:"items"`
 
-	Adjustments []Adjustment `json:"adjustments"`
+	Adjustments []Adjustment `json:"adjustments,omitempty"`
 
 	Discounts  []Discount `json:"discounts" datastore:"-"`
 	Discounts_ []byte     `json:"-"`
@@ -114,7 +114,7 @@ type Order struct {
 	Fullfillment Fullfillment `json:"fullfillment"`
 
 	// Series of events that have occured relevant to this order
-	History []Event `json:"history"`
+	History []Event `json:"history,omitempty"`
 
 	// Not a real transaction, purely for our own debugging purposes.
 	Test bool `json:"-"`
