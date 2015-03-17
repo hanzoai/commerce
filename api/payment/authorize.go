@@ -54,19 +54,28 @@ func authorize(c *gin.Context) (*order.Order, error) {
 		return nil, AuthorizationFailed
 	}
 
-	payment := models.Payment{}
-	payment.Amount = ar.Order.Total
+	// Create account
 	account := models.PaymentAccount{}
 	account.Buyer = ar.Buyer
+	account.Type = "stripe"
 
-	// Create new customer
-	customer, err := client.NewCustomer(token.ID, &ar.Card, &ar.Buyer)
+	// Create Stripe customer, which we will attach to our payment account.
+	customer, err := client.NewCustomer(token.ID, account.Buyer)
 	if err != nil {
 		return nil, FailedToCreateCustomer
 	}
 	account.Stripe.CustomerId = customer.ID
 
-	// Create charge
+	payment := models.Payment{}
+	payment.Status = "unpaid"
+	payment.Account = account
+	payment.Amount = ar.Order.Total
+	payment.Currency = ar.Order.Currency
+
+	// Fill with debug information about user's browser
+	// payment.Client =
+
+	// Create charge and associate with payment.
 	charge, err := client.NewCharge(customer, ar.Order.Total, ar.Order.Currency)
 	payment.ChargeId = charge.ID
 
