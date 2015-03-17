@@ -7,6 +7,7 @@ import (
 	"crowdstart.io/middleware"
 	"crowdstart.io/thirdparty/stripe2"
 
+	"crowdstart.io/models2"
 	"crowdstart.io/models2/order"
 	"crowdstart.io/util/json"
 )
@@ -16,6 +17,7 @@ type AuthReq struct {
 	// Paypal
 	// Affirm
 	Order *order.Order
+	Buyer models.Buyer
 }
 
 func authorize(c *gin.Context) (*order.Order, error) {
@@ -52,16 +54,24 @@ func authorize(c *gin.Context) (*order.Order, error) {
 		return nil, AuthorizationFailed
 	}
 
+	payment := models.Payment{}
+	payment.Amount = ar.Order.Total
+	account := models.PaymentAccount{}
+	account.Buyer = ar.Buyer
+
 	// Create new customer
-	customer, err := client.NewCustomer(token.ID, &ar.Card, &ar.Order.Buyer)
+	customer, err := client.NewCustomer(token.ID, &ar.Card, &ar.Buyer)
 	if err != nil {
 		return nil, FailedToCreateCustomer
 	}
+	account.Stripe.CustomerId = customer.ID
 
 	// Create charge
 	charge, err := client.NewCharge(customer, ar.Order.Total, ar.Order.Currency)
+	payment.ChargeId = charge.ID
 
 	// Create payment
+	ar.Order.Payments = append(ar.Order.Payments, payment)
 
 	return ar.Order, nil
 }
