@@ -14,7 +14,7 @@ import (
 	"crowdstart.io/models2"
 )
 
-type Card stripe.CardParams
+type CardParams stripe.CardParams
 type Charge stripe.Charge
 type Customer stripe.Customer
 type Token stripe.Token
@@ -39,7 +39,7 @@ func New(ctx appengine.Context, publishableKey string) *Client {
 }
 
 // Do authorization, return token
-func (c Client) Authorize(card *Card) (*Token, error) {
+func (c Client) Authorize(card *CardParams) (*Token, error) {
 	// Create a new token
 	t, err := token.New(&stripe.TokenParams{
 		Card: (*stripe.CardParams)(card),
