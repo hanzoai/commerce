@@ -19,6 +19,8 @@ import (
 )
 
 type Card stripe.CardParams
+type Customer stripe.Customer
+type Token stripe.Token
 
 func NewApiClient(ctx appengine.Context, accessToken string) *sClient.API {
 	c := urlfetch.Client(ctx)
@@ -31,11 +33,28 @@ func NewApiClient(ctx appengine.Context, accessToken string) *sClient.API {
 	return sc
 }
 
-func NewToken(card *Card, pubKey string) (*stripe.Token, error) {
+func NewToken(card *Card, pubKey string) (*Token, error) {
 	stripe.Key = pubKey
-	return stripeToken.New(&stripe.TokenParams{
+
+	t, err := stripeToken.New(&stripe.TokenParams{
 		Card: (*stripe.CardParams)(card),
 	})
+
+	return (*Token)(t), err
+}
+
+func NewCustomer(ctx appengine.Context, accessToken, cardToken string, card *Card, buyer *order.Buyer) (*Customer, error) {
+	sc := NewApiClient(ctx, accessToken)
+
+	params := &stripe.CustomerParams{
+		Desc:  buyer.Name(),
+		Email: buyer.Email,
+		Card:  (*stripe.CardParams)(card),
+	}
+
+	customer, err := sc.Customers.New(params)
+
+	return (*Customer)(customer), err
 }
 
 // Create a new stripe customer and assign id to user model.
