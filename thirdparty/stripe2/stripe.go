@@ -10,7 +10,6 @@ import (
 	"github.com/stripe/stripe-go/client"
 
 	"crowdstart.io/models2"
-	"crowdstart.io/util/log"
 )
 
 type CardParams stripe.CardParams
@@ -24,8 +23,6 @@ type Client struct {
 }
 
 func New(ctx appengine.Context, accessToken string) *Client {
-	log.Debug("Using access token: %v", accessToken)
-
 	// Set HTTP Client for App engine
 	httpClient := urlfetch.Client(ctx)
 	httpClient.Transport = &urlfetch.Transport{
@@ -47,7 +44,6 @@ func (c Client) Authorize(card *CardParams) (*Token, error) {
 
 	if err != nil {
 		stripeErr, ok := err.(*stripe.Error)
-		log.Debug(stripeErr)
 		if ok {
 			return nil, &Error{
 				Code:    string(stripeErr.Code),
@@ -73,7 +69,6 @@ func (c Client) NewCustomer(token string, buyer models.Buyer) (*Customer, error)
 	customer, err := c.API.Customers.New(params)
 	if err != nil {
 		stripeErr, ok := err.(*stripe.Error)
-		log.Debug(stripeErr)
 		if ok {
 			return nil, &Error{
 				Code:    string(stripeErr.Code),
@@ -107,7 +102,6 @@ func (c Client) NewCharge(customerOrToken interface{}, payment models.Payment) (
 	ch, err := c.API.Charges.New(chargeParams)
 	if err != nil {
 		stripeErr, ok := err.(*stripe.Error)
-		log.Debug(stripeErr)
 		if ok {
 			return nil, &Error{
 				Code:    string(stripeErr.Code),
@@ -116,6 +110,24 @@ func (c Client) NewCharge(customerOrToken interface{}, payment models.Payment) (
 			}
 		}
 		return nil, &Error{Type: "unknown", Message: "Stripe: charge failed"}
+	}
+
+	return (*Charge)(ch), err
+}
+
+// Capture charge
+func (c Client) Capture(id string) (*Charge, error) {
+	ch, err := c.API.Charges.Capture(id, nil)
+	if err != nil {
+		stripeErr, ok := err.(*stripe.Error)
+		if ok {
+			return nil, &Error{
+				Code:    string(stripeErr.Code),
+				Message: stripeErr.Msg,
+				Type:    string(stripeErr.Type),
+			}
+		}
+		return nil, &Error{Type: "unknown", Message: "Stripe: capture failed"}
 	}
 
 	return (*Charge)(ch), err
