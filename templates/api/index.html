@@ -39,9 +39,9 @@ button::-moz-focus-inner {
 
 <h4>payments</h4>
 <ul>
-  <li>POST <a href="/api/checkout">/api/checkout</a></li>
-  <li>POST <a href="/api/authorize">/api/authorize</a></li>
-  <li>POST <a href="/api/capture">/api/capture</a></li>
+  <li>POST <a href="/api/charge">/api/charge</a></li>
+  <li>POST <a href="/api/authorize" onclick="javascript:authorize()">/api/authorize</a></li>
+  <li>POST <a href="/api/order/:id/capture">/api/order/:id/capture</a></li>
 </ul>
 
 {% for model in models %}
@@ -58,4 +58,21 @@ button::-moz-focus-inner {
     </li>
 </ul>
 {% endfor %}
+
+<script type="text/javascript" src="{{ urlFor("/js/jquery.min.js") }}"></script>
+<script>
+    function authorize() {
+        $.ajax({
+          type: "POST",
+          url: "/api/authorize",
+          data: {
+
+          },
+          success: function() {
+
+          },
+          dataType: "json",
+        });
+    }
+</script>
 {% endblock %}
