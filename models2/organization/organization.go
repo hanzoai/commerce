@@ -26,10 +26,10 @@ type Organization struct {
 	Moderators []string `json:"moderators"`
 	Enabled    bool     `json:"enabled"`
 
-	BillingEmail string  `json:"billingEmail"`
-	Phone        string  `json:"phone"`
-	Address      Address `json:"address"`
-	Website      string  `json:"website"`
+	BillingEmail string  `json:"billingEmail,omitempty"`
+	Phone        string  `json:"phone,omitempty"`
+	Address      Address `json:"address,omitempty"`
+	Website      string  `json:"website,omitempty"`
 
 	Timezone string `json:"timezone"`
 
@@ -37,9 +37,9 @@ type Organization struct {
 	TaxId   string `json:"taxId"`
 
 	Plan struct {
-		PlanId    string    `json:"planId"`
-		StartDate time.Time `json:"startDate"`
-	}
+		PlanId    string
+		StartDate time.Time
+	} `json:"-"`
 
 	Salesforce struct {
 		AccessToken        string `json:"accessToken"`
@@ -50,7 +50,7 @@ type Organization struct {
 		IssuedAt     string `json:"issuedAt"`
 		RefreshToken string `json:"refreshToken"`
 		Signature    string `json:"signature"`
-	}
+	} `json:"-"`
 
 	Stripe struct {
 		AccessToken    string `json:"accessToken"`
@@ -60,7 +60,7 @@ type Organization struct {
 		Scope          string `json:"scope"`
 		TokenType      string `json:"tokenType"`
 		UserId         string `json:"userId"`
-	}
+	} `json:"-"`
 
 	GoogleAnalytics string `json:"googleAnalytics"`
 	FacebookTag     string `json:"facebookTag"`
