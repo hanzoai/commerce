@@ -79,10 +79,7 @@ func DebugIndex(entities []mixin.Entity) gin.HandlerFunc {
 		}
 
 		// Set datastore context to this org
-		ctx, err := org.Namespace(c)
-		if err != nil {
-			json.Fail(c, 500, "Unable to set namespace.", err)
-		}
+		ctx := org.Namespace(c)
 		db = datastore.New(ctx)
 
 		// Wrap models for display
