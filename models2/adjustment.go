@@ -2,11 +2,11 @@ package models
 
 type Adjustment struct {
 	// Possible values: flat.
-	Type string
+	Type string `json:"type"`
 	// Reasoning for price adjustment.
-	Reason string
+	Reason string `json:"reason"`
 	// Authorizer of price adjustment.
-	Issuer string
+	Issuer string `json:"issuer"`
 	// Amount of price adjustment.
-	Amount Cents
+	Amount Cents `json:"amounts"`
 }
