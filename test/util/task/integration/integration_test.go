@@ -27,7 +27,7 @@ var _ = BeforeSuite(func() {
 	})
 
 	// Wait for task to run
-	time.Sleep(3 * time.Second)
+	time.Sleep(10 * time.Second)
 })
 
 // Tear-down appengine context

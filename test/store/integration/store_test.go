@@ -1,13 +1,11 @@
 package store_integration_test
 
 import (
-	"bytes"
 	"testing"
 	"time"
 
-	"crowdstart.io/util/gincontext"
+	"crowdstart.io/models2/fixtures"
 	"crowdstart.io/util/log"
-	"crowdstart.io/util/task"
 	"crowdstart.io/util/test/ae"
 	. "crowdstart.io/util/test/ginkgo"
 	"crowdstart.io/util/test/httpclient"
@@ -35,18 +33,18 @@ var user = struct {
 
 var _ = BeforeSuite(func() {
 	ctx = ae.NewContext(ae.Options{
-		Modules:    []string{"default", "store"},
-		TaskQueues: []string{"default"},
+		Modules:                []string{"store"},
+		PreferAppengineTesting: true,
 	})
 
 	client = httpclient.New(ctx, "store")
 
 	// Install product fixtures so we can access store pages
-	task.Run(gincontext.New(ctx), "fixtures-products")
-	task.Run(gincontext.New(ctx), "fixtures-test-users")
+	fixtures.Products(ctx)
+	fixtures.TestUsers(ctx)
 
 	// Wait for fixtures to complete running
-	time.Sleep(15 * time.Second)
+	time.Sleep(5 * time.Second)
 })
 
 var _ = AfterSuite(func() {
@@ -56,11 +54,8 @@ var _ = AfterSuite(func() {
 func Get200(path string) func() {
 	return func() {
 		res, err := client.Get(path)
+		log.Debug(res.Text())
 		Expect(err).ToNot(HaveOccurred())
-		buf := new(bytes.Buffer)
-		buf.ReadFrom(res.Body)
-		s := buf.String()
-		log.Warn(s)
 		Expect(res.StatusCode).To(Equal(200))
 	}
 }
