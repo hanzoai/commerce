@@ -114,8 +114,8 @@ type Order struct {
 	// Series of events that have occured relevant to this order
 	History []Event `json:"history"`
 
-	Test    bool `json:"test"`    // Not a real transaction
-	Version int  `json:"version"` // Versioning for struct
+	// Not a real transaction, purely for our own debugging purposes.
+	Test bool `json:"-"`
 }
 
 func New(db *datastore.Datastore) *Order {
