@@ -81,12 +81,13 @@ var _ = Describe("Login", func() {
 			loginForm, err := b.Form("form#loginForm")
 			Expect(err).ToNot(HaveOccurred())
 
-			loginForm.Input("email", user.Email)
-			loginForm.Input("password", user.Password)
+			loginForm.Input("Email", user.Email)
+			loginForm.Input("Password", user.Password)
 			err = loginForm.Submit()
 			Expect(err).ToNot(HaveOccurred())
 
-			// Expect(b.Url().String()).To(HaveSuffix("/profile"))
+			errMessage := b.Find("div.errors.error").First().Text()
+			Expect(errMessage).To(Equal(""))
 		})
 	})
 
@@ -101,15 +102,58 @@ var _ = Describe("Login", func() {
 			loginForm, err := b.Form("form#loginForm")
 			Expect(err).ToNot(HaveOccurred())
 
-			loginForm.Input("email", "asjdkas")
-			loginForm.Input("password", "asdjkasdj")
+			err = loginForm.Input("Email", "asjdkas")
+			Expect(err).ToNot(HaveOccurred())
+
+			err = loginForm.Input("Password", "asdjkasdj")
+			Expect(err).ToNot(HaveOccurred())
+
 			err = loginForm.Submit()
 			Expect(err).ToNot(HaveOccurred())
 
 			// Should not redirect.
 			Expect(b.Url().String()).To(HaveSuffix("/login"))
 
-			// TODO: Check error message received.
+			errMessage := b.Find("div.errors.error").First().Text()
+			Expect(errMessage).ToNot(Equal(""))
+			Expect(errMessage).To(Equal("Invalid email or password"))
+		})
+	})
+})
+
+var _ = Describe("Register", func() {
+	Context("With an existing user", func() {
+		It("should error", func() {
+			// Login and register are both on the same page.
+			url := client.URL("/login")
+			b := surf.NewBrowser()
+
+			err := b.Open(url)
+			Expect(err).ToNot(HaveOccurred())
+
+			form, err := b.Form("form#registerForm")
+			Expect(err).ToNot(HaveOccurred())
+
+			err = form.Input("User.FirstName", "John")
+			Expect(err).ToNot(HaveOccurred())
+
+			err = form.Input("User.LastName", "Doe")
+			Expect(err).ToNot(HaveOccurred())
+
+			err = form.Input("User.Email", "test@test.com")
+			Expect(err).ToNot(HaveOccurred())
+
+			err = form.Input("Password", "password")
+			Expect(err).ToNot(HaveOccurred())
+
+			err = form.Input("ConfirmPassword", "password")
+			Expect(err).ToNot(HaveOccurred())
+
+			err = form.Submit()
+			Expect(err).ToNot(HaveOccurred())
+
+			errMessage := b.Find("form#registerForm > div.errors.error").First().Text()
+			Expect(errMessage).To(Equal("An account already exists for this email."))
 		})
 	})
 })
