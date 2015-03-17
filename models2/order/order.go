@@ -27,18 +27,18 @@ type Order struct {
 	mixin.Salesforce `json:"-"`
 
 	// Associated campaign
-	CampaignId string `json:"campaign_id"`
+	CampaignId string `json:"campaignId"`
 
 	// Associated user, optional. Not necessary for when you use our RESTful
 	// API.
-	UserId string `json:"user_id,omitempty"`
+	UserId string `json:"userId,omitempty"`
 
-	OrderStatus OrderStatus `json:"order_status"`
+	OrderStatus OrderStatus `json:"orderStatus"`
 
-	PaymentStatus PaymentStatus `json:"payment_status"`
+	PaymentStatus PaymentStatus `json:"paymentStatus"`
 
 	// unfullfilled, fulfilled, processing, failed
-	FullfillmentStatus FullfillmentStatus `json:"fullfillment_status"`
+	FullfillmentStatus FullfillmentStatus `json:"fullfillmentStatus"`
 
 	// Whether this was a preorder or not
 	Preorder bool `json:"preorder"`
@@ -57,53 +57,50 @@ type Order struct {
 	Type string `json:"type"`
 
 	// Shipping method
-	ShippingMethod string `json:"shipping_method"`
+	ShippingMethod string `json:"shippingMethod"`
 
 	// Sum of the line item amounts. Amount in cents.
-	LineTotal Cents
+	LineTotal Cents `json:"lineTotal"`
 
 	// Discount amount applied to the order. Amount in cents.
-	Discount Cents
+	Discount Cents `json:"discount"`
 
 	// Sum of line totals less discount. Amount in cents.
-	Subtotal Cents
+	Subtotal Cents `json:"subtotal"`
 
 	// Shipping cost applied. Amount in cents.
-	Shipping Cents
+	Shipping Cents `json:"shipping"`
 
 	// Sales tax applied. Amount in cents.
-	Tax Cents
+	Tax Cents `json:"tax"`
 
 	// Price adjustments applied. Amount in cents.
-	Adjustment Cents
+	Adjustment Cents `json:"adjustment"`
 
 	// Total = subtotal + shipping + taxes + adjustments. Amount in cents.
-	Total Cents
+	Total Cents `json:"total"`
 
 	// Amount owed to the seller. Amount in cents.
-	Balance Cents
+	Balance Cents `json:"balance"`
 
 	// Gross amount paid to the seller. Amount in cents.
-	Paid Cents
+	Paid Cents `json:"paid"`
 
 	// integer	Amount refunded by the seller. Amount in cents.
-	Refunded Cents
+	Refunded Cents `json:"refunded"`
 
 	// integer	Crowdstart application fee. Amount in cents.
-	Fee Cents
+	Fee Cents `json:"fee"`
 
-	CreatedAt time.Time `schema:"-" json:"created_at"`
-	UpdatedAt time.Time `schema:"-" json:"updated_at"`
-
-	BillingAddress  Address `json:"billing_address"`
-	ShippingAddress Address `json:"shipping_address"`
+	BillingAddress  Address `json:"billingAddress"`
+	ShippingAddress Address `json:"shippingAddress"`
 
 	// Individual line items
-	Items []LineItem
+	Items []LineItem `json:"items"`
 
-	Adjustments []Adjustment
+	Adjustments []Adjustment `json:"adjustments"`
 
-	Discounts []Discount
+	Discounts []Discount `json:"discounts"`
 
 	Payments []Payment `json:"payments"`
 
@@ -111,10 +108,10 @@ type Order struct {
 	Fullfillment Fullfillment `json:"fullfillment"`
 
 	// Series of events that have occured relevant to this order
-	History []Event
+	History []Event `json:"history"`
 
-	Test    bool // Not a real transaction
-	Version int  // Versioning for struct
+	Test    bool `json:"test"`    // Not a real transaction
+	Version int  `json:"version"` // Versioning for struct
 }
 
 func New(db *datastore.Datastore) *Order {
