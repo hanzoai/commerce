@@ -5,12 +5,12 @@ import "errors"
 var BuyerEmailOrPhoneRequired = errors.New("Buyer's Email or Phone is required.")
 
 type Buyer struct {
-	Email     string
-	FirstName string
-	LastName  string
-	Company   string
-	Phone     string
-	Notes     string
+	Email     string `json:"email"`
+	FirstName string `json:"firstName"`
+	LastName  string `json:"lastName"`
+	Company   string `json:"company"`
+	Phone     string `json:"phone"`
+	Notes     string `json:"notes"`
 }
 
 func (b Buyer) Name() string {
