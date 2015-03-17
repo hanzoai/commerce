@@ -15,10 +15,10 @@ const (
 type Plan struct {
 	mixin.Model
 
-	Name        string
-	Description string
-	Price       int
-	Interval    Interval
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+	Price       int      `json:"price"`
+	Interval    Interval `json:"interval"`
 }
 
 func New(db *datastore.Datastore) *Plan {

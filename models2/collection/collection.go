@@ -14,41 +14,37 @@ type Collection struct {
 	mixin.Model
 
 	// Unique human readable identifier
-	Slug string
+	Slug string `json:"slug"`
 
 	// Name of Collection
-	Name string
+	Name string `json:"name"`
 
 	// Description of collection
-	Description string `datastore:",noindex"`
+	Description string `datastore:",noindex" json:"description"`
 
 	// Image/Video/Other Media to show in a gallery
-	Media []Media
+	Media []Media `json:"media"`
 
 	// What time is this collection available to deliver/purchase
-	AvailableBy time.Time
+	AvailableBy time.Time `json:"availableBy"`
 
 	// Show this on store?
-	Published bool
+	Published bool `json:"published"`
 
 	// Is this a preorder?
-	Preorder bool
+	Preorder bool `json:"preorder"`
 
 	// Is this in stock?
-	OutOfStock bool
+	OutOfStock bool `json:"outOfStock"`
 
 	// Lists of products or specific product variants that are part of this collection
-	ProductIds []string
-	VariantIds []string
+	ProductIds []string `json:"productIds"`
+	VariantIds []string `json:"variantIds"`
 
 	// Discount for this purchase
-	Discounts []Discount
+	Discounts []Discount `json:"discounts"`
 
-	// Book keeping stuff for us
-	CreatedAt time.Time
-	UpdatedAt time.Time
-
-	History []Event
+	History []Event `json:"history"`
 }
 
 func New(db *datastore.Datastore) *Collection {

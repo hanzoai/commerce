@@ -1,7 +1,5 @@
 package models
 
-import "time"
-
 type FullfillmentStatus string
 
 const (
@@ -12,7 +10,6 @@ const (
 )
 
 type Fullfillment struct {
-	CreatedAt      time.Time
-	Courier        string
-	TrackingNumber string
+	Courier        string `json:"courier"`
+	TrackingNumber string `json:"trackingNumber"`
 }

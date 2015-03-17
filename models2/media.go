@@ -19,11 +19,11 @@ const (
 )
 
 type Media struct {
-	Type MediaType
-	Alt  string
-	Url  string
-	X    int
-	Y    int
+	Type MediaType `json:"type"`
+	Alt  string    `json:"alt"`
+	Url  string    `json:"url"`
+	X    int       `json:"x"`
+	Y    int       `json:"y"`
 }
 
 func (i Media) Dimensions() string {
