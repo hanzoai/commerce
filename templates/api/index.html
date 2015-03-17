@@ -39,7 +39,7 @@ button::-moz-focus-inner {
 
 <h4>payments</h4>
 <ul>
-  <li>POST <a href="/api/charge">/api/charge</a></li>
+  <li>POST <a href="#" onclick="javascript:charge()">/api/charge</a></li>
   <li>POST <a href="#" onclick="javascript:authorize()">/api/authorize</a></li>
   <li>POST <a href="/api/order/:id/capture">/api/order/:id/capture</a></li>
 </ul>
@@ -61,10 +61,18 @@ button::-moz-focus-inner {
 
 <script type="text/javascript" src="{{ urlFor("/js/jquery.min.js") }}"></script>
 <script>
+function charge() {
+    payment("/api/charge")
+}
+
 function authorize() {
+    payment("/api/authorize")
+}
+
+function payment(url) {
     $.ajax({
       type: "POST",
-      url: "/api/authorize",
+      url: url,
       data: JSON.stringify({
         "buyer": {
           "type": "card",

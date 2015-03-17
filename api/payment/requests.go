@@ -14,7 +14,7 @@ const (
 	SourceAffirm            = "affirm"
 )
 
-type Buyer struct {
+type Source struct {
 	Type SourceType `json:"type"`
 
 	// Buyer
@@ -33,34 +33,34 @@ type Buyer struct {
 	Year   string `json:"year"`
 }
 
-func (b Buyer) Card() *stripe.CardParams {
+func (s Source) Card() *stripe.CardParams {
 	card := stripe.CardParams{}
-	card.Name = b.FirstName + " " + b.LastName
-	card.Number = b.Number
-	card.Month = b.Month
-	card.Year = b.Year
-	card.CVC = b.CVC
-	card.Address1 = b.Address.Line1
-	card.Address2 = b.Address.Line2
-	card.City = b.Address.City
-	card.State = b.Address.State
-	card.Zip = b.Address.PostalCode
-	card.Country = b.Address.Country
+	card.Name = s.FirstName + " " + s.LastName
+	card.Number = s.Number
+	card.Month = s.Month
+	card.Year = s.Year
+	card.CVC = s.CVC
+	card.Address1 = s.Address.Line1
+	card.Address2 = s.Address.Line2
+	card.City = s.Address.City
+	card.State = s.Address.State
+	card.Zip = s.Address.PostalCode
+	card.Country = s.Address.Country
 	return &card
 }
 
-func (b Buyer) Buyer() models.Buyer {
+func (s Source) Buyer() models.Buyer {
 	buyer := models.Buyer{}
-	buyer.FirstName = b.FirstName
-	buyer.LastName = b.LastName
-	buyer.Email = b.Email
-	buyer.Phone = b.Phone
-	buyer.Company = b.Company
-	buyer.Notes = b.Notes
+	buyer.FirstName = s.FirstName
+	buyer.LastName = s.LastName
+	buyer.Email = s.Email
+	buyer.Phone = s.Phone
+	buyer.Company = s.Company
+	buyer.Notes = s.Notes
 	return buyer
 }
 
 type AuthReq struct {
-	Buyer Buyer        `json:"buyer"`
-	Order *order.Order `json:"order"`
+	Source Source       `json:"buyer"`
+	Order  *order.Order `json:"order"`
 }
