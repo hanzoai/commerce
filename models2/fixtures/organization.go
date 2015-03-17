@@ -7,7 +7,6 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models2/organization"
 	"crowdstart.io/models2/user"
-	"crowdstart.io/util/log"
 	"crowdstart.io/util/task"
 )
 
@@ -36,12 +35,9 @@ var _ = task.Func("models2-fixtures-organization", func(c *gin.Context) {
 	org.Put()
 
 	// Save into org's namespace
-	if ctx, err := org.Namespace(c); err != nil {
-		log.Panic("Failed to get namespace: %v", err)
-	} else {
-		user.SetContext(ctx)
-		org.SetContext(ctx)
-	}
+	ctx := org.Namespace(c)
+	user.SetContext(ctx)
+	org.SetContext(ctx)
 
 	org.Put()
 	user.Put()
