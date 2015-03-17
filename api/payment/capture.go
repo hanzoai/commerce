@@ -6,6 +6,8 @@ import (
 	"crowdstart.io/models2/order"
 	"crowdstart.io/models2/organization"
 	"crowdstart.io/thirdparty/stripe2"
+
+	. "crowdstart.io/models2"
 )
 
 func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (*order.Order, error) {
@@ -16,11 +18,29 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (
 	client := stripe.New(ctx, org.Stripe.AccessToken)
 
 	// Capture any uncaptured payments
-	for _, payment := range ord.Payments {
+	for i, payment := range ord.Payments {
 		if !payment.Captured {
-			client.Capture(payment.ChargeId)
+			ch, err := client.Capture(payment.ChargeId)
+
+			// Charge failed for some reason, bail
+			if err != nil {
+				return nil, err
+			}
+			if !ch.Captured {
+				return nil, FailedToCaptureCharge
+			}
+
+			// Update payment
+			payment.Captured = true
+			payment.Status = PaymentPaid
+			payment.Amount = Cents(ch.Amount)
+			payment.AmountRefunded = Cents(ch.AmountRefunded)
+			ord.Payments[i] = payment
 		}
 	}
+
+	// Save order
+	ord.Put()
 
 	return ord, nil
 }
