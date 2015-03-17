@@ -10,8 +10,6 @@ import (
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/util/log"
 
-	stripe "crowdstart.io/thirdparty/stripe/models"
-
 	. "crowdstart.io/models2"
 )
 
@@ -26,19 +24,14 @@ type User struct {
 	FirstName       string  `json:"firstName"`
 	LastName        string  `json:"lastName"`
 	Phone           string  `json:"phone"`
-	BillingAddress  Address `json:"billingAddress"`
-	ShippingAddress Address `json:"shippingAddress"`
+	BillingAddress  Address `json:"billingAddress,omitempty"`
+	ShippingAddress Address `json:"shippingAddress,omitempty"`
 	Email           string  `json:"email"`
-	PasswordHash    []byte  `schema:"-" datastore:",noindex" json:"passwordHash"`
+	PasswordHash    []byte  `schema:"-" datastore:",noindex" json:"-"`
 
-	Stripe struct {
-		// Use CustomerId instead of Account.ID because the latter is currently only
-		// set when the user updates their details via Stripe
-		CustomerId string         `json:"customerId"`
-		Account    stripe.Account `json:"account"`
-	}
+	StripeCustomerId string `json:"stripeCustomerId,omitempty"`
 
-	Metadata []Datum `json:"metadata"`
+	Metadata []Datum `json:"metadata,omitempty"`
 }
 
 func New(db *datastore.Datastore) *User {
