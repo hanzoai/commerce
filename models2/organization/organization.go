@@ -21,9 +21,9 @@ type Organization struct {
 
 	Name       string   `json:"name"`
 	FullName   string   `json:"fullName"`
-	Owners     []string `json:"owners"`
-	Admins     []string `json:"admins"`
-	Moderators []string `json:"moderators"`
+	Owners     []string `json:"owners,omitempty"`
+	Admins     []string `json:"admins,omitempty"`
+	Moderators []string `json:"moderators,omitempty"`
 	Enabled    bool     `json:"enabled"`
 
 	BillingEmail string  `json:"billingEmail,omitempty"`
