@@ -1,4 +1,4 @@
-package api
+package payment
 
 import (
 	"github.com/gin-gonic/gin"
@@ -13,20 +13,14 @@ import (
 	"crowdstart.io/util/json"
 )
 
-func charge(c *gin.Context) {
-	authorize(c)
-	capture(c)
-}
-
 type AuthReq struct {
 	Card stripe.Card
-	//Paypal
-	//Affirm
+	// Paypal
+	// Affirm
 	Order *order.Order
 }
 
-func authorize(c *gin.Context) {
-	var err error
+func authorize(c *gin.Context) (o *order.Order, err error) {
 	// Set up the db with the namespaced appengine context
 	ctx := middleware.GetNamespace(c)
 	db := datastore.New(ctx)
@@ -41,31 +35,25 @@ func authorize(c *gin.Context) {
 
 	if id != "" {
 		if err := ar.Order.Get(id); err != nil {
-			json.Fail(c, 500, "Order does not exist.", err)
-			return
+			return nil, OrderDoesNotExist
 		}
 	}
 
 	// Try decode request body
 	if err = json.Decode(c.Request.Body, &ar); err != nil {
-		json.Fail(c, 500, "Failed to decode request body.", err)
-		return
+		return nil, FailedToDecodeRequestBody
 	}
 
 	var token *stripe.Token
 	if token, err = stripe.NewToken(&ar.Card, config.Stripe.APIKey); err != nil {
-		ctx.Errorf("[Api.Payment.Stripe] %v", err)
-		json.Fail(c, 500, "Could not authorize.", err)
-		return
+		return nil, AuthorizationFailed
 	}
 
 	org := middleware.GetOrg(c)
 
 	var customer *stripe.Customer
 	if customer, err = stripe.NewCustomer(ctx, org.Stripe.AccessToken, token.ID, &ar.Card, &ar.Order.Buyer); err != nil {
-		ctx.Errorf("[Api.Payment.Stripe] %v", err)
-		json.Fail(c, 500, "Could not create customer.", err)
-		return
+		return nil, FailedToCreateCustomer
 	}
 
 	p := models.PaymentAccount{}
@@ -76,8 +64,6 @@ func authorize(c *gin.Context) {
 	p.Stripe.Last4 = token.Card.LastFour
 	p.Stripe.Expiration.Month = int(token.Card.Month)
 	p.Stripe.Expiration.Year = int(token.Card.Year)
-}
 
-func capture(c *gin.Context) {
-
+	return ar.Order, nil
 }

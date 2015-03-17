@@ -3,6 +3,7 @@ package api
 import (
 	"github.com/gin-gonic/gin"
 
+	"crowdstart.io/api/payment"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/models2/campaign"
@@ -63,14 +64,14 @@ func init() {
 
 	// Authorization routes
 	// One Step Payments
-	router.POST("/order/:id/charge", middleware.TokenRequired(), charge)
-	router.POST("/order/charge", middleware.TokenRequired(), charge)
+	router.POST("/order/:id/charge", middleware.TokenRequired(), payment.Charge)
+	router.POST("/order/charge", middleware.TokenRequired(), payment.Charge)
 
 	// Two Step Payments - "Auth & Capture"
-	router.POST("/order/:id/authorize", middleware.TokenRequired(), authorize)
-	router.POST("/order/:id/capture", middleware.TokenRequired(), capture)
+	router.POST("/order/:id/authorize", middleware.TokenRequired(), payment.Authorize)
+	router.POST("/order/:id/capture", middleware.TokenRequired(), payment.Capture)
 
-	router.POST("/order/authorize", middleware.TokenRequired(), authorize)
+	router.POST("/order/authorize", middleware.TokenRequired(), payment.Authorize)
 
 	// Setup API routes
 	logApiRoutes(entities)
