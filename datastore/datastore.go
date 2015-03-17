@@ -74,7 +74,7 @@ func (d *Datastore) SkipFieldMismatch(err error) error {
 
 	if _, ok := err.(*aeds.ErrFieldMismatch); ok {
 		// Ignore any field mismatch errors.
-		d.warn("Ignoring field mismatch: %v", err, d.Context)
+		d.warn("Ignoring, %v", err, d.Context)
 		return nil
 	}
 
@@ -445,7 +445,7 @@ func IgnoreFieldMismatch(err error) error {
 
 	if _, ok := err.(*aeds.ErrFieldMismatch); ok {
 		// Ignore any field mismatch errors, but warn user (at least during development)
-		log.Warn("Ignoring field mismatch: %v", err)
+		log.Warn("Ignoring, %v", err)
 		return nil
 	}
 
