@@ -45,11 +45,13 @@ func authorize(c *gin.Context) (*order.Order, error) {
 		return nil, FailedToDecodeRequestBody
 	}
 
+	// Try to get authorization token
 	token, err := stripe.NewToken(&ar.Card, config.Stripe.APIKey)
 	if err != nil {
 		return nil, AuthorizationFailed
 	}
 
+	// Create new customer
 	customer, err := stripe.NewCustomer(ctx, org.Stripe.AccessToken, token.ID, &ar.Card, &ar.Order.Buyer)
 	if err != nil {
 		return nil, FailedToCreateCustomer
