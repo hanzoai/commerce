@@ -66,10 +66,32 @@ button::-moz-focus-inner {
           type: "POST",
           url: "/api/authorize",
           data: {
-
+            "card": {
+              "number": "4242424242424242",
+              "month": "12",
+              "year": "2016",
+              "cvc": "123"
+            },
+            "buyer": {
+              "email": "joe@buystoomuchstuff.com",
+              "firstName": "Joe",
+              "LastName": "Smoe",
+              "company": "Buys Too Much Stuff Dotcom",
+              "phone": "555-555-5555",
+              "notes": "non"
+            },
+            "order": {
+              "items": [ {
+                "productId": "1",
+                "variantId": "1",
+                "collectionId": "1",
+                "price": 2e5,
+                "quantity": 20
+              } ]
+            }
           },
-          success: function() {
-
+          success: function(data, textStatus, jqXHR) {
+              window.body.innerHTML = JSON.stringify(jqXHR.responseText)
           },
           dataType: "json",
         });
