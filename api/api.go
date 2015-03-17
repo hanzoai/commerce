@@ -9,6 +9,7 @@ import (
 	"crowdstart.io/models2/campaign"
 	"crowdstart.io/models2/collection"
 	"crowdstart.io/models2/coupon"
+	"crowdstart.io/models2/order"
 	"crowdstart.io/models2/organization"
 	"crowdstart.io/models2/product"
 	"crowdstart.io/models2/token"
@@ -28,6 +29,7 @@ func init() {
 		collection.Collection{},
 		organization.Organization{},
 		product.Product{},
+		order.Order{},
 		token.Token{},
 		user.User{},
 		variant.Variant{},
