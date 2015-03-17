@@ -20,6 +20,7 @@ type AccessToken struct {
 
 	// Use IssuedAt as JWT "iat" param
 	IssuedAt time.Time `json:"-"`
+
 	// JWT secret
 	SecretKey []byte `json:"-"`
 
