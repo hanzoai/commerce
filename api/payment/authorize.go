@@ -3,85 +3,21 @@ package payment
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/datastore"
-	"crowdstart.io/middleware"
 	"crowdstart.io/models2"
 	"crowdstart.io/models2/order"
+	"crowdstart.io/models2/organization"
 	"crowdstart.io/thirdparty/stripe2"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 )
 
-type SourceType string
-
-const (
-	SourceCard   SourceType = "card"
-	SourcePayPal            = "paypal"
-	SourceAffirm            = "affirm"
-)
-
-type Buyer struct {
-	Type SourceType `json:"type"`
-
-	// Buyer
-	Email     string         `json:"email"`
-	FirstName string         `json:"firstName"`
-	LastName  string         `json:"firstName"`
-	Company   string         `json:"company"`
-	Address   models.Address `json:"address"`
-	Notes     string         `json:"notes"`
-
-	// Card
-	Number string `json:"number"`
-	Month  string `json:"month"`
-	CVC    string `json:"cvc"`
-	Phone  string `json:"phone"`
-	Year   string `json:"year"`
-}
-
-func (b Buyer) Card() *stripe.CardParams {
-	card := stripe.CardParams{}
-	card.Name = b.FirstName + " " + b.LastName
-	card.Number = b.Number
-	card.Month = b.Month
-	card.Year = b.Year
-	card.CVC = b.CVC
-	card.Address1 = b.Address.Line1
-	card.Address2 = b.Address.Line2
-	card.City = b.Address.City
-	card.State = b.Address.State
-	card.Zip = b.Address.PostalCode
-	card.Country = b.Address.Country
-	return &card
-}
-
-func (b Buyer) Buyer() models.Buyer {
-	buyer := models.Buyer{}
-	buyer.FirstName = b.FirstName
-	buyer.LastName = b.LastName
-	buyer.Email = b.Email
-	buyer.Phone = b.Phone
-	buyer.Company = b.Company
-	buyer.Notes = b.Notes
-	return buyer
-}
-
-type AuthReq struct {
-	Buyer Buyer        `json:"buyer"`
-	Order *order.Order `json:"order"`
-}
-
-func authorize(c *gin.Context) (*order.Order, error) {
-	// Get organization for this user
-	org := middleware.GetOrg(c)
-	ctx := org.Namespace(c)
-
-	// Set up the db with the namespaced appengine context
-	db := datastore.New(ctx)
+func authorize(c *gin.Context, org *organization.Organization, ord *order.Order) (*order.Order, error) {
+	// Get namespaced context off order
+	ctx := ord.Db.Context
 
 	// Create AuthReq properly by calling order.New
-	var ar AuthReq
-	ar.Order = order.New(db)
+	ar := new(AuthReq)
+	ar.Order = ord
 
 	// In case people are using the version of the api that takes
 	// existing orders Update order in request with id
@@ -96,12 +32,12 @@ func authorize(c *gin.Context) (*order.Order, error) {
 		return nil, FailedToDecodeRequestBody
 	}
 
+	// Get client we can use for API calls
+	client := stripe.New(ctx, org.Stripe.AccessToken)
+
 	// Update order totals
 	ar.Order.Tally()
 	log.Debug("Order: %#v", ar.Order)
-
-	// Get client we can use for API calls
-	client := stripe.New(ctx, org.Stripe.AccessToken)
 
 	// Do authorization
 	token, err := client.Authorize(ar.Buyer.Card())
