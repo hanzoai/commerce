@@ -8,5 +8,5 @@ type Adjustment struct {
 	// Authorizer of price adjustment.
 	Issuer string `json:"issuer"`
 	// Amount of price adjustment.
-	Amount Cents `json:"amounts"`
+	Amount Cents `json:"amount"`
 }
