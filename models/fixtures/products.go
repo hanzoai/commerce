@@ -3,8 +3,11 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
+	"appengine"
+
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
+	"crowdstart.io/middleware"
 	. "crowdstart.io/models"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/task"
@@ -18,7 +21,12 @@ func insertVariants(db *datastore.Datastore, variants []ProductVariant) {
 	}
 }
 
-var products = task.Func("fixtures-products", func(c *gin.Context) {
+var _ = task.Func("fixtures-products", func(c *gin.Context) {
+	ctx := middleware.GetAppEngine(c)
+	Products(ctx)
+})
+
+func Products(c appengine.Context) {
 	log.Debug("Loading fixtures...")
 	db := datastore.New(c)
 
@@ -465,4 +473,4 @@ var products = task.Func("fixtures-products", func(c *gin.Context) {
 			},
 		},
 	})
-})
+}
