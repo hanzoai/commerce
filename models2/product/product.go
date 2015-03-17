@@ -17,6 +17,8 @@ import (
 	. "crowdstart.io/models2"
 )
 
+var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
+
 type Option struct {
 	// Ex. Size
 	Name string `json:"name"`
@@ -79,7 +81,7 @@ func (p Product) Kind() string {
 
 func (p *Product) Load(c <-chan aeds.Property) (err error) {
 	// Load properties
-	if err = aeds.LoadStruct(p, c); err != nil {
+	if err = IgnoreFieldMismatch(aeds.LoadStruct(p, c)); err != nil {
 		return err
 	}
 
@@ -108,7 +110,7 @@ func (p *Product) Save(c chan<- aeds.Property) (err error) {
 	}
 
 	// Save properties
-	return aeds.SaveStruct(p, c)
+	return IgnoreFieldMismatch(aeds.SaveStruct(p, c))
 }
 
 func (p Product) DisplayName() string {

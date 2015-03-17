@@ -16,6 +16,8 @@ import (
 	. "crowdstart.io/models2"
 )
 
+var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
+
 type OrderStatus string
 
 const (
@@ -130,7 +132,7 @@ func (o Order) Kind() string {
 
 func (o *Order) Load(c <-chan aeds.Property) (err error) {
 	// Load properties
-	if err = aeds.LoadStruct(o, c); err != nil {
+	if err = IgnoreFieldMismatch(aeds.LoadStruct(o, c)); err != nil {
 		return err
 	}
 
@@ -153,7 +155,7 @@ func (o *Order) Save(c chan<- aeds.Property) (err error) {
 	}
 
 	// Save properties
-	return aeds.SaveStruct(o, c)
+	return IgnoreFieldMismatch(aeds.SaveStruct(o, c))
 }
 
 func (o *Order) Tally() {
