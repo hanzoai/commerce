@@ -3,9 +3,9 @@ package mixin
 import "time"
 
 type Salesforce struct {
-	PrimarySalesforceId_   string
-	SecondarySalesforceId_ string
-	LastSync_              time.Time
+	PrimarySalesforceId_   string    `json:"-"`
+	SecondarySalesforceId_ string    `json:"-"`
+	LastSync_              time.Time `json:"-"`
 }
 
 func (so *Salesforce) SetSalesforceId(id string) {
