@@ -39,7 +39,8 @@ type PaymentAccount struct {
 	}
 
 	Stripe struct {
-		CardId     string
+		CustomerId string
+		ChargeId   string
 		CardType   string
 		Last4      string
 		Expiration struct {
