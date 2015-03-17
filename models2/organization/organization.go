@@ -102,7 +102,7 @@ func (o Organization) GenerateAccessToken(user *user.User) (string, error) {
 	}
 }
 
-func (o Organization) Namespace(ctx interface{}) (appengine.Context, error) {
+func (o Organization) Namespace(ctx interface{}) appengine.Context {
 	var _ctx appengine.Context
 
 	switch v := ctx.(type) {
@@ -112,5 +112,9 @@ func (o Organization) Namespace(ctx interface{}) (appengine.Context, error) {
 		_ctx = v
 	}
 
-	return appengine.Namespace(_ctx, o.Id())
+	_ctx, err := appengine.Namespace(_ctx, o.Id())
+	if err != nil {
+		panic(err)
+	}
+	return _ctx
 }
