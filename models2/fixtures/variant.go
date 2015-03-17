@@ -1,8 +1,6 @@
 package fixtures
 
 import (
-	"log"
-
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/datastore"
@@ -34,12 +32,8 @@ var _ = task.Func("models2-fixtures-variant", func(c *gin.Context) {
 	org.GetOrCreate("Name=", org.Name)
 
 	// Use org's namespace
-	// Use org's namespace
-	if ctx, err := org.Namespace(c); err != nil {
-		log.Panic("Failed to get namespace: %v", err)
-	} else {
-		db = datastore.New(ctx)
-	}
+	ctx := org.Namespace(c)
+	db = datastore.New(ctx)
 
 	prod := product.New(db)
 	prod.GetOrCreate("Slug=", "t-shirt")
