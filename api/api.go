@@ -39,7 +39,7 @@ func init() {
 	})
 
 	// Access token routes
-	router.GET("/access-token/:id", func(c *gin.Context) {
+	router.GET("/access/:id", func(c *gin.Context) {
 		id := c.Params.ByName("id")
 
 		query := c.Request.URL.Query()
@@ -49,7 +49,7 @@ func init() {
 		getAccessToken(c, id, email, password)
 	})
 
-	router.POST("/access-token/:id", func(c *gin.Context) {
+	router.POST("/access/:id", func(c *gin.Context) {
 		id := c.Params.ByName("id")
 
 		email := c.Request.Form.Get("email")
@@ -58,7 +58,7 @@ func init() {
 		getAccessToken(c, id, email, password)
 	})
 
-	router.DELETE("/access-token", middleware.TokenRequired(), func(c *gin.Context) {
+	router.DELETE("/access", middleware.TokenRequired(), func(c *gin.Context) {
 		deleteAccessToken(c)
 	})
 
