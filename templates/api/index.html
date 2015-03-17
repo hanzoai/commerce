@@ -77,10 +77,10 @@ function authorize() {
           "LastName": "Smoe",
           "company": "Buys Too Much Stuff Dotcom",
           "phone": "555-555-5555",
-          "notes": "non",
+          "notes": "non"
         },
         "order": {
-          "currency" "usd",
+          "currency": "usd",
           "items": [ {
             "productId": "1",
             "variantId": "1",
@@ -91,7 +91,8 @@ function authorize() {
         }
       }),
       success: function(data, textStatus, jqXHR) {
-          document.body.innerHTML = jqXHR.responseText
+          document.body.innerHTML = jqXHR.responseText;
+          console.log(data);
       },
     });
     return false
