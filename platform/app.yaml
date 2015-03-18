@@ -1,4 +1,4 @@
-application: crowdstart-io
+application: crowdstart-us
 module: platform
 version: v1
 
@@ -12,4 +12,3 @@ automatic_scaling:
 handlers:
 - url: /.*
   script: _go_app
-  login: required

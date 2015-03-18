@@ -1,8 +1,14 @@
-application: crowdstart-io
+application: crowdstart-us
 
 dispatch:
-  - url: "static.crowdstart.io/*"
+  - url: "static.crowdstart.com/*"
     module: default
 
-  - url: "secure.crowdstart.io/*"
+  - url: "api.crowdstart.com/*"
+    module: api
+
+  - url: "secure.crowdstart.com/*"
     module: checkout
+
+  - url: "www.crowdstart.com/*"
+    module: platform
