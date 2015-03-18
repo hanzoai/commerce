@@ -70,12 +70,12 @@ header.header-scroll {
 /* LOGO */
 .site-logo .site-logo-img {
   opacity: .5;
-  width: 32px;
+  width: 42px;
 }
 
 .site-logo .site-logo-text {
   margin-left: 10px;
-  width: 180px;
+  width: 200px;
 }
 
 header.header-scroll .site-logo-img {
