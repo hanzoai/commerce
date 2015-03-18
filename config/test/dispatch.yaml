@@ -1,4 +1,4 @@
-application: crowdstart-io
+application: crowdstart-us
 
 dispatch:
   - url: "*/api/*"
