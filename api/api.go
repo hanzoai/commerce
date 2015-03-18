@@ -31,7 +31,7 @@ func init() {
 		c.Redirect(301, "http://www.crowdstart.com/docs")
 	})
 
-	v2 := router.New("api").Group("/v2/")
+	v2 := router.Group("/v2/")
 
 	// Entities with automatic RESTful API
 	entities := []mixin.Entity{
