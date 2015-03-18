@@ -61,7 +61,12 @@ func SubmitProfile(c *gin.Context) {
 
 // Admin Dashboard
 func Dashboard(c *gin.Context) {
-	template.Render(c, "dashboard.html")
+	if u, err := auth.GetUser(c); err != nil {
+		c.Fail(500, err)
+	} else {
+		template.Render(c, "dashboard.html",
+			"user", u)
+	}
 }
 
 // Admin Payment Connectors
