@@ -16,15 +16,15 @@ func Index(c *gin.Context) {
 	c.Redirect(301, url)
 }
 
-// Register
-func Register(c *gin.Context) {
-	template.Render(c, "register.html")
-}
+// // Register
+// func Register(c *gin.Context) {
+// 	template.Render(c, "register.html")
+// }
 
-// Post registration form
-func SubmitRegister(c *gin.Context) {
-	c.Redirect(301, "dashboard")
-}
+// // Post registration form
+// func SubmitRegister(c *gin.Context) {
+// 	c.Redirect(301, "dashboard")
+// }
 
 // Render login form
 func Login(c *gin.Context) {
@@ -39,7 +39,7 @@ func SubmitLogin(c *gin.Context) {
 	} else {
 		log.Debug("Failure")
 		log.Debug("%#v", err)
-		c.Redirect(301, "login")
+		template.Render(c, "login.html", "failed", true)
 	}
 }
 
