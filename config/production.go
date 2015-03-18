@@ -9,7 +9,7 @@ func Production() *Config {
 	config.IsProduction = true
 
 	config.Prefixes["default"] = "/"
-	config.Prefixes["api"] = "/"
+	config.Prefixes["api"] = "/v2/"
 	config.Prefixes["checkout"] = "/"
 	config.Prefixes["platform"] = "/"
 	config.Prefixes["preorder"] = "/"
