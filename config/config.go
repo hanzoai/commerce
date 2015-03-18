@@ -34,6 +34,7 @@ type Config struct {
 	IsDevelopment     bool
 	IsProduction      bool
 	IsStaging         bool
+	IsSandbox         bool
 	Protocol          string
 	RootDir           string
 	SentryDSN         string
@@ -138,10 +139,12 @@ func Get() *Config {
 		cachedConfig = Development()
 	} else {
 		// TODO: This is a total hack, probably can't rely on this.
-		// Use PWD to determine appid, if s~crowdstart-io-staging is in PWD,
+		// Use PWD to determine appid, if s~crowdstart-staging is in PWD,
 		// then we're in staging enviroment.
 		pwd := os.Getenv("PWD")
-		if strings.Contains(pwd, "s~crowdstart-staging") {
+		if strings.Contains(pwd, "s~crowdstart-sandbox") {
+			cachedConfig = Sandbox()
+		} else if strings.Contains(pwd, "s~crowdstart-staging") {
 			cachedConfig = Staging()
 		} else if strings.Contains(pwd, "s~crowdstart-skully") {
 			cachedConfig = Skully()
@@ -172,6 +175,7 @@ var Google = config.Google
 var IsDevelopment = config.IsDevelopment
 var IsProduction = config.IsProduction
 var IsStaging = config.IsStaging
+var IsSandbox = config.IsSandbox
 var Mandrill = config.Mandrill
 var Prefixes = config.Prefixes
 var RootDir = config.RootDir

@@ -1,0 +1,5 @@
+application: crowdstart-sandbox
+
+dispatch:
+  - url: "sandbox.crowdstart.com/*"
+    module: api
