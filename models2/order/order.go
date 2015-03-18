@@ -110,8 +110,8 @@ type Order struct {
 
 	Payments []Payment `json:"payments"`
 
-	// Fullfillment information
-	Fullfillment Fullfillment `json:"fullfillment"`
+	// Fulfillment information
+	Fulfillment Fulfillment `json:"fulfillment"`
 
 	// Series of events that have occured relevant to this order
 	History []Event `json:"history,omitempty"`
