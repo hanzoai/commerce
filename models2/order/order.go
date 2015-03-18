@@ -42,7 +42,7 @@ type Order struct {
 
 	PaymentStatus PaymentStatus `json:"paymentStatus"`
 
-	// unfullfilled, fulfilled, processing, failed
+	// unfulfilled, fulfilled, processing, failed
 	FulfillmentStatus FulfillmentStatus `json:"fulfillmentStatus"`
 
 	// Whether this was a preorder or not
