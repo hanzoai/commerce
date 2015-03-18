@@ -8,8 +8,11 @@ func Sandbox() *Config {
 	config.IsStaging = false
 	config.IsSandbox = true
 
-	config.Hosts["default"] = "default-dot-crowdstart-sandbox.appspot.com"
-	config.Hosts["api"] = "sandbox.crowdstart.com"
+	// Only modules active in sandbox
+	config.Hosts["default"] = "sandbox.crowdstart.com"
+	config.Hosts["api"] = "api.sandbox.crowdstart.com"
+
+	// Disabled but configured nonetheless
 	config.Hosts["checkout"] = "checkout-dot-crowdstart-sandbox.appspot.com"
 	config.Hosts["platform"] = "platform-dot-crowdstart-sandbox.appspot.com"
 	config.Hosts["preorder"] = "preorder-dot-crowdstart-sandbox.appspot.com"
