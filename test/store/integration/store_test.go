@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/headzoo/surf"
+	"github.com/headzoo/surf/browser"
 
 	"crowdstart.io/util/gincontext"
 	"crowdstart.io/util/task"
@@ -68,6 +69,30 @@ var _ = Describe("Index", func() {
 var _ = Describe("Products", func() {
 	It("should be 200 OK", Get200("/products"))
 })
+
+func login() *browser.Browser {
+	url := client.URL("/login")
+	b := surf.NewBrowser()
+
+	if err := b.Open(url); err != nil {
+		panic(err)
+	}
+
+	loginForm, err := b.Form("form#loginForm")
+	if err != nil {
+		panic(err)
+	}
+
+	loginForm.Input("Email", user.Email)
+	loginForm.Input("Password", user.Password)
+
+	err = loginForm.Submit()
+	if err != nil {
+		panic(err)
+	}
+
+	return b
+}
 
 var _ = Describe("Login", func() {
 	Context("With an existing user", func() {
@@ -155,6 +180,17 @@ var _ = Describe("Register", func() {
 			errMessage := b.Find("form#registerForm > div.errors.error").First().Text()
 			Expect(errMessage).To(Equal("An account already exists for this email."))
 		})
+	})
+})
+
+var _ = Describe("Profile page", func() {
+	It("should render the user's information", func() {
+		var b = login()
+		err := b.Open(client.URL("/profile"))
+		Expect(err).ToNot(HaveOccurred())
+
+		displayedEmail := b.Find("#profileForm > fieldset > div:nth-child(1) > span").Text()
+		Expect(displayedEmail).To(Equal(user.Email))
 	})
 })
 
