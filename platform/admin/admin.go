@@ -51,7 +51,20 @@ func Logout(c *gin.Context) {
 
 // Renders the admin user page
 func Profile(c *gin.Context) {
+	if u, err := auth.GetUser(c); err != nil {
+		c.Fail(500, err)
+	} else {
+		template.Render(c, "profile.html",
+			"user", u)
+	}
+}
 
+func Organization(c *gin.Context) {
+	template.Render(c, "organization.html")
+}
+
+func Keys(c *gin.Context) {
+	template.Render(c, "keys.html")
 }
 
 // Handles submission on profile page
