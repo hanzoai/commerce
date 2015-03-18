@@ -3,6 +3,7 @@ package platform
 import (
 	"crowdstart.io/middleware"
 	"crowdstart.io/platform/admin"
+	"crowdstart.io/platform/frontend"
 	"crowdstart.io/thirdparty/stripe"
 	"crowdstart.io/util/router"
 )
@@ -13,7 +14,7 @@ func init() {
 
 	loginRequired := middleware.LoginRequired("platform")
 
-	router.GET("/", admin.Index)
+	router.GET("/", frontend.Index)
 	router.GET("/theme/", admin.ThemeSample)
 
 	router.GET("/dashboard", loginRequired, admin.Dashboard)
