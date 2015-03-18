@@ -30,6 +30,9 @@ gae_development = config/development/app.yaml \
 				  preorder/app.dev.yaml \
 				  store/app.dev.yaml
 
+gae_sandbox = config/sandbox \
+			  api/app.staging.yaml
+
 gae_staging = config/staging \
 			  api/app.staging.yaml \
 			  checkout/app.staging.yaml \
