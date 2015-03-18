@@ -12,4 +12,3 @@ automatic_scaling:
 handlers:
 - url: /.*
   script: _go_app
-  login: required
