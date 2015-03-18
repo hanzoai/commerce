@@ -28,7 +28,11 @@ func init() {
 	router.GET("/profile", loginRequired, admin.Profile)
 	router.POST("/profile", admin.SubmitProfile)
 
+	router.GET("/organization", loginRequired, admin.Organization)
+	router.GET("/keys", loginRequired, admin.Keys)
 	router.GET("/connect", loginRequired, admin.Connect)
+
+	router.GET("/settings", loginRequired, admin.Profile)
 
 	// Stripe connect
 	router.GET("/stripe/callback", loginRequired, admin.StripeCallback)
