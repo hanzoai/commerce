@@ -138,7 +138,7 @@ func Get() *Config {
 		cachedConfig = Development()
 	} else {
 		// TODO: This is a total hack, probably can't rely on this.
-		// Use PWD to determine appid, if s~crowdstart-io-staging is in PWD,
+		// Use PWD to determine appid, if s~crowdstart-staging is in PWD,
 		// then we're in staging enviroment.
 		pwd := os.Getenv("PWD")
 		if strings.Contains(pwd, "s~crowdstart-staging") {
