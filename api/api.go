@@ -22,6 +22,17 @@ import (
 func init() {
 	router := router.New("api")
 
+	// Redirect naked, v1
+	router.GET("/", func(c *gin.Context) {
+		c.Redirect(301, "http://www.crowdstart.com/docs")
+	})
+
+	router.GET("/v1/", func(c *gin.Context) {
+		c.Redirect(301, "http://www.crowdstart.com/docs")
+	})
+
+	v2 := router.New("api").Group("/v2/")
+
 	// Entities with automatic RESTful API
 	entities := []mixin.Entity{
 		campaign.Campaign{},
@@ -36,12 +47,12 @@ func init() {
 	}
 
 	// Redirect root
-	router.GET("/", rest.DebugIndex(entities), func(c *gin.Context) {
+	v2.GET("/", rest.DebugIndex(entities), func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
 
 	// Access token routes
-	router.GET("/access/:id", func(c *gin.Context) {
+	v2.GET("/access/:id", func(c *gin.Context) {
 		id := c.Params.ByName("id")
 
 		query := c.Request.URL.Query()
@@ -51,7 +62,7 @@ func init() {
 		getAccessToken(c, id, email, password)
 	})
 
-	router.POST("/access/:id", func(c *gin.Context) {
+	v2.POST("/access/:id", func(c *gin.Context) {
 		id := c.Params.ByName("id")
 
 		email := c.Request.Form.Get("email")
@@ -60,19 +71,19 @@ func init() {
 		getAccessToken(c, id, email, password)
 	})
 
-	router.DELETE("/access", middleware.TokenRequired(), func(c *gin.Context) {
+	v2.DELETE("/access", middleware.TokenRequired(), func(c *gin.Context) {
 		deleteAccessToken(c)
 	})
 
 	// Authorization routes
 	// One Step Payments
-	router.POST("/charge", middleware.TokenRequired(), payment.Charge)
-	router.POST("/order/:id/charge", middleware.TokenRequired(), payment.Charge)
+	v2.POST("/charge", middleware.TokenRequired(), payment.Charge)
+	v2.POST("/order/:id/charge", middleware.TokenRequired(), payment.Charge)
 
 	// Two Step Payments - "Auth & Capture"
-	router.POST("/authorize", middleware.TokenRequired(), payment.Authorize)
-	router.POST("/order/:id/authorize", middleware.TokenRequired(), payment.Authorize)
-	router.POST("/order/:id/capture", middleware.TokenRequired(), payment.Capture)
+	v2.POST("/authorize", middleware.TokenRequired(), payment.Authorize)
+	v2.POST("/order/:id/authorize", middleware.TokenRequired(), payment.Authorize)
+	v2.POST("/order/:id/capture", middleware.TokenRequired(), payment.Capture)
 
 	// Setup API routes
 	logApiRoutes(entities)
