@@ -20,10 +20,10 @@ const (
 )
 
 type Client struct {
-	Ip        string
-	UserAgent string
-	Language  string
-	Referer   string
+	Ip        string `json:"ip,omitempty"`
+	UserAgent string `json:"userAgent,omitempty"`
+	Language  string `json:"language,omitempty"`
+	Referer   string `json:"referer,omitempty"`
 }
 
 type PaymentAccount struct {
@@ -43,7 +43,7 @@ type PaymentAccount struct {
 	} `json:"affirm,omitempty"`
 
 	Stripe struct {
-		Fingerprint string `json:fingerprint,omitempty`
+		Fingerprint string `json:"fingerprint,omitempty"`
 		CustomerId  string `json:"customerId,omitempty"`
 		ChargeId    string `json:"chargeId,omitempty"`
 		CardId      string `json:"cardId,omitempty"`
