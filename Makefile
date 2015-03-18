@@ -47,9 +47,7 @@ gae_skully = config/skully \
 gae_production = config/production \
 				 api \
 				 checkout \
-				 platform \
-				 preorder \
-				 store
+				 platform
 
 tools = github.com/nsf/gocode \
 		code.google.com/p/go.tools/cmd/goimports \
@@ -135,10 +133,13 @@ endif
 
 # set production=1 to set datastore export/import target to use production
 ifeq ($(production), 1)
+	datastore_app_id = crowdstart-us
+else ifeq ($(skully), 1)
 	datastore_app_id = crowdstart-skully
 else
 	datastore_app_id = crowdstart-staging
 endif
+
 datastore_admin_url = https://datastore-admin-dot-$(datastore_app_id).appspot.com/_ah/remote_api
 
 test_focus := $(focus)
