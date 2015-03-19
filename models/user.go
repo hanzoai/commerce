@@ -29,8 +29,22 @@ type User struct {
 	ShippingAddress Address
 	Email           string
 	Campaigns       []Campaign `schema:"-" datastore:"-"`
-	PasswordHash    []byte     `schema:"-" datastore:",noindex" json:"-"`
-	Stripe          struct {
+
+	PasswordHash []byte `schema:"-" json:"-"`
+
+	Facebook struct {
+		AccessToken string `facebook:"-"`
+		UserId      string `facebook:"id"`
+		FirstName   string `facebook:"first_name"`
+		LastName    string `facebook:"last_name"`
+		MiddleName  string `facebook:"middle_name"`
+		Name        string `facebook:"name" datastore:"-"`
+		NameFormat  string `facebook:"name_format"` // For Chinese, Japanese, and Korean names. Possibly used in the future.
+		Email       string `facebook:"email"`
+		Verified    bool   `facebook:"verified"`
+	}
+
+	Stripe struct {
 		// Use CustomerId instead of Account.ID because the latter is currently only
 		// set when the user updates their details via Stripe
 		CustomerId string

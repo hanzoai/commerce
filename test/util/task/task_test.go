@@ -3,17 +3,12 @@ package test
 import (
 	"testing"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-
-	"crowdstart.io/util/log"
 	"crowdstart.io/util/task"
+	. "crowdstart.io/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {
-	log.SetVerbose(testing.Verbose())
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "util/task")
+	Setup("util/task", t)
 }
 
 type X struct {

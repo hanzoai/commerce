@@ -15,6 +15,7 @@ var cwd, _ = os.Getwd()
 
 func TemplateSet() *pongo2.TemplateSet {
 	set := pongo2.NewSet("default")
+
 	set.Debug = config.IsDevelopment
 
 	set.Globals["config"] = config.Get()
@@ -47,7 +48,7 @@ func Render(c *gin.Context, path string, pairs ...interface{}) (err error) {
 	// Get template from cache
 	template, err := templateSet.FromCache(templatePath)
 	if err != nil {
-		log.Panic("Unable to find template: %v\n\n%v", path, err)
+		log.Panic("Unable to render template: %v\n\n%v", path, err)
 	}
 
 	// Create context from pairs
@@ -78,7 +79,7 @@ func RenderString(path string, pairs ...interface{}) string {
 	// Get template from cache
 	template, err := templateSet.FromCache(templatePath)
 	if err != nil {
-		log.Panic("Unable to find template: %v\n\n%v", path, err)
+		log.Panic("Unable to render template: %v\n\n%v", path, err)
 	}
 
 	// Create context from pairs

@@ -9,7 +9,9 @@ import (
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
+	"crowdstart.io/models/fixtures"
 	"crowdstart.io/util/gincontext"
+	"crowdstart.io/util/log"
 	"crowdstart.io/util/queries"
 	"crowdstart.io/util/task"
 	"crowdstart.io/util/test/ae"
@@ -41,8 +43,8 @@ var user = struct {
 
 var _ = BeforeSuite(func() {
 	ctx = ae.NewContext(ae.Options{
-		Modules:    []string{"default", "store"},
-		TaskQueues: []string{"default"},
+		Modules:                []string{"store"},
+		PreferAppengineTesting: true,
 	})
 
 	db = datastore.New(ctx)
@@ -51,11 +53,11 @@ var _ = BeforeSuite(func() {
 	client = httpclient.New(ctx, "store")
 
 	// Install product fixtures so we can access store pages
-	task.Run(gincontext.New(ctx), "fixtures-products")
-	task.Run(gincontext.New(ctx), "fixtures-test-users")
+	fixtures.Products(ctx)
+	fixtures.TestUsers(ctx)
 
 	// Wait for fixtures to complete running
-	time.Sleep(15 * time.Second)
+	time.Sleep(5 * time.Second)
 })
 
 var _ = AfterSuite(func() {
@@ -65,6 +67,7 @@ var _ = AfterSuite(func() {
 func Get200(path string) func() {
 	return func() {
 		res, err := client.Get(path)
+		log.Debug(res.Text())
 		Expect(err).ToNot(HaveOccurred())
 		Expect(res.StatusCode).To(Equal(200))
 	}

@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"crowdstart.io/models"
+	"crowdstart.io/models2/user"
 	"crowdstart.io/util/log"
 )
 
@@ -56,6 +57,11 @@ func (s *StringValidationContext) Contains(str string) *StringValidationContext 
 }
 
 func ValidateUser(user *models.User, errs []string) []string {
+	if !Check(user.Email).IsEmail().IsValid {
+		log.Debug("Form posted invalid email")
+		errs = append(errs, "Please enter a valid email.")
+	}
+
 	if !Check(user.FirstName).Exists().IsValid {
 		log.Debug("Form posted without first name")
 		errs = append(errs, "Please enter a first name.")
@@ -79,6 +85,37 @@ func SanitizeUser(user *models.User) {
 	user.Email = strings.ToLower(strings.TrimSpace(user.Email))
 	user.FirstName = strings.Title(user.FirstName)
 	user.LastName = strings.Title(user.LastName)
+}
+
+func ValidateUser2(u *user.User, errs []string) []string {
+	if !Check(u.Email).IsEmail().IsValid {
+		log.Debug("Form posted invalid email")
+		errs = append(errs, "Please enter a valid email.")
+	}
+
+	if !Check(u.FirstName).Exists().IsValid {
+		log.Debug("Form posted without first name")
+		errs = append(errs, "Please enter a first name.")
+	}
+
+	if !Check(u.LastName).Exists().IsValid {
+		log.Debug("Form posted without last name")
+		errs = append(errs, "Please enter a last name.")
+	}
+
+	// Do we care?
+	// if !Check(u.Phone).Exists().IsValid {
+	// 	log.Debug("Form posted without phone number")
+	// 	errs = append(errs, "Please enter a phone number.")
+	// }
+
+	return errs
+}
+
+func SanitizeUser2(u *user.User) {
+	u.Email = strings.ToLower(strings.TrimSpace(u.Email))
+	u.FirstName = strings.Title(u.FirstName)
+	u.LastName = strings.Title(u.LastName)
 }
 
 func ValidateAddress(address *models.Address, errs []string) []string {

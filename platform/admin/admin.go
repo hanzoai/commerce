@@ -3,8 +3,10 @@ package admin
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/auth"
+	"crowdstart.io/auth2"
 	"crowdstart.io/config"
+	"crowdstart.io/datastore"
+	"crowdstart.io/models2/organization"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
 )
@@ -16,62 +18,41 @@ func Index(c *gin.Context) {
 	c.Redirect(301, url)
 }
 
-// Register
-func Register(c *gin.Context) {
-	template.Render(c, "register.html")
-}
-
-// Post registration form
-func SubmitRegister(c *gin.Context) {
-	c.Redirect(301, "dashboard")
-}
-
-// Render login form
-func Login(c *gin.Context) {
-	template.Render(c, "login.html")
-}
-
-// Post login form
-func SubmitLogin(c *gin.Context) {
-	if err := auth.VerifyUser(c); err == nil {
-		log.Debug("Success")
-		c.Redirect(301, "dashboard")
+// Admin Dashboard
+func Dashboard(c *gin.Context) {
+	if u, err := auth.GetCurrentUser(c); err != nil {
+		c.Fail(500, err)
 	} else {
-		log.Debug("Failure")
-		log.Debug("%#v", err)
-		c.Redirect(301, "login")
+		template.Render(c, "admin/dashboard.html", "user", u)
 	}
 }
 
-//
-func Logout(c *gin.Context) {
-	auth.Logout(c) // Deletes the loginKey from session.Values
-	c.Redirect(301, "/")
+func Organization(c *gin.Context) {
+	if u, err := auth.GetCurrentUser(c); err != nil {
+		c.Fail(500, err)
+	} else {
+		db := datastore.New(c)
+		org := organization.New(db)
+		if _, err := org.Query().Filter("OwnerId=", u.Id()).First(); err != nil {
+			c.Fail(500, err)
+			return
+		}
+
+		template.Render(c, "admin/organization.html", "org", org)
+	}
 }
 
-// Renders the admin user page
-func Profile(c *gin.Context) {
+func Keys(c *gin.Context) {
+	if u, err := auth.GetCurrentUser(c); err != nil {
+		c.Fail(500, err)
+	} else {
+		db := datastore.New(c)
+		org := organization.New(db)
+		if _, err := org.Query().Filter("OwnerId=", u.Id()).First(); err != nil {
+			c.Fail(500, err)
+			return
+		}
 
-}
-
-// Handles submission on profile page
-func SubmitProfile(c *gin.Context) {
-	c.Redirect(301, "profile")
-}
-
-// Admin Dashboard
-func Dashboard(c *gin.Context) {
-	template.Render(c, "dashboard.html")
-}
-
-// Admin Payment Connectors
-func Connect(c *gin.Context) {
-	template.Render(c, "connect.html",
-		"stripe", config.Stripe,
-		"salesforce", config.Salesforce)
-}
-
-// Theme Testing
-func ThemeSample(c *gin.Context) {
-	template.Render(c, "sample.html")
+		template.Render(c, "admin/keys.html", "org", org)
+	}
 }
