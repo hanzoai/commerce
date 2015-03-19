@@ -29,6 +29,18 @@ type User struct {
 	Email           string  `json:"email"`
 	PasswordHash    []byte  `schema:"-" datastore:",noindex" json:"-"`
 
+	Facebook struct {
+		AccessToken string `facebook:"-"`
+		UserId      string `facebook:"id"`
+		FirstName   string `facebook:"first_name"`
+		LastName    string `facebook:"last_name"`
+		MiddleName  string `facebook:"middle_name"`
+		Name        string `facebook:"name" datastore:"-"`
+		NameFormat  string `facebook:"name_format"` // For Chinese, Japanese, and Korean names. Possibly used in the future.
+		Email       string `facebook:"email" datastore:"-"`
+		Verified    bool   `facebook:"verified" datastore:"-"`
+	} `json:"-"`
+
 	StripeCustomerId string `json:"stripeCustomerId,omitempty"`
 
 	Metadata []Datum `json:"metadata,omitempty"`
