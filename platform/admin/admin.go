@@ -82,13 +82,6 @@ func Dashboard(c *gin.Context) {
 	}
 }
 
-// Admin Payment Connectors
-func Connect(c *gin.Context) {
-	template.Render(c, "connect.html",
-		"stripe", config.Stripe,
-		"salesforce", config.Salesforce)
-}
-
 // Theme Testing
 func ThemeSample(c *gin.Context) {
 	template.Render(c, "sample.html")
