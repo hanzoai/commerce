@@ -13,6 +13,7 @@ github.com/qedus/nds master
 github.com/stripe/stripe-go 9da043110c7f8a66166c60f913ea854cc9c8ae3e
 github.com/zeekay/aetest master
 github.com/zeekay/go-logging master
+github.com/huandu/facebook master
 github.com/davidtai/appenginetesting master
 github.com/dgrijalva/jwt-go master
 github.com/headzoo/surf master
