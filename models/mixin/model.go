@@ -83,7 +83,7 @@ func (m *Model) setKey(key datastore.Key) {
 func (m *Model) Key() (key datastore.Key) {
 	// Create a new incomplete key for this new entity
 	if m.key == nil {
-		log.Warn("KEY IS NIL")
+		log.Warn("Key is nil, automatically creating a new key.")
 		kind := m.Entity.Kind()
 
 		if m.StringKey_ {
