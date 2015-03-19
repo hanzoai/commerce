@@ -29,30 +29,36 @@ func (c *Client) determineBaseURL() {
 		log.Panic("Unable to get host for module '%v': %v", c.moduleName, err)
 	}
 
-	c.baseURL = "http://" + moduleHost
+	url := "http://" + strings.Trim(moduleHost, "/")
 
-	if config.IsDevelopment {
-		c.baseURL += "/" + c.moduleName
+	if config.IsDevelopment && c.moduleName != "default" {
+		url = strings.Trim(url, "/") + "/" + c.moduleName
 	}
+
+	c.baseURL = strings.Trim(url, "/")
 }
 
-func (c *Client) Get(url string) (res Response, err error) {
-	res.Response, err = http.Get(c.baseURL + url)
+func (c *Client) getURL(path string) string {
+	return c.baseURL + "/" + strings.TrimLeft(path, "/")
+}
+
+func (c *Client) Get(path string) (res Response, err error) {
+	res.Response, err = http.Get(c.getURL(path))
 	return res, err
 }
 
-func (c *Client) Post(url, bodyType string, reader io.Reader) (res Response, err error) {
-	res.Response, err = http.Post(c.baseURL+url, bodyType, reader)
+func (c *Client) Post(path, bodyType string, reader io.Reader) (res Response, err error) {
+	res.Response, err = http.Post(c.getURL(path), bodyType, reader)
 	return res, err
 }
 
-func (c *Client) PostForm(url string, data url.Values) (res Response, err error) {
-	res.Response, err = http.PostForm(c.baseURL+url, data)
+func (c *Client) PostForm(path string, data url.Values) (res Response, err error) {
+	res.Response, err = http.PostForm(c.getURL(path), data)
 	return res, err
 }
 
-func (c *Client) PostJSON(url string, src interface{}) (res Response, err error) {
+func (c *Client) PostJSON(path string, src interface{}) (res Response, err error) {
 	encoded := json.Encode(src)
-	res.Response, err = http.Post(c.baseURL+url, "application/json", strings.NewReader(encoded))
+	res.Response, err = http.Post(c.getURL(path), "application/json", strings.NewReader(encoded))
 	return res, err
 }
