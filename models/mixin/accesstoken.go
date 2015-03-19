@@ -32,10 +32,15 @@ func (at *AccessToken) GenerateAccessToken() (string, error) {
 	// Generate a new TokenId to invalidate previous key
 	at.TokenId = rand.ShortId()
 
-	return at.accessToken()
+	return at.BuildAccessToken()
 }
 
-func (at *AccessToken) accessToken() (string, error) {
+func (at *AccessToken) MustBuildAccessToken() string {
+	token, _ := at.BuildAccessToken()
+	return token
+}
+
+func (at *AccessToken) BuildAccessToken() (string, error) {
 	token := jwt.New(jwt.SigningMethodHS512)
 
 	// Use Key as JWT "iss" param
@@ -44,7 +49,7 @@ func (at *AccessToken) accessToken() (string, error) {
 	token.Claims["jti"] = at.TokenId
 
 	// This sets the token to expire in a year
-	//token.Claims["exp"] = time.Now().Add(time.Hour * 24.0 * 365).Unix()
+	//token.Claims["exp"] = at.IssuedAt.Add(time.Hour * 24.0 * 365).Unix()
 
 	return token.SignedString(at.SecretKey)
 }
