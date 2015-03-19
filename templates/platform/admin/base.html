@@ -92,8 +92,8 @@
                     <!-- Sidebar Brand -->
                     <div id="sidebar-brand" class="themed-background">
                         <a href="/" class="sidebar-title">
-                          <img src="{{ staticUrl }}/frontend/img/logo-white.png" style="width:24px; opacity: 0.5;margin-right:5px">
-                          <span class="sidebar-nav-mini-hide"><img src="{{ staticUrl }}/frontend/img/logo-text-white.png" style="width:92px"></span>
+                          <img src="{{ staticUrl }}/frontend/img/logo-white.png" style="width:30px; opacity: 0.5;margin-right:5px; margin-bottom:5px">
+                          <span class="sidebar-nav-mini-hide"><img src="{{ staticUrl }}/frontend/img/logo-text-white.png" style="width:100px; margin-bottom:5px"></span>
                         </a>
                     </div>
                     <!-- END Sidebar Brand -->
@@ -105,7 +105,7 @@
                             <!-- Sidebar Navigation -->
                             <ul class="sidebar-nav">
                                 <li>
-                                  <a href="{{ urlFor("platform", "/dashboard") }}"><i class="gi gi-stats sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Dashboard</span></a>
+                                  <a href="{{ urlFor("platform", "/dashboard") }}"><i class="fa fa-home sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Dashboard</span></a>
                                 </li>
                                 <li class="sidebar-separator">
                                     <i class="fa fa-ellipsis-h"></i>
@@ -120,7 +120,7 @@
                                   <a href="{{ urlFor("platform", "/keys") }}"><i class="gi gi-keys sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">API Keys</span></a>
                                 </li>
                                 <li>
-                                  <a href="{{ urlFor("platform", "/stripe/connect") }}"><i class="fa fa-credit-card sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Connect Stripe</span></a>
+                                    <a href="{{ urlFor("platform", "/stripe/connect") }}"><i class="fa fa-credit-card sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Payment Processing</span></a>
                                 </li>
                                 <li class="sidebar-separator">
                                     <i class="fa fa-ellipsis-h"></i>
