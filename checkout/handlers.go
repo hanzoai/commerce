@@ -179,6 +179,7 @@ func charge(c *gin.Context) {
 	// We'll update user even if charge failed, this ensures consistent profile
 	// data and stripe customer consistency.
 	log.Debug("Updating and saving user...", c)
+
 	user.BillingAddress = form.Order.BillingAddress
 	user.ShippingAddress = form.Order.ShippingAddress
 	user.Phone = form.User.Phone
