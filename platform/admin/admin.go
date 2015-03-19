@@ -18,25 +18,15 @@ func Index(c *gin.Context) {
 	c.Redirect(301, url)
 }
 
-// // Register
-// func Register(c *gin.Context) {
-// 	template.Render(c, "register.html")
-// }
-
-// // Post registration form
-// func SubmitRegister(c *gin.Context) {
-// 	c.Redirect(301, "dashboard")
-// }
-
 // Admin Dashboard
 func Dashboard(c *gin.Context) {
 	if u, err := auth.GetCurrentUser(c); err != nil {
 		c.Fail(500, err)
 	} else {
-		template.Render(c, "dashboard.html",
-			"user", u)
+		template.Render(c, "admin/dashboard.html", "user", u)
 	}
 }
+
 func Organization(c *gin.Context) {
 	if u, err := auth.GetCurrentUser(c); err != nil {
 		c.Fail(500, err)
@@ -48,8 +38,7 @@ func Organization(c *gin.Context) {
 			return
 		}
 
-		template.Render(c, "organization.html",
-			"org", org)
+		template.Render(c, "admin/organization.html", "org", org)
 	}
 }
 
@@ -64,12 +53,6 @@ func Keys(c *gin.Context) {
 			return
 		}
 
-		template.Render(c, "keys.html",
-			"org", org)
+		template.Render(c, "admin/keys.html", "org", org)
 	}
-}
-
-// Theme Testing
-func ThemeSample(c *gin.Context) {
-	template.Render(c, "sample.html")
 }
