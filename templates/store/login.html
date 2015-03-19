@@ -32,29 +32,40 @@ div.error {
                 <h2>Returning Customer?</h2>
                 <p>Login to get the latest updates on your preorder.</p>
             </div>
+    <!-- <form id="loginForm" action="{{ urlFor("store", "/login") }}" method="post"> -->
 
-            <div class="errors error">{{ loginError }}</div>
+    <!--     <div class="user-form-header"> -->
+    <!--         <h2>Returning Customer?</h2> -->
+    <!--         <p>Login to get the latest updates on your preorder.</p> -->
+    <!--     </div> -->
 
-            <div class="field required">
-                <label>Email</label>
-                <input type="text" id="email" name="Email" placeholder="Email"/>
-            </div>
+        <div class="errors error">{{ loginError }}</div>
 
-            <div class="field required">
-                <label>Password</label>
-                <input type="password" id="password" name="Password" placeholder="Password" />
-            </div>
+        <div class="field required">
+            <label>Email</label>
+            <input type="text" id="email" name="Email" placeholder="Email"/>
+        </div>
 
-            <div class="options password-options">
-                <input type="checkbox" id="remember-me" name="RememberMe" value="true" checked />
-                <span class="remember">Remember Me</span>
-                <a href="{{ urlFor("store", "password-reset") }}">Forgot Password?</a>
-            </div>
+        <div class="field required">
+            <label>Password</label>
+            <input type="password" id="password" name="Password" placeholder="Password" />
+        </div>
 
-            <div class="options">
-                <button type="submit">Login</button>
-            </div>
-        </form>
+        <div class="options password-options">
+            <input type="checkbox" id="remember-me" name="RememberMe" value="true" checked />
+            <span class="remember">Remember Me</span>
+            <a href="{{ urlFor("store", "password-reset") }}">Forgot Password?</a>
+        </div>
+
+        <div class="options">
+            <button type="submit">Login</button>
+        </div>
+    </form>
+
+    <!-- <hr/> -->
+
+    <!-- <div><a href="{{ urlFor("store", "/auth/facebook") }}"><img style="width: 100%;" src="/static/img/social/facebook-login.png"></a></div> -->
+
     </div>
 
     <div class="divider"></div>
