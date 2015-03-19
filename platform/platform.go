@@ -14,34 +14,44 @@ func init() {
 	router := router.New("platform")
 
 	loginRequired := middleware.LoginRequired("platform")
+	logoutRequired := middleware.LogoutRequired("platform")
 
+	// Frontend
 	router.GET("/", frontend.Index)
 	router.GET("/about", frontend.About)
 	router.GET("/contact", frontend.Contact)
-	router.GET("/docs", frontend.Docs)
 	router.GET("/faq", frontend.Faq)
 	router.GET("/features", frontend.Features)
 	router.GET("/how-it-works", frontend.HowItWorks)
 	router.GET("/pricing", frontend.Pricing)
 	router.GET("/privacy", frontend.Privacy)
-	router.GET("/signup", frontend.Signup)
 	router.GET("/team", frontend.Team)
 	router.GET("/terms", frontend.Terms)
 
-	router.GET("/theme/", admin.ThemeSample)
+	// Docs
+	router.GET("/docs", frontend.Docs)
 
-	router.GET("/dashboard", loginRequired, admin.Dashboard)
-
-	router.GET("/login", user.Login)
-	router.POST("/login", user.SubmitLogin)
+	// Login
+	router.GET("/login", logoutRequired, user.Login)
+	router.POST("/login", logoutRequired, user.SubmitLogin)
 	router.GET("/logout", user.Logout)
 
-	// router.GET("/register", admin.Register)
-	// router.POST("/register", admin.SubmitRegister)
+	// Signup
+	// router.GET("/signup", login.Signup)
+	// router.POST("/signup", login.SignupSubmit)
+
+	// Password Reset
+	// router.GET("/create-password", user.CreatePassword)
+	// router.GET("/password-reset", user.PasswordReset)
+	// router.POST("/password-reset", user.PasswordResetSubmit)
+	// router.GET("/password-reset/:token", user.PasswordResetConfirm)
+	// router.POST("/password-reset/:token", user.PasswordResetConfirmSubmit)
+
+	// Admin
+	router.GET("/dashboard", loginRequired, admin.Dashboard)
 
 	router.GET("/profile", loginRequired, user.Profile)
 	router.POST("/profile", user.SubmitProfile)
-	router.POST("/resetpassword", user.ResetPassword)
 
 	router.GET("/organization", loginRequired, admin.Organization)
 	router.GET("/keys", loginRequired, admin.Keys)
