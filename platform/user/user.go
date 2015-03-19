@@ -18,7 +18,7 @@ var ErrorPasswordTooShort = errors.New("Password must be atleast 6 characters lo
 
 // Render login form
 func Login(c *gin.Context) {
-	template.Render(c, "login.html")
+	template.Render(c, "login/login.html")
 }
 
 // Post login form
@@ -29,7 +29,7 @@ func SubmitLogin(c *gin.Context) {
 	} else {
 		log.Debug("Failure")
 		log.Debug("%#v", err)
-		template.Render(c, "login.html", "failed", true)
+		template.Render(c, "login/login.html", "failed", true)
 	}
 }
 
