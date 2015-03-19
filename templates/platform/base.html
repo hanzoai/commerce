@@ -221,11 +221,8 @@
         <script src="{{ staticUrl }}/appui/js/plugins.js"></script>
         <script src="{{ staticUrl }}/appui/js/app.js"></script>
 
-        <!-- ckeditor.js, load it only in the page you would like to use CKEditor (it's a heavy plugin to include it with the others!) -->
-        <script src="{{ staticUrl }}/appui/js/plugins/ckeditor/ckeditor.js"></script>
-
         <!-- Load and execute javascript code used only in this page -->
-        <script src="{{ staticUrl }}/appui/js/pages/formsComponents.js"></script>
-        <script>$(function(){ FormsComponents.init(); });</script>
+        {% block js %}
+        {% endblock %}
     </body>
 </html>
