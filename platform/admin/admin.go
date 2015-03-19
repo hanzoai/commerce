@@ -3,7 +3,7 @@ package admin
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/auth"
+	"crowdstart.io/auth2"
 	"crowdstart.io/config"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
@@ -33,7 +33,7 @@ func Login(c *gin.Context) {
 
 // Post login form
 func SubmitLogin(c *gin.Context) {
-	if err := auth.VerifyUser(c); err == nil {
+	if _, err := auth.VerifyUser(c); err == nil {
 		log.Debug("Success")
 		c.Redirect(301, "dashboard")
 	} else {
@@ -51,7 +51,7 @@ func Logout(c *gin.Context) {
 
 // Renders the admin user page
 func Profile(c *gin.Context) {
-	if u, err := auth.GetUser(c); err != nil {
+	if u, err := auth.GetCurrentUser(c); err != nil {
 		c.Fail(500, err)
 	} else {
 		template.Render(c, "profile.html",
@@ -74,7 +74,7 @@ func SubmitProfile(c *gin.Context) {
 
 // Admin Dashboard
 func Dashboard(c *gin.Context) {
-	if u, err := auth.GetUser(c); err != nil {
+	if u, err := auth.GetCurrentUser(c); err != nil {
 		c.Fail(500, err)
 	} else {
 		template.Render(c, "dashboard.html",
