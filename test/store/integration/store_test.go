@@ -7,7 +7,10 @@ import (
 	"github.com/headzoo/surf"
 	"github.com/headzoo/surf/browser"
 
+	"crowdstart.io/datastore"
+	"crowdstart.io/models"
 	"crowdstart.io/util/gincontext"
+	"crowdstart.io/util/queries"
 	"crowdstart.io/util/task"
 	"crowdstart.io/util/test/ae"
 	. "crowdstart.io/util/test/ginkgo"
@@ -24,6 +27,8 @@ func Test(t *testing.T) {
 var (
 	ctx    ae.Context
 	client *httpclient.Client
+	db     *datastore.Datastore
+	q      *queries.Client
 )
 
 var user = struct {
@@ -39,6 +44,9 @@ var _ = BeforeSuite(func() {
 		Modules:    []string{"default", "store"},
 		TaskQueues: []string{"default"},
 	})
+
+	db = datastore.New(ctx)
+	q = queries.New(ctx)
 
 	client = httpclient.New(ctx, "store")
 
@@ -189,8 +197,12 @@ var _ = Describe("Profile page", func() {
 		err := b.Open(client.URL("/profile"))
 		Expect(err).ToNot(HaveOccurred())
 
+		duser := new(models.User)
+		err = q.GetUserByEmail(user.Email, duser)
+		Expect(err).ToNot(HaveOccurred())
+
 		displayedEmail := b.Find("#profileForm > fieldset > div:nth-child(1) > span").Text()
-		Expect(displayedEmail).To(Equal(user.Email))
+		Expect(displayedEmail).To(Equal(duser.Email))
 	})
 })
 
