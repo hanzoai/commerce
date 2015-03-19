@@ -40,21 +40,30 @@
         <link rel="stylesheet" href="{{ staticUrl }}/appui/css/themes.css">
         <!-- END Stylesheets -->
 
+        {% block css %}{% endblock %}
+
         <!-- Modernizr (browser feature detection library) -->
         <script src="{{ staticUrl }}/appui/js/vendor/modernizr-2.8.3.min.js"></script>
     </head>
     <body>
+        {% block lockbg %}{% endblock %}
+
         <div id="login-container">
+        <!-- Login Container -->
+        {% block header %}{% endblock %}
         {% block content %}{% endblock %}
-            <!-- Footer -->
-            <footer class="text-muted text-center animation-pullUp">
-                <small>&copy;&nbsp;<span id="year-copy"></span> &nbsp;Crowdstart, LLC</small>
-            </footer>
-            <!-- END Footer -->
+
+        {% block footer %}
+        <!-- Footer -->
+        <footer class="text-muted text-center animation-pullUp">
+            <small>&copy;&nbsp;<span id="year-copy"></span> &nbsp;Crowdstart, LLC</small>
+        </footer>
+        <!-- END Footer -->
+        {% endblock %}
         </div>
         <!-- END Login Container -->
 
-        {% block content_extra %}{% endblock %}
+        {% block content_end %}{% endblock %}
 
         <!-- Include Jquery library from Google's CDN but if something goes wrong get Jquery from local file -->
         <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
