@@ -15,14 +15,17 @@ import (
 	"crowdstart.io/util/log"
 )
 
-func NewApiClient(ctx appengine.Context, accessToken string) *sClient.API {
-	c := urlfetch.Client(ctx)
-	c.Transport = &urlfetch.Transport{Context: ctx, Deadline: time.Duration(10) * time.Second} // Update deadline to 10 seconds
-	backend := stripe.NewInternalBackend(c, "")
+func NewApiClient(ctx appengine.Context, publishableKey string) *sClient.API {
+	// Set HTTP Client for App engine
+	httpClient := urlfetch.Client(ctx)
+	httpClient.Transport = &urlfetch.Transport{
+		Context:  ctx,
+		Deadline: time.Duration(10) * time.Second, // Update deadline to 10 seconds
+	}
+	stripe.SetHTTPClient(httpClient)
 
-	// Stripe advises using client-level methods in a concurrent context
 	sc := &sClient.API{}
-	sc.Init(accessToken, backend)
+	sc.Init(publishableKey, nil)
 	return sc
 }
 
@@ -57,15 +60,12 @@ func Charge(ctx appengine.Context, accessToken string, authorizationToken string
 	// Create a charge for us to persist stripe data to
 	charge := new(models.Charge)
 
-	// card
-	card := &stripe.CardParams{Token: authorizationToken}
-
 	// customer params
 	customerParams := &stripe.CustomerParams{
 		Desc:  user.Name(),
 		Email: user.Email,
-		Card:  card,
 	}
+	customerParams.SetSource(authorizationToken)
 
 	if user.Stripe.CustomerId == "" {
 		// Create new Stripe customer

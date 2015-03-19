@@ -9,11 +9,12 @@ import (
 	"crowdstart.io/models"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/queries"
+	"crowdstart.io/util/session"
 )
 
 func GetEmail(c *gin.Context) (string, error) {
 	log.Debug("Retrieving email from session")
-	return Get(c, loginKey)
+	return session.Get(c, loginKey)
 }
 
 // Retrieves user instance from database using email stored in session.

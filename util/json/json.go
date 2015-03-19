@@ -5,14 +5,28 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+
+	"appengine"
 )
 
 func Encode(value interface{}) string {
-	b, err := json.Marshal(value)
-	if err != nil {
-		fmt.Println("error:", err)
+	return string(EncodeBytes(value))
+}
+
+func EncodeBytes(value interface{}) []byte {
+	var b []byte
+	var err error
+
+	if appengine.IsDevAppServer() {
+		b, err = json.MarshalIndent(value, "", "  ")
+	} else {
+		b, err = json.Marshal(value)
 	}
-	return string(b)
+
+	if err != nil {
+		fmt.Println("%v", err)
+	}
+	return b
 }
 
 func Decode(body io.ReadCloser, v interface{}) error {
