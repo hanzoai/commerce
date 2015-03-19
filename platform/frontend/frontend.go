@@ -30,6 +30,10 @@ func Features(c *gin.Context) {
 	template.Render(c, "frontend/features.html")
 }
 
+func HowItWorks(c *gin.Context) {
+	template.Render(c, "frontend/how-it-works.html")
+}
+
 func Pricing(c *gin.Context) {
 	template.Render(c, "frontend/pricing.html")
 }

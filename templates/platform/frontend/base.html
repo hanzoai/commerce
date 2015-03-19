@@ -60,7 +60,7 @@
                 {% block header %}
                 <div class="container">
                     <!-- Site Logo -->
-                    <a href="{{ staticUrl }}/frontend/index.html" class="site-logo">
+                    <a href="{{ urlFor("platform") }}" class="site-logo">
                       <img class="site-logo-img" src="{{ staticUrl }}/frontend/img/logo-white.png">
                       <img class="site-logo-text" src="{{ staticUrl }}/frontend/img/logo-text-white.png">
                     </a>
@@ -149,9 +149,9 @@
                             <ul class="footer-nav ul-breath list-unstyled">
                                 <li><a href="{{ urlFor("platform", "/about")}}">About Us</a></li>
                                 <li><a href="{{ urlFor("platform", "/contact")}}">Contact</a></li>
-                                <li><a href="{{ urlFor("platform", "/team")}}">Our Team</a></li>
-                                <li><a href="{{ urlFor("platform", "/terms")}}">Terms &amp; Conditions</a></li>
+                                <li><a href="{{ urlFor("platform", "/how-it-works")}}">How It Works</a></li>
                                 <li><a href="{{ urlFor("platform", "/privacy")}}">Privacy Policy</a></li>
+                                <li><a href="{{ urlFor("platform", "/terms")}}">Terms &amp; Conditions</a></li>
                             </ul>
                         </div>
                         <div class="col-sm-4">
@@ -186,7 +186,7 @@
                           <br>
                           <br>
                           <h5>
-                              Crafted with &nbsp;<i class="fa fa-heart text-danger"></i>
+                              Crafted with &nbsp;<i class="fa fa-heart text-danger"></i> &nbsp; in Kansas City.
                           </h5>
                           &copy; 2015 Crowdstart, LLC
                         </div>
