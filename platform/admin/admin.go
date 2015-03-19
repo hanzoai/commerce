@@ -5,6 +5,8 @@ import (
 
 	"crowdstart.io/auth2"
 	"crowdstart.io/config"
+	"crowdstart.io/datastore"
+	"crowdstart.io/models2/organization"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
 )
@@ -36,11 +38,35 @@ func Dashboard(c *gin.Context) {
 	}
 }
 func Organization(c *gin.Context) {
-	template.Render(c, "organization.html")
+	if u, err := auth.GetCurrentUser(c); err != nil {
+		c.Fail(500, err)
+	} else {
+		db := datastore.New(c)
+		org := organization.New(db)
+		if _, err := org.Query().Filter("OwnerId=", u.Id()).First(); err != nil {
+			c.Fail(500, err)
+			return
+		}
+
+		template.Render(c, "organization.html",
+			"org", org)
+	}
 }
 
 func Keys(c *gin.Context) {
-	template.Render(c, "keys.html")
+	if u, err := auth.GetCurrentUser(c); err != nil {
+		c.Fail(500, err)
+	} else {
+		db := datastore.New(c)
+		org := organization.New(db)
+		if _, err := org.Query().Filter("OwnerId=", u.Id()).First(); err != nil {
+			c.Fail(500, err)
+			return
+		}
+
+		template.Render(c, "keys.html",
+			"org", org)
+	}
 }
 
 // Theme Testing
