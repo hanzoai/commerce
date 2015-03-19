@@ -30,7 +30,7 @@ var _ = task.Func("models2-fixtures-organization", func(c *gin.Context) {
 	org.GetOrCreate("Name=", org.Name)
 
 	org.FullName = "Such Tees, Inc."
-	org.Owners = []string{user.Id()}
+	org.OwnerId = user.Id()
 	org.Website = "http://suchtees.com"
 	org.Stripe.AccessToken = "sk_test_fkjaYCdGAjYLEFnIvIK8KSHG"
 	org.Stripe.PublishableKey = "pk_test_yM33E9P6tbYOah8KVKNoUqSe"
