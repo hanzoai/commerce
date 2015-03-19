@@ -30,6 +30,10 @@ func Production() *Config {
 	config.Stripe.RedirectURL = "https:" + config.UrlFor("platform", "/stripe/callback")
 	config.Stripe.WebhookURL = "https:" + config.UrlFor("platform", "/stripe/hook")
 
+	config.Facebook.AppId = "484263268389194"
+	config.Facebook.AppSecret = "e82c15c92f9679a146a136790baf7d67"
+	config.Facebook.GraphVersion = "v2.2"
+
 	config.DemoMode = true
 
 	// Only use production credentials if demo mode is off.
