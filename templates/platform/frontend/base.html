@@ -4,7 +4,7 @@
     <head>
         <meta charset="utf-8">
 
-        <title>Crowdstart{% block title %}{% endblock %}</title>
+        <title>{% block title %}Crowdstart{% endblock %}</title>
 
         <meta name="description" content="A powerful crowdfunding platform powerful enough for your biggest ideas">
         <meta name="author" content="crowdstart">
@@ -80,7 +80,7 @@
                         <!-- Main Menu -->
                         <ul class="site-nav">
                             <li>
-                                <a href="{{ urlFor("platform", "/") }}" class="active">Welcome</a>
+                                <a href="{{ urlFor("platform") }}" class="active">Welcome</a>
                             </li>
                             <li>
                               <a href="{{urlFor("platform", "/features") }}">Features</a>
