@@ -4,7 +4,7 @@
     <head>
         <meta charset="utf-8">
 
-        <title>{% block title %}Crowdstart{% block title %}</title>
+        <title>{% block title %}Crowdstart{% block endblock %}</title>
 
         <meta name="title" content="Crowdstart"/>
         <meta name="description" content="Crowdstart is the world&#x27;s newest global funding platform. Founded on the principles of opportunity, transparency, and action, anyone with a hardware technology project – can create a campaign, offer gifts, bonuses and fund their passion." />
@@ -62,6 +62,6 @@
         {% block js %}{% endblock %}
     </body>
 {% comment %}
-vim: ft=htmldjango
+ft=htmldjango
 {% endcomment %}
 </html>
