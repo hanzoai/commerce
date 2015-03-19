@@ -3,6 +3,9 @@ package platform
 import (
 	"crowdstart.io/middleware"
 	"crowdstart.io/platform/admin"
+	"crowdstart.io/platform/frontend"
+	"crowdstart.io/platform/user"
+	"crowdstart.io/thirdparty/stripe"
 	"crowdstart.io/util/router"
 )
 
@@ -11,33 +14,58 @@ func init() {
 	router := router.New("platform")
 
 	loginRequired := middleware.LoginRequired("platform")
+	logoutRequired := middleware.LogoutRequired("platform")
 
-	router.GET("/", admin.Index)
-	router.GET("/theme/", admin.ThemeSample)
+	// Frontend
+	router.GET("/", frontend.Index)
+	router.GET("/about", frontend.About)
+	router.GET("/contact", frontend.Contact)
+	router.GET("/faq", frontend.Faq)
+	router.GET("/features", frontend.Features)
+	router.GET("/how-it-works", frontend.HowItWorks)
+	router.GET("/pricing", frontend.Pricing)
+	router.GET("/privacy", frontend.Privacy)
+	router.GET("/team", frontend.Team)
+	router.GET("/terms", frontend.Terms)
 
+	// Docs
+	router.GET("/docs", frontend.Docs)
+
+	// Login
+	router.GET("/login", logoutRequired, user.Login)
+	router.POST("/login", logoutRequired, user.SubmitLogin)
+	router.GET("/logout", user.Logout)
+
+	// Signup
+	// router.GET("/signup", login.Signup)
+	// router.POST("/signup", login.SignupSubmit)
+
+	// Password Reset
+	// router.GET("/create-password", user.CreatePassword)
+	// router.GET("/password-reset", user.PasswordReset)
+	// router.POST("/password-reset", user.PasswordResetSubmit)
+	// router.GET("/password-reset/:token", user.PasswordResetConfirm)
+	// router.POST("/password-reset/:token", user.PasswordResetConfirmSubmit)
+
+	// Admin
 	router.GET("/dashboard", loginRequired, admin.Dashboard)
 
-	router.GET("/login", admin.Login)
-	router.POST("/login", admin.SubmitLogin)
-	router.GET("/logout", admin.Logout)
+	router.GET("/profile", loginRequired, user.Profile)
+	router.POST("/profile", user.SubmitProfile)
 
-	router.GET("/register", admin.Register)
-	router.POST("/register", admin.SubmitRegister)
+	router.GET("/organization", loginRequired, admin.Organization)
+	router.GET("/keys", loginRequired, admin.Keys)
 
-	router.GET("/profile", loginRequired, admin.Profile)
-	router.POST("/profile", admin.SubmitProfile)
-
-	router.GET("/connect", loginRequired, admin.Connect)
+	router.GET("/settings", loginRequired, user.Profile)
 
 	// Stripe connect
+	router.GET("/stripe/connect", loginRequired, admin.StripeConnect)
 	router.GET("/stripe/callback", loginRequired, admin.StripeCallback)
-
-	// Stripe webhook, we don't do anything with this atm.
-	router.POST("/stripe/hook", admin.StripeWebhook)
+	router.POST("/stripe/hook", stripe.StripeWebhook)
+	router.GET("/stripe/sync", admin.StripeSync)
 
 	// Salesfoce connect
 	router.GET("/salesforce/callback", loginRequired, admin.SalesforceCallback)
-
 	router.GET("/salesforce/test", loginRequired, admin.TestSalesforceConnection)
 	router.GET("/salesforce/sync", admin.SalesforcePullLatest)
 }

@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block body %}
+<style>
+input[type="button"], input[type="button"]:focus, input[type="button"]:active,
+button, button:focus, button:active {
+    /* Remove all decorations to look like normal text */
+    background: none;
+    border: none;
+    display: inline;
+    font: inherit;
+    margin: 0;
+    padding: 0;
+    outline: none;
+    outline-offset: 0;
+    /* Additional styles to look like a link */
+    color: blue;
+    cursor: pointer;
+    text-decoration: underline;
+}
+/* Remove extra space inside buttons in Firefox */
+input[type="button"]::-moz-focus-inner,
+button::-moz-focus-inner {
+    border: none;
+    padding: 0;
+}
+</style>
+
+<h4>access tokens</h4>
+<ul>
+    <li>GET <a href="/api/access/{{ orgId }}?email={{ email }}&password={{ password }}">/api/access/{{ orgId }}</a></li>
+    <li>POST <a href="/api/access/{{ orgId }}">/api/access/{{ orgId }}</a></li>
+    <li>
+        <form method="POST" action="/api/access?_method=DELETE">
+            DELETE <button type="submit">/api/access</button>
+        </form>
+    </li>
+</ul>
+
+<h4>payments</h4>
+<ul>
+  <li>POST <a href="#" onclick="javascript:charge()">/api/charge</a></li>
+  <li>POST <a href="#" onclick="javascript:authorize()">/api/authorize</a></li>
+  <li>POST <a href="/api/order/:id/capture">/api/order/:id/capture</a></li>
+</ul>
+
+{% for model in models %}
+<h4>{{ model.Kind() }} ({{ model.DisplayCount() }})</h4>
+<ul>
+    <li>GET <a href="/api/{{ model.Kind() }}/">/api/{{ model.Kind() }}</a></li>
+    <li>GET <a href="/api/{{ model.Kind() }}/{{ model.DisplayId() }}">/api/{{ model.Kind() }}/{{ model.DisplayId() }}</a></li>
+    <li>POST <a href="/api/{{ model.Kind() }}">/api/{{ model.Kind() }}</a></li>
+    <li>PUT <a href="/api/{{ model.Kind() }}">/api/{{ model.Kind() }}/{{ model.DisplayId() }}</a></li>
+    <li>
+        <form method="POST" action="/api/{{ model.Kind() }}/{{ model.DisplayId() }}&_method=DELETE">
+         DELETE <button type="submit">/api/{{ model.Kind() }}/{{ model.DisplayId() }}</button>
+        </form>
+    </li>
+</ul>
+{% endfor %}
+
+<script type="text/javascript" src="{{ urlFor("/js/jquery.min.js") }}"></script>
+<script>
+function charge() {
+    payment("/api/charge")
+}
+
+function authorize() {
+    payment("/api/authorize")
+}
+
+function payment(url) {
+    $.ajax({
+      type: "POST",
+      url: url,
+      data: JSON.stringify({
+        "buyer": {
+          "type": "card",
+          "number": "4242424242424242",
+          "month": "12",
+          "year": "2016",
+          "cvc": "123",
+          "email": "joe@buystoomuchstuff.com",
+          "firstName": "Joe",
+          "LastName": "Smoe",
+          "company": "Buys Too Much Stuff Dotcom",
+          "phone": "555-555-5555",
+          "notes": "non"
+        },
+        "order": {
+          "currency": "usd",
+          "items": [ {
+            "productId": "1",
+            "variantId": "1",
+            "collectionId": "1",
+            "price": 100,
+            "quantity": 20
+          } ]
+        }
+      }),
+      success: function(data, textStatus, jqXHR) {
+          document.body.innerHTML = jqXHR.responseText;
+          console.log(data);
+      },
+    });
+    return false
+}
+</script>
+{% endblock %}

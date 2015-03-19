@@ -30,7 +30,6 @@ func GetPreorder(c *gin.Context) {
 	// }
 
 	db := datastore.New(c)
-
 	// Fetch token
 	token := new(models.Token)
 	db.GetKind("invite-token", c.Params.ByName("token"), token)
