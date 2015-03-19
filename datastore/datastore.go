@@ -74,7 +74,7 @@ func (d *Datastore) SkipFieldMismatch(err error) error {
 
 	if _, ok := err.(*aeds.ErrFieldMismatch); ok {
 		// Ignore any field mismatch errors.
-		d.warn("Field mismatch: %v", err, d.Context)
+		d.warn("Ignoring, %v", err, d.Context)
 		return nil
 	}
 
@@ -302,7 +302,7 @@ func (d *Datastore) Put(keyOrKind interface{}, src interface{}) (*aeds.Key, erro
 
 	key, err = nds.Put(d.Context, key, src)
 	if err != nil {
-		d.warn("Unable to put (%v, %v): %v", keyOrKind, src, err, d.Context)
+		d.warn("Unable to put (%v, %#v): %v", keyOrKind, src, err, d.Context)
 		return key, err
 	}
 	return key, nil
@@ -313,7 +313,7 @@ func (d *Datastore) PutKind(kind string, key interface{}, src interface{}) (*aed
 
 	// Invalid key, bail out.
 	if err != nil {
-		d.warn("Invalid key: unable to put (%v, %v, %v): %v", kind, key, src, err)
+		d.warn("Invalid key: unable to put (%v, %v, %#v): %v", kind, key, src, err)
 		return _key, err
 	}
 
@@ -412,15 +412,43 @@ func (d *Datastore) DeleteMulti(keys []string) error {
 func (d *Datastore) AllocateId(kind string) int64 {
 	low, _, err := aeds.AllocateIDs(d.Context, kind, nil, 1)
 	if err != nil {
+		d.warn("Unable to allocate id for '%v': %v", kind, err)
 		return 0
 	}
 	return low
+}
+
+func (d *Datastore) AllocateIntKey(kind string) Key {
+	id := d.AllocateId(kind)
+	return aeds.NewKey(d.Context, kind, "", id, nil)
 }
 
 func (d *Datastore) Query(kind string) *aeds.Query {
 	return aeds.NewQuery(kind)
 }
 
+func (d *Datastore) Query2(kind string) Query {
+	return NewQuery(kind, d.Context)
+}
+
 func (d *Datastore) RunInTransaction(f func(tc appengine.Context) error, opts *aeds.TransactionOptions) error {
 	return nds.RunInTransaction(d.Context, f, opts)
+}
+
+// Helper to ignore tedious field mismatch errors (but warn appropriately
+// during development)
+func IgnoreFieldMismatch(err error) error {
+	if err == nil {
+		// Ignore nil error
+		return nil
+	}
+
+	if _, ok := err.(*aeds.ErrFieldMismatch); ok {
+		// Ignore any field mismatch errors, but warn user (at least during development)
+		log.Warn("Ignoring, %v", err)
+		return nil
+	}
+
+	// Any other errors we damn well need to know about!
+	return err
 }

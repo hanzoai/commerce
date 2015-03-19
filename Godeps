@@ -6,13 +6,14 @@ github.com/getsentry/raven-go master
 github.com/gin-gonic/gin app_engine
 github.com/gorilla/schema master
 github.com/gorilla/sessions master
-github.com/jmcvetta/napping master
 github.com/mholt/binding master
 github.com/onsi/ginkgo/ginkgo master
 github.com/onsi/gomega master
 github.com/qedus/nds master
-github.com/stripe/stripe-go 4b8db50fd4ced3a165d9632aeb2ceb451b02e99d
+github.com/stripe/stripe-go 9da043110c7f8a66166c60f913ea854cc9c8ae3e
 github.com/zeekay/aetest master
 github.com/zeekay/go-logging master
+github.com/huandu/facebook master
 github.com/davidtai/appenginetesting master
+github.com/dgrijalva/jwt-go master
 github.com/headzoo/surf master
