@@ -3,15 +3,14 @@ package login
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/models2"
-	"crowdstart.io/models2/user"
+	"crowdstart.io/models"
 	"crowdstart.io/util/form"
 	"crowdstart.io/util/val"
 )
 
 // User profile form (contact)
 type ContactForm struct {
-	User user.User
+	User models.User
 }
 
 func (f *ContactForm) Parse(c *gin.Context) error {
@@ -20,7 +19,22 @@ func (f *ContactForm) Parse(c *gin.Context) error {
 
 func (f *ContactForm) Validate() []string {
 	var errs []string
-	errs = val.ValidateUser2(&f.User, errs)
+	errs = val.ValidateUser(&f.User, errs)
+	return errs
+}
+
+// User profile form (billing)
+type BillingForm struct {
+	BillingAddress models.Address
+}
+
+func (f *BillingForm) Parse(c *gin.Context) error {
+	return form.Parse(c, f)
+}
+
+func (f *BillingForm) Validate() []string {
+	var errs []string
+	errs = val.ValidateAddress(&f.BillingAddress, errs)
 	return errs
 }
 
