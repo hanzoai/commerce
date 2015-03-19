@@ -21,7 +21,7 @@ type Organization struct {
 
 	Name       string   `json:"name"`
 	FullName   string   `json:"fullName"`
-	Owners     []string `json:"owners,omitempty"`
+	OwnerId    string   `json:"owners,omitempty"`
 	Admins     []string `json:"admins,omitempty"`
 	Moderators []string `json:"moderators,omitempty"`
 	Enabled    bool     `json:"enabled"`
@@ -87,12 +87,7 @@ func (o Organization) IsAdmin(user *user.User) bool {
 }
 
 func (o Organization) IsOwner(user *user.User) bool {
-	for _, userId := range o.Owners {
-		if userId == user.Id() {
-			return true
-		}
-	}
-	return false
+	return o.OwnerId == user.Id()
 }
 
 func (o Organization) GenerateAccessToken(user *user.User) (string, error) {

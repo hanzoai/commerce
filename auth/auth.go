@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"errors"
+
 	"code.google.com/p/go.crypto/bcrypt"
 	"github.com/gin-gonic/gin"
 
@@ -31,6 +33,14 @@ func IsLoggedIn(c *gin.Context) bool {
 	return err == nil && value != ""
 }
 
+func IsFacebookUser(c *gin.Context) bool {
+	user, err := GetUser(c)
+	if err != nil {
+		log.Panic("Error while retrieving user \n%v", err)
+	}
+	return user.Facebook.AccessToken != "" // Checks if AccessToken is set
+}
+
 func VerifyUser(c *gin.Context) error {
 	// Parse login form
 	f := new(LoginForm)
@@ -47,6 +57,10 @@ func VerifyUser(c *gin.Context) error {
 	}
 
 	log.Debug("%v = %v", user, f.Password)
+	if !user.HasPassword() {
+		return errors.New("User likely registered via Facebook")
+	}
+
 	// Compare form password with saved hash
 	if err := CompareHashAndPassword(user.PasswordHash, f.Password); err != nil {
 		return err
