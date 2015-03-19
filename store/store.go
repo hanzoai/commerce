@@ -6,6 +6,7 @@ import (
 	"crowdstart.io/store/cart"
 	"crowdstart.io/store/products"
 	"crowdstart.io/store/user"
+	"crowdstart.io/thirdparty/facebook"
 	"crowdstart.io/util/router"
 )
 
@@ -46,6 +47,9 @@ func init() {
 	router.POST("/profile/:form", loginRequired, user.SaveProfile)
 
 	router.GET("/orders", loginRequired, user.ListOrders)
+
+	router.GET("/auth/facebook", facebook.LoginUser)
+	router.GET("/auth/facebook_callback", facebook.Callback)
 
 	// Card
 	router.GET("/card", loginRequired, card.GetCard)
