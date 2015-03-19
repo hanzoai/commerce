@@ -22,6 +22,7 @@ func init() {
 	router.GET("/features", frontend.Features)
 	router.GET("/pricing", frontend.Pricing)
 	router.GET("/privacy", frontend.Privacy)
+	router.GET("/signup", frontend.Signup)
 	router.GET("/team", frontend.Team)
 	router.GET("/terms", frontend.Terms)
 
