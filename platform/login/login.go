@@ -1,4 +1,4 @@
-package user
+package login
 
 import (
 	"errors"
@@ -22,7 +22,7 @@ func Login(c *gin.Context) {
 }
 
 // Post login form
-func SubmitLogin(c *gin.Context) {
+func LoginSubmit(c *gin.Context) {
 	if _, err := auth.VerifyUser(c); err == nil {
 		log.Debug("Success")
 		c.Redirect(301, "dashboard")
@@ -45,7 +45,7 @@ func Profile(c *gin.Context) {
 		c.Fail(500, err)
 		return
 	} else {
-		template.Render(c, "admin/profile.html", "user", u)
+		template.Render(c, "profile.html", "user", u)
 	}
 }
 
