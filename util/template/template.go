@@ -48,7 +48,7 @@ func Render(c *gin.Context, path string, pairs ...interface{}) (err error) {
 	// Get template from cache
 	template, err := templateSet.FromCache(templatePath)
 	if err != nil {
-		log.Panic("Unable to find template: %v\n\n%v", path, err)
+		log.Panic("Unable to render template: %v\n\n%v", path, err)
 	}
 
 	// Create context from pairs
@@ -79,7 +79,7 @@ func RenderString(path string, pairs ...interface{}) string {
 	// Get template from cache
 	template, err := templateSet.FromCache(templatePath)
 	if err != nil {
-		log.Panic("Unable to find template: %v\n\n%v", path, err)
+		log.Panic("Unable to render template: %v\n\n%v", path, err)
 	}
 
 	// Create context from pairs
