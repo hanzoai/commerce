@@ -92,7 +92,8 @@
                     <!-- Sidebar Brand -->
                     <div id="sidebar-brand" class="themed-background">
                         <a href="/" class="sidebar-title">
-                          <img src="{{ staticUrl }}/img/crowdstart-logo-white.png" style="width:60%">
+                          <img src="{{ staticUrl }}/frontend/img/logo-white.png" style="width:24px; opacity: 0.5;margin-right:5px">
+                          <span class="sidebar-nav-mini-hide"><img src="{{ staticUrl }}/frontend/img/logo-text-white.png" style="width:92px"></span>
                         </a>
                     </div>
                     <!-- END Sidebar Brand -->
@@ -137,9 +138,7 @@
 
                     <!-- Sidebar Extra Info -->
                     <div id="sidebar-extra-info" class="sidebar-content sidebar-nav-mini-hide">
-                        <div class="text-center">
-                            <small><span id="year-copy"></span> &copy; <a href="http://goo.gl/RcsdAh" target="_blank">Crowdstart</a></small>
-                        </div>
+                        <small>&copy;<span id="year-copy"></span> &nbsp;<a href="http://www.crowdstart.com" target="_blank">Crowdstart, LLC</a></small>
                     </div>
                     <!-- END Sidebar Extra Info -->
                 </div>
@@ -185,7 +184,7 @@
                         <ul class="nav navbar-nav-custom pull-right">
                             <!-- User Dropdown -->
                             <li>
-                                <a href="page_ready_login.html">
+                                <a href="{{ config.UrlFor("platform", "/profile") }}">
                                     <strong>{{ user.Name() }}</strong>
                                 </a>
                             </li>
