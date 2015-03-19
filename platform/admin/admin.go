@@ -26,52 +26,6 @@ func Index(c *gin.Context) {
 // 	c.Redirect(301, "dashboard")
 // }
 
-// Render login form
-func Login(c *gin.Context) {
-	template.Render(c, "login.html")
-}
-
-// Post login form
-func SubmitLogin(c *gin.Context) {
-	if _, err := auth.VerifyUser(c); err == nil {
-		log.Debug("Success")
-		c.Redirect(301, "dashboard")
-	} else {
-		log.Debug("Failure")
-		log.Debug("%#v", err)
-		template.Render(c, "login.html", "failed", true)
-	}
-}
-
-//
-func Logout(c *gin.Context) {
-	auth.Logout(c) // Deletes the loginKey from session.Values
-	c.Redirect(301, "/")
-}
-
-// Renders the admin user page
-func Profile(c *gin.Context) {
-	if u, err := auth.GetCurrentUser(c); err != nil {
-		c.Fail(500, err)
-	} else {
-		template.Render(c, "profile.html",
-			"user", u)
-	}
-}
-
-func Organization(c *gin.Context) {
-	template.Render(c, "organization.html")
-}
-
-func Keys(c *gin.Context) {
-	template.Render(c, "keys.html")
-}
-
-// Handles submission on profile page
-func SubmitProfile(c *gin.Context) {
-	c.Redirect(301, "profile")
-}
-
 // Admin Dashboard
 func Dashboard(c *gin.Context) {
 	if u, err := auth.GetCurrentUser(c); err != nil {
@@ -80,6 +34,13 @@ func Dashboard(c *gin.Context) {
 		template.Render(c, "dashboard.html",
 			"user", u)
 	}
+}
+func Organization(c *gin.Context) {
+	template.Render(c, "organization.html")
+}
+
+func Keys(c *gin.Context) {
+	template.Render(c, "keys.html")
 }
 
 // Theme Testing
