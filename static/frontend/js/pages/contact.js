@@ -15,8 +15,8 @@ var Contact = function() {
             // Initialize map
             var contactMap = new GMaps({
                 div: '#gmap',
-                lat: 59.33,
-                lng: 18.03,
+                lat: 39.094136,
+                lng: -94.583696,
                 zoom: 14,
                 disableDefaultUI: true,
                 scrollwheel: false
@@ -24,8 +24,8 @@ var Contact = function() {
 
             contactMap.addMarkers([
                 {
-                    lat: 59.33,
-                    lng: 18.03,
+                    lat: 39.094136,
+                    lng: -94.583696,
                     infoWindow: {content: '<strong>Company Address</strong>'},
                     animation: google.maps.Animation.DROP
                 }
