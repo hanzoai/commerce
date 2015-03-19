@@ -51,7 +51,20 @@ func Logout(c *gin.Context) {
 
 // Renders the admin user page
 func Profile(c *gin.Context) {
+	if u, err := auth.GetUser(c); err != nil {
+		c.Fail(500, err)
+	} else {
+		template.Render(c, "profile.html",
+			"user", u)
+	}
+}
 
+func Organization(c *gin.Context) {
+	template.Render(c, "organization.html")
+}
+
+func Keys(c *gin.Context) {
+	template.Render(c, "keys.html")
 }
 
 // Handles submission on profile page
@@ -67,13 +80,6 @@ func Dashboard(c *gin.Context) {
 		template.Render(c, "dashboard.html",
 			"user", u)
 	}
-}
-
-// Admin Payment Connectors
-func Connect(c *gin.Context) {
-	template.Render(c, "connect.html",
-		"stripe", config.Stripe,
-		"salesforce", config.Salesforce)
 }
 
 // Theme Testing
