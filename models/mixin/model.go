@@ -7,6 +7,7 @@ import (
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/util/json"
+	"crowdstart.io/util/log"
 )
 
 // Discrete instance of an entity
@@ -82,6 +83,7 @@ func (m *Model) setKey(key datastore.Key) {
 func (m *Model) Key() (key datastore.Key) {
 	// Create a new incomplete key for this new entity
 	if m.key == nil {
+		log.Warn("KEY IS NIL")
 		kind := m.Entity.Kind()
 
 		if m.StringKey_ {
