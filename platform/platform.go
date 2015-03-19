@@ -4,6 +4,7 @@ import (
 	"crowdstart.io/middleware"
 	"crowdstart.io/platform/admin"
 	"crowdstart.io/platform/frontend"
+	"crowdstart.io/platform/user"
 	"crowdstart.io/thirdparty/stripe"
 	"crowdstart.io/util/router"
 )
@@ -19,20 +20,21 @@ func init() {
 
 	router.GET("/dashboard", loginRequired, admin.Dashboard)
 
-	router.GET("/login", admin.Login)
-	router.POST("/login", admin.SubmitLogin)
-	router.GET("/logout", admin.Logout)
+	router.GET("/login", user.Login)
+	router.POST("/login", user.SubmitLogin)
+	router.GET("/logout", user.Logout)
 
 	// router.GET("/register", admin.Register)
 	// router.POST("/register", admin.SubmitRegister)
 
-	router.GET("/profile", loginRequired, admin.Profile)
-	router.POST("/profile", admin.SubmitProfile)
+	router.GET("/profile", loginRequired, user.Profile)
+	router.POST("/profile", user.SubmitProfile)
+	router.POST("/resetpassword", user.ResetPassword)
 
 	router.GET("/organization", loginRequired, admin.Organization)
 	router.GET("/keys", loginRequired, admin.Keys)
 
-	router.GET("/settings", loginRequired, admin.Profile)
+	router.GET("/settings", loginRequired, user.Profile)
 
 	// Stripe connect
 	router.GET("/stripe/connect", loginRequired, admin.StripeConnect)
