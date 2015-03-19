@@ -248,9 +248,6 @@ test-ci:
 	$(ginkgo) -r=true --randomizeAllSpecs --randomizeSuites --failOnPending --cover --trace --compilers=2 -v=true -- -test.v=true
 
 # DEPLOY
-deploy: test
-	go run scripts/deploy.go
-
 deploy-production: assets-min
 	for module in $(gae_production); do \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check rollback $$module; \
