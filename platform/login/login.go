@@ -1,27 +1,21 @@
 package login
 
 import (
-	"errors"
-
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/auth2"
-	"crowdstart.io/auth2/password"
+	"crowdstart.io/config"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
 	"crowdstart.io/util/val"
 )
 
-var ErrorInvalidProfile = errors.New("Invalid Profile Saved")
-var ErrorPasswordIncorrect = errors.New("Password Incorrect")
-var ErrorPasswordTooShort = errors.New("Password must be atleast 6 characters long")
-
-// Render login form
+// GET /login
 func Login(c *gin.Context) {
 	template.Render(c, "login/login.html")
 }
 
-// Post login form
+// POST /login
 func LoginSubmit(c *gin.Context) {
 	if _, err := auth.VerifyUser(c); err == nil {
 		log.Debug("Success")
@@ -33,85 +27,85 @@ func LoginSubmit(c *gin.Context) {
 	}
 }
 
-// Log user out
+// GET /logout
 func Logout(c *gin.Context) {
-	auth.Logout(c) // Deletes the loginKey from session.Values
-	c.Redirect(301, "/")
+	err := auth.Logout(c)
+	if err != nil {
+		log.Panic("Error while logging out \n%v", err)
+	}
+	c.Redirect(302, config.UrlFor("store"))
 }
 
-// Renders the profile page
-func Profile(c *gin.Context) {
-	if u, err := auth.GetCurrentUser(c); err != nil {
-		c.Fail(500, err)
-		return
-	} else {
-		template.Render(c, "profile.html", "user", u)
-	}
+func Signup(c *gin.Context) {
+	template.Render(c, "login/signup.html")
 }
 
-// Handles submission on profile page
-func SubmitProfile(c *gin.Context) {
-	if u, err := auth.GetCurrentUser(c); err != nil {
-		c.Fail(500, err)
+func SignupSubmit(c *gin.Context) {
+	form := new(auth.RegistrationForm)
+	err := form.Parse(c)
+	if err != nil {
+		template.Render(c, "login/login.html", "registerError", "An error has occured, please try again later.")
 		return
-	} else {
-		form := new(ContactForm)
-		if err := form.Parse(c); err != nil {
-			log.Panic("Failed to save user profile: %v", err)
-		}
-
-		val.SanitizeUser2(&form.User)
-		if errs := form.Validate(); len(errs) > 0 {
-			c.Fail(500, ErrorInvalidProfile)
-			return
-		}
-
-		// Update information from form.
-		u.FirstName = form.User.FirstName
-		u.LastName = form.User.LastName
-		u.Email = form.User.Email
-		u.Phone = form.User.Phone
-
-		u.Put()
-
-		c.Redirect(301, "profile")
 	}
-}
 
-func ResetPassword(c *gin.Context) {
-	if u, err := auth.GetCurrentUser(c); err != nil {
-		c.Fail(500, err)
+	// Validation
+	user := form.User
+	log.Debug("Register Validation for %v", user)
+	log.Debug("Form is %v", form)
+	if !val.Check(user.FirstName).Exists().IsValid {
+		log.Debug("Form posted without first name")
+		template.Render(c, "login/login.html", "registerError", "Please enter a first name.")
 		return
-	} else {
-		form := new(ChangePasswordForm)
-		if err := form.Parse(c); err != nil {
-			log.Panic("Failed to update user password: %v", err)
-		}
-
-		if !password.HashAndCompare(u.PasswordHash, form.OldPassword) {
-			log.Debug("Old password is incorrect.")
-			c.Fail(500, ErrorPasswordIncorrect)
-			return
-		}
-
-		if form.Password == form.ConfirmPassword {
-			if errs := form.Validate(); len(errs) > 0 {
-				c.Fail(500, ErrorPasswordTooShort)
-				return
-			}
-
-			if u.PasswordHash, err = password.Hash(form.Password); err != nil {
-				c.Fail(500, err)
-				return
-			}
-
-			u.Put()
-
-			c.Redirect(301, "profile")
-		} else {
-			log.Debug("Passwords do not match.")
-			c.Fail(500, auth.ErrorPasswordMismatch)
-			return
-		}
 	}
+
+	if !val.Check(user.LastName).Exists().IsValid {
+		log.Debug("Form posted without last name")
+		template.Render(c, "login/login.html", "registerError", "Please enter a last name.")
+		return
+	}
+
+	if !val.Check(user.Email).IsEmail().IsValid {
+		log.Debug("Form posted invalid email")
+		template.Render(c, "login/login.html", "registerError", "Please enter a valid email.")
+		return
+	}
+
+	if !val.Check(form.Password).IsPassword().IsValid {
+		log.Debug("Form posted invalid password")
+		template.Render(c, "login/login.html", "registerError", "Password Must be atleast 6 characters long.")
+		return
+	}
+
+	// Santitization
+	val.SanitizeUser2(&form.User)
+
+	// _, err = auth.NewUser(c, f)
+	// if err != nil && err.Error() == "Email is already registered" {
+	// 	template.Render(c, "login/login.html", "registerError", "An account already exists for this email.")
+	// 	return
+	// }
+
+	// if err != nil {
+	// 	template.Render(c, "login/login.html", "registerError", "An error has occured, please try again later.")
+	// 	log.Panic("Error generating password hash \n%v", err)
+	// }
+
+	// log.Debug("Login user")
+	// err = auth.Login(c, f.User.Email)
+	// if err != nil {
+	// 	template.Render(c, "login/login.html", "registerError", "An error has occured, please try again later.")
+	// 	log.Panic("Error while setting session cookie %v", err)
+	// }
+
+	// Look up campaign to see if we need to sync with salesforce
+	// db := datastore.New(c)
+	// campaign := models.Campaign{}
+	// if err := db.GetKind("campaign", "dev@hanzo.ai", &campaign); err != nil {
+	// 	log.Error(err, c)
+	// }
+
+	// if campaign.Salesforce.AccessToken != "" {
+	// 	salesforce.CallUpsertUserTask(db.Context, &campaign, u)
+	// }
+	c.Redirect(302, config.UrlFor("platform"))
 }
