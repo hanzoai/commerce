@@ -104,25 +104,28 @@
                             <!-- Sidebar Navigation -->
                             <ul class="sidebar-nav">
                                 <li>
-                                    <a href="index.html"><i class="gi gi-stats sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Dashboard</span></a>
+                                  <a href="{{ config.UrlFor("platform", "/dashboard") }}"><i class="gi gi-stats sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Dashboard</span></a>
                                 </li>
                                 <li class="sidebar-separator">
                                     <i class="fa fa-ellipsis-h"></i>
                                 </li>
                                 <li>
-                                  <a href="profile"><i class="gi gi-user sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Profile</span></a>
+                                  <a href="{{ config.UrlFor("platform", "/profile") }}"><i class="gi gi-user sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Profile</span></a>
                                 </li>
                                 <li>
-                                  <a href="organization"><i class="gi gi-factory sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Organization</span></a>
+                                  <a href="{{ config.UrlFor("platform", "/organization") }}"><i class="gi gi-factory sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Organization</span></a>
                                 </li>
                                 <li>
-                                  <a href="keys"><i class="gi gi-keys sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">API Keys</span></a>
+                                  <a href="{{ config.UrlFor("platform", "/keys") }}"><i class="gi gi-keys sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">API Keys</span></a>
+                                </li>
+                                <li>
+                                  <a href="{{ config.UrlFor("platform", "/stripe/connect") }}"><i class="fa fa-credit-card sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Connect Stripe</span></a>
+                                </li>
+                                <li class="sidebar-separator">
+                                    <i class="fa fa-ellipsis-h"></i>
                                 </li>
                                 <li>
                                   <a href="settings"><i class="gi gi-settings sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Settings</span></a>
-                                </li>
-                                <li>
-                                  <a href="stripe/connect"><i class="fa fa-credit-card sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Connect Stripe</span></a>
                                 </li>
                             </ul>
                             <!-- END Sidebar Navigation -->
