@@ -19,7 +19,7 @@ func Contact(c *gin.Context) {
 }
 
 func Docs(c *gin.Context) {
-	template.Render(c, "frontend/docs.html")
+	template.Render(c, "docs/docs.html")
 }
 
 func Faq(c *gin.Context) {
