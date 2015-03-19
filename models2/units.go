@@ -1,0 +1,9 @@
+package models
+
+type MassUnit string
+
+const (
+	MassLbs   MassUnit = "lb"
+	MassKilo           = "kg"
+	MassGrams          = "g"
+)

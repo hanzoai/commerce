@@ -9,14 +9,19 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/datastore"
+	"crowdstart.io/middleware"
 	. "crowdstart.io/models"
 	"crowdstart.io/util/queries"
 	"crowdstart.io/util/task"
 )
 
-var testUsers = task.Func("fixtures-test-users", func(ctx *gin.Context) {
-	db := datastore.New(ctx)
-	c := db.Context
+var _ = task.Func("fixtures-test-users", func(c *gin.Context) {
+	ctx := middleware.GetAppEngine(c)
+	TestUsers(ctx)
+})
+
+func TestUsers(c appengine.Context) {
+	db := datastore.New(c)
 	q := queries.New(c)
 
 	// Add default test user
@@ -55,7 +60,7 @@ var testUsers = task.Func("fixtures-test-users", func(ctx *gin.Context) {
 		Preorder:  true,
 	}
 	db.PutKind("order", order.Id, &order)
-})
+}
 
 var skullyUser = task.Func("fixtures-skully-user", func(g *gin.Context) {
 	c := g.MustGet("appengine")

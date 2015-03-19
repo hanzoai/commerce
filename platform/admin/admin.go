@@ -16,15 +16,15 @@ func Index(c *gin.Context) {
 	c.Redirect(301, url)
 }
 
-// Register
-func Register(c *gin.Context) {
-	template.Render(c, "register.html")
-}
+// // Register
+// func Register(c *gin.Context) {
+// 	template.Render(c, "register.html")
+// }
 
-// Post registration form
-func SubmitRegister(c *gin.Context) {
-	c.Redirect(301, "dashboard")
-}
+// // Post registration form
+// func SubmitRegister(c *gin.Context) {
+// 	c.Redirect(301, "dashboard")
+// }
 
 // Render login form
 func Login(c *gin.Context) {
@@ -39,7 +39,7 @@ func SubmitLogin(c *gin.Context) {
 	} else {
 		log.Debug("Failure")
 		log.Debug("%#v", err)
-		c.Redirect(301, "login")
+		template.Render(c, "login.html", "failed", true)
 	}
 }
 
@@ -51,7 +51,20 @@ func Logout(c *gin.Context) {
 
 // Renders the admin user page
 func Profile(c *gin.Context) {
+	if u, err := auth.GetUser(c); err != nil {
+		c.Fail(500, err)
+	} else {
+		template.Render(c, "profile.html",
+			"user", u)
+	}
+}
 
+func Organization(c *gin.Context) {
+	template.Render(c, "organization.html")
+}
+
+func Keys(c *gin.Context) {
+	template.Render(c, "keys.html")
 }
 
 // Handles submission on profile page
@@ -61,14 +74,12 @@ func SubmitProfile(c *gin.Context) {
 
 // Admin Dashboard
 func Dashboard(c *gin.Context) {
-	template.Render(c, "dashboard.html")
-}
-
-// Admin Payment Connectors
-func Connect(c *gin.Context) {
-	template.Render(c, "connect.html",
-		"stripe", config.Stripe,
-		"salesforce", config.Salesforce)
+	if u, err := auth.GetUser(c); err != nil {
+		c.Fail(500, err)
+	} else {
+		template.Render(c, "dashboard.html",
+			"user", u)
+	}
 }
 
 // Theme Testing
