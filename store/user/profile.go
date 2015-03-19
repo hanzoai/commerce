@@ -20,8 +20,9 @@ import (
 func Profile(c *gin.Context) {
 	user, err := auth.GetUser(c)
 	if err != nil {
-		log.Panic("GetUser Error: %v", err)
+		log.Panic("Error retrieving user \n%v", err)
 	}
+
 	userJson := json.Encode(user)
 
 	log.Debug("Loading Profile %v", user)

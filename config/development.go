@@ -40,6 +40,10 @@ func Development() *Config {
 	config.Stripe.APIKey = "pk_test_ucSTeAAtkSXVEg713ir40UhX"
 	config.Stripe.APISecret = ""
 
+	config.Facebook.AppId = "484263268389194"
+	config.Facebook.AppSecret = "e82c15c92f9679a146a136790baf7d67"
+	config.Facebook.GraphVersion = "v2.2"
+
 	config.Google.APIKey = "AIzaSyAOPY7nU-UlNRLvZz9D_j2Qm6SBMUvk83w"
 	config.Google.Bucket.ImageUploads = "crowdstart-staging-image-uploads"
 
