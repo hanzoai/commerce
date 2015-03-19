@@ -6,9 +6,97 @@
 {% endblock %}
 
 {% block content %}
-Coming Soon
+<!-- Contact information Form Block -->
+<div class="col-sm-10 col-sm-offset-1 col-md-10 col-md-offset-1 col-lg-8 col-lg-offset-1">
+    <div class="block">
+        <!-- Contact information Form Title -->
+        <div class="block-title">
+            <h2>Contact Information</h2>
+        </div>
+        <!-- END Contact information Form Title -->
+
+        <!-- Contact information Form Content -->
+        <form id="form-profile" method="post" class="form-horizontal">
+            <div class="form-group">
+                <label class="col-md-3 control-label" for="firstName">First Name<span class="text-danger enable-tooltip" data-original-title="required">*</span></label>
+                <div class="col-md-9">
+                    <input type="text" id="firstName" name="User.FirstName" class="form-control" value="{{ user.FirstName }}">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-md-3 control-label" for="lastName">Last Name<span class="text-danger enable-tooltip" data-original-title="required">*</span></label>
+                <div class="col-md-9">
+                    <input type="text" id="lastName" name="User.LastName" class="form-control" value="{{ user.LastName }}">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-md-3 control-label" for="email">Email<span class="text-danger enable-tooltip" data-original-title="required">*</span></label>
+                <div class="col-md-9">
+                    <input type="email" id="email" name="User.Email" class="form-control" value="{{ user.Email }}">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-md-3 control-label" for="phone">Phone</label>
+                <div class="col-md-9">
+                    <input type="tel" id="phone" name="User.Phone" class="form-control" value="{{ user.Phone }}">
+                </div>
+            </div>
+            <div class="form-group form-actions">
+                <div class="col-md-9 col-md-offset-3">
+                    <button type="submit" class="btn btn-effect-ripple btn-primary">Submit</button>
+                    <button type="reset" class="btn btn-effect-ripple btn-danger">Reset</button>
+                </div>
+            </div>
+        </form>
+        <!-- END Contact information Form Content -->
+    </div>
+    <!-- END Contact information Form Block -->
+
+    <!-- Reset Password Form Block -->
+    <div class="block">
+        <!-- Reset Password Form Title -->
+        <div class="block-title">
+            <h2>Reset Password</h2>
+        </div>
+        <!-- END Reset Password Form Title -->
+
+        <!-- Reset Password Form Content -->
+        <form id="form-password" action="resetpassword" method="post" class="form-horizontal">
+            <div class="form-group">
+                <label class="col-md-3 control-label" for="oldpassword">Current Password</label>
+                <div class="col-md-9">
+                    <input type="password" id="oldpassword" name="OldPassword" class="form-control" placeholder="******">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-md-3 control-label" for="password">New Password</label>
+                <div class="col-md-9">
+                    <input type="password" id="password" name="Password" class="form-control" placeholder="******">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-md-3 control-label" for="confirmpassword">Confirm New Password</label>
+                <div class="col-md-9">
+                    <input type="password" id="confirmpassword" name="ConfirmPassword" class="form-control" placeholder="******">
+                </div>
+            </div>
+            <div class="form-group form-actions">
+                <div class="col-md-9 col-md-offset-3">
+                    <button type="submit" class="btn btn-effect-ripple btn-primary">Submit</button>
+                    <button type="reset" class="btn btn-effect-ripple btn-danger">Reset</button>
+                </div>
+            </div>
+        </form>
+        <!-- END Reset Password Form Content -->
+    </div>
+    <!-- END Reset Password Form Block -->
+</div>
 {% endblock %}
 
 {% block js %}
+<script src="{{ staticUrl }}/appui/js/pages/submitProfile.js"></script>
+<script>$(function(){ SubmitProfile.init(); });</script>
+<script src="{{ staticUrl }}/appui/js/pages/submitPassword.js"></script>
+<script>$(function(){ SubmitPassword.init(); });</script>
 {% endblock %}
 
