@@ -6,7 +6,25 @@
 {% endblock %}
 
 {% block content %}
-Coming Soon
+<!-- API Keys Block -->
+<div class="col-sm-10 col-sm-offset-1 col-md-10 col-md-offset-1 col-lg-8 col-lg-offset-1">
+    <div class="block full">
+        <!-- API Keys Title -->
+        <div class="block-title">
+            <h2>API Keys</h2>
+        </div>
+        <!-- END API Keys Title -->
+
+        <form id="form-key" action="resetkey" method="post">
+            <div class="form-group">
+                <label>API Key</label>
+                <textarea class="form-control" style="height:100px">{{ org.MustBuildAccessToken() }}</textarea>
+            </div>
+        </form>
+    </div>
+    <!-- END API Keys Block -->
+</div>
+<!-- END API Keys Block -->
 {% endblock %}
 
 {% block js %}
