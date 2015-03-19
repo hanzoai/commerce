@@ -105,28 +105,28 @@
                             <!-- Sidebar Navigation -->
                             <ul class="sidebar-nav">
                                 <li>
-                                  <a href="{{ config.UrlFor("platform", "/dashboard") }}"><i class="gi gi-stats sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Dashboard</span></a>
+                                  <a href="{{ urlFor("platform", "/dashboard") }}"><i class="gi gi-stats sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Dashboard</span></a>
                                 </li>
                                 <li class="sidebar-separator">
                                     <i class="fa fa-ellipsis-h"></i>
                                 </li>
                                 <li>
-                                  <a href="{{ config.UrlFor("platform", "/profile") }}"><i class="gi gi-user sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Profile</span></a>
+                                  <a href="{{ urlFor("platform", "/profile") }}"><i class="gi gi-user sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Profile</span></a>
                                 </li>
                                 <li>
-                                  <a href="{{ config.UrlFor("platform", "/organization") }}"><i class="gi gi-factory sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Organization</span></a>
+                                  <a href="{{ urlFor("platform", "/organization") }}"><i class="gi gi-factory sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Organization</span></a>
                                 </li>
                                 <li>
-                                  <a href="{{ config.UrlFor("platform", "/keys") }}"><i class="gi gi-keys sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">API Keys</span></a>
+                                  <a href="{{ urlFor("platform", "/keys") }}"><i class="gi gi-keys sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">API Keys</span></a>
                                 </li>
                                 <li>
-                                  <a href="{{ config.UrlFor("platform", "/stripe/connect") }}"><i class="fa fa-credit-card sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Connect Stripe</span></a>
+                                  <a href="{{ urlFor("platform", "/stripe/connect") }}"><i class="fa fa-credit-card sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Connect Stripe</span></a>
                                 </li>
                                 <li class="sidebar-separator">
                                     <i class="fa fa-ellipsis-h"></i>
                                 </li>
                                 <li>
-                                  <a href="settings"><i class="gi gi-settings sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Settings</span></a>
+                                  <a href="{{ urlFor("platform", "/settings) }}"><i class="gi gi-settings sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Settings</span></a>
                                 </li>
                             </ul>
                             <!-- END Sidebar Navigation -->
@@ -184,7 +184,7 @@
                         <ul class="nav navbar-nav-custom pull-right">
                             <!-- User Dropdown -->
                             <li>
-                                <a href="{{ config.UrlFor("platform", "/profile") }}">
+                                <a href="{{ urlFor("platform", "/profile") }}">
                                     <strong>{{ user.Name() }}</strong>
                                 </a>
                             </li>
@@ -224,5 +224,9 @@
         <!-- Load and execute javascript code used only in this page -->
         {% block js %}
         {% endblock %}
+
     </body>
+{% comment %}
+vim: ft=htmldjango
+{% endcomment %}
 </html>
