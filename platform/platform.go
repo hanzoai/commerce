@@ -16,6 +16,18 @@ func init() {
 	loginRequired := middleware.LoginRequired("platform")
 
 	router.GET("/", frontend.Index)
+	router.GET("/about", frontend.About)
+	router.GET("/contact", frontend.Contact)
+	router.GET("/docs", frontend.Docs)
+	router.GET("/faq", frontend.Faq)
+	router.GET("/features", frontend.Features)
+	router.GET("/how-it-works", frontend.HowItWorks)
+	router.GET("/pricing", frontend.Pricing)
+	router.GET("/privacy", frontend.Privacy)
+	router.GET("/signup", frontend.Signup)
+	router.GET("/team", frontend.Team)
+	router.GET("/terms", frontend.Terms)
+
 	router.GET("/theme/", admin.ThemeSample)
 
 	router.GET("/dashboard", loginRequired, admin.Dashboard)

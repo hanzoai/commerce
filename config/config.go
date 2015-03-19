@@ -67,6 +67,12 @@ type Config struct {
 		FromName  string
 	}
 
+	Facebook struct {
+		AppId        string
+		AppSecret    string
+		GraphVersion string
+	}
+
 	Google struct {
 		APIKey string
 		Bucket struct {
@@ -186,6 +192,7 @@ var SessionName = config.SessionName
 var SiteTitle = config.SiteTitle
 var StaticUrl = config.StaticUrl
 var Stripe = config.Stripe
+var Facebook = config.Facebook
 
 func UrlFor(moduleName string, args ...string) string {
 	return config.UrlFor(moduleName, args...)
