@@ -222,7 +222,8 @@ serve-public: assets
 	$(dev_appserver) --host=0.0.0.0 $(gae_development)
 
 # LIVE RELOAD SERVER
-live-reload: assets
+serve-reload: assets
+	$(dev_appserver) $(gae_development) &
 	$(bebop)
 
 # GOLANG TOOLS
