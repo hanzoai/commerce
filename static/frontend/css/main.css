@@ -68,6 +68,10 @@ header.header-scroll {
 }
 
 /* LOGO */
+a.site-logo {
+  text-decoration: none;
+  outline: none;
+}
 .site-logo .site-logo-img {
   opacity: .5;
   width: 42px;
