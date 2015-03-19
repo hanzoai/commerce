@@ -30,6 +30,9 @@ gae_development = config/development/app.yaml \
 				  preorder/app.dev.yaml \
 				  store/app.dev.yaml
 
+gae_sandbox = config/sandbox \
+			  api/app.staging.yaml
+
 gae_staging = config/staging \
 			  api/app.staging.yaml \
 			  checkout/app.staging.yaml \
@@ -47,9 +50,7 @@ gae_skully = config/skully \
 gae_production = config/production \
 				 api \
 				 checkout \
-				 platform \
-				 preorder \
-				 store
+				 platform
 
 tools = github.com/nsf/gocode \
 		code.google.com/p/go.tools/cmd/goimports \
@@ -135,10 +136,15 @@ endif
 
 # set production=1 to set datastore export/import target to use production
 ifeq ($(production), 1)
+	datastore_app_id = crowdstart-us
+else ifeq ($(sandbox), 1)
+	datastore_app_id = crowdstart-sandbox
+else ifeq ($(skully), 1)
 	datastore_app_id = crowdstart-skully
 else
 	datastore_app_id = crowdstart-staging
 endif
+
 datastore_admin_url = https://datastore-admin-dot-$(datastore_app_id).appspot.com/_ah/remote_api
 
 test_focus := $(focus)
@@ -216,7 +222,8 @@ serve-public: assets
 	$(dev_appserver) --host=0.0.0.0 $(gae_development)
 
 # LIVE RELOAD SERVER
-live-reload: assets
+serve-reload: assets
+	$(dev_appserver) $(gae_development) &
 	$(bebop)
 
 # GOLANG TOOLS
@@ -239,12 +246,9 @@ bench:
 	@$(ginkgo) -r=true --randomizeAllSpecs -p=true -progress=true -skipPackage=integration $(test_focus) $(test_verbose)
 
 test-ci:
-	$(ginkgo) -r=true --randomizeAllSpecs --randomizeSuites --failOnPending --cover --trace --compilers=2
+	$(ginkgo) -r=true --randomizeAllSpecs --randomizeSuites --failOnPending --cover --trace --compilers=2 -v=true -- -test.v=true
 
 # DEPLOY
-deploy: test
-	go run scripts/deploy.go
-
 deploy-production: assets-min
 	for module in $(gae_production); do \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check rollback $$module; \
@@ -252,6 +256,14 @@ deploy-production: assets-min
 	done; \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check update_indexes config/production; \
 	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/production
+
+deploy-sandbox:
+	for module in $(gae_sandbox); do \
+		$(sdk_path)/appcfg.py --skip_sdk_update_check rollback $$module; \
+		$(sdk_path)/appcfg.py --skip_sdk_update_check update $$module; \
+	done; \
+	$(sdk_path)/appcfg.py --skip_sdk_update_check update_indexes config/sandbox; \
+	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/sandbox
 
 deploy-staging: assets
 	for module in $(gae_staging); do \
