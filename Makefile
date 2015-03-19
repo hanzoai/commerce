@@ -222,7 +222,8 @@ serve-public: assets
 	$(dev_appserver) --host=0.0.0.0 $(gae_development)
 
 # LIVE RELOAD SERVER
-live-reload: assets
+serve-reload: assets
+	$(dev_appserver) $(gae_development) &
 	$(bebop)
 
 # GOLANG TOOLS
@@ -248,9 +249,6 @@ test-ci:
 	$(ginkgo) -r=true --randomizeAllSpecs --randomizeSuites --failOnPending --cover --trace --compilers=2 -v=true -- -test.v=true
 
 # DEPLOY
-deploy: test
-	go run scripts/deploy.go
-
 deploy-production: assets-min
 	for module in $(gae_production); do \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check rollback $$module; \
