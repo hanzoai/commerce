@@ -1,45 +1,93 @@
 package api
 
 import (
-	"crowdstart.io/api/cart"
-	"crowdstart.io/api/order"
-	"crowdstart.io/api/product"
-	"crowdstart.io/api/user"
-	"crowdstart.io/api/variant"
-	"crowdstart.io/util/router"
 	"github.com/gin-gonic/gin"
+
+	"crowdstart.io/api/payment"
+	"crowdstart.io/middleware"
+	"crowdstart.io/models/mixin"
+	"crowdstart.io/models2/campaign"
+	"crowdstart.io/models2/collection"
+	"crowdstart.io/models2/coupon"
+	"crowdstart.io/models2/order"
+	"crowdstart.io/models2/organization"
+	"crowdstart.io/models2/product"
+	"crowdstart.io/models2/token"
+	"crowdstart.io/models2/user"
+	"crowdstart.io/models2/variant"
+	"crowdstart.io/util/rest"
+	"crowdstart.io/util/router"
 )
 
 func init() {
 	router := router.New("api")
 
-	// Redirect root
+	// Redirect naked, v1
 	router.GET("/", func(c *gin.Context) {
-		c.Redirect(301, "http://crowdstart.io")
+		c.Redirect(301, "http://www.crowdstart.com/docs")
 	})
 
-	router.GET("/cart/:id", cart.Get)
-	router.POST("/cart", cart.Add)
-	router.PUT("/cart/:id", cart.Update)
-	router.DELETE("/cart/:id", cart.Delete)
+	router.GET("/v1/", func(c *gin.Context) {
+		c.Redirect(301, "http://www.crowdstart.com/docs")
+	})
 
-	router.GET("/user/:id", user.Get)
-	router.POST("/user", user.Add)
-	router.PUT("/user/:id", user.Update)
-	router.DELETE("/user/:id", user.Delete)
+	v2 := router.Group("/v2/")
 
-	router.GET("/order/:id", order.Get)
-	router.POST("/order", order.Add)
-	router.PUT("/order/:id", order.Update)
-	router.DELETE("/order/:id", order.Delete)
+	// Entities with automatic RESTful API
+	entities := []mixin.Entity{
+		campaign.Campaign{},
+		coupon.Coupon{},
+		collection.Collection{},
+		organization.Organization{},
+		product.Product{},
+		order.Order{},
+		token.Token{},
+		user.User{},
+		variant.Variant{},
+	}
 
-	router.GET("/product/:id", product.Get)
-	router.POST("/product", product.Add)
-	router.PUT("/product/:id", product.Update)
-	router.DELETE("/product/:id", product.Delete)
+	// Redirect root
+	v2.GET("/", rest.DebugIndex(entities), func(c *gin.Context) {
+		c.JSON(200, gin.H{"status": "ok"})
+	})
 
-	router.GET("/variant/:id", variant.Get)
-	router.POST("/variant", variant.Add)
-	router.PUT("/variant/:id", variant.Update)
-	router.DELETE("/variant/:id", variant.Delete)
+	// Access token routes
+	v2.GET("/access/:id", func(c *gin.Context) {
+		id := c.Params.ByName("id")
+
+		query := c.Request.URL.Query()
+		email := query.Get("email")
+		password := query.Get("password")
+
+		getAccessToken(c, id, email, password)
+	})
+
+	v2.POST("/access/:id", func(c *gin.Context) {
+		id := c.Params.ByName("id")
+
+		email := c.Request.Form.Get("email")
+		password := c.Request.Form.Get("password")
+
+		getAccessToken(c, id, email, password)
+	})
+
+	v2.DELETE("/access", middleware.TokenRequired(), func(c *gin.Context) {
+		deleteAccessToken(c)
+	})
+
+	// Authorization routes
+	// One Step Payments
+	v2.POST("/charge", middleware.TokenRequired(), payment.Charge)
+	v2.POST("/order/:id/charge", middleware.TokenRequired(), payment.Charge)
+
+	// Two Step Payments - "Auth & Capture"
+	v2.POST("/authorize", middleware.TokenRequired(), payment.Authorize)
+	v2.POST("/order/:id/authorize", middleware.TokenRequired(), payment.Authorize)
+	v2.POST("/order/:id/capture", middleware.TokenRequired(), payment.Capture)
+
+	// Setup API routes
+	logApiRoutes(entities)
+	for _, entity := range entities {
+		rest.New(entity).Route(router)
+	}
 }

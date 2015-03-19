@@ -44,6 +44,12 @@ func StripeSync(c *gin.Context) {
 	c.String(200, "Synchronising orders")
 }
 
+// Admin Payment Connectors
+func StripeConnect(c *gin.Context) {
+	template.Render(c, "stripe/connect.html",
+		"stripe", config.Stripe)
+}
+
 // StripeCallback Stripe End Points
 func StripeCallback(c *gin.Context) {
 	req := c.Request

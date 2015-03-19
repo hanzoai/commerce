@@ -1,0 +1,11 @@
+application: crowdstart-sandbox
+module: api
+version: v1
+
+runtime: go
+api_version: go1
+threadsafe: true
+
+handlers:
+- url: /v1/.*
+  script: _go_app
