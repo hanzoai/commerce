@@ -1,8 +1,6 @@
 package auth
 
 import (
-	"errors"
-
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/auth2/password"
@@ -13,9 +11,6 @@ import (
 )
 
 const loginKey = "login-key"
-
-var ErrorUserExists = errors.New("User already exists.")
-var ErrorPasswordMismatch = errors.New("Passwords do not match.")
 
 func GetCurrentUserId(c *gin.Context) (string, error) {
 	log.Debug("Retrieving email from session")
