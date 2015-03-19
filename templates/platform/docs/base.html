@@ -45,6 +45,9 @@
 
         <!-- The themes stylesheet of this template (for using specific theme color in individual elements - must included last) -->
         <link rel="stylesheet" href="{{ staticUrl }}/frontend/css/themes.css">
+
+        <!-- stylesheet that provides syntax highlighting -->
+        <link rel="stylesheet" href="{{ staticUrl }}/docs/css/prism.css">
         <!-- END Stylesheets -->
 
         {% block css %}{% endblock %}
@@ -212,6 +215,7 @@
         <script src="{{ staticUrl }}/frontend/js/vendor/bootstrap.min.js"></script>
         <script src="{{ staticUrl }}/frontend/js/plugins.js"></script>
         <script src="{{ staticUrl }}/frontend/js/app.js"></script>
+        <script src="{{ staticUrl }}/docs/js/prism.js"></script>
 
         {% block js %}
         {% endblock %}
