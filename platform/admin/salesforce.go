@@ -105,7 +105,7 @@ func SalesforceCallback(c *gin.Context) {
 	}
 
 	// Success
-	template.Render(c, "salesforce/success.html", "token", token.AccessToken)
+	template.Render(c, "admin/salesforce/success.html", "token", token.AccessToken)
 }
 
 func SalesforcePullLatest(c *gin.Context) {

@@ -1,12 +1,15 @@
 package auth
 
 import (
+	"errors"
+
 	"code.google.com/p/go.crypto/bcrypt"
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/models"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/queries"
+	"crowdstart.io/util/session"
 )
 
 // const sessionName = "crowdstartLogin"
@@ -30,6 +33,14 @@ func IsLoggedIn(c *gin.Context) bool {
 	return err == nil && value != ""
 }
 
+func IsFacebookUser(c *gin.Context) bool {
+	user, err := GetUser(c)
+	if err != nil {
+		log.Panic("Error while retrieving user \n%v", err)
+	}
+	return user.Facebook.AccessToken != "" // Checks if AccessToken is set
+}
+
 func VerifyUser(c *gin.Context) error {
 	// Parse login form
 	f := new(LoginForm)
@@ -46,6 +57,10 @@ func VerifyUser(c *gin.Context) error {
 	}
 
 	log.Debug("%v = %v", user, f.Password)
+	if !user.HasPassword() {
+		return errors.New("User likely registered via Facebook")
+	}
+
 	// Compare form password with saved hash
 	if err := CompareHashAndPassword(user.PasswordHash, f.Password); err != nil {
 		return err
@@ -58,9 +73,9 @@ func VerifyUser(c *gin.Context) error {
 // Login should only be used in exceptional circumstances.
 // Use VerifyUser when possible.
 func Login(c *gin.Context, email string) error {
-	return Set(c, loginKey, email)
+	return session.Set(c, loginKey, email)
 }
 
 func Logout(c *gin.Context) error {
-	return Delete(c, loginKey)
+	return session.Delete(c, loginKey)
 }
