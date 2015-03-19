@@ -65,7 +65,7 @@ var _ = Describe("middleware/accesstoken", func() {
 			o.Name = "Justin"
 			o.IssuedAt = time.Now()
 			o.SecretKey = []byte("AAA")
-			o.Owners = []string{u.Id()}
+			o.OwnerId = u.Id()
 
 			// insert into db
 			o.Put()
