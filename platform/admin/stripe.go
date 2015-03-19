@@ -46,7 +46,7 @@ func StripeSync(c *gin.Context) {
 
 // Admin Payment Connectors
 func StripeConnect(c *gin.Context) {
-	template.Render(c, "stripe/connect.html",
+	template.Render(c, "admin/stripe/connect.html",
 		"stripe", config.Stripe)
 }
 
@@ -58,7 +58,7 @@ func StripeCallback(c *gin.Context) {
 
 	// Failed to get back authorization code from Stripe
 	if errStr != "" {
-		template.Render(c, "stripe/connect.html", "error", errStr)
+		template.Render(c, "admin/stripe/connect.html", "error", errStr)
 		return
 	}
 
@@ -92,7 +92,7 @@ func StripeCallback(c *gin.Context) {
 
 	// Stripe returned an error
 	if token.Error != "" {
-		template.Render(c, "connect.html",
+		template.Render(c, "admin/stripe/connect.html",
 			"stripeError", token.Error,
 			"stripe", config.Stripe,
 			"salesforce", config.Salesforce)
