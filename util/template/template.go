@@ -15,6 +15,7 @@ var cwd, _ = os.Getwd()
 
 func TemplateSet() *pongo2.TemplateSet {
 	set := pongo2.NewSet("default")
+
 	set.Debug = config.IsDevelopment
 
 	set.Globals["config"] = config.Get()
