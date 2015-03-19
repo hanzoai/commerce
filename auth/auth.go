@@ -7,6 +7,7 @@ import (
 	"crowdstart.io/models"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/queries"
+	"crowdstart.io/util/session"
 )
 
 // const sessionName = "crowdstartLogin"
@@ -58,9 +59,9 @@ func VerifyUser(c *gin.Context) error {
 // Login should only be used in exceptional circumstances.
 // Use VerifyUser when possible.
 func Login(c *gin.Context, email string) error {
-	return Set(c, loginKey, email)
+	return session.Set(c, loginKey, email)
 }
 
 func Logout(c *gin.Context) error {
-	return Delete(c, loginKey)
+	return session.Delete(c, loginKey)
 }
