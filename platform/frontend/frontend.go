@@ -38,6 +38,10 @@ func Privacy(c *gin.Context) {
 	template.Render(c, "frontend/privacy.html")
 }
 
+func Signup(c *gin.Context) {
+	template.Render(c, "frontend/signup.html")
+}
+
 func Team(c *gin.Context) {
 	template.Render(c, "frontend/team.html")
 }
