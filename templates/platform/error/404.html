@@ -1,23 +1,23 @@
-{% extends "../base.html" %}
+{% extends "base.html" %}
 
-{% block name %}User Profile{% endblock %}
-{% block desc %}{% endblock %}
-
-{% block css %}
-{% endblock %}
+{% block title %}Not found - Crowdstart{% block title %}
 
 {% block content %}
-<div class="error-page">
-    <h2 class="headline text-info"> 404</h2>
-    <div class="error-content">
-        <h3><i class="fa fa-warning text-yellow"></i> Oops! Page not found.</h3>
-        <p>
-            We could not find the page you were looking for.
-            Meanwhile, you may <a href='../../index.html'>return to dashboard</a> or try using the search form.
-        </p>
-    </div><!-- /.error-content -->
-</div><!-- /.error-page -->
-{% endblock %}
-
-{% block js %}
+<div class="row text-center">
+    <div class="col-md-6 col-md-offset-3">
+        <h1 class="text-light animation-fadeInQuick"><strong>404</strong> Not found</h1>
+        <h2 class="text-muted animation-fadeInQuickInv"><em>We sorry but this page can't be found...</em></h2>
+    </div>
+    <div class="col-md-4 col-md-offset-4">
+        <form action="page_ready_search_results.html" method="post" class="push">
+            <div class="input-group input-group-lg">
+                <input type="text" id="search-term" name="search-term" class="form-control" placeholder="Search Crowdstart">
+                <div class="input-group-btn">
+                    <button type="submit" class="btn btn-effect-ripple btn-primary"><i class="fa fa-search"></i></button>
+                </div>
+            </div>
+        </form>
+        <a href="{{ urlFor("platform") }}" class="btn btn-effect-ripple btn-default"><i class="fa fa-arrow-left"></i> Go back</a>
+    </div>
+</div>
 {% endblock %}
