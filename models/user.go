@@ -29,8 +29,10 @@ type User struct {
 	ShippingAddress Address
 	Email           string
 	Campaigns       []Campaign `schema:"-" datastore:"-"`
-	PasswordHash    []byte     `schema:"-" json:"-"`
-	Facebook        struct {
+
+	PasswordHash []byte `schema:"-" json:"-"`
+
+	Facebook struct {
 		AccessToken string `facebook:"-"`
 		UserId      string `facebook:"id"`
 		FirstName   string `facebook:"first_name"`
@@ -38,8 +40,8 @@ type User struct {
 		MiddleName  string `facebook:"middle_name"`
 		Name        string `facebook:"name" datastore:"-"`
 		NameFormat  string `facebook:"name_format"` // For Chinese, Japanese, and Korean names. Possibly used in the future.
-		Email       string `facebook:"email" datastore:"-"`
-		Verified    bool   `facebook:"verified" datastore:"-"`
+		Email       string `facebook:"email"`
+		Verified    bool   `facebook:"verified"`
 	}
 
 	Stripe struct {
