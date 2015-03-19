@@ -10,7 +10,7 @@ type Options struct {
 
 func (c *Options) SetDefaults() {
 	if c.AppId == "" {
-		c.AppId = "crowdstart-io"
+		c.AppId = "crowdstart-us"
 	}
 
 	if c.TaskQueues == nil {

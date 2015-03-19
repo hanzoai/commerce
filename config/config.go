@@ -8,8 +8,6 @@ import (
 	"strings"
 
 	"appengine"
-
-	"crowdstart.io/util/log"
 )
 
 var demoMode = true
@@ -36,11 +34,15 @@ type Config struct {
 	IsDevelopment     bool
 	IsProduction      bool
 	IsStaging         bool
+	IsSandbox         bool
 	Protocol          string
 	RootDir           string
 	SentryDSN         string
 	SiteTitle         string
 	StaticUrl         string
+
+	Secret      string
+	SessionName string
 
 	Prefixes map[string]string
 	Hosts    map[string]string
@@ -76,7 +78,6 @@ type Config struct {
 // Return url to static file, module or path rooted in a module
 func (c Config) UrlFor(moduleName string, args ...string) (url string) {
 	// Ignore the port number and the host during testing.
-	log.Info(moduleName)
 	if c.IsDevelopment && !strings.HasPrefix(moduleName, "/") {
 		if len(args) > 0 {
 			return "/" + moduleName + args[0]
@@ -138,10 +139,12 @@ func Get() *Config {
 		cachedConfig = Development()
 	} else {
 		// TODO: This is a total hack, probably can't rely on this.
-		// Use PWD to determine appid, if s~crowdstart-io-staging is in PWD,
+		// Use PWD to determine appid, if s~crowdstart-staging is in PWD,
 		// then we're in staging enviroment.
 		pwd := os.Getenv("PWD")
-		if strings.Contains(pwd, "s~crowdstart-staging") {
+		if strings.Contains(pwd, "s~crowdstart-sandbox") {
+			cachedConfig = Sandbox()
+		} else if strings.Contains(pwd, "s~crowdstart-staging") {
 			cachedConfig = Staging()
 		} else if strings.Contains(pwd, "s~crowdstart-skully") {
 			cachedConfig = Skully()
@@ -172,11 +175,14 @@ var Google = config.Google
 var IsDevelopment = config.IsDevelopment
 var IsProduction = config.IsProduction
 var IsStaging = config.IsStaging
+var IsSandbox = config.IsSandbox
 var Mandrill = config.Mandrill
 var Prefixes = config.Prefixes
 var RootDir = config.RootDir
 var Salesforce = config.Salesforce
+var Secret = config.Secret
 var SentryDSN = config.SentryDSN
+var SessionName = config.SessionName
 var SiteTitle = config.SiteTitle
 var StaticUrl = config.StaticUrl
 var Stripe = config.Stripe

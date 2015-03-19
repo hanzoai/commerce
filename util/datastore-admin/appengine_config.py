@@ -35,4 +35,4 @@ google/appengine/ext/appstats/sample_appengine_config.py instead.
 #
 remoteapi_CUSTOM_ENVIRONMENT_AUTHENTICATION = (
     'HTTP_X_APPENGINE_INBOUND_APPID', [
-        'crowdstart-io', 'crowdstart-staging', 'crowdstart-skully', 'skully-crowdstart'])
+        'crowdstart-us', 'crowdstart-staging', 'crowdstart-skully', 'skully-crowdstart'])
