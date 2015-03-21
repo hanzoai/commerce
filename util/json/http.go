@@ -19,7 +19,7 @@ func Fail(c *gin.Context, code int, message string, err error) {
 	c.Writer.Write(EncodeBytes(jsonErr))
 
 	if err != nil {
-		log.Error(message+": %v", err, c)
+		log.Error(err, c)
 	}
 
 	c.Abort(code)
