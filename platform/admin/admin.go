@@ -8,6 +8,7 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models2/organization"
 	"crowdstart.io/util/log"
+	"crowdstart.io/util/permission"
 	"crowdstart.io/util/template"
 )
 
@@ -68,10 +69,10 @@ func NewKeys(c *gin.Context) {
 			return
 		}
 
-		if _, err := org.GenerateAccessToken(u); err != nil {
-			c.Fail(500, err)
-			return
-		}
+		org.AddToken("live-secret-key", permission.Admin)
+		org.AddToken("live-published-key", permission.Published)
+		org.AddToken("test-secret-key", permission.Admin)
+		org.AddToken("test-published-key", permission.Published)
 
 		if err := org.Put(); err != nil {
 			c.Fail(500, err)
