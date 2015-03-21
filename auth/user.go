@@ -14,7 +14,11 @@ import (
 
 func GetEmail(c *gin.Context) (string, error) {
 	log.Debug("Retrieving email from session")
-	return session.Get(c, loginKey)
+	value, err := session.Get(c, loginKey)
+	if err != nil {
+		return "", err
+	}
+	return value.(string), nil
 }
 
 // Retrieves user instance from database using email stored in session.
