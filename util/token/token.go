@@ -1,7 +1,7 @@
 package token
 
 import (
-	"errors"
+	"strings"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -26,6 +26,9 @@ type Token struct {
 
 	// Permissions is the JWT "bit" param
 	Permissions bit.Field
+
+	// Original token string
+	TokenString string
 }
 
 func (t Token) String() string {
@@ -44,7 +47,7 @@ func (t *Token) getJWT() *jwt.Token {
 	jwt := jwt.New(jwt.SigningMethodHS512)
 
 	// jwt.Claims["name"] = t.Name
-	//jwt.Claims["iat"] = t.IssuedAt.Unix()
+	// jwt.Claims["iat"] = t.IssuedAt.Unix()
 	jwt.Claims["jti"] = t.Id
 	jwt.Claims["sub"] = t.ModelId
 	jwt.Claims["bit"] = int64(t.Permissions)
@@ -68,26 +71,28 @@ func New(name string, subject string, permissions bit.Mask, secret []byte) *Toke
 
 func FromString(accessToken string, secret []byte) (*Token, error) {
 	tok := new(Token)
+	tok.TokenString = accessToken
 
 	// jwt.Parse takes a function that returns the secret used to validate
 	// that we issued this accessToken using our secrets
-	jwt, err := jwt.Parse(accessToken, func(token *jwt.Token) (interface{}, error) {
-		return secret, nil
-	})
-
+	jwt, err := Parse(accessToken)
 	if err != nil {
 		return nil, err
 	}
 
-	if !jwt.Valid {
-		return nil, errors.New("Not Valid")
-	}
-
 	// tok.Name = jwt.Claims["name"].(string)
-	//tok.IssuedAt = time.Unix(int64(jwt.Claims["iat"].(float64)), 0)
+	// tok.IssuedAt = time.Unix(int64(jwt.Claims["iat"].(float64)), 0)
 	tok.Id = jwt.Claims["jti"].(string)
 	tok.ModelId = jwt.Claims["sub"].(string)
 	tok.Permissions = bit.Field(jwt.Claims["bit"].(float64))
 
 	return tok, nil
+}
+
+func (t *Token) Verify(secret []byte) bool {
+	parts := strings.Split(t.TokenString, ".")
+	if err := t.getJWT().Method.Verify(strings.Join(parts[0:2], "."), parts[2], secret); err != nil {
+		return false
+	}
+	return true
 }
