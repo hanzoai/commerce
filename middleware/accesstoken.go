@@ -7,13 +7,26 @@ import (
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/models2/organization"
+	"crowdstart.io/util/bit"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
+	"crowdstart.io/util/permission"
 	"crowdstart.io/util/session"
 )
 
 // Require login to view route
-func TokenRequired() gin.HandlerFunc {
+func TokenRequired(args ...bit.Mask) gin.HandlerFunc {
+	// Any permissions acceptable by default (i.e., only valid token required)
+	permissions := permission.Any
+
+	// Any arguments passed will be used as new permissions
+	if len(args) > 0 {
+		permissions = permission.None
+		for _, mask := range args {
+			permissions |= mask
+		}
+	}
+
 	return func(c *gin.Context) {
 		// Get the access token from the Request
 		accessToken := c.Request.Header.Get("Authorization")
@@ -55,6 +68,11 @@ func TokenRequired() gin.HandlerFunc {
 		if !tok.Verify(o.SecretKey) {
 			json.Fail(c, 403, "Unable to verify token: "+err.Error(), err)
 
+		}
+
+		// Verify permissions
+		if !tok.HasPermission(permissions) {
+			json.Fail(c, 403, "Token doesn't support this scope", err)
 		}
 
 		// Try to get the namespace to the org's key
