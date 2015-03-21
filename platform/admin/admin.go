@@ -56,3 +56,28 @@ func Keys(c *gin.Context) {
 		template.Render(c, "admin/keys.html", "org", org)
 	}
 }
+
+func NewKeys(c *gin.Context) {
+	if u, err := auth.GetCurrentUser(c); err != nil {
+		c.Fail(500, err)
+	} else {
+		db := datastore.New(c)
+		org := organization.New(db)
+		if _, err := org.Query().Filter("OwnerId=", u.Id()).First(); err != nil {
+			c.Fail(500, err)
+			return
+		}
+
+		if _, err := org.GenerateAccessToken(u); err != nil {
+			c.Fail(500, err)
+			return
+		}
+
+		if err := org.Put(); err != nil {
+			c.Fail(500, err)
+			return
+		}
+
+		c.Redirect(301, "keys")
+	}
+}
