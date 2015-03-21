@@ -74,9 +74,9 @@ func New(entity mixin.Entity, args ...interface{}) *Rest {
 	return r
 }
 
-func (r Rest) Route(router Router) {
+func (r Rest) Route(router Router, args ...gin.HandlerFunc) {
 	// Create group for our API routes and require Access token
-	group := router.Group("/"+r.Kind, middleware.TokenRequired())
+	group := router.Group("/"+r.Kind, args...)
 
 	// Add default routes
 	for _, route := range r.defaultRoutes() {
