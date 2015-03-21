@@ -1,5 +1,5 @@
 var BuildForm = (function() {
-  var formGroupTemplate = '<div class="form-group"><label class="col-md-3 control-label" for=""></label><div class="col-md-9"><input type="text" id="" name="" class="form-control" value=""></div></div>';
+  var formGroupInputTemplate = '<div class="form-group"><label class="col-md-3 control-label" for=""></label><div class="col-md-9"><input type="text" id="" name="" class="form-control" value=""></div></div>';
   var requiredAsteriskTemplate = '<span class="text-danger enable-tooltip" data-original-title="required">*</span>';
 
   return function ($formEl, inputConfigs) {
@@ -22,7 +22,6 @@ var BuildForm = (function() {
     //          ]
     //      }
     //  ]
-
     var ruleSets = {};
     var messages = {};
     var $fgs = [];
@@ -58,7 +57,7 @@ var BuildForm = (function() {
       }
 
       // Prepare templating
-      var $fg = $(formGroupTemplate);
+      var $fg = $(formGroupInputTemplate);
 
       // Set label to name
       var label = inputConfig.label;
@@ -74,7 +73,7 @@ var BuildForm = (function() {
         name: inputConfig.name,
         type: inputConfig.type,
         value: inputConfig.value,
-        placeholder: inputConfig.placeholder
+        placeholder: inputConfig.placeholder,
       });
 
       $fgs.push($fg)
