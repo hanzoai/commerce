@@ -226,6 +226,16 @@ type Query struct {
 	model *Model
 }
 
+func (q *Query) Limit(limit int) *Query {
+	q.Query = q.Query.Limit(limit)
+	return q
+}
+
+func (q *Query) Offset(offset int) *Query {
+	q.Query = q.Query.Offset(offset)
+	return q
+}
+
 func (q *Query) Filter(filterStr string, value interface{}) *Query {
 	q.Query = q.Query.Filter(filterStr, value)
 	return q
