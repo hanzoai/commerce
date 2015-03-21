@@ -11,9 +11,12 @@ import (
 	"crowdstart.io/util/test/ae"
 )
 
+type setupFn func(c *http.Request)
+
 type Client struct {
-	router  *gin.Engine
+	Router  *gin.Engine
 	Context *gin.Context
+	setup   setupFn
 }
 
 func newRouter(ctx ae.Context) *gin.Engine {
@@ -24,8 +27,15 @@ func newRouter(ctx ae.Context) *gin.Engine {
 	return router
 }
 
-func Handler(ctx ae.Context, method, path string, handler gin.HandlerFunc) *Client {
+func New(ctx ae.Context) *Client {
 	client := new(Client)
+	router := newRouter(ctx)
+	client.Router = router
+	return client
+}
+
+func Handler(ctx ae.Context, method, path string, handler gin.HandlerFunc) *Client {
+	client := New(ctx)
 
 	// Wrapper handler to save state of context
 	wrapper := func(c *gin.Context) {
@@ -33,29 +43,26 @@ func Handler(ctx ae.Context, method, path string, handler gin.HandlerFunc) *Clie
 		client.Context = c
 	}
 
-	router := newRouter(ctx)
-	router.Handle(method, path, []gin.HandlerFunc{wrapper})
-
-	client.router = router
+	client.Router.Handle(method, path, []gin.HandlerFunc{wrapper})
 
 	return client
 }
 
 func Middleware(ctx ae.Context, mw gin.HandlerFunc) *Client {
-	client := new(Client)
-
-	router := newRouter(ctx)
+	client := New(ctx)
 
 	// Helper middleware to save state of context
-	router.Use(func(c *gin.Context) {
+	client.Router.Use(func(c *gin.Context) {
 		c.Next()
 		client.Context = c
 	})
-	router.Use(mw)
-
-	client.router = router
+	client.Router.Use(mw)
 
 	return client
+}
+
+func (c *Client) Setup(setup setupFn) {
+	c.setup = setup
 }
 
 func (c *Client) NewRequest(method, path string, reader io.Reader) *http.Request {
@@ -63,12 +70,15 @@ func (c *Client) NewRequest(method, path string, reader io.Reader) *http.Request
 	if err != nil {
 		panic(err)
 	}
+	if c.setup != nil {
+		c.setup(req)
+	}
 	return req
 }
 
 func (c *Client) Do(req *http.Request) *httptest.ResponseRecorder {
 	w := httptest.NewRecorder()
-	c.router.ServeHTTP(w, req)
+	c.Router.ServeHTTP(w, req)
 	return w
 }
 
