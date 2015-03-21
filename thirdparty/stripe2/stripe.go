@@ -12,6 +12,7 @@ import (
 	"crowdstart.io/models2"
 )
 
+type Card stripe.Card
 type CardParams stripe.CardParams
 type Charge stripe.Charge
 type Customer stripe.Customer
@@ -56,6 +57,28 @@ func (c Client) Authorize(card *CardParams) (*Token, error) {
 
 	// Cast back to our token
 	return (*Token)(t), err
+}
+
+// Create new stripe customer
+func (c Client) GetCard(cardId string, customerId string) (*Card, error) {
+	params := &stripe.CardParams{
+		Customer: customerId,
+	}
+
+	card, err := c.API.Cards.Get(cardId, params)
+	if err != nil {
+		stripeErr, ok := err.(*stripe.Error)
+		if ok {
+			return nil, &Error{
+				Code:    string(stripeErr.Code),
+				Message: stripeErr.Msg,
+				Type:    string(stripeErr.Type),
+			}
+		}
+		return nil, &Error{Type: "unknown", Message: "Stripe: failed to get card"}
+	}
+
+	return (*Card)(card), err
 }
 
 // Create new stripe customer
