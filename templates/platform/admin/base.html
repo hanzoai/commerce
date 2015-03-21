@@ -105,28 +105,40 @@
                             <!-- Sidebar Navigation -->
                             <ul class="sidebar-nav">
                                 <li>
-                                  <a href="{{ urlFor("platform", "/dashboard") }}"><i class="fa fa-home sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Dashboard</span></a>
+                                  <a id="menu-dashboard" href="{{ urlFor("platform", "/dashboard") }}"><i class="fa fa-home sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Dashboard</span></a>
                                 </li>
                                 <li class="sidebar-separator">
                                     <i class="fa fa-ellipsis-h"></i>
                                 </li>
                                 <li>
-                                  <a href="{{ urlFor("platform", "/profile") }}"><i class="gi gi-user sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Profile</span></a>
+                                  <a id="menu-profile" href="{{ urlFor("platform", "/profile") }}"><i class="gi gi-user sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Profile</span></a>
                                 </li>
                                 <li>
-                                  <a href="{{ urlFor("platform", "/organization") }}"><i class="gi gi-factory sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Organization</span></a>
-                                </li>
-                                <li>
-                                  <a href="{{ urlFor("platform", "/keys") }}"><i class="gi gi-keys sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">API Keys</span></a>
-                                </li>
-                                <li>
-                                    <a href="{{ urlFor("platform", "/stripe/connect") }}"><i class="fa fa-credit-card sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Stripe</span></a>
+                                    <a id="menu-stripe-connect" href="{{ urlFor("platform", "/stripe/connect") }}"><i class="fa fa-credit-card sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Stripe</span></a>
                                 </li>
                                 <li class="sidebar-separator">
                                     <i class="fa fa-ellipsis-h"></i>
                                 </li>
                                 <li>
-                                  <a href="{{ urlFor("platform", "/settings") }}"><i class="gi gi-settings sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Settings</span></a>
+                                    <a href="#" class="sidebar-nav-menu">
+                                        <i class="fa fa-chevron-left sidebar-nav-indicator sidebar-nav-mini-hide"></i>
+                                        <i class="gi gi-settings sidebar-nav-icon"></i>
+                                        <span class="sidebar-nav-mini-hide">Settings</span>
+                                    </a>
+                                    <ul>
+                                        <li>
+                                            <a id="menu-keys" href="{{ urlFor("platform", "/keys") }}">
+                                                <i class="gi gi-keys sidebar-nav-icon"></i>
+                                                <span class="sidebar-nav-mini-hide">API</span>
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a id="menu-organization" href="{{ urlFor("platform", "/organization") }}">
+                                                <i class="gi gi-factory sidebar-nav-icon"></i>
+                                                <span class="sidebar-nav-mini-hide">Organization</span>
+                                            </a>
+                                        </li>
+                                    </ul>
                                 </li>
                             </ul>
                             <!-- END Sidebar Navigation -->
@@ -224,6 +236,13 @@
         <!-- Load and execute javascript code used only in this page -->
         {% block js %}
         {% endblock %}
+
+        <script>
+            var menuId = '{% block menulink %}none{% endblock %}';
+            var $menu = $('#' + menuId);
+            $menu.addClass('active');
+            $menu.closest('ul').closest('li').addClass('active');
+        </script>
 
     </body>
 {% comment %}

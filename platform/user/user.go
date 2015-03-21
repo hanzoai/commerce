@@ -78,7 +78,7 @@ func SubmitProfile(c *gin.Context) {
 	}
 }
 
-func ResetPassword(c *gin.Context) {
+func ChangePassword(c *gin.Context) {
 	if u, err := auth.GetCurrentUser(c); err != nil {
 		c.Fail(500, err)
 		return

@@ -17,30 +17,6 @@
 
         <!-- Contact information Form Content -->
         <form id="form-profile" method="post" class="form-horizontal">
-            <div class="form-group">
-                <label class="col-md-3 control-label" for="firstName">First Name<span class="text-danger enable-tooltip" data-original-title="required">*</span></label>
-                <div class="col-md-9">
-                    <input type="text" id="firstName" name="User.FirstName" class="form-control" value="{{ user.FirstName }}">
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="col-md-3 control-label" for="lastName">Last Name<span class="text-danger enable-tooltip" data-original-title="required">*</span></label>
-                <div class="col-md-9">
-                    <input type="text" id="lastName" name="User.LastName" class="form-control" value="{{ user.LastName }}">
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="col-md-3 control-label" for="email">Email<span class="text-danger enable-tooltip" data-original-title="required">*</span></label>
-                <div class="col-md-9">
-                    <input type="email" id="email" name="User.Email" class="form-control" value="{{ user.Email }}">
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="col-md-3 control-label" for="phone">Phone</label>
-                <div class="col-md-9">
-                    <input type="tel" id="phone" name="User.Phone" class="form-control" value="{{ user.Phone }}">
-                </div>
-            </div>
             <div class="form-group form-actions">
                 <div class="col-md-9 col-md-offset-3">
                     <button type="submit" class="btn btn-effect-ripple btn-primary">Submit</button>
@@ -56,30 +32,12 @@
     <div class="block">
         <!-- Reset Password Form Title -->
         <div class="block-title">
-            <h2>Reset Password</h2>
+            <h2>Change Password</h2>
         </div>
         <!-- END Reset Password Form Title -->
 
         <!-- Reset Password Form Content -->
-        <form id="form-password" action="resetpassword" method="post" class="form-horizontal">
-            <div class="form-group">
-                <label class="col-md-3 control-label" for="oldpassword">Current Password</label>
-                <div class="col-md-9">
-                    <input type="password" id="oldpassword" name="OldPassword" class="form-control" placeholder="******">
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="col-md-3 control-label" for="password">New Password</label>
-                <div class="col-md-9">
-                    <input type="password" id="password" name="Password" class="form-control" placeholder="******">
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="col-md-3 control-label" for="confirmpassword">Confirm New Password</label>
-                <div class="col-md-9">
-                    <input type="password" id="confirmpassword" name="ConfirmPassword" class="form-control" placeholder="******">
-                </div>
-            </div>
+        <form id="form-password" action="changepassword" method="post" class="form-horizontal">
             <div class="form-group form-actions">
                 <div class="col-md-9 col-md-offset-3">
                     <button type="submit" class="btn btn-effect-ripple btn-primary">Submit</button>
@@ -94,9 +52,138 @@
 {% endblock %}
 
 {% block js %}
-<script src="{{ staticUrl }}/appui/js/pages/submitProfile.js"></script>
-<script>$(function(){ SubmitProfile.init(); });</script>
-<script src="{{ staticUrl }}/appui/js/pages/submitPassword.js"></script>
-<script>$(function(){ SubmitPassword.init(); });</script>
+<script src="{{ staticUrl }}/js/form-builder.js"></script>
+<script>
+    $(function(){
+        BuildForm($("#form-profile"), [
+            {
+                id: "firstName",
+                name: "User.FirstName",
+                label: "First Name",
+                type: "text",
+                value: "{{ user.FirstName }}",
+                rules: [
+                    {
+                        rule: "required",
+                        value: true,
+                        message: "Please enter your first name"
+                    }
+                ]
+            },
+            {
+                id: "lastName",
+                name: "User.LastName",
+                label: "Last Name",
+                type: "text",
+                value: "{{ user.LastName }}",
+                rules: [
+                    {
+                        rule: "required",
+                        value: true,
+                        message: "Please enter your last name"
+                    }
+                ]
+            },
+            {
+                id: "email",
+                name: "User.Email",
+                label: "Email",
+                type: "email",
+                value: "{{ user.Email }}",
+                rules: [
+                    {
+                        rule: "required",
+                        value: true,
+                        message: "Please enter your email"
+                    },
+                    {
+                        rule: "email",
+                        value: true,
+                        message: "Please enter a valid email"
+                    }
+                ]
+            },
+            {
+                id: "Phone",
+                name: "User.Phone",
+                label: "Phone",
+                type: "tel",
+                value: "{{ user.Phone }}",
+            }
+        ]);
+    });
+</script>
+<script>
+    $(function(){
+        BuildForm($("#form-password"), [
+            {
+                id: "oldpassword",
+                name: "OldPassword",
+                label: "Current Password",
+                type: "password",
+                placeholder: "******",
+                asterisk: false,
+                rules: [
+                    {
+                        rule: "required",
+                        value: true,
+                        message: "Please enter your password"
+                    },
+                    {
+                        rule: "minlength",
+                        value: 6,
+                        message: "Your password must be at least 6 characters long"
+                    }
+                ]
+            },
+            {
+                id: "password",
+                name: "Password",
+                label: "New Password",
+                type: "password",
+                placeholder: "******",
+                asterisk: false,
+                rules: [
+                    {
+                        rule: "required",
+                        value: true,
+                        message: "Please enter your password"
+                    },
+                    {
+                        rule: "minlength",
+                        value: 6,
+                        message: "Your password must be at least 6 characters long"
+                    }
+                ]
+            },
+            {
+                id: "confirmpassword",
+                name: "ConfirmPassword",
+                label: "Confirm New Password",
+                type: "password",
+                placeholder: "******",
+                asterisk: false,
+                rules: [
+                    {
+                        rule: "required",
+                        value: true,
+                        message: "Please enter your password"
+                    },
+                    {
+                        rule: "minlength",
+                        value: 6,
+                        message: "Your password must be at least 6 characters long"
+                    },
+                    {
+                        rule: "equalTo",
+                        value: "#password",
+                        message: 'You did not type the same password twice'
+                    }
+                ]
+            },
+        ]);
+    });
+</script>
 {% endblock %}
+{% block menulink %}menu-profile{% endblock %}
 
