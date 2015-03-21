@@ -36,9 +36,7 @@ func init() {
 	}
 
 	// Redirect root
-	router.GET("/", rest.DebugIndex(entities), func(c *gin.Context) {
-		c.JSON(200, gin.H{"status": "ok"})
-	})
+	router.GET("/", rest.DebugIndex(entities))
 
 	// Access token routes
 	router.GET("/access/:id", func(c *gin.Context) {
