@@ -2,6 +2,7 @@ package mixin
 
 import (
 	"errors"
+	"math"
 
 	"crowdstart.io/util/bit"
 	"crowdstart.io/util/token"
@@ -47,7 +48,12 @@ func (at *AccessToken) CompareToken(tok1, tok2 *token.Token) error {
 func (at *AccessToken) GetToken(accessToken string) (*token.Token, error) {
 	tok, err := token.FromString(accessToken, at.SecretKey)
 	if err != nil {
-		return tok, err
+		return nil, err
+	}
+
+	// Try to fetch model using ModelId on token
+	if err := at.Model.Get(tok.ModelId); err != nil {
+		return nil, err
 	}
 
 	for _, _tok := range at.Tokens {
@@ -59,7 +65,7 @@ func (at *AccessToken) GetToken(accessToken string) (*token.Token, error) {
 }
 
 func (at *AccessToken) RemoveToken(name string) {
-	tokens := make([]token.Token, len(at.Tokens)-1)
+	tokens := make([]token.Token, int(math.Max(float64(len(at.Tokens)-1), 0)))
 	for _, tok := range at.Tokens {
 		if tok.Name != name {
 			tokens = append(tokens, tok)
@@ -75,11 +81,6 @@ func (at *AccessToken) ClearTokens() {
 func (at *AccessToken) GetWithAccessToken(accessToken string) error {
 	tok, err := at.GetToken(accessToken)
 	if err != nil {
-		return err
-	}
-
-	// Try to fetch model using ModelId on token
-	if err := at.Model.Get(tok.ModelId); err != nil {
 		return err
 	}
 

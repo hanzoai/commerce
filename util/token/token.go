@@ -44,7 +44,7 @@ func (t *Token) getJWT() *jwt.Token {
 	jwt := jwt.New(jwt.SigningMethodHS512)
 
 	// jwt.Claims["name"] = t.Name
-	// jwt.Claims["iat"] = t.IssuedAt
+	//jwt.Claims["iat"] = t.IssuedAt.Unix()
 	jwt.Claims["jti"] = t.Id
 	jwt.Claims["sub"] = t.ModelId
 	jwt.Claims["bit"] = int64(t.Permissions)
@@ -59,6 +59,7 @@ func New(name string, subject string, permissions bit.Mask, secret []byte) *Toke
 	tok := new(Token)
 	tok.Id = rand.ShortId()
 	tok.Secret = secret
+	tok.ModelId = subject
 	tok.IssuedAt = time.Now()
 	tok.Name = name
 	tok.Permissions = bit.Field(permissions)
@@ -75,18 +76,18 @@ func FromString(accessToken string, secret []byte) (*Token, error) {
 	})
 
 	if err != nil {
-		return tok, err
+		return nil, err
 	}
 
 	if !jwt.Valid {
-		return tok, errors.New("Not Valid")
+		return nil, errors.New("Not Valid")
 	}
 
 	// tok.Name = jwt.Claims["name"].(string)
-	// tok.IssuedAt = jwt.Claims["iat"].(time.Time)
+	//tok.IssuedAt = time.Unix(int64(jwt.Claims["iat"].(float64)), 0)
 	tok.Id = jwt.Claims["jti"].(string)
 	tok.ModelId = jwt.Claims["sub"].(string)
-	tok.Permissions = jwt.Claims["bit"].(bit.Field)
+	tok.Permissions = bit.Field(jwt.Claims["bit"].(float64))
 
 	return tok, nil
 }

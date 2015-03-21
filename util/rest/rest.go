@@ -2,6 +2,7 @@ package rest
 
 import (
 	"reflect"
+	"strconv"
 
 	"appengine"
 
@@ -31,6 +32,12 @@ type Rest struct {
 	routes     map[string]route
 	namespace  bool
 	entityType reflect.Type
+}
+
+type Pagination struct {
+	Page    string      `json:"page,omitempty"`
+	Display string      `json:"display,omitempty"`
+	Models  interface{} `json:"models"`
 }
 
 func (r *Rest) Init(entity mixin.Entity) {
@@ -182,10 +189,40 @@ func (r Rest) list(c *gin.Context) {
 
 	models := r.newEntitySlice()
 
-	if _, err := model.Query().GetAll(models); err != nil {
+	query := c.Request.URL.Query()
+	pageStr := query.Get("page")
+	displayStr := query.Get("display")
+
+	var display int
+	var err error
+
+	q := model.Query()
+
+	// if we have pagination values, then trigger pagination calculations
+	if displayStr != "" {
+		if display, err = strconv.Atoi(displayStr); err == nil && display > 0 {
+			q = q.Limit(display)
+		} else {
+			json.Fail(c, 500, "'display' must be positive and non-zero.", err)
+		}
+	}
+
+	if pageStr != "" && displayStr != "" {
+		if page, err := strconv.Atoi(pageStr); err == nil && page > 0 {
+			q = q.Offset(display * (page - 1))
+		} else {
+			json.Fail(c, 500, "'page' must be positive and non-zero.", err)
+		}
+	}
+
+	if _, err = q.GetAll(models); err != nil {
 		json.Fail(c, 500, "Failed to list "+r.Kind, err)
 	} else {
-		r.JSON(c, 200, models)
+		r.JSON(c, 200, Pagination{
+			Page:    pageStr,
+			Display: displayStr,
+			Models:  models,
+		})
 	}
 }
 
