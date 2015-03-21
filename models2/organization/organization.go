@@ -90,7 +90,7 @@ func (o Organization) IsOwner(user *user.User) bool {
 	return o.OwnerId == user.Id()
 }
 
-func (o Organization) GenerateAccessToken(user *user.User) (string, error) {
+func (o *Organization) GenerateAccessToken(user *user.User) (string, error) {
 	if o.IsOwner(user) || o.IsAdmin(user) {
 		return o.AccessToken.GenerateAccessToken()
 	} else {
