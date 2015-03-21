@@ -92,14 +92,6 @@ autoprefixer_opts = -b 'ie > 8, firefox > 24, chrome > 30, safari > 6, opera > 1
 					static/css/store.css \
 					static/css/theme.css
 
-sdk_install = wget https://storage.googleapis.com/appengine-sdks/featured/$(sdk).zip && \
-			  unzip $(sdk).zip && \
-			  mv go_appengine $(sdk_path) && \
-			  rm $(sdk).zip && \
-			  mkdir -p $(sdk_path)/gopath/src && \
-			  mkdir -p $(sdk_path)/gopath/bin && \
-			  ln -s $(shell pwd) $(sdk_path)/gopath/src/crowdstart.io
-
 dev_appserver = $(sdk_path)/dev_appserver.py --skip_sdk_update_check \
 											 --datastore_path=~/.gae_datastore.bin \
 											 --dev_appserver_log_level=error
@@ -188,10 +180,14 @@ deps-assets:
 	npm install
 
 # DEPS GO
-deps-go: .sdk .sdk/go .sdk/gpm .sdk/gopath/bin/ginkgo
+deps-go: .sdk .sdk/go .sdk/gpm .sdk/gopath/bin/ginkgo .sdk/gopath/src/crowdstart.io
 	$(gpm) install
 
 .sdk:
+	wget https://storage.googleapis.com/appengine-sdks/featured/$(sdk).zip
+	unzip $(sdk).zip
+	mv go_appengine $(sdk_path)
+	rm $(sdk).zip
 	$(sdk_install) && $(sdk_install_extra)
 
 .sdk/go:
@@ -205,6 +201,11 @@ deps-go: .sdk .sdk/go .sdk/gpm .sdk/gopath/bin/ginkgo
 
 .sdk/gopath/bin/ginkgo:
 	$(gpm) install && $(goapp) install github.com/onsi/ginkgo/ginkgo
+
+.sdk/gopath/src/crowdstart.io:
+	mkdir -p $(sdk_path)/gopath/src
+	mkdir -p $(sdk_path)/gopath/bin
+	ln -s $(shell pwd) $(sdk_path)/gopath/src/crowdstart.io
 
 # INSTALL
 install: install-deps
