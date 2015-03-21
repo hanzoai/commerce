@@ -1,0 +1,105 @@
+var BuildForm = (function() {
+  var formGroupTemplate = '<div class="form-group"><label class="col-md-3 control-label" for=""></label><div class="col-md-9"><input type="text" id="" name="" class="form-control" value=""></div></div>';
+  var requiredAsteriskTemplate = '<span class="text-danger enable-tooltip" data-original-title="required">*</span>';
+
+  return function ($formEl, inputConfigs) {
+    // Config is in the form of
+    //  [
+    //      {
+    //          id: "name",
+    //          name: "Model.Name",
+    //          label: "Name",
+    //          value: "Name",
+    //          placeholder: "Name",
+    //          asterisk: true,
+    //          type: "text",
+    //          rules: [
+    //              {
+    //                  rule: "required",
+    //                  value: "true",
+    //                  message: "this field is required",
+    //              }
+    //          ]
+    //      }
+    //  ]
+
+    var ruleSets = {};
+    var messages = {};
+    var $fgs = [];
+
+    // Convert input configs to validation rules and elements
+    var len = inputConfigs.length;
+    for (var i = 0; i < len; i++) {
+      var inputConfig = inputConfigs[i];
+
+      // Prepare validation logic
+      var ruleSet = ruleSets[inputConfig.name] = {};
+      var message = messages[inputConfig.name] = {};
+
+      // Trued if we run into a required rule
+      var isRequired = false;
+
+      // Make sure rules array exists
+      if (inputConfig.rules != null) {
+        // Loop over rules
+        var rLen = inputConfig.rules.length
+        for (var r = 0; r < rLen; r++) {
+          var rule = inputConfig.rules[r];
+
+          // True the required rule
+          if (rule.rule === 'required') {
+            isRequired = true;
+          }
+
+          // Do validation logic conversion
+          ruleSet[rule.rule] = rule.value;
+          message[rule.rule] = rule.message;
+        }
+      }
+
+      // Prepare templating
+      var $fg = $(formGroupTemplate);
+
+      // Set label to name
+      var label = inputConfig.label;
+
+      // Append asterisk if required
+      if (isRequired && inputConfig.asterisk !== false) {
+        label += requiredAsteriskTemplate;
+      }
+
+      $fg.find('label').attr('for', inputConfig.id).html(label);
+      $fg.find('input').attr({
+        id: inputConfig.id,
+        name: inputConfig.name,
+        type: inputConfig.type,
+        value: inputConfig.value,
+        placeholder: inputConfig.placeholder
+      });
+
+      $fgs.push($fg)
+    }
+
+    while ($fgs.length > 0) {
+      $formEl.prepend($fgs.pop());
+    }
+
+    $formEl.validate({
+      errorClass: 'help-block animation-slideUp', // You can change the animation class for a different entrance animation - check animations page
+      errorElement: 'div',
+      errorPlacement: function(error, e) {
+        e.parents('.form-group > div').append(error);
+      },
+      highlight: function(e) {
+        $(e).closest('.form-group').removeClass('has-success has-error').addClass('has-error');
+        $(e).closest('.help-block').remove();
+      },
+      success: function(e) {
+        e.closest('.form-group').removeClass('has-success has-error');
+        e.closest('.help-block').remove();
+      },
+      rules: ruleSets,
+      messages: messages,
+    })
+  };
+})();
