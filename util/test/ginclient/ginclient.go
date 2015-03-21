@@ -46,11 +46,12 @@ func Middleware(ctx ae.Context, mw gin.HandlerFunc) *Client {
 
 	router := newRouter(ctx)
 
-	// Setup middleware with our debug middleware last, to inspect context.
-	router.Use(mw, func(c *gin.Context) {
+	// Helper middleware to save state of context
+	router.Use(func(c *gin.Context) {
 		c.Next()
 		client.Context = c
 	})
+	router.Use(mw)
 
 	client.router = router
 
