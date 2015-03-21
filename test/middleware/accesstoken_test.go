@@ -1,20 +1,16 @@
 package test
 
 import (
-	"net/http"
 	"testing"
-	"time"
 
 	"appengine"
-
-	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models2/organization"
 	"crowdstart.io/models2/user"
-	"crowdstart.io/util/gincontext"
 	"crowdstart.io/util/test/ae"
+	"crowdstart.io/util/test/ginclient"
 
 	. "crowdstart.io/util/test/ginkgo"
 )
@@ -26,7 +22,6 @@ func Test(t *testing.T) {
 const kind = "user"
 
 var (
-	c   *gin.Context
 	ctx ae.Context
 	db  *datastore.Datastore
 )
@@ -34,7 +29,6 @@ var (
 // Setup appengine context, gin context, and datastore before tests
 var _ = BeforeSuite(func() {
 	ctx = ae.NewContext()
-	c = gincontext.New(ctx)
 	db = datastore.New(ctx)
 })
 
@@ -49,42 +43,42 @@ type Stub struct {
 var _ = Describe("middleware/accesstoken", func() {
 	Context("accessToken.RequiresOrgToken", func() {
 		It("should namespace based on org id", func() {
-			// add a dummy request
-			req, err := http.NewRequest("GET", "", nil)
-			Expect(err).NotTo(HaveOccurred())
-
-			c.Request = req
-
-			defer c.Set("appengine", ctx)
-
 			u := user.New(db)
-			u.Put()
+			err := u.Put()
+			Expect(err).NotTo(HaveOccurred())
 
 			// create an org
 			o := organization.New(db)
 			o.Name = "Justin"
-			o.IssuedAt = time.Now()
 			o.SecretKey = []byte("AAA")
 			o.OwnerId = u.Id()
 
 			// insert into db
-			o.Put()
+			err = o.Put()
+			Expect(err).NotTo(HaveOccurred())
 
 			id := o.Id()
 
 			// generate accessToken
-			tokenStr, err := o.GenerateAccessToken(u)
+			tokenStr := o.AddToken("some-token", 0)
+
+			// Update organization, so middleware can find it
+			err = o.Put()
 			Expect(err).NotTo(HaveOccurred())
 
-			// get the middleware func`
-			gFunc := middleware.TokenRequired()
+			// Setup test client
+			client := ginclient.Middleware(ctx, middleware.TokenRequired())
 
-			// set the access token on the request header
-			c.Request.Header.Set("Authorization", tokenStr)
+			// Set the access token on the request header
+			r := client.NewRequest("GET", "", nil)
+			r.Header.Set("Authorization", tokenStr)
+
+			// Do request
+			client.Do(r)
 
 			// middleware generates namespaced appengine context
-			gFunc(c)
-			org := middleware.GetOrg(c)
+			org := middleware.GetOrg(client.Context)
+
 			ctx2 := org.Namespace(ctx)
 			Expect(ctx2).ToNot(Equal(ctx))
 			Expect(org).ToNot(Equal(nil))
