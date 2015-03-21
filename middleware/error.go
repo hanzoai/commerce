@@ -8,22 +8,37 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"crowdstart.io/util/json"
 	"crowdstart.io/util/template"
 )
 
-// Show our error page & log it out
-func displayError(c *gin.Context, stack string) {
+type ErrorDisplayer func(c *gin.Context, message string, err error)
+
+// Display erros in JSON
+func ErrorJSON(c *gin.Context, message string, err error) {
+	message = "Unable to process request. Please try again later."
+	ctx := c.MustGet("appengine").(appengine.Context)
+	ctx.Criticalf("500: %v", err)
+	json.Fail(c, 500, message, err)
+}
+
+func ErrorJSONDev(c *gin.Context, message string, err error) {
+	json.Fail(c, 500, message, err)
+}
+
+// Display errors in HTML
+func ErrorHTML(c *gin.Context, stack string, err error) {
 	c.Writer.Header().Set("Content-Type", "text/html; charset=utf-8")
 	c.Abort(500)
+	ctx := c.MustGet("appengine").(appengine.Context)
+	ctx.Criticalf("500: %v", stack)
+	template.Render(c, "error/500.html")
+}
 
-	// Trim beginning of stacktrace
-	// lines := strings.Split(stack, "\n")
-	// msg := lines[0]
-	// lines = append([]string{msg + "\n"}, lines[5:]...)
-	// stack = strings.Join(lines, "\n")
-
-	if appengine.IsDevAppServer() {
-		c.Writer.Write([]byte(`<html>
+func ErrorHTMLDev(c *gin.Context, stack string, err error) {
+	c.Writer.Header().Set("Content-Type", "text/html; charset=utf-8")
+	c.Abort(500)
+	c.Writer.Write([]byte(`<html>
 	<head>
 		<title>Error: 500</title>
 		<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
@@ -38,15 +53,10 @@ func displayError(c *gin.Context, stack string) {
 		<h4>500 Internal Server Error (crowdstart/1.0.0)</h4>
 
 		<pre>` + stack + "</pre></body></html>"))
-	} else {
-		ctx := c.MustGet("appengine").(appengine.Context)
-		ctx.Criticalf("500: %v", stack)
-		template.Render(c, "error/500.html")
-	}
 }
 
-// Serve custom 500 error page and log errors
-func ErrorHandler() gin.HandlerFunc {
+// Handle errors with appropriate ErrorDisplayer
+func errorHandler(displayError ErrorDisplayer) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// On panic
 		defer func() {
@@ -54,7 +64,8 @@ func ErrorHandler() gin.HandlerFunc {
 				errstr := fmt.Sprint(r)
 				trace := make([]byte, 1024*8)
 				runtime.Stack(trace, false)
-				displayError(c, errstr+"\n\n"+string(trace))
+				err, _ := r.(error)
+				displayError(c, errstr+"\n\n"+string(trace), err)
 			}
 		}()
 
@@ -64,8 +75,24 @@ func ErrorHandler() gin.HandlerFunc {
 		if !c.Writer.Written() && c.Writer.Status() == 500 {
 			err := c.LastError()
 			stack := fmt.Sprint(err)
-			// stack = stack + "\n" + getStack()
-			displayError(c, stack)
+			displayError(c, stack, err)
 		}
+	}
+}
+
+// Error middleware
+func ErrorHandler() gin.HandlerFunc {
+	if appengine.IsDevAppServer() {
+		return errorHandler(ErrorHTMLDev)
+	} else {
+		return errorHandler(ErrorHTML)
+	}
+}
+
+func JSONErrorHandler() gin.HandlerFunc {
+	if appengine.IsDevAppServer() {
+		return errorHandler(ErrorJSONDev)
+	} else {
+		return errorHandler(ErrorJSON)
 	}
 }
