@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"crowdstart.io/datastore"
+	"crowdstart.io/middleware"
 	"crowdstart.io/models2/organization"
 	"crowdstart.io/util/permission"
 	"crowdstart.io/util/rest"
@@ -54,7 +55,7 @@ var _ = Describe("New", func() {
 
 		// Create routes for Model
 		rest := rest.New(Model{})
-		rest.Route(client.Router)
+		rest.Route(client.Router, middleware.TokenRequired())
 
 		// Should not be authorized
 		w := client.Get("/test-model")
