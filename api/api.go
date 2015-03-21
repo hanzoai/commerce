@@ -3,6 +3,7 @@ package api
 import (
 	"github.com/gin-gonic/gin"
 
+	"crowdstart.io/api/accesstoken"
 	"crowdstart.io/api/payment"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models/mixin"
@@ -15,6 +16,7 @@ import (
 	"crowdstart.io/models2/token"
 	"crowdstart.io/models2/user"
 	"crowdstart.io/models2/variant"
+	"crowdstart.io/util/permission"
 	"crowdstart.io/util/rest"
 	"crowdstart.io/util/router"
 )
@@ -25,6 +27,9 @@ func init() {
 	router.GET("/v1/", func(c *gin.Context) {
 		c.Data(410, "application/json", make([]byte, 0))
 	})
+
+	adminRequired := middleware.TokenRequired(permission.Admin)
+	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
 
 	// Entities with automatic RESTful API
 	entities := []mixin.Entity{
@@ -42,43 +47,24 @@ func init() {
 	// Redirect root
 	router.GET("/", rest.DebugIndex(entities))
 
-	// Access token routes
-	router.GET("/access/:id", func(c *gin.Context) {
-		id := c.Params.ByName("id")
-
-		query := c.Request.URL.Query()
-		email := query.Get("email")
-		password := query.Get("password")
-
-		getAccessToken(c, id, email, password)
-	})
-
-	router.POST("/access/:id", func(c *gin.Context) {
-		id := c.Params.ByName("id")
-
-		email := c.Request.Form.Get("email")
-		password := c.Request.Form.Get("password")
-
-		getAccessToken(c, id, email, password)
-	})
-
-	router.DELETE("/access", middleware.TokenRequired(), func(c *gin.Context) {
-		deleteAccessToken(c)
-	})
+	// Access tokens
+	router.GET("/access/:id", accesstoken.Get)
+	router.POST("/access/:id", accesstoken.Post)
+	router.DELETE("/access/:id", adminRequired, accesstoken.Delete)
 
 	// Authorization routes
 	// One Step Payments
-	router.POST("/charge", middleware.TokenRequired(), payment.Charge)
-	router.POST("/order/:id/charge", middleware.TokenRequired(), payment.Charge)
+	router.POST("/charge", publishedRequired, payment.Charge)
+	router.POST("/order/:id/charge", publishedRequired, payment.Charge)
 
 	// Two Step Payments - "Auth & Capture"
-	router.POST("/authorize", middleware.TokenRequired(), payment.Authorize)
-	router.POST("/order/:id/authorize", middleware.TokenRequired(), payment.Authorize)
-	router.POST("/order/:id/capture", middleware.TokenRequired(), payment.Capture)
+	router.POST("/authorize", publishedRequired, payment.Authorize)
+	router.POST("/order/:id/authorize", publishedRequired, payment.Authorize)
+	router.POST("/order/:id/capture", adminRequired, payment.Capture)
 
 	// Setup API routes
 	logApiRoutes(entities)
 	for _, entity := range entities {
-		rest.New(entity).Route(router)
+		rest.New(entity).Route(router, adminRequired)
 	}
 }
