@@ -56,6 +56,7 @@ func init() {
 
 	router.GET("/organization", loginRequired, admin.Organization)
 	router.GET("/keys", loginRequired, admin.Keys)
+	router.GET("/newkeys", loginRequired, admin.NewKeys)
 
 	router.GET("/settings", loginRequired, user.Profile)
 
