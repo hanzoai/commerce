@@ -8,6 +8,7 @@ import (
 
 func Fail(c *gin.Context, code int, message string, err error) {
 	c.Writer.Header().Set("Content-Type", "application/json")
+	c.Writer.WriteHeader(code)
 
 	jsonErr := gin.H{
 		"error": gin.H{

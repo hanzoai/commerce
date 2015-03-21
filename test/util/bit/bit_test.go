@@ -18,10 +18,10 @@ const (
 	C
 )
 
-var field = new(bit.Field)
-
 var _ = Describe("Field", func() {
 	It("Should be able to set Mask", func() {
+		field := new(bit.Field)
+
 		field.Set(A)
 		field.Set(B)
 
@@ -31,6 +31,8 @@ var _ = Describe("Field", func() {
 	})
 
 	It("Should be able to remove Mask", func() {
+		field := new(bit.Field)
+
 		field.Set(A)
 		field.Set(B)
 		field.Set(C)

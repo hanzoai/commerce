@@ -1,6 +1,7 @@
 package test
 
 import (
+	"net/http"
 	"testing"
 
 	"appengine"
@@ -9,7 +10,6 @@ import (
 	"crowdstart.io/middleware"
 	"crowdstart.io/models2/organization"
 	"crowdstart.io/models2/user"
-	"crowdstart.io/util/log"
 	"crowdstart.io/util/test/ae"
 	"crowdstart.io/util/test/ginclient"
 
@@ -61,22 +61,18 @@ var _ = Describe("middleware/accesstoken", func() {
 			id := o.Id()
 
 			// generate accessToken
-			tokenStr := o.AddToken("some-token", 0)
+			accessToken := o.AddToken("some-token", 0)
 
 			// Update organization, so middleware can find it
 			err = o.Put()
 			Expect(err).NotTo(HaveOccurred())
 
-			// Setup test client
+			// Make request using access token
 			client := ginclient.Middleware(ctx, middleware.TokenRequired())
-
-			// Set the access token on the request header
-			r := client.NewRequest("GET", "", nil)
-			r.Header.Set("Authorization", tokenStr)
-
-			// Do request
-			client.Do(r)
-			log.Debug("%v", client.Context.Keys)
+			client.Setup(func(r *http.Request) {
+				r.Header.Set("Authorization", accessToken)
+			})
+			client.Get("/")
 
 			// middleware generates namespaced appengine context
 			org := middleware.GetOrg(client.Context)
