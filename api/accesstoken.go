@@ -66,7 +66,16 @@ func getAccessToken(c *gin.Context, id, email, password string) {
 func deleteAccessToken(c *gin.Context) {
 	// Get organization for current access token
 	org := middleware.GetOrg(c)
-	org.TokenId = ""
+
+	// Retrieve token
+	accessToken := session.MustGet(c, "access-token").(string)
+	tok, err := org.GetToken(accessToken)
+	if err != nil {
+		json.Fail(c, 500, "Invalid token", err)
+	}
+
+	// Remove token
+	org.RemoveToken(tok.Name)
 
 	if err := org.Put(); err != nil {
 		json.Fail(c, 500, "Unable to update organization", err)
