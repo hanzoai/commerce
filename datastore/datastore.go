@@ -428,7 +428,7 @@ func (d *Datastore) Query(kind string) *aeds.Query {
 }
 
 func (d *Datastore) Query2(kind string) Query {
-	return NewQuery(kind, d.Context)
+	return NewQuery(kind, d)
 }
 
 func (d *Datastore) RunInTransaction(f func(tc appengine.Context) error, opts *aeds.TransactionOptions) error {
