@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"crowdstart.io/util/bit"
-	"crowdstart.io/util/log"
 	"crowdstart.io/util/token"
 )
 
@@ -58,8 +57,6 @@ func (at *AccessToken) GetToken(accessToken string) (*token.Token, error) {
 	if err := at.Model.Get(tok.ModelId); err != nil {
 		return nil, err
 	}
-
-	log.Warn("%v ==? %v", at.Tokens[0].Name, tok.Name)
 
 	for _, _tok := range at.Tokens {
 		if tok.Id == _tok.Id {
