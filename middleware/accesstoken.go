@@ -8,6 +8,7 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models2/organization"
 	"crowdstart.io/util/json"
+	"crowdstart.io/util/log"
 	"crowdstart.io/util/session"
 )
 
@@ -28,9 +29,11 @@ func TokenRequired() gin.HandlerFunc {
 			accessToken = session.MustGet(c, "access-token").(string)
 		}
 
+		log.Debug("access token: %v", accessToken)
+
 		// Bail if we still don't have an access token
 		if accessToken == "" {
-			json.Fail(c, 401, "Access token is invalid.", nil)
+			json.Fail(c, 401, "No access token provided.", nil)
 			return
 		}
 
@@ -40,18 +43,17 @@ func TokenRequired() gin.HandlerFunc {
 
 		// Try to validate the org's access token
 		if err := o.GetWithAccessToken(accessToken); err != nil {
-			json.Fail(c, 401, "Access token is invalid.", nil)
+			json.Fail(c, 401, "Unable to retrieve organization associated with access token: "+err.Error(), err)
 			return
 		}
 
 		// Try to get the namespace to the org's key
 		if ctx2, err := appengine.Namespace(ctx, o.Id()); err != nil {
-			json.Fail(c, 500, "Failed to get namespace for organization.", err)
+			json.Fail(c, 500, "Failed to get namespace for organization: %v"+o.Id(), err)
 		} else {
-			// Save organization in session
+			// Save organization in context
 			c.Set("org", o)
-			// Save namespace in session
-			// Overwrite hte old appengine Context on gin Context
+			// Save namespace in context
 			c.Set("namespace", ctx2)
 		}
 	}
