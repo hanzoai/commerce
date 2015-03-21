@@ -8,40 +8,58 @@
 {% endblock %}
 
 {% block content %}
-<div class="container">
-    <div class="row">
-        <h2>Stripe<h2>
+<!-- Stripe Connect Form Block -->
+<div class="col-sm-10 col-sm-offset-1 col-md-10 col-md-offset-1 col-lg-8 col-lg-offset-1">
+    <div class="block">
+        <!-- Stripe Connect Form Title -->
+        <div class="block-title">
+            <h2>Stripe</h2>
+        </div>
+        <!-- END Stripe Connect Form Title -->
+
+        <!-- Stripe Connect Form Content -->
+        {% if stripeError && stripeError != "" %}
+        <div class="row">
+            <h3>Your Stripe account was not successfully be connected.  Please try again.</h3>
+            <p>
+              {{ stripeError }}
+            </p>
+        </div>
+        {% endif %}
+        <div class="block-section">
+            <div class="row">
+                <div class="col-md-9 col-md-offset-3">
+                    {% if org.Stripe.AccessToken != "" %}
+                    <a class="btn btn-effect-ripple btn-success" href="https://connect.stripe.com/oauth/authorize?response_type=code&client_id={{ stripe.ClientId }}&scope=read_write&state=movetoserver&stripe_landing=login&redirect_uri={{ stripe.RedirectURL }}" class="stripe-connect"><i class="fa fa-check"></i><span>Connected with Stripe</span></a>
+                    {% else %}
+                    <a class="btn btn-effect-ripple btn-primary" href="https://connect.stripe.com/oauth/authorize?response_type=code&client_id={{ stripe.ClientId }}&scope=read_write&state=movetoserver&stripe_landing=login&redirect_uri={{ stripe.RedirectURL }}" class="stripe-connect"><span>Connect with Stripe</span></a>
+                    {% endif %}
+                    <a class="btn btn-warning" href="{{ config.UrlFor("platform", "/stripe/sync") }}">Sync orders</a>
+                </div>
+            </div>
+        </div>
+        <!-- END Stripe Connect Form Content -->
     </div>
-    <div class="row">
-        <a href="https://connect.stripe.com/oauth/authorize?response_type=code&client_id={{ stripe.ClientId }}&scope=read_write&state=movetoserver&stripe_landing=login&redirect_uri={{ stripe.RedirectURL }}" class="stripe-connect"><span>Connect with Stripe</span></a>
-    </div>
-    <div class="row stripe-sync">
-        <a class="btn btn-default" href="{{ config.UrlFor("platform", "/stripe/sync") }}">Sync orders</a>
-    </div>
-    {% if stripeError && stripeError != "" %}
-    <div class="row">
-        <h3>Your Stripe account was not successfully be connected.  Please try again.</h3>
-        <p>
-          {{ stripeError }}
-        </p>
-    </div>
-    {% endif %}
-    <div class="row">
-        <h2>Salesforce</h2>
-    </div>
-    <div class="row">
-        <a class="btn btn-default" href="https://login.salesforce.com/services/oauth2/authorize?response_type=code&client_id={{ salesforce.ConsumerKey }}&redirect_uri={{ salesforce.CallbackURL }}">Connect with Salesforce</a>
-    </div>
-    {% if salesforceError && salesforceError != "" %}
-    <div class="row">
-        <h3>Your Salesforce account was not successfully be connected.  Please try again.</h3>
-        <p>
-          {{ salesforceError }}
-        </p>
-    </div>
-    {% endif %}
+    <!-- END Stripe Connect Form Block -->
+
+    <!-- <div class="row"> -->
+    <!--     <h2>Salesforce</h2> -->
+    <!-- </div> -->
+    <!-- <div class="row"> -->
+    <!--     <a class="btn btn-default" href="https://login.salesforce.com/services/oauth2/authorize?response_type=code&client_id={{ salesforce.ConsumerKey }}&redirect_uri={{ salesforce.CallbackURL }}">Connect with Salesforce</a> -->
+    <!-- </div> -->
+    <!-- {% if salesforceError && salesforceError != "" %} -->
+    <!-- <div class="row"> -->
+    <!--     <h3>Your Salesforce account was not successfully be connected.  Please try again.</h3> -->
+    <!--     <p> -->
+    <!--       {{ salesforceError }} -->
+    <!--     </p> -->
+    <!-- </div> -->
+    <!-- {% endif %} -->
 </div>
 {% endblock %}
 
 {% block js %}
 {% endblock %}
+{% block menulink %}menu-stripe-connect{% endblock %}
+
