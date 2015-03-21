@@ -48,9 +48,8 @@ func ErrorJSONDev(c *gin.Context, stack string, err error) {
 func ErrorHTML(c *gin.Context, stack string, err error) {
 	c.Writer.Header().Set("Content-Type", "text/html; charset=utf-8")
 	c.Abort(500)
-	ctx := c.MustGet("appengine").(appengine.Context)
-	ctx.Criticalf("%v", stack)
 	template.Render(c, "error/500.html")
+	log.Error(stack, c)
 }
 
 func ErrorHTMLDev(c *gin.Context, stack string, err error) {
@@ -71,6 +70,7 @@ func ErrorHTMLDev(c *gin.Context, stack string, err error) {
 		<h4>500 Internal Server Error (crowdstart/1.0.0)</h4>
 
 		<pre>` + stack + "</pre></body></html>"))
+	log.Error(stack)
 }
 
 // Handle errors with appropriate ErrorDisplayer
