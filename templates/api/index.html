@@ -102,6 +102,11 @@ function payment(url) {
           document.body.innerHTML = jqXHR.responseText;
           console.log(data);
       },
+      error: function(jqXHR, textStatus, err) {
+          var data = JSON.parse(jqXHR.responseText);
+          console.log(data);
+          document.body.innerHTML = JSON.stringify(data);
+      },
     });
     return false
 }
