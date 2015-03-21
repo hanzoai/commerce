@@ -26,7 +26,10 @@ func TokenRequired() gin.HandlerFunc {
 
 		// During development cookie may be set from development pages.
 		if appengine.IsDevAppServer() && accessToken == "" {
-			accessToken = session.MustGet(c, "access-token").(string)
+			value, _ := session.Get(c, "access-token")
+			if tokstr, ok := value.(string); ok {
+				accessToken = tokstr
+			}
 		}
 
 		log.Debug("access token: %v", accessToken)
