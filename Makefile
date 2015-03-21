@@ -202,7 +202,6 @@ deps-go: .sdk .sdk/go .sdk/gpm .sdk/gopath/bin/ginkgo .sdk/gopath/src/crowdstart
 .sdk/gopath/bin/ginkgo:
 	$(gpm) install
 	$(goapp) install github.com/onsi/ginkgo/ginkgo
-	$(goapp) install golang.org/x/tools/cmd/cover
 
 .sdk/gopath/src/crowdstart.io:
 	mkdir -p $(sdk_path)/gopath/src
@@ -251,7 +250,7 @@ bench:
 	@$(ginkgo) $(test_target)--randomizeAllSpecs -p=true -progress=true -skipPackage=integration $(test_verbose)
 
 test-ci:
-	$(ginkgo) -r=true --randomizeAllSpecs --randomizeSuites --failOnPending --cover --trace --compilers=2 -v=true -- -test.v=true
+	$(ginkgo) -r=true --randomizeAllSpecs --randomizeSuites --failOnPending --trace --compilers=2 -v=true -- -test.v=true
 
 # DEPLOY
 deploy-production: assets-min
