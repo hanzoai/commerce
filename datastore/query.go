@@ -24,13 +24,15 @@ type Query interface {
 }
 
 type query struct {
-	Context appengine.Context
-	Query   *aeds.Query
+	Context   appengine.Context
+	Query     *aeds.Query
+	Datastore *Datastore
 }
 
-func NewQuery(kind string, context appengine.Context) *query {
+func NewQuery(kind string, db *Datastore) *query {
 	q := new(query)
-	q.Context = context
+	q.Context = db.Context
+	q.Datastore = db
 	q.Query = aeds.NewQuery(kind)
 	return q
 }
@@ -106,14 +108,17 @@ func (q *query) First(dst interface{}) (*aeds.Key, bool, error) {
 	t := q.Limit(1).Run()
 	key, err := t.Next(dst)
 
-	// Nothing found
-	if err == aeds.Done {
-		return key, false, nil
-	}
-
-	// Error!
+	// Ignore field mismatch if set
 	if err != nil {
-		return key, false, err
+		// Nothing found
+		if err == aeds.Done {
+			return key, false, nil
+		}
+
+		// Ignore field mismatch, or return error
+		if err = q.Datastore.SkipFieldMismatch(err); err != nil {
+			return key, false, err
+		}
 	}
 
 	// Success :)

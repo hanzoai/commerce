@@ -7,6 +7,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 
 	"crowdstart.io/util/bit"
+	"crowdstart.io/util/rand"
 )
 
 type Token struct {
@@ -42,10 +43,10 @@ func (t Token) HasPermission(mask bit.Mask) bool {
 func (t *Token) getJWT() *jwt.Token {
 	jwt := jwt.New(jwt.SigningMethodHS512)
 
-	jwt.Claims["name"] = t.Name
-	jwt.Claims["sub"] = t.ModelId
-	jwt.Claims["iat"] = t.IssuedAt
+	// jwt.Claims["name"] = t.Name
+	// jwt.Claims["iat"] = t.IssuedAt
 	jwt.Claims["jti"] = t.Id
+	jwt.Claims["sub"] = t.ModelId
 	jwt.Claims["bit"] = int64(t.Permissions)
 
 	// This sets the token to expire in a year
@@ -56,6 +57,7 @@ func (t *Token) getJWT() *jwt.Token {
 
 func New(name string, subject string, permissions bit.Mask, secret []byte) *Token {
 	tok := new(Token)
+	tok.Id = rand.ShortId()
 	tok.Secret = secret
 	tok.IssuedAt = time.Now()
 	tok.Name = name
@@ -80,10 +82,10 @@ func FromString(accessToken string, secret []byte) (*Token, error) {
 		return tok, errors.New("Not Valid")
 	}
 
+	// tok.Name = jwt.Claims["name"].(string)
+	// tok.IssuedAt = jwt.Claims["iat"].(time.Time)
 	tok.Id = jwt.Claims["jti"].(string)
-	tok.IssuedAt = jwt.Claims["iat"].(time.Time)
 	tok.ModelId = jwt.Claims["sub"].(string)
-	tok.Name = jwt.Claims["name"].(string)
 	tok.Permissions = jwt.Claims["bit"].(bit.Field)
 
 	return tok, nil
