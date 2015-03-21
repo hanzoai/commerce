@@ -42,9 +42,16 @@ func TokenRequired() gin.HandlerFunc {
 		o := organization.New(db)
 
 		// Try to validate the org's access token
-		if err := o.GetWithAccessToken(accessToken); err != nil {
+		tok, err := o.GetWithAccessToken(accessToken)
+		if err != nil {
 			json.Fail(c, 401, "Unable to retrieve organization associated with access token: "+err.Error(), err)
 			return
+		}
+
+		// Verify token signature
+		if !tok.Verify(o.SecretKey) {
+			json.Fail(c, 403, "Unable to verify token: "+err.Error(), err)
+
 		}
 
 		// Try to get the namespace to the org's key

@@ -78,15 +78,15 @@ func (at *AccessToken) ClearTokens() {
 	at.Tokens = make([]token.Token, 0)
 }
 
-func (at *AccessToken) GetWithAccessToken(accessToken string) error {
+func (at *AccessToken) GetWithAccessToken(accessToken string) (*token.Token, error) {
 	tok, err := at.GetToken(accessToken)
 	if err != nil {
-		return err
+		return tok, err
 	}
 
 	at.currentToken = tok
 
-	return nil
+	return tok, nil
 }
 
 func (at *AccessToken) HasPermission(mask bit.Mask) bool {
