@@ -15,14 +15,14 @@ import (
 )
 
 // Require login to view route
-func TokenRequired(args ...bit.Mask) gin.HandlerFunc {
+func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 	// Any permissions acceptable by default (i.e., only valid token required)
 	permissions := permission.Any
 
 	// Any arguments passed will be used as new permissions
-	if len(args) > 0 {
+	if len(masks) > 0 {
 		permissions = permission.None
-		for _, mask := range args {
+		for _, mask := range masks {
 			permissions |= mask
 		}
 	}
