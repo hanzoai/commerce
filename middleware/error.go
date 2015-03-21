@@ -9,7 +9,6 @@ import (
 	"appengine"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-errors/errors"
 
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
@@ -93,9 +92,9 @@ func errorHandler(displayError ErrorDisplayer) gin.HandlerFunc {
 
 		// When someone calls c.Fail(500)
 		if !c.Writer.Written() && c.Writer.Status() == 500 {
-			err := errors.New(c.LastError())
-			stack := fmt.Sprint(err)
-			displayError(c, stack, err)
+			err := c.LastError()
+			errstr := fmt.Sprint(err)
+			displayError(c, errstr, err)
 		}
 	}
 }
