@@ -191,16 +191,18 @@ deps-go: .sdk .sdk/go .sdk/gpm .sdk/gopath/bin/ginkgo .sdk/gopath/src/crowdstart
 	$(sdk_install_extra)
 
 .sdk/go:
-	echo '#!/usr/bin/env bash' > $(sdk_path)/go && \
-	echo '$(sdk_path)/goapp $$@' >> $(sdk_path)/go && \
+	echo '#!/usr/bin/env bash' > $(sdk_path)/go
+	echo '$(sdk_path)/goapp $$@' >> $(sdk_path)/go
 	chmod +x $(sdk_path)/go
 
 .sdk/gpm:
-	curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.2/bin/gpm > .sdk/gpm && \
+	curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.2/bin/gpm > .sdk/gpm
 	chmod +x .sdk/gpm
 
 .sdk/gopath/bin/ginkgo:
-	$(gpm) install && $(goapp) install github.com/onsi/ginkgo/ginkgo
+	$(gpm) install
+	$(goapp) install github.com/onsi/ginkgo/ginkgo
+	$(goapp) install golang.org/x/tools/cmd/cover
 
 .sdk/gopath/src/crowdstart.io:
 	mkdir -p $(sdk_path)/gopath/src
@@ -231,8 +233,8 @@ serve-reload: assets
 
 # GOLANG TOOLS
 tools:
-	$(goapp) get $(tools) && \
-	$(goapp) install $(tools) && \
+	$(goapp) get $(tools)
+	$(goapp) install $(tools)
 	$(gopath)/bin/gocode set lib-path "$(gopath_pkg_path):$(goroot_pkg_path)"
 
 # TEST/ BENCH
@@ -257,7 +259,7 @@ deploy-production: assets-min
 		$(sdk_path)/appcfg.py --skip_sdk_update_check rollback $$module; \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check update $$module; \
 	done; \
-	$(sdk_path)/appcfg.py --skip_sdk_update_check update_indexes config/production; \
+	$(sdk_path)/appcfg.py --skip_sdk_update_check update_indexes config/production
 	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/production
 
 deploy-sandbox:
@@ -265,7 +267,7 @@ deploy-sandbox:
 		$(sdk_path)/appcfg.py --skip_sdk_update_check rollback $$module; \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check update $$module; \
 	done; \
-	$(sdk_path)/appcfg.py --skip_sdk_update_check update_indexes config/sandbox; \
+	$(sdk_path)/appcfg.py --skip_sdk_update_check update_indexes config/sandbox
 	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/sandbox
 
 deploy-staging: assets
@@ -273,7 +275,7 @@ deploy-staging: assets
 		$(sdk_path)/appcfg.py --skip_sdk_update_check rollback $$module; \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check update $$module; \
 	done; \
-	$(sdk_path)/appcfg.py --skip_sdk_update_check update_indexes config/staging; \
+	$(sdk_path)/appcfg.py --skip_sdk_update_check update_indexes config/staging
 	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/staging
 
 deploy-skully: assets-min
@@ -289,7 +291,7 @@ deploy-appengine-ci: assets-minified
 		$(sdk_path)/appcfg.py --skip_sdk_update_check rollback $$module; \
 		$(sdk_path)/appcfg.py --skip_sdk_update_check update $$module; \
 	done; \
-	$(sdk_path)/appcfg.py --skip_sdk_update_check update_indexes config/production; \
+	$(sdk_path)/appcfg.py --skip_sdk_update_check update_indexes config/production
 	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/production
 
 # EXPORT / Usage: make datastore-export kind=user
