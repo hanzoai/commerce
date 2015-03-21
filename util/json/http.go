@@ -8,7 +8,15 @@ import (
 
 func Fail(c *gin.Context, code int, message string, err error) {
 	c.Writer.Header().Set("Content-Type", "application/json")
-	c.Writer.Write(EncodeBytes(gin.H{"code": code, "message": message}))
+
+	jsonErr := gin.H{
+		"error": gin.H{
+			"type":    "api-error",
+			"message": message,
+		},
+	}
+
+	c.Writer.Write(EncodeBytes(jsonErr))
 
 	if err != nil {
 		log.Error(message+": %v", err, c)
