@@ -3,7 +3,6 @@ package mixin
 import (
 	"errors"
 	"math"
-	"time"
 
 	"crowdstart.io/util/bit"
 	"crowdstart.io/util/token"
@@ -30,7 +29,6 @@ type AccessToken struct {
 func (at *AccessToken) AddToken(name string, permissions bit.Mask) string {
 	// Generate a new TokenId to invalidate previous key
 	t := token.New(name, at.Model.Id(), permissions, at.SecretKey)
-	t.IssuedAt = time.Now()
 	at.Tokens = append(at.Tokens, *t)
 	return t.String()
 }

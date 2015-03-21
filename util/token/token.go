@@ -44,7 +44,7 @@ func (t *Token) getJWT() *jwt.Token {
 	jwt := jwt.New(jwt.SigningMethodHS512)
 
 	// jwt.Claims["name"] = t.Name
-	jwt.Claims["iat"] = t.IssuedAt.Unix()
+	//jwt.Claims["iat"] = t.IssuedAt.Unix()
 	jwt.Claims["jti"] = t.Id
 	jwt.Claims["sub"] = t.ModelId
 	jwt.Claims["bit"] = int64(t.Permissions)
@@ -84,7 +84,7 @@ func FromString(accessToken string, secret []byte) (*Token, error) {
 	}
 
 	// tok.Name = jwt.Claims["name"].(string)
-	tok.IssuedAt = time.Unix(int64(jwt.Claims["iat"].(float64)), 0)
+	//tok.IssuedAt = time.Unix(int64(jwt.Claims["iat"].(float64)), 0)
 	tok.Id = jwt.Claims["jti"].(string)
 	tok.ModelId = jwt.Claims["sub"].(string)
 	tok.Permissions = bit.Field(jwt.Claims["bit"].(float64))
