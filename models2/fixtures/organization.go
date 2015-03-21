@@ -32,8 +32,8 @@ var _ = task.Func("models2-fixtures-organization", func(c *gin.Context) {
 	org.FullName = "Such Tees, Inc."
 	org.OwnerId = user.Id()
 	org.Website = "http://suchtees.com"
-	org.Stripe.AccessToken = "sk_test_fkjaYCdGAjYLEFnIvIK8KSHG"
-	org.Stripe.PublishableKey = "pk_test_yM33E9P6tbYOah8KVKNoUqSe"
+	org.Stripe.AccessToken = "sk_test_dmur0QtOCRZptNfRNV0uNexi"
+	org.Stripe.PublishableKey = "pk_test_VbexM7S8lSitV3xCGLm2kbIx"
 	org.Put()
 
 	// Save into org's namespace

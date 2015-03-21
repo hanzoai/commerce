@@ -2,88 +2,88 @@ package mixin
 
 import (
 	"errors"
-	"strconv"
-	"time"
 
-	"crowdstart.io/util/rand"
-
-	"github.com/dgrijalva/jwt-go"
+	"crowdstart.io/util/bit"
+	"crowdstart.io/util/token"
 )
 
 // Error for expired jti's
 var ErrorExpiredToken = errors.New("This token is expired.")
+var TokenNotFound = errors.New("Token not found.")
 
 // AccessToken is a mixin for securing objects with an AccessToken
 type AccessToken struct {
 	// Model is a struct with a Model mixin
 	Model model `json:"-" datastore:"-"`
 
-	// Use IssuedAt as JWT "iat" param
-	IssuedAt time.Time `json:"-"`
-
 	// JWT secret
 	SecretKey []byte `json:"-"`
 
 	// UseTokenId as JWT "jti" param, randomly generate upon generating a new key to expire all existing keys
-	TokenId string `json:"-"`
+	Tokens []token.Token `json:"-"`
+
+	currentToken *token.Token
 }
 
-func (at *AccessToken) GenerateAccessToken() (string, error) {
+func (at *AccessToken) AddToken(name string, permissions bit.Field) string {
 	// Generate a new TokenId to invalidate previous key
-	at.TokenId = rand.ShortId()
-
-	return at.BuildAccessToken()
+	t := token.New(name, at.Model.Id(), permissions, at.SecretKey)
+	at.Tokens = append(at.Tokens, *t)
+	return t.String()
 }
 
-func (at *AccessToken) MustBuildAccessToken() string {
-	token, _ := at.BuildAccessToken()
-	return token
+func (at *AccessToken) CompareToken(tok1, tok2 *token.Token) error {
+	if tok1.Id != tok2.Id {
+		return ErrorExpiredToken
+	}
+
+	if tok1.Permissions != tok2.Permissions {
+		return ErrorExpiredToken
+	}
+
+	return nil
 }
 
-func (at *AccessToken) BuildAccessToken() (string, error) {
-	token := jwt.New(jwt.SigningMethodHS512)
+func (at *AccessToken) GetToken(accessToken string) (*token.Token, error) {
+	tok, err := token.FromString(accessToken, at.SecretKey)
+	if err != nil {
+		return tok, err
+	}
 
-	// Use Key as JWT "iss" param
-	token.Claims["iss"] = strconv.Itoa(int(at.Model.Key().IntID()))
-	token.Claims["iat"] = at.IssuedAt
-	token.Claims["jti"] = at.TokenId
+	for _, _tok := range at.Tokens {
+		if tok.Id == _tok.Id {
+			return tok, at.CompareToken(tok, &_tok)
+		}
+	}
+	return nil, TokenNotFound
+}
 
-	// This sets the token to expire in a year
-	//token.Claims["exp"] = at.IssuedAt.Add(time.Hour * 24.0 * 365).Unix()
-
-	return token.SignedString(at.SecretKey)
+func (at *AccessToken) RevokeToken(name string) {
+	tokens := make([]token.Token, len(at.Tokens)-1)
+	for _, tok := range at.Tokens {
+		if tok.Name != name {
+			tokens = append(tokens, tok)
+		}
+	}
+	at.Tokens = tokens
 }
 
 func (at *AccessToken) GetWithAccessToken(accessToken string) error {
-	m := at.Model
-
-	// jwt.Parse takes a function that returns the secret used to validate
-	// that we issued this accessToken using our secrets
-	t, err := jwt.Parse(accessToken, func(token *jwt.Token) (interface{}, error) {
-		// Load the Model using the issuer ("iss")
-		err2 := m.Get(token.Claims["iss"].(string))
-		// If we can't load the Model, that means the metadata is stale
-		if err2 != nil {
-			return nil, err2
-		}
-
-		// If the jti mismatches, then the token is expired
-		if at.TokenId != "" && at.TokenId != token.Claims["jti"].(string) {
-			return nil, ErrorExpiredToken
-		}
-
-		// Return the Model's secret key to get the validity
-		// of this token
-		return at.SecretKey, nil
-	})
-
+	tok, err := at.GetToken(accessToken)
 	if err != nil {
 		return err
 	}
 
-	if !t.Valid {
-		return errors.New("Not Valid")
+	// Try to fetch model using ModelId on token
+	if err := at.Model.Get(tok.ModelId); err != nil {
+		return err
 	}
 
+	at.currentToken = tok
+
 	return nil
+}
+
+func (at *AccessToken) HasPermission(mask bit.Mask) bool {
+	return at.currentToken.HasPermission(mask)
 }
