@@ -25,7 +25,7 @@ func TokenRequired() gin.HandlerFunc {
 
 		// During development cookie may be set from development pages.
 		if appengine.IsDevAppServer() && accessToken == "" {
-			accessToken, _ = session.Get(c, "access-token")
+			accessToken = session.MustGet(c, "access-token").(string)
 		}
 
 		// Bail if we still don't have an access token
