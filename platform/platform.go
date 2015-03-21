@@ -52,6 +52,7 @@ func init() {
 
 	router.GET("/profile", loginRequired, user.Profile)
 	router.POST("/profile", user.SubmitProfile)
+	router.POST("/changepassword", user.ChangePassword)
 
 	router.GET("/organization", loginRequired, admin.Organization)
 	router.GET("/keys", loginRequired, admin.Keys)

@@ -1,22 +1,12 @@
 package admin
 
 import (
-	"log"
-	"net/http"
-	"net/url"
-	"strings"
-
-	"appengine/urlfetch"
-
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/auth"
-	"crowdstart.io/config"
+	"crowdstart.io/auth2"
 	"crowdstart.io/datastore"
-	"crowdstart.io/middleware"
-	"crowdstart.io/models"
+	"crowdstart.io/models2/organization"
 	"crowdstart.io/thirdparty/stripe/tasks"
-	"crowdstart.io/util/json"
 	"crowdstart.io/util/template"
 )
 
@@ -46,89 +36,99 @@ func StripeSync(c *gin.Context) {
 
 // Admin Payment Connectors
 func StripeConnect(c *gin.Context) {
-	template.Render(c, "admin/stripe/connect.html",
-		"stripe", config.Stripe)
+	if u, err := auth.GetCurrentUser(c); err != nil {
+		c.Fail(500, err)
+	} else {
+		db := datastore.New(c)
+		org := organization.New(db)
+		if _, err := org.Query().Filter("OwnerId=", u.Id()).First(); err != nil {
+			c.Fail(500, err)
+			return
+		}
+
+		template.Render(c, "admin/stripe/connect.html", "org", org)
+	}
 }
 
 // StripeCallback Stripe End Points
 func StripeCallback(c *gin.Context) {
-	req := c.Request
-	code := req.URL.Query().Get("code")
-	errStr := req.URL.Query().Get("error")
+	// req := c.Request
+	// code := req.URL.Query().Get("code")
+	// errStr := req.URL.Query().Get("error")
 
-	// Failed to get back authorization code from Stripe
-	if errStr != "" {
-		template.Render(c, "admin/stripe/connect.html", "error", errStr)
-		return
-	}
+	// // Failed to get back authorization code from Stripe
+	// if errStr != "" {
+	// 	template.Render(c, "admin/stripe/connect.html", "error", errStr)
+	// 	return
+	// }
 
-	ctx := middleware.GetAppEngine(c)
-	client := urlfetch.Client(ctx)
+	// ctx := middleware.GetAppEngine(c)
+	// client := urlfetch.Client(ctx)
 
-	data := url.Values{}
-	data.Set("client_secret", config.Stripe.APISecret)
-	data.Add("code", code)
-	data.Add("grant_type", "authorization_code")
+	// data := url.Values{}
+	// data.Set("client_secret", config.Stripe.APISecret)
+	// data.Add("code", code)
+	// data.Add("grant_type", "authorization_code")
 
-	tokenReq, err := http.NewRequest("POST", "https://connect.stripe.com/oauth/token", strings.NewReader(data.Encode()))
-	if err != nil {
-		c.Fail(500, err)
-		return
-	}
+	// tokenReq, err := http.NewRequest("POST", "https://connect.stripe.com/oauth/token", strings.NewReader(data.Encode()))
+	// if err != nil {
+	// 	c.Fail(500, err)
+	// 	return
+	// }
 
-	// try to post to OAuth API
-	res, err := client.Do(tokenReq)
-	defer res.Body.Close()
-	if err != nil {
-		c.Fail(500, err)
-		return
-	}
+	// // try to post to OAuth API
+	// res, err := client.Do(tokenReq)
+	// defer res.Body.Close()
+	// if err != nil {
+	// 	c.Fail(500, err)
+	// 	return
+	// }
 
-	token := new(stripeToken)
-	// try and extract the json struct
-	if err := json.Decode(res.Body, token); err != nil {
-		c.Fail(500, err)
-	}
+	// token := new(stripeToken)
+	// // try and extract the json struct
+	// if err := json.Decode(res.Body, token); err != nil {
+	// 	c.Fail(500, err)
+	// }
 
-	// Stripe returned an error
-	if token.Error != "" {
-		template.Render(c, "admin/stripe/connect.html",
-			"stripeError", token.Error,
-			"stripe", config.Stripe,
-			"salesforce", config.Salesforce)
-		return
-	}
+	// // Stripe returned an error
+	// if token.Error != "" {
+	// 	template.Render(c, "admin/stripe/connect.html",
+	// 		"stripeError", token.Error,
+	// 		"stripe", config.Stripe,
+	// 		"salesforce", config.Salesforce)
+	// 	return
+	// }
 
-	// Update the user
-	campaign := new(models.Campaign)
+	// // Update the user
+	// campaign := new(models.Campaign)
 
-	db := datastore.New(ctx)
+	// db := datastore.New(ctx)
 
-	// Get email from the session
-	email, err := auth.GetEmail(c)
-	if err != nil {
-		log.Panic("Unable to get email from session: %v", err)
-	}
+	// // Get email from the session
+	// email, err := auth.GetEmail(c)
+	// if err != nil {
+	// 	log.Panic("Unable to get email from session: %v", err)
+	// }
 
-	// Get user instance
-	if err := db.GetKind("campaign", email, campaign); err != nil {
-		log.Panic("Unable to get campaign from database: %v", err)
-	}
+	// // Get user instance
+	// if err := db.GetKind("campaign", email, campaign); err != nil {
+	// 	log.Panic("Unable to get campaign from database: %v", err)
+	// }
 
-	// Update stripe data
-	campaign.Stripe.AccessToken = token.AccessToken
-	campaign.Stripe.Livemode = token.Livemode
-	campaign.Stripe.PublishableKey = token.StripePublishableKey
-	campaign.Stripe.RefreshToken = token.RefreshToken
-	campaign.Stripe.Scope = token.Scope
-	campaign.Stripe.TokenType = token.TokenType
-	campaign.Stripe.UserId = token.StripeUserId
+	// // Update stripe data
+	// campaign.Stripe.AccessToken = token.AccessToken
+	// campaign.Stripe.Livemode = token.Livemode
+	// campaign.Stripe.PublishableKey = token.StripePublishableKey
+	// campaign.Stripe.RefreshToken = token.RefreshToken
+	// campaign.Stripe.Scope = token.Scope
+	// campaign.Stripe.TokenType = token.TokenType
+	// campaign.Stripe.UserId = token.StripeUserId
 
-	// Update in datastore
-	if _, err := db.PutKind("campaign", email, campaign); err != nil {
-		log.Panic("Failed to update campaign: %v", err)
-	}
+	// // Update in datastore
+	// if _, err := db.PutKind("campaign", email, campaign); err != nil {
+	// 	log.Panic("Failed to update campaign: %v", err)
+	// }
 
-	// Success
-	template.Render(c, "stripe/success.html", "token", token.AccessToken)
+	// // Success
+	// template.Render(c, "stripe/success.html", "token", token.AccessToken)
 }
