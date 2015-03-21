@@ -68,6 +68,10 @@ func (at *AccessToken) RemoveToken(name string) {
 	at.Tokens = tokens
 }
 
+func (at *AccessToken) ClearTokens() {
+	at.Tokens = make([]token.Token, 0)
+}
+
 func (at *AccessToken) GetWithAccessToken(accessToken string) error {
 	tok, err := at.GetToken(accessToken)
 	if err != nil {
