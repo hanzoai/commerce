@@ -44,41 +44,40 @@ func Organization(c *gin.Context) {
 }
 
 func Keys(c *gin.Context) {
-	if u, err := auth.GetCurrentUser(c); err != nil {
-		c.Fail(500, err)
-	} else {
-		db := datastore.New(c)
-		org := organization.New(db)
-		if _, err := org.Query().Filter("OwnerId=", u.Id()).First(); err != nil {
-			c.Fail(500, err)
-			return
-		}
-
-		template.Render(c, "admin/keys.html", "org", org)
+	u, err := auth.GetCurrentUser(c)
+	if err != nil {
+		panic(err)
 	}
+	db := datastore.New(c)
+	org := organization.New(db)
+	if _, err := org.Query().Filter("OwnerId=", u.Id()).First(); err != nil {
+		panic(err)
+	}
+
+	template.Render(c, "admin/keys.html", "org", org)
 }
 
 func NewKeys(c *gin.Context) {
-	if u, err := auth.GetCurrentUser(c); err != nil {
-		c.Fail(500, err)
-	} else {
-		db := datastore.New(c)
-		org := organization.New(db)
-		if _, err := org.Query().Filter("OwnerId=", u.Id()).First(); err != nil {
-			c.Fail(500, err)
-			return
-		}
-
-		org.AddToken("live-secret-key", permission.Admin)
-		org.AddToken("live-published-key", permission.Published)
-		org.AddToken("test-secret-key", permission.Admin)
-		org.AddToken("test-published-key", permission.Published)
-
-		if err := org.Put(); err != nil {
-			c.Fail(500, err)
-			return
-		}
-
-		c.Redirect(301, "keys")
+	u, err := auth.GetCurrentUser(c)
+	if err != nil {
+		panic(err)
 	}
+
+	db := datastore.New(c)
+	org := organization.New(db)
+	if _, err := org.Query().Filter("OwnerId=", u.Id()).First(); err != nil {
+		panic(err)
+	}
+
+	org.ClearTokens()
+	org.AddToken("live-secret-key", permission.Admin)
+	org.AddToken("live-published-key", permission.Published)
+	org.AddToken("test-secret-key", permission.Admin)
+	org.AddToken("test-published-key", permission.Published)
+
+	if err := org.Put(); err != nil {
+		panic(err)
+	}
+
+	template.Render(c, "admin/keys.html", "org", org)
 }
