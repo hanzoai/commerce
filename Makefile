@@ -147,9 +147,10 @@ endif
 
 datastore_admin_url = https://datastore-admin-dot-$(datastore_app_id).appspot.com/_ah/remote_api
 
+test_target = -r=true
 test_focus := $(focus)
 ifdef test_focus
-	test_focus=--focus=$(focus)
+	test_target=$(focus)
 endif
 
 export GOROOT := $(goroot)
@@ -234,16 +235,16 @@ tools:
 
 # TEST/ BENCH
 test:
-	@$(ginkgo) -r=true --randomizeAllSpecs -p=true -progress=true -skipMeasurements=true -skipPackage=integration $(test_focus) $(test_verbose)
+	@$(ginkgo) $(test_target) --randomizeAllSpecs -p=true -progress=true -skipMeasurements=true -skipPackage=integration $(test_verbose)
 
 test-integration:
 	@$(ginkgo) -r=true --randomizeAllSpecs -p=true -progress=true -skipMeasurements=true -focus=integration $(test_verbose)
 
 test-watch:
-	@$(ginkgo) watch -r=true -p=true -progress=true -skipMeasurements=true $(test_focus) $(test_verbose)
+	@$(ginkgo) watch -r=true -p=true -progress=true -skipMeasurements=true $(test_verbose)
 
 bench:
-	@$(ginkgo) -r=true --randomizeAllSpecs -p=true -progress=true -skipPackage=integration $(test_focus) $(test_verbose)
+	@$(ginkgo) $(test_target)--randomizeAllSpecs -p=true -progress=true -skipPackage=integration $(test_verbose)
 
 test-ci:
 	$(ginkgo) -r=true --randomizeAllSpecs --randomizeSuites --failOnPending --cover --trace --compilers=2 -v=true -- -test.v=true
