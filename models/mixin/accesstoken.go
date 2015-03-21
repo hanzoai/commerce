@@ -2,7 +2,6 @@ package mixin
 
 import (
 	"errors"
-	"math"
 
 	"crowdstart.io/util/bit"
 	"crowdstart.io/util/token"
@@ -65,13 +64,20 @@ func (at *AccessToken) GetToken(accessToken string) (*token.Token, error) {
 }
 
 func (at *AccessToken) RemoveToken(name string) {
-	tokens := make([]token.Token, int(math.Max(float64(len(at.Tokens)-1), 0)))
-	for _, tok := range at.Tokens {
-		if tok.Name != name {
-			tokens = append(tokens, tok)
+	if len(at.Tokens) <= 0 {
+		at.Tokens = make([]token.Token, 0)
+		return
+	}
+
+	// Loop over tokens looking for token to delete, if we find it, remove from
+	// tokens
+	for i, tok := range at.Tokens {
+		if tok.Name == name {
+			// Delete from tokens
+			at.Tokens = append(at.Tokens[:i], at.Tokens[i+1:]...)
+			return
 		}
 	}
-	at.Tokens = tokens
 }
 
 func (at *AccessToken) ClearTokens() {
