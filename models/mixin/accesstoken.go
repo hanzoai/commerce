@@ -25,7 +25,7 @@ type AccessToken struct {
 	currentToken *token.Token
 }
 
-func (at *AccessToken) AddToken(name string, permissions bit.Field) string {
+func (at *AccessToken) AddToken(name string, permissions bit.Mask) string {
 	// Generate a new TokenId to invalidate previous key
 	t := token.New(name, at.Model.Id(), permissions, at.SecretKey)
 	at.Tokens = append(at.Tokens, *t)
@@ -58,7 +58,7 @@ func (at *AccessToken) GetToken(accessToken string) (*token.Token, error) {
 	return nil, TokenNotFound
 }
 
-func (at *AccessToken) RevokeToken(name string) {
+func (at *AccessToken) RemoveToken(name string) {
 	tokens := make([]token.Token, len(at.Tokens)-1)
 	for _, tok := range at.Tokens {
 		if tok.Name != name {

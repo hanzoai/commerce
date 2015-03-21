@@ -1,6 +1,8 @@
 package api
 
 import (
+	"errors"
+
 	"github.com/gin-gonic/gin"
 
 	"appengine"
@@ -11,6 +13,7 @@ import (
 	"crowdstart.io/models2/organization"
 	"crowdstart.io/models2/user"
 	"crowdstart.io/util/json"
+	"crowdstart.io/util/permission"
 	"crowdstart.io/util/session"
 )
 
@@ -37,17 +40,24 @@ func getAccessToken(c *gin.Context, id, email, password string) {
 		return
 	}
 
-	// Generate a new access token
-	accessToken, err := org.GenerateAccessToken(u)
-	if err != nil {
-		json.Fail(c, 500, "Unable to generate access token", err)
+	// Check if we have permission to create an access token
+	if !(org.IsOwner(u) || org.IsAdmin(u)) {
+		json.Fail(c, 500, "Must be owner or admin to create a new access token.", errors.New("Invalid user"))
 		return
 	}
+
+	org.RemoveToken("live-secret-key")
+
+	// Generate a new access token
+	accessToken := org.AddToken("live-secret-key", permission.Admin)
 
 	// Save access token in cookie for ease of use during development
 	if appengine.IsDevAppServer() {
 		session.Set(c, "access-token", accessToken)
 	}
+
+	// Save organization
+	org.Put()
 
 	// Return access token
 	json.Render(c, 200, gin.H{"status": "ok", "token": accessToken})
