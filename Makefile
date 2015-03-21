@@ -188,7 +188,7 @@ deps-go: .sdk .sdk/go .sdk/gpm .sdk/gopath/bin/ginkgo .sdk/gopath/src/crowdstart
 	unzip $(sdk).zip
 	mv go_appengine $(sdk_path)
 	rm $(sdk).zip
-	$(sdk_install) && $(sdk_install_extra)
+	$(sdk_install_extra)
 
 .sdk/go:
 	echo '#!/usr/bin/env bash' > $(sdk_path)/go && \
