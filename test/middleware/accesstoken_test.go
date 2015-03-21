@@ -9,6 +9,7 @@ import (
 	"crowdstart.io/middleware"
 	"crowdstart.io/models2/organization"
 	"crowdstart.io/models2/user"
+	"crowdstart.io/util/log"
 	"crowdstart.io/util/test/ae"
 	"crowdstart.io/util/test/ginclient"
 
@@ -75,6 +76,7 @@ var _ = Describe("middleware/accesstoken", func() {
 
 			// Do request
 			client.Do(r)
+			log.Debug("%v", client.Context.Keys)
 
 			// middleware generates namespaced appengine context
 			org := middleware.GetOrg(client.Context)
