@@ -14,7 +14,11 @@ const loginKey = "login-key"
 
 func GetCurrentUserId(c *gin.Context) (string, error) {
 	log.Debug("Retrieving email from session")
-	return session.Get(c, loginKey)
+	value, err := session.Get(c, loginKey)
+	if err != nil {
+		return "", err
+	}
+	return value.(string), nil
 }
 
 func GetCurrentUser(c *gin.Context) (*user.User, error) {
