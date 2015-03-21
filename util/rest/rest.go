@@ -170,6 +170,7 @@ func (r Rest) get(c *gin.Context) {
 	model := r.newModel(c)
 
 	if err := model.Get(id); err != nil {
+		// TODO: When is this a 404?
 		json.Fail(c, 500, "Failed to retrieve "+r.Kind, err)
 	} else {
 		r.JSON(c, 200, model.Entity)
@@ -191,11 +192,14 @@ func (r Rest) list(c *gin.Context) {
 func (r Rest) add(c *gin.Context) {
 	model := r.newModel(c)
 
-	json.Decode(c.Request.Body, model.Entity)
+	if err := json.Decode(c.Request.Body, model.Entity); err != nil {
+		json.Fail(c, 400, "Failed decode request body", err)
+	}
 
 	if err := model.Put(); err != nil {
 		json.Fail(c, 500, "Failed to add "+r.Kind, err)
 	} else {
+		c.Writer.Header().Add("Location", c.Request.URL.Path+"/"+model.Id())
 		r.JSON(c, 201, model.Entity)
 	}
 }
@@ -205,12 +209,14 @@ func (r Rest) update(c *gin.Context) {
 
 	model := r.newModel(c)
 	model.Get(id)
-	json.Decode(c.Request.Body, model.Entity)
+	if err := json.Decode(c.Request.Body, model.Entity); err != nil {
+		json.Fail(c, 400, "Failed decode request body", err)
+	}
 
 	if err := model.Put(); err != nil {
 		json.Fail(c, 500, "Failed to update "+r.Kind, err)
 	} else {
-		r.JSON(c, 201, model.Entity)
+		r.JSON(c, 200, model.Entity)
 	}
 }
 
@@ -222,7 +228,7 @@ func (r Rest) delete(c *gin.Context) {
 	if err := model.Delete(); err != nil {
 		json.Fail(c, 500, "Failed to delete "+r.Kind, err)
 	} else {
-		r.JSON(c, 201, gin.H{"status": "ok"})
+		c.Data(204, "application/json", make([]byte, 0))
 	}
 }
 
