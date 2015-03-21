@@ -22,7 +22,14 @@ func New(moduleName string) *gin.RouterGroup {
 	log.Info("Routing %s to %s", prefix, moduleName)
 
 	router.Use(middleware.Logger())
-	router.Use(middleware.ErrorHandler())
+
+	// Special error handler for API module returns JSON always
+	if moduleName == "api" {
+		router.Use(middleware.ErrorHandlerJSON())
+	} else {
+		router.Use(middleware.ErrorHandler())
+	}
+
 	router.Use(middleware.NotFoundHandler())
 	router.Use(middleware.AddHost())
 	router.Use(middleware.AppEngine())

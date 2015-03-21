@@ -39,7 +39,6 @@ type Campaign struct {
 	OriginalUrl     string   `json:"originalUrl"`
 	StoreUrl        string   `json:"storeUrl"`
 	ProductIds      []string `datastore:"-" json:"productIds"`
-	MemberIds       []string `datastore:"-" json:"memberIds"`
 
 	GoogleAnalytics string   `json:"googleAnalytics"`
 	FacebookTag     string   `json:"facebookTag"`

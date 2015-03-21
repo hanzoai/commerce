@@ -1,29 +1,47 @@
 package middleware
 
 import (
+	"bytes"
 	"fmt"
 	"runtime"
+	"strings"
 
 	"appengine"
 
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/util/json"
+	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
 )
 
 type ErrorDisplayer func(c *gin.Context, message string, err error)
 
-// Display erros in JSON
-func ErrorJSON(c *gin.Context, message string, err error) {
-	message = "Unable to process request. Please try again later."
-	ctx := c.MustGet("appengine").(appengine.Context)
-	ctx.Criticalf("500: %v", err)
-	json.Fail(c, 500, message, err)
+// Display errors in JSON
+func ErrorJSON(c *gin.Context, stack string, err error) {
+	c.Writer.Header().Set("Content-Type", "application/json")
+	c.Abort(500)
+	jsonErr := gin.H{
+		"error": gin.H{
+			"type":    "api-error",
+			"message": "Unable to process request. Please try again later. If this continues, please message support@crowdstart.com",
+		},
+	}
+	c.Writer.Write(json.EncodeBytes(jsonErr))
+	log.Error(stack, c)
 }
 
-func ErrorJSONDev(c *gin.Context, message string, err error) {
-	json.Fail(c, 500, message, err)
+func ErrorJSONDev(c *gin.Context, stack string, err error) {
+	c.Writer.Header().Set("Content-Type", "application/json")
+	c.Abort(500)
+	jsonErr := gin.H{
+		"error": gin.H{
+			"type":    "api-error",
+			"message": strings.Split(stack, "\n")[0],
+		},
+	}
+	c.Writer.Write(json.EncodeBytes(jsonErr))
+	log.Error(stack)
 }
 
 // Display errors in HTML
@@ -31,7 +49,7 @@ func ErrorHTML(c *gin.Context, stack string, err error) {
 	c.Writer.Header().Set("Content-Type", "text/html; charset=utf-8")
 	c.Abort(500)
 	ctx := c.MustGet("appengine").(appengine.Context)
-	ctx.Criticalf("500: %v", stack)
+	ctx.Criticalf("%v", stack)
 	template.Render(c, "error/500.html")
 }
 
@@ -64,8 +82,9 @@ func errorHandler(displayError ErrorDisplayer) gin.HandlerFunc {
 				errstr := fmt.Sprint(r)
 				trace := make([]byte, 1024*8)
 				runtime.Stack(trace, false)
+				stack := string(bytes.Trim(trace, "\x00"))
 				err, _ := r.(error)
-				displayError(c, errstr+"\n\n"+string(trace), err)
+				displayError(c, errstr+"\n\n"+stack, err)
 			}
 		}()
 
@@ -89,7 +108,7 @@ func ErrorHandler() gin.HandlerFunc {
 	}
 }
 
-func JSONErrorHandler() gin.HandlerFunc {
+func ErrorHandlerJSON() gin.HandlerFunc {
 	if appengine.IsDevAppServer() {
 		return errorHandler(ErrorJSONDev)
 	} else {
