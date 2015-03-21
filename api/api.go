@@ -22,6 +22,10 @@ import (
 func init() {
 	router := router.New("api")
 
+	router.GET("/v1/", func(c *gin.Context) {
+		c.Data(410, "application/json", make([]byte, 0))
+	})
+
 	// Entities with automatic RESTful API
 	entities := []mixin.Entity{
 		campaign.Campaign{},

@@ -21,9 +21,12 @@ func New(ctx ...appengine.Context) *gin.Context {
 
 	// Setup default gin Context for tests
 	c := new(gin.Context)
-	c.Set("appengine", _ctx)
+	SetDefaults(c, _ctx)
+	return c
+}
+
+func SetDefaults(c *gin.Context, ctx appengine.Context) {
+	c.Set("appengine", ctx)
 	c.Set("verbose", testing.Verbose())
 	c.Set("test", false)
-
-	return c
 }
