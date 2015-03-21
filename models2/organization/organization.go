@@ -1,7 +1,6 @@
 package organization
 
 import (
-	"errors"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -88,14 +87,6 @@ func (o Organization) IsAdmin(user *user.User) bool {
 
 func (o Organization) IsOwner(user *user.User) bool {
 	return o.OwnerId == user.Id()
-}
-
-func (o *Organization) GenerateAccessToken(user *user.User) (string, error) {
-	if o.IsOwner(user) || o.IsAdmin(user) {
-		return o.AccessToken.GenerateAccessToken()
-	} else {
-		return "", errors.New("User is not authorized to create a new access token.")
-	}
 }
 
 func (o Organization) Namespace(ctx interface{}) appengine.Context {

@@ -7,12 +7,10 @@ import (
 	"github.com/dgrijalva/jwt-go"
 
 	"crowdstart.io/util/bit"
-	"crowdstart.io/util/rand"
 )
 
 type Token struct {
-	jwt    *jwt.Token
-	secret []byte
+	Secret []byte
 
 	Name string
 
@@ -30,7 +28,7 @@ type Token struct {
 }
 
 func (t Token) String() string {
-	signature, err := t.jwt.SignedString(t.secret)
+	signature, err := t.getJWT().SignedString(t.Secret)
 	if err != nil {
 		panic(err)
 	}
@@ -41,26 +39,28 @@ func (t Token) HasPermission(mask bit.Mask) bool {
 	return t.Permissions.Has(mask)
 }
 
-func New(name string, subject string, permissions bit.Field, secret []byte) *Token {
-	t := new(Token)
-	t.secret = secret
-	t.IssuedAt = time.Now()
-	t.Name = name
-
+func (t *Token) getJWT() *jwt.Token {
 	jwt := jwt.New(jwt.SigningMethodHS512)
 
-	jwt.Claims["name"] = name
-	jwt.Claims["sub"] = subject
+	jwt.Claims["name"] = t.Name
+	jwt.Claims["sub"] = t.ModelId
 	jwt.Claims["iat"] = t.IssuedAt
-	jwt.Claims["jti"] = rand.ShortId()
-	jwt.Claims["bit"] = int64(permissions)
+	jwt.Claims["jti"] = t.Id
+	jwt.Claims["bit"] = int64(t.Permissions)
 
 	// This sets the token to expire in a year
-	// jwt.Claims["exp"] = at.IssuedAt.Add(time.Hour * 24.0 * 365).Unix()
+	// jwt.Claims["exp"] = t.IssuedAt.Add(time.Hour * 24.0 * 365).Unix()
 
-	t.jwt = jwt
+	return jwt
+}
 
-	return t
+func New(name string, subject string, permissions bit.Mask, secret []byte) *Token {
+	tok := new(Token)
+	tok.Secret = secret
+	tok.IssuedAt = time.Now()
+	tok.Name = name
+	tok.Permissions = bit.Field(permissions)
+	return tok
 }
 
 func FromString(accessToken string, secret []byte) (*Token, error) {
