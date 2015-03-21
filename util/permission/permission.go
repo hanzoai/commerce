@@ -5,6 +5,8 @@ import (
 )
 
 const (
+	Any       bit.Mask = ^0
+	None      bit.Mask = 0
 	Admin     bit.Mask = 1 << iota // 1 << 0 which is 00000001
 	Published                      // 1 << 1 which is 00000010
 	Authorize                      // 1 << 2 which is 00000100
