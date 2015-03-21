@@ -57,9 +57,17 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	}
 	account.Stripe.CustomerId = customer.ID
 
+	log.Debug("Stripe customer: %#v", customer)
+	log.Debug("Stripe source: %#v", customer.DefaultSource)
+
 	// Get default source
-	card := customer.DefaultSource.Card
-	account.Stripe.CardId = card.ID
+	cardId := customer.DefaultSource.ID
+	card, err := client.GetCard(cardId, customer.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	account.Stripe.CardId = cardId
 	account.Stripe.Brand = string(card.Brand)
 	account.Stripe.LastFour = card.LastFour
 	account.Stripe.Expiration.Month = int(card.Month)
