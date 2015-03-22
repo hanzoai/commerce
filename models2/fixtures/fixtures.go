@@ -27,7 +27,7 @@ func getDb(c *gin.Context) *datastore.Datastore {
 	org := organization.New(db)
 	org.Name = "suchtees"
 	org.GetOrCreate("Name=", org.Name)
-	org.Put()
+	org.MustPut()
 
 	log.Debug("Using %s namespace", org.Id())
 
