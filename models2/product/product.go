@@ -90,11 +90,11 @@ func (p *Product) Load(c <-chan aeds.Property) (err error) {
 	p.Options = make([]*Option, 0)
 
 	if len(p.Variants_) > 0 {
-		err = gob.Decode(p.Variants_, p.Variants)
+		err = gob.Decode(p.Variants_, &p.Variants)
 	}
 
 	if len(p.Options_) > 0 {
-		err = gob.Decode(p.Options_, p.Options)
+		err = gob.Decode(p.Options_, &p.Options)
 	}
 
 	return err
@@ -102,8 +102,8 @@ func (p *Product) Load(c <-chan aeds.Property) (err error) {
 
 func (p *Product) Save(c chan<- aeds.Property) (err error) {
 	// Gob encode problematic properties
-	p.Variants_, _ = gob.Encode(p.Variants)
-	p.Options_, _ = gob.Encode(p.Options)
+	p.Variants_, _ = gob.Encode(&p.Variants)
+	p.Options_, _ = gob.Encode(&p.Options)
 
 	// Save properties
 	return IgnoreFieldMismatch(aeds.SaveStruct(p, c))
