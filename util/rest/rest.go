@@ -224,17 +224,18 @@ func (r Rest) list(c *gin.Context) {
 		return
 	}
 
-	if count, err := model.Query().Count(); err != nil {
+	count, err := model.Query().Count()
+	if err != nil {
 		json.Fail(c, 500, "Could not count the models.", err)
 		return
-	} else {
-		r.JSON(c, 200, Pagination{
-			Page:    pageStr,
-			Display: displayStr,
-			Models:  models,
-			Count:   count,
-		})
 	}
+
+	r.JSON(c, 200, Pagination{
+		Page:    pageStr,
+		Display: displayStr,
+		Models:  models,
+		Count:   count,
+	})
 }
 
 func (r Rest) add(c *gin.Context) {
