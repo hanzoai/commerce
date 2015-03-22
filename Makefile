@@ -238,19 +238,19 @@ tools:
 
 # TEST/ BENCH
 test:
-	@$(ginkgo) $(test_target) --randomizeAllSpecs -p=true -progress=true -skipMeasurements=true -skipPackage=integration $(test_verbose)
+	@$(ginkgo) $(test_target) -p=true --progress --randomizeAllSpecs --failFast --skipMeasurements --skipPackage=integration $(test_verbose)
 
 test-integration:
-	@$(ginkgo) -r=true --randomizeAllSpecs -p=true -progress=true -skipMeasurements=true -focus=integration $(test_verbose)
+	@$(ginkgo) -r=true -p=true --progress --randomizeAllSpecs --failFast --skipMeasurements --focus=integration $(test_verbose)
 
 test-watch:
-	@$(ginkgo) watch -r=true -p=true -progress=true -skipMeasurements=true $(test_verbose)
+	@$(ginkgo) watch -r=true -p=true --progress --failFast --skipMeasurements $(test_verbose)
 
 bench:
-	@$(ginkgo) $(test_target)--randomizeAllSpecs -p=true -progress=true -skipPackage=integration $(test_verbose)
+	@$(ginkgo) $(test_target) -p=true --progress --randomizeAllSpecs --failFast --skipPackage=integration $(test_verbose)
 
 test-ci:
-	$(ginkgo) -r=true --randomizeAllSpecs --randomizeSuites --failOnPending --trace --compilers=2 -v=true -- -test.v=true
+	$(ginkgo) -r=true -p=true --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace --compilers=2 -v=true -- -test.v=true
 
 # DEPLOY
 deploy-production: assets-min
