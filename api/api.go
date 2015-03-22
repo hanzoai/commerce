@@ -31,17 +31,16 @@ func init() {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
 
-	// Access tokens
+	// Access token API
 	router.GET("/access/:id", accesstoken.Get)
 	router.POST("/access/:id", accesstoken.Post)
 	router.DELETE("/access/:id", adminRequired, accesstoken.Delete)
 
-	// Authorization routes
-	// One Step Payments
+	// One Step Payment API
 	router.POST("/charge", publishedRequired, payment.Charge)
 	router.POST("/order/:id/charge", publishedRequired, payment.Charge)
 
-	// Two Step Payments - "Auth & Capture"
+	// Two Step Payment API ("Auth & Capture")
 	router.POST("/authorize", publishedRequired, payment.Authorize)
 	router.POST("/order/:id/authorize", publishedRequired, payment.Authorize)
 	router.POST("/order/:id/capture", adminRequired, payment.Capture)
