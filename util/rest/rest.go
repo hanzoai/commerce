@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"errors"
 	"reflect"
 	"strconv"
 
@@ -220,18 +221,19 @@ func (r Rest) list(c *gin.Context) {
 
 	if _, err = q.GetAll(models); err != nil {
 		json.Fail(c, 500, "Failed to list "+r.Kind, err)
+		return
+	}
+
+	if count, err := model.Query().Count(); err != nil {
+		json.Fail(c, 500, "Could not count the models.", err)
+		return
 	} else {
-		if count, err := model.Query().Count(); err != nil {
-			json.Fail(c, 500, "Could not count the models.", err)
-			return
-		} else {
-			r.JSON(c, 200, Pagination{
-				Page:    pageStr,
-				Display: displayStr,
-				Models:  models,
-				Count:   count,
-			})
-		}
+		r.JSON(c, 200, Pagination{
+			Page:    pageStr,
+			Display: displayStr,
+			Models:  models,
+			Count:   count,
+		})
 	}
 }
 
@@ -240,6 +242,7 @@ func (r Rest) add(c *gin.Context) {
 
 	if err := json.Decode(c.Request.Body, model.Entity); err != nil {
 		json.Fail(c, 400, "Failed decode request body", err)
+		return
 	}
 
 	if err := model.Put(); err != nil {
@@ -257,6 +260,7 @@ func (r Rest) update(c *gin.Context) {
 	model.Get(id)
 	if err := json.Decode(c.Request.Body, model.Entity); err != nil {
 		json.Fail(c, 400, "Failed decode request body", err)
+		return
 	}
 
 	if err := model.Put(); err != nil {
@@ -295,6 +299,8 @@ func (r Rest) methodOverride(c *gin.Context) {
 		r.Update(c)
 	case "DELETE":
 		r.Delete(c)
+	default:
+		json.Fail(c, 405, "Method not allowed", errors.New("Method not allowed"))
 	}
 }
 
