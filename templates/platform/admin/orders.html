@@ -38,12 +38,36 @@
       {
         field: 'id',
         name: 'ID',
-        width: '50px',
+        css: {
+          width: '50px',
+        }
+      },
+      {
+        field: 'payments.0.account.buyer.firstName',
+        name: 'First Name',
+      },
+      {
+        field: 'payments.0.account.buyer.lastName',
+        name: 'Last Name',
+      },
+      {
+        field: 'payments.0.account.buyer.email',
+        name: 'Email',
       },
       {
         field: 'total',
-        name: 'Total',
-        width: '50px',
+        name: 'Paid',
+        type: 'currency',
+      },
+      {
+        field: 'total',
+        name: 'Owed',
+        type: 'currency',
+      },
+      {
+        field: 'createdAt',
+        name: 'Order Date',
+        type: 'date',
       }
     ],
     api: '{{ urlFor("api", "/order2") }}',
