@@ -44,6 +44,23 @@ func (at *AccessToken) CompareToken(tok1, tok2 *token.Token) error {
 	return nil
 }
 
+func (at *AccessToken) GetTokenByName(name string) (*token.Token, error) {
+	for _, tok := range at.Tokens {
+		if tok.Name == name {
+			return &tok, nil
+		}
+	}
+	return nil, TokenNotFound
+}
+
+func (at *AccessToken) MustGetTokenByName(name string) *token.Token {
+	tok, err := at.GetTokenByName(name)
+	if err != nil {
+		panic(err)
+	}
+	return tok
+}
+
 func (at *AccessToken) GetToken(accessToken string) (*token.Token, error) {
 	tok, err := token.FromString(accessToken, at.SecretKey)
 	if err != nil {
