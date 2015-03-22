@@ -50,6 +50,11 @@ type Collection struct {
 func New(db *datastore.Datastore) *Collection {
 	c := new(Collection)
 	c.Model = mixin.Model{Db: db, Entity: c}
+	c.Media = make([]Media, 0)
+	c.ProductIds = make([]string, 0)
+	c.VariantIds = make([]string, 0)
+	c.Discounts = make([]Discount, 0)
+	c.History = make([]Event, 0)
 	return c
 }
 
