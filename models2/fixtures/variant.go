@@ -3,42 +3,33 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/datastore"
-	"crowdstart.io/models2/organization"
-	"crowdstart.io/models2/product"
 	"crowdstart.io/models2/variant"
-	"crowdstart.io/util/task"
 )
 
-func createVariants(db *datastore.Datastore, prod *product.Product) []*variant.Variant {
+func Variant(c *gin.Context) []*variant.Variant {
+	// Get namespaced db
+	db := getDb(c)
+
+	// Get a product
+	prod := Product(c)
+
 	v := variant.New(db)
 	v.SKU = "T-SHIRT-M"
+	v.GetOrCreate("SKU=", v.SKU)
 	v.Options = []variant.Option{variant.Option{Name: "Size", Value: "Much"}}
 	v.ProductId = prod.Id()
+	if err := v.Put(); err != nil {
+		panic(err)
+	}
 
 	v2 := variant.New(db)
-	v2.SKU = "T-SHIRT-W"
+	v2.SKU = "T-SHIRT-M"
+	v2.GetOrCreate("SKU=", v2.SKU)
 	v2.Options = []variant.Option{variant.Option{Name: "Size", Value: "Wow"}}
 	v2.ProductId = prod.Id()
+	if err := v.Put(); err != nil {
+		panic(err)
+	}
 
 	return []*variant.Variant{v, v2}
 }
-
-var _ = task.Func("models2-fixtures-variant", func(c *gin.Context) {
-	db := datastore.New(c)
-
-	org := organization.New(db)
-	org.Name = "suchtees"
-	org.GetOrCreate("Name=", org.Name)
-
-	// Use org's namespace
-	ctx := org.Namespace(c)
-	db = datastore.New(ctx)
-
-	prod := product.New(db)
-	prod.GetOrCreate("Slug=", "t-shirt")
-
-	for _, variant := range createVariants(db, prod) {
-		variant.Put()
-	}
-})

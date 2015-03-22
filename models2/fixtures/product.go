@@ -3,22 +3,12 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/datastore"
-	"crowdstart.io/models2/organization"
 	"crowdstart.io/models2/product"
-	"crowdstart.io/util/task"
 )
 
-var _ = task.Func("models2-fixtures-product", func(c *gin.Context) {
-	db := datastore.New(c)
-
-	org := organization.New(db)
-	org.Name = "suchtees"
-	org.GetOrCreate("Name=", org.Name)
-
-	// Use org's namespace
-	ctx := org.Namespace(c)
-	db = datastore.New(ctx)
+func Product(c *gin.Context) *product.Product {
+	// Get namespaced db
+	db := getDb(c)
 
 	prod := product.New(db)
 	prod.Slug = "t-shirt"
@@ -43,9 +33,13 @@ var _ = task.Func("models2-fixtures-product", func(c *gin.Context) {
 		},
 	}
 
-	variants := createVariants(db, prod)
-	for _, variant := range variants {
+	for _, variant := range Variant(c) {
 		prod.Variants = append(prod.Variants, *variant)
 	}
-	prod.Put()
-})
+	err := prod.Put()
+	if err != nil {
+		panic(err)
+	}
+
+	return prod
+}
