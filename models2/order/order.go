@@ -148,7 +148,7 @@ func (o *Order) Load(c <-chan aeds.Property) (err error) {
 
 func (o *Order) Save(c chan<- aeds.Property) (err error) {
 	// Gob encode problematic properties
-	o.Discounts_, err = gob.Encode(o.Discounts)
+	o.Discounts_, err = gob.Encode(&o.Discounts)
 
 	if err != nil {
 		return err
