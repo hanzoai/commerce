@@ -1,24 +1,26 @@
 package fixtures
 
 import (
+	"time"
+
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/auth"
 	"crowdstart.io/models2/coupon"
 )
 
 func Coupon(c *gin.Context) *coupon.Coupon {
 	db := getDb(c)
 
-	// Owner for this organization
-	user := user.New(db)
-	user.Email = "dev@hanzo.ai"
-	user.GetOrCreate("Email=", user.Email)
+	coupon := coupon.New(db)
+	coupon.Type = "flat"
+	coupon.Code = "such-coupon"
+	now := time.Now()
+	coupon.StartDate = now
+	coupon.EndDate = now.Add(Month)
+	coupon.Once = true
+	coupon.Enabled = true
+	coupon.Amount = 5
 
-	user.FirstName = "Jackson"
-	user.LastName = "Shirts"
-	user.Phone = "(999) 999-9999"
-	user.PasswordHash = auth.HashPassword("suchtees")
-	user.MustPut()
-	return user
+	coupon.MustPut()
+	return coupon
 }
