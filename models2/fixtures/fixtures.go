@@ -39,6 +39,7 @@ func getDb(c *gin.Context) *datastore.Datastore {
 
 func init() {
 	fixture("fixtures2-organization", Organization)
+	fixture("fixtures2-coupon", Coupon)
 	fixture("fixtures2-product", Product)
 	fixture("fixtures2-token", Token)
 	fixture("fixtures2-user", User)
@@ -51,5 +52,6 @@ func init() {
 		Product(c)
 		Variant(c)
 		Token(c)
+		Coupon(c)
 	})
 }
