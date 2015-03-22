@@ -4,7 +4,10 @@ var BuildTable = (function() {
   var tableHeaderTemplate = '<thead></thead>';
   var tableHeaderDataTemplate = '<th></th>';
   var tableBodyTemplate = '<tbody></tbody>';
-  var checkbox = '<label class="csscheckbox csscheckbox-primary"><input type="checkbox"><span></span></label>'
+  var checkboxTemplate = '<label class="csscheckbox csscheckbox-primary"><input type="checkbox"><span></span></label>';
+  var selectTemplate = '<select class="form-control"></select>';
+  var optionTemplate = '<option value=""></option>';
+  var displayLabelTemplate = '<label>&nbsp;&nbsp;Items per Page</label>';
 
   var currencyCharacters = {
 	'usd': '$',
@@ -29,9 +32,10 @@ var BuildTable = (function() {
     //      }],
     //      api: 'api.suchtees.com/object',
     //      apiToken: '',
-    //      display: [5, 10 , 20]
+    //      displayOptions: [5, 10 , 20]
     //      startPage: 1,
     //      startDisplay: 10,
+    //      $display: $('#display')
     //      $pagination: $('#pagination')
     //  }
     //
@@ -48,7 +52,7 @@ var BuildTable = (function() {
 
     // Build the header
     var $tableHeader = $(tableHeaderTemplate);
-    var $tableHeaderCheckbox = $(checkbox);
+    var $tableHeaderCheckbox = $(checkboxTemplate);
     var $tableHeaderDataCheckbox = $(tableHeaderDataTemplate).append($tableHeaderCheckbox).css('width', '80px').addClass('text-center');
     var $tableHeaderRow = $(tableRowTemplate).append($tableHeaderDataCheckbox);
     $tableHeader.html($tableHeaderRow);
@@ -73,12 +77,32 @@ var BuildTable = (function() {
     var path = tableConfig.api + '?token=' + tableConfig.apiToken;
     var display = tableConfig.startDisplay; //hard coded for now
 
+    // Build the display options
+    var $tableDisplaySelect = $(selectTemplate);
+    var $tableDisplayLabel = $(displayLabelTemplate);
+
+    var $tableDisplay = tableConfig.$display;
+    $tableDisplay.append($tableDisplaySelect);
+    $tableDisplay.append($tableDisplayLabel);
+
+    var displayOptions = tableConfig.displayOptions;
+    var displayOptionsLen = displayOptions.length;
+    for (var d = 0; d < displayOptionsLen; d++) {
+      var displayOption = displayOptions[d];
+      var $tableDisplayOption = $(optionTemplate).attr('value', displayOption).html(displayOption);
+      if (displayOption === display) {
+        $tableDisplayOption.attr('selected', 'selected');
+      }
+      $tableDisplaySelect.append($tableDisplayOption);
+    }
+
     var $pagination = tableConfig.$pagination;
     var ignorePage = false; // set this to prevent infinite looping due to setting max_page
 
     // Page change callback for filling the body frame
     function paged(page) {
       $.getJSON(path + '&page=' + page + '&display=' + display, function(data){
+        // Clear body frame
         $tableBody.html('');
 
         var maxPage = Math.ceil(data.count/data.display);
@@ -99,7 +123,7 @@ var BuildTable = (function() {
 
           var model = models[m];
 
-          var $tableCheckbox = $(checkbox);
+          var $tableCheckbox = $(checkboxTemplate);
           var $tableDataCheckbox = $(tableDataTemplate).append($tableCheckbox).addClass('text-center');
           var $tableRow = $(tableRowTemplate).append($tableDataCheckbox);
 
@@ -150,17 +174,25 @@ var BuildTable = (function() {
       });
     }
 
+    var lastPage = tableConfig.startPage;
+
     // Setup pagination
     $pagination.jqPagination({
       paged: function(page) {
         if (!ignorePage) {
-          // Clear body frame
+          lastPage = page;
           paged(page);
         }
       }
     });
 
+    // Setup display option changes
+    $tableDisplaySelect.on('change', function() {
+      display = parseInt($tableDisplaySelect.val(), 10);
+      paged(lastPage);
+    });
+
     // Run pagination pass
-    paged(tableConfig.startPage);
+    paged(lastPage);
   }
 })()
