@@ -127,12 +127,18 @@ var BuildTable = (function() {
             }
 
             // Handle different types of column formatting
-            if (type == 'currency' && model.currency) {
+            if (type == 'text') {
+              val = val.charAt(0).toUpperCase() + val.slice(1);
+            } else if (type == 'currency' && model.currency) {
               val = currencyCharacters[model.currency] + val;
               val = val.substr(0, val.length - 2) + '.' + val.substr(-2);
               $tableData.addClass('text-right');
             } else if (type == 'date') {
               val = (new Date(val)).toDateString();
+            } else if (type == 'number') {
+              $tableData.addClass('text-right');
+            } else if (type == 'id') {
+              $tableData.addClass('text-center');
             }
 
             $tableData.html(val);
