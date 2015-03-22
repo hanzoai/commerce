@@ -1,4 +1,4 @@
-{% extends "list.html" %}
+{% extends "base.html" %}
 
 {% block name %}Orders{% endblock %}
 
@@ -18,9 +18,14 @@
         <!-- Orders View Content -->
         <table id="table" class="table table-striped table-bordered table-vcenter">
         </table>
-        <div class="row text-center">
-            <i class="fa fa-circle-o-notch fa-3x fa-spin text-primary"></i>
+        <div id="pagination" class="row text-center">
+          <a href="#" class="btn btn-primary previous" data-action="previous"><strong>&lsaquo;</strong></a>
+          <input class="text-center form-control" type="text" readonly="readonly" data-max-page="40" style="width:125px;display:inline;padding-top:5px"/>
+          <a href="#" class="btn btn-primary next" data-action="next"><strong>&rsaquo;</strong></a>
         </div>
+        <!-- <div class="row text-center"> -->
+        <!--     <i class="fa fa-circle-o-notch fa-3x fa-spin text-primary"></i> -->
+        <!-- </div> -->
         <!-- END Orders View Content -->
     </div>
 </div>
@@ -29,9 +34,9 @@
 
 {% block js %}
 <script src="{{ staticUrl }}/js/table-builder.js"></script>
-<script src="{{ staticUrl }}/js/jquery-placeholder.js"></script>
+<script src="{{ staticUrl }}/js/jquery.jqpagination.js"></script>
 <script>
-  var paged = BuildTable($('#table'), {
+    var paged = BuildTable($('#table'), {
     columns: [
       {
         field: 'id',
@@ -71,8 +76,9 @@
     api: '{{ urlFor("api", "/order2") }}',
     apiToken: '{{ org.MustGetTokenByName("live-secret-key") }}',
     startPage: 1,
-    startDisplay: 10,
-    display: [5, 10, 2],
+    startDisplay: 2,
+    display: [5, 10, 20],
+    $pagination: $('#pagination'),
   });
 </script>
 {% endblock %}
