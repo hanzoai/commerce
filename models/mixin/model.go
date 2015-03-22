@@ -20,7 +20,9 @@ type model interface {
 	Key() (key datastore.Key)
 	Id() string
 	Put() error
+	MustPut()
 	Get(args ...interface{}) error
+	MustGet(args ...interface{})
 	Delete(args ...interface{}) error
 	Query() *Query
 	JSON() string
@@ -149,6 +151,14 @@ func (m *Model) Put() error {
 	return m.PutEntity(m.Entity)
 }
 
+// Put entity in datastore
+func (m *Model) MustPut() {
+	err := m.Put()
+	if err != nil {
+		panic(err)
+	}
+}
+
 func (m *Model) PutEntity(entity interface{}) error {
 	// Set CreatedAt, UpdatedAt
 	now := time.Now()
@@ -175,6 +185,13 @@ func (m *Model) Get(args ...interface{}) error {
 	}
 
 	return m.Db.Get(m.key, m.Entity)
+}
+
+func (m *Model) MustGet(args ...interface{}) {
+	err := m.Get(args...)
+	if err != nil {
+		panic(err)
+	}
 }
 
 // Get entity from datastore or create new one
