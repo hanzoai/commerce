@@ -31,8 +31,8 @@ button::-moz-focus-inner {
     <li>GET <a href="/api/access/{{ orgId }}?email={{ email }}&password={{ password }}">/api/access/{{ orgId }}</a></li>
     <li>POST <a href="/api/access/{{ orgId }}">/api/access/{{ orgId }}</a></li>
     <li>
-        <form method="POST" action="/api/access?_method=DELETE">
-            DELETE <button type="submit">/api/access</button>
+        <form method="POST" action="/api/access/{{ orgId }}?_method=DELETE">
+            DELETE <button type="submit">/api/access/{{ orgId }}</button>
         </form>
     </li>
 </ul>
