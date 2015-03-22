@@ -26,20 +26,14 @@ func Product(c *gin.Context) *product.Product {
 	　　　　so doge
 	`
 
-	prod.Options = []product.Option{
-		product.Option{
-			Name:   "Size",
-			Values: []string{"Much", "Wow"},
-		},
+	// Add options
+	opt := product.Option{
+		Name:   "Size",
+		Values: []string{"Much", "Wow"},
 	}
+	prod.Options = append(prod.Options, &opt)
 
-	for _, variant := range Variant(c) {
-		prod.Variants = append(prod.Variants, *variant)
-	}
-	err := prod.Put()
-	if err != nil {
-		panic(err)
-	}
+	prod.Put()
 
 	return prod
 }

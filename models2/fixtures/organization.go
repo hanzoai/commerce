@@ -5,13 +5,16 @@ import (
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/models2/organization"
+	"crowdstart.io/models2/user"
 )
 
 func Organization(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	// Owner for this organization
-	user := User(c)
+	user := user.New(db)
+	user.Email = "dev@hanzo.ai"
+	user.GetOrCreate("Email=", user.Email)
 
 	// Our fake T-shirt company
 	org := organization.New(db)
@@ -26,11 +29,13 @@ func Organization(c *gin.Context) *organization.Organization {
 	org.Stripe.PublishableKey = "pk_test_VbexM7S8lSitV3xCGLm2kbIx"
 	org.Put()
 
-	// Save into org's namespace
+	// Save org into default namespace
+	org.Put()
+
+	// ..and also save org/user into org's namespace
 	ctx := org.Namespace(c)
 	user.SetContext(ctx)
 	org.SetContext(ctx)
-
 	org.Put()
 	user.Put()
 
