@@ -5,10 +5,9 @@ import (
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/models2/token"
-	"crowdstart.io/util/task"
 )
 
-var _ = task.Func("models2-fixtures-token", func(c *gin.Context) {
+func Token(c *gin.Context) *token.Token {
 	db := datastore.New(c)
 
 	token := token.New(db)
@@ -19,4 +18,6 @@ var _ = task.Func("models2-fixtures-token", func(c *gin.Context) {
 	token.Email = "test@test.com"
 	token.UserId = "fake"
 	token.Put()
-})
+
+	return token
+}

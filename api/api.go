@@ -31,22 +31,6 @@ func init() {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
 
-	// Entities with automatic RESTful API
-	entities := []mixin.Entity{
-		campaign.Campaign{},
-		coupon.Coupon{},
-		collection.Collection{},
-		organization.Organization{},
-		product.Product{},
-		order.Order{},
-		token.Token{},
-		user.User{},
-		variant.Variant{},
-	}
-
-	// Redirect root
-	router.GET("/", rest.DebugIndex(entities))
-
 	// Access tokens
 	router.GET("/access/:id", accesstoken.Get)
 	router.POST("/access/:id", accesstoken.Post)
@@ -62,9 +46,24 @@ func init() {
 	router.POST("/order/:id/authorize", publishedRequired, payment.Authorize)
 	router.POST("/order/:id/capture", adminRequired, payment.Capture)
 
-	// Setup API routes
+	// Entities with automatic RESTful API
+	entities := []mixin.Entity{
+		campaign.Campaign{},
+		coupon.Coupon{},
+		collection.Collection{},
+		organization.Organization{},
+		product.Product{},
+		order.Order{},
+		token.Token{},
+		user.User{},
+		variant.Variant{},
+	}
+
 	logApiRoutes(entities)
 	for _, entity := range entities {
 		rest.New(entity).Route(router, adminRequired)
 	}
+
+	// REST API debugger
+	router.GET("/", rest.DebugIndex(entities))
 }
