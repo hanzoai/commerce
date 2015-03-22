@@ -27,6 +27,9 @@ func getDb(c *gin.Context) *datastore.Datastore {
 	org := organization.New(db)
 	org.Name = "suchtees"
 	org.GetOrCreate("Name=", org.Name)
+	org.Put()
+
+	log.Debug("Using %s namespace", org.Id())
 
 	// Use org's namespace
 	ctx := org.Namespace(c)
@@ -43,10 +46,10 @@ func init() {
 
 	// Setup default fixtures
 	task.Func("fixtures2-all", func(c *gin.Context) {
+		User(c)
 		Organization(c)
 		Product(c)
-		Token(c)
-		User(c)
 		Variant(c)
+		Token(c)
 	})
 }
