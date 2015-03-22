@@ -6,16 +6,26 @@ var BuildTable = (function() {
   var tableBodyTemplate = '<tbody></tbody>';
   var checkbox = '<label class="csscheckbox csscheckbox-primary"><input type="checkbox"><span></span></label>'
 
+  var currencyCharacters = {
+	'usd': '$',
+	'aud': '$',
+	'cad': '$',
+	'eur': '€',
+	'gbp': '£'
+  };
+
   return function ($tableEl, tableConfig) {
     // Config is in the form of
     //  {
     //      columns: [{
     //          field: 'field1',
-    //          name: 'Field 1'
+    //          name: 'Field 1',
+    //          css: { ... } //optional
     //      },
     //      {
-    //          field: 'field2',
-    //          name: 'Field 2'
+    //          field: 'field2.field3.field4', // chained dot notation supported
+    //          name: 'Field 2',
+    //          type: "text" // defaults to text
     //      }],
     //      api: 'api.suchtees.com/object',
     //      apiToken: '',
@@ -38,7 +48,7 @@ var BuildTable = (function() {
     // Build the header
     var $tableHeader = $(tableHeaderTemplate);
     var $tableHeaderCheckbox = $(checkbox);
-    var $tableHeaderDataCheckbox = $(tableHeaderDataTemplate).append($tableHeaderCheckbox);
+    var $tableHeaderDataCheckbox = $(tableHeaderDataTemplate).append($tableHeaderCheckbox).css('width', '80px').addClass('text-center');
     var $tableHeaderRow = $(tableRowTemplate).append($tableHeaderDataCheckbox);
     $tableHeader.html($tableHeaderRow);
     $tableEl.append($tableHeader);
@@ -46,7 +56,11 @@ var BuildTable = (function() {
     var columns = tableConfig.columns;
     var columnLen = columns.length;
     for (var c = 0; c < columnLen; c++) {
-      var $tableHeaderData = $(tableHeaderDataTemplate).html(columns[c].name);
+      var column = columns[c];
+      var $tableHeaderData = $(tableHeaderDataTemplate).html(column.name);
+      if (column.css) {
+        $tableHeaderData.css(column.css);
+      }
       $tableHeaderRow.append($tableHeaderData);
     }
 
@@ -74,7 +88,37 @@ var BuildTable = (function() {
           var $tableRow = $(tableRowTemplate).append($tableDataCheckbox);
 
           for(var c = 0; c < columnLen; c++) {
-            var $tableData = $(tableDataTemplate).html(model[columns[c].field]);
+            var column = columns[c];
+            var $tableData = $(tableDataTemplate)
+
+            var type = 'text';
+            if (column.type) {
+              type = column.type;
+            }
+
+            // Handle fields in the form of field1.field2.field3
+            var fields = column.field.split('.');
+            var fieldsLen = fields.length;
+
+            var val = model;
+            for (var f = 0; f < fieldsLen; f++) {
+              val = val[fields[f]];
+              // deal with the case where the element does not exist
+              if (val == null) {
+                val = "";
+                break;
+              }
+            }
+
+            if (type == 'currency' && model.currency) {
+              val = currencyCharacters[model.currency] + val;
+              val = val.substr(0, val.length - 2) + '.' + val.substr(-2);
+              $tableData.addClass('text-right');
+            } else if (type == 'date') {
+              val = (new Date(val)).toDateString();
+            }
+
+            $tableData.html(val);
             $tableRow.append($tableData);
           }
 
