@@ -20,6 +20,6 @@ func User(c *gin.Context) *user.User {
 	user.LastName = "Shirts"
 	user.Phone = "(999) 999-9999"
 	user.PasswordHash = auth.HashPassword("suchtees")
-	user.Put()
+	user.MustPut()
 	return user
 }

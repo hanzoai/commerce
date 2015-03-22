@@ -42,7 +42,7 @@ func Logout(c *gin.Context) {
 // Renders the profile page
 func Profile(c *gin.Context) {
 	if u, err := auth.GetCurrentUser(c); err != nil {
-		c.Fail(500, err)
+		Logout(c)
 		return
 	} else {
 		template.Render(c, "admin/profile.html", "user", u)
