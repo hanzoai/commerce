@@ -2,7 +2,6 @@ package fixtures
 
 import (
 	"reflect"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -40,10 +39,12 @@ func init() {
 	fixture("fixtures2-user", User)
 	fixture("fixtures2-variant", Variant)
 
-	// Register all fixtures under a fixtures-all task name
-	for name, tasks := range task.Registry {
-		if strings.HasPrefix(name, "fixtures2-") {
-			task.Register("fixtures2-all", tasks...)
-		}
-	}
+	// Setup default fixtures
+	task.Func("fixtures2-all", func(c *gin.Context) {
+		Organization(c)
+		Product(c)
+		Token(c)
+		User(c)
+		Variant(c)
+	})
 }
