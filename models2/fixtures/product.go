@@ -33,7 +33,7 @@ func Product(c *gin.Context) *product.Product {
 	}
 	prod.Options = append(prod.Options, &opt)
 
-	prod.Put()
+	prod.MustPut()
 
 	return prod
 }
