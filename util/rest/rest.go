@@ -37,6 +37,7 @@ type Rest struct {
 type Pagination struct {
 	Page    string      `json:"page,omitempty"`
 	Display string      `json:"display,omitempty"`
+	Count   int         `json:"count,omitempty"`
 	Models  interface{} `json:"models"`
 }
 
@@ -204,6 +205,7 @@ func (r Rest) list(c *gin.Context) {
 			q = q.Limit(display)
 		} else {
 			json.Fail(c, 500, "'display' must be positive and non-zero.", err)
+			return
 		}
 	}
 
@@ -212,17 +214,24 @@ func (r Rest) list(c *gin.Context) {
 			q = q.Offset(display * (page - 1))
 		} else {
 			json.Fail(c, 500, "'page' must be positive and non-zero.", err)
+			return
 		}
 	}
 
 	if _, err = q.GetAll(models); err != nil {
 		json.Fail(c, 500, "Failed to list "+r.Kind, err)
 	} else {
-		r.JSON(c, 200, Pagination{
-			Page:    pageStr,
-			Display: displayStr,
-			Models:  models,
-		})
+		if count, err := model.Query().Count(); err != nil {
+			json.Fail(c, 500, "Could not count the models.", err)
+			return
+		} else {
+			r.JSON(c, 200, Pagination{
+				Page:    pageStr,
+				Display: displayStr,
+				Models:  models,
+				Count:   count,
+			})
+		}
 	}
 }
 
