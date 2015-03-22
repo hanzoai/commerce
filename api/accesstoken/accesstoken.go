@@ -13,6 +13,7 @@ import (
 	"crowdstart.io/models2/organization"
 	"crowdstart.io/models2/user"
 	"crowdstart.io/util/json"
+	"crowdstart.io/util/log"
 	"crowdstart.io/util/permission"
 	"crowdstart.io/util/session"
 )
@@ -42,6 +43,7 @@ func getAccessToken(c *gin.Context, id, email, password string) {
 
 	// Check if we have permission to create an access token
 	if !(org.IsOwner(u) || org.IsAdmin(u)) {
+		log.Warn("user (%v, %v) is not owner of (%v, %v)", u.Email, u.Id(), org.Name, org.Id())
 		json.Fail(c, 500, "Must be owner or admin to create a new access token.", errors.New("Invalid user"))
 		return
 	}
