@@ -2,7 +2,7 @@ var BuildForm = (function() {
   var formGroupInputTemplate = '<div class="form-group"><label class="col-md-3 control-label" for=""></label><div class="col-md-9"><input type="text" id="" name="" class="form-control" value=""></div></div>';
   var requiredAsteriskTemplate = '<span class="text-danger enable-tooltip" data-original-title="required">*</span>';
 
-  return function ($formEl, inputConfigs) {
+  return function ($form, inputConfigs) {
     // Config is in the form of
     //  [
     //      {
@@ -80,10 +80,10 @@ var BuildForm = (function() {
     }
 
     while ($fgs.length > 0) {
-      $formEl.prepend($fgs.pop());
+      $form.prepend($fgs.pop());
     }
 
-    $formEl.validate({
+    $form.validate({
       errorClass: 'help-block animation-slideUp', // You can change the animation class for a different entrance animation - check animations page
       errorElement: 'div',
       errorPlacement: function(error, e) {
