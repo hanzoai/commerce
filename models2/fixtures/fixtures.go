@@ -7,6 +7,7 @@ import (
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/models2/organization"
+	"crowdstart.io/util/log"
 	"crowdstart.io/util/task"
 )
 
@@ -14,6 +15,7 @@ import (
 func fixture(name string, fn interface{}) {
 	fnv := reflect.ValueOf(fn)
 	task.Func(name, func(c *gin.Context) {
+		log.Debug("Running %s", name)
 		fnv.Call([]reflect.Value{reflect.ValueOf(c)})
 	})
 }

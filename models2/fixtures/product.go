@@ -36,7 +36,10 @@ func Product(c *gin.Context) *product.Product {
 	for _, variant := range Variant(c) {
 		prod.Variants = append(prod.Variants, *variant)
 	}
-	prod.Put()
+	err := prod.Put()
+	if err != nil {
+		panic(err)
+	}
 
 	return prod
 }
