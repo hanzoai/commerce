@@ -36,7 +36,7 @@ type Rest struct {
 type Pagination struct {
 	Page    string      `json:"page,omitempty"`
 	Display string      `json:"display,omitempty"`
-	Count   int         `json:"count,omitempty"`
+	Count   int         `json:"count"`
 	Models  interface{} `json:"models"`
 }
 
