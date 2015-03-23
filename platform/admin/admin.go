@@ -28,6 +28,21 @@ func Dashboard(c *gin.Context) {
 	}
 }
 
+func Products(c *gin.Context) {
+	if u, err := auth.GetCurrentUser(c); err != nil {
+		c.Fail(500, err)
+	} else {
+		db := datastore.New(c)
+		org := organization.New(db)
+		if _, err := org.Query().Filter("OwnerId=", u.Id()).First(); err != nil {
+			c.Fail(500, err)
+			return
+		}
+
+		template.Render(c, "admin/products.html", "org", org)
+	}
+}
+
 func Orders(c *gin.Context) {
 	if u, err := auth.GetCurrentUser(c); err != nil {
 		c.Fail(500, err)
