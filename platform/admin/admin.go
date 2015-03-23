@@ -39,7 +39,7 @@ func Products(c *gin.Context) {
 			return
 		}
 
-		template.Render(c, "admin/products.html", "org", org)
+		template.Render(c, "admin/list-products.html", "org", org)
 	}
 }
 
