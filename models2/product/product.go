@@ -3,7 +3,6 @@ package product
 import (
 	"net/http"
 	"reflect"
-	"time"
 
 	aeds "appengine/datastore"
 
@@ -61,8 +60,8 @@ type Product struct {
 	HeaderImage Media   `json:"headerImage"`
 	Media       []Media `json:"media"`
 
-	// When is the product available
-	AvailableBy time.Time `json:"availableBy"`
+	// Is the product available
+	Available bool `json:"available"`
 
 	// Is this product for preorder
 	Preorder bool `json:"preorder"`
