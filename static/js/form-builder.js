@@ -1,6 +1,6 @@
 var BuildForm = (function() {
   var formGroupInputTemplate = '<div class="form-group"><label class="col-md-3 control-label" for=""></label><div class="col-md-9"><input type="text" id="" name="" class="form-control" value=""></div></div>';
-  var formGroupTextAreaTemplate = '<div class="form-group"><label class="col-md-3 control-label" for=""></label><div class="col-md-9"><textarea class="form-control" style="resize:none;height:267px"></textarea></div></div>';
+  var formGroupTextAreaTemplate = '<div class="form-group"><label class="col-md-3 control-label" for=""></label><div class="col-md-9"><textarea class="form-control" style="resize:none;height:265px"></textarea></div></div>';
   var formGroupSelectTemplate = '<div class="form-group"><label class="col-md-3 control-label" for=""></label><div class="col-md-9"><select class="form-control"></select></div></div>';
   var formGroupSwitchTemplate = '<div class="form-group"><label class="col-md-10 control-label" for=""></label><div class="col-md-2"><label class="switch switch-success"><input type="checkbox"><span></span></label></div></div>';
   var optionTemplate = '<option></option>';
@@ -105,7 +105,7 @@ var BuildForm = (function() {
         for (var v = 0; v < valueLen; v++) {
           var value = values[v];
           var $option = $(optionTemplate).attr({
-            id: value.id,
+            value: value.id,
           }).text(value.name);
 
           if (value.selected) {
