@@ -94,7 +94,7 @@ type Context struct {
 
 func (c *Context) cloneKeys(keys map[string]interface{}) {
 	for k, v := range keys {
-		if k == "appengine" {
+		if k == "appengine" || k == "organization" {
 			continue
 		}
 
