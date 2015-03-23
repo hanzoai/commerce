@@ -129,7 +129,7 @@ func (m *Model) Id() string {
 }
 
 // Set's key for entity.
-func (m *Model) SetKey(key interface{}) error {
+func (m *Model) SetKey(key interface{}) (err error) {
 	var k datastore.Key
 
 	switch v := key.(type) {
@@ -141,7 +141,10 @@ func (m *Model) SetKey(key interface{}) error {
 			k = m.Db.NewKey(m.Entity.Kind(), v, 0, m.Parent)
 		} else {
 			// By default all keys are int ids internally (but we use hashid to convert them to strings)
-			k = hashid.DecodeKey(m.Db.Context, v)
+			k, err = hashid.DecodeKey(m.Db.Context, v)
+			if err != nil {
+				return datastore.InvalidKey
+			}
 		}
 	case int64:
 		k = m.Db.NewKey(m.Entity.Kind(), "", v, nil)
