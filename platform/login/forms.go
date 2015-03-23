@@ -56,21 +56,21 @@ func (f *ChangePasswordForm) Validate() []string {
 }
 
 // Reset Password form (request)
-type ResetPasswordForm struct {
+type PasswordResetForm struct {
 	Email string
 }
 
-func (f *ResetPasswordForm) Parse(c *gin.Context) error {
+func (f *PasswordResetForm) Parse(c *gin.Context) error {
 	return form.Parse(c, f)
 }
 
 // Reset Password form (confirm)
-type ResetPasswordConfirmForm struct {
+type PasswordResetConfirmForm struct {
 	NewPassword     string
 	ConfirmPassword string
 }
 
-func (f *ResetPasswordConfirmForm) Parse(c *gin.Context) error {
+func (f *PasswordResetConfirmForm) Parse(c *gin.Context) error {
 	return form.Parse(c, f)
 }
 
