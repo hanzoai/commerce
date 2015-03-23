@@ -80,6 +80,13 @@ func (o Organization) Kind() string {
 	return "organization2"
 }
 
+func (o *Organization) AddDefaultTokens() {
+	o.AddToken("live-secret-key", permission.Admin)
+	o.AddToken("live-published-key", permission.Published)
+	o.AddToken("test-secret-key", permission.Admin)
+	o.AddToken("test-published-key", permission.Published)
+}
+
 func (o Organization) IsAdmin(user *user.User) bool {
 	for _, userId := range o.Admins {
 		if userId == user.Id() {
@@ -108,11 +115,4 @@ func (o Organization) Namespace(ctx interface{}) appengine.Context {
 		panic(err)
 	}
 	return _ctx
-}
-
-func (o Organization) AddDefaultTokens() {
-	o.AddToken("live-secret-key", permission.Admin)
-	o.AddToken("live-published-key", permission.Published)
-	o.AddToken("test-secret-key", permission.Admin)
-	o.AddToken("test-published-key", permission.Published)
 }
