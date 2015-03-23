@@ -3,6 +3,7 @@ package platform
 import (
 	"crowdstart.io/middleware"
 	"crowdstart.io/platform/admin"
+	"crowdstart.io/platform/docs"
 	"crowdstart.io/platform/frontend"
 	"crowdstart.io/platform/user"
 	"crowdstart.io/thirdparty/stripe"
@@ -29,7 +30,10 @@ func init() {
 	router.GET("/terms", frontend.Terms)
 
 	// Docs
-	router.GET("/docs", frontend.Docs)
+	router.GET("/docs", docs.Introduction)
+	router.GET("/docs/api", docs.API)
+	router.GET("/docs/crowdstart.js", docs.CrowdstartJS)
+	router.GET("/docs/salesforce", docs.Salesforce)
 
 	// Login
 	router.GET("/login", logoutRequired, user.Login)
