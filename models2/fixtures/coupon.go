@@ -8,6 +8,8 @@ import (
 	"crowdstart.io/models2/coupon"
 )
 
+const Month = time.Hour * 24 * 30
+
 func Coupon(c *gin.Context) *coupon.Coupon {
 	db := getDb(c)
 

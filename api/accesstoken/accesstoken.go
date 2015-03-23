@@ -67,7 +67,7 @@ func getAccessToken(c *gin.Context, id, email, password string) {
 
 func deleteAccessToken(c *gin.Context) {
 	// Get organization for current access token
-	org := middleware.GetOrg(c)
+	org := middleware.GetOrganization(c)
 
 	// Retrieve token
 	accessToken := session.MustGet(c, "access-token").(string)
