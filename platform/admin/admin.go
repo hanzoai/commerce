@@ -54,7 +54,7 @@ func Orders(c *gin.Context) {
 			return
 		}
 
-		template.Render(c, "admin/orders.html", "org", org)
+		template.Render(c, "admin/list-orders.html", "org", org)
 	}
 }
 
