@@ -2,6 +2,7 @@ package variant
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/mholt/binding"
 
@@ -27,9 +28,20 @@ type Variant struct {
 	SKU  string `json:"sku"`
 	Name string `json:"name"`
 
-	Price Cents `json:"price"`
 	// 3-letter ISO currency code (lowercase).
 	Currency CurrencyType `json:"currency"`
+	Price    Cents        `json:"price"`
+
+	// Is the variant available
+	Available bool `json:"available"`
+
+	// Range in which variant is available. If active, it takes precedent over
+	// Available bool.
+	Availability struct {
+		Active    bool
+		StartDate time.Time `json:"startDate"`
+		EndDate   time.Time `json:"endDate"`
+	} `json:"availability"`
 
 	Inventory int `json:"inventory"`
 	Sold      int `json:"sold"`
