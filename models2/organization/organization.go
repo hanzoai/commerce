@@ -101,7 +101,7 @@ func (o Organization) Namespace(ctx interface{}) appengine.Context {
 		_ctx = v
 	}
 
-	_ctx, err := appengine.Namespace(_ctx, o.Key().IntID())
+	_ctx, err := appengine.Namespace(_ctx, string(o.Key().IntID()))
 	if err != nil {
 		panic(err)
 	}
