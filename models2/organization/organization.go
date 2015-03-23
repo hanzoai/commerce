@@ -35,7 +35,7 @@ type Organization struct {
 	Timezone string `json:"timezone"`
 
 	Country string `json:"country"`
-	TaxId   string `json:"taxId"`
+	TaxId   string `json:"-"`
 
 	Plan struct {
 		PlanId    string
