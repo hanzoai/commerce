@@ -6,6 +6,7 @@ import (
 	"crowdstart.io/auth2"
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
+	"crowdstart.io/models2/order"
 	"crowdstart.io/models2/organization"
 	"crowdstart.io/models2/product"
 	"crowdstart.io/util/log"
@@ -43,11 +44,11 @@ func Product(c *gin.Context) {
 		namespaced := org.Namespace(c)
 		db = datastore.New(namespaced)
 
-		product := product.New(db)
+		p := product.New(db)
 		id := c.Params.ByName("id")
-		product.Get(id)
+		p.Get(id)
 
-		template.Render(c, "admin/product.html", "org", org, "product", product)
+		template.Render(c, "admin/product.html", "org", org, "product", p)
 	}
 }
 
@@ -63,6 +64,28 @@ func Products(c *gin.Context) {
 		}
 
 		template.Render(c, "admin/list-products.html", "org", org)
+	}
+}
+
+func Order(c *gin.Context) {
+	if u, err := auth.GetCurrentUser(c); err != nil {
+		c.Fail(500, err)
+	} else {
+		db := datastore.New(c)
+		org := organization.New(db)
+		if _, err := org.Query().Filter("OwnerId=", u.Id()).First(); err != nil {
+			c.Fail(500, err)
+			return
+		}
+
+		namespaced := org.Namespace(c)
+		db = datastore.New(namespaced)
+
+		o := order.New(db)
+		id := c.Params.ByName("id")
+		o.Get(id)
+
+		template.Render(c, "admin/order.html", "org", org, "order", o)
 	}
 }
 
