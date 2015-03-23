@@ -205,6 +205,22 @@ func (m *Model) Get(args ...interface{}) error {
 	return m.Db.Get(m.key, m.Entity)
 }
 
+// Get's key only (ensures key is good)
+func (m *Model) GetKey(key interface{}) (datastore.Key, error) {
+	// If a key is specified, try to use that, ignore nil keys (which would
+	// otherwise create a new incomplete key which makes no sense in this case.
+	if key != nil {
+		m.SetKey(key)
+	}
+
+	keys, err := m.Query().Filter("__key__", m.key).KeysOnly().GetAll(nil)
+	if err != nil && err != aeds.ErrNoSuchEntity && len(keys) != 1 {
+		return nil, err
+	}
+	m.SetKey(keys[0])
+	return keys[0], nil
+}
+
 func (m *Model) MustGet(args ...interface{}) {
 	err := m.Get(args...)
 	if err != nil {

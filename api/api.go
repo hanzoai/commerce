@@ -50,18 +50,28 @@ func init() {
 		campaign.Campaign{},
 		coupon.Coupon{},
 		collection.Collection{},
-		organization.Organization{},
 		product.Product{},
 		order.Order{},
-		token.Token{},
 		user.User{},
 		variant.Variant{},
 	}
 
-	logApiRoutes(entities)
 	for _, entity := range entities {
 		rest.New(entity).Route(router, adminRequired)
 	}
+
+	organizationApi := rest.New(organization.Organization{})
+	organizationApi.DefaultNamespace = true
+	organizationApi.Route(router, adminRequired)
+
+	tokenApi := rest.New(token.Token{})
+	tokenApi.DefaultNamespace = true
+	tokenApi.Route(router, adminRequired)
+
+	accountApi := rest.New(user.User{})
+	accountApi.DefaultNamespace = true
+	accountApi.Kind = "account"
+	accountApi.Route(router, adminRequired)
 
 	// REST API debugger
 	router.GET("/", rest.DebugIndex(entities))
