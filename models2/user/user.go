@@ -21,6 +21,7 @@ type User struct {
 	mixin.Model
 	mixin.Salesforce
 
+	Username        string  `json:"username"`
 	FirstName       string  `json:"firstName"`
 	LastName        string  `json:"lastName"`
 	Phone           string  `json:"phone"`
