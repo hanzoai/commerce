@@ -75,7 +75,7 @@ var _ = Describe("middleware/accesstoken", func() {
 			client.Get("/")
 
 			// middleware generates namespaced appengine context
-			org := middleware.GetOrg(client.Context)
+			org := middleware.GetOrganization(client.Context)
 
 			ctx2 := org.Namespace(ctx)
 			Expect(ctx2).ToNot(Equal(ctx))

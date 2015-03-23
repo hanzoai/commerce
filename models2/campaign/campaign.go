@@ -9,6 +9,8 @@ import (
 type Campaign struct {
 	mixin.Model
 
+	Slug string `json:"slug"`
+
 	OrganizationId  string            `json:"organizationId"`
 	Approved        bool              `json:"approved"`
 	Enabled         bool              `json:"enabled"`
@@ -35,6 +37,8 @@ type Campaign struct {
 func New(db *datastore.Datastore) *Campaign {
 	c := new(Campaign)
 	c.Model = mixin.Model{Db: db, Entity: c}
+	c.Links = make([]string, 0)
+	c.ProductIds = make([]string, 0)
 	return c
 }
 

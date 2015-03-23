@@ -5,8 +5,6 @@ import (
 	"reflect"
 	"strconv"
 
-	"appengine"
-
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/datastore"
@@ -153,12 +151,11 @@ func (r Rest) newEntitySlice() interface{} {
 }
 
 func (r Rest) newModel(c *gin.Context) mixin.Model {
-	var ctx appengine.Context
+	ctx := middleware.GetAppEngine(c)
 
 	if r.namespace {
-		ctx = middleware.GetAppEngine(c)
-	} else {
-		ctx = middleware.GetNamespace(c)
+		org := middleware.GetOrganization(c)
+		ctx = org.Namespace(ctx)
 	}
 
 	db := datastore.New(ctx)
