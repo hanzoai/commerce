@@ -116,7 +116,7 @@ func Run(ctx *gin.Context, name string, args ...interface{}) {
 func getGinContext(c appengine.Context, fakectx *fakecontext.Context, ok bool) *gin.Context {
 	// If we have a fake context, try to use that
 	if ok {
-		if ctx, err := fakectx.Context(c); err == nil {
+		if ctx, err := fakectx.Context(&c); err == nil {
 			return ctx
 		}
 	}

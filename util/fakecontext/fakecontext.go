@@ -11,6 +11,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/julienschmidt/httprouter"
 
+	"crowdstart.io/datastore"
+	"crowdstart.io/models2/organization"
 	"crowdstart.io/util/log"
 )
 
@@ -100,7 +102,7 @@ func (c *Context) cloneKeys(keys map[string]interface{}) {
 	}
 }
 
-func (c Context) Context(aectx ...appengine.Context) (ctx *gin.Context, err error) {
+func (c Context) Context(aectx *appengine.Context) (ctx *gin.Context, err error) {
 	ctx = new(gin.Context)
 	ctx.Errors = ctx.Errors[0:0]
 	ctx.Keys = c.Keys
@@ -110,11 +112,23 @@ func (c Context) Context(aectx ...appengine.Context) (ctx *gin.Context, err erro
 		log.Warn("Failed to create Request from Request: %v", err)
 	}
 
-	// Set appengien context if we were passed one
-	if len(aectx) > 0 {
-		ctx.Set("appengine", aectx[0])
+	// If we don't have an appengine context, this is all we can do for now
+	if aectx == nil {
+		return ctx, err
 	}
 
+	// ...otherwise use appengine context to update gin context
+	ctx.Set("appengine", *aectx)
+
+	// Fetch organization if organizationId is set
+	if value, err := ctx.Get("organizationId"); err != nil {
+		if id, ok := value.(string); ok {
+			db := datastore.New(*aectx)
+			org := organization.New(db)
+			org.Get(id)
+			ctx.Set("organization", org)
+		}
+	}
 	return ctx, err
 }
 

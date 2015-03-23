@@ -1,20 +1,15 @@
 package fixtures
 
 import (
-	"time"
-
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/middleware"
 	"crowdstart.io/models2/campaign"
 	"crowdstart.io/util/category"
 )
 
-const Month = time.Hour * 24 * 30
-
 func Campaign(c *gin.Context) *campaign.Campaign {
+	org := getOrg(c)
 	db := getDb(c)
-	org := middleware.GetOrg(c)
 
 	campaign := campaign.New(db)
 	campaign.OrganizationId = org.Id()
