@@ -3,6 +3,7 @@ package product
 import (
 	"net/http"
 	"reflect"
+	"time"
 
 	aeds "appengine/datastore"
 
@@ -33,9 +34,9 @@ type Product struct {
 	Slug string `json:"slug"`
 	SKU  string `json:"sku"`
 
-	Price Cents `json:"price"`
 	// 3-letter ISO currency code (lowercase).
 	Currency CurrencyType `json:"currency"`
+	Price    Cents        `json:"price"`
 
 	Inventory int `json:"inventory"`
 	Sold      int `json:"sold"`
@@ -64,6 +65,14 @@ type Product struct {
 
 	// Is the product available
 	Available bool `json:"available"`
+
+	// Range in which product is available. If active, it takes precedent over
+	// Available bool.
+	Availability struct {
+		Active    bool
+		StartDate time.Time `json:"startDate"`
+		EndDate   time.Time `json:"endDate"`
+	} `json:"availability"`
 
 	// Is this product for preorder
 	Preorder bool `json:"preorder"`
