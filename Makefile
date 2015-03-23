@@ -331,8 +331,8 @@ datastore-config:
 				  --url=$(datastore_admin_url) \
 				  --filename=bulkloader.yaml
 
-# Regenerate API docs from wiki.
-update-docs:
+# Generate API docs from wiki.
+docs:
 	pandoc --no-highlight --toc ../crowdstart.wiki/API.md > templates/platform/docs/_generated/api.html
 	@sed -i .bak -e 's/class="json/class="lang-javascript/' templates/platform/docs/_generated/api.html
 	@sed -i .bak -e 's/table>/table class="table table-striped table-borderless table-vcenter">/' templates/platform/docs/_generated/api.html
