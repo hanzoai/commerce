@@ -57,7 +57,7 @@ var App = function() {
         yearCopy.html(d.getFullYear().toString());
 
         // Intialize ripple effect on buttons
-        rippleEffect($('.btn-effect-ripple'), 'btn-ripple');
+        // rippleEffect($('.btn-effect-ripple'), 'btn-ripple');
 
         // Initialize Tabs
         $('[data-toggle="tabs"] a, .enable-tabs a').click(function(e){ e.preventDefault(); $(this).tab('show'); });
@@ -157,35 +157,6 @@ var App = function() {
         var allLinks        = $('.sidebar-nav a', sidebar);
         var menuLinks       = $('.sidebar-nav-menu', sidebar);
         var submenuLinks    = $('.sidebar-nav-submenu', sidebar);
-
-        // Add ripple effect to all navigation links
-        allLinks.on('click', function(e){
-            var link = $(this), ripple, d, x, y;
-
-            // Remove .animate class from all ripple elements
-            sidebar.find('.sidebar-nav-ripple').removeClass('animate');
-
-            // If the ripple element doesn't exist in this link, add it
-            if(link.children('.sidebar-nav-ripple').length == 0) {
-                link.prepend('<span class="sidebar-nav-ripple"></span>');
-            }
-
-            // Get the ripple element
-            var ripple = link.children('.sidebar-nav-ripple');
-
-            // If the ripple element doesn't have dimensions set them accordingly
-            if(!ripple.height() && !ripple.width()) {
-                d = Math.max(link.outerWidth(), link.outerHeight());
-                ripple.css({height: d, width: d});
-            }
-
-            // Get coordinates for our ripple element
-            x = e.pageX - link.offset().left - ripple.width()/2;
-            y = e.pageY - link.offset().top - ripple.height()/2;
-
-            // Position the ripple element and add the class .animate to it
-            ripple.css({top: y + 'px', left: x + 'px'}).addClass('animate');
-        });
 
         // Primary Accordion functionality
         menuLinks.on('click', function(e){
