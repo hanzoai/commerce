@@ -331,22 +331,28 @@ datastore-config:
 				  --url=$(datastore_admin_url) \
 				  --filename=bulkloader.yaml
 
-# Regenerate API docs from wiki.
-update-docs:
-	pandoc --no-highlight --toc ../crowdstart.wiki/API.md > templates/platform/docs/api.html
-	@sed -i .bak -e 's/class="json/class="lang-javascript/' templates/platform/docs/api.html
-	@sed -i .bak -e 's/table>/table class="table table-striped table-borderless table-vcenter">/' templates/platform/docs/api.html
-	@rm templates/platform/docs/api.html.bak
+# Generate API docs from wiki.
+docs:
+	pandoc --no-highlight --toc ../crowdstart.wiki/Getting-Started.md > templates/platform/docs/_generated/getting-started.html
+	@sed -i .bak -e 's/class="json/class="lang-javascript/' templates/platform/docs/_generated/getting-started.html
+	@sed -i .bak -e 's/table>/table class="table table-striped table-borderless table-vcenter">/' templates/platform/docs/_generated/getting-started.html
+	@rm templates/platform/docs/_generated/getting-started.html.bak
 
-	pandoc --no-highlight --toc ../crowdstart.wiki/Crowdstart.js.md > templates/platform/docs/crowdstart.js.html
-	@sed -i .bak -e 's/class="javascript/class="lang-javascript/' templates/platform/docs/crowdstart.js.html
-	@sed -i .bak -e 's/table>/table class="table table-striped table-borderless table-vcenter">/' templates/platform/docs/crowdstart.js.html
-	@rm templates/platform/docs/crowdstart.js.html.bak
+	pandoc --no-highlight --toc ../crowdstart.wiki/API.md > templates/platform/docs/_generated/api.html
+	@sed -i .bak -e 's/class="json/class="lang-javascript/' templates/platform/docs/_generated/api.html
+	@sed -i .bak -e 's/table>/table class="table table-striped table-borderless table-vcenter">/' templates/platform/docs/_generated/api.html
+	@rm templates/platform/docs/_generated/api.html.bak
 
-	pandoc --no-highlight --toc ../crowdstart.wiki/Salesforce-Integration.md > templates/platform/docs/salesforce.html
-	@sed -i .bak -e 's/class="javascript/class="lang-javascript/' templates/platform/docs/salesforce.html
-	@sed -i .bak -e 's/table>/table class="table table-striped table-borderless table-vcenter">/' templates/platform/docs/salesforce.html
-	@rm templates/platform/docs/salesforce.html.bak
+	pandoc --no-highlight --toc ../crowdstart.wiki/Crowdstart.js.md > templates/platform/docs/_generated/crowdstart.js.html
+	@sed -i .bak -e 's/class="javascript/class="lang-javascript/' templates/platform/docs/_generated/crowdstart.js.html
+	@sed -i .bak -e 's/class="html/class="lang-markup/' templates/platform/docs/_generated/crowdstart.js.html
+	@sed -i .bak -e 's/table>/table class="table table-striped table-borderless table-vcenter">/' templates/platform/docs/_generated/crowdstart.js.html
+	@rm templates/platform/docs/_generated/crowdstart.js.html.bak
+
+	pandoc --no-highlight --toc ../crowdstart.wiki/Salesforce-Integration.md > templates/platform/docs/_generated/salesforce.html
+	@sed -i .bak -e 's/class="javascript/class="lang-javascript/' templates/platform/docs/_generated/salesforce.html
+	@sed -i .bak -e 's/table>/table class="table table-striped table-borderless table-vcenter">/' templates/platform/docs/_generated/salesforce.html
+	@rm templates/platform/docs/_generated/salesforce.html.bak
 
 .PHONY: all bench build compile-js compile-js-min compile-css compile-css-min \
 	datastore-import datastore-export datastore-config deploy deploy-staging \
