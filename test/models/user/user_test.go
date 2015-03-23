@@ -3,17 +3,15 @@ package test
 import (
 	"testing"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
 	"crowdstart.io/util/test/ae"
-	"crowdstart.io/util/test/ginkgo"
+
+	. "crowdstart.io/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {
-	ginkgo.Setup("models/user", t)
+	Setup("models/user", t)
 }
 
 var (
