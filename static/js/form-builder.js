@@ -13,6 +13,7 @@ var BuildForm = (function() {
     //          placeholder: "Name",
     //          asterisk: true,
     //          type: "text",
+    //          $parent: $('#id'),
     //          rules: [
     //              {
     //                  rule: "required",
@@ -76,7 +77,11 @@ var BuildForm = (function() {
         placeholder: inputConfig.placeholder,
       });
 
-      $fgs.push($fg)
+      if (inputConfig.$parent != null) {
+        inputConfig.$parent.append($fg);
+      } else {
+        $fgs.push($fg)
+      }
     }
 
     while ($fgs.length > 0) {
