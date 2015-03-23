@@ -33,9 +33,9 @@ type Product struct {
 	Slug string `json:"slug"`
 	SKU  string `json:"sku"`
 
-	Price Cents `json:"price"`
 	// 3-letter ISO currency code (lowercase).
 	Currency CurrencyType `json:"currency"`
+	Price    Cents        `json:"price"`
 
 	Inventory int `json:"inventory"`
 	Sold      int `json:"sold"`
