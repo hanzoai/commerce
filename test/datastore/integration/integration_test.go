@@ -5,19 +5,18 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/datastore/parallel"
 	"crowdstart.io/test/datastore/integration/tasks"
 	"crowdstart.io/util/gincontext"
 	"crowdstart.io/util/test/ae"
-	"crowdstart.io/util/test/ginkgo"
+
+	. "crowdstart.io/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {
-	ginkgo.Setup("datastore/integration", t)
+	Setup("datastore/integration", t)
 }
 
 var (
