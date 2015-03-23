@@ -139,8 +139,41 @@
             </header>
             <!-- END Site Header -->
 
-            {% block content %}
-            {% endblock %}
+            <!-- Intro -->
+            <section class="site-section site-section-top site-section-light themed-background-dark">
+                <div class="container">
+                    <h1 class="text-center animation-fadeInQuickInv"><i class="fa fa-fw fa-book"></i>&nbsp;<strong>Documentation</strong></h1>
+                </div>
+            </section>
+            <!-- END Intro -->
+
+            <section class="site-content site-section">
+                <div class="container">
+                    <div class="row">
+                        <div class="col-md-3 visible-md visible-lg hidden-print" role="complementary">
+                            <nav id="sidebar">
+                                <ul class="nav">
+                                    <li><a href="{{ urlFor("platform", "/docs") }}">Getting Started</a></li>
+                                    <li><a href="{{ urlFor("platform", "/docs/api") }}">API</a></li>
+                                    <li><a href="{{ urlFor("platform", "/docs/crowdstart.js") }}">Crowdstart.js</a></li>
+                                    <li><a href="{{ urlFor("platform", "/docs/salesforce") }}">Salesforce Integration</a></li>
+                                </ul>
+                            </nav>
+                        </div>
+
+                        <div class="col-md-9" role="main">
+                            {% block content %}
+                            {% endblock %}
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="site-content site-section themed-background-light">
+                <div class="container">
+                    <h4 class="push site-heading text-center text-dark">{% block updated %}Updated: March 19, 2015{% endblock %}</h4>
+                </div>
+            </section>
 
             <!-- Footer -->
             <footer class="site-footer site-section site-section-light">
@@ -216,6 +249,23 @@
         <script src="{{ staticUrl }}/frontend/js/plugins.js"></script>
         <script src="{{ staticUrl }}/frontend/js/app.js"></script>
         <script src="{{ staticUrl }}/docs/js/prism.js"></script>
+
+        <style>
+            h1 {
+                margin-top: 0px;
+            }
+            #sidebar.affix {
+                top: 80px;
+            }
+        </style>
+
+        <script>
+            $('#sidebar').affix({
+                offset: {
+                    top: 205
+                }
+            })
+        </script>
 
         {% block js %}
         {% endblock %}
