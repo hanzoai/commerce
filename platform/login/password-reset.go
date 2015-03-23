@@ -3,7 +3,8 @@ package login
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/auth"
+	"crowdstart.io/auth2"
+	"crowdstart.io/auth2/password"
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
@@ -66,18 +67,18 @@ func PasswordResetConfirm(c *gin.Context) {
 	token := token.New(db)
 	if err := token.Get(tokenId); err != nil {
 		log.Warn("Invalid reset token: %v", err)
-		template.Render(c, "password-reset-confirm.html", "invalidCode", true)
+		template.Render(c, "login/password-reset-confirm.html", "invalidCode", true)
 		return
 	}
 
 	user := user.New(db)
 	if err := user.Get(token.UserId); err != nil {
 		log.Warn("Reset token has invalid UserId: %v", err)
-		template.Render(c, "password-reset-confirm.html", "invalidCode", true)
+		template.Render(c, "login/password-reset-confirm.html", "invalidCode", true)
 		return
 	}
 
-	template.Render(c, "password-reset-confirm.html", "email", user.Email)
+	template.Render(c, "login/password-reset-confirm.html", "email", user.Email)
 }
 
 // POST /password-reset/:token
@@ -90,28 +91,28 @@ func PasswordResetConfirmSubmit(c *gin.Context) {
 	token := token.New(db)
 	if err := token.Get(tokenId); err != nil {
 		log.Warn("Invalid reset token: %v", err)
-		template.Render(c, "password-reset-confirm.html", "invalidCode", true)
+		template.Render(c, "login/password-reset-confirm.html", "invalidCode", true)
 		return
 	}
 
 	// Lookup user by email
 	user := user.New(db)
 	if err := user.Get(token.UserId); err != nil {
-		template.Render(c, "password-reset-confirm.html", "invalidEmail", true)
+		template.Render(c, "login/password-reset-confirm.html", "invalidEmail", true)
 		return
 	}
 
 	// Parse reset form
 	form := new(PasswordResetConfirmForm)
 	if err := form.Parse(c); err != nil {
-		template.Render(c, "password-reset-confirm.html", "error", "Please enter your new password.")
+		template.Render(c, "login/password-reset-confirm.html", "error", "Please enter your new password.")
 		return
 	}
 
 	if form.NewPassword == form.ConfirmPassword {
-		user.PasswordHash = auth.HashPassword(form.NewPassword)
+		user.PasswordHash, _ = password.Hash(form.NewPassword)
 	} else {
-		template.Render(c, "password-reset-confirm.html", "error", "Passwords to not match")
+		template.Render(c, "login/password-reset-confirm.html", "error", "Passwords to not match")
 		return
 	}
 
@@ -126,6 +127,9 @@ func PasswordResetConfirmSubmit(c *gin.Context) {
 		user.Name(),
 		"SKULLY password changed")
 
+	// Login user
+	auth.Login(c, user)
+
 	// Redirect to profile
-	c.Redirect(302, config.UrlFor("store", "/profile"))
+	c.Redirect(302, config.UrlFor("platform", "/dashboard"))
 }
