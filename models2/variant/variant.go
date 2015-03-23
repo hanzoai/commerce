@@ -2,6 +2,7 @@ package variant
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/mholt/binding"
 
@@ -36,8 +37,8 @@ type Variant struct {
 
 	// Range in which variant is available. If active, it takes precedent over
 	// Available bool.
-	Availability type struct {
-		Active bool
+	Availability struct {
+		Active    bool
 		StartDate time.Time `json:"startDate"`
 		EndDate   time.Time `json:"endDate"`
 	} `json:"availability"`
