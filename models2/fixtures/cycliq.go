@@ -18,6 +18,7 @@ func Cycliq(c *gin.Context) *organization.Organization {
 	user.FirstName = "Andy"
 	user.LastName = "Copely"
 	user.PasswordHash, _ = password.Hash("cycliqpass")
+	user.Put()
 
 	org := organization.New(db)
 	org.Name = "cycliq"
