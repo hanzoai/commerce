@@ -118,23 +118,27 @@
             {
               id: 'usd',
               name: '$ USD',
-              selected: true,
+              selected: 'usd' === '{{ product.currency }}',
             },
             {
               id: 'aud',
               name: '$ AUD',
+              selected: 'aud' === '{{ product.currency }}',
             },
             {
               id: 'cad',
               name: '$ CAD',
+              selected: 'cad' === '{{ product.currency }}',
             },
             {
               id: 'eur',
               name: '€ EUR',
+              selected: 'eur' === '{{ product.currency }}',
             },
             {
               id: 'gbp',
               name: '£ GBP',
+              selected: 'gbp' === '{{ product.currency }}',
             }
           ],
           type: 'select',
