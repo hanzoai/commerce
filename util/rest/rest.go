@@ -29,6 +29,7 @@ type Rest struct {
 	Update           gin.HandlerFunc
 	Patch            gin.HandlerFunc
 	Delete           gin.HandlerFunc
+	Options          gin.HandlerFunc
 	MethodOverride   gin.HandlerFunc
 
 	routes     map[string]route
@@ -109,7 +110,16 @@ func (r Rest) defaultRoutes() []route {
 		r.MethodOverride = r.methodOverride
 	}
 
+	if r.Options == nil {
+		r.Options = r.options
+	}
+
 	return []route{
+		route{
+			method:   "OPTIONS",
+			url:      "*wildcard",
+			handlers: []gin.HandlerFunc{r.Options},
+		},
 		route{
 			method:   "POST",
 			url:      "",
@@ -358,6 +368,13 @@ func (r Rest) methodOverride(c *gin.Context) {
 	default:
 		json.Fail(c, 405, "Method not allowed", errors.New("Method not allowed"))
 	}
+}
+
+// Set proper CORS non-sense
+func (r Rest) options(c *gin.Context) {
+	c.Writer.Header().Add("Access-Control-Allow-Origin", "*")
+	c.Writer.Header().Add("Access-Control-Allow-Methods", c.Request.Header.Get("Access-Control-Request-Methods"))
+	c.Writer.Header().Add("Access-Control-Allow-Headers", c.Request.Header.Get("Access-Control-Request-Headers"))
 }
 
 func (r Rest) Handle(method, url string, handlers []gin.HandlerFunc) {
