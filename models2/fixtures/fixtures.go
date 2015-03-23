@@ -20,24 +20,31 @@ func fixture(name string, fn interface{}) {
 	})
 }
 
-// Get db namespaced for our fixtures org
-func getDb(c *gin.Context) *datastore.Datastore {
+func getOrg(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
-
 	org := organization.New(db)
 	org.Name = "suchtees"
 	org.GetOrCreate("Name=", org.Name)
 	org.MustPut()
+	return org
+}
+
+// Get db namespaced for our fixtures org
+func getDb(c *gin.Context) *datastore.Datastore {
+	org := getOrg(c)
 
 	log.Debug("Using %s namespace", org.Id())
 
 	// Use org's namespace
 	ctx := org.Namespace(c)
-	db = datastore.New(ctx)
+	db := datastore.New(ctx)
 	return db
 }
 
 func init() {
+	fixture("fixtures2-campaign", Campaign)
+	fixture("fixtures2-coupon", Coupon)
+	fixture("fixtures2-collection", Collection)
 	fixture("fixtures2-organization", Organization)
 	fixture("fixtures2-product", Product)
 	fixture("fixtures2-token", Token)
@@ -50,6 +57,9 @@ func init() {
 		Organization(c)
 		Product(c)
 		Variant(c)
+		Collection(c)
 		Token(c)
+		Coupon(c)
+		Campaign(c)
 	})
 }

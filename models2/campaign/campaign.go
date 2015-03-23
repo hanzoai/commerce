@@ -3,42 +3,31 @@ package campaign
 import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
-)
-
-type Category string
-
-const (
-	Arts       Category = "arts"
-	Fashion             = "fashion"
-	Film                = "film"
-	Food                = "food"
-	Gaming              = "gaming"
-	Health              = "health"
-	Music               = "music"
-	Sports              = "sports"
-	Technology          = "technology"
+	"crowdstart.io/util/category"
 )
 
 type Campaign struct {
 	mixin.Model
 
-	OrganizationId  string   `json:"organizationId"`
-	Approved        bool     `json:"approved"`
-	Enabled         bool     `json:"enabled"`
-	Category        Category `json:"category"`
-	Title           string   `json:"title"`
-	Tagline         string   `json:"tagline"`
-	PitchMedia      string   `json:"pitchMedia"`
-	VideoUrl        string   `json:"videoUrl"`
-	VideoOverlayUrl string   `json:"videoOverlayUrl"`
-	ImageUrl        string   `json:"imageUrl"`
-	Description     string   `json:"Description"`
-	Backers         int      `json:"backers"`
-	Raised          int64    `json:"raised"`
-	Thumbnail       string   `json:"thumbnail"`
-	OriginalUrl     string   `json:"originalUrl"`
-	StoreUrl        string   `json:"storeUrl"`
-	ProductIds      []string `datastore:"-" json:"productIds"`
+	Slug string `json:"slug"`
+
+	OrganizationId  string            `json:"organizationId"`
+	Approved        bool              `json:"approved"`
+	Enabled         bool              `json:"enabled"`
+	Category        category.Category `json:"category"`
+	Title           string            `json:"title"`
+	Tagline         string            `json:"tagline"`
+	PitchMedia      string            `json:"pitchMedia"`
+	VideoUrl        string            `json:"videoUrl"`
+	VideoOverlayUrl string            `json:"videoOverlayUrl"`
+	ImageUrl        string            `json:"imageUrl"`
+	Description     string            `json:"Description"`
+	Backers         int               `json:"backers"`
+	Raised          int64             `json:"raised"`
+	Thumbnail       string            `json:"thumbnail"`
+	OriginalUrl     string            `json:"originalUrl"`
+	StoreUrl        string            `json:"storeUrl"`
+	ProductIds      []string          `datastore:"-" json:"productIds"`
 
 	GoogleAnalytics string   `json:"googleAnalytics"`
 	FacebookTag     string   `json:"facebookTag"`
@@ -48,6 +37,8 @@ type Campaign struct {
 func New(db *datastore.Datastore) *Campaign {
 	c := new(Campaign)
 	c.Model = mixin.Model{Db: db, Entity: c}
+	c.Links = make([]string, 0)
+	c.ProductIds = make([]string, 0)
 	return c
 }
 
