@@ -6,8 +6,8 @@ import (
 	"crowdstart.io/util/template"
 )
 
-func Introduction(c *gin.Context) {
-	template.Render(c, "docs/introduction.html")
+func GettingStarted(c *gin.Context) {
+	template.Render(c, "docs/getting-started.html")
 }
 
 func API(c *gin.Context) {
