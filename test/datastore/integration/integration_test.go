@@ -33,7 +33,7 @@ var _ = BeforeSuite(func() {
 	c = gincontext.New(ctx)
 
 	// Wait for devappserver to spin up.
-	time.Sleep(3 * time.Second)
+	time.Sleep(5 * time.Second)
 })
 
 var _ = AfterSuite(func() {
@@ -61,7 +61,7 @@ var _ = Describe("datastore/parallel", func() {
 			// Run task in parallel
 			parallel.Run(c, "plus-1", 2, tasks.TaskPlus1)
 
-			time.Sleep(12 * time.Second)
+			time.Sleep(15 * time.Second)
 
 			// Check if our entities have been updated
 			var models []tasks.Model
@@ -86,7 +86,7 @@ var _ = Describe("datastore/parallel", func() {
 			// Run task in parallel
 			parallel.Run(c, "set-val", 2, tasks.TaskSetVal, 100)
 
-			time.Sleep(12 * time.Second)
+			time.Sleep(15 * time.Second)
 
 			// Check if our entities have been updated
 			var models2 []tasks.Model
