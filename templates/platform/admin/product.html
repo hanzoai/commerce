@@ -41,7 +41,9 @@
 {% endblock %}
 
 {% block js %}
+<script src="{{ staticUrl }}/js/jquery.serialize-object.min.js"></script>
 <script src="{{ staticUrl }}/js/form-builder.js"></script>
+<script src="{{ staticUrl }}/js/rest-forms.js"></script>
 <script>
   (function() {
     BuildForm($('#form-product'),[
@@ -184,7 +186,34 @@
         },
     ]);
   })();
+
+  var api = NewRestAPI(
+      '{{ urlFor("api", "/product2") }}',
+      '{{ org.MustGetTokenByName("live-secret-key") }}',
+      $('#form-new-product'),
+      {
+          price: function(val) {
+              // To cents
+              return parseInt(val.replace(/[^\d.-]/g,''), 10) * 100;
+          },
+          weight: function(val) {
+              return parseInt(val.replace(/[^\d.-]/g,''), 10);
+          }
+      }
+    );
+  $('#form-product').on('submit', function(e){
+      var $form = $(this);
+      requestAnimationFrame(function() {
+          if ($('.form-group.has-error').length === 0) {
+              api.post(function(data) {
+                  window.location.replace('{{ urlFor("platform", "/products") }}')
+              }, $form, '{{ product.Id }}')
+          }
+      })
+      e.preventDefault();
+      return false;
+  })
 </script>
 {% endblock %}
-{% block menulink %}menu-organization{% endblock %}
+{% block menulink %}menu-products{% endblock %}
 
