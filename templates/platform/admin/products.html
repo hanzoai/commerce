@@ -13,8 +13,8 @@
     <div class="block-title">
       <ul class="nav nav-tabs" data-toggle="tabs">
         <li class="active"><a href="">Products</a></li>
-        <li class=""><a href="">Variants</a></li>
-        <li class=""><a href="">Collections</a></li>
+        <!-- <li class=""><a href="">Variants</a></li> -->
+        <!-- <li class=""><a href="">Collections</a></li> -->
       </ul>
     </div>
     <!-- END Products/Variants/Collections Switch Block -->
@@ -57,13 +57,20 @@
     <form id="form-new-product" method="post" class="form-horizontal">
       <div class="row">
         <div class="col-md-6">
-          <h4>What is it?</h4>
+          <h4>What is your product?</h4>
           <div id="product-info" class="block">
           </div>
         </div>
         <div class="col-md-6">
-          <h4>What does it cost?</h4>
-          <div id="product-cost" class="block">
+          <h4>What is its cost and availability?</h4>
+          <div class="row">
+            <div id="product-cost" class="block">
+            </div>
+          </div>
+          <h4>What are its shipping dimensions? (Optional)</h4>
+          <div class="row">
+            <div id="product-shipping" class="block">
+            </div>
           </div>
         </div>
       </div>
@@ -99,12 +106,22 @@
         },
         {
           field: 'slug',
-          name: 'slug',
+          name: 'Slug',
         },
         {
           field: 'price',
           name: 'Price',
           render: 'currency',
+        },
+        {
+          field: 'taxable',
+          name: 'Collect Taxes',
+          render: 'bool',
+        },
+        {
+          field: 'available',
+          name: 'Available',
+          render: 'bool',
         },
         {
           field: 'createdAt',
@@ -122,16 +139,18 @@
     });
 
     BuildForm($('#form-new-product'),[
+// product info
         {
           id: 'name',
           name: 'Product.Name',
           label: 'Name',
           type: 'text',
+          asterisk: false,
           rules: [
             {
               rule: 'required',
               value: true,
-              message: 'Please enter a name for your product.'
+              message: 'Please enter a name for your product'
             }
           ],
           $parent: $('#product-info')
@@ -141,11 +160,12 @@
           name: 'Product.Slug',
           label: 'Slug',
           type: 'text',
+          asterisk: false,
           rules: [
             {
               rule: 'required',
               value: true,
-              message: 'Please enter a unique URL identifier for your product.'
+              message: 'Please enter a unique URL identifier for your product'
             }
           ],
           $parent: $('#product-info')
@@ -154,8 +174,115 @@
           id: 'Description',
           name: 'Product.Description',
           label: 'Description',
-          type: 'text',
+          type: 'textarea',
           $parent: $('#product-info')
+        },
+// product cost
+        {
+          id: 'price',
+          name: 'Product.Price',
+          label: 'Price',
+          type: 'text',
+          asterisk: false,
+          rules: [
+            {
+              rule: 'required',
+              value: true,
+              message: 'Enter a price for your product'
+            },
+            {
+              rule: 'currency',
+              value: ['$,€,£', false],
+              message: 'Enter a valid currency $, €, £'
+            }
+          ],
+          $parent: $('#product-cost')
+        },
+        {
+          id: 'currency',
+          name: 'Product.Currency',
+          label: 'Currency',
+          value: [
+            {
+              id: 'usd',
+              name: '$ USD',
+              selected: true,
+            },
+            {
+              id: 'aud',
+              name: '$ AUD',
+            },
+            {
+              id: 'cad',
+              name: '$ CAD',
+            },
+            {
+              id: 'eur',
+              name: '€ EUR',
+            },
+            {
+              id: 'gbp',
+              name: '£ GBP',
+            }
+          ],
+          type: 'select',
+          asterisk: false,
+          rules: [
+            {
+              rule: 'required',
+              value: true,
+              message: 'Choose a currency for your product'
+            }
+          ],
+          $parent: $('#product-cost')
+        },
+        {
+          id: 'taxable',
+          name: 'Product.Taxable',
+          label: 'Do you wish to collect taxes for this product?',
+          type: 'switch',
+          value: true,
+          asterisk: false,
+          rules: [
+            {
+              rule: 'required',
+              value: true,
+              message: 'Choose if this item is taxed'
+            },
+          ],
+          $parent: $('#product-cost')
+        },
+        {
+          id: 'available',
+          name: 'Product.Available',
+          label: 'Is this available for purchase?',
+          type: 'switch',
+          value: true,
+          asterisk: false,
+          rules: [
+            {
+              rule: 'required',
+              value: true,
+              message: 'Choose if this item is visible in the store'
+            },
+          ],
+          $parent: $('#product-cost')
+        },
+        {
+          id: 'dimensions',
+          name: 'Product.Dimensions',
+          label: 'Size (L x W x H)',
+          type: 'text',
+          placeholder: '10cm x 10cm x 10cm',
+          $parent: $('#product-shipping')
+        },
+        {
+          id: 'weight',
+          name: 'Product.Weight',
+          label: 'Weight (grams)',
+          type: 'text',
+          placeholder: '1000',
+          $parent: $('#product-shipping')
         },
     ]);
   });
