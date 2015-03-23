@@ -24,6 +24,14 @@
 
 <!-- Products View Block -->
 <div class="col-sm-12">
+  <!-- Empty Products Block -->
+  <div id="empty-table" class="row text-center text-dark-op" style="display:none;margin-top:50px;margin-bottom:50px">
+    <div class="col-xs-10 col-xs-offset-1">
+      <i class="gi gi-book" style="font-size:100px;"></i>
+      <h2>It doesn't seem that anyone's added products to <strong>{{ org.Name }}</strong> yet. Just complete the form below to add one.
+    </div>
+  </div>
+  <!-- END Empty Products Block -->
   <div class="block full">
     <!-- Products View Title -->
     <div class="block-title">
@@ -129,13 +137,15 @@
           render: 'date',
         }
       ],
-      api: '{{ urlFor("api", "/product2") }}',
+      itemUrl: '{{ urlFor("platform", "/product") }}',
+      apiUrl: '{{ urlFor("api", "/product2") }}',
       apiToken: '{{ org.MustGetTokenByName("live-secret-key") }}',
       startPage: 1,
       startDisplay: 5,
       displayOptions: [5, 10, 20],
       $display: $('#display'),
       $pagination: $('#pagination'),
+      $empty: $('#empty-table'),
     });
 
     BuildForm($('#form-new-product'),[
