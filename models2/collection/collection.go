@@ -1,8 +1,6 @@
 package collection
 
 import (
-	"time"
-
 	aeds "appengine/datastore"
 
 	"crowdstart.io/datastore"
@@ -31,7 +29,11 @@ type Collection struct {
 	Media []Media `json:"media"`
 
 	// What time is this collection available to deliver/purchase
-	AvailableBy time.Time `json:"availableBy"`
+	Available bool `json:"available"`
+
+	// Range in which collection is available
+	// AvailableStartDate time.Time `json:"startDate"`
+	// AvailableEndDate   time.Time `json:"endDate"`
 
 	// Show this on store?
 	Published bool `json:"published"`

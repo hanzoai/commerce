@@ -31,6 +31,13 @@ type Variant struct {
 	Currency CurrencyType `json:"currency"`
 	Price    Cents        `json:"price"`
 
+	// Is the product available
+	Available bool `json:"available"`
+
+	// Range in which this product is available
+	// AvailableStartDate time.Time `json:"startDate"`
+	// AvailableEndDate   time.Time `json:"endDate"`
+
 	Inventory int `json:"inventory"`
 	Sold      int `json:"sold"`
 
