@@ -3,7 +3,6 @@ package product
 import (
 	"net/http"
 	"reflect"
-	"time"
 
 	aeds "appengine/datastore"
 
@@ -35,9 +34,17 @@ type Product struct {
 	SKU  string `json:"sku"`
 
 	Price Cents `json:"price"`
+	// 3-letter ISO currency code (lowercase).
+	Currency CurrencyType `json:"currency"`
 
 	Inventory int `json:"inventory"`
 	Sold      int `json:"sold"`
+
+	Weight     float64  `json:"weight"`
+	WeightUnit MassUnit `json:"weightUnit"`
+	Dimensions string   `json:"dimensions"`
+
+	Taxable bool `json:"taxable"`
 
 	// Product Name
 	Name string `json:"name"`
@@ -55,8 +62,8 @@ type Product struct {
 	HeaderImage Media   `json:"headerImage"`
 	Media       []Media `json:"media"`
 
-	// When is the product available
-	AvailableBy time.Time `json:"availableBy"`
+	// Is the product available
+	Available bool `json:"available"`
 
 	// Is this product for preorder
 	Preorder bool `json:"preorder"`
