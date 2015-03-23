@@ -33,7 +33,7 @@ func getOrg(c *gin.Context) *organization.Organization {
 func getDb(c *gin.Context) *datastore.Datastore {
 	org := getOrg(c)
 
-	log.Debug("Using %s namespace", org.Id())
+	log.Debug("Using (%v,%s) namespace", org.Key(), org.Name)
 
 	// Use org's namespace
 	ctx := org.Namespace(c)
