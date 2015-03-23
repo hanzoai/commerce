@@ -34,7 +34,11 @@ This represents a single fundraising campaign.
 | links              | Important links related to the campaign not covered in other areas (such as media releases).                                                | []string              |
 
 
+# Group Payment
+
 ## Charge [/charge]
+Charges and captures a payment immediately or fails.
+
 ### Charge an Order [POST]
 + Request (application/json)
 
@@ -172,7 +176,11 @@ This represents a single fundraising campaign.
   
         
 ## Authorize [/authorize]
-### Authorize an order
+Authorizes a charge on an order, but does not capture it.
+This method is ideal if you wish to only receive payment when the
+product is shipped.
+
+### Authorize an order [POST]
 + Request (application/json)
 
         {
@@ -204,104 +212,106 @@ This represents a single fundraising campaign.
         }
         
 + Response 200 (application/json)
+        
         {
-          "id":"12",
-          "createdAt":"2015-03-23T04:53:57.840871693Z",
-          "updatedAt":"2015-03-23T04:53:57.840871693Z",
-          "campaignId":"",
-          "orderStatus":"",
-          "paymentStatus":"",
-          "fulfillmentStatus":"",
-          "preorder":false,
-          "unconfirmed":false,
-          "currency":"usd",
-          "type":"",
-          "shippingMethod":"",
-          "lineTotal":2000,
-          "discount":0,
-          "subtotal":2000,
-          "shipping":0,
-          "tax":0,
-          "adjustment":0,
-          "total":2000,
-          "balance":0,
-          "paid":0,
-          "refunded":0,
-          "fee":0,
-          "billingAddress":{
+
+           "id":"12",
+           "createdAt":"2015-03-23T04:53:57.840871693Z",
+           "updatedAt":"2015-03-23T04:53:57.840871693Z",
+           "campaignId":"",
+           "orderStatus":"",
+           "paymentStatus":"",
+           "fulfillmentStatus":"",
+           "preorder":false,
+           "unconfirmed":false,
+           "currency":"usd",
+           "type":"",
+           "shippingMethod":"",
+           "lineTotal":2000,
+           "discount":0,
+           "subtotal":2000,
+           "shipping":0,
+           "tax":0,
+           "adjustment":0,
+           "total":2000,
+           "balance":0,
+           "paid":0,
+           "refunded":0,
+           "fee":0,
+           "billingAddress":{
         
-          },
-          "shippingAddress":{
+           },
+           "shippingAddress":{
         
-          },
-          "items":[
-            {
-              "productId":"1",
-              "productName":"",
-              "productSlug":"",
-              "collectionId":"1",
-              "variantId":"1",
-              "variantName":"",
-              "variantSKU":"",
-              "price":100,
-              "quantity":20,
-              "weight":0,
-              "taxable":false
-            }
-          ],
-          "discounts":[
+           },
+           "items":[
+              {
+                 "productId":"1",
+                 "productName":"",
+                 "productSlug":"",
+                 "collectionId":"1",
+                 "variantId":"1",
+                 "variantName":"",
+                 "variantSKU":"",
+                 "price":100,
+                 "quantity":20,
+                 "weight":0,
+                 "taxable":false
+              }
+           ],
+           "discounts":[
         
-          ],
-          "payments":[
-            {
-              "account":{
-                "type":"stripe",
-                "buyer":{
-                  "email":"joe@buystoomuchstuff.com",
-                  "firstName":"",
-                  "lastName":"",
-                  "company":"Buys Too Much Stuff Dotcom",
-                  "phone":"555-555-5555",
-                  "notes":"non",
-                  "address":{
+           ],
+           "payments":[
+              {
+                 "account":{
+                    "type":"stripe",
+                    "buyer":{
+                       "email":"joe@buystoomuchstuff.com",
+                       "firstName":"",
+                       "lastName":"",
+                       "company":"Buys Too Much Stuff Dotcom",
+                       "phone":"555-555-5555",
+                       "notes":"non",
+                       "address":{
         
-                  }
-                },
-                "affirm":{
+                       }
+                    },
+                    "affirm":{
         
-                },
-                "stripe":{
-                  "fingerprint":"k6NxwTEJxyHMPCr3",
-                  "customerId":"cus_5vE1sYKb8AayVC",
-                  "cardId":"card_15jNZVCSRlllXCwPrD6GKV1j",
-                  "brand":"Visa",
-                  "type":"credit",
-                  "lastFour":"4242",
-                  "expiration":{
-                    "month":12,
-                    "year":2016
-                  },
-                  "cvcCheck":"pass"
-                },
-                "paypal":{
+                    },
+                    "stripe":{
+                       "fingerprint":"k6NxwTEJxyHMPCr3",
+                       "customerId":"cus_5vE1sYKb8AayVC",
+                       "cardId":"card_15jNZVCSRlllXCwPrD6GKV1j",
+                       "brand":"Visa",
+                       "type":"credit",
+                       "lastFour":"4242",
+                       "expiration":{
+                          "month":12,
+                          "year":2016
+                       },
+                       "cvcCheck":"pass"
+                    },
+                    "paypal":{
         
-                }
-              },
-              "currency":"usd",
-              "campaignId":"",
-              "chargeId":"ch_15jNZZCSRlllXCwPWFblE4Hr",
-              "amount":2000,
-              "amountRefunded":0,
-              "status":"unpaid",
-              "client":{
+                    }
+                 },
+                 "currency":"usd",
+                 "campaignId":"",
+                 "chargeId":"ch_15jNZZCSRlllXCwPWFblE4Hr",
+                 "amount":2000,
+                 "amountRefunded":0,
+                 "status":"unpaid",
+                 "client":{
         
-              },
-              "captured":false,
-              "live":false
-            }
-          ],
-          "fulfillment":{
-            "courier":"",
-            "trackingNumber":""
-          }
+                 },
+                 "captured":false,
+                 "live":false
+              }
+           ],
+           "fulfillment":{
+              "courier":"",
+              "trackingNumber":""
+           }
         }
