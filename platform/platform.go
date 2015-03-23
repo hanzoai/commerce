@@ -62,6 +62,7 @@ func init() {
 	router.POST("/keys", loginRequired, admin.NewKeys)
 
 	router.GET("/orders", loginRequired, admin.Orders)
+	router.GET("/order/:id", loginRequired, admin.Order)
 	router.GET("/products", loginRequired, admin.Products)
 	router.GET("/product/:id", loginRequired, admin.Product)
 	router.GET("/organization", loginRequired, admin.Organization)
