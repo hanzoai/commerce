@@ -11,6 +11,7 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/models2/user"
+	"crowdstart.io/util/permission"
 
 	. "crowdstart.io/models2"
 )
@@ -107,4 +108,11 @@ func (o Organization) Namespace(ctx interface{}) appengine.Context {
 		panic(err)
 	}
 	return _ctx
+}
+
+func (o Organization) AddDefaultTokens() {
+	o.AddToken("live-secret-key", permission.Admin)
+	o.AddToken("live-published-key", permission.Published)
+	o.AddToken("test-secret-key", permission.Admin)
+	o.AddToken("test-published-key", permission.Published)
 }
