@@ -256,7 +256,12 @@ func (r Rest) update(c *gin.Context) {
 	id := c.Params.ByName("id")
 
 	model := r.newModel(c)
-	model.Get(id)
+	err := model.Get(id)
+	if err != nil {
+		json.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
+		return
+	}
+
 	if err := json.Decode(c.Request.Body, model.Entity); err != nil {
 		json.Fail(c, 400, "Failed decode request body", err)
 		return
