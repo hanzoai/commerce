@@ -32,13 +32,15 @@
 {% endblock %}
 
 {% block js %}
+<script src="{{ staticUrl }}/js/jquery.serialize-object.min.js"></script>
 <script src="{{ staticUrl }}/js/form-builder.js"></script>
+<script src="{{ staticUrl }}/js/rest-forms.js"></script>
 <script>
     $(function(){
         BuildForm($("#form-organization"), [
             {
                 id: "fullName",
-                name: "Org.FullName",
+                name: "fullName",
                 label: "Full Name",
                 type: "text",
                 value: "{{ org.FullName }}",
@@ -51,21 +53,47 @@
                 ]
             },
             {
-                id: "lastName",
-                name: "Org.ShortName",
+                id: "shortName",
+                name: "shortName",
                 label: "Short Name/Abbr",
                 type: "text",
                 value: "{{ org.ShortName }}",
             },
             {
                 id: "website",
-                name: "Org.Website",
+                name: "website",
                 label: "Website URL",
                 type: "url",
                 value: "{{ org.Website }}",
             },
         ]);
     });
+  var api = NewRestAPI(
+      '{{ urlFor("api", "/organization2") }}',
+      '{{ org.MustGetTokenByName("live-secret-key") }}',
+      $('#form-organization'),
+      {
+          price: function(val) {
+              // To cents
+              return parseFloat(val.replace(/[^\d.-]/g,''), 10) * 100;
+          },
+          weight: function(val) {
+              return parseFloat(val.replace(/[^\d.-]/g,''), 10);
+          }
+      }
+    );
+  $('#form-organization').on('submit', function(e){
+      var $form = $(this);
+      requestAnimationFrame(function() {
+          if ($('.form-group.has-error').length === 0) {
+              api.put(function(data) {
+                  window.location.replace('{{ urlFor("platform", "/organization") }}')
+              }, $form, '{{ org.Id }}')
+          }
+      })
+      e.preventDefault();
+      return false;
+  })
 </script>
 {% endblock %}
 {% block menulink %}menu-organization{% endblock %}
