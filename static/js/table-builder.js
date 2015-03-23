@@ -53,6 +53,12 @@ var BuildTable = (function() {
     // Build the header
     var $tableHeader = $(tableHeaderTemplate);
     var $tableHeaderCheckbox = $(checkboxTemplate);
+
+    $tableHeaderCheckbox.find(':checkbox').on('change', function() {
+      var checkedStatus   = $(this).prop('checked');
+      $table.find(':checkbox').prop('checked', checkedStatus);
+    });
+
     var $tableHeaderDataCheckbox = $(tableHeaderDataTemplate).append($tableHeaderCheckbox).css('width', '80px').addClass('text-center');
     var $tableHeaderRow = $(tableRowTemplate).append($tableHeaderDataCheckbox);
     $tableHeader.html($tableHeaderRow);
@@ -163,6 +169,8 @@ var BuildTable = (function() {
               $tableData.addClass('text-right');
             } else if (render == 'id') {
               $tableData.addClass('text-center');
+            } else if (render == 'bool') {
+              val = val ? 'Yes' : 'No';
             } else if (render && {}.toString.call(render) == '[object Function]') {
               val = render(val, model);
             }

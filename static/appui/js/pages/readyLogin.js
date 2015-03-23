@@ -38,10 +38,10 @@ var ReadyLogin = function() {
                     }
                 },
                 messages: {
-                    'email': 'Please enter your account\'s email',
+                    'email': 'Enter your account\'s email',
                     'password': {
-                        required: 'Please provide your password',
-                        minlength: 'Your password must be at least 6 characters long'
+                        required: 'Enter your password',
+                        minlength: 'Password must be at least 6 characters long'
                     }
                 }
             });
