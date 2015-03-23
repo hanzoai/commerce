@@ -8,6 +8,7 @@ import (
 
 	"crowdstart.io/auth"
 	"crowdstart.io/config"
+	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 )
 
@@ -36,6 +37,7 @@ func TemplateSet() *pongo2.TemplateSet {
 		return config.UrlFor(moduleName, args...)
 	}
 
+	set.Globals["jsonify"] = json.Encode
 	return set
 }
 
