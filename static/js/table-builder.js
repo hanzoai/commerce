@@ -30,13 +30,15 @@ var BuildTable = (function() {
     //          name: 'Field 2',
     //          render: "text" // defaults to text
     //      }],
-    //      api: 'api.suchtees.com/object',
+    //      itemUrl: 'admin.suchtees.com/object',
+    //      apiUrl: 'api.suchtees.com/object',
     //      apiToken: '',
     //      displayOptions: [5, 10 , 20]
     //      startPage: 1,
     //      startDisplay: 10,
-    //      $display: $('#display')
-    //      $pagination: $('#pagination')
+    //      $display: $('#display'),
+    //      $pagination: $('#pagination'),
+    //      $empty: $('#empty')
     //  }
     //
     // API call is expected to return something in the form of
@@ -49,6 +51,7 @@ var BuildTable = (function() {
     //          {...}
     //      ]
     //  }
+    var $empty = tableConfig.$empty;
 
     // Build the header
     var $tableHeader = $(tableHeaderTemplate);
@@ -80,7 +83,8 @@ var BuildTable = (function() {
     $table.append($tableBody);
 
     // Configure the path vars
-    var path = tableConfig.api + '?token=' + tableConfig.apiToken;
+    var tokenStr = '?token=' + tableConfig.apiToken;
+    var path = tableConfig.apiUrl + tokenStr;
     var display = tableConfig.startDisplay; //hard coded for now
 
     // Build the display options
@@ -108,6 +112,10 @@ var BuildTable = (function() {
     // Page change callback for filling the body frame
     function paged(page) {
       $.getJSON(path + '&page=' + page + '&display=' + display, function(data){
+        if (data.count === 0) {
+          $empty.show();
+          $table.closest('.block').hide();
+        }
         // Clear body frame
         $tableBody.html('');
 
@@ -169,6 +177,7 @@ var BuildTable = (function() {
               $tableData.addClass('text-right');
             } else if (render == 'id') {
               $tableData.addClass('text-center');
+              val = $('<a href="' + tableConfig.itemUrl + '/' + val + '">' + val + '</a>')
             } else if (render == 'bool') {
               val = val ? 'Yes' : 'No';
             } else if (render && {}.toString.call(render) == '[object Function]') {
