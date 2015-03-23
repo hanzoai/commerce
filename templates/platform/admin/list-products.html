@@ -93,9 +93,11 @@
 {% endblock %}
 
 {% block js %}
+<script src="{{ staticUrl }}/js/jquery.jqpagination.js"></script>
+<script src="{{ staticUrl }}/js/jquery.serialize-object.min.js"></script>
 <script src="{{ staticUrl }}/js/form-builder.js"></script>
 <script src="{{ staticUrl }}/js/table-builder.js"></script>
-<script src="{{ staticUrl }}/js/jquery.jqpagination.js"></script>
+<script src="{{ staticUrl }}/js/rest-forms.js"></script>
 <script>
   $(function(){
     BuildTable($('#table'), {
@@ -152,7 +154,7 @@
 // product info
         {
           id: 'name',
-          name: 'Product.Name',
+          name: 'name',
           label: 'Name',
           type: 'text',
           asterisk: false,
@@ -167,7 +169,7 @@
         },
         {
           id: 'slug',
-          name: 'Product.Slug',
+          name: 'slug',
           label: 'Slug',
           type: 'text',
           asterisk: false,
@@ -190,7 +192,7 @@
 // product cost
         {
           id: 'price',
-          name: 'Product.Price',
+          name: 'price',
           label: 'Price',
           type: 'currency',
           asterisk: false,
@@ -210,7 +212,7 @@
         },
         {
           id: 'currency',
-          name: 'Product.Currency',
+          name: 'currency',
           label: 'Currency',
           value: [
             {
@@ -248,39 +250,25 @@
         },
         {
           id: 'taxable',
-          name: 'Product.Taxable',
+          name: 'taxable',
           label: 'Do you wish to collect taxes for this product?',
           type: 'switch',
           value: true,
           asterisk: false,
-          rules: [
-            {
-              rule: 'required',
-              value: true,
-              message: 'Choose if this item is taxed'
-            },
-          ],
           $parent: $('#product-cost')
         },
         {
           id: 'available',
-          name: 'Product.Available',
+          name: 'available',
           label: 'Is this available for purchase?',
           type: 'switch',
           value: true,
           asterisk: false,
-          rules: [
-            {
-              rule: 'required',
-              value: true,
-              message: 'Choose if this item is visible in the store'
-            },
-          ],
           $parent: $('#product-cost')
         },
         {
           id: 'dimensions',
-          name: 'Product.Dimensions',
+          name: 'dimensions',
           label: 'Size (L x W x H)',
           type: 'text',
           placeholder: '10cm x 10cm x 10cm',
@@ -288,7 +276,7 @@
         },
         {
           id: 'weight',
-          name: 'Product.Weight',
+          name: 'weight',
           label: 'Weight (grams)',
           type: 'text',
           placeholder: '1000',
@@ -296,6 +284,33 @@
         },
     ]);
   });
+
+var api = NewRestAPI(
+    '{{ urlFor("api", "/product2") }}',
+    '{{ org.MustGetTokenByName("live-secret-key") }}',
+    $('#form-new-product'),
+    {
+        price: function(val) {
+            // To cents
+            return parseInt(val.replace(/[^\d.-]/g,''), 10) * 100;
+        },
+        weight: function(val) {
+            return parseInt(val.replace(/[^\d.-]/g,''), 10);
+        }
+    }
+  );
+$('#form-new-product').on('submit', function(e){
+    var $form = $(this);
+    requestAnimationFrame(function() {
+        if ($('.form-group.has-error').length === 0) {
+            api.post(function(data) {
+                window.location.replace('{{ urlFor("platform", "/products") }}')
+            }, $form)
+        }
+    })
+    e.preventDefault();
+    return false;
+})
 </script>
 {% endblock %}
-{% block menulink %}menu-orders{% endblock %}
+{% block menulink %}menu-products{% endblock %}
