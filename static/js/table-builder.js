@@ -107,7 +107,7 @@ var BuildTable = (function() {
     }
 
     // Chosen Select UI garish
-    $tableDisplaySelect.chosen({'disable_search_threshold': 3})
+    $tableDisplaySelect.chosen({width: '60px', 'disable_search_threshold': 3})
 
     var $pagination = tableConfig.$pagination;
     var ignorePage = false; // set this to prevent infinite looping due to setting max_page
