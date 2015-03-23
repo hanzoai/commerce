@@ -333,6 +333,11 @@ datastore-config:
 
 # Generate API docs from wiki.
 docs:
+	pandoc --no-highlight --toc ../crowdstart.wiki/Getting-Started.md > templates/platform/docs/_generated/getting-started.html
+	@sed -i .bak -e 's/class="json/class="lang-javascript/' templates/platform/docs/_generated/getting-started.html
+	@sed -i .bak -e 's/table>/table class="table table-striped table-borderless table-vcenter">/' templates/platform/docs/_generated/getting-started.html
+	@rm templates/platform/docs/_generated/getting-started.html.bak
+
 	pandoc --no-highlight --toc ../crowdstart.wiki/API.md > templates/platform/docs/_generated/api.html
 	@sed -i .bak -e 's/class="json/class="lang-javascript/' templates/platform/docs/_generated/api.html
 	@sed -i .bak -e 's/table>/table class="table table-striped table-borderless table-vcenter">/' templates/platform/docs/_generated/api.html
