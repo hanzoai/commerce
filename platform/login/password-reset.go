@@ -52,7 +52,7 @@ func PasswordResetSubmit(c *gin.Context) {
 	mandrill.SendTransactional.Call(ctx, "email/password-reset.html",
 		user.Email,
 		user.Name(),
-		"Recover your password",
+		"Reset your Crowdstart password",
 		"resetUrl", resetUrl)
 
 	template.Render(c, "login/password-reset-sent.html")
