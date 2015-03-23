@@ -2,6 +2,7 @@ package test
 
 import (
 	"net/http"
+	"strconv"
 	"testing"
 
 	"appengine"
@@ -58,7 +59,7 @@ var _ = Describe("middleware/accesstoken", func() {
 			err = o.Put()
 			Expect(err).NotTo(HaveOccurred())
 
-			id := o.Id()
+			id := strconv.Itoa(int(o.Key().IntID()))
 
 			// generate accessToken
 			accessToken := o.AddToken("some-token", 0)
