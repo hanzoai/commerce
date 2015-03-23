@@ -1,6 +1,8 @@
 package collection
 
 import (
+	"time"
+
 	aeds "appengine/datastore"
 
 	"crowdstart.io/datastore"
@@ -33,8 +35,8 @@ type Collection struct {
 
 	// Range in which collection is available. If active, it takes precedent
 	// over Available bool.
-	Availability type struct {
-		Active bool
+	Availability struct {
+		Active    bool
 		StartDate time.Time `json:"startDate"`
 		EndDate   time.Time `json:"endDate"`
 	} `json:"availability"`
