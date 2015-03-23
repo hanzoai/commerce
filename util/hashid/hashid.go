@@ -25,11 +25,3 @@ func Decode(hashid string) []int {
 	h := hashids.NewWithData(hd)
 	return h.Decode(hashid)
 }
-
-func EncodeId(id int64) string {
-	return Encode(int(id))
-}
-
-func DecodeId(hashid string) int64 {
-	return int64(Decode(hashid)[0])
-}
