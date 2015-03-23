@@ -345,6 +345,7 @@ docs:
 
 	pandoc --no-highlight --toc ../crowdstart.wiki/Crowdstart.js.md > templates/platform/docs/_generated/crowdstart.js.html
 	@sed -i .bak -e 's/class="javascript/class="lang-javascript/' templates/platform/docs/_generated/crowdstart.js.html
+	@sed -i .bak -e 's/class="html/class="lang-html/' templates/platform/docs/_generated/crowdstart.js.html
 	@sed -i .bak -e 's/table>/table class="table table-striped table-borderless table-vcenter">/' templates/platform/docs/_generated/crowdstart.js.html
 	@rm templates/platform/docs/_generated/crowdstart.js.html.bak
 
