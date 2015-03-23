@@ -8,6 +8,12 @@
 {% block content %}
 <!-- Orders View Block -->
 <div class="col-sm-12">
+    <!-- Empty Orders Block -->
+    <div id="empty-table" class="row text-center text-dark-op" style="display:none;margin-top:100px">
+      <i class="gi gi-money" style="font-size:100px"></i>
+      <h2>We couldn't find any orders for <strong>{{ org.Name }}</strong>.</h2>
+    </div>
+    <!-- END Empty Orders Block -->
     <div class="block full">
         <!-- Orders View Title -->
         <div class="block-title">
@@ -25,9 +31,6 @@
           <input class="text-center form-control" type="text" readonly="readonly" data-max-page="40" style="width:125px;display:inline;padding-top:5px"/>
           <a href="#" class="btn btn-primary next" data-action="next"><strong>&rsaquo;</strong></a>
         </div>
-        <!-- <div class="row text-center"> -->
-        <!--     <i class="fa fa-circle-o-notch fa-3x fa-spin text-primary"></i> -->
-        <!-- </div> -->
         <!-- END Orders View Content -->
     </div>
 </div>
@@ -75,13 +78,15 @@
         render: 'date',
       }
     ],
-    api: '{{ urlFor("api", "/order2") }}',
+    itemUrl: '{{ urlFor("platform", "/order") }}',
+    apiUrl: '{{ urlFor("api", "/order2") }}',
     apiToken: '{{ org.MustGetTokenByName("live-secret-key") }}',
     startPage: 1,
     startDisplay: 10,
     displayOptions: [5, 10, 20],
     $display: $('#display'),
     $pagination: $('#pagination'),
+    $empty: $('#empty-table'),
   });
 </script>
 {% endblock %}
