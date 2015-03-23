@@ -36,8 +36,9 @@ type model interface {
 // well as a few useful fields and extra methods (such as for JSON
 // serialization).
 type Model struct {
-	Db     *datastore.Datastore `json:"-" datastore:"-"`
-	Entity Entity               `json:"-" datastore:"-"`
+	Db       *datastore.Datastore `json:"-" datastore:"-"`
+	Entity   Entity               `json:"-" datastore:"-"`
+	Ancestor *aeds.Key            `json:"-" datastore:"-"`
 
 	key datastore.Key
 
@@ -56,7 +57,7 @@ func (m *Model) SetContext(ctx interface{}) {
 
 	// Update key if necessary
 	if m.key != nil {
-		m.setKey(m.Db.NewKey(m.Kind(), m.key.StringID(), m.key.IntID(), nil))
+		m.setKey(m.Db.NewKey(m.Kind(), m.key.StringID(), m.key.IntID(), m.Ancestor))
 	}
 }
 
@@ -69,14 +70,46 @@ func (m Model) Kind() string {
 func (m *Model) setId() {
 	key := m.Key()
 
-	// Set ID to StringID first, if that is not set, then try the IntID A
-	// Datastore key can be either an int or string but not both
-	m.Id_ = key.StringID()
-	if m.Id_ == "" {
-		if id := key.IntID(); id != 0 {
-			m.Id_ = hashid.EncodeId(id)
-		}
+	if m.StringKey_ {
+		m.Id_ = key.StringID()
+	} else {
+		m.Id_ = m.encodeKey(key)
 	}
+}
+
+// Encodes an int id
+func (m *Model) encodeKey(key datastore.Key) string {
+	id := key.IntID()
+
+	// Return if incomplete key
+	if id == 0 {
+		return ""
+	}
+
+	ids := make([]int, 1)
+	ids[0] = int(id)
+
+	// Add ancestor keys
+	parent := key.Parent()
+	for parent != nil {
+		ids = append(ids, int(parent.IntID()))
+		parent = key.Parent()
+	}
+
+	return hashid.Encode(ids...)
+}
+
+func (m *Model) decodeKey(encoded string) (key *aeds.Key) {
+	ids := hashid.Decode(encoded)
+	ctx := m.Db.Context
+	kind := m.Kind()
+
+	// root key is always last key, so reverse through list to recreate key
+	for i := len(ids) - 1; i >= 0; i-- {
+		key = aeds.NewKey(ctx, kind, "", int64(ids[i]), key)
+	}
+
+	return key
 }
 
 // Helper to set key + Id_
@@ -94,11 +127,11 @@ func (m *Model) Key() (key datastore.Key) {
 
 		if m.StringKey_ {
 			// Id_ will unfortunately not be set first time around...
-			m.key = m.Db.NewIncompleteKey(kind, nil)
+			m.key = m.Db.NewIncompleteKey(kind, m.Ancestor)
 		} else {
 			// We can allocate an id in advance and ensure that Id_ is populated
 			id := m.Db.AllocateId(kind)
-			m.setKey(m.Db.NewKey(kind, "", id, nil))
+			m.setKey(m.Db.NewKey(kind, "", id, m.Ancestor))
 		}
 	}
 
@@ -123,10 +156,10 @@ func (m *Model) SetKey(key interface{}) error {
 	case string:
 		if m.StringKey_ {
 			// We've declared this model uses string keys.
-			k = m.Db.NewKey(m.Entity.Kind(), v, 0, nil)
+			k = m.Db.NewKey(m.Entity.Kind(), v, 0, m.Ancestor)
 		} else {
 			// By default all keys are int ids internally (but we use hashid to convert them to strings)
-			k = m.Db.NewKey(m.Entity.Kind(), "", hashid.DecodeId(v), nil)
+			k = m.decodeKey(v)
 		}
 	case int64:
 		k = m.Db.NewKey(m.Entity.Kind(), "", v, nil)
