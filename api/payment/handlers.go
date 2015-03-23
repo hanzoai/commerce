@@ -10,7 +10,7 @@ import (
 
 func getOrganizationAndOrder(c *gin.Context) (*organization.Organization, *order.Order) {
 	// Get organization for this user
-	org := middleware.GetOrg(c)
+	org := middleware.GetOrganization(c)
 
 	// Set up the db with the namespaced appengine context
 	ctx := org.Namespace(c)

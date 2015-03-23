@@ -32,6 +32,12 @@ type Product struct {
 
 	// Unique human readable id
 	Slug string `json:"slug"`
+	SKU  string `json:"sku"`
+
+	Price Cents `json:"price"`
+
+	Inventory int `json:"inventory"`
+	Sold      int `json:"sold"`
 
 	// Product Name
 	Name string `json:"name"`

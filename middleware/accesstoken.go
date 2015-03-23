@@ -55,17 +55,17 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 
 		ctx := GetAppEngine(c)
 		db := datastore.New(ctx)
-		o := organization.New(db)
+		org := organization.New(db)
 
 		// Try to validate the org's access token
-		tok, err := o.GetWithAccessToken(accessToken)
+		tok, err := org.GetWithAccessToken(accessToken)
 		if err != nil {
 			json.Fail(c, 401, "Unable to retrieve organization associated with access token: "+err.Error(), err)
 			return
 		}
 
 		// Verify token signature
-		if !tok.Verify(o.SecretKey) {
+		if !tok.Verify(org.SecretKey) {
 			json.Fail(c, 403, "Unable to verify token: "+err.Error(), err)
 
 		}
@@ -75,22 +75,12 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 			json.Fail(c, 403, "Token doesn't support this scope", err)
 		}
 
-		// Try to get the namespace to the org's key
-		if ctx2, err := appengine.Namespace(ctx, o.Id()); err != nil {
-			json.Fail(c, 500, "Failed to get namespace for organization: %v"+o.Id(), err)
-		} else {
-			// Save organization in context
-			c.Set("org", o)
-			// Save namespace in context
-			c.Set("namespace", ctx2)
-		}
+		// Save organization in context
+		c.Set("organization", org)
+		c.Set("organizationId", org.Id())
 	}
 }
 
-func GetNamespace(c *gin.Context) appengine.Context {
-	return c.MustGet("namespace").(appengine.Context)
-}
-
-func GetOrg(c *gin.Context) *organization.Organization {
-	return c.MustGet("org").(*organization.Organization)
+func GetOrganization(c *gin.Context) *organization.Organization {
+	return c.MustGet("organization").(*organization.Organization)
 }
