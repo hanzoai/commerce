@@ -55,7 +55,7 @@ func Task(name string, workerFunc interface{}) *delay.Function {
 		q := db.Query(kind).Offset(offset).Limit(batchSize)
 
 		// Limit 1 if in test mode
-		if gc, err := fc.Context(); err == nil && gc.MustGet("test").(bool) {
+		if gc, err := fc.Context(&c); err == nil && gc.MustGet("test").(bool) {
 			q = q.Limit(1)
 		}
 

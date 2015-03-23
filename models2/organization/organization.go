@@ -69,6 +69,8 @@ func New(db *datastore.Datastore) *Organization {
 	o := new(Organization)
 	o.Model = mixin.Model{Db: db, Entity: o}
 	o.AccessToken = mixin.AccessToken{Model: o}
+	o.Admins = make([]string, 0)
+	o.Moderators = make([]string, 0)
 	return o
 }
 
