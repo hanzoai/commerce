@@ -49,6 +49,11 @@ handlers:
   upload: static/font/(.*\.woff)
   mime_type: application/font-woff
 
+- url: /font/(.*\.woff2)
+  static_files: static/font/\1
+  upload: static/font/(.*\.woff2)
+  mime_type: application/font-woff2
+
 - url: /font/(.*\.svg)
   static_files: static/font/\1
   upload: static/font/(.*\.svg)
