@@ -1,6 +1,7 @@
 package hashid
 
 import (
+	"errors"
 	"strconv"
 
 	"appengine"
@@ -64,9 +65,14 @@ func EncodeKey(key datastore.Key) string {
 	return Encode(ids...)
 }
 
-func DecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key) {
+func DecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key, err error) {
 	ids := Decode(encoded)
 	n := len(ids)
+
+	// Check for invalid keys.
+	if n < 3 {
+		return key, errors.New("Invalid key")
+	}
 
 	// TODO: Maybe use this?
 	// namespace := decodeNamespace(ids[n-1])
@@ -79,5 +85,5 @@ func DecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key) {
 		key = aeds.NewKey(ctx, decodeKind(ids[i-1]), "", int64(ids[i]), key)
 	}
 
-	return key
+	return key, nil
 }
