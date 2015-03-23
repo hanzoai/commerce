@@ -15,5 +15,6 @@ func Collection(c *gin.Context) *collection.Collection {
 	collection.Description = "Much tees in one pack!"
 	collection.Published = true
 
+	collection.MustPut()
 	return collection
 }
