@@ -124,13 +124,17 @@ var BuildForm = (function() {
       } else {
         $fg = $(formGroupInputTemplate);
 
-        $fg.find('input').attr({
+        var $input = $fg.find('input').attr({
           id: inputConfig.id,
           name: inputConfig.name,
           type: type,
           value: inputConfig.value,
           placeholder: inputConfig.placeholder,
         });
+
+        if (type === 'currency') {
+          $input.addClass('text-right');
+        }
       }
 
       // Set label to name
