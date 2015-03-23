@@ -38,7 +38,7 @@
 <script src="{{ staticUrl }}/js/table-builder.js"></script>
 <script src="{{ staticUrl }}/js/jquery.jqpagination.js"></script>
 <script>
-    var paged = BuildTable($('#table'), {
+  var paged = BuildTable($('#table'), {
     columns: [
       {
         field: 'id',
@@ -46,7 +46,7 @@
         css: {
           width: '50px',
         },
-        type: 'id',
+        render: 'id',
       },
       {
         field: 'payments.0.account.buyer.firstName',
@@ -63,7 +63,7 @@
       {
         field: 'total',
         name: 'Total',
-        type: 'currency',
+        render: 'currency',
       },
       {
         field: 'payments.0.status',
@@ -72,7 +72,7 @@
       {
         field: 'createdAt',
         name: 'Order Date',
-        type: 'date',
+        render: 'date',
       }
     ],
     api: '{{ urlFor("api", "/order2") }}',
