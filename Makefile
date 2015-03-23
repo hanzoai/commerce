@@ -331,6 +331,12 @@ datastore-config:
 				  --url=$(datastore_admin_url) \
 				  --filename=bulkloader.yaml
 
+# Regenerate API docs from wiki.
+update-docs:
+	pandoc --no-highlight --toc ../crowdstart.wiki/API.md > templates/platform/docs/api.html
+	@sed -i .bak -e 's/class="json/class="lang-javascript/' templates/platform/docs/api.html
+	@sed -i .bak -e 's/table>/table class="table table-striped table-borderless table-vcenter">/' templates/platform/docs/api.html
+
 .PHONY: all bench build compile-js compile-js-min compile-css compile-css-min \
 	datastore-import datastore-export datastore-config deploy deploy-staging \
 	deploy-skully deploy-production deps deps-assets deps-go live-reload \
