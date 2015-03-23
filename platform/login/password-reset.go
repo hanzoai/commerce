@@ -42,13 +42,14 @@ func PasswordResetSubmit(c *gin.Context) {
 	// Save reset token
 	token := token.New(db)
 	token.UserId = user.Id()
-	token.Generate()
+	token.Email = user.Email
 	if err := token.Put(); err != nil {
 		template.Render(c, "login/password-reset.html", "error", "Failed to create reset token, please try again later.")
 		return
 	}
 
-	resetUrl := config.UrlFor("platform", "/password-reset/", token.Id())
+	resetUrl := config.UrlFor("platform", "/password-reset/") + token.Id()
+
 	mandrill.SendTransactional.Call(ctx, "email/password-reset.html",
 		user.Email,
 		user.Name(),
