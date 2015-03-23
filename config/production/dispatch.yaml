@@ -1,6 +1,9 @@
 application: crowdstart-us
 
 dispatch:
+  - url: "default.crowdstart.com/*"
+    module: default
+
   - url: "js.crowdstart.com/*"
     module: default
 
