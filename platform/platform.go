@@ -5,6 +5,7 @@ import (
 	"crowdstart.io/platform/admin"
 	"crowdstart.io/platform/docs"
 	"crowdstart.io/platform/frontend"
+	"crowdstart.io/platform/login"
 	"crowdstart.io/platform/user"
 	"crowdstart.io/thirdparty/stripe"
 	"crowdstart.io/util/router"
@@ -46,10 +47,10 @@ func init() {
 
 	// Password Reset
 	// router.GET("/create-password", user.CreatePassword)
-	// router.GET("/password-reset", user.PasswordReset)
-	// router.POST("/password-reset", user.PasswordResetSubmit)
-	// router.GET("/password-reset/:token", user.PasswordResetConfirm)
-	// router.POST("/password-reset/:token", user.PasswordResetConfirmSubmit)
+	router.GET("/password-reset", login.PasswordReset)
+	router.POST("/password-reset", login.PasswordResetSubmit)
+	router.GET("/password-reset/:token", login.PasswordResetConfirm)
+	router.POST("/password-reset/:token", login.PasswordResetConfirmSubmit)
 
 	// Admin
 	router.GET("/dashboard", loginRequired, admin.Dashboard)
