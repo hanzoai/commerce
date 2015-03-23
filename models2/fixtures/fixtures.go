@@ -50,6 +50,7 @@ func init() {
 	fixture("fixtures2-token", Token)
 	fixture("fixtures2-user", User)
 	fixture("fixtures2-variant", Variant)
+	fixture("fixtures2-cycliq", Cycliq)
 
 	// Setup default fixtures
 	task.Func("fixtures2-all", func(c *gin.Context) {
