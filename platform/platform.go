@@ -37,13 +37,13 @@ func init() {
 	router.GET("/docs/salesforce", docs.Salesforce)
 
 	// Login
-	router.GET("/login", logoutRequired, user.Login)
-	router.POST("/login", logoutRequired, user.SubmitLogin)
-	router.GET("/logout", user.Logout)
+	router.GET("/login", logoutRequired, login.Login)
+	router.POST("/login", logoutRequired, login.LoginSubmit)
+	router.GET("/logout", login.Logout)
 
 	// Signup
-	// router.GET("/signup", login.Signup)
-	// router.POST("/signup", login.SignupSubmit)
+	router.GET("/signup", login.Signup)
+	router.POST("/signup", login.SignupSubmit)
 
 	// Password Reset
 	// router.GET("/create-password", user.CreatePassword)

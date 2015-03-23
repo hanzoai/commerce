@@ -11,9 +11,6 @@ func Token(c *gin.Context) *token.Token {
 
 	token := token.New(db)
 
-	// Generate ShortId
-	token.Generate()
-
 	token.Email = "test@test.com"
 	token.UserId = "fake"
 	token.Put()

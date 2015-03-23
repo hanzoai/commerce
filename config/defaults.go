@@ -17,7 +17,7 @@ func Defaults() *Config {
 
 	config.DemoMode = demoMode
 
-	config.Mandrill.FromName = "Admin"
-	config.Mandrill.FromEmail = "admin@crowdstart.io"
+	config.Mandrill.FromName = "Crowdstart"
+	config.Mandrill.FromEmail = "noreply@crowdstart.com"
 	return config
 }

@@ -16,33 +16,10 @@ var ErrorInvalidProfile = errors.New("Invalid Profile Saved")
 var ErrorPasswordIncorrect = errors.New("Password Incorrect")
 var ErrorPasswordTooShort = errors.New("Password must be atleast 6 characters long")
 
-// Render login form
-func Login(c *gin.Context) {
-	template.Render(c, "login/login.html")
-}
-
-// Post login form
-func SubmitLogin(c *gin.Context) {
-	if _, err := auth.VerifyUser(c); err == nil {
-		log.Debug("Success")
-		c.Redirect(301, "dashboard")
-	} else {
-		log.Debug("Failure")
-		log.Debug("%#v", err)
-		template.Render(c, "login/login.html", "failed", true)
-	}
-}
-
-// Log user out
-func Logout(c *gin.Context) {
-	auth.Logout(c) // Deletes the loginKey from session.Values
-	c.Redirect(301, "/")
-}
-
 // Renders the profile page
 func Profile(c *gin.Context) {
 	if u, err := auth.GetCurrentUser(c); err != nil {
-		Logout(c)
+		auth.Logout(c)
 		return
 	} else {
 		template.Render(c, "admin/profile.html", "user", u)
