@@ -6,6 +6,18 @@ import (
 	"crowdstart.io/util/template"
 )
 
-func Docs(c *gin.Context) {
-	template.Render(c, "docs/docs.html")
+func GettingStarted(c *gin.Context) {
+	template.Render(c, "docs/getting-started.html")
+}
+
+func API(c *gin.Context) {
+	template.Render(c, "docs/api.html")
+}
+
+func CrowdstartJS(c *gin.Context) {
+	template.Render(c, "docs/crowdstart.js.html")
+}
+
+func Salesforce(c *gin.Context) {
+	template.Render(c, "docs/salesforce.html")
 }
