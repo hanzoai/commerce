@@ -65,9 +65,13 @@ type Product struct {
 	// Is the product available
 	Available bool `json:"available"`
 
-	// Range in which this product is available
-	// AvailableStartDate time.Time `json:"startDate"`
-	// AvailableEndDate   time.Time `json:"endDate"`
+	// Range in which product is available. If active, it takes precedent over
+	// Available bool.
+	Availability type struct {
+		Active bool
+		StartDate time.Time `json:"startDate"`
+		EndDate   time.Time `json:"endDate"`
+	} `json:"availability"`
 
 	// Is this product for preorder
 	Preorder bool `json:"preorder"`
