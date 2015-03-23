@@ -15,13 +15,12 @@
 <section class="site-content site-section">
     <div class="container">
         <div class="row">
-
 <p>The Crowdstart API is designed to handle all of the most common tasks with associated with running a crowdfunding campaign.</p>
 <p>The API is currently in beta. Please contact support@crowdstart.com if you intend to use our API in any production code.</p>
 <h1 id="object-reference">Object reference</h1>
 <p>This section contains specifications for the public-facing objects that are used by the API.</p>
 <h2 id="campaign">Campaign</h2>
-<p>This represents a single fundraising campaign</p>
+<p>This represents a single fundraising campaign.</p>
 <table class="table table-striped table-borderless table-vcenter">
 <thead>
 <tr class="header">
@@ -48,7 +47,7 @@
 </tr>
 <tr class="even">
 <td align="left">category</td>
-<td align="left">A number representation of the general style of campaign (Technology, Arts, Entertainment, etc). This is an enum that relates the campaign type.</td>
+<td align="left">A representation of the general style of campaign (Technology, Arts, Entertainment, etc). This is a string that relates the campaign type.</td>
 <td align="left"><a href="#category">Category</a></td>
 </tr>
 <tr class="odd">
@@ -113,18 +112,8 @@
 </tr>
 <tr class="odd">
 <td align="left">productIds</td>
-<td align="left">A list of products/perks that is offered by the campaign.</td>
-<td align="left"><a href="#product"></a>(#product)</td>
-</tr>
-<tr class="even">
-<td align="left">memberIds</td>
-<td align="left">A list of the users involved in the campaign.</td>
-<td align="left"><a href="#user"></a>(#user)</td>
-</tr>
-<tr class="odd">
-<td align="left">creator</td>
-<td align="left">The creator of the campaign.</td>
-<td align="left"><a href="#user">User</a></td>
+<td align="left">A list of ids of <a href="#product">products</a>/perks that are offered by the campaign.</td>
+<td align="left">[]string</td>
 </tr>
 <tr class="even">
 <td align="left">googleAnalytics</td>
@@ -142,63 +131,39 @@
 <td align="left">[]string</td>
 </tr>
 </tbody>
-</table>
-<pre class="lang-javascript"><code>{
-    &quot;organizationId&quot;:              &quot;WVEIOJ124902AIOJFJL&quot;,
-    &quot;approved&quot;:        true,
-    &quot;enabled&quot;:         true,
-    &quot;category&quot;:        3,
-    &quot;title&quot;:           &quot;Whizbang 2000&quot;,
-    &quot;tagline&quot;:         &quot;The Whizziest Bang of the last 2000 years!&quot;,
-    &quot;pitchMedia&quot;:      &quot;http://whiz.bang/media/top/main.jpg&quot;,
-    &quot;videoUrl&quot;:        &quot;http://whiz.bang/media/vid/main.mp4&quot;,
-    &quot;videoOverlayUrl&quot;: &quot;http://whiz.bang/media/logo.jpg&quot;,
-    &quot;imageUrl&quot;:        &quot;http://whiz.bang/media/gallery/1.jpg&quot;,
-    &quot;description&quot;:     &quot;The Whizbang 2000 whizzes all of your bangs and even foos your bars!&quot;,
-    &quot;backers&quot;:         23482,
-    &quot;raised&quot;:          230103430000,
-    &quot;thumbnail&quot;:       &quot;http://whiz.bang/media/thumbnails/1.jpg&quot;,
-    &quot;originalUrl&quot;:     &quot;http://www.kickstarter.com/the-whizbang-2000&quot;,
-    &quot;storeUrl&quot;:        &quot;http://store.whiz.bang&quot;,
-    &quot;products&quot;: [
-        {
-            &quot;id&quot;:        &quot;XCKVJIW391FJIDIJ329&quot;,
-            &quot;slug&quot;:      &quot;whizbang-2000-for-you&quot;,
-            &quot;title&quot;:     &quot;A Whizbang 2000 in YOUR home!&quot;,
-            &quot;headline&quot;:  &quot;Own your very own WHIZBANG 2000!&quot;,
-            &quot;available&quot;: true
-        },
-        {
-            &quot;id&quot;:        &quot;SLD32diiSJ9293&quot;,
-            &quot;slug&quot;:      &quot;the-whizzy-pack&quot;,
-            &quot;title&quot;:     &quot;The Whizzy Pack&quot;,
-            &quot;available&quot;: false
-        }
-    ],
-    &quot;members&quot;: [
-        {
-            &quot;firstName&quot;: &quot;John&quot;,
-            &quot;lastName&quot;:  &quot;Doe&quot;,
-            &quot;email&quot;:     &quot;john.doe@example.com&quot;
-        },
-        {
-            &quot;firstName&quot;: &quot;Rando&quot;
-        }
-    ],
-    &quot;creator&quot;: {
-        &quot;firstName&quot;: &quot;Jane&quot;,
-        &quot;lastName&quot;:  &quot;Doe&quot;
-    },
-    &quot;facebookTag&quot;: &quot;Whizbang2k&quot;,
-    &quot;links&quot;: [
-        &quot;http://store.whiz.bang&quot;,
-        &quot;http://www.kickstarter.com/the-whizbang-2000&quot;
-    ]
+</table class="table table-striped table-borderless table-vcenter">
+<pre class="lang-json"><code>{
+  &quot;organizationId&quot;: &quot;WVEIOJ124902AIOJFJL&quot;,
+  &quot;approved&quot;: true,
+  &quot;enabled&quot;: true,
+  &quot;category&quot;: &quot;fashion&quot;,
+  &quot;title&quot;: &quot;SuchTees - Teh Nooest Meme Tee&quot;,
+  &quot;tagline&quot;: &quot;Paste Teh Nooest Meme on your chest (and/or face)!&quot;,
+  &quot;pitchMedia&quot;: &quot;http://suchtees.com/media/top/main.jpg&quot;,
+  &quot;videoUrl&quot;: &quot;http://suchtees.com/media/vid/main.mp4&quot;,
+  &quot;videoOverlayUrl&quot;: &quot;http://suchtees.com/media/logo.jpg&quot;,
+  &quot;imageUrl&quot;: &quot;http://suchtees.com/media/gallery/1.jpg&quot;,
+  &quot;description&quot;: &quot;Teh Nooest Meme, the funniest meme ever!  Now on your chest!&quot;,
+  &quot;backers&quot;: 23482,
+  &quot;raised&quot;: 230103,
+  &quot;thumbnail&quot;: &quot;http://suchtees.com/media/thumbnails/1.jpg&quot;,
+  &quot;originalUrl&quot;: &quot;http://www.crowdstart.com/teh-nooest-meme&quot;,
+  &quot;storeUrl&quot;: &quot;http://store.suchtees.com/teh-nooest-meme&quot;,
+  &quot;products&quot;: [
+    &quot;XCKVJIW391FJIDIJ329&quot;,
+    &quot;SLD32diiSJ9293ABC12&quot;
+  ],
+  &quot;facebookTag&quot;: &quot;TehNooestMeme&quot;,
+  &quot;links&quot;: [
+    &quot;http://store.suchtees.com/teh-nooest-meme&quot;,
+    &quot;http://www.crowdstart.com/teh-nooest-meme&quot;
+  ]
 }</code></pre>
 <h3 id="campaign-specific-objects">Campaign-specific objects</h3>
 <p>These are objects that are used in the Campaign entity, but are not shared by other objects.</p>
 <h4 id="category">Category</h4>
-<p>This is an enum that expresses the general classification or division your campaign falls under. This list is under constant re-evaluation, but assigned numbers will never change. If you would like to request a change to this list, contact us at support@verus.io.</p>
+<p>This is string that expresses the general classification or division your campaign falls under.</p>
+<p>This list is under constant re-evaluation, but assigned values will never change. If you would like to request a change to this list, contact us at support@crowdstart.com.</p>
 <table class="table table-striped table-borderless table-vcenter">
 <thead>
 <tr class="header">
@@ -208,78 +173,45 @@
 </thead>
 <tbody>
 <tr class="odd">
-<td align="left">0</td>
-<td align="left">Art</td>
+<td align="left">&quot;arts&quot;</td>
+<td align="left">Arts</td>
 </tr>
 <tr class="even">
-<td align="left">1</td>
-<td align="left">Technology</td>
+<td align="left">&quot;fashion&quot;</td>
+<td align="left">Fashion</td>
 </tr>
 <tr class="odd">
-<td align="left">2</td>
+<td align="left">&quot;film&quot;</td>
+<td align="left">Film</td>
+</tr>
+<tr class="even">
+<td align="left">&quot;food&quot;</td>
+<td align="left">Food</td>
+</tr>
+<tr class="odd">
+<td align="left">&quot;gaming&quot;</td>
+<td align="left">Gaming</td>
+</tr>
+<tr class="even">
+<td align="left">&quot;health&quot;</td>
+<td align="left">Health</td>
+</tr>
+<tr class="odd">
+<td align="left">&quot;music&quot;</td>
 <td align="left">Music</td>
 </tr>
-</tbody>
-</table>
-<h2 id="cart">Cart</h2>
-<p>This object is a representation of a user's prospective purchases, in their entirety. This is not to be confused with an <a href="#order">Order</a>, which are CONFIRMED purchases.</p>
-<table class="table table-striped table-borderless table-vcenter">
-<thead>
-<tr class="header">
-<th align="left">Field Name</th>
-<th align="left">Field Description</th>
-<th align="left">Type</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="left">id</td>
-<td align="left">The unique internal identifier for this particular cart.</td>
-<td align="left">string</td>
-</tr>
 <tr class="even">
-<td align="left">items</td>
-<td align="left">A list of the items contained in the cart.</td>
-<td align="left"><a href="#lineitem"></a>(#lineitem)</td>
+<td align="left">&quot;sports&quot;</td>
+<td align="left">Sports</td>
 </tr>
 <tr class="odd">
-<td align="left">createdAt</td>
-<td align="left">The time and date stamp when the cart came to be.</td>
-<td align="left">string</td>
+<td align="left">&quot;technology&quot;</td>
+<td align="left">Technology</td>
 </tr>
 </tbody>
-</table>
-<pre class="lang-javascript"><code>{
-  &quot;id&quot;: &quot;3929djUDNWOIJEUHX93292idnSIJD&quot;,
-  &quot;items&quot;: [
-    {
-      &quot;sku&quot;:  &quot;white-whizbang&quot;,
-      &quot;slug&quot;: &quot;2000&quot;,
-      &quot;product&quot;: {
-        &quot;id&quot;:        &quot;SLD32diiSJ9293&quot;,
-        &quot;slug&quot;:      &quot;2000&quot;,
-        &quot;available&quot;: true
-      },
-      &quot;variant&quot;: {
-        &quot;id&quot;:         &quot;FOIUVMOIS872348OIJDFWOIJ&quot;,
-        &quot;sku&quot;:        &quot;white-whizbang&quot;,
-        &quot;price&quot;:      100000000,
-        &quot;stock&quot;:      30,
-        &quot;weight&quot;:     22,
-        &quot;dimensions&quot;: &quot;5x5x5&quot;,
-        &quot;color&quot;:      &quot;white&quot;,
-        &quot;style&quot;:      &quot;traditional&quot;,
-        &quot;size&quot;:       &quot;small&quot;
-      },
-      &quot;discountAmnt&quot;: 0,
-      &quot;lineNo&quot;:       1,
-      &quot;quantity&quot;:     1
-    }
-  ],
-  &quot;createdAt&quot;: &quot;04-02-2025 04:02:55&quot;
-}</code></pre>
+</table class="table table-striped table-borderless table-vcenter">
 <h2 id="lineitem">LineItem</h2>
-<p>This object is a representation of one particular instance of a customer requesting a <a href="#product">Product</a>, complete with <a href="#productvariant">ProductVariant</a>. This can be either a prospective request (in the case of <a href="#cart">Cart</a>), or a confirmed one (in the case of <a href="#order">Order</a>))</p>
+<p>This object is a representation of one particular instance of a customer requesting a <a href="#product">Product</a>. It contains some fields associated with a <a href="#variant">Product variant</a>. This can be either a prospective request (in the case of <a href="#cart">Cart</a>), or a confirmed one (in the case of <a href="#order">Order</a>)</p>
 <table class="table table-striped table-borderless table-vcenter">
 <thead>
 <tr class="header">
@@ -312,65 +244,53 @@
 <tr class="odd">
 <td align="left">variantId</td>
 <td align="left">The specific item type ID or perk type being requested.</td>
-<td align="left"><a href="#productvariant">ProductVariant</a></td>
+<td align="left">string</td>
 </tr>
 <tr class="even">
 <td align="left">variantName</td>
 <td align="left">The specific item type Name or perk type being requested.</td>
-<td align="left"><a href="#productvariant">ProductVariant</a></td>
+<td align="left">string</td>
 </tr>
 <tr class="odd">
 <td align="left">variantSKU</td>
 <td align="left">The specific item type variant SKU or perk type being requested.</td>
-<td align="left"><a href="#productvariant">ProductVariant</a></td>
+<td align="left">string</td>
 </tr>
 <tr class="even">
 <td align="left">price</td>
-<td align="left">The price of this LineItem.</td>
-<td align="left">string</td>
+<td align="left">The price of this LineItem in cents.</td>
+<td align="left">int</td>
 </tr>
 <tr class="odd">
 <td align="left">quantity</td>
-<td align="left">The item/perk quantity.</td>
-<td align="left">int64</td>
+<td align="left">The amount of the item/perk requested in this line.</td>
+<td align="left">int</td>
 </tr>
 <tr class="even">
 <td align="left">weight</td>
-<td align="left">The item weight.</td>
+<td align="left">The item weight, typically in ounces.</td>
 <td align="left">int</td>
 </tr>
 <tr class="odd">
 <td align="left">taxable</td>
-<td align="left">Whether the product is a taxable item.</td>
+<td align="left">Whether the product is subject to taxes.</td>
 <td align="left">bool</td>
 </tr>
 </tbody>
-</table>
-<pre class="lang-javascript"><code>{
-  &quot;sku&quot;:  &quot;white-whizbang&quot;,
-  &quot;slug&quot;: &quot;2000&quot;,
-  &quot;product&quot;: {
-    &quot;id&quot;:        &quot;SLD32diiSJ9293&quot;,
-    &quot;slug&quot;:      &quot;2000&quot;,
-    &quot;available&quot;: true
-  },
-  &quot;variant&quot;: {
-    &quot;id&quot;:         &quot;FOIUVMOIS872348OIJDFWOIJ&quot;,
-    &quot;sku&quot;:        &quot;white-whizbang&quot;,
-    &quot;price&quot;:      100000000,
-    &quot;stock&quot;:      30,
-    &quot;weight&quot;:     22,
-    &quot;dimensions&quot;: &quot;5x5x5&quot;,
-    &quot;color&quot;:      &quot;white&quot;,
-    &quot;style&quot;:      &quot;traditional&quot;,
-    &quot;size&quot;:       &quot;small&quot;
-  },
-  &quot;discountAmnt&quot;: 0,
-  &quot;lineNo&quot;:       1,
-  &quot;quantity&quot;:     1
+</table class="table table-striped table-borderless table-vcenter">
+<pre class="lang-json"><code>{
+  &quot;productId&quot;: &quot;SLD32diiSJ9293&quot;,
+  &quot;productName&quot;: &quot;Teh Nooest Meme T-Shirt&quot;,
+  &quot;productSlug&quot;: &quot;t-shirt&quot;,
+  &quot;variantId&quot;: &quot;FOIUVMOIS872348OIJDFWOIJ&quot;,
+  &quot;variantSKU&quot;: &quot;T-SHIRT-M&quot;,
+  &quot;price&quot;: 1000,
+  &quot;quantity&quot;: 2,
+  &quot;weight&quot;: 22,
+  &quot;taxable&quot;: true
 }</code></pre>
 <h2 id="order">Order</h2>
-<p>This object is a representation of a user's confirmed purchase. Not to be confused with a <a href="#cart">Cart</a>, which are PROSPECTIVE purchases.</p>
+<p>This object is a representation of a user's <strong>confirmed purchase</strong>. The order should not be confused with a <a href="#cart">Cart</a>, which are prospective purchases.</p>
 <table class="table table-striped table-borderless table-vcenter">
 <thead>
 <tr class="header">
@@ -387,7 +307,7 @@
 </tr>
 <tr class="even">
 <td align="left">updatedAt</td>
-<td align="left">The time the order was last modified.</td>
+<td align="left">The time the order was last modified (not necessarily by the user).</td>
 <td align="left">string</td>
 </tr>
 <tr class="odd">
@@ -397,27 +317,27 @@
 </tr>
 <tr class="even">
 <td align="left">userId</td>
-<td align="left">The identifier for the user who requested this order.</td>
+<td align="left">The identifier for the user who placed this order.</td>
 <td align="left">string</td>
 </tr>
 <tr class="odd">
 <td align="left">shipping</td>
-<td align="left">Charges for mailing the order, down to six decimal places (one one-thousanth of a cent in USD)</td>
+<td align="left">Charges for mailing the order in cents</td>
 <td align="left">int64</td>
 </tr>
 <tr class="even">
 <td align="left">tax</td>
-<td align="left">Charges on the order levied by any relevant governments, down to six decimal places (one one-thousanth of a cent in USD)</td>
+<td align="left">Charges on the order levied by any relevant governments in cents</td>
 <td align="left">int64</td>
 </tr>
 <tr class="odd">
 <td align="left">subtotal</td>
-<td align="left">Charges from actual purchases, down to six decimal places</td>
+<td align="left">Charges from actual purchases in cents</td>
 <td align="left">int64</td>
 </tr>
 <tr class="even">
 <td align="left">total</td>
-<td align="left">Net charge to be sent to the client. Includes Subtotal, Tax, and Shipping. Goes to six decimal places.</td>
+<td align="left">Net charge to be sent to the client cents. Includes Subtotal, Tax, and Shipping.</td>
 <td align="left">int64</td>
 </tr>
 <tr class="odd">
@@ -451,39 +371,27 @@
 <td align="left">bool</td>
 </tr>
 </tbody>
-</table>
-<pre class="lang-javascript"><code>{
+</table class="table table-striped table-borderless table-vcenter">
+<pre class="lang-json"><code>{
   &quot;createdAt&quot;: &quot;04-30-2025 12:34:23&quot;,
   &quot;updatedAt&quot;: &quot;05-23-2025 02:24:55&quot;,
   &quot;id&quot;:        &quot;VIJij32309JVOIWJWE&quot;,
   &quot;userId&quot;:    &quot;jdoe&quot;,
-  &quot;shipping&quot;:  30000000,
+  &quot;shipping&quot;:  300,
   &quot;tax&quot;:       0,
-  &quot;subtotal&quot;:  100000000,
-  &quot;total&quot;:     130000000,
+  &quot;subtotal&quot;:  1000,
+  &quot;total&quot;:     1300,
   &quot;items&quot;: [
     {
-      &quot;sku&quot;:  &quot;white-whizbang&quot;,
-      &quot;slug&quot;: &quot;2000&quot;,
-      &quot;product&quot;: {
-        &quot;id&quot;:        &quot;SLD32diiSJ9293&quot;,
-        &quot;slug&quot;:      &quot;2000&quot;,
-        &quot;available&quot;: true
-      },
-      &quot;variant&quot;: {
-        &quot;id&quot;:         &quot;FOIUVMOIS872348OIJDFWOIJ&quot;,
-        &quot;sku&quot;:        &quot;white-whizbang&quot;,
-        &quot;price&quot;:      100000000,
-        &quot;stock&quot;:      30,
-        &quot;weight&quot;:     22,
-        &quot;dimensions&quot;: &quot;5x5x5&quot;,
-        &quot;color&quot;:      &quot;white&quot;,
-        &quot;style&quot;:      &quot;traditional&quot;,
-        &quot;size&quot;:       &quot;small&quot;
-      },
-      &quot;discountAmnt&quot;: 0,
-      &quot;lineNo&quot;:       1,
-      &quot;quantity&quot;:     1
+      &quot;productId&quot;: &quot;SLD32diiSJ9293&quot;,
+      &quot;productName&quot;: &quot;Teh Nooest Meme T-Shirt&quot;,
+      &quot;productSlug&quot;: &quot;t-shirt&quot;,
+      &quot;variantId&quot;: &quot;FOIUVMOIS872348OIJDFWOIJ&quot;,
+      &quot;variantSKU&quot;: &quot;T-SHIRT-M&quot;,
+      &quot;price&quot;: 1000,
+      &quot;quantity&quot;: 1,
+      &quot;weight&quot;: 11,
+      &quot;taxable&quot;: true
     }
   ],
   &quot;campaignId&quot;: &quot;WVEIOJ124902AIOJFJL&quot;,
@@ -551,67 +459,82 @@
 <tr class="even">
 <td align="left">headerImage</td>
 <td align="left">An image used as the primary representation of the product.</td>
-<td align="left"><a href="#image">Image</a></td>
+<td align="left"><a href="#media">Media</a></td>
 </tr>
 <tr class="odd">
-<td align="left">images</td>
-<td align="left">A set of images representing the product. Does not include headerImage.</td>
-<td align="left"><a href="#image"></a>(#image)</td>
+<td align="left">media</td>
+<td align="left">A set of Media resources representing the product. Does not include headerImage.</td>
+<td align="left"><a href="#media"></a>(#media)</td>
 </tr>
 <tr class="even">
 <td align="left">variants</td>
 <td align="left">A listing of variations of the same product, such as different sizes or different offered colors.</td>
-<td align="left"><a href="#productvariant"></a>(#productvariant)</td>
+<td align="left">[][ProductVariant](#variant)</td>
 </tr>
 </tbody>
-</table>
-<pre class="lang-javascript"><code>{
-  &quot;id&quot;:          &quot;SLD32diiSJ9293&quot;,
-  &quot;slug&quot;:        &quot;2000&quot;,
-  &quot;title&quot;:       &quot;Whizbang 2000&quot;,
-  &quot;headline&quot;:    &quot;The Whizziest Bang of the last 2000 years!&quot;,
-  &quot;excerpt&quot;:     &quot;It whizzes all of the bangs and foos all of the bars!&quot;,
-  &quot;description&quot;: &quot;As displayed in CoolStuff magazine, the Whizbang 2000 is the perfect whizbang for any home!&quot;,
-  &quot;released&quot;:    &quot;01-21-2025 03:08:32&quot;,
-  &quot;available&quot;:   true,
-  &quot;addLabel&quot;:    &quot;Pre-order now!&quot;,
+</table class="table table-striped table-borderless table-vcenter">
+<pre class="lang-json"><code>{
+  &quot;id&quot;: &quot;SLD32diiSJ9293&quot;,
+  &quot;slug&quot;: &quot;t-shirt&quot;,
+  &quot;title&quot;: &quot;Teh Nooest Meme T-shirt!&quot;,
+  &quot;headline&quot;: &quot;Teh Nooest Meme, now for your chest (and/or face)!&quot;,
+  &quot;excerpt&quot;: &quot;Available in from sizes Much to Wow!&quot;,
+  &quot;description&quot;: &quot;Teh Nooest Meme, the funniest meme ever!  Now on your chest!&quot;,
+  &quot;released&quot;: &quot;01-21-2025 03:08:32&quot;,
+  &quot;available&quot;: true,
+  &quot;addLabel&quot;: &quot;Pre-order now!&quot;,
   &quot;headerImage&quot;: {
-    &quot;alt&quot;: &quot;BANG!&quot;,
-    &quot;url&quot;: &quot;http://whiz.bang/media/top/1.jpg&quot;,
-    &quot;x&quot;:   400,
-    &quot;y&quot;:   100
+    &quot;type&quot;: &quot;image&quot;,
+    &quot;alt&quot;: &quot;wow&quot;,
+    &quot;url&quot;: &quot;http://suchtees.com/media/top/1.jpg&quot;,
+    &quot;x&quot;: 400,
+    &quot;y&quot;: 100
   },
-  &quot;images&quot;: [
+  &quot;media&quot;: [
     {
-      &quot;alt&quot;: &quot;In action!&quot;,
-      &quot;url&quot;: &quot;http://whiz.bang/media/top/2.jpg&quot;,
-      &quot;x&quot;:   400,
-      &quot;y&quot;:   100
+      &quot;type&quot;: &quot;image&quot;,
+      &quot;alt&quot;: &quot;such tee&quot;,
+      &quot;url&quot;: &quot;http://suchtees.com/media/top/2.jpg&quot;,
+      &quot;x&quot;: 400,
+      &quot;y&quot;: 100
     },
     {
-      &quot;url&quot;: &quot;http://whiz.bang/media/top/3.jpg&quot;,
-      &quot;x&quot;:   200,
-      &quot;y&quot;:   150
+      &quot;type&quot;: &quot;image&quot;,
+      &quot;alt&quot;: &quot;much cloth&quot;,
+      &quot;url&quot;: &quot;http://suchtees.com/media/top/3.jpg&quot;,
+      &quot;x&quot;: 200,
+      &quot;y&quot;: 150
     }
   ],
   &quot;variants&quot;: [
     {
-      &quot;id&quot;:         &quot;FOIUVMOIS872348OIJDFWOIJ&quot;,
-      &quot;sku&quot;:        &quot;white-whizbang&quot;,
-      &quot;price&quot;:      100000000,
-      &quot;stock&quot;:      30,
-      &quot;weight&quot;:     22,
+      &quot;id&quot;: &quot;FOIUVMOIS872348OIJDFWOIJ&quot;,
+      &quot;sku&quot;: &quot;T-SHIRT-M&quot;,
+      &quot;price&quot;: 1000,
+      &quot;stock&quot;: 30,
+      &quot;weight&quot;: 11,
       &quot;dimensions&quot;: &quot;5x5x5&quot;,
-      &quot;color&quot;:      &quot;white&quot;,
-      &quot;style&quot;:      &quot;traditional&quot;,
-      &quot;size&quot;:       &quot;small&quot;
-    }
+      &quot;options&quot;: {
+        &quot;size&quot;: &quot;much&quot;
+      }
+    },
+    {
+      &quot;id&quot;: &quot;FOIUVMOIS872348OIJDFWOIJ&quot;,
+      &quot;sku&quot;: &quot;T-SHIRT-W&quot;,
+      &quot;price&quot;: 1000,
+      &quot;stock&quot;: 33,
+      &quot;weight&quot;: 12,
+      &quot;dimensions&quot;: &quot;6x6x6&quot;,
+      &quot;options&quot;: {
+        &quot;size&quot;: &quot;wow&quot;
+      }
+    },
   ]
 }</code></pre>
 <h3 id="product-specific-objects">Product-specific objects</h3>
 <p>These are objects that are used in the Product entity, but are not shared by other objects.</p>
-<h4 id="image">Image</h4>
-<p>The Image object represents a graphic to be used with advertising a Product.</p>
+<h4 id="media">Media</h4>
+<p>The Media object represents a graphic resource to be used with advertising a Product.</p>
 <table class="table table-striped table-borderless table-vcenter">
 <thead>
 <tr class="header">
@@ -622,35 +545,100 @@
 </thead>
 <tbody>
 <tr class="odd">
-<td align="left">alt</td>
-<td align="left">The alt-text for the image.</td>
-<td align="left">string</td>
+<td align="left">type</td>
+<td align="left">The type of the media</td>
+<td align="left"><a href="#mediatype">MediaType</a> (#mediatype)</td>
 </tr>
 <tr class="even">
-<td align="left">url</td>
-<td align="left">The URL where the image is hosted.</td>
+<td align="left">alt</td>
+<td align="left">The alt-text for the media.</td>
 <td align="left">string</td>
 </tr>
 <tr class="odd">
-<td align="left">x</td>
-<td align="left">The width of the image, in pixels.</td>
-<td align="left">int</td>
+<td align="left">url</td>
+<td align="left">The URL where the media is hosted.</td>
+<td align="left">string</td>
 </tr>
 <tr class="even">
+<td align="left">x</td>
+<td align="left">The width of the media, in pixels.</td>
+<td align="left">int</td>
+</tr>
+<tr class="odd">
 <td align="left">y</td>
-<td align="left">The height of the image, in pixels.</td>
+<td align="left">The height of the media, in pixels.</td>
 <td align="left">int</td>
 </tr>
 </tbody>
-</table>
-<pre class="lang-javascript"><code>{
-  &quot;alt&quot;: &quot;In action!&quot;,
-  &quot;url&quot;: &quot;http://whiz.bang/media/top/2.jpg&quot;,
+</table class="table table-striped table-borderless table-vcenter">
+<pre class="lang-json"><code>{
+  &quot;type&quot;: &quot;MediaImage&quot;,
+  &quot;alt&quot;: &quot;wow&quot;,
+  &quot;url&quot;: &quot;http://suchtees.com/media/top/2.jpg&quot;,
   &quot;x&quot;:   400,
   &quot;y&quot;:   100
 }</code></pre>
-<h4 id="productvariant">ProductVariant</h4>
-<p>The ProductVariant object signifies specifics about an individual kind of Product.</p>
+<h4 id="mediatype">MediaType</h4>
+<p>This is an enum which describes the type of a media resource.</p>
+<table class="table table-striped table-borderless table-vcenter">
+<thead>
+<tr class="header">
+<th align="left">Value</th>
+<th align="left">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">&quot;video&quot;</td>
+<td align="left">Video</td>
+</tr>
+<tr class="even">
+<td align="left">&quot;image&quot;</td>
+<td align="left">Image</td>
+</tr>
+<tr class="odd">
+<td align="left">&quot;livestream&quot;</td>
+<td align="left">Live stream</td>
+</tr>
+<tr class="even">
+<td align="left">&quot;webgl&quot;</td>
+<td align="left">WebGL</td>
+</tr>
+<tr class="odd">
+<td align="left">&quot;audio&quot;</td>
+<td align="left">Audio</td>
+</tr>
+<tr class="even">
+<td align="left">&quot;embed&quot;</td>
+<td align="left">Embedded media</td>
+</tr>
+</tbody>
+</table class="table table-striped table-borderless table-vcenter">
+<h4 id="option">Option</h4>
+<p>A key-value pair of metadata about a <a href="#variant">Product variant</a></p>
+<table class="table table-striped table-borderless table-vcenter">
+<thead>
+<tr class="header">
+<th align="left">Field</th>
+<th align="left">Description</th>
+<th align="left">Type</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">name</td>
+<td align="left">The name of the datum</td>
+<td align="left">string</td>
+</tr>
+<tr class="even">
+<td align="left">value</td>
+<td align="left">The value of the datum</td>
+<td align="left">string</td>
+</tr>
+</tbody>
+</table class="table table-striped table-borderless table-vcenter">
+<h2 id="variant">Variant</h2>
+<p>The Variant object signifies specifics about an individual kind of Product.</p>
 <table class="table table-striped table-borderless table-vcenter">
 <thead>
 <tr class="header">
@@ -671,55 +659,51 @@
 <td align="left">string</td>
 </tr>
 <tr class="odd">
-<td align="left">price</td>
-<td align="left">How much the productVariant costs, with six decimal places of accuracy (one one-thousanth of a cent in USD)</td>
-<td align="left">int64</td>
+<td align="left">name</td>
+<td align="left">Display name for this variant</td>
+<td align="left">string</td>
 </tr>
 <tr class="even">
-<td align="left">stock</td>
+<td align="left">price</td>
+<td align="left">The price of this variant in cents</td>
+<td align="left">int64</td>
+</tr>
+<tr class="odd">
+<td align="left">inventory</td>
 <td align="left">How many of the variant are currently in stock.</td>
 <td align="left">int</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">weight</td>
 <td align="left">How much the variant weighs. This is typically in ounces, but can be in grams, miligrams, or whatever else as long as the usage is consistent.</td>
-<td align="left">int</td>
+<td align="left">float</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left">dimensions</td>
 <td align="left">The height by width by depth of the variant, physically. Typically in inches, but handles metric measurements fine with consistent use.</td>
 <td align="left">string</td>
 </tr>
-<tr class="odd">
-<td align="left">color</td>
-<td align="left">The physical hue of the variant, if applicable.</td>
-<td align="left">string</td>
-</tr>
 <tr class="even">
-<td align="left">style</td>
-<td align="left">A description of the variant's form or aesthetic, if applicable.</td>
-<td align="left">string</td>
-</tr>
-<tr class="odd">
-<td align="left">size</td>
-<td align="left">A short description of the physical proportions of the variant (useful for wearables)</td>
-<td align="left">string</td>
+<td align="left">options</td>
+<td align="left">Metadata associated with the variant.</td>
+<td align="left"><a href="#option"></a>(#option)</td>
 </tr>
 </tbody>
-</table>
-<pre class="lang-javascript"><code>{
-  &quot;id&quot;:         &quot;FOIUVMOIS872348OIJDFWOIJ&quot;,
-  &quot;sku&quot;:        &quot;white-whizbang&quot;,
-  &quot;price&quot;:      100000000,
-  &quot;stock&quot;:      30,
-  &quot;weight&quot;:     22,
+</table class="table table-striped table-borderless table-vcenter">
+<p>The options object may vary.</p>
+<pre class="lang-json"><code>{
+  &quot;id&quot;: &quot;FOIUVMOIS872348OIJDFWOIJ&quot;,
+  &quot;sku&quot;: &quot;T-SHIRT-M&quot;,
+  &quot;price&quot;: 1000,
+  &quot;inventory&quot;: 30,
+  &quot;weight&quot;: 11,
   &quot;dimensions&quot;: &quot;5x5x5&quot;,
-  &quot;color&quot;:      &quot;white&quot;,
-  &quot;style&quot;:      &quot;traditional&quot;,
-  &quot;size&quot;:       &quot;small&quot;
+  &quot;options&quot;: {
+    &quot;size&quot;: &quot;much&quot;
+  }
 }</code></pre>
 <h2 id="user">User</h2>
-<p>This object represents someone who is registered with the Crowdstart platform. This is traditionally NOT a backer or buyer - this is typically a campaign owner, manager, etc.</p>
+<p>This object represents someone who is registered with the Crowdstart platform. This is usually NOT a backer or buyer - this is typically a campaign owner, manager, etc.</p>
 <table class="table table-striped table-borderless table-vcenter">
 <thead>
 <tr class="header">
@@ -745,30 +729,31 @@
 <td align="left">string</td>
 </tr>
 </tbody>
-</table>
-<pre class="lang-javascript"><code>{
+</table class="table table-striped table-borderless table-vcenter">
+<pre class="lang-json"><code>{
   &quot;firstName&quot;: &quot;John&quot;,
   &quot;lastName&quot;:  &quot;Doe&quot;,
   &quot;email&quot;:     &quot;john.doe@example.com&quot;
 }</code></pre>
 <h1 id="authentication">Authentication</h1>
-<p>The access token required to use any of the below API requests can be found on the Crowdstart dashboard. All endpoints are secured with and require SSL/HTTPS. To authenticate, include the access token in the HTTP header, with the form:</p>
-<pre><code>Authorization: {ACCESS_TOKEN}</code></pre>
-<p>Other reminders: - All requests must be made over HTTPS. - All requests expect and return JSON. Please set <code>Content-Type</code> and <code>Accept</code> to <code>application-json</code>. - All money measurements, per the object definitions, have six decimal places, and are returned only in whole numbers (no decimal places). Therefore, <code>$1 USD</code> will be returned as <code>1000000</code>, and <code>$.01 USD</code> will be returned as <code>1000</code>.</p>
+<p>The access token required to use any of the below API requests can be found on the Crowdstart dashboard. All endpoints are secured with and require SSL/HTTPS. To authenticate, include the access token the URL, at the end of the API path. This takes the form of:</p>
+<pre><code>GET /api/campaign2/&lt;access token&gt;
+GET /api/coupon2/&lt;access token&gt;</code></pre>
+<p>Or whichever path is appropriate for the entity you are working with. Access tokens can be retrieved from your user dashboard. The 'live' tokens are the tokens for use in your production environment while 'test' tokens function in your sandbox.</p>
+<p>Other reminders: - All requests must be made over HTTPS. - All requests expect and return JSON. Please set <code>Content-Type</code> and <code>Accept</code> to <code>application-json</code>. - All money measurements, per the object definitions, are in cents, and are returned only in whole numbers (no decimal places). Therefore, <code>$1 USD</code> will be returned as <code>100</code>, and <code>$.01 USD</code> will be returned as <code>1</code>.</p>
 <h1 id="api-errors">API Errors</h1>
-<p>Crowdstart follows HTTP's general standards with return codes of all kinds. 200-level codes indicate successes (though depending on the request, may indicate a sort of partial success), 400-level codes indicate a failure due to bad or missing input, and 500-level codes indicate a failure on Crowdstart's servers. Meta response information will be returned regardless of if a request is successful.</p>
-<p>Meta-response information may take the following forms:</p>
-<pre class="lang-javascript"><code>{
-  &quot;code&quot;:    200,
-  &quot;message&quot;: &quot;OK&quot;
+<p>Not all requests will be successful. In the event of any problems, an error object will be returned from Crowdstart with the best message we can give. Other optional information, such as codes or error types, will be provided if possible.</p>
+<pre class="lang-json"><code>&quot;error&quot;: {
+  &quot;message&quot;: &quot;No access token provided.&quot;,
+  &quot;type&quot;: &quot;api-error&quot;
 }</code></pre>
-<pre class="lang-javascript"><code>{
-  &quot;code&quot;:    409,
+<pre class="lang-json"><code>&quot;error&quot;: {
   &quot;message&quot;: &quot;Access token is not valid.&quot;
 }</code></pre>
-<pre class="lang-javascript"><code>{
-  &quot;code&quot;:    500,
-  &quot;message&quot;: &quot;Service unavailable.&quot;
+<pre class="lang-json"><code>&quot;error&quot;: {
+  &quot;message&quot;: &quot;Service not found.&quot;
+  &quot;type&quot;: &quot;service-error&quot;
+  &quot;code&quot;: &quot;404&quot;
 }</code></pre>
 <h1 id="pagination">Pagination</h1>
 <p>Many calls can potentially return hundreds of objects. To avoid sending massive amounts of data over the wire, the API uses the following format on its pagination object:</p>
@@ -787,54 +772,40 @@
 <td align="left">int</td>
 </tr>
 <tr class="even">
-<td align="left">count</td>
-<td align="left">The number of records on the current page.</td>
-<td align="left">int</td>
-</tr>
-<tr class="odd">
 <td align="left">limit</td>
 <td align="left">The maximum number of records power page. Default is 100.</td>
 <td align="left">int</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left">offset</td>
 <td align="left">The index of the first record returned.</td>
 <td align="left">int</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left">page</td>
 <td align="left">The current page number.</td>
 <td align="left">int</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left">pages</td>
 <td align="left">The number of pages available.</td>
 <td align="left">int</td>
 </tr>
-<tr class="odd">
-<td align="left">more</td>
-<td align="left">A switch indicating if more records are available.</td>
-<td align="left">bool</td>
-</tr>
 </tbody>
-</table>
+</table class="table table-striped table-borderless table-vcenter">
 <p>Example of a response with pagination available:</p>
-<pre class="lang-javascript"><code>{
-  &quot;code&quot;:    200,
-  &quot;message&quot;: &quot;OK&quot;,
+<pre class="lang-json"><code>{
   &quot;paging&quot;: {
     &quot;total&quot;:    1532,
-    &quot;count&quot;:    150,
     &quot;limit&quot;:    150,
     &quot;offset&quot;:   300,
     &quot;page&quot;:     3,
     &quot;pages&quot;:    11,
-    &quot;has_more&quot;: true
   },
   &quot;orders&quot;: []
 }</code></pre>
 <h1 id="retrieve-an-order">Retrieve an Order</h1>
-<pre><code>GET /orders/{id}</code></pre>
+<pre><code>GET api/order2/{id}</code></pre>
 <h4 id="arguments">Arguments</h4>
 <table class="table table-striped table-borderless table-vcenter">
 <thead>
@@ -851,42 +822,40 @@
 <td align="left">string</td>
 </tr>
 </tbody>
-</table>
+</table class="table table-striped table-borderless table-vcenter">
 <h4 id="example-request">Example Request</h4>
 <pre><code>$ curl -X GET -H Content-Type:application/json -H Authorization:{{ACCESSTOKEN}} \
 https://api.crowdstart.com/orders/VIJij32309JVOIWJWE</code></pre>
 <h4 id="example-response">Example Response</h4>
-<pre class="lang-javascript"><code>{
-  &quot;code&quot;:      200,
-  &quot;message&quot;:   &quot;OK&quot;,
+<pre class="lang-json"><code>{
   &quot;createdAt&quot;: &quot;04-30-2025 12:34:23&quot;,
   &quot;updatedAt&quot;: &quot;05-23-2025 02:24:55&quot;,
   &quot;id&quot;:        &quot;VIJij32309JVOIWJWE&quot;,
   &quot;userId&quot;:    &quot;jdoe&quot;,
-  &quot;shipping&quot;:  30000000,
+  &quot;shipping&quot;:  3000,
   &quot;tax&quot;:       0,
-  &quot;subtotal&quot;:  100000000,
-  &quot;total&quot;:     130000000,
+  &quot;subtotal&quot;:  10000,
+  &quot;total&quot;:     13000,
   &quot;items&quot;: [
     {
-      &quot;sku&quot;:  &quot;white-whizbang&quot;,
-      &quot;slug&quot;: &quot;2000&quot;,
+      &quot;sku&quot;:  &quot;T-SHIRT-M&quot;,
+      &quot;slug&quot;: &quot;t-shirt&quot;,
       &quot;product&quot;: {
         &quot;id&quot;:        &quot;SLD32diiSJ9293&quot;,
-        &quot;slug&quot;:      &quot;2000&quot;,
+        &quot;slug&quot;:      &quot;t-shirt&quot;,
         &quot;available&quot;: true
       },
       &quot;variant&quot;: {
         &quot;id&quot;:         &quot;FOIUVMOIS872348OIJDFWOIJ&quot;,
-        &quot;sku&quot;:        &quot;white-whizbang&quot;,
-        &quot;price&quot;:      100000000,
+        &quot;sku&quot;:        &quot;T-SHIRT-M&quot;,
+        &quot;price&quot;:      10000,
         &quot;stock&quot;:      30,
-        &quot;weight&quot;:     22,
+        &quot;weight&quot;:     11,
         &quot;dimensions&quot;: &quot;5x5x5&quot;,
-        &quot;color&quot;:      &quot;white&quot;,
-        &quot;style&quot;:      &quot;traditional&quot;,
-        &quot;size&quot;:       &quot;small&quot;
-      },
+        &quot;options&quot;: {
+          &quot;size&quot;:       &quot;much&quot;
+        }
+      }
       &quot;discountAmnt&quot;: 0,
       &quot;lineNo&quot;:       1,
       &quot;quantity&quot;:     1
@@ -898,7 +867,8 @@ https://api.crowdstart.com/orders/VIJij32309JVOIWJWE</code></pre>
   &quot;shipped&quot;:    false,
   &quot;test&quot;:       false
 }</code></pre>
-</div>
+
+        </div>
     </div>
 </section>
 
