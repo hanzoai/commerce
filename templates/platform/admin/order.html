@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block name %}Order{% endblock %}
+
+{% block css %}
+{% endblock %}
+
+{% block content %}
+<!-- Order information Form Block -->
+<div class="col-sm-10 col-sm-offset-1 col-md-10 col-md-offset-1 col-lg-8 col-lg-offset-1">
+    <div class="block">
+        <!-- Order information Form Title -->
+        <div class="block-title">
+            <h2>Order Information</h2>
+        </div>
+        <!-- END Order information Form Title -->
+
+        <!-- Order information Form Content -->
+        <form id="form-order" method="post" class="form-horizontal">
+          <h4>Information</h4>
+          <div id="order-info" class="block">
+          </div>
+          <h4>Payment Information</h4>
+          <div id="order-payment" class="block">
+          </div>
+          <h4>Current Status</h4>
+          <div id="order-status" class="block">
+          </div>
+          <div class="form-group form-actions">
+            <div class="col-md-9 col-md-offset-3">
+              <button type="submit" class="btn btn-effect-ripple btn-primary">Submit</button>
+              <button type="reset" class="btn btn-effect-ripple btn-danger">Reset</button>
+            </div>
+          </div>
+        </form>
+        <!-- END Order information Form Content -->
+    </div>
+    <!-- END Order information Form Block -->
+</div>
+<!-- END Order information Form Block -->
+{% endblock %}
+
+{% block js %}
+<script src="{{ staticUrl }}/js/jquery.serialize-object.min.js"></script>
+<script src="{{ staticUrl }}/js/form-builder.js"></script>
+<script src="{{ staticUrl }}/js/rest-forms.js"></script>
+<script>
+    $(function(){
+        BuildForm($("#form-order"), [
+          {
+            label: "Order ID",
+            type: "static",
+            value: "{{ org.Id }}",
+            $parent: $('#order-info'),
+          },
+          {
+            label: "Created On",
+            type: "static-date",
+            value: "{{ org.CreatedAt }}",
+            $parent: $('#order-info'),
+          },
+          {
+            label: "Last Updated On",
+            type: "static-date",
+            value: "{{ order.UpdatedAt }}",
+            $parent: $('#order-info'),
+          },
+          {
+            label: "Order Status",
+            type: "static",
+            value: "{{ order.OrderStatus }}",
+            $parent: $('#order-status'),
+          },
+          {
+            label: "Payment Status",
+            type: "static",
+            value: "{{ order.PaymentStatus }}",
+            $parent: $('#order-status'),
+          },
+          {
+            label: "Fulfillment Status",
+            type: "static",
+            value: "{{ order.FulfillmentStatus }}",
+            $parent: $('#order-status'),
+          },
+          {
+            label: 'Currency',
+            type: "static",
+            value: "{{ order.Currency }}".toUpperCase(),
+            $parent: $('#order-payment'),
+          },
+          {
+            label: "Line Total",
+            type: "static-currency",
+            value: {{ order.LineTotal / 100 }},
+            $parent: $('#order-payment'),
+          },
+          {% if order.Discount != 0 %}
+          {
+            label: "Discount",
+            type: "static-currency",
+            value: {{ order.Discount / 100 }},
+            $parent: $('#order-payment'),
+          },
+          {% endif %}
+          {
+            label: "Subtotal",
+            type: "static-currency",
+            value: {{ order.Subtotal / 100 }},
+            $parent: $('#order-payment'),
+          },
+          {
+            label: "Shipping",
+            type: "static-currency",
+            value: {{ order.Shipping / 100 }},
+            $parent: $('#order-payment'),
+          },
+          {
+            label: "Tax",
+            type: "static-currency",
+            value: {{ order.Tax / 100 }},
+            $parent: $('#order-payment'),
+          },
+          {% if order.Adjustment != 0 %}
+          {
+            label: "Adjustment",
+            type: "static-currency",
+            value: {{ order.Adjustment / 100 }},
+            $parent: $('#order-payment'),
+          },
+          {% endif %}
+          {
+            label: "Total",
+            type: "static-currency",
+            value: {{ order.Total / 100 }},
+            $parent: $('#order-payment'),
+          },
+        ]);
+    });
+  var api = NewRestAPI(
+      '{{ urlFor("api", "/order2") }}',
+      '{{ org.MustGetTokenByName("live-secret-key") }}',
+      $('#form-order'),
+      {
+          price: function(val) {
+              // To cents
+              return parseFloat(val.replace(/[^\d.-]/g,''), 10) * 100;
+          },
+          weight: function(val) {
+              return parseFloat(val.replace(/[^\d.-]/g,''), 10);
+          }
+      }
+    );
+  $('#form-order').on('submit', function(e){
+      var $form = $(this);
+      requestAnimationFrame(function() {
+          if ($('.form-group.has-error').length === 0) {
+              api.put(function(data) {
+                  window.location.replace('{{ urlFor("platform", "/order") }}')
+              }, $form, '{{ org.Id }}')
+          }
+      })
+      e.preventDefault();
+      return false;
+  })
+</script>
+{% endblock %}
+{% block menulink %}menu-orders{% endblock %}
+
