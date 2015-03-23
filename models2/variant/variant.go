@@ -27,9 +27,9 @@ type Variant struct {
 	SKU  string `json:"sku"`
 	Name string `json:"name"`
 
-	Price Cents `json:"price"`
 	// 3-letter ISO currency code (lowercase).
 	Currency CurrencyType `json:"currency"`
+	Price    Cents        `json:"price"`
 
 	Inventory int `json:"inventory"`
 	Sold      int `json:"sold"`
