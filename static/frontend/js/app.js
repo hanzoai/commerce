@@ -88,6 +88,20 @@ var App = function() {
         }
     };
 
+    /* Handles Header */
+    var handleHeader = function(){
+        var header = $('header');
+
+        $(window).scroll(function() {
+            // If the user scrolled a bit (150 pixels) alter the header class to change it
+            if ($(this).scrollTop() > header.outerHeight()) {
+                header.addClass('header-scroll');
+            } else {
+                header.removeClass('header-scroll');
+            }
+        });
+    };
+
     /* Handles Main Menu */
     var handleMenu = function(){
         var sideNav = $('.site-nav');
