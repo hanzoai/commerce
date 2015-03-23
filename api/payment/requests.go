@@ -63,4 +63,5 @@ func (s Source) Buyer() models.Buyer {
 type AuthReq struct {
 	Source Source       `json:"buyer"`
 	Order  *order.Order `json:"order"`
+	UserId string       `json:"userId"`
 }
