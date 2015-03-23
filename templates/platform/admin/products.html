@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block name %}Products{% endblock %}
+
+{% block css %}
+{% endblock %}
+
+{% block content %}
+<!-- Products/Variants/Collections View Block -->
+<div class="col-sm-12">
+  <div class="block" style="padding-bottom:0px">
+    <!-- Products/Variants/Collections Switch Block -->
+    <div class="block-title">
+      <ul class="nav nav-tabs" data-toggle="tabs">
+        <li class="active"><a href="">Products</a></li>
+        <li class=""><a href="">Variants</a></li>
+        <li class=""><a href="">Collections</a></li>
+      </ul>
+    </div>
+    <!-- END Products/Variants/Collections Switch Block -->
+  </div>
+</div>
+<!-- END Products/Variants/Collections View Block -->
+
+<!-- Products View Block -->
+<div class="col-sm-12">
+  <div class="block full">
+    <!-- Products View Title -->
+    <div class="block-title">
+      <h2>Products</h2>
+    </div>
+    <!-- END Products View Title -->
+
+    <!-- Products View Content -->
+    <div id="display" class="form-group form-inline">
+    </div>
+    <table id="table" class="table table-striped table-bordered table-vcenter">
+    </table>
+    <div id="pagination" class="row text-center">
+      <a href="#" class="btn btn-primary previous" data-action="previous"><strong>&lsaquo;</strong></a>
+      <input class="text-center form-control" type="text" readonly="readonly" data-max-page="40" style="width:125px;display:inline;padding-top:5px"/>
+      <a href="#" class="btn btn-primary next" data-action="next"><strong>&rsaquo;</strong></a>
+    </div>
+    <!-- <div class="row text-center"> -->
+    <!--     <i class="fa fa-circle-o-notch fa-3x fa-spin text-primary"></i> -->
+    <!-- </div> -->
+  </div>
+</div>
+<!-- END Products View Block -->
+
+<!-- New Products View Block -->
+<div class="col-sm-12">
+  <div class="block">
+    <div class="block-title">
+      <h2>New Product</h2>
+    </div>
+    <form id="form-new-product" method="post" class="form-horizontal">
+      <div class="row">
+        <div class="col-md-6">
+          <h4>What is it?</h4>
+          <div id="product-info" class="block">
+          </div>
+        </div>
+        <div class="col-md-6">
+          <h4>What does it cost?</h4>
+          <div id="product-cost" class="block">
+          </div>
+        </div>
+      </div>
+      <div class="form-group form-actions text-center">
+        <button type="submit" class="btn btn-effect-ripple btn-primary"><i class="fa fa-plus"></i> Add</button>
+      </div>
+    </form>
+    <!-- END Products View Content -->
+  </div>
+</div>
+<!-- END New Products View Block -->
+{% endblock %}
+
+{% block js %}
+<script src="{{ staticUrl }}/js/form-builder.js"></script>
+<script src="{{ staticUrl }}/js/table-builder.js"></script>
+<script src="{{ staticUrl }}/js/jquery.jqpagination.js"></script>
+<script>
+  $(function(){
+    BuildTable($('#table'), {
+      columns: [
+        {
+          field: 'id',
+          name: 'ID',
+          css: {
+            width: '50px',
+          },
+          render: 'id',
+        },
+        {
+          field: 'name',
+          name: 'Name',
+        },
+        {
+          field: 'slug',
+          name: 'SKU',
+        },
+        {
+          field: 'createdAt',
+          name: 'Order Date',
+          render: 'date',
+        }
+      ],
+      api: '{{ urlFor("api", "/product2") }}',
+      apiToken: '{{ org.MustGetTokenByName("live-secret-key") }}',
+      startPage: 1,
+      startDisplay: 5,
+      displayOptions: [5, 10, 20],
+      $display: $('#display'),
+      $pagination: $('#pagination'),
+    });
+
+    BuildForm($('#form-new-product'),[
+        {
+          id: 'name',
+          name: 'Product.Name',
+          label: 'Name',
+          type: 'text',
+          rules: [
+            {
+              rule: 'required',
+              value: true,
+              message: 'Please enter a name for your product.'
+            }
+          ],
+          $parent: $('#product-info')
+        },
+        {
+          id: 'slug',
+          name: 'Product.Slug',
+          label: 'Slug',
+          type: 'text',
+          rules: [
+            {
+              rule: 'required',
+              value: true,
+              message: 'Please enter a unique URL identifier for your product.'
+            }
+          ],
+          $parent: $('#product-info')
+        },
+        {
+          id: 'Description',
+          name: 'Product.Description',
+          label: 'Description',
+          type: 'text',
+          $parent: $('#product-info')
+        },
+    ]);
+  });
+</script>
+{% endblock %}
+{% block menulink %}menu-orders{% endblock %}
+
+
+
