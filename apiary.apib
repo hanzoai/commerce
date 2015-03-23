@@ -1,46 +1,307 @@
 FORMAT: 1A
 
 # Crowdstart
-Notes API is a *short texts saving* service similar to its physical paper presence on your table.
+The Crowdstart API is designed to handle all of the most common tasks with
+associated with running a crowdfunding campaign.
 
-# Group Notes
-Notes related resources of the **Notes API**
+The API is currently in beta. Please contact support@crowdstart.com if you
+intend to use our API in any production code.
 
-## Notes Collection [/notes]
-### List all Notes [GET]
-+ Response 200 (application/json)
+# Group Campaign
+This represents a single fundraising campaign.
 
-        [{
-          "id": 1, "title": "Jogging in park"
-        }, {
-          "id": 2, "title": "Pick-up posters from post-office"
-        }]
+| Field name         | Field Description                                                                                                                           | Type                  |
+| ------------------ | -----------------------------------------------------------------------------------------------------------                                 | -------------         |
+| organizationId     | The unique identifier for this campaign                                                                                                     | string                |
+| approved           | A switch indicating whether or not the campaign is approved for launch. Useful for 'soft launches' and build-up to launch day.              | bool                  |
+| enabled            | A switch indicating whether or not this campaign is currently enabled for use in the system. Campaign will not appear if it is not enabled. | bool                  |
+| category           | A representation of the general style of campaign (Technology, Arts, Entertainment, etc).  This is a string that relates the campaign type. | [Category](#category) |
+| title              | The title of the campaign.                                                                                                                  | string                |
+| tagline            | The motto or tag line for the campaign.                                                                                                     | string                |
+| pitchMedia         | A representation (usually a link) to media that is to be used in the campaign's pitch.                                                      | string                |
+| videoUrl           | A url to the video associated with the campaign.                                                                                            | string                |
+| videoOverlayUrl    | A url to the overlay to be placed over the video before it begins - this is typically a company logo or a picture of the product.           | string                |
+| imageUrl           | A banner or logo for the project itself.                                                                                                    | string                |
+| description        | The long-form explanation of the campaign.                                                                                                  | string                |
+| backers            | The number of backers that have contributed to the campaign.                                                                                | int                   |
+| raised             | The amount of money raised in the campaign.                                                                                                 | int64                 |
+| thumbnail          | A smaller resource url to represent the campaign in a list.                                                                                 | string                |
+| originalUrl        | An URL pointing to the previous phase of the campaign (such as an Indiegogo or Kickstarter campaign) if applicable.                         | string                |
+| storeUrl           | A URL leading to the store associated with the campaign, if applicable.                                                                     | string                |
+| productIds         | A list of ids of [products](#product)/perks that are offered by the campaign.                                                               | []string              |
+| googleAnalytics    | The Google Analytics tag for the campaign.                                                                                                  | string                |
+| facebookTag        | The social network tag for the campaign.                                                                                                    | string                |
+| links              | Important links related to the campaign not covered in other areas (such as media releases).                                                | []string              |
 
-### Create a Note [POST]
+
+## Charge [/charge]
+### Charge an Order [POST]
 + Request (application/json)
 
-        { "title": "Buy cheese and bread for breakfast." }
-
-+ Response 201 (application/json)
-
-        { "id": 3, "title": "Buy cheese and bread for breakfast." }
-
-## Note [/notes/{id}]
-A single Note object with all its details
-
-+ Parameters
-    + id (required, number, `1`) ... Numeric `id` of the Note to perform action with. Has example value.
-
-### Retrieve a Note [GET]
+        {
+            "buyer": {
+                "type":"card",
+                "number":"4242424242424242",
+                "month":"12",
+                "year":"2016",
+                "cvc":"123",
+                "email":"joe@buystoomuchstuff.com",
+                "firstName":"Joe",
+                "LastName":"Smoe",
+                "company":"Buys Too Much Stuff Dotcom",
+                "phone":"555-555-5555",
+                "notes":"none"
+            },
+            "order": {
+                "currency":"usd",
+                "items":[
+                    {
+                        "productId":"1",
+                        "variantId":"1",
+                        "collectionId":"1",
+                        "price":100,
+                        "quantity":20
+                    }
+                ]
+            }
+        }
+        
 + Response 200 (application/json)
 
-    + Header
+        {
+          "id":"9",
+          "createdAt":"2015-03-23T04:13:56.666272023Z",
+          "updatedAt":"2015-03-23T04:13:58.989441381Z",
+          "campaignId":"",
+          "orderStatus":"",
+          "paymentStatus":"",
+          "fulfillmentStatus":"",
+          "preorder":false,
+          "unconfirmed":false,
+          "currency":"usd",
+          "type":"",
+          "shippingMethod":"",
+          "lineTotal":2000,
+          "discount":0,
+          "subtotal":2000,
+          "shipping":0,
+          "tax":0,
+          "adjustment":0,
+          "total":2000,
+          "balance":0,
+          "paid":0,
+          "refunded":0,
+          "fee":0,
+          "billingAddress":{
+        
+          },
+          "shippingAddress":{
+        
+          },
+          "items":[
+            {
+              "productId":"1",
+              "productName":"",
+              "productSlug":"",
+              "collectionId":"1",
+              "variantId":"1",
+              "variantName":"",
+              "variantSKU":"",
+              "price":100,
+              "quantity":20,
+              "weight":0,
+              "taxable":false
+            }
+          ],
+          "discounts":[
+        
+          ],
+          "payments":[
+            {
+              "account":{
+                "type":"stripe",
+                "buyer":{
+                  "email":"joe@buystoomuchstuff.com",
+                  "firstName":"",
+                  "lastName":"",
+                  "company":"Buys Too Much Stuff Dotcom",
+                  "phone":"555-555-5555",
+                  "notes":"non",
+                  "address":{
+        
+                  }
+                },
+                "affirm":{
+        
+                },
+                "stripe":{
+                  "fingerprint":"k6NxwTEJxyHMPCr3",
+                  "customerId":"cus_5vDNDt1Xi2YBBe",
+                  "cardId":"card_15jMwmCSRlllXCwP3TSacP62",
+                  "brand":"Visa",
+                  "type":"credit",
+                  "lastFour":"4242",
+                  "expiration":{
+                    "month":12,
+                    "year":2016
+                  },
+                  "cvcCheck":"pass"
+                },
+                "paypal":{
+        
+                }
+              },
+              "currency":"usd",
+              "campaignId":"",
+              "chargeId":"ch_15jMwqCSRlllXCwPpVNGPktU",
+              "amount":2000,
+              "amountRefunded":0,
+              "status":"paid",
+              "client":{
+        
+              },
+              "captured":true,
+              "live":false
+            }
+          ],
+          "fulfillment":{
+            "courier":"",
+            "trackingNumber":""
+          }
+        }
+  
+        
+## Authorize [/authorize]
+### Authorize an order
++ Request (application/json)
 
-            X-My-Header: The Value
-
-    + Body
-
-            { "id": 2, "title": "Pick-up posters from post-office" }
-
-### Remove a Note [DELETE]
-+ Response 204
+        {
+          "buyer":{
+            "type":"card",
+            "number":"4242424242424242",
+            "month":"12",
+            "year":"2016",
+            "cvc":"123",
+            "email":"joe@buystoomuchstuff.com",
+            "firstName":"Joe",
+            "LastName":"Smoe",
+            "company":"Buys Too Much Stuff Dotcom",
+            "phone":"555-555-5555",
+            "notes":"non"
+          },
+          "order":{
+            "currency":"usd",
+            "items":[
+              {
+                "productId":"1",
+                "variantId":"1",
+                "collectionId":"1",
+                "price":100,
+                "quantity":20
+              }
+            ]
+          }
+        }
+        
++ Response 200 (application/json)
+        {
+          "id":"12",
+          "createdAt":"2015-03-23T04:53:57.840871693Z",
+          "updatedAt":"2015-03-23T04:53:57.840871693Z",
+          "campaignId":"",
+          "orderStatus":"",
+          "paymentStatus":"",
+          "fulfillmentStatus":"",
+          "preorder":false,
+          "unconfirmed":false,
+          "currency":"usd",
+          "type":"",
+          "shippingMethod":"",
+          "lineTotal":2000,
+          "discount":0,
+          "subtotal":2000,
+          "shipping":0,
+          "tax":0,
+          "adjustment":0,
+          "total":2000,
+          "balance":0,
+          "paid":0,
+          "refunded":0,
+          "fee":0,
+          "billingAddress":{
+        
+          },
+          "shippingAddress":{
+        
+          },
+          "items":[
+            {
+              "productId":"1",
+              "productName":"",
+              "productSlug":"",
+              "collectionId":"1",
+              "variantId":"1",
+              "variantName":"",
+              "variantSKU":"",
+              "price":100,
+              "quantity":20,
+              "weight":0,
+              "taxable":false
+            }
+          ],
+          "discounts":[
+        
+          ],
+          "payments":[
+            {
+              "account":{
+                "type":"stripe",
+                "buyer":{
+                  "email":"joe@buystoomuchstuff.com",
+                  "firstName":"",
+                  "lastName":"",
+                  "company":"Buys Too Much Stuff Dotcom",
+                  "phone":"555-555-5555",
+                  "notes":"non",
+                  "address":{
+        
+                  }
+                },
+                "affirm":{
+        
+                },
+                "stripe":{
+                  "fingerprint":"k6NxwTEJxyHMPCr3",
+                  "customerId":"cus_5vE1sYKb8AayVC",
+                  "cardId":"card_15jNZVCSRlllXCwPrD6GKV1j",
+                  "brand":"Visa",
+                  "type":"credit",
+                  "lastFour":"4242",
+                  "expiration":{
+                    "month":12,
+                    "year":2016
+                  },
+                  "cvcCheck":"pass"
+                },
+                "paypal":{
+        
+                }
+              },
+              "currency":"usd",
+              "campaignId":"",
+              "chargeId":"ch_15jNZZCSRlllXCwPWFblE4Hr",
+              "amount":2000,
+              "amountRefunded":0,
+              "status":"unpaid",
+              "client":{
+        
+              },
+              "captured":false,
+              "live":false
+            }
+          ],
+          "fulfillment":{
+            "courier":"",
+            "trackingNumber":""
+          }
+        }
