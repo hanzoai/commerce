@@ -1,6 +1,7 @@
 package organization
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -101,7 +102,7 @@ func (o Organization) Namespace(ctx interface{}) appengine.Context {
 		_ctx = v
 	}
 
-	_ctx, err := appengine.Namespace(_ctx, string(o.Key().IntID()))
+	_ctx, err := appengine.Namespace(_ctx, strconv.Itoa(int(o.Key().IntID())))
 	if err != nil {
 		panic(err)
 	}
