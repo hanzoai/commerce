@@ -53,19 +53,24 @@ func getAccessToken(c *gin.Context, id, email, password string) {
 	// Generate a new access token
 	accessToken := org.AddToken("live-secret-key", permission.Admin)
 
+	// Save organization
+	org.Put()
+
 	// Save access token in cookie for ease of use during development
 	if appengine.IsDevAppServer() {
 		session.Set(c, "access-token", accessToken)
 	}
-
-	// Save organization
-	org.Put()
 
 	// Return access token
 	json.Render(c, 200, gin.H{"status": "ok", "token": accessToken})
 }
 
 func deleteAccessToken(c *gin.Context) {
+	// Save access token in cookie for ease of use during development
+	if appengine.IsDevAppServer() {
+		session.Delete(c, "access-token")
+	}
+
 	// Get organization for current access token
 	org := middleware.GetOrganization(c)
 
@@ -81,11 +86,6 @@ func deleteAccessToken(c *gin.Context) {
 
 	if err := org.Put(); err != nil {
 		json.Fail(c, 500, "Unable to update organization", err)
-	}
-
-	// Save access token in cookie for ease of use during development
-	if appengine.IsDevAppServer() {
-		session.Delete(c, "access-token")
 	}
 
 	// Return access token
