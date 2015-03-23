@@ -1,6 +1,7 @@
 var BuildForm = (function() {
   var formGroupInputTemplate = '<div class="form-group"><label class="col-md-3 control-label" for=""></label><div class="col-md-9"><input type="text" id="" name="" class="form-control" value=""></div></div>';
   var formGroupTextAreaTemplate = '<div class="form-group"><label class="col-md-3 control-label" for=""></label><div class="col-md-9"><textarea class="form-control" style="resize:none;height:265px"></textarea></div></div>';
+  var formGroupDisplayTemplate = '<div class="form-group"><label class="col-md-3 control-label" for=""></label><div class="col-md-9"><p class="form-control-static"></p></div></div>';
   var formGroupSelectTemplate = '<div class="form-group"><label class="col-md-3 control-label" for=""></label><div class="col-md-9"><select class="form-control"></select></div></div>';
   var formGroupSwitchTemplate = '<div class="form-group"><label class="col-md-10 control-label" for=""></label><div class="col-md-2"><label class="switch switch-success"><input type="checkbox"><span></span></label></div></div>';
   var optionTemplate = '<option></option>';
@@ -121,6 +122,16 @@ var BuildForm = (function() {
           name: inputConfig.name,
           placeholder: inputConfig.placeholder,
         }).text(inputConfig.value);
+      } else if (type === 'static'){
+        $fg = $(formGroupDisplayTemplate);
+        $fg.find('p').text(inputConfig.value);
+      } else if (type === 'static-date'){
+        $fg = $(formGroupDisplayTemplate);
+        var val = (new Date(inputConfig.value)).toDateString();
+        $fg.find('p').text(val);
+      } else if (type === 'static-currency'){
+        $fg = $(formGroupDisplayTemplate);
+        $fg.find('p').text(inputConfig.value).addClass('text-right');
       } else {
         $fg = $(formGroupInputTemplate);
 
