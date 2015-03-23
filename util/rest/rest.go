@@ -20,17 +20,18 @@ type route struct {
 }
 
 type Rest struct {
-	Kind           string
-	Get            gin.HandlerFunc
-	List           gin.HandlerFunc
-	Add            gin.HandlerFunc
-	Update         gin.HandlerFunc
-	Delete         gin.HandlerFunc
-	MethodOverride gin.HandlerFunc
+	DefaultNamespace bool
+	Kind             string
+	Get              gin.HandlerFunc
+	List             gin.HandlerFunc
+	Create           gin.HandlerFunc
+	Update           gin.HandlerFunc
+	Patch            gin.HandlerFunc
+	Delete           gin.HandlerFunc
+	MethodOverride   gin.HandlerFunc
 
-	routes       map[string]route
-	useNamespace bool
-	entityType   reflect.Type
+	routes     map[string]route
+	entityType reflect.Type
 }
 
 type Pagination struct {
@@ -44,19 +45,19 @@ func (r *Rest) Init(entity mixin.Entity) {
 	r.Kind = entity.Kind()
 	r.entityType = reflect.ValueOf(entity).Type()
 	r.routes = make(map[string]route)
-	r.useNamespace = true
 
 	// Setup default handlers
 	r.Get = r.get
 	r.List = r.list
-	r.Add = r.add
+	r.Create = r.create
 	r.Update = r.update
+	r.Patch = r.patch
 	r.Delete = r.delete
 	r.MethodOverride = r.methodOverride
 }
 
 type Opts struct {
-	NoNamespace bool
+	DefaultNamespace bool
 }
 
 func New(entity mixin.Entity, args ...interface{}) *Rest {
@@ -70,7 +71,7 @@ func New(entity mixin.Entity, args ...interface{}) *Rest {
 	r.Init(entity)
 
 	// Options
-	r.useNamespace = !opts.NoNamespace
+	r.DefaultNamespace = opts.DefaultNamespace
 
 	return r
 }
@@ -92,6 +93,11 @@ func (r Rest) Route(router Router, args ...gin.HandlerFunc) {
 func (r Rest) defaultRoutes() []route {
 	return []route{
 		route{
+			method:   "POST",
+			url:      "",
+			handlers: []gin.HandlerFunc{r.Create},
+		},
+		route{
 			method:   "GET",
 			url:      "",
 			handlers: []gin.HandlerFunc{r.List},
@@ -107,9 +113,14 @@ func (r Rest) defaultRoutes() []route {
 			handlers: []gin.HandlerFunc{r.Get},
 		},
 		route{
-			method:   "POST",
-			url:      "",
-			handlers: []gin.HandlerFunc{r.Add},
+			method:   "PUT",
+			url:      "/:id",
+			handlers: []gin.HandlerFunc{r.Update},
+		},
+		route{
+			method:   "DELETE",
+			url:      "/:id",
+			handlers: []gin.HandlerFunc{r.Delete},
 		},
 		route{
 			method:   "POST",
@@ -119,17 +130,7 @@ func (r Rest) defaultRoutes() []route {
 		route{
 			method:   "PATCH",
 			url:      "/:id",
-			handlers: []gin.HandlerFunc{r.Update},
-		},
-		route{
-			method:   "PUT",
-			url:      "/:id",
-			handlers: []gin.HandlerFunc{r.Update},
-		},
-		route{
-			method:   "DELETE",
-			url:      "/:id",
-			handlers: []gin.HandlerFunc{r.Delete},
+			handlers: []gin.HandlerFunc{r.Patch},
 		},
 	}
 }
@@ -154,7 +155,9 @@ func (r Rest) newEntitySlice() interface{} {
 func (r Rest) newModel(c *gin.Context) mixin.Model {
 	ctx := middleware.GetAppEngine(c)
 
-	if r.useNamespace {
+	// Automatically use namespace of organization unless we're configured to
+	// use the default namespace for this endpoint.
+	if !r.DefaultNamespace {
 		org := middleware.GetOrganization(c)
 		ctx = org.Namespace(ctx)
 	}
@@ -178,7 +181,7 @@ func (r Rest) get(c *gin.Context) {
 
 	if err := model.Get(id); err != nil {
 		// TODO: When is this a 404?
-		json.Fail(c, 500, "Failed to retrieve "+r.Kind, err)
+		json.Fail(c, 404, "Failed to get "+r.Kind, err)
 	} else {
 		r.JSON(c, 200, model.Entity)
 	}
@@ -236,7 +239,7 @@ func (r Rest) list(c *gin.Context) {
 	})
 }
 
-func (r Rest) add(c *gin.Context) {
+func (r Rest) create(c *gin.Context) {
 	model := r.newModel(c)
 
 	if err := json.Decode(c.Request.Body, model.Entity); err != nil {
@@ -245,14 +248,54 @@ func (r Rest) add(c *gin.Context) {
 	}
 
 	if err := model.Put(); err != nil {
-		json.Fail(c, 500, "Failed to add "+r.Kind, err)
+		json.Fail(c, 500, "Failed to create "+r.Kind, err)
 	} else {
 		c.Writer.Header().Add("Location", c.Request.URL.Path+"/"+model.Id())
 		r.JSON(c, 201, model.Entity)
 	}
 }
 
+// Completely replaces an entity for given `id`.
 func (r Rest) update(c *gin.Context) {
+	id := c.Params.ByName("id")
+
+	model := r.newModel(c)
+
+	// Get Key, and fail if this didn't exist in datastore
+	if _, err := model.GetKey(id); err != nil {
+		json.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
+		return
+	}
+
+	// Decode response body to create new entity
+	if err := json.Decode(c.Request.Body, model.Entity); err != nil {
+		json.Fail(c, 400, "Failed decode request body", err)
+		return
+	}
+
+	// Replace whatever was in the datastore with our new updated entity
+	if err := model.Put(); err != nil {
+		json.Fail(c, 500, "Failed to update "+r.Kind, err)
+	} else {
+		r.JSON(c, 200, model.Entity)
+	}
+}
+
+// Deletes an entity by given `id`
+func (r Rest) delete(c *gin.Context) {
+	id := c.Params.ByName("id")
+	model := r.newModel(c)
+	model.Delete(id)
+
+	if err := model.Delete(); err != nil {
+		json.Fail(c, 500, "Failed to delete "+r.Kind, err)
+	} else {
+		c.Data(204, "application/json", make([]byte, 0))
+	}
+}
+
+// Partially updates pre-existing entity by given `id`.
+func (r Rest) patch(c *gin.Context) {
 	id := c.Params.ByName("id")
 
 	model := r.newModel(c)
@@ -274,18 +317,6 @@ func (r Rest) update(c *gin.Context) {
 	}
 }
 
-func (r Rest) delete(c *gin.Context) {
-	id := c.Params.ByName("id")
-	model := r.newModel(c)
-	model.Delete(id)
-
-	if err := model.Delete(); err != nil {
-		json.Fail(c, 500, "Failed to delete "+r.Kind, err)
-	} else {
-		c.Data(204, "application/json", make([]byte, 0))
-	}
-}
-
 var methodOverride = middleware.MethodOverride()
 
 // This should be handled by middleware
@@ -295,11 +326,11 @@ func (r Rest) methodOverride(c *gin.Context) {
 	methodOverride(c)
 
 	switch c.Request.Method {
-	case "POST":
-		r.Update(c)
-	case "PUT":
-		r.Update(c)
 	case "PATCH":
+		r.Patch(c)
+	case "POST":
+		r.Patch(c)
+	case "PUT":
 		r.Update(c)
 	case "DELETE":
 		r.Delete(c)
