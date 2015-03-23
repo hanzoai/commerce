@@ -17,6 +17,7 @@ func Variant(c *gin.Context) []*variant.Variant {
 	prod.GetOrCreate("Slug=", prod.Slug)
 
 	v := variant.New(db)
+	v.Parent = prod.Key()
 	v.SKU = "T-SHIRT-M"
 	v.GetOrCreate("SKU=", v.SKU)
 	v.ProductId = prod.Id()
@@ -27,6 +28,7 @@ func Variant(c *gin.Context) []*variant.Variant {
 	v.MustPut()
 
 	v2 := variant.New(db)
+	v2.Parent = prod.Key()
 	v2.SKU = "T-SHIRT-W"
 	v2.GetOrCreate("SKU=", v2.SKU)
 	v2.ProductId = prod.Id()

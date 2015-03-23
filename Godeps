@@ -18,3 +18,4 @@ github.com/davidtai/appenginetesting master
 github.com/dgrijalva/jwt-go master
 github.com/headzoo/surf master
 github.com/go-errors/errors master
+github.com/speps/go-hashids master
