@@ -4,9 +4,12 @@ import (
 	"log"
 	"testing"
 
+	"appengine"
+
 	"github.com/gin-gonic/gin"
 
-	"appengine"
+	"crowdstart.io/datastore"
+	"crowdstart.io/models2/organization"
 )
 
 func New(ctx ...appengine.Context) *gin.Context {
@@ -29,4 +32,6 @@ func SetDefaults(c *gin.Context, ctx appengine.Context) {
 	c.Set("appengine", ctx)
 	c.Set("verbose", testing.Verbose())
 	c.Set("test", false)
+	db := datastore.New(ctx)
+	c.Set("organization", organization.New(db))
 }
