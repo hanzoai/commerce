@@ -6,7 +6,6 @@ var NewRestAPI = (function() {
     if (path.substr(-1) !== '/') {
       path += '/'
     }
-    path += '?';
 
     // Make the token string
     var tokenStr = 'token=' + token;
@@ -29,7 +28,14 @@ var NewRestAPI = (function() {
         $.getJSON(path + paramStrs.join('&'), handler, onErrorHandler)
       },
       // Post request
-      post: function(handler, $form, id, params) {
+      post: function(handler, $form, params) {
+        this.ajax('POST', handler, $form, '', params);
+      },
+      // Put request
+      put: function(handler, $form, id, params) {
+        this.ajax('POST', handler, $form, id, params);
+      },
+      ajax: function(method, handler, $form, id, params) {
         var paramStrs = [tokenStr];
         if (id == null) {
           id = '';
@@ -56,8 +62,8 @@ var NewRestAPI = (function() {
         }
 
         $.ajax({
-          type: 'POST',
-          url: path + paramStrs.join('&'),
+          type: method,
+          url: path + id + '?' + paramStrs.join('&'),
           data: formJSON,
           contentType: 'application/json; charset=utf-8',
           dataType: 'json',
