@@ -42,6 +42,7 @@ func Product(c *gin.Context) {
 
 		namespaced := org.Namespace(c)
 		db = datastore.New(namespaced)
+
 		product := product.New(db)
 		id := c.Params.ByName("id")
 		log.Warn("%v", id)
