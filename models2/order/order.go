@@ -105,8 +105,8 @@ type Order struct {
 
 	Adjustments []Adjustment `json:"adjustments,omitempty"`
 
-	Discounts  []Discount `json:"discounts" datastore:"-"`
-	Discounts_ []byte     `json:"-"`
+	Discounts  []*Discount `json:"discounts" datastore:"-"`
+	Discounts_ []byte      `json:"-"`
 
 	Payments []Payment `json:"payments"`
 
@@ -123,6 +123,11 @@ type Order struct {
 func New(db *datastore.Datastore) *Order {
 	o := new(Order)
 	o.Model = mixin.Model{Db: db, Entity: o}
+	o.Items = make([]LineItem, 0)
+	o.Adjustments = make([]Adjustment, 0)
+	o.Discounts = make([]*Discount, 0)
+	o.Payments = make([]Payment, 0)
+	o.History = make([]Event, 0)
 	return o
 }
 
@@ -137,7 +142,7 @@ func (o *Order) Load(c <-chan aeds.Property) (err error) {
 	}
 
 	// Deserialize gob encoded properties
-	o.Discounts = make([]Discount, 0)
+	o.Discounts = make([]*Discount, 0)
 
 	if len(o.Discounts_) > 0 {
 		err = gob.Decode(o.Discounts_, &o.Discounts)
