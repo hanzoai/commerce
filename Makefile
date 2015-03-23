@@ -336,6 +336,17 @@ update-docs:
 	pandoc --no-highlight --toc ../crowdstart.wiki/API.md > templates/platform/docs/api.html
 	@sed -i .bak -e 's/class="json/class="lang-javascript/' templates/platform/docs/api.html
 	@sed -i .bak -e 's/table>/table class="table table-striped table-borderless table-vcenter">/' templates/platform/docs/api.html
+	@rm templates/platform/docs/api.html.bak
+
+	pandoc --no-highlight --toc ../crowdstart.wiki/Crowdstart.js.md > templates/platform/docs/crowdstart.js.html
+	@sed -i .bak -e 's/class="javascript/class="lang-javascript/' templates/platform/docs/crowdstart.js.html
+	@sed -i .bak -e 's/table>/table class="table table-striped table-borderless table-vcenter">/' templates/platform/docs/crowdstart.js.html
+	@rm templates/platform/docs/crowdstart.js.html.bak
+
+	pandoc --no-highlight --toc ../crowdstart.wiki/Salesforce-Integration.md > templates/platform/docs/salesforce.html
+	@sed -i .bak -e 's/class="javascript/class="lang-javascript/' templates/platform/docs/salesforce.html
+	@sed -i .bak -e 's/table>/table class="table table-striped table-borderless table-vcenter">/' templates/platform/docs/salesforce.html
+	@rm templates/platform/docs/salesforce.html.bak
 
 .PHONY: all bench build compile-js compile-js-min compile-css compile-css-min \
 	datastore-import datastore-export datastore-config deploy deploy-staging \
