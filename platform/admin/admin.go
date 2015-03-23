@@ -45,7 +45,6 @@ func Product(c *gin.Context) {
 
 		product := product.New(db)
 		id := c.Params.ByName("id")
-		log.Warn("%v", id)
 		product.Get(id)
 
 		template.Render(c, "admin/product.html", "org", org, "product", product)
