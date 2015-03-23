@@ -16,24 +16,6 @@ import (
 	"crowdstart.io/util/log"
 )
 
-// Alias datastore.Key with our Key interface
-type Key interface {
-	AppID() string
-	Encode() string
-	Equal(o *aeds.Key) bool
-	GobDecode(buf []byte) error
-	GobEncode() ([]byte, error)
-	Incomplete() bool
-	IntID() int64
-	Kind() string
-	MarshalJSON() ([]byte, error)
-	Namespace() string
-	Parent() *aeds.Key
-	String() string
-	StringID() string
-	UnmarshalJSON(buf []byte) error
-}
-
 // Alias Done error
 var (
 	Done       = aeds.Done
@@ -132,8 +114,12 @@ func (d *Datastore) EncodeId(kind string, id interface{}) string {
 }
 
 // Wrap new key funcs
-func (d *Datastore) NewIncompleteKey(kind string, parent *aeds.Key) *aeds.Key {
-	return aeds.NewIncompleteKey(d.Context, kind, parent)
+func (d *Datastore) NewIncompleteKey(kind string, parent Key) *aeds.Key {
+	if p, ok := parent.(*aeds.Key); ok {
+		return aeds.NewIncompleteKey(d.Context, kind, p)
+	} else {
+		return aeds.NewIncompleteKey(d.Context, kind, nil)
+	}
 }
 
 func (d *Datastore) NewKey(kind, stringID string, intID int64, parent Key) *aeds.Key {
