@@ -48,7 +48,7 @@ func PasswordResetSubmit(c *gin.Context) {
 		return
 	}
 
-	resetUrl := "https:" + config.UrlFor("platform", "/password-reset/", token.Id())
+	resetUrl := config.UrlFor("platform", "/password-reset/", token.Id())
 	mandrill.SendTransactional.Call(ctx, "email/password-reset.html",
 		user.Email,
 		user.Name(),
@@ -125,7 +125,7 @@ func PasswordResetConfirmSubmit(c *gin.Context) {
 	mandrill.SendTransactional.Call(ctx, "email/password-updated.html",
 		user.Email,
 		user.Name(),
-		"SKULLY password changed")
+		"Crowdstart password changed")
 
 	// Login user
 	auth.Login(c, user)
