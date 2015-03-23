@@ -28,9 +28,9 @@ type Rest struct {
 	Delete         gin.HandlerFunc
 	MethodOverride gin.HandlerFunc
 
-	routes     map[string]route
-	namespace  bool
-	entityType reflect.Type
+	routes       map[string]route
+	useNamespace bool
+	entityType   reflect.Type
 }
 
 type Pagination struct {
@@ -44,6 +44,7 @@ func (r *Rest) Init(entity mixin.Entity) {
 	r.Kind = entity.Kind()
 	r.entityType = reflect.ValueOf(entity).Type()
 	r.routes = make(map[string]route)
+	r.useNamespace = true
 
 	// Setup default handlers
 	r.Get = r.get
@@ -69,7 +70,7 @@ func New(entity mixin.Entity, args ...interface{}) *Rest {
 	r.Init(entity)
 
 	// Options
-	r.namespace = !opts.NoNamespace
+	r.useNamespace = !opts.NoNamespace
 
 	return r
 }
@@ -153,7 +154,7 @@ func (r Rest) newEntitySlice() interface{} {
 func (r Rest) newModel(c *gin.Context) mixin.Model {
 	ctx := middleware.GetAppEngine(c)
 
-	if r.namespace {
+	if r.useNamespace {
 		org := middleware.GetOrganization(c)
 		ctx = org.Namespace(ctx)
 	}
