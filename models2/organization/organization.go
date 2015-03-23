@@ -1,6 +1,7 @@
 package organization
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -10,6 +11,7 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/models2/user"
+	"crowdstart.io/util/permission"
 
 	. "crowdstart.io/models2"
 )
@@ -78,6 +80,13 @@ func (o Organization) Kind() string {
 	return "organization2"
 }
 
+func (o *Organization) AddDefaultTokens() {
+	o.AddToken("live-secret-key", permission.Admin)
+	o.AddToken("live-published-key", permission.Published)
+	o.AddToken("test-secret-key", permission.Admin)
+	o.AddToken("test-published-key", permission.Published)
+}
+
 func (o Organization) IsAdmin(user *user.User) bool {
 	for _, userId := range o.Admins {
 		if userId == user.Id() {
@@ -101,7 +110,7 @@ func (o Organization) Namespace(ctx interface{}) appengine.Context {
 		_ctx = v
 	}
 
-	_ctx, err := appengine.Namespace(_ctx, o.Id())
+	_ctx, err := appengine.Namespace(_ctx, strconv.Itoa(int(o.Key().IntID())))
 	if err != nil {
 		panic(err)
 	}

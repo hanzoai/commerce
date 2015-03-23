@@ -12,6 +12,7 @@ func Campaign(c *gin.Context) *campaign.Campaign {
 	db := getDb(c)
 
 	campaign := campaign.New(db)
+	campaign.Parent = org.Key()
 	campaign.OrganizationId = org.Id()
 	campaign.Approved = true
 	campaign.Enabled = true

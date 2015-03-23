@@ -27,7 +27,7 @@ func Organization(c *gin.Context) *organization.Organization {
 	org.SecretKey = []byte("prettyprettyteesplease")
 	org.Stripe.AccessToken = "sk_test_dmur0QtOCRZptNfRNV0uNexi"
 	org.Stripe.PublishableKey = "pk_test_VbexM7S8lSitV3xCGLm2kbIx"
-	org.Put()
+	org.AddDefaultTokens()
 
 	// Save org into default namespace
 	org.Put()
