@@ -20,6 +20,7 @@ config.json
 *.test
 *.sql3-journal
 *.idea
+*.bak
 
 # CircleCI
 config/development/cron.yaml.orig
