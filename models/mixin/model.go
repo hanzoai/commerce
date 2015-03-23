@@ -4,10 +4,14 @@ import (
 	"reflect"
 	"time"
 
+	"appengine"
+	aeds "appengine/datastore"
+
 	"crowdstart.io/datastore"
 	"crowdstart.io/util/hashid"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
+	"crowdstart.io/util/structs"
 )
 
 // Discrete instance of an entity
@@ -195,7 +199,7 @@ func (m *Model) GetOrCreate(filterStr string, value interface{}) error {
 	ok, err := m.Query().Filter(filterStr, value).First()
 
 	// Something bad happened
-	if err != nil {
+	if err != nil && err != aeds.ErrNoSuchEntity {
 		return err
 	}
 
@@ -203,6 +207,47 @@ func (m *Model) GetOrCreate(filterStr string, value interface{}) error {
 		// Not found, save entity
 		m.Put()
 	}
+
+	return nil
+}
+
+// Get entity from datastore or create new one
+func (m *Model) GetOrUpdate(filterStr string, value interface{}) error {
+	entity := reflect.ValueOf(m.Entity).Interface()
+
+	q := datastore.NewQuery(m.Kind(), m.Db)
+	key, ok, err := q.Filter(filterStr, value).First(entity)
+
+	// Something bad happened
+	if err != nil && err != aeds.ErrNoSuchEntity {
+		return err
+	}
+
+	if ok {
+		// Update copy found with our new data, use it's key, and save updated entity
+		structs.Copy(m.Entity, entity)
+		m.Entity = entity.(Entity)
+		m.SetKey(key)
+		m.Put()
+	} else {
+		// Nothing found, save entity
+		m.Put()
+	}
+
+	return nil
+}
+
+// NOTE: This is not thread-safe
+func (m *Model) RunInTransaction(fn func() error) error {
+	ctx := m.Db.Context
+
+	err := aeds.RunInTransaction(ctx, func(c appengine.Context) error {
+		m.Db.Context = c
+		return fn()
+	}, &aeds.TransactionOptions{XG: true})
+
+	// Should I set old context back?
+	m.Db.Context = ctx
 
 	return err
 }
