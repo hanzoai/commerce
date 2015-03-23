@@ -113,6 +113,7 @@ var BuildForm = (function() {
           }
           $select.append($option);
         }
+        $select.chosen({width: '100%', 'disable_search_threshold': 3})
       } else if (type === 'textarea') {
         $fg = $(formGroupTextAreaTemplate);
         $fg.find('textarea').attr({
