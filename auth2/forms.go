@@ -6,7 +6,6 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/auth2/password"
-	"crowdstart.io/models2/user"
 	"crowdstart.io/util/form"
 )
 
@@ -31,17 +30,4 @@ func (f *LoginForm) Parse(c *gin.Context) error {
 	f.Email = strings.TrimSpace(strings.ToLower(f.Email))
 
 	return nil
-}
-
-type RegistrationForm struct {
-	User     user.User
-	Password string
-}
-
-func (f *RegistrationForm) Parse(c *gin.Context) error {
-	return form.Parse(c, f)
-}
-
-func (f RegistrationForm) PasswordHash() ([]byte, error) {
-	return password.Hash(f.Password)
 }
