@@ -1,6 +1,25 @@
 var BuildForm = (function() {
   var formGroupInputTemplate = '<div class="form-group"><label class="col-md-3 control-label" for=""></label><div class="col-md-9"><input type="text" id="" name="" class="form-control" value=""></div></div>';
+  var formGroupTextAreaTemplate = '<div class="form-group"><label class="col-md-3 control-label" for=""></label><div class="col-md-9"><textarea class="form-control" style="resize:none;height:267px"></textarea></div></div>';
+  var formGroupSelectTemplate = '<div class="form-group"><label class="col-md-3 control-label" for=""></label><div class="col-md-9"><select class="form-control"></select></div></div>';
+  var formGroupSwitchTemplate = '<div class="form-group"><label class="col-md-10 control-label" for=""></label><div class="col-md-2"><label class="switch switch-success"><input type="checkbox"><span></span></label></div></div>';
+  var optionTemplate = '<option></option>';
+
   var requiredAsteriskTemplate = '<span class="text-danger enable-tooltip" data-original-title="required">*</span>';
+
+  $.validator.addMethod('currency', function(value, element, param) {
+      var isParamString = typeof param === 'string',
+          symbol = isParamString ? param : param[0],
+          soft = isParamString ? true : param[1],
+          regex;
+
+      symbol = symbol.replace(/,/g, '');
+      symbol = soft ? symbol + ']' : symbol + ']?';
+      regex = '^[' + symbol + '([1-9]{1}[0-9]{0,2}(\\,[0-9]{3})*(\\.[0-9]{0,2})?|[1-9]{1}[0-9]{0,}(\\.[0-9]{0,2})?|0(\\.[0-9]{0,2})?|(\\.[0-9]{1,2})?)$';
+      regex = new RegExp(regex);
+      return this.optional(element) || regex.test(value);
+
+  }, 'Please specify a valid currency');
 
   return function ($form, inputConfigs) {
     // Config is in the form of
@@ -10,6 +29,13 @@ var BuildForm = (function() {
     //          name: "Model.Name",
     //          label: "Name",
     //          value: "Name",
+    //          value: [ // for select
+    //              {
+    //                  id: "Id",
+    //                  name: "Name",
+    //                  selected: true,
+    //              }
+    //          ],
     //          placeholder: "Name",
     //          asterisk: true,
     //          type: "text",
@@ -57,8 +83,54 @@ var BuildForm = (function() {
         }
       }
 
+      var type = inputConfig.type;
+      var $fg;
       // Prepare templating
-      var $fg = $(formGroupInputTemplate);
+      if (type === 'switch') {
+        $fg = $(formGroupSwitchTemplate);
+
+        $fg.find('input').attr({
+          id: inputConfig.id,
+          name: inputConfig.name,
+        }).prop('checked', inputConfig.value);
+      } else if (type === 'select') {
+        $fg = $(formGroupSelectTemplate);
+        var $select = $fg.find('select').attr({
+          id: inputConfig.id,
+          name: inputConfig.name,
+        });
+
+        var values = inputConfig.value;
+        var valueLen = values.length;
+        for (var v = 0; v < valueLen; v++) {
+          var value = values[v];
+          var $option = $(optionTemplate).attr({
+            id: value.id,
+          }).text(value.name);
+
+          if (value.selected) {
+            $option.prop('selected', true);
+          }
+          $select.append($option);
+        }
+      } else if (type === 'textarea') {
+        $fg = $(formGroupTextAreaTemplate);
+        $fg.find('textarea').attr({
+          id: inputConfig.id,
+          name: inputConfig.name,
+          placeholder: inputConfig.placeholder,
+        }).text(inputConfig.value);
+      } else {
+        $fg = $(formGroupInputTemplate);
+
+        $fg.find('input').attr({
+          id: inputConfig.id,
+          name: inputConfig.name,
+          type: type,
+          value: inputConfig.value,
+          placeholder: inputConfig.placeholder,
+        });
+      }
 
       // Set label to name
       var label = inputConfig.label;
@@ -68,14 +140,7 @@ var BuildForm = (function() {
         label += requiredAsteriskTemplate;
       }
 
-      $fg.find('label').attr('for', inputConfig.id).html(label);
-      $fg.find('input').attr({
-        id: inputConfig.id,
-        name: inputConfig.name,
-        type: inputConfig.type,
-        value: inputConfig.value,
-        placeholder: inputConfig.placeholder,
-      });
+      $fg.find('label:first').attr('for', inputConfig.id).html(label);
 
       if (inputConfig.$parent != null) {
         inputConfig.$parent.append($fg);
