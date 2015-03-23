@@ -7,60 +7,54 @@ import (
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
-	"crowdstart.io/models"
+	"crowdstart.io/models2/token"
+	"crowdstart.io/models2/user"
 	"crowdstart.io/util/log"
-	"crowdstart.io/util/queries"
 	"crowdstart.io/util/template"
 
 	mandrill "crowdstart.io/thirdparty/mandrill/tasks"
 )
 
-// GET /create-password
-func CreatePassword(c *gin.Context) {
-	template.Render(c, "create-password.html")
-}
-
 // GET /password-reset
 func PasswordReset(c *gin.Context) {
-	template.Render(c, "password-reset.html")
+	template.Render(c, "login/password-reset.html")
 }
 
 // POST /password-reset
 func PasswordResetSubmit(c *gin.Context) {
-	form := new(ResetPasswordForm)
+	form := new(PasswordResetForm)
 	if err := form.Parse(c); err != nil {
-		template.Render(c, "password-reset.html", "error", "Please enter your new password.")
+		template.Render(c, "login/password-reset.html", "error", "Please enter your new password.")
 		return
 	}
 
 	ctx := middleware.GetAppEngine(c)
 	db := datastore.New(ctx)
-	q := queries.New(ctx)
 
 	// Lookup email
-	user := new(models.User)
-	if err := q.GetUserByEmail(form.Email, user); err != nil {
-		template.Render(c, "password-reset.html", "error", "No account associated with that email.")
+	user := user.New(db)
+	if err := user.GetByEmail(form.Email); err != nil {
+		template.Render(c, "login/password-reset.html", "error", "No account associated with that email.")
 		return
 	}
 
 	// Save reset token
-	token := new(models.Token)
-	token.UserId = user.Id
-	token.GenerateId()
-	if _, err := db.PutKind("reset-token", token.Id, token); err != nil {
-		template.Render(c, "password-reset.html", "error", "Failed to create reset token, please try again later.")
+	token := token.New(db)
+	token.UserId = user.Id()
+	token.Generate()
+	if err := token.Put(); err != nil {
+		template.Render(c, "login/password-reset.html", "error", "Failed to create reset token, please try again later.")
 		return
 	}
 
-	resetUrl := "https:" + config.UrlFor("store", "/password-reset/", token.Id)
+	resetUrl := "https:" + config.UrlFor("platform", "/password-reset/", token.Id())
 	mandrill.SendTransactional.Call(ctx, "email/password-reset.html",
 		user.Email,
 		user.Name(),
 		"Recover your password",
 		"resetUrl", resetUrl)
 
-	template.Render(c, "password-reset-sent.html")
+	template.Render(c, "login/password-reset-sent.html")
 }
 
 // GET /password-reset/:token
@@ -69,17 +63,15 @@ func PasswordResetConfirm(c *gin.Context) {
 	tokenId := c.Params.ByName("token")
 
 	// Verify token is valid.
-	token := new(models.Token)
-	err := db.GetKind("reset-token", tokenId, token)
-	if err != nil {
+	token := token.New(db)
+	if err := token.Get(tokenId); err != nil {
 		log.Warn("Invalid reset token: %v", err)
 		template.Render(c, "password-reset-confirm.html", "invalidCode", true)
 		return
 	}
 
-	user := new(models.User)
-	err = db.Get(token.UserId, user)
-	if err != nil {
+	user := user.New(db)
+	if err := user.Get(token.UserId); err != nil {
 		log.Warn("Reset token has invalid UserId: %v", err)
 		template.Render(c, "password-reset-confirm.html", "invalidCode", true)
 		return
@@ -90,29 +82,27 @@ func PasswordResetConfirm(c *gin.Context) {
 
 // POST /password-reset/:token
 func PasswordResetConfirmSubmit(c *gin.Context) {
+	tokenId := c.Params.ByName("token")
 	ctx := middleware.GetAppEngine(c)
 	db := datastore.New(ctx)
-	q := queries.New(ctx)
-	tokenId := c.Params.ByName("token")
 
 	// Verify token is valid.
-	token := new(models.Token)
-	err := db.GetKind("reset-token", tokenId, token)
-	if err != nil {
+	token := token.New(db)
+	if err := token.Get(tokenId); err != nil {
 		log.Warn("Invalid reset token: %v", err)
 		template.Render(c, "password-reset-confirm.html", "invalidCode", true)
 		return
 	}
 
 	// Lookup user by email
-	user := new(models.User)
-	if err := db.Get(token.UserId, user); err != nil {
+	user := user.New(db)
+	if err := user.Get(token.UserId); err != nil {
 		template.Render(c, "password-reset-confirm.html", "invalidEmail", true)
 		return
 	}
 
 	// Parse reset form
-	form := new(ResetPasswordConfirmForm)
+	form := new(PasswordResetConfirmForm)
 	if err := form.Parse(c); err != nil {
 		template.Render(c, "password-reset-confirm.html", "error", "Please enter your new password.")
 		return
@@ -126,7 +116,7 @@ func PasswordResetConfirmSubmit(c *gin.Context) {
 	}
 
 	// Update user
-	if err = q.UpsertUser(user); err != nil {
+	if err := user.Put(); err != nil {
 		log.Panic("Failed to save user: %v", err)
 	}
 
