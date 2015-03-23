@@ -2,10 +2,10 @@ package mixin
 
 import (
 	"reflect"
-	"strconv"
 	"time"
 
 	"crowdstart.io/datastore"
+	"crowdstart.io/util/hashid"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 )
@@ -70,7 +70,7 @@ func (m *Model) setId() {
 	m.Id_ = key.StringID()
 	if m.Id_ == "" {
 		if id := key.IntID(); id != 0 {
-			m.Id_ = strconv.Itoa(int(id))
+			m.Id_ = hashid.EncodeId(id)
 		}
 	}
 }
@@ -121,12 +121,8 @@ func (m *Model) SetKey(key interface{}) error {
 			// We've declared this model uses string keys.
 			k = m.Db.NewKey(m.Entity.Kind(), v, 0, nil)
 		} else {
-			// By default all keys are int ids, use atoi to convert to an int.
-			i, err := strconv.Atoi(v)
-			if err != nil {
-				return datastore.InvalidKey
-			}
-			k = m.Db.NewKey(m.Entity.Kind(), "", int64(i), nil)
+			// By default all keys are int ids internally (but we use hashid to convert them to strings)
+			k = m.Db.NewKey(m.Entity.Kind(), "", hashid.DecodeId(v), nil)
 		}
 	case int64:
 		k = m.Db.NewKey(m.Entity.Kind(), "", v, nil)
