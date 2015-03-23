@@ -16,14 +16,14 @@
     <!-- Register Title -->
     <div class="block-title">
         <div class="block-options pull-right">
-            <a href="page_ready_login.html" class="btn btn-effect-ripple btn-primary" data-toggle="tooltip" data-placement="left" title="Back to login"><i class="fa fa-user"></i></a>
+            <a href="{{ urlFor("platform", "/login") }}" class="btn btn-effect-ripple btn-primary" data-toggle="tooltip" data-placement="left" title="Back to login"><i class="fa fa-user"></i></a>
         </div>
         <h2>Register</h2>
     </div>
     <!-- END Register Title -->
 
     <!-- Register Form -->
-    <form id="form-register" action="page_ready_register.html" method="post" class="form-horizontal">
+    <form id="form-register" action="" method="post" class="form-horizontal">
         <!-- <div class="form-group"> -->
         <!--     <div class="col-xs-12"> -->
         <!--         <input type="text" id="register-username" name="register-username" class="form-control" placeholder="Username"> -->
@@ -41,7 +41,7 @@
         </div>
         <div class="form-group">
             <div class="col-xs-12">
-                <input type="password" id="register-password-verify" name="PasswordConfirm" class="form-control" placeholder="Verify Password">
+                <input type="password" id="register-password-verify" name="ConfirmPassword" class="form-control" placeholder="Verify Password">
             </div>
         </div>
         <div class="form-group form-actions">
