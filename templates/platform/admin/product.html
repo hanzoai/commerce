@@ -153,13 +153,6 @@
           type: 'switch',
           value: '{{ product.Taxable }}' === 'True',
           asterisk: false,
-          rules: [
-            {
-              rule: 'required',
-              value: true,
-              message: 'Choose if this item is taxed'
-            },
-          ],
           $parent: $('#product-cost')
         },
         {
@@ -169,13 +162,6 @@
           type: 'switch',
           value: '{{ product.Available }}' === 'True',
           asterisk: false,
-          rules: [
-            {
-              rule: 'required',
-              value: true,
-              message: 'Choose if this item is visible in the store'
-            },
-          ],
           $parent: $('#product-cost')
         },
         {
