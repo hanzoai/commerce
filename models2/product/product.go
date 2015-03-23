@@ -39,6 +39,12 @@ type Product struct {
 	Inventory int `json:"inventory"`
 	Sold      int `json:"sold"`
 
+	Weight     float64  `json:"weight"`
+	WeightUnit MassUnit `json:"weightUnit"`
+	Dimensions string   `json:"dimensions"`
+
+	Taxable bool `json:"taxable"`
+
 	// Product Name
 	Name string `json:"name"`
 
