@@ -1,8 +1,6 @@
 package fixtures
 
 import (
-	"time"
-
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/models2/collection"
@@ -16,7 +14,7 @@ func Collection(c *gin.Context) *collection.Collection {
 	collection.Name = "Such tees pack"
 	collection.Description = "Much tees in one pack!"
 	collection.Published = true
-	collection.AvailableBy = time.Now()
+	collection.Available = true
 
 	collection.MustPut()
 	return collection
