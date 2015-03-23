@@ -11,6 +11,7 @@ import (
 	"crowdstart.io/middleware"
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/util/json"
+	"crowdstart.io/util/log"
 )
 
 type route struct {
@@ -45,15 +46,6 @@ func (r *Rest) Init(entity mixin.Entity) {
 	r.Kind = entity.Kind()
 	r.entityType = reflect.ValueOf(entity).Type()
 	r.routes = make(map[string]route)
-
-	// Setup default handlers
-	r.Get = r.get
-	r.List = r.list
-	r.Create = r.create
-	r.Update = r.update
-	r.Patch = r.patch
-	r.Delete = r.delete
-	r.MethodOverride = r.methodOverride
 }
 
 type Opts struct {
@@ -61,17 +53,14 @@ type Opts struct {
 }
 
 func New(entity mixin.Entity, args ...interface{}) *Rest {
-	opts := Opts{}
-
-	if len(args) > 0 {
-		opts = args[0].(Opts)
-	}
-
 	r := new(Rest)
-	r.Init(entity)
 
-	// Options
-	r.DefaultNamespace = opts.DefaultNamespace
+	// Handle Options
+	if len(args) > 0 {
+		opts := args[0].(Opts)
+		r.DefaultNamespace = opts.DefaultNamespace
+	}
+	r.Init(entity)
 
 	return r
 }
@@ -91,6 +80,35 @@ func (r Rest) Route(router Router, args ...gin.HandlerFunc) {
 }
 
 func (r Rest) defaultRoutes() []route {
+	// Setup default handlers
+	if r.Get == nil {
+		r.Get = r.get
+	}
+
+	if r.List == nil {
+		r.List = r.list
+	}
+
+	if r.Create == nil {
+		r.Create = r.create
+	}
+
+	if r.Update == nil {
+		r.Update = r.update
+	}
+
+	if r.Patch == nil {
+		r.Patch = r.patch
+	}
+
+	if r.Delete == nil {
+		r.Delete = r.delete
+	}
+
+	if r.MethodOverride == nil {
+		r.MethodOverride = r.methodOverride
+	}
+
 	return []route{
 		route{
 			method:   "POST",
@@ -157,9 +175,12 @@ func (r Rest) newModel(c *gin.Context) mixin.Model {
 
 	// Automatically use namespace of organization unless we're configured to
 	// use the default namespace for this endpoint.
-	if !r.DefaultNamespace {
+	if r.DefaultNamespace {
+		log.Debug("Using default namespace.")
+	} else {
 		org := middleware.GetOrganization(c)
 		ctx = org.Namespace(ctx)
+		log.Debug("Using namespace: %d", org.Key().IntID())
 	}
 
 	db := datastore.New(ctx)
