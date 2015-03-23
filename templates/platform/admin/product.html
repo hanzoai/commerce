@@ -50,7 +50,7 @@
 // product info
         {
           id: 'name',
-          name: 'Product.Name',
+          name: 'name',
           value: '{{ product.Name }}',
           label: 'Name',
           type: 'text',
@@ -66,7 +66,7 @@
         },
         {
           id: 'slug',
-          name: 'Product.Slug',
+          name: 'slug',
           value: '{{ product.Slug }}',
           label: 'Slug',
           type: 'text',
@@ -82,7 +82,7 @@
         },
         {
           id: 'Description',
-          name: 'Product.Description',
+          name: 'description',
           value: {{ jsonify(product.Description) | safe }},
           label: 'Description',
           type: 'textarea',
@@ -91,7 +91,7 @@
 // product cost
         {
           id: 'price',
-          name: 'Product.Price',
+          name: 'price',
           value: {{ product.Price }} / 100,
           label: 'Price',
           type: 'currency',
@@ -112,7 +112,7 @@
         },
         {
           id: 'currency',
-          name: 'Product.Currency',
+          name: 'currency',
           label: 'Currency',
           value: [
             {
@@ -150,7 +150,7 @@
         },
         {
           id: 'taxable',
-          name: 'Product.Taxable',
+          name: 'taxable',
           label: 'Do you wish to collect taxes for this product?',
           type: 'switch',
           value: '{{ product.Taxable }}' === 'True',
@@ -159,7 +159,7 @@
         },
         {
           id: 'available',
-          name: 'Product.Available',
+          name: 'available',
           label: 'Is this available for purchase?',
           type: 'switch',
           value: '{{ product.Available }}' === 'True',
@@ -168,7 +168,7 @@
         },
         {
           id: 'dimensions',
-          name: 'Product.Dimensions',
+          name: 'dimensions',
           value: '{{ product.Dimensions }}',
           label: 'Size (L x W x H)',
           type: 'text',
@@ -177,7 +177,7 @@
         },
         {
           id: 'weight',
-          name: 'Product.Weight',
+          name: 'weight',
           value: '{{ product.Weight }}',
           label: 'Weight (grams)',
           type: 'text',
@@ -194,10 +194,10 @@
       {
           price: function(val) {
               // To cents
-              return parseInt(val.replace(/[^\d.-]/g,''), 10) * 100;
+              return parseFloat(val.replace(/[^\d.-]/g,''), 10) * 100;
           },
           weight: function(val) {
-              return parseInt(val.replace(/[^\d.-]/g,''), 10);
+              return parseFloat(val.replace(/[^\d.-]/g,''), 10);
           }
       }
     );
@@ -205,7 +205,7 @@
       var $form = $(this);
       requestAnimationFrame(function() {
           if ($('.form-group.has-error').length === 0) {
-              api.post(function(data) {
+              api.put(function(data) {
                   window.location.replace('{{ urlFor("platform", "/products") }}')
               }, $form, '{{ product.Id }}')
           }
