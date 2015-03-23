@@ -28,7 +28,7 @@ var BuildTable = (function() {
     //      {
     //          field: 'field2.field3.field4', // chained dot notation supported
     //          name: 'Field 2',
-    //          type: "text" // defaults to text
+    //          render: "text" // defaults to text
     //      }],
     //      api: 'api.suchtees.com/object',
     //      apiToken: '',
@@ -131,9 +131,9 @@ var BuildTable = (function() {
             var column = columns[c];
             var $tableData = $(tableDataTemplate)
 
-            var type = 'text';
-            if (column.type) {
-              type = column.type;
+            var render = 'text';
+            if (column.render) {
+              render = column.render;
             }
 
             // Handle fields in the form of field1.field2.field3
@@ -150,19 +150,21 @@ var BuildTable = (function() {
               }
             }
 
-            // Handle different types of column formatting
-            if (type == 'text') {
+            // Handle different renders of column formatting
+            if (render == 'text') {
               val = val.charAt(0).toUpperCase() + val.slice(1);
-            } else if (type == 'currency' && model.currency) {
+            } else if (render == 'currency' && model.currency) {
               val = currencyCharacters[model.currency] + val;
               val = val.substr(0, val.length - 2) + '.' + val.substr(-2);
               $tableData.addClass('text-right');
-            } else if (type == 'date') {
+            } else if (render == 'date') {
               val = (new Date(val)).toDateString();
-            } else if (type == 'number') {
+            } else if (render == 'number') {
               $tableData.addClass('text-right');
-            } else if (type == 'id') {
+            } else if (render == 'id') {
               $tableData.addClass('text-center');
+            } else if (render && {}.toString.call(render) == '[object Function]') {
+              val = render(val, model);
             }
 
             $tableData.html(val);
