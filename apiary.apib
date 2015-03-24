@@ -34,7 +34,7 @@ This represents a single fundraising campaign.
 | links              | Important links related to the campaign not covered in other areas (such as media releases).                                                | []string              |
 
 
-# Group Payment
+# Group Payments
 
 ## Charge [/charge]
 Charges and captures a payment immediately or fails.
@@ -315,3 +315,57 @@ product is shipped.
               "trackingNumber":""
            }
         }
+        
+## Capture [/order/{id}/capture]
+Captures the payment for an order
+
+### Capture payment [POST]
++ Request (application/json)
++ Parameters
+    + id (string) ID of the order
+        THE-ORDER-ID
+
++ Response 200 (application/json)
+
+        {
+            "a": "b"
+        }
+        
+# Group API Methods
+## Campaign [/campaign/{id}]
+
+### Retrieve campaign [GET]
++ Request (a)
++ Parameters
+    + id (string) ID of the campaign
+        CAMPAIGN-ID
+
++ Response 200 (application/json)
+        
+        {
+          "id": "7",
+          "createdAt": "2015-03-23T04:11:02.164175Z",
+          "updatedAt": "2015-03-23T04:11:02.164175Z",
+          "slug": "",
+          "organizationId": "5",
+          "approved": true,
+          "enabled": true,
+          "category": "arts",
+          "title": "Such shirt!",
+          "tagline": "",
+          "pitchMedia": "",
+          "videoUrl": "",
+          "videoOverlayUrl": "",
+          "imageUrl": "",
+          "Description": "Shirt that bring much happiness.",
+          "backers": 0,
+          "raised": 0,
+          "thumbnail": "",
+          "originalUrl": "",
+          "storeUrl": "",
+          "productIds": null,
+          "googleAnalytics": "",
+          "facebookTag": "",
+          "links": null
+        }
+

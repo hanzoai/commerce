@@ -16,7 +16,7 @@
         <!-- END API Keys Title -->
 
         <form id="form-key" action="" method="post">
-            {% for tok in org.Tokens %}
+            {% for tok in ctx.organization.Tokens %}
             <div class="form-group">
                 <label>{{ tok.Name }}</label>
                 <textarea class="form-control" style="height:80px">{{ tok.String() }}</textarea>
