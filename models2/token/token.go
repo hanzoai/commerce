@@ -3,6 +3,7 @@ package token
 import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
+	"crowdstart.io/util/val"
 )
 
 type Token struct {
@@ -22,4 +23,8 @@ func New(db *datastore.Datastore) *Token {
 
 func (t Token) Kind() string {
 	return "token2"
+}
+
+func (t Token) Validator() *val.Validator {
+	return val.New()
 }

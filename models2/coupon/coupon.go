@@ -5,6 +5,7 @@ import (
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
+	"crowdstart.io/util/val"
 )
 
 type CouponType string
@@ -61,4 +62,8 @@ func New(db *datastore.Datastore) *Coupon {
 
 func (c Coupon) Kind() string {
 	return "coupon2"
+}
+
+func (c Coupon) Validator() *val.Validator {
+	return val.New()
 }
