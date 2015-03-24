@@ -41,3 +41,11 @@ func Decode(body io.ReadCloser, v interface{}) error {
 	}
 	return nil
 }
+
+func DecodeBytes(data []byte, v interface{}) error {
+	err := json.Unmarshal(data, v)
+	if err != nil {
+		return err
+	}
+	return nil
+}
