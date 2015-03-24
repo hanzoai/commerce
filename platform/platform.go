@@ -17,6 +17,8 @@ func init() {
 
 	loginRequired := middleware.LoginRequired("platform")
 	logoutRequired := middleware.LogoutRequired("platform")
+	acquireUser := middleware.AcquireUser("platform")
+	acquireOrganization := middleware.AcquireOrganization("platform")
 
 	// Frontend
 	router.GET("/", frontend.Index)
@@ -52,31 +54,33 @@ func init() {
 	router.GET("/password-reset/:token", login.PasswordResetConfirm)
 	router.POST("/password-reset/:token", login.PasswordResetConfirmSubmit)
 
-	// Admin
-	router.GET("/dashboard", loginRequired, admin.Dashboard)
+	// Admin dashboard
+	dash := router.Group("")
+	dash.Use(loginRequired, acquireUser, acquireOrganization)
+	dash.GET("/dashboard", admin.Dashboard)
 
-	router.GET("/profile", loginRequired, user.Profile)
-	router.POST("/profile", user.SubmitProfile)
-	router.POST("/changepassword", user.SubmitProfile)
-	router.GET("/keys", loginRequired, admin.Keys)
-	router.POST("/keys", loginRequired, admin.NewKeys)
+	dash.GET("/profile", user.Profile)
+	dash.POST("/profile", user.SubmitProfile)
+	dash.POST("/changepassword", user.SubmitProfile)
+	dash.GET("/keys", admin.Keys)
+	dash.POST("/keys", admin.NewKeys)
 
-	router.GET("/orders", loginRequired, admin.Orders)
-	router.GET("/order/:id", loginRequired, admin.Order)
-	router.GET("/products", loginRequired, admin.Products)
-	router.GET("/product/:id", loginRequired, admin.Product)
-	router.GET("/organization", loginRequired, admin.Organization)
+	dash.GET("/orders", admin.Orders)
+	dash.GET("/order/:id", admin.Order)
+	dash.GET("/products", admin.Products)
+	dash.GET("/product/:id", admin.Product)
+	dash.GET("/organization", admin.Organization)
 
-	router.GET("/settings", loginRequired, user.Profile)
+	dash.GET("/settings", user.Profile)
 
 	// Stripe connect
-	router.GET("/stripe/connect", loginRequired, admin.StripeConnect)
-	router.GET("/stripe/callback", loginRequired, admin.StripeCallback)
+	dash.GET("/stripe/connect", admin.StripeConnect)
+	dash.GET("/stripe/callback", admin.StripeCallback)
+	dash.GET("/stripe/sync", admin.StripeSync)
 	router.POST("/stripe/hook", stripe.StripeWebhook)
-	router.GET("/stripe/sync", admin.StripeSync)
 
 	// Salesfoce connect
-	router.GET("/salesforce/callback", loginRequired, admin.SalesforceCallback)
-	router.GET("/salesforce/test", loginRequired, admin.TestSalesforceConnection)
+	dash.GET("/salesforce/callback", admin.SalesforceCallback)
+	dash.GET("/salesforce/test", admin.TestSalesforceConnection)
 	router.GET("/salesforce/sync", admin.SalesforcePullLatest)
 }

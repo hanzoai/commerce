@@ -12,33 +12,34 @@ import (
 func Cycliq(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
-	user := user.New(db)
-	user.Email = "ac@theblackeyeproject.co.uk"
-	user.GetOrCreate("Email=", user.Email)
-	user.FirstName = "Andy"
-	user.LastName = "Copely"
-	user.PasswordHash, _ = password.Hash("cycliqpass")
-	user.Put()
+	u := user.New(db)
+	u.Email = "andrew@cycliq.com"
+	u.GetOrCreate("Email=", u.Email)
+	u.FirstName = "Andrew"
+	u.LastName = "Hagen"
+	u.PasswordHash, _ = password.Hash("cycliqpass")
+	u.Put()
+
+	u2 := user.New(db)
+	u2.Email = "ac@theblackeyeproject.co.uk"
+	u2.GetOrCreate("Email=", u2.Email)
+	u2.FirstName = "Andy"
+	u2.LastName = "Copely"
+	u2.PasswordHash, _ = password.Hash("cycliqpass")
+	u2.Put()
 
 	org := organization.New(db)
 	org.Name = "cycliq"
 	org.GetOrCreate("Name=", org.Name)
 
 	org.FullName = "Cycliq"
-	org.OwnerId = user.Id()
+	org.Owners = []string{u.Id(), u2.Id()}
 	org.Website = "http://cycliq.com"
 	org.SecretKey = []byte("3kfmczo801fdmur0QtOCRZptNfRNV0uNexi")
 	org.AddDefaultTokens()
 
 	// Save org into default namespace
 	org.Put()
-
-	// ..and also save org/user into org's namespace
-	ctx := org.Namespace(c)
-	user.SetContext(ctx)
-	org.SetContext(ctx)
-	org.Put()
-	user.Put()
 
 	return org
 }
