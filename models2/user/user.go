@@ -65,14 +65,15 @@ func (u User) Kind() string {
 }
 
 func (u *User) Load(c <-chan aeds.Property) (err error) {
-	// Load properties
+	// Load supported properties
 	if err = IgnoreFieldMismatch(aeds.LoadStruct(u, c)); err != nil {
 		return err
 	}
 
-	// Ensure stuff is initialized
+	// Ensure we're initialized
 	u.Init()
 
+	// Deserialize from datastore
 	if len(u.Metadata_) > 0 {
 		err = gob.Decode(u.Metadata_, &u.Metadata)
 	}
@@ -81,6 +82,7 @@ func (u *User) Load(c <-chan aeds.Property) (err error) {
 }
 
 func (u *User) Save(c chan<- aeds.Property) (err error) {
+	// Serialize unsupported properties
 	u.Metadata_, err = gob.Encode(&u.Metadata)
 
 	if err != nil {
