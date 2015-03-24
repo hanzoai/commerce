@@ -9,7 +9,7 @@ import (
 	"crowdstart.io/util/session"
 )
 
-const loginKey = "user-id"
+const loginKey = "isLoggedIn"
 
 func GetCurrentUserId(c *gin.Context) (string, error) {
 	log.Debug("Retrieving current id from session")
