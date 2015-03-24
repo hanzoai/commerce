@@ -1,9 +1,9 @@
 var BuildForm = (function() {
-  var formGroupInputTemplate = '<div class="form-group"><label class="col-md-3 control-label" for=""></label><div class="col-md-9"><input type="text" id="" name="" class="form-control" value=""></div></div>';
-  var formGroupTextAreaTemplate = '<div class="form-group"><label class="col-md-3 control-label" for=""></label><div class="col-md-9"><textarea class="form-control" style="resize:none;height:265px"></textarea></div></div>';
-  var formGroupDisplayTemplate = '<div class="form-group"><label class="col-md-3 control-label" for=""></label><div class="col-md-9"><p class="form-control-static"></p></div></div>';
-  var formGroupSelectTemplate = '<div class="form-group"><label class="col-md-3 control-label" for=""></label><div class="col-md-9"><select class="form-control"></select></div></div>';
-  var formGroupSwitchTemplate = '<div class="form-group"><label class="col-md-10 control-label" for=""></label><div class="col-md-2"><label class="switch switch-success"><input type="checkbox"><span></span></label></div></div>';
+  var formGroupInputTemplate = '<div class="form-group"><label class="control-label" for=""></label><div><input type="text" id="" name="" class="form-control" value=""></div></div>';
+  var formGroupTextAreaTemplate = '<div class="form-group"><label class="control-label" for=""></label><div><textarea class="form-control" style="resize:none;height:265px"></textarea></div></div>';
+  var formGroupStaticTemplate = '<div class="form-group"><label class="control-label" for=""></label><div><p class="form-control-static"></p></div></div>';
+  var formGroupSelectTemplate = '<div class="form-group"><label class="control-label" for=""></label><div><select class="form-control"></select></div></div>';
+  var formGroupSwitchTemplate = '<div class="form-group"><label class="control-label" for=""></label><div><label class="switch switch-success"><input type="checkbox"><span></span></label></div></div>';
   var optionTemplate = '<option></option>';
 
   var requiredAsteriskTemplate = '<span class="text-danger enable-tooltip" data-original-title="required">*</span>';
@@ -41,6 +41,8 @@ var BuildForm = (function() {
     //          asterisk: true,
     //          type: "text",
     //          $parent: $('#id'),
+    //          labelCols: 3,
+    //          valueCols: 9,
     //          rules: [
     //              {
     //                  rule: "required",
@@ -84,6 +86,9 @@ var BuildForm = (function() {
         }
       }
 
+      var labelCols = inputConfig.labelCols;
+      var valueCols = inputConfig.valueCols;
+
       var type = inputConfig.type;
       var $fg;
       // Prepare templating
@@ -94,6 +99,9 @@ var BuildForm = (function() {
           id: inputConfig.id,
           name: inputConfig.name,
         }).prop('checked', inputConfig.value);
+
+        labelCols = 10;
+        valueCols = 2;
       } else if (type === 'select') {
         $fg = $(formGroupSelectTemplate);
         var $select = $fg.find('select').attr({
@@ -123,15 +131,15 @@ var BuildForm = (function() {
           placeholder: inputConfig.placeholder,
         }).text(inputConfig.value);
       } else if (type === 'static'){
-        $fg = $(formGroupDisplayTemplate);
+        $fg = $(formGroupStaticTemplate);
         $fg.find('p').text(inputConfig.value);
       } else if (type === 'static-date'){
-        $fg = $(formGroupDisplayTemplate);
+        $fg = $(formGroupStaticTemplate);
         var val = (new Date(inputConfig.value)).toDateString();
         $fg.find('p').text(val);
       } else if (type === 'static-currency'){
-        $fg = $(formGroupDisplayTemplate);
-        $fg.find('p').text(inputConfig.value).addClass('text-right');
+        $fg = $(formGroupStaticTemplate);
+        $fg.find('p').text(Util.renderUICurrencyFromJSON(inputConfig.value)).addClass('text-right')
       } else {
         $fg = $(formGroupInputTemplate);
 
@@ -156,7 +164,8 @@ var BuildForm = (function() {
         label += requiredAsteriskTemplate;
       }
 
-      $fg.find('label:first').attr('for', inputConfig.id).html(label);
+      $fg.find('label:first').attr('for', inputConfig.id).html(label).addClass('col-md-' + (labelCols || 3));
+      $fg.find('div:first').addClass('col-md-' + (valueCols || 9));
 
       if (inputConfig.$parent != null) {
         inputConfig.$parent.append($fg);
