@@ -329,24 +329,19 @@ func (r Rest) update(c *gin.Context) {
 		return
 	}
 
+	// Do some reflection magic to make sure things are set as they should be
+	entity := reflect.Indirect(reflect.ValueOf(model.Entity))
+
+	// Set updatedAt
+	updatedAt := entity.FieldByName("UpdatedAt")
+	now := reflect.ValueOf(time.Now())
+	updatedAt.Set(now)
+
 	// Replace whatever was in the datastore with our new updated entity
 	if err := model.Put(); err != nil {
 		json.Fail(c, 500, "Failed to update "+r.Kind, err)
 	} else {
 		r.JSON(c, 200, model.Entity)
-	}
-}
-
-// Deletes an entity by given `id`
-func (r Rest) delete(c *gin.Context) {
-	id := c.Params.ByName("id")
-	model := r.newModel(c)
-	model.Delete(id)
-
-	if err := model.Delete(); err != nil {
-		json.Fail(c, 500, "Failed to delete "+r.Kind, err)
-	} else {
-		c.Data(204, "application/json", make([]byte, 0))
 	}
 }
 
@@ -366,10 +361,31 @@ func (r Rest) patch(c *gin.Context) {
 		return
 	}
 
+	// Do some reflection magic to make sure things are set as they should be
+	entity := reflect.Indirect(reflect.ValueOf(model.Entity))
+
+	// Set updatedAt
+	updatedAt := entity.FieldByName("UpdatedAt")
+	now := reflect.ValueOf(time.Now())
+	updatedAt.Set(now)
+
 	if err := model.Put(); err != nil {
 		json.Fail(c, 500, "Failed to update "+r.Kind, err)
 	} else {
 		r.JSON(c, 200, model.Entity)
+	}
+}
+
+// Deletes an entity by given `id`
+func (r Rest) delete(c *gin.Context) {
+	id := c.Params.ByName("id")
+	model := r.newModel(c)
+	model.Delete(id)
+
+	if err := model.Delete(); err != nil {
+		json.Fail(c, 500, "Failed to delete "+r.Kind, err)
+	} else {
+		c.Data(204, "application/json", make([]byte, 0))
 	}
 }
 
