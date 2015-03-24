@@ -3,7 +3,6 @@ package user
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/models2"
 	"crowdstart.io/models2/user"
 	"crowdstart.io/util/form"
 	"crowdstart.io/util/val"
@@ -58,39 +57,4 @@ type ResetPasswordConfirmForm struct {
 
 func (f *ResetPasswordConfirmForm) Parse(c *gin.Context) error {
 	return form.Parse(c, f)
-}
-
-// User profile form (metadata)
-type MetadataForm struct {
-	Metadata []models.Datum // Not on HTML form directly; generated when parsed
-}
-
-func (f *MetadataForm) Parse(c *gin.Context) error {
-	if err := c.Request.ParseForm(); err != nil {
-		return err
-	}
-
-	// Create Metadata from the HTML 'name' element and the values in the inputs.
-	for key, value := range c.Request.Form {
-		keyExists := false
-		// Range over the existing metadata to see if we can find a matching key.
-		for datumkey, datum := range f.Metadata {
-			if datum.Key == key {
-				// We found a matching key. Note we did and update the existing value.
-				f.Metadata[datumkey].Value = value[0]
-				keyExists = true
-				break
-			}
-		}
-		if keyExists == false {
-			// We didn't find a datum with the key we were looking for.  So create one and append it.
-			f.Metadata = append(f.Metadata, models.Datum{Key: key, Value: value[0]})
-		}
-	}
-	return nil
-}
-
-func (f *MetadataForm) Validate() []string {
-	var errs []string
-	return errs
 }
