@@ -7,7 +7,7 @@
 <section class="site-section site-section-top site-section-light themed-background-dark-default">
     <div class="container">
         <div class="push text-center">
-            <h1 class="animation-fadeInQuick2Inv"><strong>Infinitely scalable crowdfunding & pre-order platform.</strong></h1>
+            <h1 class="animation-fadeInQuick2Inv"><strong>Scalable crowdfunding & pre-order platform.</strong></h1>
             <h2 class="text-light-op animation-fadeInQuickInv push-bit"><strong>Fund Your Dreams.</strong></h2>
           <a href="{{ urlFor("platform", "/signup") }}" class="btn btn-lg btn-success push-right-left"><strong>Get started</strong></a>
           No setup fees.
@@ -123,14 +123,14 @@
     <div class="container">
         <h2 class="site-heading text-center text-light">Sign up here today if you want access to our <strong>Beta Program</strong>!</h2>
         <div class="site-block text-center">
-            <form action="features.html" method="post" class="form-inline" onsubmit="return false;">
+            <form action="{{ urlFor("platform", "/signup") }}" method="post" class="form-inline" onsubmit="return false;">
                 <div class="form-group">
-                    <label class="sr-only" for="register-username">Username</label>
-                    <input type="text" id="register-username" name="register-username" class="form-control input-lg" placeholder="Choose a username..">
+                    <label class="sr-only" for="register-username">Email</label>
+                    <input type="text" id="register-username" name="register-username" class="form-control input-lg" placeholder="Email">
                 </div>
                 <div class="form-group">
                     <label class="sr-only" for="register-password">Password</label>
-                    <input type="password" id="register-password" name="register-password" class="form-control input-lg" placeholder="..and a password!">
+                    <input type="password" id="register-password" name="register-password" class="form-control input-lg" placeholder="Password">
                 </div>
                 <div class="form-group">
                     <button type="submit" class="btn btn-lg btn-success">Get Started!</button>
