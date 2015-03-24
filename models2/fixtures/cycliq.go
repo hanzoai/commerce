@@ -30,7 +30,7 @@ func Cycliq(c *gin.Context) *organization.Organization {
 	u2.GetOrCreate("Email=", u2.Email)
 	u2.FirstName = "Andy"
 	u2.LastName = "Copely"
-	u.Organizations = []string{org.Id()}
+	u2.Organizations = []string{org.Id()}
 	u2.PasswordHash, _ = password.Hash("cycliqpassword!")
 	u2.Put()
 
