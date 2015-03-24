@@ -39,6 +39,9 @@ var NewRestAPI = (function() {
       put: function(handler, $form, id, params) {
         this.ajax('POST', handler, $form, id, params);
       },
+      del: function(handler, id, params) {
+        this.ajax('DELETE', handler, null, id, params);
+      },
       ajax: function(method, handler, $form, id, params) {
         var paramStrs = [tokenStr];
         if (id == null) {
