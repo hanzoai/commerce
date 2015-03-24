@@ -116,18 +116,27 @@ type Order struct {
 	// Series of events that have occured relevant to this order
 	History []Event `json:"history,omitempty"`
 
+	// Arbitrary key/value pairs associated with this order
+	Metadata  Metadata `json:"metadata" datastore:"-"`
+	Metadata_ []byte   `json:"-"`
+
 	// Not a real transaction, purely for our own debugging purposes.
 	Test bool `json:"-"`
 }
 
-func New(db *datastore.Datastore) *Order {
-	o := new(Order)
-	o.Model = mixin.Model{Db: db, Entity: o}
-	o.Items = make([]LineItem, 0)
+func (o *Order) Init() {
 	o.Adjustments = make([]Adjustment, 0)
 	o.Discounts = make([]*Discount, 0)
-	o.Payments = make([]Payment, 0)
 	o.History = make([]Event, 0)
+	o.Items = make([]LineItem, 0)
+	o.Metadata = make(Metadata)
+	o.Payments = make([]Payment, 0)
+}
+
+func New(db *datastore.Datastore) *Order {
+	o := new(Order)
+	o.Init()
+	o.Model = mixin.Model{Db: db, Entity: o}
 	return o
 }
 
@@ -136,24 +145,30 @@ func (o Order) Kind() string {
 }
 
 func (o *Order) Load(c <-chan aeds.Property) (err error) {
-	// Load properties
+	// Load supported properties
 	if err = IgnoreFieldMismatch(aeds.LoadStruct(o, c)); err != nil {
 		return err
 	}
 
-	// Deserialize gob encoded properties
-	o.Discounts = make([]*Discount, 0)
+	// Ensure we're initialized
+	o.Init()
 
+	// Deserialize from datastore
 	if len(o.Discounts_) > 0 {
 		err = gob.Decode(o.Discounts_, &o.Discounts)
+	}
+
+	if len(o.Metadata_) > 0 {
+		err = gob.Decode(o.Metadata_, &o.Metadata)
 	}
 
 	return err
 }
 
 func (o *Order) Save(c chan<- aeds.Property) (err error) {
-	// Gob encode problematic properties
+	// Serialize unsupported properties
 	o.Discounts_, err = gob.Encode(&o.Discounts)
+	o.Metadata_, err = gob.Encode(&o.Metadata)
 
 	if err != nil {
 		return err
