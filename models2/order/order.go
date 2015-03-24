@@ -145,14 +145,15 @@ func (o Order) Kind() string {
 }
 
 func (o *Order) Load(c <-chan aeds.Property) (err error) {
-	// Load properties
+	// Load supported properties
 	if err = IgnoreFieldMismatch(aeds.LoadStruct(o, c)); err != nil {
 		return err
 	}
 
-	// Deserialize gob encoded properties
+	// Ensure we're initialized
 	o.Init()
 
+	// Deserialize from datastore
 	if len(o.Discounts_) > 0 {
 		err = gob.Decode(o.Discounts_, &o.Discounts)
 	}
@@ -165,7 +166,7 @@ func (o *Order) Load(c <-chan aeds.Property) (err error) {
 }
 
 func (o *Order) Save(c chan<- aeds.Property) (err error) {
-	// Gob encode problematic properties
+	// Serialize unsupported properties
 	o.Discounts_, err = gob.Encode(&o.Discounts)
 	o.Metadata_, err = gob.Encode(&o.Metadata)
 
