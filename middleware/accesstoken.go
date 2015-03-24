@@ -80,7 +80,3 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 		c.Set("organizationId", org.Id())
 	}
 }
-
-func GetOrganization(c *gin.Context) *organization.Organization {
-	return c.MustGet("organization").(*organization.Organization)
-}

@@ -53,7 +53,7 @@ var _ = Describe("middleware/accesstoken", func() {
 			o := organization.New(db)
 			o.Name = "Justin"
 			o.SecretKey = []byte("AAA")
-			o.OwnerId = u.Id()
+			o.Owners = []string{u.Id()}
 
 			// insert into db
 			err = o.Put()
