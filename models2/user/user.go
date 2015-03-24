@@ -21,14 +21,15 @@ type User struct {
 	mixin.Model
 	mixin.Salesforce
 
-	Username        string  `json:"username"`
-	FirstName       string  `json:"firstName"`
-	LastName        string  `json:"lastName"`
-	Phone           string  `json:"phone"`
-	BillingAddress  Address `json:"billingAddress,omitempty"`
-	ShippingAddress Address `json:"shippingAddress,omitempty"`
-	Email           string  `json:"email"`
-	PasswordHash    []byte  `schema:"-" datastore:",noindex" json:"-"`
+	Username        string   `json:"username"`
+	FirstName       string   `json:"firstName"`
+	LastName        string   `json:"lastName"`
+	Phone           string   `json:"phone"`
+	BillingAddress  Address  `json:"billingAddress,omitempty"`
+	ShippingAddress Address  `json:"shippingAddress,omitempty"`
+	Email           string   `json:"email"`
+	PasswordHash    []byte   `schema:"-" datastore:",noindex" json:"-"`
+	Organizations   []string `json:"organizations"`
 
 	Facebook struct {
 		AccessToken string `facebook:"-"`
