@@ -9,14 +9,6 @@ var BuildTable = (function() {
   var optionTemplate = '<option value=""></option>';
   var displayLabelTemplate = '<label>&nbsp;&nbsp;Items per Page</label>';
 
-  var currencyCharacters = {
-	'usd': '$',
-	'aud': '$',
-	'cad': '$',
-	'eur': '€',
-	'gbp': '£'
-  };
-
   return function ($table, tableConfig) {
     // Config is in the form of
     //  {
@@ -171,8 +163,8 @@ var BuildTable = (function() {
             if (render == 'text') {
               val = val.charAt(0).toUpperCase() + val.slice(1);
             } else if (render == 'currency' && model.currency) {
-              val = currencyCharacters[model.currency] + val;
-              val = val.substr(0, val.length - 2) + '.' + val.substr(-2);
+              Util.setCurrency(model.currency);
+              val = Util.renderUICurrencyFromJSON(val);
               $tableData.addClass('text-right');
             } else if (render == 'date') {
               val = (new Date(val)).toDateString();
