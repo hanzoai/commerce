@@ -43,7 +43,7 @@
                 name: "fullName",
                 label: "Full Name",
                 type: "text",
-                value: "{{ org.FullName }}",
+                value: "{{ ctx.organization.FullName }}",
                 rules: [
                     {
                         rule: "required",
@@ -57,20 +57,20 @@
                 name: "shortName",
                 label: "Short Name/Abbr",
                 type: "text",
-                value: "{{ org.ShortName }}",
+                value: "{{ ctx.organization.Name }}",
             },
             {
                 id: "website",
                 name: "website",
                 label: "Website URL",
                 type: "url",
-                value: "{{ org.Website }}",
+                value: "{{ ctx.organization.Website }}",
             },
         ]);
     });
   var api = NewRestAPI(
       '{{ urlFor("api", "/organization2") }}',
-      '{{ org.MustGetTokenByName("live-secret-key") }}',
+      '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}',
       $('#form-organization'),
       {
           price: function(val) {
@@ -88,7 +88,7 @@
           if ($('.form-group.has-error').length === 0) {
               api.put(function(data) {
                   window.location.replace('{{ urlFor("platform", "/organization") }}')
-              }, $form, '{{ org.Id }}')
+              }, $form, '{{ ctx.organization.Id() }}')
           }
       })
       e.preventDefault();

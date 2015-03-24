@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block name %}Organization{% endblock %}
+{% block name %}Product{% endblock %}
 
 {% block css %}
 {% endblock %}
@@ -203,7 +203,7 @@
 
   var api = NewRestAPI(
       '{{ urlFor("api", "/product2") }}',
-      '{{ org.MustGetTokenByName("live-secret-key") }}',
+      '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}',
       $('#form-new-product'),
       {
           price: function(val) {

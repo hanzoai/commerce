@@ -176,7 +176,7 @@
     });
   var api = NewRestAPI(
       '{{ urlFor("api", "/order2") }}',
-      '{{ org.MustGetTokenByName("live-secret-key") }}',
+      '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}',
       $('#form-order'),
       {
           price: function(val) {
@@ -194,7 +194,7 @@
           if ($('.form-group.has-error').length === 0) {
               api.put(function(data) {
                   window.location.replace('{{ urlFor("platform", "/order") }}')
-              }, $form, '{{ org.Id }}')
+              }, $form, '{{ ctx.organization.Id() }}')
           }
       })
       e.preventDefault();
