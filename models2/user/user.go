@@ -1,21 +1,21 @@
 package user
 
 import (
-	"errors"
 	"net/http"
+
+	aeds "appengine/datastore"
 
 	"github.com/mholt/binding"
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
+	"crowdstart.io/util/gob"
 	"crowdstart.io/util/log"
 
 	. "crowdstart.io/models2"
 )
 
-var (
-	UserNotFound = errors.New("User not found.")
-)
+var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 type User struct {
 	mixin.Model
@@ -45,11 +45,17 @@ type User struct {
 
 	StripeCustomerId string `json:"stripeCustomerId,omitempty"`
 
-	Metadata []Datum `json:"metadata,omitempty"`
+	Metadata  Metadata `json:"metadata" datastore:"-"`
+	Metadata_ []byte   `json:"-"`
+}
+
+func (u *User) Init() {
+	u.Metadata = make(Metadata)
 }
 
 func New(db *datastore.Datastore) *User {
 	u := new(User)
+	u.Init()
 	u.Model = mixin.Model{Db: db, Entity: u}
 	return u
 }
@@ -58,21 +64,39 @@ func (u User) Kind() string {
 	return "user2"
 }
 
+func (u *User) Load(c <-chan aeds.Property) (err error) {
+	// Load properties
+	if err = IgnoreFieldMismatch(aeds.LoadStruct(u, c)); err != nil {
+		return err
+	}
+
+	// Ensure stuff is initialized
+	u.Init()
+
+	if len(u.Metadata_) > 0 {
+		err = gob.Decode(u.Metadata_, &u.Metadata)
+	}
+
+	return err
+}
+
+func (u *User) Save(c chan<- aeds.Property) (err error) {
+	u.Metadata_, err = gob.Encode(&u.Metadata)
+
+	if err != nil {
+		return err
+	}
+
+	// Save properties
+	return IgnoreFieldMismatch(aeds.SaveStruct(u, c))
+}
+
 func (u User) Name() string {
 	return u.FirstName + " " + u.LastName
 }
 
 func (u User) HasPassword() bool {
 	return len(u.PasswordHash) != 0
-}
-
-func (u User) GetMetadata(key string) Datum {
-	for index, datum := range u.Metadata {
-		if datum.Key == key {
-			return u.Metadata[index]
-		}
-	}
-	return Datum{}
 }
 
 func (u User) Validate(req *http.Request, errs binding.Errors) binding.Errors {
