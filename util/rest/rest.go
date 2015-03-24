@@ -71,7 +71,7 @@ func (r Rest) Route(router Router, args ...gin.HandlerFunc) {
 	// Create group for our API routes and require Access token
 	group := router.Group("/" + r.Kind)
 	group.Use(func(c *gin.Context) {
-		c.Writer.Header().Add("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 	})
 	group.Use(args...)
 
@@ -329,24 +329,19 @@ func (r Rest) update(c *gin.Context) {
 		return
 	}
 
+	// Do some reflection magic to make sure things are set as they should be
+	entity := reflect.Indirect(reflect.ValueOf(model.Entity))
+
+	// Set updatedAt
+	updatedAt := entity.FieldByName("UpdatedAt")
+	now := reflect.ValueOf(time.Now())
+	updatedAt.Set(now)
+
 	// Replace whatever was in the datastore with our new updated entity
 	if err := model.Put(); err != nil {
 		json.Fail(c, 500, "Failed to update "+r.Kind, err)
 	} else {
 		r.JSON(c, 200, model.Entity)
-	}
-}
-
-// Deletes an entity by given `id`
-func (r Rest) delete(c *gin.Context) {
-	id := c.Params.ByName("id")
-	model := r.newModel(c)
-	model.Delete(id)
-
-	if err := model.Delete(); err != nil {
-		json.Fail(c, 500, "Failed to delete "+r.Kind, err)
-	} else {
-		c.Data(204, "application/json", make([]byte, 0))
 	}
 }
 
@@ -366,10 +361,31 @@ func (r Rest) patch(c *gin.Context) {
 		return
 	}
 
+	// Do some reflection magic to make sure things are set as they should be
+	entity := reflect.Indirect(reflect.ValueOf(model.Entity))
+
+	// Set updatedAt
+	updatedAt := entity.FieldByName("UpdatedAt")
+	now := reflect.ValueOf(time.Now())
+	updatedAt.Set(now)
+
 	if err := model.Put(); err != nil {
 		json.Fail(c, 500, "Failed to update "+r.Kind, err)
 	} else {
 		r.JSON(c, 200, model.Entity)
+	}
+}
+
+// Deletes an entity by given `id`
+func (r Rest) delete(c *gin.Context) {
+	id := c.Params.ByName("id")
+	model := r.newModel(c)
+	model.Delete(id)
+
+	if err := model.Delete(); err != nil {
+		json.Fail(c, 500, "Failed to delete "+r.Kind, err)
+	} else {
+		c.Data(204, "application/json", make([]byte, 0))
 	}
 }
 
@@ -397,10 +413,12 @@ func (r Rest) methodOverride(c *gin.Context) {
 
 // Set proper CORS non-sense
 func (r Rest) options(c *gin.Context) {
-	reqMethods := c.Request.Header.Get("Access-Control-Request-Methods")
-	reqHeaders := c.Request.Header.Get("Access-Control-Request-Headers")
-	c.Writer.Header().Add("Access-Control-Allow-Methods", reqMethods)
-	c.Writer.Header().Add("Access-Control-Allow-Headers", reqHeaders)
+	header := c.Request.Header
+	reqMethods := header.Get("Access-Control-Request-Methods")
+	reqHeaders := header.Get("Access-Control-Request-Headers")
+	header = c.Writer.Header()
+	header.Set("Access-Control-Allow-Methods", reqMethods)
+	header.Set("Access-Control-Allow-Headers", reqHeaders)
 	c.Data(200, "text/plain", make([]byte, 0))
 }
 
