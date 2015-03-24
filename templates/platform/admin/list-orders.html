@@ -38,56 +38,59 @@
 {% endblock %}
 
 {% block js %}
+<script src="{{ staticUrl }}/js/util.js"></script>
 <script src="{{ staticUrl }}/js/table-builder.js"></script>
 <script src="{{ staticUrl }}/js/jquery.jqpagination.js"></script>
 <script>
-  var paged = BuildTable($('#table'), {
-    columns: [
-      {
-        field: 'id',
-        name: 'ID',
-        css: {
-          width: '50px',
-        },
-        render: 'id',
-      },
-      {
-        field: 'payments.0.account.buyer.firstName',
-        name: 'First Name',
-      },
-      {
-        field: 'payments.0.account.buyer.lastName',
-        name: 'Last Name',
-      },
-      {
-        field: 'payments.0.account.buyer.email',
-        name: 'Email',
-      },
-      {
-        field: 'total',
-        name: 'Total',
-        render: 'currency',
-      },
-      {
-        field: 'payments.0.status',
-        name: 'Status',
-      },
-      {
-        field: 'createdAt',
-        name: 'Order Date',
-        render: 'date',
-      }
-    ],
-    itemUrl: '{{ urlFor("platform", "/order") }}',
-    apiUrl: '{{ urlFor("api", "/order2") }}',
-    apiToken: '{{ org.MustGetTokenByName("live-secret-key") }}',
-    startPage: 1,
-    startDisplay: 10,
-    displayOptions: [5, 10, 20],
-    $display: $('#display'),
-    $pagination: $('#pagination'),
-    $empty: $('#empty-table'),
-  });
+$(function(){
+      BuildTable($('#table'), {
+        columns: [
+          {
+            field: 'id',
+            name: 'ID',
+            css: {
+              width: '50px',
+            },
+            render: 'id',
+          },
+          {
+            field: 'payments.0.account.buyer.firstName',
+            name: 'First Name',
+          },
+          {
+            field: 'payments.0.account.buyer.lastName',
+            name: 'Last Name',
+          },
+          {
+            field: 'payments.0.account.buyer.email',
+            name: 'Email',
+          },
+          {
+            field: 'total',
+            name: 'Total',
+            render: 'currency',
+          },
+          {
+            field: 'payments.0.status',
+            name: 'Status',
+          },
+          {
+            field: 'createdAt',
+            name: 'Order Date',
+            render: 'date',
+          }
+        ],
+        itemUrl: '{{ urlFor("platform", "/order") }}',
+        apiUrl: '{{ urlFor("api", "/order2") }}',
+        apiToken: '{{ org.MustGetTokenByName("live-secret-key") }}',
+        startPage: 1,
+        startDisplay: 10,
+        displayOptions: [5, 10, 20],
+        $display: $('#display'),
+        $pagination: $('#pagination'),
+        $empty: $('#empty-table'),
+      });
+    })
 </script>
 {% endblock %}
 {% block menulink %}menu-orders{% endblock %}

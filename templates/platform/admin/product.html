@@ -41,11 +41,14 @@
 {% endblock %}
 
 {% block js %}
+<script src="{{ staticUrl }}/js/util.js"></script>
 <script src="{{ staticUrl }}/js/jquery.serialize-object.min.js"></script>
 <script src="{{ staticUrl }}/js/form-builder.js"></script>
 <script src="{{ staticUrl }}/js/rest-forms.js"></script>
 <script>
   (function() {
+    Util.setCurrency('{{ product.Currency }}');
+
     BuildForm($('#form-product'),[
 // product info
         {
@@ -59,7 +62,7 @@
             {
               rule: 'required',
               value: true,
-              message: 'Please enter a name for your product'
+              message: 'Enter a name for your product'
             }
           ],
           $parent: $('#product-info')
@@ -75,7 +78,7 @@
             {
               rule: 'required',
               value: true,
-              message: 'Please enter a unique URL identifier for your product'
+              message: 'Enter a unique URL identifier for your product'
             }
           ],
           $parent: $('#product-info')
@@ -186,7 +189,14 @@
           label: 'Weight (grams)',
           type: 'text',
           placeholder: '1000',
-          $parent: $('#product-shipping')
+          $parent: $('#product-shipping'),
+          rules: [
+            {
+              rule: 'number',
+              value: true,
+              message: 'Weight is not a number'
+            }
+          ],
         },
     ]);
   })();
@@ -197,11 +207,11 @@
       $('#form-new-product'),
       {
           price: function(val) {
-              // To cents
-              return parseFloat(val.replace(/[^\d.-]/g,''), 10) * 100;
+            // To cents
+            return Util.renderJSONCurrencyFromUI(val);
           },
           weight: function(val) {
-              return parseFloat(val.replace(/[^\d.-]/g,''), 10);
+            return parseFloat(val);
           }
       }
     );
