@@ -6,7 +6,6 @@ import (
 	"github.com/flosch/pongo2"
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/auth2"
 	"crowdstart.io/config"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
@@ -56,8 +55,8 @@ func Render(c *gin.Context, path string, pairs ...interface{}) (err error) {
 	// Create context from pairs
 	ctx := pongo2.Context{}
 
-	// Add logged in info, if set on session
-	ctx["loggedIn"] = auth.IsLoggedIn(c)
+	// Make gin context available
+	ctx["ctx"] = c.Keys
 
 	for i := 0; i < len(pairs); i = i + 2 {
 		ctx[pairs[i].(string)] = pairs[i+1]
