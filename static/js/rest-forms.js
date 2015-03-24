@@ -7,6 +7,10 @@ var NewRestAPI = (function() {
       path += '/'
     }
 
+    if (!fieldProcessors) {
+      fieldProcessors = {};
+    }
+
     // Make the token string
     var tokenStr = 'token=' + token;
 
