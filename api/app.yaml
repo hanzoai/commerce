@@ -13,5 +13,6 @@ automatic_scaling:
   min_idle_instances: 1
 
 handlers:
-- url: /v1/.*
+- url: /.*
   script: _go_app
+  secure: always

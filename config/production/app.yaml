@@ -48,31 +48,43 @@ handlers:
   static_files: static/font/\1
   upload: static/font/(.*\.woff)
   mime_type: application/font-woff
+  http_headers:
+    Access-Control-Allow-Origin: "*"
 
 - url: /font/(.*\.woff2)
   static_files: static/font/\1
   upload: static/font/(.*\.woff2)
   mime_type: application/font-woff2
+  http_headers:
+    Access-Control-Allow-Origin: "*"
 
 - url: /font/(.*\.svg)
   static_files: static/font/\1
   upload: static/font/(.*\.svg)
   mime_type: image/svg+xml
+  http_headers:
+    Access-Control-Allow-Origin: "*"
 
 - url: /font/(.*\.eot)
   static_files: static/font/\1
   upload: static/font/(.*\.eot)
   mime_type: application/vnd.ms-fontobject
+  http_headers:
+    Access-Control-Allow-Origin: "*"
 
 - url: /font/(.*\.ttf)
   static_files: static/font/\1
   upload: static/font/(.*\.ttf)
   mime_type: application/x-font-ttf
+  http_headers:
+    Access-Control-Allow-Origin: "*"
 
 - url: /font/(.*\.otf)
   static_files: static/font/\1
   upload: static/font/(.*\.otf)
   mime_type: application/x-font-otf
+  http_headers:
+    Access-Control-Allow-Origin: "*"
 
 pagespeed:
   enabled_rewriters:
