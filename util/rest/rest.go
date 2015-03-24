@@ -126,7 +126,7 @@ func (r Rest) defaultRoutes() []route {
 		},
 		route{
 			method:   "OPTIONS",
-			url:      "/all*",
+			url:      "/*all",
 			handlers: []gin.HandlerFunc{r.Options},
 		},
 		route{
