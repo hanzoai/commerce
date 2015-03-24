@@ -22,7 +22,7 @@ type Organization struct {
 
 	Name       string   `json:"name"`
 	FullName   string   `json:"fullName"`
-	OwnerId    string   `json:"owners,omitempty"`
+	Owners     []string `json:"owners,omitempty"`
 	Admins     []string `json:"admins,omitempty"`
 	Moderators []string `json:"moderators,omitempty"`
 	Enabled    bool     `json:"enabled"`
@@ -97,7 +97,12 @@ func (o Organization) IsAdmin(user *user.User) bool {
 }
 
 func (o Organization) IsOwner(user *user.User) bool {
-	return o.OwnerId == user.Id()
+	for _, userId := range o.Owners {
+		if userId == user.Id() {
+			return true
+		}
+	}
+	return false
 }
 
 func (o Organization) Namespace(ctx interface{}) appengine.Context {
