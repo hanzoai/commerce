@@ -9,10 +9,10 @@ import (
 	"crowdstart.io/util/session"
 )
 
-const loginKey = "login-key"
+const loginKey = "user-id"
 
 func GetCurrentUserId(c *gin.Context) (string, error) {
-	log.Debug("Retrieving email from session")
+	log.Debug("Retrieving current id from session")
 	value, err := session.Get(c, loginKey)
 	if err != nil {
 		return "", err
@@ -21,8 +21,10 @@ func GetCurrentUserId(c *gin.Context) (string, error) {
 }
 
 func GetCurrentUser(c *gin.Context) (*user.User, error) {
+	log.Debug("Retrieving current user from session")
 	id, err := GetCurrentUserId(c)
 	if err != nil {
+		log.Warn("Failed to retrieve current user from session")
 		return nil, err
 	}
 
@@ -30,9 +32,11 @@ func GetCurrentUser(c *gin.Context) (*user.User, error) {
 	u := user.New(db)
 
 	if err := u.Get(id); err != nil {
+		log.Warn("Failed to retrieve current user from session")
 		return nil, err
 	}
 
+	log.Debug("Retrieved current user from session")
 	return u, nil
 }
 
@@ -74,6 +78,20 @@ func GetCurrentUser(c *gin.Context) (*user.User, error) {
 
 // 	return &m, nil
 // }
+
+func IsLoggedIn(c *gin.Context) bool {
+	value, err := session.Get(c, loginKey)
+	if err != nil {
+		return false
+	}
+
+	userId, _ := value.(string)
+	if userId == "" {
+		return false
+	}
+
+	return true
+}
 
 func Login(c *gin.Context, u *user.User) error {
 	return session.Set(c, loginKey, u.Id())
