@@ -8,6 +8,7 @@ var BuildTable = (function() {
   var selectTemplate = '<select class="form-control"></select>';
   var optionTemplate = '<option value=""></option>';
   var displayLabelTemplate = '<label>&nbsp;&nbsp;Items per Page</label>';
+  var deleteTemplate = '<a class="btn btn-xs btn-danger">x</a>';
 
   return function ($table, tableConfig) {
     // Config is in the form of
@@ -30,7 +31,8 @@ var BuildTable = (function() {
     //      startDisplay: 10,
     //      $display: $('#display'),
     //      $pagination: $('#pagination'),
-    //      $empty: $('#empty')
+    //      $empty: $('#empty'),
+    //      canDelete: true,
     //  }
     //
     // API call is expected to return something in the form of
@@ -68,6 +70,11 @@ var BuildTable = (function() {
         $tableHeaderData.css(column.css);
       }
       $tableHeaderRow.append($tableHeaderData);
+    }
+
+    if (tableConfig.canDelete) {
+      var $tableHeaderDataDelete = $(tableHeaderDataTemplate).append('Delete').css('width', '80px')
+      $tableHeaderRow.append($tableHeaderDataDelete);
     }
 
     // Build the body frame
@@ -184,11 +191,31 @@ var BuildTable = (function() {
           }
 
           $tableBody.append($tableRow);
+
+          if (tableConfig.canDelete) {
+            var dataDelete = $(deleteTemplate)
+              .on('click', function() { deleteRow(tableConfig.itemUrl + '/' + model.id); });
+
+            var $tableDataDelete = $(tableDataTemplate)
+              .append(dataDelete).css('width', '80px')
+              .addClass('text-center');
+            $tableRow.append($tableDataDelete);
+          }
         }
       });
     }
 
     var lastPage = tableConfig.startPage;
+    function deleteRow(path) {
+      $.ajax({
+        type: 'DELETE',
+        url: path,
+        success: function () {
+          paged(lastPage);
+        }
+      })
+    }
+
 
     // Setup pagination
     $pagination.jqPagination({
