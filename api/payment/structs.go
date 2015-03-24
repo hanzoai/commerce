@@ -1,8 +1,10 @@
 package payment
 
 import (
+	"crowdstart.io/datastore"
 	"crowdstart.io/models2"
 	"crowdstart.io/models2/order"
+	"crowdstart.io/models2/user"
 	"crowdstart.io/thirdparty/stripe2"
 )
 
@@ -18,19 +20,23 @@ type Source struct {
 	Type SourceType `json:"type"`
 
 	// Buyer
+	Id        string         `json:"id"`
 	Email     string         `json:"email"`
 	FirstName string         `json:"firstName"`
 	LastName  string         `json:"firstName"`
 	Company   string         `json:"company"`
 	Address   models.Address `json:"address"`
+	Phone     string         `json:"phone"`
 	Notes     string         `json:"notes"`
 
 	// Card
 	Number string `json:"number"`
 	Month  string `json:"month"`
 	CVC    string `json:"cvc"`
-	Phone  string `json:"phone"`
 	Year   string `json:"year"`
+
+	// Metadata about buyer
+	Metadata models.Metadata `json:"metadata"`
 }
 
 func (s Source) Card() *stripe.CardParams {
@@ -60,8 +66,31 @@ func (s Source) Buyer() models.Buyer {
 	return buyer
 }
 
+func (s Source) User(db *datastore.Datastore) (*user.User, error) {
+	user := user.New(db)
+
+	// Create new user or reassociate with existing user
+	if s.Id != "" {
+		if err := user.Get(s.Id); err != nil {
+			return nil, UserDoesNotExist
+		}
+	} else {
+		user.Email = s.Email
+		user.FirstName = s.FirstName
+		user.LastName = s.LastName
+		user.BillingAddress = s.Address
+		user.Phone = s.Phone
+	}
+
+	// Update metadata on user
+	for k, v := range s.Metadata {
+		user.Metadata[k] = v
+	}
+
+	return user, nil
+}
+
 type AuthReq struct {
 	Source Source       `json:"buyer"`
 	Order  *order.Order `json:"order"`
-	UserId string       `json:"userId"`
 }

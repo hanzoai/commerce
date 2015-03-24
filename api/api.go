@@ -1,8 +1,6 @@
 package api
 
 import (
-	"github.com/gin-gonic/gin"
-
 	"crowdstart.io/api/accesstoken"
 	"crowdstart.io/api/payment"
 	"crowdstart.io/middleware"
@@ -24,17 +22,10 @@ import (
 func init() {
 	router := router.New("api")
 
-	router.GET("/v1/", func(c *gin.Context) {
-		c.Data(410, "application/json", make([]byte, 0))
-	})
-
 	adminRequired := middleware.TokenRequired(permission.Admin)
 	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
 
-	// Access token API
-	router.GET("/access/:id", accesstoken.Get)
-	router.POST("/access/:id", accesstoken.Post)
-	router.DELETE("/access/:id", adminRequired, accesstoken.Delete)
+	// Organization APIs, namespaced by organization
 
 	// One Step Payment API
 	router.POST("/charge", publishedRequired, payment.Charge)
@@ -47,7 +38,6 @@ func init() {
 
 	// Entities with automatic RESTful API
 	entities := []mixin.Entity{
-		campaign.Campaign{},
 		coupon.Coupon{},
 		collection.Collection{},
 		product.Product{},
@@ -60,19 +50,30 @@ func init() {
 		rest.New(entity).Route(router, adminRequired)
 	}
 
-	organizationApi := rest.New(organization.Organization{})
-	organizationApi.DefaultNamespace = true
-	organizationApi.Route(router, adminRequired)
+	// Crowdstart APIs, using default namespace (internal use only)
+	crowdstart := router.Group("/c/", adminRequired)
 
-	tokenApi := rest.New(token.Token{})
-	tokenApi.DefaultNamespace = true
-	tokenApi.Route(router, adminRequired)
+	campaign := rest.New(campaign.Campaign{})
+	campaign.DefaultNamespace = true
+	campaign.Route(crowdstart)
 
-	accountApi := rest.New(user.User{})
-	accountApi.DefaultNamespace = true
-	accountApi.Kind = "account"
-	accountApi.Route(router, adminRequired)
+	organization := rest.New(organization.Organization{})
+	organization.DefaultNamespace = true
+	organization.Route(crowdstart)
+
+	token := rest.New(token.Token{})
+	token.DefaultNamespace = true
+	token.Route(crowdstart)
+
+	user := rest.New(user.User{})
+	user.DefaultNamespace = true
+	user.Route(crowdstart)
 
 	// REST API debugger
 	router.GET("/", rest.DebugIndex(entities))
+
+	// Access token API (internal use only)
+	router.GET("/access/:id", accesstoken.Get)
+	router.POST("/access/:id", accesstoken.Post)
+	router.DELETE("/access/:id", adminRequired, accesstoken.Delete)
 }

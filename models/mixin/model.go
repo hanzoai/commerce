@@ -12,11 +12,13 @@ import (
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/structs"
+	"crowdstart.io/util/val"
 )
 
 // Discrete instance of an entity
 type Entity interface {
 	Kind() string
+	Validator() *val.Validator
 }
 
 // Interface representing Model
@@ -304,6 +306,18 @@ func (m *Model) Delete(args ...interface{}) error {
 // Return a query for this entity kind
 func (m *Model) Query() *Query {
 	return &Query{m.Db.Query2(m.Entity.Kind()), m}
+}
+
+// Validate a model
+func (m *Model) Validate() error {
+	// val := m.Entity.Validator()
+	// errs := val.Check(m).Errors()
+	// if len(errs)
+
+	// err := val.NewError("Failed to validate " + m.Kind())
+	// err.Fields = errs
+	// return err
+	return nil
 }
 
 // Serialize entity to JSON string
