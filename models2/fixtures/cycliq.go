@@ -12,12 +12,17 @@ import (
 func Cycliq(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
+	org := organization.New(db)
+	org.Name = "cycliq"
+	org.GetOrCreate("Name=", org.Name)
+
 	u := user.New(db)
 	u.Email = "andrew@cycliq.com"
 	u.GetOrCreate("Email=", u.Email)
 	u.FirstName = "Andrew"
 	u.LastName = "Hagen"
-	u.PasswordHash, _ = password.Hash("cycliqpass")
+	u.Organizations = []string{org.Id()}
+	u.PasswordHash, _ = password.Hash("cycliqpassword!")
 	u.Put()
 
 	u2 := user.New(db)
@@ -25,12 +30,9 @@ func Cycliq(c *gin.Context) *organization.Organization {
 	u2.GetOrCreate("Email=", u2.Email)
 	u2.FirstName = "Andy"
 	u2.LastName = "Copely"
-	u2.PasswordHash, _ = password.Hash("cycliqpass")
+	u.Organizations = []string{org.Id()}
+	u2.PasswordHash, _ = password.Hash("cycliqpassword!")
 	u2.Put()
-
-	org := organization.New(db)
-	org.Name = "cycliq"
-	org.GetOrCreate("Name=", org.Name)
 
 	org.FullName = "Cycliq"
 	org.Owners = []string{u.Id(), u2.Id()}
