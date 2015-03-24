@@ -9,13 +9,11 @@ import (
 
 	"appengine/urlfetch"
 
-	"crowdstart.io/auth2"
 	"crowdstart.io/config"
-	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
-	"crowdstart.io/models2/organization"
 	"crowdstart.io/thirdparty/stripe/tasks"
 	"crowdstart.io/util/json"
+	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
 )
 
@@ -45,96 +43,75 @@ func StripeSync(c *gin.Context) {
 
 // Admin Payment Connectors
 func StripeConnect(c *gin.Context) {
-	if u, err := auth.GetCurrentUser(c); err != nil {
-		c.Fail(500, err)
-	} else {
-		db := datastore.New(c)
-		org := organization.New(db)
-		if _, err := org.Query().Filter("OwnerId=", u.Id()).First(); err != nil {
-			c.Fail(500, err)
-			return
-		}
-
-		template.Render(c, "admin/stripe/connect.html", "org", org, "stripe", config.Stripe)
-	}
+	template.Render(c, "admin/stripe/connect.html")
 }
 
 // StripeCallback Stripe End Points
 func StripeCallback(c *gin.Context) {
-	if u, err := auth.GetCurrentUser(c); err != nil {
-		c.Fail(500, err)
-	} else {
-		db := datastore.New(c)
-		org := organization.New(db)
-		if _, err := org.Query().Filter("OwnerId=", u.Id()).First(); err != nil {
-			c.Fail(500, err)
-			return
-		}
+	req := c.Request
+	code := req.URL.Query().Get("code")
+	errStr := req.URL.Query().Get("error")
 
-		req := c.Request
-		code := req.URL.Query().Get("code")
-		errStr := req.URL.Query().Get("error")
-
-		// Failed to get back authorization code from Stripe
-		if errStr != "" {
-			template.Render(c, "admin/stripe/connect.html", "org", org, "error", errStr)
-			return
-		}
-
-		ctx := middleware.GetAppEngine(c)
-		client := urlfetch.Client(ctx)
-
-		data := url.Values{}
-		data.Set("client_secret", config.Stripe.APISecret)
-		data.Add("code", code)
-		data.Add("grant_type", "authorization_code")
-
-		tokenReq, err := http.NewRequest("POST", "https://connect.stripe.com/oauth/token", strings.NewReader(data.Encode()))
-		if err != nil {
-			c.Fail(500, err)
-			return
-		}
-
-		// try to post to OAuth API
-		res, err := client.Do(tokenReq)
-		defer res.Body.Close()
-		if err != nil {
-			c.Fail(500, err)
-			return
-		}
-
-		token := new(stripeToken)
-		// try and extract the json struct
-		if err := json.Decode(res.Body, token); err != nil {
-			c.Fail(500, err)
-			return
-		}
-
-		// Stripe returned an error
-		if token.Error != "" {
-			template.Render(c, "admin/stripe/connect.html",
-				"stripeError", token.Error,
-				"stripe", config.Stripe,
-				"salesforce", config.Salesforce)
-			return
-		}
-
-		// Update stripe data
-		org.Stripe.AccessToken = token.AccessToken
-		org.Stripe.Livemode = token.Livemode
-		org.Stripe.PublishableKey = token.StripePublishableKey
-		org.Stripe.RefreshToken = token.RefreshToken
-		org.Stripe.Scope = token.Scope
-		org.Stripe.TokenType = token.TokenType
-		org.Stripe.UserId = token.StripeUserId
-
-		// Update in datastore
-		if err := org.Put(); err != nil {
-			c.Fail(500, err)
-			return
-		}
-
-		// Success
-		template.Render(c, "admin/stripe/connect.html", "org", org)
+	// Failed to get back authorization code from Stripe
+	if errStr != "" {
+		log.Error("Failed to get authorization code from Stripe during Stripe Connect: %v", errStr, c)
+		template.Render(c, "admin/stripe/connect.html", "error", errStr)
+		return
 	}
+
+	ctx := middleware.GetAppEngine(c)
+	client := urlfetch.Client(ctx)
+
+	data := url.Values{}
+	data.Set("client_secret", config.Stripe.APISecret)
+	data.Add("code", code)
+	data.Add("grant_type", "authorization_code")
+
+	tokenReq, err := http.NewRequest("POST", "https://connect.stripe.com/oauth/token", strings.NewReader(data.Encode()))
+	if err != nil {
+		c.Fail(500, err)
+		return
+	}
+
+	// try to post to OAuth API
+	res, err := client.Do(tokenReq)
+	defer res.Body.Close()
+	if err != nil {
+		c.Fail(500, err)
+		return
+	}
+
+	// try and extract the json struct
+	token := new(stripeToken)
+	if err := json.Decode(res.Body, token); err != nil {
+		c.Fail(500, err)
+		return
+	}
+
+	// Stripe returned an error
+	if token.Error != "" {
+		log.Error("There was an error with Stripe Connect: %v", token.Error, c)
+		template.Render(c, "admin/stripe/connect.html", "stripeError", token.Error)
+		return
+	}
+
+	org := middleware.GetOrganization(c)
+
+	// Update stripe data
+	org.Stripe.AccessToken = token.AccessToken
+	org.Stripe.Livemode = token.Livemode
+	org.Stripe.PublishableKey = token.StripePublishableKey
+	org.Stripe.RefreshToken = token.RefreshToken
+	org.Stripe.Scope = token.Scope
+	org.Stripe.TokenType = token.TokenType
+	org.Stripe.UserId = token.StripeUserId
+
+	// Update in datastore
+	if err := org.Put(); err != nil {
+		c.Fail(500, err)
+		return
+	}
+
+	// Success
+	template.Render(c, "admin/stripe/connect.html")
 }

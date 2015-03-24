@@ -4,6 +4,7 @@ import (
 	"errors"
 	"reflect"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -173,8 +174,9 @@ func (r Rest) defaultRoutes() []route {
 }
 
 // retuns a new interface of this entity type
-func (r Rest) newEntity() interface{} {
-	return reflect.New(r.entityType).Interface()
+func (r Rest) newEntity() mixin.Entity {
+	entity := reflect.New(r.entityType)
+	return entity.Interface().(mixin.Entity)
 }
 
 // helper which returns a slice which is compatible with this entity
@@ -203,7 +205,7 @@ func (r Rest) newModel(c *gin.Context) mixin.Model {
 	}
 
 	db := datastore.New(ctx)
-	entity := r.newEntity().(mixin.Entity)
+	entity := r.newEntity()
 	model := mixin.Model{Db: db, Entity: entity}
 	return model
 }
@@ -287,7 +289,21 @@ func (r Rest) create(c *gin.Context) {
 		return
 	}
 
-	if err := model.Put(); err != nil {
+	// Do some reflection magic to make sure things are set as they should be
+	entity := reflect.Indirect(reflect.ValueOf(model.Entity))
+
+	// Set id
+	id := entity.FieldByName("Id_")
+	id.Set(reflect.ValueOf(model.Id()))
+
+	// Set created at/updated at
+	createdAt := entity.FieldByName("CreatedAt")
+	updatedAt := entity.FieldByName("UpdatedAt")
+	now := reflect.ValueOf(time.Now())
+	createdAt.Set(now)
+	updatedAt.Set(now)
+
+	if err := model.PutEntity(model.Entity); err != nil {
 		json.Fail(c, 500, "Failed to create "+r.Kind, err)
 	} else {
 		c.Writer.Header().Add("Location", c.Request.URL.Path+"/"+model.Id())
