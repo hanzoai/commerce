@@ -6,6 +6,7 @@ import (
 	"crowdstart.io/auth2"
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
+	"crowdstart.io/middleware"
 	"crowdstart.io/models2/order"
 	"crowdstart.io/models2/organization"
 	"crowdstart.io/models2/product"
@@ -23,33 +24,23 @@ func Index(c *gin.Context) {
 
 // Admin Dashboard
 func Dashboard(c *gin.Context) {
-	if u, err := auth.GetCurrentUser(c); err != nil {
-		c.Fail(500, err)
-	} else {
-		template.Render(c, "admin/dashboard.html", "user", u)
-	}
+	user := middleware.GetCurrentUser(c)
+	org := middleware.GetOrganization(c)
+
+	template.Render(c, "admin/dashboard.html", "org", org, "user", user)
 }
 
 func Product(c *gin.Context) {
-	if u, err := auth.GetCurrentUser(c); err != nil {
-		c.Fail(500, err)
-	} else {
-		db := datastore.New(c)
-		org := organization.New(db)
-		if _, err := org.Query().Filter("OwnerId=", u.Id()).First(); err != nil {
-			c.Fail(500, err)
-			return
-		}
+	user := middleware.GetCurrentUser(c)
+	org := middleware.GetOrganization(c)
 
-		namespaced := org.Namespace(c)
-		db = datastore.New(namespaced)
+	db := datastore.New(org.Namespace(c))
 
-		p := product.New(db)
-		id := c.Params.ByName("id")
-		p.Get(id)
+	p := product.New(db)
+	id := c.Params.ByName("id")
+	p.Get(id)
 
-		template.Render(c, "admin/product.html", "org", org, "product", p)
-	}
+	template.Render(c, "admin/product.html", "org", org, "user", user, "product", p)
 }
 
 func Products(c *gin.Context) {
