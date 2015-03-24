@@ -6,7 +6,6 @@ import (
 	"crowdstart.io/models2"
 	"crowdstart.io/models2/order"
 	"crowdstart.io/models2/organization"
-	"crowdstart.io/models2/user"
 	"crowdstart.io/thirdparty/stripe2"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
@@ -33,15 +32,15 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		return nil, FailedToDecodeRequestBody
 	}
 
-	// Associate with user if UserId is specified.
-	if ar.UserId != "" {
-		user := user.New(ord.Db)
-		if err := user.Get(ar.UserId); err != nil {
-			return nil, UserDoesNotExist
-		}
-		ar.Order.Parent = user.Key()
-		ar.Order.UserId = ar.UserId
+	// Get user for order
+	user, err := ar.Source.User(ar.Order.Db)
+	if err != nil {
+		return nil, err
 	}
+
+	// Set user as parent of order
+	ar.Order.Parent = user.Key()
+	ar.Order.UserId = user.Id()
 
 	// Get client we can use for API calls
 	client := stripe.New(ctx, org.Stripe.AccessToken)

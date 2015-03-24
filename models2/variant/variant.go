@@ -1,13 +1,11 @@
 package variant
 
 import (
-	"net/http"
 	"time"
-
-	"github.com/mholt/binding"
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
+	"crowdstart.io/util/val"
 
 	. "crowdstart.io/models2"
 )
@@ -64,21 +62,23 @@ func (v Variant) Kind() string {
 	return "variant2"
 }
 
-func (v Variant) Validate(req *http.Request, errs binding.Errors) binding.Errors {
-	if v.SKU == "" {
-		errs = append(errs, binding.Error{
-			FieldNames:     []string{"SKU"},
-			Classification: "InputError",
-			Message:        "Variant does not have a SKU",
-		})
-	}
+func (v Variant) Validator() *val.Validator {
+	return val.New()
 
-	if v.Dimensions == "" {
-		errs = append(errs, binding.Error{
-			FieldNames:     []string{"Dimensions"},
-			Classification: "InputError",
-			Message:        "Variant has no given dimensions",
-		})
-	}
-	return errs
+	// if v.SKU == "" {
+	// 	errs = append(errs, binding.Error{
+	// 		FieldNames:     []string{"SKU"},
+	// 		Classification: "InputError",
+	// 		Message:        "Variant does not have a SKU",
+	// 	})
+	// }
+
+	// if v.Dimensions == "" {
+	// 	errs = append(errs, binding.Error{
+	// 		FieldNames:     []string{"Dimensions"},
+	// 		Classification: "InputError",
+	// 		Message:        "Variant has no given dimensions",
+	// 	})
+	// }
+	// return errs
 }

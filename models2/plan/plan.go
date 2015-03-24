@@ -3,6 +3,7 @@ package plan
 import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
+	"crowdstart.io/util/val"
 )
 
 type Interval string
@@ -29,4 +30,8 @@ func New(db *datastore.Datastore) *Plan {
 
 func (p Plan) Kind() string {
 	return "plan2"
+}
+
+func (p Plan) Validator() *val.Validator {
+	return val.New()
 }

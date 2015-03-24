@@ -12,6 +12,7 @@ import (
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/models2/user"
 	"crowdstart.io/util/permission"
+	"crowdstart.io/util/val"
 
 	. "crowdstart.io/models2"
 )
@@ -78,6 +79,10 @@ func New(db *datastore.Datastore) *Organization {
 
 func (o Organization) Kind() string {
 	return "organization2"
+}
+
+func (o Organization) Validator() *val.Validator {
+	return val.New()
 }
 
 func (o *Organization) AddDefaultTokens() {
