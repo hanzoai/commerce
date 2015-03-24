@@ -71,7 +71,7 @@ func (r Rest) Route(router Router, args ...gin.HandlerFunc) {
 	// Create group for our API routes and require Access token
 	group := router.Group("/" + r.Kind)
 	group.Use(func(c *gin.Context) {
-		c.Writer.Header().Add("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 	})
 	group.Use(args...)
 
@@ -413,10 +413,12 @@ func (r Rest) methodOverride(c *gin.Context) {
 
 // Set proper CORS non-sense
 func (r Rest) options(c *gin.Context) {
-	reqMethods := c.Request.Header.Get("Access-Control-Request-Methods")
-	reqHeaders := c.Request.Header.Get("Access-Control-Request-Headers")
-	c.Writer.Header().Add("Access-Control-Allow-Methods", reqMethods)
-	c.Writer.Header().Add("Access-Control-Allow-Headers", reqHeaders)
+	header := c.Request.Header
+	reqMethods := header.Get("Access-Control-Request-Methods")
+	reqHeaders := header.Get("Access-Control-Request-Headers")
+	header = c.Writer.Header()
+	header.Set("Access-Control-Allow-Methods", reqMethods)
+	header.Set("Access-Control-Allow-Headers", reqHeaders)
 	c.Data(200, "text/plain", make([]byte, 0))
 }
 
