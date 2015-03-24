@@ -194,7 +194,7 @@ var BuildTable = (function() {
 
           if (tableConfig.canDelete) {
             var dataDelete = $(deleteTemplate)
-              .on('click', function() { deleteRow(tableConfig.itemUrl + '/' + model.id); });
+              .on('click', function() { deleteRow(tableConfig.apiUrl + '/' + model.id); });
 
             var $tableDataDelete = $(tableDataTemplate)
               .append(dataDelete).css('width', '80px')
