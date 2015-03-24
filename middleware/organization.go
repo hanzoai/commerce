@@ -3,6 +3,8 @@ package middleware
 import (
 	"github.com/gin-gonic/gin"
 
+	"appengine"
+
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models2/organization"
@@ -49,4 +51,9 @@ func AcquireOrganization(moduleName string) gin.HandlerFunc {
 
 func GetOrganization(c *gin.Context) *organization.Organization {
 	return c.MustGet("organization").(*organization.Organization)
+}
+
+func GetNamespace(c *gin.Context) appengine.Context {
+	ctx := GetAppEngine(c)
+	return GetOrganization(c).Namespace(ctx)
 }
