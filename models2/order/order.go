@@ -12,6 +12,7 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/util/gob"
+	"crowdstart.io/util/val"
 
 	. "crowdstart.io/models2"
 )
@@ -34,8 +35,7 @@ type Order struct {
 	// Associated campaign
 	CampaignId string `json:"campaignId"`
 
-	// Associated user, optional. Not necessary for when you use our RESTful
-	// API.
+	// Associated Crowdstart user or buyer.
 	UserId string `json:"userId,omitempty"`
 
 	OrderStatus OrderStatus `json:"orderStatus"`
@@ -144,14 +144,18 @@ func (o Order) Kind() string {
 	return "order2"
 }
 
+func (o Order) Validator() *val.Validator {
+	return val.New()
+}
+
 func (o *Order) Load(c <-chan aeds.Property) (err error) {
+	// Ensure we're initialized
+	o.Init()
+
 	// Load supported properties
 	if err = IgnoreFieldMismatch(aeds.LoadStruct(o, c)); err != nil {
 		return err
 	}
-
-	// Ensure we're initialized
-	o.Init()
 
 	// Deserialize from datastore
 	if len(o.Discounts_) > 0 {

@@ -154,3 +154,32 @@ Part of `api` module. See [`api/models`](api/models/models.go) package.
 
 ## TODO
 - Support [multitenancy](https://cloud.google.com/appengine/docs/go/multitenancy/#Go_About_multitenancy).
+
+## Crowdfunding platform architecture
+```
+Cycliq               Crowdstart							Why use an organization?  Why user a user?
+Organization		    Users (Zach)                        - (API, Hosted store)	  - Just want a campaign
+     |                    |                              - Your own data			  - Public on crowdstart
+     v				     v
+Product, Collection  Product, Collection, etc
+     |				     |
+     v                    v
+Campaign (optional)  Campaign (page, default)
+     |					 |
+     v					 v
+Order (org)		    Order (default)
+
+Convert a campaign -> Organization
+1. Create organization
+2. Add org to user (which is an account, technically)
+3. Move orders -> organization
+4. Clone user -> organization (might go out of sync but who cares), set cid to point back to original
+5. List new order id on original user
+
+On public Crowdstart
+- Data is still visible (backer, contributions, campaign)
+- User will still see their orders from Crowdstart (that were made on Crowdstart)
+
+Public AND organization campaigns
+- When a campaign has an org as a creator, all user,orders implicitly get added to that org namespace
+```
