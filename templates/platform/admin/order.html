@@ -21,10 +21,13 @@
           <div id="order-info" class="block">
           </div>
           <h4>Buyer</h4>
-          <div id="order-info" class="block">
+          <div id="order-buyer" class="block">
+          </div>
+          <h4>Shipping</h4>
+          <div id="order-shipping" class="block">
           </div>
           <h4>Line Items</h4>
-          <div id="order-info" class="block">
+          <div id="order-items" class="block">
           </div>
           <div class="row">
             <div class = "col-xs-6">
@@ -40,8 +43,8 @@
           </div>
           <div class="form-group form-actions">
             <div class="col-md-9 col-md-offset-3">
-              <!-- <button type="submit" class="btn btn-effect-ripple btn-primary">Submit</button> -->
-              <!-- <button type="reset" class="btn btn-effect-ripple btn-danger">Reset</button> -->
+              <button type="submit" class="btn btn-effect-ripple btn-primary">Submit</button>
+              <button type="reset" class="btn btn-effect-ripple btn-danger">Reset</button>
             </div>
           </div>
         </form>
@@ -172,29 +175,105 @@
             labelCols: 6,
             valueCols: 6,
           },
+          {
+            id: "email",
+            name: "payments.0.account.buyer.email",
+            label: "Email",
+            value: '{{ order.Payments.0.Account.Buyer.Email }}',
+            $parent: $('#order-buyer'),
+            rules: [
+              {
+                rule: 'required',
+                value: true,
+                message: 'Enter a email'
+              },
+              {
+                rule: 'email',
+                value: true,
+                message: 'Enter a valid email'
+              }
+            ]
+          },
+          {
+            id: "firstName",
+            name: "payments.0.account.buyer.firstName",
+            label: "First Name",
+            value: '{{ order.Payments.0.Account.Buyer.FirstName }}',
+            $parent: $('#order-buyer'),
+          },
+          {
+            id: "lastName",
+            name: "payments.0.account.buyer.lastName",
+            label: "Last Name",
+            value: '{{ order.Payments.0.Account.Buyer.LastName }}',
+            $parent: $('#order-buyer'),
+          },
+          {
+            id: "phone",
+            name: "payments.0.account.buyer.phone",
+            label: "Phone",
+            value: '{{ order.Payments.0.Account.Buyer.Phone }}',
+            $parent: $('#order-buyer'),
+          },
+          {
+            id: "line1",
+            name: "shippingAddress.line1",
+            label: "Street Address",
+            value: '{{ order.ShippingAddress.Line1 }}',
+            $parent: $('#order-shipping'),
+          },
+          {
+            id: "line2",
+            name: "shippingAddress.line2",
+            label: "Apartment Number or PO&nbsp;Box",
+            value: '{{ order.ShippingAddress.Line2 }}',
+            $parent: $('#order-shipping'),
+          },
+          {
+            id: "city",
+            name: "shippingAddress.city",
+            label: "City",
+            value: '{{ order.ShippingAddress.City }}',
+            $parent: $('#order-shipping'),
+          },
+          {
+            id: "state",
+            name: "shippingAddress.state",
+            label: "State",
+            value: '{{ order.ShippingAddress.State }}',
+            $parent: $('#order-shipping'),
+          },
+          {
+            id: "country",
+            name: "shippingAddress.country",
+            label: "Country",
+            value: '{{ order.ShippingAddress.Country }}',
+            $parent: $('#order-shipping'),
+          },
+          {
+            id: "postalCode",
+            name: "shippingAddress.postalCode",
+            label: "Postal Code",
+            value: '{{ order.ShippingAddress.PostalCode }}',
+            $parent: $('#order-shipping'),
+          },
         ]);
     });
+  $.extend(FormSerializer.patterns, {
+    validate: /^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*(?:\[\])?$/i
+  });
   var api = NewRestAPI(
       '{{ urlFor("api", "/order2") }}',
       '{{ org.MustGetTokenByName("live-secret-key") }}',
-      $('#form-order'),
-      {
-          price: function(val) {
-              // To cents
-              return parseFloat(val.replace(/[^\d.-]/g,''), 10) * 100;
-          },
-          weight: function(val) {
-              return parseFloat(val.replace(/[^\d.-]/g,''), 10);
-          }
-      }
+      $('#form-order')
     );
   $('#form-order').on('submit', function(e){
       var $form = $(this);
       requestAnimationFrame(function() {
           if ($('.form-group.has-error').length === 0) {
               api.put(function(data) {
-                  window.location.replace('{{ urlFor("platform", "/order") }}')
-              }, $form, '{{ org.Id }}')
+                  window.location.replace('{{ urlFor("platform", "/orders") }}')
+              }, $form, '{{ order.Id }}')
           }
       })
       e.preventDefault();
