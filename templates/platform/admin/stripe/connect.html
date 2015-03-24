@@ -22,14 +22,14 @@
             <div class="well">
             {% if stripeError && stripeError != "" %}
                 <h4 class="text-danger text-center">Your Stripe account was not successfully be connected.  Please try again.</h3>
-            {% elif org.Stripe.AccessToken != "" %}
+            {% elif ctx.organization.Stripe.AccessToken != "" %}
                 <h4 class="text-center">Your Stripe account is connected.</h3>
             {% else %}
                 <h4 class="text-center">Connect a Stripe account to start selling products.</h3>
             {% endif %}
             </div>
             <div class="row text-center">
-                {% if org.Stripe.AccessToken != "" %}
+                {% if ctx.organization.Stripe.AccessToken != "" %}
                 <a class="btn btn-effect-ripple btn-success" href="https://connect.stripe.com/oauth/authorize?response_type=code&client_id={{ stripe.ClientId }}&scope=read_write&state=movetoserver&stripe_landing=login&redirect_uri={{ stripe.RedirectURL }}" class="stripe-connect"><i class="fa fa-check"></i>Connected with Stripe</a>
                 {% else %}
                 <a class="btn btn-effect-ripple btn-primary" href="https://connect.stripe.com/oauth/authorize?response_type=code&client_id={{ stripe.ClientId }}&scope=read_write&state=movetoserver&stripe_landing=login&redirect_uri={{ stripe.RedirectURL }}" class="stripe-connect">Connect with Stripe</a>
