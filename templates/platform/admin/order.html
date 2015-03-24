@@ -20,16 +20,28 @@
           <h4>Information</h4>
           <div id="order-info" class="block">
           </div>
-          <h4>Payment Information</h4>
-          <div id="order-payment" class="block">
+          <h4>Buyer</h4>
+          <div id="order-info" class="block">
           </div>
-          <h4>Current Status</h4>
-          <div id="order-status" class="block">
+          <h4>Line Items</h4>
+          <div id="order-info" class="block">
+          </div>
+          <div class="row">
+            <div class = "col-xs-6">
+              <h4>Payment Information</h4>
+              <div id="order-payment" class="block">
+              </div>
+            </div>
+            <div class = "col-xs-6">
+              <h4>Current Status</h4>
+              <div id="order-status" class="block">
+              </div>
+            </div>
           </div>
           <div class="form-group form-actions">
             <div class="col-md-9 col-md-offset-3">
-              <button type="submit" class="btn btn-effect-ripple btn-primary">Submit</button>
-              <button type="reset" class="btn btn-effect-ripple btn-danger">Reset</button>
+              <!-- <button type="submit" class="btn btn-effect-ripple btn-primary">Submit</button> -->
+              <!-- <button type="reset" class="btn btn-effect-ripple btn-danger">Reset</button> -->
             </div>
           </div>
         </form>
@@ -41,22 +53,25 @@
 {% endblock %}
 
 {% block js %}
+<script src="{{ staticUrl }}/js/util.js"></script>
 <script src="{{ staticUrl }}/js/jquery.serialize-object.min.js"></script>
 <script src="{{ staticUrl }}/js/form-builder.js"></script>
 <script src="{{ staticUrl }}/js/rest-forms.js"></script>
 <script>
     $(function(){
+        Util.setCurrency('{{ order.Currency }}');
+
         BuildForm($("#form-order"), [
           {
             label: "Order ID",
             type: "static",
-            value: "{{ org.Id }}",
+            value: "{{ order.Id }}",
             $parent: $('#order-info'),
           },
           {
             label: "Created On",
             type: "static-date",
-            value: "{{ org.CreatedAt }}",
+            value: "{{ order.CreatedAt }}",
             $parent: $('#order-info'),
           },
           {
@@ -70,70 +85,92 @@
             type: "static",
             value: "{{ order.OrderStatus }}",
             $parent: $('#order-status'),
+            labelCols: 6,
+            valueCols: 6,
           },
           {
             label: "Payment Status",
             type: "static",
             value: "{{ order.PaymentStatus }}",
             $parent: $('#order-status'),
+            labelCols: 6,
+            valueCols: 6,
           },
           {
             label: "Fulfillment Status",
             type: "static",
             value: "{{ order.FulfillmentStatus }}",
             $parent: $('#order-status'),
+            labelCols: 6,
+            valueCols: 6,
           },
           {
             label: 'Currency',
             type: "static",
             value: "{{ order.Currency }}".toUpperCase(),
             $parent: $('#order-payment'),
+            labelCols: 6,
+            valueCols: 6,
           },
           {
             label: "Line Total",
             type: "static-currency",
-            value: {{ order.LineTotal / 100 }},
+            value: {{ order.LineTotal }},
             $parent: $('#order-payment'),
+            labelCols: 6,
+            valueCols: 6,
           },
           {% if order.Discount != 0 %}
           {
             label: "Discount",
             type: "static-currency",
-            value: {{ order.Discount / 100 }},
+            value: {{ order.Discount }},
             $parent: $('#order-payment'),
+            labelCols: 6,
+            valueCols: 6,
           },
           {% endif %}
           {
             label: "Subtotal",
             type: "static-currency",
-            value: {{ order.Subtotal / 100 }},
+            value: {{ order.Subtotal }},
             $parent: $('#order-payment'),
+            labelCols: 6,
+            valueCols: 6,
           },
           {
             label: "Shipping",
             type: "static-currency",
-            value: {{ order.Shipping / 100 }},
+            value: {{ order.Shipping }},
             $parent: $('#order-payment'),
+            labelCols: 6,
+            valueCols: 6,
           },
           {
             label: "Tax",
             type: "static-currency",
-            value: {{ order.Tax / 100 }},
+            value: {{ order.Tax }},
             $parent: $('#order-payment'),
+            labelCols: 6,
+            valueCols: 6,
           },
           {% if order.Adjustment != 0 %}
           {
             label: "Adjustment",
             type: "static-currency",
-            value: {{ order.Adjustment / 100 }},
+            value: {{ order.Adjustment }},
             $parent: $('#order-payment'),
+            labelCols: 6,
+            valueCols: 6,
           },
           {% endif %}
           {
             label: "Total",
             type: "static-currency",
-            value: {{ order.Total / 100 }},
+            value: {{ order.Total }},
             $parent: $('#order-payment'),
+            labelCols: 6,
+            valueCols: 6,
           },
         ]);
     });
