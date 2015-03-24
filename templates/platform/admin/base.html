@@ -197,16 +197,45 @@
                         <!-- END Left Header Navigation -->
 
                         <ul class="nav navbar-nav-custom pull-right">
-                            <!-- User Dropdown -->
                             <li>
-                                <a href="{{ urlFor("platform", "/profile") }}">
-                                    <strong>{{ user.Name() }}</strong>
-                                </a>
+                                <form action="{{ urlFor("platform", "/search") }}" method="post" class="navbar-form-custom" role="search">
+                                    <input type="text" id="top-search" name="top-search" class="form-control" placeholder="Search...">
+                                </form>
                             </li>
-                            <li>
-                                <a href="{{ urlFor("platform", "/logout") }}">
-                                  <i class="fa fa-power-off"></i>
+                            <!-- User Dropdown -->
+                            <li class="dropdown closed">
+                                <a href="javascript:void(0)" class="dropdown-toggle" data-toggle="dropdown">
+                                    <strong>{{ ctx.organization.FullName }}</strong>
                                 </a>
+                                <ul class="dropdown-menu dropdown-menu-right">
+                                    <li class="dropdown-header">
+                                        <strong>ADMINISTRATOR</strong>
+                                    </li>
+                                    <li>
+                                        <a href="{{ urlFor("platform", "/profile") }}">
+                                            <i class="fa fa-pencil-square fa-fw pull-right"></i>
+                                            {{ ctx.user.Name() }}
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a href="{{ urlFor("platform", "/settings")}}">
+                                        <i class="gi gi-settings fa-fw pull-right"></i>
+                                        Settings
+                                        </a>
+                                    </li>
+                                    <!-- <li> -->
+                                    <!-- <a href="page_ready_lock_screen.php"> -->
+                                    <!-- <i class="gi gi-lock fa-fw pull-right"></i> -->
+                                    <!-- Lock Account -->
+                                    <!-- </a> -->
+                                    <!-- </li> -->
+                                    <li>
+                                        <a href="{{ urlFor("platform", "/logout")}}">
+                                        <i class="fa fa-power-off fa-fw pull-right"></i>
+                                        Log out
+                                        </a>
+                                    </li>
+                                </ul>
                             </li>
                             <!-- END User Dropdown -->
                         </ul>
