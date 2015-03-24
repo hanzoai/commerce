@@ -3,8 +3,8 @@ var NewRestAPI = (function() {
   return function(apiUrl, token, onErrorHandler, fieldProcessors) {
     // Make sure there is a slash on the path
     var path = apiUrl;
-    if (path.substr(-1) !== '/') {
-      path += '/'
+    if (path.substr(-1) === '/') {
+      path = path.substr(0, path.length-1)
     }
 
     // Make the token string
