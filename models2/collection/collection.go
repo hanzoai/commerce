@@ -8,6 +8,7 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/util/gob"
+	"crowdstart.io/util/val"
 
 	. "crowdstart.io/models2"
 )
@@ -74,6 +75,10 @@ func New(db *datastore.Datastore) *Collection {
 
 func (c Collection) Kind() string {
 	return "collection2"
+}
+
+func (c Collection) Validator() *val.Validator {
+	return val.New()
 }
 
 func (c *Collection) Load(ch <-chan aeds.Property) (err error) {

@@ -1,18 +1,16 @@
 package product
 
 import (
-	"net/http"
 	"reflect"
 	"time"
 
 	aeds "appengine/datastore"
 
-	"github.com/mholt/binding"
-
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/models2/variant"
 	"crowdstart.io/util/gob"
+	"crowdstart.io/util/val"
 
 	. "crowdstart.io/models2"
 )
@@ -105,14 +103,44 @@ func (p Product) Kind() string {
 	return "product2"
 }
 
+func (p Product) Validator() *val.Validator {
+	return val.New()
+	// 	if p.Name == "" {
+	// 		errs = append(errs, binding.Error{
+	// 			FieldNames:     []string{"Title"},
+	// 			Classification: "InputError",
+	// 			Message:        "Product does not have a title.",
+	// 		})
+	// 	}
+
+	// 	if len(p.Media) > 0 {
+	// 		for _, media := range p.Media {
+	// 			errs = media.Validate(req, errs)
+	// 		}
+	// 	}
+
+	// 	if len(p.Variants) == 0 {
+	// 		errs = append(errs, binding.Error{
+	// 			FieldNames:     []string{"Variants"},
+	// 			Classification: "InputError",
+	// 			Message:        "No Variants on Product",
+	// 		})
+	// 	} else {
+	// 		for _, v := range p.Variants {
+	// 			errs = v.Validate(req, errs)
+	// 		}
+	// 	}
+	// 	return errs
+}
+
 func (p *Product) Load(c <-chan aeds.Property) (err error) {
+	// Ensure we're initialized
+	p.Init()
+
 	// Load supported properties
 	if err = IgnoreFieldMismatch(aeds.LoadStruct(p, c)); err != nil {
 		return err
 	}
-
-	// Ensure we're initialized
-	p.Init()
 
 	// Deserialize from datastore
 	if len(p.Variants_) > 0 {
@@ -182,35 +210,6 @@ func (p Product) VariantOptions(name string) (options []string) {
 	}
 
 	return options
-}
-
-func (p Product) Validate(req *http.Request, errs binding.Errors) binding.Errors {
-	if p.Name == "" {
-		errs = append(errs, binding.Error{
-			FieldNames:     []string{"Title"},
-			Classification: "InputError",
-			Message:        "Product does not have a title.",
-		})
-	}
-
-	if len(p.Media) > 0 {
-		for _, media := range p.Media {
-			errs = media.Validate(req, errs)
-		}
-	}
-
-	if len(p.Variants) == 0 {
-		errs = append(errs, binding.Error{
-			FieldNames:     []string{"Variants"},
-			Classification: "InputError",
-			Message:        "No Variants on Product",
-		})
-	} else {
-		for _, v := range p.Variants {
-			errs = v.Validate(req, errs)
-		}
-	}
-	return errs
 }
 
 func init() {

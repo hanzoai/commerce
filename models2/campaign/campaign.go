@@ -4,6 +4,7 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/util/category"
+	"crowdstart.io/util/val"
 )
 
 type Campaign struct {
@@ -44,4 +45,8 @@ func New(db *datastore.Datastore) *Campaign {
 
 func (c Campaign) Kind() string {
 	return "campaign2"
+}
+
+func (c Campaign) Validator() *val.Validator {
+	return val.New()
 }

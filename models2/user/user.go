@@ -1,16 +1,13 @@
 package user
 
 import (
-	"net/http"
-
 	aeds "appengine/datastore"
-
-	"github.com/mholt/binding"
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/util/gob"
 	"crowdstart.io/util/log"
+	"crowdstart.io/util/val"
 
 	. "crowdstart.io/models2"
 )
@@ -20,6 +17,9 @@ var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 type User struct {
 	mixin.Model
 	mixin.Salesforce
+
+	// Crowdstart Id, found in default namespace
+	Cid string `json:"-"`
 
 	Username        string   `json:"username"`
 	FirstName       string   `json:"firstName"`
@@ -65,13 +65,13 @@ func (u User) Kind() string {
 }
 
 func (u *User) Load(c <-chan aeds.Property) (err error) {
+	// Ensure we're initialized
+	u.Init()
+
 	// Load supported properties
 	if err = IgnoreFieldMismatch(aeds.LoadStruct(u, c)); err != nil {
 		return err
 	}
-
-	// Ensure we're initialized
-	u.Init()
 
 	// Deserialize from datastore
 	if len(u.Metadata_) > 0 {
@@ -101,38 +101,39 @@ func (u User) HasPassword() bool {
 	return len(u.PasswordHash) != 0
 }
 
-func (u User) Validate(req *http.Request, errs binding.Errors) binding.Errors {
-	// Name cannot be empty string.
-	if u.FirstName == "" {
-		errs = append(errs, binding.Error{
-			FieldNames:     []string{"FirstName"},
-			Classification: "InputError",
-			Message:        "User first name cannot be empty.",
-		})
-	}
+func (u User) Validator() *val.Validator {
+	return val.New()
+	// // Name cannot be empty string.
+	// if u.FirstName == "" {
+	// 	errs = append(errs, binding.Error{
+	// 		FieldNames:     []string{"FirstName"},
+	// 		Classification: "InputError",
+	// 		Message:        "User first name cannot be empty.",
+	// 	})
+	// }
 
-	if u.LastName == "" {
-		errs = append(errs, binding.Error{
-			FieldNames:     []string{"LastName"},
-			Classification: "InputError",
-			Message:        "User last name cannot be empty.",
-		})
-	}
+	// if u.LastName == "" {
+	// 	errs = append(errs, binding.Error{
+	// 		FieldNames:     []string{"LastName"},
+	// 		Classification: "InputError",
+	// 		Message:        "User last name cannot be empty.",
+	// 	})
+	// }
 
-	if u.Email == "" {
-		errs = append(errs, binding.Error{
-			FieldNames:     []string{"Email"},
-			Classification: "InputError",
-			Message:        "User email cannot be empty.",
-		})
-	}
+	// if u.Email == "" {
+	// 	errs = append(errs, binding.Error{
+	// 		FieldNames:     []string{"Email"},
+	// 		Classification: "InputError",
+	// 		Message:        "User email cannot be empty.",
+	// 	})
+	// }
 
-	// Validate cart implicitly.
-	// errs = u.Cart.Validate(req, errs)
-	errs = u.BillingAddress.Validate(req, errs)
-	errs = u.ShippingAddress.Validate(req, errs)
+	// // Validate cart implicitly.
+	// // errs = u.Cart.Validate(req, errs)
+	// errs = u.BillingAddress.Validate(req, errs)
+	// errs = u.ShippingAddress.Validate(req, errs)
 
-	return errs
+	// return errs
 }
 
 // Populates current entity from datastore by Email.
