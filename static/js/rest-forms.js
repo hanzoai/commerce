@@ -43,6 +43,8 @@ var NewRestAPI = (function() {
         var paramStrs = [tokenStr];
         if (id == null) {
           id = '';
+        } else {
+          id = '/' + id;
         }
         if (params) {
           for (var prop in params) {
