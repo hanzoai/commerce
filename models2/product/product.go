@@ -89,10 +89,14 @@ type Product struct {
 	Options_ []byte    `json:"-"`
 }
 
-func New(db *datastore.Datastore) *Product {
-	p := new(Product)
+func (p *Product) Init() {
 	p.Variants = make([]*variant.Variant, 0)
 	p.Options = make([]*Option, 0)
+}
+
+func New(db *datastore.Datastore) *Product {
+	p := new(Product)
+	p.Init()
 	p.Model = mixin.Model{Db: db, Entity: p}
 	return p
 }
@@ -102,15 +106,15 @@ func (p Product) Kind() string {
 }
 
 func (p *Product) Load(c <-chan aeds.Property) (err error) {
-	// Load properties
+	// Load supported properties
 	if err = IgnoreFieldMismatch(aeds.LoadStruct(p, c)); err != nil {
 		return err
 	}
 
-	// Deserialize gob encoded properties
-	p.Variants = make([]*variant.Variant, 0)
-	p.Options = make([]*Option, 0)
+	// Ensure we're initialized
+	p.Init()
 
+	// Deserialize from datastore
 	if len(p.Variants_) > 0 {
 		err = gob.Decode(p.Variants_, &p.Variants)
 	}
@@ -123,7 +127,7 @@ func (p *Product) Load(c <-chan aeds.Property) (err error) {
 }
 
 func (p *Product) Save(c chan<- aeds.Property) (err error) {
-	// Gob encode problematic properties
+	// Serialize unsupported properties
 	p.Variants_, _ = gob.Encode(&p.Variants)
 	p.Options_, _ = gob.Encode(&p.Options)
 
