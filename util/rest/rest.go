@@ -69,6 +69,9 @@ func New(entity mixin.Entity, args ...interface{}) *Rest {
 func (r Rest) Route(router Router, args ...gin.HandlerFunc) {
 	// Create group for our API routes and require Access token
 	group := router.Group("/" + r.Kind)
+	group.Use(func(c *gin.Context) {
+		c.Writer.Header().Add("Access-Control-Allow-Origin", "*")
+	})
 	group.Use(args...)
 
 	// Add default routes
@@ -118,7 +121,12 @@ func (r Rest) defaultRoutes() []route {
 	return []route{
 		route{
 			method:   "OPTIONS",
-			url:      "*wildcard",
+			url:      "",
+			handlers: []gin.HandlerFunc{r.Options},
+		},
+		route{
+			method:   "OPTIONS",
+			url:      "/all*",
 			handlers: []gin.HandlerFunc{r.Options},
 		},
 		route{
@@ -373,9 +381,11 @@ func (r Rest) methodOverride(c *gin.Context) {
 
 // Set proper CORS non-sense
 func (r Rest) options(c *gin.Context) {
-	c.Writer.Header().Add("Access-Control-Allow-Origin", "*")
-	c.Writer.Header().Add("Access-Control-Allow-Methods", c.Request.Header.Get("Access-Control-Request-Methods"))
-	c.Writer.Header().Add("Access-Control-Allow-Headers", c.Request.Header.Get("Access-Control-Request-Headers"))
+	reqMethods := c.Request.Header.Get("Access-Control-Request-Methods")
+	reqHeaders := c.Request.Header.Get("Access-Control-Request-Headers")
+	c.Writer.Header().Add("Access-Control-Allow-Methods", reqMethods)
+	c.Writer.Header().Add("Access-Control-Allow-Headers", reqHeaders)
+	c.Data(200, "text/plain", make([]byte, 0))
 }
 
 func (r Rest) Handle(method, url string, handlers []gin.HandlerFunc) {
