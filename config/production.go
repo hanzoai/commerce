@@ -34,17 +34,14 @@ func Production() *Config {
 	config.Facebook.AppSecret = "e82c15c92f9679a146a136790baf7d67"
 	config.Facebook.GraphVersion = "v2.2"
 
-	config.DemoMode = true
+	config.DemoMode = false
 
-	// Only use production credentials if demo mode is off.
-	if !config.DemoMode {
-		config.Salesforce.ConsumerKey = "3MVG9xOCXq4ID1uElRYWhpUWjXSbiTVg4WO6q9DvWdvBjQ_DFlwSc7jZ9AbY3z9Jv_V29W7xq1nPjTYQhYJqF"
-		config.Salesforce.ConsumerSecret = "3811316853831925498"
+	config.Salesforce.ConsumerKey = ""
+	config.Salesforce.ConsumerSecret = ""
 
-		config.Stripe.ClientId = "ca_53yyRUNpMtTRUgMlVlLAM3vllY1AVybU"
-		config.Stripe.APIKey = "pk_live_APr2mdiUblcOO4c2qTeyQ3hq"
-		config.Stripe.APISecret = ""
-	}
+	config.Stripe.ClientId = "ca_53yyRUNpMtTRUgMlVlLAM3vllY1AVybU"
+	config.Stripe.APIKey = "pk_live_APr2mdiUblcOO4c2qTeyQ3hq"
+	config.Stripe.APISecret = ""
 
 	return config
 }
