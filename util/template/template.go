@@ -6,7 +6,7 @@ import (
 	"github.com/flosch/pongo2"
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/auth"
+	"crowdstart.io/auth2"
 	"crowdstart.io/config"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"

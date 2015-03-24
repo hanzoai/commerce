@@ -26,16 +26,34 @@ func saveSession(c *gin.Context, session *sessions.Session) error {
 func Get(c *gin.Context, key string) (interface{}, error) {
 	session, err := store.Get(c.Request, config.SessionName)
 	if err != nil {
-		return "", err
+		log.Warn(err)
+		return nil, err
 	}
 
 	value, ok := session.Values[key]
 	if !ok {
-		err := KeyError{key}
-		log.Debug(err)
 		return nil, err
 	}
-	return value, saveSession(c, session)
+	return value, nil
+}
+
+func GetString(c *gin.Context, key string) string {
+	session, err := store.Get(c.Request, config.SessionName)
+	if err != nil {
+		log.Warn(err)
+		return ""
+	}
+
+	// Check for value in session
+	value, ok := session.Values[key]
+	if !ok {
+		return ""
+	}
+
+	// Coerce to string
+	str, _ := value.(string)
+
+	return str
 }
 
 func MustGet(c *gin.Context, key string) interface{} {
