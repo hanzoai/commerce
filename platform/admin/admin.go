@@ -22,68 +22,46 @@ func Index(c *gin.Context) {
 
 // Admin Dashboard
 func Dashboard(c *gin.Context) {
-	user := middleware.GetCurrentUser(c)
-	org := middleware.GetOrganization(c)
-
-	template.Render(c, "admin/dashboard.html", "org", org, "user", user)
+	template.Render(c, "admin/dashboard.html")
 }
 
 func Product(c *gin.Context) {
-	user := middleware.GetCurrentUser(c)
-	org := middleware.GetOrganization(c)
-
-	db := datastore.New(org.Namespace(c))
+	db := datastore.New(middleware.GetNamespace(c))
 
 	p := product.New(db)
 	id := c.Params.ByName("id")
 	p.Get(id)
 
-	template.Render(c, "admin/product.html", "org", org, "user", user, "product", p)
+	template.Render(c, "admin/product.html", "product", p)
 }
 
 func Products(c *gin.Context) {
-	user := middleware.GetCurrentUser(c)
-	org := middleware.GetOrganization(c)
-
-	template.Render(c, "admin/list-products.html", "org", org, "user", user)
+	template.Render(c, "admin/list-products.html")
 }
 
 func Order(c *gin.Context) {
-	user := middleware.GetCurrentUser(c)
-	org := middleware.GetOrganization(c)
-
-	db := datastore.New(org.Namespace(c))
+	db := datastore.New(middleware.GetNamespace(c))
 
 	o := order.New(db)
 	id := c.Params.ByName("id")
 	o.Get(id)
 
-	template.Render(c, "admin/order.html", "org", org, "user", user, "order", o)
+	template.Render(c, "admin/order.html", "order", o)
 }
 
 func Orders(c *gin.Context) {
-	user := middleware.GetCurrentUser(c)
-	org := middleware.GetOrganization(c)
-
-	template.Render(c, "admin/list-orders.html", "org", org, "user", user)
+	template.Render(c, "admin/list-orders.html")
 }
 
 func Organization(c *gin.Context) {
-	user := middleware.GetCurrentUser(c)
-	org := middleware.GetOrganization(c)
-
-	template.Render(c, "admin/organization.html", "org", org, "user", user)
+	template.Render(c, "admin/organization.html")
 }
 
 func Keys(c *gin.Context) {
-	user := middleware.GetCurrentUser(c)
-	org := middleware.GetOrganization(c)
-
-	template.Render(c, "admin/keys.html", "org", org, "user", user)
+	template.Render(c, "admin/keys.html")
 }
 
 func NewKeys(c *gin.Context) {
-	user := middleware.GetCurrentUser(c)
 	org := middleware.GetOrganization(c)
 
 	org.ClearTokens()
@@ -96,5 +74,5 @@ func NewKeys(c *gin.Context) {
 		panic(err)
 	}
 
-	template.Render(c, "admin/keys.html", "org", org, "user", user)
+	template.Render(c, "admin/keys.html")
 }
