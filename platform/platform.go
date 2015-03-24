@@ -60,8 +60,8 @@ func init() {
 	dash.GET("/dashboard", admin.Dashboard)
 
 	dash.GET("/profile", user.Profile)
-	dash.POST("/profile", user.SubmitProfile)
-	dash.POST("/changepassword", user.SubmitProfile)
+	dash.POST("/profile/contact", user.ContactSubmit)
+	dash.POST("/profile/password", user.PasswordSubmit)
 	dash.GET("/keys", admin.Keys)
 	dash.POST("/keys", admin.NewKeys)
 
