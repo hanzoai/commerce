@@ -10,5 +10,39 @@ automatic_scaling:
   max_concurrent_requests: 100
 
 handlers:
+- url: /
+  script: _go_app
+
+- url: /features
+  script: _go_app
+
+- url: /pricing
+  script: _go_app
+
+- url: /about
+  script: _go_app
+
+- url: /contact
+  script: _go_app
+
+- url: /how-it-works
+  script: _go_app
+
+- url: /privacy
+  script: _go_app
+
+- url: /terms
+  script: _go_app
+
+- url: /docs
+  script: _go_app
+
+- url: /docs/.*
+  script: _go_app
+
+- url: /faq
+  script: _go_app
+
 - url: /.*
   script: _go_app
+  secure: always
