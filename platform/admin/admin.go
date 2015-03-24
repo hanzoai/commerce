@@ -3,11 +3,10 @@ package admin
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/auth2"
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
+	"crowdstart.io/middleware"
 	"crowdstart.io/models2/order"
-	"crowdstart.io/models2/organization"
 	"crowdstart.io/models2/product"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/permission"
@@ -23,127 +22,47 @@ func Index(c *gin.Context) {
 
 // Admin Dashboard
 func Dashboard(c *gin.Context) {
-	if u, err := auth.GetCurrentUser(c); err != nil {
-		c.Fail(500, err)
-	} else {
-		template.Render(c, "admin/dashboard.html", "user", u)
-	}
+	template.Render(c, "admin/dashboard.html")
 }
 
 func Product(c *gin.Context) {
-	if u, err := auth.GetCurrentUser(c); err != nil {
-		c.Fail(500, err)
-	} else {
-		db := datastore.New(c)
-		org := organization.New(db)
-		if _, err := org.Query().Filter("OwnerId=", u.Id()).First(); err != nil {
-			c.Fail(500, err)
-			return
-		}
+	db := datastore.New(middleware.GetNamespace(c))
 
-		namespaced := org.Namespace(c)
-		db = datastore.New(namespaced)
+	p := product.New(db)
+	id := c.Params.ByName("id")
+	p.Get(id)
 
-		p := product.New(db)
-		id := c.Params.ByName("id")
-		p.Get(id)
-
-		template.Render(c, "admin/product.html", "org", org, "product", p)
-	}
+	template.Render(c, "admin/product.html", "product", p)
 }
 
 func Products(c *gin.Context) {
-	if u, err := auth.GetCurrentUser(c); err != nil {
-		c.Fail(500, err)
-	} else {
-		db := datastore.New(c)
-		org := organization.New(db)
-		if _, err := org.Query().Filter("OwnerId=", u.Id()).First(); err != nil {
-			c.Fail(500, err)
-			return
-		}
-
-		template.Render(c, "admin/list-products.html", "org", org)
-	}
+	template.Render(c, "admin/list-products.html")
 }
 
 func Order(c *gin.Context) {
-	if u, err := auth.GetCurrentUser(c); err != nil {
-		c.Fail(500, err)
-	} else {
-		db := datastore.New(c)
-		org := organization.New(db)
-		if _, err := org.Query().Filter("OwnerId=", u.Id()).First(); err != nil {
-			c.Fail(500, err)
-			return
-		}
+	db := datastore.New(middleware.GetNamespace(c))
 
-		namespaced := org.Namespace(c)
-		db = datastore.New(namespaced)
+	o := order.New(db)
+	id := c.Params.ByName("id")
+	o.Get(id)
 
-		o := order.New(db)
-		id := c.Params.ByName("id")
-		o.Get(id)
-
-		template.Render(c, "admin/order.html", "org", org, "order", o)
-	}
+	template.Render(c, "admin/order.html", "order", o)
 }
 
 func Orders(c *gin.Context) {
-	if u, err := auth.GetCurrentUser(c); err != nil {
-		c.Fail(500, err)
-	} else {
-		db := datastore.New(c)
-		org := organization.New(db)
-		if _, err := org.Query().Filter("OwnerId=", u.Id()).First(); err != nil {
-			c.Fail(500, err)
-			return
-		}
-
-		template.Render(c, "admin/list-orders.html", "org", org)
-	}
+	template.Render(c, "admin/list-orders.html")
 }
 
 func Organization(c *gin.Context) {
-	if u, err := auth.GetCurrentUser(c); err != nil {
-		c.Fail(500, err)
-	} else {
-		db := datastore.New(c)
-		org := organization.New(db)
-		if _, err := org.Query().Filter("OwnerId=", u.Id()).First(); err != nil {
-			c.Fail(500, err)
-			return
-		}
-
-		template.Render(c, "admin/organization.html", "org", org)
-	}
+	template.Render(c, "admin/organization.html")
 }
 
 func Keys(c *gin.Context) {
-	u, err := auth.GetCurrentUser(c)
-	if err != nil {
-		panic(err)
-	}
-	db := datastore.New(c)
-	org := organization.New(db)
-	if _, err := org.Query().Filter("OwnerId=", u.Id()).First(); err != nil {
-		panic(err)
-	}
-
-	template.Render(c, "admin/keys.html", "org", org)
+	template.Render(c, "admin/keys.html")
 }
 
 func NewKeys(c *gin.Context) {
-	u, err := auth.GetCurrentUser(c)
-	if err != nil {
-		panic(err)
-	}
-
-	db := datastore.New(c)
-	org := organization.New(db)
-	if _, err := org.Query().Filter("OwnerId=", u.Id()).First(); err != nil {
-		panic(err)
-	}
+	org := middleware.GetOrganization(c)
 
 	org.ClearTokens()
 	org.AddToken("live-secret-key", permission.Admin)
@@ -155,5 +74,5 @@ func NewKeys(c *gin.Context) {
 		panic(err)
 	}
 
-	template.Render(c, "admin/keys.html", "org", org)
+	template.Render(c, "admin/keys.html")
 }
