@@ -43,7 +43,12 @@ type User struct {
 		Verified    bool   `facebook:"verified" datastore:"-"`
 	} `json:"-"`
 
-	StripeCustomerId string `json:"stripeCustomerId,omitempty"`
+	// Account to use for new orders when customer creates new orders
+	Accounts struct {
+		Stripe PaymentAccount `json:"stripe,omitempty"`
+		PayPal PaymentAccount `json:"paypal,omitempty"`
+		Affirm PaymentAccount `json:"affirm,omitempty"`
+	} `json:"accounts"`
 
 	Metadata  Metadata `json:"metadata" datastore:"-"`
 	Metadata_ []byte   `json:"-"`

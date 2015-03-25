@@ -60,33 +60,6 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	account.Buyer = ar.Source.Buyer()
 	account.Type = "stripe"
 
-	// Create Stripe customer, which we will attach to our payment account.
-	customer, err := client.NewCustomer(token.ID, account.Buyer)
-	if err != nil {
-		return nil, err
-	}
-	account.Stripe.CustomerId = customer.ID
-
-	log.Debug("Stripe customer: %#v", customer)
-	log.Debug("Stripe source: %#v", customer.DefaultSource)
-
-	// Get default source
-	cardId := customer.DefaultSource.ID
-	card, err := client.GetCard(cardId, customer.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	account.Stripe.CardId = cardId
-	account.Stripe.Brand = string(card.Brand)
-	account.Stripe.LastFour = card.LastFour
-	account.Stripe.Expiration.Month = int(card.Month)
-	account.Stripe.Expiration.Year = int(card.Year)
-	account.Stripe.Country = card.Country
-	account.Stripe.Fingerprint = card.Fingerprint
-	account.Stripe.Type = string(card.Funding)
-	account.Stripe.CVCCheck = string(card.CVCCheck)
-
 	payment := models.Payment{}
 	payment.Status = "unpaid"
 	payment.Account = account
@@ -108,6 +81,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 
 	// Save order!
 	ar.Order.Put()
+	user.Put()
 
 	return ar.Order, nil
 }
