@@ -265,7 +265,7 @@
   var api = NewRestAPI(
       '{{ urlFor("api", "/order2") }}',
       '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}',
-      $('#form-order'),
+      $('#form-order')
     );
   $('#form-order').on('submit', function(e){
       var $form = $(this);
