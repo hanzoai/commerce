@@ -144,8 +144,8 @@ func (o Order) Kind() string {
 	return "order2"
 }
 
-func (o Order) Validator() *val.Validator {
-	return val.New()
+func (o *Order) Validator() *val.Validator {
+	return val.New(o)
 }
 
 func (o *Order) Load(c <-chan aeds.Property) (err error) {

@@ -81,8 +81,8 @@ func (o Organization) Kind() string {
 	return "organization2"
 }
 
-func (o Organization) Validator() *val.Validator {
-	return val.New()
+func (o *Organization) Validator() *val.Validator {
+	return val.New(o)
 }
 
 func (o *Organization) AddDefaultTokens() {

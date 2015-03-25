@@ -101,8 +101,8 @@ func (u User) HasPassword() bool {
 	return len(u.PasswordHash) != 0
 }
 
-func (u User) Validator() *val.Validator {
-	return val.New()
+func (u *User) Validator() *val.Validator {
+	return val.New(u)
 	// // Name cannot be empty string.
 	// if u.FirstName == "" {
 	// 	errs = append(errs, binding.Error{

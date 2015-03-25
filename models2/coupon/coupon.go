@@ -64,6 +64,6 @@ func (c Coupon) Kind() string {
 	return "coupon2"
 }
 
-func (c Coupon) Validator() *val.Validator {
-	return val.New()
+func (c *Coupon) Validator() *val.Validator {
+	return val.New(c)
 }
