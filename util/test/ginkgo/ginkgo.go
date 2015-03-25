@@ -10,6 +10,7 @@ import (
 	"github.com/onsi/gomega"
 
 	"crowdstart.io/util/log"
+	"crowdstart.io/util/retry"
 )
 
 func Setup(suiteName string, t *testing.T) {
@@ -25,6 +26,8 @@ func Setup(suiteName string, t *testing.T) {
 		ginkgo.RunSpecsWithDefaultAndCustomReporters(t, suiteName, []ginkgo.Reporter{junitReporter})
 	}
 }
+
+var Retry = retry.Retry
 
 // Declarations for Ginkgo DSL
 type Done ginkgo.Done
