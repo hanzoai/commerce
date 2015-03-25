@@ -10,7 +10,7 @@ func Development() *Config {
 	config.AutoLoadFixtures = false
 	config.DatastoreWarn = true
 
-	config.Protocol = "//localhost:8080/" // Localhost
+	config.Protocol = "/"
 
 	config.Prefixes["default"] = "/"
 	config.Prefixes["api"] = "/api/"
