@@ -67,3 +67,7 @@ func (c Coupon) Kind() string {
 func (c *Coupon) Validator() *val.Validator {
 	return val.New(c)
 }
+
+func Query(db *datastore.Datastore) *mixin.Query {
+	return New(db).Query()
+}

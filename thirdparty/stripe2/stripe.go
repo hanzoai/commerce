@@ -10,6 +10,7 @@ import (
 	"github.com/stripe/stripe-go/client"
 
 	"crowdstart.io/models2"
+	"crowdstart.io/models2/payment"
 )
 
 type Card stripe.Card
@@ -106,7 +107,7 @@ func (c Client) NewCustomer(token string, buyer models.Buyer) (*Customer, error)
 }
 
 // Create new charge
-func (c Client) NewCharge(customerOrToken interface{}, payment models.Payment) (*Charge, error) {
+func (c Client) NewCharge(customerOrToken interface{}, payment *payment.Payment) (*Charge, error) {
 	chargeParams := &stripe.ChargeParams{
 		Amount:    uint64(payment.Amount),
 		Currency:  stripe.Currency(payment.Currency),

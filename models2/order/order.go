@@ -11,6 +11,7 @@ import (
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
+	"crowdstart.io/models2/payment"
 	"crowdstart.io/util/gob"
 	"crowdstart.io/util/val"
 
@@ -38,11 +39,9 @@ type Order struct {
 	// Associated Crowdstart user or buyer.
 	UserId string `json:"userId,omitempty"`
 
-	OrderStatus OrderStatus `json:"orderStatus"`
-
-	PaymentStatus PaymentStatus `json:"paymentStatus"`
-
-	// unfulfilled, fulfilled, processing, failed
+	// Status
+	OrderStatus       OrderStatus       `json:"orderStatus"`
+	PaymentStatus     payment.Status    `json:"paymentStatus"`
 	FulfillmentStatus FulfillmentStatus `json:"fulfillmentStatus"`
 
 	// Whether this was a preorder or not
@@ -108,7 +107,7 @@ type Order struct {
 	Discounts  []*Discount `json:"discounts" datastore:"-"`
 	Discounts_ []byte      `json:"-"`
 
-	Payments []Payment `json:"payments"`
+	PaymentIds []string `json:"payments"`
 
 	// Fulfillment information
 	Fulfillment Fulfillment `json:"fulfillment"`
@@ -130,7 +129,6 @@ func (o *Order) Init() {
 	o.History = make([]Event, 0)
 	o.Items = make([]LineItem, 0)
 	o.Metadata = make(Metadata)
-	o.Payments = make([]Payment, 0)
 }
 
 func New(db *datastore.Datastore) *Order {
@@ -362,3 +360,7 @@ func (o Order) DecimalFee() uint64 {
 // 	o.Total = o.Subtotal + o.Tax + o.Shipping
 // 	return nil
 // }
+
+func Query(db *datastore.Datastore) *mixin.Query {
+	return New(db).Query()
+}
