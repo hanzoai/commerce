@@ -6,6 +6,7 @@ type Options struct {
 	Modules                  []string
 	TaskQueues               []string
 	PreferAppengineTesting   bool
+	Noisy                    bool
 }
 
 func (c *Options) SetDefaults() {
