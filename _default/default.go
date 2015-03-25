@@ -41,10 +41,10 @@ func Init() {
 		}
 	})
 
-	// Monitoring test (wake up peeps)
-	router.GET("/wake-the-fuck-up", func(c *gin.Context) {
-		log.Error("wake the fuck up!", c)
-		c.Data(500, "text/html", make([]byte, 0))
+	// Monitoring test
+	router.GET("/wake-up", func(c *gin.Context) {
+		log.Error("wake up!", c)
+		template.Render(c, "wake-up.text")
 	})
 
 	// Development-only routes below
