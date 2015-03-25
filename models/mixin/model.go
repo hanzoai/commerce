@@ -11,35 +11,44 @@ import (
 	"crowdstart.io/util/hashid"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
+	"crowdstart.io/util/rand"
 	"crowdstart.io/util/structs"
 	"crowdstart.io/util/val"
 )
 
-// Discrete instance of an entity
-type Entity interface {
+// A datastore kind that is compatible with the Model mixin
+type Kind interface {
 	Kind() string
-	Validator() *val.Validator
 }
 
-// Interface representing Model
-type model interface {
+// A specific datastore entity, with methods inherited from this mixin
+type Entity interface {
+	Kind
+	SetContext(ctx interface{})
+	SetNamespace(namespace string)
 	Key() (key datastore.Key)
+	SetKey(key interface{}) (err error)
 	Id() string
+	Get(args ...interface{}) error
+	KeyExists(key interface{}) (datastore.Key, error)
+	MustGet(args ...interface{})
 	Put() error
 	MustPut()
-	Get(args ...interface{}) error
-	MustGet(args ...interface{})
+	GetOrCreate(filterStr string, value interface{}) error
+	GetOrUpdate(filterStr string, value interface{}) error
+	RunInTransaction(fn func() error) error
 	Delete(args ...interface{}) error
 	Query() *Query
+	Validate() error
+	Validator() *val.Validator
 	JSON() string
 }
 
-// Model is a datastore mixin which adds serialization to/from Datastore as
-// well as a few useful fields and extra methods (such as for JSON
-// serialization).
+// Model is a mixin which adds Datastore/Validation/Serialization methods to
+// any Kind that it has been embedded in.
 type Model struct {
 	Db     *datastore.Datastore `json:"-" datastore:"-"`
-	Entity Entity               `json:"-" datastore:"-"`
+	Entity Kind                 `json:"-" datastore:"-"`
 	Parent datastore.Key        `json:"-" datastore:"-"`
 
 	key datastore.Key
@@ -96,38 +105,18 @@ func (m *Model) setId() {
 	}
 }
 
-// Helper to set key + Id_
-func (m *Model) setKey(key datastore.Key) {
-	m.key = key
-	m.setId()
-}
-
-// Returns Key for this entity
-func (m *Model) Key() (key datastore.Key) {
-	// Create a new incomplete key for this new entity
-	if m.key == nil {
-		log.Warn("Key is nil, automatically creating a new key.")
-		kind := m.Entity.Kind()
-
-		if m.StringKey_ {
-			// Id_ will unfortunately not be set first time around...
-			m.key = m.Db.NewIncompleteKey(kind, m.Parent)
-		} else {
-			// We can allocate an id in advance and ensure that Id_ is populated
-			id := m.Db.AllocateId(kind)
-			m.setKey(m.Db.NewKey(kind, "", id, m.Parent))
-		}
-	}
-
-	return m.key
-}
-
 // Returns string key for entity
 func (m *Model) Id() string {
 	if m.Id_ == "" {
 		m.setId()
 	}
 	return m.Id_
+}
+
+// Helper to set key + Id_
+func (m *Model) setKey(key datastore.Key) {
+	m.key = key
+	m.setId()
 }
 
 // Set's key for entity.
@@ -166,9 +155,24 @@ func (m *Model) SetKey(key interface{}) (err error) {
 	return nil
 }
 
-// Put entity in datastore
-func (m *Model) Put() error {
-	return m.PutEntity(m.Entity)
+// Returns Key for this entity
+func (m *Model) Key() (key datastore.Key) {
+	// Create a new incomplete key for this new entity
+	if m.key == nil {
+		log.Warn("Key is nil, automatically creating a new key.")
+		kind := m.Entity.Kind()
+
+		if m.StringKey_ {
+			// Id_ will unfortunately not be set first time around...
+			m.key = m.Db.NewIncompleteKey(kind, m.Parent)
+		} else {
+			// We can allocate an id in advance and ensure that Id_ is populated
+			id := m.Db.AllocateId(kind)
+			m.setKey(m.Db.NewKey(kind, "", id, m.Parent))
+		}
+	}
+
+	return m.key
 }
 
 // Put entity in datastore
@@ -179,7 +183,8 @@ func (m *Model) MustPut() {
 	}
 }
 
-func (m *Model) PutEntity(entity interface{}) error {
+// Put entity in datastore
+func (m *Model) Put() error {
 	// Set CreatedAt, UpdatedAt
 	now := time.Now()
 	if m.key == nil {
@@ -188,7 +193,7 @@ func (m *Model) PutEntity(entity interface{}) error {
 	m.UpdatedAt = now
 
 	// Put entity into datastore
-	key, err := m.Db.Put(m.Key(), entity)
+	key, err := m.Db.Put(m.Key(), m.Entity)
 
 	// Update key
 	m.setKey(key)
@@ -208,7 +213,7 @@ func (m *Model) Get(args ...interface{}) error {
 }
 
 // Get's key only (ensures key is good)
-func (m *Model) GetKey(key interface{}) (datastore.Key, error) {
+func (m *Model) KeyExists(key interface{}) (datastore.Key, error) {
 	// If a key is specified, try to use that, ignore nil keys (which would
 	// otherwise create a new incomplete key which makes no sense in this case.
 	if key != nil {
@@ -288,11 +293,6 @@ func (m *Model) RunInTransaction(fn func() error) error {
 	return err
 }
 
-// Get entity in datastore
-func (m *Model) GetEntity(entity interface{}) error {
-	return m.Db.Get(m.key, entity)
-}
-
 // Delete entity from Datastore
 func (m *Model) Delete(args ...interface{}) error {
 	// If a key is specified, try to use that, ignore nil keys (which would
@@ -323,6 +323,34 @@ func (m *Model) Validate() error {
 // Serialize entity to JSON string
 func (m *Model) JSON() string {
 	return json.Encode(m.Entity)
+}
+
+// Mock model for test keys. Does everything against datastore except create/update/delete/allocate ids.
+type MockModel struct {
+	Model
+}
+
+func (m *MockModel) mockKey() datastore.Key {
+	if m.StringKey_ {
+		return m.Db.NewKey(m.Kind(), rand.ShortId(), 0, m.Parent)
+	}
+	return m.Db.NewKey(m.Kind(), "", rand.Int64(), m.Parent)
+}
+
+func (m *MockModel) Put() error {
+	// Set CreatedAt, UpdatedAt
+	now := time.Now()
+	if m.key == nil {
+		m.CreatedAt = now
+	}
+	m.UpdatedAt = now
+	// set key, id
+	m.setKey(m.mockKey())
+	return nil
+}
+
+func (m *MockModel) Delete() error {
+	return nil
 }
 
 // Wrap Query so we don't need to pass in entity to First() and key is updated
