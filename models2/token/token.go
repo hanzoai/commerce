@@ -25,6 +25,6 @@ func (t Token) Kind() string {
 	return "token2"
 }
 
-func (t Token) Validator() *val.Validator {
-	return val.New()
+func (t *Token) Validator() *val.Validator {
+	return val.New(t)
 }
