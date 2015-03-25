@@ -1,68 +1,78 @@
 package rest
 
 import (
-	"reflect"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
 	"appengine"
 
+	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/models2/organization"
 	"crowdstart.io/util/json"
+	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
 )
 
 // Wrapped model, with a few display helpers
-type model struct {
+type endpoint struct {
 	mixin.Model
-	id    string
-	count string
+	id     string
+	count  string
+	prefix string
+	kind   string
 }
 
-func newModel(db *datastore.Datastore, entity mixin.Entity) *model {
-	// Create entity
-	typ := reflect.ValueOf(entity).Type()
-	e := reflect.New(typ).Interface().(mixin.Entity)
-	// Create model
-	m := new(model)
-	// Embed entity, model
-	m.Model = mixin.Model{Db: db, Entity: e}
-	return m
+func newEndpoint(db *datastore.Datastore, r *Rest) *endpoint {
+	endpoint := new(endpoint)
+	endpoint.prefix = strings.TrimLeft(r.Prefix, "/")
+	endpoint.kind = r.Kind
+	entity := r.newEntity()
+	endpoint.Model = mixin.Model{Db: db, Entity: entity}
+	return endpoint
 }
 
-func (m *model) DisplayId() string {
-	if m.id == "" {
-		if ok, _ := m.Model.Query().First(); ok {
-			m.id = m.Model.Id()
+func (e *endpoint) FirstId() string {
+	if e.id == "" {
+		if ok, _ := e.Model.Query().First(); ok {
+			e.id = e.Model.Id()
 		} else {
-			m.id = "<id>"
+			e.id = "<id>"
 		}
 	}
 
-	return m.id
+	return e.id
 }
 
-func (m *model) DisplayCount() string {
-	if m.count == "" {
-		count, _ := m.Query().Count()
-		m.count = strconv.Itoa(count)
+func (e *endpoint) EntityCount() string {
+	if e.count == "" {
+		count, _ := e.Query().Count()
+		e.count = strconv.Itoa(count)
 	}
 
-	return m.count
+	return e.count
 }
 
-type byKind []mixin.Entity
+func (e *endpoint) Url() string {
+	return config.UrlFor("api", "/"+e.prefix+e.kind)
+}
+
+func (e *endpoint) UrlWithId() string {
+	return e.Url() + "/" + e.FirstId()
+}
+
+type byKind []*Rest
 
 func (e byKind) Len() int           { return len(e) }
 func (e byKind) Swap(i, j int)      { e[i], e[j] = e[j], e[i] }
-func (e byKind) Less(i, j int) bool { return e[i].Kind() < e[j].Kind() }
+func (e byKind) Less(i, j int) bool { return e[i].Kind < e[j].Kind }
 
-func DebugIndex(entities []mixin.Entity) gin.HandlerFunc {
-	sort.Sort(byKind(entities))
+func ListRoutes() gin.HandlerFunc {
+	sort.Sort(byKind(restApis))
 
 	return func(c *gin.Context) {
 		if !appengine.IsDevAppServer() {
@@ -78,27 +88,44 @@ func DebugIndex(entities []mixin.Entity) gin.HandlerFunc {
 			return
 		}
 
-		// Set datastore context to this org
-		ctx := org.Namespace(c)
-		db = datastore.New(ctx)
+		// Get namespaced datastore context
+		orgDb := datastore.New(org.Namespace(c))
+
+		// We special case order endpoint because of a few useful API calls we want to work.
+		var orderEndpoint *endpoint
 
 		// Wrap models for display
-		models := make([]*model, len(entities))
-		for i, entity := range entities {
-			models[i] = newModel(db, entity)
+		endpoints := make([]*endpoint, len(restApis))
+		for i, r := range restApis {
+			// Create fancy endpoint documentation for this API. If it has a
+			// prefix of /c/, all calls should be made against the default
+			// namespace, otherwise our fixture organization's namespace.
+			if r.Prefix == "/c/" {
+				endpoints[i] = newEndpoint(db, r)
+			} else {
+				endpoints[i] = newEndpoint(orgDb, r)
+			}
+
+			// Check if this is the order endpoint, if so we'll save a reference for later.
+			if r.Kind == "order2" {
+				orderEndpoint = endpoints[i]
+			}
 		}
 
 		// Helper API page for dev
 		query := c.Request.URL.Query()
 		token := query.Get("token")
 
+		log.Debug("fixture organization id: %v", org.Id())
+
 		// Generate kind map
 		template.Render(c, "index.html",
-			"orgId", org.Id(),
 			"email", "dev@hanzo.ai",
+			"endpoints", endpoints,
+			"orderEndpoint", orderEndpoint,
+			"organization", org,
 			"password", "suchtees",
 			"token", token,
-			"models", models,
 		)
 
 		// Skip rest of handlers

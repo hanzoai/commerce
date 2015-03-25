@@ -4,7 +4,6 @@ import (
 	"crowdstart.io/api/accesstoken"
 	"crowdstart.io/api/payment"
 	"crowdstart.io/middleware"
-	"crowdstart.io/models/mixin"
 	"crowdstart.io/models2/campaign"
 	"crowdstart.io/models2/collection"
 	"crowdstart.io/models2/coupon"
@@ -37,13 +36,13 @@ func init() {
 	router.POST("/order/:id/capture", adminRequired, payment.Capture)
 
 	// Entities with automatic RESTful API
-	entities := []mixin.Entity{
-		&coupon.Coupon{},
-		&collection.Collection{},
-		&product.Product{},
-		&order.Order{},
-		&user.User{},
-		&variant.Variant{},
+	entities := []interface{}{
+		coupon.Coupon{},
+		collection.Collection{},
+		product.Product{},
+		order.Order{},
+		user.User{},
+		variant.Variant{},
 	}
 
 	for _, entity := range entities {
@@ -51,26 +50,28 @@ func init() {
 	}
 
 	// Crowdstart APIs, using default namespace (internal use only)
-	crowdstart := router.Group("/c/", adminRequired)
-
-	campaign := rest.New(&campaign.Campaign{})
+	campaign := rest.New(campaign.Campaign{})
 	campaign.DefaultNamespace = true
-	campaign.Route(crowdstart)
+	campaign.Prefix = "/c/"
+	campaign.Route(router, adminRequired)
 
-	organization := rest.New(&organization.Organization{})
+	organization := rest.New(organization.Organization{})
 	organization.DefaultNamespace = true
-	organization.Route(crowdstart)
+	organization.Prefix = "/c/"
+	organization.Route(router, adminRequired)
 
-	token := rest.New(&token.Token{})
+	token := rest.New(token.Token{})
 	token.DefaultNamespace = true
-	token.Route(crowdstart)
+	token.Prefix = "/c/"
+	token.Route(router, adminRequired)
 
-	user := rest.New(&user.User{})
+	user := rest.New(user.User{})
 	user.DefaultNamespace = true
-	user.Route(crowdstart)
+	user.Prefix = "/c/"
+	user.Route(router, adminRequired)
 
 	// REST API debugger
-	router.GET("/", rest.DebugIndex(entities))
+	router.GET("/", rest.ListRoutes())
 
 	// Access token API (internal use only)
 	router.GET("/access/:id", accesstoken.Get)
