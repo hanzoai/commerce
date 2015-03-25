@@ -1,1 +1,3 @@
-../../static/robots.txt
+User-agent: *
+Disallow: /login
+Disallow: /signup
