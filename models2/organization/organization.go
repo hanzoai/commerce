@@ -71,7 +71,7 @@ type Organization struct {
 func New(db *datastore.Datastore) *Organization {
 	o := new(Organization)
 	o.Model = mixin.Model{Db: db, Entity: o}
-	o.AccessToken = mixin.AccessToken{Model: o}
+	o.AccessToken = mixin.AccessToken{Entity: o}
 	o.Admins = make([]string, 0)
 	o.Moderators = make([]string, 0)
 	return o
@@ -88,8 +88,8 @@ func (o *Organization) Validator() *val.Validator {
 func (o *Organization) AddDefaultTokens() {
 	o.AddToken("live-secret-key", permission.Admin)
 	o.AddToken("live-published-key", permission.Published)
-	o.AddToken("test-secret-key", permission.Admin)
-	o.AddToken("test-published-key", permission.Published)
+	o.AddToken("test-secret-key", permission.Admin|permission.Test)
+	o.AddToken("test-published-key", permission.Published|permission.Test)
 }
 
 func (o Organization) IsAdmin(user *user.User) bool {

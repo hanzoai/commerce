@@ -35,19 +35,13 @@ func init() {
 	router.POST("/order/:id/authorize", publishedRequired, payment.Authorize)
 	router.POST("/order/:id/capture", adminRequired, payment.Capture)
 
-	// Entities with automatic RESTful API
-	entities := []interface{}{
-		coupon.Coupon{},
-		collection.Collection{},
-		product.Product{},
-		order.Order{},
-		user.User{},
-		variant.Variant{},
-	}
-
-	for _, entity := range entities {
-		rest.New(entity).Route(router, adminRequired)
-	}
+	// Models with public RESTful API
+	rest.New(coupon.Coupon{}).Route(router, adminRequired)
+	rest.New(collection.Collection{}).Route(router, adminRequired)
+	rest.New(product.Product{}).Route(router, adminRequired)
+	rest.New(order.Order{}).Route(router, adminRequired)
+	rest.New(user.User{}).Route(router, adminRequired)
+	rest.New(variant.Variant{}).Route(router, adminRequired)
 
 	// Crowdstart APIs, using default namespace (internal use only)
 	campaign := rest.New(campaign.Campaign{})

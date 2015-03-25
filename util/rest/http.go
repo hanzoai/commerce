@@ -31,8 +31,7 @@ func newEndpoint(db *datastore.Datastore, r *Rest) *endpoint {
 	endpoint := new(endpoint)
 	endpoint.prefix = strings.TrimLeft(r.Prefix, "/")
 	endpoint.kind = r.Kind
-	entity := r.newEntity()
-	endpoint.Model = mixin.Model{Db: db, Entity: entity}
+	endpoint.Model = mixin.Model{Db: db, Entity: r.newKind()}
 	return endpoint
 }
 
