@@ -3,6 +3,7 @@ package val
 import (
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"crowdstart.io/models"
@@ -40,10 +41,31 @@ func depointer(value reflect.Value) reflect.Value {
 	return value
 }
 
+// Helper to deal with traversing dot notation
+func traverseDots(value reflect.Value, field string) reflect.Value {
+	fields := strings.Split(field, ".")
+	for _, field := range fields {
+		switch value.Kind() {
+		// Handle structs by looking up field
+		case reflect.Struct:
+			value = depointer(value.FieldByName(field))
+		// Handle slices by parsing field to int and looking up index
+		case reflect.Slice:
+			if i, err := strconv.Atoi(field); err != nil {
+				log.Panic("'%v' expected to be an int: %v", field, err)
+			} else {
+				value = depointer(value.Index(i))
+			}
+		}
+
+	}
+	return value
+}
+
 // Set the current field to be Validated
 func (v *Validator) Check(field string) *Validator {
 	// we have to add the & to make the fields on the value settable
-	if !v.Value.FieldByName(field).IsValid() {
+	if !traverseDots(v.Value, field).IsValid() {
 		log.Panic("Field does not exist!")
 	}
 
@@ -62,7 +84,7 @@ func (v *Validator) Execute() []*FieldError {
 
 	// Loop over all the field values
 	for field, fns := range v.fnsMap {
-		switch value := v.Value.FieldByName(field); value.Kind() {
+		switch value := traverseDots(v.Value, field); value.Kind() {
 		case reflect.Bool:
 			i = value.Bool()
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
