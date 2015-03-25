@@ -83,15 +83,6 @@ type Config struct {
 
 // Return url to static file, module or path rooted in a module
 func (c Config) UrlFor(moduleName string, args ...string) (url string) {
-	// Ignore the port number and the host during testing.
-	if c.IsDevelopment && !strings.HasPrefix(moduleName, "/") {
-		if len(args) > 0 {
-			return "/" + moduleName + args[0]
-		} else {
-			return "/" + moduleName + "/"
-		}
-	}
-
 	// Trim whitespace
 	moduleName = strings.TrimSpace(moduleName)
 
@@ -102,8 +93,8 @@ func (c Config) UrlFor(moduleName string, args ...string) (url string) {
 		url = host + c.Prefixes[moduleName]
 		args = append([]string{url}, args...)
 	} else {
-		url = c.StaticUrl
-		args = append([]string{url, moduleName}, args...)
+		staticPath := moduleName
+		args = append([]string{c.StaticUrl, staticPath}, args...)
 	}
 
 	// Join all parts of the path
