@@ -3,7 +3,6 @@ package task_integration_test
 import (
 	"net/url"
 	"testing"
-	"time"
 
 	"appengine/memcache"
 
@@ -25,9 +24,6 @@ var _ = BeforeSuite(func() {
 		Modules:    []string{"default"},
 		TaskQueues: []string{"default"},
 	})
-
-	// Wait for task to run
-	time.Sleep(10 * time.Second)
 })
 
 // Tear-down appengine context
@@ -44,11 +40,14 @@ var _ = Describe("Run", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.StatusCode).To(Equal(200))
 
-		// Wait for task to run
-		time.Sleep(2 * time.Second)
+		// Try and get value from memcache 5 times before giving up
+		var foo *memcache.Item
+		Retry(5, func() error {
+			foo, err = memcache.Get(ctx, "foo")
+			return err
+		})
 
 		// Check if memcache is set
-		foo, err := memcache.Get(ctx, "foo")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(string(foo.Value)).To(Equal("bar"))
 	})
@@ -61,11 +60,14 @@ var _ = Describe("Run", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.StatusCode).To(Equal(200))
 
-		// Wait for task to run
-		time.Sleep(8 * time.Second)
+		// Try to get value from memcache
+		var baz *memcache.Item
+		Retry(5, func() error {
+			baz, err = memcache.Get(ctx, "baz")
+			return err
+		})
 
 		// Check if memcache is set
-		baz, err := memcache.Get(ctx, "baz")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(string(baz.Value)).To(Equal("qux"))
 	})
