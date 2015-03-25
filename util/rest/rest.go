@@ -46,7 +46,7 @@ type Pagination struct {
 
 func (r *Rest) Init(entity mixin.Entity) {
 	r.Kind = entity.Kind()
-	r.entityType = reflect.ValueOf(entity).Type()
+	r.entityType = reflect.ValueOf(entity).Elem().Type()
 	r.routes = make(map[string]route)
 }
 
