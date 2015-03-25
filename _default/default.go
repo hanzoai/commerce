@@ -36,8 +36,13 @@ func Init() {
 			// Development index links to modules
 			template.Render(c, "index.html")
 		} else {
-			c.Data(200, "application/json", make([]byte, 0))
+			c.Data(200, "text/html", make([]byte, 0))
 		}
+	})
+
+	// Monitoring test (wake up peeps)
+	router.GET("/wake-da-fuck-up", func(c *gin.Context) {
+		c.Data(500, "text/html", make([]byte, 0))
 	})
 
 	// Development-only routes below
