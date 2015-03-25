@@ -26,47 +26,50 @@ button::-moz-focus-inner {
 }
 </style>
 
-<h4>access tokens</h4>
+<h3>access token api</h3>
 <ul>
-    <li>GET <a href="/api/access/{{ orgId }}?email={{ email }}&password={{ password }}">/api/access/{{ orgId }}</a></li>
-    <li>POST <a href="/api/access/{{ orgId }}">/api/access/{{ orgId }}</a></li>
+    {% with organization.Id as orgId %}
+    <li>GET <a href="{{ urlFor("api", "/access/", orgId) }}?email={{ email }}&password={{ password }}">{{ urlFor("api", "/access/", orgId) }}</a></li>
     <li>
-        <form method="POST" action="/api/access/{{ orgId }}?_method=DELETE">
-            DELETE <button type="submit">/api/access/{{ orgId }}</button>
+        <form method="POST" action="{{ urlFor("api", "/access/", orgId) }}?_method=DELETE">
+            DELETE <button type="submit">{{ urlFor("api", "/access/", orgId) }}</button>
         </form>
     </li>
+    {% endwith %}
 </ul>
 
-<h4>payments</h4>
+<h3>charge / auth and capture api</h3>
 <ul>
   <li>POST <a href="#" onclick="javascript:charge()">/api/charge</a></li>
   <li>POST <a href="#" onclick="javascript:authorize()">/api/authorize</a></li>
-  <li>POST <a href="/api/order/:id/capture">/api/order/:id/capture</a></li>
+  <li>POST <a href="{{ urlFor("api", orderEndpoint.UrlWithId(), "/capture") }}">{{ urlFor("api", orderEndpoint.UrlWithId(), "/capture") }}</a></li>
 </ul>
 
-{% for model in models %}
-<h4>{{ model.Kind() }} ({{ model.DisplayCount() }})</h4>
+<h3>model api</h3>
+{% for endpoint in endpoints %}
+<h4>{{ endpoint.prefix }}{{ endpoint.kind }} ({{ endpoint.EntityCount() }})</h4>
 <ul>
-    <li>GET <a href="/api/{{ model.Kind() }}/">/api/{{ model.Kind() }}</a></li>
-    <li>GET <a href="/api/{{ model.Kind() }}/{{ model.DisplayId() }}">/api/{{ model.Kind() }}/{{ model.DisplayId() }}</a></li>
-    <li>POST <a href="/api/{{ model.Kind() }}">/api/{{ model.Kind() }}</a></li>
-    <li>PUT <a href="/api/{{ model.Kind() }}">/api/{{ model.Kind() }}/{{ model.DisplayId() }}</a></li>
+    <li>GET  <a href="{{ endpoint.Url() }}/">{{ endpoint.Url() }}</a></li>
+    <li>GET  <a href="{{ endpoint.UrlWithId() }}">{{ endpoint.UrlWithId() }}</a></li>
+    <li>POST <a href="{{ endpoint.Url() }}">{{ endpoint.Url() }}</a></li>
+    <li>PUT  <a href="{{ endpoint.UrlWithId() }}">{{ endpoint.UrlWithId() }}</a></li>
     <li>
-        <form method="POST" action="/api/{{ model.Kind() }}/{{ model.DisplayId() }}&_method=DELETE">
-         DELETE <button type="submit">/api/{{ model.Kind() }}/{{ model.DisplayId() }}</button>
+        <form method="POST" action="{{ endpoint.UrlWithId() }}&_method=DELETE">
+         DELETE <button type="submit">{{ endpoint.UrlWithId() }}</button>
         </form>
     </li>
 </ul>
 {% endfor %}
 
 <script type="text/javascript" src="{{ urlFor("/js/jquery.min.js") }}"></script>
+<script type="text/javascript" src="{{ urlFor("/v1.js") }}"></script>
 <script>
 function charge() {
-    payment("/api/charge")
+    payment("{{ urlFor("api", "/charge") }}")
 }
 
 function authorize() {
-    payment("/api/authorize")
+    payment("{{ urlFor("api", "/api/authorize") }}")
 }
 
 function payment(url) {
