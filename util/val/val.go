@@ -53,11 +53,13 @@ func (v *Validator) Check(field string) *Validator {
 	return v
 }
 
+// Generate Validation Errors
 func (v *Validator) Execute() []*FieldError {
 	structValue := depointer(reflect.ValueOf(&v.Value))
 	var i interface{}
 	errs := make([]*FieldError, 0)
 
+	// Loop over all the field values
 	for field, fns := range v.fnsMap {
 		switch value := structValue.FieldByName(field); value.Kind() {
 		case reflect.Bool:
@@ -77,7 +79,10 @@ func (v *Validator) Execute() []*FieldError {
 		default:
 			log.Panic("Validator does not support type '%v'", value.Type())
 		}
+
+		// Loop over all validation functions for a field
 		for _, fn := range fns {
+			// Only append real errors
 			if err := fn(i); err != nil {
 				errs = append(errs, err)
 			}
@@ -87,6 +92,7 @@ func (v *Validator) Execute() []*FieldError {
 	return errs
 }
 
+// Built in validation routines
 func (v *Validator) Exists() *Validator {
 	field := v.lastField
 	v.fnsMap[field] = append(v.fnsMap[field], func(i interface{}) *FieldError {
