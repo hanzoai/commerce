@@ -59,7 +59,7 @@ var _ = Describe("New", func() {
 		client := ginclient.New(ctx)
 
 		// Create routes for Model
-		rest := rest.New(&Model{})
+		rest := rest.New(Model{})
 		rest.Route(client.Router, middleware.TokenRequired())
 
 		// Should not be authorized
