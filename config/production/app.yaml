@@ -19,7 +19,7 @@ handlers:
 - url: /
   script: _go_app
 
-- url: /wake-the-fuck-up
+- url: /wake-up
   script: _go_app
 
 - url: /tasks
