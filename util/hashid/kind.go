@@ -17,6 +17,7 @@ var kinds = map[string]int{
 	"token2":        8,
 	"user2":         9,
 	"variant2":      10,
+	"payment":       11,
 }
 
 var kindsReversed = make(map[int]string)
@@ -32,7 +33,7 @@ func encodeKind(kind string) int {
 	if ok {
 		return v
 	}
-	err := errors.New(fmt.Sprintf("Unable to encode kind %v", kind))
+	err := errors.New(fmt.Sprintf("Unknown kind %v. Please register in util/hashid/kind.go.", kind))
 	panic(err)
 
 }
