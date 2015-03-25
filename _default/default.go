@@ -44,7 +44,7 @@ func Init() {
 	// Monitoring test
 	router.GET("/wake-up", func(c *gin.Context) {
 		log.Error("wake up!", c)
-		template.Render(c, "wake-up.text")
+		template.Render(c, "wake-up.txt")
 	})
 
 	// Development-only routes below
