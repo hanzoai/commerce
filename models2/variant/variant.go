@@ -62,8 +62,8 @@ func (v Variant) Kind() string {
 	return "variant2"
 }
 
-func (v Variant) Validator() *val.Validator {
-	return val.New()
+func (v *Variant) Validator() *val.Validator {
+	return val.New(v)
 
 	// if v.SKU == "" {
 	// 	errs = append(errs, binding.Error{

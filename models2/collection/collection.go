@@ -77,8 +77,8 @@ func (c Collection) Kind() string {
 	return "collection2"
 }
 
-func (c Collection) Validator() *val.Validator {
-	return val.New()
+func (c *Collection) Validator() *val.Validator {
+	return val.New(c)
 }
 
 func (c *Collection) Load(ch <-chan aeds.Property) (err error) {

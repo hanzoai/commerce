@@ -3,6 +3,7 @@ package test
 import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
+	"crowdstart.io/util/val"
 )
 
 type User struct {
@@ -21,4 +22,8 @@ func newUser(db *datastore.Datastore) *User {
 	u.Model = mixin.Model{Db: db, Entity: u}
 	u.AccessToken = mixin.AccessToken{Model: u}
 	return u
+}
+
+func (u *User) Validator() *val.Validator {
+	return val.New(u)
 }

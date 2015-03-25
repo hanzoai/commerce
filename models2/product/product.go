@@ -103,8 +103,8 @@ func (p Product) Kind() string {
 	return "product2"
 }
 
-func (p Product) Validator() *val.Validator {
-	return val.New()
+func (p *Product) Validator() *val.Validator {
+	return val.New(p)
 	// 	if p.Name == "" {
 	// 		errs = append(errs, binding.Error{
 	// 			FieldNames:     []string{"Title"},

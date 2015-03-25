@@ -11,6 +11,7 @@ import (
 	"crowdstart.io/util/rest"
 	"crowdstart.io/util/test/ae"
 	"crowdstart.io/util/test/ginclient"
+	"crowdstart.io/util/val"
 
 	. "crowdstart.io/util/test/ginkgo"
 )
@@ -49,12 +50,16 @@ func (m Model) Kind() string {
 	return "test-model"
 }
 
+func (m *Model) Validator() *val.Validator {
+	return val.New(m)
+}
+
 var _ = Describe("New", func() {
 	It("Should create a new Rest object with CRUD routes", func() {
 		client := ginclient.New(ctx)
 
 		// Create routes for Model
-		rest := rest.New(Model{})
+		rest := rest.New(&Model{})
 		rest.Route(client.Router, middleware.TokenRequired())
 
 		// Should not be authorized
