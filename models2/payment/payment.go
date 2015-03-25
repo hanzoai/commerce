@@ -1,7 +1,10 @@
 package payment
 
 import (
+	"crowdstart.io/datastore"
+	"crowdstart.io/models/mixin"
 	. "crowdstart.io/models2"
+	"crowdstart.io/util/val"
 )
 
 type Status string
@@ -30,11 +33,11 @@ type Client struct {
 	Referer   string `json:"referer,omitempty"`
 }
 
-type Account struct {
-	// Affirm
+type AffirmAccount struct {
 	CheckoutToken string `json:"checkoutToken,omitempty"`
+}
 
-	// PayPal
+type PayPalAccount struct {
 	Email       string `json:"email,omitempty"`
 	SellerEmail string `json:"sellerEmail,omitempty"`
 	RedirectUrl string `json:"redirectUrl,omitempty"`
@@ -45,8 +48,9 @@ type Account struct {
 
 	// Preapproval expiration date (ISO 8601 timestamp).
 	EndingDate string `json:"endingDate,omitempty"`
+}
 
-	// Stripe
+type StripeAccount struct {
 	Fingerprint string `json:"fingerprint,omitempty"`
 	CustomerId  string `json:"customerId,omitempty"`
 	ChargeId    string `json:"chargeId,omitempty"`
@@ -62,7 +66,16 @@ type Account struct {
 	CVCCheck string `json:"cvcCheck,omitempty"`
 }
 
+// Sort of a union type of all possible payment accounts, used everywhere for convenience
+type Account struct {
+	AffirmAccount
+	PayPalAccount
+	StripeAccount
+}
+
 type Payment struct {
+	mixin.Model
+
 	Type Type `json:type"`
 
 	// Optionally associated with a user
@@ -105,4 +118,27 @@ type Payment struct {
 
 	// Whether this was a transaction in production or a testing sandbox
 	Live bool `json:"live"`
+}
+
+func (p Payment) Kind() string {
+	return "payment"
+}
+
+func (p *Payment) Init() {
+
+}
+
+func (u *Payment) Validator() *val.Validator {
+	return val.New(u)
+}
+
+func New(db *datastore.Datastore) *Payment {
+	u := new(Payment)
+	u.Init()
+	u.Model = mixin.Model{Db: db, Entity: u}
+	return u
+}
+
+func Query(db *datastore.Datastore) *mixin.Query {
+	return New(db).Query()
 }

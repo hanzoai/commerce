@@ -126,3 +126,7 @@ func (o Organization) Namespace(ctx interface{}) appengine.Context {
 	}
 	return _ctx
 }
+
+func Query(db *datastore.Datastore) *mixin.Query {
+	return New(db).Query()
+}
