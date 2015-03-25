@@ -1,16 +1,166 @@
 package val
 
 import (
+	"fmt"
+	"reflect"
 	"strings"
 
 	"crowdstart.io/models"
 	"crowdstart.io/util/log"
 )
 
-type Validator struct{}
+type ValidatorFunction func(interface{}) *FieldError
 
-func New() *Validator {
-	return new(Validator)
+// Storage for custom rules
+var customRules map[string]ValidatorFunction
+
+// RegisterRule adds a custom rule to the validaiton library
+func RegisterRule(name string, vfn ValidatorFunction) {
+	customRules[name] = vfn
+}
+
+type Validator struct {
+	Value     interface{}
+	lastField string
+	fnsMap    map[string][]ValidatorFunction
+}
+
+// Create a new Validator using a custom struct
+func New(value interface{}) *Validator {
+	return &Validator{Value: value}
+}
+
+// Helper to dereference all pointer layers
+func depointer(value reflect.Value) reflect.Value {
+	// Strip off all the pointers
+	for value.Kind() == reflect.Ptr {
+		value = value.Elem()
+	}
+	return value
+}
+
+// Set the current field to be Validated
+func (v *Validator) Check(field string) *Validator {
+	// we have to add the & to make the fields on the value settable
+	rawValue := depointer(reflect.ValueOf(&v.Value))
+	if !rawValue.FieldByName(field).IsValid() {
+		log.Panic("Field does not exist!")
+	}
+
+	if _, ok := v.fnsMap[field]; !ok {
+		v.fnsMap[field] = make([]ValidatorFunction, 0)
+	}
+	return v
+}
+
+func (v *Validator) Execute() []*FieldError {
+	structValue := depointer(reflect.ValueOf(&v.Value))
+	var i interface{}
+	errs := make([]*FieldError, 0)
+
+	for field, fns := range v.fnsMap {
+		switch value := structValue.FieldByName(field); value.Kind() {
+		case reflect.Bool:
+			i = value.Bool()
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			i = value.Int()
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+			i = value.Uint()
+		case reflect.String:
+			i = value.String()
+		// case reflect.Slice:
+		// 	// don't handle
+		// case reflect.Complex64, reflect.Complex128:
+		// 	// don't handle
+		case reflect.Float32, reflect.Float64:
+			i = value.Float()
+		default:
+			log.Panic("Validator does not support type '%v'", value.Type())
+		}
+		for _, fn := range fns {
+			if err := fn(i); err != nil {
+				errs = append(errs, err)
+			}
+		}
+	}
+
+	return errs
+}
+
+func (v *Validator) Exists() *Validator {
+	field := v.lastField
+	v.fnsMap[field] = append(v.fnsMap[field], func(i interface{}) *FieldError {
+		switch value := i.(type) {
+		case string:
+			if len(value) > 0 {
+				return nil
+			}
+		}
+		return NewFieldError(field, "Field cannot be blank")
+	})
+	return v
+}
+
+func (v *Validator) IsEmail() *Validator {
+	field := v.lastField
+	v.fnsMap[field] = append(v.fnsMap[field], func(i interface{}) *FieldError {
+		switch value := i.(type) {
+		case string:
+			if strings.Contains(value, "@") &&
+				strings.Contains(value, ".") &&
+				strings.Index(value, "@") < strings.Index(value, ".") &&
+				len(value) > 5 {
+				return nil
+			}
+		}
+		return NewFieldError(field, "Email is invalid")
+	})
+	return v
+}
+
+func (v *Validator) IsPassword() *Validator {
+	field := v.lastField
+	v.fnsMap[field] = append(v.fnsMap[field], func(i interface{}) *FieldError {
+		switch value := i.(type) {
+		case string:
+			if len(value) >= 6 {
+				return nil
+			}
+		}
+		return NewFieldError(field, "Passwords must be atleast 6 characters long.")
+	})
+	return v
+}
+
+func (v *Validator) MinLength(minLength int) *Validator {
+	field := v.lastField
+	v.fnsMap[field] = append(v.fnsMap[field], func(i interface{}) *FieldError {
+		switch value := i.(type) {
+		case string:
+			if len(value) >= minLength {
+				return nil
+			}
+		}
+		return NewFieldError(field, fmt.Sprintf("Field must be atleast %d characters long.", minLength))
+	})
+	return v
+}
+
+// Use for enums
+func (v *Validator) Matches(strs ...string) *Validator {
+	field := v.lastField
+	v.fnsMap[field] = append(v.fnsMap[field], func(i interface{}) *FieldError {
+		switch value := i.(type) {
+		case string:
+			for _, str := range strs {
+				if str == value {
+					return nil
+				}
+			}
+		}
+		return NewFieldError(field, fmt.Sprintf("Field must be match one of ['%v'].", strings.Join(strs, "', '")))
+	})
+	return v
 }
 
 type StringValidationContext struct {
