@@ -15,6 +15,8 @@ import (
 	"crowdstart.io/util/log"
 )
 
+var restApis = make([]*Rest, 0)
+
 type route struct {
 	url      string
 	method   string
@@ -24,6 +26,7 @@ type route struct {
 type Rest struct {
 	DefaultNamespace bool
 	Kind             string
+	Prefix           string
 	Get              gin.HandlerFunc
 	List             gin.HandlerFunc
 	Create           gin.HandlerFunc
@@ -44,9 +47,10 @@ type Pagination struct {
 	Models  interface{} `json:"models"`
 }
 
-func (r *Rest) Init(entity mixin.Entity) {
-	r.Kind = entity.Kind()
-	r.entityType = reflect.ValueOf(entity).Elem().Type()
+func (r *Rest) Init(entity interface{}) {
+	// Get type of entity
+	r.entityType = reflect.ValueOf(entity).Type()
+	r.Kind = r.newEntity().Kind()
 	r.routes = make(map[string]route)
 }
 
@@ -54,7 +58,7 @@ type Opts struct {
 	DefaultNamespace bool
 }
 
-func New(entity mixin.Entity, args ...interface{}) *Rest {
+func New(entity interface{}, args ...interface{}) *Rest {
 	r := new(Rest)
 
 	// Handle Options
@@ -64,12 +68,15 @@ func New(entity mixin.Entity, args ...interface{}) *Rest {
 	}
 	r.Init(entity)
 
+	// Keep track of all apis globally
+	restApis = append(restApis, r)
+
 	return r
 }
 
 func (r Rest) Route(router Router, args ...gin.HandlerFunc) {
 	// Create group for our API routes and require Access token
-	group := router.Group("/" + r.Kind)
+	group := router.Group("/" + r.Prefix + r.Kind)
 	group.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 	})
