@@ -63,7 +63,9 @@ func (v Variant) Kind() string {
 }
 
 func (v *Variant) Validator() *val.Validator {
-	return val.New(v)
+	return val.New(v).Check("ProductId").Exists().
+		Check("SKU").Exists().
+		Check("Name").Exists()
 
 	// if v.SKU == "" {
 	// 	errs = append(errs, binding.Error{
