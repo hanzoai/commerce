@@ -16,17 +16,20 @@ inbound_services:
 - warmup
 
 handlers:
+- url: /
+  script: _go_app
+
+- url: /*
+  static_dir: static
+  http_headers:
+    Access-Control-Allow-Origin: "*"
+
 - url: /tasks
   script: _go_app
   login: admin
   secure: always
 
 - url: /task/.*
-  script: _go_app
-  login: admin
-  secure: always
-
-- url: /execute-task/.*
   script: _go_app
   login: admin
   secure: always
@@ -38,11 +41,6 @@ handlers:
 - url: /_ah/queue/go/delay
   script: _go_app
   login: admin
-
-- url: /*
-  static_dir: static
-  http_headers:
-    Access-Control-Allow-Origin: "*"
 
 - url: /font/(.*\.woff)
   static_files: static/font/\1
