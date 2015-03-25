@@ -8,6 +8,7 @@ import (
 	"crowdstart.io/config"
 	"crowdstart.io/middleware"
 	"crowdstart.io/util/exec"
+	"crowdstart.io/util/log"
 	"crowdstart.io/util/router"
 	"crowdstart.io/util/task"
 	"crowdstart.io/util/template"
@@ -42,6 +43,7 @@ func Init() {
 
 	// Monitoring test (wake up peeps)
 	router.GET("/wake-the-fuck-up", func(c *gin.Context) {
+		log.Error("wake the fuck up!", c)
 		c.Data(500, "text/html", make([]byte, 0))
 	})
 
