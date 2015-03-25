@@ -34,9 +34,37 @@ type ValStruct struct {
 	KindOfAStringField string
 	IntField           int
 	FloatField         float64
+	NestedField        *ValStruct
+	SlicedField        []ValStruct
 }
 
 // These tests also check the reflect logic for supporting types derived from base types
+var _ = Describe("Look Capabilities", func() {
+	It("Should lookup top level field", func() {
+		vs := ValStruct{StringField: "TopLevel"}
+		v := val.New(&vs)
+
+		errs := v.Check("StringField").Exists().Execute()
+		Expect(len(errs)).To(Equal(0))
+	})
+
+	It("Should lookup nested field", func() {
+		vs := ValStruct{NestedField: &ValStruct{StringField: "Nested"}}
+		v := val.New(&vs)
+
+		errs := v.Check("NestedField.StringField").Exists().Execute()
+		Expect(len(errs)).To(Equal(0))
+	})
+
+	It("Should lookup sliced field", func() {
+		vs := ValStruct{SlicedField: []ValStruct{ValStruct{StringField: "Sliced"}}}
+		v := val.New(&vs)
+
+		errs := v.Check("SlicedField.0.StringField").Exists().Execute()
+		Expect(len(errs)).To(Equal(0))
+	})
+})
+
 var _ = Describe("Exists", func() {
 	It("Should Fail for Empty String", func() {
 		vs := ValStruct{}
