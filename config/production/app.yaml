@@ -22,11 +22,6 @@ handlers:
 - url: /wake-the-fuck-up
   script: _go_app
 
-- url: /*
-  static_dir: static
-  http_headers:
-    Access-Control-Allow-Origin: "*"
-
 - url: /tasks
   script: _go_app
   login: admin
@@ -53,17 +48,17 @@ handlers:
   static_files: static/robots.txt
   upload: static/robots.txt
 
-- url: /font/(.*\.woff2)
-  static_files: static/font/\1
-  upload: static/font/(.*\.woff2)
-  mime_type: application/font-woff2
-  http_headers:
-    Access-Control-Allow-Origin: "*"
-
 - url: /font/(.*\.woff)
   static_files: static/font/\1
   upload: static/font/(.*\.woff)
   mime_type: application/font-woff
+  http_headers:
+    Access-Control-Allow-Origin: "*"
+
+- url: /font/(.*\.woff2)
+  static_files: static/font/\1
+  upload: static/font/(.*\.woff2)
+  mime_type: application/font-woff2
   http_headers:
     Access-Control-Allow-Origin: "*"
 
@@ -92,6 +87,11 @@ handlers:
   static_files: static/font/\1
   upload: static/font/(.*\.otf)
   mime_type: application/x-font-otf
+  http_headers:
+    Access-Control-Allow-Origin: "*"
+
+- url: /*
+  static_dir: static
   http_headers:
     Access-Control-Allow-Origin: "*"
 
