@@ -2,7 +2,6 @@ package datastore_integration_test
 
 import (
 	"testing"
-	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -31,9 +30,6 @@ var _ = BeforeSuite(func() {
 	})
 
 	c = gincontext.New(ctx)
-
-	// Wait for devappserver to spin up.
-	time.Sleep(5 * time.Second)
 })
 
 var _ = AfterSuite(func() {
@@ -61,11 +57,13 @@ var _ = Describe("datastore/parallel", func() {
 			// Run task in parallel
 			parallel.Run(c, "plus-1", 2, tasks.TaskPlus1)
 
-			time.Sleep(15 * time.Second)
-
 			// Check if our entities have been updated
 			var models []tasks.Model
-			_, err := db.Query("plus-1").GetAll(db.Context, &models)
+			var err error
+			Retry(5, func() error {
+				_, err = db.Query("plus-1").GetAll(db.Context, &models)
+				return err
+			})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(len(models)).To(Equal(10))
 			checkCountValue(models, 1)
@@ -86,11 +84,14 @@ var _ = Describe("datastore/parallel", func() {
 			// Run task in parallel
 			parallel.Run(c, "set-val", 2, tasks.TaskSetVal, 100)
 
-			time.Sleep(15 * time.Second)
+			var err error
+			var models2 []tasks.Model
+			Retry(5, func() error {
+				_, err := db.Query("set-val").GetAll(db.Context, &models2)
+				return err
+			})
 
 			// Check if our entities have been updated
-			var models2 []tasks.Model
-			_, err := db.Query("set-val").GetAll(db.Context, &models2)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(len(models2)).To(Equal(10))
 			checkCountValue(models2, 100)

@@ -54,9 +54,14 @@ func New(opts options.Options) (*appenginetesting.Context, error) {
 
 	// Detect verbose
 	if log.Verbose() {
-		_opts.Debug = appenginetesting.LogChild
+		_opts.Debug = appenginetesting.LogDebug
 	} else {
 		_opts.Debug = appenginetesting.LogWarning
+	}
+
+	// Override and spam everything
+	if opts.Noisy {
+		_opts.Debug = appenginetesting.LogChild
 	}
 
 	// Add modules
