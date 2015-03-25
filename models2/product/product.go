@@ -104,7 +104,9 @@ func (p Product) Kind() string {
 }
 
 func (p *Product) Validator() *val.Validator {
-	return val.New(p)
+	return val.New(p).Check("Slug").Exists().
+		Check("SKU").Exists().
+		Check("Name").Exists()
 	// 	if p.Name == "" {
 	// 		errs = append(errs, binding.Error{
 	// 			FieldNames:     []string{"Title"},
