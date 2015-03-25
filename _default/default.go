@@ -37,7 +37,7 @@ func Init() {
 			// Development index links to modules
 			template.Render(c, "index.html")
 		} else {
-			c.Data(200, "text/html", make([]byte, 0))
+			c.Data(500, "text/html", make([]byte, 0))
 		}
 	})
 
