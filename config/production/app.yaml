@@ -53,17 +53,17 @@ handlers:
   static_files: static/robots.txt
   upload: static/robots.txt
 
-- url: /font/(.*\.woff)
-  static_files: static/font/\1
-  upload: static/font/(.*\.woff)
-  mime_type: application/font-woff
-  http_headers:
-    Access-Control-Allow-Origin: "*"
-
 - url: /font/(.*\.woff2)
   static_files: static/font/\1
   upload: static/font/(.*\.woff2)
   mime_type: application/font-woff2
+  http_headers:
+    Access-Control-Allow-Origin: "*"
+
+- url: /font/(.*\.woff)
+  static_files: static/font/\1
+  upload: static/font/(.*\.woff)
+  mime_type: application/font-woff
   http_headers:
     Access-Control-Allow-Origin: "*"
 
