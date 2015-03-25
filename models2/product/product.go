@@ -212,6 +212,10 @@ func (p Product) VariantOptions(name string) (options []string) {
 	return options
 }
 
+func Query(db *datastore.Datastore) *mixin.Query {
+	return New(db).Query()
+}
+
 func init() {
 	gob.Register(variant.Variant{})
 	gob.Register(Option{})

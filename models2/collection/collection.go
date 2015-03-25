@@ -116,3 +116,7 @@ func (c Collection) GetDescriptionParagraphs() []string {
 func (c Collection) DisplayTitle() string {
 	return DisplayTitle(c.Name)
 }
+
+func Query(db *datastore.Datastore) *mixin.Query {
+	return New(db).Query()
+}

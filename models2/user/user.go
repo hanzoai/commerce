@@ -5,6 +5,7 @@ import (
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
+	"crowdstart.io/models2/payment"
 	"crowdstart.io/util/gob"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/val"
@@ -45,9 +46,9 @@ type User struct {
 
 	// Account to use for new orders when customer creates new orders
 	Accounts struct {
-		Stripe PaymentAccount `json:"stripe,omitempty"`
-		PayPal PaymentAccount `json:"paypal,omitempty"`
-		Affirm PaymentAccount `json:"affirm,omitempty"`
+		Stripe payment.Account `json:"stripe,omitempty"`
+		PayPal payment.Account `json:"paypal,omitempty"`
+		Affirm payment.Account `json:"affirm,omitempty"`
 	} `json:"accounts"`
 
 	Metadata  Metadata `json:"metadata" datastore:"-"`
@@ -214,3 +215,7 @@ func (u *User) GetByEmail(email string) error {
 
 // 	return u.upsert(db)
 // }
+
+func Query(db *datastore.Datastore) *mixin.Query {
+	return New(db).Query()
+}
