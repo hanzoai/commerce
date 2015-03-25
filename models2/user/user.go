@@ -108,7 +108,9 @@ func (u User) HasPassword() bool {
 }
 
 func (u *User) Validator() *val.Validator {
-	return val.New(u)
+	return val.New(u).Check("FirstName").Exists().
+		Check("LastName").Exists().
+		Check("Email").Exists()
 	// // Name cannot be empty string.
 	// if u.FirstName == "" {
 	// 	errs = append(errs, binding.Error{
