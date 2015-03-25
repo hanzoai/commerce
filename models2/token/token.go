@@ -28,3 +28,7 @@ func (t Token) Kind() string {
 func (t *Token) Validator() *val.Validator {
 	return val.New(t)
 }
+
+func Query(db *datastore.Datastore) *mixin.Query {
+	return New(db).Query()
+}

@@ -82,3 +82,7 @@ func (v *Variant) Validator() *val.Validator {
 	// }
 	// return errs
 }
+
+func Query(db *datastore.Datastore) *mixin.Query {
+	return New(db).Query()
+}
