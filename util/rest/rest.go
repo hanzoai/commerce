@@ -4,7 +4,6 @@ import (
 	"errors"
 	"reflect"
 	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -13,6 +12,7 @@ import (
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
+	"crowdstart.io/util/permission"
 )
 
 var restApis = make([]*Rest, 0)
@@ -50,7 +50,7 @@ type Pagination struct {
 func (r *Rest) Init(entity interface{}) {
 	// Get type of entity
 	r.entityType = reflect.ValueOf(entity).Type()
-	r.Kind = r.newEntity().Kind()
+	r.Kind = r.newKind().Kind()
 	r.routes = make(map[string]route)
 }
 
@@ -180,10 +180,42 @@ func (r Rest) defaultRoutes() []route {
 	}
 }
 
+func (r Rest) newKind() mixin.Kind {
+	return reflect.New(r.entityType).Interface().(mixin.Kind)
+}
+
 // retuns a new interface of this entity type
-func (r Rest) newEntity() mixin.Entity {
-	entity := reflect.New(r.entityType)
-	return entity.Interface().(mixin.Entity)
+func (r Rest) newEntity(c *gin.Context) mixin.Entity {
+	ctx := middleware.GetAppEngine(c)
+
+	// Automatically use namespace of organization unless we're configured to
+	// use the default namespace for this endpoint.
+	if r.DefaultNamespace {
+		log.Debug("Using default namespace.")
+	} else {
+		org := middleware.GetOrganization(c)
+		ctx = org.Namespace(ctx)
+		log.Debug("Using namespace: %d", org.Key().IntID())
+	}
+
+	db := datastore.New(ctx)
+
+	// Create a new entity
+	entity := reflect.New(r.entityType).Interface().(mixin.Entity)
+
+	// If token had test bit set use our mock model
+	if middleware.GetPermissions(c).Has(permission.Test) {
+		model := mixin.Model{Db: db, Entity: entity}
+		mock := mixin.MockModel{model}
+		field := reflect.ValueOf(entity).FieldByName("Model")
+		field.Set(reflect.ValueOf(mock))
+	} else {
+		model := mixin.Model{Db: db, Entity: entity}
+		field := reflect.ValueOf(entity).FieldByName("Model")
+		field.Set(reflect.ValueOf(model))
+	}
+
+	return entity
 }
 
 // helper which returns a slice which is compatible with this entity
@@ -198,25 +230,6 @@ func (r Rest) newEntitySlice() interface{} {
 	return ptr.Interface()
 }
 
-func (r Rest) newModel(c *gin.Context) mixin.Model {
-	ctx := middleware.GetAppEngine(c)
-
-	// Automatically use namespace of organization unless we're configured to
-	// use the default namespace for this endpoint.
-	if r.DefaultNamespace {
-		log.Debug("Using default namespace.")
-	} else {
-		org := middleware.GetOrganization(c)
-		ctx = org.Namespace(ctx)
-		log.Debug("Using namespace: %d", org.Key().IntID())
-	}
-
-	db := datastore.New(ctx)
-	entity := r.newEntity()
-	model := mixin.Model{Db: db, Entity: entity}
-	return model
-}
-
 func (r Rest) JSON(c *gin.Context, code int, body interface{}) {
 	c.Writer.Header().Set("Content-Type", "application/json")
 	c.Writer.WriteHeader(code)
@@ -226,20 +239,20 @@ func (r Rest) JSON(c *gin.Context, code int, body interface{}) {
 func (r Rest) get(c *gin.Context) {
 	id := c.Params.ByName("id")
 
-	model := r.newModel(c)
+	entity := r.newEntity(c)
 
-	if err := model.Get(id); err != nil {
+	if err := entity.Get(id); err != nil {
 		// TODO: When is this a 404?
 		json.Fail(c, 404, "Failed to get "+r.Kind, err)
 	} else {
-		r.JSON(c, 200, model.Entity)
+		r.JSON(c, 200, entity)
 	}
 }
 
 func (r Rest) list(c *gin.Context) {
-	model := r.newModel(c)
+	entity := r.newEntity(c)
 
-	models := r.newEntitySlice()
+	entities := r.newEntitySlice()
 
 	query := c.Request.URL.Query()
 	pageStr := query.Get("page")
@@ -248,7 +261,7 @@ func (r Rest) list(c *gin.Context) {
 	var display int
 	var err error
 
-	q := model.Query()
+	q := entity.Query()
 
 	// if we have pagination values, then trigger pagination calculations
 	if displayStr != "" {
@@ -269,12 +282,12 @@ func (r Rest) list(c *gin.Context) {
 		}
 	}
 
-	if _, err = q.GetAll(models); err != nil {
+	if _, err = q.GetAll(entities); err != nil {
 		json.Fail(c, 500, "Failed to list "+r.Kind, err)
 		return
 	}
 
-	count, err := model.Query().Count()
+	count, err := entity.Query().Count()
 	if err != nil {
 		json.Fail(c, 500, "Could not count the models.", err)
 		return
@@ -283,38 +296,38 @@ func (r Rest) list(c *gin.Context) {
 	r.JSON(c, 200, Pagination{
 		Page:    pageStr,
 		Display: displayStr,
-		Models:  models,
+		Models:  entities,
 		Count:   count,
 	})
 }
 
 func (r Rest) create(c *gin.Context) {
-	model := r.newModel(c)
+	entity := r.newEntity(c)
 
-	if err := json.Decode(c.Request.Body, model.Entity); err != nil {
+	if err := json.Decode(c.Request.Body, entity); err != nil {
 		json.Fail(c, 400, "Failed decode request body", err)
 		return
 	}
 
 	// Do some reflection magic to make sure things are set as they should be
-	entity := reflect.Indirect(reflect.ValueOf(model.Entity))
+	// entity := reflect.Indirect(reflect.ValueOf(model.Entity))
 
-	// Set id
-	id := entity.FieldByName("Id_")
-	id.Set(reflect.ValueOf(model.Id()))
+	// // Set id
+	// id := entity.FieldByName("Id_")
+	// id.Set(reflect.ValueOf(model.Id())) // this allocates a new Id
 
-	// Set created at/updated at
-	createdAt := entity.FieldByName("CreatedAt")
-	updatedAt := entity.FieldByName("UpdatedAt")
-	now := reflect.ValueOf(time.Now())
-	createdAt.Set(now)
-	updatedAt.Set(now)
+	// // Set created at/updated at
+	// createdAt := entity.FieldByName("CreatedAt")
+	// updatedAt := entity.FieldByName("UpdatedAt")
+	// now := reflect.ValueOf(time.Now())
+	// createdAt.Set(now)
+	// updatedAt.Set(now)
 
-	if err := model.PutEntity(model.Entity); err != nil {
+	if err := entity.Put(); err != nil {
 		json.Fail(c, 500, "Failed to create "+r.Kind, err)
 	} else {
-		c.Writer.Header().Add("Location", c.Request.URL.Path+"/"+model.Id())
-		r.JSON(c, 201, model.Entity)
+		c.Writer.Header().Add("Location", c.Request.URL.Path+"/"+entity.Id())
+		r.JSON(c, 201, entity)
 	}
 }
 
@@ -322,33 +335,33 @@ func (r Rest) create(c *gin.Context) {
 func (r Rest) update(c *gin.Context) {
 	id := c.Params.ByName("id")
 
-	model := r.newModel(c)
+	entity := r.newEntity(c)
 
 	// Get Key, and fail if this didn't exist in datastore
-	if _, err := model.GetKey(id); err != nil {
+	if _, err := entity.KeyExists(id); err != nil {
 		json.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
 		return
 	}
 
 	// Decode response body to create new entity
-	if err := json.Decode(c.Request.Body, model.Entity); err != nil {
+	if err := json.Decode(c.Request.Body, entity); err != nil {
 		json.Fail(c, 400, "Failed decode request body", err)
 		return
 	}
 
-	// Do some reflection magic to make sure things are set as they should be
-	entity := reflect.Indirect(reflect.ValueOf(model.Entity))
+	// // Do some reflection magic to make sure things are set as they should be
+	// entity := reflect.Indirect(reflect.ValueOf(model.Entity))
 
-	// Set updatedAt
-	updatedAt := entity.FieldByName("UpdatedAt")
-	now := reflect.ValueOf(time.Now())
-	updatedAt.Set(now)
+	// // Set updatedAt
+	// updatedAt := entity.FieldByName("UpdatedAt")
+	// now := reflect.ValueOf(time.Now())
+	// updatedAt.Set(now)
 
 	// Replace whatever was in the datastore with our new updated entity
-	if err := model.Put(); err != nil {
+	if err := entity.Put(); err != nil {
 		json.Fail(c, 500, "Failed to update "+r.Kind, err)
 	} else {
-		r.JSON(c, 200, model.Entity)
+		r.JSON(c, 200, entity)
 	}
 }
 
@@ -356,40 +369,40 @@ func (r Rest) update(c *gin.Context) {
 func (r Rest) patch(c *gin.Context) {
 	id := c.Params.ByName("id")
 
-	model := r.newModel(c)
-	err := model.Get(id)
+	entity := r.newEntity(c)
+	err := entity.Get(id)
 	if err != nil {
 		json.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
 		return
 	}
 
-	if err := json.Decode(c.Request.Body, model.Entity); err != nil {
+	if err := json.Decode(c.Request.Body, entity); err != nil {
 		json.Fail(c, 400, "Failed decode request body", err)
 		return
 	}
 
 	// Do some reflection magic to make sure things are set as they should be
-	entity := reflect.Indirect(reflect.ValueOf(model.Entity))
+	// entity := reflect.Indirect(reflect.ValueOf(model.Entity))
 
 	// Set updatedAt
-	updatedAt := entity.FieldByName("UpdatedAt")
-	now := reflect.ValueOf(time.Now())
-	updatedAt.Set(now)
+	// updatedAt := entity.FieldByName("UpdatedAt")
+	// now := reflect.ValueOf(time.Now())
+	// updatedAt.Set(now)
 
-	if err := model.Put(); err != nil {
+	if err := entity.Put(); err != nil {
 		json.Fail(c, 500, "Failed to update "+r.Kind, err)
 	} else {
-		r.JSON(c, 200, model.Entity)
+		r.JSON(c, 200, entity)
 	}
 }
 
 // Deletes an entity by given `id`
 func (r Rest) delete(c *gin.Context) {
 	id := c.Params.ByName("id")
-	model := r.newModel(c)
-	model.Delete(id)
+	entity := r.newEntity(c)
+	entity.Delete(id)
 
-	if err := model.Delete(); err != nil {
+	if err := entity.Delete(); err != nil {
 		json.Fail(c, 500, "Failed to delete "+r.Kind, err)
 	} else {
 		c.Data(204, "application/json", make([]byte, 0))

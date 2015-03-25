@@ -1,6 +1,9 @@
 package middleware
 
 import (
+	"encoding/base64"
+	"strings"
+
 	"github.com/gin-gonic/gin"
 
 	"appengine"
@@ -9,10 +12,30 @@ import (
 	"crowdstart.io/models2/organization"
 	"crowdstart.io/util/bit"
 	"crowdstart.io/util/json"
-	"crowdstart.io/util/log"
 	"crowdstart.io/util/permission"
 	"crowdstart.io/util/session"
 )
+
+func splitAuthorization(fieldValue string) (string, string) {
+	parts := strings.Split(fieldValue, " ")
+	if len(parts) == 1 {
+		return "", parts[0]
+	}
+	return parts[0], parts[1]
+}
+
+func accessTokenFromHeader(fieldValue string) string {
+	method, accessToken := splitAuthorization(fieldValue)
+	if method == "Basic" {
+		bytes, _ := base64.StdEncoding.DecodeString(accessToken)
+		return string(bytes)
+	}
+	return accessToken
+}
+
+func GetPermissions(c *gin.Context) bit.Field {
+	return c.MustGet("permissions").(bit.Field)
+}
 
 // Require login to view route
 func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
@@ -29,23 +52,21 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 
 	return func(c *gin.Context) {
 		// Get the access token from the Request
-		accessToken := c.Request.Header.Get("Authorization")
+		accessToken := accessTokenFromHeader(c.Request.Header.Get("Authorization"))
 
 		// If not set using Authorization header, check for token query param.
 		if accessToken == "" {
 			query := c.Request.URL.Query()
 			accessToken = query.Get("token")
-		}
 
-		// During development cookie may be set from development pages.
-		if appengine.IsDevAppServer() && accessToken == "" {
-			value, _ := session.Get(c, "access-token")
-			if tokstr, ok := value.(string); ok {
-				accessToken = tokstr
+			// During development cookie may be set from development pages.
+			if appengine.IsDevAppServer() && accessToken == "" {
+				value, _ := session.Get(c, "access-token")
+				if tokstr, ok := value.(string); ok {
+					accessToken = tokstr
+				}
 			}
 		}
-
-		log.Debug("access token: %v", accessToken)
 
 		// Bail if we still don't have an access token
 		if accessToken == "" {
@@ -67,7 +88,6 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 		// Verify token signature
 		if !tok.Verify(org.SecretKey) {
 			json.Fail(c, 403, "Unable to verify token: "+err.Error(), err)
-
 		}
 
 		// Verify permissions
@@ -76,6 +96,7 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 		}
 
 		// Save organization in context
+		c.Set("permissions", tok.Permissions)
 		c.Set("organization", org)
 		c.Set("organizationId", org.Id())
 	}

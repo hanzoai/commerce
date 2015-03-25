@@ -18,8 +18,8 @@ type Token struct {
 	// IssuedAt is the JWT "iat" param
 	IssuedAt time.Time
 
-	// ModelId is the JWT "sub" param
-	ModelId string
+	// EntityId is the JWT "sub" param
+	EntityId string
 
 	// Id is the JWT "jti" param
 	Id string
@@ -49,7 +49,7 @@ func (t *Token) getJWT() *jwt.Token {
 	// jwt.Claims["name"] = t.Name
 	// jwt.Claims["iat"] = t.IssuedAt.Unix()
 	jwt.Claims["jti"] = t.Id
-	jwt.Claims["sub"] = t.ModelId
+	jwt.Claims["sub"] = t.EntityId
 	jwt.Claims["bit"] = int64(t.Permissions)
 
 	// This sets the token to expire in a year
@@ -62,7 +62,7 @@ func New(name string, subject string, permissions bit.Mask, secret []byte) *Toke
 	tok := new(Token)
 	tok.Id = rand.ShortId()
 	tok.Secret = secret
-	tok.ModelId = subject
+	tok.EntityId = subject
 	tok.IssuedAt = time.Now()
 	tok.Name = name
 	tok.Permissions = bit.Field(permissions)
@@ -83,7 +83,7 @@ func FromString(accessToken string, secret []byte) (*Token, error) {
 	// tok.Name = jwt.Claims["name"].(string)
 	// tok.IssuedAt = time.Unix(int64(jwt.Claims["iat"].(float64)), 0)
 	tok.Id = jwt.Claims["jti"].(string)
-	tok.ModelId = jwt.Claims["sub"].(string)
+	tok.EntityId = jwt.Claims["sub"].(string)
 	tok.Permissions = bit.Field(jwt.Claims["bit"].(float64))
 
 	return tok, nil
