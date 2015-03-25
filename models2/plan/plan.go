@@ -32,6 +32,6 @@ func (p Plan) Kind() string {
 	return "plan2"
 }
 
-func (p Plan) Validator() *val.Validator {
-	return val.New()
+func (p *Plan) Validator() *val.Validator {
+	return val.New(p)
 }
