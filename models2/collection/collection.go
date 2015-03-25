@@ -78,7 +78,8 @@ func (c Collection) Kind() string {
 }
 
 func (c *Collection) Validator() *val.Validator {
-	return val.New(c)
+	return val.New(c).Check("Slug").Exists().
+		Check("Name").Exists()
 }
 
 func (c *Collection) Load(ch <-chan aeds.Property) (err error) {
