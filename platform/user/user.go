@@ -11,7 +11,6 @@ import (
 	"crowdstart.io/middleware"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
-	"crowdstart.io/util/val"
 )
 
 var ErrorInvalidProfile = errors.New("Invalid Profile Saved")
@@ -30,7 +29,7 @@ func ContactSubmit(c *gin.Context) {
 		log.Panic("Failed to save user profile: %v", err)
 	}
 
-	val.SanitizeUser2(&form.User)
+	// val.SanitizeUser2(&form.User)
 	if errs := form.Validate(); len(errs) > 0 {
 		c.Fail(500, ErrorInvalidProfile)
 		return

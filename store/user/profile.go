@@ -11,7 +11,6 @@ import (
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/queries"
 	"crowdstart.io/util/template"
-	"crowdstart.io/util/val"
 
 	mandrill "crowdstart.io/thirdparty/mandrill/tasks"
 	salesforce "crowdstart.io/thirdparty/salesforce/tasks"
@@ -35,7 +34,7 @@ func updateContact(c *gin.Context, user *models.User) bool {
 		log.Panic("Failed to save user profile: %v", err)
 	}
 
-	val.SanitizeUser(&form.User)
+	// val.SanitizeUser(&form.User)
 	if errs := form.Validate(); len(errs) > 0 {
 		log.Debug("Billing info is incorrect. %v", errs)
 		c.JSON(400, gin.H{"message": errs})

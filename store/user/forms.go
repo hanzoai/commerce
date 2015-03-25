@@ -19,7 +19,7 @@ func (f *ContactForm) Parse(c *gin.Context) error {
 
 func (f *ContactForm) Validate() []string {
 	var errs []string
-	errs = val.ValidateUser(&f.User, errs)
+	// errs = val.ValidateUser(&f.User, errs)
 	return errs
 }
 
@@ -85,10 +85,10 @@ func (f *MetadataForm) Parse(c *gin.Context) error {
 	}
 
 	// Create Metadata from the HTML 'name' element and the values in the inputs.
-	for key,value := range c.Request.Form {
+	for key, value := range c.Request.Form {
 		keyExists := false
 		// Range over the existing metadata to see if we can find a matching key.
-		for datumkey,datum := range f.Metadata {
+		for datumkey, datum := range f.Metadata {
 			if datum.Key == key {
 				// We found a matching key. Note we did and update the existing value.
 				f.Metadata[datumkey].Value = value[0]

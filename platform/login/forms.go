@@ -46,7 +46,7 @@ func (f *ContactForm) Parse(c *gin.Context) error {
 
 func (f *ContactForm) Validate() []string {
 	var errs []string
-	errs = val.ValidateUser(&f.User, errs)
+	// errs = val.ValidateUser(&f.User, errs)
 	return errs
 }
 
