@@ -13,8 +13,8 @@ var TokenNotFound = errors.New("Token not found.")
 
 // AccessToken is a mixin for securing objects with an AccessToken
 type AccessToken struct {
-	// Model is a struct with a Model mixin
-	Model model `json:"-" datastore:"-"`
+	// Entity is a struct with a Entity mixin
+	Entity Entity `json:"-" datastore:"-"`
 
 	// JWT secret
 	SecretKey []byte `json:"-"`
@@ -27,7 +27,7 @@ type AccessToken struct {
 
 func (at *AccessToken) AddToken(name string, permissions bit.Mask) string {
 	// Generate a new TokenId to invalidate previous key
-	t := token.New(name, at.Model.Id(), permissions, at.SecretKey)
+	t := token.New(name, at.Entity.Id(), permissions, at.SecretKey)
 	at.Tokens = append(at.Tokens, *t)
 	return t.String()
 }
@@ -67,8 +67,8 @@ func (at *AccessToken) GetToken(accessToken string) (*token.Token, error) {
 		return nil, err
 	}
 
-	// Try to fetch model using ModelId on token
-	if err := at.Model.Get(tok.ModelId); err != nil {
+	// Try to fetch model using EntityId on token
+	if err := at.Entity.Get(tok.EntityId); err != nil {
 		return nil, err
 	}
 

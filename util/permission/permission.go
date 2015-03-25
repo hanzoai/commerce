@@ -32,4 +32,5 @@ const (
 	WriteToken
 	WriteUser
 	WriteVariant
+	Test
 )
