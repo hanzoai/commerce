@@ -12,7 +12,6 @@ import (
 	"crowdstart.io/thirdparty/stripe"
 	"crowdstart.io/thirdparty/stripe/tasks"
 	"crowdstart.io/util/gincontext"
-	"crowdstart.io/util/log"
 	"crowdstart.io/util/queries"
 	"crowdstart.io/util/test/ae"
 	. "crowdstart.io/util/test/ginkgo"
@@ -36,9 +35,6 @@ var _ = BeforeSuite(func() {
 		Modules:    []string{"default"},
 		TaskQueues: []string{"default"},
 	})
-
-	time.Sleep(3 * time.Second)
-	log.Debug("Finished waiting for server to start")
 
 	db = datastore.New(ctx)
 	q = queries.New(ctx)
