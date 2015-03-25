@@ -20,21 +20,22 @@ func RegisterRule(name string, vfn ValidatorFunction) {
 }
 
 type Validator struct {
-	Value     interface{}
+	Value     reflect.Value
 	lastField string
 	fnsMap    map[string][]ValidatorFunction
 }
 
 // Create a new Validator using a custom struct
 func New(value interface{}) *Validator {
-	return &Validator{Value: value}
+
+	return &Validator{Value: depointer(reflect.ValueOf(value)), fnsMap: make(map[string][]ValidatorFunction)}
 }
 
 // Helper to dereference all pointer layers
 func depointer(value reflect.Value) reflect.Value {
 	// Strip off all the pointers
 	for value.Kind() == reflect.Ptr {
-		value = value.Elem()
+		value = reflect.Indirect(value)
 	}
 	return value
 }
@@ -42,26 +43,26 @@ func depointer(value reflect.Value) reflect.Value {
 // Set the current field to be Validated
 func (v *Validator) Check(field string) *Validator {
 	// we have to add the & to make the fields on the value settable
-	rawValue := depointer(reflect.ValueOf(&v.Value))
-	if !rawValue.FieldByName(field).IsValid() {
+	if !v.Value.FieldByName(field).IsValid() {
 		log.Panic("Field does not exist!")
 	}
 
 	if _, ok := v.fnsMap[field]; !ok {
 		v.fnsMap[field] = make([]ValidatorFunction, 0)
 	}
+
+	v.lastField = field
 	return v
 }
 
 // Generate Validation Errors
 func (v *Validator) Execute() []*FieldError {
-	structValue := depointer(reflect.ValueOf(&v.Value))
 	var i interface{}
 	errs := make([]*FieldError, 0)
 
 	// Loop over all the field values
 	for field, fns := range v.fnsMap {
-		switch value := structValue.FieldByName(field); value.Kind() {
+		switch value := v.Value.FieldByName(field); value.Kind() {
 		case reflect.Bool:
 			i = value.Bool()
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
