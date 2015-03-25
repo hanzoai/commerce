@@ -38,7 +38,6 @@ type ValStruct struct {
 	SlicedField        []ValStruct
 }
 
-// These tests also check the reflect logic for supporting types derived from base types
 var _ = Describe("Look Capabilities", func() {
 	It("Should lookup top level field", func() {
 		vs := ValStruct{StringField: "TopLevel"}
@@ -65,6 +64,7 @@ var _ = Describe("Look Capabilities", func() {
 	})
 })
 
+// This set of tests actually test more than just Exists
 var _ = Describe("Exists", func() {
 	It("Should Fail for Empty String", func() {
 		vs := ValStruct{}
@@ -74,6 +74,7 @@ var _ = Describe("Exists", func() {
 		Expect(len(errs)).To(Equal(1))
 	})
 
+	// This test also covers chaining multiple field rules
 	It("Should Fail for NonStrings", func() {
 		vs := ValStruct{IntField: 123, FloatField: 123.0}
 		v := val.New(&vs)
@@ -91,6 +92,7 @@ var _ = Describe("Exists", func() {
 		Expect(len(errs)).To(Equal(0))
 	})
 
+	// This test also checks the reflect logic for supporting types derived from base types
 	It("Should Work for NonEmpty StringDerived Type", func() {
 		vs := ValStruct{KindOfAStringField: "123"}
 		v := val.New(&vs)
