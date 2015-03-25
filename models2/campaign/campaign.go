@@ -50,3 +50,7 @@ func (c Campaign) Kind() string {
 func (c *Campaign) Validator() *val.Validator {
 	return val.New(c)
 }
+
+func Query(db *datastore.Datastore) *mixin.Query {
+	return New(db).Query()
+}
