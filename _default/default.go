@@ -1,6 +1,8 @@
 package _default
 
 import (
+	"appengine"
+
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/config"
@@ -28,20 +30,24 @@ func Init() {
 	// Setup routes for tasks
 	task.SetupRoutes(router)
 
+	// Index
+	router.GET("/", func(c *gin.Context) {
+		if appengine.IsDevAppServer() {
+			// Development index links to modules
+			template.Render(c, "index.html")
+		} else {
+			c.Data(200, "application/json", make([]byte, 0))
+		}
+	})
+
+	// Development-only routes below
 	if config.IsProduction {
 		return
 	}
 
-	// Development routes
-
 	// Static assets
 	router.GET("/static/*file", middleware.Static("static/"))
 	router.GET("/assets/*file", middleware.Static("assets/"))
-
-	// Development index links to modules
-	router.GET("/", func(c *gin.Context) {
-		template.Render(c, "index.html")
-	})
 
 	// Warmup: automatically install fixtures, etc.
 	router.GET("/_ah/warmup", func(c *gin.Context) {
