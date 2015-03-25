@@ -19,6 +19,9 @@ handlers:
 - url: /
   script: _go_app
 
+- url: /wake-the-fuck-up
+  script: _go_app
+
 - url: /*
   static_dir: static
   http_headers:
@@ -41,6 +44,14 @@ handlers:
 - url: /_ah/queue/go/delay
   script: _go_app
   login: admin
+
+- url: /humans.txt
+  static_files: static/humans.txt
+  upload: static/humans.txt
+
+- url: /robots.txt
+  static_files: static/robots.txt
+  upload: static/robots.txt
 
 - url: /font/(.*\.woff)
   static_files: static/font/\1

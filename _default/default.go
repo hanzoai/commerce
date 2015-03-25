@@ -41,7 +41,7 @@ func Init() {
 	})
 
 	// Monitoring test (wake up peeps)
-	router.GET("/wake-da-fuck-up", func(c *gin.Context) {
+	router.GET("/wake-the-fuck-up", func(c *gin.Context) {
 		c.Data(500, "text/html", make([]byte, 0))
 	})
 
