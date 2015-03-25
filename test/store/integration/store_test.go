@@ -2,7 +2,6 @@ package store_integration_test
 
 import (
 	"testing"
-	"time"
 
 	"github.com/headzoo/surf"
 	"github.com/headzoo/surf/browser"
@@ -54,9 +53,6 @@ var _ = BeforeSuite(func() {
 	// Install product fixtures so we can access store pages
 	fixtures.Products(ctx)
 	fixtures.TestUsers(ctx)
-
-	// Wait for fixtures to complete running
-	time.Sleep(5 * time.Second)
 })
 
 var _ = AfterSuite(func() {
