@@ -79,7 +79,7 @@ func SubmitRegister(c *gin.Context) {
 	}
 
 	//Santitization
-	val.SanitizeUser(&f.User)
+	// val.SanitizeUser(&f.User)
 
 	u, err := auth.NewUser(c, f)
 	if err != nil && err.Error() == "Email is already registered" {
