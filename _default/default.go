@@ -45,6 +45,7 @@ func Init() {
 	router.GET("/wake-up", func(c *gin.Context) {
 		log.Error("wake up!", c)
 		template.Render(c, "wake-up.txt")
+		c.Abort(500)
 	})
 
 	// Development-only routes below
