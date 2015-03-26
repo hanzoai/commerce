@@ -12,6 +12,7 @@ import (
 	"crowdstart.io/models2/organization"
 	"crowdstart.io/util/bit"
 	"crowdstart.io/util/json"
+	"crowdstart.io/util/log"
 	"crowdstart.io/util/permission"
 	"crowdstart.io/util/session"
 )
@@ -26,9 +27,10 @@ func splitAuthorization(fieldValue string) (string, string) {
 
 func accessTokenFromHeader(fieldValue string) string {
 	method, accessToken := splitAuthorization(fieldValue)
+	log.Debug(method, accessToken)
 	if method == "Basic" {
 		bytes, _ := base64.StdEncoding.DecodeString(accessToken)
-		return string(bytes)
+		return strings.Split(string(bytes), ":")[0]
 	}
 	return accessToken
 }
@@ -53,6 +55,7 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Get the access token from the Request
 		accessToken := accessTokenFromHeader(c.Request.Header.Get("Authorization"))
+		log.Debug("accessToken: %v", accessToken)
 
 		// If not set using Authorization header, check for token query param.
 		if accessToken == "" {
@@ -87,7 +90,7 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 
 		// Verify token signature
 		if !tok.Verify(org.SecretKey) {
-			json.Fail(c, 403, "Unable to verify token: "+err.Error(), err)
+			json.Fail(c, 403, "Unable to verify token.", err)
 		}
 
 		// Verify permissions
