@@ -10,9 +10,9 @@ import (
 	"crowdstart.io/util/log"
 )
 
-func authorizationRequest(c *gin.Context, ord *order.Order) (*AuthReq, error) {
+func authorizationRequest(c *gin.Context, ord *order.Order) (*AuthorizationReq, error) {
 	// Create AuthReq properly by calling order.New
-	ar := new(AuthReq)
+	ar := new(AuthorizationReq)
 	ar.Order = ord
 
 	// In case people are using the version of the api that takes existing
@@ -45,17 +45,20 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	ord.Tally()
 	log.Debug("Order: %#v", ord)
 
-	// Get user from source
-	usr, err := ar.Source.User(ord.Db)
+	// Get user from request
+	usr, err := ar.User()
 	if err != nil {
 		return nil, err
 	}
 
-	// Get payment from source, update order
-	pay, err := ar.Source.Payment(ord.Db)
+	// Get payment from request, update order
+	pay, err := ar.Payment()
 	if err != nil {
 		return nil, err
 	}
+
+	// Use user as buyer
+	pay.Buyer = usr.Buyer()
 
 	// Fill with debug information about user's browser
 	pay.Client.Ip = c.Request.RemoteAddr
