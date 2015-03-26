@@ -29,10 +29,11 @@ button::-moz-focus-inner {
 <h3>access token api</h3>
 <ul>
     {% with organization.Id as orgId %}
-    <li>GET <a href="{{ urlFor("api", "/access/", orgId) }}?email={{ email }}&password={{ password }}">{{ urlFor("api", "/access/", orgId) }}</a></li>
+    <li>GET <a href="{{ urlFor("api", "/access/live/", orgId) }}?email={{ email }}&password={{ password }}">{{ urlFor("api", "/access/live/", orgId) }}</a></li>
+    <li>GET <a href="{{ urlFor("api", "/access/test/", orgId) }}?email={{ email }}&password={{ password }}">{{ urlFor("api", "/access/test/", orgId) }}</a></li>
     <li>
-        <form method="POST" action="{{ urlFor("api", "/access/", orgId) }}?_method=DELETE">
-            DELETE <button type="submit">{{ urlFor("api", "/access/", orgId) }}</button>
+        <form method="POST" action="{{ urlFor("api", "/access/delete/", orgId) }}?_method=DELETE">
+            DELETE <button type="submit">{{ urlFor("api", "/access/delete/", orgId) }}</button>
         </form>
     </li>
     {% endwith %}
@@ -54,7 +55,7 @@ button::-moz-focus-inner {
     <li>POST <a href="{{ endpoint.Url() }}">{{ endpoint.Url() }}</a></li>
     <li>PUT  <a href="{{ endpoint.UrlWithId() }}">{{ endpoint.UrlWithId() }}</a></li>
     <li>
-        <form method="POST" action="{{ endpoint.UrlWithId() }}&_method=DELETE">
+        <form method="POST" action="{{ endpoint.UrlWithId() }}?_method=DELETE">
          DELETE <button type="submit">{{ endpoint.UrlWithId() }}</button>
         </form>
     </li>

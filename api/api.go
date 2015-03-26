@@ -23,6 +23,7 @@ func init() {
 
 	adminRequired := middleware.TokenRequired(permission.Admin)
 	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
+	methodOverride := middleware.MethodOverride()
 
 	// Organization APIs, namespaced by organization
 
@@ -64,11 +65,13 @@ func init() {
 	user.Prefix = "/c/"
 	user.Route(router, adminRequired)
 
+	// Access token API (internal use only)
+	accessToken := rest.New("/access")
+	accessToken.GET("/:mode/:id", accesstoken.Get)
+	accessToken.POST("/:mode/:id", adminRequired, accesstoken.Delete)
+	accessToken.DELETE("/:mode/:id", adminRequired, accesstoken.Delete)
+	accessToken.Route(router, methodOverride)
+
 	// REST API debugger
 	router.GET("/", rest.ListRoutes())
-
-	// Access token API (internal use only)
-	router.GET("/access/:id", accesstoken.Get)
-	router.POST("/access/:id", accesstoken.Post)
-	router.DELETE("/access/:id", adminRequired, accesstoken.Delete)
 }

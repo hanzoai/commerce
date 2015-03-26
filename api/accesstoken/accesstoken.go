@@ -18,7 +18,7 @@ import (
 	"crowdstart.io/util/session"
 )
 
-func getAccessToken(c *gin.Context, id, email, password string) {
+func getAccessToken(c *gin.Context, id, email, password string, test bool) {
 	db := datastore.New(c)
 	u := user.New(db)
 
@@ -48,10 +48,22 @@ func getAccessToken(c *gin.Context, id, email, password string) {
 		return
 	}
 
-	org.RemoveToken("live-secret-key")
+	// Get proper token
+	var accessToken string
 
-	// Generate a new access token
-	accessToken := org.AddToken("live-secret-key", permission.Admin)
+	if test {
+		// Remove old token
+		org.RemoveToken("live-secret-key")
+
+		// Generate a new access token
+		accessToken = org.AddToken("live-secret-key", permission.Admin)
+	} else {
+		// Remove old token
+		org.RemoveToken("test-secret-key")
+
+		// Generate a new access token
+		accessToken = org.AddToken("test-secret-key", permission.Admin)
+	}
 
 	// Save organization
 	org.Put()
@@ -66,6 +78,8 @@ func getAccessToken(c *gin.Context, id, email, password string) {
 }
 
 func deleteAccessToken(c *gin.Context) {
+	accessToken := session.GetString(c, "access-token")
+
 	// Save access token in cookie for ease of use during development
 	if appengine.IsDevAppServer() {
 		session.Delete(c, "access-token")
@@ -75,10 +89,10 @@ func deleteAccessToken(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 
 	// Retrieve token
-	accessToken := session.MustGet(c, "access-token").(string)
 	tok, err := org.GetToken(accessToken)
 	if err != nil {
 		json.Fail(c, 500, "Invalid token", err)
+		return
 	}
 
 	// Remove token
@@ -86,6 +100,7 @@ func deleteAccessToken(c *gin.Context) {
 
 	if err := org.Put(); err != nil {
 		json.Fail(c, 500, "Unable to update organization", err)
+		return
 	}
 
 	// Return access token
