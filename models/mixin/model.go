@@ -152,6 +152,11 @@ func (m *Model) SetKey(key interface{}) (err error) {
 		return datastore.InvalidKey
 	}
 
+	// Make sure this is a valid key for this kind of entity
+	if k.Kind() != m.Kind() {
+		return datastore.InvalidKey
+	}
+
 	// Set key, update Id_, etc.
 	m.setKey(k)
 
@@ -213,7 +218,9 @@ func (m *Model) Get(args ...interface{}) error {
 	// If a key is specified, try to use that, ignore nil keys (which would
 	// otherwise create a new incomplete key which makes no sense in this case.
 	if len(args) == 1 && args[0] != nil {
-		m.SetKey(args[0])
+		if err := m.SetKey(args[0]); err != nil {
+			return err
+		}
 	}
 
 	return m.Db.Get(m.key, m.Entity)
@@ -224,7 +231,9 @@ func (m *Model) KeyExists(key interface{}) (datastore.Key, error) {
 	// If a key is specified, try to use that, ignore nil keys (which would
 	// otherwise create a new incomplete key which makes no sense in this case.
 	if key != nil {
-		m.SetKey(key)
+		if err := m.SetKey(key); err != nil {
+			return nil, err
+		}
 	}
 
 	keys, err := m.Query().Filter("__key__", m.key).KeysOnly().GetAll(nil)
@@ -309,7 +318,9 @@ func (m *Model) Delete(args ...interface{}) error {
 	// If a key is specified, try to use that, ignore nil keys (which would
 	// otherwise create a new incomplete key which makes no sense in this case.
 	if len(args) == 1 && args[0] != nil {
-		m.SetKey(args[0])
+		if err := m.SetKey(args[0]); err != nil {
+			return err
+		}
 	}
 	return m.Db.Delete(m.key)
 }
