@@ -1,4 +1,4 @@
-Crowdstart = require 'crowdstart.js/src/index'
+Crowdstart = require 'crowdstart.js'
 
 $('.charge').click (e)->
   Crowdstart.charge

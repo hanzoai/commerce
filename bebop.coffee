@@ -45,6 +45,10 @@ files =
 module.exports =
   cwd: process.cwd()
 
+  include: [
+    /node_modules\/crowdstart\.js/
+  ]
+
   exclude: [
     /checkout\/static/
     /platform\/static/
