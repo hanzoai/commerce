@@ -61,6 +61,7 @@ func (s Source) Payment(db *datastore.Datastore) (*payment.Payment, error) {
 		pay.Account.CVC = s.CVC
 		pay.Account.Expiration.Month = s.Month
 		pay.Account.Expiration.Year = s.Year
+		pay.Status = "unpaid"
 		return pay, nil
 	default:
 		return nil, UnsupportedPaymentSource
