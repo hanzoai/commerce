@@ -20,7 +20,7 @@ func (u *User) Kind() string {
 func newUser(db *datastore.Datastore) *User {
 	u := new(User)
 	u.Model = mixin.Model{Db: db, Entity: u}
-	u.AccessToken = mixin.AccessToken{Model: u}
+	u.AccessToken = mixin.AccessToken{Entity: u}
 	return u
 }
 

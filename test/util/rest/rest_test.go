@@ -6,12 +6,12 @@ import (
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
+	"crowdstart.io/models/mixin"
 	"crowdstart.io/models2/organization"
 	"crowdstart.io/util/permission"
 	"crowdstart.io/util/rest"
 	"crowdstart.io/util/test/ae"
 	"crowdstart.io/util/test/ginclient"
-	"crowdstart.io/util/val"
 
 	. "crowdstart.io/util/test/ginkgo"
 )
@@ -43,15 +43,12 @@ var _ = AfterSuite(func() {
 })
 
 type Model struct {
+	mixin.Model
 	Name string
 }
 
 func (m Model) Kind() string {
 	return "test-model"
-}
-
-func (m *Model) Validator() *val.Validator {
-	return val.New(m)
 }
 
 var _ = Describe("New", func() {
