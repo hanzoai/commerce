@@ -20,3 +20,4 @@ github.com/headzoo/surf master
 github.com/go-errors/errors master
 github.com/speps/go-hashids master
 github.com/cenkalti/backoff master
+github.com/vincent-petithory/countries master
