@@ -11,7 +11,7 @@
     "blueimp-canvas-to-blob": "^2.1.1",
     "card": "^0.1.4",
     "coffee-script": "^1.8.0",
-    "crowdstart.js": "0.0.3",
+    "crowdstart.js": "0.0.4",
     "csso-stylus": "0.0.3",
     "jeet": "^6.1.2",
     "mvstar": "^0.1.19",
