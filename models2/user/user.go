@@ -25,6 +25,7 @@ type User struct {
 	Username        string   `json:"username"`
 	FirstName       string   `json:"firstName"`
 	LastName        string   `json:"lastName"`
+	Company         string   `json:"company"`
 	Phone           string   `json:"phone"`
 	BillingAddress  Address  `json:"billingAddress,omitempty"`
 	ShippingAddress Address  `json:"shippingAddress,omitempty"`
@@ -105,6 +106,18 @@ func (u User) Name() string {
 
 func (u User) HasPassword() bool {
 	return len(u.PasswordHash) != 0
+}
+
+func (u User) Buyer() Buyer {
+	return Buyer{
+		Email:     u.Email,
+		UserId:    u.Id(),
+		FirstName: u.FirstName,
+		LastName:  u.LastName,
+		Company:   u.Company,
+		Phone:     u.Phone,
+		Address:   u.BillingAddress,
+	}
 }
 
 func (u *User) Validator() *val.Validator {
