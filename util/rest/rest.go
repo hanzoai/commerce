@@ -4,6 +4,7 @@ import (
 	"errors"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -23,6 +24,12 @@ type route struct {
 	handlers []gin.HandlerFunc
 }
 
+type Opts struct {
+	DefaultNamespace bool
+}
+
+type routeMap map[string](map[string]route)
+
 type Rest struct {
 	DefaultNamespace bool
 	Kind             string
@@ -36,7 +43,7 @@ type Rest struct {
 	Options          gin.HandlerFunc
 	MethodOverride   gin.HandlerFunc
 
-	routes     map[string]route
+	routes     routeMap
 	entityType reflect.Type
 }
 
@@ -47,18 +54,19 @@ type Pagination struct {
 	Models  interface{} `json:"models"`
 }
 
-func (r *Rest) Init(entity interface{}) {
+func (r *Rest) Init(prefix string) {
+	r.Prefix = prefix
+	r.routes = make(routeMap)
+}
+
+func (r *Rest) InitModel(entity mixin.Kind) {
 	// Get type of entity
 	r.entityType = reflect.ValueOf(entity).Type()
 	r.Kind = r.newKind().Kind()
-	r.routes = make(map[string]route)
+	r.routes = make(routeMap)
 }
 
-type Opts struct {
-	DefaultNamespace bool
-}
-
-func New(entity interface{}, args ...interface{}) *Rest {
+func New(entityOrPrefix interface{}, args ...interface{}) *Rest {
 	r := new(Rest)
 
 	// Handle Options
@@ -66,17 +74,25 @@ func New(entity interface{}, args ...interface{}) *Rest {
 		opts := args[0].(Opts)
 		r.DefaultNamespace = opts.DefaultNamespace
 	}
-	r.Init(entity)
 
-	// Keep track of all apis globally
-	restApis = append(restApis, r)
+	switch v := entityOrPrefix.(type) {
+	case string:
+		r.Init(v)
+	case mixin.Kind:
+		r.InitModel(v)
+		restApis = append(restApis, r) // Keep track of all apis globally
+	}
 
 	return r
 }
 
 func (r Rest) Route(router Router, args ...gin.HandlerFunc) {
+	prefix := r.Prefix + r.Kind
+	prefix = "/" + strings.TrimLeft(prefix, "/")
+	log.Debug("Prefix: %v", prefix)
+
 	// Create group for our API routes and require Access token
-	group := router.Group("/" + r.Prefix + r.Kind)
+	group := router.Group(prefix)
 	group.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 	})
@@ -84,15 +100,24 @@ func (r Rest) Route(router Router, args ...gin.HandlerFunc) {
 
 	// Add default routes
 	for _, route := range r.defaultRoutes() {
+		log.Debug("Model Route: %v", route)
 		group.Handle(route.method, route.url, route.handlers)
 	}
 
-	for _, route := range r.routes {
-		group.Handle(route.method, route.url, route.handlers)
+	for _, routes := range r.routes {
+		for _, route := range routes {
+			log.Debug("Manual route: %v", route)
+			group.Handle(route.method, route.url, route.handlers)
+		}
 	}
 }
 
 func (r Rest) defaultRoutes() []route {
+	if r.Kind == "" {
+		// Only supported on model APIs
+		return []route{}
+	}
+
 	// Setup default handlers
 	if r.Get == nil {
 		r.Get = r.get
@@ -207,11 +232,11 @@ func (r Rest) newEntity(c *gin.Context) mixin.Entity {
 	if middleware.GetPermissions(c).Has(permission.Test) {
 		model := mixin.Model{Db: db, Entity: entity}
 		mock := mixin.MockModel{model}
-		field := reflect.ValueOf(entity).FieldByName("Model")
+		field := reflect.Indirect(reflect.ValueOf(entity)).FieldByName("Model")
 		field.Set(reflect.ValueOf(mock))
 	} else {
 		model := mixin.Model{Db: db, Entity: entity}
-		field := reflect.ValueOf(entity).FieldByName("Model")
+		field := reflect.Indirect(reflect.ValueOf(entity)).FieldByName("Model")
 		field.Set(reflect.ValueOf(model))
 	}
 
@@ -443,11 +468,18 @@ func (r Rest) options(c *gin.Context) {
 }
 
 func (r Rest) Handle(method, url string, handlers []gin.HandlerFunc) {
-	r.routes[url] = route{
+	routes, ok := r.routes[url]
+	if !ok {
+		routes = make(map[string]route)
+	}
+
+	routes[method] = route{
 		method:   method,
 		url:      url,
 		handlers: handlers,
 	}
+
+	r.routes[url] = routes
 }
 
 func (r Rest) GET(url string, handlers ...gin.HandlerFunc) {
