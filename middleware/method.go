@@ -4,6 +4,8 @@ import (
 	"errors"
 
 	"github.com/gin-gonic/gin"
+
+	"crowdstart.io/util/log"
 )
 
 // HeaderMethodOverride is a commonly used
@@ -39,6 +41,8 @@ func OverrideRequestMethod(c *gin.Context, method string) error {
 
 func MethodOverride() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		log.Debug("TRYING TO OVERRIDE...")
+
 		// Only override POST methods
 		if c.Request.Method != "POST" {
 			return
