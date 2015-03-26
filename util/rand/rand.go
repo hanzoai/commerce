@@ -3,8 +3,9 @@ package rand
 import (
 	"crypto/rand"
 	"encoding/base64"
-	"encoding/binary"
+	mathrand "math/rand"
 	"strings"
+	"time"
 
 	"crowdstart.io/util/log"
 )
@@ -21,16 +22,18 @@ func ShortId() string {
 	return strings.Trim(base64.URLEncoding.EncodeToString(rb), "=")
 }
 
-func Int32() int32 {
-	var n int32
-	binary.Read(rand.Reader, binary.LittleEndian, &n)
-	return n
+func Int() int {
+	return mathrand.Int()
 }
 
-func Int() int {
-	return int(Int32())
+func Int32() int32 {
+	return mathrand.Int31()
 }
 
 func Int64() int64 {
-	return int64(Int32())
+	return mathrand.Int63()
+}
+
+func init() {
+	mathrand.Seed(time.Now().UTC().UnixNano())
 }
