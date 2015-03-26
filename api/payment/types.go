@@ -6,7 +6,6 @@ import (
 	"crowdstart.io/models2/order"
 	"crowdstart.io/models2/payment"
 	"crowdstart.io/models2/user"
-	"crowdstart.io/thirdparty/stripe2"
 )
 
 type SourceType string
@@ -40,20 +39,15 @@ type Source struct {
 	Metadata models.Metadata `json:"metadata"`
 }
 
-func (s Source) Card() *stripe.CardParams {
-	card := stripe.CardParams{}
-	card.Name = s.FirstName + " " + s.LastName
-	card.Number = s.Number
-	card.Month = s.Month
-	card.Year = s.Year
-	card.CVC = s.CVC
-	card.Address1 = s.Address.Line1
-	card.Address2 = s.Address.Line2
-	card.City = s.Address.City
-	card.State = s.Address.State
-	card.Zip = s.Address.PostalCode
-	card.Country = s.Address.Country
-	return &card
+func (s Source) Buyer() models.Buyer {
+	buyer := models.Buyer{}
+	buyer.FirstName = s.FirstName
+	buyer.LastName = s.LastName
+	buyer.Email = s.Email
+	buyer.Phone = s.Phone
+	buyer.Company = s.Company
+	buyer.Notes = s.Notes
+	return buyer
 }
 
 func (s Source) Payment(db *datastore.Datastore) (*payment.Payment, error) {
@@ -71,17 +65,6 @@ func (s Source) Payment(db *datastore.Datastore) (*payment.Payment, error) {
 	default:
 		return nil, UnsupportedPaymentSource
 	}
-}
-
-func (s Source) Buyer() models.Buyer {
-	buyer := models.Buyer{}
-	buyer.FirstName = s.FirstName
-	buyer.LastName = s.LastName
-	buyer.Email = s.Email
-	buyer.Phone = s.Phone
-	buyer.Company = s.Company
-	buyer.Notes = s.Notes
-	return buyer
 }
 
 func (s Source) User(db *datastore.Datastore) (*user.User, error) {
