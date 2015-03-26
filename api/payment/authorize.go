@@ -6,6 +6,7 @@ import (
 	"crowdstart.io/api/payment/stripe"
 	"crowdstart.io/models2/order"
 	"crowdstart.io/models2/organization"
+	"crowdstart.io/models2/payment"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 )
@@ -27,6 +28,9 @@ func authorizationRequest(c *gin.Context, ord *order.Order) (*AuthorizationReq, 
 	if err := json.Decode(c.Request.Body, &ar); err != nil {
 		return nil, FailedToDecodeRequestBody
 	}
+
+	// Default all payment types to Stripe for now, eventually we should use organization settings
+	ar.Type = payment.Stripe
 
 	return ar, nil
 }
