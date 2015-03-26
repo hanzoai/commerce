@@ -5,6 +5,11 @@ requisite = 'node_modules/.bin/requisite -s -g'
 stylus    = 'node_modules/.bin/stylus -u autoprefixer-stylus --sourcemap --sourcemap-inline'
 
 files =
+  api:
+    js:
+      in:  'assets/js/api/api.coffee'
+      out: 'static/js/api.js'
+
   checkout:
     js:
       in:  'assets/js/checkout/checkout.coffee'
@@ -52,6 +57,8 @@ module.exports =
     /config\/skully\/static/
     /config\/staging\/assets/
     /config\/staging\/static/
+    /config\/sandbox\/assets/
+    /config\/sandbox\/static/
     /config.json$/
     /\.go$/
     /\.yaml$/
@@ -66,6 +73,8 @@ module.exports =
         return "#{requisite} #{files.preorder.js.in} -o #{files.preorder.js.out}"
       if /^assets\/js\/store/.test src
         return "#{requisite} #{files.store.js.in} -o #{files.store.js.out}"
+      if /^assets\/js\/api/.test src
+        return "#{requisite} #{files.api.js.in} -o #{files.api.js.out}"
 
       if /^assets\/js\//.test src
         output = []
