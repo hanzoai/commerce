@@ -40,7 +40,8 @@ exports.displayHelmets = ->
   # First time through, no existing order, use defaults
   if (not PreorderData.hasPassword) or
      (not PreorderData.existingOrder.Items?) or
-     (PreorderData.existingOrder.length == 0)
+     (PreorderData.existingOrder.length == 0) or
+     (PreorderData.existingOrder.Items[0].SKU == "")
     view.newItem()
   else
     # Get variants
@@ -82,7 +83,8 @@ exports.displayApparel = ->
 
   if (not PreorderData.hasPassword) or
      (not PreorderData.existingOrder.Items?) or
-     (PreorderData.existingOrder.length == 0)
+     (PreorderData.existingOrder.length == 0) or
+     (PreorderData.existingOrder.Items[0].SKU == "")
     view.newItem()
   else
     # Get variants
@@ -119,7 +121,8 @@ exports.displayHats = ->
 
   if (not PreorderData.hasPassword) or
      (not PreorderData.existingOrder.Items?) or
-     (PreorderData.existingOrder.length == 0)
+     (PreorderData.existingOrder.length == 0) or
+     (PreorderData.existingOrder.Items[0].SKU == "")
     view.newItem()
   else
     # Get variants
