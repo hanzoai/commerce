@@ -9,4 +9,5 @@ var (
 	FailedToCreateCustomer    = errors.New("Failed to create customer")
 	FailedToCreateUser        = errors.New("Failed to create user")
 	FailedToCaptureCharge     = errors.New("Failed to capture charge")
+	UnsupportedPaymentSource  = errors.New("Unsupported payment source")
 )

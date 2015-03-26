@@ -38,10 +38,27 @@ func New(ctx appengine.Context, accessToken string) *Client {
 	return &Client{sc, ctx}
 }
 
+// Covert a payment model into a card card we can use for authorization
+func PaymentToCard(pay *payment.Payment) *stripe.CardParams {
+	card := stripe.CardParams{}
+	card.Name = pay.Buyer.Name()
+	card.Number = pay.Account.Number
+	card.CVC = pay.Account.CVC
+	card.Month = pay.Account.Expiration.Month
+	card.Year = pay.Account.Expiration.Year
+	card.Address1 = pay.Buyer.Address.Line1
+	card.Address2 = pay.Buyer.Address.Line2
+	card.City = pay.Buyer.Address.City
+	card.State = pay.Buyer.Address.State
+	card.Zip = pay.Buyer.Address.PostalCode
+	card.Country = pay.Buyer.Address.Country
+	return &card
+}
+
 // Do authorization, return token
-func (c Client) Authorize(card *CardParams) (*Token, error) {
+func (c Client) Authorize(pay *payment.Payment) (*Token, error) {
 	t, err := c.API.Tokens.New(&stripe.TokenParams{
-		Card: (*stripe.CardParams)(card),
+		Card: PaymentToCard(pay),
 	})
 
 	if err != nil {

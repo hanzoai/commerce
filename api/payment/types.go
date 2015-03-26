@@ -4,6 +4,7 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models2"
 	"crowdstart.io/models2/order"
+	"crowdstart.io/models2/payment"
 	"crowdstart.io/models2/user"
 	"crowdstart.io/thirdparty/stripe2"
 )
@@ -53,6 +54,23 @@ func (s Source) Card() *stripe.CardParams {
 	card.Zip = s.Address.PostalCode
 	card.Country = s.Address.Country
 	return &card
+}
+
+func (s Source) Payment(db *datastore.Datastore) (*payment.Payment, error) {
+	pay := payment.New(db)
+	pay.Buyer = s.Buyer()
+
+	switch s.Type {
+	case SourceCard:
+		pay.Type = "stripe"
+		pay.Account.Number = s.Number
+		pay.Account.CVC = s.CVC
+		pay.Account.Expiration.Month = s.Month
+		pay.Account.Expiration.Year = s.Year
+		return pay, nil
+	default:
+		return nil, UnsupportedPaymentSource
+	}
 }
 
 func (s Source) Buyer() models.Buyer {
