@@ -21,6 +21,18 @@ import (
 	salesforce "crowdstart.io/thirdparty/salesforce/tasks"
 )
 
+func getOrderKey(db *datastore.Datastore, id string) datastore.Key {
+	// get intid
+	intid, err := strconv.Atoi(id)
+	if err != nil {
+		panic(err)
+	}
+
+	// Get orders by id
+	key := db.NewKey("order", "", int64(intid), nil)
+	return key
+}
+
 // GET /order/:id
 func GetPreorder(c *gin.Context) {
 	db := datastore.New(c)
@@ -35,11 +47,9 @@ func GetPreorder(c *gin.Context) {
 		return
 	}
 
-	// Get orders by id
-	var orders []models.Order
-	keys, err := db.Query("order").
-		Filter("Id=", id).
-		GetAll(db.Context, &orders)
+	order := new(models.Order)
+	key := getOrderKey(db, id)
+	err := db.Get(key, order)
 
 	// Query will not error when number of entities returned by query is zero.
 	// We continue based on the assumption that when saving that will create an actual order.
@@ -49,37 +59,31 @@ func GetPreorder(c *gin.Context) {
 
 	// Get user from order
 	user := new(models.User)
-	if err := db.Get(orders[0].UserId, user); err != nil {
+	if err := db.Get(order.UserId, user); err != nil {
 		log.Error("Failed to fetch user: %v", err, c)
 		// Bad token
 		c.Redirect(302, "../")
 		return
 	}
 
-	for i := range orders {
-		orders[i].LoadVariantsProducts(c)
-		orders[i].Id = strconv.Itoa(int(keys[i].IntID()))
-	}
+	// Load order
+	order.LoadVariantsProducts(c)
 
-	orderId := ""
-	orderJSON := "{}"
+	// Order id
+	orderId := strconv.Itoa(int(key.IntID()))
 
-	// TODO: Make this work for multiple orders? Tie token to each order?
-	if len(orders) != 0 {
-		order := orders[0]
-		orderId = order.Id
-		orderJSON = json.Encode(order)
-	}
+	// Create  JSON
+	contributionsJSON := "{}"
+	orderJSON := json.Encode(order)
+	userJSON := json.Encode(user)
 
 	// Find all of a user's contributions
 	var contributions []models.Contribution
-	if _, err := db.Query("contribution").Filter("Id =", orders[0].Id).GetAll(db.Context, &contributions); err != nil {
-		log.Panic("Failed to find contributions: %v", err, c)
+	db.Query("contribution").Filter("Id =", orderId).GetAll(db.Context, &contributions)
+	if len(contributions) > 0 {
+		log.Debug("Contributions: %v", contributions)
+		contributionsJSON = json.Encode(contributions)
 	}
-
-	log.Debug("Contributions: %v", contributions)
-	userJSON := json.Encode(user)
-	contributionsJSON := json.Encode(contributions)
 
 	// Get all products
 	var products []models.Product
