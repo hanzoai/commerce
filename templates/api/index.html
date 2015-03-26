@@ -67,5 +67,6 @@ button::-moz-focus-inner {
 <script type="text/javascript" src="{{ urlFor("/js/api.js") }}"></script>
 <script>
     Crowdstart.endpoint = "{{ urlFor("api") }}"
+    Crowdstart.setKey("{{ token }}")
 </script>
 {% endblock %}

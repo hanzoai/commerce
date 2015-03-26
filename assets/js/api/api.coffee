@@ -1,4 +1,4 @@
-Crowdstart = require 'crowdstart.js'
+require 'crowdstart.js/src/index'
 
 $('.charge').click (e)->
   Crowdstart.charge
@@ -38,5 +38,7 @@ $('.charge').click (e)->
       ]
       metadata:
         shippingNotes: 'Ship Ship to da moon.'
-  , (status, data) ->
+  , (status, data, loc) ->
     console.log status, data
+    if loc?
+      window.location = loc

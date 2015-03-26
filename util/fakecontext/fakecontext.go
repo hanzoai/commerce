@@ -94,7 +94,14 @@ type Context struct {
 
 func (c *Context) cloneKeys(keys map[string]interface{}) {
 	for k, v := range keys {
-		if k == "appengine" || k == "organization" {
+		// Skip app engine
+		if k == "appengine" {
+			continue
+		}
+
+		// save organization id so we can fetch it on the other side
+		if k == "organization" {
+			c.Keys["organization-id"] = (v.(*organization.Organization)).Id()
 			continue
 		}
 
@@ -120,8 +127,8 @@ func (c Context) Context(aectx *appengine.Context) (ctx *gin.Context, err error)
 	// ...otherwise use appengine context to update gin context
 	ctx.Set("appengine", *aectx)
 
-	// Fetch organization if organizationId is set
-	if value, err := ctx.Get("organizationId"); err != nil {
+	// Fetch organization if organization-id is set
+	if value, err := ctx.Get("organization-id"); err != nil {
 		if id, ok := value.(string); ok {
 			db := datastore.New(*aectx)
 			org := organization.New(db)
