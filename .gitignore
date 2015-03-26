@@ -14,6 +14,7 @@ static/js/api.js
 static/js/checkout.js
 static/js/preorder.js
 static/js/store.js
+static/v1.js
 config.json
 templates/platform/docs/_generated
 
