@@ -31,7 +31,7 @@ func GetPreorder(c *gin.Context) {
 	// Make sure we don't have a token id.
 	count, _ := db.Query("invite-token").Filter("Id=", id).Count(ctx)
 	if count > 0 {
-		c.Redirect(301, "../expired-token")
+		c.Redirect(302, "../expired-token")
 		return
 	}
 
@@ -52,7 +52,7 @@ func GetPreorder(c *gin.Context) {
 	if err := db.Get(orders[0].UserId, user); err != nil {
 		log.Error("Failed to fetch user: %v", err, c)
 		// Bad token
-		c.Redirect(301, "../")
+		c.Redirect(302, "../")
 		return
 	}
 
@@ -235,7 +235,7 @@ func SavePreorder(c *gin.Context) {
 		user.Name(),
 		"SKULLY preorder information updated")
 
-	c.Redirect(301, config.UrlFor("preorder", "/thanks"))
+	c.Redirect(302, config.UrlFor("preorder", "/thanks"))
 }
 
 // GET /
@@ -252,7 +252,7 @@ func Index(c *gin.Context) {
 		// Complain if user doesn't have any tokens
 		if len(tokens) > 0 {
 			// Redirect to order page as they have a valid token
-			c.Redirect(301, "order/"+tokens[0].Id)
+			c.Redirect(302, "order/"+tokens[0].Id)
 		} else {
 			template.Render(c, "login.html", "message", "No pre-orders found for your account")
 			return
@@ -286,7 +286,7 @@ func Login(c *gin.Context) {
 	// Complain if user doesn't have any tokens
 	if len(tokens) > 0 {
 		// Redirect to order page as they have a valid token
-		c.Redirect(301, "order/"+tokens[0].Id)
+		c.Redirect(302, "order/"+tokens[0].Id)
 	} else {
 		template.Render(c, "login.html", "message", "No pre-orders found for your account")
 	}
