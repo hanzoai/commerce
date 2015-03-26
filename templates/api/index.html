@@ -41,9 +41,9 @@ button::-moz-focus-inner {
 
 <h3>charge / auth and capture api</h3>
 <ul>
-  <li>POST <a href="#" onclick="javascript:charge()">/api/charge</a></li>
-  <li>POST <a href="#" onclick="javascript:authorize()">/api/authorize</a></li>
-  <li>POST <a href="{{ urlFor("api", orderEndpoint.UrlWithId(), "/capture") }}">{{ urlFor("api", orderEndpoint.UrlWithId(), "/capture") }}</a></li>
+  <li>POST <a href="#" class="charge">/api/charge</a></li>
+  <li>POST <a href="#" class="authorize">/api/authorize</a></li>
+  <li>POST <a href="#" class="capture">{{ urlFor("api", orderEndpoint.UrlWithId(), "/capture") }}</a></li>
 </ul>
 
 <h3>model api</h3>
@@ -64,73 +64,8 @@ button::-moz-focus-inner {
 
 <script type="text/javascript" src="{{ urlFor("/js/jquery.min.js") }}"></script>
 <script type="text/javascript" src="{{ urlFor("/v1.js") }}"></script>
+<script type="text/javascript" src="{{ urlFor("/js/api.js") }}"></script>
 <script>
-function charge() {
-    payment("{{ urlFor("api", "/charge") }}")
-}
-
-function authorize() {
-    payment("{{ urlFor("api", "/api/authorize") }}")
-}
-
-function payment(url) {
-    $.ajax({
-      type: "POST",
-      url: url,
-      data: JSON.stringify({
-        "payment": {
-          "type": "card",
-          "number": "4242424242424242",
-          "month": "12",
-          "year": "2016",
-          "cvc": "123",
-        },
-        "buyer": {
-          "email": "suchfan@shirtlessinseattle.com",
-          "firstName": "Sam",
-          "LastName": "Ryan",
-          "company": "Peabody Conservatory of Music",
-          "phone": "555-555-5555",
-          "address": {
-              "line1": "12345 Faux Road",
-              "city": "Doesntexistville",
-              "state": "East Virginia",
-              "country": "United States",
-              "postalCode": "55555-5555",
-          },
-          "metadata": {
-              "shippingNotes": "Ship to da moon."
-          },
-        },
-        "order": {
-          "currency": "usd",
-          "items": [ {
-            "productId": "1",
-            "variantId": "1",
-            "collectionId": "1",
-            "price": 100,
-            "quantity": 20,
-            "shippingAddress": {
-                "line1": "12345 Faux Road",
-                "city": "Doesntexistville",
-                "state": "East Virginia",
-                "country": "United States",
-                "postalCode": "55555-5555",
-            },
-          } ]
-        },
-      }),
-      success: function(data, textStatus, jqXHR) {
-          document.body.innerHTML = jqXHR.responseText;
-          console.log(data);
-      },
-      error: function(jqXHR, textStatus, err) {
-          var data = JSON.parse(jqXHR.responseText);
-          console.log(data);
-          document.body.innerHTML = JSON.stringify(data);
-      },
-    });
-    return false
-}
+    Crowdstart.endpoint = "{{ urlFor("api") }}"
 </script>
 {% endblock %}
