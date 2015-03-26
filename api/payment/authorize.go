@@ -45,43 +45,48 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	ord.Tally()
 	log.Debug("Order: %#v", ord)
 
+	// Get user from source
+	usr, err := ar.Source.User(ord.Db)
+	if err != nil {
+		return nil, err
+	}
+
 	// Get payment from source, update order
 	pay, err := ar.Source.Payment(ord.Db)
 	if err != nil {
 		return nil, err
 	}
 
-	pay.Status = "unpaid"
+	// Fill with debug information about user's browser
+	pay.Client.Ip = c.Request.RemoteAddr
+	pay.Client.UserAgent = c.Request.UserAgent()
+	pay.Client.Language = c.Request.Header.Get("Accept-Language")
+	pay.Client.Referer = c.Request.Referer()
+
+	// Update payment with order information
 	pay.Amount = ord.Total
 	pay.Currency = ord.Currency
 
-	// Get user from source, update order
-	u, err := ar.Source.User(ord.Db)
-	if err != nil {
-		return nil, err
-	}
-
 	// Have stripe handle authorization
-	if err := stripe.Authorize(org, ord, u, pay); err != nil {
+	if err := stripe.Authorize(org, ord, usr, pay); err != nil {
 		return nil, err
 	}
 
-	// Set user as parent of order
-	ord.Parent = u.Key()
-	ord.UserId = u.Id()
+	// User -> order
+	ord.Parent = usr.Key()
+	ord.UserId = usr.Id()
 
-	// Create payment
+	// Order -> payment
+	pay.Parent = ord.Key()
+	pay.OrderId = ord.Id()
+
+	// Save payment Id on order
 	ord.PaymentIds = append(ord.PaymentIds, pay.Id())
 
-	// Save order, payment and user!
+	// Save user, order, payment
+	usr.Put()
 	ord.Put()
-
-	// Set order as parent of payment
-	pay.Parent = ord.Key()
 	pay.Put()
-
-	// Save user
-	u.Put()
 
 	return ord, nil
 }
