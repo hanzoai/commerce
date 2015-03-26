@@ -1,0 +1,34 @@
+package country
+
+import (
+	"sort"
+
+	"github.com/vincent-petithory/countries"
+)
+
+type Country countries.Country
+
+var List []Country
+var ByISOCodeISO3166_2 map[string]Country
+
+func init() {
+	List = make([]Country, len(countries.Countries))
+	ByISOCodeISO3166_2 = make(map[string]Country)
+
+	nameToIsoMap := make(map[string]string)
+	sortedNames := make([]string, len(countries.Countries))
+	i := 0
+	for iso, country := range countries.Countries {
+		name := country.ISO3166OneEnglishShortNameReadingOrder
+		sortedNames[i] = name
+		nameToIsoMap[name] = iso
+		ByISOCodeISO3166_2[iso] = Country(country)
+		i++
+	}
+
+	sort.Strings(sortedNames)
+
+	for i, name := range sortedNames {
+		List[i] = ByISOCodeISO3166_2[nameToIsoMap[name]]
+	}
+}

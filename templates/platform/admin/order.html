@@ -176,44 +176,35 @@
             valueCols: 6,
           },
           {
-            id: "email",
-            name: "payments.0.account.buyer.email",
+            label: "User ID",
+            value: '{{ user.Id }}',
+            href: '{{ urlFor("api", "user2", user.Id) }}',
+            $parent: $('#order-buyer'),
+            type: "link",
+          },
+          {
             label: "Email",
-            value: '{{ order.Payments.0.Account.Buyer.Email }}',
+            value: '{{ user.Email }}',
             $parent: $('#order-buyer'),
-            rules: [
-              {
-                rule: 'required',
-                value: true,
-                message: 'Enter a email'
-              },
-              {
-                rule: 'email',
-                value: true,
-                message: 'Enter a valid email'
-              }
-            ]
+            type: "static",
           },
           {
-            id: "firstName",
-            name: "payments.0.account.buyer.firstName",
             label: "First Name",
-            value: '{{ order.Payments.0.Account.Buyer.FirstName }}',
+            value: '{{ user.FirstName }}',
             $parent: $('#order-buyer'),
+            type: "static",
           },
           {
-            id: "lastName",
-            name: "payments.0.account.buyer.lastName",
             label: "Last Name",
-            value: '{{ order.Payments.0.Account.Buyer.LastName }}',
+            value: '{{ user.LastName }}',
             $parent: $('#order-buyer'),
+            type: "static",
           },
           {
-            id: "phone",
-            name: "payments.0.account.buyer.phone",
             label: "Phone",
-            value: '{{ order.Payments.0.Account.Buyer.Phone }}',
+            value: '{{ user.Phone }}',
             $parent: $('#order-buyer'),
+            type: "static",
           },
           {
             id: "line1",
@@ -221,6 +212,13 @@
             label: "Street Address",
             value: '{{ order.ShippingAddress.Line1 }}',
             $parent: $('#order-shipping'),
+            rules: [
+                {
+                    rule: "required",
+                    value: "true",
+                    message: "Street address is required",
+                }
+            ]
           },
           {
             id: "line2",
@@ -235,6 +233,13 @@
             label: "City",
             value: '{{ order.ShippingAddress.City }}',
             $parent: $('#order-shipping'),
+            rules: [
+                {
+                    rule: "required",
+                    value: "true",
+                    message: "City is required",
+                }
+            ]
           },
           {
             id: "state",
@@ -242,13 +247,35 @@
             label: "State",
             value: '{{ order.ShippingAddress.State }}',
             $parent: $('#order-shipping'),
+            rules: [
+                {
+                    rule: "required",
+                    value: "true",
+                    message: "State is required",
+                }
+            ]
           },
           {
             id: "country",
             name: "shippingAddress.country",
             label: "Country",
-            value: '{{ order.ShippingAddress.Country }}',
+            value: [
+            {% for country in constants.Countries %}
+            {
+              name: '{{ country.ISO3166OneEnglishShortNameReadingOrder }}',
+                id: '{{ country.ISO3166OneAlphaTwo }}',
+            },
+            {% endfor %}
+            ],
+            type: 'select',
             $parent: $('#order-shipping'),
+            rules: [
+                {
+                    rule: "required",
+                    value: "true",
+                    message: "Country is required",
+                }
+            ]
           },
           {
             id: "postalCode",
@@ -263,7 +290,7 @@
     validate: /^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*(?:\[\])?$/i
   });
   var api = NewRestAPI(
-      '{{ urlFor("api", "/order2") }}',
+      '{{ urlFor("api", "order2") }}',
       '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}',
       $('#form-order')
     );
@@ -272,7 +299,7 @@
       requestAnimationFrame(function() {
           if ($('.form-group.has-error').length === 0) {
               api.put(function(data) {
-                  window.location.replace('{{ urlFor("platform", "/orders") }}')
+                window.location.replace('{{ urlFor("platform", "order", order.Id ) }}')
               }, $form, '{{ order.Id }}')
           }
       })
