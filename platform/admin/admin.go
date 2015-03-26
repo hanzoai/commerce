@@ -8,6 +8,7 @@ import (
 	"crowdstart.io/middleware"
 	"crowdstart.io/models2/order"
 	"crowdstart.io/models2/product"
+	"crowdstart.io/models2/user"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/permission"
 	"crowdstart.io/util/template"
@@ -46,7 +47,10 @@ func Order(c *gin.Context) {
 	id := c.Params.ByName("id")
 	o.Get(id)
 
-	template.Render(c, "admin/order.html", "order", o)
+	u := user.New(db)
+	u.Get(o.UserId)
+
+	template.Render(c, "admin/order.html", "order", o, "user", u)
 }
 
 func Orders(c *gin.Context) {
