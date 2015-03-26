@@ -60,17 +60,18 @@ func updatePaymentFromUser(pay *payment.Payment, usr *user.User) {
 
 func firstTime(client *stripe.Client, tok *stripe.Token, u *user.User, ord *order.Order, pay *payment.Payment) error {
 	// Create Stripe customer, which we will attach to our payment account.
-	customer, err := client.NewCustomer(tok.ID, u)
+	cust, err := client.NewCustomer(tok.ID, u)
 	if err != nil {
 		return err
 	}
-	pay.Account.CustomerId = customer.ID
+	pay.Account.CustomerId = cust.ID
+	pay.Live = cust.Live
 
-	log.Debug("Stripe customer: %#v", customer)
+	log.Debug("Stripe customer: %#v", cust)
 
 	// Get default source
-	cardId := customer.DefaultSource.ID
-	card, err := client.GetCard(cardId, customer.ID)
+	cardId := cust.DefaultSource.ID
+	card, err := client.GetCard(cardId, cust.ID)
 	if err != nil {
 		return err
 	}
@@ -82,7 +83,7 @@ func firstTime(client *stripe.Client, tok *stripe.Token, u *user.User, ord *orde
 	u.Accounts.Stripe = pay.Account
 
 	// Create charge and associate with payment.
-	charge, err := client.NewCharge(customer, pay)
+	charge, err := client.NewCharge(cust, pay)
 	if err != nil {
 		return err
 	}
@@ -97,6 +98,7 @@ func returning(client *stripe.Client, tok *stripe.Token, usr *user.User, ord *or
 	if err != nil {
 		return err
 	}
+	pay.Live = cust.Live
 
 	updatePaymentFromUser(pay, usr)
 
