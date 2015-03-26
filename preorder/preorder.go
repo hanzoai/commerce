@@ -1,6 +1,10 @@
 package preorder
 
-import "crowdstart.io/util/router"
+import (
+	"crowdstart.io/util/router"
+	"crowdstart.io/util/template"
+	"github.com/gin-gonic/gin"
+)
 
 func init() {
 	router := router.New("preorder")
@@ -11,5 +15,12 @@ func init() {
 	router.GET("/order/:token", GetPreorder)
 	router.POST("/order/save", SavePreorder)
 
-	router.GET("/thanks", Thanks)
+	router.GET("/thanks", func(c *gin.Context) {
+		template.Render(c, "thanks.html")
+	})
+
+	router.GET("/expired-token", func(c *gin.Context) {
+		template.Render(c, "expired-token.html")
+	})
+
 }

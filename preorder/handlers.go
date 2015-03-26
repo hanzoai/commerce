@@ -21,45 +21,38 @@ import (
 	salesforce "crowdstart.io/thirdparty/salesforce/tasks"
 )
 
-// GET /order/:token
+// GET /order/:id
 func GetPreorder(c *gin.Context) {
-	// For testing Stackdriver
-	// if c.Params.ByName("token") == "test-token" {
-	// 	c.Fail(500, errors.New("Test error"))
-	// 	return
-	// }
-
 	db := datastore.New(c)
 
-	// Fetch token
-	token := new(models.Token)
-	db.GetKind("invite-token", c.Params.ByName("token"), token)
+	id := c.Params.ByName("id")
 
-	// Redirect to login if token is expired or used
-	if token.Expired || token.Used {
-		c.Redirect(301, "/")
+	// Make sure we don't have a token id.
+	err := db.GetKind("invite-token", id, new(models.Token))
+	if err == nil {
+		c.Redirect(301, "../expired-token")
 		return
 	}
 
-	// Should use token to lookup email
-	user := new(models.User)
-	if err := db.Get(token.UserId, user); err != nil {
-		log.Error("Failed to fetch user: %v", err, c)
-		// Bad token
-		c.Redirect(301, "../")
-		return
-	}
-
-	// Get orders by email
+	// Get orders by id
 	var orders []models.Order
 	keys, err := db.Query("order").
-		Filter("UserId =", user.Id).
+		Filter("Id=", id).
 		GetAll(db.Context, &orders)
 
 	// Query will not error when number of entities returned by query is zero.
 	// We continue based on the assumption that when saving that will create an actual order.
 	if err != nil {
 		log.Panic("Error retrieving orders associated with the user's email", err)
+	}
+
+	// Get user from order
+	user := new(models.User)
+	if err := db.Get(orders[0].UserId, user); err != nil {
+		log.Error("Failed to fetch user: %v", err, c)
+		// Bad token
+		c.Redirect(301, "../")
+		return
 	}
 
 	for i := range orders {
@@ -79,7 +72,7 @@ func GetPreorder(c *gin.Context) {
 
 	// Find all of a user's contributions
 	var contributions []models.Contribution
-	if _, err := db.Query("contribution").Filter("UserId =", user.Id).GetAll(db.Context, &contributions); err != nil {
+	if _, err := db.Query("contribution").Filter("Id =", orders[0].Id).GetAll(db.Context, &contributions); err != nil {
 		log.Panic("Failed to find contributions: %v", err, c)
 	}
 
@@ -99,7 +92,7 @@ func GetPreorder(c *gin.Context) {
 	productsJSON := json.Encode(productsMap)
 
 	template.Render(c, "preorder.html",
-		"tokenId", token.Id,
+		"tokenId", "",
 		"user", user,
 		"productsJSON", productsJSON,
 		"contributionsJSON", contributionsJSON,
@@ -242,11 +235,6 @@ func SavePreorder(c *gin.Context) {
 		"SKULLY preorder information updated")
 
 	c.Redirect(301, config.UrlFor("preorder", "/thanks"))
-}
-
-// GET /thanks
-func Thanks(c *gin.Context) {
-	template.Render(c, "thanks.html")
 }
 
 // GET /
