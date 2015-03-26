@@ -24,7 +24,7 @@
         <tbody>
             {% for order in orders %}
             <tr class="row sep-top">
-                <td>{{ order.Id }}</td>
+                <td><a href="{{ urlFor("preorder", "/order", order.Id) }}">{{ order.Id }}</a></td>
                 <td class="description">
                     {% for item in order.Items %}
                     <p>{{ item.DisplayShortDescription() }} x {{ item.Quantity }}</p>
@@ -39,12 +39,14 @@
             {% endfor %}
         </tbody>
     </table>
-    {% if tokenId %}
-    <div class="options sep-top">
-        <button style="margin-left: 20px" onclick="location.href='{{ urlFor("store", "/card/") }}'">Download holiday card</button>
-        <button onclick="location.href='{{ urlFor("preorder", "/order/", tokenId) }}'">Edit preorders</button>
-    </div>
-    {% endif %}
+
+    <!-- {% if tokenId %} -->
+    <!-- <div class="options sep-top"> -->
+    <!--     <button style="margin-left: 20px" onclick="location.href='{{ urlFor("store", "/card/") }}'">Download holiday card</button> -->
+    <!--     <button onclick="location.href='{{ urlFor("preorder", "/order/", tokenId) }}'">Edit preorders</button> -->
+    <!-- </div> -->
+    <!-- {% endif %} -->
+
     {% else %}
     <div class="no-history">You have no order history.</div>
     {% endif %}
