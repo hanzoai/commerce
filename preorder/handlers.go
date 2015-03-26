@@ -17,7 +17,6 @@ import (
 	"crowdstart.io/util/queries"
 	"crowdstart.io/util/template"
 
-	mandrill "crowdstart.io/thirdparty/mandrill/tasks"
 	salesforce "crowdstart.io/thirdparty/salesforce/tasks"
 )
 
@@ -127,22 +126,22 @@ func SavePreorder(c *gin.Context) {
 	}
 
 	// Ensure that token matches email
-	tokens := getTokens(c, user.Id)
-	if len(tokens) < 1 {
-		c.Fail(500, errors.New("Failed to find pre-order token."))
-		return
-	} else if !hasToken(tokens, form.Token.Id) {
-		c.Fail(500, errors.New("Token not valid for user email."))
-		return
-	}
+	// tokens := getTokens(c, user.Id)
+	// if len(tokens) < 1 {
+	// 	c.Fail(500, errors.New("Failed to find pre-order token."))
+	// 	return
+	// } else if !hasToken(tokens, form.Token.Id) {
+	// 	c.Fail(500, errors.New("Token not valid for user email."))
+	// 	return
+	// }
 
-	log.Debug("Found token")
+	// log.Debug("Found token")
 
 	// Update user's password if this is the first time saving.
 
-	if !user.HasPassword() {
-		user.PasswordHash = form.User.PasswordHash
-	}
+	// if !user.HasPassword() {
+	// 	user.PasswordHash = form.User.PasswordHash
+	// }
 
 	// Update user information
 	user.Phone = form.User.Phone
@@ -234,10 +233,11 @@ func SavePreorder(c *gin.Context) {
 		salesforce.CallUpsertOrderTask(db.Context, &campaign, &order)
 	}
 
-	mandrill.SendTransactional.Call(ctx, "email/preorder-updated.html",
-		user.Email,
-		user.Name(),
-		"SKULLY preorder information updated")
+	// TODO: Reenable for production!
+	// mandrill.SendTransactional.Call(ctx, "email/preorder-updated.html",
+	// 	user.Email,
+	// 	user.Name(),
+	// 	"SKULLY preorder information updated")
 
 	c.Redirect(302, config.UrlFor("preorder", "/thanks"))
 }
