@@ -73,5 +73,5 @@ func init() {
 	accessToken.Route(router, methodOverride)
 
 	// REST API debugger
-	router.GET("/", rest.ListRoutes())
+	router.GET("/", middleware.ParseToken, rest.ListRoutes())
 }

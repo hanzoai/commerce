@@ -45,11 +45,8 @@ files =
 module.exports =
   cwd: process.cwd()
 
-  include: [
-    /node_modules\/crowdstart\.js/
-  ]
-
   exclude: [
+    /api\/static/
     /checkout\/static/
     /platform\/static/
     /preorder\/static/
@@ -57,12 +54,12 @@ module.exports =
     /theme\/static/
     /config\/production\/assets/
     /config\/production\/static/
+    /config\/sandbox\/assets/
+    /config\/sandbox\/static/
     /config\/skully\/assets/
     /config\/skully\/static/
     /config\/staging\/assets/
     /config\/staging\/static/
-    /config\/sandbox\/assets/
-    /config\/sandbox\/static/
     /config.json$/
     /\.go$/
     /\.yaml$/
