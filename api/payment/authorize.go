@@ -43,6 +43,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 
 	// Update order totals
 	ord.Tally()
+
 	log.Debug("Order: %#v", ord)
 
 	// Get user from request
@@ -50,6 +51,8 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	if err != nil {
 		return nil, err
 	}
+
+	log.Debug("User: %#v", usr)
 
 	// Get payment from request, update order
 	pay, err := ar.Payment()
@@ -69,6 +72,8 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	// Update payment with order information
 	pay.Amount = ord.Total
 	pay.Currency = ord.Currency
+
+	log.Debug("Payment: %#v", pay)
 
 	// Have stripe handle authorization
 	if err := stripe.Authorize(org, ord, usr, pay); err != nil {
