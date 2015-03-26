@@ -10,6 +10,7 @@ static/css/checkout.css
 static/css/preorder.css
 static/css/store.css
 static/css/theme.css
+static/js/api.js
 static/js/checkout.js
 static/js/preorder.js
 static/js/store.js
