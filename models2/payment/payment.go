@@ -103,15 +103,14 @@ type Payment struct {
 
 	Type Type `json:type"`
 
-	// Optionally associated with a user
-	UserId string `json:"userId,omitempty"`
-
+	// Order this is associated with
 	OrderId string `json:"orderId,omitempty"`
 
 	// Payment source information
 	Account Account `json:"account"`
 
-	// Immutable buyer data from time of payment
+	// Immutable buyer data from time of payment, may or may not be associated
+	// with a user.
 	Buyer Buyer `json:"buyer"`
 
 	Currency CurrencyType `json:"currency"`
@@ -143,8 +142,11 @@ type Payment struct {
 	// Whether this payment has been captured or not
 	Captured bool `json:"captured"`
 
-	// Whether this was a transaction in production or a testing sandbox
+	// Stripe livemode
 	Live bool `json:"live"`
+
+	// Internal testing flag
+	Test bool `json:"-"`
 
 	Metadata  Metadata `json:"metadata" datastore:"-"`
 	Metadata_ []byte   `json:"-"`

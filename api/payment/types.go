@@ -1,98 +1,44 @@
 package payment
 
 import (
-	"crowdstart.io/datastore"
-	"crowdstart.io/models2"
 	"crowdstart.io/models2/order"
 	"crowdstart.io/models2/payment"
 	"crowdstart.io/models2/user"
 )
 
-type SourceType string
+type AuthorizationReq struct {
+	Type payment.Type `json:"type"`
 
-const (
-	SourceCard   SourceType = "card"
-	SourcePayPal            = "paypal"
-	SourceAffirm            = "affirm"
-)
-
-type Source struct {
-	Type SourceType `json:"type"`
-
-	// Buyer
-	Id        string         `json:"id"`
-	Email     string         `json:"email"`
-	FirstName string         `json:"firstName"`
-	LastName  string         `json:"firstName"`
-	Company   string         `json:"company"`
-	Address   models.Address `json:"address"`
-	Phone     string         `json:"phone"`
-	Notes     string         `json:"notes"`
-
-	// Card
-	Number string `json:"number"`
-	Month  string `json:"month"`
-	CVC    string `json:"cvc"`
-	Year   string `json:"year"`
-
-	// Metadata about buyer
-	Metadata models.Metadata `json:"metadata"`
+	Buyer   *user.User      `json:"buyer"`
+	Account payment.Account `json:"payment"`
+	Order   *order.Order    `json:"order"`
 }
 
-func (s Source) Buyer() models.Buyer {
-	buyer := models.Buyer{}
-	buyer.FirstName = s.FirstName
-	buyer.LastName = s.LastName
-	buyer.Email = s.Email
-	buyer.Phone = s.Phone
-	buyer.Company = s.Company
-	buyer.Notes = s.Notes
-	return buyer
+func (ar *AuthorizationReq) User() (*user.User, error) {
+	usr := ar.Buyer
+	usr.Model.Entity = ar.Buyer
+	usr.Model.Db = ar.Order.Db
+
+	// If Id is set, this is a pre-existing user, user copy from datastore
+	if usr.Id_ != "" {
+		if err := usr.Get(usr.Id_); err != nil {
+			return nil, UserDoesNotExist
+		}
+	}
+
+	return usr, nil
 }
 
-func (s Source) Payment(db *datastore.Datastore) (*payment.Payment, error) {
-	pay := payment.New(db)
-	pay.Buyer = s.Buyer()
+func (ar *AuthorizationReq) Payment() (*payment.Payment, error) {
+	pay := payment.New(ar.Order.Db)
 
-	switch s.Type {
-	case SourceCard:
-		pay.Type = "stripe"
-		pay.Account.Number = s.Number
-		pay.Account.CVC = s.CVC
-		pay.Account.Expiration.Month = s.Month
-		pay.Account.Expiration.Year = s.Year
+	switch ar.Type {
+	case payment.Stripe:
+		pay.Type = payment.Stripe
+		pay.Account = ar.Account
 		pay.Status = "unpaid"
 		return pay, nil
 	default:
 		return nil, UnsupportedPaymentSource
 	}
-}
-
-func (s Source) User(db *datastore.Datastore) (*user.User, error) {
-	user := user.New(db)
-
-	// Create new user or reassociate with existing user
-	if s.Id != "" {
-		if err := user.Get(s.Id); err != nil {
-			return nil, UserDoesNotExist
-		}
-	} else {
-		user.Email = s.Email
-		user.FirstName = s.FirstName
-		user.LastName = s.LastName
-		user.BillingAddress = s.Address
-		user.Phone = s.Phone
-	}
-
-	// Update metadata on user
-	for k, v := range s.Metadata {
-		user.Metadata[k] = v
-	}
-
-	return user, nil
-}
-
-type AuthReq struct {
-	Source Source       `json:"buyer"`
-	Order  *order.Order `json:"order"`
 }
