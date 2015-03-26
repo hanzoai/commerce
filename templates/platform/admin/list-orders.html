@@ -54,16 +54,10 @@ $(function(){
             render: 'id',
           },
           {
-            field: 'payments.0.account.buyer.firstName',
-            name: 'First Name',
-          },
-          {
-            field: 'payments.0.account.buyer.lastName',
-            name: 'Last Name',
-          },
-          {
-            field: 'payments.0.account.buyer.email',
-            name: 'Email',
+            field: 'userId',
+            name: 'User ID',
+            href: '{{ urlFor("api", "/user2") }}',
+            render: 'link',
           },
           {
             field: 'total',
@@ -71,7 +65,7 @@ $(function(){
             render: 'currency',
           },
           {
-            field: 'payments.0.status',
+            field: 'status',
             name: 'Status',
           },
           {

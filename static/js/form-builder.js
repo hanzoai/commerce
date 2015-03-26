@@ -1,6 +1,7 @@
 var BuildForm = (function() {
   var formGroupInputTemplate = '<div class="form-group"><label class="control-label" for=""></label><div><input type="text" id="" name="" class="form-control" value=""></div></div>';
   var formGroupTextAreaTemplate = '<div class="form-group"><label class="control-label" for=""></label><div><textarea class="form-control" style="resize:none;height:265px"></textarea></div></div>';
+  var formGroupLinkTemplate =   '<div class="form-group"><label class="control-label" for=""></label><div><p class="form-control-static"><a></a></p></div></div>';
   var formGroupStaticTemplate = '<div class="form-group"><label class="control-label" for=""></label><div><p class="form-control-static"></p></div></div>';
   var formGroupSelectTemplate = '<div class="form-group"><label class="control-label" for=""></label><div><select class="form-control"></select></div></div>';
   var formGroupSwitchTemplate = '<div class="form-group"><label class="control-label" for=""></label><div><label class="switch switch-success"><input type="checkbox"><span></span></label></div></div>';
@@ -43,6 +44,7 @@ var BuildForm = (function() {
     //          $parent: $('#id'),
     //          labelCols: 3,
     //          valueCols: 9,
+    //          href: "lolololol.html, // for link type only
     //          rules: [
     //              {
     //                  rule: "required",
@@ -92,7 +94,12 @@ var BuildForm = (function() {
       var type = inputConfig.type;
       var $fg;
       // Prepare templating
-      if (type === 'switch') {
+      if (type === 'link') {
+        $fg = $(formGroupLinkTemplate);
+        $fg.find('a').attr({
+          href: inputConfig.href
+        }).text(inputConfig.value)
+      } else if (type === 'switch') {
         $fg = $(formGroupSwitchTemplate);
 
         $fg.find('input').attr({

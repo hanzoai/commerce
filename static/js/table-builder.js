@@ -33,6 +33,7 @@ var BuildTable = (function() {
     //      $pagination: $('#pagination'),
     //      $empty: $('#empty'),
     //      canDelete: true,
+    //      href: "lolololol.html", // for render link
     //  }
     //
     // API call is expected to return something in the form of
@@ -178,8 +179,9 @@ var BuildTable = (function() {
             } else if (render == 'number') {
               $tableData.addClass('text-right');
             } else if (render == 'id') {
-              $tableData.addClass('text-center');
               val = $('<a href="' + tableConfig.itemUrl + '/' + val + '">' + val + '</a>')
+            } else if (render == 'link') {
+              val = $('<a href="' + column.href + '/' + val + '">' + val + '</a>')
             } else if (render == 'bool') {
               val = val ? 'Yes' : 'No';
             } else if (render && {}.toString.call(render) == '[object Function]') {
