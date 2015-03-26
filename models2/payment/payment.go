@@ -51,18 +51,24 @@ type PayPalAccount struct {
 }
 
 type StripeAccount struct {
+	// Very important to never store these!
+	Number string `json:- datastore:-`
+	CVC    string `json:- datastore:-`
+
+	CardId     string `json:"cardId,omitempty"`
+	ChargeId   string `json:"chargeId,omitempty"`
+	CustomerId string `json:"customerId,omitempty"`
+
 	Fingerprint string `json:"fingerprint,omitempty"`
-	CustomerId  string `json:"customerId,omitempty"`
-	ChargeId    string `json:"chargeId,omitempty"`
-	CardId      string `json:"cardId,omitempty"`
+	Funding     string `json:"funding,omitempty"`
 	Brand       string `json:"brand,omitempty"`
-	Type        string `json:"type,omitempty"`
 	LastFour    string `json:"lastFour,omitempty"`
 	Expiration  struct {
-		Month int `json:"month,omitempty"`
-		Year  int `json:"year,omitempty"`
+		Month string `json:"month,omitempty"`
+		Year  string `json:"year,omitempty"`
 	} `json:"expiration,omitempty"`
-	Country  string `json:"country,omitempty"`
+	Country string `json:"country,omitempty"`
+
 	CVCCheck string `json:"cvcCheck,omitempty"`
 }
 
