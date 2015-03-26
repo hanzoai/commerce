@@ -1,11 +1,17 @@
 package payment
 
 import (
+	aeds "appengine/datastore"
+
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
-	. "crowdstart.io/models2"
+	"crowdstart.io/util/gob"
 	"crowdstart.io/util/val"
+
+	. "crowdstart.io/models2"
 )
+
+var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 type Status string
 
@@ -72,6 +78,19 @@ type StripeAccount struct {
 	CVCCheck string `json:"cvcCheck,omitempty"`
 }
 
+func (s StripeAccount) CardMatches(acct Account) bool {
+	if s.Expiration.Month != acct.Expiration.Month {
+		return false
+	}
+	if s.Expiration.Year != acct.Expiration.Year {
+		return false
+	}
+	if len(acct.Number) > 4 && s.LastFour != acct.Number[len(acct.Number)-4:] {
+		return false
+	}
+	return true
+}
+
 // Sort of a union type of all possible payment accounts, used everywhere for convenience
 type Account struct {
 	AffirmAccount
@@ -86,6 +105,8 @@ type Payment struct {
 
 	// Optionally associated with a user
 	UserId string `json:"userId,omitempty"`
+
+	OrderId string `json:"orderId,omitempty"`
 
 	// Payment source information
 	Account Account `json:"account"`
@@ -124,6 +145,9 @@ type Payment struct {
 
 	// Whether this was a transaction in production or a testing sandbox
 	Live bool `json:"live"`
+
+	Metadata  Metadata `json:"metadata" datastore:"-"`
+	Metadata_ []byte   `json:"-"`
 }
 
 func (p Payment) Kind() string {
@@ -134,15 +158,44 @@ func (p *Payment) Init() {
 
 }
 
-func (u *Payment) Validator() *val.Validator {
-	return val.New(u)
+func (p *Payment) Load(c <-chan aeds.Property) (err error) {
+	// Ensure we're initialized
+	p.Init()
+
+	// Load supported properties
+	if err = IgnoreFieldMismatch(aeds.LoadStruct(p, c)); err != nil {
+		return err
+	}
+
+	// Deserialize from datastore
+	if len(p.Metadata_) > 0 {
+		err = gob.Decode(p.Metadata_, &p.Metadata)
+	}
+
+	return err
+}
+
+func (p *Payment) Save(c chan<- aeds.Property) (err error) {
+	// Serialize unsupported properties
+	p.Metadata_, err = gob.Encode(&p.Metadata)
+
+	if err != nil {
+		return err
+	}
+
+	// Save properties
+	return IgnoreFieldMismatch(aeds.SaveStruct(p, c))
+}
+
+func (p *Payment) Validator() *val.Validator {
+	return val.New(p)
 }
 
 func New(db *datastore.Datastore) *Payment {
-	u := new(Payment)
-	u.Init()
-	u.Model = mixin.Model{Db: db, Entity: u}
-	return u
+	p := new(Payment)
+	p.Init()
+	p.Model = mixin.Model{Db: db, Entity: p}
+	return p
 }
 
 func Query(db *datastore.Datastore) *mixin.Query {

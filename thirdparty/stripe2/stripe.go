@@ -9,8 +9,9 @@ import (
 	"github.com/stripe/stripe-go"
 	"github.com/stripe/stripe-go/client"
 
-	"crowdstart.io/models2"
 	"crowdstart.io/models2/payment"
+	"crowdstart.io/models2/user"
+	"crowdstart.io/util/json"
 )
 
 type Card stripe.Card
@@ -62,22 +63,14 @@ func (c Client) Authorize(pay *payment.Payment) (*Token, error) {
 	})
 
 	if err != nil {
-		stripeErr, ok := err.(*stripe.Error)
-		if ok {
-			return nil, &Error{
-				Code:    string(stripeErr.Code),
-				Message: stripeErr.Msg,
-				Type:    string(stripeErr.Type),
-			}
-		}
-		return nil, &Error{Type: "unknown", Message: "Stripe: authorization failed."}
+		return nil, NewError(err)
 	}
 
 	// Cast back to our token
 	return (*Token)(t), err
 }
 
-// Create new stripe customer
+// Get an exising Stripe card
 func (c Client) GetCard(cardId string, customerId string) (*Card, error) {
 	params := &stripe.CardParams{
 		Customer: customerId,
@@ -85,73 +78,116 @@ func (c Client) GetCard(cardId string, customerId string) (*Card, error) {
 
 	card, err := c.API.Cards.Get(cardId, params)
 	if err != nil {
-		stripeErr, ok := err.(*stripe.Error)
-		if ok {
-			return nil, &Error{
-				Code:    string(stripeErr.Code),
-				Message: stripeErr.Msg,
-				Type:    string(stripeErr.Type),
-			}
-		}
-		return nil, &Error{Type: "unknown", Message: "Stripe: failed to get card"}
+		return nil, NewError(err)
 	}
 
 	return (*Card)(card), err
 }
 
-// Create new stripe customer
-func (c Client) NewCustomer(token string, buyer models.Buyer) (*Customer, error) {
-	params := &stripe.CustomerParams{
-		Desc:  buyer.Name(),
-		Email: buyer.Email,
-	}
+// Get Stripe customer
+func (c Client) GetCustomer(token, user *user.User) (*Customer, error) {
+	params := &stripe.CustomerParams{}
 	params.SetSource(token)
 
-	customer, err := c.API.Customers.New(params)
+	customerId := user.Accounts.Stripe.CustomerId
+
+	customer, err := c.API.Customers.Get(customerId, params)
 	if err != nil {
-		stripeErr, ok := err.(*stripe.Error)
-		if ok {
-			return nil, &Error{
-				Code:    string(stripeErr.Code),
-				Message: stripeErr.Msg,
-				Type:    string(stripeErr.Type),
-			}
-		}
-		return nil, &Error{Type: "unknown", Message: "Stripe: failed to create customer"}
+		return nil, NewError(err)
 	}
 
 	return (*Customer)(customer), err
 }
 
+// Update Stripe customer
+func (c Client) UpdateCustomer(token string, user *user.User) (*Customer, error) {
+	params := &stripe.CustomerParams{
+		Email: user.Email,
+	}
+	params.SetSource(token)
+
+	// Update with our user metadata
+	for k, v := range user.Metadata {
+		params.AddMeta(k, json.Encode(v))
+	}
+
+	customerId := user.Accounts.Stripe.CustomerId
+
+	customer, err := c.API.Customers.Update(customerId, params)
+	if err != nil {
+		return nil, NewError(err)
+	}
+
+	return (*Customer)(customer), err
+}
+
+// Create new stripe customer
+func (c Client) NewCustomer(token string, user *user.User) (*Customer, error) {
+	params := &stripe.CustomerParams{
+		Desc:  user.Name(),
+		Email: user.Email,
+	}
+	params.SetSource(token)
+
+	// Update with our user metadata
+	for k, v := range user.Metadata {
+		params.AddMeta(k, json.Encode(v))
+	}
+
+	customer, err := c.API.Customers.New(params)
+	if err != nil {
+		return nil, NewError(err)
+	}
+
+	return (*Customer)(customer), err
+}
+
+// Add new card to Stripe customer
+func (c Client) AddCard(token string, user *user.User) (*Card, error) {
+	params := &stripe.CardParams{
+		Customer: user.Accounts.Stripe.CustomerId,
+		Token:    token,
+	}
+
+	card, err := c.API.Cards.New(params)
+	if err != nil {
+		return nil, NewError(err)
+	}
+
+	return (*Card)(card), err
+}
+
 // Create new charge
-func (c Client) NewCharge(customerOrToken interface{}, payment *payment.Payment) (*Charge, error) {
-	chargeParams := &stripe.ChargeParams{
-		Amount:    uint64(payment.Amount),
-		Currency:  stripe.Currency(payment.Currency),
+func (c Client) NewCharge(source interface{}, pay *payment.Payment) (*Charge, error) {
+	params := &stripe.ChargeParams{
+		Amount:    uint64(pay.Amount),
+		Currency:  stripe.Currency(pay.Currency),
 		Desc:      "Charge for test@example.com",
 		NoCapture: true,
 	}
 
-	switch v := customerOrToken.(type) {
+	// Update with our user metadata
+	for k, v := range pay.Metadata {
+		params.AddMeta(k, json.Encode(v))
+	}
+
+	switch v := source.(type) {
 	case string:
-		chargeParams.SetSource(v)
+		params.SetSource(v)
 	case *Customer:
-		chargeParams.Customer = v.ID
+		params.Customer = v.ID
+	case *user.User:
+		params.Customer = v.Accounts.Stripe.CustomerId
 	}
 
 	// Create charge
-	ch, err := c.API.Charges.New(chargeParams)
+	ch, err := c.API.Charges.New(params)
 	if err != nil {
-		stripeErr, ok := err.(*stripe.Error)
-		if ok {
-			return nil, &Error{
-				Code:    string(stripeErr.Code),
-				Message: stripeErr.Msg,
-				Type:    string(stripeErr.Type),
-			}
-		}
-		return nil, &Error{Type: "unknown", Message: "Stripe: charge failed"}
+		return nil, NewError(err)
 	}
+
+	// Set Charge Id
+	pay.ChargeId = ch.ID
 
 	return (*Charge)(ch), err
 }
@@ -160,15 +196,7 @@ func (c Client) NewCharge(customerOrToken interface{}, payment *payment.Payment)
 func (c Client) Capture(id string) (*Charge, error) {
 	ch, err := c.API.Charges.Capture(id, nil)
 	if err != nil {
-		stripeErr, ok := err.(*stripe.Error)
-		if ok {
-			return nil, &Error{
-				Code:    string(stripeErr.Code),
-				Message: stripeErr.Msg,
-				Type:    string(stripeErr.Type),
-			}
-		}
-		return nil, &Error{Type: "unknown", Message: "Stripe: capture failed"}
+		return nil, NewError(err)
 	}
 
 	return (*Charge)(ch), err
