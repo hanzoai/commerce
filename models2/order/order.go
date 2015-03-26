@@ -34,7 +34,7 @@ type Order struct {
 	mixin.Salesforce `json:"-"`
 
 	// Associated campaign
-	CampaignId string `json:"campaignId"`
+	CampaignId string `json:"campaignId,omitempty"`
 
 	// Associated Crowdstart user or buyer.
 	UserId string `json:"userId,omitempty"`

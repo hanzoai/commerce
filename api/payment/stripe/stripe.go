@@ -37,8 +37,8 @@ func updatePaymentFromCard(pay *payment.Payment, card *stripe.Card) {
 	pay.Account.CardId = card.ID
 	pay.Account.Brand = string(card.Brand)
 	pay.Account.LastFour = card.LastFour
-	pay.Account.Expiration.Month = string(card.Month)
-	pay.Account.Expiration.Year = string(card.Year)
+	pay.Account.Month = string(card.Month)
+	pay.Account.Year = string(card.Year)
 	pay.Account.Country = card.Country
 	pay.Account.Fingerprint = card.Fingerprint
 	pay.Account.Funding = string(card.Funding)
@@ -50,8 +50,8 @@ func updatePaymentFromUser(pay *payment.Payment, usr *user.User) {
 	pay.Account.CardId = acct.CardId
 	pay.Account.Brand = acct.Brand
 	pay.Account.LastFour = acct.LastFour
-	pay.Account.Expiration.Month = acct.Expiration.Month
-	pay.Account.Expiration.Year = acct.Expiration.Year
+	pay.Account.Month = acct.Month
+	pay.Account.Year = acct.Year
 	pay.Account.Country = acct.Country
 	pay.Account.Fingerprint = acct.Fingerprint
 	pay.Account.Funding = acct.Funding

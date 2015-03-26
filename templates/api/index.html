@@ -78,18 +78,29 @@ function payment(url) {
       type: "POST",
       url: url,
       data: JSON.stringify({
-        "buyer": {
+        "payment": {
           "type": "card",
           "number": "4242424242424242",
           "month": "12",
           "year": "2016",
           "cvc": "123",
-          "email": "joe@buystoomuchstuff.com",
-          "firstName": "Joe",
-          "LastName": "Smoe",
-          "company": "Buys Too Much Stuff Dotcom",
+        },
+        "buyer": {
+          "email": "suchfan@shirtlessinseattle.com",
+          "firstName": "Sam",
+          "LastName": "Ryan",
+          "company": "Peabody Conservatory of Music",
           "phone": "555-555-5555",
-          "notes": "non"
+          "address": {
+              "line1": "12345 Faux Road",
+              "city": "Doesntexistville",
+              "state": "East Virginia",
+              "country": "United States",
+              "postalCode": "55555-5555",
+          },
+          "metadata": {
+              "shippingNotes": "Ship to da moon."
+          },
         },
         "order": {
           "currency": "usd",
@@ -99,13 +110,6 @@ function payment(url) {
             "collectionId": "1",
             "price": 100,
             "quantity": 20,
-            "billingAddress": {
-                "line1": "12345 Faux Road",
-                "city": "Doesntexistville",
-                "state": "East Virginia",
-                "country": "United States",
-                "postalCode": "55555-5555",
-            },
             "shippingAddress": {
                 "line1": "12345 Faux Road",
                 "city": "Doesntexistville",

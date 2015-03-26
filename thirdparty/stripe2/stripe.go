@@ -45,8 +45,8 @@ func PaymentToCard(pay *payment.Payment) *stripe.CardParams {
 	card.Name = pay.Buyer.Name()
 	card.Number = pay.Account.Number
 	card.CVC = pay.Account.CVC
-	card.Month = pay.Account.Expiration.Month
-	card.Year = pay.Account.Expiration.Year
+	card.Month = pay.Account.Month
+	card.Year = pay.Account.Year
 	card.Address1 = pay.Buyer.Address.Line1
 	card.Address2 = pay.Buyer.Address.Line2
 	card.City = pay.Buyer.Address.City
