@@ -58,8 +58,8 @@ type PayPalAccount struct {
 
 type StripeAccount struct {
 	// Very important to never store these!
-	Number string `json:- datastore:-`
-	CVC    string `json:- datastore:-`
+	Number string `json:"number" datastore:"-"`
+	CVC    string `json:"cvc" datastore:"-"`
 
 	CardId     string `json:"cardId,omitempty"`
 	ChargeId   string `json:"chargeId,omitempty"`
@@ -69,23 +69,21 @@ type StripeAccount struct {
 	Funding     string `json:"funding,omitempty"`
 	Brand       string `json:"brand,omitempty"`
 	LastFour    string `json:"lastFour,omitempty"`
-	Expiration  struct {
-		Month string `json:"month,omitempty"`
-		Year  string `json:"year,omitempty"`
-	} `json:"expiration,omitempty"`
-	Country string `json:"country,omitempty"`
+	Month       string `json:"month,omitempty"`
+	Year        string `json:"year,omitempty"`
+	Country     string `json:"country,omitempty"`
 
 	CVCCheck string `json:"cvcCheck,omitempty"`
 }
 
-func (s StripeAccount) CardMatches(acct Account) bool {
-	if s.Expiration.Month != acct.Expiration.Month {
+func (sa StripeAccount) CardMatches(acct Account) bool {
+	if sa.Month != acct.Month {
 		return false
 	}
-	if s.Expiration.Year != acct.Expiration.Year {
+	if sa.Year != acct.Year {
 		return false
 	}
-	if len(acct.Number) > 4 && s.LastFour != acct.Number[len(acct.Number)-4:] {
+	if len(acct.Number) > 4 && sa.LastFour != acct.Number[len(acct.Number)-4:] {
 		return false
 	}
 	return true

@@ -39,6 +39,6 @@ func (ar *AuthorizationReq) Payment() (*payment.Payment, error) {
 		pay.Status = "unpaid"
 		return pay, nil
 	default:
-		return nil, UnsupportedPaymentSource
+		return nil, UnsupportedPaymentType
 	}
 }
