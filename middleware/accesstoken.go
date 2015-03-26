@@ -33,8 +33,25 @@ func accessTokenFromHeader(fieldValue string) string {
 	return accessToken
 }
 
-func GetPermissions(c *gin.Context) bit.Field {
-	return c.MustGet("permissions").(bit.Field)
+func ParseToken(c *gin.Context) {
+	// Get the access token from the Request
+	accessToken := accessTokenFromHeader(c.Request.Header.Get("Authorization"))
+
+	// If not set using Authorization header, check for token query param.
+	if accessToken == "" {
+		query := c.Request.URL.Query()
+		accessToken = query.Get("token")
+
+		// During development cookie may be set from development pages.
+		if appengine.IsDevAppServer() && accessToken == "" {
+			value, _ := session.Get(c, "access-token")
+			if tokstr, ok := value.(string); ok {
+				accessToken = tokstr
+			}
+		}
+	}
+
+	c.Set("access-token", accessToken)
 }
 
 // Require login to view route
@@ -51,22 +68,11 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 	}
 
 	return func(c *gin.Context) {
-		// Get the access token from the Request
-		accessToken := accessTokenFromHeader(c.Request.Header.Get("Authorization"))
+		// Parse token
+		ParseToken(c)
 
-		// If not set using Authorization header, check for token query param.
-		if accessToken == "" {
-			query := c.Request.URL.Query()
-			accessToken = query.Get("token")
-
-			// During development cookie may be set from development pages.
-			if appengine.IsDevAppServer() && accessToken == "" {
-				value, _ := session.Get(c, "access-token")
-				if tokstr, ok := value.(string); ok {
-					accessToken = tokstr
-				}
-			}
-		}
+		// Try to fetch access token
+		accessToken := GetAccessToken(c)
 
 		// Bail if we still don't have an access token
 		if accessToken == "" {
@@ -98,6 +104,18 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 		// Save organization in context
 		c.Set("permissions", tok.Permissions)
 		c.Set("organization", org)
-		c.Set("organizationId", org.Id())
 	}
+}
+
+func GetAccessToken(c *gin.Context) string {
+	tok, err := c.Get("access-token")
+	if err != nil {
+		return ""
+	}
+
+	return tok.(string)
+}
+
+func GetPermissions(c *gin.Context) bit.Field {
+	return c.MustGet("permissions").(bit.Field)
 }

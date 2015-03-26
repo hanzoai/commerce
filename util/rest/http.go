@@ -11,6 +11,7 @@ import (
 
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
+	"crowdstart.io/middleware"
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/models2/organization"
 	"crowdstart.io/util/json"
@@ -111,9 +112,7 @@ func ListRoutes() gin.HandlerFunc {
 			}
 		}
 
-		// Helper API page for dev
-		query := c.Request.URL.Query()
-		token := query.Get("token")
+		token := middleware.GetAccessToken(c)
 
 		log.Debug("fixture organization id: %v", org.Id())
 
@@ -126,8 +125,5 @@ func ListRoutes() gin.HandlerFunc {
 			"password", "suchtees",
 			"token", token,
 		)
-
-		// Skip rest of handlers
-		c.Abort(200)
 	}
 }
