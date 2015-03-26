@@ -52,17 +52,11 @@ func getAccessToken(c *gin.Context, id, email, password string, test bool) {
 	var accessToken string
 
 	if test {
-		// Remove old token
-		org.RemoveToken("live-secret-key")
-
-		// Generate a new access token
-		accessToken = org.AddToken("live-secret-key", permission.Admin)
-	} else {
-		// Remove old token
 		org.RemoveToken("test-secret-key")
-
-		// Generate a new access token
-		accessToken = org.AddToken("test-secret-key", permission.Admin)
+		accessToken = org.AddToken("test-secret-key", permission.Admin|permission.Test)
+	} else {
+		org.RemoveToken("live-secret-key")
+		accessToken = org.AddToken("live-secret-key", permission.Admin)
 	}
 
 	// Save organization
