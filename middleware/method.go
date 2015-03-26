@@ -41,20 +41,25 @@ func OverrideRequestMethod(c *gin.Context, method string) error {
 
 func MethodOverride() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		log.Debug("TRYING TO OVERRIDE...")
-
 		// Only override POST methods
 		if c.Request.Method != "POST" {
 			return
 		}
 
+		// Try to override method using query
 		m := c.Request.FormValue(ParamMethodOverride)
 		if IsValidMethodOverride(m) {
 			OverrideRequestMethod(c, m)
 		}
+
+		// Try to override method using header
 		m = c.Request.Header.Get(HeaderMethodOverride)
 		if IsValidMethodOverride(m) {
 			OverrideRequestMethod(c, m)
+		}
+
+		if c.Request.Method != "POST" {
+			log.Warn("Method overriden to %v", c.Request.Method)
 		}
 	}
 }
