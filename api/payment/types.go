@@ -7,16 +7,14 @@ import (
 )
 
 type AuthorizationReq struct {
-	Type payment.Type `json:"type"`
-
-	Buyer   *user.User      `json:"buyer"`
-	Account payment.Account `json:"payment"`
-	Order   *order.Order    `json:"order"`
+	User_    *user.User       `json:"user"`
+	Payment_ *payment.Payment `json:"payment"`
+	Order    *order.Order     `json:"order"`
 }
 
 func (ar *AuthorizationReq) User() (*user.User, error) {
-	usr := ar.Buyer
-	usr.Model.Entity = ar.Buyer
+	usr := ar.User_
+	usr.Model.Entity = ar.User_
 	usr.Model.Db = ar.Order.Db
 
 	// If Id is set, this is a pre-existing user, user copy from datastore
@@ -30,13 +28,18 @@ func (ar *AuthorizationReq) User() (*user.User, error) {
 }
 
 func (ar *AuthorizationReq) Payment() (*payment.Payment, error) {
-	pay := payment.New(ar.Order.Db)
+	pay := ar.Payment_
+	pay.Model.Entity = ar.User_
+	pay.Model.Db = ar.Order.Db
 
-	switch ar.Type {
+	pay.Status = "unpaid"
+
+	// Default all payment types to Stripe for now, although eventually we
+	// should use organization settings
+	pay.Type = payment.Stripe
+
+	switch pay.Type {
 	case payment.Stripe:
-		pay.Type = payment.Stripe
-		pay.Account = ar.Account
-		pay.Status = "unpaid"
 		return pay, nil
 	default:
 		return nil, UnsupportedPaymentType
