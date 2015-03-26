@@ -24,12 +24,13 @@ import (
 // GET /order/:id
 func GetPreorder(c *gin.Context) {
 	db := datastore.New(c)
+	ctx := db.Context
 
 	id := c.Params.ByName("id")
 
 	// Make sure we don't have a token id.
-	err := db.GetKind("invite-token", id, new(models.Token))
-	if err == nil {
+	count, _ := db.Query("invite-token").Filter("Id=", id).Count(ctx)
+	if count > 0 {
 		c.Redirect(301, "../expired-token")
 		return
 	}
