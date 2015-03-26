@@ -89,7 +89,6 @@ func New(entityOrPrefix interface{}, args ...interface{}) *Rest {
 func (r Rest) Route(router Router, args ...gin.HandlerFunc) {
 	prefix := r.Prefix + r.Kind
 	prefix = "/" + strings.TrimLeft(prefix, "/")
-	log.Debug("Prefix: %v", prefix)
 
 	// Create group for our API routes and require Access token
 	group := router.Group(prefix)
@@ -100,13 +99,11 @@ func (r Rest) Route(router Router, args ...gin.HandlerFunc) {
 
 	// Add default routes
 	for _, route := range r.defaultRoutes() {
-		log.Debug("Model Route: %v", route)
 		group.Handle(route.method, route.url, route.handlers)
 	}
 
 	for _, routes := range r.routes {
 		for _, route := range routes {
-			log.Debug("Manual route: %v", route)
 			group.Handle(route.method, route.url, route.handlers)
 		}
 	}
@@ -223,22 +220,19 @@ func (r Rest) newEntity(c *gin.Context) mixin.Entity {
 		log.Debug("Using namespace: %d", org.Key().IntID())
 	}
 
-	db := datastore.New(ctx)
-
 	// Create a new entity
+	db := datastore.New(ctx)
 	entity := reflect.New(r.entityType).Interface().(mixin.Entity)
+	model := mixin.Model{Db: db, Entity: entity}
 
-	// If token had test bit set use our mock model
+	// Disable Put/Delete if in test mode
 	if middleware.GetPermissions(c).Has(permission.Test) {
-		model := mixin.Model{Db: db, Entity: entity}
-		mock := mixin.MockModel{model}
-		field := reflect.Indirect(reflect.ValueOf(entity)).FieldByName("Model")
-		field.Set(reflect.ValueOf(mock))
-	} else {
-		model := mixin.Model{Db: db, Entity: entity}
-		field := reflect.Indirect(reflect.ValueOf(entity)).FieldByName("Model")
-		field.Set(reflect.ValueOf(model))
+		model.Mock = true
 	}
+
+	// Set model on entity
+	field := reflect.Indirect(reflect.ValueOf(entity)).FieldByName("Model")
+	field.Set(reflect.ValueOf(model))
 
 	return entity
 }

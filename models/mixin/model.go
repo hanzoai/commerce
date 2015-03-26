@@ -50,6 +50,7 @@ type Model struct {
 	Db     *datastore.Datastore `json:"-" datastore:"-"`
 	Entity Kind                 `json:"-" datastore:"-"`
 	Parent datastore.Key        `json:"-" datastore:"-"`
+	Mock   bool                 `json:"-" datastore:"-"`
 
 	key datastore.Key
 
@@ -192,6 +193,10 @@ func (m *Model) Put() error {
 	}
 	m.UpdatedAt = now
 
+	if m.Mock { // Need mock Put
+		return m.mockPut()
+	}
+
 	// Put entity into datastore
 	key, err := m.Db.Put(m.Key(), m.Entity)
 
@@ -295,6 +300,10 @@ func (m *Model) RunInTransaction(fn func() error) error {
 
 // Delete entity from Datastore
 func (m *Model) Delete(args ...interface{}) error {
+	if m.Mock { // Need mock Delete
+		return m.mockDelete()
+	}
+
 	// If a key is specified, try to use that, ignore nil keys (which would
 	// otherwise create a new incomplete key which makes no sense in this case.
 	if len(args) == 1 && args[0] != nil {
@@ -309,6 +318,10 @@ func (m *Model) Query() *Query {
 }
 
 // Validate a model
+func (m *Model) Validator() *val.Validator {
+	return val.New(nil)
+}
+
 func (m *Model) Validate() error {
 	// val := m.Entity.Validator()
 	// errs := val.Check(m).Errors()
@@ -325,31 +338,21 @@ func (m *Model) JSON() string {
 	return json.Encode(m.Entity)
 }
 
-// Mock model for test keys. Does everything against datastore except create/update/delete/allocate ids.
-type MockModel struct {
-	Model
-}
-
-func (m *MockModel) mockKey() datastore.Key {
+// Mock methods for test keys. Does everything against datastore except create/update/delete/allocate ids.
+func (m *Model) mockKey() datastore.Key {
 	if m.StringKey_ {
 		return m.Db.NewKey(m.Kind(), rand.ShortId(), 0, m.Parent)
 	}
 	return m.Db.NewKey(m.Kind(), "", rand.Int64(), m.Parent)
 }
 
-func (m *MockModel) Put() error {
-	// Set CreatedAt, UpdatedAt
-	now := time.Now()
-	if m.key == nil {
-		m.CreatedAt = now
-	}
-	m.UpdatedAt = now
+func (m *Model) mockPut() error {
 	// set key, id
 	m.setKey(m.mockKey())
 	return nil
 }
 
-func (m *MockModel) Delete() error {
+func (m *Model) mockDelete() error {
 	return nil
 }
 
