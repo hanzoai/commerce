@@ -20,13 +20,13 @@ import (
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
-type OrderStatus string
+type Status string
 
 const (
-	Open      OrderStatus = "open"
-	Locked                = "locked"
-	Cancelled             = "cancelled"
-	Completed             = "completed"
+	Open      Status = "open"
+	Locked           = "locked"
+	Cancelled        = "cancelled"
+	Completed        = "completed"
 )
 
 type Order struct {
@@ -40,7 +40,7 @@ type Order struct {
 	UserId string `json:"userId,omitempty"`
 
 	// Status
-	OrderStatus       OrderStatus       `json:"orderStatus"`
+	Status            Status            `json:"status"`
 	PaymentStatus     payment.Status    `json:"paymentStatus"`
 	FulfillmentStatus FulfillmentStatus `json:"fulfillmentStatus"`
 
@@ -53,9 +53,6 @@ type Order struct {
 
 	// 3-letter ISO currency code (lowercase).
 	Currency CurrencyType `json:"currency"`
-
-	// Seller notes
-	Notes string `json:"notes,omitempty"`
 
 	// Type of order
 	Type string `json:"type"`
@@ -119,8 +116,7 @@ type Order struct {
 	Metadata  Metadata `json:"metadata" datastore:"-"`
 	Metadata_ []byte   `json:"-"`
 
-	// Not a real transaction, purely for our own debugging purposes.
-	Test bool `json:"-"`
+	Test bool `json:"-"` // Whether our internal test flag is active or not
 }
 
 func (o *Order) Init() {
