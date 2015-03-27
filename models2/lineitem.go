@@ -1,6 +1,9 @@
 package models
 
-import "crowdstart.io/models/mixin"
+import (
+	"crowdstart.io/models/mixin"
+	"crowdstart.io/models2/types/currency"
+)
 
 type LineItem struct {
 	mixin.Salesforce
@@ -16,7 +19,7 @@ type LineItem struct {
 	VariantSKU  string `json:"variantSKU"`
 
 	// Unit price
-	Price Cents `json:"price"`
+	Price currency.Cents `json:"price"`
 
 	// Number of units
 	Quantity int `json:"quantity"`
@@ -28,8 +31,8 @@ type LineItem struct {
 	Taxable bool `json:"taxable"`
 }
 
-func (li LineItem) TotalPrice() Cents {
-	return li.Price * Cents(li.Quantity)
+func (li LineItem) TotalPrice() currency.Cents {
+	return li.Price * currency.Cents(li.Quantity)
 }
 
 func (li LineItem) DisplayPrice() string {

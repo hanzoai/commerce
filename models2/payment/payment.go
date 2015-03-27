@@ -5,6 +5,7 @@ import (
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
+	"crowdstart.io/models2/types/currency"
 	"crowdstart.io/util/gob"
 	"crowdstart.io/util/val"
 
@@ -111,7 +112,7 @@ type Payment struct {
 	// with a user.
 	Buyer Buyer `json:"buyer"`
 
-	Currency CurrencyType `json:"currency"`
+	Currency currency.Type `json:"currency"`
 
 	CampaignId string `json:"campaignId"`
 
@@ -129,8 +130,8 @@ type Payment struct {
 	CaptureId     string `json:"captureId,omitempty"`
 	TransactionId string `json:"transactionId,omitempty"`
 
-	Amount         Cents `json:"amount"`
-	AmountRefunded Cents `json:"amountRefunded"`
+	Amount         currency.Cents `json:"amount"`
+	AmountRefunded currency.Cents `json:"amountRefunded"`
 
 	Status Status `json:"status"`
 
