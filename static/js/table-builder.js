@@ -34,6 +34,13 @@ var BuildTable = (function() {
     //      $empty: $('#empty'),
     //      canDelete: true,
     //      href: "lolololol.html", // for render link
+    //      checkboxes: false, //defaults to true
+    //      data: [{
+    //          field: 'data to load',
+    //        },
+    //        {
+    //          field: 'if no api url',
+    //        }]
     //  }
     //
     // API call is expected to return something in the form of
@@ -50,15 +57,20 @@ var BuildTable = (function() {
 
     // Build the header
     var $tableHeader = $(tableHeaderTemplate);
-    var $tableHeaderCheckbox = $(checkboxTemplate);
+    var $tableHeaderRow = $(tableRowTemplate);
 
-    $tableHeaderCheckbox.find(':checkbox').on('change', function() {
-      var checkedStatus   = $(this).prop('checked');
-      $table.find(':checkbox').prop('checked', checkedStatus);
-    });
+    if (tableConfig.checkboxes !== false) {
+      var $tableHeaderCheckbox = $(checkboxTemplate);
 
-    var $tableHeaderDataCheckbox = $(tableHeaderDataTemplate).append($tableHeaderCheckbox).css('width', '80px').addClass('text-center');
-    var $tableHeaderRow = $(tableRowTemplate).append($tableHeaderDataCheckbox);
+      $tableHeaderCheckbox.find(':checkbox').on('change', function() {
+        var checkedStatus   = $(this).prop('checked');
+        $table.find(':checkbox').prop('checked', checkedStatus);
+      });
+
+      var $tableHeaderDataCheckbox = $(tableHeaderDataTemplate).append($tableHeaderCheckbox).css('width', '80px').addClass('text-center');
+      $tableHeaderRow.append($tableHeaderDataCheckbox);
+    }
+
     $tableHeader.html($tableHeaderRow);
     $table.append($tableHeader);
 
@@ -112,98 +124,120 @@ var BuildTable = (function() {
     var $pagination = tableConfig.$pagination;
     var ignorePage = false; // set this to prevent infinite looping due to setting max_page
 
+    function load(data) {
+      if (data.count === 0) {
+        $empty.show();
+        $table.closest('.block').hide();
+      }
+      // Clear body frame
+      $tableBody.html('');
+
+      var maxPage = Math.ceil(data.count/data.display);
+
+      if (maxPage > 1) {
+
+        ignorePage = true;
+        $pagination.show()
+        $pagination.jqPagination('option', 'max_page', maxPage);
+        ignorePage = false;
+      } else {
+        $pagination.hide()
+      }
+
+      // Get the models and start loading rows
+      var models = data.models;
+      var modelsLen = data.models.length;
+      for (var m = 0; m < modelsLen; m++) {
+
+        var model = models[m];
+        var $tableRow = $(tableRowTemplate);
+
+        if (tableConfig.checkboxes !== false) {
+          var $tableCheckbox = $(checkboxTemplate);
+          var $tableDataCheckbox = $(tableDataTemplate).append($tableCheckbox).addClass('text-center');
+          $tableRow.append($tableDataCheckbox);
+        }
+
+        for(var c = 0; c < columnLen; c++) {
+          var column = columns[c];
+          var $tableData = $(tableDataTemplate)
+
+          var render = 'text';
+          if (column.render) {
+            render = column.render;
+          }
+
+          // Handle fields in the form of field1.field2.field3
+          var fields = column.field.split('.');
+          var fieldsLen = fields.length;
+
+          var val = model;
+          for (var f = 0; f < fieldsLen; f++) {
+            val = val[fields[f]];
+            // deal with the case where the element does not exist
+            if (val == null) {
+              val = '';
+              break;
+            }
+          }
+
+          // Handle different renders of column formatting
+          if (render == 'text') {
+            val = "" + val;
+            val = val.charAt(0).toUpperCase() + val.slice(1);
+          } else if (render == 'currency' && model.currency) {
+            Util.setCurrency(model.currency);
+            val = Util.renderUICurrencyFromJSON(val);
+            $tableData.addClass('text-right');
+          } else if (render == 'date') {
+            val = (new Date(val)).toDateString();
+          } else if (render == 'number') {
+            $tableData.addClass('text-right');
+          } else if (render == 'id') {
+            val = $('<a href="' + tableConfig.itemUrl + '/' + val + '">' + val + '</a>')
+          } else if (render == 'link') {
+            val = $('<a href="' + column.href + '/' + val + '">' + val + '</a>')
+          } else if (render == 'bool') {
+            val = val ? 'Yes' : 'No';
+          } else if (render && {}.toString.call(render) == '[object Function]') {
+            val = render(val, model);
+          }
+
+          $tableData.html(val);
+          $tableRow.append($tableData);
+        }
+
+        $tableBody.append($tableRow);
+
+        if (tableConfig.canDelete) {
+          var dataDelete = $(deleteTemplate)
+            .on('click', function() { deleteRow(tableConfig.apiUrl + '/' + model.id); });
+
+          var $tableDataDelete = $(tableDataTemplate)
+            .append(dataDelete).css('width', '80px')
+            .addClass('text-center');
+          $tableRow.append($tableDataDelete);
+        }
+      }
+    }
+
+    // if no api data is present, then load and then quit
+    if (tableConfig.apiUrl === '' || tableConfig.apiUrl == null) {
+      $tableDisplay.hide();
+      var fakeData = {
+        page: 1,
+        display: 1000,
+        count: 1000,
+        models: tableConfig.data || [],
+      }
+      load(fakeData);
+      return;
+    }
+
     // Page change callback for filling the body frame
     function paged(page) {
       $.getJSON(path + '&page=' + page + '&display=' + display, function(data){
-        if (data.count === 0) {
-          $empty.show();
-          $table.closest('.block').hide();
-        }
-        // Clear body frame
-        $tableBody.html('');
-
-        var maxPage = Math.ceil(data.count/data.display);
-
-        if (maxPage > 1) {
-          ignorePage = true;
-          $pagination.show()
-          $pagination.jqPagination('option', 'max_page', maxPage);
-          ignorePage = false;
-        } else {
-          $pagination.hide()
-        }
-
-        // Get the models and start loading rows
-        var models = data.models;
-        var modelsLen = data.models.length;
-        for (var m = 0; m < modelsLen; m++) {
-
-          var model = models[m];
-
-          var $tableCheckbox = $(checkboxTemplate);
-          var $tableDataCheckbox = $(tableDataTemplate).append($tableCheckbox).addClass('text-center');
-          var $tableRow = $(tableRowTemplate).append($tableDataCheckbox);
-
-          for(var c = 0; c < columnLen; c++) {
-            var column = columns[c];
-            var $tableData = $(tableDataTemplate)
-
-            var render = 'text';
-            if (column.render) {
-              render = column.render;
-            }
-
-            // Handle fields in the form of field1.field2.field3
-            var fields = column.field.split('.');
-            var fieldsLen = fields.length;
-
-            var val = model;
-            for (var f = 0; f < fieldsLen; f++) {
-              val = val[fields[f]];
-              // deal with the case where the element does not exist
-              if (val == null) {
-                val = '';
-                break;
-              }
-            }
-
-            // Handle different renders of column formatting
-            if (render == 'text') {
-              val = val.charAt(0).toUpperCase() + val.slice(1);
-            } else if (render == 'currency' && model.currency) {
-              Util.setCurrency(model.currency);
-              val = Util.renderUICurrencyFromJSON(val);
-              $tableData.addClass('text-right');
-            } else if (render == 'date') {
-              val = (new Date(val)).toDateString();
-            } else if (render == 'number') {
-              $tableData.addClass('text-right');
-            } else if (render == 'id') {
-              val = $('<a href="' + tableConfig.itemUrl + '/' + val + '">' + val + '</a>')
-            } else if (render == 'link') {
-              val = $('<a href="' + column.href + '/' + val + '">' + val + '</a>')
-            } else if (render == 'bool') {
-              val = val ? 'Yes' : 'No';
-            } else if (render && {}.toString.call(render) == '[object Function]') {
-              val = render(val, model);
-            }
-
-            $tableData.html(val);
-            $tableRow.append($tableData);
-          }
-
-          $tableBody.append($tableRow);
-
-          if (tableConfig.canDelete) {
-            var dataDelete = $(deleteTemplate)
-              .on('click', function() { deleteRow(tableConfig.apiUrl + '/' + model.id); });
-
-            var $tableDataDelete = $(tableDataTemplate)
-              .append(dataDelete).css('width', '80px')
-              .addClass('text-center');
-            $tableRow.append($tableDataDelete);
-          }
-        }
+        load(data);
       });
     }
 

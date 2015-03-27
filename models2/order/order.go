@@ -14,6 +14,7 @@ import (
 	"crowdstart.io/models2/payment"
 	"crowdstart.io/models2/types/currency"
 	"crowdstart.io/util/gob"
+	"crowdstart.io/util/json"
 	"crowdstart.io/util/val"
 
 	. "crowdstart.io/models2"
@@ -193,6 +194,10 @@ func (o *Order) Tally() {
 	o.Tax = currency.Cents(tax)
 	o.Subtotal = currency.Cents(subtotal)
 	o.Total = currency.Cents(total)
+}
+
+func (o Order) ItemsJSON() string {
+	return json.Encode(o.Items)
 }
 
 // var variantsMap map[string]Variant
