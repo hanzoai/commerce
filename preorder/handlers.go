@@ -244,9 +244,7 @@ func SavePreorder(c *gin.Context) {
 
 // GET /login
 func Login(c *gin.Context) {
-
-	redirectUrl := c.Request.Referer()
-	template.Render(c, "login.html", "redirectUrl", redirectUrl)
+	template.Render(c, "login.html")
 }
 
 // POST /login

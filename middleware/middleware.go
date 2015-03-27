@@ -48,7 +48,7 @@ func LoginRequired(moduleName string) gin.HandlerFunc {
 
 		if !loggedIn {
 			log.Debug("Redirecting to login page")
-			c.Redirect(302, config.UrlFor(moduleName, "/login"))
+			c.Redirect(302, config.UrlFor(moduleName, "/login")+"?redirect-url="+c.Request.RequestURI)
 			c.Abort(302)
 		}
 	}
