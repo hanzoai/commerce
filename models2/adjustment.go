@@ -1,5 +1,7 @@
 package models
 
+import "crowdstart.io/models2/types/currency"
+
 type Adjustment struct {
 	// Possible values: flat.
 	Type string `json:"type"`
@@ -8,5 +10,5 @@ type Adjustment struct {
 	// Authorizer of price adjustment.
 	Issuer string `json:"issuer"`
 	// Amount of price adjustment.
-	Amount Cents `json:"amount"`
+	Amount currency.Cents `json:"amount"`
 }

@@ -5,6 +5,7 @@ import (
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
+	"crowdstart.io/models2/types/currency"
 	"crowdstart.io/util/val"
 
 	. "crowdstart.io/models2"
@@ -27,8 +28,8 @@ type Variant struct {
 	Name string `json:"name"`
 
 	// 3-letter ISO currency code (lowercase).
-	Currency CurrencyType `json:"currency"`
-	Price    Cents        `json:"price"`
+	Currency currency.Type  `json:"currency"`
+	Price    currency.Cents `json:"price"`
 
 	// Is the variant available
 	Available bool `json:"available"`

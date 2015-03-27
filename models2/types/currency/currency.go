@@ -1,4 +1,4 @@
-package models
+package currency
 
 // import (
 // 	"github.com/mholt/binding"
@@ -20,9 +20,9 @@ package models
 
 type Cents int
 
-type CurrencyType string
+type Type string
 
-func (t CurrencyType) Symbol() string {
+func (t Type) Symbol() string {
 	switch t {
 	case USD, AUD, CAD:
 		return "$"
@@ -36,9 +36,11 @@ func (t CurrencyType) Symbol() string {
 }
 
 const (
-	USD CurrencyType = "usd"
-	AUD              = "aud"
-	CAD              = "cad"
-	EUR              = "eur"
-	GBP              = "gbp"
+	USD Type = "usd"
+	AUD      = "aud"
+	CAD      = "cad"
+	EUR      = "eur"
+	GBP      = "gbp"
 )
+
+var List = []Type{USD, AUD, CAD, EUR, GBP}

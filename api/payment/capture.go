@@ -6,9 +6,8 @@ import (
 	"crowdstart.io/models2/order"
 	"crowdstart.io/models2/organization"
 	"crowdstart.io/models2/payment"
+	"crowdstart.io/models2/types/currency"
 	"crowdstart.io/thirdparty/stripe2"
-
-	. "crowdstart.io/models2"
 )
 
 func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (*order.Order, error) {
@@ -38,8 +37,8 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (
 			// Update payment
 			p.Captured = true
 			p.Status = payment.Paid
-			p.Amount = Cents(ch.Amount)
-			p.AmountRefunded = Cents(ch.AmountRefunded)
+			p.Amount = currency.Cents(ch.Amount)
+			p.AmountRefunded = currency.Cents(ch.AmountRefunded)
 		}
 	}
 
