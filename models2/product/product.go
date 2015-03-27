@@ -8,6 +8,7 @@ import (
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
+	"crowdstart.io/models2/types/currency"
 	"crowdstart.io/models2/variant"
 	"crowdstart.io/util/gob"
 	"crowdstart.io/util/val"
@@ -33,8 +34,8 @@ type Product struct {
 	SKU  string `json:"sku"`
 
 	// 3-letter ISO currency code (lowercase).
-	Currency CurrencyType `json:"currency"`
-	Price    Cents        `json:"price"`
+	Currency currency.Type  `json:"currency"`
+	Price    currency.Cents `json:"price"`
 
 	Inventory int `json:"inventory"`
 	Sold      int `json:"sold"`
@@ -182,7 +183,7 @@ func (p Product) DisplayPrice() string {
 	return DisplayPrice(p.MinPrice())
 }
 
-func (p Product) MinPrice() Cents {
+func (p Product) MinPrice() currency.Cents {
 	min := p.Variants[0].Price
 
 	for _, v := range p.Variants {

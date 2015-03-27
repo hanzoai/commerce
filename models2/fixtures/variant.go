@@ -3,7 +3,7 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/models2"
+	"crowdstart.io/models2/types/currency"
 	"crowdstart.io/models2/variant"
 )
 
@@ -24,7 +24,7 @@ func Variant(c *gin.Context) []*variant.Variant {
 	v.Options = []variant.Option{variant.Option{Name: "Size", Value: "Much"}}
 	v.ProductId = prod.Id()
 	v.Price = 2000
-	v.Currency = models.USD
+	v.Currency = currency.USD
 	v.MustPut()
 
 	v2 := variant.New(db)
@@ -35,7 +35,7 @@ func Variant(c *gin.Context) []*variant.Variant {
 	v2.Options = []variant.Option{variant.Option{Name: "Size", Value: "Wow"}}
 	v2.ProductId = prod.Id()
 	v2.Price = 2000
-	v2.Currency = models.USD
+	v2.Currency = currency.USD
 	v2.MustPut()
 
 	prod.Variants = []*variant.Variant{v, v2}
