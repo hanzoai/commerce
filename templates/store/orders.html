@@ -19,6 +19,7 @@
                 <td>Price</td>
                 <td>Delivery date</td>
                 <td>Order Creation</td>
+                <td></td>
             </tr>
         </thead>
         <tbody>
@@ -35,6 +36,7 @@
                 </td>
                 <td>{{ order.EstimatedDeliveryHTML()|safe }}</td>
                 <td>{{ order.DisplayCreatedAt() }}</td>
+                <td><a href="{{ urlFor("preorder", "/order", order.Id) }}">Edit</a></td>
             </tr>
             {% endfor %}
         </tbody>
