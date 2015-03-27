@@ -12,6 +12,7 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/models2/payment"
+	"crowdstart.io/models2/types/currency"
 	"crowdstart.io/util/gob"
 	"crowdstart.io/util/val"
 
@@ -52,7 +53,7 @@ type Order struct {
 	Unconfirmed bool `json:"unconfirmed"`
 
 	// 3-letter ISO currency code (lowercase).
-	Currency CurrencyType `json:"currency"`
+	Currency currency.Type `json:"currency"`
 
 	// Type of order
 	Type string `json:"type"`
@@ -61,37 +62,37 @@ type Order struct {
 	ShippingMethod string `json:"shippingMethod"`
 
 	// Sum of the line item amounts. Amount in cents.
-	LineTotal Cents `json:"lineTotal"`
+	LineTotal currency.Cents `json:"lineTotal"`
 
 	// Discount amount applied to the order. Amount in cents.
-	Discount Cents `json:"discount"`
+	Discount currency.Cents `json:"discount"`
 
 	// Sum of line totals less discount. Amount in cents.
-	Subtotal Cents `json:"subtotal"`
+	Subtotal currency.Cents `json:"subtotal"`
 
 	// Shipping cost applied. Amount in cents.
-	Shipping Cents `json:"shipping"`
+	Shipping currency.Cents `json:"shipping"`
 
 	// Sales tax applied. Amount in cents.
-	Tax Cents `json:"tax"`
+	Tax currency.Cents `json:"tax"`
 
 	// Price adjustments applied. Amount in cents.
-	Adjustment Cents `json:"adjustment"`
+	Adjustment currency.Cents `json:"adjustment"`
 
 	// Total = subtotal + shipping + taxes + adjustments. Amount in cents.
-	Total Cents `json:"total"`
+	Total currency.Cents `json:"total"`
 
 	// Amount owed to the seller. Amount in cents.
-	Balance Cents `json:"balance"`
+	Balance currency.Cents `json:"balance"`
 
 	// Gross amount paid to the seller. Amount in cents.
-	Paid Cents `json:"paid"`
+	Paid currency.Cents `json:"paid"`
 
 	// integer	Amount refunded by the seller. Amount in cents.
-	Refunded Cents `json:"refunded"`
+	Refunded currency.Cents `json:"refunded"`
 
 	// integer	Crowdstart application fee. Amount in cents.
-	Fee Cents `json:"fee"`
+	Fee currency.Cents `json:"fee"`
 
 	BillingAddress  Address `json:"billingAddress"`
 	ShippingAddress Address `json:"shippingAddress"`
@@ -181,17 +182,17 @@ func (o *Order) Tally() {
 	for _, item := range o.Items {
 		subtotal += item.Quantity * int(item.Price)
 	}
-	o.LineTotal = Cents(subtotal)
+	o.LineTotal = currency.Cents(subtotal)
 
 	// TODO: Make this use shipping/tax information
 	shipping := 0
 	tax := 0
 	total := tax + shipping + subtotal
 
-	o.Shipping = Cents(shipping)
-	o.Tax = Cents(tax)
-	o.Subtotal = Cents(subtotal)
-	o.Total = Cents(total)
+	o.Shipping = currency.Cents(shipping)
+	o.Tax = currency.Cents(tax)
+	o.Subtotal = currency.Cents(subtotal)
+	o.Total = currency.Cents(total)
 }
 
 // var variantsMap map[string]Variant
