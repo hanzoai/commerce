@@ -123,20 +123,22 @@
     <div class="container">
         <h2 class="site-heading text-center text-light">Sign up here today if you want access to our <strong>Beta Program</strong>!</h2>
         <div class="site-block text-center">
-            <form action="{{ urlFor("platform", "/signup") }}" method="post" class="form-inline" onsubmit="return false;">
+            <form action="//verus.us9.list-manage.com/subscribe/post?u=67f1f2f555cd225fd210eb89e&amp;id=7ff6e72b1a" method="post" class="validate form-inline" target="_blank" novalidate>
                 <div class="form-group">
                     <label class="sr-only" for="register-username">Email</label>
-                    <input type="text" id="register-username" name="register-username" class="form-control input-lg" placeholder="Email">
+                    <input type="email" id="register-username" name="EMAIL" class="form-control input-lg" placeholder="Email">
                 </div>
                 <div class="form-group">
-                    <label class="sr-only" for="register-password">Password</label>
-                    <input type="password" id="register-password" name="register-password" class="form-control input-lg" placeholder="Password">
+                    <label class="sr-only" for="register-password">Full Name</label>
+                    <input type="text" id="register-password" name="NAME" class="form-control input-lg" placeholder="Name">
                 </div>
                 <div class="form-group">
-                    <button type="submit" class="btn btn-lg btn-success">Get Started!</button>
+                    <button type="submit" name="subscribe" class="button btn btn-lg btn-success">Get Started!</button>
                 </div>
+</div>
             </form>
         </div>
+        <script type='text/javascript' src='//s3.amazonaws.com/downloads.mailchimp.com/js/mc-validate.js'></script><script type='text/javascript'>(function($) {window.fnames = new Array(); window.ftypes = new Array();fnames[0]='EMAIL';ftypes[0]='email';fnames[2]='NAME';ftypes[2]='text';}(jQuery));var $mcj = jQuery.noConflict(true);</script>
     </div>
 </section>
 <!-- END Sign Up Action -->
