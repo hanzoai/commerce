@@ -6,14 +6,15 @@ import (
 	"strconv"
 	"strings"
 
+	"crowdstart.io/models2/types/currency"
 	humanize "github.com/dustin/go-humanize"
 )
 
-func FloatPrice(price Cents) float64 {
+func FloatPrice(price currency.Cents) float64 {
 	return math.Floor(float64(price)*100+0.5) / 1000000
 }
 
-func DisplayPrice(price Cents) string {
+func DisplayPrice(price currency.Cents) string {
 	f := strconv.FormatFloat(FloatPrice(price), 'f', 2, 64)
 	bits := strings.Split(f, ".")
 	decimal := bits[1]
