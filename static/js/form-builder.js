@@ -51,7 +51,8 @@ var BuildForm = (function() {
     //                  value: "true",
     //                  message: "this field is required",
     //              }
-    //          ]
+    //          ],
+    //          css: 'text-align:right'
     //      }
     //  ]
     var ruleSets = {};
@@ -172,7 +173,10 @@ var BuildForm = (function() {
       }
 
       $fg.find('label:first').attr('for', inputConfig.id).html(label).addClass('col-md-' + (labelCols || 3));
-      $fg.find('div:first').addClass('col-md-' + (valueCols || 9));
+      var $div = $fg.find('div:first').addClass('col-md-' + (valueCols || 9));
+      if(inputConfig.css){
+        $div.css(inputConfig.css);
+      }
 
       if (inputConfig.$parent != null) {
         inputConfig.$parent.append($fg);
