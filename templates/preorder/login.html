@@ -6,7 +6,7 @@ Login &mdash; {{ siteTitle }}</title>
 
 {% block content %}
 <div class="narrow center content-centered">
-    <form action="" method="post">
+    <form action="?redirect-url={{ redirectUrl }}" method="post">
         <div class="form body">
             <div class="form-group">
             <input type="text" name="Email" class="email form-control" placeholder="Email"/>

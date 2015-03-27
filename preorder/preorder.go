@@ -1,10 +1,12 @@
 package preorder
 
 import (
+	"github.com/gin-gonic/gin"
+
+	"crowdstart.io/config"
 	"crowdstart.io/middleware"
 	"crowdstart.io/util/router"
 	"crowdstart.io/util/template"
-	"github.com/gin-gonic/gin"
 )
 
 func init() {
@@ -12,8 +14,12 @@ func init() {
 
 	loginRequired := middleware.LoginRequired("preorder")
 
-	router.GET("/", Index)
-	router.POST("/", Login)
+	router.GET("/", func(c *gin.Context) {
+		c.Redirect(302, config.UrlFor("store"))
+	})
+
+	router.GET("/login", Login)
+	router.POST("/login", LoginSubmit)
 
 	router.GET("/order/:id", loginRequired, GetPreorder)
 	router.POST("/order/save", loginRequired, SavePreorder)
@@ -25,5 +31,4 @@ func init() {
 	router.GET("/expired-token", func(c *gin.Context) {
 		template.Render(c, "expired-token.html")
 	})
-
 }
