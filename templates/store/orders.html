@@ -17,8 +17,8 @@
                 <td>Order Id</td>
                 <td>Summary</td>
                 <td>Price</td>
-                <td>Delivery date</td>
-                <td>Order Creation</td>
+                <td>Estimated delivery</td>
+                <!-- <td>Order Creation</td> -->
                 <td></td>
             </tr>
         </thead>
@@ -35,7 +35,7 @@
                     <span>$</span><span class="money">{{ order.DisplayTotal()}}&nbsp;</span>
                 </td>
                 <td>{{ order.EstimatedDeliveryHTML()|safe }}</td>
-                <td>{{ order.DisplayCreatedAt() }}</td>
+                <!-- <td>{{ order.DisplayCreatedAt() }}</td> -->
                 <td><a href="{{ urlFor("preorder", "/order", order.Id) }}">Edit</a></td>
             </tr>
             {% endfor %}
