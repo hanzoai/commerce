@@ -8,6 +8,7 @@ import (
 
 	"crowdstart.io/config"
 	"crowdstart.io/models2/types/country"
+	"crowdstart.io/models2/types/currency"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 )
@@ -15,7 +16,8 @@ import (
 var cwd, _ = os.Getwd()
 
 type Constants struct {
-	Countries []country.Country
+	Countries     []country.Country
+	CurrencyTypes []currency.Type
 }
 
 func TemplateSet() *pongo2.TemplateSet {
@@ -43,7 +45,8 @@ func TemplateSet() *pongo2.TemplateSet {
 
 	set.Globals["jsonify"] = json.Encode
 	set.Globals["constants"] = Constants{
-		Countries: country.List,
+		Countries:     country.List,
+		CurrencyTypes: currency.List,
 	}
 	return set
 }
