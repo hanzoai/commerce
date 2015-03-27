@@ -9,6 +9,14 @@
 {% block content_width_class %}cart-width{% endblock %}
 
 {% block content %}
+<style>
+    thead {
+        font-size: 120%;
+    }
+    td {
+        padding: 10px 0 10px 0;
+    }
+</style>
 <div class="shopping-cart">
     {% if orders | length > 0 %}
     <table class="orderTable">
