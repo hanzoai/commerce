@@ -219,27 +219,13 @@
           name: 'currency',
           label: 'Currency',
           value: [
+            {% for type in constants.CurrencyTypes %}
             {
-              id: 'usd',
-              name: '$ USD',
-              selected: true,
+              selected: '{{ type }}' === 'usd',
+              name: '{{ type.Label() }}',
+              id: '{{ type }}',
             },
-            {
-              id: 'aud',
-              name: '$ AUD',
-            },
-            {
-              id: 'cad',
-              name: '$ CAD',
-            },
-            {
-              id: 'eur',
-              name: '€ EUR',
-            },
-            {
-              id: 'gbp',
-              name: '£ GBP',
-            }
+            {% endfor %}
           ],
           type: 'select',
           asterisk: false,
