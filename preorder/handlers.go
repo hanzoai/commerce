@@ -242,30 +242,18 @@ func SavePreorder(c *gin.Context) {
 	c.Redirect(302, config.UrlFor("preorder", "/thanks"))
 }
 
-// GET /
-func Index(c *gin.Context) {
-	template.Render(c, "login.html")
-	return
+// GET /login
+func Login(c *gin.Context) {
 
-	if !auth.IsLoggedIn(c) {
-		template.Render(c, "login.html")
-	} else {
-		user, _ := auth.GetUser(c)
-		tokens := getTokens(c, user.Id)
-
-		// Complain if user doesn't have any tokens
-		if len(tokens) > 0 {
-			// Redirect to order page as they have a valid token
-			c.Redirect(302, "order/"+tokens[0].Id)
-		} else {
-			template.Render(c, "login.html", "message", "No pre-orders found for your account")
-			return
-		}
-	}
+	redirectUrl := c.Request.Referer()
+	template.Render(c, "login.html", "redirectUrl", redirectUrl)
 }
 
-// POST /
-func Login(c *gin.Context) {
+// POST /login
+func LoginSubmit(c *gin.Context) {
+	query := c.Request.URL.Query()
+	redirectUrl := query.Get("redirect-url")
+
 	// Parse login form
 	f := new(auth.LoginForm)
 	if err := f.Parse(c); err != nil {
@@ -280,20 +268,7 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	user, err := auth.GetUser(c)
-	if err != nil {
-		template.Render(c, "login.html", "message", "An error has occured, please try logging in again.")
-	}
-
-	tokens := getTokens(c, user.Id)
-	log.Debug("Tokens: %v", tokens)
-	// Complain if user doesn't have any tokens
-	if len(tokens) > 0 {
-		// Redirect to order page as they have a valid token
-		c.Redirect(302, "order/"+tokens[0].Id)
-	} else {
-		template.Render(c, "login.html", "message", "No pre-orders found for your account")
-	}
+	c.Redirect(302, redirectUrl)
 }
 
 // hasToken checks whether any of the tokens have the id
