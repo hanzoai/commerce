@@ -28,6 +28,8 @@
           </div>
           <h4>Line Items</h4>
           <div id="order-items" class="block">
+            <table id="order-items-table" class="table table-striped table-bordered table-vcenter">
+            </table>
           </div>
           <div class="row">
             <div class = "col-xs-6">
@@ -59,6 +61,7 @@
 <script src="{{ staticUrl }}/js/util.js"></script>
 <script src="{{ staticUrl }}/js/jquery.serialize-object.min.js"></script>
 <script src="{{ staticUrl }}/js/form-builder.js"></script>
+<script src="{{ staticUrl }}/js/table-builder.js"></script>
 <script src="{{ staticUrl }}/js/rest-forms.js"></script>
 <script>
     $(function(){
@@ -287,6 +290,59 @@
           },
         ]);
     });
+
+    var itemsJSON = {{ order.ItemsJSON() | safe }};
+    for (var i = 0; i < itemsJSON.length; i++) {
+        itemsJSON[i].currency = '{{order.Currency}}';
+    }
+    BuildTable($('#order-items-table'), {
+    columns: [
+      {
+        field: 'productId',
+        name: 'Product ID',
+        href: '{{ urlFor("platform", "/product") }}',
+        render: 'link',
+      },
+      {
+        field: 'productName',
+        name: 'Product Name',
+      },
+      {
+        field: 'variantId',
+        name: 'Variant ID',
+        href: '{{ urlFor("api", "/variant2") }}',
+        render: 'link',
+      },
+      {
+        field: 'variantName',
+        name: 'Variant Name',
+      },
+      {
+        field: 'collectionId',
+        name: 'Collection ID',
+        href: '{{ urlFor("api", "/collection2") }}',
+        render: 'link',
+      },
+      {
+        field: 'price',
+        name: 'Price',
+        render: 'currency'
+      },
+      {
+        field: 'quantity',
+        name: 'Quantity',
+      }
+    ],
+    startPage: 1,
+    startDisplay: 10,
+    displayOptions: [5, 10, 20],
+    $display: $('#display'),
+    $pagination: $('#pagination'),
+    $empty: $('#empty-table'),
+    data: itemsJSON,
+    checkboxes: false,
+  });
+
   $.extend(FormSerializer.patterns, {
     validate: /^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*(?:\[\])?$/i
   });
