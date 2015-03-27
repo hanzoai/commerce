@@ -1,5 +1,7 @@
 package currency
 
+import "strings"
+
 // import (
 // 	"github.com/mholt/binding"
 // 	"net/http"
@@ -33,6 +35,10 @@ func (t Type) Symbol() string {
 	}
 
 	return ""
+}
+
+func (t Type) Label() string {
+	return t.Symbol() + " " + strings.ToUpper(string(t))
 }
 
 const (
