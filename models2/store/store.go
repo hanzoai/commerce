@@ -3,8 +3,10 @@ package store
 import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
-	. "crowdstart.io/models2"
 	"crowdstart.io/models2/types/currency"
+	"crowdstart.io/models2/types/shipping"
+
+	. "crowdstart.io/models2"
 )
 
 type Store struct {
@@ -22,11 +24,16 @@ type Store struct {
 	// Taxation information
 	TaxNexus []Address
 
-	// Shipping Table
-	ShippingTable map[string]float64
+	// Shipping Rate Table
+	ShippingRateTable map[string]shipping.Rates
+
+	Salesforce struct {
+		PriceBookId string `json:"PriceBookId"`
+	} `json:"-"`
 }
 
 func (s *Store) Init() {
+	s.ShippingRateTable = make(map[string]shipping.Rates)
 }
 
 func New(db *datastore.Datastore) *Store {
