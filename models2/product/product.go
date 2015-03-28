@@ -36,6 +36,8 @@ type Product struct {
 	// 3-letter ISO currency code (lowercase).
 	Currency currency.Type  `json:"currency"`
 	Price    currency.Cents `json:"price"`
+	// Override for the shipping formula
+	Shipping currency.Cents `json:"shipping"`
 
 	Inventory int `json:"inventory"`
 	Sold      int `json:"sold"`
