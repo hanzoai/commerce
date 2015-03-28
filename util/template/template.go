@@ -45,8 +45,8 @@ func TemplateSet() *pongo2.TemplateSet {
 
 	set.Globals["jsonify"] = json.Encode
 	set.Globals["constants"] = Constants{
-		Countries:     country.List,
-		CurrencyTypes: currency.List,
+		Countries:     country.Countries,
+		CurrencyTypes: currency.Types,
 	}
 	return set
 }
