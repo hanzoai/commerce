@@ -18,6 +18,10 @@ type Store struct {
 	// Unique human readable id for url <slug>.crowdstart.come
 	Slug string `json:"slug"`
 
+	// Where this is hosted if not on crowdstart.com
+	Hostname string `json:"hostname"`
+	Prefix   string `json:"prefix"`
+
 	// Default unit of currency set in UI for store admin
 	DefaultCurrency currency.Type `json:"defaultCurrency"`
 
