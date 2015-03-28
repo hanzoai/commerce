@@ -19,13 +19,13 @@ type Store struct {
 	Slug string `json:"slug"`
 
 	// Default unit of currency set in UI for store admin
-	DefaultCurrencyType currency.Type
+	DefaultCurrency currency.Type `json:"defaultCurrency"`
 
 	// Taxation information
-	TaxNexus []Address
+	TaxNexus []Address `json:"taxNexus"`
 
 	// Shipping Rate Table
-	ShippingRateTable map[string]shipping.Rates
+	ShippingRateTable map[string]shipping.Rates `json:"shippingRates"`
 
 	Salesforce struct {
 		PriceBookId string `json:"PriceBookId"`
