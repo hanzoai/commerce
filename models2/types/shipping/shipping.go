@@ -9,26 +9,30 @@ import (
 	"crowdstart.io/models2/types/weight"
 )
 
-type Type string
+type RateType string
 
 const (
-	Flat     Type = "flat"
-	Variable      = "variable"
+	Flat     RateType = "flat"
+	Variable          = "variable"
 )
 
 // This represents the minimum value of a shipping formula
 //  for example: Shipping = $10 Flat Rate if weight > 10 lbs
 type Formula struct {
-	MinWeight weight.Mass
-	RateType  Type
-	Price     currency.Cents
-	Currency  currency.Type
+	MinWeight weight.Mass    `json:"minWeight"`
+	RateType  RateType       `json:"type"`
+	Price     currency.Cents `json:"price"`
 }
 
-// A collection of shipping rate formulas, all must have a common weight unit
+// A collection of shipping rate formulas, all must have a common weight and currency unit
 type Rates struct {
-	Formulas   []Formula
-	WeightUnit weight.Unit
+	Formulas   []Formula     `json:"formulas"`
+	WeightUnit weight.Unit   `json:"weightUnit"`
+	Currency   currency.Type `json:"currency"`
+
+	// Rate used by default
+	BaseRateType RateType       `json:"type"`
+	BasePrice    currency.Cents `json:"price"`
 }
 
 func (r Rates) Len() int {
@@ -44,29 +48,47 @@ func (r Rates) Less(i, j int) bool {
 }
 
 // To calculate shipping rate, we sort an array of formulas by the MinWeight ascending
-// When we find the first element with a weight greater than a min, we return the shipping price
-func (r Rates) GetCost(p *product.Product) (currency.Cents, currency.Type) {
-	w, _ := weight.Convert(p.Weight, p.WeightUnit, r.WeightUnit)
+// When we find the first element with a weight greater than a min, we calculate using the previous one
+func (r Rates) GetPrice(p *product.Product) (currency.Cents, currency.Type) {
+	// Convert to f units
+	w := weight.Convert(p.Weight, p.WeightUnit, r.WeightUnit)
 
 	sort.Sort(&r)
-	for _, f := range r.Formulas {
-		// Convert to f units
 
-		// Formul
-		if w < p.Weight {
-			continue
+	// i is index of last Formula compared
+	i := -1
+	for j, f := range r.Formulas {
+
+		// Break if MinWeight is less than Product Weight
+		if w < f.MinWeight {
+			break
 		}
 
-		switch f.RateType {
-		case Variable:
-			// Do the math and round up for variable rates
-			return currency.Cents(math.Ceil(float64(w) * float64(f.Price))), f.Currency
-		case Flat:
-			return f.Price, f.Currency
-		}
+		// Set index to current formula
+		i = j
+	}
 
-		return currency.Cents(0), currency.USD
+	if i == -1 {
+		// Use the base rate if weight is less than the first MinWeight
+		return calculateShippingPrice(w, r.BaseRateType, r.BasePrice), r.Currency
+	} else {
+		// Otherwise look up the corresponding formula and use the rates on it
+		f := r.Formulas[i]
+		return calculateShippingPrice(w, f.RateType, f.Price), r.Currency
 	}
 
 	return currency.Cents(0), currency.USD
+}
+
+// helpers
+func calculateShippingPrice(w weight.Mass, rateType RateType, price currency.Cents) currency.Cents {
+	switch rateType {
+	case Variable:
+		// Do the math and round up for variable rates
+		return currency.Cents(math.Ceil(float64(w) * float64(price)))
+		// Flat/other cases
+	default:
+		return price
+	}
+	return currency.Cents(0)
 }
