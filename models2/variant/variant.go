@@ -30,6 +30,7 @@ type Variant struct {
 	// 3-letter ISO currency code (lowercase).
 	Currency currency.Type  `json:"currency"`
 	Price    currency.Cents `json:"price"`
+	Discount currency.Cents `json:"discount"`
 
 	// Is the variant available
 	Available bool `json:"available"`
