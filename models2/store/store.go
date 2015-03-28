@@ -28,7 +28,7 @@ type Store struct {
 	// Taxation information
 	TaxNexus []Address `json:"taxNexus"`
 
-	// Shipping Rate Table
+	// Shipping Rate Table, country name to shipping rate
 	ShippingRateTable map[string]shipping.Rates `json:"shippingRates"`
 
 	Salesforce struct {
