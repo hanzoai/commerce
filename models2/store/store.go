@@ -3,6 +3,8 @@ package store
 import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
+	. "crowdstart.io/models2"
+	"crowdstart.io/models2/types/currency"
 )
 
 type Store struct {
@@ -14,7 +16,14 @@ type Store struct {
 	// Unique human readable id for url <slug>.crowdstart.come
 	Slug string `json:"slug"`
 
-	//
+	// Default unit of currency set in UI for store admin
+	DefaultCurrencyType currency.Type
+
+	// Taxation information
+	TaxNexus []Address
+
+	// Shipping Table
+	ShippingTable map[string]float64
 }
 
 func (s *Store) Init() {
