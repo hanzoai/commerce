@@ -1,5 +1,6 @@
 package weight
 
+type Mass float64
 type Unit string
 
 const (
@@ -9,18 +10,15 @@ const (
 	Gram          = "g"
 )
 
-type Weight struct {
-	Mass float64
-	Unit Unit
-}
-
 // Convert everything to grams
 var conversions = map[Unit]float64{Pound: 453.592, Ounce: 28.3495, Kilogram: 1000, Gram: 1}
 
-func (w Weight) convert(u Unit) Weight {
-	toG := conversions[w.Unit]
-	fromG := 1 / conversions[u]
+func Convert(mass Mass, from, to Unit) (Mass, Unit) {
+	fromG := conversions[from]
+	toG := 1 / conversions[to]
 
 	// Convert to and then from grams
-	return Weight{Mass: w.Mass * toG * fromG, Unit: u}
+	return Mass(float64(mass) * toG * fromG), to
 }
+
+var Units = []Unit{Pound, Ounce, Kilogram, Gram}
