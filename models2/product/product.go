@@ -9,6 +9,7 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/models2/types/currency"
+	"crowdstart.io/models2/types/weight"
 	"crowdstart.io/models2/variant"
 	"crowdstart.io/util/gob"
 	"crowdstart.io/util/val"
@@ -42,9 +43,9 @@ type Product struct {
 	Inventory int `json:"inventory"`
 	Sold      int `json:"sold"`
 
-	Weight     float64  `json:"weight"`
-	WeightUnit MassUnit `json:"weightUnit"`
-	Dimensions string   `json:"dimensions"`
+	Weight     weight.Mass `json:"weight"`
+	WeightUnit weight.Unit `json:"weightUnit"`
+	Dimensions string      `json:"dimensions"`
 
 	Taxable bool `json:"taxable"`
 
