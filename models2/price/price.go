@@ -34,3 +34,7 @@ func New(db *datastore.Datastore) *Price {
 func (p *Price) Validator() *val.Validator {
 	return val.New(p)
 }
+
+func (p Price) Kind() string {
+	return "price2"
+}
