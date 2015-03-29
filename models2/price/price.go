@@ -14,9 +14,8 @@ type Price struct {
 	StoreId string `json:"storeId"`
 
 	//Ids to filter on
-	ProductId    string `json:"productId"`
-	VariantId    string `json:"variantId"`
-	CollectionId string `json:"collectionId"`
+	ProductId string `json:"productId"`
+	VariantId string `json:"variantId"`
 
 	Price    currency.Cents `json:"price"`
 	Currency currency.Type  `json:"currency"`
