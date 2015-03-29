@@ -9,6 +9,7 @@ import (
 	"crowdstart.io/models2/coupon"
 	"crowdstart.io/models2/order"
 	"crowdstart.io/models2/organization"
+	"crowdstart.io/models2/price"
 	"crowdstart.io/models2/product"
 	"crowdstart.io/models2/token"
 	"crowdstart.io/models2/user"
@@ -43,6 +44,7 @@ func init() {
 	rest.New(order.Order{}).Route(router, adminRequired)
 	rest.New(user.User{}).Route(router, adminRequired)
 	rest.New(variant.Variant{}).Route(router, adminRequired)
+	rest.New(price.Price{}).Route(router, adminRequired)
 
 	// Crowdstart APIs, using default namespace (internal use only)
 	campaign := rest.New(campaign.Campaign{})

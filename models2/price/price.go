@@ -1,10 +1,11 @@
-package pricebook
+package price
 
 import (
 	"crowdstart.io/datastore"
 
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/models2/types/currency"
+	"crowdstart.io/util/val"
 )
 
 type Price struct {
@@ -28,4 +29,8 @@ func New(db *datastore.Datastore) *Price {
 	p := new(Price)
 	p.Model = mixin.Model{Db: db, Entity: p}
 	return p
+}
+
+func (p *Price) Validator() *val.Validator {
+	return val.New(p)
 }
