@@ -3,6 +3,7 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
+	"crowdstart.io/models2/price"
 	"crowdstart.io/models2/product"
 	"crowdstart.io/models2/types/currency"
 )
@@ -37,6 +38,13 @@ func Product(c *gin.Context) *product.Product {
 	prod.Currency = currency.USD
 
 	prod.MustPut()
+
+	price := price.New(db)
+	price.StoreId = "test"
+	price.ProductId = prod.Id()
+	price.Price = 1000
+	price.Currency = currency.GBP
+	price.MustPut()
 
 	return prod
 }
