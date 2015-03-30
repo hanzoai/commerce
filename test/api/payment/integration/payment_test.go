@@ -4,11 +4,15 @@ import (
 	"net/http"
 	"testing"
 
+	"appengine"
+
 	apiPayment "crowdstart.io/api/payment"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models2/fixtures"
 	"crowdstart.io/models2/order"
+	"crowdstart.io/models2/organization"
 	"crowdstart.io/models2/payment"
+	"crowdstart.io/models2/user"
 	"crowdstart.io/test/api/payment/requests"
 	"crowdstart.io/util/gincontext"
 	"crowdstart.io/util/json"
@@ -25,25 +29,27 @@ func Test(t *testing.T) {
 }
 
 var (
-	ctx         ae.Context
+	aectx       ae.Context
+	ctx         appengine.Context
 	client      *ginclient.Client
 	accessToken string
 	db          datastore.Datastore
+	org         *organization.Organization
 )
 
 // Setup appengine context
 var _ = BeforeSuite(func() {
-	ctx = ae.NewContext()
+	aectx = ae.NewContext()
 
 	// Mock gin context that we can use with fixtures
-	c := gincontext.New(ctx)
+	c := gincontext.New(aectx)
 	fixtures.User(c)
-	org := fixtures.Organization(c)
+	org = fixtures.Organization(c)
 	fixtures.Product(c)
 	fixtures.Variant(c)
 
 	// Setup client and add routes for payment API
-	client = ginclient.New(ctx)
+	client = ginclient.New(aectx)
 	apiPayment.Route(client.Router)
 
 	// Create organization for tests, accessToken
@@ -55,11 +61,13 @@ var _ = BeforeSuite(func() {
 	client.Setup(func(r *http.Request) {
 		r.Header.Set("Authorization", accessToken)
 	})
+
+	ctx = org.Namespace(aectx)
 })
 
 // Tear-down appengine context
 var _ = AfterSuite(func() {
-	ctx.Close()
+	aectx.Close()
 })
 
 var _ = Describe("Authorize", func() {
@@ -87,13 +95,17 @@ var _ = Describe("Authorize", func() {
 		Expect(key).ToNot(BeNil())
 
 		// User should be in db
-		key, err = payment.New(db).KeyExists(ord.UserId)
+		key, err = user.New(db).KeyExists(ord.UserId)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(key).ToNot(BeNil())
 
 		// Payment should be in db
 		Expect(len(ord.PaymentIds)).To(Equal(1))
+		var payments []payment.Payment
+		payment.Query(db).GetAll(&payments)
+
+		log.Warn("Payments %v", payments)
 		key, err = payment.New(db).KeyExists(ord.PaymentIds[0])
 
 		Expect(err).ToNot(HaveOccurred())
