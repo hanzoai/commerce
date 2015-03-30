@@ -6,6 +6,7 @@ import (
 
 	"crowdstart.io/api/payment"
 	"crowdstart.io/models2/fixtures"
+	"crowdstart.io/test/api/payment/requests"
 	"crowdstart.io/util/gincontext"
 	"crowdstart.io/util/permission"
 	"crowdstart.io/util/test/ae"
@@ -58,7 +59,7 @@ var _ = AfterSuite(func() {
 
 var _ = Describe("Authorize", func() {
 	It("Should create a new Rest object with CRUD routes", func() {
-		w := client.PostRawJSON("/authorize", validOrder)
+		w := client.PostRawJSON("/authorize", requests.ValidOrder)
 		Expect(w.Code).To(Equal(200))
 	})
 })
