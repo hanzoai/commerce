@@ -76,7 +76,7 @@ func Charge(c *gin.Context) {
 	c.JSON(200, ord)
 }
 
-func Route(router *gin.RouterGroup) {
+func Route(router *gin.Engine) {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
 
