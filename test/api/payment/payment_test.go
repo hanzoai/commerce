@@ -7,6 +7,7 @@ import (
 	"crowdstart.io/api/payment"
 	"crowdstart.io/models2/fixtures"
 	"crowdstart.io/util/gincontext"
+	"crowdstart.io/util/permission"
 	"crowdstart.io/util/test/ae"
 	"crowdstart.io/util/test/ginclient"
 
@@ -26,7 +27,6 @@ var (
 // Setup appengine context
 var _ = BeforeSuite(func() {
 	ctx = ae.NewContext()
-	db := datastore.New(ctx)
 
 	// Setup client and add routes for payment API
 	client := ginclient.New(ctx)
@@ -58,12 +58,7 @@ var _ = Describe("Authorize", func() {
 			r.Header.Set("Authorization", accessToken)
 		})
 
-		req := payment.AuthorizationReq{}
-		req.User_ = user.New(db)
-		req.Payment_ = payment.New(db)
-		req.Order = order.New(db)
-
-		w := client.PostJSON("/authorize", req)
+		w := client.PostRawJSON("/authorize", validOrder)
 		Expect(w.Code).To(Equal(200))
 	})
 })
