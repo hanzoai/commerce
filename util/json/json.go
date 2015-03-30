@@ -1,6 +1,7 @@
 package json
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -44,6 +45,14 @@ func Decode(body io.ReadCloser, v interface{}) error {
 
 func DecodeBytes(data []byte, v interface{}) error {
 	err := json.Unmarshal(data, v)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func DecodeBuffer(buf *bytes.Buffer, v interface{}) error {
+	err := json.Unmarshal(buf.Bytes(), v)
 	if err != nil {
 		return err
 	}
