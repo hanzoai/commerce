@@ -81,6 +81,7 @@ var _ = Describe("Authorize", func() {
 
 		// Order should be in db
 		key, err := order.New(db).KeyExists(ord.Id())
+		log.Debug("Err %v", err)
 
 		Expect(err).ToNot(HaveOccurred())
 		Expect(key).ToNot(BeNil())
