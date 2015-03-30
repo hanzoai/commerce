@@ -4,11 +4,15 @@ import (
 	"net/http"
 	"testing"
 
-	"crowdstart.io/api/payment"
+	apiPayment "crowdstart.io/api/payment"
+	"crowdstart.io/datastore"
 	"crowdstart.io/models2/fixtures"
 	"crowdstart.io/models2/order"
+	"crowdstart.io/models2/payment"
 	"crowdstart.io/test/api/payment/requests"
 	"crowdstart.io/util/gincontext"
+	"crowdstart.io/util/json"
+	"crowdstart.io/util/log"
 	"crowdstart.io/util/permission"
 	"crowdstart.io/util/test/ae"
 	"crowdstart.io/util/test/ginclient"
@@ -24,6 +28,7 @@ var (
 	ctx         ae.Context
 	client      *ginclient.Client
 	accessToken string
+	db          datastore.Datastore
 )
 
 // Setup appengine context
@@ -39,7 +44,7 @@ var _ = BeforeSuite(func() {
 
 	// Setup client and add routes for payment API
 	client = ginclient.New(ctx)
-	payment.Route(client.Router)
+	apiPayment.Route(client.Router)
 
 	// Create organization for tests, accessToken
 	accessToken = org.AddToken("test-published-key", permission.Admin)
@@ -59,9 +64,38 @@ var _ = AfterSuite(func() {
 
 var _ = Describe("Authorize", func() {
 	It("Should save new order successfully", func() {
+		// Should come back with 200
 		w := client.PostRawJSON("/authorize", requests.ValidOrder)
-		ord := order.Order{}
-
 		Expect(w.Code).To(Equal(200))
+
+		log.Debug("JSON %v", w.Body)
+
+		// Payment and Order info should be in the dv
+		db := datastore.New(ctx)
+		ord := order.New(db)
+
+		err := json.DecodeBuffer(w.Body, &ord)
+		Expect(err).ToNot(HaveOccurred())
+
+		log.Debug("Order %v", ord)
+
+		// Order should be in db
+		key, err := order.New(db).KeyExists(ord.Id())
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(key).ToNot(BeNil())
+
+		// User should be in db
+		key, err = payment.New(db).KeyExists(ord.UserId)
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(key).ToNot(BeNil())
+
+		// Payment should be in db
+		Expect(len(ord.PaymentIds)).To(Equal(1))
+		key, err = payment.New(db).KeyExists(ord.PaymentIds[0])
+
+		Expect(err).ToNot(HaveOccurred())
+		Expect(key).ToNot(BeNil())
 	})
 })
