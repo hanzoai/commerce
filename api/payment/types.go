@@ -29,7 +29,7 @@ func (ar *AuthorizationReq) User() (*user.User, error) {
 
 func (ar *AuthorizationReq) Payment() (*payment.Payment, error) {
 	pay := ar.Payment_
-	pay.Model.Entity = ar.User_
+	pay.Model.Entity = ar.Payment_
 	pay.Model.Db = ar.Order.Db
 
 	pay.Status = "unpaid"
