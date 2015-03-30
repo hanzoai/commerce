@@ -1,6 +1,6 @@
-package test
+package requests
 
-var validOrder = `
+var ValidOrder = `
 {
   "payment": {
     "type": "stripe",
