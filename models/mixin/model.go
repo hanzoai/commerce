@@ -237,7 +237,7 @@ func (m *Model) KeyExists(key interface{}) (datastore.Key, error) {
 	}
 
 	keys, err := m.Query().Filter("__key__", m.key).KeysOnly().GetAll(nil)
-	if err != nil && err != aeds.ErrNoSuchEntity && len(keys) != 1 {
+	if err != nil || len(keys) != 1 {
 		return nil, err
 	}
 	m.SetKey(keys[0])
