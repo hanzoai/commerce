@@ -236,7 +236,6 @@ func (m *Model) KeyExists(key interface{}) (datastore.Key, error) {
 		}
 	}
 
-	log.Warn("%v", m.key.IntID())
 	keys, err := m.Query().Filter("__key__=", m.key).KeysOnly().GetAll(nil)
 	if err != nil || len(keys) != 1 {
 		return nil, err
