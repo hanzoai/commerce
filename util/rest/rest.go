@@ -14,6 +14,7 @@ import (
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/permission"
+	"crowdstart.io/util/router"
 )
 
 var restApis = make([]*Rest, 0)
@@ -86,7 +87,7 @@ func New(entityOrPrefix interface{}, args ...interface{}) *Rest {
 	return r
 }
 
-func (r Rest) Route(router Router, args ...gin.HandlerFunc) {
+func (r Rest) Route(router router.Router, args ...gin.HandlerFunc) {
 	prefix := r.Prefix + r.Kind
 	prefix = "/" + strings.TrimLeft(prefix, "/")
 
