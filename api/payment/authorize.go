@@ -92,9 +92,9 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	ord.PaymentIds = append(ord.PaymentIds, pay.Id())
 
 	// Save user, order, payment
-	usr.Put()
-	ord.Put()
-	pay.Put()
+	usr.MustPut()
+	ord.MustPut()
+	pay.MustPut()
 
 	return ord, nil
 }
