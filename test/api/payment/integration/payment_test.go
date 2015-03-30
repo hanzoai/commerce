@@ -29,17 +29,16 @@ var (
 var _ = BeforeSuite(func() {
 	ctx = ae.NewContext()
 
-	// Setup client and add routes for payment API
-	client := ginclient.New(ctx)
-	payment.Route(client.Router)
-
 	// Mock gin context that we can use with fixtures
 	c := gincontext.New(ctx)
-
 	fixtures.User(c)
 	org := fixtures.Organization(c)
 	fixtures.Product(c)
 	fixtures.Variant(c)
+
+	// Setup client and add routes for payment API
+	client = ginclient.New(ctx)
+	payment.Route(client.Router)
 
 	// Create organization for tests, accessToken
 	accessToken = org.AddToken("test-published-key", permission.Admin)
@@ -58,7 +57,7 @@ var _ = AfterSuite(func() {
 })
 
 var _ = Describe("Authorize", func() {
-	It("Should create a new Rest object with CRUD routes", func() {
+	It("Should save new order successfully", func() {
 		w := client.PostRawJSON("/authorize", requests.ValidOrder)
 		Expect(w.Code).To(Equal(200))
 	})
