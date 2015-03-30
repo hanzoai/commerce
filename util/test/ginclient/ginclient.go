@@ -18,7 +18,7 @@ type setupFn func(c *http.Request)
 type Client struct {
 	Router  *gin.Engine
 	Context *gin.Context
-	setup   setupFn
+	setupFn setupFn
 }
 
 func newRouter(ctx ae.Context) *gin.Engine {
@@ -30,10 +30,11 @@ func newRouter(ctx ae.Context) *gin.Engine {
 }
 
 func New(ctx ae.Context) *Client {
-	client := new(Client)
+	c := new(Client)
 	router := newRouter(ctx)
-	client.Router = router
-	return client
+	c.Router = router
+	c.Setup(func(r *http.Request) {})
+	return c
 }
 
 func Handler(ctx ae.Context, method, path string, handler gin.HandlerFunc) *Client {
@@ -63,18 +64,20 @@ func Middleware(ctx ae.Context, mw gin.HandlerFunc) *Client {
 	return client
 }
 
-func (c *Client) Setup(setup setupFn) {
-	c.setup = setup
+func (c *Client) Setup(fn setupFn) {
+	c.setupFn = fn
 }
 
 func (c *Client) NewRequest(method, path string, reader io.Reader) *http.Request {
+	// Create new request
 	req, err := http.NewRequest(method, path, reader)
 	if err != nil {
 		panic(err)
 	}
-	if c.setup != nil {
-		c.setup(req)
-	}
+
+	// Run any sort of setup code necessary
+	c.setupFn(req)
+
 	return req
 }
 
