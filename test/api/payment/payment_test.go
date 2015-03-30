@@ -44,6 +44,11 @@ var _ = BeforeSuite(func() {
 	accessToken = org.AddToken("test-published-key", permission.Admin)
 	err := org.Put()
 	Expect(err).NotTo(HaveOccurred())
+
+	// Set authorization header for subsequent requests
+	client.Setup(func(r *http.Request) {
+		r.Header.Set("Authorization", accessToken)
+	})
 })
 
 // Tear-down appengine context
@@ -53,11 +58,6 @@ var _ = AfterSuite(func() {
 
 var _ = Describe("Authorize", func() {
 	It("Should create a new Rest object with CRUD routes", func() {
-		// Set authorization header for subsequent requests
-		client.Setup(func(r *http.Request) {
-			r.Header.Set("Authorization", accessToken)
-		})
-
 		w := client.PostRawJSON("/authorize", validOrder)
 		Expect(w.Code).To(Equal(200))
 	})
