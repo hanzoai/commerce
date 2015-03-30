@@ -3,11 +3,12 @@ package task
 import (
 	"github.com/gin-gonic/gin"
 
+	"crowdstart.io/util/router"
 	"crowdstart.io/util/template"
 )
 
 // Setup handlers for HTTP registered tasks
-func SetupRoutes(router *gin.RouterGroup) {
+func SetupRoutes(router router.Router) {
 	// Redirects
 	router.GET("/task", func(c *gin.Context) {
 		c.Redirect(301, "/tasks")
