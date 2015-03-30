@@ -6,6 +6,7 @@ import (
 
 	"crowdstart.io/api/payment"
 	"crowdstart.io/models2/fixtures"
+	"crowdstart.io/test/api/payment/requests"
 	"crowdstart.io/util/gincontext"
 	"crowdstart.io/util/permission"
 	"crowdstart.io/util/test/ae"
@@ -44,6 +45,11 @@ var _ = BeforeSuite(func() {
 	accessToken = org.AddToken("test-published-key", permission.Admin)
 	err := org.Put()
 	Expect(err).NotTo(HaveOccurred())
+
+	// Set authorization header for subsequent requests
+	client.Setup(func(r *http.Request) {
+		r.Header.Set("Authorization", accessToken)
+	})
 })
 
 // Tear-down appengine context
@@ -53,12 +59,7 @@ var _ = AfterSuite(func() {
 
 var _ = Describe("Authorize", func() {
 	It("Should create a new Rest object with CRUD routes", func() {
-		// Set authorization header for subsequent requests
-		client.Setup(func(r *http.Request) {
-			r.Header.Set("Authorization", accessToken)
-		})
-
-		w := client.PostRawJSON("/authorize", validOrder)
+		w := client.PostRawJSON("/authorize", requests.ValidOrder)
 		Expect(w.Code).To(Equal(200))
 	})
 })
