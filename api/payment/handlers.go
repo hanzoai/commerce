@@ -7,6 +7,7 @@ import (
 	"crowdstart.io/models2/order"
 	"crowdstart.io/models2/organization"
 	"crowdstart.io/util/permission"
+	"crowdstart.io/util/router"
 	"github.com/gin-gonic/gin"
 )
 
@@ -76,7 +77,7 @@ func Charge(c *gin.Context) {
 	c.JSON(200, ord)
 }
 
-func Route(router *gin.Engine) {
+func Route(router router.Router) {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
 
