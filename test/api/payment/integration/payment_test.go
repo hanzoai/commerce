@@ -6,6 +6,7 @@ import (
 
 	"crowdstart.io/api/payment"
 	"crowdstart.io/models2/fixtures"
+	"crowdstart.io/models2/order"
 	"crowdstart.io/test/api/payment/requests"
 	"crowdstart.io/util/gincontext"
 	"crowdstart.io/util/permission"
@@ -59,6 +60,8 @@ var _ = AfterSuite(func() {
 var _ = Describe("Authorize", func() {
 	It("Should save new order successfully", func() {
 		w := client.PostRawJSON("/authorize", requests.ValidOrder)
+		ord := order.Order{}
+
 		Expect(w.Code).To(Equal(200))
 	})
 })
