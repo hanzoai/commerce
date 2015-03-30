@@ -70,45 +70,47 @@ var _ = AfterSuite(func() {
 	aectx.Close()
 })
 
-var _ = Describe("Authorize", func() {
-	It("Should save new order successfully", func() {
-		// Should come back with 200
-		w := client.PostRawJSON("/authorize", requests.ValidOrder)
-		Expect(w.Code).To(Equal(200))
+var _ = Describe("Payment API", func() {
+	Context("Authorize", func() {
+		It("Should save new order successfully", func() {
+			// Should come back with 200
+			w := client.PostRawJSON("/authorize", requests.ValidOrder)
+			Expect(w.Code).To(Equal(200))
 
-		log.Debug("JSON %v", w.Body)
+			log.Debug("JSON %v", w.Body)
 
-		// Payment and Order info should be in the dv
-		db := datastore.New(ctx)
-		ord := order.New(db)
+			// Payment and Order info should be in the dv
+			db := datastore.New(ctx)
+			ord := order.New(db)
 
-		err := json.DecodeBuffer(w.Body, &ord)
-		Expect(err).ToNot(HaveOccurred())
+			err := json.DecodeBuffer(w.Body, &ord)
+			Expect(err).ToNot(HaveOccurred())
 
-		log.Debug("Order %v", ord)
+			log.Debug("Order %v", ord)
 
-		// Order should be in db
-		key, err := order.New(db).KeyExists(ord.Id())
-		log.Debug("Err %v", err)
+			// Order should be in db
+			key, err := order.New(db).KeyExists(ord.Id())
+			log.Debug("Err %v", err)
 
-		Expect(err).ToNot(HaveOccurred())
-		Expect(key).ToNot(BeNil())
+			Expect(err).ToNot(HaveOccurred())
+			Expect(key).ToNot(BeNil())
 
-		// User should be in db
-		key, err = user.New(db).KeyExists(ord.UserId)
+			// User should be in db
+			key, err = user.New(db).KeyExists(ord.UserId)
 
-		Expect(err).ToNot(HaveOccurred())
-		Expect(key).ToNot(BeNil())
+			Expect(err).ToNot(HaveOccurred())
+			Expect(key).ToNot(BeNil())
 
-		// Payment should be in db
-		Expect(len(ord.PaymentIds)).To(Equal(1))
-		var payments []payment.Payment
-		payment.Query(db).GetAll(&payments)
+			// Payment should be in db
+			Expect(len(ord.PaymentIds)).To(Equal(1))
+			var payments []payment.Payment
+			payment.Query(db).GetAll(&payments)
 
-		log.Warn("Payments %v", payments)
-		key, err = payment.New(db).KeyExists(ord.PaymentIds[0])
+			log.Warn("Payments %v", payments)
+			key, err = payment.New(db).KeyExists(ord.PaymentIds[0])
 
-		Expect(err).ToNot(HaveOccurred())
-		Expect(key).ToNot(BeNil())
+			Expect(err).ToNot(HaveOccurred())
+			Expect(key).ToNot(BeNil())
+		})
 	})
 })
