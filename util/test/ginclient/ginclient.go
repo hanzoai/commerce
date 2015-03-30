@@ -4,10 +4,12 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/util/gincontext"
+	"crowdstart.io/util/json"
 	"crowdstart.io/util/test/ae"
 )
 
@@ -90,5 +92,20 @@ func (c *Client) Get(path string) *httptest.ResponseRecorder {
 func (c *Client) Post(path, bodyType string, reader io.Reader) *httptest.ResponseRecorder {
 	req := c.NewRequest("POST", path, reader)
 	req.Header.Set("Content-Type", bodyType)
+	return c.Do(req)
+}
+
+func (c *Client) PostJSON(path string, src interface{}) *httptest.ResponseRecorder {
+	encoded := json.Encode(src)
+	reader := strings.NewReader(encoded)
+	req := c.NewRequest("POST", path, reader)
+	req.Header.Set("Content-Type", "application/json")
+	return c.Do(req)
+}
+
+func (c *Client) PostRawJSON(path string, src string) *httptest.ResponseRecorder {
+	reader := strings.NewReader(src)
+	req := c.NewRequest("POST", path, reader)
+	req.Header.Set("Content-Type", "application/json")
 	return c.Do(req)
 }

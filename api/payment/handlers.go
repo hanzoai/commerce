@@ -6,6 +6,7 @@ import (
 	"crowdstart.io/middleware"
 	"crowdstart.io/models2/order"
 	"crowdstart.io/models2/organization"
+	"crowdstart.io/util/permission"
 	"github.com/gin-gonic/gin"
 )
 
@@ -73,4 +74,17 @@ func Charge(c *gin.Context) {
 
 	c.Writer.Header().Add("Location", orderEndpoint+ord.Id())
 	c.JSON(200, ord)
+}
+
+func Route(router *gin.RouterGroup) {
+	adminRequired := middleware.TokenRequired(permission.Admin)
+	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
+
+	router.POST("/charge", publishedRequired, Charge)
+	router.POST("/order/:id/charge", publishedRequired, Charge)
+
+	// Two Step Payment API ("Auth & Capture")
+	router.POST("/authorize", publishedRequired, Authorize)
+	router.POST("/order/:id/authorize", publishedRequired, Authorize)
+	router.POST("/order/:id/capture", adminRequired, Capture)
 }
