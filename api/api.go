@@ -22,7 +22,6 @@ func init() {
 	router := router.New("api")
 
 	adminRequired := middleware.TokenRequired(permission.Admin)
-	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
 	methodOverride := middleware.MethodOverride()
 
 	// Organization APIs, namespaced by organization
