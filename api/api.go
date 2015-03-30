@@ -28,13 +28,7 @@ func init() {
 	// Organization APIs, namespaced by organization
 
 	// One Step Payment API
-	router.POST("/charge", publishedRequired, payment.Charge)
-	router.POST("/order/:id/charge", publishedRequired, payment.Charge)
-
-	// Two Step Payment API ("Auth & Capture")
-	router.POST("/authorize", publishedRequired, payment.Authorize)
-	router.POST("/order/:id/authorize", publishedRequired, payment.Authorize)
-	router.POST("/order/:id/capture", adminRequired, payment.Capture)
+	payment.Route(router)
 
 	// Models with public RESTful API
 	rest.New(coupon.Coupon{}).Route(router, adminRequired)
