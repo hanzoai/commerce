@@ -18,8 +18,9 @@ import (
 
 // Alias Done error
 var (
-	Done       = aeds.Done
-	InvalidKey = errors.New("Invalid key")
+	Done        = aeds.Done
+	InvalidKey  = errors.New("Invalid key")
+	KeyNotFound = errors.New("Key not found")
 )
 
 type Datastore struct {
