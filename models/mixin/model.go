@@ -237,9 +237,16 @@ func (m *Model) KeyExists(key interface{}) (datastore.Key, error) {
 	}
 
 	keys, err := m.Query().Filter("__key__=", m.key).KeysOnly().GetAll(nil)
-	if err != nil || len(keys) != 1 {
+	// Something bad happened
+	if err != nil {
 		return nil, err
 	}
+
+	// We couldn't find it
+	if len(keys) != 1 {
+		return nil, datastore.KeyNotFound
+	}
+
 	m.SetKey(keys[0])
 	return keys[0], nil
 }
