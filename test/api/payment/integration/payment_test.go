@@ -120,7 +120,6 @@ func FirstTimeSuccessfulOrderTest(isCharge bool) testHelperReturn {
 	var payments []payment.Payment
 	payment.Query(db).GetAll(&payments)
 
-	log.Warn("Payments %v", payments)
 	pay := payment.New(db)
 	err = pay.Get(ord.PaymentIds[0])
 
