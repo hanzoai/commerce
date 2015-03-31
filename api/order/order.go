@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"crowdstart.io/datastore"
+	"crowdstart.io/middleware"
 	"crowdstart.io/models2/order"
 	"crowdstart.io/models2/payment"
 	"crowdstart.io/util/json"
@@ -17,7 +18,10 @@ var orderApi = rest.New(order.Order{})
 func Route(router router.Router, args ...gin.HandlerFunc) {
 	orderApi.GET("/:id/payments", func(c *gin.Context) {
 		id := c.Params.ByName("id")
-		db := datastore.New(c)
+		org := middleware.GetOrganization(c)
+		ctx := middleware.GetAppEngine(c)
+		ctx = org.Namespace(ctx)
+		db := datastore.New(ctx)
 		ord := order.New(db)
 
 		err := ord.Get(id)
