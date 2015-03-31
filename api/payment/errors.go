@@ -8,7 +8,6 @@ var (
 	FailedToDecodeRequestBody = errors.New("Failed to decode request body")
 	FailedToCreateCustomer    = errors.New("Failed to create customer")
 	FailedToCreateUser        = errors.New("Failed to create user")
-	FailedToCaptureCharge     = errors.New("Failed to capture charge")
 	UnsupportedPaymentType    = errors.New("Unsupported payment type")
 	OnlyOneOfUserBuyerAllowed = errors.New("Only one of user buyer allowed")
 )
