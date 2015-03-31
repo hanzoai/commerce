@@ -1,11 +1,21 @@
 package test
 
 import (
+	"crowdstart.io/models2/payment"
 	"crowdstart.io/models2/user"
 	"crowdstart.io/util/log"
 
 	. "crowdstart.io/util/test/ginkgo"
 )
+
+func stripeVerifyAuth(pay *payment.Payment) {
+	c, err := sc.Charges.Get(pay.ChargeId, nil)
+	Expect(c).ToNot(BeNil())
+	Expect(err).ToNot(HaveOccurred())
+
+	Expect(c.Captured).To(BeFalse())
+	log.Debug("StripeVerifyAuth Results:\n%v\n%v", c, err)
+}
 
 func stripeVerifyUser(usr *user.User) {
 	c, err := sc.Customers.Get(usr.Accounts.Stripe.CustomerId, nil)
