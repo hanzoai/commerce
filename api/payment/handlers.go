@@ -6,6 +6,7 @@ import (
 	"crowdstart.io/middleware"
 	"crowdstart.io/models2/order"
 	"crowdstart.io/models2/organization"
+	"crowdstart.io/util/json"
 	"crowdstart.io/util/permission"
 	"crowdstart.io/util/router"
 	"github.com/gin-gonic/gin"
@@ -32,7 +33,8 @@ func Authorize(c *gin.Context) {
 
 	var err error
 	if ord, err = authorize(c, org, ord); err != nil {
-		panic(err)
+		json.Fail(c, 500, "Error during authorize", err)
+		return
 	}
 
 	c.Writer.Header().Add("Location", orderEndpoint+ord.Id())
@@ -45,14 +47,16 @@ func Capture(c *gin.Context) {
 	// Fetch order for which we shall capture charges
 	id := c.Params.ByName("id")
 	if err := ord.Get(id); err != nil {
-		panic(err)
+		json.Fail(c, 500, "Error looking up order", err)
+		return
 	}
 
 	// Do capture using order we've found
 	var err error
 	ord, err = capture(c, org, ord)
 	if err != nil {
-		panic(err)
+		json.Fail(c, 500, "Error during capture", err)
+		return
 	}
 
 	c.JSON(200, ord)
@@ -64,13 +68,15 @@ func Charge(c *gin.Context) {
 	// Do authorization
 	ord, err := authorize(c, org, ord)
 	if err != nil {
-		panic(err)
+		json.Fail(c, 500, "Error during authorize", err)
+		return
 	}
 
 	// Do capture using order from authorization
 	ord, err = capture(c, org, ord)
 	if err != nil {
-		panic(err)
+		json.Fail(c, 500, "Error during capture", err)
+		return
 	}
 
 	c.Writer.Header().Add("Location", orderEndpoint+ord.Id())
