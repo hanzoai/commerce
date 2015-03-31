@@ -216,9 +216,6 @@ func (c Client) NewCharge(source interface{}, pay *payment.Payment) (*Charge, er
 		return nil, NewError(err)
 	}
 
-	// Set Charge Id
-	pay.Account.ChargeId = ch.ID
-
 	return (*Charge)(ch), err
 }
 
