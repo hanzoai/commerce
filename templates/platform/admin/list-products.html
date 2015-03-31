@@ -143,7 +143,7 @@
         }
       ],
       itemUrl: '{{ urlFor("platform", "/product") }}',
-      apiUrl: '{{ urlFor("api", "/product2") }}',
+      apiUrl: '{{ urlFor("api", "/product") }}',
       apiToken: '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}',
       startPage: 1,
       startDisplay: 5,
@@ -283,7 +283,7 @@
   });
 
 var api = NewRestAPI(
-    '{{ urlFor("api", "/product2") }}',
+    '{{ urlFor("api", "/product") }}',
     '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}',
     $('#form-new-product'),
     {
