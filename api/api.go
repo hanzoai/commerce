@@ -38,7 +38,7 @@ func init() {
 	rest.New(user.User{}).Route(router, adminRequired)
 	rest.New(payment.Payment{}).Route(router, adminRequired)
 	rest.New(variant.Variant{}).Route(router, adminRequired)
-	orderApi.Route(router)
+	orderApi.Route(router, adminRequired)
 
 	// Crowdstart APIs, using default namespace (internal use only)
 	campaign := rest.New(campaign.Campaign{})
