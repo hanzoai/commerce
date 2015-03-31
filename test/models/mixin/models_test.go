@@ -25,7 +25,7 @@ var _ = Describe("models/mixin Model", func() {
 			// Manually create a new user and store in datastore
 			user := new(User)
 			user.Name = "Dustin"
-			key, err := db.Put("user2", user)
+			key, err := db.Put("user", user)
 			Expect(err).NotTo(HaveOccurred())
 
 			// Retrieve user from datastore using Model mixin
