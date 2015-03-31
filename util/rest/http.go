@@ -22,6 +22,7 @@ import (
 // Wrapped model, with a few display helpers
 type endpoint struct {
 	mixin.Model
+	rest   *Rest
 	id     string
 	count  string
 	prefix string
@@ -31,6 +32,7 @@ type endpoint struct {
 func newEndpoint(db *datastore.Datastore, r *Rest) *endpoint {
 	endpoint := new(endpoint)
 	endpoint.prefix = strings.TrimLeft(r.Prefix, "/")
+	endpoint.rest = r
 	endpoint.kind = r.Kind
 	endpoint.Model = mixin.Model{Db: db, Entity: r.newKind()}
 	return endpoint
