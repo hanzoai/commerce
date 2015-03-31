@@ -8,15 +8,13 @@ import (
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
-	"crowdstart.io/models/fixtures"
+	// "crowdstart.io/models/fixtures"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/queries"
 	"crowdstart.io/util/test/ae"
-	. "crowdstart.io/util/test/ginkgo"
 	"crowdstart.io/util/test/httpclient"
 
-	// Imported so we can call fixtures tasks from here
-	_ "crowdstart.io/models/fixtures"
+	. "crowdstart.io/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {
@@ -51,8 +49,8 @@ var _ = BeforeSuite(func() {
 	client = httpclient.New(ctx, "store")
 
 	// Install product fixtures so we can access store pages
-	fixtures.Products(ctx)
-	fixtures.TestUsers(ctx)
+	// fixtures.Products(ctx)
+	// fixtures.TestUsers(ctx)
 })
 
 var _ = AfterSuite(func() {
