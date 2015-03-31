@@ -50,6 +50,8 @@ type Variant struct {
 	WeightUnit MassUnit `json:"weightUnit"`
 	Dimensions string   `json:"dimensions"`
 
+	Taxable bool `json:"taxable"`
+
 	Options []Option `json:"options"`
 }
 
