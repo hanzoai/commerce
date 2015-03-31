@@ -13,6 +13,7 @@ import (
 	"crowdstart.io/models2/payment"
 	"crowdstart.io/models2/user"
 	"crowdstart.io/test/api/payment/requests"
+	"crowdstart.io/thirdparty/stripe"
 	"crowdstart.io/util/gincontext"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
@@ -33,6 +34,7 @@ var (
 	accessToken string
 	db          *datastore.Datastore
 	org         *organization.Organization
+	sc          *stripe.Client
 )
 
 // Setup appengine context
@@ -59,6 +61,8 @@ var _ = BeforeSuite(func() {
 	client.Setup(func(r *http.Request) {
 		r.Header.Set("Authorization", accessToken)
 	})
+
+	sc = stripe.New(ctx, org.Stripe.Test.AccessToken)
 
 	// Save namespaced db
 	db = datastore.New(org.Namespace(ctx))
@@ -94,10 +98,12 @@ var _ = Describe("payment", func() {
 			Expect(key).ToNot(BeNil())
 
 			// User should be in db
-			key, err = user.New(db).KeyExists(ord.UserId)
+			usr := user.New(db)
+			err = usr.Get(ord.UserId)
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(key).ToNot(BeNil())
+			Expect(usr.Key()).ToNot(BeNil())
+			stripeVerifyUser(usr)
 
 			// Payment should be in db
 			Expect(len(ord.PaymentIds)).To(Equal(1))
@@ -105,10 +111,12 @@ var _ = Describe("payment", func() {
 			payment.Query(db).GetAll(&payments)
 
 			log.Warn("Payments %v", payments)
-			key, err = payment.New(db).KeyExists(ord.PaymentIds[0])
+			pay := payment.New(db)
+			err = pay.Get(ord.PaymentIds[0])
 
 			Expect(err).ToNot(HaveOccurred())
-			Expect(key).ToNot(BeNil())
+			Expect(pay.Key()).ToNot(BeNil())
+			stripeVerifyCards(usr, []string{pay.Account.CardId})
 		})
 	})
 
@@ -123,10 +131,15 @@ var _ = Describe("payment", func() {
 		err := json.DecodeBuffer(w.Body, &ord)
 		Expect(err).ToNot(HaveOccurred())
 
+		// Fetch the payment for the order to test later
+		pay1 := payment.New(db)
+		pay1.Get(ord.PaymentIds[0])
+
 		// Save user, customerId from first order
 		usr := user.New(db)
 		usr.Get(ord.UserId)
 		customerId := usr.Accounts.Stripe.CustomerId
+		stripeVerifyUser(usr)
 
 		// Returning user, should reuse stripe customer id
 		body := fmt.Sprintf(requests.ReturningUserOrder, usr.Id())
@@ -140,8 +153,16 @@ var _ = Describe("payment", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(usr.Id()).To(Equal(ord.UserId))
 
+		// Fetch the payment for the order to test later
+		pay2 := payment.New(db)
+		pay2.Get(ord.PaymentIds[0])
+
 		user2 := user.New(db)
 		user2.Get(ord.UserId)
 		Expect(user2.Accounts.Stripe.CustomerId).To(Equal(customerId))
+
+		// Payment/Card logic
+		Expect(pay1.Account.CardId).To(Equal(pay2.Account.CardId))
+		stripeVerifyCards(usr, []string{pay1.Account.CardId})
 	})
 })
