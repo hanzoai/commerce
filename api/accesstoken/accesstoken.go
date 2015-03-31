@@ -56,7 +56,7 @@ func getAccessToken(c *gin.Context, id, email, password string, test bool) {
 		accessToken = org.AddToken("test-secret-key", permission.Admin|permission.Test)
 	} else {
 		org.RemoveToken("live-secret-key")
-		accessToken = org.AddToken("live-secret-key", permission.Admin)
+		accessToken = org.AddToken("live-secret-key", permission.Admin|permission.Live)
 	}
 
 	// Save organization
