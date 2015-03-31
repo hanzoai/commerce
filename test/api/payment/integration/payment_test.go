@@ -73,7 +73,12 @@ var _ = AfterSuite(func() {
 	ctx.Close()
 })
 
-func FirstTimeSuccessfulOrderTest(isCharge bool) {
+type testHelperReturn struct {
+	Payments []*payment.Payment
+	Orders   []*order.Order
+}
+
+func FirstTimeSuccessfulOrderTest(isCharge bool) testHelperReturn {
 	var path string
 	if isCharge {
 		path = "/charge"
@@ -129,9 +134,14 @@ func FirstTimeSuccessfulOrderTest(isCharge bool) {
 	}
 
 	stripeVerifyCards(usr, []string{pay.Account.CardId})
+
+	return testHelperReturn{
+		Payments: []*payment.Payment{pay},
+		Orders:   []*order.Order{ord},
+	}
 }
 
-func ReturningSuccessfulOrderSameCardTest(isCharge bool) {
+func ReturningSuccessfulOrderSameCardTest(isCharge bool) testHelperReturn {
 	var path string
 	if isCharge {
 		path = "/charge"
@@ -145,13 +155,13 @@ func ReturningSuccessfulOrderSameCardTest(isCharge bool) {
 	log.Debug("JSON %v", w.Body)
 
 	// Decode body so we can re-use user id
-	ord := order.New(db)
-	err := json.DecodeBuffer(w.Body, &ord)
+	ord1 := order.New(db)
+	err := json.DecodeBuffer(w.Body, &ord1)
 	Expect(err).ToNot(HaveOccurred())
 
 	// Fetch the payment for the order to test later
 	pay1 := payment.New(db)
-	pay1.Get(ord.PaymentIds[0])
+	pay1.Get(ord1.PaymentIds[0])
 	if isCharge {
 		stripeVerifyCharge(pay1)
 	} else {
@@ -160,7 +170,7 @@ func ReturningSuccessfulOrderSameCardTest(isCharge bool) {
 
 	// Save user, customerId from first order
 	usr := user.New(db)
-	usr.Get(ord.UserId)
+	usr.Get(ord1.UserId)
 	customerId := usr.Accounts.Stripe.CustomerId
 	stripeVerifyUser(usr)
 
@@ -171,14 +181,14 @@ func ReturningSuccessfulOrderSameCardTest(isCharge bool) {
 	Expect(w.Code).To(Equal(200))
 
 	// Decode body from second request
-	ord = order.New(db)
-	err = json.DecodeBuffer(w.Body, &ord)
+	ord2 := order.New(db)
+	err = json.DecodeBuffer(w.Body, &ord2)
 	Expect(err).ToNot(HaveOccurred())
-	Expect(usr.Id()).To(Equal(ord.UserId))
+	Expect(usr.Id()).To(Equal(ord2.UserId))
 
 	// Fetch the payment for the order to test later
 	pay2 := payment.New(db)
-	pay2.Get(ord.PaymentIds[0])
+	pay2.Get(ord2.PaymentIds[0])
 	if isCharge {
 		stripeVerifyCharge(pay2)
 	} else {
@@ -186,15 +196,20 @@ func ReturningSuccessfulOrderSameCardTest(isCharge bool) {
 	}
 
 	user2 := user.New(db)
-	user2.Get(ord.UserId)
+	user2.Get(ord2.UserId)
 	Expect(user2.Accounts.Stripe.CustomerId).To(Equal(customerId))
 
 	// Payment/Card logic
 	Expect(pay1.Account.CardId).To(Equal(pay2.Account.CardId))
 	stripeVerifyCards(usr, []string{pay1.Account.CardId})
+
+	return testHelperReturn{
+		Payments: []*payment.Payment{pay1, pay2},
+		Orders:   []*order.Order{ord1, ord2},
+	}
 }
 
-func ReturningSuccessfulOrderNewCardTest(isCharge bool) {
+func ReturningSuccessfulOrderNewCardTest(isCharge bool) testHelperReturn {
 	var path string
 	if isCharge {
 		path = "/charge"
@@ -208,13 +223,13 @@ func ReturningSuccessfulOrderNewCardTest(isCharge bool) {
 	log.Debug("JSON %v", w.Body)
 
 	// Decode body so we can re-use user id
-	ord := order.New(db)
-	err := json.DecodeBuffer(w.Body, &ord)
+	ord1 := order.New(db)
+	err := json.DecodeBuffer(w.Body, &ord1)
 	Expect(err).ToNot(HaveOccurred())
 
 	// Fetch the payment for the order to test later
 	pay1 := payment.New(db)
-	pay1.Get(ord.PaymentIds[0])
+	pay1.Get(ord1.PaymentIds[0])
 	if isCharge {
 		stripeVerifyCharge(pay1)
 	} else {
@@ -223,7 +238,7 @@ func ReturningSuccessfulOrderNewCardTest(isCharge bool) {
 
 	// Save user, customerId from first order
 	usr := user.New(db)
-	usr.Get(ord.UserId)
+	usr.Get(ord1.UserId)
 	customerId := usr.Accounts.Stripe.CustomerId
 	stripeVerifyUser(usr)
 
@@ -234,14 +249,14 @@ func ReturningSuccessfulOrderNewCardTest(isCharge bool) {
 	Expect(w.Code).To(Equal(200))
 
 	// Decode body from second request
-	ord = order.New(db)
-	err = json.DecodeBuffer(w.Body, &ord)
+	ord2 := order.New(db)
+	err = json.DecodeBuffer(w.Body, &ord2)
 	Expect(err).ToNot(HaveOccurred())
-	Expect(usr.Id()).To(Equal(ord.UserId))
+	Expect(usr.Id()).To(Equal(ord2.UserId))
 
 	// Fetch the payment for the order to test later
 	pay2 := payment.New(db)
-	pay2.Get(ord.PaymentIds[0])
+	pay2.Get(ord2.PaymentIds[0])
 	if isCharge {
 		stripeVerifyCharge(pay2)
 	} else {
@@ -249,12 +264,17 @@ func ReturningSuccessfulOrderNewCardTest(isCharge bool) {
 	}
 
 	user2 := user.New(db)
-	user2.Get(ord.UserId)
+	user2.Get(ord2.UserId)
 	Expect(user2.Accounts.Stripe.CustomerId).To(Equal(customerId))
 
 	// Payment/Card logic
 	Expect(pay1.Account.CardId).ToNot(Equal(pay2.Account.CardId))
 	stripeVerifyCards(usr, []string{pay1.Account.CardId, pay2.Account.CardId})
+
+	return testHelperReturn{
+		Payments: []*payment.Payment{pay1, pay2},
+		Orders:   []*order.Order{ord1, ord2},
+	}
 }
 
 func OrderBadCardTest(isCharge bool) {
@@ -350,4 +370,21 @@ var _ = Describe("payment", func() {
 		})
 	})
 
+	Context("Capture Order", func() {
+		It("Should capture existing order successfully", func() {
+			pnos := FirstTimeSuccessfulOrderTest(false)
+			id := pnos.Orders[0].Id()
+
+			w := client.PostRawJSON("/order/"+id+"/capture/", "")
+			Expect(w.Code).To(Equal(200))
+			log.Debug("JSON %v", w.Body)
+			stripeVerifyCharge(pnos.Payments[0])
+		})
+
+		It("Should not capture invalid order", func() {
+			w := client.PostRawJSON("/order/BADID/capture/", "")
+			Expect(w.Code).To(Equal(500))
+			log.Debug("JSON %v", w.Body)
+		})
+	})
 })
