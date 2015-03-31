@@ -374,14 +374,14 @@ var _ = Describe("payment", func() {
 			pnos := FirstTimeSuccessfulOrderTest(false)
 			id := pnos.Orders[0].Id()
 
-			w := client.PostRawJSON("/order/"+id+"/capture/", "")
+			w := client.PostRawJSON("/order/"+id+"/capture", "")
 			Expect(w.Code).To(Equal(200))
 			log.Debug("JSON %v", w.Body)
 			stripeVerifyCharge(pnos.Payments[0])
 		})
 
 		It("Should not capture invalid order", func() {
-			w := client.PostRawJSON("/order/BADID/capture/", "")
+			w := client.PostRawJSON("/order/BADID/capture", "")
 			Expect(w.Code).To(Equal(500))
 			log.Debug("JSON %v", w.Body)
 		})
