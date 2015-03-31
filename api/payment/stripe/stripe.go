@@ -21,15 +21,18 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User,
 
 	// New customer
 	if usr.Accounts.Stripe.CustomerId == "" {
+		log.Debug("New stripe customer")
 		return firstTime(client, tok, usr, ord, pay)
 	}
 
 	// Existing customer, already have card on record
 	if usr.Accounts.Stripe.CardMatches(pay.Account) {
+		log.Debug("Returning stripe customer")
 		return returning(client, tok, usr, ord, pay)
 	}
 
 	// Existing customer, new card
+	log.Debug("Returning stripe customer, new card")
 	return returningNewCard(client, tok, usr, ord, pay)
 }
 
@@ -37,8 +40,8 @@ func updatePaymentFromCard(pay *payment.Payment, card *stripe.Card) {
 	pay.Account.CardId = card.ID
 	pay.Account.Brand = string(card.Brand)
 	pay.Account.LastFour = card.LastFour
-	pay.Account.Month = string(card.Month)
-	pay.Account.Year = string(card.Year)
+	pay.Account.Month = int(card.Month)
+	pay.Account.Year = int(card.Year)
 	pay.Account.Country = card.Country
 	pay.Account.Fingerprint = card.Fingerprint
 	pay.Account.Funding = string(card.Funding)
