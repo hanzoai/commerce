@@ -105,7 +105,7 @@ type Account struct {
 type Payment struct {
 	mixin.Model
 
-	Type Type `json:type"`
+	Type Type `json:"type"`
 
 	// Order this is associated with
 	OrderId string `json:"orderId,omitempty"`
