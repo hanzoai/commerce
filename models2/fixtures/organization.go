@@ -5,6 +5,7 @@ import (
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/models2/organization"
+	"crowdstart.io/util/log"
 )
 
 func Organization(c *gin.Context) *organization.Organization {
@@ -41,6 +42,7 @@ func Organization(c *gin.Context) *organization.Organization {
 	org.Stripe.RefreshToken = org.Stripe.RefreshToken
 
 	org.AddDefaultTokens()
+	log.Debug("Adding tokens: %v", org.Tokens)
 
 	// Save org into default namespace
 	org.MustPut()

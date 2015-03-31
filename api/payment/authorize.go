@@ -87,10 +87,8 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 
 	log.Debug("Payment: %#v", pay)
 
-	// Have stripe handle authorization
-	if err := stripe.Authorize(org, ord, usr, pay); err != nil {
-		return nil, err
-	}
+	// Setup all relationships before we try to authorize to ensure that keys
+	// that get created are actually valid.
 
 	// User -> order
 	ord.Parent = usr.Key()
@@ -102,6 +100,11 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 
 	// Save payment Id on order
 	ord.PaymentIds = append(ord.PaymentIds, pay.Id())
+
+	// Have stripe handle authorization
+	if err := stripe.Authorize(org, ord, usr, pay); err != nil {
+		return nil, err
+	}
 
 	// Save user, order, payment
 	usr.MustPut()
