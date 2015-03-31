@@ -2,6 +2,7 @@ package order
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"math"
 	"strconv"
@@ -13,6 +14,7 @@ import (
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
+	"crowdstart.io/models2/coupon"
 	"crowdstart.io/models2/payment"
 	"crowdstart.io/models2/types/currency"
 	"crowdstart.io/util/gob"
@@ -104,8 +106,8 @@ type Order struct {
 
 	Adjustments []Adjustment `json:"adjustments,omitempty"`
 
-	Discounts  []*Discount `json:"discounts" datastore:"-"`
-	Discounts_ []byte      `json:"-"`
+	Coupons     []coupon.Coupon `json:"coupons,omitempty"`
+	CouponCodes []string        `json:"couponCodes,omitempty"`
 
 	PaymentIds []string `json:"payments"`
 
@@ -124,7 +126,6 @@ type Order struct {
 
 func (o *Order) Init() {
 	o.Adjustments = make([]Adjustment, 0)
-	o.Discounts = make([]*Discount, 0)
 	o.History = make([]Event, 0)
 	o.Items = make([]LineItem, 0)
 	o.Metadata = make(Metadata)
@@ -155,10 +156,6 @@ func (o *Order) Load(c <-chan aeds.Property) (err error) {
 	}
 
 	// Deserialize from datastore
-	if len(o.Discounts_) > 0 {
-		err = gob.Decode(o.Discounts_, &o.Discounts)
-	}
-
 	if len(o.Metadata_) > 0 {
 		err = gob.Decode(o.Metadata_, &o.Metadata)
 	}
@@ -168,7 +165,6 @@ func (o *Order) Load(c <-chan aeds.Property) (err error) {
 
 func (o *Order) Save(c chan<- aeds.Property) (err error) {
 	// Serialize unsupported properties
-	o.Discounts_, err = gob.Encode(&o.Discounts)
 	o.Metadata_, err = gob.Encode(&o.Metadata)
 
 	if err != nil {
@@ -195,6 +191,48 @@ func (o Order) Description() string {
 		buffer.WriteString(strconv.Itoa(item.Quantity))
 	}
 	return buffer.String()
+}
+
+// Get line items from datastore
+func (o *Order) GetCoupons() error {
+	db := o.Model.Db
+
+	num := len(o.CouponCodes)
+	o.Coupons = make([]coupon.Coupon, num, num)
+	keys := make([]datastore.Key, num, num)
+
+	for i := 0; i < num; i++ {
+		c := coupon.New(db)
+		ok, err := c.Query().Filter("Code=", o.CouponCodes[i]).KeysOnly().First()
+		if err != nil {
+			return err
+		}
+
+		if !ok {
+			return errors.New("Invalid coupon code")
+		}
+
+		keys = append(keys, c.Key())
+	}
+
+	return db.GetMulti(keys, &o.Coupons)
+}
+
+// Apply discounts from coupon codes
+func (o *Order) ApplyDiscounts() {
+	o.Discount = 0
+	num := len(o.CouponCodes)
+	for i := 0; i < num; i++ {
+		c := &o.Coupons[i]
+		switch c.Type {
+		case coupon.Flat:
+			o.Discount = currency.Cents(int(o.Discount) + c.Amount)
+		case coupon.Percent:
+			o.Discount = currency.Cents(int(o.Discount) + (int(o.Total) * c.Amount))
+		case coupon.FreeShipping:
+			o.Discount = currency.Cents(int(o.Discount) + int(o.Shipping))
+		}
+	}
 }
 
 // Get line items from datastore
@@ -237,12 +275,12 @@ func (o *Order) Tally() {
 	o.LineTotal = currency.Cents(subtotal)
 
 	// TODO: Make this use shipping/tax information
-	shipping := 0
-	tax := 0
-	total := tax + shipping + subtotal
+	discount := int(o.Discount)
+	shipping := int(o.Shipping)
+	tax := int(o.Tax)
+	subtotal = subtotal - discount
+	total := subtotal + tax + shipping
 
-	o.Shipping = currency.Cents(shipping)
-	o.Tax = currency.Cents(tax)
 	o.Subtotal = currency.Cents(subtotal)
 	o.Total = currency.Cents(total)
 }
