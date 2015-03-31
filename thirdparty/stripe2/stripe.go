@@ -100,11 +100,10 @@ func (c Client) GetCustomer(token, user *user.User) (*Customer, error) {
 }
 
 // Update Stripe customer
-func (c Client) UpdateCustomer(token string, user *user.User) (*Customer, error) {
+func (c Client) UpdateCustomer(user *user.User) (*Customer, error) {
 	params := &stripe.CustomerParams{
 		Email: user.Email,
 	}
-	params.SetSource(token)
 
 	// Update with our user metadata
 	for k, v := range user.Metadata {
@@ -150,6 +149,21 @@ func (c Client) AddCard(token string, user *user.User) (*Card, error) {
 	}
 
 	card, err := c.API.Cards.New(params)
+	if err != nil {
+		return nil, NewError(err)
+	}
+
+	return (*Card)(card), err
+}
+
+// Update card associated with Stripe customer
+func (c Client) UpdateCard(token string, pay *payment.Payment, user *user.User) (*Card, error) {
+	params := &stripe.CardParams{
+		Customer: user.Accounts.Stripe.CustomerId,
+		Token:    token,
+	}
+
+	card, err := c.API.Cards.Update(pay.Account.CardId, params)
 	if err != nil {
 		return nil, NewError(err)
 	}
