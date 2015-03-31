@@ -4,8 +4,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/middleware"
-	"crowdstart.io/thirdparty/stripe2/connect"
-	"crowdstart.io/thirdparty/stripe2/tasks"
+	"crowdstart.io/thirdparty/stripe/connect"
+	"crowdstart.io/thirdparty/stripe/tasks"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
 )

@@ -11,7 +11,7 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/models2/user"
-	"crowdstart.io/thirdparty/stripe2/connect"
+	"crowdstart.io/thirdparty/stripe/connect"
 	"crowdstart.io/util/permission"
 	"crowdstart.io/util/val"
 
