@@ -1,7 +1,6 @@
 package api
 
 import (
-	"crowdstart.io/api/accesstoken"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models2/campaign"
 	"crowdstart.io/models2/collection"
@@ -16,6 +15,7 @@ import (
 	"crowdstart.io/util/rest"
 	"crowdstart.io/util/router"
 
+	accessTokenApi "crowdstart.io/api/accesstoken"
 	orderApi "crowdstart.io/api/order"
 	paymentApi "crowdstart.io/api/payment"
 )
@@ -24,7 +24,6 @@ func init() {
 	router := router.New("api")
 
 	adminRequired := middleware.TokenRequired(permission.Admin)
-	methodOverride := middleware.MethodOverride()
 
 	// Organization APIs, namespaced by organization
 
@@ -62,11 +61,7 @@ func init() {
 	user.Route(router, adminRequired)
 
 	// Access token API (internal use only)
-	accessToken := rest.New("/access")
-	accessToken.GET("/:mode/:id", accesstoken.Get)
-	accessToken.POST("/:mode/:id", adminRequired, accesstoken.Delete)
-	accessToken.DELETE("/:mode/:id", adminRequired, accesstoken.Delete)
-	accessToken.Route(router, methodOverride)
+	accessTokenApi.Route(router)
 
 	// REST API debugger
 	router.GET("/", middleware.ParseToken, rest.ListRoutes())
