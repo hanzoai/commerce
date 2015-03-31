@@ -12,7 +12,7 @@ import (
 
 var FailedToCaptureCharge = errors.New("Failed to capture charge")
 
-func Capture(org *organization.Organization, ord *order.Order) (*order.Order, error) {
+func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []*payment.Payment, error) {
 	// Get namespaced context off order
 	db := ord.Db
 	ctx := db.Context
@@ -26,14 +26,14 @@ func Capture(org *organization.Organization, ord *order.Order) (*order.Order, er
 	// Capture any uncaptured payments
 	for _, p := range payments {
 		if !p.Captured {
-			ch, err := client.Capture(p.ChargeId)
+			ch, err := client.Capture(p.Account.ChargeId)
 
 			// Charge failed for some reason, bail
 			if err != nil {
-				return nil, err
+				return nil, payments, err
 			}
 			if !ch.Captured {
-				return nil, FailedToCaptureCharge
+				return nil, payments, FailedToCaptureCharge
 			}
 
 			// Update payment
@@ -44,5 +44,5 @@ func Capture(org *organization.Organization, ord *order.Order) (*order.Order, er
 		}
 	}
 
-	return ord, nil
+	return ord, payments, nil
 }
