@@ -42,7 +42,7 @@ var _ = BeforeSuite(func() {
 	campaign.Creator.Email = campaign.Id
 	campaign.Stripe.UserId = "acct_something"
 	campaign.Stripe.Livemode = false
-	campaign.Stripe.AccessToken = config.Stripe.APISecret
+	campaign.Stripe.AccessToken = config.Stripe.SecretKey
 })
 
 var _ = AfterSuite(func() {
