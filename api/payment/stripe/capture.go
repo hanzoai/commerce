@@ -3,16 +3,19 @@ package stripe
 import (
 	"errors"
 
+	"appengine/datastore"
+
 	"crowdstart.io/models2/order"
 	"crowdstart.io/models2/organization"
 	"crowdstart.io/models2/payment"
 	"crowdstart.io/models2/types/currency"
 	"crowdstart.io/thirdparty/stripe"
+	"crowdstart.io/util/log"
 )
 
 var FailedToCaptureCharge = errors.New("Failed to capture charge")
 
-func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []*payment.Payment, error) {
+func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []*datastore.Key, []*payment.Payment, error) {
 	// Get namespaced context off order
 	db := ord.Db
 	ctx := db.Context
@@ -21,19 +24,23 @@ func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []
 	client := stripe.New(ctx, org.StripeToken())
 
 	payments := make([]*payment.Payment, 0)
-	payment.Query(db).Ancestor(ord.Key()).GetAll(payments)
+	keys, err := payment.Query(db).Ancestor(ord.Key()).GetAll(&payments)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 
+	log.Warn("payments %v", payments)
 	// Capture any uncaptured payments
 	for _, p := range payments {
 		if !p.Captured {
-			ch, err := client.Capture(p.Account.ChargeId)
+			ch, err := client.Capture(p.ChargeId)
 
 			// Charge failed for some reason, bail
 			if err != nil {
-				return nil, payments, err
+				return nil, keys, payments, err
 			}
 			if !ch.Captured {
-				return nil, payments, FailedToCaptureCharge
+				return nil, keys, payments, FailedToCaptureCharge
 			}
 
 			// Update payment
@@ -44,5 +51,5 @@ func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []
 		}
 	}
 
-	return ord, payments, nil
+	return ord, keys, payments, nil
 }
