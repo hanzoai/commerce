@@ -26,7 +26,7 @@ var ValidOrder = `
   "order": {
     "currency": "usd",
     "items": [ {
-      "productId": "1",
+      "productSlug": "t-shirt",
       "price": 1000,
       "quantity": 2
     } ]
