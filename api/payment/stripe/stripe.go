@@ -93,14 +93,16 @@ func firstTime(client *stripe.Client, tok *stripe.Token, u *user.User, ord *orde
 }
 
 func returning(client *stripe.Client, tok *stripe.Token, usr *user.User, ord *order.Order, pay *payment.Payment) error {
-	// Old card, set as source on customer and let's use that to charge
-	cust, err := client.UpdateCustomer(tok.ID, usr)
+	// Update customer details
+	cust, err := client.UpdateCustomer(usr)
 	if err != nil {
 		return err
 	}
 	pay.Live = cust.Live
 
-	updatePaymentFromUser(pay, usr)
+	// Update card details using token
+	card, err := client.UpdateCard(tok.ID, pay, usr)
+	updatePaymentFromCard(pay, card)
 
 	// Charge using customer
 	_, err = client.NewCharge(cust, pay)
