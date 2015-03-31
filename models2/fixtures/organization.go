@@ -37,9 +37,9 @@ func Organization(c *gin.Context) *organization.Organization {
 
 	// Default to live
 	org.Stripe.UserId = org.Stripe.Live.UserId
-	org.Stripe.AccessToken = org.Stripe.AccessToken
-	org.Stripe.PublishableKey = org.Stripe.PublishableKey
-	org.Stripe.RefreshToken = org.Stripe.RefreshToken
+	org.Stripe.AccessToken = org.Stripe.Live.AccessToken
+	org.Stripe.PublishableKey = org.Stripe.Live.PublishableKey
+	org.Stripe.RefreshToken = org.Stripe.Live.RefreshToken
 
 	org.AddDefaultTokens()
 	log.Debug("Adding tokens: %v", org.Tokens)
