@@ -12,7 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var orderEndpoint = config.UrlFor("api", "/order2/")
+var orderEndpoint = config.UrlFor("api", "/order/")
 
 func getOrganizationAndOrder(c *gin.Context) (*organization.Organization, *order.Order) {
 	// Get organization for this user
@@ -83,17 +83,17 @@ func Charge(c *gin.Context) {
 	c.JSON(200, ord)
 }
 
-func Route(router router.Router) {
-	group := router.Group("")
-	group.Use(func(c *gin.Context) {
+func Route(router router.Router, args ...gin.HandlerFunc) {
+	api := router.Group("")
+	api.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 	})
 
 	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
 
 	// Charge Payment API
-	group.POST("/charge", publishedRequired, Charge)
+	api.POST("/charge", publishedRequired, Charge)
 
 	// Auth & Capture Pament API (Two Step Payment)
-	group.POST("/authorize", publishedRequired, Authorize)
+	api.POST("/authorize", publishedRequired, Authorize)
 }
