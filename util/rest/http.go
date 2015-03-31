@@ -109,7 +109,7 @@ func ListRoutes() gin.HandlerFunc {
 			}
 
 			// Check if this is the order endpoint, if so we'll save a reference for later.
-			if r.Kind == "order2" {
+			if r.Kind == "order" {
 				orderEndpoint = endpoints[i]
 			}
 		}
