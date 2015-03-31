@@ -10,7 +10,7 @@ github.com/mholt/binding master
 github.com/onsi/ginkgo/ginkgo master
 github.com/onsi/gomega master
 github.com/qedus/nds master
-github.com/stripe/stripe-go 9da043110c7f8a66166c60f913ea854cc9c8ae3e
+github.com/stripe/stripe-go v6.1.0
 github.com/zeekay/aetest master
 github.com/zeekay/go-logging master
 github.com/huandu/facebook master

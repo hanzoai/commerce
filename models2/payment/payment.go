@@ -7,6 +7,7 @@ import (
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/models2/types/currency"
 	"crowdstart.io/util/gob"
+	"crowdstart.io/util/log"
 	"crowdstart.io/util/val"
 
 	. "crowdstart.io/models2"
@@ -70,14 +71,18 @@ type StripeAccount struct {
 	Funding     string `json:"funding,omitempty"`
 	Brand       string `json:"brand,omitempty"`
 	LastFour    string `json:"lastFour,omitempty"`
-	Month       string `json:"month,omitempty"`
-	Year        string `json:"year,omitempty"`
+	Month       int    `json:"month,string,omitempty"`
+	Year        int    `json:"year,string,omitempty"`
 	Country     string `json:"country,omitempty"`
 
 	CVCCheck string `json:"cvcCheck,omitempty"`
 }
 
 func (sa StripeAccount) CardMatches(acct Account) bool {
+	log.Debug("Checking for match")
+	log.Debug("Old card: %v", sa)
+	log.Debug("New card: %v", acct)
+
 	if sa.Month != acct.Month {
 		return false
 	}
