@@ -22,8 +22,24 @@ func Organization(c *gin.Context) *organization.Organization {
 	org.Owners = []string{user.Id()}
 	org.Website = "http://suchtees.com"
 	org.SecretKey = []byte("prettyprettyteesplease")
-	org.Stripe.AccessToken = "sk_test_REDACTED"
-	org.Stripe.PublishableKey = "pk_test_REDACTED"
+
+	// Saved stripe tokens
+	org.Stripe.Live.UserId = "acct_14lSsRCSRlllXCwP"
+	org.Stripe.Live.AccessToken = "sk_test_REDACTED"
+	org.Stripe.Live.PublishableKey = "pk_test_REDACTED"
+	org.Stripe.Live.RefreshToken = "rt_5uU4oIaJ9irUxH5dljX0vb2upWBoUVQwUAfuAdUW7mNVUurV"
+
+	org.Stripe.Test.UserId = "acct_14lSsRCSRlllXCwP"
+	org.Stripe.Test.AccessToken = "sk_test_REDACTED"
+	org.Stripe.Test.PublishableKey = "pk_test_REDACTED"
+	org.Stripe.Test.RefreshToken = "rt_5uU4oIaJ9irUxH5dljX0vb2upWBoUVQwUAfuAdUW7mNVUurV"
+
+	// Default to live
+	org.Stripe.UserId = org.Stripe.Live.UserId
+	org.Stripe.AccessToken = org.Stripe.AccessToken
+	org.Stripe.PublishableKey = org.Stripe.PublishableKey
+	org.Stripe.RefreshToken = org.Stripe.RefreshToken
+
 	org.AddDefaultTokens()
 
 	// Save org into default namespace
