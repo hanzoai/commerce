@@ -99,6 +99,13 @@ func GetTokens(ctx appengine.Context, code string) (*Token, *Token, error) {
 		return nil, nil, err
 	}
 
+	// The development client id can only create test tokens, and you can only
+	// have a single set of tokens at a time, thus return just the live token.
+	if config.Stripe.ClientId == config.Stripe.DevelopmentClientId {
+		return liveToken, liveToken, err
+	}
+
+	// In production, our users actually need both tokens created.
 	testToken, err := GetTestToken(ctx, liveToken.RefreshToken)
 	if err != nil {
 		return nil, nil, err
