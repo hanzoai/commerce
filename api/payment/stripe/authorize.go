@@ -86,13 +86,8 @@ func firstTime(client *stripe.Client, tok *stripe.Token, u *user.User, ord *orde
 	u.Accounts.Stripe = pay.Account
 
 	// Create charge and associate with payment.
-	charge, err := client.NewCharge(cust, pay)
-	if err != nil {
-		return err
-	}
-	pay.Account.ChargeId = charge.ID
-
-	return nil
+	_, err = client.NewCharge(cust, pay)
+	return err
 }
 
 func returning(client *stripe.Client, tok *stripe.Token, usr *user.User, ord *order.Order, pay *payment.Payment) error {
