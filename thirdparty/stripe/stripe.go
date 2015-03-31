@@ -111,6 +111,8 @@ func (c Client) UpdateCustomer(user *user.User) (*Customer, error) {
 		params.AddMeta(k, json.Encode(v))
 	}
 
+	params.AddMeta("user", user.Id())
+
 	customerId := user.Accounts.Stripe.CustomerId
 
 	customer, err := c.API.Customers.Update(customerId, params)
@@ -133,6 +135,8 @@ func (c Client) NewCustomer(token string, user *user.User) (*Customer, error) {
 	for k, v := range user.Metadata {
 		params.AddMeta(k, json.Encode(v))
 	}
+
+	params.AddMeta("user", user.Id())
 
 	customer, err := c.API.Customers.New(params)
 	if err != nil {
@@ -193,7 +197,7 @@ func (c Client) NewCharge(source interface{}, pay *payment.Payment) (*Charge, er
 		params.AddMeta(k, json.Encode(v))
 	}
 
-	params.AddMeta("paymentId", pay.Id())
+	params.AddMeta("payment", pay.Id())
 
 	switch v := source.(type) {
 	case string:
@@ -202,7 +206,7 @@ func (c Client) NewCharge(source interface{}, pay *payment.Payment) (*Charge, er
 		params.Customer = v.ID
 	case *user.User:
 		params.Customer = v.Accounts.Stripe.CustomerId
-		params.AddMeta("userId", v.Id())
+		params.AddMeta("user", v.Id())
 	}
 
 	// Create charge
