@@ -9,7 +9,7 @@ import (
 )
 
 func stripeVerifyCharge(pay *payment.Payment) {
-	c, err := sc.Charges.Get(pay.ChargeId, nil)
+	c, err := sc.Charges.Get(pay.Account.ChargeId, nil)
 	Expect(c).ToNot(BeNil())
 	Expect(err).ToNot(HaveOccurred())
 
@@ -18,7 +18,7 @@ func stripeVerifyCharge(pay *payment.Payment) {
 }
 
 func stripeVerifyAuth(pay *payment.Payment) {
-	c, err := sc.Charges.Get(pay.ChargeId, nil)
+	c, err := sc.Charges.Get(pay.Account.ChargeId, nil)
 	Expect(c).ToNot(BeNil())
 	Expect(err).ToNot(HaveOccurred())
 

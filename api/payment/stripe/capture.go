@@ -33,7 +33,7 @@ func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []
 	// Capture any uncaptured payments
 	for _, p := range payments {
 		if !p.Captured {
-			ch, err := client.Capture(p.ChargeId)
+			ch, err := client.Capture(p.Account.ChargeId)
 
 			// Charge failed for some reason, bail
 			if err != nil {
