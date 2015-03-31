@@ -41,18 +41,18 @@ func getDb(c *gin.Context) *datastore.Datastore {
 }
 
 func init() {
-	fixture("fixtures2-campaign", Campaign)
-	fixture("fixtures2-coupon", Coupon)
-	fixture("fixtures2-collection", Collection)
-	fixture("fixtures2-organization", Organization)
-	fixture("fixtures2-product", Product)
-	fixture("fixtures2-token", Token)
-	fixture("fixtures2-user", User)
-	fixture("fixtures2-variant", Variant)
-	fixture("fixtures2-cycliq", Cycliq)
+	fixture("fixtures-campaign", Campaign)
+	fixture("fixtures-coupon", Coupon)
+	fixture("fixtures-collection", Collection)
+	fixture("fixtures-organization", Organization)
+	fixture("fixtures-product", Product)
+	fixture("fixtures-token", Token)
+	fixture("fixtures-user", User)
+	fixture("fixtures-variant", Variant)
+	fixture("fixtures-cycliq", Cycliq)
 
 	// Setup default fixtures
-	task.Func("fixtures2-all", func(c *gin.Context) {
+	task.Func("fixtures-all", func(c *gin.Context) {
 		Organization(c)
 		Product(c)
 		Variant(c)
