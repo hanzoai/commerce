@@ -89,14 +89,11 @@ func Route(router router.Router) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 	})
 
-	adminRequired := middleware.TokenRequired(permission.Admin)
 	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
 
+	// Charge Payment API
 	group.POST("/charge", publishedRequired, Charge)
-	group.POST("/order/:id/charge", publishedRequired, Charge)
 
-	// Two Step Payment API ("Auth & Capture")
+	// Auth & Capture Pament API (Two Step Payment)
 	group.POST("/authorize", publishedRequired, Authorize)
-	group.POST("/order/:id/authorize", publishedRequired, Authorize)
-	group.POST("/order/:id/capture", adminRequired, Capture)
 }
