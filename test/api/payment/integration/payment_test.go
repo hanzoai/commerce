@@ -13,6 +13,7 @@ import (
 	"crowdstart.io/models2/payment"
 	"crowdstart.io/models2/user"
 	"crowdstart.io/test/api/payment/requests"
+	"crowdstart.io/thirdparty/stripe"
 	"crowdstart.io/util/gincontext"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
@@ -33,6 +34,7 @@ var (
 	accessToken string
 	db          *datastore.Datastore
 	org         *organization.Organization
+	sc          *stripe.Client
 )
 
 // Setup appengine context
@@ -60,6 +62,8 @@ var _ = BeforeSuite(func() {
 		r.Header.Set("Authorization", accessToken)
 	})
 
+	sc = stripe.New(ctx, org.Stripe.Test.AccessToken)
+
 	// Save namespaced db
 	db = datastore.New(org.Namespace(ctx))
 })
@@ -69,79 +73,281 @@ var _ = AfterSuite(func() {
 	ctx.Close()
 })
 
+func FirstTimeSuccessfulOrderTest(isCharge bool) {
+	var path string
+	if isCharge {
+		path = "/charge"
+	} else {
+		path = "/authorize"
+	}
+
+	// Should come back with 200
+	w := client.PostRawJSON(path, requests.ValidOrder)
+	Expect(w.Code).To(Equal(200))
+
+	log.Debug("JSON %v", w.Body)
+
+	// Payment and Order info should be in the dv
+	ord := order.New(db)
+
+	err := json.DecodeBuffer(w.Body, &ord)
+	Expect(err).ToNot(HaveOccurred())
+
+	log.Debug("Order %v", ord)
+
+	// Order should be in db
+	key, err := order.New(db).KeyExists(ord.Id())
+	log.Debug("Err %v", err)
+
+	Expect(err).ToNot(HaveOccurred())
+	Expect(key).ToNot(BeNil())
+
+	// User should be in db
+	usr := user.New(db)
+	err = usr.Get(ord.UserId)
+
+	Expect(err).ToNot(HaveOccurred())
+	Expect(usr.Key()).ToNot(BeNil())
+	stripeVerifyUser(usr)
+
+	// Payment should be in db
+	Expect(len(ord.PaymentIds)).To(Equal(1))
+	var payments []payment.Payment
+	payment.Query(db).GetAll(&payments)
+
+	log.Warn("Payments %v", payments)
+	pay := payment.New(db)
+	err = pay.Get(ord.PaymentIds[0])
+
+	Expect(err).ToNot(HaveOccurred())
+	Expect(pay.Key()).ToNot(BeNil())
+
+	if isCharge {
+		stripeVerifyCharge(pay)
+	} else {
+		stripeVerifyAuth(pay)
+	}
+
+	stripeVerifyCards(usr, []string{pay.Account.CardId})
+}
+
+func ReturningSuccessfulOrderSameCardTest(isCharge bool) {
+	var path string
+	if isCharge {
+		path = "/charge"
+	} else {
+		path = "/authorize"
+	}
+
+	// Make first request
+	w := client.PostRawJSON(path, requests.ValidOrder)
+	Expect(w.Code).To(Equal(200))
+	log.Debug("JSON %v", w.Body)
+
+	// Decode body so we can re-use user id
+	ord := order.New(db)
+	err := json.DecodeBuffer(w.Body, &ord)
+	Expect(err).ToNot(HaveOccurred())
+
+	// Fetch the payment for the order to test later
+	pay1 := payment.New(db)
+	pay1.Get(ord.PaymentIds[0])
+	if isCharge {
+		stripeVerifyCharge(pay1)
+	} else {
+		stripeVerifyAuth(pay1)
+	}
+
+	// Save user, customerId from first order
+	usr := user.New(db)
+	usr.Get(ord.UserId)
+	customerId := usr.Accounts.Stripe.CustomerId
+	stripeVerifyUser(usr)
+
+	// Returning user, should reuse stripe customer id
+	body := fmt.Sprintf(requests.ReturningUserOrder, usr.Id())
+	log.Debug("JSON %v", w.Body)
+	w = client.PostRawJSON(path, body)
+	Expect(w.Code).To(Equal(200))
+
+	// Decode body from second request
+	ord = order.New(db)
+	err = json.DecodeBuffer(w.Body, &ord)
+	Expect(err).ToNot(HaveOccurred())
+	Expect(usr.Id()).To(Equal(ord.UserId))
+
+	// Fetch the payment for the order to test later
+	pay2 := payment.New(db)
+	pay2.Get(ord.PaymentIds[0])
+	if isCharge {
+		stripeVerifyCharge(pay2)
+	} else {
+		stripeVerifyAuth(pay2)
+	}
+
+	user2 := user.New(db)
+	user2.Get(ord.UserId)
+	Expect(user2.Accounts.Stripe.CustomerId).To(Equal(customerId))
+
+	// Payment/Card logic
+	Expect(pay1.Account.CardId).To(Equal(pay2.Account.CardId))
+	stripeVerifyCards(usr, []string{pay1.Account.CardId})
+}
+
+func ReturningSuccessfulOrderNewCardTest(isCharge bool) {
+	var path string
+	if isCharge {
+		path = "/charge"
+	} else {
+		path = "/authorize"
+	}
+
+	// Make first request
+	w := client.PostRawJSON(path, requests.ValidOrder)
+	Expect(w.Code).To(Equal(200))
+	log.Debug("JSON %v", w.Body)
+
+	// Decode body so we can re-use user id
+	ord := order.New(db)
+	err := json.DecodeBuffer(w.Body, &ord)
+	Expect(err).ToNot(HaveOccurred())
+
+	// Fetch the payment for the order to test later
+	pay1 := payment.New(db)
+	pay1.Get(ord.PaymentIds[0])
+	if isCharge {
+		stripeVerifyCharge(pay1)
+	} else {
+		stripeVerifyAuth(pay1)
+	}
+
+	// Save user, customerId from first order
+	usr := user.New(db)
+	usr.Get(ord.UserId)
+	customerId := usr.Accounts.Stripe.CustomerId
+	stripeVerifyUser(usr)
+
+	// Returning user, should reuse stripe customer id
+	body := fmt.Sprintf(requests.ReturningUserOrderNewCard, usr.Id())
+	log.Debug("JSON %v", w.Body)
+	w = client.PostRawJSON(path, body)
+	Expect(w.Code).To(Equal(200))
+
+	// Decode body from second request
+	ord = order.New(db)
+	err = json.DecodeBuffer(w.Body, &ord)
+	Expect(err).ToNot(HaveOccurred())
+	Expect(usr.Id()).To(Equal(ord.UserId))
+
+	// Fetch the payment for the order to test later
+	pay2 := payment.New(db)
+	pay2.Get(ord.PaymentIds[0])
+	if isCharge {
+		stripeVerifyCharge(pay2)
+	} else {
+		stripeVerifyAuth(pay2)
+	}
+
+	user2 := user.New(db)
+	user2.Get(ord.UserId)
+	Expect(user2.Accounts.Stripe.CustomerId).To(Equal(customerId))
+
+	// Payment/Card logic
+	Expect(pay1.Account.CardId).ToNot(Equal(pay2.Account.CardId))
+	stripeVerifyCards(usr, []string{pay1.Account.CardId, pay2.Account.CardId})
+}
+
+func OrderBadCardTest(isCharge bool) {
+	var path string
+	if isCharge {
+		path = "/charge"
+	} else {
+		path = "/authorize"
+	}
+
+	// Returning user, should reuse stripe customer id
+	body := fmt.Sprintf(requests.InvalidOrderBadCard)
+	w := client.PostRawJSON(path, body)
+	log.Debug("JSON %v", w.Body)
+	Expect(w.Code).To(Equal(500))
+}
+
+func OrderBadUserTest(isCharge bool) {
+	var path string
+	if isCharge {
+		path = "/charge"
+	} else {
+		path = "/authorize"
+	}
+
+	// Returning user, should reuse stripe customer id
+	body := fmt.Sprintf(requests.ReturningUserOrderNewCard, "BadId")
+	w := client.PostRawJSON(path, body)
+	log.Debug("JSON %v", w.Body)
+	Expect(w.Code).To(Equal(500))
+}
+
 var _ = Describe("payment", func() {
-	Context("Authorize", func() {
+	Context("Authorize First Time Customers", func() {
 		It("Should save new order successfully", func() {
-			// Should come back with 200
-			w := client.PostRawJSON("/authorize", requests.ValidOrder)
-			Expect(w.Code).To(Equal(200))
+			FirstTimeSuccessfulOrderTest(false)
+		})
 
-			log.Debug("JSON %v", w.Body)
+		It("Should not authorize invalid credit card number", func() {
+			OrderBadCardTest(false)
+		})
 
-			// Payment and Order info should be in the dv
-			ord := order.New(db)
+		// It("Should not authorize invalid product id", func() {
+		// })
+		// It("Should not authorize invalid variant id", func() {
+		// })
+		// It("Should not authorize invalid collection id", func() {
+		// })
+	})
 
-			err := json.DecodeBuffer(w.Body, &ord)
-			Expect(err).ToNot(HaveOccurred())
+	Context("Authorize Returning Customers", func() {
+		It("Should save returning customer order with the same card successfully", func() {
+			ReturningSuccessfulOrderSameCardTest(false)
+		})
 
-			log.Debug("Order %v", ord)
+		It("Should save returning customer order with a new card successfully", func() {
+			ReturningSuccessfulOrderNewCardTest(false)
+		})
 
-			// Order should be in db
-			key, err := order.New(db).KeyExists(ord.Id())
-			log.Debug("Err %v", err)
-
-			Expect(err).ToNot(HaveOccurred())
-			Expect(key).ToNot(BeNil())
-
-			// User should be in db
-			key, err = user.New(db).KeyExists(ord.UserId)
-
-			Expect(err).ToNot(HaveOccurred())
-			Expect(key).ToNot(BeNil())
-
-			// Payment should be in db
-			Expect(len(ord.PaymentIds)).To(Equal(1))
-			var payments []payment.Payment
-			payment.Query(db).GetAll(&payments)
-
-			log.Warn("Payments %v", payments)
-			key, err = payment.New(db).KeyExists(ord.PaymentIds[0])
-
-			Expect(err).ToNot(HaveOccurred())
-			Expect(key).ToNot(BeNil())
+		It("Should not save customer with invalid user id", func() {
+			OrderBadUserTest(false)
 		})
 	})
 
-	It("Should save returning customer order successfully", func() {
-		// Make first request
-		w := client.PostRawJSON("/authorize", requests.ValidOrder)
-		Expect(w.Code).To(Equal(200))
-		log.Debug("JSON %v", w.Body)
+	Context("Charge First Time Customers", func() {
+		It("Should save new order successfully", func() {
+			FirstTimeSuccessfulOrderTest(true)
+		})
 
-		// Decode body so we can re-use user id
-		ord := order.New(db)
-		err := json.DecodeBuffer(w.Body, &ord)
-		Expect(err).ToNot(HaveOccurred())
+		It("Should not authorize invalid credit card number", func() {
+			OrderBadCardTest(true)
+		})
 
-		// Save user, customerId from first order
-		usr := user.New(db)
-		usr.Get(ord.UserId)
-		customerId := usr.Accounts.Stripe.CustomerId
-
-		// Returning user, should reuse stripe customer id
-		body := fmt.Sprintf(requests.ReturningUserOrder, usr.Id())
-		log.Debug("JSON %v", w.Body)
-		w = client.PostRawJSON("/authorize", body)
-		Expect(w.Code).To(Equal(200))
-
-		// Decode body from second request
-		ord = order.New(db)
-		err = json.DecodeBuffer(w.Body, &ord)
-		Expect(err).ToNot(HaveOccurred())
-		Expect(usr.Id()).To(Equal(ord.UserId))
-
-		user2 := user.New(db)
-		user2.Get(ord.UserId)
-		Expect(user2.Accounts.Stripe.CustomerId).To(Equal(customerId))
+		// It("Should not authorize invalid product id", func() {
+		// })
+		// It("Should not authorize invalid variant id", func() {
+		// })
+		// It("Should not authorize invalid collection id", func() {
+		// })
 	})
+
+	Context("Charge Returning Customers", func() {
+		It("Should save returning customer order with the same card successfully", func() {
+			ReturningSuccessfulOrderSameCardTest(true)
+		})
+
+		It("Should save returning customer order with a new card successfully", func() {
+			ReturningSuccessfulOrderNewCardTest(true)
+		})
+
+		It("Should not save customer with invalid user id", func() {
+			OrderBadUserTest(true)
+		})
+	})
+
 })
