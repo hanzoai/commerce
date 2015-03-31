@@ -1,6 +1,7 @@
 package stripe
 
 import (
+	"strconv"
 	"time"
 
 	"appengine"
@@ -45,8 +46,8 @@ func PaymentToCard(pay *payment.Payment) *stripe.CardParams {
 	card.Name = pay.Buyer.Name()
 	card.Number = pay.Account.Number
 	card.CVC = pay.Account.CVC
-	card.Month = pay.Account.Month
-	card.Year = pay.Account.Year
+	card.Month = strconv.Itoa(pay.Account.Month)
+	card.Year = strconv.Itoa(pay.Account.Year)
 	card.Address1 = pay.Buyer.Address.Line1
 	card.Address2 = pay.Buyer.Address.Line2
 	card.City = pay.Buyer.Address.City
@@ -158,12 +159,16 @@ func (c Client) AddCard(token string, user *user.User) (*Card, error) {
 
 // Update card associated with Stripe customer
 func (c Client) UpdateCard(token string, pay *payment.Payment, user *user.User) (*Card, error) {
+	acct := user.Accounts.Stripe
+	customerId := acct.CustomerId
+	cardId := acct.CardId
+
 	params := &stripe.CardParams{
-		Customer: user.Accounts.Stripe.CustomerId,
+		Customer: customerId,
 		Token:    token,
 	}
 
-	card, err := c.API.Cards.Update(pay.Account.CardId, params)
+	card, err := c.API.Cards.Update(cardId, params)
 	if err != nil {
 		return nil, NewError(err)
 	}
