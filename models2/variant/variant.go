@@ -63,7 +63,7 @@ func New(db *datastore.Datastore) *Variant {
 }
 
 func (v Variant) Kind() string {
-	return "variant2"
+	return "variant"
 }
 
 func (v *Variant) Validator() *val.Validator {
