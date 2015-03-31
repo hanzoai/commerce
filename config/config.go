@@ -54,9 +54,19 @@ type Config struct {
 	}
 
 	Stripe struct {
-		ClientId    string
-		APIKey      string
-		APISecret   string
+		// Current id/keys based on development mode
+		ClientId       string
+		SecretKey      string
+		PublishableKey string
+
+		DevelopmentClientId string
+		ProductionClientId  string
+
+		TestSecretKey      string
+		TestPublishableKey string
+		LiveSecretKey      string
+		LivePublishablKey  string
+
 		RedirectURL string
 		WebhookURL  string
 	}

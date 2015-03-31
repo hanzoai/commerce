@@ -17,7 +17,16 @@ func Defaults() *Config {
 
 	config.DemoMode = demoMode
 
+	config.Stripe.DevelopmentClientId = "ca_REDACTED"
+	config.Stripe.ProductionClientId = "ca_REDACTED"
+
+	config.Stripe.TestSecretKey = ""
+	config.Stripe.TestPublishableKey = "pk_test_REDACTED"
+	config.Stripe.LiveSecretKey = ""
+	config.Stripe.LivePublishablKey = "pk_live_REDACTED"
+
 	config.Mandrill.FromName = "Crowdstart"
 	config.Mandrill.FromEmail = "noreply@crowdstart.com"
+
 	return config
 }
