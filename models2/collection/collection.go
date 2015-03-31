@@ -74,7 +74,7 @@ func New(db *datastore.Datastore) *Collection {
 }
 
 func (c Collection) Kind() string {
-	return "collection2"
+	return "collection"
 }
 
 func (c *Collection) Validator() *val.Validator {
