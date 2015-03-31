@@ -1,10 +1,9 @@
 package test
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
-
-	"appengine"
 
 	apiPayment "crowdstart.io/api/payment"
 	"crowdstart.io/datastore"
@@ -29,27 +28,26 @@ func Test(t *testing.T) {
 }
 
 var (
-	aectx       ae.Context
-	ctx         appengine.Context
+	ctx         ae.Context
 	client      *ginclient.Client
 	accessToken string
-	db          datastore.Datastore
+	db          *datastore.Datastore
 	org         *organization.Organization
 )
 
 // Setup appengine context
 var _ = BeforeSuite(func() {
-	aectx = ae.NewContext()
+	ctx = ae.NewContext()
 
 	// Mock gin context that we can use with fixtures
-	c := gincontext.New(aectx)
+	c := gincontext.New(ctx)
 	fixtures.User(c)
 	org = fixtures.Organization(c)
 	fixtures.Product(c)
 	fixtures.Variant(c)
 
 	// Setup client and add routes for payment API
-	client = ginclient.New(aectx)
+	client = ginclient.New(ctx)
 	apiPayment.Route(client.Router)
 
 	// Create organization for tests, accessToken
@@ -62,15 +60,16 @@ var _ = BeforeSuite(func() {
 		r.Header.Set("Authorization", accessToken)
 	})
 
-	ctx = org.Namespace(aectx)
+	// Save namespaced db
+	db = datastore.New(org.Namespace(ctx))
 })
 
 // Tear-down appengine context
 var _ = AfterSuite(func() {
-	aectx.Close()
+	ctx.Close()
 })
 
-var _ = Describe("Payment API", func() {
+var _ = Describe("payment", func() {
 	Context("Authorize", func() {
 		It("Should save new order successfully", func() {
 			// Should come back with 200
@@ -80,7 +79,6 @@ var _ = Describe("Payment API", func() {
 			log.Debug("JSON %v", w.Body)
 
 			// Payment and Order info should be in the dv
-			db := datastore.New(ctx)
 			ord := order.New(db)
 
 			err := json.DecodeBuffer(w.Body, &ord)
@@ -112,5 +110,38 @@ var _ = Describe("Payment API", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(key).ToNot(BeNil())
 		})
+	})
+
+	It("Should save returning customer order successfully", func() {
+		// Make first request
+		w := client.PostRawJSON("/authorize", requests.ValidOrder)
+		Expect(w.Code).To(Equal(200))
+		log.Debug("JSON %v", w.Body)
+
+		// Decode body so we can re-use user id
+		ord := order.New(db)
+		err := json.DecodeBuffer(w.Body, &ord)
+		Expect(err).ToNot(HaveOccurred())
+
+		// Save user, customerId from first order
+		usr := user.New(db)
+		usr.Get(ord.UserId)
+		customerId := usr.Accounts.Stripe.CustomerId
+
+		// Returning user, should reuse stripe customer id
+		body := fmt.Sprintf(requests.ReturningUserOrder, usr.Id())
+		log.Debug("JSON %v", w.Body)
+		w = client.PostRawJSON("/authorize", body)
+		Expect(w.Code).To(Equal(200))
+
+		// Decode body from second request
+		ord = order.New(db)
+		err = json.DecodeBuffer(w.Body, &ord)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(usr.Id()).To(Equal(ord.UserId))
+
+		user2 := user.New(db)
+		user2.Get(ord.UserId)
+		Expect(user2.Accounts.Stripe.CustomerId).To(Equal(customerId))
 	})
 })
