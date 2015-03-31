@@ -29,7 +29,7 @@ module.exports =
       items: [
         productSlug:  't-shirt'
         price:        100
-        quantity:     20
+        quantity:     2
       ]
       metadata:
         shippingNotes: 'Ship Ship to da moon.'
