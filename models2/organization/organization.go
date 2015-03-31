@@ -11,6 +11,7 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/models2/user"
+	"crowdstart.io/thirdparty/stripe2/connect"
 	"crowdstart.io/util/permission"
 	"crowdstart.io/util/val"
 
@@ -55,13 +56,15 @@ type Organization struct {
 	} `json:"-"`
 
 	Stripe struct {
-		AccessToken    string `json:"accessToken"`
-		Livemode       bool   `json:"livemode"`
-		PublishableKey string `json:"publishableKey"`
-		RefreshToken   string `json:"refreshToken"`
-		Scope          string `json:"scope"`
-		TokenType      string `json:"tokenType"`
-		UserId         string `json:"userId"`
+		// For convenience duplicated
+		AccessToken    string
+		PublishableKey string
+		RefreshToken   string
+		UserId         string
+
+		// Save entire live and test tokens
+		Live connect.Token
+		Test connect.Token
 	} `json:"-"`
 
 	GoogleAnalytics string `json:"googleAnalytics"`

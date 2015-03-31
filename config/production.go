@@ -24,9 +24,11 @@ func Production() *Config {
 
 	config.StaticUrl = "//static.crowdstart.com"
 
-	config.Mandrill.APIKey = "wJ3LGLp5ZOUZlSH8wwqmTg"
+	config.DemoMode = false
 
-	config.Salesforce.CallbackURL = "https:" + config.UrlFor("platform", "/salesforce/callback")
+	config.Stripe.ClientId = config.Stripe.ProductionClientId
+	config.Stripe.SecretKey = config.Stripe.LiveSecretKey
+	config.Stripe.PublishableKey = config.Stripe.LivePublishablKey
 	config.Stripe.RedirectURL = "https:" + config.UrlFor("platform", "/stripe/callback")
 	config.Stripe.WebhookURL = "https:" + config.UrlFor("platform", "/stripe/hook")
 
@@ -34,14 +36,11 @@ func Production() *Config {
 	config.Facebook.AppSecret = "e82c15c92f9679a146a136790baf7d67"
 	config.Facebook.GraphVersion = "v2.2"
 
-	config.DemoMode = false
+	config.Mandrill.APIKey = "wJ3LGLp5ZOUZlSH8wwqmTg"
 
 	config.Salesforce.ConsumerKey = ""
 	config.Salesforce.ConsumerSecret = ""
-
-	config.Stripe.ClientId = "ca_REDACTED"
-	config.Stripe.APIKey = "pk_live_REDACTED"
-	config.Stripe.APISecret = ""
+	config.Salesforce.CallbackURL = "https:" + config.UrlFor("platform", "/salesforce/callback")
 
 	return config
 }
