@@ -29,7 +29,7 @@ func Organization(c *gin.Context) *organization.Organization {
 	org.Stripe.Test.UserId = "acct_14lSsRCSRlllXCwP"
 	org.Stripe.Test.AccessToken = "sk_test_REDACTED"
 	org.Stripe.Test.PublishableKey = "pk_test_REDACTED"
-	org.Stripe.Test.RefreshToken = "rt_5uU4oIaJ9irUxH5dljX0vb2upWBoUVQwUAfuAdUW7mNVUurV"
+	org.Stripe.Test.RefreshToken = "rt_5yS8YoaRQc7qP0hu8dtgOdfKXZ7fA5xu25q6oeTYNPiXobWH"
 
 	// You can only have one set of test credentials, so live/test are the same.
 	org.Stripe.Live.UserId = org.Stripe.Test.UserId
