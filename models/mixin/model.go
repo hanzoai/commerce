@@ -263,13 +263,13 @@ func (m *Model) GetOrCreate(filterStr string, value interface{}) error {
 	ok, err := m.Query().Filter(filterStr, value).First()
 
 	// Something bad happened
-	if err != nil && err != aeds.ErrNoSuchEntity {
+	if err != nil {
 		return err
 	}
 
 	if !ok {
 		// Not found, save entity
-		m.Put()
+		return m.Put()
 	}
 
 	return nil
@@ -283,22 +283,19 @@ func (m *Model) GetOrUpdate(filterStr string, value interface{}) error {
 	key, ok, err := q.Filter(filterStr, value).First(entity)
 
 	// Something bad happened
-	if err != nil && err != aeds.ErrNoSuchEntity {
+	if err != nil {
 		return err
 	}
 
-	if ok {
-		// Update copy found with our new data, use it's key, and save updated entity
-		structs.Copy(m.Entity, entity)
-		m.Entity = entity.(Entity)
-		m.SetKey(key)
-		m.Put()
-	} else {
-		// Nothing found, save entity
-		m.Put()
+	if !ok {
+		return m.Put()
 	}
 
-	return nil
+	// Update copy found with our new data, use it's key, and save updated entity
+	structs.Copy(m.Entity, entity)
+	m.Entity = entity.(Entity)
+	m.SetKey(key)
+	return m.Put()
 }
 
 // NOTE: This is not thread-safe
