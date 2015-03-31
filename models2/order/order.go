@@ -205,7 +205,7 @@ func (o *Order) GetItemEntities() error {
 	keys := make([]datastore.Key, nItems, nItems)
 	vals := make([]interface{}, nItems, nItems)
 
-	for i := 0; i < len(o.Items); i++ {
+	for i := 0; i < nItems; i++ {
 		key, dst, err := o.Items[i].Entity(db)
 		if err != nil {
 			log.Error("Failed to get entity for %#v: %v", o.Items[i], err)
@@ -220,7 +220,8 @@ func (o *Order) GetItemEntities() error {
 
 // Update line items from underlying entities
 func (o *Order) UpdateFromEntities() {
-	for i := 0; i < len(o.Items); i++ {
+	nItems := len(o.Items)
+	for i := 0; i < nItems; i++ {
 		(&o.Items[i]).Update()
 	}
 }
@@ -229,7 +230,8 @@ func (o *Order) UpdateFromEntities() {
 func (o *Order) Tally() {
 	// Update total
 	subtotal := 0
-	for i := 0; i < len(o.Items); i++ {
+	nItems := len(o.Items)
+	for i := 0; i < nItems; i++ {
 		subtotal += o.Items[i].Quantity * int(o.Items[i].Price)
 	}
 	o.LineTotal = currency.Cents(subtotal)
