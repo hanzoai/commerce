@@ -1,6 +1,6 @@
 package requests
 
-var ValidOrder = `
+var ReturningUserOrder = `
 {
   "payment": {
     "type": "stripe",
@@ -12,23 +12,14 @@ var ValidOrder = `
     }
   },
   "user": {
-    "email": "dev@hanzo.ai",
-    "firstName": "Fry",
-    "LastName": "Not Sure",
-    "address": {
-      "line1": "1 Planet Way",
-      "city": "New York",
-      "state": "New New York",
-      "country": "United States",
-      "postalCode": "55555-5555"
-    }
+	"id": "%s"
   },
   "order": {
     "currency": "usd",
     "items": [ {
       "productId": "1",
       "price": 1000,
-      "quantity": 2
+      "quantity": 3
     } ]
   }
 }`
