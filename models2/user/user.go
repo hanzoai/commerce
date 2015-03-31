@@ -68,7 +68,7 @@ func New(db *datastore.Datastore) *User {
 }
 
 func (u User) Kind() string {
-	return "user2"
+	return "user"
 }
 
 func (u *User) Load(c <-chan aeds.Property) (err error) {
