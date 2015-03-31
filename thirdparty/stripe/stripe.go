@@ -1,21 +1,32 @@
 package stripe
 
 import (
+	"strconv"
 	"time"
 
 	"appengine"
 	"appengine/urlfetch"
 
-	stripe "github.com/stripe/stripe-go"
-	sClient "github.com/stripe/stripe-go/client"
-	"github.com/stripe/stripe-go/currency"
+	"github.com/stripe/stripe-go"
+	"github.com/stripe/stripe-go/client"
 
-	"crowdstart.io/models"
+	"crowdstart.io/models2/payment"
+	"crowdstart.io/models2/user"
 	"crowdstart.io/util/json"
-	"crowdstart.io/util/log"
 )
 
-func NewApiClient(ctx appengine.Context, publishableKey string) *sClient.API {
+type Card stripe.Card
+type CardParams stripe.CardParams
+type Charge stripe.Charge
+type Customer stripe.Customer
+type Token stripe.Token
+
+type Client struct {
+	*client.API
+	ctx appengine.Context
+}
+
+func New(ctx appengine.Context, accessToken string) *Client {
 	// Set HTTP Client for App engine
 	httpClient := urlfetch.Client(ctx)
 	httpClient.Transport = &urlfetch.Transport{
@@ -24,103 +35,188 @@ func NewApiClient(ctx appengine.Context, publishableKey string) *sClient.API {
 	}
 	stripe.SetHTTPClient(httpClient)
 
-	sc := &sClient.API{}
-	sc.Init(publishableKey, nil)
-	return sc
+	sc := &client.API{}
+	sc.Init(accessToken, nil)
+	return &Client{sc, ctx}
 }
 
-// Create a new stripe customer and assign id to user model.
-func createStripeCustomer(ctx appengine.Context, sc *sClient.API, user *models.User, params *stripe.CustomerParams) error {
-	customer, err := sc.Customers.New(params)
+// Covert a payment model into a card card we can use for authorization
+func PaymentToCard(pay *payment.Payment) *stripe.CardParams {
+	card := stripe.CardParams{}
+	card.Name = pay.Buyer.Name()
+	card.Number = pay.Account.Number
+	card.CVC = pay.Account.CVC
+	card.Month = strconv.Itoa(pay.Account.Month)
+	card.Year = strconv.Itoa(pay.Account.Year)
+	card.Address1 = pay.Buyer.Address.Line1
+	card.Address2 = pay.Buyer.Address.Line2
+	card.City = pay.Buyer.Address.City
+	card.State = pay.Buyer.Address.State
+	card.Zip = pay.Buyer.Address.PostalCode
+	card.Country = pay.Buyer.Address.Country
+	return &card
+}
+
+// Do authorization, return token
+func (c Client) Authorize(pay *payment.Payment) (*Token, error) {
+	t, err := c.API.Tokens.New(&stripe.TokenParams{
+		Card: PaymentToCard(pay),
+	})
 
 	if err != nil {
-		log.Warn("Failed to create Stripe customer: %v", err, ctx)
-		return err
+		return nil, NewError(err)
 	}
 
-	// Update user model with stripe customer ID so we can charge for them later
-	user.Stripe.CustomerId = customer.ID
-
-	return nil
+	// Cast back to our token
+	return (*Token)(t), err
 }
 
-// Update corresponding Stripe customer for this user. If that fails, try to
-// create a new customer.
-func updateStripeCustomer(ctx appengine.Context, sc *sClient.API, user *models.User, params *stripe.CustomerParams) error {
-	if _, err := sc.Customers.Update(user.Stripe.CustomerId, params); err != nil {
-		log.Warn("Failed to update Stripe customer, attempting to create a new Stripe customer: %v", err, ctx)
-		return createStripeCustomer(ctx, sc, user, params)
+// Get an exising Stripe card
+func (c Client) GetCard(cardId string, customerId string) (*Card, error) {
+	params := &stripe.CardParams{
+		Customer: customerId,
 	}
-	return nil
+
+	card, err := c.API.Cards.Get(cardId, params)
+	if err != nil {
+		return nil, NewError(err)
+	}
+
+	return (*Card)(card), err
 }
 
-func Charge(ctx appengine.Context, accessToken string, authorizationToken string, order *models.Order, user *models.User) (*models.Charge, error) {
-	sc := NewApiClient(ctx, accessToken)
+// Get Stripe customer
+func (c Client) GetCustomer(token, user *user.User) (*Customer, error) {
+	params := &stripe.CustomerParams{}
+	params.SetSource(token)
 
-	// Create a charge for us to persist stripe data to
-	charge := new(models.Charge)
+	customerId := user.Accounts.Stripe.CustomerId
 
-	// customer params
-	customerParams := &stripe.CustomerParams{
+	customer, err := c.API.Customers.Get(customerId, params)
+	if err != nil {
+		return nil, NewError(err)
+	}
+
+	return (*Customer)(customer), err
+}
+
+// Update Stripe customer
+func (c Client) UpdateCustomer(user *user.User) (*Customer, error) {
+	params := &stripe.CustomerParams{
+		Email: user.Email,
+	}
+
+	// Update with our user metadata
+	for k, v := range user.Metadata {
+		params.AddMeta(k, json.Encode(v))
+	}
+
+	customerId := user.Accounts.Stripe.CustomerId
+
+	customer, err := c.API.Customers.Update(customerId, params)
+	if err != nil {
+		return nil, NewError(err)
+	}
+
+	return (*Customer)(customer), err
+}
+
+// Create new stripe customer
+func (c Client) NewCustomer(token string, user *user.User) (*Customer, error) {
+	params := &stripe.CustomerParams{
 		Desc:  user.Name(),
 		Email: user.Email,
 	}
-	customerParams.SetSource(authorizationToken)
+	params.SetSource(token)
 
-	if user.Stripe.CustomerId == "" {
-		// Create new Stripe customer
-		if err := createStripeCustomer(ctx, sc, user, customerParams); err != nil {
-			return charge, err
-		}
-	} else {
-		// Update Stripe customer
-		if err := updateStripeCustomer(ctx, sc, user, customerParams); err != nil {
-			return charge, err
-		}
+	// Update with our user metadata
+	for k, v := range user.Metadata {
+		params.AddMeta(k, json.Encode(v))
+	}
+
+	customer, err := c.API.Customers.New(params)
+	if err != nil {
+		return nil, NewError(err)
+	}
+
+	return (*Customer)(customer), err
+}
+
+// Add new card to Stripe customer
+func (c Client) AddCard(token string, user *user.User) (*Card, error) {
+	params := &stripe.CardParams{
+		Customer: user.Accounts.Stripe.CustomerId,
+		Token:    token,
+	}
+
+	card, err := c.API.Cards.New(params)
+	if err != nil {
+		return nil, NewError(err)
+	}
+
+	return (*Card)(card), err
+}
+
+// Update card associated with Stripe customer
+func (c Client) UpdateCard(token string, pay *payment.Payment, user *user.User) (*Card, error) {
+	acct := user.Accounts.Stripe
+	customerId := acct.CustomerId
+	cardId := acct.CardId
+
+	params := &stripe.CardParams{
+		Customer: customerId,
+		Token:    token,
+	}
+
+	card, err := c.API.Cards.Update(cardId, params)
+	if err != nil {
+		return nil, NewError(err)
+	}
+
+	return (*Card)(card), err
+}
+
+// Create new charge
+func (c Client) NewCharge(source interface{}, pay *payment.Payment) (*Charge, error) {
+	params := &stripe.ChargeParams{
+		Amount:    uint64(pay.Amount),
+		Currency:  stripe.Currency(pay.Currency),
+		Desc:      "Charge for test@example.com",
+		NoCapture: true,
+	}
+
+	// Update with our user metadata
+	for k, v := range pay.Metadata {
+		params.AddMeta(k, json.Encode(v))
+	}
+
+	switch v := source.(type) {
+	case string:
+		params.SetSource(v)
+	case *Customer:
+		params.Customer = v.ID
+	case *user.User:
+		params.Customer = v.Accounts.Stripe.CustomerId
 	}
 
 	// Create charge
-	log.Debug("Creating charge")
-	chargeParams := &stripe.ChargeParams{
-		Amount:    order.DecimalTotal(),
-		Fee:       order.DecimalFee(),
-		Currency:  currency.USD,
-		Customer:  user.Stripe.CustomerId,
-		Desc:      order.Description(),
-		Email:     user.Email,
-		Statement: "SKULLY SYSTEMS", // Max 15 characters
-	}
-	chargeParams.Meta = make(map[string]string)
-	chargeParams.Meta["UserId"] = user.Id
-
-	log.Debug("chargeParams: %#v", chargeParams)
-	stripeCharge, err := sc.Charges.New(chargeParams)
-
-	// Charges and tokens are recorded regardless of success/failure.
-	// It doesn't record whether each charge/token is success or failure.
+	ch, err := c.API.Charges.New(params)
 	if err != nil {
-		stripeErr, ok := err.(*stripe.Error)
-		if ok {
-			charge.FailCode = json.Encode(stripeErr.Code)
-			charge.FailMsg = stripeErr.Msg
-			charge.FailType = json.Encode(stripeErr.Type)
-		}
-	} else {
-		charge.ID = stripeCharge.ID
-		charge.Captured = stripeCharge.Captured
-		charge.Created = stripeCharge.Created
-		charge.Desc = stripeCharge.Desc
-		charge.Email = stripeCharge.Email
-		charge.Live = stripeCharge.Live
-		charge.Paid = stripeCharge.Paid
-		charge.Refunded = stripeCharge.Refunded
-		charge.Statement = stripeCharge.Statement
-		charge.Amount = int64(stripeCharge.Amount)
-		charge.AmountRefunded = int64(stripeCharge.AmountRefunded)
+		return nil, NewError(err)
 	}
 
-	order.Charges = append(order.Charges, *charge)
-	order.StripeTokens = append(order.StripeTokens, authorizationToken)
+	// Set Charge Id
+	pay.ChargeId = ch.ID
 
-	return charge, err
+	return (*Charge)(ch), err
+}
+
+// Capture charge
+func (c Client) Capture(id string) (*Charge, error) {
+	ch, err := c.API.Charges.Capture(id, nil)
+	if err != nil {
+		return nil, NewError(err)
+	}
+
+	return (*Charge)(ch), err
 }

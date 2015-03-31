@@ -5,7 +5,7 @@ import (
 	"crowdstart.io/models2/organization"
 	"crowdstart.io/models2/payment"
 	"crowdstart.io/models2/user"
-	"crowdstart.io/thirdparty/stripe2"
+	"crowdstart.io/thirdparty/stripe"
 	"crowdstart.io/util/log"
 )
 
