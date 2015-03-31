@@ -1,7 +1,9 @@
 package order
 
 import (
+	"bytes"
 	"fmt"
+	"math"
 	"strconv"
 	"time"
 
@@ -94,9 +96,6 @@ type Order struct {
 	// integer	Amount refunded by the seller. Amount in cents.
 	Refunded currency.Cents `json:"refunded"`
 
-	// integer	Crowdstart application fee. Amount in cents.
-	Fee currency.Cents `json:"fee"`
-
 	BillingAddress  Address `json:"billingAddress"`
 	ShippingAddress Address `json:"shippingAddress"`
 
@@ -178,6 +177,24 @@ func (o *Order) Save(c chan<- aeds.Property) (err error) {
 
 	// Save properties
 	return IgnoreFieldMismatch(aeds.SaveStruct(o, c))
+}
+
+func (o Order) Fee() currency.Cents {
+	return currency.Cents(math.Floor(float64(o.Total) * 0.02))
+}
+
+func (o Order) Description() string {
+	buffer := bytes.NewBufferString("")
+
+	for i, item := range o.Items {
+		if i > 0 {
+			buffer.WriteString(", ")
+		}
+		buffer.WriteString(item.String())
+		buffer.WriteString(" x")
+		buffer.WriteString(strconv.Itoa(item.Quantity))
+	}
+	return buffer.String()
 }
 
 // Get line items from datastore
@@ -332,20 +349,6 @@ func (o Order) DecimalTotal() uint64 {
 func (o Order) DecimalFee() uint64 {
 	return uint64(FloatPrice(o.Total) * 100 * 0.02)
 }
-
-// func (o Order) Description() string {
-// 	buffer := bytes.NewBufferString("")
-
-// 	for i, item := range o.Items {
-// 		if i > 0 {
-// 			buffer.WriteString(", ")
-// 		}
-// 		buffer.WriteString(item.SKU())
-// 		buffer.WriteString(" x")
-// 		buffer.WriteString(strconv.Itoa(item.Quantity))
-// 	}
-// 	return buffer.String()
-// }
 
 // Use binding to validate that there are no errors
 // func (o Order) Validate(req *http.Request, errs binding.Errors) binding.Errors {
