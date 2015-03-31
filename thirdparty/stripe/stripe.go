@@ -180,8 +180,11 @@ func (c Client) UpdateCard(token string, pay *payment.Payment, user *user.User) 
 func (c Client) NewCharge(source interface{}, pay *payment.Payment) (*Charge, error) {
 	params := &stripe.ChargeParams{
 		Amount:    uint64(pay.Amount),
+		Fee:       uint64(pay.Fee),
 		Currency:  stripe.Currency(pay.Currency),
-		Desc:      "Charge for test@example.com",
+		Customer:  pay.Account.CustomerId,
+		Email:     pay.Buyer.Email,
+		Desc:      pay.Description,
 		NoCapture: true,
 	}
 
@@ -190,6 +193,8 @@ func (c Client) NewCharge(source interface{}, pay *payment.Payment) (*Charge, er
 		params.AddMeta(k, json.Encode(v))
 	}
 
+	params.AddMeta("paymentId", pay.Id())
+
 	switch v := source.(type) {
 	case string:
 		params.SetSource(v)
@@ -197,6 +202,7 @@ func (c Client) NewCharge(source interface{}, pay *payment.Payment) (*Charge, er
 		params.Customer = v.ID
 	case *user.User:
 		params.Customer = v.Accounts.Stripe.CustomerId
+		params.AddMeta("userId", v.Id())
 	}
 
 	// Create charge
