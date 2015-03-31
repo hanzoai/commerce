@@ -398,6 +398,11 @@ func (q *Query) Filter(filterStr string, value interface{}) *Query {
 	return q
 }
 
+func (q *Query) KeysOnly() *Query {
+	q.Query = q.Query.KeysOnly()
+	return q
+}
+
 func (q *Query) First() (bool, error) {
 	key, ok, err := q.Query.First(q.model.Entity)
 	if ok {

@@ -41,7 +41,17 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	// Peel off order for convience
 	ord = ar.Order
 
-	// Update order totals
+	// Get underlying product/variant entities
+	err = ord.GetItemEntities()
+	if err != nil {
+		log.Error("Failed to get item entities: %v", err)
+		return nil, err
+	}
+
+	// Update line items using that information
+	ord.UpdateFromEntities()
+
+	// Tally up order again
 	ord.Tally()
 
 	log.Debug("Order: %#v", ord)

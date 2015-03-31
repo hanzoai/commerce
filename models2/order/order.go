@@ -15,9 +15,11 @@ import (
 	"crowdstart.io/models2/types/currency"
 	"crowdstart.io/util/gob"
 	"crowdstart.io/util/json"
+	"crowdstart.io/util/log"
 	"crowdstart.io/util/val"
 
 	. "crowdstart.io/models2"
+	. "crowdstart.io/models2/lineitem"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
@@ -178,10 +180,40 @@ func (o *Order) Save(c chan<- aeds.Property) (err error) {
 	return IgnoreFieldMismatch(aeds.SaveStruct(o, c))
 }
 
+// Get line items from datastore
+func (o *Order) GetItemEntities() error {
+	db := o.Model.Db
+
+	nItems := len(o.Items)
+	keys := make([]datastore.Key, nItems, nItems)
+	vals := make([]interface{}, nItems, nItems)
+
+	for i := 0; i < len(o.Items); i++ {
+		key, dst, err := o.Items[i].Entity(db)
+		if err != nil {
+			log.Error("Failed to get entity for %#v: %v", o.Items[i], err)
+			return err
+		}
+		keys[i] = key
+		vals[i] = dst
+	}
+
+	return db.GetMulti(keys, vals)
+}
+
+// Update line items from underlying entities
+func (o *Order) UpdateFromEntities() {
+	for i := 0; i < len(o.Items); i++ {
+		(&o.Items[i]).Update()
+	}
+}
+
+// Calculate total of an order
 func (o *Order) Tally() {
+	// Update total
 	subtotal := 0
-	for _, item := range o.Items {
-		subtotal += item.Quantity * int(item.Price)
+	for i := 0; i < len(o.Items); i++ {
+		subtotal += o.Items[i].Quantity * int(o.Items[i].Price)
 	}
 	o.LineTotal = currency.Cents(subtotal)
 
