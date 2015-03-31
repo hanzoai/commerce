@@ -81,7 +81,9 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 
 	// Update payment with order information
 	pay.Amount = ord.Total
+	pay.Fee = ord.Fee()
 	pay.Currency = ord.Currency
+	pay.Description = ord.Description()
 
 	log.Debug("Payment: %#v", pay)
 

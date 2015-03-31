@@ -2,6 +2,7 @@ package lineitem
 
 import (
 	"errors"
+	"fmt"
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
@@ -113,6 +114,34 @@ func (li *LineItem) Update() {
 		li.Taxable = li.Variant.Taxable
 		li.Weight = li.Variant.Weight
 	}
+}
+
+func (li LineItem) String() string {
+	if li.VariantName != "" {
+		return fmt.Sprintf("%v", li.VariantName)
+	}
+
+	if li.VariantSKU != "" {
+		return fmt.Sprintf("%v", li.VariantSKU)
+	}
+
+	if li.VariantId != "" {
+		return fmt.Sprintf("%v", li.VariantId)
+	}
+
+	if li.ProductName != "" {
+		return fmt.Sprintf("%v", li.ProductName)
+	}
+
+	if li.ProductSlug != "" {
+		return fmt.Sprintf("%v", li.ProductSlug)
+	}
+
+	if li.ProductId != "" {
+		return fmt.Sprintf("%v", li.ProductId)
+	}
+
+	return fmt.Sprintf("%v", li)
 }
 
 // func (li LineItem) Validate(req *http.Request, errs binding.Errors) binding.Errors {
