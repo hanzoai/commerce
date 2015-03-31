@@ -8,6 +8,15 @@ import (
 	. "crowdstart.io/util/test/ginkgo"
 )
 
+func stripeVerifyCharge(pay *payment.Payment) {
+	c, err := sc.Charges.Get(pay.ChargeId, nil)
+	Expect(c).ToNot(BeNil())
+	Expect(err).ToNot(HaveOccurred())
+
+	Expect(c.Captured).To(BeTrue())
+	log.Debug("StripeVerifyCharge Results:\n%v\n%v", c, err)
+}
+
 func stripeVerifyAuth(pay *payment.Payment) {
 	c, err := sc.Charges.Get(pay.ChargeId, nil)
 	Expect(c).ToNot(BeNil())
