@@ -87,6 +87,23 @@ func New(entityOrPrefix interface{}, args ...interface{}) *Rest {
 	return r
 }
 
+func defaultMiddleware(c *gin.Context) {
+	// Ensure CORS works
+	c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+}
+
+func namespacedMiddleware(c *gin.Context) {
+	// Ensure CORS works
+	c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+
+	// Automatically use namespace of organization unless we're
+	// configured to use the default namespace for this endpoint.
+	ctx := middleware.GetAppEngine(c)
+	org := middleware.GetOrganization(c)
+	ctx = org.Namespace(ctx)
+	c.Set("appengine", ctx)
+}
+
 func (r Rest) Route(router router.Router, args ...gin.HandlerFunc) {
 	prefix := r.Prefix + r.Kind
 	prefix = "/" + strings.TrimLeft(prefix, "/")
@@ -94,10 +111,16 @@ func (r Rest) Route(router router.Router, args ...gin.HandlerFunc) {
 	log.Debug("Creating group with prefix: %v", prefix)
 	// Create group for our API routes and require Access token
 	group := router.Group(prefix)
-	group.Use(func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-	})
+
+	// Any additional middleware
 	group.Use(args...)
+
+	// Setup our middleware
+	if r.DefaultNamespace {
+		group.Use(defaultMiddleware)
+	} else {
+		group.Use(namespacedMiddleware)
+	}
 
 	// Add default routes
 	for _, route := range r.defaultRoutes() {
@@ -212,17 +235,8 @@ func (r Rest) newKind() mixin.Kind {
 
 // retuns a new interface of this entity type
 func (r Rest) newEntity(c *gin.Context) mixin.Entity {
-	ctx := middleware.GetAppEngine(c)
-
-	// Automatically use namespace of organization unless we're configured to
-	// use the default namespace for this endpoint.
-	if !r.DefaultNamespace {
-		org := middleware.GetOrganization(c)
-		ctx = org.Namespace(ctx)
-	}
-
 	// Create a new entity
-	db := datastore.New(ctx)
+	db := datastore.New(c)
 	entity := reflect.New(r.entityType).Interface().(mixin.Entity)
 	model := mixin.Model{Db: db, Entity: entity}
 
@@ -329,20 +343,6 @@ func (r Rest) create(c *gin.Context) {
 		return
 	}
 
-	// Do some reflection magic to make sure things are set as they should be
-	// entity := reflect.Indirect(reflect.ValueOf(model.Entity))
-
-	// // Set id
-	// id := entity.FieldByName("Id_")
-	// id.Set(reflect.ValueOf(model.Id())) // this allocates a new Id
-
-	// // Set created at/updated at
-	// createdAt := entity.FieldByName("CreatedAt")
-	// updatedAt := entity.FieldByName("UpdatedAt")
-	// now := reflect.ValueOf(time.Now())
-	// createdAt.Set(now)
-	// updatedAt.Set(now)
-
 	if err := entity.Put(); err != nil {
 		json.Fail(c, 500, "Failed to create "+r.Kind, err)
 	} else {
@@ -369,14 +369,6 @@ func (r Rest) update(c *gin.Context) {
 		return
 	}
 
-	// // Do some reflection magic to make sure things are set as they should be
-	// entity := reflect.Indirect(reflect.ValueOf(model.Entity))
-
-	// // Set updatedAt
-	// updatedAt := entity.FieldByName("UpdatedAt")
-	// now := reflect.ValueOf(time.Now())
-	// updatedAt.Set(now)
-
 	// Replace whatever was in the datastore with our new updated entity
 	if err := entity.Put(); err != nil {
 		json.Fail(c, 500, "Failed to update "+r.Kind, err)
@@ -400,14 +392,6 @@ func (r Rest) patch(c *gin.Context) {
 		json.Fail(c, 400, "Failed decode request body", err)
 		return
 	}
-
-	// Do some reflection magic to make sure things are set as they should be
-	// entity := reflect.Indirect(reflect.ValueOf(model.Entity))
-
-	// Set updatedAt
-	// updatedAt := entity.FieldByName("UpdatedAt")
-	// now := reflect.ValueOf(time.Now())
-	// updatedAt.Set(now)
 
 	if err := entity.Put(); err != nil {
 		json.Fail(c, 500, "Failed to update "+r.Kind, err)
