@@ -1,6 +1,12 @@
 package accesstoken
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/gin-gonic/gin"
+
+	"crowdstart.io/middleware"
+	"crowdstart.io/util/permission"
+	"crowdstart.io/util/router"
+)
 
 // Access token routes
 func Get(c *gin.Context) {
@@ -39,4 +45,13 @@ func Post(c *gin.Context) {
 
 func Delete(c *gin.Context) {
 	deleteAccessToken(c)
+}
+
+func Route(router router.Router, args ...gin.HandlerFunc) {
+	adminRequired := middleware.TokenRequired(permission.Admin)
+
+	api := router.Group("/access")
+	api.GET("/:mode/:id", Get)
+	api.POST("/:mode/:id", adminRequired, Delete)
+	api.DELETE("/:mode/:id", adminRequired, Delete)
 }
