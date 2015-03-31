@@ -10,13 +10,16 @@ import (
 
 func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (*order.Order, error) {
 	// We could actually capture different types of things here...
-	ord, err := stripe.Capture(org, ord)
+	ord, payments, err := stripe.Capture(org, ord)
 	if err != nil {
 		return nil, err
 	}
 
-	// Save order
+	// Save order and payments
 	ord.Put()
+	for _, pay := range payments {
+		pay.Put()
+	}
 
 	return ord, nil
 }

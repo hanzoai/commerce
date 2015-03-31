@@ -12,7 +12,6 @@ import (
 	"crowdstart.io/middleware"
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/util/json"
-	"crowdstart.io/util/log"
 	"crowdstart.io/util/permission"
 	"crowdstart.io/util/router"
 )
@@ -213,12 +212,9 @@ func (r Rest) newEntity(c *gin.Context) mixin.Entity {
 
 	// Automatically use namespace of organization unless we're configured to
 	// use the default namespace for this endpoint.
-	if r.DefaultNamespace {
-		log.Debug("Using default namespace.")
-	} else {
+	if !r.DefaultNamespace {
 		org := middleware.GetOrganization(c)
 		ctx = org.Namespace(ctx)
-		log.Debug("Using namespace: %d", org.Key().IntID())
 	}
 
 	// Create a new entity

@@ -4,12 +4,14 @@ import (
 	"errors"
 
 	"crowdstart.io/util/bit"
+	"crowdstart.io/util/log"
 	"crowdstart.io/util/token"
 )
 
 // Error for expired jti's
-var ErrorExpiredToken = errors.New("This token is expired.")
-var TokenNotFound = errors.New("Token not found.")
+var ErrorExpiredToken = errors.New("This token is expired")
+var TokenNotFound = errors.New("Token not found")
+var TokenNotFoundByName = errors.New("Token not found by name")
 
 // AccessToken is a mixin for securing objects with an AccessToken
 type AccessToken struct {
@@ -50,7 +52,7 @@ func (at *AccessToken) GetTokenByName(name string) (*token.Token, error) {
 			return &tok, nil
 		}
 	}
-	return nil, TokenNotFound
+	return nil, TokenNotFoundByName
 }
 
 func (at *AccessToken) MustGetTokenByName(name string) *token.Token {
@@ -64,12 +66,12 @@ func (at *AccessToken) MustGetTokenByName(name string) *token.Token {
 func (at *AccessToken) GetToken(accessToken string) (*token.Token, error) {
 	tok, err := token.FromString(accessToken, at.SecretKey)
 	if err != nil {
-		return nil, err
+		return tok, err
 	}
 
 	// Try to fetch model using EntityId on token
 	if err := at.Entity.Get(tok.EntityId); err != nil {
-		return nil, err
+		return tok, err
 	}
 
 	for _, _tok := range at.Tokens {
@@ -77,7 +79,8 @@ func (at *AccessToken) GetToken(accessToken string) (*token.Token, error) {
 			return tok, at.CompareToken(tok, &_tok)
 		}
 	}
-	return nil, TokenNotFound
+
+	return tok, TokenNotFound
 }
 
 func (at *AccessToken) RemoveToken(name string) {
@@ -104,6 +107,7 @@ func (at *AccessToken) ClearTokens() {
 func (at *AccessToken) GetWithAccessToken(accessToken string) (*token.Token, error) {
 	tok, err := at.GetToken(accessToken)
 	if err != nil {
+		log.Warn("Failed to get %v using token: %v", at.Entity.Kind(), accessToken)
 		return tok, err
 	}
 
