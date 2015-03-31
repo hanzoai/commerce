@@ -14,7 +14,7 @@ type User struct {
 }
 
 func (u *User) Kind() string {
-	return "user2"
+	return "user"
 }
 
 func newUser(db *datastore.Datastore) *User {

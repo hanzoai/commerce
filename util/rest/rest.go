@@ -87,12 +87,12 @@ func New(entityOrPrefix interface{}, args ...interface{}) *Rest {
 	return r
 }
 
-func defaultMiddleware(c *gin.Context) {
+func DefaultMiddleware(c *gin.Context) {
 	// Ensure CORS works
 	c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 }
 
-func namespacedMiddleware(c *gin.Context) {
+func NamespacedMiddleware(c *gin.Context) {
 	// Ensure CORS works
 	c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 
@@ -112,20 +112,24 @@ func (r Rest) Route(router router.Router, args ...gin.HandlerFunc) {
 	// Create group for our API routes and require Access token
 	group := router.Group(prefix)
 
-	// Any additional middleware
+	// Previous middleware should set organization on context, if non-default
+	// namespace is used.
 	group.Use(args...)
+
+	var middleware gin.HandlerFunc
 
 	// Setup our middleware
 	if r.DefaultNamespace {
-		group.Use(defaultMiddleware)
+		middleware = DefaultMiddleware
 	} else {
-		group.Use(namespacedMiddleware)
+		middleware = NamespacedMiddleware
 	}
 
 	// Add default routes
 	for _, route := range r.defaultRoutes() {
 		log.Debug("Add route %v %v", route.method, prefix+route.url)
-		group.Handle(route.method, route.url, route.handlers)
+		handlers := append([]gin.HandlerFunc{middleware}, route.handlers...)
+		group.Handle(route.method, route.url, handlers)
 	}
 
 	for _, routes := range r.routes {

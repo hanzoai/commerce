@@ -17,13 +17,17 @@ import (
 	paymentApi "crowdstart.io/api/payment"
 )
 
-var orderApi = rest.New(order.Order{})
-
 func Route(router router.Router, args ...gin.HandlerFunc) {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
 
-	orderApi.GET("/:id/payments", adminRequired, func(c *gin.Context) {
+	api := rest.New(order.Order{})
+
+	api.POST("/:id/capture", adminRequired, rest.NamespacedMiddleware, paymentApi.Capture)
+	api.POST("/:id/charge", publishedRequired, paymentApi.Charge)
+	api.POST("/:id/authorize", publishedRequired, paymentApi.Authorize)
+
+	api.GET("/:id/payments", adminRequired, rest.NamespacedMiddleware, func(c *gin.Context) {
 		id := c.Params.ByName("id")
 		db := datastore.New(c)
 		ord := order.New(db)
@@ -38,7 +42,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 		c.JSON(200, payments)
 	})
 
-	orderApi.Create = func(c *gin.Context) {
+	api.Create = func(c *gin.Context) {
 		db := datastore.New(c)
 		ord := order.New(db)
 
@@ -63,11 +67,11 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 			json.Fail(c, 500, "Failed to create order", err)
 		} else {
 			c.Writer.Header().Add("Location", c.Request.URL.Path+"/"+ord.Id())
-			orderApi.JSON(c, 201, ord)
+			api.JSON(c, 201, ord)
 		}
 	}
 
-	orderApi.Update = func(c *gin.Context) {
+	api.Update = func(c *gin.Context) {
 		id := c.Params.ByName("id")
 		db := datastore.New(c)
 		ord := order.New(db)
@@ -100,11 +104,11 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 		if err := ord.Put(); err != nil {
 			json.Fail(c, 500, "Failed to update order", err)
 		} else {
-			orderApi.JSON(c, 200, ord)
+			api.JSON(c, 200, ord)
 		}
 	}
 
-	orderApi.Patch = func(c *gin.Context) {
+	api.Patch = func(c *gin.Context) {
 		id := c.Params.ByName("id")
 		db := datastore.New(c)
 		ord := order.New(db)
@@ -135,13 +139,9 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 		if err := ord.Put(); err != nil {
 			json.Fail(c, 500, "Failed to update order", err)
 		} else {
-			orderApi.JSON(c, 200, ord)
+			api.JSON(c, 200, ord)
 		}
-
 	}
 
-	orderApi.POST("/:id/charge", publishedRequired, paymentApi.Charge)
-	orderApi.POST("/:id/authorize", publishedRequired, paymentApi.Authorize)
-	orderApi.POST("/:id/capture", adminRequired, paymentApi.Capture)
-	orderApi.Route(router, args...)
+	api.Route(router, args...)
 }
