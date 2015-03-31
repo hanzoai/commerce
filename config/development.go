@@ -28,17 +28,11 @@ func Development() *Config {
 
 	config.StaticUrl = "/static"
 
-	config.Salesforce.CallbackURL = "http:" + config.UrlFor("platform", "/salesforce/callback")
-	config.Stripe.RedirectURL = "http:" + config.UrlFor("platform", "/stripe/callback")
-	config.Stripe.WebhookURL = "http:" + config.UrlFor("platform", "/stripe/hook")
-
-	// TODO: Create dev versions somehow
-	config.Salesforce.ConsumerKey = "3MVG9xOCXq4ID1uElRYWhpUWjXYxIIlf_W1_MSDefMxTxdgMz5aMsZ7uvZ4n8zHI1wq6UREv2KE31Kes_Bq6D"
-	config.Salesforce.ConsumerSecret = "2354282251954184740"
-
 	config.Stripe.ClientId = "ca_53yyPzxlPsdAtzMEIuS2mXYDp4FFXLmm"
-	config.Stripe.APIKey = "pk_test_ucSTeAAtkSXVEg713ir40UhX"
-	config.Stripe.APISecret = ""
+	config.Stripe.PublishableKey = config.Stripe.TestPublishableKey
+	config.Stripe.SecretKey = config.Stripe.TestSecretKey
+	config.Stripe.RedirectURL = "http://localhost:8080" + config.UrlFor("platform", "/stripe/callback")
+	config.Stripe.WebhookURL = "http://localhost:8080" + config.UrlFor("platform", "/stripe/hook")
 
 	config.Facebook.AppId = "484263268389194"
 	config.Facebook.AppSecret = "e82c15c92f9679a146a136790baf7d67"
@@ -46,6 +40,11 @@ func Development() *Config {
 
 	config.Google.APIKey = "AIzaSyAOPY7nU-UlNRLvZz9D_j2Qm6SBMUvk83w"
 	config.Google.Bucket.ImageUploads = "crowdstart-staging-image-uploads"
+
+	// TODO: Create dev versions somehow
+	config.Salesforce.ConsumerKey = "3MVG9xOCXq4ID1uElRYWhpUWjXYxIIlf_W1_MSDefMxTxdgMz5aMsZ7uvZ4n8zHI1wq6UREv2KE31Kes_Bq6D"
+	config.Salesforce.ConsumerSecret = "2354282251954184740"
+	config.Salesforce.CallbackURL = "http://localhost:8080" + config.UrlFor("platform", "/salesforce/callback")
 
 	return config
 }
