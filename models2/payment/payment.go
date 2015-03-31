@@ -42,6 +42,8 @@ type Client struct {
 }
 
 type AffirmAccount struct {
+	CaptureId     string `json:"captureId,omitempty"`
+	TransactionId string `json:"transactionId,omitempty"`
 	CheckoutToken string `json:"checkoutToken,omitempty"`
 }
 
@@ -50,6 +52,9 @@ type PayPalAccount struct {
 	SellerEmail string `json:"sellerEmail,omitempty"`
 	RedirectUrl string `json:"redirectUrl,omitempty"`
 	Ipn         string `json:"ipn,omitempty"`
+
+	PayKey         string `json:"payKey,omitempty"`
+	PreapprovalKey string `json:"preapprovalKey,omitempty"`
 
 	// Preapproval expiration date (Unix timestamp in milliseconds).
 	Ending int `json:"ending,omitempty"`
@@ -60,12 +65,13 @@ type PayPalAccount struct {
 
 type StripeAccount struct {
 	// Very important to never store these!
-	Number string `json:"number" datastore:"-"`
-	CVC    string `json:"cvc" datastore:"-"`
+	Number string `json:"number,omitempty" datastore:"-"`
+	CVC    string `json:"cvc,omitempty" datastore:"-"`
 
-	CardId     string `json:"cardId,omitempty"`
-	ChargeId   string `json:"chargeId,omitempty"`
-	CustomerId string `json:"customerId,omitempty"`
+	BalanceTransactionId string `json:"balanceTransactionId,omitempty"`
+	CardId               string `json:"cardId,omitempty"`
+	ChargeId             string `json:"chargeId,omitempty"`
+	CustomerId           string `json:"customerId,omitempty"`
 
 	Fingerprint string `json:"fingerprint,omitempty"`
 	Funding     string `json:"funding,omitempty"`
@@ -120,20 +126,6 @@ type Payment struct {
 	Currency currency.Type `json:"currency"`
 
 	CampaignId string `json:"campaignId"`
-
-	// Id for Stripe/Affirm
-	ChargeId string `json:"chargeId,omitempty"`
-
-	// Stripe only.
-	BalanceTransaction string `json:"balanceTransaction,omitempty"`
-
-	// PayPal only.
-	PayKey         string `json:"payKey,omitempty"`
-	PreapprovalKey string `json:"preapprovalKey,omitempty"`
-
-	// Affirm only.
-	CaptureId     string `json:"captureId,omitempty"`
-	TransactionId string `json:"transactionId,omitempty"`
 
 	Amount         currency.Cents `json:"amount"`
 	AmountRefunded currency.Cents `json:"amountRefunded"`
