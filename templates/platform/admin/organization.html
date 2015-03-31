@@ -69,7 +69,7 @@
         ]);
     });
   var api = NewRestAPI(
-      '{{ urlFor("api", "/organization2") }}',
+      '{{ urlFor("api", "/organization") }}',
       '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}',
       $('#form-organization'),
       {
