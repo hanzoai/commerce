@@ -44,7 +44,7 @@ func New(db *datastore.Datastore) *Campaign {
 }
 
 func (c Campaign) Kind() string {
-	return "campaign2"
+	return "campaign"
 }
 
 func (c *Campaign) Validator() *val.Validator {

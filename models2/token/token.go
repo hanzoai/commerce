@@ -22,7 +22,7 @@ func New(db *datastore.Datastore) *Token {
 }
 
 func (t Token) Kind() string {
-	return "token2"
+	return "token"
 }
 
 func (t *Token) Validator() *val.Validator {
