@@ -84,14 +84,19 @@ func Charge(c *gin.Context) {
 }
 
 func Route(router router.Router) {
+	group := router.Group("")
+	group.Use(func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+	})
+
 	adminRequired := middleware.TokenRequired(permission.Admin)
 	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
 
-	router.POST("/charge", publishedRequired, Charge)
-	router.POST("/order/:id/charge", publishedRequired, Charge)
+	group.POST("/charge", publishedRequired, Charge)
+	group.POST("/order/:id/charge", publishedRequired, Charge)
 
 	// Two Step Payment API ("Auth & Capture")
-	router.POST("/authorize", publishedRequired, Authorize)
-	router.POST("/order/:id/authorize", publishedRequired, Authorize)
-	router.POST("/order/:id/capture", adminRequired, Capture)
+	group.POST("/authorize", publishedRequired, Authorize)
+	group.POST("/order/:id/authorize", publishedRequired, Authorize)
+	group.POST("/order/:id/capture", adminRequired, Capture)
 }

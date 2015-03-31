@@ -24,8 +24,7 @@ func getOrg(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 	org := organization.New(db)
 	org.Name = "suchtees"
-	org.GetOrCreate("Name=", org.Name)
-	org.MustPut()
+	org.Query().Filter("Name=", org.Name).First()
 	return org
 }
 
