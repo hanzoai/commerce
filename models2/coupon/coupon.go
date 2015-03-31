@@ -61,7 +61,7 @@ func New(db *datastore.Datastore) *Coupon {
 }
 
 func (c Coupon) Kind() string {
-	return "coupon2"
+	return "coupon"
 }
 
 func (c *Coupon) Validator() *val.Validator {
