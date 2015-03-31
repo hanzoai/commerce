@@ -12,6 +12,7 @@ import (
 	"crowdstart.io/middleware"
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/util/json"
+	"crowdstart.io/util/log"
 	"crowdstart.io/util/permission"
 	"crowdstart.io/util/router"
 )
@@ -90,6 +91,7 @@ func (r Rest) Route(router router.Router, args ...gin.HandlerFunc) {
 	prefix := r.Prefix + r.Kind
 	prefix = "/" + strings.TrimLeft(prefix, "/")
 
+	log.Debug("Creating group with prefix: %v", prefix)
 	// Create group for our API routes and require Access token
 	group := router.Group(prefix)
 	group.Use(func(c *gin.Context) {
@@ -99,11 +101,13 @@ func (r Rest) Route(router router.Router, args ...gin.HandlerFunc) {
 
 	// Add default routes
 	for _, route := range r.defaultRoutes() {
+		log.Debug("Add route %v %v", route.method, prefix+route.url)
 		group.Handle(route.method, route.url, route.handlers)
 	}
 
 	for _, routes := range r.routes {
 		for _, route := range routes {
+			log.Debug("Add route %v %v", route.method, prefix+route.url)
 			group.Handle(route.method, route.url, route.handlers)
 		}
 	}
