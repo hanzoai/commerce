@@ -13,7 +13,6 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models"
-	"crowdstart.io/thirdparty/stripe"
 	"crowdstart.io/util/cache"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/queries"
@@ -162,19 +161,21 @@ func charge(c *gin.Context) {
 	// Charging order
 	log.Debug("Charging order...", c)
 	log.Debug("API Key: %v, Token: %v", stripeAccessToken, form.StripeToken)
-	charge, err := stripe.Charge(ctx, stripeAccessToken, form.StripeToken, &form.Order, user)
-	if err != nil {
-		log.Warn("stripe error %v", err)
-		if charge.FailMsg != "" {
-			// client error
-			log.Warn("Stripe declined charge: %v", err, c)
-			c.JSON(400, gin.H{"message": charge.FailMsg})
-		} else {
-			// internal error
-			log.Error("Stripe charge failed: %v", err, c)
-			c.JSON(500, gin.H{})
-		}
-	}
+
+	// TODO: use new API
+	// charge, err := stripe.Charge(ctx, stripeAccessToken, form.StripeToken, &form.Order, user)
+	// if err != nil {
+	// 	log.Warn("stripe error %v", err)
+	// 	if charge.FailMsg != "" {
+	// 		// client error
+	// 		log.Warn("Stripe declined charge: %v", err, c)
+	// 		c.JSON(400, gin.H{"message": charge.FailMsg})
+	// 	} else {
+	// 		// internal error
+	// 		log.Error("Stripe charge failed: %v", err, c)
+	// 		c.JSON(500, gin.H{})
+	// 	}
+	// }
 
 	// We'll update user even if charge failed, this ensures consistent profile
 	// data and stripe customer consistency.
@@ -185,18 +186,20 @@ func charge(c *gin.Context) {
 	user.Phone = form.User.Phone
 	user.FirstName = form.User.FirstName
 	user.LastName = form.User.LastName
-	if err := q.UpsertUser(user); err != nil {
-		log.Error("Failed to save user: %v", err, c)
-		if charge.Captured {
-			c.Fail(500, err)
-		}
-		return
-	}
+
+	// TODO: Use new API
+	// if err := q.UpsertUser(user); err != nil {
+	// 	log.Error("Failed to save user: %v", err, c)
+	// 	if charge.Captured {
+	// 		c.Fail(500, err)
+	// 	}
+	// 	return
+	// }
 
 	// If charge failed, bail out here
-	if !charge.Captured {
-		return
-	}
+	// if !charge.Captured {
+	// 	return
+	// }
 
 	// Save order
 	log.Debug("Saving order...", c)
