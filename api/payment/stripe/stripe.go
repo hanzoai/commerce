@@ -11,7 +11,7 @@ import (
 
 func Authorize(org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) error {
 	// Create stripe client
-	client := stripe.New(ord.Db.Context, org.Stripe.AccessToken)
+	client := stripe.New(ord.Db.Context, org.StripeToken())
 
 	// Do authorization
 	tok, err := client.Authorize(pay)

@@ -69,6 +69,9 @@ type Organization struct {
 
 	GoogleAnalytics string `json:"googleAnalytics"`
 	FacebookTag     string `json:"facebookTag"`
+
+	// Whether we use live or test tokens, mostly applicable to stripe
+	Live bool `json:"-" datastore:"-"`
 }
 
 func New(db *datastore.Datastore) *Organization {
@@ -89,8 +92,8 @@ func (o *Organization) Validator() *val.Validator {
 }
 
 func (o *Organization) AddDefaultTokens() {
-	o.AddToken("live-secret-key", permission.Admin)
-	o.AddToken("live-published-key", permission.Published)
+	o.AddToken("live-secret-key", permission.Admin|permission.Live)
+	o.AddToken("live-published-key", permission.Published|permission.Live)
 	o.AddToken("test-secret-key", permission.Admin|permission.Test)
 	o.AddToken("test-published-key", permission.Published|permission.Test)
 }
@@ -128,6 +131,14 @@ func (o Organization) Namespace(ctx interface{}) appengine.Context {
 		panic(err)
 	}
 	return _ctx
+}
+
+func (o Organization) StripeToken() string {
+	if o.Live {
+		return o.Stripe.Live.AccessToken
+	}
+
+	return o.Stripe.Test.AccessToken
 }
 
 func Query(db *datastore.Datastore) *mixin.Query {

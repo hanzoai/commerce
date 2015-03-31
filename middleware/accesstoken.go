@@ -101,6 +101,9 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 			json.Fail(c, 403, "Token doesn't support this scope", err)
 		}
 
+		// Whether or not we can make live calls
+		org.Live = tok.HasPermission(permission.Live)
+
 		// Save organization in context
 		c.Set("permissions", tok.Permissions)
 		c.Set("organization", org)

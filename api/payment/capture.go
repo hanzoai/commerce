@@ -3,43 +3,16 @@ package payment
 import (
 	"github.com/gin-gonic/gin"
 
+	"crowdstart.io/api/payment/stripe"
 	"crowdstart.io/models2/order"
 	"crowdstart.io/models2/organization"
-	"crowdstart.io/models2/payment"
-	"crowdstart.io/models2/types/currency"
-	"crowdstart.io/thirdparty/stripe2"
 )
 
 func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (*order.Order, error) {
-	// Get namespaced context off order
-	db := ord.Db
-	ctx := db.Context
-
-	// Get client we can use for API calls
-	client := stripe.New(ctx, org.Stripe.AccessToken)
-
-	payments := make([]*payment.Payment, 0)
-	payment.Query(db).Ancestor(ord.Key()).GetAll(payments)
-
-	// Capture any uncaptured payments
-	for _, p := range payments {
-		if !p.Captured {
-			ch, err := client.Capture(p.ChargeId)
-
-			// Charge failed for some reason, bail
-			if err != nil {
-				return nil, err
-			}
-			if !ch.Captured {
-				return nil, FailedToCaptureCharge
-			}
-
-			// Update payment
-			p.Captured = true
-			p.Status = payment.Paid
-			p.Amount = currency.Cents(ch.Amount)
-			p.AmountRefunded = currency.Cents(ch.AmountRefunded)
-		}
+	// We could actually capture different types of things here...
+	ord, err := stripe.Capture(org, ord)
+	if err != nil {
+		return nil, err
 	}
 
 	// Save order
