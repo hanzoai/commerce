@@ -2,13 +2,14 @@ package api
 
 import (
 	"crowdstart.io/api/accesstoken"
-	"crowdstart.io/api/payment"
+	paymentApi "crowdstart.io/api/payment"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models2/campaign"
 	"crowdstart.io/models2/collection"
 	"crowdstart.io/models2/coupon"
 	"crowdstart.io/models2/order"
 	"crowdstart.io/models2/organization"
+	"crowdstart.io/models2/payment"
 	"crowdstart.io/models2/product"
 	"crowdstart.io/models2/token"
 	"crowdstart.io/models2/user"
@@ -27,7 +28,7 @@ func init() {
 	// Organization APIs, namespaced by organization
 
 	// One Step Payment API
-	payment.Route(router)
+	paymentApi.Route(router)
 
 	// Models with public RESTful API
 	rest.New(coupon.Coupon{}).Route(router, adminRequired)
@@ -35,6 +36,7 @@ func init() {
 	rest.New(product.Product{}).Route(router, adminRequired)
 	rest.New(order.Order{}).Route(router, adminRequired)
 	rest.New(user.User{}).Route(router, adminRequired)
+	rest.New(payment.Payment{}).Route(router, adminRequired)
 	rest.New(variant.Variant{}).Route(router, adminRequired)
 
 	// Crowdstart APIs, using default namespace (internal use only)
