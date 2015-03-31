@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"testing"
 
-	apiPayment "crowdstart.io/api/payment"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models2/fixtures"
 	"crowdstart.io/models2/order"
@@ -20,6 +19,9 @@ import (
 	"crowdstart.io/util/permission"
 	"crowdstart.io/util/test/ae"
 	"crowdstart.io/util/test/ginclient"
+
+	orderApi "crowdstart.io/api/order"
+	paymentApi "crowdstart.io/api/payment"
 
 	. "crowdstart.io/util/test/ginkgo"
 )
@@ -48,9 +50,10 @@ var _ = BeforeSuite(func() {
 	fixtures.Product(c)
 	fixtures.Variant(c)
 
-	// Setup client and add routes for payment API
+	// Setup client and add routes for payment API tests.
 	client = ginclient.New(ctx)
-	apiPayment.Route(client.Router)
+	paymentApi.Route(client.Router)
+	orderApi.Route(client.Router)
 
 	// Create organization for tests, accessToken
 	accessToken = org.AddToken("test-published-key", permission.Admin)
