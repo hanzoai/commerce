@@ -28,7 +28,7 @@ func Development() *Config {
 
 	config.StaticUrl = "/static"
 
-	config.Stripe.ClientId = "ca_53yyPzxlPsdAtzMEIuS2mXYDp4FFXLmm"
+	config.Stripe.ClientId = config.Stripe.DevelopmentClientId
 	config.Stripe.PublishableKey = config.Stripe.TestPublishableKey
 	config.Stripe.SecretKey = config.Stripe.TestSecretKey
 	config.Stripe.RedirectURL = "http://localhost:8080" + config.UrlFor("platform", "/stripe/callback")
