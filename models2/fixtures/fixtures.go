@@ -54,7 +54,6 @@ func init() {
 
 	// Setup default fixtures
 	task.Func("fixtures2-all", func(c *gin.Context) {
-		User(c)
 		Organization(c)
 		Product(c)
 		Variant(c)
