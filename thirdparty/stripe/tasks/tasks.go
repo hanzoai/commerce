@@ -75,7 +75,7 @@ func SynchronizeCharge(db *datastore.Datastore, key datastore.Key, o models.Orde
 
 func RunSynchronizeCharges(c *gin.Context) {
 	ctx := c.MustGet("appengine").(appengine.Context)
-	sc := NewApiClient(ctx, config.Stripe.APISecret)
+	sc := NewApiClient(ctx, config.Stripe.TestSecretKey)
 	parallel.Run(c, "order", 100, synchronizeCharges, sc)
 }
 
