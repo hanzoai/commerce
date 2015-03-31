@@ -185,7 +185,7 @@
   })();
 
   var api = NewRestAPI(
-      '{{ urlFor("api", "/product2") }}',
+      '{{ urlFor("api", "/product") }}',
       '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}',
       $('#form-new-product'),
       {

@@ -182,7 +182,7 @@
           {
             label: "User ID",
             value: '{{ user.Id }}',
-            href: '{{ urlFor("api", "user2", user.Id) }}',
+            href: '{{ urlFor("api", "user", user.Id) }}',
             $parent: $('#order-buyer'),
             type: "link",
           },
@@ -310,7 +310,7 @@
       {
         field: 'variantId',
         name: 'Variant ID',
-        href: '{{ urlFor("api", "/variant2") }}',
+        href: '{{ urlFor("api", "/variant") }}',
         render: 'link',
       },
       {
@@ -320,7 +320,7 @@
       {
         field: 'collectionId',
         name: 'Collection ID',
-        href: '{{ urlFor("api", "/collection2") }}',
+        href: '{{ urlFor("api", "/collection") }}',
         render: 'link',
       },
       {
@@ -347,7 +347,7 @@
     validate: /^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*(?:\[\])?$/i
   });
   var api = NewRestAPI(
-      '{{ urlFor("api", "order2") }}',
+      '{{ urlFor("api", "order") }}',
       '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}',
       $('#form-order')
     );
