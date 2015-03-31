@@ -90,7 +90,7 @@ func firstTime(client *stripe.Client, tok *stripe.Token, u *user.User, ord *orde
 	if err != nil {
 		return err
 	}
-	pay.ChargeId = charge.ID
+	pay.Account.ChargeId = charge.ID
 
 	return nil
 }
