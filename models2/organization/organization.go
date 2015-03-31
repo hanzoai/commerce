@@ -84,7 +84,7 @@ func New(db *datastore.Datastore) *Organization {
 }
 
 func (o Organization) Kind() string {
-	return "organization2"
+	return "organization"
 }
 
 func (o *Organization) Validator() *val.Validator {

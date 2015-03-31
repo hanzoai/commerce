@@ -101,7 +101,7 @@ func New(db *datastore.Datastore) *Product {
 }
 
 func (p Product) Kind() string {
-	return "product2"
+	return "product"
 }
 
 func (p *Product) Validator() *val.Validator {

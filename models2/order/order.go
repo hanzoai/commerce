@@ -138,7 +138,7 @@ func New(db *datastore.Datastore) *Order {
 }
 
 func (o Order) Kind() string {
-	return "order2"
+	return "order"
 }
 
 func (o *Order) Validator() *val.Validator {

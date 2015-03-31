@@ -29,7 +29,7 @@ func New(db *datastore.Datastore) *Plan {
 }
 
 func (p Plan) Kind() string {
-	return "plan2"
+	return "plan"
 }
 
 func (p *Plan) Validator() *val.Validator {
