@@ -25,21 +25,22 @@ func Organization(c *gin.Context) *organization.Organization {
 	org.SecretKey = []byte("prettyprettyteesplease")
 
 	// Saved stripe tokens
-	org.Stripe.Live.UserId = "acct_14lSsRCSRlllXCwP"
-	org.Stripe.Live.AccessToken = "sk_test_7nN2LIG8PwXI7mIxbFqFVHz1"
-	org.Stripe.Live.PublishableKey = "pk_test_0b9wTQ9dVPOfKjJbSyYGdRVH"
-	org.Stripe.Live.RefreshToken = "rt_5uU4oIaJ9irUxH5dljX0vb2upWBoUVQwUAfuAdUW7mNVUurV"
 
 	org.Stripe.Test.UserId = "acct_14lSsRCSRlllXCwP"
-	org.Stripe.Test.AccessToken = "sk_test_IPRhj4UKxyFqBS9Zm42iERno"
-	org.Stripe.Test.PublishableKey = "pk_test_h9j38gX0LFvlOabYRRT3InRb"
+	org.Stripe.Test.AccessToken = "sk_test_H60p4xJcaHEZFjHHCtJqNn8P"
+	org.Stripe.Test.PublishableKey = "pk_test_bAuLKp43Nu6rmWzTU5Nys7UL"
 	org.Stripe.Test.RefreshToken = "rt_5uU4oIaJ9irUxH5dljX0vb2upWBoUVQwUAfuAdUW7mNVUurV"
 
-	// Default to live
-	org.Stripe.UserId = org.Stripe.Live.UserId
-	org.Stripe.AccessToken = org.Stripe.Live.AccessToken
-	org.Stripe.PublishableKey = org.Stripe.Live.PublishableKey
-	org.Stripe.RefreshToken = org.Stripe.Live.RefreshToken
+	// You can only have one set of test credentials, so live/test are the same.
+	org.Stripe.Live.UserId = org.Stripe.Test.UserId
+	org.Stripe.Live.AccessToken = org.Stripe.Test.AccessToken
+	org.Stripe.Live.PublishableKey = org.Stripe.Test.PublishableKey
+	org.Stripe.Live.RefreshToken = org.Stripe.Test.RefreshToken
+
+	org.Stripe.UserId = org.Stripe.Test.UserId
+	org.Stripe.AccessToken = org.Stripe.Test.AccessToken
+	org.Stripe.PublishableKey = org.Stripe.Test.PublishableKey
+	org.Stripe.RefreshToken = org.Stripe.Test.RefreshToken
 
 	org.AddDefaultTokens()
 	log.Debug("Adding tokens: %v", org.Tokens)
