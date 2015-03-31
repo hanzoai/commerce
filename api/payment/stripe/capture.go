@@ -7,7 +7,7 @@ import (
 	"crowdstart.io/models2/organization"
 	"crowdstart.io/models2/payment"
 	"crowdstart.io/models2/types/currency"
-	"crowdstart.io/thirdparty/stripe2"
+	"crowdstart.io/thirdparty/stripe"
 )
 
 var FailedToCaptureCharge = errors.New("Failed to capture charge")

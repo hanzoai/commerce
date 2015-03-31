@@ -12,8 +12,9 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/datastore/parallel"
 	"crowdstart.io/models"
-	. "crowdstart.io/thirdparty/stripe"
 	"crowdstart.io/util/log"
+
+	. "crowdstart.io/thirdparty/stripe"
 )
 
 // This is a worker that processes one order at a time
@@ -75,7 +76,10 @@ func SynchronizeCharge(db *datastore.Datastore, key datastore.Key, o models.Orde
 
 func RunSynchronizeCharges(c *gin.Context) {
 	ctx := c.MustGet("appengine").(appengine.Context)
-	sc := NewApiClient(ctx, config.Stripe.TestSecretKey)
+
+	// This needs to use org secret
+	sc := New(ctx, config.Stripe.SecretKey)
+
 	parallel.Run(c, "order", 100, synchronizeCharges, sc)
 }
 
