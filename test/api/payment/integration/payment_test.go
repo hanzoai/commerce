@@ -120,7 +120,7 @@ var _ = Describe("payment", func() {
 		})
 	})
 
-	It("Should save returning customer order successfully", func() {
+	It("Should save returning customer order with the same card successfully", func() {
 		// Make first request
 		w := client.PostRawJSON("/authorize", requests.ValidOrder)
 		Expect(w.Code).To(Equal(200))
@@ -165,4 +165,51 @@ var _ = Describe("payment", func() {
 		Expect(pay1.Account.CardId).To(Equal(pay2.Account.CardId))
 		stripeVerifyCards(usr, []string{pay1.Account.CardId})
 	})
+
+	It("Should save returning customer order with a new card successfully", func() {
+		// Make first request
+		w := client.PostRawJSON("/authorize", requests.ValidOrder)
+		Expect(w.Code).To(Equal(200))
+		log.Debug("JSON %v", w.Body)
+
+		// Decode body so we can re-use user id
+		ord := order.New(db)
+		err := json.DecodeBuffer(w.Body, &ord)
+		Expect(err).ToNot(HaveOccurred())
+
+		// Fetch the payment for the order to test later
+		pay1 := payment.New(db)
+		pay1.Get(ord.PaymentIds[0])
+
+		// Save user, customerId from first order
+		usr := user.New(db)
+		usr.Get(ord.UserId)
+		customerId := usr.Accounts.Stripe.CustomerId
+		stripeVerifyUser(usr)
+
+		// Returning user, should reuse stripe customer id
+		body := fmt.Sprintf(requests.ReturningUserOrderNewCard, usr.Id())
+		log.Debug("JSON %v", w.Body)
+		w = client.PostRawJSON("/authorize", body)
+		Expect(w.Code).To(Equal(200))
+
+		// Decode body from second request
+		ord = order.New(db)
+		err = json.DecodeBuffer(w.Body, &ord)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(usr.Id()).To(Equal(ord.UserId))
+
+		// Fetch the payment for the order to test later
+		pay2 := payment.New(db)
+		pay2.Get(ord.PaymentIds[0])
+
+		user2 := user.New(db)
+		user2.Get(ord.UserId)
+		Expect(user2.Accounts.Stripe.CustomerId).To(Equal(customerId))
+
+		// Payment/Card logic
+		Expect(pay1.Account.CardId).ToNot(Equal(pay2.Account.CardId))
+		stripeVerifyCards(usr, []string{pay1.Account.CardId, pay2.Account.CardId})
+	})
+
 })
