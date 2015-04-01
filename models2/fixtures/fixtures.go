@@ -42,13 +42,16 @@ func getDb(c *gin.Context) *datastore.Datastore {
 
 func init() {
 	fixture("fixtures-campaign", Campaign)
-	fixture("fixtures-coupon", Coupon)
 	fixture("fixtures-collection", Collection)
+	fixture("fixtures-coupon", Coupon)
 	fixture("fixtures-organization", Organization)
 	fixture("fixtures-product", Product)
+	fixture("fixtures-store", Store)
 	fixture("fixtures-token", Token)
 	fixture("fixtures-user", User)
 	fixture("fixtures-variant", Variant)
+
+	// Custom one-off fixture for cycliq
 	fixture("fixtures-cycliq", Cycliq)
 
 	// Setup default fixtures
@@ -60,5 +63,6 @@ func init() {
 		Token(c)
 		Coupon(c)
 		Campaign(c)
+		Store(c)
 	})
 }
