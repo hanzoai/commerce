@@ -216,7 +216,7 @@ func (o *Order) GetCoupons() error {
 		keys = append(keys, c.Key())
 	}
 
-	return db.GetMulti(keys, &o.Coupons)
+	return db.GetMulti(keys, o.Coupons)
 }
 
 // Update discount using coupon codes/order info.
