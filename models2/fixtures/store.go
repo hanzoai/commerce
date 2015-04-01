@@ -20,7 +20,7 @@ func Store(c *gin.Context) *store.Store {
 
 	// Fetch first product
 
-	prod := Store(c)
+	prod := Product(c)
 	stor.Listings[prod.Id()] = store.Listing{
 		ProductId: prod.Id(),
 		Price:     currency.Cents(30000),
