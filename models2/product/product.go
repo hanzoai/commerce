@@ -37,6 +37,7 @@ type Product struct {
 	// 3-letter ISO currency code (lowercase).
 	Currency currency.Type  `json:"currency"`
 	Price    currency.Cents `json:"price"`
+
 	// Override for the shipping formula
 	Shipping currency.Cents `json:"shipping"`
 
@@ -53,13 +54,13 @@ type Product struct {
 	Name string `json:"name"`
 
 	// Product headline
-	Headline string `json:"headline"`
+	Headline string `json:"headline" datastore:",noindex"`
 
 	// Product Excerpt
-	Excerpt string `json:"excerpt"`
+	Excerpt string `json:"excerpt" datastore:",noindex"`
 
 	// Product Description
-	Description string `datastore:",noindex" json:"description"`
+	Description string `json:"description", datastore:",noindex"`
 
 	// Product Media
 	HeaderImage Media   `json:"headerImage"`
@@ -67,6 +68,9 @@ type Product struct {
 
 	// Is the product available
 	Available bool `json:"available"`
+
+	// Is product hidden from users
+	Hidden bool `json:"hidden"`
 
 	// Range in which product is available. If active, it takes precedent over
 	// Available bool.
