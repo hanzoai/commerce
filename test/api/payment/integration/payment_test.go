@@ -310,65 +310,99 @@ func OrderBadUserTest(isCharge bool) {
 }
 
 var _ = Describe("payment", func() {
-	Context("Authorize First Time Customers", func() {
-		It("Should save new order successfully", func() {
-			FirstTimeSuccessfulOrderTest(false)
+	// Context("Authorize First Time Customers", func() {
+	// 	It("Should save new order successfully", func() {
+	// 		FirstTimeSuccessfulOrderTest(false)
+	// 	})
+
+	// 	It("Should not authorize invalid credit card number", func() {
+	// 		OrderBadCardTest(false)
+	// 	})
+
+	// 	// It("Should not authorize invalid product id", func() {
+	// 	// })
+	// 	// It("Should not authorize invalid variant id", func() {
+	// 	// })
+	// 	// It("Should not authorize invalid collection id", func() {
+	// 	// })
+	// })
+
+	// Context("Authorize Returning Customers", func() {
+	// 	It("Should save returning customer order with the same card successfully", func() {
+	// 		ReturningSuccessfulOrderSameCardTest(false)
+	// 	})
+
+	// 	It("Should save returning customer order with a new card successfully", func() {
+	// 		ReturningSuccessfulOrderNewCardTest(false)
+	// 	})
+
+	// 	It("Should not save customer with invalid user id", func() {
+	// 		OrderBadUserTest(false)
+	// 	})
+	// })
+
+	// Context("Charge First Time Customers", func() {
+	// 	It("Should save new order successfully", func() {
+	// 		FirstTimeSuccessfulOrderTest(true)
+	// 	})
+
+	// 	It("Should not authorize invalid credit card number", func() {
+	// 		OrderBadCardTest(true)
+	// 	})
+
+	// 	// It("Should not authorize invalid product id", func() {
+	// 	// })
+	// 	// It("Should not authorize invalid variant id", func() {
+	// 	// })
+	// 	// It("Should not authorize invalid collection id", func() {
+	// 	// })
+	// })
+
+	// Context("Charge Returning Customers", func() {
+	// 	It("Should save returning customer order with the same card successfully", func() {
+	// 		ReturningSuccessfulOrderSameCardTest(true)
+	// 	})
+
+	// 	It("Should save returning customer order with a new card successfully", func() {
+	// 		ReturningSuccessfulOrderNewCardTest(true)
+	// 	})
+
+	// 	It("Should not save customer with invalid user id", func() {
+	// 		OrderBadUserTest(true)
+	// 	})
+	// })
+
+	Context("Authorize Order", func() {
+		It("Should authorize existing order successfully", func() {
+			w := client.PostRawJSON("/order", requests.ValidOrderOnly)
+			Expect(w.Code).To(Equal(201))
+
+			ord1 := order.New(db)
+			err := json.DecodeBuffer(w.Body, &ord1)
+			Expect(err).ToNot(HaveOccurred())
+
+			ord2 := order.New(db)
+			err = ord2.Get(ord1.Id())
+			Expect(err).ToNot(HaveOccurred())
+
+			w = client.PostRawJSON("/order/"+ord2.Id()+"/authorize", requests.ValidUserPaymentOnly)
+			Expect(w.Code).To(Equal(200))
+			log.Debug("JSON %v", w.Body)
+
+			ord3 := order.New(db)
+			err = json.DecodeBuffer(w.Body, &ord3)
+			Expect(err).ToNot(HaveOccurred())
+
+			pay := payment.New(db)
+			pay.Get(ord3.PaymentIds[0])
+
+			stripeVerifyAuth(pay)
 		})
 
-		It("Should not authorize invalid credit card number", func() {
-			OrderBadCardTest(false)
-		})
-
-		// It("Should not authorize invalid product id", func() {
-		// })
-		// It("Should not authorize invalid variant id", func() {
-		// })
-		// It("Should not authorize invalid collection id", func() {
-		// })
-	})
-
-	Context("Authorize Returning Customers", func() {
-		It("Should save returning customer order with the same card successfully", func() {
-			ReturningSuccessfulOrderSameCardTest(false)
-		})
-
-		It("Should save returning customer order with a new card successfully", func() {
-			ReturningSuccessfulOrderNewCardTest(false)
-		})
-
-		It("Should not save customer with invalid user id", func() {
-			OrderBadUserTest(false)
-		})
-	})
-
-	Context("Charge First Time Customers", func() {
-		It("Should save new order successfully", func() {
-			FirstTimeSuccessfulOrderTest(true)
-		})
-
-		It("Should not authorize invalid credit card number", func() {
-			OrderBadCardTest(true)
-		})
-
-		// It("Should not authorize invalid product id", func() {
-		// })
-		// It("Should not authorize invalid variant id", func() {
-		// })
-		// It("Should not authorize invalid collection id", func() {
-		// })
-	})
-
-	Context("Charge Returning Customers", func() {
-		It("Should save returning customer order with the same card successfully", func() {
-			ReturningSuccessfulOrderSameCardTest(true)
-		})
-
-		It("Should save returning customer order with a new card successfully", func() {
-			ReturningSuccessfulOrderNewCardTest(true)
-		})
-
-		It("Should not save customer with invalid user id", func() {
-			OrderBadUserTest(true)
+		It("Should not capture invalid order", func() {
+			w := client.PostRawJSON("/order/BADID/authorize", "")
+			Expect(w.Code).To(Equal(500))
+			log.Debug("JSON %v", w.Body)
 		})
 	})
 
