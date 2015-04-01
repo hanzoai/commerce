@@ -9,6 +9,7 @@ import (
 	"crowdstart.io/models2/types/shipping"
 	"crowdstart.io/models2/types/weight"
 	"crowdstart.io/util/json"
+	"crowdstart.io/util/val"
 
 	. "crowdstart.io/models2"
 )
@@ -63,6 +64,10 @@ type Store struct {
 	} `json:"-"`
 }
 
+func (s Store) Kind() string {
+	return "store"
+}
+
 func (s *Store) Init() {
 	s.ShippingRateTable = make(ShippingRateTable)
 	s.Listings = make(Listings)
@@ -107,4 +112,8 @@ func (s *Store) Save(c chan<- aeds.Property) (err error) {
 
 	// Save properties
 	return IgnoreFieldMismatch(aeds.SaveStruct(s, c))
+}
+
+func (s *Store) Validator() *val.Validator {
+	return val.New(s)
 }
