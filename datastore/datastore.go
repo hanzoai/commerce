@@ -312,22 +312,8 @@ func (d *Datastore) PutKind(kind string, key interface{}, src interface{}) (*aed
 	return _key, nil
 }
 
-func (d *Datastore) PutMulti(kind string, srcs []interface{}) (keys []*aeds.Key, err error) {
-	nkeys := len(srcs)
-	_keys := make([]*aeds.Key, nkeys)
-	log.Info(srcs)
-
-	for i := 0; i < nkeys; i++ {
-		_keys[i] = aeds.NewIncompleteKey(d.Context, kind, nil)
-	}
-
-	_keys, err = nds.PutMulti(d.Context, _keys, srcs)
-	if err != nil {
-		d.warn("%v", err, d.Context)
-		return keys, err
-	}
-
-	return _keys, nil
+func (d *Datastore) PutMulti(keys []*aeds.Key, srcs interface{}) ([]*aeds.Key, error) {
+	return nds.PutMulti(d.Context, keys, srcs)
 }
 
 func (d *Datastore) PutKindMulti(kind string, keys []interface{}, srcs []interface{}) ([]*aeds.Key, error) {

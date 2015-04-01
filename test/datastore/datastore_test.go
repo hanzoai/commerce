@@ -290,25 +290,25 @@ var _ = Describe("Datastore.PutKind", func() {
 
 var _ = Describe("Datastore.GetMulti", func() {
 	kind := "datastore-getmulti-test"
-	Context("With Datastore.PutMulti", func() {
-		It("should be the same", func() {
-			a := make([]Entity, 10)
-			b := make([]interface{}, len(a))
-			for i, _ := range a {
-				entity := Entity{str(i)}
-				a[i] = entity
-				b[i] = &entity
-			}
-			keys, err := db.PutMulti(kind, b)
-			Expect(err).ToNot(HaveOccurred())
+	// Context("With Datastore.PutMulti", func() {
+	// 	It("should be the same", func() {
+	// 		a := make([]Entity, 10)
+	// 		b := make([]interface{}, len(a))
+	// 		for i, _ := range a {
+	// 			entity := Entity{str(i)}
+	// 			a[i] = entity
+	// 			b[i] = &entity
+	// 		}
+	// 		keys, err := db.PutMulti(kind, b)
+	// 		Expect(err).ToNot(HaveOccurred())
 
-			c := make([]Entity, len(a))
-			err = db.GetMulti(keys, c)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(c).To(Equal(a))
-			Expect(c).To(HaveLen(len(a)))
-		})
-	})
+	// 		c := make([]Entity, len(a))
+	// 		err = db.GetMulti(keys, c)
+	// 		Expect(err).ToNot(HaveOccurred())
+	// 		Expect(c).To(Equal(a))
+	// 		Expect(c).To(HaveLen(len(a)))
+	// 	})
+	// })
 
 	Context("With appengine's datastore.PutMulti", func() {
 		It("should be the same", func() {
@@ -339,68 +339,68 @@ var _ = Describe("Datastore.GetMulti", func() {
 	})
 })
 
-var _ = Describe("Datastore.PutMulti", func() {
-	kind := "datastore-putmulti-test"
+// var _ = Describe("Datastore.PutMulti", func() {
+// 	kind := "datastore-putmulti-test"
 
-	Context("With Datastore.Get", func() {
-		It("should be the same", func() {
-			a := make([]Entity, 10)
-			b := make([]interface{}, len(a))
-			for i, _ := range a {
-				entity := Entity{str(i)}
-				a[i] = entity
-				b[i] = &entity
-			}
-			keys, err := db.PutMulti(kind, b)
-			Expect(err).ToNot(HaveOccurred())
+// 	Context("With Datastore.Get", func() {
+// 		It("should be the same", func() {
+// 			a := make([]Entity, 10)
+// 			b := make([]interface{}, len(a))
+// 			for i, _ := range a {
+// 				entity := Entity{str(i)}
+// 				a[i] = entity
+// 				b[i] = &entity
+// 			}
+// 			keys, err := db.PutMulti(kind, b)
+// 			Expect(err).ToNot(HaveOccurred())
 
-			c := new(Entity)
-			err = db.Get(keys[len(a)-1], c)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(*c).To(Equal(a[len(a)-1]))
-		})
-	})
+// 			c := new(Entity)
+// 			err = db.Get(keys[len(a)-1], c)
+// 			Expect(err).ToNot(HaveOccurred())
+// 			Expect(*c).To(Equal(a[len(a)-1]))
+// 		})
+// 	})
 
-	Context("With Datastore.GetMulti", func() {
-		It("should be the same", func() {
-			a := make([]Entity, 10)
-			b := make([]interface{}, len(a))
-			for i, _ := range a {
-				entity := Entity{str(i)}
-				a[i] = entity
-				b[i] = &entity
-			}
-			keys, err := db.PutMulti(kind, b)
-			Expect(err).ToNot(HaveOccurred())
+// 	Context("With Datastore.GetMulti", func() {
+// 		It("should be the same", func() {
+// 			a := make([]Entity, 10)
+// 			b := make([]interface{}, len(a))
+// 			for i, _ := range a {
+// 				entity := Entity{str(i)}
+// 				a[i] = entity
+// 				b[i] = &entity
+// 			}
+// 			keys, err := db.PutMulti(kind, b)
+// 			Expect(err).ToNot(HaveOccurred())
 
-			c := make([]Entity, len(a))
-			err = db.GetMulti(keys, c)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(c).To(Equal(a))
-			Expect(c).To(HaveLen(len(a)))
-		})
-	})
+// 			c := make([]Entity, len(a))
+// 			err = db.GetMulti(keys, c)
+// 			Expect(err).ToNot(HaveOccurred())
+// 			Expect(c).To(Equal(a))
+// 			Expect(c).To(HaveLen(len(a)))
+// 		})
+// 	})
 
-	Context("With appengine's datastore.GetMulti", func() {
-		It("should be the same", func() {
-			a := make([]Entity, 10)
-			b := make([]interface{}, len(a))
-			for i, _ := range a {
-				entity := Entity{str(i)}
-				a[i] = entity
-				b[i] = &entity
-			}
-			keys, err := db.PutMulti(kind, b)
-			Expect(err).ToNot(HaveOccurred())
+// 	Context("With appengine's datastore.GetMulti", func() {
+// 		It("should be the same", func() {
+// 			a := make([]Entity, 10)
+// 			b := make([]interface{}, len(a))
+// 			for i, _ := range a {
+// 				entity := Entity{str(i)}
+// 				a[i] = entity
+// 				b[i] = &entity
+// 			}
+// 			keys, err := db.PutMulti(kind, b)
+// 			Expect(err).ToNot(HaveOccurred())
 
-			c := make([]Entity, len(a))
-			err = aeds.GetMulti(ctx, keys, c)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(c).To(Equal(a))
-			Expect(c).To(HaveLen(len(a)))
-		})
-	})
-})
+// 			c := make([]Entity, len(a))
+// 			err = aeds.GetMulti(ctx, keys, c)
+// 			Expect(err).ToNot(HaveOccurred())
+// 			Expect(c).To(Equal(a))
+// 			Expect(c).To(HaveLen(len(a)))
+// 		})
+// 	})
+// })
 
 var _ = Describe("Datastore.GetKindMulti", func() {
 	kind := "datastore-GetMultiKey-test"
