@@ -3,7 +3,6 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/models2/price"
 	"crowdstart.io/models2/product"
 	"crowdstart.io/models2/types/currency"
 )
@@ -12,8 +11,26 @@ func Product(c *gin.Context) *product.Product {
 	// Get namespaced db
 	db := getDb(c)
 
+	// Sad Keanu shirt
 	prod := product.New(db)
-	prod.Slug = "t-shirt"
+	prod.Slug = "sad-keanu-shirt"
+	prod.GetOrCreate("Slug=", prod.Slug)
+	prod.Name = "Sad Keanu T-shirt"
+	prod.Headline = "Oh Keanu"
+	prod.Description = "Sad Keanu is sad."
+	opt := product.Option{
+		Name:   "Size",
+		Values: []string{"Sadness"},
+	}
+	prod.Options = append(prod.Options, &opt)
+	prod.Price = 2500
+	prod.Currency = currency.USD
+
+	prod.MustPut()
+
+	// Doge shirt
+	prod = product.New(db)
+	prod.Slug = "doge-shirt"
 	prod.GetOrCreate("Slug=", prod.Slug)
 	prod.Name = "Such T-shirt"
 	prod.Headline = "wow  such shirt  much tee"
@@ -27,9 +44,7 @@ func Product(c *gin.Context) *product.Product {
 
 	　　　　so doge
 	`
-
-	// Add options
-	opt := product.Option{
+	opt = product.Option{
 		Name:   "Size",
 		Values: []string{"Much", "Wow"},
 	}
@@ -38,13 +53,6 @@ func Product(c *gin.Context) *product.Product {
 	prod.Currency = currency.USD
 
 	prod.MustPut()
-
-	price := price.New(db)
-	price.StoreId = "test"
-	price.ProductId = prod.Id()
-	price.Price = 1000
-	price.Currency = currency.GBP
-	price.MustPut()
 
 	return prod
 }
