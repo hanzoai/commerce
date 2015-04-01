@@ -1,6 +1,8 @@
 package store
 
 import (
+	"time"
+
 	aeds "appengine/datastore"
 
 	"crowdstart.io/datastore"
@@ -17,16 +19,34 @@ import (
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 type Listing struct {
+	Name string `json:"name"`
+
+	Headline    string `json:"headline" datastore:",noindex"`
+	Excerpt     string `json:"excerpt" datastore:",noindex"`
+	Description string `json:"description", datastore:",noindex"`
+
+	// Product Media
+	HeaderImage Media   `json:"headerImage"`
+	Media       []Media `json:"media"`
+
 	ProductId string `json:"productId,omitempty"`
 	VariantId string `json:"variantId,omitempty"`
 
-	Price currency.Cents `json:"price"`
+	Sold int `json:"sold"`
 
-	Taxable bool `json:"taxable"`
+	Price    currency.Cents `json:"price"`
+	Shipping currency.Cents `json:"shipping"`
+	Taxable  bool           `json:"taxable"`
 
 	WeightUnit weight.Unit `json:"weightUnit"`
 
-	Available bool `json:"available"`
+	Available    bool `json:"available"`
+	Availability struct {
+		Active    bool
+		StartDate time.Time `json:"startDate"`
+		EndDate   time.Time `json:"endDate"`
+	} `json:"availability"`
+	Hidden bool `json:"hidden"`
 }
 
 type Listings map[string]Listing
