@@ -3,7 +3,7 @@ package stripe
 import (
 	"errors"
 
-	"appengine/datastore"
+	aeds "appengine/datastore"
 
 	"crowdstart.io/models2/order"
 	"crowdstart.io/models2/organization"
@@ -15,7 +15,7 @@ import (
 
 var FailedToCaptureCharge = errors.New("Failed to capture charge")
 
-func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []*datastore.Key, []*payment.Payment, error) {
+func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []*aeds.Key, []*payment.Payment, error) {
 	// Get namespaced context off order
 	db := ord.Db
 	ctx := db.Context
@@ -29,9 +29,13 @@ func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []
 		return nil, nil, nil, err
 	}
 
-	log.Warn("payments %v", payments)
+	num := len(keys)
+	log.Warn("payments %v", num)
+
 	// Capture any uncaptured payments
-	for _, p := range payments {
+	for i := 0; i < num; i++ {
+		p := payments[i]
+
 		if !p.Captured {
 			ch, err := client.Capture(p.Account.ChargeId)
 

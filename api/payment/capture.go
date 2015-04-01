@@ -19,10 +19,9 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (
 	// Save order and payments
 	ord.Put()
 
-	db := datastore.New(org.Namespace(c))
-
-	for i, payment := range payments {
-		db.PutKind(payment.Kind(), keys[i], payment)
+	db := datastore.New(ord.Db.Context)
+	if _, err = db.PutMulti(keys, payments); err != nil {
+		return nil, err
 	}
 
 	return ord, nil
