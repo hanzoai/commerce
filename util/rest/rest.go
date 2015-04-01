@@ -108,7 +108,6 @@ func (r Rest) Route(router router.Router, args ...gin.HandlerFunc) {
 	prefix := r.Prefix + r.Kind
 	prefix = "/" + strings.TrimLeft(prefix, "/")
 
-	log.Debug("Creating group with prefix: %v", prefix)
 	// Create group for our API routes and require Access token
 	group := router.Group(prefix)
 
@@ -127,14 +126,14 @@ func (r Rest) Route(router router.Router, args ...gin.HandlerFunc) {
 
 	// Add default routes
 	for _, route := range r.defaultRoutes() {
-		log.Debug("Add route %v %v", route.method, prefix+route.url)
+		log.Debug("%-7s %v", route.method, prefix+route.url)
 		handlers := append([]gin.HandlerFunc{middleware}, route.handlers...)
 		group.Handle(route.method, route.url, handlers)
 	}
 
 	for _, routes := range r.routes {
 		for _, route := range routes {
-			log.Debug("Add route %v %v", route.method, prefix+route.url)
+			log.Debug("%-7s %v", route.method, prefix+route.url)
 			group.Handle(route.method, route.url, route.handlers)
 		}
 	}
