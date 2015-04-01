@@ -2,7 +2,6 @@ package product
 
 import (
 	"reflect"
-	"time"
 
 	aeds "appengine/datastore"
 
@@ -74,11 +73,7 @@ type Product struct {
 
 	// Range in which product is available. If active, it takes precedent over
 	// Available bool.
-	Availability struct {
-		Active    bool
-		StartDate time.Time `json:"startDate"`
-		EndDate   time.Time `json:"endDate"`
-	} `json:"availability"`
+	Availability Availability `json:"availability"`
 
 	// Is this product for preorder
 	Preorder bool `json:"preorder"`
