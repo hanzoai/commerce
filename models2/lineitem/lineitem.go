@@ -8,6 +8,7 @@ import (
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/models2/product"
 	"crowdstart.io/models2/types/currency"
+	"crowdstart.io/models2/types/weight"
 	"crowdstart.io/models2/variant"
 
 	. "crowdstart.io/models2"
@@ -37,7 +38,8 @@ type LineItem struct {
 	Quantity int `json:"quantity"`
 
 	// Unit weight
-	Weight float64 `json:"weight"`
+	Weight     weight.Mass `json:"weight"`
+	WeightUnit weight.Unit `json:"weightUnit"`
 
 	// Whether taxes apply to this line item
 	Taxable bool `json:"taxable"`
@@ -105,6 +107,7 @@ func (li *LineItem) Update() {
 		li.ProductSlug = li.Product.Slug
 		li.Taxable = li.Product.Taxable
 		li.Weight = li.Product.Weight
+		li.WeightUnit = li.Product.WeightUnit
 	}
 
 	if li.Variant != nil {
@@ -113,6 +116,7 @@ func (li *LineItem) Update() {
 		li.VariantSKU = li.Variant.SKU
 		li.Taxable = li.Variant.Taxable
 		li.Weight = li.Variant.Weight
+		li.WeightUnit = li.Product.WeightUnit
 	}
 }
 
