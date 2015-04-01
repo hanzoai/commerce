@@ -1,8 +1,6 @@
 package api
 
 import (
-	"crowdstart.io/api/accesstoken"
-	"crowdstart.io/api/payment"
 	"crowdstart.io/api/store"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models2/campaign"
@@ -19,7 +17,7 @@ import (
 	"crowdstart.io/util/rest"
 	"crowdstart.io/util/router"
 
-	accessTokenApi "crowdstart.io/api/accesstoken"
+	accessTokenApi "crowdstart.io/api/accessToken"
 	orderApi "crowdstart.io/api/order"
 	paymentApi "crowdstart.io/api/payment"
 )
@@ -49,7 +47,6 @@ func init() {
 	s.GET("/:storeid/:entity/:id", adminRequired, store.GetStorePrice)
 	s.POST("/:storeid/:entity/:id", adminRequired, store.PostStorePrice)
 	s.DELETE("/:storeid/:entity/:id", adminRequired, store.DeleteStorePrice)
-	s.Route(router, methodOverride)
 
 	// Crowdstart APIs, using default namespace (internal use only)
 	campaign := rest.New(campaign.Campaign{})
