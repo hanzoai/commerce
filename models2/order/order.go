@@ -129,6 +129,7 @@ func (o *Order) Init() {
 	o.History = make([]Event, 0)
 	o.Items = make([]LineItem, 0)
 	o.Metadata = make(Metadata)
+	o.Coupons = make([]coupon.Coupon, 0)
 }
 
 func New(db *datastore.Datastore) *Order {
