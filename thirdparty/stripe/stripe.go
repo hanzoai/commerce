@@ -224,7 +224,7 @@ func (c Client) NewCharge(source interface{}, pay *payment.Payment) (*Charge, er
 
 // Capture charge
 func (c Client) Capture(id string) (*Charge, error) {
-	log.Warn("Capture %v", id)
+	log.Debug("Capture %v", id)
 	ch, err := c.API.Charges.Capture(id, nil)
 	if err != nil {
 		return nil, NewError(err)
