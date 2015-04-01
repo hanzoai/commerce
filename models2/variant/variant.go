@@ -1,13 +1,13 @@
 package variant
 
 import (
-	"time"
-
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/models2/types/currency"
 	"crowdstart.io/models2/types/weight"
 	"crowdstart.io/util/val"
+
+	. "crowdstart.io/models2"
 )
 
 type Option struct {
@@ -35,11 +35,7 @@ type Variant struct {
 
 	// Range in which variant is available. If active, it takes precedent over
 	// Available bool.
-	Availability struct {
-		Active    bool
-		StartDate time.Time `json:"startDate"`
-		EndDate   time.Time `json:"endDate"`
-	} `json:"availability"`
+	Availability Availability `json:"availability"`
 
 	Inventory int `json:"inventory"`
 	Sold      int `json:"sold"`

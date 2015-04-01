@@ -1,7 +1,7 @@
 package store
 
 import (
-	"time"
+	"reflect"
 
 	aeds "appengine/datastore"
 
@@ -11,6 +11,8 @@ import (
 	"crowdstart.io/models2/types/shipping"
 	"crowdstart.io/models2/types/weight"
 	"crowdstart.io/util/json"
+	"crowdstart.io/util/log"
+	"crowdstart.io/util/structs"
 	"crowdstart.io/util/val"
 
 	. "crowdstart.io/models2"
@@ -18,36 +20,37 @@ import (
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
+// Everything is a pointer, which allows fields to be nil. This way when we
+// serialize to/from JSON we know what has and has not been set.
 type Listing struct {
-	Name string `json:"name"`
-
-	Headline    string `json:"headline" datastore:",noindex"`
-	Excerpt     string `json:"excerpt" datastore:",noindex"`
-	Description string `json:"description", datastore:",noindex"`
-
-	// Product Media
-	HeaderImage Media   `json:"headerImage"`
-	Media       []Media `json:"media"`
-
 	ProductId string `json:"productId,omitempty"`
 	VariantId string `json:"variantId,omitempty"`
 
-	Sold int `json:"sold"`
+	Name *string `json:"name"`
 
-	Price    currency.Cents `json:"price"`
-	Shipping currency.Cents `json:"shipping"`
-	Taxable  bool           `json:"taxable"`
+	Headline    *string `json:"headline,omitempty"`
+	Excerpt     *string `json:"excerpt,omitempty"`
+	Description *string `json:"description,omitempty"`
 
-	WeightUnit weight.Unit `json:"weightUnit"`
+	// Product Media
+	HeaderImage *Media  `json:"headerImage,omitempty"`
+	Media       []Media `json:"media,omitempty"`
 
-	Available    bool `json:"available"`
-	Availability struct {
-		Active    bool
-		StartDate time.Time `json:"startDate"`
-		EndDate   time.Time `json:"endDate"`
-	} `json:"availability"`
-	Hidden bool `json:"hidden"`
+	Sold *int `json:"sold"`
+
+	Price    *currency.Cents `json:"price,omitempty"`
+	Shipping *currency.Cents `json:"shipping,omitempty"`
+	Taxable  *bool           `json:"taxable,omitempty"`
+
+	WeightUnit weight.Unit `json:"weightUnit,omitempty"`
+
+	Available    *bool         `json:"available,omitempty"`
+	Availability *Availability `json:"availability,omitempty"`
+
+	Hidden *bool `json:"hidden,omitempty"`
 }
+
+var ListingFields = structs.FieldNames(Listing{})
 
 type Listings map[string]Listing
 type ShippingRateTable map[string]shipping.Rates
@@ -136,4 +139,21 @@ func (s *Store) Save(c chan<- aeds.Property) (err error) {
 
 func (s *Store) Validator() *val.Validator {
 	return val.New(s)
+}
+
+func (s *Store) Override(entity mixin.Entity) {
+	listing, ok := s.Listings[entity.Id()]
+	if !ok {
+		log.Warn("No listing found that matches given %s", entity.Kind())
+		return
+	}
+
+	ev := reflect.ValueOf(entity)
+	lv := reflect.ValueOf(listing)
+
+	for _, name := range ListingFields {
+		field := reflect.Indirect(ev).FieldByName(name)
+		val := lv.FieldByName(name)
+		field.Set(val)
+	}
 }

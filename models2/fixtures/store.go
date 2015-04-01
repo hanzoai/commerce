@@ -21,9 +21,10 @@ func Store(c *gin.Context) *store.Store {
 	// Fetch first product
 
 	prod := Product(c)
+	price := currency.Cents(30000)
 	stor.Listings[prod.Id()] = store.Listing{
 		ProductId: prod.Id(),
-		Price:     currency.Cents(30000),
+		Price:     &price,
 	}
 
 	stor.MustPut()
