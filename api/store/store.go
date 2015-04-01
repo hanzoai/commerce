@@ -1,61 +1,70 @@
 package store
 
-// import (
-// 	"github.com/gin-gonic/gin"
+import (
+	"fmt"
+	"reflect"
 
-// 	"crowdstart.io/datastore"
-// 	"crowdstart.io/middleware"
-// 	"crowdstart.io/models2/product"
-// 	"crowdstart.io/models2/variant"
-// 	"crowdstart.io/util/json"
-// 	"crowdstart.io/util/log"
-// )
+	"github.com/gin-gonic/gin"
 
-// func variantPriceOverride(c *gin.Context, storeId, variantId string) *variant.Variant {
-// 	// Get organization for this user
-// 	org := middleware.GetOrganization(c)
+	"crowdstart.io/datastore"
+	"crowdstart.io/middleware"
+	"crowdstart.io/models/mixin"
+	"crowdstart.io/models2/product"
+	"crowdstart.io/models2/store"
+	"crowdstart.io/models2/variant"
+	"crowdstart.io/util/json"
+	"crowdstart.io/util/permission"
+	"crowdstart.io/util/rest"
+	"crowdstart.io/util/router"
+)
 
-// 	// Set up the db with the namespaced appengine context
-// 	ctx := org.Namespace(c)
-// 	db := datastore.New(ctx)
+var entityTypes = map[string]reflect.Type{
+	"product": reflect.ValueOf(product.Product{}).Type(),
+	"variant": reflect.ValueOf(variant.Variant{}).Type(),
+}
 
-// 	// Create variant that's properly namespaced
-// 	v := variant.New(db)
-// 	if err := v.Get(variantId); err != nil {
-// 		json.Fail(c, 404, "Failed to get "+v.Kind(), err)
-// 	}
+func getOverride(c *gin.Context) {
+	storeid := c.Params.ByName("id")
+	entityId := c.Params.ByName("entityid")
+	kind := c.Params.ByName("kind")
 
-// 	p := price.New(db)
-// 	ok, _ := p.Query().Filter("StoreId=", storeId).Filter("VariantId=", variantId).First()
-// 	if ok {
-// 		v.Price = p.Price
-// 		v.Currency = p.Currency
-// 	}
+	db := datastore.New(c)
 
-// 	return v
-// }
+	stor := store.New(db)
+	if err := stor.Get(storeid); err != nil {
+		json.Fail(c, 500, fmt.Sprintf("Failed to retrieve store '%v': %v", storeid, err), err)
+		return
+	}
 
-// func productPriceOverride(c *gin.Context, storeId, productId string) *product.Product {
-// 	// Get organization for this user
-// 	org := middleware.GetOrganization(c)
+	entity := reflect.New(entityTypes[kind]).Interface().(mixin.Entity)
+	model := mixin.Model{Db: db, Entity: entity}
+	field := reflect.Indirect(reflect.ValueOf(entity)).FieldByName("Model")
+	field.Set(reflect.ValueOf(model))
 
-// 	// Set up the db with the namespaced appengine context
-// 	ctx := org.Namespace(c)
-// 	db := datastore.New(ctx)
+	if err := entity.Get(entityId); err != nil {
+		json.Fail(c, 500, fmt.Sprintf("Failed to retrieve %s %s: %v", kind, entityId, err), err)
+		return
+	}
 
-// 	// Create product that's properly namespaced
-// 	prod := product.New(db)
-// 	if err := prod.Get(productId); err != nil {
-// 		json.Fail(c, 404, "Failed to get "+prod.Kind(), err)
-// 	}
+	// Override product with store customizations
+	stor.Override(entity)
 
-// 	p := price.New(db)
-// 	ok, _ := p.Query().Filter("StoreId=", storeId).Filter("ProductId=", productId).First()
-// 	log.Warn("OK? %v storeId %v productId %v", ok, storeId, productId)
-// 	if ok {
-// 		prod.Price = p.Price
-// 		prod.Currency = p.Currency
-// 	}
+	c.JSON(200, entity)
+}
 
-// 	return prod
-// }
+func Route(router router.Router, args ...gin.HandlerFunc) {
+	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
+
+	api := rest.New(store.Store{})
+
+	api.GET("/:id/:kind/:entityid", publishedRequired, rest.NamespacedMiddleware, getOverride)
+	// api.GET("/:id/bundle/:bundleid", adminRequired, store.GetStorePrice)
+
+	// api.GET("/:id/listings", adminRequired, store.GetStorePrice)
+	// api.POST("/:id/listings", adminRequired, store.GetStorePrice)
+	// api.PUT("/:id/listings", adminRequired, store.GetStorePrice)
+	// api.PATCH("/:id/listings", adminRequired, store.GetStorePrice)
+	// api.DELETE("/:id/listings", adminRequired, store.GetStorePrice)
+
+	api.Route(router, args...)
+}
