@@ -29,12 +29,9 @@ func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []
 		return nil, nil, nil, err
 	}
 
-	num := len(keys)
-	log.Warn("payments %v", num)
-
+	log.Debug("payments %v", payments)
 	// Capture any uncaptured payments
-	for i := 0; i < num; i++ {
-		p := payments[i]
+	for _, p := range payments {
 
 		if !p.Captured {
 			ch, err := client.Capture(p.Account.ChargeId)
