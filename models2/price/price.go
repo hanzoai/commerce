@@ -1,0 +1,39 @@
+package price
+
+import (
+	"crowdstart.io/datastore"
+
+	"crowdstart.io/models/mixin"
+	"crowdstart.io/models2/types/currency"
+	"crowdstart.io/util/val"
+)
+
+type Price struct {
+	mixin.Model
+
+	StoreId string `json:"storeId"`
+
+	//Ids to filter on
+	ProductId string `json:"productId"`
+	VariantId string `json:"variantId"`
+
+	Price    currency.Cents `json:"price"`
+	Currency currency.Type  `json:"currency"`
+}
+
+func (p *Price) Init() {
+}
+
+func New(db *datastore.Datastore) *Price {
+	p := new(Price)
+	p.Model = mixin.Model{Db: db, Entity: p}
+	return p
+}
+
+func (p *Price) Validator() *val.Validator {
+	return val.New(p)
+}
+
+func (p Price) Kind() string {
+	return "price2"
+}
