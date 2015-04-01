@@ -213,7 +213,7 @@ func (o *Order) GetCoupons() error {
 			return errors.New("Invalid coupon code")
 		}
 
-		keys = append(keys, c.Key())
+		keys[i] = c.Key()
 	}
 
 	return db.GetMulti(keys, o.Coupons)
