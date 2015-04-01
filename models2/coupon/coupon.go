@@ -50,13 +50,13 @@ type Coupon struct {
 	Used int `json:"used"`
 
 	// List of buyer email addresses who have redeemed coupon.
-	Buyers []string `json:"buyers"`
+	//Buyers []string `json:"buyers"`
 }
 
 func New(db *datastore.Datastore) *Coupon {
 	c := new(Coupon)
 	c.Model = mixin.Model{Db: db, Entity: c}
-	c.Buyers = make([]string, 0)
+	//c.Buyers = make([]string, 0)
 	return c
 }
 
