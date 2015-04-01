@@ -46,17 +46,11 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 		db := datastore.New(c)
 		ord := order.New(db)
 
-		// Get underlying product/variant entities
-		if err := ord.GetItemEntities(); err != nil {
-			json.Fail(c, 400, "Failed to get underlying line items", err)
+		// Update order with information from datastore and tally
+		if err := ord.UpdateAndTally(); err != nil {
+			json.Fail(c, 400, "Invalid or incomplete order", err)
 			return
 		}
-
-		// Update line items using that information
-		ord.UpdateFromEntities()
-
-		// Tally up order again
-		ord.Tally()
 
 		if err := json.Decode(c.Request.Body, ord); err != nil {
 			json.Fail(c, 400, "Failed decode request body", err)
@@ -88,17 +82,11 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 			return
 		}
 
-		// Get underlying product/variant entities
-		if err := ord.GetItemEntities(); err != nil {
-			json.Fail(c, 400, "Failed to get underlying line items", err)
+		// Update order with information from datastore and tally
+		if err := ord.UpdateAndTally(); err != nil {
+			json.Fail(c, 400, "Invalid or incomplete order", err)
 			return
 		}
-
-		// Update line items using that information
-		ord.UpdateFromEntities()
-
-		// Tally up order again
-		ord.Tally()
 
 		// Replace whatever was in the datastore with our new updated order
 		if err := ord.Put(); err != nil {
@@ -124,17 +112,11 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 			return
 		}
 
-		// Get underlying product/variant entities
-		if err = ord.GetItemEntities(); err != nil {
-			json.Fail(c, 400, "Failed to get underlying line items", err)
+		// Update order with information from datastore and tally
+		if err := ord.UpdateAndTally(); err != nil {
+			json.Fail(c, 400, "Invalid or incomplete order", err)
 			return
 		}
-
-		// Update line items using that information
-		ord.UpdateFromEntities()
-
-		// Tally up order again
-		ord.Tally()
 
 		if err := ord.Put(); err != nil {
 			json.Fail(c, 500, "Failed to update order", err)

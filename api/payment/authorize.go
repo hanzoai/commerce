@@ -1,6 +1,8 @@
 package payment
 
 import (
+	"errors"
+
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/api/payment/stripe"
@@ -41,18 +43,13 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	// Peel off order for convience
 	ord = ar.Order
 
-	// Get underlying product/variant entities
-	err = ord.GetItemEntities()
-	if err != nil {
-		log.Error("Failed to get item entities: %v", err)
-		return nil, err
+	ctx := ord.Db.Context
+
+	// Update order with information from datastore and tally
+	if err := ord.UpdateAndTally(); err != nil {
+		log.Error(err, ctx)
+		return nil, errors.New("Invalid or incomplete order")
 	}
-
-	// Update line items using that information
-	ord.UpdateFromEntities()
-
-	// Tally up order again
-	ord.Tally()
 
 	log.Debug("Order: %#v", ord)
 
