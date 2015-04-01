@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"crowdstart.io/datastore"
+	"crowdstart.io/middleware"
 	"crowdstart.io/models2/fixtures"
 	"crowdstart.io/models2/order"
 	"crowdstart.io/models2/organization"
@@ -41,6 +42,8 @@ var (
 
 // Setup appengine context
 var _ = BeforeSuite(func() {
+	adminRequired := middleware.TokenRequired(permission.Admin)
+
 	ctx = ae.NewContext()
 
 	// Mock gin context that we can use with fixtures
@@ -52,8 +55,8 @@ var _ = BeforeSuite(func() {
 
 	// Setup client and add routes for payment API tests.
 	client = ginclient.New(ctx)
-	paymentApi.Route(client.Router)
-	orderApi.Route(client.Router)
+	paymentApi.Route(client.Router, adminRequired)
+	orderApi.Route(client.Router, adminRequired)
 
 	// Create organization for tests, accessToken
 	accessToken = org.AddToken("test-published-key", permission.Admin)
@@ -310,67 +313,67 @@ func OrderBadUserTest(isCharge bool) {
 }
 
 var _ = Describe("payment", func() {
-	// Context("Authorize First Time Customers", func() {
-	// 	It("Should save new order successfully", func() {
-	// 		FirstTimeSuccessfulOrderTest(false)
-	// 	})
+	Context("Authorize First Time Customers", func() {
+		It("Should save new order successfully", func() {
+			FirstTimeSuccessfulOrderTest(false)
+		})
 
-	// 	It("Should not authorize invalid credit card number", func() {
-	// 		OrderBadCardTest(false)
-	// 	})
+		It("Should not authorize invalid credit card number", func() {
+			OrderBadCardTest(false)
+		})
 
-	// 	// It("Should not authorize invalid product id", func() {
-	// 	// })
-	// 	// It("Should not authorize invalid variant id", func() {
-	// 	// })
-	// 	// It("Should not authorize invalid collection id", func() {
-	// 	// })
-	// })
+		// It("Should not authorize invalid product id", func() {
+		// })
+		// It("Should not authorize invalid variant id", func() {
+		// })
+		// It("Should not authorize invalid collection id", func() {
+		// })
+	})
 
-	// Context("Authorize Returning Customers", func() {
-	// 	It("Should save returning customer order with the same card successfully", func() {
-	// 		ReturningSuccessfulOrderSameCardTest(false)
-	// 	})
+	Context("Authorize Returning Customers", func() {
+		It("Should save returning customer order with the same card successfully", func() {
+			ReturningSuccessfulOrderSameCardTest(false)
+		})
 
-	// 	It("Should save returning customer order with a new card successfully", func() {
-	// 		ReturningSuccessfulOrderNewCardTest(false)
-	// 	})
+		It("Should save returning customer order with a new card successfully", func() {
+			ReturningSuccessfulOrderNewCardTest(false)
+		})
 
-	// 	It("Should not save customer with invalid user id", func() {
-	// 		OrderBadUserTest(false)
-	// 	})
-	// })
+		It("Should not save customer with invalid user id", func() {
+			OrderBadUserTest(false)
+		})
+	})
 
-	// Context("Charge First Time Customers", func() {
-	// 	It("Should save new order successfully", func() {
-	// 		FirstTimeSuccessfulOrderTest(true)
-	// 	})
+	Context("Charge First Time Customers", func() {
+		It("Should save new order successfully", func() {
+			FirstTimeSuccessfulOrderTest(true)
+		})
 
-	// 	It("Should not authorize invalid credit card number", func() {
-	// 		OrderBadCardTest(true)
-	// 	})
+		It("Should not authorize invalid credit card number", func() {
+			OrderBadCardTest(true)
+		})
 
-	// 	// It("Should not authorize invalid product id", func() {
-	// 	// })
-	// 	// It("Should not authorize invalid variant id", func() {
-	// 	// })
-	// 	// It("Should not authorize invalid collection id", func() {
-	// 	// })
-	// })
+		// It("Should not authorize invalid product id", func() {
+		// })
+		// It("Should not authorize invalid variant id", func() {
+		// })
+		// It("Should not authorize invalid collection id", func() {
+		// })
+	})
 
-	// Context("Charge Returning Customers", func() {
-	// 	It("Should save returning customer order with the same card successfully", func() {
-	// 		ReturningSuccessfulOrderSameCardTest(true)
-	// 	})
+	Context("Charge Returning Customers", func() {
+		It("Should save returning customer order with the same card successfully", func() {
+			ReturningSuccessfulOrderSameCardTest(true)
+		})
 
-	// 	It("Should save returning customer order with a new card successfully", func() {
-	// 		ReturningSuccessfulOrderNewCardTest(true)
-	// 	})
+		It("Should save returning customer order with a new card successfully", func() {
+			ReturningSuccessfulOrderNewCardTest(true)
+		})
 
-	// 	It("Should not save customer with invalid user id", func() {
-	// 		OrderBadUserTest(true)
-	// 	})
-	// })
+		It("Should not save customer with invalid user id", func() {
+			OrderBadUserTest(true)
+		})
+	})
 
 	Context("Authorize Order", func() {
 		It("Should authorize existing order successfully", func() {
@@ -407,7 +410,7 @@ var _ = Describe("payment", func() {
 	})
 
 	Context("Capture Order", func() {
-		It("Should capture existing order successfully", func() {
+		It("Should capture existing authorized order successfully", func() {
 			pnos := FirstTimeSuccessfulOrderTest(false)
 			id := pnos.Orders[0].Id()
 
@@ -423,4 +426,43 @@ var _ = Describe("payment", func() {
 			log.Debug("JSON %v", w.Body)
 		})
 	})
+
+	Context("Charge Order", func() {
+		It("Should charge existing order successfully", func() {
+			w := client.PostRawJSON("/order", requests.ValidOrderOnly)
+			Expect(w.Code).To(Equal(201))
+
+			ord1 := order.New(db)
+			err := json.DecodeBuffer(w.Body, &ord1)
+			Expect(err).ToNot(HaveOccurred())
+
+			ord2 := order.New(db)
+			err = ord2.Get(ord1.Id())
+			Expect(err).ToNot(HaveOccurred())
+
+			w = client.PostRawJSON("/order/"+ord2.Id()+"/charge", requests.ValidUserPaymentOnly)
+			Expect(w.Code).To(Equal(200))
+			log.Debug("JSON %v", w.Body)
+
+			ord3 := order.New(db)
+			err = json.DecodeBuffer(w.Body, &ord3)
+			Expect(err).ToNot(HaveOccurred())
+
+			pay := payment.New(db)
+			pay.Get(ord3.PaymentIds[0])
+
+			stripeVerifyCharge(pay)
+		})
+
+		It("Should not capture invalid order", func() {
+			w := client.PostRawJSON("/order/BADID/charge", "")
+			Expect(w.Code).To(Equal(500))
+			log.Debug("JSON %v", w.Body)
+		})
+	})
+
+	// Other things that could be tested
+	// Capturing an unauthorized order
+	// Capturing a captured order
+	// Authorizing a captured order
 })
