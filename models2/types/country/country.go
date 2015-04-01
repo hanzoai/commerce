@@ -8,11 +8,11 @@ import (
 
 type Country countries.Country
 
-var List []Country
+var Countries []Country
 var ByISOCodeISO3166_2 map[string]Country
 
 func init() {
-	List = make([]Country, len(countries.Countries))
+	Countries = make([]Country, len(countries.Countries))
 	ByISOCodeISO3166_2 = make(map[string]Country)
 
 	nameToIsoMap := make(map[string]string)
@@ -29,6 +29,6 @@ func init() {
 	sort.Strings(sortedNames)
 
 	for i, name := range sortedNames {
-		List[i] = ByISOCodeISO3166_2[nameToIsoMap[name]]
+		Countries[i] = ByISOCodeISO3166_2[nameToIsoMap[name]]
 	}
 }

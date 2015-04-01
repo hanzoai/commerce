@@ -27,3 +27,4 @@ templates/platform/docs/_generated
 *.bak
 *.orig
 *.coverprofile
+platform/docs/_generated/getting-started.html

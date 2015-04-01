@@ -49,4 +49,4 @@ const (
 	GBP      = "gbp"
 )
 
-var List = []Type{USD, AUD, CAD, EUR, GBP}
+var Types = []Type{USD, AUD, CAD, EUR, GBP}
