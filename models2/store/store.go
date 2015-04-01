@@ -52,7 +52,7 @@ type Store struct {
 	TaxNexus []Address `json:"taxNexus"`
 
 	// Shipping Rate Table, country name to shipping rate
-	ShippingRateTable  ShippingRateTable `json:"shippingRates" datastore"-"`
+	ShippingRateTable  ShippingRateTable `json:"shippingRates" datastore:"-"`
 	ShippingRateTable_ string            `json:"-" datastore:",noindex"`
 
 	// Overrides per item
