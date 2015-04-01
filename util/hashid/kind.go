@@ -18,6 +18,7 @@ var kinds = map[string]int{
 	"token":        9,
 	"user":         10,
 	"variant":      11,
+	"price":        12,
 }
 
 var kindsReversed = make(map[int]string)
