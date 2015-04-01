@@ -24,8 +24,8 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api := rest.New(order.Order{})
 
 	api.POST("/:id/capture", adminRequired, rest.NamespacedMiddleware, paymentApi.Capture)
-	api.POST("/:id/charge", publishedRequired, paymentApi.Charge)
-	api.POST("/:id/authorize", publishedRequired, paymentApi.Authorize)
+	api.POST("/:id/charge", publishedRequired, rest.NamespacedMiddleware, paymentApi.Charge)
+	api.POST("/:id/authorize", publishedRequired, rest.NamespacedMiddleware, paymentApi.Authorize)
 
 	api.GET("/:id/payments", adminRequired, rest.NamespacedMiddleware, func(c *gin.Context) {
 		id := c.Params.ByName("id")
@@ -43,7 +43,8 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	})
 
 	api.Create = func(c *gin.Context) {
-		db := datastore.New(c)
+		org := middleware.GetOrganization(c)
+		db := datastore.New(org.Namespace(c))
 		ord := order.New(db)
 
 		// Decode response body to create new order
@@ -67,8 +68,10 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	}
 
 	api.Update = func(c *gin.Context) {
+		org := middleware.GetOrganization(c)
+		db := datastore.New(org.Namespace(c))
+
 		id := c.Params.ByName("id")
-		db := datastore.New(c)
 		ord := order.New(db)
 
 		// Get Key, and fail if this didn't exist in datastore
@@ -98,8 +101,10 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	}
 
 	api.Patch = func(c *gin.Context) {
+		org := middleware.GetOrganization(c)
+		db := datastore.New(org.Namespace(c))
+
 		id := c.Params.ByName("id")
-		db := datastore.New(c)
 		ord := order.New(db)
 
 		err := ord.Get(id)
