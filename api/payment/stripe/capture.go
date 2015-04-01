@@ -29,7 +29,7 @@ func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []
 		return nil, nil, nil, err
 	}
 
-	log.Warn("payments %v", payments)
+	log.Debug("payments %v", payments)
 	// Capture any uncaptured payments
 	for _, p := range payments {
 		if !p.Captured {
