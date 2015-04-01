@@ -46,14 +46,15 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 		db := datastore.New(c)
 		ord := order.New(db)
 
-		// Update order with information from datastore and tally
-		if err := ord.UpdateAndTally(); err != nil {
-			json.Fail(c, 400, "Invalid or incomplete order", err)
+		// Decode response body to create new order
+		if err := json.Decode(c.Request.Body, ord); err != nil {
+			json.Fail(c, 400, "Failed decode request body", err)
 			return
 		}
 
-		if err := json.Decode(c.Request.Body, ord); err != nil {
-			json.Fail(c, 400, "Failed decode request body", err)
+		// Update order with information from datastore and tally
+		if err := ord.UpdateAndTally(); err != nil {
+			json.Fail(c, 400, "Invalid or incomplete order", err)
 			return
 		}
 
@@ -107,6 +108,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 			return
 		}
 
+		// Decode response body to create new order
 		if err := json.Decode(c.Request.Body, ord); err != nil {
 			json.Fail(c, 400, "Failed decode request body", err)
 			return
