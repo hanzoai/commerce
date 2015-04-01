@@ -218,8 +218,8 @@ func (o *Order) GetCoupons() error {
 	return db.GetMulti(keys, &o.Coupons)
 }
 
-// Apply discounts from coupon codes
-func (o *Order) ApplyDiscounts() {
+// Update discount using coupon codes/order info.
+func (o *Order) UpdateDiscount() {
 	o.Discount = 0
 	num := len(o.CouponCodes)
 	for i := 0; i < num; i++ {
@@ -238,6 +238,7 @@ func (o *Order) ApplyDiscounts() {
 // Get line items from datastore
 func (o *Order) GetItemEntities() error {
 	db := o.Model.Db
+	ctx := o.Model.Db.Context
 
 	nItems := len(o.Items)
 	keys := make([]datastore.Key, nItems, nItems)
@@ -246,7 +247,7 @@ func (o *Order) GetItemEntities() error {
 	for i := 0; i < nItems; i++ {
 		key, dst, err := o.Items[i].Entity(db)
 		if err != nil {
-			log.Error("Failed to get entity for %#v: %v", o.Items[i], err)
+			log.Error("Failed to get entity for %#v: %v", o.Items[i], err, ctx)
 			return err
 		}
 		keys[i] = key
@@ -283,6 +284,34 @@ func (o *Order) Tally() {
 
 	o.Subtotal = currency.Cents(subtotal)
 	o.Total = currency.Cents(total)
+}
+
+// Update order with information from datastore and tally
+func (o *Order) UpdateAndTally() error {
+	ctx := o.Db.Context
+
+	// Get coupons from datastore
+	if err := o.GetCoupons(); err != nil {
+		log.Error(err, ctx)
+		return errors.New("Failed to get coupons")
+	}
+
+	// Update discount amount
+	o.UpdateDiscount()
+
+	// Get underlying product/variant entities
+	if err := o.GetItemEntities(); err != nil {
+		log.Error(err, ctx)
+		return errors.New("Failed to get underlying line items")
+	}
+
+	// Update line items using that information
+	o.UpdateFromEntities()
+
+	// Tally up order again
+	o.Tally()
+
+	return nil
 }
 
 func (o Order) ItemsJSON() string {
