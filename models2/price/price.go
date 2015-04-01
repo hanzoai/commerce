@@ -35,5 +35,5 @@ func (p *Price) Validator() *val.Validator {
 }
 
 func (p Price) Kind() string {
-	return "price2"
+	return "price"
 }
