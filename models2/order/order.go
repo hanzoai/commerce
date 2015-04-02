@@ -17,7 +17,6 @@ import (
 	"crowdstart.io/models2/coupon"
 	"crowdstart.io/models2/payment"
 	"crowdstart.io/models2/types/currency"
-	"crowdstart.io/util/gob"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/val"
@@ -119,7 +118,7 @@ type Order struct {
 
 	// Arbitrary key/value pairs associated with this order
 	Metadata  Metadata `json:"metadata" datastore:"-"`
-	Metadata_ []byte   `json:"-"`
+	Metadata_ string   `json:"-" datastore:",noindex"`
 
 	Test bool `json:"-"` // Whether our internal test flag is active or not
 }
@@ -158,7 +157,7 @@ func (o *Order) Load(c <-chan aeds.Property) (err error) {
 
 	// Deserialize from datastore
 	if len(o.Metadata_) > 0 {
-		err = gob.Decode(o.Metadata_, &o.Metadata)
+		err = json.DecodeBytes([]byte(o.Metadata_), &o.Metadata)
 	}
 
 	return err
@@ -166,11 +165,7 @@ func (o *Order) Load(c <-chan aeds.Property) (err error) {
 
 func (o *Order) Save(c chan<- aeds.Property) (err error) {
 	// Serialize unsupported properties
-	o.Metadata_, err = gob.Encode(&o.Metadata)
-
-	if err != nil {
-		return err
-	}
+	o.Metadata_ = string(json.EncodeBytes(&o.Metadata))
 
 	// Save properties
 	return IgnoreFieldMismatch(aeds.SaveStruct(o, c))
