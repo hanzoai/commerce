@@ -18,11 +18,12 @@ func Product(c *gin.Context) *product.Product {
 	prod.Name = "Sad Keanu T-shirt"
 	prod.Headline = "Oh Keanu"
 	prod.Description = "Sad Keanu is sad."
-	opt := product.Option{
-		Name:   "Size",
-		Values: []string{"Sadness"},
+	prod.Options = []*product.Option{
+		&product.Option{
+			Name:   "Size",
+			Values: []string{"Sadness"},
+		},
 	}
-	prod.Options = append(prod.Options, &opt)
 	prod.Price = 2500
 	prod.Currency = currency.USD
 
@@ -44,11 +45,12 @@ func Product(c *gin.Context) *product.Product {
 
 	　　　　so doge
 	`
-	opt = product.Option{
-		Name:   "Size",
-		Values: []string{"Much", "Wow"},
+	prod.Options = []*product.Option{
+		&product.Option{
+			Name:   "Size",
+			Values: []string{"Much", "Wow"},
+		},
 	}
-	prod.Options = append(prod.Options, &opt)
 	prod.Price = 2000
 	prod.Currency = currency.USD
 
