@@ -8,6 +8,7 @@ import (
 	"crowdstart.io/api/payment/stripe"
 	"crowdstart.io/models2/order"
 	"crowdstart.io/models2/organization"
+	"crowdstart.io/models2/store"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 )
@@ -45,8 +46,15 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 
 	ctx := ord.Db.Context
 
-	// Update order with information from datastore and tally
-	if err := ord.UpdateAndTally(); err != nil {
+	// Check if store has been set, if so pull it out of the context
+	var stor *store.Store
+	v, err := c.Get("store")
+	if err == nil {
+		stor = v.(*store.Store)
+	}
+
+	// Update order with information from datastore, store and tally
+	if err := ord.UpdateAndTally(stor); err != nil {
 		log.Error(err, ctx)
 		return nil, errors.New("Invalid or incomplete order")
 	}
