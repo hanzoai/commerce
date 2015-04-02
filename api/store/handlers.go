@@ -16,17 +16,22 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 
 	api := rest.New(store.Store{})
 
-	// API for manipulating listings per store
-	api.GET("/:id/listings", adminRequired, getListings)
-	api.POST("/:id/listings", adminRequired, createListings)
-	api.PUT("/:id/listings", adminRequired, createListings)
-	api.PATCH("/:id/listings", adminRequired, patchListings)
-	api.DELETE("/:id/listings", adminRequired, deleteListings)
+	// API for getting a full product/variant/bundle for a specific store
+	api.GET("/:id/authorize", publishedRequired, rest.NamespacedMiddleware, authorize)
+	api.GET("/:id/charge", publishedRequired, rest.NamespacedMiddleware, charge)
 
-	// API for getting listing per product/variant
-	api.GET("/:id/product/:entityid", publishedRequired, rest.NamespacedMiddleware, getListing("product"))
-	api.GET("/:id/variant/:entityid", publishedRequired, rest.NamespacedMiddleware, getListing("variant"))
-	api.GET("/:id/bundle/:entityid", publishedRequired, rest.NamespacedMiddleware, getListing("bundle"))
+	// API for getting a full product/variant/bundle for a specific store
+	api.GET("/:id/product/:key", publishedRequired, rest.NamespacedMiddleware, getItem)
+	api.GET("/:id/variant/:key", publishedRequired, rest.NamespacedMiddleware, getItem)
+	api.GET("/:id/bundle/:key", publishedRequired, rest.NamespacedMiddleware, getItem)
+
+	// API for working with listings directly
+	api.GET("/:id/listing", adminRequired, rest.NamespacedMiddleware, listListing)
+	api.GET("/:id/listing/:key", adminRequired, rest.NamespacedMiddleware, getListing)
+	api.POST("/:id/listing/:key", adminRequired, rest.NamespacedMiddleware, createListing)
+	api.PUT("/:id/listing/:key", adminRequired, rest.NamespacedMiddleware, updateListing)
+	api.PATCH("/:id/listing/:key", adminRequired, rest.NamespacedMiddleware, patchListing)
+	api.DELETE("/:id/listing/:key", adminRequired, rest.NamespacedMiddleware, deleteListing)
 
 	api.Route(router, args...)
 }

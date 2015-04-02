@@ -16,6 +16,7 @@ import (
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/models2/coupon"
 	"crowdstart.io/models2/payment"
+	"crowdstart.io/models2/store"
 	"crowdstart.io/models2/types/currency"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
@@ -253,6 +254,20 @@ func (o *Order) GetItemEntities() error {
 	return db.GetMulti(keys, vals)
 }
 
+// Update underlying line item entities using store listings
+func (o *Order) UpdateEntities(stor *store.Store) {
+	nItems := len(o.Items)
+	for i := 0; i < nItems; i++ {
+		if o.Items[i].Product != nil {
+			stor.UpdateFromListing(o.Items[i].Product)
+			continue
+		}
+		if o.Items[i].Variant != nil {
+			stor.UpdateFromListing(o.Items[i].Variant)
+		}
+	}
+}
+
 // Update line items from underlying entities
 func (o *Order) UpdateFromEntities() {
 	nItems := len(o.Items)
@@ -283,8 +298,22 @@ func (o *Order) Tally() {
 }
 
 // Update order with information from datastore and tally
-func (o *Order) UpdateAndTally() error {
+func (o *Order) UpdateAndTally(stor *store.Store) error {
 	ctx := o.Db.Context
+
+	// Get underlying product/variant entities
+	if err := o.GetItemEntities(); err != nil {
+		log.Error(err, ctx)
+		return errors.New("Failed to get underlying line items")
+	}
+
+	// Update against store listings
+	if stor != nil {
+		o.UpdateEntities(stor)
+	}
+
+	// Update line items using that information
+	o.UpdateFromEntities()
 
 	// Get coupons from datastore
 	if err := o.GetCoupons(); err != nil {
@@ -294,15 +323,6 @@ func (o *Order) UpdateAndTally() error {
 
 	// Update discount amount
 	o.UpdateDiscount()
-
-	// Get underlying product/variant entities
-	if err := o.GetItemEntities(); err != nil {
-		log.Error(err, ctx)
-		return errors.New("Failed to get underlying line items")
-	}
-
-	// Update line items using that information
-	o.UpdateFromEntities()
 
 	// Tally up order again
 	o.Tally()
