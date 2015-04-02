@@ -4,7 +4,7 @@ var ValidOrderOnly = `
 {
     "currency": "usd",
     "items": [ {
-      "productSlug": "t-shirt",
+      "productSlug": "doge-shirt",
       "price": 1000,
       "quantity": 2
     } ]

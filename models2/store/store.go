@@ -137,8 +137,8 @@ func (s *Store) Validator() *val.Validator {
 	return val.New(s)
 }
 
-// Overide product, variant with listing override values
-func (s *Store) Override(entity mixin.Entity) {
+// Update product/variant using listing for said item
+func (s *Store) UpdateFromListing(entity mixin.Entity) {
 	// Check if we have a listing for this product/variant
 	listing, ok := s.Listings[entity.Id()]
 	if !ok {
