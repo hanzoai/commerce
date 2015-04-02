@@ -151,11 +151,16 @@ var BuildForm = (function() {
       } else {
         $fg = $(formGroupInputTemplate);
 
+        var val = inputConfig.value;
+        if (type.indexOf('upper') != -1) {
+          val = val.toUpperCase();
+        }
+
         var $input = $fg.find('input').attr({
           id: inputConfig.id,
           name: inputConfig.name,
           type: type,
-          value: inputConfig.value,
+          value: val,
           placeholder: inputConfig.placeholder,
         });
 
