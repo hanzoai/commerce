@@ -3,11 +3,8 @@ package collection
 import (
 	"time"
 
-	aeds "appengine/datastore"
-
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
-	"crowdstart.io/util/gob"
 	"crowdstart.io/util/val"
 
 	. "crowdstart.io/models2"
@@ -55,10 +52,6 @@ type Collection struct {
 	ProductIds []string `json:"productIds"`
 	VariantIds []string `json:"variantIds"`
 
-	// Discount for this purchase
-	Discounts  []*Discount `json:"discounts"`
-	Discounts_ []byte      `json:"-"`
-
 	History []Event `json:"history"`
 }
 
@@ -68,7 +61,6 @@ func New(db *datastore.Datastore) *Collection {
 	c.Media = make([]Media, 0)
 	c.ProductIds = make([]string, 0)
 	c.VariantIds = make([]string, 0)
-	c.Discounts = make([]*Discount, 0)
 	c.History = make([]Event, 0)
 	return c
 }
@@ -80,34 +72,6 @@ func (c Collection) Kind() string {
 func (c *Collection) Validator() *val.Validator {
 	return val.New(c).Check("Slug").Exists().
 		Check("Name").Exists()
-}
-
-func (c *Collection) Load(ch <-chan aeds.Property) (err error) {
-	// Load properties
-	if err = IgnoreFieldMismatch(aeds.LoadStruct(c, ch)); err != nil {
-		return err
-	}
-
-	// Deserialize gob encoded properties
-	c.Discounts = make([]*Discount, 0)
-
-	if len(c.Discounts_) > 0 {
-		err = gob.Decode(c.Discounts_, &c.Discounts)
-	}
-
-	return err
-}
-
-func (c *Collection) Save(ch chan<- aeds.Property) (err error) {
-	// Gob encode problematic properties
-	c.Discounts_, err = gob.Encode(&c.Discounts)
-
-	if err != nil {
-		return err
-	}
-
-	// Save properties
-	return IgnoreFieldMismatch(aeds.SaveStruct(c, ch))
 }
 
 func (c Collection) GetDescriptionParagraphs() []string {

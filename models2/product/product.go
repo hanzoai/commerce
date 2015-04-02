@@ -10,7 +10,7 @@ import (
 	"crowdstart.io/models2/types/currency"
 	"crowdstart.io/models2/types/weight"
 	"crowdstart.io/models2/variant"
-	"crowdstart.io/util/gob"
+	"crowdstart.io/util/json"
 	"crowdstart.io/util/val"
 
 	. "crowdstart.io/models2"
@@ -82,12 +82,12 @@ type Product struct {
 	AddLabel string `json:"addLabel"`
 
 	// List of variants
-	Variants  []*variant.Variant `datastore:"-" json:"variants"`
-	Variants_ []byte             `json:"-"`
+	Variants  []*variant.Variant `json:"variants" datastore:"-"`
+	Variants_ string             `json:"-" datastore:",noindex"`
 
 	// Reference to options used
-	Options  []*Option `datastore:"-" json:"options"`
-	Options_ []byte    `json:"-"`
+	Options  []*Option `json:"options" datastore:"-"`
+	Options_ string    `json:"-" datastore:",noindex"`
 }
 
 func (p *Product) Init() {
@@ -149,11 +149,11 @@ func (p *Product) Load(c <-chan aeds.Property) (err error) {
 
 	// Deserialize from datastore
 	if len(p.Variants_) > 0 {
-		err = gob.Decode(p.Variants_, &p.Variants)
+		err = json.DecodeBytes([]byte(p.Variants_), &p.Variants)
 	}
 
 	if len(p.Options_) > 0 {
-		err = gob.Decode(p.Options_, &p.Options)
+		err = json.DecodeBytes([]byte(p.Options_), &p.Options)
 	}
 
 	return err
@@ -161,8 +161,8 @@ func (p *Product) Load(c <-chan aeds.Property) (err error) {
 
 func (p *Product) Save(c chan<- aeds.Property) (err error) {
 	// Serialize unsupported properties
-	p.Variants_, _ = gob.Encode(&p.Variants)
-	p.Options_, _ = gob.Encode(&p.Options)
+	p.Variants_ = string(json.EncodeBytes(&p.Variants))
+	p.Options_ = string(json.Encode(&p.Options))
 
 	// Save properties
 	return IgnoreFieldMismatch(aeds.SaveStruct(p, c))
@@ -219,9 +219,4 @@ func (p Product) VariantOptions(name string) (options []string) {
 
 func Query(db *datastore.Datastore) *mixin.Query {
 	return New(db).Query()
-}
-
-func init() {
-	gob.Register(variant.Variant{})
-	gob.Register(Option{})
 }
