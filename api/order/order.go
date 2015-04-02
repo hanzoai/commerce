@@ -54,7 +54,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 		}
 
 		// Update order with information from datastore and tally
-		if err := ord.UpdateAndTally(); err != nil {
+		if err := ord.UpdateAndTally(nil); err != nil {
 			json.Fail(c, 400, "Invalid or incomplete order", err)
 			return
 		}
@@ -87,7 +87,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 		}
 
 		// Update order with information from datastore and tally
-		if err := ord.UpdateAndTally(); err != nil {
+		if err := ord.UpdateAndTally(nil); err != nil {
 			json.Fail(c, 400, "Invalid or incomplete order", err)
 			return
 		}
@@ -120,7 +120,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 		}
 
 		// Update order with information from datastore and tally
-		if err := ord.UpdateAndTally(); err != nil {
+		if err := ord.UpdateAndTally(nil); err != nil {
 			json.Fail(c, 400, "Invalid or incomplete order", err)
 			return
 		}
