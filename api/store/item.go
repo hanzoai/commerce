@@ -46,7 +46,11 @@ func getItem(c *gin.Context) {
 
 	// Kind/type referenced
 	kind := _key.Kind()
-	typ := types[kind]
+	typ, ok := types[kind]
+	if !ok {
+		json.Fail(c, 500, fmt.Sprintf("Unsupported item type: %v", kind), err)
+		return
+	}
 
 	// Create new entity instance
 	entity := reflect.New(typ).Interface().(mixin.Entity)
