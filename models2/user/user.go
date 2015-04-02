@@ -6,7 +6,7 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/models2/payment"
-	"crowdstart.io/util/gob"
+	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/val"
 
@@ -53,7 +53,7 @@ type User struct {
 	} `json:"accounts"`
 
 	Metadata  Metadata `json:"metadata" datastore:"-"`
-	Metadata_ []byte   `json:"-"`
+	Metadata_ string   `json:"-" datastore:",noindex"`
 }
 
 func (u *User) Init() {
@@ -82,7 +82,7 @@ func (u *User) Load(c <-chan aeds.Property) (err error) {
 
 	// Deserialize from datastore
 	if len(u.Metadata_) > 0 {
-		err = gob.Decode(u.Metadata_, &u.Metadata)
+		err = json.DecodeBytes([]byte(u.Metadata_), &u.Metadata)
 	}
 
 	return err
@@ -90,11 +90,7 @@ func (u *User) Load(c <-chan aeds.Property) (err error) {
 
 func (u *User) Save(c chan<- aeds.Property) (err error) {
 	// Serialize unsupported properties
-	u.Metadata_, err = gob.Encode(&u.Metadata)
-
-	if err != nil {
-		return err
-	}
+	u.Metadata_ = string(json.EncodeBytes(&u.Metadata))
 
 	// Save properties
 	return IgnoreFieldMismatch(aeds.SaveStruct(u, c))

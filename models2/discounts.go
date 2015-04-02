@@ -1,7 +1,5 @@
 package models
 
-import "encoding/gob"
-
 type Discount struct {
 	// Possible values: flat, percent
 	Type string `json:"type"`
@@ -26,8 +24,4 @@ type Discount struct {
 
 	// Whether to apply to all matching items, or just once.
 	Once bool `json:"once"`
-}
-
-func init() {
-	gob.Register(Discount{})
 }
