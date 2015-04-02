@@ -41,6 +41,9 @@ type Order struct {
 	mixin.Model
 	mixin.Salesforce `json:"-"`
 
+	// Store this was sold from (if any)
+	StoreId string `json:"storeId,omitempty"`
+
 	// Associated campaign
 	CampaignId string `json:"campaignId,omitempty"`
 
@@ -266,6 +269,9 @@ func (o *Order) UpdateEntities(stor *store.Store) {
 			stor.UpdateFromListing(o.Items[i].Variant)
 		}
 	}
+
+	// Update order to reflectw which store was used
+	o.StoreId = stor.Id()
 }
 
 // Update line items from underlying entities
