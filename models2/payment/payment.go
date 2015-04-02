@@ -6,7 +6,7 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/models2/types/currency"
-	"crowdstart.io/util/gob"
+	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/val"
 
@@ -147,7 +147,7 @@ type Payment struct {
 	Test bool `json:"-"`
 
 	Metadata  Metadata `json:"metadata" datastore:"-"`
-	Metadata_ []byte   `json:"-"`
+	Metadata_ string   `json:"-" datastore:"-"`
 }
 
 func (p Payment) Kind() string {
@@ -169,7 +169,7 @@ func (p *Payment) Load(c <-chan aeds.Property) (err error) {
 
 	// Deserialize from datastore
 	if len(p.Metadata_) > 0 {
-		err = gob.Decode(p.Metadata_, &p.Metadata)
+		err = json.DecodeBytes([]byte(p.Metadata_), &p.Metadata)
 	}
 
 	return err
@@ -177,7 +177,7 @@ func (p *Payment) Load(c <-chan aeds.Property) (err error) {
 
 func (p *Payment) Save(c chan<- aeds.Property) (err error) {
 	// Serialize unsupported properties
-	p.Metadata_, err = gob.Encode(&p.Metadata)
+	p.Metadata_ = string(json.EncodeBytes(&p.Metadata))
 
 	if err != nil {
 		return err

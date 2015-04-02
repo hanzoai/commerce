@@ -129,10 +129,6 @@ func (s *Store) Save(c chan<- aeds.Property) (err error) {
 	s.Listings_ = string(json.EncodeBytes(&s.Listings))
 	s.ShippingRateTable_ = string(json.EncodeBytes(&s.ShippingRateTable))
 
-	if err != nil {
-		return err
-	}
-
 	// Save properties
 	return IgnoreFieldMismatch(aeds.SaveStruct(s, c))
 }
