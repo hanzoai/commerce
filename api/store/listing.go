@@ -1,58 +1,193 @@
 package store
 
 import (
+	"errors"
 	"fmt"
-	"reflect"
 
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/datastore"
-	"crowdstart.io/models/mixin"
-	"crowdstart.io/models2/bundle"
-	"crowdstart.io/models2/product"
+	"crowdstart.io/middleware"
 	"crowdstart.io/models2/store"
-	"crowdstart.io/models2/variant"
 	"crowdstart.io/util/json"
 )
 
-// Return store listing for given product/variant
-func getListing(kind string) gin.HandlerFunc {
-	var entityType reflect.Type
+// Return all listings
+func listListing(c *gin.Context) {
+	id := c.Params.ByName("id")
 
-	switch kind {
-	case "product":
-		entityType = reflect.ValueOf(product.Product{}).Type()
-	case "variant":
-		entityType = reflect.ValueOf(variant.Variant{}).Type()
-	case "bundle":
-		entityType = reflect.ValueOf(bundle.Bundle{}).Type()
+	db := datastore.New(c)
+
+	stor := store.New(db)
+	if err := stor.Get(id); err != nil {
+		json.Fail(c, 500, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
+		return
 	}
 
-	return func(c *gin.Context) {
-		storeid := c.Params.ByName("id")
-		entityId := c.Params.ByName("entityid")
+	c.JSON(200, stor.Listings)
+}
 
-		db := datastore.New(c)
+// Get single store listing for given product/variant
+func getListing(c *gin.Context) {
+	ctx := middleware.GetAppEngine(c)
+	db := datastore.New(ctx)
+	id := c.Params.ByName("id")
+	key := c.Params.ByName("key")
 
-		stor := store.New(db)
-		if err := stor.Get(storeid); err != nil {
-			json.Fail(c, 500, fmt.Sprintf("Failed to retrieve store '%v': %v", storeid, err), err)
-			return
+	// Get store
+	stor := store.New(db)
+	if err := stor.Get(id); err != nil {
+		json.Fail(c, 500, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
+		return
+	}
+
+	// Try and grab listing
+	listing, ok := stor.Listings[key]
+
+	// Do not override on create, user should explicitly update instead
+	if !ok {
+		msg := fmt.Sprintf("No listing exists for '%v' in store '%v'", key, id)
+		json.Fail(c, 404, msg, errors.New(msg))
+		return
+	}
+
+	c.JSON(200, listing)
+}
+
+func createListing(c *gin.Context) {
+	id := c.Params.ByName("id")
+	key := c.Params.ByName("key")
+	db := datastore.New(c)
+
+	stor := store.New(db)
+	if err := stor.Get(id); err != nil {
+		msg := fmt.Sprintf("Failed to retrieve store '%v'", id)
+		json.Fail(c, 500, msg, err)
+		return
+	}
+
+	// Try and grab listing
+	listing, ok := stor.Listings[key]
+
+	// Do not override on create, user should explicitly update instead
+	if ok {
+		msg := fmt.Sprintf("'%v' already exists in store '%v' listing")
+		json.Fail(c, 400, msg, errors.New(msg))
+		return
+	}
+
+	// Decode response body for listing
+	if err := json.Decode(c.Request.Body, &listing); err != nil {
+		json.Fail(c, 400, "Failed decode request body", err)
+		return
+	}
+
+	// Update include listing in listings
+	stor.Listings[key] = listing
+
+	// Save store
+	if err := stor.Put(); err != nil {
+		json.Fail(c, 500, "Failed to save store listings", err)
+	} else {
+		c.Writer.Header().Add("Location", c.Request.URL.Path)
+		c.JSON(201, stor.Listings)
+	}
+}
+
+func updateListing(c *gin.Context) {
+	id := c.Params.ByName("id")
+	key := c.Params.ByName("key")
+	db := datastore.New(c)
+
+	stor := store.New(db)
+	if err := stor.Get(id); err != nil {
+		json.Fail(c, 500, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
+		return
+	}
+
+	listing, ok := stor.Listings[key]
+
+	// Decode response body to create new listings
+	if err := json.Decode(c.Request.Body, &listing); err != nil {
+		json.Fail(c, 400, "Failed decode request body", err)
+		return
+	}
+
+	// Override listing potentially
+	stor.Listings[key] = listing
+
+	// Try to save store
+	if err := stor.Put(); err != nil {
+		json.Fail(c, 500, "Failed to save store listings", err)
+	} else {
+		if ok {
+			c.JSON(200, stor.Listings)
+		} else {
+			c.Writer.Header().Add("Location", c.Request.URL.Path)
+			c.JSON(201, stor.Listings)
 		}
+	}
+}
 
-		entity := reflect.New(entityType).Interface().(mixin.Entity)
-		model := mixin.Model{Db: db, Entity: entity}
-		field := reflect.Indirect(reflect.ValueOf(entity)).FieldByName("Model")
-		field.Set(reflect.ValueOf(model))
+func patchListing(c *gin.Context) {
+	id := c.Params.ByName("id")
+	key := c.Params.ByName("key")
+	db := datastore.New(c)
 
-		if err := entity.Get(entityId); err != nil {
-			json.Fail(c, 500, fmt.Sprintf("Failed to retrieve %s %s: %v", kind, entityId, err), err)
-			return
-		}
+	stor := store.New(db)
+	if err := stor.Get(id); err != nil {
+		json.Fail(c, 500, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
+		return
+	}
 
-		// Update product/variant using listing for said item
-		stor.UpdateFromListing(entity)
+	listing, ok := stor.Listings[key]
+	// Can't patch an object that doesn't exist!
+	if !ok {
+		msg := fmt.Sprintf("No listing exists for '%v' in store '%v'", key, id)
+		json.Fail(c, 404, msg, errors.New(msg))
+		return
+	}
 
-		c.JSON(200, entity)
+	// Decode response body to update listings
+	if err := json.Decode(c.Request.Body, &listing); err != nil {
+		json.Fail(c, 400, "Failed decode request body", err)
+		return
+	}
+
+	// Try to save store
+	if err := stor.Put(); err != nil {
+		json.Fail(c, 500, "Failed to save store listings", err)
+	} else {
+		c.JSON(200, stor.Listings)
+	}
+}
+
+func deleteListing(c *gin.Context) {
+	id := c.Params.ByName("id")
+	key := c.Params.ByName("key")
+	db := datastore.New(c)
+
+	stor := store.New(db)
+	if err := stor.Get(id); err != nil {
+		json.Fail(c, 500, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
+		return
+	}
+
+	// Check if file even exists
+	_, ok := stor.Listings[key]
+	if !ok {
+		msg := fmt.Sprintf("No listing exists for '%v' in store '%v'", key, id)
+		json.Fail(c, 404, msg, errors.New(msg))
+		return
+	}
+
+	// Delete key from map
+	delete(stor.Listings, key)
+
+	// Try to save store
+	if err := stor.Put(); err != nil {
+		json.Fail(c, 500, "Failed to save store listings", err)
+	} else {
+		c.Data(204, "application/json", make([]byte, 0))
 	}
 }

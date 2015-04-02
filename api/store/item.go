@@ -1,0 +1,67 @@
+package store
+
+import (
+	"fmt"
+	"reflect"
+
+	"github.com/gin-gonic/gin"
+
+	"crowdstart.io/datastore"
+	"crowdstart.io/middleware"
+	"crowdstart.io/models/mixin"
+	"crowdstart.io/models2/bundle"
+	"crowdstart.io/models2/product"
+	"crowdstart.io/models2/store"
+	"crowdstart.io/models2/variant"
+	"crowdstart.io/util/hashid"
+	"crowdstart.io/util/json"
+)
+
+var types = map[string]reflect.Type{
+	"bundle":  reflect.ValueOf(bundle.Bundle{}).Type(),
+	"product": reflect.ValueOf(product.Product{}).Type(),
+	"variant": reflect.ValueOf(variant.Variant{}).Type(),
+}
+
+// Return product/variant updated against store listing
+func getItem(c *gin.Context) {
+	ctx := middleware.GetAppEngine(c)
+	db := datastore.New(ctx)
+	id := c.Params.ByName("id")
+	key := c.Params.ByName("key")
+
+	// Get store
+	stor := store.New(db)
+	if err := stor.Get(id); err != nil {
+		json.Fail(c, 500, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
+		return
+	}
+
+	// Decode key
+	_key, err := hashid.DecodeKey(ctx, key)
+	if err != nil {
+		json.Fail(c, 500, fmt.Sprintf("Invalid key: %v", key, err), err)
+		return
+	}
+
+	// Kind/type referenced
+	kind := _key.Kind()
+	typ := types[kind]
+
+	// Create new entity instance
+	entity := reflect.New(typ).Interface().(mixin.Entity)
+	model := mixin.Model{Db: db, Entity: entity}
+	field := reflect.Indirect(reflect.ValueOf(entity)).FieldByName("Model")
+	field.Set(reflect.ValueOf(model))
+
+	// Try to get entity using key
+	if err := entity.Get(_key); err != nil {
+		json.Fail(c, 500, fmt.Sprintf("Failed to retrieve '%s' using '%s': %v", kind, key, err), err)
+		return
+	}
+
+	// Update product/variant using listing for said item
+	stor.UpdateFromListing(entity)
+
+	c.JSON(200, entity)
+}
