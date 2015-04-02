@@ -197,6 +197,8 @@ var BuildTable = (function() {
             val = $('<a href="' + tableConfig.itemUrl + '/' + val + '">' + val + '</a>')
           } else if (render == 'link') {
             val = $('<a href="' + column.href + '/' + val + '">' + val + '</a>')
+          } else if (render == 'upper') {
+            val = val.toUpperCase();
           } else if (render == 'bool') {
             val = val ? 'Yes' : 'No';
           } else if (render && {}.toString.call(render) == '[object Function]') {
