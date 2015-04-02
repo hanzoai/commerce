@@ -13,7 +13,7 @@ func Variant(c *gin.Context) []*variant.Variant {
 
 	// Get a product
 	prod := Product(c)
-	prod.Slug = "t-shirt"
+	prod.Slug = "doge-shirt"
 	prod.GetOrCreate("Slug=", prod.Slug)
 
 	v := variant.New(db)
