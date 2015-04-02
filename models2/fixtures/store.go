@@ -12,14 +12,15 @@ func Store(c *gin.Context) *store.Store {
 	db := getDb(c)
 
 	stor := store.New(db)
-	stor.Name = "default"
 	stor.Slug = "suchtees"
+	stor.GetOrCreate("Slug=", stor.Slug)
+
+	stor.Name = "default"
 	stor.Hostname = "www.suchtees.com"
 	stor.Prefix = "/"
 	stor.Currency = currency.USD
 
 	// Fetch first product
-
 	prod := Product(c)
 	price := currency.Cents(30000)
 	stor.Listings[prod.Id()] = store.Listing{

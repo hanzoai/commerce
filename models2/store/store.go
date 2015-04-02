@@ -33,8 +33,8 @@ type Listing struct {
 	Description *string `json:"description,omitempty"`
 
 	// Product Media
-	HeaderImage *Media  `json:"headerImage,omitempty"`
-	Media       []Media `json:"media,omitempty"`
+	HeaderImage *Media   `json:"headerImage,omitempty"`
+	Media       *[]Media `json:"media,omitempty"`
 
 	Sold *int `json:"sold"`
 
@@ -42,7 +42,7 @@ type Listing struct {
 	Shipping *currency.Cents `json:"shipping,omitempty"`
 	Taxable  *bool           `json:"taxable,omitempty"`
 
-	WeightUnit weight.Unit `json:"weightUnit,omitempty"`
+	WeightUnit *weight.Unit `json:"weightUnit,omitempty"`
 
 	Available    *bool         `json:"available,omitempty"`
 	Availability *Availability `json:"availability,omitempty"`
@@ -141,19 +141,24 @@ func (s *Store) Validator() *val.Validator {
 	return val.New(s)
 }
 
+// Overide product, variant with listing override values
 func (s *Store) Override(entity mixin.Entity) {
+	// Check if we have a listing for this product/variant
 	listing, ok := s.Listings[entity.Id()]
 	if !ok {
 		log.Warn("No listing found that matches given %s", entity.Kind())
 		return
 	}
 
-	ev := reflect.ValueOf(entity)
+	ev := reflect.Indirect(reflect.ValueOf(entity))
 	lv := reflect.ValueOf(listing)
 
+	// Loop over listing fields and set any that this listing has that are non-nil
 	for _, name := range ListingFields {
-		field := reflect.Indirect(ev).FieldByName(name)
-		val := lv.FieldByName(name)
-		field.Set(val)
+		field := ev.FieldByName(name)
+		val := reflect.Indirect(lv.FieldByName(name))
+		if val.IsValid() && field.IsValid() {
+			field.Set(val)
+		}
 	}
 }
