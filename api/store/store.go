@@ -23,7 +23,21 @@ var entityTypes = map[string]reflect.Type{
 	"variant": reflect.ValueOf(variant.Variant{}).Type(),
 }
 
-func getOverride(c *gin.Context) {
+// Return all listings
+func getListings(c *gin.Context) {
+	storeid := c.Params.ByName("id")
+	db := datastore.New(c)
+	stor := store.New(db)
+	if err := stor.Get(storeid); err != nil {
+		json.Fail(c, 500, fmt.Sprintf("Failed to retrieve store '%v': %v", storeid, err), err)
+		return
+	}
+
+	c.JSON(200, stor.Listings)
+}
+
+// Return store listing for given product/variant
+func getListing(c *gin.Context) {
 	storeid := c.Params.ByName("id")
 	entityId := c.Params.ByName("entityid")
 	kind := c.Params.ByName("kind")
@@ -46,21 +60,21 @@ func getOverride(c *gin.Context) {
 		return
 	}
 
-	// Override product with store customizations
-	stor.Override(entity)
+	// Update product/variant using listing for said item
+	stor.UpdateFromListing(entity)
 
 	c.JSON(200, entity)
 }
 
 func Route(router router.Router, args ...gin.HandlerFunc) {
+	adminRequired := middleware.TokenRequired(permission.Admin)
 	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
 
 	api := rest.New(store.Store{})
 
-	api.GET("/:id/:kind/:entityid", publishedRequired, rest.NamespacedMiddleware, getOverride)
-	// api.GET("/:id/bundle/:bundleid", adminRequired, store.GetStorePrice)
+	api.GET("/:id/:kind/:entityid", publishedRequired, rest.NamespacedMiddleware, getListing)
+	api.GET("/:id/listings", adminRequired, getListings)
 
-	// api.GET("/:id/listings", adminRequired, store.GetStorePrice)
 	// api.POST("/:id/listings", adminRequired, store.GetStorePrice)
 	// api.PUT("/:id/listings", adminRequired, store.GetStorePrice)
 	// api.PATCH("/:id/listings", adminRequired, store.GetStorePrice)
