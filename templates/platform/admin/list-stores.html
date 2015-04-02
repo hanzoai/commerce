@@ -27,8 +27,8 @@
   <!-- Empty Products Block -->
   <div id="empty-table" class="row text-center text-dark-op" style="display:none;margin-top:50px;margin-bottom:50px">
     <div class="col-xs-10 col-xs-offset-1">
-      <i class="gi gi-barcode" style="font-size:100px;"></i>
-      <h2>It doesn't seem that anyone's added products to <strong>{{ ctx.organization.Name }}</strong> yet. Just complete the form below to add one.
+      <i class="gi gi-store" style="font-size:100px;"></i>
+      <h2>Add a store if you want to sell products in different countries or using different currencies. Just complete the form below to add one.
     </div>
   </div>
   <!-- END Empty Products Block -->
@@ -60,27 +60,14 @@
 <div class="col-sm-12">
   <div class="block">
     <div class="block-title">
-      <h2>New Product</h2>
+      <h2>New Store</h2>
     </div>
-    <form id="form-new-product" method="post" class="form-horizontal">
-      <div class="row">
-        <div class="col-md-6">
-          <h4>What is your product?</h4>
-          <div id="product-info" class="block">
-          </div>
-        </div>
-        <div class="col-md-6">
-          <h4>What is its cost and availability?</h4>
-          <div class="row">
-            <div id="product-cost" class="block">
-            </div>
-          </div>
-          <h4>What are its shipping dimensions? (Optional)</h4>
-          <div class="row">
-            <div id="product-shipping" class="block">
-            </div>
-          </div>
-        </div>
+    <form id="form-new-store" method="post" class="form-horizontal">
+      <h4>Tell us a little more about this store.</h4>
+      <div id="store-info" class="block">
+      </div>
+      <h4>What does this store sell?</h4>
+      <div id="store-products" class="block">
       </div>
       <div class="form-group form-actions text-center">
         <button type="submit" class="btn btn-effect-ripple btn-primary"><i class="fa fa-plus"></i> Add</button>
@@ -101,7 +88,7 @@
 <script src="{{ staticUrl }}/js/rest-forms.js"></script>
 <script>
   $(function(){
-    Util.setCurrency('{{ product.Currency }}');
+    Util.setCurrency('{{ store.Currency }}');
 
     BuildTable($('#table'), {
       columns: [
@@ -128,28 +115,13 @@
           render: 'upper',
         },
         {
-          field: 'price',
-          name: 'Price',
-          render: 'currency',
-        },
-        {
-          field: 'taxable',
-          name: 'Collect Taxes',
-          render: 'bool',
-        },
-        {
-          field: 'available',
-          name: 'Available',
-          render: 'bool',
-        },
-        {
           field: 'createdAt',
           name: 'Created',
           render: 'date',
         }
       ],
-      itemUrl: '{{ urlFor("platform", "/product") }}',
-      apiUrl: '{{ urlFor("api", "/product") }}',
+      itemUrl: '{{ urlFor("platform", "/store") }}',
+      apiUrl: '{{ urlFor("api", "/store") }}',
       apiToken: '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}',
       startPage: 1,
       startDisplay: 5,
@@ -160,8 +132,8 @@
       canDelete: true,
     });
 
-    BuildForm($('#form-new-product'),[
-// product info
+    BuildForm($('#form-new-store'),[
+// store info
         {
           id: 'name',
           name: 'name',
@@ -172,10 +144,12 @@
             {
               rule: 'required',
               value: true,
-              message: 'Enter a name for your product'
+              message: 'Enter a name for your store'
             }
           ],
-          $parent: $('#product-info')
+          $parent: $('#store-info'),
+          labelCols: 3,
+          valueCols: 6,
         },
         {
           id: 'slug',
@@ -187,19 +161,14 @@
             {
               rule: 'required',
               value: true,
-              message: 'Enter a unique URL identifier for your product'
+              message: 'Enter a unique URL identifier for your store'
             }
           ],
-          $parent: $('#product-info')
+          $parent: $('#store-info'),
+          labelCols: 3,
+          valueCols: 6,
         },
-        {
-          id: 'Description',
-          name: 'Product.Description',
-          label: 'Description',
-          type: 'textarea',
-          $parent: $('#product-info')
-        },
-// product cost
+// store product cost overrides
         {
           id: 'price',
           name: 'price',
@@ -316,4 +285,4 @@ $('#form-new-product').on('submit', function(e){
 })
 </script>
 {% endblock %}
-{% block menulink %}menu-products{% endblock %}
+{% block menulink %}menu-stores{% endblock %}
