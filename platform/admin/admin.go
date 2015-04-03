@@ -58,7 +58,10 @@ func Coupon(c *gin.Context) {
 	cou := coupon.New(db)
 	cou.MustGet(id)
 
-	template.Render(c, "admin/coupon.html", "coupon", cou)
+	var products []product.Product
+	product.Query(db).GetAll(&products)
+
+	template.Render(c, "admin/coupon.html", "coupon", cou, "products", products)
 }
 
 type ProductsMap map[string]product.Product
