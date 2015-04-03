@@ -84,18 +84,18 @@ func (at *AccessToken) GetToken(accessToken string) (*token.Token, error) {
 }
 
 func (at *AccessToken) RemoveToken(name string) {
-	if len(at.Tokens) <= 0 {
+	num := len(at.Tokens)
+	if num <= 0 {
 		at.Tokens = make([]token.Token, 0)
 		return
 	}
 
 	// Loop over tokens looking for token to delete, if we find it, remove from
-	// tokens
-	for i, tok := range at.Tokens {
-		if tok.Name == name {
+	// tokens. We check every token just in case a duplicate was saved.
+	for i := 0; i < num; i++ {
+		if at.Tokens[i].Name == name {
 			// Delete from tokens
 			at.Tokens = append(at.Tokens[:i], at.Tokens[i+1:]...)
-			return
 		}
 	}
 }
