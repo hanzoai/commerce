@@ -5,14 +5,15 @@ import (
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/models2/organization"
+	"crowdstart.io/models2/user"
 	"crowdstart.io/util/log"
 )
 
-func Organization(c *gin.Context) *organization.Organization {
+var Organization = New("organization", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	// Such tees owner &operator
-	user := User(c)
+	user := User(c).(*user.User)
 
 	// Our fake T-shirt company
 	org := organization.New(db)
@@ -25,7 +26,6 @@ func Organization(c *gin.Context) *organization.Organization {
 	org.SecretKey = []byte("prettyprettyteesplease")
 
 	// Saved stripe tokens
-
 	org.Stripe.Test.UserId = "acct_14lSsRCSRlllXCwP"
 	org.Stripe.Test.AccessToken = "sk_test_pApnjF5lBAgmO14BCzXGoGOB"
 	org.Stripe.Test.PublishableKey = "pk_test_IDltLDxulChR8tw9rb87JvJk"
@@ -42,14 +42,15 @@ func Organization(c *gin.Context) *organization.Organization {
 	org.Stripe.PublishableKey = org.Stripe.Test.PublishableKey
 	org.Stripe.RefreshToken = org.Stripe.Test.RefreshToken
 
+	// Add default access tokens
 	org.AddDefaultTokens()
 	log.Debug("Adding tokens: %v", org.Tokens)
 
 	// Save org into default namespace
 	org.MustPut()
 
-	// Add user as owner
+	// Add org to user and also save
 	user.Organizations = []string{org.Id()}
 	user.MustPut()
 	return org
-}
+})

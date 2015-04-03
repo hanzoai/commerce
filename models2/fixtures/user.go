@@ -8,7 +8,7 @@ import (
 	"crowdstart.io/models2/user"
 )
 
-func User(c *gin.Context) *user.User {
+var User = New("user", func(c *gin.Context) *user.User {
 	db := datastore.New(c)
 
 	// Such tees owner & operator
@@ -22,4 +22,4 @@ func User(c *gin.Context) *user.User {
 	user.PasswordHash = auth.HashPassword("suchtees")
 	user.MustPut()
 	return user
-}
+})
