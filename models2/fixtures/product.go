@@ -7,9 +7,9 @@ import (
 	"crowdstart.io/models2/types/currency"
 )
 
-func Product(c *gin.Context) *product.Product {
+var Product = New("product", func(c *gin.Context) *product.Product {
 	// Get namespaced db
-	db := getDb(c)
+	db := getNamespaceDb(c)
 
 	// Doge shirt
 	prod := product.New(db)
@@ -55,4 +55,4 @@ func Product(c *gin.Context) *product.Product {
 	prod.MustPut()
 
 	return prod
-}
+})

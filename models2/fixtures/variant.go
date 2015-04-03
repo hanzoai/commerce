@@ -3,18 +3,17 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
+	"crowdstart.io/models2/product"
 	"crowdstart.io/models2/types/currency"
 	"crowdstart.io/models2/variant"
 )
 
-func Variant(c *gin.Context) []*variant.Variant {
+var Variant = New("variant", func(c *gin.Context) *variant.Variant {
 	// Get namespaced db
-	db := getDb(c)
+	db := getNamespaceDb(c)
 
 	// Get a product
-	prod := Product(c)
-	prod.Slug = "doge-shirt"
-	prod.GetOrCreate("Slug=", prod.Slug)
+	prod := Product(c).(*product.Product)
 
 	v := variant.New(db)
 	v.Parent = prod.Key()
@@ -41,5 +40,5 @@ func Variant(c *gin.Context) []*variant.Variant {
 	prod.Variants = []*variant.Variant{v, v2}
 	prod.Put()
 
-	return []*variant.Variant{v, v2}
-}
+	return v
+})
