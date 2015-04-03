@@ -43,7 +43,12 @@ func Product(c *gin.Context) {
 }
 
 func Coupons(c *gin.Context) {
-	template.Render(c, "admin/list-coupons.html")
+	db := datastore.New(middleware.GetNamespace(c))
+
+	var products []product.Product
+	product.Query(db).GetAll(&products)
+
+	template.Render(c, "admin/list-coupons.html", "products", products)
 }
 
 func Coupon(c *gin.Context) {
