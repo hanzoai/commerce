@@ -226,7 +226,7 @@ $('#form-store').on('submit', function(e){
                 $el.parent().children('.listing-price').attr('name', 'listings[' + $el.val() + '][price]')
             });
             api.put(function(data) {
-                window.location.replace('{{ urlFor("platform", "/stores") }}')
+                window.location.replace('{{ urlFor("platform", "/store", store.Id ) }}')
             }, $form, '{{ store.Id }}')
         }
     })
