@@ -49,7 +49,7 @@ var _ = BeforeSuite(func() {
 	// Mock gin context that we can use with fixtures
 	c := gincontext.New(ctx)
 	fixtures.User(c)
-	org = fixtures.Organization(c)
+	org = fixtures.Organization(c).(*organization.Organization)
 	fixtures.Product(c)
 	fixtures.Variant(c)
 
