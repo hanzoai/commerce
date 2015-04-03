@@ -296,6 +296,9 @@ func (m *Model) GetOrUpdate(filterStr string, value interface{}) error {
 	}
 
 	if !ok {
+		name := strings.TrimSpace(strings.Split(filterStr, "=")[0])
+		field := reflect.Indirect(reflect.ValueOf(m.Entity)).FieldByName(name)
+		field.Set(reflect.ValueOf(value))
 		return m.Put()
 	}
 
