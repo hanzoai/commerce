@@ -73,7 +73,7 @@
           name: 'slug',
           value: '{{ product.Slug }}',
           label: 'Slug',
-          type: 'text-upper',
+          type: 'text',
           asterisk: false,
           rules: [
             {
@@ -96,7 +96,7 @@
         {
           id: 'price',
           name: 'price',
-          value: {{ product.Price }} / 100,
+          value: Util.renderUICurrencyFromJSON({{ product.Price }}),
           label: 'Price',
           type: 'currency',
           asterisk: false,
