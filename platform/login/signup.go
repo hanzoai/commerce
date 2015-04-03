@@ -11,7 +11,10 @@ import (
 )
 
 func Signup(c *gin.Context) {
-	template.Render(c, "login/signup.html")
+	// Redirect to mailchimp for now.
+	c.Redirect(302, "http://eepurl.com/bhWUC1")
+
+	// template.Render(c, "login/signup.html")
 }
 
 func SignupSubmit(c *gin.Context) {
