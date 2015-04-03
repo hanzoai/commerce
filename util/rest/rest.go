@@ -87,7 +87,6 @@ func New(entityOrPrefix interface{}, args ...interface{}) *Rest {
 	return r
 }
 
-var AllowCrossDomain = middleware.AccessControl("*")
 var Namespaced = middleware.Namespace()
 
 func (r Rest) Route(router router.Router, mw ...gin.HandlerFunc) {
@@ -96,9 +95,6 @@ func (r Rest) Route(router router.Router, mw ...gin.HandlerFunc) {
 
 	// Create group for our API routes
 	group := router.Group(prefix)
-
-	// Ensure CORS works properly
-	group.Use(AllowCrossDomain)
 
 	if !r.DefaultNamespace {
 		// Automatically namespace requests
@@ -161,7 +157,7 @@ func (r Rest) defaultRoutes() []route {
 	return []route{
 		// route{
 		// 	method:   "OPTIONS",
-		// 	url:      "",
+		// 	url:      "*",
 		// 	handlers: []gin.HandlerFunc{r.Options},
 		// },
 		// route{
