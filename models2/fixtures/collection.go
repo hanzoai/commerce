@@ -6,11 +6,12 @@ import (
 	"crowdstart.io/models2/collection"
 )
 
-func Collection(c *gin.Context) *collection.Collection {
-	db := getDb(c)
+var Collection = New("collection", func(c *gin.Context) *collection.Collection {
+	db := getNamespaceDb(c)
 
 	collection := collection.New(db)
 	collection.Slug = "such-tees-pack"
+	collection.GetOrCreate("Slug=", collection.Slug)
 	collection.Name = "Such tees pack"
 	collection.Description = "Much tees in one pack!"
 	collection.Published = true
@@ -18,4 +19,4 @@ func Collection(c *gin.Context) *collection.Collection {
 
 	collection.MustPut()
 	return collection
-}
+})
