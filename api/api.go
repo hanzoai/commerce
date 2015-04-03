@@ -70,7 +70,7 @@ func init() {
 	user.Prefix = "/c/"
 	user.Route(router, adminRequired)
 
-	// Access token API (internal use only)
+	// Access token API
 	accessTokenApi.Route(router)
 
 	// REST API debugger
