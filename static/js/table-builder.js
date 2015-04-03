@@ -95,8 +95,7 @@ var BuildTable = (function() {
     $table.append($tableBody);
 
     // Configure the path vars
-    var tokenStr = '?token=' + tableConfig.apiToken;
-    var path = tableConfig.apiUrl + tokenStr;
+    var path = tableConfig.apiUrl
     var display = tableConfig.startDisplay; //hard coded for now
 
     // Build the display options
@@ -238,8 +237,13 @@ var BuildTable = (function() {
 
     // Page change callback for filling the body frame
     function paged(page) {
-      $.getJSON(path + '&page=' + page + '&display=' + display, function(data){
-        load(data);
+      $.ajax({
+        type: 'GET',
+        headers: {Authorization: tableConfig.apiToken},
+        url: path + '?page=' + page + '&display=' + display,
+        success: function(data){
+          load(data);
+        }
       });
     }
 
@@ -247,6 +251,7 @@ var BuildTable = (function() {
     function deleteRow(path) {
       $.ajax({
         type: 'DELETE',
+        headers: {Authorization: tableConfig.apiToken},
         url: path,
         success: function () {
           paged(lastPage);
