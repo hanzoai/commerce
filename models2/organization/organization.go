@@ -92,6 +92,10 @@ func (o *Organization) Validator() *val.Validator {
 }
 
 func (o *Organization) AddDefaultTokens() {
+	o.RemoveToken("live-secret-key")
+	o.RemoveToken("live-published-key")
+	o.RemoveToken("test-secret-key")
+	o.RemoveToken("test-published-key")
 	o.AddToken("live-secret-key", permission.Admin|permission.Live)
 	o.AddToken("live-published-key", permission.Published|permission.Live)
 	o.AddToken("test-secret-key", permission.Admin|permission.Test)
