@@ -172,7 +172,7 @@
         // Update currencies set by template
         $('input[type="currency"]').each(function(){
             var $el = $(this);
-            $el.val(Util.renderUpdatedUICurrency($el.val()));
+            $el.val(Util.renderUICurrencyFromJSON($el.val()));
         });
 
         // Update currency when currency changes
