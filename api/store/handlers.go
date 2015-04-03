@@ -11,32 +11,28 @@ import (
 )
 
 func Route(router router.Router, args ...gin.HandlerFunc) {
-	allowAll := middleware.AccessControl("*")
 	adminRequired := middleware.TokenRequired(permission.Admin)
 	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
 	namespaced := middleware.Namespace()
 
-	admin := []gin.HandlerFunc{allowAll, adminRequired, namespaced}
-	published := []gin.HandlerFunc{allowAll, publishedRequired, namespaced}
-
 	api := rest.New(store.Store{})
 
 	// API for getting a full product/variant/bundle for a specific store
-	api.GET("/:id/authorize", append(published, authorize)...)
-	api.GET("/:id/charge", append(published, charge)...)
+	api.GET("/:id/authorize", publishedRequired, namespaced, authorize)
+	api.GET("/:id/charge", publishedRequired, namespaced, charge)
 
 	// API for getting a full product/variant/bundle for a specific store
-	api.GET("/:id/product/:key", append(published, getItem)...)
-	api.GET("/:id/variant/:key", append(published, getItem)...)
-	api.GET("/:id/bundle/:key", append(published, getItem)...)
+	api.GET("/:id/product/:key", publishedRequired, namespaced, getItem)
+	api.GET("/:id/variant/:key", publishedRequired, namespaced, getItem)
+	api.GET("/:id/bundle/:key", publishedRequired, namespaced, getItem)
 
 	// API for working with listings directly
-	api.GET("/:id/listing", append(admin, listListing)...)
-	api.GET("/:id/listing/:key", append(admin, getListing)...)
-	api.POST("/:id/listing/:key", append(admin, createListing)...)
-	api.PUT("/:id/listing/:key", append(admin, updateListing)...)
-	api.PATCH("/:id/listing/:key", append(admin, patchListing)...)
-	api.DELETE("/:id/listing/:key", append(admin, deleteListing)...)
+	api.GET("/:id/listing", adminRequired, namespaced, listListing)
+	api.GET("/:id/listing/:key", adminRequired, namespaced, getListing)
+	api.POST("/:id/listing/:key", adminRequired, namespaced, createListing)
+	api.PUT("/:id/listing/:key", adminRequired, namespaced, updateListing)
+	api.PATCH("/:id/listing/:key", adminRequired, namespaced, patchListing)
+	api.DELETE("/:id/listing/:key", adminRequired, namespaced, deleteListing)
 
 	api.Route(router, args...)
 }
