@@ -65,17 +65,17 @@
     <form id="form-new-coupon" method="post" class="form-horizontal">
       <div class="row">
         <div class="col-md-6">
-          <h4>What type of coupon?</h4>
-          <div id="coupon-info" class="block">
+          <h4>What type of coupon is this?</h4>
+          <div id="coupon-info" class="block" style="min-height:205px">
           </div>
         </div>
         <div class="col-md-6">
-          <h4>Discount what amount?</h4>
+          <h4>What is the discount amount or percent? (Price or percent)</h4>
           <div class="row">
             <div id="coupon-amount" class="block">
             </div>
           </div>
-          <h4>Product it applies to (Optional)</h4>
+          <h4>What product does it apply to?</h4>
           <div class="row">
             <div id="coupon-product-id" class="block">
             </div>
@@ -123,9 +123,23 @@
           render: 'raw',
         },
         {
+          field: 'type',
+          name: 'Type',
+          render: 'text',
+        },
+        {
           field: 'amount',
           name: 'Amount',
-          render: 'raw',
+          render: function(val, data, $el) {
+              $el.addClass('text-right')
+              if (data.type === 'flat') {
+                  return Util.renderUICurrencyFromJSON(val);
+              } else if(data.type === 'percent') {
+                  return val + '%';
+              } else {
+                  return 'N/A'
+              }
+          },
         },
         {
           field: 'used',
@@ -190,7 +204,7 @@
           asterisk: false,
           value: [
             {
-              name: 'Flat',
+              name: 'Flat (In product\'s currency)',
               id: 'flat',
             },
             {
@@ -206,7 +220,7 @@
             {
               rule: 'required',
               value: true,
-              message: 'Enter a unique code for your coupon'
+              message: 'Enter a type for your coupon'
             }
           ],
           $parent: $('#coupon-info')
@@ -217,39 +231,67 @@
           name: 'amount',
           label: 'Amount',
           type: 'currency',
+          value: '0',
           asterisk: false,
           rules: [
             {
               rule: 'required',
               value: true,
               message: 'Enter an an amount to discount'
-            }
+            },
           ],
           $parent: $('#coupon-amount')
         },
         {
-          id: 'product-id',
-          name: 'product-id',
+          id: 'productId',
+          name: 'productId',
           label: 'Product',
-          type: 'text',
-          placeholder: '',
+          value: [
+              {
+                  selected: true,
+                  name: 'All',
+                  id: ''
+              },
+              {% for product in products %}
+              {
+                  name: '{{ product.Name }} ({{ product.Slug }})',
+                  id: '{{ product.Id }}'
+              },
+              {% endfor %}
+          ],
+          type: 'select',
           $parent: $('#coupon-product-id'),
         },
     ]);
-  });
+
+  (function() {
+      $('#type').chosen().on('change', function(){
+          if ($(this).val() === 'free-shipping') {
+            $('#amount').prop('disabled', true).val(0);
+          } else {
+            $('#amount').prop('disabled', false);
+          }
+      })
+
+  })();
+});
 
 var api = NewRestAPI(
     '{{ urlFor("api", "/coupon") }}',
     '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}',
     $('#form-new-coupon'),
     {
-        price: function(val) {
-            // To cents
-            return Util.renderJSONCurrencyFromUI(val);
+        amount: function(val) {
+            var type = $('#type').val();
+            if (type === 'flat') {
+                // To cents
+                return Util.renderJSONCurrencyFromUI(val);
+            } else if (type === 'percent') {
+                return parseFloat(val);
+            } else {
+                return 0
+            }
         },
-        weight: function(val) {
-            return parseFloat(val);
-        }
     }
   );
 $('#form-new-coupon').on('submit', function(e){
