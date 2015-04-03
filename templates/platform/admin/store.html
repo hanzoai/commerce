@@ -172,7 +172,7 @@
         // Update currencies set by template
         $('input[type="currency"]').each(function(){
             var $el = $(this);
-            $el.val(Util.renderUpdatedUICurrency($el.val()));
+            $el.val(Util.renderUICurrencyFromJSON($el.val()));
         });
 
         // Update currency when currency changes
@@ -259,7 +259,7 @@ $('#form-store').on('submit', function(e){
                 $el.attr('name', 'listings[' + $el.val() + '][productId]')
                 $el.parent().parent().find('.listing-price').attr('name', 'listings[' + $el.val() + '][price]')
             });
-            api.post(function(data) {
+            api.put(function(data) {
                 window.location.replace('{{ urlFor("platform", "/store", store.Id ) }}')
             }, $form, '{{ store.Id }}')
         }
