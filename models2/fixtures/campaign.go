@@ -7,11 +7,13 @@ import (
 	"crowdstart.io/util/category"
 )
 
-func Campaign(c *gin.Context) *campaign.Campaign {
-	org := getOrg(c)
-	db := getDb(c)
+var Campaign = New("campaign", func(c *gin.Context) *campaign.Campaign {
+	db := getNamespaceDb(c)
+	org := Organization(c)
 
 	campaign := campaign.New(db)
+	campaign.Slug = "some-campaign"
+	campaign.GetOrCreate("Slug=", campaign.Slug)
 	campaign.Parent = org.Key()
 	campaign.OrganizationId = org.Id()
 	campaign.Approved = true
@@ -22,4 +24,4 @@ func Campaign(c *gin.Context) *campaign.Campaign {
 
 	campaign.MustPut()
 	return campaign
-}
+})

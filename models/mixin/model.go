@@ -2,6 +2,7 @@ package mixin
 
 import (
 	"reflect"
+	"strings"
 	"time"
 
 	"appengine"
@@ -267,8 +268,15 @@ func (m *Model) GetOrCreate(filterStr string, value interface{}) error {
 		return err
 	}
 
+	// Not found, save entity
 	if !ok {
-		// Not found, save entity
+		// What were we filtering on? Make sure the field is set to value of
+		// filter. This prevents any duplicate attempts from creating new
+		// models as well.
+		name := strings.TrimSpace(strings.Split(filterStr, "=")[0])
+		field := reflect.Indirect(reflect.ValueOf(m.Entity)).FieldByName(name)
+		field.Set(reflect.ValueOf(value))
+
 		return m.Put()
 	}
 

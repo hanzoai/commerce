@@ -3,13 +3,14 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
+	"crowdstart.io/models2/product"
 	"crowdstart.io/models2/store"
 	"crowdstart.io/models2/types/currency"
 )
 
-func Store(c *gin.Context) *store.Store {
+var Store = New("store", func(c *gin.Context) *store.Store {
 	// Get namespaced db
-	db := getDb(c)
+	db := getNamespaceDb(c)
 
 	stor := store.New(db)
 	stor.Slug = "suchtees"
@@ -21,7 +22,7 @@ func Store(c *gin.Context) *store.Store {
 	stor.Currency = currency.USD
 
 	// Fetch first product
-	prod := Product(c)
+	prod := Product(c).(*product.Product)
 	price := currency.Cents(30000)
 	stor.Listings[prod.Id()] = store.Listing{
 		ProductId: prod.Id(),
@@ -30,4 +31,4 @@ func Store(c *gin.Context) *store.Store {
 
 	stor.MustPut()
 	return stor
-}
+})

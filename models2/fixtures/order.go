@@ -3,22 +3,23 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/datastore"
 	"crowdstart.io/models2/order"
 	"crowdstart.io/models2/types/currency"
 
 	. "crowdstart.io/models2/lineitem"
 )
 
-func Order(c *gin.Context) *order.Order {
-	db := datastore.New(c)
+var Order = New("order", func(c *gin.Context) *order.Order {
+	db := getNamespaceDb(c)
 
 	u := User(c)
 	p := Product(c)
+
 	ord := order.New(db)
+	ord.UserId = u.Id()
+	ord.GetOrCreate("UserId=", ord.UserId)
 
 	ord.Currency = currency.USD
-	ord.UserId = u.Id()
 	ord.Items = []LineItem{
 		LineItem{
 			ProductId: p.Id(),
@@ -28,4 +29,4 @@ func Order(c *gin.Context) *order.Order {
 	}
 
 	return ord
-}
+})

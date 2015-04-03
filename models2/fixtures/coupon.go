@@ -10,8 +10,8 @@ import (
 
 const Month = time.Hour * 24 * 30
 
-func Coupon(c *gin.Context) *coupon.Coupon {
-	db := getDb(c)
+var Coupon = New("coupon", func(c *gin.Context) *coupon.Coupon {
+	db := getNamespaceDb(c)
 
 	coupon := coupon.New(db)
 	coupon.Code = "such-coupon"
@@ -27,4 +27,4 @@ func Coupon(c *gin.Context) *coupon.Coupon {
 
 	coupon.MustPut()
 	return coupon
-}
+})

@@ -6,14 +6,14 @@ import (
 	"crowdstart.io/models2/token"
 )
 
-func Token(c *gin.Context) *token.Token {
-	db := getDb(c)
+var Token = New("token", func(c *gin.Context) *token.Token {
+	db := getNamespaceDb(c)
 
 	token := token.New(db)
-
 	token.Email = "test@test.com"
+	token.GetOrCreate("Email=", token.Email)
 	token.UserId = "fake"
-	token.Put()
+	token.MustPut()
 
 	return token
-}
+})
