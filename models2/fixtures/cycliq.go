@@ -9,7 +9,7 @@ import (
 	"crowdstart.io/models2/user"
 )
 
-func Cycliq(c *gin.Context) *organization.Organization {
+var Cycliq = New("cycliq", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)
@@ -44,4 +44,4 @@ func Cycliq(c *gin.Context) *organization.Organization {
 	org.Put()
 
 	return org
-}
+})
