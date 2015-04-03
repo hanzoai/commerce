@@ -34,7 +34,7 @@
                         </select>
                     </div>
                     <div class="col-xs-6 input-group">
-                        <input type="text" id="product-price" class="form-control" value="">
+                        <input type="text" id="product-price" class="form-control text-right" value="">
                         <div class="input-group-btn">
                             <button id="override-product-btn" type="button" class="btn btn-effect-ripple btn-primary"><i class="fa fa-plus"></i></button>
                         </div>
@@ -54,14 +54,13 @@
                         </thead>
                         <tbody>
                             {% for listing in listings %}
-                            <tr>
+                            <tr data-id="{{ listing.ProductId }}">
                                 <td>
                                     <input type="text" class="listing-id hidden" value="{{ listing.ProductId }}">
-                                    <input type="currency" class="listing-price hidden" value="{{ listing.Price / 100 }}">
                                     <strong class="name">{{ productsMap.Find(listing.ProductId).Name }}</strong>
                                 </td>
                                 <td>
-                                    <span class="price">{{ listing.Price / 100 }}</span>
+                                    <input type="currency" class="listing-price form-control text-right" value="{{ listing.Price }}">
                                 </td>
                                 <td class="text-center">
                                     <button type="button" class="delete btn btn-xs btn-danger">x</button>
@@ -170,9 +169,38 @@
             {% endfor %}
         };
 
+        // Update currencies set by template
+        $('input[type="currency"]').each(function(){
+            var $el = $(this);
+            $el.val(Util.renderUpdatedUICurrency($el.val()));
+        });
+
+        // Update currency when currency changes
+        $('#currency').chosen().on('change', function() {
+            Util.setCurrency($(this).val());
+            $('input[type="currency"]').each(function(){
+                var $el = $(this);
+                $el.val(Util.renderUpdatedUICurrency($el.val()));
+            });
+        });
+
+        function updateOverrideButton(id) {
+            $('#product-price').val(ProductToPrices[id]);
+            if ($('[data-id="' + id + '"]').length > 0) {
+                var $btn = $('#override-product-btn');
+                $btn.removeClass('btn-primary');
+                $btn.addClass('btn-success');
+            } else {
+                var $btn = $('#override-product-btn');
+                $btn.removeClass('btn-success');
+                $btn.addClass('btn-primary');
+            }
+        }
+        updateOverrideButton($('#product').val());
+
         // Set up products select
         $('#product').chosen().on('change', function() {
-            $('#product-price').val(ProductToPrices[$(this).val()]);
+            updateOverrideButton($(this).val());
         });
 
         // Update price with default product price
@@ -180,21 +208,27 @@
 
         var $overrides = $('#product-overrides');
         var $overridesBody = $overrides.children('tbody');
-        var overrideTemplate = '<tr><td><input type="text" class="listing-id hidden" value=""><input type="currency" class="listing-price hidden" value=""><strong class="name"></strong></td><td><span class="price"></span></td><td class="text-center"><button type="button" class="delete btn btn-xs btn-danger">x</button></td></tr>';
+        var overrideTemplate = '<tr><td><input type="text" class="listing-id hidden" value=""><strong class="name"></strong></td><td><input type="currency" class="listing-price text-right form-control" value=""></td><td class="text-center"><button type="button" class="delete btn btn-xs btn-danger">x</button></td></tr>';
 
         $('#override-product-btn').on('click', function() {
+            var $btn = $(this);
+            $btn.removeClass('btn-primary');
+            $btn.addClass('btn-success');
+
             var $override = $(overrideTemplate);
+            var id = $('#product').val();
+            $('[data-id="' + id + '"]').remove();
+            $override.attr('data-id', id)
             $override.find('.name').text($('#product').children("option:selected").attr('data-name'));
-            $override.find('.price').text($('#product-price').val());
-            $override.find('.listing-id').val($('#product').val());
-            $override.find('.listing-price').val($('#product-price').val());
+            $override.find('.listing-id').val(id);
+            $override.find('.listing-price').val(Util.renderUpdatedUICurrency($('#product-price').val()));
             $override.find('.delete').on('click', function() {
                 $(this).closest('tr').remove();
                 if ($overridesBody.children().length == 0) {
                     $overrides.addClass('hidden');
                 }
             });
-            $overridesBody.append($override);
+            $overridesBody.prepend($override);
             $overrides.removeClass('hidden');
         });
     })();
@@ -223,9 +257,9 @@ $('#form-store').on('submit', function(e){
             $('#product-overrides').find('.listing-id').each(function(i){
                 var $el = $(this)
                 $el.attr('name', 'listings[' + $el.val() + '][productId]')
-                $el.parent().children('.listing-price').attr('name', 'listings[' + $el.val() + '][price]')
+                $el.parent().parent().find('.listing-price').attr('name', 'listings[' + $el.val() + '][price]')
             });
-            api.put(function(data) {
+            api.post(function(data) {
                 window.location.replace('{{ urlFor("platform", "/store", store.Id ) }}')
             }, $form, '{{ store.Id }}')
         }
