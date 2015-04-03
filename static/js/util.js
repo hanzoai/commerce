@@ -5,11 +5,11 @@ var Util = (function() {
 	'cad': '$',
 	'eur': '€',
 	'gbp': '£',
-	'': '$'
+	'': ''
   };
 
   var currencySeparator = '.';
-  var currentCurrencyCode = 'usd';
+  var currentCurrencyCode = '';
   var currentCurrencySign = currencySigns[currentCurrencyCode];
 
   return {
