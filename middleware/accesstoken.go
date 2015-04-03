@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"encoding/base64"
+	"errors"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -76,7 +77,7 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 
 		// Bail if we still don't have an access token
 		if accessToken == "" {
-			json.Fail(c, 401, "No access token provided.", nil)
+			json.Fail(c, 401, "No access token provided.", errors.New("No access token provided"))
 			return
 		}
 

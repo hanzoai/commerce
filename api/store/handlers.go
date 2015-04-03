@@ -33,5 +33,5 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api.PATCH("/:id/listing/:key", adminRequired, rest.NamespacedMiddleware, patchListing)
 	api.DELETE("/:id/listing/:key", adminRequired, rest.NamespacedMiddleware, deleteListing)
 
-	api.Route(router, args...)
+	api.Route(router, adminRequired)
 }
