@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+
+{% block name %}Store{% endblock %}
+
+{% block css %}
+{% endblock %}
+
+{% block content %}
+<!-- Store information Form Block -->
+<div class="col-sm-10 col-sm-offset-1 col-md-10 col-md-offset-1 col-lg-8 col-lg-offset-1">
+    <div class="block">
+        <!-- Store information Form Title -->
+        <div class="block-title">
+          <h2>Store Information</h2>
+        </div>
+        <!-- END Store information Form Title -->
+
+        <!-- Store information Form Content -->
+        <form id="form-store" method="post" class="form-horizontal">
+          <h4>Information</h4>
+          <div id="store-info" class="block">
+          </div>
+          <h4>Store Pricing</h4>
+          <div id="store-products" class="block">
+            <div class="form-group">
+                <label class="col-md-3 col-sm-2 control-label" for="product">Custom Price</label>
+                {% if products %}
+                <div class="row col-md-6 col-sm-8">
+                    <div class="col-xs-6">
+                        <select type="text" id="product" name="" class="form-control" value="">
+                            {% for product in products %}
+                            <option data-name="{{ product.Name }}" value="{{ product.Id_ }}">{{ product.Name }} ({{ product.Slug }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-xs-6 input-group">
+                        <input type="text" id="product-price" class="form-control" value="">
+                        <div class="input-group-btn">
+                            <button id="override-product-btn" type="button" class="btn btn-effect-ripple btn-primary"><i class="fa fa-plus"></i></button>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            <div class="row">
+                <div class="col-md-6 col-md-offset-3 ">
+                    <table id="product-overrides" class="{% if !listings%}hidden{% endif %} table table-striped table-borderless table-vcenter">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Price</th>
+                                <th style="width:50px">Delete</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for listing in listings %}
+                            <tr>
+                                <td>
+                                    <input type="text" class="listing-id hidden" value="{{ listing.ProductId }}">
+                                    <input type="currency" class="listing-price hidden" value="{{ listing.Price / 100 }}">
+                                    <strong class="name">{{ productsMap.Find(listing.ProductId).Name }}</strong>
+                                </td>
+                                <td>
+                                    <span class="price">{{ listing.Price / 100 }}</span>
+                                </td>
+                                <td class="text-center">
+                                    <button type="button" class="delete btn btn-xs btn-danger">x</button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="form-group form-actions">
+                <div class="col-md-9 col-md-offset-3">
+                    <button type="submit" class="btn btn-effect-ripple btn-primary">Submit</button>
+                    <button type="submit" class="btn btn-effect-ripple btn-warning" formmethod="GET" formaction="">Reset</button>
+                    <button type="button" id="delete-btn" class="btn btn-effect-ripple btn-danger">Delete</button>
+                </div>
+            </div>
+        </form>
+        <!-- END Store information Form Content -->
+    </div>
+    <!-- END Store information Form Block -->
+</div>
+<!-- END Store information Form Block -->
+{% endblock %}
+
+{% block js %}
+<script src="{{ staticUrl }}/js/util.js"></script>
+<script src="{{ staticUrl }}/js/jquery.serialize-object.min.js"></script>
+<script src="{{ staticUrl }}/js/form-builder.js"></script>
+<script src="{{ staticUrl }}/js/rest-forms.js"></script>
+<script>
+  $(function(){
+    Util.setCurrency('{{ store.Currency }}');
+
+    BuildForm($('#form-store'),[
+// store info
+        {
+          id: 'name',
+          name: 'name',
+          label: 'Name',
+          type: 'text',
+          value: '{{ store.Name }}',
+          asterisk: false,
+          rules: [
+            {
+              rule: 'required',
+              value: true,
+              message: 'Enter a name for your store'
+            }
+          ],
+          $parent: $('#store-info'),
+          labelCols: 3,
+          valueCols: 6,
+        },
+        {
+          id: 'slug',
+          name: 'slug',
+          label: 'Slug',
+          type: 'text',
+          value: '{{ store.Slug }}',
+          asterisk: false,
+          rules: [
+            {
+              rule: 'required',
+              value: true,
+              message: 'Enter a unique URL identifier for your store'
+            }
+          ],
+          $parent: $('#store-info'),
+          labelCols: 3,
+          valueCols: 6,
+        },
+        {
+          id: 'currency',
+          name: 'currency',
+          label: 'Currency',
+          value: '{{ store.Currency }}',
+          value: [
+            {% for type in constants.CurrencyTypes %}
+            {
+              selected: '{{ type }}' === '{{ product.currency }}',
+              name: '{{ type.Label() }}',
+              id: '{{ type }}',
+            },
+            {% endfor %}
+          ],
+          type: 'select',
+          asterisk: false,
+          rules: [
+            {
+              rule: 'required',
+              value: true,
+              message: 'Choose a currency for your store'
+            }
+          ],
+          $parent: $('#store-info'),
+          labelCols: 3,
+          valueCols: 6,
+        },
+    ]);
+// custom control code
+    (function() {
+        var ProductToPrices = {
+            {% for product in products %}
+            '{{ product.Id_ }}': Util.renderUICurrencyFromJSON({{ product.Price }}),
+            {% endfor %}
+        };
+
+        // Set up products select
+        $('#product').chosen().on('change', function() {
+            $('#product-price').val(ProductToPrices[$(this).val()]);
+        });
+
+        // Update price with default product price
+        $('#product-price').val(ProductToPrices[$('#product').val()]);
+
+        var $overrides = $('#product-overrides');
+        var $overridesBody = $overrides.children('tbody');
+        var overrideTemplate = '<tr><td><input type="text" class="listing-id hidden" value=""><input type="currency" class="listing-price hidden" value=""><strong class="name"></strong></td><td><span class="price"></span></td><td class="text-center"><button type="button" class="delete btn btn-xs btn-danger">x</button></td></tr>';
+
+        $('#override-product-btn').on('click', function() {
+            var $override = $(overrideTemplate);
+            $override.find('.name').text($('#product').children("option:selected").attr('data-name'));
+            $override.find('.price').text($('#product-price').val());
+            $override.find('.listing-id').val($('#product').val());
+            $override.find('.listing-price').val($('#product-price').val());
+            $override.find('.delete').on('click', function() {
+                $(this).closest('tr').remove();
+                if ($overridesBody.children().length == 0) {
+                    $overrides.addClass('hidden');
+                }
+            });
+            $overridesBody.append($override);
+            $overrides.removeClass('hidden');
+        });
+    })();
+});
+
+var api = NewRestAPI(
+    '{{ urlFor("api", "/store") }}',
+    '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}',
+    $('#form-store'),
+    {
+        listings: function(listings) {
+            // To cents
+            var len = listings.len;
+            for (var key in listings) {
+                var listing = listings[key];
+                listing.price = Util.renderJSONCurrencyFromUI(listing.price);
+            }
+            return listings;
+        }
+    }
+  );
+$('#form-store').on('submit', function(e){
+    var $form = $(this);
+    requestAnimationFrame(function() {
+        if ($('.form-group.has-error').length === 0) {
+            $('#product-overrides').find('.listing-id').each(function(i){
+                var $el = $(this)
+                $el.attr('name', 'listings[' + $el.val() + '][productId]')
+                $el.parent().children('.listing-price').attr('name', 'listings[' + $el.val() + '][price]')
+            });
+            api.post(function(data) {
+                window.location.replace('{{ urlFor("platform", "/stores") }}')
+            }, $form)
+        }
+    })
+    e.preventDefault();
+    return false;
+})
+$('#delete-btn').on('click', function(e) {
+    api.del(function(data) {
+        window.location.replace('{{ urlFor("platform", "/stores") }}')
+    }, '{{ product.Id }}')
+})
+</script>
+{% endblock %}
+{% block menulink %}menu-stores{% endblock %}
+

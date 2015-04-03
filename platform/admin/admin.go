@@ -8,6 +8,7 @@ import (
 	"crowdstart.io/middleware"
 	"crowdstart.io/models2/order"
 	"crowdstart.io/models2/product"
+	"crowdstart.io/models2/store"
 	"crowdstart.io/models2/user"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/permission"
@@ -26,6 +27,10 @@ func Dashboard(c *gin.Context) {
 	template.Render(c, "admin/dashboard.html")
 }
 
+func Products(c *gin.Context) {
+	template.Render(c, "admin/list-products.html")
+}
+
 func Product(c *gin.Context) {
 	db := datastore.New(middleware.GetNamespace(c))
 
@@ -36,12 +41,42 @@ func Product(c *gin.Context) {
 	template.Render(c, "admin/product.html", "product", p)
 }
 
-func Products(c *gin.Context) {
-	template.Render(c, "admin/list-products.html")
+type ProductsMap map[string]product.Product
+
+func (p ProductsMap) Find(id string) product.Product {
+	return p[id]
+}
+
+func Store(c *gin.Context) {
+	db := datastore.New(middleware.GetNamespace(c))
+
+	s := store.New(db)
+	id := c.Params.ByName("id")
+	s.Get(id)
+
+	listings := make([]store.Listing, 0, len(s.Listings))
+	for _, listing := range s.Listings {
+		listings = append(listings, listing)
+	}
+
+	var products []product.Product
+	product.Query(db).GetAll(&products)
+
+	productsMap := make(ProductsMap)
+	for _, product := range products {
+		productsMap[product.Id()] = product
+	}
+
+	template.Render(c, "admin/store.html", "store", s, "listings", listings, "products", products, "productsMap", productsMap)
 }
 
 func Stores(c *gin.Context) {
-	template.Render(c, "admin/list-stores.html")
+	db := datastore.New(middleware.GetNamespace(c))
+
+	var products []product.Product
+	product.Query(db).GetAll(&products)
+
+	template.Render(c, "admin/list-stores.html", "products", products)
 }
 
 func Order(c *gin.Context) {
