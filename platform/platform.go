@@ -70,7 +70,7 @@ func init() {
 	dash.GET("/products", admin.Products)
 	dash.GET("/product/:id", admin.Product)
 	dash.GET("/stores", admin.Stores)
-	// dash.GET("/store/:id", admin.Product)
+	dash.GET("/store/:id", admin.Store)
 	dash.GET("/organization", admin.Organization)
 
 	dash.GET("/settings", user.Profile)
