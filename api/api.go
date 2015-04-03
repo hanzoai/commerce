@@ -14,6 +14,7 @@ import (
 	"crowdstart.io/util/permission"
 	"crowdstart.io/util/rest"
 	"crowdstart.io/util/router"
+	"github.com/gin-gonic/gin"
 
 	accessTokenApi "crowdstart.io/api/accessToken"
 	orderApi "crowdstart.io/api/order"
@@ -22,9 +23,15 @@ import (
 )
 
 func init() {
+	adminRequired := middleware.TokenRequired(permission.Admin)
+
 	router := router.New("api")
 
-	adminRequired := middleware.TokenRequired(permission.Admin)
+	// Use permissive CORS policy for all API routes.
+	router.Use(middleware.AccessControl("*"))
+	router.OPTIONS("*wildcard", func(c *gin.Context) {
+		c.Next()
+	})
 
 	// Organization APIs, namespaced by organization
 
