@@ -1,6 +1,11 @@
 package currency
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+
+	"crowdstart.io/util/log"
+)
 
 // import (
 // 	"github.com/mholt/binding"
@@ -21,6 +26,14 @@ import "strings"
 // func (c Currency) String() {}
 
 type Cents int
+
+func (c Cents) Humanize() string {
+	t := USD
+	cents := c % 100
+	dollars := c / 100
+	log.Warn("%s%d.%d", t, dollars, cents)
+	return fmt.Sprintf("%s%d.%d", t.Symbol(), dollars, cents)
+}
 
 type Type string
 

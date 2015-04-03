@@ -9,7 +9,7 @@ var BuildForm = (function() {
 
   var requiredAsteriskTemplate = '<span class="text-danger enable-tooltip" data-original-title="required">*</span>';
 
-  $.validator.addMethod('currency', function(value, element, param) {
+  $.validator.addMethod('check-currency', function(value, element, param) {
       var isParamString = typeof param === 'string',
           symbol = isParamString ? param : param[0],
           soft = isParamString ? true : param[1],
