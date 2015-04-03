@@ -20,14 +20,15 @@ import (
 func Route(router router.Router, args ...gin.HandlerFunc) {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
+	namespaced := middleware.Namespace()
 
 	api := rest.New(order.Order{})
 
-	api.POST("/:id/capture", adminRequired, rest.NamespacedMiddleware, paymentApi.Capture)
-	api.POST("/:id/charge", publishedRequired, rest.NamespacedMiddleware, paymentApi.Charge)
-	api.POST("/:id/authorize", publishedRequired, rest.NamespacedMiddleware, paymentApi.Authorize)
+	api.POST("/:id/capture", adminRequired, namespaced, paymentApi.Capture)
+	api.POST("/:id/charge", publishedRequired, namespaced, paymentApi.Charge)
+	api.POST("/:id/authorize", publishedRequired, namespaced, paymentApi.Authorize)
 
-	api.GET("/:id/payments", adminRequired, rest.NamespacedMiddleware, func(c *gin.Context) {
+	api.GET("/:id/payments", adminRequired, namespaced, func(c *gin.Context) {
 		id := c.Params.ByName("id")
 		db := datastore.New(c)
 		ord := order.New(db)
