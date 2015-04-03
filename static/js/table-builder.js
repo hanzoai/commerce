@@ -181,7 +181,9 @@ var BuildTable = (function() {
           }
 
           // Handle different renders of column formatting
-          if (render == 'text') {
+          if (typeof render === 'function') {
+            val = render(val, model, $tableData);
+          } else if (render == 'text') {
             val = "" + val;
             val = val.charAt(0).toUpperCase() + val.slice(1);
           } else if (render == 'currency' && model.currency) {
@@ -211,11 +213,11 @@ var BuildTable = (function() {
         $tableBody.append($tableRow);
 
         if (tableConfig.canDelete) {
-          var dataDelete = $(deleteTemplate)
-            .on('click', function() { deleteRow(tableConfig.apiUrl + '/' + model.id); });
+          var $dataDelete = $(deleteTemplate)
+          bindDeleteRow($dataDelete, tableConfig.apiUrl, model.id);
 
           var $tableDataDelete = $(tableDataTemplate)
-            .append(dataDelete).css('width', '80px')
+            .append($dataDelete).css('width', '80px')
             .addClass('text-center');
           $tableRow.append($tableDataDelete);
         }
@@ -248,6 +250,10 @@ var BuildTable = (function() {
     }
 
     var lastPage = tableConfig.startPage;
+    function bindDeleteRow($el, apiUrl, id) {
+      $el.on('click', function() { deleteRow(apiUrl + '/' + id); });
+    }
+
     function deleteRow(path) {
       $.ajax({
         type: 'DELETE',
