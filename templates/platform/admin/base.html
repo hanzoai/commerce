@@ -117,13 +117,10 @@
                                     <!--     <a id="menu-profile" href="{{ urlFor("platform", "/users") }}"><i class="gi gi-group sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Customer</span></a> -->
                                 <!-- </li> -->
                                 <li>
-                                    <a id="menu-products" href="{{ urlFor("platform", "/products") }}"><i class="gi gi-barcode sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Products</span></a>
+                                    <a id="menu-products" href="{{ urlFor("platform", "/products") }}"><i class="gi gi-book sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Products</span></a>
                                 </li>
                                 <li>
                                     <a id="menu-stores" href="{{ urlFor("platform", "/stores") }}"><i class="gi gi-shop sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Stores</span></a>
-                                </li>
-                                <li>
-                                    <a id="menu-stripe-connect" href="{{ urlFor("platform", "/stripe/connect") }}"><i class="fa fa-credit-card sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Stripe</span></a>
                                 </li>
                                 <li>
                                     <a href="#" class="sidebar-nav-menu">
@@ -138,10 +135,18 @@
                                                 <span class="sidebar-nav-mini-hide">API</span>
                                             </a>
                                         </li>
+
                                         <li>
                                             <a id="menu-organization" href="{{ urlFor("platform", "/organization") }}">
                                                 <i class="fa fa-sitemap sidebar-nav-icon"></i>
                                                 <span class="sidebar-nav-mini-hide">Organization</span>
+                                            </a>
+                                        </li>
+
+                                        <li>
+                                            <a id="menu-stripe-connect" href="{{ urlFor("platform", "/stripe/connect") }}">
+                                                <i class="fa fa-credit-card sidebar-nav-icon"></i>
+                                                <span class="sidebar-nav-mini-hide">Stripe</span>
                                             </a>
                                         </li>
                                     </ul>

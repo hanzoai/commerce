@@ -236,7 +236,7 @@ $('#form-store').on('submit', function(e){
 $('#delete-btn').on('click', function(e) {
     api.del(function(data) {
         window.location.replace('{{ urlFor("platform", "/stores") }}')
-    }, '{{ product.Id }}')
+    }, '{{ store.Id }}')
 })
 </script>
 {% endblock %}
