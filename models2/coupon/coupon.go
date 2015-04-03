@@ -19,6 +19,8 @@ const (
 type Coupon struct {
 	mixin.Model
 
+	Name string `json:"name"`
+
 	// Possible values: flat, percent, free_shipping.
 	Type CouponType `json:"type"`
 
