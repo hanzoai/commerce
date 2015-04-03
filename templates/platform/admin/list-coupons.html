@@ -101,8 +101,6 @@
 <script src="{{ staticUrl }}/js/rest-forms.js"></script>
 <script>
   $(function(){
-    Util.setCurrency('{{ coupon.Currency }}');
-
     BuildTable($('#table'), {
       columns: [
         {
@@ -255,7 +253,7 @@
               {% for product in products %}
               {
                   name: '{{ product.Name }} ({{ product.Slug }})',
-                  id: '{{ product.Id }}'
+                  id: '{{ product.Id_ }}'
               },
               {% endfor %}
           ],
