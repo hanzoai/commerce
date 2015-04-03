@@ -49,6 +49,16 @@ func AcquireOrganization(moduleName string) gin.HandlerFunc {
 	}
 }
 
+// Automatically use namespace of organization set in context.
+func Namespace() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ctx := GetAppEngine(c)
+		org := GetOrganization(c)
+		ctx = org.Namespace(ctx)
+		c.Set("appengine", ctx)
+	}
+}
+
 func GetOrganization(c *gin.Context) *organization.Organization {
 	return c.MustGet("organization").(*organization.Organization)
 }

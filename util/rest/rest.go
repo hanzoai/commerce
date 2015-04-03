@@ -87,48 +87,28 @@ func New(entityOrPrefix interface{}, args ...interface{}) *Rest {
 	return r
 }
 
-func DefaultMiddleware(c *gin.Context) {
-	// Ensure CORS works
-	c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-}
+var AllowCrossDomain = middleware.AccessControl("*")
+var Namespaced = middleware.Namespace()
 
-func NamespacedMiddleware(c *gin.Context) {
-	// Ensure CORS works
-	c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-
-	// Automatically use namespace of organization unless we're
-	// configured to use the default namespace for this endpoint.
-	ctx := middleware.GetAppEngine(c)
-	org := middleware.GetOrganization(c)
-	ctx = org.Namespace(ctx)
-	c.Set("appengine", ctx)
-}
-
-func (r Rest) Route(router router.Router, args ...gin.HandlerFunc) {
+func (r Rest) Route(router router.Router, mw ...gin.HandlerFunc) {
 	prefix := r.Prefix + r.Kind
 	prefix = "/" + strings.TrimLeft(prefix, "/")
 
-	// Create group for our API routes and require Access token
+	// Create group for our API routes
 	group := router.Group(prefix)
 
-	// Previous middleware should set organization on context, if non-default
-	// namespace is used.
-	group.Use(args...)
+	// Ensure CORS works properly
+	group.Use(AllowCrossDomain)
 
-	var middleware gin.HandlerFunc
-
-	// Setup our middleware
-	if r.DefaultNamespace {
-		middleware = DefaultMiddleware
-	} else {
-		middleware = NamespacedMiddleware
+	if !r.DefaultNamespace {
+		// Automatically namespace requests
+		mw = append(mw, Namespaced)
 	}
 
 	// Add default routes
 	for _, route := range r.defaultRoutes() {
 		log.Debug("%-7s %v", route.method, prefix+route.url)
-		handlers := append([]gin.HandlerFunc{middleware}, route.handlers...)
-		group.Handle(route.method, route.url, handlers)
+		group.Handle(route.method, route.url, append(mw, route.handlers...))
 	}
 
 	for _, routes := range r.routes {
@@ -179,16 +159,16 @@ func (r Rest) defaultRoutes() []route {
 	}
 
 	return []route{
-		route{
-			method:   "OPTIONS",
-			url:      "",
-			handlers: []gin.HandlerFunc{r.Options},
-		},
-		route{
-			method:   "OPTIONS",
-			url:      "/*all",
-			handlers: []gin.HandlerFunc{r.Options},
-		},
+		// route{
+		// 	method:   "OPTIONS",
+		// 	url:      "",
+		// 	handlers: []gin.HandlerFunc{r.Options},
+		// },
+		// route{
+		// 	method:   "OPTIONS",
+		// 	url:      "/*all",
+		// 	handlers: []gin.HandlerFunc{r.Options},
+		// },
 		route{
 			method:   "POST",
 			url:      "",
@@ -199,11 +179,11 @@ func (r Rest) defaultRoutes() []route {
 			url:      "",
 			handlers: []gin.HandlerFunc{r.List},
 		},
-		route{
-			method:   "GET",
-			url:      "/",
-			handlers: []gin.HandlerFunc{r.List},
-		},
+		// route{
+		// 	method:   "GET",
+		// 	url:      "/",
+		// 	handlers: []gin.HandlerFunc{r.List},
+		// },
 		route{
 			method:   "GET",
 			url:      "/:id",
