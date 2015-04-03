@@ -14,8 +14,10 @@ func Coupon(c *gin.Context) *coupon.Coupon {
 	db := getDb(c)
 
 	coupon := coupon.New(db)
-	coupon.Type = "flat"
 	coupon.Code = "such-coupon"
+	coupon.GetOrCreate("Code=", coupon.Code)
+	coupon.Name = "Such Coupon"
+	coupon.Type = "flat"
 	now := time.Now()
 	coupon.StartDate = now
 	coupon.EndDate = now.Add(Month)
