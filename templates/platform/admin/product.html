@@ -203,7 +203,7 @@
       requestAnimationFrame(function() {
           if ($('.form-group.has-error').length === 0) {
               api.put(function(data) {
-                  window.location.replace('{{ urlFor("platform", "/products") }}')
+                  window.location.replace('{{ urlFor("platform", "/product", product.Id) }}')
               }, $form, '{{ product.Id }}')
           }
       })
