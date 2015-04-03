@@ -11,27 +11,32 @@ import (
 )
 
 func Route(router router.Router, args ...gin.HandlerFunc) {
+	allowAll := middleware.AccessControl("*")
 	adminRequired := middleware.TokenRequired(permission.Admin)
 	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
+	namespaced := middleware.Namespace()
+
+	admin := []gin.HandlerFunc{allowAll, adminRequired, namespaced}
+	published := []gin.HandlerFunc{allowAll, publishedRequired, namespaced}
 
 	api := rest.New(store.Store{})
 
 	// API for getting a full product/variant/bundle for a specific store
-	api.GET("/:id/authorize", publishedRequired, rest.NamespacedMiddleware, authorize)
-	api.GET("/:id/charge", publishedRequired, rest.NamespacedMiddleware, charge)
+	api.GET("/:id/authorize", append(published, authorize)...)
+	api.GET("/:id/charge", append(published, charge)...)
 
 	// API for getting a full product/variant/bundle for a specific store
-	api.GET("/:id/product/:key", publishedRequired, rest.NamespacedMiddleware, getItem)
-	api.GET("/:id/variant/:key", publishedRequired, rest.NamespacedMiddleware, getItem)
-	api.GET("/:id/bundle/:key", publishedRequired, rest.NamespacedMiddleware, getItem)
+	api.GET("/:id/product/:key", append(published, getItem)...)
+	api.GET("/:id/variant/:key", append(published, getItem)...)
+	api.GET("/:id/bundle/:key", append(published, getItem)...)
 
 	// API for working with listings directly
-	api.GET("/:id/listing", adminRequired, rest.NamespacedMiddleware, listListing)
-	api.GET("/:id/listing/:key", adminRequired, rest.NamespacedMiddleware, getListing)
-	api.POST("/:id/listing/:key", adminRequired, rest.NamespacedMiddleware, createListing)
-	api.PUT("/:id/listing/:key", adminRequired, rest.NamespacedMiddleware, updateListing)
-	api.PATCH("/:id/listing/:key", adminRequired, rest.NamespacedMiddleware, patchListing)
-	api.DELETE("/:id/listing/:key", adminRequired, rest.NamespacedMiddleware, deleteListing)
+	api.GET("/:id/listing", append(admin, listListing)...)
+	api.GET("/:id/listing/:key", append(admin, getListing)...)
+	api.POST("/:id/listing/:key", append(admin, createListing)...)
+	api.PUT("/:id/listing/:key", append(admin, updateListing)...)
+	api.PATCH("/:id/listing/:key", append(admin, patchListing)...)
+	api.DELETE("/:id/listing/:key", append(admin, deleteListing)...)
 
-	api.Route(router, adminRequired)
+	api.Route(router, args...)
 }
