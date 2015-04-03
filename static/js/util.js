@@ -17,6 +17,9 @@ var Util = (function() {
       currentCurrencyCode = code;
       currentCurrencySign = currencySigns[code];
     },
+    renderUpdatedUICurrency: function(uiCurrency) {
+      return Util.renderUICurrencyFromJSON(Util.renderJSONCurrencyFromUI(uiCurrency));
+    },
     renderUICurrencyFromJSON: function(jsonCurrency) {
       // jsonCurrency is cents
       jsonCurrency = '' + jsonCurrency;
