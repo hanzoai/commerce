@@ -11,9 +11,6 @@ var NewRestAPI = (function() {
       fieldProcessors = {};
     }
 
-    // Make the token string
-    var tokenStr = 'token=' + token;
-
     if (!onErrorHandler) {
       onErrorHandler = function(){};
     }
@@ -21,15 +18,7 @@ var NewRestAPI = (function() {
     return {
       // Get request
       get: function(handler, params) {
-        var paramStrs = [tokenStr];
-        if (params) {
-          for (var prop in params) {
-            if(params.hasOwnProperty(prop)){
-              paramStrs.push(prop + '=' + params[prop]);
-            }
-          }
-        }
-        $.getJSON(path + paramStrs.join('&'), handler, onErrorHandler)
+        this.ajax('GET', handler, $form, '', params);
       },
       // Post request
       post: function(handler, $form, params) {
@@ -43,12 +32,14 @@ var NewRestAPI = (function() {
         this.ajax('DELETE', handler, null, id, params);
       },
       ajax: function(method, handler, $form, id, params) {
-        var paramStrs = [tokenStr];
         if (id == null) {
           id = '';
         } else {
           id = '/' + id;
         }
+
+        var paramStrs = [];
+        var prop;
         if (params) {
           for (var prop in params) {
             if (params.hasOwnProperty(prop)) {
@@ -72,6 +63,7 @@ var NewRestAPI = (function() {
 
         $.ajax({
           type: method,
+          headers: {Authorization: token},
           url: path + id + '?' + paramStrs.join('&'),
           data: formJSON,
           contentType: 'application/json; charset=utf-8',
