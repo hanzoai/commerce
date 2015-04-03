@@ -6,6 +6,7 @@ import (
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
+	"crowdstart.io/models2/coupon"
 	"crowdstart.io/models2/order"
 	"crowdstart.io/models2/product"
 	"crowdstart.io/models2/store"
@@ -36,9 +37,23 @@ func Product(c *gin.Context) {
 
 	p := product.New(db)
 	id := c.Params.ByName("id")
-	p.Get(id)
+	p.MustGet(id)
 
 	template.Render(c, "admin/product.html", "product", p)
+}
+
+func Coupons(c *gin.Context) {
+	template.Render(c, "admin/list-coupons.html")
+}
+
+func Coupon(c *gin.Context) {
+	id := c.Params.ByName("id")
+	db := datastore.New(middleware.GetNamespace(c))
+
+	cou := coupon.New(db)
+	cou.MustGet(id)
+
+	template.Render(c, "admin/coupon.html", "coupon", cou)
 }
 
 type ProductsMap map[string]product.Product
@@ -52,7 +67,7 @@ func Store(c *gin.Context) {
 
 	s := store.New(db)
 	id := c.Params.ByName("id")
-	s.Get(id)
+	s.MustGet(id)
 
 	listings := make([]store.Listing, 0, len(s.Listings))
 	for _, listing := range s.Listings {
@@ -84,10 +99,10 @@ func Order(c *gin.Context) {
 
 	o := order.New(db)
 	id := c.Params.ByName("id")
-	o.Get(id)
+	o.MustGet(id)
 
 	u := user.New(db)
-	u.Get(o.UserId)
+	u.MustGet(o.UserId)
 
 	template.Render(c, "admin/order.html", "order", o, "user", u)
 }
