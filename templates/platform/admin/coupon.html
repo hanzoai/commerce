@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+
+{% block name %}Coupon{% endblock %}
+
+{% block css %}
+{% endblock %}
+
+{% block content %}
+<!-- Coupon information Form Block -->
+<div class="col-sm-10 col-sm-offset-1 col-md-10 col-md-offset-1 col-lg-8 col-lg-offset-1">
+    <div class="block">
+        <!-- Coupon information Form Title -->
+        <div class="block-title">
+          <h2>Coupon Information</h2>
+        </div>
+        <!-- END Coupon information Form Title -->
+
+        <!-- Coupon information Form Content -->
+        <form id="form-coupon" method="post" class="form-horizontal">
+            <h4>Information</h4>
+            <div id="coupon-info" class="block">
+            </div>
+            <h4>Cost and Availability</h4>
+            <div id="coupon-cost" class="block">
+            </div>
+            <h4>Shipping (Optional)</h4>
+            <div id="coupon-shipping" class="block">
+            </div>
+            <div class="form-group form-actions">
+                <div class="col-md-9 col-md-offset-3">
+                    <button type="submit" class="btn btn-effect-ripple btn-primary">Submit</button>
+                    <button type="reset" class="btn btn-effect-ripple btn-warning">Reset</button>
+                    <button type="button" id="delete-btn" class="btn btn-effect-ripple btn-danger">Delete</button>
+                </div>
+            </div>
+        </form>
+        <!-- END Coupon information Form Content -->
+    </div>
+    <!-- END Coupon information Form Block -->
+</div>
+<!-- END Coupon information Form Block -->
+{% endblock %}
+
+{% block js %}
+<script src="{{ staticUrl }}/js/util.js"></script>
+<script src="{{ staticUrl }}/js/jquery.serialize-object.min.js"></script>
+<script src="{{ staticUrl }}/js/form-builder.js"></script>
+<script src="{{ staticUrl }}/js/rest-forms.js"></script>
+<script>
+  (function() {
+    Util.setCurrency('{{ coupon.Currency }}');
+
+    BuildForm($('#form-coupon'),[
+// coupon info
+        {
+          id: 'name',
+          name: 'name',
+          value: '{{ coupon.Name }}',
+          label: 'Name',
+          type: 'text',
+          asterisk: false,
+          rules: [
+            {
+              rule: 'required',
+              value: true,
+              message: 'Enter a name for your coupon'
+            }
+          ],
+          $parent: $('#coupon-info')
+        },
+        {
+          id: 'slug',
+          name: 'slug',
+          value: '{{ coupon.Slug }}',
+          label: 'Slug',
+          type: 'text',
+          asterisk: false,
+          rules: [
+            {
+              rule: 'required',
+              value: true,
+              message: 'Enter a unique URL identifier for your coupon'
+            }
+          ],
+          $parent: $('#coupon-info')
+        },
+        {
+          id: 'Description',
+          name: 'description',
+          value: {{ jsonify(coupon.Description) | safe }},
+          label: 'Description',
+          type: 'textarea',
+          $parent: $('#coupon-info')
+        },
+// coupon cost
+        {
+          id: 'price',
+          name: 'price',
+          value: Util.renderUICurrencyFromJSON({{ coupon.Price }}),
+          label: 'Price',
+          type: 'currency',
+          asterisk: false,
+          rules: [
+            {
+              rule: 'required',
+              value: true,
+              message: 'Enter a price for your coupon'
+            },
+            {
+              rule: 'check-currency',
+              value: ['$,€,£', false],
+              message: 'Enter a valid currency $, €, £'
+            }
+          ],
+          $parent: $('#coupon-cost')
+        },
+        {
+          id: 'currency',
+          name: 'currency',
+          label: 'Currency',
+          value: [
+            {% for type in constants.CurrencyTypes %}
+            {
+              selected: '{{ type }}' === '{{ coupon.currency }}',
+              name: '{{ type.Label() }}',
+              id: '{{ type }}',
+            },
+            {% endfor %}
+          ],
+          type: 'select',
+          asterisk: false,
+          rules: [
+            {
+              rule: 'required',
+              value: true,
+              message: 'Choose a currency for your coupon'
+            }
+          ],
+          $parent: $('#coupon-cost')
+        },
+        {
+          id: 'taxable',
+          name: 'taxable',
+          label: 'Do you wish to collect taxes for this coupon?',
+          type: 'switch',
+          value: '{{ coupon.Taxable }}' === 'True',
+          asterisk: false,
+          $parent: $('#coupon-cost')
+        },
+        {
+          id: 'available',
+          name: 'available',
+          label: 'Is this available for purchase?',
+          type: 'switch',
+          value: '{{ coupon.Available }}' === 'True',
+          asterisk: false,
+          $parent: $('#coupon-cost')
+        },
+        {
+          id: 'dimensions',
+          name: 'dimensions',
+          value: '{{ coupon.Dimensions }}',
+          label: 'Size (L x W x H)',
+          type: 'text',
+          placeholder: '10cm x 10cm x 10cm',
+          $parent: $('#coupon-shipping')
+        },
+        {
+          id: 'weight',
+          name: 'weight',
+          value: '{{ coupon.Weight }}',
+          label: 'Weight (grams)',
+          type: 'text',
+          placeholder: '1000',
+          $parent: $('#coupon-shipping'),
+          rules: [
+            {
+              rule: 'number',
+              value: true,
+              message: 'Weight is not a number'
+            }
+          ],
+        },
+    ]);
+  })();
+
+  var api = NewRestAPI(
+      '{{ urlFor("api", "/coupon") }}',
+      '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}',
+      $('#form-new-coupon'),
+      {
+          price: function(val) {
+            // To cents
+            return Util.renderJSONCurrencyFromUI(val);
+          },
+          weight: function(val) {
+            return parseFloat(val);
+          }
+      }
+    );
+  $('#form-coupon').on('submit', function(e){
+      var $form = $(this);
+      requestAnimationFrame(function() {
+          if ($('.form-group.has-error').length === 0) {
+              api.put(function(data) {
+                  window.location.replace('{{ urlFor("platform", "/coupon", coupon.Id) }}')
+              }, $form, '{{ coupon.Id }}')
+          }
+      })
+      e.preventDefault();
+      return false;
+  })
+  $('#delete-btn').on('click', function(e) {
+    api.del(function(data) {
+        window.location.replace('{{ urlFor("platform", "/coupons") }}')
+    }, '{{ coupon.Id }}')
+  })
+</script>
+{% endblock %}
+
+{% block menulink %}menu-coupons{% endblock %}
