@@ -20,11 +20,11 @@
             <h4>Information</h4>
             <div id="coupon-info" class="block">
             </div>
-            <h4>Cost and Availability</h4>
-            <div id="coupon-cost" class="block">
+            <h4>Coupon Amount</h4>
+            <div id="coupon-amount" class="block">
             </div>
-            <h4>Shipping (Optional)</h4>
-            <div id="coupon-shipping" class="block">
+            <h4>Coupon Products</h4>
+            <div id="coupon-product-id" class="block">
             </div>
             <div class="form-group form-actions">
                 <div class="col-md-9 col-md-offset-3">
@@ -47,16 +47,14 @@
 <script src="{{ staticUrl }}/js/form-builder.js"></script>
 <script src="{{ staticUrl }}/js/rest-forms.js"></script>
 <script>
-  (function() {
-    Util.setCurrency('{{ coupon.Currency }}');
-
+  $(function() {
     BuildForm($('#form-coupon'),[
-// coupon info
+        // coupon info
         {
           id: 'name',
           name: 'name',
-          value: '{{ coupon.Name }}',
           label: 'Name',
+          value: '{{ coupon.Name }}',
           type: 'text',
           asterisk: false,
           rules: [
@@ -69,133 +67,126 @@
           $parent: $('#coupon-info')
         },
         {
-          id: 'slug',
-          name: 'slug',
-          value: '{{ coupon.Slug }}',
-          label: 'Slug',
+          id: 'code',
+          name: 'code',
+          label: 'Code',
+          value: '{{ coupon.Code }}',
           type: 'text',
           asterisk: false,
           rules: [
             {
               rule: 'required',
               value: true,
-              message: 'Enter a unique URL identifier for your coupon'
+              message: 'Enter a unique code for your coupon'
             }
           ],
           $parent: $('#coupon-info')
         },
         {
-          id: 'Description',
-          name: 'description',
-          value: {{ jsonify(coupon.Description) | safe }},
-          label: 'Description',
-          type: 'textarea',
+          id: 'type',
+          name: 'type',
+          label: 'Type',
+          type: 'select',
+          asterisk: false,
+          value: [
+            {
+              name: 'Flat (In product\'s currency)',
+              id: 'flat',
+              selected: 'flat' === '{{ coupon.Type }}',
+            },
+            {
+              name: 'Percent',
+              id: 'percent',
+              selected: 'percent' === '{{ coupon.Type }}',
+            },
+            {
+              name: 'Free shipping',
+              id: 'free-shipping',
+              selected: 'free-shipping' === '{{ coupon.Type }}',
+            },
+          ],
+          rules: [
+            {
+              rule: 'required',
+              value: true,
+              message: 'Enter a type for your coupon'
+            }
+          ],
           $parent: $('#coupon-info')
         },
-// coupon cost
+        // coupon amount
         {
-          id: 'price',
-          name: 'price',
-          value: Util.renderUICurrencyFromJSON({{ coupon.Price }}),
-          label: 'Price',
+          id: 'amount',
+          name: 'amount',
+          label: 'Amount',
+          value: (function(){
+              if ('{{ coupon.Type }}' === 'flat') {
+                return Util.renderUICurrencyFromJSON({{ coupon.Amount }});
+              } else {
+                return {{ coupon.Amount }};
+              }
+          })(),
           type: 'currency',
           asterisk: false,
           rules: [
             {
               rule: 'required',
               value: true,
-              message: 'Enter a price for your coupon'
+              message: 'Enter an an amount to discount'
             },
-            {
-              rule: 'check-currency',
-              value: ['$,€,£', false],
-              message: 'Enter a valid currency $, €, £'
-            }
           ],
-          $parent: $('#coupon-cost')
+          $parent: $('#coupon-amount')
         },
         {
-          id: 'currency',
-          name: 'currency',
-          label: 'Currency',
+          id: 'productId',
+          name: 'productId',
+          label: 'Product',
           value: [
-            {% for type in constants.CurrencyTypes %}
-            {
-              selected: '{{ type }}' === '{{ coupon.currency }}',
-              name: '{{ type.Label() }}',
-              id: '{{ type }}',
-            },
-            {% endfor %}
+              {
+                  selected: '' === '{{ coupon.ProductId }}',
+                  name: 'All',
+                  id: ''
+              },
+              {% for product in products %}
+              {
+                  selected: '{{ product.Id_ }}' === '{{ coupon.ProductId }}',
+                  name: '{{ product.Name }} ({{ product.Slug }})',
+                  id: '{{ product.Id_ }}'
+              },
+              {% endfor %}
           ],
           type: 'select',
-          asterisk: false,
-          rules: [
-            {
-              rule: 'required',
-              value: true,
-              message: 'Choose a currency for your coupon'
-            }
-          ],
-          $parent: $('#coupon-cost')
-        },
-        {
-          id: 'taxable',
-          name: 'taxable',
-          label: 'Do you wish to collect taxes for this coupon?',
-          type: 'switch',
-          value: '{{ coupon.Taxable }}' === 'True',
-          asterisk: false,
-          $parent: $('#coupon-cost')
-        },
-        {
-          id: 'available',
-          name: 'available',
-          label: 'Is this available for purchase?',
-          type: 'switch',
-          value: '{{ coupon.Available }}' === 'True',
-          asterisk: false,
-          $parent: $('#coupon-cost')
-        },
-        {
-          id: 'dimensions',
-          name: 'dimensions',
-          value: '{{ coupon.Dimensions }}',
-          label: 'Size (L x W x H)',
-          type: 'text',
-          placeholder: '10cm x 10cm x 10cm',
-          $parent: $('#coupon-shipping')
-        },
-        {
-          id: 'weight',
-          name: 'weight',
-          value: '{{ coupon.Weight }}',
-          label: 'Weight (grams)',
-          type: 'text',
-          placeholder: '1000',
-          $parent: $('#coupon-shipping'),
-          rules: [
-            {
-              rule: 'number',
-              value: true,
-              message: 'Weight is not a number'
-            }
-          ],
+          $parent: $('#coupon-product-id'),
         },
     ]);
+
+  (function() {
+      $('#type').chosen().on('change', function(){
+          if ($(this).val() === 'free-shipping') {
+            $('#amount').prop('disabled', true).val(0);
+          } else {
+            $('#amount').prop('disabled', false);
+          }
+      })
   })();
+});
 
   var api = NewRestAPI(
       '{{ urlFor("api", "/coupon") }}',
       '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}',
       $('#form-new-coupon'),
       {
-          price: function(val) {
-            // To cents
-            return Util.renderJSONCurrencyFromUI(val);
-          },
-          weight: function(val) {
-            return parseFloat(val);
-          }
+        amount: function(val) {
+            var type = $('#type').val();
+            if (type === 'flat') {
+                // To cents
+                return Util.renderJSONCurrencyFromUI(val);
+            } else if (type === 'percent') {
+                return parseFloat(val);
+            } else {
+                return 0
+            }
+        },
       }
     );
   $('#form-coupon').on('submit', function(e){
