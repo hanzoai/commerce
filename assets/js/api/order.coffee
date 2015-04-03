@@ -27,7 +27,7 @@ module.exports =
     order:
       currency: 'usd'
       items: [
-        productSlug:  't-shirt'
+        productSlug:  'doge-shirt'
         price:        100
         quantity:     2
       ]

@@ -152,7 +152,7 @@ var BuildForm = (function() {
         $fg = $(formGroupInputTemplate);
 
         var val = inputConfig.value;
-        if (type.indexOf('upper') != -1) {
+        if (type && type.indexOf('upper') != -1) {
           val = val.toUpperCase();
         }
 
