@@ -30,8 +30,17 @@ var Util = (function() {
     },
     renderJSONCurrencyFromUI: function(uiCurrency) {
       // uiCurrency is a whole unit of currency
-      var re = new RegExp('[^\\d' + currencySeparator + '.-]', 'g')
-      return parseFloat(uiCurrency.replace(re, '')) * 100;
+      var parts = uiCurrency.split(currencySeparator);
+      if (parts.length > 1) {
+        parts[1] = parts[1].substr(0, 2);
+        while(parts[1].length < 2) {
+          parts[1] += '0';
+        }
+      } else {
+        parts[1] = '00';
+      }
+      var re = new RegExp('[^\\d.-]', 'g')
+      return parseInt(parseFloat(parts[0].replace(re, '')) * 100 + parseFloat(parts[1].replace(re, '')), 10);
     },
   }
 })()
