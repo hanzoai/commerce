@@ -8,13 +8,15 @@ import (
 	"crowdstart.io/util/val"
 )
 
-type CouponType string
+type Type string
 
 const (
-	Flat         CouponType = "flat"
-	Percent                 = "percent"
-	FreeShipping            = "free-shipping"
+	Flat         Type = "flat"
+	Percent           = "percent"
+	FreeShipping      = "free-shipping"
 )
+
+var Types = []Type{Flat, Percent, FreeShipping}
 
 type Coupon struct {
 	mixin.Model
@@ -22,7 +24,7 @@ type Coupon struct {
 	Name string `json:"name"`
 
 	// Possible values: flat, percent, free_shipping.
-	Type CouponType `json:"type"`
+	Type Type `json:"type"`
 
 	// Coupon code (must be unique).
 	Code string `json:"code"`
