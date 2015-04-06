@@ -7,6 +7,43 @@ associated with running a crowdfunding campaign.
 The API is currently in beta. Please contact support@crowdstart.com if you
 intend to use our API in any production code.
 
+# Group Coupon [/coupon]
+This object is a representation of special offers that provide discounts
+associated with a certain order or item.
+
+| Field Name | Field Description                                                                                                                                                                                           | Type   |
+| ---------- | -----------------                                                                                                                                                                                           | ----   |
+| Name       | The public moniker for the coupon.                                                                                                                                                                          | string |
+| Type       | A category for the coupon.  Possible values are: 'flat' (for a certain number of cents off), 'percent' (for a percentage of the total as a discount), and 'free_shipping' (exemption from shipping charges) | string |
+| Code       | A unique identifier for this coupon for internal use.                                                                                                                                                       | string |
+| CampaignId | The specific campaign this coupon is valid for.                                                                                                                                                             | string |
+| StartDate  | Combined with EndDate, this denotes the time span the coupon is valid for.                                                                                                                                  | string |
+| EndDate    | Combined with StartDate, this denotes the time span the coupon is valid for.                                                                                                                                | string |
+| Filter     | The scope the coupon applies to.  Possible values are 'order' and 'product'                                                                                                                                 | string |
+| Once       | A flag indicating whether to apply the coupon once, or every time it is valid.                                                                                                                              | bool   |
+| ProductId  | The specific ID of the product this coupon applies to, if applicable.                                                                                                                                       | string |
+| Enabled    | A flag indicating whether or not the coupon is currently valid.                                                                                                                                             | bool   |
+| Amount     | The numerical value attached to the coupon.  'Flat' coupons should be in cents (500 for $5), while 'percent' coupons should be in percentage points (10 for 10%). Unneeded for 'free_shipping' coupons.     | int    |
+| Used       | How many times this coupon has been redeemed.                                                                                                                                                               | bool   |
+
+## Get a Coupon [GET]
++ Response 200 (application/json)
+
+        {
+            "name": "10% off teh nooest shirt!",
+            "type": "percent",
+            "code": "WIOFJ23948",
+            "campaignId": "1",
+            "startDate": "04-30-2025 12:34:23",
+            "endDate": "05-23-2025 02:24:55",
+            "filter": "product",
+            "once": true,
+            "productId": "1",
+            "enabled": true,
+            "amount": 10,
+            "used": 249
+        }
+
 # Group Campaign
 This represents a single fundraising campaign.
 
@@ -33,6 +70,266 @@ This represents a single fundraising campaign.
 | facebookTag        | The social network tag for the campaign.                                                                                                    | string                |
 | links              | Important links related to the campaign not covered in other areas (such as media releases).                                                | []string              |
 
+
+## Group Order [/order]
+
+This object is a representation of a user's **confirmed purchase**.  The order should not be
+confused with a [Cart](#cart), which are prospective purchases.
+
+| Field Name | Field Description                                                                          | Type                    |
+| ---------- | -----------------                                                                          | ----                    |
+| createdAt  | The time the order first came to be.                                                       | string                  |
+| updatedAt  | The time the order was last modified (not necessarily by the user).                        | string                  |
+| id         | The internal unique identifier for this order.                                             | string                  |
+| userId     | The identifier for the user who placed this order.                                         | string                  |
+| shipping   | Charges for mailing the order in cents                                                     | int64                   |
+| tax        | Charges on the order levied by any relevant governments in cents                           | int64                   |
+| subtotal   | Charges from actual purchases in cents                                                     | int64                   |
+| total      | Net charge to be sent to the client cents. Includes Subtotal, Tax, and Shipping.           | int64                   |
+| items      | A list of LineItems that comprise this order.                                              | [[]LineItem](#lineitem) |
+| campaignId | The unique identifier for the fundraising campaign that spawned this order (if applicable) | string                  |
+| preorder   | A switch indicating whether or not this is a preorder.                                     | bool                    |
+| cancelled  | A switch indicating whether or not this order has been cancelled.                          | bool                    |
+| shipped    | A switch indicating whether or not this order has been shipped.                            | bool                    |
+| test       | A switch indicating whether or not this is a test order.                                   | bool                    |
+
+## Get an Order [GET]
++ Response 200 (application/json)
+
+        {
+          "createdAt": "04-30-2025 12:34:23",
+          "updatedAt": "05-23-2025 02:24:55",
+          "id":        "VIJij32309JVOIWJWE",
+          "userId":    "jdoe",
+          "shipping":  300,
+          "tax":       0,
+          "subtotal":  1000,
+          "total":     1300,
+          "items": [
+            {
+              "productId": "SLD32diiSJ9293",
+              "productName": "Teh Nooest Meme T-Shirt",
+              "productSlug": "t-shirt",
+              "variantId": "FOIUVMOIS872348OIJDFWOIJ",
+              "variantSKU": "T-SHIRT-M",
+              "price": 1000,
+              "quantity": 1,
+              "weight": 11,
+              "taxable": true
+            }
+          ],
+          "campaignId": "WVEIOJ124902AIOJFJL",
+          "preorder":   true,
+          "cancelled":  false,
+          "shipped":    false,
+          "test":       false
+        }
+
+# Group Product [/product]
+
+This represents a single product (or, perk, if intangible) that is offered by a
+campaign.
+
+| Field Name  | Field Description                                                                                 | Type                         |
+| ----------  | -----------------------------------------------------------                                       | ------                       |
+| id          | The unique identifier for this product.                                                           | string                       |
+| slug        | The friendly Url representation (such as whizbang-200).                                           | string                       |
+| title       | The top-level title of this product (such as Whizbang 2000).                                      | string                       |
+| headline    | The most important one-liner regarding the product.                                               | string                       |
+| excerpt     | A short paragraph explaining the product.                                                         | string                       |
+| description | The long form explanation of the product.                                                         | string                       |
+| released    | The time associated with the product's release.                                                   | string                       |
+| available   | A switch indicating whether or not the product is available.                                      | bool                         |
+| addLabel    | The text used when staging the product for purchase.                                              | string                       |
+| headerImage | An image used as the primary representation of the product.                                       | [Media](#media)              |
+| media       | A set of Media resources representing the product.  Does not include headerImage.                 | [[]Media](#media)            |
+| variants    | A listing of variations of the same product, such as different sizes or different offered colors. | [[]ProductVariant](#variant) |
+
+## Get a Product [GET]
++ Response 200 (application/json)
+
+        {
+          "id": "SLD32diiSJ9293",
+          "slug": "t-shirt",
+          "title": "Teh Nooest Meme T-shirt!",
+          "headline": "Teh Nooest Meme, now for your chest (and/or face)!",
+          "excerpt": "Available in from sizes Much to Wow!",
+          "description": "Teh Nooest Meme, the funniest meme ever!  Now on your chest!",
+          "released": "01-21-2025 03:08:32",
+          "available": true,
+          "addLabel": "Pre-order now!",
+          "headerImage": {
+            "type": "image",
+            "alt": "wow",
+            "url": "http://suchtees.com/media/top/1.jpg",
+            "x": 400,
+            "y": 100
+          },
+          "media": [
+            {
+              "type": "image",
+              "alt": "such tee",
+              "url": "http://suchtees.com/media/top/2.jpg",
+              "x": 400,
+              "y": 100
+            },
+            {
+              "type": "image",
+              "alt": "much cloth",
+              "url": "http://suchtees.com/media/top/3.jpg",
+              "x": 200,
+              "y": 150
+            }
+          ],
+          "variants": [
+            {
+              "id": "FOIUVMOIS872348OIJDFWOIJ",
+              "sku": "T-SHIRT-M",
+              "price": 1000,
+              "stock": 30,
+              "weight": 11,
+              "dimensions": "5x5x5",
+              "options": {
+                "size": "much"
+              }
+            },
+            {
+              "id": "FOIUVMOIS872348OIJDFWOIJ",
+              "sku": "T-SHIRT-W",
+              "price": 1000,
+              "stock": 33,
+              "weight": 12,
+              "dimensions": "6x6x6",
+              "options": {
+                "size": "wow"
+              }
+            },
+          ]
+        }
+
+
+# Group Variant [/variant]
+The Variant object signifies specifics about
+an individual kind of Product.
+
+| Field Name | Field Description                                                                                                                              | Type                |
+| ---------- | -----------------                                                                                                                              | ----                |
+| id         | The unique internal identifier for this variant.                                                                                               | string              |
+| sku        | The unique external product identifier for this variant (helps with fulfillment)                                                               | string              |
+| name       | Display name for this variant                                                                                                                  | string              |
+| price      | The price of this variant in cents                                                                                                             | int64               |
+| inventory  | How many of the variant are currently in stock.                                                                                                | int                 |
+| weight     | How much the variant weighs. This is typically in ounces, but can be in grams, miligrams, or whatever else as long as the usage is consistent. | float               |
+| dimensions | The height by width by depth of the variant, physically. Typically in inches, but handles metric measurements fine with consistent use.        | string              |
+| options    | Metadata associated with the variant. It is designed to hold arbitrary data and can vary.                                                      | [[]Option](#option) |
+
+## Get a Variant [GET]
++ Response 200 (application/json)
+
+        {
+          "id": "FOIUVMOIS872348OIJDFWOIJ",
+          "sku": "T-SHIRT-M",
+          "price": 1000,
+          "inventory": 30,
+          "weight": 11,
+          "dimensions": "5x5x5",
+          "options": {
+            "size": "much"
+          }
+        }
+
+## Group Additional objects
+These objects are not tied to any particular route, but are generally retrieved
+as part of another request.
+
+### Group Dates
+Dates are always RFC3339.
+
+### Group Currency
+All money measurements, per the object definitions, are in cents, and are
+  returned only in whole numbers (no decimal places). Therefore, `$1 USD` will
+  be returned as `100`, and `$.01 USD` will be returned as `1`.
+
+### Group CouponType
+**CouponType** is a string which represents how the discount should be applied.
+
+| Value         | Description                                   |
+| -----         | -----------                                   |
+| flat          | Discounts amount in cents from the subtotal   |
+| percent       | Discounts amount as a percent of subtotal     |
+| free_shipping | Discounts the cost of shipping from the total |
+
+### Group Category
+This string expresses the general classification or division your campaign falls
+under.
+
+This list is under constant re-evaluation, but assigned values will never
+change.  If you would like to request a change to this list, contact us at
+support@crowdstart.com.
+
+| Value        | Description   |
+| -------      | ------------- |
+| "arts"       | Arts          |
+| "fashion"    | Fashion       |
+| "film"       | Film          |
+| "food"       | Food          |
+| "gaming"     | Gaming        |
+| "health"     | Health        |
+| "music"      | Music         |
+| "sports"     | Sports        |
+| "technology" | Technology    |
+
+## Group LineItem
+This object is a representation of one particular instance of a customer
+requesting a [Product](#product). It contains some fields associated with a [Product
+variant](#variant). This can be either a prospective request (in the case of [Cart](#cart)),
+or a confirmed one (in the case of [Order](#order))
+
+| Field Name   | Field Description                                                                                                                                                     | Type   |
+| ----------   | -----------------                                                                                                                                                     | ----   |
+| productId    | The specific identifier for the ProductId referenced in this LineItem.  This is a computed field.                                                                     | string |
+| productName  | The specific identifier for the ProductName referenced in this LineItem.                                                                                              | string |
+| productSlug  | The specific identifier for the [Product](#Product) referenced in this LineItem.  This is a computed field, related to the data from the Product property (see below) | string |
+| collectionId | The collection ID.                                                                                                                                                    | string |
+| variantId    | The specific item type ID or perk type being requested.                                                                                                               | string |
+| variantName  | The specific item type Name or perk type being requested.                                                                                                             | string |
+| variantSKU   | The specific item type variant SKU or perk type being requested.                                                                                                      | string |
+| price        | The price of this LineItem in cents.                                                                                                                                  | int    |
+| quantity     | The amount of the item/perk requested in this line.                                                                                                                   | int    |
+| weight       | The item weight, typically in ounces.                                                                                                                                 | int    |
+| taxable      | Whether the product is subject to taxes.                                                                                                                              | bool   |
+
+## Group User [/user]
+
+| Field Name     | Field Description                                                  | Type    |
+| ----------     | -----------------                                                  | ----    |
+| createdAt      | The time the user first came to be.                                | string    |
+| updatedAt      | The time the user was last modified (not necessarily by the user). | string    |
+| id             | The internal unique identifier.                                    | string  |
+| username       | The username for this user.                                        | string  |
+| firstName      | The first name for this user.                                      | string  |
+| lastName       | The last name for this user.                                       | string  |
+| firstName      | The first name for this user.                                      | string  |
+| phone          | The phone for this user.                                           | string  |
+| billingAddress | The billing address for this user.                                 | string |
+| mailingAddress | The mailing address for this user.                                 | string |
+| email          | The email for this user.                                           | string  |
+
+### Get a User [GET]
++ Response 200 (application/json)
+
+    {
+      "id": "KawefZu3VY",
+      "createdAt": "2015-03-23T14:44:46.215269Z",
+      "updatedAt": "2015-03-23T14:44:46.597388Z",
+      "username": "",
+      "firstName": "",
+      "lastName": "",
+      "phone": "",
+      "billingAddress": {},
+      "shippingAddress": {},
+      "email": "dev@hanzo.ai"
+    }
 
 # Group Payments
 
@@ -69,7 +366,7 @@ Charges and captures a payment immediately or fails.
                 ]
             }
         }
-        
+
 + Response 200 (application/json)
 
         {
@@ -97,10 +394,10 @@ Charges and captures a payment immediately or fails.
           "refunded":0,
           "fee":0,
           "billingAddress":{
-        
+
           },
           "shippingAddress":{
-        
+
           },
           "items":[
             {
@@ -118,7 +415,7 @@ Charges and captures a payment immediately or fails.
             }
           ],
           "discounts":[
-        
+
           ],
           "payments":[
             {
@@ -132,11 +429,11 @@ Charges and captures a payment immediately or fails.
                   "phone":"555-555-5555",
                   "notes":"non",
                   "address":{
-        
+
                   }
                 },
                 "affirm":{
-        
+
                 },
                 "stripe":{
                   "fingerprint":"k6NxwTEJxyHMPCr3",
@@ -152,7 +449,7 @@ Charges and captures a payment immediately or fails.
                   "cvcCheck":"pass"
                 },
                 "paypal":{
-        
+
                 }
               },
               "currency":"usd",
@@ -162,7 +459,7 @@ Charges and captures a payment immediately or fails.
               "amountRefunded":0,
               "status":"paid",
               "client":{
-        
+
               },
               "captured":true,
               "live":false
@@ -173,8 +470,8 @@ Charges and captures a payment immediately or fails.
             "trackingNumber":""
           }
         }
-  
-        
+
+
 ## Authorize [/authorize]
 Authorizes a charge on an order, but does not capture it.
 This method is ideal if you wish to only receive payment when the
@@ -210,9 +507,9 @@ product is shipped.
             ]
           }
         }
-        
+
 + Response 200 (application/json)
-        
+
         {
 
            "id":"12",
@@ -239,10 +536,10 @@ product is shipped.
            "refunded":0,
            "fee":0,
            "billingAddress":{
-        
+
            },
            "shippingAddress":{
-        
+
            },
            "items":[
               {
@@ -260,7 +557,7 @@ product is shipped.
               }
            ],
            "discounts":[
-        
+
            ],
            "payments":[
               {
@@ -274,11 +571,11 @@ product is shipped.
                        "phone":"555-555-5555",
                        "notes":"non",
                        "address":{
-        
+
                        }
                     },
                     "affirm":{
-        
+
                     },
                     "stripe":{
                        "fingerprint":"k6NxwTEJxyHMPCr3",
@@ -294,7 +591,7 @@ product is shipped.
                        "cvcCheck":"pass"
                     },
                     "paypal":{
-        
+
                     }
                  },
                  "currency":"usd",
@@ -304,7 +601,7 @@ product is shipped.
                  "amountRefunded":0,
                  "status":"unpaid",
                  "client":{
-        
+
                  },
                  "captured":false,
                  "live":false
@@ -315,7 +612,7 @@ product is shipped.
               "trackingNumber":""
            }
         }
-        
+
 ## Capture [/order/{id}/capture]
 Captures the payment for an order
 
@@ -330,7 +627,7 @@ Captures the payment for an order
         {
             "a": "b"
         }
-        
+
 # Group API Methods
 ## Campaign [/campaign/{id}]
 
@@ -341,7 +638,7 @@ Captures the payment for an order
         CAMPAIGN-ID
 
 + Response 200 (application/json)
-        
+
         {
           "id": "7",
           "createdAt": "2015-03-23T04:11:02.164175Z",
