@@ -1188,6 +1188,7 @@ func push(api SalesforceClient, p string, s SObjectSyncable) error {
 	response := new(UpsertResponse)
 
 	if err := json.Unmarshal(body, response); err != nil {
+		log.Error("Unable to unmarshall UpsertResponse: %v", body, api.GetContext())
 		return err
 	}
 
