@@ -514,6 +514,19 @@ func ProcessUpdatedSObjects(api SalesforceClient, response *UpdatedRecordsRespon
 		if err := us.Write(object); err != nil {
 			return err
 		}
+
+		// Ensure that order's userId points to the right user in case account
+		// was switched around in salesforce.
+		if sOrder, ok := us.(*Order); ok {
+			acct := new(Account)
+			user := acct.LoadSalesforceId(db, sOrder.AccountId).(*models.User)
+			if user == nil {
+				return errors.New("Order updated with invalid account, no user found")
+			}
+			// Update userId
+			order := object.(*models.Order)
+			order.UserId = user.Id
+		}
 	}
 
 	return nil
