@@ -178,6 +178,7 @@ type Contact struct {
 	// You can manually specify these
 
 	// Data Fields
+	Account            ForeignKey `json:"Account,omitempty"`
 	LastName           string     `json:"LastName,omitempty"`
 	FirstName          string     `json:"FirstName,omitempty"`
 	Salutation         string     `json:"Salutation,omitempty"`
@@ -202,15 +203,8 @@ type Contact struct {
 	LastModifiedDate   string     `json:"LastModifiedDate,omitempty"`
 	SystemModstamp     string     `json:"SystemModstamp,omitempty"`
 	LastActivityDate   string     `json:"LastActivityDate,omitempty"`
-	LastCURequestDate  string     `json:"LastCURequestDate,omitempty"`
-	LastCUUpdateDate   string     `json:"LastCUUpdateDate,omitempty"`
 	LastViewedDate     string     `json:"LastViewedDate,omitempty"`
 	LastReferencedDate string     `json:"LastReferencedDate,omitempty"`
-	EmailBouncedReason string     `json:"EmailBouncedReason,omitempty"`
-	EmailBouncedDate   string     `json:"EmailBouncedDate,omitempty"`
-	IsEmailBounced     bool       `json:"IsEmailBounced,omitempty"`
-	JigsawContactId    string     `json:"JigsawContactId,omitempty"`
-	Account            ForeignKey `json:"Account,omitempty"`
 
 	// Skully Custom fields
 	UniquePreorderLinkC string `json:"Unique_Preorder_Link__c,omitempty"`
@@ -221,18 +215,6 @@ type Contact struct {
 	ShippingStateC      string `json:"Shipping_State__c,omitempty"`
 	ShippingPostalZipC  string `json:"Shipping_Postal_Zip__c,omitempty"`
 	ShippingCountryC    string `json:"Shipping_Country__c,omitempty"`
-	MC4SFMCSubscriberC  string `json:"MC4SF__MC_Subscriber__c,omitempty"`
-
-	// Zendesk Custom fields
-	ZendeskLastSyncDateC         string `json:"Zendesk__Last_Sync_Date__c,omitempty"`
-	ZendeskLastSyncStatusC       string `json:"Zendesk__Last_Sync_Status__c,omitempty"`
-	ZendeskResultC               string `json:"Zendesk__Result__c,omitempty"`
-	ZendeskTagsC                 string `json:"Zendesk__Tags__c,omitempty"`
-	ZendeskZendeskOutofSyncC     string `json:"Zendesk__Zendesk_OutofSync__c,omitempty"`
-	ZendeskZendeskOldTagsC       string `json:"Zendesk__Zendesk_oldTags__c,omitempty"`
-	ZendeskIsCreatedUpdatedFlagC string `json:"Zendesk__isCreatedUpdatedFlag__c,omitempty"`
-	ZendeskNotesC                string `json:"Zendesk__notes__c,omitempty"`
-	ZendeskZendeskIdC            string `json:"Zendesk__zendesk_id__c,omitempty"`
 }
 
 func (c *Contact) Read(so SObjectCompatible) error {
