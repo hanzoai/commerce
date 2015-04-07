@@ -29,6 +29,21 @@ func FromCurrency(dollars Currency) int64 {
 	return int64(dollars * 10000.0)
 }
 
+var zeroTime = time.Time{}
+
+// Returns date formatted for Salesforce. Only dates within a certain range are
+// valid. The earliest valid date is 1700-01-01T00:00:00Z GMT, or just after
+// midnight on January 1, 1700. The latest valid date is 4000-12-31T00:00:00Z
+// GMT, or just after midnight on December 31, 4000. In our case, we default to
+// January 1, 1900 UTC.
+func formatDate(t time.Time) string {
+	if t == zeroTime {
+		t = time.Date(1900, time.January, 1, 0, 0, 0, 0, time.UTC)
+		t = time.Now()
+	}
+	return t.Format(time.RFC3339)
+}
+
 // For crowdstart models/mixins to be salesforce compatible in future
 type SObjectCompatible interface {
 	SetSalesforceId(string)
@@ -618,7 +633,7 @@ func (o *Order) Read(so SObjectCompatible) error {
 		return ErrorOrderTypeRequired
 	}
 
-	o.EffectiveDate = order.CreatedAt.Format(time.RFC3339)
+	o.EffectiveDate = formatDate(order.CreatedAt)
 
 	o.BillingStreet = order.BillingAddress.Line1 + "\n" + order.BillingAddress.Line2
 	o.BillingCity = order.BillingAddress.City
