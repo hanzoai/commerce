@@ -73,23 +73,27 @@ a.site-logo {
   outline: none;
 }
 .site-logo .site-logo-img {
-  opacity: .5;
+  opacity: 0.5;
+  height: 42px;
   width: 42px;
 }
 
 .site-logo .site-logo-text {
   margin-left: 10px;
+  height: 22px;
   width: 200px;
 }
 
 header.header-scroll .site-logo-img {
   margin-top: 6px;
   width: 28px;
+  height: 28px;
 }
 
 header.header-scroll .site-logo-text {
   margin-top: 6px;
-  width: 150px;
+  width: 146px;
+  height: 16px;
 }
 
 /* Menu */
