@@ -331,6 +331,49 @@ or a confirmed one (in the case of [Order](#order))
       "email": "dev@hanzo.ai"
     }
 
+# Group Store
+
+| Field Name        | Field Description                                                                                                                             | Type              |
+| ----------        | -----------------                                                                                                                             | ----              |
+| Name              | The publicly readable name for the store.                                                                                                     | string            |
+| Slug              | The unique human readable ID for the store.  Used in the url <slug>.crowdstart.com.                                                           | string            |
+| Hostname          | Along with the Prefix, designates where the store is hosted, if not on Crowdstart.com.                                                        | string            |
+| Prefix            | Along with the Hostname, designates where the store is hosted, if not on Crowdstart.com.                                                      | string            |
+| Currency          | The currency type for the store (such as USD or GBP)                                                                                          | string            |
+| TaxNexus          | A list of addresses that comprise taxable locations, for computing sales tax, etc.                                                            | []Address         |
+| Listings          | An array of Product-like objects that contains overrides for any products associated with the store.  Useful for temporary or special offers. | []Product         |
+
+### Get a store [GET]
++ Response 200 (application/json)
+    {
+      "id": "5LGwtbfDrL",
+      "createdAt": "2015-04-10T00:38:40.55973Z",
+      "updatedAt": "2015-04-10T01:16:54.944356Z",
+      "name": "default",
+      "slug": "suchtees",
+      "hostname": "www.suchtees.com",
+      "prefix": "/",
+      "currency": "usd",
+      "taxNexus": [
+        {
+          "line1": "123 Such St",
+          "city": "Tee City"
+        },
+        {
+          "line1": "456 Noo Ln",
+          "city": "Memetown"
+        }
+      ],
+      "listings": {
+        "vMA5cpSREM": {
+          "productId": "vMA5cpSREM",
+          "name": null,
+          "sold": null,
+          "price": 30000
+        }
+      }
+    }
+
 # Group Payments
 
 ## Charge [/charge]
