@@ -343,6 +343,10 @@ or a confirmed one (in the case of [Order](#order))
 | TaxNexus          | A list of addresses that comprise taxable locations, for computing sales tax, etc.                                                            | []Address         |
 | Listings          | An array of Product-like objects that contains overrides for any products associated with the store.  Useful for temporary or special offers. | []Product         |
 
+## Calls related to Stores [/store/{id}]
+Basic Store calls are keyed upon the unique ID of the Store.  As with all calls,
+it also requires an access key included with the request.
+
 ### Get a store [GET]
 + Response 200 (application/json)
     {
@@ -373,6 +377,62 @@ or a confirmed one (in the case of [Order](#order))
         }
       }
     }
+## Store Product Subcalls [/store/{id}/product/{key}]
+It is possible to access the products belonging to a store by passing in the
+store's unique identifier, followed by the product's unique key.  As with all
+calls, this also requires an access key to be included with the request.
+
+### Get a Store's Product [GET]
++ Response 200 (application/json)
+    {
+      "id": "QMZncoubZM",
+      "createdAt": "2015-04-10T00:38:40.428135Z",
+      "updatedAt": "2015-04-10T01:16:54.858432Z",
+      "slug": "doge-shirt",
+      "sku": "",
+      "currency": "usd",
+      "price": 2000,
+      "shipping": 0,
+      "inventory": 0,
+      "sold": 0,
+      "weight": 0,
+      "weightUnit": "",
+      "dimensions": "",
+      "taxable": false,
+      "name": "Such T-shirt",
+      "headline": "wow  such shirt  much tee",
+      "excerpt": "",
+      "description": "wow\n\tã€€ã€€ã€€ã€€ã€€ã€€such shirt\n\tmuch tee\n\n\t\t\tnice shop\n\n\tã€€so hip\n\n\tã€€ã€€ã€€ã€€so doge\n\t",
+      "headerImage": {
+        "type": "",
+        "alt": "",
+        "url": "",
+        "x": 0,
+        "y": 0
+      },
+      "media": null,
+      "available": false,
+      "hidden": false,
+      "availability": {
+        "active": false,
+        "startDate": "0001-01-01T00:00:00Z",
+        "endDate": "0001-01-01T00:00:00Z"
+      },
+      "preorder": false,
+      "addLabel": "",
+      "variants": [],
+      "options": [
+        {
+          "name": "Size",
+          "values": [
+            "Much",
+            "Wow"
+          ]
+        }
+      ]
+    }
+
+
 
 # Group Payments
 
