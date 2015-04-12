@@ -328,5 +328,103 @@ Captures the payment for an order
 + Response 200 (application/json)
 
         {
-            "a": "b"
+          "id":"9",
+          "createdAt":"2015-03-23T04:13:56.666272023Z",
+          "updatedAt":"2015-03-23T04:13:58.989441381Z",
+          "campaignId":"",
+          "orderStatus":"",
+          "paymentStatus":"",
+          "fulfillmentStatus":"",
+          "preorder":false,
+          "unconfirmed":false,
+          "currency":"usd",
+          "type":"",
+          "shippingMethod":"",
+          "lineTotal":2000,
+          "discount":0,
+          "subtotal":2000,
+          "shipping":0,
+          "tax":0,
+          "adjustment":0,
+          "total":2000,
+          "balance":0,
+          "paid":0,
+          "refunded":0,
+          "fee":0,
+          "billingAddress":{
+
+          },
+          "shippingAddress":{
+
+          },
+          "items":[
+            {
+              "productId":"1",
+              "productName":"",
+              "productSlug":"",
+              "collectionId":"1",
+              "variantId":"1",
+              "variantName":"",
+              "variantSKU":"",
+              "price":100,
+              "quantity":20,
+              "weight":0,
+              "taxable":false
+            }
+          ],
+          "discounts":[
+
+          ],
+          "payments":[
+            {
+              "account":{
+                "type":"stripe",
+                "buyer":{
+                  "email":"joe@buystoomuchstuff.com",
+                  "firstName":"",
+                  "lastName":"",
+                  "company":"Buys Too Much Stuff Dotcom",
+                  "phone":"555-555-5555",
+                  "notes":"non",
+                  "address":{
+
+                  }
+                },
+                "affirm":{
+
+                },
+                "stripe":{
+                  "fingerprint":"k6NxwTEJxyHMPCr3",
+                  "customerId":"cus_5vDNDt1Xi2YBBe",
+                  "cardId":"card_15jMwmCSRlllXCwP3TSacP62",
+                  "brand":"Visa",
+                  "type":"credit",
+                  "lastFour":"4242",
+                  "expiration":{
+                    "month":12,
+                    "year":2016
+                  },
+                  "cvcCheck":"pass"
+                },
+                "paypal":{
+
+                }
+              },
+              "currency":"usd",
+              "campaignId":"",
+              "chargeId":"ch_15jMwqCSRlllXCwPpVNGPktU",
+              "amount":2000,
+              "amountRefunded":0,
+              "status":"paid",
+              "client":{
+
+              },
+              "captured":true,
+              "live":false
+            }
+          ],
+          "fulfillment":{
+            "courier":"",
+            "trackingNumber":""
+          }
         }
