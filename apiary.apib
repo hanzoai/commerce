@@ -7,6 +7,101 @@ associated with running a crowdfunding campaign.
 The API is currently in beta. Please contact support@crowdstart.com if you
 intend to use our API in any production code.
 
+# Group Coupon
+This object is a representation of special offers that provide discounts
+associated with a certain order or item.
+
+| Field Name | Field Description                                                                                                                                                                                           | Type   |
+| ---------- | -----------------                                                                                                                                                                                           | ----   |
+| name       | The public moniker for the coupon.                                                                                                                                                                          | string |
+| type       | A category for the coupon.  Possible values are: 'flat' (for a certain number of cents off), 'percent' (for a percentage of the total as a discount), and 'free_shipping' (exemption from shipping charges) | string |
+| code       | A unique identifier for this coupon for internal use.                                                                                                                                                       | string |
+| campaignId | The specific campaign this coupon is valid for.                                                                                                                                                             | string |
+| startDate  | Combined with EndDate, this denotes the time span the coupon is valid for.                                                                                                                                  | string |
+| endDate    | Combined with StartDate, this denotes the time span the coupon is valid for.                                                                                                                                | string |
+| filter     | The scope the coupon applies to.  Possible values are 'order' and 'product'                                                                                                                                 | string |
+| once       | A flag indicating whether to apply the coupon once, or every time it is valid.                                                                                                                              | bool   |
+| productId  | The specific ID of the product this coupon applies to, if applicable.                                                                                                                                       | string |
+| enabled    | A flag indicating whether or not the coupon is currently valid.                                                                                                                                             | bool   |
+| amount     | The numerical value attached to the coupon.  'Flat' coupons should be in cents (500 for $5), while 'percent' coupons should be in percentage points (10 for 10%). Unneeded for 'free_shipping' coupons.     | int    |
+| used       | How many times this coupon has been redeemed.                                                                                                                                                               | bool   |
+
+## Calls related to Coupons [/coupon/{id}]
+Basic Coupon calls are keyed upon the unique ID of the Coupon.  As with all
+calls, it also requires an access key included with the request.
+
+### Get a Coupon [GET]
++ Response 200 (application/json)
+
+        {
+            "name": "10% off teh nooest shirt!",
+            "type": "percent",
+            "code": "WIOFJ23948",
+            "campaignId": "1",
+            "startDate": "04-30-2025 12:34:23",
+            "endDate": "05-23-2025 02:24:55",
+            "filter": "product",
+            "once": true,
+            "productId": "1",
+            "enabled": true,
+            "amount": 10,
+            "used": 249
+        }
+
+### Create a Coupon [POST]
++ Request (application/json)
+
+        {
+            "name": "10% off teh nooest shirt!",
+            "type": "percent",
+            "code": "WIOFJ23948",
+            "campaignId": "1",
+            "startDate": "04-30-2025 12:34:23",
+            "endDate": "05-23-2025 02:24:55",
+            "filter": "product",
+            "once": true,
+            "productId": "1",
+            "enabled": true,
+            "amount": 10,
+            "used": 249
+        }
+
++ Response 200 (application/json)
+
+        {
+            "id": "43",
+            "createdAt": "2015-03-23T04:13.56.666272023Z",
+            "updatedAt": "2015-03-23T04:13.56.666272023Z",
+            "name": "10% off teh nooest shirt!",
+            "type": "percent",
+            "code": "WIOFJ23948",
+            "campaignId": "1",
+            "startDate": "04-30-2025 12:34:23",
+            "endDate": "05-23-2025 02:24:55",
+            "filter": "product",
+            "once": true,
+            "productId": "1",
+            "enabled": true,
+            "amount": 10,
+            "used": 249
+        }
+
+### Deleting a Coupon [DELETE]
+Deleting a Coupon is as simple as passing its ID to the Coupon endpoint using
+the HTTP Delete method. You will not receive a response past the normal HTTP
+200.
+
+### Wholly replacing a Coupon [PUT]
+The PUT method will allow you to replace a given ID's data in its entirety.
+Passing in valid Coupon JSON (see the POST method), will overwrite any and all
+data existing on that ID.
+
+### Partially replacing a Coupon [PATCH]
+The PATCH method will allow you to replace a given ID's data in a piecemeal
+fashion.  Any fields passed in to a PATCH method will be updated with what you
+request, while any fields not specified in the JSON will be left alone.
+
+
 # Group Campaign
 This represents a single fundraising campaign.
 
@@ -34,6 +129,707 @@ This represents a single fundraising campaign.
 | links              | Important links related to the campaign not covered in other areas (such as media releases).                                                | []string              |
 
 
+# Group Order
+
+This object is a representation of a user's **confirmed purchase**.  The order should not be
+confused with a [Cart](#cart), which are prospective purchases.
+
+| Field Name | Field Description                                                                          | Type                    |
+| ---------- | -----------------                                                                          | ----                    |
+| createdAt  | The time the order first came to be.                                                       | string                  |
+| updatedAt  | The time the order was last modified (not necessarily by the user).                        | string                  |
+| id         | The internal unique identifier for this order.                                             | string                  |
+| userId     | The identifier for the user who placed this order.                                         | string                  |
+| shipping   | Charges for mailing the order in cents                                                     | int64                   |
+| tax        | Charges on the order levied by any relevant governments in cents                           | int64                   |
+| subtotal   | Charges from actual purchases in cents                                                     | int64                   |
+| total      | Net charge to be sent to the client cents. Includes Subtotal, Tax, and Shipping.           | int64                   |
+| items      | A list of LineItems that comprise this order.                                              | [[]LineItem](#lineitem) |
+| campaignId | The unique identifier for the fundraising campaign that spawned this order (if applicable) | string                  |
+| preorder   | A switch indicating whether or not this is a preorder.                                     | bool                    |
+| cancelled  | A switch indicating whether or not this order has been cancelled.                          | bool                    |
+| shipped    | A switch indicating whether or not this order has been shipped.                            | bool                    |
+| test       | A switch indicating whether or not this is a test order.                                   | bool                    |
+
+## Calls related to Orders [/order/{id}]
+Basic Order calls are keyed upon the unique ID of the Order.  As with all calls,
+it also requires an access key included with the request.
+
+### Get an Order [GET]
++ Response 200 (application/json)
+
+        {
+          "createdAt": "04-30-2025 12:34:23",
+          "updatedAt": "05-23-2025 02:24:55",
+          "id":        "VIJij32309JVOIWJWE",
+          "userId":    "jdoe",
+          "shipping":  300,
+          "tax":       0,
+          "subtotal":  1000,
+          "total":     1300,
+          "items": [
+            {
+              "productId": "SLD32diiSJ9293",
+              "productName": "Teh Nooest Meme T-Shirt",
+              "productSlug": "t-shirt",
+              "variantId": "FOIUVMOIS872348OIJDFWOIJ",
+              "variantSKU": "T-SHIRT-M",
+              "price": 1000,
+              "quantity": 1,
+              "weight": 11,
+              "taxable": true
+            }
+          ],
+          "campaignId": "WVEIOJ124902AIOJFJL",
+          "preorder":   true,
+          "cancelled":  false,
+          "shipped":    false,
+          "test":       false
+        }
+
+### Create an Order [POST]
++ Request (application/json)
+
+        {
+          "userId":    "jdoe",
+          "shipping":  300,
+          "tax":       0,
+          "subtotal":  1000,
+          "total":     1300,
+          "items": [
+            {
+              "productId": "SLD32diiSJ9293",
+              "productName": "Teh Nooest Meme T-Shirt",
+              "productSlug": "t-shirt",
+              "variantId": "FOIUVMOIS872348OIJDFWOIJ",
+              "variantSKU": "T-SHIRT-M",
+              "price": 1000,
+              "quantity": 1,
+              "weight": 11,
+              "taxable": true
+            }
+          ],
+          "campaignId": "WVEIOJ124902AIOJFJL",
+          "preorder":   true,
+          "cancelled":  false,
+          "shipped":    false,
+          "test":       false
+        }
+
++ Response 200 (application/json)
+
+        {
+          "createdAt": "04-30-2025 12:34:23",
+          "updatedAt": "05-23-2025 02:24:55",
+          "id":        "VIJij32309JVOIWJWE",
+          "userId":    "jdoe",
+          "shipping":  300,
+          "tax":       0,
+          "subtotal":  1000,
+          "total":     1300,
+          "items": [
+            {
+              "productId": "SLD32diiSJ9293",
+              "productName": "Teh Nooest Meme T-Shirt",
+              "productSlug": "t-shirt",
+              "variantId": "FOIUVMOIS872348OIJDFWOIJ",
+              "variantSKU": "T-SHIRT-M",
+              "price": 1000,
+              "quantity": 1,
+              "weight": 11,
+              "taxable": true
+            }
+          ],
+          "campaignId": "WVEIOJ124902AIOJFJL",
+          "preorder":   true,
+          "cancelled":  false,
+          "shipped":    false,
+          "test":       false
+        }
+
+### Deleting a Order [DELETE]
+Deleting a Order is as simple as passing its ID to the Order endpoint using
+the HTTP Delete method. You will not receive a response past the normal HTTP
+200.
+
+### Wholly replacing a Order [PUT]
+The PUT method will allow you to replace a given ID's data in its entirety.
+Passing in valid Order JSON (see the POST method), will overwrite any and all
+data existing on that ID.
+
+### Partially replacing a Order [PATCH]
+The PATCH method will allow you to replace a given ID's data in a piecemeal
+fashion.  Any fields passed in to a PATCH method will be updated with what you
+request, while any fields not specified in the JSON will be left alone.
+
+# Group Product
+
+This represents a single product (or, perk, if intangible) that is offered by a
+campaign.
+
+| Field Name  | Field Description                                                                                 | Type                         |
+| ----------  | -----------------------------------------------------------                                       | ------                       |
+| id          | The unique identifier for this product.                                                           | string                       |
+| slug        | The friendly Url representation (such as whizbang-200).                                           | string                       |
+| title       | The top-level title of this product (such as Whizbang 2000).                                      | string                       |
+| headline    | The most important one-liner regarding the product.                                               | string                       |
+| excerpt     | A short paragraph explaining the product.                                                         | string                       |
+| description | The long form explanation of the product.                                                         | string                       |
+| released    | The time associated with the product's release.                                                   | string                       |
+| available   | A switch indicating whether or not the product is available.                                      | bool                         |
+| addLabel    | The text used when staging the product for purchase.                                              | string                       |
+| headerImage | An image used as the primary representation of the product.                                       | [Media](#media)              |
+| media       | A set of Media resources representing the product.  Does not include headerImage.                 | [[]Media](#media)            |
+| variants    | A listing of variations of the same product, such as different sizes or different offered colors. | [[]ProductVariant](#variant) |
+
+## Calls related to Products [/product/{id}]
+Basic Product calls are keyed upon the unique ID of the Product.  As with all
+calls, it also requires an access key included with the request.
+
+### Get a Product [GET]
++ Response 200 (application/json)
+
+        {
+          "id": "SLD32diiSJ9293",
+          "slug": "t-shirt",
+          "title": "Teh Nooest Meme T-shirt!",
+          "headline": "Teh Nooest Meme, now for your chest (and/or face)!",
+          "excerpt": "Available in from sizes Much to Wow!",
+          "description": "Teh Nooest Meme, the funniest meme ever!  Now on your chest!",
+          "released": "01-21-2025 03:08:32",
+          "available": true,
+          "addLabel": "Pre-order now!",
+          "headerImage": {
+            "type": "image",
+            "alt": "wow",
+            "url": "http://suchtees.com/media/top/1.jpg",
+            "x": 400,
+            "y": 100
+          },
+          "media": [
+            {
+              "type": "image",
+              "alt": "such tee",
+              "url": "http://suchtees.com/media/top/2.jpg",
+              "x": 400,
+              "y": 100
+            },
+            {
+              "type": "image",
+              "alt": "much cloth",
+              "url": "http://suchtees.com/media/top/3.jpg",
+              "x": 200,
+              "y": 150
+            }
+          ],
+          "variants": [
+            {
+              "id": "FOIUVMOIS872348OIJDFWOIJ",
+              "sku": "T-SHIRT-M",
+              "price": 1000,
+              "stock": 30,
+              "weight": 11,
+              "dimensions": "5x5x5",
+              "options": {
+                "size": "much"
+              }
+            },
+            {
+              "id": "FOIUVMOIS872348OIJDFWOIJ",
+              "sku": "T-SHIRT-W",
+              "price": 1000,
+              "stock": 33,
+              "weight": 12,
+              "dimensions": "6x6x6",
+              "options": {
+                "size": "wow"
+              }
+            },
+          ]
+        }
+
+### Creating a Product [POST]
++ Request (application/json)
+
+        {
+          "slug": "t-shirt",
+          "title": "Teh Nooest Meme T-shirt!",
+          "headline": "Teh Nooest Meme, now for your chest (and/or face)!",
+          "excerpt": "Available in from sizes Much to Wow!",
+          "description": "Teh Nooest Meme, the funniest meme ever!  Now on your chest!",
+          "released": "01-21-2025 03:08:32",
+          "available": true,
+          "addLabel": "Pre-order now!",
+          "headerImage": {
+            "type": "image",
+            "alt": "wow",
+            "url": "http://suchtees.com/media/top/1.jpg",
+            "x": 400,
+            "y": 100
+          },
+          "media": [
+            {
+              "type": "image",
+              "alt": "such tee",
+              "url": "http://suchtees.com/media/top/2.jpg",
+              "x": 400,
+              "y": 100
+            },
+            {
+              "type": "image",
+              "alt": "much cloth",
+              "url": "http://suchtees.com/media/top/3.jpg",
+              "x": 200,
+              "y": 150
+            }
+          ],
+          "variants": [
+            {
+              "id": "FOIUVMOIS872348OIJDFWOIJ",
+              "sku": "T-SHIRT-M",
+              "price": 1000,
+              "stock": 30,
+              "weight": 11,
+              "dimensions": "5x5x5",
+              "options": {
+                "size": "much"
+              }
+            },
+            {
+              "id": "FOIUVMOIS872348OIJDFWOIJ",
+              "sku": "T-SHIRT-W",
+              "price": 1000,
+              "stock": 33,
+              "weight": 12,
+              "dimensions": "6x6x6",
+              "options": {
+                "size": "wow"
+              }
+            },
+          ]
+        }
+
++ Response 200 (application/json)
+
+        {
+          "id": "SLD32diiSJ9293",
+          "createdAt": "2015-03-23T04:13.56.666272023Z",
+          "updatedAt": "2015-03-23T04:13.56.666272023Z",
+          "slug": "t-shirt",
+          "title": "Teh Nooest Meme T-shirt!",
+          "headline": "Teh Nooest Meme, now for your chest (and/or face)!",
+          "excerpt": "Available in from sizes Much to Wow!",
+          "description": "Teh Nooest Meme, the funniest meme ever!  Now on your chest!",
+          "released": "01-21-2025 03:08:32",
+          "available": true,
+          "addLabel": "Pre-order now!",
+          "headerImage": {
+            "type": "image",
+            "alt": "wow",
+            "url": "http://suchtees.com/media/top/1.jpg",
+            "x": 400,
+            "y": 100
+          },
+          "media": [
+            {
+              "type": "image",
+              "alt": "such tee",
+              "url": "http://suchtees.com/media/top/2.jpg",
+              "x": 400,
+              "y": 100
+            },
+            {
+              "type": "image",
+              "alt": "much cloth",
+              "url": "http://suchtees.com/media/top/3.jpg",
+              "x": 200,
+              "y": 150
+            }
+          ],
+          "variants": [
+            {
+              "id": "FOIUVMOIS872348OIJDFWOIJ",
+              "sku": "T-SHIRT-M",
+              "price": 1000,
+              "stock": 30,
+              "weight": 11,
+              "dimensions": "5x5x5",
+              "options": {
+                "size": "much"
+              }
+            },
+            {
+              "id": "FOIUVMOIS872348OIJDFWOIJ",
+              "sku": "T-SHIRT-W",
+              "price": 1000,
+              "stock": 33,
+              "weight": 12,
+              "dimensions": "6x6x6",
+              "options": {
+                "size": "wow"
+              }
+            },
+          ]
+        }
+
+### Deleting a Product [DELETE]
+Deleting a Product is as simple as passing its ID to the Product endpoint using
+the HTTP Delete method. You will not receive a response past the normal HTTP
+200.
+
+### Wholly replacing a Product [PUT]
+The PUT method will allow you to replace a given ID's data in its entirety.
+Passing in valid Product JSON (see the POST method), will overwrite any and all
+data existing on that ID.
+
+### Partially replacing a Product [PATCH]
+The PATCH method will allow you to replace a given ID's data in a piecemeal
+fashion.  Any fields passed in to a PATCH method will be updated with what you
+request, while any fields not specified in the JSON will be left alone.
+
+# Group Variant
+The Variant object signifies specifics about
+an individual kind of Product.
+
+| Field Name | Field Description                                                                                                                              | Type                |
+| ---------- | -----------------                                                                                                                              | ----                |
+| id         | The unique internal identifier for this variant.                                                                                               | string              |
+| sku        | The unique external product identifier for this variant (helps with fulfillment)                                                               | string              |
+| name       | Display name for this variant                                                                                                                  | string              |
+| price      | The price of this variant in cents                                                                                                             | int64               |
+| inventory  | How many of the variant are currently in stock.                                                                                                | int                 |
+| weight     | How much the variant weighs. This is typically in ounces, but can be in grams, miligrams, or whatever else as long as the usage is consistent. | float               |
+| dimensions | The height by width by depth of the variant, physically. Typically in inches, but handles metric measurements fine with consistent use.        | string              |
+| options    | Metadata associated with the variant. It is designed to hold arbitrary data and can vary.                                                      | [[]Option](#option) |
+
+# Calls related to Variants [/variant/{id}]
+Basic Variant calls are keyed upon the unique ID of the Variant.  As with all
+calls, it also requires an access key included with the request.
+
+### Get a Variant [GET]
++ Response 200 (application/json)
+
+        {
+          "id": "FOIUVMOIS872348OIJDFWOIJ",
+          "createdAt": "2015-03-23T04:13.56.666272023Z",
+          "updatedAt": "2015-03-23T04:13.56.666272023Z",
+          "sku": "T-SHIRT-M",
+          "price": 1000,
+          "inventory": 30,
+          "weight": 11,
+          "dimensions": "5x5x5",
+          "options": {
+            "size": "much"
+          }
+        }
+
+### Create a Variant [POST]
++ Request (application/json)
+
+        {
+          "sku": "T-SHIRT-M",
+          "price": 1000,
+          "inventory": 30,
+          "weight": 11,
+          "dimensions": "5x5x5",
+          "options": {
+            "size": "much"
+          }
+        }
+
++ Response 200 (application/json)
+
+        {
+          "id": "FOIUVMOIS872348OIJDFWOIJ",
+          "createdAt": "2015-03-23T04:13.56.666272023Z",
+          "updatedAt": "2015-03-23T04:13.56.666272023Z",
+          "sku": "T-SHIRT-M",
+          "price": 1000,
+          "inventory": 30,
+          "weight": 11,
+          "dimensions": "5x5x5",
+          "options": {
+            "size": "much"
+          }
+        }
+
+### Deleting a Variant [DELETE]
+Deleting a Variant is as simple as passing its ID to the Variant endpoint using
+the HTTP Delete method. You will not receive a response past the normal HTTP
+200.
+
+### Wholly replacing a Variant [PUT]
+The PUT method will allow you to replace a given ID's data in its entirety.
+Passing in valid Variant JSON (see the POST method), will overwrite any and all
+data existing on that ID.
+
+### Partially replacing a Variant [PATCH]
+The PATCH method will allow you to replace a given ID's data in a piecemeal
+fashion.  Any fields passed in to a PATCH method will be updated with what you
+request, while any fields not specified in the JSON will be left alone.
+
+# Group User
+
+| Field Name     | Field Description                                                  | Type    |
+| ----------     | -----------------                                                  | ----    |
+| createdAt      | The time the user first came to be.                                | string    |
+| updatedAt      | The time the user was last modified (not necessarily by the user). | string    |
+| id             | The internal unique identifier.                                    | string  |
+| username       | The username for this user.                                        | string  |
+| firstName      | The first name for this user.                                      | string  |
+| lastName       | The last name for this user.                                       | string  |
+| firstName      | The first name for this user.                                      | string  |
+| phone          | The phone for this user.                                           | string  |
+| billingAddress | The billing address for this user.                                 | string |
+| shippingAddress| The shipping address for this user.                                 | string |
+| email          | The email for this user.                                           | string  |
+
+## Calls relating to Users [/user/{id}]
+Basic User calls are keyed upon the unique ID of the User.  As with all calls,
+it also requires an access key included with the request.
+
+### Get a User [GET]
++ Response 200 (application/json)
+
+    {
+      "id": "KawefZu3VY",
+      "createdAt": "2015-03-23T14:44:46.215269Z",
+      "updatedAt": "2015-03-23T14:44:46.597388Z",
+      "username": "",
+      "firstName": "",
+      "lastName": "",
+      "phone": "",
+      "billingAddress": {},
+      "shippingAddress": {},
+      "email": "dev@hanzo.ai"
+    }
+
+### Create a User [POST]
++ Request (application/json)
+
+    {
+      "username": "",
+      "firstName": "",
+      "lastName": "",
+      "phone": "",
+      "billingAddress": {},
+      "shippingAddress": {},
+      "email": "dev@hanzo.ai"
+    }
+
++ Response 200 (application/json)
+
+    {
+      "id": "KawefZu3VY",
+      "createdAt": "2015-03-23T14:44:46.215269Z",
+      "updatedAt": "2015-03-23T14:44:46.597388Z",
+      "username": "",
+      "firstName": "",
+      "lastName": "",
+      "phone": "",
+      "billingAddress": {},
+      "shippingAddress": {},
+      "email": "dev@hanzo.ai"
+    }
+
+### Deleting a User [DELETE]
+Deleting a User is as simple as passing its ID to the User endpoint using
+the HTTP Delete method. You will not receive a response past the normal HTTP
+200.
+
+### Wholly replacing a User [PUT]
+The PUT method will allow you to replace a given ID's data in its entirety.
+Passing in valid User JSON (see the POST method), will overwrite any and all
+data existing on that ID.
+
+### Partially replacing a User [PATCH]
+The PATCH method will allow you to replace a given ID's data in a piecemeal
+fashion.  Any fields passed in to a PATCH method will be updated with what you
+request, while any fields not specified in the JSON will be left alone.
+
+# Group Store
+
+| Field Name        | Field Description                                                                                                                             | Type              |
+| ----------        | -----------------                                                                                                                             | ----              |
+| name              | The publicly readable name for the store.                                                                                                     | string            |
+| slug              | The unique human readable ID for the store.  Used in the url <slug>.crowdstart.com.                                                           | string            |
+| hostname          | Along with the Prefix, designates where the store is hosted, if not on Crowdstart.com.                                                        | string            |
+| prefix            | Along with the Hostname, designates where the store is hosted, if not on Crowdstart.com.                                                      | string            |
+| currency          | The currency type for the store (such as USD or GBP)                                                                                          | string            |
+| taxNexus          | A list of addresses that comprise taxable locations, for computing sales tax, etc.                                                            | []Address         |
+| listings          | An array of Product-like objects that contains overrides for any products associated with the store.  Useful for temporary or special offers. | []Product         |
+
+## Calls related to Stores [/store/{id}]
+Basic Store calls are keyed upon the unique ID of the Store.  As with all calls,
+it also requires an access key included with the request.
+
+### Get a store [GET]
++ Response 200 (application/json)
+    {
+      "id": "5LGwtbfDrL",
+      "createdAt": "2015-04-10T00:38:40.55973Z",
+      "updatedAt": "2015-04-10T01:16:54.944356Z",
+      "name": "default",
+      "slug": "suchtees",
+      "hostname": "www.suchtees.com",
+      "prefix": "/",
+      "currency": "usd",
+      "taxNexus": [
+        {
+          "line1": "123 Such St",
+          "city": "Tee City"
+        },
+        {
+          "line1": "456 Noo Ln",
+          "city": "Memetown"
+        }
+      ],
+      "listings": {
+        "vMA5cpSREM": {
+          "productId": "vMA5cpSREM",
+          "name": null,
+          "sold": null,
+          "price": 30000
+        }
+      }
+    }
+
+## Store Product Subcalls [/store/{id}/product/{key}]
+It is possible to access the products belonging to a store by passing in the
+store's unique identifier, followed by the product's unique key.  As with all
+calls, this also requires an access key to be included with the request.
+
+### Get a Store's Product [GET]
++ Response 200 (application/json)
+    {
+      "id": "QMZncoubZM",
+      "createdAt": "2015-04-10T00:38:40.428135Z",
+      "updatedAt": "2015-04-10T01:16:54.858432Z",
+      "slug": "doge-shirt",
+      "sku": "",
+      "currency": "usd",
+      "price": 2000,
+      "shipping": 0,
+      "inventory": 0,
+      "sold": 0,
+      "weight": 0,
+      "weightUnit": "",
+      "dimensions": "",
+      "taxable": false,
+      "name": "Such T-shirt",
+      "headline": "wow  such shirt  much tee",
+      "excerpt": "",
+      "description": "wow\n\tã€€ã€€ã€€ã€€ã€€ã€€such shirt\n\tmuch tee\n\n\t\t\tnice shop\n\n\tã€€so hip\n\n\tã€€ã€€ã€€ã€€so doge\n\t",
+      "headerImage": {
+        "type": "",
+        "alt": "",
+        "url": "",
+        "x": 0,
+        "y": 0
+      },
+      "media": null,
+      "available": false,
+      "hidden": false,
+      "availability": {
+        "active": false,
+        "startDate": "0001-01-01T00:00:00Z",
+        "endDate": "0001-01-01T00:00:00Z"
+      },
+      "preorder": false,
+      "addLabel": "",
+      "variants": [],
+      "options": [
+        {
+          "name": "Size",
+          "values": [
+            "Much",
+            "Wow"
+          ]
+        }
+      ]
+    }
+
+## Store Variant Subcalls [/store/{id}/variant/{key}]
+It is possible to access the product variants organized under a store by
+providing the store's unique identifier and the variant's unique key. As with
+all calls, this requires an API key included along with the request.
+
+### Get a store's variant [GET]
++ Response 200 (application/json)
+
+        {
+          "id": "FOIUVMOIS872348OIJDFWOIJ",
+          "createdAt": "2015-03-23T04:13.56.666272023Z",
+          "updatedAt": "2015-03-23T04:13.56.666272023Z",
+          "sku": "T-SHIRT-M",
+          "price": 1000,
+          "inventory": 30,
+          "weight": 11,
+          "dimensions": "5x5x5",
+          "options": {
+            "size": "much"
+          }
+        }
+
+# Group Additional objects
+These objects are not tied to any particular route, but are generally retrieved
+as part of another request.
+
+## Group Dates
+Dates are always RFC3339.
+
+## Group Currency
+All money measurements, per the object definitions, are in cents, and are
+returned only in whole numbers (no decimal places). Therefore, `$1 USD` will
+be returned as `100`, and `$.01 USD` will be returned as `1`.
+
+## Group CouponType
+**CouponType** is a string which represents how the discount should be applied.
+
+| Value         | Description                                   |
+| -----         | -----------                                   |
+| flat          | Discounts amount in cents from the subtotal   |
+| percent       | Discounts amount as a percent of subtotal     |
+| free_shipping | Discounts the cost of shipping from the total |
+
+## Group Category
+This string expresses the general classification or division your campaign falls
+under.
+
+This list is under constant re-evaluation, but assigned values will never
+change.  If you would like to request a change to this list, contact us at
+support@crowdstart.com.
+
+| Value        | Description   |
+| -------      | ------------- |
+| "arts"       | Arts          |
+| "fashion"    | Fashion       |
+| "film"       | Film          |
+| "food"       | Food          |
+| "gaming"     | Gaming        |
+| "health"     | Health        |
+| "music"      | Music         |
+| "sports"     | Sports        |
+| "technology" | Technology    |
+
+## Group LineItem
+This object is a representation of one particular instance of a customer
+requesting a [Product](#product). It contains some fields associated with a [Product
+variant](#variant). This can be either a prospective request (in the case of [Cart](#cart)),
+or a confirmed one (in the case of [Order](#order))
+
+| Field Name   | Field Description                                                                                                                                                     | Type   |
+| ----------   | -----------------                                                                                                                                                     | ----   |
+| productId    | The specific identifier for the ProductId referenced in this LineItem.  This is a computed field.                                                                     | string |
+| productName  | The specific identifier for the ProductName referenced in this LineItem.                                                                                              | string |
+| productSlug  | The specific identifier for the [Product](#Product) referenced in this LineItem.  This is a computed field, related to the data from the Product property (see below) | string |
+| collectionId | The collection ID.                                                                                                                                                    | string |
+| variantId    | The specific item type ID or perk type being requested.                                                                                                               | string |
+| variantName  | The specific item type Name or perk type being requested.                                                                                                             | string |
+| variantSKU   | The specific item type variant SKU or perk type being requested.                                                                                                      | string |
+| price        | The price of this LineItem in cents.                                                                                                                                  | int    |
+| quantity     | The amount of the item/perk requested in this line.                                                                                                                   | int    |
+| weight       | The item weight, typically in ounces.                                                                                                                                 | int    |
 # Group Payments
 
 ## Charge [/charge]
@@ -352,10 +1148,6 @@ Captures the payment for an order
           "refunded":0,
           "fee":0,
           "billingAddress":{
-
-          },
-          "shippingAddress":{
-
           },
           "items":[
             {
@@ -373,7 +1165,6 @@ Captures the payment for an order
             }
           ],
           "discounts":[
-
           ],
           "payments":[
             {
