@@ -3,6 +3,7 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
+	"crowdstart.io/models2"
 	"crowdstart.io/models2/product"
 	"crowdstart.io/models2/store"
 	"crowdstart.io/models2/types/currency"
@@ -20,6 +21,7 @@ var Store = New("store", func(c *gin.Context) *store.Store {
 	stor.Hostname = "www.suchtees.com"
 	stor.Prefix = "/"
 	stor.Currency = currency.USD
+	stor.TaxNexus = []models.Address{models.Address{Line1: "123 Such St", City: "Tee City"}, models.Address{Line1: "456 Noo Ln", City: "Memetown"}}
 
 	// Fetch first product
 	prod := Product(c).(*product.Product)
