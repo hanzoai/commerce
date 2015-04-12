@@ -396,6 +396,7 @@ Captures the payment for an order
             "trackingNumber":""
           }
         }
+
 # Group Coupon
 This object is a representation of special offers that provide discounts
 associated with a certain order or item.
@@ -478,18 +479,23 @@ calls, it also requires an access key included with the request.
 ### Deleting a Coupon [DELETE]
 Deleting a Coupon is as simple as passing its ID to the Coupon endpoint using
 the HTTP Delete method. You will not receive a response past the normal HTTP
-200.
+204.
+
++ Response 204 (application/json)
 
 ### Wholly replacing a Coupon [PUT]
 The PUT method will allow you to replace a given ID's data in its entirety.
 Passing in valid Coupon JSON (see the POST method), will overwrite any and all
 data existing on that ID.
 
++ Response 201 (application/json)
+
 ### Partially replacing a Coupon [PATCH]
 The PATCH method will allow you to replace a given ID's data in a piecemeal
 fashion.  Any fields passed in to a PATCH method will be updated with what you
 request, while any fields not specified in the JSON will be left alone.
 
++ Response 201 (application/json)
 
 # Group Campaign
 This represents a single fundraising campaign.
@@ -1160,19 +1166,19 @@ all calls, this requires an API key included along with the request.
           }
         }
 
-# Group Additional objects
+## Group Additional objects
 These objects are not tied to any particular route, but are generally retrieved
 as part of another request.
 
-## Dates
+### Dates
 Dates are always RFC3339.
 
-## Currency
+### Currency
 All money measurements, per the object definitions, are in cents, and are
 returned only in whole numbers (no decimal places). Therefore, `$1 USD` will
 be returned as `100`, and `$.01 USD` will be returned as `1`.
 
-## CouponType
+### CouponType
 **CouponType** is a string which represents how the discount should be applied.
 
 | Value         | Description                                   |
@@ -1181,7 +1187,7 @@ be returned as `100`, and `$.01 USD` will be returned as `1`.
 | percent       | Discounts amount as a percent of subtotal     |
 | free_shipping | Discounts the cost of shipping from the total |
 
-## Category
+### Category
 This string expresses the general classification or division your campaign falls
 under.
 
@@ -1201,7 +1207,7 @@ support@crowdstart.com.
 | "sports"     | Sports        |
 | "technology" | Technology    |
 
-## LineItem
+### LineItem
 This object is a representation of one particular instance of a customer
 requesting a [Product](#product). It contains some fields associated with a [Product
 variant](#variant). This can be either a prospective request (in the case of [Cart](#cart)),
@@ -1219,4 +1225,3 @@ or a confirmed one (in the case of [Order](#order))
 | price        | The price of this LineItem in cents.                                                                                                                                  | int    |
 | quantity     | The amount of the item/perk requested in this line.                                                                                                                   | int    |
 | weight       | The item weight, typically in ounces.                                                                                                                                 | int    |
-
