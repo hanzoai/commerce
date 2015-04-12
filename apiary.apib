@@ -749,6 +749,28 @@ calls, this also requires an access key to be included with the request.
       ]
     }
 
+## Store Variant Subcalls [/store/{id}/variant/{key}]
+It is possible to access the product variants organized under a store by
+providing the store's unique identifier and the variant's unique key. As with
+all calls, this requires an API key included along with the request.
+
+### Get a store's variant [GET]
++ Response 200 (application/json)
+
+        {
+          "id": "FOIUVMOIS872348OIJDFWOIJ",
+          "createdAt": "2015-03-23T04:13.56.666272023Z",
+          "updatedAt": "2015-03-23T04:13.56.666272023Z",
+          "sku": "T-SHIRT-M",
+          "price": 1000,
+          "inventory": 30,
+          "weight": 11,
+          "dimensions": "5x5x5",
+          "options": {
+            "size": "much"
+          }
+        }
+
 ## Group Additional objects
 These objects are not tied to any particular route, but are generally retrieved
 as part of another request.
