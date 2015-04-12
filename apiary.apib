@@ -247,8 +247,8 @@ Dates are always RFC3339.
 
 ### Group Currency
 All money measurements, per the object definitions, are in cents, and are
-  returned only in whole numbers (no decimal places). Therefore, `$1 USD` will
-  be returned as `100`, and `$.01 USD` will be returned as `1`.
+returned only in whole numbers (no decimal places). Therefore, `$1 USD` will
+be returned as `100`, and `$.01 USD` will be returned as `1`.
 
 ### Group CouponType
 **CouponType** is a string which represents how the discount should be applied.
@@ -377,6 +377,7 @@ it also requires an access key included with the request.
         }
       }
     }
+
 ## Store Product Subcalls [/store/{id}/product/{key}]
 It is possible to access the products belonging to a store by passing in the
 store's unique identifier, followed by the product's unique key.  As with all
