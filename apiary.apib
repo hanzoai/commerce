@@ -1170,15 +1170,15 @@ all calls, this requires an API key included along with the request.
 These objects are not tied to any particular route, but are generally retrieved
 as part of another request.
 
-### Dates
+### Group Dates
 Dates are always RFC3339.
 
-### Currency
+### Group Currency
 All money measurements, per the object definitions, are in cents, and are
 returned only in whole numbers (no decimal places). Therefore, `$1 USD` will
 be returned as `100`, and `$.01 USD` will be returned as `1`.
 
-### CouponType
+### Group CouponType
 **CouponType** is a string which represents how the discount should be applied.
 
 | Value         | Description                                   |
@@ -1187,7 +1187,7 @@ be returned as `100`, and `$.01 USD` will be returned as `1`.
 | percent       | Discounts amount as a percent of subtotal     |
 | free_shipping | Discounts the cost of shipping from the total |
 
-### Category
+### Group Category
 This string expresses the general classification or division your campaign falls
 under.
 
@@ -1207,7 +1207,7 @@ support@crowdstart.com.
 | "sports"     | Sports        |
 | "technology" | Technology    |
 
-### LineItem
+### Group LineItem
 This object is a representation of one particular instance of a customer
 requesting a [Product](#product). It contains some fields associated with a [Product
 variant](#variant). This can be either a prospective request (in the case of [Cart](#cart)),
