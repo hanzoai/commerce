@@ -222,17 +222,18 @@ install-deps:
 
 # DEV SERVER
 serve: assets
+	$(bebop) &
 	$(dev_appserver) $(gae_development)
 
 serve-clear-datastore: assets
+	$(bebop) &
 	$(dev_appserver) --clear_datastore=true $(gae_development)
 
 serve-public: assets
+	$(bebop) &
 	$(dev_appserver) --host=0.0.0.0 $(gae_development)
 
-# LIVE RELOAD SERVER
-serve-reload: assets
-	$(bebop) &
+serve-no-reload: assets
 	$(dev_appserver) $(gae_development)
 
 # GOLANG TOOLS

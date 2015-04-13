@@ -295,9 +295,6 @@ Captures the payment for an order
 ### Capture payment [POST]
 + Request (application/json)
 
-+ Parameters
-    + id: (string) - Order id.
-
 + Response 200 (application/json)
 
         {
@@ -483,14 +480,14 @@ the HTTP Delete method. You will not receive a response past the normal HTTP
 
 + Response 204 (application/json)
 
-### Wholly replacing a Coupon [PUT]
+### Updating a Coupon [PUT]
 The PUT method will allow you to replace a given ID's data in its entirety.
 Passing in valid Coupon JSON (see the POST method), will overwrite any and all
 data existing on that ID.
 
 + Response 201 (application/json)
 
-### Partially replacing a Coupon [PATCH]
+### Patching a Coupon [PATCH]
 The PATCH method will allow you to replace a given ID's data in a piecemeal
 fashion.  Any fields passed in to a PATCH method will be updated with what you
 request, while any fields not specified in the JSON will be left alone.
@@ -649,14 +646,14 @@ the HTTP Delete method. You will not receive a response past the normal HTTP
 
 + Response 204 (application/json)
 
-### Wholly replacing a Order [PUT]
+### Updating a Order [PUT]
 The PUT method will allow you to replace a given ID's data in its entirety.
 Passing in valid Order JSON (see the POST method), will overwrite any and all
 data existing on that ID.
 
 + Response 201 (application/json)
 
-### Partially replacing a Order [PATCH]
+### Patching a Order [PATCH]
 The PATCH method will allow you to replace a given ID's data in a piecemeal
 fashion.  Any fields passed in to a PATCH method will be updated with what you
 request, while any fields not specified in the JSON will be left alone.
@@ -880,14 +877,14 @@ the HTTP Delete method. You will not receive a response past the normal HTTP
 
 + Response 204 (application/json)
 
-### Wholly replacing a Product [PUT]
+### Updating a Product [PUT]
 The PUT method will allow you to replace a given ID's data in its entirety.
 Passing in valid Product JSON (see the POST method), will overwrite any and all
 data existing on that ID.
 
 + Response 201 (application/json)
 
-### Partially replacing a Product [PATCH]
+### Patching a Product [PATCH]
 The PATCH method will allow you to replace a given ID's data in a piecemeal
 fashion.  Any fields passed in to a PATCH method will be updated with what you
 request, while any fields not specified in the JSON will be left alone.
@@ -967,14 +964,14 @@ the HTTP Delete method. You will not receive a response past the normal HTTP
 
 + Response 204 (application/json)
 
-### Wholly replacing a Variant [PUT]
+### Updating a Variant [PUT]
 The PUT method will allow you to replace a given ID's data in its entirety.
 Passing in valid Variant JSON (see the POST method), will overwrite any and all
 data existing on that ID.
 
 + Response 201 (application/json)
 
-### Partially replacing a Variant [PATCH]
+### Patching a Variant [PATCH]
 The PATCH method will allow you to replace a given ID's data in a piecemeal
 fashion.  Any fields passed in to a PATCH method will be updated with what you
 request, while any fields not specified in the JSON will be left alone.
@@ -1052,14 +1049,14 @@ the HTTP Delete method. You will not receive a response past the normal HTTP
 
 + Response 204 (application/json)
 
-### Wholly replacing a User [PUT]
+### Updating a User [PUT]
 The PUT method will allow you to replace a given ID's data in its entirety.
 Passing in valid User JSON (see the POST method), will overwrite any and all
 data existing on that ID.
 
 + Response 201 (application/json)
 
-### Partially replacing a User [PATCH]
+### Patching a User [PATCH]
 The PATCH method will allow you to replace a given ID's data in a piecemeal
 fashion.  Any fields passed in to a PATCH method will be updated with what you
 request, while any fields not specified in the JSON will be left alone.
@@ -1199,14 +1196,14 @@ the HTTP Delete method. You will not receive a response past the normal HTTP
 
 + Response 204 (application/json)
 
-### Wholly replacing a Variant [PUT]
+### Updating a Variant [PUT]
 The PUT method will allow you to replace a given ID's data in its entirety.
 Passing in valid Variant JSON (see the POST method), will overwrite any and all
 data existing on that ID.
 
 + Response 201 (application/json)
 
-### Partially replacing a Variant [PATCH]
+### Patching a Variant [PATCH]
 The PATCH method will allow you to replace a given ID's data in a piecemeal
 fashion.  Any fields passed in to a PATCH method will be updated with what you
 request, while any fields not specified in the JSON will be left alone.

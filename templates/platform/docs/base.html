@@ -150,7 +150,7 @@
             <section class="site-content site-section">
                 <div class="container">
                     <div class="row">
-                        <div class="col-md-3 visible-md visible-lg hidden-print" role="complementary">
+                        <div class="col-md-2 visible-md visible-lg hidden-print" role="complementary">
                             <nav id="sidebar">
                                 <ul class="nav">
                                     <li><a href="{{ urlFor("platform", "/docs") }}">Getting Started</a></li>
@@ -161,7 +161,7 @@
                             </nav>
                         </div>
 
-                        <div class="col-md-9" role="main">
+                        <div class="col-md-10" role="main">
                             {% block content %}
                             {% endblock %}
                         </div>
@@ -257,10 +257,19 @@
             #sidebar.affix {
                 top: 80px;
             }
+            #nav.affix {
+                top: 80px;
+            }
         </style>
 
         <script>
             $('#sidebar').affix({
+                offset: {
+                    top: 205
+                }
+            })
+
+            $('#nav').affix({
                 offset: {
                     top: 205
                 }
