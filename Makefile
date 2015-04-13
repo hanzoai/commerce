@@ -343,7 +343,7 @@ docs:
 	@sed -i .bak -e 's/table>/table class="table table-striped table-borderless table-vcenter">/' templates/platform/docs/_generated/getting-started.html
 	@rm templates/platform/docs/_generated/getting-started.html.bak
 
-	pandoc --no-highlight --toc ../crowdstart.wiki/API.md > templates/platform/docs/_generated/api.html
+	node_modules/.bin/aglio -i apiary.apib -o templates/platform/docs/_generated/api.html
 	@sed -i .bak -e 's/class="json/class="lang-javascript/' templates/platform/docs/_generated/api.html
 	@sed -i .bak -e 's/table>/table class="table table-striped table-borderless table-vcenter">/' templates/platform/docs/_generated/api.html
 	@rm templates/platform/docs/_generated/api.html.bak
