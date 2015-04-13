@@ -647,15 +647,21 @@ Deleting a Order is as simple as passing its ID to the Order endpoint using
 the HTTP Delete method. You will not receive a response past the normal HTTP
 200.
 
++ Response 204 (application/json)
+
 ### Wholly replacing a Order [PUT]
 The PUT method will allow you to replace a given ID's data in its entirety.
 Passing in valid Order JSON (see the POST method), will overwrite any and all
 data existing on that ID.
 
++ Response 201 (application/json)
+
 ### Partially replacing a Order [PATCH]
 The PATCH method will allow you to replace a given ID's data in a piecemeal
 fashion.  Any fields passed in to a PATCH method will be updated with what you
 request, while any fields not specified in the JSON will be left alone.
+
++ Response 201 (application/json)
 
 # Group Product
 
@@ -872,15 +878,21 @@ Deleting a Product is as simple as passing its ID to the Product endpoint using
 the HTTP Delete method. You will not receive a response past the normal HTTP
 200.
 
++ Response 204 (application/json)
+
 ### Wholly replacing a Product [PUT]
 The PUT method will allow you to replace a given ID's data in its entirety.
 Passing in valid Product JSON (see the POST method), will overwrite any and all
 data existing on that ID.
 
++ Response 201 (application/json)
+
 ### Partially replacing a Product [PATCH]
 The PATCH method will allow you to replace a given ID's data in a piecemeal
 fashion.  Any fields passed in to a PATCH method will be updated with what you
 request, while any fields not specified in the JSON will be left alone.
+
++ Response 201 (application/json)
 
 # Group Variant
 The Variant object signifies specifics about
@@ -953,15 +965,21 @@ Deleting a Variant is as simple as passing its ID to the Variant endpoint using
 the HTTP Delete method. You will not receive a response past the normal HTTP
 200.
 
++ Response 204 (application/json)
+
 ### Wholly replacing a Variant [PUT]
 The PUT method will allow you to replace a given ID's data in its entirety.
 Passing in valid Variant JSON (see the POST method), will overwrite any and all
 data existing on that ID.
 
++ Response 201 (application/json)
+
 ### Partially replacing a Variant [PATCH]
 The PATCH method will allow you to replace a given ID's data in a piecemeal
 fashion.  Any fields passed in to a PATCH method will be updated with what you
 request, while any fields not specified in the JSON will be left alone.
+
++ Response 201 (application/json)
 
 # Group User
 
@@ -1032,15 +1050,21 @@ Deleting a User is as simple as passing its ID to the User endpoint using
 the HTTP Delete method. You will not receive a response past the normal HTTP
 200.
 
++ Response 204 (application/json)
+
 ### Wholly replacing a User [PUT]
 The PUT method will allow you to replace a given ID's data in its entirety.
 Passing in valid User JSON (see the POST method), will overwrite any and all
 data existing on that ID.
 
++ Response 201 (application/json)
+
 ### Partially replacing a User [PATCH]
 The PATCH method will allow you to replace a given ID's data in a piecemeal
 fashion.  Any fields passed in to a PATCH method will be updated with what you
 request, while any fields not specified in the JSON will be left alone.
+
++ Response 201 (application/json)
 
 # Group Store
 
@@ -1165,6 +1189,27 @@ all calls, this requires an API key included along with the request.
             "size": "much"
           }
         }
+
+### Deleting a Variant [DELETE]
+Deleting a Variant is as simple as passing its ID to the Variant endpoint using
+the HTTP Delete method. You will not receive a response past the normal HTTP
+200.
+
++ Response 204 (application/json)
+
+### Wholly replacing a Variant [PUT]
+The PUT method will allow you to replace a given ID's data in its entirety.
+Passing in valid Variant JSON (see the POST method), will overwrite any and all
+data existing on that ID.
+
++ Response 201 (application/json)
+
+### Partially replacing a Variant [PATCH]
+The PATCH method will allow you to replace a given ID's data in a piecemeal
+fashion.  Any fields passed in to a PATCH method will be updated with what you
+request, while any fields not specified in the JSON will be left alone.
+
++ Response 201 (application/json)
 
 # Group Additional objects
 These objects are not tied to any particular route, but are generally retrieved
