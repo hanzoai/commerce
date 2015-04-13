@@ -113,19 +113,9 @@ style
                 span.open
                     display none
 
-        // #nav
-        //     width: inherit
-        //     margin-top 38px
-        //     max-width 255px
-        //     top 0
-        //     bottom 0
-        //     padding-right 12px
-        //     padding-bottom 12px
-        //     overflow-y auto
+.row
+    .col-md-9
+        +Content('info', false)
 
-        // @media(max-width: 1199px)
-        //     #nav
-        //         max-width 212px
-
-// CONTENT
-+Content('info', false)
+    .col-md-3
+        +Nav(false, true)
