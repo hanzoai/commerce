@@ -66,6 +66,9 @@ module.exports =
   ]
 
   compilers:
+    jade: (src) ->
+      return 'node_modules/.bin/aglio -t templates/platform/docs/blueprint/theme.jade -i apiary.apib -o templates/platform/docs/_generated/api.html'
+
     coffee: (src) ->
       # try to just optimize module changed
       if /^assets\/js\/checkout/.test src
