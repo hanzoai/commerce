@@ -398,18 +398,18 @@ type Account struct {
 	Account            string `json:"Account,omitempty"`
 	Master             string `json:"Master,omitempty"`
 
-	// Zendesk integration items
-	ZendeskCreatedUpdatedFlagC    string `json:"Zendesk__createdUpdatedFlag__c,omitempty"`
-	ZendeskDomainMappingC         string `json:"Zendesk__Domain_Mapping__c,omitempty"`
-	ZendeskLastSyncDataC          string `json:"Zendesk__Last_Sync_Date__c,omitempty"`
-	ZendeskLastSyncStatusC        string `json:"Zendesk__Last_Sync_Status__c,omitempty"`
-	ZendeskNotesC                 string `json:"Zendesk__Notes__c,omitempty"`
-	ZendeskTagsC                  string `json:"Zendesk__Tags__c,omitempty"`
-	ZendeskZendeskOldTagsC        string `json:"Zendesk__Zendesk_oldTags__c,omitempty"`
-	ZendeskZendeskOutofSyncC      string `json:"Zendesk__Zendesk_OutofSync__c,omitempty"`
-	ZendeskZendeskOrganizationC   string `json:"Zendesk__Zendesk_Organization__c,omitempty"`
-	ZendeskZendeskOrganizationIdC string `json:"Zendesk__Zendesk_Organization_Id__c,omitempty"`
-	ZendeskZendeskResultC         string `json:"Zendesk__Result__c,omitempty"`
+	// // Zendesk integration items
+	// ZendeskCreatedUpdatedFlagC    string `json:"Zendesk__createdUpdatedFlag__c,omitempty"`
+	// ZendeskDomainMappingC         string `json:"Zendesk__Domain_Mapping__c,omitempty"`
+	// ZendeskLastSyncDataC          string `json:"Zendesk__Last_Sync_Date__c,omitempty"`
+	// ZendeskLastSyncStatusC        string `json:"Zendesk__Last_Sync_Status__c,omitempty"`
+	// ZendeskNotesC                 string `json:"Zendesk__Notes__c,omitempty"`
+	// ZendeskTagsC                  string `json:"Zendesk__Tags__c,omitempty"`
+	// ZendeskZendeskOldTagsC        string `json:"Zendesk__Zendesk_oldTags__c,omitempty"`
+	// ZendeskZendeskOutofSyncC      string `json:"Zendesk__Zendesk_OutofSync__c,omitempty"`
+	// ZendeskZendeskOrganizationC   string `json:"Zendesk__Zendesk_Organization__c,omitempty"`
+	// ZendeskZendeskOrganizationIdC string `json:"Zendesk__Zendesk_Organization_Id__c,omitempty"`
+	// ZendeskZendeskResultC         string `json:"Zendesk__Result__c,omitempty"`
 }
 
 func (a *Account) Read(so SObjectCompatible) error {
