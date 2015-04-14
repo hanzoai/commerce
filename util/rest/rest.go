@@ -95,12 +95,6 @@ func (r Rest) Route(router router.Router, mw ...gin.HandlerFunc) {
 	// Create group for our API routes
 	group := router.Group(prefix)
 
-	// Use permissive CORS policy for all API routes.
-	group.Use(middleware.AccessControl("*"))
-	// group.OPTIONS("*wildcard", func(c *gin.Context) {
-	// 	c.Next()
-	// })
-
 	if !r.DefaultNamespace {
 		// Automatically namespace requests
 		mw = append(mw, Namespaced)

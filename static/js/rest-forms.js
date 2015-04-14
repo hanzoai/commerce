@@ -1,12 +1,6 @@
 // This function creates handlers for the Post/Get handlers of a restful api
 var NewRestAPI = (function() {
-  return function(apiUrl, token, onErrorHandler, fieldProcessors) {
-    // Make sure there is a slash on the path
-    var path = apiUrl;
-    if (path.substr(-1) === '/') {
-      path = path.substr(0, path.length-1)
-    }
-
+  return function(endpoint, token, onErrorHandler, fieldProcessors) {
     if (!fieldProcessors) {
       fieldProcessors = {};
     }
@@ -18,11 +12,11 @@ var NewRestAPI = (function() {
     return {
       // Get request
       get: function(handler, params) {
-        this.ajax('GET', handler, $form, '', params);
+        this.ajax('GET', handler, null, null, params);
       },
       // Post request
       post: function(handler, $form, params) {
-        this.ajax('POST', handler, $form, '', params);
+        this.ajax('POST', handler, $form, null, params);
       },
       // Put request
       put: function(handler, $form, id, params) {
@@ -32,16 +26,10 @@ var NewRestAPI = (function() {
         this.ajax('DELETE', handler, null, id, params);
       },
       ajax: function(method, handler, $form, id, params) {
-        if (id == null) {
-          id = '';
-        } else {
-          id = '/' + id;
-        }
-
         var paramStrs = [];
         var prop;
         if (params) {
-          for (var prop in params) {
+          for (prop in params) {
             if (params.hasOwnProperty(prop)) {
               paramStrs.push(prop + '=' + params[prop]);
             }
@@ -51,7 +39,7 @@ var NewRestAPI = (function() {
         var formJSON;
         if ($form) {
           var formObj = $form.serializeObject();
-          for (var prop in formObj) {
+          for (prop in formObj) {
             if (fieldProcessors[prop]) {
               formObj[prop] = fieldProcessors[prop](formObj[prop]);
             }
@@ -61,10 +49,18 @@ var NewRestAPI = (function() {
           formJSON = '';
         }
 
+        // Construct URI optionally using id
+        var uri = (endpoint + '/' + (id || '')).replace(/\/+$/, '');
+
+        // Append params to URI
+        if (paramStrs.length > 0) {
+          uri = uri + '?' + paramStrs.join('&');
+        }
+
         $.ajax({
+          url: uri,
           type: method,
           headers: {Authorization: token},
-          url: path + id + '?' + paramStrs.join('&'),
           data: formJSON,
           contentType: 'application/json; charset=utf-8',
           dataType: 'json',
