@@ -15,6 +15,8 @@ import (
 	"crowdstart.io/util/log"
 )
 
+var EarliestDate = time.Date(1900, 1, 1, 1, 1, 1, 1, time.UTC)
+
 var ErrorUserTypeRequired = errors.New("Parameter needs to be of type User")
 var ErrorOrderTypeRequired = errors.New("Parameter needs to be of type Order")
 var ErrorShouldNotCall = errors.New("Function should not be called")
@@ -633,7 +635,11 @@ func (o *Order) Read(so SObjectCompatible) error {
 		return ErrorOrderTypeRequired
 	}
 
-	o.EffectiveDate = formatDate(order.CreatedAt)
+	createdAt := order.CreatedAt
+	if createdAt.Before(EarliestDate) {
+		createdAt = EarliestDate
+	}
+	o.EffectiveDate = formatDate(createdAt)
 
 	o.BillingStreet = order.BillingAddress.Line1 + "\n" + order.BillingAddress.Line2
 	o.BillingCity = order.BillingAddress.City
