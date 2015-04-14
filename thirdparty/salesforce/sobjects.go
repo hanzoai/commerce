@@ -39,8 +39,7 @@ var zeroTime = time.Time{}
 // GMT, or just after midnight on December 31, 4000. In our case, we default to
 // January 1, 1900 UTC.
 func formatDate(t time.Time) string {
-	if t == zeroTime {
-		t = time.Date(1900, time.January, 1, 0, 0, 0, 0, time.UTC)
+	if t.Before(EarliestDate) {
 		t = time.Now()
 	}
 	return t.Format(time.RFC3339)
@@ -635,11 +634,7 @@ func (o *Order) Read(so SObjectCompatible) error {
 		return ErrorOrderTypeRequired
 	}
 
-	createdAt := order.CreatedAt
-	if createdAt.Before(EarliestDate) {
-		createdAt = EarliestDate
-	}
-	o.EffectiveDate = formatDate(createdAt)
+	o.EffectiveDate = formatDate(order.CreatedAt)
 
 	o.BillingStreet = order.BillingAddress.Line1 + "\n" + order.BillingAddress.Line2
 	o.BillingCity = order.BillingAddress.City
