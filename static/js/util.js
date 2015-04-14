@@ -5,7 +5,9 @@ var Util = (function() {
 	'cad': '$',
 	'eur': '€',
 	'gbp': '£',
-	'': ''
+	'hkd': '$',
+	'jpy': '¥',
+	'nzd': '$',
   };
 
   var currencySeparator = '.';
