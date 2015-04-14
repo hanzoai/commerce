@@ -957,7 +957,7 @@ func (o *OrderProduct) ExternalId() string {
 }
 
 func (o *OrderProduct) Push(api SalesforceClient) error {
-	del(api, OrderProductPath, o.ExternalId())
+	del(api, OrderProductExternalIdPath, o.ExternalId())
 	return push(api, OrderProductExternalIdPath, o)
 }
 
@@ -1185,7 +1185,7 @@ func push(api SalesforceClient, p string, s SObjectSyncable) error {
 	response := new(UpsertResponse)
 
 	if err := json.Unmarshal(body, response); err != nil {
-		log.Error("Unable to unmarshall UpsertResponse: %v", string(body), api.GetContext())
+		log.Error("Unable to unmarshal UpsertResponse: %v\n\nObject: %v", string(body), s, api.GetContext())
 		return err
 	}
 
