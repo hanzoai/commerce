@@ -809,6 +809,20 @@ func (o *Order) Push(api SalesforceClient) error {
 	return nil
 }
 
+func (o *Order) Delete(api SalesforceClient) error {
+	if err := del(api, OrderExternalIdPath, o.ExternalId()); err != nil {
+		return err
+	}
+
+	for _, orderProduct := range o.orderProducts {
+		if err := orderProduct.Delete(api); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 var variantCache map[string]models.ProductVariant
 
 // Helper for getting a Order's Order Products
@@ -958,8 +972,14 @@ func (o *OrderProduct) ExternalId() string {
 }
 
 func (o *OrderProduct) Push(api SalesforceClient) error {
-	del(api, OrderProductExternalIdPath, o.ExternalId())
+	if err := o.Delete(api); err != nil {
+		return err
+	}
 	return push(api, OrderProductExternalIdPath, o)
+}
+
+func (o *OrderProduct) Delete(api SalesforceClient) error {
+	return del(api, OrderProductExternalIdPath, o.ExternalId())
 }
 
 func (o *OrderProduct) PullExternalId(api SalesforceClient, id string) error {

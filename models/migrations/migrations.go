@@ -1,9 +1,13 @@
 package migrations
 
 import (
+	"log"
+
 	"github.com/gin-gonic/gin"
 
+	"crowdstart.io/datastore"
 	"crowdstart.io/datastore/parallel"
+	"crowdstart.io/models"
 	"crowdstart.io/models/migrations/tasks"
 	"crowdstart.io/util/task"
 )
@@ -48,4 +52,19 @@ func init() {
 	task.Register("migrations-generate-new-id-for-unsynced-orders", func(c *gin.Context) {
 		parallel.Run(c, "order", 50, tasks.GenerateNewIdForUnsyncedOrders)
 	})
+
+	// Add missing orders for each contributors
+	task.Register("migrations-fix-preorder-corruption", func(c *gin.Context) {
+		db := datastore.New(c)
+		campaign := models.Campaign{}
+
+		if err := db.GetKind("campaign", "dev@hanzo.ai", &campaign); err != nil {
+			log.Panic("Unable to get campaign from database: %v", err, c)
+		}
+
+		if campaign.Salesforce.AccessToken != "" {
+			parallel.Run(c, "order", 50, tasks.FixPreorderCorruption, campaign)
+		}
+	})
+
 }
