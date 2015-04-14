@@ -72,15 +72,14 @@
             <label class="col-md-3 col-sm-2 control-label" for="product">Custom Price</label>
             {% if products %}
             <div class="row col-md-6 col-sm-8">
-                <div class="col-xs-6">
+                <div class="col-s-11 col-xs-10">
                     <select type="text" id="product" name="" class="form-control" value="">
                         {% for product in products %}
                         <option data-name="{{ product.Name }}" value="{{ product.Id_ }}">{{ product.Name }} ({{ product.Slug }})</option>
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-xs-6 input-group">
-                    <input type="text" id="product-price" class="text-right form-control" value="">
+                <div class="col-s-1 col-xs-2 input-group">
                     <div class="input-group-btn">
                         <button id="override-product-btn" type="button" class="btn btn-effect-ripple btn-primary"><i class="fa fa-plus"></i></button>
                     </div>
@@ -247,44 +246,42 @@ $(function(){
         });
 
         // Set up products select
-        $('#product').chosen().on('change', function() {
-            var id = $(this).val();
-            $('#product-price').val(ProductToPrices[id]);
-            if ($('[data-id="' + id + '"]').length > 0) {
-                var $btn = $('#override-product-btn');
-                $btn.removeClass('btn-primary');
-                $btn.addClass('btn-success');
-            } else {
-                var $btn = $('#override-product-btn');
-                $btn.removeClass('btn-success');
-                $btn.addClass('btn-primary');
-            }
-        });
+        $('#product').chosen();
 
         // Update price with default product price
-        $('#product-price').val(ProductToPrices[$('#product').val()]);
-
         var $overrides = $('#product-overrides');
         var $overridesBody = $overrides.children('tbody');
         var overrideTemplate = '<tr><td><input type="text" class="listing-id hidden" value=""><strong class="name"></strong></td><td><input type="currency" class="listing-price text-right form-control" value=""></td><td class="text-center"><button type="button" class="delete btn btn-xs btn-danger">x</button></td></tr>';
 
         $('#override-product-btn').on('click', function() {
-            var $btn = $(this);
-            $btn.removeClass('btn-primary');
-            $btn.addClass('btn-success');
+            if ($('#product').val() == null) {
+                return;
+            }
 
             var $override = $(overrideTemplate);
             var id = $('#product').val();
             $('[data-id="' + id + '"]').remove();
-            $override.attr('data-id', id)
-            $override.find('.name').text($('#product').children("option:selected").attr('data-name'));
+            $override.attr('data-id', id);
+
+            var optionToDisable = $('#product').children("option:selected");
+            var dataName = optionToDisable.attr('data-name');
+
+            $override.attr('data-name', dataName);
+            $override.find('.name').text(dataName);
             $override.find('.listing-id').val(id);
-            $override.find('.listing-price').val(Util.renderUpdatedUICurrency($('#product-price').val()));
+            $override.find('.listing-price').val(Util.renderUpdatedUICurrency(ProductToPrices[$('#product').val()]));
+
+            optionToDisable.prop('disabled', true);
+            optionToDisable.prop('selected', false);
+            $('#product').trigger("chosen:updated");
+
             $override.find('.delete').on('click', function() {
+                $('#product').children('option[data-name="' + dataName + '"]').prop('disabled', false);
                 $(this).closest('tr').remove();
                 if ($overridesBody.children().length == 0) {
                     $overrides.addClass('hidden');
                 }
+                $('#product').trigger("chosen:updated");
             });
             $overridesBody.prepend($override);
             $overrides.removeClass('hidden');
