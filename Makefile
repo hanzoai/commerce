@@ -52,15 +52,15 @@ gae_production = config/production \
 				 checkout \
 				 platform
 
-tools = github.com/nsf/gocode \
-		code.google.com/p/go.tools/cmd/goimports \
-		code.google.com/p/go.tools/cmd/oracle \
-		code.google.com/p/rog-go/exp/cmd/godef \
+tools = code.google.com/p/rog-go/exp/cmd/godef \
 		github.com/golang/lint/golint \
 		github.com/jstemmer/gotags \
 		github.com/kisielk/errcheck \
+		github.com/nsf/gocode \
 		golang.org/x/tools/cmd/cover \
-		golang.org/x/tools/cmd/gorename
+		golang.org/x/tools/cmd/goimports \
+		golang.org/x/tools/cmd/gorename \
+		golang.org/x/tools/cmd/oracle
 
 # Various patches for SDK
 mtime_file_watcher = https://gist.githubusercontent.com/zeekay/5eba991c39426ca42cbb/raw/235f107b7ed081719103a4259dddd0e568d12480/mtime_file_watcher.py
