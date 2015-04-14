@@ -107,8 +107,8 @@ func (o *Order) LoadVariantsProducts(c interface{}) {
 		// We might need to derive Slug_ from Sku_
 		if item.Slug_ == "" && item.SKU_ != "" {
 			for slug, _ := range productsMap {
-				upperSKU := strings.ToUpper(item.SKU_)
-				upperSlug := strings.ToUpper(slug)
+				upperSKU := strings.Replace(strings.ToUpper(item.SKU_), "-", "", -1)
+				upperSlug := strings.Replace(strings.ToUpper(slug), "-", "", -1)
 				if strings.Contains(upperSKU, upperSlug) {
 					// Remember that item is a copy and not the actual object
 					o.Items[i].Slug_ = slug
