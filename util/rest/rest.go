@@ -41,7 +41,6 @@ type Rest struct {
 	Update           gin.HandlerFunc
 	Patch            gin.HandlerFunc
 	Delete           gin.HandlerFunc
-	Options          gin.HandlerFunc
 	MethodOverride   gin.HandlerFunc
 
 	routes     routeMap
@@ -95,6 +94,12 @@ func (r Rest) Route(router router.Router, mw ...gin.HandlerFunc) {
 
 	// Create group for our API routes
 	group := router.Group(prefix)
+
+	// Use permissive CORS policy for all API routes.
+	group.Use(middleware.AccessControl("*"))
+	// group.OPTIONS("*wildcard", func(c *gin.Context) {
+	// 	c.Next()
+	// })
 
 	if !r.DefaultNamespace {
 		// Automatically namespace requests
@@ -150,21 +155,7 @@ func (r Rest) defaultRoutes() []route {
 		r.MethodOverride = r.methodOverride
 	}
 
-	if r.Options == nil {
-		r.Options = r.options
-	}
-
 	return []route{
-		// route{
-		// 	method:   "OPTIONS",
-		// 	url:      "*",
-		// 	handlers: []gin.HandlerFunc{r.Options},
-		// },
-		// route{
-		// 	method:   "OPTIONS",
-		// 	url:      "/*all",
-		// 	handlers: []gin.HandlerFunc{r.Options},
-		// },
 		route{
 			method:   "POST",
 			url:      "",
@@ -412,17 +403,6 @@ func (r Rest) methodOverride(c *gin.Context) {
 	default:
 		json.Fail(c, 405, "Method not allowed", errors.New("Method not allowed"))
 	}
-}
-
-// Set proper CORS non-sense
-func (r Rest) options(c *gin.Context) {
-	header := c.Request.Header
-	reqMethods := header.Get("Access-Control-Request-Methods")
-	reqHeaders := header.Get("Access-Control-Request-Headers")
-	header = c.Writer.Header()
-	header.Set("Access-Control-Allow-Methods", reqMethods)
-	header.Set("Access-Control-Allow-Headers", reqHeaders)
-	c.Data(200, "text/plain", make([]byte, 0))
 }
 
 func (r Rest) Handle(method, url string, handlers []gin.HandlerFunc) {
