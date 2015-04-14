@@ -109,7 +109,7 @@ func (o *Order) LoadVariantsProducts(c interface{}) {
 			for slug, _ := range productsMap {
 				upperSKU := strings.ToUpper(item.SKU_)
 				upperSlug := strings.ToUpper(slug)
-				if strings.HasPrefix(upperSKU, upperSlug) {
+				if strings.Contains(upperSKU, upperSlug) {
 					// Remember that item is a copy and not the actual object
 					o.Items[i].Slug_ = slug
 					break

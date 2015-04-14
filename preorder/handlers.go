@@ -20,16 +20,17 @@ import (
 	salesforce "crowdstart.io/thirdparty/salesforce/tasks"
 )
 
-func getOrderKey(db *datastore.Datastore, id string) datastore.Key {
+func getOrderKey(db *datastore.Datastore, id string) (datastore.Key, error) {
 	// get intid
 	intid, err := strconv.Atoi(id)
+
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	// Get orders by id
 	key := db.NewKey("order", "", int64(intid), nil)
-	return key
+	return key, nil
 }
 
 // GET /order/:id
@@ -47,8 +48,12 @@ func GetPreorder(c *gin.Context) {
 	}
 
 	order := new(models.Order)
-	key := getOrderKey(db, id)
-	err := db.Get(key, order)
+	key, err := getOrderKey(db, id)
+	if err != nil {
+		log.Panic("Error retrieving order id associated with the user's email", err)
+	}
+
+	err = db.Get(key, order)
 
 	// Query will not error when number of entities returned by query is zero.
 	// We continue based on the assumption that when saving that will create an actual order.
@@ -192,7 +197,8 @@ func SavePreorder(c *gin.Context) {
 	log.Debug("Saving order: %v", order)
 	if order.Id != "" {
 		log.Debug("Using OrderId: %v", order.Id)
-		key, err := strconv.Atoi(order.Id)
+		key, err := getOrderKey(db, order.Id)
+		order.Id = key.Encode()
 		if err != nil {
 			log.Error("Invalid Order.Id: %v", err, ctx)
 			c.Fail(500, err)
@@ -200,14 +206,15 @@ func SavePreorder(c *gin.Context) {
 		}
 
 		// Retrieve existing order and update things we care about
-		if _, err := db.PutKind("order", key, &order); err != nil {
+		if _, err := db.Put(key, &order); err != nil {
 			log.Error("Error saving order: %v", err, ctx)
 			c.Fail(500, err)
 			return
 		}
 	} else {
 		log.Debug("No order Id found")
-		if _, err := db.Put("order", &order); err != nil {
+		key := db.AllocateIntKey("order")
+		if _, err := db.Put(key, &order); err != nil {
 			log.Error("Error saving order: %v", err, ctx)
 			c.Fail(500, err)
 			return

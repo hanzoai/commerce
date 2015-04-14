@@ -74,18 +74,19 @@ class ProductView extends View
       slug:     product.Slug
       children: childProducts
 
-    for config in listing.Configs
-      product = allProducts[config.Product]
-      variant = products.getVariant(config.Product, {}) #supply blank options temporarily
-      childProducts.push
-        sku:      variant.SKU
-        color:    variant.Color
-        img:      product.Images?[0]?.Url
-        name:     product.Title
-        price:    (parseInt(variant.Price, 10) - parseInt(config.PriceAdjustment, 10)) * 0.0001
-        multiplier: config.Quantity
-        size:     variant.Size
-        slug:     product.Slug
+    if listing.Configs.length > 1
+      for config in listing.Configs
+        product = allProducts[config.Product]
+        variant = products.getVariant(config.Product, {}) #supply blank options temporarily
+        childProducts.push
+          sku:      variant.SKU
+          color:    variant.Color
+          img:      product.Images?[0]?.Url
+          name:     product.Title
+          price:    (parseInt(variant.Price, 10) - parseInt(config.PriceAdjustment, 10)) * 0.0001
+          multiplier: config.Quantity
+          size:     variant.Size
+          slug:     product.Slug
 
     inner = @el.find '.add-to-cart span'
     inner.html ''

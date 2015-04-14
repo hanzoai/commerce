@@ -67,7 +67,15 @@ func (li LineItem) Validate(req *http.Request, errs binding.Errors) binding.Erro
 // Displays nice "/" delimited variant information.
 func (li LineItem) DisplayShortDescription() string {
 	opts := []string{}
-	for _, opt := range []string{li.Product.Title, li.Variant.Color, li.Variant.Style, li.Variant.Size} {
+
+	var vals []string
+	if li.SKU_ == "" {
+		vals = []string{li.Product.Title, "Please Finish Configuring"}
+	} else {
+		vals = []string{li.Product.Title, li.Variant.Color, li.Variant.Style, li.Variant.Size}
+	}
+
+	for _, opt := range vals {
 		if opt != "" {
 			opts = append(opts, opt)
 		}

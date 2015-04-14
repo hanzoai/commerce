@@ -652,6 +652,12 @@ transformers:
     - property: Phone
       external_name: Phone
 
+    - property: PrimarySalesforceId_
+      external_name: PrimarySalesforceId_
+
+    - property: SecondarySalesforceId_
+      external_name: SecondarySalesforceId_
+
     - property: ShippingAddress.City
       external_name: ShippingAddress.City
 
