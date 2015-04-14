@@ -79,7 +79,7 @@ func (c Config) UrlFor(moduleName string, args ...string) (url string) {
 	log.Info(moduleName)
 	if c.IsDevelopment && !strings.HasPrefix(moduleName, "/") {
 		if len(args) > 0 {
-			return "/" + moduleName + args[0]
+			return "/" + moduleName + strings.Join(args, "/")
 		} else {
 			return "/" + moduleName + "/"
 		}

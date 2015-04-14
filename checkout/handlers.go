@@ -199,18 +199,21 @@ func charge(c *gin.Context) {
 
 	// Save order
 	log.Debug("Saving order...", c)
-	key, err := db.Put("order", &form.Order)
+
+	key := db.AllocateIntKey("order")
 	encodedKey := key.Encode()
+
+	// Set the id as we use it to update salesforce
+	form.Order.Id = encodedKey
+
+	orderId := key.IntID()
+	_, err = db.Put(key, &form.Order)
+
 	if err != nil {
 		log.Error("Failed to save order", err, c)
 		c.Fail(500, err)
 		return
 	}
-	key, _ = db.DecodeKey(encodedKey)
-	orderId := key.IntID()
-
-	// Set the id as we use it to update salesforce
-	form.Order.Id = key.Encode()
 
 	// Synchronize Salesforce
 	salesforceTokens := getSalesforceTokens(c, db).(models.SalesforceTokens)
