@@ -1,9 +1,6 @@
 package sentry
 
 import (
-	"appengine"
-	"appengine/delay"
-	"appengine/urlfetch"
 	"bytes"
 	"compress/zlib"
 	"encoding/base64"
@@ -14,6 +11,10 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+
+	"appengine"
+	"appengine/delay"
+	"appengine/urlfetch"
 
 	"github.com/getsentry/raven-go"
 
@@ -132,7 +133,7 @@ func deserializeException(exception SerializedException) *raven.Exception {
 
 	for i := 0; i < numFrames; i++ {
 		frame := &exception.Frames[i]
-		frame.InApp = &b
+		frame.InApp = b
 		exc.Stacktrace.Frames[i] = frame
 	}
 	return exc
