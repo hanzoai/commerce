@@ -141,7 +141,7 @@
           value: [
             {% for type in constants.CurrencyTypes %}
             {
-              selected: '{{ type }}' === '{{ product.currency }}',
+              selected: '{{ type }}' === '{{ store.Currency }}',
               name: '{{ type.Label() }}',
               id: '{{ type }}',
             },
