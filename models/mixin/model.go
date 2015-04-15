@@ -236,7 +236,6 @@ func (m *Model) Get(args ...interface{}) error {
 
 // Helper that will retrieve entity by id (which may be an encoded key/slug/sku)
 func (m *Model) GetById(id string) error {
-
 	// Try to decode key
 	key, err := hashid.DecodeKey(m.Db.Context, id)
 
@@ -245,8 +244,11 @@ func (m *Model) GetById(id string) error {
 		return m.Get(key)
 	}
 
-	// Use unique filter based on model type
+	// Set err to nil and try to use filter
+	err = nil
 	filterStr := ""
+
+	// Use unique filter based on model type
 	switch m.Kind() {
 	case "store", "product":
 		filterStr = "Slug"
@@ -263,7 +265,7 @@ func (m *Model) GetById(id string) error {
 	}
 
 	// Try and fetch by filterStr
-	_, err = m.Query().Filter(filterStr, id).First()
+	_, err = m.Query().Filter(filterStr+"=", id).First()
 	return err
 }
 
