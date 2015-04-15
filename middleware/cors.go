@@ -14,12 +14,14 @@ func AccessControl(allowOrigin string) gin.HandlerFunc {
 		// Handle OPTIONS
 		header := c.Request.Header
 
-		reqMethods := header.Get("Access-Control-Request-Methods")
-		reqHeaders := header.Get("Access-Control-Request-Headers")
+		// reqMethods := header.Get("Access-Control-Request-Method")
+		// reqMethods := header.Get("Access-Control-Request-Methods")
+		// reqHeaders := header.Get("Access-Control-Request-Header")
+		// reqHeaders := header.Get("Access-Control-Request-Headers")
 
 		header = c.Writer.Header()
-		header.Set("Access-Control-Allow-Methods", reqMethods)
-		header.Set("Access-Control-Allow-Headers", reqHeaders)
+		header.Set("Access-Control-Allow-Methods", "*")
+		header.Set("Access-Control-Allow-Headers", "*")
 
 		c.Data(200, "text/plain", make([]byte, 0))
 		c.Abort(200)
