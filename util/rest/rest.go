@@ -260,7 +260,7 @@ func (r Rest) get(c *gin.Context) {
 
 	entity := r.newEntity(c)
 
-	if err := entity.Get(id); err != nil {
+	if err := entity.GetById(id); err != nil {
 		// TODO: When is this a 404?
 		json.Fail(c, 404, "Failed to get "+r.Kind, err)
 	} else {
