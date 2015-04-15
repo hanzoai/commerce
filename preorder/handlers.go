@@ -74,7 +74,7 @@ func GetPreorder(c *gin.Context) {
 	order.LoadVariantsProducts(c)
 
 	// Order id
-	orderId := strconv.Itoa(int(key.IntID()))
+	contributionId := strconv.Itoa(int(key.IntID()))
 
 	// Create  JSON
 	contributionsJSON := "{}"
@@ -83,7 +83,7 @@ func GetPreorder(c *gin.Context) {
 
 	// Find all of a user's contributions
 	var contributions []models.Contribution
-	db.Query("contribution").Filter("Id =", orderId).GetAll(db.Context, &contributions)
+	db.Query("contribution").Filter("Id =", contributionId).GetAll(db.Context, &contributions)
 	if len(contributions) > 0 {
 		log.Debug("Contributions: %v", contributions)
 		contributionsJSON = json.Encode(contributions)
@@ -106,7 +106,8 @@ func GetPreorder(c *gin.Context) {
 		"productsJSON", productsJSON,
 		"contributionsJSON", contributionsJSON,
 		"orderJSON", orderJSON,
-		"orderId", orderId,
+		"contributionId", contributionId,
+		"orderId", order.Id,
 		"userJSON", userJSON,
 	)
 }
@@ -197,8 +198,7 @@ func SavePreorder(c *gin.Context) {
 	log.Debug("Saving order: %v", order)
 	if order.Id != "" {
 		log.Debug("Using OrderId: %v", order.Id)
-		key, err := getOrderKey(db, order.Id)
-		order.Id = key.Encode()
+		key, err := db.DecodeKey(order.Id)
 		if err != nil {
 			log.Error("Invalid Order.Id: %v", err, ctx)
 			c.Fail(500, err)
