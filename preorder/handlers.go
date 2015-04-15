@@ -109,6 +109,7 @@ func GetPreorder(c *gin.Context) {
 		"contributionId", contributionId,
 		"orderId", order.Id,
 		"userJSON", userJSON,
+		"items", order.Items,
 	)
 }
 

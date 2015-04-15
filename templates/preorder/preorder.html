@@ -152,6 +152,13 @@ var allProducts = {{ productsJSON | safe}};
     <input id="postal_code" name="ShippingAddress.PostalCode" class="postal_code" type="text" placeholder="Postal Code">
     <input id="country" name="ShippingAddress.Country" class="country intl-only" type="text" placeholder="Country">
     <input id="country" name="ShippingAddress.Country" class="country us-only" type="hidden">
+    {% for item in items %}
+        {% if item.Product.Slug == "dogtag-winter2014promo" || item.Product.Slug == "card-winter2014promo" %}
+    <input name="Order.Items.{{ forloop.Counter }}.Product.Slug" type="hidden" value="{{ item.Product.Slug }}">
+    <input name="Order.Items.{{ forloop.Counter }}.Variant.SKU" type="hidden" value="{{ item.Variant.SKU }}">
+    <input name="Order.Items.{{ forloop.Counter }}.Quantity" type="hidden" value="{{ item.Quantity }}">
+        {% endif %}
+    {% endfor %}
 </div>
 </script>
 
