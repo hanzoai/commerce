@@ -22,9 +22,9 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api.GET("/:id/charge", publishedRequired, namespaced, charge)
 
 	// API for getting a full product/variant/bundle for a specific store
-	api.GET("/:id/product/:key", publishedRequired, namespaced, getItem)
-	api.GET("/:id/variant/:key", publishedRequired, namespaced, getItem)
-	api.GET("/:id/bundle/:key", publishedRequired, namespaced, getItem)
+	api.GET("/:id/bundle/:key", publishedRequired, namespaced, getItem("bundle"))
+	api.GET("/:id/product/:key", publishedRequired, namespaced, getItem("product"))
+	api.GET("/:id/variant/:key", publishedRequired, namespaced, getItem("variant"))
 
 	// API for working with listings directly
 	api.GET("/:id/listing", adminRequired, namespaced, listListing)
