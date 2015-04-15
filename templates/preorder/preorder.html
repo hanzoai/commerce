@@ -75,6 +75,7 @@ var allProducts = {{ productsJSON | safe}};
         </p>
         <br>
     </div>
+    <input id="contribution" name="ContributionId" type="hidden" value="{{ contributionId }}">
     <input id="order" name="Order.Id" type="hidden" value="{{ orderId }}">
     <input id="token" name="Token.Id" type="hidden" value="{{ tokenId }}">
     <input id="email" name="User.Email" class="email" type="hidden" value="{{ user.Email }}">
