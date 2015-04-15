@@ -36,13 +36,23 @@ func getListing(c *gin.Context) {
 
 	// Get store
 	stor := store.New(db)
-	if err := stor.Get(id); err != nil {
+	if err := stor.GetById(id); err != nil {
 		json.Fail(c, 500, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
 		return
 	}
 
 	// Try and grab listing
 	listing, ok := stor.Listings[key]
+
+	// Maybe we have a slug or sku?
+	if !ok {
+		for _, listing = range stor.Listings {
+			if key == listing.Slug || key == listing.SKU {
+				ok = true
+				break
+			}
+		}
+	}
 
 	// Do not override on create, user should explicitly update instead
 	if !ok {

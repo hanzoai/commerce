@@ -27,12 +27,14 @@ type Kind interface {
 // A specific datastore entity, with methods inherited from this mixin
 type Entity interface {
 	Kind
+	Context() appengine.Context
 	SetContext(ctx interface{})
 	SetNamespace(namespace string)
 	Key() (key datastore.Key)
 	SetKey(key interface{}) (err error)
 	Id() string
 	Get(args ...interface{}) error
+	GetById(string) error
 	KeyExists(key interface{}) (datastore.Key, error)
 	MustGet(args ...interface{})
 	Put() error
@@ -66,7 +68,12 @@ type Model struct {
 	StringKey_ bool `json:"-" datastore:"-"`
 }
 
-// Set's the appengine context to whatev
+// Get AppEngine context
+func (m *Model) Context() appengine.Context {
+	return m.Db.Context
+}
+
+// Set AppEngine Context
 func (m *Model) SetContext(ctx interface{}) {
 	// Update context
 	m.Db = datastore.New(ctx)
@@ -225,6 +232,39 @@ func (m *Model) Get(args ...interface{}) error {
 	}
 
 	return m.Db.Get(m.key, m.Entity)
+}
+
+// Helper that will retrieve entity by id (which may be an encoded key/slug/sku)
+func (m *Model) GetById(id string) error {
+
+	// Try to decode key
+	key, err := hashid.DecodeKey(m.Db.Context, id)
+
+	// Use key if we have one
+	if err == nil {
+		return m.Get(key)
+	}
+
+	// Use unique filter based on model type
+	filterStr := ""
+	switch m.Kind() {
+	case "store", "product":
+		filterStr = "Slug"
+	case "variant":
+		filterStr = "SKU"
+	case "coupon":
+		filterStr = "Code"
+	case "organization":
+		filterStr = "Name"
+	case "user":
+		filterStr = "Username"
+	default:
+		return datastore.InvalidKey
+	}
+
+	// Try and fetch by filterStr
+	_, err = m.Query().Filter(filterStr, id).First()
+	return err
 }
 
 // Get's key only (ensures key is good)
