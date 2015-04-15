@@ -926,7 +926,7 @@ type OrderProduct struct {
 	Quantity             float64     `json:"Quantity,omitempty"`
 	StartDate            string      `json:"ServiceDate,omitempty"`
 	TotalPrice           Currency    `json:"TotalPrice,omitempty"`
-	UnitPrice            Currency    `json:"UnitPrice,omitempty"`
+	UnitPrice            Currency    `json:"UnitPrice"`
 
 	// Private data
 	variant *models.ProductVariant
@@ -942,6 +942,7 @@ func (o *OrderProduct) Read(so SObjectCompatible) error {
 
 	o.Quantity = float64(li.Quantity)
 	o.PricebookEntry = &ForeignKey{CrowdstartIdC: li.Variant.Id}
+	log.Warn("Price %v", o.UnitPrice)
 	o.UnitPrice = ToCurrency(li.Variant.Price)
 
 	return nil
