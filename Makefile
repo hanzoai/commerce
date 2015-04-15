@@ -12,6 +12,7 @@ current_date	= $(shell date +"%Y-%m-%d")
 goapp			= $(sdk_path)/goapp
 gpm				= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(sdk_path)/gpm
 ginkgo			= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(gopath)/bin/ginkgo
+appcfg.py 		= $(sdk_path)/appcfg.py --skip_sdk_update_check --oauth2
 
 deps	= $(shell cat Godeps | cut -d ' ' -f 1)
 modules	= crowdstart.io/api \
@@ -261,43 +262,43 @@ test-ci:
 # DEPLOY
 deploy-production: assets-min
 	for module in $(gae_production); do \
-		$(sdk_path)/appcfg.py --skip_sdk_update_check rollback $$module; \
-		$(sdk_path)/appcfg.py --skip_sdk_update_check update $$module; \
+		$(appcfg.py) rollback $$module; \
+		$(appcfg.py) update $$module; \
 	done; \
-	$(sdk_path)/appcfg.py --skip_sdk_update_check update_indexes config/production
-	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/production
+	$(appcfg.py) update_indexes config/production
+	$(appcfg.py) update_dispatch config/production
 
 deploy-sandbox:
 	for module in $(gae_sandbox); do \
-		$(sdk_path)/appcfg.py --skip_sdk_update_check rollback $$module; \
-		$(sdk_path)/appcfg.py --skip_sdk_update_check update $$module; \
+		$(appcfg.py) rollback $$module; \
+		$(appcfg.py) update $$module; \
 	done; \
-	$(sdk_path)/appcfg.py --skip_sdk_update_check update_indexes config/sandbox
-	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/sandbox
+	$(appcfg.py) update_indexes config/sandbox
+	$(appcfg.py) update_dispatch config/sandbox
 
 deploy-staging: assets
 	for module in $(gae_staging); do \
-		$(sdk_path)/appcfg.py --skip_sdk_update_check rollback $$module; \
-		$(sdk_path)/appcfg.py --skip_sdk_update_check update $$module; \
+		$(appcfg.py) rollback $$module; \
+		$(appcfg.py) update $$module; \
 	done; \
-	$(sdk_path)/appcfg.py --skip_sdk_update_check update_indexes config/staging
-	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/staging
+	$(appcfg.py) update_indexes config/staging
+	$(appcfg.py) update_dispatch config/staging
 
 deploy-skully: assets-min
 	for module in $(gae_skully); do \
-		$(sdk_path)/appcfg.py --skip_sdk_update_check rollback $$module; \
-		$(sdk_path)/appcfg.py --skip_sdk_update_check update $$module; \
+		$(appcfg.py) rollback $$module; \
+		$(appcfg.py) update $$module; \
 	done; \
-	$(sdk_path)/appcfg.py --skip_sdk_update_check update_indexes config/skully; \
-	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/skully
+	$(appcfg.py) update_indexes config/skully; \
+	$(appcfg.py) update_dispatch config/skully
 
 deploy-appengine-ci: assets-minified
 	for module in $(gae_production); do \
-		$(sdk_path)/appcfg.py --skip_sdk_update_check rollback $$module; \
-		$(sdk_path)/appcfg.py --skip_sdk_update_check update $$module; \
+		$(appcfg.py) rollback $$module; \
+		$(appcfg.py) update $$module; \
 	done; \
-	$(sdk_path)/appcfg.py --skip_sdk_update_check update_indexes config/production
-	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/production
+	$(appcfg.py) update_indexes config/production
+	$(appcfg.py) update_dispatch config/production
 
 # EXPORT / Usage: make datastore-export kind=user
 datastore-export:
@@ -320,7 +321,7 @@ datastore-export:
 
 # IMPORT / Usage: make datastore-import kind=user file=user.csv
 datastore-import:
-	@appcfg.py upload_data --bandwidth_limit 1000000000 \
+	@$(appcfg.py) upload_data --bandwidth_limit 1000000000 \
 						  --rps_limit 10000 \
 						  --batch_size 250 \
 						  --http_limit 200 \
