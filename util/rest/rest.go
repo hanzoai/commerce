@@ -37,6 +37,7 @@ type Rest struct {
 	DefaultNamespace bool
 	DefaultSortField string
 	Kind             string
+	ParamId          string
 	Prefix           string
 	Get              gin.HandlerFunc
 	List             gin.HandlerFunc
@@ -66,6 +67,7 @@ func (r *Rest) InitModel(entity mixin.Kind) {
 	// Get type of entity
 	r.entityType = reflect.ValueOf(entity).Type()
 	r.Kind = r.newKind().Kind()
+	r.ParamId = r.Kind + "id"
 	r.routes = make(routeMap)
 
 	if r.DefaultSortField != "" {
@@ -188,27 +190,27 @@ func (r Rest) defaultRoutes() []route {
 		// },
 		route{
 			method:   "GET",
-			url:      "/:id",
+			url:      "/:" + r.ParamId,
 			handlers: []gin.HandlerFunc{r.Get},
 		},
 		route{
 			method:   "PUT",
-			url:      "/:id",
+			url:      "/:" + r.ParamId,
 			handlers: []gin.HandlerFunc{r.Update},
 		},
 		route{
 			method:   "DELETE",
-			url:      "/:id",
+			url:      "/:" + r.ParamId,
 			handlers: []gin.HandlerFunc{r.Delete},
 		},
 		route{
 			method:   "POST",
-			url:      "/:id",
+			url:      "/:" + r.ParamId,
 			handlers: []gin.HandlerFunc{r.MethodOverride},
 		},
 		route{
 			method:   "PATCH",
-			url:      "/:id",
+			url:      "/:" + r.ParamId,
 			handlers: []gin.HandlerFunc{r.Patch},
 		},
 	}
@@ -256,7 +258,7 @@ func (r Rest) JSON(c *gin.Context, code int, body interface{}) {
 }
 
 func (r Rest) get(c *gin.Context) {
-	id := c.Params.ByName("id")
+	id := c.Params.ByName(r.ParamId)
 
 	entity := r.newEntity(c)
 
@@ -344,7 +346,7 @@ func (r Rest) create(c *gin.Context) {
 
 // Completely replaces an entity for given `id`.
 func (r Rest) update(c *gin.Context) {
-	id := c.Params.ByName("id")
+	id := c.Params.ByName(r.ParamId)
 
 	entity := r.newEntity(c)
 
@@ -370,7 +372,7 @@ func (r Rest) update(c *gin.Context) {
 
 // Partially updates pre-existing entity by given `id`.
 func (r Rest) patch(c *gin.Context) {
-	id := c.Params.ByName("id")
+	id := c.Params.ByName(r.ParamId)
 
 	entity := r.newEntity(c)
 	err := entity.Get(id)
@@ -393,7 +395,7 @@ func (r Rest) patch(c *gin.Context) {
 
 // Deletes an entity by given `id`
 func (r Rest) delete(c *gin.Context) {
-	id := c.Params.ByName("id")
+	id := c.Params.ByName(r.ParamId)
 	entity := r.newEntity(c)
 	entity.Delete(id)
 

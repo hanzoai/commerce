@@ -14,8 +14,7 @@ import (
 
 // Return all listings
 func listListing(c *gin.Context) {
-	id := c.Params.ByName("id")
-
+	id := c.Params.ByName("storeid")
 	db := datastore.New(c)
 
 	stor := store.New(db)
@@ -31,7 +30,7 @@ func listListing(c *gin.Context) {
 func getListing(c *gin.Context) {
 	ctx := middleware.GetAppEngine(c)
 	db := datastore.New(ctx)
-	id := c.Params.ByName("id")
+	id := c.Params.ByName("storeid")
 	key := c.Params.ByName("key")
 
 	// Get store
@@ -65,7 +64,7 @@ func getListing(c *gin.Context) {
 }
 
 func createListing(c *gin.Context) {
-	id := c.Params.ByName("id")
+	id := c.Params.ByName("storeid")
 	key := c.Params.ByName("key")
 	db := datastore.New(c)
 
@@ -105,7 +104,7 @@ func createListing(c *gin.Context) {
 }
 
 func updateListing(c *gin.Context) {
-	id := c.Params.ByName("id")
+	id := c.Params.ByName("storeid")
 	key := c.Params.ByName("key")
 	db := datastore.New(c)
 
@@ -140,7 +139,7 @@ func updateListing(c *gin.Context) {
 }
 
 func patchListing(c *gin.Context) {
-	id := c.Params.ByName("id")
+	id := c.Params.ByName("storeid")
 	key := c.Params.ByName("key")
 	db := datastore.New(c)
 
@@ -173,7 +172,7 @@ func patchListing(c *gin.Context) {
 }
 
 func deleteListing(c *gin.Context) {
-	id := c.Params.ByName("id")
+	id := c.Params.ByName("storeid")
 	key := c.Params.ByName("key")
 	db := datastore.New(c)
 
