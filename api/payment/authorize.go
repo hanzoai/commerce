@@ -20,7 +20,7 @@ func authorizationRequest(c *gin.Context, ord *order.Order) (*AuthorizationReq, 
 
 	// In case people are using the version of the api that takes existing
 	// orders Update order in request with id
-	if id := c.Params.ByName("id"); id != "" {
+	if id := c.Params.ByName("orderid"); id != "" {
 		if err := ar.Order.Get(id); err != nil {
 			return nil, OrderDoesNotExist
 		}
