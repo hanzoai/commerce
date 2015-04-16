@@ -10,22 +10,28 @@ module.exports =
         paid: 'in full'
 
     user:
-        email:     'suchfan@shirtlessinseattle.com'
-        firstName: 'Sam'
-        LastName:  'Ryan'
-        company:   'Peabody Conservatory of Music'
-        phone:     '555-555-5555'
-        address:
-          line1:      '12345 Faux Road'
-          city:       'Seattle'
-          state:      'Washington'
-          country:    'United States'
-          postalCode: '55555-5555'
-        metadata:
-          sleepless: true
+      email:     'suchfan@shirtlessinseattle.com'
+      firstName: 'Sam'
+      LastName:  'Ryan'
+      company:   'Peabody Conservatory of Music'
+      phone:     '555-555-5555'
+      metadata:
+        sleepless: true
 
     order:
       currency: 'usd'
+      billingAddress:
+        line1:      '12345 Faux Road'
+        city:       'Seattle'
+        state:      'Washington'
+        country:    'US'
+        postalCode: '55555-5555'
+      shippingAddress:
+        line1:      '12345 Faux Road'
+        city:       'Seattle'
+        state:      'Washington'
+        country:    'US'
+        postalCode: '55555-5555'
       items: [
         productSlug:  'doge-shirt'
         price:        100
