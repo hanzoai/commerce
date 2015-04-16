@@ -23,8 +23,13 @@ var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 // Everything is a pointer, which allows fields to be nil. This way when we
 // serialize to/from JSON we know what has and has not been set.
 type Listing struct {
+	// Not customizable
+	Slug      string `json:"slug,omitempty"`
+	SKU       string `json:"sku,omitempty"`
 	ProductId string `json:"productId,omitempty"`
 	VariantId string `json:"variantId,omitempty"`
+
+	// Everything else May be overriden
 
 	Name *string `json:"name"`
 
