@@ -266,6 +266,7 @@
             value: [
             {% for country in constants.Countries %}
             {
+              selected: '{{ country.ISO3166OneAlphaTwo }}' === '{{ order.ShippingAddress.Country }}' || '{{ country.ISO3166OneEnglishShortNameReadingOrder }}' === '{{ order.ShippingAddress.Country }}',
               name: '{{ country.ISO3166OneEnglishShortNameReadingOrder }}',
                 id: '{{ country.ISO3166OneAlphaTwo }}',
             },
