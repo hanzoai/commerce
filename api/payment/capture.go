@@ -7,6 +7,7 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models2/order"
 	"crowdstart.io/models2/organization"
+	"crowdstart.io/models2/payment"
 )
 
 func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (*order.Order, error) {
@@ -15,6 +16,9 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (
 	if err != nil {
 		return nil, err
 	}
+
+	// Set as paid?
+	ord.PaymentStatus = payment.Paid
 
 	// Save order and payments
 	ord.Put()
