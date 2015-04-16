@@ -24,11 +24,11 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 
 	api := rest.New(order.Order{})
 
-	api.POST("/:id/capture", adminRequired, namespaced, paymentApi.Capture)
-	api.POST("/:id/charge", publishedRequired, namespaced, paymentApi.Charge)
-	api.POST("/:id/authorize", publishedRequired, namespaced, paymentApi.Authorize)
+	api.POST("/:orderid/capture", adminRequired, namespaced, paymentApi.Capture)
+	api.POST("/:orderid/charge", publishedRequired, namespaced, paymentApi.Charge)
+	api.POST("/:orderid/authorize", publishedRequired, namespaced, paymentApi.Authorize)
 
-	api.GET("/:id/payments", adminRequired, namespaced, func(c *gin.Context) {
+	api.GET("/:orderid/payments", adminRequired, namespaced, func(c *gin.Context) {
 		id := c.Params.ByName("id")
 		db := datastore.New(c)
 		ord := order.New(db)
