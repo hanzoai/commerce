@@ -7,6 +7,8 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models2/order"
 	"crowdstart.io/models2/organization"
+	"crowdstart.io/models2/payment"
+	"crowdstart.io/models2/types/currency"
 )
 
 func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (*order.Order, error) {
@@ -14,6 +16,17 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (
 	ord, keys, payments, err := stripe.Capture(org, ord)
 	if err != nil {
 		return nil, err
+	}
+
+	// Update amount paid
+	totalPaid := 0
+	for _, pay := range payments {
+		totalPaid += int(pay.Amount)
+	}
+
+	ord.Paid = currency.Cents(int(ord.Paid) + totalPaid)
+	if ord.Paid == ord.Total {
+		ord.PaymentStatus = payment.Paid
 	}
 
 	// Save order and payments
