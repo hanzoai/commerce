@@ -45,7 +45,7 @@ func Capture(c *gin.Context) {
 	org, ord := getOrganizationAndOrder(c)
 
 	// Fetch order for which we shall capture charges
-	id := c.Params.ByName("id")
+	id := c.Params.ByName("orderid")
 	if err := ord.Get(id); err != nil {
 		json.Fail(c, 500, "Error looking up order", err)
 		return

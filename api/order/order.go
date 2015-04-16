@@ -29,7 +29,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api.POST("/:orderid/authorize", publishedRequired, namespaced, paymentApi.Authorize)
 
 	api.GET("/:orderid/payments", adminRequired, namespaced, func(c *gin.Context) {
-		id := c.Params.ByName("id")
+		id := c.Params.ByName("orderid")
 		db := datastore.New(c)
 		ord := order.New(db)
 
@@ -72,7 +72,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 		org := middleware.GetOrganization(c)
 		db := datastore.New(org.Namespace(c))
 
-		id := c.Params.ByName("id")
+		id := c.Params.ByName("orderid")
 		ord := order.New(db)
 
 		// Get Key, and fail if this didn't exist in datastore
@@ -105,7 +105,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 		org := middleware.GetOrganization(c)
 		db := datastore.New(org.Namespace(c))
 
-		id := c.Params.ByName("id")
+		id := c.Params.ByName("orderid")
 		ord := order.New(db)
 
 		err := ord.Get(id)
