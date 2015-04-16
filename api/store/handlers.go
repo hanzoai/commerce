@@ -18,8 +18,8 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api := rest.New(store.Store{})
 
 	// API for getting a full product/variant/bundle for a specific store
-	api.GET("/:id/authorize", publishedRequired, namespaced, authorize)
-	api.GET("/:id/charge", publishedRequired, namespaced, charge)
+	api.POST("/:id/authorize", publishedRequired, namespaced, authorize)
+	api.POST("/:id/charge", publishedRequired, namespaced, charge)
 
 	// API for getting a full product/variant/bundle for a specific store
 	api.GET("/:id/bundle/:key", publishedRequired, namespaced, getItem("bundle"))
