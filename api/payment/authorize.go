@@ -28,6 +28,7 @@ func authorizationRequest(c *gin.Context, ord *order.Order) (*AuthorizationReq, 
 
 	// Try decode request body
 	if err := json.Decode(c.Request.Body, &ar); err != nil {
+		log.Error("Failed to decode request body: %v\n%v", c.Request.Body, err, c)
 		return nil, FailedToDecodeRequestBody
 	}
 
