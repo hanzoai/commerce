@@ -22,17 +22,17 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api.POST("/:storeid/charge", publishedRequired, namespaced, charge)
 
 	// API for getting a full product/variant/bundle for a specific store
-	api.GET("/:id/bundle/:key", publishedRequired, namespaced, getItem("bundle"))
-	api.GET("/:id/product/:key", publishedRequired, namespaced, getItem("product"))
-	api.GET("/:id/variant/:key", publishedRequired, namespaced, getItem("variant"))
+	api.GET("/:storeid/bundle/:key", publishedRequired, namespaced, getItem("bundle"))
+	api.GET("/:storeid/product/:key", publishedRequired, namespaced, getItem("product"))
+	api.GET("/:storeid/variant/:key", publishedRequired, namespaced, getItem("variant"))
 
 	// API for working with listings directly
-	api.GET("/:id/listing", adminRequired, namespaced, listListing)
-	api.GET("/:id/listing/:key", adminRequired, namespaced, getListing)
-	api.POST("/:id/listing/:key", adminRequired, namespaced, createListing)
-	api.PUT("/:id/listing/:key", adminRequired, namespaced, updateListing)
-	api.PATCH("/:id/listing/:key", adminRequired, namespaced, patchListing)
-	api.DELETE("/:id/listing/:key", adminRequired, namespaced, deleteListing)
+	api.GET("/:storeid/listing", adminRequired, namespaced, listListing)
+	api.GET("/:storeid/listing/:key", adminRequired, namespaced, getListing)
+	api.POST("/:storeid/listing/:key", adminRequired, namespaced, createListing)
+	api.PUT("/:storeid/listing/:key", adminRequired, namespaced, updateListing)
+	api.PATCH("/:storeid/listing/:key", adminRequired, namespaced, patchListing)
+	api.DELETE("/:storeid/listing/:key", adminRequired, namespaced, deleteListing)
 
 	api.Route(router, args...)
 }
