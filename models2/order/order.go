@@ -139,6 +139,10 @@ func New(db *datastore.Datastore) *Order {
 	o := new(Order)
 	o.Init()
 	o.Model = mixin.Model{Db: db, Entity: o}
+
+	o.Status = Open
+	o.PaymentStatus = Unpaid
+	o.FulfillmentStatus = FulfillmentUnfulfilled
 	return o
 }
 
