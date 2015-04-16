@@ -19,7 +19,7 @@ func authorize(c *gin.Context) {
 
 	// Get store
 	stor := store.New(db)
-	if err := stor.Get(id); err != nil {
+	if err := stor.GetById(id); err != nil {
 		json.Fail(c, 500, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
 		return
 	}
@@ -36,7 +36,7 @@ func charge(c *gin.Context) {
 
 	// Get store
 	stor := store.New(db)
-	if err := stor.Get(id); err != nil {
+	if err := stor.GetById(id); err != nil {
 		json.Fail(c, 500, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
 		return
 	}
