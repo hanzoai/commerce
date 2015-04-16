@@ -15,7 +15,7 @@ import (
 func authorize(c *gin.Context) {
 	ctx := middleware.GetAppEngine(c)
 	db := datastore.New(ctx)
-	id := c.Params.ByName("id")
+	id := c.Params.ByName("storeid")
 
 	// Get store
 	stor := store.New(db)
@@ -32,7 +32,7 @@ func authorize(c *gin.Context) {
 func charge(c *gin.Context) {
 	ctx := middleware.GetAppEngine(c)
 	db := datastore.New(ctx)
-	id := c.Params.ByName("id")
+	id := c.Params.ByName("storeid")
 
 	// Get store
 	stor := store.New(db)
