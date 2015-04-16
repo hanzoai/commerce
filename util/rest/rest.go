@@ -15,6 +15,7 @@ import (
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/permission"
 	"crowdstart.io/util/router"
+	"crowdstart.io/util/structs"
 )
 
 var restApis = make([]*Rest, 0)
@@ -27,12 +28,14 @@ type route struct {
 
 type Opts struct {
 	DefaultNamespace bool
+	DefaultSortField string
 }
 
 type routeMap map[string](map[string]route)
 
 type Rest struct {
 	DefaultNamespace bool
+	DefaultSortField string
 	Kind             string
 	Prefix           string
 	Get              gin.HandlerFunc
@@ -64,15 +67,33 @@ func (r *Rest) InitModel(entity mixin.Kind) {
 	r.entityType = reflect.ValueOf(entity).Type()
 	r.Kind = r.newKind().Kind()
 	r.routes = make(routeMap)
+
+	if r.DefaultSortField != "" {
+		return
+	}
+
+	// Introspect model to determine default sort field
+	fields := structs.FieldNames(entity)
+	for _, name := range fields {
+		if name == "Slug" || name == "SKU" {
+			r.DefaultSortField = name
+			return
+		}
+	}
+
+	// Use Id_ as default sort field if nothing is specified.
+	if r.DefaultSortField == "" {
+		r.DefaultSortField = "Id_"
+	}
 }
 
 func New(entityOrPrefix interface{}, args ...interface{}) *Rest {
 	r := new(Rest)
 
-	// Handle Options
 	if len(args) > 0 {
 		opts := args[0].(Opts)
 		r.DefaultNamespace = opts.DefaultNamespace
+		r.DefaultSortField = opts.DefaultSortField
 	}
 
 	switch v := entityOrPrefix.(type) {
@@ -80,7 +101,7 @@ func New(entityOrPrefix interface{}, args ...interface{}) *Rest {
 		r.Init(v)
 	case mixin.Kind:
 		r.InitModel(v)
-		restApis = append(restApis, r) // Keep track of all apis globally
+		restApis = append(restApis, r) // Keep track of all APIs globally
 	}
 
 	return r
@@ -239,7 +260,7 @@ func (r Rest) get(c *gin.Context) {
 
 	entity := r.newEntity(c)
 
-	if err := entity.Get(id); err != nil {
+	if err := entity.GetById(id); err != nil {
 		// TODO: When is this a 404?
 		json.Fail(c, 404, "Failed to get "+r.Kind, err)
 	} else {
@@ -249,17 +270,23 @@ func (r Rest) get(c *gin.Context) {
 
 func (r Rest) list(c *gin.Context) {
 	entity := r.newEntity(c)
-
 	entities := r.newEntitySlice()
-
 	query := c.Request.URL.Query()
-	pageStr := query.Get("page")
-	displayStr := query.Get("display")
 
+	// Determine deafult sort order
+	sortField := query.Get("sort")
+	if sortField == "" {
+		sortField = r.DefaultSortField
+	}
+
+	// Create query
+	q := entity.Query().Order(sortField)
+
+	// Update query with page/display params
 	var display int
 	var err error
-
-	q := entity.Query()
+	pageStr := query.Get("page")
+	displayStr := query.Get("display")
 
 	// if we have pagination values, then trigger pagination calculations
 	if displayStr != "" {

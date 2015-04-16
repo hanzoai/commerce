@@ -66,6 +66,13 @@ func EncodeKey(key datastore.Key) string {
 }
 
 func DecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key, err error) {
+	// Catch panic from Decode
+	defer func() {
+		if r := recover(); r != nil {
+			err = errors.New(r.(string))
+		}
+	}()
+
 	ids := Decode(encoded)
 	n := len(ids)
 
