@@ -34,7 +34,7 @@ func getItem(itemType string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := middleware.GetAppEngine(c)
 		db := datastore.New(ctx)
-		id := c.Params.ByName("id")
+		id := c.Params.ByName("storeid")
 		key := c.Params.ByName("key")
 
 		// Get store
