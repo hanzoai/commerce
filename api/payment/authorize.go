@@ -52,6 +52,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	v, err := c.Get("store")
 	if err == nil {
 		stor = v.(*store.Store)
+		ord.Currency = stor.Currency // Set currency
 	}
 
 	// Update order with information from datastore, store and tally
