@@ -37,6 +37,7 @@ func Decode(body io.ReadCloser, v interface{}) error {
 		return err
 	}
 	err = json.Unmarshal(content, v)
+
 	if err != nil {
 		return err
 	}
