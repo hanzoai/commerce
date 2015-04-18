@@ -40,7 +40,7 @@ func getItem(itemType string) gin.HandlerFunc {
 		// Get store
 		stor := store.New(db)
 		if err := stor.GetById(id); err != nil {
-			json.Fail(c, 500, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
+			json.Fail(c, 404, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
 			return
 		}
 
@@ -52,7 +52,7 @@ func getItem(itemType string) gin.HandlerFunc {
 
 		// Try to get entity using key
 		if err := entity.GetById(key); err != nil {
-			json.Fail(c, 500, fmt.Sprintf("Failed to retrieve '%s' using '%s': %v", itemType, key, err), err)
+			json.Fail(c, 404, fmt.Sprintf("Failed to retrieve '%s' using '%s': %v", itemType, key, err), err)
 			return
 		}
 
