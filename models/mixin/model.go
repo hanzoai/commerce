@@ -265,7 +265,10 @@ func (m *Model) GetById(id string) error {
 	}
 
 	// Try and fetch by filterStr
-	_, err = m.Query().Filter(filterStr+"=", id).First()
+	ok, err := m.Query().Filter(filterStr+"=", id).First()
+	if !ok {
+		return datastore.KeyNotFound
+	}
 	return err
 }
 
