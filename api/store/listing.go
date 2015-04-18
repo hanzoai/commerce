@@ -18,8 +18,8 @@ func listListing(c *gin.Context) {
 	db := datastore.New(c)
 
 	stor := store.New(db)
-	if err := stor.Get(id); err != nil {
-		json.Fail(c, 500, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
+	if err := stor.GetById(id); err != nil {
+		json.Fail(c, 404, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
 		return
 	}
 
@@ -36,7 +36,7 @@ func getListing(c *gin.Context) {
 	// Get store
 	stor := store.New(db)
 	if err := stor.GetById(id); err != nil {
-		json.Fail(c, 500, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
+		json.Fail(c, 404, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
 		return
 	}
 
@@ -69,9 +69,9 @@ func createListing(c *gin.Context) {
 	db := datastore.New(c)
 
 	stor := store.New(db)
-	if err := stor.Get(id); err != nil {
+	if err := stor.GetById(id); err != nil {
 		msg := fmt.Sprintf("Failed to retrieve store '%v'", id)
-		json.Fail(c, 500, msg, err)
+		json.Fail(c, 404, msg, err)
 		return
 	}
 
@@ -109,8 +109,8 @@ func updateListing(c *gin.Context) {
 	db := datastore.New(c)
 
 	stor := store.New(db)
-	if err := stor.Get(id); err != nil {
-		json.Fail(c, 500, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
+	if err := stor.GetById(id); err != nil {
+		json.Fail(c, 404, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
 		return
 	}
 
@@ -144,8 +144,8 @@ func patchListing(c *gin.Context) {
 	db := datastore.New(c)
 
 	stor := store.New(db)
-	if err := stor.Get(id); err != nil {
-		json.Fail(c, 500, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
+	if err := stor.GetById(id); err != nil {
+		json.Fail(c, 404, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
 		return
 	}
 
@@ -177,8 +177,8 @@ func deleteListing(c *gin.Context) {
 	db := datastore.New(c)
 
 	stor := store.New(db)
-	if err := stor.Get(id); err != nil {
-		json.Fail(c, 500, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
+	if err := stor.GetById(id); err != nil {
+		json.Fail(c, 404, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
 		return
 	}
 
