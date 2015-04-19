@@ -7,393 +7,6 @@ associated with running a crowdfunding campaign.
 The API is currently in beta. Please contact support@crowdstart.com if you
 intend to use our API in any production code.
 
-# Group Payments
-
-## Charge [/charge]
-Charges and captures a payment immediately or fails.
-
-### Charge an Order [POST]
-+ Request (application/json)
-
-        {
-            "buyer": {
-                "type":"card",
-                "number":"4242424242424242",
-                "month":"12",
-                "year":"2016",
-                "cvc":"123",
-                "email":"joe@buystoomuchstuff.com",
-                "firstName":"Joe",
-                "lastName":"Smoe",
-                "company":"Buys Too Much Stuff Dotcom",
-                "phone":"555-555-5555",
-                "notes":"none"
-            },
-            "order": {
-                "currency":"usd",
-                "items":[
-                    {
-                        "productId":"1",
-                        "variantId":"1",
-                        "collectionId":"1",
-                        "price":100,
-                        "quantity":20
-                    }
-                ]
-            }
-        }
-
-+ Response 200 (application/json)
-
-        {
-          "id":"9",
-          "createdAt":"2015-03-23T04:13:56.666272023Z",
-          "updatedAt":"2015-03-23T04:13:58.989441381Z",
-          "campaignId":"",
-          "orderStatus":"",
-          "paymentStatus":"",
-          "fulfillmentStatus":"",
-          "preorder":false,
-          "unconfirmed":false,
-          "currency":"usd",
-          "type":"",
-          "shippingMethod":"",
-          "lineTotal":2000,
-          "discount":0,
-          "subtotal":2000,
-          "shipping":0,
-          "tax":0,
-          "adjustment":0,
-          "total":2000,
-          "balance":0,
-          "paid":0,
-          "refunded":0,
-          "fee":0,
-          "billingAddress":{
-
-          },
-          "shippingAddress":{
-
-          },
-          "items":[
-            {
-              "productId":"1",
-              "productName":"",
-              "productSlug":"",
-              "collectionId":"1",
-              "variantId":"1",
-              "variantName":"",
-              "variantSKU":"",
-              "price":100,
-              "quantity":20,
-              "weight":0,
-              "taxable":false
-            }
-          ],
-          "discounts":[
-
-          ],
-          "payments":[
-            {
-              "account":{
-                "type":"stripe",
-                "buyer":{
-                  "email":"joe@buystoomuchstuff.com",
-                  "firstName":"",
-                  "lastName":"",
-                  "company":"Buys Too Much Stuff Dotcom",
-                  "phone":"555-555-5555",
-                  "notes":"non",
-                  "address":{
-
-                  }
-                },
-                "affirm":{
-
-                },
-                "stripe":{
-                  "fingerprint":"k6NxwTEJxyHMPCr3",
-                  "customerId":"cus_5vDNDt1Xi2YBBe",
-                  "cardId":"card_15jMwmCSRlllXCwP3TSacP62",
-                  "brand":"Visa",
-                  "type":"credit",
-                  "lastFour":"4242",
-                  "expiration":{
-                    "month":12,
-                    "year":2016
-                  },
-                  "cvcCheck":"pass"
-                },
-                "paypal":{
-
-                }
-              },
-              "currency":"usd",
-              "campaignId":"",
-              "chargeId":"ch_15jMwqCSRlllXCwPpVNGPktU",
-              "amount":2000,
-              "amountRefunded":0,
-              "status":"paid",
-              "client":{
-
-              },
-              "captured":true,
-              "live":false
-            }
-          ],
-          "fulfillment":{
-            "courier":"",
-            "trackingNumber":""
-          }
-        }
-
-
-## Authorize [/authorize]
-Authorizes a charge on an order, but does not capture it.
-This method is ideal if you wish to only receive payment when the
-product is shipped.
-
-### Authorize an order [POST]
-+ Request (application/json)
-
-        {
-          "buyer":{
-            "type":"card",
-            "number":"4242424242424242",
-            "month":"12",
-            "year":"2016",
-            "cvc":"123",
-            "email":"joe@buystoomuchstuff.com",
-            "firstName":"Joe",
-            "lastName":"Smoe",
-            "company":"Buys Too Much Stuff Dotcom",
-            "phone":"555-555-5555",
-            "notes":"non"
-          },
-          "order":{
-            "currency":"usd",
-            "items":[
-              {
-                "productId":"1",
-                "variantId":"1",
-                "collectionId":"1",
-                "price":100,
-                "quantity":20
-              }
-            ]
-          }
-        }
-
-+ Response 200 (application/json)
-
-        {
-
-           "id":"12",
-           "createdAt":"2015-03-23T04:53:57.840871693Z",
-           "updatedAt":"2015-03-23T04:53:57.840871693Z",
-           "campaignId":"",
-           "orderStatus":"",
-           "paymentStatus":"",
-           "fulfillmentStatus":"",
-           "preorder":false,
-           "unconfirmed":false,
-           "currency":"usd",
-           "type":"",
-           "shippingMethod":"",
-           "lineTotal":2000,
-           "discount":0,
-           "subtotal":2000,
-           "shipping":0,
-           "tax":0,
-           "adjustment":0,
-           "total":2000,
-           "balance":0,
-           "paid":0,
-           "refunded":0,
-           "fee":0,
-           "billingAddress":{
-
-           },
-           "shippingAddress":{
-
-           },
-           "items":[
-              {
-                 "productId":"1",
-                 "productName":"",
-                 "productSlug":"",
-                 "collectionId":"1",
-                 "variantId":"1",
-                 "variantName":"",
-                 "variantSKU":"",
-                 "price":100,
-                 "quantity":20,
-                 "weight":0,
-                 "taxable":false
-              }
-           ],
-           "discounts":[
-
-           ],
-           "payments":[
-              {
-                 "account":{
-                    "type":"stripe",
-                    "buyer":{
-                       "email":"joe@buystoomuchstuff.com",
-                       "firstName":"",
-                       "lastName":"",
-                       "company":"Buys Too Much Stuff Dotcom",
-                       "phone":"555-555-5555",
-                       "notes":"non",
-                       "address":{
-
-                       }
-                    },
-                    "affirm":{
-
-                    },
-                    "stripe":{
-                       "fingerprint":"k6NxwTEJxyHMPCr3",
-                       "customerId":"cus_5vE1sYKb8AayVC",
-                       "cardId":"card_15jNZVCSRlllXCwPrD6GKV1j",
-                       "brand":"Visa",
-                       "type":"credit",
-                       "lastFour":"4242",
-                       "expiration":{
-                          "month":12,
-                          "year":2016
-                       },
-                       "cvcCheck":"pass"
-                    },
-                    "paypal":{
-
-                    }
-                 },
-                 "currency":"usd",
-                 "campaignId":"",
-                 "chargeId":"ch_15jNZZCSRlllXCwPWFblE4Hr",
-                 "amount":2000,
-                 "amountRefunded":0,
-                 "status":"unpaid",
-                 "client":{
-
-                 },
-                 "captured":false,
-                 "live":false
-              }
-           ],
-           "fulfillment":{
-              "courier":"",
-              "trackingNumber":""
-           }
-        }
-
-## Capture [/order/{id}/capture]
-Captures the payment for an order
-
-### Capture payment [POST]
-+ Request (application/json)
-
-+ Response 200 (application/json)
-
-        {
-          "id":"9",
-          "createdAt":"2015-03-23T04:13:56.666272023Z",
-          "updatedAt":"2015-03-23T04:13:58.989441381Z",
-          "campaignId":"",
-          "orderStatus":"",
-          "paymentStatus":"",
-          "fulfillmentStatus":"",
-          "preorder":false,
-          "unconfirmed":false,
-          "currency":"usd",
-          "type":"",
-          "shippingMethod":"",
-          "lineTotal":2000,
-          "discount":0,
-          "subtotal":2000,
-          "shipping":0,
-          "tax":0,
-          "adjustment":0,
-          "total":2000,
-          "balance":0,
-          "paid":0,
-          "refunded":0,
-          "fee":0,
-          "billingAddress":{
-          },
-          "items":[
-            {
-              "productId":"1",
-              "productName":"",
-              "productSlug":"",
-              "collectionId":"1",
-              "variantId":"1",
-              "variantName":"",
-              "variantSKU":"",
-              "price":100,
-              "quantity":20,
-              "weight":0,
-              "taxable":false
-            }
-          ],
-          "discounts":[
-          ],
-          "payments":[
-            {
-              "account":{
-                "type":"stripe",
-                "buyer":{
-                  "email":"joe@buystoomuchstuff.com",
-                  "firstName":"",
-                  "lastName":"",
-                  "company":"Buys Too Much Stuff Dotcom",
-                  "phone":"555-555-5555",
-                  "notes":"non",
-                  "address":{
-
-                  }
-                },
-                "affirm":{
-
-                },
-                "stripe":{
-                  "fingerprint":"k6NxwTEJxyHMPCr3",
-                  "customerId":"cus_5vDNDt1Xi2YBBe",
-                  "cardId":"card_15jMwmCSRlllXCwP3TSacP62",
-                  "brand":"Visa",
-                  "type":"credit",
-                  "lastFour":"4242",
-                  "expiration":{
-                    "month":12,
-                    "year":2016
-                  },
-                  "cvcCheck":"pass"
-                },
-                "paypal":{
-
-                }
-              },
-              "currency":"usd",
-              "campaignId":"",
-              "chargeId":"ch_15jMwqCSRlllXCwPpVNGPktU",
-              "amount":2000,
-              "amountRefunded":0,
-              "status":"paid",
-              "client":{
-
-              },
-              "captured":true,
-              "live":false
-            }
-          ],
-          "fulfillment":{
-            "courier":"",
-            "trackingNumber":""
-          }
-        }
-
 # Group Coupon
 This object is a representation of special offers that provide discounts
 associated with a certain order or item.
@@ -633,6 +246,449 @@ request, while any fields not specified in the JSON will be left alone.
 
 + Response 201 (application/json)
 
+## Payments on an Order [/order/{id}/payments]
+It is possible to get a listing of all the payments on a specific order with
+this endpoint.
+
+### Get Payments on an Order [GET]
++ Response 200 (application/json)
+
+    {
+     "account":{
+        "type":"stripe",
+        "buyer":{
+           "email":"joe@buystoomuchstuff.com",
+           "firstname":"",
+           "lastname":"",
+           "company":"buys too much stuff dotcom",
+           "phone":"555-555-5555",
+           "notes":"non",
+           "address":{
+
+           }
+        },
+        "affirm":{
+
+        },
+        "stripe":{
+           "fingerprint":"k6nxwtejxyhmpcr3",
+           "customerid":"cus_5ve1sykb8aayvc",
+           "cardid":"card_15jnzvcsrlllxcwprd6gkv1j",
+           "brand":"visa",
+           "type":"credit",
+           "lastfour":"4242",
+           "expiration":{
+              "month":12,
+              "year":2016
+           },
+           "cvccheck":"pass"
+        },
+        "paypal":{
+
+        }
+     },
+     "currency":"usd",
+     "campaignid":"",
+     "chargeid":"ch_15jnzzcsrlllxcwpwfble4hr",
+     "amount":2000,
+     "amountrefunded":0,
+     "status":"unpaid",
+     "client":{
+
+     },
+     "captured":false,
+     "live":false
+    }
+
+## Charging an order [/order/{id}/charge]
+This endpoint is the 'one-step' payment endpoint.  It will attempt to
+immediately both authorize and capture a specific payment, or it will fail
+shortly.
+
+### Charge an Order [POST]
++ Request (application/json)
+
+        {
+            "buyer": {
+                "type":"card",
+                "number":"4242424242424242",
+                "month":"12",
+                "year":"2016",
+                "cvc":"123",
+                "email":"joe@buystoomuchstuff.com",
+                "firstName":"Joe",
+                "LastName":"Smoe",
+                "company":"Buys Too Much Stuff Dotcom",
+                "phone":"555-555-5555",
+                "notes":"none"
+            },
+            "order": {
+                "currency":"usd",
+                "items":[
+                    {
+                        "productId":"1",
+                        "variantId":"1",
+                        "collectionId":"1",
+                        "price":100,
+                        "quantity":20
+                    }
+                ]
+            }
+        }
+
++ Response 200 (application/json)
+
+        {
+          "id":"9",
+          "createdAt":"2015-03-23T04:13:56.666272023Z",
+          "updatedAt":"2015-03-23T04:13:58.989441381Z",
+          "campaignId":"",
+          "orderStatus":"",
+          "paymentStatus":"",
+          "fulfillmentStatus":"",
+          "preorder":false,
+          "unconfirmed":false,
+          "currency":"usd",
+          "type":"",
+          "shippingMethod":"",
+          "lineTotal":2000,
+          "discount":0,
+          "subtotal":2000,
+          "shipping":0,
+          "tax":0,
+          "adjustment":0,
+          "total":2000,
+          "balance":0,
+          "paid":0,
+          "refunded":0,
+          "fee":0,
+          "billingAddress":{
+
+          },
+          "shippingAddress":{
+
+          },
+          "items":[
+            {
+              "productId":"1",
+              "productName":"",
+              "productSlug":"",
+              "collectionId":"1",
+              "variantId":"1",
+              "variantName":"",
+              "variantSKU":"",
+              "price":100,
+              "quantity":20,
+              "weight":0,
+              "taxable":false
+            }
+          ],
+          "discounts":[
+
+          ],
+          "payments":[
+            {
+              "account":{
+                "type":"stripe",
+                "buyer":{
+                  "email":"joe@buystoomuchstuff.com",
+                  "firstName":"",
+                  "lastName":"",
+                  "company":"Buys Too Much Stuff Dotcom",
+                  "phone":"555-555-5555",
+                  "notes":"non",
+                  "address":{
+
+                  }
+                },
+                "affirm":{
+
+                },
+                "stripe":{
+                  "fingerprint":"k6NxwTEJxyHMPCr3",
+                  "customerId":"cus_5vDNDt1Xi2YBBe",
+                  "cardId":"card_15jMwmCSRlllXCwP3TSacP62",
+                  "brand":"Visa",
+                  "type":"credit",
+                  "lastFour":"4242",
+                  "expiration":{
+                    "month":12,
+                    "year":2016
+                  },
+                  "cvcCheck":"pass"
+                },
+                "paypal":{
+
+                }
+              },
+              "currency":"usd",
+              "campaignId":"",
+              "chargeId":"ch_15jMwqCSRlllXCwPpVNGPktU",
+              "amount":2000,
+              "amountRefunded":0,
+              "status":"paid",
+              "client":{
+
+              },
+              "captured":true,
+              "live":false
+            }
+          ],
+          "fulfillment":{
+            "courier":"",
+            "trackingNumber":""
+          }
+        }
+
+## Authorize a Payment for an Order [/order/{id}/authorize]
+This is the first step of the 'two-step' payment process.  This endpoint will
+authorize a charge on an order, but does not capture it.  It is ideal if you
+wish only to receive payment upon shipping a product.
+
+### Authorize [POST]
++ Request (application/json)
+
+        {
+          "buyer":{
+            "type":"card",
+            "number":"4242424242424242",
+            "month":"12",
+            "year":"2016",
+            "cvc":"123",
+            "email":"joe@buystoomuchstuff.com",
+            "firstName":"Joe",
+            "LastName":"Smoe",
+            "company":"Buys Too Much Stuff Dotcom",
+            "phone":"555-555-5555",
+            "notes":"non"
+          },
+          "order":{
+            "currency":"usd",
+            "items":[
+              {
+                "productId":"1",
+                "variantId":"1",
+                "collectionId":"1",
+                "price":100,
+                "quantity":20
+              }
+            ]
+          }
+        }
+
++ Response 200 (application/json)
+
+        {
+
+           "id":"12",
+           "createdAt":"2015-03-23T04:53:57.840871693Z",
+           "updatedAt":"2015-03-23T04:53:57.840871693Z",
+           "campaignId":"",
+           "orderStatus":"",
+           "paymentStatus":"",
+           "fulfillmentStatus":"",
+           "preorder":false,
+           "unconfirmed":false,
+           "currency":"usd",
+           "type":"",
+           "shippingMethod":"",
+           "lineTotal":2000,
+           "discount":0,
+           "subtotal":2000,
+           "shipping":0,
+           "tax":0,
+           "adjustment":0,
+           "total":2000,
+           "balance":0,
+           "paid":0,
+           "refunded":0,
+           "fee":0,
+           "billingAddress":{
+
+           },
+           "shippingAddress":{
+
+           },
+           "items":[
+              {
+                 "productId":"1",
+                 "productName":"",
+                 "productSlug":"",
+                 "collectionId":"1",
+                 "variantId":"1",
+                 "variantName":"",
+                 "variantSKU":"",
+                 "price":100,
+                 "quantity":20,
+                 "weight":0,
+                 "taxable":false
+              }
+           ],
+           "discounts":[
+
+           ],
+           "payments":[
+              {
+                 "account":{
+                    "type":"stripe",
+                    "buyer":{
+                       "email":"joe@buystoomuchstuff.com",
+                       "firstName":"",
+                       "lastName":"",
+                       "company":"Buys Too Much Stuff Dotcom",
+                       "phone":"555-555-5555",
+                       "notes":"non",
+                       "address":{
+
+                       }
+                    },
+                    "affirm":{
+
+                    },
+                    "stripe":{
+                       "fingerprint":"k6NxwTEJxyHMPCr3",
+                       "customerId":"cus_5vE1sYKb8AayVC",
+                       "cardId":"card_15jNZVCSRlllXCwPrD6GKV1j",
+                       "brand":"Visa",
+                       "type":"credit",
+                       "lastFour":"4242",
+                       "expiration":{
+                          "month":12,
+                          "year":2016
+                       },
+                       "cvcCheck":"pass"
+                    },
+                    "paypal":{
+
+                    }
+                 },
+                 "currency":"usd",
+                 "campaignId":"",
+                 "chargeId":"ch_15jNZZCSRlllXCwPWFblE4Hr",
+                 "amount":2000,
+                 "amountRefunded":0,
+                 "status":"unpaid",
+                 "client":{
+                 },
+                 "captured":false,
+                 "live":false
+              }
+           ],
+           "fulfillment":{
+              "courier":"",
+              "trackingNumber":""
+           }
+        }
+
+## Capture a Payment for an Order [/order/{id}/capture]
+This is the second step in the 'two-step' payment process.  This will capture
+payment on an order that has already been authorized.  It will fail if you have
+not called the Authorize endpoint first (see above).
+
+### Capture payment [POST]
++ Request (application/json)
++ Parameters
+    + id (string) ID of the order
+        THE-ORDER-ID
+
++ Response 200 (application/json)
+
+        {
+          "id":"9",
+          "createdAt":"2015-03-23T04:13:56.666272023Z",
+          "updatedAt":"2015-03-23T04:13:58.989441381Z",
+          "campaignId":"",
+          "orderStatus":"",
+          "paymentStatus":"",
+          "fulfillmentStatus":"",
+          "preorder":false,
+          "unconfirmed":false,
+          "currency":"usd",
+          "type":"",
+          "shippingMethod":"",
+          "lineTotal":2000,
+          "discount":0,
+          "subtotal":2000,
+          "shipping":0,
+          "tax":0,
+          "adjustment":0,
+          "total":2000,
+          "balance":0,
+          "paid":0,
+          "refunded":0,
+          "fee":0,
+          "billingAddress":{
+          },
+          "items":[
+            {
+              "productId":"1",
+              "productName":"",
+              "productSlug":"",
+              "collectionId":"1",
+              "variantId":"1",
+              "variantName":"",
+              "variantSKU":"",
+              "price":100,
+              "quantity":20,
+              "weight":0,
+              "taxable":false
+            }
+          ],
+          "discounts":[
+          ],
+          "payments":[
+            {
+              "account":{
+                "type":"stripe",
+                "buyer":{
+                  "email":"joe@buystoomuchstuff.com",
+                  "firstName":"",
+                  "lastName":"",
+                  "company":"Buys Too Much Stuff Dotcom",
+                  "phone":"555-555-5555",
+                  "notes":"non",
+                  "address":{
+
+                  }
+                },
+                "affirm":{
+
+                },
+                "stripe":{
+                  "fingerprint":"k6NxwTEJxyHMPCr3",
+                  "customerId":"cus_5vDNDt1Xi2YBBe",
+                  "cardId":"card_15jMwmCSRlllXCwP3TSacP62",
+                  "brand":"Visa",
+                  "type":"credit",
+                  "lastFour":"4242",
+                  "expiration":{
+                    "month":12,
+                    "year":2016
+                  },
+                  "cvcCheck":"pass"
+                },
+                "paypal":{
+
+                }
+              },
+              "currency":"usd",
+              "campaignId":"",
+              "chargeId":"ch_15jMwqCSRlllXCwPpVNGPktU",
+              "amount":2000,
+              "amountRefunded":0,
+              "status":"paid",
+              "client":{
+
+              },
+              "captured":true,
+              "live":false
+            }
+          ],
+          "fulfillment":{
+            "courier":"",
+            "trackingNumber":""
+          }
+        }
 # Group Product
 
 This represents a single product (or, perk, if intangible) that is offered by a
