@@ -22,20 +22,15 @@ func Skully() *Config {
 	config.Stripe.RedirectURL = "https:" + config.UrlFor("platform", "/stripe/callback")
 	config.Stripe.WebhookURL = "https:" + config.UrlFor("platform", "/stripe/hook")
 
-	config.DemoMode = false
+	config.Salesforce.ConsumerKey = "3MVG9xOCXq4ID1uElRYWhpUWjXSbiTVg4WO6q9DvWdvBjQ_DFlwSc7jZ9AbY3z9Jv_V29W7xq1nPjTYQhYJqF"
+	config.Salesforce.ConsumerSecret = "3811316853831925498"
 
-	// Only use production credentials if demo mode is off.
-	if !config.DemoMode {
-		config.Salesforce.ConsumerKey = "3MVG9xOCXq4ID1uElRYWhpUWjXSbiTVg4WO6q9DvWdvBjQ_DFlwSc7jZ9AbY3z9Jv_V29W7xq1nPjTYQhYJqF"
-		config.Salesforce.ConsumerSecret = "3811316853831925498"
+	config.Stripe.ClientId = "ca_REDACTED"
+	config.Stripe.APIKey = "pk_live_REDACTED"
+	config.Stripe.APISecret = "sk_live_REDACTED"
 
-		config.Stripe.ClientId = "ca_REDACTED"
-		config.Stripe.APIKey = "pk_live_REDACTED"
-		config.Stripe.APISecret = ""
-
-		config.Google.APIKey = "AIza_REDACTED"
-		config.Google.Bucket.ImageUploads = "skully-images"
-	}
+	config.Google.APIKey = "AIza_REDACTED"
+	config.Google.Bucket.ImageUploads = "skully-images"
 
 	return config
 }
