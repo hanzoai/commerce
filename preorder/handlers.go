@@ -157,13 +157,26 @@ func SavePreorder(c *gin.Context) {
 	user.ShippingAddress = form.ShippingAddress
 	log.Debug("User: %v", user)
 
-	order := form.Order
+	var order models.Order
+	if form.Order.Id != "" {
+		key, err := db.DecodeKey(form.Order.Id)
+		if err = db.Get(key, &order); err != nil {
+			log.Error("Invalid Order.Id: %v", err, ctx)
+			c.Fail(500, err)
+			return
+		}
+		if err := db.Get(key, &order); err != nil {
+			order = form.Order
+		}
+	} else {
+		order = form.Order
+	}
 	order.UpdatedAt = time.Now()
 	order.ShippingAddress = form.ShippingAddress
 	log.Debug("ShippingAddress: %v", user)
 
 	// TODO: Optimize this, multiget, use caching.
-	for i, lineItem := range order.Items {
+	for i, lineItem := range form.Order.Items {
 		log.Debug("Fetching variant for %v", lineItem.SKU())
 
 		// Fetch Variant for LineItem from datastore
