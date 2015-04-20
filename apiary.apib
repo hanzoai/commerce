@@ -7,13 +7,13 @@ associated with running a crowdfunding campaign.
 The API is currently in beta. Please contact support@crowdstart.com if you
 intend to use our API in any production code.
 
-# Payment API
+# Group Payment API
 There is a special, easy-to-use API with static endpoints for collecting money.
 There is a one-step payment process (charge endpoint) and a two-step payment
 process (authorize endpoint, followed by the capture endpoint on the Order
 object).
 
-## Group One-step Payments [/charge]
+## One-step Payments [/charge]
 The one-step payment process is mostly used for general commerce for immediate
 fulfillment/sale.  In general, you must send three things to successfully
 complete a charge call: order information, payment information, and user
@@ -156,7 +156,7 @@ Any failure in this process will result in a failure of the call.
           }
         }
 
-## Group Two-step payment process, part 1 [/authorize]
+## Two-step payment process, part 1 [/authorize]
 The two-step payment process separates the two steps mentioned in the one-step
 payment process, and allows you to authorize a payment, and then capture it at a
 later period.  This is useful for pre-orders or other such payments that you do
