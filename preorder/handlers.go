@@ -175,6 +175,10 @@ func SavePreorder(c *gin.Context) {
 	order.ShippingAddress = form.ShippingAddress
 	log.Debug("ShippingAddress: %v", user)
 
+	recalc := false
+	if order.Subtotal == 0 {
+		recalc = true
+	}
 	// TODO: Optimize this, multiget, use caching.
 	for i, lineItem := range form.Order.Items {
 		log.Debug("Fetching variant for %v", lineItem.SKU())
@@ -200,12 +204,17 @@ func SavePreorder(c *gin.Context) {
 		// Update item in order
 		order.Items[i] = lineItem
 
-		// Update subtotal
-		order.Subtotal += lineItem.Price()
+		if recalc {
+			// Update subtotal
+			order.Subtotal += lineItem.Price()
+		}
 	}
 
-	// Update Total
-	order.Total = order.Subtotal + order.Shipping + order.Tax
+	if recalc {
+		// Update Total
+		order.Total = order.Subtotal + order.Shipping + order.Tax
+	}
+
 	order.UserId = user.Id
 
 	// Save order
