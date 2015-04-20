@@ -441,7 +441,7 @@ var products = task.Func("fixtures-products", func(c *gin.Context) {
 					  focus on what matters most: the road ahead. SKULLY AR-1: Ride safer, look
 					  badass.
 
-					  Estimated Delivery: JULY 2015`,
+					  Estimated Delivery: 2015`,
 		Images: []Image{
 			Image{
 				Alt: "blackhelmet_store_1000px.jpg",
@@ -456,8 +456,7 @@ var products = task.Func("fixtures-products", func(c *gin.Context) {
 				Y:   1000,
 			},
 		},
-		EstimatedDelivery: "July 2015",
-		SoldOut:           true,
+		EstimatedDelivery: "2015",
 		Configs: []Config{
 			Config{
 				Product:  "ar-1",
