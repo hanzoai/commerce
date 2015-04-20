@@ -404,7 +404,7 @@ var _ = Describe("payment", func() {
 
 		It("Should not capture invalid order", func() {
 			w := client.PostRawJSON("/order/BADID/authorize", "")
-			Expect(w.Code).To(Equal(500))
+			Expect(w.Code).To(Equal(404))
 			log.Debug("JSON %v", w.Body)
 		})
 	})
@@ -422,7 +422,7 @@ var _ = Describe("payment", func() {
 
 		It("Should not capture invalid order", func() {
 			w := client.PostRawJSON("/order/BADID/capture", "")
-			Expect(w.Code).To(Equal(500))
+			Expect(w.Code).To(Equal(404))
 			log.Debug("JSON %v", w.Body)
 		})
 	})
@@ -456,7 +456,7 @@ var _ = Describe("payment", func() {
 
 		It("Should not capture invalid order", func() {
 			w := client.PostRawJSON("/order/BADID/charge", "")
-			Expect(w.Code).To(Equal(500))
+			Expect(w.Code).To(Equal(404))
 			log.Debug("JSON %v", w.Body)
 		})
 	})
