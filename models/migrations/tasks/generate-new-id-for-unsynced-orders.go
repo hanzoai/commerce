@@ -1,12 +1,11 @@
 package tasks
 
 import (
-	"time"
-
 	"crowdstart.io/datastore"
 	"crowdstart.io/datastore/parallel"
 	"crowdstart.io/models"
 	"crowdstart.io/util/log"
+	"crowdstart.io/util/queries"
 )
 
 //If we don't get a sync, then there is some problem with the order id key and it needs to be regenerated
@@ -16,9 +15,13 @@ var GenerateNewIdForUnsyncedOrders = parallel.Task("generate-new-id-for-unsynced
 		return
 	}
 
-	log.Debug("Regenerating Id for order %v", order, db.Context)
+	log.Debug("Regenerating UserId for order %v", order, db.Context)
 
-	order.Id = key.Encode()
-	order.UpdatedAt = time.Now()
+	user := models.User{}
+	q := queries.New(db.Context)
+	if err := q.GetUserByEmail(order.Email, &user); err != nil {
+		log.Warn("Error %v", err, db.Context)
+	}
+	order.UserId = user.Id
 	db.PutKind("order", key, &order)
 })

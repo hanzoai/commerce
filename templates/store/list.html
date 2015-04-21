@@ -70,7 +70,7 @@ var allListings = {{ listingsJSON | safe }};
         {% if !forloop.First %}
         <br />
         {% endif %}
-        <p>{{ p }}</p>
+        <p>{{ p | safe }}</p>
         {% endfor %}
         <br>
         <span class="product-estimated-delivery">
