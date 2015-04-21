@@ -439,9 +439,7 @@ var products = task.Func("fixtures-products", func(c *gin.Context) {
 					  provide telemetry and rider data such as speed, GPS directions, fuel, and
 					  more, the SKULLY AR-1 not only eliminates blind spots, but allows the rider to
 					  focus on what matters most: the road ahead. SKULLY AR-1: Ride safer, look
-					  badass.
-
-					  Estimated Delivery: 2015`,
+					  badass.`,
 		Images: []Image{
 			Image{
 				Alt: "blackhelmet_store_1000px.jpg",
