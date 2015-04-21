@@ -20,25 +20,21 @@
 {% endblock %}
 
 {% block content %}
+<style>
+    .message a {
+        text-decoration: underline
+    }
+</style>
 <div class="thankyou">
     <div class="message">
         <p>Thank you for your order. You will receive a confirmation email shortly.</p>
+        <br>
         {% if loggedIn %}
-        <p><a href="{{ urlFor("store", "/card") }}">Click here to download your Holiday card</a>.</p>
+        <p>You can view and manage your order from your <a href="{{ urlFor("/store", "orders") }}">profile</a>.</p>
         {% else %}
-        <p>Your email will contain instructions for downloading your holiday card.</p>
+        <p><a href="{{ urlFor("/store", "create-password") }}">Please create a password for your account</a>, so you can manage your order later.</p>
         {% endif %}
-    </div>
-    <div class="social-icons">
-        <a href="https://www.facebook.com/skullysystems" target="_blank" title="Skully Helmets, Inc" class="social-facebook">
-            <img src="{{ urlFor("/img/social/facebook.png") }}">
-        </a>
-        <a href="http://www.twitter.com/skullysystems" target="_blank" title="SKULLY HELMETS" class="social-twitter">
-            <img src="{{ urlFor("/img/social/twitter.png") }}">
-        </a>
-        <a href="https://plus.google.com/112776474651298122010/posts" target="_blank" title="Marcus Weller" class="social-google">
-            <img src="{{ urlFor("/img/social/google-plus.png") }}">
-        </a>
+        <p>If you have any questions, please visit our <a href="https://skully.zendesk.com/hc/en-us">Help Center</a>.</p>
     </div>
 </div>
 {% endblock %}
