@@ -28,9 +28,9 @@ func Development() *Config {
 
 	config.StaticUrl = "/static"
 
-	config.Salesforce.CallbackURL = "http:" + config.UrlFor("platform", "/salesforce/callback")
-	config.Stripe.RedirectURL = "http:" + config.UrlFor("platform", "/stripe/callback")
-	config.Stripe.WebhookURL = "http:" + config.UrlFor("platform", "/stripe/hook")
+	config.Salesforce.CallbackURL = "http://localhost:8080" + config.UrlFor("platform", "/salesforce/callback")
+	config.Stripe.RedirectURL = "http://localhost:8080" + config.UrlFor("platform", "/stripe/callback")
+	config.Stripe.WebhookURL = "http://localhost:8080" + config.UrlFor("platform", "/stripe/hook")
 
 	// TODO: Create dev versions somehow
 	config.Salesforce.ConsumerKey = "3MVG9xOCXq4ID1uElRYWhpUWjXYxIIlf_W1_MSDefMxTxdgMz5aMsZ7uvZ4n8zHI1wq6UREv2KE31Kes_Bq6D"
