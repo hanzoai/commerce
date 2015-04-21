@@ -18,14 +18,6 @@ func authorizationRequest(c *gin.Context, ord *order.Order) (*AuthorizationReq, 
 	ar := new(AuthorizationReq)
 	ar.Order = ord
 
-	// In case people are using the version of the api that takes existing
-	// orders Update order in request with id
-	if id := c.Params.ByName("orderid"); id != "" {
-		if err := ar.Order.Get(id); err != nil {
-			return nil, OrderDoesNotExist
-		}
-	}
-
 	// Try decode request body
 	if err := json.Decode(c.Request.Body, &ar); err != nil {
 		log.Error("Failed to decode request body: %v\n%v", c.Request.Body, err, c)

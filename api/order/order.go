@@ -35,7 +35,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 
 		err := ord.Get(id)
 		if err != nil {
-			json.Fail(c, 500, fmt.Sprintf("Failed to retrieve order %v: %v", id, err), err)
+			json.Fail(c, 404, fmt.Sprintf("Failed to retrieve order %v: %v", id, err), err)
 		}
 
 		payments := make([]*payment.Payment, 0)
