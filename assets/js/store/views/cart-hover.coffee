@@ -17,6 +17,7 @@ class CartHover extends View
       util.humanizeNumber v
 
   showCart: ->
+    @el.show()
     @el.animate {opacity: 1}, 400, 'swing'
 
   listen: ->
