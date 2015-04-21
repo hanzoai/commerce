@@ -25,14 +25,24 @@ func getOrganizationAndOrder(c *gin.Context) (*organization.Organization, *order
 	// Create order that's properly namespaced
 	ord := order.New(db)
 
+	// Get order if an existing order was referenced
+	if id := c.Params.ByName("orderid"); id != "" {
+		if err := ord.Get(id); err != nil {
+			return nil, nil
+		}
+	}
+
 	return org, ord
 }
 
 func Authorize(c *gin.Context) {
 	org, ord := getOrganizationAndOrder(c)
+	if ord == nil {
+		json.Fail(c, 404, "Failed to retrieve order", OrderDoesNotExist)
+		return
+	}
 
-	var err error
-	if ord, err = authorize(c, org, ord); err != nil {
+	if _, err := authorize(c, org, ord); err != nil {
 		json.Fail(c, 500, "Error during authorize", err)
 		return
 	}
@@ -43,11 +53,8 @@ func Authorize(c *gin.Context) {
 
 func Capture(c *gin.Context) {
 	org, ord := getOrganizationAndOrder(c)
-
-	// Fetch order for which we shall capture charges
-	id := c.Params.ByName("orderid")
-	if err := ord.Get(id); err != nil {
-		json.Fail(c, 500, "Error looking up order", err)
+	if ord == nil {
+		json.Fail(c, 404, "Failed to retrieve order", OrderDoesNotExist)
 		return
 	}
 
@@ -64,6 +71,10 @@ func Capture(c *gin.Context) {
 
 func Charge(c *gin.Context) {
 	org, ord := getOrganizationAndOrder(c)
+	if ord == nil {
+		json.Fail(c, 404, "Failed to retrieve order", OrderDoesNotExist)
+		return
+	}
 
 	// Do authorization
 	ord, err := authorize(c, org, ord)

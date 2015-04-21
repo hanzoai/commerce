@@ -7,10 +7,19 @@ associated with running a crowdfunding campaign.
 The API is currently in beta. Please contact support@crowdstart.com if you
 intend to use our API in any production code.
 
-# Group Payments
+# Group Payment API
+There is a special, easy-to-use API with static endpoints for collecting money.
+There is a one-step payment process (charge endpoint) and a two-step payment
+process (authorize endpoint, followed by the capture endpoint on the Order
+object).
 
-## Charge [/charge]
-Charges and captures a payment immediately or fails.
+## One-step Payments [/charge]
+The one-step payment process is mostly used for general commerce for immediate
+fulfillment/sale.  In general, you must send three things to successfully
+complete a charge call: order information, payment information, and user
+information. In essence, the one-step payment method takes this information,
+authorizes the payment, and, if successful, immediately attempts to capture it.
+Any failure in this process will result in a failure of the call.
 
 ### Charge an Order [POST]
 + Request (application/json)
@@ -147,13 +156,15 @@ Charges and captures a payment immediately or fails.
           }
         }
 
+## Two-step payment process, part 1 [/authorize]
+The two-step payment process separates the two steps mentioned in the one-step
+payment process, and allows you to authorize a payment, and then capture it at a
+later period.  This is useful for pre-orders or other such payments that you do
+not wish to collect until shipment.  The basic data needs remain the same, as
+Crowdstart implicitly creates the Order and User for you, for later use in the
+capture portion.
 
-## Authorize [/authorize]
-Authorizes a charge on an order, but does not capture it.
-This method is ideal if you wish to only receive payment when the
-product is shipped.
-
-### Authorize an order [POST]
+### Authorize [POST]
 + Request (application/json)
 
         {
@@ -277,7 +288,6 @@ product is shipped.
                  "amountRefunded":0,
                  "status":"unpaid",
                  "client":{
-
                  },
                  "captured":false,
                  "live":false
@@ -289,11 +299,16 @@ product is shipped.
            }
         }
 
-## Capture [/order/{id}/capture]
-Captures the payment for an order
+## Group Two-step payment process, part 2 [/order/{id}/capture]
+The second step of the two-step payment process involves capturing a
+pre-authorized payment.  The order ID is required for this step, but it is
+returned in the Authorize step (see above).
 
 ### Capture payment [POST]
 + Request (application/json)
++ Parameters
+    + id (string) ID of the order
+        THE-ORDER-ID
 
 + Response 200 (application/json)
 
@@ -632,6 +647,60 @@ fashion.  Any fields passed in to a PATCH method will be updated with what you
 request, while any fields not specified in the JSON will be left alone.
 
 + Response 201 (application/json)
+
+## Payments on an Order [/order/{id}/payments]
+It is possible to get a listing of all the payments on a specific order with
+this endpoint.
+
+### Get Payments on an Order [GET]
++ Response 200 (application/json)
+
+    {
+     "account":{
+        "type":"stripe",
+        "buyer":{
+           "email":"joe@buystoomuchstuff.com",
+           "firstname":"",
+           "lastname":"",
+           "company":"buys too much stuff dotcom",
+           "phone":"555-555-5555",
+           "notes":"non",
+           "address":{
+
+           }
+        },
+        "affirm":{
+
+        },
+        "stripe":{
+           "fingerprint":"k6nxwtejxyhmpcr3",
+           "customerid":"cus_5ve1sykb8aayvc",
+           "cardid":"card_15jnzvcsrlllxcwprd6gkv1j",
+           "brand":"visa",
+           "type":"credit",
+           "lastfour":"4242",
+           "expiration":{
+              "month":12,
+              "year":2016
+           },
+           "cvccheck":"pass"
+        },
+        "paypal":{
+
+        }
+     },
+     "currency":"usd",
+     "campaignid":"",
+     "chargeid":"ch_15jnzzcsrlllxcwpwfble4hr",
+     "amount":2000,
+     "amountrefunded":0,
+     "status":"unpaid",
+     "client":{
+
+     },
+     "captured":false,
+     "live":false
+    }
 
 # Group Product
 
