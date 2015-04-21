@@ -17,7 +17,7 @@ cookies =
   set: (name, state, path, expires) ->
     domain = null
     unless location.hostname is 'localhost'
-      domain = (location.hostname.replace 'store.', '').replace 'checkout.', ''
+      domain = (location.hostname.replace 'store.', '').replace 'secure.', ''
 
     $.cookie name, (JSON.stringify state),
       domain:  domain
