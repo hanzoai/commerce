@@ -92,7 +92,7 @@ func createListing(c *gin.Context) {
 	}
 
 	// Update include listing in listings
-	stor.Listings[key] = listing
+	stor.AddListing(key, listing)
 
 	// Save store
 	if err := stor.Put(); err != nil {
