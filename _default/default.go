@@ -27,23 +27,24 @@ import (
 func Init() {
 	router := router.New("default")
 
-	// Setup routes for tasks
-	task.SetupRoutes(router)
-
-	// Index
-	router.GET("/", func(c *gin.Context) {
-		if appengine.IsDevAppServer() {
-			// Development index links to modules
+	// Index, development has nice index with links
+	if appengine.IsDevAppServer() {
+		router.GET("/", func(c *gin.Context) {
 			template.Render(c, "index.html")
-		} else {
-			c.Data(200, "text/html", make([]byte, 0))
-		}
-	})
+		})
+	} else {
+		router.GET("/", func(c *gin.Context) {
+			c.String(200, "ok")
+		})
+	}
 
 	// Monitoring test
 	router.GET("/wake-up", func(c *gin.Context) {
 		log.Panic("I think I heard, I think I heard a shot.")
 	})
+
+	// Setup routes for tasks
+	task.SetupRoutes(router)
 
 	// Development-only routes below
 	if config.IsProduction {
