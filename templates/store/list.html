@@ -72,6 +72,10 @@ var allListings = {{ listingsJSON | safe }};
         {% endif %}
         <p>{{ p }}</p>
         {% endfor %}
+        <br>
+        <span class="product-estimated-delivery">
+          Estimated Delivery: {{ listing.EstimatedDelivery }}
+        </span>
       </div>
 
       {% if !listing.SoldOut %}
