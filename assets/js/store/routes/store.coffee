@@ -117,6 +117,22 @@ exports.gallery = ->
   $(document).ready ->
     $colors.val 'Matte Black'
 
+    showPreview = (index) ->
+      oldindex = index ^ 1
+      $preview = $($previews[index])
+      $oldpreview = $($previews[oldindex])
+
+      $oldpreview.hide()
+      $preview.show()
+      return
+
+      $previews.css 'opacity', 0
+      setTimeout ->
+        $oldpreview.hide()
+        $preview.show()
+        $preview.css 'opacity', 1
+      , 300
+
     $colors.change (e) ->
       index = 0
       switch $(e.target).val()
@@ -125,11 +141,7 @@ exports.gallery = ->
         when 'Gloss White'
           index = 1
 
-      $previews.css('opacity', 0)
-      setTimeout ()->
-        $($previews).hide()
-        $($previews[index]).show().css('opacity', 1)
-      , 300
+      showPreview index
 
     $thumbnails.on 'click', ->
       $thumbnail = $(@)
@@ -138,11 +150,7 @@ exports.gallery = ->
       $thumbnails.removeClass 'selected'
       $thumbnail.addClass 'selected'
 
-      $previews.css('opacity', 0)
-      setTimeout ()->
-        $($previews).hide()
-        $($previews[index]).show().css('opacity', 1)
-      , 300
+      showPreview index
 
       switch index
         when 0
