@@ -40,7 +40,7 @@ var allListings = {{ listingsJSON | safe }};
       {% if forloop.First %}
       <img class="preview" src="{{ image.Url }}" alt="{{ image.Alt }}">
       {% else %}
-      <img style="display:none" class="preview" src="{{ image.Url }}" alt="{{ image.Alt }}">
+      <img class="preview transparent" src="{{ image.Url }}" alt="{{ image.Alt }}">
       {% endif %}
       {% endfor %}
     </div>

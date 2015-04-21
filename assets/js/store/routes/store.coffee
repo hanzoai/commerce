@@ -97,8 +97,6 @@ exports.setupFormValidation = (formId, ajax=false)->
       return valid
 
 exports.setupViews = ->
-  console.log 'store#setupViews'
-  console.log 'hi'
   for div in $('.product-text')
     do (div) ->
       console.log 'product'
@@ -114,24 +112,24 @@ exports.gallery = ->
   $previews   = $('.preview-background .preview')
   $colors     = $('.product-config .color')
 
+  # set container height correctly
+  $previewbg  = $('.preview-background')
+  $previewbg.height $previewbg.width()
+  $(window).resize ->
+    $previewbg.height $previewbg.width()
+
   $(document).ready ->
     $colors.val 'Matte Black'
 
+    # fade out old preview, fade in new
     showPreview = (index) ->
       oldindex = index ^ 1
       $preview = $($previews[index])
       $oldpreview = $($previews[oldindex])
 
-      $oldpreview.hide()
-      $preview.show()
-      return
-
-      $previews.css 'opacity', 0
-      setTimeout ->
-        $oldpreview.hide()
-        $preview.show()
-        $preview.css 'opacity', 1
-      , 300
+      requestAnimationFrame ->
+        $oldpreview.addClass 'transparent'
+        $preview.removeClass 'transparent'
 
     $colors.change (e) ->
       index = 0
