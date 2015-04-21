@@ -9,7 +9,7 @@ github.com/gorilla/sessions master
 github.com/mholt/binding master
 github.com/onsi/ginkgo/ginkgo master
 github.com/onsi/gomega master
-github.com/qedus/nds master
+github.com/qedus/nds classic
 github.com/stripe/stripe-go v6.1.0
 github.com/zeekay/aetest master
 github.com/zeekay/go-logging master
