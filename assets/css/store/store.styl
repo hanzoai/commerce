@@ -886,6 +886,9 @@ body.mobile .cart-hover
      col(1/2)
 
 @media all and ( max-width: 400px )
+  .title-nav .logo
+    height: 50px
+
   .product-viewer
     .preview-background
       width 75%
@@ -900,6 +903,9 @@ body.mobile .cart-hover
         text-align: center
 
 @media all and ( max-width: 800px )
+  .content
+    width 90%
+
   .product-viewer
     width 100%
 
@@ -939,6 +945,12 @@ body.mobile .cart-hover
         width: 100%
       .product-cost
         float:left
+
+// @media all and ( max-width: 600px ) and ( orientation : landscape )
+//   .content, .content-header
+//     transform: scale(0.5,0.5)
+//   .title-nav .logo
+//     height: 30px
 
 // DROPDOWNS
 .dropdown
