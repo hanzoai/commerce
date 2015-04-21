@@ -498,7 +498,7 @@ section > .item
   width 280px
   background-image: linear-gradient(rgb(30,30,30), rgb(4,4,4))
   background-color: rgb(4,4,4)
-  top 96px
+  top 84px
   right 15px
   border-top 1px solid #000
   border-radius 45px
@@ -886,6 +886,19 @@ body.mobile .cart-hover
      col(1/2)
 
 @media all and ( max-width: 400px )
+  // CART HOVER
+  .cart-hover
+    top: auto !important
+    left: 0px !important
+    border-radius: 0
+    bottom: 0px
+    width: 100%
+    margin: 0
+    padding: 0
+
+  .content-header
+    margin: 48px auto 0 auto
+
   .title-nav .logo
     height: 50px
 
@@ -903,6 +916,10 @@ body.mobile .cart-hover
         text-align: center
 
 @media all and ( max-width: 800px )
+  .cart-hover
+    top: 66px
+    right: 5px
+
   .content
     width 90%
 
