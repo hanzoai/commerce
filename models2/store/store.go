@@ -24,10 +24,11 @@ var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 // serialize to/from JSON we know what has and has not been set.
 type Listing struct {
 	// Not customizable
-	Slug      string `json:"slug,omitempty"`
-	SKU       string `json:"sku,omitempty"`
-	ProductId string `json:"productId,omitempty"`
-	VariantId string `json:"variantId,omitempty"`
+	ProductId string        `json:"productId,omitempty"`
+	Slug      string        `json:"slug,omitempty"`
+	VariantId string        `json:"variantId,omitempty"`
+	SKU       string        `json:"sku,omitempty"`
+	Currency  currency.Type `json:"currency,omitempty"`
 
 	// Everything else May be overriden
 
@@ -142,6 +143,12 @@ func (s *Store) Validator() *val.Validator {
 	return val.New(s)
 }
 
+// Add a new listing to the listings map
+func (s *Store) AddListing(id string, listing Listing) {
+	listing.Currency = s.Currency
+	s.Listings[id] = listing
+}
+
 // Update product/variant using listing for said item
 func (s *Store) UpdateFromListing(entity mixin.Entity) {
 	// Check if we have a listing for this product/variant
@@ -162,4 +169,8 @@ func (s *Store) UpdateFromListing(entity mixin.Entity) {
 			field.Set(val)
 		}
 	}
+
+	// Ensure currency is set to currency of store
+	field := ev.FieldByName("Currency")
+	field.Set(reflect.ValueOf(s.Currency))
 }
