@@ -110,26 +110,37 @@ exports.setupViews = ->
 
 # Simple thumbnail gallery
 exports.gallery = ->
-  fading = false
+  $thumbnails = $('.product-viewer .gallery .thumbnail')
+  $previews   = $('.preview-background .preview')
+  $colors     = $('.product-config .color')
+
   $(document).ready ->
-    $('.product-viewer .gallery .thumbnail').on 'click', ->
-      if !fading
-        fading = true
-        thumbnail = $(@)
-        gallery = thumbnail.parent()
-        viewer = gallery.parent()
-        images = viewer.find '.preview'
+    $colors.val 'Matte Black'
 
-        gallery.children().removeClass 'selected'
-        thumbnail.addClass 'selected'
+    $colors.change (e) ->
+      switch $(e.target).val()
+        when 'Matte Black'
+          $previews.hide()
+          $($previews[0]).show()
+        when 'Gloss White'
+          $previews.hide()
+          $($previews[1]).show()
 
-        i = $(@).index()
-        images.hide()
-        $(images[i]).show()
+    $thumbnails.on 'click', ->
+      $thumbnail = $(@)
+      index = $thumbnail.index()
 
-        setTimeout ->
-          fading = false
-        , 300
+      $thumbnails.removeClass 'selected'
+      $thumbnail.addClass 'selected'
+
+      $previews.hide()
+      $($previews[index]).show()
+
+      switch index
+        when 0
+          $colors.val 'Matte Black'
+        when 1
+          $colors.val 'Gloss White'
 
 exports.setupStylesAndSizes =->
   $(document).ready ->
