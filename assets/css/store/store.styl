@@ -451,9 +451,10 @@ section > .item
     display inline-block
     .product-name
       width 65%
+      font-size 1.8em
     .product-cost
       display inline-block
-      margin 12px 11px 0 0
+      line-height: 1.9em
       float right
   .product-body
     padding 20px 10px 0 0px
@@ -925,6 +926,14 @@ body.mobile .cart-hover
     .gallery
       width 25%
       float: left
+
+@media all and ( max-width: 1200px )
+  .product-text
+    .product-title
+      .product-name
+        width: 100%
+      .product-cost
+        float:left
 
 // DROPDOWNS
 .dropdown
