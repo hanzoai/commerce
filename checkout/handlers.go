@@ -133,8 +133,8 @@ func charge(c *gin.Context) {
 		returningUser := new(models.User)
 		if err = q.GetUserByEmail(form.User.Email, returningUser); err != nil {
 			log.Debug("Using form.User", c)
-			user.Id = db.EncodeId("user", db.AllocateId("user"))
 			user = &form.User
+			user.Id = db.EncodeId("user", db.AllocateId("user"))
 		} else {
 			log.Debug("Returning User")
 			user = returningUser
