@@ -27,7 +27,7 @@ func Skully() *Config {
 
 	config.Stripe.ClientId = "ca_REDACTED"
 	config.Stripe.APIKey = "pk_live_REDACTED"
-	config.Stripe.APISecret = "sk_live_REDACTED"
+	config.Stripe.APISecret = ""
 
 	config.Google.APIKey = "AIza_REDACTED"
 	config.Google.Bucket.ImageUploads = "skully-images"
