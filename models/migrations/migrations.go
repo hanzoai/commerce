@@ -54,6 +54,11 @@ func init() {
 	})
 
 	// Add missing orders for each contributors
+	task.Register("migrations-generate-new-userid-for-unsynced-orders", func(c *gin.Context) {
+		parallel.Run(c, "order", 50, tasks.GenerateNewUserIdForUnsyncedOrders)
+	})
+
+	// Add missing orders for each contributors
 	task.Register("migrations-fix-preorder-corruption", func(c *gin.Context) {
 		db := datastore.New(c)
 		campaign := models.Campaign{}
