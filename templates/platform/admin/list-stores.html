@@ -236,6 +236,12 @@ $(function(){
             {% endfor %}
         };
 
+        var ProductToSlugs = {
+            {% for product in products %}
+            '{{ product.Id_ }}': '{{ product.Slug }}',
+            {% endfor %}
+        };
+
         // Update currency when currency changes
         $('#currency').chosen().on('change', function() {
             Util.setCurrency($(this).val());
@@ -251,7 +257,7 @@ $(function(){
         // Update price with default product price
         var $overrides = $('#product-overrides');
         var $overridesBody = $overrides.children('tbody');
-        var overrideTemplate = '<tr><td><input type="text" class="listing-id hidden" value=""><strong class="name"></strong></td><td><input type="currency" class="listing-price text-right form-control" value=""></td><td class="text-center"><button type="button" class="delete btn btn-xs btn-danger">x</button></td></tr>';
+        var overrideTemplate = '<tr><td><input type="text" class="listing-id hidden" value=""><strong class="name"></strong></td><td><input type="currency" class="listing-price text-right form-control" value=""><input type="hidden" class="listing-slug" value=""></td><td class="text-center"><button type="button" class="delete btn btn-xs btn-danger">x</button></td></tr>';
 
         $('#override-product-btn').on('click', function() {
             if ($('#product').val() == null) {
@@ -270,6 +276,7 @@ $(function(){
             $override.find('.name').text(dataName);
             $override.find('.listing-id').val(id);
             $override.find('.listing-price').val(Util.renderUpdatedUICurrency(ProductToPrices[$('#product').val()]));
+            $override.find('.listing-slug').val(ProductToSlugs[$('#product').val()]);
 
             optionToDisable.prop('disabled', true);
             optionToDisable.prop('selected', false);
@@ -313,6 +320,7 @@ $('#form-new-store').on('submit', function(e){
                 var $el = $(this)
                 $el.attr('name', 'listings[' + $el.val() + '][productId]')
                 $el.parent().parent().find('.listing-price').attr('name', 'listings[' + $el.val() + '][price]')
+                $el.parent().parent().find('.listing-slug').attr('name', 'listings[' + $el.val() + '][slug]')
             });
             api.post(function(data) {
                 window.location.replace('{{ urlFor("platform", "/stores") }}')
