@@ -22,6 +22,7 @@ var kinds = map[string]int{
 	"user":         13,
 	"variant":      14,
 	"mailinglist":  15,
+	"subscriber":   16,
 }
 
 var kindsReversed = make(map[int]string)
