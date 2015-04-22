@@ -83,10 +83,10 @@ module.exports =
       if /^assets\/js\/store/.test src
         return "#{requisite} #{files.store.js.in} -o #{files.store.js.out}"
       if /^assets\/js\/api/.test src
-        return "#{requisite} #{files.api.js.in} -o #{files.api.js.out}"
-      if /^assets\/js\/mailinglist/.test src
-        return "#{requisite} #{files.mailinglist.js.in} -o #{files.mailinglist.js.out}"
-
+        if /mailinglist/.test src
+          return "#{requisite} #{files.mailinglist.js.in} -o #{files.mailinglist.js.out}"
+        else
+          return "#{requisite} #{files.api.js.in} -o #{files.api.js.out}"
       if /^assets\/js\//.test src
         output = []
         input = []
