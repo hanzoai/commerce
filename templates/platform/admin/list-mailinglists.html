@@ -105,6 +105,12 @@ $(function(){
             name: 'MailChimp API Key',
           },
           {
+            field: 'id',
+            name: 'MailChimp Snippet',
+            token: '{{ ctx.organization.MustGetTokenByName("live-published-key") }}',
+            render: 'mailchimp-snippet',
+          },
+          {
             field: 'createdAt',
             name: 'Created',
             render: 'date',
