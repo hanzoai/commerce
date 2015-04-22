@@ -74,7 +74,7 @@ requisite_opts = assets/js/store/store.coffee \
 				 assets/js/preorder/preorder.coffee \
 				 assets/js/checkout/checkout.coffee \
 				 assets/js/api/api.coffee \
-				 assets/js/mailinglist/mailinglist.coffee \
+				 assets/js/api/mailinglist.coffee \
 				 node_modules/crowdstart.js/src/index.coffee \
 				 -o static/js/store.js \
 				 -o static/js/preorder.js \
