@@ -7,7 +7,7 @@ import (
 	"crowdstart.io/util/val"
 )
 
-type MailchimpList struct {
+type Mailchimp struct {
 	Id               string `json:"id"`
 	APIKey           string `json:"apiKey"`
 	DoubleOptin      bool   `json:"doubleOptin"`
@@ -18,16 +18,12 @@ type MailchimpList struct {
 type MailingList struct {
 	mixin.Model
 
-	Name          string        `json:"name"`
-	MailchimpList MailchimpList `json:"mailchimp"`
-}
-
-func (m *MailingList) Init() {
+	Name      string    `json:"name"`
+	Mailchimp Mailchimp `json:"mailchimp"`
 }
 
 func New(db *datastore.Datastore) *MailingList {
 	m := new(MailingList)
-	m.Init()
 	m.Model = mixin.Model{Db: db, Entity: m}
 	return m
 }
@@ -48,7 +44,23 @@ func (m *MailingList) AddSubscriber(s *subscriber.Subscriber) error {
 
 func (m *MailingList) Js() string {
 	return `
-	`
+	function findForm() {
+		// start at the root element
+		var node = document.documentElement;
+		while (node.childNodes.length && node.lastChild.nodeType == 1) {
+			// find last HTMLElement child node
+			node = node.lastChild;
+		}
+		// node is now the script element
+		form = node.parentNode;
+
+		return form
+	}
+
+	function attachForm() {
+		var form = findForm()
+	}
+`
 }
 
 func Query(db *datastore.Datastore) *mixin.Query {
