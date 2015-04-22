@@ -10,6 +10,11 @@ files =
       in:  'assets/js/api/api.coffee'
       out: 'static/js/api.js'
 
+  mailinglist:
+    js:
+      in:  'assets/js/mailinglist/mailinglist.coffee'
+      out: 'static/js/mailinglist.js'
+
   checkout:
     js:
       in:  'assets/js/checkout/checkout.coffee'
@@ -79,6 +84,8 @@ module.exports =
         return "#{requisite} #{files.store.js.in} -o #{files.store.js.out}"
       if /^assets\/js\/api/.test src
         return "#{requisite} #{files.api.js.in} -o #{files.api.js.out}"
+      if /^assets\/js\/mailinglist/.test src
+        return "#{requisite} #{files.mailinglist.js.in} -o #{files.mailinglist.js.out}"
 
       if /^assets\/js\//.test src
         output = []
