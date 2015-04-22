@@ -22,7 +22,7 @@
       <h4>MailChimp Snippet</h4>
       <div id="mailinglist-snippet" class="block">
         <div class="form-group">
-          <textarea class="form-control" style="height:120px;"><script src="https://api.crowdstart.com/mailinglist/{{ mailingList.Id }}/js?token={{ ctx.organization.MustGetTokenByName("live-published-key") }}"></script></textarea>
+          <textarea class="form-control" style="height:120px;"><script src="{{ urlFor("api") }}mailinglist/{{ mailingList.Id }}/js?token={{ ctx.organization.MustGetTokenByName("live-published-key") }}"></script></textarea>
         </div>
       </div>
       <div class="form-group form-actions">
