@@ -203,7 +203,7 @@ var BuildTable = (function() {
           } else if (render == 'bool') {
             val = val ? 'Yes' : 'No';
           } else if (render == 'mailchimp-snippet' && model.id){
-            val = $('<textarea class="form-control" style="height:120px;"><script src="https://api.crowdstart.com/mailinglist/' + model.id + '/js?token='+ column.token +'"></script></textarea>');
+            val = $('<textarea class="form-control" style="height:120px;"><script src="' + column.apiUrl + 'mailinglist/' + model.id + '/js?token='+ column.token +'"></script></textarea>');
           } else if (render && {}.toString.call(render) == '[object Function]') {
             val = render(val, model);
           }
