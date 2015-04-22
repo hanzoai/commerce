@@ -108,8 +108,8 @@ var BuildForm = (function() {
           name: inputConfig.name,
         }).prop('checked', inputConfig.value);
 
-        labelCols = 10;
-        valueCols = 2;
+        labelCols = labelCols || 10;
+        valueCols = valueCols || 2;
       } else if (type === 'select') {
         $fg = $(formGroupSelectTemplate);
         var $select = $fg.find('select').attr({

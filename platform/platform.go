@@ -68,8 +68,8 @@ func init() {
 	dash.GET("/orders", admin.Orders)
 	dash.GET("/order/:id", admin.Order)
 
-	dash.GET("/mailinglists", admin.Orders)
-	dash.GET("/mailinglists/:id", admin.Order)
+	dash.GET("/mailinglists", admin.MailingLists)
+	dash.GET("/mailinglist/:id", admin.MailingList)
 
 	dash.GET("/products", admin.Products)
 	dash.GET("/product/:id", admin.Product)
