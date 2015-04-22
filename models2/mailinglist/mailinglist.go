@@ -3,6 +3,7 @@ package mailinglist
 import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
+	"crowdstart.io/models2/subscriber"
 	"crowdstart.io/util/val"
 )
 
@@ -37,6 +38,12 @@ func (m MailingList) Kind() string {
 
 func (m *MailingList) Validator() *val.Validator {
 	return val.New(m)
+}
+
+func (m *MailingList) AddSubscriber(s *subscriber.Subscriber) error {
+	s.MailingListId = s.Id()
+	s.Parent = m.Key()
+	return s.Put()
 }
 
 func (m *MailingList) Js() string {
