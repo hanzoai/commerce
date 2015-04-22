@@ -102,6 +102,10 @@ func Stores(c *gin.Context) {
 	template.Render(c, "admin/list-stores.html", "products", products)
 }
 
+func MailingLists(c *gin.Context) {
+	template.Render(c, "admin/list-mailinglists.html")
+}
+
 func Order(c *gin.Context) {
 	db := datastore.New(middleware.GetNamespace(c))
 
