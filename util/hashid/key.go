@@ -81,8 +81,12 @@ func DecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key, err error)
 		return key, errors.New("Invalid key")
 	}
 
-	// TODO: Maybe use this?
-	// namespace := decodeNamespace(ids[n-1])
+	// Set namespace
+	namespace := decodeNamespace(ids[n-1])
+	ctx, err = appengine.Namespace(ctx, namespace)
+	if err != nil {
+		return key, err
+	}
 
 	// root key
 	key = aeds.NewKey(ctx, decodeKind(ids[n-3]), "", int64(ids[n-2]), nil)
