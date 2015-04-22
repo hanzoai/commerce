@@ -30,7 +30,7 @@ BuildForm($('#form-mailinglist'),
         }
       ],
       $parent: $('#mailinglist-info'),
-      value: '{{ mailingList.MailchimpList.Id }}',
+      value: '{{ mailingList.Mailchimp.Id }}',
     },
     {
       id: 'apiKey',
@@ -46,7 +46,7 @@ BuildForm($('#form-mailinglist'),
         }
       ],
       $parent: $('#mailinglist-info'),
-      value: '{{ mailingList.MailchimpList.APIKey }}',
+      value: '{{ mailingList.Mailchimp.APIKey }}',
     },
     {
       id: 'doubleOptin',
@@ -56,7 +56,7 @@ BuildForm($('#form-mailinglist'),
       $parent: $('#mailinglist-mailchimp'),
       labelCols: 6,
       valueCols: 6,
-      value: '{{ mailingList.MailchimpList.DoubleOptin }}' === "True",
+      value: '{{ mailingList.Mailchimp.DoubleOptin }}' === 'True'
     },
     {
       id: 'updateExisting',
@@ -66,7 +66,7 @@ BuildForm($('#form-mailinglist'),
       $parent: $('#mailinglist-mailchimp'),
       labelCols: 6,
       valueCols: 6,
-      value: '{{ mailingList.MailchimpList.UpdateExisting }}' === 'True',
+      value: '{{ mailingList.Mailchimp.UpdateExisting }}' === 'True'
     },
     {
       id: 'replaceInterests',
@@ -76,7 +76,7 @@ BuildForm($('#form-mailinglist'),
       $parent: $('#mailinglist-mailchimp'),
       labelCols: 6,
       valueCols: 6,
-      value: '{{ mailingList.MailchimpList.ReplaceInterests }}' === 'True',
+      value: '{{ mailingList.Mailchimp.ReplaceInterests }}' === 'True'
     },
   ]);
 });
