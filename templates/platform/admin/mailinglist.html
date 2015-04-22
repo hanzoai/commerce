@@ -56,13 +56,12 @@ var api = NewRestAPI(
     '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}',
     $('#form-mailinglist'),
     {
-        price: function(val) {
-            // To cents
-            return Util.renderJSONCurrencyFromUI(val);
-        },
-        weight: function(val) {
-            return parseFloat(val);
-        }
+      mailchimp: function(val) {
+        val.doubleOptin = val.doubleOptin == null ? false : val.doubleOptin;
+        val.updateExisting = val.updateExisting == null ? false : val.updateExisting;
+        val.replaceInterests = val.replaceInterests == null ? false : val.replaceInterests;
+        return val
+      }
     }
   );
 $('#form-mailinglist').on('submit', function(e){
