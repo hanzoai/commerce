@@ -20,7 +20,8 @@ func addSubscriber(c *gin.Context) {
 	db := datastore.New(c)
 
 	ml := mailinglist.New(db)
-	if err := ml.GetById(id); err != nil {
+
+	if err := ml.Get(id); err != nil {
 		json.Fail(c, 404, fmt.Sprintf("Failed to retrieve mailing list '%v': %v", id, err), err)
 		return
 	}
@@ -47,7 +48,8 @@ func js(c *gin.Context) {
 	db := datastore.New(c)
 
 	ml := mailinglist.New(db)
-	if err := ml.GetById(id); err != nil {
+
+	if err := ml.Get(id); err != nil {
 		c.String(404, fmt.Sprintf("Failed to retrieve mailing list '%v': %v", id, err))
 		return
 	}
