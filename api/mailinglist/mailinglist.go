@@ -41,3 +41,17 @@ func addSubscriber(c *gin.Context) {
 		c.JSON(201, s)
 	}
 }
+
+func js(c *gin.Context) {
+	id := c.Params.ByName("mailinglistid")
+	db := datastore.New(c)
+
+	ml := mailinglist.New(db)
+	if err := ml.GetById(id); err != nil {
+		c.String(404, fmt.Sprintf("Failed to retrieve mailing list '%v': %v", id, err))
+		return
+	}
+
+	c.Writer.Header().Add("Content-Type", "application/javascript")
+	c.String(200, ml.Js())
+}
