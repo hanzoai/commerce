@@ -7,6 +7,7 @@ import (
 )
 
 type MailchimpList struct {
+	Id               string `json:"id"`
 	APIKey           string `json:"apiKey"`
 	DoubleOptin      bool   `json:"doubleOptin"`
 	UpdateExisting   bool   `json:"updateExisting"`
@@ -36,6 +37,11 @@ func (m MailingList) Kind() string {
 
 func (m *MailingList) Validator() *val.Validator {
 	return val.New(m)
+}
+
+func (m *MailingList) Js() string {
+	return `
+	`
 }
 
 func Query(db *datastore.Datastore) *mixin.Query {
