@@ -12,6 +12,7 @@ current_date	= $(shell date +"%Y-%m-%d")
 goapp			= $(sdk_path)/goapp
 gpm				= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(sdk_path)/gpm
 ginkgo			= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(gopath)/bin/ginkgo
+appcfg.py 		= $(sdk_path)/appcfg.py --oauth2 --skip_sdk_update_check
 
 deps	= $(shell cat Godeps | cut -d ' ' -f 1)
 modules	= crowdstart.io/api \
@@ -98,8 +99,7 @@ sdk_install = wget https://storage.googleapis.com/appengine-sdks/featured/$(sdk)
 			  mkdir -p $(sdk_path)/gopath/bin && \
 			  ln -s $(shell pwd) $(sdk_path)/gopath/src/crowdstart.io
 
-dev_appserver = $(sdk_path)/dev_appserver.py --skip_sdk_update_check \
-											 --datastore_path=~/.gae_datastore.bin \
+dev_appserver = $(sdk_path)/dev_appserver.py --datastore_path=~/.gae_datastore.bin \
 											 --dev_appserver_log_level=error
 
 sdk_install_extra = rm -rf $(sdk_path)/demos
@@ -242,40 +242,15 @@ test-ci:
 	$(ginkgo) -r=true --randomizeAllSpecs --randomizeSuites --failOnPending --cover --trace --compilers=2
 
 # DEPLOY
-deploy: test
-	go run scripts/deploy.go
-
-deploy-production: assets-min
-	for module in $(gae_production); do \
-		$(sdk_path)/appcfg.py --skip_sdk_update_check rollback $$module; \
-		$(sdk_path)/appcfg.py --skip_sdk_update_check update $$module; \
-	done; \
-	$(sdk_path)/appcfg.py --skip_sdk_update_check update_indexes config/production; \
-	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/production
-
-deploy-staging: assets
-	for module in $(gae_staging); do \
-		$(sdk_path)/appcfg.py --skip_sdk_update_check rollback $$module; \
-		$(sdk_path)/appcfg.py --skip_sdk_update_check update $$module; \
-	done; \
-	$(sdk_path)/appcfg.py --skip_sdk_update_check update_indexes config/staging; \
-	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/staging
-
-deploy-skully: assets-min
+deploy: assets-min
 	for module in $(gae_skully); do \
-		$(sdk_path)/appcfg.py --skip_sdk_update_check rollback $$module; \
-		$(sdk_path)/appcfg.py --skip_sdk_update_check update $$module; \
-	done; \
-	$(sdk_path)/appcfg.py --skip_sdk_update_check update_indexes config/skully; \
-	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/skully
+		$(appcfg.py) rollback $$module; \
+		$(appcfg.py) update $$module; \
+	done
+	$(appcfg.py) update_indexes config/skully
+	$(appcfg.py) update_dispatch config/skully
 
-deploy-appengine-ci: assets-minified
-	for module in $(gae_production); do \
-		$(sdk_path)/appcfg.py --skip_sdk_update_check rollback $$module; \
-		$(sdk_path)/appcfg.py --skip_sdk_update_check update $$module; \
-	done; \
-	$(sdk_path)/appcfg.py --skip_sdk_update_check update_indexes config/production; \
-	$(sdk_path)/appcfg.py --skip_sdk_update_check update_dispatch config/production
+deploy-skully: deploy
 
 # EXPORT / Usage: make datastore-export kind=user
 datastore-export:
@@ -292,22 +267,22 @@ datastore-export:
 				  --result_db_filename /tmp/bulkloader-result-$$kind.db \
 				  --kind $$kind \
 				  --filename _export/$$kind-$(datastore_app_id)-$(current_date).csv && \
-	rm -rf /tmp/bulkloader-$$kind.db \
+	@rm -rf /tmp/bulkloader-$$kind.db \
 		   /tmp/bulkloader-$$kind.log \
 		   /tmp/bulkloader-result-$$kind.db
 
 # IMPORT / Usage: make datastore-import kind=user file=user.csv
 datastore-import:
-	@appcfg.py upload_data --bandwidth_limit 1000000000 \
-						  --rps_limit 10000 \
-						  --batch_size 250 \
-						  --http_limit 200 \
-						  --url $(datastore_admin_url) \
-						  --config_file util/bulkloader/bulkloader-import.yaml \
-						  --kind $$kind \
-						  --filename $$file \
-						  --log_file /tmp/bulkloader-upload-$$kind.log && \
-	rm -rf /tmp/bulkloader-upload-$$kind.log
+	@$(appcfg.py) upload_data --bandwidth_limit 1000000000 \
+							  --rps_limit 10000 \
+							  --batch_size 250 \
+							  --http_limit 200 \
+							  --url $(datastore_admin_url) \
+							  --config_file util/bulkloader/bulkloader-import.yaml \
+							  --kind $$kind \
+							  --filename $$file \
+							  --log_file /tmp/bulkloader-upload-$$kind.log && \
+	@rm -rf /tmp/bulkloader-upload-$$kind.log
 
 # Generate config for use with datastore-export target
 datastore-config:
