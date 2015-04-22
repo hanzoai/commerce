@@ -1,5 +1,5 @@
 do ->
-  url = '%s/%s/subscribe'
+  url = '%s' # Embedded by MailingList Js() method
 
   XHR = ->
     xhr = null
