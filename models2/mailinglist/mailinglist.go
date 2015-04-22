@@ -1,11 +1,17 @@
 package mailinglist
 
 import (
+	"fmt"
+	"os"
+
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/models2/subscriber"
+	"crowdstart.io/util/fs"
 	"crowdstart.io/util/val"
 )
+
+var jsTemplate = ""
 
 type Mailchimp struct {
 	Id               string `json:"id"`
@@ -43,24 +49,12 @@ func (m *MailingList) AddSubscriber(s *subscriber.Subscriber) error {
 }
 
 func (m *MailingList) Js() string {
-	return `
-	function findForm() {
-		// start at the root element
-		var node = document.documentElement;
-		while (node.childNodes.length && node.lastChild.nodeType == 1) {
-			// find last HTMLElement child node
-			node = node.lastChild;
-		}
-		// node is now the script element
-		form = node.parentNode;
+	if jsTemplate == "" {
+		var cwd, _ = os.Getwd()
+		jsTemplate = string(fs.ReadFile(cwd + "/resources/mailinglist.js"))
 
-		return form
 	}
-
-	function attachForm() {
-		var form = findForm()
-	}
-`
+	return fmt.Sprintf(jsTemplate, m.Id())
 }
 
 func Query(db *datastore.Datastore) *mixin.Query {
