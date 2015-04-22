@@ -19,6 +19,12 @@
       <h4>Select some options.</h4>
       <div id="mailinglist-mailchimp" class="block">
       </div>
+      <h4>MailChimp Snippet</h4>
+      <div id="mailinglist-snippet" class="block">
+        <div class="form-group">
+          <textarea class="form-control" style="height:120px;"><script src="https://api.crowdstart.com/mailinglist/{{ mailingList.Id }}/js?token={{ ctx.organization.MustGetTokenByName("live-published-key") }}"></script></textarea>
+        </div>
+      </div>
       <div class="form-group form-actions">
           <div class="col-md-9 col-md-offset-3">
               <button type="submit" class="btn btn-effect-ripple btn-primary">Submit</button>
@@ -42,91 +48,8 @@
 <script src="{{ staticUrl }}/js/rest-forms.js"></script>
 <script>
 $(function(){
-      BuildForm($('#form-mailinglist'),[
-// product info
-        {
-          id: 'name',
-          name: 'name',
-          label: 'Name',
-          type: 'text',
-          asterisk: false,
-          rules: [
-            {
-              rule: 'required',
-              value: true,
-              message: 'Enter a name for your mailing list'
-            }
-          ],
-          $parent: $('#mailinglist-info'),
-          value: "{{ mailingList.Name }}",
-        },
-        {
-          id: 'id',
-          name: 'mailchimp[id]',
-          label: 'MailChimp ID',
-          type: 'text',
-          asterisk: false,
-          rules: [
-            {
-              rule: 'required',
-              value: true,
-              message: 'Enter your mailing list\'s MailChimp API Key'
-            }
-          ],
-          $parent: $('#mailinglist-info'),
-          value: "{{ mailingList.MailchimpList.Id }}",
-        },
-        {
-          id: 'apiKey',
-          name: 'mailchimp[apiKey]',
-          label: 'MailChimp API Key',
-          type: 'text',
-          asterisk: false,
-          rules: [
-            {
-              rule: 'required',
-              value: true,
-              message: 'Enter your mailing list\'s MailChimp API Key'
-            }
-          ],
-          $parent: $('#mailinglist-info'),
-          value: "{{ mailingList.MailchimpList.APIKey }}",
-        },
-        {
-          id: 'doubleOptin',
-          name: 'mailchimp[doubleOptin]',
-          label: 'Double Opt-in?',
-          type: 'switch',
-          value: false,
-          $parent: $('#mailinglist-mailchimp'),
-          labelCols: 6,
-          valueCols: 6,
-          value: "{{ mailingList.MailchimpList.DoubleOptin }}",
-        },
-        {
-          id: 'updateExisting',
-          name: 'mailchimp[updateExisting]',
-          label: 'Update Existing?',
-          type: 'switch',
-          value: false,
-          $parent: $('#mailinglist-mailchimp'),
-          labelCols: 6,
-          valueCols: 6,
-          value: "{{ mailingList.MailchimpList.UpdateExisting }}",
-        },
-        {
-          id: 'replaceInterests',
-          name: 'mailchimp[replaceInterests]',
-          label: 'Replace Interests?',
-          type: 'switch',
-          value: false,
-          $parent: $('#mailinglist-mailchimp'),
-          labelCols: 6,
-          valueCols: 6,
-          value: "{{ mailingList.MailchimpList.ReplaceInterests }}",
-        },
-      ]);
-    });
+
+{% include "js/mailinglistform.js" %}
 
 var api = NewRestAPI(
     '{{ urlFor("api", "/mailinglist") }}',
@@ -146,7 +69,7 @@ $('#form-mailinglist').on('submit', function(e){
     var $form = $(this);
     requestAnimationFrame(function() {
         if ($('.form-group.has-error').length === 0) {
-            api.post(function(data) {
+            api.put(function(data) {
                 window.location.replace('{{ urlFor("platform", "/mailinglist", mailingList.Id) }}')
             }, $form, '{{ mailingList.Id }}')
         }
