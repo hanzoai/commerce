@@ -48,7 +48,7 @@
     <div class="block-title">
       <h2>New Product</h2>
     </div>
-    <form id="form-new-mailinglist" method="post" class="form-horizontal">
+    <form id="form-mailinglist" method="post" class="form-horizontal">
       <div class="row">
         <div class="col-md-8">
           <h4>Provide some basic information.</h4>
@@ -108,7 +108,7 @@ $(function(){
             field: 'createdAt',
             name: 'Created',
             render: 'date',
-          }
+          },
         ],
         itemUrl: '{{ urlFor("platform", "/mailinglist") }}',
         apiUrl: '{{ urlFor("api", "/mailinglist") }}',
@@ -122,90 +122,12 @@ $(function(){
         canDelete: true,
       });
 
-      BuildForm($('#form-new-mailinglist'),[
-// product info
-        {
-          id: 'name',
-          name: 'name',
-          label: 'Name',
-          type: 'text',
-          asterisk: false,
-          rules: [
-            {
-              rule: 'required',
-              value: true,
-              message: 'Enter a name for your mailing list'
-            }
-          ],
-          $parent: $('#mailinglist-info')
-        },
-        {
-          id: 'id',
-          name: 'mailchimp[id]',
-          label: 'MailChimp ID',
-          type: 'text',
-          asterisk: false,
-          rules: [
-            {
-              rule: 'required',
-              value: true,
-              message: 'Enter your mailing list\'s MailChimp API Key'
-            }
-          ],
-          $parent: $('#mailinglist-info')
-        },
-        {
-          id: 'apiKey',
-          name: 'mailchimp[apiKey]',
-          label: 'MailChimp API Key',
-          type: 'text',
-          asterisk: false,
-          rules: [
-            {
-              rule: 'required',
-              value: true,
-              message: 'Enter your mailing list\'s MailChimp API Key'
-            }
-          ],
-          $parent: $('#mailinglist-info')
-        },
-        {
-          id: 'doubleOptin',
-          name: 'mailchimp[doubleOptin]',
-          label: 'Double Opt-in?',
-          type: 'switch',
-          value: false,
-          $parent: $('#mailinglist-mailchimp'),
-          labelCols: 8,
-          valueCols: 4,
-        },
-        {
-          id: 'updateExisting',
-          name: 'mailchimp[updateExisting]',
-          label: 'Update Existing?',
-          type: 'switch',
-          value: false,
-          $parent: $('#mailinglist-mailchimp'),
-          labelCols: 8,
-          valueCols: 4,
-        },
-        {
-          id: 'replaceInterests',
-          name: 'mailchimp[replaceInterests]',
-          label: 'Replace Interests?',
-          type: 'switch',
-          value: false,
-          $parent: $('#mailinglist-mailchimp'),
-          labelCols: 8,
-          valueCols: 4,
-        },
-      ]);
-    });
+      {% include "js/mailinglistform.js" %}
 
 var api = NewRestAPI(
     '{{ urlFor("api", "/mailinglist") }}',
     '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}',
-    $('#form-new-mailinglist'),
+    $('#form-mailinglist'),
     {
         price: function(val) {
             // To cents
@@ -216,7 +138,7 @@ var api = NewRestAPI(
         }
     }
   );
-$('#form-new-mailinglist').on('submit', function(e){
+$('#form-mailinglist').on('submit', function(e){
     var $form = $(this);
     requestAnimationFrame(function() {
         if ($('.form-group.has-error').length === 0) {
