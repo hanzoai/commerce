@@ -10,8 +10,14 @@
 <div class="col-sm-12">
     <!-- Empty Mailing Lists Block -->
     <div id="empty-table" class="row text-center text-dark-op" style="display:none;margin-top:100px">
-      <i class="gi gi-money" style="font-size:100px"></i>
-      <h2>It doesn't seem that anyone's added mailing lists to <strong>{{ ctx.organization.Name }}</strong> yet. Just complete the form below to add one.</h2>
+      <i class="fa fa-envelope" style="font-size:100px"></i>
+      <h2>
+        <p>
+          It doesn't seem that anyone's added mailing lists to <strong>{{ ctx.organization.Name }}</strong> yet.
+          <br />
+          Just complete the form below to add one.
+        </p>
+      </h2>
     </div>
     <!-- END Empty Mailing Lists Block -->
     <div class="block full">
@@ -92,11 +98,11 @@ $(function(){
           },
           {
             field: 'mailchimp.id',
-            name: 'API Key',
+            name: 'MailChimp ID',
           },
           {
             field: 'mailchimp.apiKey',
-            name: 'API Key',
+            name: 'MailChimp API Key',
           },
           {
             field: 'createdAt',
@@ -113,6 +119,7 @@ $(function(){
         $display: $('#display'),
         $pagination: $('#pagination'),
         $empty: $('#empty-table'),
+        canDelete: true,
       });
 
       BuildForm($('#form-new-mailinglist'),[
@@ -133,8 +140,23 @@ $(function(){
           $parent: $('#mailinglist-info')
         },
         {
+          id: 'id',
+          name: 'mailchimp[id]',
+          label: 'MailChimp ID',
+          type: 'text',
+          asterisk: false,
+          rules: [
+            {
+              rule: 'required',
+              value: true,
+              message: 'Enter your mailing list\'s MailChimp API Key'
+            }
+          ],
+          $parent: $('#mailinglist-info')
+        },
+        {
           id: 'apiKey',
-          name: 'apiKey',
+          name: 'mailchimp[apiKey]',
           label: 'MailChimp API Key',
           type: 'text',
           asterisk: false,
@@ -149,7 +171,7 @@ $(function(){
         },
         {
           id: 'doubleOptin',
-          name: 'mailchimp.doubleOptin',
+          name: 'mailchimp[doubleOptin]',
           label: 'Double Opt-in?',
           type: 'switch',
           value: false,
@@ -159,7 +181,7 @@ $(function(){
         },
         {
           id: 'updateExisting',
-          name: 'mailchimp.updateExisting',
+          name: 'mailchimp[updateExisting]',
           label: 'Update Existing?',
           type: 'switch',
           value: false,
@@ -169,7 +191,7 @@ $(function(){
         },
         {
           id: 'replaceInterests',
-          name: 'mailchimp.replaceInterests',
+          name: 'mailchimp[replaceInterests]',
           label: 'Replace Interests?',
           type: 'switch',
           value: false,
@@ -181,9 +203,9 @@ $(function(){
     });
 
 var api = NewRestAPI(
-    '{{ urlFor("api", "/product") }}',
+    '{{ urlFor("api", "/mailinglist") }}',
     '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}',
-    $('#form-new-product'),
+    $('#form-new-mailinglist'),
     {
         price: function(val) {
             // To cents
@@ -194,7 +216,7 @@ var api = NewRestAPI(
         }
     }
   );
-$('#form-new-product').on('submit', function(e){
+$('#form-new-mailinglist').on('submit', function(e){
     var $form = $(this);
     requestAnimationFrame(function() {
         if ($('.form-group.has-error').length === 0) {
@@ -208,7 +230,7 @@ $('#form-new-product').on('submit', function(e){
 })
 </script>
 {% endblock %}
-{% block menulink %}menu-orders{% endblock %}
+{% block menulink %}menu-mailinglists{% endblock %}
 
 
 
