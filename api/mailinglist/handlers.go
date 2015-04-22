@@ -16,7 +16,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 
 	api := rest.New(mailinglist.MailingList{})
 
-	api.POST("/:mailinlistid/subscribe", publishedRequired, namespaced, addSubscriber)
+	api.POST("/:mailinglistid/subscribe", publishedRequired, namespaced, addSubscriber)
 
 	api.Route(router, args...)
 }
