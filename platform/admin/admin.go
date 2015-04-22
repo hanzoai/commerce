@@ -7,6 +7,7 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models2/coupon"
+	"crowdstart.io/models2/mailinglist"
 	"crowdstart.io/models2/order"
 	"crowdstart.io/models2/product"
 	"crowdstart.io/models2/store"
@@ -100,6 +101,16 @@ func Stores(c *gin.Context) {
 	product.Query(db).GetAll(&products)
 
 	template.Render(c, "admin/list-stores.html", "products", products)
+}
+
+func MailingList(c *gin.Context) {
+	db := datastore.New(middleware.GetNamespace(c))
+
+	m := mailinglist.New(db)
+	id := c.Params.ByName("id")
+	m.MustGet(id)
+
+	template.Render(c, "admin/mailinglist.html", "mailingList", m)
 }
 
 func MailingLists(c *gin.Context) {
