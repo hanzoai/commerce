@@ -74,11 +74,13 @@ requisite_opts = assets/js/store/store.coffee \
 				 assets/js/preorder/preorder.coffee \
 				 assets/js/checkout/checkout.coffee \
 				 assets/js/api/api.coffee \
+				 assets/js/mailinglist/mailinglist.coffee \
 				 node_modules/crowdstart.js/src/index.coffee \
 				 -o static/js/store.js \
 				 -o static/js/preorder.js \
 				 -o static/js/checkout.js \
 				 -o static/js/api.js \
+				 -o static/js/mailinglist.js \
 				 -o static/v1.js
 
 requisite_opts_min = -m --strip-debug
