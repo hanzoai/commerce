@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/models2/subscriber"
@@ -54,7 +55,8 @@ func (m *MailingList) Js() string {
 		jsTemplate = string(fs.ReadFile(cwd + "/resources/mailinglist.js"))
 
 	}
-	return fmt.Sprintf(jsTemplate, m.Id())
+	endpoint := config.UrlFor("api", "/mailinglist/", m.Id(), "/subscribe")
+	return fmt.Sprintf(jsTemplate, endpoint)
 }
 
 func Query(db *datastore.Datastore) *mixin.Query {
