@@ -53,5 +53,5 @@ func js(c *gin.Context) {
 	}
 
 	c.Writer.Header().Add("Content-Type", "application/javascript")
-	c.String(200, ml.Js())
+	c.String(200, config.UrlFor("api", "/mailinglist"), c.Id())
 }

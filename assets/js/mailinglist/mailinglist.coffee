@@ -1,5 +1,5 @@
 do ->
-  url = 'https://api.crowdstart.com/mailinglist/%s/subscribe'
+  url = '%s/%s/subscribe'
 
   XHR = ->
     xhr = null
