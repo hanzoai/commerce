@@ -67,12 +67,19 @@ func init() {
 
 	dash.GET("/orders", admin.Orders)
 	dash.GET("/order/:id", admin.Order)
+
+	dash.GET("/mailinglists", admin.MailingLists)
+	dash.GET("/mailinglist/:id", admin.MailingList)
+
 	dash.GET("/products", admin.Products)
 	dash.GET("/product/:id", admin.Product)
+
 	dash.GET("/coupons", admin.Coupons)
 	dash.GET("/coupon/:id", admin.Coupon)
+
 	dash.GET("/stores", admin.Stores)
 	dash.GET("/store/:id", admin.Store)
+
 	dash.GET("/organization", admin.Organization)
 
 	dash.GET("/settings", user.Profile)
