@@ -25,8 +25,26 @@ type Mailchimp struct {
 type MailingList struct {
 	mixin.Model
 
-	Name      string    `json:"name"`
+	// Name of list
+	Name string `json:"name"`
+
+	// Mailchimp settings for this list
 	Mailchimp Mailchimp `json:"mailchimp"`
+
+	// Url to Thank you page
+	ThankYou string `json:"thankyou,omitempty"`
+
+	// Conversion tracking info
+	Facebook struct {
+		Id       string `json:"id"`
+		Value    string `json:"value"`
+		Currency string `json:"currency"`
+	} `json:"facebook"`
+
+	Google struct {
+		Category string `json:"category"`
+		Name     string `json:"name"`
+	} `json:"google"`
 }
 
 func New(db *datastore.Datastore) *MailingList {
@@ -56,7 +74,7 @@ func (m *MailingList) Js() string {
 
 	}
 	endpoint := config.UrlFor("api", "/mailinglist/", m.Id(), "/subscribe")
-	return fmt.Sprintf(jsTemplate, endpoint)
+	return fmt.Sprintf(jsTemplate, endpoint, m.ThankYou, m.Facebook.Id, m.Facebook.Value, m.Facebook.Currency, m.Google.Category, m.Google.Name)
 }
 
 func Query(db *datastore.Datastore) *mixin.Query {

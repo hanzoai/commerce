@@ -12,7 +12,7 @@ files =
 
   mailinglist:
     js:
-      in:  'assets/js/mailinglist/mailinglist.coffee'
+      in:  'assets/js/api/mailinglist.coffee'
       out: 'static/js/mailinglist.js'
 
   checkout:
