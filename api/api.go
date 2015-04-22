@@ -1,6 +1,10 @@
 package api
 
 import (
+	"appengine"
+
+	"github.com/gin-gonic/gin"
+
 	"crowdstart.io/middleware"
 	"crowdstart.io/models2/campaign"
 	"crowdstart.io/models2/collection"
@@ -14,7 +18,6 @@ import (
 	"crowdstart.io/util/permission"
 	"crowdstart.io/util/rest"
 	"crowdstart.io/util/router"
-	"github.com/gin-gonic/gin"
 
 	accessTokenApi "crowdstart.io/api/accessToken"
 	orderApi "crowdstart.io/api/order"
@@ -26,6 +29,13 @@ func init() {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 
 	router := router.New("api")
+
+	// Production index
+	if !appengine.IsDevAppServer() {
+		router.GET("/", func(c *gin.Context) {
+			c.String(200, "ok")
+		})
+	}
 
 	// Use permissive CORS policy for all API routes.
 	router.Use(middleware.AccessControl("*"))
@@ -73,6 +83,8 @@ func init() {
 	// Access token API
 	accessTokenApi.Route(router)
 
-	// REST API debugger
-	router.GET("/", middleware.ParseToken, rest.ListRoutes())
+	// Development index with debugging routes
+	if appengine.IsDevAppServer() {
+		router.GET("/", middleware.ParseToken, rest.ListRoutes())
+	}
 }
