@@ -1,4 +1,4 @@
-package subscription
+package subscriber
 
 import (
 	"time"
@@ -15,7 +15,7 @@ import (
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
-type Subscription struct {
+type Subscriber struct {
 	mixin.Model
 
 	Email         string `json:"email"`
@@ -29,26 +29,26 @@ type Subscription struct {
 	Metadata_ string   `json:"-" datastore:",noindex"`
 }
 
-func (s *Subscription) Init() {
+func (s *Subscriber) Init() {
 	s.Metadata = make(Metadata)
 }
 
-func New(db *datastore.Datastore) *Subscription {
-	s := new(Subscription)
+func New(db *datastore.Datastore) *Subscriber {
+	s := new(Subscriber)
 	s.Init()
 	s.Model = mixin.Model{Db: db, Entity: s}
 	return s
 }
 
-func (s Subscription) Key() string {
+func (s Subscriber) Key() string {
 	return s.MailingListId + ":" + s.Email
 }
 
-func (s Subscription) Kind() string {
-	return "subscription"
+func (s Subscriber) Kind() string {
+	return "subscriber"
 }
 
-func (s *Subscription) Load(c <-chan aeds.Property) (err error) {
+func (s *Subscriber) Load(c <-chan aeds.Property) (err error) {
 	// Ensure we're initialized
 	s.Init()
 
@@ -65,7 +65,7 @@ func (s *Subscription) Load(c <-chan aeds.Property) (err error) {
 	return err
 }
 
-func (s *Subscription) Save(c chan<- aeds.Property) (err error) {
+func (s *Subscriber) Save(c chan<- aeds.Property) (err error) {
 	// Serialize unsupported properties
 	s.Metadata_ = string(json.EncodeBytes(&s.Metadata))
 
@@ -73,7 +73,7 @@ func (s *Subscription) Save(c chan<- aeds.Property) (err error) {
 	return IgnoreFieldMismatch(aeds.SaveStruct(s, c))
 }
 
-func (s *Subscription) Validator() *val.Validator {
+func (s *Subscriber) Validator() *val.Validator {
 	return val.New(s)
 }
 
