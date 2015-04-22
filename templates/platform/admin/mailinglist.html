@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block name %}Mailing Lists{% endblock %}
+
+{% block css %}
+{% endblock %}
+
+{% block content %}
+<!-- Mailing List Information Form Block -->
+<div class="col-sm-10 col-sm-offset-1 col-md-10 col-md-offset-1 col-lg-8 col-lg-offset-1">
+  <div class="block">
+    <div class="block-title">
+      <h2>New Product</h2>
+    </div>
+    <form id="form-mailinglist" method="post" class="form-horizontal">
+      <h4>Provide some basic information.</h4>
+      <div id="mailinglist-info" class="block">
+      </div>
+      <h4>Select some options.</h4>
+      <div id="mailinglist-mailchimp" class="block">
+      </div>
+      <div class="form-group form-actions">
+          <div class="col-md-9 col-md-offset-3">
+              <button type="submit" class="btn btn-effect-ripple btn-primary">Submit</button>
+              <button type="reset" class="btn btn-effect-ripple btn-warning">Reset</button>
+              <button type="button" id="delete-btn" class="btn btn-effect-ripple btn-danger">Delete</button>
+          </div>
+      </div>
+    </form>
+    <!-- END Mailing Lists Form Content -->
+  </div>
+</div>
+<!-- END Mailing List Information Form Block -->
+{% endblock %}
+
+{% block js %}
+<script src="{{ staticUrl }}/js/util.js"></script>
+<script src="{{ staticUrl }}/js/jquery.jqpagination.js"></script>
+<script src="{{ staticUrl }}/js/jquery.serialize-object.min.js"></script>
+<script src="{{ staticUrl }}/js/form-builder.js"></script>
+<script src="{{ staticUrl }}/js/table-builder.js"></script>
+<script src="{{ staticUrl }}/js/rest-forms.js"></script>
+<script>
+$(function(){
+      BuildForm($('#form-mailinglist'),[
+// product info
+        {
+          id: 'name',
+          name: 'name',
+          label: 'Name',
+          type: 'text',
+          asterisk: false,
+          rules: [
+            {
+              rule: 'required',
+              value: true,
+              message: 'Enter a name for your mailing list'
+            }
+          ],
+          $parent: $('#mailinglist-info'),
+          value: "{{ mailingList.Name }}",
+        },
+        {
+          id: 'id',
+          name: 'mailchimp[id]',
+          label: 'MailChimp ID',
+          type: 'text',
+          asterisk: false,
+          rules: [
+            {
+              rule: 'required',
+              value: true,
+              message: 'Enter your mailing list\'s MailChimp API Key'
+            }
+          ],
+          $parent: $('#mailinglist-info'),
+          value: "{{ mailingList.MailchimpList.Id }}",
+        },
+        {
+          id: 'apiKey',
+          name: 'mailchimp[apiKey]',
+          label: 'MailChimp API Key',
+          type: 'text',
+          asterisk: false,
+          rules: [
+            {
+              rule: 'required',
+              value: true,
+              message: 'Enter your mailing list\'s MailChimp API Key'
+            }
+          ],
+          $parent: $('#mailinglist-info'),
+          value: "{{ mailingList.MailchimpList.APIKey }}",
+        },
+        {
+          id: 'doubleOptin',
+          name: 'mailchimp[doubleOptin]',
+          label: 'Double Opt-in?',
+          type: 'switch',
+          value: false,
+          $parent: $('#mailinglist-mailchimp'),
+          labelCols: 6,
+          valueCols: 6,
+          value: "{{ mailingList.MailchimpList.DoubleOptin }}",
+        },
+        {
+          id: 'updateExisting',
+          name: 'mailchimp[updateExisting]',
+          label: 'Update Existing?',
+          type: 'switch',
+          value: false,
+          $parent: $('#mailinglist-mailchimp'),
+          labelCols: 6,
+          valueCols: 6,
+          value: "{{ mailingList.MailchimpList.UpdateExisting }}",
+        },
+        {
+          id: 'replaceInterests',
+          name: 'mailchimp[replaceInterests]',
+          label: 'Replace Interests?',
+          type: 'switch',
+          value: false,
+          $parent: $('#mailinglist-mailchimp'),
+          labelCols: 6,
+          valueCols: 6,
+          value: "{{ mailingList.MailchimpList.ReplaceInterests }}",
+        },
+      ]);
+    });
+
+var api = NewRestAPI(
+    '{{ urlFor("api", "/mailinglist") }}',
+    '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}',
+    $('#form-mailinglist'),
+    {
+        price: function(val) {
+            // To cents
+            return Util.renderJSONCurrencyFromUI(val);
+        },
+        weight: function(val) {
+            return parseFloat(val);
+        }
+    }
+  );
+$('#form-mailinglist').on('submit', function(e){
+    var $form = $(this);
+    requestAnimationFrame(function() {
+        if ($('.form-group.has-error').length === 0) {
+            api.post(function(data) {
+                window.location.replace('{{ urlFor("platform", "/mailinglist", mailingList.Id) }}')
+            }, $form, '{{ mailingList.Id }}')
+        }
+    })
+    e.preventDefault();
+    return false;
+})
+$('#delete-btn').on('click', function(e) {
+  api.del(function(data) {
+      window.location.replace('{{ urlFor("platform", "/mailinglists") }}')
+  }, '{{ mailingList.Id }}')
+})
+</script>
+{% endblock %}
+{% block menulink %}menu-mailinglists{% endblock %}
+
+
+
+
