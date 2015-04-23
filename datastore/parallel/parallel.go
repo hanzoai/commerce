@@ -63,8 +63,6 @@ func New(name string, fn interface{}) *ParallelFn {
 	// Create delay function
 	p.createDelayFn(p.Name)
 
-	log.Debug("Created parallel function: %v", p)
-
 	return p
 }
 
