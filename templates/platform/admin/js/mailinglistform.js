@@ -57,20 +57,34 @@ BuildForm($('#form-mailinglist'),
       value: '{{ mailingList.Name }}',
     },
     {
-      id: 'thankYou',
-      name: 'thankYou',
-      label: 'Thank You URL',
-      type: 'text',
-      asterisk: false,
-      rules: [
+      id: 'thankyou-type',
+      name: 'thankyou[type]',
+      label: 'Thank You Type',
+      value: [
+        {% for type in constants.ThankYouTypes %}
         {
-          rule: 'required',
-          value: true,
-          message: 'Enter your mailing list thank you page.'
-        }
+          selected: '{{ type }}' === '{{ mailingList.ThankYou.Type }}',
+          name: '{{ type }}',
+          id: '{{ type }}',
+        },
+        {% endfor %}
       ],
+      type: 'select',
       $parent: $('#mailinglist-info'),
-      value: '{{ mailingList.ThankYou }}',
+    },
+    {
+      id: 'thankyou',
+      label: 'Thank You (URL, HTML, or Javascript)',
+      type: 'textarea',
+      $parent: $('#mailinglist-info'),
+      {% if mailingList.ThankYou.Type == constants.ThankYouTypes.1 %}
+      name: 'thankyou[url]',
+      value: '{{ mailingList.ThankYou.Url }}',
+      {% else %}
+      name: 'thankyou[html]',
+      value: '{{ mailingList.ThankYou.HTML }}',
+      {% endif %}
+      height: '192px',
     },
     {
       id: 'id',
@@ -85,7 +99,7 @@ BuildForm($('#form-mailinglist'),
           message: 'Enter your mailing list\'s MailChimp API Key'
         }
       ],
-      $parent: $('#mailinglist-mailchimp'),
+      $parent: $('.mailinglist-mailchimp-col1'),
       value: '{{ mailingList.Mailchimp.Id }}',
     },
     {
@@ -101,7 +115,7 @@ BuildForm($('#form-mailinglist'),
           message: 'Enter your mailing list\'s MailChimp API Key'
         }
       ],
-      $parent: $('#mailinglist-mailchimp'),
+      $parent: $('.mailinglist-mailchimp-col1'),
       value: '{{ mailingList.Mailchimp.APIKey }}',
     },
     {
@@ -109,7 +123,7 @@ BuildForm($('#form-mailinglist'),
       name: 'mailchimp[doubleOptin]',
       label: 'Double Opt-in?',
       type: 'switch',
-      $parent: $('#mailinglist-mailchimp'),
+      $parent: $('.mailinglist-mailchimp-col2'),
       labelCols: 6,
       valueCols: 6,
       value: '{{ mailingList.Mailchimp.DoubleOptin }}' === 'True'
@@ -119,7 +133,7 @@ BuildForm($('#form-mailinglist'),
       name: 'mailchimp[updateExisting]',
       label: 'Update Existing?',
       type: 'switch',
-      $parent: $('#mailinglist-mailchimp'),
+      $parent: $('.mailinglist-mailchimp-col2'),
       labelCols: 6,
       valueCols: 6,
       value: '{{ mailingList.Mailchimp.UpdateExisting }}' === 'True'
@@ -129,11 +143,22 @@ BuildForm($('#form-mailinglist'),
       name: 'mailchimp[replaceInterests]',
       label: 'Replace Interests?',
       type: 'switch',
-      $parent: $('#mailinglist-mailchimp'),
+      $parent: $('.mailinglist-mailchimp-col2'),
       labelCols: 6,
       valueCols: 6,
       value: '{{ mailingList.Mailchimp.ReplaceInterests }}' === 'True'
     },
   ]);
+});
+
+$(function(){
+  $('#thankyou-type').chosen().on('change', function() {
+    var val = $(this).val();
+    var key = 'html';
+    if (val === 'redirect') {
+      key = 'url';
+    }
+    $('#thankyou').attr('name', 'thankyou[' + key + ']');
+  });
 });
 
