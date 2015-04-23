@@ -8,7 +8,9 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"crowdstart.io/models"
+	// "crowdstart.io/models"
+	"crowdstart.io/models2/order"
+	"crowdstart.io/models2/user"
 
 	"appengine"
 	"appengine/urlfetch"
@@ -81,16 +83,16 @@ type AuthorizationRes struct { // {
 	Token    string `json:"token"`    // "token":    "9419786452781111",
 } // }
 
-func Authorize(ctx appengine.Context, order models.Order, user models.User) (ares AuthorizationRes, err error) {
+func Authorize(ctx appengine.Context, order *order.Order, user *user.User) (ares AuthorizationRes, err error) {
 	// Convert models.LineItem to our CardConnect specialized LineItem that
 	// will serialize properly.
 	items := make([]LineItem, len(order.Items))
 	for i, v := range order.Items {
 		items[i] = LineItem{
-			Description:  v.Product.Description,
-			DiscountAmnt: v.DiscountAmnt,
-			LineNo:       v.LineNo,
-			Quantity:     v.Quantity,
+			Description: v.Product.Description,
+			// DiscountAmnt: v.DiscountAmnt,
+			// LineNo:       v.LineNo,
+			Quantity: v.Quantity,
 			// UOM:          v.UOM,
 		}
 	}
@@ -99,7 +101,7 @@ func Authorize(ctx appengine.Context, order models.Order, user models.User) (are
 		// Account:  order.Account.Number,
 		// AcctType: order.Account.Type,
 		Address: order.BillingAddress.Line(),
-		Amount:  order.Total,
+		// Amount:  order.Total,
 		// CVV2:     order.Account.CVV2,
 		City:     order.BillingAddress.City,
 		Country:  order.BillingAddress.Country,
@@ -109,7 +111,7 @@ func Authorize(ctx appengine.Context, order models.Order, user models.User) (are
 		// Expiry:   order.Account.Expiry,
 		MerchId:  496160873888,
 		Name:     user.Name(),
-		OrderId:  order.Id,
+		OrderId:  order.Id(),
 		Phone:    user.Phone,
 		Postal:   order.BillingAddress.PostalCode,
 		Region:   order.BillingAddress.State,
