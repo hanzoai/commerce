@@ -59,18 +59,11 @@ BuildForm($('#form-mailinglist'),
     {
       id: 'thankYou',
       name: 'thankYou',
-      label: 'Thank You URL',
-      type: 'text',
-      asterisk: false,
-      rules: [
-        {
-          rule: 'required',
-          value: true,
-          message: 'Enter your mailing list thank you page.'
-        }
-      ],
+      label: 'Thank You (URL, HTML, or Javascript)',
+      type: 'textarea',
       $parent: $('#mailinglist-info'),
       value: '{{ mailingList.ThankYou }}',
+      height: '260px',
     },
     {
       id: 'id',
@@ -85,7 +78,7 @@ BuildForm($('#form-mailinglist'),
           message: 'Enter your mailing list\'s MailChimp API Key'
         }
       ],
-      $parent: $('#mailinglist-mailchimp'),
+      $parent: $('.mailinglist-mailchimp-col1'),
       value: '{{ mailingList.Mailchimp.Id }}',
     },
     {
@@ -101,7 +94,7 @@ BuildForm($('#form-mailinglist'),
           message: 'Enter your mailing list\'s MailChimp API Key'
         }
       ],
-      $parent: $('#mailinglist-mailchimp'),
+      $parent: $('.mailinglist-mailchimp-col1'),
       value: '{{ mailingList.Mailchimp.APIKey }}',
     },
     {
@@ -109,7 +102,7 @@ BuildForm($('#form-mailinglist'),
       name: 'mailchimp[doubleOptin]',
       label: 'Double Opt-in?',
       type: 'switch',
-      $parent: $('#mailinglist-mailchimp'),
+      $parent: $('.mailinglist-mailchimp-col2'),
       labelCols: 6,
       valueCols: 6,
       value: '{{ mailingList.Mailchimp.DoubleOptin }}' === 'True'
@@ -119,7 +112,7 @@ BuildForm($('#form-mailinglist'),
       name: 'mailchimp[updateExisting]',
       label: 'Update Existing?',
       type: 'switch',
-      $parent: $('#mailinglist-mailchimp'),
+      $parent: $('.mailinglist-mailchimp-col2'),
       labelCols: 6,
       valueCols: 6,
       value: '{{ mailingList.Mailchimp.UpdateExisting }}' === 'True'
@@ -129,7 +122,7 @@ BuildForm($('#form-mailinglist'),
       name: 'mailchimp[replaceInterests]',
       label: 'Replace Interests?',
       type: 'switch',
-      $parent: $('#mailinglist-mailchimp'),
+      $parent: $('.mailinglist-mailchimp-col2'),
       labelCols: 6,
       valueCols: 6,
       value: '{{ mailingList.Mailchimp.ReplaceInterests }}' === 'True'
