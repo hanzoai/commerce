@@ -1,24 +1,20 @@
 package tasks
 
 import (
-	"appengine"
-
 	"github.com/gin-gonic/gin"
 	stripe "github.com/stripe/stripe-go"
 	"github.com/stripe/stripe-go/client"
 	"github.com/stripe/stripe-go/dispute"
 
-	"crowdstart.io/config"
 	"crowdstart.io/datastore"
-	"crowdstart.io/datastore/parallel"
 	"crowdstart.io/models"
 	"crowdstart.io/util/log"
 
-	. "crowdstart.io/thirdparty/stripe"
+	// . "crowdstart.io/thirdparty/stripe"
 )
 
 // This is a worker that processes one order at a time
-var synchronizeCharges = parallel.Task("synchronize-charges", SynchronizeCharge)
+// var synchronizeCharges = parallel.New("synchronize-charges", SynchronizeCharge)
 
 func SynchronizeCharge(db *datastore.Datastore, key datastore.Key, o *models.Order, sc *client.API) error {
 	description := o.Description()
@@ -75,13 +71,10 @@ func SynchronizeCharge(db *datastore.Datastore, key datastore.Key, o *models.Ord
 }
 
 func RunSynchronizeCharges(c *gin.Context) {
-	ctx := c.MustGet("appengine").(appengine.Context)
+	// ctx := c.MustGet("appengine").(appengine.Context)
 
 	// This needs to use org secret
-	sc := New(ctx, config.Stripe.SecretKey)
+	// sc := New(ctx, config.Stripe.SecretKey)
 
-	parallel.Run(c, "order", 100, synchronizeCharges, sc)
-}
-
-func init() {
+	// synchronizeCharges.Run(c, 100, sc)
 }

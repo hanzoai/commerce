@@ -9,7 +9,6 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/datastore/parallel"
-	"crowdstart.io/models/mixin"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/task"
 )
@@ -19,9 +18,9 @@ type SetupFn func(*gin.Context)
 func New(name string, setupFn SetupFn, fns ...interface{}) *delay.Function {
 	name = "migration-" + name
 
-	tasks := make([]*delay.Function, len(fns))
+	tasks := make([]*parallel.ParallelFn, len(fns))
 	for i, fn := range fns {
-		tasks[i] = parallel.Task(name+"-task-"+strconv.Itoa(i), fn)
+		tasks[i] = parallel.New(name+"-task-"+strconv.Itoa(i), fn)
 	}
 
 	return task.Func(name, func(c *gin.Context) {
@@ -39,12 +38,7 @@ func New(name string, setupFn SetupFn, fns ...interface{}) *delay.Function {
 				log.Panic("Function requires at least three arguments")
 			}
 
-			entityType := t.In(2).Elem()
-			entity := reflect.New(entityType).Interface().(mixin.Entity)
-
-			kind := entity.Kind()
-
-			parallel.Run(c, kind, 50, tasks[i])
+			tasks[i].Run(c, 50)
 		}
 	})
 }
