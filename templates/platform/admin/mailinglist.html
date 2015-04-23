@@ -13,16 +13,22 @@
       <h2>New Product</h2>
     </div>
     <form id="form-mailinglist" method="post" class="form-horizontal">
-      <h4>Provide some basic information.</h4>
+      <h4>Basic Information</h4>
       <div id="mailinglist-info" class="block">
       </div>
-      <h4>Select some options.</h4>
+      <h4>MailChimp Configuration</h4>
       <div id="mailinglist-mailchimp" class="block">
       </div>
-      <h4>MailChimp Snippet</h4>
+      <h4>Configure Google Analytics.</h4>
+      <div id="mailinglist-ga" class="block">
+      </div>
+      <h4>Configure Facebook.</h4>
+      <div id="mailinglist-fb" class="block">
+      </div>
+      <h4>Snippet</h4>
       <div id="mailinglist-snippet" class="block">
         <div class="form-group">
-          <textarea class="form-control" style="height:120px;"><script src="{{ urlFor("api") }}mailinglist/{{ mailingList.Id }}/js?token={{ ctx.organization.MustGetTokenByName("live-published-key") }}"></script></textarea>
+          <textarea class="form-control" style="height:60px;"><script src="{{ urlFor("api") }}mailinglist/{{ mailingList.Id }}/js"></script></textarea>
         </div>
       </div>
       <div class="form-group form-actions">

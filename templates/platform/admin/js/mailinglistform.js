@@ -1,6 +1,46 @@
 BuildForm($('#form-mailinglist'),
   [
     {
+      id: 'gaCategory',
+      name: 'google[category]',
+      label: 'Category',
+      type: 'text',
+      $parent: $('#mailinglist-ga'),
+      value: '{{ mailingList.Google.Category }}',
+    },
+    {
+      id: 'gaName',
+      name: 'google[name]',
+      label: 'Name',
+      type: 'text',
+      $parent: $('#mailinglist-ga'),
+      value: '{{ mailingList.Google.Name }}',
+    },
+    {
+      id: 'fbId',
+      name: 'facebook[id]',
+      label: 'Id',
+      type: 'text',
+      $parent: $('#mailinglist-fb'),
+      value: '{{ mailingList.Facebook.Id }}',
+    },
+    {
+      id: 'fbValue',
+      name: 'facebook[value]',
+      label: 'Value',
+      type: 'text',
+      $parent: $('#mailinglist-fb'),
+      value: '{{ mailingList.Facebook.Value }}' || '0.0',
+    },
+    {
+      id: 'fbId',
+      name: 'facebook[currency]',
+      label: 'Id',
+      type: 'text',
+      $parent: $('#mailinglist-fb'),
+      value: '{{ mailingList.Facebook.Currency }}' || 'USD',
+    },
+    {
       id: 'name',
       name: 'name',
       label: 'Name',
@@ -17,9 +57,25 @@ BuildForm($('#form-mailinglist'),
       value: '{{ mailingList.Name }}',
     },
     {
+      id: 'thankYou',
+      name: 'thankYou',
+      label: 'Thank You URL',
+      type: 'text',
+      asterisk: false,
+      rules: [
+        {
+          rule: 'required',
+          value: true,
+          message: 'Enter your mailing list thank you page.'
+        }
+      ],
+      $parent: $('#mailinglist-info'),
+      value: '{{ mailingList.ThankYou }}',
+    },
+    {
       id: 'id',
       name: 'mailchimp[id]',
-      label: 'MailChimp ID',
+      label: 'MailChimp List ID',
       type: 'text',
       asterisk: false,
       rules: [
@@ -29,7 +85,7 @@ BuildForm($('#form-mailinglist'),
           message: 'Enter your mailing list\'s MailChimp API Key'
         }
       ],
-      $parent: $('#mailinglist-info'),
+      $parent: $('#mailinglist-mailchimp'),
       value: '{{ mailingList.Mailchimp.Id }}',
     },
     {
@@ -45,7 +101,7 @@ BuildForm($('#form-mailinglist'),
           message: 'Enter your mailing list\'s MailChimp API Key'
         }
       ],
-      $parent: $('#mailinglist-info'),
+      $parent: $('#mailinglist-mailchimp'),
       value: '{{ mailingList.Mailchimp.APIKey }}',
     },
     {
