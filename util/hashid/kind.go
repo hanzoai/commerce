@@ -15,7 +15,7 @@ var kinds = map[string]int{
 	"organization": 6,
 	"payment":      7,
 	"plan":         8,
-	"price":        9,
+	"price":        9, // No longer used, kept for historical purposes
 	"product":      10,
 	"store":        11,
 	"token":        12,
