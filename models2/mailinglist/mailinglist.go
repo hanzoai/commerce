@@ -23,6 +23,14 @@ type Mailchimp struct {
 	ReplaceInterests bool   `json:"replaceInterests"`
 }
 
+type ThankYou string
+
+const (
+	Html     ThankYou = "html"
+	Redirect          = "redirect"
+	Disabled          = "disabled"
+)
+
 type MailingList struct {
 	mixin.Model
 
@@ -33,7 +41,11 @@ type MailingList struct {
 	Mailchimp Mailchimp `json:"mailchimp"`
 
 	// Url to Thank you page
-	ThankYou string `json:"thankyou,omitempty"`
+	ThankYou struct {
+		Type ThankYou `json:"type"`
+		Url  string   `json:"url,omitempty"`
+		HTML string   `json:"html,omitempty"`
+	} `json:"thankyou"`
 
 	// Conversion tracking info
 	Facebook struct {
@@ -58,6 +70,7 @@ func New(db *datastore.Datastore) *MailingList {
 func (m *MailingList) Init() {
 	m.Facebook.Value = "0.00"
 	m.Facebook.Currency = "USD"
+	m.ThankYou.Type = Disabled
 }
 
 func (m MailingList) Kind() string {
