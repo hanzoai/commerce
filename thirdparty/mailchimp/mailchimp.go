@@ -1,19 +1,31 @@
 package mailchimp
 
 import (
+	"time"
+
+	"appengine"
+	"appengine/urlfetch"
+
 	"github.com/mattbaird/gochimp"
 
 	"crowdstart.io/models2/mailinglist"
 	"crowdstart.io/models2/subscriber"
+	"crowdstart.io/util/log"
 )
 
 type API struct {
+	ctx    appengine.Context
 	client *gochimp.ChimpAPI
 }
 
-func New(apiKey string) *API {
+func New(ctx appengine.Context, apiKey string) *API {
 	api := new(API)
+	api.ctx = ctx
 	api.client = gochimp.NewChimp(apiKey, true)
+	api.client.Transport = &urlfetch.Transport{
+		Context:  ctx,
+		Deadline: time.Duration(60) * time.Second, // Update deadline to 60 seconds
+	}
 	return api
 }
 
@@ -35,6 +47,9 @@ func (a API) BatchSubscribe(ml *mailinglist.MailingList, subscribers []*subscrib
 		ReplaceInterests: ml.Mailchimp.ReplaceInterests,
 	}
 	_, err := a.client.BatchSubscribe(req)
+	if err != nil {
+		log.Error("Batch subscribe failed: %v", err, a.ctx)
+	}
 	return err
 }
 
@@ -52,5 +67,8 @@ func (a API) Subscribe(ml *mailinglist.MailingList, s *subscriber.Subscriber) er
 		SendWelcome:      ml.Mailchimp.SendWelcome,
 	}
 	_, err := a.client.ListsSubscribe(req)
+	if err != nil {
+		log.Error("Failed to subscribe %v: %v", s, err, a.ctx)
+	}
 	return err
 }
