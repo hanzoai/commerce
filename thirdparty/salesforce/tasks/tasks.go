@@ -20,35 +20,35 @@ import (
 
 // Deferred Tasks
 // UpsertUserTask upserts a contact into salesforce
-var UpsertUserTask = delay.Func("SalesforceUpsertUserTask", func(c appengine.Context, campaign models.Campaign, user models.User) {
+var UpsertUserTask = delay.Func("SalesforceUpsertUserTask", func(c appengine.Context, campaign models.Campaign, user *models.User) {
 	if campaign.Salesforce.AccessToken != "" {
 		log.Info("Try to synchronize with salesforce", c)
 
 		client := New(c, &campaign, true)
 
-		if err := client.Push(&user); err != nil {
+		if err := client.Push(user); err != nil {
 			log.Panic("UpsertUserTask failed: %v", err, c)
 		}
 	}
 })
 
 // UpsertOrderTask upserts users into salesforce
-var UpsertOrderTask = delay.Func("SalesforceUpsertOrderTask", func(c appengine.Context, campaign models.Campaign, order models.Order) {
+var UpsertOrderTask = delay.Func("SalesforceUpsertOrderTask", func(c appengine.Context, campaign models.Campaign, order *models.Order) {
 	if campaign.Salesforce.AccessToken != "" {
 		log.Info("Try to synchronize with salesforce", c)
 
 		client := New(c, &campaign, true)
 
-		if err := client.Push(&order); err != nil {
+		if err := client.Push(order); err != nil {
 			log.Panic("UpsertOrderTask failed: %v", err, c)
 		}
 	}
 })
 
 // UpsertUserTask upserts users into salesforce
-var ImportUsersTask = parallel.Task("sf-import-user-task", func(db *datastore.Datastore, key datastore.Key, user models.User, campaign models.Campaign) {
+var ImportUsersTask = parallel.Task("sf-import-user-task", func(db *datastore.Datastore, key datastore.Key, user *models.User, campaign models.Campaign) {
 	client := New(db.Context, &campaign, true)
-	if err := client.Push(&user); err != nil {
+	if err := client.Push(user); err != nil {
 		log.Debug("Error: %v", err)
 	}
 
@@ -72,14 +72,14 @@ func ImportUsers(c *gin.Context) {
 }
 
 // UpsertMissingUserTask upserts users not synchronized into salesforce
-var ImportMissingUsersTask = parallel.Task("sf-import-missing-user-task", func(db *datastore.Datastore, key datastore.Key, user models.User, campaign models.Campaign) {
+var ImportMissingUsersTask = parallel.Task("sf-import-missing-user-task", func(db *datastore.Datastore, key datastore.Key, user *models.User, campaign models.Campaign) {
 	// Skip users with missing
 	if user.SalesforceId() != "" {
 		return
 	}
 
 	client := New(db.Context, &campaign, true)
-	if err := client.Push(&user); err != nil {
+	if err := client.Push(user); err != nil {
 		log.Debug("Error: %v", err)
 	}
 
@@ -103,9 +103,9 @@ func ImportMissingUsers(c *gin.Context) {
 }
 
 // UpsertOrderTask upserts orders into salesforce
-var ImportOrdersTask = parallel.Task("sf-import-order-task", func(db *datastore.Datastore, key datastore.Key, order models.Order, campaign models.Campaign) {
+var ImportOrdersTask = parallel.Task("sf-import-order-task", func(db *datastore.Datastore, key datastore.Key, order *models.Order, campaign models.Campaign) {
 	client := New(db.Context, &campaign, true)
-	if err := client.Push(&order); err != nil {
+	if err := client.Push(order); err != nil {
 		log.Debug("Error: %v, '%v'", err, order.UserId)
 	}
 
@@ -129,14 +129,14 @@ func ImportOrders(c *gin.Context) {
 }
 
 // UpsertMissingOrderTask upserts orders not synchronized into salesforce
-var ImportMissingOrdersTask = parallel.Task("sf-import-missing-order-task", func(db *datastore.Datastore, key datastore.Key, order models.Order, campaign models.Campaign) {
+var ImportMissingOrdersTask = parallel.Task("sf-import-missing-order-task", func(db *datastore.Datastore, key datastore.Key, order *models.Order, campaign models.Campaign) {
 	// Skip orders with missing
 	if order.SalesforceId() != "" {
 		return
 	}
 
 	client := New(db.Context, &campaign, true)
-	if err := client.Push(&order); err != nil {
+	if err := client.Push(order); err != nil {
 		log.Debug("Error: %v, '%v'", err, order.UserId)
 	}
 
@@ -160,9 +160,9 @@ func ImportMissingOrders(c *gin.Context) {
 }
 
 // UpsertOrderTask upserts users into salesforce
-var ImportProductVariantsTask = parallel.Task("sf-import-product-task", func(db *datastore.Datastore, key datastore.Key, variant models.ProductVariant, campaign models.Campaign) {
+var ImportProductVariantsTask = parallel.Task("sf-import-product-task", func(db *datastore.Datastore, key datastore.Key, variant *models.ProductVariant, campaign models.Campaign) {
 	client := New(db.Context, &campaign, true)
-	if err := client.Push(&variant); err != nil {
+	if err := client.Push(variant); err != nil {
 		log.Error("Unable to update variant '%v': %v", variant.Id, err, db.Context)
 	}
 
@@ -310,7 +310,7 @@ func CallUpsertOrderTask(c appengine.Context, campaign *models.Campaign, order *
 // Get Salesforce Ids for every user
 
 // PopulateMissingUserSFIdsTask adds all missing salesforce ids for users
-var PopulateMissingUserSFIdsTask = parallel.Task("sf-populate-user-ids", func(db *datastore.Datastore, key datastore.Key, user models.User, campaign models.Campaign) {
+var PopulateMissingUserSFIdsTask = parallel.Task("sf-populate-user-ids", func(db *datastore.Datastore, key datastore.Key, user *models.User, campaign models.Campaign) {
 	if user.SalesforceId() != "" {
 		return
 	}
@@ -325,7 +325,7 @@ var PopulateMissingUserSFIdsTask = parallel.Task("sf-populate-user-ids", func(db
 	user.SetSalesforceId2(blankUser.SalesforceId2())
 
 	// Pushes can update sync times and salesforce ids so update in datastore
-	db.Put(key, &user)
+	db.Put(key, user)
 })
 
 // PopulateMissingUserSFIds ensures all users have salesforce ids
