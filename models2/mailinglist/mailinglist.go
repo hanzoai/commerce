@@ -50,8 +50,14 @@ type MailingList struct {
 
 func New(db *datastore.Datastore) *MailingList {
 	m := new(MailingList)
+	m.Init()
 	m.Model = mixin.Model{Db: db, Entity: m}
 	return m
+}
+
+func (m *MailingList) Init() {
+	m.Facebook.Value = "0.00"
+	m.Facebook.Currency = "USD"
 }
 
 func (m MailingList) Kind() string {
