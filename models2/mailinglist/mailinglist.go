@@ -9,6 +9,7 @@ import (
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/models2/subscriber"
 	"crowdstart.io/util/fs"
+	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/val"
 )
@@ -21,6 +22,9 @@ type Mailchimp struct {
 	DoubleOptin      bool   `json:"doubleOptin"`
 	UpdateExisting   bool   `json:"updateExisting"`
 	ReplaceInterests bool   `json:"replaceInterests"`
+
+	// Whether to have mailchimp email confirmation
+	SendWelcome bool `json:"sendWelcome"`
 }
 
 type ThankYou string
@@ -40,7 +44,7 @@ type MailingList struct {
 	Name string `json:"name"`
 
 	// Whether to send email confirmation
-	SendConfirmation bool `json:"sendConfirmation"`
+	SendWelcome bool `json:"sendWelcome"`
 
 	// Mailchimp settings for this list
 	Mailchimp Mailchimp `json:"mailchimp"`
@@ -119,4 +123,10 @@ func (m *MailingList) Js() string {
 
 func Query(db *datastore.Datastore) *mixin.Query {
 	return New(db).Query()
+}
+
+func FromJSON(db *datastore.Datastore, data []byte) *MailingList {
+	ml := New(db)
+	json.DecodeBytes(data, ml)
+	return ml
 }

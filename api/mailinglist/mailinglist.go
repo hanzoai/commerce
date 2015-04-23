@@ -11,6 +11,8 @@ import (
 	"crowdstart.io/models2/subscriber"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
+
+	mailchimp "crowdstart.io/thirdparty/mailchimp/tasks"
 )
 
 var subscriberEndpoint = config.UrlFor("api", "/subscriber/")
@@ -49,6 +51,7 @@ func addSubscriber(c *gin.Context) {
 			json.Fail(c, 500, "Failed to save subscriber to mailing list", err)
 		}
 	} else {
+		mailchimp.Subscriber.Call(db.Context, ml.JSON(), s.JSON())
 		c.Writer.Header().Add("Location", subscriberEndpoint+s.Id())
 		c.JSON(201, s)
 	}
