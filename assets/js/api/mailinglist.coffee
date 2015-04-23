@@ -1,14 +1,5 @@
 do ->
-  # Embedded by MailingList Js() method
-  endpoint = 'http://localhost:8080%s'
-  thankyou = '%s'
-  facebook =
-    id:       '%s'
-    value:    '%s'
-    currency: '%s'
-  google =
-    category: '%s'
-    name:     '%s'
+  `var endpoint = "%s", ml = %s` # Embedded by MailingList Js() method
 
   XHR = ->
     xhr = null
@@ -69,55 +60,62 @@ do ->
     console.log 'tracking event'
 
     if window._gaq?
-      window._gaq.push ['_trackEvent', google.category, google.name]
+      window._gaq.push ['_trackEvent', ml.google.category, ml.google.name]
 
     if window._fbq?
-      window._fbq.push ['track', facebook.id,
-        value:    facebook.value,
-        currency: facebook.currency,
+      window._fbq.push ['track', ml.facebook.id,
+        value:    ml.facebook.value,
+        currency: ml.facebook.currency,
       ]
 
 
-  addHandler = (e) ->
+  addHandler = (ev) ->
     console.log 'adding submit handler'
 
     form.removeEventListener 'submit', addHandler
-    form.addEventListener 'submit', submitHandler
+    form.addEventListener    'submit', submitHandler
 
     setTimeout ->
       form.dispatchEvent new Event 'submit',
         bubbles:    false
-        cancelable: false
-    , 400
+        cancelable: true
+    , 500
 
-    e.preventDefault()
-    return false
+    ev.preventDefault()
+    false
 
-  redirect = ->
-    setTimeout ->
-      window.location = thankyou
-    , 1000
+  thankYou = ->
+    switch ml.thankyou.type
+      when 'redirect'
+        setTimeout ->
+          window.location = ml.thankyou.url
+        , 1000
+      when 'html'
+        form.innerHTML = ml.thankyou.html
 
-  submitHandler = (e) ->
+  submitHandler = (ev) ->
     console.log 'submit handler'
 
-    return if e.defaultPrevented
+    if ev.defaultPrevented
+      return
+    else
+      ev.preventDefault()
 
     payload = JSON.stringify serialize form
     headers =
       'X-Requested-With': 'XMLHttpRequest',
       'Content-type':     'application/json; charset=utf-8'
-      'Content-length':   payload.length
-      'Connection':       'close'
 
     xhr = XHR()
     xhr.post endpoint, headers, payload, (err, status, xhr) ->
-      return redirect() if status == 409
+      return thankYou() if status == 409
       return if err?
 
       # Fire tracking pixels
       track()
-      redirect()
+      thankYou()
+
+    false
 
   # init
   form = getForm()
