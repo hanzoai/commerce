@@ -21,3 +21,4 @@ github.com/go-errors/errors master
 github.com/speps/go-hashids master
 github.com/cenkalti/backoff master
 github.com/vincent-petithory/countries master
+github.com/mattbaird/gochimp master
