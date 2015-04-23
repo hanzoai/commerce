@@ -9,6 +9,7 @@ import (
 	"appengine/delay"
 
 	"crowdstart.io/datastore"
+	"crowdstart.io/models/mixin"
 	"crowdstart.io/util/fakecontext"
 	"crowdstart.io/util/log"
 )
@@ -46,7 +47,7 @@ func Task(name string, workerFunc interface{}) *delay.Function {
 		log.Panic("Second argument must be datastore.Key")
 	}
 
-	entityType := t.In(2)
+	entityType := t.In(2).Elem()
 	workerFuncValue := reflect.ValueOf(workerFunc)
 
 	return delay.Func(name, func(c appengine.Context, fc *fakecontext.Context, kind string, offset, batchSize int, args ...interface{}) {
@@ -63,8 +64,14 @@ func Task(name string, workerFunc interface{}) *delay.Function {
 
 		// Loop over entities passing them into workerFunc one at a time
 		for {
-			entityPtr := reflect.New(entityType).Interface()
-			key, err := t.Next(entityPtr)
+			entity := reflect.New(entityType).Interface().(mixin.Entity)
+			model := mixin.Model{Db: db, Entity: entity}
+
+			// Set model on entity
+			field := reflect.Indirect(reflect.ValueOf(entity)).FieldByName("Model")
+			field.Set(reflect.ValueOf(model))
+
+			key, err := t.Next(entity)
 
 			if err != nil {
 				// Done iterating
@@ -84,7 +91,7 @@ func Task(name string, workerFunc interface{}) *delay.Function {
 			}
 
 			// Build arguments for workerFunc
-			in := []reflect.Value{reflect.ValueOf(db), reflect.ValueOf(key), reflect.Indirect(reflect.ValueOf(entityPtr))}
+			in := []reflect.Value{reflect.ValueOf(db), reflect.ValueOf(key), reflect.ValueOf(entity)}
 
 			// Append variadic args
 			for _, arg := range args {

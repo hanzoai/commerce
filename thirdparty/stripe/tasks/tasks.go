@@ -20,7 +20,7 @@ import (
 // This is a worker that processes one order at a time
 var synchronizeCharges = parallel.Task("synchronize-charges", SynchronizeCharge)
 
-func SynchronizeCharge(db *datastore.Datastore, key datastore.Key, o models.Order, sc *client.API) error {
+func SynchronizeCharge(db *datastore.Datastore, key datastore.Key, o *models.Order, sc *client.API) error {
 	description := o.Description()
 	for i, charge := range o.Charges {
 		updatedCharge, err := sc.Charges.Get(charge.ID, nil)
