@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"crowdstart.io/models"
 	"crowdstart.io/util/log"
 )
 
@@ -306,33 +305,33 @@ func (s *StringValidationContext) Contains(str string) *StringValidationContext 
 // 	u.LastName = strings.Title(u.LastName)
 // }
 
-func ValidateAddress(address *models.Address, errs []string) []string {
-	if !Check(address.Line1).Exists().IsValid {
-		log.Debug("Form posted without address")
-		errs = append(errs, "Please enter an address.")
-	}
+// func ValidateAddress(address *models.Address, errs []string) []string {
+// 	if !Check(address.Line1).Exists().IsValid {
+// 		log.Debug("Form posted without address")
+// 		errs = append(errs, "Please enter an address.")
+// 	}
 
-	if !Check(address.City).Exists().IsValid {
-		log.Debug("Form posted without city")
-		errs = append(errs, "Please enter a city.")
-	}
+// 	if !Check(address.City).Exists().IsValid {
+// 		log.Debug("Form posted without city")
+// 		errs = append(errs, "Please enter a city.")
+// 	}
 
-	if !Check(address.State).Exists().IsValid {
-		log.Debug("Form posted without state")
-		errs = append(errs, "Please enter a state.")
-	}
+// 	if !Check(address.State).Exists().IsValid {
+// 		log.Debug("Form posted without state")
+// 		errs = append(errs, "Please enter a state.")
+// 	}
 
-	if !Check(address.PostalCode).Exists().IsValid {
-		log.Debug("Form posted without postal code")
-		errs = append(errs, "Please enter a zip/postal code.")
-	}
+// 	if !Check(address.PostalCode).Exists().IsValid {
+// 		log.Debug("Form posted without postal code")
+// 		errs = append(errs, "Please enter a zip/postal code.")
+// 	}
 
-	if !Check(address.Country).Exists().IsValid {
-		log.Debug("Form posted without country")
-		errs = append(errs, "Please enter a country.")
-	}
-	return errs
-}
+// 	if !Check(address.Country).Exists().IsValid {
+// 		log.Debug("Form posted without country")
+// 		errs = append(errs, "Please enter a country.")
+// 	}
+// 	return errs
+// }
 
 func ValidatePassword(password string, errs []string) []string {
 	if !Check(password).IsPassword().IsValid {
