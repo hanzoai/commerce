@@ -46,7 +46,7 @@ type Entity interface {
 	Query() *Query
 	Validate() error
 	Validator() *val.Validator
-	JSON() string
+	JSON() []byte
 }
 
 // Model is a mixin which adds Datastore/Validation/Serialization methods to
@@ -400,9 +400,9 @@ func (m *Model) Validate() error {
 	return nil
 }
 
-// Serialize entity to JSON string
-func (m *Model) JSON() string {
-	return json.Encode(m.Entity)
+// Serialize entity to JSON
+func (m *Model) JSON() []byte {
+	return json.EncodeBytes(m.Entity)
 }
 
 // Mock methods for test keys. Does everything against datastore except create/update/delete/allocate ids.
