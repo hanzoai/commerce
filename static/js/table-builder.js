@@ -191,7 +191,11 @@ var BuildTable = (function() {
             val = Util.renderUICurrencyFromJSON(val);
             $tableData.addClass('text-right');
           } else if (render == 'date') {
-            val = (new Date(val)).toDateString();
+            val = DateFormat.format.date(val, 'yyyy-MM-dd hh:mm');
+            $tableData.addClass('text-center');
+          } else if (render == 'ago') {
+            val = $.timeago(val);
+            $tableData.addClass('text-center');
           } else if (render == 'number') {
             $tableData.addClass('text-right');
           } else if (render == 'id') {
@@ -244,7 +248,7 @@ var BuildTable = (function() {
       $.ajax({
         type: 'GET',
         headers: {Authorization: tableConfig.apiToken},
-        url: path + '?page=' + page + '&display=' + display,
+        url: path + '?page=' + page + '&display=' + display + '&sort=-UpdatedAt',
         success: function(data){
           load(data);
         }
@@ -266,7 +270,6 @@ var BuildTable = (function() {
         }
       })
     }
-
 
     // Setup pagination
     $pagination.jqPagination({
