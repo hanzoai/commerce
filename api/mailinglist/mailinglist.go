@@ -10,6 +10,7 @@ import (
 	"crowdstart.io/models2/mailinglist"
 	"crowdstart.io/models2/subscriber"
 	"crowdstart.io/util/json"
+	"crowdstart.io/util/log"
 )
 
 var subscriberEndpoint = config.UrlFor("api", "/subscriber/")
@@ -20,11 +21,18 @@ func addSubscriber(c *gin.Context) {
 	db := datastore.New(c)
 
 	ml := mailinglist.New(db)
-	if err := ml.GetById(id); err != nil {
+
+	// Set key and namespace correctly
+	ml.SetKey(id)
+	ml.SetNamespace(ml.Key().Namespace())
+
+	if err := ml.Get(); err != nil {
 		json.Fail(c, 404, fmt.Sprintf("Failed to retrieve mailing list '%v': %v", id, err), err)
 		return
 	}
 
+	// Make sure Subscriber is created with the right context
+	db.Context = ml.Db.Context
 	s := subscriber.New(db)
 
 	// Decode response body for subscriber
@@ -35,7 +43,11 @@ func addSubscriber(c *gin.Context) {
 
 	// Save subscriber to mailing list
 	if err := ml.AddSubscriber(s); err != nil {
-		json.Fail(c, 500, "Failed to save subscriber to mailing list", err)
+		if err == mailinglist.SubscriberAlreadyExists {
+			json.Fail(c, 409, "Subscriber already exists", err)
+		} else {
+			json.Fail(c, 500, "Failed to save subscriber to mailing list", err)
+		}
 	} else {
 		c.Writer.Header().Add("Location", subscriberEndpoint+s.Id())
 		c.JSON(201, s)
@@ -47,7 +59,15 @@ func js(c *gin.Context) {
 	db := datastore.New(c)
 
 	ml := mailinglist.New(db)
-	if err := ml.GetById(id); err != nil {
+
+	// Set key and namespace correctly
+	ml.SetKey(id)
+	log.Debug("mailinglist: %v", ml)
+	log.Debug("key: %v", ml.Key())
+	log.Debug("namespace: %v", ml.Key().Namespace())
+	ml.SetNamespace(ml.Key().Namespace())
+
+	if err := ml.Get(); err != nil {
 		c.String(404, fmt.Sprintf("Failed to retrieve mailing list '%v': %v", id, err))
 		return
 	}
