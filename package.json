@@ -11,7 +11,7 @@
     "bebop": "^1.1.19",
     "blueimp-canvas-to-blob": "^2.1.1",
     "card": "^0.1.4",
-    "coffee-script": "^1.8.0",
+    "coffee-script": "^1.9.2",
     "crowdstart.js": "0.0.4",
     "csso-stylus": "0.0.3",
     "jeet": "^6.1.2",
