@@ -31,11 +31,16 @@ const (
 	Disabled          = "disabled"
 )
 
+var ThankYouTypes = []ThankYou{Html, Redirect, Disabled}
+
 type MailingList struct {
 	mixin.Model
 
 	// Name of list
 	Name string `json:"name"`
+
+	// Whether to send email confirmation
+	SendConfirmation bool `json:"sendConfirmation"`
 
 	// Mailchimp settings for this list
 	Mailchimp Mailchimp `json:"mailchimp"`
