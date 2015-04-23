@@ -57,13 +57,34 @@ BuildForm($('#form-mailinglist'),
       value: '{{ mailingList.Name }}',
     },
     {
-      id: 'thankYou',
-      name: 'thankYou',
+      id: 'thankyou-type',
+      name: 'thankyou[type]',
+      label: 'Thank You Type',
+      value: [
+        {% for type in constants.ThankYouTypes %}
+        {
+          selected: '{{ type }}' === '{{ mailingList.ThankYou.Type }}',
+          name: '{{ type }}',
+          id: '{{ type }}',
+        },
+        {% endfor %}
+      ],
+      type: 'select',
+      $parent: $('#mailinglist-info'),
+    },
+    {
+      id: 'thankyou',
       label: 'Thank You (URL, HTML, or Javascript)',
       type: 'textarea',
       $parent: $('#mailinglist-info'),
-      value: '{{ mailingList.ThankYou }}',
-      height: '260px',
+      {% if mailingList.ThankYou.Type == constants.ThankYouTypes.1 %}
+      name: 'thankyou[url]',
+      value: '{{ mailingList.ThankYou.Url }}',
+      {% else %}
+      name: 'thankyou[html]',
+      value: '{{ mailingList.ThankYou.HTML }}',
+      {% endif %}
+      height: '192px',
     },
     {
       id: 'id',
@@ -128,5 +149,16 @@ BuildForm($('#form-mailinglist'),
       value: '{{ mailingList.Mailchimp.ReplaceInterests }}' === 'True'
     },
   ]);
+});
+
+$(function(){
+  $('#thankyou-type').chosen().on('change', function() {
+    var val = $(this).val();
+    var key = 'html';
+    if (val === 'redirect') {
+      key = 'url';
+    }
+    $('#thankyou').attr('name', 'thankyou[' + key + ']');
+  });
 });
 
