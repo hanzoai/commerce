@@ -11,16 +11,16 @@ type Model struct {
 }
 
 // Define a new worker with parallel.Task
-var TaskPlus1 = parallel.Task("test-worker", func(db *datastore.Datastore, k datastore.Key, model Model) {
+var TaskPlus1 = parallel.Task("test-worker", func(db *datastore.Datastore, k datastore.Key, model *Model) {
 	model.Count = model.Count + 1
 	log.Warn("Working On Object %v, %v", k, model)
-	db.PutKind("plus-1", k, &model)
+	db.PutKind("plus-1", k, model)
 	log.Warn("Inserted")
 })
 
 // Define a new worker with parallel.Task
-var TaskSetVal = parallel.Task("test-worker2", func(db *datastore.Datastore, k datastore.Key, model Model, v int) {
+var TaskSetVal = parallel.Task("test-worker2", func(db *datastore.Datastore, k datastore.Key, model *Model, v int) {
 	println("Setting val")
 	model.Count = v
-	db.PutKind("set-val", k, &model)
+	db.PutKind("set-val", k, model)
 })
