@@ -202,8 +202,8 @@ var BuildTable = (function() {
             val = val.toUpperCase();
           } else if (render == 'bool') {
             val = val ? 'Yes' : 'No';
-          } else if (render == 'mailchimp-snippet' && model.id){
-            val = $('<textarea class="form-control" style="height:120px;"><script src="' + column.apiUrl + 'mailinglist/' + model.id + '/js?token='+ column.token +'"></script></textarea>');
+          } else if (render == 'snippet' && model.id){
+            val = $('<textarea class="form-control" style="height:80px;"><script src="' + column.apiUrl + 'mailinglist/' + model.id + '/js"></script></textarea>');
           } else if (render && {}.toString.call(render) == '[object Function]') {
             val = render(val, model);
           }
