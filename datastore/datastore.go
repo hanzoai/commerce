@@ -407,12 +407,16 @@ func (d *Datastore) Query(kind string) *aeds.Query {
 	return aeds.NewQuery(kind)
 }
 
-func (d *Datastore) Query2(kind string) Query {
-	return NewQuery(kind, d)
+func (d *Datastore) Query2(kind string) *DatastoreQuery {
+	return NewQuery(d, kind)
 }
 
 func (d *Datastore) RunInTransaction(f func(tc appengine.Context) error, opts *aeds.TransactionOptions) error {
 	return nds.RunInTransaction(d.Context, f, opts)
+}
+
+func (d *Datastore) DecodeCursor(cursor string) (aeds.Cursor, error) {
+	return aeds.DecodeCursor(cursor)
 }
 
 // Helper to ignore tedious field mismatch errors (but warn appropriately
