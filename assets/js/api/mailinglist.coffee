@@ -93,6 +93,11 @@ do ->
     e.preventDefault()
     return false
 
+  redirect = ->
+    setTimeout ->
+      window.location = thankyou
+    , 1000
+
   submitHandler = (e) ->
     console.log 'submit handler'
 
@@ -107,16 +112,12 @@ do ->
 
     xhr = XHR()
     xhr.post endpoint, headers, payload, (err, status, xhr) ->
+      return redirect() if status == 409
       return if err?
 
       # Fire tracking pixels
       track()
-
-      # Redirect
-      setTimeout ->
-        return unless thankyou != ""
-        window.location = thankyou
-      , 100
+      redirect()
 
   # init
   form = getForm()
