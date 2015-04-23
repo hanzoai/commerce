@@ -31,8 +31,8 @@ type Datastore struct {
 
 func New(ctx interface{}) *Datastore {
 	d := new(Datastore)
-	d.IgnoreFieldMismatch = config.DatastoreWarn
-	d.Warn = true
+	d.IgnoreFieldMismatch = true
+	d.Warn = config.DatastoreWarn
 	d.SetContext(ctx)
 	return d
 }
