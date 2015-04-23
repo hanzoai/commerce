@@ -64,7 +64,7 @@ tools = code.google.com/p/rog-go/exp/cmd/godef \
 		golang.org/x/tools/cmd/oracle
 
 # Various patches for SDK
-mtime_file_watcher = https://gist.githubusercontent.com/zeekay/5eba991c39426ca42cbb/raw/235f107b7ed081719103a4259dddd0e568d12480/mtime_file_watcher.py
+mtime_file_watcher = https://gist.githubusercontent.com/zeekay/5eba991c39426ca42cbb/raw/8db2e910b89e3927adc9b7c183387186facee17b/mtime_file_watcher.py
 
 # static assets, requisite javascript from assets -> static
 bebop = node_modules/.bin/bebop
