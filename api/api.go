@@ -40,10 +40,9 @@ func init() {
 	}
 
 	// Use permissive CORS policy for all API routes.
-	cors := middleware.AccessControl("*")
-	router.Use(cors)
+	router.Use(middleware.AccessControl("*"))
 	router.OPTIONS("*wildcard", func(c *gin.Context) {
-		cors(c)
+		c.Next()
 	})
 
 	// Organization APIs, namespaced by organization
