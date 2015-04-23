@@ -1,6 +1,7 @@
 fs   = require 'fs'
 path = require 'path'
 
+coffee    = 'node_modules/.bin/coffee'
 requisite = 'node_modules/.bin/requisite -s -g'
 stylus    = 'node_modules/.bin/stylus -u autoprefixer-stylus --sourcemap --sourcemap-inline'
 
@@ -13,7 +14,7 @@ files =
   mailinglist:
     js:
       in:  'assets/js/api/mailinglist.coffee'
-      out: 'static/js/mailinglist.js'
+      out: 'static/js'
 
   checkout:
     js:
@@ -84,7 +85,7 @@ module.exports =
         return "#{requisite} #{files.store.js.in} -o #{files.store.js.out}"
       if /^assets\/js\/api/.test src
         if /mailinglist/.test src
-          return "#{requisite} #{files.mailinglist.js.in} -o #{files.mailinglist.js.out}"
+          return "#{coffee} -bcm -o #{files.mailinglist.js.out} #{files.mailinglist.js.in}"
         else
           return "#{requisite} #{files.api.js.in} -o #{files.api.js.out}"
       if /^assets\/js\//.test src
