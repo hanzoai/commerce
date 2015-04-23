@@ -29,14 +29,11 @@ type Datastore struct {
 	Warn                bool
 }
 
-func New(ctx interface{}) (d *Datastore) {
-	switch ctx := ctx.(type) {
-	case appengine.Context:
-		d = &Datastore{ctx, config.DatastoreWarn, true}
-	case *gin.Context:
-		c := ctx.MustGet("appengine").(appengine.Context)
-		d = &Datastore{c, config.DatastoreWarn, true}
-	}
+func New(ctx interface{}) *Datastore {
+	d := new(Datastore)
+	d.IgnoreFieldMismatch = config.DatastoreWarn
+	d.Warn = true
+	d.SetContext(ctx)
 	return d
 }
 
@@ -44,6 +41,16 @@ func New(ctx interface{}) (d *Datastore) {
 func (d *Datastore) warn(fmtOrError interface{}, args ...interface{}) {
 	if d.Warn {
 		log.Warn(fmtOrError, args...)
+	}
+}
+
+// Set context for datastore
+func (d *Datastore) SetContext(ctx interface{}) {
+	switch ctx := ctx.(type) {
+	case appengine.Context:
+		d.Context = ctx
+	case *gin.Context:
+		d.Context = ctx.MustGet("appengine").(appengine.Context)
 	}
 }
 

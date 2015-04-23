@@ -1,6 +1,6 @@
 do ->
   # Embedded by MailingList Js() method
-  endpoint = '%s'
+  endpoint = 'http://localhost:8080%s'
   thankyou = '%s'
   facebook =
     id:       '%s'
@@ -39,6 +39,8 @@ do ->
       return
 
   getForm = ->
+    console.log 'serializing form'
+
     # start at the root element
     node = document.documentElement
 
@@ -47,18 +49,25 @@ do ->
 
     # node is now the script element
     form = node.parentNode
-    form
+    window.form = form
 
   serialize = (form) ->
+    console.log 'serializing form'
+
     return {} if not form or form.nodeName isnt "FORM"
     data = {}
 
-    for el in form.elements
+    elements = form.getElementsByTagName 'input'
+    console.log elements
+
+    for el in elements
       data[el.name] = el.value.trim()
 
     data
 
   track = ->
+    console.log 'tracking event'
+
     if window._gaq?
       window._gaq.push ['_trackEvent', google.category, google.name]
 
@@ -70,6 +79,8 @@ do ->
 
 
   addHandler = (e) ->
+    console.log 'adding submit handler'
+
     form.removeEventListener 'submit', addHandler
     form.addEventListener 'submit', submitHandler
 
@@ -82,7 +93,14 @@ do ->
     e.preventDefault()
     return false
 
+  redirect = ->
+    setTimeout ->
+      window.location = thankyou
+    , 1000
+
   submitHandler = (e) ->
+    console.log 'submit handler'
+
     return if e.defaultPrevented
 
     payload = JSON.stringify serialize form
@@ -94,16 +112,12 @@ do ->
 
     xhr = XHR()
     xhr.post endpoint, headers, payload, (err, status, xhr) ->
+      return redirect() if status == 409
       return if err?
 
       # Fire tracking pixels
       track()
-
-      # Redirect
-      setTimeout ->
-        return unless thankyou != ""
-        window.location = thankyou
-      , 100
+      redirect()
 
   # init
   form = getForm()
