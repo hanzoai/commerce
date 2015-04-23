@@ -12,10 +12,10 @@ import (
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
-	"crowdstart.io/models"
+	// "crowdstart.io/models"
 	"crowdstart.io/util/cache"
 	"crowdstart.io/util/log"
-	"crowdstart.io/util/queries"
+	// "crowdstart.io/util/queries"
 	"crowdstart.io/util/template"
 
 	mandrill "crowdstart.io/thirdparty/mandrill/tasks"
@@ -106,7 +106,7 @@ func charge(c *gin.Context) {
 
 	ctx := middleware.GetAppEngine(c)
 	db := datastore.New(ctx)
-	q := queries.New(ctx)
+	// q := queries.New(ctx)
 
 	// Populate
 	if err := form.Order.Populate(db); err != nil {
@@ -128,14 +128,12 @@ func charge(c *gin.Context) {
 	if err != nil {
 		// see if this is a returning user
 		log.Debug("User is not logged in")
-		returningUser := new(models.User)
-		if err = q.GetUserByEmail(form.User.Email, returningUser); err != nil {
+		if err = user.GetByEmail(form.User.Email); err != nil {
 			log.Debug("Using form.User", c)
 			user.Id = db.EncodeId("user", db.AllocateId("user"))
 			user = &form.User
 		} else {
 			log.Debug("Returning User")
-			user = returningUser
 		}
 	}
 	log.Debug("User: %#v", user)

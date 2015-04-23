@@ -3,7 +3,7 @@ package login
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/auth2"
+	"crowdstart.io/auth"
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models2/user"

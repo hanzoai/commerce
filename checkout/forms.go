@@ -4,7 +4,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/datastore"
-	"crowdstart.io/models"
+	// "crowdstart.io/models"
+	"crowdstart.io/models2/order"
 	"crowdstart.io/util/form"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/val"
@@ -12,7 +13,7 @@ import (
 
 // Load order from checkout form
 type CheckoutForm struct {
-	Order models.Order
+	Order *order.Order
 }
 
 // Parse form

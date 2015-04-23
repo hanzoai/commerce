@@ -3,7 +3,7 @@ package middleware
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/auth2"
+	"crowdstart.io/auth"
 	"crowdstart.io/config"
 	"crowdstart.io/models2/user"
 	"crowdstart.io/util/log"
