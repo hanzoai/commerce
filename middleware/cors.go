@@ -1,15 +1,22 @@
 package middleware
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/gin-gonic/gin"
+
+	"crowdstart.io/util/log"
+)
 
 func AccessControl(allowOrigin string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Allow all CORS requests.
 		c.Writer.Header().Set("Access-Control-Allow-Origin", allowOrigin)
 
+		log.Debug("IN CORS")
 		if c.Request.Method != "OPTIONS" {
 			return
 		}
+
+		log.Debug("IN CORS STILL")
 
 		// Handle OPTIONS
 		header := c.Request.Header
