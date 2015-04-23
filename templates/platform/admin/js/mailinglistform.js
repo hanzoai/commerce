@@ -82,7 +82,7 @@ BuildForm($('#form-mailinglist'),
       value: '{{ mailingList.ThankYou.Url }}',
       {% else %}
       name: 'thankyou[html]',
-      value: '{{ mailingList.ThankYou.HTML }}',
+      value: '{{ mailingList.ThankYou.HTML | escapejs | safe }}',
       {% endif %}
       height: '192px',
     },
