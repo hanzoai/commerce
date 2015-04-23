@@ -21,8 +21,8 @@ import (
 	_ "crowdstart.io/models2/migrations"
 	_ "crowdstart.io/thirdparty/mailchimp/tasks"
 	_ "crowdstart.io/thirdparty/mandrill/tasks"
-	_ "crowdstart.io/thirdparty/salesforce/tasks"
-	_ "crowdstart.io/thirdparty/stripe/tasks"
+	// _ "crowdstart.io/thirdparty/salesforce/tasks"
+	// _ "crowdstart.io/thirdparty/stripe/tasks"
 )
 
 func Init() {
