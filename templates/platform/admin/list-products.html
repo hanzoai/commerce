@@ -148,8 +148,13 @@
         },
         {
           field: 'createdAt',
-          name: 'Created',
+          name: 'Created At',
           render: 'date',
+        },
+        {
+          field: 'updatedAt',
+          name: 'Last Updated',
+          render: 'ago',
         }
       ],
       itemUrl: '{{ urlFor("platform", "/product") }}',
