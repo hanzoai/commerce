@@ -11,8 +11,9 @@ import (
 func Route(router router.Router, args ...gin.HandlerFunc) {
 	api := rest.New(mailinglist.MailingList{})
 
-	api.POST("/:mailinglistid/subscribe", addSubscriber)
-	api.GET("/:mailinglistid/js", js)
+	group := router.Group("mailinglist")
+	group.POST("/:mailinglistid/subscribe", addSubscriber)
+	group.GET("/:mailinglistid/js", js)
 
 	api.Route(router, args...)
 }

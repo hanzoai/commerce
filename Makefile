@@ -69,18 +69,17 @@ mtime_file_watcher = https://gist.githubusercontent.com/zeekay/5eba991c39426ca42
 # static assets, requisite javascript from assets -> static
 bebop = node_modules/.bin/bebop
 
+coffee	   	   = node_modules/.bin/coffee
 requisite	   = node_modules/.bin/requisite -s -g
 requisite_opts = assets/js/store/store.coffee \
 				 assets/js/preorder/preorder.coffee \
 				 assets/js/checkout/checkout.coffee \
 				 assets/js/api/api.coffee \
-				 assets/js/api/mailinglist.coffee \
 				 node_modules/crowdstart.js/src/index.coffee \
 				 -o static/js/store.js \
 				 -o static/js/preorder.js \
 				 -o static/js/checkout.js \
 				 -o static/js/api.js \
-				 -o static/js/mailinglist.js \
 				 -o static/v1.js
 
 requisite_opts_min = -m --strip-debug
@@ -166,6 +165,7 @@ assets-min: deps-assets compile-css-min compile-js-min
 
 compile-js:
 	$(requisite) $(requisite_opts)
+	$(coffee) -bc -o static/js assets/js/api/mailinglist.coffee
 
 compile-js-min:
 	$(requisite) $(requisite_opts) $(requisite_opts_min)

@@ -47,6 +47,7 @@ type Rest struct {
 	Delete           gin.HandlerFunc
 	MethodOverride   gin.HandlerFunc
 
+	middleware []gin.HandlerFunc
 	routes     routeMap
 	entityType reflect.Type
 }
@@ -117,6 +118,8 @@ func (r Rest) Route(router router.Router, mw ...gin.HandlerFunc) {
 
 	// Create group for our API routes
 	group := router.Group(prefix)
+
+	mw = append(r.middleware, mw...)
 
 	if !r.DefaultNamespace {
 		// Automatically namespace requests
@@ -441,6 +444,10 @@ func (r Rest) Handle(method, url string, handlers []gin.HandlerFunc) {
 	}
 
 	r.routes[url] = routes
+}
+
+func (r Rest) Use(handlers ...gin.HandlerFunc) {
+	r.middleware = append(r.middleware, handlers...)
 }
 
 func (r Rest) GET(url string, handlers ...gin.HandlerFunc) {

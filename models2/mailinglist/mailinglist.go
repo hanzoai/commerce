@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"os"
 
+	"appengine"
+
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/models2/subscriber"
 	"crowdstart.io/util/fs"
 	"crowdstart.io/util/json"
-	"crowdstart.io/util/log"
 	"crowdstart.io/util/val"
 )
 
@@ -97,7 +98,6 @@ func (m *MailingList) AddSubscriber(s *subscriber.Subscriber) error {
 
 	return m.RunInTransaction(func() error {
 		keys, err := subscriber.Query(m.Db).Ancestor(mkey).Filter("Email=", s.Email).KeysOnly().GetAll(nil)
-		log.Debug("keys: %v, err: %v", keys, err)
 
 		if len(keys) != 0 {
 			return SubscriberAlreadyExists
@@ -117,8 +117,14 @@ func (m *MailingList) Js() string {
 		jsTemplate = string(fs.ReadFile(cwd + "/resources/mailinglist.js"))
 
 	}
+
+	// Endpoint for subscription
 	endpoint := config.UrlFor("api", "/mailinglist/", m.Id(), "/subscribe")
-	return fmt.Sprintf(jsTemplate, endpoint, m.ThankYou, m.Facebook.Id, m.Facebook.Value, m.Facebook.Currency, m.Google.Category, m.Google.Name)
+	if appengine.IsDevAppServer() {
+		endpoint = "http://localhost:8080" + endpoint
+	}
+
+	return fmt.Sprintf(jsTemplate, endpoint, m.JSON())
 }
 
 func Query(db *datastore.Datastore) *mixin.Query {
