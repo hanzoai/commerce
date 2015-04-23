@@ -6,23 +6,23 @@ import (
 )
 
 var kinds = map[string]int{
-	"bundle":       0,
-	"campaign":     1,
-	"collection":   2,
-	"coupon":       3,
-	"discounts":    4,
+	"bundle":     0,
+	"campaign":   1,
+	"collection": 2,
+	"coupon":     3,
+	//"discounts":    4, //No longer used, replace please
 	"order":        5,
 	"organization": 6,
 	"payment":      7,
 	"plan":         8,
-	"price":        9,
-	"product":      10,
-	"store":        11,
-	"token":        12,
-	"user":         13,
-	"variant":      14,
-	"mailinglist":  15,
-	"subscriber":   16,
+	//"price":        9, //No longer used, replace please
+	"product":     10,
+	"store":       11,
+	"token":       12,
+	"user":        13,
+	"variant":     14,
+	"mailinglist": 15,
+	"subscriber":  16,
 }
 
 var kindsReversed = make(map[int]string)
