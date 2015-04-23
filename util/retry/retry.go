@@ -1,6 +1,8 @@
 package retry
 
 import (
+	"time"
+
 	"github.com/cenkalti/backoff"
 
 	"crowdstart.io/util/log"
@@ -8,6 +10,11 @@ import (
 
 func Retry(times int, fn func() error) error {
 	b := backoff.NewExponentialBackOff()
+	b.InitialInterval = 1 * time.Second
+	b.RandomizationFactor = 0.1
+	b.Multiplier = 2.0
+	b.MaxInterval = 10 * time.Second
+	b.MaxElapsedTime = 5 * time.Minute
 	ticker := backoff.NewTicker(b)
 
 	var err error
