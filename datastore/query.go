@@ -67,7 +67,9 @@ func (q *query) Filter(filterStr string, value interface{}) Query {
 }
 
 func (q *query) GetAll(dst interface{}) ([]*aeds.Key, error) {
-	return q.Query.GetAll(q.Context, dst)
+	keys, err := q.Query.GetAll(q.Context, dst)
+	err = q.Datastore.SkipFieldMismatch(err)
+	return keys, err
 }
 
 func (q *query) KeysOnly() Query {
