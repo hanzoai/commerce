@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/config"
+	"crowdstart.io/models2/mailinglist"
 	"crowdstart.io/models2/types/country"
 	"crowdstart.io/models2/types/currency"
 	"crowdstart.io/util/json"
@@ -14,11 +15,6 @@ import (
 )
 
 var cwd, _ = os.Getwd()
-
-type Constants struct {
-	Countries     []country.Country
-	CurrencyTypes []currency.Type
-}
 
 func TemplateSet() *pongo2.TemplateSet {
 	set := pongo2.NewSet("default")
@@ -44,9 +40,14 @@ func TemplateSet() *pongo2.TemplateSet {
 	}
 
 	set.Globals["jsonify"] = json.Encode
-	set.Globals["constants"] = Constants{
+	set.Globals["constants"] = struct {
+		Countries     []country.Country
+		CurrencyTypes []currency.Type
+		ShippingTypes []mailinglist.ThankYou
+	}{
 		Countries:     country.Countries,
 		CurrencyTypes: currency.Types,
+		ShippingTypes: mailinglist.ThankYouTypes,
 	}
 	return set
 }
