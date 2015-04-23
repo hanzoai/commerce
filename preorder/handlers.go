@@ -7,14 +7,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/auth"
+	// "crowdstart.io/auth"
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
-	"crowdstart.io/models"
+	// "crowdstart.io/models"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
-	"crowdstart.io/util/queries"
+	// "crowdstart.io/util/queries"
 	"crowdstart.io/util/template"
 
 	mandrill "crowdstart.io/thirdparty/mandrill/tasks"
@@ -118,11 +118,11 @@ func SavePreorder(c *gin.Context) {
 
 	ctx := middleware.GetAppEngine(c)
 	db := datastore.New(ctx)
-	q := queries.New(ctx)
+	// q := queries.New(ctx)
 
 	// Get user from datastore
-	user := new(models.User)
-	if err := q.GetUserByEmail(form.User.Email, user); err != nil {
+	user := user.New(db)
+	if err := user.GetByEmail(form.User.Email); err != nil {
 		c.Fail(500, errors.New("Failed to find user."))
 		return
 	}
