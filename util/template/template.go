@@ -43,11 +43,11 @@ func TemplateSet() *pongo2.TemplateSet {
 	set.Globals["constants"] = struct {
 		Countries     []country.Country
 		CurrencyTypes []currency.Type
-		ShippingTypes []mailinglist.ThankYou
+		ThankYouTypes []mailinglist.ThankYou
 	}{
 		Countries:     country.Countries,
 		CurrencyTypes: currency.Types,
-		ShippingTypes: mailinglist.ThankYouTypes,
+		ThankYouTypes: mailinglist.ThankYouTypes,
 	}
 	return set
 }

@@ -133,11 +133,14 @@ var BuildForm = (function() {
         $select.chosen({width: '100%', 'disable_search_threshold': 3})
       } else if (type === 'textarea') {
         $fg = $(formGroupTextAreaTemplate);
-        $fg.find('textarea').attr({
+        var $textArea = $fg.find('textarea').attr({
           id: inputConfig.id,
           name: inputConfig.name,
           placeholder: inputConfig.placeholder,
-        }).text(inputConfig.value);
+        }).text(inputConfig.value)
+        if (inputConfig.height) {
+          $textArea.css('height', inputConfig.height);
+        }
       } else if (type === 'static'){
         $fg = $(formGroupStaticTemplate);
         $fg.find('p').text(inputConfig.value);
