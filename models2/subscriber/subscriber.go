@@ -80,3 +80,9 @@ func (s *Subscriber) Validator() *val.Validator {
 func Query(db *datastore.Datastore) *mixin.Query {
 	return New(db).Query()
 }
+
+func FromJSON(db *datastore.Datastore, data []byte) *Subscriber {
+	s := New(db)
+	json.DecodeBytes(data, s)
+	return s
+}
