@@ -11,7 +11,6 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/util/hashid"
 	"crowdstart.io/util/json"
-	"crowdstart.io/util/log"
 	"crowdstart.io/util/rand"
 	"crowdstart.io/util/structs"
 	"crowdstart.io/util/val"
@@ -46,6 +45,7 @@ type Entity interface {
 	Query() *Query
 	Validate() error
 	Validator() *val.Validator
+	Slice() interface{}
 	JSON() []byte
 }
 
@@ -169,7 +169,6 @@ func (m *Model) SetKey(key interface{}) (err error) {
 func (m *Model) Key() (key datastore.Key) {
 	// Create a new incomplete key for this new entity
 	if m.key == nil {
-		log.Warn("Key is nil, automatically creating a new key.")
 		kind := m.Entity.Kind()
 
 		if m.StringKey_ {
@@ -326,7 +325,7 @@ func (m *Model) GetOrCreate(filterStr string, value interface{}) error {
 func (m *Model) GetOrUpdate(filterStr string, value interface{}) error {
 	entity := reflect.ValueOf(m.Entity).Interface()
 
-	q := datastore.NewQuery(m.Kind(), m.Db)
+	q := m.Db.Query2(m.Kind())
 	key, ok, err := q.Filter(filterStr, value).First(entity)
 
 	// Something bad happened
@@ -398,6 +397,15 @@ func (m *Model) Validate() error {
 	// err.Fields = errs
 	// return err
 	return nil
+}
+
+// Return slice suitable for use with GetAll
+func (m *Model) Slice() interface{} {
+	typ := reflect.TypeOf(m.Entity)
+	slice := reflect.MakeSlice(reflect.SliceOf(typ), 0, 0)
+	ptr := reflect.New(slice.Type())
+	ptr.Elem().Set(slice)
+	return ptr.Interface()
 }
 
 // Serialize entity to JSON
