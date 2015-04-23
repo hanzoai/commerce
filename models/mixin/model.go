@@ -76,7 +76,7 @@ func (m *Model) Context() appengine.Context {
 // Set AppEngine Context
 func (m *Model) SetContext(ctx interface{}) {
 	// Update context
-	m.Db = datastore.New(ctx)
+	m.Db.SetContext(ctx)
 
 	// Update key if necessary
 	if m.key != nil {
@@ -91,13 +91,7 @@ func (m *Model) SetNamespace(namespace string) {
 		panic(err)
 	}
 
-	// Update context
-	m.Db.Context = ctx
-
-	// Update key if necessary
-	if m.key != nil {
-		m.setKey(m.Db.NewKey(m.Kind(), m.key.StringID(), m.key.IntID(), m.Parent))
-	}
+	m.SetContext(ctx)
 }
 
 // Return kind of entity
@@ -434,6 +428,11 @@ func (m *Model) mockDelete() error {
 type Query struct {
 	datastore.Query
 	model *Model
+}
+
+func (q *Query) Ancestor(key datastore.Key) *Query {
+	q.Query = q.Query.Ancestor(key)
+	return q
 }
 
 func (q *Query) Limit(limit int) *Query {
