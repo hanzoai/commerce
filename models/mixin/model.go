@@ -11,7 +11,6 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/util/hashid"
 	"crowdstart.io/util/json"
-	"crowdstart.io/util/log"
 	"crowdstart.io/util/rand"
 	"crowdstart.io/util/structs"
 	"crowdstart.io/util/val"
@@ -170,7 +169,6 @@ func (m *Model) SetKey(key interface{}) (err error) {
 func (m *Model) Key() (key datastore.Key) {
 	// Create a new incomplete key for this new entity
 	if m.key == nil {
-		log.Warn("Key is nil, automatically creating a new key.")
 		kind := m.Entity.Kind()
 
 		if m.StringKey_ {
