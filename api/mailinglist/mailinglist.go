@@ -46,7 +46,7 @@ func addSubscriber(c *gin.Context) {
 	// Save subscriber to mailing list
 	if err := ml.AddSubscriber(s); err != nil {
 		if err == mailinglist.SubscriberAlreadyExists {
-			json.Fail(c, 409, "Subscriber already exists", err)
+			json.Fail(c, 409, "Subscriber already exists", nil)
 		} else {
 			json.Fail(c, 500, "Failed to save subscriber to mailing list", err)
 		}
