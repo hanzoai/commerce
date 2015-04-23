@@ -50,16 +50,20 @@
     </div>
     <form id="form-mailinglist" method="post" class="form-horizontal">
       <div class="row">
-        <div class="col-md-8">
+        <div class="col-md-6">
           <h4>Provide some basic information.</h4>
           <div id="mailinglist-info" class="block">
           </div>
+          <h4>Configure MailChimp.</h4>
+          <div id="mailinglist-mailchimp" class="block">
+          </div>
         </div>
-        <div class="col-md-4">
-          <h4>Select some options.</h4>
-          <div class="row">
-            <div id="mailinglist-mailchimp" class="block">
-            </div>
+        <div class="col-md-6">
+          <h4>Configure Google Analytics.</h4>
+          <div id="mailinglist-ga" class="block">
+          </div>
+          <h4>Configure Facebook.</h4>
+          <div id="mailinglist-fb" class="block">
           </div>
         </div>
       </div>
@@ -98,7 +102,7 @@ $(function(){
           },
           {
             field: 'mailchimp.id',
-            name: 'MailChimp ID',
+            name: 'MailChimp List ID',
           },
           {
             field: 'mailchimp.apiKey',
@@ -106,10 +110,9 @@ $(function(){
           },
           {
             field: 'id',
-            name: 'MailChimp Snippet',
-            token: '{{ ctx.organization.MustGetTokenByName("live-published-key") }}',
+            name: 'Snippet',
             apiUrl: '{{ urlFor("api") }}',
-            render: 'mailchimp-snippet',
+            render: 'snippet',
           },
           {
             field: 'createdAt',
