@@ -2,14 +2,17 @@ package datastore_integration_test
 
 import (
 	"errors"
+	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/datastore"
-	"crowdstart.io/datastore/parallel"
+	"crowdstart.io/models/mixin"
 	"crowdstart.io/test/datastore/integration/tasks"
 	"crowdstart.io/util/gincontext"
+	"crowdstart.io/util/log"
 	"crowdstart.io/util/test/ae"
 
 	. "crowdstart.io/util/test/ginkgo"
@@ -29,6 +32,7 @@ var _ = BeforeSuite(func() {
 	ctx = ae.NewContext(ae.Options{
 		Modules:    []string{"default"},
 		TaskQueues: []string{"default"},
+		Noisy:      true,
 	})
 
 	c = gincontext.New(ctx)
@@ -39,20 +43,31 @@ var _ = AfterSuite(func() {
 	ctx.Close()
 })
 
-func checkCountValue(kind string, numModels int, expected int) {
+func checkCountValue(entity mixin.Entity, numModels int, expected int) {
 	err := Retry(10, func() error {
-		var models []tasks.Model
-		_, err := db.Query(kind).GetAll(db.Context, &models)
+		models := entity.Slice()
+		_, err := entity.Query().GetAll(models)
 		if err != nil {
+			log.Error("Failed to get models from datastore: %v", err)
 			return err
 		}
 
-		Expect(len(models)).To(Equal(numModels))
+		slice := reflect.Indirect(reflect.ValueOf(models))
+
+		Expect(slice.Len()).To(Equal(numModels))
 
 		// Make sure expected count is right
-		for _, model := range models {
-			if model.Count != expected {
-				return errors.New("Task did not set value on model correctly.")
+		for i := 0; i < slice.Len(); i++ {
+			model := slice.Index(i)
+			count := 0
+			switch v := model.Interface().(type) {
+			case *tasks.Model:
+				count = v.Count
+			case *tasks.Model2:
+				count = v.Count
+			}
+			if count != expected {
+				return errors.New(fmt.Sprintf("Task did not set value on model correctly, expected: %v, found: %v, models: %#v", expected, count, models))
 			}
 		}
 
@@ -66,15 +81,16 @@ var _ = Describe("datastore/parallel", func() {
 		It("Should run tasks in parallel", func() {
 			// Prepoulate database with 10 entities
 			for i := 0; i < 10; i++ {
-				_, err := db.Put("plus-1", &tasks.Model{})
+				model := tasks.NewModel(db)
+				err := model.Put()
 				Expect(err).NotTo(HaveOccurred())
 			}
 
 			// Run task in parallel
-			parallel.Run(c, "plus-1", 2, tasks.TaskPlus1)
+			tasks.TaskPlus1.Run(c, 2)
 
 			// Check if our entities have been updated
-			checkCountValue("plus-1", 10, 1)
+			checkCountValue(tasks.NewModel(db), 10, 1)
 		})
 	})
 
@@ -82,15 +98,15 @@ var _ = Describe("datastore/parallel", func() {
 		It("Should run tasks in parallel", func() {
 			// Prepoulate database with 10 entities
 			for i := 0; i < 10; i++ {
-				model := &tasks.Model{}
-				_, err := db.Put("set-val", model)
+				model := tasks.NewModel2(db)
+				err := model.Put()
 				Expect(err).NotTo(HaveOccurred())
 			}
 
 			// Run task in parallel
-			parallel.Run(c, "set-val", 2, tasks.TaskSetVal, 100)
+			tasks.TaskSetVal.Run(c, 2, 100)
 
-			checkCountValue("set-val", 10, 100)
+			checkCountValue(tasks.NewModel2(db), 10, 100)
 		})
 	})
 })
