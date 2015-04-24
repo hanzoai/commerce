@@ -42,60 +42,60 @@ func setupNamespaceMigration(c *gin.Context) {
 }
 
 var _ = New("namespace", setupNamespaceMigration,
-	func(db *ds.Datastore, key ds.Key, bundle *bundle.Bundle) {
+	func(db *ds.Datastore, bundle *bundle.Bundle) {
 		bundle.SetNamespace(newNamespace)
 		bundle.Put()
 	},
-	func(db *ds.Datastore, key ds.Key, campaign *campaign.Campaign) {
+	func(db *ds.Datastore, campaign *campaign.Campaign) {
 		campaign.SetNamespace(newNamespace)
 		campaign.Put()
 	},
-	func(db *ds.Datastore, key ds.Key, collection *collection.Collection) {
+	func(db *ds.Datastore, collection *collection.Collection) {
 		collection.SetNamespace(newNamespace)
 		collection.Put()
 	},
-	func(db *ds.Datastore, key ds.Key, coupon *coupon.Coupon) {
+	func(db *ds.Datastore, coupon *coupon.Coupon) {
 		coupon.SetNamespace(newNamespace)
 		coupon.Put()
 	},
-	func(db *ds.Datastore, key ds.Key, order *order.Order) {
+	func(db *ds.Datastore, order *order.Order) {
 		order.SetNamespace(newNamespace)
 		order.Put()
 	},
-	func(db *ds.Datastore, key ds.Key, payment *payment.Payment) {
+	func(db *ds.Datastore, payment *payment.Payment) {
 		payment.SetNamespace(newNamespace)
 		payment.Put()
 	},
-	func(db *ds.Datastore, key ds.Key, plan *plan.Plan) {
+	func(db *ds.Datastore, plan *plan.Plan) {
 		plan.SetNamespace(newNamespace)
 		plan.Put()
 	},
-	func(db *ds.Datastore, key ds.Key, product *product.Product) {
+	func(db *ds.Datastore, product *product.Product) {
 		product.SetNamespace(newNamespace)
 		product.Put()
 	},
-	func(db *ds.Datastore, key ds.Key, store *store.Store) {
+	func(db *ds.Datastore, store *store.Store) {
 		store.SetNamespace(newNamespace)
 		store.Put()
 	},
-	func(db *ds.Datastore, key ds.Key, token *token.Token) {
+	func(db *ds.Datastore, token *token.Token) {
 		token.SetNamespace(newNamespace)
 		token.Put()
 	},
-	func(db *ds.Datastore, key ds.Key, variant *variant.Variant) {
+	func(db *ds.Datastore, variant *variant.Variant) {
 		variant.SetNamespace(newNamespace)
 		variant.Put()
 	},
-	func(db *ds.Datastore, key ds.Key, user *user.User) {
+	func(db *ds.Datastore, user *user.User) {
 		log.Warn("%v", user)
 		user.SetNamespace(newNamespace)
 		user.Put()
 	},
-	func(db *ds.Datastore, key ds.Key, mailinglist *mailinglist.MailingList) {
+	func(db *ds.Datastore, mailinglist *mailinglist.MailingList) {
 		mailinglist.SetNamespace(newNamespace)
 		mailinglist.Put()
 	},
-	func(db *ds.Datastore, key ds.Key, subscriber *subscriber.Subscriber) {
+	func(db *ds.Datastore, subscriber *subscriber.Subscriber) {
 		subscriber.SetNamespace(newNamespace)
 		subscriber.Put()
 	},
