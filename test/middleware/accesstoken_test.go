@@ -2,7 +2,6 @@ package test
 
 import (
 	"net/http"
-	"strconv"
 	"testing"
 
 	"appengine"
@@ -44,7 +43,7 @@ type Stub struct {
 
 var _ = Describe("middleware/accesstoken", func() {
 	Context("accessToken.RequiresOrgToken", func() {
-		It("should namespace based on org id", func() {
+		It("should namespace based on Organization.Name", func() {
 			u := user.New(db)
 			err := u.Put()
 			Expect(err).NotTo(HaveOccurred())
@@ -59,7 +58,7 @@ var _ = Describe("middleware/accesstoken", func() {
 			err = o.Put()
 			Expect(err).NotTo(HaveOccurred())
 
-			id := strconv.Itoa(int(o.Key().IntID()))
+			id := o.Name
 
 			// generate accessToken
 			accessToken := o.AddToken("some-token", 0)
