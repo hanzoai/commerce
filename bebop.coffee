@@ -67,6 +67,7 @@ module.exports =
     /platform\/templates/
     /\.go$/
     /\.yaml$/
+    /\.test$/
   ]
 
   compilers:
