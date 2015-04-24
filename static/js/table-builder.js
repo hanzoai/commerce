@@ -2,7 +2,7 @@ var BuildTable = (function() {
   var tableRowTemplate = '<tr></tr>';
   var tableDataTemplate = '<td></td>';
   var tableHeaderTemplate = '<thead></thead>';
-  var tableHeaderDataTemplate = '<th></th>';
+  var tableHeaderDataTemplate = '<th style="white-space:nowrap;cursor:pointer;"></th>';
   var tableBodyTemplate = '<tbody></tbody>';
   var checkboxTemplate = '<label class="csscheckbox csscheckbox-primary"><input type="checkbox"><span></span></label>';
   var selectTemplate = '<select class="form-control"></select>';
@@ -53,6 +53,11 @@ var BuildTable = (function() {
     //          {...}
     //      ]
     //  }
+    var lastPage = tableConfig.startPage;
+    var sort = '-UpdatedAt';
+    var $lastSort = $();
+    var lastSortName = '';
+
     var $empty = tableConfig.$empty;
 
     // Build the header
@@ -78,11 +83,38 @@ var BuildTable = (function() {
     var columnLen = columns.length;
     for (var c = 0; c < columnLen; c++) {
       var column = columns[c];
-      var $tableHeaderData = $(tableHeaderDataTemplate).html(column.name);
-      if (column.css) {
-        $tableHeaderData.css(column.css);
-      }
-      $tableHeaderRow.append($tableHeaderData);
+      (function(column) {
+        var $tableHeaderData = $(tableHeaderDataTemplate).html(column.name);
+        if (column.css) {
+          $tableHeaderData.css(column.css);
+        }
+        $tableHeaderRow.append($tableHeaderData);
+
+        $tableHeaderData.on('click', function(){
+          var newSort = column.field;
+          if (newSort == 'id') {
+            newSort = 'Id_'
+          } else {
+            newSort = newSort.charAt(0).toUpperCase() + newSort.slice(1);
+          }
+
+          var direction = 'sort-asc'
+          var i = sort.indexOf(newSort);
+          if (i === 0) {
+            sort = '-' + newSort;
+            var direction = 'sort-desc'
+          } else {
+            sort = newSort;
+          }
+
+          $lastSort.html(lastSortName)
+          $lastSort = $tableHeaderData;
+          lastSortName = column.name;
+
+          $tableHeaderData.html(column.name + '&nbsp;<i class="fa fa-' + direction + '"></i>')
+          paged(lastPage);
+        });
+      })(column)
     }
 
     if (tableConfig.canDelete) {
@@ -248,14 +280,13 @@ var BuildTable = (function() {
       $.ajax({
         type: 'GET',
         headers: {Authorization: tableConfig.apiToken},
-        url: path + '?page=' + page + '&display=' + display + '&sort=-UpdatedAt',
+        url: path + '?page=' + page + '&display=' + display + '&sort=' + sort,
         success: function(data){
           load(data);
         }
       });
     }
 
-    var lastPage = tableConfig.startPage;
     function bindDeleteRow($el, apiUrl, id) {
       $el.on('click', function() { deleteRow(apiUrl + '/' + id); });
     }
