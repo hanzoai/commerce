@@ -3,7 +3,7 @@ package user
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/models2/user"
+	"crowdstart.io/models/user"
 	"crowdstart.io/util/form"
 	"crowdstart.io/util/val"
 )

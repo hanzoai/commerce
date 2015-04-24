@@ -1,0 +1,184 @@
+package lineitem
+
+import (
+	"errors"
+	"fmt"
+
+	"crowdstart.io/datastore"
+	"crowdstart.io/models/mixin"
+	"crowdstart.io/models/product"
+	"crowdstart.io/models/types/currency"
+	"crowdstart.io/models/types/weight"
+	"crowdstart.io/models/variant"
+
+	. "crowdstart.io/models"
+)
+
+var InvalidLineItem = errors.New("Invalid line item. Ensure ID, slug or SKU is correct.")
+
+type LineItem struct {
+	mixin.Salesforce
+
+	CollectionId string `json:"collectionId"`
+
+	Product     *product.Product `json:"-" datastore:"-"`
+	ProductId   string           `json:"productId,omitempty"`
+	ProductName string           `json:"productName,omitempty"`
+	ProductSlug string           `json:"productSlug,omitempty"`
+
+	Variant     *variant.Variant `json:"-" datastore:"-"`
+	VariantId   string           `json:"variantId,omitempty"`
+	VariantName string           `json:"variantName,omitempty"`
+	VariantSKU  string           `json:"variantSKU,omitempty"`
+
+	// Unit price
+	Price currency.Cents `json:"price"`
+
+	// Number of units
+	Quantity int `json:"quantity"`
+
+	// Unit weight
+	Weight     weight.Mass `json:"weight"`
+	WeightUnit weight.Unit `json:"weightUnit"`
+
+	// Whether taxes apply to this line item
+	Taxable bool `json:"taxable"`
+}
+
+func (li LineItem) TotalPrice() currency.Cents {
+	return li.Price * currency.Cents(li.Quantity)
+}
+
+func (li LineItem) DisplayPrice() string {
+	return DisplayPrice(li.TotalPrice())
+}
+
+// Returns the entity represented by this line item, which can be used later to
+// update it's price. If key is nil, this product is already fleshed out and
+// does not need to be fetched.
+func (li *LineItem) Entity(db *datastore.Datastore) (datastore.Key, interface{}, error) {
+	if li.ProductId != "" {
+		li.Product = product.New(db)
+		err := li.Product.SetKey(li.ProductId)
+		if err != nil {
+			return nil, nil, err
+		}
+		return li.Product.Key(), li.Product, nil
+	}
+
+	if li.VariantId != "" {
+		li.Variant = variant.New(db)
+		err := li.Variant.SetKey(li.VariantId)
+		if err != nil {
+			return nil, nil, err
+		}
+		return li.Variant.Key(), li.Variant, nil
+	}
+
+	if li.ProductSlug != "" {
+		li.Product = product.New(db)
+		ok, err := li.Product.Query().Filter("Slug=", li.ProductSlug).KeysOnly().First()
+		if err != nil {
+			return nil, nil, err
+		}
+		if ok {
+			return li.Product.Key(), li.Product, nil
+		}
+	}
+
+	if li.VariantSKU != "" {
+		li.Variant = variant.New(db)
+		ok, err := li.Variant.Query().Filter("SKU=", li.VariantSKU).KeysOnly().First()
+		if err != nil {
+			return nil, nil, err
+		}
+		if ok {
+			return li.Variant.Key(), li.Variant, nil
+		}
+	}
+
+	return nil, nil, InvalidLineItem
+}
+
+func (li *LineItem) Update() {
+	if li.Product != nil {
+		li.Price = li.Product.Price
+		li.ProductName = li.Product.Name
+		li.ProductSlug = li.Product.Slug
+		li.Taxable = li.Product.Taxable
+		li.Weight = li.Product.Weight
+		li.WeightUnit = li.Product.WeightUnit
+	}
+
+	if li.Variant != nil {
+		li.Price = li.Variant.Price
+		li.VariantName = li.Variant.Name
+		li.VariantSKU = li.Variant.SKU
+		li.Taxable = li.Variant.Taxable
+		li.Weight = li.Variant.Weight
+		li.WeightUnit = li.Product.WeightUnit
+	}
+}
+
+func (li LineItem) String() string {
+	if li.VariantName != "" {
+		return fmt.Sprintf("%v", li.VariantName)
+	}
+
+	if li.VariantSKU != "" {
+		return fmt.Sprintf("%v", li.VariantSKU)
+	}
+
+	if li.VariantId != "" {
+		return fmt.Sprintf("%v", li.VariantId)
+	}
+
+	if li.ProductName != "" {
+		return fmt.Sprintf("%v", li.ProductName)
+	}
+
+	if li.ProductSlug != "" {
+		return fmt.Sprintf("%v", li.ProductSlug)
+	}
+
+	if li.ProductId != "" {
+		return fmt.Sprintf("%v", li.ProductId)
+	}
+
+	return fmt.Sprintf("%v", li)
+}
+
+// func (li LineItem) Validate(req *http.Request, errs binding.Errors) binding.Errors {
+// 	if li.SKU() == "" {
+// 		errs = append(errs, binding.Error{
+// 			FieldNames:     []string{"Variant.SKU"},
+// 			Classification: "InputError",
+// 			Message:        "SKU cannot be empty.",
+// 		})
+// 	}
+
+// 	if li.Quantity < 1 {
+// 		errs = append(errs, binding.Error{
+// 			FieldNames:     []string{"Quantity"},
+// 			Classification: "InputError",
+// 			Message:        "Quantity cannot be less than 1.",
+// 		})
+// 	}
+
+// 	return errs
+// }
+
+// Displays nice "/" delimited variant information.
+// func (li LineItem) DisplayShortDescription() string {
+// 	opts := []string{}
+// 	for _, opt := range []string{li.Product.Title, li.Variant.Color, li.Variant.Style, li.Variant.Size} {
+// 		if opt != "" {
+// 			opts = append(opts, opt)
+// 		}
+// 	}
+// 	if len(opts) > 0 {
+// 		return strings.Join(opts, " / ")
+// 	} else {
+// 		return li.SKU()
+// 	}
+// }

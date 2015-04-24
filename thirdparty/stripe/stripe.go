@@ -10,8 +10,8 @@ import (
 	"github.com/stripe/stripe-go"
 	"github.com/stripe/stripe-go/client"
 
-	"crowdstart.io/models2/payment"
-	"crowdstart.io/models2/user"
+	"crowdstart.io/models/payment"
+	"crowdstart.io/models/user"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 )
