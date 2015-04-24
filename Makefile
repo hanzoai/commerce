@@ -16,9 +16,7 @@ appcfg.py 		= $(sdk_path)/appcfg.py --oauth2 --skip_sdk_update_check
 
 deps	= $(shell cat Godeps | cut -d ' ' -f 1)
 modules	= crowdstart.io/api \
-		  crowdstart.io/checkout \
 		  crowdstart.io/platform \
-		  crowdstart.io/preorder \
 		  crowdstart.io/store
 
 gae_token = 1/DLPZCHjjCkiegGp0SiIvkWmtZcUNl15JlOg4qB0-1r0MEudVrK5jSpoR30zcRFq6
@@ -26,9 +24,7 @@ gae_token = 1/DLPZCHjjCkiegGp0SiIvkWmtZcUNl15JlOg4qB0-1r0MEudVrK5jSpoR30zcRFq6
 gae_development = config/development/app.yaml \
 				  config/development/dispatch.yaml \
 				  api/app.dev.yaml \
-				  checkout/app.dev.yaml \
 				  platform/app.dev.yaml \
-				  preorder/app.dev.yaml \
 				  store/app.dev.yaml
 
 gae_sandbox = config/sandbox \
@@ -36,21 +32,16 @@ gae_sandbox = config/sandbox \
 
 gae_staging = config/staging \
 			  api/app.staging.yaml \
-			  checkout/app.staging.yaml \
 			  platform/app.staging.yaml \
-			  preorder/app.staging.yaml \
 			  store/app.staging.yaml
 
 gae_skully = config/skully \
 			 api/app.skully.yaml \
-			 checkout/app.skully.yaml \
 			 platform/app.skully.yaml \
-			 preorder/app.skully.yaml \
 			 store/app.skully.yaml
 
 gae_production = config/production \
 				 api \
-				 checkout \
 				 platform
 
 tools = code.google.com/p/rog-go/exp/cmd/godef \
@@ -72,30 +63,22 @@ bebop = node_modules/.bin/bebop
 coffee	   	   = node_modules/.bin/coffee
 requisite	   = node_modules/.bin/requisite -s -g
 requisite_opts = assets/js/store/store.coffee \
-				 assets/js/preorder/preorder.coffee \
-				 assets/js/checkout/checkout.coffee \
 				 assets/js/api/api.coffee \
 				 node_modules/crowdstart.js/src/index.coffee \
 				 -o static/js/store.js \
-				 -o static/js/preorder.js \
-				 -o static/js/checkout.js \
 				 -o static/js/api.js \
 				 -o static/v1.js
 
 requisite_opts_min = -m --strip-debug
 
 stylus		= node_modules/.bin/stylus
-stylus_opts = assets/css/preorder/preorder.styl \
-			  assets/css/store/store.styl \
+stylus_opts = assets/css/store/store.styl \
 			  assets/css/theme/theme.styl \
-			  assets/css/checkout/checkout.styl \
 			  -o static/css
 stylus_opts_min = -u csso-stylus -c
 
 autoprefixer = node_modules/.bin/autoprefixer
 autoprefixer_opts = -b 'ie > 8, firefox > 24, chrome > 30, safari > 6, opera > 17, ios > 6, android > 4' \
-					static/css/checkout.css \
-					static/css/preorder.css \
 					static/css/store.css \
 					static/css/theme.css
 
