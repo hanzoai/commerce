@@ -2,6 +2,7 @@ package hashid
 
 import (
 	"errors"
+	"strconv"
 
 	"appengine"
 	aeds "appengine/datastore"
@@ -42,11 +43,27 @@ func encodeNamespace(ctx appengine.Context, namespace string) int {
 		key, ok, err := db.Query2("organization").Filter("Name=", namespace).KeysOnly().First(nil)
 
 		// Blow up if we can't find organization
-		if err != nil {
-			panic(err)
-		}
-		if !ok {
-			panic("Failed to retrieve organization named: " + namespace)
+		if err != nil || !ok {
+			// try legacy encoding
+			id, err2 := strconv.Atoi(namespace)
+			if err2 != nil {
+				panic(err2)
+			}
+			key = db.NewKey("organization", "", int64(id), nil)
+			_, ok, err2 = db.Query2("organization").Filter("__key__=", key).KeysOnly().First(nil)
+			if err2 != nil {
+				// return original error if legacy fails
+				if err != nil {
+					panic(err)
+				}
+				// return legacy error
+				panic(err2)
+			}
+			if !ok {
+				panic("Failed to retrieve organization named: " + namespace)
+			}
+			// notify that we shouldn't probably be here
+			log.Warn("Executed Legacy Hash Namespace Encoding", ctx)
 		}
 
 		// Get IntID
