@@ -8,6 +8,7 @@ var Util = (function() {
 	'hkd': '$',
 	'jpy': '¥',
 	'nzd': '$',
+	''   : '',
   };
 
   var currencySeparator = '.';
