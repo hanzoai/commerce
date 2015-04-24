@@ -33,6 +33,12 @@ func (q Query) RunAll(batchSize int, args ...interface{}) error {
 		return err
 	}
 
+	namespace := ""
+	maybeNamespace, err := q.gincontext.Get("namespace")
+	if err == nil {
+		namespace = maybeNamespace.(string)
+	}
+
 	// Limit results in test mode
 	if q.gincontext.MustGet("test").(bool) {
 		batchSize = 1
@@ -42,11 +48,13 @@ func (q Query) RunAll(batchSize int, args ...interface{}) error {
 	// Loop until all tasks have started with appropriate cursor, limit, offsets
 	for offset := 0; offset < total; offset += batchSize {
 		// Append variadic arguments after required args
-		args := append([]interface{}{fakecontext.NewContext(q.gincontext), "", offset, batchSize}, args...)
+		args := append([]interface{}{namespace, fakecontext.NewContext(q.gincontext), "", offset, batchSize}, args...)
 
+		log.Debug("Namespace set %v", ctx, ctx)
 		// Call delay.Function
 		q.fn.DelayFn.Call(ctx, args...)
 	}
+	log.Warn("DONE")
 
 	return nil
 }
