@@ -24,6 +24,9 @@ func New(name string, setupFn SetupFn, fns ...interface{}) *delay.Function {
 	}
 
 	return task.Func(name, func(c *gin.Context) {
+		// Call setup fn
+		setupFn(c)
+
 		for i, fn := range fns {
 			// Check type of worker func to ensure it matches required signature.
 			t := reflect.TypeOf(fn)
@@ -38,6 +41,7 @@ func New(name string, setupFn SetupFn, fns ...interface{}) *delay.Function {
 				log.Panic("Function requires at least three arguments")
 			}
 
+			// Run task fn
 			tasks[i].Run(c, 50)
 		}
 	})
