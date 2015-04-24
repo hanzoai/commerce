@@ -33,7 +33,7 @@ func New(name string, fn interface{}) *ParallelFn {
 		log.Panic("Function is required for second parameter")
 	}
 
-	// fn should be a function that takes at least three arguments
+	// fn should be a function that takes at least two arguments
 	argNum := typ.NumIn()
 	if argNum < 2 {
 		log.Panic("Function requires at least two arguments")
@@ -77,9 +77,6 @@ func (fn *ParallelFn) createDelayFn(name string) {
 
 		// Construct query
 		q := db.Query2(fn.Kind).Offset(offset).Limit(batchSize)
-
-		total, _ := db.Query2("product").Count()
-		log.Debug("total: %v", total)
 
 		// Run query
 		t := q.Run()
@@ -175,15 +172,11 @@ var initNamespace = delay.Func("parallel-init", func(ctx appengine.Context, fnNa
 	fn := parallelFns[fnName]
 
 	total, _ := db.Query2(fn.Kind).Count()
-	log.Debug("total: %v", total)
 
 	// Start all workers
 	for offset := 0; offset < total; offset += batchSize {
 		// Append variadic arguments after required args
 		args := append([]interface{}{namespace, offset, batchSize}, args...)
-
-		// Check context here
-		log.Debug("context to delay fn: %v", ctx)
 
 		// Call delay.Function
 		fn.DelayFn.Call(ctx, args...)
