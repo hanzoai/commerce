@@ -1,47 +1,41 @@
 package test
 
-import (
-	"time"
+// import . "crowdstart.io/util/test/ginkgo"
 
-	"crowdstart.io/datastore"
-	"crowdstart.io/models"
-	. "crowdstart.io/util/test/ginkgo"
-)
+// func newOrder(user *models.User, charge models.Charge) (datastore.Key, *models.Order) {
+// 	key := db.AllocateIntKey("order")
 
-func newOrder(user *models.User, charge models.Charge) (datastore.Key, *models.Order) {
-	key := db.AllocateIntKey("order")
+// 	order := new(models.Order)
+// 	order.Id = key.Encode()
+// 	order.UserId = user.Id
+// 	order.Email = user.Email
+// 	order.CampaignId = campaign.Id
+// 	order.CreatedAt = time.Now()
+// 	order.UpdatedAt = order.CreatedAt
+// 	order.Test = true
+// 	order.Preorder = true
+// 	order.Shipping = 0
+// 	order.Subtotal = 50 * 100
+// 	order.Total = 50 * 100
 
-	order := new(models.Order)
-	order.Id = key.Encode()
-	order.UserId = user.Id
-	order.Email = user.Email
-	order.CampaignId = campaign.Id
-	order.CreatedAt = time.Now()
-	order.UpdatedAt = order.CreatedAt
-	order.Test = true
-	order.Preorder = true
-	order.Shipping = 0
-	order.Subtotal = 50 * 100
-	order.Total = 50 * 100
+// 	order.Charges = append(order.Charges, charge)
+// 	_, err := db.Put(key, order)
+// 	Expect(err).ToNot(HaveOccurred())
 
-	order.Charges = append(order.Charges, charge)
-	_, err := db.Put(key, order)
-	Expect(err).ToNot(HaveOccurred())
+// 	return key, order
+// }
 
-	return key, order
-}
+// func newUser(email string) (datastore.Key, *models.User) {
+// 	user := new(models.User)
+// 	key := db.AllocateIntKey("user")
+// 	user.Id = key.Encode()
+// 	user.Email = email
 
-func newUser(email string) (datastore.Key, *models.User) {
-	user := new(models.User)
-	key := db.AllocateIntKey("user")
-	user.Id = key.Encode()
-	user.Email = email
+// 	_, err := db.Put(key, user)
+// 	Expect(err).ToNot(HaveOccurred())
 
-	_, err := db.Put(key, user)
-	Expect(err).ToNot(HaveOccurred())
-
-	return key, user
-}
+// 	return key, user
+// }
 
 // TODO: Update to use new API
 // var _ = Describe("SynchronizeCharges", func() {
