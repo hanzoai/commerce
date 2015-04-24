@@ -7,8 +7,8 @@ import (
 
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
-	"crowdstart.io/models2/mailinglist"
-	"crowdstart.io/models2/subscriber"
+	"crowdstart.io/models/mailinglist"
+	"crowdstart.io/models/subscriber"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 

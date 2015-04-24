@@ -1,7 +1,7 @@
 package test
 
 import (
-	. "crowdstart.io/models2/types/weight"
+	. "crowdstart.io/models/types/weight"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

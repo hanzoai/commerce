@@ -5,18 +5,22 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/auth"
-	"crowdstart.io/models"
+	"crowdstart.io/auth/password"
+	// "crowdstart.io/models"
+	. "crowdstart.io/models"
+	"crowdstart.io/models/order"
+	"crowdstart.io/models/token"
+	"crowdstart.io/models/user"
 	"crowdstart.io/util/form"
 )
 
 type PreorderForm struct {
-	User            models.User
-	Order           models.Order
+	User            *user.User
+	Order           *order.Order
 	Password        string
 	PasswordConfirm string
-	ShippingAddress models.Address
-	Token           models.Token
+	ShippingAddress Address
+	Token           *token.Token
 }
 
 func (f *PreorderForm) Parse(c *gin.Context) error {
@@ -37,19 +41,19 @@ func (f *PreorderForm) Parse(c *gin.Context) error {
 	// removes whitespace
 	f.User.Email = strings.TrimSpace(f.User.Email)
 
-	// Schema creates the Order.Items slice sized to whatever is the largest
-	// index form item. This creates a slice with a huge number of nil structs,
-	// so we create a new slice of items and use that instead.
-	items := make([]models.LineItem, 0)
-	for _, lineItem := range f.Order.Items {
-		if lineItem.SKU() != "" {
-			items = append(items, lineItem)
-		}
-	}
-	f.Order.Items = items
+	// // Schema creates the Order.Items slice sized to whatever is the largest
+	// // index form item. This creates a slice with a huge number of nil structs,
+	// // so we create a new slice of items and use that instead.
+	// items := make([]lineitem.LineItem, 0)
+	// for _, lineItem := range f.Order.Items {
+	// 	// if lineItem.SKU() != "" {
+	// 	// 	items = append(items, lineItem)
+	// 	// }
+	// }
+	// f.Order.Items = items
 
 	// Set password hash
-	f.User.PasswordHash = auth.HashPassword(f.Password)
+	f.User.PasswordHash, _ = password.Hash(f.Password)
 
 	return nil
 }

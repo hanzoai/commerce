@@ -13,8 +13,5 @@ dispatch:
   - url: "api.crowdstart.com/*"
     module: api
 
-  - url: "secure.crowdstart.com/*"
-    module: checkout
-
   - url: "www.crowdstart.com/*"
     module: platform

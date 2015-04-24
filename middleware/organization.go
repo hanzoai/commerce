@@ -7,7 +7,7 @@ import (
 
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
-	"crowdstart.io/models2/organization"
+	"crowdstart.io/models/organization"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/session"
 )

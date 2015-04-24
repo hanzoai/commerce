@@ -306,9 +306,6 @@ returned in the Authorize step (see above).
 
 ### Capture payment [POST]
 + Request (application/json)
-+ Parameters
-    + id (string) ID of the order
-        THE-ORDER-ID
 
 + Response 200 (application/json)
 
@@ -655,52 +652,52 @@ this endpoint.
 ### Get Payments on an Order [GET]
 + Response 200 (application/json)
 
-    {
-     "account":{
-        "type":"stripe",
-        "buyer":{
-           "email":"joe@buystoomuchstuff.com",
-           "firstname":"",
-           "lastname":"",
-           "company":"buys too much stuff dotcom",
-           "phone":"555-555-5555",
-           "notes":"non",
-           "address":{
+        {
+         "account":{
+            "type":"stripe",
+            "buyer":{
+               "email":"joe@buystoomuchstuff.com",
+               "firstname":"",
+               "lastname":"",
+               "company":"buys too much stuff dotcom",
+               "phone":"555-555-5555",
+               "notes":"non",
+               "address":{
 
-           }
-        },
-        "affirm":{
+               }
+            },
+            "affirm":{
 
-        },
-        "stripe":{
-           "fingerprint":"k6nxwtejxyhmpcr3",
-           "customerid":"cus_5ve1sykb8aayvc",
-           "cardid":"card_15jnzvcsrlllxcwprd6gkv1j",
-           "brand":"visa",
-           "type":"credit",
-           "lastfour":"4242",
-           "expiration":{
-              "month":12,
-              "year":2016
-           },
-           "cvccheck":"pass"
-        },
-        "paypal":{
+            },
+            "stripe":{
+               "fingerprint":"k6nxwtejxyhmpcr3",
+               "customerid":"cus_5ve1sykb8aayvc",
+               "cardid":"card_15jnzvcsrlllxcwprd6gkv1j",
+               "brand":"visa",
+               "type":"credit",
+               "lastfour":"4242",
+               "expiration":{
+                  "month":12,
+                  "year":2016
+               },
+               "cvccheck":"pass"
+            },
+            "paypal":{
 
+            }
+         },
+         "currency":"usd",
+         "campaignid":"",
+         "chargeid":"ch_15jnzzcsrlllxcwpwfble4hr",
+         "amount":2000,
+         "amountrefunded":0,
+         "status":"unpaid",
+         "client":{
+
+         },
+         "captured":false,
+         "live":false
         }
-     },
-     "currency":"usd",
-     "campaignid":"",
-     "chargeid":"ch_15jnzzcsrlllxcwpwfble4hr",
-     "amount":2000,
-     "amountrefunded":0,
-     "status":"unpaid",
-     "client":{
-
-     },
-     "captured":false,
-     "live":false
-    }
 
 # Group Product
 
