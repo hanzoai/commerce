@@ -53,11 +53,8 @@ module.exports =
 
   exclude: [
     /api\/static/
-    /checkout\/static/
     /platform\/static/
-    /preorder\/static/
     /store\/static/
-    /theme\/static/
     /config\/production\/assets/
     /config\/production\/static/
     /config\/sandbox\/assets/
@@ -67,13 +64,15 @@ module.exports =
     /config\/staging\/assets/
     /config\/staging\/static/
     /config.json$/
+    /platform\/templates/
     /\.go$/
     /\.yaml$/
   ]
 
   compilers:
     jade: (src) ->
-      return 'node_modules/.bin/aglio -t templates/platform/docs/blueprint/theme.jade -i apiary.apib -o templates/platform/docs/_generated/api.html'
+      if /^templates\/platform\/docs\/blueprint/.test src
+        return 'node_modules/.bin/aglio -t templates/platform/docs/blueprint/theme.jade -i apiary.apib -o templates/platform/docs/_generated/api.html'
 
     coffee: (src) ->
       # try to just optimize module changed
