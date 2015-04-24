@@ -11,7 +11,7 @@ import (
 
 	"crowdstart.io/datastore"
 	// "crowdstart.io/models"
-	"crowdstart.io/models2/campaign"
+	"crowdstart.io/models/campaign"
 	"crowdstart.io/util/log"
 
 	"appengine/urlfetch"

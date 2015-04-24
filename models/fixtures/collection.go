@@ -3,7 +3,7 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/models2/collection"
+	"crowdstart.io/models/collection"
 )
 
 var Collection = New("collection", func(c *gin.Context) *collection.Collection {

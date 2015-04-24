@@ -5,10 +5,10 @@ import (
 
 	aeds "appengine/datastore"
 
-	"crowdstart.io/models2/order"
-	"crowdstart.io/models2/organization"
-	"crowdstart.io/models2/payment"
-	"crowdstart.io/models2/types/currency"
+	"crowdstart.io/models/order"
+	"crowdstart.io/models/organization"
+	"crowdstart.io/models/payment"
+	"crowdstart.io/models/types/currency"
 	"crowdstart.io/thirdparty/stripe"
 	"crowdstart.io/util/log"
 )

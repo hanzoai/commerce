@@ -3,7 +3,7 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/models2/token"
+	"crowdstart.io/models/token"
 )
 
 var Token = New("token", func(c *gin.Context) *token.Token {

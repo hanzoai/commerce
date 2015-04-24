@@ -1,6 +1,6 @@
 package models
 
-import "crowdstart.io/models2/types/currency"
+import "crowdstart.io/models/types/currency"
 
 type Adjustment struct {
 	// Possible values: flat.

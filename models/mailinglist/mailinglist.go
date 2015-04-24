@@ -9,7 +9,7 @@ import (
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
-	"crowdstart.io/models2/subscriber"
+	"crowdstart.io/models/subscriber"
 	"crowdstart.io/util/fs"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/val"
