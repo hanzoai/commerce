@@ -39,6 +39,13 @@
     $(function(){
         BuildForm($("#form-organization"), [
             {
+                id: "shortName",
+                name: "shortName",
+                label: "Unique Identifier/Slug",
+                type: "static",
+                value: "{{ ctx.organization.Name }}",
+            },
+            {
                 id: "fullName",
                 name: "fullName",
                 label: "Full Name",
@@ -51,13 +58,6 @@
                         message: "Please enter your Organization's full name"
                     }
                 ]
-            },
-            {
-                id: "shortName",
-                name: "shortName",
-                label: "Short Name/Abbr",
-                type: "text",
-                value: "{{ ctx.organization.Name }}",
             },
             {
                 id: "website",
