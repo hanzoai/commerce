@@ -9,10 +9,10 @@ import (
 
 	"crowdstart.io/datastore"
 	// "crowdstart.io/models"
-	"crowdstart.io/models2/lineitem"
-	"crowdstart.io/models2/order"
-	"crowdstart.io/models2/user"
-	"crowdstart.io/models2/variant"
+	"crowdstart.io/models/lineitem"
+	"crowdstart.io/models/order"
+	"crowdstart.io/models/user"
+	"crowdstart.io/models/variant"
 	"crowdstart.io/util/log"
 )
 

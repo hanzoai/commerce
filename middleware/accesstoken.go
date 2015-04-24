@@ -10,7 +10,7 @@ import (
 	"appengine"
 
 	"crowdstart.io/datastore"
-	"crowdstart.io/models2/organization"
+	"crowdstart.io/models/organization"
 	"crowdstart.io/util/bit"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/permission"

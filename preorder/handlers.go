@@ -7,7 +7,7 @@ import (
 	"crowdstart.io/datastore"
 
 	// "crowdstart.io/models"
-	"crowdstart.io/models2/token"
+	"crowdstart.io/models/token"
 
 	// "crowdstart.io/util/queries"
 	"crowdstart.io/util/log"

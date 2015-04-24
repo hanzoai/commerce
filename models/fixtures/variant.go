@@ -3,9 +3,9 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/models2/product"
-	"crowdstart.io/models2/types/currency"
-	"crowdstart.io/models2/variant"
+	"crowdstart.io/models/product"
+	"crowdstart.io/models/types/currency"
+	"crowdstart.io/models/variant"
 )
 
 var Variant = New("variant", func(c *gin.Context) *variant.Variant {

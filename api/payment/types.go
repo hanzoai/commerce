@@ -1,9 +1,9 @@
 package payment
 
 import (
-	"crowdstart.io/models2/order"
-	"crowdstart.io/models2/payment"
-	"crowdstart.io/models2/user"
+	"crowdstart.io/models/order"
+	"crowdstart.io/models/payment"
+	"crowdstart.io/models/user"
 )
 
 type AuthorizationReq struct {

@@ -5,12 +5,12 @@ import (
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
-	"crowdstart.io/models2/types/currency"
+	"crowdstart.io/models/types/currency"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/val"
 
-	. "crowdstart.io/models2"
+	. "crowdstart.io/models"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
