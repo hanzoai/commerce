@@ -113,15 +113,15 @@ func Run(ctx *gin.Context, name string, args ...interface{}) {
 	}
 }
 
-func getGinContext(c appengine.Context, fakectx *fakecontext.Context, ok bool) *gin.Context {
+func getGinContext(ctx appengine.Context, fakectx *fakecontext.Context, ok bool) *gin.Context {
 	// If we have a fake context, try to use that
 	if ok {
-		if ctx, err := fakectx.Context(&c); err == nil {
-			return ctx
+		if c, err := fakectx.Context(&ctx); err == nil {
+			return c
 		}
 	}
 
-	return gincontext.New(c)
+	return gincontext.New(ctx)
 }
 
 // Creates a new delay.Func which will call our fn with gin.Context, etc.
