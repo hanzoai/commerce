@@ -6,7 +6,7 @@ import (
 
 	"crowdstart.io/datastore"
 	// "crowdstart.io/models"
-	"crowdstart.io/models2/order"
+	"crowdstart.io/models/order"
 
 	// . "crowdstart.io/thirdparty/stripe"
 )

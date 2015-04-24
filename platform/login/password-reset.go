@@ -8,8 +8,8 @@ import (
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
-	"crowdstart.io/models2/token"
-	"crowdstart.io/models2/user"
+	"crowdstart.io/models/token"
+	"crowdstart.io/models/user"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
 

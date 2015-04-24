@@ -7,8 +7,8 @@ import (
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
-	"crowdstart.io/models2/order"
-	"crowdstart.io/models2/payment"
+	"crowdstart.io/models/order"
+	"crowdstart.io/models/payment"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/permission"
 	"crowdstart.io/util/rest"

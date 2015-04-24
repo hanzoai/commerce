@@ -12,7 +12,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"crowdstart.io/datastore"
-	"crowdstart.io/models2/organization"
+	"crowdstart.io/models/organization"
 	"crowdstart.io/util/log"
 )
 

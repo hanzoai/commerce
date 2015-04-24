@@ -4,8 +4,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/datastore"
-	"crowdstart.io/models2/organization"
-	"crowdstart.io/models2/user"
+	"crowdstart.io/models/organization"
+	"crowdstart.io/models/user"
 	"crowdstart.io/util/log"
 )
 

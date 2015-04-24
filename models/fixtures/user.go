@@ -5,7 +5,7 @@ import (
 
 	"crowdstart.io/auth/password"
 	"crowdstart.io/datastore"
-	"crowdstart.io/models2/user"
+	"crowdstart.io/models/user"
 )
 
 var User = New("user", func(c *gin.Context) *user.User {

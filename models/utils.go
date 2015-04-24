@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"crowdstart.io/models2/types/currency"
+	"crowdstart.io/models/types/currency"
 	humanize "github.com/dustin/go-humanize"
 )
 

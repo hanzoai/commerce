@@ -13,17 +13,17 @@ import (
 	"github.com/dustin/go-humanize"
 
 	"crowdstart.io/datastore"
+	"crowdstart.io/models/coupon"
 	"crowdstart.io/models/mixin"
-	"crowdstart.io/models2/coupon"
-	"crowdstart.io/models2/payment"
-	"crowdstart.io/models2/store"
-	"crowdstart.io/models2/types/currency"
+	"crowdstart.io/models/payment"
+	"crowdstart.io/models/store"
+	"crowdstart.io/models/types/currency"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/val"
 
-	. "crowdstart.io/models2"
-	. "crowdstart.io/models2/lineitem"
+	. "crowdstart.io/models"
+	. "crowdstart.io/models/lineitem"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
