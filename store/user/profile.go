@@ -9,7 +9,7 @@ import (
 
 	"crowdstart.io/util/log"
 
-// "crowdstart.io/util/queries"
+	// "crowdstart.io/util/queries"
 )
 
 func Profile(c *gin.Context) {
@@ -96,10 +96,10 @@ func updatePassword(c *gin.Context, user *user.User) bool {
 			return false
 		}
 
-		user.PasswordHash, err = password.Hash(form.Password)
-		if err != nil {
-			panic(err)
-		}
+		// user.PasswordHash, err := password.Hash(form.Password)
+		// if err != nil {
+		// 	panic(err)
+		// }
 	} else {
 		log.Debug("Passwords do not match.")
 		c.JSON(400, gin.H{"message": "Passwords do not match."})
