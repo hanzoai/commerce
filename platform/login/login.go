@@ -7,7 +7,7 @@ import (
 	"crowdstart.io/auth/password"
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
-	"crowdstart.io/models2/user"
+	"crowdstart.io/models/user"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
 )

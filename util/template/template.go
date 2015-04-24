@@ -7,9 +7,9 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/config"
-	"crowdstart.io/models2/mailinglist"
-	"crowdstart.io/models2/types/country"
-	"crowdstart.io/models2/types/currency"
+	"crowdstart.io/models/mailinglist"
+	"crowdstart.io/models/types/country"
+	"crowdstart.io/models/types/currency"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 )

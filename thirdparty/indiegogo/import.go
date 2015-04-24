@@ -5,8 +5,8 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/util/csv"
 
-	. "crowdstart.io/models2"
-	"crowdstart.io/models2/user"
+	. "crowdstart.io/models"
+	"crowdstart.io/models/user"
 )
 
 func ImportCSV(db *datastore.Datastore, filename string) {

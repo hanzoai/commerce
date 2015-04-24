@@ -6,12 +6,12 @@ import (
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
-	"crowdstart.io/models2/product"
-	"crowdstart.io/models2/types/currency"
-	"crowdstart.io/models2/types/weight"
-	"crowdstart.io/models2/variant"
+	"crowdstart.io/models/product"
+	"crowdstart.io/models/types/currency"
+	"crowdstart.io/models/types/weight"
+	"crowdstart.io/models/variant"
 
-	. "crowdstart.io/models2"
+	. "crowdstart.io/models"
 )
 
 var InvalidLineItem = errors.New("Invalid line item. Ensure ID, slug or SKU is correct.")
