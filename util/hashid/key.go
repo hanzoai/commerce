@@ -7,6 +7,7 @@ import (
 	aeds "appengine/datastore"
 
 	"crowdstart.io/datastore"
+	"crowdstart.io/util/log"
 )
 
 var (
@@ -49,7 +50,7 @@ func encodeNamespace(ctx appengine.Context, namespace string) int {
 		}
 
 		// Get IntID
-		id := key.IntID()
+		id = key.IntID()
 
 		// Cache result
 		cache(namespace, id)
@@ -58,6 +59,7 @@ func encodeNamespace(ctx appengine.Context, namespace string) int {
 }
 
 func decodeNamespace(ctx appengine.Context, encoded int) string {
+	log.Debug("Decoding a thing! %v", encoded)
 	// Default namespace
 	if encoded == 0 {
 		return ""
@@ -126,14 +128,18 @@ func EncodeKey(ctx appengine.Context, key datastore.Key) string {
 	// Append namespace
 	ids = append(ids, namespace)
 
+	log.Debug("Encoding keyyyyyy: %v, %v", key, ids)
+
 	return Encode(ids...)
 }
 
 func DecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key, err error) {
+	log.Debug("Decoding key: %v", encoded)
 	// Catch panic from Decode
 	defer func() {
 		if r := recover(); r != nil {
 			err = errors.New(r.(string))
+			log.Warn("Failed to decode key '%v': %v", encoded, err, ctx)
 		}
 	}()
 
