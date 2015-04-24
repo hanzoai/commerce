@@ -6,6 +6,7 @@ import (
 	"crowdstart.io/util/csv"
 
 	. "crowdstart.io/models"
+	"crowdstart.io/models/user"
 )
 
 func ImportCSV(db *datastore.Datastore, filename string) {
@@ -18,27 +19,26 @@ func ImportCSV(db *datastore.Datastore, filename string) {
 		r := NewRow(record.Row)
 
 		// Create user
-		user := &User{
-			Email:           r.Email,
-			FirstName:       r.FirstName,
-			LastName:        r.LastName,
-			ShippingAddress: r.ShippingAddress,
-			BillingAddress:  r.ShippingAddress,
-		}
+		user := user.New(db)
+		user.Email = r.Email
+		user.FirstName = r.FirstName
+		user.LastName = r.LastName
+		user.ShippingAddress = r.ShippingAddress
+		user.BillingAddress = r.ShippingAddress
 
 		// No longer updating user information in production, as it would clobber any customized information.
 		if !config.IsProduction {
-			user.Upsert(db)
+			user.Put()
 		}
 
 		// Create token
-		token := &Token{
-			Id:     r.TokenID,
-			UserId: user.Id,
-			Email:  user.Email,
-		}
+		// token := &Token{
+		// 	Id:     r.TokenID,
+		// 	UserId: user.Id,
+		// 	Email:  user.Email,
+		// }
 
-		db.PutKind("invite-token", token.Id, token)
+		// db.PutKind("invite-token", token.Id, token)
 
 		// Save contribution
 		// contribution := &Contribution{

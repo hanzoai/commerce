@@ -8,7 +8,7 @@ import (
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
-	"crowdstart.io/models2/store"
+	"crowdstart.io/models/store"
 	"crowdstart.io/util/json"
 )
 

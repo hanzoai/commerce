@@ -6,8 +6,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/auth2/password"
+	"crowdstart.io/auth/password"
 	"crowdstart.io/models"
+	"crowdstart.io/models/user"
 	"crowdstart.io/util/form"
 	"crowdstart.io/util/val"
 )
@@ -37,7 +38,7 @@ func (f *LoginForm) Parse(c *gin.Context) error {
 
 // User profile form (contact)
 type ContactForm struct {
-	User models.User
+	User *user.User
 }
 
 func (f *ContactForm) Parse(c *gin.Context) error {
@@ -61,7 +62,7 @@ func (f *BillingForm) Parse(c *gin.Context) error {
 
 func (f *BillingForm) Validate() []string {
 	var errs []string
-	errs = val.ValidateAddress(&f.BillingAddress, errs)
+	// errs = val.ValidateAddress(&f.BillingAddress, errs)
 	return errs
 }
 

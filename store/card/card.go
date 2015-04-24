@@ -1,32 +1,22 @@
 package card
 
-import (
-	"errors"
-
-	"github.com/gin-gonic/gin"
-
-	"crowdstart.io/auth"
-	"crowdstart.io/config"
-	"crowdstart.io/datastore"
-	"crowdstart.io/middleware"
-	"crowdstart.io/util/template"
-)
+import "github.com/gin-gonic/gin"
 
 func GetCard(c *gin.Context) {
-	email, _ := auth.GetEmail(c)
+	// email, _ := auth.GetEmail(c)
 
-	db := datastore.New(c)
-	ctx := middleware.GetAppEngine(c)
+	// db := datastore.New(c)
+	// ctx := middleware.GetAppEngine(c)
 
-	if count, err := db.Query("order").Filter("Email =", email).Count(ctx); count < 1 || err != nil {
-		c.Fail(404, errors.New("No orders found for that user."))
-		return
-	}
+	// if count, err := db.Query("order").Filter("Email =", email).Count(ctx); count < 1 || err != nil {
+	// 	c.Fail(404, errors.New("No orders found for that user."))
+	// 	return
+	// }
 
-	user, _ := auth.GetUser(c)
+	// user, _ := auth.GetUser(c)
 
-	template.Render(c, "skullycard.html",
-		"user", user,
-		"GCSBucket", config.Google.Bucket.ImageUploads,
-		"GCSAPIKey", config.Google.APIKey)
+	// template.Render(c, "skullycard.html",
+	// 	"user", user,
+	// 	"GCSBucket", config.Google.Bucket.ImageUploads,
+	// 	"GCSAPIKey", config.Google.APIKey)
 }

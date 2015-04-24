@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -50,6 +51,11 @@ func Log(c *gin.Context) {
 	statusCode := c.Writer.Status()
 	statusColor := colorForStatus(statusCode)
 	methodColor := colorForMethod(method)
+
+	// Ignore static files
+	if strings.Contains(c.Request.URL.Path, "/static/") && c.Writer.Status() < 400 {
+		return
+	}
 
 	log.Info("%s%3d%s %s%s%s %s %v",
 		statusColor, statusCode, reset,
