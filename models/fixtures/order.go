@@ -3,10 +3,10 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/models2/order"
-	"crowdstart.io/models2/types/currency"
+	"crowdstart.io/models/order"
+	"crowdstart.io/models/types/currency"
 
-	. "crowdstart.io/models2/lineitem"
+	. "crowdstart.io/models/lineitem"
 )
 
 var Order = New("order", func(c *gin.Context) *order.Order {

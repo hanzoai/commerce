@@ -8,11 +8,11 @@ import (
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
+	"crowdstart.io/models/bundle"
 	"crowdstart.io/models/mixin"
-	"crowdstart.io/models2/bundle"
-	"crowdstart.io/models2/product"
-	"crowdstart.io/models2/store"
-	"crowdstart.io/models2/variant"
+	"crowdstart.io/models/product"
+	"crowdstart.io/models/store"
+	"crowdstart.io/models/variant"
 	"crowdstart.io/util/json"
 )
 

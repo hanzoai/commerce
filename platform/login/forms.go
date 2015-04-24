@@ -7,8 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/auth/password"
-	"crowdstart.io/models2"
-	"crowdstart.io/models2/user"
+	"crowdstart.io/models"
+	"crowdstart.io/models/user"
 	"crowdstart.io/util/form"
 	"crowdstart.io/util/val"
 )

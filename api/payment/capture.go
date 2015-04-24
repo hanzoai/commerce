@@ -5,10 +5,10 @@ import (
 
 	"crowdstart.io/api/payment/stripe"
 	"crowdstart.io/datastore"
-	"crowdstart.io/models2/order"
-	"crowdstart.io/models2/organization"
-	"crowdstart.io/models2/payment"
-	"crowdstart.io/models2/types/currency"
+	"crowdstart.io/models/order"
+	"crowdstart.io/models/organization"
+	"crowdstart.io/models/payment"
+	"crowdstart.io/models/types/currency"
 )
 
 func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (*order.Order, error) {

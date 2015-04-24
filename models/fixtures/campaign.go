@@ -3,7 +3,7 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/models2/campaign"
+	"crowdstart.io/models/campaign"
 	"crowdstart.io/util/category"
 )
 

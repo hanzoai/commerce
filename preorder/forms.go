@@ -7,10 +7,10 @@ import (
 
 	"crowdstart.io/auth/password"
 	// "crowdstart.io/models"
-	. "crowdstart.io/models2"
-	"crowdstart.io/models2/order"
-	"crowdstart.io/models2/token"
-	"crowdstart.io/models2/user"
+	. "crowdstart.io/models"
+	"crowdstart.io/models/order"
+	"crowdstart.io/models/token"
+	"crowdstart.io/models/user"
 	"crowdstart.io/util/form"
 )
 

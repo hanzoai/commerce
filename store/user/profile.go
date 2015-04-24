@@ -5,7 +5,7 @@ import (
 
 	"crowdstart.io/auth/password"
 	// "crowdstart.io/models"
-	"crowdstart.io/models2/user"
+	"crowdstart.io/models/user"
 
 	"crowdstart.io/util/log"
 

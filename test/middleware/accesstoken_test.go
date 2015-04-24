@@ -9,8 +9,8 @@ import (
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
-	"crowdstart.io/models2/organization"
-	"crowdstart.io/models2/user"
+	"crowdstart.io/models/organization"
+	"crowdstart.io/models/user"
 	"crowdstart.io/util/test/ae"
 	"crowdstart.io/util/test/ginclient"
 

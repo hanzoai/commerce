@@ -6,9 +6,9 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/api/payment/stripe"
-	"crowdstart.io/models2/order"
-	"crowdstart.io/models2/organization"
-	"crowdstart.io/models2/store"
+	"crowdstart.io/models/order"
+	"crowdstart.io/models/organization"
+	"crowdstart.io/models/store"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 )

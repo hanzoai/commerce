@@ -3,11 +3,11 @@ package variant
 import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
-	"crowdstart.io/models2/types/currency"
-	"crowdstart.io/models2/types/weight"
+	"crowdstart.io/models/types/currency"
+	"crowdstart.io/models/types/weight"
 	"crowdstart.io/util/val"
 
-	. "crowdstart.io/models2"
+	. "crowdstart.io/models"
 )
 
 type Option struct {
