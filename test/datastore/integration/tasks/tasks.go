@@ -7,7 +7,7 @@ import (
 )
 
 // Define a new worker with parallel.Task
-var TaskPlus1 = parallel.New("test-worker", func(db *datastore.Datastore, k datastore.Key, model *Model) {
+var TaskPlus1 = parallel.New("test-worker", func(db *datastore.Datastore, model *Model) {
 	log.Debug("ADSFJKASJDFKASDJFLKASDJFLAKSDJFLASKDJFLSAKDJFALSKDJFLASKDJFLAKSDJFLAKSJDFLASKDJFALSKDFJASLDKJFALSKDFJ")
 	model.Count = model.Count + 1
 	if err := model.Put(); err != nil {
@@ -16,7 +16,7 @@ var TaskPlus1 = parallel.New("test-worker", func(db *datastore.Datastore, k data
 })
 
 // Define a new worker with parallel.Task
-var TaskSetVal = parallel.New("test-worker2", func(db *datastore.Datastore, k datastore.Key, model *Model2, v int) {
+var TaskSetVal = parallel.New("test-worker2", func(db *datastore.Datastore, model *Model2, v int) {
 	log.Debug("ADSFJKASJDFKASDJFLKASDJFLAKSDJFLASKDJFLSAKDJFALSKDJFLASKDJFLAKSDJFLAKSJDFLASKDJFALSKDFJASLDKJFALSKDFJ")
 	model.Count = v
 	if err := model.Put(); err != nil {
