@@ -7,7 +7,7 @@ import (
 
 	"appengine"
 
-	"crowdstart.io/auth"
+	"crowdstart.io/auth/password"
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models2/organization"
@@ -18,7 +18,7 @@ import (
 	"crowdstart.io/util/session"
 )
 
-func getAccessToken(c *gin.Context, id, email, password string, test bool) {
+func getAccessToken(c *gin.Context, id, email, pass string, test bool) {
 	db := datastore.New(c)
 	u := user.New(db)
 
@@ -29,7 +29,7 @@ func getAccessToken(c *gin.Context, id, email, password string, test bool) {
 	}
 
 	// Check password
-	if err := auth.CompareHashAndPassword(u.PasswordHash, password); err != nil {
+	if !password.HashAndCompare(u.PasswordHash, pass) {
 		json.Fail(c, 401, "Invalid password.", nil)
 		return
 	}
