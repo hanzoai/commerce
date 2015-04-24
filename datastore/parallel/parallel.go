@@ -35,8 +35,8 @@ func New(name string, fn interface{}) *ParallelFn {
 
 	// fn should be a function that takes at least three arguments
 	argNum := typ.NumIn()
-	if argNum < 3 {
-		log.Panic("Function requires at least three arguments")
+	if argNum < 2 {
+		log.Panic("Function requires at least two arguments")
 	}
 
 	// Check fn's first argument
@@ -44,13 +44,8 @@ func New(name string, fn interface{}) *ParallelFn {
 		log.Panic("First argument must be datastore.Datastore: %v", typ)
 	}
 
-	// Check fn's second argument
-	if typ.In(1) != keyType {
-		log.Panic("Second argument must be datastore.Key")
-	}
-
 	// Get entity type & kind
-	entityType := typ.In(2).Elem()
+	entityType := typ.In(1).Elem()
 	entity := reflect.New(entityType).Interface().(mixin.Kind)
 	kind := entity.Kind()
 
@@ -118,7 +113,7 @@ func (fn *ParallelFn) createDelayFn(name string) {
 			}
 
 			// Build arguments for workerFunc
-			in := []reflect.Value{reflect.ValueOf(db), reflect.ValueOf(key), reflect.ValueOf(entity)}
+			in := []reflect.Value{reflect.ValueOf(db), reflect.ValueOf(entity)}
 
 			// Append variadic args
 			for _, arg := range args {

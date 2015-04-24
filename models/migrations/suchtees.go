@@ -13,7 +13,7 @@ func suchTeesSetup(c *gin.Context) {
 }
 
 var _ = New("suchtees", suchTeesSetup,
-	func(db *datastore.Datastore, key datastore.Key, product *product.Product) {
+	func(db *datastore.Datastore, product *product.Product) {
 		log.Debug("product: %v", product)
 	},
 )
