@@ -7,7 +7,7 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models/mixin"
-	"crowdstart.io/models2/organization"
+	"crowdstart.io/models/organization"
 	"crowdstart.io/util/permission"
 	"crowdstart.io/util/rest"
 	"crowdstart.io/util/test/ae"

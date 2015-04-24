@@ -4,14 +4,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
-	aeds "appengine/datastore"
-
 	"crowdstart.io/datastore"
-	"crowdstart.io/models"
+	// "crowdstart.io/models"
+	"crowdstart.io/models/lineitem"
+	"crowdstart.io/models/order"
+	"crowdstart.io/models/user"
+	"crowdstart.io/models/variant"
 	"crowdstart.io/util/log"
 )
 
@@ -236,57 +237,59 @@ type Contact struct {
 }
 
 func (c *Contact) Read(so SObjectCompatible) error {
-	c.Ref = so
-
-	u, ok := so.(*models.User)
-	if !ok {
-		return ErrorUserTypeRequired
-	}
-
-	c.CrowdstartIdC = u.Id
-	c.LastName = u.LastName
-	if c.LastName == "" {
-		c.LastName = "-"
-	}
-
-	c.FirstName = u.FirstName
-	if c.FirstName == "" {
-		c.FirstName = "-"
-	}
-
-	c.Email = u.Email
-	c.Phone = u.Phone
-
-	c.Account.CrowdstartIdC = u.Id
-
 	return nil
+	// c.Ref = so
+
+	// u, ok := so.(*models.User)
+	// if !ok {
+	// 	return ErrorUserTypeRequired
+	// }
+
+	// c.CrowdstartIdC = u.Id
+	// c.LastName = u.LastName
+	// if c.LastName == "" {
+	// 	c.LastName = "-"
+	// }
+
+	// c.FirstName = u.FirstName
+	// if c.FirstName == "" {
+	// 	c.FirstName = "-"
+	// }
+
+	// c.Email = u.Email
+	// c.Phone = u.Phone
+
+	// c.Account.CrowdstartIdC = u.Id
+
+	// return nil
 }
 
 func (c *Contact) Write(so SObjectCompatible) error {
-	c.Ref = so
-
-	u, ok := so.(*models.User)
-	if !ok {
-		return ErrorUserTypeRequired
-	}
-
-	c.SetSalesforceId(c.Id)
-
-	u.Id = c.CrowdstartIdC
-	u.Email = c.Email
-
-	u.LastName = c.LastName
-	if u.LastName == "-" {
-		u.LastName = ""
-	}
-
-	u.FirstName = c.FirstName
-	if u.FirstName == "-" {
-		u.FirstName = ""
-	}
-
-	u.Phone = c.Phone
 	return nil
+	// c.Ref = so
+
+	// u, ok := so.(*models.User)
+	// if !ok {
+	// 	return ErrorUserTypeRequired
+	// }
+
+	// c.SetSalesforceId(c.Id)
+
+	// u.Id = c.CrowdstartIdC
+	// u.Email = c.Email
+
+	// u.LastName = c.LastName
+	// if u.LastName == "-" {
+	// 	u.LastName = ""
+	// }
+
+	// u.FirstName = c.FirstName
+	// if u.FirstName == "-" {
+	// 	u.FirstName = ""
+	// }
+
+	// u.Phone = c.Phone
+	// return nil
 }
 
 func (c *Contact) SetExternalId(id string) {
@@ -298,13 +301,13 @@ func (c *Contact) ExternalId() string {
 }
 
 func (c *Contact) Load(db *datastore.Datastore) SObjectCompatible {
-	c.Ref = new(models.User)
+	c.Ref = user.New(db)
 	db.Get(c.ExternalId(), c.Ref)
 	return c.Ref
 }
 
 func (c *Contact) LoadSalesforceId(db *datastore.Datastore, id string) SObjectCompatible {
-	objects := make([]*models.User, 0)
+	objects := make([]*user.User, 0)
 	db.Query("user").Filter("SecondarySalesforceId_=", id).Limit(1).GetAll(db.Context, &objects)
 	if len(objects) == 0 {
 		return nil
@@ -418,18 +421,18 @@ type Account struct {
 func (a *Account) Read(so SObjectCompatible) error {
 	a.Ref = so
 
-	u, ok := so.(*models.User)
+	u, ok := so.(*user.User)
 	if !ok {
 		return ErrorUserTypeRequired
 	}
 
-	a.CrowdstartIdC = u.Id
+	a.CrowdstartIdC = u.Id()
 
-	if key, err := aeds.DecodeKey(u.Id); err == nil {
-		a.Name = strconv.FormatInt(key.IntID(), 10)
-	} else {
-		// This should never happen
-	}
+	// if key, err := aeds.DecodeKey(u.Id); err == nil {
+	// 	a.Name = u.Key()strconv.FormatInt(key.IntID(), 10)
+	// } else {
+	// 	// This should never happen
+	// }
 
 	a.BillingStreet = u.BillingAddress.Line1 + "\n" + u.BillingAddress.Line2
 	a.BillingCity = u.BillingAddress.City
@@ -446,44 +449,45 @@ func (a *Account) Read(so SObjectCompatible) error {
 }
 
 func (a *Account) Write(so SObjectCompatible) error {
-	a.Ref = so
-
-	u, ok := so.(*models.User)
-	if !ok {
-		return ErrorUserTypeRequired
-	}
-
-	a.SetSalesforceId(a.Id)
-
-	u.Id = a.CrowdstartIdC
-
-	lines := strings.Split(a.ShippingStreet, "\n")
-
-	// Split Street line \n to recover our data
-	u.ShippingAddress.Line1 = strings.TrimSpace(lines[0])
-	if len(lines) > 1 {
-		u.ShippingAddress.Line2 = strings.TrimSpace(strings.Join(lines[1:], "\n"))
-	}
-
-	u.ShippingAddress.City = a.ShippingCity
-	u.ShippingAddress.State = a.ShippingState
-	u.ShippingAddress.PostalCode = a.ShippingPostalCode
-	u.ShippingAddress.Country = a.ShippingCountry
-
-	lines = strings.Split(a.BillingStreet, "\n")
-
-	// Split Street line \n to recover our data
-	u.BillingAddress.Line1 = strings.TrimSpace(lines[0])
-	if len(lines) > 1 {
-		u.BillingAddress.Line2 = strings.TrimSpace(strings.Join(lines[1:], "\n"))
-	}
-
-	u.BillingAddress.City = a.BillingCity
-	u.BillingAddress.State = a.BillingState
-	u.BillingAddress.PostalCode = a.BillingPostalCode
-	u.BillingAddress.Country = a.BillingCountry
-
 	return nil
+	// a.Ref = so
+
+	// u, ok := so.(*user.User)
+	// if !ok {
+	// 	return ErrorUserTypeRequired
+	// }
+
+	// a.SetSalesforceId(a.Id)
+
+	// u.Id = a.CrowdstartIdC
+
+	// lines := strings.Split(a.ShippingStreet, "\n")
+
+	// // Split Street line \n to recover our data
+	// u.ShippingAddress.Line1 = strings.TrimSpace(lines[0])
+	// if len(lines) > 1 {
+	// 	u.ShippingAddress.Line2 = strings.TrimSpace(strings.Join(lines[1:], "\n"))
+	// }
+
+	// u.ShippingAddress.City = a.ShippingCity
+	// u.ShippingAddress.State = a.ShippingState
+	// u.ShippingAddress.PostalCode = a.ShippingPostalCode
+	// u.ShippingAddress.Country = a.ShippingCountry
+
+	// lines = strings.Split(a.BillingStreet, "\n")
+
+	// // Split Street line \n to recover our data
+	// u.BillingAddress.Line1 = strings.TrimSpace(lines[0])
+	// if len(lines) > 1 {
+	// 	u.BillingAddress.Line2 = strings.TrimSpace(strings.Join(lines[1:], "\n"))
+	// }
+
+	// u.BillingAddress.City = a.BillingCity
+	// u.BillingAddress.State = a.BillingState
+	// u.BillingAddress.PostalCode = a.BillingPostalCode
+	// u.BillingAddress.Country = a.BillingCountry
+
+	// return nil
 }
 
 func (a *Account) SetExternalId(id string) {
@@ -495,13 +499,13 @@ func (a *Account) ExternalId() string {
 }
 
 func (a *Account) Load(db *datastore.Datastore) SObjectCompatible {
-	a.Ref = new(models.User)
+	a.Ref = user.New(db)
 	db.Get(a.ExternalId(), a.Ref)
 	return a.Ref
 }
 
 func (a *Account) LoadSalesforceId(db *datastore.Datastore, id string) SObjectCompatible {
-	objects := make([]*models.User, 0)
+	objects := make([]*user.User, 0)
 	db.Query("user").Filter("PrimarySalesforceId_=", id).Limit(1).GetAll(db.Context, &objects)
 	if len(objects) == 0 {
 		return nil
@@ -631,7 +635,7 @@ type Order struct {
 func (o *Order) Read(so SObjectCompatible) error {
 	o.Ref = so
 
-	order, ok := so.(*models.Order)
+	order, ok := so.(*order.Order)
 	if !ok {
 		return ErrorOrderTypeRequired
 	}
@@ -652,46 +656,46 @@ func (o *Order) Read(so SObjectCompatible) error {
 
 	o.Status = "Draft" // SF Rquired
 
-	// Payment Information
-	o.ShippingC = ToCurrency(order.Shipping)
-	o.SubtotalC = ToCurrency(order.Subtotal)
-	o.TaxC = ToCurrency(order.Tax)
-	o.TotalC = ToCurrency(order.Shipping + order.Subtotal + order.Tax)
+	// // Payment Information
+	// o.ShippingC = ToCurrency(order.Shipping)
+	// o.SubtotalC = ToCurrency(order.Subtotal)
+	// o.TaxC = ToCurrency(order.Tax)
+	// o.TotalC = ToCurrency(order.Shipping + order.Subtotal + order.Tax)
 
-	if len(order.Charges) > 0 {
-		o.PaymentTypeC = "Stripe"
-		o.PaymentIdC = order.Charges[0].ID
-	}
-
-	// Status Flags
-	o.CancelledC = order.Cancelled
-	o.DisputedC = order.Disputed
-	o.LockedC = order.Locked
-	o.PreorderC = order.Preorder
-	o.RefundedC = order.Refunded
-	o.ShippedC = order.Shipped
-	o.UnconfirmedC = order.Unconfirmed
-
-	//SKU
-	if !o.UnconfirmedC {
-		o.orderProducts = make([]*OrderProduct, len(order.Items))
-		for i, _ := range order.Items {
-			item := &order.Items[i]
-			orderProduct := &OrderProduct{CrowdstartIdC: order.Id + fmt.Sprintf("_%d", i)}
-			orderProduct.Read(item)
-			orderProduct.Order = &ForeignKey{CrowdstartIdC: order.Id}
-			o.orderProducts[i] = orderProduct
-		}
-	}
-
-	// Skully salesforce is rejecting name
-	// if name, err := datastore.DecodeKey(order.Id); err == nil {
-	// 	o.Name = strconv.FormatInt(name.IntID(), 10)
+	// if len(order.Charges) > 0 {
+	// 	o.PaymentTypeC = "Stripe"
+	// 	o.PaymentIdC = order.Charges[0].ID
 	// }
 
-	o.Account = &ForeignKey{CrowdstartIdC: order.UserId}
-	o.CrowdstartIdC = order.Id
-	o.OriginalEmailC = order.Email
+	// // Status Flags
+	// o.CancelledC = order.Cancelled
+	// o.DisputedC = order.Disputed
+	// o.LockedC = order.Locked
+	// o.PreorderC = order.Preorder
+	// o.RefundedC = order.Refunded
+	// o.ShippedC = order.Shipped
+	// o.UnconfirmedC = order.Unconfirmed
+
+	// //SKU
+	// if !o.UnconfirmedC {
+	// 	o.orderProducts = make([]*OrderProduct, len(order.Items))
+	// 	for i, _ := range order.Items {
+	// 		item := &order.Items[i]
+	// 		orderProduct := &OrderProduct{CrowdstartIdC: order.Id + fmt.Sprintf("_%d", i)}
+	// 		orderProduct.Read(item)
+	// 		orderProduct.Order = &ForeignKey{CrowdstartIdC: order.Id}
+	// 		o.orderProducts[i] = orderProduct
+	// 	}
+	// }
+
+	// // Skully salesforce is rejecting name
+	// // if name, err := datastore.DecodeKey(order.Id); err == nil {
+	// // 	o.Name = strconv.FormatInt(name.IntID(), 10)
+	// // }
+
+	// o.Account = &ForeignKey{CrowdstartIdC: order.UserId}
+	// o.CrowdstartIdC = order.Id
+	// o.OriginalEmailC = order.Email
 
 	return nil
 }
@@ -699,7 +703,7 @@ func (o *Order) Read(so SObjectCompatible) error {
 func (o *Order) Write(so SObjectCompatible) error {
 	o.Ref = so
 
-	order, ok := so.(*models.Order)
+	order, ok := so.(*order.Order)
 	if !ok {
 		return ErrorOrderTypeRequired
 	}
@@ -732,42 +736,42 @@ func (o *Order) Write(so SObjectCompatible) error {
 	order.ShippingAddress.Country = o.ShippingCountry
 
 	// Payment Information
-	order.Shipping = FromCurrency(o.ShippingC)
-	order.Subtotal = FromCurrency(o.SubtotalC)
-	order.Tax = FromCurrency(o.TaxC)
+	// order.Shipping = FromCurrency(o.ShippingC)
+	// order.Subtotal = FromCurrency(o.SubtotalC)
+	// order.Tax = FromCurrency(o.TaxC)
 
-	// We shouldn't update a read only value like this
-	// if len(order.Charges) > 0 {
-	// 	o.PaymentTypeC = "Stripe"
-	// 	o.PaymentIdC = order.Charges[0].ID
+	// // We shouldn't update a read only value like this
+	// // if len(order.Charges) > 0 {
+	// // 	o.PaymentTypeC = "Stripe"
+	// // 	o.PaymentIdC = order.Charges[0].ID
+	// // }
+
+	// // Status Flags
+	// order.Cancelled = o.CancelledC
+	// order.Disputed = o.DisputedC
+	// order.Locked = o.LockedC
+	// order.Preorder = o.PreorderC
+	// order.Refunded = o.RefundedC
+	// order.Shipped = o.ShippedC
+	// order.Unconfirmed = o.UnconfirmedC
+
+	// //SKU
+	// lineItems := make([]models.LineItem, len(o.orderProducts))
+	// order.Items = lineItems
+	// for i, op := range o.orderProducts {
+	// 	lineItems[i] = models.LineItem{}
+	// 	op.Write(&lineItems[i])
 	// }
 
-	// Status Flags
-	order.Cancelled = o.CancelledC
-	order.Disputed = o.DisputedC
-	order.Locked = o.LockedC
-	order.Preorder = o.PreorderC
-	order.Refunded = o.RefundedC
-	order.Shipped = o.ShippedC
-	order.Unconfirmed = o.UnconfirmedC
+	// // Skully salesforce is rejecting name
+	// // if name, err := datastore.DecodeKey(order.Id); err == nil {
+	// // 	o.Name = strconv.FormatInt(name.IntID(), 10)
+	// // }
 
-	//SKU
-	lineItems := make([]models.LineItem, len(o.orderProducts))
-	order.Items = lineItems
-	for i, op := range o.orderProducts {
-		lineItems[i] = models.LineItem{}
-		op.Write(&lineItems[i])
-	}
+	// // We shouldn't update a read only value like this
+	// // o.OriginalEmailC = order.Email
 
-	// Skully salesforce is rejecting name
-	// if name, err := datastore.DecodeKey(order.Id); err == nil {
-	// 	o.Name = strconv.FormatInt(name.IntID(), 10)
-	// }
-
-	// We shouldn't update a read only value like this
-	// o.OriginalEmailC = order.Email
-
-	order.Id = o.CrowdstartIdC
+	// order.Id = o.CrowdstartIdC
 
 	return nil
 }
@@ -781,13 +785,13 @@ func (o *Order) ExternalId() string {
 }
 
 func (o *Order) Load(db *datastore.Datastore) SObjectCompatible {
-	o.Ref = new(models.Order)
+	o.Ref = order.New(db)
 	db.Get(o.ExternalId(), o.Ref)
 	return o.Ref
 }
 
 func (o *Order) LoadSalesforceId(db *datastore.Datastore, id string) SObjectCompatible {
-	objects := make([]*models.Order, 0)
+	objects := make([]*order.Order, 0)
 	db.Query("order").Filter("PrimarySalesforceId_=", id).Limit(1).GetAll(db.Context, &objects)
 	if len(objects) == 0 {
 		return nil
@@ -811,12 +815,12 @@ func (o *Order) Push(api SalesforceClient) error {
 	return nil
 }
 
-var variantCache map[string]models.ProductVariant
+var variantCache map[string]variant.Variant
 
 // Helper for getting a Order's Order Products
 func pullOrderProduct(api SalesforceClient, o *Order) error {
 	if variantCache == nil {
-		variantCache = make(map[string]models.ProductVariant)
+		variantCache = make(map[string]variant.Variant)
 	}
 	// Get Order Products as well.  Use the place order product since it is likely faster than a filter
 	poow := PlaceOrderOrderWrapper{}
@@ -849,7 +853,7 @@ func pullOrderProduct(api SalesforceClient, o *Order) error {
 
 		pv, ok := variantCache[op.PricebookEntryId]
 		if !ok {
-			variants := make([]models.ProductVariant, 0)
+			variants := make([]variant.Variant, 0)
 			db.Query("variant").Filter("SecondarySalesforceId_=", op.PricebookEntryId).Limit(1).GetAll(db.Context, &variants)
 			variantCache[op.PricebookEntryId] = variants[0]
 			pv = variants[0]
@@ -917,20 +921,20 @@ type OrderProduct struct {
 	UnitPrice            Currency    `json:"UnitPrice,omitempty"`
 
 	// Private data
-	variant *models.ProductVariant
+	variant *variant.Variant
 }
 
 func (o *OrderProduct) Read(so SObjectCompatible) error {
 	o.Ref = so
 
-	li, ok := so.(*models.LineItem)
+	li, ok := so.(*lineitem.LineItem)
 	if !ok {
 		return ErrorOrderTypeRequired
 	}
 
 	o.Quantity = float64(li.Quantity)
-	o.PricebookEntry = &ForeignKey{CrowdstartIdC: li.Variant.Id}
-	o.UnitPrice = ToCurrency(li.Variant.Price)
+	o.PricebookEntry = &ForeignKey{CrowdstartIdC: li.Variant.Id()}
+	o.UnitPrice = ToCurrency(int64(li.Variant.Price))
 
 	return nil
 }
@@ -938,7 +942,7 @@ func (o *OrderProduct) Read(so SObjectCompatible) error {
 func (o *OrderProduct) Write(so SObjectCompatible) error {
 	o.Ref = so
 
-	li, ok := so.(*models.LineItem)
+	li, ok := so.(*lineitem.LineItem)
 	if !ok {
 		return ErrorOrderTypeRequired
 	}
@@ -946,7 +950,7 @@ func (o *OrderProduct) Write(so SObjectCompatible) error {
 	o.SetSalesforceId(o.Id)
 
 	li.Quantity = int(o.Quantity)
-	li.SKU_ = o.variant.SKU
+	// li.SKU_ = o.variant.SKU
 
 	return nil
 }
@@ -1002,12 +1006,12 @@ type Product struct {
 func (p *Product) Read(so SObjectCompatible) error {
 	p.Ref = so
 
-	v, ok := so.(*models.ProductVariant)
+	v, ok := so.(*variant.Variant)
 	if !ok {
 		return ErrorUserTypeRequired
 	}
 
-	p.CrowdstartIdC = v.Id
+	p.CrowdstartIdC = v.Id()
 	p.Name = v.SKU
 	p.ProductCode = v.SKU
 	p.IsActive = true
@@ -1018,14 +1022,14 @@ func (p *Product) Read(so SObjectCompatible) error {
 func (p *Product) Write(so SObjectCompatible) error {
 	p.Ref = so
 
-	v, ok := so.(*models.ProductVariant)
+	v, ok := so.(*variant.Variant)
 	if !ok {
 		return ErrorUserTypeRequired
 	}
 
 	p.SetSalesforceId(p.Id)
 
-	v.Id = p.CrowdstartIdC
+	// v.Id = p.CrowdstartIdC
 	v.SKU = p.ProductCode
 
 	return nil
@@ -1084,15 +1088,15 @@ type PricebookEntry struct {
 func (p *PricebookEntry) Read(so SObjectCompatible) error {
 	p.Ref = so
 
-	v, ok := so.(*models.ProductVariant)
+	v, ok := so.(*variant.Variant)
 	if !ok {
 		return ErrorUserTypeRequired
 	}
 
-	p.CrowdstartIdC = v.Id
-	p.Product = &ForeignKey{CrowdstartIdC: v.Id}
+	p.CrowdstartIdC = v.Id()
+	p.Product = &ForeignKey{CrowdstartIdC: v.Id()}
 	p.UseStandardPrice = false
-	p.UnitPrice = ToCurrency(v.Price)
+	p.UnitPrice = ToCurrency(int64(v.Price))
 	p.IsActive = true
 
 	return nil
@@ -1101,14 +1105,14 @@ func (p *PricebookEntry) Read(so SObjectCompatible) error {
 func (p *PricebookEntry) Write(so SObjectCompatible) error {
 	p.Ref = so
 
-	v, ok := so.(*models.ProductVariant)
-	if !ok {
-		return ErrorUserTypeRequired
-	}
+	// v, ok := so.(*variant.Variant)
+	// if !ok {
+	// 	return ErrorUserTypeRequired
+	// }
 
 	p.SetSalesforceId(p.Id)
 
-	v.Id = p.CrowdstartIdC
+	// v.Id = p.CrowdstartIdC
 	//v.UnitPrice =
 
 	return nil

@@ -3,7 +3,7 @@ package store
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/models2/mailinglist"
+	"crowdstart.io/models/mailinglist"
 	"crowdstart.io/util/rest"
 	"crowdstart.io/util/router"
 )
