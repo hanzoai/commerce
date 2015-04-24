@@ -1,13 +1,26 @@
 package facebook
 
 import (
+	"errors"
+	"fmt"
+	"io/ioutil"
+	"math/rand"
+	"net/http"
+	"net/url"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	fb "github.com/huandu/facebook"
 
+	"appengine"
+	"appengine/memcache"
+	"appengine/urlfetch"
+
 	"crowdstart.io/config"
+	"crowdstart.io/middleware"
 	// "crowdstart.io/models"
 
-	// "crowdstart.io/util/queries"
+	"crowdstart.io/util/log"
 )
 
 var appId = config.Facebook.AppId
@@ -32,6 +45,7 @@ func redirectUri(c *gin.Context) string {
 	// 	_redirectUri = url.QueryEscape("http://" + config.UrlFor("store", "/auth/facebook_callback/"))
 	// }
 	// return _redirectUri
+	return ""
 }
 
 var graphVersion = config.Facebook.GraphVersion
@@ -39,13 +53,13 @@ var graphVersion = config.Facebook.GraphVersion
 var app *fb.App
 
 func newSession(c *gin.Context, accessToken string) *fb.Session {
-	// if app == nil {
-	// 	app = fb.New(appId, appSecret)
-	// 	app.RedirectUri = redirectUri(c)
-	// }
-	// session := app.Session(accessToken)
-	// session.HttpClient = urlfetch.Client(appengine.NewContext(c.Request))
-	// return session
+	if app == nil {
+		app = fb.New(appId, appSecret)
+		app.RedirectUri = redirectUri(c)
+	}
+	session := app.Session(accessToken)
+	session.HttpClient = urlfetch.Client(appengine.NewContext(c.Request))
+	return session
 }
 
 // GET /auth/facebook_callback
@@ -126,22 +140,22 @@ func Callback(c *gin.Context) {
 var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
 func CSRFToken(c *gin.Context) string {
-	// size := 16
-	// b := make([]rune, size)
-	// for i := range b {
-	// 	b[i] = letters[rand.Intn(len(letters))]
-	// }
-	// token := string(b)
+	size := 16
+	b := make([]rune, size)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	token := string(b)
 
-	// item := &memcache.Item{
-	// 	Key:        token,
-	// 	Value:      []byte(token),
-	// 	Expiration: 3 * time.Minute,
-	// }
+	item := &memcache.Item{
+		Key:        token,
+		Value:      []byte(token),
+		Expiration: 3 * time.Minute,
+	}
 
-	// ctx := middleware.GetAppEngine(c)
-	// memcache.Set(ctx, item)
-	// return url.QueryEscape(token)
+	ctx := middleware.GetAppEngine(c)
+	memcache.Set(ctx, item)
+	return url.QueryEscape(token)
 }
 
 // GET /auth/facebook
@@ -174,32 +188,32 @@ func LoginUser(c *gin.Context) {
 }
 
 func exchangeCode(c *gin.Context, code string) (token string, err error) {
-	// endpoint := fmt.Sprintf(
-	// 	"https://graph.facebook.com/oauth/access_token?client_id=%s&redirect_uri=%s&client_secret=%s&code=%s",
-	// 	appId, redirectUri(c), appSecret, code,
-	// )
-	// log.Debug(endpoint)
-	// client := urlfetch.Client(middleware.GetAppEngine(c))
-	// req, err := http.NewRequest("GET", endpoint, nil)
-	// if err != nil {
-	// 	log.Panic(err)
-	// }
-	// res, err := client.Do(req)
-	// defer res.Body.Close()
-	// b, err := ioutil.ReadAll(res.Body)
-	// if err != nil {
-	// 	log.Panic(err)
-	// }
-	// body := string(b)
+	endpoint := fmt.Sprintf(
+		"https://graph.facebook.com/oauth/access_token?client_id=%s&redirect_uri=%s&client_secret=%s&code=%s",
+		appId, redirectUri(c), appSecret, code,
+	)
+	log.Debug(endpoint)
+	client := urlfetch.Client(middleware.GetAppEngine(c))
+	req, err := http.NewRequest("GET", endpoint, nil)
+	if err != nil {
+		log.Panic(err)
+	}
+	res, err := client.Do(req)
+	defer res.Body.Close()
+	b, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		log.Panic(err)
+	}
+	body := string(b)
 
-	// values, err := url.ParseQuery(body)
-	// if err != nil {
-	// 	return token, err
-	// }
+	values, err := url.ParseQuery(body)
+	if err != nil {
+		return token, err
+	}
 
-	// token = values.Get("access_token")
-	// if token == "" {
-	// 	return token, errors.New(body)
-	// }
-	// return token, nil
+	token = values.Get("access_token")
+	if token == "" {
+		return token, errors.New(body)
+	}
+	return token, nil
 }
