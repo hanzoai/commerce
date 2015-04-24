@@ -106,7 +106,7 @@ func (m *Model) setId() {
 	if m.StringKey_ {
 		m.Id_ = key.StringID()
 	} else {
-		m.Id_ = hashid.EncodeKey(key)
+		m.Id_ = hashid.EncodeKey(m.Db.Context, key)
 	}
 }
 
@@ -227,6 +227,14 @@ func (m *Model) Get(args ...interface{}) error {
 	return m.Db.Get(m.key, m.Entity)
 }
 
+// Get or panic
+func (m *Model) MustGet(args ...interface{}) {
+	err := m.Get(args...)
+	if err != nil {
+		panic(err)
+	}
+}
+
 // Helper that will retrieve entity by id (which may be an encoded key/slug/sku)
 func (m *Model) GetById(id string) error {
 	// Try to decode key
@@ -288,13 +296,6 @@ func (m *Model) KeyExists(key interface{}) (datastore.Key, error) {
 
 	m.SetKey(keys[0])
 	return keys[0], nil
-}
-
-func (m *Model) MustGet(args ...interface{}) {
-	err := m.Get(args...)
-	if err != nil {
-		panic(err)
-	}
 }
 
 // Get entity from datastore or create new one
