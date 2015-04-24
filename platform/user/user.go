@@ -5,8 +5,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/auth2"
-	"crowdstart.io/auth2/password"
+	"crowdstart.io/auth"
+	"crowdstart.io/auth/password"
 	"crowdstart.io/config"
 	"crowdstart.io/middleware"
 	"crowdstart.io/util/log"
