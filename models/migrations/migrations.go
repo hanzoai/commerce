@@ -24,6 +24,8 @@ func New(name string, setupFn SetupFn, fns ...interface{}) *delay.Function {
 	}
 
 	return task.Func(name, func(c *gin.Context) {
+		setupFn(c)
+
 		for i, fn := range fns {
 			// Check type of worker func to ensure it matches required signature.
 			t := reflect.TypeOf(fn)

@@ -69,12 +69,18 @@ func New(name string, fn interface{}) *ParallelFn {
 // Creates a new parallel datastore worker task, which will operate on a single
 // entity of a given kind at a time (but all of them eventually, in parallel).
 func (fn *ParallelFn) createDelayFn(name string) {
-	fn.DelayFn = delay.Func("parallel-fn-"+name, func(c appengine.Context, fc *fakecontext.Context, cursor string, offset int, limit int, args ...interface{}) {
+	fn.DelayFn = delay.Func("parallel-fn-"+name, func(c appengine.Context, namespace string, fc *fakecontext.Context, cursor string, offset int, limit int, args ...interface{}) {
+		if namespace != "" {
+			c, _ = appengine.Namespace(c, namespace)
+		}
+		log.Warn("namespace %v", namespace)
+
 		// Run query to get results for this batch of entities
 		db := datastore.New(c)
 
 		// Construct query
 		q := db.Query(fn.Kind).Offset(offset).Limit(limit)
+		log.Warn("kind %v", fn.Kind)
 
 		// Run query
 		t := q.Run(c)
@@ -85,6 +91,7 @@ func (fn *ParallelFn) createDelayFn(name string) {
 			key, err := t.Next(entity)
 
 			if err != nil {
+				log.Warn("WHAT")
 				// Done iterating
 				if err == datastore.Done {
 					break
@@ -101,6 +108,8 @@ func (fn *ParallelFn) createDelayFn(name string) {
 				err = nil
 			}
 
+			log.Warn("HUH?")
+
 			err = entity.SetKey(key)
 			if err != nil {
 				log.Error("Failed to set key: %v", err, c)
@@ -115,6 +124,7 @@ func (fn *ParallelFn) createDelayFn(name string) {
 				in = append(in, reflect.ValueOf(arg))
 			}
 
+			log.Warn("CALLING %v", fn)
 			// Run our worker func with this entity
 			fn.Value.Call(in)
 		}

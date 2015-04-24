@@ -24,7 +24,7 @@ import (
 	"crowdstart.io/util/log"
 )
 
-var newNamespace = "cyclic"
+var newNamespace = "suchtees"
 
 func setupNamespaceMigration(c *gin.Context) {
 	if ctx, err := appengine.Namespace(middleware.GetAppEngine(c), "2"); err != nil {
@@ -32,6 +32,7 @@ func setupNamespaceMigration(c *gin.Context) {
 		return
 	} else {
 		c.Set("appengine", ctx)
+		c.Set("namespace", "2")
 	}
 }
 
@@ -81,6 +82,7 @@ var _ = New("namespace", setupNamespaceMigration,
 		variant.Put()
 	},
 	func(db *ds.Datastore, key ds.Key, user *user.User) {
+		log.Warn("%v", user)
 		user.SetNamespace(newNamespace)
 		user.Put()
 	},
