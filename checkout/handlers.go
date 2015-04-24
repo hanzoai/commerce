@@ -8,7 +8,7 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
 	// "crowdstart.io/models"
-	"crowdstart.io/models2/campaign"
+	"crowdstart.io/models/campaign"
 	"crowdstart.io/util/cache"
 	"crowdstart.io/util/log"
 	// "crowdstart.io/util/queries"

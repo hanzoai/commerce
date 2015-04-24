@@ -10,12 +10,12 @@ import (
 
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
-	"crowdstart.io/models2/user"
+	"crowdstart.io/models/user"
 	"crowdstart.io/thirdparty/stripe/connect"
 	"crowdstart.io/util/permission"
 	"crowdstart.io/util/val"
 
-	. "crowdstart.io/models2"
+	. "crowdstart.io/models"
 )
 
 type Organization struct {

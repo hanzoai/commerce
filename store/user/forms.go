@@ -7,9 +7,9 @@ import (
 	"crowdstart.io/util/form"
 	"crowdstart.io/util/val"
 
-	"crowdstart.io/models2/user"
+	"crowdstart.io/models/user"
 
-	. "crowdstart.io/models2"
+	. "crowdstart.io/models"
 )
 
 // User profile form (contact)

@@ -9,8 +9,8 @@ import (
 	"net/http"
 
 	// "crowdstart.io/models"
-	"crowdstart.io/models2/order"
-	"crowdstart.io/models2/user"
+	"crowdstart.io/models/order"
+	"crowdstart.io/models/user"
 
 	"appengine"
 	"appengine/urlfetch"

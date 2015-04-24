@@ -5,7 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/models2/coupon"
+	"crowdstart.io/models/coupon"
 )
 
 const Month = time.Hour * 24 * 30
