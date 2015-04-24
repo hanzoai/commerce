@@ -92,6 +92,9 @@ var BuildTable = (function() {
 
         $tableHeaderData.on('click', function(){
           var newSort = column.field;
+          if (newSort.indexOf('.') > -1) {
+            return
+          }
           if (newSort == 'id') {
             newSort = 'Id_'
           } else {
