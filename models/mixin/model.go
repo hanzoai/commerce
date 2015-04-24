@@ -106,7 +106,7 @@ func (m *Model) setId() {
 	if m.StringKey_ {
 		m.Id_ = key.StringID()
 	} else {
-		m.Id_ = hashid.EncodeKey(key)
+		m.Id_ = hashid.EncodeKey(m.Db.Context, key)
 	}
 }
 
