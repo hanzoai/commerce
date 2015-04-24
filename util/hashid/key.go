@@ -2,35 +2,101 @@ package hashid
 
 import (
 	"errors"
-	"strconv"
 
 	"appengine"
 	aeds "appengine/datastore"
 
 	"crowdstart.io/datastore"
+	"crowdstart.io/util/log"
 )
 
-func encodeNamespace(namespace string) int {
+var (
+	idToNamespace = make(map[int64]string)
+	namespaceToId = make(map[string]int64)
+)
+
+func cache(namespace string, id int64) {
+	idToNamespace[id] = namespace
+	namespaceToId[namespace] = id
+}
+
+type Organization struct {
+	Name string
+}
+
+// Encodes organzation namespace into it's IntID
+func encodeNamespace(ctx appengine.Context, namespace string) int {
+	// Default namespace
 	if namespace == "" {
 		return 0
 	}
 
-	i, err := strconv.Atoi(namespace)
-	if err != nil {
-		panic(err)
+	id, ok := namespaceToId[namespace]
+	if !ok {
+		// Lookup IntID
+		ns, err := appengine.Namespace(ctx, "")
+		if err != nil {
+			panic(err)
+		}
+		db := datastore.New(ns)
+		key, ok, err := db.Query2("organization").Filter("Name=", namespace).KeysOnly().First(nil)
+
+		// Blow up if we can't find organization
+		if err != nil {
+			panic(err)
+		}
+		if !ok {
+			panic("Failed to retrieve organization named: " + namespace)
+		}
+
+		// Get IntID
+		id = key.IntID()
+
+		// Cache result
+		cache(namespace, id)
 	}
-	return i
+	return int(id)
 }
 
-func decodeNamespace(namespace int) string {
-	if namespace == 0 {
+func decodeNamespace(ctx appengine.Context, encoded int) string {
+	log.Debug("Decoding a thing! %v", encoded)
+	// Default namespace
+	if encoded == 0 {
 		return ""
 	}
 
-	return strconv.Itoa(namespace)
+	id := int64(encoded)
+	namespace, ok := idToNamespace[id]
+	if !ok {
+		// Lookup IntID
+		ns, err := appengine.Namespace(ctx, "")
+		if err != nil {
+			panic(err)
+		}
+
+		db := datastore.New(ns)
+		var org Organization
+		key := db.NewKey("organization", "", id, nil)
+		_, ok, err := db.Query2("organization").Filter("__key__=", key).Project("Name").First(&org)
+
+		// Blow up if we can't find organization
+		if err != nil {
+			panic(err)
+		}
+		if !ok {
+			panic("Failed to retrieve organization named: " + namespace)
+		}
+
+		// Get Namespace off organization
+		namespace = org.Name
+
+		// Cache result
+		cache(namespace, id)
+	}
+	return namespace
 }
 
-func EncodeKey(key datastore.Key) string {
+func EncodeKey(ctx appengine.Context, key datastore.Key) string {
 	id := int(key.IntID())
 
 	// Return if incomplete key
@@ -54,22 +120,26 @@ func EncodeKey(key datastore.Key) string {
 
 	// Parent namespace overrides child
 	if parent != nil {
-		namespace = encodeNamespace(parent.Namespace())
+		namespace = encodeNamespace(ctx, parent.Namespace())
 	} else {
-		namespace = encodeNamespace(key.Namespace())
+		namespace = encodeNamespace(ctx, key.Namespace())
 	}
 
 	// Append namespace
 	ids = append(ids, namespace)
 
+	log.Debug("Encoding keyyyyyy: %v, %v", key, ids)
+
 	return Encode(ids...)
 }
 
 func DecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key, err error) {
+	log.Debug("Decoding key: %v", encoded)
 	// Catch panic from Decode
 	defer func() {
 		if r := recover(); r != nil {
 			err = errors.New(r.(string))
+			log.Warn("Failed to decode key '%v': %v", encoded, err, ctx)
 		}
 	}()
 
@@ -82,7 +152,7 @@ func DecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key, err error)
 	}
 
 	// Set namespace
-	namespace := decodeNamespace(ids[n-1])
+	namespace := decodeNamespace(ctx, ids[n-1])
 	ctx, err = appengine.Namespace(ctx, namespace)
 	if err != nil {
 		return key, err
