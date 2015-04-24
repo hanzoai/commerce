@@ -4,7 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/middleware"
-	"crowdstart.io/models2/store"
+	"crowdstart.io/models/store"
 	"crowdstart.io/util/permission"
 	"crowdstart.io/util/rest"
 	"crowdstart.io/util/router"

@@ -6,8 +6,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/datastore"
-	"crowdstart.io/models"
 	stripe "crowdstart.io/thirdparty/stripe/models"
 	"crowdstart.io/util/log"
 )
@@ -30,7 +28,7 @@ type Event struct {
 type ChargeEvent struct {
 	Event
 	Data struct {
-		Charge models.Charge `json:"object"`
+		Charge stripe.Charge `json:"object"`
 	} `json:"data"`
 }
 
@@ -90,98 +88,98 @@ func StripeWebhook(c *gin.Context) {
 }
 
 func chargeModified(c *gin.Context, data []byte) {
-	chargeEvt := new(ChargeEvent)
-	if err := json.Unmarshal(data, chargeEvt); err != nil {
-		c.String(500, "Error parsing charge json")
-		log.Panic(err)
-	}
-	charge := chargeEvt.Data.Charge
+	// chargeEvt := new(ChargeEvent)
+	// if err := json.Unmarshal(data, chargeEvt); err != nil {
+	// 	c.String(500, "Error parsing charge json")
+	// 	log.Panic(err)
+	// }
+	// charge := chargeEvt.Data.Charge
 
-	db := datastore.New(c)
-	order := new(models.Order)
-	key, err := db.Query("order").Filter("Charges.ID =", charge.ID).Run(db.Context).Next(order)
-	if err != nil {
-		c.String(500, "Error retrieving order by charge id")
-		log.Panic(err)
-	}
+	// db := datastore.New(c)
+	// order := new(models.Order)
+	// key, err := db.Query("order").Filter("Charges.ID =", charge.ID).Run(db.Context).Next(order)
+	// if err != nil {
+	// 	c.String(500, "Error retrieving order by charge id")
+	// 	log.Panic(err)
+	// }
 
-	for i := range order.Charges {
-		if order.Charges[i].ID == charge.ID {
-			order.Charges[i] = charge
-			break
-		}
-	}
+	// for i := range order.Charges {
+	// 	if order.Charges[i].ID == charge.ID {
+	// 		order.Charges[i] = charge
+	// 		break
+	// 	}
+	// }
 
-	if _, err := db.PutKind("order", key, order); err != nil {
-		c.String(500, "Error saving order")
-		log.Panic(err)
-	}
+	// if _, err := db.PutKind("order", key, order); err != nil {
+	// 	c.String(500, "Error saving order")
+	// 	log.Panic(err)
+	// }
 
-	c.String(200, "ok")
+	// c.String(200, "ok")
 }
 
 func chargeDisputed(c *gin.Context, data []byte) {
-	event := new(DisputeEvent)
-	if err := json.Unmarshal(data, event); err != nil {
-		c.String(500, "Error parsing dispute json")
-		log.Panic(err)
-	}
-	dispute := event.Data.Dispute
+	// event := new(DisputeEvent)
+	// if err := json.Unmarshal(data, event); err != nil {
+	// 	c.String(500, "Error parsing dispute json")
+	// 	log.Panic(err)
+	// }
+	// dispute := event.Data.Dispute
 
-	db := datastore.New(c)
-	order := new(models.Order)
-	key, err := db.Query("order").Filter("Charges.ID =", dispute.Charge).Run(db.Context).Next(order)
-	if err != nil {
-		c.String(500, "Error retrieving order")
-		log.Panic(err)
-	}
+	// db := datastore.New(c)
+	// order := new(models.Order)
+	// key, err := db.Query("order").Filter("Charges.ID =", dispute.Charge).Run(db.Context).Next(order)
+	// if err != nil {
+	// 	c.String(500, "Error retrieving order")
+	// 	log.Panic(err)
+	// }
 
-	for i, charge := range order.Charges {
-		if charge.ID == dispute.Charge {
-			order.Charges[i].Disputed = false
-			break
-		}
-	}
+	// for i, charge := range order.Charges {
+	// 	if charge.ID == dispute.Charge {
+	// 		order.Charges[i].Disputed = false
+	// 		break
+	// 	}
+	// }
 
-	if _, err := db.Put("dispute", &dispute); err != nil {
-		c.String(500, "Error saving dispute")
-		log.Panic(err)
-	}
+	// if _, err := db.Put("dispute", &dispute); err != nil {
+	// 	c.String(500, "Error saving dispute")
+	// 	log.Panic(err)
+	// }
 
-	if _, err := db.PutKind("order", key, order); err != nil {
-		c.String(500, "Error saving order")
-		log.Panic(err)
-	}
+	// if _, err := db.PutKind("order", key, order); err != nil {
+	// 	c.String(500, "Error saving order")
+	// 	log.Panic(err)
+	// }
 
-	c.String(200, "ok")
+	// c.String(200, "ok")
 }
 
 func accountUpdated(c *gin.Context, data []byte) {
-	event := new(AccountUpdatedEvent)
-	if err := json.Unmarshal(data, event); err != nil {
-		c.String(500, "Error parsing account json")
-		log.Panic(err)
-	}
-	customerId := event.Data.Account.ID
-	db := datastore.New(c)
+	// event := new(AccountUpdatedEvent)
+	// if err := json.Unmarshal(data, event); err != nil {
+	// 	c.String(500, "Error parsing account json")
+	// 	log.Panic(err)
+	// }
+	// customerId := event.Data.Account.ID
+	// db := datastore.New(c)
 
-	user := new(models.User)
-	key, err := db.Query("user").
-		Filter("Stripe.CustomerId =", customerId).
-		Run(db.Context).
-		Next(user)
-	if err != nil {
-		c.String(500, "Error retrieving user")
-		log.Panic(err)
-	}
+	// user := new(models.User)
+	// key, err := db.Query("user").
+	// 	Filter("Stripe.CustomerId =", customerId).
+	// 	Run(db.Context).
+	// 	Next(user)
+	// if err != nil {
+	// 	c.String(500, "Error retrieving user")
+	// 	log.Panic(err)
+	// }
 
-	user.Stripe.Account = event.Data.Account
+	// user.Stripe.Account = event.Data.Account
 
-	_, err = db.PutKind("user", key, user)
-	if err != nil {
-		c.String(500, "Error saving user")
-		log.Panic(err)
-	}
+	// _, err = db.PutKind("user", key, user)
+	// if err != nil {
+	// 	c.String(500, "Error saving user")
+	// 	log.Panic(err)
+	// }
 
-	c.String(200, "ok")
+	// c.String(200, "ok")
 }

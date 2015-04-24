@@ -1,8 +1,8 @@
 package test
 
 import (
-	"crowdstart.io/models2/payment"
-	"crowdstart.io/models2/user"
+	"crowdstart.io/models/payment"
+	"crowdstart.io/models/user"
 	"crowdstart.io/util/log"
 
 	. "crowdstart.io/util/test/ginkgo"

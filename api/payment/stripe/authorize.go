@@ -1,10 +1,10 @@
 package stripe
 
 import (
-	"crowdstart.io/models2/order"
-	"crowdstart.io/models2/organization"
-	"crowdstart.io/models2/payment"
-	"crowdstart.io/models2/user"
+	"crowdstart.io/models/order"
+	"crowdstart.io/models/organization"
+	"crowdstart.io/models/payment"
+	"crowdstart.io/models/user"
 	"crowdstart.io/thirdparty/stripe"
 	"crowdstart.io/util/log"
 )

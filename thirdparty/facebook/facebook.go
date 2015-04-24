@@ -9,19 +9,18 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/gin-gonic/gin"
+	fb "github.com/huandu/facebook"
+
 	"appengine"
 	"appengine/memcache"
 	"appengine/urlfetch"
 
-	"github.com/gin-gonic/gin"
-	fb "github.com/huandu/facebook"
-
-	"crowdstart.io/auth"
 	"crowdstart.io/config"
 	"crowdstart.io/middleware"
-	"crowdstart.io/models"
+	// "crowdstart.io/models"
+
 	"crowdstart.io/util/log"
-	"crowdstart.io/util/queries"
 )
 
 var appId = config.Facebook.AppId
@@ -33,19 +32,20 @@ var _redirectUri string
 // Sets _redirectUri as necessary for dev machines
 // Uses config.UrlFor in production and staging.
 func redirectUri(c *gin.Context) string {
-	if config.IsDevelopment && _redirectUri == "" {
-		client := urlfetch.Client(middleware.GetAppEngine(c))
-		req, _ := http.NewRequest("GET", "http://checkip.amazonaws.com", nil)
-		res, _ := client.Do(req)
-		defer res.Body.Close()
-		b, _ := ioutil.ReadAll(res.Body)
-		ip := string(b)
-		ip = ip[0 : len(ip)-1]
-		_redirectUri = "http://" + ip + ":8080/store/auth/facebook_callback"
-	} else if (config.IsProduction || config.IsStaging) && _redirectUri == "" {
-		_redirectUri = url.QueryEscape("http://" + config.UrlFor("store", "/auth/facebook_callback/"))
-	}
-	return _redirectUri
+	// if config.IsDevelopment && _redirectUri == "" {
+	// 	client := urlfetch.Client(middleware.GetAppEngine(c))
+	// 	req, _ := http.NewRequest("GET", "http://checkip.amazonaws.com", nil)
+	// 	res, _ := client.Do(req)
+	// 	defer res.Body.Close()
+	// 	b, _ := ioutil.ReadAll(res.Body)
+	// 	ip := string(b)
+	// 	ip = ip[0 : len(ip)-1]
+	// 	_redirectUri = "http://" + ip + ":8080/store/auth/facebook_callback"
+	// } else if (config.IsProduction || config.IsStaging) && _redirectUri == "" {
+	// 	_redirectUri = url.QueryEscape("http://" + config.UrlFor("store", "/auth/facebook_callback/"))
+	// }
+	// return _redirectUri
+	return ""
 }
 
 var graphVersion = config.Facebook.GraphVersion
@@ -64,75 +64,75 @@ func newSession(c *gin.Context, accessToken string) *fb.Session {
 
 // GET /auth/facebook_callback
 func Callback(c *gin.Context) {
-	req := c.Request
-	e := req.URL.Query().Get("error")
-	if e != "" {
-		description := req.URL.Query().Get("error_description")
-		reason := req.URL.Query().Get("error_reason")
-		log.Info(
-			"Error in facebook callback \n %s \n %s \n %s",
-			e, reason, description,
-		)
-		return
-	}
+	// req := c.Request
+	// e := req.URL.Query().Get("error")
+	// if e != "" {
+	// 	description := req.URL.Query().Get("error_description")
+	// 	reason := req.URL.Query().Get("error_reason")
+	// 	log.Info(
+	// 		"Error in facebook callback \n %s \n %s \n %s",
+	// 		e, reason, description,
+	// 	)
+	// 	return
+	// }
 
-	if resState := req.URL.Query().Get("state"); true {
-		log.Debug(resState)
-		ctx := middleware.GetAppEngine(c)
-		_, err := memcache.Get(ctx, resState)
-		if err != nil {
-			log.Panic("CSRF attempt \n\tExpected: %s", resState)
-		}
-	}
+	// if resState := req.URL.Query().Get("state"); true {
+	// 	log.Debug(resState)
+	// 	ctx := middleware.GetAppEngine(c)
+	// 	_, err := memcache.Get(ctx, resState)
+	// 	if err != nil {
+	// 		log.Panic("CSRF attempt \n\tExpected: %s", resState)
+	// 	}
+	// }
 
-	code := req.URL.Query().Get("code")
-	if code == "" {
-		log.Panic("No code found")
-	}
-	accessToken, err := exchangeCode(c, code)
-	if err != nil {
-		log.Panic(err)
-	}
+	// code := req.URL.Query().Get("code")
+	// if code == "" {
+	// 	log.Panic("No code found")
+	// }
+	// accessToken, err := exchangeCode(c, code)
+	// if err != nil {
+	// 	log.Panic(err)
+	// }
 
-	session := newSession(c, accessToken)
-	if err := session.Validate(); err != nil {
-		log.Panic("AccessToken is invalid %s", session.AccessToken())
-	}
+	// session := newSession(c, accessToken)
+	// if err := session.Validate(); err != nil {
+	// 	log.Panic("AccessToken is invalid %s", session.AccessToken())
+	// }
 
-	me, err := session.Get("/me", nil)
-	if err != nil {
-		log.Panic("Error accessing Graph API with accessToken", err)
-	}
+	// me, err := session.Get("/me", nil)
+	// if err != nil {
+	// 	log.Panic("Error accessing Graph API with accessToken", err)
+	// }
 
-	user := new(models.User)
-	if err := me.Decode(&user.Facebook); err != nil {
-		log.Debug("%v")
-	}
+	// user := new(models.User)
+	// if err := me.Decode(&user.Facebook); err != nil {
+	// 	log.Debug("%v")
+	// }
 
-	if user.Facebook.Verified {
-		log.Debug("Verified")
+	// if user.Facebook.Verified {
+	// 	log.Debug("Verified")
 
-		user.FirstName = user.Facebook.FirstName
-		user.LastName = user.Facebook.LastName
-		user.Email = user.Facebook.Email
+	// 	user.FirstName = user.Facebook.FirstName
+	// 	user.LastName = user.Facebook.LastName
+	// 	user.Email = user.Facebook.Email
 
-		q := queries.New(c)
-		if err := q.UpsertUser(user); err != nil {
-			log.Debug("Failed to upsert user")
-			return
-		}
+	// 	q := queries.New(c)
+	// 	if err := q.UpsertUser(user); err != nil {
+	// 		log.Debug("Failed to upsert user")
+	// 		return
+	// 	}
 
-		if err := auth.Login(c, user.Email); err != nil {
-			log.Debug("Failed to login")
-			log.Debug("%#v", err)
-			c.Redirect(302, config.UrlFor("store", "/login"))
-			return
-		}
-		c.Redirect(302, config.UrlFor("store"))
-	} else {
-		auth.Logout(c)
-		c.Redirect(302, config.UrlFor("store", "/login"))
-	}
+	// 	if err := auth.Login(c, user.Email); err != nil {
+	// 		log.Debug("Failed to login")
+	// 		log.Debug("%#v", err)
+	// 		c.Redirect(302, config.UrlFor("store", "/login"))
+	// 		return
+	// 	}
+	// 	c.Redirect(302, config.UrlFor("store"))
+	// } else {
+	// 	auth.Logout(c)
+	// 	c.Redirect(302, config.UrlFor("store", "/login"))
+	// }
 }
 
 // Generates a token and inserts it into memcache
@@ -160,31 +160,31 @@ func CSRFToken(c *gin.Context) string {
 
 // GET /auth/facebook
 func LoginUser(c *gin.Context) {
-	state := CSRFToken(c)
-	log.Debug(state)
-	url := fmt.Sprintf(
-		"https://www.facebook.com/dialog/oauth?client_id=%s&state=%s&redirect_uri=%s&response_type=%s&scope=%s",
-		appId, state,
-		redirectUri(c), "code",
-		"email",
-	)
+	// state := CSRFToken(c)
+	// log.Debug(state)
+	// url := fmt.Sprintf(
+	// 	"https://www.facebook.com/dialog/oauth?client_id=%s&state=%s&redirect_uri=%s&response_type=%s&scope=%s",
+	// 	appId, state,
+	// 	redirectUri(c), "code",
+	// 	"email",
+	// )
 
-	if auth.IsLoggedIn(c) {
-		log.Debug("Logged in")
-		user, _ := auth.GetUser(c)
-		if user.Facebook.AccessToken != "" {
-			session := newSession(c, user.Facebook.AccessToken)
-			if err := session.Validate(); err == nil {
-				// Token is still valid
-				auth.Login(c, user.Email)
-				c.Redirect(302, "/profile")
-				return
-			}
-		}
-	}
+	// if auth.IsLoggedIn(c) {
+	// 	log.Debug("Logged in")
+	// 	user, _ := auth.GetUser(c)
+	// 	if user.Facebook.AccessToken != "" {
+	// 		session := newSession(c, user.Facebook.AccessToken)
+	// 		if err := session.Validate(); err == nil {
+	// 			// Token is still valid
+	// 			auth.Login(c, user.Email)
+	// 			c.Redirect(302, "/profile")
+	// 			return
+	// 		}
+	// 	}
+	// }
 
-	log.Debug("Not logged in")
-	c.Redirect(302, url)
+	// log.Debug("Not logged in")
+	// c.Redirect(302, url)
 }
 
 func exchangeCode(c *gin.Context, code string) (token string, err error) {
