@@ -7,9 +7,9 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/config"
-	"crowdstart.io/models/mailinglist"
 	"crowdstart.io/models/types/country"
 	"crowdstart.io/models/types/currency"
+	"crowdstart.io/models/types/thankyou"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 )
@@ -43,11 +43,11 @@ func TemplateSet() *pongo2.TemplateSet {
 	set.Globals["constants"] = struct {
 		Countries     []country.Country
 		CurrencyTypes []currency.Type
-		ThankYouTypes []mailinglist.ThankYou
+		ThankYouTypes []thankyou.Type
 	}{
 		Countries:     country.Countries,
 		CurrencyTypes: currency.Types,
-		ThankYouTypes: mailinglist.ThankYouTypes,
+		ThankYouTypes: thankyou.Types,
 	}
 	return set
 }
@@ -109,4 +109,15 @@ func RenderString(path string, pairs ...interface{}) string {
 	}
 
 	return out
+}
+
+func RenderStringFromString(template string, pairs ...interface{}) string {
+	// Create context from pairs
+	ctx := pongo2.Context{}
+
+	for i := 0; i < len(pairs); i = i + 2 {
+		ctx[pairs[i].(string)] = pairs[i+1]
+	}
+
+	return pongo2.RenderTemplateString(template, ctx)
 }
