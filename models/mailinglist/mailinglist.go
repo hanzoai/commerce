@@ -28,16 +28,6 @@ type Mailchimp struct {
 	SendWelcome bool `json:"sendWelcome"`
 }
 
-type ThankYou string
-
-const (
-	Html     ThankYou = "html"
-	Redirect          = "redirect"
-	Disabled          = "disabled"
-)
-
-var ThankYouTypes = []ThankYou{Html, Redirect, Disabled}
-
 type MailingList struct {
 	mixin.Model
 
@@ -52,9 +42,9 @@ type MailingList struct {
 
 	// Url to Thank you page
 	ThankYou struct {
-		Type ThankYou `json:"type"`
-		Url  string   `json:"url,omitempty"`
-		HTML string   `json:"html,omitempty"`
+		Type thankyou.Type `json:"type"`
+		Url  string        `json:"url,omitempty"`
+		HTML string        `json:"html,omitempty"`
 	} `json:"thankyou"`
 
 	// Conversion tracking info
