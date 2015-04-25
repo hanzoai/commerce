@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"crowdstart.io/util/log"
+	"crowdstart.io/util/template"
 )
 
 type ValidatorFunction func(interface{}) *FieldError
@@ -118,6 +119,7 @@ func (v *Validator) Exists() *Validator {
 		}
 		return NewFieldError(field, "Field cannot be blank")
 	})
+	v.jsTmplMap[field] = append(v.jsTmplMap[field], template.RenderStringFromString(ExistsCoffee, "field", field))
 	return v
 }
 
@@ -135,6 +137,7 @@ func (v *Validator) IsEmail() *Validator {
 		}
 		return NewFieldError(field, "Email is invalid")
 	})
+	v.jsTmplMap[field] = append(v.jsTmplMap[field], template.RenderStringFromString(IsEmailCoffee, "field", field))
 	return v
 }
 
@@ -149,6 +152,7 @@ func (v *Validator) IsPassword() *Validator {
 		}
 		return NewFieldError(field, "Passwords must be atleast 6 characters long.")
 	})
+	v.jsTmplMap[field] = append(v.jsTmplMap[field], template.RenderStringFromString(IsPasswordCoffee, "field", field))
 	return v
 }
 
@@ -163,6 +167,7 @@ func (v *Validator) MinLength(minLength int) *Validator {
 		}
 		return NewFieldError(field, fmt.Sprintf("Field must be atleast %d characters long.", minLength))
 	})
+	v.jsTmplMap[field] = append(v.jsTmplMap[field], template.RenderStringFromString(IsMinLengthCoffee, "field", field, "minLength", minLength))
 	return v
 }
 
@@ -178,8 +183,9 @@ func (v *Validator) Matches(strs ...string) *Validator {
 				}
 			}
 		}
-		return NewFieldError(field, fmt.Sprintf("Field must be match one of ['%v'].", strings.Join(strs, "', '")))
+		return NewFieldError(field, fmt.Sprintf("Field must be one of ['%v'], not '%v'.", strings.Join(strs, "', '"), i))
 	})
+	v.jsTmplMap[field] = append(v.jsTmplMap[field], template.RenderStringFromString(IsMatchesCoffee, "field", field, "matches", strs))
 	return v
 }
 
