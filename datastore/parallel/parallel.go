@@ -9,8 +9,8 @@ import (
 	"appengine/delay"
 
 	"crowdstart.io/datastore"
+	"crowdstart.io/models"
 	"crowdstart.io/models/mixin"
-	"crowdstart.io/util/fakecontext"
 	"crowdstart.io/util/log"
 )
 
@@ -22,6 +22,8 @@ type ParallelFn struct {
 	DelayFn    *delay.Function
 }
 
+var parallelFns = make(map[string]*ParallelFn)
+
 func New(name string, fn interface{}) *ParallelFn {
 	// Check type of worker func to ensure it matches required signature.
 	typ := reflect.TypeOf(fn)
@@ -31,10 +33,10 @@ func New(name string, fn interface{}) *ParallelFn {
 		log.Panic("Function is required for second parameter")
 	}
 
-	// fn should be a function that takes at least three arguments
+	// fn should be a function that takes at least two arguments
 	argNum := typ.NumIn()
-	if argNum < 3 {
-		log.Panic("Function requires at least three arguments")
+	if argNum < 2 {
+		log.Panic("Function requires at least two arguments")
 	}
 
 	// Check fn's first argument
@@ -42,13 +44,8 @@ func New(name string, fn interface{}) *ParallelFn {
 		log.Panic("First argument must be datastore.Datastore: %v", typ)
 	}
 
-	// Check fn's second argument
-	if typ.In(1) != keyType {
-		log.Panic("Second argument must be datastore.Key")
-	}
-
 	// Get entity type & kind
-	entityType := typ.In(2).Elem()
+	entityType := typ.In(1).Elem()
 	entity := reflect.New(entityType).Interface().(mixin.Kind)
 	kind := entity.Kind()
 
@@ -63,27 +60,26 @@ func New(name string, fn interface{}) *ParallelFn {
 	// Create delay function
 	p.createDelayFn(p.Name)
 
+	parallelFns[p.Name] = p
+
 	return p
 }
 
 // Creates a new parallel datastore worker task, which will operate on a single
 // entity of a given kind at a time (but all of them eventually, in parallel).
 func (fn *ParallelFn) createDelayFn(name string) {
-	fn.DelayFn = delay.Func("parallel-fn-"+name, func(c appengine.Context, namespace string, fc *fakecontext.Context, cursor string, offset int, limit int, args ...interface{}) {
-		if namespace != "" {
-			c, _ = appengine.Namespace(c, namespace)
-		}
-		log.Warn("namespace %v", namespace)
+	fn.DelayFn = delay.Func("parallel-fn-"+name, func(ctx appengine.Context, namespace string, offset int, batchSize int, args ...interface{}) {
+		// Explicitly switch namespace. TODO: this should not be necessary, bug?
+		ctx, _ = appengine.Namespace(ctx, namespace)
 
 		// Run query to get results for this batch of entities
-		db := datastore.New(c)
+		db := datastore.New(ctx)
 
 		// Construct query
-		q := db.Query(fn.Kind).Offset(offset).Limit(limit)
-		log.Warn("kind %v", fn.Kind)
+		q := db.Query2(fn.Kind).Offset(offset).Limit(batchSize)
 
 		// Run query
-		t := q.Run(c)
+		t := q.Run()
 
 		// Loop over entities passing them into workerFunc one at a time
 		for {
@@ -91,7 +87,6 @@ func (fn *ParallelFn) createDelayFn(name string) {
 			key, err := t.Next(entity)
 
 			if err != nil {
-				log.Warn("WHAT")
 				// Done iterating
 				if err == datastore.Done {
 					break
@@ -99,32 +94,29 @@ func (fn *ParallelFn) createDelayFn(name string) {
 
 				// Check if genuine error occurred
 				if db.SkipFieldMismatch(err) != nil {
-					log.Error("datastore.parallel worker encountered error: %v", err, c)
+					log.Error("datastore.parallel worker encountered error: %v", err, ctx)
 					continue
 				}
 
 				// Ignore field mismatch
-				log.Warn("Field mismatch when getting %v: %v", key, err, c)
+				log.Warn("Field mismatch when getting %v: %v", key, err, ctx)
 				err = nil
 			}
 
-			log.Warn("HUH?")
-
 			err = entity.SetKey(key)
 			if err != nil {
-				log.Error("Failed to set key: %v", err, c)
+				log.Error("Failed to set key: %v", err, ctx)
 				continue
 			}
 
 			// Build arguments for workerFunc
-			in := []reflect.Value{reflect.ValueOf(db), reflect.ValueOf(key), reflect.ValueOf(entity)}
+			in := []reflect.Value{reflect.ValueOf(db), reflect.ValueOf(entity)}
 
 			// Append variadic args
 			for _, arg := range args {
 				in = append(in, reflect.ValueOf(arg))
 			}
 
-			log.Warn("CALLING %v", fn)
 			// Run our worker func with this entity
 			fn.Value.Call(in)
 		}
@@ -136,12 +128,57 @@ func (fn *ParallelFn) Call(ctx appengine.Context, args ...interface{}) {
 	fn.DelayFn.Call(ctx, args...)
 }
 
-// Return a wrapped query which we can run our workers across
-func (fn *ParallelFn) Query(c *gin.Context) *Query {
-	return NewQuery(c, fn)
-}
-
 // Run fn in parallel across all entities
 func (fn *ParallelFn) Run(c *gin.Context, batchSize int, args ...interface{}) error {
-	return fn.Query(c).RunAll(batchSize, args...)
+	// Limit results in test mode
+	if c.MustGet("test").(bool) {
+		batchSize = 1
+	}
+
+	ctx := c.MustGet("appengine").(appengine.Context)
+
+	namespaces := make([]string, 0)
+
+	// Check if namespace is set explicitly
+	v, err := c.Get("namespace")
+	if err == nil {
+		namespace, ok := v.(string)
+		if ok {
+			namespaces = append(namespaces, namespace)
+		}
+	}
+
+	// Use all namespaces
+	if len(namespaces) == 0 {
+		namespaces = models.GetNamespaces(ctx)
+	}
+
+	// Iterate through namespaces and initialize workers to run in each
+	for _, ns := range namespaces {
+		args := append([]interface{}{fn.Name, ns, batchSize}, args...)
+		initNamespace.Call(ctx, args...)
+	}
+
+	return nil
 }
+
+// Start individual runs in a given namespace
+var initNamespace = delay.Func("parallel-init", func(ctx appengine.Context, fnName string, namespace string, batchSize int, args ...interface{}) {
+	// Set namespace explicitly
+	ctx, _ = appengine.Namespace(ctx, namespace)
+	db := datastore.New(ctx)
+
+	// Get relevant ParallelFn
+	fn := parallelFns[fnName]
+
+	total, _ := db.Query2(fn.Kind).Count()
+
+	// Start all workers
+	for offset := 0; offset < total; offset += batchSize {
+		// Append variadic arguments after required args
+		args := append([]interface{}{namespace, offset, batchSize}, args...)
+
+		// Call delay.Function
+		fn.DelayFn.Call(ctx, args...)
+	}
+})
