@@ -1,7 +1,6 @@
 package migration
 
 import (
-	"reflect"
 	"strconv"
 
 	"appengine/delay"
@@ -9,7 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/datastore/parallel"
-	"crowdstart.io/util/log"
 	"crowdstart.io/util/task"
 )
 
@@ -24,22 +22,11 @@ func New(name string, setupFn SetupFn, fns ...interface{}) *delay.Function {
 	}
 
 	return task.Func(name, func(c *gin.Context) {
+		// Call setup fn
 		setupFn(c)
 
-		for i, fn := range fns {
-			// Check type of worker func to ensure it matches required signature.
-			t := reflect.TypeOf(fn)
-
-			// Ensure that workerFunc is actually a func
-			if t.Kind() != reflect.Func {
-				log.Panic("Non-function passed in as migration.")
-			}
-
-			argNum := t.NumIn()
-			if argNum < 3 {
-				log.Panic("Function requires at least three arguments")
-			}
-
+		for i, _ := range fns {
+			// Run task fn
 			tasks[i].Run(c, 50)
 		}
 	})
