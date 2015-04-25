@@ -11,23 +11,15 @@ import (
 
 type ValidatorFunction func(interface{}) *FieldError
 
-// Storage for custom rules
-var customRules map[string]ValidatorFunction
-
-// RegisterRule adds a custom rule to the validaiton library
-func RegisterRule(name string, vfn ValidatorFunction) {
-	customRules[name] = vfn
-}
-
 type Validator struct {
 	Value     reflect.Value
 	lastField string
 	fnsMap    map[string][]ValidatorFunction
+	jsTmplMap map[string][]string
 }
 
 // Create a new Validator using a custom struct
 func New(value interface{}) *Validator {
-
 	return &Validator{Value: depointer(reflect.ValueOf(value)), fnsMap: make(map[string][]ValidatorFunction)}
 }
 
@@ -188,6 +180,13 @@ func (v *Validator) Matches(strs ...string) *Validator {
 		}
 		return NewFieldError(field, fmt.Sprintf("Field must be match one of ['%v'].", strings.Join(strs, "', '")))
 	})
+	return v
+}
+
+func (v *Validator) CustomRule(fn ValidatorFunction, jsTmpl string) *Validator {
+	field := v.lastField
+	v.fnsMap[field] = append(v.fnsMap[field], fn)
+	v.jsTmplMap[field] = append(v.jsTmplMap[field], jsTmpl)
 	return v
 }
 
