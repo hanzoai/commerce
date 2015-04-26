@@ -18,10 +18,11 @@ func idFromNamespace(c *gin.Context) {
 	namespace := c.Params.ByName("namespace")
 	db := datastore.New(c)
 	key, ok, err := db.Query2("organization").Filter("Name=", namespace).KeysOnly().First(nil)
-
-	// Blow up if we can't find organization
+	if !ok {
+		log.Panic("Query for organization failed", c)
+	}
 	if err != nil {
-		log.Panic("Query for organization failed", err, c)
+		log.Panic("Query for organization failed: %v", err, c)
 	}
 	if !ok {
 		log.Panic("Failed to retrieve organization named '%v'", namespace, err, c)
@@ -43,10 +44,11 @@ func namespaceFromId(c *gin.Context) {
 	var org Organization
 	key := db.NewKey("organization", "", id, nil)
 	_, ok, err := db.Query2("organization").Filter("__key__=", key).Project("Name").First(&org)
-
-	// Blow up if we can't find organization
+	if !ok {
+		log.Panic("Query for organization failed", c)
+	}
 	if err != nil {
-		log.Panic("Query for organization failed", err, c)
+		log.Panic("Query for organization failed: %v", err, c)
 	}
 	if !ok {
 		log.Panic("Failed to retrieve organization with IntID '%v'", id, err, c)
