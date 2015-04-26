@@ -27,7 +27,7 @@ func cache(namespace string, id int64) {
 // Fetch namespace info from our API
 func fetch(ctx appengine.Context, url string) (string, error) {
 	// Get full URL to API endpoint
-	endpoint := config.UrlFor("api", "/c/namespace")
+	endpoint := config.AbsoluteUrlFor("api", "/c/namespace")
 
 	// Construct URL for request
 	url = endpoint + url
