@@ -14,14 +14,14 @@ func Staging() *Config {
 	config.Prefixes["preorder"] = "/"
 	config.Prefixes["store"] = "/"
 
-	config.Hosts["default"] = "default-dot-crowdstart-staging.appspot.com"
-	config.Hosts["api"] = "api-dot-crowdstart-staging.appspot.com"
-	config.Hosts["checkout"] = "checkout-dot-crowdstart-staging.appspot.com"
-	config.Hosts["platform"] = "platform-dot-crowdstart-staging.appspot.com"
-	config.Hosts["preorder"] = "preorder-dot-crowdstart-staging.appspot.com"
-	config.Hosts["store"] = "store-dot-crowdstart-staging.appspot.com"
+	config.Hosts["default"] = "default.staging.crowdstart.com"
+	config.Hosts["api"] = "api.staging.crowdstart.com"
+	config.Hosts["checkout"] = "checkout.staging.crowdstart.com"
+	config.Hosts["platform"] = "platform.staging.crowdstart.com"
+	config.Hosts["preorder"] = "preorder.staging.crowdstart.com"
+	config.Hosts["store"] = "store.staging.crowdstart.com"
 
-	config.StaticUrl = "//static-dot-crowdstart-staging.appspot.com"
+	config.StaticUrl = "//static.staging.crowdstart.com"
 
 	config.Stripe.ClientId = config.Stripe.DevelopmentClientId
 	config.Stripe.PublishableKey = config.Stripe.TestPublishableKey
