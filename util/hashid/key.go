@@ -3,7 +3,6 @@ package hashid
 import (
 	"errors"
 	"fmt"
-	"net/http"
 
 	"appengine"
 	aeds "appengine/datastore"
@@ -26,21 +25,18 @@ type Organization struct {
 	Name string
 }
 
-// Get a fresh appengine context so we can safely query the default namespace.
-func newContext() appengine.Context {
-	// Create dummy request
-	req, err := http.NewRequest("GET", "http://localhost", nil)
+// Return default namespace
+func getDefaultNs(ctx appengine.Context) appengine.Context {
+	ctx, err := appengine.Namespace(ctx, "default")
 	if err != nil {
 		panic(err)
 	}
-
-	return appengine.NewContext(req)
+	return ctx
 }
 
 // Get IntID by querying organization from it's namespace name
 func getId(ctx appengine.Context, namespace string) int64 {
-	db := datastore.New(newContext())
-
+	db := datastore.New(getDefaultNs(ctx))
 	key, ok, err := db.Query2("organization").Filter("Name=", namespace).KeysOnly().First(nil)
 
 	// Blow up if we can't find organization
@@ -56,7 +52,7 @@ func getId(ctx appengine.Context, namespace string) int64 {
 
 // Get namespace from organization using it's IntID
 func getNamespace(ctx appengine.Context, id int64) string {
-	db := datastore.New(newContext())
+	db := datastore.New(getDefaultNs(ctx))
 
 	var org Organization
 	key := db.NewKey("organization", "", id, nil)
