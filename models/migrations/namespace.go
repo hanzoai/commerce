@@ -24,7 +24,7 @@ import (
 var newNamespace = "cyclic"
 
 func setupNamespaceMigration(c *gin.Context) {
-	c.Set("namespace", "406001")
+	c.Set("namespace", "4060001")
 }
 
 var _ = New("namespace", setupNamespaceMigration,
