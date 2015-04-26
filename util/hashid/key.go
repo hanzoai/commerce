@@ -84,7 +84,6 @@ func encodeNamespace(ctx appengine.Context, namespace string) int {
 }
 
 func decodeNamespace(ctx appengine.Context, encoded int) string {
-	log.Debug("Decoding a thing! %v", encoded)
 	// Default namespace
 	if encoded == 0 {
 		return ""
