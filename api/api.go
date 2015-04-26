@@ -22,6 +22,7 @@ import (
 
 	accessTokenApi "crowdstart.io/api/accessToken"
 	mailinglistApi "crowdstart.io/api/mailinglist"
+	namespaceApi "crowdstart.io/api/namespace"
 	orderApi "crowdstart.io/api/order"
 	paymentApi "crowdstart.io/api/payment"
 	storeApi "crowdstart.io/api/store"
@@ -85,6 +86,9 @@ func init() {
 	user.DefaultNamespace = true
 	user.Prefix = "/c/"
 	user.Route(router, adminRequired)
+
+	// Namespace API
+	namespaceApi.Route(router)
 
 	// Access token API
 	accessTokenApi.Route(router)
