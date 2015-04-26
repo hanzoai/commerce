@@ -25,14 +25,14 @@ import (
 	ds "crowdstart.io/datastore"
 )
 
-var oldNamespace = "2"
-var newNamespace = "suchtees"
+var oldNamespace = "4060001"
+var newNamespace = "cyclic"
 
 func setupNamespaceMigration(c *gin.Context) {
 	db := datastore.New(c)
 
 	org := new(organization.Organization)
-	key, ok, err := db.Query2("organization").Filter("Name=", "suchtees").First(org)
+	key, ok, err := db.Query2("organization").Filter("Name=", oldNamespace).First(org)
 	if !ok {
 		panic("Unable to find organization")
 	}
