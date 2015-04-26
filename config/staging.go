@@ -7,20 +7,31 @@ func Staging() *Config {
 	config.IsProduction = false
 	config.IsStaging = true
 
-	config.Hosts["default"] = "default-dot-crowdstart-staging.appspot.com"
-	config.Hosts["api"] = "api-dot-crowdstart-staging.appspot.com"
-	config.Hosts["checkout"] = "checkout-dot-crowdstart-staging.appspot.com"
-	config.Hosts["platform"] = "platform-dot-crowdstart-staging.appspot.com"
-	config.Hosts["preorder"] = "preorder-dot-crowdstart-staging.appspot.com"
-	config.Hosts["store"] = "store-dot-crowdstart-staging.appspot.com"
+	config.Prefixes["default"] = "/"
+	config.Prefixes["api"] = "/"
+	config.Prefixes["checkout"] = "/"
+	config.Prefixes["platform"] = "/"
+	config.Prefixes["preorder"] = "/"
+	config.Prefixes["store"] = "/"
 
-	config.StaticUrl = "//static-dot-crowdstart-staging.appspot.com"
+	config.Hosts["default"] = "default.staging.crowdstart.com"
+	config.Hosts["api"] = "api.staging.crowdstart.com"
+	config.Hosts["checkout"] = "checkout.staging.crowdstart.com"
+	config.Hosts["platform"] = "platform.staging.crowdstart.com"
+	config.Hosts["preorder"] = "preorder.staging.crowdstart.com"
+	config.Hosts["store"] = "store.staging.crowdstart.com"
+
+	config.StaticUrl = "//static.staging.crowdstart.com"
 
 	config.Stripe.ClientId = config.Stripe.DevelopmentClientId
 	config.Stripe.PublishableKey = config.Stripe.TestPublishableKey
 	config.Stripe.SecretKey = config.Stripe.TestSecretKey
 	config.Stripe.RedirectURL = "https:" + config.UrlFor("platform", "/stripe/callback")
 	config.Stripe.WebhookURL = "https:" + config.UrlFor("platform", "/stripe/hook")
+
+	config.Facebook.AppId = "484263268389194"
+	config.Facebook.AppSecret = "e82c15c92f9679a146a136790baf7d67"
+	config.Facebook.GraphVersion = "v2.2"
 
 	config.Mandrill.APIKey = "wJ3LGLp5ZOUZlSH8wwqmTg"
 
