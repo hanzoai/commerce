@@ -1,12 +1,13 @@
 package migration
 
 import (
+	"crowdstart.io/datastore"
 	"crowdstart.io/models/bundle"
-	"crowdstart.io/models/campaign"
 	"crowdstart.io/models/collection"
 	"crowdstart.io/models/coupon"
 	"crowdstart.io/models/mailinglist"
 	"crowdstart.io/models/order"
+	"crowdstart.io/models/organization"
 	"crowdstart.io/models/payment"
 	"crowdstart.io/models/plan"
 	"crowdstart.io/models/product"
@@ -21,20 +22,25 @@ import (
 	"crowdstart.io/util/log"
 )
 
+var oldNamespace = "4060001"
 var newNamespace = "cyclic"
 
 func setupNamespaceMigration(c *gin.Context) {
-	c.Set("namespace", "4060001")
+	db := datastore.New(c)
+	org := organization.New(db)
+	_, err := org.Query().Filter("Name=", "cycliq").First()
+	org.Name = oldNamespace
+	err = org.Put()
+	if err != nil {
+		panic(err)
+	}
+	c.Set("namespace", oldNamespace)
 }
 
 var _ = New("namespace", setupNamespaceMigration,
 	func(db *ds.Datastore, bundle *bundle.Bundle) {
 		bundle.SetNamespace(newNamespace)
 		bundle.Put()
-	},
-	func(db *ds.Datastore, campaign *campaign.Campaign) {
-		campaign.SetNamespace(newNamespace)
-		campaign.Put()
 	},
 	func(db *ds.Datastore, collection *collection.Collection) {
 		collection.SetNamespace(newNamespace)
