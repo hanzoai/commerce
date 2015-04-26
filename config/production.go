@@ -4,8 +4,6 @@ package config
 func Production() *Config {
 	config := Defaults()
 
-	config.SentryDSN = "https://4daf3e86c2744df4b932abbe4eb48aa8:27fa30055d9747e795ca05d5ffb96f0c@app.getsentry.com/32164"
-
 	config.IsProduction = true
 
 	config.Prefixes["default"] = "/"
