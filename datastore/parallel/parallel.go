@@ -70,7 +70,7 @@ func New(name string, fn interface{}) *ParallelFn {
 func (fn *ParallelFn) createDelayFn(name string) {
 	fn.DelayFn = delay.Func("parallel-fn-"+name, func(ctx appengine.Context, namespace string, offset int, batchSize int, args ...interface{}) {
 		// Explicitly switch namespace. TODO: this should not be necessary, bug?
-		ctx, err = appengine.Namespace(ctx, namespace)
+		ctx, err := appengine.Namespace(ctx, namespace)
 		if err != nil {
 			panic(err)
 		}
@@ -168,7 +168,11 @@ func (fn *ParallelFn) Run(c *gin.Context, batchSize int, args ...interface{}) er
 // Start individual runs in a given namespace
 var initNamespace = delay.Func("parallel-init", func(ctx appengine.Context, fnName string, namespace string, batchSize int, args ...interface{}) {
 	// Set namespace explicitly
-	ctx, _ = appengine.Namespace(ctx, namespace)
+	ctx, err := appengine.Namespace(ctx, namespace)
+	if err != nil {
+		panic(err)
+	}
+
 	db := datastore.New(ctx)
 
 	// Get relevant ParallelFn
