@@ -21,7 +21,7 @@ type Validator struct {
 
 // Create a new Validator using a custom struct
 func New(value interface{}) *Validator {
-	return &Validator{Value: depointer(reflect.ValueOf(value)), fnsMap: make(map[string][]ValidatorFunction)}
+	return &Validator{Value: depointer(reflect.ValueOf(value)), fnsMap: make(map[string][]ValidatorFunction), jsTmplMap: make(map[string][]string)}
 }
 
 // Helper to dereference all pointer layers
