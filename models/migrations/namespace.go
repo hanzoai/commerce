@@ -29,7 +29,7 @@ func setupNamespaceMigration(c *gin.Context) {
 	db := datastore.New(c)
 	org := organization.New(db)
 	_, err := org.Query().Filter("Name=", "cycliq").First()
-	org.Name = oldNamespace
+	org.SetNamespace("default")
 	err = org.Put()
 	if err != nil {
 		panic(err)
