@@ -32,8 +32,10 @@ func init() {
 
 	router := router.New("api")
 
-	// Production index
-	if !appengine.IsDevAppServer() {
+	// Index
+	if appengine.IsDevAppServer() {
+		router.GET("/", middleware.ParseToken, rest.ListRoutes())
+	} else {
 		router.GET("/", func(c *gin.Context) {
 			c.String(200, "ok")
 		})
@@ -86,9 +88,4 @@ func init() {
 
 	// Access token API
 	accessTokenApi.Route(router)
-
-	// Development index with debugging routes
-	if appengine.IsDevAppServer() {
-		router.GET("/", middleware.ParseToken, rest.ListRoutes())
-	}
 }
