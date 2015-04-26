@@ -70,7 +70,10 @@ func New(name string, fn interface{}) *ParallelFn {
 func (fn *ParallelFn) createDelayFn(name string) {
 	fn.DelayFn = delay.Func("parallel-fn-"+name, func(ctx appengine.Context, namespace string, offset int, batchSize int, args ...interface{}) {
 		// Explicitly switch namespace. TODO: this should not be necessary, bug?
-		ctx, _ = appengine.Namespace(ctx, namespace)
+		ctx, err = appengine.Namespace(ctx, namespace)
+		if err != nil {
+			panic(err)
+		}
 
 		// Run query to get results for this batch of entities
 		db := datastore.New(ctx)
