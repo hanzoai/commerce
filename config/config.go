@@ -124,6 +124,16 @@ func (c Config) UrlFor(moduleName string, args ...string) (url string) {
 	return url
 }
 
+// Return absolute url (including protocol to path)
+func (c Config) AbsoluteUrlFor(moduleName string, args ...string) (url string) {
+	url = c.UrlFor(moduleName, args...)
+	if c.IsDevelopment {
+		return "http://localhost:8080" + url
+	} else {
+		return "https:" + url
+	}
+}
+
 // Load configuration from JSON file
 func (c *Config) Load(fileName string) {
 	file, err := os.Open(fileName)
@@ -197,4 +207,8 @@ var Facebook = config.Facebook
 
 func UrlFor(moduleName string, args ...string) string {
 	return config.UrlFor(moduleName, args...)
+}
+
+func AbsoluteUrlFor(moduleName string, args ...string) string {
+	return config.AbsoluteUrlFor(moduleName, args...)
 }
