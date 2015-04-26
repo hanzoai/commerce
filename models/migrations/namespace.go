@@ -1,7 +1,6 @@
 package migration
 
 import (
-	"crowdstart.io/datastore"
 	"crowdstart.io/models/bundle"
 	"crowdstart.io/models/campaign"
 	"crowdstart.io/models/collection"
@@ -18,27 +17,14 @@ import (
 	"crowdstart.io/models/variant"
 	"github.com/gin-gonic/gin"
 
-	"appengine"
-
 	ds "crowdstart.io/datastore"
-	"crowdstart.io/middleware"
 	"crowdstart.io/util/log"
 )
 
-var newNamespace = "suchtees"
+var newNamespace = "cyclic"
 
 func setupNamespaceMigration(c *gin.Context) {
-	db := datastore.New(c)
-	keys, _ := db.Query2("__namespace__").KeysOnly().GetAll(nil)
-	log.Debug("KEYS FOUND: %v", keys)
-
-	if ctx, err := appengine.Namespace(middleware.GetAppEngine(c), "2"); err != nil {
-		log.Error("Could not namespace in dispatch: %v", err, ctx)
-		return
-	} else {
-		c.Set("appengine", ctx)
-		c.Set("namespace", "2")
-	}
+	c.Set("namespace", "406001")
 }
 
 var _ = New("namespace", setupNamespaceMigration,
