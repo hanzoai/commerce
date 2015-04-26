@@ -506,6 +506,56 @@ request, while any fields not specified in the JSON will be left alone.
 
 + Response 201 (application/json)
 
+# Group Collection
+This object is a representation of a bundle of [Products](#product) and/or
+[Variants](#variant), sold as a single unit.
+
+| Field Name   | Field Description                                                                                                 | Type                          |
+| ----------   | -----------------                                                                                                 | ----                          |
+| slug         | The unique, human-readable identifier.                                                                            | string                        |
+| name         | The name of the collection.                                                                                       | string                        |
+| description  | The long-form explanation of the Collection.                                                                      | string                        |
+| media        | Images, videos, etc to show off in a gallery.                                                                     | [[]Media](#media)             |
+| available    | A flag denoting whether or not the bundle can be purchased.                                                       | bool                          |
+| availability | A date range over which the collection is available.  If this is not null, it overrides the 'available' property. | [Availability](#availability) |
+| published    | A flag denoting whether or not this should be shown in the store.                                                 | bool                          |
+| outOfStock   | A flag denoting whether or not any of these collections are stocked properly.                                     | bool                          |
+| productIds   | A list of products that are associated with this collection.                                                      | []string                      |
+| variantIds   | A list of variants that are associated with this collection.                                                      | []string                      |
+
+## Calls related to Collections [/collection/{id}]
+Basic Collection calls are keyed to the unique ID of the collection.  As with
+all calls, it also requires an API key to be included with the request.
+
+### Get a Collection [GET]
++ Response 200 (application/json)
+
+### Create a Collection [POST]
++ Request (application/json)
+
++ Response 200 (application/json)
+
+### Deleting a Collection [DELETE]
+Deleting a Collection is as simple as passing its ID to the Collection endpoint using
+the HTTP Delete method. You will not receive a response past the normal HTTP
+204.
+
++ Response 204 (application/json)
+
+### Updating a Collection [PUT]
+The PUT method will allow you to replace a given ID's data in its entirety.
+Passing in valid Collection JSON (see the POST method), will overwrite any and all
+data existing on that ID.
+
++ Response 201 (application/json)
+
+### Patching a Collection [PATCH]
+The PATCH method will allow you to replace a given ID's data in a piecemeal
+fashion.  Any fields passed in to a PATCH method will be updated with what you
+request, while any fields not specified in the JSON will be left alone.
+
++ Response 201 (application/json)
+
 # Group Order
 
 This object is a representation of a user's **confirmed purchase**.  The order should not be
@@ -1252,6 +1302,17 @@ request, while any fields not specified in the JSON will be left alone.
 # Group Additional objects
 These objects are not tied to any particular route, but are generally retrieved
 as part of another request.
+
+## Availability
+The Availability object is used in things like [Collections](#collection) and
+can override the available tag if the current datestamp is within the date range
+specified.
+
+| Field Name | Field Description                                                                                                            | Type   |
+| ---------- | -----------------                                                                                                            | ----   |
+| active     | A flag denoting whether or not the Availability object is attempting to take precedent over any existing Available property. | bool   |
+| startDate  | The date stamp where availability starts                                                                                     | string |
+| endDate    | the date stamp where availability ends                                                                                       | string |
 
 ## Dates
 Dates are always RFC3339.
