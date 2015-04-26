@@ -1,6 +1,10 @@
 package migration
 
 import (
+	"appengine"
+
+	"github.com/gin-gonic/gin"
+
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/bundle"
 	"crowdstart.io/models/collection"
@@ -16,21 +20,24 @@ import (
 	"crowdstart.io/models/token"
 	"crowdstart.io/models/user"
 	"crowdstart.io/models/variant"
-	"github.com/gin-gonic/gin"
+	"crowdstart.io/util/log"
 
 	ds "crowdstart.io/datastore"
-	"crowdstart.io/util/log"
 )
 
-var oldNamespace = "4060001"
-var newNamespace = "cyclic"
+var oldNamespace = "2"
+var newNamespace = "suchtees"
 
 func setupNamespaceMigration(c *gin.Context) {
 	db := datastore.New(c)
-	org := organization.New(db)
-	_, err := org.Query().Filter("Name=", "cycliq").First()
-	org.SetNamespace("default")
-	err = org.Put()
+
+	org := new(organization.Organization)
+	key, ok, err := db.Query2("organization").Filter("Name=", "suchtees").First(org)
+	if !ok {
+		panic("Unable to find organization")
+	}
+	db.Context, _ = appengine.Namespace(db.Context, "default")
+	_, err = db.PutKind("organization", key, org)
 	if err != nil {
 		panic(err)
 	}
