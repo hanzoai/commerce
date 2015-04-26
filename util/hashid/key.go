@@ -2,7 +2,7 @@ package hashid
 
 import (
 	"errors"
-	"strconv"
+	"fmt"
 
 	"appengine"
 	aeds "appengine/datastore"
@@ -25,6 +25,54 @@ type Organization struct {
 	Name string
 }
 
+// Get IntID by querying organization from it's namespace name
+func getId(ctx appengine.Context, namespace string) int64 {
+	// Set namespace to default
+	ns, err := appengine.Namespace(ctx, "")
+	if err != nil {
+		panic(err)
+	}
+
+	db := datastore.New(ns)
+
+	key, ok, err := db.Query2("organization").Filter("Name=", namespace).KeysOnly().First(nil)
+
+	// Blow up if we can't find organization
+	if err != nil {
+		panic(err)
+	}
+	if !ok {
+		panic("Failed to retrieve organization named: " + namespace)
+	}
+
+	return key.IntID()
+}
+
+// Get namespace from organization using it's IntID
+func getNamespace(ctx appengine.Context, id int64) string {
+	// Set namespace to default
+	ns, err := appengine.Namespace(ctx, "")
+	if err != nil {
+		panic(err)
+	}
+
+	db := datastore.New(ns)
+
+	var org Organization
+	key := db.NewKey("organization", "", id, nil)
+	_, ok, err := db.Query2("organization").Filter("__key__=", key).Project("Name").First(&org)
+
+	// Blow up if we can't find organization
+	if err != nil {
+		panic(err)
+	}
+	if !ok {
+		panic(fmt.Sprintf("Failed to retrieve organization with IntID: %v", id))
+	}
+
+	return org.Name
+}
+
 // Encodes organzation namespace into it's IntID
 func encodeNamespace(ctx appengine.Context, namespace string) int {
 	// Default namespace
@@ -34,40 +82,7 @@ func encodeNamespace(ctx appengine.Context, namespace string) int {
 
 	id, ok := namespaceToId[namespace]
 	if !ok {
-		// Lookup IntID
-		ns, err := appengine.Namespace(ctx, "")
-		if err != nil {
-			panic(err)
-		}
-		db := datastore.New(ns)
-		key, ok, err := db.Query2("organization").Filter("Name=", namespace).KeysOnly().First(nil)
-
-		// Blow up if we can't find organization
-		if err != nil || !ok {
-			// try legacy encoding
-			id, err2 := strconv.Atoi(namespace)
-			if err2 != nil {
-				panic(err2)
-			}
-			key = db.NewKey("organization", "", int64(id), nil)
-			_, ok, err2 = db.Query2("organization").Filter("__key__=", key).KeysOnly().First(nil)
-			if err2 != nil {
-				// return original error if legacy fails
-				if err != nil {
-					panic(err)
-				}
-				// return legacy error
-				panic(err2)
-			}
-			if !ok {
-				panic("Failed to retrieve organization named: " + namespace)
-			}
-			// notify that we shouldn't probably be here
-			log.Warn("Executed Legacy Hash Namespace Encoding", ctx)
-		}
-
-		// Get IntID
-		id = key.IntID()
+		id := getId(ctx, namespace)
 
 		// Cache result
 		cache(namespace, id)
@@ -85,27 +100,7 @@ func decodeNamespace(ctx appengine.Context, encoded int) string {
 	id := int64(encoded)
 	namespace, ok := idToNamespace[id]
 	if !ok {
-		// Lookup IntID
-		ns, err := appengine.Namespace(ctx, "")
-		if err != nil {
-			panic(err)
-		}
-
-		db := datastore.New(ns)
-		var org Organization
-		key := db.NewKey("organization", "", id, nil)
-		_, ok, err := db.Query2("organization").Filter("__key__=", key).Project("Name").First(&org)
-
-		// Blow up if we can't find organization
-		if err != nil {
-			panic(err)
-		}
-		if !ok {
-			panic("Failed to retrieve organization named: " + namespace)
-		}
-
-		// Get Namespace off organization
-		namespace = org.Name
+		namespace := getNamespace(ctx, id)
 
 		// Cache result
 		cache(namespace, id)
