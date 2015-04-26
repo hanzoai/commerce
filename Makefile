@@ -32,17 +32,16 @@ gae_sandbox = config/sandbox \
 
 gae_staging = config/staging \
 			  api/app.staging.yaml \
-			  platform/app.staging.yaml \
-			  store/app.staging.yaml
+			  platform/app.staging.yaml
+
+gae_production = config/production \
+				 api \
+				 platform
 
 gae_skully = config/skully \
 			 api/app.skully.yaml \
 			 platform/app.skully.yaml \
 			 store/app.skully.yaml
-
-gae_production = config/production \
-				 api \
-				 platform
 
 tools = code.google.com/p/rog-go/exp/cmd/godef \
 		github.com/golang/lint/golint \
