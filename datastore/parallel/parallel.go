@@ -156,6 +156,8 @@ func (fn *ParallelFn) Run(c *gin.Context, batchSize int, args ...interface{}) er
 		namespaces = models.GetNamespaces(ctx)
 	}
 
+	log.Debug("Migrating namespaces: %v", namespaces)
+
 	// Iterate through namespaces and initialize workers to run in each
 	for _, ns := range namespaces {
 		args := append([]interface{}{fn.Name, ns, batchSize}, args...)
