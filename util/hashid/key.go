@@ -2,11 +2,14 @@ package hashid
 
 import (
 	"errors"
-	"fmt"
+	"io/ioutil"
+	"strconv"
 
 	"appengine"
 	aeds "appengine/datastore"
+	"appengine/urlfetch"
 
+	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/util/log"
 )
@@ -21,52 +24,46 @@ func cache(namespace string, id int64) {
 	namespaceToId[namespace] = id
 }
 
-type Organization struct {
-	Name string
-}
+// Fetch namespace info from our API
+func fetch(ctx appengine.Context, url string) (string, error) {
+	// Get full URL to API endpoint
+	endpoint := config.UrlFor("api", "/c/namespace")
 
-// Return default namespace
-func getDefaultNs(ctx appengine.Context) appengine.Context {
-	ctx, err := appengine.Namespace(ctx, "default")
+	// Construct URL for request
+	url = endpoint + url
+
+	// Make request with urlfetch
+	client := urlfetch.Client(ctx)
+	res, err := client.Get(url)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
-	return ctx
+	if res.StatusCode != 200 {
+		return "", errors.New("API call failed")
+	}
+
+	// Return body
+	body, err := ioutil.ReadAll(res.Body)
+	return string(body), err
 }
 
 // Get IntID by querying organization from it's namespace name
 func getId(ctx appengine.Context, namespace string) int64 {
-	db := datastore.New(getDefaultNs(ctx))
-	key, ok, err := db.Query2("organization").Filter("Name=", namespace).KeysOnly().First(nil)
-
-	// Blow up if we can't find organization
+	res, err := fetch(ctx, "/to-id/"+namespace)
+	id, err := strconv.Atoi(res)
 	if err != nil {
-		panic(err)
+		log.Panic("Failed to retrieve id from namespace: %v", err, ctx)
 	}
-	if !ok {
-		panic("Failed to retrieve organization named: " + namespace)
-	}
-
-	return key.IntID()
+	return int64(id)
 }
 
 // Get namespace from organization using it's IntID
 func getNamespace(ctx appengine.Context, id int64) string {
-	db := datastore.New(getDefaultNs(ctx))
-
-	var org Organization
-	key := db.NewKey("organization", "", id, nil)
-	_, ok, err := db.Query2("organization").Filter("__key__=", key).Project("Name").First(&org)
-
-	// Blow up if we can't find organization
+	res, err := fetch(ctx, "/by-id/"+strconv.Itoa(int(id)))
 	if err != nil {
-		panic(err)
+		log.Panic("Failed to retrieve namespace from id: %v", err, ctx)
 	}
-	if !ok {
-		panic(fmt.Sprintf("Failed to retrieve organization with IntID: %v", id))
-	}
-
-	return org.Name
+	return res
 }
 
 // Encodes organzation namespace into it's IntID
