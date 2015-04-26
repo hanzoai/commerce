@@ -10,6 +10,7 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/models/subscriber"
+	"crowdstart.io/models/types/thankyou"
 	"crowdstart.io/util/fs"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/val"
@@ -70,7 +71,7 @@ func New(db *datastore.Datastore) *MailingList {
 func (m *MailingList) Init() {
 	m.Facebook.Value = "0.00"
 	m.Facebook.Currency = "USD"
-	m.ThankYou.Type = Disabled
+	m.ThankYou.Type = thankyou.Disabled
 }
 
 func (m MailingList) Kind() string {
