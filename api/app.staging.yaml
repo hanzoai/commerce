@@ -9,4 +9,4 @@ threadsafe: true
 handlers:
 - url: /v1/.*
   script: _go_app
-  login: required
+  secure: always
