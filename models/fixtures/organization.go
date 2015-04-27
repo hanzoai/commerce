@@ -62,6 +62,11 @@ var Organization = New("organization", func(c *gin.Context) *organization.Organi
 
 	nsDb := datastore.New(nsCtx)
 	ns := namespace.New(nsDb)
+
+	rootKey := nsDb.NewKey(ns.Kind(), constants.NamespaceRootKey, 0, nil)
+	key := nsDb.NewKey(ns.Kind(), "", 0, rootKey)
+
+	ns.SetKey(key)
 	ns.StringId = org.Name
 	ns.GetOrCreate("StringId=", ns.StringId)
 	ns.IntId = org.Key().IntID()
