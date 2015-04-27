@@ -21,7 +21,12 @@ var _ = New("add-namespace-for-orgs",
 
 		nsDb := ds.New(nsCtx)
 		ns := namespace.New(nsDb)
+
+		rootKey := nsDb.NewKey(ns.Kind(), constants.NamespaceRootKey, 0, nil)
+		key := nsDb.NewKey(ns.Kind(), "", 0, rootKey)
+
 		ns.StringId = org.Name
+		ns.SetKey(key)
 		ns.GetOrCreate("StringId=", ns.StringId)
 		ns.IntId = org.Key().IntID()
 		ns.MustPut()
