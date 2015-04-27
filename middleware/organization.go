@@ -16,7 +16,7 @@ func AcquireOrganization(moduleName string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		u := GetCurrentUser(c)
 
-		// How did you get this far without an organization, bra?
+		// How did you get this far without an organization, bruh?
 		if len(u.Organizations) < 1 {
 			panic("THE WORLD MAKES NO SENSE.")
 		}
