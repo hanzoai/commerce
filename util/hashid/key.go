@@ -2,13 +2,13 @@ package hashid
 
 import (
 	"errors"
-	"fmt"
+	"strconv"
 
 	"appengine"
 	aeds "appengine/datastore"
 
 	"crowdstart.io/datastore"
-	"crowdstart.io/util/context"
+	"crowdstart.io/models/constants"
 	"crowdstart.io/util/log"
 )
 
@@ -22,51 +22,64 @@ func cache(namespace string, id int64) {
 	namespaceToId[namespace] = id
 }
 
-type Organization struct {
-	Name string
+type Namespace struct {
+	IntId    int64
+	StringId string
 }
 
-func GetDefaultContext(ctx appengine.Context) appengine.Context {
-	defaultCtx := context.Get(appengine.RequestID(ctx))
-	if defaultCtx == nil {
-		panic("Register Inflight Request to use DB functions")
+func GetNamespaceContext(ctx appengine.Context) appengine.Context {
+	nsCtx, err := appengine.Namespace(ctx, constants.NamespaceNamespace)
+	if err != nil {
+		panic(err)
 	}
 
-	return defaultCtx
+	return nsCtx
 }
 
 // Get IntID by querying organization from it's namespace name
 func getId(ctx appengine.Context, namespace string) int64 {
-	db := datastore.New(GetDefaultContext(ctx))
-	key, ok, err := db.Query2("organization").Filter("Name=", namespace).KeysOnly().First(nil)
+	if namespace == constants.NamespaceNamespace {
+		return 0
+	}
+
+	db := datastore.New(GetNamespaceContext(ctx))
+	ns := Namespace{}
+
+	_, ok, err := db.Query2("namespace").Filter("StringId=", namespace).First(&ns)
+	err = datastore.IgnoreFieldMismatch(err)
 
 	// Blow up if we can't find organization
 	if err != nil {
 		panic(err.Error())
 	}
 	if !ok {
-		panic("Failed to retrieve organization named: " + namespace)
+		panic("Failed to retrieve namespace with StringId: " + namespace)
 	}
 
-	return key.IntID()
+	return ns.IntId
 }
 
 // Get namespace from organization using it's IntID
 func getNamespace(ctx appengine.Context, id int64) string {
-	db := datastore.New(GetDefaultContext(ctx))
+	if id == 0 {
+		return constants.NamespaceNamespace
+	}
 
-	log.Warn("Decoding using id %v", id, ctx)
+	db := datastore.New(GetNamespaceContext(ctx))
+	ns := Namespace{}
 
-	var org Organization
-	key := db.NewKey("organization", "", id, nil)
-	err := datastore.IgnoreFieldMismatch(db.Get(key, &org))
+	_, ok, err := db.Query2("namespace").Filter("IntId=", id).First(&ns)
+	err = datastore.IgnoreFieldMismatch(err)
 
 	// Blow up if we can't find organization
 	if err != nil {
-		panic(fmt.Sprintf("Failed to retrieve organization with IntID: %v", id))
+		panic(err.Error())
+	}
+	if !ok {
+		panic("Failed to retrieve namespace with IntId: " + strconv.Itoa(int(id)))
 	}
 
-	return org.Name
+	return ns.StringId
 }
 
 // Encodes organzation namespace into it's IntID

@@ -10,7 +10,7 @@ var kinds = map[string]int{
 	"campaign":     1,
 	"collection":   2,
 	"coupon":       3,
-	"discounts":    4, // No longer used
+	"namespace":    4,
 	"order":        5,
 	"organization": 6,
 	"payment":      7,
