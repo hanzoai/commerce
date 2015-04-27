@@ -50,10 +50,10 @@ func fetch(ctx appengine.Context, url string) (string, error) {
 // Get IntID by querying organization from it's namespace name
 func getId(ctx appengine.Context, namespace string) int64 {
 	res, err := fetch(ctx, "/to-id/"+namespace)
-	id, err := strconv.Atoi(res)
 	if err != nil {
 		log.Panic("Failed to retrieve id from namespace: %v", err, ctx)
 	}
+	id, err := strconv.Atoi(res)
 	return int64(id)
 }
 
