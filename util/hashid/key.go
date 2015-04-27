@@ -92,7 +92,7 @@ func getNamespace(ctx appengine.Context, id int64) string {
 
 // Encodes organzation namespace into it's IntID
 func encodeNamespace(ctx appengine.Context, namespace string) int {
-	log.Debug("encoding namespace: %v", namespace)
+	log.Debug("namespace: %v", namespace)
 
 	// Default namespace
 	if namespace == "" {
@@ -110,7 +110,7 @@ func encodeNamespace(ctx appengine.Context, namespace string) int {
 }
 
 func decodeNamespace(ctx appengine.Context, encoded int) string {
-	log.Debug("decoding namespace: %v", encoded)
+	log.Debug("id: %v", encoded)
 	// Default namespace
 	if encoded == 0 {
 		return ""
@@ -129,7 +129,7 @@ func decodeNamespace(ctx appengine.Context, encoded int) string {
 }
 
 func EncodeKey(ctx appengine.Context, key datastore.Key) string {
-	log.Debug("encoding key: %v", key)
+	log.Debug("key: %v", key)
 	id := int(key.IntID())
 
 	// Return if incomplete key
@@ -161,13 +161,12 @@ func EncodeKey(ctx appengine.Context, key datastore.Key) string {
 	// Append namespace
 	ids = append(ids, namespace)
 
-	log.Debug("Encoding keyyyyyy: %v, %v", key, ids)
-
+	log.Debug("ids to encode: %v, %v", key, ids)
 	return Encode(ids...)
 }
 
 func DecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key, err error) {
-	log.Debug("decoding key: %v", encoded)
+	log.Debug("encoded key: %v", encoded)
 
 	// Catch panic from Decode
 	defer func() {

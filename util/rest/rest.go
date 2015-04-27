@@ -12,7 +12,6 @@ import (
 	"crowdstart.io/middleware"
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/util/json"
-	"crowdstart.io/util/log"
 	"crowdstart.io/util/permission"
 	"crowdstart.io/util/router"
 	"crowdstart.io/util/structs"
@@ -128,13 +127,13 @@ func (r Rest) Route(router router.Router, mw ...gin.HandlerFunc) {
 
 	// Add default routes
 	for _, route := range r.defaultRoutes() {
-		log.Debug("%-7s %v", route.method, prefix+route.url)
+		// log.Debug("%-7s %v", route.method, prefix+route.url)
 		group.Handle(route.method, route.url, append(mw, route.handlers...))
 	}
 
 	for _, routes := range r.routes {
 		for _, route := range routes {
-			log.Debug("%-7s %v", route.method, prefix+route.url)
+			// log.Debug("%-7s %v", route.method, prefix+route.url)
 			group.Handle(route.method, route.url, route.handlers)
 		}
 	}
