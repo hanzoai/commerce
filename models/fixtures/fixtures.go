@@ -3,11 +3,15 @@ package fixtures
 import (
 	"reflect"
 
+	"appengine"
+
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/datastore"
+	"crowdstart.io/middleware"
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/models/organization"
+	"crowdstart.io/util/context"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/task"
 )
@@ -35,6 +39,9 @@ func New(name string, fn interface{}) func(c *gin.Context) mixin.Entity {
 	// Return wrapper that memoizes result for safe chaining
 	return func(c *gin.Context) mixin.Entity {
 		if fix.entity == nil {
+			ctx := middleware.GetAppEngine(c)
+			context.Register(appengine.RequestID(ctx), ctx)
+
 			res := fix.fnv.Call([]reflect.Value{reflect.ValueOf(c)})
 			fix.entity = res[0].Interface().(mixin.Entity)
 		}

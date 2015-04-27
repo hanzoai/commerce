@@ -2,15 +2,13 @@ package hashid
 
 import (
 	"errors"
-	"io/ioutil"
-	"strconv"
+	"fmt"
 
 	"appengine"
 	aeds "appengine/datastore"
-	"appengine/urlfetch"
 
-	"crowdstart.io/config"
 	"crowdstart.io/datastore"
+	"crowdstart.io/util/context"
 	"crowdstart.io/util/log"
 )
 
@@ -24,46 +22,52 @@ func cache(namespace string, id int64) {
 	namespaceToId[namespace] = id
 }
 
-// Fetch namespace info from our API
-func fetch(ctx appengine.Context, url string) (string, error) {
-	// Get full URL to API endpoint
-	endpoint := config.AbsoluteUrlFor("api", "/c/namespace")
+type Organization struct {
+	Name string
+}
 
-	// Construct URL for request
-	url = endpoint + url
-
-	// Make request with urlfetch
-	client := urlfetch.Client(ctx)
-	res, err := client.Get(url)
-	if err != nil {
-		return "", err
-	}
-	if res.StatusCode != 200 {
-		return "", errors.New("API call failed")
+func GetDefaultContext(ctx appengine.Context) appengine.Context {
+	defaultCtx := context.Get(appengine.RequestID(ctx))
+	if defaultCtx == nil {
+		panic("Register Inflight Request to use DB functions")
 	}
 
-	// Return body
-	body, err := ioutil.ReadAll(res.Body)
-	return string(body), err
+	return defaultCtx
 }
 
 // Get IntID by querying organization from it's namespace name
 func getId(ctx appengine.Context, namespace string) int64 {
-	res, err := fetch(ctx, "/to-id/"+namespace)
+	db := datastore.New(GetDefaultContext(ctx))
+	key, ok, err := db.Query2("organization").Filter("Name=", namespace).KeysOnly().First(nil)
+
+	// Blow up if we can't find organization
 	if err != nil {
-		log.Panic("Failed to retrieve id from namespace: %v", err, ctx)
+		panic(err.Error())
 	}
-	id, err := strconv.Atoi(res)
-	return int64(id)
+	if !ok {
+		panic("Failed to retrieve organization named: " + namespace)
+	}
+
+	return key.IntID()
 }
 
 // Get namespace from organization using it's IntID
 func getNamespace(ctx appengine.Context, id int64) string {
-	res, err := fetch(ctx, "/by-id/"+strconv.Itoa(int(id)))
+	db := datastore.New(GetDefaultContext(ctx))
+
+	var org Organization
+	key := db.NewKey("organization", "", id, nil)
+	_, ok, err := db.Query2("organization").Filter("__key__=", key).Project("Name").First(&org)
+
+	// Blow up if we can't find organization
 	if err != nil {
-		log.Panic("Failed to retrieve namespace from id: %v", err, ctx)
+		panic(err.Error())
 	}
-	return res
+	if !ok {
+		panic(fmt.Sprintf("Failed to retrieve organization with IntID: %v", id))
+	}
+
+	return org.Name
 }
 
 // Encodes organzation namespace into it's IntID
@@ -84,6 +88,7 @@ func encodeNamespace(ctx appengine.Context, namespace string) int {
 }
 
 func decodeNamespace(ctx appengine.Context, encoded int) string {
+	log.Debug("Decoding a thing! %v", encoded)
 	// Default namespace
 	if encoded == 0 {
 		return ""
@@ -94,6 +99,7 @@ func decodeNamespace(ctx appengine.Context, encoded int) string {
 	if !ok {
 		namespace := getNamespace(ctx, id)
 
+		log.Debug("Decoded a thing to %v, %v", namespace, id)
 		// Cache result
 		cache(namespace, id)
 	}
