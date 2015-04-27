@@ -11,7 +11,6 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
 	"crowdstart.io/models/mixin"
-	"crowdstart.io/util/context"
 	"crowdstart.io/util/log"
 )
 
@@ -70,9 +69,6 @@ func New(name string, fn interface{}) *ParallelFn {
 // entity of a given kind at a time (but all of them eventually, in parallel).
 func (fn *ParallelFn) createDelayFn(name string) {
 	fn.DelayFn = delay.Func("parallel-fn-"+name, func(ctx appengine.Context, namespace string, offset int, batchSize int, args ...interface{}) {
-		// Cache the ctx
-		context.Register(appengine.RequestID(ctx), ctx)
-
 		// Explicitly switch namespace. TODO: this should not be necessary, bug?
 		nsCtx, err := appengine.Namespace(ctx, namespace)
 		if err != nil {
