@@ -27,13 +27,21 @@ type Namespace struct {
 	StringId string
 }
 
-func GetNamespaceContext(ctx appengine.Context) appengine.Context {
-	nsCtx, err := appengine.Namespace(ctx, constants.NamespaceNamespace)
+func getContext(ctx appengine.Context, namespace string) appengine.Context {
+	if namespace == "" {
+		return ctx
+	}
+
+	ctx, err := appengine.Namespace(ctx, namespace)
 	if err != nil {
 		panic(err)
 	}
 
-	return nsCtx
+	return ctx
+}
+
+func getNamespaceContext(ctx appengine.Context) appengine.Context {
+	return getContext(ctx, constants.NamespaceNamespace)
 }
 
 // Get IntID by querying organization from it's namespace name
@@ -42,7 +50,7 @@ func getId(ctx appengine.Context, namespace string) int64 {
 		return 0
 	}
 
-	db := datastore.New(GetNamespaceContext(ctx))
+	db := datastore.New(getNamespaceContext(ctx))
 	ns := Namespace{}
 
 	_, ok, err := db.Query2("namespace").Filter("StringId=", namespace).First(&ns)
@@ -65,7 +73,7 @@ func getNamespace(ctx appengine.Context, id int64) string {
 		return constants.NamespaceNamespace
 	}
 
-	db := datastore.New(GetNamespaceContext(ctx))
+	db := datastore.New(getNamespaceContext(ctx))
 	ns := Namespace{}
 
 	_, ok, err := db.Query2("namespace").Filter("IntId=", id).First(&ns)
@@ -84,6 +92,8 @@ func getNamespace(ctx appengine.Context, id int64) string {
 
 // Encodes organzation namespace into it's IntID
 func encodeNamespace(ctx appengine.Context, namespace string) int {
+	log.Debug("encoding namespace: %v", namespace)
+
 	// Default namespace
 	if namespace == "" {
 		return 0
@@ -100,7 +110,7 @@ func encodeNamespace(ctx appengine.Context, namespace string) int {
 }
 
 func decodeNamespace(ctx appengine.Context, encoded int) string {
-	log.Debug("Decoding a thing! %v", encoded)
+	log.Debug("decoding namespace: %v", encoded)
 	// Default namespace
 	if encoded == 0 {
 		return ""
@@ -119,6 +129,7 @@ func decodeNamespace(ctx appengine.Context, encoded int) string {
 }
 
 func EncodeKey(ctx appengine.Context, key datastore.Key) string {
+	log.Debug("encoding key: %v", key)
 	id := int(key.IntID())
 
 	// Return if incomplete key
@@ -137,7 +148,7 @@ func EncodeKey(ctx appengine.Context, key datastore.Key) string {
 		parent = parent.Parent()
 	}
 
-	// Use parent namespace if it exists, otherwise use child's
+	// Default to default namespace
 	namespace := 0
 
 	// Parent namespace overrides child
@@ -156,7 +167,8 @@ func EncodeKey(ctx appengine.Context, key datastore.Key) string {
 }
 
 func DecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key, err error) {
-	log.Debug("Decoding key: %v", encoded)
+	log.Debug("decoding key: %v", encoded)
+
 	// Catch panic from Decode
 	defer func() {
 		if r := recover(); r != nil {
@@ -175,10 +187,7 @@ func DecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key, err error)
 
 	// Set namespace
 	namespace := decodeNamespace(ctx, ids[n-1])
-	ctx, err = appengine.Namespace(ctx, namespace)
-	if err != nil {
-		return key, err
-	}
+	ctx = getContext(ctx, namespace)
 
 	// root key
 	key = aeds.NewKey(ctx, decodeKind(ids[n-3]), "", int64(ids[n-2]), nil)
