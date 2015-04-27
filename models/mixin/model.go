@@ -11,6 +11,7 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/util/hashid"
 	"crowdstart.io/util/json"
+	"crowdstart.io/util/log"
 	"crowdstart.io/util/rand"
 	"crowdstart.io/util/structs"
 	"crowdstart.io/util/val"
@@ -223,7 +224,7 @@ func (m *Model) Get(args ...interface{}) error {
 			return err
 		}
 	}
-
+	log.Warn("Key %v", m.key)
 	return m.Db.Get(m.key, m.Entity)
 }
 
