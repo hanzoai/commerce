@@ -109,7 +109,7 @@ func decodeNamespace(ctx appengine.Context, encoded int) string {
 	id := int64(encoded)
 	namespace, ok := idToNamespace[id]
 	if !ok {
-		namespace := getNamespace(ctx, id)
+		namespace = getNamespace(ctx, id)
 
 		log.Debug("Decoded a thing to %v, %v", namespace, id)
 		// Cache result
