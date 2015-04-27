@@ -55,15 +55,14 @@ func getId(ctx appengine.Context, namespace string) int64 {
 func getNamespace(ctx appengine.Context, id int64) string {
 	db := datastore.New(GetDefaultContext(ctx))
 
+	log.Warn("Decoding using id %v", id, ctx)
+
 	var org Organization
 	key := db.NewKey("organization", "", id, nil)
-	_, ok, err := db.Query2("organization").Filter("__key__=", key).Project("Name").First(&org)
+	err := datastore.IgnoreFieldMismatch(db.Get(key, &org))
 
 	// Blow up if we can't find organization
 	if err != nil {
-		panic(err.Error())
-	}
-	if !ok {
 		panic(fmt.Sprintf("Failed to retrieve organization with IntID: %v", id))
 	}
 
