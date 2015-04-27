@@ -1,6 +1,8 @@
 package migrations
 
 import (
+	"github.com/gin-gonic/gin"
+
 	"appengine"
 
 	"crowdstart.io/models/constants"
@@ -12,7 +14,9 @@ import (
 )
 
 var _ = New("add-namespace-for-orgs",
-	NoSetup,
+	func(c *gin.Context) {
+		c.Set("namespace", "")
+	},
 	func(db *ds.Datastore, org *organization.Organization) {
 		nsCtx, err := appengine.Namespace(db.Context, constants.NamespaceNamespace)
 		if err != nil {
