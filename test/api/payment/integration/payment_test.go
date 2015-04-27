@@ -5,8 +5,6 @@ import (
 	"net/http"
 	"testing"
 
-	"appengine"
-
 	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
 	"crowdstart.io/models/fixtures"
@@ -16,7 +14,6 @@ import (
 	"crowdstart.io/models/user"
 	"crowdstart.io/test/api/payment/requests"
 	"crowdstart.io/thirdparty/stripe"
-	"crowdstart.io/util/context"
 	"crowdstart.io/util/gincontext"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
@@ -75,9 +72,6 @@ var _ = BeforeSuite(func() {
 
 	// Save namespaced db
 	db = datastore.New(org.Namespace(ctx))
-
-	// Register the top level appengine context
-	context.Register(appengine.RequestID(ctx), ctx)
 })
 
 // Tear-down appengine context

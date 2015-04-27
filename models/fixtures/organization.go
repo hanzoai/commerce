@@ -3,7 +3,12 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
+	"appengine"
+
 	"crowdstart.io/datastore"
+	"crowdstart.io/middleware"
+	"crowdstart.io/models/constants"
+	"crowdstart.io/models/namespace"
 	"crowdstart.io/models/organization"
 	"crowdstart.io/models/user"
 	"crowdstart.io/util/log"
@@ -48,6 +53,19 @@ var Organization = New("organization", func(c *gin.Context) *organization.Organi
 
 	// Save org into default namespace
 	org.MustPut()
+
+	ctx := middleware.GetAppEngine(c)
+	nsCtx, err := appengine.Namespace(ctx, constants.NamespaceNamespace)
+	if err != nil {
+		panic(err)
+	}
+
+	nsDb := datastore.New(nsCtx)
+	ns := namespace.New(nsDb)
+	ns.StringId = org.Name
+	ns.GetOrCreate("StringId=", ns.StringId)
+	ns.IntId = org.Key().IntID()
+	ns.MustPut()
 
 	// Add org to user and also save
 	user.Organizations = []string{org.Id()}

@@ -3,7 +3,6 @@ package middleware
 import (
 	"appengine"
 
-	"crowdstart.io/util/context"
 	"github.com/gin-gonic/gin"
 )
 
@@ -12,8 +11,6 @@ func AppEngine() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := appengine.NewContext(c.Request)
 		c.Set("appengine", ctx)
-
-		context.Register(appengine.RequestID(ctx), ctx)
 	}
 }
 

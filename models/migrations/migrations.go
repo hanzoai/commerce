@@ -1,4 +1,4 @@
-package migration
+package migrations
 
 import (
 	"strconv"
@@ -12,6 +12,9 @@ import (
 )
 
 type SetupFn func(*gin.Context)
+
+func NoSetup(c *gin.Context) {
+}
 
 func New(name string, setupFn SetupFn, fns ...interface{}) *delay.Function {
 	name = "migration-" + name
