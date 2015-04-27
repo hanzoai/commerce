@@ -1,8 +1,6 @@
 package migration
 
 import (
-	"appengine"
-
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/datastore"
@@ -36,7 +34,8 @@ func setupNamespaceMigration(c *gin.Context) {
 	if !ok {
 		panic("Unable to find organization")
 	}
-	db.Context, _ = appengine.Namespace(db.Context, "default")
+	org.Name = newNamespace
+	// db.Context, _ = appengine.Namespace(db.Context, "default")
 	_, err = db.PutKind("organization", key, org)
 	if err != nil {
 		panic(err)
