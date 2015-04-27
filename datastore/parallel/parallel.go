@@ -11,6 +11,7 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
 	"crowdstart.io/models/mixin"
+	"crowdstart.io/util/context"
 	"crowdstart.io/util/log"
 )
 
@@ -69,14 +70,17 @@ func New(name string, fn interface{}) *ParallelFn {
 // entity of a given kind at a time (but all of them eventually, in parallel).
 func (fn *ParallelFn) createDelayFn(name string) {
 	fn.DelayFn = delay.Func("parallel-fn-"+name, func(ctx appengine.Context, namespace string, offset int, batchSize int, args ...interface{}) {
+		// Cache the ctx
+		context.Register(appengine.RequestID(ctx), ctx)
+
 		// Explicitly switch namespace. TODO: this should not be necessary, bug?
-		ctx, err := appengine.Namespace(ctx, namespace)
+		nsCtx, err := appengine.Namespace(ctx, namespace)
 		if err != nil {
 			panic(err)
 		}
 
 		// Run query to get results for this batch of entities
-		db := datastore.New(ctx)
+		db := datastore.New(nsCtx)
 
 		// Construct query
 		q := db.Query2(fn.Kind).Offset(offset).Limit(batchSize)
@@ -170,12 +174,12 @@ func (fn *ParallelFn) Run(c *gin.Context, batchSize int, args ...interface{}) er
 // Start individual runs in a given namespace
 var initNamespace = delay.Func("parallel-init", func(ctx appengine.Context, fnName string, namespace string, batchSize int, args ...interface{}) {
 	// Set namespace explicitly
-	ctx, err := appengine.Namespace(ctx, namespace)
+	nsCtx, err := appengine.Namespace(ctx, namespace)
 	if err != nil {
 		panic(err)
 	}
 
-	db := datastore.New(ctx)
+	db := datastore.New(nsCtx)
 
 	// Get relevant ParallelFn
 	fn := parallelFns[fnName]
