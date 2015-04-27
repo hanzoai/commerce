@@ -12,17 +12,24 @@ var Mailinglist = New("mailinglist", func(c *gin.Context) *mailinglist.MailingLi
 
 	mailingList := mailinglist.New(db)
 
-	mailingList.Name = "Teh Nooest Mailing List!"
+	mailingList.Name = "Such Tees Newsletter"
 	mailingList.SendWelcome = true
-	mailingList.Mailchimp = mailinglist.Mailchimp{Id: "aowieij", APIKey: "23098fIOWJEOIJFW", DoubleOptin: false, UpdateExisting: true, ReplaceInterests: true, SendWelcome: false}
+	mailingList.Mailchimp = mailinglist.Mailchimp{
+		Id: "30d872227a",
+		APIKey: "473b358fd2972742c8ef6af581c3c0-us9",
+		DoubleOptin: false,
+		UpdateExisting: true,
+		ReplaceInterests: false,
+		SendWelcome: false
+	}
 	mailingList.ThankYou.Type = thankyou.Redirect
 	mailingList.ThankYou.Url = "http://suchtees.com/thanks/"
-	mailingList.Facebook.Id = "6024480985959"
+	mailingList.Facebook.Id = "6031480185266"
 	mailingList.Facebook.Value = "0.00"
 	mailingList.Facebook.Currency = "USD"
 
 	mailingList.Google.Category = "Subscription"
-	mailingList.Google.Name = "T-Shirt List Sign-up"
+	mailingList.Google.Name = "Newsletter Sign-up"
 
 	mailingList.MustPut()
 
