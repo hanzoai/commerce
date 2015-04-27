@@ -20,8 +20,8 @@ var Namespace = New("namespace", func(c *gin.Context) *namespace.Namespace {
 
 	nsDb := datastore.New(nsCtx)
 	ns := namespace.New(nsDb)
-	ns.StringId = constants.NamespaceNamespace
-	ns.GetOrCreate("StringId=", constants.NamespaceNamespace)
+	ns.StringId = constants.NamespaceRootKey
+	ns.GetOrCreate("StringId=", constants.NamespaceRootKey)
 	ns.IntId = ns.Key().IntID()
 	ns.MustPut()
 
