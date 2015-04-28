@@ -1,4 +1,4 @@
 package constants
 
 var NamespaceNamespace = "namespace"
-var NamespaceRootKey = "root"
+var NamespaceRootKey = int64(1)
