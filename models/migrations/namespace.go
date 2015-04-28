@@ -23,8 +23,8 @@ import (
 	ds "crowdstart.io/datastore"
 )
 
-var oldNamespace = "cyclic"
-var newNamespace = "cycliq"
+var oldNamespace = "cycliq"
+var newNamespace = "cycliq2"
 
 func setupNamespaceMigration(c *gin.Context) {
 	db := datastore.New(c)
