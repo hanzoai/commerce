@@ -22,7 +22,7 @@ func New(db *datastore.Datastore) *Namespace {
 	n := new(Namespace)
 	n.Model = mixin.Model{Db: db, Entity: n}
 	n.SetNamespace(constants.NamespaceNamespace)
-	n.Parent = db.NewKey(n.Kind(), "", 1, nil)
+	n.Parent = db.NewKey(n.Kind(), "", constants.NamespaceRootKey, nil)
 	n.UseStringKey = true
 	return n
 }
@@ -50,12 +50,21 @@ func (n *Namespace) NameExists(name string) (ok bool, err error) {
 
 func (n *Namespace) Put() (err error) {
 	return aeds.RunInTransaction(n.Db.Context, func(ctx appengine.Context) error {
-		ok, _ := n.Exists()
+		// Set key
+		n.SetKey(n.Name)
+
+		// Check if namespace exists
+		ok, err := n.Exists()
+		if err != nil && err != datastore.KeyNotFound {
+			return err
+		}
+
+		// Warn if it already exists, otherwise save.
 		if ok {
 			log.Warn("Namespace exists: %v", n.Name)
 			return NamespaceExists
 		} else {
-			return n.Put()
+			return n.Model.Put()
 		}
 	}, &aeds.TransactionOptions{XG: true})
 }
