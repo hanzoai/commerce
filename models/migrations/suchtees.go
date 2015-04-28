@@ -1,4 +1,4 @@
-package migration
+package migrations
 
 import (
 	"github.com/gin-gonic/gin"

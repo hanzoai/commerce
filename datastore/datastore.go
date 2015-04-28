@@ -403,11 +403,7 @@ func (d *Datastore) AllocateIntKey(kind string) Key {
 	return aeds.NewKey(d.Context, kind, "", id, nil)
 }
 
-func (d *Datastore) Query(kind string) *aeds.Query {
-	return aeds.NewQuery(kind)
-}
-
-func (d *Datastore) Query2(kind string) *DatastoreQuery {
+func (d *Datastore) Query(kind string) *DatastoreQuery {
 	return NewQuery(d, kind)
 }
 

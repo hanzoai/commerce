@@ -216,7 +216,7 @@ var _ = Describe("Put", func() {
 			Expect(err).NotTo(HaveOccurred())
 			_, err = db.Query(kind).
 				Filter("Field =", a.Field).
-				Run(ctx).
+				Run().
 				Next(b)
 
 			Expect(err).NotTo(HaveOccurred())

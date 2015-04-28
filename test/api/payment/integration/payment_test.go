@@ -107,7 +107,7 @@ func FirstTimeSuccessfulOrderTest(isCharge bool) testHelperReturn {
 	log.Debug("Order %v", ord)
 
 	// Order should be in db
-	key, err := order.New(db).KeyExists(ord.Id())
+	key, _, err := order.New(db).KeyExists(ord.Id())
 	log.Debug("Err %v", err)
 
 	Expect(err).ToNot(HaveOccurred())
