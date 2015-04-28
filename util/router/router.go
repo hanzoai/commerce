@@ -43,3 +43,11 @@ func New(moduleName string) Router {
 
 	return router.Group(prefix)
 }
+
+func Ok(c *gin.Context) {
+	c.String(200, "ok\n")
+}
+
+func Empty(c *gin.Context) {
+	c.Abort(200)
+}
