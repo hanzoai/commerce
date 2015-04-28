@@ -352,9 +352,15 @@ func (r Rest) update(c *gin.Context) {
 
 	entity := r.newEntity(c)
 
-	// Get Key, and fail if this didn't exist in datastore
-	if _, err := entity.KeyExists(id); err != nil {
+	// Try to retrieve key from datastore
+	_, ok, err := entity.KeyExists(id)
+	if !ok {
 		json.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
+		return
+	}
+
+	if err != nil {
+		json.Fail(c, 500, "Failed to retrieve key for "+id, err)
 		return
 	}
 

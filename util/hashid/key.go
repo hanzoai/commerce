@@ -23,8 +23,8 @@ func cache(namespace string, id int64) {
 }
 
 type Namespace struct {
-	IntId    int64
-	StringId string
+	IntId int64
+	Name  string
 }
 
 func getContext(ctx appengine.Context, namespace string) appengine.Context {
@@ -53,7 +53,7 @@ func getId(ctx appengine.Context, namespace string) int64 {
 	db := datastore.New(getNamespaceContext(ctx))
 	ns := Namespace{}
 
-	_, ok, err := db.Query2("namespace").Filter("StringId=", namespace).First(&ns)
+	_, ok, err := db.Query2("namespace").Filter("Name=", namespace).First(&ns)
 	err = datastore.IgnoreFieldMismatch(err)
 
 	// Blow up if we can't find organization
@@ -61,7 +61,7 @@ func getId(ctx appengine.Context, namespace string) int64 {
 		panic(err.Error())
 	}
 	if !ok {
-		panic("Failed to retrieve namespace with StringId: " + namespace)
+		panic("Failed to retrieve namespace with Name: " + namespace)
 	}
 
 	return ns.IntId
@@ -84,10 +84,10 @@ func getNamespace(ctx appengine.Context, id int64) string {
 		panic(err.Error())
 	}
 	if !ok {
-		panic("Failed to retrieve namespace with IntId: " + strconv.Itoa(int(id)))
+		panic("Failed to retrieve namespace with Id: " + strconv.Itoa(int(id)))
 	}
 
-	return ns.StringId
+	return ns.Name
 }
 
 // Encodes organzation namespace into it's IntID
@@ -101,11 +101,13 @@ func encodeNamespace(ctx appengine.Context, namespace string) int {
 
 	id, ok := namespaceToId[namespace]
 	if !ok {
-		id := getId(ctx, namespace)
+		id = getId(ctx, namespace)
 
 		// Cache result
 		cache(namespace, id)
 	}
+
+	log.Debug("encoded '%v' to %v", namespace, id)
 	return int(id)
 }
 
@@ -121,10 +123,11 @@ func decodeNamespace(ctx appengine.Context, encoded int) string {
 	if !ok {
 		namespace = getNamespace(ctx, id)
 
-		log.Debug("Decoded a thing to %v, %v", namespace, id)
 		// Cache result
 		cache(namespace, id)
 	}
+
+	log.Debug("decoded '%v' to %v", namespace, id)
 	return namespace
 }
 

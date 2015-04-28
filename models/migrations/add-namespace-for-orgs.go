@@ -26,8 +26,8 @@ var _ = New("add-namespace-for-orgs",
 		nsDb := ds.New(nsCtx)
 		ns := namespace.New(nsDb)
 
-		ns.StringId = org.Name
-		ns.GetOrCreate("StringId=", ns.StringId)
+		ns.Name = org.Name
+		ns.GetOrCreate("Name=", ns.Name)
 		ns.IntId = org.Key().IntID()
 		ns.MustPut()
 	},

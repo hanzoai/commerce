@@ -62,8 +62,8 @@ var Organization = New("organization", func(c *gin.Context) *organization.Organi
 
 	nsDb := datastore.New(nsCtx)
 	ns := namespace.New(nsDb)
-	ns.StringId = org.Name
-	ns.GetOrCreate("StringId=", ns.StringId)
+	ns.Name = org.Name
+	ns.GetOrCreate("Name=", ns.Name)
 	ns.IntId = org.Key().IntID()
 	ns.MustPut()
 
