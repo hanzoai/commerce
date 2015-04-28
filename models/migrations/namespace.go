@@ -8,6 +8,7 @@ import (
 	"crowdstart.io/models/collection"
 	"crowdstart.io/models/coupon"
 	"crowdstart.io/models/mailinglist"
+	"crowdstart.io/models/namespace"
 	"crowdstart.io/models/order"
 	"crowdstart.io/models/organization"
 	"crowdstart.io/models/payment"
@@ -29,17 +30,40 @@ var newNamespace = "cycliq2"
 func setupNamespaceMigration(c *gin.Context) {
 	db := datastore.New(c)
 
+	// Try to find organization
 	org := new(organization.Organization)
-	key, ok, err := db.Query2("organization").Filter("Name=", oldNamespace).First(org)
+	key, ok, err := db.Query("organization").Filter("Name=", newNamespace).First(org)
 	if !ok {
 		panic("Unable to find organization")
 	}
+
+	// Save old namespace TODO: only for cycliq, remove
+	ns := namespace.New(db)
+	ns.Name = oldNamespace
+	ns.IntId = key.IntID()
+	err = ns.Put()
+	if err != nil {
+		log.Warn("Failed to put namespace: %v", err)
+	}
+
+	// Save org with new name
 	org.Name = newNamespace
-	// db.Context, _ = appengine.Namespace(db.Context, "default")
-	_, err = db.PutKind("organization", key, org)
+
+	key, err = db.PutKind("organization", key, org)
 	if err != nil {
 		panic(err)
 	}
+
+	// Save new namespace
+	ns = namespace.New(db)
+	ns.Name = org.Name
+	ns.IntId = key.IntID()
+	err = ns.Put()
+	if err != nil {
+		log.Warn("Failed to put namespace: %v", err)
+	}
+
+	// Set namespace to ensure we iterate over old entities
 	c.Set("namespace", oldNamespace)
 }
 
