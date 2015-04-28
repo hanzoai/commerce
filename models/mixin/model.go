@@ -334,7 +334,7 @@ func (m *Model) GetOrCreate(filterStr string, value interface{}) error {
 func (m *Model) GetOrUpdate(filterStr string, value interface{}) error {
 	entity := reflect.ValueOf(m.Entity).Interface()
 
-	q := m.Db.Query2(m.Kind())
+	q := m.Db.Query(m.Kind())
 	key, ok, err := q.Filter(filterStr, value).First(entity)
 
 	// Something bad happened
@@ -389,7 +389,10 @@ func (m *Model) Delete(args ...interface{}) error {
 
 // Return a query for this entity kind
 func (m *Model) Query() *Query {
-	return &Query{m.Db.Query2(m.Entity.Kind()), m}
+	q := new(Query)
+	q.Query = datastore.NewQuery(m.Db, m.Entity.Kind())
+	q.model = m
+	return q
 }
 
 // Validate a model
