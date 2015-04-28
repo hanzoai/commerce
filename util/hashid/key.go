@@ -60,7 +60,7 @@ func getId(ctx appengine.Context, namespace string) int64 {
 
 	// Use namespace root to ensure a strongly consistent query
 	root := getRoot(ctx)
-	_, ok, err := db.Query2("namespace").Ancestor(root).Filter("Name=", namespace).First(&ns)
+	_, ok, err := db.Query("namespace").Ancestor(root).Filter("Name=", namespace).First(&ns)
 	err = datastore.IgnoreFieldMismatch(err)
 
 	// Blow up if we can't find organization
@@ -86,7 +86,7 @@ func getNamespace(ctx appengine.Context, id int64) string {
 
 	// Use namespace root to ensure a strongly consistent query
 	root := getRoot(ctx)
-	_, ok, err := db.Query2("namespace").Ancestor(root).Filter("IntId=", id).First(&ns)
+	_, ok, err := db.Query("namespace").Ancestor(root).Filter("IntId=", id).First(&ns)
 	err = datastore.IgnoreFieldMismatch(err)
 
 	// Blow up if we can't find organization
