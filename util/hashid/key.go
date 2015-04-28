@@ -8,7 +8,7 @@ import (
 	aeds "appengine/datastore"
 
 	"crowdstart.io/datastore"
-	"crowdstart.io/models/constants"
+	"crowdstart.io/models/namespace/consts"
 	"crowdstart.io/util/log"
 )
 
@@ -28,7 +28,7 @@ type Namespace struct {
 }
 
 func getRoot(ctx appengine.Context) *aeds.Key {
-	return aeds.NewKey(ctx, "namespace", "", constants.NamespaceRootKey, nil)
+	return aeds.NewKey(ctx, "namespace", "", consts.RootKey, nil)
 }
 
 func getContext(ctx appengine.Context, namespace string) appengine.Context {
@@ -45,12 +45,12 @@ func getContext(ctx appengine.Context, namespace string) appengine.Context {
 }
 
 func getNamespaceContext(ctx appengine.Context) appengine.Context {
-	return getContext(ctx, constants.NamespaceNamespace)
+	return getContext(ctx, consts.Namespace)
 }
 
 // Get IntID by querying organization from it's namespace name
 func getId(ctx appengine.Context, namespace string) int64 {
-	if namespace == constants.NamespaceNamespace {
+	if namespace == consts.Namespace {
 		return 0
 	}
 
@@ -77,7 +77,7 @@ func getId(ctx appengine.Context, namespace string) int64 {
 // Get namespace from organization using it's IntID
 func getNamespace(ctx appengine.Context, id int64) string {
 	if id == 0 {
-		return constants.NamespaceNamespace
+		return consts.Namespace
 	}
 
 	ctx = getNamespaceContext(ctx)
