@@ -1,9 +1,0 @@
-cron:
-- description: Update Users from Salesforce
-  url: /execute-task/salesforce-sync-updated-users
-  schedule: every 20 minutes
-  target: default
-- description: Update Orders from Salesforce
-  url: /execute-task/salesforce-sync-updated-orders
-  schedule: every 20 minutes
-  target: default
