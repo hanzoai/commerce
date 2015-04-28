@@ -79,7 +79,7 @@ func (s *MockSObjectSerializeable) PullId(api salesforce.SalesforceClient, id st
 
 func (s *MockSObjectSerializeable) LoadSalesforceId(db *datastore.Datastore, id string) salesforce.SObjectCompatible {
 	objects := make([]*user.User, 0)
-	db.Query("user").Filter("PrimarySalesforceId_=", id).Limit(1).GetAll(db.Context, &objects)
+	db.Query("user").Filter("PrimarySalesforceId_=", id).Limit(1).GetAll(&objects)
 	if len(objects) == 0 {
 		return nil
 	}
