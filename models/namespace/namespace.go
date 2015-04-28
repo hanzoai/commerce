@@ -5,8 +5,8 @@ import (
 	aeds "appengine/datastore"
 
 	"crowdstart.io/datastore"
-	"crowdstart.io/models/constants"
 	"crowdstart.io/models/mixin"
+	"crowdstart.io/models/namespace/consts"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/val"
 )
@@ -21,8 +21,8 @@ type Namespace struct {
 func New(db *datastore.Datastore) *Namespace {
 	n := new(Namespace)
 	n.Model = mixin.Model{Db: db, Entity: n}
-	n.SetNamespace(constants.NamespaceNamespace)
-	n.Parent = db.NewKey(n.Kind(), "", constants.NamespaceRootKey, nil)
+	n.SetNamespace(consts.Namespace)
+	n.Parent = db.NewKey(n.Kind(), "", consts.RootKey, nil)
 	n.UseStringKey = true
 	return n
 }
