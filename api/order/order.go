@@ -10,6 +10,7 @@ import (
 	"crowdstart.io/models/order"
 	"crowdstart.io/models/payment"
 	"crowdstart.io/util/json"
+	"crowdstart.io/util/json/http"
 	"crowdstart.io/util/permission"
 	"crowdstart.io/util/rest"
 	"crowdstart.io/util/router"
@@ -35,12 +36,13 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 
 		err := ord.Get(id)
 		if err != nil {
-			json.Fail(c, 404, fmt.Sprintf("Failed to retrieve order %v: %v", id, err), err)
+			http.Fail(c, 404, fmt.Sprintf("Failed to retrieve order %v: %v", id, err), err)
+			return
 		}
 
 		payments := make([]*payment.Payment, 0)
 		payment.Query(db).Ancestor(ord.Key()).GetAll(&payments)
-		c.JSON(200, payments)
+		http.Render(c, 200, payments)
 	})
 
 	api.Create = func(c *gin.Context) {
@@ -50,21 +52,21 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 
 		// Decode response body to create new order
 		if err := json.Decode(c.Request.Body, ord); err != nil {
-			json.Fail(c, 400, "Failed decode request body", err)
+			http.Fail(c, 400, "Failed decode request body", err)
 			return
 		}
 
 		// Update order with information from datastore and tally
 		if err := ord.UpdateAndTally(nil); err != nil {
-			json.Fail(c, 400, "Invalid or incomplete order", err)
+			http.Fail(c, 400, "Invalid or incomplete order", err)
 			return
 		}
 
 		if err := ord.Put(); err != nil {
-			json.Fail(c, 500, "Failed to create order", err)
+			http.Fail(c, 500, "Failed to create order", err)
 		} else {
 			c.Writer.Header().Add("Location", c.Request.URL.Path+"/"+ord.Id())
-			api.JSON(c, 201, ord)
+			api.Render(c, 201, ord)
 		}
 	}
 
@@ -77,27 +79,27 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 
 		// Get Key, and fail if this didn't exist in datastore
 		if _, _, err := ord.KeyExists(id); err != nil {
-			json.Fail(c, 404, "No order found with id: "+id, err)
+			http.Fail(c, 404, "No order found with id: "+id, err)
 			return
 		}
 
 		// Decode response body to create new order
 		if err := json.Decode(c.Request.Body, ord); err != nil {
-			json.Fail(c, 400, "Failed decode request body", err)
+			http.Fail(c, 400, "Failed decode request body", err)
 			return
 		}
 
 		// Update order with information from datastore and tally
 		if err := ord.UpdateAndTally(nil); err != nil {
-			json.Fail(c, 400, "Invalid or incomplete order", err)
+			http.Fail(c, 400, "Invalid or incomplete order", err)
 			return
 		}
 
 		// Replace whatever was in the datastore with our new updated order
 		if err := ord.Put(); err != nil {
-			json.Fail(c, 500, "Failed to update order", err)
+			http.Fail(c, 500, "Failed to update order", err)
 		} else {
-			api.JSON(c, 200, ord)
+			http.Render(c, 200, ord)
 		}
 	}
 
@@ -110,26 +112,26 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 
 		err := ord.Get(id)
 		if err != nil {
-			json.Fail(c, 404, "No order found with id: "+id, err)
+			http.Fail(c, 404, "No order found with id: "+id, err)
 			return
 		}
 
 		// Decode response body to create new order
 		if err := json.Decode(c.Request.Body, ord); err != nil {
-			json.Fail(c, 400, "Failed decode request body", err)
+			http.Fail(c, 400, "Failed decode request body", err)
 			return
 		}
 
 		// Update order with information from datastore and tally
 		if err := ord.UpdateAndTally(nil); err != nil {
-			json.Fail(c, 400, "Invalid or incomplete order", err)
+			http.Fail(c, 400, "Invalid or incomplete order", err)
 			return
 		}
 
 		if err := ord.Put(); err != nil {
-			json.Fail(c, 500, "Failed to update order", err)
+			http.Fail(c, 500, "Failed to update order", err)
 		} else {
-			api.JSON(c, 200, ord)
+			http.Render(c, 200, ord)
 		}
 	}
 

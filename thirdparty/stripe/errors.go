@@ -9,7 +9,7 @@ import (
 
 var (
 	FailedToCreateCustomer = errors.New("Failed to create Stripe customer.")
-	FailedtoUpdateCustomer = errors.New("Failed to update Stripe customer.")
+	FailedToUpdateCustomer = errors.New("Failed to update Stripe customer.")
 )
 
 type Error struct {
