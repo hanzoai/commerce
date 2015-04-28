@@ -54,7 +54,8 @@ func getId(ctx appengine.Context, namespace string) int64 {
 		return 0
 	}
 
-	db := datastore.New(getNamespaceContext(ctx))
+	ctx = getNamespaceContext(ctx)
+	db := datastore.New(ctx)
 	ns := Namespace{}
 
 	// Use namespace root to ensure a strongly consistent query
@@ -79,7 +80,8 @@ func getNamespace(ctx appengine.Context, id int64) string {
 		return constants.NamespaceNamespace
 	}
 
-	db := datastore.New(getNamespaceContext(ctx))
+	ctx = getNamespaceContext(ctx)
+	db := datastore.New(ctx)
 	ns := Namespace{}
 
 	// Use namespace root to ensure a strongly consistent query
