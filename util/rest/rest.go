@@ -12,7 +12,6 @@ import (
 	"crowdstart.io/middleware"
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/util/json"
-	"crowdstart.io/util/log"
 	"crowdstart.io/util/permission"
 	"crowdstart.io/util/router"
 	"crowdstart.io/util/structs"
@@ -128,13 +127,13 @@ func (r Rest) Route(router router.Router, mw ...gin.HandlerFunc) {
 
 	// Add default routes
 	for _, route := range r.defaultRoutes() {
-		log.Debug("%-7s %v", route.method, prefix+route.url)
+		// log.Debug("%-7s %v", route.method, prefix+route.url)
 		group.Handle(route.method, route.url, append(mw, route.handlers...))
 	}
 
 	for _, routes := range r.routes {
 		for _, route := range routes {
-			log.Debug("%-7s %v", route.method, prefix+route.url)
+			// log.Debug("%-7s %v", route.method, prefix+route.url)
 			group.Handle(route.method, route.url, route.handlers)
 		}
 	}
@@ -353,9 +352,15 @@ func (r Rest) update(c *gin.Context) {
 
 	entity := r.newEntity(c)
 
-	// Get Key, and fail if this didn't exist in datastore
-	if _, err := entity.KeyExists(id); err != nil {
+	// Try to retrieve key from datastore
+	_, ok, err := entity.KeyExists(id)
+	if !ok {
 		json.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
+		return
+	}
+
+	if err != nil {
+		json.Fail(c, 500, "Failed to retrieve key for "+id, err)
 		return
 	}
 
