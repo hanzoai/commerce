@@ -21,7 +21,7 @@ func Render(c *gin.Context, status int, src interface{}) {
 
 func Fail(c *gin.Context, status int, message interface{}, err error) {
 	// Default response
-	res := Error{"api-error", "", ""}
+	res := Error{"api-error", "", "", ""}
 
 	// Parse message type
 	switch v := message.(type) {
@@ -39,19 +39,23 @@ func Fail(c *gin.Context, status int, message interface{}, err error) {
 		if msg, ok := v["message"]; ok {
 			res.Message = msg
 		}
+		if param, ok := v["param"]; ok {
+			res.Param = param
+		}
 	}
 
 	// Support various custom errors
 	switch v := err.(type) {
-	case stripe.Error:
+	case *stripe.Error:
 		if v.Type == "card_error" {
 			res.Type = "authorization-error"
 		} else {
 			res.Type = "stripe-error"
 		}
 
-		// Use stripe message in call cases
+		// Use stripe message, param in call cases
 		res.Message = v.Message
+		res.Param = v.Param
 
 		// Replace underscores in code to make consistent with our API.
 		res.Code = strings.Replace(v.Code, "_", "-", -1)
