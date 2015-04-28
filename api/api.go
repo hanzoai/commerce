@@ -31,65 +31,64 @@ import (
 func init() {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 
-	router := router.New("api")
+	api := router.New("api")
 
 	// Index
 	if appengine.IsDevAppServer() {
-		router.GET("/", middleware.ParseToken, rest.ListRoutes())
+		api.GET("/", middleware.ParseToken, rest.ListRoutes())
 	} else {
-		router.GET("/", func(c *gin.Context) {
-			c.String(200, "ok")
-		})
+		api.GET("/", router.Ok)
+		api.HEAD("/", router.Empty)
 	}
 
 	// Use permissive CORS policy for all API routes.
-	router.Use(middleware.AccessControl("*"))
-	router.OPTIONS("*wildcard", func(c *gin.Context) {
+	api.Use(middleware.AccessControl("*"))
+	api.OPTIONS("*wildcard", func(c *gin.Context) {
 		c.Next()
 	})
 
 	// Organization APIs, namespaced by organization
 
 	// One Step Payment API
-	paymentApi.Route(router)
+	paymentApi.Route(api)
 
 	// Models with public RESTful API
-	rest.New(coupon.Coupon{}).Route(router, adminRequired)
-	rest.New(collection.Collection{}).Route(router, adminRequired)
-	rest.New(product.Product{}).Route(router, adminRequired)
-	rest.New(user.User{}).Route(router, adminRequired)
-	rest.New(payment.Payment{}).Route(router, adminRequired)
-	rest.New(variant.Variant{}).Route(router, adminRequired)
-	rest.New(subscriber.Subscriber{}).Route(router, adminRequired)
+	rest.New(coupon.Coupon{}).Route(api, adminRequired)
+	rest.New(collection.Collection{}).Route(api, adminRequired)
+	rest.New(product.Product{}).Route(api, adminRequired)
+	rest.New(user.User{}).Route(api, adminRequired)
+	rest.New(payment.Payment{}).Route(api, adminRequired)
+	rest.New(variant.Variant{}).Route(api, adminRequired)
+	rest.New(subscriber.Subscriber{}).Route(api, adminRequired)
 
-	orderApi.Route(router, adminRequired)
-	storeApi.Route(router, adminRequired)
-	mailinglistApi.Route(router, adminRequired)
+	orderApi.Route(api, adminRequired)
+	storeApi.Route(api, adminRequired)
+	mailinglistApi.Route(api, adminRequired)
 
 	// Crowdstart APIs, using default namespace (internal use only)
 	campaign := rest.New(campaign.Campaign{})
 	campaign.DefaultNamespace = true
 	campaign.Prefix = "/c/"
-	campaign.Route(router, adminRequired)
+	campaign.Route(api, adminRequired)
 
 	organization := rest.New(organization.Organization{})
 	organization.DefaultNamespace = true
 	organization.Prefix = "/c/"
-	organization.Route(router, adminRequired)
+	organization.Route(api, adminRequired)
 
 	token := rest.New(token.Token{})
 	token.DefaultNamespace = true
 	token.Prefix = "/c/"
-	token.Route(router, adminRequired)
+	token.Route(api, adminRequired)
 
 	user := rest.New(user.User{})
 	user.DefaultNamespace = true
 	user.Prefix = "/c/"
-	user.Route(router, adminRequired)
+	user.Route(api, adminRequired)
 
 	// Namespace API
-	namespaceApi.Route(router)
+	namespaceApi.Route(api)
 
 	// Access token API
-	accessTokenApi.Route(router)
+	accessTokenApi.Route(api)
 }
