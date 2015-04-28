@@ -27,6 +27,10 @@ type Namespace struct {
 	Name  string
 }
 
+func getRoot(ctx appengine.Context) *aeds.Key {
+	return aeds.NewKey(ctx, "namespace", "", constants.NamespaceRootKey, nil)
+}
+
 func getContext(ctx appengine.Context, namespace string) appengine.Context {
 	if namespace == "" {
 		return ctx
@@ -53,7 +57,9 @@ func getId(ctx appengine.Context, namespace string) int64 {
 	db := datastore.New(getNamespaceContext(ctx))
 	ns := Namespace{}
 
-	_, ok, err := db.Query2("namespace").Filter("Name=", namespace).First(&ns)
+	// Use namespace root to ensure a strongly consistent query
+	root := getRoot(ctx)
+	_, ok, err := db.Query2("namespace").Ancestor(root).Filter("Name=", namespace).First(&ns)
 	err = datastore.IgnoreFieldMismatch(err)
 
 	// Blow up if we can't find organization
@@ -76,7 +82,9 @@ func getNamespace(ctx appengine.Context, id int64) string {
 	db := datastore.New(getNamespaceContext(ctx))
 	ns := Namespace{}
 
-	_, ok, err := db.Query2("namespace").Filter("IntId=", id).First(&ns)
+	// Use namespace root to ensure a strongly consistent query
+	root := getRoot(ctx)
+	_, ok, err := db.Query2("namespace").Ancestor(root).Filter("IntId=", id).First(&ns)
 	err = datastore.IgnoreFieldMismatch(err)
 
 	// Blow up if we can't find organization
