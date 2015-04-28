@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/datastore"
+	"crowdstart.io/models/namespace"
 	"crowdstart.io/models/organization"
 	"crowdstart.io/models/user"
 	"crowdstart.io/util/log"
@@ -48,6 +49,15 @@ var Organization = New("organization", func(c *gin.Context) *organization.Organi
 
 	// Save org into default namespace
 	org.MustPut()
+
+	// Save namespace so we can decode keys for this organization later
+	ns := namespace.New(db)
+	ns.Name = org.Name
+	ns.IntId = org.Key().IntID()
+	err := ns.Put()
+	if err != nil {
+		log.Warn("Failed to put namespace: %v", err)
+	}
 
 	// Add org to user and also save
 	user.Organizations = []string{org.Id()}
