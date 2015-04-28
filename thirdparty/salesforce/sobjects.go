@@ -308,7 +308,7 @@ func (c *Contact) Load(db *datastore.Datastore) SObjectCompatible {
 
 func (c *Contact) LoadSalesforceId(db *datastore.Datastore, id string) SObjectCompatible {
 	objects := make([]*user.User, 0)
-	db.Query("user").Filter("SecondarySalesforceId_=", id).Limit(1).GetAll(db.Context, &objects)
+	db.Query("user").Filter("SecondarySalesforceId_=", id).Limit(1).GetAll(&objects)
 	if len(objects) == 0 {
 		return nil
 	}
@@ -506,7 +506,7 @@ func (a *Account) Load(db *datastore.Datastore) SObjectCompatible {
 
 func (a *Account) LoadSalesforceId(db *datastore.Datastore, id string) SObjectCompatible {
 	objects := make([]*user.User, 0)
-	db.Query("user").Filter("PrimarySalesforceId_=", id).Limit(1).GetAll(db.Context, &objects)
+	db.Query("user").Filter("PrimarySalesforceId_=", id).Limit(1).GetAll(&objects)
 	if len(objects) == 0 {
 		return nil
 	}
@@ -792,7 +792,7 @@ func (o *Order) Load(db *datastore.Datastore) SObjectCompatible {
 
 func (o *Order) LoadSalesforceId(db *datastore.Datastore, id string) SObjectCompatible {
 	objects := make([]*order.Order, 0)
-	db.Query("order").Filter("PrimarySalesforceId_=", id).Limit(1).GetAll(db.Context, &objects)
+	db.Query("order").Filter("PrimarySalesforceId_=", id).Limit(1).GetAll(&objects)
 	if len(objects) == 0 {
 		return nil
 	}
@@ -854,7 +854,7 @@ func pullOrderProduct(api SalesforceClient, o *Order) error {
 		pv, ok := variantCache[op.PricebookEntryId]
 		if !ok {
 			variants := make([]variant.Variant, 0)
-			db.Query("variant").Filter("SecondarySalesforceId_=", op.PricebookEntryId).Limit(1).GetAll(db.Context, &variants)
+			db.Query("variant").Filter("SecondarySalesforceId_=", op.PricebookEntryId).Limit(1).GetAll(&variants)
 			variantCache[op.PricebookEntryId] = variants[0]
 			pv = variants[0]
 		}

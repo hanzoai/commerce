@@ -17,7 +17,7 @@ type Organization struct {
 func idFromNamespace(c *gin.Context) {
 	namespace := c.Params.ByName("namespace")
 	db := datastore.New(c)
-	key, ok, err := db.Query2("organization").Filter("Name=", namespace).KeysOnly().First(nil)
+	key, ok, err := db.Query("organization").Filter("Name=", namespace).KeysOnly().First(nil)
 	if !ok {
 		log.Panic("Query for organization failed", c)
 	}
@@ -43,7 +43,7 @@ func namespaceFromId(c *gin.Context) {
 
 	var org Organization
 	key := db.NewKey("organization", "", id, nil)
-	_, ok, err := db.Query2("organization").Filter("__key__=", key).Project("Name").First(&org)
+	_, ok, err := db.Query("organization").Filter("__key__=", key).Project("Name").First(&org)
 	if !ok {
 		log.Panic("Query for organization failed", c)
 	}
