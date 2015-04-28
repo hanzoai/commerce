@@ -31,6 +31,15 @@ var newCycliqNamespace = "cycliq"
 func setupCycliqMigration(c *gin.Context) {
 	db := datastore.New(c)
 
+	// Save old namespace
+	ns := namespace.New(db)
+	ns.Name = oldCycliqNamespace
+	ns.IntId = 4060001
+	err := ns.Put()
+	if err != nil {
+		log.Warn("Failed to put namespace: %v", err)
+	}
+
 	// Try to find organization
 	org := new(organization.Organization)
 	key, ok, err := db.Query("organization").Filter("Name=", oldCycliqNamespace).First(org)
@@ -44,15 +53,6 @@ func setupCycliqMigration(c *gin.Context) {
 	key, err = db.PutKind("organization", key, org)
 	if err != nil {
 		panic(err)
-	}
-
-	// Save old namespace
-	ns := namespace.New(db)
-	ns.Name = oldCycliqNamespace
-	ns.IntId = key.IntID()
-	err = ns.Put()
-	if err != nil {
-		log.Warn("Failed to put namespace: %v", err)
 	}
 
 	// Save new namespace
