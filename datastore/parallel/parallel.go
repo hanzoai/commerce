@@ -83,7 +83,7 @@ func (fn *ParallelFn) createDelayFn(name string) {
 		db := datastore.New(nsCtx)
 
 		// Construct query
-		q := db.Query2(fn.Kind).Offset(offset).Limit(batchSize)
+		q := db.Query(fn.Kind).Offset(offset).Limit(batchSize)
 
 		// Run query
 		t := q.Run()
@@ -188,7 +188,7 @@ var initNamespace = delay.Func("parallel-init", func(ctx appengine.Context, fnNa
 	// Get relevant ParallelFn
 	fn := parallelFns[fnName]
 
-	total, _ := db.Query2(fn.Kind).Count()
+	total, _ := db.Query(fn.Kind).Count()
 
 	// Start all workers
 	for offset := 0; offset < total; offset += batchSize {
