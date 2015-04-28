@@ -35,7 +35,8 @@ type Entity interface {
 	Id() string
 	Get(args ...interface{}) error
 	GetById(string) error
-	KeyExists(key interface{}) (datastore.Key, error)
+	Exists() (bool, error)
+	KeyExists(key interface{}) (datastore.Key, bool, error)
 	MustGet(args ...interface{})
 	Put() error
 	MustPut()
@@ -66,7 +67,7 @@ type Model struct {
 	UpdatedAt time.Time `json:"updatedAt"`
 
 	// Flag used to specify that we're using a string key for this kind
-	StringKey_ bool `json:"-" datastore:"-"`
+	UseStringKey bool `json:"-" datastore:"-"`
 }
 
 // Get AppEngine context
@@ -104,7 +105,7 @@ func (m Model) Kind() string {
 func (m *Model) setId() {
 	key := m.Key()
 
-	if m.StringKey_ {
+	if m.UseStringKey {
 		m.Id_ = key.StringID()
 	} else {
 		m.Id_ = hashid.EncodeKey(m.Db.Context, key)
@@ -133,7 +134,7 @@ func (m *Model) SetKey(key interface{}) (err error) {
 	case datastore.Key:
 		k = v
 	case string:
-		if m.StringKey_ {
+		if m.UseStringKey {
 			// We've declared this model uses string keys.
 			k = m.Db.NewKey(m.Entity.Kind(), v, 0, m.Parent)
 		} else {
@@ -172,7 +173,7 @@ func (m *Model) Key() (key datastore.Key) {
 	if m.key == nil {
 		kind := m.Entity.Kind()
 
-		if m.StringKey_ {
+		if m.UseStringKey {
 			// Id_ will unfortunately not be set first time around...
 			m.key = m.Db.NewIncompleteKey(kind, m.Parent)
 		} else {
@@ -274,29 +275,35 @@ func (m *Model) GetById(id string) error {
 	return err
 }
 
+// Check if entity is in datastore.
+func (m *Model) Exists() (bool, error) {
+	_, ok, err := m.KeyExists(nil)
+	return ok, err
+}
+
 // Get's key only (ensures key is good)
-func (m *Model) KeyExists(key interface{}) (datastore.Key, error) {
+func (m *Model) KeyExists(key interface{}) (datastore.Key, bool, error) {
 	// If a key is specified, try to use that, ignore nil keys (which would
 	// otherwise create a new incomplete key which makes no sense in this case.
 	if key != nil {
 		if err := m.SetKey(key); err != nil {
-			return nil, err
+			return nil, false, err
 		}
 	}
 
 	keys, err := m.Query().Filter("__key__=", m.key).KeysOnly().GetAll(nil)
 	// Something bad happened
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	// We couldn't find it
 	if len(keys) != 1 {
-		return nil, datastore.KeyNotFound
+		return nil, false, datastore.KeyNotFound
 	}
 
 	m.SetKey(keys[0])
-	return keys[0], nil
+	return keys[0], true, nil
 }
 
 // Get entity from datastore or create new one
@@ -417,7 +424,7 @@ func (m *Model) JSON() []byte {
 
 // Mock methods for test keys. Does everything against datastore except create/update/delete/allocate ids.
 func (m *Model) mockKey() datastore.Key {
-	if m.StringKey_ {
+	if m.UseStringKey {
 		return m.Db.NewKey(m.Kind(), rand.ShortId(), 0, m.Parent)
 	}
 	return m.Db.NewKey(m.Kind(), "", rand.Int64(), m.Parent)
