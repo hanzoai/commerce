@@ -2,8 +2,9 @@ package http
 
 type Error struct {
 	Type    string `json:"type"`
-	Code    string `json:"code,omitempty"`
 	Message string `json:"message"`
+	Code    string `json:"code,omitempty"`
+	Param   string `json:"param,omitempty"`
 }
 
 func (e Error) Error() string {

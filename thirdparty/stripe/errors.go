@@ -16,6 +16,7 @@ type Error struct {
 	Type    string
 	Message string
 	Code    string
+	Param   string
 }
 
 func (e Error) Error() string {
@@ -26,9 +27,10 @@ func NewError(err error) error {
 	stripeErr, ok := err.(*stripe.Error)
 	if ok {
 		return &Error{
-			Code:    string(stripeErr.Code),
-			Message: stripeErr.Msg,
 			Type:    string(stripeErr.Type),
+			Message: stripeErr.Msg,
+			Code:    string(stripeErr.Code),
+			Param:   string(stripeErr.Param),
 		}
 	}
 
