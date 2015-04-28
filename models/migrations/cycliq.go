@@ -17,6 +17,8 @@ import (
 	"crowdstart.io/models/user"
 	"crowdstart.io/models/variant"
 	"crowdstart.io/util/log"
+
+	ds "crowdstart.io/datastore"
 )
 
 var oldCycliqNamespace = "4060001"
