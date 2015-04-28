@@ -3,14 +3,11 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/datastore"
 	"crowdstart.io/models/bundle"
 	"crowdstart.io/models/collection"
 	"crowdstart.io/models/coupon"
 	"crowdstart.io/models/mailinglist"
-	"crowdstart.io/models/namespace"
 	"crowdstart.io/models/order"
-	"crowdstart.io/models/organization"
 	"crowdstart.io/models/payment"
 	"crowdstart.io/models/plan"
 	"crowdstart.io/models/product"
@@ -20,8 +17,6 @@ import (
 	"crowdstart.io/models/user"
 	"crowdstart.io/models/variant"
 	"crowdstart.io/util/log"
-
-	ds "crowdstart.io/datastore"
 )
 
 var oldCycliqNamespace = "4060001"
@@ -29,40 +24,31 @@ var newCycliqNamespace = "cycliq"
 
 // Update cycliq org to use new namespace, save namespace
 func setupCycliqMigration(c *gin.Context) {
-	db := datastore.New(c)
+	// db := datastore.New(c)
 
-	// Save old namespace
-	ns := namespace.New(db)
-	ns.Name = oldCycliqNamespace
-	ns.IntId = 4060001
-	err := ns.Put()
-	if err != nil {
-		log.Warn("Failed to put namespace: %v", err)
-	}
+	// // Try to find organization
+	// org := new(organization.Organization)
+	// key, ok, err := db.Query("organization").Filter("Name=", newCycliqNamespace).First(org)
+	// if !ok {
+	// 	panic("Unable to find organization")
+	// }
 
-	// Try to find organization
-	org := new(organization.Organization)
-	key, ok, err := db.Query("organization").Filter("Name=", oldCycliqNamespace).First(org)
-	if !ok {
-		panic("Unable to find organization")
-	}
+	// // Update namespace name
+	// org.Name = newCycliqNamespace
 
-	// Update namespace name
-	org.Name = newCycliqNamespace
+	// _, err = db.PutKind("organization", key, org)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
-	key, err = db.PutKind("organization", key, org)
-	if err != nil {
-		panic(err)
-	}
-
-	// Save new namespace
-	ns = namespace.New(db)
-	ns.Name = newCycliqNamespace
-	ns.IntId = key.IntID()
-	err = ns.Put()
-	if err != nil {
-		log.Warn("Failed to put namespace: %v", err)
-	}
+	// 	// Save new namespace
+	// 	ns = namespace.New(db)
+	// 	ns.Name = newCycliqNamespace
+	// 	ns.IntId = key.IntID()
+	// 	err = ns.Put()
+	// 	if err != nil {
+	// 		log.Warn("Failed to put namespace: %v", err)
+	// 	}
 
 	// Set namespace to ensure we iterate over old entities
 	c.Set("namespace", oldCycliqNamespace)
