@@ -102,7 +102,7 @@ func getNamespace(ctx appengine.Context, id int64) string {
 
 // Encodes organzation namespace into it's IntID
 func encodeNamespace(ctx appengine.Context, namespace string) int {
-	log.Debug("namespace: %v", namespace)
+	log.Debug("namespace: '%v'", namespace)
 
 	// Default namespace
 	if namespace == "" {
