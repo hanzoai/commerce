@@ -3,11 +3,14 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
+	"crowdstart.io/datastore"
 	"crowdstart.io/models/bundle"
 	"crowdstart.io/models/collection"
 	"crowdstart.io/models/coupon"
 	"crowdstart.io/models/mailinglist"
+	"crowdstart.io/models/namespace"
 	"crowdstart.io/models/order"
+	"crowdstart.io/models/organization"
 	"crowdstart.io/models/payment"
 	"crowdstart.io/models/plan"
 	"crowdstart.io/models/product"
@@ -21,94 +24,102 @@ import (
 	ds "crowdstart.io/datastore"
 )
 
-var oldCycliqNamespace = "4060001"
-var newCycliqNamespace = "cycliq"
+var newNamespace = ""
 
-// Update cycliq org to use new namespace, save namespace
-func setupCycliqMigration(c *gin.Context) {
-	// db := datastore.New(c)
+func setupNamespaceRename(c *gin.Context) {
+	panic("Unable to pass configuration info back to migration funcs yet")
 
-	// // Try to find organization
-	// org := new(organization.Organization)
-	// key, ok, err := db.Query("organization").Filter("Name=", newCycliqNamespace).First(org)
-	// if !ok {
-	// 	panic("Unable to find organization")
-	// }
+	// TODO: we SHOULD be able to do this
+	q := c.Request.URL.Query()
+	oldns := q.Get("old-namespace")
+	newns := q.Get("new-namespace")
 
-	// // Update namespace name
-	// org.Name = newCycliqNamespace
+	// Should not need global
+	newNamespace = newns
 
-	// _, err = db.PutKind("organization", key, org)
-	// if err != nil {
-	// 	panic(err)
-	// }
+	db := datastore.New(c)
 
-	// 	// Save new namespace
-	// 	ns = namespace.New(db)
-	// 	ns.Name = newCycliqNamespace
-	// 	ns.IntId = key.IntID()
-	// 	err = ns.Put()
-	// 	if err != nil {
-	// 		log.Warn("Failed to put namespace: %v", err)
-	// 	}
+	// Try to find organization
+	org := new(organization.Organization)
+	key, ok, err := db.Query("organization").Filter("Name=", oldns).First(org)
+	if !ok {
+		panic("Unable to find organization")
+	}
+
+	// Update namespace name
+	org.Name = newns
+
+	_, err = db.PutKind("organization", key, org)
+	if err != nil {
+		panic(err)
+	}
+
+	// Save new namespace
+	ns := namespace.New(db)
+	ns.Name = newns
+	ns.IntId = key.IntID()
+	err = ns.Put()
+	if err != nil {
+		log.Warn("Failed to put new namespace: %v", err)
+	}
 
 	// Set namespace to ensure we iterate over old entities
-	c.Set("namespace", oldCycliqNamespace)
+	c.Set("namespace", oldns)
 }
 
 // Setup migration
-var _ = New("cycliq", setupCycliqMigration,
+var _ = New("namespace-rename", setupNamespaceRename,
 	func(db *ds.Datastore, bundle *bundle.Bundle) {
-		bundle.SetNamespace(newCycliqNamespace)
+		bundle.SetNamespace(newNamespace)
 		bundle.Put()
 	},
 	func(db *ds.Datastore, collection *collection.Collection) {
-		collection.SetNamespace(newCycliqNamespace)
+		collection.SetNamespace(newNamespace)
 		collection.Put()
 	},
 	func(db *ds.Datastore, coupon *coupon.Coupon) {
-		coupon.SetNamespace(newCycliqNamespace)
+		coupon.SetNamespace(newNamespace)
 		coupon.Put()
 	},
 	func(db *ds.Datastore, order *order.Order) {
-		order.SetNamespace(newCycliqNamespace)
+		order.SetNamespace(newNamespace)
 		order.Put()
 	},
 	func(db *ds.Datastore, payment *payment.Payment) {
-		payment.SetNamespace(newCycliqNamespace)
+		payment.SetNamespace(newNamespace)
 		payment.Put()
 	},
 	func(db *ds.Datastore, plan *plan.Plan) {
-		plan.SetNamespace(newCycliqNamespace)
+		plan.SetNamespace(newNamespace)
 		plan.Put()
 	},
 	func(db *ds.Datastore, product *product.Product) {
-		product.SetNamespace(newCycliqNamespace)
+		product.SetNamespace(newNamespace)
 		product.Put()
 	},
 	func(db *ds.Datastore, store *store.Store) {
-		store.SetNamespace(newCycliqNamespace)
+		store.SetNamespace(newNamespace)
 		store.Put()
 	},
 	func(db *ds.Datastore, token *token.Token) {
-		token.SetNamespace(newCycliqNamespace)
+		token.SetNamespace(newNamespace)
 		token.Put()
 	},
 	func(db *ds.Datastore, variant *variant.Variant) {
-		variant.SetNamespace(newCycliqNamespace)
+		variant.SetNamespace(newNamespace)
 		variant.Put()
 	},
 	func(db *ds.Datastore, user *user.User) {
 		log.Warn("%v", user)
-		user.SetNamespace(newCycliqNamespace)
+		user.SetNamespace(newNamespace)
 		user.Put()
 	},
 	func(db *ds.Datastore, mailinglist *mailinglist.MailingList) {
-		mailinglist.SetNamespace(newCycliqNamespace)
+		mailinglist.SetNamespace(newNamespace)
 		mailinglist.Put()
 	},
 	func(db *ds.Datastore, subscriber *subscriber.Subscriber) {
-		subscriber.SetNamespace(newCycliqNamespace)
+		subscriber.SetNamespace(newNamespace)
 		subscriber.Put()
 	},
 )
