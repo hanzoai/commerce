@@ -1,9 +1,13 @@
 package namespace
 
 import (
+	"appengine"
+	aeds "appengine/datastore"
+
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/constants"
 	"crowdstart.io/models/mixin"
+	"crowdstart.io/util/log"
 	"crowdstart.io/util/val"
 )
 
@@ -35,11 +39,23 @@ func Query(db *datastore.Datastore) *mixin.Query {
 	return New(db).Query()
 }
 
-func (n *Namespace) Exists(name string) (ok bool, err error) {
+func (n *Namespace) NameExists(name string) (ok bool, err error) {
 	n.RunInTransaction(func() error {
 		_, ok, err = n.Model.KeyExists(name)
 		return err
 	})
 
 	return ok, err
+}
+
+func (n *Namespace) Put() (err error) {
+	return aeds.RunInTransaction(n.Db.Context, func(ctx appengine.Context) error {
+		ok, _ := n.Exists()
+		if ok {
+			log.Warn("Namespace exists: %v", n.Name)
+			return NamespaceExists
+		} else {
+			return n.Put()
+		}
+	}, &aeds.TransactionOptions{XG: true})
 }
