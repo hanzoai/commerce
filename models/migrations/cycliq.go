@@ -46,9 +46,18 @@ func setupCycliqMigration(c *gin.Context) {
 		panic(err)
 	}
 
+	// Save old namespace
+	ns := namespace.New(db)
+	ns.Name = oldCycliqNamespace
+	ns.IntId = key.IntID()
+	err = ns.Put()
+	if err != nil {
+		log.Warn("Failed to put namespace: %v", err)
+	}
+
 	// Save new namespace
 	ns := namespace.New(db)
-	ns.Name = org.Name
+	ns.Name = newCycliqNamespace
 	ns.IntId = key.IntID()
 	err = ns.Put()
 	if err != nil {
