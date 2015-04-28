@@ -6,7 +6,7 @@ import (
 	"crowdstart.io/middleware"
 	"crowdstart.io/models/order"
 	"crowdstart.io/models/organization"
-	"crowdstart.io/util/json"
+	"crowdstart.io/util/json/http"
 	"crowdstart.io/util/permission"
 	"crowdstart.io/util/router"
 	"github.com/gin-gonic/gin"
@@ -38,23 +38,23 @@ func getOrganizationAndOrder(c *gin.Context) (*organization.Organization, *order
 func Authorize(c *gin.Context) {
 	org, ord := getOrganizationAndOrder(c)
 	if ord == nil {
-		json.Fail(c, 404, "Failed to retrieve order", OrderDoesNotExist)
+		http.Fail(c, 404, "Failed to retrieve order", OrderDoesNotExist)
 		return
 	}
 
 	if _, err := authorize(c, org, ord); err != nil {
-		json.Fail(c, 500, "Error during authorize", err)
+		http.Fail(c, 500, "Error during authorize", err)
 		return
 	}
 
 	c.Writer.Header().Add("Location", orderEndpoint+ord.Id())
-	c.JSON(200, ord)
+	http.Render(c, 200, ord)
 }
 
 func Capture(c *gin.Context) {
 	org, ord := getOrganizationAndOrder(c)
 	if ord == nil {
-		json.Fail(c, 404, "Failed to retrieve order", OrderDoesNotExist)
+		http.Fail(c, 404, "Failed to retrieve order", OrderDoesNotExist)
 		return
 	}
 
@@ -62,36 +62,36 @@ func Capture(c *gin.Context) {
 	var err error
 	ord, err = capture(c, org, ord)
 	if err != nil {
-		json.Fail(c, 500, "Error during capture", err)
+		http.Fail(c, 500, "Error during capture", err)
 		return
 	}
 
-	c.JSON(200, ord)
+	http.Render(c, 200, ord)
 }
 
 func Charge(c *gin.Context) {
 	org, ord := getOrganizationAndOrder(c)
 	if ord == nil {
-		json.Fail(c, 404, "Failed to retrieve order", OrderDoesNotExist)
+		http.Fail(c, 404, "Failed to retrieve order", OrderDoesNotExist)
 		return
 	}
 
 	// Do authorization
 	ord, err := authorize(c, org, ord)
 	if err != nil {
-		json.Fail(c, 500, "Error during authorize", err)
+		http.Fail(c, 500, "Error during authorize", err)
 		return
 	}
 
 	// Do capture using order from authorization
 	ord, err = capture(c, org, ord)
 	if err != nil {
-		json.Fail(c, 500, "Error during capture", err)
+		http.Fail(c, 500, "Error during capture", err)
 		return
 	}
 
 	c.Writer.Header().Add("Location", orderEndpoint+ord.Id())
-	c.JSON(200, ord)
+	http.Render(c, 200, ord)
 }
 
 func Route(router router.Router, args ...gin.HandlerFunc) {

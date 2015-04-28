@@ -10,6 +10,7 @@ import (
 	"crowdstart.io/middleware"
 	"crowdstart.io/models/store"
 	"crowdstart.io/util/json"
+	"crowdstart.io/util/json/http"
 )
 
 // Return all listings
@@ -19,11 +20,11 @@ func listListing(c *gin.Context) {
 
 	stor := store.New(db)
 	if err := stor.GetById(id); err != nil {
-		json.Fail(c, 404, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
+		http.Fail(c, 404, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
 		return
 	}
 
-	c.JSON(200, stor.Listings)
+	http.Render(c, 200, stor.Listings)
 }
 
 // Get single store listing for given product/variant
@@ -36,7 +37,7 @@ func getListing(c *gin.Context) {
 	// Get store
 	stor := store.New(db)
 	if err := stor.GetById(id); err != nil {
-		json.Fail(c, 404, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
+		http.Fail(c, 404, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
 		return
 	}
 
@@ -56,11 +57,11 @@ func getListing(c *gin.Context) {
 	// Do not override on create, user should explicitly update instead
 	if !ok {
 		msg := fmt.Sprintf("No listing exists for '%v' in store '%v'", key, id)
-		json.Fail(c, 404, msg, errors.New(msg))
+		http.Fail(c, 404, msg, errors.New(msg))
 		return
 	}
 
-	c.JSON(200, listing)
+	http.Render(c, 200, listing)
 }
 
 func createListing(c *gin.Context) {
@@ -71,7 +72,7 @@ func createListing(c *gin.Context) {
 	stor := store.New(db)
 	if err := stor.GetById(id); err != nil {
 		msg := fmt.Sprintf("Failed to retrieve store '%v'", id)
-		json.Fail(c, 404, msg, err)
+		http.Fail(c, 404, msg, err)
 		return
 	}
 
@@ -81,13 +82,13 @@ func createListing(c *gin.Context) {
 	// Do not override on create, user should explicitly update instead
 	if ok {
 		msg := fmt.Sprintf("'%v' already exists in store '%v' listing")
-		json.Fail(c, 400, msg, errors.New(msg))
+		http.Fail(c, 400, msg, errors.New(msg))
 		return
 	}
 
 	// Decode response body for listing
 	if err := json.Decode(c.Request.Body, &listing); err != nil {
-		json.Fail(c, 400, "Failed decode request body", err)
+		http.Fail(c, 400, "Failed decode request body", err)
 		return
 	}
 
@@ -96,10 +97,10 @@ func createListing(c *gin.Context) {
 
 	// Save store
 	if err := stor.Put(); err != nil {
-		json.Fail(c, 500, "Failed to save store listings", err)
+		http.Fail(c, 500, "Failed to save store listings", err)
 	} else {
 		c.Writer.Header().Add("Location", c.Request.URL.Path)
-		c.JSON(201, stor.Listings)
+		http.Render(c, 201, stor.Listings)
 	}
 }
 
@@ -110,7 +111,7 @@ func updateListing(c *gin.Context) {
 
 	stor := store.New(db)
 	if err := stor.GetById(id); err != nil {
-		json.Fail(c, 404, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
+		http.Fail(c, 404, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
 		return
 	}
 
@@ -118,7 +119,7 @@ func updateListing(c *gin.Context) {
 
 	// Decode response body to create new listings
 	if err := json.Decode(c.Request.Body, &listing); err != nil {
-		json.Fail(c, 400, "Failed decode request body", err)
+		http.Fail(c, 400, "Failed decode request body", err)
 		return
 	}
 
@@ -127,13 +128,13 @@ func updateListing(c *gin.Context) {
 
 	// Try to save store
 	if err := stor.Put(); err != nil {
-		json.Fail(c, 500, "Failed to save store listings", err)
+		http.Fail(c, 500, "Failed to save store listings", err)
 	} else {
 		if ok {
-			c.JSON(200, stor.Listings)
+			http.Render(c, 200, stor.Listings)
 		} else {
 			c.Writer.Header().Add("Location", c.Request.URL.Path)
-			c.JSON(201, stor.Listings)
+			http.Render(c, 201, stor.Listings)
 		}
 	}
 }
@@ -145,7 +146,7 @@ func patchListing(c *gin.Context) {
 
 	stor := store.New(db)
 	if err := stor.GetById(id); err != nil {
-		json.Fail(c, 404, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
+		http.Fail(c, 404, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
 		return
 	}
 
@@ -153,21 +154,21 @@ func patchListing(c *gin.Context) {
 	// Can't patch an object that doesn't exist!
 	if !ok {
 		msg := fmt.Sprintf("No listing exists for '%v' in store '%v'", key, id)
-		json.Fail(c, 404, msg, errors.New(msg))
+		http.Fail(c, 404, msg, errors.New(msg))
 		return
 	}
 
 	// Decode response body to update listings
 	if err := json.Decode(c.Request.Body, &listing); err != nil {
-		json.Fail(c, 400, "Failed decode request body", err)
+		http.Fail(c, 400, "Failed decode request body", err)
 		return
 	}
 
 	// Try to save store
 	if err := stor.Put(); err != nil {
-		json.Fail(c, 500, "Failed to save store listings", err)
+		http.Fail(c, 500, "Failed to save store listings", err)
 	} else {
-		c.JSON(200, stor.Listings)
+		http.Render(c, 200, stor.Listings)
 	}
 }
 
@@ -178,7 +179,7 @@ func deleteListing(c *gin.Context) {
 
 	stor := store.New(db)
 	if err := stor.GetById(id); err != nil {
-		json.Fail(c, 404, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
+		http.Fail(c, 404, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
 		return
 	}
 
@@ -186,7 +187,7 @@ func deleteListing(c *gin.Context) {
 	_, ok := stor.Listings[key]
 	if !ok {
 		msg := fmt.Sprintf("No listing exists for '%v' in store '%v'", key, id)
-		json.Fail(c, 404, msg, errors.New(msg))
+		http.Fail(c, 404, msg, errors.New(msg))
 		return
 	}
 
@@ -195,7 +196,7 @@ func deleteListing(c *gin.Context) {
 
 	// Try to save store
 	if err := stor.Put(); err != nil {
-		json.Fail(c, 500, "Failed to save store listings", err)
+		http.Fail(c, 500, "Failed to save store listings", err)
 	} else {
 		c.Data(204, "application/json", make([]byte, 0))
 	}
