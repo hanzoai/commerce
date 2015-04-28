@@ -312,7 +312,7 @@ func getTokens(c *gin.Context, userId string) []token.Token {
 	log.Debug("Searching for valid token for: %v", userId, c)
 
 	tokens := make([]token.Token, 0)
-	if _, err := db.Query("invite-token").Filter("UserId =", userId).GetAll(db.Context, &tokens); err != nil {
+	if _, err := db.Query("invite-token").Filter("UserId =", userId).GetAll(&tokens); err != nil {
 		log.Panic("Failed to query for tokens: %v", err, c)
 	}
 

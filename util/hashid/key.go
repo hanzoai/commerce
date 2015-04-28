@@ -2,15 +2,13 @@ package hashid
 
 import (
 	"errors"
-	"io/ioutil"
 	"strconv"
 
 	"appengine"
 	aeds "appengine/datastore"
-	"appengine/urlfetch"
 
-	"crowdstart.io/config"
 	"crowdstart.io/datastore"
+	"crowdstart.io/models/namespace/consts"
 	"crowdstart.io/util/log"
 )
 
@@ -24,50 +22,88 @@ func cache(namespace string, id int64) {
 	namespaceToId[namespace] = id
 }
 
-// Fetch namespace info from our API
-func fetch(ctx appengine.Context, url string) (string, error) {
-	// Get full URL to API endpoint
-	endpoint := config.AbsoluteUrlFor("api", "/c/namespace")
+type Namespace struct {
+	IntId int64
+	Name  string
+}
 
-	// Construct URL for request
-	url = endpoint + url
+func getRoot(ctx appengine.Context) *aeds.Key {
+	return aeds.NewKey(ctx, "namespace", "", consts.RootKey, nil)
+}
 
-	// Make request with urlfetch
-	client := urlfetch.Client(ctx)
-	res, err := client.Get(url)
+func getContext(ctx appengine.Context, namespace string) appengine.Context {
+	if namespace == "" {
+		return ctx
+	}
+
+	ctx, err := appengine.Namespace(ctx, namespace)
 	if err != nil {
-		return "", err
-	}
-	if res.StatusCode != 200 {
-		return "", errors.New("API call failed")
+		panic(err)
 	}
 
-	// Return body
-	body, err := ioutil.ReadAll(res.Body)
-	return string(body), err
+	return ctx
+}
+
+func getNamespaceContext(ctx appengine.Context) appengine.Context {
+	return getContext(ctx, consts.Namespace)
 }
 
 // Get IntID by querying organization from it's namespace name
 func getId(ctx appengine.Context, namespace string) int64 {
-	res, err := fetch(ctx, "/to-id/"+namespace)
-	if err != nil {
-		log.Panic("Failed to retrieve id from namespace: %v", err, ctx)
+	if namespace == consts.Namespace {
+		return 0
 	}
-	id, err := strconv.Atoi(res)
-	return int64(id)
+
+	ctx = getNamespaceContext(ctx)
+	db := datastore.New(ctx)
+	ns := Namespace{}
+
+	// Use namespace root to ensure a strongly consistent query
+	root := getRoot(ctx)
+	_, ok, err := db.Query("namespace").Ancestor(root).Filter("Name=", namespace).First(&ns)
+	err = datastore.IgnoreFieldMismatch(err)
+
+	// Blow up if we can't find organization
+	if err != nil {
+		panic(err.Error())
+	}
+	if !ok {
+		panic("Failed to retrieve namespace with Name: " + namespace)
+	}
+
+	return ns.IntId
 }
 
 // Get namespace from organization using it's IntID
 func getNamespace(ctx appengine.Context, id int64) string {
-	res, err := fetch(ctx, "/by-id/"+strconv.Itoa(int(id)))
-	if err != nil {
-		log.Panic("Failed to retrieve namespace from id: %v", err, ctx)
+	if id == 0 {
+		return consts.Namespace
 	}
-	return res
+
+	ctx = getNamespaceContext(ctx)
+	db := datastore.New(ctx)
+	ns := Namespace{}
+
+	// Use namespace root to ensure a strongly consistent query
+	root := getRoot(ctx)
+	_, ok, err := db.Query("namespace").Ancestor(root).Filter("IntId=", id).First(&ns)
+	err = datastore.IgnoreFieldMismatch(err)
+
+	// Blow up if we can't find organization
+	if err != nil {
+		panic(err.Error())
+	}
+	if !ok {
+		panic("Failed to retrieve namespace with Id: " + strconv.Itoa(int(id)))
+	}
+
+	return ns.Name
 }
 
 // Encodes organzation namespace into it's IntID
 func encodeNamespace(ctx appengine.Context, namespace string) int {
+	log.Debug("namespace: '%v'", namespace)
+
 	// Default namespace
 	if namespace == "" {
 		return 0
@@ -75,15 +111,18 @@ func encodeNamespace(ctx appengine.Context, namespace string) int {
 
 	id, ok := namespaceToId[namespace]
 	if !ok {
-		id := getId(ctx, namespace)
+		id = getId(ctx, namespace)
 
 		// Cache result
 		cache(namespace, id)
 	}
+
+	log.Debug("encoded '%v' to %v", namespace, id)
 	return int(id)
 }
 
 func decodeNamespace(ctx appengine.Context, encoded int) string {
+	log.Debug("id: %v", encoded)
 	// Default namespace
 	if encoded == 0 {
 		return ""
@@ -92,15 +131,18 @@ func decodeNamespace(ctx appengine.Context, encoded int) string {
 	id := int64(encoded)
 	namespace, ok := idToNamespace[id]
 	if !ok {
-		namespace := getNamespace(ctx, id)
+		namespace = getNamespace(ctx, id)
 
 		// Cache result
 		cache(namespace, id)
 	}
+
+	log.Debug("decoded '%v' to %v", namespace, id)
 	return namespace
 }
 
 func EncodeKey(ctx appengine.Context, key datastore.Key) string {
+	log.Debug("key: %v", key)
 	id := int(key.IntID())
 
 	// Return if incomplete key
@@ -119,7 +161,7 @@ func EncodeKey(ctx appengine.Context, key datastore.Key) string {
 		parent = parent.Parent()
 	}
 
-	// Use parent namespace if it exists, otherwise use child's
+	// Default to default namespace
 	namespace := 0
 
 	// Parent namespace overrides child
@@ -132,13 +174,13 @@ func EncodeKey(ctx appengine.Context, key datastore.Key) string {
 	// Append namespace
 	ids = append(ids, namespace)
 
-	log.Debug("Encoding keyyyyyy: %v, %v", key, ids)
-
+	log.Debug("ids to encode: %v, %v", key, ids)
 	return Encode(ids...)
 }
 
 func DecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key, err error) {
-	log.Debug("Decoding key: %v", encoded)
+	log.Debug("encoded key: %v", encoded)
+
 	// Catch panic from Decode
 	defer func() {
 		if r := recover(); r != nil {
@@ -157,10 +199,7 @@ func DecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key, err error)
 
 	// Set namespace
 	namespace := decodeNamespace(ctx, ids[n-1])
-	ctx, err = appengine.Namespace(ctx, namespace)
-	if err != nil {
-		return key, err
-	}
+	ctx = getContext(ctx, namespace)
 
 	// root key
 	key = aeds.NewKey(ctx, decodeKind(ids[n-3]), "", int64(ids[n-2]), nil)

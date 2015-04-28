@@ -1,4 +1,4 @@
-package migration
+package migrations
 
 import (
 	"github.com/gin-gonic/gin"
@@ -8,6 +8,7 @@ import (
 	"crowdstart.io/models/collection"
 	"crowdstart.io/models/coupon"
 	"crowdstart.io/models/mailinglist"
+	"crowdstart.io/models/namespace"
 	"crowdstart.io/models/order"
 	"crowdstart.io/models/organization"
 	"crowdstart.io/models/payment"
@@ -23,78 +24,94 @@ import (
 	ds "crowdstart.io/datastore"
 )
 
-var oldNamespace = "cyclic"
-var newNamespace = "cycliq"
+var oldCycliqNamespace = "4060001"
+var newCycliqNamespace = "cycliq"
 
-func setupNamespaceMigration(c *gin.Context) {
+// Update cycliq org to use new namespace, save namespace
+func setupCycliqMigration(c *gin.Context) {
 	db := datastore.New(c)
 
+	// Try to find organization
 	org := new(organization.Organization)
-	key, ok, err := db.Query2("organization").Filter("Name=", oldNamespace).First(org)
+	key, ok, err := db.Query("organization").Filter("Name=", oldCycliqNamespace).First(org)
 	if !ok {
 		panic("Unable to find organization")
 	}
-	org.Name = newNamespace
-	// db.Context, _ = appengine.Namespace(db.Context, "default")
-	_, err = db.PutKind("organization", key, org)
+
+	// Update namespace name
+	org.Name = newCycliqNamespace
+
+	key, err = db.PutKind("organization", key, org)
 	if err != nil {
 		panic(err)
 	}
-	c.Set("namespace", oldNamespace)
+
+	// Save new namespace
+	ns := namespace.New(db)
+	ns.Name = org.Name
+	ns.IntId = key.IntID()
+	err = ns.Put()
+	if err != nil {
+		log.Warn("Failed to put namespace: %v", err)
+	}
+
+	// Set namespace to ensure we iterate over old entities
+	c.Set("namespace", oldCycliqNamespace)
 }
 
-var _ = New("namespace", setupNamespaceMigration,
+// Setup migration
+var _ = New("cycliq", setupCycliqMigration,
 	func(db *ds.Datastore, bundle *bundle.Bundle) {
-		bundle.SetNamespace(newNamespace)
+		bundle.SetNamespace(newCycliqNamespace)
 		bundle.Put()
 	},
 	func(db *ds.Datastore, collection *collection.Collection) {
-		collection.SetNamespace(newNamespace)
+		collection.SetNamespace(newCycliqNamespace)
 		collection.Put()
 	},
 	func(db *ds.Datastore, coupon *coupon.Coupon) {
-		coupon.SetNamespace(newNamespace)
+		coupon.SetNamespace(newCycliqNamespace)
 		coupon.Put()
 	},
 	func(db *ds.Datastore, order *order.Order) {
-		order.SetNamespace(newNamespace)
+		order.SetNamespace(newCycliqNamespace)
 		order.Put()
 	},
 	func(db *ds.Datastore, payment *payment.Payment) {
-		payment.SetNamespace(newNamespace)
+		payment.SetNamespace(newCycliqNamespace)
 		payment.Put()
 	},
 	func(db *ds.Datastore, plan *plan.Plan) {
-		plan.SetNamespace(newNamespace)
+		plan.SetNamespace(newCycliqNamespace)
 		plan.Put()
 	},
 	func(db *ds.Datastore, product *product.Product) {
-		product.SetNamespace(newNamespace)
+		product.SetNamespace(newCycliqNamespace)
 		product.Put()
 	},
 	func(db *ds.Datastore, store *store.Store) {
-		store.SetNamespace(newNamespace)
+		store.SetNamespace(newCycliqNamespace)
 		store.Put()
 	},
 	func(db *ds.Datastore, token *token.Token) {
-		token.SetNamespace(newNamespace)
+		token.SetNamespace(newCycliqNamespace)
 		token.Put()
 	},
 	func(db *ds.Datastore, variant *variant.Variant) {
-		variant.SetNamespace(newNamespace)
+		variant.SetNamespace(newCycliqNamespace)
 		variant.Put()
 	},
 	func(db *ds.Datastore, user *user.User) {
 		log.Warn("%v", user)
-		user.SetNamespace(newNamespace)
+		user.SetNamespace(newCycliqNamespace)
 		user.Put()
 	},
 	func(db *ds.Datastore, mailinglist *mailinglist.MailingList) {
-		mailinglist.SetNamespace(newNamespace)
+		mailinglist.SetNamespace(newCycliqNamespace)
 		mailinglist.Put()
 	},
 	func(db *ds.Datastore, subscriber *subscriber.Subscriber) {
-		subscriber.SetNamespace(newNamespace)
+		subscriber.SetNamespace(newCycliqNamespace)
 		subscriber.Put()
 	},
 )
