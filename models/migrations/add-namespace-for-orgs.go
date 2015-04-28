@@ -3,9 +3,6 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"appengine"
-
-	"crowdstart.io/models/constants"
 	"crowdstart.io/models/namespace"
 	"crowdstart.io/models/organization"
 	"crowdstart.io/util/log"
@@ -18,17 +15,12 @@ var _ = New("add-namespace-for-orgs",
 		c.Set("namespace", "")
 	},
 	func(db *ds.Datastore, org *organization.Organization) {
-		nsCtx, err := appengine.Namespace(db.Context, constants.NamespaceNamespace)
-		if err != nil {
-			log.Error("Could not update namespace %v", err, db.Context)
-		}
-
-		nsDb := ds.New(nsCtx)
-		ns := namespace.New(nsDb)
-
+		ns := namespace.New(db)
 		ns.Name = org.Name
-		ns.GetOrCreate("Name=", ns.Name)
 		ns.IntId = org.Key().IntID()
-		ns.MustPut()
+		err := ns.Put()
+		if err != nil {
+			log.Warn("Failed to put namespace: %v", err)
+		}
 	},
 )
