@@ -529,66 +529,70 @@ all calls, it also requires an API key to be included with the request.
 
 ### Get a Collection [GET]
 + Response 200 (application/json)
-    {
-      "id": "aJpS06tepV",
-      "createdAt": "2015-04-27T00:29:31.56072Z",
-      "updatedAt": "2015-04-27T00:29:31.564548Z",
-      "slug": "such-tees-pack",
-      "name": "Such tees pack",
-      "description": "Much tees in one pack!",
-      "media": null,
-      "available": true,
-      "availability": {
-        "Active": false,
-        "startDate": "0001-01-01T00:00:00Z",
-        "endDate": "0001-01-01T00:00:00Z"
-      },
-      "published": true,
-      "preorder": false,
-      "outOfStock": false,
-      "productIds": null,
-      "variantIds": null,
-      "history": null
-    }
+
+        {
+          "id": "aJpS06tepV",
+          "createdAt": "2015-04-27T00:29:31.56072Z",
+          "updatedAt": "2015-04-27T00:29:31.564548Z",
+          "slug": "such-tees-pack",
+          "name": "Such tees pack",
+          "description": "Much tees in one pack!",
+          "media": null,
+          "available": true,
+          "availability": {
+            "Active": false,
+            "startDate": "0001-01-01T00:00:00Z",
+            "endDate": "0001-01-01T00:00:00Z"
+          },
+          "published": true,
+          "preorder": false,
+          "outOfStock": false,
+          "productIds": null,
+          "variantIds": null,
+          "history": null
+        }
+
 ### Create a Collection [POST]
 + Request (application/json)
-    {
-      "slug": "such-tees-pack",
-      "name": "Such tees pack",
-      "description": "Much tees in one pack!",
-      "available": true,
-      "availability": {
-        "Active": false,
-        "startDate": "0001-01-01T00:00:00Z",
-        "endDate": "0001-01-01T00:00:00Z"
-      },
-      "published": true,
-      "preorder": false,
-      "outOfStock": false,
-    }
+
+        {
+          "slug": "such-tees-pack",
+          "name": "Such tees pack",
+          "description": "Much tees in one pack!",
+          "available": true,
+          "availability": {
+            "Active": false,
+            "startDate": "0001-01-01T00:00:00Z",
+            "endDate": "0001-01-01T00:00:00Z"
+          },
+          "published": true,
+          "preorder": false,
+          "outOfStock": false,
+        }
 
 + Response 200 (application/json)
-    {
-      "id": "aJpS06tepV",
-      "createdAt": "2015-04-27T00:29:31.56072Z",
-      "updatedAt": "2015-04-27T00:29:31.564548Z",
-      "slug": "such-tees-pack",
-      "name": "Such tees pack",
-      "description": "Much tees in one pack!",
-      "media": null,
-      "available": true,
-      "availability": {
-        "Active": false,
-        "startDate": "0001-01-01T00:00:00Z",
-        "endDate": "0001-01-01T00:00:00Z"
-      },
-      "published": true,
-      "preorder": false,
-      "outOfStock": false,
-      "productIds": null,
-      "variantIds": null,
-      "history": null
-    }
+
+        {
+          "id": "aJpS06tepV",
+          "createdAt": "2015-04-27T00:29:31.56072Z",
+          "updatedAt": "2015-04-27T00:29:31.564548Z",
+          "slug": "such-tees-pack",
+          "name": "Such tees pack",
+          "description": "Much tees in one pack!",
+          "media": null,
+          "available": true,
+          "availability": {
+            "Active": false,
+            "startDate": "0001-01-01T00:00:00Z",
+            "endDate": "0001-01-01T00:00:00Z"
+          },
+          "published": true,
+          "preorder": false,
+          "outOfStock": false,
+          "productIds": null,
+          "variantIds": null,
+          "history": null
+        }
 
 ### Deleting a Collection [DELETE]
 Deleting a Collection is as simple as passing its ID to the Collection endpoint using
@@ -631,87 +635,94 @@ all calls, it also requires an API key to be included with the request.
 ### Get a Mailing List [GET]
 + Response 200 (application/json)
 
-    {
-      "id": "JLnDuXu4M6",
-      "createdAt": "2015-04-27T01:15:33.113334Z",
-      "updatedAt": "2015-04-27T01:15:33.113334Z",
-      "name": "Teh Nooest Mailing List!",
-      "sendWelcome": true,
-      "mailchimp": {
-        "id": "aowieij",
-        "apiKey": "23098fIOWJEOIJFW",
-        "doubleOptin": false,
-        "updateExisting": true,
-        "replaceInterests": true,
-        "sendWelcome": false
-      },
-      "thankyou": {
-        "type": "redirect",
-        "url": "http://suchtees.com/thanks/"
-      },
-      "facebook": {
-        "id": "6024480985959",
-        "value": "0.00",
-        "currency": "USD"
-      },
-      "google": {
-        "category": "Subscription",
-        "name": "T-Shirt List Sign-up"
-      }
+        {
+          "id": "JLnDuXu4M6",
+          "createdAt": "2015-04-27T01:15:33.113334Z",
+          "updatedAt": "2015-04-27T01:15:33.113334Z",
+          "name": "Teh Nooest Mailing List!",
+          "sendWelcome": true,
+          "mailchimp": {
+            "id": "aowieij",
+            "apiKey": "23098fIOWJEOIJFW",
+            "doubleOptin": false,
+            "updateExisting": true,
+            "replaceInterests": true,
+            "sendWelcome": false
+          },
+          "thankyou": {
+            "type": "redirect",
+            "url": "http://suchtees.com/thanks/"
+          },
+          "facebook": {
+            "id": "6024480985959",
+            "value": "0.00",
+            "currency": "USD"
+          },
+          "google": {
+            "category": "Subscription",
+            "name": "T-Shirt List Sign-up"
+          }
+        }
+
 ### Create a Mailing List [POST]
 + Request (application/json)
-    {
-      "name": "Teh Nooest Mailing List!",
-      "sendWelcome": true,
-      "mailchimp": {
-        "id": "aowieij",
-        "apiKey": "23098fIOWJEOIJFW",
-        "doubleOptin": false,
-        "updateExisting": true,
-        "replaceInterests": true,
-        "sendWelcome": false
-      },
-      "thankyou": {
-        "type": "redirect",
-        "url": "http://suchtees.com/thanks/"
-      },
-      "facebook": {
-        "id": "6024480985959",
-        "value": "0.00",
-        "currency": "USD"
-      },
-      "google": {
-        "category": "Subscription",
-        "name": "T-Shirt List Sign-up"
-      }
+
+        {
+          "name": "Teh Nooest Mailing List!",
+          "sendWelcome": true,
+          "mailchimp": {
+            "id": "aowieij",
+            "apiKey": "23098fIOWJEOIJFW",
+            "doubleOptin": false,
+            "updateExisting": true,
+            "replaceInterests": true,
+            "sendWelcome": false
+          },
+          "thankyou": {
+            "type": "redirect",
+            "url": "http://suchtees.com/thanks/"
+          },
+          "facebook": {
+            "id": "6024480985959",
+            "value": "0.00",
+            "currency": "USD"
+          },
+          "google": {
+            "category": "Subscription",
+            "name": "T-Shirt List Sign-up"
+          }
+        }
+
 + Response 200 (application/json)
-    {
-      "id": "JLnDuXu4M6",
-      "createdAt": "2015-04-27T01:15:33.113334Z",
-      "updatedAt": "2015-04-27T01:15:33.113334Z",
-      "name": "Teh Nooest Mailing List!",
-      "sendWelcome": true,
-      "mailchimp": {
-        "id": "aowieij",
-        "apiKey": "23098fIOWJEOIJFW",
-        "doubleOptin": false,
-        "updateExisting": true,
-        "replaceInterests": true,
-        "sendWelcome": false
-      },
-      "thankyou": {
-        "type": "redirect",
-        "url": "http://suchtees.com/thanks/"
-      },
-      "facebook": {
-        "id": "6024480985959",
-        "value": "0.00",
-        "currency": "USD"
-      },
-      "google": {
-        "category": "Subscription",
-        "name": "T-Shirt List Sign-up"
-      }
+
+        {
+          "id": "JLnDuXu4M6",
+          "createdAt": "2015-04-27T01:15:33.113334Z",
+          "updatedAt": "2015-04-27T01:15:33.113334Z",
+          "name": "Teh Nooest Mailing List!",
+          "sendWelcome": true,
+          "mailchimp": {
+            "id": "aowieij",
+            "apiKey": "23098fIOWJEOIJFW",
+            "doubleOptin": false,
+            "updateExisting": true,
+            "replaceInterests": true,
+            "sendWelcome": false
+          },
+          "thankyou": {
+            "type": "redirect",
+            "url": "http://suchtees.com/thanks/"
+          },
+          "facebook": {
+            "id": "6024480985959",
+            "value": "0.00",
+            "currency": "USD"
+          },
+          "google": {
+            "category": "Subscription",
+            "name": "T-Shirt List Sign-up"
+          }
+
 ### Deleting a Mailing List [DELETE]
 Deleting a Mailing List is as simple as passing its ID to the Mailing List endpoint using
 the HTTP Delete method. You will not receive a response past the normal HTTP
@@ -732,6 +743,7 @@ fashion.  Any fields passed in to a PATCH method will be updated with what you
 request, while any fields not specified in the JSON will be left alone.
 
 + Response 201 (application/json)
+
 # Group Order
 
 This object is a representation of a user's **confirmed purchase**.  The order should not be
@@ -1587,5 +1599,3 @@ you page for customers that accept an offer from your mailing list.
 | type       | The class of thank-you page that is configured for this object. Potential values are "Redirect", "Html", and "Disabled" | string |
 | url        | Required for "Redirect" type ThankYous, this denotes the place to redirect to.  Omitted if not set.                     | string |
 | html       | Required for "Html" type ThankYous, this contains the HTML used for the thank-you page.  Omitted if not set.            | string |
-
-
