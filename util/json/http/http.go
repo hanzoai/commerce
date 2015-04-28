@@ -68,4 +68,7 @@ func Fail(c *gin.Context, status int, message interface{}, err error) {
 	if err != nil {
 		log.Error(err, c)
 	}
+
+	// Stop processing middleware
+	c.Abort(status)
 }
