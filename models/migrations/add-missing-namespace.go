@@ -1,0 +1,20 @@
+package migrations
+
+import (
+	"github.com/gin-gonic/gin"
+
+	"crowdstart.io/datastore"
+	"crowdstart.io/models/namespace"
+	"crowdstart.io/util/log"
+)
+
+var _ = New("add-missing-namespace", func(c *gin.Context) {
+	db := datastore.New(c)
+	ns := namespace.New(db)
+	ns.Name = "4050001"
+	ns.IntId = 4050001
+	err := ns.Put()
+	if err != nil {
+		log.Warn("Failed to put namespace: %v", err)
+	}
+})
