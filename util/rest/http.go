@@ -14,7 +14,7 @@ import (
 	"crowdstart.io/middleware"
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/models/organization"
-	"crowdstart.io/util/json"
+	"crowdstart.io/util/json/http"
 	"crowdstart.io/util/log"
 	"crowdstart.io/util/template"
 )
@@ -86,7 +86,7 @@ func ListRoutes() gin.HandlerFunc {
 		org := organization.New(db)
 		err := org.GetOrCreate("Name=", "suchtees")
 		if err != nil {
-			json.Fail(c, 500, "Unable to fetch organization", err)
+			http.Fail(c, 500, "Unable to fetch organization", err)
 			return
 		}
 

@@ -12,6 +12,7 @@ import (
 	"crowdstart.io/middleware"
 	"crowdstart.io/models/mixin"
 	"crowdstart.io/util/json"
+	"crowdstart.io/util/json/http"
 	"crowdstart.io/util/permission"
 	"crowdstart.io/util/router"
 	"crowdstart.io/util/structs"
@@ -253,10 +254,12 @@ func (r Rest) newEntitySlice() interface{} {
 	return ptr.Interface()
 }
 
-func (r Rest) JSON(c *gin.Context, code int, body interface{}) {
-	c.Writer.Header().Set("Content-Type", "application/json")
-	c.Writer.WriteHeader(code)
-	c.Writer.Write(json.EncodeBytes(body))
+func (r Rest) Render(c *gin.Context, status int, data interface{}) {
+	http.Render(c, status, data)
+}
+
+func (r Rest) Fail(c *gin.Context, status int, message interface{}, err error) {
+	http.Fail(c, status, message, err)
 }
 
 func (r Rest) get(c *gin.Context) {
@@ -266,9 +269,9 @@ func (r Rest) get(c *gin.Context) {
 
 	if err := entity.GetById(id); err != nil {
 		// TODO: When is this a 404?
-		json.Fail(c, 404, "Failed to get "+r.Kind, err)
+		r.Fail(c, 404, "Failed to get "+r.Kind, err)
 	} else {
-		r.JSON(c, 200, entity)
+		r.Render(c, 200, entity)
 	}
 }
 
@@ -297,7 +300,7 @@ func (r Rest) list(c *gin.Context) {
 		if display, err = strconv.Atoi(displayStr); err == nil && display > 0 {
 			q = q.Limit(display)
 		} else {
-			json.Fail(c, 500, "'display' must be positive and non-zero.", err)
+			r.Fail(c, 500, "'display' must be positive and non-zero.", err)
 			return
 		}
 	}
@@ -306,23 +309,23 @@ func (r Rest) list(c *gin.Context) {
 		if page, err := strconv.Atoi(pageStr); err == nil && page > 0 {
 			q = q.Offset(display * (page - 1))
 		} else {
-			json.Fail(c, 500, "'page' must be positive and non-zero.", err)
+			r.Fail(c, 500, "'page' must be positive and non-zero.", err)
 			return
 		}
 	}
 
 	if _, err = q.GetAll(entities); err != nil {
-		json.Fail(c, 500, "Failed to list "+r.Kind, err)
+		r.Fail(c, 500, "Failed to list "+r.Kind, err)
 		return
 	}
 
 	count, err := entity.Query().Count()
 	if err != nil {
-		json.Fail(c, 500, "Could not count the models.", err)
+		r.Fail(c, 500, "Could not count the models.", err)
 		return
 	}
 
-	r.JSON(c, 200, Pagination{
+	r.Render(c, 200, Pagination{
 		Page:    pageStr,
 		Display: displayStr,
 		Models:  entities,
@@ -334,15 +337,15 @@ func (r Rest) create(c *gin.Context) {
 	entity := r.newEntity(c)
 
 	if err := json.Decode(c.Request.Body, entity); err != nil {
-		json.Fail(c, 400, "Failed decode request body", err)
+		r.Fail(c, 400, "Failed decode request body", err)
 		return
 	}
 
 	if err := entity.Put(); err != nil {
-		json.Fail(c, 500, "Failed to create "+r.Kind, err)
+		r.Fail(c, 500, "Failed to create "+r.Kind, err)
 	} else {
 		c.Writer.Header().Add("Location", c.Request.URL.Path+"/"+entity.Id())
-		r.JSON(c, 201, entity)
+		r.Render(c, 201, entity)
 	}
 }
 
@@ -355,26 +358,26 @@ func (r Rest) update(c *gin.Context) {
 	// Try to retrieve key from datastore
 	_, ok, err := entity.KeyExists(id)
 	if !ok {
-		json.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
+		r.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
 		return
 	}
 
 	if err != nil {
-		json.Fail(c, 500, "Failed to retrieve key for "+id, err)
+		r.Fail(c, 500, "Failed to retrieve key for "+id, err)
 		return
 	}
 
 	// Decode response body to create new entity
 	if err := json.Decode(c.Request.Body, entity); err != nil {
-		json.Fail(c, 400, "Failed decode request body", err)
+		r.Fail(c, 400, "Failed decode request body", err)
 		return
 	}
 
 	// Replace whatever was in the datastore with our new updated entity
 	if err := entity.Put(); err != nil {
-		json.Fail(c, 500, "Failed to update "+r.Kind, err)
+		r.Fail(c, 500, "Failed to update "+r.Kind, err)
 	} else {
-		r.JSON(c, 200, entity)
+		r.Render(c, 200, entity)
 	}
 }
 
@@ -385,19 +388,19 @@ func (r Rest) patch(c *gin.Context) {
 	entity := r.newEntity(c)
 	err := entity.Get(id)
 	if err != nil {
-		json.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
+		r.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
 		return
 	}
 
 	if err := json.Decode(c.Request.Body, entity); err != nil {
-		json.Fail(c, 400, "Failed decode request body", err)
+		r.Fail(c, 400, "Failed decode request body", err)
 		return
 	}
 
 	if err := entity.Put(); err != nil {
-		json.Fail(c, 500, "Failed to update "+r.Kind, err)
+		r.Fail(c, 500, "Failed to update "+r.Kind, err)
 	} else {
-		r.JSON(c, 200, entity)
+		r.Render(c, 200, entity)
 	}
 }
 
@@ -408,7 +411,7 @@ func (r Rest) delete(c *gin.Context) {
 	entity.Delete(id)
 
 	if err := entity.Delete(); err != nil {
-		json.Fail(c, 500, "Failed to delete "+r.Kind, err)
+		r.Fail(c, 500, "Failed to delete "+r.Kind, err)
 	} else {
 		c.Data(204, "application/json", make([]byte, 0))
 	}
@@ -432,7 +435,7 @@ func (r Rest) methodOverride(c *gin.Context) {
 	case "DELETE":
 		r.Delete(c)
 	default:
-		json.Fail(c, 405, "Method not allowed", errors.New("Method not allowed"))
+		r.Fail(c, 405, "Method not allowed", errors.New("Method not allowed"))
 	}
 }
 
