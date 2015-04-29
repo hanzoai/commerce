@@ -109,7 +109,7 @@ func (at *AccessToken) ClearTokens() {
 func (at *AccessToken) GetWithAccessToken(accessToken string) (*token.Token, error) {
 	tok, err := at.GetToken(accessToken)
 	if err != nil {
-		log.Warn("Failed to get %v using token: %v", at.Entity.Kind(), accessToken)
+		log.Warn("Failed to get %v using token '%v': %v", at.Entity.Kind(), accessToken, err)
 		return tok, err
 	}
 
