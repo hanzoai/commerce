@@ -242,7 +242,7 @@ var BuildTable = (function() {
           } else if (render == 'bool') {
             val = val ? 'Yes' : 'No';
           } else if (render == 'snippet' && model.id){
-            val = $('<textarea class="form-control" style="height:80px;"><script src="' + column.apiUrl + 'mailinglist/' + model.id + '/js"></script></textarea>');
+            val = $('<textarea class="form-control" style="height:80px;"><script src="https:' + column.apiUrl + 'mailinglist/' + model.id + '/js"></script></textarea>');
           } else if (render && {}.toString.call(render) == '[object Function]') {
             val = render(val, model);
           }
