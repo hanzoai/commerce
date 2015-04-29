@@ -30,8 +30,6 @@ do ->
       return
 
   getForm = ->
-    console.log 'serializing form'
-
     # start at the root element
     node = document.documentElement
 
@@ -43,35 +41,49 @@ do ->
     window.form = form
 
   serialize = (form) ->
-    console.log 'serializing form'
-
     return {} if not form or form.nodeName isnt "FORM"
     data = {}
 
     elements = form.getElementsByTagName 'input'
-    console.log elements
 
     for el in elements
       data[el.name] = el.value.trim()
 
     data
 
+  fb = (opts) ->
+    window._fbq = window._fbq ?= []
+
+    unless _fbq.loaded
+      fbds = document.createElement 'script'
+      fbds.async = true
+      fbds.src = '//connect.facebook.net/en_US/fbds.js'
+      s = document.getElementsByTagName('script')[0]
+      s.parentNode.insertBefore fbds, s
+      _fbq.loaded = true
+
+    window._fbq.push ['track', opts.id,
+      value:    opts.value,
+      currency: opts.currency,
+    ]
+
+  ga = (opts)->
+    unless _gaq?
+      window._gaq = window._gaq ?= []
+      ga = document.createElement 'script'
+      ga.type = 'text/javascript'
+      ga.async = true
+      ga.src = ((if 'https:' is document.location.protocol then 'https://' else 'http://')) + 'stats.g.doubleclick.net/dc.js'
+      s = document.getElementsByTagName('script')[0]
+      s.parentNode.insertBefore ga, s
+
+    window._gaq.push ['_trackEvent', opts.category, opts.name]
+
   track = ->
-    console.log 'tracking event'
-
-    if window._gaq?
-      window._gaq.push ['_trackEvent', ml.google.category, ml.google.name]
-
-    if window._fbq?
-      window._fbq.push ['track', ml.facebook.id,
-        value:    ml.facebook.value,
-        currency: ml.facebook.currency,
-      ]
-
+    ga ml.google if ml.google.category?
+    fb ml.facebook if ml.facebook.id?
 
   addHandler = (ev) ->
-    console.log 'adding submit handler'
-
     form.removeEventListener 'submit', addHandler
     form.addEventListener    'submit', submitHandler
 
@@ -94,8 +106,6 @@ do ->
         form.innerHTML = ml.thankyou.html
 
   submitHandler = (ev) ->
-    console.log 'submit handler'
-
     if ev.defaultPrevented
       return
     else
