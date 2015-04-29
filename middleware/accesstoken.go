@@ -12,7 +12,7 @@ import (
 	"crowdstart.io/datastore"
 	"crowdstart.io/models/organization"
 	"crowdstart.io/util/bit"
-	"crowdstart.io/util/json"
+	"crowdstart.io/util/json/http"
 	"crowdstart.io/util/permission"
 	"crowdstart.io/util/session"
 )
@@ -77,7 +77,7 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 
 		// Bail if we still don't have an access token
 		if accessToken == "" {
-			json.Fail(c, 401, "No access token provided.", errors.New("No access token provided"))
+			http.Fail(c, 401, "No access token provided.", errors.New("No access token provided"))
 			return
 		}
 
@@ -88,18 +88,18 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 		// Try to validate the org's access token
 		tok, err := org.GetWithAccessToken(accessToken)
 		if err != nil {
-			json.Fail(c, 401, "Unable to retrieve organization associated with access token: "+err.Error(), err)
+			http.Fail(c, 401, "Unable to retrieve organization associated with access token: "+err.Error(), err)
 			return
 		}
 
 		// Verify token signature
 		if !tok.Verify(org.SecretKey) {
-			json.Fail(c, 403, "Unable to verify token.", err)
+			http.Fail(c, 403, "Unable to verify token.", err)
 		}
 
 		// Verify permissions
 		if !tok.HasPermission(permissions) {
-			json.Fail(c, 403, "Token doesn't support this scope", err)
+			http.Fail(c, 403, "Token doesn't support this scope", err)
 		}
 
 		// Whether or not we can make live calls
