@@ -134,7 +134,7 @@ else
 endif
 
 # set production=1 to set datastore export/import target to use production
-ifeq ($(production), 1)
+ifeq ($(skully), 1)
 	datastore_app_id = crowdstart-skully
 else
 	datastore_app_id = crowdstart-staging
@@ -266,7 +266,7 @@ datastore-export:
 				  --log_file /tmp/bulkloader-$$kind.log \
 				  --result_db_filename /tmp/bulkloader-result-$$kind.db \
 				  --kind $$kind \
-				  --filename _export/$$kind-$(datastore_app_id)-$(current_date).csv && \
+				  --filename _export/$$kind-$(datastore_app_id)-$(current_date).csv
 	@rm -rf /tmp/bulkloader-$$kind.db \
 		   /tmp/bulkloader-$$kind.log \
 		   /tmp/bulkloader-result-$$kind.db
@@ -281,7 +281,7 @@ datastore-import:
 							  --config_file util/bulkloader/bulkloader-import.yaml \
 							  --kind $$kind \
 							  --filename $$file \
-							  --log_file /tmp/bulkloader-upload-$$kind.log && \
+							  --log_file /tmp/bulkloader-upload-$$kind.log
 	@rm -rf /tmp/bulkloader-upload-$$kind.log
 
 # Generate config for use with datastore-export target
