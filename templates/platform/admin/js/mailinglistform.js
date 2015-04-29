@@ -35,7 +35,7 @@ BuildForm($('#form-mailinglist'),
     {
       id: 'fbId',
       name: 'facebook[currency]',
-      label: 'Id',
+      label: 'Currency',
       type: 'text',
       $parent: $('#mailinglist-fb'),
       value: '{{ mailingList.Facebook.Currency }}' || 'USD',
