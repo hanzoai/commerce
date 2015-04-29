@@ -20,7 +20,7 @@ var Myle = New("myle", func(c *gin.Context) *organization.Organization {
 	org.GetOrCreate("Name=", org.Name)
 
 	u := user.New(db)
-	u.Email = "dev@hanzo.ai"
+	u.Email = "myle@verus.io"
 	u.GetOrCreate("Email=", u.Email)
 	u.FirstName = "Michael"
 	u.LastName = "Walker"
