@@ -85,7 +85,7 @@ module.exports =
         return "#{requisite} #{files.store.js.in} -o #{files.store.js.out}"
       if /^assets\/js\/api/.test src
         if /mailinglist/.test src
-          return "#{coffee} -bcm -o #{files.mailinglist.js.out} #{files.mailinglist.js.in}"
+          return "#{coffee} -bc -o #{files.mailinglist.js.out} #{files.mailinglist.js.in}"
         else
           return "#{requisite} #{files.api.js.in} -o #{files.api.js.out}"
       if /^assets\/js\//.test src
