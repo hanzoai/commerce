@@ -28,6 +28,9 @@ func Init() {
 	task.SetupRoutes(router)
 
 	if config.IsProduction {
+		router.GET("/", func(c *gin.Context) {
+			c.String(200, "ok")
+		})
 		return
 	}
 
