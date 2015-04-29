@@ -148,6 +148,16 @@ BuildForm($('#form-mailinglist'),
       valueCols: 6,
       value: '{{ mailingList.Mailchimp.ReplaceInterests }}' === 'True'
     },
+    {
+      id: 'sendWelcome',
+      name: 'mailchimp[sendWelcome]',
+      label: 'Send a Welcome Email?',
+      type: 'switch',
+      $parent: $('.mailinglist-mailchimp-col2'),
+      labelCols: 6,
+      valueCols: 6,
+      value: '{{ mailingList.Mailchimp.SendWelcome }}' === 'True'
+    },
   ]);
 });
 
