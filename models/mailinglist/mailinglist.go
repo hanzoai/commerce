@@ -113,6 +113,8 @@ func (m *MailingList) Js() string {
 	endpoint := config.UrlFor("api", "/mailinglist/", m.Id(), "/subscribe")
 	if appengine.IsDevAppServer() {
 		endpoint = "http://localhost:8080" + endpoint
+	} else {
+		endpoint = "https:" + endpoint
 	}
 
 	return fmt.Sprintf(jsTemplate, endpoint, m.JSON())
