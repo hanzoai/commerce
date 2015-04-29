@@ -52,9 +52,8 @@ do ->
     data
 
   fb = (opts) ->
-    window._fbq = window._fbq ?= []
-
-    unless _fbq.loaded
+    unless window._fbq?
+      window._fbq = []
       fbds = document.createElement 'script'
       fbds.async = true
       fbds.src = '//connect.facebook.net/en_US/fbds.js'
@@ -68,8 +67,8 @@ do ->
     ]
 
   ga = (opts)->
-    unless _gaq?
-      window._gaq = window._gaq ?= []
+    unless window._gaq?
+      window._gaq = []
       ga = document.createElement 'script'
       ga.type = 'text/javascript'
       ga.async = true
