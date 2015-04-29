@@ -5,8 +5,11 @@ import (
 
 	"crowdstart.io/auth/password"
 	"crowdstart.io/datastore"
+	"crowdstart.io/models/namespace"
 	"crowdstart.io/models/organization"
 	"crowdstart.io/models/user"
+
+	"crowdstart.io/util/log"
 )
 
 var Myle = New("myle", func(c *gin.Context) *organization.Organization {
@@ -33,6 +36,15 @@ var Myle = New("myle", func(c *gin.Context) *organization.Organization {
 
 	// Save org into default namespace
 	org.Put()
+
+	// Save namespace so we can decode keys for this organization later
+	ns := namespace.New(db)
+	ns.Name = org.Name
+	ns.IntId = org.Key().IntID()
+	err := ns.Put()
+	if err != nil {
+		log.Warn("Failed to put namespace: %v", err)
+	}
 
 	return org
 })
