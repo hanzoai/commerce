@@ -520,7 +520,12 @@ func ProcessUpdatedSObjects(api SalesforceClient, response *UpdatedRecordsRespon
 		if sOrder, ok := us.(*Order); ok {
 			acct := new(Account)
 			log.Debug("SF Account Id = %v", sOrder.AccountId)
-			user := acct.LoadSalesforceId(db, sOrder.AccountId).(*models.User)
+			maybeUser := acct.LoadSalesforceId(db, sOrder.AccountId)
+			user, ok := maybeUser.(*models.User)
+			if !ok {
+				panic("no user found for SF Account Id = " + sOrder.AccountId)
+			}
+
 			if user == nil {
 				return errors.New("Order updated with invalid account, no user found")
 			}
