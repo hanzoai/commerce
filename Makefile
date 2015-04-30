@@ -136,8 +136,10 @@ endif
 # set production=1 to set datastore export/import target to use production
 ifeq ($(skully), 1)
 	datastore_app_id = crowdstart-skully
+	gae_config = $(gae_skully)
 else
 	datastore_app_id = crowdstart-staging
+	gae_config = $(gae_staging)
 endif
 datastore_admin_url = https://datastore-admin-dot-$(datastore_app_id).appspot.com/_ah/remote_api
 
@@ -243,14 +245,12 @@ test-ci:
 
 # DEPLOY
 deploy: assets-min
-	for module in $(gae_skully); do \
+	for module in $(gae_config); do \
 		$(appcfg.py) rollback $$module; \
 		$(appcfg.py) update $$module; \
 	done
 	$(appcfg.py) update_indexes config/skully
 	$(appcfg.py) update_dispatch config/skully
-
-deploy-skully: deploy
 
 # EXPORT / Usage: make datastore-export kind=user
 datastore-export:
