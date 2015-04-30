@@ -222,8 +222,7 @@ func charge(c *gin.Context) {
 	if salesforceTokens.AccessToken != "" {
 		// Launch a synchronization task
 		campaign := getCampaign(c, db)
-		salesforce.CallUpsertUserTask(ctx, &campaign, user)
-		salesforce.CallUpsertOrderTask(ctx, &campaign, &form.Order)
+		salesforce.CallUpsertNewOrderTask(ctx, &campaign, user, &form.Order)
 	}
 
 	// Generate invite for preorder site.

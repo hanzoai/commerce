@@ -171,6 +171,7 @@ func SavePreorder(c *gin.Context) {
 	} else {
 		order = form.Order
 	}
+	order.Unconfirmed = false
 	order.UpdatedAt = time.Now()
 	order.ShippingAddress = form.ShippingAddress
 	log.Debug("ShippingAddress: %v", user)
