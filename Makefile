@@ -54,7 +54,7 @@ gae_production = config/production \
 
 tools = github.com/nsf/gocode \
 		github.com/golang/lint/golint \
-		github.com/jstemmer/gotags
+		github.com/jstemmer/gotags \
 		github.com/kisielk/errcheck \
 		golang.org/x/tools/cmd/cover \
 		golang.org/x/tools/cmd/goimports \
