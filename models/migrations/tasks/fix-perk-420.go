@@ -11,7 +11,8 @@ import (
 )
 
 var FixPerk420 = parallel.Task("fix-perk-420", func(db *datastore.Datastore, key datastore.Key, order models.Order) {
-	if order.CreatedAt.Before(time.Now().Add(-30 * 24 * time.Hour)) {
+	LastMonth := time.Now().Add(-30 * 24 * time.Hour)
+	if order.CreatedAt.Before(LastMonth) {
 		return
 	}
 
