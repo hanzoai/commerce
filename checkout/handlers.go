@@ -243,7 +243,7 @@ func charge(c *gin.Context) {
 	contribution.Id = strconv.Itoa(int(orderId))
 	contribution.UserId = user.Id
 	contribution.Email = user.Email
-	contribution.Perk = models.Perks["WINTER2014PROMO"]
+	contribution.Perk = models.Perks["AR1-2015"]
 	if _, err := db.PutKind("contribution", contribution.Id, contribution); err != nil {
 		log.Error("Failed to save contribution: %v", err, c)
 		c.Fail(500, err)
