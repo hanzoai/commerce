@@ -45,6 +45,25 @@ var UpsertOrderTask = delay.Func("SalesforceUpsertOrderTask", func(c appengine.C
 	}
 })
 
+// UpsertOrderTask upserts users into salesforce
+var UpsertNewOrderTask = delay.Func("SalesforceUpsertNewOrderTask", func(c appengine.Context, campaign models.Campaign, user models.User, order models.Order) {
+	if campaign.Salesforce.AccessToken != "" {
+		log.Info("Try to synchronize user with salesforce", c)
+
+		client := New(c, &campaign, true)
+
+		if err := client.Push(&user); err != nil {
+			log.Panic("UpsertUserTask failed: %v", err, c)
+		}
+
+		log.Info("Try to synchronize order with salesforce", c)
+
+		if err := client.Push(&order); err != nil {
+			log.Panic("UpsertOrderTask failed: %v", err, c)
+		}
+	}
+})
+
 // UpsertUserTask upserts users into salesforce
 var ImportUsersTask = parallel.Task("sf-import-user-task", func(db *datastore.Datastore, key datastore.Key, user models.User, campaign models.Campaign) {
 	client := New(db.Context, &campaign, true)
@@ -293,6 +312,61 @@ var PullUpdatedOrdersTask = delay.Func("SalesforcePullUpdatedOrderTask", func(c 
 	}
 })
 
+// PullUpdatedTask gets recently(20 minutes ago) updated Contact and upserts them as Users
+var PullUpdatedUsersAndOrdersTask = delay.Func("SalesforcePullUpdatedUsersAndOrdersTask", func(c appengine.Context) {
+	db := datastore.New(c)
+	campaign := new(models.Campaign)
+
+	// Get user instance
+	if err := db.GetKind("campaign", "dev@hanzo.ai", campaign); err != nil {
+		log.Panic("Unable to get campaign from database: %v", err, c)
+	}
+
+	if campaign.Salesforce.AccessToken != "" {
+		log.Info("Try to synchronize from updated salesforce users list", c)
+
+		q := queries.New(c)
+		client := New(c, campaign, true)
+
+		now := time.Now()
+
+		// Get recently updated users
+		users := new([]*models.User)
+		// We check 15 minutes into the future in case salesforce clocks (logs based on the minute updated) is slightly out of sync with google's
+		if err := client.PullUpdated(now.Add(-21*time.Minute), now, users); err != nil {
+			log.Panic("Getting Updated Contacts Failed: %v, %v", err, string(client.LastBody[:]), c)
+		}
+
+		log.Info("Updating %v Users from Salesforce", len(*users), c)
+		for _, user := range *users {
+			if err := q.UpsertUser(user); err != nil {
+				log.Panic("User '%v' could not be updated, %v", user.Id, err, c)
+			} else {
+				log.Info("User '%v' was successfully updated", user.Id, c)
+			}
+		}
+
+		log.Info("Try to synchronize from updated salesforce orders list", c)
+
+		// Get recently updated orders
+		orders := new([]*models.Order)
+		// We check 15 minutes into the future in case salesforce clocks (logs based on the minute updated) is slightly out of sync with google's
+		if err := client.PullUpdated(now.Add(-21*time.Minute), now, orders); err != nil {
+			log.Error("Getting Updated Contacts Failed: %v, %v", err, string(client.LastBody[:]), c)
+		}
+
+		log.Info("Updating %v Orders from Salesforce", len(*orders), c)
+		for _, order := range *orders {
+			key, _ := db.DecodeKey(order.Id)
+			if _, err := db.Put(key, order); err != nil {
+				log.Error("Order '%v' could not be updated, %v", order.Id, err, c)
+			} else {
+				log.Info("Order '%v' was successfully updated", order.Id, c)
+			}
+		}
+	}
+})
+
 // PullUpdatedLast28DaysTask gets updated Contact from last 28 days and upserts them as Users
 var PullUpdatedLast28DaysTask = delay.Func("SalesforcePullUpdatedLast28Days", func(c appengine.Context) {
 	db := datastore.New(c)
@@ -341,6 +415,11 @@ func CallUpsertOrderTask(c appengine.Context, campaign *models.Campaign, order *
 	UpsertOrderTask.Call(c, *campaign, *order)
 }
 
+// CallUpsertOrderTask calls the task queue delay function with the passed in params
+func CallUpsertNewOrderTask(c appengine.Context, campaign *models.Campaign, user *models.User, order *models.Order) {
+	UpsertNewOrderTask.Call(c, *campaign, *user, *order)
+}
+
 // Get Salesforce Ids for every user
 
 // PopulateMissingUserSFIdsTask adds all missing salesforce ids for users
@@ -386,6 +465,7 @@ func init() {
 	task.Register("salesforce-sync-product-variants", ImportProductVariant)
 	task.Register("salesforce-sync-updated-users", PullUpdatedUsersTask)
 	task.Register("salesforce-sync-updated-orders", PullUpdatedOrdersTask)
+	task.Register("salesforce-sync-updated-users-and-orders", PullUpdatedUsersAndOrdersTask)
 	task.Register("salesforce-sync-updated-last-28-days", PullUpdatedLast28DaysTask)
 	task.Register("salesforce-populate-missing-user-sf-ids", PopulateMissingUserSFIds)
 }
