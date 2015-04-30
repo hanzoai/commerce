@@ -454,7 +454,7 @@ var products = task.Func("fixtures-products", func(c *gin.Context) {
 				Y:   1000,
 			},
 		},
-		EstimatedDelivery: "2015",
+		EstimatedDelivery: "Late 2015",
 		Configs: []Config{
 			Config{
 				Product:  "ar-1",
