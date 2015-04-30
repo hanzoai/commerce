@@ -33,6 +33,16 @@ func init() {
 	})
 
 	// Add missing orders for each contributors
+	task.Register("migrations-set-estimated-delivery-date-to-late-2015", func(c *gin.Context) {
+		parallel.Run(c, "order", 50, tasks.SetEstimatedDeliveryDateToLate2015)
+	})
+
+	// Add missing orders for each contributors
+	task.Register("migrations-fix-perk-420", func(c *gin.Context) {
+		parallel.Run(c, "order", 50, tasks.FixPerk420)
+	})
+
+	// Add missing orders for each contributors
 	task.Register("migrations-add-id-to-order", func(c *gin.Context) {
 		parallel.Run(c, "order", 50, tasks.AddIdToOrder)
 	})

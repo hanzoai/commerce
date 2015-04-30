@@ -1,0 +1,29 @@
+package tasks
+
+import (
+	"time"
+
+	"crowdstart.io/datastore"
+	"crowdstart.io/datastore/parallel"
+	"crowdstart.io/models"
+	"crowdstart.io/util/log"
+)
+
+var FixPerk420 = parallel.Task("fix-perk-420", func(db *datastore.Datastore, key datastore.Key, order models.Order) {
+	if order.CreatedAt.Before(time.Now().Add(-30 * time.Day)) {
+		return
+	}
+
+	cKey := db.NewKey("contribution", key.StringID(), key.IntID(), nil)
+	contribution := models.Contribution{}
+	err := db.Get(cKey, &contribution)
+	if err != nil {
+		log.Error("No contribution with id %v", key.IntID(), db.Context)
+	}
+
+	contribution.Perk = models.Perks["AR1-2015"]
+	db.Put(cKey, &contribution)
+	if err != nil {
+		log.Error("Could not put contribution with id %v", key.IntID(), db.Context)
+	}
+})
