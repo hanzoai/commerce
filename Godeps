@@ -5,7 +5,6 @@ github.com/flosch/pongo2 master
 github.com/getsentry/raven-go master
 github.com/gin-gonic/gin app_engine
 golang.org/x/crypto/bcrypt master
-github.com/golang/protobuf/proto master
 github.com/gorilla/schema master
 github.com/gorilla/sessions master
 github.com/headzoo/surf master
