@@ -8,6 +8,9 @@ threadsafe: true
 automatic_scaling:
   max_concurrent_requests: 100
 
+builtins:
+- remote_api: on
+
 inbound_services:
 - warmup
 
@@ -22,6 +25,9 @@ handlers:
   script: _go_app
 
 - url: /execute-task/.*
+  script: _go_app
+
+- url: /_ah/remote_api
   script: _go_app
 
 # DEPRECTATED in production, for consistent local logging.
