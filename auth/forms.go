@@ -3,8 +3,8 @@ package auth
 import (
 	"strings"
 
-	"code.google.com/p/go.crypto/bcrypt"
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 
 	"crowdstart.io/models"
 	"crowdstart.io/util/form"
