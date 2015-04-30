@@ -43,11 +43,11 @@ gae_skully = config/skully \
 			 platform/app.skully.yaml \
 			 store/app.skully.yaml
 
-tools = code.google.com/p/rog-go/exp/cmd/godef \
-		github.com/golang/lint/golint \
+tools = github.com/golang/lint/golint \
 		github.com/jstemmer/gotags \
 		github.com/kisielk/errcheck \
 		github.com/nsf/gocode \
+		github.com/rogpeppe/godef \
 		golang.org/x/tools/cmd/cover \
 		golang.org/x/tools/cmd/goimports \
 		golang.org/x/tools/cmd/gorename \
