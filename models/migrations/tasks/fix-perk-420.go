@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"strconv"
 	"time"
 
 	"crowdstart.io/datastore"
@@ -14,11 +15,12 @@ var FixPerk420 = parallel.Task("fix-perk-420", func(db *datastore.Datastore, key
 		return
 	}
 
-	cKey := db.NewKey("contribution", key.StringID(), key.IntID(), nil)
+	cKey := db.NewKey("contribution", strconv.Itoa(int(key.IntID())), 0, nil)
 	contribution := models.Contribution{}
 	err := db.Get(cKey, &contribution)
 	if err != nil {
 		log.Error("No contribution with id %v", key.IntID(), db.Context)
+		return
 	}
 
 	contribution.Perk = models.Perks["AR1-2015"]
