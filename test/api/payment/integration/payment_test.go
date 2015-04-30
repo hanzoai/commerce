@@ -11,6 +11,7 @@ import (
 	"crowdstart.io/models/order"
 	"crowdstart.io/models/organization"
 	"crowdstart.io/models/payment"
+	"crowdstart.io/models/store"
 	"crowdstart.io/models/user"
 	"crowdstart.io/test/api/payment/requests"
 	"crowdstart.io/thirdparty/stripe"
@@ -23,6 +24,7 @@ import (
 
 	orderApi "crowdstart.io/api/order"
 	paymentApi "crowdstart.io/api/payment"
+	storeApi "crowdstart.io/api/store"
 
 	. "crowdstart.io/util/test/ginkgo"
 )
@@ -37,6 +39,7 @@ var (
 	accessToken string
 	db          *datastore.Datastore
 	org         *organization.Organization
+	stor        *store.Store
 	sc          *stripe.Client
 )
 
@@ -52,11 +55,13 @@ var _ = BeforeSuite(func() {
 	org = fixtures.Organization(c).(*organization.Organization)
 	fixtures.Product(c)
 	fixtures.Variant(c)
+	stor = fixtures.Store(c).(*store.Store)
 
 	// Setup client and add routes for payment API tests.
 	client = ginclient.New(ctx)
 	paymentApi.Route(client.Router, adminRequired)
 	orderApi.Route(client.Router, adminRequired)
+	storeApi.Route(client.Router, adminRequired)
 
 	// Create organization for tests, accessToken
 	accessToken = org.AddToken("test-published-key", permission.Admin)
@@ -84,13 +89,18 @@ type testHelperReturn struct {
 	Orders   []*order.Order
 }
 
-func FirstTimeSuccessfulOrderTest(isCharge bool) testHelperReturn {
+func FirstTimeSuccessfulOrderTest(isCharge bool, stor *store.Store) testHelperReturn {
 	var path string
 	if isCharge {
 		path = "/charge"
 	} else {
 		path = "/authorize"
 	}
+
+	if stor != nil {
+		path = "/store/" + stor.Id() + path
+	}
+	log.Warn(path)
 
 	// Should come back with 200
 	w := client.PostRawJSON(path, requests.ValidOrder)
@@ -146,12 +156,16 @@ func FirstTimeSuccessfulOrderTest(isCharge bool) testHelperReturn {
 	}
 }
 
-func ReturningSuccessfulOrderSameCardTest(isCharge bool) testHelperReturn {
+func ReturningSuccessfulOrderSameCardTest(isCharge bool, stor *store.Store) testHelperReturn {
 	var path string
 	if isCharge {
 		path = "/charge"
 	} else {
 		path = "/authorize"
+	}
+
+	if stor != nil {
+		path = "/store/" + stor.Id() + path
 	}
 
 	// Make first request
@@ -214,12 +228,16 @@ func ReturningSuccessfulOrderSameCardTest(isCharge bool) testHelperReturn {
 	}
 }
 
-func ReturningSuccessfulOrderNewCardTest(isCharge bool) testHelperReturn {
+func ReturningSuccessfulOrderNewCardTest(isCharge bool, stor *store.Store) testHelperReturn {
 	var path string
 	if isCharge {
 		path = "/charge"
 	} else {
 		path = "/authorize"
+	}
+
+	if stor != nil {
+		path = "/store/" + stor.Id() + path
 	}
 
 	// Make first request
@@ -282,12 +300,16 @@ func ReturningSuccessfulOrderNewCardTest(isCharge bool) testHelperReturn {
 	}
 }
 
-func OrderBadCardTest(isCharge bool) {
+func OrderBadCardTest(isCharge bool, stor *store.Store) {
 	var path string
 	if isCharge {
 		path = "/charge"
 	} else {
 		path = "/authorize"
+	}
+
+	if stor != nil {
+		path = "/store/" + stor.Id() + path
 	}
 
 	// Returning user, should reuse stripe customer id
@@ -297,12 +319,16 @@ func OrderBadCardTest(isCharge bool) {
 	Expect(w.Code).To(Equal(500))
 }
 
-func OrderBadUserTest(isCharge bool) {
+func OrderBadUserTest(isCharge bool, stor *store.Store) {
 	var path string
 	if isCharge {
 		path = "/charge"
 	} else {
 		path = "/authorize"
+	}
+
+	if stor != nil {
+		path = "/store/" + stor.Id() + path
 	}
 
 	// Returning user, should reuse stripe customer id
@@ -315,13 +341,20 @@ func OrderBadUserTest(isCharge bool) {
 var _ = Describe("payment", func() {
 	Context("Authorize First Time Customers", func() {
 		It("Should save new order successfully", func() {
-			FirstTimeSuccessfulOrderTest(false)
+			FirstTimeSuccessfulOrderTest(false, nil)
+		})
+
+		It("Should save new order successfully for store", func() {
+			FirstTimeSuccessfulOrderTest(false, stor)
 		})
 
 		It("Should not authorize invalid credit card number", func() {
-			OrderBadCardTest(false)
+			OrderBadCardTest(false, nil)
 		})
 
+		It("Should not authorize invalid credit card number for store", func() {
+			OrderBadCardTest(false, stor)
+		})
 		// It("Should not authorize invalid product id", func() {
 		// })
 		// It("Should not authorize invalid variant id", func() {
@@ -332,25 +365,45 @@ var _ = Describe("payment", func() {
 
 	Context("Authorize Returning Customers", func() {
 		It("Should save returning customer order with the same card successfully", func() {
-			ReturningSuccessfulOrderSameCardTest(false)
+			ReturningSuccessfulOrderSameCardTest(false, nil)
+		})
+
+		It("Should save returning customer order with the same card successfully for store", func() {
+			ReturningSuccessfulOrderSameCardTest(false, stor)
 		})
 
 		It("Should save returning customer order with a new card successfully", func() {
-			ReturningSuccessfulOrderNewCardTest(false)
+			ReturningSuccessfulOrderNewCardTest(false, nil)
+		})
+
+		It("Should save returning customer order with a new card successfully for store", func() {
+			ReturningSuccessfulOrderNewCardTest(false, stor)
 		})
 
 		It("Should not save customer with invalid user id", func() {
-			OrderBadUserTest(false)
+			OrderBadUserTest(false, nil)
+		})
+
+		It("Should not save customer with invalid user id for store", func() {
+			OrderBadUserTest(false, stor)
 		})
 	})
 
 	Context("Charge First Time Customers", func() {
 		It("Should save new order successfully", func() {
-			FirstTimeSuccessfulOrderTest(true)
+			FirstTimeSuccessfulOrderTest(true, nil)
+		})
+
+		It("Should save new order successfully for store", func() {
+			FirstTimeSuccessfulOrderTest(true, stor)
 		})
 
 		It("Should not authorize invalid credit card number", func() {
-			OrderBadCardTest(true)
+			OrderBadCardTest(true, nil)
+		})
+
+		It("Should not authorize invalid credit card number for store", func() {
+			OrderBadCardTest(true, stor)
 		})
 
 		// It("Should not authorize invalid product id", func() {
@@ -363,15 +416,27 @@ var _ = Describe("payment", func() {
 
 	Context("Charge Returning Customers", func() {
 		It("Should save returning customer order with the same card successfully", func() {
-			ReturningSuccessfulOrderSameCardTest(true)
+			ReturningSuccessfulOrderSameCardTest(true, nil)
+		})
+
+		It("Should save returning customer order with the same card successfully for store", func() {
+			ReturningSuccessfulOrderSameCardTest(true, stor)
 		})
 
 		It("Should save returning customer order with a new card successfully", func() {
-			ReturningSuccessfulOrderNewCardTest(true)
+			ReturningSuccessfulOrderNewCardTest(true, nil)
+		})
+
+		It("Should save returning customer order with a new card successfully for store", func() {
+			ReturningSuccessfulOrderNewCardTest(true, stor)
 		})
 
 		It("Should not save customer with invalid user id", func() {
-			OrderBadUserTest(true)
+			OrderBadUserTest(true, nil)
+		})
+
+		It("Should not save customer with invalid user id", func() {
+			OrderBadUserTest(true, stor)
 		})
 	})
 
@@ -411,7 +476,7 @@ var _ = Describe("payment", func() {
 
 	Context("Capture Order", func() {
 		It("Should capture existing authorized order successfully", func() {
-			pnos := FirstTimeSuccessfulOrderTest(false)
+			pnos := FirstTimeSuccessfulOrderTest(false, nil)
 			id := pnos.Orders[0].Id()
 
 			w := client.PostRawJSON("/order/"+id+"/capture", "")
