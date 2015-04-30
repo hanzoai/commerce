@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"appengine"
+
 	aeds "appengine/datastore"
 
 	"crowdstart.io/datastore"
@@ -303,10 +305,14 @@ func (c *Contact) Load(db *datastore.Datastore) SObjectCompatible {
 
 func (c *Contact) LoadSalesforceId(db *datastore.Datastore, id string) SObjectCompatible {
 	objects := make([]*models.User, 0)
-	db.Query("user").Filter("SecondarySalesforceId_=", id).Limit(1).GetAll(db.Context, &objects)
+	db.RunInTransaction(func(ctx appengine.Context) error {
+		db.Query("user").Filter("SecondarySalesforceId_=", id).Limit(1).GetAll(db.Context, &objects)
+		return nil
+	}, &aeds.TransactionOptions{})
 	if len(objects) == 0 {
 		return nil
 	}
+
 	return objects[0]
 }
 
@@ -500,10 +506,15 @@ func (a *Account) Load(db *datastore.Datastore) SObjectCompatible {
 
 func (a *Account) LoadSalesforceId(db *datastore.Datastore, id string) SObjectCompatible {
 	objects := make([]*models.User, 0)
-	db.Query("user").Filter("PrimarySalesforceId_=", id).Limit(1).GetAll(db.Context, &objects)
+	db.RunInTransaction(func(ctx appengine.Context) error {
+		db.Query("user").Filter("PrimarySalesforceId_=", id).Limit(1).GetAll(db.Context, &objects)
+		return nil
+	}, &aeds.TransactionOptions{})
+
 	if len(objects) == 0 {
 		return nil
 	}
+
 	return objects[0]
 }
 
@@ -786,10 +797,14 @@ func (o *Order) Load(db *datastore.Datastore) SObjectCompatible {
 
 func (o *Order) LoadSalesforceId(db *datastore.Datastore, id string) SObjectCompatible {
 	objects := make([]*models.Order, 0)
-	db.Query("order").Filter("PrimarySalesforceId_=", id).Limit(1).GetAll(db.Context, &objects)
+	db.RunInTransaction(func(ctx appengine.Context) error {
+		db.Query("order").Filter("PrimarySalesforceId_=", id).Limit(1).GetAll(db.Context, &objects)
+		return nil
+	}, &aeds.TransactionOptions{})
 	if len(objects) == 0 {
 		return nil
 	}
+
 	return objects[0]
 }
 
