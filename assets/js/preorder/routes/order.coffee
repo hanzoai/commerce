@@ -52,6 +52,15 @@ exports.displayHelmets = ->
     first = true
     hasItem = false
 
+    # Make sure the total is correct
+    runningCount = 0
+    for item in PreorderData.existingOrder.Items
+      if item.Slug == 'ar-1'
+        runningCount += item.Quantity
+        if runningCount > view.get 'total'
+          view.set 'total', runningCount
+          window.helmetTotal = runningCount
+
     # Restore order
     for item in PreorderData.existingOrder.Items
       if item.Slug == 'ar-1'
@@ -93,6 +102,7 @@ exports.displayApparel = ->
       variants[variant.SKU] = variant
 
     hasItem = false
+
     # Restore order
     for item in PreorderData.existingOrder.Items
       if item.Slug == 't-shirt'
@@ -134,7 +144,6 @@ exports.displayHats = ->
     # Restore order
     for item in PreorderData.existingOrder.Items
       if item.Slug == 'hat'
-        console.log item
         itemView = view.newItem()
         itemView.set 'quantity', item.Quantity
         itemView.set 'sku',      item.SKU
