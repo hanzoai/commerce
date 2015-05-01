@@ -1,0 +1,84 @@
+.product-viewer
+  height: 100%
+  vertical-align: middle
+
+  .preview-background
+    max-width 600px
+    max-height 600px
+    background-size contain
+    background-repeat no-repeat
+    width 90%
+    position: relative
+    padding-bottom: 10px
+
+    .sold-out
+      position: absolute;
+      width: 100%;
+
+  .preview
+    position: absolute
+    top: 0
+    height: auto
+    display: block
+    max-width 600px
+    max-height 600px
+    width 100%
+    transition all .3s ease-out
+    transition opacity .3s ease-in
+
+  .transparent
+    opacity: 0
+
+  .gallery
+    margin-bottom: 30px
+
+    .thumbnail
+      width 18%
+      height 18%
+      min-width 40px
+      min-height 40px
+      margin 0 5px
+      padding 5px
+      padding-bottom: 10px
+      border 1px solid #fff
+      float left
+      cursor pointer
+
+@media all and ( max-width: 414px )
+  .product-viewer
+    .preview-background
+      width 75%
+      float:left
+
+    .gallery
+      width: 25%
+      float: right
+
+      .thumbnail
+        width: 75%
+        text-align: center
+
+@media all and ( max-width: 800px )
+  .product-viewer
+    width 100%
+
+    .preview-background
+      width 80%
+      float: left
+
+    .gallery
+      width 12%
+      float: left
+
+      .thumbnail
+        width: 100%
+        text-align: center
+
+@media all and ( min-width: 800px )
+  .product-viewer
+    width 50%
+    display table-cell
+
+    .preview-background
+      padding-bottom: 0px
+

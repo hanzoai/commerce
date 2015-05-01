@@ -34,7 +34,7 @@ class ProductView extends View
         cost -= parseInt(config.PriceAdjustment, 10)
 
       @cost = cost
-      return (cost * .0001).toFixed(2) + ""
+      return (cost * .0001).toFixed(0) + ""
 
   events:
     'click .add-to-cart': 'addToCart'

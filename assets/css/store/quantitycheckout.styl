@@ -1,0 +1,49 @@
+.quantity-checkout
+  .col-1-2
+    column(1/2, gutter: 0)
+
+  .quantity
+    height: 50px
+    font-weight: 600
+    input
+      width: 33%
+      height: 48px
+      text-align: right
+      border: 1px solid theme-dark
+      color: theme-darker
+      outline: none
+      margin: 0
+      padding: 0
+      display: inline-block
+      float: left
+
+  .price-wrapper
+    width: 60%
+    display: table
+    vertical-align: top
+    height: 48px
+    border: 1px solid theme-dark
+    border-left: 0px
+
+    *
+      display: table-cell
+      vertical-align: middle
+
+    .x
+      padding: 0 5px 0 20px
+
+    .plus
+      font-size: 24px
+      vertical-align: middle
+      padding: 10px
+
+  .checkout-options
+    button
+      width: 100%
+      height: 100%
+      margin-top: 0px
+      text-transform: none
+      background-color: theme-red
+
+  .fine-print
+    text-align: right

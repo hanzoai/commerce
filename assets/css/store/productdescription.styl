@@ -1,0 +1,66 @@
+.product-text
+  .product-title
+    margin-bottom: 30px
+    color: theme-darker
+
+@media all and ( min-width: 800px )
+  .product-text
+    display inline
+    float left
+
+    .gallery
+      width 25%
+      float: left
+
+@media all and ( min-width: 1000px )
+  .product-text
+    margin-top 20px
+    .product-title
+      width 100%
+      display inline-block
+      .product-name
+          width 65%
+          font-size 1.8em
+        .product-cost
+          display inline-block
+          line-height: 1.9em
+          float right
+
+      .product-body
+        padding 20px 10px 0 0px
+        .product-description
+          margin-bottom 20px
+
+        .product-estimated-delivery
+          font-size: 110%
+
+        .product-config, .notify-instock
+          .checkout-options, .notify-me
+            height 100px
+            display inline
+            float left
+            width 33%
+
+          .quantity, .email
+            display inline
+            float left
+            width 66%
+
+          .email
+            input
+              width: 100%
+              margin-top: 10px
+              max-width: 200px
+
+          button.add-to-cart
+            min-width 150px
+
+@media all and ( max-width: 1200px )
+  .product-text
+    .product-title
+      .product-name
+        width: 100%
+      .product-cost
+        float:left
+
+
