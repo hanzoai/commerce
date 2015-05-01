@@ -41,15 +41,27 @@ do ->
     window.form = form
 
   serialize = (form) ->
-    return {} if not form or form.nodeName isnt "FORM"
-    data = {}
+    return {} if not form or form.nodeName isnt 'FORM'
 
+    data = {}
     elements = form.getElementsByTagName 'input'
 
+    # loop over form elements
     for el in elements
-      data[el.name] = el.value.trim()
+      k = el.name.trim().toLowerCase()
+      v = el.value.trim()
+      unless k and v
+        continue
 
-    metadata: data
+      if /email/.test v
+        data.email = v
+      else
+        data.metadata[k] = v
+
+    unless data.email?
+      throw new Error 'No email provided, make sure form element has an email field and that the value is populated correctly'
+
+    data
 
   fb = (opts) ->
     unless window._fbq?
