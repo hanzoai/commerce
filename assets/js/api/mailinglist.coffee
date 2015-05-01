@@ -43,7 +43,9 @@ do ->
   serialize = (form) ->
     return {} if not form or form.nodeName isnt 'FORM'
 
-    data = {}
+    data =
+      metadata: {}
+
     elements = form.getElementsByTagName 'input'
 
     # loop over form elements
