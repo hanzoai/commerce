@@ -59,7 +59,7 @@ do ->
         continue
 
       # Detect emails
-      if /email/.test v
+      if /email/.test k
         data.email = v
       else
         data.metadata[k] = v
