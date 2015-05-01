@@ -48,13 +48,17 @@ do ->
 
     elements = form.getElementsByTagName 'input'
 
-    # loop over form elements
+    # Loop over form elements
     for el in elements
+      # Clean up inputs
       k = el.name.trim().toLowerCase()
       v = el.value.trim()
-      unless k and v
+
+      # Skip inputs we don't care about
+      if k == '' or v == '' or (el.getAttribute 'type') == 'submit'
         continue
 
+      # Detect emails
       if /email/.test v
         data.email = v
       else
