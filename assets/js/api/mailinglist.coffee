@@ -49,7 +49,7 @@ do ->
     for el in elements
       data[el.name] = el.value.trim()
 
-    data
+    metadata: data
 
   fb = (opts) ->
     unless window._fbq?
