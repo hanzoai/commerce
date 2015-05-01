@@ -3,11 +3,20 @@
 @import "../mixin/quill"
 @import "../mixin/reset"
 @import "../theme/forms"
+@import "../theme/store"
 @import "../preorder/spinner"
-@import "dropdown"
 
 normalize()
 reset()
+
+@import "dropdown"
+@import "text"
+@import "picker"
+@import "colorpicker"
+@import "sizepicker"
+@import "productviewer"
+@import "productdescription"
+@import "quantitycheckout"
 
 form
   form-error(red)
@@ -16,13 +25,6 @@ form
   width: 100%
 
 body
-  color rgb(46,46,46)
-  font-family 'proxima-nova', sans-serif
-  font-size 16px
-  line-height 1.6em
-  letter-spacing 0px
-  font-weight 400
-  font-style normal
   background-color #171717
 
 .site
@@ -383,113 +385,17 @@ button
           text-decoration underline
 
 // STORE
-store-width
-  max-width 1000px
+.store-width
+  max-width: 762px
 
 section > .item
     display table
     width 100%
     padding 10px 0
 
-  .product-viewer
-    padding-top 13px
-
-    .preview-background
-      max-width 600px
-      max-height 600px
-      background-size contain
-      background-repeat no-repeat
-      width 90%
-      position: relative
-      padding-bottom: 10px
-
-      .sold-out
-        position: absolute;
-        width: 100%;
-
-    .preview
-      position: absolute
-      top: 0
-      height: auto
-      display: block
-      max-width 600px
-      max-height 600px
-      width 100%
-      transition all .3s ease-out
-      transition opacity .3s ease-in
-
-    .transparent
-      opacity: 0
-
-    .gallery
-      margin-bottom: 30px
-
-      .thumbnail
-        width 18%
-        height 18%
-        min-width 40px
-        min-height 40px
-        margin 0 5px
-        padding 5px
-        padding-bottom: 10px
-        border 1px solid #fff
-        float left
-        cursor pointer
-
 .empty-message
   text-align center
   display none
-
-@media all and ( min-width: 1000px )
-  body .product-text
-    padding-left 20px
-
-.product-text
-  margin-top 20px
-  .product-title
-    width 100%
-    display inline-block
-    .product-name
-      width 65%
-      font-size 1.8em
-    .product-cost
-      display inline-block
-      line-height: 1.9em
-      float right
-
-  .product-body
-    padding 20px 10px 0 0px
-    .product-description
-      margin-bottom 20px
-
-    .product-estimated-delivery
-      font-size: 110%
-
-    .product-config, .notify-instock
-      label
-        display block
-      input, select
-        margin-bottom 15px
-
-      .checkout-options, .notify-me
-        height 100px
-        display inline
-        float left
-        width 33%
-
-      .quantity, .email
-        display inline
-        float left
-        width 66%
-
-      .email
-        input
-          width: 100%
-          margin-top: 10px
-          max-width: 200px
-
-      button.add-to-cart
-        min-width 150px
 
 // CART HOVER
 .cart-hover
@@ -902,19 +808,6 @@ body.mobile .cart-hover
   .title-nav .logo
     height: 50px
 
-  .product-viewer
-    .preview-background
-      width 75%
-      float:left
-
-    .gallery
-      width: 25%
-      float: right
-
-      .thumbnail
-        width: 75%
-        text-align: center
-
 @media all and ( max-width: 800px )
   .cart-hover
     top: 66px
@@ -922,46 +815,6 @@ body.mobile .cart-hover
 
   .content
     width 90%
-
-  .product-viewer
-    width 100%
-
-    .preview-background
-      width 80%
-      float: left
-
-    .gallery
-      width 12%
-      float: left
-
-      .thumbnail
-        width: 100%
-        text-align: center
-
-@media all and ( min-width: 800px )
-  .product-viewer
-    width 50%
-    display table-cell
-    vertical-align top
-
-    .preview-background
-      padding-bottom: 0px
-
-  .product-text
-    display inline
-    float left
-
-    .gallery
-      width 25%
-      float: left
-
-@media all and ( max-width: 1200px )
-  .product-text
-    .product-title
-      .product-name
-        width: 100%
-      .product-cost
-        float:left
 
 // @media all and ( max-width: 600px ) and ( orientation : landscape )
 //   .content, .content-header

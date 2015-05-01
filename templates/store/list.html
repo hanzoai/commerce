@@ -19,10 +19,6 @@ var allListings = {{ listingsJSON | safe }};
 </script>
 {% endblock %}
 
-{% block content_header %}
-<h1>Get the Gear</h1>
-{% endblock %}
-
 {% block content_header_width_class %}store-width{% endblock %}
 
 {% block content_width_class %}store-width{% endblock %}
@@ -30,7 +26,7 @@ var allListings = {{ listingsJSON | safe }};
 {% block content %}
 {% for listing in listings %}
 {% if !listing.Disabled %}
-<div class="item sep-top product-listing">
+<div class="item product-listing">
   <div class="product-viewer">
     <div class="preview-background">
       {% if listing.SoldOut %}
@@ -44,24 +40,11 @@ var allListings = {{ listingsJSON | safe }};
       {% endif %}
       {% endfor %}
     </div>
-
-    {% if listing.Images | length > 1 %}
-    <div class="gallery">
-      {% for image in listing.Images %}
-      {% if forloop.First %}
-      <img class="thumbnail selected" src="{{ image.Url }}" alt="{{ image.Alt }}">
-      {% else %}
-      <img class="thumbnail" src="{{ image.Url }}" alt="{{ image.Alt }}">
-      {% endif %}
-      {% endfor %}
-    </div>
-    {% endif %}
   </div>
 
   <div class="product-text" data-sku="{{ listing.SKU }}">
     <div class="product-title">
-      <h1 class="product-name">{{ listing.DisplayTitle()|safe }}</h1>
-      <h2 class="product-cost"><span>$</span><span class="money"></span></h2>
+        <h1 class="product-name">AR-<span class="red-text">1</span></h1>
     </div>
 
     <div class="product-body">
@@ -72,10 +55,7 @@ var allListings = {{ listingsJSON | safe }};
         {% endif %}
         <p>{{ p | safe }}</p>
         {% endfor %}
-        <br>
-        <span class="product-estimated-delivery">
-          Estimated Delivery: {{ listing.EstimatedDelivery }}
-        </span>
+        <br />
       </div>
 
       {% if !listing.SoldOut %}
@@ -89,44 +69,101 @@ var allListings = {{ listingsJSON | safe }};
         </select>
         {% endif %}
 
-        {% if products.0.VariantOptions("Color") %}
-        <label for="color">Color:</label>
-        <select name="Color" class="color">
-          {% for color in products.0.VariantOptions("Color") %}
-          <option value="{{ color }}">{{ color }}</option>
-          {% endfor %}
-        </select>
-        {% endif %}
+        <div class="color-picker picker-wrapper">
+            {% if products.0.VariantOptions("Color") %}
+            <div class="instructions emphasis">Choose a color:</div>
+            <div class="picker">
+                <div class="col-1-2">
+                    <input type="radio" id="black" name="Color" value="Matte Black" checked>
+                    <label for="black">
+                        <img src="{{ urlFor("/img/store/ar1/ar1_black_button.png") }}">
+                        <p>Matte Black</p>
+                    </label>
+                </div>
+                <div class="col-1-2">
+                    <input type="radio" id="white" name="Color" value="Gloss White">
+                    <label for="white">
+                        <img src="{{ urlFor("/img/store/ar1/ar1_white_button.png") }}">
+                        <p>Gloss White</p>
+                    </label>
+                </div>
+            </div>
+            {% endif %}
+        </div>
 
-        {% if products.0.VariantOptions("Size") %}
-        <label for="size">Size:</label>
-        <select name="Size" class="size">
-          {% for size in products.0.VariantOptions("Size") %}
-          <option value="{{ size }}">{{ size }}</option>
-          {% endfor %}
-        </select>
-        {% endif %}
+        <div class="size-picker picker-wrapper">
+            {% if products.0.VariantOptions("Size") %}
+            <div class="instructions emphasis">Choose a size:</div>
+            <div class="picker">
+                <div class="col-1-5 small">
+                    <input type="radio" id="small" name="Size" value="S">
+                    <label for="small">
+                        <div class="sizing">
+                            <div class="pictograph"></div>
+                        </div>
+                        <p>S</p>
+                    </label>
+                </div>
+                <div class="col-1-5 medium">
+                    <input type="radio" id="medium" name="Size" value="M" checked>
+                    <label for="medium">
+                        <div class="sizing">
+                            <div class="pictograph"></div>
+                        </div>
+                        <p>M</p>
+                    </label>
+                </div>
+                <div class="col-1-5 large">
+                    <input type="radio" id="large" name="Size" value="L">
+                    <label for="large">
+                        <div class="sizing">
+                            <div class="pictograph"></div>
+                        </div>
+                        <p>L</p>
+                    </label>
+                </div>
+                <div class="col-1-5 x-large">
+                    <input type="radio" id="x-large" name="Size" value="XL">
+                    <label for="x-large">
+                        <div class="sizing">
+                            <div class="pictograph"></div>
+                        </div>
+                        <p>XL</p>
+                    </label>
+                </div>
+                <div class="col-1-5 xx-large">
+                    <input type="radio" id="xx-large" name="Size" value="XXL">
+                    <label for="xx-large">
+                        <div class="sizing">
+                            <div class="pictograph"></div>
+                        </div>
+                        <p>XXL</p>
+                    </label>
+                </div>
+            </div>
+            <p class="italic fine-print">
+                The AR-1 is Race Fit(very tight). For a more traditional street fit, choose one size up.
+            </p>
+            {% endif %}
+        </div>
 
-        <div class="quantity-checkout">
-          <div class="quantity">
-            <label for="quantity">Quantity:</label>
-            <select name="quantity">
-                <option value="1">1</option>
-                <option value="2">2</option>
-                <option value="3">3</option>
-                <option value="4">4</option>
-                <option value="5">5</option>
-                <option value="6">6</option>
-                <option value="7">7</option>
-                <option value="8">8</option>
-                <option value="9">9</option>
-                <option value="10">10</option>
-            </select>
-          </div>
+        <div class="quantity-checkout picker-wrapper">
+            <div for="quantity" class="instructions emphasis">Quantity:</div>
+            <div class="picker">
+                <div class="quantity col-1-2">
+                    <input type="number" name="quantity" value="1" min="1" max="9" maxlength="1">
+                    <div class="price-wrapper">
+                        <span class="x">x</span><span class="product-cost"><span>$</span><span class="money"></span></span>
+                    </div>
+                </div>
 
-          <div class="checkout-options">
-              <button class="add-to-cart"><span>Add to Cart</span></button>
-          </div>
+                <div class="checkout-options col-1-2">
+                    <button class="add-to-cart"><span class="plus">+</span><span>Add to Cart</span></button>
+                </div>
+            </div>
+            <p class="product-estimated-delivery italic fine-print">
+                Estimated Delivery: {{ listing.EstimatedDelivery }}
+            </p>
         </div>
       </div>
       {% else %}
