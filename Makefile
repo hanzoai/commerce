@@ -322,6 +322,11 @@ datastore-config:
 				  --url=$(datastore_admin_url) \
 				  --filename=bulkloader.yaml
 
+# Replicate production data to localhost
+datastore-replicate:
+	appcfg.py download_data --application=s~$(datastore_app_id) --url=http://datastore-admin-dot-$(datastore_app_id).appspot.com/_ah/remote_api/ --filename=datastore.bin
+	appcfg.py --url=http://localhost:8080/_ah/remote_api --filename=datastore.bin upload_data
+
 # Generate API docs from wiki.
 docs:
 	pandoc --no-highlight --toc ../crowdstart.wiki/Getting-Started.md > templates/platform/docs/_generated/getting-started.html
