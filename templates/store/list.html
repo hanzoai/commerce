@@ -74,14 +74,14 @@ var allListings = {{ listingsJSON | safe }};
             <div class="instructions emphasis">Choose a color:</div>
             <div class="picker">
                 <div class="col-1-2">
-                    <input type="radio" id="black" name="Color" value="Matte Black" checked>
+                    <input type="radio" id="black" name="Color" class="color" value="Matte Black" checked>
                     <label for="black">
                         <img src="{{ urlFor("/img/store/ar1/ar1_black_button.png") }}">
                         <p>Matte Black</p>
                     </label>
                 </div>
                 <div class="col-1-2">
-                    <input type="radio" id="white" name="Color" value="Gloss White">
+                    <input type="radio" id="white" name="Color" class="color" value="Gloss White">
                     <label for="white">
                         <img src="{{ urlFor("/img/store/ar1/ar1_white_button.png") }}">
                         <p>Gloss White</p>
@@ -158,7 +158,7 @@ var allListings = {{ listingsJSON | safe }};
                 </div>
 
                 <div class="checkout-options col-1-2">
-                    <button class="add-to-cart"><span class="plus">+</span><span>Add to Cart</span></button>
+                    <button class="add-to-cart"><span><span class="plus">+</span>Add to Cart</span></button>
                 </div>
             </div>
             <p class="product-estimated-delivery italic fine-print">
