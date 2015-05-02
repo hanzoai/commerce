@@ -58,7 +58,7 @@ class ProductView extends View
 
     listingSKU = listing.SKU + variant.SKU
 
-    quantity = parseInt @el.find('select[name=quantity]').val(), 10
+    quantity = parseInt @el.find('input[name=quantity]').val(), 10
 
     product = allProducts[slug]
     childProducts = []
@@ -89,10 +89,11 @@ class ProductView extends View
             size:     variant.Size
             slug:     product.Slug
 
-    inner = @el.find '.add-to-cart span'
+    inner = @el.find '.add-to-cart > span'
+    @innerHtml = inner.html() if !@innerHtml?
     inner.html ''
     inner.append '<div class="loading-spinner" style="float:left"></div>'
-    inner.append '<div class="add-to-cart-adding-text" style="float:right">Adding...</div>'
+    inner.append '<div class="add-to-cart-adding-text">Adding...</div>'
 
     listing = @get 'listing'
 
@@ -100,9 +101,9 @@ class ProductView extends View
     cart = app.get 'cart'
     if (cart.getProduct listingSKU)?.quantity + quantity > (app.get 'maxQuantityPerProduct')
       setTimeout =>
-        @el.find('.add-to-cart span').text("Too Many").fadeOut 1000, =>
-          inner.html 'Add to Cart'
-          @el.find('.add-to-cart span').fadeIn()
+        inner.text("Too Many").fadeOut 1000, =>
+          inner.html @innerHtml
+          inner.fadeIn()
       , 500
       return
 
@@ -110,9 +111,9 @@ class ProductView extends View
     cart.addProduct listingSKU, rootProduct
 
     setTimeout =>
-      @el.find('.add-to-cart span').text('Added!').fadeOut 500, =>
-        inner.html 'Add to Cart'
-        @el.find('.add-to-cart span').fadeIn()
+      inner.text('Added!').fadeOut 500, =>
+        inner.html @innerHtml
+        inner.fadeIn()
     , 500
 
     # Flash cart hover
@@ -126,12 +127,12 @@ class ProductView extends View
     options = {}
     missing = []
 
-    @el.find('select').each (i, v) ->
-      $select = $(v)
-      name = $select.attr('name')
+    @el.find('input:checked').each (i, v) ->
+      $radio = $(v)
+      name = $radio.attr('name')
       return if name == 'quantity'  # Not variant option
 
-      value = $select.val()
+      value = $radio.val()
       options[name] = value
       missing.push name if value is 'none'
       return
