@@ -108,7 +108,6 @@ exports.setupViews = ->
 
 # Simple thumbnail gallery
 exports.gallery = ->
-  $thumbnails = $('.product-viewer .gallery .thumbnail')
   $previews   = $('.preview-background .preview')
   $colors     = $('.product-config .color')
 
@@ -119,8 +118,6 @@ exports.gallery = ->
     $previewbg.height $previewbg.width()
 
   $(document).ready ->
-    $colors.val 'Matte Black'
-
     # fade out old preview, fade in new
     showPreview = (index) ->
       oldindex = index ^ 1
@@ -133,28 +130,15 @@ exports.gallery = ->
 
     $colors.change (e) ->
       index = 0
-      switch $(e.target).val()
-        when 'Matte Black'
-          index = 0
-        when 'Gloss White'
-          index = 1
+      $checked = $(e.target)
+      if $checked.has ':checked'
+        switch $checked.val()
+          when 'Matte Black'
+            index = 0
+          when 'Gloss White'
+            index = 1
 
       showPreview index
-
-    $thumbnails.on 'click', ->
-      $thumbnail = $(@)
-      index = $thumbnail.index()
-
-      $thumbnails.removeClass 'selected'
-      $thumbnail.addClass 'selected'
-
-      showPreview index
-
-      switch index
-        when 0
-          $colors.val 'Matte Black'
-        when 1
-          $colors.val 'Gloss White'
 
 exports.setupStylesAndSizes =->
   $(document).ready ->
