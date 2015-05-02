@@ -324,8 +324,8 @@ datastore-config:
 
 # Replicate production data to localhost
 datastore-replicate:
-	appcfg.py download_data --application=s~$(datastore_app_id) --url=http://datastore-admin-dot-$(datastore_app_id).appspot.com/_ah/remote_api/ --filename=datastore.bin
-	appcfg.py --url=http://localhost:8080/_ah/remote_api --filename=datastore.bin upload_data
+	$(appcfg.py) download_data --application=s~$(datastore_app_id) --url=http://datastore-admin-dot-$(datastore_app_id).appspot.com/_ah/remote_api/ --filename=datastore.bin
+	$(appcfg.py) --url=http://localhost:8080/_ah/remote_api --filename=datastore.bin upload_data
 
 # Generate API docs from wiki.
 docs:
