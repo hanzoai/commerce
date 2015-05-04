@@ -167,7 +167,7 @@ compile-js-min:
 	$(requisite) $(requisite_opts) $(requisite_opts_min)
 
 compile-css:
-	$(stylus) $(stylus_opts) -u autoprefixer-stylus --sourcemap --sourcemap-inline
+	$(stylus) $(stylus_opts) --sourcemap --sourcemap-inline
 
 compile-css-min:
 	$(stylus) $(stylus_opts) $(stylus_opts_min) && $(autoprefixer) $(autoprefixer_opts)
