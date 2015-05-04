@@ -1,0 +1,134 @@
+.product-features
+  margin-top: 20px
+
+  .hidden
+    display: none
+
+  .transparent
+    opacity: 0
+
+  .circle
+    width: 86px
+    float: left
+
+  .mobile-fov-buttons
+    display: table
+    width: 75%
+    margin: 20px auto 0 auto
+
+    .mobile-skully-fov-button
+      font-family: Michroma
+      font-size: 12px
+
+    .mobile-fov-button
+      display: table-cell
+      border: 1px solid theme-dark
+      height: 40px
+      vertical-align: middle
+      text-align: center
+      width: 50%
+      box-sizing: border-box
+
+      img
+        max-width: 64px
+
+  .fov-infographics
+    img
+      margin-top: 10px
+      width: 100%
+      transition: opacity 0.2s ease-in-out
+
+    img.skully-fov
+      position: absolute
+      top: 0
+
+  .fov-wrapper
+    width:90%
+    margin: auto
+    position: relative
+
+    .fov-info
+      margin-top: 0px
+      h4
+        color: theme-blue
+
+      .check-mark
+        padding 5px 10px
+        opacity: 0
+
+      label
+        min-width: 200px
+        display: block
+        border: 1px solid theme-dark
+        margin: 21px 0 0 107px
+        padding: 5px 10px 6px 0px
+        white-space: nowrap
+
+  input#mobile-skully-fov:checked ~ .mobile-fov-buttons .mobile-skully-fov-button
+    border: 2px solid theme-blue
+    color: theme-blue
+    font-weight: 800
+
+  input#mobile-skully-fov:checked ~ .fov-wrapper .skully-fov.display-medium-max
+    opacity: 1
+
+  input#mobile-conventional-fov:checked ~ .mobile-fov-buttons .mobile-conventional-fov-button
+    border: 2px solid theme-darker
+    color: theme-darker
+    font-weight: 800
+
+  input#fov-toggle:checked ~ .fov-wrapper .skully-fov.display-medium-min
+    opacity: 1
+
+  input#fov-toggle:checked ~ .fov-info
+    .check-mark
+      opacity: 1
+
+    label
+      margin: 20px 0 0 106px
+      padding: 5px 10px 5px 0px
+      font-weight: 600
+      color: theme-blue
+      border: 2px solid theme-blue
+
+  .circle-info
+    margin-top: 45px
+    float: left
+
+    .circle-description
+      padding-left: 106px
+
+  h4
+    font-weight: 600
+    font-size: 16px
+
+  .misc-features
+    width: 90%
+    margin: auto
+    display: table
+
+    h4
+      color: theme-blue
+
+.collage
+  img
+    width: 100%
+    margin-bottom: -20px
+    margin-top: 70px
+
+@media all and ( min-width: 768px )
+  .product-features
+    .fov-wrapper
+      padding-bottom: 50px
+
+    .fov-infographics
+      img
+        margin-top: 50px
+
+    .fov-info
+      position: absolute
+      left: 0px
+      bottom: 0px
+
+    .circle-info
+      col(1/2, gutter:8, cycle:2)

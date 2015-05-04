@@ -16,7 +16,7 @@ import (
 var FixOrderPrice = parallel.Task("fix-order-price", func(db *datastore.Datastore, key datastore.Key, contribution models.Contribution) {
 	// Ignore winter promo stuff
 	log.Debug("Contribution Type '%v'", contribution.Perk.Id, db.Context)
-	if contribution.Perk.Id == "WINTER2014PROMO" {
+	if contribution.Perk.Id == "WINTER2014PROMO" || contribution.Perk.Id == "AR1-2015" {
 		return
 	}
 
