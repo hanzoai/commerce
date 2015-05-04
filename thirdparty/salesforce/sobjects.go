@@ -667,9 +667,11 @@ func (o *Order) Read(so SObjectCompatible) error {
 	o.TaxC = ToCurrency(order.Tax)
 	o.TotalC = ToCurrency(order.Shipping + order.Subtotal + order.Tax)
 
-	if len(order.Charges) > 0 {
+	if len(order.Charges) > 0 && order.Charges[0].ID != "" {
 		o.PaymentTypeC = "Stripe"
 		o.PaymentIdC = order.Charges[0].ID
+	} else {
+		o.PaymentTypeC = "Indiegogo"
 	}
 
 	// Status Flags
