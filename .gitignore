@@ -17,7 +17,6 @@ static/js/preorder.js
 static/js/store.js
 static/v1.js
 config.json
-templates/platform/docs/_generated
 
 *.sql3
 *.csv
