@@ -119,16 +119,16 @@ endif
 # set production=1 to set datastore export/import target to use production
 ifeq ($(production), 1)
 	datastore_app_id = crowdstart-us
-	gae_config = gae_production
+	gae_config = $(gae_production)
 else ifeq ($(sandbox), 1)
 	datastore_app_id = crowdstart-sandbox
-	gae_config = gae_sandbox
+	gae_config = $(gae_sandbox)
 else ifeq ($(skully), 1)
 	datastore_app_id = crowdstart-skully
-	gae_config = gae_skully
+	gae_config = $(gae_skully)
 else
 	datastore_app_id = crowdstart-staging
-	gae_config = gae_staging
+	gae_config = $(gae_staging)
 endif
 
 datastore_admin_url = https://datastore-admin-dot-$(datastore_app_id).appspot.com/_ah/remote_api
