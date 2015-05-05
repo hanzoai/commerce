@@ -119,12 +119,16 @@ endif
 # set production=1 to set datastore export/import target to use production
 ifeq ($(production), 1)
 	datastore_app_id = crowdstart-us
+	gae_config = $(gae_production)
 else ifeq ($(sandbox), 1)
 	datastore_app_id = crowdstart-sandbox
+	gae_config = $(gae_sandbox)
 else ifeq ($(skully), 1)
 	datastore_app_id = crowdstart-skully
+	gae_config = $(gae_skully)
 else
 	datastore_app_id = crowdstart-staging
+	gae_config = $(gae_staging)
 endif
 
 datastore_admin_url = https://datastore-admin-dot-$(datastore_app_id).appspot.com/_ah/remote_api
@@ -244,40 +248,8 @@ test-ci:
 	$(ginkgo) -r=true -p=true --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace --compilers=2 -v=true -- -test.v=true
 
 # DEPLOY
-deploy-production: assets-min docs
-	for module in $(gae_production); do \
-		$(appcfg.py) rollback $$module; \
-		$(appcfg.py) update $$module; \
-	done; \
-	$(appcfg.py) update_indexes config/production
-	$(appcfg.py) update_dispatch config/production
-
-deploy-sandbox:
-	for module in $(gae_sandbox); do \
-		$(appcfg.py) rollback $$module; \
-		$(appcfg.py) update $$module; \
-	done; \
-	$(appcfg.py) update_indexes config/sandbox
-	$(appcfg.py) update_dispatch config/sandbox
-
-deploy-staging: assets
-	for module in $(gae_staging); do \
-		$(appcfg.py) rollback $$module; \
-		$(appcfg.py) update $$module; \
-	done; \
-	$(appcfg.py) update_indexes config/staging
-	$(appcfg.py) update_dispatch config/staging
-
-deploy-skully: assets-min
-	for module in $(gae_skully); do \
-		$(appcfg.py) rollback $$module; \
-		$(appcfg.py) update $$module; \
-	done; \
-	$(appcfg.py) update_indexes config/skully; \
-	$(appcfg.py) update_dispatch config/skully
-
-deploy-appengine-ci: assets-minified
-	for module in $(gae_production); do \
+deploy: assets-min docs
+	for module in $(gae_config); do \
 		$(appcfg.py) rollback $$module; \
 		$(appcfg.py) update $$module; \
 	done; \
@@ -321,6 +293,11 @@ datastore-config:
 	@bulkloader.py --create_config \
 				  --url=$(datastore_admin_url) \
 				  --filename=bulkloader.yaml
+
+# Replicate production data to localhost
+datastore-replicate:
+	$(appcfg.py) download_data --application=s~$(datastore_app_id) --url=http://datastore-admin-dot-$(datastore_app_id).appspot.com/_ah/remote_api/ --filename=datastore.bin
+	$(appcfg.py) --url=http://localhost:8080/_ah/remote_api --filename=datastore.bin upload_data
 
 # Generate API docs from wiki.
 docs:

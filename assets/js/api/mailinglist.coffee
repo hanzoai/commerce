@@ -41,13 +41,31 @@ do ->
     window.form = form
 
   serialize = (form) ->
-    return {} if not form or form.nodeName isnt "FORM"
-    data = {}
+    return {} if not form or form.nodeName isnt 'FORM'
+
+    data =
+      metadata: {}
 
     elements = form.getElementsByTagName 'input'
 
+    # Loop over form elements
     for el in elements
-      data[el.name] = el.value.trim()
+      # Clean up inputs
+      k = el.name.trim().toLowerCase()
+      v = el.value.trim()
+
+      # Skip inputs we don't care about
+      if k == '' or v == '' or (el.getAttribute 'type') == 'submit'
+        continue
+
+      # Detect emails
+      if /email/.test k
+        data.email = v
+      else
+        data.metadata[k] = v
+
+    unless data.email?
+      throw new Error 'No email provided, make sure form element has an email field and that the value is populated correctly'
 
     data
 
