@@ -44,9 +44,10 @@ type Listing struct {
 
 	Sold *int `json:"sold"`
 
-	Price    *currency.Cents `json:"price,omitempty"`
-	Shipping *currency.Cents `json:"shipping,omitempty"`
-	Taxable  *bool           `json:"taxable,omitempty"`
+	Price     *currency.Cents `json:"price,omitempty"`
+	ListPrice *currency.Cents `json:"listPrice,omitempty"`
+	Shipping  *currency.Cents `json:"shipping,omitempty"`
+	Taxable   *bool           `json:"taxable,omitempty"`
 
 	WeightUnit *weight.Unit `json:"weightUnit,omitempty"`
 
