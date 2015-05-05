@@ -108,25 +108,22 @@ exports.setupViews = ->
 
 # Simple thumbnail gallery
 exports.gallery = ->
-  $previews   = $('.preview-background .preview')
+  $previews   = $('.preview-background')
   $colors     = $('.product-config .color')
 
   # set container height correctly
-  $previewbg  = $('.preview-background')
-  $previewbg.height $previewbg.width()
-  $(window).resize ->
-    $previewbg.height $previewbg.width()
-
   $(document).ready ->
     # fade out old preview, fade in new
     showPreview = (index) ->
       oldindex = index ^ 1
-      $preview = $($previews[index])
-      $oldpreview = $($previews[oldindex])
+      $previews.each ()->
+        $imgs = $(this).children()
+        $img = $($imgs[index])
+        $oldimg = $($imgs[oldindex])
 
-      requestAnimationFrame ->
-        $oldpreview.addClass 'transparent'
-        $preview.removeClass 'transparent'
+        requestAnimationFrame ->
+          $oldimg.addClass 'transparent'
+          $img.removeClass 'transparent'
 
     $colors.change (e) ->
       index = 0
