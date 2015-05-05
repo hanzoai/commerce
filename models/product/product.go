@@ -34,8 +34,9 @@ type Product struct {
 	SKU  string `json:"sku"`
 
 	// 3-letter ISO currency code (lowercase).
-	Currency currency.Type  `json:"currency"`
-	Price    currency.Cents `json:"price"`
+	Currency  currency.Type  `json:"currency"`
+	Price     currency.Cents `json:"price"`
+	ListPrice currency.Cents `json:"listPrice"`
 
 	// Override for the shipping formula
 	Shipping currency.Cents `json:"shipping"`
