@@ -53,8 +53,9 @@ type Api struct {
 }
 
 // Get the HttpClient from the Gin context
-func getClient(c appengine.Context) *http.Client {
-	client := urlfetch.Client(c)
+func getClient(ctx appengine.Context) *http.Client {
+	client := urlfetch.Client(ctx)
+	client.Transport = &urlfetch.Transport{Context: ctx, Deadline: time.Duration(10) * time.Second} // Update deadline to 10 seconds
 
 	return client
 }
