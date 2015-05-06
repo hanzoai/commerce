@@ -9,12 +9,16 @@
       border: 1px solid theme-dark
       border-radius: 50%
       display: inline-block
-      position: absolute
-      left: 24px
-      top: 17px
       overflow: hidden
       transform-origin: 50% 50%;
       transform: rotate(-30deg)
+      margin-right: 10px
+      position: relative
+      top: 3px
+
+    @media all and ( max-width: 414px )
+      p
+        display: inline
 
   label[for=black]
     .mobile-color-picker-circle
@@ -44,6 +48,4 @@
     padding: 14px
 
     .mobile-color-picker-circle
-      top: 16px
-      left: 23px
-
+      margin-right: 8px
