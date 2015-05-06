@@ -24,6 +24,10 @@ var FixPerk420 = parallel.Task("fix-perk-420", func(db *datastore.Datastore, key
 		return
 	}
 
+	if contribution.Perk.Id != "AR1-2015" && contribution.Perk.Id != "" {
+		return
+	}
+
 	contribution.Perk = models.Perks["AR1-2015"]
 	db.Put(cKey, &contribution)
 	if err != nil {

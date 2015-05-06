@@ -134,15 +134,13 @@ var Perks = map[string]Perk{
 	"AR1-2015": Perk{
 		Id:    "AR1-2015",
 		Title: "AR-1",
-		Description: `The world’s smartest motorcycle helmet. SKULLY AR-1 is a light, high-quality,
-							and full-faced motorcycle helmet equipped with a wide-angle rearview camera and
-							transparent heads up display (HUD). With its live rearview feed and ability to
-							provide telemetry and rider data such as speed, GPS directions, fuel, and
-							more, the SKULLY AR-1 not only eliminates blind spots, but allows the rider to
-							focus on what matters most: the road ahead. SKULLY AR-1: Ride safer, look
-							badass.`,
+		Description: `SKULLY AR-1 is the world's smartest motorcycle
+						helmet. With a blind spot camera and transparent
+						heads up display (HUD) the SKULLY AR-1 not only
+						eliminates blind spots but gives you the most
+						important information right when you need it.`,
 		Price:             "$1,499 USD",
-		EstimatedDelivery: "Late 2015",
+		EstimatedDelivery: "December 2015",
 		HelmetQuantity:    1,
 		GearQuantity:      0,
 	},
