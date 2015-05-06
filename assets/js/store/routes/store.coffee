@@ -137,6 +137,14 @@ exports.gallery = ->
 
       showPreview index
 
+  $(document).scroll ()->
+    if $(document).scrollTop() + $(window).height() > $('.fov-wrapper').offset().top
+      setTimeout ()->
+        $('#fov-toggle').prop('checked', true)
+        $('#mobile-skully-fov').prop('checked', true)
+      , 1500
+
+  $(document).scroll
 exports.setupStylesAndSizes =->
   $(document).ready ->
     $('.size').val('M')
