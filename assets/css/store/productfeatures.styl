@@ -57,19 +57,25 @@
       h4
         color: theme-blue
 
+      span
+        padding 5px 9px 5px 11px
+
       .check-mark
-        padding 5px 10px
-        opacity: 0
+        display: none
+
+      .x-mark
+        display: initial
 
       label
         min-width: 221px
         max-width: 221px
         display: block
-        border: 1px solid theme-dark
+        border: 1px solid theme-less-dark
         margin: 21px 0 0 107px
         padding: 5px 10px 6px 0px
         white-space: nowrap
         cursor: pointer
+        font-weight: 600
 
   @media all and ( max-width: 414px ), all and ( min-width: 1000px )
     input#mobile-skully-fov:checked ~ .mobile-fov-buttons .mobile-skully-fov-button
@@ -91,12 +97,14 @@
 
     input#fov-toggle:checked ~ .fov-wrapper .fov-info
       .check-mark
-        opacity: 1
+        display: initial
+
+      .x-mark
+        display: none
 
       label
         margin: 20px 0 0 106px
         padding: 5px 10px 5px 0px
-        font-weight: 600
         color: theme-blue
         border: 2px solid theme-blue
 

@@ -43,7 +43,7 @@ var listings = task.Func("fixtures-listings", func(c *gin.Context) {
 				Y:   1000,
 			},
 		},
-		EstimatedDelivery: "July 2015",
+		EstimatedDelivery: "Late 2015",
 		Disabled:          true,
 		SoldOut:           true,
 		Configs: []Config{
@@ -65,15 +65,9 @@ var listings = task.Func("fixtures-listings", func(c *gin.Context) {
 	})
 
 	db.PutKind("listing", "ar-1", &Listing{
-		SKU:   "ar-1",
-		Title: "SKULLY AR-1",
-		Description: `The world’s smartest motorcycle helmet. SKULLY AR-1 is a light, high-quality,
-					  and full-faced motorcycle helmet equipped with a wide-angle rearview camera and
-					  transparent heads up display (HUD). With its live rearview feed and ability to
-					  provide telemetry and rider data such as speed, GPS directions, fuel, and
-					  more, the SKULLY AR-1 not only eliminates blind spots, but allows the rider to
-					  focus on what matters most: the road ahead. SKULLY AR-1: Ride safer, look
-					  badass.`,
+		SKU:         "ar-1",
+		Title:       "SKULLY AR-1",
+		Description: `SKULLY AR-1 is the world's smartest motorcycle helmet. With a blind spot camera and transparent heads up display (HUD), the SKULLY AR-1 not only eliminates blind spots but gives you the most important information right when you need it.<br />The AR-1 helps you navigate safely with GPS turn-by-turn directions. It helps you hear better with intelligent sound processing, it enhances your situational awareness by letting you see 360° while keeping your eyes on the road.<br /><br />AR-1 allows you to focus on what matters most: the road ahead.`,
 		Images: []Image{
 			Image{
 				Alt: "blackhelmet_store.png",
@@ -88,7 +82,7 @@ var listings = task.Func("fixtures-listings", func(c *gin.Context) {
 				Y:   1000,
 			},
 		},
-		EstimatedDelivery: "Late 2015",
+		EstimatedDelivery: "December 2015",
 		Configs: []Config{
 			Config{
 				Product:  "ar-1",
