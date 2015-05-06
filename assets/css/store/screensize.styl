@@ -1,13 +1,25 @@
-@media all and ( min-width: 768px )
+@media all and ( min-width: 1000px )
+  .display-large-only
+    display: none !important
+  .display-medium-only
+    display: none !important
+  .display-small-only
+    display: none !important
+
+@media all and ( max-width: 1000px ) and ( min-width: 768px )
+  .display-x-large-only
+    display: none !important
   .display-medium-only
     display: none !important
   .display-small-only
     display: none !important
 
 @media all and ( max-width: 768px ) and ( min-width: 414px )
-  .display-small-only
+  .display-x-large-only
     display: none !important
   .display-large-only
+    display: none !important
+  .display-small-only
     display: none !important
 
 @media all and ( max-width: 414px )
@@ -15,24 +27,22 @@
     display: none !important
   .display-large-only
     display: none !important
-
-@media all and ( min-width: 768px )
-  .display-medium-max
-    display: none !important
-  .display-small-max
+  .display-x-large-only
     display: none !important
 
-@media all and ( min-width: 414px )
-  .display-small-max
+@media all and ( min-width: 1000px )
+  .display-x-large-hide
+    display: none !important
+
+@media all and ( max-width: 1000px ) and ( min-width: 768px )
+  .display-large-hide
     display: none !important
 
 @media all and ( max-width: 768px ) and ( min-width: 414px )
-  .display-small-min
+  .display-medium-hide
     display: none !important
 
-@media all and ( max-width: 768px )
-  .display-medium-min
-    display: none !important
-  .display-small-min
+@media all and ( max-width: 414px )
+  .display-small-hide
     display: none !important
 

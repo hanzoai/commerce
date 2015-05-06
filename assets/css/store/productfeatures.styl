@@ -28,9 +28,12 @@
       text-align: center
       width: 50%
       box-sizing: border-box
+      cursor: pointer
 
-      img
-        max-width: 64px
+    .mobile-fov-button:first-child
+      border-right: 0px
+    .mobile-fov-button:last-child
+      border-left: 0px
 
   .fov-infographics
     img
@@ -65,33 +68,36 @@
         margin: 21px 0 0 107px
         padding: 5px 10px 6px 0px
         white-space: nowrap
+        cursor: pointer
 
-  input#mobile-skully-fov:checked ~ .mobile-fov-buttons .mobile-skully-fov-button
-    border: 2px solid theme-blue
-    color: theme-blue
-    font-weight: 800
+  @media all and ( max-width: 414px ), all and ( min-width: 1000px )
+    input#mobile-skully-fov:checked ~ .mobile-fov-buttons .mobile-skully-fov-button
+      border: 2px solid theme-blue
+      color: theme-blue
+      font-weight: 800
 
-  input#mobile-skully-fov:checked ~ .fov-wrapper .skully-fov.display-medium-max
-    opacity: 1
-
-  input#mobile-conventional-fov:checked ~ .mobile-fov-buttons .mobile-conventional-fov-button
-    border: 2px solid theme-darker
-    color: theme-darker
-    font-weight: 800
-
-  input#fov-toggle:checked ~ .fov-wrapper .skully-fov.display-medium-min
-    opacity: 1
-
-  input#fov-toggle:checked ~ .fov-wrapper .fov-info
-    .check-mark
+    input#mobile-skully-fov:checked ~ .fov-wrapper .skully-fov
       opacity: 1
 
-    label
-      margin: 20px 0 0 106px
-      padding: 5px 10px 5px 0px
-      font-weight: 600
-      color: theme-blue
-      border: 2px solid theme-blue
+    input#mobile-conventional-fov:checked ~ .mobile-fov-buttons .mobile-conventional-fov-button
+      border: 2px solid theme-darker
+      color: theme-darker
+      font-weight: 800
+
+  @media all and ( min-width: 414px ) and ( max-width: 1000px)
+    input#fov-toggle:checked ~ .fov-wrapper .skully-fov
+      opacity: 1
+
+    input#fov-toggle:checked ~ .fov-wrapper .fov-info
+      .check-mark
+        opacity: 1
+
+      label
+        margin: 20px 0 0 106px
+        padding: 5px 10px 5px 0px
+        font-weight: 600
+        color: theme-blue
+        border: 2px solid theme-blue
 
   .circle-info
     margin-top: 45px
@@ -113,16 +119,22 @@
       color: theme-blue
 
 .collage
-  img
-    width: 100%
-    margin-bottom: -20px
-    margin-top: 70px
+  background-color: #171717
+  text-align: center
+  margin-top: 70px
 
-@media all and ( min-width: 768px )
+  img
+    max-width: 1000px
+    width: 100%
+    margin: 0 auto -20px auto
+
+@media all and ( min-width: 414px ) and ( max-width: 1000px )
   .product-features
     .fov-wrapper
       padding-bottom: 50px
 
+@media all and ( min-width: 700px )
+  .product-features
     .fov-infographics
       img
         margin-top: 50px
