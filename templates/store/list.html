@@ -168,7 +168,17 @@ var allListings = {{ listingsJSON | safe }};
             <div for="quantity" class="instructions emphasis">Quantity:</div>
             <div class="picker">
                 <div class="quantity col-1-2">
-                    <input type="number" name="quantity" value="1" min="1" max="9" maxlength="1">
+                    <select type="number" id="quantity" name="quantity" style="width:33%">
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                        <option value="6">6</option>
+                        <option value="7">7</option>
+                        <option value="8">8</option>
+                        <option value="9">9</option>
+                    </select>
                     <div class="price-wrapper">
                         <span class="x">x</span><span class="product-cost"><span>$</span><span class="money"></span></span>
                     </div>
@@ -294,4 +304,11 @@ window._fbq.push(['track', '6018312526922', {'value':'0.00','currency':'USD'}]);
 </script>
 <noscript><img height="1" width="1" alt="" style="display:none" src="https://www.facebook.com/tr?id=552096258229612&amp;ev=PixelInitialized" /></noscript>
 {% endif %}
+<script>
+    $(document).ready(function() {
+        $("#quantity").select2({
+            minimumResultsForSearch: Infinity
+        });
+    });
+</script>
 {% endblock %}

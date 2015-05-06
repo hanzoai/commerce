@@ -6,17 +6,32 @@
     height: 50px
     font-weight: 600
 
-    input, select
+    .select2
       width: 33%
-      height: 48px
-      text-align: right
-      border: 1px solid theme-dark
-      color: theme-darker
-      outline: none
-      margin: 0
-      padding: 0
       display: inline-block
       float: left
+
+      .selection
+        width: 100%
+        display: table
+
+        .select2-selection
+          border-radius: 0
+          height: 50px
+          text-align: right
+          border: 1px solid theme-dark
+          color: theme-darker
+          outline: none
+          margin: 0
+          padding: 0
+          display: table-cell
+          vertical-align: middle
+
+          .select2-selection__rendered
+            padding-right: 30px
+
+          .select2-selection__arrow
+            display: none
 
   .price-wrapper
     width: 65%
