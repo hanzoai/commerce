@@ -93,15 +93,15 @@ var allListings = {{ listingsJSON | safe }};
                 <div class="col-1-2">
                     <input type="radio" id="black" name="Color" class="color" value="Matte Black" checked>
                     <label for="black">
-                        <img src="{{ urlFor("/img/store/ar1/ar1_black_button.png") }}">
-                        <p>Matte Black</p>
+                        <img class="display-small-hide" src="{{ urlFor("/img/store/ar1/ar1_black_button.png") }}">
+                        <div class="display-small-only mobile-color-picker-circle"></div><p>Matte Black</p>
                     </label>
                 </div>
                 <div class="col-1-2">
                     <input type="radio" id="white" name="Color" class="color" value="Gloss White">
                     <label for="white">
-                        <img src="{{ urlFor("/img/store/ar1/ar1_white_button.png") }}">
-                        <p>Gloss White</p>
+                        <img class="display-small-hide" src="{{ urlFor("/img/store/ar1/ar1_white_button.png") }}">
+                        <div class="display-small-only mobile-color-picker-circle"><div></div></div><p>Gloss White</p>
                     </label>
                 </div>
             </div>

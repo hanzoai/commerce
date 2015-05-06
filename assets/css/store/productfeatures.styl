@@ -15,6 +15,7 @@
     display: table
     width: 75%
     margin: 20px auto 0 auto
+    max-width: 500px
 
     .mobile-skully-fov-button
       font-family: Michroma
@@ -37,7 +38,7 @@
 
   .fov-infographics
     img
-      margin-top: 10px
+      margin-top: 20px
       width: 100%
       transition: opacity 0.2s ease-in-out
 
@@ -128,7 +129,13 @@
     width: 100%
     margin: 0 auto -20px auto
 
-@media all and ( min-width: 414px ) and ( max-width: 1000px )
+@media all and ( max-width: 414px )
+  .product-features
+    .fov-wrapper
+      .fov-info
+        margin-top: 40px
+
+@media all and ( min-width: 415px ) and ( max-width: 1000px )
   .product-features
     .fov-wrapper
       padding-bottom: 50px
