@@ -180,8 +180,16 @@ var BuildForm = (function() {
         label += requiredAsteriskTemplate;
       }
 
-      $fg.find('label:first').attr('for', inputConfig.id).html(label).addClass('col-md-' + (labelCols || 3));
-      var $div = $fg.find('div:first').addClass('col-md-' + (valueCols || 9));
+      var $labelDiv = $fg.find('label:first').attr('for', inputConfig.id).html(label)
+      var $div = $fg.find('div:first')
+
+      if (labelCols != 0) {
+        $labelDiv.addClass('col-md-' + (labelCols || 3));
+      }
+      if (valueCols != 0) {
+        $div.addClass('col-md-' + (valueCols || 9));
+      }
+
       if(inputConfig.css){
         $div.css(inputConfig.css);
       }
