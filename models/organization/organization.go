@@ -1,9 +1,11 @@
 package organization
 
 import (
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ryanuber/go-glob"
 
 	"appengine"
 
@@ -145,6 +147,22 @@ func (o Organization) StripeToken() string {
 	}
 
 	return o.Stripe.Test.AccessToken
+}
+
+func (o Organization) IsTestEmail(email string) bool {
+	if o.EmailWhitelist == "" {
+		return false
+	}
+
+	globs := strings.Split(o.EmailWhitelist, ",")
+
+	for _, g := range globs {
+		if glob.Glob(g, email) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func Query(db *datastore.Datastore) *mixin.Query {
