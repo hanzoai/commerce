@@ -1,6 +1,6 @@
 var BuildForm = (function() {
   var formGroupInputTemplate = '<div class="form-group"><label class="control-label" for=""></label><div><input type="text" id="" name="" class="form-control" value=""></div></div>';
-  var formGroupTextAreaTemplate = '<div class="form-group"><label class="control-label" for=""></label><div><textarea class="form-control" style="resize:none;height:265px"></textarea></div></div>';
+  var formGroupTextAreaTemplate = '<div class="form-group"><label class="control-label" for=""></label><div><textarea class="form-control" style="resize:none;"></textarea></div></div>';
   var formGroupLinkTemplate =   '<div class="form-group"><label class="control-label" for=""></label><div><p class="form-control-static"><a></a></p></div></div>';
   var formGroupStaticTemplate = '<div class="form-group"><label class="control-label" for=""></label><div><p class="form-control-static"></p></div></div>';
   var formGroupSelectTemplate = '<div class="form-group"><label class="control-label" for=""></label><div><select class="form-control"></select></div></div>';
