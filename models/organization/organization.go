@@ -71,6 +71,9 @@ type Organization struct {
 
 	// Whether we use live or test tokens, mostly applicable to stripe
 	Live bool `json:"-" datastore:"-"`
+
+	// List of comma deliminated email globs that result in charges of 50 cents
+	EmailWhitelist string `json:"emailWhitelist"`
 }
 
 func New(db *datastore.Datastore) *Organization {
