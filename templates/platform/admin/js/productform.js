@@ -40,6 +40,7 @@
         {% endif %}
         label: 'Description',
         type: 'textarea',
+        height: '100px',
         $parent: $('#product-info')
       },
 // product cost
