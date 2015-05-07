@@ -9,6 +9,7 @@ import (
 	"crowdstart.io/models/order"
 	"crowdstart.io/models/organization"
 	"crowdstart.io/models/store"
+	"crowdstart.io/models/types/currency"
 	"crowdstart.io/util/json"
 	"crowdstart.io/util/log"
 )
@@ -85,6 +86,12 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	pay.Description = ord.Description()
 
 	log.Debug("Payment: %#v", pay)
+
+	// Set order total to $0.50 if using a test email
+	if org.IsTestEmail(pay.Buyer.Email) {
+		pay.Amount = currency.Cents(50)
+		ord.Total = currency.Cents(50)
+	}
 
 	// Setup all relationships before we try to authorize to ensure that keys
 	// that get created are actually valid.
