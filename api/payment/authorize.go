@@ -91,6 +91,8 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	if org.IsTestEmail(pay.Buyer.Email) {
 		pay.Amount = currency.Cents(50)
 		ord.Total = currency.Cents(50)
+		ord.Test = true
+		pay.Test = true
 	}
 
 	// Setup all relationships before we try to authorize to ensure that keys
