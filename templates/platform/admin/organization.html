@@ -17,6 +17,12 @@
 
         <!-- Organization information Form Content -->
         <form id="form-organization" method="post" class="form-horizontal">
+            <h4>Basic Info</h4>
+            <div id="org-information" class="block">
+            </div>
+            <h4>Emails for Testing Payment Processing (50 cent charges)</h4>
+            <div id="org-whitelist" class="block">
+            </div>
             <div class="form-group form-actions">
                 <div class="col-md-9 col-md-offset-3">
                     <button type="submit" class="btn btn-effect-ripple btn-primary">Submit</button>
@@ -37,39 +43,52 @@
 <script src="{{ staticUrl }}/js/rest-forms.js"></script>
 <script>
     $(function(){
-        BuildForm($("#form-organization"), [
+        BuildForm($('#form-organization'), [
             {
-                id: "shortName",
-                name: "shortName",
-                label: "Unique Identifier/Slug",
-                type: "static",
-                value: "{{ ctx.organization.Name }}",
+                id: 'shortName',
+                name: 'shortName',
+                label: 'Unique Identifier/Slug',
+                type: 'static',
+                value: '{{ ctx.organization.Name }}',
+                $parent: $('#org-information'),
             },
             {
-                id: "fullName",
-                name: "fullName",
-                label: "Full Name",
-                type: "text",
-                value: "{{ ctx.organization.FullName }}",
+                id: 'fullName',
+                name: 'fullName',
+                label: 'Full Name',
+                type: 'text',
+                value: '{{ ctx.organization.FullName }}',
                 rules: [
                     {
-                        rule: "required",
+                        rule: 'required',
                         value: true,
                         message: "Please enter your Organization's full name"
                     }
-                ]
+                ],
+                $parent: $('#org-information'),
             },
             {
-                id: "website",
-                name: "website",
-                label: "Website URL",
-                type: "url",
-                value: "{{ ctx.organization.Website }}",
+                id: 'website',
+                name: 'website',
+                label: 'Website URL',
+                type: 'url',
+                value: '{{ ctx.organization.Website }}',
+                $parent: $('#org-information'),
+            },
+            {
+                id: 'emailWhitelist',
+                name: 'emailWhitelist',
+                label: 'Comma Separated Globs (ex. *@{{ ctx.organization.Name }}.com,*@gmail.com)',
+                type: 'textarea',
+                value: '{{ ctx.organization.EmailWhitelist }}',
+                $parent: $('#org-whitelist'),
+                labelCols: 0,
+                valueCols: 0,
             },
         ]);
     });
   var api = NewRestAPI(
-      '{{ urlFor("api", "/organization") }}',
+      '{{ urlFor("api", "c/organization") }}',
       '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}',
       $('#form-organization'),
       {
