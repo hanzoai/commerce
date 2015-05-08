@@ -3,13 +3,13 @@ package user
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/auth/password"
-	// "crowdstart.io/models"
-	"crowdstart.io/models/user"
+	"crowdstart.com/auth/password"
+	// "crowdstart.com/models"
+	"crowdstart.com/models/user"
 
-	"crowdstart.io/util/log"
+	"crowdstart.com/util/log"
 
-	// "crowdstart.io/util/queries"
+	// "crowdstart.com/util/queries"
 )
 
 func Profile(c *gin.Context) {

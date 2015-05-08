@@ -4,8 +4,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/sessions"
 
-	"crowdstart.io/config"
-	"crowdstart.io/util/log"
+	"crowdstart.com/config"
+	"crowdstart.com/util/log"
 )
 
 var store = sessions.NewCookieStore([]byte(config.Secret))

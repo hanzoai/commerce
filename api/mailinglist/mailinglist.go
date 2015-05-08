@@ -5,15 +5,15 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/config"
-	"crowdstart.io/datastore"
-	"crowdstart.io/models/mailinglist"
-	"crowdstart.io/models/subscriber"
-	"crowdstart.io/util/json"
-	"crowdstart.io/util/json/http"
-	"crowdstart.io/util/log"
+	"crowdstart.com/config"
+	"crowdstart.com/datastore"
+	"crowdstart.com/models/mailinglist"
+	"crowdstart.com/models/subscriber"
+	"crowdstart.com/util/json"
+	"crowdstart.com/util/json/http"
+	"crowdstart.com/util/log"
 
-	mailchimp "crowdstart.io/thirdparty/mailchimp/tasks"
+	mailchimp "crowdstart.com/thirdparty/mailchimp/tasks"
 )
 
 var subscriberEndpoint = config.UrlFor("api", "/subscriber/")

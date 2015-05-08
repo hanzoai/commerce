@@ -2,9 +2,9 @@ package user
 
 import "github.com/gin-gonic/gin"
 
-// "crowdstart.io/auth"
+// "crowdstart.com/auth"
 
-// "crowdstart.io/models"
+// "crowdstart.com/models"
 
 func DisplayOrders(c *gin.Context) {
 	// // user := auth.GetUser(c)

@@ -3,7 +3,7 @@ package crowdstart
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/_default"
+	"crowdstart.com/_default"
 )
 
 func init() {

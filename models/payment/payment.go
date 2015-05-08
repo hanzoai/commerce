@@ -3,14 +3,14 @@ package payment
 import (
 	aeds "appengine/datastore"
 
-	"crowdstart.io/datastore"
-	"crowdstart.io/models/mixin"
-	"crowdstart.io/models/types/currency"
-	"crowdstart.io/util/json"
-	"crowdstart.io/util/log"
-	"crowdstart.io/util/val"
+	"crowdstart.com/datastore"
+	"crowdstart.com/models/mixin"
+	"crowdstart.com/models/types/currency"
+	"crowdstart.com/util/json"
+	"crowdstart.com/util/log"
+	"crowdstart.com/util/val"
 
-	. "crowdstart.io/models"
+	. "crowdstart.com/models"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch

@@ -1,11 +1,11 @@
 package crowdstart
 
 import (
-	"crowdstart.io/_default"
+	"crowdstart.com/_default"
 
 	// Imported for side-effect, ensures tasks are registered
-	_ "crowdstart.io/test/datastore/integration/tasks"
-	_ "crowdstart.io/test/util/task/integration/tasks"
+	_ "crowdstart.com/test/datastore/integration/tasks"
+	_ "crowdstart.com/test/util/task/integration/tasks"
 )
 
 func init() {

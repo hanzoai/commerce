@@ -1,6 +1,6 @@
 package crowdstart
 
-import "crowdstart.io/_default"
+import "crowdstart.com/_default"
 
 func init() {
 	_default.Init()

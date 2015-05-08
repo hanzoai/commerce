@@ -3,10 +3,10 @@ package test
 import (
 	"testing"
 
-	"crowdstart.io/util/test/ae"
-	"crowdstart.io/util/val"
+	"crowdstart.com/util/test/ae"
+	"crowdstart.com/util/val"
 
-	. "crowdstart.io/util/test/ginkgo"
+	. "crowdstart.com/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {

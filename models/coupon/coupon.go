@@ -3,9 +3,9 @@ package coupon
 import (
 	"time"
 
-	"crowdstart.io/datastore"
-	"crowdstart.io/models/mixin"
-	"crowdstart.io/util/val"
+	"crowdstart.com/datastore"
+	"crowdstart.com/models/mixin"
+	"crowdstart.com/util/val"
 )
 
 type Type string

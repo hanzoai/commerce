@@ -12,8 +12,8 @@ import (
 
 	"github.com/zeekay/aetest"
 
-	"crowdstart.io/datastore"
-	"crowdstart.io/util/log"
+	"crowdstart.com/datastore"
+	"crowdstart.com/util/log"
 )
 
 func Test(t *testing.T) {

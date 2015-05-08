@@ -5,11 +5,11 @@ import (
 
 	"github.com/zeekay/aetest"
 
-	"crowdstart.io/datastore"
-	"crowdstart.io/models/user"
-	"crowdstart.io/thirdparty/salesforce"
+	"crowdstart.com/datastore"
+	"crowdstart.com/models/user"
+	"crowdstart.com/thirdparty/salesforce"
 
-	. "crowdstart.io/util/test/ginkgo"
+	. "crowdstart.com/util/test/ginkgo"
 )
 
 // func Test(t *testing.T) {

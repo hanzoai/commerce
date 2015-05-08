@@ -9,8 +9,8 @@ import (
 	"github.com/onsi/ginkgo/reporters"
 	"github.com/onsi/gomega"
 
-	"crowdstart.io/util/log"
-	"crowdstart.io/util/retry"
+	"crowdstart.com/util/log"
+	"crowdstart.com/util/retry"
 )
 
 func Setup(suiteName string, t *testing.T) {

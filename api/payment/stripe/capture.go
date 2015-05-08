@@ -5,12 +5,12 @@ import (
 
 	aeds "appengine/datastore"
 
-	"crowdstart.io/models/order"
-	"crowdstart.io/models/organization"
-	"crowdstart.io/models/payment"
-	"crowdstart.io/models/types/currency"
-	"crowdstart.io/thirdparty/stripe"
-	"crowdstart.io/util/log"
+	"crowdstart.com/models/order"
+	"crowdstart.com/models/organization"
+	"crowdstart.com/models/payment"
+	"crowdstart.com/models/types/currency"
+	"crowdstart.com/thirdparty/stripe"
+	"crowdstart.com/util/log"
 )
 
 var FailedToCaptureCharge = errors.New("Failed to capture charge")

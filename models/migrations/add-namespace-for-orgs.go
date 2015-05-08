@@ -3,11 +3,11 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/models/namespace"
-	"crowdstart.io/models/organization"
-	"crowdstart.io/util/log"
+	"crowdstart.com/models/namespace"
+	"crowdstart.com/models/organization"
+	"crowdstart.com/util/log"
 
-	ds "crowdstart.io/datastore"
+	ds "crowdstart.com/datastore"
 )
 
 var _ = New("add-namespace-for-orgs",

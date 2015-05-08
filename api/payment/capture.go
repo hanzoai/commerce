@@ -3,12 +3,12 @@ package payment
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/api/payment/stripe"
-	"crowdstart.io/datastore"
-	"crowdstart.io/models/order"
-	"crowdstart.io/models/organization"
-	"crowdstart.io/models/payment"
-	"crowdstart.io/models/types/currency"
+	"crowdstart.com/api/payment/stripe"
+	"crowdstart.com/datastore"
+	"crowdstart.com/models/order"
+	"crowdstart.com/models/organization"
+	"crowdstart.com/models/payment"
+	"crowdstart.com/models/types/currency"
 )
 
 func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (*order.Order, error) {

@@ -1,12 +1,12 @@
 package indiegogo
 
 import (
-	"crowdstart.io/config"
-	"crowdstart.io/datastore"
-	"crowdstart.io/util/csv"
+	"crowdstart.com/config"
+	"crowdstart.com/datastore"
+	"crowdstart.com/util/csv"
 
-	. "crowdstart.io/models"
-	"crowdstart.io/models/user"
+	. "crowdstart.com/models"
+	"crowdstart.com/models/user"
 )
 
 func ImportCSV(db *datastore.Datastore, filename string) {

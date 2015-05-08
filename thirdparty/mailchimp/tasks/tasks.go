@@ -4,10 +4,10 @@ import (
 	"appengine"
 	"appengine/delay"
 
-	"crowdstart.io/datastore"
-	"crowdstart.io/models/mailinglist"
-	"crowdstart.io/models/subscriber"
-	"crowdstart.io/thirdparty/mailchimp"
+	"crowdstart.com/datastore"
+	"crowdstart.com/models/mailinglist"
+	"crowdstart.com/models/subscriber"
+	"crowdstart.com/thirdparty/mailchimp"
 )
 
 var Subscriber = delay.Func("mailchimp-subscribe", func(ctx appengine.Context, mlJSON []byte, sJSON []byte) {

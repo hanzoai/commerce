@@ -3,10 +3,10 @@ package auth
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/datastore"
-	"crowdstart.io/models/user"
-	"crowdstart.io/util/log"
-	"crowdstart.io/util/session"
+	"crowdstart.com/datastore"
+	"crowdstart.com/models/user"
+	"crowdstart.com/util/log"
+	"crowdstart.com/util/session"
 )
 
 const loginKey = "loggedIn"

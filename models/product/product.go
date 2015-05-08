@@ -5,15 +5,15 @@ import (
 
 	aeds "appengine/datastore"
 
-	"crowdstart.io/datastore"
-	"crowdstart.io/models/mixin"
-	"crowdstart.io/models/types/currency"
-	"crowdstart.io/models/types/weight"
-	"crowdstart.io/models/variant"
-	"crowdstart.io/util/json"
-	"crowdstart.io/util/val"
+	"crowdstart.com/datastore"
+	"crowdstart.com/models/mixin"
+	"crowdstart.com/models/types/currency"
+	"crowdstart.com/models/types/weight"
+	"crowdstart.com/models/variant"
+	"crowdstart.com/util/json"
+	"crowdstart.com/util/val"
 
-	. "crowdstart.io/models"
+	. "crowdstart.com/models"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
