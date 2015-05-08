@@ -4,9 +4,9 @@ import (
 	"math"
 	"sort"
 
-	"crowdstart.io/models/product"
-	"crowdstart.io/models/types/currency"
-	"crowdstart.io/models/types/weight"
+	"crowdstart.com/models/product"
+	"crowdstart.com/models/types/currency"
+	"crowdstart.com/models/types/weight"
 )
 
 type RateType string

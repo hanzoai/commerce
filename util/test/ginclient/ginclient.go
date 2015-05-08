@@ -8,9 +8,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/util/gincontext"
-	"crowdstart.io/util/json"
-	"crowdstart.io/util/test/ae"
+	"crowdstart.com/util/gincontext"
+	"crowdstart.com/util/json"
+	"crowdstart.com/util/test/ae"
 )
 
 type setupFn func(c *http.Request)

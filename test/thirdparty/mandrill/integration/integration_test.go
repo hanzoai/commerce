@@ -8,9 +8,9 @@ import (
 
 	"github.com/zeekay/aetest"
 
-	"crowdstart.io/config"
-	"crowdstart.io/thirdparty/mandrill"
-	"crowdstart.io/util/log"
+	"crowdstart.com/config"
+	"crowdstart.com/thirdparty/mandrill"
+	"crowdstart.com/util/log"
 )
 
 func Test(t *testing.T) {

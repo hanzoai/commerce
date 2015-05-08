@@ -9,10 +9,10 @@ import (
 
 	"appengine"
 
-	"crowdstart.io/datastore"
-	// "crowdstart.io/models"
-	"crowdstart.io/models/campaign"
-	"crowdstart.io/util/log"
+	"crowdstart.com/datastore"
+	// "crowdstart.com/models"
+	"crowdstart.com/models/campaign"
+	"crowdstart.com/util/log"
 
 	"appengine/urlfetch"
 )

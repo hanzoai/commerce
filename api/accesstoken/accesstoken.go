@@ -7,15 +7,15 @@ import (
 
 	"appengine"
 
-	"crowdstart.io/auth/password"
-	"crowdstart.io/datastore"
-	"crowdstart.io/middleware"
-	"crowdstart.io/models/organization"
-	"crowdstart.io/models/user"
-	"crowdstart.io/util/json/http"
-	"crowdstart.io/util/log"
-	"crowdstart.io/util/permission"
-	"crowdstart.io/util/session"
+	"crowdstart.com/auth/password"
+	"crowdstart.com/datastore"
+	"crowdstart.com/middleware"
+	"crowdstart.com/models/organization"
+	"crowdstart.com/models/user"
+	"crowdstart.com/util/json/http"
+	"crowdstart.com/util/log"
+	"crowdstart.com/util/permission"
+	"crowdstart.com/util/session"
 )
 
 func getAccessToken(c *gin.Context, id, email, pass string, test bool) {

@@ -6,9 +6,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/config"
-	"crowdstart.io/middleware"
-	"crowdstart.io/util/log"
+	"crowdstart.com/config"
+	"crowdstart.com/middleware"
+	"crowdstart.com/util/log"
 )
 
 func New(moduleName string) Router {

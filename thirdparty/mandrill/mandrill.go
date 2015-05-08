@@ -12,9 +12,9 @@ import (
 	"appengine"
 	"appengine/urlfetch"
 
-	"crowdstart.io/config"
-	"crowdstart.io/util/json"
-	"crowdstart.io/util/log"
+	"crowdstart.com/config"
+	"crowdstart.com/util/json"
+	"crowdstart.com/util/log"
 )
 
 const root = "http://mandrillapp.com/api/1.0"

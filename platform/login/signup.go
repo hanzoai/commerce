@@ -3,11 +3,11 @@ package login
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/auth"
-	"crowdstart.io/config"
-	"crowdstart.io/datastore"
-	"crowdstart.io/models/user"
-	"crowdstart.io/util/template"
+	"crowdstart.com/auth"
+	"crowdstart.com/config"
+	"crowdstart.com/datastore"
+	"crowdstart.com/models/user"
+	"crowdstart.com/util/template"
 )
 
 func Signup(c *gin.Context) {

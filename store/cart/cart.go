@@ -1,7 +1,7 @@
 package cart
 
 import (
-	"crowdstart.io/util/template"
+	"crowdstart.com/util/template"
 	"github.com/gin-gonic/gin"
 )
 

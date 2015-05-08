@@ -6,11 +6,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/auth/password"
-	"crowdstart.io/models"
-	"crowdstart.io/models/user"
-	"crowdstart.io/util/form"
-	"crowdstart.io/util/val"
+	"crowdstart.com/auth/password"
+	"crowdstart.com/models"
+	"crowdstart.com/models/user"
+	"crowdstart.com/util/form"
+	"crowdstart.com/util/val"
 )
 
 type LoginForm struct {

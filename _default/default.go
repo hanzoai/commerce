@@ -5,24 +5,24 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/config"
-	"crowdstart.io/middleware"
-	"crowdstart.io/util/exec"
-	"crowdstart.io/util/log"
-	"crowdstart.io/util/router"
-	"crowdstart.io/util/task"
-	"crowdstart.io/util/template"
+	"crowdstart.com/config"
+	"crowdstart.com/middleware"
+	"crowdstart.com/util/exec"
+	"crowdstart.com/util/log"
+	"crowdstart.com/util/router"
+	"crowdstart.com/util/task"
+	"crowdstart.com/util/template"
 
 	// Imported for side-effect, needed to enable remote api calls
 	_ "appengine/remote_api"
 
 	// Imported for side-effect, ensures tasks are registered
-	_ "crowdstart.io/models/fixtures"
-	_ "crowdstart.io/models/migrations"
-	_ "crowdstart.io/thirdparty/mailchimp/tasks"
-	_ "crowdstart.io/thirdparty/mandrill/tasks"
-	// _ "crowdstart.io/thirdparty/salesforce/tasks"
-	// _ "crowdstart.io/thirdparty/stripe/tasks"
+	_ "crowdstart.com/models/fixtures"
+	_ "crowdstart.com/models/migrations"
+	_ "crowdstart.com/thirdparty/mailchimp/tasks"
+	_ "crowdstart.com/thirdparty/mandrill/tasks"
+	// _ "crowdstart.com/thirdparty/salesforce/tasks"
+	// _ "crowdstart.com/thirdparty/stripe/tasks"
 )
 
 func Init() {

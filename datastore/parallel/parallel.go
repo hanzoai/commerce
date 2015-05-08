@@ -8,10 +8,10 @@ import (
 	"appengine"
 	"appengine/delay"
 
-	"crowdstart.io/datastore"
-	"crowdstart.io/models"
-	"crowdstart.io/models/mixin"
-	"crowdstart.io/util/log"
+	"crowdstart.com/datastore"
+	"crowdstart.com/models"
+	"crowdstart.com/models/mixin"
+	"crowdstart.com/util/log"
 )
 
 type ParallelFn struct {

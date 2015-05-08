@@ -3,15 +3,15 @@ package preorder
 import (
 	"github.com/gin-gonic/gin"
 
-	// "crowdstart.io/auth"
-	"crowdstart.io/datastore"
+	// "crowdstart.com/auth"
+	"crowdstart.com/datastore"
 
-	// "crowdstart.io/models"
-	"crowdstart.io/models/token"
+	// "crowdstart.com/models"
+	"crowdstart.com/models/token"
 
-	// "crowdstart.io/util/queries"
-	"crowdstart.io/util/log"
-	"crowdstart.io/util/template"
+	// "crowdstart.com/util/queries"
+	"crowdstart.com/util/log"
+	"crowdstart.com/util/template"
 )
 
 // GET /order/:token

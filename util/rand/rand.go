@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"crowdstart.io/util/log"
+	"crowdstart.com/util/log"
 )
 
 // Returns short, url-friendly Id

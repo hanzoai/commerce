@@ -7,13 +7,13 @@ import (
 	"strings"
 	"time"
 
-	"crowdstart.io/datastore"
-	// "crowdstart.io/models"
-	"crowdstart.io/models/lineitem"
-	"crowdstart.io/models/order"
-	"crowdstart.io/models/user"
-	"crowdstart.io/models/variant"
-	"crowdstart.io/util/log"
+	"crowdstart.com/datastore"
+	// "crowdstart.com/models"
+	"crowdstart.com/models/lineitem"
+	"crowdstart.com/models/order"
+	"crowdstart.com/models/user"
+	"crowdstart.com/models/variant"
+	"crowdstart.com/util/log"
 )
 
 var ErrorUserTypeRequired = errors.New("Parameter needs to be of type User")

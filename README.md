@@ -51,7 +51,7 @@ Implements backend models and provides abstraction layer between Google's
 Datastore. `api/models` package is shared across project.
 
 ### `checkout` (`checkout/app.yaml`)
-Implements secure checkout, generally hosted at `https://secure.crowdstart.io`.
+Implements secure checkout, generally hosted at `https://secure.crowdstart.com`.
 should be possible to CNAME to it from `secure.client.com` for branding
 purposes.
 
@@ -88,7 +88,7 @@ subdirectory.
 
 ## Frontend UI
 
-### store.crowdstart.io (`store module`)
+### store.crowdstart.com (`store module`)
 - Need to display hover when something is in cart with link to show cart page.
 
 ### / product listing
@@ -124,7 +124,7 @@ subdirectory.
 - Tracking info?
 - Ability to manage order up until shipped
 
-### secure.crowdstart.io (`checkout` module)
+### secure.crowdstart.com (`checkout` module)
 - Requires SSL.
 
 ### /checkout/<cartid>
@@ -139,12 +139,12 @@ subdirectory.
     - thank you
 
 ## Backend API
-## api.crowdstart.io (`api` module)
+## api.crowdstart.com (`api` module)
 ### /api/cart
 - create, get, add, remove stuff from a cart
 
 ## Platform UI
-### crowdstart.io (`platform` module)
+### crowdstart.com (`platform` module)
 
 ### /login
 ### /logout

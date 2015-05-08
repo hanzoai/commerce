@@ -9,14 +9,14 @@ import (
 
 	"appengine"
 
-	"crowdstart.io/datastore"
-	"crowdstart.io/models/mixin"
-	"crowdstart.io/models/user"
-	"crowdstart.io/thirdparty/stripe/connect"
-	"crowdstart.io/util/permission"
-	"crowdstart.io/util/val"
+	"crowdstart.com/datastore"
+	"crowdstart.com/models/mixin"
+	"crowdstart.com/models/user"
+	"crowdstart.com/thirdparty/stripe/connect"
+	"crowdstart.com/util/permission"
+	"crowdstart.com/util/val"
 
-	. "crowdstart.io/models"
+	. "crowdstart.com/models"
 )
 
 type Organization struct {

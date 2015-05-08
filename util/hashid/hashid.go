@@ -1,7 +1,7 @@
 package hashid
 
 import (
-	"crowdstart.io/config"
+	"crowdstart.com/config"
 	"github.com/speps/go-hashids"
 )
 

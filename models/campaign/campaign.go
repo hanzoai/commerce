@@ -1,10 +1,10 @@
 package campaign
 
 import (
-	"crowdstart.io/datastore"
-	"crowdstart.io/models/mixin"
-	"crowdstart.io/util/category"
-	"crowdstart.io/util/val"
+	"crowdstart.com/datastore"
+	"crowdstart.com/models/mixin"
+	"crowdstart.com/util/category"
+	"crowdstart.com/util/val"
 )
 
 type Campaign struct {

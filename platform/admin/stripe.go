@@ -3,11 +3,11 @@ package admin
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/middleware"
-	"crowdstart.io/thirdparty/stripe/connect"
-	"crowdstart.io/thirdparty/stripe/tasks"
-	"crowdstart.io/util/log"
-	"crowdstart.io/util/template"
+	"crowdstart.com/middleware"
+	"crowdstart.com/thirdparty/stripe/connect"
+	"crowdstart.com/thirdparty/stripe/tasks"
+	"crowdstart.com/util/log"
+	"crowdstart.com/util/template"
 )
 
 /*

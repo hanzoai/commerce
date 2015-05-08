@@ -8,8 +8,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/datastore"
-	"crowdstart.io/models/organization"
+	"crowdstart.com/datastore"
+	"crowdstart.com/models/organization"
 )
 
 func New(ctx ...appengine.Context) *gin.Context {

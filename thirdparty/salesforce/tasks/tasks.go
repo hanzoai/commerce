@@ -6,19 +6,19 @@ import (
 	"appengine"
 	"appengine/delay"
 
-	"crowdstart.io/datastore"
-	"crowdstart.io/datastore/parallel"
-	// "crowdstart.io/models"
-	"crowdstart.io/util/log"
-	// "crowdstart.io/util/queries"
-	"crowdstart.io/util/task"
+	"crowdstart.com/datastore"
+	"crowdstart.com/datastore/parallel"
+	// "crowdstart.com/models"
+	"crowdstart.com/util/log"
+	// "crowdstart.com/util/queries"
+	"crowdstart.com/util/task"
 
-	"crowdstart.io/models/campaign"
-	"crowdstart.io/models/order"
-	"crowdstart.io/models/user"
-	"crowdstart.io/models/variant"
+	"crowdstart.com/models/campaign"
+	"crowdstart.com/models/order"
+	"crowdstart.com/models/user"
+	"crowdstart.com/models/variant"
 
-	// . "crowdstart.io/thirdparty/salesforce"
+	// . "crowdstart.com/thirdparty/salesforce"
 )
 
 // Deferred Tasks
