@@ -1,4 +1,5 @@
-@import "node_modules/nib/lib/nib"
+transition()
+  transition: arguments
 @import "node_modules/axis/axis"
 @import "../mixin/normalize"
 @import "../mixin/quill"
@@ -9,6 +10,12 @@
 
 normalize()
 reset()
+
+// vendor(prop, args)
+//   {prop} args
+
+// transition()
+//   vendor('transition', arguments)
 
 @import "dropdown"
 @import "text"
@@ -26,6 +33,14 @@ form
 
 .container
   width: 100%
+
+label
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 
 body
   background-color #171717
@@ -60,9 +75,9 @@ a:active
   top 0px
   left 0px
   background-color #000
-  display block
-  z-index 10
-  transition left .3s ease 0s
+  display:block
+  z-index:10
+  transition:left .3s ease 0s
 
 .title-nav
   max-width 1200px
@@ -389,7 +404,7 @@ button
 
 // STORE
 .store-width
-  max-width: 1200px
+  max-width: 1000px
 
 section > .item
     display table
@@ -811,7 +826,7 @@ body.mobile .cart-hover
   .title-nav .logo
     height: 50px
 
-@media all and ( max-width: 800px )
+@media all and ( max-width: 900px )
   .cart-hover
     top: 66px
     right: 5px

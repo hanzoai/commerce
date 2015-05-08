@@ -27,7 +27,7 @@ var allListings = {{ listingsJSON | safe }};
 {% for listing in listings %}
 {% if !listing.Disabled %}
 <div class="item product-listing">
-  <div class="product-viewer display-large-only">
+  <div class="product-viewer display-medium-hide display-small-hide">
     <div class="preview-background">
       {% if listing.SoldOut %}
       <img class="sold-out" src="{{ urlFor("img/soldout.png") }}" alt="Sold Out">
@@ -58,7 +58,7 @@ var allListings = {{ listingsJSON | safe }};
         <br />
     </div>
 
-    <div class="mobile-viewer-wrapper display-medium-max">
+    <div class="mobile-viewer-wrapper display-x-large-hide display-large-hide">
       <div class="product-viewer">
         <div class="preview-background">
           {% if listing.SoldOut %}
@@ -93,15 +93,15 @@ var allListings = {{ listingsJSON | safe }};
                 <div class="col-1-2">
                     <input type="radio" id="black" name="Color" class="color" value="Matte Black" checked>
                     <label for="black">
-                        <img src="{{ urlFor("/img/store/ar1/ar1_black_button.png") }}">
-                        <p>Matte Black</p>
+                        <img class="display-small-hide" src="{{ urlFor("/img/store/ar1/ar1_black_button.png") }}">
+                        <div class="display-small-only mobile-color-picker-circle"></div><p>Matte Black</p>
                     </label>
                 </div>
                 <div class="col-1-2">
                     <input type="radio" id="white" name="Color" class="color" value="Gloss White">
                     <label for="white">
-                        <img src="{{ urlFor("/img/store/ar1/ar1_white_button.png") }}">
-                        <p>Gloss White</p>
+                        <img class="display-small-hide" src="{{ urlFor("/img/store/ar1/ar1_white_button.png") }}">
+                        <div class="display-small-only mobile-color-picker-circle"><div></div></div><p>Gloss White</p>
                     </label>
                 </div>
             </div>
@@ -159,7 +159,7 @@ var allListings = {{ listingsJSON | safe }};
                 </div>
             </div>
             <p class="italic fine-print">
-                The AR-1 is Race Fit(very tight). For a more traditional street fit, choose one size up.
+                The AR-1 is Race Fit (very tight). For a more traditional street fit, choose one size up.
             </p>
             {% endif %}
         </div>
@@ -168,7 +168,17 @@ var allListings = {{ listingsJSON | safe }};
             <div for="quantity" class="instructions emphasis">Quantity:</div>
             <div class="picker">
                 <div class="quantity col-1-2">
-                    <input type="number" name="quantity" value="1" min="1" max="9" maxlength="1">
+                    <select type="number" id="quantity" name="quantity" style="width:33%">
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                        <option value="6">6</option>
+                        <option value="7">7</option>
+                        <option value="8">8</option>
+                        <option value="9">9</option>
+                    </select>
                     <div class="price-wrapper">
                         <span class="x">x</span><span class="product-cost"><span>$</span><span class="money"></span></span>
                     </div>
@@ -209,25 +219,25 @@ var allListings = {{ listingsJSON | safe }};
     <input id="fov-toggle" class="hidden" type="checkbox">
     <input id="mobile-skully-fov" name="fov" class="hidden" type="radio">
     <input id="mobile-conventional-fov" name="fov" class="hidden" type="radio" checked>
-    <div class="display-medium-max mobile-fov-buttons">
+    <div class="display-large-hide display-medium-hide mobile-fov-buttons">
         <label for="mobile-skully-fov" class="mobile-fov-button mobile-skully-fov-button">SKULLY</label>
         <label for="mobile-conventional-fov" class="mobile-fov-button mobile-conventional-fov-button">Conventional</label>
     </div>
     <div class="fov-wrapper">
         <div class="fov-infographics">
-            <img class="traditional-fov display-medium-min" src="{{ urlFor("/img/store/ar1/fov_conventional.png") }}">
-            <img class="skully-fov transparent display-medium-min" src="{{ urlFor("/img/store/ar1/fov.png") }}">
-            <img class="traditional-fov display-medium-max" src="{{ urlFor("/img/store/ar1/fov_conventional_mobile.png") }}">
-            <img class="skully-fov transparent display-medium-max" src="{{ urlFor("/img/store/ar1/fov_mobile.png") }}">
+            <img class="traditional-fov display-small-hide" src="{{ urlFor("/img/store/ar1/fov_conventional.png") }}">
+            <img class="skully-fov transparent display-small-hide" src="{{ urlFor("/img/store/ar1/fov.png") }}">
+            <img class="traditional-fov display-small-only" src="{{ urlFor("/img/store/ar1/fov_conventional_mobile.png") }}">
+            <img class="skully-fov transparent display-small-only" src="{{ urlFor("/img/store/ar1/fov_mobile.png") }}">
         </div>
         <div class="fov-info circle-info">
             <img class="circle" src="{{ urlFor("/img/store/ar1/180_circle.png") }}">
             <div class="circle-description">
                 <h4>180&deg; Blind Spot Camera</h4>
-                <p>Donec id elit non mi porta gravida at eget metus. Mirrors suck... porta felis euismod semper.</p>
+                <p>Conventional mirrors show you a thin slice of reality, a blind spot camera shows <b>everything</b> happening around you.</p>
             </div>
-            <div class="display-medium-min">
-                <label for="fov-toggle"><span class="check-mark">&#10003;</span>Show Skully Field of View</label>
+            <div class="display-small-hide display-x-large-hide">
+                <label for="fov-toggle"><span class="check-mark">&#10003;</span>Show SKULLY Field of View</label>
             </div>
         </div>
     </div>
@@ -236,42 +246,42 @@ var allListings = {{ listingsJSON | safe }};
             <img class="circle" src="{{ urlFor("/img/store/ar1/hud_circle.png") }}">
             <div class="circle-description">
                 <h4>Heads Up Display</h4>
-                <p>Donec id elit non mi porta gravida at eget metus. Mirrors suck... porta felis euismod semper.</p>
+                <p>Transparent HUD projects a focused display that appears floating in front-right of view</p>
             </div>
         </div>
         <div class="circle-info">
             <img class="circle" src="{{ urlFor("/img/store/ar1/awareness_circle.png") }}">
             <div class="circle-description">
                 <h4>Situational Awareness</h4>
-                <p>Donec id elit non mi porta gravida at eget metus. Mirrors suck... porta felis euismod semper.</p>
+                <p>Full situational awareness with GPS navigation and a live blindspot camera view</p>
             </div>
         </div>
         <div class="circle-info">
             <img class="circle" src="{{ urlFor("/img/store/ar1/safety_circle.png") }}">
             <div class="circle-description">
                 <h4>Safety</h4>
-                <p>Donec id elit non mi porta gravida at eget metus. Mirrors suck... porta felis euismod semper.</p>
+                <p>DOT/ECE certified. Featuring a quick release chin strap and a visor that is fog, scratch & glare resistant</p>
             </div>
         </div>
         <div class="circle-info">
             <img class="circle" src="{{ urlFor("/img/store/ar1/connect_circle.png") }}">
             <div class="circle-description">
                 <h4>Connectivity</h4>
-                <p>Donec id elit non mi porta gravida at eget metus. Mirrors suck... porta felis euismod semper.</p>
+                <p>Fully connected with Bluetooth, internet via smartphone and automatic software updates</p>
             </div>
         </div>
         <div class="circle-info">
             <img class="circle" src="{{ urlFor("/img/store/ar1/fit_circle.png") }}">
             <div class="circle-description">
                 <h4>Perfect Fit</h4>
-                <p>Donec id elit non mi porta gravida at eget metus. Mirrors suck... porta felis euismod semper.</p>
+                <p>Lightweight, aerodynamic shell fits sizes S-XXL with interchangable padding inserts</p>
             </div>
         </div>
         <div class="circle-info">
             <img class="circle" src="{{ urlFor("/img/store/ar1/sound_circle.png") }}">
             <div class="circle-description">
                 <h4>Intelligent Sound</h4>
-                <p>Donec id elit non mi porta gravida at eget metus. Mirrors suck... porta felis euismod semper.</p>
+                <p>Intelligent audio system features hands-free calling and music streaming</p>
             </div>
         </div>
     </div>
@@ -279,8 +289,8 @@ var allListings = {{ listingsJSON | safe }};
 {% endblock %}
 {% block content_footer %}
 <div class="collage">
-    <img class="display-medium-min" src="{{ urlFor("/img/store/ar1/collage_desktop.png")}}">
-    <img class="display-medium-max" src="{{ urlFor("/img/store/ar1/collage_mobile.png")}}">
+    <img class="display-medium-hide display-small-hide" src="{{ urlFor("/img/store/ar1/collage_desktop.png")}}">
+    <img class="display-large-hide display-x-large-hide" src="{{ urlFor("/img/store/ar1/collage_mobile.png")}}">
 </div>
 {% endblock %}
 
@@ -294,4 +304,11 @@ window._fbq.push(['track', '6018312526922', {'value':'0.00','currency':'USD'}]);
 </script>
 <noscript><img height="1" width="1" alt="" style="display:none" src="https://www.facebook.com/tr?id=552096258229612&amp;ev=PixelInitialized" /></noscript>
 {% endif %}
+<script>
+    $(document).ready(function() {
+        $("#quantity").select2({
+            minimumResultsForSearch: Infinity
+        });
+    });
+</script>
 {% endblock %}

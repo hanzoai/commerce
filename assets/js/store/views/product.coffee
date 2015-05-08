@@ -58,7 +58,7 @@ class ProductView extends View
 
     listingSKU = listing.SKU + variant.SKU
 
-    quantity = parseInt @el.find('input[name=quantity]').val(), 10
+    quantity = parseInt @el.find('#quantity').val(), 10
 
     product = allProducts[slug]
     childProducts = []

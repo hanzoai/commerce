@@ -817,6 +817,37 @@ func (o *Order) Push(api SalesforceClient) error {
 		return err
 	}
 
+	if o.SalesforceId() == "" {
+		// Delete everything
+		for _, orderProduct := range o.orderProducts {
+			if err := orderProduct.Delete(api); err != nil {
+				return err
+			}
+		}
+	} else {
+		// Get Order Products as well.  Use the place order product since it is likely faster than a filter
+		poow := PlaceOrderOrderWrapper{}
+		if err := pull(api, PlaceOrderOrderPath, o.SalesforceId(), &poow); err != nil {
+			return err
+		}
+
+		// If no orders, then leave
+		if len(poow.Records) == 0 {
+			return nil
+		}
+
+		// If no product orders, then leave
+		if poow.Records[0].OrderProducts == nil {
+			return nil
+		}
+		ops := poow.Records[0].OrderProducts.Records
+		for _, op := range ops {
+			if err := op.Delete(api); err != nil {
+				return err
+			}
+		}
+	}
+
 	for _, orderProduct := range o.orderProducts {
 		if err := orderProduct.Push(api); err != nil {
 			return err
@@ -990,14 +1021,11 @@ func (o *OrderProduct) ExternalId() string {
 }
 
 func (o *OrderProduct) Push(api SalesforceClient) error {
-	if err := o.Delete(api); err != nil {
-		return err
-	}
 	return push(api, OrderProductExternalIdPath, o)
 }
 
 func (o *OrderProduct) Delete(api SalesforceClient) error {
-	return del(api, OrderProductExternalIdPath, o.ExternalId())
+	return del(api, OrderProductPath, o.Id)
 }
 
 func (o *OrderProduct) PullExternalId(api SalesforceClient, id string) error {
