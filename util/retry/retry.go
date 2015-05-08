@@ -5,7 +5,7 @@ import (
 
 	"github.com/cenkalti/backoff"
 
-	"crowdstart.io/util/log"
+	"crowdstart.com/util/log"
 )
 
 func Retry(times int, fn func() error) error {

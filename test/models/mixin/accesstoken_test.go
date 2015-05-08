@@ -4,7 +4,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"crowdstart.io/util/permission"
+	"crowdstart.com/util/permission"
 )
 
 var _ = Describe("models/mixin AccessToken", func() {

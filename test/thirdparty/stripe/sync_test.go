@@ -1,6 +1,6 @@
 package test
 
-// import . "crowdstart.io/util/test/ginkgo"
+// import . "crowdstart.com/util/test/ginkgo"
 
 // func newOrder(user *models.User, charge models.Charge) (datastore.Key, *models.Order) {
 // 	key := db.AllocateIntKey("order")

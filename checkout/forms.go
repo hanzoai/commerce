@@ -3,12 +3,12 @@ package checkout
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/datastore"
-	// "crowdstart.io/models"
-	"crowdstart.io/models/order"
-	"crowdstart.io/models/user"
-	"crowdstart.io/util/form"
-	"crowdstart.io/util/log"
+	"crowdstart.com/datastore"
+	// "crowdstart.com/models"
+	"crowdstart.com/models/order"
+	"crowdstart.com/models/user"
+	"crowdstart.com/util/form"
+	"crowdstart.com/util/log"
 )
 
 // Load order from checkout form

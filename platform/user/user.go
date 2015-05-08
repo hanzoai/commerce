@@ -5,12 +5,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/auth"
-	"crowdstart.io/auth/password"
-	"crowdstart.io/config"
-	"crowdstart.io/middleware"
-	"crowdstart.io/util/log"
-	"crowdstart.io/util/template"
+	"crowdstart.com/auth"
+	"crowdstart.com/auth/password"
+	"crowdstart.com/config"
+	"crowdstart.com/middleware"
+	"crowdstart.com/util/log"
+	"crowdstart.com/util/template"
 )
 
 var ErrorInvalidProfile = errors.New("Invalid Profile Saved")

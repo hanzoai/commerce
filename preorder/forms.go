@@ -5,13 +5,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/auth/password"
-	// "crowdstart.io/models"
-	. "crowdstart.io/models"
-	"crowdstart.io/models/order"
-	"crowdstart.io/models/token"
-	"crowdstart.io/models/user"
-	"crowdstart.io/util/form"
+	"crowdstart.com/auth/password"
+	// "crowdstart.com/models"
+	. "crowdstart.com/models"
+	"crowdstart.com/models/order"
+	"crowdstart.com/models/token"
+	"crowdstart.com/models/user"
+	"crowdstart.com/util/form"
 )
 
 type PreorderForm struct {

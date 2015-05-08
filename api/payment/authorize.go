@@ -5,13 +5,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/api/payment/stripe"
-	"crowdstart.io/models/order"
-	"crowdstart.io/models/organization"
-	"crowdstart.io/models/store"
-	"crowdstart.io/models/types/currency"
-	"crowdstart.io/util/json"
-	"crowdstart.io/util/log"
+	"crowdstart.com/api/payment/stripe"
+	"crowdstart.com/models/order"
+	"crowdstart.com/models/organization"
+	"crowdstart.com/models/store"
+	"crowdstart.com/models/types/currency"
+	"crowdstart.com/util/json"
+	"crowdstart.com/util/log"
 )
 
 func authorizationRequest(c *gin.Context, ord *order.Order) (*AuthorizationReq, error) {

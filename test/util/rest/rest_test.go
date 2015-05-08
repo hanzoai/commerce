@@ -4,16 +4,16 @@ import (
 	"net/http"
 	"testing"
 
-	"crowdstart.io/datastore"
-	"crowdstart.io/middleware"
-	"crowdstart.io/models/mixin"
-	"crowdstart.io/models/organization"
-	"crowdstart.io/util/permission"
-	"crowdstart.io/util/rest"
-	"crowdstart.io/util/test/ae"
-	"crowdstart.io/util/test/ginclient"
+	"crowdstart.com/datastore"
+	"crowdstart.com/middleware"
+	"crowdstart.com/models/mixin"
+	"crowdstart.com/models/organization"
+	"crowdstart.com/util/permission"
+	"crowdstart.com/util/rest"
+	"crowdstart.com/util/test/ae"
+	"crowdstart.com/util/test/ginclient"
 
-	. "crowdstart.io/util/test/ginkgo"
+	. "crowdstart.com/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {

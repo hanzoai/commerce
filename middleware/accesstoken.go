@@ -9,12 +9,12 @@ import (
 
 	"appengine"
 
-	"crowdstart.io/datastore"
-	"crowdstart.io/models/organization"
-	"crowdstart.io/util/bit"
-	"crowdstart.io/util/json/http"
-	"crowdstart.io/util/permission"
-	"crowdstart.io/util/session"
+	"crowdstart.com/datastore"
+	"crowdstart.com/models/organization"
+	"crowdstart.com/util/bit"
+	"crowdstart.com/util/json/http"
+	"crowdstart.com/util/permission"
+	"crowdstart.com/util/session"
 )
 
 func splitAuthorization(fieldValue string) (string, string) {

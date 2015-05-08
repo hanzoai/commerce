@@ -11,9 +11,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/julienschmidt/httprouter"
 
-	"crowdstart.io/datastore"
-	"crowdstart.io/models/organization"
-	"crowdstart.io/util/log"
+	"crowdstart.com/datastore"
+	"crowdstart.com/models/organization"
+	"crowdstart.com/util/log"
 )
 
 // Request that can be almost completely be serialized to/from a real Request

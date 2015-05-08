@@ -3,9 +3,9 @@ package mixin
 import (
 	"errors"
 
-	"crowdstart.io/util/bit"
-	"crowdstart.io/util/log"
-	"crowdstart.io/util/token"
+	"crowdstart.com/util/bit"
+	"crowdstart.com/util/log"
+	"crowdstart.com/util/token"
 )
 
 // Error for expired jti's

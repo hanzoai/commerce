@@ -6,8 +6,8 @@ import (
 	"appengine"
 	"appengine/memcache"
 
-	"crowdstart.io/util/log"
-	"crowdstart.io/util/task"
+	"crowdstart.com/util/log"
+	"crowdstart.com/util/task"
 )
 
 // SOON!

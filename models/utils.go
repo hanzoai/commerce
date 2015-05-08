@@ -8,8 +8,8 @@ import (
 
 	humanize "github.com/dustin/go-humanize"
 
-	"crowdstart.io/datastore"
-	"crowdstart.io/models/types/currency"
+	"crowdstart.com/datastore"
+	"crowdstart.com/models/types/currency"
 )
 
 func FloatPrice(price currency.Cents) float64 {

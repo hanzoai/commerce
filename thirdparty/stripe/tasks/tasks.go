@@ -4,11 +4,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stripe/stripe-go/client"
 
-	"crowdstart.io/datastore"
-	// "crowdstart.io/models"
-	"crowdstart.io/models/order"
+	"crowdstart.com/datastore"
+	// "crowdstart.com/models"
+	"crowdstart.com/models/order"
 
-	// . "crowdstart.io/thirdparty/stripe"
+	// . "crowdstart.com/thirdparty/stripe"
 )
 
 // This is a worker that processes one order at a time

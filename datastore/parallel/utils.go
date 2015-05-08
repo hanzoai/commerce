@@ -3,8 +3,8 @@ package parallel
 import (
 	"reflect"
 
-	"crowdstart.io/datastore"
-	"crowdstart.io/models/mixin"
+	"crowdstart.com/datastore"
+	"crowdstart.com/models/mixin"
 )
 
 // Precompute a few common types

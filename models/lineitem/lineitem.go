@@ -4,14 +4,14 @@ import (
 	"errors"
 	"fmt"
 
-	"crowdstart.io/datastore"
-	"crowdstart.io/models/mixin"
-	"crowdstart.io/models/product"
-	"crowdstart.io/models/types/currency"
-	"crowdstart.io/models/types/weight"
-	"crowdstart.io/models/variant"
+	"crowdstart.com/datastore"
+	"crowdstart.com/models/mixin"
+	"crowdstart.com/models/product"
+	"crowdstart.com/models/types/currency"
+	"crowdstart.com/models/types/weight"
+	"crowdstart.com/models/variant"
 
-	. "crowdstart.io/models"
+	. "crowdstart.com/models"
 )
 
 var InvalidLineItem = errors.New("Invalid line item. Ensure ID, slug or SKU is correct.")

@@ -3,7 +3,7 @@ package namespace
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/util/router"
+	"crowdstart.com/util/router"
 )
 
 func Route(router router.Router, args ...gin.HandlerFunc) {

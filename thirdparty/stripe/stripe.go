@@ -10,10 +10,10 @@ import (
 	"github.com/stripe/stripe-go"
 	"github.com/stripe/stripe-go/client"
 
-	"crowdstart.io/models/payment"
-	"crowdstart.io/models/user"
-	"crowdstart.io/util/json"
-	"crowdstart.io/util/log"
+	"crowdstart.com/models/payment"
+	"crowdstart.com/models/user"
+	"crowdstart.com/util/json"
+	"crowdstart.com/util/log"
 )
 
 type Card stripe.Card

@@ -3,7 +3,7 @@ package frontend
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/util/template"
+	"crowdstart.com/util/template"
 )
 
 func Index(c *gin.Context) {

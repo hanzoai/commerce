@@ -10,9 +10,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/util/json"
-	"crowdstart.io/util/log"
-	"crowdstart.io/util/template"
+	"crowdstart.com/util/json"
+	"crowdstart.com/util/log"
+	"crowdstart.com/util/template"
 )
 
 type ErrorDisplayer func(c *gin.Context, message string, err error)

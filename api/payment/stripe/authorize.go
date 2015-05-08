@@ -1,12 +1,12 @@
 package stripe
 
 import (
-	"crowdstart.io/models/order"
-	"crowdstart.io/models/organization"
-	"crowdstart.io/models/payment"
-	"crowdstart.io/models/user"
-	"crowdstart.io/thirdparty/stripe"
-	"crowdstart.io/util/log"
+	"crowdstart.com/models/order"
+	"crowdstart.com/models/organization"
+	"crowdstart.com/models/payment"
+	"crowdstart.com/models/user"
+	"crowdstart.com/thirdparty/stripe"
+	"crowdstart.com/util/log"
 )
 
 func Authorize(org *organization.Organization, ord *order.Order, usr *user.User, pay *payment.Payment) error {

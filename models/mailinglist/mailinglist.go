@@ -6,14 +6,14 @@ import (
 
 	"appengine"
 
-	"crowdstart.io/config"
-	"crowdstart.io/datastore"
-	"crowdstart.io/models/mixin"
-	"crowdstart.io/models/subscriber"
-	"crowdstart.io/models/types/thankyou"
-	"crowdstart.io/util/fs"
-	"crowdstart.io/util/json"
-	"crowdstart.io/util/val"
+	"crowdstart.com/config"
+	"crowdstart.com/datastore"
+	"crowdstart.com/models/mixin"
+	"crowdstart.com/models/subscriber"
+	"crowdstart.com/models/types/thankyou"
+	"crowdstart.com/util/fs"
+	"crowdstart.com/util/json"
+	"crowdstart.com/util/val"
 )
 
 var jsTemplate = ""

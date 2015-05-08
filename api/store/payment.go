@@ -5,11 +5,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/api/payment"
-	"crowdstart.io/datastore"
-	"crowdstart.io/middleware"
-	"crowdstart.io/models/store"
-	"crowdstart.io/util/json/http"
+	"crowdstart.com/api/payment"
+	"crowdstart.com/datastore"
+	"crowdstart.com/middleware"
+	"crowdstart.com/models/store"
+	"crowdstart.com/util/json/http"
 )
 
 func authorize(c *gin.Context) {

@@ -1,8 +1,8 @@
 package api
 
 import (
-	"crowdstart.io/models/mixin"
-	"crowdstart.io/util/log"
+	"crowdstart.com/models/mixin"
+	"crowdstart.com/util/log"
 )
 
 func logApiRoutes(entities []mixin.Entity) {

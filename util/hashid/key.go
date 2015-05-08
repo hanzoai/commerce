@@ -7,9 +7,9 @@ import (
 	"appengine"
 	aeds "appengine/datastore"
 
-	"crowdstart.io/datastore"
-	"crowdstart.io/models/namespace/consts"
-	"crowdstart.io/util/log"
+	"crowdstart.com/datastore"
+	"crowdstart.com/models/namespace/consts"
+	"crowdstart.com/util/log"
 )
 
 var (

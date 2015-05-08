@@ -3,10 +3,10 @@ package store
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/middleware"
-	"crowdstart.io/models/mailinglist"
-	"crowdstart.io/util/rest"
-	"crowdstart.io/util/router"
+	"crowdstart.com/middleware"
+	"crowdstart.com/models/mailinglist"
+	"crowdstart.com/util/rest"
+	"crowdstart.com/util/router"
 )
 
 func Route(router router.Router, args ...gin.HandlerFunc) {

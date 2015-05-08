@@ -3,8 +3,8 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/models/product"
-	"crowdstart.io/models/types/currency"
+	"crowdstart.com/models/product"
+	"crowdstart.com/models/types/currency"
 )
 
 var Product = New("product", func(c *gin.Context) *product.Product {

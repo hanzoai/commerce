@@ -1,7 +1,7 @@
 package exec
 
 import (
-	"crowdstart.io/config"
+	"crowdstart.com/config"
 	"log"
 	"os"
 	"os/exec"

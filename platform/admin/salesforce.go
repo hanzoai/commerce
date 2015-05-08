@@ -11,10 +11,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/config"
-	"crowdstart.io/middleware"
-	"crowdstart.io/thirdparty/salesforce"
-	"crowdstart.io/util/template"
+	"crowdstart.com/config"
+	"crowdstart.com/middleware"
+	"crowdstart.com/thirdparty/salesforce"
+	"crowdstart.com/util/template"
 )
 
 // Salesforce End Points

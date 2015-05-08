@@ -3,13 +3,13 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/auth/password"
-	"crowdstart.io/datastore"
-	"crowdstart.io/models/namespace"
-	"crowdstart.io/models/organization"
-	"crowdstart.io/models/user"
+	"crowdstart.com/auth/password"
+	"crowdstart.com/datastore"
+	"crowdstart.com/models/namespace"
+	"crowdstart.com/models/organization"
+	"crowdstart.com/models/user"
 
-	"crowdstart.io/util/log"
+	"crowdstart.com/util/log"
 )
 
 var Spero = New("spero", func(c *gin.Context) *organization.Organization {

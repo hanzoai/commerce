@@ -6,8 +6,8 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 
-	"crowdstart.io/util/bit"
-	"crowdstart.io/util/rand"
+	"crowdstart.com/util/bit"
+	"crowdstart.com/util/rand"
 )
 
 type Token struct {

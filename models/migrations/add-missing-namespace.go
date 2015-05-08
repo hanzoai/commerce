@@ -3,9 +3,9 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/datastore"
-	"crowdstart.io/models/namespace"
-	"crowdstart.io/util/log"
+	"crowdstart.com/datastore"
+	"crowdstart.com/models/namespace"
+	"crowdstart.com/util/log"
 )
 
 var _ = New("add-missing-namespace", func(c *gin.Context) {

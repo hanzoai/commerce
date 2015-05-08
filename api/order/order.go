@@ -5,17 +5,17 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/datastore"
-	"crowdstart.io/middleware"
-	"crowdstart.io/models/order"
-	"crowdstart.io/models/payment"
-	"crowdstart.io/util/json"
-	"crowdstart.io/util/json/http"
-	"crowdstart.io/util/permission"
-	"crowdstart.io/util/rest"
-	"crowdstart.io/util/router"
+	"crowdstart.com/datastore"
+	"crowdstart.com/middleware"
+	"crowdstart.com/models/order"
+	"crowdstart.com/models/payment"
+	"crowdstart.com/util/json"
+	"crowdstart.com/util/json/http"
+	"crowdstart.com/util/permission"
+	"crowdstart.com/util/rest"
+	"crowdstart.com/util/router"
 
-	paymentApi "crowdstart.io/api/payment"
+	paymentApi "crowdstart.com/api/payment"
 )
 
 func Route(router router.Router, args ...gin.HandlerFunc) {

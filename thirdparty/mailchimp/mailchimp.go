@@ -8,9 +8,9 @@ import (
 
 	"github.com/mattbaird/gochimp"
 
-	"crowdstart.io/models/mailinglist"
-	"crowdstart.io/models/subscriber"
-	"crowdstart.io/util/log"
+	"crowdstart.com/models/mailinglist"
+	"crowdstart.com/models/subscriber"
+	"crowdstart.com/util/log"
 )
 
 type API struct {
