@@ -1,14 +1,36 @@
 .color-picker
   label
-    margin-top: 1px
-    border: 1px solid theme-dark
-    color: theme-dark
-    text-align: center
     padding: 15px
-    display: block
+    position: relative
 
-    p
-      margin-bottom: -5px
+    .mobile-color-picker-circle
+      width: 14px
+      height: 14px
+      border: 1px solid theme-dark
+      border-radius: 50%
+      display: inline-block
+      overflow: hidden
+      transform-origin: 50% 50%;
+      transform: rotate(-30deg)
+      margin-right: 10px
+      position: relative
+      top: 3px
+
+    @media all and ( max-width: 414px )
+      p
+        display: inline
+
+  label[for=black]
+    .mobile-color-picker-circle
+      background-color: theme-darker
+      border-color: theme-darker
+
+  label[for=white]
+    .mobile-color-picker-circle div
+      margin-top: 50%
+      height: 50%
+      width: 100%
+      background-color: theme-less-dark
 
   input
     display: none
@@ -21,3 +43,9 @@
 
   margin-top: 10px
   margin-bottom: 20px
+
+  input:checked + label
+    padding: 14px
+
+    .mobile-color-picker-circle
+      margin-right: 8px
