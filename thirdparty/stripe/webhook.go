@@ -6,8 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	stripe "crowdstart.io/thirdparty/stripe/models"
-	"crowdstart.io/util/log"
+	stripe "crowdstart.com/thirdparty/stripe/models"
+	"crowdstart.com/util/log"
 )
 
 func StripeSync(c *gin.Context) {

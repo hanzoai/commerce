@@ -3,18 +3,18 @@ package admin
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/config"
-	"crowdstart.io/datastore"
-	"crowdstart.io/middleware"
-	"crowdstart.io/models/coupon"
-	"crowdstart.io/models/mailinglist"
-	"crowdstart.io/models/order"
-	"crowdstart.io/models/product"
-	"crowdstart.io/models/store"
-	"crowdstart.io/models/user"
-	"crowdstart.io/util/log"
-	"crowdstart.io/util/permission"
-	"crowdstart.io/util/template"
+	"crowdstart.com/config"
+	"crowdstart.com/datastore"
+	"crowdstart.com/middleware"
+	"crowdstart.com/models/coupon"
+	"crowdstart.com/models/mailinglist"
+	"crowdstart.com/models/order"
+	"crowdstart.com/models/product"
+	"crowdstart.com/models/store"
+	"crowdstart.com/models/user"
+	"crowdstart.com/util/log"
+	"crowdstart.com/util/permission"
+	"crowdstart.com/util/template"
 )
 
 // Index

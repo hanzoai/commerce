@@ -6,13 +6,13 @@ import (
 	"github.com/headzoo/surf"
 	"github.com/headzoo/surf/browser"
 
-	"crowdstart.io/datastore"
-	// "crowdstart.io/models/fixtures"
-	"crowdstart.io/util/log"
-	"crowdstart.io/util/test/ae"
-	"crowdstart.io/util/test/httpclient"
+	"crowdstart.com/datastore"
+	// "crowdstart.com/models/fixtures"
+	"crowdstart.com/util/log"
+	"crowdstart.com/util/test/ae"
+	"crowdstart.com/util/test/httpclient"
 
-	. "crowdstart.io/util/test/ginkgo"
+	. "crowdstart.com/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {

@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"crowdstart.io/util/log"
-	"crowdstart.io/util/template"
+	"crowdstart.com/util/log"
+	"crowdstart.com/util/template"
 )
 
 type ValidatorFunction func(interface{}) *FieldError

@@ -5,7 +5,7 @@ import
 
 "github.com/gin-gonic/gin"
 
-// "crowdstart.io/models"
+// "crowdstart.com/models"
 
 // GET store./orders
 // LoginRequired

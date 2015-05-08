@@ -3,8 +3,8 @@ package aetest
 import (
 	"github.com/zeekay/aetest"
 
-	"crowdstart.io/util/test/ae/context"
-	"crowdstart.io/util/test/ae/options"
+	"crowdstart.com/util/test/ae/context"
+	"crowdstart.com/util/test/ae/options"
 )
 
 // Create a new *aetest.Context

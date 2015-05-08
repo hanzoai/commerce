@@ -1,9 +1,9 @@
 package tasks
 
 import (
-	"crowdstart.io/datastore"
-	"crowdstart.io/datastore/parallel"
-	"crowdstart.io/util/log"
+	"crowdstart.com/datastore"
+	"crowdstart.com/datastore/parallel"
+	"crowdstart.com/util/log"
 )
 
 // Define a new worker with parallel.Task

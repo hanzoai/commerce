@@ -1,8 +1,8 @@
 package checkout
 
 import (
-	"crowdstart.io/middleware"
-	"crowdstart.io/util/router"
+	"crowdstart.com/middleware"
+	"crowdstart.com/util/router"
 )
 
 func init() {

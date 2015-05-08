@@ -6,14 +6,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/datastore"
-	"crowdstart.io/middleware"
-	"crowdstart.io/models/bundle"
-	"crowdstart.io/models/mixin"
-	"crowdstart.io/models/product"
-	"crowdstart.io/models/store"
-	"crowdstart.io/models/variant"
-	"crowdstart.io/util/json/http"
+	"crowdstart.com/datastore"
+	"crowdstart.com/middleware"
+	"crowdstart.com/models/bundle"
+	"crowdstart.com/models/mixin"
+	"crowdstart.com/models/product"
+	"crowdstart.com/models/store"
+	"crowdstart.com/models/variant"
+	"crowdstart.com/util/json/http"
 )
 
 var types = map[string]reflect.Type{

@@ -4,7 +4,7 @@ import (
 	"encoding/csv"
 	"os"
 
-	"crowdstart.io/util/log"
+	"crowdstart.com/util/log"
 )
 
 type Record struct {

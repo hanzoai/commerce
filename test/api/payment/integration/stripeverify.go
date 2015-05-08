@@ -1,11 +1,11 @@
 package test
 
 import (
-	"crowdstart.io/models/payment"
-	"crowdstart.io/models/user"
-	"crowdstart.io/util/log"
+	"crowdstart.com/models/payment"
+	"crowdstart.com/models/user"
+	"crowdstart.com/util/log"
 
-	. "crowdstart.io/util/test/ginkgo"
+	. "crowdstart.com/util/test/ginkgo"
 )
 
 func stripeVerifyCharge(pay *payment.Payment) {

@@ -16,11 +16,11 @@ import (
 	"appengine/memcache"
 	"appengine/urlfetch"
 
-	"crowdstart.io/config"
-	"crowdstart.io/middleware"
-	// "crowdstart.io/models"
+	"crowdstart.com/config"
+	"crowdstart.com/middleware"
+	// "crowdstart.com/models"
 
-	"crowdstart.io/util/log"
+	"crowdstart.com/util/log"
 )
 
 var appId = config.Facebook.AppId
