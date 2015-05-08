@@ -9,14 +9,14 @@ import (
 
 	"appengine"
 
-	"crowdstart.io/config"
-	"crowdstart.io/datastore"
-	"crowdstart.io/middleware"
-	"crowdstart.io/models/mixin"
-	"crowdstart.io/models/organization"
-	"crowdstart.io/util/json/http"
-	"crowdstart.io/util/log"
-	"crowdstart.io/util/template"
+	"crowdstart.com/config"
+	"crowdstart.com/datastore"
+	"crowdstart.com/middleware"
+	"crowdstart.com/models/mixin"
+	"crowdstart.com/models/organization"
+	"crowdstart.com/util/json/http"
+	"crowdstart.com/util/log"
+	"crowdstart.com/util/template"
 )
 
 // Wrapped model, with a few display helpers

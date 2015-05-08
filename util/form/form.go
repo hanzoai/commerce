@@ -4,7 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/schema"
 
-	"crowdstart.io/util/log"
+	"crowdstart.com/util/log"
 )
 
 var decoder = schema.NewDecoder()

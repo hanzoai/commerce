@@ -4,11 +4,11 @@ import (
 	"appengine"
 	aeds "appengine/datastore"
 
-	"crowdstart.io/datastore"
-	"crowdstart.io/models/mixin"
-	"crowdstart.io/models/namespace/consts"
-	"crowdstart.io/util/log"
-	"crowdstart.io/util/val"
+	"crowdstart.com/datastore"
+	"crowdstart.com/models/mixin"
+	"crowdstart.com/models/namespace/consts"
+	"crowdstart.com/util/log"
+	"crowdstart.com/util/val"
 )
 
 type Namespace struct {

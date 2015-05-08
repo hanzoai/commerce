@@ -7,8 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/datastore/parallel"
-	"crowdstart.io/util/task"
+	"crowdstart.com/datastore/parallel"
+	"crowdstart.com/util/task"
 )
 
 type SetupFn func(*gin.Context)

@@ -3,13 +3,13 @@ package user
 import (
 	"github.com/gin-gonic/gin"
 
-	// "crowdstart.io/models"
-	"crowdstart.io/util/form"
-	"crowdstart.io/util/val"
+	// "crowdstart.com/models"
+	"crowdstart.com/util/form"
+	"crowdstart.com/util/val"
 
-	"crowdstart.io/models/user"
+	"crowdstart.com/models/user"
 
-	. "crowdstart.io/models"
+	. "crowdstart.com/models"
 )
 
 // User profile form (contact)

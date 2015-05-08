@@ -4,10 +4,10 @@ import (
 	"appengine"
 	"appengine/delay"
 
-	"crowdstart.io/config"
-	"crowdstart.io/thirdparty/mandrill"
-	"crowdstart.io/util/log"
-	"crowdstart.io/util/template"
+	"crowdstart.com/config"
+	"crowdstart.com/thirdparty/mandrill"
+	"crowdstart.com/util/log"
+	"crowdstart.com/util/template"
 )
 
 var SendTemplateAsync = delay.Func("send-template-email", func(ctx appengine.Context, template, toEmail, toName, subject string, vars ...mandrill.Var) {

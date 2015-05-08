@@ -8,14 +8,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/datastore"
-	"crowdstart.io/middleware"
-	"crowdstart.io/models/mixin"
-	"crowdstart.io/util/json"
-	"crowdstart.io/util/json/http"
-	"crowdstart.io/util/permission"
-	"crowdstart.io/util/router"
-	"crowdstart.io/util/structs"
+	"crowdstart.com/datastore"
+	"crowdstart.com/middleware"
+	"crowdstart.com/models/mixin"
+	"crowdstart.com/util/json"
+	"crowdstart.com/util/json/http"
+	"crowdstart.com/util/permission"
+	"crowdstart.com/util/router"
+	"crowdstart.com/util/structs"
 )
 
 var restApis = make([]*Rest, 0)

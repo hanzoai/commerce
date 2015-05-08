@@ -1,7 +1,7 @@
 package permission
 
 import (
-	"crowdstart.io/util/bit"
+	"crowdstart.com/util/bit"
 )
 
 const (
