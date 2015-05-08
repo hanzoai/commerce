@@ -5,6 +5,7 @@ import "time"
 type Salesforce struct {
 	PrimarySalesforceId_   string    `json:"-"`
 	SecondarySalesforceId_ string    `json:"-"`
+	ExternalId_            string    `json:"_"`
 	LastSync_              time.Time `json:"-"`
 }
 
@@ -14,6 +15,14 @@ func (so *Salesforce) SetSalesforceId(id string) {
 
 func (so *Salesforce) SalesforceId() string {
 	return so.PrimarySalesforceId_
+}
+
+func (so *Salesforce) SetExternalId(id string) {
+	so.ExternalId_ = id
+}
+
+func (so *Salesforce) ExternalId() string {
+	return so.ExternalId_
 }
 
 func (so *Salesforce) SetSalesforceId2(id string) {
