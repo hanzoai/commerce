@@ -3,10 +3,10 @@ package user
 import (
 	"github.com/gin-gonic/gin"
 
-	// "crowdstart.io/models"
+	// "crowdstart.com/models"
 
-	// "crowdstart.io/util/queries"
-	"crowdstart.io/util/template"
+	// "crowdstart.com/util/queries"
+	"crowdstart.com/util/template"
 )
 
 // GET /create-password

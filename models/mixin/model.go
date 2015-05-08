@@ -8,12 +8,12 @@ import (
 	"appengine"
 	aeds "appengine/datastore"
 
-	"crowdstart.io/datastore"
-	"crowdstart.io/util/hashid"
-	"crowdstart.io/util/json"
-	"crowdstart.io/util/rand"
-	"crowdstart.io/util/structs"
-	"crowdstart.io/util/val"
+	"crowdstart.com/datastore"
+	"crowdstart.com/util/hashid"
+	"crowdstart.com/util/json"
+	"crowdstart.com/util/rand"
+	"crowdstart.com/util/structs"
+	"crowdstart.com/util/val"
 )
 
 var zeroTime = time.Time{}

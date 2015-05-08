@@ -3,9 +3,9 @@ package accesstoken
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/middleware"
-	"crowdstart.io/util/permission"
-	"crowdstart.io/util/router"
+	"crowdstart.com/middleware"
+	"crowdstart.com/util/permission"
+	"crowdstart.com/util/router"
 )
 
 // Access token routes

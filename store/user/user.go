@@ -3,11 +3,11 @@ package user
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/auth"
-	"crowdstart.io/config"
-	// "crowdstart.io/models"
-	"crowdstart.io/util/log"
-	"crowdstart.io/util/template"
+	"crowdstart.com/auth"
+	"crowdstart.com/config"
+	// "crowdstart.com/models"
+	"crowdstart.com/util/log"
+	"crowdstart.com/util/template"
 )
 
 // GET /login

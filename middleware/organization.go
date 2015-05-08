@@ -5,11 +5,11 @@ import (
 
 	"appengine"
 
-	"crowdstart.io/config"
-	"crowdstart.io/datastore"
-	"crowdstart.io/models/organization"
-	"crowdstart.io/util/log"
-	"crowdstart.io/util/session"
+	"crowdstart.com/config"
+	"crowdstart.com/datastore"
+	"crowdstart.com/models/organization"
+	"crowdstart.com/util/log"
+	"crowdstart.com/util/session"
 )
 
 func AcquireOrganization(moduleName string) gin.HandlerFunc {

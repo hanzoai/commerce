@@ -1,11 +1,11 @@
 package ae
 
 import (
-	"crowdstart.io/util/log"
-	"crowdstart.io/util/test/ae/aetest"
-	"crowdstart.io/util/test/ae/appenginetesting"
-	"crowdstart.io/util/test/ae/context"
-	"crowdstart.io/util/test/ae/options"
+	"crowdstart.com/util/log"
+	"crowdstart.com/util/test/ae/aetest"
+	"crowdstart.com/util/test/ae/appenginetesting"
+	"crowdstart.com/util/test/ae/context"
+	"crowdstart.com/util/test/ae/options"
 )
 
 // aliased for simplicity

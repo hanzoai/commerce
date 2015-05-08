@@ -12,8 +12,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/qedus/nds"
 
-	"crowdstart.io/config"
-	"crowdstart.io/util/log"
+	"crowdstart.com/config"
+	"crowdstart.com/util/log"
 )
 
 // Alias Done error

@@ -1,14 +1,14 @@
 package platform
 
 import (
-	"crowdstart.io/middleware"
-	"crowdstart.io/platform/admin"
-	"crowdstart.io/platform/docs"
-	"crowdstart.io/platform/frontend"
-	"crowdstart.io/platform/login"
-	"crowdstart.io/platform/user"
-	"crowdstart.io/thirdparty/stripe"
-	"crowdstart.io/util/router"
+	"crowdstart.com/middleware"
+	"crowdstart.com/platform/admin"
+	"crowdstart.com/platform/docs"
+	"crowdstart.com/platform/frontend"
+	"crowdstart.com/platform/login"
+	"crowdstart.com/platform/user"
+	"crowdstart.com/thirdparty/stripe"
+	"crowdstart.com/util/router"
 )
 
 // Defines the routes for the platform

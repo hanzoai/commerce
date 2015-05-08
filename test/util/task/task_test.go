@@ -3,8 +3,8 @@ package test
 import (
 	"testing"
 
-	"crowdstart.io/util/task"
-	. "crowdstart.io/util/test/ginkgo"
+	"crowdstart.com/util/task"
+	. "crowdstart.com/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {

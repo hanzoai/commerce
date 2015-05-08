@@ -3,7 +3,7 @@ package middleware
 import (
 	"net/http"
 
-	"crowdstart.io/util/template"
+	"crowdstart.com/util/template"
 	"github.com/gin-gonic/gin"
 
 	"appengine"

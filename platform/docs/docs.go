@@ -3,7 +3,7 @@ package docs
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/util/template"
+	"crowdstart.com/util/template"
 )
 
 func GettingStarted(c *gin.Context) {

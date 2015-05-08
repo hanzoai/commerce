@@ -6,14 +6,14 @@ import (
 
 	"appengine"
 
-	"crowdstart.io/datastore"
-	"crowdstart.io/middleware"
-	"crowdstart.io/models/organization"
-	"crowdstart.io/models/user"
-	"crowdstart.io/util/test/ae"
-	"crowdstart.io/util/test/ginclient"
+	"crowdstart.com/datastore"
+	"crowdstart.com/middleware"
+	"crowdstart.com/models/organization"
+	"crowdstart.com/models/user"
+	"crowdstart.com/util/test/ae"
+	"crowdstart.com/util/test/ginclient"
 
-	. "crowdstart.io/util/test/ginkgo"
+	. "crowdstart.com/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {

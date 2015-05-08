@@ -3,8 +3,8 @@ package task
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/util/router"
-	"crowdstart.io/util/template"
+	"crowdstart.com/util/router"
+	"crowdstart.com/util/template"
 )
 
 // Setup handlers for HTTP registered tasks

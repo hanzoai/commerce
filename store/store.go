@@ -1,13 +1,13 @@
 package store
 
 import (
-	"crowdstart.io/middleware"
-	"crowdstart.io/store/card"
-	"crowdstart.io/store/cart"
-	"crowdstart.io/store/products"
-	"crowdstart.io/store/user"
-	"crowdstart.io/thirdparty/facebook"
-	"crowdstart.io/util/router"
+	"crowdstart.com/middleware"
+	"crowdstart.com/store/card"
+	"crowdstart.com/store/cart"
+	"crowdstart.com/store/products"
+	"crowdstart.com/store/user"
+	"crowdstart.com/thirdparty/facebook"
+	"crowdstart.com/util/router"
 )
 
 func init() {

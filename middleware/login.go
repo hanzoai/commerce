@@ -3,9 +3,9 @@ package middleware
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.io/auth"
-	"crowdstart.io/config"
-	"crowdstart.io/util/log"
+	"crowdstart.com/auth"
+	"crowdstart.com/config"
+	"crowdstart.com/util/log"
 )
 
 // Updates session with login information, does not require it

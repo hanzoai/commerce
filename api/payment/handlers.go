@@ -1,14 +1,14 @@
 package payment
 
 import (
-	"crowdstart.io/config"
-	"crowdstart.io/datastore"
-	"crowdstart.io/middleware"
-	"crowdstart.io/models/order"
-	"crowdstart.io/models/organization"
-	"crowdstart.io/util/json/http"
-	"crowdstart.io/util/permission"
-	"crowdstart.io/util/router"
+	"crowdstart.com/config"
+	"crowdstart.com/datastore"
+	"crowdstart.com/middleware"
+	"crowdstart.com/models/order"
+	"crowdstart.com/models/organization"
+	"crowdstart.com/util/json/http"
+	"crowdstart.com/util/permission"
+	"crowdstart.com/util/router"
 	"github.com/gin-gonic/gin"
 )
 

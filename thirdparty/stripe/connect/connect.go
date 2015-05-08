@@ -9,8 +9,8 @@ import (
 	"appengine"
 	"appengine/urlfetch"
 
-	"crowdstart.io/config"
-	"crowdstart.io/util/json"
+	"crowdstart.com/config"
+	"crowdstart.com/util/json"
 )
 
 type Token struct {
