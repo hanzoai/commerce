@@ -73,6 +73,11 @@ func init() {
 		parallel.Run(c, "order", 50, tasks.GenerateNewUserIdForUnsyncedOrders)
 	})
 
+	// Update orders with defaults
+	task.Register("migrations-add-skus-to-order", func(c *gin.Context) {
+		parallel.Run(c, "order", 50, tasks.AddSkusToOrder)
+	})
+
 	// Add missing orders for each contributors
 	task.Register("migrations-fix-preorder-corruption", func(c *gin.Context) {
 		db := datastore.New(c)
@@ -86,5 +91,4 @@ func init() {
 			parallel.Run(c, "order", 50, tasks.FixPreorderCorruption, campaign)
 		}
 	})
-
 }
