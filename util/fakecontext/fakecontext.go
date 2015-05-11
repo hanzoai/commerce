@@ -159,5 +159,5 @@ func NewContext(c *gin.Context) *Context {
 }
 
 func init() {
-	gob.Register(&Context{})
+	gob.RegisterName("fakeContext", &Context{})
 }
