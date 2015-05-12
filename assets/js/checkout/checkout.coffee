@@ -101,7 +101,7 @@ updateShippingAndTax = $.debounce 250, ->
   state    = $state.val().trim()
 
   subtotal = parseFloat $subtotal.text().replace ',', ''
-  shipping = 50.00
+  shipping = 50.00 * ar1Quantity
   tax      = 0
   total    = 0
 
@@ -109,7 +109,7 @@ updateShippingAndTax = $.debounce 250, ->
   unless (/^usa$|^us$|unitedstates$|unitedstatesofamerica/i).test country
     shipping = 100.00 * ar1Quantity
   else
-    shipping = 50.00
+    shipping = 50.00 * ar1Quantity
 
   # Update tax
   if ((/^usa$|^us$|unitedstates$|unitedstatesofamerica/i).test country) and
@@ -137,6 +137,7 @@ $city.on 'keyup', updateShippingAndTax
 $country.change updateShippingAndTax
 
 $(document).ready ->
+  updateShippingAndTax()
   $form = $('#form')
 
   # Authorize with stripe
