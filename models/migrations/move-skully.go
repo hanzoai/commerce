@@ -1,8 +1,6 @@
 package migrations
 
 import (
-	"strconv"
-
 	"github.com/gin-gonic/gin"
 
 	"appengine"
@@ -12,9 +10,12 @@ import (
 	oldparallel "crowdstart.io/datastore/parallel"
 	oldmodels "crowdstart.io/models"
 
+	"crowdstart.com/auth/password"
 	ds "crowdstart.com/datastore"
 	"crowdstart.com/models"
 	"crowdstart.com/models/bundle"
+	"crowdstart.com/models/lineitem"
+	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/namespace"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
@@ -29,17 +30,17 @@ import (
 )
 
 var skullyIntId = 420
-var skullyNamespace = strconv.Itoa(skullyIntId)
+var skullyNamespace = "skully"
 
 var _ = task.Func("migrate-skully-1-org-products-users", func(c *gin.Context) {
 	oldparallel.Run(c, "campaign", 50, migrateSkullyOrg)
-	oldparallel.Run(c, "products", 50, migrateSkullyProducts)
-	oldparallel.Run(c, "users", 50, migrateSkullyUsers)
+	oldparallel.Run(c, "product", 50, migrateSkullyProducts)
+	oldparallel.Run(c, "user", 50, migrateSkullyUsers)
 })
 
 var _ = task.Func("migrate-skully-2-listings-orders", func(c *gin.Context) {
-	oldparallel.Run(c, "listings", 50, migrateSkullyOrg)
-	oldparallel.Run(c, "orders", 50, migrateSkullyProducts)
+	oldparallel.Run(c, "listing", 50, migrateSkullyListings)
+	oldparallel.Run(c, "order", 50, migrateSkullyOrders)
 })
 
 var migrateSkullyOrg = oldparallel.Task("migrate-skully-org-task", func(odb *olddatastore.Datastore, key olddatastore.Key, campaign oldmodels.Campaign) {
@@ -70,8 +71,23 @@ var migrateSkullyOrg = oldparallel.Task("migrate-skully-org-task", func(odb *old
 	org.FullName = "SKULLY"
 	org.Enabled = true
 	org.Website = "http://www.skully.com"
+	org.SecretKey = []byte("9ul9k12F8gGp0r5sIM4x34hDqR7tJK5f")
 
 	if err := db.RunInTransaction(func(ctx appengine.Context) error {
+		org.SetKey(skullyIntId)
+
+		u := user.New(db)
+		u.Email = "dev@hanzo.ai"
+		u.GetOrCreate("Email=", u.Email)
+		u.FirstName = "Mitchell"
+		u.LastName = "Weller"
+		u.Organizations = []string{org.Id()}
+		u.PasswordHash, _ = password.Hash("Ducati1!")
+		u.Put()
+
+		org.Owners = []string{u.Id()}
+		org.AddDefaultTokens()
+
 		if err := org.Put(); err != nil {
 			return err
 		}
@@ -84,15 +100,21 @@ var migrateSkullyOrg = oldparallel.Task("migrate-skully-org-task", func(odb *old
 			return err
 		}
 
-		return odb.Delete(key)
+		return nil
+		//return odb.Delete(key)
 	}, &aeds.TransactionOptions{}); err != nil {
 		log.Error("Error %v", err, db.Context)
 	}
 })
 
 var migrateSkullyUsers = oldparallel.Task("migrate-skully-user", func(odb *olddatastore.Datastore, key olddatastore.Key, ou oldmodels.User) {
+	if ou.Email == "dev@hanzo.ai" {
+		return
+	}
+
 	db := ds.New(odb.Context)
 	u := user.New(db)
+	u.SetNamespace(skullyNamespace)
 
 	// Contact Info
 	u.FirstName = ou.FirstName
@@ -127,11 +149,11 @@ var migrateSkullyUsers = oldparallel.Task("migrate-skully-user", func(odb *oldda
 	u.Accounts.Stripe.CustomerId = ou.Stripe.CustomerId
 
 	if err := db.RunInTransaction(func(ctx appengine.Context) error {
-		u.SetNamespace(skullyNamespace)
 		if err := u.Put(); err != nil {
 			return err
 		}
-		return odb.Delete(key)
+		return nil
+		//return odb.Delete(key)
 	}, &aeds.TransactionOptions{}); err != nil {
 		log.Error("Error %v", err, db.Context)
 	}
@@ -153,21 +175,23 @@ func AddOption(p *product.Product, v *variant.Variant, name, value string) {
 var migrateSkullyProducts = oldparallel.Task("migrate-skully-product", func(odb *olddatastore.Datastore, key olddatastore.Key, op oldmodels.Product) {
 	db := ds.New(odb.Context)
 	p := product.New(db)
+	p.SetNamespace(skullyNamespace)
 
 	// Identifier
+	p.Name = op.Slug
 	p.Slug = op.Slug
 	p.SKU = op.Slug
 
 	// Prices
 	p.Currency = currency.USD
-	p.Price = currency.Cents(op.MinPrice())
+	p.Price = currency.Cents(op.MinPrice() / 100)
 	p.ListPrice = p.Price
 
 	// Text Fields
 	p.Headline = op.Headline
 	p.Excerpt = op.Excerpt
 	p.Description = op.Description
-	p.Available = op.Available
+	p.Available = true
 	p.AddLabel = op.AddLabel
 
 	// Structs
@@ -178,7 +202,9 @@ var migrateSkullyProducts = oldparallel.Task("migrate-skully-product", func(odb 
 	if err := db.RunInTransaction(func(ctx appengine.Context) error {
 		for i, ov := range op.Variants {
 			v := variant.New(db)
-			vkey := odb.NewKey("variants", ov.SKU, 0, nil)
+			v.SetNamespace(skullyNamespace)
+
+			vkey := odb.NewKey("variant", ov.SKU, 0, nil)
 			if err := odb.Get(vkey, &ov); err != nil {
 				log.Error("%v Error", err, db.Context)
 				continue
@@ -197,7 +223,7 @@ var migrateSkullyProducts = oldparallel.Task("migrate-skully-product", func(odb 
 
 			// Prices
 			v.Currency = currency.USD
-			v.Price = currency.Cents(ov.Price)
+			v.Price = currency.Cents(ov.Price / 100)
 
 			// Volume/Masses
 			v.Dimensions = ov.Dimensions
@@ -212,21 +238,20 @@ var migrateSkullyProducts = oldparallel.Task("migrate-skully-product", func(odb 
 
 			p.Variants[i] = v
 
-			v.SetNamespace(skullyNamespace)
 			if err := v.Put(); err != nil {
 				return err
 			}
 
-			if err := odb.Delete(vkey); err != nil {
-				return err
-			}
+			// if err := odb.Delete(vkey); err != nil {
+			// 	return err
+			// }
 		}
 
-		p.SetNamespace(skullyNamespace)
 		if err := p.Put(); err != nil {
 			return err
 		}
-		return odb.Delete(key)
+		return nil
+		//return odb.Delete(key)
 	}, &aeds.TransactionOptions{}); err != nil {
 		log.Error("Error %v", err, db.Context)
 	}
@@ -249,9 +274,10 @@ var migrateSkullyListings = oldparallel.Task("migrate-skully-listing", func(odb 
 	if err := db.RunInTransaction(func(ctx appengine.Context) error {
 		for _, config := range l.Configs {
 			if config.Variant != "" {
-				v := product.New(db)
+				v := variant.New(db)
 				v.SetNamespace(skullyNamespace)
 				if ok, err := v.Query().Filter("SKU=", config.Variant).First(); !ok {
+					log.Warn("!ok or error %v for %v", err, config.Variant, db.Context)
 					return err
 				}
 				for i := 0; i < config.Quantity; i++ {
@@ -261,6 +287,7 @@ var migrateSkullyListings = oldparallel.Task("migrate-skully-listing", func(odb 
 				p := product.New(db)
 				p.SetNamespace(skullyNamespace)
 				if ok, err := p.Query().Filter("SKU=", config.Product).First(); !ok {
+					log.Warn("!ok or error %v for %v", err, config.Product, db.Context)
 					return err
 				}
 				for i := 0; i < config.Quantity; i++ {
@@ -273,7 +300,8 @@ var migrateSkullyListings = oldparallel.Task("migrate-skully-listing", func(odb 
 		if err := b.Put(); err != nil {
 			return err
 		}
-		return odb.Delete(key)
+		return nil
+		//return odb.Delete(key)
 	}, &aeds.TransactionOptions{}); err != nil {
 		log.Error("Error %v", err, db.Context)
 	}
@@ -282,6 +310,7 @@ var migrateSkullyListings = oldparallel.Task("migrate-skully-listing", func(odb 
 var migrateSkullyOrders = oldparallel.Task("migrate-skully-order", func(odb *olddatastore.Datastore, key olddatastore.Key, oo oldmodels.Order) {
 	db := ds.New(odb.Context)
 	o := order.New(db)
+	o.SetNamespace(skullyNamespace)
 
 	// SObjects
 	o.Salesforce.PrimarySalesforceId_ = oo.SalesforceSObject.PrimarySalesforceId_
@@ -331,31 +360,84 @@ var migrateSkullyOrders = oldparallel.Task("migrate-skully-order", func(odb *old
 
 	// Invoice
 	o.Currency = currency.USD
-	o.Shipping = currency.Cents(oo.Shipping)
-	o.Tax = currency.Cents(oo.Tax)
-	o.Subtotal = currency.Cents(oo.Subtotal)
-	o.Total = currency.Cents(oo.Total)
+	o.Shipping = currency.Cents(oo.Shipping / 100)
+	o.Tax = currency.Cents(oo.Tax / 100)
+	o.Subtotal = currency.Cents(oo.Subtotal / 100)
+	o.Total = currency.Cents(oo.Total / 100)
 
+	o.Items = make([]lineitem.LineItem, len(oo.Items))
 	o.PaymentIds = make([]string, len(oo.Charges))
 
 	oid := o.Id()
 
 	if err := db.RunInTransaction(func(ctx appengine.Context) error {
 		u := user.New(db)
-		if ok, err := u.Query().Filter("Salesforce.ExternalId_=", oo.UserId).First(); !ok {
-			return err
+		if ok, err := u.Query().Filter("ExternalId_=", oo.UserId).First(); !ok {
+			log.Warn("!ok or error %v for %v", err, oo.UserId, db.Context)
+			if ok, err := u.Query().Filter("Email=", oo.Email).First(); !ok {
+				log.Warn("!ok or error %v for %v", err, oo.UserId, db.Context)
+				return err
+			}
 		}
 
 		o.UserId = u.Id()
 
+		for i, item := range oo.Items {
+			o.Items[i] = lineitem.LineItem{
+				ProductSlug: item.Slug_,
+				VariantSKU:  item.SKU_,
+				Quantity:    item.Quantity,
+				// SObjects
+				Salesforce: mixin.Salesforce{
+					PrimarySalesforceId_:   oo.SalesforceSObject.PrimarySalesforceId_,
+					SecondarySalesforceId_: oo.SalesforceSObject.SecondarySalesforceId_,
+					LastSync_:              oo.SalesforceSObject.LastSync_,
+				},
+			}
+
+			if item.Slug_ != "" {
+				p := product.New(db)
+				p.SetNamespace(skullyNamespace)
+				if ok, err := p.Query().Filter("SKU=", item.Slug_).First(); !ok {
+					log.Warn("!ok or error %v for %v", err, item.Slug_, db.Context)
+					return err
+				}
+
+				o.Items[i].VariantName = p.Name
+				o.Items[i].VariantId = p.Id()
+				o.Items[i].Taxable = p.Taxable
+				o.Items[i].Price = p.Price
+				o.Items[i].Weight = p.Weight
+				o.Items[i].WeightUnit = p.WeightUnit
+				o.Items[i].Taxable = p.Taxable
+			}
+
+			if item.SKU_ != "" {
+				v := variant.New(db)
+				v.SetNamespace(skullyNamespace)
+				if ok, err := v.Query().Filter("SKU=", item.SKU_).First(); !ok {
+					log.Warn("!ok or error %v for %v", err, item.SKU_, db.Context)
+					return err
+				}
+
+				o.Items[i].ProductName = v.Name
+				o.Items[i].ProductId = v.Id()
+				o.Items[i].Price = v.Price
+				o.Items[i].Weight = v.Weight
+				o.Items[i].WeightUnit = v.WeightUnit
+				o.Items[i].Taxable = v.Taxable
+			}
+		}
+
 		for i, charge := range oo.Charges {
 			p := payment.New(db)
+			p.SetNamespace(skullyNamespace)
 
 			// Dispute stuff
 			p.Type = payment.Stripe
 			p.Currency = currency.USD
-			p.Amount = currency.Cents(charge.Amount)
-			p.AmountRefunded = currency.Cents(charge.AmountRefunded)
+			p.Amount = currency.Cents(charge.Amount / 100)
+			p.AmountRefunded = currency.Cents(charge.AmountRefunded / 100)
 
 			p.Account.ChargeId = charge.ID
 			p.Live = charge.Live
@@ -391,7 +473,6 @@ var migrateSkullyOrders = oldparallel.Task("migrate-skully-order", func(odb *old
 
 			p.OrderId = oid
 
-			p.SetNamespace(skullyNamespace)
 			if err := p.Put(); err != nil {
 				return err
 			}
@@ -399,11 +480,11 @@ var migrateSkullyOrders = oldparallel.Task("migrate-skully-order", func(odb *old
 			o.PaymentIds[i] = p.Id()
 		}
 
-		o.SetNamespace(skullyNamespace)
 		if err := o.Put(); err != nil {
 			return err
 		}
-		return odb.Delete(key)
+		return nil
+		//return odb.Delete(key)
 	}, &aeds.TransactionOptions{}); err != nil {
 		log.Error("Error %v", err, db.Context)
 	}
