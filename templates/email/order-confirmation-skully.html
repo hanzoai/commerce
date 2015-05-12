@@ -962,8 +962,7 @@
   </style>
 </head>
 
-<body leftmargin="0" marginwidth="0" topmargin="0"
-marginheight="0" offset="0">
+<body leftmargin="0" marginwidth="0" topmargin="0" marginheight="0" offset="0">
   <center>
     <table align="center" border="0" cellpadding="0"
     cellspacing="0" height="100%" width="100%"
@@ -991,11 +990,10 @@ marginheight="0" offset="0">
             <tr>
               <td align="center" valign="top">
                 <!-- BEGIN BODY // -->
-                <table border="0" cellpadding="0" cellspacing="0"
-                width="100%" id="templateBody">
+                <table border="0" cellpadding="0" width="100%" id="templateBody">
                   <tr>
                     <td style="text-align:center; padding:30px;">
-                      <a href=""><img src="http://static1.squarespace.com/static/53dd2a15e4b06cbe07110bd5/t/546bf870e4b03de552046351/1416362101729/SKULLY-logo-black.jpg?format=40w"></a>
+                        <a href=""><img src="http://static1.squarespace.com/static/53dd2a15e4b06cbe07110bd5/t/546bf870e4b03de552046351/1416362101729/SKULLY-logo-black.jpg?format=40w" /></a>
                     </td>
                   </tr>
 
@@ -1003,8 +1001,7 @@ marginheight="0" offset="0">
                     <td align="center" class="bodyContent" style="padding-top:0px;">
                       <!-- <table border="0" cellpadding="0" cellpadding="0" width="100%" -->
                       <!-- style="background-color:#2f2f2f; color:#ffffff; border-top: 4px solid #D70404;"> -->
-                      <table border="0" cellpadding="0" cellpadding="0"
-                        width="455px;" style="color:#ffffff; background-image:url('background.png'); background-repeat:no-repeat; margin-left:50px;">
+                      <table border="0" cellpadding="0" width="455px;" style="color:#ffffff; background-image:url('background.png'); background-repeat:no-repeat; margin-left:50px;">
                         <tr>
                           <td class="message">
                             <p>
@@ -1064,7 +1061,7 @@ marginheight="0" offset="0">
                         <tr>
                           <td style="padding-top:2px; padding-bottom:5px;"
                           class="message signature">
-                            <img style="width:25%;" src="marcussig.png">
+                            <img style="width:25%;" src="marcussig.png" />
                           </td>
                         </tr>
                         <tr>
@@ -1077,41 +1074,73 @@ marginheight="0" offset="0">
                             CEO &amp; Founder at SKULLY
                           </td>
                         </tr>
-                      </table>
-                  </tr>
-                  </td>
-            </tr>
-
-              <tr>
-                  <td class="bodyContent" align="center">
-                      <table style=" margin-left:55px;" border="0" cellpadding="0" width="395px;">
-                          <tr>
-                              <td align="left" style="padding-left:25px; padding-bottom:23px; padding-right:10px;">
-                                  Let everyone know about the most advanced motorcycling helmet
-                                  on planet earth.
-                              </td>
-                              <td width="20%" align="right" style="padding-bottom:23px; padding-left:20px; padding-right:25px;">
-                                  <a href="#"><img width="180" src="new-video-preview.png"></a>
-                              </td>
-                          </tr>
-                          <tr>
-                             <td align="right" style="padding-left:25px; padding-right:5px; padding-top:10px;">
-                                 <a href="#"><img src="facebook.png"></a>
-                             </td>
-                             <td aling="left" style="padding-right:25px; padding-top:10px;">
-                                 <a href="#"><img src="twitter.png"></a>
-                              </td>
-                          </tr>
-</table>
-</td>
-</tr>
-
-            <tr>
-              <td align="center" valign="top">
-                <!-- BEGIN FOOTER // -->
-                <table border="0" cellpadding="0" cellspacing="0"
-                width="100%" id="templateFooter">
-                  <tr>
+                    </table>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+    <tr>
+        <td class="bodyContent" align="center">
+            <table style=" margin-left:55px;" border="0" cellpadding="0" width="395px;">
+                <tr>
+                    <td align="left" style="padding-left:25px; padding-bottom:23px; padding-right:10px;">
+                        Let everyone know about the most advanced motorcycling helmet
+                        on planet earth.
+                    </td>
+                    <td width="20%" align="right" style="padding-bottom:23px; padding-left:20px; padding-right:25px;">
+                        <a href="#"><img width="180" src="new-video-preview.png" /></a>
+                    </td>
+                </tr>
+                <tr>
+                    <td align="right" style="padding-left:25px; padding-right:5px; padding-top:10px;">
+                        <a href="#"><img src="facebook.png" /></a>
+                    </td>
+                    <td aling="left" style="padding-right:25px; padding-top:10px;">
+                        <a href="#"><img src="twitter.png" /></a>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    <tr>
+        <td align="center" valign="top">
+            <table style=" margin-left:55px;" border="0" cellpadding="0" width="395px;">
+                <tr>
+                    <td colspan="6">
+                        Order: {{order.Id}}
+                    </td>
+                </tr>
+                {% for item in order.Items %}
+                <tr>
+                    <td>
+                        {{ item.Slug() }}
+                    </td>
+                    <td>
+                        {{ item.Variant.Size }}
+                    </td>
+                    <td>
+                        {{ item.Variant.Color }}
+                    </td>
+                    <td>
+                        {{ item.Quantity }}
+                    </td>
+                    <td>
+                        x
+                    </td>
+                    <td>
+                        {{ item.Price }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+        </td>
+    </tr>
+    </tr>
+    <tr>
+        <td align="center" valign="top">
+            <!-- BEGIN FOOTER // -->
+            <table border="0" cellpadding="0" cellspacing="0" width="100%" id="templateFooter">
+                <tr>
                     <!-- *|IFNOT:ARCHIVE_PAGE|* -->
                     <td valign="top" width="180" class="preheaderContent"
                     style="text-align:right; padding-top:10px; padding-right:20px; padding-bottom:10px; padding-left:0;"
@@ -1123,16 +1152,16 @@ marginheight="0" offset="0">
                       </a>
                     </td>
                     <!-- *|END:IF|* -->
-                  </tr>
-                </table>
-                <!-- // END FOOTER -->
-              </td>
-            </tr>
+                </tr>
             </table>
-            <!-- // END TEMPLATE -->
-            </td>
-      </tr>
-      </table>
-  </center>
+        <!-- // END FOOTER -->
+        </td>
+    </tr>
+</table>
+<!-- // END TEMPLATE -->
+</td>
+</tr>
+</table>
+</center>
 </body>
 </html>
