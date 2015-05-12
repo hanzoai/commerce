@@ -7,6 +7,8 @@ import (
 	"crowdstart.io/store/products"
 	"crowdstart.io/store/user"
 	"crowdstart.io/util/router"
+	"crowdstart.io/util/template"
+	"github.com/gin-gonic/gin"
 )
 
 func init() {
@@ -49,4 +51,9 @@ func init() {
 
 	// Card
 	router.GET("/card", loginRequired, card.GetCard)
+
+	// Test-Confirm
+	router.GET("/test-confirm", func(c *gin.Context) {
+		template.Render(c, "/email/order-confirmation-skully.html")
+	})
 }

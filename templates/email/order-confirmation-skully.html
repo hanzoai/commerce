@@ -1001,7 +1001,7 @@
                     <td align="center" class="bodyContent" style="padding-top:0px;">
                       <!-- <table border="0" cellpadding="0" cellpadding="0" width="100%" -->
                       <!-- style="background-color:#2f2f2f; color:#ffffff; border-top: 4px solid #D70404;"> -->
-                      <table border="0" cellpadding="0" width="455px;" style="color:#ffffff; background-image:url('background.png'); background-repeat:no-repeat; margin-left:50px;">
+                      <table border="0" cellpadding="0" width="455px;" style="color:#ffffff; background-image:url('{{ urlFor("/img/email/background.png") }}'); background-repeat:no-repeat; margin-left:50px;">
                         <tr>
                           <td class="message">
                             <p>
@@ -1061,7 +1061,7 @@
                         <tr>
                           <td style="padding-top:2px; padding-bottom:5px;"
                           class="message signature">
-                            <img style="width:25%;" src="marcussig.png" />
+                          <img style="width:25%;" src="{{ urlFor("/img/email/marcussig.png") }}" />
                           </td>
                         </tr>
                         <tr>
@@ -1089,15 +1089,15 @@
                         on planet earth.
                     </td>
                     <td width="20%" align="right" style="padding-bottom:23px; padding-left:20px; padding-right:25px;">
-                        <a href="#"><img width="180" src="new-video-preview.png" /></a>
+                        <a href="#"><img width="180" src="{{ urlFor("/img/email/new-video-preview.png") }}" /></a>
                     </td>
                 </tr>
                 <tr>
                     <td align="right" style="padding-left:25px; padding-right:5px; padding-top:10px;">
-                        <a href="#"><img src="facebook.png" /></a>
+                        <a href="#"><img src="{{ urlFor("/img/email/facebook.png") }}" /></a>
                     </td>
                     <td aling="left" style="padding-right:25px; padding-top:10px;">
-                        <a href="#"><img src="twitter.png" /></a>
+                        <a href="#"><img src="{{ urlFor("/img/email/twitter.png") }}" /></a>
                     </td>
                 </tr>
             </table>
