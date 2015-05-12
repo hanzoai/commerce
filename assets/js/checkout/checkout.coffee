@@ -101,7 +101,7 @@ updateShippingAndTax = $.debounce 250, ->
   state    = $state.val().trim()
 
   subtotal = parseFloat $subtotal.text().replace ',', ''
-  shipping = 0
+  shipping = 50.00
   tax      = 0
   total    = 0
 
@@ -109,7 +109,7 @@ updateShippingAndTax = $.debounce 250, ->
   unless (/^usa$|^us$|unitedstates$|unitedstatesofamerica/i).test country
     shipping = 100.00 * ar1Quantity
   else
-    shipping = 0
+    shipping = 50.00
 
   # Update tax
   if ((/^usa$|^us$|unitedstates$|unitedstatesofamerica/i).test country) and
