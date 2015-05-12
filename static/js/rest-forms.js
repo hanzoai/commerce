@@ -1,6 +1,6 @@
 // This function creates handlers for the Post/Get handlers of a restful api
 var NewRestAPI = (function() {
-  return function(endpoint, token, onErrorHandler, fieldProcessors) {
+  return function(endpoint, token, onErrorHandler, fieldProcessors, defaults) {
     if (!fieldProcessors) {
       fieldProcessors = {};
     }
@@ -42,6 +42,14 @@ var NewRestAPI = (function() {
           for (prop in formObj) {
             if (fieldProcessors[prop]) {
               formObj[prop] = fieldProcessors[prop](formObj[prop]);
+            }
+          }
+
+          if (defaults != null) {
+            for (prop in defaults) {
+              if (formObj[prop] == null) {
+                formObj[prop] = defaults[prop];
+              }
             }
           }
           formJSON = JSON.stringify(formObj);
