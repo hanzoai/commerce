@@ -251,8 +251,8 @@ func charge(c *gin.Context) {
 	}
 
 	// Send order confirmation email
-	form.Order.LoadVariantsProducts()
-	mandrill.SendTransactional.Call(ctx, "email/order-confirmation.html",
+	form.Order.LoadVariantsProducts(ctx)
+	mandrill.SendTransactional.Call(ctx, "email/order-confirmation-skully.html",
 		user.Email,
 		user.Name(),
 		fmt.Sprintf("SKULLY Order confirmation #%v", orderId),
