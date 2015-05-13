@@ -251,13 +251,19 @@ func charge(c *gin.Context) {
 	}
 
 	// Send order confirmation email
-	form.Order.LoadVariantsProducts(ctx)
-	mandrill.SendTransactional.Call(ctx, "email/order-confirmation-skully.html",
+	mandrill.SendTransactional.Call(ctx, "email/order-confirmation.html",
 		user.Email,
 		user.Name(),
 		fmt.Sprintf("SKULLY Order confirmation #%v", orderId),
-		"user", user,
-		"order", &form.Order)
+	)
+
+	// form.Order.LoadVariantsProducts(ctx)
+	// mandrill.SendTransactional.Call(ctx, "email/order-confirmation-skully.html",
+	// 	user.Email,
+	// 	user.Name(),
+	// 	fmt.Sprintf("SKULLY Order confirmation #%v", orderId),
+	// 	"user", user,
+	// 	"order", &form.Order)
 
 	log.Debug("Checkout complete!", c)
 	c.JSON(200, gin.H{"inviteId": invite.Id, "orderId": orderId})
