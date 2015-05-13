@@ -297,7 +297,12 @@
       /*@editable*/
 
       border-bottom: 1px solid #CCCCCC;
-    }
+  }
+
+  b {
+      color: rgb(85,85,85);
+  }
+
     /**
       * @tab Header
       * @section preheader text
@@ -451,7 +456,7 @@
       border-top: 4px solid #D70404;
       /*@editable*/
 
-      border-bottom: 1px solid #CCCCCC;
+      /*border-bottom: 1px solid #CCCCCC;*/
     }
     /**
       * @tab Body
@@ -462,8 +467,8 @@
 
     .bodyContent {
       /*@editable*/
+        color: rgb(152,152,152);
 
-      color: #505050;
       /*@editable*/
 
       font-family: Helvetica;
@@ -962,7 +967,7 @@
   </style>
 </head>
 
-<body leftmargin="0" marginwidth="0" topmargin="0" marginheight="0" offset="0">
+<body leftmargin="0" marginwidth="0" topmargin="0" marginheight="0" offset="0" style="font-size:16px">
   <center>
     <table align="center" border="0" cellpadding="0"
     cellspacing="0" height="100%" width="100%"
@@ -970,17 +975,13 @@
       <tr>
         <td align="center" valign="top" id="bodyCell">
           <!-- BEGIN TEMPLATE // -->
-          <table border="0" cellpadding="0" cellspacing="0"
-          id="templateContainer">
+          <table border="0" cellpadding="0" cellspacing="0" id="templateContainer">
             <tr>
               <td align="center" valign="top">
                 <!-- BEGIN PREHEADER // -->
-                <table border="0" cellpadding="0" cellspacing="0"
-                width="100%" id="templatePreheader">
+                <table border="0" cellpadding="0" cellspacing="0" width="100%" id="templatePreheader">
                   <tr>
-                    <td valign="top" class="preheaderContent"
-                    style="text-align:center; padding:30px;"
-                    mc:edit="preheader_content00">
+                    <td valign="top" class="preheaderContent" style="text-align:center; padding:30px;" mc:edit="preheader_content00">
                     </td>
                   </tr>
                 </table>
@@ -1082,19 +1083,19 @@
     </tr>
     <tr>
         <td class="bodyContent" align="center">
-            <table style=" margin-left:55px;" border="0" cellpadding="0" width="395px;">
+            <table style="margin-left:55px;" border="0" cellpadding="0" width="395px;">
                 <tr>
                     <td align="left" style="padding-left:25px; padding-bottom:23px; padding-right:10px;">
                         Let everyone know about the most advanced motorcycling helmet
                         on planet earth.
                     </td>
                     <td width="20%" align="right" style="padding-bottom:23px; padding-left:20px; padding-right:25px;">
-                        <a href="#"><img width="180" src="{{ urlFor("/img/email/new-video-preview.png") }}" /></a>
+                        <a href="https://twitter.com/home?status="><img width="180" src="{{ urlFor("/img/email/new-video-preview.png") }}" /></a>
                     </td>
                 </tr>
                 <tr>
                     <td align="right" style="padding-left:25px; padding-right:5px; padding-top:10px;">
-                        <a href="#"><img src="{{ urlFor("/img/email/facebook.png") }}" /></a>
+                        <a href="https://www.facebook.com/sharer/sharer.php?u="><img src="{{ urlFor("/img/email/facebook.png") }}" /></a>
                     </td>
                     <td aling="left" style="padding-right:25px; padding-top:10px;">
                         <a href="#"><img src="{{ urlFor("/img/email/twitter.png") }}" /></a>
@@ -1103,38 +1104,137 @@
             </table>
         </td>
     <tr>
-        <td align="center" valign="top">
-            <table style=" margin-left:55px;" border="0" cellpadding="0" width="395px;">
-                <tr>
-                    <td colspan="6">
-                        Order: {{order.Id}}
-                    </td>
-                </tr>
+        <td align="center" valign="top" class="bodyContent">
+            <table style="margin-left:80px;" border="0" cellpadding="0" width="395px;">
+                <tbody>
+                    <tr style="border-bottom: 4px solid rgb(230,230,230)">
+                        <td colspan="6" align="left" style="padding-bottom:16px">
+                            Order #: <b>{{ orderId }}</b>
+                        </td>
+                    </tr>
                 {% for item in order.Items %}
-                <tr>
-                    <td>
-                        {{ item.Slug() }}
-                    </td>
-                    <td>
-                        {{ item.Variant.Size }}
-                    </td>
-                    <td>
-                        {{ item.Variant.Color }}
-                    </td>
-                    <td>
-                        {{ item.Quantity }}
-                    </td>
-                    <td>
-                        x
-                    </td>
-                    <td>
-                        {{ item.Price }}
-                    </td>
-                </tr>
+                    <tr style="border-bottom: 1px solid rgb(230,230,230)">
+                        <td style="text-transform: uppercase;padding:19px 0">
+                            <b>{{ item.Slug() }}</b>
+                        </td>
+                        <td align="right">
+                            {{ item.Variant.Size }}
+                        </td>
+                        <td align="right">
+                            {{ item.Variant.Color }}
+                        </td>
+                        <td align="right">
+                            <b>{{ item.Quantity }}</b>
+                        </td>
+                        <td align="right">
+                            x
+                        </td>
+                        <td align="right" style="width:80px">
+                            <b>${{ item.DisplayPrice() }}</b>
+                        </td>
+                    </tr>
                 {% endfor %}
+                </tbody>
+            </table>
+            <table style="margin-left:80px;" border="0" cellpadding="0" width="395px;">
+                <tbody>
+                    <tr>
+                        <td align="right" style="padding:10px 0"><b style="color:rgb(152,152,152);float:left;">VISA ****4242</b>Subtotal:</td>
+                        <td align="right" style="width:80px"><b>${{ order.DisplaySubtotal() }}</b></td>
+                    </tr>
+                    <tr>
+                        <td align="right" style="padding-bottom:10px">Tax:</td>
+                        <td align="right" style="width:80px"><b>${{ order.DisplayTax() }}</b></td>
+                    </tr>
+                    <tr>
+                        <td align="right" style="uppercase;padding-bottom:10px">Shipping:</td>
+                        <td align="right" style="width:80px"><b>${{ order.DisplayShipping() }}</b></td>
+                    </tr>
+                    <tr>
+                        <td align="right" style="uppercase;padding-bottom:50px">Total:</td>
+                        <td align="right" style="width:80px;padding-bottom:50px"><b>${{ order.DisplayTotal() }}</b></td>
+                    </tr>
+                </tbody>
+            </table>
+            <table style="margin-left:80px;" border="0" cellpadding="0" width="395px;">
+                <tbody>
+                    <tr>
+                        <td align="left">
+                            <div>Shipping Address</div>
+                            <b>
+                                <div>{{ order.ShippingAddress.Line1}}</div>
+                                {% if order.ShippingAddress.Line2 != "" %}<div>{{ order.ShippingAddress.Line2}}</div>{% endif %}
+                                <div>{{ order.ShippingAddress.City}}{% if order.ShippingAddress.State != "" %}, {{ order.ShippingAddress.State}}{% endif %}{% if order.ShippingAddress.PostalCode != "" %} {{order.ShippingAddress.PostalCode}}{% endif %}</div>
+                                <div>{{ order.ShippingAddress.Country}}</div>
+                            </b>
+                        </td>
+                        <td align="left">
+                            <div>Billing Address</div>
+                            <b>
+                                <div>{{ order.BillingAddress.Line1}}</div>
+                                {% if order.BillingAddress.Line2 != "" %}<div>{{ order.BillingAddress.Line2}}</div>{% endif %}
+                                <div>{{ order.BillingAddress.City}}{% if order.BillingAddress.State != "" %}, {{ order.BillingAddress.State}}{% endif %}{% if order.BillingAddress.PostalCode != "" %} {{order.BillingAddress.PostalCode}}{% endif %}</div>
+                                <div>{{ order.BillingAddress.Country}}</div>
+                            </b>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="left" colspan="2" style="padding-top:25px;padding-bottom:20px">
+                            <div>Estimated Delivery</div>
+                            <div><b>{{ order.EstimatedDelivery }}</b></div>
+                        </td>
+                    </tr>
+                </tbody>
             </table>
         </td>
     </tr>
+    <tr>
+        <td align="center" valign="top"  class="bodyContent" style="font-size:14px;">
+            <table style="margin-left:80px;" border="0" cellpadding="0" width="395px;">
+                <tbody>
+                    <tr>
+                        <td align="left">
+                            <a style="color:rgb(152,152,152);padding-right: 10px;" href="https://support.skully.com/" target="_blank" title="Skully Helmets, Inc"><b style="color:rgb(152,152,152);">Help&nbsp;Center</b></a>
+                        </td>
+                        <td>|</td>
+                        <td align="left">
+                            <a style="color:rgb(152,152,152);padding-left: 10px;" href="http://store.skully.com/login" target="_blank" title="Skully Helmets, Inc"><b style="color:rgb(152,152,152);">Customer&nbsp;Portal</b></a>
+                        </td>
+                        <td style="width:100%">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="4" style="padding-bottom:30px">You are receiving this email as a service of www.SKULLY.com.
+Copyright © 2015 SKULLY. All rights reserved.</td>
+                    </tr>
+                </tbody>
+            </table>
+            <table style="margin-left:80px;" border="0" cellpadding="0" width="395px;">
+                <tbody>
+                    <tr>
+                        <td align="left">
+                            <a style="color:rgb(152,152,152);padding-right: 10px;" href="https://www.facebook.com/skullysystems" target="_blank" title="Skully Helmets, Inc"><b style="color:rgb(152,152,152);">Facebook</b></a>
+                        </td>
+                        <td>|</td>
+                        <td align="left">
+                            <a style="color:rgb(152,152,152);padding:0 10px;" href="http://www.twitter.com/skullysystems" target="_blank" title="SKULLY HELMETS"><b style="color:rgb(152,152,152);">Twitter</b></a>
+                        </td>
+                        <td>|</td>
+                        <td align="left">
+                            <a style="color:rgb(152,152,152);padding:0 10px;" href="http://www.instagram.com/skullysystems" target="_blank" title="Skully Helmets"><b style="color:rgb(152,152,152);">Instagram</b></a>
+                        </td>
+                        <td>|</td>
+                        <td align="left">
+                            <a style="color:rgb(152,152,152);padding:0 10px;" href="https://www.pinterest.com/skullysystems" target="_blank" title="Skully Helmets"><b style="color:rgb(152,152,152);">Pinterest</b></a>
+                        </td>
+                        <td>|</td>
+                        <td align="left">
+                            <a style="color:rgb(152,152,152);padding-left: 10px;" href="https://plus.google.com/112776474651298122010/posts" target="_blank" title="Marcus Weller"><b style="color:rgb(152,152,152);">Google+</b></a>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </td>
     </tr>
     <tr>
         <td align="center" valign="top">
