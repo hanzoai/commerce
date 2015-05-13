@@ -188,8 +188,8 @@ var allListings = {{ listingsJSON | safe }};
                     <button class="add-to-cart"><span><span class="plus">+</span>Add to Cart</span></button>
                 </div>
             </div>
-            <p class="product-estimated-delivery italic fine-print">
-                Estimated Delivery: {{ listing.EstimatedDelivery }}
+            <p class="product-estimated-delivery" style="">
+                Estimated Delivery: <strong>{{ listing.EstimatedDelivery }}</strong>
             </p>
         </div>
       </div>
