@@ -38,7 +38,7 @@ var Util = (function() {
     },
     renderJSONCurrencyFromUI: function(uiCurrency) {
       if (currentCurrencyCode === 'jpy') {
-        return parseInt(uiCurrency.replace(digitsOnlyRe, ''), 10)
+        return parseInt(('' + uiCurrency).replace(digitsOnlyRe, ''), 10)
       }
       // uiCurrency is a whole unit of currency
       var parts = uiCurrency.split(currencySeparator);
