@@ -2,7 +2,7 @@ module.exports =
     payment:
       type: 'stripe'
       account:
-        number: '6242424242424241'
+        number: '4242424242424242'
         month:  '12'
         year:   '2016'
         cvc:    '123'
