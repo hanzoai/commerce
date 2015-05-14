@@ -1,6 +1,5 @@
 var Util = (function() {
   var currencySigns = {
-	'usd': '$',
 	'aud': '$',
 	'cad': '$',
 	'eur': '€',
@@ -8,6 +7,8 @@ var Util = (function() {
 	'hkd': '$',
 	'jpy': '¥',
 	'nzd': '$',
+	'sgd': '$',
+	'usd': '$',
 	''   : '',
   };
 
