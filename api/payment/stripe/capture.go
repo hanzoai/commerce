@@ -49,6 +49,9 @@ func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []
 			p.Status = payment.Paid
 			p.Amount = currency.Cents(ch.Amount)
 			p.AmountRefunded = currency.Cents(ch.AmountRefunded)
+			p.Account.BalanceTransactionId = ch.Tx.ID
+			p.AmountTransferred = currency.Cents(ch.Tx.Amount)
+			p.CurrencyTransferred = currency.Type(ch.Tx.Currency)
 		}
 	}
 

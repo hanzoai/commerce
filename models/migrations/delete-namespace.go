@@ -20,13 +20,14 @@ import (
 	ds "crowdstart.com/datastore"
 )
 
-func setupNamespaceDelete(c *gin.Context) {
+func setupNamespaceDelete(c *gin.Context) []interface{} {
 	q := c.Request.URL.Query()
 	ns := q.Get("namespace")
 	if ns == "" {
 		panic("Namespace not specified")
 	}
 	c.Set("namespace", ns)
+	return NoArgs
 }
 
 var _ = New("namespace-delete", setupNamespaceDelete,
