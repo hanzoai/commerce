@@ -335,7 +335,7 @@ func OrderBadUserTest(isCharge bool, stor *store.Store) {
 	body := fmt.Sprintf(requests.ReturningUserOrderNewCard, "BadId")
 	w := client.PostRawJSON(path, body)
 	log.Debug("JSON %v", w.Body)
-	Expect(w.Code).To(Equal(402))
+	Expect(w.Code).To(Equal(500))
 }
 
 var _ = Describe("payment", func() {
