@@ -10,30 +10,9 @@ import (
 	"crowdstart.io/util/template"
 )
 
-var SendTemplateAsync = delay.Func("send-template-email", func(ctx appengine.Context, template, toEmail, toName, subject string, vars ...mandrill.Var) {
-	req := mandrill.NewSendTemplateReq()
-	req.AddRecipient(toEmail, toName)
-
-	req.Message.FromEmail = config.Mandrill.FromEmail
-	req.Message.FromName = config.Mandrill.FromName
-	req.Message.Subject = subject
-	req.TemplateName = template
-
-	for _, v := range vars {
-		req.AddMergeVar(v)
-	}
-
-	log.Debug("Sending email to %s", toEmail, ctx)
-
-	// Send template
-	if err := mandrill.SendTemplate(ctx, &req); err != nil {
-		log.Error("Failed to send email: %v", err, ctx)
-	}
-})
-
-// Helper that will render a template and send it as body for
-// transactional-template email.
-var SendTransactional = delay.Func("send-template-email", func(ctx appengine.Context, templateName, toEmail, toName, subject string, args ...interface{}) {
+// Helper that will render a template as body for one of our transactional
+// template emails
+var SendTransactional = delay.Func("mandrill-send-transactional", func(ctx appengine.Context, templateName, toEmail, toName, subject string, args ...interface{}) {
 	req := mandrill.NewSendTemplateReq()
 	req.AddRecipient(toEmail, toName)
 
@@ -51,6 +30,26 @@ var SendTransactional = delay.Func("send-template-email", func(ctx appengine.Con
 
 	// Send template
 	if err := mandrill.SendTemplate(ctx, &req); err != nil {
+		log.Error("Failed to send email: %v", err, ctx)
+	}
+})
+
+// Helper that will render a template and uses it for complete email
+var Send = delay.Func("mandrill-send-email", func(ctx appengine.Context, templateName, toEmail, toName, subject string, args ...interface{}) {
+	req := mandrill.NewSendReq()
+	req.AddRecipient(toEmail, toName)
+
+	req.Message.FromEmail = config.Mandrill.FromEmail
+	req.Message.FromName = config.Mandrill.FromName
+	req.Message.Subject = subject
+
+	log.Debug("Sending email to %s", toEmail, ctx)
+
+	// Render body
+	req.Message.Html = template.RenderString(templateName, args...)
+
+	// Send template
+	if err := mandrill.Send(ctx, &req); err != nil {
 		log.Error("Failed to send email: %v", err, ctx)
 	}
 })
