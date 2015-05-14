@@ -182,6 +182,17 @@ func (c Client) UpdateCard(token string, pay *payment.Payment, user *user.User) 
 	return (*Card)(card), err
 }
 
+func (c Client) GetCharge(chargeId string) (*Charge, error) {
+	params := &stripe.ChargeParams{}
+	params.Expand("balance_transaction")
+	charge, err := c.API.Charges.Get(chargeId, params)
+	if err != nil {
+		return nil, err
+	}
+
+	return (*Charge)(charge), err
+}
+
 // Create new charge
 func (c Client) NewCharge(source interface{}, pay *payment.Payment) (*Charge, error) {
 	params := &stripe.ChargeParams{
@@ -210,6 +221,8 @@ func (c Client) NewCharge(source interface{}, pay *payment.Payment) (*Charge, er
 		params.Customer = v.Accounts.Stripe.CustomerId
 		params.AddMeta("user", v.Id())
 	}
+
+	params.Expand("balance_transaction")
 
 	// Create charge
 	ch, err := c.API.Charges.New(params)

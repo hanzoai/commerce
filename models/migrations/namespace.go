@@ -26,7 +26,7 @@ import (
 
 var newNamespace = ""
 
-func setupNamespaceRename(c *gin.Context) {
+func setupNamespaceRename(c *gin.Context) []interface{} {
 	panic("Unable to pass configuration info back to migration funcs yet")
 
 	// TODO: we SHOULD be able to do this
@@ -65,6 +65,7 @@ func setupNamespaceRename(c *gin.Context) {
 
 	// Set namespace to ensure we iterate over old entities
 	c.Set("namespace", oldns)
+	return NoArgs
 }
 
 // Setup migration

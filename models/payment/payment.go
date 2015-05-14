@@ -131,6 +131,9 @@ type Payment struct {
 	AmountRefunded currency.Cents `json:"amountRefunded"`
 	Fee            currency.Cents `json:"fee"`
 
+	AmountTransferred   currency.Cents `json:"-"`
+	CurrencyTransferred currency.Type  `json:"-"`
+
 	Description string `json:"description"`
 	Status      Status `json:"status"`
 

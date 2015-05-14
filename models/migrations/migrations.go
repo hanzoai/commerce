@@ -11,9 +11,12 @@ import (
 	"crowdstart.com/util/task"
 )
 
-type SetupFn func(*gin.Context)
+type SetupFn func(*gin.Context) []interface{}
 
-func NoSetup(c *gin.Context) {
+var NoArgs = []interface{}{}
+
+func NoSetup(c *gin.Context) []interface{} {
+	return NoArgs
 }
 
 func New(name string, setupFn SetupFn, fns ...interface{}) *delay.Function {
@@ -26,11 +29,11 @@ func New(name string, setupFn SetupFn, fns ...interface{}) *delay.Function {
 
 	return task.Func(name, func(c *gin.Context) {
 		// Call setup fn
-		setupFn(c)
+		args := setupFn(c)
 
 		for i, _ := range fns {
 			// Run task fn
-			tasks[i].Run(c, 50)
+			tasks[i].Run(c, 50, args...)
 		}
 	})
 }
