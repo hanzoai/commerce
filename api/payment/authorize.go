@@ -91,7 +91,6 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	if org.IsTestEmail(pay.Buyer.Email) {
 		pay.Amount = currency.Cents(50)
 		ord.Total = currency.Cents(50)
-		ord.Test = true
 		pay.Test = true
 	}
 
@@ -113,6 +112,9 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	if err := stripe.Authorize(org, ord, usr, pay); err != nil {
 		return nil, err
 	}
+
+	// If the charge is not live or test flag is set, then it is a test charge
+	ord.Test = pay.Test || !pay.Live
 
 	// Save user, order, payment
 	usr.MustPut()
