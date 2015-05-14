@@ -63,9 +63,11 @@ coffee	   	   = node_modules/.bin/coffee
 requisite	   = node_modules/.bin/requisite -s -g
 requisite_opts = assets/js/store/store.coffee \
 				 assets/js/api/api.coffee \
+				 assets/js/platform/platform.coffee \
 				 node_modules/crowdstart.js/src/index.coffee \
 				 -o static/js/store.js \
 				 -o static/js/api.js \
+				 -o static/js/platform.js \
 				 -o static/v1.js
 
 requisite_opts_min = -m --strip-debug
@@ -73,13 +75,15 @@ requisite_opts_min = -m --strip-debug
 stylus		= node_modules/.bin/stylus
 stylus_opts = assets/css/store/store.styl \
 			  assets/css/theme/theme.styl \
+			  assets/css/platform/platform.styl \
 			  -o static/css
 stylus_opts_min = -u csso-stylus -c
 
 autoprefixer = node_modules/.bin/autoprefixer
 autoprefixer_opts = -b 'ie > 8, firefox > 24, chrome > 30, safari > 6, opera > 17, ios > 6, android > 4' \
 					static/css/store.css \
-					static/css/theme.css
+					static/css/theme.css \
+					static/css/platform.css
 
 dev_appserver = $(sdk_path)/dev_appserver.py --skip_sdk_update_check \
 											 --datastore_path=~/.gae_datastore.bin \
