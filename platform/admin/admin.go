@@ -1,6 +1,8 @@
 package admin
 
 import (
+	"strings"
+
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.com/config"
@@ -9,8 +11,11 @@ import (
 	"crowdstart.com/models/coupon"
 	"crowdstart.com/models/mailinglist"
 	"crowdstart.com/models/order"
+	"crowdstart.com/models/payment"
 	"crowdstart.com/models/product"
 	"crowdstart.com/models/store"
+	"crowdstart.com/models/subscriber"
+	"crowdstart.com/models/types/currency"
 	"crowdstart.com/models/user"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/permission"
@@ -24,9 +29,96 @@ func Index(c *gin.Context) {
 	c.Redirect(301, url)
 }
 
+type StoreData struct {
+	StoreId    string
+	StoreName  string
+	OrderCount int
+	Sales      currency.Cents
+}
+
 // Admin Dashboard
 func Dashboard(c *gin.Context) {
-	template.Render(c, "admin/dashboard.html")
+	// Update Stats
+	db := datastore.New(middleware.GetNamespace(c))
+	u := user.New(db)
+
+	userCount, err := u.Query().KeysOnly().Count()
+	if err != nil {
+		panic(err)
+	}
+
+	sub := subscriber.New(db)
+	subCount, err := sub.Query().KeysOnly().Count()
+	if err != nil {
+		panic(err)
+	}
+
+	o := order.New(db)
+	var orders []order.Order
+	_, err = o.Query().GetAll(&orders)
+	if err != nil {
+		panic(err)
+	}
+
+	log.Warn("%v", orders)
+
+	var cur currency.Type
+	storeDataMap := make(map[string]*StoreData)
+	storeDatas := make([]*StoreData, 0)
+	for _, ord := range orders {
+		if ord.Test && ord.PaymentStatus == payment.Paid {
+			continue
+		}
+
+		var storeData *StoreData
+		var ok bool
+
+		if storeData, ok = storeDataMap[ord.StoreId]; !ok {
+			storeData = &StoreData{StoreId: ord.StoreId}
+			storeDatas = append(storeDatas, storeData)
+			storeDataMap[ord.StoreId] = storeData
+		}
+		storeData.OrderCount++
+
+		for _, payId := range ord.PaymentIds {
+			pay := payment.New(db)
+			err = pay.GetById(payId)
+			if err != nil {
+				panic(err)
+			}
+			storeData.Sales += pay.AmountTransferred
+			cur = pay.CurrencyTransferred
+		}
+	}
+
+	s := store.New(db)
+	var stores []store.Store
+	_, err = s.Query().GetAll(&stores)
+	if err != nil {
+		panic(err)
+	}
+
+	for _, stor := range stores {
+		if storeData, ok := storeDataMap[stor.Id()]; ok {
+			storeData.StoreName = strings.ToUpper(stor.Name)
+		}
+	}
+
+	orderTotal := 0
+	salesTotal := currency.Cents(0)
+	for _, storeData := range storeDatas {
+		orderTotal += storeData.OrderCount
+		salesTotal += storeData.Sales
+	}
+
+	template.Render(c, "admin/dashboard.html",
+		"userCount", userCount,
+		"subCount", subCount,
+		"currency", cur,
+		"orderTotal", orderTotal,
+		"salesTotal", salesTotal,
+		"storeDatas", storeDatas,
+	)
 }
 
 func Products(c *gin.Context) {
