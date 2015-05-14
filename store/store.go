@@ -1,16 +1,12 @@
 package store
 
 import (
-	"crowdstart.io/datastore"
 	"crowdstart.io/middleware"
-	"crowdstart.io/models"
 	"crowdstart.io/store/card"
 	"crowdstart.io/store/cart"
 	"crowdstart.io/store/products"
 	"crowdstart.io/store/user"
 	"crowdstart.io/util/router"
-	"crowdstart.io/util/template"
-	"github.com/gin-gonic/gin"
 )
 
 func init() {
@@ -55,12 +51,12 @@ func init() {
 	router.GET("/card", loginRequired, card.GetCard)
 
 	// Test-Confirm
-	router.GET("/test-confirm", func(c *gin.Context) {
-		var orders []models.Order
-		db := datastore.New(c)
-		keys, _ := db.Query("order").GetAll(db.Context, &orders)
+	// router.GET("/test-confirm", func(c *gin.Context) {
+	// 	var orders []models.Order
+	// 	db := datastore.New(c)
+	// 	keys, _ := db.Query("order").GetAll(db.Context, &orders)
 
-		orders[0].LoadVariantsProducts(db.Context)
-		template.Render(c, "/email/order-confirmation-skully.html", "orderId", keys[0].IntID(), "order", &orders[0])
-	})
+	// 	orders[0].LoadVariantsProducts(db.Context)
+	// 	template.Render(c, "/email/order-confirmation-skully.html", "orderId", keys[0].IntID(), "order", &orders[0])
+	// })
 }
