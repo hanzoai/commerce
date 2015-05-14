@@ -29,7 +29,7 @@ type Type string
 
 func (t Type) Symbol() string {
 	switch t {
-	case USD, AUD, CAD, HKD, NZD:
+	case USD, AUD, CAD, HKD, NZD, SGD:
 		return "$"
 	case EUR:
 		return "€"
@@ -75,6 +75,7 @@ const (
 	HKD      = "hkd"
 	JPY      = "jpy"
 	NZD      = "nzd"
+	SGD      = "sgd"
 )
 
-var Types = []Type{USD, AUD, CAD, EUR, GBP, HKD, JPY, NZD}
+var Types = []Type{USD, AUD, CAD, EUR, GBP, HKD, JPY, NZD, SGD}
