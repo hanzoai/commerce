@@ -84,7 +84,7 @@ var skullyCampaign = task.Func("fixtures-skully-campaign", func(c *gin.Context) 
 
 	// Hardcode stripe test credentials
 	if appengine.IsDevAppServer() {
-		campaign.Stripe.AccessToken = ""
+		campaign.Stripe.AccessToken = "sk_test_REDACTED"
 		campaign.Stripe.PublishableKey = "pk_test_REDACTED"
 		campaign.Stripe.RefreshToken = "rt_5E65oPVEYWwIAqBWpW64RfefExYPVAvt4Pu9YeEBPJn9AECa"
 		campaign.Stripe.UserId = "acct_14lSsRCSRlllXCwP"
