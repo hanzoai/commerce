@@ -61,6 +61,11 @@ func Fail(c *gin.Context, status int, message interface{}, err error) {
 		res.Code = strings.Replace(v.Code, "_", "-", -1)
 	}
 
+	// Force 402 on auth errors
+	if res.Type == "authorization-error" {
+		status = 402
+	}
+
 	// Write headers
 	c.Writer.Header().Set("Content-Type", "application/json")
 	c.Writer.WriteHeader(status)
