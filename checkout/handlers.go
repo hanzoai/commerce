@@ -257,6 +257,7 @@ func charge(c *gin.Context) {
 		user.Name(),
 		fmt.Sprintf("SKULLY Order confirmation #%v", orderId),
 		"user", user,
+		"orderId", orderId,
 		"order", &form.Order)
 
 	log.Debug("Checkout complete!", c)
