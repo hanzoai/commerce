@@ -88,7 +88,7 @@ func Charge(ctx appengine.Context, accessToken string, authorizationToken string
 		Customer:  user.Stripe.CustomerId,
 		Desc:      order.Description(),
 		Email:     user.Email,
-		Statement: "SKULLY SYSTEMS", // Max 15 characters
+		Statement: "WWW.SKULLY.COM", // Max 15 characters
 	}
 	chargeParams.Meta = make(map[string]string)
 	chargeParams.Meta["UserId"] = user.Id
