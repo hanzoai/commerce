@@ -1,1 +1,58 @@
-(function(t){function e(t,r){if({}.hasOwnProperty.call(e.cache,t))return e.cache[t];if("function"==typeof r)return void e.load(t,r);var n=e.resolve(t);if(!n)throw new Error("Failed to resolve module "+t);var o={id:t,require:e,filename:t,exports:{},loaded:!1,parent:null,children:[]},i=t.slice(0,t.lastIndexOf("/")+1);return e.cache[t]=o.exports,n.call(o.exports,o,o.exports,i,t),o.loaded=!0,e.cache[t]=o.exports}e.modules={},e.cache={},e.resolve=function(t){return{}.hasOwnProperty.call(e.modules,t)?e.modules[t]:void 0},e.define=function(t,r){e.modules[t]=r},t.require=e,e.define("./platform",function(){"use strict"}),e("./platform")}).call(this,this);
+(function (global) {
+  var process = {
+    title: 'browser',
+    browser: true,
+    env: {},
+    argv: [],
+    nextTick: function (fn) {
+      setTimeout(fn, 0)
+    },
+    cwd: function () {
+      return '/'
+    },
+    chdir: function () {
+    }
+  };
+  // Require module
+  function require(file, callback) {
+    if ({}.hasOwnProperty.call(require.cache, file))
+      return require.cache[file];
+    // Handle async require
+    if (typeof callback == 'function') {
+      require.load(file, callback);
+      return
+    }
+    var resolved = require.resolve(file);
+    if (!resolved)
+      throw new Error('Failed to resolve module ' + file);
+    var module$ = {
+      id: file,
+      require: require,
+      filename: file,
+      exports: {},
+      loaded: false,
+      parent: null,
+      children: []
+    };
+    var dirname = file.slice(0, file.lastIndexOf('/') + 1);
+    require.cache[file] = module$.exports;
+    resolved.call(module$.exports, module$, module$.exports, dirname, file);
+    module$.loaded = true;
+    return require.cache[file] = module$.exports
+  }
+  require.modules = {};
+  require.cache = {};
+  require.resolve = function (file) {
+    return {}.hasOwnProperty.call(require.modules, file) ? require.modules[file] : void 0
+  };
+  // define normal static module
+  require.define = function (file, fn) {
+    require.modules[file] = fn
+  };
+  global.require = require;
+  // source: /Users/dtai/work/verus/crowdstart/assets/js/platform/platform.coffee
+  require.define('./platform', function (module, exports, __dirname, __filename) {
+    'use strict'
+  });
+  require('./platform')
+}.call(this, this))//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VzIjpbXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6IiIsInNvdXJjZVJvb3QiOiIvYXNzZXRzL2pzL3BsYXRmb3JtIn0=
