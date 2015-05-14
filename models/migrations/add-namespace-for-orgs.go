@@ -11,8 +11,9 @@ import (
 )
 
 var _ = New("add-namespace-for-orgs",
-	func(c *gin.Context) {
+	func(c *gin.Context) []interface{} {
 		c.Set("namespace", "")
+		return NoArgs
 	},
 	func(db *ds.Datastore, org *organization.Organization) {
 		ns := namespace.New(db)
