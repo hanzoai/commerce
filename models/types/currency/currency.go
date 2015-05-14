@@ -145,7 +145,7 @@ func (t Type) Symbol() string {
 
 func (t Type) IsZeroDecimal() bool {
 	switch t {
-	case JPY:
+	case BIF, CLP, DJF, GNF, JPY, KMF, KRW, MGA, PYG, RWF, VND, VUV, XAF, XOF, XPF:
 		return true
 	}
 
