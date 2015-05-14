@@ -24,6 +24,14 @@ files =
       in:  'assets/css/checkout/checkout.styl'
       out: 'static/css'
 
+  platform:
+    js:
+      in:  'assets/js/platform/platform.coffee'
+      out: 'static/js/platform.js'
+    css:
+      in:  'assets/css/platform/platform.styl'
+      out: 'static/css'
+
   preorder:
     js:
       in:  'assets/js/preorder/preorder.coffee'
@@ -83,6 +91,8 @@ module.exports =
         return "#{requisite} #{files.preorder.js.in} -o #{files.preorder.js.out}"
       if /^assets\/js\/store/.test src
         return "#{requisite} #{files.store.js.in} -o #{files.store.js.out}"
+      if /^assets\/js\/platform/.test src
+        return "#{requisite} #{files.platform.js.in} -o #{files.platform.js.out}"
       if /^assets\/js\/api/.test src
         if /mailinglist/.test src
           return "#{coffee} -bc -o #{files.mailinglist.js.out} #{files.mailinglist.js.in}"
@@ -106,6 +116,8 @@ module.exports =
         return "#{stylus} #{files.preorder.css.in} -o #{files.preorder.css.out}"
       if /^assets\/css\/store/.test src
         return "#{stylus} #{files.store.css.in} -o #{files.store.css.out}"
+      if /^assets\/css\/platform/.test src
+        return "#{stylus} #{files.platform.css.in} -o #{files.platform.css.out}"
       if /^assets\/css\/theme/.test src
         return "#{stylus} #{files.theme.css.in} -o #{files.theme.css.out}"
 

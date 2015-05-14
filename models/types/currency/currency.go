@@ -1,10 +1,8 @@
 package currency
 
 import (
-	"fmt"
+	"strconv"
 	"strings"
-
-	"crowdstart.com/util/log"
 )
 
 // import (
@@ -27,14 +25,6 @@ import (
 
 type Cents int
 
-func (c Cents) Humanize() string {
-	t := USD
-	cents := c % 100
-	dollars := c / 100
-	log.Warn("%s%d.%d", t, dollars, cents)
-	return fmt.Sprintf("%s%d.%d", t.Symbol(), dollars, cents)
-}
-
 type Type string
 
 func (t Type) Symbol() string {
@@ -50,6 +40,26 @@ func (t Type) Symbol() string {
 	}
 
 	return ""
+}
+
+func (t Type) IsZeroDecimal() bool {
+	switch t {
+	case JPY:
+		return true
+	}
+
+	return false
+}
+
+func (t Type) ToString(c Cents) string {
+	if t.IsZeroDecimal() {
+		return t.Symbol() + strconv.Itoa(int(c))
+	}
+	cents := strconv.Itoa(int(c) % 100)
+	if len(cents) < 2 {
+		cents += "0"
+	}
+	return t.Symbol() + strconv.Itoa(int(c)/100) + "." + cents
 }
 
 func (t Type) Label() string {

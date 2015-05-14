@@ -8,7 +8,7 @@ import (
 	"crowdstart.com/util/log"
 )
 
-var _ = New("add-missing-namespace", func(c *gin.Context) {
+var _ = New("add-missing-namespace", func(c *gin.Context) []interface{} {
 	db := datastore.New(c)
 	ns := namespace.New(db)
 	ns.Name = "4050001"
@@ -17,4 +17,5 @@ var _ = New("add-missing-namespace", func(c *gin.Context) {
 	if err != nil {
 		log.Warn("Failed to put namespace: %v", err)
 	}
+	return NoArgs
 })
