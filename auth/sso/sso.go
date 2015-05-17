@@ -8,6 +8,9 @@ import (
 	"errors"
 	"net/url"
 
+	"github.com/gin-gonic/gin"
+
+	"crowdstart.io/config"
 	"crowdstart.io/models"
 )
 
@@ -74,12 +77,25 @@ func (s *SSO) Build(nonce Nonce, user *models.User) (url.Values, error) {
 	return v, nil
 }
 
-var std = New("d836444a9e4084d5b224a60c208dce14")
+var std = New(config.Discourse.Secret)
 
-func Parse(sso, sig string) (Nonce, error) {
-	return std.Parse(sso, sig)
+func Parse(sso, sig string) (string, error) {
+	nonce, err := std.Parse(sso, sig)
+
+	return string(nonce), err
 }
 
 func Build(nonce string, user *models.User) (url.Values, error) {
 	return std.Build(Nonce(nonce), user)
+}
+
+func Redirect(c *gin.Context, nonce string, user *models.User) {
+	params, err := Build(nonce, user)
+	if err != nil {
+		c.Redirect(302, config.UrlFor("store", "/login"))
+	}
+
+	url, _ := url.Parse(config.Discourse.URL + "/session/sso_login")
+	url.RawQuery = params.Encode()
+	c.Redirect(302, url.String())
 }
