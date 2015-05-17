@@ -92,7 +92,7 @@ func Build(nonce string, user *models.User) (url.Values, error) {
 func Redirect(c *gin.Context, nonce string, user *models.User) {
 	params, err := Build(nonce, user)
 	if err != nil {
-		c.Redirect(302, config.UrlFor("store", "/login"))
+		c.Redirect(302, config.Discourse.URL)
 	}
 
 	url, _ := url.Parse(config.Discourse.URL + "/session/sso_login")
