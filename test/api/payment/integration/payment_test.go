@@ -316,7 +316,7 @@ func OrderBadCardTest(isCharge bool, stor *store.Store) {
 	body := fmt.Sprintf(requests.InvalidOrderBadCard)
 	w := client.PostRawJSON(path, body)
 	log.Debug("JSON %v", w.Body)
-	Expect(w.Code).To(Equal(500))
+	Expect(w.Code).To(Equal(402))
 }
 
 func OrderBadUserTest(isCharge bool, stor *store.Store) {
