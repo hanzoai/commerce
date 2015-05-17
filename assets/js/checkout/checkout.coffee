@@ -302,8 +302,10 @@ $(document).ready ->
         dataType: "json"
         success: (data) ->
           # track checkout complete
-          window._fbq?.push ['track', '6018312014122', {value: $('.price.grand-total').text(), currency: 'USD'}]
-          window.location.replace 'complete/'
+          window._fbq?.push ['track', '6027472462517', {value: $('.price.grand-total').text(), currency: 'USD'}]
+          setTimeout ->
+            window.location.replace 'complete/'
+          , 300
         error: (xhr) ->
           # important to force a new authorization, assuming user wants to edit card details
           app.set 'approved', false

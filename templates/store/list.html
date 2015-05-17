@@ -296,13 +296,12 @@ var allListings = {{ listingsJSON | safe }};
 
 {% block js %}
 {% if isProduction %}
-<script>(function() {
-window._fbq.push(['addPixelId', '552096258229612']);
-window._fbq.push(['track', 'PixelInitialized', {}]);
-window._fbq.push(['track', '6018312526922', {'value':'0.00','currency':'USD'}]);
-})();
+<!-- Facebook Conversion Code for Store Viewed -->
+<script>
+window._fbq = window._fbq || [];
+window._fbq.push(['track', '6027472500717', {'value':'0.00','currency':'USD'}]);
 </script>
-<noscript><img height="1" width="1" alt="" style="display:none" src="https://www.facebook.com/tr?id=552096258229612&amp;ev=PixelInitialized" /></noscript>
+<noscript><img height="1" width="1" alt="" style="display:none" src="https://www.facebook.com/tr?ev=6027472500717&amp;cd[value]=0.00&amp;cd[currency]=USD&amp;noscript=1" /></noscript>
 {% endif %}
 <script>
     $(document).ready(function() {
