@@ -17,19 +17,24 @@ import (
 
 // GET /login
 func Login(c *gin.Context) {
+	query := c.Request.URL.Query()
+	sso := query.Get("sso")
+	sig := query.Get("sig")
+
+	if sso != "" && sig != "" {
+		LoginSSO(c, sso, sig)
+		return
+	}
+
 	template.Render(c, "login.html")
 }
 
 // GET /login/sso
-func LoginSSO(c *gin.Context) {
-	query := c.Request.URL.Query()
-	sso_ := query.Get("sso")
-	sig := query.Get("sig")
-
+func LoginSSO(c *gin.Context, sso_, sig string) {
 	// Parse SSO payload
 	nonce, err := sso.Parse(sso_, sig)
 	if err != nil {
-		c.Redirect(302, config.UrlFor("store"))
+		c.Redirect(302, config.Discourse.URL)
 	}
 
 	// Check if we're already logged in
