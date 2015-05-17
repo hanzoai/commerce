@@ -43,3 +43,14 @@
     </form>
 </div>
 {% endblock %}
+
+{% block js %}
+{% if isProduction %}
+<!-- Facebook Conversion Code for Registrations -->
+<script>
+window._fbq = window._fbq || [];
+window._fbq.push(['track', '6027472475717', {'value':'0.00','currency':'USD'}]);
+</script>
+<noscript><img height="1" width="1" alt="" style="display:none" src="https://www.facebook.com/tr?ev=6027472475717&amp;cd[value]=0.00&amp;cd[currency]=USD&amp;noscript=1" /></noscript>
+{% endif %}
+{% endblock %}
