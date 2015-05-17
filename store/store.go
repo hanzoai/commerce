@@ -27,7 +27,7 @@ func init() {
 
 	// Login
 	router.GET("/login", logoutRequired, user.Login)
-	router.GET("/login/sso", user.LoginSSO)
+	router.GET("/login/sso", logoutRequired, user.LoginSSO)
 	router.POST("/login", logoutRequired, user.SubmitLogin)
 	router.GET("/logout", user.Logout)
 

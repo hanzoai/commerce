@@ -15,15 +15,6 @@ import (
 	salesforce "crowdstart.io/thirdparty/salesforce/tasks"
 )
 
-func SSORedirect(c *gin.Context, nonce string, user *models.User) {
-	params, err := sso.Build(nonce, user)
-	if err != nil {
-		c.Redirect(302, config.UrlFor("store"))
-	}
-
-	c.Redirect(302, config.UrlFor("store", params.Encode()))
-}
-
 // GET /login
 func Login(c *gin.Context) {
 	template.Render(c, "login.html")
@@ -39,9 +30,20 @@ func LoginSSO(c *gin.Context) {
 	nonce, err := sso.Parse(sso_, sig)
 	if err != nil {
 		c.Redirect(302, config.UrlFor("store"))
-	} else {
-		template.Render(c, "login.html", "nonce", nonce)
 	}
+
+	// Check if we're already logged in
+	if auth.IsLoggedIn(c) {
+		user, err := auth.GetUser(c)
+		if err != nil {
+			// Just redirect back if user already logged in
+			sso.Redirect(c, nonce, user)
+			return
+		}
+	}
+
+	// Show login form so user can login.
+	template.Render(c, "login.html", "nonce", nonce)
 }
 
 // POST /login
@@ -57,7 +59,7 @@ func SubmitLogin(c *gin.Context) {
 	}
 
 	if nonce != "" {
-		SSORedirect(c, nonce, user)
+		sso.Redirect(c, nonce, user)
 	} else {
 		c.Redirect(302, config.UrlFor("store", "/profile"))
 	}
