@@ -15,22 +15,8 @@ import (
 	salesforce "crowdstart.io/thirdparty/salesforce/tasks"
 )
 
-// GET /login
-func Login(c *gin.Context) {
-	query := c.Request.URL.Query()
-	sso := query.Get("sso")
-	sig := query.Get("sig")
-
-	if sso != "" && sig != "" {
-		LoginSSO(c, sso, sig)
-		return
-	}
-
-	template.Render(c, "login.html")
-}
-
-// GET /login/sso
-func LoginSSO(c *gin.Context, sso_, sig string) {
+// Helper to handle SSO logins
+func SSO(c *gin.Context, sso_, sig string) {
 	// Parse SSO payload
 	nonce, err := sso.Parse(sso_, sig)
 	if err != nil {
@@ -49,6 +35,20 @@ func LoginSSO(c *gin.Context, sso_, sig string) {
 
 	// Show login form so user can login.
 	template.Render(c, "login.html", "nonce", nonce)
+}
+
+// GET /login
+func Login(c *gin.Context) {
+	query := c.Request.URL.Query()
+	sso := query.Get("sso")
+	sig := query.Get("sig")
+
+	if sso != "" && sig != "" {
+		SSO(c, sso, sig)
+		return
+	}
+
+	template.Render(c, "login.html")
 }
 
 // POST /login
