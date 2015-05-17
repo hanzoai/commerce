@@ -260,7 +260,11 @@ func (m *Model) GetById(id string) error {
 	case "organization":
 		filterStr = "Name"
 	case "user":
-		filterStr = "Username"
+		if strings.Contains(id, "@") {
+			filterStr = "Email"
+		} else {
+			filterStr = "Username"
+		}
 	default:
 		return datastore.InvalidKey
 	}
