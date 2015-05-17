@@ -30,29 +30,32 @@ func IsLoggedIn(c *gin.Context) bool {
 	return err == nil && value != ""
 }
 
-func VerifyUser(c *gin.Context) error {
+func VerifyUser(c *gin.Context) (*models.User, error) {
+	user := new(models.User)
+
 	// Parse login form
 	f := new(LoginForm)
 	if err := f.Parse(c); err != nil {
-		return err
+		return user, err
 	}
 
 	q := queries.New(c)
 
 	// Get user from database
-	user := new(models.User)
 	if err := q.GetUserByEmail(f.Email, user); err != nil {
-		return err
+		return user, err
 	}
 
 	log.Debug("%v = %v", user, f.Password)
 	// Compare form password with saved hash
 	if err := CompareHashAndPassword(user.PasswordHash, f.Password); err != nil {
-		return err
+		return user, err
 	}
 
 	// Set the loginKey value to the user id
-	return Login(c, user.Email)
+	err := Login(c, user.Email)
+
+	return user, err
 }
 
 // Login should only be used in exceptional circumstances.

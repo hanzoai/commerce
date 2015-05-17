@@ -291,7 +291,7 @@ func LoginSubmit(c *gin.Context) {
 	}
 
 	// Verify password
-	err := auth.VerifyUser(c)
+	_, err := auth.VerifyUser(c)
 	if err != nil {
 		template.Render(c, "login.html", "message", "The email or password you entered is incorrect.")
 		return
