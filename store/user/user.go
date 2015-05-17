@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.io/auth"
+	"crowdstart.io/auth/sso"
 	"crowdstart.io/config"
 	"crowdstart.io/datastore"
 	"crowdstart.io/models"
@@ -14,17 +15,55 @@ import (
 	salesforce "crowdstart.io/thirdparty/salesforce/tasks"
 )
 
+func SSORender(c *gin.Context, sso_, sig string) {
+	// Parse SSO payload
+	nonce, err := sso.Parse(sso_, sig)
+	if err != nil {
+		c.Redirect(302, config.UrlFor("store"))
+	} else {
+		template.Render(c, "login.html", "nonce", nonce)
+	}
+}
+
+func SSORedirect(c *gin.Context, nonce string, user *models.User) {
+	params, err := sso.Build(nonce, user)
+	if err != nil {
+		c.Redirect(302, config.UrlFor("store"))
+	}
+
+	c.Redirect(302, config.UrlFor("store", params.Encode()))
+}
+
 // GET /login
 func Login(c *gin.Context) {
-	template.Render(c, "login.html")
+	query := c.Request.URL.Query()
+	sso_ := query.Get("sso")
+	sig := query.Get("sig")
+
+	// Handle SSO login
+	if sso_ != "" && sig != "" {
+		SSORender(c, sso_, sig)
+	} else {
+		template.Render(c, "login.html")
+	}
 }
 
 // POST /login
 func SubmitLogin(c *gin.Context) {
-	if err := auth.VerifyUser(c); err == nil {
-		c.Redirect(302, config.UrlFor("store", "/profile"))
-	} else {
+	query := c.Request.URL.Query()
+	nonce := query.Get("nonce")
+
+	user, err := auth.VerifyUser(c)
+
+	if err != nil {
 		template.Render(c, "login.html", "loginError", "Invalid email or password")
+		return
+	}
+
+	if nonce != "" {
+		SSORedirect(c, nonce, user)
+	} else {
+		c.Redirect(302, config.UrlFor("store", "/profile"))
 	}
 }
 

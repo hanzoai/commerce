@@ -10,7 +10,7 @@ import (
 const kind = "user"
 
 func Login(c *gin.Context) {
-	if err := auth.VerifyUser(c); err == nil {
+	if _, err := auth.VerifyUser(c); err == nil {
 		c.Redirect(300, "/user/")
 	} else {
 		template.Render(c, "platform/user/login.html",
