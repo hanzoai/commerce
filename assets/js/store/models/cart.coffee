@@ -93,7 +93,7 @@ class Cart extends ModelEmitter
     subtotal = (@get 'subtotal') + price
 
     # track add to cart conversion
-    window._fbq?.push ['track', '6018312116522', {'value': price.toFixed(), 'currency':'USD'}]
+    window._fbq?.push ['track', '6027472465917', {'value': price.toFixed(), 'currency':'USD'}]
 
     @set 'quantity', quantity
     @set 'subtotal', subtotal

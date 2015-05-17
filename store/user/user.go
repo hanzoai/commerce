@@ -15,16 +15,6 @@ import (
 	salesforce "crowdstart.io/thirdparty/salesforce/tasks"
 )
 
-func SSORender(c *gin.Context, sso_, sig string) {
-	// Parse SSO payload
-	nonce, err := sso.Parse(sso_, sig)
-	if err != nil {
-		c.Redirect(302, config.UrlFor("store"))
-	} else {
-		template.Render(c, "login.html", "nonce", nonce)
-	}
-}
-
 func SSORedirect(c *gin.Context, nonce string, user *models.User) {
 	params, err := sso.Build(nonce, user)
 	if err != nil {
@@ -36,15 +26,21 @@ func SSORedirect(c *gin.Context, nonce string, user *models.User) {
 
 // GET /login
 func Login(c *gin.Context) {
+	template.Render(c, "login.html")
+}
+
+// GET /login/sso
+func LoginSSO(c *gin.Context) {
 	query := c.Request.URL.Query()
 	sso_ := query.Get("sso")
 	sig := query.Get("sig")
 
-	// Handle SSO login
-	if sso_ != "" && sig != "" {
-		SSORender(c, sso_, sig)
+	// Parse SSO payload
+	nonce, err := sso.Parse(sso_, sig)
+	if err != nil {
+		c.Redirect(302, config.UrlFor("store"))
 	} else {
-		template.Render(c, "login.html")
+		template.Render(c, "login.html", "nonce", nonce)
 	}
 }
 
