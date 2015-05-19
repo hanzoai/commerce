@@ -185,7 +185,7 @@
                     <!-- Billing Address Country -->
                     <div id="billing-country" class="field country required">
                         <label for="Order.BillingAddress.Country">Country</label>
-                        <input id="Order.BillingAddress.Country" name="Order.BillingAddress.Country" type="text" spellcheck="false" placeholder="Country ex. United States" x-autocompletetype="country-name" value="{% if user.BillingAddress.Country %} {{ user.BillingAddress.Country }} {% else %} {{ "United States" }} {% endif %}" data-stripe="address_country">
+                        <input id="Order.BillingAddress.Country" name="Order.BillingAddress.Country" type="text" spellcheck="false" placeholder="Country ex. United States" x-autocompletetype="country-name" value="{% if user.BillingAddress.Country %}{{ user.BillingAddress.Country }}{% else %}United States{% endif %}" data-stripe="address_country">
                     </div>
                 </fieldset>
             </div>

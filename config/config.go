@@ -71,6 +71,11 @@ type Config struct {
 			ImageUploads string
 		}
 	}
+
+	Discourse struct {
+		Secret string
+		URL    string
+	}
 }
 
 // Return url to static file, module or path rooted in a module
@@ -168,6 +173,7 @@ var AutoLoadFixtures = config.AutoLoadFixtures
 var CookieDomain = config.CookieDomain
 var DatastoreWarn = config.DatastoreWarn
 var DemoMode = config.DemoMode
+var Discourse = config.Discourse
 var Google = config.Google
 var IsDevelopment = config.IsDevelopment
 var IsProduction = config.IsProduction

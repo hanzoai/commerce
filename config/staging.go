@@ -32,5 +32,8 @@ func Staging() *Config {
 	config.Google.APIKey = "AIza_REDACTED"
 	config.Google.Bucket.ImageUploads = "crowdstart-staging-image-uploads"
 
+	config.Discourse.URL = "http://forum.staging.skully.com"
+	config.Discourse.Secret = "e836445b10e4085d6b225b61d209edf15"
+
 	return config
 }

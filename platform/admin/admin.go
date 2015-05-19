@@ -33,7 +33,7 @@ func Login(c *gin.Context) {
 
 // Post login form
 func SubmitLogin(c *gin.Context) {
-	if err := auth.VerifyUser(c); err == nil {
+	if _, err := auth.VerifyUser(c); err == nil {
 		log.Debug("Success")
 		c.Redirect(301, "dashboard")
 	} else {
