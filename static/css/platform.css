@@ -1,1 +1,10 @@
-.table thead>tr>th,.table tbody>tr>td{font-size:14px;padding-top:4px;padding-bottom:4px}.widget{min-height:100px}
+.table thead > tr > th,
+.table tbody > tr > td {
+  font-size: 14px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+.widget {
+  min-height: 100px;
+}
+/*# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VzIjpbIi4uLy4uL2Fzc2V0cy9jc3MvcGxhdGZvcm0vcGxhdGZvcm0uc3R5bCJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiQUFBQTtBQUF3QjtFQUN0QixXQUFXLEtBQVg7RUFDQSxhQUFhLElBQWI7RUFDQSxnQkFBZ0IsSUFBaEI7O0FBRUY7RUFDRSxZQUFZLE1BQVoiLCJmaWxlIjoicGxhdGZvcm0uY3NzIiwic291cmNlc0NvbnRlbnQiOlsiLnRhYmxlIHRoZWFkID4gdHIgPiB0aCwgLnRhYmxlIHRib2R5ID4gdHIgPiB0ZFxuICBmb250LXNpemU6IDE0cHhcbiAgcGFkZGluZy10b3A6IDRweFxuICBwYWRkaW5nLWJvdHRvbTogNHB4XG5cbi53aWRnZXRcbiAgbWluLWhlaWdodDogMTAwcHhcbiJdfQ== */
