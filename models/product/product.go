@@ -42,7 +42,6 @@ type Product struct {
 	Shipping currency.Cents `json:"shipping"`
 
 	Inventory int `json:"inventory"`
-	Sold      int `json:"sold"`
 
 	Weight     weight.Mass `json:"weight"`
 	WeightUnit weight.Unit `json:"weightUnit"`
