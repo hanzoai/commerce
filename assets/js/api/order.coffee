@@ -34,7 +34,6 @@ module.exports =
         postalCode: '55555-5555'
       items: [
         productSlug:  'doge-shirt'
-        price:        100
         quantity:     2
       ]
       metadata:
