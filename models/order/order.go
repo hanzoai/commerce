@@ -111,6 +111,7 @@ type Order struct {
 
 	Coupons     []coupon.Coupon `json:"coupons,omitempty"`
 	CouponCodes []string        `json:"couponCodes,omitempty"`
+	ReferralId  string          `json:"referralId,omitempty"`
 
 	PaymentIds []string `json:"payments"`
 
