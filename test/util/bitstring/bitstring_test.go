@@ -60,4 +60,10 @@ var _ = Describe("BitString", func() {
 		bTestShort := bShort.SetBit(0).SetBit(120).SetBit(100)
 		Expect(bTestShort.Or(b).Equal(bTestShort)).To(BeTrue())
 	})
+
+	It("Should be able to GetSegment", func() {
+		bTest := b.SetBit(3)
+		seg := bTest.GetSegment(0)
+		Expect(int(seg)).To(Equal(8))
+	})
 })
