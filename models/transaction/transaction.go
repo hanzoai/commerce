@@ -21,6 +21,7 @@ const (
 type Transaction struct {
 	mixin.Model
 
+	UserId   string         `json:"userId"`
 	Type     Type           `json:"type"`
 	Currency currency.Type  `json:"currency"`
 	Amount   currency.Cents `json:"amount"`
