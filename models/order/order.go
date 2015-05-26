@@ -218,20 +218,6 @@ func (o *Order) GetCoupons() error {
 			return errors.New("Invalid coupon code")
 		}
 
-		if c.ProductId != "" {
-			hasProduct := false
-			for _, item := range o.Items {
-				if item.ProductId != c.ProductId {
-					hasProduct = true
-					break
-				}
-			}
-
-			if !hasProduct {
-				continue
-			}
-		}
-
 		keys[i] = c.Key()
 	}
 
@@ -257,6 +243,23 @@ func (o *Order) UpdateDiscount() {
 	num := len(o.CouponCodes)
 	for i := 0; i < num; i++ {
 		c := &o.Coupons[i]
+
+		// Ignore coupons that do not apply
+		if c.ProductId != "" {
+			hasProduct := false
+			for _, item := range o.Items {
+				// log.Warn("%v, %v ==? %v", item.ProductName, item.ProductId, c.ProductId)
+				if item.ProductId == c.ProductId {
+					hasProduct = true
+					break
+				}
+			}
+
+			if !hasProduct {
+				continue
+			}
+		}
+
 		switch c.Type {
 		case coupon.Flat:
 			o.Discount = currency.Cents(int(o.Discount) + c.Amount)

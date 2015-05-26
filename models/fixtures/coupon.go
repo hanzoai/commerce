@@ -15,6 +15,8 @@ var Coupon = New("coupon", func(c *gin.Context) *coupon.Coupon {
 
 	now := time.Now()
 
+	p := Product(c)
+
 	cpn := coupon.New(db)
 	cpn.Code = "sad-coupon"
 	cpn.GetOrCreate("Code=", cpn.Code)
@@ -25,7 +27,7 @@ var Coupon = New("coupon", func(c *gin.Context) *coupon.Coupon {
 	cpn.Once = true
 	cpn.Enabled = true
 	cpn.Amount = 500
-	cpn.ProductId = Product(c).Id()
+	cpn.ProductId = p.Id()
 
 	cpn.MustPut()
 
