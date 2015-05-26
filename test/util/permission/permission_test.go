@@ -14,9 +14,9 @@ func Test(t *testing.T) {
 }
 
 var _ = Describe("Permission", func() {
-	It("Any should pass for any permission", func() {
+	It("All should pass for any permission", func() {
 		field := new(bit.Field)
-		field.Set(permission.Any)
+		field.Set(permission.All)
 
 		Expect(field.Has(permission.Admin)).To(Equal(true))
 		Expect(field.Has(permission.Charge)).To(Equal(true))
