@@ -12,7 +12,7 @@ current_date	= $(shell date +"%Y-%m-%d")
 goapp			= $(sdk_path)/goapp
 gpm				= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(sdk_path)/gpm
 ginkgo			= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(gopath)/bin/ginkgo
-appcfg.py 		= $(sdk_path)/appcfg.py --oauth2 --skip_sdk_update_check
+appcfg.py 		= $(sdk_path)/appcfg.py --skip_sdk_update_check
 
 deps	= $(shell cat Godeps | cut -d ' ' -f 1)
 modules	= crowdstart.com/api \
