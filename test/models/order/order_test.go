@@ -42,6 +42,7 @@ var _ = AfterSuite(func() {
 
 var _ = Describe("Order", func() {
 	It("Should UpdateAndTally", func() {
+		ord.CouponCodes = []string{}
 		err := ord.UpdateAndTally(nil)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ord.Subtotal).To(Equal(currency.Cents(50000)))
