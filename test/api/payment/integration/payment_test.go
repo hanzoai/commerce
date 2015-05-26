@@ -593,6 +593,7 @@ var _ = Describe("payment", func() {
 			trans := transaction.New(db)
 			err = trans.GetById(refIn1.TransactionIds[0])
 			Expect(err).ToNot(HaveOccurred())
+			Expect(trans.UserId).To(Equal(u.Id()))
 			Expect(trans.Currency).To(Equal(refIn.Referral.Actions[0].Currency))
 			Expect(trans.Amount).To(Equal(refIn.Referral.Actions[0].Amount))
 
