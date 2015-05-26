@@ -37,6 +37,7 @@ type Action struct {
 type Referral struct {
 	mixin.Model
 
+	Name string `json:"name"`
 	// Trigger is the number of referrals, 0 means it triggers on every referral
 	Triggers []int    `json:"triggers"`
 	Actions  []Action `json:"actions"`
@@ -74,21 +75,19 @@ func (r *Referral) Validator() *val.Validator {
 	return nil
 }
 
-func (r *Referral) GetBonus(referrals int) *transaction.Transaction {
+func (r *Referral) GetBonus(trans *transaction.Transaction, referrals int) {
 	for i, trig := range r.Triggers {
 		if trig == referrals || trig == 0 {
 			action := r.Actions[i]
 			switch r.Actions[i].Type {
 			case StoreCredit:
-				trans := transaction.New(r.Db)
 				trans.Amount = action.Amount
 				trans.Currency = action.Currency
-				return trans
+				return
 			case Refund:
 			}
 		}
 	}
-	return nil
 }
 
 func Query(db *datastore.Datastore) *mixin.Query {
