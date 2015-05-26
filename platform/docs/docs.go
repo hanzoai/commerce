@@ -14,6 +14,10 @@ func API(c *gin.Context) {
 	template.Render(c, "docs/api.html")
 }
 
+func Checkout(c *gin.Context) {
+	template.Render(c, "docs/checkout.html")
+}
+
 func CrowdstartJS(c *gin.Context) {
 	template.Render(c, "docs/crowdstart.js.html")
 }
