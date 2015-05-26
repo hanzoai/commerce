@@ -218,13 +218,27 @@ func (o *Order) GetCoupons() error {
 			return errors.New("Invalid coupon code")
 		}
 
+		if c.ProductId != "" {
+			hasProduct := false
+			for _, item := range o.Items {
+				if item.ProductId != c.ProductId {
+					hasProduct = true
+					break
+				}
+			}
+
+			if !hasProduct {
+				continue
+			}
+		}
+
 		keys[i] = c.Key()
 	}
 
 	return db.GetMulti(keys, o.Coupons)
 }
 
-func (o Order) DedupeCouponCodes() {
+func (o *Order) DedupeCouponCodes() {
 	found := make(map[string]bool)
 	j := 0
 	for i, code := range o.CouponCodes {
