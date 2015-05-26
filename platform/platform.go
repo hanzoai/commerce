@@ -35,6 +35,7 @@ func init() {
 	// Docs
 	router.GET("/docs", docs.GettingStarted)
 	router.GET("/docs/api", docs.API)
+	router.GET("/docs/checkout", docs.Checkout)
 	router.GET("/docs/crowdstart.js", docs.CrowdstartJS)
 	router.GET("/docs/salesforce", docs.Salesforce)
 
