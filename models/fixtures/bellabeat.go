@@ -20,10 +20,10 @@ var Bellabeat = New("bellabeat", func(c *gin.Context) *organization.Organization
 	org.GetOrCreate("Name=", org.Name)
 
 	u := user.New(db)
-	u.Email = "bellabeat@verus.io"
+	u.Email = "sandro@bellabeat.com"
 	u.GetOrCreate("Email=", u.Email)
-	u.FirstName = "Michael"
-	u.LastName = "Walker"
+	u.FirstName = "Sandro"
+	u.LastName = "Mur"
 	u.Organizations = []string{org.Id()}
 	u.PasswordHash, _ = password.Hash("bellabeatpassword!")
 	u.Put()
