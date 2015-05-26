@@ -8,10 +8,14 @@ import (
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/fixtures"
+	"crowdstart.com/models/lineitem"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"
+	"crowdstart.com/models/product"
+	"crowdstart.com/models/referralinstance"
 	"crowdstart.com/models/store"
+	"crowdstart.com/models/transaction"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/models/user"
 	"crowdstart.com/test/api/payment/requests"
@@ -40,8 +44,11 @@ var (
 	accessToken string
 	db          *datastore.Datastore
 	org         *organization.Organization
+	prod        *product.Product
 	stor        *store.Store
 	sc          *stripe.Client
+	u           *user.User
+	refIn       *referralinstance.ReferralInstance
 )
 
 // Setup appengine context
@@ -52,9 +59,10 @@ var _ = BeforeSuite(func() {
 
 	// Mock gin context that we can use with fixtures
 	c := gincontext.New(ctx)
-	fixtures.User(c)
+	u = fixtures.User(c).(*user.User)
 	org = fixtures.Organization(c).(*organization.Organization)
-	fixtures.Product(c)
+	refIn = fixtures.ReferralInstance(c).(*referralinstance.ReferralInstance)
+	prod = fixtures.Product(c).(*product.Product)
 	fixtures.Coupon(c)
 	fixtures.Variant(c)
 	stor = fixtures.Store(c).(*store.Store)
@@ -552,6 +560,50 @@ var _ = Describe("payment", func() {
 			w := client.PostRawJSON("/order/BADID/charge", "")
 			Expect(w.Code).To(Equal(404))
 			log.Debug("JSON %v", w.Body)
+		})
+	})
+
+	Context("Charge Order With Referral", func() {
+		It("Should charge existing order with referral successfully", func() {
+			ord1 := order.New(db)
+			ord1.UserId = u.Id()
+			ord1.Currency = currency.USD
+			ord1.ReferralInstanceId = refIn.Id()
+			ord1.Items = []lineitem.LineItem{
+				lineitem.LineItem{
+					ProductId: prod.Id(),
+					Quantity:  1,
+				},
+			}
+			err := ord1.Put()
+			Expect(err).ToNot(HaveOccurred())
+
+			w := client.PostRawJSON("/order/"+ord1.Id()+"/charge", requests.ValidUserPaymentOnly)
+			Expect(w.Code).To(Equal(200))
+			log.Debug("JSON %v", w.Body)
+
+			refIn1 := referralinstance.New(db)
+			refIn1.MustGet(refIn.Id())
+			Expect(len(refIn.ReferredOrderIds)).To(Equal(0))
+			Expect(len(refIn.TransactionIds)).To(Equal(0))
+
+			Expect(len(refIn1.ReferredOrderIds)).To(Equal(1))
+			Expect(len(refIn1.TransactionIds)).To(Equal(1))
+
+			trans := transaction.New(db)
+			err = trans.GetById(refIn1.TransactionIds[0])
+			Expect(err).ToNot(HaveOccurred())
+			Expect(trans.Currency).To(Equal(refIn.Referral.Actions[0].Currency))
+			Expect(trans.Amount).To(Equal(refIn.Referral.Actions[0].Amount))
+
+			ord2 := order.New(db)
+			err = json.DecodeBuffer(w.Body, &ord2)
+			Expect(err).ToNot(HaveOccurred())
+
+			pay := payment.New(db)
+			pay.Get(ord2.PaymentIds[0])
+
+			stripeVerifyCharge(pay)
 		})
 	})
 
