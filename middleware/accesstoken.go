@@ -58,7 +58,7 @@ func ParseToken(c *gin.Context) {
 // Require login to view route
 func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 	// Any permissions acceptable by default (i.e., only valid token required)
-	permissions := permission.Any
+	permissions := permission.All
 
 	// Any arguments passed will be used as new permissions
 	if len(masks) > 0 {
