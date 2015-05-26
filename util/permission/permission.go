@@ -9,7 +9,7 @@ import (
 // 2. Clients using API on their server (via secret keys)
 // 3. Crowdstart (Complete access)
 const (
-	Any  bit.Mask = ^0
+	All  bit.Mask = ^0
 	None bit.Mask = 0
 
 	Live      bit.Mask = 1 << iota // 1 << 0 which is 00000001
