@@ -15,10 +15,12 @@ var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 type ReferralInstance struct {
 	mixin.Model
 
-	Referral         *referral.Referral `json:"referral"`
-	OrderId          string             `json:"orderId"`
-	UserId           string             `json:"userId"`
-	ReferredOrderIds []string           `json:"count"`
+	Referral         referral.Referral         `json:"referral"`
+	OrderId          string                    `json:"orderId"`
+	UserId           string                    `json:"userId"`
+	ReferredOrderIds []string                  `json:"referredOrderIds"`
+	TransactionIds   []string                  `json:"transactionsIds"`
+	Transactions     []transaction.Transaction `json:"transactions,omitempty"`
 }
 
 func New(db *datastore.Datastore) *ReferralInstance {
@@ -30,6 +32,7 @@ func New(db *datastore.Datastore) *ReferralInstance {
 
 func (r ReferralInstance) Init() {
 	r.ReferredOrderIds = make([]string, 0)
+	r.TransactionIds = make([]string, 0)
 }
 
 func (r ReferralInstance) Kind() string {
@@ -54,12 +57,19 @@ func (r *ReferralInstance) Validator() *val.Validator {
 	return nil
 }
 
-func (r *ReferralInstance) ApplyBonus() *transaction.Transaction {
-	trans := r.Referral.GetBonus(len(r.ReferredOrderIds))
+func (r *ReferralInstance) ApplyBonus() (*transaction.Transaction, error) {
+	trans := transaction.New(r.Db)
+	r.Referral.GetBonus(trans, len(r.ReferredOrderIds))
 	trans.UserId = r.UserId
-	trans.Put()
+	if err := trans.Put(); err != nil {
+		return nil, err
+	}
+	r.TransactionIds = append(r.TransactionIds, trans.Id())
+	if err := r.Put(); err != nil {
+		return nil, err
+	}
 
-	return trans
+	return trans, nil
 }
 
 func Query(db *datastore.Datastore) *mixin.Query {

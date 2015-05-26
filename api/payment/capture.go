@@ -33,7 +33,9 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (
 				return nil, err
 			}
 
-			ri.ApplyBonus()
+			if _, err = ri.ApplyBonus(); err != nil {
+				return nil, err
+			}
 		}
 	}
 
