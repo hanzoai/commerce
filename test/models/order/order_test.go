@@ -5,6 +5,7 @@ import (
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/fixtures"
+	"crowdstart.com/models/lineitem"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/util/gincontext"
@@ -65,13 +66,21 @@ var _ = Describe("Order", func() {
 		Expect(ord.Total).To(Equal(currency.Cents(49500)))
 	})
 
-	// It("Should UpdateAndTally Only Applicable Coupons", func() {
-	// 	ord2 := order.New(db)
-	// 	ord2.CouponCodes = []string{"sad-coupon"}
-	// 	ord2.Items = []lineitem.LineItem{lineitem.LineItem{ProductSlug: "doge-shirt", Quantity: 1}}
-	// 	err := ord2.UpdateAndTally(nil)
-	// 	Expect(err).ToNot(HaveOccurred())
-	// 	Expect(ord2.Subtotal).To(Equal(currency.Cents(2000)))
-	// 	Expect(ord2.Total).To(Equal(currency.Cents(2000)))
-	// })
+	It("Should UpdateAndTally Only Applicable Coupons", func() {
+		ord2 := order.New(ord.Db)
+		ord2.CouponCodes = []string{"sad-coupon"}
+		ord2.Items = []lineitem.LineItem{lineitem.LineItem{ProductSlug: "doge-shirt", Quantity: 1}}
+		err := ord2.UpdateAndTally(nil)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(ord2.Subtotal).To(Equal(currency.Cents(2000)))
+		Expect(ord2.Total).To(Equal(currency.Cents(2000)))
+
+		ord2 = order.New(ord.Db)
+		ord2.CouponCodes = []string{"sad-coupon"}
+		ord2.Items = []lineitem.LineItem{lineitem.LineItem{ProductSlug: "sad-keanu-shirt", Quantity: 1}}
+		err = ord2.UpdateAndTally(nil)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(ord2.Subtotal).To(Equal(currency.Cents(2000)))
+		Expect(ord2.Total).To(Equal(currency.Cents(2000)))
+	})
 })
