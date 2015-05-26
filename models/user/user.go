@@ -1,11 +1,14 @@
 package user
 
 import (
+	"time"
+
 	aeds "appengine/datastore"
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/payment"
+	"crowdstart.com/models/types/currency"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/val"
@@ -51,6 +54,13 @@ type User struct {
 		PayPal payment.Account `json:"paypal,omitempty"`
 		Affirm payment.Account `json:"affirm,omitempty"`
 	} `json:"accounts"`
+
+	Credit struct {
+		Currency currency.Type  `json:"currency"`
+		Amount   currency.Cents `json:"amount"`
+
+		LastUpdated time.Time `json:"lastUpdated"`
+	} `json:"credit"`
 
 	Metadata  Metadata `json:"metadata" datastore:"-"`
 	Metadata_ string   `json:"-" datastore:",noindex"`
