@@ -14,7 +14,7 @@ import (
 	"crowdstart.com/util/router"
 	"crowdstart.com/util/template"
 
-	mandrill "crowdstart.io/thirdparty/mandrill/tasks"
+	mandrill "crowdstart.com/thirdparty/mandrill/tasks"
 )
 
 var orderEndpoint = config.UrlFor("api", "/order/")
