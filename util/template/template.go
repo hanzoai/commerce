@@ -54,7 +54,7 @@ func TemplateSet() *pongo2.TemplateSet {
 
 var templateSet = TemplateSet()
 
-func createContext(c *gin.Context, pairs []interface{}) pongo2.Context {
+func createContext(c *gin.Context, pairs ...interface{}) pongo2.Context {
 	// Create context from pairs
 	ctx := pongo2.Context{}
 
@@ -81,7 +81,7 @@ func Render(c *gin.Context, path string, pairs ...interface{}) (err error) {
 	}
 
 	// Create context
-	ctx := createContext(c, pairs)
+	ctx := createContext(c, pairs...)
 
 	// Render template
 	if err := template.ExecuteWriter(ctx, c.Writer); err != nil {
@@ -105,7 +105,7 @@ func RenderString(c *gin.Context, path string, pairs ...interface{}) string {
 	}
 
 	// Create context
-	ctx := createContext(c, pairs)
+	ctx := createContext(c, pairs...)
 
 	// Render template
 	out, err := template.Execute(ctx)
@@ -117,6 +117,6 @@ func RenderString(c *gin.Context, path string, pairs ...interface{}) string {
 }
 
 func RenderStringFromString(template string, pairs ...interface{}) string {
-	ctx := createContext(nil, pairs)
+	ctx := createContext(nil, pairs...)
 	return pongo2.RenderTemplateString(template, ctx)
 }
