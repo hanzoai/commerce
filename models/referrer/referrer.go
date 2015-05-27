@@ -36,7 +36,7 @@ func (r Referrer) Init() {
 }
 
 func (r Referrer) Kind() string {
-	return "referral"
+	return "referrer"
 }
 
 func (r *Referrer) Load(c <-chan aeds.Property) (err error) {
