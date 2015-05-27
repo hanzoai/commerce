@@ -109,9 +109,9 @@ type Order struct {
 
 	Adjustments []Adjustment `json:"adjustments,omitempty"`
 
-	Coupons            []coupon.Coupon `json:"coupons,omitempty"`
-	CouponCodes        []string        `json:"couponCodes,omitempty"`
-	ReferralInstanceId string          `json:"referralinstanceId,omitempty"`
+	Coupons     []coupon.Coupon `json:"coupons,omitempty"`
+	CouponCodes []string        `json:"couponCodes,omitempty"`
+	ReferrerId  string          `json:"referrerId,omitempty"`
 
 	PaymentIds []string `json:"payments"`
 
