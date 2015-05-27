@@ -152,8 +152,7 @@ func (r Rest) CheckPermissions(c *gin.Context, method string) bool {
 	tok := middleware.GetPermissions(c)
 
 	// Lookup permission
-	log.Debug("method", method)
-	permissions, ok := r.Permissions[method]
+	log.Debug("method", method, c)
 
 	// Unsupported method, need to define permissions
 	if !ok {
@@ -165,7 +164,7 @@ func (r Rest) CheckPermissions(c *gin.Context, method string) bool {
 		return true
 	}
 
-	log.Debug("permissions", permissions)
+	log.Debug("permissions", permissions, c)
 
 	// See if token matches any of the supported permissions
 	for _, perm := range permissions {
