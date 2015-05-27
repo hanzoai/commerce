@@ -3,24 +3,25 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/models/referral"
 	"crowdstart.com/models/referrer"
+	"crowdstart.com/models/types/currency"
 )
 
 var Referrer = New("referrer", func(c *gin.Context) *referrer.Referrer {
 	// Get namespaced db
 	db := getNamespaceDb(c)
 
-	ref := Referral(c).(*referral.Referral)
 	ord := Order(c)
 	u := User(c)
 
-	refIn := referrer.New(db)
-	refIn.UserId = u.Id()
-	refIn.GetOrCreate("UserId=", refIn.UserId)
-	refIn.Referral = *ref
-	refIn.OrderId = ord.Id()
-	refIn.MustPut()
+	ref := referrer.New(db)
+	ref.UserId = u.Id()
+	ref.GetOrCreate("UserId=", ref.UserId)
+	ref.Program.Triggers = []int{0}
+	ref.Program.Actions = []referrer.Action{referrer.Action{Type: referrer.StoreCredit}}
+	ref.Program.Actions[0].Credit = referrer.Credit{Currency: currency.USD, Amount: currency.Cents(1000)}
+	ref.OrderId = ord.Id()
+	ref.MustPut()
 
-	return refIn
+	return ref
 })
