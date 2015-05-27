@@ -80,16 +80,16 @@ var SendTransactional = delay.Func("send-template-email", func(ctx appengine.Con
 })
 
 // Helper that will render a template and uses it for complete email
-var Send = delay.Func("send-email", func(ctx appengine.Context, apiKey, email, name, subject, html string) {
+var Send = delay.Func("send-email", func(ctx appengine.Context, apiKey, toEmail, toName, fromEmail, fromName, subject, html string) {
 	req := mandrill.NewSendReq()
-	req.AddRecipient(email, name)
+	req.AddRecipient(toEmail, toName)
 	req.Key = apiKey
 
-	req.Message.FromEmail = config.Mandrill.FromEmail
-	req.Message.FromName = config.Mandrill.FromName
+	req.Message.FromEmail = fromEmail
+	req.Message.FromName = fromName
 	req.Message.Subject = subject
 
-	log.Debug("Sending email to %s", email, ctx)
+	log.Debug("Sending email to %s, %v", toEmail, req, ctx)
 
 	// Render body
 	req.Message.Html = html
