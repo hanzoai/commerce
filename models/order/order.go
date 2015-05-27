@@ -238,7 +238,7 @@ func (o *Order) DedupeCouponCodes() {
 }
 
 // Check if there is a discount
-func (o Order) HasDiscount() {
+func (o Order) HasDiscount() bool {
 	if o.Discount != currency.Cents(0) {
 		return true
 	}
