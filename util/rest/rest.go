@@ -39,6 +39,7 @@ type Rest struct {
 	Kind             string
 	ParamId          string
 	Prefix           string
+	Permissions      Permissions
 	Get              gin.HandlerFunc
 	List             gin.HandlerFunc
 	Create           gin.HandlerFunc
@@ -126,6 +127,11 @@ func (r Rest) Route(router router.Router, mw ...gin.HandlerFunc) {
 		mw = append(mw, Namespaced)
 	}
 
+	// Setup default permissions
+	if r.Permissions == nil {
+		r.Permissions = DefaultPermissions[r.Kind]
+	}
+
 	// Add default routes
 	for _, route := range r.defaultRoutes() {
 		// log.Debug("%-7s %v", route.method, prefix+route.url)
@@ -138,6 +144,33 @@ func (r Rest) Route(router router.Router, mw ...gin.HandlerFunc) {
 			group.Handle(route.method, route.url, route.handlers)
 		}
 	}
+}
+
+func (r Rest) CheckPermissions(c *gin.Context, method, kind string) bool {
+	// Get permissions of current token
+	tok := middleware.GetPermissions(c)
+
+	// Lookup permission
+	permissions, ok := r.Permissions[method]
+
+	// Unsupported method, need to define permissions
+	if !ok {
+		msg := "Unsupported method for API access"
+		r.Fail(c, 500, msg, errors.New(msg))
+		return false
+	}
+
+	// See if token matches any of the supported permissions
+	for _, perm := range permissions {
+		if tok.Has(perm) {
+			return true
+		}
+	}
+
+	// Token lacks valid permission
+	msg := "Token doesn't support " + method + " " + r.Kind
+	r.Fail(c, 403, msg, errors.New(msg))
+	return false
 }
 
 func (r Rest) defaultRoutes() []route {
@@ -186,11 +219,6 @@ func (r Rest) defaultRoutes() []route {
 			url:      "",
 			handlers: []gin.HandlerFunc{r.List},
 		},
-		// route{
-		// 	method:   "GET",
-		// 	url:      "/",
-		// 	handlers: []gin.HandlerFunc{r.List},
-		// },
 		route{
 			method:   "GET",
 			url:      "/:" + r.ParamId,
@@ -263,6 +291,10 @@ func (r Rest) Fail(c *gin.Context, status int, message interface{}, err error) {
 }
 
 func (r Rest) get(c *gin.Context) {
+	if !r.CheckPermissions(c, "get", r.Kind) {
+		return
+	}
+
 	id := c.Params.ByName(r.ParamId)
 
 	entity := r.newEntity(c)
@@ -276,6 +308,10 @@ func (r Rest) get(c *gin.Context) {
 }
 
 func (r Rest) list(c *gin.Context) {
+	if !r.CheckPermissions(c, "list", r.Kind) {
+		return
+	}
+
 	entity := r.newEntity(c)
 	entities := r.newEntitySlice()
 	query := c.Request.URL.Query()
@@ -334,6 +370,10 @@ func (r Rest) list(c *gin.Context) {
 }
 
 func (r Rest) create(c *gin.Context) {
+	if !r.CheckPermissions(c, "create", r.Kind) {
+		return
+	}
+
 	entity := r.newEntity(c)
 
 	if err := json.Decode(c.Request.Body, entity); err != nil {
@@ -351,6 +391,10 @@ func (r Rest) create(c *gin.Context) {
 
 // Completely replaces an entity for given `id`.
 func (r Rest) update(c *gin.Context) {
+	if !r.CheckPermissions(c, "update", r.Kind) {
+		return
+	}
+
 	id := c.Params.ByName(r.ParamId)
 
 	entity := r.newEntity(c)
@@ -383,6 +427,10 @@ func (r Rest) update(c *gin.Context) {
 
 // Partially updates pre-existing entity by given `id`.
 func (r Rest) patch(c *gin.Context) {
+	if !r.CheckPermissions(c, "patch", r.Kind) {
+		return
+	}
+
 	id := c.Params.ByName(r.ParamId)
 
 	entity := r.newEntity(c)
@@ -406,6 +454,10 @@ func (r Rest) patch(c *gin.Context) {
 
 // Deletes an entity by given `id`
 func (r Rest) delete(c *gin.Context) {
+	if !r.CheckPermissions(c, "delete", r.Kind) {
+		return
+	}
+
 	id := c.Params.ByName(r.ParamId)
 	entity := r.newEntity(c)
 	entity.Delete(id)

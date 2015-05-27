@@ -55,7 +55,28 @@ func ParseToken(c *gin.Context) {
 	c.Set("access-token", accessToken)
 }
 
-// Require login to view route
+// Permissions required to access route
+func TokenPermits(masks ...bit.Mask) gin.HandlerFunc {
+	// Any permissions acceptable by default (i.e., only valid token required)
+	permissions := permission.All
+
+	// Any arguments passed will be used as new permissions
+	if len(masks) > 0 {
+		permissions = permission.None
+		for _, mask := range masks {
+			permissions |= mask
+		}
+	}
+
+	return func(c *gin.Context) {
+		// Verify permissions
+		if !GetPermissions(c).Has(permissions) {
+			http.Fail(c, 403, "Token doesn't support this scope", errors.New("Token doesn't support this scope"))
+		}
+	}
+}
+
+// Parses token, default permissions check
 func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 	// Any permissions acceptable by default (i.e., only valid token required)
 	permissions := permission.All
@@ -94,12 +115,13 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 
 		// Verify token signature
 		if !tok.Verify(org.SecretKey) {
-			http.Fail(c, 403, "Unable to verify token.", err)
+			http.Fail(c, 403, "Unable to verify token.", errors.New("Unable to verify token"))
+			return
 		}
 
 		// Verify permissions
 		if !tok.HasPermission(permissions) {
-			http.Fail(c, 403, "Token doesn't support this scope", err)
+			http.Fail(c, 403, "Token doesn't support this scope", errors.New("Token doesn't support this scope"))
 		}
 
 		// Whether or not we can make live calls
