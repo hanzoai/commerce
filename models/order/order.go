@@ -376,71 +376,13 @@ func (o Order) ItemsJSON() string {
 	return json.Encode(o.Items)
 }
 
-// var variantsMap map[string]Variant
-// var salesforceVariantsMap map[string]Variant
-// var productsMap map[string]Product
+func (o Order) IntId() int {
+	return int(o.Key().IntID())
+}
 
-// func (o Order) EstimatedDeliveryHTML() string {
-// 	return "<div>" + strings.Replace(o.EstimatedDelivery, ",", "</div><div>", -1) + "</div>"
-// }
-
-// func (o Order) DisputedCharges(c *gin.Context) (disputedCharges []Charge) {
-// 	for _, charge := range o.Charges {
-// 		if charge.Disputed {
-// 			disputedCharges = append(disputedCharges, charge)
-// 		}
-// 	}
-// 	return disputedCharges
-// }
-
-// func (o *Order) LoadVariantsProducts(c interface{}) {
-// 	if variantsMap == nil || productsMap == nil || salesforceVariantsMap == nil {
-// 		db := datastore.New(c)
-
-// 		variantsMap = make(map[string]ProductVariant)
-// 		salesforceVariantsMap = make(map[string]ProductVariant)
-// 		var variants []ProductVariant
-// 		db.Query("variant").GetAll(db.Context, &variants)
-// 		for _, variant := range variants {
-// 			variantsMap[variant.SKU] = variant
-// 			salesforceVariantsMap[variant.SecondarySalesforceId_] = variant
-// 		}
-
-// 		productsMap = make(map[string]Product)
-// 		var products []Product
-// 		db.Query("product").GetAll(db.Context, &products)
-// 		for _, product := range products {
-// 			productsMap[product.Slug] = product
-// 		}
-// 	}
-
-// 	for i, item := range o.Items {
-// 		// We might need to derive Slug_ from Sku_
-// 		if item.Slug_ == "" && item.SKU_ != "" {
-// 			for slug, _ := range productsMap {
-// 				upperSKU := strings.ToUpper(item.SKU_)
-// 				upperSlug := strings.ToUpper(slug)
-// 				if strings.HasPrefix(upperSKU, upperSlug) {
-// 					// Remember that item is a copy and not the actual object
-// 					o.Items[i].Slug_ = slug
-// 					break
-// 				}
-// 			}
-// 			log.Warn("Slug was missing on line item, guessed slug is '%v' based on SKU '%v'", o.Items[i].Slug_, item.SKU_, c)
-// 		}
-// 		o.Items[i].Product = productsMap[item.Slug_]
-
-// 		// We might need to look up using sf id
-// 		var ok bool
-// 		if o.Items[i].Variant, ok = variantsMap[item.SKU_]; !ok {
-// 			if o.Items[i].Variant, ok = salesforceVariantsMap[item.PrimarySalesforceId_]; !ok {
-// 				o.Items[i].Variant, ok = salesforceVariantsMap[item.SecondarySalesforceId_]
-// 			}
-// 		}
-
-// 		o.Items[i].VariantId = o.Items[i].VariantId
-// 	}
-// }
+func (o Order) DisplayId() string {
+	return strconv.Itoa(o.IntId())
+}
 
 func (o Order) DisplayCreatedAt() string {
 	duration := time.Since(o.CreatedAt)
@@ -476,54 +418,6 @@ func (o Order) DecimalTotal() uint64 {
 func (o Order) DecimalFee() uint64 {
 	return uint64(FloatPrice(o.Total) * 100 * 0.02)
 }
-
-// Use binding to validate that there are no errors
-// func (o Order) Validate(req *http.Request, errs binding.Errors) binding.Errors {
-// 	if len(o.Items) == 0 {
-// 		errs = append(errs, binding.Error{
-// 			FieldNames:     []string{"Items"},
-// 			Classification: "InputError",
-// 			Message:        "Order has no items.",
-// 		})
-// 	} else {
-// 		for _, v := range o.Items {
-// 			errs = v.Validate(req, errs)
-// 		}
-// 	}
-
-// 	return errs
-// }
-
-// // Repopulate order with data from database, variant options, etc., and
-// // recalculate totals.
-// func (o *Order) Populate(db *datastore.Datastore) error {
-// 	// TODO: Optimize this, multiget, use caching.
-// 	for i, item := range o.Items {
-// 		// Fetch Variant for LineItem from datastore
-// 		if err := db.GetKind("variant", item.SKU(), &item.Variant); err != nil {
-// 			return err
-// 		}
-
-// 		// Fetch Product for LineItem from datastore
-// 		if err := db.GetKind("product", item.Slug(), &item.Product); err != nil {
-// 			return err
-// 		}
-
-// 		// Set SKU so we can deserialize later
-// 		item.SKU_ = item.SKU()
-// 		item.Slug_ = item.Slug()
-
-// 		// Update item in order
-// 		o.Items[i] = item
-
-// 		// Update subtotal
-// 		o.Subtotal += item.Price()
-// 	}
-
-// 	// Update grand total
-// 	o.Total = o.Subtotal + o.Tax + o.Shipping
-// 	return nil
-// }
 
 func Query(db *datastore.Datastore) *mixin.Query {
 	return New(db).Query()
