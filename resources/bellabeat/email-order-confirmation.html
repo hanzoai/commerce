@@ -550,7 +550,7 @@
                             </td>
 
                             <td align="right" style="-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;">
-                              <strong style="color: rgb(85,85,85);">{{ order.Items[0].Quantity }}</strong>
+                              <strong style="color: rgb(85,85,85);">{{ order.Items.0.Quantity }}</strong>
                             </td>
 
                             <td align="right" style="-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt; padding-right:5px">
@@ -558,7 +558,7 @@
                             </td>
 
                             <td align="right" style="width: 80px;-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;">
-                              <strong style="color: rgb(85,85,85);">$ {{ order.Items[0].DisplayPrice() }}</strong>
+                              <strong style="color: rgb(85,85,85);">$ {{ order.Items.0.DisplayPrice() }}</strong>
                             </td>
                           </tr>
                         </tbody>
