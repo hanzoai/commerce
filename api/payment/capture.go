@@ -10,6 +10,7 @@ import (
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/types/currency"
+	"crowdstart.com/util/log"
 )
 
 func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (*order.Order, error) {
@@ -21,20 +22,15 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (
 
 	// Referral
 	if ord.ReferrerId != "" {
-		db := datastore.New(c)
-		ri := referrer.New(db)
+		ref := referrer.New(ord.Db)
 
 		// if ReferrerId refers to non-existing token, then remove from order
-		if err = ri.GetById(ord.ReferrerId); err != nil {
+		if err = ref.GetById(ord.ReferrerId); err != nil {
 			ord.ReferrerId = ""
 		} else {
-			ri.ReferredOrderIds = append(ri.ReferredOrderIds, ord.Id())
-			if err = ri.Put(); err != nil {
-				return nil, err
-			}
-
-			if _, err = ri.ApplyBonus(); err != nil {
-				return nil, err
+			// Try to save referral, save updated referrer
+			if _, err := ref.SaveReferral(ord); err != nil {
+				log.Warn("Unable to save referral: %v", err, c)
 			}
 		}
 	}
