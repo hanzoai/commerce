@@ -9,9 +9,15 @@ import (
 type Referral struct {
 	mixin.Model
 
-	UserId     string `json:"userId"`
-	ReferrerId string `json:"referrerId"`
-	OrderId    string `json:"orderId"`
+	// User being referred
+	UserId string `json:"userId"`
+
+	// Associated order
+	OrderId string `json:"orderId"`
+
+	// Referred by
+	ReferrerUserId string `json:"referrerUserId"`
+	ReferrerId     string `json:"referrerId"`
 }
 
 func New(db *datastore.Datastore) *Referral {
