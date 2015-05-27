@@ -13,7 +13,7 @@ import (
 )
 
 func FloatPrice(price currency.Cents) float64 {
-	return math.Floor(float64(price)*100+0.5) / 1000000
+	return math.Floor(float64(price)*100+0.5) / 10000
 }
 
 func DisplayPrice(price currency.Cents) string {
