@@ -43,7 +43,7 @@ var Bellabeat = New("bellabeat", func(c *gin.Context) *organization.Organization
 	org.Email.FromName = "Bellabeat"
 	org.Email.FromEmail = "hi@bellabeat.com"
 	org.Email.OrderConfirmation.Enabled = true
-	org.Email.OrderConfirmation.Subject = "Bellabeat Leaf Order Confirmation"
+	org.Email.OrderConfirmation.Subject = "LEAF Order Confirmation"
 	org.Email.OrderConfirmation.Template = string(fs.ReadFile(config.WorkingDir + "/resources/bellabeat/email-order-confirmation.html"))
 
 	// Save org into default namespace
