@@ -8,7 +8,7 @@ import (
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"
-	"crowdstart.com/models/referralinstance"
+	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/types/currency"
 )
 
@@ -20,13 +20,13 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (
 	}
 
 	// Referral
-	if ord.ReferralInstanceId != "" {
+	if ord.ReferrerId != "" {
 		db := datastore.New(c)
-		ri := referralinstance.New(db)
+		ri := referrer.New(db)
 
-		// if ReferralInstanceId refers to non-existing token, then remove from order
-		if err = ri.GetById(ord.ReferralInstanceId); err != nil {
-			ord.ReferralInstanceId = ""
+		// if ReferrerId refers to non-existing token, then remove from order
+		if err = ri.GetById(ord.ReferrerId); err != nil {
+			ord.ReferrerId = ""
 		} else {
 			ri.ReferredOrderIds = append(ri.ReferredOrderIds, ord.Id())
 			if err = ri.Put(); err != nil {

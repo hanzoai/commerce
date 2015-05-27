@@ -1,4 +1,4 @@
-package referralinstance
+package referrer
 
 import (
 	aeds "appengine/datastore"
@@ -12,7 +12,7 @@ import (
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
-type ReferralInstance struct {
+type Referrer struct {
 	mixin.Model
 
 	Referral         referral.Referral         `json:"referral"`
@@ -23,23 +23,23 @@ type ReferralInstance struct {
 	Transactions     []transaction.Transaction `json:"transactions,omitempty"`
 }
 
-func New(db *datastore.Datastore) *ReferralInstance {
-	r := new(ReferralInstance)
+func New(db *datastore.Datastore) *Referrer {
+	r := new(Referrer)
 	r.Init()
 	r.Model = mixin.Model{Db: db, Entity: r}
 	return r
 }
 
-func (r ReferralInstance) Init() {
+func (r Referrer) Init() {
 	r.ReferredOrderIds = make([]string, 0)
 	r.TransactionIds = make([]string, 0)
 }
 
-func (r ReferralInstance) Kind() string {
-	return "referralinstance"
+func (r Referrer) Kind() string {
+	return "referral"
 }
 
-func (r *ReferralInstance) Load(c <-chan aeds.Property) (err error) {
+func (r *Referrer) Load(c <-chan aeds.Property) (err error) {
 	// Load supported properties
 	if err = IgnoreFieldMismatch(aeds.LoadStruct(r, c)); err != nil {
 		return err
@@ -48,16 +48,16 @@ func (r *ReferralInstance) Load(c <-chan aeds.Property) (err error) {
 	return err
 }
 
-func (r *ReferralInstance) Save(c chan<- aeds.Property) (err error) {
+func (r *Referrer) Save(c chan<- aeds.Property) (err error) {
 	// Save properties
 	return IgnoreFieldMismatch(aeds.SaveStruct(r, c))
 }
 
-func (r *ReferralInstance) Validator() *val.Validator {
+func (r *Referrer) Validator() *val.Validator {
 	return nil
 }
 
-func (r *ReferralInstance) ApplyBonus() (*transaction.Transaction, error) {
+func (r *Referrer) ApplyBonus() (*transaction.Transaction, error) {
 	trans := transaction.New(r.Db)
 	r.Referral.GetBonus(trans, len(r.ReferredOrderIds))
 	trans.UserId = r.UserId

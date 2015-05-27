@@ -4,10 +4,10 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.com/models/referral"
-	"crowdstart.com/models/referralinstance"
+	"crowdstart.com/models/referrer"
 )
 
-var ReferralInstance = New("referralinstance", func(c *gin.Context) *referralinstance.ReferralInstance {
+var Referrer = New("referrer", func(c *gin.Context) *referrer.Referrer {
 	// Get namespaced db
 	db := getNamespaceDb(c)
 
@@ -15,8 +15,7 @@ var ReferralInstance = New("referralinstance", func(c *gin.Context) *referralins
 	ord := Order(c)
 	u := User(c)
 
-	// ReferralInstance
-	refIn := referralinstance.New(db)
+	refIn := referrer.New(db)
 	refIn.UserId = u.Id()
 	refIn.GetOrCreate("UserId=", refIn.UserId)
 	refIn.Referral = *ref
