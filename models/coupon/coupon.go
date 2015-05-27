@@ -29,7 +29,7 @@ type Coupon struct {
 	// Coupon code (must be unique).
 	Code string `json:"code"`
 
-	CampaignId string `json:"campaignId"`
+	CampaignId string `json:"campaignId,omitempty"`
 
 	// Range in which coupon is valid
 	StartDate time.Time `json:"startDate"`
@@ -42,7 +42,7 @@ type Coupon struct {
 	Once bool `json:"once"`
 
 	// Product id for product-specific coupons.
-	ProductId string `json:"productId"`
+	ProductId string `json:"productId,omitempty"`
 
 	// Whether coupon is valid.
 	Enabled bool `json:"enabled"`
