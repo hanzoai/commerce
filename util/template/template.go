@@ -54,7 +54,7 @@ func TemplateSet() *pongo2.TemplateSet {
 
 var templateSet = TemplateSet()
 
-func createContext(c *gin.Context, pairs ...interface{}) pongo2.Context {
+func createContext(c *gin.Context, pairs []interface{}) pongo2.Context {
 	// Create context from pairs
 	ctx := pongo2.Context{}
 
