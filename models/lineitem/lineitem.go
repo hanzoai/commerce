@@ -50,6 +50,10 @@ func (li LineItem) TotalPrice() currency.Cents {
 }
 
 func (li LineItem) DisplayPrice() string {
+	return DisplayPrice(li.Price)
+}
+
+func (li LineItem) DisplayTotalPrice() string {
 	return DisplayPrice(li.TotalPrice())
 }
 
