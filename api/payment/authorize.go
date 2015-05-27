@@ -8,8 +8,10 @@ import (
 	"crowdstart.com/api/payment/stripe"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
+	"crowdstart.com/models/payment"
 	"crowdstart.com/models/store"
 	"crowdstart.com/models/types/currency"
+	"crowdstart.com/models/user"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
 )
@@ -28,11 +30,11 @@ func authorizationRequest(c *gin.Context, ord *order.Order) (*AuthorizationReq, 
 	return ar, nil
 }
 
-func authorize(c *gin.Context, org *organization.Organization, ord *order.Order) (*order.Order, error) {
+func authorize(c *gin.Context, org *organization.Organization, ord *order.Order) (*payment.Payment, *user.User, error) {
 	// Process authorization request
 	ar, err := authorizationRequest(c, ord)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Peel off order for convience
@@ -50,7 +52,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	// Update order with information from datastore, store and tally
 	if err := ord.UpdateAndTally(stor); err != nil {
 		log.Error(err, ctx)
-		return nil, errors.New("Invalid or incomplete order")
+		return nil, nil, errors.New("Invalid or incomplete order")
 	}
 
 	log.Debug("Order: %#v", ord)
@@ -58,7 +60,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	// Get user from request
 	usr, err := ar.User()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	log.Debug("User: %#v", usr)
@@ -66,7 +68,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	// Get payment from request, update order
 	pay, err := ar.Payment()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Use user as buyer
@@ -109,7 +111,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 
 	// Have stripe handle authorization
 	if err := stripe.Authorize(org, ord, usr, pay); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// If the charge is not live or test flag is set, then it is a test charge
@@ -120,5 +122,5 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	ord.MustPut()
 	pay.MustPut()
 
-	return ord, nil
+	return pay, usr, nil
 }
