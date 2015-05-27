@@ -237,6 +237,14 @@ func (o *Order) DedupeCouponCodes() {
 	o.CouponCodes = o.CouponCodes[:j]
 }
 
+// Check if there is a discount
+func (o Order) HasDiscount() {
+	if o.Discount != currency.Cents(0) {
+		return true
+	}
+	return false
+}
+
 // Update discount using coupon codes/order info.
 func (o *Order) UpdateDiscount() {
 	o.Discount = 0
