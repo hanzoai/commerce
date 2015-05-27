@@ -572,7 +572,7 @@
                             </td>
 
                             <td align="right" style="width: 80px;-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;">
-                              <strong style="color: rgb(85,85,85);">$0.50</strong>
+                              <strong style="color: rgb(85,85,85);">{{ order.DisplaySubtotal() }}</strong>
                             </td>
                           </tr>
 
@@ -581,7 +581,7 @@
                             Tax:
                             </td>
                             <td align="right" style="width: 80px;-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;">
-                              <strong style="color: rgb(85,85,85);">$0.00</strong>
+                              <strong style="color: rgb(85,85,85);">{{ order.DisplayTax() }}</strong>
                             </td>
                           </tr>
 
@@ -590,7 +590,7 @@
                               Shipping:
                             </td>
                             <td align="right" style="width: 80px;-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;">
-                              <strong style="color: rgb(85,85,85);">$0.00</strong>
+                              <strong style="color: rgb(85,85,85);">{{ order.DisplayShipping() }}</strong>
                             </td>
                           </tr>
 
@@ -599,7 +599,7 @@
                               Total:
                             </td>
                             <td align="right" style="width: 80px;padding-bottom: 50px;-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;">
-                              <strong style="color: rgb(85,85,85);">$0.50</strong>
+                              <strong style="color: rgb(85,85,85);">{{ order.DisplayTotal() }}</strong>
                             </td>
                           </tr>
                         </tbody>
@@ -612,47 +612,33 @@
                               <div>
                                 Shipping Address
                               </div>
+
                               <div>
-                                <strong style="color: rgb(85,85,85);">128 Auburn Ct</strong>
+                                <strong style="color: rgb(85,85,85);">{{ order.ShippingAddress.Line1 }}</strong>
                               </div>
+
+                              {% if order.ShippingAddress.Line2 != "" %}
                               <div>
-                                <strong style="color: rgb(85,85,85);">Ste 200</strong>
+                                <strong style="color: rgb(85,85,85);">{{ order.ShippingAddress.Line2 }}</strong>
                               </div>
+                              {% endif %}
+
                               <div>
-                                <strong style="color: rgb(85,85,85);">Los Angeles, California</strong>
+                                <strong style="color: rgb(85,85,85);">{{ order.ShippingAddress.City }}</strong>
                               </div>
+
+                              {% if order.ShippingAddress.PostalCode != "" %}
                               <div>
-                                <strong style="color: rgb(85,85,85);">91362</strong>
+                                <strong style="color: rgb(85,85,85);">{{ order.ShippingAddress.PostalCode }}</strong>
                               </div>
+                              {% endif %}
+
                               <div>
-                                <strong style="color: rgb(85,85,85);">United States</strong>
+                                <strong style="color: rgb(85,85,85);">{{ order.ShippingAddress.Country }}</strong>
                               </div>
                             </td>
 
-                            <td align="right" style="-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;text-align:left">
-                              <div>
-                                Billing Address
-                              </div>
-                              <div>
-                                <strong style="color: rgb(85,85,85);">128 Auburn Ct</strong>
-                              </div>
-                              <div>
-                                <strong style="color: rgb(85,85,85);">Ste 200</strong>
-                              </div>
-                              <div>
-                                <strong style="color: rgb(85,85,85);">Los Angeles, California</strong>
-                              </div>
-                              <div>
-                                <strong style="color: rgb(85,85,85);">91362</strong>
-                              </div>
-                              <div>
-                                <strong style="color: rgb(85,85,85);">United States</strong>
-                              </div>
-                            </td>
-                          </tr>
-
-                          <tr>
-                            <td align="left" colspan="2" style="padding-top: 25px;padding-bottom: 0px;-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;">
+                            <td align="right" style="vertical-align: top; -webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;text-align:left">
                               <div>
                                 Estimated Delivery
                               </div>
