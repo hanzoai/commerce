@@ -242,7 +242,8 @@ func (o *Order) UpdateDiscount() {
 	o.Discount = 0
 	num := len(o.CouponCodes)
 
-	log.Warn("Coupons: %v", o.Coupons, c)
+	ctx := o.Model.Db.Context
+	log.Warn("Coupons: %v", o.Coupons, ctx)
 
 	for i := 0; i < num; i++ {
 		c := &o.Coupons[i]
@@ -260,7 +261,7 @@ func (o *Order) UpdateDiscount() {
 		} else {
 			// Coupons per product
 			for _, item := range o.Items {
-				log.Warn("Coupon.ProductId: %v, Item.ProductId: %v", c.ProductId, item.ProductId, c)
+				log.Warn("Coupon.ProductId: %v, Item.ProductId: %v", c.ProductId, item.ProductId, ctx)
 				// log.Warn("%v, %v ==? %v", item.ProductName, item.ProductId, c.ProductId)
 				if item.ProductId == c.ProductId {
 					switch c.Type {
