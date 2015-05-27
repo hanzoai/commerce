@@ -594,8 +594,8 @@ var _ = Describe("payment", func() {
 			err = trans.GetById(refIn1.TransactionIds[0])
 			Expect(err).ToNot(HaveOccurred())
 			Expect(trans.UserId).To(Equal(u.Id()))
-			Expect(trans.Currency).To(Equal(refIn.Referral.Actions[0].Currency))
-			Expect(trans.Amount).To(Equal(refIn.Referral.Actions[0].Amount))
+			Expect(trans.Currency).To(Equal(refIn.Program.Actions[0].Currency))
+			Expect(trans.Amount).To(Equal(refIn.Program.Actions[0].Amount))
 
 			ord2 := order.New(db)
 			err = json.DecodeBuffer(w.Body, &ord2)
