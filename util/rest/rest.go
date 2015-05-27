@@ -13,6 +13,7 @@ import (
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/json/http"
+	"crowdstart.com/util/log"
 	"crowdstart.com/util/permission"
 	"crowdstart.com/util/router"
 	"crowdstart.com/util/structs"
@@ -155,9 +156,12 @@ func (r Rest) CheckPermissions(c *gin.Context, method, kind string) bool {
 
 	// Unsupported method, need to define permissions
 	if !ok {
-		msg := "Unsupported method for API access"
-		r.Fail(c, 500, msg, errors.New(msg))
-		return false
+		// TODO: Use more strict checks
+		// msg := "Unsupported method for API access"
+		// r.Fail(c, 500, msg, errors.New(msg))
+		// return false
+		log.Warn("Unsupported method for API access")
+		return true
 	}
 
 	// See if token matches any of the supported permissions
