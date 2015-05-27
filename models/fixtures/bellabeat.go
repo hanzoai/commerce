@@ -34,7 +34,7 @@ var Bellabeat = New("bellabeat", func(c *gin.Context) *organization.Organization
 	org.Owners = []string{u.Id()}
 	org.Website = "http://www.bellabeat.com"
 	org.SecretKey = []byte("yW83JZGLjkGJE2gMfB4i0bwEoP03yJa5")
-	org.AddDefaultTokens()
+	// org.AddDefaultTokens()
 
 	// Email configuration
 	org.Mandrill.APIKey = ""
