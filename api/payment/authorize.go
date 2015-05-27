@@ -37,7 +37,6 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 
 	// Peel off order for convience
 	ord = ar.Order
-
 	ctx := ord.Db.Context
 
 	// Check if store has been set, if so pull it out of the context

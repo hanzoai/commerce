@@ -200,6 +200,7 @@ func (o Order) Description() string {
 
 // Get line items from datastore
 func (o *Order) GetCoupons() error {
+	o.DedupeCouponCodes()
 	db := o.Model.Db
 
 	num := len(o.CouponCodes)
@@ -223,12 +224,42 @@ func (o *Order) GetCoupons() error {
 	return db.GetMulti(keys, o.Coupons)
 }
 
+func (o *Order) DedupeCouponCodes() {
+	found := make(map[string]bool)
+	j := 0
+	for i, code := range o.CouponCodes {
+		if !found[code] {
+			found[code] = true
+			o.CouponCodes[j] = o.CouponCodes[i]
+			j++
+		}
+	}
+	o.CouponCodes = o.CouponCodes[:j]
+}
+
 // Update discount using coupon codes/order info.
 func (o *Order) UpdateDiscount() {
 	o.Discount = 0
 	num := len(o.CouponCodes)
 	for i := 0; i < num; i++ {
 		c := &o.Coupons[i]
+
+		// Ignore coupons that do not apply
+		if c.ProductId != "" {
+			hasProduct := false
+			for _, item := range o.Items {
+				// log.Warn("%v, %v ==? %v", item.ProductName, item.ProductId, c.ProductId)
+				if item.ProductId == c.ProductId {
+					hasProduct = true
+					break
+				}
+			}
+
+			if !hasProduct {
+				continue
+			}
+		}
+
 		switch c.Type {
 		case coupon.Flat:
 			o.Discount = currency.Cents(int(o.Discount) + c.Amount)

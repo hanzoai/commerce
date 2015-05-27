@@ -103,6 +103,7 @@ func (li *LineItem) Entity(db *datastore.Datastore) (datastore.Key, interface{},
 func (li *LineItem) Update() {
 	if li.Product != nil {
 		li.Price = li.Product.Price
+		li.ProductId = li.Product.Id()
 		li.ProductName = li.Product.Name
 		li.ProductSlug = li.Product.Slug
 		li.Taxable = li.Product.Taxable
@@ -112,6 +113,7 @@ func (li *LineItem) Update() {
 
 	if li.Variant != nil {
 		li.Price = li.Variant.Price
+		li.VariantId = li.Variant.Id()
 		li.VariantName = li.Variant.Name
 		li.VariantSKU = li.Variant.SKU
 		li.Taxable = li.Variant.Taxable

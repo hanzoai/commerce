@@ -8,6 +8,7 @@ import (
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/payment"
+	"crowdstart.com/models/transaction"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
@@ -90,12 +91,30 @@ func (u *User) Load(c <-chan aeds.Property) (err error) {
 		return err
 	}
 
+	// Update balance when queried out
+	now := time.Now()
+	var transactions []transaction.Transaction
+	if _, err = transaction.Query(u.Db).Filter("CreatedAt >=", u.Credit.LastUpdated).GetAll(&transactions); err != nil {
+		return
+	}
+
+	for _, trans := range transactions {
+		switch trans.Type {
+		case transaction.Deposit:
+			u.Credit.Amount += trans.Amount
+		case transaction.Withdraw:
+			u.Credit.Amount -= trans.Amount
+		}
+	}
+
+	u.Credit.LastUpdated = now
+
 	// Deserialize from datastore
 	if len(u.Metadata_) > 0 {
 		err = json.DecodeBytes([]byte(u.Metadata_), &u.Metadata)
 	}
 
-	return err
+	return
 }
 
 func (u *User) Save(c chan<- aeds.Property) (err error) {
