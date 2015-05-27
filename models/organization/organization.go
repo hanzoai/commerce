@@ -40,6 +40,21 @@ type Organization struct {
 	Country string `json:"country"`
 	TaxId   string `json:"-"`
 
+	// Email configuration
+	Email struct {
+		Enabled   bool   `json:"enabled"`
+		FromName  string `json:"fromName"`
+		FromEmail string `json:"fromEmail"`
+
+		// Per-email configuration
+		OrderConfirmation struct {
+			Enabled   bool   `json:"enabled"`
+			FromName  string `json:"fromName"`
+			FromEmail string `json:"fromEmail"`
+			Template  string `json:"template" datastore:",noindex"`
+		} `json:"orderConfirmation"`
+	} `json:"email"`
+
 	Plan struct {
 		PlanId    string
 		StartDate time.Time
@@ -66,6 +81,10 @@ type Organization struct {
 		// Save entire live and test tokens
 		Live connect.Token
 		Test connect.Token
+	} `json:"-"`
+
+	Mandrill struct {
+		APIKey string
 	} `json:"-"`
 
 	GoogleAnalytics string `json:"googleAnalytics"`
