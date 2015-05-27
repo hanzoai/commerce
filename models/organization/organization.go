@@ -121,9 +121,9 @@ func (o *Organization) AddDefaultTokens() {
 	o.RemoveToken("test-secret-key")
 	o.RemoveToken("test-published-key")
 	o.AddToken("live-secret-key", permission.Admin|permission.Live)
-	o.AddToken("live-published-key", permission.Published|permission.Live)
+	o.AddToken("live-published-key", permission.Published|permission.Live|permission.ReadCoupon|permission.ReadProduct|permission.WriteReferrer)
 	o.AddToken("test-secret-key", permission.Admin|permission.Test)
-	o.AddToken("test-published-key", permission.Published|permission.Test)
+	o.AddToken("test-published-key", permission.Published|permission.Test|permission.ReadCoupon|permission.ReadProduct|permission.WriteReferrer)
 }
 
 func (o Organization) IsAdmin(user *user.User) bool {
