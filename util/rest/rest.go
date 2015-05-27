@@ -160,7 +160,7 @@ func (r Rest) CheckPermissions(c *gin.Context, method string) bool {
 		// msg := "Unsupported method for API access"
 		// r.Fail(c, 500, msg, errors.New(msg))
 		// return false
-		log.Warn("Unsupported method for API access")
+		log.Warn("Unsupported method for API access", c)
 		return true
 	}
 
@@ -299,6 +299,7 @@ func (r Rest) Fail(c *gin.Context, status int, message interface{}, err error) {
 }
 
 func (r Rest) get(c *gin.Context) {
+	log.Warn("get %v", r.Kind, c)
 	if !r.CheckPermissions(c, "get") {
 		return
 	}
@@ -316,6 +317,7 @@ func (r Rest) get(c *gin.Context) {
 }
 
 func (r Rest) list(c *gin.Context) {
+	log.Warn("list %v", r.Kind, c)
 	if !r.CheckPermissions(c, "list") {
 		return
 	}
