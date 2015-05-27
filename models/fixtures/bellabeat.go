@@ -32,7 +32,7 @@ var Bellabeat = New("bellabeat", func(c *gin.Context) *organization.Organization
 
 	u2 := user.New(db)
 	u2.Email = "marko@bellabeat.com"
-	u2.GetOrCreate("Email=", u.Email)
+	u2.GetOrCreate("Email=", u2.Email)
 	u2.FirstName = "Marko"
 	u2.LastName = "Bozic"
 	u2.Organizations = []string{org.Id()}
