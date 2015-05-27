@@ -266,7 +266,7 @@ func (o *Order) UpdateDiscount() {
 				if item.ProductId == c.ProductId {
 					switch c.Type {
 					case coupon.Flat:
-						o.Discount = currency.Cents(int(o.Discount) + c.Amount)
+						o.Discount = currency.Cents(int(o.Discount) + (item.Quantity * c.Amount))
 					case coupon.Percent:
 						o.Discount = currency.Cents(int(o.Discount) + (int(item.TotalPrice()) * c.Amount))
 					}
