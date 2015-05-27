@@ -584,10 +584,10 @@ var _ = Describe("payment", func() {
 
 			refIn1 := referrer.New(db)
 			refIn1.MustGet(refIn.Id())
-			Expect(len(refIn.ReferredOrderIds)).To(Equal(0))
+			Expect(len(refIn.ReferralIds)).To(Equal(0))
 			Expect(len(refIn.TransactionIds)).To(Equal(0))
 
-			Expect(len(refIn1.ReferredOrderIds)).To(Equal(1))
+			Expect(len(refIn1.ReferralIds)).To(Equal(1))
 			Expect(len(refIn1.TransactionIds)).To(Equal(1))
 
 			trans := transaction.New(db)
