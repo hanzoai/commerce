@@ -1,18 +1,37 @@
 package payment
 
 import (
+	"github.com/gin-gonic/gin"
+
 	"crowdstart.com/config"
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
+	"crowdstart.com/models/user"
 	"crowdstart.com/util/json/http"
 	"crowdstart.com/util/permission"
 	"crowdstart.com/util/router"
-	"github.com/gin-gonic/gin"
+	"crowdstart.com/util/template"
+
+	mandrill "crowdstart.io/thirdparty/mandrill/tasks"
 )
 
 var orderEndpoint = config.UrlFor("api", "/order/")
+
+func sendOrderConfirmationEmail(c *gin.Context, org *organization.Organization, ord *order.Order, usr *user.User) {
+	if !org.Email.Enabled || !org.Email.OrderConfirmation.Enabled || org.Mandrill.APIKey == "" {
+		return
+	}
+
+	html := template.RenderStringFromString(org.Email.OrderConfirmation.Template,
+		"order", ord,
+		"orderId", ord.Id(),
+		"user", usr)
+
+	ctx := middleware.GetAppEngine(c)
+	mandrill.Send.Call(ctx, org.Mandrill.APIKey, usr.Email, usr.Name(), org.Email.OrderConfirmation.Subject, html)
+}
 
 func getOrganizationAndOrder(c *gin.Context) (*organization.Organization, *order.Order) {
 	// Get organization for this user
@@ -42,7 +61,7 @@ func Authorize(c *gin.Context) {
 		return
 	}
 
-	if _, err := authorize(c, org, ord); err != nil {
+	if _, _, err := authorize(c, org, ord); err != nil {
 		http.Fail(c, 500, "Error during authorize", err)
 		return
 	}
@@ -77,7 +96,7 @@ func Charge(c *gin.Context) {
 	}
 
 	// Do authorization
-	ord, err := authorize(c, org, ord)
+	_, usr, err := authorize(c, org, ord)
 	if err != nil {
 		http.Fail(c, 500, "Error during authorize", err)
 		return
@@ -89,6 +108,8 @@ func Charge(c *gin.Context) {
 		http.Fail(c, 500, "Error during capture", err)
 		return
 	}
+
+	sendOrderConfirmationEmail(c, org, ord, usr)
 
 	c.Writer.Header().Add("Location", orderEndpoint+ord.Id())
 	http.Render(c, 200, ord)
