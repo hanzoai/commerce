@@ -18,7 +18,6 @@ import (
 	"crowdstart.com/models/token"
 	"crowdstart.com/models/user"
 	"crowdstart.com/models/variant"
-	"crowdstart.com/util/permission"
 	"crowdstart.com/util/rest"
 	"crowdstart.com/util/router"
 
@@ -31,7 +30,7 @@ import (
 )
 
 func init() {
-	adminRequired := middleware.TokenRequired(permission.Admin)
+	tokenRequired := middleware.TokenRequired()
 
 	api := router.New("api")
 
@@ -55,40 +54,40 @@ func init() {
 	paymentApi.Route(api)
 
 	// Models with public RESTful API
-	rest.New(collection.Collection{}).Route(api, adminRequired)
-	rest.New(coupon.Coupon{}).Route(api, adminRequired)
-	rest.New(payment.Payment{}).Route(api, adminRequired)
-	rest.New(product.Product{}).Route(api, adminRequired)
-	rest.New(referral.Referral{}).Route(api, adminRequired)
-	rest.New(referrer.Referrer{}).Route(api, adminRequired)
-	rest.New(subscriber.Subscriber{}).Route(api, adminRequired)
-	rest.New(user.User{}).Route(api, adminRequired)
-	rest.New(variant.Variant{}).Route(api, adminRequired)
+	rest.New(collection.Collection{}).Route(api, tokenRequired)
+	rest.New(coupon.Coupon{}).Route(api, tokenRequired)
+	rest.New(payment.Payment{}).Route(api, tokenRequired)
+	rest.New(product.Product{}).Route(api, tokenRequired)
+	rest.New(referral.Referral{}).Route(api, tokenRequired)
+	rest.New(referrer.Referrer{}).Route(api, tokenRequired)
+	rest.New(subscriber.Subscriber{}).Route(api, tokenRequired)
+	rest.New(user.User{}).Route(api, tokenRequired)
+	rest.New(variant.Variant{}).Route(api, tokenRequired)
 
-	orderApi.Route(api, adminRequired)
-	storeApi.Route(api, adminRequired)
-	mailinglistApi.Route(api, adminRequired)
+	orderApi.Route(api, tokenRequired)
+	storeApi.Route(api, tokenRequired)
+	mailinglistApi.Route(api, tokenRequired)
 
 	// Crowdstart APIs, using default namespace (internal use only)
 	campaign := rest.New(campaign.Campaign{})
 	campaign.DefaultNamespace = true
 	campaign.Prefix = "/c/"
-	campaign.Route(api, adminRequired)
+	campaign.Route(api, tokenRequired)
 
 	organization := rest.New(organization.Organization{})
 	organization.DefaultNamespace = true
 	organization.Prefix = "/c/"
-	organization.Route(api, adminRequired)
+	organization.Route(api, tokenRequired)
 
 	token := rest.New(token.Token{})
 	token.DefaultNamespace = true
 	token.Prefix = "/c/"
-	token.Route(api, adminRequired)
+	token.Route(api, tokenRequired)
 
 	user := rest.New(user.User{})
 	user.DefaultNamespace = true
 	user.Prefix = "/c/"
-	user.Route(api, adminRequired)
+	user.Route(api, tokenRequired)
 
 	// Namespace API
 	namespaceApi.Route(api)
