@@ -12,6 +12,8 @@ import (
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/product"
+	"crowdstart.com/models/referral"
+	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/subscriber"
 	"crowdstart.com/models/token"
 	"crowdstart.com/models/user"
@@ -53,13 +55,15 @@ func init() {
 	paymentApi.Route(api)
 
 	// Models with public RESTful API
-	rest.New(coupon.Coupon{}).Route(api, adminRequired)
 	rest.New(collection.Collection{}).Route(api, adminRequired)
-	rest.New(product.Product{}).Route(api, adminRequired)
-	rest.New(user.User{}).Route(api, adminRequired)
+	rest.New(coupon.Coupon{}).Route(api, adminRequired)
 	rest.New(payment.Payment{}).Route(api, adminRequired)
-	rest.New(variant.Variant{}).Route(api, adminRequired)
+	rest.New(product.Product{}).Route(api, adminRequired)
+	rest.New(referral.Referral{}).Route(api, adminRequired)
+	rest.New(referrer.Referrer{}).Route(api, adminRequired)
 	rest.New(subscriber.Subscriber{}).Route(api, adminRequired)
+	rest.New(user.User{}).Route(api, adminRequired)
+	rest.New(variant.Variant{}).Route(api, adminRequired)
 
 	orderApi.Route(api, adminRequired)
 	storeApi.Route(api, adminRequired)
