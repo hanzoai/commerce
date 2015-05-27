@@ -147,11 +147,12 @@ func (r Rest) Route(router router.Router, mw ...gin.HandlerFunc) {
 	}
 }
 
-func (r Rest) CheckPermissions(c *gin.Context, method, kind string) bool {
+func (r Rest) CheckPermissions(c *gin.Context, method string) bool {
 	// Get permissions of current token
 	tok := middleware.GetPermissions(c)
 
 	// Lookup permission
+	log.Debug("method", method)
 	permissions, ok := r.Permissions[method]
 
 	// Unsupported method, need to define permissions
@@ -163,6 +164,8 @@ func (r Rest) CheckPermissions(c *gin.Context, method, kind string) bool {
 		log.Warn("Unsupported method for API access")
 		return true
 	}
+
+	log.Debug("permissions", permissions)
 
 	// See if token matches any of the supported permissions
 	for _, perm := range permissions {
@@ -295,7 +298,7 @@ func (r Rest) Fail(c *gin.Context, status int, message interface{}, err error) {
 }
 
 func (r Rest) get(c *gin.Context) {
-	if !r.CheckPermissions(c, "get", r.Kind) {
+	if !r.CheckPermissions(c, "get") {
 		return
 	}
 
@@ -312,7 +315,7 @@ func (r Rest) get(c *gin.Context) {
 }
 
 func (r Rest) list(c *gin.Context) {
-	if !r.CheckPermissions(c, "list", r.Kind) {
+	if !r.CheckPermissions(c, "list") {
 		return
 	}
 
@@ -374,7 +377,7 @@ func (r Rest) list(c *gin.Context) {
 }
 
 func (r Rest) create(c *gin.Context) {
-	if !r.CheckPermissions(c, "create", r.Kind) {
+	if !r.CheckPermissions(c, "create") {
 		return
 	}
 
@@ -395,7 +398,7 @@ func (r Rest) create(c *gin.Context) {
 
 // Completely replaces an entity for given `id`.
 func (r Rest) update(c *gin.Context) {
-	if !r.CheckPermissions(c, "update", r.Kind) {
+	if !r.CheckPermissions(c, "update") {
 		return
 	}
 
@@ -431,7 +434,7 @@ func (r Rest) update(c *gin.Context) {
 
 // Partially updates pre-existing entity by given `id`.
 func (r Rest) patch(c *gin.Context) {
-	if !r.CheckPermissions(c, "patch", r.Kind) {
+	if !r.CheckPermissions(c, "patch") {
 		return
 	}
 
@@ -458,7 +461,7 @@ func (r Rest) patch(c *gin.Context) {
 
 // Deletes an entity by given `id`
 func (r Rest) delete(c *gin.Context) {
-	if !r.CheckPermissions(c, "delete", r.Kind) {
+	if !r.CheckPermissions(c, "delete") {
 		return
 	}
 

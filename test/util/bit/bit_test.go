@@ -43,4 +43,5 @@ var _ = Describe("Field", func() {
 		Expect(field.Has(B)).To(Equal(false))
 		Expect(field.Has(C)).To(Equal(true))
 	})
+
 })
