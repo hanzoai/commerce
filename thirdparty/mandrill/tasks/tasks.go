@@ -45,7 +45,7 @@ var SendTransactionalSkully = delay.Func("send-template-email", func(ctx appengi
 	log.Debug("Sending email to %s", toEmail, ctx)
 
 	// Render body
-	body := template.RenderString(templateName, args...)
+	body := template.RenderString(nil, templateName, args...)
 
 	req.AddMergeVar(mandrill.Var{"BODY", body})
 
@@ -69,12 +69,33 @@ var SendTransactional = delay.Func("send-template-email", func(ctx appengine.Con
 	log.Debug("Sending email to %s", toEmail, ctx)
 
 	// Render body
-	body := template.RenderString(templateName, args...)
+	body := template.RenderString(nil, templateName, args...)
 
 	req.AddMergeVar(mandrill.Var{"BODY", body})
 
 	// Send template
 	if err := mandrill.SendTemplate(ctx, &req); err != nil {
+		log.Error("Failed to send email: %v", err, ctx)
+	}
+})
+
+// Helper that will render a template and uses it for complete email
+var Send = delay.Func("mandrill-send-email", func(ctx appengine.Context, apiKey, email, name, subject, html string) {
+	req := mandrill.NewSendReq()
+	req.AddRecipient(email, name)
+	req.Key = apiKey
+
+	req.Message.FromEmail = config.Mandrill.FromEmail
+	req.Message.FromName = config.Mandrill.FromName
+	req.Message.Subject = subject
+
+	log.Debug("Sending email to %s", email, ctx)
+
+	// Render body
+	req.Message.Html = html
+
+	// Send template
+	if err := mandrill.Send(ctx, &req); err != nil {
 		log.Error("Failed to send email: %v", err, ctx)
 	}
 })
