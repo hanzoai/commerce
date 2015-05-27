@@ -244,29 +244,34 @@ func (o *Order) UpdateDiscount() {
 	for i := 0; i < num; i++ {
 		c := &o.Coupons[i]
 
-		// Ignore coupons that do not apply
-		if c.ProductId != "" {
-			hasProduct := false
+		if c.ProductId == "" {
+			// Coupons per product
+			switch c.Type {
+			case coupon.Flat:
+				o.Discount = currency.Cents(int(o.Discount) + c.Amount)
+			case coupon.Percent:
+				o.Discount = currency.Cents(int(o.Discount) + (int(o.Total) * c.Amount))
+			case coupon.FreeShipping:
+				o.Discount = currency.Cents(int(o.Discount) + int(o.Shipping))
+			}
+		} else {
+			// Coupons per product
 			for _, item := range o.Items {
 				// log.Warn("%v, %v ==? %v", item.ProductName, item.ProductId, c.ProductId)
 				if item.ProductId == c.ProductId {
-					hasProduct = true
-					break
+					switch c.Type {
+					case coupon.Flat:
+						o.Discount = currency.Cents(int(o.Discount) + c.Amount)
+					case coupon.Percent:
+						o.Discount = currency.Cents(int(o.Discount) + (int(item.TotalPrice()) * c.Amount))
+					}
+
+					// Break out unless required to apply to each product
+					if c.Once {
+						break
+					}
 				}
 			}
-
-			if !hasProduct {
-				continue
-			}
-		}
-
-		switch c.Type {
-		case coupon.Flat:
-			o.Discount = currency.Cents(int(o.Discount) + c.Amount)
-		case coupon.Percent:
-			o.Discount = currency.Cents(int(o.Discount) + (int(o.Total) * c.Amount))
-		case coupon.FreeShipping:
-			o.Discount = currency.Cents(int(o.Discount) + int(o.Shipping))
 		}
 	}
 }
