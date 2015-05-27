@@ -8,7 +8,7 @@ import (
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/organization"
-	"crowdstart.com/util/permission"
+	"crowdstart.com/util/bit"
 	"crowdstart.com/util/rest"
 	"crowdstart.com/util/test/ae"
 	"crowdstart.com/util/test/ginclient"
@@ -21,8 +21,15 @@ func Test(t *testing.T) {
 }
 
 var (
-	ctx         ae.Context
-	accessToken string
+	ctx  ae.Context
+	tok1 string
+	tok2 string
+)
+
+const (
+	Perm1 bit.Mask = 1 << iota // 1 << 0 which is 00000001
+	Perm2
+	Perm3
 )
 
 // Setup appengine context
@@ -32,7 +39,8 @@ var _ = BeforeSuite(func() {
 	// Setup organization so Authorization middleware works
 	db := datastore.New(ctx)
 	org := organization.New(db)
-	accessToken = org.AddToken("admin", permission.Admin)
+	tok1 = org.AddToken("tok1", Perm1)
+	tok2 = org.AddToken("tok2", Perm2|Perm3)
 	err := org.Put()
 	Expect(err).NotTo(HaveOccurred())
 })
@@ -56,8 +64,12 @@ var _ = Describe("New", func() {
 		client := ginclient.New(ctx)
 
 		// Create routes for Model
-		rest := rest.New(Model{})
-		rest.Route(client.Router, middleware.TokenRequired())
+		r := rest.New(Model{})
+		r.Permissions = rest.Permissions{
+			"get":  []bit.Mask{Perm1, Perm2 | Perm3},
+			"list": []bit.Mask{Perm1, Perm2 | Perm3},
+		}
+		r.Route(client.Router, middleware.TokenRequired())
 
 		// Should not be authorized
 		w := client.Get("/test-model")
@@ -65,7 +77,20 @@ var _ = Describe("New", func() {
 
 		// Set authorization header for subsequent requests
 		client.Setup(func(r *http.Request) {
-			r.Header.Set("Authorization", accessToken)
+			r.Header.Set("Authorization", tok1)
+		})
+
+		// Get should work ok
+		w = client.Get("/test-model")
+		Expect(w.Code).To(Equal(200))
+
+		// Should 404
+		w = client.Get("/test-model2")
+		Expect(w.Code).To(Equal(404))
+
+		// Should work with more complex token
+		client.Setup(func(r *http.Request) {
+			r.Header.Set("Authorization", tok2)
 		})
 
 		// Get should work ok
