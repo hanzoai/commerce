@@ -13,9 +13,9 @@ import (
 var demoMode = true
 var cachedConfig *Config
 
-// CWD is set to config/development due to how we split development/production
-// app.yaml files so we need to check two places for config.json based on which
-// module is trying to load it.
+// The current working dir is config/development due to how we split
+// development and production app.yaml files so we need to check two places for
+// config.json based on which module is trying to load it.
 var cwd, _ = os.Getwd()
 var configFileLocations = []string{
 	cwd + "/../../../../config.json",
@@ -89,6 +89,9 @@ type Config struct {
 			ImageUploads string
 		}
 	}
+
+	// Current working dir
+	WorkingDir string
 }
 
 // Return url to static file, module or path rooted in a module
@@ -177,6 +180,9 @@ func Get() *Config {
 		}
 	}
 
+	// Set current working dir
+	cachedConfig.WorkingDir = cwd
+
 	return cachedConfig
 }
 
@@ -188,11 +194,12 @@ var AutoLoadFixtures = config.AutoLoadFixtures
 var CookieDomain = config.CookieDomain
 var DatastoreWarn = config.DatastoreWarn
 var DemoMode = config.DemoMode
+var Facebook = config.Facebook
 var Google = config.Google
 var IsDevelopment = config.IsDevelopment
 var IsProduction = config.IsProduction
-var IsStaging = config.IsStaging
 var IsSandbox = config.IsSandbox
+var IsStaging = config.IsStaging
 var Mandrill = config.Mandrill
 var Prefixes = config.Prefixes
 var RootDir = config.RootDir
@@ -203,7 +210,7 @@ var SessionName = config.SessionName
 var SiteTitle = config.SiteTitle
 var StaticUrl = config.StaticUrl
 var Stripe = config.Stripe
-var Facebook = config.Facebook
+var WorkingDir = config.WorkingDir
 
 func UrlFor(moduleName string, args ...string) string {
 	return config.UrlFor(moduleName, args...)
