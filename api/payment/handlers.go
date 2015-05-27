@@ -26,12 +26,25 @@ func sendOrderConfirmationEmail(c *gin.Context, org *organization.Organization, 
 
 	ctx := middleware.GetAppEngine(c)
 
+	ordConf := org.Email.OrderConfirmation
+
+	// From
+	fromEmail := org.Email.FromEmail
+	fromName := org.Email.FromName
+	if ordConf.FromEmail != "" {
+		fromEmail = ordConf.FromEmail
+	}
+	if ordConf.FromName != "" {
+		fromName = ordConf.FromName
+	}
+
+	// To
 	toEmail := usr.Email
 	toName := usr.Name()
-	fromEmail := org.Email.OrderConfirmation.FromEmail
-	fromName := org.Email.OrderConfirmation.FromName
-	subject := org.Email.OrderConfirmation.Subject
-	html := template.RenderStringFromString(org.Email.OrderConfirmation.Template,
+
+	// Subject, HTML
+	subject := ordConf.Subject
+	html := template.RenderStringFromString(ordConf.Template,
 		"order", ord,
 		"orderId", ord.Id(),
 		"user", usr)
