@@ -13,7 +13,7 @@ import (
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/product"
-	"crowdstart.com/models/referralinstance"
+	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/store"
 	"crowdstart.com/models/transaction"
 	"crowdstart.com/models/types/currency"
@@ -48,7 +48,7 @@ var (
 	stor        *store.Store
 	sc          *stripe.Client
 	u           *user.User
-	refIn       *referralinstance.ReferralInstance
+	refIn       *referrer.Referrer
 )
 
 // Setup appengine context
@@ -61,7 +61,7 @@ var _ = BeforeSuite(func() {
 	c := gincontext.New(ctx)
 	u = fixtures.User(c).(*user.User)
 	org = fixtures.Organization(c).(*organization.Organization)
-	refIn = fixtures.ReferralInstance(c).(*referralinstance.ReferralInstance)
+	refIn = fixtures.Referrer(c).(*referrer.Referrer)
 	prod = fixtures.Product(c).(*product.Product)
 	fixtures.Coupon(c)
 	fixtures.Variant(c)
@@ -568,7 +568,7 @@ var _ = Describe("payment", func() {
 			ord1 := order.New(db)
 			ord1.UserId = u.Id()
 			ord1.Currency = currency.USD
-			ord1.ReferralInstanceId = refIn.Id()
+			ord1.ReferrerId = refIn.Id()
 			ord1.Items = []lineitem.LineItem{
 				lineitem.LineItem{
 					ProductId: prod.Id(),
@@ -582,7 +582,7 @@ var _ = Describe("payment", func() {
 			Expect(w.Code).To(Equal(200))
 			log.Debug("JSON %v", w.Body)
 
-			refIn1 := referralinstance.New(db)
+			refIn1 := referrer.New(db)
 			refIn1.MustGet(refIn.Id())
 			Expect(len(refIn.ReferredOrderIds)).To(Equal(0))
 			Expect(len(refIn.TransactionIds)).To(Equal(0))
