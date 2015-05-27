@@ -468,19 +468,19 @@
                           </tr>
                           <tr>
                             <td align="center" class="bodyContent" style="padding-top: 0px;-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;color: rgb(152,152,152);font-size: 16px;line-height: 150%;padding-bottom: 20px; 20px;text-align: left;">
-                              <table border="0" cellpadding="0" width="455" style="min-height:780px;color:#ffffff;background-image:url('http://storage.googleapis.com/bellabeat/email-order-confirmation/facade_without_background.png');background-repeat:no-repeat;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse ;">
+                              <table border="0" cellpadding="0" width="455" style="min-height:780px;color:#ffffff;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;mso-table-lspace:0pt;mso-table-rspace:0pt;border-collapse:collapse ;">
                               <tbody>
-                                  <tr>
+                                  <tr style="background-color: #444444">
                                     <td class="message" style="-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;padding-left: 25px;padding-right: 20px;font-size: 16px;">
                                       <p style="-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;font-size: 16px;">
                                         <br/>
                                         Hi,
                                       </p>
                                       <p style="-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;font-size: 16px;">
-                                        We can't thank you enough for taking an early interest in the LEAF, a health tracker that we truly believe is the world's smartest piece of jewelry. <br/><br/>
+                                        We can't thank you enough for taking an early interest in the LEAF, a health tracker that we truly believe is the world's smartest piece of jewelry. <br/>
                                       </p>
                                       <p style="-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;font-size: 16px;">
-                                        We made it our mission to help you discover greater health so you can thrive in every aspect of life.<br/><br/>
+                                        We made it our mission to help you discover greater health so you can thrive in every aspect of life.<br/>
                                       </p>
                                       <p style="-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;font-size: 16px;">
                                         If you have any questions about your order don't hesitate to contact us at <a href="mailto:hi@bellabeat.com?Subject=Order%20confirmation%20from%20Bellabeat" class="hi_bellabeat" target="_blank"><b style="color:white;text-decoration:none;">hi@bellabeat.com</b></a><br/><br/>
@@ -489,13 +489,13 @@
                                   </tr>
 
                                   <tr>
-                                    <td class="message" style="-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;padding-left: 25px;padding-right: 20px;font-size: 16px;">
-                                      <br/>
+                                    <td class="message" height=296 style="vertical-align: top; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;padding-left: 25px;padding-right: 20px;font-size: 16px; background-image:url('http://storage.googleapis.com/bellabeat/email-order-confirmation/facade_without_background.jpg');background-repeat:no-repeat;">
+                                      <br />
                                        The Bellabeat Team
                                     </td>
                                   </tr>
                                   <tr>
-                                    <td class="message" style="padding-bottom: 385px;-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;padding-left: 15px;padding-right: 15px;font-size: 16px;">
+                                    <td class="message" style="padding-bottom: 50px;-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;padding-left: 15px;padding-right: 15px;font-size: 16px;">
                                     </td>
                                   </tr>
                                 </tbody>
@@ -536,25 +536,21 @@
                         <tbody>
                           <tr style="border-bottom: 4px solid rgb(230,230,230)">
                             <td colspan="6" align="left" style="padding-bottom: 16px;-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;">
-                              Order #: <strong style="color: rgb(85,85,85);">2520084</strong>
+                              Order #: <strong style="color: rgb(85,85,85);">{{ order.DisplayId() }}</strong>
                             </td>
                           </tr>
 
                           <tr style="border-bottom: 1px solid rgb(230,230,230)">
                             <td style="text-transform: uppercase;padding: 19px 0;-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;">
-                              <strong style="color: rgb(85,85,85);">ar-1</strong>
+                              <strong style="color: rgb(85,85,85);">Leaf</strong>
                             </td>
 
                             <td align="right" style="-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;">
-                              Medium
+                              Silver
                             </td>
 
                             <td align="right" style="-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;">
-                              Matte Black
-                            </td>
-
-                            <td align="right" style="-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;">
-                              <strong style="color: rgb(85,85,85);">1</strong>
+                              <strong style="color: rgb(85,85,85);">{{ item.Quantity() }}</strong>
                             </td>
 
                             <td align="right" style="-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt; padding-right:5px">
@@ -562,7 +558,7 @@
                             </td>
 
                             <td align="right" style="width: 80px;-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;">
-                              <strong style="color: rgb(85,85,85);">$1,499.00</strong>
+                              <strong style="color: rgb(85,85,85);">{{ item.Price() }}</strong>
                             </td>
                           </tr>
                         </tbody>
