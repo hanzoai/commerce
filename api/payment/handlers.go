@@ -24,13 +24,19 @@ func sendOrderConfirmationEmail(c *gin.Context, org *organization.Organization, 
 		return
 	}
 
+	ctx := middleware.GetAppEngine(c)
+
+	toEmail := usr.Email
+	toName := usr.Name()
+	fromEmail := org.Email.OrderConfirmation.FromEmail
+	fromName := org.Email.OrderConfirmation.FromName
+	subject := org.Email.OrderConfirmation.Subject
 	html := template.RenderStringFromString(org.Email.OrderConfirmation.Template,
 		"order", ord,
 		"orderId", ord.Id(),
 		"user", usr)
 
-	ctx := middleware.GetAppEngine(c)
-	mandrill.Send.Call(ctx, org.Mandrill.APIKey, usr.Email, usr.Name(), org.Email.OrderConfirmation.Subject, html)
+	mandrill.Send.Call(ctx, org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, html)
 }
 
 func getOrganizationAndOrder(c *gin.Context) (*organization.Organization, *order.Order) {
