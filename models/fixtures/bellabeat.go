@@ -4,11 +4,13 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.com/auth/password"
+	"crowdstart.com/config"
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/namespace"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/user"
 
+	"crowdstart.com/util/fs"
 	"crowdstart.com/util/log"
 )
 
@@ -33,6 +35,13 @@ var Bellabeat = New("bellabeat", func(c *gin.Context) *organization.Organization
 	org.Website = "http://www.bellabeat.com"
 	org.SecretKey = []byte("yW83JZGLjkGJE2gMfB4i0bwEoP03yJa5")
 	org.AddDefaultTokens()
+
+	// Email configuration
+	org.Mandrill.APIKey = ""
+
+	org.Enabled = true
+	org.Email.OrderConfirmation.Enabled = true
+	org.Email.OrderConfirmation.Template = string(fs.ReadFile(config.WorkingDir + "/resources/bellabeat/email-order-confirmation.html"))
 
 	// Save org into default namespace
 	org.Put()
