@@ -54,6 +54,22 @@ func TemplateSet() *pongo2.TemplateSet {
 
 var templateSet = TemplateSet()
 
+func createContext(c *gin.Context, pairs ...interface{}) pongo2.Context {
+	// Create context from pairs
+	ctx := pongo2.Context{}
+
+	if c != nil {
+		// Make gin context available
+		ctx["ctx"] = c.Keys
+	}
+
+	for i := 0; i < len(pairs); i = i + 2 {
+		ctx[pairs[i].(string)] = pairs[i+1]
+	}
+
+	return ctx
+}
+
 func Render(c *gin.Context, path string, pairs ...interface{}) (err error) {
 	// All templates are expected to be in templates dir
 	templatePath := cwd + "/templates/" + path
@@ -64,15 +80,8 @@ func Render(c *gin.Context, path string, pairs ...interface{}) (err error) {
 		log.Panic("Unable to render template: %v\n\n%v", path, err)
 	}
 
-	// Create context from pairs
-	ctx := pongo2.Context{}
-
-	// Make gin context available
-	ctx["ctx"] = c.Keys
-
-	for i := 0; i < len(pairs); i = i + 2 {
-		ctx[pairs[i].(string)] = pairs[i+1]
-	}
+	// Create context
+	ctx := createContext(c, pairs)
 
 	// Render template
 	if err := template.ExecuteWriter(ctx, c.Writer); err != nil {
@@ -85,7 +94,7 @@ func Render(c *gin.Context, path string, pairs ...interface{}) (err error) {
 	return
 }
 
-func RenderString(path string, pairs ...interface{}) string {
+func RenderString(c *gin.Context, path string, pairs ...interface{}) string {
 	// All templates are expected to be in templates dir
 	templatePath := cwd + "/templates/" + path
 
@@ -95,12 +104,8 @@ func RenderString(path string, pairs ...interface{}) string {
 		log.Panic("Unable to render template: %v\n\n%v", path, err)
 	}
 
-	// Create context from pairs
-	ctx := pongo2.Context{}
-
-	for i := 0; i < len(pairs); i = i + 2 {
-		ctx[pairs[i].(string)] = pairs[i+1]
-	}
+	// Create context
+	ctx := createContext(c, pairs)
 
 	// Render template
 	out, err := template.Execute(ctx)
@@ -112,12 +117,6 @@ func RenderString(path string, pairs ...interface{}) string {
 }
 
 func RenderStringFromString(template string, pairs ...interface{}) string {
-	// Create context from pairs
-	ctx := pongo2.Context{}
-
-	for i := 0; i < len(pairs); i = i + 2 {
-		ctx[pairs[i].(string)] = pairs[i+1]
-	}
-
+	ctx := createContext(nil, pairs)
 	return pongo2.RenderTemplateString(template, ctx)
 }

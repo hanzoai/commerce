@@ -49,8 +49,9 @@ type Organization struct {
 		// Per-email configuration
 		OrderConfirmation struct {
 			Enabled   bool   `json:"enabled"`
-			FromName  string `json:"fromName"`
 			FromEmail string `json:"fromEmail"`
+			FromName  string `json:"fromName"`
+			Subject   string `json:"subject"`
 			Template  string `json:"template" datastore:",noindex"`
 		} `json:"orderConfirmation"`
 	} `json:"email"`
