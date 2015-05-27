@@ -399,6 +399,10 @@ func (o Order) DisplaySubtotal() string {
 	return DisplayPrice(o.Subtotal)
 }
 
+func (o Order) DisplayDiscount() string {
+	return DisplayPrice(o.Discount)
+}
+
 func (o Order) DisplayTax() string {
 	return DisplayPrice(o.Tax)
 }
