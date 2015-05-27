@@ -567,7 +567,6 @@
                         <tbody>
                           <tr>
                             <td align="right" style="padding: 10px 0;-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;">
-                              <strong style="color:rgb(152,152,152);float:left;"><!-- VISA ****4242 --></strong>
                               Subtotal:
                             </td>
 
@@ -575,6 +574,18 @@
                               <strong style="color: rgb(85,85,85);">$ {{ order.DisplaySubtotal() }}</strong>
                             </td>
                           </tr>
+
+                          {% if order.DisplayDiscount() != "0.00" %}
+                          <tr>
+                            <td align="right" style="padding: 10px 0;-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;">
+                              Discount:
+                            </td>
+
+                            <td align="right" style="width: 80px;-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;">
+                              <strong style="color: rgb(85,85,85);">$ -{{ order.DisplayDiscount() }}</strong>
+                            </td>
+                          </tr>
+                          {% endif %}
 
                           <tr>
                             <td align="right" style="padding-bottom: 10px;-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;">
