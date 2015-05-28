@@ -7,6 +7,7 @@ import (
 
 	"appengine"
 	aeds "appengine/datastore"
+	"appengine/search"
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/util/hashid"
@@ -23,9 +24,19 @@ type Kind interface {
 	Kind() string
 }
 
+type Searchable interface {
+	Document() Document
+}
+
+type SearchableKind interface {
+	Kind
+	Searchable
+}
+
 // A specific datastore entity, with methods inherited from this mixin
 type Entity interface {
-	Kind
+	SearchableKind
+
 	Context() appengine.Context
 	SetContext(ctx interface{})
 	SetNamespace(namespace string)
@@ -38,6 +49,7 @@ type Entity interface {
 	KeyExists(key interface{}) (datastore.Key, bool, error)
 	MustGet(args ...interface{})
 	Put() error
+	PutDocument() error
 	MustPut()
 	GetOrCreate(filterStr string, value interface{}) error
 	GetOrUpdate(filterStr string, value interface{}) error
@@ -54,7 +66,7 @@ type Entity interface {
 // any Kind that it has been embedded in.
 type Model struct {
 	Db     *datastore.Datastore `json:"-" datastore:"-"`
-	Entity Kind                 `json:"-" datastore:"-"`
+	Entity SearchableKind       `json:"-" datastore:"-"`
 	Parent datastore.Key        `json:"-" datastore:"-"`
 	Mock   bool                 `json:"-" datastore:"-"`
 
@@ -208,11 +220,34 @@ func (m *Model) Put() error {
 
 	// Put entity into datastore
 	key, err := m.Db.Put(m.Key(), m.Entity)
+	if err != nil {
+		return err
+	}
 
 	// Update key
 	m.setKey(key)
 
-	return err
+	return m.PutDocument()
+}
+
+func (m Model) PutDocument() error {
+	if doc := m.Entity.Document(); doc != nil {
+		orgName, err := hashid.GetNamespace(m.Db.Context, m.Id())
+		if err != nil {
+			return err
+		}
+
+		index, err := search.Open(orgName + "_" + m.Entity.Kind())
+		if err != nil {
+			return err
+		}
+
+		_, err = index.Put(m.Db.Context, m.Id(), doc)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Get entity from datastore

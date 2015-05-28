@@ -106,6 +106,10 @@ func (p Product) Kind() string {
 	return "product"
 }
 
+func (p Product) Document() mixin.Document {
+	return nil
+}
+
 func (p *Product) Validator() *val.Validator {
 	return val.New(p).Check("Slug").Exists().
 		Check("SKU").Exists().

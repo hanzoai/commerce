@@ -32,6 +32,10 @@ func (p Plan) Kind() string {
 	return "plan"
 }
 
+func (p Plan) Document() mixin.Document {
+	return nil
+}
+
 func (p *Plan) Validator() *val.Validator {
 	return val.New(p)
 }

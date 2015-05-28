@@ -81,6 +81,37 @@ func (u User) Kind() string {
 	return "user"
 }
 
+func (u User) Document() mixin.Document {
+	return &Document{
+		u.Id(),
+		u.Email,
+		u.Username,
+		u.FirstName,
+		u.LastName,
+
+		u.BillingAddress.Line1,
+		u.BillingAddress.Line2,
+		u.BillingAddress.City,
+		u.BillingAddress.State,
+		u.BillingAddress.Country,
+		u.BillingAddress.PostalCode,
+
+		u.ShippingAddress.Line1,
+		u.ShippingAddress.Line2,
+		u.ShippingAddress.City,
+		u.ShippingAddress.State,
+		u.ShippingAddress.Country,
+		u.ShippingAddress.PostalCode,
+
+		u.Accounts.Stripe.BalanceTransactionId,
+		u.Accounts.Stripe.CardId,
+		u.Accounts.Stripe.ChargeId,
+		u.Accounts.Stripe.CustomerId,
+		u.Accounts.Stripe.Brand,
+		u.Accounts.Stripe.LastFour,
+	}
+}
+
 func (u *User) Load(c <-chan aeds.Property) (err error) {
 	// Ensure we're initialized
 	u.Init()

@@ -38,6 +38,10 @@ func (r Referrer) Kind() string {
 	return "referrer"
 }
 
+func (r Referrer) Document() mixin.Document {
+	return nil
+}
+
 func (r *Referrer) Validator() *val.Validator {
 	return nil
 }
