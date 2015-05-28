@@ -151,6 +151,10 @@ func (o Order) Kind() string {
 	return "order"
 }
 
+func (o Order) Document() mixin.Document {
+	return nil
+}
+
 func (o *Order) Validator() *val.Validator {
 	return val.New(o)
 }

@@ -68,6 +68,10 @@ func (c Coupon) Kind() string {
 	return "coupon"
 }
 
+func (c Coupon) Document() mixin.Document {
+	return nil
+}
+
 func (c *Coupon) Validator() *val.Validator {
 	return val.New(c)
 }
