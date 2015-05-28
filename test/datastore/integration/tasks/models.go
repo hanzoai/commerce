@@ -16,6 +16,10 @@ func (m Model) Kind() string {
 	return "user"
 }
 
+func (m Model) Document() mixin.Document {
+	return nil
+}
+
 func (m *Model) Validator() *val.Validator {
 	return val.New(m)
 }
@@ -34,6 +38,10 @@ type Model2 struct {
 
 func (m Model2) Kind() string {
 	return "order"
+}
+
+func (m Model2) Document() mixin.Document {
+	return nil
 }
 
 func (m *Model2) Validator() *val.Validator {

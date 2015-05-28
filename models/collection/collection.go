@@ -69,6 +69,10 @@ func (c Collection) Kind() string {
 	return "collection"
 }
 
+func (c Collection) Document() mixin.Document {
+	return nil
+}
+
 func (c *Collection) Validator() *val.Validator {
 	return val.New(c).Check("Slug").Exists().
 		Check("Name").Exists()
