@@ -232,12 +232,7 @@ func (m *Model) Put() error {
 
 func (m Model) PutDocument() error {
 	if doc := m.Entity.Document(); doc != nil {
-		orgName, err := hashid.GetNamespace(m.Db.Context, m.Id())
-		if err != nil {
-			return err
-		}
-
-		index, err := search.Open(orgName + "_" + m.Entity.Kind())
+		index, err := search.Open(m.Entity.Kind())
 		if err != nil {
 			return err
 		}
