@@ -17,6 +17,10 @@ func (u *User) Kind() string {
 	return "user"
 }
 
+func (u *User) Document() mixin.Document {
+	return nil
+}
+
 func newUser(db *datastore.Datastore) *User {
 	u := new(User)
 	u.Model = mixin.Model{Db: db, Entity: u}

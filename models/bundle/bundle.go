@@ -65,6 +65,10 @@ func (c Bundle) Kind() string {
 	return "bundle"
 }
 
+func (c Bundle) Document() mixin.Document {
+	return nil
+}
+
 func (c *Bundle) Validator() *val.Validator {
 	return val.New(c).Check("Slug").Exists().
 		Check("Name").Exists()
