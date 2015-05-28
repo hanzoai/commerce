@@ -157,6 +157,10 @@ func (p Payment) Kind() string {
 	return "payment"
 }
 
+func (p Payment) Document() mixin.Document {
+	return nil
+}
+
 func (p *Payment) Init() {
 
 }

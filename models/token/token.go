@@ -25,6 +25,10 @@ func (t Token) Kind() string {
 	return "token"
 }
 
+func (t Token) Document() mixin.Document {
+	return nil
+}
+
 func (t *Token) Validator() *val.Validator {
 	return val.New(t)
 }

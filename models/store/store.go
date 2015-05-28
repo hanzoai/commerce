@@ -98,6 +98,10 @@ func (s Store) Kind() string {
 	return "store"
 }
 
+func (s Store) Document() mixin.Document {
+	return nil
+}
+
 func (s *Store) Init() {
 	s.ShippingRateTable = make(ShippingRateTable)
 	s.Listings = make(Listings)
