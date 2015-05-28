@@ -266,7 +266,9 @@ func (o *Order) UpdateDiscount() {
 			case coupon.Flat:
 				o.Discount = currency.Cents(int(o.Discount) + c.Amount)
 			case coupon.Percent:
-				o.Discount = currency.Cents(int(o.Discount) + (int(o.Total) * c.Amount))
+				for _, item := range o.Items {
+					o.Discount = currency.Cents(int(o.Discount) + int(math.Floor(float64(item.TotalPrice())*float64(c.Amount)*0.01)))
+				}
 			case coupon.FreeShipping:
 				o.Discount = currency.Cents(int(o.Discount) + int(o.Shipping))
 			}
@@ -280,7 +282,7 @@ func (o *Order) UpdateDiscount() {
 					case coupon.Flat:
 						o.Discount = currency.Cents(int(o.Discount) + (item.Quantity * c.Amount))
 					case coupon.Percent:
-						o.Discount = currency.Cents(int(o.Discount) + (int(item.TotalPrice()) * c.Amount))
+						o.Discount = currency.Cents(int(o.Discount) + int(math.Floor(float64(item.TotalPrice())*float64(c.Amount)*0.01)))
 					}
 
 					// Break out unless required to apply to each product
