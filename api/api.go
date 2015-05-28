@@ -26,6 +26,7 @@ import (
 	namespaceApi "crowdstart.com/api/namespace"
 	orderApi "crowdstart.com/api/order"
 	paymentApi "crowdstart.com/api/payment"
+	searchApi "crowdstart.com/api/search"
 	storeApi "crowdstart.com/api/store"
 )
 
@@ -88,6 +89,8 @@ func init() {
 	user.DefaultNamespace = true
 	user.Prefix = "/c/"
 	user.Route(api, tokenRequired)
+
+	searchApi.Route(api, tokenRequired)
 
 	// Namespace API
 	namespaceApi.Route(api)

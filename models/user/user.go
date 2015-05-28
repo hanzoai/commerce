@@ -88,6 +88,7 @@ func (u User) Document() mixin.Document {
 		u.Username,
 		u.FirstName,
 		u.LastName,
+		u.Phone,
 
 		u.BillingAddress.Line1,
 		u.BillingAddress.Line2,
