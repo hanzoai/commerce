@@ -48,6 +48,10 @@ func (s Subscriber) Kind() string {
 	return "subscriber"
 }
 
+func (s Subscriber) Document() mixin.Document {
+	return nil
+}
+
 func (s *Subscriber) Load(c <-chan aeds.Property) (err error) {
 	// Ensure we're initialized
 	s.Init()

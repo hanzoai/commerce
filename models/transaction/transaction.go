@@ -37,6 +37,10 @@ func (r Transaction) Kind() string {
 	return "transaction"
 }
 
+func (r Transaction) Document() mixin.Document {
+	return nil
+}
+
 func (t *Transaction) Load(c <-chan aeds.Property) (err error) {
 	// Load supported properties
 	if err = IgnoreFieldMismatch(aeds.LoadStruct(t, c)); err != nil {

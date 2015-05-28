@@ -1,11 +1,17 @@
 package hashid
 
 import (
+	"errors"
+
 	"crowdstart.com/config"
 	"github.com/speps/go-hashids"
+
+	"appengine"
 )
 
 var hd = hashids.NewData()
+
+var MalformedHashId = errors.New("Hash id is malformed")
 
 func init() {
 	hd.Salt = config.Secret
@@ -24,4 +30,16 @@ func Encode(numbers ...int) string {
 func Decode(hashid string) []int {
 	h := hashids.NewWithData(hd)
 	return h.Decode(hashid)
+}
+
+func GetNamespace(ctx appengine.Context, hashid string) (string, error) {
+	ids := Decode(hashid)
+	// ids should never be empty...
+	idsLen := len(ids)
+	if idsLen <= 0 {
+		return "", MalformedHashId
+	}
+
+	id := ids[idsLen-1]
+	return decodeNamespace(ctx, id), nil
 }
