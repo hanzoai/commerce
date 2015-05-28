@@ -66,6 +66,9 @@ func init() {
 	dash.GET("/keys", admin.Keys)
 	dash.POST("/keys", admin.NewKeys)
 
+	dash.GET("/users", admin.Users)
+	dash.GET("/user/:id", admin.User)
+
 	dash.GET("/orders", admin.Orders)
 	dash.GET("/order/:id", admin.Order)
 
