@@ -6,6 +6,7 @@ type Document struct {
 	Username  string
 	FirstName string
 	LastName  string
+	Phone     string
 
 	BillingAddressLine1      string
 	BillingAddressLine2      string
