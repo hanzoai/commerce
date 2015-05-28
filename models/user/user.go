@@ -107,7 +107,6 @@ func (u User) Document() mixin.Document {
 		u.Accounts.Stripe.CardId,
 		u.Accounts.Stripe.ChargeId,
 		u.Accounts.Stripe.CustomerId,
-		u.Accounts.Stripe.Brand,
 		u.Accounts.Stripe.LastFour,
 	}
 }
