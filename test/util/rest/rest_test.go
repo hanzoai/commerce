@@ -59,6 +59,10 @@ func (m Model) Kind() string {
 	return "test-model"
 }
 
+func (m Model) Document() mixin.Document {
+	return nil
+}
+
 var _ = Describe("New", func() {
 	It("Should create a new Rest object with CRUD routes", func() {
 		client := ginclient.New(ctx)
