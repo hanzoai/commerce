@@ -25,7 +25,6 @@ type Document struct {
 	StripeCardId               string
 	StripeChargeId             string
 	StripeCustomerId           string
-	StripeBrand                string
 	StripeLastFour             string
 }
 
