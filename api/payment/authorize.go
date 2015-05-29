@@ -2,6 +2,7 @@ package payment
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -25,6 +26,15 @@ func authorizationRequest(c *gin.Context, ord *order.Order) (*AuthorizationReq, 
 	if err := json.Decode(c.Request.Body, &ar); err != nil {
 		log.Error("Failed to decode request body: %v\n%v", c.Request.Body, err, c)
 		return nil, FailedToDecodeRequestBody
+	}
+
+	// This is kind of terrible to do here but oh well...
+	if ar.Order.ShippingAddress.Empty() {
+		ar.Order.ShippingAddress = ar.User_.ShippingAddress
+	}
+
+	if ar.Order.BillingAddress.Empty() {
+		ar.Order.BillingAddress = ar.User_.BillingAddress
 	}
 
 	return ar, nil
@@ -116,6 +126,9 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 
 	// If the charge is not live or test flag is set, then it is a test charge
 	ord.Test = pay.Test || !pay.Live
+
+	ord.BillingAddress.Country = strings.ToUpper(ord.BillingAddress.Country)
+	ord.ShippingAddress.Country = strings.ToUpper(ord.ShippingAddress.Country)
 
 	// Save user, order, payment
 	usr.MustPut()
