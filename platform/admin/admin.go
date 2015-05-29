@@ -2,6 +2,10 @@ package admin
 
 import (
 	"strings"
+	"time"
+
+	"appengine/memcache"
+	"appengine/search"
 
 	"github.com/gin-gonic/gin"
 
@@ -13,6 +17,7 @@ import (
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/product"
+	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/store"
 	"crowdstart.com/models/subscriber"
 	"crowdstart.com/models/types/currency"
@@ -36,79 +41,144 @@ type StoreData struct {
 	Sales      currency.Cents
 }
 
+type IntRef struct {
+	I int
+}
+
+type IntCurRef struct {
+	I int
+	C currency.Cents
+}
+
 // Admin Dashboard
 func Dashboard(c *gin.Context) {
 	// Update Stats
 	db := datastore.New(middleware.GetNamespace(c))
 	u := user.New(db)
 
-	userCount, err := u.Query().KeysOnly().Count()
-	if err != nil {
-		panic(err)
-	}
+	orgName := middleware.GetOrganization(c).Name
 
-	sub := subscriber.New(db)
-	subCount, err := sub.Query().KeysOnly().Count()
-	if err != nil {
-		panic(err)
-	}
+	ctx := db.Context
+	key := orgName + "-userCount"
+	ir := IntRef{}
 
-	o := order.New(db)
-	var orders []order.Order
-	_, err = o.Query().GetAll(&orders)
-	if err != nil {
-		panic(err)
-	}
-
-	log.Warn("%v", orders)
-
-	var cur currency.Type
-	storeDataMap := make(map[string]*StoreData)
-	storeDatas := make([]*StoreData, 0)
-	for _, ord := range orders {
-		if ord.Test && ord.PaymentStatus == payment.Paid {
-			continue
-		}
-
-		var storeData *StoreData
-		var ok bool
-
-		if storeData, ok = storeDataMap[ord.StoreId]; !ok {
-			storeData = &StoreData{StoreId: ord.StoreId}
-			storeDatas = append(storeDatas, storeData)
-			storeDataMap[ord.StoreId] = storeData
-		}
-		storeData.OrderCount++
-
-		for _, payId := range ord.PaymentIds {
-			pay := payment.New(db)
-			err = pay.GetById(payId)
-			if err != nil {
-				panic(err)
-			}
-			storeData.Sales += pay.AmountTransferred
-			cur = pay.CurrencyTransferred
-		}
-	}
-
-	s := store.New(db)
-	var stores []store.Store
-	_, err = s.Query().GetAll(&stores)
-	if err != nil {
-		panic(err)
-	}
-
-	for _, stor := range stores {
-		if storeData, ok := storeDataMap[stor.Id()]; ok {
-			storeData.StoreName = strings.ToUpper(stor.Name)
-		}
-	}
-
+	userCount := 0
+	subCount := 0
 	orderTotal := 0
 	salesTotal := currency.Cents(0)
-	for _, storeData := range storeDatas {
-		orderTotal += storeData.OrderCount
-		salesTotal += storeData.Sales
+
+	_, err := memcache.Gob.Get(ctx, key, &ir)
+	if err != nil {
+		userCount, err = u.Query().KeysOnly().Count()
+		if err != nil {
+			panic(err)
+		}
+
+		item := &memcache.Item{
+			Key:        key,
+			Object:     IntRef{userCount},
+			Expiration: time.Duration(time.Minute * 17),
+		}
+
+		memcache.Gob.Set(db.Context, item)
+	} else {
+		userCount = ir.I
+	}
+
+	key = orgName + "-subCount"
+
+	_, err = memcache.Gob.Get(ctx, key, &ir)
+	if err != nil {
+		sub := subscriber.New(db)
+		subCount, err = sub.Query().KeysOnly().Count()
+		if err != nil {
+			panic(err)
+		}
+
+		item := &memcache.Item{
+			Key:        key,
+			Object:     IntRef{userCount},
+			Expiration: time.Duration(time.Minute * 19),
+		}
+
+		memcache.Gob.Set(db.Context, item)
+	} else {
+		subCount = ir.I
+	}
+
+	key = orgName + "-totalCount"
+	icr := IntCurRef{}
+	storeDatas := make([]*StoreData, 0)
+	var cur currency.Type
+
+	_, err = memcache.Gob.Get(ctx, key, &icr)
+	if err != nil {
+		o := order.New(db)
+		var orders []order.Order
+		_, err = o.Query().GetAll(&orders)
+		if err != nil {
+			panic(err)
+		}
+
+		log.Warn("%v", orders)
+
+		storeDataMap := make(map[string]*StoreData)
+		for _, ord := range orders {
+			if ord.Test && ord.PaymentStatus == payment.Paid {
+				continue
+			}
+
+			var storeData *StoreData
+			var ok bool
+
+			if storeData, ok = storeDataMap[ord.StoreId]; !ok {
+				storeData = &StoreData{StoreId: ord.StoreId}
+				storeDatas = append(storeDatas, storeData)
+				storeDataMap[ord.StoreId] = storeData
+			}
+			storeData.OrderCount++
+
+			for _, payId := range ord.PaymentIds {
+				pay := payment.New(db)
+				err = pay.GetById(payId)
+				if err != nil {
+					panic(err)
+				}
+				storeData.Sales += pay.AmountTransferred
+				cur = pay.CurrencyTransferred
+			}
+		}
+
+		s := store.New(db)
+		var stores []store.Store
+		_, err = s.Query().GetAll(&stores)
+		if err != nil {
+			panic(err)
+		}
+
+		for _, stor := range stores {
+			if storeData, ok := storeDataMap[stor.Id()]; ok {
+				storeData.StoreName = strings.ToUpper(stor.Name)
+			}
+		}
+
+		orderTotal = 0
+		salesTotal = currency.Cents(0)
+		for _, storeData := range storeDatas {
+			orderTotal += storeData.OrderCount
+			salesTotal += storeData.Sales
+		}
+
+		item := &memcache.Item{
+			Key:        key,
+			Object:     IntCurRef{orderTotal, salesTotal},
+			Expiration: time.Duration(time.Minute * 23),
+		}
+
+		memcache.Gob.Set(db.Context, item)
+	} else {
+		orderTotal = icr.I
+		salesTotal = icr.C
 	}
 
 	template.Render(c, "admin/dashboard.html",
@@ -119,6 +189,40 @@ func Dashboard(c *gin.Context) {
 		"salesTotal", salesTotal,
 		"storeDatas", storeDatas,
 	)
+}
+
+func Search(c *gin.Context) {
+	q := c.Request.URL.Query().Get("q")
+
+	u := user.User{}
+	index, err := search.Open(u.Kind())
+	if err != nil {
+		return
+	}
+
+	db := datastore.New(middleware.GetNamespace(c))
+
+	users := make([]*user.User, 0)
+	for t := index.Search(db.Context, q, nil); ; {
+		var doc user.Document
+		id, err := t.Next(&doc)
+		if err == search.Done {
+			break
+		}
+		if err != nil {
+			break
+		}
+
+		u := user.New(db)
+		err = u.GetById(id)
+		if err != nil {
+			continue
+		}
+
+		users = append(users, u)
+	}
+
+	template.Render(c, "admin/search-results.html", "users", users)
 }
 
 func Products(c *gin.Context) {
@@ -207,6 +311,26 @@ func MailingList(c *gin.Context) {
 
 func MailingLists(c *gin.Context) {
 	template.Render(c, "admin/list-mailinglists.html")
+}
+
+func User(c *gin.Context) {
+	db := datastore.New(middleware.GetNamespace(c))
+
+	u := user.New(db)
+	id := c.Params.ByName("id")
+	u.MustGet(id)
+
+	var referrers []*referrer.Referrer
+	referrer.Query(db).Filter("UserId=", u.Id()).GetAll(&referrers)
+
+	var orders []*order.Order
+	order.Query(db).Filter("UserId=", u.Id()).GetAll(&orders)
+
+	template.Render(c, "admin/user.html", "user", u, "referrers", referrers, "orders", orders)
+}
+
+func Users(c *gin.Context) {
+	template.Render(c, "admin/list-users.html")
 }
 
 func Order(c *gin.Context) {

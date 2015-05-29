@@ -66,6 +66,9 @@ func init() {
 	dash.GET("/keys", admin.Keys)
 	dash.POST("/keys", admin.NewKeys)
 
+	dash.GET("/users", admin.Users)
+	dash.GET("/user/:id", admin.User)
+
 	dash.GET("/orders", admin.Orders)
 	dash.GET("/order/:id", admin.Order)
 
@@ -84,6 +87,8 @@ func init() {
 	dash.GET("/organization", admin.Organization)
 
 	dash.GET("/settings", user.Profile)
+
+	dash.GET("/search", admin.Search)
 
 	// Stripe connect
 	dash.GET("/stripe/connect", admin.StripeConnect)

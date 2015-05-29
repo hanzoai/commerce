@@ -239,6 +239,8 @@ var BuildTable = (function() {
             val = $('<a href="' + column.href + '/' + val + '">' + val + '</a>')
           } else if (render == 'upper') {
             val = val.toUpperCase();
+          } else if (render == 'lower') {
+            val = val.toLowerCase();
           } else if (render == 'bool') {
             val = val ? 'Yes' : 'No';
           } else if (render == 'snippet' && model.id){

@@ -19,6 +19,14 @@ func (a Address) Line() string {
 	return a.Line1 + " " + a.Line2
 }
 
+func (a Address) Empty() bool {
+	if a.Line1 == "" && a.Line2 == "" && a.City == "" && a.State == "" && a.PostalCode == "" && a.Country == "" {
+		return true
+	}
+
+	return false
+}
+
 func (a Address) Validate(req *http.Request, errs binding.Errors) binding.Errors {
 
 	if a.Line() == "" {
