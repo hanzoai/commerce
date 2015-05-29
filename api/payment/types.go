@@ -1,6 +1,8 @@
 package payment
 
 import (
+	"strings"
+
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/user"
@@ -23,6 +25,18 @@ func (ar *AuthorizationReq) User() (*user.User, error) {
 			return nil, UserDoesNotExist
 		}
 	}
+
+	// See if order has address if we don't.
+	if usr.ShippingAddress.Empty() {
+		usr.ShippingAddress = ar.Order.ShippingAddress
+	}
+
+	if usr.BillingAddress.Empty() {
+		usr.BillingAddress = ar.Order.BillingAddress
+	}
+
+	usr.Email = strings.ToLower(strings.TrimSpace(usr.Email))
+	usr.Username = strings.ToLower(strings.TrimSpace(usr.Username))
 
 	return usr, nil
 }
