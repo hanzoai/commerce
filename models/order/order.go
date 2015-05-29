@@ -17,6 +17,7 @@ import (
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/store"
+	"crowdstart.com/models/types/country"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
@@ -152,7 +153,24 @@ func (o Order) Kind() string {
 }
 
 func (o Order) Document() mixin.Document {
-	return nil
+	return &Document{
+		o.Id(),
+		o.UserId,
+
+		o.BillingAddress.Line1,
+		o.BillingAddress.Line2,
+		o.BillingAddress.City,
+		o.BillingAddress.State,
+		country.ByISOCodeISO3166_2[o.BillingAddress.Country].ISO3166OneEnglishShortNameReadingOrder,
+		o.BillingAddress.PostalCode,
+
+		o.ShippingAddress.Line1,
+		o.ShippingAddress.Line2,
+		o.ShippingAddress.City,
+		o.ShippingAddress.State,
+		country.ByISOCodeISO3166_2[o.ShippingAddress.Country].ISO3166OneEnglishShortNameReadingOrder,
+		o.ShippingAddress.PostalCode,
+	}
 }
 
 func (o *Order) Validator() *val.Validator {
