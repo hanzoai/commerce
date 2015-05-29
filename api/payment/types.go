@@ -26,6 +26,15 @@ func (ar *AuthorizationReq) User() (*user.User, error) {
 		}
 	}
 
+	// See if order has address if we don't.
+	if usr.ShippingAddress.Empty() {
+		usr.ShippingAddress = ar.Order.ShippingAddress
+	}
+
+	if usr.BillingAddress.Empty() {
+		usr.BillingAddress = ar.Order.BillingAddress
+	}
+
 	usr.Email = strings.TrimSpace(usr.Email)
 	usr.Email = strings.ToLower(usr.Email)
 
@@ -46,7 +55,6 @@ func (ar *AuthorizationReq) Payment() (*payment.Payment, error) {
 	// should use organization settings
 	pay.Type = payment.Stripe
 
-	// ar.Order.Load(nil)
 	ar.Order.BillingAddress.Country = strings.ToUpper(ar.Order.BillingAddress.Country)
 	ar.Order.ShippingAddress.Country = strings.ToUpper(ar.Order.ShippingAddress.Country)
 
