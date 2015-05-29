@@ -39,6 +39,24 @@ var Bellabeat = New("bellabeat", func(c *gin.Context) *organization.Organization
 	u2.PasswordHash, _ = password.Hash("bellabeatpassword!")
 	u2.Put()
 
+	u3 := user.New(db)
+	u3.Email = "morena@bellabeat.com"
+	u3.GetOrCreate("Email=", u3.Email)
+	u3.FirstName = "Morena"
+	u3.LastName = "Šimatić"
+	u3.Organizations = []string{org.Id()}
+	u3.PasswordHash, _ = password.Hash("bellabeatpassword!")
+	u3.Put()
+
+	u4 := user.New(db)
+	u4.Email = "ivana@bellabeat.com"
+	u4.GetOrCreate("Email=", u4.Email)
+	u4.FirstName = "Ivana"
+	u4.LastName = "Skegro"
+	u4.Organizations = []string{org.Id()}
+	u4.PasswordHash, _ = password.Hash("bellabeatpassword!")
+	u4.Put()
+
 	org.FullName = "bellabeat"
 	org.Owners = []string{u.Id()}
 	org.Admins = []string{u2.Id()}
