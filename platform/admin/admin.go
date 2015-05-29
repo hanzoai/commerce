@@ -41,13 +41,15 @@ type StoreData struct {
 	Sales      currency.Cents
 }
 
-type IntRef struct {
+type IRef struct {
 	I int
 }
 
-type IntCurRef struct {
-	I int
-	C currency.Cents
+type ICCSRef struct {
+	I  int
+	C  currency.Cents
+	C2 currency.Type
+	S  []*StoreData
 }
 
 // Admin Dashboard
@@ -60,7 +62,7 @@ func Dashboard(c *gin.Context) {
 
 	ctx := db.Context
 	key := orgName + "-userCount"
-	ir := IntRef{}
+	ir := IRef{}
 
 	userCount := 0
 	subCount := 0
@@ -76,7 +78,7 @@ func Dashboard(c *gin.Context) {
 
 		item := &memcache.Item{
 			Key:        key,
-			Object:     IntRef{userCount},
+			Object:     IRef{userCount},
 			Expiration: time.Duration(time.Minute * 17),
 		}
 
@@ -97,7 +99,7 @@ func Dashboard(c *gin.Context) {
 
 		item := &memcache.Item{
 			Key:        key,
-			Object:     IntRef{userCount},
+			Object:     IRef{subCount},
 			Expiration: time.Duration(time.Minute * 19),
 		}
 
@@ -107,11 +109,11 @@ func Dashboard(c *gin.Context) {
 	}
 
 	key = orgName + "-totalCount"
-	icr := IntCurRef{}
+	iccsr := ICCSRef{}
 	storeDatas := make([]*StoreData, 0)
 	var cur currency.Type
 
-	_, err = memcache.Gob.Get(ctx, key, &icr)
+	_, err = memcache.Gob.Get(ctx, key, &iccsr)
 	if err != nil {
 		o := order.New(db)
 		var orders []order.Order
@@ -144,8 +146,17 @@ func Dashboard(c *gin.Context) {
 				if err != nil {
 					panic(err)
 				}
-				storeData.Sales += pay.AmountTransferred
-				cur = pay.CurrencyTransferred
+				if pay.AmountTransferred == 0 {
+					storeData.Sales += pay.AmountTransferred
+				} else {
+					storeData.Sales += pay.Amount
+				}
+
+				if pay.CurrencyTransferred == "" {
+					cur = pay.CurrencyTransferred
+				} else {
+					cur = pay.Currency
+				}
 			}
 		}
 
@@ -171,15 +182,19 @@ func Dashboard(c *gin.Context) {
 
 		item := &memcache.Item{
 			Key:        key,
-			Object:     IntCurRef{orderTotal, salesTotal},
+			Object:     ICCSRef{orderTotal, salesTotal, cur, storeDatas},
 			Expiration: time.Duration(time.Minute * 23),
 		}
 
 		memcache.Gob.Set(db.Context, item)
 	} else {
-		orderTotal = icr.I
-		salesTotal = icr.C
+		orderTotal = iccsr.I
+		salesTotal = iccsr.C
+		cur = iccsr.C2
+		storeDatas = iccsr.S
 	}
+
+	log.Warn("%v %v %v %v %v", userCount, subCount, cur, orderTotal, salesTotal)
 
 	template.Render(c, "admin/dashboard.html",
 		"userCount", userCount,
@@ -222,7 +237,33 @@ func Search(c *gin.Context) {
 		users = append(users, u)
 	}
 
-	template.Render(c, "admin/search-results.html", "users", users)
+	o := order.Order{}
+	index, err = search.Open(o.Kind())
+	if err != nil {
+		return
+	}
+
+	orders := make([]*order.Order, 0)
+	for t := index.Search(db.Context, q, nil); ; {
+		var doc order.Document
+		id, err := t.Next(&doc)
+		if err == search.Done {
+			break
+		}
+		if err != nil {
+			break
+		}
+
+		o := order.New(db)
+		err = o.GetById(id)
+		if err != nil {
+			continue
+		}
+
+		orders = append(orders, o)
+	}
+
+	template.Render(c, "admin/search-results.html", "users", users, "orders", orders)
 }
 
 func Products(c *gin.Context) {
