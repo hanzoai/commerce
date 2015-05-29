@@ -3,6 +3,8 @@ package admin
 import (
 	"strings"
 
+	"appengine/search"
+
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.com/config"
@@ -122,6 +124,40 @@ func Dashboard(c *gin.Context) {
 	)
 }
 
+func Search(c *gin.Context) {
+	q := c.Request.URL.Query().Get("q")
+
+	u := user.User{}
+	index, err := search.Open(u.Kind())
+	if err != nil {
+		return
+	}
+
+	db := datastore.New(middleware.GetNamespace(c))
+
+	users := make([]*user.User, 0)
+	for t := index.Search(db.Context, q, nil); ; {
+		var doc user.Document
+		id, err := t.Next(&doc)
+		if err == search.Done {
+			break
+		}
+		if err != nil {
+			break
+		}
+
+		u := user.New(db)
+		err = u.GetById(id)
+		if err != nil {
+			continue
+		}
+
+		users = append(users, u)
+	}
+
+	template.Render(c, "admin/search-results.html", "users", users)
+}
+
 func Products(c *gin.Context) {
 	template.Render(c, "admin/list-products.html")
 }
@@ -220,7 +256,10 @@ func User(c *gin.Context) {
 	var referrers []*referrer.Referrer
 	referrer.Query(db).Filter("UserId=", u.Id()).GetAll(&referrers)
 
-	template.Render(c, "admin/user.html", "user", u, "referrers", referrers)
+	var orders []*order.Order
+	order.Query(db).Filter("UserId=", u.Id()).GetAll(&orders)
+
+	template.Render(c, "admin/user.html", "user", u, "referrers", referrers, "orders", orders)
 }
 
 func Users(c *gin.Context) {

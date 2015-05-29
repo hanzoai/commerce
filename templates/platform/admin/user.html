@@ -27,9 +27,16 @@
           <div id="user-shipping-address" class="block">
           </div>
           {% if referrers | length > 0 %}>
-          <h4>Referral Links</h4>
+          <h4>Referral Tokens</h4>
           <div id="user-referrers" class="block">
             <table id="user-referrer-table" class="table table-striped table-busered table-vcenter">
+            </table>
+          </div>
+          {% endif %}
+          {% if orders | length > 0 %}
+          <h4>Orders</h4>
+          <div id="user-orders" class="block">
+            <table id="user-order-table" class="table table-striped table-busered table-vcenter">
             </table>
           </div>
           {% endif %}
@@ -55,8 +62,6 @@
 <script src="{{ staticUrl }}/js/rest-forms.js"></script>
 <script>
     $(function(){
-        Util.setCurrency('{{ user.Currency }}');
-
         BuildForm($("#form-user"), [
         // Info
           {
@@ -69,7 +74,7 @@
             id: "email",
             name: "email",
             label: "Email",
-            type: "text",
+            render: 'lower',
             value: "{{ user.Email }}",
             $parent: $('#user-info'),
           },
@@ -95,6 +100,18 @@
             label: "Phone",
             type: "text",
             value: "{{ user.Phone }}",
+            $parent: $('#user-info'),
+          },
+          {
+            label: "Created On",
+            type: "static-date",
+            value: "{{ user.CreatedAt }}",
+            $parent: $('#user-info'),
+          },
+          {
+            label: "Last Updated On",
+            type: "static-date",
+            value: "{{ user.UpdatedAt }}",
             $parent: $('#user-info'),
           },
 
@@ -138,7 +155,7 @@
             value: [
             {% for country in constants.Countries %}
             {
-              selected: '{{ country.ISO3166OneAlphaTwo }}' === '{{ user.BillingAddress.Country }}' || '{{ country.ISO3166OneEnglishShortNameReadingOrder }}' === '{{ order.ShippingAddress.Country }}',
+              selected: '{{ country.ISO3166OneAlphaTwo }}' === '{{ user.BillingAddress.Country }}'.toUpperCase() || '{{ country.ISO3166OneEnglishShortNameReadingOrder }}' === '{{ order.BillingAddress.Country }}'.toUpperCase(),
               name: '{{ country.ISO3166OneEnglishShortNameReadingOrder }}',
                 id: '{{ country.ISO3166OneAlphaTwo }}',
             },
@@ -195,7 +212,7 @@
             value: [
             {% for country in constants.Countries %}
             {
-              selected: '{{ country.ISO3166OneAlphaTwo }}' === '{{ user.ShippingAddress.Country }}' || '{{ country.ISO3166OneEnglishShortNameReadingOrder }}' === '{{ order.ShippingAddress.Country }}',
+              selected: '{{ country.ISO3166OneAlphaTwo }}' === '{{ user.ShippingAddress.Country }}'.toUpperCase() || '{{ country.ISO3166OneEnglishShortNameReadingOrder }}' === '{{ order.ShippingAddress.Country }}'.toUpperCase(),
               name: '{{ country.ISO3166OneEnglishShortNameReadingOrder }}',
                 id: '{{ country.ISO3166OneAlphaTwo }}',
             },
@@ -224,7 +241,7 @@
       {
         field: 'id',
         name: 'Referrer Id',
-        href: '{{ urlFor("referrer", "/referrer") }}',
+        href: '{{ urlFor("api", "/referrer") }}',
         render: 'link',
       },
     ],
@@ -235,6 +252,61 @@
     $pagination: $('#pagination'),
     $empty: $('#empty-table'),
     data: referrersJSON,
+    checkboxes: false,
+  });
+
+  var ordersJSON = [
+    {% for order in orders %}
+        {
+            id: '{{ order.Id() }}',
+            currency: '{{ order.Currency }}',
+            total: '{{ order.Total }}',
+            status: '{{ order.Status }}',
+            createdAt: '{{ order.CreatedAt.Format("2006-01-02T15:04:05Z07:00") }}',
+            updatedAt: '{{ order.UpdatedAt.Format("2006-01-02T15:04:05Z07:00") }}',
+        },
+    {% endfor %}
+    ];
+    BuildTable($('#user-order-table'), {
+    columns: [
+      {
+        field: 'id',
+        name: 'Order Id',
+        href: '{{ urlFor("platform", "/order") }}',
+        render: 'link',
+      },
+      {
+        field: 'currency',
+        name: 'Currency',
+        render: 'upper',
+      },
+      {
+        field: 'total',
+        name: 'Total',
+        render: 'currency',
+      },
+      {
+        field: 'status',
+        name: 'Status',
+      },
+      {
+        field: 'createdAt',
+        name: 'Created At',
+        render: 'date',
+      },
+      {
+        field: 'updatedAt',
+        name: 'Last Updated',
+        render: 'ago',
+      }
+    ],
+    startPage: 1,
+    startDisplay: 10,
+    displayOptions: [5, 10, 20],
+    $display: $('#display'),
+    $pagination: $('#pagination'),
+    $empty: $('#empty-table'),
+    data: ordersJSON,
     checkboxes: false,
   });
 
