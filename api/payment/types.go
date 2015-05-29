@@ -24,6 +24,15 @@ func (ar *AuthorizationReq) User() (*user.User, error) {
 		}
 	}
 
+	// See if order has address if we don't.
+	if usr.ShippingAddress.Empty() {
+		usr.ShippingAddress = ar.Order.ShippingAddress
+	}
+
+	if usr.BillingAddress.Empty() {
+		usr.BillingAddress = ar.Order.BillingAddress
+	}
+
 	return usr, nil
 }
 
