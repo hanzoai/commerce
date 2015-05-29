@@ -322,7 +322,7 @@
       var $form = $(this);
       requestAnimationFrame(function() {
           if ($('.form-group.has-error').length === 0) {
-              api.put(function(data) {
+              api.patch(function(data) {
                 window.location.replace('{{ urlFor("platform", "user", user.Id ) }}')
               }, $form, '{{ user.Id }}')
           }
