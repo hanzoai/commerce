@@ -27,6 +27,15 @@ func authorizationRequest(c *gin.Context, ord *order.Order) (*AuthorizationReq, 
 		return nil, FailedToDecodeRequestBody
 	}
 
+	// This is kind of terrible to do here but oh well...
+	if ar.Order.ShippingAddress.Empty() {
+		ar.Order.ShippingAddress = ar.User_.ShippingAddress
+	}
+
+	if ar.Order.BillingAddress.Empty() {
+		ar.Order.BillingAddress = ar.User_.BillingAddress
+	}
+
 	return ar, nil
 }
 
