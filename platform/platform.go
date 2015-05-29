@@ -88,6 +88,8 @@ func init() {
 
 	dash.GET("/settings", user.Profile)
 
+	dash.GET("/search", admin.Search)
+
 	// Stripe connect
 	dash.GET("/stripe/connect", admin.StripeConnect)
 	dash.GET("/stripe/callback", admin.StripeCallback)
