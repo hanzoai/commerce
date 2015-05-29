@@ -2,6 +2,7 @@ package payment
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -125,6 +126,9 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 
 	// If the charge is not live or test flag is set, then it is a test charge
 	ord.Test = pay.Test || !pay.Live
+
+	ord.BillingAddress.Country = strings.ToUpper(ord.BillingAddress.Country)
+	ord.ShippingAddress.Country = strings.ToUpper(ord.ShippingAddress.Country)
 
 	// Save user, order, payment
 	usr.MustPut()

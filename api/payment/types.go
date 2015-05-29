@@ -35,11 +35,8 @@ func (ar *AuthorizationReq) User() (*user.User, error) {
 		usr.BillingAddress = ar.Order.BillingAddress
 	}
 
-	usr.Email = strings.TrimSpace(usr.Email)
-	usr.Email = strings.ToLower(usr.Email)
-
-	usr.Username = strings.TrimSpace(usr.Username)
-	usr.Username = strings.ToLower(usr.Username)
+	usr.Email = strings.ToLower(strings.TrimSpace(usr.Email))
+	usr.Username = strings.ToLower(strings.TrimSpace(usr.Username))
 
 	return usr, nil
 }
@@ -55,12 +52,8 @@ func (ar *AuthorizationReq) Payment() (*payment.Payment, error) {
 	// should use organization settings
 	pay.Type = payment.Stripe
 
-	ar.Order.BillingAddress.Country = strings.ToUpper(ar.Order.BillingAddress.Country)
-	ar.Order.ShippingAddress.Country = strings.ToUpper(ar.Order.ShippingAddress.Country)
-
 	switch pay.Type {
 	case payment.Stripe:
-		ar.Order.Save(nil)
 		return pay, nil
 	default:
 		return nil, UnsupportedPaymentType
