@@ -4,10 +4,12 @@ import (
 	"time"
 
 	aeds "appengine/datastore"
+	"appengine/search"
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/payment"
+	"crowdstart.com/models/types/country"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
@@ -84,7 +86,7 @@ func (u User) Kind() string {
 func (u User) Document() mixin.Document {
 	return &Document{
 		u.Id(),
-		u.Email,
+		search.Atom(u.Email),
 		u.Username,
 		u.FirstName,
 		u.LastName,
@@ -94,14 +96,14 @@ func (u User) Document() mixin.Document {
 		u.BillingAddress.Line2,
 		u.BillingAddress.City,
 		u.BillingAddress.State,
-		u.BillingAddress.Country,
+		country.ByISOCodeISO3166_2[u.BillingAddress.Country].ISO3166OneEnglishShortNameReadingOrder,
 		u.BillingAddress.PostalCode,
 
 		u.ShippingAddress.Line1,
 		u.ShippingAddress.Line2,
 		u.ShippingAddress.City,
 		u.ShippingAddress.State,
-		u.ShippingAddress.Country,
+		country.ByISOCodeISO3166_2[u.ShippingAddress.Country].ISO3166OneEnglishShortNameReadingOrder,
 		u.ShippingAddress.PostalCode,
 
 		u.Accounts.Stripe.BalanceTransactionId,

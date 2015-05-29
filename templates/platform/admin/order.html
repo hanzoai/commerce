@@ -266,7 +266,7 @@
             value: [
             {% for country in constants.Countries %}
             {
-              selected: '{{ country.ISO3166OneAlphaTwo }}' === '{{ order.ShippingAddress.Country }}' || '{{ country.ISO3166OneEnglishShortNameReadingOrder }}' === '{{ order.ShippingAddress.Country }}',
+              selected: '{{ country.ISO3166OneAlphaTwo }}' === '{{ order.ShippingAddress.Country }}'.toUpperCase() || '{{ country.ISO3166OneEnglishShortNameReadingOrder }}' === '{{ order.ShippingAddress.Country }}'.toUpperCase(),
               name: '{{ country.ISO3166OneEnglishShortNameReadingOrder }}',
                 id: '{{ country.ISO3166OneAlphaTwo }}',
             },
@@ -356,7 +356,7 @@
       var $form = $(this);
       requestAnimationFrame(function() {
           if ($('.form-group.has-error').length === 0) {
-              api.put(function(data) {
+              api.patch(function(data) {
                 window.location.replace('{{ urlFor("platform", "order", order.Id ) }}')
               }, $form, '{{ order.Id }}')
           }

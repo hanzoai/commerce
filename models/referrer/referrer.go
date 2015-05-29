@@ -63,7 +63,7 @@ func (r *Referrer) SaveReferral(ord *order.Order) (*referral.Referral, error) {
 	ref.UserId = ord.UserId
 	ref.ReferrerUserId = r.UserId
 	ref.OrderId = ord.Id()
-	ref.ReferrerId = ref.Id()
+	ref.ReferrerId = ord.ReferrerId
 
 	// Try to save referral
 	if err := ref.Put(); err != nil {
