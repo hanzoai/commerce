@@ -18,6 +18,10 @@ var NewRestAPI = (function() {
       post: function(handler, $form, params) {
         this.ajax('POST', handler, $form, null, params);
       },
+      // Patch request
+      patch: function(handler, $form, id, params) {
+        this.ajax('PATCH', handler, $form, id, params);
+      },
       // Put request
       put: function(handler, $form, id, params) {
         this.ajax('POST', handler, $form, id, params);
