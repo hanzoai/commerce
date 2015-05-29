@@ -1,8 +1,10 @@
 package user
 
+import "appengine/search"
+
 type Document struct {
 	Id_       string
-	Email     string
+	Email     search.Atom
 	Username  string
 	FirstName string
 	LastName  string
