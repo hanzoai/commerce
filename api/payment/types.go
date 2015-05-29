@@ -1,6 +1,8 @@
 package payment
 
 import (
+	"strings"
+
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/user"
@@ -24,6 +26,12 @@ func (ar *AuthorizationReq) User() (*user.User, error) {
 		}
 	}
 
+	usr.Email = strings.TrimSpace(usr.Email)
+	usr.Email = strings.ToLower(usr.Email)
+
+	usr.Username = strings.TrimSpace(usr.Username)
+	usr.Username = strings.ToLower(usr.Username)
+
 	return usr, nil
 }
 
@@ -38,8 +46,13 @@ func (ar *AuthorizationReq) Payment() (*payment.Payment, error) {
 	// should use organization settings
 	pay.Type = payment.Stripe
 
+	// ar.Order.Load(nil)
+	ar.Order.BillingAddress.Country = strings.ToUpper(ar.Order.BillingAddress.Country)
+	ar.Order.ShippingAddress.Country = strings.ToUpper(ar.Order.ShippingAddress.Country)
+
 	switch pay.Type {
 	case payment.Stripe:
+		ar.Order.Save(nil)
 		return pay, nil
 	default:
 		return nil, UnsupportedPaymentType
