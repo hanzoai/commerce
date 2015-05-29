@@ -3,6 +3,7 @@ package test
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	"crowdstart.com/datastore"
@@ -350,6 +351,26 @@ func OrderBadUserTest(isCharge bool, stor *store.Store) {
 
 var _ = Describe("payment", func() {
 	Context("Authorize First Time Customers", func() {
+		It("Should normalise the user information", func() {
+			path := "/order"
+			w := client.PostRawJSON(path, requests.NonNormalizedOrder)
+
+			ord := order.New(db)
+			json.DecodeBuffer(w.Body, &ord)
+
+			usr := user.New(db)
+			usr.Get(ord.UserId)
+
+			var normalize = func(s string) string {
+				return strings.ToLower(strings.TrimSpace(s))
+			}
+
+			Expect(usr.Username).To(Equal(normalize(usr.Username)))
+			Expect(usr.Email).To(Equal(normalize(usr.Email)))
+			Expect(ord.BillingAddress.Country).To(Equal(strings.ToUpper(ord.BillingAddress.Country)))
+			Expect(ord.ShippingAddress.Country).To(Equal(strings.ToUpper(ord.ShippingAddress.Country)))
+		})
+
 		It("Should save new order successfully", func() {
 			FirstTimeSuccessfulOrderTest(false, nil)
 		})
