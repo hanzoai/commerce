@@ -48,20 +48,20 @@ $(function(){
           {
             field: 'id',
             name: 'ID',
-            href: '{{ urlFor("api", "/user") }}',
             render: 'id',
           },
           {
             field: 'email',
             name: 'Email',
+            render: 'lower',
           },
           {
             field: 'firstName',
-            name: 'FirstName',
+            name: 'First Name',
           },
           {
             field: 'lastName',
-            name: 'Currency',
+            name: 'Last Name',
             render: 'upper',
           },
           {
@@ -84,6 +84,7 @@ $(function(){
         $display: $('#display'),
         $pagination: $('#pagination'),
         $empty: $('#empty-table'),
+        checkboxes: false,
       });
     })
 </script>
