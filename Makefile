@@ -261,7 +261,7 @@ deploy: assets-min docs
 	$(appcfg.py) update_indexes config/production
 	$(appcfg.py) update_dispatch config/production
 
-# EXPORT / Usage: make datastore-export kind=user
+# EXPORT / Usage: make datastore-export kind=user namespace=bellabeat
 datastore-export:
 	@mkdir -p _export/ && \
 	bulkloader.py --download \
@@ -274,6 +274,7 @@ datastore-export:
 				  --db_filename /tmp/bulkloader-$$kind.db \
 				  --log_file /tmp/bulkloader-$$kind.log \
 				  --result_db_filename /tmp/bulkloader-result-$$kind.db \
+				  --namespace $$namespace \
 				  --kind $$kind \
 				  --filename _export/$$kind-$(datastore_app_id)-$(current_date).csv && \
 	rm -rf /tmp/bulkloader-$$kind.db \
@@ -288,6 +289,7 @@ datastore-import:
 						  --http_limit 200 \
 						  --url $(datastore_admin_url) \
 						  --config_file util/bulkloader/bulkloader-import.yaml \
+				  	      --namespace $$namespace \
 						  --kind $$kind \
 						  --filename $$file \
 						  --log_file /tmp/bulkloader-upload-$$kind.log && \
@@ -297,6 +299,7 @@ datastore-import:
 datastore-config:
 	@bulkloader.py --create_config \
 				  --url=$(datastore_admin_url) \
+				  --namespace $$namespace \
 				  --filename=bulkloader.yaml
 
 # Replicate production data to localhost
