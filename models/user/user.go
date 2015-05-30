@@ -1,6 +1,7 @@
 package user
 
 import (
+	"strings"
 	"time"
 
 	aeds "appengine/datastore"
@@ -13,6 +14,7 @@ import (
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
+	"crowdstart.com/util/searchpartial"
 	"crowdstart.com/util/val"
 
 	. "crowdstart.com/models"
@@ -84,12 +86,17 @@ func (u User) Kind() string {
 }
 
 func (u User) Document() mixin.Document {
+	emailUser := strings.Split(u.Email, "@")[0]
 	return &Document{
 		u.Id(),
 		search.Atom(u.Email),
+		searchpartial.Partials(emailUser) + " " + emailUser,
 		u.Username,
+		searchpartial.Partials(u.Username),
 		u.FirstName,
+		searchpartial.Partials(u.FirstName),
 		u.LastName,
+		searchpartial.Partials(u.LastName),
 		u.Phone,
 
 		u.BillingAddress.Line1,
