@@ -115,6 +115,7 @@ var BuildForm = (function() {
         var $select = $fg.find('select').attr({
           id: inputConfig.id,
           name: inputConfig.name,
+          'data-placeholder': inputConfig.placeholder,
         });
 
         var values = inputConfig.value;
