@@ -264,6 +264,11 @@
             name: "shippingAddress.country",
             label: "Country",
             value: [
+            {
+              selected: '',
+              name: '',
+                id: '',
+            },
             {% for country in constants.Countries %}
             {
               selected: '{{ country.ISO3166OneAlphaTwo }}' === '{{ order.ShippingAddress.Country }}'.toUpperCase() || '{{ country.ISO3166OneEnglishShortNameReadingOrder }}' === '{{ order.ShippingAddress.Country }}'.toUpperCase(),
@@ -272,6 +277,7 @@
             },
             {% endfor %}
             ],
+            placeholder: 'Choose a country...',
             type: 'select',
             $parent: $('#order-shipping'),
             rules: [
