@@ -3,12 +3,16 @@ package user
 import "appengine/search"
 
 type Document struct {
-	Id_       string
-	Email     search.Atom
-	Username  string
-	FirstName string
-	LastName  string
-	Phone     string
+	Id_               string
+	Email             search.Atom
+	EmailPartials     string
+	Username          string
+	UsernamePartials  string
+	FirstName         string
+	FirstNamePartials string
+	LastName          string
+	LastNamePartials  string
+	Phone             string
 
 	BillingAddressLine1      string
 	BillingAddressLine2      string
