@@ -22,6 +22,7 @@ import (
 	"crowdstart.com/models/subscriber"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/models/user"
+	"crowdstart.com/util/emails"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/permission"
 	"crowdstart.com/util/template"
@@ -389,6 +390,22 @@ func Order(c *gin.Context) {
 
 func Orders(c *gin.Context) {
 	template.Render(c, "admin/list-orders.html")
+}
+
+func SendOrderConfirmation(c *gin.Context) {
+	org := middleware.GetOrganization(c)
+	db := datastore.New(middleware.GetNamespace(c))
+
+	o := order.New(db)
+	id := c.Params.ByName("id")
+	o.MustGet(id)
+
+	u := user.New(db)
+	u.MustGet(o.UserId)
+
+	emails.SendOrderConfirmationEmail(c, org, o, u)
+
+	template.Render(c, "admin/order.html", "order", o, "user", u)
 }
 
 func Organization(c *gin.Context) {
