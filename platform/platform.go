@@ -71,6 +71,7 @@ func init() {
 
 	dash.GET("/orders", admin.Orders)
 	dash.GET("/order/:id", admin.Order)
+	dash.GET("/sendorderconfirmation/:id", admin.SendOrderConfirmation)
 
 	dash.GET("/mailinglists", admin.MailingLists)
 	dash.GET("/mailinglist/:id", admin.MailingList)
