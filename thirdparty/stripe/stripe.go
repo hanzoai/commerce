@@ -32,7 +32,7 @@ func New(ctx appengine.Context, accessToken string) *Client {
 	httpClient := urlfetch.Client(ctx)
 	httpClient.Transport = &urlfetch.Transport{
 		Context:  ctx,
-		Deadline: time.Duration(10) * time.Second, // Update deadline to 10 seconds
+		Deadline: time.Duration(20) * time.Second, // Update deadline to 10 seconds
 	}
 	stripe.SetBackend(stripe.APIBackend, nil)
 	stripe.SetHTTPClient(httpClient)
