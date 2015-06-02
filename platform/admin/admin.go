@@ -145,7 +145,7 @@ func Dashboard(c *gin.Context) {
 				pay := payment.New(db)
 				err = pay.GetById(payId)
 				if err != nil {
-					panic(err)
+					continue
 				}
 				if pay.AmountTransferred == 0 {
 					storeData.Sales += pay.AmountTransferred
