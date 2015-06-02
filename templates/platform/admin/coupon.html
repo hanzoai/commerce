@@ -114,6 +114,17 @@
           ],
           $parent: $('#coupon-info')
         },
+        {
+          id: 'enabled',
+          name: 'enabled',
+          label: 'Enabled',
+          value: '{{ coupon.Enabled }}' === 'True',
+          type: 'switch',
+          asterisk: false,
+          labelCols: 3,
+          valueCols: 9,
+          $parent: $('#coupon-info'),
+        },
         // coupon amount
         {
           id: 'amount',
@@ -187,6 +198,9 @@
                 return 0
             }
         },
+      },
+      {
+        enabled: false,
       }
     );
   $('#form-coupon').on('submit', function(e){
