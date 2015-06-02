@@ -60,6 +60,7 @@ type Coupon struct {
 func New(db *datastore.Datastore) *Coupon {
 	c := new(Coupon)
 	c.Model = mixin.Model{Db: db, Entity: c}
+	c.Enabled = true
 	//c.Buyers = make([]string, 0)
 	return c
 }
