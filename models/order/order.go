@@ -277,6 +277,9 @@ func (o *Order) UpdateDiscount() {
 
 	for i := 0; i < num; i++ {
 		c := &o.Coupons[i]
+		if !c.Enabled {
+			continue
+		}
 
 		if c.ProductId == "" {
 			// Coupons per product
