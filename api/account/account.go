@@ -69,6 +69,12 @@ func login(c *gin.Context) {
 
 	usrIn := &userIn{User: usr}
 
+	// Decode response body to create new user
+	if err := json.Decode(c.Request.Body, usrIn); err != nil {
+		http.Fail(c, 400, "Failed decode request body", err)
+		return
+	}
+
 	if err := usr.GetByEmail(usr.Email); err != nil {
 		http.Fail(c, 401, "Email or password is incorrect", errors.New("Email or password is incorrect"))
 		return
@@ -90,29 +96,19 @@ func create(c *gin.Context) {
 	usrIn := &userIn{User: usr}
 
 	// Decode response body to create new user
-	if err := json.Decode(c.Request.Body, usr); err == nil {
-		http.Fail(c, 400, "Email is in use", err)
+	if err := json.Decode(c.Request.Body, usrIn); err != nil {
+		http.Fail(c, 400, "Failed decode request body", err)
 		return
 	}
 
-	if err := usr.GetByEmail(usr.Email); err != nil {
-		http.Fail(c, 400, "Email or password is incorrect", errors.New("Email or password is incorrect"))
+	if err := usr.GetByEmail(usr.Email); err == nil {
+		http.Fail(c, 400, "Email is in use", errors.New("Email is in use"))
 		return
 	}
 
 	// Check for required fields
-	if usr.Email != "" {
+	if usr.Email == "" {
 		http.Fail(c, 400, "Email is required", errors.New("Email is required"))
-		return
-	}
-
-	if usr.FirstName != "" {
-		http.Fail(c, 400, "First name is required", errors.New("First name is required"))
-		return
-	}
-
-	if usr.LastName != "" {
-		http.Fail(c, 400, "Last name is required", errors.New("Last name is required"))
 		return
 	}
 
@@ -121,7 +117,7 @@ func create(c *gin.Context) {
 		return
 	}
 
-	if usrIn.Password == usrIn.PasswordConfirm {
+	if usrIn.Password != usrIn.PasswordConfirm {
 		http.Fail(c, 400, "Passwords need to match", errors.New("Passwords need to match"))
 		return
 	}
