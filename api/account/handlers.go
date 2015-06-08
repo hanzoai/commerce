@@ -13,13 +13,13 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	accountRequired := middleware.AccountRequired()
 	namespaced := middleware.Namespace()
 
-	group := router.Group("account")
-	group.Use(publishedRequired)
+	api := router.Group("account")
+	api.Use(middleware.AccessControl("*"), publishedRequired)
 
-	group.GET("", publishedRequired, accountRequired, namespaced, get)
-	group.PUT("", publishedRequired, accountRequired, namespaced, update)
-	group.PATCH("", publishedRequired, accountRequired, namespaced, patch)
+	api.GET("", publishedRequired, accountRequired, namespaced, get)
+	api.PUT("", publishedRequired, accountRequired, namespaced, update)
+	api.PATCH("", publishedRequired, accountRequired, namespaced, patch)
 
-	group.POST("login", publishedRequired, namespaced, login)
-	group.POST("create", publishedRequired, namespaced, create)
+	api.POST("/login", publishedRequired, namespaced, login)
+	api.POST("/create", publishedRequired, namespaced, create)
 }
