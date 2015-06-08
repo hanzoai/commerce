@@ -21,5 +21,5 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	group.PATCH("", publishedRequired, accountRequired, namespaced, patch)
 
 	group.POST("login", publishedRequired, namespaced, login)
-	group.POST("new", publishedRequired, namespaced, create)
+	group.POST("create", publishedRequired, namespaced, create)
 }
