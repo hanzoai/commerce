@@ -1,0 +1,140 @@
+package account
+
+import (
+	"errors"
+
+	"github.com/gin-gonic/gin"
+
+	"crowdstart.com/auth"
+	"crowdstart.com/auth/password"
+	"crowdstart.com/datastore"
+	"crowdstart.com/middleware"
+	"crowdstart.com/models/user"
+	"crowdstart.com/util/json"
+	"crowdstart.com/util/json/http"
+)
+
+func get(c *gin.Context) {
+	usr := c.MustGet("user").(*user.User)
+	http.Render(c, 200, usr)
+}
+
+func update(c *gin.Context) {
+	usr := c.MustGet("user").(*user.User)
+	org := middleware.GetOrganization(c)
+	db := datastore.New(org.Namespace(c))
+
+	id := usr.Id()
+	newUsr := user.New(db)
+	if err := json.Decode(c.Request.Body, newUsr); err != nil {
+		newUsr.SetKey(id)
+	}
+
+	if err := newUsr.Put(); err != nil {
+		http.Fail(c, 400, "Failed to update user", err)
+	} else {
+		http.Render(c, 200, usr)
+	}
+}
+
+func patch(c *gin.Context) {
+	usr := c.MustGet("user").(*user.User)
+	org := middleware.GetOrganization(c)
+	db := datastore.New(org.Namespace(c))
+
+	id := usr.Id()
+	newUsr := user.New(db)
+	if err := json.Decode(c.Request.Body, newUsr); err != nil {
+		newUsr.SetKey(id)
+	}
+
+	if err := newUsr.Put(); err != nil {
+		http.Fail(c, 400, "Failed to update user", err)
+	} else {
+		http.Render(c, 200, usr)
+	}
+}
+
+type userIn struct {
+	*user.User
+
+	Password        string `json:"password,omitempty"`
+	PasswordConfirm string `json:"passwordConfirm,omitempty"`
+}
+
+func login(c *gin.Context) {
+	org := middleware.GetOrganization(c)
+	db := datastore.New(org.Namespace(c))
+	usr := user.New(db)
+
+	usrIn := &userIn{User: usr}
+
+	if err := usr.GetByEmail(usr.Email); err != nil {
+		http.Fail(c, 401, "Email or password is incorrect", errors.New("Email or password is incorrect"))
+		return
+	}
+
+	if !password.HashAndCompare(usr.PasswordHash, usrIn.Password) {
+		http.Fail(c, 401, "Email or password is incorrect", errors.New("Email or password is incorrect"))
+		return
+	}
+
+	auth.Login(c, usr)
+}
+
+func create(c *gin.Context) {
+	org := middleware.GetOrganization(c)
+	db := datastore.New(org.Namespace(c))
+	usr := user.New(db)
+
+	usrIn := &userIn{User: usr}
+
+	// Decode response body to create new user
+	if err := json.Decode(c.Request.Body, usr); err == nil {
+		http.Fail(c, 400, "Email is in use", err)
+		return
+	}
+
+	if err := usr.GetByEmail(usr.Email); err != nil {
+		http.Fail(c, 400, "Email or password is incorrect", errors.New("Email or password is incorrect"))
+		return
+	}
+
+	// Check for required fields
+	if usr.Email != "" {
+		http.Fail(c, 400, "Email is required", errors.New("Email is required"))
+		return
+	}
+
+	if usr.FirstName != "" {
+		http.Fail(c, 400, "First name is required", errors.New("First name is required"))
+		return
+	}
+
+	if usr.LastName != "" {
+		http.Fail(c, 400, "Last name is required", errors.New("Last name is required"))
+		return
+	}
+
+	if len(usrIn.Password) < 6 {
+		http.Fail(c, 400, "Password needs to be atleast 6 characters", errors.New("Password needs to be atleast 6 characters"))
+		return
+	}
+
+	if usrIn.Password == usrIn.PasswordConfirm {
+		http.Fail(c, 400, "Passwords need to match", errors.New("Passwords need to match"))
+		return
+	}
+
+	if hash, err := password.Hash(usrIn.Password); err != nil {
+		http.Fail(c, 400, "Failed to hash user password", err)
+	} else {
+		usr.PasswordHash = hash
+	}
+
+	if err := usr.Put(); err != nil {
+		http.Fail(c, 400, "Failed to create user", err)
+	} else {
+		auth.Login(c, usr)
+	}
+}
