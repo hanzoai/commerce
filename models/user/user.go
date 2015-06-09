@@ -10,6 +10,8 @@ import (
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/payment"
+	"crowdstart.com/models/referral"
+	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/types/country"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/util/json"
@@ -68,6 +70,9 @@ type User struct {
 
 	Metadata  Metadata `json:"metadata" datastore:"-"`
 	Metadata_ string   `json:"-" datastore:",noindex"`
+
+	Referrals []referral.Referral `json:"referrals,omitempty" datastore:"-"`
+	Referrers []referrer.Referrer `json:"referrers,omitempty" datastore:"-"`
 }
 
 func (u *User) Init() {
@@ -294,6 +299,18 @@ func (u *User) GetByEmail(email string) error {
 
 // 	return u.upsert(db)
 // }
+
+func (u *User) LoadReferrals() error {
+	if _, err := referrer.Query(u.Db).Filter("UserId=", u.Id()).GetAll(&u.Referrals); err != nil {
+		return err
+	}
+
+	if _, err := referral.Query(u.Db).Filter("ReferrerUserId=", u.Id()).GetAll(&u.Referrers); err != nil {
+		return err
+	}
+
+	return nil
+}
 
 func Query(db *datastore.Datastore) *mixin.Query {
 	return New(db).Query()
