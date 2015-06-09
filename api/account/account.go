@@ -2,6 +2,7 @@ package account
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -16,6 +17,12 @@ import (
 
 func get(c *gin.Context) {
 	usr := c.MustGet("user").(*user.User)
+
+	if err := usr.LoadReferrals(); err != nil {
+		http.Fail(c, 500, "User referral data could get be queried", err)
+		return
+	}
+
 	http.Render(c, 200, usr)
 }
 
@@ -104,6 +111,13 @@ func create(c *gin.Context) {
 	if err := usr.GetByEmail(usr.Email); err == nil {
 		http.Fail(c, 400, "Email is in use", errors.New("Email is in use"))
 		return
+	}
+
+	if strings.Contains(usr.Email, "@") &&
+		strings.Contains(usr.Email, ".") &&
+		strings.Index(usr.Email, "@") < strings.Index(usr.Email, ".") &&
+		len(usr.Email) > 5 {
+		http.Fail(c, 400, "Email is not valid", errors.New("Email is not valid"))
 	}
 
 	// Check for required fields
