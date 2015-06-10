@@ -16,7 +16,12 @@ import (
 )
 
 func get(c *gin.Context) {
-	usr := c.MustGet("user").(*user.User)
+	o, err := c.Get("user")
+	if err != nil {
+		http.Fail(c, 400, "No user logged in", err)
+	}
+
+	usr := o.(*user.User)
 
 	if err := usr.LoadReferrals(); err != nil {
 		http.Fail(c, 500, "User referral data could get be queried", err)
@@ -92,6 +97,7 @@ func login(c *gin.Context) {
 		return
 	}
 
+	usr.GetByEmail(usr.Email)
 	auth.Login(c, usr)
 }
 
@@ -145,6 +151,7 @@ func create(c *gin.Context) {
 	if err := usr.Put(); err != nil {
 		http.Fail(c, 400, "Failed to create user", err)
 	} else {
+		usr.GetByEmail(usr.Email)
 		auth.Login(c, usr)
 	}
 }
