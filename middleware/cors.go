@@ -1,11 +1,25 @@
 package middleware
 
-import "github.com/gin-gonic/gin"
+import (
+	"net/url"
+
+	"github.com/gin-gonic/gin"
+)
 
 func AccessControl(allowOrigin string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Allow all CORS requests.
-		c.Writer.Header().Set("Access-Control-Allow-Origin", allowOrigin)
+		domain, _ := url.Parse(c.Request.Referer())
+
+		if allowOrigin == "*" {
+			// We need to send back and ACTUAL origin instead of * for cookies to work
+			origin := domain.Scheme + "://" + domain.Host
+			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
+		} else {
+			c.Writer.Header().Set("Access-Control-Allow-Origin", allowOrigin)
+		}
+
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 
 		if c.Request.Method != "OPTIONS" {
 			return
