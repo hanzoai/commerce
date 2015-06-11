@@ -13,7 +13,6 @@ import (
 	"crowdstart.com/models/organization"
 	"crowdstart.com/util/bit"
 	"crowdstart.com/util/json/http"
-	"crowdstart.com/util/log"
 	"crowdstart.com/util/permission"
 	"crowdstart.com/util/session"
 )
@@ -113,8 +112,6 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 			http.Fail(c, 401, "Unable to retrieve organization associated with access token: "+err.Error(), err)
 			return
 		}
-
-		log.Warn("tok %v", tok)
 
 		// Verify token signature
 		if !tok.Verify(org.SecretKey) {

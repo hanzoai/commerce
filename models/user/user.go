@@ -9,11 +9,13 @@ import (
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
+	"crowdstart.com/models/order"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/referral"
 	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/types/country"
 	"crowdstart.com/models/types/currency"
+	"crowdstart.com/util/hashid"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/searchpartial"
@@ -73,6 +75,7 @@ type User struct {
 
 	Referrals []referral.Referral `json:"referrals,omitempty" datastore:"-"`
 	Referrers []referrer.Referrer `json:"referrers,omitempty" datastore:"-"`
+	Orders    []order.Order       `json:"orders,omitempty" datastore:"-"`
 }
 
 func (u *User) Init() {
@@ -307,6 +310,18 @@ func (u *User) LoadReferrals() error {
 
 	if _, err := referral.Query(u.Db).Filter("ReferrerUserId=", u.Id()).GetAll(&u.Referrals); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (u *User) LoadOrders() error {
+	if _, err := order.Query(u.Db).Filter("UserId=", u.Id()).GetAll(&u.Orders); err != nil {
+		return err
+	}
+
+	for i, o := range u.Orders {
+		u.Orders[i].Number = hashid.Decode(o.Id_)[1]
 	}
 
 	return nil
