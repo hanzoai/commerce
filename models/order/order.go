@@ -42,6 +42,8 @@ type Order struct {
 	mixin.Model
 	mixin.Salesforce `json:"-"`
 
+	Number int `json:"number,omitempty" datastore:"-"`
+
 	// Store this was sold from (if any)
 	StoreId string `json:"storeId,omitempty"`
 
