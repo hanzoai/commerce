@@ -31,4 +31,5 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 
 	api.POST("/login", publishedRequired, namespaced, login)
 	api.POST("/create", publishedRequired, namespaced, create)
+	api.GET("/exists", publishedRequired, namespaced, exists)
 }
