@@ -32,7 +32,7 @@ func Skully() *Config {
 	config.Google.APIKey = "AIza_REDACTED"
 	config.Google.Bucket.ImageUploads = "skully-images"
 
-	config.Discourse.URL = "https://forum.skully.com"
+	config.Discourse.URL = "https://owners.skully.com"
 	config.Discourse.Secret = "e836445b10e4085d6b225b61d209edf15"
 
 	return config
