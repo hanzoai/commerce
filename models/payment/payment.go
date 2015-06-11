@@ -5,6 +5,7 @@ import (
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
+	"crowdstart.com/models/types/client"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
@@ -33,13 +34,6 @@ const (
 	Affirm      = "affirm"
 	PayPal      = "paypal"
 )
-
-type Client struct {
-	Ip        string `json:"ip,omitempty"`
-	UserAgent string `json:"userAgent,omitempty"`
-	Language  string `json:"language,omitempty"`
-	Referer   string `json:"referer,omitempty"`
-}
 
 type AffirmAccount struct {
 	CaptureId     string `json:"captureId,omitempty"`
@@ -138,7 +132,7 @@ type Payment struct {
 	Status      Status `json:"status"`
 
 	// Client's browser, associated info
-	Client Client `json:"client"`
+	Client client.Client `json:"client"`
 
 	// Whether this payment has been captured or not
 	Captured bool `json:"captured"`
