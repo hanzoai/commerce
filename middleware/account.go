@@ -5,20 +5,30 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/auth"
+	"crowdstart.com/datastore"
+	"crowdstart.com/models/user"
 	"crowdstart.com/util/json/http"
-	"crowdstart.com/util/log"
-	"crowdstart.com/util/session"
 )
 
 func AccountRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if u, err := auth.GetCurrentUser(c); err != nil {
-			log.Warn("Unable to acquire account.")
-			session.Clear(c)
+		tok := GetToken(c)
+
+		id := tok.Get("user-id").(string)
+
+		org := GetOrganization(c)
+		db := datastore.New(org.Namespace(c))
+		u := user.New(db)
+
+		if err := u.GetById(id); err != nil {
 			http.Fail(c, 403, "Access Denied", errors.New("Access Denied"))
-		} else {
-			c.Set("user", u)
+			return
 		}
+
+		c.Set("user", u)
 	}
+}
+
+func GetUser(c *gin.Context) *user.User {
+	return c.MustGet("user").(*user.User)
 }
