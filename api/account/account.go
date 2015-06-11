@@ -3,25 +3,25 @@ package account
 import (
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/auth"
 	"crowdstart.com/auth/password"
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/user"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/json/http"
+	"crowdstart.com/util/log"
 )
 
-func get(c *gin.Context) {
-	o, err := c.Get("user")
-	if err != nil {
-		http.Fail(c, 400, "No user logged in", err)
-	}
+type Token struct {
+	Token string `json:"token"`
+}
 
-	usr := o.(*user.User)
+func get(c *gin.Context) {
+	usr := middleware.GetUser(c)
 
 	if err := usr.LoadReferrals(); err != nil {
 		http.Fail(c, 500, "User referral data could get be queried", err)
@@ -32,7 +32,7 @@ func get(c *gin.Context) {
 }
 
 func update(c *gin.Context) {
-	usr := c.MustGet("user").(*user.User)
+	usr := middleware.GetUser(c)
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespace(c))
 
@@ -50,7 +50,7 @@ func update(c *gin.Context) {
 }
 
 func patch(c *gin.Context) {
-	usr := c.MustGet("user").(*user.User)
+	usr := middleware.GetUser(c)
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespace(c))
 
@@ -97,8 +97,17 @@ func login(c *gin.Context) {
 		return
 	}
 
-	usr.GetByEmail(usr.Email)
-	auth.Login(c, usr)
+	if err := usr.GetByEmail(usr.Email); err != nil {
+		http.Fail(c, 401, "Email or password is incorrect", errors.New("Email or password is incorrect"))
+		return
+	}
+
+	tok := middleware.GetToken(c)
+	tok.Set("user-id", usr.Id())
+	tok.Set("exp", time.Now().Add(time.Hour*24*7))
+	tok.Secret = org.SecretKey
+	log.Warn("session %v", tok.Secret)
+	http.Render(c, 200, Token{tok.String()})
 }
 
 func create(c *gin.Context) {
@@ -124,6 +133,7 @@ func create(c *gin.Context) {
 		strings.Index(usr.Email, "@") < strings.Index(usr.Email, ".") &&
 		len(usr.Email) > 5 {
 		http.Fail(c, 400, "Email is not valid", errors.New("Email is not valid"))
+		return
 	}
 
 	// Check for required fields
@@ -150,8 +160,5 @@ func create(c *gin.Context) {
 
 	if err := usr.Put(); err != nil {
 		http.Fail(c, 400, "Failed to create user", err)
-	} else {
-		usr.GetByEmail(usr.Email)
-		auth.Login(c, usr)
 	}
 }
