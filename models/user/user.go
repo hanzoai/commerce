@@ -13,6 +13,7 @@ import (
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/referral"
 	"crowdstart.com/models/referrer"
+	"crowdstart.com/models/transaction"
 	"crowdstart.com/models/types/country"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/util/hashid"
@@ -76,6 +77,8 @@ type User struct {
 	Referrals []referral.Referral `json:"referrals,omitempty" datastore:"-"`
 	Referrers []referrer.Referrer `json:"referrers,omitempty" datastore:"-"`
 	Orders    []order.Order       `json:"orders,omitempty" datastore:"-"`
+
+	Balances map[currency.Type]currency.Cents `json:"balances" datastore:"-"`
 }
 
 func (u *User) Init() {
@@ -322,6 +325,26 @@ func (u *User) LoadOrders() error {
 
 	for i, o := range u.Orders {
 		u.Orders[i].Number = hashid.Decode(o.Id_)[1]
+	}
+
+	return nil
+}
+
+func (u *User) CalculateBalances() error {
+	var trans []transaction.Transaction
+	if _, err := transaction.Query(u.Db).Filter("UserId=", u.Id()).GetAll(&trans); err != nil {
+		return err
+	}
+
+	u.Balances = make(map[currency.Type]currency.Cents)
+	for _, t := range trans {
+		cents := u.Balances[t.Currency]
+
+		if t.Type == transaction.Deposit {
+			u.Balances[t.Currency] = cents + t.Amount
+		} else {
+			u.Balances[t.Currency] = cents - t.Amount
+		}
 	}
 
 	return nil
