@@ -301,11 +301,11 @@ func (u *User) GetByEmail(email string) error {
 // }
 
 func (u *User) LoadReferrals() error {
-	if _, err := referrer.Query(u.Db).Filter("UserId=", u.Id()).GetAll(&u.Referrals); err != nil {
+	if _, err := referrer.Query(u.Db).Filter("UserId=", u.Id()).GetAll(&u.Referrers); err != nil {
 		return err
 	}
 
-	if _, err := referral.Query(u.Db).Filter("ReferrerUserId=", u.Id()).GetAll(&u.Referrers); err != nil {
+	if _, err := referral.Query(u.Db).Filter("ReferrerUserId=", u.Id()).GetAll(&u.Referrals); err != nil {
 		return err
 	}
 
