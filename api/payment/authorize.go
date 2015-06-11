@@ -11,6 +11,7 @@ import (
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/store"
+	"crowdstart.com/models/types/client"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/models/user"
 	"crowdstart.com/util/json"
@@ -85,10 +86,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	pay.Buyer = usr.Buyer()
 
 	// Fill with debug information about user's browser
-	pay.Client.Ip = c.Request.RemoteAddr
-	pay.Client.UserAgent = c.Request.UserAgent()
-	pay.Client.Language = c.Request.Header.Get("Accept-Language")
-	pay.Client.Referer = c.Request.Referer()
+	pay.Client = client.New(c)
 
 	// Update payment with order information
 	pay.Amount = ord.Total
