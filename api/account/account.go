@@ -13,7 +13,6 @@ import (
 	"crowdstart.com/models/user"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/json/http"
-	"crowdstart.com/util/log"
 )
 
 type Token struct {
@@ -24,6 +23,11 @@ func get(c *gin.Context) {
 	usr := middleware.GetUser(c)
 
 	if err := usr.LoadReferrals(); err != nil {
+		http.Fail(c, 500, "User referral data could get be queried", err)
+		return
+	}
+
+	if err := usr.LoadOrders(); err != nil {
 		http.Fail(c, 500, "User referral data could get be queried", err)
 		return
 	}
@@ -106,7 +110,6 @@ func login(c *gin.Context) {
 	tok.Set("user-id", usr.Id())
 	tok.Set("exp", time.Now().Add(time.Hour*24*7))
 	tok.Secret = org.SecretKey
-	log.Warn("session %v", tok.Secret)
 	http.Render(c, 200, Token{tok.String()})
 }
 
