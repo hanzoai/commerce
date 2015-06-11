@@ -22,6 +22,7 @@ const (
 	Failed            = "failed"
 	Fraudulent        = "fraudulent"
 	Paid              = "paid"
+	Credit            = "credit"
 	Refunded          = "refunded"
 	Unpaid            = "unpaid"
 )
