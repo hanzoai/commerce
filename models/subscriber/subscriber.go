@@ -7,6 +7,7 @@ import (
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
+	"crowdstart.com/models/types/client"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/val"
 
@@ -24,6 +25,8 @@ type Subscriber struct {
 
 	Unsubscribed    bool      `json:"unsubscribed"`
 	UnsubscribeDate time.Time `json:"unsubscribeDate,omitempty"`
+
+	Client client.Client `json:"client"`
 
 	Metadata  Metadata `json:"metadata" datastore:"-"`
 	Metadata_ string   `json:"-" datastore:",noindex"`
@@ -50,6 +53,24 @@ func (s Subscriber) Kind() string {
 
 func (s Subscriber) Document() mixin.Document {
 	return nil
+}
+
+func (s Subscriber) MergeVars() Metadata {
+	vars := make(Metadata)
+
+	for k, v := range s.Metadata {
+		vars[k] = v
+	}
+
+	// Update metadata with some extra client data
+	vars["useragent"] = s.Client.UserAgent
+	vars["referer"] = s.Client.Referer
+	vars["language"] = s.Client.Language
+	vars["country"] = s.Client.Country
+	vars["region"] = s.Client.Region
+	vars["city"] = s.Client.City
+
+	return vars
 }
 
 func (s *Subscriber) Load(c <-chan aeds.Property) (err error) {
