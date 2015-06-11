@@ -7,6 +7,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 
 	"crowdstart.com/util/bit"
+	"crowdstart.com/util/log"
 	"crowdstart.com/util/rand"
 )
 
@@ -29,6 +30,8 @@ type Token struct {
 
 	// Original token string
 	TokenString string
+
+	jwt *jwt.Token
 }
 
 func (t Token) String() string {
@@ -43,7 +46,22 @@ func (t Token) HasPermission(mask bit.Mask) bool {
 	return t.Permissions.Has(mask)
 }
 
+func (t *Token) Get(field string) interface{} {
+	jwt := t.getJWT()
+	return jwt.Claims[field]
+}
+
+func (t *Token) Set(field string, value interface{}) *Token {
+	jwt := t.getJWT()
+	jwt.Claims[field] = value
+	return t
+}
+
 func (t *Token) getJWT() *jwt.Token {
+	if t.jwt != nil {
+		return t.jwt
+	}
+
 	jwt := jwt.New(jwt.SigningMethodHS512)
 
 	// jwt.Claims["name"] = t.Name
@@ -54,6 +72,8 @@ func (t *Token) getJWT() *jwt.Token {
 
 	// This sets the token to expire in a year
 	// jwt.Claims["exp"] = t.IssuedAt.Add(time.Hour * 24.0 * 365).Unix()
+
+	t.jwt = jwt
 
 	return jwt
 }
@@ -85,6 +105,7 @@ func FromString(accessToken string, secret []byte) (*Token, error) {
 	tok.Id = jwt.Claims["jti"].(string)
 	tok.EntityId = jwt.Claims["sub"].(string)
 	tok.Permissions = bit.Field(jwt.Claims["bit"].(float64))
+	tok.jwt = jwt
 
 	return tok, nil
 }
@@ -92,6 +113,7 @@ func FromString(accessToken string, secret []byte) (*Token, error) {
 func (t *Token) Verify(secret []byte) bool {
 	parts := strings.Split(t.TokenString, ".")
 	if err := t.getJWT().Method.Verify(strings.Join(parts[0:2], "."), parts[2], secret); err != nil {
+		log.Warn("err %v", err)
 		return false
 	}
 	return true
