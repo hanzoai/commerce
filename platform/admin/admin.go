@@ -1,7 +1,6 @@
 package admin
 
 import (
-	"strings"
 	"time"
 
 	"appengine/memcache"
@@ -15,7 +14,6 @@ import (
 	"crowdstart.com/models/coupon"
 	"crowdstart.com/models/mailinglist"
 	"crowdstart.com/models/order"
-	"crowdstart.com/models/payment"
 	"crowdstart.com/models/product"
 	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/store"
@@ -110,90 +108,90 @@ func Dashboard(c *gin.Context) {
 	}
 
 	key = orgName + "-totalCount"
-	iccsr := ICCSRef{}
+	// iccsr := ICCSRef{}
 	storeDatas := make([]*StoreData, 0)
 	var cur currency.Type
 
-	_, err = memcache.Gob.Get(ctx, key, &iccsr)
-	if err != nil {
-		o := order.New(db)
-		var orders []order.Order
-		_, err = o.Query().GetAll(&orders)
-		if err != nil {
-			panic(err)
-		}
+	// _, err = memcache.Gob.Get(ctx, key, &iccsr)
+	// if err != nil {
+	// 	o := order.New(db)
+	// 	var orders []order.Order
+	// 	_, err = o.Query().GetAll(&orders)
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
 
-		log.Warn("%v", orders)
+	// 	log.Warn("%v", orders)
 
-		storeDataMap := make(map[string]*StoreData)
-		for _, ord := range orders {
-			if ord.Test && ord.PaymentStatus == payment.Paid {
-				continue
-			}
+	// 	storeDataMap := make(map[string]*StoreData)
+	// 	for _, ord := range orders {
+	// 		if ord.Test && ord.PaymentStatus == payment.Paid {
+	// 			continue
+	// 		}
 
-			var storeData *StoreData
-			var ok bool
+	// 		var storeData *StoreData
+	// 		var ok bool
 
-			if storeData, ok = storeDataMap[ord.StoreId]; !ok {
-				storeData = &StoreData{StoreId: ord.StoreId}
-				storeDatas = append(storeDatas, storeData)
-				storeDataMap[ord.StoreId] = storeData
-			}
-			storeData.OrderCount++
+	// 		if storeData, ok = storeDataMap[ord.StoreId]; !ok {
+	// 			storeData = &StoreData{StoreId: ord.StoreId}
+	// 			storeDatas = append(storeDatas, storeData)
+	// 			storeDataMap[ord.StoreId] = storeData
+	// 		}
+	// 		storeData.OrderCount++
 
-			for _, payId := range ord.PaymentIds {
-				pay := payment.New(db)
-				err = pay.GetById(payId)
-				if err != nil {
-					continue
-				}
-				if pay.AmountTransferred == 0 {
-					storeData.Sales += pay.AmountTransferred
-				} else {
-					storeData.Sales += pay.Amount
-				}
+	// 		for _, payId := range ord.PaymentIds {
+	// 			pay := payment.New(db)
+	// 			err = pay.GetById(payId)
+	// 			if err != nil {
+	// 				continue
+	// 			}
+	// 			if pay.AmountTransferred == 0 {
+	// 				storeData.Sales += pay.AmountTransferred
+	// 			} else {
+	// 				storeData.Sales += pay.Amount
+	// 			}
 
-				if pay.CurrencyTransferred == "" {
-					cur = pay.CurrencyTransferred
-				} else {
-					cur = pay.Currency
-				}
-			}
-		}
+	// 			if pay.CurrencyTransferred == "" {
+	// 				cur = pay.CurrencyTransferred
+	// 			} else {
+	// 				cur = pay.Currency
+	// 			}
+	// 		}
+	// 	}
 
-		s := store.New(db)
-		var stores []store.Store
-		_, err = s.Query().GetAll(&stores)
-		if err != nil {
-			panic(err)
-		}
+	// 	s := store.New(db)
+	// 	var stores []store.Store
+	// 	_, err = s.Query().GetAll(&stores)
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
 
-		for _, stor := range stores {
-			if storeData, ok := storeDataMap[stor.Id()]; ok {
-				storeData.StoreName = strings.ToUpper(stor.Name)
-			}
-		}
+	// 	for _, stor := range stores {
+	// 		if storeData, ok := storeDataMap[stor.Id()]; ok {
+	// 			storeData.StoreName = strings.ToUpper(stor.Name)
+	// 		}
+	// 	}
 
-		orderTotal = 0
-		salesTotal = currency.Cents(0)
-		for _, storeData := range storeDatas {
-			orderTotal += storeData.OrderCount
-			salesTotal += storeData.Sales
-		}
+	// 	orderTotal = 0
+	// 	salesTotal = currency.Cents(0)
+	// 	for _, storeData := range storeDatas {
+	// 		orderTotal += storeData.OrderCount
+	// 		salesTotal += storeData.Sales
+	// 	}
 
-		item := &memcache.Item{
-			Key:        key,
-			Object:     ICCSRef{orderTotal, salesTotal, cur, storeDatas},
-			Expiration: time.Duration(time.Minute * 23),
-		}
+	// 	item := &memcache.Item{
+	// 		Key:        key,
+	// 		Object:     ICCSRef{orderTotal, salesTotal, cur, storeDatas},
+	// 		Expiration: time.Duration(time.Minute * 23),
+	// 	}
 
-		memcache.Gob.Set(db.Context, item)
-	} else {
-		orderTotal = iccsr.I
-		salesTotal = iccsr.C
-		cur = iccsr.C2
-		storeDatas = iccsr.S
-	}
+	// 	memcache.Gob.Set(db.Context, item)
+	// } else {
+	// 	orderTotal = iccsr.I
+	// 	salesTotal = iccsr.C
+	// 	cur = iccsr.C2
+	// 	storeDatas = iccsr.S
+	// }
 
 	log.Warn("%v %v %v %v %v", userCount, subCount, cur, orderTotal, salesTotal)
 
