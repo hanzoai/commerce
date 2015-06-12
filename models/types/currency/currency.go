@@ -164,7 +164,11 @@ func (t Type) ToString(c Cents) string {
 }
 
 func (t Type) Label() string {
-	return t.Symbol() + " " + strings.ToUpper(string(t))
+	return t.Symbol() + " " + t.Code()
+}
+
+func (t Type) Code() string {
+	return strings.ToUpper(string(t))
 }
 
 const (
