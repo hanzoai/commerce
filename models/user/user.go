@@ -2,7 +2,6 @@ package user
 
 import (
 	"strings"
-	"time"
 
 	aeds "appengine/datastore"
 	"appengine/search"
@@ -64,12 +63,7 @@ type User struct {
 		Affirm payment.Account `json:"affirm,omitempty"`
 	} `json:"accounts"`
 
-	Credit struct {
-		Currency currency.Type  `json:"currency"`
-		Amount   currency.Cents `json:"amount"`
-
-		LastUpdated time.Time `json:"lastUpdated"`
-	} `json:"credit"`
+	Enabled bool `json:"-"` //whether or not the user can login yet
 
 	Metadata  Metadata `json:"metadata" datastore:"-"`
 	Metadata_ string   `json:"-" datastore:",noindex"`
