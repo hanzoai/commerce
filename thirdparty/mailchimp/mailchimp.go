@@ -36,7 +36,7 @@ func (a API) BatchSubscribe(ml *mailinglist.MailingList, subscribers []*subscrib
 			Email: gochimp.Email{
 				Email: s.Email,
 			},
-			MergeVars: s.Metadata,
+			MergeVars: s.MergeVars(),
 		})
 	}
 	req := gochimp.BatchSubscribe{
@@ -59,7 +59,7 @@ func (a API) Subscribe(ml *mailinglist.MailingList, s *subscriber.Subscriber) er
 	}
 	req := gochimp.ListsSubscribe{
 		Email:            email,
-		MergeVars:        s.Metadata,
+		MergeVars:        s.MergeVars(),
 		ListId:           ml.Mailchimp.Id,
 		DoubleOptIn:      ml.Mailchimp.DoubleOptin,
 		UpdateExisting:   ml.Mailchimp.UpdateExisting,
