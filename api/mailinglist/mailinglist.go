@@ -9,6 +9,7 @@ import (
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mailinglist"
 	"crowdstart.com/models/subscriber"
+	"crowdstart.com/models/types/client"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/json/http"
 	"crowdstart.com/util/log"
@@ -43,6 +44,9 @@ func addSubscriber(c *gin.Context) {
 		http.Fail(c, 400, "Failed decode request body", err)
 		return
 	}
+
+	// Store metadata about client
+	s.Client = client.New(c)
 
 	// Save subscriber to mailing list
 	if err := ml.AddSubscriber(s); err != nil {
