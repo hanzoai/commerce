@@ -26,7 +26,6 @@ func saveSession(c *gin.Context, session *sessions.Session) error {
 func Get(c *gin.Context, key string) (interface{}, error) {
 	session, err := store.Get(c.Request, config.SessionName)
 	if err != nil {
-		log.Warn(err)
 		return nil, err
 	}
 

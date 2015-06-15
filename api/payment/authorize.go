@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"crowdstart.com/api/payment/balance"
 	"crowdstart.com/api/payment/stripe"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
@@ -118,8 +119,15 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	ord.PaymentIds = append(ord.PaymentIds, pay.Id())
 
 	// Have stripe handle authorization
-	if err := stripe.Authorize(org, ord, usr, pay); err != nil {
-		return nil, nil, err
+	switch ord.Type {
+	case "balance":
+		if err := balance.Authorize(org, ord, usr, pay); err != nil {
+			return nil, nil, err
+		}
+	default:
+		if err := stripe.Authorize(org, ord, usr, pay); err != nil {
+			return nil, nil, err
+		}
 	}
 
 	// If the charge is not live or test flag is set, then it is a test charge

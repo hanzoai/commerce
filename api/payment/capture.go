@@ -3,6 +3,9 @@ package payment
 import (
 	"github.com/gin-gonic/gin"
 
+	aeds "appengine/datastore"
+
+	"crowdstart.com/api/payment/balance"
 	"crowdstart.com/api/payment/stripe"
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/order"
@@ -14,10 +17,22 @@ import (
 )
 
 func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (*order.Order, error) {
+	var err error
+	var payments []*payment.Payment
+	var keys []*aeds.Key
+
 	// We could actually capture different types of things here...
-	ord, keys, payments, err := stripe.Capture(org, ord)
-	if err != nil {
-		return nil, err
+	switch ord.Type {
+	case "balance":
+		ord, keys, payments, err = balance.Capture(org, ord)
+		if err != nil {
+			return nil, err
+		}
+	default:
+		ord, keys, payments, err = stripe.Capture(org, ord)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Referral

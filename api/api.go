@@ -22,6 +22,7 @@ import (
 	"crowdstart.com/util/router"
 
 	accessTokenApi "crowdstart.com/api/accessToken"
+	accountApi "crowdstart.com/api/account"
 	mailinglistApi "crowdstart.com/api/mailinglist"
 	namespaceApi "crowdstart.com/api/namespace"
 	orderApi "crowdstart.com/api/order"
@@ -65,6 +66,7 @@ func init() {
 	rest.New(user.User{}).Route(api, tokenRequired)
 	rest.New(variant.Variant{}).Route(api, tokenRequired)
 
+	accountApi.Route(api, tokenRequired)
 	orderApi.Route(api, tokenRequired)
 	storeApi.Route(api, tokenRequired)
 	mailinglistApi.Route(api, tokenRequired)

@@ -22,7 +22,6 @@ import (
 	"crowdstart.com/models/user"
 	"crowdstart.com/util/emails"
 	"crowdstart.com/util/log"
-	"crowdstart.com/util/permission"
 	"crowdstart.com/util/template"
 )
 
@@ -417,11 +416,7 @@ func Keys(c *gin.Context) {
 func NewKeys(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 
-	org.ClearTokens()
-	org.AddToken("live-secret-key", permission.Admin)
-	org.AddToken("live-published-key", permission.Published)
-	org.AddToken("test-secret-key", permission.Admin)
-	org.AddToken("test-published-key", permission.Published)
+	org.AddDefaultTokens()
 
 	if err := org.Put(); err != nil {
 		panic(err)
