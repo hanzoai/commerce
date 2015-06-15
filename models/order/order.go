@@ -275,7 +275,6 @@ func (o *Order) UpdateDiscount() {
 	num := len(o.CouponCodes)
 
 	ctx := o.Model.Db.Context
-	log.Warn("Coupons: %v", o.Coupons, ctx)
 
 	for i := 0; i < num; i++ {
 		c := &o.Coupons[i]
