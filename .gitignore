@@ -29,4 +29,4 @@ config.json
 *.bak
 *.orig
 *.coverprofile
-platform/docs/_generated/*.html
+templates/platform/docs/_generated/*.html
