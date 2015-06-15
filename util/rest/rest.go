@@ -299,7 +299,6 @@ func (r Rest) Fail(c *gin.Context, status int, message interface{}, err error) {
 }
 
 func (r Rest) get(c *gin.Context) {
-	log.Warn("get %v", r.Kind, c)
 	if !r.CheckPermissions(c, "get") {
 		return
 	}
