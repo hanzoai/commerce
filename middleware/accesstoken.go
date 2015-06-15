@@ -130,6 +130,7 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 		// Save organization in context
 		c.Set("permissions", tok.Permissions)
 		c.Set("organization", org)
+		c.Set("token", tok)
 	}
 }
 

@@ -10,6 +10,7 @@ import (
 	"crowdstart.com/models/organization"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/session"
+	"crowdstart.com/util/token"
 )
 
 func AcquireOrganization(moduleName string) gin.HandlerFunc {
@@ -61,6 +62,10 @@ func Namespace() gin.HandlerFunc {
 
 func GetOrganization(c *gin.Context) *organization.Organization {
 	return c.MustGet("organization").(*organization.Organization)
+}
+
+func GetToken(c *gin.Context) *token.Token {
+	return c.MustGet("token").(*token.Token)
 }
 
 func GetNamespace(c *gin.Context) appengine.Context {
