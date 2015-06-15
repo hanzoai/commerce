@@ -178,7 +178,7 @@ func (o Organization) IsTestEmail(email string) bool {
 		return false
 	}
 
-	globs := strings.Split(o.EmailWhitelist, ",")
+	globs := strings.Split(strings.Replace(o.EmailWhitelist, " ", "", -1), ",")
 
 	for _, g := range globs {
 		if glob.Glob(g, email) {
