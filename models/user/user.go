@@ -334,10 +334,10 @@ func (u *User) CalculateBalances() error {
 	for _, t := range trans {
 		cents := u.Balances[t.Currency]
 
-		if t.Type == transaction.Deposit {
-			u.Balances[t.Currency] = cents + t.Amount
-		} else {
+		if t.Type == transaction.Withdraw {
 			u.Balances[t.Currency] = cents - t.Amount
+		} else {
+			u.Balances[t.Currency] = cents + t.Amount
 		}
 	}
 
