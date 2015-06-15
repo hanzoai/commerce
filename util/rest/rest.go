@@ -164,10 +164,6 @@ func (r Rest) CheckPermissions(c *gin.Context, method string) bool {
 		return true
 	}
 
-	// TODO: Remove
-	log.Warn("method", method, c)
-	log.Warn("permissions", permissions, c)
-
 	// See if token matches any of the supported permissions
 	for _, perm := range permissions {
 		if tok.Has(perm) {

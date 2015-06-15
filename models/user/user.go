@@ -2,16 +2,20 @@ package user
 
 import (
 	"strings"
-	"time"
 
 	aeds "appengine/datastore"
 	"appengine/search"
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
+	"crowdstart.com/models/order"
 	"crowdstart.com/models/payment"
+	"crowdstart.com/models/referral"
+	"crowdstart.com/models/referrer"
+	"crowdstart.com/models/transaction"
 	"crowdstart.com/models/types/country"
 	"crowdstart.com/models/types/currency"
+	"crowdstart.com/util/hashid"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/searchpartial"
@@ -59,15 +63,16 @@ type User struct {
 		Affirm payment.Account `json:"affirm,omitempty"`
 	} `json:"accounts"`
 
-	Credit struct {
-		Currency currency.Type  `json:"currency"`
-		Amount   currency.Cents `json:"amount"`
-
-		LastUpdated time.Time `json:"lastUpdated"`
-	} `json:"credit"`
+	Enabled bool `json:"-"` //whether or not the user can login yet
 
 	Metadata  Metadata `json:"metadata" datastore:"-"`
 	Metadata_ string   `json:"-" datastore:",noindex"`
+
+	Referrals []referral.Referral `json:"referrals,omitempty" datastore:"-"`
+	Referrers []referrer.Referrer `json:"referrers,omitempty" datastore:"-"`
+	Orders    []order.Order       `json:"orders,omitempty" datastore:"-"`
+
+	Balances map[currency.Type]currency.Cents `json:"balances" datastore:"-"`
 }
 
 func (u *User) Init() {
@@ -294,6 +299,50 @@ func (u *User) GetByEmail(email string) error {
 
 // 	return u.upsert(db)
 // }
+
+func (u *User) LoadReferrals() error {
+	if _, err := referrer.Query(u.Db).Filter("UserId=", u.Id()).GetAll(&u.Referrers); err != nil {
+		return err
+	}
+
+	if _, err := referral.Query(u.Db).Filter("ReferrerUserId=", u.Id()).GetAll(&u.Referrals); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (u *User) LoadOrders() error {
+	if _, err := order.Query(u.Db).Filter("UserId=", u.Id()).GetAll(&u.Orders); err != nil {
+		return err
+	}
+
+	for i, o := range u.Orders {
+		u.Orders[i].Number = hashid.Decode(o.Id_)[1]
+	}
+
+	return nil
+}
+
+func (u *User) CalculateBalances() error {
+	var trans []transaction.Transaction
+	if _, err := transaction.Query(u.Db).Filter("UserId=", u.Id()).GetAll(&trans); err != nil {
+		return err
+	}
+
+	u.Balances = make(map[currency.Type]currency.Cents)
+	for _, t := range trans {
+		cents := u.Balances[t.Currency]
+
+		if t.Type == transaction.Deposit {
+			u.Balances[t.Currency] = cents + t.Amount
+		} else {
+			u.Balances[t.Currency] = cents - t.Amount
+		}
+	}
+
+	return nil
+}
 
 func Query(db *datastore.Datastore) *mixin.Query {
 	return New(db).Query()
