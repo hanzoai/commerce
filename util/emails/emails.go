@@ -13,7 +13,7 @@ import (
 )
 
 func SendOrderConfirmationEmail(c *gin.Context, org *organization.Organization, ord *order.Order, usr *user.User) {
-	conf := org.Email.OrderConfirmation.Settings()
+	conf := org.Email.OrderConfirmation.Config(org)
 	if !conf.Enabled || org.Mandrill.APIKey == "" {
 		return
 	}
