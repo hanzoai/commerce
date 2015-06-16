@@ -13,31 +13,24 @@ import (
 )
 
 func SendOrderConfirmationEmail(c *gin.Context, org *organization.Organization, ord *order.Order, usr *user.User) {
-	if !org.Email.Enabled || !org.Email.OrderConfirmation.Enabled || org.Mandrill.APIKey == "" {
+	conf := org.Email.OrderConfirmation.Settings()
+	if !conf.Enabled || org.Mandrill.APIKey == "" {
 		return
 	}
 
 	ctx := middleware.GetAppEngine(c)
 
-	ordConf := org.Email.OrderConfirmation
-
 	// From
-	fromEmail := org.Email.FromEmail
-	fromName := org.Email.FromName
-	if ordConf.FromEmail != "" {
-		fromEmail = ordConf.FromEmail
-	}
-	if ordConf.FromName != "" {
-		fromName = ordConf.FromName
-	}
+	fromName := conf.FromName
+	fromEmail := conf.FromEmail
 
 	// To
 	toEmail := usr.Email
 	toName := usr.Name()
 
 	// Subject, HTML
-	subject := ordConf.Subject
-	html := template.RenderStringFromString(ordConf.Template,
+	subject := conf.Subject
+	html := template.RenderStringFromString(conf.Template,
 		"order", ord,
 		"orderId", ord.Id(),
 		"user", usr)
