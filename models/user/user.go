@@ -6,6 +6,7 @@ import (
 	aeds "appengine/datastore"
 	"appengine/search"
 
+	"crowdstart.com/auth/password"
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/order"
@@ -341,6 +342,16 @@ func (u *User) CalculateBalances() error {
 		}
 	}
 
+	return nil
+}
+
+func (u *User) SetPassword(newPassword string) error {
+	hash, err := password.Hash(newPassword)
+	if err != nil {
+		return err
+	}
+
+	u.PasswordHash = hash
 	return nil
 }
 
