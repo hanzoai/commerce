@@ -18,7 +18,7 @@ import (
 )
 
 func SendPasswordReset(c *gin.Context, org *organization.Organization, usr *user.User) {
-	conf := org.Email.PasswordReset.Settings()
+	conf := org.Email.User.PasswordReset.Config(org)
 	if !conf.Enabled || org.Mandrill.APIKey == "" {
 		return
 	}
@@ -72,7 +72,7 @@ type ConfirmPassword struct {
 	Password string `json:"password"`
 }
 
-func confirm(c *gin.Context) {
+func resetConfirm(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespace(c))
 
@@ -90,13 +90,16 @@ func confirm(c *gin.Context) {
 		panic(err)
 	}
 
-	confirm := &ConfirmPassword{}
-
 	// Get new password
+	confirm := &ConfirmPassword{}
 	if err := json.Decode(c.Request.Body, confirm); err != nil {
 		http.Fail(c, 400, "Failed decode request body", err)
 	}
 
+	// Enable user in case this user has never confirmed account
+	usr.Enabled = true
+
+	// Update password
 	usr.SetPassword(confirm.Password)
 	if err := usr.Put(); err != nil {
 		panic(err)

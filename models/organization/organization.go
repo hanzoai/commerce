@@ -19,37 +19,30 @@ import (
 	. "crowdstart.com/models"
 )
 
-type EmailDefaults struct {
-	Enabled   bool   `json:"enabled"`
-	FromName  string `json:"fromName"`
-	FromEmail string `json:"fromEmail"`
-}
-
-type EmailSettings struct {
+type Email struct {
 	Enabled   bool   `json:"enabled"`
 	FromEmail string `json:"fromEmail"`
 	FromName  string `json:"fromName"`
 	Subject   string `json:"subject"`
 	Template  string `json:"template" datastore:",noindex"`
-
-	// Not stored
-	Defaults *EmailDefaults `json:"-" datastore:"-"`
 }
 
-func (e EmailSettings) Settings() EmailSettings {
-	conf := EmailSettings{e.Enabled, e.FromName, e.FromEmail, e.Subject, e.Template, e.Defaults}
+func (e Email) Config(org *Organization) Email {
+	conf := Email{e.Enabled, e.FromName, e.FromEmail, e.Subject, e.Template}
 
-	if !e.Defaults.Enabled {
-		e.Enabled = false
-	}
+	// Use organization defaults
+	if org != nil {
+		if !org.Email.Defaults.Enabled {
+			conf.Enabled = false
+		}
 
-	// Use defaults for from name/from email if necessary
-	if conf.FromEmail == "" {
-		conf.FromEmail = e.Defaults.FromEmail
-	}
+		if conf.FromEmail == "" {
+			conf.FromEmail = org.Email.Defaults.FromEmail
+		}
 
-	if conf.FromName == "" {
-		conf.FromName = e.Defaults.FromName
+		if conf.FromName == "" {
+			conf.FromName = org.Email.Defaults.FromName
+		}
 	}
 
 	return conf
@@ -78,11 +71,20 @@ type Organization struct {
 
 	Email struct {
 		// Default email configuration
-		Defaults EmailDefaults `json:"defaults"`
+		Defaults struct {
+			Enabled   bool   `json:"enabled"`
+			FromName  string `json:"fromName"`
+			FromEmail string `json:"fromEmail"`
+		} `json:"defaults"`
 
 		// Per-email configuration
-		OrderConfirmation EmailSettings `json:"orderConfirmation"`
-		PasswordReset     EmailSettings `json:"passwordReset"`
+		OrderConfirmation Email `json:"orderConfirmation"`
+		User              struct {
+			Welcome           Email `json:"welcome`
+			EmailConfirmation Email `json:"emailConfirmation"`
+			EmailConfirmed    Email `json:"emailConfirmed"`
+			PasswordReset     Email `json:"PasswordReset"`
+		} `json:"user"`
 	} `json:"email"`
 
 	Plan struct {
@@ -133,13 +135,6 @@ func New(db *datastore.Datastore) *Organization {
 	o.AccessToken = mixin.AccessToken{Entity: o}
 	o.Admins = make([]string, 0)
 	o.Moderators = make([]string, 0)
-
-	// Email settings
-	if o.Mandrill.APIKey == "" {
-		o.Email.Defaults.Enabled = false
-	}
-	o.Email.OrderConfirmation.Defaults = &o.Email.Defaults
-	o.Email.PasswordReset.Defaults = &o.Email.Defaults
 	return o
 }
 
