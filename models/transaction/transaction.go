@@ -25,6 +25,7 @@ type Transaction struct {
 	Type     Type           `json:"type"`
 	Currency currency.Type  `json:"currency"`
 	Amount   currency.Cents `json:"amount"`
+	Test     bool           `json:"test"`
 }
 
 func New(db *datastore.Datastore) *Transaction {

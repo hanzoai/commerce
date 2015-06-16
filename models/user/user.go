@@ -326,7 +326,7 @@ func (u *User) LoadOrders() error {
 
 func (u *User) CalculateBalances() error {
 	var trans []transaction.Transaction
-	if _, err := transaction.Query(u.Db).Filter("UserId=", u.Id()).GetAll(&trans); err != nil {
+	if _, err := transaction.Query(u.Db).Filter("UserId=", u.Id()).Filter("Test=", false).GetAll(&trans); err != nil {
 		return err
 	}
 
