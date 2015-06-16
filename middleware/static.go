@@ -29,13 +29,13 @@ func Static(urlRoot string) gin.HandlerFunc {
 
 		f, err := dir.Open(file)
 		if err != nil {
-			c.Abort(404)
+			c.AbortWithStatus(404)
 			return
 		}
 		defer f.Close()
 		fi, err := f.Stat()
 		if err != nil {
-			c.Abort(500)
+			c.AbortWithStatus(500)
 			return
 		}
 
@@ -43,13 +43,13 @@ func Static(urlRoot string) gin.HandlerFunc {
 			file = path.Join(file, "index.html")
 			f, err = dir.Open(file)
 			if err != nil {
-				c.Abort(500)
+				c.AbortWithStatus(500)
 				return
 			}
 			defer f.Close()
 			fi, err = f.Stat()
 			if err != nil || fi.IsDir() {
-				c.Abort(500)
+				c.AbortWithStatus(500)
 				return
 			}
 		}
