@@ -1,6 +1,7 @@
 package account
 
 import (
+	"errors"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -69,7 +70,8 @@ func reset(c *gin.Context) {
 }
 
 type ConfirmPassword struct {
-	Password string `json:"password"`
+	Password        string `json:"password"`
+	ConfirmPassword string `json:"confirmPassword"`
 }
 
 func resetConfirm(c *gin.Context) {
@@ -94,15 +96,32 @@ func resetConfirm(c *gin.Context) {
 	confirm := &ConfirmPassword{}
 	if err := json.Decode(c.Request.Body, confirm); err != nil {
 		http.Fail(c, 400, "Failed decode request body", err)
+		return
 	}
 
 	// Enable user in case this user has never confirmed account
 	usr.Enabled = true
 
+	// Validate password
+	if len(confirm.Password) < 6 {
+		http.Fail(c, 400, "Password needs to be atleast 6 characters", errors.New("Password needs to be atleast 6 characters"))
+		return
+	}
+
+	if confirm.Password != confirm.PasswordConfirm {
+		http.Fail(c, 400, "Passwords need to match", errors.New("Passwords need to match"))
+		return
+	}
+
 	// Update password
-	usr.SetPassword(confirm.Password)
+	if err := usr.SetPassword(confirm.Password); err != nil {
+		http.Fail(c, 500, "Failed to set password", err)
+		return
+	}
+
 	if err := usr.Put(); err != nil {
-		panic(err)
+		http.Fail(c, 500, "Failed to update password", err)
+		return
 	}
 
 	http.Render(c, 200, gin.H{"status": "ok"})
