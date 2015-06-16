@@ -20,10 +20,14 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api.PUT("", publishedRequired, accountRequired, namespaced, update)
 	api.PATCH("", publishedRequired, accountRequired, namespaced, patch)
 
-	api.POST("/login", publishedRequired, namespaced, login)
-	api.POST("/create", publishedRequired, namespaced, create)
-
 	api.GET("/exists", publishedRequired, namespaced, exists)
 
+	api.POST("/login", publishedRequired, namespaced, login)
+
+	api.POST("/create", publishedRequired, namespaced, create)
+	api.GET("/create/confirm/:tokenid", publishedRequired, namespaced, createConfirm)
+	api.POST("/create/confirm/:tokenid", publishedRequired, namespaced, createConfirm)
+
 	api.GET("/reset", publishedRequired, namespaced, reset)
+	api.POST("/reset/confirm/:tokenid", publishedRequired, namespaced, resetConfirm)
 }
