@@ -108,7 +108,7 @@ func resetConfirm(c *gin.Context) {
 		return
 	}
 
-	if confirm.Password != confirm.PasswordConfirm {
+	if confirm.Password != confirm.ConfirmPassword {
 		http.Fail(c, 400, "Passwords need to match", errors.New("Passwords need to match"))
 		return
 	}
