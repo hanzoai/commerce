@@ -78,6 +78,20 @@ func (t *Token) getJWT() *jwt.Token {
 	return jwt
 }
 
+func (t *Token) Verify(secret []byte) bool {
+	parts := strings.Split(t.TokenString, ".")
+
+	if err := t.getJWT().Method.Verify(strings.Join(parts[0:2], "."), parts[2], secret); err != nil {
+		log.Warn("err %v", err)
+		return false
+	}
+
+	// Update secret on token
+	t.Secret = secret
+
+	return true
+}
+
 func New(name string, subject string, permissions bit.Mask, secret []byte) *Token {
 	tok := new(Token)
 	tok.Id = rand.ShortId()
@@ -106,15 +120,7 @@ func FromString(accessToken string, secret []byte) (*Token, error) {
 	tok.EntityId = jwt.Claims["sub"].(string)
 	tok.Permissions = bit.Field(jwt.Claims["bit"].(float64))
 	tok.jwt = jwt
+	tok.Secret = secret
 
 	return tok, nil
-}
-
-func (t *Token) Verify(secret []byte) bool {
-	parts := strings.Split(t.TokenString, ".")
-	if err := t.getJWT().Method.Verify(strings.Join(parts[0:2], "."), parts[2], secret); err != nil {
-		log.Warn("err %v", err)
-		return false
-	}
-	return true
 }
