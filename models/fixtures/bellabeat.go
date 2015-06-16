@@ -13,7 +13,7 @@ import (
 )
 
 var Bellabeat = New("bellabeat", func(c *gin.Context) *organization.Organization {
-	db := datastore.New(c)
+	db = datastore.New(c)
 
 	org := organization.New(db)
 	org.Name = "bellabeat"
@@ -70,7 +70,13 @@ var Bellabeat = New("bellabeat", func(c *gin.Context) *organization.Organization
 	// org.Email.FromEmail = "hi@bellabeat.com"
 	// org.Email.OrderConfirmation.Enabled = true
 	// org.Email.OrderConfirmation.Subject = "LEAF Order Confirmation"
-	org.Email.OrderConfirmation.Template = string(fs.ReadFile(config.WorkingDir + "/resources/bellabeat/email-order-confirmation.html"))
+	org.Email.OrderConfirmation.Template = string(fs.ReadFile(config.WorkingDir + "/resources/bellabeat/emails/order-confirmation.html"))
+	org.Email.User.PasswordReset.Template = string(fs.ReadFile(config.WorkingDir + "/resources/bellabeat/emails/user-password-reset.html"))
+	org.Email.User.PasswordReset.Subject = "Reset your Bellabeat password"
+	org.Email.User.EmailConfirmation.Template = string(fs.ReadFile(config.WorkingDir + "/resources/bellabeat/emails/user-email-confirmation.html"))
+	org.Email.User.EmailConfirmation.Subject = "Please confirm your email"
+	org.Email.User.EmailConfirmed.Subject = "Thank you for confirming your email"
+	org.Email.User.EmailConfirmed.Template = string(fs.ReadFile(config.WorkingDir + "/resources/bellabeat/emails/user-email-confirmed.html"))
 
 	// // Save org into default namespace
 	org.Put()
