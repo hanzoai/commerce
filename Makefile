@@ -19,8 +19,6 @@ modules	= crowdstart.com/api \
 		  crowdstart.com/platform \
 		  crowdstart.com/store
 
-gae_token = 1/DLPZCHjjCkiegGp0SiIvkWmtZcUNl15JlOg4qB0-1r0MEudVrK5jSpoR30zcRFq6
-
 gae_development = config/development/app.yaml \
 				  config/development/dispatch.yaml \
 				  api/app.dev.yaml \

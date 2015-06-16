@@ -13,7 +13,7 @@ import (
 )
 
 var Bellabeat = New("bellabeat", func(c *gin.Context) *organization.Organization {
-	db = datastore.New(c)
+	db := datastore.New(c)
 
 	org := organization.New(db)
 	org.Name = "bellabeat"
@@ -65,9 +65,9 @@ var Bellabeat = New("bellabeat", func(c *gin.Context) *organization.Organization
 	// // Email configuration
 	// org.Mandrill.APIKey = ""
 
-	org.Email.Enabled = true
-	org.Email.FromName = "Bellabeat"
-	org.Email.FromEmail = "hi@bellabeat.com"
+	org.Email.Defaults.Enabled = true
+	org.Email.Defaults.FromName = "Bellabeat"
+	org.Email.Defaults.FromEmail = "hi@bellabeat.com"
 
 	org.Email.OrderConfirmation.Subject = "LEAF Order Confirmation"
 	org.Email.OrderConfirmation.Template = string(fs.ReadFile(config.WorkingDir + "/resources/bellabeat/emails/order-confirmation.html"))
@@ -75,7 +75,7 @@ var Bellabeat = New("bellabeat", func(c *gin.Context) *organization.Organization
 
 	org.Email.User.PasswordReset.Template = string(fs.ReadFile(config.WorkingDir + "/resources/bellabeat/emails/user-password-reset.html"))
 	org.Email.User.PasswordReset.Subject = "Reset your Bellabeat password"
-	org.Email.User.Enabled = true
+	org.Email.User.PasswordReset.Enabled = true
 
 	org.Email.User.EmailConfirmation.Template = string(fs.ReadFile(config.WorkingDir + "/resources/bellabeat/emails/user-email-confirmation.html"))
 	org.Email.User.EmailConfirmation.Subject = "Please confirm your email"
