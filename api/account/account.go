@@ -12,8 +12,6 @@ import (
 	"crowdstart.com/models/user"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/json/http"
-	"crowdstart.com/util/log"
-	"crowdstart.com/util/permission"
 )
 
 type Token struct {
@@ -97,26 +95,29 @@ func login(c *gin.Context) {
 		return
 	}
 
+	// Get user by email
 	if err := usr.GetByEmail(usr.Email); err != nil {
 		http.Fail(c, 401, "Email or password is incorrect", errors.New("Email or password is incorrect"))
 		return
 	}
 
+	// Check user's password
 	if !password.HashAndCompare(usr.PasswordHash, usrIn.Password) {
 		http.Fail(c, 401, "Email or password is incorrect", errors.New("Email or password is incorrect"))
 		return
 	}
 
-	if err := usr.GetByEmail(usr.Email); err != nil {
-		http.Fail(c, 401, "Email or password is incorrect", errors.New("Email or password is incorrect"))
+	// If user is not enabled fail
+	if !usr.Enabled {
+		http.Fail(c, 401, "User is not enabled", errors.New("User is not enabled"))
 		return
 	}
 
+	// Return a new token with user id set
 	tok := middleware.GetToken(c)
 	tok.Set("user-id", usr.Id())
 	tok.Set("exp", time.Now().Add(time.Hour*24*7))
-	tok.Secret = org.SecretKey
-	log.Warn("Referrer %v", tok.Permissions.Has(permission.Published))
+
 	http.Render(c, 200, Token{tok.String()})
 }
 
