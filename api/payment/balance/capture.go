@@ -24,17 +24,21 @@ func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []
 
 	// Capture any uncaptured payments
 	for _, p := range payments {
-
 		if !p.Captured {
 			// Update payment
 			p.Captured = true
 
 			trans := transaction.New(db)
+			trans.UserId = ord.UserId
 			trans.Amount = p.Amount
 			trans.Currency = p.Currency
 			trans.Type = transaction.Withdraw
+			trans.Test = ord.Test
+			trans.Put()
 		}
 	}
 
+	// apply discount
+	ord.Discount = ord.Total
 	return ord, keys, payments, nil
 }

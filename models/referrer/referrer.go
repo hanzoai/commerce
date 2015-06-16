@@ -50,6 +50,7 @@ func (r *Referrer) ApplyBonus() (*transaction.Transaction, error) {
 	trans := transaction.New(r.Db)
 	r.Program.GetBonus(trans, len(r.ReferralIds))
 	trans.UserId = r.UserId
+	trans.Type = transaction.Deposit
 	if err := trans.Put(); err != nil {
 		return nil, err
 	}
