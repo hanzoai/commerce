@@ -30,7 +30,7 @@ var template503 = `
 // Serve custom 404 page.
 func UnavailableHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Fail(http.StatusServiceUnavailable, errors.New("Service temporarily unavailable."))
+		c.AbortWithError(http.StatusServiceUnavailable, errors.New("Service temporarily unavailable."))
 
 		c.Next()
 

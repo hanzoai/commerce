@@ -135,8 +135,8 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 }
 
 func GetAccessToken(c *gin.Context) string {
-	tok, err := c.Get("access-token")
-	if err != nil {
+	tok, ok := c.Get("access-token")
+	if !ok {
 		return ""
 	}
 
