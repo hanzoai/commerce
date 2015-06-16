@@ -36,7 +36,7 @@ func (t *Token) Validator() *val.Validator {
 }
 
 func (t Token) Expired() bool {
-	if time.Now().After(t.Expires) {
+	if t.Used || time.Now().After(t.Expires) {
 		return true
 	}
 	return false

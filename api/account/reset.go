@@ -13,6 +13,7 @@ import (
 	"crowdstart.com/models/user"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/json/http"
+	"crowdstart.com/util/log"
 	"crowdstart.com/util/template"
 
 	mandrill "crowdstart.com/thirdparty/mandrill/tasks"
@@ -92,6 +93,11 @@ func resetConfirm(c *gin.Context) {
 		panic(err)
 	}
 
+	if tok.Expired() {
+		http.Fail(c, 403, "Token expired", errors.New("Token expired"))
+		return
+	}
+
 	// Get new password
 	confirm := &ConfirmPassword{}
 	if err := json.Decode(c.Request.Body, confirm); err != nil {
@@ -122,6 +128,12 @@ func resetConfirm(c *gin.Context) {
 	if err := usr.Put(); err != nil {
 		http.Fail(c, 500, "Failed to update password", err)
 		return
+	}
+
+	// Save token
+	tok.Used = true
+	if err := tok.Put(); err != nil {
+		log.Warn("Unable to update token", err, c)
 	}
 
 	http.Render(c, 200, gin.H{"status": "ok"})
