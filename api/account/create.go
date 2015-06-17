@@ -2,7 +2,7 @@ package account
 
 import (
 	"errors"
-	"strings"
+	"regexp"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -118,6 +118,10 @@ func create(c *gin.Context) {
 
 	req := &createReq{}
 
+	// Default these fields to exotic unicode character to test if they are set to empty
+	usr.FirstName = "\u263A"
+	usr.LastName = "\u263A"
+
 	// Decode response body to create new user
 	if err := json.Decode(c.Request.Body, req); err != nil {
 		http.Fail(c, 400, "Failed decode request body", err)
@@ -134,6 +138,20 @@ func create(c *gin.Context) {
 		return
 	}
 
+	if usr.FirstName == "" {
+		http.Fail(c, 400, "First name cannot be blank", errors.New("First name cannot be blank"))
+		return
+	} else if usr.FirstName == "\u263A" {
+		usr.FirstName = ""
+	}
+
+	if usr.LastName == "" {
+		http.Fail(c, 400, "Last name cannot be blank", errors.New("Last name cannot be blank"))
+		return
+	} else if usr.LastName == "\u263A" {
+		usr.LastName = ""
+	}
+
 	// Email can't already exist
 	if err := usr.GetByEmail(usr.Email); err == nil {
 		http.Fail(c, 400, "Email is in use", errors.New("Email is in use"))
@@ -141,10 +159,7 @@ func create(c *gin.Context) {
 	}
 
 	// Email must be valid
-	if strings.Contains(usr.Email, "@") &&
-		strings.Contains(usr.Email, ".") &&
-		strings.Index(usr.Email, "@") < strings.Index(usr.Email, ".") &&
-		len(usr.Email) > 5 {
+	if ok, _ := regexp.MatchString("(\\w[-._\\w]*\\w@\\w[-._\\w]*\\w\\.\\w{2,3})", usr.Email); !ok {
 		http.Fail(c, 400, "Email is not valid", errors.New("Email is not valid"))
 		return
 	}
