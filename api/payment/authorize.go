@@ -98,6 +98,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	log.Debug("Payment: %#v", pay, c)
 
 	// Set order total to $0.50 if using a test email
+	log.Debug("Buyer: %v", pay.Buyer, c)
 	if org.IsTestEmail(pay.Buyer.Email) {
 		pay.Amount = currency.Cents(50)
 		ord.Total = currency.Cents(50)
