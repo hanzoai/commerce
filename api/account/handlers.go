@@ -12,9 +12,10 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
 	accountRequired := middleware.AccountRequired()
 	namespaced := middleware.Namespace()
+	origin := middleware.AccessControl("*")
 
 	api := router.Group("account")
-	api.Use(publishedRequired)
+	api.Use(publishedRequired, origin)
 
 	api.GET("", publishedRequired, accountRequired, namespaced, get)
 	api.PUT("", publishedRequired, accountRequired, namespaced, update)
