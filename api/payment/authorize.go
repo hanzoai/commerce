@@ -49,6 +49,10 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		return nil, nil, err
 	}
 
+	log.Debug("AuthorizationReq.User_: %#v", ar.User_, c)
+	log.Debug("AuthorizationReq.Order: %#v", ar.Order, c)
+	log.Debug("AuthorizationReq.Payment_: %#v", ar.Payment_, c)
+
 	// Peel off order for convience
 	ord = ar.Order
 	ctx := ord.Db.Context
@@ -67,7 +71,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		return nil, nil, errors.New("Invalid or incomplete order")
 	}
 
-	log.Debug("Order: %#v", ord)
+	log.Debug("Order: %#v", ord, c)
 
 	// Get user from request
 	usr, err := ar.User()
@@ -75,7 +79,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		return nil, nil, err
 	}
 
-	log.Debug("User: %#v", usr)
+	log.Debug("User: %#v", usr, c)
 
 	// Get payment from request, update order
 	pay, err := ar.Payment()
@@ -85,6 +89,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 
 	// Use user as buyer
 	pay.Buyer = usr.Buyer()
+	log.Debug("Buyer: %#v", pay.Buyer, c)
 
 	// Fill with debug information about user's browser
 	pay.Client = client.New(c)
@@ -95,7 +100,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	pay.Currency = ord.Currency
 	pay.Description = ord.Description()
 
-	log.Debug("Payment: %#v", pay)
+	log.Debug("Payment: %#v", pay, c)
 
 	// Set order total to $0.50 if using a test email
 	if org.IsTestEmail(pay.Buyer.Email) {

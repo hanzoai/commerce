@@ -19,21 +19,15 @@ import (
 	mandrill "crowdstart.com/thirdparty/mandrill/tasks"
 )
 
-func SendPasswordReset(c *gin.Context, org *organization.Organization, usr *user.User) {
+type resetReq struct {
+	Password        string `json:"password"`
+	ConfirmPassword string `json:"confirmPassword"`
+}
+
+func sendPasswordReset(c *gin.Context, org *organization.Organization, usr *user.User, tok *token.Token) {
 	conf := org.Email.User.PasswordReset.Config(org)
 	if !conf.Enabled || org.Mandrill.APIKey == "" {
 		return
-	}
-
-	// Create token
-	tok := token.New(usr.Db)
-	tok.Email = usr.Email
-	tok.UserId = usr.Id()
-	tok.Expires = time.Now().Add(time.Hour * 72)
-
-	err := tok.Put()
-	if err != nil {
-		panic(err)
 	}
 
 	// From
@@ -63,16 +57,28 @@ func reset(c *gin.Context) {
 	query := c.Request.URL.Query()
 	email := query.Get("email")
 
-	if err := usr.GetByEmail(email); err == nil {
-		SendPasswordReset(c, org, usr)
+	if err := usr.GetByEmail(email); err != nil {
+		// If user doesn't exist, we pretend like it's ok
+		log.Warn("Email doesn't exist, unable to reset password: %v", email, c)
+		http.Render(c, 200, gin.H{"status": "ok"})
+		return
 	}
 
-	http.Render(c, 200, gin.H{"status": "ok"})
-}
+	// Create token
+	tok := token.New(usr.Db)
+	tok.Email = usr.Email
+	tok.UserId = usr.Id()
+	tok.Expires = time.Now().Add(time.Hour * 72)
 
-type ConfirmPassword struct {
-	Password        string `json:"password"`
-	ConfirmPassword string `json:"confirmPassword"`
+	if err := tok.Put(); err != nil {
+		http.Fail(c, 500, "Unable to create reset token", err)
+		return
+	}
+
+	// Send email
+	sendPasswordReset(c, org, usr, tok)
+
+	http.Render(c, 200, gin.H{"status": "ok"})
 }
 
 func resetConfirm(c *gin.Context) {
@@ -99,8 +105,8 @@ func resetConfirm(c *gin.Context) {
 	}
 
 	// Get new password
-	confirm := &ConfirmPassword{}
-	if err := json.Decode(c.Request.Body, confirm); err != nil {
+	req := &resetReq{}
+	if err := json.Decode(c.Request.Body, req); err != nil {
 		http.Fail(c, 400, "Failed decode request body", err)
 		return
 	}
@@ -109,18 +115,18 @@ func resetConfirm(c *gin.Context) {
 	usr.Enabled = true
 
 	// Validate password
-	if len(confirm.Password) < 6 {
+	if len(req.Password) < 6 {
 		http.Fail(c, 400, "Password needs to be atleast 6 characters", errors.New("Password needs to be atleast 6 characters"))
 		return
 	}
 
-	if confirm.Password != confirm.ConfirmPassword {
+	if req.Password != req.ConfirmPassword {
 		http.Fail(c, 400, "Passwords need to match", errors.New("Passwords need to match"))
 		return
 	}
 
 	// Update password
-	if err := usr.SetPassword(confirm.Password); err != nil {
+	if err := usr.SetPassword(req.Password); err != nil {
 		http.Fail(c, 500, "Failed to set password", err)
 		return
 	}
