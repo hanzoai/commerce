@@ -3,6 +3,7 @@ package payment
 import (
 	"strings"
 
+	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/user"
@@ -15,30 +16,36 @@ type AuthorizationReq struct {
 }
 
 func (ar *AuthorizationReq) User() (*user.User, error) {
-	usr := ar.User_
-	usr.Model.Entity = ar.User_
-	usr.Model.Db = ar.Order.Db
+	// Pull user id off request
+	id := ar.User_.Id_
 
-	// If Id is set, this is a pre-existing user, user copy from datastore
-	if usr.Id_ != "" {
-		if err := usr.Get(usr.Id_); err != nil {
+	// If id is set, this is a pre-existing user, use data from datastore
+	if id != "" {
+		ar.User_ = user.New(ar.Order.Db)
+		if err := ar.User_.Get(id); err != nil {
 			return nil, UserDoesNotExist
+		} else {
+			return ar.User_, nil
 		}
 	}
 
+	// Ensure model mixin is setup correctly
+	ar.User_.Model = mixin.Model{Db: ar.Order.Db, Entity: ar.User_}
+
 	// See if order has address if we don't.
-	if usr.ShippingAddress.Empty() {
-		usr.ShippingAddress = ar.Order.ShippingAddress
+	if ar.User_.ShippingAddress.Empty() {
+		ar.User_.ShippingAddress = ar.Order.ShippingAddress
 	}
 
-	if usr.BillingAddress.Empty() {
-		usr.BillingAddress = ar.Order.BillingAddress
+	if ar.User_.BillingAddress.Empty() {
+		ar.User_.BillingAddress = ar.Order.BillingAddress
 	}
 
-	usr.Email = strings.ToLower(strings.TrimSpace(usr.Email))
-	usr.Username = strings.ToLower(strings.TrimSpace(usr.Username))
+	// Normalize a few things we get in
+	ar.User_.Email = strings.ToLower(strings.TrimSpace(ar.User_.Email))
+	ar.User_.Username = strings.ToLower(strings.TrimSpace(ar.User_.Username))
 
-	return usr, nil
+	return ar.User_, nil
 }
 
 func (ar *AuthorizationReq) Payment() (*payment.Payment, error) {
