@@ -3,6 +3,7 @@ package payment
 import (
 	"strings"
 
+	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/user"
@@ -16,13 +17,16 @@ type AuthorizationReq struct {
 
 func (ar *AuthorizationReq) User() (*user.User, error) {
 	usr := ar.User_
-	usr.Model.Entity = ar.User_
-	usr.Model.Db = ar.Order.Db
+	usr.Model = mixin.Model{Db: ar.Order.Db, Entity: usr}
 
-	// If Id is set, this is a pre-existing user, user copy from datastore
+	// If id is set, this is a pre-existing user, use data from datastore
 	if usr.Id_ != "" {
-		if err := usr.Get(usr.Id_); err != nil {
+		id := usr.Id_
+		usr = user.New(usr.Model.Db)
+		if err := usr.Get(id); err != nil {
 			return nil, UserDoesNotExist
+		} else {
+			return usr, nil
 		}
 	}
 
@@ -35,6 +39,7 @@ func (ar *AuthorizationReq) User() (*user.User, error) {
 		usr.BillingAddress = ar.Order.BillingAddress
 	}
 
+	// Normalize a few things we get in
 	usr.Email = strings.ToLower(strings.TrimSpace(usr.Email))
 	usr.Username = strings.ToLower(strings.TrimSpace(usr.Username))
 
