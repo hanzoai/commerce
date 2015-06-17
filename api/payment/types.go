@@ -16,34 +16,33 @@ type AuthorizationReq struct {
 }
 
 func (ar *AuthorizationReq) User() (*user.User, error) {
-	usr := ar.User_
-	usr.Model = mixin.Model{Db: ar.Order.Db, Entity: usr}
+	ar.User_.Model = mixin.Model{Db: ar.Order.Db, Entity: ar.User_}
+	id := ar.User_.Id_
 
 	// If id is set, this is a pre-existing user, use data from datastore
-	if usr.Id_ != "" {
-		id := usr.Id_
-		usr = user.New(usr.Model.Db)
-		if err := usr.Get(id); err != nil {
+	if id != "" {
+		ar.User_ = user.New(ar.Order.Db)
+		if err := ar.User_.Get(id); err != nil {
 			return nil, UserDoesNotExist
 		} else {
-			return usr, nil
+			return ar.User_, nil
 		}
 	}
 
 	// See if order has address if we don't.
-	if usr.ShippingAddress.Empty() {
-		usr.ShippingAddress = ar.Order.ShippingAddress
+	if ar.User_.ShippingAddress.Empty() {
+		ar.User_.ShippingAddress = ar.Order.ShippingAddress
 	}
 
-	if usr.BillingAddress.Empty() {
-		usr.BillingAddress = ar.Order.BillingAddress
+	if ar.User_.BillingAddress.Empty() {
+		ar.User_.BillingAddress = ar.Order.BillingAddress
 	}
 
 	// Normalize a few things we get in
-	usr.Email = strings.ToLower(strings.TrimSpace(usr.Email))
-	usr.Username = strings.ToLower(strings.TrimSpace(usr.Username))
+	ar.User_.Email = strings.ToLower(strings.TrimSpace(ar.User_.Email))
+	ar.User_.Username = strings.ToLower(strings.TrimSpace(ar.User_.Username))
 
-	return usr, nil
+	return ar.User_, nil
 }
 
 func (ar *AuthorizationReq) Payment() (*payment.Payment, error) {
