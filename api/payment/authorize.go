@@ -49,6 +49,8 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		return nil, nil, err
 	}
 
+	log.Debug("AuthorizationReq: %#v", ar, c)
+
 	// Peel off order for convience
 	ord = ar.Order
 	ctx := ord.Db.Context
