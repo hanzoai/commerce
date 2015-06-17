@@ -49,7 +49,9 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		return nil, nil, err
 	}
 
-	log.Debug("AuthorizationReq: %#v", ar, c)
+	log.Debug("AuthorizationReq.User_: %#v", ar.User_, c)
+	log.Debug("AuthorizationReq.Order: %#v", ar.Order, c)
+	log.Debug("AuthorizationReq.Payment_: %#v", ar.Payment_, c)
 
 	// Peel off order for convience
 	ord = ar.Order
