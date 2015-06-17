@@ -16,7 +16,7 @@ type AuthorizationReq struct {
 }
 
 func (ar *AuthorizationReq) User() (*user.User, error) {
-	ar.User_.Model = mixin.Model{Db: ar.Order.Db, Entity: ar.User_}
+	// Pull user id off request
 	id := ar.User_.Id_
 
 	// If id is set, this is a pre-existing user, use data from datastore
@@ -28,6 +28,9 @@ func (ar *AuthorizationReq) User() (*user.User, error) {
 			return ar.User_, nil
 		}
 	}
+
+	// Ensure model mixin is setup correctly
+	ar.User_.Model = mixin.Model{Db: ar.Order.Db, Entity: ar.User_}
 
 	// See if order has address if we don't.
 	if ar.User_.ShippingAddress.Empty() {
