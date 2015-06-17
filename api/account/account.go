@@ -14,8 +14,14 @@ import (
 	"crowdstart.com/util/json/http"
 )
 
-type Token struct {
+type loginRes struct {
 	Token string `json:"token"`
+}
+
+type loginReq struct {
+	Email           string `json:"email"`
+	Password        string `json:"password"`
+	PasswordConfirm string `json:"passwordConfirm"`
 }
 
 func get(c *gin.Context) {
@@ -75,34 +81,27 @@ func patch(c *gin.Context) {
 	}
 }
 
-type userIn struct {
-	*user.User
-
-	Password        string `json:"password,omitempty"`
-	PasswordConfirm string `json:"passwordConfirm,omitempty"`
-}
-
 func login(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespace(c))
-	usr := user.New(db)
 
-	usrIn := &userIn{User: usr}
+	req := &loginReq{}
 
 	// Decode response body to create new user
-	if err := json.Decode(c.Request.Body, usrIn); err != nil {
+	if err := json.Decode(c.Request.Body, req); err != nil {
 		http.Fail(c, 400, "Failed decode request body", err)
 		return
 	}
 
 	// Get user by email
-	if err := usr.GetByEmail(usr.Email); err != nil {
+	usr := user.New(db)
+	if err := usr.GetByEmail(req.Email); err != nil {
 		http.Fail(c, 401, "Email or password is incorrect", errors.New("Email or password is incorrect"))
 		return
 	}
 
 	// Check user's password
-	if !password.HashAndCompare(usr.PasswordHash, usrIn.Password) {
+	if !password.HashAndCompare(usr.PasswordHash, req.Password) {
 		http.Fail(c, 401, "Email or password is incorrect", errors.New("Email or password is incorrect"))
 		return
 	}
@@ -118,7 +117,7 @@ func login(c *gin.Context) {
 	tok.Set("user-id", usr.Id())
 	tok.Set("exp", time.Now().Add(time.Hour*24*7))
 
-	http.Render(c, 200, Token{tok.String()})
+	http.Render(c, 200, loginRes{tok.String()})
 }
 
 func exists(c *gin.Context) {
