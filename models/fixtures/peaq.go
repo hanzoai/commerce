@@ -31,7 +31,7 @@ var PEAQAudio = New("peaqaudio", func(c *gin.Context) *organization.Organization
 	org.FullName = "PEAQAudio"
 	org.Owners = []string{u.Id()}
 	org.Website = "http://peaqaudio.com"
-	org.SecretKey = []byte("3kfmczo801fdmur0QtOCRZptNfRNV0uNexi")
+	org.SecretKey = []byte("DY1E05iX1Bp4ku7148N2RTd0d579bT56")
 	org.AddDefaultTokens()
 
 	// Save org into default namespace
