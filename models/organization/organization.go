@@ -205,7 +205,7 @@ func (o Organization) StripeToken() string {
 }
 
 func (o Organization) IsTestEmail(email string) bool {
-	if o.EmailWhitelist == "" {
+	if email == "" || o.EmailWhitelist == "" {
 		return false
 	}
 
