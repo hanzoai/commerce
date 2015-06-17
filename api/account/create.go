@@ -20,6 +20,12 @@ import (
 	mandrill "crowdstart.com/thirdparty/mandrill/tasks"
 )
 
+type createReq struct {
+	User            *user.User `json:"user"`
+	Password        string     `json:"password"`
+	PasswordConfirm string     `json:"passwordConfirm"`
+}
+
 func sendEmailConfirmation(c *gin.Context, org *organization.Organization, usr *user.User) {
 	conf := org.Email.User.EmailConfirmation.Config(org)
 	if !conf.Enabled || org.Mandrill.APIKey == "" {
@@ -109,21 +115,32 @@ func sendWelcome(c *gin.Context, org *organization.Organization, usr *user.User)
 func create(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespace(c))
-	usr := user.New(db)
 
-	usrIn := &userIn{User: usr}
+	req := &createReq{}
 
 	// Decode response body to create new user
-	if err := json.Decode(c.Request.Body, usrIn); err != nil {
+	if err := json.Decode(c.Request.Body, req); err != nil {
 		http.Fail(c, 400, "Failed decode request body", err)
 		return
 	}
 
+	// Pull out user
+	usr := req.User
+	usr.Mixin(db, usr)
+
+	// Email is required
+	if usr.Email == "" {
+		http.Fail(c, 400, "Email is required", errors.New("Email is required"))
+		return
+	}
+
+	// Email can't already exist
 	if err := usr.GetByEmail(usr.Email); err == nil {
 		http.Fail(c, 400, "Email is in use", errors.New("Email is in use"))
 		return
 	}
 
+	// Email must be valid
 	if strings.Contains(usr.Email, "@") &&
 		strings.Contains(usr.Email, ".") &&
 		strings.Index(usr.Email, "@") < strings.Index(usr.Email, ".") &&
@@ -132,28 +149,26 @@ func create(c *gin.Context) {
 		return
 	}
 
-	// Check for required fields
-	if usr.Email == "" {
-		http.Fail(c, 400, "Email is required", errors.New("Email is required"))
-		return
-	}
-
-	if len(usrIn.Password) < 6 {
+	// Password should be at least 6 characters long
+	if len(req.Password) < 6 {
 		http.Fail(c, 400, "Password needs to be atleast 6 characters", errors.New("Password needs to be atleast 6 characters"))
 		return
 	}
 
-	if usrIn.Password != usrIn.PasswordConfirm {
+	// Password confirm must match
+	if req.Password != req.PasswordConfirm {
 		http.Fail(c, 400, "Passwords need to match", errors.New("Passwords need to match"))
 		return
 	}
 
-	if hash, err := password.Hash(usrIn.Password); err != nil {
+	// Hash password
+	if hash, err := password.Hash(req.Password); err != nil {
 		http.Fail(c, 400, "Failed to hash user password", err)
 	} else {
 		usr.PasswordHash = hash
 	}
 
+	// Save new user
 	if err := usr.Put(); err != nil {
 		http.Fail(c, 400, "Failed to create user", err)
 	}
