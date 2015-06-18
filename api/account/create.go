@@ -20,6 +20,8 @@ import (
 	mandrill "crowdstart.com/thirdparty/mandrill/tasks"
 )
 
+var emailRegex = regexp.MustCompile("(\\w[-._\\w]*\\w@\\w[-._\\w]*\\w\\.\\w{2,4})")
+
 type createReq struct {
 	*user.User
 	Password        string `json:"password"`
@@ -159,7 +161,7 @@ func create(c *gin.Context) {
 	}
 
 	// Email must be valid
-	if ok, _ := regexp.MatchString("(\\w[-._\\w]*\\w@\\w[-._\\w]*\\w\\.\\w{2,4})", usr.Email); !ok {
+	if ok, _ := emailRegex.MatchString(usr.Email); !ok {
 		http.Fail(c, 400, "Email is not valid", errors.New("Email is not valid"))
 		return
 	}
