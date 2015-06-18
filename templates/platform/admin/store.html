@@ -209,7 +209,7 @@
         // Update price with default product price
         var $overrides = $('#product-overrides');
         var $overridesBody = $overrides.children('tbody');
-        var overrideTemplate = '<tr><td><input type="text" class="listing-id hidden" value=""><strong class="name"></strong></td><td><input type="currency" class="listing-price text-right form-control" value=""><input type="hidden" class="listing-slug" value=""></td><td class="text-center"><button type="button" class="delete btn btn-xs btn-danger">x</button></td></tr>';
+        var overrideTemplate = '<tr><td><input type="text" class="listing-id hidden" value=""><strong class="name"></strong></td><td><input type="currency" class="listing-list-price form-control text-right" autocomplete="off" value="{{ listing.ListPrice }}"></td><td><input type="currency" class="listing-price text-right form-control" value=""><input type="hidden" class="listing-slug" value=""></td><td class="text-center"><button type="button" class="delete btn btn-xs btn-danger">x</button></td></tr>';
 
         // Add delete functionality to rendered buttons
         $('.delete').on('click', function() {
