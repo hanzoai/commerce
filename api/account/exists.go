@@ -14,10 +14,9 @@ import (
 func exists(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespace(c))
-	usr := user.New(db)
+	email := c.Params.ByName("email")
 
-	query := c.Request.URL.Query()
-	email := query.Get("email")
+	usr := user.New(db)
 
 	if err := usr.GetByEmail(email); err == nil {
 		http.Fail(c, 400, "Email is in use", errors.New("Email is in use"))
