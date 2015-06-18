@@ -139,6 +139,8 @@ func (t Type) Symbol() string {
 		return "руб"
 	case INR, TRY:
 		return ""
+	case PNT:
+		return "POINTS"
 	}
 	return ""
 }
@@ -310,6 +312,8 @@ const (
 	YER      = "yer" // Yemeni Rial
 	ZAR      = "zar" // South African Rand
 	ZMW      = "zmw" // Zambian Kwacha
+
+	PNT = "points" // points
 )
 
 var Types = []Type{
@@ -451,4 +455,6 @@ var Types = []Type{
 	YER,
 	ZAR,
 	ZMW,
+
+	PNT,
 }

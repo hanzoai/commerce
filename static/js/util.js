@@ -113,6 +113,7 @@ var Util = (function() {
     'rub':'руб',
     'inr':'',
     'try':'',
+    'points':'Points',
 	''   : '',
   };
 

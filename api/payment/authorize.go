@@ -135,6 +135,8 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		}
 	}
 
+	log.Warn("Test? Ord  %v, Pay %v", ord.Test, pay.Test, c)
+
 	// If the charge is not live or test flag is set, then it is a test charge
 	ord.Test = pay.Test || !pay.Live
 
