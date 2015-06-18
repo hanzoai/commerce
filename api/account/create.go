@@ -161,7 +161,7 @@ func create(c *gin.Context) {
 	}
 
 	// Email must be valid
-	if ok, _ := emailRegex.MatchString(usr.Email); !ok {
+	if ok := emailRegex.MatchString(usr.Email); !ok {
 		http.Fail(c, 400, "Email is not valid", errors.New("Email is not valid"))
 		return
 	}

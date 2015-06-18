@@ -3,7 +3,6 @@ package account
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/json/http"
@@ -49,12 +48,10 @@ func update(c *gin.Context) {
 }
 
 func patch(c *gin.Context) {
-	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespace(c))
 	usr := middleware.GetUser(c)
 
 	if err := json.Decode(c.Request.Body, usr); err != nil {
-		r.Fail(c, 400, "Failed decode request body", err)
+		http.Fail(c, 400, "Failed decode request body", err)
 		return
 	}
 
