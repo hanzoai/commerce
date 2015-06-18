@@ -1,0 +1,77 @@
+package account
+
+import (
+	"errors"
+	"time"
+
+	"github.com/gin-gonic/gin"
+
+	"crowdstart.com/auth/password"
+	"crowdstart.com/datastore"
+	"crowdstart.com/middleware"
+	"crowdstart.com/models/user"
+	"crowdstart.com/util/json"
+	"crowdstart.com/util/json/http"
+)
+
+type loginReq struct {
+	Email           string `json:"email"`
+	Id              string `json:"id"`
+	Username        string `json:"username"`
+	Password        string `json:"password"`
+	PasswordConfirm string `json:"passwordConfirm"`
+}
+
+type loginRes struct {
+	Token string `json:"token"`
+}
+
+func login(c *gin.Context) {
+	org := middleware.GetOrganization(c)
+	db := datastore.New(org.Namespace(c))
+
+	req := &loginReq{}
+
+	// Decode response body to create new user
+	if err := json.Decode(c.Request.Body, req); err != nil {
+		http.Fail(c, 400, "Failed decode request body", err)
+		return
+	}
+
+	var id string
+
+	// Allow userame, email or id to be used to lookup user
+	if req.Id != "" {
+		id = req.Id
+	} else if req.Email != "" {
+		id = req.Email
+	} else if req.Username != "" {
+		id = req.Username
+	}
+
+	// Get user by email
+	usr := user.New(db)
+	if err := usr.GetById(id); err != nil {
+		http.Fail(c, 401, "Email or password is incorrect", errors.New("Email or password is incorrect"))
+		return
+	}
+
+	// Check user's password
+	if !password.HashAndCompare(usr.PasswordHash, req.Password) {
+		http.Fail(c, 401, "Email or password is incorrect", errors.New("Email or password is incorrect"))
+		return
+	}
+
+	// If user is not enabled fail
+	if !usr.Enabled {
+		http.Fail(c, 401, "User is not enabled", errors.New("User is not enabled"))
+		return
+	}
+
+	// Return a new token with user id set
+	tok := middleware.GetToken(c)
+	tok.Set("user-id", usr.Id())
+	tok.Set("exp", time.Now().Add(time.Hour*24*7))
+
+	http.Render(c, 200, loginRes{tok.String()})
+}
