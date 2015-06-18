@@ -16,6 +16,8 @@ import (
 
 type loginReq struct {
 	Email           string `json:"email"`
+	Id              string `json:"id"`
+	Username        string `json:"username"`
 	Password        string `json:"password"`
 	PasswordConfirm string `json:"passwordConfirm"`
 }
@@ -36,9 +38,20 @@ func login(c *gin.Context) {
 		return
 	}
 
+	var id string
+
+	// Allow userame, email or id to be used to lookup user
+	if req.Id != "" {
+		id = req.Id
+	} else if req.Email != "" {
+		id = req.Email
+	} else if req.Username != "" {
+		id = req.Username
+	}
+
 	// Get user by email
 	usr := user.New(db)
-	if err := usr.GetByEmail(req.Email); err != nil {
+	if err := usr.GetById(id); err != nil {
 		http.Fail(c, 401, "Email or password is incorrect", errors.New("Email or password is incorrect"))
 		return
 	}
