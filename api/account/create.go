@@ -21,9 +21,9 @@ import (
 )
 
 type createReq struct {
-	User            *user.User `json:"user"`
-	Password        string     `json:"password"`
-	PasswordConfirm string     `json:"passwordConfirm"`
+	*user.User
+	Password        string `json:"password"`
+	PasswordConfirm string `json:"passwordConfirm"`
 }
 
 func sendEmailConfirmation(c *gin.Context, org *organization.Organization, usr *user.User) {
@@ -117,10 +117,11 @@ func create(c *gin.Context) {
 	db := datastore.New(org.Namespace(c))
 
 	req := &createReq{}
+	req.User = user.New(db)
 
 	// Default these fields to exotic unicode character to test if they are set to empty
-	usr.FirstName = "\u263A"
-	usr.LastName = "\u263A"
+	req.FirstName = "\u263A"
+	req.LastName = "\u263A"
 
 	// Decode response body to create new user
 	if err := json.Decode(c.Request.Body, req); err != nil {
@@ -130,7 +131,6 @@ func create(c *gin.Context) {
 
 	// Pull out user
 	usr := req.User
-	usr.Mixin(db, usr)
 
 	// Email is required
 	if usr.Email == "" {
