@@ -1,8 +1,6 @@
 package account
 
 import (
-	"errors"
-
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.com/datastore"
@@ -19,9 +17,8 @@ func exists(c *gin.Context) {
 	usr := user.New(db)
 
 	if err := usr.GetByEmail(email); err == nil {
-		http.Fail(c, 400, "Email is in use", errors.New("Email is in use"))
-		return
+		http.Render(c, 200, gin.H{"exists": true})
+	} else {
+		http.Render(c, 200, gin.H{"exists": false})
 	}
-
-	http.Render(c, 200, gin.H{"status": "ok"})
 }
