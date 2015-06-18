@@ -81,6 +81,19 @@ type Model struct {
 	UseStringKey bool `json:"-" datastore:"-"`
 }
 
+// Wire up datastore/entity
+func (m *Model) Mixin(db *datastore.Datastore, entity SearchableKind) {
+	// Do some reflection here and copy key Id_ off entity (if it had that stuff already populated)?
+	// oldmodel := reflect.ValueOf(entity).Elem().FieldByName("Model").(*Model)
+	// if oldmodel.Id_ != "" {
+	// 	m.Id_ = oldmodel.Id_
+	// 	m.key = oldmodel.Key()
+	// }
+
+	m.Db = db
+	m.Entity = entity
+}
+
 // Get AppEngine context
 func (m *Model) Context() appengine.Context {
 	return m.Db.Context
