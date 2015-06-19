@@ -1,9 +1,8 @@
 indexes:
 
-- kind: order
+- kind: user
   ancestor: no
   properties:
   - name: Email
-    direction: desc
   - name: CreatedAt
     direction: desc
