@@ -304,7 +304,7 @@ func (m *Model) GetById(id string) error {
 	key, err := hashid.DecodeKey(m.Db.Context, id)
 
 	ctx := m.Db.Context
-	log.Warn("Tried to decode id: %v, with kind: %v, got key: %v, err: %v", id, kind, key, err, ctx)
+	log.Warn("Tried to decode id: %v, with kind: %v, got key: %v, err: %v", id, m.Kind(), key, err, ctx)
 
 	// Use key if we have one
 	if err == nil {
