@@ -1,6 +1,8 @@
 package account
 
 import (
+	"strings"
+
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.com/middleware"
@@ -49,6 +51,8 @@ func update(c *gin.Context) {
 
 func patch(c *gin.Context) {
 	usr := middleware.GetUser(c)
+
+	usr.Email = strings.ToLower(strings.TrimSpace(usr.Email))
 
 	if err := json.Decode(c.Request.Body, usr); err != nil {
 		http.Fail(c, 400, "Failed decode request body", err)

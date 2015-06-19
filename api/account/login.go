@@ -2,6 +2,7 @@ package account
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -44,9 +45,12 @@ func login(c *gin.Context) {
 	if req.Id != "" {
 		id = req.Id
 	} else if req.Email != "" {
-		id = req.Email
+		id = strings.ToLower(strings.TrimSpace(req.Email))
 	} else if req.Username != "" {
 		id = req.Username
+	} else {
+		http.Fail(c, 400, "Could not find account", errors.New("Could not find account"))
+		return
 	}
 
 	// Get user by email

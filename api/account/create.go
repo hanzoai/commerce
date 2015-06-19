@@ -3,6 +3,7 @@ package account
 import (
 	"errors"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -153,6 +154,8 @@ func create(c *gin.Context) {
 	} else if usr.LastName == "\u263A" {
 		usr.LastName = ""
 	}
+
+	usr.Email = strings.ToLower(strings.TrimSpace(usr.Email))
 
 	// Email can't already exist
 	if err := usr.GetByEmail(usr.Email); err == nil {
