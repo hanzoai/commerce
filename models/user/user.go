@@ -166,6 +166,9 @@ func (u *User) Save(c chan<- aeds.Property) (err error) {
 	// Serialize unsupported properties
 	u.Metadata_ = string(json.EncodeBytes(&u.Metadata))
 
+	// sanitize email
+	u.Email = strings.ToLower(strings.TrimSpace(u.Email))
+
 	// Save properties
 	return IgnoreFieldMismatch(aeds.SaveStruct(u, c))
 }
@@ -229,6 +232,7 @@ func (u *User) Validator() *val.Validator {
 
 // Populates current entity from datastore by Email.
 func (u *User) GetByEmail(email string) error {
+	email = strings.ToLower(strings.TrimSpace(email))
 	log.Debug("Searching for user '%v'", email)
 
 	// Build query to return user
