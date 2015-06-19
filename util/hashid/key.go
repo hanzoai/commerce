@@ -184,7 +184,6 @@ func DecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key, err error)
 	// Catch panic from Decode
 	defer func() {
 		if r := recover(); r != nil {
-			var err error
 			switch v := r.(type) {
 			case string:
 				err = errors.New(v)
