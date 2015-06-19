@@ -184,8 +184,15 @@ func DecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key, err error)
 	// Catch panic from Decode
 	defer func() {
 		if r := recover(); r != nil {
-			err = errors.New(r.(string))
-			log.Warn("Failed to decode key '%v': %v", encoded, err, ctx)
+			var err error
+			switch v := r.(type) {
+			case string:
+				err = errors.New(v)
+			case error:
+				err = v
+			default:
+				err = errors.New("I don't even")
+			}
 		}
 	}()
 
