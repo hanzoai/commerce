@@ -280,7 +280,7 @@ datastore-export:
 				  --result_db_filename /tmp/bulkloader-result-$$kind.db \
 				  --namespace $$namespace \
 				  --kind $$kind \
-				  --filename _export/$$kind-$(datastore_app_id)-$(current_date).csv && \
+				  --filename _export/$$namespace-$$kind-$(datastore_app_id)-$(current_date).csv && \
 	rm -rf /tmp/bulkloader-$$kind.db \
 		   /tmp/bulkloader-$$kind.log \
 		   /tmp/bulkloader-result-$$kind.db
