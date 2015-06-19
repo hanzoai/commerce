@@ -274,7 +274,7 @@ datastore-export:
 				  --batch_size 250 \
 				  --http_limit 200 \
 				  --url $(datastore_admin_url) \
-				  --config_file util/bulkloader/bulkloader-export.yaml \
+				  --config_file util/bulkloader/bulkloader.yaml \
 				  --db_filename /tmp/bulkloader-$$kind.db \
 				  --log_file /tmp/bulkloader-$$kind.log \
 				  --result_db_filename /tmp/bulkloader-result-$$kind.db \
@@ -292,7 +292,7 @@ datastore-import:
 						  --batch_size 250 \
 						  --http_limit 200 \
 						  --url $(datastore_admin_url) \
-						  --config_file util/bulkloader/bulkloader-import.yaml \
+						  --config_file util/bulkloader/bulkloader.yaml \
 				  	      --namespace $$namespace \
 						  --kind $$kind \
 						  --filename $$file \
