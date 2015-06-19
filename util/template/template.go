@@ -41,13 +41,15 @@ func TemplateSet() *pongo2.TemplateSet {
 
 	set.Globals["jsonify"] = json.Encode
 	set.Globals["constants"] = struct {
-		Countries     []country.Country
-		CurrencyTypes []currency.Type
-		ThankYouTypes []thankyou.Type
+		CountriesByISOCode map[string]country.Country
+		Countries          []country.Country
+		CurrencyTypes      []currency.Type
+		ThankYouTypes      []thankyou.Type
 	}{
-		Countries:     country.Countries,
-		CurrencyTypes: currency.Types,
-		ThankYouTypes: thankyou.Types,
+		CountriesByISOCode: country.ByISOCodeISO3166_2,
+		Countries:          country.Countries,
+		CurrencyTypes:      currency.Types,
+		ThankYouTypes:      thankyou.Types,
 	}
 	return set
 }
