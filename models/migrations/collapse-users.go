@@ -4,6 +4,9 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.com/models/order"
+	"crowdstart.com/models/payment"
+	"crowdstart.com/models/referral"
+	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/user"
 	"crowdstart.com/util/log"
 
@@ -16,26 +19,96 @@ var _ = New("collapse-users",
 		return NoArgs
 	},
 	func(db *ds.Datastore, ord *order.Order) {
-		id := ord.UserId
+		ctx := db.Context
+		userid := ord.UserId
 
 		// Look up user for this order
 		usr := user.New(db)
-		if err := usr.GetById(id); err != nil {
-			log.Warn("Failed to query for user: %v", id)
+		if err := usr.GetById(userid); err != nil {
+			log.Warn("Failed to query for user: %v", userid, ctx)
 			return
 		}
 
 		// Try to find newest instance of a user with this email
 		usr2 := user.New(db)
 		if ok, err := usr2.Query().Order("-CreatedAt").Filter("Email=", usr.Email).First(); !ok || err != nil {
-			log.Warn("Failed to query for newest user: %v", usr)
+			log.Warn("Failed to query for newest user: %v", usr, ctx)
+			return
+		}
+
+		// Same user, just return
+		if usr2.Id() == usr.Id() {
 			return
 		}
 
 		// Update order with correct user id
 		ord.UserId = usr2.Id()
+		ord.Parent = usr2.Key()
+
+		// Save references to old order
+		oldkey := ord.Key()
+		oldid := ord.Id()
+
+		// Create a new key for this order
+		ord.NewKey()
+		newid := ord.Id()
+
+		log.Debug("Order: %v", ord, ctx)
+		log.Debug("Old order id: %v, new order id: %v", oldid, newid, ctx)
+
+		// Update all references to old order id
+		var referrers []*referrer.Referrer
+		var referrals []*referral.Referral
+		var payments []*payment.Payment
+
+		if _, err := referrer.Query(db).Filter("OrderId=", oldid).GetAll(&referrers); err != nil {
+			log.Warn("Failed to query out referrers, OrderId: %v", oldid, err, ctx)
+			return
+		}
+
+		if _, err := referral.Query(db).Filter("OrderId=", oldid).GetAll(&referrals); err != nil {
+			log.Warn("Failed to query out referrals, OrderId: %v", oldid, err, ctx)
+			return
+		}
+
+		if _, err := payment.Query(db).Filter("OrderId=", oldid).GetAll(&payments); err != nil {
+			log.Warn("Failed to query out payments, OrderId: %v", oldid, err, ctx)
+			return
+		}
+
+		for _, ref := range referrers {
+			ref.OrderId = ord.Id()
+			if err := ref.Put(); err != nil {
+				log.Warn("Failed to update referrer: %v", ref, err, ctx)
+				return
+			}
+		}
+
+		for _, refl := range referrals {
+			refl.OrderId = ord.Id()
+			if err := refl.Put(); err != nil {
+				log.Warn("Failed to update referral: %v", refl, err, ctx)
+				return
+			}
+		}
+
+		for _, pay := range payments {
+			pay.OrderId = ord.Id()
+			if err := pay.Put(); err != nil {
+				log.Warn("Failed to update referral: %v", pay, err, ctx)
+				return
+			}
+		}
+
+		// Delete old order
+		if err := db.Delete(oldkey); err != nil {
+			log.Warn("Failed to delete old order: %v", oldkey, err, ctx)
+		}
 
 		// Save order
-		ord.Put()
+		if err := ord.Put(); err != nil {
+			log.Error("Failed to update order: %v", ord, err, ctx)
+			return
+		}
 	},
 )
