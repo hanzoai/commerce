@@ -31,15 +31,19 @@ var _ = New("collapse-users",
 
 		// Try to find newest instance of a user with this email
 		usr2 := user.New(db)
-		if ok, err := usr2.Query().Order("-CreatedAt").Filter("Email=", usr.Email).First(); !ok || err != nil {
-			log.Warn("Failed to query for newest user: %v", usr, ctx)
+		if _, err := usr2.Query().Filter("Email=", usr.Email).Order("-CreatedAt").First(); err != nil {
+			log.Error("Failed to query for newest user: %v", err, ctx)
 			return
 		}
 
 		// Same user, just return
 		if usr2.Id() == usr.Id() {
+			log.Warn("Same user", ctx)
 			return
 		}
+
+		// Need to update order
+		log.Warn("Need to update order", ctx)
 
 		// Update order with correct user id
 		ord.UserId = usr2.Id()
