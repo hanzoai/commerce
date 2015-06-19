@@ -42,6 +42,7 @@ type Entity interface {
 	SetNamespace(namespace string)
 	Key() (key datastore.Key)
 	SetKey(key interface{}) (err error)
+	NewKey() datastore.Key
 	Id() string
 	Get(args ...interface{}) error
 	GetById(string) error
@@ -106,7 +107,7 @@ func (m *Model) SetContext(ctx interface{}) {
 
 	// Update key if necessary
 	if m.key != nil {
-		m.setKey(m.Db.NewKey(m.Kind(), m.key.StringID(), m.key.IntID(), m.Parent))
+		m.NewKey()
 	}
 }
 
@@ -208,6 +209,24 @@ func (m *Model) Key() (key datastore.Key) {
 	}
 
 	return m.key
+}
+
+// Create a new key for this object
+func (m *Model) NewKey() datastore.Key {
+	kind := m.Kind()
+
+	if m.key == nil {
+		m.key = m.Db.NewIncompleteKey(kind, m.Parent)
+		return m.key
+	}
+
+	// intid := m.Db.AllocateId(kind)
+	intid := m.key.IntID()
+	stringid := m.key.StringID()
+
+	key := m.Db.NewKey(kind, stringid, intid, m.Parent)
+	m.setKey(key)
+	return key
 }
 
 // Put entity in datastore
