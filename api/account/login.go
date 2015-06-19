@@ -40,12 +40,14 @@ func login(c *gin.Context) {
 	}
 
 	var id string
+	var isEmail = false
 
 	// Allow userame, email or id to be used to lookup user
 	if req.Id != "" {
 		id = req.Id
 	} else if req.Email != "" {
 		id = strings.ToLower(strings.TrimSpace(req.Email))
+		isEmail = true
 	} else if req.Username != "" {
 		id = req.Username
 	} else {
@@ -55,9 +57,17 @@ func login(c *gin.Context) {
 
 	// Get user by email
 	usr := user.New(db)
-	if err := usr.GetById(id); err != nil {
-		http.Fail(c, 401, "Email or password is incorrect", errors.New("Email or password is incorrect"))
-		return
+
+	if isEmail {
+		if err := usr.GetByEmail(id); err != nil {
+			http.Fail(c, 401, "Email or password is incorrect", errors.New("Email or password is incorrect"))
+			return
+		}
+	} else {
+		if err := usr.GetById(id); err != nil {
+			http.Fail(c, 401, "Email or password is incorrect", errors.New("Email or password is incorrect"))
+			return
+		}
 	}
 
 	// Check user's password
