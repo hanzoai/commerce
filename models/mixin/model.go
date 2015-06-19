@@ -12,6 +12,7 @@ import (
 	"crowdstart.com/datastore"
 	"crowdstart.com/util/hashid"
 	"crowdstart.com/util/json"
+	"crowdstart.com/util/log"
 	"crowdstart.com/util/rand"
 	"crowdstart.com/util/structs"
 	"crowdstart.com/util/val"
@@ -302,6 +303,8 @@ func (m *Model) GetById(id string) error {
 	// Try to decode key
 	key, err := hashid.DecodeKey(m.Db.Context, id)
 
+	log.Warn("key %v, err %v", key, err, m.Db.Context)
+
 	// Use key if we have one
 	if err == nil {
 		return m.Get(key)
@@ -310,6 +313,8 @@ func (m *Model) GetById(id string) error {
 	// Set err to nil and try to use filter
 	err = nil
 	filterStr := ""
+
+	log.Warn("kind %v, id %v", m.Kind(), id, m.Db.Context)
 
 	// Use unique filter based on model type
 	switch m.Kind() {
