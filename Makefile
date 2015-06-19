@@ -261,6 +261,11 @@ deploy: assets-min docs
 	$(appcfg.py) update_indexes config/production
 	$(appcfg.py) update_dispatch config/production
 
+rollback: assets-min docs
+	for module in $(gae_config); do \
+		$(appcfg.py) rollback $$module; \
+	done; \
+
 # EXPORT / Usage: make datastore-export kind=user namespace=bellabeat
 datastore-export:
 	@mkdir -p _export/ && \
