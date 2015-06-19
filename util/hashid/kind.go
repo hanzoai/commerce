@@ -1,9 +1,6 @@
 package hashid
 
-import (
-	"errors"
-	"fmt"
-)
+import "fmt"
 
 var kinds = map[string]int{
 	"bundle":       0,
@@ -37,15 +34,17 @@ func init() {
 }
 
 func encodeKind(kind string) int {
-	v, ok := kinds[kind]
-	if ok {
-		return v
+	if encoded, ok := kinds[kind]; ok {
+		return encoded
+	} else {
+		panic(fmt.Sprintf("Unknown kind %v. Please register in util/hashid/kind.go.", kind))
 	}
-	err := errors.New(fmt.Sprintf("Unknown kind %v. Please register in util/hashid/kind.go.", kind))
-	panic(err)
-
 }
 
 func decodeKind(encoded int) string {
-	return kindsReversed[encoded]
+	if kind, ok := kindsReversed[encoded]; ok {
+		return kind
+	} else {
+		panic(fmt.Sprintf("Unknown encoded kind %v. Please register in util/hashid/kind.go.", encoded))
+	}
 }
