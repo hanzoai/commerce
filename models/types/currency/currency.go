@@ -140,7 +140,7 @@ func (t Type) Symbol() string {
 	case INR, TRY:
 		return ""
 	case PNT:
-		return "POINTS"
+		return ""
 	}
 	return ""
 }
