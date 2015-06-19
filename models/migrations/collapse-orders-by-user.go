@@ -100,6 +100,7 @@ var _ = New("collapse-orders-by-user",
 
 		for _, pay := range payments {
 			pay.OrderId = ord.Id()
+			pay.Buyer.UserId = ord.UserId
 			pay.Mixin(db, pay)
 			if err := pay.Put(); err != nil {
 				log.Warn("Failed to update referral: %v", pay, err, ctx)
