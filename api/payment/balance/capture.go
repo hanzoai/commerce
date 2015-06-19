@@ -38,7 +38,5 @@ func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []
 		}
 	}
 
-	// apply discount
-	ord.Discount = ord.Total
 	return ord, keys, payments, nil
 }
