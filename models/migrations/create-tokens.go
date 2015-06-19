@@ -17,8 +17,6 @@ var _ = New("create-tokens",
 		return NoArgs
 	},
 	func(db *ds.Datastore, usr *user.User) {
-		ctx := db.Context
-
 		tok := token.New(usr.Db)
 		tok.Email = usr.Email
 		tok.UserId = usr.Id()
