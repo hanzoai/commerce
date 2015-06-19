@@ -30,6 +30,13 @@ var _ = New("dedupe-users",
 			return
 		}
 
-		usr.Delete()
+		// transfer accounts in case of shenanigans
+		if usr2.Accounts.Stripe.CustomerId == "" && usr.Accounts.Stripe.CustomerId != "" {
+			usr2.Accounts = usr.Accounts
+			usr2.Put()
+		}
+
+		usr.Email = "!______" + usr.Email
+		usr.Put()
 	},
 )
