@@ -303,7 +303,8 @@ func (m *Model) GetById(id string) error {
 	// Try to decode key
 	key, err := hashid.DecodeKey(m.Db.Context, id)
 
-	log.Warn("key %v, err %v", key, err, m.Db.Context)
+	ctx := m.Db.Context
+	log.Warn("Tried to decode id: %v, with kind: %v, got key: %v, err: %v", id, m.Kind(), key, err, ctx)
 
 	// Use key if we have one
 	if err == nil {
@@ -313,8 +314,6 @@ func (m *Model) GetById(id string) error {
 	// Set err to nil and try to use filter
 	err = nil
 	filterStr := ""
-
-	log.Warn("kind %v, id %v", m.Kind(), id, m.Db.Context)
 
 	// Use unique filter based on model type
 	switch m.Kind() {
