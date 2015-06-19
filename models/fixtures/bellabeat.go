@@ -81,9 +81,9 @@ var Bellabeat = New("bellabeat", func(c *gin.Context) *organization.Organization
 	org.Email.User.EmailConfirmation.Subject = "Please confirm your email"
 	org.Email.User.EmailConfirmation.Enabled = true
 
-	org.Email.User.EmailConfirmed.Subject = "Thank you for confirming your email"
-	org.Email.User.EmailConfirmed.Template = string(fs.ReadFile(config.WorkingDir + "/resources/bellabeat/emails/user-email-confirmed.html"))
-	org.Email.User.EmailConfirmed.Enabled = true
+	// org.Email.User.EmailConfirmed.Subject = "Thank you for confirming your email"
+	// org.Email.User.EmailConfirmed.Template = string(fs.ReadFile(config.WorkingDir + "/resources/bellabeat/emails/user-email-confirmed.html"))
+	// org.Email.User.EmailConfirmed.Enabled = true
 
 	// // Save org into default namespace
 	org.Put()
