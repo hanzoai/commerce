@@ -30,6 +30,6 @@ var _ = New("dedupe-users",
 			return
 		}
 
-		usr2.Delete()
+		usr.Delete()
 	},
 )
