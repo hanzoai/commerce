@@ -82,6 +82,7 @@ var _ = New("collapse-users",
 
 		for _, ref := range referrers {
 			ref.OrderId = ord.Id()
+			ref.Mixin(db, ref)
 			if err := ref.Put(); err != nil {
 				log.Warn("Failed to update referrer: %v", ref, err, ctx)
 				return
@@ -90,6 +91,7 @@ var _ = New("collapse-users",
 
 		for _, refl := range referrals {
 			refl.OrderId = ord.Id()
+			refl.Mixin(db, refl)
 			if err := refl.Put(); err != nil {
 				log.Warn("Failed to update referral: %v", refl, err, ctx)
 				return
@@ -98,6 +100,7 @@ var _ = New("collapse-users",
 
 		for _, pay := range payments {
 			pay.OrderId = ord.Id()
+			pay.Mixin(db, pay)
 			if err := pay.Put(); err != nil {
 				log.Warn("Failed to update referral: %v", pay, err, ctx)
 				return
