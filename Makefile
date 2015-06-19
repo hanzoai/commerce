@@ -255,7 +255,6 @@ test-ci:
 # DEPLOY
 deploy: assets-min docs
 	for module in $(gae_config); do \
-		$(appcfg.py) rollback $$module; \
 		$(appcfg.py) update $$module; \
 	done; \
 	$(appcfg.py) update_indexes config/production
