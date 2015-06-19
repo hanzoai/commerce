@@ -21,5 +21,6 @@ var _ = New("create-tokens",
 		tok.Email = usr.Email
 		tok.UserId = usr.Id()
 		tok.Expires = time.Now().Add(time.Hour * 168)
+		tok.Put()
 	},
 )
