@@ -510,6 +510,11 @@ func (q *Query) Offset(offset int) *Query {
 	return q
 }
 
+func (q *Query) Order(order string) *Query {
+	q.Query = q.Query.Order(order)
+	return q
+}
+
 func (q *Query) Filter(filterStr string, value interface{}) *Query {
 	q.Query = q.Query.Filter(filterStr, value)
 	return q
