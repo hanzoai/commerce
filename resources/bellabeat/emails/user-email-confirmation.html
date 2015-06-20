@@ -17,22 +17,19 @@
 
         <style type="text/css">
 
-			body {
+		  body {
 			font-family:'Open Sans', Arial, Helvetica, sans-serif;
 			-webkit-text-size-adjust: none;
-		}
+		  }
 
-		a, a:link {
-		    color: #444444;
-		    text-decoration: none;
-		}
+          a, a:link, a:hover {
+              color: #856381;
+              text-decoration: none;
+          }
 
-		a:hover
-		{
-		     color:#444444;
-		     text-decoration:none;
-		     cursor:pointer;
-		}
+          a:hover {
+               cursor:pointer;
+          }
 
 		.whiteText {
 			color: #ffffff;
@@ -59,9 +56,7 @@
 			padding: 0px;
 		}
 
-
-
-			#contentTable h3 {
+		#contentTable h3 {
 			font-weight: bold;
 			font-size: 32px;
 			margin: 5px 0;
@@ -79,11 +74,6 @@
 			color: #444444;
 			width: 200px;
 		}
-
-
-
-
-
 	</style>
 
 	<!-- ADD TITLE HERE -->
@@ -95,15 +85,15 @@
 
     <table width="100%" cellpadding="0" cellspacing="0">
         <tr>
-            <td width="646px" align="center" valign="top" bgcolor="#E9E9E9" style="padding: 0px;">
+            <td width=646 align="center" valign="top" bgcolor="#E9E9E9" style="padding: 0px;">
                 <!-- Start Main Table -->
 
-                <table width="646px" cellpadding="0" cellspacing="0" border="0">
+                <table width=646 cellpadding="0" cellspacing="0" border="0">
                     <tr>
-                        <td width="646px" align="center" bgcolor="#FFFFFF" style="padding: 0px;">
+                        <td width=646 align="center" bgcolor="#FFFFFF" style="padding: 0px;">
                             <!-- TOP -->
 
-                            <table width="699px" cellpadding="0" cellspacing="0" border="0">
+                            <table width=699 cellpadding="0" cellspacing="0" border="0">
                                 <tbody>
                                     <tr>
                                         <td colspan="2" height="15" bgcolor="#444444" valign="top" align="center" style="padding: 0px;">
@@ -139,11 +129,10 @@
                             <table width="675" cellpadding="0" cellspacing="0" id="contentTable">
                                 <tr>
                                     <td width="646" align="center" valign="middle" class="whiteText" style="padding: 12px;color: #444444; padding-bottom:40px;">
-                                        <h3 style="font-weight: lighter;font-size: 24px;margin: 5px 0;" mc:edit="title">Hi, <b mc:edit="name"></b></h3>
+                                      <h3 style="font-weight: lighter;font-size: 24px;margin: 5px 0;">Hi, <b>{{ user.FirstName }}</b></h3>
                                     	<p style="font-size: 18px;  padding-bottom:10px; letter-spacing:0.06em; line-height:1.6em; font-weight:light; font-family:'Open Sans', 'Trebuchet MS', 'Verdana', 'Helvetica', sans-serif; font-weight: lighter;">
-                                            Before you can start working on your refreshed lifestyle please <a href="https://www.bellabeat.com/login.html?tokenid={{ token.Id() }}">verify your email</a>. You’re one click away from feeling your absolute best.<br/>
+                                            Before you can start working on your refreshed lifestyle please <a style="text-decoration:underline" href="https://www.bellabeat.com/login.html?tokenid={{ token.Id() }}">verify your email</a>. You’re one click away from feeling your absolute best.<br/>
                                     	</p>
-                                        <span mc:edit="link"></span>
                                     </td>
                                 </tr>
                             </table>
