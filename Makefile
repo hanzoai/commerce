@@ -100,6 +100,7 @@ ifeq ($(os), linux)
 			   				  -not -path "./static/*" \
 			   				  -not -path "./node_modules/*" \
 			   				  -printf '%h\n' | sort -u | sed -e 's/.\//crowdstart.com\//')
+	sed = @sed -i -e
 else
 	packages = $(shell find . -maxdepth 4 -mindepth 2 -name '*.go' \
 			   				  -not -path "./.sdk/*" \
@@ -111,6 +112,7 @@ else
 	sdk_install_extra := $(sdk_install_extra) && \
 						 curl $(mtime_file_watcher) > $(sdk_path)/google/appengine/tools/devappserver2/mtime_file_watcher.py && \
 						 pip install macfsevents --upgrade
+	sed = @sed -i .bak -e
 endif
 
 # set v=1 to enable verbose mode
@@ -314,31 +316,31 @@ datastore-replicate:
 # Generate API docs from wiki.
 docs:
 	pandoc --no-highlight --toc ../crowdstart.wiki/Getting-Started.md > templates/platform/docs/_generated/getting-started.html
-	@sed -i .bak -e 's/class="json/class="lang-javascript/' templates/platform/docs/_generated/getting-started.html
-	@sed -i .bak -e 's/table>/table class="table table-striped table-borderless table-vcenter">/' templates/platform/docs/_generated/getting-started.html
-	@rm templates/platform/docs/_generated/getting-started.html.bak
+	$(sed) 's/class="json/class="lang-javascript/' templates/platform/docs/_generated/getting-started.html
+	$(sed) 's/table>/table class="table table-striped table-borderless table-vcenter">/' templates/platform/docs/_generated/getting-started.html
+	@rm -rf templates/platform/docs/_generated/getting-started.html.bak
 
 	node_modules/.bin/aglio -t templates/platform/docs/blueprint/theme.jade -i apiary.apib -o templates/platform/docs/_generated/api.html
-	@sed -i .bak -e 's/class="json/class="lang-javascript/' templates/platform/docs/_generated/api.html
-	@sed -i .bak -e 's/table>/table class="table table-striped table-borderless table-vcenter">/' templates/platform/docs/_generated/api.html
-	@rm templates/platform/docs/_generated/api.html.bak
+	$(sed) 's/class="json/class="lang-javascript/' templates/platform/docs/_generated/api.html
+	$(sed) 's/table>/table class="table table-striped table-borderless table-vcenter">/' templates/platform/docs/_generated/api.html
+	@rm -rf templates/platform/docs/_generated/api.html.bak
 
 	pandoc --no-highlight --toc ../crowdstart.wiki/Checkout.md > templates/platform/docs/_generated/checkout.html
-	@sed -i .bak -e 's/class="javascript/class="lang-javascript/' templates/platform/docs/_generated/checkout.html
-	@sed -i .bak -e 's/class="html/class="lang-markup/' templates/platform/docs/_generated/checkout.html
-	@sed -i .bak -e 's/table>/table class="table table-striped table-borderless table-vcenter">/' templates/platform/docs/_generated/checkout.html
-	@rm templates/platform/docs/_generated/checkout.html.bak
+	$(sed) 's/class="javascript/class="lang-javascript/' templates/platform/docs/_generated/checkout.html
+	$(sed) 's/class="html/class="lang-markup/' templates/platform/docs/_generated/checkout.html
+	$(sed) 's/table>/table class="table table-striped table-borderless table-vcenter">/' templates/platform/docs/_generated/checkout.html
+	@rm -rf templates/platform/docs/_generated/checkout.html.bak
 
 	pandoc --no-highlight --toc ../crowdstart.wiki/Crowdstart.js.md > templates/platform/docs/_generated/crowdstart.js.html
-	@sed -i .bak -e 's/class="javascript/class="lang-javascript/' templates/platform/docs/_generated/crowdstart.js.html
-	@sed -i .bak -e 's/class="html/class="lang-markup/' templates/platform/docs/_generated/crowdstart.js.html
-	@sed -i .bak -e 's/table>/table class="table table-striped table-borderless table-vcenter">/' templates/platform/docs/_generated/crowdstart.js.html
-	@rm templates/platform/docs/_generated/crowdstart.js.html.bak
+	$(sed) 's/class="javascript/class="lang-javascript/' templates/platform/docs/_generated/crowdstart.js.html
+	$(sed) 's/class="html/class="lang-markup/' templates/platform/docs/_generated/crowdstart.js.html
+	$(sed) 's/table>/table class="table table-striped table-borderless table-vcenter">/' templates/platform/docs/_generated/crowdstart.js.html
+	@rm -rf templates/platform/docs/_generated/crowdstart.js.html.bak
 
 	pandoc --no-highlight --toc ../crowdstart.wiki/Salesforce-Integration.md > templates/platform/docs/_generated/salesforce.html
-	@sed -i .bak -e 's/class="javascript/class="lang-javascript/' templates/platform/docs/_generated/salesforce.html
-	@sed -i .bak -e 's/table>/table class="table table-striped table-borderless table-vcenter">/' templates/platform/docs/_generated/salesforce.html
-	@rm templates/platform/docs/_generated/salesforce.html.bak
+	$(sed) 's/class="javascript/class="lang-javascript/' templates/platform/docs/_generated/salesforce.html
+	$(sed) 's/table>/table class="table table-striped table-borderless table-vcenter">/' templates/platform/docs/_generated/salesforce.html
+	@rm -rf templates/platform/docs/_generated/salesforce.html.bak
 
 .PHONY: all bench build compile-js compile-js-min compile-css compile-css-min \
 	datastore-import datastore-export datastore-config deploy deploy-staging \
