@@ -64,6 +64,17 @@ var _ = BeforeSuite(func() {
 
 	// Save namespaced db
 	db = datastore.New(org.Namespace(ctx))
+	usr := user.New(db)
+	usr.Email = "dev@hanzo.ai"
+	usr.SetPassword("Z0rd0N")
+	usr.Enabled = true
+	usr.MustPut()
+
+	usr2 := user.New(db)
+	usr2.Email = "dev@hanzo.ai"
+	usr2.SetPassword("ilikedragons")
+	usr2.Enabled = false
+	usr2.MustPut()
 })
 
 // Tear-down appengine context
@@ -80,8 +91,7 @@ var _ = Describe("account", func() {
 		It("Should allow login with proper credentials", func() {
 			req := `{
 				"email": "dev@hanzo.ai",
-				"password": "suchtees",
-				"passwordConfirm": "suchtees"
+				"password": "Z0rd0N"
 			}`
 			res := loginRes{}
 
@@ -91,7 +101,56 @@ var _ = Describe("account", func() {
 			log.Debug("%#v %#v", req, res)
 
 			Expect(w.Code).To(Equal(200))
+			// TODO: should deconstruct token and test if the user id is in it
 			Expect(res.Token).ToNot(Equal(""))
+		})
+
+		It("Should disallow login with disabled account", func() {
+			req := `{
+				"email": "dev@hanzo.ai",
+				"password": "ilikedragon"
+			}`
+			res := loginRes{}
+
+			w := client.PostRawJSON("/account/login", req)
+			json.DecodeBuffer(w.Body, &res)
+
+			log.Debug("%#v %#v", req, res)
+
+			Expect(w.Code).To(Equal(401))
+			Expect(res.Token).To(Equal(""))
+		})
+
+		It("Should disallow login with wrong password", func() {
+			req := `{
+				"email": "dev@hanzo.ai",
+				"password": "z3d"
+			}`
+			res := loginRes{}
+
+			w := client.PostRawJSON("/account/login", req)
+			json.DecodeBuffer(w.Body, &res)
+
+			log.Debug("%#v %#v", req, res)
+
+			Expect(w.Code).To(Equal(401))
+			Expect(res.Token).To(Equal(""))
+		})
+
+		It("Should disallow login with wrong email", func() {
+			req := `{
+				"email": "billy@blue.co.uk",
+				"password": "bloo"
+			}`
+			res := loginRes{}
+
+			w := client.PostRawJSON("/account/login", req)
+			json.DecodeBuffer(w.Body, &res)
+
+			log.Debug("%#v %#v", req, res)
+
+			Expect(w.Code).To(Equal(401))
+			Expect(res.Token).To(Equal(""))
 		})
 	})
 })
