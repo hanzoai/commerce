@@ -308,6 +308,7 @@ func (m *Model) GetById(id string) error {
 
 	// Use key if we have one
 	if err == nil {
+		log.Warn("Ok we got a key! Goodbye!", ctx)
 		return m.Get(key)
 	}
 
@@ -335,11 +336,15 @@ func (m *Model) GetById(id string) error {
 		return datastore.InvalidKey
 	}
 
+	log.Warn("Trying to find id: %v, using filter: %v", id, filterStr, ctx)
+
 	// Try and fetch by filterStr
 	ok, err := m.Query().Filter(filterStr+"=", id).First()
 	if !ok {
 		return datastore.KeyNotFound
 	}
+
+	log.Warn("Found it????", ctx)
 	return err
 }
 
