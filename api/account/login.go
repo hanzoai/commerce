@@ -59,16 +59,15 @@ func login(c *gin.Context) {
 	// Get user by email
 	usr := user.New(db)
 
+	// else {
+	if err := usr.GetById(id); err != nil {
+		log.Warn("Could not get by Id %v", id, c)
+	}
+	// }
 	if isEmail {
 		if err := usr.GetByEmail(id); err != nil {
 			http.Fail(c, 401, "Email or password is incorrect", errors.New("Email or password is incorrect"))
 			log.Debug("Unable to lookup user by email", c)
-			return
-		}
-	} else {
-		if err := usr.GetById(id); err != nil {
-			http.Fail(c, 401, "Email or password is incorrect", errors.New("Email or password is incorrect"))
-			log.Debug("Unable to lookup user by id", c)
 			return
 		}
 	}
