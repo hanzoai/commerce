@@ -21,7 +21,7 @@ import (
 	"crowdstart.com/util/rest"
 	"crowdstart.com/util/router"
 
-	accessTokenApi "crowdstart.com/api/accessToken"
+	accessTokenApi "crowdstart.com/api/accesstoken"
 	accountApi "crowdstart.com/api/account"
 	mailinglistApi "crowdstart.com/api/mailinglist"
 	namespaceApi "crowdstart.com/api/namespace"
