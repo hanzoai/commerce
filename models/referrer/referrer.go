@@ -55,6 +55,11 @@ func (r *Referrer) ApplyBonus() (*transaction.Transaction, error) {
 		return nil, err
 	}
 	r.TransactionIds = append(r.TransactionIds, trans.Id())
+	trans.Notes = "Deposite due to referral"
+	trans.Tags = "referral"
+
+	trans.SourceId = r.Id()
+	trans.SourceKind = r.Kind()
 
 	return trans, nil
 }
