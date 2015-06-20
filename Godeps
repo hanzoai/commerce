@@ -19,6 +19,7 @@ github.com/qedus/nds classic
 github.com/ryanuber/go-glob master
 github.com/speps/go-hashids master
 github.com/stripe/stripe-go v6.2.0
+github.com/vanng822/go-premailer/premailer master
 github.com/vincent-petithory/countries master
 github.com/zeekay/aetest master
 github.com/zeekay/gin app_engine
