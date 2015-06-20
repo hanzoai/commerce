@@ -2,15 +2,26 @@ package fixtures
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/vanng822/go-premailer/premailer"
 
 	"crowdstart.com/config"
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/namespace"
 	"crowdstart.com/models/organization"
-
 	"crowdstart.com/util/fs"
 	"crowdstart.com/util/log"
 )
+
+// Inline all styles before use
+func readEmailTemplate(path string) string {
+	template := string(fs.ReadFile(config.WorkingDir + path))
+	prem := premailer.NewPremailerFromString(template, premailer.NewOptions())
+	html, err := prem.Transform()
+	if err != nil {
+		panic(err)
+	}
+	return html
+}
 
 var Bellabeat = New("bellabeat", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
@@ -70,19 +81,19 @@ var Bellabeat = New("bellabeat", func(c *gin.Context) *organization.Organization
 	org.Email.Defaults.FromEmail = "hi@bellabeat.com"
 
 	org.Email.OrderConfirmation.Subject = "LEAF Order Confirmation"
-	org.Email.OrderConfirmation.Template = string(fs.ReadFile(config.WorkingDir + "/resources/bellabeat/emails/order-confirmation.html"))
+	org.Email.OrderConfirmation.Template = readEmailTemplate("/resources/bellabeat/emails/order-confirmation.html")
 	org.Email.OrderConfirmation.Enabled = true
 
-	org.Email.User.PasswordReset.Template = string(fs.ReadFile(config.WorkingDir + "/resources/bellabeat/emails/user-password-reset.html"))
+	org.Email.User.PasswordReset.Template = readEmailTemplate("/resources/bellabeat/emails/user-password-reset.html")
 	org.Email.User.PasswordReset.Subject = "Reset your Bellabeat password"
 	org.Email.User.PasswordReset.Enabled = true
 
-	org.Email.User.EmailConfirmation.Template = string(fs.ReadFile(config.WorkingDir + "/resources/bellabeat/emails/user-email-confirmation.html"))
+	org.Email.User.EmailConfirmation.Template = readEmailTemplate("/resources/bellabeat/emails/user-email-confirmation.html")
 	org.Email.User.EmailConfirmation.Subject = "Please confirm your email"
 	org.Email.User.EmailConfirmation.Enabled = true
 
 	// org.Email.User.EmailConfirmed.Subject = "Thank you for confirming your email"
-	// org.Email.User.EmailConfirmed.Template = string(fs.ReadFile(config.WorkingDir + "/resources/bellabeat/emails/user-email-confirmed.html"))
+	// org.Email.User.EmailConfirmed.Template = readEmailTemplate("/resources/bellabeat/emails/user-email-confirmed.html")
 	// org.Email.User.EmailConfirmed.Enabled = true
 
 	// // Save org into default namespace
