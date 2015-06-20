@@ -67,6 +67,7 @@ func login(c *gin.Context) {
 	if isEmail {
 		if err := usr.GetByEmail(id); err != nil {
 			http.Fail(c, 401, "Email or password is incorrect", errors.New("Email or password is incorrect"))
+			log.Debug("Unable to lookup user by email", c)
 			return
 		}
 	}
@@ -74,6 +75,7 @@ func login(c *gin.Context) {
 	// Check user's password
 	if !password.HashAndCompare(usr.PasswordHash, req.Password) {
 		http.Fail(c, 401, "Email or password is incorrect", errors.New("Email or password is incorrect"))
+		log.Debug("Incorrect password", c)
 		return
 	}
 
