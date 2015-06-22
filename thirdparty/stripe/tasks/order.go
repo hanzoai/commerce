@@ -29,6 +29,8 @@ var updateOrder = delay.Func("stripe-update-order", func(ctx appengine.Context, 
 			log.Warn("Order has already been updated %v", ord, ctx)
 			return nil
 		}
+
+		// Update order using latest payment information
 		ord.UpdatePaymentStatus()
 
 		return ord.Put()
