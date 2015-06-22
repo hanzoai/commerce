@@ -30,6 +30,7 @@ var UpdatePayment = delay.Func("stripe-update-payment", func(ctx appengine.Conte
 		if ok, err := pay.Query().Ancestor(key).Filter("Account.ChargeId=", ch.ID).First(); !ok {
 			return errors.New(fmt.Sprintf("Unable to retrieve payment for charge (%s), ancestor, (%v):", ch.ID, key, err))
 		}
+		log.Debug("Payment: %v", pay, ctx)
 
 		// Bail out if someone has updated payment since us
 		if start.Before(pay.UpdatedAt) {
@@ -48,6 +49,8 @@ var UpdatePayment = delay.Func("stripe-update-payment", func(ctx appengine.Conte
 		} else {
 			pay.Status = payment.Unpaid
 		}
+
+		log.Debug("Payment updated to: %v", pay, ctx)
 
 		// Save updated payment
 		return pay.Put()
