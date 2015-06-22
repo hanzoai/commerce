@@ -28,7 +28,7 @@ func UpdatePaymentFromDispute(pay *payment.Payment, dispute *stripe.Dispute) {
 
 // Synchronize payment using dispute
 var DisputeSync = delay.Func("stripe-update-disputed-payment", func(ctx appengine.Context, ns string, token string, dispute stripe.Dispute, start time.Time) {
-	ctx := getNamespace(ctx, ns)
+	ctx = getNamespace(ctx, ns)
 
 	// Get charge from Stripe
 	chargeId := dispute.Charge
