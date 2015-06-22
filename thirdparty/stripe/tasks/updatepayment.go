@@ -14,10 +14,24 @@ import (
 	"crowdstart.com/util/log"
 )
 
+// Update payment from charge
+func UpdatePaymentFromCharge(pay *payment.Payment, ch stripe.Charge) {
+	// Update status
+	if ch.Captured {
+		pay.Status = payment.Paid
+	} else if ch.Refunded {
+		pay.Status = payment.Refunded
+	} else if ch.Paid {
+		pay.Status = payment.Paid
+	} else {
+		pay.Status = payment.Unpaid
+	}
+}
+
 var UpdatePayment = delay.Func("stripe-update-payment", func(ctx appengine.Context, ns string, ch stripe.Charge, start time.Time) {
 	ctx = getNamespace(ctx, ns)
 
-	key, err := getAncestor(ctx, ch)
+	key, err := getPaymentAncestor(ctx, &ch)
 	if err != nil {
 		log.Panic("Unable to find payment matching charge: %s, %v", ch.ID, err, ctx)
 	}
@@ -39,17 +53,8 @@ var UpdatePayment = delay.Func("stripe-update-payment", func(ctx appengine.Conte
 			return nil
 		}
 
-		// Update status
-		if ch.Captured {
-			pay.Status = payment.Paid
-		} else if ch.Refunded {
-			pay.Status = payment.Refunded
-		} else if ch.Paid {
-			pay.Status = payment.Paid
-		} else {
-			pay.Status = payment.Unpaid
-		}
-
+		// Actually update payment
+		UpdatePaymentFromCharge(pay, ch)
 		log.Debug("Payment updated to: %v", pay, ctx)
 
 		// Save updated payment

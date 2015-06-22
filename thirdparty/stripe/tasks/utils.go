@@ -45,7 +45,7 @@ func getOrganization(ctx appengine.Context) *organization.Organization {
 }
 
 // Update charge in case order/pay id is missing in metadata
-func updateCharge(ctx appengine.Context, ch stripe.Charge, pay *payment.Payment) {
+func updateCharge(ctx appengine.Context, ch *stripe.Charge, pay *payment.Payment) {
 	org := getOrganization(ctx)
 
 	// Get a stripe client
@@ -57,7 +57,7 @@ func updateCharge(ctx appengine.Context, ch stripe.Charge, pay *payment.Payment)
 }
 
 // Get ancestor for ancestor query for a payment associated with a stripe charge
-func getAncestor(ctx appengine.Context, ch stripe.Charge) (*aeds.Key, error) {
+func getPaymentAncestor(ctx appengine.Context, ch *stripe.Charge) (*aeds.Key, error) {
 	// Try to user order id if possible
 	if id, ok := ch.Meta["order"]; ok {
 		log.Debug("Try to use order id in charge metadata", ctx)
