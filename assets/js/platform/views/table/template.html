@@ -1,0 +1,19 @@
+<cs-table>
+  <div class="{ loading: loading }">
+    <table>
+      <thead>
+        <tr>
+          <th each="{ headers }">{name}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr each="{ model }" class="animated bounceIn">
+          <td each="{ this.parent.headers }">
+            <table-field field="{this}" value="{this.parent[this.field]}"></table-field>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="loader">Loading...</div>
+  </div>
+</cs-table>
