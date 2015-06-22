@@ -22,7 +22,16 @@ import (
 	"crowdstart.com/util/task"
 )
 
-var updateOrder = delay.Func("stripe-update-order", func(ctx appengine.Context, orderId string, start time.Time) {
+func getNamespace(ctx appengine.Context, ns string) appengine.Context {
+	ctx, err := appengine.Namespace(ctx, ns)
+	if err != nil {
+		log.Panic("Unable to get namespace %s: %v", ns, err)
+	}
+	return ctx
+}
+
+var updateOrder = delay.Func("stripe-update-order", func(ctx appengine.Context, ns string, orderId string, start time.Time) {
+	ctx = getNamespace(ctx, ns)
 	db := datastore.New(ctx)
 	o := order.New(db)
 
@@ -79,7 +88,9 @@ func getAncestor(ctx appengine.Context, ch stripe.Charge) (*aeds.Key, error) {
 	return hashid.DecodeKey(ctx, pay.OrderId)
 }
 
-var UpdatePayment = delay.Func("stripe-update-payment", func(ctx appengine.Context, ch stripe.Charge, start time.Time) {
+var UpdatePayment = delay.Func("stripe-update-payment", func(ctx appengine.Context, ns string, ch stripe.Charge, start time.Time) {
+	ctx = getNamespace(ctx, ns)
+
 	key, err := getAncestor(ctx, ch)
 	if err != nil {
 		log.Panic("Unable to find payment matching charge: %s, %v", ch.ID, err, ctx)
@@ -122,10 +133,11 @@ var UpdatePayment = delay.Func("stripe-update-payment", func(ctx appengine.Conte
 	}
 
 	// Update order
-	updateOrder.Call(ctx, pay.OrderId, start)
+	updateOrder.Call(ctx, ns, pay.OrderId, start)
 })
 
-var UpdateDisputedPayment = delay.Func("stripe-update-disputed-payment", func(ctx appengine.Context, dispute stripe.Dispute, start time.Time) {
+var UpdateDisputedPayment = delay.Func("stripe-update-disputed-payment", func(ctx appengine.Context, ns string, dispute stripe.Dispute, start time.Time) {
+	ctx, _ = appengine.Namespace(ctx, ns)
 	db := datastore.New(ctx)
 	pay := payment.New(db)
 
@@ -156,12 +168,13 @@ var UpdateDisputedPayment = delay.Func("stripe-update-disputed-payment", func(ct
 		return pay.Put()
 	})
 
-	updateOrder.Call(ctx, pay.OrderId, start)
+	updateOrder.Call(ctx, ns, pay.OrderId, start)
 })
 
 var SyncCharges = task.Func("stripe-sync-charges", func(c *gin.Context) {
 	db := datastore.New(c)
 	org := organization.New(db)
+	ctx := org.Context()
 
 	// Get organization off query
 	query := c.Request.URL.Query()
@@ -174,10 +187,7 @@ var SyncCharges = task.Func("stripe-sync-charges", func(c *gin.Context) {
 		return
 	}
 
-	// Get namespaced context
-	ctx := org.Namespace(db.Context)
-
-	// Create stripe client
+	// Create stripe client for this organization
 	client := stripe.New(ctx, org.Stripe.AccessToken)
 
 	// Get all stripe charges
@@ -195,7 +205,7 @@ var SyncCharges = task.Func("stripe-sync-charges", func(c *gin.Context) {
 
 		// Update payment, using the namespaced context (i hope)
 		start := time.Now()
-		UpdatePayment.Call(ctx, ch, start)
+		UpdatePayment.Call(ctx, org.Name, ch, start)
 	}
 
 	if err := i.Err(); err != nil {
