@@ -28,10 +28,12 @@ func UpdatePaymentFromCharge(pay *payment.Payment, ch stripe.Charge) {
 	}
 }
 
-var UpdatePayment = delay.Func("stripe-update-payment", func(ctx appengine.Context, ns string, ch stripe.Charge, start time.Time) {
+// Synchronize payment using charge
+var ChargeSync = delay.Func("stripe-update-payment", func(ctx appengine.Context, ns string, token string, ch stripe.Charge, start time.Time) {
 	ctx = getNamespace(ctx, ns)
 
-	key, err := getPaymentAncestor(ctx, &ch)
+	// Get ancestor (order) using charge
+	key, err := getOrderFromCharge(ctx, &ch)
 	if err != nil {
 		log.Panic("Unable to find payment matching charge: %s, %v", ch.ID, err, ctx)
 	}
@@ -67,5 +69,5 @@ var UpdatePayment = delay.Func("stripe-update-payment", func(ctx appengine.Conte
 	}
 
 	// Update order
-	updateOrder.Call(ctx, ns, pay.OrderId, start)
+	updateOrder.Call(ctx, ns, token, pay.OrderId, start)
 })

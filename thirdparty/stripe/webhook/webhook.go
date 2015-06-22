@@ -42,7 +42,7 @@ func Webhook(c *gin.Context) {
 		ctx := middleware.GetAppEngine(c)
 
 		start := time.Now()
-		tasks.UpdatePayment.Call(ctx, ch, start)
+		tasks.ChargeSync.Call(ctx, ch, start)
 
 	case "charge.dispute.closed":
 	case "charge.dispute.created":
@@ -55,7 +55,7 @@ func Webhook(c *gin.Context) {
 			return
 		}
 		start := time.Now()
-		tasks.UpdateDisputedPayment.Call(middleware.GetAppEngine(c), dispute, start)
+		tasks.DisputeSync.Call(middleware.GetAppEngine(c), dispute, start)
 
 	case "ping":
 		c.String(200, "pong")

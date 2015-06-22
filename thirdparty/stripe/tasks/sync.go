@@ -46,8 +46,11 @@ var SyncCharges = task.Func("stripe-sync-charges", func(c *gin.Context) {
 		return
 	}
 
+	// Pass Stripe access token to all subsequent requests
+	token := org.StripeToken()
+
 	// Create stripe client for this organization
-	client := stripe.New(ctx, org.StripeToken())
+	client := stripe.New(ctx, token)
 
 	// Get all stripe charges
 	params := &sg.ChargeListParams{}
@@ -72,7 +75,7 @@ var SyncCharges = task.Func("stripe-sync-charges", func(c *gin.Context) {
 
 		// Update payment, using the namespaced context (i hope)
 		start := time.Now()
-		UpdatePayment.Call(ctx, ns, ch, start)
+		ChargeSync.Call(ctx, ns, token, ch, start)
 	}
 
 	if err := i.Err(); err != nil {
