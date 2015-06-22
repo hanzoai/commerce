@@ -3,6 +3,10 @@ package tasks
 import (
 	"time"
 
+	"appengine"
+
+	"appengine/memcache"
+
 	"github.com/gin-gonic/gin"
 	sg "github.com/stripe/stripe-go"
 
@@ -12,6 +16,19 @@ import (
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/task"
 )
+
+func cacheOrganization(ctx appengine.Context, org *organization.Organization) {
+	nsctx := org.Namespace(ctx)
+
+	item := &memcache.Item{
+		Key:   "organization",
+		Value: org.JSON(),
+	}
+
+	if err := memcache.Set(nsctx, item); err != nil {
+		log.Error("Unable to cache organization: %v", err, ctx)
+	}
+}
 
 var SyncCharges = task.Func("stripe-sync-charges", func(c *gin.Context) {
 	db := datastore.New(c)
@@ -34,6 +51,8 @@ var SyncCharges = task.Func("stripe-sync-charges", func(c *gin.Context) {
 
 	// Get all stripe charges
 	params := &sg.ChargeListParams{}
+
+	// Check for test flag
 	if test == "1" || test == "true" {
 		params.Filters.AddFilter("include[]", "", "total_count")
 		params.Filters.AddFilter("limit", "", "10")
@@ -41,9 +60,11 @@ var SyncCharges = task.Func("stripe-sync-charges", func(c *gin.Context) {
 		params.Single = true
 	}
 
-	// Get namespace to use for later queries
+	// Cache organization, namespace to use for later queries
+	cacheOrganization(ctx, org)
 	ns := org.Name
 
+	// Get iterator for Stripe charges
 	i := client.Charges.List(params)
 	for i.Next() {
 		// Get next charge
