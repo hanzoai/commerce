@@ -132,7 +132,7 @@ var SyncCharges = task.Func("stripe-sync-charges", func(c *gin.Context) {
 	i := client.Charges.List(params)
 	for i.Next() {
 		// Get next charge
-		ch := i.Charge()
+		ch := *i.Charge()
 
 		// Update payment, using the namespaced context (i hope)
 		start := time.Now()
