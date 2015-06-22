@@ -6,14 +6,18 @@ import (
 
 	"appengine"
 	aeds "appengine/datastore"
+	"appengine/memcache"
 
 	"crowdstart.com/datastore"
+	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/thirdparty/stripe"
 	"crowdstart.com/util/hashid"
+	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
 )
 
+// Get namespaced appengine context for given namespace
 func getNamespace(ctx appengine.Context, ns string) appengine.Context {
 	log.Debug("Setting namespace of context to %s", ns, ctx)
 	ctx, err := appengine.Namespace(ctx, ns)
@@ -23,6 +27,36 @@ func getNamespace(ctx appengine.Context, ns string) appengine.Context {
 	return ctx
 }
 
+// Grab organization out of memcache
+func getOrganization(ctx appengine.Context) *organization.Organization {
+	org := &organization.Organization{}
+	item, err := memcache.Get(ctx, "organization")
+	if err != nil {
+		log.Error("Failed to get organization from memcache: %v", err, ctx)
+		return org
+	}
+
+	// Decode organization
+	err = json.DecodeBytes(item.Value, org)
+	if err != nil {
+		log.Error("Failed to decode organization: %v", err, ctx)
+	}
+	return org
+}
+
+// Update charge in case order/pay id is missing in metadata
+func updateCharge(ctx appengine.Context, ch stripe.Charge, pay *payment.Payment) {
+	org := getOrganization(ctx)
+
+	// Get a stripe client
+	client := stripe.New(ctx, org.Stripe.AccessToken)
+
+	if _, err := client.UpdateCharge(pay); err != nil {
+		log.Error(" %v", pay.OrderId, ctx)
+	}
+}
+
+// Get ancestor for ancestor query for a payment associated with a stripe charge
 func getAncestor(ctx appengine.Context, ch stripe.Charge) (*aeds.Key, error) {
 	// Try to user order id if possible
 	if id, ok := ch.Meta["order"]; ok {
@@ -53,6 +87,8 @@ func getAncestor(ctx appengine.Context, ch stripe.Charge) (*aeds.Key, error) {
 		log.Debug("Unable to lookup payment id", ctx)
 		return nil, errors.New(fmt.Sprintf("Unable to lookup payment by id (%s) or charge id (%s): %v", id, ch.ID, err, ctx))
 	}
+
+	updateCharge(ctx, ch, pay)
 
 	log.Debug("Try to decode order id: %v", pay.OrderId, ctx)
 	return hashid.DecodeKey(ctx, pay.OrderId)
