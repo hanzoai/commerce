@@ -30,7 +30,7 @@ var SyncCharges = task.Func("stripe-sync-charges", func(c *gin.Context) {
 	}
 
 	// Create stripe client for this organization
-	client := stripe.New(ctx, org.Stripe.Live.AccessToken)
+	client := stripe.New(ctx, org.StripeToken())
 
 	// Get all stripe charges
 	params := &sg.ChargeListParams{}
