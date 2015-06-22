@@ -333,7 +333,7 @@ func (o *Order) UpdatePaymentStatus() {
 	}
 
 	// Get payments associated with this order
-	var payments []*payment.Payment
+	payments := make([]*payment.Payment, len(o.PaymentIds))
 	db := datastore.New(ctx)
 	err := db.GetMulti(keys, payments)
 	if err != nil {
