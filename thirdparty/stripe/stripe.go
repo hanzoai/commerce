@@ -12,6 +12,7 @@ import (
 
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/user"
+	"crowdstart.com/thirdparty/stripe/errors"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
 )
@@ -19,8 +20,11 @@ import (
 type Card stripe.Card
 type CardParams stripe.CardParams
 type Charge stripe.Charge
+type ChargeListParams stripe.ChargeListParams
 type Customer stripe.Customer
+type Dispute stripe.Dispute
 type Token stripe.Token
+type Event stripe.Event
 
 type Client struct {
 	*client.API
@@ -66,7 +70,7 @@ func (c Client) Authorize(pay *payment.Payment) (*Token, error) {
 	})
 
 	if err != nil {
-		return nil, NewError(err)
+		return nil, errors.New(err)
 	}
 
 	// Cast back to our token
@@ -81,7 +85,7 @@ func (c Client) GetCard(cardId string, customerId string) (*Card, error) {
 
 	card, err := c.API.Cards.Get(cardId, params)
 	if err != nil {
-		return nil, NewError(err)
+		return nil, errors.New(err)
 	}
 
 	return (*Card)(card), err
@@ -96,7 +100,7 @@ func (c Client) GetCustomer(token, user *user.User) (*Customer, error) {
 
 	customer, err := c.API.Customers.Get(customerId, params)
 	if err != nil {
-		return nil, NewError(err)
+		return nil, errors.New(err)
 	}
 
 	return (*Customer)(customer), err
@@ -119,7 +123,7 @@ func (c Client) UpdateCustomer(user *user.User) (*Customer, error) {
 
 	customer, err := c.API.Customers.Update(customerId, params)
 	if err != nil {
-		return nil, NewError(err)
+		return nil, errors.New(err)
 	}
 
 	return (*Customer)(customer), err
@@ -142,7 +146,7 @@ func (c Client) NewCustomer(token string, user *user.User) (*Customer, error) {
 
 	customer, err := c.API.Customers.New(params)
 	if err != nil {
-		return nil, NewError(err)
+		return nil, errors.New(err)
 	}
 
 	return (*Customer)(customer), err
@@ -157,7 +161,7 @@ func (c Client) AddCard(token string, user *user.User) (*Card, error) {
 
 	card, err := c.API.Cards.New(params)
 	if err != nil {
-		return nil, NewError(err)
+		return nil, errors.New(err)
 	}
 
 	return (*Card)(card), err
@@ -176,7 +180,7 @@ func (c Client) UpdateCard(token string, pay *payment.Payment, user *user.User) 
 
 	card, err := c.API.Cards.Update(cardId, params)
 	if err != nil {
-		return nil, NewError(err)
+		return nil, errors.New(err)
 	}
 
 	return (*Card)(card), err
@@ -227,7 +231,7 @@ func (c Client) NewCharge(source interface{}, pay *payment.Payment) (*Charge, er
 	// Create charge
 	ch, err := c.API.Charges.New(params)
 	if err != nil {
-		return nil, NewError(err)
+		return nil, errors.New(err)
 	}
 
 	// Update charge Id on payment
@@ -241,7 +245,7 @@ func (c Client) Capture(id string) (*Charge, error) {
 	log.Debug("Capture %v", id)
 	ch, err := c.API.Charges.Capture(id, nil)
 	if err != nil {
-		return nil, NewError(err)
+		return nil, errors.New(err)
 	}
 
 	return (*Charge)(ch), err

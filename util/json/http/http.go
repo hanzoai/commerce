@@ -5,7 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/thirdparty/stripe"
+	"crowdstart.com/thirdparty/stripe/errors"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
 )
@@ -46,7 +46,7 @@ func Fail(c *gin.Context, status int, message interface{}, err error) {
 
 	// Support various custom errors
 	switch v := err.(type) {
-	case *stripe.Error:
+	case *errors.StripeError:
 		if v.Type == "card_error" {
 			res.Type = "authorization-error"
 		} else {
