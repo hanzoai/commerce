@@ -198,6 +198,9 @@ var SyncCharges = task.Func("stripe-sync-charges", func(c *gin.Context) {
 		params.Single = true
 	}
 
+	// Get namespace to use for later queries
+	ns := org.Name
+
 	i := client.Charges.List(params)
 	for i.Next() {
 		// Get next charge
@@ -205,7 +208,7 @@ var SyncCharges = task.Func("stripe-sync-charges", func(c *gin.Context) {
 
 		// Update payment, using the namespaced context (i hope)
 		start := time.Now()
-		UpdatePayment.Call(ctx, org.Name, ch, start)
+		UpdatePayment.Call(ctx, ns, ch, start)
 	}
 
 	if err := i.Err(); err != nil {
