@@ -49,6 +49,8 @@ func Webhook(c *gin.Context) {
 	case "charge.dispute.funds_reinstated":
 	case "charge.dispute.funds_withdrawn":
 	case "charge.dispute.updated":
+
+		// Decode stripe dispute
 		dispute := stripe.Dispute{}
 		if err := json.Unmarshal(event.Data.Raw, &dispute); err != nil {
 			log.Error("Error decoding dispute. %#v %#v", event, err, c)

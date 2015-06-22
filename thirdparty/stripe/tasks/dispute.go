@@ -15,7 +15,7 @@ import (
 )
 
 // Update payment from dispute
-func UpdatePaymentFromDispute(pay *payment.Payment, dispute stripe.Dispute) {
+func UpdatePaymentFromDispute(pay *payment.Payment, dispute *stripe.Dispute) {
 	switch dispute.Status {
 	case "won":
 		pay.Status = payment.Paid
@@ -28,11 +28,10 @@ func UpdatePaymentFromDispute(pay *payment.Payment, dispute stripe.Dispute) {
 
 // Synchronize payment using dispute
 var DisputeSync = delay.Func("stripe-update-disputed-payment", func(ctx appengine.Context, ns string, token string, dispute stripe.Dispute, start time.Time) {
-	ctx, _ = appengine.Namespace(ctx, ns)
-
-	chargeId := dispute.Charge
+	ctx := getNamespace(ctx, ns)
 
 	// Get charge from Stripe
+	chargeId := dispute.Charge
 	client := stripe.New(ctx, token)
 	ch, err := client.GetCharge(chargeId)
 	if err != nil {
@@ -53,6 +52,7 @@ var DisputeSync = delay.Func("stripe-update-disputed-payment", func(ctx appengin
 		if ok, err := pay.Query().Ancestor(key).Filter("Account.ChargeId=", ch.ID).First(); !ok {
 			return errors.New(fmt.Sprintf("Unable to retrieve payment for charge (%s), ancestor, (%v):", ch.ID, key, err))
 		}
+		log.Debug("Payment: %v", pay, ctx)
 
 		if start.Before(pay.UpdatedAt) {
 			log.Info(`The Payment(%s) associated with Charge(%s) has already been updated.
@@ -61,7 +61,7 @@ var DisputeSync = delay.Func("stripe-update-disputed-payment", func(ctx appengin
 		}
 
 		// Actually update payment
-		UpdatePaymentFromDispute(pay, dispute)
+		UpdatePaymentFromDispute(pay, &dispute)
 		log.Debug("Payment updated to: %v", pay, ctx)
 
 		return pay.Put()
