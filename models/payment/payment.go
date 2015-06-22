@@ -19,11 +19,12 @@ var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 type Status string
 
 const (
-	Disputed   Status = "disputed"
+	Cancelled  Status = "cancelled"
+	Credit            = "credit"
+	Disputed          = "disputed"
 	Failed            = "failed"
 	Fraudulent        = "fraudulent"
 	Paid              = "paid"
-	Credit            = "credit"
 	Refunded          = "refunded"
 	Unpaid            = "unpaid"
 )
