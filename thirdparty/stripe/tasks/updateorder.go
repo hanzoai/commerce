@@ -14,22 +14,27 @@ import (
 var updateOrder = delay.Func("stripe-update-order", func(ctx appengine.Context, ns string, orderId string, start time.Time) {
 	ctx = getNamespace(ctx, ns)
 	db := datastore.New(ctx)
-	o := order.New(db)
+	ord := order.New(db)
 
-	err := o.RunInTransaction(func() error {
-		o.MustGet(orderId)
+	log.Debug("Updating order (%s)", orderId, ctx)
 
-		if start.Before(o.UpdatedAt) {
-			log.Info(`The Order(%s) has already been updated.
-					  Stopping 'stripe-update-order' task.`, o.Id(), ctx)
+	err := ord.RunInTransaction(func() error {
+		err := ord.Get(orderId)
+		if err != nil {
+			log.Error("Failed to get order: %v", err, ctx)
 			return nil
 		}
-		o.UpdatePaymentStatus()
 
-		return o.Put()
+		if start.Before(ord.UpdatedAt) {
+			log.Warn("Order has already been updated %v", ord, ctx)
+			return nil
+		}
+		ord.UpdatePaymentStatus()
+
+		return ord.Put()
 	})
 
 	if err != nil {
-		log.Panic("Error updating Order(%s) in 'stripe-update-order' %#v", o.Id(), err, ctx)
+		log.Panic("Update order transaction failed to get order (%s): %v", orderId, err, ctx)
 	}
 })

@@ -30,13 +30,14 @@ var SyncCharges = task.Func("stripe-sync-charges", func(c *gin.Context) {
 	}
 
 	// Create stripe client for this organization
-	client := stripe.New(ctx, org.Stripe.AccessToken)
+	client := stripe.New(ctx, org.Stripe.Live.AccessToken)
 
 	// Get all stripe charges
 	params := &sg.ChargeListParams{}
 	if test == "1" || test == "true" {
 		params.Filters.AddFilter("include[]", "", "total_count")
 		params.Filters.AddFilter("limit", "", "10")
+		params.Filters.AddFilter("starting_after", "", "ch_16FyN1F118aqM8IJCHWi6Mkx")
 		params.Single = true
 	}
 
