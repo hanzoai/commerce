@@ -1,79 +1,145 @@
 package tasks
 
 import (
+	"time"
+
+	"appengine"
+	"appengine/delay"
+
 	"github.com/gin-gonic/gin"
-	"github.com/stripe/stripe-go/client"
+	sg "github.com/stripe/stripe-go"
 
 	"crowdstart.com/datastore"
-	// "crowdstart.com/models"
 	"crowdstart.com/models/order"
-
-	// . "crowdstart.com/thirdparty/stripe"
+	"crowdstart.com/models/organization"
+	"crowdstart.com/models/payment"
+	"crowdstart.com/thirdparty/stripe"
+	"crowdstart.com/util/log"
+	"crowdstart.com/util/task"
 )
 
-// This is a worker that processes one order at a time
-// var synchronizeCharges = parallel.New("synchronize-charges", SynchronizeCharge)
+var updateOrder = delay.Func("stripe-update-order", func(ctx appengine.Context, orderId string, start time.Time) {
+	db := datastore.New(ctx)
+	o := order.New(db)
+	o.MustGet(orderId)
 
-func SynchronizeCharge(db *datastore.Datastore, key datastore.Key, o *order.Order, sc *client.API) error {
-	return nil
-	// description := o.Description()
-	// for i, charge := range o.Charges {
-	// 	updatedCharge, err := sc.Charges.Get(charge.ID, nil)
-	// 	if err != nil {
-	// 		log.Error("Failed to get charges for %v: %v", charge.ID, err)
-	// 		return err
-	// 	}
+	err := o.RunInTransaction(func() error {
+		if start.Before(o.UpdatedAt) {
+			log.Info(`The Order(%s) has already been updated.
+					  Stopping 'stripe-update-order' task.`, o.Id(), ctx)
+			return nil
+		}
+		o.UpdatePaymentStatus()
+		return o.Put()
+	})
 
-	// 	if updatedCharge.Desc != description {
-	// 		params := &stripe.ChargeParams{Desc: description}
-	// 		var err error
-	// 		updatedCharge, err = sc.Charges.Update(charge.ID, params)
-	// 		if err != nil {
-	// 			return err
-	// 		}
-	// 	}
-	// 	o.Charges[i] = models.Charge{
-	// 		ID:             updatedCharge.ID,
-	// 		Captured:       updatedCharge.Captured,
-	// 		Created:        updatedCharge.Created,
-	// 		Desc:           updatedCharge.Desc,
-	// 		Email:          updatedCharge.Email,
-	// 		FailCode:       updatedCharge.FailCode,
-	// 		FailMsg:        updatedCharge.FailMsg,
-	// 		Live:           updatedCharge.Live,
-	// 		Paid:           updatedCharge.Paid,
-	// 		Refunded:       updatedCharge.Refunded,
-	// 		Statement:      updatedCharge.Statement,
-	// 		Amount:         int64(updatedCharge.Amount), // TODO: Check if this is necessary.
-	// 		AmountRefunded: int64(updatedCharge.AmountRefunded),
-	// 	}
+	if err != nil {
+		log.Panic("Error updating Order(%s) in 'stripe-update-order' %#v", o.Id(), err, ctx)
+	}
+})
 
-	// 	if updatedCharge.Dispute != nil {
-	// 		// TODO: Refactor for multiple charges.
-	// 		// o.Dispute = stripeWrapperModels.ConvertDispute(*updatedCharge.Dispute)
-	// 		o.Disputed = true
-	// 		if updatedCharge.Dispute.Status != dispute.Won {
-	// 			o.Locked = true
-	// 		}
-	// 	}
+var UpdatePayment = delay.Func("stripe-update-payment", func(c appengine.Context, ch stripe.Charge, start time.Time) {
+	db := datastore.New(c)
+	pay := payment.New(db)
 
-	// 	if charge.Refunded {
-	// 		o.Refunded = true
-	// 	}
-	// }
+	err := pay.RunInTransaction(func() error {
+		if ok, err := pay.Query().Filter("Account.ChargeId=", ch.ID).First(); !ok {
+			log.Panic("Unable to find payment matching charge: %s", ch.ID, err, c)
+		}
 
-	// log.Info("Refunded: %v", o.Refunded)
-	// if _, err := db.PutKind("order", key, &o); err != nil {
-	// 	return err
-	// }
-	// return nil
-}
+		if start.Before(pay.UpdatedAt) {
+			log.Info(`The Payment(%s) associated with Charge(%s) has already been updated.
+					  Stopping 'stripe-update-payment' task.`, pay.Id(), ch.ID, c)
+			return nil
+		}
 
-func RunSynchronizeCharges(c *gin.Context) {
-	// ctx := c.MustGet("appengine").(appengine.Context)
+		if ch.Captured {
+			pay.Status = payment.Paid
+		} else if ch.Refunded {
+			pay.Status = payment.Refunded
+		} else if ch.Paid {
+			pay.Status = payment.Paid
+		} else {
+			pay.Status = payment.Unpaid
+		}
 
-	// This needs to use org secret
-	// sc := New(ctx, config.Stripe.SecretKey)
+		return pay.Put()
+	})
 
-	// synchronizeCharges.Run(c, 100, sc)
-}
+	if err != nil {
+		log.Panic("Error updating Payment(%s) in 'stripe-update-payment'. %#v", pay.Id(), err, c)
+	}
+
+	updateOrder.Call(c, pay.OrderId)
+})
+
+var UpdateDisputedPayment = delay.Func("stripe-update-disputed-payment", func(ctx appengine.Context, dispute stripe.Dispute, start time.Time) {
+	db := datastore.New(ctx)
+	pay := payment.New(db)
+
+	chargeId := dispute.Charge
+
+	pay.RunInTransaction(func() error {
+		ok, err := pay.Query().Filter("Account.ChargeId=", chargeId).First()
+		if !ok {
+			log.Error("Error retrieving Payment associated with disputed Charge(%s). %#v", chargeId, err, ctx)
+			return nil
+		}
+
+		if start.Before(pay.UpdatedAt) {
+			log.Info(`The Payment(%s) associated with Charge(%s) has already been updated.
+					  Stopping 'stripe-update-disputed-payment' task.`, pay.Id(), chargeId, ctx)
+			return nil
+		}
+
+		switch dispute.Status {
+		case "won":
+			pay.Status = payment.Paid
+		case "charge_refunded":
+			pay.Status = payment.Refunded
+		default:
+			pay.Status = payment.Disputed
+		}
+
+		return pay.Put()
+	})
+
+	updateOrder.Call(ctx, pay.OrderId)
+})
+
+var SyncCharges = task.Func("stripe-sync-charges", func(c *gin.Context) {
+	db := datastore.New(c)
+	org := organization.New(db)
+
+	// Get organization off query
+	query := c.Request.URL.Query()
+	orgname := query.Get("organization")
+
+	// Lookup organization
+	if err := org.GetById(orgname); err != nil {
+		log.Error("Unable to find organization(%s). %#v", orgname, err, c)
+		return
+	}
+
+	// Get namespaced context
+	ctx := org.Namespace(db.Context)
+
+	// Create stripe client
+	client := stripe.New(ctx, org.Stripe.AccessToken)
+
+	// Get all stripe charges
+	params := &sg.ChargeListParams{}
+	i := client.Charges.List(params)
+	for i.Next() {
+		// Get next charge
+		ch := i.Charge()
+
+		// Update payment, using the namespaced context (i hope)
+		start := time.Now()
+		UpdatePayment.Call(ctx, ch, start)
+	}
+
+	if err := i.Err(); err != nil {
+		log.Error("Error while iterating over charges. %#v", err, ctx)
+	}
+})
