@@ -1,6 +1,8 @@
 package tasks
 
 import (
+	"errors"
+	"fmt"
 	"time"
 
 	"appengine"
@@ -12,18 +14,43 @@ import (
 	"crowdstart.com/util/log"
 )
 
-var UpdateDisputedPayment = delay.Func("stripe-update-disputed-payment", func(ctx appengine.Context, ns string, dispute stripe.Dispute, start time.Time) {
+// Update payment from dispute
+func UpdatePaymentFromDispute(pay *payment.Payment, dispute stripe.Dispute) {
+	switch dispute.Status {
+	case "won":
+		pay.Status = payment.Paid
+	case "charge_refunded":
+		pay.Status = payment.Refunded
+	default:
+		pay.Status = payment.Disputed
+	}
+}
+
+var UpdateDisputedPayment = delay.Func("stripe-update-disputed-payment", func(ctx appengine.Context, apikey, ns string, dispute stripe.Dispute, start time.Time) {
 	ctx, _ = appengine.Namespace(ctx, ns)
-	db := datastore.New(ctx)
-	pay := payment.New(db)
 
 	chargeId := dispute.Charge
 
+	// Get charge from Stripe
+	client := stripe.New(ctx, apikey)
+	ch, err := client.GetCharge(chargeId)
+	if err != nil {
+		log.Panic("Unable to fetch charge (%s) for dispute (%s): %v", chargeId, dispute, err, ctx)
+	}
+
+	// Get ancestor (order) using charge
+	key, err := getPaymentAncestor(ctx, ch)
+	if err != nil {
+		log.Panic("Unable to find payment matching charge: %s, %v", chargeId, err, ctx)
+	}
+
+	db := datastore.New(ctx)
+	pay := payment.New(db)
+
 	pay.RunInTransaction(func() error {
-		ok, err := pay.Query().Filter("Account.ChargeId=", chargeId).First()
-		if !ok {
-			log.Error("Error retrieving Payment associated with disputed Charge(%s). %#v", chargeId, err, ctx)
-			return nil
+		// Query by ancestor so we can use a transaction
+		if ok, err := pay.Query().Ancestor(key).Filter("Account.ChargeId=", ch.ID).First(); !ok {
+			return errors.New(fmt.Sprintf("Unable to retrieve payment for charge (%s), ancestor, (%v):", ch.ID, key, err))
 		}
 
 		if start.Before(pay.UpdatedAt) {
@@ -32,14 +59,9 @@ var UpdateDisputedPayment = delay.Func("stripe-update-disputed-payment", func(ct
 			return nil
 		}
 
-		switch dispute.Status {
-		case "won":
-			pay.Status = payment.Paid
-		case "charge_refunded":
-			pay.Status = payment.Refunded
-		default:
-			pay.Status = payment.Disputed
-		}
+		// Actually update payment
+		UpdatePaymentFromDispute(pay, dispute)
+		log.Debug("Payment updated to: %v", pay, ctx)
 
 		return pay.Put()
 	})
