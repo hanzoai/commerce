@@ -19,6 +19,7 @@ import (
 	"crowdstart.com/models/store"
 	"crowdstart.com/models/types/country"
 	"crowdstart.com/models/types/currency"
+	"crowdstart.com/util/hashid"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/val"
@@ -313,6 +314,73 @@ func (o *Order) UpdateDiscount() {
 					}
 				}
 			}
+		}
+	}
+}
+
+// Update order's payment status based on payments
+func (o *Order) UpdatePaymentStatus() {
+	keys := make([]*aeds.Key, len(o.PaymentIds))
+	ctx := o.Context()
+
+	// Convert payment ids into keys
+	for i, id := range o.PaymentIds {
+		if key, err := hashid.DecodeKey(o.Context(), id); err != nil {
+			log.Error("Unable to decode payment id into Key %s", id, ctx)
+		} else {
+			keys[i] = key
+		}
+	}
+
+	// Get payments associated with this order
+	var payments []*payment.Payment
+	db := datastore.New(ctx)
+	err := db.GetMulti(keys, payments)
+	if err != nil {
+		log.Error("Unable to fetch oer (%s) payments %v", o.Id(), err, ctx)
+		return
+	}
+
+	// Sum payments to figure out what we've been paid and check for bad status
+	var badstatus payment.Status
+	failed := false
+	disputed := false
+	refunded := false
+	totalPaid := 0
+
+	for _, pay := range payments {
+		switch pay.Status {
+		case payment.Paid:
+			totalPaid += int(pay.Amount)
+		case payment.Cancelled, payment.Failed, payment.Fraudulent:
+			badstatus = pay.Status
+			failed = true
+		case payment.Disputed:
+			disputed = true
+		case payment.Refunded:
+			refunded = true
+		}
+	}
+
+	// Update order paid amount and status
+	o.Paid = currency.Cents(int(o.Paid) + totalPaid)
+	if o.Paid >= o.Total {
+		// TODO Notify user via email.
+		o.PaymentStatus = payment.Paid
+		if o.Status != Completed {
+			o.Status = Open
+		}
+	} else {
+		if failed {
+			// If something bad happened, cancel the order
+			o.Status = Cancelled
+			o.PaymentStatus = badstatus
+		} else if refunded {
+			o.Status = Cancelled
+			o.PaymentStatus = payment.Refunded
+		} else if disputed {
+			o.Status = Locked
+			o.PaymentStatus = payment.Disputed
 		}
 	}
 }

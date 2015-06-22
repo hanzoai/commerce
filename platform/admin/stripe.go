@@ -18,7 +18,8 @@ this function assumes that every order is associated with the only campaign (SKU
 TODO: Run a migration to set `CampaignId` in all orders.
 */
 func StripeSync(c *gin.Context) {
-	tasks.RunSynchronizeCharges(c)
+	ctx := middleware.GetAppEngine(c)
+	tasks.SyncCharges.Call(ctx, "organization", middleware.GetOrganization(c).Id())
 	c.String(200, "Synchronising orders")
 }
 

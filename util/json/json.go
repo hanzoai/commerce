@@ -59,3 +59,5 @@ func DecodeBuffer(buf *bytes.Buffer, v interface{}) error {
 	}
 	return nil
 }
+
+var Unmarshal = json.Unmarshal
