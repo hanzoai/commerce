@@ -45,7 +45,7 @@ func getOrganization(ctx appengine.Context) *organization.Organization {
 }
 
 // Update charge in case order/pay id is missing in metadata
-func updateCharge(ctx appengine.Context, ch *stripe.Charge, pay *payment.Payment) {
+func updateChargeFromPayment(ctx appengine.Context, ch *stripe.Charge, pay *payment.Payment) {
 	org := getOrganization(ctx)
 
 	// Get a stripe client
@@ -57,7 +57,7 @@ func updateCharge(ctx appengine.Context, ch *stripe.Charge, pay *payment.Payment
 }
 
 // Get ancestor for ancestor query for a payment associated with a stripe charge
-func getPaymentAncestor(ctx appengine.Context, ch *stripe.Charge) (*aeds.Key, error) {
+func getOrderFromCharge(ctx appengine.Context, ch *stripe.Charge) (*aeds.Key, error) {
 	// Try to user order id if possible
 	if id, ok := ch.Meta["order"]; ok {
 		log.Debug("Try to use order id in charge metadata", ctx)
@@ -88,7 +88,7 @@ func getPaymentAncestor(ctx appengine.Context, ch *stripe.Charge) (*aeds.Key, er
 		return nil, errors.New(fmt.Sprintf("Unable to lookup payment by id (%s) or charge id (%s): %v", id, ch.ID, err, ctx))
 	}
 
-	updateCharge(ctx, ch, pay)
+	updateChargeFromPayment(ctx, ch, pay)
 
 	log.Debug("Try to decode order id: %v", pay.OrderId, ctx)
 	return hashid.DecodeKey(ctx, pay.OrderId)

@@ -26,20 +26,21 @@ func UpdatePaymentFromDispute(pay *payment.Payment, dispute stripe.Dispute) {
 	}
 }
 
-var UpdateDisputedPayment = delay.Func("stripe-update-disputed-payment", func(ctx appengine.Context, apikey, ns string, dispute stripe.Dispute, start time.Time) {
+// Synchronize payment using dispute
+var DisputeSync = delay.Func("stripe-update-disputed-payment", func(ctx appengine.Context, ns string, token string, dispute stripe.Dispute, start time.Time) {
 	ctx, _ = appengine.Namespace(ctx, ns)
 
 	chargeId := dispute.Charge
 
 	// Get charge from Stripe
-	client := stripe.New(ctx, apikey)
+	client := stripe.New(ctx, token)
 	ch, err := client.GetCharge(chargeId)
 	if err != nil {
 		log.Panic("Unable to fetch charge (%s) for dispute (%s): %v", chargeId, dispute, err, ctx)
 	}
 
 	// Get ancestor (order) using charge
-	key, err := getPaymentAncestor(ctx, ch)
+	key, err := getOrderFromCharge(ctx, ch)
 	if err != nil {
 		log.Panic("Unable to find payment matching charge: %s, %v", chargeId, err, ctx)
 	}
@@ -66,5 +67,5 @@ var UpdateDisputedPayment = delay.Func("stripe-update-disputed-payment", func(ct
 		return pay.Put()
 	})
 
-	updateOrder.Call(ctx, ns, pay.OrderId, start)
+	updateOrder.Call(ctx, ns, token, pay.OrderId, start)
 })
