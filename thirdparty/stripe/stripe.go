@@ -214,6 +214,7 @@ func (c Client) NewCharge(source interface{}, pay *payment.Payment) (*Charge, er
 		params.AddMeta(k, json.Encode(v))
 	}
 
+	params.AddMeta("order", pay.OrderId)
 	params.AddMeta("payment", pay.Id())
 
 	switch v := source.(type) {
