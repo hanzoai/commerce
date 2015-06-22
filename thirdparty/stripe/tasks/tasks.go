@@ -166,6 +166,7 @@ var SyncCharges = task.Func("stripe-sync-charges", func(c *gin.Context) {
 	// Get organization off query
 	query := c.Request.URL.Query()
 	orgname := query.Get("organization")
+	test := query.Get("test")
 
 	// Lookup organization
 	if err := org.GetById(orgname); err != nil {
@@ -181,6 +182,12 @@ var SyncCharges = task.Func("stripe-sync-charges", func(c *gin.Context) {
 
 	// Get all stripe charges
 	params := &sg.ChargeListParams{}
+	if test == "1" || test == "true" {
+		params.Filters.AddFilter("include[]", "", "total_count")
+		params.Filters.AddFilter("limit", "", "10")
+		params.Single = true
+	}
+
 	i := client.Charges.List(params)
 	for i.Next() {
 		// Get next charge
