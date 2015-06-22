@@ -334,10 +334,11 @@ func (o *Order) UpdatePaymentStatus() {
 
 	// Get payments associated with this order
 	payments := make([]*payment.Payment, len(o.PaymentIds))
+
 	db := datastore.New(ctx)
 	err := db.GetMulti(keys, payments)
 	if err != nil {
-		log.Error("Unable to fetch oer (%s) payments %v", o.Id(), err, ctx)
+		log.Error("Unable to fetch payments for order (%s): %v", o.Id(), err, ctx)
 		return
 	}
 
