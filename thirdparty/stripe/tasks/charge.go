@@ -15,7 +15,7 @@ import (
 )
 
 // Update payment from charge
-func UpdatePaymentFromCharge(pay *payment.Payment, ch stripe.Charge) {
+func UpdatePaymentFromCharge(pay *payment.Payment, ch *stripe.Charge) {
 	// Update status
 	if ch.Captured {
 		pay.Status = payment.Paid
@@ -56,7 +56,7 @@ var ChargeSync = delay.Func("stripe-update-payment", func(ctx appengine.Context,
 		}
 
 		// Actually update payment
-		UpdatePaymentFromCharge(pay, ch)
+		UpdatePaymentFromCharge(pay, &ch)
 		log.Debug("Payment updated to: %v", pay, ctx)
 
 		// Save updated payment
