@@ -19,6 +19,7 @@ func Webhook(c *gin.Context) {
 		c.String(500, "Error parsing event json")
 		return
 	}
+
 	if !event.Live {
 		c.String(200, event.Type)
 		return
