@@ -1,0 +1,7 @@
+<div class="form-group">
+  <label __for="{ model.name }" class="control-label">{ model.name }</label>
+  <select id="{ model.name }" name="{ model.name }" type="text" onchange="{ change }" onblur="{ change }" data-placeholder="{ model.placeholder }" class="form-control">
+    <option if="{model.placeholder}"></option>
+    <option each="{value, name in options()}" value="{value.toUpperCase()}" __selected="{this.parent.model.value == value.toUpperCase()}">{name}</option>
+  </select>
+</div>
