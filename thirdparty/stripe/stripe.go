@@ -20,6 +20,7 @@ import (
 type Card stripe.Card
 type CardParams stripe.CardParams
 type Charge stripe.Charge
+type ChargeParams stripe.ChargeParams
 type ChargeListParams stripe.ChargeListParams
 type Customer stripe.Customer
 type Dispute stripe.Dispute
@@ -192,6 +193,35 @@ func (c Client) GetCharge(chargeId string) (*Charge, error) {
 	charge, err := c.API.Charges.Get(chargeId, params)
 	if err != nil {
 		return nil, err
+	}
+
+	return (*Charge)(charge), err
+}
+
+// Update Stripe charge
+func (c Client) UpdateCharge(pay *payment.Payment) (*Charge, error) {
+	pay.Metadata["payment"] = pay.Id()
+	pay.Metadata["order"] = pay.OrderId
+
+	// Create params for update
+	params := &stripe.ChargeParams{
+		Desc:  pay.Description,
+		Email: pay.Buyer.Email,
+	}
+
+	// Update metadata
+	for k, v := range pay.Metadata {
+		s, ok := v.(string)
+		if ok {
+			params.AddMeta(k, s)
+		}
+	}
+
+	id := pay.Account.ChargeId
+
+	charge, err := c.API.Charges.Update(id, params)
+	if err != nil {
+		return nil, errors.New(err)
 	}
 
 	return (*Charge)(charge), err
