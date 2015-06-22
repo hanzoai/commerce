@@ -16,6 +16,7 @@ import (
 	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/subscriber"
 	"crowdstart.com/models/token"
+	"crowdstart.com/models/transaction"
 	"crowdstart.com/models/user"
 	"crowdstart.com/models/variant"
 	"crowdstart.com/util/rest"
@@ -65,6 +66,7 @@ func init() {
 	rest.New(subscriber.Subscriber{}).Route(api, tokenRequired)
 	rest.New(user.User{}).Route(api, tokenRequired)
 	rest.New(variant.Variant{}).Route(api, tokenRequired)
+	rest.New(transaction.Transaction{}).Route(api, tokenRequired)
 
 	accountApi.Route(api, tokenRequired)
 	orderApi.Route(api, tokenRequired)
