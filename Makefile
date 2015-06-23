@@ -13,6 +13,7 @@ goapp			= $(sdk_path)/goapp
 gpm				= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(sdk_path)/gpm
 ginkgo			= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(gopath)/bin/ginkgo
 appcfg.py 		= $(sdk_path)/appcfg.py --skip_sdk_update_check
+bulkloader.py   = $(sdk_path)/bulkloader.py
 
 deps	= $(shell cat Godeps | cut -d ' ' -f 1)
 modules	= crowdstart.com/api \
@@ -269,20 +270,20 @@ rollback:
 
 # EXPORT / Usage: make datastore-export kind=user namespace=bellabeat
 datastore-export:
-	@mkdir -p _export/ && \
-	bulkloader.py --download \
-				  --bandwidth_limit 1000000000 \
-				  --rps_limit 10000 \
-				  --batch_size 250 \
-				  --http_limit 200 \
-				  --url $(datastore_admin_url) \
-				  --config_file util/bulkloader/bulkloader.yaml \
-				  --db_filename /tmp/bulkloader-$$kind.db \
-				  --log_file /tmp/bulkloader-$$kind.log \
-				  --result_db_filename /tmp/bulkloader-result-$$kind.db \
-				  --namespace $$namespace \
-				  --kind $$kind \
-				  --filename _export/$$namespace-$$kind-$(datastore_app_id)-$(current_date).csv && \
+	@mkdir -p _export/
+	$(bulkloader.py) --download \
+				  	 --bandwidth_limit 1000000000 \
+				  	 --rps_limit 10000 \
+				  	 --batch_size 250 \
+				  	 --http_limit 200 \
+				  	 --url $(datastore_admin_url) \
+				  	 --config_file util/bulkloader/bulkloader.yaml \
+				  	 --db_filename /tmp/bulkloader-$$kind.db \
+				  	 --log_file /tmp/bulkloader-$$kind.log \
+				  	 --result_db_filename /tmp/bulkloader-result-$$kind.db \
+				  	 --namespace $$namespace \
+				  	 --kind $$kind \
+				  	 --filename _export/$$namespace-$$kind-$(datastore_app_id)-$(current_date).csv
 	rm -rf /tmp/bulkloader-$$kind.db \
 		   /tmp/bulkloader-$$kind.log \
 		   /tmp/bulkloader-result-$$kind.db
@@ -290,23 +291,23 @@ datastore-export:
 # IMPORT / Usage: make datastore-import kind=user file=user.csv
 datastore-import:
 	@$(appcfg.py) upload_data --bandwidth_limit 1000000000 \
-						  --rps_limit 10000 \
-						  --batch_size 250 \
-						  --http_limit 200 \
-						  --url $(datastore_admin_url) \
-						  --config_file util/bulkloader/bulkloader.yaml \
-				  	      --namespace $$namespace \
-						  --kind $$kind \
-						  --filename $$file \
-						  --log_file /tmp/bulkloader-upload-$$kind.log && \
+						      --rps_limit 10000 \
+						      --batch_size 250 \
+						      --http_limit 200 \
+						      --url $(datastore_admin_url) \
+						      --config_file util/bulkloader/bulkloader.yaml \
+				  	          --namespace $$namespace \
+						      --kind $$kind \
+						      --filename $$file \
+						      --log_file /tmp/bulkloader-upload-$$kind.log
 	rm -rf /tmp/bulkloader-upload-$$kind.log
 
 # Generate config for use with datastore-export target
 datastore-config:
-	@bulkloader.py --create_config \
-				  --url=$(datastore_admin_url) \
-				  --namespace $$namespace \
-				  --filename=bulkloader.yaml
+	@$(bulkloader.py) --create_config \
+				      --url=$(datastore_admin_url) \
+				      --namespace $$namespace \
+				      --filename=bulkloader.yaml
 
 # Replicate production data to localhost
 datastore-replicate:
