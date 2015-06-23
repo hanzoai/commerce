@@ -37,16 +37,12 @@ var _ = Describe("thirdparty.stripe.UpdatePaymentFromDispute", func() {
 	Context("When a dispute is lost (or anything else)", func() {
 		It("should mark the payment as Disputed", func() {
 			pay, dispute := construct()
-			dispute.Status = sdispute.Lost
 
+			dispute.Status = sdispute.Lost
 			tasks.UpdatePaymentFromDispute(pay, dispute)
 			Expect(string(pay.Status)).To(Equal(payment.Disputed))
-		})
 
-		It("should mark the payment as Disputed", func() {
-			pay, dispute := construct()
 			dispute.Status = sdispute.Review
-
 			tasks.UpdatePaymentFromDispute(pay, dispute)
 			Expect(string(pay.Status)).To(Equal(payment.Disputed))
 		})
