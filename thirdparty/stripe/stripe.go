@@ -17,16 +17,6 @@ import (
 	"crowdstart.com/util/log"
 )
 
-type Card stripe.Card
-type CardParams stripe.CardParams
-type Charge stripe.Charge
-type ChargeParams stripe.ChargeParams
-type ChargeListParams stripe.ChargeListParams
-type Customer stripe.Customer
-type Dispute stripe.Dispute
-type Token stripe.Token
-type Event stripe.Event
-
 type Client struct {
 	*client.API
 	ctx appengine.Context

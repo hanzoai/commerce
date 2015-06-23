@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/stripe/stripe-go/charge"
+
 	"appengine"
 	"appengine/delay"
 
@@ -25,6 +27,11 @@ func UpdatePaymentFromCharge(pay *payment.Payment, ch *stripe.Charge) {
 		pay.Status = payment.Paid
 	} else {
 		pay.Status = payment.Unpaid
+	}
+
+	if ch.FraudDetails.UserReport == charge.ReportFraudulent ||
+		ch.FraudDetails.StripeReport == charge.ReportFraudulent {
+		pay.Status = payment.Fraudulent
 	}
 }
 
