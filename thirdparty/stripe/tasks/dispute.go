@@ -8,8 +8,6 @@ import (
 	"appengine"
 	"appengine/delay"
 
-	sdispute "github.com/stripe/stripe-go/dispute"
-
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/thirdparty/stripe"
@@ -19,9 +17,9 @@ import (
 // Update payment from dispute
 func UpdatePaymentFromDispute(pay *payment.Payment, dispute *stripe.Dispute) {
 	switch dispute.Status {
-	case sdispute.Won:
+	case stripe.Won:
 		pay.Status = payment.Paid
-	case sdispute.ChargeRefunded:
+	case stripe.ChargeRefunded:
 		pay.Status = payment.Refunded
 	default:
 		pay.Status = payment.Disputed

@@ -1,8 +1,6 @@
 package test
 
 import (
-	sdispute "github.com/stripe/stripe-go/dispute"
-
 	"crowdstart.com/models/payment"
 	"crowdstart.com/thirdparty/stripe"
 	"crowdstart.com/thirdparty/stripe/tasks"
@@ -18,7 +16,7 @@ var _ = Describe("thirdparty.stripe.UpdatePaymentFromDispute", func() {
 
 	Context("When a dispute is won", func() {
 		pay, dispute := construct()
-		dispute.Status = sdispute.Won
+		dispute.Status = stripe.Won
 		It("should mark the payment as Paid", func() {
 			tasks.UpdatePaymentFromDispute(pay, dispute)
 			Expect(string(pay.Status)).To(Equal(payment.Paid))
@@ -27,7 +25,7 @@ var _ = Describe("thirdparty.stripe.UpdatePaymentFromDispute", func() {
 
 	Context("When the charge of a dispute is refunded", func() {
 		pay, dispute := construct()
-		dispute.Status = sdispute.ChargeRefunded
+		dispute.Status = stripe.ChargeRefunded
 		It("should mark the payment as Refunded", func() {
 			tasks.UpdatePaymentFromDispute(pay, dispute)
 			Expect(string(pay.Status)).To(Equal(payment.Refunded))
@@ -38,11 +36,11 @@ var _ = Describe("thirdparty.stripe.UpdatePaymentFromDispute", func() {
 		It("should mark the payment as Disputed", func() {
 			pay, dispute := construct()
 
-			dispute.Status = sdispute.Lost
+			dispute.Status = stripe.Lost
 			tasks.UpdatePaymentFromDispute(pay, dispute)
 			Expect(string(pay.Status)).To(Equal(payment.Disputed))
 
-			dispute.Status = sdispute.Review
+			dispute.Status = stripe.Review
 			tasks.UpdatePaymentFromDispute(pay, dispute)
 			Expect(string(pay.Status)).To(Equal(payment.Disputed))
 		})
