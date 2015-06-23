@@ -30,6 +30,7 @@ import (
 	paymentApi "crowdstart.com/api/payment"
 	searchApi "crowdstart.com/api/search"
 	storeApi "crowdstart.com/api/store"
+	userApi "crowdstart.com/api/user"
 )
 
 func init() {
@@ -64,10 +65,10 @@ func init() {
 	rest.New(referral.Referral{}).Route(api, tokenRequired)
 	rest.New(referrer.Referrer{}).Route(api, tokenRequired)
 	rest.New(subscriber.Subscriber{}).Route(api, tokenRequired)
-	rest.New(user.User{}).Route(api, tokenRequired)
 	rest.New(variant.Variant{}).Route(api, tokenRequired)
 	rest.New(transaction.Transaction{}).Route(api, tokenRequired)
 
+	userApi.Route(api, tokenRequired)
 	accountApi.Route(api, tokenRequired)
 	orderApi.Route(api, tokenRequired)
 	storeApi.Route(api, tokenRequired)
