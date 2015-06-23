@@ -29,9 +29,11 @@ func UpdatePaymentFromCharge(pay *payment.Payment, ch *stripe.Charge) {
 		pay.Status = payment.Unpaid
 	}
 
-	if ch.FraudDetails.UserReport == charge.ReportFraudulent ||
-		ch.FraudDetails.StripeReport == charge.ReportFraudulent {
-		pay.Status = payment.Fraudulent
+	if ch.FraudDetails != nil {
+		if ch.FraudDetails.UserReport == charge.ReportFraudulent ||
+			ch.FraudDetails.StripeReport == charge.ReportFraudulent {
+			pay.Status = payment.Fraudulent
+		}
 	}
 }
 
