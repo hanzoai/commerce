@@ -1,50 +1,116 @@
 crowdcontrol = require 'crowdcontrol'
+_ = require 'underscore'
 
+View = crowdcontrol.view.View
 InputView = crowdcontrol.view.form.InputView
 
 helpers = crowdcontrol.view.form.helpers
 helpers.defaultTagName = 'basic-input'
 
 # views
+class StaticView extends View
+  tag: 'static'
+  html: require './static.html'
+
+class StaticDateView extends View
+  tag: 'static-date'
+  html: require './static-date.html'
+
 class BasicInputView extends InputView
   tag: 'basic-input'
-  html: require './basic-form.html'
+  html: require './basic-input.html'
+  js: ()->
+    super
+    #validate initial conditions
+    @one 'update', ()=>
+      if @model.value?
+        @obs.trigger InputView.Events.Change, @model.name, @model.value
 
 new BasicInputView
 
-class SelectView extends InputView
-  html: require './select.html'
+class BasicSelectView extends BasicInputView
+  tag: 'basic-select'
+  html: require './basic-select.html'
   mixins:
     options: ()->
-  events:
-    update: ()->
-      $(@root).find('select').chosen
+  js:()->
+    super
+
+    @on 'update', ()=>
+      $(@root).find('select').chosen(
         width: '100%'
         disable_search_threshold: 3
+      ).change((event)=>@change(event))
 
-class CountriesSelectView extends SelectView
-  tag: 'countries-select'
+new BasicSelectView
+
+class CountrySelectView extends BasicSelectView
+  tag: 'country-select'
   mixins:
     options: ()->
       return window.countries
 
-new CountriesSelectView
+new CountrySelectView
+
+tokenize = (str)->
+  tokens = str.split(' ')
+  dict = {}
+  for token in tokens
+    if token.indexOf(':') >= 0
+      [k, v] = token.split(':')
+      dict[k] = v
+    else
+      dict[token] = true
+
+  return dict
 
 # tag registration
 helpers.registerTag (inputCfg)->
-  return inputCfg.hints.indexOf('countries') >= 0
-, 'countries-select'
+  return inputCfg.hints.indexOf('country') >= 0
+, 'country-select'
+
+helpers.registerTag (inputCfg)->
+  return inputCfg.hints.indexOf('static-date') >= 0
+, 'static-date'
+
+helpers.registerTag (inputCfg)->
+  return inputCfg.hints.indexOf('static') >= 0
+, 'static'
 
 # validator registration
+helpers.registerValidator ((inputCfg) -> return inputCfg.hints.indexOf('required') >= 0), (model, name)->
+  value = model[name]
+  value = value.trim()
+  throw new Error "Required" if !value? || value == ''
+
+  return value
+
 helpers.registerValidator ((inputCfg) -> return inputCfg.hints.indexOf('email') >= 0), (model, name)->
   value = model[name]
-  throw new Error "Enter a valid email" if !value?
-
   value = value.trim().toLowerCase()
   re = /[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?/
   if value.match(re)
     return value
   throw new Error "Enter a valid email"
+
+# should be okay for single one of these on a form
+emailExcept = ''
+helpers.registerValidator (inputCfg) ->
+  hints = tokenize(inputCfg.hints)
+  if hints['email-unique']
+    emailExcept = hints['email-unique-exception'] || ''
+    return true
+  return false
+, (model, name)->
+  value = model[name]
+  if emailExcept.indexOf(value) < 0
+    return crowdcontrol.config.api.get('account/exists/' + value).then (data)->
+      if data.data.exists
+        throw new Error "Email already exists"
+      return value
+    , ()->
+      return value
+  return value
 
 # module.exports =
 #   BasicInputView: BasicInputView
