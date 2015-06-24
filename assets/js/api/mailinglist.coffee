@@ -204,10 +204,10 @@ do ->
     selectors[prop] = (attr prop) ? ml.selectors?[prop] ? false
 
   # are we validating?
-  validate = (attr 'validate') ? ml.validate ? false
+  validate = (attr 'validate') ? ml.validate ? ''
 
   # data attributes can only be strings
-  validate = false if validate.toLowerCase() == 'false'
+  validate = false if validate?.toLowerCase() == 'false'
 
   # init
   forms    = getElements script, selectors.forms
