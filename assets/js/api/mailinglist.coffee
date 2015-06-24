@@ -29,33 +29,46 @@ do ->
         return
       return
 
-  getForm = ->
+  getScript = ->
     # start at the root element
     node = document.documentElement
 
     # find last HTMLElement child node
-    node = node.lastChild  while node.childNodes.length and node.lastChild.nodeType is 1
+    node = node.lastChild while node.childNodes.length and node.lastChild.nodeType is 1
 
-    # node is now the script element
-    form = node.parentNode
-    window.form = form
+    # last HTMLElement is script tag
+    node
 
-  serialize = (form) ->
-    return {} if not form or form.nodeName isnt 'FORM'
+  getElements = (script, selector) ->
+    if selector != ''
+      # look up form elements
+      document.querySelectorAll selector
+    else
+      # use HTML element containing script tag
+      [script.parentNode]
+
+  getValue = (selector, el = document) ->
+    console.log 'getValue', selector, el
+    found = el.querySelector selector
+    console.log found, found?.value?.trim()
+    found?.value?.trim()
+
+  serialize = (el) ->
+    return {} unless el?
 
     data =
       metadata: {}
 
-    elements = form.getElementsByTagName 'input'
+    inputs = el.getElementsByTagName 'input'
 
     # Loop over form elements
-    for el in elements
+    for input in inputs
       # Clean up inputs
-      k = el.name.trim().toLowerCase()
-      v = el.value.trim()
+      k = input.name.trim().toLowerCase()
+      v = input.value.trim()
 
       # Skip inputs we don't care about
-      if k == '' or v == '' or (el.getAttribute 'type') == 'submit'
+      if k == '' or v == '' or (input.getAttribute 'type') == 'submit'
         continue
 
       # Detect emails
@@ -64,8 +77,15 @@ do ->
       else
         data.metadata[k] = v
 
-    unless data.email?
-      throw new Error 'No email provided, make sure form element has an email field and that the value is populated correctly'
+    # Use selectors if necessary
+    if selectors.email
+      data.email = getValue selectors.email, el
+
+    for prop in ['firstname', 'lastname', 'name']
+      if (selector = selectors[prop])?
+        data.metadata[prop] = getValue selector, el
+
+    console.error 'Email is required' unless data.email?
 
     data
 
@@ -100,51 +120,109 @@ do ->
     ga ml.google if ml.google.category?
     fb ml.facebook if ml.facebook.id?
 
-  addHandler = (ev) ->
-    form.removeEventListener 'submit', addHandler
-    form.addEventListener    'submit', submitHandler
+  addHandler = (el, errorEl) ->
+    unless errorEl?
+      errorEl = document.createElement 'div'
+      errorEl.className = 'crowdstart-mailinglist-error'
+      errorEl.style.display = 'none'
+      errorEl.style.width   = '100%'
+      el.appendChild errorEl
 
-    setTimeout ->
-      form.dispatchEvent new Event 'submit',
-        bubbles:    false
-        cancelable: true
-    , 500
+    showError = (msg) ->
+      errorEl.style.display   = 'inline'
+      errorEl.innerHTML = msg
+      false
 
-    ev.preventDefault()
-    false
+    hideError = ->
+      errorEl.style.display = 'none'
 
-  thankYou = ->
-    switch ml.thankyou.type
-      when 'redirect'
-        setTimeout ->
-          window.location = ml.thankyou.url
-        , 1000
-      when 'html'
-        form.innerHTML = ml.thankyou.html
+    thankYou = ->
+      switch ml.thankyou.type
+        when 'redirect'
+          setTimeout ->
+            window.location = ml.thankyou.url
+          , 1000
+        when 'html'
+          el.innerHTML = ml.thankyou.html
 
-  submitHandler = (ev) ->
-    if ev.defaultPrevented
-      return
-    else
+    submitHandler = (ev) ->
+      if ev.defaultPrevented
+        return
+      else
+        ev.preventDefault()
+
+      data = serialize el
+
+      if validate
+        unless data.email?
+          return showError 'Email is required'
+        hideError()
+
+      payload = JSON.stringify data
+
+      headers =
+        'X-Requested-With': 'XMLHttpRequest',
+        'Content-type':     'application/json; charset=utf-8'
+
+      xhr = XHR()
+      xhr.post endpoint, headers, payload, (err, status, xhr) ->
+        return thankYou() if status == 409
+        return if err?
+
+        # Fire tracking pixels
+        track()
+        thankYou()
+
+      false
+
+    (ev) ->
+      el.removeEventListener 'submit', addHandler
+      el.addEventListener    'submit', submitHandler
+
+      setTimeout ->
+        el.dispatchEvent new Event 'submit',
+          bubbles:    false
+          cancelable: true
+      , 500
+
       ev.preventDefault()
+      false
 
-    payload = JSON.stringify serialize form
-    headers =
-      'X-Requested-With': 'XMLHttpRequest',
-      'Content-type':     'application/json; charset=utf-8'
+  attr = (s) ->
+    script.getAttribute 'data-' + s
 
-    xhr = XHR()
-    xhr.post endpoint, headers, payload, (err, status, xhr) ->
-      return thankYou() if status == 409
-      return if err?
+  # get script tag
+  script = getScript()
 
-      # Fire tracking pixels
-      track()
-      thankYou()
+  selectors = {}
+  props = ['forms', 'submits', 'errors', 'email', 'firstname', 'lastname', 'name']
+  for prop in props
+    selectors[prop] = (attr prop) ? ml.selectors?[prop] ? false
 
-    false
+  # are we validating?
+  validate = (attr 'validate') ? ml.validate ? false
+
+  # data attributes can only be strings
+  validate = false if validate.toLowerCase() == 'false'
 
   # init
-  form = getForm()
-  form.addEventListener 'submit', addHandler
+  forms    = getElements script, selectors.forms
+  handlers = getElements script, selectors.submits
+
+  # error handling
+  if selectors.errors
+    errors = getElements script, selectors.errors
+  else
+    errors = []
+
+  for handler, i in handlers
+    do (handler, i) ->
+      return if handler.getAttribute 'data-hijacked'
+
+      handler.setAttribute 'data-hijacked', true
+      handler.addEventListener 'click',  (addHandler forms[i], errors[i])
+      handler.addEventListener 'submit', (addHandler forms[i], errors[i])
+
+  console.log selectors
+
   return
