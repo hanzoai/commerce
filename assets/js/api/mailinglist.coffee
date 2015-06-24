@@ -156,6 +156,10 @@ do ->
       if validate
         unless data.email?
           return showError 'Email is required'
+        if (data.email.indexOf '@') == -1
+          return showError 'Invalid email'
+        if data.email.length < 3
+          return showError 'Invalid email'
         hideError()
 
       payload = JSON.stringify data
