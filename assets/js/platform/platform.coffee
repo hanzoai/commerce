@@ -5,6 +5,5 @@ crowdcontrol = require 'crowdcontrol'
 
 window.moment = require 'moment'
 window.crowdstart =
-  views: require './views'
+  table: require './table'
   form: require './form'
-  data: crowdcontrol.data

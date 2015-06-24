@@ -19,31 +19,31 @@
         <user-form>
           <h4>Information</h4>
           <div id="user-info" class="block">
-              <control label="{'ID'}" input="{ inputs.id }"></control>
-              <control label="{'Email'}" input="{ inputs.email }" obs="{ obs }"></control>
-              <control label="{'First Name'}" input="{ inputs.firstName }" obs="{ obs }"></control>
-              <control label="{'Last Name'}" input="{ inputs.lastName }" obs="{ obs }"></control>
-              <control label="{'Phone'}" input="{ inputs.phone }" obs="{ obs }"></control>
-              <control label="{'Created On'}" input="{ inputs.createdAt }"></control>
-              <control label="{'Last Updated On'}" input="{ inputs.updatedAt }"></control>
+              <control label="ID" input="{ inputs.id }"></control>
+              <control label="Email" input="{ inputs.email }" obs="{ obs }"></control>
+              <control label="First Name" input="{ inputs.firstName }" obs="{ obs }"></control>
+              <control label="Last Name" input="{ inputs.lastName }" obs="{ obs }"></control>
+              <control label="Phone" input="{ inputs.phone }" obs="{ obs }"></control>
+              <control label="Created On" input="{ inputs.createdAt }"></control>
+              <control label="Last Updated On" input="{ inputs.updatedAt }"></control>
           </div>
           <h4>Billing Address</h4>
           <div id="user-billing-address" class="block">
-              <control label="{'Street Address'}" input="{ inputs['billingAddress.line1'] }" obs="{ obs }"></control>
-              <control label="{'Apt/Suite Number'}" input="{ inputs['billingAddress.line2'] }" obs="{ obs }"></control>
-              <control label="{'City'}" input="{ inputs['billingAddress.city'] }" obs="{ obs }"></control>
-              <control label="{'State'}" input="{ inputs['billingAddress.state'] }" obs="{ obs }"></control>
-              <control label="{'Postal/ZIP Code'}" input="{ inputs['billingAddress.postalCode'] }" obs="{ obs }"></control>
-              <control label="{'Country'}" input="{ inputs['billingAddress.country'] }" obs="{ obs }"></control>
+              <control label="Street Address" input="{ inputs['billingAddress.line1'] }" obs="{ obs }"></control>
+              <control label="Apt/Suite Number" input="{ inputs['billingAddress.line2'] }" obs="{ obs }"></control>
+              <control label="City" input="{ inputs['billingAddress.city'] }" obs="{ obs }"></control>
+              <control label="State" input="{ inputs['billingAddress.state'] }" obs="{ obs }"></control>
+              <control label="Postal/ZIP Code" input="{ inputs['billingAddress.postalCode'] }" obs="{ obs }"></control>
+              <control label="Country" input="{ inputs['billingAddress.country'] }" obs="{ obs }"></control>
           </div>
           <h4>Shipping Address</h4>
           <div id="user-shipping-address" class="block">
-              <control label="{'Street Address'}" input="{ inputs['shippingAddress.line1'] }" obs="{ obs }"></control>
-              <control label="{'Apt/Suite Number'}" input="{ inputs['shippingAddress.line2'] }" obs="{ obs }"></control>
-              <control label="{'City'}" input="{ inputs['shippingAddress.city'] }" obs="{ obs }"></control>
-              <control label="{'State'}" input="{ inputs['shippingAddress.state'] }" obs="{ obs }"></control>
-              <control label="{'Postal/ZIP Code'}" input="{ inputs['shippingAddress.postalCode'] }" obs="{ obs }"></control>
-              <control label="{'Country'}" input="{ inputs['shippingAddress.country'] }" obs="{ obs }"></control>
+              <control label="Street Address" input="{ inputs['shippingAddress.line1'] }" obs="{ obs }"></control>
+              <control label="Apt/Suite Number" input="{ inputs['shippingAddress.line2'] }" obs="{ obs }"></control>
+              <control label="City" input="{ inputs['shippingAddress.city'] }" obs="{ obs }"></control>
+              <control label="State" input="{ inputs['shippingAddress.state'] }" obs="{ obs }"></control>
+              <control label="Postal/ZIP Code" input="{ inputs['shippingAddress.postalCode'] }" obs="{ obs }"></control>
+              <control label="Country" input="{ inputs['shippingAddress.country'] }" obs="{ obs }"></control>
           </div>
           {% if referrers | length > 0 %}
           <h4>Referral Tokens</h4>
@@ -81,41 +81,11 @@
     {% endfor %}
   }
 
-  var Source = crowdstart.data.Source
-  var api = new crowdstart.data.Api('{{ urlFor("api") }}', '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}')
-  var src = new Source({
-      name: 'user-{{ user.Id }}',
-      path: 'user/{{ user.Id }}',
-      api: api,
+  riot.mount('user-form', {
+    userId: '{{ user.Id }}',
+    url:    '{{ urlFor("api") }}',
+    token:  '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}',
   })
-
-  src.on(Source.Events.LoadData, function(model) {
-    input = crowdstart.form.input
-    crowdstart.form.user('user-form', model, [
-      input('id', '', 'static'),
-      input('email', 'your@email.com', 'required email email-unique email-unique-exception:{{ user.Email }} '),
-      input('firstName', 'First Name', 'required'),
-      input('lastName', 'Last Name', 'required'),
-      input('phone', 'Phone'),
-      input('createdAt', '', 'static-date'),
-      input('updatedAt', '', 'static-date'),
-
-      input('billingAddress.line1', 'Street Address'),
-      input('billingAddress.line2', 'Apt/Suite Number'),
-      input('billingAddress.city', 'City'),
-      input('billingAddress.state', 'State'),
-      input('billingAddress.postalCode', 'Postal/ZIP Code'),
-      input('billingAddress.country', 'Choose a Country...', 'country'),
-
-      input('shippingAddress.line1', 'Street Address'),
-      input('shippingAddress.line2', 'Apt/Suite Number'),
-      input('shippingAddress.city', 'City'),
-      input('shippingAddress.state', 'State'),
-      input('shippingAddress.postalCode', 'Postal/ZIP Code'),
-      input('shippingAddress.country', 'Choose a Country...', 'country'),
-    ])
-  })
-
 </script>
 <!-- <script src="{{ staticUrl }}/js/util.js"></script> -->
 <!-- <script src="{{ staticUrl }}/js/jquery.serialize-object.min.js"></script> -->
