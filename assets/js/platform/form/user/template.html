@@ -1,4 +1,6 @@
 <form class="form-horizontal" onsubmit="{ submit }">
-  <yield></yield/>
+  <div if="{ !loading }">
+    <yield></yield/>
+  </div>
 </form>
 
