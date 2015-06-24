@@ -33,6 +33,8 @@ func init() {
 	router.PUT("/order/:id", order.Update)
 	router.DELETE("/order/:id", order.Delete)
 
+	router.GET("/lastorder", order.LastOrder)
+
 	router.GET("/product/:id", product.Get)
 	router.POST("/product", product.Add)
 	router.PUT("/product/:id", product.Update)
