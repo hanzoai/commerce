@@ -4,13 +4,12 @@ package config
 func Skully() *Config {
 	config := Production()
 
-	config.Hosts["default"] = "static.skully.com"
+	config.Hosts["api"] = "api.crowdstart.skully.com"
 	config.Hosts["checkout"] = "secure.skully.com"
+	config.Hosts["default"] = "static.skully.com"
 	config.Hosts["platform"] = "crowdstart.skully.com"
 	config.Hosts["preorder"] = "preorder.skully.com"
 	config.Hosts["store"] = "store.skully.com"
-
-	config.Hosts["api"] = "api.crowdstart.skully.com"
 
 	config.CookieDomain = "skully.com"
 

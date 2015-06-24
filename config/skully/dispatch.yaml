@@ -1,6 +1,9 @@
 application: crowdstart-skully
 
 dispatch:
+  - url: "api.crowdstart.skully.com/*"
+    module: api
+
   - url: "static.skully.com/*"
     module: default
 
@@ -15,6 +18,3 @@ dispatch:
 
   - url: "crowdstart.skully.com/*"
     module: platform
-
-  - url: "api.crowdstart.skully.com/*"
-    module: api
