@@ -8,23 +8,21 @@ helpers = crowdcontrol.view.form.helpers
 helpers.defaultTagName = 'basic-input'
 
 # views
-class StaticView extends View
+class StaticView extends InputView
   tag: 'static'
   html: require './static.html'
 
-class StaticDateView extends View
+new StaticView
+
+class StaticDateView extends StaticView
   tag: 'static-date'
   html: require './static-date.html'
+
+new StaticDateView
 
 class BasicInputView extends InputView
   tag: 'basic-input'
   html: require './basic-input.html'
-  js: ()->
-    super
-    #validate initial conditions
-    @one 'update', ()=>
-      if @model.value?
-        @obs.trigger InputView.Events.Change, @model.name, @model.value
 
 new BasicInputView
 
@@ -33,6 +31,7 @@ class BasicSelectView extends BasicInputView
   html: require './basic-select.html'
   mixins:
     options: ()->
+      console.log('what')
   js:()->
     super
 
@@ -41,8 +40,6 @@ class BasicSelectView extends BasicInputView
         width: '100%'
         disable_search_threshold: 3
       ).change((event)=>@change(event))
-
-new BasicSelectView
 
 class CountrySelectView extends BasicSelectView
   tag: 'country-select'
@@ -94,16 +91,21 @@ helpers.registerValidator ((inputCfg) -> return inputCfg.hints.indexOf('email') 
   throw new Error "Enter a valid email"
 
 # should be okay for single one of these on a form
-emailExcept = ''
+emailExceptConfig = null
 helpers.registerValidator (inputCfg) ->
   hints = tokenize(inputCfg.hints)
   if hints['email-unique']
-    emailExcept = hints['email-unique-exception'] || ''
+    emailExceptConfig = inputCfg
     return true
   return false
 , (model, name)->
   value = model[name]
-  if emailExcept.indexOf(value) < 0
+  if emailExceptConfig?
+    hints = tokenize(emailExceptConfig.hints)
+
+    if value == hints['email-unique-exception']
+      return value
+
     return crowdcontrol.config.api.get('account/exists/' + value).then (data)->
       if data.data.exists
         throw new Error "Email already exists"
