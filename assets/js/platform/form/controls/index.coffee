@@ -21,6 +21,7 @@ class StaticDateView extends StaticView
 new StaticDateView
 
 class BasicInputView extends InputView
+  errorHtml: ''
   tag: 'basic-input'
   html: require './basic-input.html'
 
@@ -36,10 +37,15 @@ class BasicSelectView extends BasicInputView
     super
 
     @on 'update', ()=>
-      $(@root).find('select').chosen(
-        width: '100%'
-        disable_search_threshold: 3
-      ).change((event)=>@change(event))
+      $select = $(@root).find('select')
+      if !@initialized && $select[0]?
+        $select.chosen(
+          width: '100%'
+          disable_search_threshold: 3
+        ).change((event)=>@change(event))
+        @initialized = true
+      requestAnimationFrame ()->
+        $select.chosen().trigger("chosen:updated")
 
 class CountrySelectView extends BasicSelectView
   tag: 'country-select'
