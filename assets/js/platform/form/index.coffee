@@ -1,4 +1,6 @@
 module.exports =
-  user: require './user'
+  # tag/validator registration must occur first
   controls: require './controls'
-  input: require './input'
+
+  # must be after controls
+  user: require './user'

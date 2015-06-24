@@ -60,7 +60,7 @@ mtime_file_watcher = https://gist.githubusercontent.com/zeekay/5eba991c39426ca42
 bebop = node_modules/.bin/bebop
 
 coffee	   	   = node_modules/.bin/coffee
-requisite	   = node_modules/.bin/requisite -s -g
+requisite	   = node_modules/.bin/requisite -g
 requisite_opts = assets/js/store/store.coffee \
 				 assets/js/api/api.coffee \
 				 assets/js/platform/platform.coffee \
