@@ -13,5 +13,5 @@ automatic_scaling:
   max_concurrent_requests: 100
 
 handlers:
-- url: /v1/.*
+- url: /.*
   script: _go_app
