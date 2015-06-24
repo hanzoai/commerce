@@ -42,9 +42,10 @@ var _ = BeforeSuite(func() {
 	// Install product fixtures so we can access store pages
 	task.Run(gincontext.New(ctx), "fixtures-products")
 	task.Run(gincontext.New(ctx), "fixtures-test-users")
+	task.Run(gincontext.New(ctx), "fixtures-all")
 
 	// Wait for fixtures to complete running
-	time.Sleep(15 * time.Second)
+	time.Sleep(40 * time.Second)
 })
 
 var _ = AfterSuite(func() {
@@ -56,6 +57,11 @@ func Get200(path string) func() {
 		res, err := client.Get(path)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(res.StatusCode).To(Equal(200))
+
+		var b []byte
+		_, err = res.Body.Read(b)
+		Expect(err).ToNot(HaveOccurred())
+		println(string(b))
 	}
 }
 
