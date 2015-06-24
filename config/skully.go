@@ -10,7 +10,7 @@ func Skully() *Config {
 	config.Hosts["preorder"] = "preorder.skully.com"
 	config.Hosts["store"] = "store.skully.com"
 
-	config.Hosts["api"] = "api-dot-crowdstart-skully.appspot.com"
+	config.Hosts["api"] = "api.crowdstart.skully.com"
 
 	config.CookieDomain = "skully.com"
 
