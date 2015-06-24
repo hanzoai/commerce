@@ -15,7 +15,7 @@ func init() {
 
 	// Redirect root
 	router.GET("/", func(c *gin.Context) {
-		c.Redirect(301, "http://crowdstart.io")
+		c.Redirect(301, "http://www.crowdstart.com")
 	})
 
 	router.GET("/cart/:id", cart.Get)
