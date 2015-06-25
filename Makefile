@@ -207,7 +207,6 @@ deps-go: .sdk .sdk/go .sdk/gpm .sdk/gopath/bin/ginkgo .sdk/gopath/src/crowdstart
 	mkdir -p $(sdk_path)/gopath/src
 	mkdir -p $(sdk_path)/gopath/bin
 	ln -s $(shell pwd) $(sdk_path)/gopath/src/crowdstart.com
-	ln -s $(shell pwd)/../crowdstart-skully $(sdk_path)/gopath/src/crowdstart.io
 
 # INSTALL
 install: install-deps
