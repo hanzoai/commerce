@@ -1,19 +1,18 @@
-<cs-table>
-  <div class="{ loading: loading }">
-    <table>
-      <thead>
-        <tr>
-          <th each="{ headers }">{name}</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr each="{ model }" class="animated bounceIn">
-          <td each="{ this.parent.headers }">
-            <table-field field="{this}" value="{this.parent[this.field]}"></table-field>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-    <div class="loader">Loading...</div>
-  </div>
-</cs-table>
+<div class="{ loading: loading }" if="{ model.length != 0 }">
+  <table class="table table-striped table-vcenter table-borderless table-condensed table-hover">
+    <thead>
+      <tr>
+        <th each="{ headers }">{name}</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr each="{ model }" class="animated bounceIn">
+        <td each="{ this.parent.headers }">
+          <table-field field="{ this }" value="{this.parent[id]}"></table-field>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="loader">Loading...</div>
+</div>
+<h3 class="text-center" if="{ model.length == 0 }">No Data</h3>
