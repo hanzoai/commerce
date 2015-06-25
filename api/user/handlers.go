@@ -13,8 +13,8 @@ import (
 func Route(router router.Router, args ...gin.HandlerFunc) {
 	readUserRequired := middleware.TokenRequired(permission.Admin, permission.ReadUser)
 
-	userApi := rest.New(user.User{})
-	userApi.Route(router, args...)
-	userApi.GET("/:userid/transaction", readUserRequired, getTransactions)
-	userApi.PUT("/:userid/transaction", readUserRequired, getTransactions)
+	api := rest.New(user.User{})
+	api.GET("/:userid/transactions", readUserRequired, getTransactions)
+
+	api.Route(router, args...)
 }

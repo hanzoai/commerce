@@ -1,0 +1,20 @@
+<div>
+  <div class="btn-group">
+    <a href="javascript:void(0)" data-toggle="dropdown" class="btn btn-default dropdown-toggle" aria-expanded="true">
+      Currency
+      <span class="caret"></span>
+    </a>
+    <ul class="dropdown-menu text-left">
+      <li each="{}">
+      </li>
+    </ul>
+  </div>
+  <div class="btn-group open" if="{ model.length != 0 && !loading }">
+  </div>
+  <basic-table headers="{ tableHeaders }" src="{ src }" obs="{ obs }">
+  </basic-table>
+  <balance-widget-form model="{ formModel }" accountingoptions="{ accountingOptions }" obs="{ obs }">
+  </balance-widget-form>
+  <div class="loader" if="{ loading }">Loading...</div>
+</div>
+

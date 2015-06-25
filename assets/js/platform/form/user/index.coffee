@@ -4,11 +4,10 @@ crowdcontrol = require 'crowdcontrol'
 Api = crowdcontrol.data.Api
 Source = crowdcontrol.data.Source
 
-FormView = crowdcontrol.view.form.FormView
-
 input = require '../input'
+BasicFormView = require '../basic'
 
-class UserFormView extends FormView
+class UserFormView extends BasicFormView
   tag: 'user-form'
   path: 'user'
   html: require './template.html'
@@ -26,43 +25,18 @@ class UserFormView extends FormView
     input('billingAddress.city', 'City'),
     input('billingAddress.state', 'State'),
     input('billingAddress.postalCode', 'Postal/ZIP Code'),
-    input('billingAddress.country', 'Choose a Country...', 'country'),
+    input('billingAddress.country', 'Choose a Country...', 'country-select'),
 
     input('shippingAddress.line1', 'Street Address'),
     input('shippingAddress.line2', 'Apt/Suite Number'),
     input('shippingAddress.city', 'City'),
     input('shippingAddress.state', 'State'),
     input('shippingAddress.postalCode', 'Postal/ZIP Code'),
-    input('shippingAddress.country', 'Choose a Country...', 'country'),
+    input('shippingAddress.country', 'Choose a Country...', 'country-select'),
   ]
-  events:
-    "#{FormView.Events.SubmitFailed}": ()->
-      requestAnimationFrame ()->
-        $container = $(".error-container")
-        if $container[0]
-          $('html, body').animate(
-            scrollTop: $container.offset().top-$(window).height()/2
-          , 1000)
-  js: (opts)->
-    super
 
-    @loading = true
-    view = @view
-    view.api = api = new Api opts.url, opts.token
-    view.src = src = new Source
-      name: view.path + '/' + opts.userId,
-      path: view.path + '/' + opts.userId,
-      api: api
-
-    src.on Source.Events.LoadData, (model)=>
-      @loading = false
-      @model = model
-      view.inputConfigs[1].hints += model.email
-      view.initFormGroup.apply @
-      riot.update()
-
-  submit: ()->
-    @api.patch(@src.path, @ctx.model)
+  loadData: (model)->
+    @inputConfigs[1].hints += model.email
 
 new UserFormView
 
