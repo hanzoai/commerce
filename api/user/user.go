@@ -14,7 +14,7 @@ func getTransactions(c *gin.Context) {
 	db := datastore.New(org.Namespace(c))
 	id := c.Params.ByName("userid")
 
-	var trans []transaction.Transaction
+	trans := make([]transaction.Transaction, 0)
 	if _, err := transaction.Query(db).Filter("Test=", false).Filter("UserId=", id).GetAll(&trans); err != nil {
 		http.Fail(c, 400, "Could not query transaction", err)
 		return
