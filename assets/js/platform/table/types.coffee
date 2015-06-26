@@ -31,38 +31,28 @@ class TableFieldConfig
 #     ]
 #   path: path relative to api.  Use only if retrieving live data
 
-class TableView extends View
+TableViewEvents =
+  NewData: 'table-new-data'
+
+class BasicTableView extends View
+  @Events: TableViewEvents
+
   tag: 'basic-table'
   html: require './template.html'
-
+  events:
+    "#{TableViewEvents.NewData}": (model)->
+      @model = model
+      @update()
+  mixin:
+    isEmpty: ()->
+      model = @model
+      return model? && model.length && model.length > 0
   js: (opts)->
     @headers = opts.headers
 
-    if _.isArray(@model)
-      @loading = true
-    else
-      @loading = false
-      src = opts.src
-      if !src?
-        src = new Source
-          api: crowdcontrol.config.api || opts.api
-          path: opts.path
-          policy: opts.policy || crowdcontrol.data.Policy.Once
-
-      src.on Source.Events.Loading, ()=>
-        @loading = true
-        @update()
-
-      src.on Source.Events.LoadData, (data)=>
-        @loading = false
-        if !_.isArray(data)
-          throw new Error 'TableView needs an array of models'
-        @model = data
-        @update()
-
-new TableView
+new BasicTableView
 
 module.exports =
-  TableView:        TableView
+  BasicTableView:   BasicTableView
   TableFieldConfig: TableFieldConfig
 

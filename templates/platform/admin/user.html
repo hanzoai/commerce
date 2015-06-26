@@ -30,6 +30,12 @@
               <control label="Phone" input="{ inputs.phone }"></control>
               <control label="Created On" input="{ inputs.createdAt }"></control>
               <control label="Last Updated On" input="{ inputs.updatedAt }"></control>
+              <div class="form-group form-actions">
+                <div class="col-md-9 col-md-offset-3">
+                    <button type="submit" class="btn btn-effect-ripple btn-primary">Save</button>
+                  <button type="reset" class="btn btn-effect-ripple btn-warning">Reset</button>
+                </div>
+              </div>
           </div>
           <h4>
             <a data-toggle="collapse" href="#user-shipping-address">
@@ -43,6 +49,12 @@
               <control label="State" input="{ inputs['shippingAddress.state'] }"></control>
               <control label="Postal/ZIP Code" input="{ inputs['shippingAddress.postalCode'] }"></control>
               <control label="Country" input="{ inputs['shippingAddress.country'] }"></control>
+              <div class="form-group form-actions">
+                <div class="col-md-9 col-md-offset-3">
+                    <button type="submit" class="btn btn-effect-ripple btn-primary">Save</button>
+                  <button type="reset" class="btn btn-effect-ripple btn-warning">Reset</button>
+                </div>
+              </div>
           </div>
           <h4>
             <a data-toggle="collapse" href="#user-billing-address">
@@ -56,6 +68,12 @@
               <control label="State" input="{ inputs['billingAddress.state'] }"></control>
               <control label="Postal/ZIP Code" input="{ inputs['billingAddress.postalCode'] }"></control>
               <control label="Country" input="{ inputs['billingAddress.country'] }"></control>
+              <div class="form-group form-actions">
+                <div class="col-md-9 col-md-offset-3">
+                    <button type="submit" class="btn btn-effect-ripple btn-primary">Save</button>
+                  <button type="reset" class="btn btn-effect-ripple btn-warning">Reset</button>
+                </div>
+              </div>
           </div>
           <h4>
             <a data-toggle="collapse" href="#user-balance">
@@ -80,12 +98,6 @@
             </table>
           </div>
           {% endif %}
-          <div class="form-group form-actions">
-            <div class="col-md-9 col-md-offset-3">
-              <button type="submit" class="btn btn-effect-ripple btn-primary">Submit</button>
-              <button type="reset" class="btn btn-effect-ripple btn-warning">Reset</button>
-            </div>
-          </div>
         </user-form>
         <!-- END User information Form Content -->
     </div>

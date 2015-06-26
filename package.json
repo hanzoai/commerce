@@ -25,6 +25,7 @@
     "stylus-normalize": "^3.0.3",
     "typographic": "^2.9.3",
     "uglify-js": "^2.4.15",
-    "underscore": "^1.8.3"
+    "underscore": "^1.8.3",
+    "underscore-deep-extend": "0.0.5"
   }
 }
