@@ -161,6 +161,7 @@ compile-js:
 
 compile-js-min:
 	$(requisite) $(requisite_opts) $(requisite_opts_min)
+	$(coffee) -bc -o static/js assets/js/api/mailinglist.coffee
 
 compile-css:
 	$(stylus) $(stylus_opts) -u autoprefixer-stylus --sourcemap --sourcemap-inline
