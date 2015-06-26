@@ -1,5 +1,8 @@
 crowdcontrol = require 'crowdcontrol'
 _ = require 'underscore'
+riot = require 'riot'
+
+util = require '../../util'
 
 View = crowdcontrol.view.View
 InputView = crowdcontrol.view.form.InputView
@@ -29,6 +32,46 @@ class BasicInputView extends InputView
 
 new BasicInputView
 
+class MoneyInputView extends BasicInputView
+  tag: 'money-input'
+
+  events:
+    "#{InputView.Events.Set}": (name, value) ->
+      if name == @model.name
+        @clearError()
+        # in case the number was corrupted, reset to 0
+        value = if isNaN(parseFloat(value)) then 0 else value
+        code = @view.currency()
+        @model.value = util.currency.renderUICurrencyFromJSON(code, value)
+        @update()
+
+  mixins:
+    change: (event) ->
+      value = @view.getValue(event.target)
+      code = @view.currency()
+      @obs.trigger InputView.Events.Change, @model.name, util.currency.renderJSONCurrencyFromUI(code, value)
+      @model.value = value
+
+  # get the currency set on the model (all models with currencies have both currency and amount field
+  currency: ()->
+    # convoluted return scheme
+    @curr = {value: ''}
+    @ctx.obs.trigger(InputView.Events.Get, 'currency').one InputView.Events.Result, (result)=>
+      @curr.value = result
+    return @curr.value
+
+  js:(opts)->
+    @model = if opts.input then opts.input.model else @model
+    model = @model
+    code = @view.currency()
+    model.value = util.currency.renderUICurrencyFromJSON(code, model.value)
+
+    @on 'update', ()->
+      code = @view.currency()
+      model.value = util.currency.renderUpdatedUICurrency(code, model.value)
+
+new MoneyInputView
+
 class BasicSelectView extends BasicInputView
   tag: 'basic-select'
   html: require './basic-select.html'
@@ -55,6 +98,13 @@ new BasicSelectView
 
 class CountrySelectView extends BasicSelectView
   tag: 'country-select'
+  events:
+    "#{InputView.Events.Set}": (name, value) ->
+      if name == @model.name
+        @clearError()
+        @model.value = value
+        # whole page needs to be updated for side effects
+        riot.update()
   mixins:
     options: ()->
       return window.countries
@@ -63,6 +113,13 @@ new CountrySelectView
 
 class CurrencySelectView extends BasicSelectView
   tag: 'currency-select'
+  events:
+    "#{InputView.Events.Set}": (name, value) ->
+      if name == @model.name
+        @clearError()
+        @model.value = value
+        # whole page needs to be updated for side effects
+        riot.update()
   mixins:
     options: ()->
       return window.currencies
@@ -101,6 +158,11 @@ helpers.registerTag (inputCfg)->
 helpers.registerTag (inputCfg)->
   return inputCfg.hints.indexOf('static') >= 0
 , 'static'
+
+
+helpers.registerTag (inputCfg)->
+  return inputCfg.hints.indexOf('money') >= 0
+, 'money-input'
 
 # validator registration
 helpers.registerValidator ((inputCfg) -> return inputCfg.hints.indexOf('required') >= 0), (model, name)->

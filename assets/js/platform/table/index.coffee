@@ -6,7 +6,7 @@ require './fields'
 module.exports =
   helpers: helpers
 
-  TableView:        types.TableView
+  BasicTableView:   types.BasicTableView
   TableFieldConfig: types.TableFieldConfig
 
   field: (id, name, type, hints)->
