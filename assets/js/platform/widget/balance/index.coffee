@@ -1,13 +1,17 @@
+_ = require 'underscore'
+moment = require 'moment'
+crowdcontrol = require 'crowdcontrol'
+
+util = require '../../util'
 table = require '../../table'
 field = table.field
-
-crowdcontrol = require 'crowdcontrol'
 
 input = require '../../form/input'
 
 View = crowdcontrol.view.View
 Source = crowdcontrol.data.Source
 
+BasicTableView = table.BasicTableView
 FormView = crowdcontrol.view.form.FormView
 
 class BalanceWidgetFormView extends FormView
@@ -21,16 +25,77 @@ class BalanceWidgetFormView extends FormView
   ]
   js: (opts)->
     super
-    @api = crowdcontrol.config.api || opts.api
+    @src = opts.src
 
   submit: ()->
-    @ctx.api.post(@path, @ctx.model)
+    @ctx.src.api.post(@path, @ctx.model).then ()=>
+      setTimeout ()=>
+        @ctx.src.trigger Source.Events.Reload
+      , 500
 
 new BalanceWidgetFormView
 
 class BalanceWidget extends View
   tag: 'balance-widget'
   html: require './template.html'
+
+  currencyOptions: {}
+  formModel:
+    userId: ''
+    type: 'deposit',
+    amount: 0,
+    currency: 'points'
+  accountingOptions:
+    deposit: 'Add(+)'
+    withdraw: 'Subtract(-)'
+  tableHeaders: [
+    field('type', 'Type')
+    field('amount', 'Amount', 'money')
+    field('description', 'Description')
+    field('createdAt', 'Created On', 'date')
+  ]
+
+  mixins:
+    updateModel: (model)->
+      # We should only receive array models
+      if !_.isArray model
+        return
+
+      # prepare model
+      model.sort (a, b)->
+        return 1 if moment(a.createdAt).isBefore(b.createdAt)
+        return -1
+
+      # grab the last currency (most recently added)
+      @currency = currency = model[0].currency
+
+      newModel = {}
+      for row in model
+        transactions = newModel[row.currency]
+
+        if !transactions
+          transactions = newModel[row.currency] = []
+        transactions.push row
+
+        @view.currencyOptions[row.currency] = row.currency
+
+      @model = newModel
+      @obs.trigger BasicTableView.Events.NewData, newModel[currency]
+      @update()
+
+    change: (event)->
+      @currency = $(event.target).val()
+      @obs.trigger BasicTableView.Events.NewData, @model[@currency]
+      @update()
+
+    balance: ()->
+      transactions = @model[@currency]
+
+      amount = 0
+      for transaction in transactions
+        amount += if transaction.type == 'deposit' then transaction.amount else -transaction.amount
+
+      return util.currency.renderUICurrencyFromJSON @currency, amount
 
   js: (opts)->
     #case sensitivity issues
@@ -48,25 +113,22 @@ class BalanceWidget extends View
       @loading = true
       @update()
 
-    src.on Source.Events.LoadData, (data)=>
+    src.on Source.Events.LoadData, (model)=>
       @loading = false
-      @model = data
-      @update()
+      @updateModel model
 
-    @formModel =
-      userId: userId
-      type: 'deposit',
-      amount: 0,
-      currency: 'points'
+    @view.formModel.userId = userId
 
-    @accountingOptions =
-      deposit: 'Add(+)'
-      withdraw: 'Subtract(-)'
-
-    @tableHeaders = [
-      field('type', 'Type')
-      field('amount', 'Amount', 'numeric')
-    ]
+    @on 'update', ()=>
+      $select = $($(@root).find('select')[0])
+      if !@initialized && $select[0]?
+        $select.chosen(
+          width: '100%'
+          disable_search_threshold: 3
+        ).change((event)=>@change(event))
+        @initialized = true
+      requestAnimationFrame ()->
+        $select.chosen().trigger("chosen:updated")
 
 new BalanceWidget
 
