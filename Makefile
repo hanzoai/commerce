@@ -1,7 +1,7 @@
 pwd				= $(shell pwd)
 os				= $(shell uname | tr '[A-Z]' '[a-z]')
 platform		= $(os)_amd64
-sdk				= go_appengine_sdk_$(platform)-1.9.22
+sdk				= go_appengine_sdk_$(platform)-1.9.23
 sdk_path		= $(pwd)/.sdk
 goroot			= $(sdk_path)/goroot
 gopath			= $(sdk_path)/gopath
@@ -161,6 +161,7 @@ compile-js:
 
 compile-js-min:
 	$(requisite) $(requisite_opts) $(requisite_opts_min)
+	$(coffee) -bc -o static/js assets/js/api/mailinglist.coffee
 
 compile-css:
 	$(stylus) $(stylus_opts) -u autoprefixer-stylus --sourcemap --sourcemap-inline
