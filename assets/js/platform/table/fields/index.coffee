@@ -20,7 +20,7 @@ class NumericTableFieldView extends BasicTableFieldView
   tag: 'numeric-table-field'
   html: require './numeric-field.html'
 
-new NumericTableFieldView
+NumericTableFieldView.register()
 
 class MoneyTableFieldView extends NumericTableFieldView
   tag: 'money-table-field'
@@ -28,7 +28,7 @@ class MoneyTableFieldView extends NumericTableFieldView
     super
     @value = util.currency.renderUICurrencyFromJSON @row.currency, @value
 
-new MoneyTableFieldView
+MoneyTableFieldView.register()
 
 class DateTableFieldView extends BasicTableFieldView
   tag: 'date-table-field'
@@ -37,7 +37,15 @@ class DateTableFieldView extends BasicTableFieldView
     super
     @value = moment(@value).format 'YYYY-MM-DD HH:mm'
 
-new DateTableFieldView
+DateTableFieldView.register()
+
+class AgoTableFieldView extends DateTableFieldView
+  tag: 'ago-table-field'
+  js: ()->
+    super
+    @value = $.timeago(@value)
+
+AgoTableFieldView.register()
 
 # tag registration
 helpers.registerTag (fieldCfg)->
@@ -47,6 +55,10 @@ helpers.registerTag (fieldCfg)->
 helpers.registerTag (fieldCfg)->
   return fieldCfg.type == 'money'
 , 'money-table-field'
+
+helpers.registerTag (fieldCfg)->
+  return fieldCfg.type == 'ago'
+, 'ago-table-field'
 
 helpers.registerTag (fieldCfg)->
   return fieldCfg.type == 'date'
