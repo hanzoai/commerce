@@ -15,13 +15,13 @@ class StaticView extends InputView
   tag: 'static'
   html: require './static.html'
 
-new StaticView
+StaticView.register()
 
 class StaticDateView extends StaticView
   tag: 'static-date'
   html: require './static-date.html'
 
-new StaticDateView
+StaticDateView.register()
 
 class BasicInputView extends InputView
   errorHtml: ''
@@ -30,7 +30,13 @@ class BasicInputView extends InputView
   js:(opts)->
     @model = if opts.input then opts.input.model else @model
 
-new BasicInputView
+BasicInputView.register()
+
+class DisabledInputView extends BasicInputView
+  tag: 'disabled-input'
+  html: require './disabled-input.html'
+
+DisabledInputView.register()
 
 class MoneyInputView extends BasicInputView
   tag: 'money-input'
@@ -41,43 +47,41 @@ class MoneyInputView extends BasicInputView
         @clearError()
         # in case the number was corrupted, reset to 0
         value = if isNaN(parseFloat(value)) then 0 else value
-        code = @view.currency()
+        code = @currency()
         @model.value = util.currency.renderUICurrencyFromJSON(code, value)
         @update()
 
-  mixins:
-    change: (event) ->
-      value = @view.getValue(event.target)
-      code = @view.currency()
-      @obs.trigger InputView.Events.Change, @model.name, util.currency.renderJSONCurrencyFromUI(code, value)
-      @model.value = value
+  change: (event) ->
+    value = @getValue(event.target)
+    code = @currency()
+    @obs.trigger InputView.Events.Change, @model.name, util.currency.renderJSONCurrencyFromUI(code, value)
+    @model.value = value
 
   # get the currency set on the model (all models with currencies have both currency and amount field
   currency: ()->
     # convoluted return scheme
     @curr = {value: ''}
-    @ctx.obs.trigger(InputView.Events.Get, 'currency').one InputView.Events.Result, (result)=>
+    @obs.trigger(InputView.Events.Get, 'currency').one InputView.Events.Result, (result)=>
       @curr.value = result
     return @curr.value
 
   js:(opts)->
     @model = if opts.input then opts.input.model else @model
     model = @model
-    code = @view.currency()
+    code = @currency()
     model.value = util.currency.renderUICurrencyFromJSON(code, model.value)
 
-    @on 'update', ()->
-      code = @view.currency()
+    @on 'update', ()=>
+      code = @currency()
       model.value = util.currency.renderUpdatedUICurrency(code, model.value)
 
-new MoneyInputView
+MoneyInputView.register()
 
 class BasicSelectView extends BasicInputView
   tag: 'basic-select'
   html: require './basic-select.html'
-  mixins:
-    options: ()->
-      @selectOptions
+  options: ()->
+    @selectOptions
   js:(opts)->
     super
 
@@ -94,7 +98,7 @@ class BasicSelectView extends BasicInputView
       requestAnimationFrame ()->
         $select.chosen().trigger("chosen:updated")
 
-new BasicSelectView
+BasicSelectView.register()
 
 class CountrySelectView extends BasicSelectView
   tag: 'country-select'
@@ -105,11 +109,10 @@ class CountrySelectView extends BasicSelectView
         @model.value = value
         # whole page needs to be updated for side effects
         riot.update()
-  mixins:
-    options: ()->
-      return window.countries
+  options: ()->
+    return window.countries
 
-new CountrySelectView
+CountrySelectView.register()
 
 class CurrencySelectView extends BasicSelectView
   tag: 'currency-select'
@@ -120,11 +123,10 @@ class CurrencySelectView extends BasicSelectView
         @model.value = value
         # whole page needs to be updated for side effects
         riot.update()
-  mixins:
-    options: ()->
-      return window.currencies
+  options: ()->
+    return window.currencies
 
-new CurrencySelectView
+CurrencySelectView.register()
 
 tokenize = (str)->
   tokens = str.split(' ')
@@ -139,6 +141,10 @@ tokenize = (str)->
   return dict
 
 # tag registration
+helpers.registerTag (inputCfg)->
+  return inputCfg.hints.indexOf('disabled') >= 0
+, 'disabled-input'
+
 helpers.registerTag (inputCfg)->
   return inputCfg.hints.indexOf('basic-select') >= 0
 , 'basic-select'
@@ -158,7 +164,6 @@ helpers.registerTag (inputCfg)->
 helpers.registerTag (inputCfg)->
   return inputCfg.hints.indexOf('static') >= 0
 , 'static'
-
 
 helpers.registerTag (inputCfg)->
   return inputCfg.hints.indexOf('money') >= 0

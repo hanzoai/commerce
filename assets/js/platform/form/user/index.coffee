@@ -1,9 +1,6 @@
-riot = require 'riot'
 _ = require 'underscore'
 
 crowdcontrol = require 'crowdcontrol'
-Api = crowdcontrol.data.Api
-Source = crowdcontrol.data.Source
 
 input = require '../input'
 BasicFormView = require '../basic'
@@ -40,23 +37,26 @@ class UserFormView extends BasicFormView
     input('shippingAddress.country', 'Choose a Country...', 'country-select'),
   ]
 
-  mixins:
-    reset: (event)->
-      @model = _.deepExtend {}, @view.resetModel
-      @view.initFormGroup.apply @
-      riot.update()
+  reset: (event)->
+    if event?
       event.preventDefault()
-      event.stopPropagation()
 
-  submit: ()->
-    p = super()
-    p.then (data)=>
-      @resetModel = _.deepExtend {}, data.data
+    @model = _.deepExtend {}, @resetModel
+    @initFormGroup.apply @
+    @_reset(event)
+    riot.update()
+
+  _reset: (event)->
+
+  _submit: (event)->
+    p = super
+    p.then ()=>
+      @resetModel = _.deepExtend {}, @model
 
   loadData: (model)->
     @inputConfigs[1].hints += model.email
-    @resetModel = _.deepExtend {}, model
+    @resetModel = _.deepExtend {}, @model
 
-new UserFormView
+UserFormView.register()
 
 module.exports = UserFormView

@@ -38,6 +38,15 @@
               </div>
           </div>
           <h4>
+            <a data-toggle="collapse" href="#user-reset-password">
+              Reset Password
+            </a>
+          </h4>
+          <div id="user-reset-password" class="collapse in block">
+              <reset-password-form userId="{ opts.userId }", url ="{ opts.url }" token="{ opts.token }">
+            </reset-password-form>
+          </div>
+          <h4>
             <a data-toggle="collapse" href="#user-shipping-address">
               Shipping Address
             </a>
@@ -76,28 +85,41 @@
               </div>
           </div>
           <h4>
+            <a data-toggle="collapse" href="#user-orders">
+              Orders
+            </a>
+          </h4>
+          <div id="user-orders" class="collapse in block">
+            <order-list path="{ 'user/'+opts.userId+'/orders' }">
+            </order-list>
+          </div>
+          <h4>
             <a data-toggle="collapse" href="#user-balance">
               Credit Balance
             </a>
           </h4>
           <div id="user-balance" class="collapse in block">
-              <balance-widget userId="{opts.userId}">
-              </balance-widget>
+            <balance-widget userId="{opts.userId}">
+            </balance-widget>
           </div>
-          {% if referrers | length > 0 %}
-          <h4>Referral Tokens</h4>
-          <div id="user-referrers" class="block">
-            <table id="user-referrer-table" class="table table-striped table-busered table-vcenter">
-            </table>
+          <h4>
+            <a data-toggle="collapse" href="#user-referrers">
+              Referral Tokens
+            </a>
+          </h4>
+          <div id="user-referrals" class="collapse in block">
+            <referrer-list path="{ 'user/'+opts.userId+'/referrers' }">
+            </referrer-list>
           </div>
-          {% endif %}
-          {% if orders | length > 0 %}
-          <h4>Orders</h4>
-          <div id="user-orders" class="block">
-            <table id="user-order-table" class="table table-striped table-busered table-vcenter">
-            </table>
+          <h4>
+            <a data-toggle="collapse" href="#user-referrals">
+              Referrals
+            </a>
+          </h4>
+          <div id="user-referrals" class="collapse in block">
+            <referral-list path="{ 'user/'+opts.userId+'/referrals' }">
+            </referral-list>
           </div>
-          {% endif %}
         </user-form>
         <!-- END User information Form Content -->
     </div>
@@ -120,12 +142,14 @@
     {% endfor %}
   }
 
-  var urlParts = window.location.pathname.split('/')
-  var userId = urlParts.pop()
-  riot.mount('user-form', {
-    userId: userId,
-    url:    '{{ urlFor("api") }}',
-    token:  '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}',
+  $(function(){
+    var urlParts = window.location.pathname.split('/')
+    var userId = urlParts.pop()
+    riot.mount('user-form', {
+      userId: userId,
+      url:    '{{ urlFor("api") }}',
+      token:  '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}',
+    })
   })
 </script>
 <!-- <script src="{{ staticUrl }}/js/util.js"></script> -->
