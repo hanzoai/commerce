@@ -90,15 +90,7 @@ do ->
     data
 
   fb = (opts) ->
-    unless window._fbq?
-      window._fbq = []
-      fbds = document.createElement 'script'
-      fbds.async = true
-      fbds.src = '//connect.facebook.net/en_US/fbds.js'
-      s = document.getElementsByTagName('script')[0]
-      s.parentNode.insertBefore fbds, s
-      _fbq.loaded = true
-
+    window._fbq = window._fbq || [];
     window._fbq.push ['track', opts.id,
       value:    opts.value,
       currency: opts.currency,
