@@ -105,16 +105,10 @@ do ->
     ]
 
   ga = (opts)->
-    unless window._gaq?
-      window._gaq = []
-      ga = document.createElement 'script'
-      ga.type = 'text/javascript'
-      ga.async = true
-      ga.src = ((if 'https:' is document.location.protocol then 'https://' else 'http://')) + 'stats.g.doubleclick.net/dc.js'
-      s = document.getElementsByTagName('script')[0]
-      s.parentNode.insertBefore ga, s
-
-    window._gaq.push ['_trackEvent', opts.category, opts.name]
+    if window._gaq?
+      window._gaq.push ['_trackEvent', opts.category, opts.name]
+    if window.ga?
+      window.ga 'send', 'event', opts.category, opts.name, '', 0
 
   track = ->
     ga ml.google if ml.google.category?
