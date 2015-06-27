@@ -5,6 +5,7 @@ crowdcontrol = require 'crowdcontrol'
 FormView = crowdcontrol.view.form.FormView
 Api = crowdcontrol.data.Api
 Source = crowdcontrol.data.Source
+m = crowdcontrol.utils.mediator
 
 class BasicFormView extends FormView
   tag: 'basic-form'
@@ -25,25 +26,42 @@ class BasicFormView extends FormView
     opts.userId = opts.userId || opts.userid
 
     @loading = true
-    view = @view
-    view.api = api = new Api opts.url, opts.token
-    view.src = src = new Source
-      name: view.path + '/' + opts.userId,
-      path: view.path + '/' + opts.userId,
+    m.trigger 'start-spin', 'user-form-load'
+
+    @api = api = new Api opts.url, opts.token
+    @src = src = new Source
+      name: @path + '/' + opts.userId,
+      path: @path + '/' + opts.userId,
       api: api
 
     src.on Source.Events.LoadData, (model)=>
-      @loading = false
+      m.trigger 'stop-spin', 'user-form-load'
       @model = model
 
-      view.loadData(model)
+      @loadData(model)
 
-      view.initFormGroup.apply @
+      @initFormGroup()
       riot.update()
 
   loadData: (model)->
 
-  submit: ()->
-    @api.patch(@src.path, @ctx.model)
+  _submit: (event)->
+    m.trigger 'start-spin', 'user-form-save'
+    @update()
+
+    return @api.patch(@src.path, @model).then ()=>
+      m.trigger 'stop-spin', 'user-form-save'
+      $button = $(event.target).find('input[type=submit], button[type=submit]').text('Saved')
+      setTimeout ()->
+        $button.text('Save')
+      , 1000
+      @update()
+    , ()=>
+      m.trigger 'stop-spin', 'user-form-save'
+      $button = $(event.target).find('input[type=submit], button[type=submit]').text('Saved')
+      setTimeout ()->
+        $button.text('Save')
+      , 1000
+      @update()
 
 module.exports = BasicFormView
