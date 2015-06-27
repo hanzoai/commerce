@@ -1,0 +1,39 @@
+_ = require 'underscore'
+riot = require 'riot'
+
+crowdcontrol = require 'crowdcontrol'
+
+input = require '../input'
+Api = crowdcontrol.data.Api
+FormView = crowdcontrol.view.form.FormView
+m = crowdcontrol.utils.mediator
+
+class ResetPasswordFormView extends FormView
+  tag: 'reset-password-form'
+  html: require './template.html'
+  model:
+    password: ''
+
+  # model that stores the last model queried
+  resetModel: null
+
+  inputConfigs:[
+    input('password', 'Password Appears Here', 'disabled'),
+  ]
+
+  js: (opts)->
+    super
+    @api = new Api opts.url, opts.token
+    @userId = opts.userId || opts.userid
+
+  submit: ()->
+    m.trigger 'start-spin', 'user-form-save'
+    @api.get("user/#{@userId}/password/reset").then (data)=>
+      m.trigger 'stop-spin', 'user-form-save'
+      @model = data.data
+      @initFormGroup()
+      riot.update()
+    , ()->
+      m.trigger 'stop-spin', 'user-form-save'
+
+ResetPasswordFormView.register()

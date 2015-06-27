@@ -43,16 +43,17 @@ class BasicTableView extends View
     "#{TableViewEvents.NewData}": (model)->
       @model = model
       @update()
-  mixin:
-    isEmpty: ()->
-      model = @model
-      return model? && model.length && model.length > 0
+  isEmpty: ()->
+    model = @model
+    return !model? || !model.length || model.length == 0
   js: (opts)->
     @headers = opts.headers
 
-new BasicTableView
+BasicTableView.register()
 
 module.exports =
   BasicTableView:   BasicTableView
   TableFieldConfig: TableFieldConfig
+  field: (id, name, type, hints)->
+    return new TableFieldConfig(id, name, type, hints)
 

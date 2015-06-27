@@ -13,6 +13,7 @@ Source = crowdcontrol.data.Source
 
 BasicTableView = table.BasicTableView
 FormView = crowdcontrol.view.form.FormView
+m = crowdcontrol.utils.mediator
 
 class BalanceWidgetFormView extends FormView
   tag: 'balance-widget-form'
@@ -27,13 +28,13 @@ class BalanceWidgetFormView extends FormView
     super
     @src = opts.src
 
-  submit: ()->
-    @ctx.src.api.post(@path, @ctx.model).then ()=>
+  _submit: ()->
+    @src.api.post(@path, @model).then ()=>
       setTimeout ()=>
-        @ctx.src.trigger Source.Events.Reload
+        @src.trigger Source.Events.Reload
       , 500
 
-new BalanceWidgetFormView
+BalanceWidgetFormView.register()
 
 class BalanceWidget extends View
   tag: 'balance-widget'
@@ -55,47 +56,46 @@ class BalanceWidget extends View
     field('createdAt', 'Created On', 'date')
   ]
 
-  mixins:
-    updateModel: (model)->
-      # We should only receive array models
-      if !_.isArray model
-        return
+  updateModel: (model)->
+    # We should only receive array models
+    if !_.isArray(model) || model.length == 0
+      return
 
-      # prepare model
-      model.sort (a, b)->
-        return 1 if moment(a.createdAt).isBefore(b.createdAt)
-        return -1
+    # prepare model
+    model.sort (a, b)->
+      return 1 if moment(a.createdAt).isBefore(b.createdAt)
+      return -1
 
-      # grab the last currency (most recently added)
-      @currency = currency = model[0].currency
+    # grab the last currency (most recently added)
+    @currency = currency = model[0].currency
 
-      newModel = {}
-      for row in model
-        transactions = newModel[row.currency]
+    newModel = {}
+    for row in model
+      transactions = newModel[row.currency]
 
-        if !transactions
-          transactions = newModel[row.currency] = []
-        transactions.push row
+      if !transactions
+        transactions = newModel[row.currency] = []
+      transactions.push row
 
-        @view.currencyOptions[row.currency] = row.currency
+      @currencyOptions[row.currency] = row.currency
 
-      @model = newModel
-      @obs.trigger BasicTableView.Events.NewData, newModel[currency]
-      @update()
+    @model = newModel
+    @obs.trigger BasicTableView.Events.NewData, newModel[currency]
+    @update()
 
-    change: (event)->
-      @currency = $(event.target).val()
-      @obs.trigger BasicTableView.Events.NewData, @model[@currency]
-      @update()
+  change: (event)->
+    @currency = $(event.target).val()
+    @obs.trigger BasicTableView.Events.NewData, @model[@currency]
+    @update()
 
-    balance: ()->
-      transactions = @model[@currency]
+  balance: ()->
+    transactions = @model[@currency]
 
-      amount = 0
-      for transaction in transactions
-        amount += if transaction.type == 'deposit' then transaction.amount else -transaction.amount
+    amount = 0
+    for transaction in transactions
+      amount += if transaction.type == 'deposit' then transaction.amount else -transaction.amount
 
-      return util.currency.renderUICurrencyFromJSON @currency, amount
+    return util.currency.renderUICurrencyFromJSON @currency, amount
 
   js: (opts)->
     #case sensitivity issues
@@ -103,21 +103,21 @@ class BalanceWidget extends View
 
     path = "user/#{userId}/transactions"
 
-    @loading = false
     @src = src = new Source
+      name: 'balance-widget'
       api: crowdcontrol.config.api || opts.api
       path: path
       policy: opts.policy || crowdcontrol.data.Policy.Once
 
     src.on Source.Events.Loading, ()=>
-      @loading = true
+      m.trigger 'start-spin', 'balance-form-load'
       @update()
 
     src.on Source.Events.LoadData, (model)=>
-      @loading = false
+      m.trigger 'stop-spin', 'balance-form-load'
       @updateModel model
 
-    @view.formModel.userId = userId
+    @formModel.userId = userId
 
     @on 'update', ()=>
       $select = $($(@root).find('select')[0])
@@ -130,6 +130,6 @@ class BalanceWidget extends View
       requestAnimationFrame ()->
         $select.chosen().trigger("chosen:updated")
 
-new BalanceWidget
+BalanceWidget.register()
 
-module.exports = BalanceWidget
+# module.exports = BalanceWidget
