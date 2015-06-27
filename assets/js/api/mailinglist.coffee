@@ -90,17 +90,21 @@ do ->
     data
 
   fb = (opts) ->
-    window._fbq = window._fbq || [];
+    window._fbq ?= []
     window._fbq.push ['track', opts.id,
       value:    opts.value,
       currency: opts.currency,
     ]
 
-  ga = (opts)->
+  ga = (opts) ->
+    category = opts.category ? 'Subscription'
+    action   = opts.action   ? opts.name ? 'Signup'
+    label    = opts.label    ? ''
+
     if window._gaq?
-      window._gaq.push ['_trackEvent', opts.category, opts.name]
+      window._gaq.push ['_trackEvent', category, action]
     if window.ga?
-      window.ga 'send', 'event', opts.category, opts.name, '', 0
+      window.ga 'send', 'event', category, action, label, 0
 
   track = ->
     ga ml.google if ml.google.category?
