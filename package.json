@@ -18,7 +18,7 @@
     "jeet": "^6.1.2",
     "moment": "^2.10.3",
     "mvstar": "^0.1.19",
-    "requisite": "^1.8.10",
+    "requisite": "^1.9.5",
     "riot": "^2.1.0",
     "rupture": "^0.6.1",
     "stylus": "^0.51.1",
@@ -26,6 +26,7 @@
     "typographic": "^2.9.3",
     "uglify-js": "^2.4.15",
     "underscore": "^1.8.3",
-    "underscore-deep-extend": "0.0.5"
+    "underscore-deep-extend": "0.0.5",
+    "esmangle": "~1.0.1"
   }
 }
