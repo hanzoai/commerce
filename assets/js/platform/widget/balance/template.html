@@ -4,7 +4,7 @@
       <label for="balance-currency-select" class="control-label" style="float:left;text-align:left;">Currency</label>
       <div class="col-xs-6">
         <select id="balance-currency-select">
-          <option each="{ value, name in view.currencyOptions }" value="{ value }">{ window.currencies[value] }</option>
+          <option each="{ value, name in currencyOptions }" value="{ value }" __selected="{ parent.currency == value }">{ window.currencies[value] }</option>
         </select>
       </div>
     </div>
@@ -17,8 +17,8 @@
   </div>
   <div class="btn-group open" if="{ model.length != 0 && !loading }">
   </div>
-  <basic-table class="table-viewport" headers="{ view.tableHeaders }" src="{ src }" obs="{ obs }">
+  <basic-table class="table-viewport" headers="{ tableHeaders }" src="{ src }" obs="{ obs }">
   </basic-table>
-  <balance-widget-form model="{ view.formModel }" src="{ src }" accountingoptions="{ view.accountingOptions }" obs="{ obs }">
+  <balance-widget-form model="{ formModel }" src="{ src }" accountingoptions="{ accountingOptions }" obs="{ obs }">
   </balance-widget-form>
 </div>

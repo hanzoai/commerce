@@ -9,5 +9,5 @@ module.exports =
   BasicTableView:   types.BasicTableView
   TableFieldConfig: types.TableFieldConfig
 
-  field: (id, name, type, hints)->
-    return new types.TableFieldConfig(id, name, type, hints)
+  lists: require './lists'
+  field: types.field
