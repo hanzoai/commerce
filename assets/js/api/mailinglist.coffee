@@ -89,26 +89,57 @@ do ->
 
     data
 
-  fb = (opts) ->
-    window._fbq ?= []
-    window._fbq.push ['track', opts.id,
-      value:    opts.value,
-      currency: opts.currency,
-    ]
+  google =
+    setup: ->
+      return if window.ga? or window._gaq?
 
-  ga = (opts) ->
-    category = opts.category ? 'Subscription'
-    action   = opts.action   ? opts.name ? 'Signup'
-    label    = opts.label    ? ''
+      window.ga = ga = document.createElement 'script'
+      ga.type = 'text/javascript'
+      ga.async = true
+      ga.src = ((if 'https:' is document.location.protocol then 'https://' else 'http://')) + 'stats.g.doubleclick.net/dc.js'
+      s = document.getElementsByTagName('script')[0]
+      s.parentNode.insertBefore ga, s
 
-    if window._gaq?
-      window._gaq.push ['_trackEvent', category, action]
-    if window.ga?
-      window.ga 'send', 'event', category, action, label, 0
+    track: (opts) ->
+      return unless opts.category?
+
+      google.setup()
+
+      category = opts.category ? 'Subscription'
+      action   = opts.action   ? opts.name ? 'Signup'
+      label    = opts.label    ? ''
+
+      if window._gaq?
+        window._gaq.push ['_trackEvent', category, action]
+      if window.ga?
+        window.ga 'send', 'event', category, action, label, 0
+
+  facebook =
+    setup: ->
+      return if window._fbq?.loaded
+
+      _fbq = window._fbq or (window._fbq = [])
+
+      fbds = document.createElement('script')
+      fbds.async = true
+      fbds.src = '//connect.facebook.net/en_US/fbds.js'
+      s = document.getElementsByTagName('script')[0]
+      s.parentNode.insertBefore fbds, s
+      _fbq.loaded = true
+
+    track: (opts) ->
+      return unless opts.id?
+
+      facebook.setup()
+
+      window._fbq.push ['track', opts.id,
+        value:    opts.value,
+        currency: opts.currency,
+      ]
 
   track = ->
-    ga ml.google if ml.google.category?
-    fb ml.facebook if ml.facebook.id?
+    facebook.track ml.facebook
+    google.track ml.google
 
   addHandler = (el, errorEl) ->
     unless errorEl?
