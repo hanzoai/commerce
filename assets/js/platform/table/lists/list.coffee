@@ -3,7 +3,7 @@ crowdcontrol = require 'crowdcontrol'
 table = require '../types'
 field = table.field
 
-Source = crowdcontrol.data.Source
+Api = crowdcontrol.data.Api
 BasicTableView = table.BasicTableView
 m = crowdcontrol.utils.mediator
 
@@ -13,23 +13,13 @@ class BasicList extends BasicTableView
   js: (opts)->
     @path = opts.path if opts.path
 
-    if opts.src?
-      @src = src = src
-    else if @isEmpty()
-      @src = src = new Source
-        name: @tag + @path + 'order-list'
-        api: crowdcontrol.config.api || opts.api
-        path: @path
-        policy: opts.policy || crowdcontrol.data.Policy.Once
+    @api = api = Api.get('crowdstart')
 
-    if src?
-      src.on Source.Events.Loading, ()=>
-        m.trigger 'start-spin', @tag + @path + '-list-load'
-        @update()
+    m.trigger 'start-spin', @tag + @path + '-list-load'
 
-      src.on Source.Events.LoadData, (model)=>
-        m.trigger 'stop-spin', @tag + @path + '-list-load'
-        @model = model
-        @update()
+    api.get(@path).then (res) =>
+      m.trigger 'stop-spin', @tag + @path + '-list-load'
+      @model = res.responseText
+      @update()
 
 module.exports = BasicList

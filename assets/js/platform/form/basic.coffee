@@ -22,23 +22,15 @@ class BasicFormView extends FormView
   js: (opts)->
     super
 
-    #case sensitivity issues
-    opts.userId = opts.userId || opts.userid
-
     @loading = true
-    m.trigger 'start-spin', 'user-form-load'
+    m.trigger 'start-spin', @path + '-form-load'
 
-    @api = api = new Api opts.url, opts.token
-    @src = src = new Source
-      name: @path + '/' + opts.userId,
-      path: @path + '/' + opts.userId,
-      api: api
+    @api = api = Api.get('crowdstart')
+    api.get(@path).then (res)=>
+      m.trigger 'stop-spin', @path + '-form-load'
 
-    src.on Source.Events.LoadData, (model)=>
-      m.trigger 'stop-spin', 'user-form-load'
-      @model = model
-
-      @loadData(model)
+      @model = res.responseText
+      @loadData @model
 
       @initFormGroup()
       riot.update()
@@ -46,18 +38,18 @@ class BasicFormView extends FormView
   loadData: (model)->
 
   _submit: (event)->
-    m.trigger 'start-spin', 'user-form-save'
+    m.trigger 'start-spin', @path + '-form-save'
     @update()
 
     return @api.patch(@src.path, @model).then ()=>
-      m.trigger 'stop-spin', 'user-form-save'
+      m.trigger 'stop-spin', @path + '-form-save'
       $button = $(event.target).find('input[type=submit], button[type=submit]').text('Saved')
       setTimeout ()->
         $button.text('Save')
       , 1000
       @update()
     , ()=>
-      m.trigger 'stop-spin', 'user-form-save'
+      m.trigger 'stop-spin', @path + '-form-save'
       $button = $(event.target).find('input[type=submit], button[type=submit]').text('Saved')
       setTimeout ()->
         $button.text('Save')

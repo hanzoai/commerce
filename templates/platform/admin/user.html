@@ -145,12 +145,15 @@
   $(function(){
     var urlParts = window.location.pathname.split('/')
     var userId = urlParts.pop()
-    riot.mount('user-form', {
-      userId: userId,
-      url:    '{{ urlFor("api") }}',
-      token:  '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}',
-    })
+
+      new crowdcontrol.data.Api(
+          '{{ urlFor("api") }}',
+          '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}'
+      ).register('crowdstart')
+
+    riot.mount('user-form', {userId: userId})
   })
+
 </script>
 <!-- <script src="{{ staticUrl }}/js/util.js"></script> -->
 <!-- <script src="{{ staticUrl }}/js/jquery.serialize-object.min.js"></script> -->
