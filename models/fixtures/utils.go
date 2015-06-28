@@ -1,5 +1,12 @@
+package fixtures
+
 // Inline all styles before use
-import "github.com/vanng822/go-premailer/premailer"
+import (
+	"github.com/vanng822/go-premailer/premailer"
+
+	"crowdstart.com/config"
+	"crowdstart.com/util/fs"
+)
 
 func readEmailTemplate(path string) string {
 	template := string(fs.ReadFile(config.WorkingDir + path))
