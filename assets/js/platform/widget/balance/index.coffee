@@ -8,8 +8,8 @@ field = table.field
 
 input = require '../../form/input'
 
+Api = crowdcontrol.data.Api
 View = crowdcontrol.view.View
-Source = crowdcontrol.data.Source
 
 BasicTableView = table.BasicTableView
 FormView = crowdcontrol.view.form.FormView
@@ -26,12 +26,12 @@ class BalanceWidgetFormView extends FormView
   ]
   js: (opts)->
     super
-    @src = opts.src
+    @api = api = Api.get('crowdstart')
 
   _submit: ()->
-    @src.api.post(@path, @model).then ()=>
+    @api.post(@path, @model).then ()=>
       setTimeout ()=>
-        @src.trigger Source.Events.Reload
+        @obs.trigger 'refresh'
       , 500
 
 BalanceWidgetFormView.register()
@@ -103,19 +103,13 @@ class BalanceWidget extends View
 
     path = "user/#{userId}/transactions"
 
-    @src = src = new Source
-      name: 'balance-widget'
-      api: crowdcontrol.config.api || opts.api
-      path: path
-      policy: opts.policy || crowdcontrol.data.Policy.Once
+    @api = api = Api.get('crowdstart')
 
-    src.on Source.Events.Loading, ()=>
-      m.trigger 'start-spin', 'balance-form-load'
-      @update()
+    m.trigger 'start-spin', 'balance-form-load'
 
-    src.on Source.Events.LoadData, (model)=>
+    api.get(path).then (res) =>
       m.trigger 'stop-spin', 'balance-form-load'
-      @updateModel model
+      @updateModel res.responseText
 
     @formModel.userId = userId
 
