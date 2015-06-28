@@ -3,9 +3,11 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
+	"crowdstart.com/auth/password"
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/namespace"
 	"crowdstart.com/models/organization"
+	"crowdstart.com/models/user"
 	"crowdstart.com/util/log"
 )
 
@@ -16,17 +18,20 @@ var Crowdstart = New("crowdstart", func(c *gin.Context) *organization.Organizati
 	org := organization.New(db)
 	org.Name = "crowdstart"
 	org.GetOrCreate("Name=", org.Name)
-	org.FullName = "crowdstart"
-	org.Owners = []string{u.Id()}
-	org.Admins = []string{u2.Id()}
-	org.Website = "http://www.crowdstart.com"
-	org.SecretKey = []byte("zW85MZHMklGJE3hNgC5j1cxFpQ04zLb6")
-	org.AddDefaultTokens()
 
 	// Create admin
 	u := user.New(db)
 	u.Email = "crowdstart@verus.io"
 	u.GetOrCreate("Email=", u.Email)
+
+	// Configure org
+	org.FullName = "crowdstart"
+	org.Owners = []string{u.Id()}
+	org.Website = "http://www.crowdstart.com"
+	org.SecretKey = []byte("zW85MZHMklGJE3hNgC5j1cxFpQ04zLb6")
+	org.AddDefaultTokens()
+
+	// Configure user
 	u.FirstName = "Michael"
 	u.LastName = "Walker"
 	u.Organizations = []string{org.Id()}
