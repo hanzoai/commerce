@@ -175,7 +175,7 @@ do ->
       errorEl               = document.createElement 'div'
       errorEl.className     = 'crowdstart-mailinglist-error'
       errorEl.style.display = 'none'
-      errorEl.style.width   = 100 + '%'  # Prevents interpolation from picking up % as a thing needing interpolatin'
+      errorEl.style.width   = 100 + '%%'[0]  # Prevents interpolation from picking up % as a thing needing interpolatin'
       el.appendChild errorEl
 
     showError = (msg) ->
