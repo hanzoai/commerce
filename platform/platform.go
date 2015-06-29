@@ -45,8 +45,9 @@ func init() {
 	router.GET("/logout", login.Logout)
 
 	// Signup
-	router.GET("/signup", login.Signup)
-	router.POST("/signup", login.SignupSubmit)
+	router.GET("/signup", frontend.Signup)
+	// router.GET("/signup", login.Signup)
+	// router.POST("/signup", login.SignupSubmit)
 
 	// Password Reset
 	// router.GET("/create-password", user.CreatePassword)
