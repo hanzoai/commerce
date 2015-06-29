@@ -1,6 +1,5 @@
 node_modules
 /.cake_task_cache
-data/
 .sdk
 npm-debug.log
 .datastore.bin
