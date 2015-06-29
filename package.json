@@ -12,17 +12,21 @@
     "blueimp-canvas-to-blob": "^2.1.1",
     "card": "^1.0.0",
     "coffee-script": "^1.9.2",
+    "crowdcontrol": "^1.0.2",
     "crowdstart.js": "0.0.5",
     "csso-stylus": "0.0.3",
     "jeet": "^6.1.2",
     "moment": "^2.10.3",
     "mvstar": "^0.1.19",
-    "requisite": "^1.8.10",
-    "riot": "^2.1.0",
+    "requisite": "^1.9.9",
+    "riot": "2.1.0",
     "rupture": "^0.6.1",
     "stylus": "^0.51.1",
     "stylus-normalize": "^3.0.3",
     "typographic": "^2.9.3",
-    "uglify-js": "^2.4.15"
+    "uglify-js": "~2.4.23",
+    "underscore": "^1.8.3",
+    "underscore-deep-extend": "0.0.5",
+    "esmangle": "~1.0.1"
   }
 }
