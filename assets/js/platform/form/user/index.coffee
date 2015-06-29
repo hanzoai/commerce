@@ -37,6 +37,14 @@ class UserFormView extends BasicFormView
     input('shippingAddress.country', 'Choose a Country...', 'country-select'),
   ]
 
+  js: (opts)->
+    #case sensitivity issues
+    @userId = opts.userId = opts.userId || opts.userid
+
+    @path += '/' + opts.userId
+
+    super
+
   reset: (event)->
     if event?
       event.preventDefault()
