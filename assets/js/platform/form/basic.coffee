@@ -41,7 +41,7 @@ class BasicFormView extends FormView
     m.trigger 'start-spin', @path + '-form-save'
     @update()
 
-    return @api.patch(@src.path, @model).then ()=>
+    return @api.patch(@path, @model).then ()=>
       m.trigger 'stop-spin', @path + '-form-save'
       $button = $(event.target).find('input[type=submit], button[type=submit]').text('Saved')
       setTimeout ()->
