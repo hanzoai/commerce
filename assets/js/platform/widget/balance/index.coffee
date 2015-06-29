@@ -8,8 +8,8 @@ field = table.field
 
 input = require '../../form/input'
 
+Api = crowdcontrol.data.Api
 View = crowdcontrol.view.View
-Source = crowdcontrol.data.Source
 
 BasicTableView = table.BasicTableView
 FormView = crowdcontrol.view.form.FormView
@@ -26,12 +26,12 @@ class BalanceWidgetFormView extends FormView
   ]
   js: (opts)->
     super
-    @src = opts.src
+    @api = api = Api.get('crowdstart')
 
   _submit: ()->
-    @src.api.post(@path, @model).then ()=>
+    @api.post(@path, @model).then ()=>
       setTimeout ()=>
-        @src.trigger Source.Events.Reload
+        @obs.trigger 'refresh'
       , 500
 
 BalanceWidgetFormView.register()
@@ -55,6 +55,14 @@ class BalanceWidget extends View
     field('description', 'Description')
     field('createdAt', 'Created On', 'date')
   ]
+
+  events:
+    refresh: ()->
+      m.trigger 'start-spin', 'balance-form-load'
+      @api.get(@path).then (res) =>
+        m.trigger 'stop-spin', 'balance-form-load'
+        @updateModel res.responseText
+      @update()
 
   updateModel: (model)->
     # We should only receive array models
@@ -101,21 +109,11 @@ class BalanceWidget extends View
     #case sensitivity issues
     userId = opts.userId = opts.userId || opts.userid
 
-    path = "user/#{userId}/transactions"
+    @path = "user/#{userId}/transactions"
 
-    @src = src = new Source
-      name: 'balance-widget'
-      api: crowdcontrol.config.api || opts.api
-      path: path
-      policy: opts.policy || crowdcontrol.data.Policy.Once
+    @api = Api.get('crowdstart')
 
-    src.on Source.Events.Loading, ()=>
-      m.trigger 'start-spin', 'balance-form-load'
-      @update()
-
-    src.on Source.Events.LoadData, (model)=>
-      m.trigger 'stop-spin', 'balance-form-load'
-      @updateModel model
+    @obs.trigger 'refresh'
 
     @formModel.userId = userId
 
