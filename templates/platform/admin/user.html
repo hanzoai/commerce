@@ -16,37 +16,111 @@
         <!-- END User information Form Title -->
 
         <!-- User information Form Content -->
-        <form id="form-user" method="post" class="form-horizontal">
-          <h4>Information</h4>
-          <div id="user-info" class="block">
+        <user-form>
+          <h4>
+            <a data-toggle="collapse" href="#user-info">
+              Information
+            </a>
+          </h4>
+          <div id="user-info" class="collapse in block">
+              <control label="ID" input="{ inputs.id }"></control>
+              <control label="Email" input="{ inputs.email }"></control>
+              <control label="First Name" input="{ inputs.firstName }"></control>
+              <control label="Last Name" input="{ inputs.lastName }"></control>
+              <control label="Phone" input="{ inputs.phone }"></control>
+              <control label="Created On" input="{ inputs.createdAt }"></control>
+              <control label="Last Updated On" input="{ inputs.updatedAt }"></control>
+              <div class="form-group form-actions">
+                <div class="col-md-9 col-md-offset-3">
+                    <button type="submit" class="btn btn-effect-ripple btn-primary">Save</button>
+                  <button type="reset" class="btn btn-effect-ripple btn-warning">Reset</button>
+                </div>
+              </div>
           </div>
-          <h4>Billing Address</h4>
-          <div id="user-billing-address" class="block">
+          <h4>
+            <a data-toggle="collapse" href="#user-reset-password">
+              Reset Password
+            </a>
+          </h4>
+          <div id="user-reset-password" class="collapse in block">
+              <reset-password-form userId="{ opts.userId }", url ="{ opts.url }" token="{ opts.token }">
+            </reset-password-form>
           </div>
-          <h4>Shipping Address</h4>
-          <div id="user-shipping-address" class="block">
+          <h4>
+            <a data-toggle="collapse" href="#user-shipping-address">
+              Shipping Address
+            </a>
+          </h4>
+          <div id="user-shipping-address" class="collapse in block">
+              <control label="Street Address" input="{ inputs['shippingAddress.line1'] }"></control>
+              <control label="Apt/Suite Number" input="{ inputs['shippingAddress.line2'] }"></control>
+              <control label="City" input="{ inputs['shippingAddress.city'] }"></control>
+              <control label="State" input="{ inputs['shippingAddress.state'] }"></control>
+              <control label="Postal/ZIP Code" input="{ inputs['shippingAddress.postalCode'] }"></control>
+              <control label="Country" input="{ inputs['shippingAddress.country'] }"></control>
+              <div class="form-group form-actions">
+                <div class="col-md-9 col-md-offset-3">
+                    <button type="submit" class="btn btn-effect-ripple btn-primary">Save</button>
+                  <button type="reset" class="btn btn-effect-ripple btn-warning">Reset</button>
+                </div>
+              </div>
           </div>
-          {% if referrers | length > 0 %}
-          <h4>Referral Tokens</h4>
-          <div id="user-referrers" class="block">
-            <table id="user-referrer-table" class="table table-striped table-busered table-vcenter">
-            </table>
+          <h4>
+            <a data-toggle="collapse" href="#user-billing-address">
+              Billing Address
+            </a>
+          </h4>
+          <div id="user-billing-address" class="collapse in block">
+              <control label="Street Address" input="{ inputs['billingAddress.line1'] }"></control>
+              <control label="Apt/Suite Number" input="{ inputs['billingAddress.line2'] }"></control>
+              <control label="City" input="{ inputs['billingAddress.city'] }"></control>
+              <control label="State" input="{ inputs['billingAddress.state'] }"></control>
+              <control label="Postal/ZIP Code" input="{ inputs['billingAddress.postalCode'] }"></control>
+              <control label="Country" input="{ inputs['billingAddress.country'] }"></control>
+              <div class="form-group form-actions">
+                <div class="col-md-9 col-md-offset-3">
+                    <button type="submit" class="btn btn-effect-ripple btn-primary">Save</button>
+                  <button type="reset" class="btn btn-effect-ripple btn-warning">Reset</button>
+                </div>
+              </div>
           </div>
-          {% endif %}
-          {% if orders | length > 0 %}
-          <h4>Orders</h4>
-          <div id="user-orders" class="block">
-            <table id="user-order-table" class="table table-striped table-busered table-vcenter">
-            </table>
+          <h4>
+            <a data-toggle="collapse" href="#user-orders">
+              Orders
+            </a>
+          </h4>
+          <div id="user-orders" class="collapse in block">
+            <order-list path="{ 'user/'+opts.userId+'/orders' }">
+            </order-list>
           </div>
-          {% endif %}
-          <div class="form-group form-actions">
-            <div class="col-md-9 col-md-offset-3">
-              <button type="submit" class="btn btn-effect-ripple btn-primary">Submit</button>
-              <button type="reset" class="btn btn-effect-ripple btn-warning">Reset</button>
-            </div>
+          <h4>
+            <a data-toggle="collapse" href="#user-balance">
+              Credit Balance
+            </a>
+          </h4>
+          <div id="user-balance" class="collapse in block">
+            <balance-widget userId="{opts.userId}">
+            </balance-widget>
           </div>
-        </form>
+          <h4>
+            <a data-toggle="collapse" href="#user-referrers">
+              Referral Tokens
+            </a>
+          </h4>
+          <div id="user-referrals" class="collapse in block">
+            <referrer-list path="{ 'user/'+opts.userId+'/referrers' }">
+            </referrer-list>
+          </div>
+          <h4>
+            <a data-toggle="collapse" href="#user-referrals">
+              Referrals
+            </a>
+          </h4>
+          <div id="user-referrals" class="collapse in block">
+            <referral-list path="{ 'user/'+opts.userId+'/referrals' }">
+            </referral-list>
+          </div>
+        </user-form>
         <!-- END User information Form Content -->
     </div>
     <!-- END User information Form Block -->
@@ -55,293 +129,31 @@
 {% endblock %}
 
 {% block js %}
-<script src="{{ staticUrl }}/js/util.js"></script>
-<script src="{{ staticUrl }}/js/jquery.serialize-object.min.js"></script>
-<script src="{{ staticUrl }}/js/form-builder.js"></script>
-<script src="{{ staticUrl }}/js/table-builder.js"></script>
-<script src="{{ staticUrl }}/js/rest-forms.js"></script>
 <script>
-    $(function(){
-        BuildForm($("#form-user"), [
-        // Info
-          {
-            label: "User ID",
-            type: "static",
-            value: "{{ user.Id }}",
-            $parent: $('#user-info'),
-          },
-          {
-            id: "email",
-            name: "email",
-            label: "Email",
-            render: 'lower',
-            value: "{{ user.Email }}",
-            $parent: $('#user-info'),
-          },
-          {
-            id: "firstName",
-            name: "firstName",
-            label: "First Name",
-            type: "text",
-            value: "{{ user.FirstName }}",
-            $parent: $('#user-info'),
-          },
-          {
-            id: "lastName",
-            name: "lastName",
-            label: "Last Name",
-            type: "text",
-            value: "{{ user.LastName }}",
-            $parent: $('#user-info'),
-          },
-          {
-            id: "phone",
-            name: "phone",
-            label: "Phone",
-            type: "text",
-            value: "{{ user.Phone }}",
-            $parent: $('#user-info'),
-          },
-          {
-            label: "Created On",
-            type: "static-date",
-            value: "{{ user.CreatedAt }}",
-            $parent: $('#user-info'),
-          },
-          {
-            label: "Last Updated On",
-            type: "static-date",
-            value: "{{ user.UpdatedAt }}",
-            $parent: $('#user-info'),
-          },
-
-          // Billing Address
-          {
-            id: "billingAddress.Line1",
-            name: "billingAddress.Line1",
-            label: "Street Address",
-            type: "text",
-            value: '{{ user.BillingAddress.Line1 }}',
-            $parent: $('#user-billing-address'),
-          },
-          {
-            id: "billingAddress.Line2",
-            name: "billingAddress.Line2",
-            label: "Apartment Number or PO&nbsp;Box",
-            type: "text",
-            value: '{{ user.BillingAddress.Line2 }}',
-            $parent: $('#user-billing-address'),
-          },
-          {
-            id: "billingAddress.City",
-            name: "billingAddress.City",
-            label: "City",
-            type: "text",
-            value: '{{ user.BillingAddress.City }}',
-            $parent: $('#user-billing-address'),
-          },
-          {
-            id: "billingAddress.State",
-            name: "billingAddress.State",
-            label: "State",
-            type: "text",
-            value: '{{ user.BillingAddress.State }}',
-            $parent: $('#user-billing-address'),
-          },
-          {
-            id: "billingAddress.country",
-            name: "billingAddress.country",
-            label: "Country",
-            value: [
-            {
-              selected: '',
-              name: '',
-                id: '',
-            },
-            {% for country in constants.Countries %}
-            {
-              selected: '{{ country.ISO3166OneAlphaTwo }}' === '{{ user.BillingAddress.Country }}'.toUpperCase() || '{{ country.ISO3166OneEnglishShortNameReadingOrder }}' === '{{ order.BillingAddress.Country }}'.toUpperCase(),
-              name: '{{ country.ISO3166OneEnglishShortNameReadingOrder }}',
-                id: '{{ country.ISO3166OneAlphaTwo }}',
-            },
-            {% endfor %}
-            ],
-            placeholder: 'Choose a country...',
-            type: 'select',
-            $parent: $('#user-billing-address'),
-            rules: [
-                {
-                    rule: "required",
-                    value: "true",
-                    message: "Country is required",
-                }
-            ]
-          },
-
-          // Shipping Address
-          {
-            id: "shippingAddress.Line1",
-            name: "shippingAddress.Line1",
-            label: "Street Address",
-            type: "text",
-            value: '{{ user.ShippingAddress.Line1 }}',
-            $parent: $('#user-shipping-address'),
-          },
-          {
-            id: "shippingAddress.Line2",
-            name: "shippingAddress.Line2",
-            label: "Apartment Number or PO&nbsp;Box",
-            type: "text",
-            value: '{{ user.ShippingAddress.Line2 }}',
-            $parent: $('#user-shipping-address'),
-          },
-          {
-            id: "shippingAddress.City",
-            name: "shippingAddress.City",
-            label: "City",
-            type: "text",
-            value: '{{ user.ShippingAddress.City }}',
-            $parent: $('#user-shipping-address'),
-          },
-          {
-            id: "shippingAddress.State",
-            name: "shippingAddress.State",
-            label: "State",
-            type: "text",
-            value: '{{ user.ShippingAddress.State }}',
-            $parent: $('#user-shipping-address'),
-          },
-          {
-            id: "shippingAddress.country",
-            name: "shippingAddress.country",
-            label: "Country",
-            value: [
-            {
-              selected: '',
-              name: '',
-                id: '',
-            },
-            {% for country in constants.Countries %}
-            {
-              selected: '{{ country.ISO3166OneAlphaTwo }}' === '{{ user.ShippingAddress.Country }}'.toUpperCase() || '{{ country.ISO3166OneEnglishShortNameReadingOrder }}' === '{{ order.ShippingAddress.Country }}'.toUpperCase(),
-              name: '{{ country.ISO3166OneEnglishShortNameReadingOrder }}',
-                id: '{{ country.ISO3166OneAlphaTwo }}',
-            },
-            {% endfor %}
-            ],
-            placeholder: 'Choose a country...',
-            type: 'select',
-            $parent: $('#user-shipping-address'),
-            rules: [
-                {
-                    rule: "required",
-                    value: "true",
-                    message: "Country is required",
-                }
-            ]
-          },
-        ]);
-    });
-
-    var referrersJSON = [
-    {% for referrer in referrers %}
-        { id: '{{ referrer.Id() }}' },
+  var countries = {
+    {% for country in constants.Countries %}
+        '{{ country.ISO3166OneAlphaTwo }}': '{{ country.ISO3166OneEnglishShortNameReadingOrder }}',
     {% endfor %}
-    ];
-    BuildTable($('#user-referrer-table'), {
-    columns: [
-      {
-        field: 'id',
-        name: 'Referrer Id',
-        href: '{{ urlFor("api", "/referrer") }}',
-        render: 'link',
-      },
-    ],
-    startPage: 1,
-    startDisplay: 10,
-    displayOptions: [5, 10, 20],
-    $display: $('#display'),
-    $pagination: $('#pagination'),
-    $empty: $('#empty-table'),
-    data: referrersJSON,
-    checkboxes: false,
-  });
+  }
 
-  var ordersJSON = [
-    {% for order in orders %}
-        {
-            id: '{{ order.Id() }}',
-            currency: '{{ order.Currency }}',
-            total: '{{ order.Total }}',
-            status: '{{ order.Status }}',
-            createdAt: '{{ order.CreatedAt.Format("2006-01-02T15:04:05Z07:00") }}',
-            updatedAt: '{{ order.UpdatedAt.Format("2006-01-02T15:04:05Z07:00") }}',
-        },
+  var currencies = {
+    {% for type in constants.CurrencyTypes %}
+      '{{ type }}': '{{ type.Label() }}',
     {% endfor %}
-    ];
-    BuildTable($('#user-order-table'), {
-    columns: [
-      {
-        field: 'id',
-        name: 'Order Id',
-        href: '{{ urlFor("platform", "/order") }}',
-        render: 'link',
-      },
-      {
-        field: 'currency',
-        name: 'Currency',
-        render: 'upper',
-      },
-      {
-        field: 'total',
-        name: 'Total',
-        render: 'currency',
-      },
-      {
-        field: 'status',
-        name: 'Status',
-      },
-      {
-        field: 'createdAt',
-        name: 'Created At',
-        render: 'date',
-      },
-      {
-        field: 'updatedAt',
-        name: 'Last Updated',
-        render: 'ago',
-      }
-    ],
-    startPage: 1,
-    startDisplay: 10,
-    displayOptions: [5, 10, 20],
-    $display: $('#display'),
-    $pagination: $('#pagination'),
-    $empty: $('#empty-table'),
-    data: ordersJSON,
-    checkboxes: false,
-  });
+  }
 
-  $.extend(FormSerializer.patterns, {
-    validate: /^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*(?:\[\])?$/i
-  });
-  var api = NewRestAPI(
-      '{{ urlFor("api", "user") }}',
-      '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}',
-      $('#form-user')
-    );
-  $('#form-user').on('submit', function(e){
-      var $form = $(this);
-      requestAnimationFrame(function() {
-          if ($('.form-group.has-error').length === 0) {
-              api.patch(function(data) {
-                window.location.replace('{{ urlFor("platform", "user", user.Id ) }}')
-              }, $form, '{{ user.Id }}')
-          }
-      })
-      e.preventDefault();
-      return false;
+  $(function(){
+    var urlParts = window.location.pathname.split('/')
+    var userId = urlParts.pop()
+
+      new crowdcontrol.data.Api(
+          '{{ urlFor("api") }}',
+          '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}'
+      ).register('crowdstart')
+
+    riot.mount('user-form', {userId: userId})
   })
+
 </script>
 {% endblock %}
 {% block menulink %}menu-users{% endblock %}
