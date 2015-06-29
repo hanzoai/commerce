@@ -21,6 +21,9 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api.PUT("", publishedRequired, accountRequired, namespaced, update)
 	api.PATCH("", publishedRequired, accountRequired, namespaced, patch)
 
+	api.GET("/order/:orderid", publishedRequired, accountRequired, namespaced, getOrder)
+	api.PATCH("/order/:orderid", publishedRequired, accountRequired, namespaced, patchOrder)
+
 	api.GET("/exists/:email", publishedRequired, namespaced, exists)
 
 	api.POST("/login", publishedRequired, namespaced, login)
