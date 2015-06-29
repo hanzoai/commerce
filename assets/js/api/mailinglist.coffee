@@ -172,10 +172,10 @@ do ->
 
   addHandler = (el, errorEl) ->
     unless errorEl?
-      errorEl = document.createElement 'div'
-      errorEl.className = 'crowdstart-mailinglist-error'
+      errorEl               = document.createElement 'div'
+      errorEl.className     = 'crowdstart-mailinglist-error'
       errorEl.style.display = 'none'
-      errorEl.style.width   = '100%'
+      errorEl.style.width   = 100 + '%'  # Prevents interpolation from picking up % as a thing needing interpolatin'
       el.appendChild errorEl
 
     showError = (msg) ->
