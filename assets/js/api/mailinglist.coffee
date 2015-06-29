@@ -45,12 +45,10 @@ do ->
     else
       parent = script.parentNode
       inputs = parent.getElementsByTagName 'input'
-
-      while inputs.length < 1 and parent?
-        parent = parent.parentNode
-        inputs = parent.getElementsByTagName 'input'
-
-      parent ? script
+      if inputs.length < 1
+        document.body
+      else
+        parent
 
   # get this script tag
   getScript = ->
@@ -284,7 +282,7 @@ do ->
     ml.validate ?= (attr 'validate') ? false
 
     parent   = getContainer script, selectors.container
-    forms    = getElements document.body, selectors.forms
+    forms    = getElements parent, selectors.forms
     handlers = getElements parent, selectors.submits
 
     # find error divs
