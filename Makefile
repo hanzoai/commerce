@@ -71,7 +71,7 @@ requisite_opts = --no-source-map \
 				 -o static/js/platform.js \
 				 -o static/v1.js
 
-requisite_opts_min = -m --no-source-map --strip-debug --minifier=uglify
+requisite_opts_min = -m --strip-debug --minifier uglify
 
 stylus		= node_modules/.bin/stylus
 stylus_opts = assets/css/store/store.styl \
@@ -161,7 +161,7 @@ compile-js:
 	$(coffee) -bc -o static/js assets/js/api/mailinglist.coffee
 
 compile-js-min:
-	$(requisite) $(requisite_opts) $(requisite_opts_min)
+	$(requisite) $(requisite_opts_min) $(requisite_opts)
 	$(coffee) -bc -o static/js assets/js/api/mailinglist.coffee
 
 compile-css:
