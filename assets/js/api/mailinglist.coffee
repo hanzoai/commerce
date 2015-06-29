@@ -38,6 +38,21 @@ do ->
         return
       return
 
+  # get form container
+  getContainer = (script, selector = '')->
+    if selector != ''
+      document.querySelector selectors.container
+    else
+      parent = script.parentNode
+      inputs = parent.getElementsByTagName 'input'
+
+      while inputs.length < 1 and parent?
+        parent = parent.parentNode
+        inputs = parent.getElementsByTagName 'input'
+
+      parent ? script
+
+  # get this script tag
   getScript = ->
     # start at the root element
     node = document.documentElement
@@ -48,24 +63,24 @@ do ->
     # last HTMLElement is script tag
     node
 
+  # Get elements from inside a parent
   getElements = (parent, selector) ->
     console.log 'getElements', parent, selector
 
     if selector? and selector != ''
-      # look up form elements
-      console.log parent.querySelectorAll selector
       parent.querySelectorAll selector
     else
-      console.log [parent]
       [parent]
 
+  # get value from a selector
   getValue = (selector, el = document) ->
     console.log 'getValue', selector, el
     found = el.querySelector selector
     console.log found, found?.value?.trim()
     found?.value?.trim()
 
-  serialize = (el) ->
+  # serialize a form
+  serializeForm = (el) ->
     return {} unless el?
 
     data =
@@ -101,9 +116,20 @@ do ->
 
     data
 
-  attr = (s) ->
-    script.getAttribute 'data-' + s
+  # get setting off script tag data attribute
+  attr = (name) ->
+    val = script.getAttribute 'data-' + name
+    return unless val?
 
+    switch val.trim().toLowerCase()
+      when 'false'
+        false
+      when 'true'
+        true
+      else
+        val
+
+  # Google event tracking code
   google =
     setup: ->
       return if window.ga? or window._gaq?
@@ -140,6 +166,7 @@ do ->
       if window.ga?
         window.ga 'send', 'event', category, action, label, 0
 
+  # Facebook event tracking
   facebook =
     setup: ->
       return if window._fbq?.loaded
@@ -165,11 +192,13 @@ do ->
       ]
       return
 
+  # Trigger event tracking
   track = ->
     facebook.track ml.facebook
     google.track ml.google
     return
 
+  # Wire up submit handler
   addHandler = (el, errorEl) ->
     unless errorEl?
       errorEl               = document.createElement 'div'
@@ -201,7 +230,7 @@ do ->
       else
         ev.preventDefault()
 
-      data = serialize el
+      data = serializeForm el
       console.log data
 
       if validate
@@ -243,34 +272,28 @@ do ->
       ev.preventDefault()
       false
 
+  # Init all the things
   init = ->
     if called then return else called = true
 
-    window.parent = parent = script.parentNode
-    console.log 'parent', parent, parent.querySelectorAll '.form-group'
-
-    props = ['forms', 'submits', 'errors', 'email', 'firstname', 'lastname', 'name']
+    props = ['container', 'forms', 'submits', 'errors', 'email', 'firstname', 'lastname', 'name']
     for prop in props
       selectors[prop] = (attr prop) ? ml.selectors?[prop]
 
-    console.log 'selectors', selectors
-
     # are we validating?
-    validate = (attr 'validate') ? ml.validate ? ''
+    ml.validate ?= (attr 'validate') ? false
 
-    # data attributes can only be strings
-    validate = false if validate?.toLowerCase() == 'false'
-
-    # init
+    parent   = getContainer script, selectors.container
     forms    = getElements parent, selectors.forms
     handlers = getElements parent, selectors.submits
 
-    # error handling
+    # find error divs
     if selectors.errors
       errors = getElements parent, selectors.errors
     else
       errors = []
 
+    console.log 'selectors', selectors
     console.log 'forms', forms
     console.log 'handlers', handlers
     console.log 'errors', errors
@@ -283,12 +306,10 @@ do ->
         handler.addEventListener 'click',  (addHandler forms[i], errors[i])
         handler.addEventListener 'submit', (addHandler forms[i], errors[i])
 
-    console.log selectors
-
-  # get script tag
+  # Get script tag, has to run before rest of DOM loads
   script = getScript()
 
-  # setup listeners for load event
+  # Run init after DOM loads, attach various listeners
   if document.addEventListener
     document.addEventListener 'DOMContentLoaded', init, false
   else if document.attachEvent
