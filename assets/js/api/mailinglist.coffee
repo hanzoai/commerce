@@ -284,7 +284,7 @@ do ->
     ml.validate ?= (attr 'validate') ? false
 
     parent   = getContainer script, selectors.container
-    forms    = getElements parent, selectors.forms
+    forms    = getElements document.body, selectors.forms
     handlers = getElements parent, selectors.submits
 
     # find error divs
