@@ -1,14 +1,6 @@
 package order
 
-import (
-	"encoding/json"
-	"io/ioutil"
-
-	"github.com/gin-gonic/gin"
-
-	stripe "crowdstart.com/thirdparty/stripe/models"
-	"crowdstart.com/util/log"
-)
+import "github.com/gin-gonic/gin"
 
 // <?xml version="1.0" encoding="utf-8"?>
 // <Orders>
@@ -72,42 +64,51 @@ import (
 // 	</Order>
 // </Orders>
 
+type Item struct {
+	SKU         string
+	Name        string
+	ImageUrl    string
+	Weight      string
+	WeightUnits string
+	Quantity    string
+	UnitPrice   string
+	Location    string
+}
+
 type Order struct {
-	OrderID string
-	OrderNumber string
-	OrderDate string
-	OrderStatus string
-	LastModified string
+	OrderID        string
+	OrderNumber    string
+	OrderDate      string
+	OrderStatus    string
+	LastModified   string
 	ShippingMethod string
-	PaymentMethod string
-	OrderTotal string
-	TaxAmount string
+	PaymentMethod  string
+	OrderTotal     string
+	TaxAmount      string
 	ShippingAmount string
-	CustomerNotes string
-	InternalNotes string
-	Customer struct {
+	CustomerNotes  string
+	InternalNotes  string
+	Customer       struct {
 		CustomerCode string
-		BillTo struct {
-			Name string
+		BillTo       struct {
+			Name    string
 			Company string
-			Phone string
-			Email string
+			Phone   string
+			Email   string
 		}
 		ShipTo struct {
-			Name string
-			Company string
-			Address1 string
-			Address2 string
-			City string
-			State string
+			Name       string
+			Company    string
+			Address1   string
+			Address2   string
+			City       string
+			State      string
 			PostalCode string
-			Country string
-			Phone string
+			Country    string
+			Phone      string
 		}
 	}
-	Items Item[]
-
-
+	Items []Item
 }
 
 type Response struct {
@@ -115,7 +116,11 @@ type Response struct {
 }
 
 func Get(c *gin.Context) {
-
 	query := c.Request.URL.Query()
+	action = query.Get("action")
+	startDate = query.Get("start_date")
+	endDate := query.Get("end_date")
+	page := query.Get("page")
 
+	log.Debug("action: %v, startDate: %v, endDate: %v, page: %v", action, startDate, endDate, page, c)
 }
