@@ -231,7 +231,7 @@ do ->
       data = serializeForm el
       console.log data
 
-      if validate
+      if ml.validate
         unless data.email?
           return showError 'Email is required'
         if (data.email.indexOf '@') == -1
