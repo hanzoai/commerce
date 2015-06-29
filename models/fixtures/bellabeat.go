@@ -2,28 +2,12 @@ package fixtures
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/vanng822/go-premailer/premailer"
 
-	"crowdstart.com/config"
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/namespace"
 	"crowdstart.com/models/organization"
-	"crowdstart.com/util/fs"
 	"crowdstart.com/util/log"
 )
-
-// Inline all styles before use
-func readEmailTemplate(path string) string {
-	template := string(fs.ReadFile(config.WorkingDir + path))
-	return template
-
-	prem := premailer.NewPremailerFromString(template, premailer.NewOptions())
-	html, err := prem.Transform()
-	if err != nil {
-		panic(err)
-	}
-	return html
-}
 
 var Bellabeat = New("bellabeat", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
