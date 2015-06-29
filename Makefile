@@ -61,7 +61,8 @@ bebop = node_modules/.bin/bebop
 
 coffee	   	   = node_modules/.bin/coffee
 requisite	   = node_modules/.bin/requisite -g
-requisite_opts = assets/js/store/store.coffee \
+requisite_opts = --no-source-map \
+				 assets/js/store/store.coffee \
 				 assets/js/api/api.coffee \
 				 assets/js/platform/platform.coffee \
 				 node_modules/crowdstart.js/src/index.coffee \
@@ -70,7 +71,7 @@ requisite_opts = assets/js/store/store.coffee \
 				 -o static/js/platform.js \
 				 -o static/v1.js
 
-requisite_opts_min = -m --strip-debug
+requisite_opts_min = -m --strip-debug --minifier uglify
 
 stylus		= node_modules/.bin/stylus
 stylus_opts = assets/css/store/store.styl \
@@ -160,7 +161,7 @@ compile-js:
 	$(coffee) -bc -o static/js assets/js/api/mailinglist.coffee
 
 compile-js-min:
-	$(requisite) $(requisite_opts) $(requisite_opts_min)
+	$(requisite) $(requisite_opts_min) $(requisite_opts)
 	$(coffee) -bc -o static/js assets/js/api/mailinglist.coffee
 
 compile-css:
