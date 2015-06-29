@@ -23,14 +23,15 @@ class ResetPasswordFormView extends FormView
 
   js: (opts)->
     super
-    @api = new Api opts.url, opts.token
+
+    @api = api = Api.get('crowdstart')
     @userId = opts.userId || opts.userid
 
   submit: ()->
     m.trigger 'start-spin', 'user-form-save'
     @api.get("user/#{@userId}/password/reset").then (data)=>
       m.trigger 'stop-spin', 'user-form-save'
-      @model = data.data
+      @model = data.responseText
       @initFormGroup()
       riot.update()
     , ()->
