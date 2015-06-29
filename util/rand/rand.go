@@ -11,6 +11,18 @@ import (
 )
 
 // Returns short, url-friendly Id
+func ShortPassword() string {
+	size := 16
+
+	rb := make([]byte, size)
+	if _, err := rand.Read(rb); err != nil {
+		log.Error("Failed to genrate random characters: %v", err)
+	}
+
+	return strings.Trim(base64.URLEncoding.EncodeToString(rb), "=")
+}
+
+// Returns short, url-friendly Id
 func ShortId() string {
 	size := 8
 

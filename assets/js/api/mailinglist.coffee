@@ -45,12 +45,10 @@ do ->
     else
       parent = script.parentNode
       inputs = parent.getElementsByTagName 'input'
-
-      while inputs.length < 1 and parent?
-        parent = parent.parentNode
-        inputs = parent.getElementsByTagName 'input'
-
-      parent ? script
+      if inputs.length < 1
+        document.body
+      else
+        parent
 
   # get this script tag
   getScript = ->
@@ -73,11 +71,9 @@ do ->
       [parent]
 
   # get value from a selector
-  getValue = (selector, el = document) ->
-    console.log 'getValue', selector, el
-    found = el.querySelector selector
-    console.log found, found?.value?.trim()
-    found?.value?.trim()
+  getValue = (parent = document.body, selector) ->
+    el = parent.querySelector selector
+    el?.value?.trim()
 
   # serialize a form
   serializeForm = (el) ->
@@ -106,13 +102,15 @@ do ->
 
     # Use selectors if necessary
     if selectors.email
-      data.email = getValue selectors.email, el
+      data.email = getValue el, selectors.email
+    else
+      data.email ?= ''
 
     for prop in ['firstname', 'lastname', 'name']
       if (selector = selectors[prop])?
-        data.metadata[prop] = getValue selector, el
+        data.metadata[prop] = getValue el, selector
 
-    console.error 'Email is required' unless data.email?
+    console.error 'Email is required' if data.email == ''
 
     data
 
@@ -233,7 +231,7 @@ do ->
       data = serializeForm el
       console.log data
 
-      if validate
+      if ml.validate
         unless data.email?
           return showError 'Email is required'
         if (data.email.indexOf '@') == -1
@@ -284,7 +282,7 @@ do ->
     ml.validate ?= (attr 'validate') ? false
 
     parent   = getContainer script, selectors.container
-    forms    = getElements document.body, selectors.forms
+    forms    = getElements parent, selectors.forms
     handlers = getElements parent, selectors.submits
 
     # find error divs
