@@ -71,11 +71,9 @@ do ->
       [parent]
 
   # get value from a selector
-  getValue = (selector, el = document) ->
-    console.log 'getValue', selector, el
-    found = el.querySelector selector
-    console.log found, found?.value?.trim()
-    found?.value?.trim()
+  getValue = (parent = document.body, selector) ->
+    el = parent.querySelector selector
+    el?.value?.trim()
 
   # serialize a form
   serializeForm = (el) ->
@@ -104,13 +102,15 @@ do ->
 
     # Use selectors if necessary
     if selectors.email
-      data.email = getValue selectors.email, el
+      data.email = getValue el, selectors.email
+    else
+      data.email ?= ''
 
     for prop in ['firstname', 'lastname', 'name']
       if (selector = selectors[prop])?
-        data.metadata[prop] = getValue selector, el
+        data.metadata[prop] = getValue el, selector
 
-    console.error 'Email is required' unless data.email?
+    console.error 'Email is required' if data.email == ''
 
     data
 
