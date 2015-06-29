@@ -19,7 +19,7 @@
     "moment": "^2.10.3",
     "mvstar": "^0.1.19",
     "requisite": "^1.9.9",
-    "riot": "^2.1.0",
+    "riot": "2.1.0",
     "rupture": "^0.6.1",
     "stylus": "^0.51.1",
     "stylus-normalize": "^3.0.3",

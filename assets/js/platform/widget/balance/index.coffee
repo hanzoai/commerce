@@ -56,6 +56,14 @@ class BalanceWidget extends View
     field('createdAt', 'Created On', 'date')
   ]
 
+  events:
+    refresh: ()->
+      m.trigger 'start-spin', 'balance-form-load'
+      @api.get(@path).then (res) =>
+        m.trigger 'stop-spin', 'balance-form-load'
+        @updateModel res.responseText
+      @update()
+
   updateModel: (model)->
     # We should only receive array models
     if !_.isArray(model) || model.length == 0
@@ -101,15 +109,11 @@ class BalanceWidget extends View
     #case sensitivity issues
     userId = opts.userId = opts.userId || opts.userid
 
-    path = "user/#{userId}/transactions"
+    @path = "user/#{userId}/transactions"
 
-    @api = api = Api.get('crowdstart')
+    @api = Api.get('crowdstart')
 
-    m.trigger 'start-spin', 'balance-form-load'
-
-    api.get(path).then (res) =>
-      m.trigger 'stop-spin', 'balance-form-load'
-      @updateModel res.responseText
+    @obs.trigger 'refresh'
 
     @formModel.userId = userId
 
