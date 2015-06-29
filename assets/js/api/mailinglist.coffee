@@ -1,6 +1,15 @@
 do ->
   `var endpoint = "%s", ml = %s` # Embedded by MailingList Js() method
 
+  called    = false
+  errors    = null
+  forms     = null
+  handlers  = null
+  parent    = null
+  script    = null
+  selectors = {}
+  validate  = false
+
   XHR = ->
     xhr = null
 
@@ -29,6 +38,19 @@ do ->
         return
       return
 
+  # get form container
+  getContainer = (script, selector = '')->
+    if selector != ''
+      document.querySelector selectors.container
+    else
+      parent = script.parentNode
+      inputs = parent.getElementsByTagName 'input'
+      if inputs.length < 1
+        document.body
+      else
+        parent
+
+  # get this script tag
   getScript = ->
     # start at the root element
     node = document.documentElement
@@ -39,21 +61,22 @@ do ->
     # last HTMLElement is script tag
     node
 
-  getElements = (script, selector) ->
-    if selector != ''
-      # look up form elements
-      document.querySelectorAll selector
+  # Get elements from inside a parent
+  getElements = (parent, selector) ->
+    console.log 'getElements', parent, selector
+
+    if selector? and selector != ''
+      parent.querySelectorAll selector
     else
-      # use HTML element containing script tag
-      [script.parentNode]
+      [parent]
 
-  getValue = (selector, el = document) ->
-    console.log 'getValue', selector, el
-    found = el.querySelector selector
-    console.log found, found?.value?.trim()
-    found?.value?.trim()
+  # get value from a selector
+  getValue = (parent = document.body, selector) ->
+    el = parent.querySelector selector
+    el?.value?.trim()
 
-  serialize = (el) ->
+  # serialize a form
+  serializeForm = (el) ->
     return {} unless el?
 
     data =
@@ -79,53 +102,107 @@ do ->
 
     # Use selectors if necessary
     if selectors.email
-      data.email = getValue selectors.email, el
+      data.email = getValue el, selectors.email
+    else
+      data.email ?= ''
 
     for prop in ['firstname', 'lastname', 'name']
       if (selector = selectors[prop])?
-        data.metadata[prop] = getValue selector, el
+        data.metadata[prop] = getValue el, selector
 
-    console.error 'Email is required' unless data.email?
+    console.error 'Email is required' if data.email == ''
 
     data
 
-  fb = (opts) ->
-    unless window._fbq?
-      window._fbq = []
-      fbds = document.createElement 'script'
+  # get setting off script tag data attribute
+  attr = (name) ->
+    val = script.getAttribute 'data-' + name
+    return unless val?
+
+    switch val.trim().toLowerCase()
+      when 'false'
+        false
+      when 'true'
+        true
+      else
+        val
+
+  # Google event tracking code
+  google =
+    setup: ->
+      return if window.ga? or window._gaq?
+
+      ((i, s, o, g, r, a, m) ->
+        i['GoogleAnalyticsObject'] = r
+        i[r] = i[r] or ->
+          (i[r].q = i[r].q or []).push arguments
+          return
+
+        i[r].l = 1 * new Date()
+
+        a = s.createElement(o)
+        m = s.getElementsByTagName(o)[0]
+
+        a.async = 1
+        a.src = g
+        m.parentNode.insertBefore a, m
+        return
+      ) window, document, 'script', '//www.google-analytics.com/analytics.js', 'ga'
+      return
+
+    track: (opts) ->
+      return unless opts.category?
+
+      google.setup()
+
+      category = opts.category ? 'Subscription'
+      action   = opts.action   ? opts.name ? 'Signup'
+      label    = opts.label    ? ''
+
+      if window._gaq?
+        window._gaq.push ['_trackEvent', category, action]
+      if window.ga?
+        window.ga 'send', 'event', category, action, label, 0
+
+  # Facebook event tracking
+  facebook =
+    setup: ->
+      return if window._fbq?.loaded
+
+      _fbq = window._fbq or (window._fbq = [])
+
+      fbds = document.createElement('script')
       fbds.async = true
       fbds.src = '//connect.facebook.net/en_US/fbds.js'
       s = document.getElementsByTagName('script')[0]
       s.parentNode.insertBefore fbds, s
       _fbq.loaded = true
+      return
 
-    window._fbq.push ['track', opts.id,
-      value:    opts.value,
-      currency: opts.currency,
-    ]
+    track: (opts) ->
+      return unless opts.id?
 
-  ga = (opts)->
-    unless window._gaq?
-      window._gaq = []
-      ga = document.createElement 'script'
-      ga.type = 'text/javascript'
-      ga.async = true
-      ga.src = ((if 'https:' is document.location.protocol then 'https://' else 'http://')) + 'stats.g.doubleclick.net/dc.js'
-      s = document.getElementsByTagName('script')[0]
-      s.parentNode.insertBefore ga, s
+      facebook.setup()
 
-    window._gaq.push ['_trackEvent', opts.category, opts.name]
+      window._fbq.push ['track', opts.id,
+        value:    opts.value,
+        currency: opts.currency,
+      ]
+      return
 
+  # Trigger event tracking
   track = ->
-    ga ml.google if ml.google.category?
-    fb ml.facebook if ml.facebook.id?
+    facebook.track ml.facebook
+    google.track ml.google
+    return
 
+  # Wire up submit handler
   addHandler = (el, errorEl) ->
     unless errorEl?
-      errorEl = document.createElement 'div'
-      errorEl.className = 'crowdstart-mailinglist-error'
+      errorEl               = document.createElement 'div'
+      errorEl.className     = 'crowdstart-mailinglist-error'
       errorEl.style.display = 'none'
-      errorEl.style.width   = '100%'
+      errorEl.style.width   = 100 + '%%'[0]  # Prevents interpolation from picking up % as a thing needing interpolatin'
       el.appendChild errorEl
 
     showError = (msg) ->
@@ -151,9 +228,10 @@ do ->
       else
         ev.preventDefault()
 
-      data = serialize el
+      data = serializeForm el
+      console.log data
 
-      if validate
+      if ml.validate
         unless data.email?
           return showError 'Email is required'
         if (data.email.indexOf '@') == -1
@@ -192,41 +270,53 @@ do ->
       ev.preventDefault()
       false
 
-  attr = (s) ->
-    script.getAttribute 'data-' + s
+  # Init all the things
+  init = ->
+    if called then return else called = true
 
-  # get script tag
+    props = ['container', 'forms', 'submits', 'errors', 'email', 'firstname', 'lastname', 'name']
+    for prop in props
+      selectors[prop] = (attr prop) ? ml.selectors?[prop]
+
+    # are we validating?
+    ml.validate ?= (attr 'validate') ? false
+
+    parent   = getContainer script, selectors.container
+    forms    = getElements parent, selectors.forms
+    handlers = getElements parent, selectors.submits
+
+    # find error divs
+    if selectors.errors
+      errors = getElements parent, selectors.errors
+    else
+      errors = []
+
+    console.log 'selectors', selectors
+    console.log 'forms', forms
+    console.log 'handlers', handlers
+    console.log 'errors', errors
+
+    for handler, i in handlers
+      do (handler, i) ->
+        return if handler.getAttribute 'data-hijacked'
+
+        handler.setAttribute 'data-hijacked', true
+        handler.addEventListener 'click',  (addHandler forms[i], errors[i])
+        handler.addEventListener 'submit', (addHandler forms[i], errors[i])
+
+  # Get script tag, has to run before rest of DOM loads
   script = getScript()
 
-  selectors = {}
-  props = ['forms', 'submits', 'errors', 'email', 'firstname', 'lastname', 'name']
-  for prop in props
-    selectors[prop] = (attr prop) ? ml.selectors?[prop] ? false
+  # Run init after DOM loads, attach various listeners
+  if document.addEventListener
+    document.addEventListener 'DOMContentLoaded', init, false
+  else if document.attachEvent
+    document.attachEvent 'onreadystatechange', ->
+      init() if document.readyState == 'complete'
 
-  # are we validating?
-  validate = (attr 'validate') ? ml.validate ? ''
-
-  # data attributes can only be strings
-  validate = false if validate?.toLowerCase() == 'false'
-
-  # init
-  forms    = getElements script, selectors.forms
-  handlers = getElements script, selectors.submits
-
-  # error handling
-  if selectors.errors
-    errors = getElements script, selectors.errors
-  else
-    errors = []
-
-  for handler, i in handlers
-    do (handler, i) ->
-      return if handler.getAttribute 'data-hijacked'
-
-      handler.setAttribute 'data-hijacked', true
-      handler.addEventListener 'click',  (addHandler forms[i], errors[i])
-      handler.addEventListener 'submit', (addHandler forms[i], errors[i])
-
-  console.log selectors
+  if window.addEventListener
+      window.addEventListener 'load', init, false
+  else if window.attachEvent
+      window.attachEvent 'onload', init
 
   return
