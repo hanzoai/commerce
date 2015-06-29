@@ -1,0 +1,17 @@
+<div if="{ !isEmpty() }">
+  <table class="table table-striped table-vcenter table-borderless table-condensed table-hover">
+    <thead>
+      <tr>
+        <th each="{ headers }">{name}</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr each="{ model }" class="animated bounceIn">
+        <td each="{ this.parent.headers }">
+          <table-field field="{ this }" value="{ this.parent[id] }" row="{ this.parent }"></table-field>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+<h3 class="text-center" if="{ isEmpty() }">No Data</h3>
