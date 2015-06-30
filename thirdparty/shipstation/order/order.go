@@ -1,6 +1,8 @@
 package order
 
 import (
+	"encoding/xml"
+
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.com/util/log"
@@ -68,6 +70,12 @@ import (
 // 	</Order>
 // </Orders>
 
+type Option struct {
+	Name   string
+	Value  string
+	Weight string
+}
+
 type Item struct {
 	SKU         string
 	Name        string
@@ -77,6 +85,8 @@ type Item struct {
 	Quantity    string
 	UnitPrice   string
 	Location    string
+
+	Options []Option
 }
 
 type Order struct {
@@ -127,4 +137,63 @@ func Get(c *gin.Context) {
 	page := query.Get("page")
 
 	log.Debug("action: %v, startDate: %v, endDate: %v, page: %v", action, startDate, endDate, page, c)
+
+	// Example response
+	ord := Order{}
+	ord.OrderID = "123456"
+	ord.OrderNumber = "ABC123"
+	ord.OrderDate = "12/8/2011 21:56 PM"
+	ord.OrderStatus = "AwaitingShipment"
+	ord.LastModified = "12/8/2011 12:56 PM"
+	ord.ShippingMethod = "USPSPriorityMail"
+	ord.PaymentMethod = "Credit Card"
+	ord.OrderTotal = "123.45"
+	ord.TaxAmount = "0.00"
+	ord.ShippingAmount = "4.50"
+	ord.CustomerNotes = "Please make sure it gets here by Dec. 22nd!"
+	ord.InternalNotes = "Ship by December 18th via Priority Mail."
+
+	ord.Customer.CustomerCode = "dev@hanzo.ai"
+
+	ord.Customer.BillTo.Name = "The President"
+	ord.Customer.BillTo.Company = "US Govt"
+	ord.Customer.BillTo.Phone = "512-555-5555"
+	ord.Customer.BillTo.Email = "dev@hanzo.ai"
+
+	ord.Customer.ShipTo.Name = "The President"
+	ord.Customer.ShipTo.Company = "US Govt"
+	ord.Customer.ShipTo.Address1 = "1600 Pennsylvania Ave"
+	ord.Customer.ShipTo.Address2 = ""
+	ord.Customer.ShipTo.City = "Washington"
+	ord.Customer.ShipTo.State = "DC"
+	ord.Customer.ShipTo.Country = "US"
+	ord.Customer.ShipTo.Phone = "512-555-5555"
+
+	ord.Items = make([]Item, 1, 1)
+	ord.Items[0] = Item{
+		SKU:         "FD88821",
+		Name:        "My Product Name",
+		ImageUrl:    "http://www.mystore.com/products/12345.jpg",
+		Weight:      "8",
+		WeightUnits: "Ounces",
+		Quantity:    "2",
+		UnitPrice:   "13.99",
+		Location:    "A1-B2",
+		Options: []Option{
+			Option{
+				Name:   "Size",
+				Value:  "Large",
+				Weight: "10",
+			},
+			Option{
+				Name:   "Color",
+				Value:  "Green",
+				Weight: "5",
+			},
+		},
+	}
+
+	res, _ := xml.MarshalIndent(Response{[]Order{ord}}, "", "  ")
+	res = append([]byte(xml.Header), res...)
+	c.Data(200, "text/xml", res)
 }
