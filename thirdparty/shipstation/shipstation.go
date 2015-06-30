@@ -4,8 +4,8 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.com/middleware"
-	"crowdstart.com/thirdparty/shipstation/notify"
-	"crowdstart.com/thirdparty/shipstation/order"
+	"crowdstart.com/thirdparty/shipstation/export"
+	"crowdstart.com/thirdparty/shipstation/shipnotify"
 	"crowdstart.com/util/permission"
 	"crowdstart.com/util/router"
 )
@@ -18,6 +18,6 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	})
 	adminRequired := middleware.TokenRequired(permission.Admin)
 
-	api.POST("notify", adminRequired, notify.Post)
-	api.GET("order", adminRequired, order.Get)
+	api.GET("", adminRequired, export.Export)
+	api.POST("", adminRequired, shipnotify.ShipNotify)
 }
