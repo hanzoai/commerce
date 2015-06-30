@@ -6,12 +6,16 @@ import (
 	"strconv"
 	"time"
 
+	aeds "appengine/datastore"
+
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/lineitem"
 	"crowdstart.com/models/order"
+	"crowdstart.com/models/user"
+	"crowdstart.com/util/hashid"
 	"crowdstart.com/util/log"
 )
 
@@ -155,6 +159,51 @@ func newItem(item lineitem.LineItem) Item {
 	return si
 }
 
+type Customer struct {
+	CustomerCode CDATA
+	BillTo       struct {
+		Name    CDATA
+		Company CDATA
+		Phone   CDATA
+		Email   CDATA
+	}
+	ShipTo struct {
+		Name       CDATA
+		Company    CDATA
+		Address1   CDATA
+		Address2   CDATA
+		City       CDATA
+		State      CDATA
+		PostalCode CDATA
+		Country    CDATA
+		Phone      CDATA
+	}
+}
+
+func newCustomer(ord *order.Order, usr *user.User) *Customer {
+	sc := &Customer{}
+
+	if usr == nil {
+		return sc
+	}
+
+	sc.CustomerCode = CDATA(usr.Id())
+	sc.BillTo.Name = CDATA(usr.Name())
+	sc.BillTo.Email = CDATA(usr.Email)
+	sc.BillTo.Phone = CDATA(usr.Phone)
+
+	sc.ShipTo.Name = CDATA(usr.Name())
+	sc.ShipTo.Phone = CDATA(usr.Phone)
+	sc.ShipTo.Address1 = CDATA(ord.ShippingAddress.Line1)
+	sc.ShipTo.Address2 = CDATA(ord.ShippingAddress.Line2)
+	sc.ShipTo.City = CDATA(ord.ShippingAddress.City)
+	sc.ShipTo.State = CDATA(ord.ShippingAddress.State)
+	sc.ShipTo.PostalCode = CDATA(ord.ShippingAddress.PostalCode)
+	sc.ShipTo.Country = CDATA(ord.ShippingAddress.Country)
+
+	return sc
+}
+
 type Order struct {
 	XMLName        xml.Name `xml:"Order"`
 	OrderID        CDATA
@@ -175,26 +224,7 @@ type Order struct {
 		Items []Item
 	}
 
-	Customer struct {
-		CustomerCode CDATA
-		BillTo       struct {
-			Name    CDATA
-			Company CDATA
-			Phone   CDATA
-			Email   CDATA
-		}
-		ShipTo struct {
-			Name       CDATA
-			Company    CDATA
-			Address1   CDATA
-			Address2   CDATA
-			City       CDATA
-			State      CDATA
-			PostalCode CDATA
-			Country    CDATA
-			Phone      CDATA
-		}
-	}
+	Customer *Customer
 }
 
 func newOrder(ord *order.Order) *Order {
@@ -254,21 +284,41 @@ func Get(c *gin.Context) {
 	count, _ := q.Count()
 	pages := int(math.Ceil(float64(count) / float64(100)))
 
-	// Get this page
+	// Get current page of orders
 	orders := make([]*order.Order, 0, 0)
 	_, err = q.Limit(limit).Offset(offset).GetAll(&orders)
 	if err != nil {
 		log.Panic("Unable to fetch orders between %s and %s, page %s: %v", startDate, endDate, page, err, c)
 	}
 
-	log.Debug("Orders: %v", orders, c)
+	numOrders := len(orders)
 
 	// Build XML response
 	res := &Response{}
 	res.Pages = pages
-	res.Orders = make([]*Order, len(orders))
+	res.Orders = make([]*Order, numOrders)
+
+	ctx := db.Context
+	keys := make([]*aeds.Key, numOrders)
+
+	// Fetch orders
 	for i, ord := range orders {
+		// Store order
 		res.Orders[i] = newOrder(ord)
+		// Save user key for later
+		keys[i], _ = hashid.DecodeKey(ctx, ord.UserId)
+	}
+
+	// Fetch users
+	users := make([]*user.User, numOrders)
+	if err := aeds.GetMulti(ctx, keys, users); err != nil {
+		log.Warn("Unable to fetch all users using keys %v: %v", keys, err, c)
+		log.Warn("Found users: %v", users, c)
+	}
+
+	// Set customers
+	for i, ord := range orders {
+		res.Orders[i].Customer = newCustomer(ord, users[i])
 	}
 
 	buf, _ := xml.MarshalIndent(res, "", "  ")
