@@ -71,6 +71,8 @@ import (
 // </Orders>
 
 type Option struct {
+	XMLName xml.Name `xml:"Option"`
+
 	Name   string
 	Value  string
 	Weight string
@@ -88,7 +90,9 @@ type Item struct {
 	UnitPrice   string
 	Location    string
 
-	Options []Option
+	Options struct {
+		Options []Option
+	}
 }
 
 type Order struct {
@@ -179,7 +183,7 @@ func Get(c *gin.Context) {
 	ord.Customer.ShipTo.Phone = "512-555-5555"
 
 	ord.Items.Items = make([]Item, 1, 1)
-	ord.Items.Items[1] = Item{
+	ord.Items.Items[0] = Item{
 		SKU:         "FD88820",
 		Name:        "My Product Name",
 		ImageUrl:    "http://www.mystore.com/products/12345.jpg",
@@ -188,17 +192,18 @@ func Get(c *gin.Context) {
 		Quantity:    "2",
 		UnitPrice:   "13.99",
 		Location:    "A1-B2",
-		Options: []Option{
-			Option{
-				Name:   "Size",
-				Value:  "Large",
-				Weight: "10",
-			},
-			Option{
-				Name:   "Color",
-				Value:  "Green",
-				Weight: "5",
-			},
+	}
+
+	ord.Items.Items[0].Options.Options = []Option{
+		Option{
+			Name:   "Size",
+			Value:  "Large",
+			Weight: "10",
+		},
+		Option{
+			Name:   "Color",
+			Value:  "Green",
+			Weight: "5",
 		},
 	}
 
