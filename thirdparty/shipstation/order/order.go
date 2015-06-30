@@ -2,9 +2,13 @@ package order
 
 import (
 	"encoding/xml"
+	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
+	"crowdstart.com/datastore"
+	"crowdstart.com/models/order"
 	"crowdstart.com/util/log"
 )
 
@@ -154,70 +158,113 @@ type Response struct {
 
 func Get(c *gin.Context) {
 	query := c.Request.URL.Query()
+
+	limit := 100
+	offset := 0
+
+	// Only support export action
 	action := query.Get("action")
-	startDate := query.Get("start_date")
-	endDate := query.Get("end_date")
-	page := query.Get("page")
-
-	log.Debug("action: %v, startDate: %v, endDate: %v, page: %v", action, startDate, endDate, page, c)
-
-	// Example response
-	ord := Order{}
-	ord.OrderID = "123456"
-	ord.OrderNumber = "ABC123"
-	ord.OrderDate = "12/8/2011 21:56 PM"
-	ord.OrderStatus = "AwaitingShipment"
-	ord.LastModified = "12/8/2011 12:56 PM"
-	ord.ShippingMethod = "USPSPriorityMail"
-	ord.PaymentMethod = "Credit Card"
-	ord.OrderTotal = "123.45"
-	ord.TaxAmount = "0.00"
-	ord.ShippingAmount = "4.50"
-	ord.CustomerNotes = "Please make sure it gets here by Dec. 22nd!"
-	ord.InternalNotes = "Ship by December 18th via Priority Mail."
-
-	ord.Customer.CustomerCode = "dev@hanzo.ai"
-
-	ord.Customer.BillTo.Name = "The President"
-	ord.Customer.BillTo.Company = "US Govt"
-	ord.Customer.BillTo.Phone = "512-555-5555"
-	ord.Customer.BillTo.Email = "dev@hanzo.ai"
-
-	ord.Customer.ShipTo.Name = "The President"
-	ord.Customer.ShipTo.Company = "US Govt"
-	ord.Customer.ShipTo.Address1 = "1600 Pennsylvania Ave"
-	ord.Customer.ShipTo.Address2 = ""
-	ord.Customer.ShipTo.City = "Washington"
-	ord.Customer.ShipTo.State = "DC"
-	ord.Customer.ShipTo.Country = "US"
-	ord.Customer.ShipTo.Phone = "512-555-5555"
-
-	ord.Items.Items = make([]Item, 1, 1)
-	ord.Items.Items[0] = Item{
-		SKU:         "FD88820",
-		Name:        "My Product Name",
-		ImageUrl:    "http://www.mystore.com/products/12345.jpg",
-		Weight:      "8",
-		WeightUnits: "Ounces",
-		Quantity:    "2",
-		UnitPrice:   "13.99",
-		Location:    "A1-B2",
+	if action != "export" {
+		log.Panic("Invalid action %s, only understand 'export'", action, c)
 	}
 
-	ord.Items.Items[0].Options.Options = []Option{
-		Option{
-			Name:   "Size",
-			Value:  "Large",
-			Weight: "10",
-		},
-		Option{
-			Name:   "Color",
-			Value:  "Green",
-			Weight: "5",
-		},
+	// Parse offset
+	page, err := strconv.Atoi(query.Get("page"))
+	if err != nil && page > 1 {
+		offset = limit * (page - 1)
 	}
 
-	orders := []Order{ord}
+	// Get start/end dates
+	startDate, err := time.Parse("01/02/2006 15:04", query.Get("start_date"))
+	if err != nil {
+		log.Panic("Unable to parse start date: %v", err, c)
+	}
+
+	endDate, err := time.Parse("01/02/2006 15:04", query.Get("end_date"))
+	if err != nil {
+		log.Panic("Unable to parse end date: %v", err, c)
+	}
+
+	// Query out relevant orders
+	orders := make([]Order, 0)
+	db := datastore.New(c)
+	q := order.Query(db).Order("CreatedAt").
+		Filter("CreatedAt >=", startDate).
+		Filter("CreatedAt <", endDate).
+		Limit(limit).
+		Offset(offset)
+
+	count, _ := order.Query(db).Count()
+	log.Debug("Total orders: %v", count)
+
+	count, _ = q.Count()
+	log.Debug("Number of filtered orders: %v", count)
+
+	_, err = q.GetAll(&orders)
+
+	if err != nil {
+		log.Panic("Unable to fetch orders between %s and %s, page %s: %v", startDate, endDate, page, err, c)
+	}
+
+	log.Debug("Orders: %v", orders, c)
+
+	// // Example response
+	// ord := Order{}
+	// ord.OrderID = "123456"
+	// ord.OrderNumber = "ABC123"
+	// ord.OrderDate = "12/8/2011 21:56 PM"
+	// ord.OrderStatus = "AwaitingShipment"
+	// ord.LastModified = "12/8/2011 12:56 PM"
+	// ord.ShippingMethod = "USPSPriorityMail"
+	// ord.PaymentMethod = "Credit Card"
+	// ord.OrderTotal = "123.45"
+	// ord.TaxAmount = "0.00"
+	// ord.ShippingAmount = "4.50"
+	// ord.CustomerNotes = "Please make sure it gets here by Dec. 22nd!"
+	// ord.InternalNotes = "Ship by December 18th via Priority Mail."
+
+	// ord.Customer.CustomerCode = "dev@hanzo.ai"
+
+	// ord.Customer.BillTo.Name = "The President"
+	// ord.Customer.BillTo.Company = "US Govt"
+	// ord.Customer.BillTo.Phone = "512-555-5555"
+	// ord.Customer.BillTo.Email = "dev@hanzo.ai"
+
+	// ord.Customer.ShipTo.Name = "The President"
+	// ord.Customer.ShipTo.Company = "US Govt"
+	// ord.Customer.ShipTo.Address1 = "1600 Pennsylvania Ave"
+	// ord.Customer.ShipTo.Address2 = ""
+	// ord.Customer.ShipTo.City = "Washington"
+	// ord.Customer.ShipTo.State = "DC"
+	// ord.Customer.ShipTo.Country = "US"
+	// ord.Customer.ShipTo.Phone = "512-555-5555"
+
+	// ord.Items.Items = make([]Item, 1, 1)
+	// ord.Items.Items[0] = Item{
+	// 	SKU:         "FD88820",
+	// 	Name:        "My Product Name",
+	// 	ImageUrl:    "http://www.mystore.com/products/12345.jpg",
+	// 	Weight:      "8",
+	// 	WeightUnits: "Ounces",
+	// 	Quantity:    "2",
+	// 	UnitPrice:   "13.99",
+	// 	Location:    "A1-B2",
+	// }
+
+	// ord.Items.Items[0].Options.Options = []Option{
+	// 	Option{
+	// 		Name:   "Size",
+	// 		Value:  "Large",
+	// 		Weight: "10",
+	// 	},
+	// 	Option{
+	// 		Name:   "Color",
+	// 		Value:  "Green",
+	// 		Weight: "5",
+	// 	},
+	// }
+
+	// orders := []Order{ord}
 	res, _ := xml.MarshalIndent(Response{Orders: orders}, "", "  ")
 	res = append([]byte(xml.Header), res...)
 	c.Data(200, "text/xml", res)
