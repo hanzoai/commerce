@@ -2,6 +2,7 @@ package order
 
 import (
 	"encoding/xml"
+	"math"
 	"strconv"
 	"time"
 
@@ -155,6 +156,12 @@ type Order struct {
 type Response struct {
 	XMLName xml.Name `xml:"Orders"`
 	Orders  []*Order
+	Pages   int `xml:"pages,attr"`
+}
+
+func newOrder(ord *order.Order) *Order {
+	o := &Order{}
+	return o
 }
 
 func Get(c *gin.Context) {
@@ -193,14 +200,14 @@ func Get(c *gin.Context) {
 	orders := make([]*order.Order, 0)
 	q := order.Query(db).Order("CreatedAt").
 		Filter("CreatedAt >=", startDate).
-		Filter("CreatedAt <", endDate).
-		Limit(limit).
-		Offset(offset)
+		Filter("CreatedAt <", endDate)
 
+	// Calculate total pages
 	count, _ := q.Count()
-	log.Debug("Number of filtered orders: %v", count)
+	pages := int(math.Ceil(float64(count) / float64(100)))
 
-	_, err = q.GetAll(&orders)
+	// Get this page
+	_, err = q.Limit(limit).Offset(offset).GetAll(&orders)
 
 	if err != nil {
 		log.Panic("Unable to fetch orders between %s and %s, page %s: %v", startDate, endDate, page, err, c)
@@ -210,6 +217,7 @@ func Get(c *gin.Context) {
 
 	// Build XML response
 	res := &Response{}
+	res.Pages = pages
 	res.Orders = make([]*Order, 0, 0)
 	for _, ord := range orders {
 		o := Order{}
