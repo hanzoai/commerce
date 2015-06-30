@@ -35,13 +35,13 @@ func accessTokenFromHeader(fieldValue string) string {
 }
 
 func ParseToken(c *gin.Context) {
-	// Get the access token from the Request
-	accessToken := accessTokenFromHeader(c.Request.Header.Get("Authorization"))
+	// Use token query param if set
+	query := c.Request.URL.Query()
+	accessToken := query.Get("token")
 
-	// If not set using Authorization header, check for token query param.
 	if accessToken == "" {
-		query := c.Request.URL.Query()
-		accessToken = query.Get("token")
+		// Check if it's set in Authorization header
+		accessToken = accessTokenFromHeader(c.Request.Header.Get("Authorization"))
 
 		// During development cookie may be set from development pages.
 		if appengine.IsDevAppServer() && accessToken == "" {
