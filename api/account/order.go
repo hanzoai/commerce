@@ -51,10 +51,20 @@ func patchOrder(c *gin.Context) {
 		return
 	}
 
-	if err := json.Decode(c.Request.Body, ord); err != nil {
+	// We only want to extend the shipping address for right now
+	// We use a second instance to decode into
+	ord2 := order.New(db)
+
+	// Set the address so we overlay
+	ord2.ShippingAddress = ord.ShippingAddress
+
+	// Decode into ord2
+	if err := json.Decode(c.Request.Body, ord2); err != nil {
 		http.Fail(c, 400, "Failed decode request body", err)
 		return
 	}
+
+	ord.ShippingAddress = ord2.ShippingAddress
 
 	if err := ord.Put(); err != nil {
 		http.Fail(c, 400, "Failed to update order", err)
