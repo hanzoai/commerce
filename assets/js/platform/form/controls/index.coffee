@@ -4,6 +4,7 @@ riot = require 'riot'
 
 util = require '../../util'
 
+Api = crowdcontrol.data.Api
 View = crowdcontrol.view.View
 InputView = crowdcontrol.view.form.InputView
 
@@ -128,49 +129,38 @@ class CurrencySelectView extends BasicSelectView
 
 CurrencySelectView.register()
 
-tokenize = (str)->
-  tokens = str.split(' ')
-  dict = {}
-  for token in tokens
-    if token.indexOf(':') >= 0
-      [k, v] = token.split(':')
-      dict[k] = v
-    else
-      dict[token] = true
-
-  return dict
-
 # tag registration
 helpers.registerTag (inputCfg)->
-  return inputCfg.hints.indexOf('disabled') >= 0
+  return inputCfg.hints['disabled']
 , 'disabled-input'
 
 helpers.registerTag (inputCfg)->
-  return inputCfg.hints.indexOf('basic-select') >= 0
+  return inputCfg.hints['basic-select']
 , 'basic-select'
 
 helpers.registerTag (inputCfg)->
-  return inputCfg.hints.indexOf('country-select') >= 0
+  return inputCfg.hints['country-select']
 , 'country-select'
 
 helpers.registerTag (inputCfg)->
-  return inputCfg.hints.indexOf('currency-type-select') >= 0
+  return inputCfg.hints['currency-type-select']
 , 'currency-select'
 
 helpers.registerTag (inputCfg)->
-  return inputCfg.hints.indexOf('static-date') >= 0
+  return inputCfg.hints['static-date']
 , 'static-date'
 
 helpers.registerTag (inputCfg)->
-  return inputCfg.hints.indexOf('static') >= 0
+  return inputCfg.hints['static']
 , 'static'
 
 helpers.registerTag (inputCfg)->
-  return inputCfg.hints.indexOf('money') >= 0
+  return inputCfg.hints['money']
 , 'money-input'
 
 # validator registration
-helpers.registerValidator ((inputCfg) -> return inputCfg.hints.indexOf('required') >= 0), (model, name)->
+helpers.registerValidator ((inputCfg) -> return inputCfg.hints['required'])
+, (model, name)->
   value = model[name]
   if _.isNumber(value)
     return value
@@ -180,7 +170,8 @@ helpers.registerValidator ((inputCfg) -> return inputCfg.hints.indexOf('required
 
   return value
 
-helpers.registerValidator ((inputCfg) -> return inputCfg.hints.indexOf('email') >= 0), (model, name)->
+helpers.registerValidator ((inputCfg) -> return inputCfg.hints['email'])
+, (model, name)->
   value = model[name]
   value = value.trim().toLowerCase()
   re = /[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?/
@@ -188,32 +179,24 @@ helpers.registerValidator ((inputCfg) -> return inputCfg.hints.indexOf('email') 
     return value
   throw new Error "Enter a valid email"
 
-helpers.registerValidator ((inputCfg) -> return inputCfg.hints.indexOf('money') >= 0), (model, name)->
+helpers.registerValidator ((inputCfg) -> return inputCfg.hints['money'] >= 0)
+, (model, name)->
   value = model[name]
   return parseFloat(value)
 
 # should be okay for single one of these on a form
-emailExceptConfig = null
-helpers.registerValidator (inputCfg) ->
-  hints = tokenize(inputCfg.hints)
-  if hints['email-unique']
-    emailExceptConfig = inputCfg
-    return true
-  return false
+helpers.registerValidator ((inputCfg) ->return inputCfg.hints['email-unique'])
 , (model, name)->
   value = model[name]
-  if emailExceptConfig?
-    hints = tokenize(emailExceptConfig.hints)
+  if value == @hints['email-unique-exception']
+    return value
 
-    if value == hints['email-unique-exception']
-      return value
-
-    return crowdcontrol.config.api.get('account/exists/' + value).then (data)->
-      if data.data.exists
-        throw new Error "Email already exists"
-      return value
-    , ()->
-      return value
+  return Api.get('crowdstart').get('account/exists/' + value).then (res)->
+    if res.responseText.exists
+      throw new Error "Email already exists"
+    return value
+  , ()->
+    return value
   return value
 
 # module.exports =

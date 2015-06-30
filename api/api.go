@@ -19,6 +19,7 @@ import (
 	"crowdstart.com/models/transaction"
 	"crowdstart.com/models/user"
 	"crowdstart.com/models/variant"
+	"crowdstart.com/thirdparty/shipstation"
 	"crowdstart.com/util/rest"
 	"crowdstart.com/util/router"
 
@@ -102,4 +103,7 @@ func init() {
 
 	// Access token API
 	accessTokenApi.Route(api)
+
+	// Shipstation API
+	shipstation.Route(api)
 }
