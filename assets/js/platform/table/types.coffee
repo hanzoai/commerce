@@ -2,6 +2,7 @@ riot = require 'riot'
 _ = require 'underscore'
 
 crowdcontrol = require 'crowdcontrol'
+tokenize = crowdcontrol.view.form.tokenize
 
 View = crowdcontrol.view.View
 Source = crowdcontrol.data.Source
@@ -16,7 +17,8 @@ class TableFieldConfig
   # hints for the tagLookup
   hints: ''
 
-  constructor: (@id, @name, @type='text', @hints = '')->
+  constructor: (@id, @name, @type='text', hints = '')->
+    @hints = tokenize hints
 
 # Model needs to be in the form of:
 #
