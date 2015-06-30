@@ -173,6 +173,11 @@ func (t Type) Code() string {
 	return strings.ToUpper(string(t))
 }
 
+func CentsFromString(s string) Cents {
+	f, _ := strconv.ParseFloat(s, 64)
+	return Cents(int(f * 100))
+}
+
 const (
 	USD Type = "usd"
 	AUD      = "aud"
