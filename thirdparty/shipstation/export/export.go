@@ -1,4 +1,4 @@
-package order
+package export
 
 import (
 	"encoding/xml"
@@ -250,7 +250,7 @@ type Response struct {
 	Pages   int `xml:"pages,attr"`
 }
 
-func Get(c *gin.Context) {
+func Export(c *gin.Context) {
 	query := c.Request.URL.Query()
 
 	limit := 100
