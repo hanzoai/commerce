@@ -39,32 +39,30 @@ import (
 // </ShipNotice>
 
 type Request struct {
-	ShipNotice struct {
-		OrderNumber     string
-		CustomerCode    string
-		LabelCreateDate string
-		ShipDate        string
-		Carrier         string
-		Service         string
-		TrackingNumber  string
-		ShippingCost    string
+	OrderNumber     string
+	CustomerCode    string
+	LabelCreateDate string
+	ShipDate        string
+	Carrier         string
+	Service         string
+	TrackingNumber  string
+	ShippingCost    string
 
-		Recipient struct {
-			Name       string
-			Company    string
-			Address1   string
-			Address2   string
-			City       string
-			State      string
-			PostalCode string
-			Country    string
-		}
+	Recipient struct {
+		Name       string
+		Company    string
+		Address1   string
+		Address2   string
+		City       string
+		State      string
+		PostalCode string
+		Country    string
+	}
 
-		Items []struct {
-			SKU      string
-			Name     string
-			Quantity string
-		}
+	Items []struct {
+		SKU      string
+		Name     string
+		Quantity string
 	}
 }
 
@@ -81,7 +79,9 @@ func Post(c *gin.Context) {
 	}
 
 	req := Request{}
-	xml.Unmarshal(b, &req)
+	if err := xml.Unmarshal(b, &req); err != nil {
+		log.Panic("Unable to unmarshal XML: %v", err, c)
+	}
 
-	log.Debug("action: %v, orderId: %v, carrier: %v, trackingNumber: %v, xml: %v", action, orderId, carrier, trackingNumber, req, c)
+	log.Debug("action: %v, orderId: %v, carrier: %v, trackingNumber: %v, xml: %#v", action, orderId, carrier, trackingNumber, req, c)
 }
