@@ -11,10 +11,19 @@ class BasicTableFieldView extends View
   html: require './basic-field.html'
   js: (opts)->
     @field = opts.field
-    @value = opts.value
+    @value = opts.row[opts.field.id]
     @row = opts.row
 
-new BasicTableFieldView
+BasicTableFieldView.register()
+
+class IdTableFieldView extends BasicTableFieldView
+  tag: 'id-table-field'
+  html: require './link-field.html'
+  js: (opts)->
+    super
+    @path = opts.field.hints['id-path']
+
+IdTableFieldView.register()
 
 class NumericTableFieldView extends BasicTableFieldView
   tag: 'numeric-table-field'
@@ -63,3 +72,7 @@ helpers.registerTag (fieldCfg)->
 helpers.registerTag (fieldCfg)->
   return fieldCfg.type == 'date'
 , 'date-table-field'
+
+helpers.registerTag (fieldCfg)->
+  return fieldCfg.type == 'id'
+, 'id-table-field'
