@@ -90,6 +90,7 @@ type Item struct {
 }
 
 type Order struct {
+	XMLName        xml.Name `xml:"Order"`
 	OrderID        string
 	OrderNumber    string
 	OrderDate      string
@@ -126,7 +127,8 @@ type Order struct {
 }
 
 type Response struct {
-	Orders []Order
+	XMLName xml.Name `xml:"Orders"`
+	Orders  []Order
 }
 
 func Get(c *gin.Context) {
@@ -193,7 +195,8 @@ func Get(c *gin.Context) {
 		},
 	}
 
-	res, _ := xml.MarshalIndent(Response{[]Order{ord}}, "", "  ")
+	orders := []Order{ord}
+	res, _ := xml.MarshalIndent(Response{Orders: orders}, "", "  ")
 	res = append([]byte(xml.Header), res...)
 	c.Data(200, "text/xml", res)
 }
