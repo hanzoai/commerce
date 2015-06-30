@@ -184,13 +184,13 @@ func (o *Order) Load(c <-chan aeds.Property) (err error) {
 	// Ensure we're initialized
 	o.Init()
 
-	// Set order number
-	o.Number = o.NumberFromId()
-
 	// Load supported properties
 	if err = IgnoreFieldMismatch(aeds.LoadStruct(o, c)); err != nil {
 		return err
 	}
+
+	// Set order number
+	o.Number = o.NumberFromId()
 
 	// Deserialize from datastore
 	if len(o.Metadata_) > 0 {
@@ -213,6 +213,9 @@ func (o Order) Fee() currency.Cents {
 }
 
 func (o Order) NumberFromId() int {
+	if o.Id_ == "" {
+		return -1
+	}
 	return hashid.Decode(o.Id_)[1]
 }
 
