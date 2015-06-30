@@ -62,7 +62,7 @@ class UserFormView extends BasicFormView
       @resetModel = _.deepExtend {}, @model
 
   loadData: (model)->
-    @inputConfigs[1].hints += model.email
+    @inputConfigs[1].hints['email-unique-exception'] = model.email
     @resetModel = _.deepExtend {}, @model
 
 UserFormView.register()

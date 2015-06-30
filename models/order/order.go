@@ -189,6 +189,9 @@ func (o *Order) Load(c <-chan aeds.Property) (err error) {
 		return err
 	}
 
+	// Set order number
+	o.Number = o.NumberFromId()
+
 	// Deserialize from datastore
 	if len(o.Metadata_) > 0 {
 		err = json.DecodeBytes([]byte(o.Metadata_), &o.Metadata)
@@ -207,6 +210,13 @@ func (o *Order) Save(c chan<- aeds.Property) (err error) {
 
 func (o Order) Fee() currency.Cents {
 	return currency.Cents(math.Floor(float64(o.Total) * 0.02))
+}
+
+func (o Order) NumberFromId() int {
+	if o.Id_ == "" {
+		return -1
+	}
+	return hashid.Decode(o.Id_)[1]
 }
 
 func (o Order) Description() string {
