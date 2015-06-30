@@ -6,9 +6,9 @@
       </tr>
     </thead>
     <tbody>
-      <tr each="{ model }" class="animated bounceIn">
-        <td each="{ this.parent.headers }">
-          <table-field field="{ this }" value="{ this.parent[id] }" row="{ this.parent }"></table-field>
+      <tr each="{ row, i in model }" class="animated bounceIn">
+        <td each="{ field, j in this.parent.headers }">
+          <table-field field="{ field }" row="{ this.parent }"></table-field>
         </td>
       </tr>
     </tbody>

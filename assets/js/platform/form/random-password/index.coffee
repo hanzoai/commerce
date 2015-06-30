@@ -18,7 +18,7 @@ class ResetPasswordFormView extends FormView
   resetModel: null
 
   inputConfigs:[
-    input('password', 'Password Appears Here', 'disabled'),
+    input('password', 'Password Appears Here'),
   ]
 
   js: (opts)->
