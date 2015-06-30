@@ -3,9 +3,17 @@ package shipnotify
 import (
 	"encoding/xml"
 	"io/ioutil"
+	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
+	aeds "appengine/datastore"
+
+	"crowdstart.com/datastore"
+	"crowdstart.com/middleware"
+	"crowdstart.com/models/order"
+	"crowdstart.com/models/types/currency"
 	"crowdstart.com/util/log"
 )
 
@@ -37,6 +45,22 @@ import (
 //               </Item>
 //        </Items>
 // </ShipNotice>
+
+func parseDate(s string) time.Time {
+	date, err := time.Parse("01/02/2006", s)
+	if err != nil {
+		log.Panic("Unable to parse date: %v", err)
+	}
+	return date
+}
+
+func parseTime(s string) time.Time {
+	date, err := time.Parse("01/02/2006 15:04", s)
+	if err != nil {
+		log.Panic("Unable to parse time: %v", err)
+	}
+	return date
+}
 
 type Request struct {
 	OrderNumber     string
@@ -75,9 +99,21 @@ func ShipNotify(c *gin.Context) {
 		log.Panic("Invalid action %s, only understand 'shipnotify'", action, c)
 	}
 
-	orderId := query.Get("order_number")
-	carrier := query.Get("carrier")
-	trackingNumber := query.Get("tracking_number")
+	orderNumber := query.Get("order_number")
+	id, err := strconv.Atoi(orderNumber)
+	if err != nil {
+		log.Panic("Unable to convert order_number to int: %v", err, c)
+	}
+
+	org := middleware.GetOrganization(c)
+	db := datastore.New(org.Namespace(c))
+	ctx := db.Context
+
+	ord := order.New(db)
+	key := aeds.NewKey(ctx, ord.Kind(), "", int64(id), nil)
+	if err := ord.Get(key); err != nil {
+		log.Panic("Unable to find order: %v", err, c)
+	}
 
 	b, err := ioutil.ReadAll(c.Request.Body)
 	if err != nil {
@@ -89,5 +125,13 @@ func ShipNotify(c *gin.Context) {
 		log.Panic("Unable to unmarshal XML: %v", err, c)
 	}
 
-	log.Debug("action: %v, orderId: %v, carrier: %v, trackingNumber: %v, xml: %#v", action, orderId, carrier, trackingNumber, req, c)
+	ord.FulfillmentStatus = "shipped"
+	ord.Fulfillment.TrackingNumber = req.TrackingNumber
+	ord.Fulfillment.CreatedAt = parseTime(req.LabelCreateDate)
+	ord.Fulfillment.ShippedAt = parseDate(req.ShipDate)
+	ord.Fulfillment.Service = req.Service
+	ord.Fulfillment.Carrier = req.Carrier
+	ord.Fulfillment.Cost = currency.CentsFromString(req.ShippingCost)
+
+	ord.MustPut()
 }
