@@ -1,4 +1,4 @@
-package notify
+package shipnotify
 
 import (
 	"encoding/xml"
@@ -66,9 +66,15 @@ type Request struct {
 	}
 }
 
-func Post(c *gin.Context) {
+func ShipNotify(c *gin.Context) {
 	query := c.Request.URL.Query()
+
+	// Only support export action
 	action := query.Get("action")
+	if action != "shipnotify" {
+		log.Panic("Invalid action %s, only understand 'shipnotify'", action, c)
+	}
+
 	orderId := query.Get("order_number")
 	carrier := query.Get("carrier")
 	trackingNumber := query.Get("tracking_number")
