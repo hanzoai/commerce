@@ -197,9 +197,6 @@ func Get(c *gin.Context) {
 		Limit(limit).
 		Offset(offset)
 
-	count, _ := order.Query(db).Count()
-	log.Debug("Total orders: %v", count)
-
 	count, _ = q.Count()
 	log.Debug("Number of filtered orders: %v", count)
 
