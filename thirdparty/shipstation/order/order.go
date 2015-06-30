@@ -1,6 +1,10 @@
 package order
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/gin-gonic/gin"
+
+	"crowdstart.com/util/log"
+)
 
 // <?xml version="1.0" encoding="utf-8"?>
 // <Orders>
@@ -117,8 +121,8 @@ type Response struct {
 
 func Get(c *gin.Context) {
 	query := c.Request.URL.Query()
-	action = query.Get("action")
-	startDate = query.Get("start_date")
+	action := query.Get("action")
+	startDate := query.Get("start_date")
 	endDate := query.Get("end_date")
 	page := query.Get("page")
 
