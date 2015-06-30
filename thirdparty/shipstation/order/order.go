@@ -77,6 +77,8 @@ type Option struct {
 }
 
 type Item struct {
+	XMLName xml.Name `xml:"Item"`
+
 	SKU         string
 	Name        string
 	ImageUrl    string
@@ -103,7 +105,8 @@ type Order struct {
 	ShippingAmount string
 	CustomerNotes  string
 	InternalNotes  string
-	Customer       struct {
+
+	Customer struct {
 		CustomerCode string
 		BillTo       struct {
 			Name    string
@@ -123,7 +126,11 @@ type Order struct {
 			Phone      string
 		}
 	}
-	Items []Item
+
+	// Need to nest items slice so we can have a proper XML node here
+	Items struct {
+		Items []Item
+	}
 }
 
 type Response struct {
@@ -171,9 +178,9 @@ func Get(c *gin.Context) {
 	ord.Customer.ShipTo.Country = "US"
 	ord.Customer.ShipTo.Phone = "512-555-5555"
 
-	ord.Items = make([]Item, 1, 1)
-	ord.Items[0] = Item{
-		SKU:         "FD88821",
+	ord.Items.Items = make([]Item, 1, 1)
+	ord.Items.Items[1] = Item{
+		SKU:         "FD88820",
 		Name:        "My Product Name",
 		ImageUrl:    "http://www.mystore.com/products/12345.jpg",
 		Weight:      "8",
