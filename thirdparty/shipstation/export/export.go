@@ -233,7 +233,7 @@ func newOrder(ord *order.Order) *Order {
 	so.OrderNumber = ord.Number
 	so.OrderDate = Date(ord.CreatedAt)
 	so.LastModified = Date(ord.UpdatedAt)
-	so.OrderStatus = CDATA(ord.Status)
+	so.OrderStatus = CDATA(ord.FulfillmentStatus)
 	so.OrderTotal = ord.DisplayTotal()
 	so.TaxAmount = ord.DisplayTax()
 	so.ShippingAmount = ord.DisplayShipping()
