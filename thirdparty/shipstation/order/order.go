@@ -10,19 +10,10 @@ import (
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
+	"crowdstart.com/models/lineitem"
 	"crowdstart.com/models/order"
 	"crowdstart.com/util/log"
 )
-
-type CDATA string
-
-func (n CDATA) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
-	return e.EncodeElement(struct {
-		S string `xml:",innerxml"`
-	}{
-		S: "<![CDATA[" + string(n) + "]]>",
-	}, start)
-}
 
 // <?xml version="1.0" encoding="utf-8"?>
 // <Orders>
@@ -86,6 +77,38 @@ func (n CDATA) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
 // 	</Order>
 // </Orders>
 
+func parseDate(s string) time.Time {
+	date, err := time.Parse("01/02/2006 15:04", s)
+	if err != nil {
+		log.Panic("Unable to parse start date: %v", err)
+	}
+	return date
+}
+
+func renderDate(date Date) string {
+	return time.Time(date).Format("01/02/2006 15:04")
+}
+
+type CDATA string
+
+func (c CDATA) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
+	return e.EncodeElement(struct {
+		S string `xml:",innerxml"`
+	}{
+		S: "<![CDATA[" + string(c) + "]]>",
+	}, start)
+}
+
+type Date time.Time
+
+func (d Date) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
+	return e.EncodeElement(struct {
+		S string `xml:",innerxml"`
+	}{
+		S: renderDate(d),
+	}, start)
+}
+
 type Option struct {
 	XMLName xml.Name `xml:"Option"`
 
@@ -102,7 +125,7 @@ type Item struct {
 	ImageUrl    CDATA
 	Weight      string
 	WeightUnits string
-	Quantity    string
+	Quantity    int
 	UnitPrice   string
 	Location    CDATA
 
@@ -111,13 +134,34 @@ type Item struct {
 	}
 }
 
+func newItem(item lineitem.LineItem) Item {
+	si := Item{}
+	si.SKU = CDATA(item.ProductSlug)
+	si.Name = CDATA(item.ProductName)
+
+	if item.VariantSKU != "" {
+		si.SKU = CDATA(item.VariantSKU)
+	}
+
+	if item.VariantName != "" {
+		si.SKU = CDATA(item.VariantName)
+	}
+
+	si.UnitPrice = item.DisplayPrice()
+	si.Quantity = item.Quantity
+	si.Weight = item.Weight.String()
+	si.WeightUnits = string(item.WeightUnit)
+
+	return si
+}
+
 type Order struct {
 	XMLName        xml.Name `xml:"Order"`
 	OrderID        CDATA
-	OrderNumber    CDATA
-	OrderDate      string
+	OrderNumber    int
+	OrderDate      Date
 	OrderStatus    CDATA
-	LastModified   string
+	LastModified   Date
 	ShippingMethod CDATA
 	PaymentMethod  CDATA
 	OrderTotal     string
@@ -125,6 +169,11 @@ type Order struct {
 	ShippingAmount string
 	CustomerNotes  CDATA
 	InternalNotes  CDATA
+
+	// Need to nest items slice so we can have a proper XML node here
+	Items struct {
+		Items []Item
+	}
 
 	Customer struct {
 		CustomerCode CDATA
@@ -146,22 +195,29 @@ type Order struct {
 			Phone      CDATA
 		}
 	}
+}
 
-	// Need to nest items slice so we can have a proper XML node here
-	Items struct {
-		Items []Item
+func newOrder(ord *order.Order) *Order {
+	so := &Order{}
+	so.OrderID = CDATA(ord.Id())
+	so.OrderNumber = ord.Number
+	so.OrderDate = Date(ord.CreatedAt)
+	so.LastModified = Date(ord.UpdatedAt)
+	so.OrderStatus = CDATA(ord.Status)
+	so.OrderTotal = ord.DisplayTotal()
+	so.TaxAmount = ord.DisplayTax()
+	so.ShippingAmount = ord.DisplayShipping()
+	so.Items.Items = make([]Item, len(ord.Items))
+	for i, item := range ord.Items {
+		so.Items.Items[i] = newItem(item)
 	}
+	return so
 }
 
 type Response struct {
 	XMLName xml.Name `xml:"Orders"`
 	Orders  []*Order
 	Pages   int `xml:"pages,attr"`
-}
-
-func newOrder(ord *order.Order) *Order {
-	o := &Order{}
-	return o
 }
 
 func Get(c *gin.Context) {
@@ -183,15 +239,8 @@ func Get(c *gin.Context) {
 	}
 
 	// Get start/end dates
-	startDate, err := time.Parse("01/02/2006 15:04", query.Get("start_date"))
-	if err != nil {
-		log.Panic("Unable to parse start date: %v", err, c)
-	}
-
-	endDate, err := time.Parse("01/02/2006 15:04", query.Get("end_date"))
-	if err != nil {
-		log.Panic("Unable to parse end date: %v", err, c)
-	}
+	startDate := parseDate(query.Get("start_date"))
+	endDate := parseDate(query.Get("end_date"))
 
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespace(c))
@@ -218,12 +267,9 @@ func Get(c *gin.Context) {
 	// Build XML response
 	res := &Response{}
 	res.Pages = pages
-	res.Orders = make([]*Order, 0, 0)
-	for _, ord := range orders {
-		o := Order{}
-		// Convert order -> shipstation order
-		o.OrderID = CDATA(ord.Id())
-		res.Orders = append(res.Orders, &o)
+	res.Orders = make([]*Order, len(orders))
+	for i, ord := range orders {
+		res.Orders[i] = newOrder(ord)
 	}
 
 	buf, _ := xml.MarshalIndent(res, "", "  ")
