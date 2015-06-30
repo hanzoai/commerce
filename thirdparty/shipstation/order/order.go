@@ -246,7 +246,6 @@ func Get(c *gin.Context) {
 	db := datastore.New(org.Namespace(c))
 
 	// Query out relevant orders
-	orders := make([]*order.Order, 0)
 	q := order.Query(db).Order("CreatedAt").
 		Filter("CreatedAt >=", startDate).
 		Filter("CreatedAt <", endDate)
@@ -256,8 +255,8 @@ func Get(c *gin.Context) {
 	pages := int(math.Ceil(float64(count) / float64(100)))
 
 	// Get this page
+	orders := make([]*order.Order, 0, 0)
 	_, err = q.Limit(limit).Offset(offset).GetAll(&orders)
-
 	if err != nil {
 		log.Panic("Unable to fetch orders between %s and %s, page %s: %v", startDate, endDate, page, err, c)
 	}
