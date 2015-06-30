@@ -16,8 +16,8 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 	})
-	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
+	adminRequired := middleware.TokenRequired(permission.Admin)
 
-	api.POST("notify", publishedRequired, notify.Post)
-	api.GET("order", publishedRequired, order.Get)
+	api.POST("notify", adminRequired, notify.Post)
+	api.GET("order", adminRequired, order.Get)
 }
