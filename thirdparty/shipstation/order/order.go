@@ -8,6 +8,16 @@ import (
 	"crowdstart.com/util/log"
 )
 
+type CDATA string
+
+func (n CDATA) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
+	return e.EncodeElement(struct {
+		S string `xml:",innerxml"`
+	}{
+		S: "<![CDATA[" + string(n) + "]]>",
+	}, start)
+}
+
 // <?xml version="1.0" encoding="utf-8"?>
 // <Orders>
 // 	<Order>
@@ -73,22 +83,22 @@ import (
 type Option struct {
 	XMLName xml.Name `xml:"Option"`
 
-	Name   string
-	Value  string
+	Name   CDATA
+	Value  CDATA
 	Weight string
 }
 
 type Item struct {
 	XMLName xml.Name `xml:"Item"`
 
-	SKU         string
-	Name        string
-	ImageUrl    string
+	SKU         CDATA
+	Name        CDATA
+	ImageUrl    CDATA
 	Weight      string
 	WeightUnits string
 	Quantity    string
 	UnitPrice   string
-	Location    string
+	Location    CDATA
 
 	Options struct {
 		Options []Option
@@ -97,37 +107,37 @@ type Item struct {
 
 type Order struct {
 	XMLName        xml.Name `xml:"Order"`
-	OrderID        string
-	OrderNumber    string
+	OrderID        CDATA
+	OrderNumber    CDATA
 	OrderDate      string
-	OrderStatus    string
+	OrderStatus    CDATA
 	LastModified   string
-	ShippingMethod string
-	PaymentMethod  string
+	ShippingMethod CDATA
+	PaymentMethod  CDATA
 	OrderTotal     string
 	TaxAmount      string
 	ShippingAmount string
-	CustomerNotes  string
-	InternalNotes  string
+	CustomerNotes  CDATA
+	InternalNotes  CDATA
 
 	Customer struct {
-		CustomerCode string
+		CustomerCode CDATA
 		BillTo       struct {
-			Name    string
-			Company string
-			Phone   string
-			Email   string
+			Name    CDATA
+			Company CDATA
+			Phone   CDATA
+			Email   CDATA
 		}
 		ShipTo struct {
-			Name       string
-			Company    string
-			Address1   string
-			Address2   string
-			City       string
-			State      string
-			PostalCode string
-			Country    string
-			Phone      string
+			Name       CDATA
+			Company    CDATA
+			Address1   CDATA
+			Address2   CDATA
+			City       CDATA
+			State      CDATA
+			PostalCode CDATA
+			Country    CDATA
+			Phone      CDATA
 		}
 	}
 
