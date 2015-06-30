@@ -197,7 +197,7 @@ func Get(c *gin.Context) {
 		Limit(limit).
 		Offset(offset)
 
-	count, _ = q.Count()
+	count, _ := q.Count()
 	log.Debug("Number of filtered orders: %v", count)
 
 	_, err = q.GetAll(&orders)
