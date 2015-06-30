@@ -1,7 +1,6 @@
 package weight
 
-type Mass float64
-type Unit string
+import "strconv"
 
 const (
 	Pound    Unit = "lb"
@@ -9,6 +8,14 @@ const (
 	Kilogram      = "kg"
 	Gram          = "g"
 )
+
+type Mass float64
+
+func (m Mass) String() string {
+	return strconv.FormatFloat(float64(m), 'f', 2, 64)
+}
+
+type Unit string
 
 // Convert everything to grams
 var conversions = map[Unit]float64{Pound: 453.592, Ounce: 28.3495, Kilogram: 1000, Gram: 1}

@@ -16,7 +16,6 @@ import (
 	"crowdstart.com/models/transaction"
 	"crowdstart.com/models/types/country"
 	"crowdstart.com/models/types/currency"
-	"crowdstart.com/util/hashid"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/searchpartial"
@@ -320,10 +319,6 @@ func (u *User) LoadReferrals() error {
 func (u *User) LoadOrders() error {
 	if _, err := order.Query(u.Db).Filter("UserId=", u.Id()).GetAll(&u.Orders); err != nil {
 		return err
-	}
-
-	for i, o := range u.Orders {
-		u.Orders[i].Number = hashid.Decode(o.Id_)[1]
 	}
 
 	return nil
