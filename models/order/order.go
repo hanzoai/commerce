@@ -19,6 +19,7 @@ import (
 	"crowdstart.com/models/store"
 	"crowdstart.com/models/types/country"
 	"crowdstart.com/models/types/currency"
+	"crowdstart.com/util/hashid"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/val"
@@ -183,6 +184,9 @@ func (o *Order) Load(c <-chan aeds.Property) (err error) {
 	// Ensure we're initialized
 	o.Init()
 
+	// Set order number
+	o.Number = o.NumberFromId()
+
 	// Load supported properties
 	if err = IgnoreFieldMismatch(aeds.LoadStruct(o, c)); err != nil {
 		return err
@@ -206,6 +210,10 @@ func (o *Order) Save(c chan<- aeds.Property) (err error) {
 
 func (o Order) Fee() currency.Cents {
 	return currency.Cents(math.Floor(float64(o.Total) * 0.02))
+}
+
+func (o Order) NumberFromId() int {
+	return hashid.Decode(o.Id_)[1]
 }
 
 func (o Order) Description() string {
