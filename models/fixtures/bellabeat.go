@@ -3,10 +3,8 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/auth/password"
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/organization"
-	"crowdstart.com/models/user"
 )
 
 var Bellabeat = New("bellabeat", func(c *gin.Context) *organization.Organization {
@@ -16,18 +14,14 @@ var Bellabeat = New("bellabeat", func(c *gin.Context) *organization.Organization
 	org.Name = "bellabeat"
 	org.GetOrCreate("Name=", org.Name)
 
-	u := user.New(db)
-	u.Email = "bellabeat-shipstation@crowdstart.com"
-	u.GetOrCreate("Email=", u.Email)
-	u.FirstName = "Shipstation"
-	u.LastName = "API"
-	u.Organizations = []string{org.Id()}
-	u.PasswordHash, _ = password.Hash("xvMQrMv2c5dCFbVG")
-
-	u.Put()
-
-	org.Admins = append(org.Admins, u.Id())
-	org.Put()
+	// u := user.New(db)
+	// u.Email = "bellabeat-shipstation@crowdstart.com"
+	// u.GetOrCreate("Email=", u.Email)
+	// u.FirstName = "Shipstation"
+	// u.LastName = "API"
+	// u.Organizations = []string{org.Id()}
+	// u.PasswordHash, _ = password.Hash("xvMQrMv2c5dCFbVG")
+	// u.Put()
 
 	// u2 := user.New(db)
 	// u2.Email = "marko@bellabeat.com"
