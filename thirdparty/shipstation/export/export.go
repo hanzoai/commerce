@@ -14,9 +14,12 @@ import (
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/lineitem"
 	"crowdstart.com/models/order"
+	"crowdstart.com/models/payment"
 	"crowdstart.com/models/user"
 	"crowdstart.com/util/hashid"
 	"crowdstart.com/util/log"
+
+	. "crowdstart.com/models"
 )
 
 // <?xml version="1.0" encoding="utf-8"?>
@@ -233,13 +236,38 @@ func newOrder(ord *order.Order) *Order {
 	so.OrderNumber = ord.Number
 	so.OrderDate = Date(ord.CreatedAt)
 	so.LastModified = Date(ord.UpdatedAt)
-	so.OrderStatus = CDATA(ord.FulfillmentStatus)
 	so.OrderTotal = ord.DisplayTotal()
 	so.TaxAmount = ord.DisplayTax()
 	so.ShippingAmount = ord.DisplayShipping()
 	so.Items.Items = make([]Item, len(ord.Items))
 	for i, item := range ord.Items {
 		so.Items.Items[i] = newItem(item)
+	}
+
+	// Try to figure out order status
+	if ord.Status.PaymentStatus == payment.Unpaid {
+		so.OrderStatus = CDATA(payment.Unpaid)
+	}
+
+	if ord.Status.PaymentStatus == payment.Paid {
+		so.OrderStatus = CDATA(payment.Paid)
+	}
+
+	if ord.Status.FulfillmentStatus = FulfillmentShipped {
+		so.OrderStatus = CDATA(FulfillmentShipped)
+	}
+
+	if ord.Status == order.Cancelled {
+		so.OrderStatus = CDATA(order.Cancelled)
+	}
+
+	if ord.Status == order.Locked {
+		so.OrderStatus = CDATA(order.Locked)
+	}
+
+	// Default to FulfillmentStatus
+	if so.OrderStatus == "" {
+		so.OrderStatus = CDATA(ord.FulfillmentStatus)
 	}
 	return so
 }
