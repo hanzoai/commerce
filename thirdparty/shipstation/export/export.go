@@ -320,8 +320,7 @@ func Export(c *gin.Context) {
 	// Query out relevant orders
 	q := order.Query(db).Order("CreatedAt").
 		Filter("CreatedAt >=", startDate).
-		Filter("CreatedAt <", endDate).
-		Filter("Test =", false)
+		Filter("CreatedAt <", endDate)
 
 	// Calculate total pages
 	count, _ := q.Count()
@@ -368,6 +367,13 @@ func Export(c *gin.Context) {
 			res.Orders[i].Customer = customer
 		} else {
 			log.Warn("Missing COUNTRY: %v, %v, %v", customer, ord, users[i], c)
+			res.Orders[i] = nil
+		}
+	}
+
+	// Filter out test charges
+	for i, ord := range orders {
+		if ord.Test == true {
 			res.Orders[i] = nil
 		}
 	}
