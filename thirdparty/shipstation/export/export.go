@@ -375,7 +375,9 @@ func Export(c *gin.Context) {
 		// Can't ship to someone without a country
 		if string(customer.ShipTo.Country) != "" {
 			res.Orders[i].Customer = customer
+		} else {
 			log.Warn("Missing COUNTRY: %v, %v, %v", customer, ord, users[i], c)
+			res.Orders[i] = nil
 		}
 	}
 
