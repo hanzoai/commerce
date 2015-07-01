@@ -26,7 +26,7 @@ func setOrg(c *gin.Context) {
 		log.Panic("Unable to get current user", c)
 	}
 
-	if !(org.IsAdminId(userid) || org.IsOwnerId(userid)) {
+	if !(org.IsAdmin(userid) || org.IsOwner(userid)) {
 		log.Panic("Not a valid admin/owner for this organization", c)
 	}
 

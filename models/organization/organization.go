@@ -161,9 +161,9 @@ func (o *Organization) AddDefaultTokens() {
 	o.AddToken("test-published-key", permission.Published|permission.Test|permission.ReadCoupon|permission.ReadProduct|permission.WriteReferrer)
 }
 
-func userId(usr interface{}) string {
+func userId(userOrId interface{}) string {
 	userid := ""
-	switch v := usr.(type) {
+	switch v := userOrId.(type) {
 	case *user.User:
 		userid = v.Id()
 	case string:
@@ -172,8 +172,8 @@ func userId(usr interface{}) string {
 	return userid
 }
 
-func (o Organization) IsAdmin(usr interface{}) bool {
-	userid := userId(usr)
+func (o Organization) IsAdmin(userOrId interface{}) bool {
+	userid := userId(userOrId)
 
 	for _, id := range o.Admins {
 		if id == userid {
@@ -183,8 +183,8 @@ func (o Organization) IsAdmin(usr interface{}) bool {
 	return false
 }
 
-func (o Organization) IsOwner(usr interface{}) bool {
-	userid := userId(usr)
+func (o Organization) IsOwner(userOrId interface{}) bool {
+	userid := userId(userOrId)
 
 	for _, id := range o.Owners {
 		if id == userid {
