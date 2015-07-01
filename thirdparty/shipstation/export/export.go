@@ -320,7 +320,8 @@ func Export(c *gin.Context) {
 	// Query out relevant orders
 	q := order.Query(db).Order("CreatedAt").
 		Filter("CreatedAt >=", startDate).
-		Filter("CreatedAt <", endDate)
+		Filter("CreatedAt <", endDate).
+		Filter("Test =", false)
 
 	// Calculate total pages
 	count, _ := q.Count()
