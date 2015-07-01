@@ -208,6 +208,26 @@ func newCustomer(ord *order.Order, usr *user.User) *Customer {
 	sc.ShipTo.PostalCode = CDATA(ord.ShippingAddress.PostalCode)
 	sc.ShipTo.Country = CDATA(ord.ShippingAddress.Country)
 
+	// Default to user if missing
+	if sc.ShipTo.Address1 != "" {
+		sc.ShipTo.Address1 = CDATA(usr.ShippingAddress.Line1)
+	}
+	if sc.ShipTo.Address2 != "" {
+		sc.ShipTo.Address2 = CDATA(usr.ShippingAddress.Line2)
+	}
+	if sc.ShipTo.City != "" {
+		sc.ShipTo.City = CDATA(usr.ShippingAddress.City)
+	}
+	if sc.ShipTo.State != "" {
+		sc.ShipTo.State = CDATA(usr.ShippingAddress.State)
+	}
+	if sc.ShipTo.PostalCode != "" {
+		sc.ShipTo.PostalCode = CDATA(usr.ShippingAddress.PostalCode)
+	}
+	if sc.ShipTo.Country != "" {
+		sc.ShipTo.Country = CDATA(usr.ShippingAddress.Country)
+	}
+
 	return sc
 }
 
@@ -350,7 +370,12 @@ func Export(c *gin.Context) {
 
 	// Set customers
 	for i, ord := range orders {
-		res.Orders[i].Customer = newCustomer(ord, users[i])
+		customer := newCustomer(ord, users[i])
+
+		// Can't ship to someone without a country
+		if string(customer.ShipTo.Country) != "" {
+			res.Orders[i].Customer = customer
+		}
 	}
 
 	buf, _ := xml.MarshalIndent(res, "", "  ")
