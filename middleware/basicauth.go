@@ -28,14 +28,14 @@ func BasicAuth() gin.HandlerFunc {
 	realm := "Basic realm=" + strconv.Quote("Authorization Required")
 
 	return func(c *gin.Context) {
-		id, password := parseAuthHeader(c.Request.Header.Get("Authorization"))
+		email, password := parseAuthHeader(c.Request.Header.Get("Authorization"))
 
 		db := datastore.New(c)
 		usr := user.New(db)
-		if err := usr.GetById(id); err != nil {
+		if err := usr.GetByEmail(email); err != nil {
 			c.Request.Header.Set("WWW-Authenticate", realm)
 			c.Abort(401)
-			log.Warn("Unable to get user by id '%v': %v", id, err, c)
+			log.Warn("Unable to get user with email '%v': %v", email, err, c)
 		}
 
 		// Validate password
