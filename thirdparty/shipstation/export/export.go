@@ -245,15 +245,15 @@ func newOrder(ord *order.Order) *Order {
 	}
 
 	// Try to figure out order status
-	if ord.Status.PaymentStatus == payment.Unpaid {
+	if ord.PaymentStatus == payment.Unpaid {
 		so.OrderStatus = CDATA(payment.Unpaid)
 	}
 
-	if ord.Status.PaymentStatus == payment.Paid {
+	if ord.PaymentStatus == payment.Paid {
 		so.OrderStatus = CDATA(payment.Paid)
 	}
 
-	if ord.Status.FulfillmentStatus = FulfillmentShipped {
+	if ord.FulfillmentStatus == FulfillmentShipped {
 		so.OrderStatus = CDATA(FulfillmentShipped)
 	}
 
