@@ -4,6 +4,7 @@ import (
 	"encoding/xml"
 	"math"
 	"strconv"
+	"strings"
 	"time"
 
 	aeds "appengine/datastore"
@@ -83,6 +84,9 @@ import (
 // 		</Items>
 // 	</Order>
 // </Orders>
+func removeCommas(s string) string {
+	return strings.Replace(s, ",", "", -1)
+}
 
 func parseDate(s string) time.Time {
 	date, err := time.Parse("01/02/2006 15:04", s)
@@ -154,7 +158,7 @@ func newItem(item lineitem.LineItem) Item {
 		si.SKU = CDATA(item.VariantName)
 	}
 
-	si.UnitPrice = item.DisplayPrice()
+	si.UnitPrice = removeCommas(item.DisplayPrice())
 	si.Quantity = item.Quantity
 	si.Weight = item.Weight.String()
 	si.WeightUnits = string(item.WeightUnit)
@@ -236,9 +240,9 @@ func newOrder(ord *order.Order) *Order {
 	so.OrderNumber = ord.Number
 	so.OrderDate = Date(ord.CreatedAt)
 	so.LastModified = Date(ord.UpdatedAt)
-	so.OrderTotal = ord.DisplayTotal()
-	so.TaxAmount = ord.DisplayTax()
-	so.ShippingAmount = ord.DisplayShipping()
+	so.OrderTotal = removeCommas(ord.DisplayTotal())
+	so.TaxAmount = removeCommas(ord.DisplayTax())
+	so.ShippingAmount = removeCommas(ord.DisplayShipping())
 	so.Items.Items = make([]Item, len(ord.Items))
 	for i, item := range ord.Items {
 		so.Items.Items[i] = newItem(item)
