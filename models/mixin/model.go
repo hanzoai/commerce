@@ -12,7 +12,6 @@ import (
 	"crowdstart.com/datastore"
 	"crowdstart.com/util/hashid"
 	"crowdstart.com/util/json"
-	"crowdstart.com/util/log"
 	"crowdstart.com/util/rand"
 	"crowdstart.com/util/structs"
 	"crowdstart.com/util/val"
@@ -303,12 +302,8 @@ func (m *Model) GetById(id string) error {
 	// Try to decode key
 	key, err := hashid.DecodeKey(m.Db.Context, id)
 
-	ctx := m.Db.Context
-	log.Warn("Tried to decode id: %v, with kind: %v, got key: %v, err: %v", id, m.Kind(), key, err, ctx)
-
 	// Use key if we have one
 	if err == nil {
-		log.Warn("Ok we got a key! Goodbye!", ctx)
 		return m.Get(key)
 	}
 
@@ -336,15 +331,12 @@ func (m *Model) GetById(id string) error {
 		return datastore.InvalidKey
 	}
 
-	log.Warn("Trying to find id: %v, using filter: %v", id, filterStr, ctx)
-
 	// Try and fetch by filterStr
 	ok, err := m.Query().Filter(filterStr+"=", id).First()
 	if !ok {
 		return datastore.KeyNotFound
 	}
 
-	log.Warn("Found it????", ctx)
 	return err
 }
 
