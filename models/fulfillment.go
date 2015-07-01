@@ -10,8 +10,7 @@ type FulfillmentStatus string
 
 const (
 	FulfillmentUnfulfilled FulfillmentStatus = "unfulfilled"
-	fulfillmentShipped                       = "shipped"
-	FulfillmentFulfilled                     = "fulfilled"
+	FulfillmentShipped                       = "shipped"
 	FulfillmentProcessing                    = "processing"
 	FulFillmentCancelled                     = "cancelled"
 )
