@@ -306,7 +306,7 @@ func Export(c *gin.Context) {
 
 	// Parse offset
 	page, err := strconv.Atoi(query.Get("page"))
-	if err != nil && page > 1 {
+	if err == nil && page > 1 {
 		offset = limit * (page - 1)
 	}
 
