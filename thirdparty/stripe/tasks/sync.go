@@ -40,6 +40,9 @@ var SyncCharges = task.Func("stripe-sync-charges", func(c *gin.Context, args ...
 	orgname := ""
 	test := false
 
+	log.Debug("Request: %#v", c.Request, c)
+	log.Debug("Args: %#v", args, c)
+
 	// If we're called as an HTTP web task, we need to get organization off query string
 	if c.Request != nil {
 		query := c.Request.URL.Query()
@@ -58,7 +61,7 @@ var SyncCharges = task.Func("stripe-sync-charges", func(c *gin.Context, args ...
 
 	// Lookup organization
 	if err := org.GetById(orgname); err != nil {
-		log.Error("Unable to find organization(%s). %#v", orgname, err, c)
+		log.Error("Unable to find organization '%s': %v", orgname, err, c)
 		return
 	}
 
