@@ -4,9 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.com/datastore"
-	"crowdstart.com/models/namespace"
 	"crowdstart.com/models/organization"
-	"crowdstart.com/util/log"
 )
 
 var Bellabeat = New("bellabeat", func(c *gin.Context) *organization.Organization {
@@ -17,12 +15,12 @@ var Bellabeat = New("bellabeat", func(c *gin.Context) *organization.Organization
 	org.GetOrCreate("Name=", org.Name)
 
 	// u := user.New(db)
-	// u.Email = "sandro@bellabeat.com"
+	// u.Email = "bellabeat-shipstation@crowdstart.com"
 	// u.GetOrCreate("Email=", u.Email)
-	// u.FirstName = "Sandro"
-	// u.LastName = "Mur"
+	// u.FirstName = "Shipstation"
+	// u.LastName = "API"
 	// u.Organizations = []string{org.Id()}
-	// u.PasswordHash, _ = password.Hash("bellabeatpassword!")
+	// u.PasswordHash, _ = password.Hash("xvMQrMv2c5dCFbVG")
 	// u.Put()
 
 	// u2 := user.New(db)
@@ -62,37 +60,37 @@ var Bellabeat = New("bellabeat", func(c *gin.Context) *organization.Organization
 	// // Email configuration
 	// org.Mandrill.APIKey = ""
 
-	org.Email.Defaults.Enabled = true
-	org.Email.Defaults.FromName = "Bellabeat"
-	org.Email.Defaults.FromEmail = "hi@bellabeat.com"
+	// org.Email.Defaults.Enabled = true
+	// org.Email.Defaults.FromName = "Bellabeat"
+	// org.Email.Defaults.FromEmail = "hi@bellabeat.com"
 
-	org.Email.OrderConfirmation.Subject = "LEAF Order Confirmation"
-	org.Email.OrderConfirmation.Template = readEmailTemplate("/resources/bellabeat/emails/order-confirmation.html")
-	org.Email.OrderConfirmation.Enabled = true
+	// org.Email.OrderConfirmation.Subject = "LEAF Order Confirmation"
+	// org.Email.OrderConfirmation.Template = readEmailTemplate("/resources/bellabeat/emails/order-confirmation.html")
+	// org.Email.OrderConfirmation.Enabled = true
 
-	org.Email.User.PasswordReset.Template = readEmailTemplate("/resources/bellabeat/emails/user-password-reset.html")
-	org.Email.User.PasswordReset.Subject = "Reset your Bellabeat password"
-	org.Email.User.PasswordReset.Enabled = true
+	// org.Email.User.PasswordReset.Template = readEmailTemplate("/resources/bellabeat/emails/user-password-reset.html")
+	// org.Email.User.PasswordReset.Subject = "Reset your Bellabeat password"
+	// org.Email.User.PasswordReset.Enabled = true
 
-	org.Email.User.EmailConfirmation.Template = readEmailTemplate("/resources/bellabeat/emails/user-email-confirmation.html")
-	org.Email.User.EmailConfirmation.Subject = "Please confirm your email"
-	org.Email.User.EmailConfirmation.Enabled = true
+	// org.Email.User.EmailConfirmation.Template = readEmailTemplate("/resources/bellabeat/emails/user-email-confirmation.html")
+	// org.Email.User.EmailConfirmation.Subject = "Please confirm your email"
+	// org.Email.User.EmailConfirmation.Enabled = true
 
 	// org.Email.User.EmailConfirmed.Subject = "Thank you for confirming your email"
 	// org.Email.User.EmailConfirmed.Template = readEmailTemplate("/resources/bellabeat/emails/user-email-confirmed.html")
 	// org.Email.User.EmailConfirmed.Enabled = true
 
 	// // Save org into default namespace
-	org.Put()
+	// org.Put()
 
-	// Save namespace so we can decode keys for this organization later
-	ns := namespace.New(db)
-	ns.Name = org.Name
-	ns.IntId = org.Key().IntID()
-	err := ns.Put()
-	if err != nil {
-		log.Warn("Failed to put namespace: %v", err)
-	}
+	// 	// Save namespace so we can decode keys for this organization later
+	// 	ns := namespace.New(db)
+	// 	ns.Name = org.Name
+	// 	ns.IntId = org.Key().IntID()
+	// 	err := ns.Put()
+	// 	if err != nil {
+	// 		log.Warn("Failed to put namespace: %v", err)
+	// 	}
 
 	return org
 })

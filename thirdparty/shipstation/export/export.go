@@ -4,6 +4,7 @@ import (
 	"encoding/xml"
 	"math"
 	"strconv"
+	"strings"
 	"time"
 
 	aeds "appengine/datastore"
@@ -14,9 +15,12 @@ import (
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/lineitem"
 	"crowdstart.com/models/order"
+	"crowdstart.com/models/payment"
 	"crowdstart.com/models/user"
 	"crowdstart.com/util/hashid"
 	"crowdstart.com/util/log"
+
+	. "crowdstart.com/models"
 )
 
 // <?xml version="1.0" encoding="utf-8"?>
@@ -80,6 +84,9 @@ import (
 // 		</Items>
 // 	</Order>
 // </Orders>
+func removeCommas(s string) string {
+	return strings.Replace(s, ",", "", -1)
+}
 
 func parseDate(s string) time.Time {
 	date, err := time.Parse("01/02/2006 15:04", s)
@@ -151,7 +158,7 @@ func newItem(item lineitem.LineItem) Item {
 		si.SKU = CDATA(item.VariantName)
 	}
 
-	si.UnitPrice = item.DisplayPrice()
+	si.UnitPrice = removeCommas(item.DisplayPrice())
 	si.Quantity = item.Quantity
 	si.Weight = item.Weight.String()
 	si.WeightUnits = string(item.WeightUnit)
@@ -201,6 +208,16 @@ func newCustomer(ord *order.Order, usr *user.User) *Customer {
 	sc.ShipTo.PostalCode = CDATA(ord.ShippingAddress.PostalCode)
 	sc.ShipTo.Country = CDATA(ord.ShippingAddress.Country)
 
+	// Default to user shipping info if missing
+	if sc.ShipTo.Address1 == "" && sc.ShipTo.City == "" && sc.ShipTo.Country == "" {
+		sc.ShipTo.Address1 = CDATA(usr.ShippingAddress.Line1)
+		sc.ShipTo.Address2 = CDATA(usr.ShippingAddress.Line2)
+		sc.ShipTo.City = CDATA(usr.ShippingAddress.City)
+		sc.ShipTo.State = CDATA(usr.ShippingAddress.State)
+		sc.ShipTo.PostalCode = CDATA(usr.ShippingAddress.PostalCode)
+		sc.ShipTo.Country = CDATA(usr.ShippingAddress.Country)
+	}
+
 	return sc
 }
 
@@ -233,13 +250,38 @@ func newOrder(ord *order.Order) *Order {
 	so.OrderNumber = ord.Number
 	so.OrderDate = Date(ord.CreatedAt)
 	so.LastModified = Date(ord.UpdatedAt)
-	so.OrderStatus = CDATA(ord.FulfillmentStatus)
-	so.OrderTotal = ord.DisplayTotal()
-	so.TaxAmount = ord.DisplayTax()
-	so.ShippingAmount = ord.DisplayShipping()
+	so.OrderTotal = removeCommas(ord.DisplayTotal())
+	so.TaxAmount = removeCommas(ord.DisplayTax())
+	so.ShippingAmount = removeCommas(ord.DisplayShipping())
 	so.Items.Items = make([]Item, len(ord.Items))
 	for i, item := range ord.Items {
 		so.Items.Items[i] = newItem(item)
+	}
+
+	// Try to figure out order status
+	if ord.PaymentStatus == payment.Unpaid {
+		so.OrderStatus = CDATA(payment.Unpaid)
+	}
+
+	if ord.PaymentStatus == payment.Paid {
+		so.OrderStatus = CDATA(payment.Paid)
+	}
+
+	if ord.FulfillmentStatus == FulfillmentShipped {
+		so.OrderStatus = CDATA(FulfillmentShipped)
+	}
+
+	if ord.Status == order.Cancelled {
+		so.OrderStatus = CDATA(order.Cancelled)
+	}
+
+	if ord.Status == order.Locked {
+		so.OrderStatus = CDATA(order.Locked)
+	}
+
+	// Default to FulfillmentStatus
+	if so.OrderStatus == "" {
+		so.OrderStatus = CDATA(ord.FulfillmentStatus)
 	}
 	return so
 }
@@ -253,7 +295,7 @@ type Response struct {
 func Export(c *gin.Context) {
 	query := c.Request.URL.Query()
 
-	limit := 100
+	limit := 50
 	offset := 0
 
 	// Only support export action
@@ -264,7 +306,7 @@ func Export(c *gin.Context) {
 
 	// Parse offset
 	page, err := strconv.Atoi(query.Get("page"))
-	if err != nil && page > 1 {
+	if err == nil && page > 1 {
 		offset = limit * (page - 1)
 	}
 
@@ -282,7 +324,9 @@ func Export(c *gin.Context) {
 
 	// Calculate total pages
 	count, _ := q.Count()
-	pages := int(math.Ceil(float64(count) / float64(100)))
+	pages := int(math.Ceil(float64(count) / float64(limit)))
+
+	log.Warn("Query: pages: %v, limit %v, offset %v", pages, limit, offset, c)
 
 	// Get current page of orders
 	orders := make([]*order.Order, 0, 0)
@@ -318,7 +362,22 @@ func Export(c *gin.Context) {
 
 	// Set customers
 	for i, ord := range orders {
-		res.Orders[i].Customer = newCustomer(ord, users[i])
+		customer := newCustomer(ord, users[i])
+		res.Orders[i].Customer = customer
+
+		// Can't ship to someone without a country
+		if string(customer.ShipTo.Country) == "" {
+			log.Warn("Missing COUNTRY: %#v, %#v, %#v", customer, ord, users[i], c)
+			res.Orders[i] = nil
+		}
+	}
+
+	// Filter out test charges
+	for i, ord := range orders {
+		if ord.Test == true {
+			log.Warn("Test order, ignoring: %v", ord, c)
+			res.Orders[i] = nil
+		}
 	}
 
 	buf, _ := xml.MarshalIndent(res, "", "  ")
