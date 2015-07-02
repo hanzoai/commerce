@@ -22,7 +22,7 @@ import (
 	_ "crowdstart.com/thirdparty/mailchimp/tasks"
 	_ "crowdstart.com/thirdparty/mandrill/tasks"
 	// _ "crowdstart.com/thirdparty/salesforce/tasks"
-	// _ "crowdstart.com/thirdparty/stripe/tasks"
+	_ "crowdstart.com/thirdparty/stripe/tasks"
 )
 
 func Init() {
