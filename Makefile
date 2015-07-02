@@ -257,7 +257,7 @@ test-ci:
 	$(ginkgo) -r=true -p=true --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace --compilers=2 -v=true -- -test.v=true
 
 # DEPLOY
-deploy: assets-min docs
+deploy: assets-min docs rollback
 	for module in $(gae_config); do \
 		$(appcfg.py) update $$module; \
 	done; \
