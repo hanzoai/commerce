@@ -38,7 +38,7 @@ func UpdatePaymentFromCharge(pay *payment.Payment, ch *stripe.Charge) {
 }
 
 // Synchronize payment using charge
-var ChargeSync = delay.Func("stripe-update-payment", func(ctx appengine.Context, ns string, token string, ch stripe.Charge, start time.Time) {
+var ChargeSync = delay.Func("stripe-charge-sync", func(ctx appengine.Context, ns string, token string, ch stripe.Charge, start time.Time) {
 	ctx = getNamespace(ctx, ns)
 
 	// Get ancestor (order) using charge
