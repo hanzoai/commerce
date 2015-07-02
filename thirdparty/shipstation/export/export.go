@@ -361,13 +361,13 @@ func Export(c *gin.Context) {
 	// Set customers
 	for i, ord := range orders {
 		customer := newCustomer(ord, users[i])
+		res.Orders[i].Customer = customer
 
 		// Can't ship to someone without a country
-		if string(customer.ShipTo.Country) != "" {
-			res.Orders[i].Customer = customer
-		} else {
+		if string(customer.ShipTo.Country) == "" {
+			customer.ShipTo.Country = CDATA("US")
 			log.Warn("Missing COUNTRY: %v, %v, %v", customer, ord, users[i], c)
-			res.Orders[i] = nil
+			res.Orders[i].OrderStatus = CDATA(order.Cancelled)
 		}
 	}
 
@@ -375,7 +375,7 @@ func Export(c *gin.Context) {
 	for i, ord := range orders {
 		if ord.Test == true {
 			log.Warn("Test order, ignoring: %v", ord, c)
-			res.Orders[i] = nil
+			res.Orders[i].OrderStatus = CDATA(order.Cancelled)
 		}
 	}
 
