@@ -41,7 +41,7 @@ var SyncCharges = task.Func("stripe-sync-charges", func(c *gin.Context, args ...
 	test := false
 
 	// If we're called as an HTTP web task, we need to get organization off query string
-	if c.Request.URL != nil {
+	if c.Request != nil {
 		query := c.Request.URL.Query()
 		orgname = query.Get("organization")
 		test_ := query.Get("test")
