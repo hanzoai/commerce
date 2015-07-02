@@ -278,6 +278,9 @@ do ->
     for prop in props
       selectors[prop] = (attr prop) ? ml.selectors?[prop]
 
+    # default selector for submit button
+    selectors.submits ?= 'input[type="submit"]'
+
     # are we validating?
     ml.validate ?= (attr 'validate') ? false
 

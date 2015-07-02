@@ -17,15 +17,6 @@ import (
 	"crowdstart.com/util/log"
 )
 
-type Card stripe.Card
-type CardParams stripe.CardParams
-type Charge stripe.Charge
-type ChargeListParams stripe.ChargeListParams
-type Customer stripe.Customer
-type Dispute stripe.Dispute
-type Token stripe.Token
-type Event stripe.Event
-
 type Client struct {
 	*client.API
 	ctx appengine.Context
@@ -197,6 +188,35 @@ func (c Client) GetCharge(chargeId string) (*Charge, error) {
 	return (*Charge)(charge), err
 }
 
+// Update Stripe charge
+func (c Client) UpdateCharge(pay *payment.Payment) (*Charge, error) {
+	pay.Metadata["payment"] = pay.Id()
+	pay.Metadata["order"] = pay.OrderId
+
+	// Create params for update
+	params := &stripe.ChargeParams{
+		Desc:  pay.Description,
+		Email: pay.Buyer.Email,
+	}
+
+	// Update metadata
+	for k, v := range pay.Metadata {
+		s, ok := v.(string)
+		if ok {
+			params.AddMeta(k, s)
+		}
+	}
+
+	id := pay.Account.ChargeId
+
+	charge, err := c.API.Charges.Update(id, params)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	return (*Charge)(charge), err
+}
+
 // Create new charge
 func (c Client) NewCharge(source interface{}, pay *payment.Payment) (*Charge, error) {
 	params := &stripe.ChargeParams{
@@ -214,6 +234,7 @@ func (c Client) NewCharge(source interface{}, pay *payment.Payment) (*Charge, er
 		params.AddMeta(k, json.Encode(v))
 	}
 
+	params.AddMeta("order", pay.OrderId)
 	params.AddMeta("payment", pay.Id())
 
 	switch v := source.(type) {
