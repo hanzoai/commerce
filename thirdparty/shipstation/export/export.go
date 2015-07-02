@@ -374,6 +374,7 @@ func Export(c *gin.Context) {
 	// Filter out test charges
 	for i, ord := range orders {
 		if ord.Test == true {
+			log.Warn("Test order, ignoring: %v", ord, c)
 			res.Orders[i] = nil
 		}
 	}
