@@ -310,6 +310,8 @@ func Export(c *gin.Context) {
 		offset = limit * (page - 1)
 	}
 
+	log.Warn("Page %s, err %s", page, err, c)
+
 	// Get start/end dates
 	startDate := parseDate(query.Get("start_date"))
 	endDate := parseDate(query.Get("end_date"))
