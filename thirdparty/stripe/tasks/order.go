@@ -11,7 +11,7 @@ import (
 	"crowdstart.com/util/log"
 )
 
-var updateOrder = delay.Func("stripe-update-order", func(ctx appengine.Context, ns string, orderId string, start time.Time) {
+var updateOrder = delay.Func("stripe-update-order", func(ctx appengine.Context, ns string, token string, orderId string, start time.Time) {
 	ctx = getNamespace(ctx, ns)
 	db := datastore.New(ctx)
 	ord := order.New(db)
