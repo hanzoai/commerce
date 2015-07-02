@@ -30,15 +30,18 @@ func cacheOrganization(ctx appengine.Context, org *organization.Organization) {
 	}
 }
 
-var SyncCharges = task.Func("stripe-sync-charges", func(c *gin.Context) {
+var SyncCharges = task.Func("stripe-sync-charges", func(c *gin.Context, args ...interface{}) {
 	db := datastore.New(c)
 	org := organization.New(db)
-	ctx := org.Context()
 
 	// Get organization off query
 	query := c.Request.URL.Query()
 	orgname := query.Get("organization")
 	test := query.Get("test")
+
+	if len(args) == 1 {
+		orgname = args[0].(string)
+	}
 
 	// Lookup organization
 	if err := org.GetById(orgname); err != nil {
@@ -48,6 +51,8 @@ var SyncCharges = task.Func("stripe-sync-charges", func(c *gin.Context) {
 
 	// Pass Stripe access token to all subsequent requests
 	token := org.StripeToken()
+
+	ctx := db.Context
 
 	// Create stripe client for this organization
 	client := stripe.New(ctx, token)
