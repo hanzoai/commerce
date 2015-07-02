@@ -326,6 +326,8 @@ func Export(c *gin.Context) {
 	count, _ := q.Count()
 	pages := int(math.Ceil(float64(count) / float64(limit)))
 
+	log.Warn("Query: pages: %v, limit %v, offset %v", pages, limit, offset, c)
+
 	// Get current page of orders
 	orders := make([]*order.Order, 0, 0)
 	_, err = q.Limit(limit).Offset(offset).GetAll(&orders)
