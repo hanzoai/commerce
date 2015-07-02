@@ -180,6 +180,10 @@ func (u User) HasPassword() bool {
 	return len(u.PasswordHash) != 0
 }
 
+func (u User) ComparePassword(pass string) bool {
+	return password.HashAndCompare(u.PasswordHash, pass)
+}
+
 func (u User) Buyer() Buyer {
 	return Buyer{
 		Email:     u.Email,

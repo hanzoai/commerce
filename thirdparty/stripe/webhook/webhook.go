@@ -19,6 +19,7 @@ func Webhook(c *gin.Context) {
 		c.String(500, "Error parsing event json")
 		return
 	}
+
 	if !event.Live {
 		c.String(200, event.Type)
 		return
@@ -41,20 +42,22 @@ func Webhook(c *gin.Context) {
 		ctx := middleware.GetAppEngine(c)
 
 		start := time.Now()
-		tasks.UpdatePayment.Call(ctx, ch, start)
+		tasks.ChargeSync.Call(ctx, ch, start)
 
 	case "charge.dispute.closed":
 	case "charge.dispute.created":
 	case "charge.dispute.funds_reinstated":
 	case "charge.dispute.funds_withdrawn":
 	case "charge.dispute.updated":
+
+		// Decode stripe dispute
 		dispute := stripe.Dispute{}
 		if err := json.Unmarshal(event.Data.Raw, &dispute); err != nil {
 			log.Error("Error decoding dispute. %#v %#v", event, err, c)
 			return
 		}
 		start := time.Now()
-		tasks.UpdateDisputedPayment.Call(middleware.GetAppEngine(c), dispute, start)
+		tasks.DisputeSync.Call(middleware.GetAppEngine(c), dispute, start)
 
 	case "ping":
 		c.String(200, "pong")
