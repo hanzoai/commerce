@@ -19,7 +19,8 @@ TODO: Run a migration to set `CampaignId` in all orders.
 */
 func StripeSync(c *gin.Context) {
 	ctx := middleware.GetAppEngine(c)
-	tasks.SyncCharges.Call(ctx, "organization", middleware.GetOrganization(c).Id())
+	org := middleware.GetOrganization(c)
+	tasks.SyncCharges.Call(ctx, org.Id())
 	template.Render(c, "admin/stripe/sync-success.html")
 }
 
