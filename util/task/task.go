@@ -138,6 +138,7 @@ func Func(name string, fn interface{}) *delay.Function {
 
 	// Create actual delay func
 	delayFn := delay.Func(name, func(c appengine.Context, args ...interface{}) {
+		log.Debug("Args: %#v", args, c)
 		// Try to retrieve fake context from args
 		var fakectx *fakecontext.Context
 		var ok bool
