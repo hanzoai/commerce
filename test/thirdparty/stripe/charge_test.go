@@ -1,0 +1,46 @@
+package test
+
+import (
+	"crowdstart.com/models/payment"
+	"crowdstart.com/thirdparty/stripe"
+	"crowdstart.com/thirdparty/stripe/tasks"
+	. "crowdstart.com/util/test/ginkgo"
+)
+
+var _ = Describe("thirdparty.stripe.UpdatePaymentFromCharge", func() {
+	var construct = func() (*payment.Payment, *stripe.Charge) {
+		return new(payment.Payment), new(stripe.Charge)
+	}
+
+	Context("When a charge is captured", func() {
+		pay, charge := construct()
+		charge.Captured = true
+		It("should mark the payment as Paid", func() {
+			tasks.UpdatePaymentFromCharge(pay, charge)
+			Expect(string(pay.Status)).To(Equal(payment.Paid))
+		})
+	})
+	Context("When a charge is refunded", func() {
+		pay, charge := construct()
+		charge.Refunded = true
+		It("should mark the payment as Paid", func() {
+			tasks.UpdatePaymentFromCharge(pay, charge)
+			Expect(string(pay.Status)).To(Equal(payment.Refunded))
+		})
+	})
+	Context("When a charge is paid", func() {
+		pay, charge := construct()
+		charge.Paid = true
+		It("should mark the payment as Paid", func() {
+			tasks.UpdatePaymentFromCharge(pay, charge)
+			Expect(string(pay.Status)).To(Equal(payment.Paid))
+		})
+	})
+	Context("For every other state", func() {
+		It("should mark the payment as Unpaid", func() {
+			pay, charge := construct()
+			tasks.UpdatePaymentFromCharge(pay, charge)
+			Expect(string(pay.Status)).To(Equal(payment.Unpaid))
+		})
+	})
+})
