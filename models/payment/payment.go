@@ -158,7 +158,7 @@ func (p Payment) Document() mixin.Document {
 }
 
 func (p *Payment) Init() {
-
+	p.Metadata = make(Metadata)
 }
 
 func (p *Payment) Load(c <-chan aeds.Property) (err error) {
