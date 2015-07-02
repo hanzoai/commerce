@@ -30,15 +30,28 @@ func cacheOrganization(ctx appengine.Context, org *organization.Organization) {
 	}
 }
 
+// May be called one of two ways:
+//   1. As an HTTP task from the generated pages, append organization=name to specify organization.
+//	 2. As a delay Func, in which case organization should be specified as an extra argument.
 var SyncCharges = task.Func("stripe-sync-charges", func(c *gin.Context, args ...interface{}) {
 	db := datastore.New(c)
 	org := organization.New(db)
 
-	// Get organization off query
-	query := c.Request.URL.Query()
-	orgname := query.Get("organization")
-	test := query.Get("test")
+	orgname := ""
+	test := false
 
+	// If we're called as an HTTP web task, we need to get organization off query string
+	if c.Request.URL != nil {
+		query := c.Request.URL.Query()
+		orgname = query.Get("organization")
+		test_ := query.Get("test")
+		if test_ == "1" || test_ == "true" {
+			test = true
+		}
+	}
+
+	// If an extra argument is passed in, this is being called as a delay.Func,
+	// get organization as extra parameter
 	if len(args) == 1 {
 		orgname = args[0].(string)
 	}
@@ -61,7 +74,7 @@ var SyncCharges = task.Func("stripe-sync-charges", func(c *gin.Context, args ...
 	params := &sg.ChargeListParams{}
 
 	// Check for test flag
-	if test == "1" || test == "true" {
+	if test {
 		params.Filters.AddFilter("include[]", "", "total_count")
 		params.Filters.AddFilter("limit", "", "10")
 		params.Filters.AddFilter("starting_after", "", "ch_16FyN1F118aqM8IJCHWi6Mkx")
