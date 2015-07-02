@@ -10,9 +10,9 @@ type FulfillmentStatus string
 
 const (
 	FulfillmentUnfulfilled FulfillmentStatus = "unfulfilled"
-	FulfillmentFulfilled                     = "fulfilled"
+	FulfillmentShipped                       = "shipped"
 	FulfillmentProcessing                    = "processing"
-	FulfillmentFailed                        = "failed"
+	FulFillmentCancelled                     = "cancelled"
 )
 
 type Fulfillment struct {
