@@ -60,7 +60,7 @@ var ChargeSync = delay.Func("stripe-charge-sync", func(ctx appengine.Context, ns
 		// Bail out if someone has updated payment since us
 		if start.Before(pay.UpdatedAt) {
 			log.Info(`The Payment(%s) associated with Charge(%s) has already been updated.
-					  Stopping 'stripe-update-payment' task.`, pay.Id(), ch.ID, ctx)
+					  Stopping 'stripe-charge-sync' task.`, pay.Id(), ch.ID, ctx)
 			return nil
 		}
 
