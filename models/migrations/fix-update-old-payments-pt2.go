@@ -3,10 +3,13 @@ package migrations
 import (
 	"strings"
 
+	"appengine/delay"
+
 	"github.com/gin-gonic/gin"
 
 	"appengine"
 
+	"crowdstart.com/datastore"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/thirdparty/stripe"
@@ -22,7 +25,20 @@ func testModeError(err error) bool {
 }
 
 // Update charge in case order/pay id is missing in metadata
-func updateChargeAndFixTestMode(ctx appengine.Context, pay *payment.Payment, ord *order.Order) {
+var updateChargeAndFixTestMode = delay.Func("update-charge-and-fix-test-mode", func(ctx appengine.Context, payId string) {
+	db := datastore.New(ctx)
+	pay := payment.New(db)
+	if err := pay.Get(payId); err != nil {
+		log.Error("Unable to get payment: %v", err, ctx)
+		return
+	}
+
+	ord := order.New(db)
+	if err := ord.Get(pay.OrderId); err != nil {
+		log.Error("Unable to get order for payment '%s': %v", payId, err, ctx)
+		return
+	}
+
 	// Get a stripe client
 	client := stripe.New(ctx, accessToken)
 
@@ -44,7 +60,7 @@ func updateChargeAndFixTestMode(ctx appengine.Context, pay *payment.Payment, ord
 
 	ord.Test = true
 	ord.MustPut()
-}
+})
 
 var _ = New("fix-update-old-payments-pt-2",
 	func(c *gin.Context) []interface{} {
@@ -58,13 +74,7 @@ var _ = New("fix-update-old-payments-pt-2",
 
 		ctx := db.Context
 
-		ord := order.New(db)
-		if err := ord.Get(pay.OrderId); err != nil {
-			log.Error("Found broken payment: %#v", pay, ctx)
-			return
-		}
-
 		// Mostly just want to ensure metadata is right and test mode stuff is flagged correctly.
-		updateChargeAndFixTestMode(ctx, pay, ord)
+		updateChargeAndFixTestMode.Call(ctx, pay.Id())
 	},
 )
