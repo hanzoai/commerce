@@ -73,10 +73,14 @@ type User struct {
 	Orders    []order.Order       `json:"orders,omitempty" datastore:"-"`
 
 	Balances map[currency.Type]currency.Cents `json:"balances" datastore:"-"`
+
+	// Series of events that have occured relevant to this order
+	History []Event `json:"history,omitempty"`
 }
 
 func (u *User) Init() {
 	u.Metadata = make(Metadata)
+	u.History = make([]Event, 0)
 }
 
 func New(db *datastore.Datastore) *User {
