@@ -21,8 +21,13 @@ func updateChargeFromPayment(ctx appengine.Context, pay *payment.Payment) error 
 	// Get a stripe client
 	client := stripe.New(ctx, accessToken)
 
-	_, err := client.UpdateCharge(pay)
-	return err
+	if _, err := client.UpdateCharge(pay); err != nil {
+		log.Error("Failed to update charge '%s' using payment %#v: %v", pay.Account.ChargeId, pay, err, ctx)
+		return err
+	}
+
+	log.Debug("Updated charge '%s' using payment: %#v", pay.Account.ChargeId, pay, ctx)
+	return nil
 }
 
 // Ensure order has right payment id
@@ -37,6 +42,15 @@ func orderNeedsPaymentId(ctx appengine.Context, ord *order.Order, pay *payment.P
 		}
 	}
 
+	return nil
+}
+
+func deletePayment(ctx appengine.Context, pay *payment.Payment) error {
+	pay.Deleted = true
+	if err := pay.Put(); err != nil {
+		log.Error("Unable to mark payment '%s' as deleted: %#v", pay.Id(), pay, err, ctx)
+		return err
+	}
 	return nil
 }
 
@@ -75,10 +89,7 @@ var _ = New("update-old-payments",
 
 			log.Debug("Single payment '%v' associated with order '%v'", pay.Id(), ord.Id(), ctx)
 
-			// log.Debug("Updating charge from payment %#v", pay, ctx)
-			// err = updateChargeFromPayment(ctx, pay)
-			// if err != nil {
-			// 	log.Error("Failed to update charge using payment: %#v", pay, ctx)
+			// if err := updateChargeFromPayment(ctx, pay); err != nil {
 			// 	return
 			// }
 
@@ -124,17 +135,14 @@ var _ = New("update-old-payments",
 				return
 			}
 
-			// log.Debug("Updating charge from payment %#v", newest, ctx)
-			// err = updateChargeFromPayment(ctx, newest)
-			// if err != nil {
-			// 	log.Error("Unable to update charge from payment: %#v", err, ctx)
+			// if err := updateChargeFromPayment(ctx, newest); err != nil {
+			// 	return
 			// }
 
 			// Delete older payment
-			// if err := oldest.Delete(); err != nil {
-			// 	log.Error("Unable to delete older payment: %#v, #v", oldest, err, ctx)
-			// 	return
-			// }
+			if err := deletePayment(ctx, oldest); err != nil {
+				return
+			}
 
 			log.Debug("Deleted oldest payment: %#v", oldest, ctx)
 			log.Debug("Newest payment '%v' associated with order '%v'", newest.Id(), ord.Id(), ctx)
@@ -156,17 +164,15 @@ var _ = New("update-old-payments",
 			return
 		}
 
-		// log.Debug("Updating charge from payment %#v", oldest, ctx)
-		// err = updateChargeFromPayment(ctx, newest)
-		// if err != nil {
-		// 	log.Error("Unable to update charge from payment: %#v", err, ctx)
+		// if err := updateChargeFromPayment(ctx, newest); err != nil {
+		// 	return
 		// }
 
 		// Delete newest payment
-		// if err := newest.Delete(); err != nil {
-		// 	log.Error("Unable to delete older payment: %#v, #v", newest, err, ctx)
-		// 	return
-		// }
+		if err := deletePayment(ctx, newest); err != nil {
+			return
+		}
+
 		log.Debug("Deleted newest payment: %#v", newest, ctx)
 		log.Debug("Oldest payment '%v' associated with order '%v'", oldest.Id(), ord.Id(), ctx)
 	},
