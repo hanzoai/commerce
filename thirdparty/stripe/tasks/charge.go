@@ -58,7 +58,7 @@ var ChargeSync = delay.Func("stripe-charge-sync", func(ctx appengine.Context, ns
 			return errors.New(fmt.Sprintf("Unable to retrieve payment for charge (%s), ancestor, (%v):", ch.ID, key, err))
 		}
 		for i, p := range payments {
-			if p.CreatedAt.Before(pay) {
+			if p.CreatedAt.Before(pay.CreatedAt) {
 				p.Mixin(db, p)
 				p.SetKey(keys[i])
 				pay = p
