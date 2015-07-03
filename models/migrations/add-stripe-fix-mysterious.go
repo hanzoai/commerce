@@ -35,14 +35,6 @@ var _ = New("add-stripe-fix-mysterious",
 			return
 		}
 
-		updated := false
-		sc := stripe.New(db.Context, accessToken)
-		charge, err := sc.GetCharge(pay.Account.ChargeId)
-		if err != nil {
-			log.Error("Stripe error encoutnered %v", err, db.Context)
-			return
-		}
-
 		usr := user.New(db)
 		if err := usr.GetByEmail(pay.Buyer.Email); err != nil {
 			buyer := pay.Buyer
@@ -57,12 +49,16 @@ var _ = New("add-stripe-fix-mysterious",
 			usr.Accounts.Stripe = pay.Account
 
 			usr.MustPut()
-		} else {
-			updated = true
 		}
 
 		ord := order.New(db)
 		if err := ord.GetById(pay.OrderId); err != nil {
+			sc := stripe.New(db.Context, accessToken)
+			charge, err := sc.GetCharge(pay.Account.ChargeId)
+			if err != nil {
+				log.Error("Stripe error encoutnered %v", err, db.Context)
+				return
+			}
 
 			log.Debug("Order Is Missing", db.Context)
 			ord.ShippingAddress = pay.Buyer.Address
@@ -76,8 +72,8 @@ var _ = New("add-stripe-fix-mysterious",
 
 			for i, desc := range descs {
 				tokens := strings.Split(desc, "x")
-				if len(tokens) == 2 {
-					log.Warn("Malformed description detected %v", err, db.Context)
+				if len(tokens) != 2 {
+					log.Warn("Malformed description detected", db.Context)
 				}
 
 				val, err := strconv.Atoi(strings.TrimSpace(tokens[1]))
@@ -97,15 +93,11 @@ var _ = New("add-stripe-fix-mysterious",
 			}
 			ord.UserId = usr.Id()
 			ord.MustPut()
-		} else {
-			updated = true
 		}
 
-		if updated {
-			pay.Buyer.UserId = usr.Id()
-			pay.OrderId = ord.Id()
-			pay.MustPut()
-			log.Debug("Updating Payment %v, Order %v, UserId %v", pay.Id(), ord.Id(), usr.Id(), db.Context)
-		}
+		pay.Buyer.UserId = usr.Id()
+		pay.OrderId = ord.Id()
+		pay.MustPut()
+		log.Debug("Updating Payment %v, Order %v, UserId %v", pay.Id(), ord.Id(), usr.Id(), db.Context)
 	},
 )
