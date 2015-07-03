@@ -44,7 +44,7 @@ var _ = New("add-stripe-fix-mysterious",
 		}
 
 		usr := user.New(db)
-		if err := usr.GetById(pay.OrderId); err != nil {
+		if err := usr.GetByEmail(pay.Buyer.Email); err != nil {
 			buyer := pay.Buyer
 
 			usr.Email = buyer.Email
