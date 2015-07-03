@@ -1438,6 +1438,10 @@ transformers:
       external_name: Currency
       # Type: String Stats: 4914 properties of this type in this kind.
 
+    - property: Deleted
+      external_name: Deleted
+      import_transform: transform.regexp_bool('true', re.IGNORECASE)
+
     - property: Description
       external_name: Description
       # Type: String Stats: 4914 properties of this type in this kind.
