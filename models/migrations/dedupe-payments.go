@@ -21,10 +21,10 @@ var _ = New("dedupe-payments",
 		}
 
 		// See if we have a valid order
-		ord = order.New(db)
-		if err := ord.Get(p.OrderId); err != nil {
+		ord := order.New(db)
+		if err := ord.Get(pay.OrderId); err != nil {
 			// Not a good payment, no matching order
-			deletePayment(ctx, p)
+			deletePayment(db.Context, pay)
 		}
 	},
 )
