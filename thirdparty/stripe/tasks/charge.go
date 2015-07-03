@@ -44,7 +44,8 @@ var ChargeSync = delay.Func("stripe-charge-sync", func(ctx appengine.Context, ns
 	// Get ancestor (order) using charge
 	key, err := getOrderFromCharge(ctx, &ch)
 	if err != nil {
-		log.Panic("Unable to find payment matching charge: %s, %v", ch.ID, err, ctx)
+		log.Error("Unable to find payment matching charge: %s, %v", ch.ID, err, ctx)
+		return
 	}
 
 	db := datastore.New(ctx)
@@ -83,7 +84,8 @@ var ChargeSync = delay.Func("stripe-charge-sync", func(ctx appengine.Context, ns
 
 	// Panic so we restart if something failed
 	if err != nil {
-		log.Panic("Error updating payment (%s): %v", pay.Id(), err, ctx)
+		log.Error("Error updating payment (%s): %v", pay.Id(), err, ctx)
+		return
 	}
 
 	// Update order
