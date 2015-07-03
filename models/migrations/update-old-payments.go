@@ -33,42 +33,56 @@ var _ = New("update-old-payments",
 	func(db *ds.Datastore, pay *payment.Payment) {
 		var payments []*payment.Payment
 
-		ctx := db.Context
+		ctx := db.Context // Cache context
 
+		// Query out payments with matching chargeId's, only one is linked to a
+		// real order, and the charge should be pointed at that one.
 		keys, err := payment.Query(db).Filter("Account.ChargeId=", pay.Account.ChargeId).GetAll(&payments)
 		if err != nil {
-			log.Warn("Unable to query out payments: %v", err, db.Context)
+			log.Error("Unable to query out payments: %v", err, ctx)
 			return
 		}
 
-		// Singular payment! Hooray
 		if len(payments) == 1 {
-			// MAKE SURE IT'S GOOD
+			log.Debug("Single payment found '%v'", pay.Id(), ctx)
+
+			// Check if this payment has a matching order
 			ord := order.New(db)
 			if err := ord.Get(pay.OrderId); err != nil {
-				log.Error("We got only one payment here and it's bad: %#v", pay, ctx)
+				log.Error("Did not find order associated with: %#v, bailing: %v", pay, err, ctx)
 				return
 			}
-			ord.PaymentIds = []string{pay.Id()}
 
+			log.Debug("Found order associated with '%v'", pay.Id(), ctx)
+
+			// Ensure order has right payment id set, update if necessary
+			if len(ord.PaymentIds) > 0 && ord.PaymentIds[0] != pay.Id() {
+				log.Warn("Order.PaymentIds is incorrect: %#v, should include: %v", ord.PaymentIds, pay.Id(), ctx)
+				ord.PaymentIds = []string{pay.Id()}
+
+				err = ord.Put()
+				if err != nil {
+					log.Error("Failed to update order: %#v, bailing: %v", ord, err, ctx)
+				}
+			}
+
+			// log.Debug("Updating charge from payment %#v", pay, ctx)
 			// err = updateChargeFromPayment(ctx, pay)
 			// if err != nil {
 			// 	log.Error("Failed to update charge using payment: %#v", pay, ctx)
 			// 	return
 			// }
 
-			err = ord.Put()
-			if err != nil {
-				log.Error("Failed to update order: %#v", ord, ctx)
-			}
 			return
 		}
 
-		// You've been duped!
+		log.Warn("Found multiple payments: %v", payments, ctx)
+
+		// Find newest/oldest payments
 		newest := pay
 		oldest := pay
 		for i, p := range payments {
-			// make sure we have a payment we can work with
+			// Make sure we have a payment we can work with
 			p.Mixin(db, p)
 			p.SetKey(keys[i])
 
@@ -83,39 +97,46 @@ var _ = New("update-old-payments",
 			}
 		}
 
-		// Make sure order is right
+		// Check newest order
 		ord := order.New(db)
 		err = ord.Get(newest.OrderId)
 		if err == nil {
-			// The newest order is correct
-			log.Debug("newer order is correct", db.Context)
-			oldest.Buyer.UserId = newest.Buyer.UserId
-			oldest.OrderId = newest.OrderId
-		} else {
-			log.Debug("older order is correct", db.Context)
-			ord = order.New(db)
-			err := ord.Get(oldest.OrderId)
-			if err != nil {
-				log.Error("Unable to find an order for either payment! oldest: %#v, newest: %#v", oldest, newest, db.Context)
-				return
-			}
+			log.Debug("Newest payment has order: %#v", newest, ctx)
+			// log.Debug("Updating charge from payment %#v", newest, ctx)
+			// err = updateChargeFromPayment(ctx, newest)
+			// if err != nil {
+			// 	log.Error("Unable to update charge from payment: %#v", err, ctx)
+			// }
+			return
 		}
+
+		// Check oldest order
+		ord = order.New(db)
+		err = ord.Get(oldest.OrderId)
+		if err != nil {
+			log.Error("Unable to find an order for either payment! oldest: %#v, newest: %#v", oldest, newest, ctx)
+			return
+		}
+
+		log.Debug("Oldest payment has order: %v", oldest, ctx)
 
 		// Update order
 		ord.PaymentIds = []string{oldest.Id()}
 
 		if err := oldest.Put(); err != nil {
-			log.Debug("Unable to update oldest payment: %v", err, db.Context)
+			log.Error("Unable to update oldest payment %#v: %v", pay, err, ctx)
+			return
 		}
 
 		if err := ord.Put(); err != nil {
-			log.Error("Unable to save order: %v", err, db.Context)
+			log.Error("Unable to save order %#v: %v", ord, err, ctx)
+			return
 		}
 
-		// Make stripe charge match this payment
-		// err = updateChargeFromPayment(db.Context, oldest)
+		// log.Debug("Updating charge from payment %#v", oldest, ctx)
+		// err = updateChargeFromPayment(ctx, newest)
 		// if err != nil {
-		// 	log.Error("Unable to update charge from payent: %v", err, db.Context)
+		// 	log.Error("Unable to update charge from payment: %#v", err, ctx)
 		// }
 	},
 )
