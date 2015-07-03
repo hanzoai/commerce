@@ -104,10 +104,17 @@ var ChargeSync = delay.Func("stripe-charge-sync", func(ctx appengine.Context, ns
 		return
 	}
 
-	// Get a stripe client
-	client := stripe.New(ctx, token)
+	// Check if we need to sync back changes to charge
+	payId, _ := ch.Meta["payment"]
+	ordId, _ := ch.Meta["order"]
+	usrId, _ := ch.Meta["user"]
+	if pay.Id() != payId || pay.OrderId != ordId || pay.Buyer.UserId != usrId {
+		// Get a stripe client
+		client := stripe.New(ctx, token)
 
-	if _, err := client.UpdateCharge(pay); err != nil {
-		log.Error("Unable to update charge for payment '%s': %v", pay.Id(), err, ctx)
+		// Update charge with new metadata
+		if _, err := client.UpdateCharge(pay); err != nil {
+			log.Error("Unable to update charge for payment '%s': %v", pay.Id(), err, ctx)
+		}
 	}
 })
