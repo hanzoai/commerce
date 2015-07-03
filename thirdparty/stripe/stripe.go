@@ -190,8 +190,9 @@ func (c Client) GetCharge(chargeId string) (*Charge, error) {
 
 // Update Stripe charge
 func (c Client) UpdateCharge(pay *payment.Payment) (*Charge, error) {
-	pay.Metadata["payment"] = pay.Id()
 	pay.Metadata["order"] = pay.OrderId
+	pay.Metadata["payment"] = pay.Id()
+	pay.Metadata["user"] = pay.Buyer.UserId
 
 	// Create params for update
 	params := &stripe.ChargeParams{
