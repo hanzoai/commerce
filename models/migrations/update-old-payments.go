@@ -73,7 +73,7 @@ var _ = New("update-old-payments",
 				return
 			}
 
-			log.Debug("Single payment '%v' correctly associated with order '%v'", pay.Id(), ord.Id(), ctx)
+			log.Debug("Single payment '%v' associated with order '%v'", pay.Id(), ord.Id(), ctx)
 
 			// log.Debug("Updating charge from payment %#v", pay, ctx)
 			// err = updateChargeFromPayment(ctx, pay)
@@ -137,6 +137,7 @@ var _ = New("update-old-payments",
 			// }
 
 			log.Debug("Deleted oldest payment: %#v", oldest, ctx)
+			log.Debug("Newest payment '%v' associated with order '%v'", newest.Id(), ord.Id(), ctx)
 			return
 		}
 
@@ -166,6 +167,7 @@ var _ = New("update-old-payments",
 		// 	log.Error("Unable to delete older payment: %#v, #v", newest, err, ctx)
 		// 	return
 		// }
-		// log.Debug("Deleted newest payment: %#v", newest, ctx)
+		log.Debug("Deleted newest payment: %#v", newest, ctx)
+		log.Debug("Oldest payment '%v' associated with order '%v'", oldest.Id(), ord.Id(), ctx)
 	},
 )
