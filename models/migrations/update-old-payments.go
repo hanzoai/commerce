@@ -28,7 +28,7 @@ func updateChargeFromPayment(ctx appengine.Context, pay *payment.Payment) error 
 // Ensure order has right payment id
 func orderNeedsPaymentId(ctx appengine.Context, ord *order.Order, pay *payment.Payment) error {
 	if len(ord.PaymentIds) > 0 && ord.PaymentIds[0] != pay.Id() {
-		log.Warn("Single payment '%v' not found in order '%v' PaymentIds: %#v", pay.Id(), ord.Id(), ord.PaymentIds, ctx)
+		log.Warn("Payment '%v' not found in order '%v' PaymentIds: %#v", pay.Id(), ord.Id(), ord.PaymentIds, ctx)
 		ord.PaymentIds = []string{pay.Id()}
 
 		if err := ord.Put(); err != nil {
