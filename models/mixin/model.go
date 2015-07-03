@@ -77,6 +77,7 @@ type Model struct {
 	Id_       string    `json:"id"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
+	Deleted   bool      `json:"deleted,omitempty"`
 
 	// Flag used to specify that we're using a string key for this kind
 	UseStringKey bool `json:"-" datastore:"-"`
