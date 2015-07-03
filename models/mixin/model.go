@@ -552,3 +552,7 @@ func (q *Query) First() (bool, error) {
 	}
 	return ok, err
 }
+
+func (q *Query) GetAll(dst interface{}) ([]*aeds.Key, error) {
+	return q.Query.GetAll(dst)
+}
