@@ -17,13 +17,12 @@ import (
 var accessToken = ""
 
 // Update charge in case order/pay id is missing in metadata
-func updateChargeFromPayment(ctx appengine.Context, pay *payment.Payment) {
+func updateChargeFromPayment(ctx appengine.Context, pay *payment.Payment) error {
 	// Get a stripe client
 	client := stripe.New(ctx, accessToken)
 
-	if _, err := client.UpdateCharge(pay); err != nil {
-		log.Error("Unable to update charge for payment %#v: %v", pay.OrderId, err, ctx)
-	}
+	_, err := client.UpdateCharge(pay)
+	return err
 }
 
 var _ = New("update-old-payments",
@@ -77,7 +76,7 @@ var _ = New("update-old-payments",
 		}
 
 		// Update order
-		seen = false
+		seen := false
 		for _, id := range ord.PaymentIds {
 			if id == oldest.Id() {
 				seen = true
@@ -97,7 +96,7 @@ var _ = New("update-old-payments",
 		}
 
 		// Make stripe charge match this payment
-		err := updateChargeFromPayment(db.Context, oldest)
+		err = updateChargeFromPayment(db.Context, oldest)
 		if err != nil {
 			log.Error("Unable to update charge from payent: %v", err, db.Context)
 		}
