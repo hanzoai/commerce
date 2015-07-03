@@ -1,4 +1,4 @@
-package stripe
+package errors
 
 import (
 	"errors"
@@ -12,21 +12,21 @@ var (
 	FailedToUpdateCustomer = errors.New("Failed to update Stripe customer.")
 )
 
-type Error struct {
+type StripeError struct {
 	Type    string
 	Message string
 	Code    string
 	Param   string
 }
 
-func (e Error) Error() string {
+func (e StripeError) Error() string {
 	return e.Message
 }
 
-func NewError(err error) error {
+func New(err error) error {
 	stripeErr, ok := err.(*stripe.Error)
 	if ok {
-		return &Error{
+		return &StripeError{
 			Type:    string(stripeErr.Type),
 			Message: stripeErr.Msg,
 			Code:    string(stripeErr.Code),
@@ -34,5 +34,5 @@ func NewError(err error) error {
 		}
 	}
 
-	return &Error{Type: "unknown", Message: fmt.Sprintf("Stripe error: %v", err)}
+	return &StripeError{Type: "unknown", Message: fmt.Sprintf("Stripe error: %v", err)}
 }
