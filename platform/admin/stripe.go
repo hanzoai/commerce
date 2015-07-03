@@ -18,8 +18,10 @@ this function assumes that every order is associated with the only campaign (SKU
 TODO: Run a migration to set `CampaignId` in all orders.
 */
 func StripeSync(c *gin.Context) {
-	tasks.RunSynchronizeCharges(c)
-	c.String(200, "Synchronising orders")
+	ctx := middleware.GetAppEngine(c)
+	org := middleware.GetOrganization(c)
+	tasks.SyncCharges.Call(ctx, org.Id())
+	template.Render(c, "admin/stripe/sync-success.html")
 }
 
 // Admin Payment Connectors
