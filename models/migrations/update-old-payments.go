@@ -48,7 +48,7 @@ func orderNeedsPaymentId(ctx appengine.Context, ord *order.Order, pay *payment.P
 func deletePayment(ctx appengine.Context, pay *payment.Payment) error {
 	pay.Deleted = true
 	if err := pay.Put(); err != nil {
-		log.Error("Unable to mark payment '%s' as deleted: %#v", pay.Id(), pay, err, ctx)
+		log.Error("Unable to mark payment '%s' as deleted: %v", pay.Id(), err, ctx)
 		return err
 	}
 	return nil
