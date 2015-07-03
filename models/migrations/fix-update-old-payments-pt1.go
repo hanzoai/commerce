@@ -55,9 +55,7 @@ var _ = New("fix-update-old-payments-pt-1",
 	},
 	func(db *ds.Datastore, pay *payment.Payment) {
 		// Ensure that non-deleted payments have deleted set to false
-		if pay.Deleted {
-			pay.Delete()
-		} else {
+		if !pay.Deleted {
 			pay.MustPut()
 		}
 	},
