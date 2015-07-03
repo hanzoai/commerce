@@ -9,6 +9,8 @@ threadsafe: true
 automatic_scaling:
   max_concurrent_requests: 100
 
+instance_class: F4
+
 builtins:
 - remote_api: on
 
