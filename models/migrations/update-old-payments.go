@@ -17,8 +17,8 @@ var _ = New("update-old-payments",
 	func(db *ds.Datastore, pay *payment.Payment) {
 		var payments []*payment.Payment
 
-		if _, err := payment.Query(db).Filter("Account.ChargeId=", pay.Account.ChargeId).GetAll(payments); err != nil {
-			log.Warn("Unable to query out payments?????", db.Context)
+		if _, err := payment.Query(db).Filter("Account.ChargeId=", pay.Account.ChargeId).GetAll(&payments); err != nil {
+			log.Warn("Unable to query out payments: %v", err, db.Context)
 			return
 		}
 
