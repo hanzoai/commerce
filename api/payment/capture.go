@@ -62,7 +62,7 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (
 	}
 
 	// Save order and payments
-	ord.Put()
+	ord.MustPut()
 
 	db := datastore.New(ord.Db.Context)
 	if _, err = db.PutMulti(keys, payments); err != nil {
