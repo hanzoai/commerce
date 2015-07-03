@@ -106,15 +106,18 @@ func (fn *ParallelFn) createDelayFn(name string) {
 
 			if err := entity.SetKey(key); err != nil {
 				log.Error("Failed to set key: %v", err, ctx)
-				continue
+				break
 			}
 
 			// Build arguments for workerFunc
-			in := []reflect.Value{reflect.ValueOf(db), reflect.ValueOf(entity)}
+			numArgs := len(args)
+			in := make([]reflect.Value, numArgs+2, numArgs+2)
+			in[0] = reflect.ValueOf(db)
+			in[1] = reflect.ValueOf(entity)
 
 			// Append variadic args
-			for _, arg := range args {
-				in = append(in, reflect.ValueOf(arg))
+			for i := 0; i < numArgs; i++ {
+				in[i+2] = reflect.ValueOf(args[i])
 			}
 
 			// Run our worker func with this entity
