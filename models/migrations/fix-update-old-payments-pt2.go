@@ -22,7 +22,7 @@ func testModeError(err error) bool {
 }
 
 // Update charge in case order/pay id is missing in metadata
-func updateChargeFromPayment2(ctx appengine.Context, pay *payment.Payment) {
+func updateChargeAndFixTestMode(ctx appengine.Context, pay *payment.Payment, ord *order.Order) {
 	// Get a stripe client
 	client := stripe.New(ctx, accessToken)
 
@@ -37,16 +37,11 @@ func updateChargeFromPayment2(ctx appengine.Context, pay *payment.Payment) {
 		return
 	}
 
-	// This was a test mode charge, update payment
+	// This was a test mode charge, update payment and order
 	log.Debug("Found test payment '%s' and associated order '%s'", pay.Id(), pay.OrderId, ctx)
 	pay.Test = true
 	pay.MustPut()
 
-	// Update order
-	ord := order.New(pay.Db)
-	if err := ord.Get(pay.OrderId); err != nil {
-		log.Error("Failed to set order '%s' to test mode: %v", ord.Id(), err, ctx)
-	}
 	ord.Test = true
 	ord.MustPut()
 }
@@ -70,6 +65,6 @@ var _ = New("fix-update-old-payments-pt-2",
 		}
 
 		// Mostly just want to ensure metadata is right and test mode stuff is flagged correctly.
-		updateChargeFromPayment2(ctx, pay)
+		updateChargeAndFixTestMode(ctx, pay, ord)
 	},
 )
