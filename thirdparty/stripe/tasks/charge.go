@@ -103,4 +103,11 @@ var ChargeSync = delay.Func("stripe-charge-sync", func(ctx appengine.Context, ns
 		log.Error("Unable to update payment %#v: %v", pay, err, ctx)
 		return
 	}
+
+	// Get a stripe client
+	client := stripe.New(ctx, token)
+
+	if _, err := client.UpdateCharge(pay); err != nil {
+		log.Error("Unable to update charge for payment '%s': %v", pay.Id(), err, ctx)
+	}
 })
