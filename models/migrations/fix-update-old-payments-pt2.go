@@ -72,9 +72,7 @@ var _ = New("fix-update-old-payments-pt-2",
 			return
 		}
 
-		ctx := db.Context
-
 		// Mostly just want to ensure metadata is right and test mode stuff is flagged correctly.
-		updateChargeAndFixTestMode.Call(ctx, pay.Id())
+		updateChargeAndFixTestMode.Call(db.Context, pay.Id())
 	},
 )
