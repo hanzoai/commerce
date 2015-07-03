@@ -118,9 +118,10 @@ var _ = New("update-old-payments",
 			return
 		}
 
-		// if err := updateChargeFromPayment(ctx, pay); err != nil {
-		// 	return
-		// }
+		// Update charge
+		if err := updateChargeFromPayment(ctx, valid); err != nil {
+			return
+		}
 
 		log.Debug("Payment '%v' associated with order '%v'", valid.Id(), ord.Id(), ctx)
 	},
