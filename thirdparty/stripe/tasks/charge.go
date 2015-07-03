@@ -88,6 +88,11 @@ var ChargeSync = delay.Func("stripe-charge-sync", func(ctx appengine.Context, ns
 		return
 	}
 
+	if pay.OrderId == "" {
+		log.Error("Payment missing order id %#v", pay, ctx)
+		return
+	}
+
 	// Update order
 	updateOrder.Call(ctx, ns, token, pay.OrderId, start)
 })
