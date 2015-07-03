@@ -73,7 +73,7 @@ var _ = New("update-old-payments",
 		// real order, and the charge should be pointed at that one.
 		keys, err := payment.Query(db).Filter("Account.ChargeId=", pay.Account.ChargeId).GetAll(&payments)
 		if err != nil {
-			log.Error("Unable to query out payments: %v", err, ctx)
+			log.Error("Unable query for payments: %v", err, ctx)
 			return
 		}
 
@@ -102,11 +102,13 @@ var _ = New("update-old-payments",
 			return
 		}
 
-		log.Warn("Found multiple payments: %v", payments, ctx)
+		log.Debug("Found multiple payments: %#v", payments, ctx)
 
 		// Find newest/oldest payments
-		newest := pay
 		oldest := pay
+		var valid *payment.Payment
+		var ord *order.Order
+
 		for i, p := range payments {
 			// Make sure we have a payment we can work with
 			p.Mixin(db, p)
@@ -117,69 +119,35 @@ var _ = New("update-old-payments",
 				oldest = p
 			}
 
-			// Find the youngest
-			if p.CreatedAt.After(newest.CreatedAt) {
-				newest = p
+			// See if we have a valid order
+			ord = order.New(db)
+			if err := ord.Get(p.OrderId); err != nil {
+				// Not a good payment, no matching order
+				deletePayment(ctx, p)
+			} else {
+				// Found a valid order, hooray!
+				valid = p
 			}
 		}
 
-		// Check newest order
-		ord := order.New(db)
-		err = ord.Get(newest.OrderId)
-		if err == nil {
-			newest.CreatedAt = oldest.CreatedAt
-			newest.Buyer.UserId = ord.UserId
-			newest.MustPut()
-
-			// Update order if necessary
-			if err := orderNeedsPaymentId(ctx, ord, newest); err != nil {
-				return
-			}
-
-			log.Debug("Newest payment '%s' associated with order '%s'", newest.Id(), ord.Id(), ctx)
-
-			// Delete older payment
-			if err := deletePayment(ctx, oldest); err != nil {
-				return
-			}
-
-			// if err := updateChargeFromPayment(ctx, newest); err != nil {
-			// 	return
-			// }
-
-			log.Debug("Deleted oldest payment: %#v", oldest, ctx)
-			log.Debug("Newest payment '%v' associated with order '%v'", newest.Id(), ord.Id(), ctx)
+		if valid == nil {
+			log.Error("Unable to find a matching order for any payments: %v", payments, ctx)
 			return
 		}
 
-		// Check oldest order
-		ord = order.New(db)
-		err = ord.Get(oldest.OrderId)
-		if err != nil {
-			log.Error("Unable to find an order for either payment! oldest: %#v, newest: %#v", oldest, newest, ctx)
-			return
-		}
-
-		oldest.Buyer.UserId = ord.UserId
-		oldest.MustPut()
+		valid.CreatedAt = oldest.CreatedAt
+		valid.Buyer.UserId = ord.UserId
+		valid.MustPut()
 
 		// Update order if necessary
-		if err := orderNeedsPaymentId(ctx, ord, oldest); err != nil {
+		if err := orderNeedsPaymentId(ctx, ord, valid); err != nil {
 			return
 		}
 
-		log.Debug("Oldest payment '%s' associated with order '%s'", oldest.Id(), ord.Id(), ctx)
-
-		// Delete newest payment
-		if err := deletePayment(ctx, newest); err != nil {
-			return
-		}
-
-		// if err := updateChargeFromPayment(ctx, newest); err != nil {
+		// if err := updateChargeFromPayment(ctx, pay); err != nil {
 		// 	return
 		// }
 
-		log.Debug("Deleted newest payment: %#v", newest, ctx)
-		log.Debug("Oldest payment '%v' associated with order '%v'", oldest.Id(), ord.Id(), ctx)
+		log.Debug("Payment '%v' associated with order '%v'", valid.Id(), ord.Id(), ctx)
 	},
 )
