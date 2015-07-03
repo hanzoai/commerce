@@ -93,35 +93,31 @@ func (fn *ParallelFn) createDelayFn(name string) {
 			entity := newEntity(db, fn.EntityType)
 			key, err := t.Next(entity)
 
-			if err != nil {
-				// Done iterating
-				if err == datastore.Done {
-					break
-				}
-
-				// Check if genuine error occurred
-				if db.SkipFieldMismatch(err) != nil {
-					log.Error("datastore.parallel worker encountered error: %v", err, ctx)
-					continue
-				}
-
-				// Ignore field mismatch
-				log.Warn("Field mismatch when getting %v: %v", key, err, ctx)
-				err = nil
+			// Done iterating
+			if err == datastore.Done {
+				break
 			}
 
-			err = entity.SetKey(key)
-			if err != nil {
+			// Skip field mismatch errors
+			if err := db.SkipFieldMismatch(err); err != nil {
+				log.Error("Failed to fetch next entity: %v", err, ctx)
+				break
+			}
+
+			if err := entity.SetKey(key); err != nil {
 				log.Error("Failed to set key: %v", err, ctx)
-				continue
+				break
 			}
 
 			// Build arguments for workerFunc
-			in := []reflect.Value{reflect.ValueOf(db), reflect.ValueOf(entity)}
+			numArgs := len(args)
+			in := make([]reflect.Value, numArgs+2, numArgs+2)
+			in[0] = reflect.ValueOf(db)
+			in[1] = reflect.ValueOf(entity)
 
 			// Append variadic args
-			for _, arg := range args {
-				in = append(in, reflect.ValueOf(arg))
+			for i := 0; i < numArgs; i++ {
+				in[i+2] = reflect.ValueOf(args[i])
 			}
 
 			// Run our worker func with this entity
