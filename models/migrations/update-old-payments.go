@@ -62,11 +62,16 @@ var _ = New("update-old-payments",
 	func(db *ds.Datastore, pay *payment.Payment) {
 		var payments []*payment.Payment
 
+		// Bail out if we've been previously deleted
+		if pay.Deleted {
+			return
+		}
+
 		ctx := db.Context // Cache context
 
 		// Query out payments with matching chargeId's, only one is linked to a
 		// real order, and the charge should be pointed at that one.
-		keys, err := payment.Query(db).Filter("Account.ChargeId=", pay.Account.ChargeId).GetAll(&payments)
+		keys, err := payment.Query(db).Filter("Account.ChargeId=", pay.Account.ChargeId).Filter("Deleted=", false).GetAll(&payments)
 		if err != nil {
 			log.Error("Unable to query out payments: %v", err, ctx)
 			return
