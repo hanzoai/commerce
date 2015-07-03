@@ -87,6 +87,9 @@ var _ = New("update-old-payments",
 				return
 			}
 
+			pay.Buyer.UserId = ord.UserId
+			pay.MustPut()
+
 			// Update order if necessary
 			if err := orderNeedsPaymentId(ctx, ord, pay); err != nil {
 				return
@@ -135,10 +138,8 @@ var _ = New("update-old-payments",
 
 			// Update CreatedAt
 			newest.CreatedAt = oldest.CreatedAt
-			if err := newest.Put(); err != nil {
-				log.Error("Unable to update payment %#v: %v", newest, err, ctx)
-				return
-			}
+			newest.Buyer.UserId = ord.UserId
+			newest.MustPut()
 
 			// if err := updateChargeFromPayment(ctx, newest); err != nil {
 			// 	return
@@ -163,9 +164,11 @@ var _ = New("update-old-payments",
 		}
 
 		log.Debug("Oldest payment has order: %v", oldest, ctx)
+		oldest.Buyer.UserId = ord.UserId
+		oldest.MustPut()
 
 		// Update order if necessary
-		if err := orderNeedsPaymentId(ctx, ord, pay); err != nil {
+		if err := orderNeedsPaymentId(ctx, ord, oldest); err != nil {
 			return
 		}
 
