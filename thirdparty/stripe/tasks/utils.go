@@ -52,7 +52,7 @@ func updateChargeFromPayment(ctx appengine.Context, ch *stripe.Charge, pay *paym
 	client := stripe.New(ctx, org.Stripe.AccessToken)
 
 	if _, err := client.UpdateCharge(pay); err != nil {
-		log.Error(" %v", pay.OrderId, ctx)
+		log.Error("Unable to update charge for payment %#v: %v", pay.OrderId, err, ctx)
 	}
 }
 
