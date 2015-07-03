@@ -65,8 +65,11 @@ var SyncCharges = task.Func("stripe-sync-charges", func(c *gin.Context, args ...
 		return
 	}
 
-	// Pass Stripe access token to all subsequent requests
-	token := org.StripeToken()
+	// Get appropriate Stripe token for requests
+	token := org.Stripe.Test.AccessToken
+	if !test {
+		token = org.Stripe.Live.AccessToken
+	}
 
 	ctx := db.Context
 

@@ -33,7 +33,7 @@ func New(name string, setupFn SetupFn, fns ...interface{}) *delay.Function {
 
 		for i, _ := range fns {
 			// Run task fn
-			tasks[i].Run(c, 50, args...)
+			tasks[i].Run(c, 10, args...)
 		}
 	})
 }

@@ -1,8 +1,6 @@
 package tasks
 
 import (
-	"errors"
-	"fmt"
 	"time"
 
 	"github.com/stripe/stripe-go/charge"
@@ -11,6 +9,7 @@ import (
 	"appengine/delay"
 
 	"crowdstart.com/datastore"
+	"crowdstart.com/models/order"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/thirdparty/stripe"
 	"crowdstart.com/util/log"
@@ -18,15 +17,19 @@ import (
 
 // Update payment from charge
 func UpdatePaymentFromCharge(pay *payment.Payment, ch *stripe.Charge) {
+	pay.Status = payment.Unpaid
+
 	// Update status
 	if ch.Captured {
 		pay.Status = payment.Paid
-	} else if ch.Refunded {
+	}
+
+	if ch.Status == "failed" {
+		pay.Status = payment.Cancelled
+	}
+
+	if ch.Refunded {
 		pay.Status = payment.Refunded
-	} else if ch.Paid {
-		pay.Status = payment.Paid
-	} else {
-		pay.Status = payment.Unpaid
 	}
 
 	if ch.FraudDetails != nil {
@@ -41,42 +44,77 @@ func UpdatePaymentFromCharge(pay *payment.Payment, ch *stripe.Charge) {
 var ChargeSync = delay.Func("stripe-charge-sync", func(ctx appengine.Context, ns string, token string, ch stripe.Charge, start time.Time) {
 	ctx = getNamespace(ctx, ns)
 
-	// Get ancestor (order) using charge
-	key, err := getOrderFromCharge(ctx, &ch)
-	if err != nil {
-		log.Panic("Unable to find payment matching charge: %s, %v", ch.ID, err, ctx)
-	}
-
 	db := datastore.New(ctx)
-	pay := payment.New(db)
 
-	err = pay.RunInTransaction(func() error {
-		// Query by ancestor so we can use a transaction
-		if ok, err := pay.Query().Ancestor(key).Filter("Account.ChargeId=", ch.ID).First(); !ok {
-			return errors.New(fmt.Sprintf("Unable to retrieve payment for charge (%s), ancestor, (%v):", ch.ID, key, err))
-		}
-		log.Debug("Payment: %v", pay, ctx)
-
-		// Bail out if someone has updated payment since us
-		if start.Before(pay.UpdatedAt) {
-			log.Info(`The Payment(%s) associated with Charge(%s) has already been updated.
-					  Stopping 'stripe-charge-sync' task.`, pay.Id(), ch.ID, ctx)
-			return nil
-		}
-
-		// Actually update payment
-		UpdatePaymentFromCharge(pay, &ch)
-		log.Debug("Payment updated to: %v", pay, ctx)
-
-		// Save updated payment
-		return pay.Put()
-	})
-
-	// Panic so we restart if something failed
+	// Query by ancestor so we can use a transaction
+	var payments []*payment.Payment
+	keys, err := payment.Query(db).Filter("Account.ChargeId=", ch.ID).GetAll(&payments)
 	if err != nil {
-		log.Panic("Error updating payment (%s): %v", pay.Id(), err, ctx)
+		log.Error("Failed to find payment for charge '%s': %v", ch.ID, err, ctx)
+		return
 	}
 
-	// Update order
-	updateOrder.Call(ctx, ns, token, pay.OrderId, start)
+	// Find right payment and order
+	var ord *order.Order
+	var pay *payment.Payment
+
+	for i, p := range payments {
+		if p.Deleted || p.Test {
+			continue
+		}
+
+		p.Mixin(db, p)
+
+		// Try and get order
+		ord = order.New(db)
+		if err := ord.Get(p.OrderId); err != nil {
+			continue
+		}
+
+		p.Parent = ord.Key()
+		p.SetKey(keys[i])
+		pay = p
+		break
+	}
+
+	if pay == nil {
+		log.Error("Unable to find payment for charge '%s': %v", ch.ID, err, ctx)
+		return
+	}
+
+	// Update payment status
+	UpdatePaymentFromCharge(pay, &ch)
+	if err := pay.Put(); err != nil {
+		log.Error("Unable to update payment %#v: %v", pay, err, ctx)
+		return
+	}
+
+	// Update order with payment status
+	ord.PaymentStatus = pay.Status
+	if pay.Status == payment.Cancelled || pay.Status == payment.Refunded {
+		ord.Status = order.Cancelled
+	}
+
+	if pay.Status == payment.Fraudulent {
+		ord.Status = order.Locked
+	}
+
+	if err := ord.Put(); err != nil {
+		log.Error("Unable to update payment %#v: %v", pay, err, ctx)
+		return
+	}
+
+	// Check if we need to sync back changes to charge
+	payId, _ := ch.Meta["payment"]
+	ordId, _ := ch.Meta["order"]
+	usrId, _ := ch.Meta["user"]
+	if pay.Id() != payId || pay.OrderId != ordId || pay.Buyer.UserId != usrId {
+		// Get a stripe client
+		client := stripe.New(ctx, token)
+
+		// Update charge with new metadata
+		if _, err := client.UpdateCharge(pay); err != nil {
+			log.Error("Unable to update charge for payment '%s': %v", pay.Id(), err, ctx)
+		}
+	}
 })
