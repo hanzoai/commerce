@@ -52,8 +52,17 @@ var ChargeSync = delay.Func("stripe-charge-sync", func(ctx appengine.Context, ns
 
 	err = pay.RunInTransaction(func() error {
 		// Query by ancestor so we can use a transaction
-		if ok, err := pay.Query().Ancestor(key).Filter("Account.ChargeId=", ch.ID).First(); !ok {
+		var payments []*payment.Payment
+		keys, err := pay.Query().Ancestor(key).Filter("Account.ChargeId=", ch.ID).GetAll(&payments)
+		if err != nil {
 			return errors.New(fmt.Sprintf("Unable to retrieve payment for charge (%s), ancestor, (%v):", ch.ID, key, err))
+		}
+		for i, p := range payments {
+			if p.CreatedAt.Before(pay) {
+				p.Mixin(db, p)
+				p.SetKey(keys[i])
+				pay = p
+			}
 		}
 		log.Debug("Payment: %v", pay, ctx)
 
