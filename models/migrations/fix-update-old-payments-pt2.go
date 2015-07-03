@@ -1,6 +1,8 @@
 package migrations
 
 import (
+	"strings"
+
 	"github.com/gin-gonic/gin"
 
 	"appengine"
@@ -15,44 +17,39 @@ import (
 
 // var accessToken = ""
 
+func testModeError(err error) bool {
+	return strings.Contains(err.Error(), "a similar object exists in test mode, but a live mode key was used to make this request")
+}
+
 // Update charge in case order/pay id is missing in metadata
 func updateChargeFromPayment2(ctx appengine.Context, pay *payment.Payment) {
 	// Get a stripe client
 	client := stripe.New(ctx, accessToken)
 
-	if _, err := client.UpdateCharge(pay); err != nil {
-		// This was a test mode charge
-		log.Debug("Failed to update charge '%s', set payment '%s' to test mode", pay.Account.ChargeId, pay.Id(), ctx)
-		pay.Test = true
-		pay.MustPut()
-	} else {
+	_, err := client.UpdateCharge(pay)
+	if err == nil {
 		log.Debug("Updated charge '%s' using payment: %#v", pay.Account.ChargeId, pay, ctx)
+		return
 	}
+
+	if !testModeError(err) {
+		log.Error("Failed to update charge '%s' from payment '%s': %v", pay.Account.ChargeId, pay.Id(), err, ctx)
+		return
+	}
+
+	// This was a test mode charge, update payment
+	log.Debug("Found test payment '%s' and associated order '%s'", pay.Id(), pay.OrderId, ctx)
+	pay.Test = true
+	pay.MustPut()
+
+	// Update order
+	ord := order.New(pay.Db)
+	if err := ord.Get(pay.OrderId); err != nil {
+		log.Error("Failed to set order '%s' to test mode: %v", ord.Id(), err, ctx)
+	}
+	ord.Test = true
+	ord.MustPut()
 }
-
-// // Ensure order has right payment id
-// func orderNeedsPaymentId(ctx appengine.Context, ord *order.Order, pay *payment.Payment) error {
-// 	if len(ord.PaymentIds) > 0 && ord.PaymentIds[0] != pay.Id() {
-// 		log.Warn("Payment '%v' not found in order '%v' PaymentIds: %#v", pay.Id(), ord.Id(), ord.PaymentIds, ctx)
-// 		ord.PaymentIds = []string{pay.Id()}
-
-// 		if err := ord.Put(); err != nil {
-// 			log.Error("Failed to update order: %#v, bailing: %v", ord, err, ctx)
-// 			return err
-// 		}
-// 	}
-
-// 	return nil
-// }
-
-// func deletePayment(ctx appengine.Context, pay *payment.Payment) error {
-// 	pay.Deleted = true
-// 	if err := pay.Put(); err != nil {
-// 		log.Error("Unable to mark payment '%s' as deleted: %v", pay.Id(), err, ctx)
-// 		return err
-// 	}
-// 	return nil
-// }
 
 var _ = New("fix-update-old-payments-pt-2",
 	func(c *gin.Context) []interface{} {
@@ -72,6 +69,7 @@ var _ = New("fix-update-old-payments-pt-2",
 			return
 		}
 
+		// Mostly just want to ensure metadata is right and test mode stuff is flagged correctly.
 		updateChargeFromPayment2(ctx, pay)
 	},
 )
