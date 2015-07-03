@@ -71,15 +71,13 @@ var _ = New("update-old-payments",
 
 		// Query out payments with matching chargeId's, only one is linked to a
 		// real order, and the charge should be pointed at that one.
-		keys, err := payment.Query(db).Filter("Account.ChargeId=", pay.Account.ChargeId).Filter("Deleted=", false).GetAll(&payments)
+		keys, err := payment.Query(db).Filter("Account.ChargeId=", pay.Account.ChargeId).GetAll(&payments)
 		if err != nil {
 			log.Error("Unable to query out payments: %v", err, ctx)
 			return
 		}
 
 		if len(payments) == 1 {
-			log.Debug("Single payment found '%v'", pay.Id(), ctx)
-
 			// Check if this payment has a matching order
 			ord := order.New(db)
 			if err := ord.Get(pay.OrderId); err != nil {
@@ -129,26 +127,25 @@ var _ = New("update-old-payments",
 		ord := order.New(db)
 		err = ord.Get(newest.OrderId)
 		if err == nil {
-			log.Debug("Newest payment has order: %#v", newest, ctx)
+			newest.CreatedAt = oldest.CreatedAt
+			newest.Buyer.UserId = ord.UserId
+			newest.MustPut()
 
 			// Update order if necessary
 			if err := orderNeedsPaymentId(ctx, ord, newest); err != nil {
 				return
 			}
 
-			// Update CreatedAt
-			newest.CreatedAt = oldest.CreatedAt
-			newest.Buyer.UserId = ord.UserId
-			newest.MustPut()
-
-			// if err := updateChargeFromPayment(ctx, newest); err != nil {
-			// 	return
-			// }
+			log.Debug("Newest payment '%s' associated with order '%s'", newest.Id(), ord.Id(), ctx)
 
 			// Delete older payment
 			if err := deletePayment(ctx, oldest); err != nil {
 				return
 			}
+
+			// if err := updateChargeFromPayment(ctx, newest); err != nil {
+			// 	return
+			// }
 
 			log.Debug("Deleted oldest payment: %#v", oldest, ctx)
 			log.Debug("Newest payment '%v' associated with order '%v'", newest.Id(), ord.Id(), ctx)
@@ -163,7 +160,6 @@ var _ = New("update-old-payments",
 			return
 		}
 
-		log.Debug("Oldest payment has order: %v", oldest, ctx)
 		oldest.Buyer.UserId = ord.UserId
 		oldest.MustPut()
 
@@ -172,14 +168,16 @@ var _ = New("update-old-payments",
 			return
 		}
 
-		// if err := updateChargeFromPayment(ctx, newest); err != nil {
-		// 	return
-		// }
+		log.Debug("Oldest payment '%s' associated with order '%s'", oldest.Id(), ord.Id(), ctx)
 
 		// Delete newest payment
 		if err := deletePayment(ctx, newest); err != nil {
 			return
 		}
+
+		// if err := updateChargeFromPayment(ctx, newest); err != nil {
+		// 	return
+		// }
 
 		log.Debug("Deleted newest payment: %#v", newest, ctx)
 		log.Debug("Oldest payment '%v' associated with order '%v'", oldest.Id(), ord.Id(), ctx)
