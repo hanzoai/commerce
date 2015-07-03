@@ -25,6 +25,21 @@ func updateChargeFromPayment(ctx appengine.Context, pay *payment.Payment) error 
 	return err
 }
 
+// Ensure order has right payment id
+func orderNeedsPaymentId(ctx appengine.Context, ord *order.Order, pay *payment.Payment) error {
+	if len(ord.PaymentIds) > 0 && ord.PaymentIds[0] != pay.Id() {
+		log.Warn("Single payment '%v' not found in order '%v' PaymentIds: %#v", pay.Id(), ord.Id(), ord.PaymentIds, ctx)
+		ord.PaymentIds = []string{pay.Id()}
+
+		if err := ord.Put(); err != nil {
+			log.Error("Failed to update order: %#v, bailing: %v", ord, err, ctx)
+			return err
+		}
+	}
+
+	return nil
+}
+
 var _ = New("update-old-payments",
 	func(c *gin.Context) []interface{} {
 		c.Set("namespace", "bellabeat")
@@ -53,18 +68,12 @@ var _ = New("update-old-payments",
 				return
 			}
 
-			log.Debug("Found order associated with '%v'", pay.Id(), ctx)
-
-			// Ensure order has right payment id set, update if necessary
-			if len(ord.PaymentIds) > 0 && ord.PaymentIds[0] != pay.Id() {
-				log.Warn("Order.PaymentIds is incorrect: %#v, should include: %v", ord.PaymentIds, pay.Id(), ctx)
-				ord.PaymentIds = []string{pay.Id()}
-
-				err = ord.Put()
-				if err != nil {
-					log.Error("Failed to update order: %#v, bailing: %v", ord, err, ctx)
-				}
+			// Update order if necessary
+			if err := orderNeedsPaymentId(ctx, ord, pay); err != nil {
+				return
 			}
+
+			log.Debug("Single payment '%v' correctly associated with order '%v'", pay.Id(), ord.Id(), ctx)
 
 			// log.Debug("Updating charge from payment %#v", pay, ctx)
 			// err = updateChargeFromPayment(ctx, pay)
@@ -102,11 +111,32 @@ var _ = New("update-old-payments",
 		err = ord.Get(newest.OrderId)
 		if err == nil {
 			log.Debug("Newest payment has order: %#v", newest, ctx)
+
+			// Update order if necessary
+			if err := orderNeedsPaymentId(ctx, ord, newest); err != nil {
+				return
+			}
+
+			// Update CreatedAt
+			newest.CreatedAt = oldest.CreatedAt
+			if err := newest.Put(); err != nil {
+				log.Error("Unable to update payment %#v: %v", newest, err, ctx)
+				return
+			}
+
 			// log.Debug("Updating charge from payment %#v", newest, ctx)
 			// err = updateChargeFromPayment(ctx, newest)
 			// if err != nil {
 			// 	log.Error("Unable to update charge from payment: %#v", err, ctx)
 			// }
+
+			// Delete older payment
+			// if err := oldest.Delete(); err != nil {
+			// 	log.Error("Unable to delete older payment: %#v, #v", oldest, err, ctx)
+			// 	return
+			// }
+
+			log.Debug("Deleted oldest payment: %#v", oldest, ctx)
 			return
 		}
 
@@ -120,16 +150,8 @@ var _ = New("update-old-payments",
 
 		log.Debug("Oldest payment has order: %v", oldest, ctx)
 
-		// Update order
-		ord.PaymentIds = []string{oldest.Id()}
-
-		if err := oldest.Put(); err != nil {
-			log.Error("Unable to update oldest payment %#v: %v", pay, err, ctx)
-			return
-		}
-
-		if err := ord.Put(); err != nil {
-			log.Error("Unable to save order %#v: %v", ord, err, ctx)
+		// Update order if necessary
+		if err := orderNeedsPaymentId(ctx, ord, pay); err != nil {
 			return
 		}
 
@@ -138,5 +160,12 @@ var _ = New("update-old-payments",
 		// if err != nil {
 		// 	log.Error("Unable to update charge from payment: %#v", err, ctx)
 		// }
+
+		// Delete newest payment
+		// if err := newest.Delete(); err != nil {
+		// 	log.Error("Unable to delete older payment: %#v, #v", newest, err, ctx)
+		// 	return
+		// }
+		// log.Debug("Deleted newest payment: %#v", newest, ctx)
 	},
 )
