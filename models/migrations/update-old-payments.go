@@ -77,33 +77,6 @@ var _ = New("update-old-payments",
 			return
 		}
 
-		if len(payments) == 1 {
-			// Check if this payment has a matching order
-			ord := order.New(db)
-			if err := ord.Get(pay.OrderId); err != nil {
-				log.Error("Did not find order associated with: %#v, bailing: %v", pay, err, ctx)
-				return
-			}
-
-			pay.Buyer.UserId = ord.UserId
-			pay.MustPut()
-
-			// Update order if necessary
-			if err := orderNeedsPaymentId(ctx, ord, pay); err != nil {
-				return
-			}
-
-			log.Debug("Single payment '%v' associated with order '%v'", pay.Id(), ord.Id(), ctx)
-
-			// if err := updateChargeFromPayment(ctx, pay); err != nil {
-			// 	return
-			// }
-
-			return
-		}
-
-		log.Debug("Found multiple payments: %#v", payments, ctx)
-
 		// Find newest/oldest payments
 		oldest := pay
 		var valid *payment.Payment
@@ -112,7 +85,6 @@ var _ = New("update-old-payments",
 		for i, p := range payments {
 			// Make sure we have a payment we can work with
 			p.Mixin(db, p)
-			p.SetKey(keys[i])
 
 			// Find the oldest
 			if p.CreatedAt.Before(oldest.CreatedAt) {
@@ -126,6 +98,8 @@ var _ = New("update-old-payments",
 				deletePayment(ctx, p)
 			} else {
 				// Found a valid order, hooray!
+				p.Parent = ord.Key()
+				p.SetKey(keys[i])
 				valid = p
 			}
 		}
