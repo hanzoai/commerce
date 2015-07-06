@@ -1,8 +1,6 @@
 package tasks
 
 import (
-	"errors"
-	"fmt"
 	"time"
 
 	"github.com/stripe/stripe-go/charge"
@@ -10,7 +8,6 @@ import (
 	"appengine"
 	"appengine/delay"
 
-	"crowdstart.com/datastore"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/thirdparty/stripe"
 	"crowdstart.com/util/log"
@@ -39,24 +36,15 @@ func UpdatePaymentFromCharge(pay *payment.Payment, ch *stripe.Charge) {
 
 // Synchronize payment using charge
 var ChargeSync = delay.Func("stripe-update-payment", func(ctx appengine.Context, ns string, token string, ch stripe.Charge, start time.Time) {
-	ctx = getNamespace(ctx, ns)
+	ctx = getNamespacedCtx(ctx, ns)
 
 	// Get ancestor (order) using charge
-	key, err := getOrderFromCharge(ctx, &ch)
+	pay, err := getPaymentFromCharge(ctx, &ch)
 	if err != nil {
 		log.Panic("Unable to find payment matching charge: %s, %v", ch.ID, err, ctx)
 	}
 
-	db := datastore.New(ctx)
-	pay := payment.New(db)
-
 	err = pay.RunInTransaction(func() error {
-		// Query by ancestor so we can use a transaction
-		if ok, err := pay.Query().Ancestor(key).Filter("Account.ChargeId=", ch.ID).First(); !ok {
-			return errors.New(fmt.Sprintf("Unable to retrieve payment for charge (%s), ancestor, (%v):", ch.ID, key, err))
-		}
-		log.Debug("Payment: %v", pay, ctx)
-
 		// Bail out if someone has updated payment since us
 		if start.Before(pay.UpdatedAt) {
 			log.Info(`The Payment(%s) associated with Charge(%s) has already been updated.
@@ -78,5 +66,5 @@ var ChargeSync = delay.Func("stripe-update-payment", func(ctx appengine.Context,
 	}
 
 	// Update order
-	updateOrder.Call(ctx, ns, token, pay.OrderId, start)
+	updateOrder.Call(ctx, ns, pay.OrderId, start)
 })
