@@ -138,6 +138,16 @@ func New(db *datastore.Datastore) *Organization {
 	return o
 }
 
+func (o Organization) GetStripeAccessToken(userId string) (string, error) {
+	if o.Stripe.Live.UserId == userId {
+		return o.Stripe.Live.AccessToken, nil
+	}
+	if o.Stripe.Test.UserId == userId {
+		return o.Stripe.Test.AccessToken, nil
+	}
+	return "", StripeAccessTokenNotFound{userId, o.Stripe.Live.UserId, o.Stripe.Test.UserId}
+}
+
 func (o Organization) Kind() string {
 	return "organization"
 }
