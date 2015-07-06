@@ -12,7 +12,7 @@ import (
 )
 
 var updateOrder = delay.Func("stripe-update-order", func(ctx appengine.Context, ns string, orderId string, start time.Time) {
-	ctx = getNamespace(ctx, ns)
+	ctx = getNamespacedCtx(ctx, ns)
 	db := datastore.New(ctx)
 	ord := order.New(db)
 
