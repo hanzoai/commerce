@@ -10,3 +10,4 @@ vendor/
 resources
 static
 _export
+.git
