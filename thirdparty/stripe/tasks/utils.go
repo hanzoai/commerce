@@ -5,20 +5,18 @@ import (
 	"fmt"
 
 	"appengine"
-	aeds "appengine/datastore"
 	"appengine/memcache"
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/thirdparty/stripe"
-	"crowdstart.com/util/hashid"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
 )
 
 // Get namespaced appengine context for given namespace
-func getNamespace(ctx appengine.Context, ns string) appengine.Context {
+func getNamespacedCtx(ctx appengine.Context, ns string) appengine.Context {
 	log.Debug("Setting namespace of context to %s", ns, ctx)
 	ctx, err := appengine.Namespace(ctx, ns)
 	if err != nil {
@@ -57,20 +55,12 @@ func updateChargeFromPayment(ctx appengine.Context, ch *stripe.Charge, pay *paym
 }
 
 // Get ancestor for ancestor query for a payment associated with a stripe charge
-func getOrderFromCharge(ctx appengine.Context, ch *stripe.Charge) (*aeds.Key, error) {
-	// Try to user order id if possible
-	if id, ok := ch.Meta["order"]; ok {
-		log.Debug("Try to use order id in charge metadata", ctx)
-		return hashid.DecodeKey(ctx, id)
-	}
-
-	// Try to lookup payment
+func getPaymentFromCharge(ctx appengine.Context, ch *stripe.Charge) (*payment.Payment, error) {
 	db := datastore.New(ctx)
 	pay := payment.New(db)
 	var err error
 
 	id, ok := ch.Meta["payment"]
-
 	// Try to get by payment id
 	if ok {
 		log.Debug("Try to get payment by payment id: %v", id, ctx)
@@ -88,8 +78,5 @@ func getOrderFromCharge(ctx appengine.Context, ch *stripe.Charge) (*aeds.Key, er
 		return nil, errors.New(fmt.Sprintf("Unable to lookup payment by id (%s) or charge id (%s): %v", id, ch.ID, err, ctx))
 	}
 
-	updateChargeFromPayment(ctx, ch, pay)
-
-	log.Debug("Try to decode order id: %v", pay.OrderId, ctx)
-	return hashid.DecodeKey(ctx, pay.OrderId)
+	return pay, nil
 }
