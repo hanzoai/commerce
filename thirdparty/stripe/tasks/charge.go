@@ -42,64 +42,25 @@ func UpdatePaymentFromCharge(pay *payment.Payment, ch *stripe.Charge) {
 
 // Synchronize payment using charge
 var ChargeSync = delay.Func("stripe-charge-sync", func(ctx appengine.Context, ns string, token string, ch stripe.Charge, start time.Time) {
-	ctx = getNamespace(ctx, ns)
+	ctx = getNamespacedCtx(ctx, ns)
 
-	db := datastore.New(ctx)
-
-	// Query by ancestor so we can use a transaction
-	var payments []*payment.Payment
-	keys, err := payment.Query(db).Filter("Account.ChargeId=", ch.ID).GetAll(&payments)
+	// Get payment using charge
+	pay, err := getPaymentFromCharge(ctx, &ch)
 	if err != nil {
 		log.Error("Failed to find payment for charge '%s': %v", ch.ID, err, ctx)
 		return
 	}
 
-	// Find right payment and order
-	var ord *order.Order
-	var pay *payment.Payment
-
-	for i, p := range payments {
-		if p.Deleted || p.Test {
-			continue
+	err = pay.RunInTransaction(func() error {
+		// Bail out if someone has updated payment since us
+		if start.Before(pay.UpdatedAt) {
+			log.Info(`The Payment(%s) associated with Charge(%s) has already been updated.
+					  Stopping 'stripe-update-payment' task.`, pay.Id(), ch.ID, ctx)
+			return nil
 		}
-
-		p.Mixin(db, p)
-
-		// Try and get order
-		ord = order.New(db)
-		if err := ord.Get(p.OrderId); err != nil {
-			continue
-		}
-
-		p.Parent = ord.Key()
-		p.SetKey(keys[i])
-		pay = p
-		break
-	}
-
-	if pay == nil {
-		log.Error("Unable to find payment for charge '%s': %v", ch.ID, err, ctx)
-		return
-	}
-
 	// Update payment status
 	UpdatePaymentFromCharge(pay, &ch)
 	if err := pay.Put(); err != nil {
-		log.Error("Unable to update payment %#v: %v", pay, err, ctx)
-		return
-	}
-
-	// Update order with payment status
-	ord.PaymentStatus = pay.Status
-	if pay.Status == payment.Cancelled || pay.Status == payment.Refunded {
-		ord.Status = order.Cancelled
-	}
-
-	if pay.Status == payment.Fraudulent {
-		ord.Status = order.Locked
-	}
-
-	if err := ord.Put(); err != nil {
 		log.Error("Unable to update payment %#v: %v", pay, err, ctx)
 		return
 	}
@@ -117,4 +78,7 @@ var ChargeSync = delay.Func("stripe-charge-sync", func(ctx appengine.Context, ns
 			log.Error("Unable to update charge for payment '%s': %v", pay.Id(), err, ctx)
 		}
 	}
+
+	// Update order
+	updateOrder.Call(ctx, ns, pay.OrderId, start)
 })
