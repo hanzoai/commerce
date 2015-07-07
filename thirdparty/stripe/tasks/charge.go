@@ -40,7 +40,7 @@ func UpdatePaymentFromCharge(pay *payment.Payment, ch *stripe.Charge) {
 
 // Synchronize payment using charge
 var ChargeSync = delay.Func("stripe-charge-sync", func(ctx appengine.Context, ns string, token string, ch stripe.Charge, start time.Time) {
-	ctx = getNamespacedCtx(ctx, ns)
+	ctx = getNamespacedContext(ctx, ns)
 
 	// Get payment using charge
 	pay, err := getPaymentFromCharge(ctx, &ch)
@@ -56,9 +56,10 @@ var ChargeSync = delay.Func("stripe-charge-sync", func(ctx appengine.Context, ns
 
 	// Update payment using charge
 	err = pay.RunInTransaction(func() error {
-		log.Debug("Before UpdatePaymentFromCharge: %+v", pay, ctx)
+		log.Debug("Payment before: %+v", pay, ctx)
 		UpdatePaymentFromCharge(pay, &ch)
-		log.Debug("After UpdatePaymentFromCharge: %+v", pay, ctx)
+		log.Debug("Payment after: %+v", pay, ctx)
+
 		return pay.Put()
 	})
 

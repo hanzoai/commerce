@@ -3,45 +3,27 @@ package tasks
 import (
 	"time"
 
-	"appengine"
-
-	"appengine/memcache"
-
 	"github.com/gin-gonic/gin"
 	sg "github.com/stripe/stripe-go"
 
 	"crowdstart.com/datastore"
+	"crowdstart.com/middleware"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/thirdparty/stripe"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/task"
 )
 
-func cacheOrganization(ctx appengine.Context, org *organization.Organization) {
-	nsctx := org.Namespace(ctx)
-
-	item := &memcache.Item{
-		Key:   "organization",
-		Value: org.JSON(),
-	}
-
-	if err := memcache.Set(nsctx, item); err != nil {
-		log.Error("Unable to cache organization: %v", err, ctx)
-	}
-}
-
 // May be called one of two ways:
 //   1. As an HTTP task from the generated pages, append organization=name to specify organization.
 //	 2. As a delay Func, in which case organization should be specified as an extra argument.
 var SyncCharges = task.Func("stripe-sync-charges", func(c *gin.Context, args ...interface{}) {
-	db := datastore.New(c)
+	ctx := middleware.GetAppEngine(c)
+	db := datastore.New(ctx)
 	org := organization.New(db)
 
 	orgname := ""
 	test := false
-
-	log.Debug("Request: %#v", c.Request, c)
-	log.Debug("Args: %#v", args, c)
 
 	// If we're called as an HTTP web task, we need to get organization off query string
 	if c.Request != nil {
@@ -66,20 +48,17 @@ var SyncCharges = task.Func("stripe-sync-charges", func(c *gin.Context, args ...
 	}
 
 	// Get appropriate Stripe token for requests
-	token := org.Stripe.Test.AccessToken
-	if !test {
-		token = org.Stripe.Live.AccessToken
+	token := org.Stripe.Live.AccessToken
+	if test {
+		token = org.Stripe.Test.AccessToken
 	}
 
-	ctx := db.Context
-
-	// Create stripe client for this organization
+	// Get new Stripe client
+	ns := org.Name
 	client := stripe.New(ctx, token)
 
-	// Get all stripe charges
+	// Setup charge params
 	params := &sg.ChargeListParams{}
-
-	// Check for test flag
 	if test {
 		params.Filters.AddFilter("include[]", "", "total_count")
 		params.Filters.AddFilter("limit", "", "10")
@@ -87,17 +66,13 @@ var SyncCharges = task.Func("stripe-sync-charges", func(c *gin.Context, args ...
 		params.Single = true
 	}
 
-	// Cache organization, namespace to use for later queries
-	cacheOrganization(ctx, org)
-	ns := org.Name
-
 	// Get iterator for Stripe charges
 	i := client.Charges.List(params)
 	for i.Next() {
 		// Get next charge
 		ch := stripe.Charge(*i.Charge())
 
-		// Update payment, using the namespaced context (i hope)
+		// Update payment, order based on current charge
 		start := time.Now()
 		ChargeSync.Call(ctx, ns, token, ch, start)
 	}
