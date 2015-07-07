@@ -1,9 +1,6 @@
 package tasks
 
 import (
-	"errors"
-	"fmt"
-
 	"appengine"
 	"appengine/memcache"
 
@@ -16,7 +13,7 @@ import (
 )
 
 // Get namespaced appengine context for given namespace
-func getNamespacedCtx(ctx appengine.Context, ns string) appengine.Context {
+func getNamespacedContext(ctx appengine.Context, ns string) appengine.Context {
 	log.Debug("Setting namespace of context to %s", ns, ctx)
 	ctx, err := appengine.Namespace(ctx, ns)
 	if err != nil {
@@ -43,30 +40,24 @@ func getOrganization(ctx appengine.Context) *organization.Organization {
 }
 
 // Get ancestor for ancestor query for a payment associated with a stripe charge
-func getPaymentFromCharge(ctx appengine.Context, ch *stripe.Charge) (*payment.Payment, error) {
+func getPaymentFromCharge(ctx appengine.Context, ch *stripe.Charge) (*payment.Payment, bool, error) {
 	db := datastore.New(ctx)
 	pay := payment.New(db)
-	var err error
 
 	id, ok := ch.Meta["payment"]
+
 	// Try to get by payment id
 	if ok {
 		log.Debug("Try to get payment by payment id: %v", id, ctx)
-		err = pay.Get(id)
+		if err := pay.Get(id); err == nil {
+			return pay, true, nil
+		}
 	}
 
-	// Lookup by charge id
-	if !ok || err != nil {
-		log.Debug("Lookup payment by charge id: %v", ch.ID, ctx)
-		_, err = pay.Query().Filter("Account.ChargeId=", ch.ID).First()
-	}
-
-	if err != nil {
-		log.Debug("Unable to lookup payment id", ctx)
-		return nil, errors.New(fmt.Sprintf("Unable to lookup payment by id (%s) or charge id (%s): %v", id, ch.ID, err, ctx))
-	}
-
-	return pay, nil
+	// Try to lookup payment using charge id
+	log.Debug("Lookup payment by charge id: %v", ch.ID, ctx)
+	ok, err := pay.Query().Filter("Account.ChargeId=", ch.ID).First()
+	return pay, ok, err
 }
 
 // Update charge in case order/pay id is missing in metadata
