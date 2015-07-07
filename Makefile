@@ -260,14 +260,14 @@ test-ci:
 deploy: assets-min docs rollback
 	for module in $(gae_config); do \
 		$(appcfg.py) update $$module; \
-	done; \
-	$(appcfg.py) update_indexes config/production
-	$(appcfg.py) update_dispatch config/production
+	done
+	$(appcfg.py) update_indexes $(firstword gae_config)
+	$(appcfg.py) update_dispatch $(firstword gae_config)
 
 rollback:
 	for module in $(gae_config); do \
 		$(appcfg.py) rollback $$module; \
-	done; \
+	done
 
 # EXPORT / Usage: make datastore-export kind=user namespace=bellabeat
 datastore-export:
