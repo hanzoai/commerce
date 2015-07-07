@@ -9,6 +9,7 @@ m = crowdcontrol.utils.mediator
 
 class BasicFormView extends FormView
   tag: 'basic-form'
+  redirectPath: ''
   path: ''
   html: ''
   events:
@@ -19,6 +20,11 @@ class BasicFormView extends FormView
           $('html, body').animate(
             scrollTop: $container.offset().top-$(window).height()/2
           , 1000)
+  delete: ()->
+    m.trigger 'start-spin', @path + '-delete'
+    @api.delete(@path).finally ()=>
+      window.location.replace('../' + @redirectPath)
+
   js: (opts)->
     super
 
@@ -26,14 +32,19 @@ class BasicFormView extends FormView
     m.trigger 'start-spin', @path + '-form-load'
 
     @api = api = Api.get('crowdstart')
-    api.get(@path).then (res)=>
+    api.get(@path).then((res)=>
       m.trigger 'stop-spin', @path + '-form-load'
+
+      if res.status != 200
+        throw new Error("Form failed to load")
 
       @model = res.responseText
       @loadData @model
 
       @initFormGroup()
       riot.update()
+    ).catch ()=>
+      window.location.replace('../' + @redirectPath)
 
   loadData: (model)->
 
