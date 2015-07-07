@@ -16,7 +16,12 @@ var updateOrder = delay.Func("stripe-update-order", func(ctx appengine.Context, 
 	db := datastore.New(ctx)
 	ord := order.New(db)
 
-	log.Debug("Updating order (%s)", orderId, ctx)
+	log.Debug("Updating order '%s'", orderId, ctx)
+
+	if start.Before(ord.UpdatedAt) {
+		log.Warn("Order has already been updated %v", ord, ctx)
+		return
+	}
 
 	err := ord.RunInTransaction(func() error {
 		err := ord.Get(orderId)
@@ -25,18 +30,15 @@ var updateOrder = delay.Func("stripe-update-order", func(ctx appengine.Context, 
 			return nil
 		}
 
-		if start.Before(ord.UpdatedAt) {
-			log.Warn("Order has already been updated %v", ord, ctx)
-			return nil
-		}
-
 		// Update order using latest payment information
+		log.Debug("Before UpdatePaymentStatus: %+v", ord, ctx)
 		ord.UpdatePaymentStatus()
+		log.Debug("After UpdatePaymentStatus: %+v", ord, ctx)
 
 		return ord.Put()
 	})
 
 	if err != nil {
-		log.Panic("Update order transaction failed to get order (%s): %v", orderId, err, ctx)
+		log.Error("Failed to update order '%s': %v", orderId, err, ctx)
 	}
 })
