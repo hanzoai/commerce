@@ -115,7 +115,7 @@ func (q *DatastoreQuery) First(dst interface{}) (*aeds.Key, bool, error) {
 
 	// Nothing found
 	if err == aeds.Done {
-		return key, false, err
+		return key, false, nil
 	}
 
 	// Something went wrong
