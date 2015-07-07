@@ -2,7 +2,6 @@ package tasks
 
 import (
 	"errors"
-	"fmt"
 
 	"appengine"
 	"appengine/memcache"
@@ -60,12 +59,12 @@ func getPaymentFromCharge(ctx appengine.Context, ch *stripe.Charge) (*payment.Pa
 	// Lookup by charge id
 	if !ok || err != nil {
 		log.Debug("Lookup payment by charge id: %v", ch.ID, ctx)
-		_, err = pay.Query().Filter("Account.ChargeId=", ch.ID).First()
+		ok, err = pay.Query().Filter("Account.ChargeId=", ch.ID).First()
 	}
 
-	if err != nil {
-		log.Debug("Unable to lookup payment id", ctx)
-		return nil, errors.New(fmt.Sprintf("Unable to lookup payment by id '%s' or charge id '%s': %v", id, ch.ID, err, ctx))
+	if !ok {
+		log.Warn("Unable to get payment '%s' from charge '%s': %v", id, ch.ID, err, ctx)
+		return nil, errors.New("Unable to get payment from charge")
 	}
 
 	return pay, nil
