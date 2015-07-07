@@ -1,8 +1,6 @@
 package tasks
 
 import (
-	"errors"
-
 	"appengine"
 	"appengine/memcache"
 
@@ -42,32 +40,24 @@ func getOrganization(ctx appengine.Context) *organization.Organization {
 }
 
 // Get ancestor for ancestor query for a payment associated with a stripe charge
-func getPaymentFromCharge(ctx appengine.Context, ch *stripe.Charge) (*payment.Payment, error) {
+func getPaymentFromCharge(ctx appengine.Context, ch *stripe.Charge) (*payment.Payment, bool, error) {
 	db := datastore.New(ctx)
 	pay := payment.New(db)
-
-	var err error
 
 	id, ok := ch.Meta["payment"]
 
 	// Try to get by payment id
 	if ok {
 		log.Debug("Try to get payment by payment id: %v", id, ctx)
-		err = pay.Get(id)
+		if err := pay.Get(id); err == nil {
+			return pay, true, nil
+		}
 	}
 
-	// Lookup by charge id
-	if !ok || err != nil {
-		log.Debug("Lookup payment by charge id: %v", ch.ID, ctx)
-		ok, err = pay.Query().Filter("Account.ChargeId=", ch.ID).First()
-	}
-
-	if !ok {
-		log.Warn("Unable to get payment '%s' from charge '%s': %v", id, ch.ID, err, ctx)
-		return nil, errors.New("Unable to get payment from charge")
-	}
-
-	return pay, nil
+	// Try to lookup payment using charge id
+	log.Debug("Lookup payment by charge id: %v", ch.ID, ctx)
+	ok, err := pay.Query().Filter("Account.ChargeId=", ch.ID).First()
+	return pay, ok, err
 }
 
 // Update charge in case order/pay id is missing in metadata
