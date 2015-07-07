@@ -335,7 +335,7 @@ func (o *Order) UpdatePaymentStatus() {
 
 	// Convert payment ids into keys
 	for i, id := range o.PaymentIds {
-		if key, err := hashid.DecodeKey(o.Context(), id); err != nil {
+		if key, err := hashid.DecodeKey(ctx, id); err != nil {
 			log.Error("Unable to decode payment id into Key %s", id, ctx)
 		} else {
 			keys[i] = key
@@ -348,7 +348,7 @@ func (o *Order) UpdatePaymentStatus() {
 	db := datastore.New(ctx)
 	err := db.GetMulti(keys, payments)
 	if err != nil {
-		log.Error("Unable to fetch payments for order (%s): %v", o.Id(), err, ctx)
+		log.Error("Unable to fetch payments for order '%s': %v", o.Id(), err, ctx)
 		return
 	}
 

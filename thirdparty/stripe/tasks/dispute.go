@@ -25,7 +25,7 @@ func UpdatePaymentFromDispute(pay *payment.Payment, dispute *stripe.Dispute) {
 
 // Synchronize payment using dispute
 var DisputeSync = delay.Func("stripe-update-disputed-payment", func(ctx appengine.Context, ns string, token string, dispute stripe.Dispute, start time.Time) {
-	ctx = getNamespacedCtx(ctx, ns)
+	ctx = getNamespacedContext(ctx, ns)
 
 	// Get charge from Stripe
 	client := stripe.New(ctx, token)
@@ -36,9 +36,14 @@ var DisputeSync = delay.Func("stripe-update-disputed-payment", func(ctx appengin
 	}
 
 	// Get payment for associated charge
-	pay, err := getPaymentFromCharge(ctx, ch)
+	pay, ok, err := getPaymentFromCharge(ctx, ch)
 	if err != nil {
-		log.Error("Unable to find payment matching charge  '%s': %v", ch.ID, err, ctx)
+		log.Error("Failed to query for payment associated with charge '%s': %v", ch.ID, err, ctx)
+		return
+	}
+
+	if !ok {
+		log.Warn("No payment associated with charge '%s'", ch.ID, ctx)
 		return
 	}
 
