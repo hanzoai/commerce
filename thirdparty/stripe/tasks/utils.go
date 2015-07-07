@@ -16,7 +16,7 @@ import (
 )
 
 // Get namespaced appengine context for given namespace
-func getNamespacedCtx(ctx appengine.Context, ns string) appengine.Context {
+func getNamespacedContext(ctx appengine.Context, ns string) appengine.Context {
 	log.Debug("Setting namespace of context to %s", ns, ctx)
 	ctx, err := appengine.Namespace(ctx, ns)
 	if err != nil {
