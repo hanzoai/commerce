@@ -7,6 +7,7 @@ BasicFormView = require '../basic'
 
 class UserFormView extends BasicFormView
   tag: 'user-form'
+  redirectPath: 'users'
   path: 'user'
   html: require './template.html'
 
