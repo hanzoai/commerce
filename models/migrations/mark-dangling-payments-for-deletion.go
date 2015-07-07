@@ -3,6 +3,8 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
+	"appengine/datastore"
+
 	ds "crowdstart.com/datastore"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/payment"
@@ -14,18 +16,26 @@ var _ = New("mark-dangling-payments-for-deletion",
 		return NoArgs
 	},
 	func(db *ds.Datastore, pay *payment.Payment) {
+		ctx := db.Context
 		oid := pay.OrderId
-
 		ord := order.New(db)
-		if err := ord.GetById(oid); err != nil {
+
+		// Try and lookup order
+		err := ord.Get(oid)
+
+		// Update payment accordingly
+		switch err {
+		case nil:
+			pay.Deleted = false
+		case datastore.ErrNoSuchEntity:
+			pay.Deleted = true
+		default:
+			log.Error("Failed to query for order: %v", err, ctx)
 			return
 		}
 
-		log.Warn("No Order Found For Payment %v", pay.Id(), db.Context)
-
-		pay.Deleted = true
+		// Update payment
 		if err := pay.Put(); err != nil {
-			log.Error(err, db.Context)
+			log.Error("Failed to save payment: %v", err, ctx)
 		}
-	},
-)
+	})
