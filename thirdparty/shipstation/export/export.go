@@ -320,9 +320,9 @@ func Export(c *gin.Context) {
 	db := datastore.New(org.Namespace(c))
 
 	// Query out relevant orders
-	q := order.Query(db).Order("CreatedAt").
-		Filter("CreatedAt >=", startDate).
-		Filter("CreatedAt <", endDate)
+	q := order.Query(db).Order("UpdatedAt").
+		Filter("UpdatedAt >=", startDate).
+		Filter("UpdatedAt <", endDate)
 
 	// Calculate total pages
 	count, _ := q.Count()
