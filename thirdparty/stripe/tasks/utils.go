@@ -46,9 +46,11 @@ func getOrganization(ctx appengine.Context) *organization.Organization {
 func getPaymentFromCharge(ctx appengine.Context, ch *stripe.Charge) (*payment.Payment, error) {
 	db := datastore.New(ctx)
 	pay := payment.New(db)
+
 	var err error
 
 	id, ok := ch.Meta["payment"]
+
 	// Try to get by payment id
 	if ok {
 		log.Debug("Try to get payment by payment id: %v", id, ctx)
@@ -63,7 +65,7 @@ func getPaymentFromCharge(ctx appengine.Context, ch *stripe.Charge) (*payment.Pa
 
 	if err != nil {
 		log.Debug("Unable to lookup payment id", ctx)
-		return nil, errors.New(fmt.Sprintf("Unable to lookup payment by id (%s) or charge id (%s): %v", id, ch.ID, err, ctx))
+		return nil, errors.New(fmt.Sprintf("Unable to lookup payment by id '%s' or charge id '%s': %v", id, ch.ID, err, ctx))
 	}
 
 	return pay, nil
