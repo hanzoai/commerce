@@ -364,13 +364,19 @@ func Export(c *gin.Context) {
 
 	// Set customers
 	for i, ord := range orders {
-		customer := newCustomer(ord, users[i])
+		usr := users[i]
+		customer := newCustomer(ord, usr)
 		res.Orders[i].Customer = customer
 
 		// Can't ship to someone without a country
 		if string(customer.ShipTo.Country) == "" {
 			log.Warn("Missing COUNTRY: %#v, %#v, %#v", customer, ord, users[i], c)
 			res.Orders[i] = nil
+		}
+
+		// Set as locked if still needs first/lastname
+		if usr.FirstName == "" && usr.LastName == "" {
+			res.Orders[i].OrderStatus = CDATA("locked")
 		}
 	}
 
