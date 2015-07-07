@@ -12,7 +12,7 @@ import (
 )
 
 var updateOrder = delay.Func("stripe-update-order", func(ctx appengine.Context, ns string, orderId string, start time.Time) {
-	ctx = getNamespacedCtx(ctx, ns)
+	ctx = getNamespacedContext(ctx, ns)
 	db := datastore.New(ctx)
 	ord := order.New(db)
 
@@ -26,14 +26,13 @@ var updateOrder = delay.Func("stripe-update-order", func(ctx appengine.Context, 
 	err := ord.RunInTransaction(func() error {
 		err := ord.Get(orderId)
 		if err != nil {
-			log.Error("Failed to get order: %v", err, ctx)
-			return nil
+			return err
 		}
 
 		// Update order using latest payment information
-		log.Debug("Before UpdatePaymentStatus: %+v", ord, ctx)
+		log.Debug("Order before: %+v", ord, ctx)
 		ord.UpdatePaymentStatus()
-		log.Debug("After UpdatePaymentStatus: %+v", ord, ctx)
+		log.Debug("Order after: %+v", ord, ctx)
 
 		return ord.Put()
 	})
