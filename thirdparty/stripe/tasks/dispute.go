@@ -28,33 +28,39 @@ var DisputeSync = delay.Func("stripe-update-disputed-payment", func(ctx appengin
 	ctx = getNamespacedCtx(ctx, ns)
 
 	// Get charge from Stripe
-	chargeId := dispute.Charge
 	client := stripe.New(ctx, token)
-	ch, err := client.GetCharge(chargeId)
+	ch, err := client.GetCharge(dispute.Charge)
 	if err != nil {
-		log.Panic("Unable to fetch charge (%s) for dispute (%s): %v", chargeId, dispute, err, ctx)
+		log.Error("Unable to get charge '%s' for dispute %v: %v", ch.ID, dispute, err, ctx)
+		return
 	}
 
+	// Get payment for associated charge
 	pay, err := getPaymentFromCharge(ctx, ch)
 	if err != nil {
-		log.Panic("Unable to find payment matching charge: %s, %v", chargeId, err, ctx)
+		log.Error("Unable to find payment matching charge  '%s': %v", ch.ID, err, ctx)
+		return
 	}
 
-	pay.RunInTransaction(func() error {
-		log.Debug("Payment: %v", pay, ctx)
+	if start.Before(pay.UpdatedAt) {
+		log.Warn("Payment '%s' previously updated, bailing out", pay.Id(), ctx)
+		return
+	}
 
-		if start.Before(pay.UpdatedAt) {
-			log.Info(`The Payment(%s) associated with Charge(%s) has already been updated.
-					  Stopping 'stripe-update-disputed-payment' task.`, pay.Id(), chargeId, ctx)
-			return nil
-		}
-
-		// Actually update payment
+	// Update payment using dispute
+	err = pay.RunInTransaction(func() error {
 		UpdatePaymentFromDispute(pay, &dispute)
-		log.Debug("Payment updated to: %v", pay, ctx)
-
 		return pay.Put()
 	})
 
+	if err != nil {
+		log.Error("Failed to update payment '%s' from charge %v: ", pay.Id(), ch, err, ctx)
+		return
+	}
+
+	// Update charge if necessary
+	updateChargeFromPayment(ctx, token, pay, ch)
+
+	// Update order
 	updateOrder.Call(ctx, ns, pay.OrderId, start)
 })
