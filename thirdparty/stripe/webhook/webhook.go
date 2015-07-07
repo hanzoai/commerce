@@ -12,6 +12,7 @@ import (
 	"crowdstart.com/thirdparty/stripe/tasks"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
+	"crowdstart.com/util/router"
 )
 
 // Handle stripe webhook POSTs
@@ -79,4 +80,11 @@ func Webhook(c *gin.Context) {
 	default:
 		log.Info("Unsupported Stripe webhook event %s %#v", event.Type, event, c)
 	}
+}
+
+// Wire up webhook endpoint
+func Route(router router.Router, args ...gin.HandlerFunc) {
+	api := router.Group("stripe")
+
+	api.POST("/webhook", Webhook)
 }

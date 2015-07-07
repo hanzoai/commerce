@@ -19,7 +19,6 @@ import (
 	"crowdstart.com/models/transaction"
 	"crowdstart.com/models/user"
 	"crowdstart.com/models/variant"
-	"crowdstart.com/thirdparty/shipstation"
 	"crowdstart.com/util/rest"
 	"crowdstart.com/util/router"
 
@@ -32,6 +31,9 @@ import (
 	searchApi "crowdstart.com/api/search"
 	storeApi "crowdstart.com/api/store"
 	userApi "crowdstart.com/api/user"
+
+	shipstationApi "crowdstart.com/thirdparty/shipstation"
+	stripeApi "crowdstart.com/thirdparty/stripe/webhook"
 )
 
 func init() {
@@ -104,6 +106,9 @@ func init() {
 	// Access token API
 	accessTokenApi.Route(api)
 
-	// Shipstation API
-	shipstation.Route(api)
+	// Shipstation custom store API endpoints
+	shipstationApi.Route(api)
+
+	// Stripe webhook
+	stripeApi.Route(api)
 }
