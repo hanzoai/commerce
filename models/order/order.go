@@ -352,6 +352,8 @@ func (o *Order) UpdatePaymentStatus() {
 		return
 	}
 
+	log.Warn(o.PaymentIds)
+
 	// Sum payments to figure out what we've been paid and check for bad status
 	var badstatus payment.Status
 	failed := false
@@ -384,6 +386,7 @@ func (o *Order) UpdatePaymentStatus() {
 	} else {
 		if failed {
 			// If something bad happened, cancel the order
+			log.Warn("Something Bad Happened %v", badstatus)
 			o.Status = Cancelled
 			o.PaymentStatus = badstatus
 		} else if refunded {
