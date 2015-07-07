@@ -469,7 +469,17 @@ func (r Rest) delete(c *gin.Context) {
 
 	id := c.Params.ByName(r.ParamId)
 	entity := r.newEntity(c)
-	entity.Delete(id)
+	err := entity.Get(id)
+	if err != nil {
+		r.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
+		return
+	}
+
+	db := entity.Datastore()
+	if _, err := db.Put("deleted", entity); err != nil {
+		r.Fail(c, 500, "Failed to start deletion "+r.Kind, err)
+		return
+	}
 
 	if err := entity.Delete(); err != nil {
 		r.Fail(c, 500, "Failed to delete "+r.Kind, err)
