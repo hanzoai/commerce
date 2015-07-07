@@ -43,9 +43,14 @@ var ChargeSync = delay.Func("stripe-charge-sync", func(ctx appengine.Context, ns
 	ctx = getNamespacedContext(ctx, ns)
 
 	// Get payment using charge
-	pay, err := getPaymentFromCharge(ctx, &ch)
+	pay, ok, err := getPaymentFromCharge(ctx, &ch)
 	if err != nil {
-		log.Error("Failed to find payment for charge '%s': %v", ch.ID, err, ctx)
+		log.Error("Failed to query for payment associated with charge '%s': %v", ch.ID, err, ctx)
+		return
+	}
+
+	if !ok {
+		log.Warn("No payment associated with charge '%s'", ch.ID, ctx)
 		return
 	}
 
