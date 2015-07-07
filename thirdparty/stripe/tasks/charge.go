@@ -73,7 +73,7 @@ var ChargeSync = delay.Func("stripe-charge-sync", func(ctx appengine.Context, ns
 
 	// Update order
 	if pay.OrderId == "" {
-		log.Warn("No order associated with payment: %+v", ctx)
+		log.Warn("No order associated with payment: %+v", pay, ctx)
 		return
 	}
 
