@@ -23,7 +23,7 @@ func Webhook(c *gin.Context) {
 		return
 	}
 
-	log.Debug("Webhook recieved '%s': %s", event.Type, c.Request.Body, c)
+	log.Debug("Webhook recieved '%s': %+v", event.Type, event, c)
 
 	// Look up organization
 	db := datastore.New(c)
