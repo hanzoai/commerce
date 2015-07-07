@@ -56,7 +56,9 @@ var ChargeSync = delay.Func("stripe-charge-sync", func(ctx appengine.Context, ns
 
 	// Update payment using charge
 	err = pay.RunInTransaction(func() error {
+		log.Debug("Before UpdatePaymentFromCharge: %+v", pay, ctx)
 		UpdatePaymentFromCharge(pay, &ch)
+		log.Debug("After UpdatePaymentFromCharge: %+v", pay, ctx)
 		return pay.Put()
 	})
 
