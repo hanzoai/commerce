@@ -23,12 +23,12 @@ func Webhook(c *gin.Context) {
 		return
 	}
 
-	log.Debug("Webhook recieved '%s': %#v", event.Type, event, c)
+	log.Debug("Webhook recieved '%s': %s", event.Type, c.Request.Body, c)
 
 	// Look up organization
 	db := datastore.New(c)
 	org := organization.New(db)
-	if _, err := org.Query().Filter("Stripe.UserId=", event.UserID).First(); err != nil {
+	if ok, err := org.Query().Filter("Stripe.UserId=", event.UserID).First(); !ok || err != nil {
 		log.Error("Failed to look up organization by Stripe user id: %v", err, c)
 		return
 	}
@@ -36,7 +36,7 @@ func Webhook(c *gin.Context) {
 	// Get stripe token
 	token, err := org.GetStripeAccessToken(event.UserID)
 	if err != nil {
-		log.Error("Failed to get Stripe access token from organization: %#v %v", org, err, c)
+		log.Error("Failed to get Stripe access token for organization '%s': %v", org.Name, err, c)
 		return
 	}
 
