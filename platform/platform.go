@@ -7,7 +7,6 @@ import (
 	"crowdstart.com/platform/frontend"
 	"crowdstart.com/platform/login"
 	"crowdstart.com/platform/user"
-	stripe "crowdstart.com/thirdparty/stripe/webhook"
 	"crowdstart.com/util/router"
 )
 
@@ -96,7 +95,6 @@ func init() {
 	dash.GET("/stripe/connect", admin.StripeConnect)
 	dash.GET("/stripe/callback", admin.StripeCallback)
 	dash.GET("/stripe/sync", admin.StripeSync)
-	router.POST("/stripe/hook", stripe.Webhook)
 
 	// Salesfoce connect
 	dash.GET("/salesforce/callback", admin.SalesforceCallback)
