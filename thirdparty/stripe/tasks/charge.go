@@ -23,7 +23,7 @@ func UpdatePaymentFromCharge(pay *payment.Payment, ch *stripe.Charge) {
 	}
 
 	if ch.Status == "failed" {
-		pay.Status = payment.Cancelled
+		pay.Status = payment.Failed
 	}
 
 	if ch.Refunded {
