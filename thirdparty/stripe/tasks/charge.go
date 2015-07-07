@@ -8,8 +8,6 @@ import (
 	"appengine"
 	"appengine/delay"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/order"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/thirdparty/stripe"
 	"crowdstart.com/util/log"
@@ -51,33 +49,24 @@ var ChargeSync = delay.Func("stripe-charge-sync", func(ctx appengine.Context, ns
 		return
 	}
 
-	err = pay.RunInTransaction(func() error {
-		// Bail out if someone has updated payment since us
-		if start.Before(pay.UpdatedAt) {
-			log.Info(`The Payment(%s) associated with Charge(%s) has already been updated.
-					  Stopping 'stripe-update-payment' task.`, pay.Id(), ch.ID, ctx)
-			return nil
-		}
-	// Update payment status
-	UpdatePaymentFromCharge(pay, &ch)
-	if err := pay.Put(); err != nil {
-		log.Error("Unable to update payment %#v: %v", pay, err, ctx)
+	if start.Before(pay.UpdatedAt) {
+		log.Warn("Payment '%s' previously updated, bailing out", pay.Id(), ctx)
 		return
 	}
 
-	// Check if we need to sync back changes to charge
-	payId, _ := ch.Meta["payment"]
-	ordId, _ := ch.Meta["order"]
-	usrId, _ := ch.Meta["user"]
-	if pay.Id() != payId || pay.OrderId != ordId || pay.Buyer.UserId != usrId {
-		// Get a stripe client
-		client := stripe.New(ctx, token)
+	// Update payment using charge
+	err = pay.RunInTransaction(func() error {
+		UpdatePaymentFromCharge(pay, &ch)
+		return pay.Put()
+	})
 
-		// Update charge with new metadata
-		if _, err := client.UpdateCharge(pay); err != nil {
-			log.Error("Unable to update charge for payment '%s': %v", pay.Id(), err, ctx)
-		}
+	if err != nil {
+		log.Error("Failed to update payment '%s' from charge %v: ", pay.Id(), ch, err, ctx)
+		return
 	}
+
+	// Update charge if necessary
+	updateChargeFromPayment(ctx, token, pay, &ch)
 
 	// Update order
 	updateOrder.Call(ctx, ns, pay.OrderId, start)
