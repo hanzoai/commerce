@@ -10,13 +10,6 @@ import (
 	"crowdstart.com/util/template"
 )
 
-/*
-Warning
-Due to the fact that `CampaignId`s are currently missing in all the orders,
-this function assumes that every order is associated with the only campaign (SKULLY).
-
-TODO: Run a migration to set `CampaignId` in all orders.
-*/
 func StripeSync(c *gin.Context) {
 	ctx := middleware.GetAppEngine(c)
 	org := middleware.GetOrganization(c)
@@ -29,7 +22,7 @@ func StripeConnect(c *gin.Context) {
 	template.Render(c, "admin/stripe/connect.html")
 }
 
-// StripeCallback Stripe End Points
+// Connect connect callback
 func StripeCallback(c *gin.Context) {
 	req := c.Request
 	code := req.URL.Query().Get("code")
