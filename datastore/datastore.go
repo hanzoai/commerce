@@ -18,7 +18,12 @@ import (
 
 // Alias Done error
 var (
-	Done        = aeds.Done
+	Done                 = aeds.Done
+	ErrNoSuchEntity      = aeds.ErrNoSuchEntity
+	ErrInvalidEntityType = aeds.ErrInvalidEntityType
+	ErrInvalidKey        = aeds.ErrInvalidKey
+
+	// TODO: Use appengine aliases everywhere
 	InvalidKey  = errors.New("Invalid key")
 	KeyNotFound = errors.New("Key not found")
 )
