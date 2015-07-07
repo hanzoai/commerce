@@ -42,18 +42,6 @@ func getOrganization(ctx appengine.Context) *organization.Organization {
 	return org
 }
 
-// Update charge in case order/pay id is missing in metadata
-func updateChargeFromPayment(ctx appengine.Context, ch *stripe.Charge, pay *payment.Payment) {
-	org := getOrganization(ctx)
-
-	// Get a stripe client
-	client := stripe.New(ctx, org.Stripe.AccessToken)
-
-	if _, err := client.UpdateCharge(pay); err != nil {
-		log.Error("Unable to update charge for payment %#v: %v", pay.OrderId, err, ctx)
-	}
-}
-
 // Get ancestor for ancestor query for a payment associated with a stripe charge
 func getPaymentFromCharge(ctx appengine.Context, ch *stripe.Charge) (*payment.Payment, error) {
 	db := datastore.New(ctx)
@@ -79,4 +67,27 @@ func getPaymentFromCharge(ctx appengine.Context, ch *stripe.Charge) (*payment.Pa
 	}
 
 	return pay, nil
+}
+
+// Update charge in case order/pay id is missing in metadata
+func updateChargeFromPayment(ctx appengine.Context, token string, pay *payment.Payment, ch *stripe.Charge) {
+	if ch != nil {
+		// Check if we need to sync back changes to charge
+		payId, _ := ch.Meta["payment"]
+		ordId, _ := ch.Meta["order"]
+		usrId, _ := ch.Meta["user"]
+
+		// Don't sync if metadata is already correct
+		if pay.Id() == payId && pay.OrderId == ordId && pay.Buyer.UserId == usrId {
+			return
+		}
+	}
+
+	// Get a stripe client
+	client := stripe.New(ctx, token)
+
+	// Update charge with new metadata
+	if _, err := client.UpdateCharge(pay); err != nil {
+		log.Error("Unable to update charge for payment '%s': %v", pay.Id(), err, ctx)
+	}
 }
