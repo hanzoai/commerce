@@ -23,8 +23,6 @@ func Webhook(c *gin.Context) {
 		return
 	}
 
-	log.Debug("Received event %#v", *event, c)
-
 	if !event.Live {
 		c.String(200, event.Type)
 		return
@@ -56,7 +54,6 @@ func Webhook(c *gin.Context) {
 			log.Error("Failed to unmarshal stripe.Charge: %#v %v", event, err, c)
 			return
 		}
-
 		start := time.Now()
 		tasks.ChargeSync.Call(ctx, org.Name, token, ch, start)
 
@@ -65,6 +62,7 @@ func Webhook(c *gin.Context) {
 	case "charge.dispute.funds_reinstated":
 	case "charge.dispute.funds_withdrawn":
 	case "charge.dispute.updated":
+		log.Warn("Decode 2")
 		// Decode stripe dispute
 		dispute := stripe.Dispute{}
 		if err := json.Unmarshal(event.Data.Raw, &dispute); err != nil {
@@ -76,8 +74,10 @@ func Webhook(c *gin.Context) {
 		tasks.DisputeSync.Call(ctx, org.Name, token, dispute, start)
 
 	case "ping":
+		log.Warn("Decode 3")
 		c.String(200, "pong")
 	default:
+		log.Warn("Decode 4")
 		log.Info("Unsupported Stripe webhook event %s %#v", event.Type, event, c)
 	}
 }
