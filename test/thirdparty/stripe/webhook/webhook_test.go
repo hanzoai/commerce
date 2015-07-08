@@ -58,7 +58,35 @@ var _ = AfterSuite(func() {
 	ctx.Close()
 })
 
-func mockStripeEvent(event, status string, captured bool) (*order.Order, *payment.Payment) {
+func mockStripeDisputeEvent(event, status string) (*order.Order, *payment.Payment) {
+	ord := order.New(db)
+	ord.Put()
+
+	pay := payment.New(db)
+	pay.OrderId = ord.Id()
+	pay.Amount = currency.Cents(1000)
+	pay.Put()
+
+	ord.PaymentIds = []string{pay.Id()}
+	ord.Total = currency.Cents(1000)
+	ord.Put()
+
+	request := CreateDispute(event, status)
+	w := client.PostRawJSON("/stripe/webhook", request)
+	Expect(w.Code).To(Equal(200))
+
+	time.Sleep(10 * time.Second)
+
+	pay2 := payment.New(db)
+	pay2.GetById(pay.Id())
+
+	ord2 := order.New(db)
+	ord2.GetById(ord.Id())
+
+	return ord2, pay2
+}
+
+func mockStripeChargeEvent(event, status string, captured bool) (*order.Order, *payment.Payment) {
 	refunded := false
 
 	ord := order.New(db)
@@ -68,7 +96,6 @@ func mockStripeEvent(event, status string, captured bool) (*order.Order, *paymen
 	pay.OrderId = ord.Id()
 	pay.Amount = currency.Cents(1000)
 	if status == "refunded" {
-		pay.AmountRefunded = pay.Amount
 		refunded = true
 	}
 	pay.Put()
@@ -77,7 +104,7 @@ func mockStripeEvent(event, status string, captured bool) (*order.Order, *paymen
 	ord.Total = currency.Cents(1000)
 	ord.Put()
 
-	request := CreateRequest(event, ord.Id(), pay.Id(), status, refunded, captured)
+	request := CreatePayment(event, ord.Id(), pay.Id(), status, refunded, captured)
 	w := client.PostRawJSON("/stripe/webhook", request)
 	Expect(w.Code).To(Equal(200))
 
@@ -95,35 +122,45 @@ func mockStripeEvent(event, status string, captured bool) (*order.Order, *paymen
 var _ = Describe("Stripe Webhook Events", func() {
 	Context("Respond To charge.updated Events", func() {
 		It("Succeeded = true", func() {
-			ord, pay := mockStripeEvent("charge.updated", "succeeded", true)
+			ord, pay := mockStripeChargeEvent("charge.updated", "succeeded", true)
 
 			Expect(payment.Paid).To(Equal(string(pay.Status)))
+			Expect(payment.Paid).To(Equal(string(ord.PaymentStatus)))
+			Expect(order.Open).To(Equal(string(ord.Status)))
+
 			Expect(ord.Paid).To(Equal(pay.Amount))
-			Expect(order.Open).To(Equal(ord.Status))
 		})
 
 		It("Status = failed", func() {
-			ord, pay := mockStripeEvent("charge.updated", "failed", true)
+			ord, pay := mockStripeChargeEvent("charge.updated", "failed", true)
 
-			Expect(payment.Cancelled).To(Equal(pay.Status))
-			Expect(payment.Cancelled).To(Equal(ord.PaymentStatus))
-			Expect(order.Cancelled).To(Equal(string(ord.Status)))
+			Expect(payment.Failed).To(Equal(string(pay.Status)))
+			Expect(payment.Failed).To(Equal(string(ord.PaymentStatus)))
+			Expect(order.Cancelled).To(Equal(ord.Status))
 		})
 
 		It("Status = refunded", func() {
-			ord, pay := mockStripeEvent("charge.updated", "refunded", true)
+			ord, pay := mockStripeChargeEvent("charge.updated", "refunded", true)
 
 			Expect(payment.Refunded).To(Equal(string(pay.Status)))
 			Expect(payment.Refunded).To(Equal(string(ord.PaymentStatus)))
-			Expect(order.Cancelled).To(Equal(string(ord.Status)))
-		})
-
-		It("Status = disputed", func() {
-			ord, pay := mockStripeEvent("charge.updated", "disputed", true)
-
-			Expect(payment.Refunded).To(Equal(string(pay.Status)))
-			Expect(payment.Refunded).To(Equal(string(ord.PaymentStatus)))
-			Expect(order.Disputed).To(Equal(string(ord.Status)))
+			Expect(order.Cancelled).To(Equal(ord.Status))
 		})
 	})
+
+	// Context("Respond To charge.dispute.updated Events", func() {
+	// 	It("Status = won", func() {
+	// 		ord, pay := mockStripeChargeEvent("charge.dispute.updated", "won", true)
+	// 		Expect(payment.Paid).To(Equal(string(pay.Status)))
+	// 		Expect(payment.Paid).To(Equal(string(ord.PaymentStatus)))
+	// 		Expect(order.Open).To(Equal(ord.Status))
+	// 	})
+
+	// 	It("Status = lost", func() {
+	// 		ord, pay := mockStripeChargeEvent("charge.dispute.updated", "won", true)
+	// 		Expect(payment.Refunded).To(Equal(string(pay.Status)))
+	// 		Expect(payment.Refunded).To(Equal(string(ord.PaymentStatus)))
+	// 		Expect(order.Cancelled).To(Equal(ord.Status))
+	// 	})
+	// })
 })
