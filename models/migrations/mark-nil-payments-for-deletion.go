@@ -8,7 +8,7 @@ import (
 	"crowdstart.com/util/log"
 )
 
-var _ = New("mark-dangling-payments-for-deletion",
+var _ = New("mark-nil-payments-for-deletion",
 	func(c *gin.Context) []interface{} {
 		return NoArgs
 	},
