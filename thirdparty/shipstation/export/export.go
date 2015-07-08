@@ -285,6 +285,7 @@ func newOrder(ord *order.Order) *Order {
 		so.OrderStatus = CDATA(order.OnHold)
 	}
 
+	so.InternalNotes = CDATA("Order / Payment / Fullfillment Status: " + string(ord.Status) + " / " + string(ord.PaymentStatus) + " / " + string(ord.FulfillmentStatus))
 	so.CustomField1 = "Order Id: " + ord.Id()
 	so.CustomField2 = "Payment Ids: " + strings.Join(ord.PaymentIds, ", ")
 	so.CustomField3 = "User Id: " + ord.UserId
