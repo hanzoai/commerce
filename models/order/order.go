@@ -377,25 +377,26 @@ func (o *Order) UpdatePaymentStatus() {
 
 	// Update order paid amount and status
 	o.Paid = currency.Cents(int(o.Paid) + totalPaid)
+	// Paid or Partially Refunded
 	if o.Paid >= o.Total {
 		// TODO Notify user via email.
 		o.PaymentStatus = payment.Paid
 		if o.Status != Completed {
 			o.Status = Open
 		}
-	} else {
-		if failed {
-			// If something bad happened, cancel the order
-			log.Warn("Something Bad Happened %v", badstatus)
-			o.Status = Cancelled
-			o.PaymentStatus = badstatus
-		} else if refunded {
-			o.Status = Cancelled
-			o.PaymentStatus = payment.Refunded
-		} else if disputed {
-			o.Status = Locked
-			o.PaymentStatus = payment.Disputed
-		}
+	}
+
+	if failed {
+		// If something bad happened, cancel the order
+		log.Warn("Something Bad Happened %v", badstatus)
+		o.Status = Cancelled
+		o.PaymentStatus = badstatus
+	} else if refunded {
+		o.Status = Cancelled
+		o.PaymentStatus = payment.Refunded
+	} else if disputed {
+		o.Status = Locked
+		o.PaymentStatus = payment.Disputed
 	}
 }
 

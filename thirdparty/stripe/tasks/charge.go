@@ -9,12 +9,16 @@ import (
 	"appengine/delay"
 
 	"crowdstart.com/models/payment"
+	"crowdstart.com/models/types/currency"
 	"crowdstart.com/thirdparty/stripe"
 	"crowdstart.com/util/log"
 )
 
 // Update payment from charge
 func UpdatePaymentFromCharge(pay *payment.Payment, ch *stripe.Charge) {
+	pay.Amount = currency.Cents(ch.Amount)
+	pay.AmountRefunded = currency.Cents(ch.AmountRefunded)
+
 	pay.Status = payment.Unpaid
 
 	// Update status
@@ -23,7 +27,7 @@ func UpdatePaymentFromCharge(pay *payment.Payment, ch *stripe.Charge) {
 	}
 
 	if ch.Status == "failed" {
-		pay.Status = payment.Cancelled
+		pay.Status = payment.Failed
 	}
 
 	if ch.Refunded {
