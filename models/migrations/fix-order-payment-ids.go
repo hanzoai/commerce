@@ -1,0 +1,35 @@
+package migrations
+
+import (
+	"github.com/gin-gonic/gin"
+
+	"crowdstart.com/models/order"
+	"crowdstart.com/models/payment"
+	"crowdstart.com/util/log"
+
+	ds "crowdstart.com/datastore"
+)
+
+var _ = New("flag-order-payment-ids",
+	func(c *gin.Context) []interface{} {
+		c.Set("namespace", "bellabeat")
+		return NoArgs
+	},
+	func(db *ds.Datastore, ord *order.Order) {
+		var pays []*payment.Payment
+		if _, err := payment.Query(db).Filter("OrderId=", ord.Id()).GetAll(&pays); err != nil {
+			log.Error(err, db.Context)
+			return
+		}
+
+		paymentIds := make([]string, len(pays))
+		for i, pay := range pays {
+			paymentIds[i] = pay.Id()
+		}
+
+		ord.PaymentIds = paymentIds
+		if err := ord.Put(); err != nil {
+			log.Error(err, db.Context)
+		}
+	},
+)
