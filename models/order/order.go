@@ -33,10 +33,11 @@ var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 type Status string
 
 const (
-	Open      Status = "open"
-	Locked           = "locked"
-	Cancelled        = "cancelled"
+	Cancelled Status = "cancelled"
 	Completed        = "completed"
+	Locked           = "locked"
+	OnHold           = "on-hold"
+	Open             = "open"
 )
 
 type Order struct {
@@ -365,7 +366,7 @@ func (o *Order) UpdatePaymentStatus() {
 		switch pay.Status {
 		case payment.Paid:
 			totalPaid += int(pay.Amount)
-		case payment.Cancelled, payment.Failed, payment.Fraudulent:
+		case payment.Failed, payment.Fraudulent:
 			badstatus = pay.Status
 			failed = true
 		case payment.Disputed:
