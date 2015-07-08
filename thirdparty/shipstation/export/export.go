@@ -2,6 +2,7 @@ package export
 
 import (
 	"encoding/xml"
+	"fmt"
 	"math"
 	"strconv"
 	"strings"
@@ -285,10 +286,17 @@ func newOrder(ord *order.Order) *Order {
 		so.OrderStatus = CDATA(order.OnHold)
 	}
 
-	so.InternalNotes = CDATA("Order / Payment / Fullfillment Status: " + string(ord.Status) + " / " + string(ord.PaymentStatus) + " / " + string(ord.FulfillmentStatus))
-	so.CustomField1 = "Order Id: " + ord.Id()
-	so.CustomField2 = "Payment Ids: " + strings.Join(ord.PaymentIds, ", ")
-	so.CustomField3 = "User Id: " + ord.UserId
+	// Set internal notes/custom fields to useful values
+	so.InternalNotes = CDATA(fmt.Sprintf(`Order Status: %s
+Payment Status: %s
+Fullfillment Status: %s
+Order Id: %s
+Payment Ids: %s
+User Id: %s`, ord.Status, ord.PaymentStatus, ord.FulfillmentStatus, ord.Id(), strings.Join(ord.PaymentIds, ", "), ord.UserId))
+
+	so.CustomField1 = ord.Id()
+	so.CustomField2 = ord.PaymentIds[0]
+	so.CustomField3 = ord.UserId
 
 	return so
 }
