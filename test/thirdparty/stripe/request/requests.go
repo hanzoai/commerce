@@ -1,9 +1,14 @@
 package request
 
-func CreateRequest(event, orderId, paymentId, status string, captured bool) string {
+func CreateRequest(event, orderId, paymentId, status string, refunded, captured bool) string {
 	capturedStr := "false"
 	if captured {
 		capturedStr = "true"
+	}
+
+	refundedStr := "false"
+	if refunded {
+		refundedStr = "true"
 	}
 
 	return `
@@ -16,6 +21,7 @@ func CreateRequest(event, orderId, paymentId, status string, captured bool) stri
 	"request": null,
 	"pending_webhooks": 1,
 	"api_version": "2015-06-15",
+	"user_id": "1",
 	"data": {
 		"object": {
 			"id": "ch_00000000000000",
@@ -24,9 +30,9 @@ func CreateRequest(event, orderId, paymentId, status string, captured bool) stri
 			"livemode": false,
 			"paid": true,
 			"status": "` + status + `",
-			"amount": 4000,
+			"amount": 1000,
 			"currency": "usd",
-			"refunded": false,
+			"refunded": ` + refundedStr + `,
 			"source": {
 				"id": "card_00000000000000",
 				"object": "card",
