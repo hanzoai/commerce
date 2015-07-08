@@ -1,6 +1,67 @@
 package request
 
-func CreateRequest(event, orderId, paymentId, status string, refunded, captured bool) string {
+func CreateDispute(event, status string) string {
+	return `
+{
+	"created": 1326853478,
+	"livemode": true,
+	"id": "evt_00000000000000",
+	"type": "` + event + `",
+	"object": "event",
+	"request": null,
+	"pending_webhooks": 1,
+	"api_version": "2015-06-15",
+	"user_id": "1",
+    "object": {
+	  "charge": "ch_15ZGKCCSRlllXCwPryrymFEH",
+	  "amount": 2499,
+	  "created": 1424675302,
+	  "status": "` + status + `",
+	  "livemode": false,
+	  "currency": "usd",
+	  "object": "dispute",
+	  "reason": "general",
+	  "is_charge_refundable": false,
+	  "balance_transactions": [
+		{
+		  "id": "txn_15ZGKICSRlllXCwPg71Bwysl",
+		  "object": "balance_transaction",
+		  "amount": -2499,
+		  "currency": "usd",
+		  "net": -3999,
+		  "type": "adjustment",
+		  "created": 1424675302,
+		  "available_on": 1424822400,
+		  "status": "available",
+		  "fee": 1500,
+		  "fee_details": [
+			{
+			  "amount": 1500,
+			  "currency": "usd",
+			  "type": "stripe_fee",
+			  "description": "Dispute fee",
+			  "application": null
+			}
+		  ],
+		  "source": "ch_15ZGKCCSRlllXCwPryrymFEH",
+		  "description": "Chargeback withdrawal for ch_15ZGKCCSRlllXCwPryrymFEH",
+		  "sourced_transfers": {
+			"object": "list",
+			"total_count": 0,
+			"has_more": false,
+			"url": "/v1/transfers?source_transaction=ad_15ZGKICSRlllXCwPxSSjrMvW",
+			"data": [
+
+			]
+		  }
+		}
+	  ]
+	}
+}
+`
+}
+
+func CreatePayment(event, orderId, paymentId, status string, refunded, captured bool) string {
 	capturedStr := "false"
 	if captured {
 		capturedStr = "true"
