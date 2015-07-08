@@ -81,7 +81,7 @@ func (fn *ParallelFn) createDelayFn(name string) {
 		}
 
 		// Increase Timeout
-		nsCtx = appengine.Timeout(nsCtx, 15*time.Second)
+		nsCtx = appengine.Timeout(nsCtx, 30*time.Second)
 
 		// Run query to get results for this batch of entities
 		db := datastore.New(nsCtx)
