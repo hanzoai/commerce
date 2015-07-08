@@ -267,23 +267,23 @@ func newOrder(ord *order.Order) *Order {
 
 	// Try to figure out order status
 	if ord.Status == order.Locked || ord.PaymentStatus == payment.Unpaid || ord.PaymentStatus == payment.Disputed {
-		so.OrderStatus = CDATA(payment.Unpaid)
+		so.OrderStatus = CDATA("unpaid")
 	}
 
 	if ord.PaymentStatus == payment.Paid {
-		so.OrderStatus = CDATA(payment.Paid)
+		so.OrderStatus = CDATA("paid")
 	}
 
 	if ord.FulfillmentStatus == FulfillmentShipped {
-		so.OrderStatus = CDATA(FulfillmentShipped)
+		so.OrderStatus = CDATA("shipped")
 	}
 
 	if ord.Status == order.Cancelled || ord.PaymentStatus == payment.Cancelled || ord.PaymentStatus == payment.Failed || ord.PaymentStatus == payment.Fraudulent || ord.PaymentStatus == payment.Refunded {
-		so.OrderStatus = CDATA(order.Cancelled)
+		so.OrderStatus = CDATA("cancelled")
 	}
 
 	if ord.Status == order.OnHold {
-		so.OrderStatus = CDATA(order.OnHold)
+		so.OrderStatus = CDATA("on_hold")
 	}
 
 	// Set internal notes/custom fields to useful values
