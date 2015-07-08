@@ -1,9 +1,9 @@
 package test
 
 import (
+	"errors"
 	"net/http"
 	"testing"
-	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -58,33 +58,31 @@ var _ = AfterSuite(func() {
 	ctx.Close()
 })
 
-func mockStripeDisputeEvent(event, status string) (*order.Order, *payment.Payment) {
-	ord := order.New(db)
-	ord.Put()
+// func mockStripeDisputeEvent(event, status string) (*order.Order, *payment.Payment) {
+// 	ord := order.New(db)
+// 	ord.Put()
 
-	pay := payment.New(db)
-	pay.OrderId = ord.Id()
-	pay.Amount = currency.Cents(1000)
-	pay.Put()
+// 	pay := payment.New(db)
+// 	pay.OrderId = ord.Id()
+// 	pay.Amount = currency.Cents(1000)
+// 	pay.Put()
 
-	ord.PaymentIds = []string{pay.Id()}
-	ord.Total = currency.Cents(1000)
-	ord.Put()
+// 	ord.PaymentIds = []string{pay.Id()}
+// 	ord.Total = currency.Cents(1000)
+// 	ord.Put()
 
-	request := CreateDispute(event, status)
-	w := client.PostRawJSON("/stripe/webhook", request)
-	Expect(w.Code).To(Equal(200))
+// 	request := CreateDispute(event, status)
+// 	w := client.PostRawJSON("/stripe/webhook", request)
+// 	Expect(w.Code).To(Equal(200))
 
-	time.Sleep(10 * time.Second)
+// 	pay2 := payment.New(db)
+// 	pay2.GetById(pay.Id())
 
-	pay2 := payment.New(db)
-	pay2.GetById(pay.Id())
+// 	ord2 := order.New(db)
+// 	ord2.GetById(ord.Id())
 
-	ord2 := order.New(db)
-	ord2.GetById(ord.Id())
-
-	return ord2, pay2
-}
+// 	return ord2, pay2
+// }
 
 func mockStripeChargeEvent(event, status string, captured bool) (*order.Order, *payment.Payment) {
 	refunded := false
@@ -108,13 +106,18 @@ func mockStripeChargeEvent(event, status string, captured bool) (*order.Order, *
 	w := client.PostRawJSON("/stripe/webhook", request)
 	Expect(w.Code).To(Equal(200))
 
-	time.Sleep(10 * time.Second)
-
 	pay2 := payment.New(db)
-	pay2.GetById(pay.Id())
-
 	ord2 := order.New(db)
-	ord2.GetById(ord.Id())
+	err := Retry(20, func() error {
+		pay2.GetById(pay.Id())
+		if pay.Status == pay2.Status {
+			return errors.New("error")
+		}
+
+		ord2.GetById(ord.Id())
+		return nil
+	})
+	Expect(err).NotTo(HaveOccurred())
 
 	return ord2, pay2
 }

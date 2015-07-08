@@ -158,6 +158,7 @@ func (p Payment) Document() mixin.Document {
 }
 
 func (p *Payment) Init() {
+	p.Status = Unpaid
 	p.Metadata = make(Metadata)
 }
 
