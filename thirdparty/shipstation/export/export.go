@@ -362,9 +362,10 @@ func Export(c *gin.Context) {
 	for i, ord := range orders {
 		usr := users[i]
 
-		// How doe this even happen?
+		// How does this even happen?
 		if usr == nil {
 			res.Orders[i] = nil
+			log.Error("User should exist for order %v", ord, c)
 			continue
 		}
 
