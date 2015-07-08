@@ -259,7 +259,7 @@ func newOrder(ord *order.Order) *Order {
 	}
 
 	// Try to figure out order status
-	if ord.PaymentStatus == payment.Unpaid {
+	if ord.Status == order.Locked || ord.PaymentStatus == payment.Unpaid || ord.PaymentStatus == payment.Disputed {
 		so.OrderStatus = CDATA(payment.Unpaid)
 	}
 
@@ -271,18 +271,14 @@ func newOrder(ord *order.Order) *Order {
 		so.OrderStatus = CDATA(FulfillmentShipped)
 	}
 
-	if ord.Status == order.Cancelled {
+	if ord.Status == order.Cancelled || ord.PaymentStatus == payment.Cancelled || ord.PaymentStatus == payment.Failed || ord.PaymentStatus == payment.Fraudulent || ord.PaymentStatus == payment.Refunded {
 		so.OrderStatus = CDATA(order.Cancelled)
 	}
 
-	if ord.Status == order.Locked {
-		so.OrderStatus = CDATA(order.Locked)
+	if ord.Status == order.OnHold {
+		so.OrderStatus = CDATA(order.OnHold)
 	}
 
-	// Default to FulfillmentStatus
-	if so.OrderStatus == "" {
-		so.OrderStatus = CDATA(ord.FulfillmentStatus)
-	}
 	return so
 }
 
