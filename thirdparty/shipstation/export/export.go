@@ -361,6 +361,13 @@ func Export(c *gin.Context) {
 	// Set customers
 	for i, ord := range orders {
 		usr := users[i]
+
+		// How doe this even happen?
+		if usr == nil {
+			res.Orders[i] = nil
+			continue
+		}
+
 		customer := newCustomer(ord, usr)
 		res.Orders[i].Customer = customer
 
@@ -368,6 +375,7 @@ func Export(c *gin.Context) {
 		if string(customer.ShipTo.Country) == "" {
 			log.Warn("Missing COUNTRY: %#v, %#v, %#v", customer, ord, users[i], c)
 			res.Orders[i] = nil
+			continue
 		}
 
 		// Set as locked if still needs first/lastname
