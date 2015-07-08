@@ -17,6 +17,20 @@ var _ = New("flag-order-payment-ids",
 	},
 	func(db *ds.Datastore, ord *order.Order) {
 		var pays []*payment.Payment
+		update := false
+
+		for _, pid := range ord.PaymentIds {
+			pay := payment.New(db)
+			if err := pay.GetById(pid); err != nil {
+				update = true
+				break
+			}
+		}
+
+		if !update {
+			return
+		}
+
 		if _, err := payment.Query(db).Filter("OrderId=", ord.Id()).GetAll(&pays); err != nil {
 			log.Error(err, db.Context)
 			return
