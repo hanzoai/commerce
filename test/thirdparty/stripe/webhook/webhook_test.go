@@ -9,6 +9,7 @@ import (
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/order"
+	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/util/gincontext"
@@ -26,6 +27,7 @@ var (
 	ctx    ae.Context
 	client *ginclient.Client
 	db     *datastore.Datastore
+	org    *organization.Organization
 )
 
 func Test(t *testing.T) {
@@ -41,6 +43,11 @@ var _ = BeforeSuite(func() {
 	c = gincontext.New(ctx)
 	db = datastore.New(c)
 
+	org = organization.New(db)
+	org.Stripe.UserId = "1"
+	org.Stripe.Test.UserId = "1"
+	org.Put()
+
 	client = ginclient.New(ctx)
 	client.Setup(func(r *http.Request) {})
 
@@ -52,18 +59,25 @@ var _ = AfterSuite(func() {
 })
 
 func mockStripeEvent(event, status string, captured bool) (*order.Order, *payment.Payment) {
+	refunded := false
+
 	ord := order.New(db)
 	ord.Put()
 
 	pay := payment.New(db)
 	pay.OrderId = ord.Id()
 	pay.Amount = currency.Cents(1000)
+	if status == "refunded" {
+		pay.AmountRefunded = pay.Amount
+		refunded = true
+	}
 	pay.Put()
 
 	ord.PaymentIds = []string{pay.Id()}
+	ord.Total = currency.Cents(1000)
 	ord.Put()
 
-	request := CreateRequest(event, ord.Id(), pay.Id(), status, captured)
+	request := CreateRequest(event, ord.Id(), pay.Id(), status, refunded, captured)
 	w := client.PostRawJSON("/stripe/webhook", request)
 	Expect(w.Code).To(Equal(200))
 
@@ -85,22 +99,31 @@ var _ = Describe("Stripe Webhook Events", func() {
 
 			Expect(payment.Paid).To(Equal(string(pay.Status)))
 			Expect(ord.Paid).To(Equal(pay.Amount))
+			Expect(order.Open).To(Equal(ord.Status))
 		})
 
-		// It("Status = failed", func() {
-		// 	ord, pay := mockStripeEvent("charge.updated", "failed", true)
+		It("Status = failed", func() {
+			ord, pay := mockStripeEvent("charge.updated", "failed", true)
 
-		// 	Expect(payment.Cancelled).To(Equal(pay.Status))
-		// 	Expect(payment.Cancelled).To(Equal(ord.PaymentStatus))
-		// 	Expect(order.Cancelled).To(Equal(ord.Status))
-		// })
+			Expect(payment.Cancelled).To(Equal(pay.Status))
+			Expect(payment.Cancelled).To(Equal(ord.PaymentStatus))
+			Expect(order.Cancelled).To(Equal(string(ord.Status)))
+		})
 
-		// It("Status = refunded", func() {
-		// 	ord, pay := mockStripeEvent("charge.updated", "refunded", true)
+		It("Status = refunded", func() {
+			ord, pay := mockStripeEvent("charge.updated", "refunded", true)
 
-		// 	Expect(payment.Refunded).To(Equal(pay.Status))
-		// 	Expect(payment.Refunded).To(Equal(ord.PaymentStatus))
-		// 	Expect(order.Cancelled).To(Equal(ord.Status))
-		// })
+			Expect(payment.Refunded).To(Equal(string(pay.Status)))
+			Expect(payment.Refunded).To(Equal(string(ord.PaymentStatus)))
+			Expect(order.Cancelled).To(Equal(string(ord.Status)))
+		})
+
+		It("Status = disputed", func() {
+			ord, pay := mockStripeEvent("charge.updated", "disputed", true)
+
+			Expect(payment.Refunded).To(Equal(string(pay.Status)))
+			Expect(payment.Refunded).To(Equal(string(ord.PaymentStatus)))
+			Expect(order.Disputed).To(Equal(string(ord.Status)))
+		})
 	})
 })
