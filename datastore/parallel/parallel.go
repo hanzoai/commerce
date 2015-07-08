@@ -2,6 +2,7 @@ package parallel
 
 import (
 	"reflect"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -78,6 +79,9 @@ func (fn *ParallelFn) createDelayFn(name string) {
 				panic(err)
 			}
 		}
+
+		// Increase Timeout
+		nsCtx = appengine.Timeout(nsCtx, 15*time.Second)
 
 		// Run query to get results for this batch of entities
 		db := datastore.New(nsCtx)
