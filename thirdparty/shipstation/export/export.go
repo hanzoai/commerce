@@ -242,6 +242,12 @@ type Order struct {
 	}
 
 	Customer *Customer
+	// Order Id
+	CustomField1 string
+	// Payment Ids
+	CustomField2 string
+	// User Id
+	CustomField3 string
 }
 
 func newOrder(ord *order.Order) *Order {
@@ -278,6 +284,10 @@ func newOrder(ord *order.Order) *Order {
 	if ord.Status == order.OnHold {
 		so.OrderStatus = CDATA(order.OnHold)
 	}
+
+	so.CustomField1 = "Order Id: " + ord.Id()
+	so.CustomField2 = "Payment Ids: " + strings.Join(ord.PaymentIds, ", ")
+	so.CustomField3 = "User Id: " + ord.UserId
 
 	return so
 }
