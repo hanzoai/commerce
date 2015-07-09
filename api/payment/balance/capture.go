@@ -27,6 +27,8 @@ func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []
 		if !p.Captured {
 			// Update payment
 			p.Captured = true
+			p.Status = payment.Paid
+			p.Put()
 
 			trans := transaction.New(db)
 			trans.UserId = ord.UserId
