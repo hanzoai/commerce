@@ -222,6 +222,13 @@ do ->
         when 'html'
           el.innerHTML = ml.thankyou.html
 
+      if document.createEvent && document.dispatchEvent
+        event = document.createEvent 'Event'
+        event.initEvent 'thankyou', true, true
+        document.dispatchEvent event
+      else
+        console.log "Could not create or dispatch thankyou event"
+
     submitHandler = (ev) ->
       if ev.defaultPrevented
         return
@@ -249,7 +256,7 @@ do ->
       xhr = XHR()
       xhr.post endpoint, headers, payload, (err, status, xhr) ->
         return thankYou() if status == 409
-        return if err?
+        return showError(err) if err?
 
         # Fire tracking pixels
         track()
