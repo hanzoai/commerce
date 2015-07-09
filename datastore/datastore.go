@@ -18,7 +18,12 @@ import (
 
 // Alias Done error
 var (
-	Done        = aeds.Done
+	Done                 = aeds.Done
+	ErrNoSuchEntity      = aeds.ErrNoSuchEntity
+	ErrInvalidEntityType = aeds.ErrInvalidEntityType
+	ErrInvalidKey        = aeds.ErrInvalidKey
+
+	// TODO: Use appengine aliases everywhere
 	InvalidKey  = errors.New("Invalid key")
 	KeyNotFound = errors.New("Key not found")
 )
@@ -51,6 +56,15 @@ func (d *Datastore) SetContext(ctx interface{}) {
 		d.Context = ctx
 	case *gin.Context:
 		d.Context = ctx.MustGet("appengine").(appengine.Context)
+	}
+}
+
+// Set context for datastore
+func (d *Datastore) SetNamespace(ns string) {
+	if ctx, err := appengine.Namespace(d.Context, ns); err != nil {
+		log.Error("Unable to set namespace for datastore: %v", err, d.Context)
+	} else {
+		d.Context = ctx
 	}
 }
 
@@ -376,17 +390,8 @@ func (d *Datastore) Delete(key interface{}) error {
 	return nds.Delete(d.Context, _key)
 }
 
-func (d *Datastore) DeleteMulti(keys []string) error {
-	_keys := make([]*aeds.Key, 0)
-	for _, key := range keys {
-		k, err := d.DecodeKey(key)
-		_keys = append(_keys, k)
-		if err != nil {
-			d.warn("%v", err, d.Context)
-			return err
-		}
-	}
-	return nds.DeleteMulti(d.Context, _keys)
+func (d *Datastore) DeleteMulti(keys []*aeds.Key) error {
+	return nds.DeleteMulti(d.Context, keys)
 }
 
 func (d *Datastore) AllocateId(kind string) int64 {

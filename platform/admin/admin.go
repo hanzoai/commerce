@@ -15,7 +15,6 @@ import (
 	"crowdstart.com/models/mailinglist"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/product"
-	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/store"
 	"crowdstart.com/models/subscriber"
 	"crowdstart.com/models/types/currency"
@@ -353,19 +352,7 @@ func MailingLists(c *gin.Context) {
 }
 
 func User(c *gin.Context) {
-	db := datastore.New(middleware.GetNamespace(c))
-
-	u := user.New(db)
-	id := c.Params.ByName("id")
-	u.MustGet(id)
-
-	var referrers []*referrer.Referrer
-	referrer.Query(db).Filter("UserId=", u.Id()).GetAll(&referrers)
-
-	var orders []*order.Order
-	order.Query(db).Filter("UserId=", u.Id()).GetAll(&orders)
-
-	template.Render(c, "admin/user.html", "user", u, "referrers", referrers, "orders", orders)
+	template.Render(c, "admin/user.html")
 }
 
 func Users(c *gin.Context) {

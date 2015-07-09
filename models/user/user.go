@@ -16,7 +16,6 @@ import (
 	"crowdstart.com/models/transaction"
 	"crowdstart.com/models/types/country"
 	"crowdstart.com/models/types/currency"
-	"crowdstart.com/util/hashid"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/searchpartial"
@@ -74,10 +73,14 @@ type User struct {
 	Orders    []order.Order       `json:"orders,omitempty" datastore:"-"`
 
 	Balances map[currency.Type]currency.Cents `json:"balances" datastore:"-"`
+
+	// Series of events that have occured relevant to this order
+	History []Event `json:"history,omitempty"`
 }
 
 func (u *User) Init() {
 	u.Metadata = make(Metadata)
+	u.History = make([]Event, 0)
 }
 
 func New(db *datastore.Datastore) *User {
@@ -179,6 +182,10 @@ func (u User) Name() string {
 
 func (u User) HasPassword() bool {
 	return len(u.PasswordHash) != 0
+}
+
+func (u User) ComparePassword(pass string) bool {
+	return password.HashAndCompare(u.PasswordHash, pass)
 }
 
 func (u User) Buyer() Buyer {
@@ -320,10 +327,6 @@ func (u *User) LoadReferrals() error {
 func (u *User) LoadOrders() error {
 	if _, err := order.Query(u.Db).Filter("UserId=", u.Id()).GetAll(&u.Orders); err != nil {
 		return err
-	}
-
-	for i, o := range u.Orders {
-		u.Orders[i].Number = hashid.Decode(o.Id_)[1]
 	}
 
 	return nil

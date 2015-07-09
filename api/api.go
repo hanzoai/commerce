@@ -16,6 +16,7 @@ import (
 	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/subscriber"
 	"crowdstart.com/models/token"
+	"crowdstart.com/models/transaction"
 	"crowdstart.com/models/user"
 	"crowdstart.com/models/variant"
 	"crowdstart.com/util/rest"
@@ -29,6 +30,10 @@ import (
 	paymentApi "crowdstart.com/api/payment"
 	searchApi "crowdstart.com/api/search"
 	storeApi "crowdstart.com/api/store"
+	userApi "crowdstart.com/api/user"
+
+	shipstationApi "crowdstart.com/thirdparty/shipstation"
+	stripeApi "crowdstart.com/thirdparty/stripe/webhook"
 )
 
 func init() {
@@ -63,9 +68,10 @@ func init() {
 	rest.New(referral.Referral{}).Route(api, tokenRequired)
 	rest.New(referrer.Referrer{}).Route(api, tokenRequired)
 	rest.New(subscriber.Subscriber{}).Route(api, tokenRequired)
-	rest.New(user.User{}).Route(api, tokenRequired)
 	rest.New(variant.Variant{}).Route(api, tokenRequired)
+	rest.New(transaction.Transaction{}).Route(api, tokenRequired)
 
+	userApi.Route(api, tokenRequired)
 	accountApi.Route(api, tokenRequired)
 	orderApi.Route(api, tokenRequired)
 	storeApi.Route(api, tokenRequired)
@@ -99,4 +105,10 @@ func init() {
 
 	// Access token API
 	accessTokenApi.Route(api)
+
+	// Shipstation custom store API endpoints
+	shipstationApi.Route(api)
+
+	// Stripe webhook
+	stripeApi.Route(api)
 }

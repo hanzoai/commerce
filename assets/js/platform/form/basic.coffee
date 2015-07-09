@@ -1,0 +1,70 @@
+riot = require 'riot'
+
+crowdcontrol = require 'crowdcontrol'
+
+FormView = crowdcontrol.view.form.FormView
+Api = crowdcontrol.data.Api
+Source = crowdcontrol.data.Source
+m = crowdcontrol.utils.mediator
+
+class BasicFormView extends FormView
+  tag: 'basic-form'
+  redirectPath: ''
+  path: ''
+  html: ''
+  events:
+    "#{FormView.Events.SubmitFailed}": ()->
+      requestAnimationFrame ()->
+        $container = $(".error-container")
+        if $container[0]
+          $('html, body').animate(
+            scrollTop: $container.offset().top-$(window).height()/2
+          , 1000)
+  delete: ()->
+    m.trigger 'start-spin', @path + '-delete'
+    @api.delete(@path).finally ()=>
+      window.location.replace('../' + @redirectPath)
+
+  js: (opts)->
+    super
+
+    @loading = true
+    m.trigger 'start-spin', @path + '-form-load'
+
+    @api = api = Api.get('crowdstart')
+    api.get(@path).then((res)=>
+      m.trigger 'stop-spin', @path + '-form-load'
+
+      if res.status != 200
+        throw new Error("Form failed to load")
+
+      @model = res.responseText
+      @loadData @model
+
+      @initFormGroup()
+      riot.update()
+    ).catch ()=>
+      window.location.replace('../' + @redirectPath)
+
+  loadData: (model)->
+
+  _submit: (event)->
+    m.trigger 'start-spin', @path + '-form-save'
+    @update()
+
+    return @api.patch(@path, @model).then ()=>
+      m.trigger 'stop-spin', @path + '-form-save'
+      $button = $(event.target).find('input[type=submit], button[type=submit]').text('Saved')
+      setTimeout ()->
+        $button.text('Save')
+      , 1000
+      @update()
+    , ()=>
+      m.trigger 'stop-spin', @path + '-form-save'
+      $button = $(event.target).find('input[type=submit], button[type=submit]').text('Saved')
+      setTimeout ()->
+        $button.text('Save')
+      , 1000
+      @update()
+
+module.exports = BasicFormView

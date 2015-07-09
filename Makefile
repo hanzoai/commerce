@@ -1,7 +1,7 @@
 pwd				= $(shell pwd)
 os				= $(shell uname | tr '[A-Z]' '[a-z]')
 platform		= $(os)_amd64
-sdk				= go_appengine_sdk_$(platform)-1.9.22
+sdk				= go_appengine_sdk_$(platform)-1.9.23
 sdk_path		= $(pwd)/.sdk
 goroot			= $(sdk_path)/goroot
 gopath			= $(sdk_path)/gopath
@@ -13,6 +13,7 @@ goapp			= $(sdk_path)/goapp
 gpm				= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(sdk_path)/gpm
 ginkgo			= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(gopath)/bin/ginkgo
 appcfg.py 		= $(sdk_path)/appcfg.py --skip_sdk_update_check
+bulkloader.py   = $(sdk_path)/bulkloader.py
 
 deps	= $(shell cat Godeps | cut -d ' ' -f 1)
 modules	= crowdstart.com/api \
@@ -60,8 +61,9 @@ mtime_file_watcher = https://gist.githubusercontent.com/zeekay/5eba991c39426ca42
 bebop = node_modules/.bin/bebop
 
 coffee	   	   = node_modules/.bin/coffee
-requisite	   = node_modules/.bin/requisite -s -g
-requisite_opts = assets/js/store/store.coffee \
+requisite	   = node_modules/.bin/requisite -g
+requisite_opts = --no-source-map \
+				 assets/js/store/store.coffee \
 				 assets/js/api/api.coffee \
 				 assets/js/platform/platform.coffee \
 				 node_modules/crowdstart.js/src/index.coffee \
@@ -70,7 +72,7 @@ requisite_opts = assets/js/store/store.coffee \
 				 -o static/js/platform.js \
 				 -o static/v1.js
 
-requisite_opts_min = -m --strip-debug
+requisite_opts_min = -m --strip-debug --minifier uglify
 
 stylus		= node_modules/.bin/stylus
 stylus_opts = assets/css/store/store.styl \
@@ -160,7 +162,8 @@ compile-js:
 	$(coffee) -bc -o static/js assets/js/api/mailinglist.coffee
 
 compile-js-min:
-	$(requisite) $(requisite_opts) $(requisite_opts_min)
+	$(requisite) $(requisite_opts_min) $(requisite_opts)
+	$(coffee) -bc -o static/js assets/js/api/mailinglist.coffee
 
 compile-css:
 	$(stylus) $(stylus_opts) -u autoprefixer-stylus --sourcemap --sourcemap-inline
@@ -177,7 +180,7 @@ deps: deps-assets deps-go
 
 # DEPS JS/CSS
 deps-assets:
-	npm install
+	npm install && npm update
 
 # DEPS GO
 deps-go: .sdk .sdk/go .sdk/gpm .sdk/gopath/bin/ginkgo .sdk/gopath/src/crowdstart.com
@@ -207,7 +210,6 @@ deps-go: .sdk .sdk/go .sdk/gpm .sdk/gopath/bin/ginkgo .sdk/gopath/src/crowdstart
 	mkdir -p $(sdk_path)/gopath/src
 	mkdir -p $(sdk_path)/gopath/bin
 	ln -s $(shell pwd) $(sdk_path)/gopath/src/crowdstart.com
-	ln -s $(shell pwd)/../crowdstart-skully $(sdk_path)/gopath/src/crowdstart.io
 
 # INSTALL
 install: install-deps
@@ -255,34 +257,34 @@ test-ci:
 	$(ginkgo) -r=true -p=true --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace --compilers=2 -v=true -- -test.v=true
 
 # DEPLOY
-deploy: assets-min docs
+deploy: assets-min docs rollback
 	for module in $(gae_config); do \
 		$(appcfg.py) update $$module; \
-	done; \
-	$(appcfg.py) update_indexes config/production
-	$(appcfg.py) update_dispatch config/production
+	done
+	$(appcfg.py) update_indexes $(firstword $(gae_config))
+	$(appcfg.py) update_dispatch $(firstword $(gae_config))
 
 rollback:
 	for module in $(gae_config); do \
 		$(appcfg.py) rollback $$module; \
-	done; \
+	done
 
 # EXPORT / Usage: make datastore-export kind=user namespace=bellabeat
 datastore-export:
-	@mkdir -p _export/ && \
-	bulkloader.py --download \
-				  --bandwidth_limit 1000000000 \
-				  --rps_limit 10000 \
-				  --batch_size 250 \
-				  --http_limit 200 \
-				  --url $(datastore_admin_url) \
-				  --config_file util/bulkloader/bulkloader.yaml \
-				  --db_filename /tmp/bulkloader-$$kind.db \
-				  --log_file /tmp/bulkloader-$$kind.log \
-				  --result_db_filename /tmp/bulkloader-result-$$kind.db \
-				  --namespace $$namespace \
-				  --kind $$kind \
-				  --filename _export/$$namespace-$$kind-$(datastore_app_id)-$(current_date).csv && \
+	@mkdir -p _export/
+	$(bulkloader.py) --download \
+				  	 --bandwidth_limit 1000000000 \
+				  	 --rps_limit 10000 \
+				  	 --batch_size 250 \
+				  	 --http_limit 200 \
+				  	 --url $(datastore_admin_url) \
+				  	 --config_file util/bulkloader/bulkloader.yaml \
+				  	 --db_filename /tmp/bulkloader-$$kind.db \
+				  	 --log_file /tmp/bulkloader-$$kind.log \
+				  	 --result_db_filename /tmp/bulkloader-result-$$kind.db \
+				  	 --namespace $$namespace \
+				  	 --kind $$kind \
+				  	 --filename _export/$$namespace-$$kind-$(datastore_app_id)-$(current_date).csv
 	rm -rf /tmp/bulkloader-$$kind.db \
 		   /tmp/bulkloader-$$kind.log \
 		   /tmp/bulkloader-result-$$kind.db
@@ -290,23 +292,23 @@ datastore-export:
 # IMPORT / Usage: make datastore-import kind=user file=user.csv
 datastore-import:
 	@$(appcfg.py) upload_data --bandwidth_limit 1000000000 \
-						  --rps_limit 10000 \
-						  --batch_size 250 \
-						  --http_limit 200 \
-						  --url $(datastore_admin_url) \
-						  --config_file util/bulkloader/bulkloader.yaml \
-				  	      --namespace $$namespace \
-						  --kind $$kind \
-						  --filename $$file \
-						  --log_file /tmp/bulkloader-upload-$$kind.log && \
+						      --rps_limit 10000 \
+						      --batch_size 250 \
+						      --http_limit 200 \
+						      --url $(datastore_admin_url) \
+						      --config_file util/bulkloader/bulkloader.yaml \
+				  	          --namespace $$namespace \
+						      --kind $$kind \
+						      --filename $$file \
+						      --log_file /tmp/bulkloader-upload-$$kind.log
 	rm -rf /tmp/bulkloader-upload-$$kind.log
 
 # Generate config for use with datastore-export target
 datastore-config:
-	@bulkloader.py --create_config \
-				  --url=$(datastore_admin_url) \
-				  --namespace $$namespace \
-				  --filename=bulkloader.yaml
+	@$(bulkloader.py) --create_config \
+				      --url=$(datastore_admin_url) \
+				      --namespace $$namespace \
+				      --filename=bulkloader.yaml
 
 # Replicate production data to localhost
 datastore-replicate:
