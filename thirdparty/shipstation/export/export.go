@@ -364,8 +364,15 @@ func Export(c *gin.Context) {
 
 	// Fetch orders
 	for i, ord := range orders {
+		// Skip broken orders
+		if len(ord.PaymentIds) == 0 {
+			log.Warn("Order has no payments associated: %#v", ord, ctx)
+			continue
+		}
+
 		// Store order
 		res.Orders[i] = newOrder(ord)
+
 		// Save user key for later
 		keys[i], _ = hashid.DecodeKey(ctx, ord.UserId)
 	}
