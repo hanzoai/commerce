@@ -352,20 +352,18 @@ func Export(c *gin.Context) {
 		log.Panic("Unable to fetch orders between %s and %s, page %s: %v", startDate, endDate, page, err, c)
 	}
 
-	numOrders := len(orders)
-
 	// Build XML response
 	res := &Response{}
 	res.Pages = pages
-	res.Orders = make([]*Order, numOrders)
+	res.Orders = make([]*Order, 0)
 
 	ctx := db.Context
-	keys := make([]*aeds.Key, numOrders)
+	keys := make([]*aeds.Key, 0)
 
 	// Fetch orders
-	for i, ord := range orders {
+	for _, ord := range orders {
 		// Filter out test orders
-		if ord.Test == true {
+		if ord.Test {
 			log.Warn("Test order, ignoring: %v", ord, c)
 			continue
 		}
@@ -377,14 +375,15 @@ func Export(c *gin.Context) {
 		}
 
 		// Store order
-		res.Orders[i] = newOrder(ord)
+		res.Orders = append(res.Orders, newOrder(ord))
 
 		// Save user key for later
-		keys[i], _ = hashid.DecodeKey(ctx, ord.UserId)
+		key, _ := hashid.DecodeKey(ctx, ord.UserId)
+		keys = append(keys, key)
 	}
 
 	// Fetch users
-	users := make([]*user.User, numOrders)
+	users := make([]*user.User, len(keys))
 	if err := aeds.GetMulti(ctx, keys, users); err != nil {
 		log.Warn("Unable to fetch all users using keys %v: %v", keys, err, c)
 		log.Warn("Found users: %v", users, c)
