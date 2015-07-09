@@ -1,24 +1,54 @@
 package fileupload
 
-// import (
-// 	"golang.org/x/net/context"
+import (
+	"mime/multipart"
 
-// 	"appengine"
+	"golang.org/x/net/context"
 
-// 	"golang.org/x/oauth2/google"
-// 	storage "google.golang.org/api/storage/v1"
+	"appengine"
 
-// 	"crowdstart.com/models/organization"
-// 	"crowdstart.com/util/log"
-// )
+	"golang.org/x/oauth2/google"
+	storage "google.golang.org/api/storage/v1"
 
-// func UploadFile(c *appengine.Context, org *organization.Organization) string {
-// 	client, err := google.DefaultClient(context.Background(), scope)
-// 	if err != nil {
-// 		log.Error("Unable to get default client: %v", err, c)
-// 	}
+	"crowdstart.com/models/organization"
+	"crowdstart.com/util/log"
+)
 
-// 	service, err := storage.New(client)
+func UploadFile(ctx *appengine.Context, org *organization.Organization, file multipart.File, header *multipart.FileHeader) (string, error) {
+	client, err := google.DefaultClient(context.Background(), storage.DevstorageFullControlScope)
+	if err != nil {
+		log.Error("Unable to get default client: %v", err, ctx)
+		return "", err
+	}
 
-// 	return ""
-// }
+	service, err := storage.New(client)
+	if err != nil {
+		log.Error("Unable to create storage service: %v", err, ctx)
+		return "", err
+	}
+
+	projectId := appengine.AppID(*ctx)
+	bucketName := org.Name + "-bucket"
+
+	log.Debug("Project Id %v", projectId, ctx)
+
+	if _, err := service.Buckets.Get(bucketName).Do(); err != nil {
+		if res, err := service.Buckets.Insert(projectId, &storage.Bucket{Name: bucketName}).Do(); err == nil {
+			log.Info("Created bucket %v at location %v\n\n", res.Name, res.SelfLink, ctx)
+		} else {
+			log.Error(service, "Failed creating bucket %s: %v", bucketName, err, ctx)
+			return "", err
+		}
+	}
+
+	filename := header.Filename
+	object := &storage.Object{Name: filename}
+
+	if res, err := service.Objects.Insert(bucketName, object).Media(file).Do(); err != nil {
+		log.Error(service, "Objects.Insert failed: %v", err)
+		return "", err
+	} else {
+		log.Info("Created object %v at location %v\n\n", res.Name, res.SelfLink)
+		return res.SelfLink, nil
+	}
+}
