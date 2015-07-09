@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"appengine"
+
 	aeds "appengine/datastore"
 
 	"github.com/gin-gonic/gin"
@@ -352,40 +354,59 @@ func Export(c *gin.Context) {
 		log.Panic("Unable to fetch orders between %s and %s, page %s: %v", startDate, endDate, page, err, c)
 	}
 
-	numOrders := len(orders)
-
 	// Build XML response
 	res := &Response{}
 	res.Pages = pages
-	res.Orders = make([]*Order, numOrders)
+	res.Orders = make([]*Order, 0)
 
 	ctx := db.Context
-	keys := make([]*aeds.Key, numOrders)
+	keys := make([]*aeds.Key, 0)
+
+	validOrders := make([]*order.Order, 0)
 
 	// Fetch orders
-	for i, ord := range orders {
-		// Skip broken orders
-		if len(ord.PaymentIds) == 0 {
-			log.Warn("Order has no payments associated: %#v", ord, ctx)
+	for _, ord := range orders {
+		// Filter out test orders
+		if ord.Test {
+			log.Debug("Test order, ignoring: %v", ord, c)
 			continue
 		}
 
-		// Store order
-		res.Orders[i] = newOrder(ord)
+		// Skip broken orders
+		if len(ord.PaymentIds) == 0 {
+			log.Error("Order has no payments associated: %#v", ord, c)
+			continue
+		}
 
 		// Save user key for later
-		keys[i], _ = hashid.DecodeKey(ctx, ord.UserId)
+		if key, err := hashid.DecodeKey(ctx, ord.UserId); err != nil {
+			log.Warn("Could not decode key %v: %v", key, err, c)
+		} else {
+			keys = append(keys, key)
+
+			validOrders = append(validOrders, ord)
+
+			// Store order
+			res.Orders = append(res.Orders, newOrder(ord))
+		}
 	}
 
 	// Fetch users
-	users := make([]*user.User, numOrders)
+	users := make([]*user.User, len(keys))
 	if err := aeds.GetMulti(ctx, keys, users); err != nil {
 		log.Warn("Unable to fetch all users using keys %v: %v", keys, err, c)
+
+		if me, ok := err.(appengine.MultiError); ok {
+			for _, merr := range me {
+				log.Warn(merr, c)
+			}
+		}
+
 		log.Warn("Found users: %v", users, c)
 	}
 
 	// Set customers
-	for i, ord := range orders {
+	for i, ord := range validOrders {
 		usr := users[i]
 
 		// How does this even happen?
@@ -408,14 +429,6 @@ func Export(c *gin.Context) {
 		// Set as locked if still needs first/lastname
 		if usr.FirstName == "" && usr.LastName == "" {
 			res.Orders[i].OrderStatus = CDATA("on_hold")
-		}
-	}
-
-	// Filter out test charges
-	for i, ord := range orders {
-		if ord.Test == true {
-			log.Warn("Test order, ignoring: %v", ord, c)
-			res.Orders[i] = nil
 		}
 	}
 
