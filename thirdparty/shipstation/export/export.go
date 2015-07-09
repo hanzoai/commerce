@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"appengine"
+
 	aeds "appengine/datastore"
 
 	"github.com/gin-gonic/gin"
@@ -360,37 +362,51 @@ func Export(c *gin.Context) {
 	ctx := db.Context
 	keys := make([]*aeds.Key, 0)
 
+	validOrders := make([]*order.Order, 0)
+
 	// Fetch orders
 	for _, ord := range orders {
 		// Filter out test orders
 		if ord.Test {
-			log.Warn("Test order, ignoring: %v", ord, c)
+			log.Debug("Test order, ignoring: %v", ord, c)
 			continue
 		}
 
 		// Skip broken orders
 		if len(ord.PaymentIds) == 0 {
-			log.Warn("Order has no payments associated: %#v", ord, c)
+			log.Error("Order has no payments associated: %#v", ord, c)
 			continue
 		}
 
-		// Store order
-		res.Orders = append(res.Orders, newOrder(ord))
-
 		// Save user key for later
-		key, _ := hashid.DecodeKey(ctx, ord.UserId)
-		keys = append(keys, key)
+		if key, err := hashid.DecodeKey(ctx, ord.UserId); err != nil {
+			log.Warn("Could not decode key %v: %v", key, err, c)
+		} else {
+			keys = append(keys, key)
+
+			validOrders = append(validOrders, ord)
+
+			// Store order
+			res.Orders = append(res.Orders, newOrder(ord))
+		}
 	}
 
 	// Fetch users
 	users := make([]*user.User, len(keys))
 	if err := aeds.GetMulti(ctx, keys, users); err != nil {
 		log.Warn("Unable to fetch all users using keys %v: %v", keys, err, c)
+
+		if me, ok := err.(appengine.MultiError); ok {
+			for _, merr := range me {
+				log.Warn(merr, c)
+			}
+		}
+
 		log.Warn("Found users: %v", users, c)
 	}
 
 	// Set customers
-	for i, ord := range orders {
+	for i, ord := range validOrders {
 		usr := users[i]
 
 		// How does this even happen?
