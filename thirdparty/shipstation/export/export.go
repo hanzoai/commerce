@@ -364,9 +364,15 @@ func Export(c *gin.Context) {
 
 	// Fetch orders
 	for i, ord := range orders {
+		// Filter out test orders
+		if ord.Test == true {
+			log.Warn("Test order, ignoring: %v", ord, c)
+			continue
+		}
+
 		// Skip broken orders
 		if len(ord.PaymentIds) == 0 {
-			log.Warn("Order has no payments associated: %#v", ord, ctx)
+			log.Warn("Order has no payments associated: %#v", ord, c)
 			continue
 		}
 
@@ -408,14 +414,6 @@ func Export(c *gin.Context) {
 		// Set as locked if still needs first/lastname
 		if usr.FirstName == "" && usr.LastName == "" {
 			res.Orders[i].OrderStatus = CDATA("locked")
-		}
-	}
-
-	// Filter out test charges
-	for i, ord := range orders {
-		if ord.Test == true {
-			log.Warn("Test order, ignoring: %v", ord, c)
-			res.Orders[i] = nil
 		}
 	}
 
