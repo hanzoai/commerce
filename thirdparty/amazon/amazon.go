@@ -1,12 +1,16 @@
 package amazon
 
 import (
+	"encoding/xml"
 	"time"
 
 	"github.com/stripe/stripe-go/client"
 
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/payment"
+	"crowdstart.com/thirdparty/amazon/requests"
+	"crowdstart.com/thirdparty/amazon/responses"
+	"crowdstart.com/thirdparty/amazon/types"
 
 	"appengine"
 	"appengine/urlfetch"
@@ -27,7 +31,25 @@ func New(ctx appengine.Context, accessToken string) *Client {
 	return &Client{}
 }
 
-func (c Client) Authorize(pay *payment.Payment, ord *order.Order) error {
+func (c Client) Authorize(pay *payment.Payment, ord *order.Order) (string, error) {
+	authRequest := requests.AuthorizeRequest{
+		AmazonOrderReferenceId:   ord.ExternalId(),
+		AuthorizationReferenceId: ord.DisplayId(),
+		AuthorizationAmount:      types.Price{Amount: ord.DisplayTotal(), CurrencyCode: ord.Currency.Code()},
+		TransactionTimeout:       1440,
+		CaptureNow:               false,
+		SoftDescriptor:           "",
+	}
 
-	return nil
+	xmlRequest, err := xml.Marshal(authRequest)
+	if err != nil {
+		return "", err
+	}
+
+	// send off xml request, get xml response back
+
+	authResponse := responses.AuthorizeResponse{}
+
+	err = xml.Unmarshal(nil, &authResponse)
+	return authResponse.AuthorizationDetails.AmazonAuthorizationId, nil
 }
