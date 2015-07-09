@@ -325,7 +325,7 @@ func Export(c *gin.Context) {
 		offset = limit * (page - 1)
 	}
 
-	log.Warn("Page %s, err %s", page, err, c)
+	log.Debug("Page %s, err %s", page, err, c)
 
 	// Get start/end dates
 	startDate := parseDate(query.Get("start_date"))
@@ -343,7 +343,7 @@ func Export(c *gin.Context) {
 	count, _ := q.Count()
 	pages := int(math.Ceil(float64(count) / float64(limit)))
 
-	log.Warn("Query: pages: %v, limit %v, offset %v", pages, limit, offset, c)
+	log.Debug("Query: pages: %v, limit %v, offset %v", pages, limit, offset, c)
 
 	// Get current page of orders
 	orders := make([]*order.Order, 0, 0)
