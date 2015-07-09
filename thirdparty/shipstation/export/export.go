@@ -428,7 +428,7 @@ func Export(c *gin.Context) {
 
 		// Set as locked if still needs first/lastname
 		if usr.FirstName == "" && usr.LastName == "" {
-			res.Orders[i].OrderStatus = CDATA("locked")
+			res.Orders[i].OrderStatus = CDATA("on_hold")
 		}
 	}
 
