@@ -1,15 +1,15 @@
-package amazon
+package types
 
 type Address struct {
-	Name          string //max length: 50 chars, required
-	AddressLine1  string //max length: 180 chars, required
-	AddressLine2  string //max length: 60 chars, optional
-	AddressLine3  string //max length: 60 chars, optional
-	City          string //max length: 50 chars, required
-	County        string //max length: 50 chars, optional
-	District      string //max length: 50 chars, optional
-	StateOrRegion string //max length: 50 chars, required
-	PostalCode    string //max length: 20 chars, required
-	CountryCode   string //Country Code in ISO-3166, required
-	Phone         string //phone number, required
+	Name          string // Max length: 50 chars. Required.
+	AddressLine1  string // Max length: 180 chars. Required.
+	AddressLine2  string // Max length: 60 chars. Optional.
+	AddressLine3  string // Max length: 60 chars. Optional.
+	City          string // Max length: 50 chars. Required.
+	County        string // Max length: 50 chars. Optional.
+	District      string // Max length: 50 chars. Optional.
+	StateOrRegion string // Max length: 50 chars. Required.
+	PostalCode    string // Max length: 20 chars. Required.
+	CountryCode   string // Country Code in ISO-3166. Required.
+	Phone         string // Phone number. Required.
 }
