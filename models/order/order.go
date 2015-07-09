@@ -19,6 +19,7 @@ import (
 	"crowdstart.com/models/store"
 	"crowdstart.com/models/types/country"
 	"crowdstart.com/models/types/currency"
+	"crowdstart.com/util/hashid"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/val"
@@ -32,10 +33,11 @@ var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 type Status string
 
 const (
-	Open      Status = "open"
-	Locked           = "locked"
-	Cancelled        = "cancelled"
+	Cancelled Status = "cancelled"
 	Completed        = "completed"
+	Locked           = "locked"
+	OnHold           = "on-hold"
+	Open             = "open"
 )
 
 type Order struct {
@@ -188,6 +190,9 @@ func (o *Order) Load(c <-chan aeds.Property) (err error) {
 		return err
 	}
 
+	// Set order number
+	o.Number = o.NumberFromId()
+
 	// Deserialize from datastore
 	if len(o.Metadata_) > 0 {
 		err = json.DecodeBytes([]byte(o.Metadata_), &o.Metadata)
@@ -206,6 +211,13 @@ func (o *Order) Save(c chan<- aeds.Property) (err error) {
 
 func (o Order) Fee() currency.Cents {
 	return currency.Cents(math.Floor(float64(o.Total) * 0.02))
+}
+
+func (o Order) NumberFromId() int {
+	if o.Id_ == "" {
+		return -1
+	}
+	return hashid.Decode(o.Id_)[1]
 }
 
 func (o Order) Description() string {
@@ -314,6 +326,78 @@ func (o *Order) UpdateDiscount() {
 				}
 			}
 		}
+	}
+}
+
+// Update order's payment status based on payments
+func (o *Order) UpdatePaymentStatus() {
+	keys := make([]*aeds.Key, len(o.PaymentIds))
+	ctx := o.Context()
+
+	// Convert payment ids into keys
+	for i, id := range o.PaymentIds {
+		if key, err := hashid.DecodeKey(ctx, id); err != nil {
+			log.Error("Unable to decode payment id into Key %s", id, ctx)
+		} else {
+			keys[i] = key
+		}
+	}
+
+	// Get payments associated with this order
+	payments := make([]payment.Payment, len(o.PaymentIds))
+
+	db := datastore.New(ctx)
+	err := db.GetMulti(keys, payments)
+	if err != nil {
+		log.Error("Unable to fetch payments for order '%s': %v", o.Id(), err, ctx)
+		return
+	}
+
+	log.Warn(o.PaymentIds)
+
+	// Sum payments to figure out what we've been paid and check for bad status
+	var badstatus payment.Status
+	failed := false
+	disputed := false
+	refunded := false
+	totalPaid := 0
+
+	for _, pay := range payments {
+		switch pay.Status {
+		case payment.Paid:
+			totalPaid += int(pay.Amount)
+		case payment.Failed, payment.Fraudulent:
+			badstatus = pay.Status
+			failed = true
+		case payment.Disputed:
+			disputed = true
+		case payment.Refunded:
+			refunded = true
+		}
+	}
+
+	// Update order paid amount and status
+	o.Paid = currency.Cents(int(o.Paid) + totalPaid)
+	// Paid or Partially Refunded
+	if o.Paid >= o.Total {
+		// TODO Notify user via email.
+		o.PaymentStatus = payment.Paid
+		if o.Status != Completed {
+			o.Status = Open
+		}
+	}
+
+	if failed {
+		// If something bad happened, cancel the order
+		log.Warn("Something Bad Happened %v", badstatus)
+		o.Status = Cancelled
+		o.PaymentStatus = badstatus
+	} else if refunded {
+		o.Status = Cancelled
+		o.PaymentStatus = payment.Refunded
+	} else if disputed {
+		o.Status = Locked
+		o.PaymentStatus = payment.Disputed
 	}
 }
 

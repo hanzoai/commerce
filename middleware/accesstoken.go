@@ -35,10 +35,10 @@ func accessTokenFromHeader(fieldValue string) string {
 }
 
 func ParseToken(c *gin.Context) {
-	// Get the access token from the Request
+	// Grab access token out of Authorization header (Basic Auth)
 	accessToken := accessTokenFromHeader(c.Request.Header.Get("Authorization"))
 
-	// If not set using Authorization header, check for token query param.
+	// If not set using Authorization header, check request query for token param
 	if accessToken == "" {
 		query := c.Request.URL.Query()
 		accessToken = query.Get("token")

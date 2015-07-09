@@ -26,6 +26,17 @@ type Transaction struct {
 	Currency currency.Type  `json:"currency"`
 	Amount   currency.Cents `json:"amount"`
 	Test     bool           `json:"test"`
+
+	// Short text human readable description
+	Notes string `json:"notes"`
+
+	// For searching
+	Tags string `json:"tags"`
+
+	// Source Data
+	// We store Kind even though it is encoded in id for easier reference
+	SourceId   string `json:"sourceId"`
+	SourceKind string `json:"sourceKind"`
 }
 
 func New(db *datastore.Datastore) *Transaction {

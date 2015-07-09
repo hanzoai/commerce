@@ -1,0 +1,88 @@
+package webhook
+
+import (
+	"time"
+
+	"github.com/gin-gonic/gin"
+
+	"crowdstart.com/datastore"
+	"crowdstart.com/middleware"
+	"crowdstart.com/models/organization"
+	"crowdstart.com/thirdparty/stripe"
+	"crowdstart.com/thirdparty/stripe/tasks"
+	"crowdstart.com/util/json"
+	"crowdstart.com/util/log"
+	"crowdstart.com/util/router"
+)
+
+// Handle stripe webhook POSTs
+func Webhook(c *gin.Context) {
+	event := new(stripe.Event)
+	if err := json.Decode(c.Request.Body, event); err != nil {
+		c.String(500, "Error parsing event json")
+		return
+	}
+
+	log.Debug("Webhook recieved '%s': %+v", event.Type, event, c)
+
+	// Look up organization
+	db := datastore.New(c)
+	org := organization.New(db)
+	if ok, err := org.Query().Filter("Stripe.UserId=", event.UserID).First(); !ok || err != nil {
+		log.Error("Failed to look up organization by Stripe user id: %v", err, c)
+		return
+	}
+
+	// Get stripe token
+	token, err := org.GetStripeAccessToken(event.UserID)
+	if err != nil {
+		log.Error("Failed to get Stripe access token for organization '%s': %v", org.Name, err, c)
+		return
+	}
+
+	ctx := middleware.GetAppEngine(c)
+
+	switch event.Type {
+	case "charge.captured":
+	case "charge.failed":
+	case "charge.refunded":
+	case "charge.succeeded":
+	case "charge.updated":
+		ch := stripe.Charge{}
+		if err := json.Unmarshal(event.Data.Raw, &ch); err != nil {
+			log.Error("Failed to unmarshal stripe.Charge %#v: %v", event, err, c)
+		} else {
+			start := time.Now()
+			tasks.ChargeSync.Call(ctx, org.Name, token, ch, start)
+		}
+
+	case "charge.dispute.closed":
+	case "charge.dispute.created":
+	case "charge.dispute.funds_reinstated":
+	case "charge.dispute.funds_withdrawn":
+	case "charge.dispute.updated":
+		dispute := stripe.Dispute{}
+		if err := json.Unmarshal(event.Data.Raw, &dispute); err != nil {
+			log.Error("Failed to unmarshal stripe.Dispute %#v: %v", event, err, c)
+		} else {
+			start := time.Now()
+			tasks.DisputeSync.Call(ctx, org.Name, token, dispute, start)
+		}
+
+	case "ping":
+		log.Warn("Decode 3")
+		c.String(200, "pong")
+		return
+
+	default:
+		log.Warn("Unsupported Stripe event '%s': %#v", event.Type, event, c)
+	}
+
+	c.String(200, "ok")
+}
+
+// Wire up webhook endpoint
+func Route(router router.Router, args ...gin.HandlerFunc) {
+	api := router.Group("stripe")
+	api.POST("/webhook", Webhook)
+}

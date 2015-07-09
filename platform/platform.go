@@ -7,7 +7,6 @@ import (
 	"crowdstart.com/platform/frontend"
 	"crowdstart.com/platform/login"
 	"crowdstart.com/platform/user"
-	"crowdstart.com/thirdparty/stripe"
 	"crowdstart.com/util/router"
 )
 
@@ -45,8 +44,9 @@ func init() {
 	router.GET("/logout", login.Logout)
 
 	// Signup
-	router.GET("/signup", login.Signup)
-	router.POST("/signup", login.SignupSubmit)
+	router.GET("/signup", frontend.Signup)
+	// router.GET("/signup", login.Signup)
+	// router.POST("/signup", login.SignupSubmit)
 
 	// Password Reset
 	// router.GET("/create-password", user.CreatePassword)
@@ -95,7 +95,6 @@ func init() {
 	dash.GET("/stripe/connect", admin.StripeConnect)
 	dash.GET("/stripe/callback", admin.StripeCallback)
 	dash.GET("/stripe/sync", admin.StripeSync)
-	router.POST("/stripe/hook", stripe.StripeWebhook)
 
 	// Salesfoce connect
 	dash.GET("/salesforce/callback", admin.SalesforceCallback)

@@ -138,6 +138,16 @@ func New(db *datastore.Datastore) *Organization {
 	return o
 }
 
+func (o Organization) GetStripeAccessToken(userId string) (string, error) {
+	if o.Stripe.Live.UserId == userId {
+		return o.Stripe.Live.AccessToken, nil
+	}
+	if o.Stripe.Test.UserId == userId {
+		return o.Stripe.Test.AccessToken, nil
+	}
+	return "", StripeAccessTokenNotFound{userId, o.Stripe.Live.UserId, o.Stripe.Test.UserId}
+}
+
 func (o Organization) Kind() string {
 	return "organization"
 }
@@ -161,18 +171,33 @@ func (o *Organization) AddDefaultTokens() {
 	o.AddToken("test-published-key", permission.Published|permission.Test|permission.ReadCoupon|permission.ReadProduct|permission.WriteReferrer)
 }
 
-func (o Organization) IsAdmin(user *user.User) bool {
-	for _, userId := range o.Admins {
-		if userId == user.Id() {
+func userId(userOrId interface{}) string {
+	userid := ""
+	switch v := userOrId.(type) {
+	case *user.User:
+		userid = v.Id()
+	case string:
+		userid = v
+	}
+	return userid
+}
+
+func (o Organization) IsAdmin(userOrId interface{}) bool {
+	userid := userId(userOrId)
+
+	for _, id := range o.Admins {
+		if id == userid {
 			return true
 		}
 	}
 	return false
 }
 
-func (o Organization) IsOwner(user *user.User) bool {
-	for _, userId := range o.Owners {
-		if userId == user.Id() {
+func (o Organization) IsOwner(userOrId interface{}) bool {
+	userid := userId(userOrId)
+
+	for _, id := range o.Owners {
+		if id == userid {
 			return true
 		}
 	}

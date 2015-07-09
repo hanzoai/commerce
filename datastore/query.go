@@ -111,18 +111,18 @@ func (q *DatastoreQuery) First(dst interface{}) (*aeds.Key, bool, error) {
 	key, err := t.Next(dst)
 
 	// Ignore field mismatch if set
-	if err != nil {
-		// Nothing found
-		if err == aeds.Done {
-			return key, false, nil
-		}
+	err = q.Datastore.SkipFieldMismatch(err)
 
-		// Ignore field mismatch, or return error
-		if err = q.Datastore.SkipFieldMismatch(err); err != nil {
-			return key, false, err
-		}
+	// Nothing found
+	if err == aeds.Done {
+		return key, false, nil
+	}
+
+	// Something went wrong
+	if err != nil {
+		return nil, false, err
 	}
 
 	// Success :)
-	return key, true, err
+	return key, true, nil
 }

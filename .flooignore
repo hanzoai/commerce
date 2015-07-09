@@ -1,0 +1,13 @@
+#*
+*.o
+*.pyc
+*~
+extern/
+node_modules/
+tmp
+vendor/
+.sdk
+resources
+static
+_export
+.git

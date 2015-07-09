@@ -12,7 +12,6 @@ import (
 	"crowdstart.com/datastore"
 	"crowdstart.com/util/hashid"
 	"crowdstart.com/util/json"
-	"crowdstart.com/util/log"
 	"crowdstart.com/util/rand"
 	"crowdstart.com/util/structs"
 	"crowdstart.com/util/val"
@@ -62,6 +61,7 @@ type Entity interface {
 	Validator() *val.Validator
 	Slice() interface{}
 	JSON() []byte
+	Datastore() *datastore.Datastore
 }
 
 // Model is a mixin which adds Datastore/Validation/Serialization methods to
@@ -78,6 +78,7 @@ type Model struct {
 	Id_       string    `json:"id"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
+	Deleted   bool      `json:"deleted,omitempty"`
 
 	// Flag used to specify that we're using a string key for this kind
 	UseStringKey bool `json:"-" datastore:"-"`
@@ -303,12 +304,8 @@ func (m *Model) GetById(id string) error {
 	// Try to decode key
 	key, err := hashid.DecodeKey(m.Db.Context, id)
 
-	ctx := m.Db.Context
-	log.Warn("Tried to decode id: %v, with kind: %v, got key: %v, err: %v", id, m.Kind(), key, err, ctx)
-
 	// Use key if we have one
 	if err == nil {
-		log.Warn("Ok we got a key! Goodbye!", ctx)
 		return m.Get(key)
 	}
 
@@ -336,15 +333,12 @@ func (m *Model) GetById(id string) error {
 		return datastore.InvalidKey
 	}
 
-	log.Warn("Trying to find id: %v, using filter: %v", id, filterStr, ctx)
-
 	// Try and fetch by filterStr
 	ok, err := m.Query().Filter(filterStr+"=", id).First()
 	if !ok {
 		return datastore.KeyNotFound
 	}
 
-	log.Warn("Found it????", ctx)
 	return err
 }
 
@@ -498,6 +492,10 @@ func (m *Model) JSON() []byte {
 	return json.EncodeBytes(m.Entity)
 }
 
+func (m *Model) Datastore() *datastore.Datastore {
+	return m.Db
+}
+
 // Mock methods for test keys. Does everything against datastore except create/update/delete/allocate ids.
 func (m *Model) mockKey() datastore.Key {
 	if m.UseStringKey {
@@ -559,4 +557,8 @@ func (q *Query) First() (bool, error) {
 		q.model.setKey(key)
 	}
 	return ok, err
+}
+
+func (q *Query) GetAll(dst interface{}) ([]*aeds.Key, error) {
+	return q.Query.GetAll(dst)
 }
