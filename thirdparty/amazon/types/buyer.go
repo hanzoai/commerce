@@ -1,6 +1,6 @@
-package amazon
+package types
 
-// all of these are pretty much exactly what they say on the tin
+// All of these are pretty much exactly what they say on the tin
 type Buyer struct {
 	Name  string
 	Email string
