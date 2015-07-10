@@ -33,7 +33,7 @@ func New(ctx appengine.Context, accessToken string) *Client {
 
 func (c Client) Authorize(pay *payment.Payment, ord *order.Order) (string, error) {
 	authRequest := requests.AuthorizeRequest{
-		AmazonOrderReferenceId:   ord.ExternalId(),
+		AmazonOrderReferenceId:   ord.ExternalId(), //NOT SURE ABOUT THIS DATA POINT
 		AuthorizationReferenceId: ord.DisplayId(),
 		AuthorizationAmount:      types.Price{Amount: ord.DisplayTotal(), CurrencyCode: ord.Currency.Code()},
 		TransactionTimeout:       1440,
@@ -41,7 +41,7 @@ func (c Client) Authorize(pay *payment.Payment, ord *order.Order) (string, error
 		SoftDescriptor:           "",
 	}
 
-	xmlRequest, err := xml.Marshal(authRequest)
+	_, err := xml.Marshal(authRequest)
 	if err != nil {
 		return "", err
 	}
