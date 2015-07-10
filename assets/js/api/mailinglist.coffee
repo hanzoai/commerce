@@ -157,12 +157,13 @@ do ->
 
       category = opts.category ? 'Subscription'
       action   = opts.action   ? opts.name ? 'Signup'
-      label    = opts.label    ? ''
+      label    = opts.label    ? 'Lead'
+      value    = opts.value    ? 0
 
       if window._gaq?
-        window._gaq.push ['_trackEvent', category, action]
+        window._gaq.push ['_trackEvent', category, action, label, value]
       if window.ga?
-        window.ga 'send', 'event', category, action, label, 0
+        window.ga 'send', 'event', category, action, label, value
 
   # Facebook event tracking
   facebook =
