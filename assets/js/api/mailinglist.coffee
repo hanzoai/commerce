@@ -155,12 +155,14 @@ do ->
 
       category = opts.category ? 'Subscription'
       action   = opts.action   ? opts.name ? 'Signup'
-      label    = opts.label    ? ''
+      label    = opts.label    ? 'Lead'
+      value    = opts.value    ? 1
 
       if window._gaq?
-        window._gaq.push ['_trackEvent', category, action]
+        window._gaq.push ['_trackEvent', category, action, label, value]
       if window.ga?
-        window.ga 'send', 'event', category, action, label, 0
+        window.ga 'send', 'event', category, action, label, value
+      return
 
   # Facebook event tracking
   facebook =
@@ -182,9 +184,12 @@ do ->
 
       facebook.setup()
 
+      value    = opts.value    ? '1.00'
+      currency = opts.currency ? 'USD'
+
       window._fbq.push ['track', opts.id,
-        value:    opts.value,
-        currency: opts.currency,
+        value:    value,
+        currency: currency,
       ]
       return
 
