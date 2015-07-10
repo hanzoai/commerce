@@ -52,14 +52,12 @@ do ->
 
   # get this script tag
   getScript = ->
-    # start at the root element
-    node = document.documentElement
+    # find last script node
+    scripts = document.getElementsByTagName( 'script' )
 
-    # find last HTMLElement child node
-    node = node.lastChild while node.childNodes.length and node.lastChild.nodeType is 1
-
-    # last HTMLElement is script tag
-    node
+    # last element is this script tag
+    script = scripts[ scripts.length - 1 ]
+    script
 
   # Get elements from inside a parent
   getElements = (parent, selector) ->
@@ -325,8 +323,8 @@ do ->
       init() if document.readyState == 'complete'
 
   if window.addEventListener
-      window.addEventListener 'load', init, false
+    window.addEventListener 'load', init, false
   else if window.attachEvent
-      window.attachEvent 'onload', init
+    window.attachEvent 'onload', init
 
   return
