@@ -1,6 +1,6 @@
 package requests
 
-import "crowdstart.io/thirdparty/amazon/types"
+import "crowdstart.com/thirdparty/amazon/types"
 
 type CaptureRequest struct {
 	AmazonAuthorizationId string      //Amazon-generated auth id for a transaction

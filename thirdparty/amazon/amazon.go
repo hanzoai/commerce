@@ -51,5 +51,33 @@ func (c Client) Authorize(pay *payment.Payment, ord *order.Order) (string, error
 	authResponse := responses.AuthorizeResponse{}
 
 	err = xml.Unmarshal(nil, &authResponse)
+	if err != nil {
+		return "", err
+	}
 	return authResponse.AuthorizationDetails.AmazonAuthorizationId, nil
+}
+
+func (c Client) Capture(pay *payment.Payment, ord *order.Order, authId string) (string, error) {
+	capRequest := requests.CaptureRequest{
+		AmazonAuthorizationId: authId,
+		CaptureReferenceId:    pay.Key().String(),
+		CaptureAmount:         types.Price{Amount: ord.DisplayTotal(), CurrencyCode: ord.Currency.Code()},
+		SellerCaptureNote:     "",
+		SoftDescriptor:        "",
+	}
+
+	_, err := xml.Marshal(capRequest)
+	if err != nil {
+		return "", err
+	}
+
+	// send off xml request, get xml response back
+
+	capResponse := responses.CaptureResponse{}
+
+	err = xml.Unmarshal(nil, &capResponse)
+	if err != nil {
+		return "", err
+	}
+	return capResponse.CaptureDetails.CaptureReferenceId, nil
 }
