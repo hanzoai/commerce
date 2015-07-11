@@ -107,6 +107,7 @@
           </h4>
           <div id="user-orders" class="collapse in block">
             <order-list path="{ 'user/'+opts.userId+'/orders' }">
+              No Orders Found
             </order-list>
           </div>
           <h4>
@@ -125,6 +126,7 @@
           </h4>
           <div id="user-referrers" class="collapse in block">
             <referrer-list path="{ 'user/'+opts.userId+'/referrers' }">
+              No Referrer Tokens Found
             </referrer-list>
           </div>
           <h4>
@@ -134,6 +136,7 @@
           </h4>
           <div id="user-referrals" class="collapse in block">
             <referral-list path="{ 'user/'+opts.userId+'/referrals' }">
+              No Referrals Found
             </referral-list>
           </div>
         </user-form>
@@ -162,15 +165,15 @@
     var urlParts = window.location.pathname.split('/')
     var userId = urlParts.pop()
 
-      new crowdcontrol.data.Api(
-          '{{ urlFor("api") }}',
-          '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}'
-      ).register('crowdstart')
+    new crowdcontrol.data.Api(
+      '{{ urlFor("api") }}',
+      '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}'
+    ).register('crowdstart')
 
     riot.mount('user-form', {userId: userId})
   })
-
 </script>
 {% endblock %}
+
 {% block menulink %}menu-users{% endblock %}
 
