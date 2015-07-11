@@ -18,6 +18,7 @@ class BasicPagedTable extends BasicTableView
   $pagination: $()
   sortField: 'UpdatedAt'
   sortDirection: ''
+  firstLoad: false
   js: (opts)->
     @path = opts.path if opts.path
     @api = Api.get 'crowdstart'
@@ -70,6 +71,8 @@ class BasicPagedTable extends BasicTableView
   refresh: ()->
     path = @path + '?page=' + @page + '&display=' + @display + '&sort=' + (if @sortDirection == 'sort-desc' then '' else '-') + if @sortField == "Id" then "Id_" else @sortField
     @api.get(path).then (res) =>
+      @firstLoad = true
+
       m.trigger 'stop-spin', @tag + @path + '-paged-table-load'
       data = res.responseText
       @model = data.models
