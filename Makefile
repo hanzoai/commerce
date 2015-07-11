@@ -72,7 +72,8 @@ requisite_opts = --no-source-map \
 				 -o static/js/platform.js \
 				 -o static/v1.js
 
-requisite_opts_min = -m --strip-debug --minifier uglify
+requisite_opts_min = --strip-debug --minifier uglify
+#requisite_opts_min = -m --strip-debug --minifier uglify
 
 stylus		= node_modules/.bin/stylus
 stylus_opts = assets/css/store/store.styl \
