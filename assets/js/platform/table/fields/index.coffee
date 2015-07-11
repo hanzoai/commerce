@@ -21,7 +21,7 @@ class IdTableFieldView extends BasicTableFieldView
   html: require './link-field.html'
   js: (opts)->
     super
-    @displayValue = opts.row['number'] if opts.row['number']?
+    @displayValue = opts.row['number'] if @field.id == 'id' && opts.row['number']?
     @path = opts.field.hints['id-path']
 
 IdTableFieldView.register()
