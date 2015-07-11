@@ -1,4 +1,4 @@
-<div if="{ !isEmpty() }">
+<div if="{ !isEmpty() && firstLoad }">
   <select class="form-control">
     <option value="5">5</option>
     <option value="10" selected="selected">10</option>
@@ -33,6 +33,6 @@
     </a>
   </div>
 </div>
-<h3 class="text-center" if="{ isEmpty() }">
+<h3 class="text-center" if="{ isEmpty() && firstLoad }">
   <yield></yield>
 </h3>
