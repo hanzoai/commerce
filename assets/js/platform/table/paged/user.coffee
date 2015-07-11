@@ -10,7 +10,7 @@ class UserPagedTable extends BasicPagedTable
   tag: 'user-paged-table'
   path: 'user'
   headers: [
-    field('id', 'Id', 'id', 'id-path:user')
+    field('id', 'ID', 'id', 'id-path:user')
     field('email', 'Email')
     field('firstName', 'First Name')
     field('lastName', 'Last Name')
