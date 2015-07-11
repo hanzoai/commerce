@@ -10,4 +10,5 @@ module.exports =
   TableFieldConfig: types.TableFieldConfig
 
   lists: require './lists'
+  paged: require './paged'
   field: types.field
