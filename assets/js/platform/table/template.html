@@ -6,7 +6,7 @@
       </tr>
     </thead>
     <tbody>
-      <tr each="{ row, i in model }" class="animated bounceIn">
+      <tr each="{ row, i in model }" class="animated fadeIn">
         <td each="{ field, j in this.parent.headers }">
           <table-field field="{ field }" row="{ this.parent }"></table-field>
         </td>
@@ -14,4 +14,6 @@
     </tbody>
   </table>
 </div>
-<h3 class="text-center" if="{ isEmpty() }">No Data</h3>
+<h3 class="text-center" if="{ isEmpty() }">
+  <yield></yield>
+</h3>
