@@ -1,3 +1,4 @@
 module.exports =
-  Balance: require './balance'
-  Spinner: require './spinner'
+  Balance:  require './balance'
+  Dropzone: require './dropzone'
+  Spinner:  require './spinner'
