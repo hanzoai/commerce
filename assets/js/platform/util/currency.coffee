@@ -1,3 +1,5 @@
+_ = require 'underscore'
+
 currencySigns = require './data/currencies'
 currencySeparator = '.'
 digitsOnlyRe = new RegExp('[^\\d.-]', 'g')
@@ -26,6 +28,9 @@ module.exports = Util =
     return currentCurrencySign + jsonCurrency.substr(0, jsonCurrency.length - 2) + '.' + jsonCurrency.substr(-2)
 
   renderJSONCurrencyFromUI: (code, uiCurrency) ->
+    if _.isNumber(uiCurrency)
+      return uiCurrency
+
     if isZeroDecimal code
       return parseInt(('' + uiCurrency).replace(digitsOnlyRe, '').replace(currencySeparator, ''), 10)
 

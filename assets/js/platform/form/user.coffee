@@ -2,14 +2,13 @@ _ = require 'underscore'
 
 crowdcontrol = require 'crowdcontrol'
 
-input = require '../input'
-BasicFormView = require '../basic'
+input = require './input'
+BasicFormView = require './basic'
 
-class UserFormView extends BasicFormView
+class UserForm extends BasicFormView
   tag: 'user-form'
   redirectPath: 'users'
   path: 'user'
-  html: require './template.html'
 
   # model that stores the last model queried
   resetModel: null
@@ -66,6 +65,6 @@ class UserFormView extends BasicFormView
     @inputConfigs[1].hints['email-unique-exception'] = model.email
     @resetModel = _.deepExtend {}, @model
 
-UserFormView.register()
+UserForm.register()
 
-module.exports = UserFormView
+module.exports = UserForm

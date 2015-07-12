@@ -11,8 +11,23 @@ class BasicTableFieldView extends View
   html: require './basic-field.html'
   js: (opts)->
     @field = opts.field
-    @value = opts.row[opts.field.id]
-    @row = opts.row
+    @row = row = opts.row
+
+    id = opts.field.id
+    names = id.split '.'
+
+    if names.length == 1
+      @value = row[id]
+    else
+      currentObject = row
+      for name in names
+        if !currentObject[name]?
+          @value = undefined
+          return
+
+        currentObject = currentObject[name]
+
+      @value = currentObject
 
 BasicTableFieldView.register()
 
@@ -21,7 +36,8 @@ class IdTableFieldView extends BasicTableFieldView
   html: require './link-field.html'
   js: (opts)->
     super
-    @displayValue = opts.row['number'] if @field.id == 'id' && opts.row['number']?
+    @displayField = opts.field.hints['id-display']
+    @displayValue =  if @displayField? then opts.row[@displayField] else opts.row[@field.id]
     @path = opts.field.hints['id-path']
 
 IdTableFieldView.register()
