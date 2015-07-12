@@ -16,30 +16,107 @@
         <!-- END Order information Form Title -->
 
         <!-- Order information Form Content -->
-        <form id="form-order" method="post" class="form-horizontal">
-          <h4>Information</h4>
-          <div id="order-info" class="block">
+        <order-form>
+          <h4>
+            <a data-toggle="collapse" href="#order-info">
+              Information
+            </a>
+          </h4>
+          <div id="order-info" class="collapse in block">
+              <control label="ID" input="{ inputs.id }"></control>
+              <control label="Number" input="{ inputs.number }"></control>
+              <control label="Created On" input="{ inputs.createdAt }"></control>
+              <control label="Last Updated On" input="{ inputs.updatedAt }"></control>
+              <div class="form-group form-actions">
+                <div class="col-md-9 col-md-offset-3">
+                  <button type="submit" class="btn btn-effect-ripple btn-primary">Save</button>
+                  <button type="reset" class="btn btn-effect-ripple btn-warning">Reset</button>
+                </div>
+              </div>
           </div>
-          <h4>Buyer</h4>
-          <div id="order-buyer" class="block">
+
+          <h4>
+            <a data-toggle="collapse" href="#user-info">
+              User Information
+            </a>
+          </h4>
+          <div id="user-info" class="collapse in block">
+              <order-user-static-form obs="{ obs }">
+                  <control label="ID" input="{ inputs.id }"></control>
+                  <control label="Email" input="{ inputs.email }"></control>
+                  <control label="First Name" input="{ inputs.firstName }"></control>
+                  <control label="Last Name" input="{ inputs.lastName }"></control>
+                  <control label="Phone" input="{ inputs.phone }"></control>
+                  <control label="Created On" input="{ inputs.createdAt }"></control>
+                  <control label="Last Updated On" input="{ inputs.updatedAt }"></control>
+              </order-user-static-form>
           </div>
-          <h4>Shipping</h4>
-          <div id="order-shipping" class="block">
+          <h4>
+            <a data-toggle="collapse" href="#order-shipping-address">
+              Shipping Address
+            </a>
+          </h4>
+          <div id="order-shipping-address" class="collapse in block">
+              <control label="Street Address" input="{ inputs['shippingAddress.line1'] }"></control>
+              <control label="Apt/Suite Number" input="{ inputs['shippingAddress.line2'] }"></control>
+              <control label="City" input="{ inputs['shippingAddress.city'] }"></control>
+              <control label="State" input="{ inputs['shippingAddress.state'] }"></control>
+              <control label="Postal/ZIP Code" input="{ inputs['shippingAddress.postalCode'] }"></control>
+              <control label="Country" input="{ inputs['shippingAddress.country'] }"></control>
+              <div class="form-group form-actions">
+                <div class="col-md-9 col-md-offset-3">
+                    <button type="submit" class="btn btn-effect-ripple btn-primary">Save</button>
+                  <button type="reset" class="btn btn-effect-ripple btn-warning">Reset</button>
+                </div>
+              </div>
           </div>
-          <h4>Line Items</h4>
-          <div id="order-items" class="block">
-            <table id="order-items-table" class="table table-striped table-bordered table-vcenter">
-            </table>
+          <h4>
+            <a data-toggle="collapse" href="#order-items">
+              Items
+            </a>
+          </h4>
+          <div id="order-items" class="collapse in block">
+              <item-list obs="{ obs }">
+              No Items Found
+            </item-list>
+          </div>
+          <h4>
+            <a data-toggle="collapse" href="#order-payments">
+              Payments
+            </a>
+          </h4>
+          <div id="order-payments" class="collapse in block">
+            <payment-list path="{ 'order/'+opts.orderId+'/payments' }">
+              No Payments Found
+            </payment-list>
           </div>
           <div class="row">
             <div class = "col-xs-6">
-              <h4>Payment Information</h4>
-              <div id="order-payment" class="block">
+              <h4>
+                <a data-toggle="collapse" href="#order-payment">
+                  Payment Information
+                </a>
+              </h4>
+              <div id="order-payment" class="collapse in block">
+                  <control label="Currency" input="{ inputs.currency }" labelClasses="col-md-5" controlClasses="col-md-7"></control>
+                  <control label="Line Total" input="{ inputs.lineTotal }" labelClasses="col-md-5" controlClasses="col-md-7"></control>
+                  <control label="Discount" input="{ inputs.discount }" labelClasses="col-md-5" controlClasses="col-md-7"></control>
+                  <control label="Subtotal" input="{ inputs.subtotal }" labelClasses="col-md-5" controlClasses="col-md-7"></control>
+                  <control label="Shipping" input="{ inputs.shipping }" labelClasses="col-md-5" controlClasses="col-md-7"></control>
+                  <control label="Tax" input="{ inputs.tax }" labelClasses="col-md-5" controlClasses="col-md-7"></control>
+                  <control label="Total" input="{ inputs.total }" labelClasses="col-md-5" controlClasses="col-md-7"></control>
               </div>
             </div>
             <div class = "col-xs-6">
-              <h4>Current Status</h4>
-              <div id="order-status" class="block">
+              <h4>
+                <a data-toggle="collapse" href="#order-status">
+                  Status
+                </a>
+              </h4>
+              <div id="order-status" class="collapse in block">
+                  <control label="Status" input="{ inputs.status }" labelClasses="col-md-6" controlClasses="col-md-6"></control>
+                  <control label="Payment Status" input="{ inputs.paymentStatus }" labelClasses="col-md-6" controlClasses="col-md-6"></control>
+                  <control label="Fulfillment Status" input="{ inputs.fulfillmentStatus }" labelClasses="col-md-6" controlClasses="col-md-6"></control>
               </div>
             </div>
           </div>
@@ -50,7 +127,7 @@
               <button type="reset" class="btn btn-effect-ripple btn-warning">Reset</button>
             </div>
           </div>
-        </form>
+        </order-form>
         <!-- END Order information Form Content -->
     </div>
     <!-- END Order information Form Block -->
@@ -59,324 +136,32 @@
 {% endblock %}
 
 {% block js %}
-<script src="{{ staticUrl }}/js/util.js"></script>
-<script src="{{ staticUrl }}/js/jquery.serialize-object.min.js"></script>
-<script src="{{ staticUrl }}/js/form-builder.js"></script>
-<script src="{{ staticUrl }}/js/table-builder.js"></script>
-<script src="{{ staticUrl }}/js/rest-forms.js"></script>
 <script>
-    $(function(){
-      $('.reset-btn').on('click', function(e){
-          window.location.replace('{{ urlFor("platform", "sendorderconfirmation", order.Id) }}')
-          e.preventDefault();
-      })
+  var countries = {
+    {% for country in constants.Countries %}
+        '{{ country.ISO3166OneAlphaTwo }}': '{{ country.ISO3166OneEnglishShortNameReadingOrder }}',
+    {% endfor %}
+  }
 
-        Util.setCurrency('{{ order.Currency }}');
+  var currencies = {
+    {% for type in constants.CurrencyTypes %}
+      '{{ type }}': '{{ type.Label() }}',
+    {% endfor %}
+  }
 
-        BuildForm($("#form-order"), [
-          {
-            label: "Order ID",
-            type: "static",
-            value: "{{ order.Id }}",
-            $parent: $('#order-info'),
-          },
-          {
-            label: "Created On",
-            type: "static-date",
-            value: "{{ order.CreatedAt }}",
-            $parent: $('#order-info'),
-          },
-          {
-            label: "Last Updated On",
-            type: "static-date",
-            value: "{{ order.UpdatedAt }}",
-            $parent: $('#order-info'),
-          },
-          {
-            label: "Order Status",
-            type: "static",
-            value: "{{ order.Status }}",
-            $parent: $('#order-status'),
-            labelCols: 6,
-            valueCols: 6,
-          },
-          {
-            label: "Payment Status",
-            type: "static",
-            value: "{{ order.PaymentStatus }}",
-            $parent: $('#order-status'),
-            labelCols: 6,
-            valueCols: 6,
-          },
-          {
-            label: "Fulfillment Status",
-            type: "static",
-            value: "{{ order.FulfillmentStatus }}",
-            $parent: $('#order-status'),
-            labelCols: 6,
-            valueCols: 6,
-          },
-          {
-            label: 'Currency',
-            type: "static",
-            value: "{{ order.Currency }}".toUpperCase(),
-            $parent: $('#order-payment'),
-            css: {'text-align' : 'right'},
-            labelCols: 6,
-            valueCols: 6,
-          },
-          {
-            label: "Line Total",
-            type: "static-currency",
-            value: {{ order.LineTotal }},
-            $parent: $('#order-payment'),
-            labelCols: 6,
-            valueCols: 6,
-          },
-          {% if order.Discount != 0 %}
-          {
-            label: "Discount",
-            type: "static-currency",
-            value: {{ order.Discount }},
-            $parent: $('#order-payment'),
-            labelCols: 6,
-            valueCols: 6,
-          },
-          {% endif %}
-          {
-            label: "Subtotal",
-            type: "static-currency",
-            value: {{ order.Subtotal }},
-            $parent: $('#order-payment'),
-            labelCols: 6,
-            valueCols: 6,
-          },
-          {
-            label: "Shipping",
-            type: "static-currency",
-            value: {{ order.Shipping }},
-            $parent: $('#order-payment'),
-            labelCols: 6,
-            valueCols: 6,
-          },
-          {
-            label: "Tax",
-            type: "static-currency",
-            value: {{ order.Tax }},
-            $parent: $('#order-payment'),
-            labelCols: 6,
-            valueCols: 6,
-          },
-          {% if order.Adjustment != 0 %}
-          {
-            label: "Adjustment",
-            type: "static-currency",
-            value: {{ order.Adjustment }},
-            $parent: $('#order-payment'),
-            labelCols: 6,
-            valueCols: 6,
-          },
-          {% endif %}
-          {
-            label: "Total",
-            type: "static-currency",
-            value: {{ order.Total }},
-            $parent: $('#order-payment'),
-            labelCols: 6,
-            valueCols: 6,
-          },
-          {
-            label: "User ID",
-            value: '{{ user.Id }}',
-            href: '{{ urlFor("platform", "user", user.Id) }}',
-            $parent: $('#order-buyer'),
-            type: "link",
-          },
-          {
-            label: "Email",
-            value: '{{ user.Email }}',
-            $parent: $('#order-buyer'),
-            type: "static",
-          },
-          {
-            label: "First Name",
-            value: '{{ user.FirstName }}',
-            $parent: $('#order-buyer'),
-            type: "static",
-          },
-          {
-            label: "Last Name",
-            value: '{{ user.LastName }}',
-            $parent: $('#order-buyer'),
-            type: "static",
-          },
-          {
-            label: "Phone",
-            value: '{{ user.Phone }}',
-            $parent: $('#order-buyer'),
-            type: "static",
-          },
-          {
-            id: "line1",
-            name: "shippingAddress.line1",
-            label: "Street Address",
-            value: '{{ order.ShippingAddress.Line1 }}',
-            $parent: $('#order-shipping'),
-            rules: [
-                {
-                    rule: "required",
-                    value: "true",
-                    message: "Street address is required",
-                }
-            ]
-          },
-          {
-            id: "line2",
-            name: "shippingAddress.line2",
-            label: "Apartment Number or PO&nbsp;Box",
-            value: '{{ order.ShippingAddress.Line2 }}',
-            $parent: $('#order-shipping'),
-          },
-          {
-            id: "city",
-            name: "shippingAddress.city",
-            label: "City",
-            value: '{{ order.ShippingAddress.City }}',
-            $parent: $('#order-shipping'),
-            rules: [
-                {
-                    rule: "required",
-                    value: "true",
-                    message: "City is required",
-                }
-            ]
-          },
-          {
-            id: "state",
-            name: "shippingAddress.state",
-            label: "State",
-            value: '{{ order.ShippingAddress.State }}',
-            $parent: $('#order-shipping'),
-            rules: [
-                {
-                    rule: "required",
-                    value: "true",
-                    message: "State is required",
-                }
-            ]
-          },
-          {
-            id: "country",
-            name: "shippingAddress.country",
-            label: "Country",
-            value: [
-            {
-              selected: '',
-              name: '',
-                id: '',
-            },
-            {% for country in constants.Countries %}
-            {
-              selected: '{{ country.ISO3166OneAlphaTwo }}' === '{{ order.ShippingAddress.Country }}'.toUpperCase() || '{{ country.ISO3166OneEnglishShortNameReadingOrder }}' === '{{ order.ShippingAddress.Country }}'.toUpperCase(),
-              name: '{{ country.ISO3166OneEnglishShortNameReadingOrder }}',
-                id: '{{ country.ISO3166OneAlphaTwo }}',
-            },
-            {% endfor %}
-            ],
-            placeholder: 'Choose a country...',
-            type: 'select',
-            $parent: $('#order-shipping'),
-            rules: [
-                {
-                    rule: "required",
-                    value: "true",
-                    message: "Country is required",
-                }
-            ]
-          },
-          {
-            id: "postalCode",
-            name: "shippingAddress.postalCode",
-            label: "Postal Code",
-            value: '{{ order.ShippingAddress.PostalCode }}',
-            $parent: $('#order-shipping'),
-          },
-        ]);
-    });
+  $(function(){
+    var urlParts = window.location.pathname.split('/')
+    var orderId = urlParts.pop()
 
-    var itemsJSON = {{ order.ItemsJSON() | safe }};
-    for (var i = 0; i < itemsJSON.length; i++) {
-        itemsJSON[i].currency = '{{order.Currency}}';
-    }
-    BuildTable($('#order-items-table'), {
-    columns: [
-      {
-        field: 'productId',
-        name: 'Product ID',
-        href: '{{ urlFor("platform", "/product") }}',
-        render: 'link',
-      },
-      {
-        field: 'productName',
-        name: 'Product Name',
-      },
-      {
-        field: 'variantId',
-        name: 'Variant ID',
-        href: '{{ urlFor("api", "/variant") }}',
-        render: 'link',
-      },
-      {
-        field: 'variantName',
-        name: 'Variant Name',
-      },
-      {
-        field: 'collectionId',
-        name: 'Collection ID',
-        href: '{{ urlFor("api", "/collection") }}',
-        render: 'link',
-      },
-      {
-        field: 'price',
-        name: 'Price',
-        render: 'currency'
-      },
-      {
-        field: 'quantity',
-        name: 'Quantity',
-      }
-    ],
-    startPage: 1,
-    startDisplay: 10,
-    displayOptions: [5, 10, 20],
-    $display: $('#display'),
-    $pagination: $('#pagination'),
-    $empty: $('#empty-table'),
-    data: itemsJSON,
-    checkboxes: false,
-  });
+    new crowdcontrol.data.Api(
+      '{{ urlFor("api") }}',
+      '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}'
+    ).register('crowdstart')
 
-  $.extend(FormSerializer.patterns, {
-    validate: /^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*(?:\[\])?$/i
-  });
-  var api = NewRestAPI(
-      '{{ urlFor("api", "order") }}',
-      '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}',
-      $('#form-order')
-    );
-  $('#form-order').on('submit', function(e){
-      var $form = $(this);
-      requestAnimationFrame(function() {
-          if ($('.form-group.has-error').length === 0) {
-              api.patch(function(data) {
-                window.location.replace('{{ urlFor("platform", "order", order.Id ) }}')
-              }, $form, '{{ order.Id }}')
-          }
-      })
-      e.preventDefault();
-      return false;
+    riot.mount('order-form', {orderId: orderId})
   })
 </script>
 {% endblock %}
+
 {% block menulink %}menu-orders{% endblock %}
 
