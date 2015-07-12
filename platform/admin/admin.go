@@ -360,16 +360,7 @@ func Users(c *gin.Context) {
 }
 
 func Order(c *gin.Context) {
-	db := datastore.New(middleware.GetNamespace(c))
-
-	o := order.New(db)
-	id := c.Params.ByName("id")
-	o.MustGet(id)
-
-	u := user.New(db)
-	u.MustGet(o.UserId)
-
-	template.Render(c, "admin/order.html", "order", o, "user", u)
+	template.Render(c, "admin/order.html")
 }
 
 func Orders(c *gin.Context) {
@@ -389,7 +380,7 @@ func SendOrderConfirmation(c *gin.Context) {
 
 	emails.SendOrderConfirmationEmail(c, org, o, u)
 
-	template.Render(c, "admin/order.html", "order", o, "user", u)
+	template.Render(c, "admin/order.html")
 }
 
 func Organization(c *gin.Context) {
