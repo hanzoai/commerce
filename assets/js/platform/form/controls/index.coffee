@@ -24,6 +24,15 @@ class StaticDateView extends StaticView
 
 StaticDateView.register()
 
+class IdLinkView extends StaticView
+  tag: 'id-link'
+  html: require './id-link.html'
+  js: (opts)->
+    super
+    @path = opts.input.model.cfg.hints['id-path']
+
+IdLinkView.register()
+
 class BasicInputView extends InputView
   errorHtml: ''
   tag: 'basic-input'
@@ -48,35 +57,40 @@ class MoneyInputView extends BasicInputView
         @clearError()
         # in case the number was corrupted, reset to 0
         value = if isNaN(parseFloat(value)) then 0 else value
-        code = @currency()
-        @model.value = util.currency.renderUICurrencyFromJSON(code, value)
-        @update()
+        @currency (code)=>
+          @model.value = util.currency.renderUICurrencyFromJSON(code, value)
+          @update()
 
   change: (event) ->
     value = @getValue(event.target)
-    code = @currency()
-    @obs.trigger InputView.Events.Change, @model.name, util.currency.renderJSONCurrencyFromUI(code, value)
-    @model.value = value
+    @currency (code)=>
+      @obs.trigger InputView.Events.Change, @model.name, util.currency.renderJSONCurrencyFromUI(code, value)
+      @model.value = value
+      @update
 
   # get the currency set on the model (all models with currencies have both currency and amount field
-  currency: ()->
+  currency: (fn)->
     # convoluted return scheme
-    @curr = {value: ''}
-    @obs.trigger(InputView.Events.Get, 'currency').one InputView.Events.Result, (result)=>
-      @curr.value = result
-    return @curr.value
+    @obs.trigger(InputView.Events.Get, 'currency').one InputView.Events.Result, (result)->
+      fn(result)
 
   js:(opts)->
     @model = if opts.input then opts.input.model else @model
     model = @model
-    code = @currency()
-    model.value = util.currency.renderUICurrencyFromJSON(code, model.value)
+    @currency (code)->
+      model.value = util.currency.renderUICurrencyFromJSON(code, model.value)
 
     @on 'update', ()=>
-      code = @currency()
-      model.value = util.currency.renderUpdatedUICurrency(code, model.value)
+      @currency (code)->
+        model.value = util.currency.renderUpdatedUICurrency(code, model.value)
 
 MoneyInputView.register()
+
+class StaticMoneyView extends MoneyInputView
+  tag: 'static-money'
+  html: require './static.html'
+
+StaticMoneyView.register()
 
 class BasicSelectView extends BasicInputView
   tag: 'basic-select'
@@ -147,12 +161,20 @@ helpers.registerTag (inputCfg)->
 , 'currency-select'
 
 helpers.registerTag (inputCfg)->
+  return inputCfg.hints['static-money']
+, 'static-money'
+
+helpers.registerTag (inputCfg)->
   return inputCfg.hints['static-date']
 , 'static-date'
 
 helpers.registerTag (inputCfg)->
   return inputCfg.hints['static']
 , 'static'
+
+helpers.registerTag (inputCfg)->
+  return inputCfg.hints['id']
+, 'id-link'
 
 helpers.registerTag (inputCfg)->
   return inputCfg.hints['money']

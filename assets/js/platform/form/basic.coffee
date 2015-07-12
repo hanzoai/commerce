@@ -7,11 +7,16 @@ Api = crowdcontrol.data.Api
 Source = crowdcontrol.data.Source
 m = crowdcontrol.utils.mediator
 
+LoadEvent = 'Load'
+
 class BasicFormView extends FormView
+  @Events:
+    Load: LoadEvent
   tag: 'basic-form'
   redirectPath: ''
   path: ''
-  html: ''
+  html: require './template.html'
+
   events:
     "#{FormView.Events.SubmitFailed}": ()->
       requestAnimationFrame ()->
@@ -20,6 +25,7 @@ class BasicFormView extends FormView
           $('html, body').animate(
             scrollTop: $container.offset().top-$(window).height()/2
           , 1000)
+
   delete: ()->
     m.trigger 'start-spin', @path + '-delete'
     @api.delete(@path).finally ()=>
@@ -42,6 +48,8 @@ class BasicFormView extends FormView
       @loadData @model
 
       @initFormGroup()
+
+      @obs.trigger LoadEvent, @model
       riot.update()
     ).catch ()=>
       window.location.replace('../' + @redirectPath)
@@ -61,7 +69,7 @@ class BasicFormView extends FormView
       @update()
     , ()=>
       m.trigger 'stop-spin', @path + '-form-save'
-      $button = $(event.target).find('input[type=submit], button[type=submit]').text('Saved')
+      $button = $(event.target).find('input[type=submit], button[type=submit]').text('An Error Has Occured')
       setTimeout ()->
         $button.text('Save')
       , 1000
