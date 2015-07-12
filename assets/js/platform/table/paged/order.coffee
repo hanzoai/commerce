@@ -10,7 +10,7 @@ class OrderPagedTable extends BasicPagedTable
   tag: 'order-paged-table'
   path: 'order'
   headers: [
-    field('id', 'Number', 'id', 'id-path:order')
+    field('id', 'Number', 'id', 'id-display:number id-path:order')
     field('userId', 'User ID', 'id', 'id-path:user')
     field('currency', 'Currency', 'upper')
     field('total', 'Total', 'money')
