@@ -41,6 +41,7 @@ class BalanceWidget extends View
   html: require './template.html'
 
   currencyOptions: {}
+  isEmpty: true
   formModel:
     userId: ''
     type: 'deposit',
@@ -67,7 +68,10 @@ class BalanceWidget extends View
   updateModel: (model)->
     # We should only receive array models
     if !_.isArray(model) || model.length == 0
+      @isEmpty = true
       return
+
+    @isEmpty = false
 
     # prepare model
     model.sort (a, b)->
@@ -76,6 +80,8 @@ class BalanceWidget extends View
 
     # grab the last currency (most recently added)
     @currency = currency = model[0].currency
+
+    @currencyOptions = {}
 
     newModel = {}
     for row in model
@@ -118,15 +124,16 @@ class BalanceWidget extends View
     @formModel.userId = userId
 
     @on 'update', ()=>
-      $select = $($(@root).find('select')[0])
+      $select = $(@root).find('#balance-currency-select')
       if !@initialized && $select[0]?
         $select.chosen(
           width: '100%'
           disable_search_threshold: 3
         ).change((event)=>@change(event))
         @initialized = true
-      requestAnimationFrame ()->
+      setTimeout ()->
         $select.chosen().trigger("chosen:updated")
+      , 500
 
 BalanceWidget.register()
 
