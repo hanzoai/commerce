@@ -42,6 +42,12 @@ class BasicInputView extends InputView
 
 BasicInputView.register()
 
+class BasicTextareaView extends BasicInputView
+  tag: 'basic-textarea.'
+  html: require './basic-textarea.html'
+
+BasicTextareaView.register()
+
 class DisabledInputView extends BasicInputView
   tag: 'disabled-input'
   html: require './disabled-input.html'
@@ -110,8 +116,9 @@ class BasicSelectView extends BasicInputView
           disable_search_threshold: 3
         ).change((event)=>@change(event))
         @initialized = true
-      requestAnimationFrame ()->
+      setTimeout ()->
         $select.chosen().trigger("chosen:updated")
+      , 500
 
 BasicSelectView.register()
 
@@ -144,6 +151,10 @@ class CurrencySelectView extends BasicSelectView
 CurrencySelectView.register()
 
 # tag registration
+helpers.registerTag (inputCfg)->
+  return inputCfg.hints['text']
+, 'basic-textarea'
+
 helpers.registerTag (inputCfg)->
   return inputCfg.hints['disabled']
 , 'disabled-input'

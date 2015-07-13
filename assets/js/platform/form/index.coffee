@@ -2,8 +2,5 @@
 require './controls'
 
 module.exports =
-  # must be after controls
-  user: require './user'
-  order: require './order'
-
+  forms: require './forms'
   randomPassword: require './random-password'
