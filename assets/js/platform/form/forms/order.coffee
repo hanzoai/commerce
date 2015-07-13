@@ -3,11 +3,13 @@ _ = require 'underscore'
 crowdcontrol = require 'crowdcontrol'
 m = crowdcontrol.utils.mediator
 
-input = require './input'
-BasicFormView = require './basic'
+input = require '../input'
+BasicFormView = require '../basic'
+Form = require './form'
+
 Api = crowdcontrol.data.Api
 
-class OrderForm extends BasicFormView
+class OrderForm extends Form
   tag: 'order-form'
   redirectPath: 'orders'
   path: 'order'
@@ -41,33 +43,6 @@ class OrderForm extends BasicFormView
     input('paymentStatus', '', 'static'),
     input('fulfillmentStatus', '', 'static'),
   ]
-
-  js: (opts)->
-    #case sensitivity issues
-    @orderId = opts.orderId = opts.orderId || opts.orderid
-
-    @path += '/' + opts.orderId
-
-    super
-
-  reset: (event)->
-    if event?
-      event.preventDefault()
-
-    @model = _.deepExtend {}, @resetModel
-    @initFormGroup.apply @
-    @_reset(event)
-    riot.update()
-
-  _reset: (event)->
-
-  _submit: (event)->
-    p = super
-    p.then ()=>
-      @resetModel = _.deepExtend {}, @model
-
-  loadData: (model)->
-    @resetModel = _.deepExtend {}, @model
 
 OrderForm.register()
 
