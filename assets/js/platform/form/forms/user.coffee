@@ -2,10 +2,11 @@ _ = require 'underscore'
 
 crowdcontrol = require 'crowdcontrol'
 
-input = require './input'
-BasicFormView = require './basic'
+input = require '../input'
+BasicFormView = require '../basic'
+Form = require './form'
 
-class UserForm extends BasicFormView
+class UserForm extends Form
   tag: 'user-form'
   redirectPath: 'users'
   path: 'user'
@@ -37,33 +38,9 @@ class UserForm extends BasicFormView
     input('shippingAddress.country', 'Choose a Country...', 'country-select'),
   ]
 
-  js: (opts)->
-    #case sensitivity issues
-    @userId = opts.userId = opts.userId || opts.userid
-
-    @path += '/' + opts.userId
-
-    super
-
-  reset: (event)->
-    if event?
-      event.preventDefault()
-
-    @model = _.deepExtend {}, @resetModel
-    @initFormGroup.apply @
-    @_reset(event)
-    riot.update()
-
-  _reset: (event)->
-
-  _submit: (event)->
-    p = super
-    p.then ()=>
-      @resetModel = _.deepExtend {}, @model
-
   loadData: (model)->
+    super
     @inputConfigs[1].hints['email-unique-exception'] = model.email
-    @resetModel = _.deepExtend {}, @model
 
 UserForm.register()
 
