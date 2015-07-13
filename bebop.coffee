@@ -2,7 +2,7 @@ fs   = require 'fs'
 path = require 'path'
 
 coffee    = 'node_modules/.bin/coffee'
-requisite = 'node_modules/.bin/requisite -g'
+requisite = 'node_modules/.bin/requisite -g --no-source-map'
 stylus    = 'node_modules/.bin/stylus -u autoprefixer-stylus --sourcemap --sourcemap-inline'
 
 files =

@@ -1,5 +1,5 @@
 <div>
-  <div class="form-group">
+  <div class="form-group" if="{ !isEmpty }">
     <div class="col-xs-6">
       <label for="balance-currency-select" class="control-label" style="float:left;text-align:left;">Currency</label>
       <div class="col-xs-6">
@@ -18,6 +18,7 @@
   <div class="btn-group open" if="{ model.length != 0 && !loading }">
   </div>
   <basic-table class="table-viewport" headers="{ tableHeaders }" obs="{ obs }">
+    No Transactions Found
   </basic-table>
   <balance-widget-form model="{ formModel }" accountingoptions="{ accountingOptions }" obs="{ obs }">
   </balance-widget-form>
