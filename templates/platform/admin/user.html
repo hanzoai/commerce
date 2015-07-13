@@ -59,7 +59,7 @@
             </a>
           </h4>
           <div id="user-reset-password" class="collapse in block">
-              <reset-password-form userId="{ opts.userId }", url ="{ opts.url }" token="{ opts.token }">
+              <reset-password-form userId="{ opts.id }", url ="{ opts.url }" token="{ opts.token }">
             </reset-password-form>
           </div>
           <h4>
@@ -106,7 +106,7 @@
             </a>
           </h4>
           <div id="user-orders" class="collapse in block">
-            <order-list path="{ 'user/'+opts.userId+'/orders' }">
+            <order-list path="{ 'user/'+opts.id+'/orders' }">
               No Orders Found
             </order-list>
           </div>
@@ -116,7 +116,7 @@
             </a>
           </h4>
           <div id="user-balance" class="collapse in block">
-            <balance-widget userId="{opts.userId}">
+            <balance-widget userId="{opts.id}">
             </balance-widget>
           </div>
           <h4>
@@ -125,7 +125,7 @@
             </a>
           </h4>
           <div id="user-referrers" class="collapse in block">
-            <referrer-list path="{ 'user/'+opts.userId+'/referrers' }">
+            <referrer-list path="{ 'user/'+opts.id+'/referrers' }">
               No Referrer Tokens Found
             </referrer-list>
           </div>
@@ -135,7 +135,7 @@
             </a>
           </h4>
           <div id="user-referrals" class="collapse in block">
-            <referral-list path="{ 'user/'+opts.userId+'/referrals' }">
+            <referral-list path="{ 'user/'+opts.id+'/referrals' }">
               No Referrals Found
             </referral-list>
           </div>
@@ -163,14 +163,14 @@
 
   $(function(){
     var urlParts = window.location.pathname.split('/')
-    var userId = urlParts.pop()
+    var id = urlParts.pop()
 
     new crowdcontrol.data.Api(
       '{{ urlFor("api") }}',
       '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}'
     ).register('crowdstart')
 
-    riot.mount('user-form', {userId: userId})
+    riot.mount('user-form', {id: id})
   })
 </script>
 {% endblock %}

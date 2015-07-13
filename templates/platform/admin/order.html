@@ -87,7 +87,7 @@
             </a>
           </h4>
           <div id="order-payments" class="collapse in block">
-            <payment-list path="{ 'order/'+opts.orderId+'/payments' }">
+            <payment-list path="{ 'order/'+opts.id+'/payments' }">
               No Payments Found
             </payment-list>
           </div>
@@ -151,17 +151,17 @@
 
   $(function(){
     var urlParts = window.location.pathname.split('/')
-    var orderId = urlParts.pop()
+    var id = urlParts.pop()
 
     new crowdcontrol.data.Api(
       '{{ urlFor("api") }}',
       '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}'
     ).register('crowdstart')
 
-    riot.mount('order-form', {orderId: orderId})
+    riot.mount('order-form', {id: id})
 
     $('.resend-btn').on('click', function(e){
-      window.location.replace('{{ urlFor("platform", "sendorderconfirmation") }}' + '/' + orderId)
+      window.location.replace('{{ urlFor("platform", "sendorderconfirmation") }}' + '/' + id)
       e.preventDefault();
     })
 

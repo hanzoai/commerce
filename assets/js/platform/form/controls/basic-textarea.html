@@ -1,0 +1,8 @@
+<div class="{form-group: true, has-error: hasError()}">
+  <label __for="{ model.name }" class="control-label { opts.labelclasses || 'col-md-3' }">{ opts.label }</label>
+  <div class="col-md-9">
+    <textarea id="{ model.name }" name="{ model.name }" type="text" style="resize: none; height: 100px;"  onchange="{ change }" onblur="{ change }" placeholder="{ model.placeholder }" class="form-control">
+      { model.value }
+    </textarea>
+  </div>
+</div>
