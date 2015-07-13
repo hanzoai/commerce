@@ -17,7 +17,7 @@
   </div>
   <div class="btn-group open" if="{ model.length != 0 && !loading }">
   </div>
-  <basic-table class="table-viewport" headers="{ tableHeaders }" obs="{ obs }">
+  <basic-table class="{table-viewport: !isEmpty }" headers="{ tableHeaders }" obs="{ obs }">
     No Transactions Found
   </basic-table>
   <balance-widget-form model="{ formModel }" accountingoptions="{ accountingOptions }" obs="{ obs }">
