@@ -16,24 +16,75 @@
         <!-- END Product information Form Title -->
 
         <!-- Product information Form Content -->
-        <form id="form-product" method="post" class="form-horizontal">
-            <h4>Information</h4>
-            <div id="product-info" class="block">
-            </div>
-            <h4>Cost and Availability</h4>
-            <div id="product-cost" class="block">
-            </div>
-            <h4>Shipping (Optional)</h4>
-            <div id="product-shipping" class="block">
-            </div>
+        <product-form>
+          <h4>
+            <a data-toggle="collapse" href="#product-info">
+              Information
+            </a>
+          </h4>
+          <div id="product-info" class="collapse in block">
+            <control label="ID" input="{ inputs.id }"></control>
+            <control label="Name" input="{ inputs.name }"></control>
+            <control label="Slug" input="{ inputs.slug }"></control>
+            <control label="Description" input="{ inputs.description }"></control>
+            <control label="Created On" input="{ inputs.createdAt }"></control>
+            <control label="Last Updated On" input="{ inputs.updatedAt }"></control>
             <div class="form-group form-actions">
-                <div class="col-md-9 col-md-offset-3">
-                    <button type="submit" class="btn btn-effect-ripple btn-primary">Submit</button>
-                    <button type="reset" class="btn btn-effect-ripple btn-warning">Reset</button>
-                    <button type="button" id="delete-btn" class="btn btn-effect-ripple btn-danger">Delete</button>
-                </div>
+              <div class="col-md-9 col-md-offset-3">
+                <button type="submit" class="btn btn-effect-ripple btn-primary">Submit</button>
+                <button type="reset" class="btn btn-effect-ripple btn-warning">Reset</button>
+                <button type="button" id="delete-btn" class="btn btn-effect-ripple btn-danger">Delete</button>
+              </div>
             </div>
-        </form>
+          </div>
+          <h4>
+            <a data-toggle="collapse" href="#product-cost">
+              Cost and Availability
+            </a>
+          </h4>
+          <div id="product-cost" class="collapse in block">
+            <control label="Currency" input="{ inputs.currency }"></control>
+            <control label="List Price" input="{ inputs.listPrice }"></control>
+            <control label="Price" input="{ inputs.price }"></control>
+            <control label="Product is Instock?" input="{ inputs.available }"></control>
+            <control label="Product is Available?" input="{ inputs.hidden }"></control>
+            <div class="form-group form-actions">
+              <div class="col-md-9 col-md-offset-3">
+                <button type="submit" class="btn btn-effect-ripple btn-primary">Submit</button>
+                <button type="reset" class="btn btn-effect-ripple btn-warning">Reset</button>
+              </div>
+            </div>
+          </div>
+          <h4>
+            <a data-toggle=collapse" href="product-shipping">
+              Shipping (Optional)
+            </a>
+          </h4>
+          <div id="product-shipping" class="collapse in block">
+            <control label="Size (L x W x H)" input="{ inputs.dimensions }"></control>
+            <control label="Weight (grams)" input="{ inputs.weight }"></control>
+            <div class="form-group form-actions">
+              <div class="col-md-9 col-md-offset-3">
+                <button type="submit" class="btn btn-effect-ripple btn-primary">Submit</button>
+                <button type="reset" class="btn btn-effect-ripple btn-warning">Reset</button>
+              </div>
+            </div>
+          </div>
+          <h4>
+            <a data-toggle="collapse" href="product-variant-options">
+              Variant Options
+            </a>
+          </h4>
+          <div id="product-variant-options" class="collapse in block">
+            <variant-options model="{ opts.model }" obs="{ obs }"></variant-options>
+            <div class="form-group form-actions">
+              <div class="col-md-9 col-md-offset-3">
+                <button type="submit" class="btn btn-effect-ripple btn-primary">Submit</button>
+                <button type="reset" class="btn btn-effect-ripple btn-warning">Reset</button>
+              </div>
+            </div>
+          </div>
+        </product-form>
         <!-- END Product information Form Content -->
     </div>
     <!-- END Product information Form Block -->
@@ -42,55 +93,29 @@
 {% endblock %}
 
 {% block js %}
-<script src="{{ staticUrl }}/js/util.js"></script>
-<script src="{{ staticUrl }}/js/jquery.serialize-object.min.js"></script>
-<script src="{{ staticUrl }}/js/form-builder.js"></script>
-<script src="{{ staticUrl }}/js/rest-forms.js"></script>
 <script>
-  $(function() {
-    Util.setCurrency('{{ product.Currency }}');
+  var countries = {
+    {% for country in constants.Countries %}
+        '{{ country.ISO3166OneAlphaTwo }}': '{{ country.ISO3166OneEnglishShortNameReadingOrder }}',
+    {% endfor %}
+  }
 
-    {% include "js/productform.js" %}
-})
+  var currencies = {
+    {% for type in constants.CurrencyTypes %}
+      '{{ type }}': '{{ type.Label() }}',
+    {% endfor %}
+  }
 
-    var api = NewRestAPI(
-      '{{ urlFor("api", "/product") }}',
-      '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}',
-      $('#form-new-product'),
-      {
-            listPrice: function(val) {
-                // To cents
-                return Util.renderJSONCurrencyFromUI(val);
-            },
-          price: function(val) {
-            // To cents
-            return Util.renderJSONCurrencyFromUI(val);
-          },
-          weight: function(val) {
-            return parseFloat(val);
-          }
-      },
-      {
-          taxable: false,
-          available: false,
-      }
-    );
-  $('#form-product').on('submit', function(e){
-      var $form = $(this);
-      requestAnimationFrame(function() {
-          if ($('.form-group.has-error').length === 0) {
-              api.put(function(data) {
-                  window.location.replace('{{ urlFor("platform", "/product", product.Id) }}')
-              }, $form, '{{ product.Id }}')
-          }
-      })
-      e.preventDefault();
-      return false;
-  })
-  $('#delete-btn').on('click', function(e) {
-    api.del(function(data) {
-        window.location.replace('{{ urlFor("platform", "/products") }}')
-    }, '{{ product.Id }}')
+  $(function(){
+    var urlParts = window.location.pathname.split('/')
+    var id = urlParts.pop()
+
+    new crowdcontrol.data.Api(
+      '{{ urlFor("api") }}',
+      '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}'
+    ).register('crowdstart')
+
+    riot.mount('product-form', {id: id})
   })
 </script>
 {% endblock %}

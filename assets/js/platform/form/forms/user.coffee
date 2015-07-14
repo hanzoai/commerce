@@ -11,9 +11,6 @@ class UserForm extends Form
   redirectPath: 'users'
   path: 'user'
 
-  # model that stores the last model queried
-  resetModel: null
-
   inputConfigs:[
     input('id', '', 'static'),
     input('email', 'your@email.com', 'required email email-unique email-unique-exception:'),
