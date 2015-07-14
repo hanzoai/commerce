@@ -14,9 +14,6 @@ class OrderForm extends Form
   redirectPath: 'orders'
   path: 'order'
 
-  # model that stores the last model queried
-  resetModel: null
-
   inputConfigs:[
     input('id', '', 'static'),
     input('number', '', 'static'),
