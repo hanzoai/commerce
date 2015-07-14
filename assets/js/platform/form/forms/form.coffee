@@ -19,7 +19,8 @@ class Form extends BasicFormView
     #case sensitivity issues
     @id = id = opts.id
 
-    @path += '/' + opts.id
+    if @id?
+      @path += '/' + opts.id
 
     super
 
