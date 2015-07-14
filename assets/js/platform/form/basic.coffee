@@ -16,6 +16,7 @@ class BasicFormView extends FormView
   redirectPath: ''
   path: ''
   html: require './template.html'
+  id: null
 
   events:
     "#{FormView.Events.SubmitFailed}": ()->
@@ -34,25 +35,26 @@ class BasicFormView extends FormView
   js: (opts)->
     super
 
-    @loading = true
-    m.trigger 'start-spin', @path + '-form-load'
+    if @id?
+      @loading = true
+      m.trigger 'start-spin', @path + '-form-load'
 
-    @api = api = Api.get('crowdstart')
-    api.get(@path).then((res)=>
-      m.trigger 'stop-spin', @path + '-form-load'
+      @api = api = Api.get('crowdstart')
+      api.get(@path).then((res)=>
+        m.trigger 'stop-spin', @path + '-form-load'
 
-      if res.status != 200
-        throw new Error("Form failed to load")
+        if res.status != 200
+          throw new Error("Form failed to load")
 
-      @model = res.responseText
-      @loadData @model
+        @model = res.responseText
+        @loadData @model
 
-      @initFormGroup()
+        @initFormGroup()
 
-      @obs.trigger LoadEvent, @model
-      riot.update()
-    ).catch ()=>
-      window.location.replace('../' + @redirectPath)
+        @obs.trigger LoadEvent, @model
+        riot.update()
+      ).catch ()=>
+        window.location.replace('../' + @redirectPath)
 
   loadData: (model)->
 
@@ -60,7 +62,9 @@ class BasicFormView extends FormView
     m.trigger 'start-spin', @path + '-form-save'
     @update()
 
-    return @api.patch(@path, @model).then ()=>
+    method = if @id? then 'patch' else 'post'
+
+    return @api[method](@path, @model).then ()=>
       m.trigger 'stop-spin', @path + '-form-save'
       $button = $(event.target).find('input[type=submit], button[type=submit]').text('Saved')
       setTimeout ()->

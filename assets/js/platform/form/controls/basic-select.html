@@ -5,5 +5,6 @@
       <option if="{ !model || model.placeholder != '' }"></option>
       <option each="{ value, name in options() }" value="{value}" __selected="{ this.parent.model.value == value }">{name}</option>
     </select>
+    <div if="{hasError()}" class="error-container help-block animation-pullUp">{ error }</div>
   </div>
 </div>

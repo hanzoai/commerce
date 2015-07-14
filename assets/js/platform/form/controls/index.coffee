@@ -43,10 +43,21 @@ class BasicInputView extends InputView
 BasicInputView.register()
 
 class BasicTextareaView extends BasicInputView
-  tag: 'basic-textarea.'
+  tag: 'basic-textarea'
   html: require './basic-textarea.html'
 
 BasicTextareaView.register()
+
+class Switch extends BasicInputView
+  tag: 'switch'
+  html: require './switch.html'
+  change: (event) ->
+    value = event.target.checked
+    @obs.trigger InputView.Events.Change, @model.name, value
+    @model.value = value
+    @update
+
+Switch.register()
 
 class DisabledInputView extends BasicInputView
   tag: 'disabled-input'
@@ -151,6 +162,10 @@ class CurrencySelectView extends BasicSelectView
 CurrencySelectView.register()
 
 # tag registration
+helpers.registerTag (inputCfg)->
+  return inputCfg.hints['switch']
+, 'switch'
+
 helpers.registerTag (inputCfg)->
   return inputCfg.hints['text']
 , 'basic-textarea'
