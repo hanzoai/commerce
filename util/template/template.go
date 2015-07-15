@@ -8,6 +8,7 @@ import (
 
 	"crowdstart.io/auth"
 	"crowdstart.io/config"
+	"crowdstart.io/models/types/country"
 	"crowdstart.io/util/log"
 )
 
@@ -34,6 +35,9 @@ func TemplateSet() *pongo2.TemplateSet {
 	set.Globals["moduleUrl"] = func(moduleName string, args ...string) string {
 		return config.UrlFor(moduleName, args...)
 	}
+
+	set.Globals["Countries"] = country.Countries
+	set.Globals["ShippingCosts"] = country.ShippingCosts
 
 	return set
 }

@@ -17,6 +17,13 @@ import (
 	"crowdstart.io/util/log"
 )
 
+type Speed string
+
+const (
+	Normal    Speed = "normal"
+	Expedited       = "expedited"
+)
+
 type Order struct {
 	FieldMapMixin
 	SalesforceSObject
@@ -54,6 +61,8 @@ type Order struct {
 	Shipped           bool
 	Unconfirmed       bool // True only if preorder has not be confirmed by customer
 	EstimatedDelivery string
+
+	ShippingSpeed Speed
 
 	// Dispute details
 	Disputed bool

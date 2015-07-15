@@ -4,6 +4,10 @@ validator  = require 'address-validator/src/validator'
 validation = require '../utils/validation'
 util       = require '../store/util'
 
+$('select').select2
+  minimumResultsForSearch: Infinity
+  width: '100%'
+
 validateForm = ->
   $errors = $('#error-message')
   $errors.text ''
@@ -59,7 +63,7 @@ $('div.field input').on 'click', clearError
 $('div.field input').on 'change', clearError
 
 $('input[name="ShipToBilling"]').change ->
-  shipping = $('.shipping-information fieldset')
+  shipping = $('.shipping-information fieldset:first')
   if @checked
     shipping.fadeOut 500
     setTimeout ->
@@ -74,7 +78,8 @@ $('input[name="ShipToBilling"]').change ->
 # Update tax display
 $state    = $('input[name="Order.BillingAddress.State"]')
 $city     = $('input[name="Order.BillingAddress.City"]')
-$country  = $('input[name="Order.BillingAddress.Country"]')
+$country  = $('select[name="Order.BillingAddress.Country"]')
+$shippingOptions = $('.shipping-options')
 
 $subtotal = $('span.subtotal')
 $tax      = $('span.tax')
@@ -96,9 +101,10 @@ $('input')
     ar1Quantity += parseInt $(selector).val(), 10
 
 updateShippingAndTax = $.debounce 250, ->
-  country  = $country.val().trim().replace ' ', ''
+  country  = $country.val().trim().toLowerCase().replace ' ', ''
   city     = $city.val().trim()
   state    = $state.val().trim()
+  speed    = $shippingOptions.children(':checked').val()
 
   subtotal = parseFloat $subtotal.text().replace ',', ''
   shipping = 50.00 * ar1Quantity
@@ -106,10 +112,14 @@ updateShippingAndTax = $.debounce 250, ->
   total    = 0
 
   # Update shipping
-  unless (/^usa$|^us$|unitedstates$|unitedstatesofamerica/i).test country
-    shipping = 100.00 * ar1Quantity
-  else
-    shipping = 50.00 * ar1Quantity
+  shippingInfo = window.ShippingCosts[country.toUpperCase()]
+  if shippingInfo
+    shipping = (shippingInfo[speed]/100 || 50) * ar1Quantity
+
+  # unless (/^usa$|^us$|unitedstates$|unitedstatesofamerica/i).test country
+  #   shipping = 100.00 * ar1Quantity
+  # else
+  #   shipping = 50.00 * ar1Quantity
 
   # Update tax
   if ((/^usa$|^us$|unitedstates$|unitedstatesofamerica/i).test country) and
@@ -135,6 +145,7 @@ updateShippingAndTax = $.debounce 250, ->
 $state.change updateShippingAndTax
 $city.on 'keyup', updateShippingAndTax
 $country.change updateShippingAndTax
+$shippingOptions.children().change updateShippingAndTax
 
 $(document).ready ->
   updateShippingAndTax()
@@ -181,7 +192,7 @@ $(document).ready ->
               $billingInfo.find('#billing-city input').val(address.city)
               $billingInfo.find('#billing-state input').val(address.state)
               $billingInfo.find('#billing-zip input').val(address.postalCode)
-              $billingInfo.find('#billing-country input').val(address.country)
+              $billingInfo.find('#billing-country select').val(address.country).trigger('change')
               app.set 'validBillingAddress', true
               setTimeout ->
                 $form.submit()
@@ -222,7 +233,7 @@ $(document).ready ->
               $shippingInfo.find('#shipping-city input').val(address.city)
               $shippingInfo.find('#shipping-state input').val(address.state)
               $shippingInfo.find('#shipping-zip input').val(address.postalCode)
-              $shippingInfo.find('#shipping-country input').val(address.country)
+              $shippingInfo.find('#shipping-country select').val(address.country).trigger('change')
               app.set 'validShippingAddress', true
               setTimeout ->
                 $form.submit()
