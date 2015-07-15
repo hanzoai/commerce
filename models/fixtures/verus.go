@@ -11,23 +11,31 @@ import (
 	"crowdstart.com/util/log"
 )
 
-var Crowdstart = New("crowdstart", func(c *gin.Context) *organization.Organization {
+var Verus = New("verus", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	// Create organization
 	org := organization.New(db)
-	org.Name = "crowdstart"
+	org.Name = "verus"
 	org.GetOrCreate("Name=", org.Name)
 
-	// Create admin
+	// Create admins
 	u := user.New(db)
-	u.Email = "crowdstart@verus.io"
+	u.Email = "dev@hanzo.ai"
 	u.GetOrCreate("Email=", u.Email)
 
+	u2 := user.New(db)
+	u2.Email = "dev@hanzo.ai"
+	u2.GetOrCreate("Email=", u.Email)
+
+	u3 := user.New(db)
+	u3.Email = "dev@hanzo.ai"
+	u3.GetOrCreate("Email=", u.Email)
+
 	// Configure org
-	org.FullName = "crowdstart"
-	org.Owners = []string{u.Id()}
-	org.Website = "http://www.crowdstart.com"
+	org.FullName = "verus"
+	org.Owners = []string{u.Id(), u2.Id(), u3.Id()}
+	org.Website = "http://www.verus.com"
 	org.SecretKey = []byte("zW85MZHMklGJE3hNgC5j1cxFpQ04zLb6")
 	org.AddDefaultTokens()
 
@@ -35,8 +43,22 @@ var Crowdstart = New("crowdstart", func(c *gin.Context) *organization.Organizati
 	u.FirstName = "Michael"
 	u.LastName = "Walker"
 	u.Organizations = []string{org.Id()}
-	u.PasswordHash, _ = password.Hash("crowdstartpassword!")
+	u.PasswordHash, _ = password.Hash("veruspassword!")
 	u.Put()
+
+	// Configure user
+	u2.FirstName = "Zach"
+	u2.LastName = "Kelling"
+	u2.Organizations = []string{org.Id()}
+	u2.PasswordHash, _ = password.Hash("veruspassword!")
+	u2.Put()
+
+	// Configure user
+	u3.FirstName = "David"
+	u3.LastName = "Tai"
+	u3.Organizations = []string{org.Id()}
+	u3.PasswordHash, _ = password.Hash("veruspassword!")
+	u3.Put()
 
 	// Email configuration
 	// org.Mandrill.APIKey = ""
