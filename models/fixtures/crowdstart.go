@@ -60,13 +60,6 @@ var Verus = New("verus", func(c *gin.Context) *organization.Organization {
 	u3.PasswordHash, _ = password.Hash("veruspassword!")
 	u3.Put()
 
-	// Configure user
-	u.FirstName = "Michael"
-	u.LastName = "Walker"
-	u.Organizations = []string{org.Id()}
-	u.PasswordHash, _ = password.Hash("veruspassword!")
-	u.Put()
-
 	// Email configuration
 	// org.Mandrill.APIKey = ""
 
