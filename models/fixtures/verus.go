@@ -26,11 +26,11 @@ var Verus = New("verus", func(c *gin.Context) *organization.Organization {
 
 	u2 := user.New(db)
 	u2.Email = "dev@hanzo.ai"
-	u2.GetOrCreate("Email=", u.Email)
+	u2.GetOrCreate("Email=", u2.Email)
 
 	u3 := user.New(db)
 	u3.Email = "dev@hanzo.ai"
-	u3.GetOrCreate("Email=", u.Email)
+	u3.GetOrCreate("Email=", u3.Email)
 
 	// Configure org
 	org.FullName = "verus"
