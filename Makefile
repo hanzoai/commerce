@@ -62,6 +62,7 @@ bebop = node_modules/.bin/bebop
 
 coffee	   	   = node_modules/.bin/coffee
 requisite	   = node_modules/.bin/requisite -g
+uglifyjs	   = node_modules/.bin/uglifyjs
 requisite_opts = --no-source-map \
 				 assets/js/store/store.coffee \
 				 assets/js/api/api.coffee \
@@ -72,9 +73,8 @@ requisite_opts = --no-source-map \
 				 -o static/js/platform.js \
 				 -o static/v1.js
 
-# currently variable mangling causes errors
-requisite_opts_min = --strip-debug --minifier uglify
-#requisite_opts_min = -m --strip-debug --minifier uglify
+# requisite_opts_min = --strip-debug --minifier uglify
+requisite_opts_min = --strip-debug
 
 stylus		= node_modules/.bin/stylus
 stylus_opts = assets/css/store/store.styl \
@@ -166,6 +166,14 @@ compile-js:
 compile-js-min:
 	$(requisite) $(requisite_opts_min) $(requisite_opts)
 	$(coffee) -bc -o static/js assets/js/api/mailinglist.coffee
+	$(uglifyjs) static/js/api.js -o static/js/api.js.min -c
+	$(uglifyjs) static/js/platform.js -o static/js/platform.js.min -c
+	$(uglifyjs) static/js/store.js -o static/js/store.js.min -c
+	$(uglifyjs) static/v1.js -o static/v1.js.min -c
+	@mv static/js/api.js.min static/js/api.js
+	@mv static/js/platform.js.min static/js/platform.js
+	@mv static/js/store.js.min static/js/store.js
+	@mv static/v1.js.min static/v1.js
 
 compile-css:
 	$(stylus) $(stylus_opts) -u autoprefixer-stylus --sourcemap --sourcemap-inline
