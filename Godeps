@@ -15,4 +15,5 @@ github.com/qedus/nds classic
 github.com/stripe/stripe-go 4b8db50fd4ced3a165d9632aeb2ceb451b02e99d
 github.com/zeekay/aetest master
 github.com/zeekay/go-logging master
-github.com/julienschmidt/httprouter master
+github.com/julienschmidt/httprouter 8c199fb6259ffc1af525cc3ad52ee60ba8359669
+github.com/vincent-petithory/countries master

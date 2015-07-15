@@ -2,8 +2,11 @@ package models
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/mholt/binding"
+
+	"crowdstart.io/models/types/country"
 )
 
 type Address struct {
@@ -17,6 +20,39 @@ type Address struct {
 
 func (a Address) Line() string {
 	return a.Line1 + " " + a.Line2
+}
+
+func compact(str string) string {
+	return strings.ToUpper(strings.Replace(strings.TrimSpace(str), " ", "", -1))
+}
+
+func (a Address) MatchCountry(country country.Country) bool {
+	names := []string{
+		country.ISO3166OneAlphaTwo,
+		country.ISO3166OneAlphaThree,
+		country.BGNEnglishLongName,
+		country.PCGNEnglishLongName,
+		country.UNGEGNEnglishFormalName,
+		country.BGNEnglishShortNameReadingOrder,
+		country.BGNEnglishShortNameGazetteerOrder,
+		country.PCGNEnglishShortNameReadingOrder,
+		country.PCGNEnglishShortNameGazetteerOrder,
+		country.ISO3166OneEnglishShortNameReadingOrder,
+		country.ISO3166OneEnglishShortNameGazetteerOrder,
+	}
+
+	ref := compact(a.Country)
+
+	for _, name := range names {
+		if ref == compact(name) {
+			return true
+		}
+	}
+	return false
+}
+
+func (a Address) DisplayCountry() string {
+	return strings.TrimSpace(a.Country)
 }
 
 func (a Address) Validate(req *http.Request, errs binding.Errors) binding.Errors {

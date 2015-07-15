@@ -151,8 +151,8 @@ func charge(c *gin.Context) {
 	// Set test mode, minimum stripe transaction
 	if strings.Contains(user.Email, "@verus.io") {
 		form.Order.Test = true
-		form.Order.Shipping = 0
-		form.Order.Tax = 0
+		// form.Order.Shipping = 0
+		// form.Order.Tax = 0
 		form.Order.Subtotal = 50 * 100 // 50 cents is Stripe's
 		form.Order.Total = 50 * 100    // minimum transaction amount.
 	}

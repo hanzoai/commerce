@@ -185,7 +185,15 @@
                     <!-- Billing Address Country -->
                     <div id="billing-country" class="field country required">
                         <label for="Order.BillingAddress.Country">Country</label>
-                        <input id="Order.BillingAddress.Country" name="Order.BillingAddress.Country" type="text" spellcheck="false" placeholder="Country ex. United States" x-autocompletetype="country-name" value="{% if user.BillingAddress.Country %}{{ user.BillingAddress.Country }}{% else %}United States{% endif %}" data-stripe="address_country">
+                        <select id="Order.BillingAddress.Country" name="Order.BillingAddress.Country">
+                            {% for country in Countries %}
+                            {% if user.BillingAddress.MatchCountry(country) %}
+                            <option value="{{ country.ISO3166OneAlphaTwo }}" selected>{{ country.ISO3166OneEnglishShortNameReadingOrder }}</option>
+                            {% else %}
+                            <option value="{{ country.ISO3166OneAlphaTwo }}">{{ country.ISO3166OneEnglishShortNameReadingOrder }}</option>
+                            {% endif %}
+                            {% endfor %}
+                        </select>
                     </div>
                 </fieldset>
             </div>
@@ -232,7 +240,21 @@
                     <!-- Shipping Address Country -->
                     <div id="shipping-country" class="field country required">
                         <label for="Order.ShippingAddress.Country">Country</label>
-                        <input id="Order.ShippingAddress.Country" name="Order.ShippingAddress.Country" type="text" spellcheck="false" placeholder="Country ex. United States" x-autocompletetype="country-name" value="United States">
+                        <select id="Order.ShippingAddress.Country" name="Order.ShippingAddress.Country">
+                            {% for country in Countries %}
+                            {% if user.ShippingAddress.MatchCountry(country) %}
+                            <option value="{{ country.ISO3166OneAlphaTwo }}" selected>{{ country.ISO3166OneEnglishShortNameReadingOrder }}</option>
+                            {% else %}
+                            <option value="{{ country.ISO3166OneAlphaTwo }}">{{ country.ISO3166OneEnglishShortNameReadingOrder }}</option>
+                            {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                </fieldset>
+                <fieldset style="margin-top:10px">
+                    <div class="shipping-options field required">
+                        <input type="radio" id="Order.ShippingSpeed" name="Order.ShippingSpeed" value="normal" checked>Normal (5-7 Business Days)<br>
+                        <input type="radio" id="Order.ShippingSpeed" name="Order.ShippingSpeed" value="expedited">Expedited (Less than 5 Business Days)
                     </div>
                 </fieldset>
             </div>
@@ -319,4 +341,14 @@
 <script type="text/javascript" src="https://js.stripe.com/v2/"></script>
 <script type="text/javascript">Stripe.setPublishableKey('{{ stripePublishableKey }}');</script>
 <script type="text/javascript" src="{{ urlFor("/js/checkout.js") }}"></script>
+<script>
+    window.ShippingCosts = {
+    {% for costs in ShippingCosts %}
+        {{ costs.Code }}: {
+            normal: {{ costs.Normal}},
+            expedited: {{ costs.Expedited }},
+        },
+    {% endfor %}
+    };
+</script>
 {% endblock %}
