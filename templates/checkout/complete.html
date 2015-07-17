@@ -30,9 +30,9 @@
         <p>Thank you for your order. You will receive a confirmation email shortly.</p>
         <br>
         {% if loggedIn %}
-        <p>You can view and manage your order from your <a href="{{ urlFor("/store", "orders") }}">profile</a>.</p>
+        <p>You can view and manage your order from your <a href="{{ urlFor("store", "/orders") }}">profile</a>.</p>
         {% else %}
-        <p><a href="{{ urlFor("/store", "create-password") }}">Please create a password for your account</a>, so you can manage your order later.</p>
+        <p><a href="{{ urlFor("store", "/create-password") }}">Please create a password for your account</a>, so you can manage your order later.</p>
         {% endif %}
         <p>If you have any questions, please visit our <a href="http://support.skully.com/">Help Center</a>.</p>
     </div>
