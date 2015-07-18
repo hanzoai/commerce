@@ -148,6 +148,9 @@ $country.change updateShippingAndTax
 $shippingOptions.children().change updateShippingAndTax
 
 $(document).ready ->
+  if !$country[0]?
+    return
+
   updateShippingAndTax()
   $form = $('#form')
 
