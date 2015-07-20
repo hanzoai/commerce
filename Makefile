@@ -57,12 +57,11 @@ tools = github.com/golang/lint/golint \
 # Various patches for SDK
 mtime_file_watcher = https://gist.githubusercontent.com/zeekay/5eba991c39426ca42cbb/raw/8db2e910b89e3927adc9b7c183387186facee17b/mtime_file_watcher.py
 
-# static assets, requisite javascript from assets -> static
-bebop = node_modules/.bin/bebop
+bebop    = node_modules/.bin/bebop
+coffee	 = node_modules/.bin/coffee
+uglifyjs = node_modules/.bin/uglifyjs
 
-coffee	   	   = node_modules/.bin/coffee
 requisite	   = node_modules/.bin/requisite -g
-uglifyjs	   = node_modules/.bin/uglifyjs
 requisite_opts = --no-source-map \
 				 assets/js/store/store.coffee \
 				 assets/js/api/api.coffee \
@@ -170,14 +169,14 @@ compile-js-min:
 	$(requisite) --no-source-map assets/js/analytics/analytics.coffee -o static/js/analytics/analytics.js
 	$(coffee) -bc -o static/js assets/js/analytics/snippet.coffee
 	$(coffee) -bc -o static/js assets/js/api/mailinglist.coffee
-	$(uglifyjs) static/js/api.js -o static/js/api.min.js -c
-	$(uglifyjs) static/js/analytics/analytics.js -o static/js/analytics/analytics.min.js -c
-	$(uglifyjs) static/js/analyitcs/snippet.js -o static/js/analytics/snippet.min.js -c
-	$(uglifyjs) static/js/platform.js -o static/js/platform.min.js -c
-	$(uglifyjs) static/js/store.js -o static/js/store.min.js -c
-	$(uglifyjs) static/v1.js -o static/v1.min.js -c
+	$(uglifyjs) static/js/api.js -o static/js/api.min.js -c --warnings=false
+	$(uglifyjs) static/js/analytics/analytics.js -o static/js/analytics/analytics.min.js -c --warnings=false
+	$(uglifyjs) static/js/analytics/snippet.js -o static/js/analytics/snippet.min.js -c --warnings=false
+	$(uglifyjs) static/js/platform.js -o static/js/platform.min.js -c --warnings=false
+	$(uglifyjs) static/js/store.js -o static/js/store.min.js -c --warnings=false
+	$(uglifyjs) static/v1.js -o static/v1.min.js -c --warnings=false
 	@mv static/js/api.min.js static/js/api.js
-	@mv static/js/analytics/analytics.min.js static/js/analyitcs/analytics.js
+	@mv static/js/analytics/analytics.min.js static/js/analytics/analytics.js
 	@mv static/js/analytics/snippet.min.js static/js/analytics/snippet.js
 	@mv static/js/platform.min.js static/js/platform.js
 	@mv static/js/store.min.js static/js/store.js
