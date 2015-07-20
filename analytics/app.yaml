@@ -1,0 +1,18 @@
+application: crowdstart-us
+module: analytics
+version: v1
+
+runtime: go
+api_version: go1
+threadsafe: true
+
+instance_class: F2
+
+automatic_scaling:
+  max_concurrent_requests: 100
+  min_idle_instances: 1
+
+handlers:
+- url: /.*
+  script: _go_app
+  secure: always
