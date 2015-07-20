@@ -1,7 +1,7 @@
 do ->
   analytics = new (require './analytics')
-  analytics.integrations `%s`
-  analytics.initialize `%s`
+  analytics.integrations {}
+  analytics.initialize {}
 
   # Loop through the interim analytics queue and reapply the calls to their
   # proper analytics.js method.
