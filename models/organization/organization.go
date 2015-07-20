@@ -142,6 +142,7 @@ type Organization struct {
 		APIKey string
 	} `json:"-"`
 
+	// TODO: Delete?
 	GoogleAnalytics string `json:"googleAnalytics"`
 	FacebookTag     string `json:"facebookTag"`
 
