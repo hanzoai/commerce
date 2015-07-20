@@ -16,6 +16,7 @@
     "crowdcontrol": "^1.0.41",
     "crowdstart.js": "0.0.5",
     "csso-stylus": "0.0.3",
+    "cuckoo-js": "^1.0.0",
     "dropzone": "^4.0.1",
     "esmangle": "~1.0.1",
     "jeet": "^6.1.2",
