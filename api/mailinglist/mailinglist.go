@@ -1,4 +1,4 @@
-package store
+package mailinglist
 
 import (
 	"fmt"
