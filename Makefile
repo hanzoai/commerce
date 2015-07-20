@@ -161,21 +161,27 @@ assets-min: deps-assets compile-css-min compile-js-min
 
 compile-js:
 	$(requisite) $(requisite_opts)
-	$(coffee) -bc -o static/js assets/js/api/analytics.coffee
+	$(requisite) --no-source-map assets/js/analytics/analytics.coffee -o static/js/analytics/analytics.js
+	$(coffee) -bc -o static/js/analytics assets/js/analytics/snippet.coffee
 	$(coffee) -bc -o static/js assets/js/api/mailinglist.coffee
 
 compile-js-min:
 	$(requisite) $(requisite_opts_min) $(requisite_opts)
-	$(coffee) -bc -o static/js assets/js/api/analytics.coffee
+	$(requisite) --no-source-map assets/js/analytics/analytics.coffee -o static/js/analytics/analytics.js
+	$(coffee) -bc -o static/js assets/js/analytics/snippet.coffee
 	$(coffee) -bc -o static/js assets/js/api/mailinglist.coffee
-	$(uglifyjs) static/js/api.js -o static/js/api.js.min -c
-	$(uglifyjs) static/js/platform.js -o static/js/platform.js.min -c
-	$(uglifyjs) static/js/store.js -o static/js/store.js.min -c
-	$(uglifyjs) static/v1.js -o static/v1.js.min -c
-	@mv static/js/api.js.min static/js/api.js
-	@mv static/js/platform.js.min static/js/platform.js
-	@mv static/js/store.js.min static/js/store.js
-	@mv static/v1.js.min static/v1.js
+	$(uglifyjs) static/js/api.js -o static/js/api.min.js -c
+	$(uglifyjs) static/js/analytics/analytics.js -o static/js/analytics/analytics.min.js -c
+	$(uglifyjs) static/js/analyitcs/snippet.js -o static/js/analytics/snippet.min.js -c
+	$(uglifyjs) static/js/platform.js -o static/js/platform.min.js -c
+	$(uglifyjs) static/js/store.js -o static/js/store.min.js -c
+	$(uglifyjs) static/v1.js -o static/v1.min.js -c
+	@mv static/js/api.min.js static/js/api.js
+	@mv static/js/analytics/analytics.min.js static/js/analyitcs/analytics.js
+	@mv static/js/analytics/snippet.min.js static/js/analytics/snippet.js
+	@mv static/js/platform.min.js static/js/platform.js
+	@mv static/js/store.min.js static/js/store.js
+	@mv static/v1.min.js static/v1.js
 
 compile-css:
 	$(stylus) $(stylus_opts) -u autoprefixer-stylus --sourcemap --sourcemap-inline
