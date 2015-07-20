@@ -170,8 +170,8 @@ compile-js-min:
 	$(coffee) -bc -o static/js/analytics assets/js/analytics/snippet.coffee
 	$(coffee) -bc -o static/js assets/js/api/mailinglist.coffee
 	$(uglifyjs) static/js/api.js -o static/js/api.min.js -c --warnings=false
-	$(uglifyjs) static/js/analytics/analytics.js -o static/js/analytics/analytics.min.js -c --warnings=false
-	$(uglifyjs) static/js/analytics/snippet.js -o static/js/analytics/snippet.min.js -c --warnings=false
+	$(uglifyjs) static/js/analytics/analytics.js -o static/js/analytics/analytics.min.js -c --mangle --warnings=false
+	$(uglifyjs) static/js/analytics/snippet.js -o static/js/analytics/snippet.min.js -c --mangle --warnings=false
 	$(uglifyjs) static/js/platform.js -o static/js/platform.min.js -c --warnings=false
 	$(uglifyjs) static/js/store.js -o static/js/store.min.js -c --warnings=false
 	$(uglifyjs) static/v1.js -o static/v1.min.js -c --warnings=false
