@@ -1,5 +1,5 @@
 do ->
-  analytics = new (require './analytics')
+  analytics = new (require 'crowdstart-analytics/lib/analytics')
   analytics.integrations {}
   analytics.initialize {}
 
