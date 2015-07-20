@@ -167,7 +167,7 @@ compile-js:
 compile-js-min:
 	$(requisite) $(requisite_opts_min) $(requisite_opts)
 	$(requisite) --no-source-map assets/js/analytics/analytics.coffee -o static/js/analytics/analytics.js
-	$(coffee) -bc -o static/js assets/js/analytics/snippet.coffee
+	$(coffee) -bc -o static/js/analytics assets/js/analytics/snippet.coffee
 	$(coffee) -bc -o static/js assets/js/api/mailinglist.coffee
 	$(uglifyjs) static/js/api.js -o static/js/api.min.js -c --warnings=false
 	$(uglifyjs) static/js/analytics/analytics.js -o static/js/analytics/analytics.min.js -c --warnings=false
