@@ -161,10 +161,12 @@ assets-min: deps-assets compile-css-min compile-js-min
 
 compile-js:
 	$(requisite) $(requisite_opts)
+	$(coffee) -bc -o static/js assets/js/api/analytics.coffee
 	$(coffee) -bc -o static/js assets/js/api/mailinglist.coffee
 
 compile-js-min:
 	$(requisite) $(requisite_opts_min) $(requisite_opts)
+	$(coffee) -bc -o static/js assets/js/api/analytics.coffee
 	$(coffee) -bc -o static/js assets/js/api/mailinglist.coffee
 	$(uglifyjs) static/js/api.js -o static/js/api.js.min -c
 	$(uglifyjs) static/js/platform.js -o static/js/platform.js.min -c
