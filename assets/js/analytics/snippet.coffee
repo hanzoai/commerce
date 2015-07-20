@@ -32,7 +32,7 @@ do ->
   script = document.createElement('script')
   script.async = true
   script.type = 'text/javascript'
-  script.src = `%s` # Endpoint for organization analytics bundle
+  script.src = `'%s'` # Endpoint for organization analytics bundle
   first = document.getElementsByTagName('script')[0]
   first.parentNode.insertBefore script, first
 
