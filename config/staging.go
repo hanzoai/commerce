@@ -10,6 +10,7 @@ func Staging() *Config {
 	config.IsStaging = true
 
 	config.Prefixes["default"] = "/"
+	config.Prefixes["analytics"] = "/"
 	config.Prefixes["api"] = "/"
 	config.Prefixes["checkout"] = "/"
 	config.Prefixes["platform"] = "/"
@@ -17,6 +18,7 @@ func Staging() *Config {
 	config.Prefixes["store"] = "/"
 
 	config.Hosts["default"] = "default.staging.crowdstart.com"
+	config.Hosts["analytics"] = "analytics.staging.crowdstart.com"
 	config.Hosts["api"] = "api.staging.crowdstart.com"
 	config.Hosts["checkout"] = "checkout.staging.crowdstart.com"
 	config.Hosts["platform"] = "platform.staging.crowdstart.com"
