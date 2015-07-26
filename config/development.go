@@ -13,6 +13,7 @@ func Development() *Config {
 	config.Protocol = "/"
 
 	config.Prefixes["default"] = "/"
+	config.Prefixes["analytics"] = "/analytics/"
 	config.Prefixes["api"] = "/api/"
 	config.Prefixes["checkout"] = "/checkout/"
 	config.Prefixes["platform"] = "/platform/"
