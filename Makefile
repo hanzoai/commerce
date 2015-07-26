@@ -24,22 +24,27 @@ gae_token = 1/DLPZCHjjCkiegGp0SiIvkWmtZcUNl15JlOg4qB0-1r0MEudVrK5jSpoR30zcRFq6
 
 gae_development = config/development/app.yaml \
 				  config/development/dispatch.yaml \
+				  analytics/app.dev.yaml \
 				  api/app.dev.yaml \
 				  platform/app.dev.yaml \
 				  store/app.dev.yaml
 
 gae_sandbox = config/sandbox \
+			  analytics/app.staging.yaml \
 			  api/app.staging.yaml
 
 gae_staging = config/staging \
+			  analytics/app.staging.yaml \
 			  api/app.staging.yaml \
 			  platform/app.staging.yaml
 
 gae_production = config/production \
+				 analytics \
 				 api \
 				 platform
 
 gae_skully = config/skully \
+			 analytics/app.skully.yaml \
 			 api/app.skully.yaml \
 			 platform/app.skully.yaml \
 			 store/app.skully.yaml

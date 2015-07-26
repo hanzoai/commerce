@@ -7,6 +7,9 @@ dispatch:
   # - url: "*/checkout/*"
   #   module: checkout
 
+  - url: "*/analytics/*"
+    module: analytics
+
   - url: "*/admin/*"
     module: platform
 
