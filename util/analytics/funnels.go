@@ -11,24 +11,44 @@ import (
 	"crowdstart.com/util/log"
 )
 
-var UpdateFunnels = delay.Func("UpdateFunnels", func(ctx appengine.Context, org *organization.Organization, event *analytics.AnalyticsEvent) {
-	nsctx := org.Namespace(ctx)
-	db := datastore.New(nsctx)
+var UpdateFunnels = delay.Func("UpdateFunnels", func(ctx appengine.Context, orgName, eventId string) {
+	db := datastore.New(ctx)
+	org := organization.New(db)
 
-	var fs []*funnel.Funnel
-	_, err := analytics.Query(db).GetAll(&fs)
+	err := org.GetById(orgName)
 	if err != nil {
-		log.Error("Could not get funnel", err, ctx)
+		log.Error("Could not get organization %v, %v", orgName, err, ctx)
 		return
 	}
 
+	db = datastore.New(org.Namespace(ctx))
+
+	event := analytics.New(db)
+	err = event.GetById(eventId)
+	if err != nil {
+		log.Error("Could not get event %v, %v", eventId, err, ctx)
+		return
+	}
+
+	var fs []*funnel.Funnel
+	keys, err := funnel.Query(db).GetAll(&fs)
+	if err != nil {
+		log.Error("Could not get funnel %v", err, ctx)
+		return
+	}
+
+	log.Warn("ORG %v", org)
+	log.Warn("EVENT %v", event)
+	log.Warn("FUNNELS %v", fs)
+
 	// Loop over funnels
-	for _, f := range fs {
+	for k, f := range fs {
 		// Loop over the events required by the funnel
 		for i, step := range f.Events {
 			found := false
 			// Each step of the funnel must be a member of a set of events
 			for _, option := range step {
+				log.Warn("%v ?= %v", event.Name, option)
 				if option == event.Name {
 					found = true
 					break
@@ -38,7 +58,7 @@ var UpdateFunnels = delay.Func("UpdateFunnels", func(ctx appengine.Context, org 
 			// If the event is in the set of the step of the current funnel, then validate
 			if !found {
 				// otherwise abort
-				break
+				continue
 			}
 
 			currentEvent := event
@@ -65,17 +85,19 @@ var UpdateFunnels = delay.Func("UpdateFunnels", func(ctx appengine.Context, org 
 				if !found {
 					break
 				}
-
-				// ...until reaching the first element
-				if last == 0 {
-					f.Counts[i]++
-					if err := f.Put(); err != nil {
-						log.Error("Could not update funnel", err, ctx)
-					}
-				}
 				last--
 			}
-		}
 
+			// If the first element is reached, then update!
+			if last == -1 {
+				f.Counts[i]++
+				f.Db = db
+				f.Entity = f
+				f.SetKey(keys[k])
+				if err := f.Put(); err != nil {
+					log.Error("Could not update funnel", err, ctx)
+				}
+			}
+		}
 	}
 })
