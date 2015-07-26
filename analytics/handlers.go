@@ -18,8 +18,10 @@ import (
 func create(c *gin.Context) {
 	receivedTime := time.Now()
 
+	ctx := middleware.GetAppEngine(c)
+
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespace(c))
+	db := datastore.New(org.Namespace(ctx))
 	var events []*analytics.AnalyticsEvent
 
 	if err := json.Decode(c.Request.Body, &events); err != nil {
@@ -40,7 +42,7 @@ func create(c *gin.Context) {
 				http.Fail(c, 500, "Failed to create event", err)
 				return
 			}
-			UpdateFunnels.Call(db.Context, org, event)
+			UpdateFunnels.Call(ctx, org.Name, event.Id())
 		}
 	}
 	http.Render(c, 204, nil)
