@@ -10,6 +10,7 @@ func Sandbox() *Config {
 
 	// Only modules active in sandbox
 	config.Hosts["default"] = "sandbox.crowdstart.com"
+	config.Hosts["analytics"] = "analytics.sandbox.crowdstart.com"
 	config.Hosts["api"] = "api.sandbox.crowdstart.com"
 
 	// Disabled but configured nonetheless

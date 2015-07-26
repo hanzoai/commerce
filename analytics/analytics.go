@@ -1,9 +1,25 @@
-package api
+package analytics
 
-import "crowdstart.com/util/router"
+import (
+	"github.com/gin-gonic/gin"
+
+	"crowdstart.com/middleware"
+	"crowdstart.com/util/permission"
+	"crowdstart.com/util/router"
+)
 
 func init() {
+	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
+	namespaced := middleware.Namespace()
+
 	analytics := router.New("analytics")
-	analytics.GET("/", router.Ok)
-	analytics.HEAD("/", router.Empty)
+
+	// Use permissive CORS policy for all API routes.
+	analytics.Use(middleware.AccessControl("*"))
+	analytics.OPTIONS("*wildcard", func(c *gin.Context) {
+		c.Next()
+	})
+
+	analytics.POST("/", publishedRequired, namespaced, create)
+	analytics.HEAD("/", router.Empty, publishedRequired, namespaced)
 }
