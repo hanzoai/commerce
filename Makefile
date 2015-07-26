@@ -169,12 +169,12 @@ compile-js-min:
 	$(requisite) --no-source-map assets/js/analytics/analytics.coffee -o static/js/analytics/analytics.js
 	$(coffee) -bc -o static/js/analytics assets/js/analytics/snippet.coffee
 	$(coffee) -bc -o static/js assets/js/api/mailinglist.coffee
-	$(uglifyjs) static/js/api.js -o static/js/api.min.js -c --warnings=false
-	$(uglifyjs) static/js/analytics/analytics.js -o static/js/analytics/analytics.min.js -c --mangle --warnings=false
-	$(uglifyjs) static/js/analytics/snippet.js -o static/js/analytics/snippet.min.js -c --mangle --warnings=false
-	$(uglifyjs) static/js/platform.js -o static/js/platform.min.js -c --warnings=false
-	$(uglifyjs) static/js/store.js -o static/js/store.min.js -c --warnings=false
-	$(uglifyjs) static/v1.js -o static/v1.min.js -c --warnings=false
+	$(uglifyjs) static/js/api.js -o static/js/api.min.js -c
+	$(uglifyjs) static/js/analytics/analytics.js -o static/js/analytics/analytics.min.js -c
+	$(uglifyjs) static/js/analytics/snippet.js -o static/js/analytics/snippet.min.js -c
+	$(uglifyjs) static/js/platform.js -o static/js/platform.min.js -c
+	$(uglifyjs) static/js/store.js -o static/js/store.min.js -c
+	$(uglifyjs) static/v1.js -o static/v1.min.js -c
 	@mv static/js/api.min.js static/js/api.js
 	@mv static/js/analytics/analytics.min.js static/js/analytics/analytics.js
 	@mv static/js/analytics/snippet.min.js static/js/analytics/snippet.js
