@@ -1,15 +1,21 @@
 package analytics
 
 import (
+	"fmt"
+	"os"
 	"time"
+
+	"appengine"
 
 	"github.com/gin-gonic/gin"
 
+	"crowdstart.com/config"
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/aggregate"
 	"crowdstart.com/models/analytics"
 	"crowdstart.com/models/types/client"
+	"crowdstart.com/util/fs"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/json/http"
 
@@ -50,4 +56,26 @@ func create(c *gin.Context) {
 		}
 	}
 	http.Render(c, 204, nil)
+}
+
+var jsTemplate string
+
+func js(c *gin.Context) {
+	org := middleware.GetOrganization(c)
+
+	if jsTemplate == "" {
+		var cwd, _ = os.Getwd()
+		jsTemplate = string(fs.ReadFile(cwd + "/js/native.js"))
+	}
+
+	// Endpoint for subscription
+	endpoint := config.UrlFor("analytics", "/?token="+org.MustGetTokenByName("live-published-key").String())
+	if appengine.IsDevAppServer() {
+		endpoint = "http://localhost:8080" + endpoint
+	} else {
+		endpoint = "https:" + endpoint
+	}
+
+	c.Writer.Header().Add("Content-Type", "application/javascript")
+	c.String(200, fmt.Sprintf(jsTemplate, endpoint))
 }

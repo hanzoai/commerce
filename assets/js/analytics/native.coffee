@@ -4,7 +4,7 @@ do ->
   Espy = require 'espy'
   Cuckoo = require 'cuckoo'
 
-  Cuckoo.Target 'click submit'
+  Cuckoo.Target 'click submit scroll'
   Cuckoo.Egg (event)->
     type == event.type
 
@@ -22,6 +22,9 @@ do ->
           clas = event.target.getAttribute 'class'
           if clas != ''
             eventName = '.' + clas.replace(/ /g, '.')
-
-      Espy.Event(eventName)
-
+      Espy.Event eventName,
+        path: event.path
+    else if type == 'scroll'
+      Espy.Event eventName,
+        scrollX: window.scrollX
+        scrollY: window.scrollY

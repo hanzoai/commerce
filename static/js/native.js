@@ -4,7 +4,7 @@
   var Cuckoo, Espy;
   Espy = require('espy');
   Cuckoo = require('cuckoo');
-  Cuckoo.Target('click submit');
+  Cuckoo.Target('click submit scroll');
   return Cuckoo.Egg(function(event) {
     var clas, eventName, id, name;
     type === event.type;
@@ -24,7 +24,14 @@
           }
         }
       }
-      return Espy.Event(eventName);
+      return Espy.Event(eventName, {
+        path: event.path
+      });
+    } else if (type === 'scroll') {
+      return Espy.Event(eventName, {
+        scrollX: window.scrollX,
+        scrollY: window.scrollY
+      });
     }
   });
 })();
