@@ -1,30 +1,45 @@
 do ->
-  `var endpoint = '%s'`
+  endpoint = '%%%%%token%%%%%'
 
   Espy = require 'espy'
-  Cuckoo = require 'cuckoo'
+  Cuckoo = require 'cuckoo-js'
 
-  Cuckoo.Target 'click submit scroll'
-  Cuckoo.Egg (event)->
-    type == event.type
+  scripts = document.getElementsByTagName('script')
+  script = scripts[scripts.length - 1]
+  tokens = script.src.split '?'
 
-    eventName = type + '_'
+  Espy.url = '%%%%%url%%%%%?' + tokens[1]
+  Cuckoo.Target 'click touch submit scroll'
 
-    if type == 'click' || type == 'submit'
+  debounced = {}
+
+  Cuckoo.Egg = (event)->
+    type = event.type
+
+    eventName = type
+
+    if type == 'click' || type == 'touch' || type == 'submit'
+      eventName += '_' + event.target.tagName
       id = event.target.getAttribute 'id'
-      if id != ''
-        eventName += '#id'
+      if id
+        eventName += '#' + id
       else
         name = event.target.getAttribute 'name'
-        if name != ''
+        if name
           eventName += "[name=#{name}]"
         else
           clas = event.target.getAttribute 'class'
-          if clas != ''
-            eventName = '.' + clas.replace(/ /g, '.')
-      Espy.Event eventName,
-        path: event.path
+          if clas
+            eventName += '.' + clas.replace(/ /g, '.')
+
+      if !debounced[eventName]?
+        Espy eventName
     else if type == 'scroll'
-      Espy.Event eventName,
-        scrollX: window.scrollX
-        scrollY: window.scrollY
+      if !debounced[eventName]?
+        Espy eventName,
+          scrollX: window.scrollX
+          scrollY: window.scrollY
+
+    debounced[eventName] = setTimeout ()->
+      debounced[eventName] = undefined
+    , 100
