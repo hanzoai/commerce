@@ -33,12 +33,19 @@ var upsertAggregate = delay.Func("UpsertAggregate", func(ctx appengine.Context, 
 		} else {
 			// update aggregate
 			agg.Value += agg.Value
-			for len(deltaVectorValue) > len(agg.VectorValue) {
-				agg.VectorValue = append(agg.VectorValue, 0)
-			}
 
-			for i, v := range deltaVectorValue {
-				agg.VectorValue[i] += v
+			if deltaVectorValue != nil {
+				if agg.VectorValue == nil {
+					agg.VectorValue = deltaVectorValue
+				} else {
+					for len(deltaVectorValue) > len(agg.VectorValue) {
+						agg.VectorValue = append(agg.VectorValue, 0)
+					}
+
+					for i, v := range deltaVectorValue {
+						agg.VectorValue[i] += v
+					}
+				}
 			}
 		}
 
