@@ -14,7 +14,7 @@ files =
   analyticsNative:
     js:
       in:  'assets/js/analytics/native.coffee'
-      out: 'static/js'
+      out: 'static/js/analytics'
 
   mailinglist:
     js:

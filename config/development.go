@@ -21,6 +21,7 @@ func Development() *Config {
 	config.Prefixes["store"] = "/store/"
 
 	config.Hosts["default"] = ""
+	config.Hosts["analytics"] = ""
 	config.Hosts["api"] = ""
 	config.Hosts["checkout"] = ""
 	config.Hosts["platform"] = ""
