@@ -14,7 +14,7 @@ files =
   analyticsNative:
     js:
       in:  'assets/js/analytics/native.coffee'
-      out: 'static/js/analytics'
+      out: 'static/js/analytics/native.js'
 
   mailinglist:
     js:
@@ -99,7 +99,7 @@ module.exports =
       if /^assets\/js\/platform/.test src
         return "#{requisite} #{files.platform.js.in} -o #{files.platform.js.out}"
       if /^assets\/js\/analytics\/native/.test src
-        return "#{coffee} -bc -o #{files.analyticsNative.js.out} #{files.analyticsNative.js.in}"
+        return "#{requisite} #{files.analyticsNative.js.in} -o #{files.analyticsNative.js.out}"
       if /^assets\/js\/api/.test src
         if /mailinglist/.test src
           return "#{coffee} -bc -o #{files.mailinglist.js.out} #{files.mailinglist.js.in}"

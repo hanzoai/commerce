@@ -407,7 +407,9 @@ func NewKeys(c *gin.Context) {
 func Render(c *gin.Context, name string, args ...interface{}) {
 	db := datastore.New(c)
 	org := organization.New(db)
-	org.GetById("crowdstart")
+	if err := org.GetById("crowdstart"); err == nil {
+		args = append(args, "crowdstartKey", org.MustGetTokenByName("live-published-key").String())
+	}
 
-	template.Render(c, name, append(args, "crowdstartKey", org.MustGetTokenByName("live-published-key").String())...)
+	template.Render(c, name, args...)
 }
