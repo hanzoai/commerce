@@ -20,7 +20,7 @@ func init() {
 		c.Next()
 	})
 
-	analytics.GET("/espy.js", router.Empty, publishedRequired, namespaced, create)
+	analytics.GET("/native/js", router.Empty, publishedRequired, namespaced, create)
 	analytics.POST("/", publishedRequired, namespaced, create)
 	analytics.HEAD("/", router.Empty)
 }

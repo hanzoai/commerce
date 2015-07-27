@@ -23,7 +23,6 @@ var Funnel = New("espy-test-funnel", func(c *gin.Context) *funnel.Funnel {
 		},
 	}
 
-	f.Counts = make([]int, 3)
 	f.MustPut()
 
 	return f
