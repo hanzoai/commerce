@@ -1,8 +1,8 @@
 package analytics
 
 import (
-	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"appengine"
@@ -77,5 +77,9 @@ func js(c *gin.Context) {
 	}
 
 	c.Writer.Header().Add("Content-Type", "application/javascript")
-	c.String(200, fmt.Sprintf(jsTemplate, endpoint))
+
+	script := strings.Replace(jsTemplate, "%%%%%token%%%%%", endpoint, -1)
+	script = strings.Replace(script, "%%%%%url%%%%%", config.UrlFor("analytics", "/"), -1)
+
+	c.String(200, script)
 }

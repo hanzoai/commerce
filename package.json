@@ -1,6 +1,6 @@
 {
   "name": "crowdstart",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "dependencies": {
     "address-validator": "^0.1.3",
@@ -17,7 +17,7 @@
     "crowdstart-analytics": "0.0.3",
     "crowdstart.js": "0.0.5",
     "csso-stylus": "0.0.3",
-    "cuckoo-js": "^1.0.2",
+    "cuckoo-js": "^1.0.3",
     "dropzone": "^4.0.1",
     "esmangle": "~1.0.1",
     "espy": "^1.0.1",
