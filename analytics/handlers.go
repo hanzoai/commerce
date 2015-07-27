@@ -7,11 +7,13 @@ import (
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
+	"crowdstart.com/models/aggregate"
 	"crowdstart.com/models/analytics"
 	"crowdstart.com/models/types/client"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/json/http"
 
+	. "crowdstart.com/util/aggregate/tasks"
 	. "crowdstart.com/util/analytics/tasks"
 )
 
@@ -42,6 +44,8 @@ func create(c *gin.Context) {
 				http.Fail(c, 500, "Failed to create event", err)
 				return
 			}
+
+			UpsertAggregate(ctx, org.Name, event.Name, "AnalyticsEvent", event.CalculatedTimestamp, aggregate.Hourly, 1, nil)
 			UpdateFunnels(ctx, org.Name, event.Id())
 		}
 	}
