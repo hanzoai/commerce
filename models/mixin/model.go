@@ -323,6 +323,8 @@ func (m *Model) GetById(id string) error {
 		filterStr = "Code"
 	case "organization":
 		filterStr = "Name"
+	case "aggregate":
+		filterStr = "Instance"
 	case "user":
 		if strings.Contains(id, "@") {
 			filterStr = "Email"
