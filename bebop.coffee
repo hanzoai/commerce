@@ -11,6 +11,11 @@ files =
       in:  'assets/js/api/api.coffee'
       out: 'static/js/api.js'
 
+  analyticsNative:
+    js:
+      in:  'assets/js/analytics/native.coffee'
+      out: 'static/js'
+
   mailinglist:
     js:
       in:  'assets/js/api/mailinglist.coffee'
@@ -93,6 +98,8 @@ module.exports =
         return "#{requisite} #{files.store.js.in} -o #{files.store.js.out}"
       if /^assets\/js\/platform/.test src
         return "#{requisite} #{files.platform.js.in} -o #{files.platform.js.out}"
+      if /^assets\/js\/analytics\/native/.test src
+        return "#{coffee} -bc -o #{files.analyticsNative.js.out} #{files.analyticsNative.js.in}"
       if /^assets\/js\/api/.test src
         if /mailinglist/.test src
           return "#{coffee} -bc -o #{files.mailinglist.js.out} #{files.mailinglist.js.in}"

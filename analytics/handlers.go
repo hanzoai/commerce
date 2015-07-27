@@ -12,7 +12,7 @@ import (
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/json/http"
 
-	. "crowdstart.com/util/analytics"
+	. "crowdstart.com/util/analytics/tasks"
 )
 
 func create(c *gin.Context) {
@@ -42,7 +42,7 @@ func create(c *gin.Context) {
 				http.Fail(c, 500, "Failed to create event", err)
 				return
 			}
-			UpdateFunnels.Call(ctx, org.Name, event.Id())
+			UpdateFunnels(ctx, org.Name, event.Id())
 		}
 	}
 	http.Render(c, 204, nil)

@@ -16,12 +16,10 @@ type Funnel struct {
 	Name    string     `json:"name"`
 	Events  [][]string `json:"events" datastore:"-"`
 	Events_ string     `json:"-"`
-	Counts  []int      `json:"counts"`
 }
 
 func (f *Funnel) Init() {
 	f.Events = make([][]string, 0)
-	f.Counts = make([]int, 0)
 }
 
 func New(db *datastore.Datastore) *Funnel {
@@ -37,10 +35,6 @@ func (f Funnel) Kind() string {
 
 func (f Funnel) Document() mixin.Document {
 	return nil
-}
-
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
 }
 
 func (f *Funnel) Load(c <-chan aeds.Property) (err error) {
@@ -66,4 +60,8 @@ func (f *Funnel) Save(c chan<- aeds.Property) (err error) {
 
 	// Save properties
 	return IgnoreFieldMismatch(aeds.SaveStruct(f, c))
+}
+
+func Query(db *datastore.Datastore) *mixin.Query {
+	return New(db).Query()
 }
