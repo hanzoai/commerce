@@ -12,6 +12,8 @@ class VariantOptionsEditor extends View
       @formModel = model
 
       @model = model.options
+      if !@model
+        @model = model.options = []
       for option, i in @model
         option.i = i
 
@@ -48,8 +50,8 @@ class VariantOptionsEditor extends View
               width: 'auto'
               height: 'auto'
               defaultText: '+'
-              onChange: ($input)=>
-                @changeOptionValues(option.i, $input)
+              onChange: (input)=>
+                @changeOptionValues(option.i, $(input))
       , 500
 
 VariantOptionsEditor.register()
