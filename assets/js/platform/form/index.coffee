@@ -2,5 +2,5 @@
 require './controls'
 
 module.exports =
-  forms: require './forms'
+  generic: require './generic'
   randomPassword: require './random-password'
