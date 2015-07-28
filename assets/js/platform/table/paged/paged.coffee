@@ -46,9 +46,8 @@ class BasicPagedTable extends BasicTableView
   initDynamicContent: ()->
     $select = $($(@root).find('select')[0])
     if !@initializedSelect && $select[0]?
-      $select.chosen(
-        width: '80px'
-        disable_search_threshold: 0
+      $select.select2(
+        minimumResultsForSearch: Infinity
       ).change (event)=>@updateDisplay(event)
       @initializedSelect = true
 
@@ -61,12 +60,15 @@ class BasicPagedTable extends BasicTableView
             @refresh()
       @initializedPaging = true
 
-    requestAnimationFrame ()->
-      $select.chosen().trigger "chosen:updated"
+    requestAnimationFrame ()=>
+      if @initializedSelect
+        $select.select2('val', @display)
 
   updateDisplay: (event)->
-    @display = parseInt $(event.target).val(), 10
-    @refresh()
+    display = parseInt $(event.target).val(), 10
+    if @display != display
+      @display = display
+      @refresh()
 
   refresh: ()->
     path = @path + '?page=' + @page + '&display=' + @display + '&sort=' + (if @sortDirection == 'sort-desc' then '' else '-') + if @sortField == "Id" then "Id_" else @sortField
