@@ -1,14 +1,8 @@
 do ->
-  endpoint = '%%%%%token%%%%%'
-
   Espy = require 'espy'
   Cuckoo = require 'cuckoo-js'
 
-  scripts = document.getElementsByTagName('script')
-  script = scripts[scripts.length - 1]
-  tokens = script.src.split '?'
-
-  Espy.url = '%%%%%url%%%%%?' + tokens[1]
+  Espy.url = '%%%%%url%%%%%'
   Cuckoo.Target 'click touch submit scroll'
 
   debounced = {}

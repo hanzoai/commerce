@@ -408,8 +408,11 @@ func Render(c *gin.Context, name string, args ...interface{}) {
 	db := datastore.New(c)
 	org := organization.New(db)
 	if err := org.GetById("crowdstart"); err == nil {
-		args = append(args, "crowdstartKey", org.MustGetTokenByName("live-published-key").String())
+		args = append(args, "crowdstartId", org.Id())
+	} else {
+		args = append(args, "crowdstartId", "")
 	}
+	log.Warn("Z%s", org.Id())
 
 	template.Render(c, name, args...)
 }
