@@ -14,6 +14,7 @@ import (
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/aggregate"
 	"crowdstart.com/models/analytics"
+	"crowdstart.com/models/organization"
 	"crowdstart.com/models/types/client"
 	"crowdstart.com/util/fs"
 	"crowdstart.com/util/json"
@@ -27,9 +28,17 @@ func create(c *gin.Context) {
 	receivedTime := time.Now()
 
 	ctx := middleware.GetAppEngine(c)
+	db := datastore.New(ctx)
 
-	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespace(ctx))
+	id := c.Params.ByName("orgid")
+	org := organization.New(db)
+	if err := org.Get(id); err != nil {
+		http.Fail(c, 400, "Failed to get organization", err)
+		return
+	}
+
+	db = datastore.New(org.Namespace(ctx))
+
 	var events []*analytics.AnalyticsEvent
 
 	if err := json.Decode(c.Request.Body, &events); err != nil {
@@ -61,7 +70,14 @@ func create(c *gin.Context) {
 var jsTemplate string
 
 func js(c *gin.Context) {
-	org := middleware.GetOrganization(c)
+	db := datastore.New(c)
+
+	id := c.Params.ByName("orgid")
+	org := organization.New(db)
+	if err := org.Get(id); err != nil {
+		http.Fail(c, 400, "Failed to get organization", err)
+		return
+	}
 
 	if jsTemplate == "" {
 		var cwd, _ = os.Getwd()
@@ -69,7 +85,7 @@ func js(c *gin.Context) {
 	}
 
 	// Endpoint for subscription
-	endpoint := config.UrlFor("analytics", "/?token="+org.MustGetTokenByName("live-published-key").String())
+	endpoint := config.UrlFor("analytics", "/"+org.Id())
 	if appengine.IsDevAppServer() {
 		endpoint = "http://localhost:8080" + endpoint
 	} else {
@@ -78,8 +94,7 @@ func js(c *gin.Context) {
 
 	c.Writer.Header().Add("Content-Type", "application/javascript")
 
-	script := strings.Replace(jsTemplate, "%%%%%token%%%%%", endpoint, -1)
-	script = strings.Replace(script, "%%%%%url%%%%%", config.UrlFor("analytics", "/"), -1)
+	script := strings.Replace(jsTemplate, "%%%%%url%%%%%", config.UrlFor("analytics", "/"+org.Id()+"/"), -1)
 
 	c.String(200, script)
 }
