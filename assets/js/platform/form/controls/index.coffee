@@ -122,13 +122,12 @@ class BasicSelectView extends BasicInputView
     @on 'update', ()=>
       $select = $(@root).find('select')
       if !@initialized && $select[0]?
-        $select.chosen(
-          width: '100%'
-          disable_search_threshold: 3
+        $select.select2(
+          minimumResultsForSearch: 3
         ).change((event)=>@change(event))
         @initialized = true
-      setTimeout ()->
-        $select.chosen().trigger("chosen:updated")
+      setTimeout ()=>
+        $select.select2('val', @model.value)
       , 500
 
 BasicSelectView.register()
