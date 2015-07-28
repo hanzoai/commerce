@@ -2415,14 +2415,10 @@
   // source: /Users/dtai/work/verus/crowdstart/assets/js/analytics/native.coffee
   require.define('./native', function (module, exports, __dirname, __filename) {
     (function () {
-      var Cuckoo, Espy, debounced, endpoint, script, scripts, tokens;
-      endpoint = '%%%%%token%%%%%';
+      var Cuckoo, Espy, debounced;
       Espy = require('espy/src');
       Cuckoo = require('cuckoo-js/src');
-      scripts = document.getElementsByTagName('script');
-      script = scripts[scripts.length - 1];
-      tokens = script.src.split('?');
-      Espy.url = '%%%%%url%%%%%?' + tokens[1];
+      Espy.url = '%%%%%url%%%%%';
       Cuckoo.Target('click touch submit scroll');
       debounced = {};
       return Cuckoo.Egg = function (event) {

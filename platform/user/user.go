@@ -8,7 +8,9 @@ import (
 	"crowdstart.com/auth"
 	"crowdstart.com/auth/password"
 	"crowdstart.com/config"
+	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
+	"crowdstart.com/models/organization"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/template"
 )
@@ -19,7 +21,7 @@ var ErrorPasswordTooShort = errors.New("Password must be atleast 6 characters lo
 
 // Renders the profile page
 func Profile(c *gin.Context) {
-	template.Render(c, "admin/profile.html")
+	Render(c, "admin/profile.html")
 }
 
 // Handles submission on profile page
@@ -82,4 +84,17 @@ func PasswordSubmit(c *gin.Context) {
 		c.Fail(500, auth.ErrorPasswordMismatch)
 		return
 	}
+}
+
+func Render(c *gin.Context, name string, args ...interface{}) {
+	db := datastore.New(c)
+	org := organization.New(db)
+	if err := org.GetById("crowdstart"); err == nil {
+		args = append(args, "crowdstartId", org.Id())
+	} else {
+		args = append(args, "crowdstartId", "")
+	}
+	log.Warn("Z%s", org.Id())
+
+	template.Render(c, name, args...)
 }
