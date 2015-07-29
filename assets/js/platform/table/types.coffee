@@ -44,7 +44,7 @@ class BasicTableView extends View
   events:
     "#{TableViewEvents.NewData}": (model)->
       @model = model
-      @update()
+      riot.update()
   isEmpty: ()->
     model = @model
     return !model? || !model.length || model.length == 0
