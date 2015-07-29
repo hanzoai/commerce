@@ -98,9 +98,11 @@ class BalanceWidget extends View
     @update()
 
   change: (event)->
-    @currency = $(event.target).val()
-    @obs.trigger BasicTableView.Events.NewData, @model[@currency]
-    @update()
+    currency = $(event.target).val()
+    if @currency != currency
+      @currency = currency
+      @obs.trigger BasicTableView.Events.NewData, @model[@currency]
+      @update()
 
   balance: ()->
     transactions = @model[@currency]
@@ -117,23 +119,24 @@ class BalanceWidget extends View
 
     @path = "user/#{userId}/transactions"
 
-    @api = Api.get('crowdstart')
+    @api = Api.get 'crowdstart'
 
     @obs.trigger 'refresh'
 
     @formModel.userId = userId
 
     @on 'update', ()=>
-      $select = $(@root).find('#balance-currency-select')
-      if !@initialized && $select[0]?
-        $select.chosen(
-          width: '100%'
-          disable_search_threshold: 3
-        ).change((event)=>@change(event))
-        @initialized = true
-      setTimeout ()->
-        $select.chosen().trigger("chosen:updated")
-      , 500
+      $select = $(@root).find '#balance-currency-select'
+      if $select[0]?
+        if !@initialized
+          $select.select2(
+            minimumResultsForSearch: 10
+          ).change((event)=>@change(event))
+          @initialized = true
+        else
+          setTimeout ()=>
+            $select.select2('val', @currency)
+          , 500
 
 BalanceWidget.register()
 

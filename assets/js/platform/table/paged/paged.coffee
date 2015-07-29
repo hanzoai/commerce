@@ -45,11 +45,16 @@ class BasicPagedTable extends BasicTableView
 
   initDynamicContent: ()->
     $select = $($(@root).find('select')[0])
-    if !@initializedSelect && $select[0]?
-      $select.select2(
-        minimumResultsForSearch: Infinity
-      ).change (event)=>@updateDisplay(event)
-      @initializedSelect = true
+    if $select[0]?
+      if !@initializedSelect
+        $select.select2(
+          minimumResultsForSearch: Infinity
+        ).change (event)=>@updateDisplay(event)
+        @initializedSelect = true
+      else
+        setTimeout ()->
+          $select.select2()
+        , 500
 
     @$pagination = $pagination = $(@root).find('.pagination')
     if !@initializedPaging && $pagination[0]?
@@ -59,10 +64,6 @@ class BasicPagedTable extends BasicTableView
             @page = page
             @refresh()
       @initializedPaging = true
-
-    requestAnimationFrame ()=>
-      if @initializedSelect
-        $select.select2('val', @display)
 
   updateDisplay: (event)->
     display = parseInt $(event.target).val(), 10
