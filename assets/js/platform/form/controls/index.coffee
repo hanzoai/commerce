@@ -121,14 +121,15 @@ class BasicSelectView extends BasicInputView
 
     @on 'update', ()=>
       $select = $(@root).find('select')
-      if !@initialized && $select[0]?
-        $select.select2(
-          minimumResultsForSearch: 3
-        ).change((event)=>@change(event))
-        @initialized = true
-      setTimeout ()=>
-        $select.select2('val', @model.value)
-      , 500
+      if $select[0]?
+        if !@initialized
+          $select.select2(
+            minimumResultsForSearch: 10
+          ).change((event)=>@change(event))
+          @initialized = true
+        else
+          requestAnimationFrame ()=>
+            $select.select2('val', @model.value)
 
 BasicSelectView.register()
 
