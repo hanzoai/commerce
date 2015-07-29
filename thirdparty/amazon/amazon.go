@@ -2,6 +2,10 @@ package amazon
 
 import (
 	"encoding/xml"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"strings"
 
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/payment"
@@ -10,6 +14,7 @@ import (
 	"crowdstart.com/thirdparty/amazon/types"
 
 	"appengine"
+	"appengine/urlfetch"
 )
 
 type Client struct {
@@ -37,10 +42,47 @@ func (c Client) Authorize(pay *payment.Payment, ord *order.Order) (string, error
 	}
 
 	// send off xml request, get xml response back
+	client := urlfetch.Client(c.ctx)
+
+	//log.Debug("Req: %v", req, c.ctx)
+
+	// Marshal request
+	data := url.Values{}
+	data.Set("AWSAccessKeyId", "")
+	data.Set("Action", "Authorize")
+	data.Set("AmazonOrderReferenceId", authRequest.AmazonOrderReferenceId)
+	data.Set("AuthorizationAmount.Amount", authRequest.AuthorizationAmount.Amount)
+	data.Set("AuthorizationAmount.CurrencyCode", authRequest.AuthorizationAmount.CurrencyCode)
+	data.Set("AuthorizationReferenceId", authRequest.AuthorizationReferenceId)
+	data.Set("MWSAuthToken", "")
+	data.Set("SellerAuthorizationNote", "")
+	data.Set("SellerId", "")
+	data.Set("SignatureMethod", "")
+	data.Set("SignatureVersion", "")
+	data.Set("Timestamp", "")
+	data.Set("TransactionTimeout", "")
+	data.Set("Version", "")
+	data.Set("Signature", "")
+
+	tokenReq, err := http.NewRequest("POST", "", strings.NewReader(data.Encode()))
+	if err != nil {
+		return "", err
+	}
+
+	res, err := client.Do(tokenReq)
+	defer res.Body.Close()
+	if err != nil {
+		return "", err
+	}
+
+	xmlBody, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return "", err
+	}
 
 	authResponse := responses.AuthorizeResponse{}
 
-	err = xml.Unmarshal(nil, &authResponse)
+	err = xml.Unmarshal(xmlBody, &authResponse)
 	if err != nil {
 		return "", err
 	}
@@ -62,10 +104,44 @@ func (c Client) Capture(pay *payment.Payment, ord *order.Order, authId string) (
 	}
 
 	// send off xml request, get xml response back
+	client := urlfetch.Client(c.ctx)
+
+	data := url.Values{}
+	data.Set("AWSAccessKeyId", "")
+	data.Set("Action", "Capture")
+	data.Set("AmazonAuthorizationId", capRequest.AmazonAuthorizationId)
+	data.Set("CaptureAmount.Amount", capRequest.CaptureAmount.Amount)
+	data.Set("AuthorizationAmount.CurrencyCode", capRequest.CaptureAmount.CurrencyCode)
+	data.Set("CaptureReferenceId", capRequest.CaptureReferenceId)
+	data.Set("MWSAuthToken", "")
+	data.Set("SellerCaptureNote", "")
+	data.Set("SellerId", "")
+	data.Set("SignatureMethod", "")
+	data.Set("SignatureVersion", "")
+	data.Set("Timestamp", "")
+	data.Set("TransactionTimeout", "")
+	data.Set("Version", "")
+	data.Set("Signature", "")
+
+	tokenReq, err := http.NewRequest("POST", "", strings.NewReader(data.Encode()))
+	if err != nil {
+		return "", err
+	}
+
+	res, err := client.Do(tokenReq)
+	defer res.Body.Close()
+	if err != nil {
+		return "", err
+	}
+
+	xmlBody, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return "", err
+	}
 
 	capResponse := responses.CaptureResponse{}
 
-	err = xml.Unmarshal(nil, &capResponse)
+	err = xml.Unmarshal(xmlBody, &capResponse)
 	if err != nil {
 		return "", err
 	}
