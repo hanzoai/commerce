@@ -2419,7 +2419,7 @@
       Espy = require('espy/src');
       Cuckoo = require('cuckoo-js/src');
       Espy.url = '%%%%%url%%%%%';
-      Cuckoo.Target('click touch submit scroll');
+      Cuckoo.Target('click touch submit');
       debounced = {};
       return Cuckoo.Egg = function (event) {
         var clas, eventName, id, name, type;
