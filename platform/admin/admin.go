@@ -50,6 +50,10 @@ type ICCSRef struct {
 	S  []*StoreData
 }
 
+func Dash(c *gin.Context) {
+	Render(c, "backend/index.html")
+}
+
 // Admin Dashboard
 func Dashboard(c *gin.Context) {
 	// Update Stats

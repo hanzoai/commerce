@@ -53,9 +53,10 @@ class Switch extends BasicInputView
   html: require './switch.html'
   change: (event) ->
     value = event.target.checked
-    @obs.trigger InputView.Events.Change, @model.name, value
-    @model.value = value
-    @update
+    if value != @model.value
+      @obs.trigger InputView.Events.Change, @model.name, value
+      @model.value = value
+      @update()
 
 Switch.register()
 
@@ -114,6 +115,15 @@ class BasicSelectView extends BasicInputView
   html: require './basic-select.html'
   options: ()->
     @selectOptions
+  changed: false
+  change: (event) ->
+    value = $(event.target).val()
+    if value != @model.value
+      @obs.trigger InputView.Events.Change, @model.name, value
+      @model.value = value
+      @changed = true
+      @update()
+
   js:(opts)->
     super
 
@@ -124,12 +134,18 @@ class BasicSelectView extends BasicInputView
       if $select[0]?
         if !@initialized
           $select.select2(
+            placeholder: @model.placeholder
             minimumResultsForSearch: 10
           ).change((event)=>@change(event))
           @initialized = true
-        else
+          @changed = true
+        else if @changed
           requestAnimationFrame ()=>
             $select.select2('val', @model.value)
+            @changed = false
+
+    @on 'unmount', ()=>
+      $select = $(@root).find('select')
 
 BasicSelectView.register()
 
