@@ -400,38 +400,6 @@
 
     // Init Theme Core
     Core.init();
-
-    // Init Widget Demo JS
-    // demoHighCharts.init();
-
-    // Because we are using Admin Panels we use the OnFinish
-    // callback to activate the demoWidgets. It's smoother if
-    // we let the panels be moved and organized before
-    // filling them with content from various plugins
-
-    // Init plugins used on this page
-    // HighCharts, JvectorMap, Admin Panels
-
-    // Init Admin Panels on widgets inside the ".admin-panels" container
-    $('.admin-panels').adminpanel({
-      grid: '.admin-grid',
-      draggable: true,
-      preserveGrid: true,
-      // mobile: true,
-      onStart: function() {
-        // Do something before AdminPanels runs
-      },
-      onFinish: function() {
-        $('.admin-panels').addClass('animated fadeIn').removeClass('fade-onload');
-
-        // Init the rest of the plugins now that the panels
-        // have had a chance to be moved and organized.
-        // It's less taxing to organize empty panels
-      },
-      onSave: function() {
-        $(window).trigger('resize');
-      }
-    });
   });
   </script>
   <script src="{{ staticUrl }}/js/platform.js"></script>
