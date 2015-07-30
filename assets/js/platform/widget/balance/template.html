@@ -8,14 +8,12 @@
         </select>
       </div>
     </div>
-    <label class="control-label col-xs-4">
-      Total:
-    </label>
-    <div class="col-xs-2 form-control-static" style="text-align:right">
+    <div class="col-xs-6 form-control-static" style="text-align:right">
+      <label class="control-label">
+        Total:
+      </label>
       { balance() }
     </div>
-  </div>
-  <div class="btn-group open" if="{ model.length != 0 && !loading }">
   </div>
   <basic-table class="{table-viewport: !isEmpty }" headers="{ tableHeaders }" obs="{ obs }">
     No Transactions Found

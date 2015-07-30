@@ -4,11 +4,9 @@
     <user-form id="{opts._id}">
       <div id="user-info" class="panel animated fadeIn">
         <div class="panel-heading">
-          <a data-toggle="collapse" href="#user-info .panel-body">
-            Information
-          </a>
+          Information
         </div>
-        <div class="panel-body collapse in">
+        <div class="panel-body">
           <div class="section col-xs-12 mb20" style="padding:0">
             <div class="col-md-8">
               <control class="col-sm-12" label="Email" input="{ inputs.email }"></control>
@@ -53,11 +51,9 @@
 
       <div id="user-reset-password" class="panel">
         <div class="panel-heading">
-          <a data-toggle="collapse" href="#user-reset-password .panel-body">
-            Reset Password
-          </a>
+          Reset Password
         </div>
-        <div class="panel-body collapse in">
+        <div class="panel-body">
           <reset-password-form userId="{ opts.id }", url ="{ opts.url }" token="{ opts.token }">
           </reset-password-form>
         </div>
@@ -65,8 +61,7 @@
 
       <div id="user-shipping-address" class="panel">
         <div class="panel-heading">
-          <a data-toggle="collapse" href="#user-shipping-address .panel-body"></a>
-          <ul class="nav panel-tabs-border panel-tabs panel-tabs-left" style="width:90%">
+          <ul class="nav panel-tabs-border panel-tabs panel-tabs-left">
             <li class="active">
               <a href="#address1" data-toggle="tab" aria-expanded="true">Shipping Address</a>
             </li>
@@ -75,7 +70,7 @@
             </li>
           </ul>
         </div>
-        <div class="panel-body collapse in">
+        <div class="panel-body">
           <div class="tab-content pn br-n">
             <div id="address1" class="tab-pane active animated fadeIn">
               <div class="section col-xs-12" style="padding:0">
@@ -141,44 +136,48 @@
         </div>
       </div>
 
-      <h4>
-        <a data-toggle="collapse" href="#user-orders">
-          Orders
-        </a>
-      </h4>
-      <div id="user-orders" class="collapse in block">
-        <order-list path="{ 'user/'+opts.id+'/orders' }">
-          No Orders Found
-        </order-list>
+      <div id="user-lists" class="panel">
+        <div class="panel-heading">
+          <ul class="nav panel-tabs-border panel-tabs panel-tabs-left">
+            <li class="active">
+              <a href="#list1" data-toggle="tab" aria-expanded="true">Orders</a>
+            </li>
+            <li class>
+              <a href="#list2" data-toggle="tab" aria-expanded="true">Referrer Tokens</a>
+            </li>
+            <li class>
+              <a href="#list3" data-toggle="tab" aria-expanded="true">Referral</a>
+            </li>
+          </ul>
+        </div>
+        <div class="panel-body">
+          <div class="tab-content pn br-n">
+            <div id="list1" class="tab-pane active animated fadeIn">
+              <order-list path="{ 'user/'+opts.id+'/orders' }">
+                No Orders Found
+              </order-list>
+            </div>
+            <div id="list2" class="tab-pane animated fadeIn">
+              <referrer-list path="{ 'user/'+opts.id+'/referrers' }">
+                No Referrer Tokens Found
+              </referrer-list>
+            </div>
+            <div id="list3" class="tab-pane animated fadeIn">
+              <referral-list path="{ 'user/'+opts.id+'/referrals' }">
+                No Referrals Found
+              </referral-list>
+            </div>
+          </div>
+        </div>
       </div>
-      <h4>
-        <a data-toggle="collapse" href="#user-balance">
+      <div id="user-lists" class="panel">
+        <div class="panel-heading">
           Credit Balance
-        </a>
-      </h4>
-      <div id="user-balance" class="collapse in block">
-        <balance-widget userId="{opts.id}">
-        </balance-widget>
-      </div>
-      <h4>
-        <a data-toggle="collapse" href="#user-referrers">
-          Referrer Tokens
-        </a>
-      </h4>
-      <div id="user-referrers" class="collapse in block">
-        <referrer-list path="{ 'user/'+opts.id+'/referrers' }">
-          No Referrer Tokens Found
-        </referrer-list>
-      </div>
-      <h4>
-        <a data-toggle="collapse" href="#user-referrals">
-          Referrals
-        </a>
-      </h4>
-      <div id="user-referrals" class="collapse in block">
-        <referral-list path="{ 'user/'+opts.id+'/referrals' }">
-          No Referrals Found
-        </referral-list>
+        </div>
+        <div class="panel-body">
+          <balance-widget userId="{opts.id}">
+          </balance-widget>
+        </div>
       </div>
     </user-form>
     <!-- END User information Form Content -->
