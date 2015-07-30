@@ -17,24 +17,37 @@
 
         <!-- User information Form Content -->
         <user-form>
-          <h4>
-            <a data-toggle="collapse" href="#user-info">
-              Information
-            </a>
-          </h4>
-          <div id="user-info" class="collapse in block">
-              <control label="ID" input="{ inputs.id }"></control>
-              <control label="Email" input="{ inputs.email }"></control>
-              <control label="First Name" input="{ inputs.firstName }"></control>
-              <control label="Last Name" input="{ inputs.lastName }"></control>
-              <control label="Phone" input="{ inputs.phone }"></control>
-              <control label="Created On" input="{ inputs.createdAt }"></control>
-              <control label="Last Updated On" input="{ inputs.updatedAt }"></control>
-              <div class="form-group form-actions">
-                <div class="col-md-9 col-md-offset-3">
-                  <button type="submit" class="btn btn-effect-ripple btn-primary">Save</button>
-                  <button type="reset" class="btn btn-effect-ripple btn-warning">Reset</button>
-                  <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#deleteModal">Delete</button>
+          <div id="user-info" class="panel animated fadeIn">
+            <div class="panel-heading">
+              <a data-toggle="collapse" href="#user-info .panel-body">
+                Information
+              </a>
+            </div>
+            <div class="panel-body collapse in">
+              <div class="section row col-xl-12 mb20" style="padding:0">
+                <div class="col-md-8">
+                  <control class="col-sm-12" label="Email" input="{ inputs.email }"></control>
+                  <control class="col-sm-6" label="First Name" input="{ inputs.firstName }"></control>
+                  <control class="col-sm-6" label="Last Name" input="{ inputs.lastName }"></control>
+                  <control class="col-sm-12" label="Phone" input="{ inputs.phone }"></control>
+                </div>
+                <div class="col-md-4">
+                  <control label="ID" input="{ inputs.id }"></control>
+                  <control label="Created On" input="{ inputs.createdAt }"></control>
+                  <control label="Last Updated On" input="{ inputs.updatedAt }"></control>
+                </div>
+              </div>
+              <div class="form-actions section row">
+                <div class="col-md-8">
+                  <div class="col-xs-6">
+                    <button type="submit" class="btn btn-block btn-dark">Save</button>
+                  </div>
+                  <div class="col-xs-3">
+                    <button type="reset" class="btn btn-block btn-default">Reset</button>
+                  </div>
+                  <div class="col-xs-3">
+                    <button type="button" class="btn btn-block btn-default" data-toggle="modal" data-target="#deleteModal">Delete</button>
+                  </div>
 
                   <div class="modal fade" id="deleteModal">
                     <div class="modal-dialog" role="document" style="width:300px">
@@ -52,16 +65,21 @@
                   </div>
                 </div>
               </div>
+            </div>
           </div>
-          <h4>
-            <a data-toggle="collapse" href="#user-reset-password">
-              Reset Password
-            </a>
-          </h4>
-          <div id="user-reset-password" class="collapse in block">
+
+          <div id="user-reset-password" class="panel">
+            <div class="panel-heading">
+              <a data-toggle="collapse" href="#user-reset-password .panel-body">
+                Reset Password
+              </a>
+            </div>
+            <div class="panel-body collapse in">
               <reset-password-form userId="{ opts.id }", url ="{ opts.url }" token="{ opts.token }">
-            </reset-password-form>
+              </reset-password-form>
+            </div>
           </div>
+
           <h4>
             <a data-toggle="collapse" href="#user-shipping-address">
               Shipping Address
