@@ -3,7 +3,7 @@ do ->
   Cuckoo = require 'cuckoo-js'
 
   Espy.url = '%%%%%url%%%%%'
-  Cuckoo.Target 'click touch submit scroll'
+  Cuckoo.Target 'click touch submit' # scroll'
 
   debounced = {}
 
