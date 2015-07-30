@@ -52,8 +52,8 @@ class BasicPagedTable extends BasicTableView
         ).change (event)=>@updateDisplay(event)
         @initializedSelect = true
       else
-        setTimeout ()->
-          $select.select2()
+        setTimeout ()=>
+          $select.select2('val', @display)
         , 500
 
     @$pagination = $pagination = $(@root).find('.pagination')

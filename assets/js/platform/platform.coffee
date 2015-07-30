@@ -9,6 +9,7 @@ _.mixin deepExtend: require('underscore-deep-extend')(_)
 
 window.moment = require 'moment'
 window.crowdstart =
+  site: require     './site'
   table: require    './table'
   form: require     './form'
   widget: require   './widget'

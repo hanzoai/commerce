@@ -58,6 +58,7 @@ func init() {
 	// Admin dashboard
 	dash := router.Group("")
 	dash.Use(loginRequired, acquireUser, acquireOrganization)
+	dash.GET("/dash", admin.Dash)
 	dash.GET("/dashboard", admin.Dashboard)
 
 	dash.GET("/profile", user.Profile)
