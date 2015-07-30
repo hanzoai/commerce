@@ -40,7 +40,7 @@ class BasicTableView extends View
   @Events: TableViewEvents
 
   tag: 'basic-table'
-  html: require './template.html'
+  html: require '../templates/backend/table/template.html'
   events:
     "#{TableViewEvents.NewData}": (model)->
       @model = model

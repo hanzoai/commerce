@@ -8,7 +8,7 @@ View = crowdcontrol.view.View
 
 class BasicTableFieldView extends View
   tag: 'basic-table-field'
-  html: require './basic-field.html'
+  html: require '../../templates/backend/table/fields/basic-field.html'
   js: (opts)->
     @field = opts.field
     @row = row = opts.row
@@ -33,7 +33,7 @@ BasicTableFieldView.register()
 
 class IdTableFieldView extends BasicTableFieldView
   tag: 'id-table-field'
-  html: require './link-field.html'
+  html: require '../../templates/backend/table/fields/link-field.html'
   js: (opts)->
     super
     @displayField = opts.field.hints['id-display']
@@ -44,7 +44,7 @@ IdTableFieldView.register()
 
 class NumericTableFieldView extends BasicTableFieldView
   tag: 'numeric-table-field'
-  html: require './numeric-field.html'
+  html: require '../../templates/backend/table/fields/numeric-field.html'
 
 NumericTableFieldView.register()
 
@@ -58,7 +58,7 @@ MoneyTableFieldView.register()
 
 class DateTableFieldView extends BasicTableFieldView
   tag: 'date-table-field'
-  html: require './numeric-field.html'
+  html: require '../../templates/backend/table/fields/numeric-field.html'
   js: ()->
     super
     @value = moment(@value).format 'YYYY-MM-DD HH:mm'
