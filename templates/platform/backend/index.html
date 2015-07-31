@@ -194,6 +194,15 @@
     {% endfor %}
   }
 
+  $(function(){
+    requestAnimationFrame(function(){
+      try {
+        window.Core.init()
+      } catch (e) {
+      }
+    })
+  })
+
   new crowdcontrol.data.Api(
     '{{ urlFor("api") }}',
     '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}'

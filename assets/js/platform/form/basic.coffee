@@ -30,7 +30,7 @@ class BasicFormView extends FormView
   delete: ()->
     m.trigger 'start-spin', @path + '-delete'
     @api.delete(@path).finally ()=>
-      window.location.replace('../' + @redirectPath)
+      window.location.hash = @redirectPath
 
   js: (opts)->
     super
@@ -54,7 +54,7 @@ class BasicFormView extends FormView
         @obs.trigger LoadEvent, @model
         riot.update()
       ).catch ()=>
-        window.location.replace('../' + @redirectPath)
+        window.location.hash = @redirectPath
 
   loadData: (model)->
 
