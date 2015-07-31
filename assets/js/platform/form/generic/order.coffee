@@ -17,7 +17,7 @@ class OrderForm extends Form
   inputConfigs:[
     input('id', '', 'static'),
     input('number', '', 'static'),
-    input('userId', '', 'id id-path:../user'),
+    input('userId', '', 'id id-path:#user'),
     input('createdAt', '', 'static-date'),
     input('updatedAt', '', 'static-date'),
 
@@ -48,7 +48,7 @@ class OrderUserStaticForm extends BasicFormView
   basePath: 'user'
 
   inputConfigs:[
-    input('id', '', 'id id-path:../user'),
+    input('id', '', 'id id-path:#user'),
     input('email', 'your@email.com', 'static')
     input('firstName', 'First Name', 'static'),
     input('lastName', 'Last Name', 'static'),

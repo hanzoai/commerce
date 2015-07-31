@@ -7,7 +7,7 @@ Form = require './form'
 
 class UserForm extends Form
   tag: 'user-form'
-  redirectPath: 'users'
+  redirectPath: '#users'
   path: 'user'
 
   inputConfigs:[
