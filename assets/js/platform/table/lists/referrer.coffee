@@ -13,7 +13,7 @@ class ReferrerList extends BasicList
   path: 'referrer'
   headers: [
     field('id', 'Referrer Token')
-    field('createdAt', 'Created On', 'date')
+    field('createdAt', 'Created', 'date')
     # field('updatedAt', 'Last Updated', 'ago')
   ]
 
