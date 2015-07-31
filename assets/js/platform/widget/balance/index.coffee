@@ -54,7 +54,7 @@ class BalanceWidget extends View
     field('type', 'Type')
     field('amount', 'Amount', 'money')
     field('description', 'Description')
-    field('createdAt', 'Created On', 'date')
+    field('createdAt', 'Created', 'date')
   ]
 
   events:

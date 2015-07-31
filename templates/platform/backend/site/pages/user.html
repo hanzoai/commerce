@@ -14,7 +14,7 @@
               <control class="col-sm-6" label="Last Name" input="{ inputs.lastName }"></control>
               <control class="col-sm-12" label="Phone" input="{ inputs.phone }"></control>
             </div>
-            <div class="form-actions section col-md-8">
+            <div class="form-actions section col-xs-12" style="padding:0">
               <div class="col-xs-6">
                 <button type="submit" class="btn btn-block btn-dark">Save</button>
               </div>
@@ -134,7 +134,7 @@
               </li>
             </ul>
           </div>
-          <div class="panel-body">
+          <div class="panel-body" style="min-height:500px">
             <div class="tab-content pn br-n">
               <div id="list1" class="tab-pane active animated fadeIn">
                 <order-list path="{ 'user/'+opts.id+'/orders' }">
@@ -154,26 +154,24 @@
             </div>
           </div>
         </div>
-        <div id="user-lists" class="panel">
-          <div class="panel-heading">
-            Credit Balance
-          </div>
-          <div class="panel-body">
-            <balance-widget userId="{opts.id}">
-            </balance-widget>
-          </div>
-        </div>
+
       </div>
 
       <div class="col-md-4">
         <div id="user-info" class="panel animated fadeIn">
           <div class="panel-heading">
-            Confirmation
+            Information
           </div>
           <div class="panel-body">
-            <control label="ID" input="{ inputs.id }"></control>
-            <control label="Created On" input="{ inputs.createdAt }"></control>
-            <control label="Last Updated On" input="{ inputs.updatedAt }"></control>
+            <div class="section row">
+              <control label="ID" input="{ inputs.id }" labelclasses="col-xs-4" controlclasses="col-xs-8"></control>
+            </div>
+            <div class="section row">
+              <control label="Created" input="{ inputs.createdAt }" labelclasses="col-xs-4" controlclasses="col-xs-8"></control>
+            </div>
+            <div class="section row">
+              <control label="Last Updated" input="{ inputs.updatedAt }" labelclasses="col-xs-4" controlclasses="col-xs-8"></control>
+            </div>
           </div>
         </div>
 
@@ -186,6 +184,17 @@
             </reset-password-form>
           </div>
         </div>
+
+        <div id="balance" class="panel">
+          <div class="panel-heading">
+            Credit Balance
+          </div>
+          <div class="panel-body">
+            <balance-widget userId="{opts.id}">
+            </balance-widget>
+          </div>
+        </div>
+
       </div>
 
     </user-form>
