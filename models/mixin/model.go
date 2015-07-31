@@ -12,6 +12,7 @@ import (
 	"crowdstart.com/datastore"
 	"crowdstart.com/util/hashid"
 	"crowdstart.com/util/json"
+	"crowdstart.com/util/log"
 	"crowdstart.com/util/rand"
 	"crowdstart.com/util/structs"
 	"crowdstart.com/util/val"
@@ -261,7 +262,11 @@ func (m *Model) Put() error {
 	// Update key
 	m.setKey(key)
 
-	return m.PutDocument()
+	if err := m.PutDocument(); err != nil {
+		log.Error("Could not save search document for model with id %v", m.Id(), m.Db.Context)
+	}
+
+	return nil
 }
 
 func (m Model) PutDocument() error {
