@@ -1,6 +1,7 @@
 module.exports =
   Dashboard:    require './dashboard'
   Users:        require './users'
+  Order:        require './order'
   Orders:       require './orders'
   Products:     require './products'
   Coupons:      require './coupons'
