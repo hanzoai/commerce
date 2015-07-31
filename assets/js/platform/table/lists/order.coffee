@@ -10,7 +10,7 @@ class OrderList extends BasicList
   tag: 'order-list'
   path: 'order'
   headers: [
-    field('id', 'Number', 'id', 'id-display:number id-path:../order')
+    field('id', 'Number', 'id', 'id-display:number id-path:#order')
     field('currency', 'Currency', 'upper')
     field('total', 'Total', 'money')
     field('status', 'Order Status')
