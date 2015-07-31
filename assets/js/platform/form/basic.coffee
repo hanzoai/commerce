@@ -7,7 +7,7 @@ Api = crowdcontrol.data.Api
 Source = crowdcontrol.data.Source
 m = crowdcontrol.utils.mediator
 
-LoadEvent = 'Load'
+LoadEvent = 'form-data-load'
 
 class BasicFormView extends FormView
   @Events:
@@ -29,7 +29,8 @@ class BasicFormView extends FormView
 
   delete: ()->
     m.trigger 'start-spin', @path + '-delete'
-    @api.delete(@path).finally ()=>
+    @api.delete(@path).finally (e)=>
+      console.log(e.stack)
       window.location.hash = @redirectPath
 
   js: (opts)->
@@ -53,7 +54,8 @@ class BasicFormView extends FormView
 
         @obs.trigger LoadEvent, @model
         riot.update()
-      ).catch ()=>
+      ).catch (e)=>
+        console.log(e.stack)
         window.location.hash = @redirectPath
 
   loadData: (model)->
