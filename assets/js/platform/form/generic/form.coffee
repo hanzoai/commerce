@@ -28,9 +28,11 @@ class Form extends BasicFormView
     if event?
       event.preventDefault()
 
-    @model = _.deepExtend {}, @resetModel
+    @model = JSON.parse JSON.stringify(@resetModel)
     @initFormGroup.apply @
     @_reset(event)
+
+    @obs.trigger BasicFormView.Events.Load, @model
     riot.update()
 
   _reset: (event)->
@@ -38,9 +40,9 @@ class Form extends BasicFormView
   _submit: (event)->
     p = super
     p.then ()=>
-      @resetModel = _.deepExtend {}, @model
+      @resetModel = JSON.parse JSON.stringify(@model)
 
   loadData: (model)->
-    @resetModel = _.deepExtend {}, @model
+    @resetModel = JSON.parse JSON.stringify(model)
 
 module.exports = Form
