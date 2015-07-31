@@ -15,7 +15,7 @@ class OrderList extends BasicList
     field('total', 'Total', 'money')
     field('status', 'Order Status')
     field('fulfillmentStatus', 'Fulfillment Status')
-    field('createdAt', 'Created On', 'date')
+    field('createdAt', 'Created', 'date')
     # field('updatedAt', 'Last Updated', 'ago')
   ]
 
