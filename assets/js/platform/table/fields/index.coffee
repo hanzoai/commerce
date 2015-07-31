@@ -56,6 +56,14 @@ class MoneyTableFieldView extends NumericTableFieldView
 
 MoneyTableFieldView.register()
 
+class TotalTableFieldView extends NumericTableFieldView
+  tag: 'total-table-field'
+  js: ()->
+    super
+    @value = util.currency.renderUICurrencyFromJSON @row.currency, @row.price * @row.quantity
+
+TotalTableFieldView.register()
+
 class DateTableFieldView extends BasicTableFieldView
   tag: 'date-table-field'
   html: require '../../templates/backend/table/fields/numeric-field.html'
@@ -89,6 +97,10 @@ helpers.registerTag (fieldCfg)->
 helpers.registerTag (fieldCfg)->
   return fieldCfg.type == 'date'
 , 'date-table-field'
+
+helpers.registerTag (fieldCfg)->
+  return fieldCfg.type == 'total'
+, 'total-table-field'
 
 helpers.registerTag (fieldCfg)->
   return fieldCfg.type == 'id'

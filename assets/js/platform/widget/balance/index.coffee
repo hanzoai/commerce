@@ -18,7 +18,7 @@ m = crowdcontrol.utils.mediator
 class BalanceWidgetFormView extends FormView
   tag: 'balance-widget-form'
   path: 'transaction'
-  html: require './balance-form.html'
+  html: require '../../templates/backend/widget/balance/balance-form.html'
   inputConfigs: [
     input('type', '', 'required basic-select'),
     input('amount', 'ex 100', 'required money'),
@@ -38,7 +38,7 @@ BalanceWidgetFormView.register()
 
 class BalanceWidget extends View
   tag: 'balance-widget'
-  html: require './template.html'
+  html: require '../../templates/backend/widget/balance/template.html'
 
   currencyOptions: {}
   isEmpty: true

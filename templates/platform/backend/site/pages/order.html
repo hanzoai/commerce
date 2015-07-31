@@ -32,6 +32,9 @@
               <control label="Country" input="{ inputs['shippingAddress.country'] }"></control>
             </div>
           </div>
+          <div class="section col-xs-12 mb20">
+            <gmap obs="{ obs }" addressField="shippingAddress"></gmap>
+          </div>
           <div class="form-actions section">
             <div class="col-xs-8 col-md-3 col-md-offset-3">
               <button type="submit" class="btn btn-block btn-dark">Save</button>
@@ -45,28 +48,21 @@
 
       <div id="order-items" class="panel">
         <div class="panel-heading">
-          Items
+          Receipt
         </div>
         <div class="panel-body">
           <item-list obs="{ obs }">
             No Items Found
           </item-list>
         </div>
-      </div>
-
-      <div id="order-payment" class="panel animated fadeIn">
-        <div class="panel-heading">
-          Payment Information
-        </div>
-
         <div class="panel-body">
-          <control label="Currency" input="{ inputs.currency }" labelClasses="col-md-5" controlClasses="col-md-7"></control>
-          <control label="Line Total" input="{ inputs.lineTotal }" labelClasses="col-md-5" controlClasses="col-md-7"></control>
-          <control label="Discount" input="{ inputs.discount }" labelClasses="col-md-5" controlClasses="col-md-7"></control>
-          <control label="Subtotal" input="{ inputs.subtotal }" labelClasses="col-md-5" controlClasses="col-md-7"></control>
-          <control label="Shipping" input="{ inputs.shipping }" labelClasses="col-md-5" controlClasses="col-md-7"></control>
-          <control label="Tax" input="{ inputs.tax }" labelClasses="col-md-5" controlClasses="col-md-7"></control>
-          <control label="Total" input="{ inputs.total }" labelClasses="col-md-5" controlClasses="col-md-7"></control>
+          <control label="Currency" input="{ inputs.currency }" labelClasses="col-xs-2 col-xs-offset-8 text-right" controlClasses="col-xs-2 text-right"></control>
+          <control label="Line Total" input="{ inputs.lineTotal }" labelClasses="col-xs-2 col-xs-offset-8 text-right" controlClasses="col-xs-2 text-right"></control>
+          <control label="Discount" input="{ inputs.discount }" labelClasses="col-xs-2 col-xs-offset-8 text-right" controlClasses="col-xs-2 text-right"></control>
+          <control label="Subtotal" input="{ inputs.subtotal }" labelClasses="col-xs-2 col-xs-offset-8 text-right" controlClasses="col-xs-2 text-right"></control>
+          <control label="Shipping" input="{ inputs.shipping }" labelClasses="col-xs-2 col-xs-offset-8 text-right" controlClasses="col-xs-2 text-right"></control>
+          <control label="Tax" input="{ inputs.tax }" labelClasses="col-xs-2 col-xs-offset-8 text-right" controlClasses="col-xs-2 text-right"></control>
+          <control label="Total" input="{ inputs.total }" labelClasses="col-xs-2 col-xs-offset-8 text-right" controlClasses="col-xs-2 text-right"></control>
         </div>
       </div>
 
@@ -125,9 +121,6 @@
           <order-user-static-form obs="{ obs }">
             <div class="section col-xs-12 mb20" style="padding:0">
               <div class="section row">
-                <control label="ID" input="{ inputs.id }" labelclasses="col-xs-4" controlclasses="col-xs-8"></control>
-              </div>
-              <div class="section row">
                 <control label="Email" input="{ inputs.email }" labelclasses="col-xs-4" controlclasses="col-xs-8"></control>
               </div>
               <div class="section row">
@@ -144,6 +137,9 @@
              </div>
               <div class="section row">
                 <control label="Last Updated" input="{ inputs.updatedAt }" labelclasses="col-xs-4" controlclasses="col-xs-8"></control>
+              </div>
+              <div class="section row">
+                <control label="ID" input="{ inputs.id }" labelclasses="col-xs-4" controlclasses="col-xs-8"></control>
               </div>
             </div>
           </order-user-static-form>
