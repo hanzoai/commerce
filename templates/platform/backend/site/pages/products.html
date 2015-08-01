@@ -1,0 +1,57 @@
+<!-- Products View Block -->
+<div class="block">
+  <product-form>
+    <div class="panel animated fadeIn">
+      <div class="panel-heading">
+        Add a Product
+      </div>
+      <div class="panel-body">
+        <div class="section col-xs-12 mb10" style="padding:0">
+          <div class="col-md-5">
+            <control label="Name" input="{ inputs.name }"></control>
+            <control label="Slug" input="{ inputs.slug }"></control>
+          </div>
+          <div class="col-md-7">
+            <control label="Description" input="{ inputs.description }"></control>
+          </div>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="section col-xs-12" style="padding:0">
+          <div class="col-md-6">
+            <control label="Currency" input="{ inputs.currency }"></control>
+            <control label="List Price (How much this should cost)" input="{ inputs.listPrice }"></control>
+            <control label="Price (How much this costs)" input="{ inputs.price }"></control>
+          </div>
+          <div class="col-md-6">
+            <control label="Size (L x W x H)" input="{ inputs.size }"></control>
+            <control label="Weight (grams)" input="{ inputs.weight }"></control>
+            <control label="In Stock" input="{ inputs.available }"></control>
+          </div>
+        </div>
+        <div class="form-actions section text-center">
+          <button type="submit" class="btn btn-dark">Add(+)</button>
+        </div>
+      </div>
+    </div>
+    <div class="panel animated fadeIn">
+      <div class="panel-heading">
+        Products
+      </div>
+      <div class="panel-body">
+        <!-- New Product Form-->
+        <!-- END New Product Form-->
+        <!-- Products View Content -->
+        <product-paged-table obs="{obs}">
+          <div>
+            <i class="gi gi-money" style="font-size:100px"></i>
+            <h2 class="text-center">We couldn't find any users for <strong>{{ ctx.organization.Name }}</strong>.</h2>
+          </div>
+        </product-paged-table>
+        <!-- END Products View Content -->
+      </div>
+    </div>
+  </product-form>
+</div>
+<!-- END Products View Block -->
+

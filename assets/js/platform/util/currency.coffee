@@ -14,6 +14,8 @@ module.exports = Util =
     return Util.renderUICurrencyFromJSON code, Util.renderJSONCurrencyFromUI(code, uiCurrency)
 
   renderUICurrencyFromJSON: (code, jsonCurrency)->
+    if isNaN jsonCurrency
+      jsonCurrency = 0
     currentCurrencySign = currencySigns[code] || ''
 
     jsonCurrency = '' + jsonCurrency
