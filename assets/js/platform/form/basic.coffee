@@ -7,11 +7,13 @@ Api = crowdcontrol.data.Api
 Source = crowdcontrol.data.Source
 m = crowdcontrol.utils.mediator
 
+SuccessEvent = 'form-submit-success'
 LoadEvent = 'form-data-load'
 
 class BasicFormView extends FormView
   @Events:
     Load: LoadEvent
+    Success: SuccessEvent
   tag: 'basic-form'
   redirectPath: ''
   path: ''
@@ -30,17 +32,18 @@ class BasicFormView extends FormView
   delete: ()->
     m.trigger 'start-spin', @path + '-delete'
     @api.delete(@path).finally (e)=>
-      console.log(e.stack)
+      console.log(e.stack) if e
       window.location.hash = @redirectPath
 
   js: (opts)->
     super
 
+    @api = api = Api.get('crowdstart')
+
     if @id?
       @loading = true
       m.trigger 'start-spin', @path + '-form-load'
 
-      @api = api = Api.get('crowdstart')
       api.get(@path).then((res)=>
         m.trigger 'stop-spin', @path + '-form-load'
 
@@ -58,6 +61,13 @@ class BasicFormView extends FormView
         console.log(e.stack)
         window.location.hash = @redirectPath
 
+  initFormGroup: ()->
+    if !@id? && @inputs?
+      for key, input of @inputs
+        input.model.value = ''
+
+    super
+
   loadData: (model)->
 
   _submit: (event)->
@@ -66,18 +76,29 @@ class BasicFormView extends FormView
 
     method = if @id? then 'patch' else 'post'
 
+    $button = $(event.target).find('input[type=submit], button[type=submit]')
+    buttonText= $button.text()
+    $button.text 'Processing'
+    $button.prop 'disabled', true
+    @fullyValidated = false
+
     return @api[method](@path, @model).then ()=>
       m.trigger 'stop-spin', @path + '-form-save'
-      $button = $(event.target).find('input[type=submit], button[type=submit]').text('Saved')
+      $button.text 'Saved'
+
       setTimeout ()->
-        $button.text('Save')
+        $button.text buttonText
+        $button.prop 'disabled', false
       , 1000
+      @obs.trigger SuccessEvent
       @update()
     , ()=>
       m.trigger 'stop-spin', @path + '-form-save'
-      $button = $(event.target).find('input[type=submit], button[type=submit]').text('An Error Has Occured')
+      $button.text 'An Error Has Occured'
+
       setTimeout ()->
-        $button.text('Save')
+        $button.text buttonText
+        $button.prop 'disabled', false
       , 1000
       @update()
 

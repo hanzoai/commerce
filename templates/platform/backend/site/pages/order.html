@@ -85,7 +85,7 @@
           Information
         </div>
         <div class="panel-body">
-          <div class="section col-xs-12 mb20" style="padding:0">
+          <div class="section col-xs-12" style="padding:0">
             <div class="section row">
               <control label="ID" input="{ inputs.id }" labelclasses="col-xs-4" controlclasses="col-xs-8"></control>
             </div>
@@ -119,7 +119,10 @@
         </div>
         <div class="panel-body">
           <order-user-static-form obs="{ obs }">
-            <div class="section col-xs-12 mb20" style="padding:0">
+            <div class="section col-xs-12" style="padding:0">
+              <div class="section row">
+                <control label="ID" input="{ inputs.id }" labelclasses="col-xs-4" controlclasses="col-xs-8"></control>
+              </div>
               <div class="section row">
                 <control label="Email" input="{ inputs.email }" labelclasses="col-xs-4" controlclasses="col-xs-8"></control>
               </div>
@@ -137,9 +140,6 @@
              </div>
               <div class="section row">
                 <control label="Last Updated" input="{ inputs.updatedAt }" labelclasses="col-xs-4" controlclasses="col-xs-8"></control>
-              </div>
-              <div class="section row">
-                <control label="ID" input="{ inputs.id }" labelclasses="col-xs-4" controlclasses="col-xs-8"></control>
               </div>
             </div>
           </order-user-static-form>

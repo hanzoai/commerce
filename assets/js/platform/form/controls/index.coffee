@@ -99,8 +99,11 @@ class MoneyInputView extends BasicInputView
       model.value = util.currency.renderUICurrencyFromJSON(code, model.value)
 
     @on 'update', ()=>
-      @currency (code)->
-        model.value = util.currency.renderUpdatedUICurrency(code, model.value)
+      @currency (code)=>
+        value = util.currency.renderUpdatedUICurrency(code, model.value)
+        if value != model.value
+          model.value = value
+          @update()
 
 MoneyInputView.register()
 
@@ -143,6 +146,9 @@ class BasicSelectView extends BasicInputView
           requestAnimationFrame ()=>
             $select.select2('val', @model.value)
             @changed = false
+      else
+        requestAnimationFrame ()=>
+          @update()
 
     @on 'unmount', ()=>
       $select = $(@root).find('select')
@@ -223,13 +229,18 @@ helpers.registerTag (inputCfg)->
 , 'money-input'
 
 # validator registration
+helpers.registerValidator ((inputCfg) -> return inputCfg.hints['numeric'])
+, (model, name)->
+  value = model[name]
+  return parseFloat(value)
+
 helpers.registerValidator ((inputCfg) -> return inputCfg.hints['required'])
 , (model, name)->
   value = model[name]
   if _.isNumber(value)
     return value
 
-  value = value.trim()
+  value = value?.trim()
   throw new Error "Required" if !value? || value == ''
 
   return value
@@ -237,13 +248,13 @@ helpers.registerValidator ((inputCfg) -> return inputCfg.hints['required'])
 helpers.registerValidator ((inputCfg) -> return inputCfg.hints['email'])
 , (model, name)->
   value = model[name]
-  value = value.trim().toLowerCase()
+  value = value?.trim().toLowerCase()
   re = /[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?/
-  if value.match(re)
+  if value? && value.match(re)
     return value
   throw new Error "Enter a valid email"
 
-helpers.registerValidator ((inputCfg) -> return inputCfg.hints['money'] >= 0)
+helpers.registerValidator ((inputCfg) -> return inputCfg.hints['money'])
 , (model, name)->
   value = model[name]
   return parseFloat(value)
@@ -258,6 +269,20 @@ helpers.registerValidator ((inputCfg) ->return inputCfg.hints['email-unique'])
   return Api.get('crowdstart').get('account/exists/' + value).then (res)->
     if res.responseText.exists
       throw new Error "Email already exists"
+    return value
+  , ()->
+    return value
+  return value
+
+helpers.registerValidator ((inputCfg) ->return inputCfg.hints['unique'])
+, (model, name)->
+  value = model[name]
+  if value == @hints['unique-exception']
+    return value
+
+  return Api.get('crowdstart').get(@hints['unique-api'] + '/' + value).then (res)->
+    if res.status == 200 || res.staticText == 'OK'
+      throw new Error "'#{value}' is already in use"
     return value
   , ()->
     return value
