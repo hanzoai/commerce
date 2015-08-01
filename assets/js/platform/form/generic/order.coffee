@@ -21,12 +21,12 @@ class OrderForm extends Form
     input('createdAt', '', 'static-date'),
     input('updatedAt', '', 'static-date'),
 
-    input('shippingAddress.line1', 'Street Address'),
+    input('shippingAddress.line1', 'Street Address', 'required'),
     input('shippingAddress.line2', 'Apt/Suite Number'),
-    input('shippingAddress.city', 'City'),
-    input('shippingAddress.state', 'State'),
+    input('shippingAddress.city', 'City', 'required'),
+    input('shippingAddress.state', 'State', 'required'),
     input('shippingAddress.postalCode', 'Postal/ZIP Code', 'postal-code'),
-    input('shippingAddress.country', 'Choose a Country...', 'country-select'),
+    input('shippingAddress.country', 'Choose a Country...', 'country-select', 'required'),
 
     input('currency', '', 'static'),
     input('lineTotal', '', 'static-money'),
