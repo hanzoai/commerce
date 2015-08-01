@@ -1,10 +1,13 @@
-<div class="{form-group: true, has-error: hasError()}">
-  <label __for="{ model.name }" class="control-label { opts.labelclasses || 'col-md-10' }">{ opts.label }</label>
-  <div class=" { opts.controlclasses || 'col-md-2' }">
-    <label class="switch switch-success">
+<div class="{has-error: hasError(), admin-form: true}">
+  <label __for="{ model.name }" class="control-label { opts.labelclasses }">
+    <span>{ opts.label }</span>
+  </label>
+  <div class="section mt5 { opts.controlclasses }">
+    <label class="switch switch-primary">
       <input id="{ model.name }" name="{ model.name }" type="checkbox" onchange="{ change }" onblur="{ change }" __checked ="{ model.value }"></input>
-      <span></span>
+      <label for="{ model.name }" data-on="YES" data-off="NO"></label>
     </label>
     <div if="{hasError()}" class="error-container help-block animation-pullUp">{ error }</div>
   </div>
 </div>
+

@@ -21,6 +21,8 @@ class Form extends BasicFormView
 
     if @id?
       @path += '/' + opts.id
+    else
+      @resetModel = JSON.parse JSON.stringify(@model)
 
     super
 
@@ -40,7 +42,10 @@ class Form extends BasicFormView
   _submit: (event)->
     p = super
     p.then ()=>
-      @resetModel = JSON.parse JSON.stringify(@model)
+      if @id?
+        @resetModel = JSON.parse JSON.stringify(@model)
+      else
+        @reset()
 
   loadData: (model)->
     @resetModel = JSON.parse JSON.stringify(model)

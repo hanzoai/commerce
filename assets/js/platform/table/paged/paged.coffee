@@ -19,6 +19,14 @@ class BasicPagedTable extends BasicTableView
   sortField: 'UpdatedAt'
   sortDirection: ''
   firstLoad: false
+
+  events:
+    # finishing a form that is linked to this table will refresh it
+    'form-submit-success': ()->
+      setTimeout ()=>
+        @refresh()
+      , 1000
+
   js: (opts)->
     @path = opts.path if opts.path
     @api = Api.get 'crowdstart'
@@ -69,6 +77,7 @@ class BasicPagedTable extends BasicTableView
     display = parseInt $(event.target).val(), 10
     if @display != display
       @display = display
+      @page = 1
       @refresh()
 
   refresh: ()->
