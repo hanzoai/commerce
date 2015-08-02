@@ -9,13 +9,14 @@ Api = crowdcontrol.data.Api
 
 class ProductForm extends Form
   tag: 'product-form'
-  redirectPath: 'product'
+  redirectPath: 'products'
   path: 'product'
   model:
     currency: 'usd'
     available: true
 
   inputConfigs: [
+    input('id', '', 'static'),
     input('name', 'Product Name (Shirt)', 'required')
     input('slug', 'Product Slug (SHIRT-123)', 'required unique unique-api:product')
     input('description', 'Describe this product', 'text')
@@ -28,11 +29,14 @@ class ProductForm extends Form
     input('weight', '1000', 'numeric'),
 
     input('available', '', 'switch'),
+
+    input('createdAt', '', 'static-date'),
+    input('updatedAt', '', 'static-date'),
   ]
 
   loadData: (model)->
     super
-    @inputConfigs[1].hints['unique-exception'] = model.slug
+    @inputConfigs[2].hints['unique-exception'] = model.slug
 
 ProductForm.register()
 
