@@ -42,6 +42,22 @@ class BasicInputView extends InputView
 
 BasicInputView.register()
 
+class NumericInputView extends BasicInputView
+  tag: 'numeric-input'
+  events:
+    "#{InputView.Events.Set}": (name, value) ->
+      if name == @model.name
+        @clearError()
+        # in case the number was corrupted, reset to 0
+        v = parseFloat(value)
+        @model.value = if isNaN(v) then 0 else v
+  js:(opts)->
+    @model = if opts.input then opts.input.model else @model
+    v = parseFloat(@model.value)
+    @model.value = if isNaN(v) then 0 else v
+
+NumericInputView.register()
+
 class BasicTextareaView extends BasicInputView
   tag: 'basic-textarea'
   html: require './basic-textarea.html'
@@ -116,6 +132,21 @@ StaticMoneyView.register()
 class BasicSelectView extends BasicInputView
   tag: 'basic-select'
   html: require './basic-select.html'
+
+  # Use when loading options async
+  async: false
+
+  # These are used for caching values for async = true
+  optionsLoaded: false
+  lastValueSet: null
+
+  events:
+    "#{InputView.Events.Set}": (name, value) ->
+      if name == @model.name && value?
+        @clearError()
+        @model.value = value
+        # whole page needs to be updated for side effects
+        riot.update()
   options: ()->
     @selectOptions
   changed: false
@@ -126,6 +157,30 @@ class BasicSelectView extends BasicInputView
       @model.value = value
       @changed = true
       @update()
+
+  # if async is set to true, then call this when async loading is done
+  asyncDone: ()->
+    @optionsLoaded = true
+    # Only use lastValueSet if it is set to something
+    #
+    # Notes:
+    # 1) @model.value is usually set by the form directly in initFormGroup
+    #
+    # 2) In the case of a form that is POSTing to create a new item,
+    #   @model.value is set directly in initFormGroup during riot.mount
+    #   before async loading of the select values compltes.
+    #   Nothing else needs to happen here and @lastValueSet will not be set
+    #
+    # 3) In the case of a form that is PUTing to update an existing model,
+    #   @model.value is set directly BUT a series of updates fires when the models
+    #   are loaded.  This causes async select2('val', ...) calls before the async
+    #   loading is done for the select options.  This is the case where we need to cache
+    #   the value from the model and send it to select2('val', ...) by setting @model.value
+    #   and firing update.
+    #
+    if @lastValueSet?
+      @model.value = @lastValueSet
+    @update()
 
   js:(opts)->
     super
@@ -144,8 +199,11 @@ class BasicSelectView extends BasicInputView
           @changed = true
         else if @changed
           requestAnimationFrame ()=>
-            $select.select2('val', @model.value)
-            @changed = false
+            if @async && !@optionsLoaded
+              @lastValueSet = @model.value
+            else
+              $select.select2('val', @model.value)
+              @changed = false
       else
         requestAnimationFrame ()=>
           @update()
@@ -157,13 +215,6 @@ BasicSelectView.register()
 
 class CountrySelectView extends BasicSelectView
   tag: 'country-select'
-  events:
-    "#{InputView.Events.Set}": (name, value) ->
-      if name == @model.name
-        @clearError()
-        @model.value = value
-        # whole page needs to be updated for side effects
-        riot.update()
   options: ()->
     return window.countries
 
@@ -171,17 +222,39 @@ CountrySelectView.register()
 
 class CurrencySelectView extends BasicSelectView
   tag: 'currency-select'
-  events:
-    "#{InputView.Events.Set}": (name, value) ->
-      if name == @model.name
-        @clearError()
-        @model.value = value
-        # whole page needs to be updated for side effects
-        riot.update()
   options: ()->
     return window.currencies
 
 CurrencySelectView.register()
+
+class CouponTypeSelectView extends BasicSelectView
+  tag: 'coupon-type-select'
+  options: ()->
+    return {
+      flat: 'Flat (Deduct Amount from Product\'s Price in Product\'s Currency)'
+      percent: 'Percent (Deduct Percent from Product\'s Price)'
+      'free-shipping': 'Free Shipping'
+    }
+
+CouponTypeSelectView.register()
+
+class ProductSelectView extends BasicSelectView
+  tag: 'product-type-select'
+  async: true
+  options: ()->
+    return @products if @products?
+
+    api = Api.get('crowdstart')
+    api.get('product').then (res)=>
+      @products = '_': 'All'
+      for product in res.responseText.models
+        @products[product.id] = product.name
+
+      @asyncDone()
+
+    return @products = '_': 'All'
+
+ProductSelectView.register()
 
 # tag registration
 helpers.registerTag (inputCfg)->
@@ -205,6 +278,14 @@ helpers.registerTag (inputCfg)->
 , 'country-select'
 
 helpers.registerTag (inputCfg)->
+  return inputCfg.hints['coupon-type-select']
+, 'coupon-type-select'
+
+helpers.registerTag (inputCfg)->
+  return inputCfg.hints['product-type-select']
+, 'product-type-select'
+
+helpers.registerTag (inputCfg)->
   return inputCfg.hints['currency-type-select']
 , 'currency-select'
 
@@ -223,6 +304,10 @@ helpers.registerTag (inputCfg)->
 helpers.registerTag (inputCfg)->
   return inputCfg.hints['id']
 , 'id-link'
+
+helpers.registerTag (inputCfg)->
+  return inputCfg.hints['numeric']
+, 'numeric-input'
 
 helpers.registerTag (inputCfg)->
   return inputCfg.hints['money']
