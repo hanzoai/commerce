@@ -4,3 +4,4 @@ module.exports =
   Dropzone: require './dropzone'
   Spinner:  require './spinner'
   Gmap:     require './gmap'
+  Listing: require './listing'

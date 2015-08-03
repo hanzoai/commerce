@@ -4,3 +4,4 @@ module.exports =
   order: require    './order'
   product: require  './product'
   coupon: require   './coupon'
+  store: require    './store'

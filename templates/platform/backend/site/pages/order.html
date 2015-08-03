@@ -9,40 +9,33 @@
         </div>
         <div class="panel-body">
           <div class="section col-xs-12" style="padding:0">
-            <div class="col-md-8">
+            <div class="section col-lg-6 mb20">
               <control label="Street Address" input="{ inputs['shippingAddress.line1'] }"></control>
-            </div>
-            <div class="col-md-4">
               <control label="Apt/Suite Number" input="{ inputs['shippingAddress.line2'] }"></control>
-            </div>
-          </div>
-          <div class="section col-xs-12" style="padding:0">
-            <div class="col-md-6">
               <control label="City" input="{ inputs['shippingAddress.city'] }"></control>
-            </div>
-            <div class="col-md-3">
-              <control label="State" input="{ inputs['shippingAddress.state'] }"></control>
-            </div>
-            <div class="col-md-3">
-              <control label="Postal/ZIP Code" input="{ inputs['shippingAddress.postalCode'] }"></control>
-            </div>
-          </div>
-          <div class="section col-xs-12 mb20" style="padding:0">
-            <div class="col-md-12">
+              <div class="col-xs-7" style="padding-left:0">
+                <control label="State" input="{ inputs['shippingAddress.state'] }"></control>
+              </div>
+              <div class="col-xs-5" style="padding-right:0">
+                <control label="Postal/ZIP Code" input="{ inputs['shippingAddress.postalCode'] }"></control>
+              </div>
               <control label="Country" input="{ inputs['shippingAddress.country'] }"></control>
             </div>
+
+            <div class="section col-lg-6 mb20">
+              <gmap obs="{ obs }" addressField="shippingAddress" style="min-height:340px"></gmap>
+            </div>
           </div>
-          <div class="section col-xs-12 mb20">
-            <gmap obs="{ obs }" addressField="shippingAddress"></gmap>
-          </div>
+
           <div class="form-actions section">
-            <div class="col-xs-8 col-md-3 col-md-offset-3">
+            <div class="col-xs-6">
               <button type="submit" class="btn btn-block btn-dark">Save</button>
             </div>
-            <div class="col-xs-4 col-md-3">
+            <div class="col-xs-6">
               <button type="reset" class="btn btn-block btn-default">Reset</button>
             </div>
           </div>
+
         </div>
       </div>
 
