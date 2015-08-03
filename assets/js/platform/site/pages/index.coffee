@@ -8,6 +8,7 @@ module.exports =
   Products:     require './products'
   Coupon:       require './coupon'
   Coupons:      require './coupons'
+  Store:        require './store'
   Stores:       require './stores'
   MailingLists: require './mailinglists'
   Profile:      require './profile'
