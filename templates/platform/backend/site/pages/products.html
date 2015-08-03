@@ -6,7 +6,7 @@
         Add a Product
       </div>
       <div class="panel-body">
-        <div class="section col-xs-12 mb10" style="padding:0">
+        <div class="section col-xs-12 mb20" style="padding:0">
           <div class="col-md-5">
             <control label="Name" input="{ inputs.name }"></control>
             <control label="Slug" input="{ inputs.slug }"></control>
@@ -15,18 +15,28 @@
             <control label="Description" input="{ inputs.description }"></control>
           </div>
         </div>
-      </div>
-      <div class="panel-body">
-        <div class="section col-xs-12 mb20" style="padding:0">
-          <div class="col-md-6">
-            <control label="Currency" input="{ inputs.currency }"></control>
-            <control label="List Price (How much this should be listed at)" input="{ inputs.listPrice }"></control>
-            <control label="Price (How much this is being sold for)" input="{ inputs.price }"></control>
+        <div class="col-xs-6">
+          <div class="panel animated fadeIn">
+            <div class="panel-heading">
+              Pricing
+            </div>
+            <div class="panel-body">
+              <control label="Currency" input="{ inputs.currency }"></control>
+              <control label="List Price (How much this should be listed at)" input="{ inputs.listPrice }"></control>
+              <control label="Price (How much this is being sold for)" input="{ inputs.price }"></control>
+            </div>
           </div>
-          <div class="col-md-6">
-            <control label="Size (L x W x H)" input="{ inputs.size }"></control>
-            <control label="Weight (grams)" input="{ inputs.weight }"></control>
-            <control label="In Stock" input="{ inputs.available }"></control>
+        </div>
+        <div class="col-xs-6">
+          <div class="panel animated fadeIn">
+            <div class="panel-heading">
+              Shipping/Availability
+            </div>
+            <div class="panel-body">
+              <control label="Size (L x W x H)" input="{ inputs.size }"></control>
+              <control label="Weight (grams)" input="{ inputs.weight }"></control>
+              <control label="In Stock" input="{ inputs.available }"></control>
+            </div>
           </div>
         </div>
         <div class="form-actions section text-center">

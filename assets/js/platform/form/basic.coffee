@@ -48,7 +48,7 @@ class BasicFormView extends FormView
         m.trigger 'stop-spin', @path + '-form-load'
 
         if res.status != 200
-          throw new Error("Form failed to load")
+          throw new Error 'Form failed to load'
 
         @model = res.responseText
         @loadData @model
@@ -60,6 +60,11 @@ class BasicFormView extends FormView
       ).catch (e)=>
         console.log(e.stack)
         window.location.hash = @redirectPath
+    else
+      # the LoadEvent is meant to be triggered asynchrous of the object bootstrapping
+      # otherwise, it will fire before riot.mount finishes rendering this tag's children
+      requestAnimationFrame ()=>
+        @obs.trigger LoadEvent, @model
 
   initFormGroup: ()->
     if !@id? && @inputs?
