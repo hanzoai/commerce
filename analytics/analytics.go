@@ -16,7 +16,6 @@ func init() {
 		c.Next()
 	})
 
-	analytics.GET("/:orgid/native/js", js)
-	analytics.POST("/:orgid/", create)
+	analytics.POST("/:organizationid", create)
 	analytics.HEAD("/", router.Empty)
 }
