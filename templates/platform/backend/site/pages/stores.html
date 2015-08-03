@@ -1,0 +1,48 @@
+<!-- Stores View Block -->
+<div class="block">
+  <store-form>
+    <div class="panel animated fadeIn">
+      <div class="panel-heading">
+        Add a Store
+      </div>
+      <div class="panel-body">
+        <div class="section col-xs-12 mb20" style="padding:0">
+          <div class="col-md-4">
+            <control label="Name" input="{ inputs.name }"></control>
+          </div>
+          <div class="col-md-4">
+            <control label="Slug" input="{ inputs.slug }"></control>
+          </div>
+          <div class="col-md-4">
+            <control label="Currency" input="{ inputs.currency }"></control>
+          </div>
+        </div>
+        <div class="section col-xs-12 mb20">
+          <listing-widget obs="{obs}">
+          </listing-widget>
+        </div>
+        <div class="form-actions section text-center">
+          <button type="submit" class="btn btn-dark">Add(+)</button>
+        </div>
+      </div>
+    </div>
+    <div class="panel animated fadeIn">
+      <div class="panel-heading">
+        Stores
+      </div>
+      <div class="panel-body">
+        <!-- New Store Form-->
+        <!-- END New Store Form-->
+        <!-- Stores View Content -->
+        <store-paged-table obs="{obs}">
+          <div>
+            <i class="gi gi-money" style="font-size:100px"></i>
+            <h2 class="text-center">We couldn't find any users for <strong>{{ ctx.organization.Name }}</strong>.</h2>
+          </div>
+        </store-paged-table>
+        <!-- END Stores View Content -->
+      </div>
+    </div>
+  </store-form>
+</div>
+<!-- END Stores View Block -->
