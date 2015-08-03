@@ -5,6 +5,10 @@ import (
 
 	"crowdstart.com/middleware"
 	"crowdstart.com/util/router"
+
+	"crowdstart.com/cdn/analytics"
+	"crowdstart.com/cdn/form"
+	"crowdstart.com/cdn/native"
 )
 
 func init() {
@@ -16,7 +20,9 @@ func init() {
 		c.Next()
 	})
 
-	cdn.GET("/:orgid/native/js", js)
-	cdn.POST("/:orgid/", create)
+	cdn.GET("/:organizationid/v1/analytics.js", analytics.Js)
+	cdn.GET("/:organizationid/v1/form.js", form.Js)
+	cdn.GET("/:organizationid/v1/native.js", native.Js)
+
 	cdn.HEAD("/", router.Empty)
 }

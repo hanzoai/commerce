@@ -12,7 +12,6 @@ import (
 	"crowdstart.com/models/types/client"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/json/http"
-	"crowdstart.com/util/log"
 
 	mailchimp "crowdstart.com/thirdparty/mailchimp/tasks"
 )
@@ -60,26 +59,4 @@ func addSubscriber(c *gin.Context) {
 		c.Writer.Header().Add("Location", subscriberEndpoint+s.Id())
 		http.Render(c, 201, s)
 	}
-}
-
-func js(c *gin.Context) {
-	id := c.Params.ByName("mailinglistid")
-	db := datastore.New(c)
-
-	ml := mailinglist.New(db)
-
-	// Set key and namespace correctly
-	ml.SetKey(id)
-	log.Debug("mailinglist: %v", ml)
-	log.Debug("key: %v", ml.Key())
-	log.Debug("namespace: %v", ml.Key().Namespace())
-	ml.SetNamespace(ml.Key().Namespace())
-
-	if err := ml.Get(); err != nil {
-		c.String(404, fmt.Sprintf("Failed to retrieve mailing list '%v': %v", id, err))
-		return
-	}
-
-	c.Writer.Header().Add("Content-Type", "application/javascript")
-	c.String(200, ml.Js())
 }
