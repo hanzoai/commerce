@@ -9,7 +9,7 @@ import (
 	"crowdstart.com/models/organization"
 )
 
-func js(c *gin.Context) {
+func Js(c *gin.Context) {
 	id := c.Params.ByName("organizationid")
 	db := datastore.New(c)
 
