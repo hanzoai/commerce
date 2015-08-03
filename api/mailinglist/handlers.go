@@ -7,6 +7,8 @@ import (
 	"crowdstart.com/models/mailinglist"
 	"crowdstart.com/util/rest"
 	"crowdstart.com/util/router"
+
+	"crowdstart.com/cdn/form"
 )
 
 func Route(router router.Router, args ...gin.HandlerFunc) {
@@ -16,7 +18,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	group.Use(middleware.AccessControl("*"))
 
 	group.POST("/:mailinglistid/subscribe", addSubscriber)
-	group.GET("/:mailinglistid/js", js)
+	group.GET("/:mailinglistid/js", form.Js)
 
 	api.Route(router, args...)
 }
