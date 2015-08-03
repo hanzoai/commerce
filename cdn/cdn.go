@@ -20,8 +20,8 @@ func init() {
 		c.Next()
 	})
 
+	cdn.GET("/:mailinglistid/v1/form.js", form.Js)
 	cdn.GET("/:organizationid/v1/analytics.js", analytics.Js)
-	cdn.GET("/:organizationid/v1/form.js", form.Js)
 	cdn.GET("/:organizationid/v1/native.js", native.Js)
 
 	cdn.HEAD("/", router.Empty)
