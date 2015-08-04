@@ -7,7 +7,7 @@ import (
 	"crowdstart.com/util/router"
 
 	"crowdstart.com/cdn/analytics"
-	"crowdstart.com/cdn/form"
+	"crowdstart.com/cdn/mailinglist"
 	"crowdstart.com/cdn/native"
 )
 
@@ -20,9 +20,9 @@ func init() {
 		c.Next()
 	})
 
-	cdn.GET("/:mailinglistid/v1/form.js", form.Js)
-	cdn.GET("/:organizationid/v1/analytics.js", analytics.Js)
-	cdn.GET("/:organizationid/v1/native.js", native.Js)
+	cdn.GET("/a/:organizationid/analytics.js", analytics.Js)
+	cdn.GET("/m/:mailinglistid/mailinglist.js", mailinglist.Js)
+	cdn.GET("/n/:organizationid/native.js", native.Js)
 
 	cdn.HEAD("/", router.Empty)
 }
