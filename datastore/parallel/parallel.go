@@ -147,8 +147,8 @@ func (fn *ParallelFn) Run(c *gin.Context, batchSize int, args ...interface{}) er
 	namespaces := make([]string, 0)
 
 	// Check if namespace is set explicitly
-	v, err := c.Get("namespace")
-	if err == nil {
+	v, ok := c.Get("namespace")
+	if ok {
 		namespace, ok := v.(string)
 		if ok {
 			namespaces = append(namespaces, namespace)

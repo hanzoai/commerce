@@ -21,10 +21,10 @@ var (
 )
 
 func ErrorLogger() gin.HandlerFunc {
-	return ErrorLoggerT(gin.ErrorTypeAll)
+	return ErrorLoggerT(gin.ErrorTypeAny)
 }
 
-func ErrorLoggerT(typ uint32) gin.HandlerFunc {
+func ErrorLoggerT(typ gin.ErrorType) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Next()
 
