@@ -14,6 +14,7 @@ import (
 	"crowdstart.com/models/coupon"
 	"crowdstart.com/models/mailinglist"
 	"crowdstart.com/models/order"
+	"crowdstart.com/models/organization"
 	"crowdstart.com/models/product"
 	"crowdstart.com/models/store"
 	"crowdstart.com/models/subscriber"
@@ -193,7 +194,7 @@ func Dashboard(c *gin.Context) {
 
 	log.Warn("%v %v %v %v %v", userCount, subCount, cur, orderTotal, salesTotal)
 
-	template.Render(c, "admin/dashboard.html",
+	Render(c, "admin/dashboard.html",
 		"userCount", userCount,
 		"subCount", subCount,
 		"currency", cur,
@@ -260,11 +261,11 @@ func Search(c *gin.Context) {
 		orders = append(orders, o)
 	}
 
-	template.Render(c, "admin/search-results.html", "users", users, "orders", orders)
+	Render(c, "admin/search-results.html", "users", users, "orders", orders)
 }
 
 func Products(c *gin.Context) {
-	template.Render(c, "admin/list-products.html")
+	Render(c, "admin/list-products.html")
 }
 
 func Product(c *gin.Context) {
@@ -274,7 +275,7 @@ func Product(c *gin.Context) {
 	id := c.Params.ByName("id")
 	p.MustGet(id)
 
-	template.Render(c, "admin/product.html", "product", p)
+	Render(c, "admin/product.html", "product", p)
 }
 
 func Coupons(c *gin.Context) {
@@ -283,7 +284,7 @@ func Coupons(c *gin.Context) {
 	var products []product.Product
 	product.Query(db).GetAll(&products)
 
-	template.Render(c, "admin/list-coupons.html", "products", products)
+	Render(c, "admin/list-coupons.html", "products", products)
 }
 
 func Coupon(c *gin.Context) {
@@ -296,7 +297,7 @@ func Coupon(c *gin.Context) {
 	var products []product.Product
 	product.Query(db).GetAll(&products)
 
-	template.Render(c, "admin/coupon.html", "coupon", cou, "products", products)
+	Render(c, "admin/coupon.html", "coupon", cou, "products", products)
 }
 
 type ProductsMap map[string]product.Product
@@ -325,7 +326,7 @@ func Store(c *gin.Context) {
 		productsMap[product.Id()] = product
 	}
 
-	template.Render(c, "admin/store.html", "store", s, "listings", listings, "products", products, "productsMap", productsMap)
+	Render(c, "admin/store.html", "store", s, "listings", listings, "products", products, "productsMap", productsMap)
 }
 
 func Stores(c *gin.Context) {
@@ -334,7 +335,7 @@ func Stores(c *gin.Context) {
 	var products []product.Product
 	product.Query(db).GetAll(&products)
 
-	template.Render(c, "admin/list-stores.html", "products", products)
+	Render(c, "admin/list-stores.html", "products", products)
 }
 
 func MailingList(c *gin.Context) {
@@ -344,27 +345,27 @@ func MailingList(c *gin.Context) {
 	id := c.Params.ByName("id")
 	m.MustGet(id)
 
-	template.Render(c, "admin/mailinglist.html", "mailingList", m)
+	Render(c, "admin/mailinglist.html", "mailingList", m)
 }
 
 func MailingLists(c *gin.Context) {
-	template.Render(c, "admin/list-mailinglists.html")
+	Render(c, "admin/list-mailinglists.html")
 }
 
 func User(c *gin.Context) {
-	template.Render(c, "admin/user.html")
+	Render(c, "admin/user.html")
 }
 
 func Users(c *gin.Context) {
-	template.Render(c, "admin/list-users.html")
+	Render(c, "admin/list-users.html")
 }
 
 func Order(c *gin.Context) {
-	template.Render(c, "admin/order.html")
+	Render(c, "admin/order.html")
 }
 
 func Orders(c *gin.Context) {
-	template.Render(c, "admin/list-orders.html")
+	Render(c, "admin/list-orders.html")
 }
 
 func SendOrderConfirmation(c *gin.Context) {
@@ -380,15 +381,15 @@ func SendOrderConfirmation(c *gin.Context) {
 
 	emails.SendOrderConfirmationEmail(c, org, o, u)
 
-	template.Render(c, "admin/order.html")
+	Render(c, "admin/order.html")
 }
 
 func Organization(c *gin.Context) {
-	template.Render(c, "admin/organization.html")
+	Render(c, "admin/organization.html")
 }
 
 func Keys(c *gin.Context) {
-	template.Render(c, "admin/keys.html")
+	Render(c, "admin/keys.html")
 }
 
 func NewKeys(c *gin.Context) {
@@ -400,5 +401,18 @@ func NewKeys(c *gin.Context) {
 		panic(err)
 	}
 
-	template.Render(c, "admin/keys.html")
+	Render(c, "admin/keys.html")
+}
+
+func Render(c *gin.Context, name string, args ...interface{}) {
+	db := datastore.New(c)
+	org := organization.New(db)
+	if err := org.GetById("crowdstart"); err == nil {
+		args = append(args, "crowdstartId", org.Id())
+	} else {
+		args = append(args, "crowdstartId", "")
+	}
+	log.Warn("Z%s", org.Id())
+
+	template.Render(c, name, args...)
 }
