@@ -1,7 +1,7 @@
 pwd				= $(shell pwd)
 os				= $(shell uname | tr '[A-Z]' '[a-z]')
 platform		= $(os)_amd64
-sdk				= go_appengine_sdk_$(platform)-1.9.23
+sdk				= go_appengine_sdk_$(platform)-1.9.24
 sdk_path		= $(pwd)/.sdk
 goroot			= $(sdk_path)/goroot
 gopath			= $(sdk_path)/gopath
@@ -20,27 +20,34 @@ modules	= crowdstart.com/api \
 		  crowdstart.com/platform \
 		  crowdstart.com/store
 
-gae_token = 1/DLPZCHjjCkiegGp0SiIvkWmtZcUNl15JlOg4qB0-1r0MEudVrK5jSpoR30zcRFq6
-
 gae_development = config/development/app.yaml \
 				  config/development/dispatch.yaml \
+				  analytics/app.dev.yaml \
 				  api/app.dev.yaml \
+				  cdn/app.dev.yaml \
 				  platform/app.dev.yaml \
 				  store/app.dev.yaml
 
 gae_sandbox = config/sandbox \
-			  api/app.staging.yaml
+			  analytics/app.staging.yaml \
+			  api/app.staging.yaml \
 
 gae_staging = config/staging \
+			  analytics/app.staging.yaml \
 			  api/app.staging.yaml \
+			  cdn/app.dev.yaml \
 			  platform/app.staging.yaml
 
 gae_production = config/production \
+				 analytics \
 				 api \
-				 platform
+			  	 cdn \
+				 platform \
 
 gae_skully = config/skully \
+			 analytics/app.skully.yaml \
 			 api/app.skully.yaml \
+			 cdn/app.skully.yaml \
 			 platform/app.skully.yaml \
 			 store/app.skully.yaml
 
@@ -160,23 +167,22 @@ assets-min: deps-assets compile-css-min compile-js-min
 
 compile-js:
 	$(requisite) $(requisite_opts)
-	$(requisite) --no-source-map assets/js/analytics/analytics.coffee -o static/js/analytics/analytics.js
-	$(coffee) -bc -o static/js/analytics assets/js/analytics/snippet.coffee
 	$(coffee) -bc -o static/js assets/js/api/mailinglist.coffee
+	$(requisite) --no-source-map node_modules/crowdstart-analytics/lib/index.js -o static/js/analytics/analytics.js
+	cp node_modules/crowdstart-analytics/lib/snippet.js static/js/analytics
+	cp node_modules/crowdstart-analytics/lib/bundle.js static/js/analytics
 
-compile-js-min:
-	$(requisite) $(requisite_opts_min) $(requisite_opts)
-	$(requisite) --no-source-map assets/js/analytics/analytics.coffee -o static/js/analytics/analytics.js
-	$(coffee) -bc -o static/js/analytics assets/js/analytics/snippet.coffee
-	$(coffee) -bc -o static/js assets/js/api/mailinglist.coffee
+compile-js-min: compile-js
 	$(uglifyjs) static/js/api.js -o static/js/api.min.js -c
-	$(uglifyjs) static/js/analytics/analytics.js -o static/js/analytics/analytics.min.js -c
-	$(uglifyjs) static/js/analytics/snippet.js -o static/js/analytics/snippet.min.js -c
+	$(uglifyjs) static/js/analytics/analytics.js -o static/js/analytics/analytics.min.js -c -m
+	$(uglifyjs) static/js/analytics/bundle.js -o static/js/analytics/bundle.min.js -c -m
+	$(uglifyjs) static/js/analytics/snippet.js -o static/js/analytics/snippet.min.js -c -m
 	$(uglifyjs) static/js/platform.js -o static/js/platform.min.js -c
 	$(uglifyjs) static/js/store.js -o static/js/store.min.js -c
 	$(uglifyjs) static/v1.js -o static/v1.min.js -c
 	@mv static/js/api.min.js static/js/api.js
 	@mv static/js/analytics/analytics.min.js static/js/analytics/analytics.js
+	@mv static/js/analytics/bundle.min.js static/js/analytics/bundle.js
 	@mv static/js/analytics/snippet.min.js static/js/analytics/snippet.js
 	@mv static/js/platform.min.js static/js/platform.js
 	@mv static/js/store.min.js static/js/store.js

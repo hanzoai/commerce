@@ -8,7 +8,9 @@ import (
 	"crowdstart.com/auth"
 	"crowdstart.com/auth/password"
 	"crowdstart.com/config"
+	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
+	"crowdstart.com/models/organization"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/template"
 )
@@ -19,7 +21,7 @@ var ErrorPasswordTooShort = errors.New("Password must be atleast 6 characters lo
 
 // Renders the profile page
 func Profile(c *gin.Context) {
-	template.Render(c, "admin/profile.html")
+	Render(c, "admin/profile.html")
 }
 
 // Handles submission on profile page
@@ -31,7 +33,7 @@ func ContactSubmit(c *gin.Context) {
 
 	// val.SanitizeUser2(&form.User)
 	if errs := form.Validate(); len(errs) > 0 {
-		c.Fail(500, ErrorInvalidProfile)
+		c.AbortWithError(500, ErrorInvalidProfile)
 		return
 	}
 
@@ -58,19 +60,19 @@ func PasswordSubmit(c *gin.Context) {
 
 	if !password.HashAndCompare(u.PasswordHash, form.OldPassword) {
 		log.Debug("Old password is incorrect.")
-		c.Fail(500, ErrorPasswordIncorrect)
+		c.AbortWithError(500, ErrorPasswordIncorrect)
 		return
 	}
 
 	if form.Password == form.ConfirmPassword {
 		if errs := form.Validate(); len(errs) > 0 {
-			c.Fail(500, ErrorPasswordTooShort)
+			c.AbortWithError(500, ErrorPasswordTooShort)
 			return
 		}
 
 		var err error
 		if u.PasswordHash, err = password.Hash(form.Password); err != nil {
-			c.Fail(500, err)
+			c.AbortWithError(500, err)
 			return
 		}
 
@@ -79,7 +81,20 @@ func PasswordSubmit(c *gin.Context) {
 		c.Redirect(301, config.UrlFor("platform/", "profile"))
 	} else {
 		log.Debug("Passwords do not match.")
-		c.Fail(500, auth.ErrorPasswordMismatch)
+		c.AbortWithError(500, auth.ErrorPasswordMismatch)
 		return
 	}
+}
+
+func Render(c *gin.Context, name string, args ...interface{}) {
+	db := datastore.New(c)
+	org := organization.New(db)
+	if err := org.GetById("crowdstart"); err == nil {
+		args = append(args, "crowdstartId", org.Id())
+	} else {
+		args = append(args, "crowdstartId", "")
+	}
+	log.Warn("Z%s", org.Id())
+
+	template.Render(c, name, args...)
 }
