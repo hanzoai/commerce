@@ -8,7 +8,7 @@ golang.org/x/crypto/bcrypt master
 github.com/gorilla/schema master
 github.com/gorilla/sessions master
 github.com/headzoo/surf master
-github.com/mholt/binding master
+github.com/mholt/binding 6c082304f300fc70793cb0be18af0fdd4acd2b75
 github.com/onsi/ginkgo/ginkgo master
 github.com/onsi/gomega master
 github.com/qedus/nds classic
