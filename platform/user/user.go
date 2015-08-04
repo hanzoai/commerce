@@ -33,7 +33,7 @@ func ContactSubmit(c *gin.Context) {
 
 	// val.SanitizeUser2(&form.User)
 	if errs := form.Validate(); len(errs) > 0 {
-		c.Fail(500, ErrorInvalidProfile)
+		c.AbortWithError(500, ErrorInvalidProfile)
 		return
 	}
 
@@ -60,19 +60,19 @@ func PasswordSubmit(c *gin.Context) {
 
 	if !password.HashAndCompare(u.PasswordHash, form.OldPassword) {
 		log.Debug("Old password is incorrect.")
-		c.Fail(500, ErrorPasswordIncorrect)
+		c.AbortWithError(500, ErrorPasswordIncorrect)
 		return
 	}
 
 	if form.Password == form.ConfirmPassword {
 		if errs := form.Validate(); len(errs) > 0 {
-			c.Fail(500, ErrorPasswordTooShort)
+			c.AbortWithError(500, ErrorPasswordTooShort)
 			return
 		}
 
 		var err error
 		if u.PasswordHash, err = password.Hash(form.Password); err != nil {
-			c.Fail(500, err)
+			c.AbortWithError(500, err)
 			return
 		}
 
@@ -81,7 +81,7 @@ func PasswordSubmit(c *gin.Context) {
 		c.Redirect(301, config.UrlFor("platform/", "profile"))
 	} else {
 		log.Debug("Passwords do not match.")
-		c.Fail(500, auth.ErrorPasswordMismatch)
+		c.AbortWithError(500, auth.ErrorPasswordMismatch)
 		return
 	}
 }
