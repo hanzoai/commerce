@@ -59,8 +59,8 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 
 	// Check if store has been set, if so pull it out of the context
 	var stor *store.Store
-	v, err := c.Get("store")
-	if err == nil {
+	v, ok := c.Get("store")
+	if ok {
 		stor = v.(*store.Store)
 		ord.Currency = stor.Currency // Set currency
 	}
