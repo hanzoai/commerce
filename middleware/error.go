@@ -20,7 +20,7 @@ type ErrorDisplayer func(c *gin.Context, message string, err error)
 // Display errors in JSON
 func ErrorJSON(c *gin.Context, stack string, err error) {
 	c.Writer.Header().Set("Content-Type", "application/json")
-	c.Abort(500)
+	c.AbortWithStatus(500)
 	jsonErr := gin.H{
 		"error": gin.H{
 			"type":    "api-error",
@@ -33,7 +33,7 @@ func ErrorJSON(c *gin.Context, stack string, err error) {
 
 func ErrorJSONDev(c *gin.Context, stack string, err error) {
 	c.Writer.Header().Set("Content-Type", "application/json")
-	c.Abort(500)
+	c.AbortWithStatus(500)
 	jsonErr := gin.H{
 		"error": gin.H{
 			"type":    "api-error",
@@ -47,14 +47,14 @@ func ErrorJSONDev(c *gin.Context, stack string, err error) {
 // Display errors in HTML
 func ErrorHTML(c *gin.Context, stack string, err error) {
 	c.Writer.Header().Set("Content-Type", "text/html; charset=utf-8")
-	c.Abort(500)
+	c.AbortWithStatus(500)
 	template.Render(c, "error/500.html")
 	log.Error(stack, c)
 }
 
 func ErrorHTMLDev(c *gin.Context, stack string, err error) {
 	c.Writer.Header().Set("Content-Type", "text/html; charset=utf-8")
-	c.Abort(500)
+	c.AbortWithStatus(500)
 	c.Writer.Write([]byte(`<html>
 	<head>
 		<title>Error: 500</title>
@@ -92,7 +92,7 @@ func errorHandler(displayError ErrorDisplayer) gin.HandlerFunc {
 
 		// When someone calls c.Fail(500)
 		if !c.Writer.Written() && c.Writer.Status() == 500 {
-			err := c.LastError()
+			err := c.Err()
 			errstr := fmt.Sprint(err)
 			displayError(c, errstr, err)
 		}
