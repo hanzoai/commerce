@@ -12,18 +12,20 @@ func Development() *Config {
 
 	config.Protocol = "/"
 
-	config.Prefixes["default"] = "/"
 	config.Prefixes["analytics"] = "/analytics/"
 	config.Prefixes["api"] = "/api/"
+	config.Prefixes["cdn"] = "/cdn/"
 	config.Prefixes["checkout"] = "/checkout/"
+	config.Prefixes["default"] = "/"
 	config.Prefixes["platform"] = "/platform/"
 	config.Prefixes["preorder"] = "/preorder/"
 	config.Prefixes["store"] = "/store/"
 
-	config.Hosts["default"] = ""
 	config.Hosts["analytics"] = ""
 	config.Hosts["api"] = ""
+	config.Hosts["cdn"] = ""
 	config.Hosts["checkout"] = ""
+	config.Hosts["default"] = ""
 	config.Hosts["platform"] = ""
 	config.Hosts["preorder"] = ""
 	config.Hosts["store"] = ""

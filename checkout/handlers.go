@@ -51,7 +51,7 @@ func checkout(c *gin.Context) {
 	form := new(CheckoutForm)
 	if err := form.Parse(c); err != nil {
 		log.Error("Failed to parse form: %v", err)
-		c.Fail(500, err)
+		c.AbortWithError(500, err)
 		return
 	}
 
@@ -60,7 +60,7 @@ func checkout(c *gin.Context) {
 	// Populate with data from DB
 	if err := form.Populate(db); err != nil {
 		log.Error("Failed to populate order with information from datastore: %v", err)
-		c.Fail(500, err)
+		c.AbortWithError(500, err)
 		return
 	}
 
@@ -90,7 +90,7 @@ func charge(c *gin.Context) {
 	form := new(ChargeForm)
 	if err := form.Parse(c); err != nil {
 		log.Error("Failed to parse form: %v", err, c)
-		c.Fail(500, err)
+		c.AbortWithError(500, err)
 		return
 	}
 
@@ -104,7 +104,7 @@ func charge(c *gin.Context) {
 	// Populate
 	// if err := form.Order.Populate(db); err != nil {
 	// 	log.Error("Failed to repopulate order information from datastore: %v", err)
-	// 	c.Fail(500, err)
+	// 	c.AbortWithError(500, err)
 	// 	return
 	// }
 
@@ -182,7 +182,7 @@ func charge(c *gin.Context) {
 	// if err := q.UpsertUser(user); err != nil {
 	// 	log.Error("Failed to save user: %v", err, c)
 	// 	if charge.Captured {
-	// 		c.Fail(500, err)
+	// 		c.AbortWithError(500, err)
 	// 	}
 	// 	return
 	// }
@@ -198,7 +198,7 @@ func charge(c *gin.Context) {
 	encodedKey := key.Encode()
 	if err != nil {
 		log.Error("Failed to save order", err, c)
-		c.Fail(500, err)
+		c.AbortWithError(500, err)
 		return
 	}
 	key, _ = db.DecodeKey(encodedKey)
@@ -225,7 +225,7 @@ func charge(c *gin.Context) {
 	// invite.Email = user.Email
 	// if _, err := db.PutKind("invite-token", invite.Id, invite); err != nil {
 	// 	log.Error("Failed to save invite-token: %v", err, c)
-	// 	c.Fail(500, err)
+	// 	c.AbortWithError(500, err)
 	// 	return
 	// }
 
@@ -238,7 +238,7 @@ func charge(c *gin.Context) {
 	// contribution.Perk = models.Perks["WINTER2014PROMO"]
 	// if _, err := db.PutKind("contribution", contribution.Id, contribution); err != nil {
 	// 	log.Error("Failed to save contribution: %v", err, c)
-	// 	c.Fail(500, err)
+	// 	c.AbortWithError(500, err)
 	// 	return
 	// }
 
