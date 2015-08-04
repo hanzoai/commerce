@@ -10,12 +10,6 @@ indexes:
 - kind: event
   ancestor: no
   properties:
-  - name: CalculatedTimestamp
-    direction: desc
-
-- kind: event
-  ancestor: no
-  properties:
   - name: Type
   - name: CalculatedTimestamp
     direction: desc
