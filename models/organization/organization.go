@@ -1,8 +1,6 @@
 package organization
 
 import (
-	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -15,15 +13,12 @@ import (
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/user"
 	"crowdstart.com/thirdparty/stripe/connect"
-	"crowdstart.com/util/fs"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/permission"
 	"crowdstart.com/util/val"
 
 	. "crowdstart.com/models"
 )
-
-var jsTemplate = ""
 
 type Analytics struct {
 	Facebook struct {
@@ -267,15 +262,6 @@ func (o Organization) IsTestEmail(email string) bool {
 	}
 
 	return false
-}
-
-func (o *Organization) AnalyticsJs() string {
-	if jsTemplate == "" {
-		var cwd, _ = os.Getwd()
-		jsTemplate = string(fs.ReadFile(cwd + "/resources/analytics.js"))
-	}
-
-	return fmt.Sprintf(jsTemplate, o.Analytics.JSON())
 }
 
 func Query(db *datastore.Datastore) *mixin.Query {
