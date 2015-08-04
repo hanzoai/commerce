@@ -34,14 +34,14 @@ func BasicAuth() gin.HandlerFunc {
 		usr := user.New(db)
 		if err := usr.GetByEmail(email); err != nil {
 			c.Request.Header.Set("WWW-Authenticate", realm)
-			c.Abort(401)
+			c.AbortWithStatus(401)
 			log.Warn("Unable to get user with email '%v': %v", email, err, c)
 		}
 
 		// Validate password
 		if !usr.ComparePassword(password) {
 			c.Request.Header.Set("WWW-Authenticate", realm)
-			c.Abort(401)
+			c.AbortWithStatus(401)
 			log.Warn("Invalid password for user: %v", usr, c)
 		}
 
