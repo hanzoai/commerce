@@ -5,6 +5,7 @@ github.com/dgrijalva/jwt-go master
 github.com/dustin/go-humanize master
 github.com/flosch/pongo2 master
 github.com/getsentry/raven-go master
+github.com/gin-gonic/gin master
 github.com/go-errors/errors master
 github.com/gorilla/schema master
 github.com/gorilla/sessions master
@@ -22,7 +23,6 @@ github.com/stripe/stripe-go v6.4.2
 github.com/vanng822/go-premailer/premailer master
 github.com/vincent-petithory/countries master
 github.com/zeekay/aetest master
-github.com/gin-gonic/gin app_engine
 github.com/zeekay/go-logging master
 golang.org/x/crypto/bcrypt master
 golang.org/x/oauth2/google master
