@@ -9,7 +9,6 @@ import (
 	"appengine"
 
 	"github.com/gin-gonic/gin"
-	"github.com/julienschmidt/httprouter"
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/organization"
@@ -88,7 +87,7 @@ func NewRequest(r *http.Request) *Request {
 // gin.Context replacement that can be almost completely be serialized to/from a gin.Context
 type Context struct {
 	Keys    map[string]interface{}
-	Params  httprouter.Params
+	Params  gin.Params
 	Request *Request
 }
 
@@ -113,11 +112,7 @@ func (c Context) Context(aectx *appengine.Context) (ctx *gin.Context, err error)
 	ctx = new(gin.Context)
 	ctx.Errors = ctx.Errors[0:0]
 	ctx.Keys = c.Keys
-	ctx.Params = make(gin.Params, len(c.Params))
-
-	for i, param := range c.Params {
-		ctx.Params[i] = gin.Param{param.Key, param.Value}
-	}
+	ctx.Params = c.Params
 
 	ctx.Request, err = c.Request.Request()
 	if err != nil {
@@ -149,10 +144,7 @@ func NewContext(c *gin.Context) *Context {
 
 	ctx.Keys = make(map[string]interface{}, 0)
 
-	ctx.Params = make(httprouter.Params, len(c.Params))
-	for i, param := range c.Params {
-		ctx.Params[i] = httprouter.Param{param.Key, param.Value}
-	}
+	ctx.Params = c.Params
 
 	// Need to create request context, because c.Request cannot be gob-encoded
 	if c.Request != nil {
