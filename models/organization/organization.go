@@ -11,28 +11,14 @@ import (
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
+	"crowdstart.com/models/types/analytics"
 	"crowdstart.com/models/user"
 	"crowdstart.com/thirdparty/stripe/connect"
-	"crowdstart.com/util/json"
 	"crowdstart.com/util/permission"
 	"crowdstart.com/util/val"
 
 	. "crowdstart.com/models"
 )
-
-type Analytics struct {
-	Facebook struct {
-		RemarketingId string `json:"remarketingId"`
-	} `json:"facebook"`
-
-	Google struct {
-		TrackingId string `json:"trackingId"`
-	} `json:"google"`
-}
-
-func (a Analytics) JSON() []byte {
-	return json.EncodeBytes(a)
-}
 
 type Email struct {
 	Enabled   bool   `json:"enabled"`
@@ -85,7 +71,7 @@ type Organization struct {
 	TaxId   string `json:"-"`
 
 	// Analytics config
-	Analytics Analytics `json:"analytics"`
+	Analytics analytics.Analytics `json:"analytics"`
 
 	Email struct {
 		// Default email configuration
