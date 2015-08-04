@@ -22,12 +22,13 @@ func (a Analytics) JSON() []byte {
 
 type Integration struct {
 	// Common to all integrations
-	Id       string `json:"id,omitempty"`
-	Event    string `json:"event,omitempty"`
+	Name     string `json:"-"`
 	Type     string `json:"type"`
 	Disabled bool   `json:"-"`
+	Id       string `json:"id,omitempty"`
+	Event    string `json:"event,omitempty"`
 
-	// Embed every integration for easy customization
+	// Available integrations
 	FacebookAudiences
 	FacebookConversions
 	GoogleAnalytics
@@ -39,6 +40,8 @@ type FacebookAudiences struct {
 }
 
 type FacebookConversions struct {
+	Value    string `json:"value,omitempty"`
+	Currency string `json:"currency,omitempty"`
 }
 
 type GoogleAnalytics struct {
