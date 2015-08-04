@@ -60,7 +60,7 @@ func StripeCallback(c *gin.Context) {
 
 	// Save to datastore
 	if err := org.Put(); err != nil {
-		c.Fail(500, err)
+		c.AbortWithError(500, err)
 		return
 	}
 
