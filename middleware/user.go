@@ -16,7 +16,7 @@ func AcquireUser(moduleName string) gin.HandlerFunc {
 			log.Warn("Unable to acquire user.")
 			session.Clear(c)
 			c.Redirect(302, config.UrlFor(moduleName, "/login"))
-			c.Abort(302)
+			c.AbortWithStatus(302)
 		} else {
 			c.Set("user", u)
 		}

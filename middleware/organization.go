@@ -40,7 +40,7 @@ func AcquireOrganization(moduleName string) gin.HandlerFunc {
 			log.Warn("Unable to acquire organization.")
 			session.Clear(c)
 			c.Redirect(302, config.UrlFor(moduleName, "/login"))
-			c.Abort(302)
+			c.AbortWithStatus(302)
 		} else {
 			log.Debug("Organization acquired")
 			c.Set("user", u)
