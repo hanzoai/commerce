@@ -183,5 +183,3 @@ On public Crowdstart
 Public AND organization campaigns
 - When a campaign has an org as a creator, all user,orders implicitly get added to that org namespace
 ```
-
-

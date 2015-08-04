@@ -113,6 +113,7 @@ func (c Context) Context(aectx *appengine.Context) (ctx *gin.Context, err error)
 	ctx.Errors = ctx.Errors[0:0]
 	ctx.Keys = c.Keys
 	ctx.Params = c.Params
+
 	ctx.Request, err = c.Request.Request()
 	if err != nil {
 		log.Warn("Failed to create Request from Request: %v", err)
@@ -127,7 +128,7 @@ func (c Context) Context(aectx *appengine.Context) (ctx *gin.Context, err error)
 	ctx.Set("appengine", *aectx)
 
 	// Fetch organization if organization-id is set
-	if value, ok := ctx.Get("organization-id"); ok {
+	if value, ok := ctx.Get("organization-id"); !ok {
 		if id, ok := value.(string); ok {
 			db := datastore.New(*aectx)
 			org := organization.New(db)
@@ -142,6 +143,7 @@ func NewContext(c *gin.Context) *Context {
 	ctx := new(Context)
 
 	ctx.Keys = make(map[string]interface{}, 0)
+
 	ctx.Params = c.Params
 
 	// Need to create request context, because c.Request cannot be gob-encoded
