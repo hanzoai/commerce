@@ -15,7 +15,7 @@ import (
 
 var (
 	jsTemplate   = ""
-	requireRegex = regexp.MustCompile(`require\(['"]./index['"]\)|\w\(['"]./index['"]\)`)
+	requireRegex = regexp.MustCompile(`require\(['"]./index['"]\)|,\w\(['"]./index['"]\)`)
 )
 
 func Render(org *organization.Organization) string {
@@ -23,7 +23,7 @@ func Render(org *organization.Organization) string {
 		var cwd, _ = os.Getwd()
 		bundleJs := string(fs.ReadFile(cwd + "/resources/analytics/bundle.js"))
 		jsTemplate = string(fs.ReadFile(cwd + "/resources/analytics/analytics.js"))
-		jsTemplate = requireRegex.ReplaceAllString(jsTemplate, bundleJs)
+		jsTemplate = requireRegex.ReplaceAllString(jsTemplate, ";"+bundleJs)
 		jsTemplate = strings.Replace(jsTemplate, "analytics.initialize({})", "analytics.initialize(%s)", 1)
 	}
 
