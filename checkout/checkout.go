@@ -12,12 +12,12 @@ func init() {
 	router.Use(middleware.CheckLogin())
 
 	// Checkout
-	router.GET("/", index)
-	router.POST("/", checkout)
+	// router.GET("/", index)
+	// router.POST("/", checkout)
 
-	// Charge
-	router.POST("/charge", charge)
+	// // Charge
+	// router.POST("/charge", charge)
 
-	// Complete
-	router.GET("/complete", complete)
+	// // Complete
+	// router.GET("/complete", complete)
 }

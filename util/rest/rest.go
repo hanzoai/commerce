@@ -136,13 +136,13 @@ func (r Rest) Route(router router.Router, mw ...gin.HandlerFunc) {
 	// Add default routes
 	for _, route := range r.defaultRoutes() {
 		// log.Debug("%-7s %v", route.method, prefix+route.url)
-		group.Handle(route.method, route.url, append(mw, route.handlers...))
+		group.Handle(route.method, route.url, append(mw, route.handlers...)...)
 	}
 
 	for _, routes := range r.routes {
 		for _, route := range routes {
 			// log.Debug("%-7s %v", route.method, prefix+route.url)
-			group.Handle(route.method, route.url, route.handlers)
+			group.Handle(route.method, route.url, route.handlers...)
 		}
 	}
 }

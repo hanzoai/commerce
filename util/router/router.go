@@ -49,5 +49,5 @@ func Ok(c *gin.Context) {
 }
 
 func Empty(c *gin.Context) {
-	c.Abort(200)
+	c.AbortWithStatus(200)
 }
