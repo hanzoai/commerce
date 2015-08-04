@@ -102,7 +102,7 @@ func ShipNotify(c *gin.Context) {
 	orderNumber := query.Get("order_number")
 	id, err := strconv.Atoi(orderNumber)
 	if err != nil {
-		log.Panic("Unable to convert order_number to int: %v", err, c)
+		log.Panic("Unable to convert order_number '%s' to int: %v", orderNumber, err, c)
 	}
 
 	org := middleware.GetOrganization(c)
@@ -112,7 +112,8 @@ func ShipNotify(c *gin.Context) {
 	ord := order.New(db)
 	key := aeds.NewKey(ctx, ord.Kind(), "", int64(id), nil)
 	if err := ord.Get(key); err != nil {
-		log.Panic("Unable to find order: %v", err, c)
+		log.Warn("Unable to find order '%s': %v", id, err, c)
+		return
 	}
 
 	b, err := ioutil.ReadAll(c.Request.Body)

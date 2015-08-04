@@ -11,7 +11,7 @@ import (
 	"crowdstart.com/util/log"
 )
 
-func New(moduleName string) Router {
+func New(moduleName string) *gin.RouterGroup {
 	router := gin.New()
 
 	prefix := strings.TrimSpace(config.Prefixes[moduleName])
@@ -49,5 +49,5 @@ func Ok(c *gin.Context) {
 }
 
 func Empty(c *gin.Context) {
-	c.Abort(200)
+	c.AbortWithStatus(200)
 }
