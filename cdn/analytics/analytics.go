@@ -3,6 +3,7 @@ package analytics
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -12,15 +13,17 @@ import (
 	"crowdstart.com/util/fs"
 )
 
-var jsTemplate = ""
+var (
+	jsTemplate   = ""
+	requireRegex = regexp.MustCompile(`require\(['"]./index['"]\)|\w\(['"]./index['"]\)`)
+)
 
 func Render(org *organization.Organization) string {
 	if jsTemplate == "" {
 		var cwd, _ = os.Getwd()
 		bundleJs := string(fs.ReadFile(cwd + "/resources/analytics/bundle.js"))
 		jsTemplate = string(fs.ReadFile(cwd + "/resources/analytics/analytics.js"))
-		jsTemplate = strings.Replace(jsTemplate, "require('./index')", bundleJs, 1)
-		jsTemplate = strings.Replace(jsTemplate, "e('./index')", bundleJs, 1)
+		jsTemplate = requireRegex.ReplaceAllString(jsTemplate, bundleJs)
 		jsTemplate = strings.Replace(jsTemplate, "analytics.initialize({})", "analytics.initialize(%s)", 1)
 	}
 
