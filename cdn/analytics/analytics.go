@@ -19,8 +19,8 @@ func Render(org *organization.Organization) string {
 		var cwd, _ = os.Getwd()
 		bundleJs := string(fs.ReadFile(cwd + "/resources/analytics/bundle.js"))
 		jsTemplate = string(fs.ReadFile(cwd + "/resources/analytics/analytics.js"))
-		jsTemplate = strings.Replace(jsTemplate, "require(\"./index\")", bundleJs, 1)
-		jsTemplate = strings.Replace(jsTemplate, "e(\"./index\")", bundleJs, 1)
+		jsTemplate = strings.Replace(jsTemplate, "require('./index')", bundleJs, 1)
+		jsTemplate = strings.Replace(jsTemplate, "e('./index')", bundleJs, 1)
 		jsTemplate = strings.Replace(jsTemplate, "analytics.initialize({})", "analytics.initialize(%s)", 1)
 	}
 
