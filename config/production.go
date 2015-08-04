@@ -6,18 +6,20 @@ func Production() *Config {
 
 	config.IsProduction = true
 
-	config.Prefixes["default"] = "/"
 	config.Prefixes["analytics"] = "/"
 	config.Prefixes["api"] = "/"
+	config.Prefixes["cdn"] = "/"
 	config.Prefixes["checkout"] = "/"
+	config.Prefixes["default"] = "/"
 	config.Prefixes["platform"] = "/"
 	config.Prefixes["preorder"] = "/"
 	config.Prefixes["store"] = "/"
 
-	config.Hosts["default"] = "static.crowdstart.com"
 	config.Hosts["analytics"] = "analytics.crowdstart.com"
 	config.Hosts["api"] = "api.crowdstart.com"
+	config.Hosts["cdn"] = "cdn.crowdstart.com"
 	config.Hosts["checkout"] = "secure.crowdstart.com"
+	config.Hosts["default"] = "static.crowdstart.com"
 	config.Hosts["platform"] = "www.crowdstart.com"
 	config.Hosts["preorder"] = "preorder.crowdstart.com"
 	config.Hosts["store"] = "store.crowdstart.com"
