@@ -21,6 +21,8 @@ import (
 	_ "crowdstart.com/models/migrations"
 	_ "crowdstart.com/thirdparty/mailchimp/tasks"
 	_ "crowdstart.com/thirdparty/mandrill/tasks"
+	_ "crowdstart.com/util/aggregate/tasks"
+	_ "crowdstart.com/util/analytics/tasks"
 	// _ "crowdstart.com/thirdparty/salesforce/tasks"
 	_ "crowdstart.com/thirdparty/stripe/tasks"
 )
