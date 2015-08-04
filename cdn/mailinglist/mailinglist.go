@@ -1,4 +1,4 @@
-package form
+package mailinglist
 
 import (
 	"fmt"

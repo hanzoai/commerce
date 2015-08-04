@@ -13,6 +13,9 @@ dispatch:
   - url: "*/admin/*"
     module: platform
 
+  - url: "*/cdn/*"
+    module: cdn
+
   - url: "*/platform/*"
     module: platform
 
