@@ -46,7 +46,7 @@ func Handler(ctx ae.Context, method, path string, handler gin.HandlerFunc) *Clie
 		client.Context = c
 	}
 
-	client.Router.Handle(method, path, []gin.HandlerFunc{wrapper})
+	client.Router.Handle(method, path, wrapper)
 
 	return client
 }

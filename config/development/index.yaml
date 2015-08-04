@@ -6,3 +6,46 @@ indexes:
   - name: Email
   - name: CreatedAt
     direction: desc
+
+- kind: event
+  ancestor: no
+  properties:
+  - name: Type
+  - name: CalculatedTimestamp
+    direction: desc
+
+- kind: event
+  ancestor: no
+  properties:
+  - name: UserId
+  - name: CalculatedTimestamp
+    direction: desc
+
+- kind: event
+  ancestor: no
+  properties:
+  - name: SessionId
+  - name: CalculatedTimestamp
+    direction: desc
+
+- kind: event
+  ancestor: no
+  properties:
+  - name: PageId
+  - name: CalculatedTimestamp
+    direction: desc
+
+- kind: event
+  ancestor: no
+  properties:
+  - name: Event
+  - name: CalculatedTimestamp
+    direction: desc
+
+- kind: event
+  ancestor: no
+  properties:
+  - name: SessionId
+  - name: Name
+  - name: CalculatedTimestamp
+    direction: desc

@@ -8,6 +8,8 @@ import (
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/user"
 	"crowdstart.com/util/log"
+
+	. "crowdstart.com/models/types/analytics"
 )
 
 var Organization = New("organization", func(c *gin.Context) *organization.Organization {
@@ -46,6 +48,29 @@ var Organization = New("organization", func(c *gin.Context) *organization.Organi
 	// Add default access tokens
 	org.AddDefaultTokens()
 	log.Debug("Adding tokens: %v", org.Tokens)
+
+	// Add default analytics config
+	integrations := []Integration{
+		Integration{
+			Type: "facebook-audiences",
+			Id:   "920910517982389",
+		},
+		Integration{
+			Type:  "facebook-conversions",
+			Id:    "6025763568614",
+			Event: "Sign-up",
+		},
+		Integration{
+			Type: "google-analytics",
+			Id:   "UA-65099214-1",
+		},
+		Integration{
+			Type:  "google-adwords",
+			Id:    "945491661",
+			Event: "Sign-up",
+		},
+	}
+	org.Analytics = Analytics{integrations}
 
 	// Save org into default namespace
 	org.MustPut()
