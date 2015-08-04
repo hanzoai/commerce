@@ -14,7 +14,7 @@
     "card": "^1.0.0",
     "coffee-script": "^1.9.2",
     "crowdcontrol": "^1.0.41",
-    "crowdstart-analytics": "0.0.3",
+    "crowdstart-analytics": "0.0.8",
     "crowdstart.js": "0.0.5",
     "csso-stylus": "0.0.3",
     "cuckoo-js": "^1.0.3",
@@ -34,8 +34,5 @@
     "uglifyjs": "^2.4.10",
     "underscore": "^1.8.3",
     "underscore-deep-extend": "0.0.5"
-  },
-  "devDependencies": {
-    "crowdstart-analytics": "0.0.5"
   }
 }
