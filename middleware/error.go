@@ -92,8 +92,8 @@ func errorHandler(displayError ErrorDisplayer) gin.HandlerFunc {
 
 		// When someone calls c.Fail(500)
 		if !c.Writer.Written() && c.Writer.Status() == 500 {
-			err := c.Err()
-			errstr := fmt.Sprint(err)
+			err := c.Errors.Last()
+			errstr := err.Error()
 			displayError(c, errstr, err)
 		}
 	}
