@@ -11,7 +11,7 @@ import (
 	"crowdstart.com/util/log"
 )
 
-func New(moduleName string) Router {
+func New(moduleName string) *gin.RouterGroup {
 	router := gin.New()
 
 	prefix := strings.TrimSpace(config.Prefixes[moduleName])
