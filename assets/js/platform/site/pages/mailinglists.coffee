@@ -6,7 +6,7 @@ class MailingLists extends Page
   name: 'Mailing Lists'
   html: require '../../templates/backend/site/pages/mailinglists.html'
 
-  collection: 'dashboard'
+  collection: 'mailinglists'
 
 MailingLists.register()
 

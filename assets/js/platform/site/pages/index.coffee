@@ -10,6 +10,7 @@ module.exports =
   Coupons:      require './coupons'
   Store:        require './store'
   Stores:       require './stores'
+  MailingList:  require './mailinglist'
   MailingLists: require './mailinglists'
   Profile:      require './profile'
   Api:          require './api'
