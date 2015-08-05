@@ -3,7 +3,8 @@
     <span>{ opts.label }</span>
   </label>
   <div class="section { opts.controlclasses }">
-    <select id="{ model.name }" name="{ model.name }" onchange="{ change }" onblur="{ change }" value="{ model.value }" class="form-control" style="width:100%">
+    <select id="{ model.name }" name="{ model.name }" onchange="{ change }" onblur="{ change }" value="{ model.value }" class="form-control" data-placeholder="{ model.placeholder }" style="width:100%">
+      <option if="{ model.placeholder }"></option>
       <option each="{ value, name in options() }" value="{value}" __selected="{ this.parent.model.value == value }">{name}</option>
     </select>
     <div if="{hasError()}" class="error-container help-block animation-pullUp">{ error }</div>
