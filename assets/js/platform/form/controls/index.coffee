@@ -213,6 +213,17 @@ class BasicSelectView extends BasicInputView
 
 BasicSelectView.register()
 
+class MailinglistThankyouSelectView extends BasicSelectView
+  tag: 'mailinglist-thankyou-select'
+  options: ()->
+    return {
+      html: 'Show HTML Template where form was.'
+      redirect: 'Redirect to URL'
+      disable: 'Use the default form action.'
+    }
+
+MailinglistThankyouSelectView.register()
+
 class CountrySelectView extends BasicSelectView
   tag: 'country-select'
   options: ()->
@@ -284,6 +295,10 @@ helpers.registerTag (inputCfg)->
 helpers.registerTag (inputCfg)->
   return inputCfg.hints['product-type-select']
 , 'product-type-select'
+
+helpers.registerTag (inputCfg)->
+  return inputCfg.hints['mailinglist-thankyou-select']
+, 'mailinglist-thankyou-select'
 
 helpers.registerTag (inputCfg)->
   return inputCfg.hints['currency-type-select']
@@ -371,6 +386,12 @@ helpers.registerValidator ((inputCfg) ->return inputCfg.hints['unique'])
     return value
   , ()->
     return value
+  return value
+
+helpers.registerValidator ((inputCfg) -> return inputCfg.hints['copy'])
+, (model, name)->
+  value = model[name]
+  model[@hints.copy] =  value
   return value
 
 # module.exports =
