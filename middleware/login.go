@@ -42,8 +42,8 @@ func LogoutRequired(moduleName string) gin.HandlerFunc {
 			return
 		}
 
-		log.Warn("Already logged in, redirecting to profile")
-		c.Redirect(302, config.UrlFor(moduleName, "/profile"))
+		log.Warn("Already logged in, redirecting to dashboard")
+		c.Redirect(302, config.UrlFor(moduleName, "/dashboard"))
 		c.AbortWithStatus(302)
 	}
 }
