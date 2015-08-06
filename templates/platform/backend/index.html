@@ -17,6 +17,9 @@
   <!-- FullCalendar Plugin CSS -->
   <link rel="stylesheet" type="text/css" href="{{ staticUrl }}/vendor/plugins/fullcalendar/fullcalendar.min.css">
 
+  <!-- Highlight.js CSS -->
+  <link rel="stylesheet" type="text/css" href="{{ staticUrl }}/vendor/plugins/highlight/styles/github.css">
+
   <!-- Theme CSS -->
   <link rel="stylesheet" type="text/css" href="{{ staticUrl }}/backend/skin/default_skin/css/theme.css">
 
@@ -176,10 +179,12 @@
   <script src="{{ staticUrl }}/backend/js/demo/demo.js"></script>
   <script src="{{ staticUrl }}/backend/js/main.js"></script>
 
+  <!-- Highlight.js -->
+  <script src="{{ staticUrl }}/vendor/plugins/highlight/highlight.pack.js"></script>
+
   <!-- Widget Javascript -->
   <script src="{{ staticUrl }}/backend/js/demo/widgets.js"></script>
   <script src="{{ staticUrl }}/js/jquery.jqpagination.min.js"></script>
-
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-timeago/1.4.1/jquery.timeago.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.0/js/select2.min.js"></script>
 
@@ -206,6 +211,11 @@
       }
     })
   })
+
+  new crowdcontrol.data.Api(
+    '{{ urlFor("platform") }}',
+    '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}'
+  ).register('platform')
 
   new crowdcontrol.data.Api(
     '{{ urlFor("api") }}',
