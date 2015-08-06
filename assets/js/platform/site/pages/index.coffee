@@ -12,6 +12,7 @@ module.exports =
   Stores:       require './stores'
   MailingList:  require './mailinglist'
   MailingLists: require './mailinglists'
+
   Profile:      require './profile'
   Api:          require './api'
   Organization: require './organization'

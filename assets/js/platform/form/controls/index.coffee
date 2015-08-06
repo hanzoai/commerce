@@ -42,6 +42,12 @@ class BasicInputView extends InputView
 
 BasicInputView.register()
 
+class PasswordInputView extends BasicInputView
+  tag: 'basic-password'
+  html: require './password.html'
+
+PasswordInputView.register()
+
 class NumericInputView extends BasicInputView
   tag: 'numeric-input'
   events:
@@ -277,6 +283,10 @@ helpers.registerTag (inputCfg)->
 , 'basic-textarea'
 
 helpers.registerTag (inputCfg)->
+  return inputCfg.hints['password']
+, 'basic-password'
+
+helpers.registerTag (inputCfg)->
   return inputCfg.hints['disabled']
 , 'disabled-input'
 
@@ -344,6 +354,21 @@ helpers.registerValidator ((inputCfg) -> return inputCfg.hints['required'])
   throw new Error "Required" if !value? || value == ''
 
   return value
+
+helpers.registerValidator ((inputCfg) -> return inputCfg.hints['min'])
+, (model, name)->
+  value = model[name]
+  if value? & value.length >= parseInt @hints['min'], 10
+    return value
+  throw new Error "Minimum Length is " + @hints['min']
+
+helpers.registerValidator ((inputCfg) -> return inputCfg.hints['password-match'])
+, (model, name)->
+  value = model[name]
+  value2 = model[@hints['password-match']]
+  if value == value2
+    return value
+  throw new Error "Your passwords must match"
 
 helpers.registerValidator ((inputCfg) -> return inputCfg.hints['email'])
 , (model, name)->

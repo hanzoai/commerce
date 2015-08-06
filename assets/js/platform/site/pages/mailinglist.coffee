@@ -8,6 +8,17 @@ class MailingList extends Page
 
   collection: 'mailinglist'
 
+  js: ()->
+    super
+
+    @on 'update', ()->
+      requestAnimationFrame ()->
+        try
+          $('pre code').each (i, block)->
+            hljs.highlightBlock block
+        catch e
+          e
+
 MailingList.register()
 
 module.exports = MailingList
