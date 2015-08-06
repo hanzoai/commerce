@@ -1,5 +1,6 @@
 _ = require 'underscore'
 crowdcontrol = require 'crowdcontrol'
+Events = crowdcontrol.Events
 
 util = require '../../util'
 table = require '../../table'
@@ -16,7 +17,7 @@ class ListingWidget extends View
   tag: 'listing-widget'
   html: require '../../templates/backend/widget/listing/template.html'
   events:
-    'form-data-load': (model)->
+    "#{Events.Form.Prefill}": (model)->
       @model = model
       @model.listing = {} if !@model.listing?
       @reset()

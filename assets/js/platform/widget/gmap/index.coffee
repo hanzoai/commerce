@@ -1,6 +1,7 @@
 riot = require 'riot'
 
 crowdcontrol = require 'crowdcontrol'
+Events = crowdcontrol.Events
 View = crowdcontrol.view.View
 
 class Gmap extends View
@@ -8,7 +9,7 @@ class Gmap extends View
   addressField: 'address'
 
   events:
-    'input-set': (name)->
+    "#{Events.Input.Set}": (name)->
       if name == (@addressField + '.line1')      ||
       name == (@addressField + '.line2')         ||
       name == (@addressField + '.city')          ||
@@ -18,7 +19,7 @@ class Gmap extends View
 
         @refresh()
 
-    'form-data-load': (model)->
+    "#{Events.Form.Prefill}": (model)->
       @model = model
       @refresh()
 
