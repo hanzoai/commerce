@@ -1,6 +1,7 @@
 _ = require 'underscore'
 
 crowdcontrol = require 'crowdcontrol'
+Events = crowdcontrol.Events
 
 input = require '../input'
 BasicForm = require '../basic'
@@ -32,7 +33,7 @@ class AdminForm extends FormView
 
         @initFormGroup()
 
-        @obs.trigger BasicForm.Events.Load, @model
+        @obs.trigger Events.Form.Prefill, @model
         riot.update()
       ).catch (e)=>
         console.log(e.stack)
