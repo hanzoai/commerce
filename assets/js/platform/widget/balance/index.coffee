@@ -1,6 +1,7 @@
 _ = require 'underscore'
 moment = require 'moment'
 crowdcontrol = require 'crowdcontrol'
+Events = crowdcontrol.Events
 
 util = require '../../util'
 table = require '../../table'
@@ -94,14 +95,14 @@ class BalanceWidget extends View
       @currencyOptions[row.currency] = row.currency
 
     @model = newModel
-    @obs.trigger BasicTableView.Events.NewData, newModel[currency]
+    @obs.trigger Events.Table.NewData, newModel[currency]
     @update()
 
   change: (event)->
     currency = $(event.target).val()
     if @currency != currency
       @currency = currency
-      @obs.trigger BasicTableView.Events.NewData, @model[@currency]
+      @obs.trigger Events.Table.NewData, @model[@currency]
       @update()
 
   balance: ()->

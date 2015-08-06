@@ -1,4 +1,5 @@
 crowdcontrol = require 'crowdcontrol'
+Events = crowdcontrol.Events
 
 BasicFormView = require '../../form/basic'
 
@@ -21,7 +22,7 @@ class ItemList extends BasicList
   ]
 
   events:
-    "#{ BasicFormView.Events.Load }": (orderModel) ->
+    "#{ Events.Form.Prefill }": (orderModel) ->
       @model = orderModel.items
       for item in @model
         item.currency = orderModel.currency

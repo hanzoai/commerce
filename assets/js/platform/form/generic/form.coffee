@@ -1,6 +1,7 @@
 _ = require 'underscore'
 
 crowdcontrol = require 'crowdcontrol'
+Events = crowdcontrol.Events
 
 input = require '../input'
 BasicFormView = require '../basic'
@@ -34,7 +35,7 @@ class GenericForm extends BasicFormView
     @initFormGroup.apply @
     @_reset(event)
 
-    @obs.trigger BasicFormView.Events.Load, @model
+    @obs.trigger Events.Form.Prefill, @model
     riot.update()
 
   _reset: (event)->
