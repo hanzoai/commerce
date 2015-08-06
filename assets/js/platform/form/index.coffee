@@ -2,5 +2,6 @@
 require './controls'
 
 module.exports =
-  generic: require './generic'
-  randomPassword: require './random-password'
+  admin:            require './admin'
+  generic:          require './generic'
+  randomPassword:   require './random-password'
