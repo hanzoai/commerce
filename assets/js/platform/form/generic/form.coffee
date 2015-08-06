@@ -5,7 +5,7 @@ crowdcontrol = require 'crowdcontrol'
 input = require '../input'
 BasicFormView = require '../basic'
 
-class Form extends BasicFormView
+class GenericForm extends BasicFormView
   tag: 'form'
   redirectPath: ''
   path: ''
@@ -22,7 +22,7 @@ class Form extends BasicFormView
     if @id?
       @path += '/' + opts.id
     else
-      @resetModel = JSON.parse JSON.stringify(@model)
+      @resetModel = JSON.parse JSON.stringify @model
 
     super
 
@@ -30,7 +30,7 @@ class Form extends BasicFormView
     if event?
       event.preventDefault()
 
-    @model = JSON.parse JSON.stringify(@resetModel)
+    @model = JSON.parse JSON.stringify @resetModel
     @initFormGroup.apply @
     @_reset(event)
 
@@ -43,11 +43,11 @@ class Form extends BasicFormView
     p = super
     p.then ()=>
       if @id?
-        @resetModel = JSON.parse JSON.stringify(@model)
+        @resetModel = JSON.parse JSON.stringify @model
       else
         @reset()
 
   loadData: (model)->
-    @resetModel = JSON.parse JSON.stringify(model)
+    @resetModel = JSON.parse JSON.stringify model
 
-module.exports = Form
+module.exports = GenericForm

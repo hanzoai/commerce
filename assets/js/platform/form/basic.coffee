@@ -19,6 +19,7 @@ class BasicFormView extends FormView
   path: ''
   html: require './template.html'
   id: null
+  error: null
 
   events:
     "#{FormView.Events.SubmitFailed}": ()->
@@ -38,7 +39,7 @@ class BasicFormView extends FormView
   js: (opts)->
     super
 
-    @api = api = Api.get('crowdstart')
+    @api = api = Api.get 'crowdstart'
 
     if @id?
       @loading = true
@@ -47,8 +48,8 @@ class BasicFormView extends FormView
       api.get(@path).then((res)=>
         m.trigger 'stop-spin', @path + '-form-load'
 
-        if res.status != 200
-          throw new Error 'Form failed to load'
+        if res.status != 200 && res.status != 204
+          throw new Error 'Form failed to load: '
 
         @model = res.responseText
         @loadData @model
@@ -87,7 +88,12 @@ class BasicFormView extends FormView
     $button.prop 'disabled', true
     @fullyValidated = false
 
-    return @api[method](@path, @model).then ()=>
+    return @api[method](@path, @model).then((res)=>
+      if res.status != 200 && res.status != 204
+        throw new Error res.responseText.error.message
+
+      @error = undefined
+
       m.trigger 'stop-spin', @path + '-form-save'
       $button.text 'Saved'
 
@@ -97,7 +103,9 @@ class BasicFormView extends FormView
       , 1000
       @obs.trigger SuccessEvent
       @update()
-    , ()=>
+    ).catch (e)=>
+      @error = e
+
       m.trigger 'stop-spin', @path + '-form-save'
       $button.text 'An Error Has Occured'
 
