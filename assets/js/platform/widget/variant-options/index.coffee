@@ -1,6 +1,5 @@
 crowdcontrol = require 'crowdcontrol'
-
-BasicFormView = require '../../form/basic'
+Events = crowdcontrol.Events
 
 View = crowdcontrol.view.View
 
@@ -8,7 +7,7 @@ class VariantOptionsEditor extends View
   tag: 'variant-options'
   html: require './template.html'
   events:
-    "#{BasicFormView.Events.Load}": (model)->
+    "#{Events.Form.Load}": (model)->
       @formModel = model
 
       @model = model.options

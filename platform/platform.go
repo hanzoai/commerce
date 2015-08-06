@@ -58,7 +58,6 @@ func init() {
 	// Admin dashboard
 	dash := router.Group("")
 	dash.Use(loginRequired, acquireUser, acquireOrganization)
-	dash.GET("/dash", admin.Dash)
 	dash.GET("/dashboard", admin.Dashboard)
 
 	dash.GET("/profile", user.Profile)
@@ -67,24 +66,7 @@ func init() {
 	dash.GET("/keys", admin.Keys)
 	dash.POST("/keys", admin.NewKeys)
 
-	dash.GET("/users", admin.Users)
-	dash.GET("/user/:id", admin.User)
-
-	dash.GET("/orders", admin.Orders)
-	dash.GET("/order/:id", admin.Order)
 	dash.GET("/sendorderconfirmation/:id", admin.SendOrderConfirmation)
-
-	dash.GET("/mailinglists", admin.MailingLists)
-	dash.GET("/mailinglist/:id", admin.MailingList)
-
-	dash.GET("/products", admin.Products)
-	dash.GET("/product/:id", admin.Product)
-
-	dash.GET("/coupons", admin.Coupons)
-	dash.GET("/coupon/:id", admin.Coupon)
-
-	dash.GET("/stores", admin.Stores)
-	dash.GET("/store/:id", admin.Store)
 
 	dash.GET("/organization", admin.Organization)
 

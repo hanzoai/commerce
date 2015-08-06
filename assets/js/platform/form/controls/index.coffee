@@ -1,4 +1,6 @@
 crowdcontrol = require 'crowdcontrol'
+Events = crowdcontrol.Events
+
 _ = require 'underscore'
 riot = require 'riot'
 
@@ -51,7 +53,7 @@ PasswordInputView.register()
 class NumericInputView extends BasicInputView
   tag: 'numeric-input'
   events:
-    "#{InputView.Events.Set}": (name, value) ->
+    "#{Events.Input.Set}": (name, value) ->
       if name == @model.name
         @clearError()
         # in case the number was corrupted, reset to 0
@@ -76,7 +78,7 @@ class Switch extends BasicInputView
   change: (event) ->
     value = event.target.checked
     if value != @model.value
-      @obs.trigger InputView.Events.Change, @model.name, value
+      @obs.trigger Events.Input.Change, @model.name, value
       @model.value = value
       @update()
 
@@ -92,7 +94,7 @@ class MoneyInputView extends BasicInputView
   tag: 'money-input'
 
   events:
-    "#{InputView.Events.Set}": (name, value) ->
+    "#{Events.Input.Set}": (name, value) ->
       if name == @model.name
         @clearError()
         # in case the number was corrupted, reset to 0
@@ -104,14 +106,14 @@ class MoneyInputView extends BasicInputView
   change: (event) ->
     value = @getValue(event.target)
     @currency (code)=>
-      @obs.trigger InputView.Events.Change, @model.name, util.currency.renderJSONCurrencyFromUI(code, value)
+      @obs.trigger Events.Input.Change, @model.name, util.currency.renderJSONCurrencyFromUI(code, value)
       @model.value = value
       @update
 
   # get the currency set on the model (all models with currencies have both currency and amount field
   currency: (fn)->
     # convoluted return scheme
-    @obs.trigger(InputView.Events.Get, 'currency').one InputView.Events.Result, (result)->
+    @obs.trigger(Events.Input.Get, 'currency').one Events.Input.Result, (result)->
       fn(result)
 
   js:(opts)->
@@ -147,7 +149,7 @@ class BasicSelectView extends BasicInputView
   lastValueSet: null
 
   events:
-    "#{InputView.Events.Set}": (name, value) ->
+    "#{Events.Input.Set}": (name, value) ->
       if name == @model.name && value?
         @clearError()
         @model.value = value
@@ -159,7 +161,7 @@ class BasicSelectView extends BasicInputView
   change: (event) ->
     value = $(event.target).val()
     if value != @model.value
-      @obs.trigger InputView.Events.Change, @model.name, value
+      @obs.trigger Events.Input.Change, @model.name, value
       @model.value = value
       @changed = true
       @update()

@@ -212,14 +212,21 @@
     })
   })
 
+  window.Keys = {
+    'live-secret-key':      '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}',
+    'live-published-key':   '{{ ctx.organization.MustGetTokenByName("live-published-key") }}',
+    'test-secret-key':      '{{ ctx.organization.MustGetTokenByName("test-secret-key") }}',
+    'test-published-key':   '{{ ctx.organization.MustGetTokenByName("test-published-key") }}',
+  }
+
   new crowdcontrol.data.Api(
     '{{ urlFor("platform") }}',
-    '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}'
+    window.Keys['live-secret-key']
   ).register('platform')
 
   new crowdcontrol.data.Api(
     '{{ urlFor("api") }}',
-    '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}'
+    window.Keys['live-secret-key']
   ).register('crowdstart')
 
   riot.mount('*')

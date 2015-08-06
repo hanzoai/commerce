@@ -1,28 +1,29 @@
 riot = require 'riot'
 
 crowdcontrol = require 'crowdcontrol'
+Events = crowdcontrol.Events
 
 FormView = crowdcontrol.view.form.FormView
 Api = crowdcontrol.data.Api
 Source = crowdcontrol.data.Source
 m = crowdcontrol.utils.mediator
 
-SuccessEvent = 'form-submit-success'
-LoadEvent = 'form-data-load'
+Events.Form.Prefill = 'form-data-load'
+Events.Form.ResponseSuccess = 'form-response-success'
+Events.Form.ResponseFailed = 'form-response-failed'
 
 class BasicFormView extends FormView
-  @Events:
-    Load: LoadEvent
-    Success: SuccessEvent
   tag: 'basic-form'
   redirectPath: ''
   path: ''
   html: require './template.html'
   id: null
   error: null
+  processButtonText: 'Processing'
+  successButtonText: 'Saved'
 
   events:
-    "#{FormView.Events.SubmitFailed}": ()->
+    "#{Events.Form.SubmitFailed}": ()->
       requestAnimationFrame ()->
         $container = $(".error-container")
         if $container[0]
@@ -56,7 +57,7 @@ class BasicFormView extends FormView
 
         @initFormGroup()
 
-        @obs.trigger LoadEvent, @model
+        @obs.trigger Events.Form.Prefill, @model
         riot.update()
       ).catch (e)=>
         console.log(e.stack)
@@ -65,7 +66,7 @@ class BasicFormView extends FormView
       # the LoadEvent is meant to be triggered asynchrous of the object bootstrapping
       # otherwise, it will fire before riot.mount finishes rendering this tag's children
       requestAnimationFrame ()=>
-        @obs.trigger LoadEvent, @model
+        @obs.trigger Events.Form.Prefill, @model
 
   initFormGroup: ()->
     if !@id? && @inputs?
@@ -84,7 +85,7 @@ class BasicFormView extends FormView
 
     $button = $(event.target).find('input[type=submit], button[type=submit]')
     buttonText= $button.text()
-    $button.text 'Processing'
+    $button.text @processButtonText
     $button.prop 'disabled', true
     @fullyValidated = false
 
@@ -95,13 +96,13 @@ class BasicFormView extends FormView
       @error = undefined
 
       m.trigger 'stop-spin', @path + '-form-save'
-      $button.text 'Saved'
+      $button.text @successButtonText
 
       setTimeout ()->
         $button.text buttonText
         $button.prop 'disabled', false
       , 1000
-      @obs.trigger SuccessEvent
+      @obs.trigger Events.Form.ResponseSuccess
       @update()
     ).catch (e)=>
       @error = e
@@ -113,6 +114,7 @@ class BasicFormView extends FormView
         $button.text buttonText
         $button.prop 'disabled', false
       , 1000
+      @obs.trigger Events.Form.ResponseFailed
       @update()
 
 module.exports = BasicFormView

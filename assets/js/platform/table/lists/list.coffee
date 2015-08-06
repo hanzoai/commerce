@@ -14,7 +14,7 @@ class BasicList extends BasicTableView
     if opts.path?
       @path = opts.path if opts.path
 
-      @api = api = Api.get('crowdstart')
+      @api = api = Api.get 'crowdstart'
 
       m.trigger 'start-spin', @tag + @path + '-list-load'
 

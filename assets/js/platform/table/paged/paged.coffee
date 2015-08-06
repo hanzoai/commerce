@@ -1,4 +1,5 @@
 crowdcontrol = require 'crowdcontrol'
+Events = crowdcontrol.Events
 
 table = require '../types'
 
@@ -22,7 +23,7 @@ class BasicPagedTable extends BasicTableView
 
   events:
     # finishing a form that is linked to this table will refresh it
-    'form-submit-success': ()->
+    "#{Events.Form.SubmitSuccess}": ()->
       setTimeout ()=>
         @refresh()
       , 1000
