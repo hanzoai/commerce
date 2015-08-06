@@ -1,6 +1,8 @@
 _ = require 'underscore'
 
 crowdcontrol = require 'crowdcontrol'
+Events = crowdcontrol.Events
+
 m = crowdcontrol.utils.mediator
 
 input = require '../input'
@@ -58,7 +60,7 @@ class OrderUserStaticForm extends BasicFormView
   ]
 
   events:
-    "#{BasicFormView.Events.Load}": (orderModel)->
+    "#{Events.Form.Prefill}": (orderModel)->
       @loading = true
       m.trigger 'start-spin', @path + '-form-load'
 
