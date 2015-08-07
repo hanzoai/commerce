@@ -10,9 +10,10 @@ import (
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
-	"crowdstart.com/models/types/currency"
 	"crowdstart.com/models/user"
 	"crowdstart.com/util/emails"
+	"crowdstart.com/util/json"
+	"crowdstart.com/util/json/http"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/template"
 )
@@ -22,24 +23,6 @@ func Index(c *gin.Context) {
 	url := config.UrlFor("platform", "/dashboard")
 	log.Debug("Redirecting to %s", url)
 	c.Redirect(301, url)
-}
-
-type StoreData struct {
-	StoreId    string
-	StoreName  string
-	OrderCount int
-	Sales      currency.Cents
-}
-
-type IRef struct {
-	I int
-}
-
-type ICCSRef struct {
-	I  int
-	C  currency.Cents
-	C2 currency.Type
-	S  []*StoreData
 }
 
 func Dashboard(c *gin.Context) {
@@ -123,7 +106,37 @@ func SendOrderConfirmation(c *gin.Context) {
 }
 
 func Organization(c *gin.Context) {
-	Render(c, "admin/organization.html")
+	o := middleware.GetOrganization(c)
+
+	org := new(organization.Organization)
+	org.Name = o.Name
+	org.FullName = o.FullName
+	org.Website = o.Website
+	org.EmailWhitelist = o.EmailWhitelist
+	org.GoogleAnalytics = o.GoogleAnalytics
+	org.FacebookTag = o.FacebookTag
+
+	http.Render(c, 200, org)
+}
+
+func UpdateOrganization(c *gin.Context) {
+	o := new(organization.Organization)
+	if err := json.Decode(c.Request.Body, o); err != nil {
+		http.Fail(c, 400, "Failed decode request body", err)
+		return
+	}
+
+	org := middleware.GetOrganization(c)
+
+	org.FullName = o.FullName
+	org.Website = o.Website
+	org.EmailWhitelist = o.EmailWhitelist
+	org.GoogleAnalytics = o.GoogleAnalytics
+	org.FacebookTag = o.FacebookTag
+
+	org.Put()
+
+	c.Writer.WriteHeader(204)
 }
 
 func Keys(c *gin.Context) {
