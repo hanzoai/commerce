@@ -5,8 +5,6 @@ crowdcontrol = require 'crowdcontrol'
 input = require '../input'
 Form = require './form'
 
-Api = crowdcontrol.data.Api
-
 class ProfileForm extends Form
   tag: 'profile-admin-form'
   path: 'profile'
