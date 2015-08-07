@@ -76,7 +76,7 @@ func init() {
 	dash.GET("/search", admin.Search)
 
 	// Stripe connect
-	dash.GET("/stripe/connect", admin.StripeConnect)
+	dash.GET("/stripe", admin.Stripe)
 	dash.GET("/stripe/callback", admin.StripeCallback)
 	dash.GET("/stripe/sync", admin.StripeSync)
 

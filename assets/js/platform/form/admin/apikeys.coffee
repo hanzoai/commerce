@@ -6,8 +6,6 @@ Events = crowdcontrol.Events
 input = require '../input'
 Form = require './form'
 
-Api = crowdcontrol.data.Api
-
 class ApiKeysForm extends Form
   tag: 'api-keys-admin-form'
   path: 'keys'

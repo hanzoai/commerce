@@ -1,11 +1,7 @@
 _ = require 'underscore'
 
-crowdcontrol = require 'crowdcontrol'
-
 input = require '../input'
 Form = require './form'
-
-Api = crowdcontrol.data.Api
 
 class OrganizationForm extends Form
   tag: 'organization-admin-form'
