@@ -20,6 +20,7 @@ changePage = (collection = '', id = '', action = '') ->
 
     Router.Menu.setActive(page)
     Router.Crumbs.setActive(page)
+    Router.Crumbs.setActiveId(id)
 
     proto = page.prototype
 
