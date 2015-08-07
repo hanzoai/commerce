@@ -12,6 +12,8 @@ Api = crowdcontrol.data.Api
 class AdminForm extends FormView
   tag: 'admin-form'
   path: ''
+  processButtonText: 'Saving...'
+  successButtonText: 'Saved'
 
   prefill: false
 
