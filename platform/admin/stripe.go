@@ -31,7 +31,7 @@ func StripeCallback(c *gin.Context) {
 	// Failed to get back authorization code from Stripe
 	if errStr != "" {
 		log.Error("Failed to get authorization code from Stripe during Stripe Connect: %v", errStr, c)
-		template.Render(c, "admin/stripe/connect.html", "error", errStr)
+		Render(c, "admin/stripe/connect.html", "error", errStr)
 		return
 	}
 
@@ -41,7 +41,7 @@ func StripeCallback(c *gin.Context) {
 	token, testToken, err := connect.GetTokens(ctx, code)
 	if err != nil {
 		log.Error("There was an error with Stripe Connect: %v", err, c)
-		template.Render(c, "admin/stripe/connect.html", "stripeError", err)
+		Render(c, "admin/stripe/connect.html", "stripeError", err)
 		return
 	}
 
@@ -65,5 +65,5 @@ func StripeCallback(c *gin.Context) {
 	}
 
 	// Success
-	template.Render(c, "admin/stripe/connect.html")
+	Render(c, "admin/stripe/connect.html")
 }
