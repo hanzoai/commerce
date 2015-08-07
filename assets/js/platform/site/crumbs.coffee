@@ -7,6 +7,7 @@ Router = require './router'
 View = crowdcontrol.view.View
 
 activePage = pages.Dashboard
+_id = ''
 
 class Crumbs extends View
   tag: 'crumbs'
@@ -21,6 +22,18 @@ class Crumbs extends View
       catch e
         e
         #console?.log e
+
+  setActiveId: (id)->
+    _id = id
+
+  getActiveId: ()->
+    return _id
+
+  @setActiveId: (id)->
+    _id = id
+
+  @getActiveId: ()->
+    return _id
 
   setActive: (p)->
     activePage = p

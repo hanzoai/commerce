@@ -19,7 +19,7 @@ class BasicFormView extends FormView
   html: require './template.html'
   id: null
   error: null
-  processButtonText: 'Processing'
+  processButtonText: 'Saving...'
   successButtonText: 'Saved'
 
   events:
