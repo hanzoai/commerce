@@ -7,19 +7,18 @@ import (
 	"crowdstart.com/thirdparty/stripe/connect"
 	"crowdstart.com/thirdparty/stripe/tasks"
 	"crowdstart.com/util/log"
-	"crowdstart.com/util/template"
 )
 
 func StripeSync(c *gin.Context) {
 	ctx := middleware.GetAppEngine(c)
 	org := middleware.GetOrganization(c)
 	tasks.SyncCharges.Call(ctx, org.Id())
-	template.Render(c, "admin/stripe/sync-success.html")
+	Render(c, "admin/stripe/sync-success.html")
 }
 
 // Admin Payment Connectors
 func StripeConnect(c *gin.Context) {
-	template.Render(c, "admin/stripe/connect.html")
+	Render(c, "admin/stripe/connect.html")
 }
 
 // Connect connect callback
