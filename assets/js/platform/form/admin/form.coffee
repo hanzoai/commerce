@@ -19,6 +19,7 @@ class AdminForm extends FormView
 
   html:     BasicForm.prototype.html
   events:   BasicForm.prototype.events
+  reset: ()->
   _submit:  BasicForm.prototype._submit
 
   js: (opts)->
