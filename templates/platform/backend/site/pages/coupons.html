@@ -3,6 +3,23 @@
   <coupon-form>
     <div class="panel animated fadeIn">
       <div class="panel-heading">
+        Coupons
+      </div>
+      <div class="panel-body">
+        <!-- New Coupon Form-->
+        <!-- END New Coupon Form-->
+        <!-- Coupons View Content -->
+        <coupon-paged-table obs="{obs}">
+          <div>
+            <i class="glyphicon glyphicon-tag" style="font-size:50px"></i>
+            <h2 class="text-center">No Coupons Found</h2>
+          </div>
+        </coupon-paged-table>
+        <!-- END Coupons View Content -->
+      </div>
+    </div>
+    <div class="panel animated fadeIn">
+      <div class="panel-heading">
         Add a Coupon
       </div>
       <div class="panel-body">
@@ -32,23 +49,6 @@
             <button type="submit" class="btn btn-block btn-dark">Add(+)</button>
           </div>
         </div>
-      </div>
-    </div>
-    <div class="panel animated fadeIn">
-      <div class="panel-heading">
-        Coupons
-      </div>
-      <div class="panel-body">
-        <!-- New Coupon Form-->
-        <!-- END New Coupon Form-->
-        <!-- Coupons View Content -->
-        <coupon-paged-table obs="{obs}">
-          <div>
-            <i class="glyphicon glyphicon-tag" style="font-size:50px"></i>
-            <h2 class="text-center">No Coupons Found</h2>
-          </div>
-        </coupon-paged-table>
-        <!-- END Coupons View Content -->
       </div>
     </div>
   </coupon-form>
