@@ -61,7 +61,8 @@ class BasicFormView extends FormView
         riot.update()
       ).catch (e)=>
         console.log(e.stack)
-        window.location.hash = @redirectPath
+        @error = e
+        # window.location.hash = @redirectPath
     else
       # the LoadEvent is meant to be triggered asynchrous of the object bootstrapping
       # otherwise, it will fire before riot.mount finishes rendering this tag's children
