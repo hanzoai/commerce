@@ -27,6 +27,8 @@ changePage = (collection = '', id = '', action = '') ->
     $('#content .tray').html "<#{proto.tag}/>"
     lastPages = riot.mount proto.tag, _id: id
 
+    $(window).scrollTop(0)
+
 riot.route changePage
 
 $ ()->
