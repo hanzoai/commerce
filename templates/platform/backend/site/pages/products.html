@@ -3,6 +3,21 @@
   <product-form>
     <div class="panel animated fadeIn">
       <div class="panel-heading">
+        Products
+      </div>
+      <div class="panel-body">
+        <!-- Products View Content -->
+        <product-paged-table obs="{obs}">
+          <div>
+            <i class="glyphicon glyphicon-book" style="font-size:50px"></i>
+            <h2 class="text-center">No Products Found</strong>.</h2>
+          </div>
+        </product-paged-table>
+        <!-- END Products View Content -->
+      </div>
+    </div>
+    <div class="panel animated fadeIn">
+      <div class="panel-heading">
         Add a Product
       </div>
       <div class="panel-body">
@@ -44,21 +59,6 @@
             <button type="submit" class="btn btn-block btn-dark">Add(+)</button>
           </div>
         </div>
-      </div>
-    </div>
-    <div class="panel animated fadeIn">
-      <div class="panel-heading">
-        Products
-      </div>
-      <div class="panel-body">
-        <!-- Products View Content -->
-        <product-paged-table obs="{obs}">
-          <div>
-            <i class="glyphicon glyphicon-book" style="font-size:50px"></i>
-            <h2 class="text-center">No Products Found</strong>.</h2>
-          </div>
-        </product-paged-table>
-        <!-- END Products View Content -->
       </div>
     </div>
   </product-form>
