@@ -17,3 +17,5 @@ module.exports =
   Api:          require './api'
   Organization: require './organization'
   Integrations: require './integrations'
+
+  Search:       require './search'

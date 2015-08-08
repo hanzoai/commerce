@@ -29,6 +29,11 @@ func Dashboard(c *gin.Context) {
 	Render(c, "backend/index.html")
 }
 
+type SearchResults struct {
+	Users  []*user.User   `json:"users"`
+	Orders []*order.Order `json:"orders"`
+}
+
 func Search(c *gin.Context) {
 	q := c.Request.URL.Query().Get("q")
 
@@ -86,7 +91,7 @@ func Search(c *gin.Context) {
 		orders = append(orders, o)
 	}
 
-	Render(c, "admin/search-results.html", "users", users, "orders", orders)
+	http.Render(c, 200, SearchResults{users, orders})
 }
 
 func SendOrderConfirmation(c *gin.Context) {
@@ -102,7 +107,7 @@ func SendOrderConfirmation(c *gin.Context) {
 
 	emails.SendOrderConfirmationEmail(c, org, o, u)
 
-	Render(c, "admin/order.html")
+	c.Writer.WriteHeader(204)
 }
 
 func Organization(c *gin.Context) {

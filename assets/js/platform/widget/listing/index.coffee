@@ -11,7 +11,6 @@ Api = crowdcontrol.data.Api
 View = crowdcontrol.view.View
 
 BasicTableView = table.BasicTableView
-FormView = crowdcontrol.view.View
 
 class ListingWidget extends View
   tag: 'listing-widget'
