@@ -21,7 +21,7 @@
               <button onclick="{ stripeOAuth }" __disabled="{ !model.clientId }" if="{ model.state != 'connected' }" class="btn btn-block btn-effect-ripple btn-dark" class="stripe-connect" type="button">Connect with Stripe</button>
             </div>
             <div class="col-md-4" style="padding-right:0">
-              <button onclick="{ stripeSync }" __disabled="{ !model.clientId }" class="btn btn-block btn-default" type="button">Sync orders</button>
+              <button onclick="{ stripeSync }" __disabled="{ !model.clientId || syncing }" class="btn btn-block btn-default" type="button">Sync orders</button>
             </div>
           </div>
         </div>

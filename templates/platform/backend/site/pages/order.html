@@ -131,8 +131,11 @@
               <div class="section row">
                 <control label="Created" input="{ inputs.createdAt }" labelclasses="col-xs-4" controlclasses="col-xs-8"></control>
              </div>
-              <div class="section row">
+              <div class="section row mb20">
                 <control label="Last Updated" input="{ inputs.updatedAt }" labelclasses="col-xs-4" controlclasses="col-xs-8"></control>
+              </div>
+              <div class="col-xs-12" style="padding:0">
+                <button __disabled="{ sending }" onclick="{ resendConfirmation }" type="button" class="btn btn-block btn-dark">Resend Confirmation</button>
               </div>
             </div>
           </order-user-static-form>
