@@ -23,6 +23,11 @@
               </div>
             </div>
           </div>
+
+          <div class="section col-xs-12 mb10 has-error" if="{error}" style="padding:0">
+            <span class="error-container help-block animated fadeInUp">{error.message}</span>
+          </div>
+
           <div class="form-actions section col-xs-12" style="padding:0">
             <div class="col-xs-6">
               <button type="submit" class="btn btn-block btn-dark">Save</button>
