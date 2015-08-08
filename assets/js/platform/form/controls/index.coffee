@@ -16,19 +16,19 @@ helpers.defaultTagName = 'basic-input'
 # views
 class StaticView extends InputView
   tag: 'static'
-  html: require './static.html'
+  html: require '../../templates/backend/form/controls/static.html'
 
 StaticView.register()
 
 class StaticDateView extends StaticView
   tag: 'static-date'
-  html: require './static-date.html'
+  html: require '../../templates/backend/form/controls/static-date.html'
 
 StaticDateView.register()
 
 class IdLinkView extends StaticView
   tag: 'id-link'
-  html: require './id-link.html'
+  html: require '../../templates/backend/form/controls/id-link.html'
   js: (opts)->
     super
     @path = opts.input.model.cfg.hints['id-path']
@@ -38,7 +38,7 @@ IdLinkView.register()
 class BasicInputView extends InputView
   errorHtml: ''
   tag: 'basic-input'
-  html: require './basic-input.html'
+  html: require '../../templates/backend/form/controls/basic-input.html'
   js:(opts)->
     @model = if opts.input then opts.input.model else @model
 
@@ -46,7 +46,7 @@ BasicInputView.register()
 
 class PasswordInputView extends BasicInputView
   tag: 'basic-password'
-  html: require './password.html'
+  html: require '../../templates/backend/form/controls/password.html'
 
 PasswordInputView.register()
 
@@ -68,13 +68,13 @@ NumericInputView.register()
 
 class BasicTextareaView extends BasicInputView
   tag: 'basic-textarea'
-  html: require './basic-textarea.html'
+  html: require '../../templates/backend/form/controls/basic-textarea.html'
 
 BasicTextareaView.register()
 
 class Switch extends BasicInputView
   tag: 'switch'
-  html: require './switch.html'
+  html: require '../../templates/backend/form/controls/switch.html'
   change: (event) ->
     value = event.target.checked
     if value != @model.value
@@ -86,7 +86,7 @@ Switch.register()
 
 class DisabledInputView extends BasicInputView
   tag: 'disabled-input'
-  html: require './disabled-input.html'
+  html: require '../../templates/backend/form/controls/disabled-input.html'
 
 DisabledInputView.register()
 
@@ -133,13 +133,13 @@ MoneyInputView.register()
 
 class StaticMoneyView extends MoneyInputView
   tag: 'static-money'
-  html: require './static.html'
+  html: require '../../templates/backend/form/controls/static.html'
 
 StaticMoneyView.register()
 
 class BasicSelectView extends BasicInputView
   tag: 'basic-select'
-  html: require './basic-select.html'
+  html: require '../../templates/backend/form/controls/basic-select.html'
 
   # Use when loading options async
   async: false
