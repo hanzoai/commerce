@@ -91,7 +91,7 @@ class BasicFormView extends FormView
     @fullyValidated = false
 
     return @api[method](@path, @model).then((res)=>
-      if res.status != 200 && res.status != 204
+      if res.status != 200 && res.status != 201 && res.status != 204
         throw new Error res.responseText.error.message
 
       @error = undefined
