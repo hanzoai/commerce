@@ -16,7 +16,7 @@ class OrderList extends BasicList
     field('status', 'Order Status')
     field('fulfillmentStatus', 'Fulfillment Status')
     field('createdAt', 'Created', 'date')
-    # field('updatedAt', 'Last Updated', 'ago')
+    field('updatedAt', 'Last Updated', 'ago')
   ]
 
 OrderList.register()
