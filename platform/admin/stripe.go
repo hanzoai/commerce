@@ -16,7 +16,8 @@ func StripeSync(c *gin.Context) {
 	ctx := middleware.GetAppEngine(c)
 	org := middleware.GetOrganization(c)
 	tasks.SyncCharges.Call(ctx, org.Id())
-	template.Render(c, "admin/stripe/sync-success.html")
+
+	c.Writer.WriteHeader(204)
 }
 
 type StripeData struct {
