@@ -83,6 +83,9 @@ class BasicPagedTable extends BasicTableView
 
   refresh: ()->
     path = @path + '?page=' + @page + '&display=' + @display + '&sort=' + (if @sortDirection == 'sort-desc' then '' else '-') + if @sortField == "Id" then "Id_" else @sortField
+    requestAnimationFrame ()->
+      $('.previous .next').addClass('disabled')
+
     @api.get(path).then (res) =>
       @firstLoad = true
 
@@ -96,5 +99,8 @@ class BasicPagedTable extends BasicTableView
 
       @initDynamicContent()
       @$pagination.jqPagination 'option', 'max_page', @maxPage
+
+      requestAnimationFrame ()->
+        $('.previous .next').removeClass('disabled')
 
 module.exports = BasicPagedTable
