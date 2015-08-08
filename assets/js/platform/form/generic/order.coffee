@@ -64,6 +64,7 @@ class OrderUserStaticForm extends BasicFormView
       @loading = true
       m.trigger 'start-spin', @path + '-form-load'
 
+      @orderId = orderModel.id
       @path = @basePath + '/' + orderModel.userId
 
       @api = api = Api.get('crowdstart')
@@ -81,6 +82,13 @@ class OrderUserStaticForm extends BasicFormView
 
   js: ()->
     @initFormGroup()
+
+  resendConfirmation: (event)->
+    api = Api.get 'platform'
+
+    api.get('sendorderconfirmation/' + @orderId)
+    $(event.target).html 'Sent!'
+    @sending = true
 
 OrderUserStaticForm.register()
 
