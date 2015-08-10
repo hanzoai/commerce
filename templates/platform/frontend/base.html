@@ -122,7 +122,11 @@
                             <!-- </li> -->
 
                             <li>
-                              <a href="{{ urlFor("platform", "/login") }}" class="featured">Login <i class="fa fa-arrow-right"></i></a>
+                              {% if user %}
+                              <a href="dashboard" class="featured">Hello, {{ user.Name() }} <i class="fa fa-arrow-right"></i></a>
+                              {% else %}
+                              <a href="login" class="featured">Login <i class="fa fa-arrow-right"></i></a>
+                              {% endif %}
                             </li>
                         </ul>
                         <!-- END Main Menu -->

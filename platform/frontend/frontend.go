@@ -3,53 +3,63 @@ package frontend
 import (
 	"github.com/gin-gonic/gin"
 
+	"crowdstart.com/auth"
 	"crowdstart.com/util/template"
 )
 
+func Render(c *gin.Context, tmpl string) {
+	if usr, err := auth.GetCurrentUser(c); err == nil {
+		template.Render(c, tmpl, "user", usr)
+		return
+	}
+
+	template.Render(c, tmpl)
+}
+
 func Index(c *gin.Context) {
-	template.Render(c, "frontend/index.html")
+	Render(c, "frontend/index.html")
 }
 
 func About(c *gin.Context) {
-	template.Render(c, "frontend/about.html")
+	Render(c, "frontend/about.html")
 }
 
 func Contact(c *gin.Context) {
-	template.Render(c, "frontend/contact.html")
+	Render(c, "frontend/contact.html")
 }
 
 func Docs(c *gin.Context) {
-	template.Render(c, "docs/docs.html")
+	Render(c, "docs/docs.html")
 }
 
 func Faq(c *gin.Context) {
-	template.Render(c, "frontend/faq.html")
+	Render(c, "frontend/faq.html")
 }
 
 func Features(c *gin.Context) {
-	template.Render(c, "frontend/features.html")
+	Render(c, "frontend/features.html")
 }
 
 func HowItWorks(c *gin.Context) {
-	template.Render(c, "frontend/how-it-works.html")
+	Render(c, "frontend/how-it-works.html")
 }
 
 func Pricing(c *gin.Context) {
-	template.Render(c, "frontend/pricing.html")
+	Render(c, "frontend/pricing.html")
 }
 
 func Privacy(c *gin.Context) {
-	template.Render(c, "frontend/privacy.html")
+	Render(c, "frontend/privacy.html")
 }
 
 func Signup(c *gin.Context) {
-	template.Render(c, "frontend/signup.html")
+	Render(c, "frontend/signup.html")
 }
 
 func Team(c *gin.Context) {
-	template.Render(c, "frontend/team.html")
+	Render(c, "frontend/team.html")
 }
 
 func Terms(c *gin.Context) {
-	template.Render(c, "frontend/terms.html")
+	Render(c, "frontend/terms.html")
 }
