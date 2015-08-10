@@ -85,7 +85,7 @@ class BasicPagedTable extends BasicTableView
       @refresh()
 
   refresh: ()->
-    path = @path + '?page=' + @page + '&display=' + @display + '&sort=' + (if @sortDirection == 'sort-desc' then '' else '-') + if @filterModel.sortField == "Id" then "Id_" else @filterModel.sortField
+    path = @path + '?page=' + @page + '&display=' + @display + '&sort=' + (if @filterModel.sortDirection == 'sort-desc' then '' else '-') + if @filterModel.sortField == "Id" then "Id_" else @filterModel.sortField
     requestAnimationFrame ()->
       $('.previous .next').addClass('disabled')
 
