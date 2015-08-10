@@ -13,5 +13,9 @@
   </tbody>
 </table>
 <h3 class="text-center pb10" if="{ isEmpty() }">
-  <yield></yield>
+  <div if="{ searching }">
+  </div>
+  <div if="{ !searching }">
+    <yield></yield>
+  </div>
 </h3>

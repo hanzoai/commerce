@@ -17,6 +17,11 @@ func GetCurrentUserId(c *gin.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	if value == nil {
+		return "", err
+	}
+
 	return value.(string), nil
 }
 

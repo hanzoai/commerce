@@ -122,7 +122,7 @@
                             <!-- </li> -->
 
                             <li>
-                              {% if user %}
+                              {% if loggedIn %}
                               <a href="dashboard" class="featured">Hello, {{ user.FirstName }} <i class="fa fa-arrow-right"></i></a>
                               {% else %}
                               <a href="login" class="featured">Login <i class="fa fa-arrow-right"></i></a>
