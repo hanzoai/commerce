@@ -12,7 +12,7 @@
   <table class="table table-striped table-responsive table-hover mb20">
     <thead>
       <tr>
-        <th class="{ text-right: id == 'createdAt' || id == 'updatedAt', sortable: true }" each="{ headers }" onclick="{ this.parent.sort(id) }">{name}&nbsp;<i  if="{ this.parent.sortField.toUpperCase() == id.toUpperCase() }" class="{ fa: true, fa-sort-asc: this.parent.sortDirection == 'sort-asc', fa-sort-desc: this.parent.sortDirection == 'sort-desc' }"></i></th>
+        <th class="{ text-right: id == 'createdAt' || id == 'updatedAt', sortable: true }" each="{ headers }" onclick="{ this.parent.sort(id) }">{name}&nbsp;<i  if="{ this.parent.filterModel.sortField.toUpperCase() == id.toUpperCase() }" class="{ fa: true, fa-sort-asc: this.parent.filterModel.sortDirection == 'sort-asc', fa-sort-desc: this.parent.filterModel.sortDirection == 'sort-desc' }"></i></th>
       </tr>
     </thead>
     <tbody>
