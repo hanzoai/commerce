@@ -18,11 +18,6 @@ class BasicPagedTable extends BasicTableView
   display: 10
   $pagination: $()
   firstLoad: false
-  filterModel:
-    sortField: 'UpdatedAt'
-    sortDirection: ''
-    minDate: ''
-    maxDate: ''
 
   events:
     # finishing a form that is linked to this table will refresh it
@@ -32,6 +27,12 @@ class BasicPagedTable extends BasicTableView
       , 1000
 
   js: (opts)->
+    @filterModel =
+      sortField: 'UpdatedAt'
+      sortDirection: ''
+      minDate: ''
+      maxDate: ''
+
     @path = opts.path if opts.path
     @api = Api.get 'crowdstart'
 
@@ -46,6 +47,8 @@ class BasicPagedTable extends BasicTableView
   sort: (id)->
     field = capitalizeFirstLetter id
     return ()=>
+      if field == 'Number'
+        field = 'Id'
       if field != @filterModel.sortField
         @filterModel.sortField = field
         @filterModel.sortDirection = 'sort-desc'
