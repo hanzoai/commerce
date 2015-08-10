@@ -17,9 +17,12 @@ class BasicPagedTable extends BasicTableView
   maxPage: 2
   display: 10
   $pagination: $()
-  sortField: 'UpdatedAt'
-  sortDirection: ''
   firstLoad: false
+  filterModel:
+    sortField: 'UpdatedAt'
+    sortDirection: ''
+    minDate: ''
+    maxDate: ''
 
   events:
     # finishing a form that is linked to this table will refresh it
@@ -43,13 +46,13 @@ class BasicPagedTable extends BasicTableView
   sort: (id)->
     field = capitalizeFirstLetter id
     return ()=>
-      if field != @sortField
-        @sortField = field
-        @sortDirection = 'sort-desc'
-      else if @sortDirection != 'sort-desc'
-        @sortDirection = 'sort-desc'
+      if field != @filterModel.sortField
+        @filterModel.sortField = field
+        @filterModel.sortDirection = 'sort-desc'
+      else if @filterModel.sortDirection != 'sort-desc'
+        @filterModel.sortDirection = 'sort-desc'
       else
-        @sortDirection = 'sort-asc'
+        @filterModel.sortDirection = 'sort-asc'
       @refresh()
 
   initDynamicContent: ()->
@@ -82,7 +85,7 @@ class BasicPagedTable extends BasicTableView
       @refresh()
 
   refresh: ()->
-    path = @path + '?page=' + @page + '&display=' + @display + '&sort=' + (if @sortDirection == 'sort-desc' then '' else '-') + if @sortField == "Id" then "Id_" else @sortField
+    path = @path + '?page=' + @page + '&display=' + @display + '&sort=' + (if @sortDirection == 'sort-desc' then '' else '-') + if @filterModel.sortField == "Id" then "Id_" else @filterModel.sortField
     requestAnimationFrame ()->
       $('.previous .next').addClass('disabled')
 
