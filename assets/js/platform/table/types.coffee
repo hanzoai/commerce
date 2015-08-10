@@ -37,14 +37,21 @@ class TableFieldConfig
 
 Events.Table =
   NewData: 'table-new-data'
+  StartSearch: 'table-start-search'
+  EndSearch: 'table-end-search'
 
 class BasicTableView extends View
   tag: 'basic-table'
   html: require '../templates/backend/table/template.html'
+  searching: false
   events:
     "#{Events.Table.NewData}": (model)->
       @model = model
       riot.update()
+    "#{Events.Table.StartSearch}": ()->
+      @searching = true
+    "#{Events.Table.EndSearch}": ()->
+      @searching = false
   isEmpty: ()->
     model = @model
     return !model? || !model.length || model.length == 0
