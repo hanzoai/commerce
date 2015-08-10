@@ -1,3 +1,6 @@
+# we require table events so require tables first
+require '../../table'
+
 crowdcontrol = require 'crowdcontrol'
 Events = crowdcontrol.Events
 
@@ -23,6 +26,10 @@ class Search extends View
 
     q = window.location.search
 
+    requestAnimationFrame ()=>
+      @userObs.trigger Events.Table.StartSearch
+      @orderObs.trigger Events.Table.StartSearch
+
     api.get('search' + q).then((res) =>
       if res.status != 200 && res.status != 204
         throw new Error 'Form failed to load: '
@@ -30,6 +37,9 @@ class Search extends View
       @model = model = res.responseText
       @userObs.trigger Events.Table.NewData, model.users
       @orderObs.trigger Events.Table.NewData, model.orders
+
+      @userObs.trigger Events.Table.EndSearch
+      @orderObs.trigger Events.Table.EndSearch
 
       riot.update()
     ).catch (e)->
