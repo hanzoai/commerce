@@ -9,11 +9,11 @@ import (
 
 func Render(c *gin.Context, tmpl string) {
 	if usr, err := auth.GetCurrentUser(c); err == nil {
-		template.Render(c, tmpl, "user", usr)
+		template.Render(c, tmpl, "loggedIn", true, "user", usr)
 		return
 	}
 
-	template.Render(c, tmpl)
+	template.Render(c, tmpl, "loggedIn", false)
 }
 
 func Index(c *gin.Context) {
