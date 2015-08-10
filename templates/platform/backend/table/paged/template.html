@@ -34,5 +34,11 @@
   </div>
 </div>
 <h3 class="text-center pb10" if="{ isEmpty() && firstLoad }">
-  <yield></yield>
+  <div if="{ searching }">
+    <i class="glyphicon glyphicon-search" style="font-size:50px"></i>
+    <h2 class="text-center">Searching...</h2>
+  </div>
+  <div if="{ !searching }">
+    <yield></yield>
+  </div>
 </h3>
