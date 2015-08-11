@@ -13,6 +13,7 @@ menu = [
       pages.Dashboard
       pages.Users
       pages.Orders
+      pages.Payments
       pages.Products
       pages.Coupons
       pages.Stores
