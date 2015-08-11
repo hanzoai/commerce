@@ -9,31 +9,63 @@
         </div>
         <div class="panel-body">
           <div class="section col-xs-12 mb10">
-            <control label="Order ID" input="{ inputs.orderId }" labelclasses="col-xs-3" controlclasses="col-xs-9"></control>
-            <control label="Type" input="{ inputs.type }" labelclasses="col-xs-3" controlclasses="col-xs-9"></control>
-            <control label="Status" input="{ inputs.status }" labelclasses="col-xs-3" controlclasses="col-xs-9"></control>
-            <control label="Amount" input="{ inputs.amount }" labelclasses="col-xs-3" controlclasses="col-xs-9"></control>
-            <control label="Refunded" input="{ inputs.amountRefunded }" if="{model.status=='refunded'}" labelclasses="col-xs-3" controlclasses="col-xs-9"></control>
-            <control label="Platform Fee" input="{ inputs.fee }" labelclasses="col-xs-3" controlclasses="col-xs-9"></control>
+            <div class="section row">
+              <control label="Order ID" input="{ inputs.orderId }" labelclasses="col-xs-3" controlclasses="col-xs-9"></control>
+            </div>
+            <div class="section row">
+              <control label="Type" input="{ inputs.type }" labelclasses="col-xs-3" controlclasses="col-xs-9"></control>
+            </div>
+            <div class="section row">
+              <control label="Status" input="{ inputs.status }" labelclasses="col-xs-3" controlclasses="col-xs-9"></control>
+            </div>
+            <div class="section row">
+              <control label="Amount" input="{ inputs.amount }" labelclasses="col-xs-3" controlclasses="col-xs-9"></control>
+            </div>
+            <div class="section row">
+              <control label="Refunded" input="{ inputs.amountRefunded }" if="{model.status=='refunded'}" labelclasses="col-xs-3" controlclasses="col-xs-9"></control>
+            </div>
+            <div class="section row">
+              <control label="Platform Fee" input="{ inputs.fee }" labelclasses="col-xs-3" controlclasses="col-xs-9"></control>
+            </div>
           </div>
         </div>
       </div>
-      <div class="panel animated fadeIn" if='{model.type == 'stripe'}'>
+      <div class="panel animated fadeIn" if="{model.type == 'stripe'}">
         <div class="panel-heading">
           Stripe Information
         </div>
         <div class="panel-body">
           <div class="section col-xs-12 mb10">
-            <control label="Customer ID" input="{ inputs['account.customerId'] }" labelclasses="col-xs-3" controlclasses="col-xs-9"></control>
-            <control label="Charge ID" input="{ inputs['account.chargeId'] }" labelclasses="col-xs-3" controlclasses="col-xs-9"></control>
-            <control label="Card ID" input="{ inputs['account.cardId'] }" labelclasses="col-xs-3" controlclasses="col-xs-9"></control>
-            <control label="Transaction ID" input="{ inputs['account.balanceTransactionId'] }" labelclasses="col-xs-3" controlclasses="col-xs-9"></control>
-            <control label="Fingerprint" input="{ inputs['account.fingerprint'] }" labelclasses="col-xs-3" controlclasses="col-xs-9"></control>
-            <control label="Funding" input="{ inputs['account.funding'] }" labelclasses="col-xs-3" controlclasses="col-xs-9"></control>
-            <control label="Brand" input="{ inputs['account.brand'] }" labelclasses="col-xs-3" controlclasses="col-xs-9"></control>
-            <control label="Expiration Month" input="{ inputs['account.month'] }" labelclasses="col-xs-3" controlclasses="col-xs-9"></control>
-            <control label="Expiration Year" input="{ inputs['account.year'] }" labelclasses="col-xs-3" controlclasses="col-xs-9"></control>
-            <control label="Country" input="{ inputs['account.country'] }" labelclasses="col-xs-3" controlclasses="col-xs-9"></control>
+            <div class="section row">
+              <control label="Customer ID" input="{ inputs['account.customerId'] }" labelclasses="col-xs-3" controlclasses="col-xs-9"></control>
+            </div>
+            <div class="section row">
+              <control label="Charge ID" input="{ inputs['account.chargeId'] }" labelclasses="col-xs-3" controlclasses="col-xs-9"></control>
+            </div>
+            <div class="section row">
+                <control label="Card ID" input="{ inputs['account.cardId'] }" labelclasses="col-xs-3" controlclasses="col-xs-9"></control>
+            </div>
+            <div class="section row">
+              <control label="Transaction ID" input="{ inputs['account.balanceTransactionId'] }" labelclasses="col-xs-3" controlclasses="col-xs-9"></control>
+            </div>
+            <div class="section row">
+              <control label="Fingerprint" input="{ inputs['account.fingerprint'] }" labelclasses="col-xs-3" controlclasses="col-xs-9"></control>
+            </div>
+            <div class="section row">
+              <control label="Funding" input="{ inputs['account.funding'] }" labelclasses="col-xs-3" controlclasses="col-xs-9"></control>
+            </div>
+            <div class="section row">
+              <control label="Brand" input="{ inputs['account.brand'] }" labelclasses="col-xs-3" controlclasses="col-xs-9"></control>
+            </div>
+            <div class="section row">
+              <control label="Expiration Month" input="{ inputs['account.month'] }" labelclasses="col-xs-3" controlclasses="col-xs-9"></control>
+            </div>
+            <div class="section row">
+              <control label="Expiration Year" input="{ inputs['account.year'] }" labelclasses="col-xs-3" controlclasses="col-xs-9"></control>
+            </div>
+            <div class="section row">
+              <control label="Country" input="{ inputs['account.country'] }" labelclasses="col-xs-3" controlclasses="col-xs-9"></control>
+            </div>
           </div>
         </div>
       </div>
@@ -43,13 +75,27 @@
         </div>
         <div class="panel-body">
           <div class="section col-xs-12">
-            <control label="IP" input="{ inputs['client.ip'] }" labelclasses="col-xs-4" controlclasses="col-xs-8"></control>
-            <control label="Referrer" input="{ inputs['client.referer'] }" labelclasses="col-xs-4" controlclasses="col-xs-8"></control>
-            <control label="User Agent" input="{ inputs['client.userAgent'] }" labelclasses="col-xs-4" controlclasses="col-xs-8"></control>
-            <control label="Language" input="{ inputs['client.language'] }" labelclasses="col-xs-4" controlclasses="col-xs-8"></control>
-            <control label="City" input="{ inputs['client.city'] }" labelclasses="col-xs-4" controlclasses="col-xs-8"></control>
-            <control label="Region" input="{ inputs['client.region'] }" labelclasses="col-xs-4" controlclasses="col-xs-8"></control>
-            <control label="Country" input="{ inputs['client.country'] }" labelclasses="col-xs-4" controlclasses="col-xs-8"></control>
+            <div class="section row">
+              <control label="IP" input="{ inputs['client.ip'] }" labelclasses="col-xs-4" controlclasses="col-xs-8"></control>
+            </div>
+            <div class="section row">
+              <control label="Referrer" input="{ inputs['client.referer'] }" labelclasses="col-xs-4" controlclasses="col-xs-8"></control>
+            </div>
+            <div class="section row">
+              <control label="User Agent" input="{ inputs['client.userAgent'] }" labelclasses="col-xs-4" controlclasses="col-xs-8"></control>
+            </div>
+            <div class="section row">
+              <control label="Language" input="{ inputs['client.language'] }" labelclasses="col-xs-4" controlclasses="col-xs-8"></control>
+            </div>
+            <div class="section row">
+              <control label="City" input="{ inputs['client.city'] }" labelclasses="col-xs-4" controlclasses="col-xs-8"></control>
+            </div>
+            <div class="section row">
+              <control label="Region" input="{ inputs['client.region'] }" labelclasses="col-xs-4" controlclasses="col-xs-8"></control>
+            </div>
+            <div class="section row">
+              <control label="Country" input="{ inputs['client.country'] }" labelclasses="col-xs-4" controlclasses="col-xs-8"></control>
+            </div>
           </div>
         </div>
       </div>
@@ -61,9 +107,15 @@
         </div>
         <div class="panel-body">
           <div class="section col-xs-12" style="padding:0">
-            <control label="Id" input="{ inputs.id }" labelclasses="col-xs-4" controlclasses="col-xs-8"></control>
-            <control label="Created" input="{ inputs.createdAt }" labelclasses="col-xs-4" controlclasses="col-xs-8"></control>
-            <control label="Last Updated" input="{ inputs.updatedAt }" labelclasses="col-xs-4" controlclasses="col-xs-8"></control>
+            <div class="section row">
+              <control label="ID" input="{ inputs.id }" labelclasses="col-xs-4" controlclasses="col-xs-8"></control>
+            </div>
+            <div class="section row">
+              <control label="Created" input="{ inputs.createdAt }" labelclasses="col-xs-4" controlclasses="col-xs-8"></control>
+            </div>
+            <div class="section row">
+              <control label="Last Updated" input="{ inputs.updatedAt }" labelclasses="col-xs-4" controlclasses="col-xs-8"></control>
+            </div>
           </div>
         </div>
       </div>
