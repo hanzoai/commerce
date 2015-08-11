@@ -1,10 +1,10 @@
 <div if="{ !isEmpty() && firstLoad }">
   <select class="form-control" style="width:80px;" if="{ model.length > 5 }">
-    <option value="5">5</option>
-    <option value="10" selected="selected">10</option>
-    <option value="20">20</option>
-    <option value="50">50</option>
-    <option value="100">100</option>
+    <option value="5" __selected="{5 == display }">5</option>
+    <option value="10" __selected="{10 == display }">10</option>
+    <option value="20" __selected="{20 == display }">20</option>
+    <option value="50" __selected="{50 == display }">50</option>
+    <option value="100" __selected="{100 == display }">100</option>
   </select>
   <label if="{ model.length > 5 }">&nbsp;&nbsp;Items per Page</label>
   <br if="{ model.length > 5 }"/>
