@@ -55,6 +55,9 @@ class BasicPagedTable extends BasicTableView
   sort: (id)->
     field = capitalizeFirstLetter id
     return ()=>
+      if @headerMap[id].hints['dontsort']
+        return
+
       if field == 'Number'
         field = '__key__'
       if field != @filterModel.sortField
@@ -103,7 +106,7 @@ class BasicPagedTable extends BasicTableView
   refresh: ()->
     path = @path + '?page=' + @page + '&display=' + @display + '&sort=' + (if @filterModel.sortDirection == 'sort-desc' then '' else '-') + if @filterModel.sortField == "Id" then "Id_" else @filterModel.sortField
     requestAnimationFrame ()->
-      $('.previous .next').addClass('disabled')
+      $('.previous, .next').addClass('disabled')
 
     @api.get(path).then (res) =>
       @firstLoad = true
@@ -123,6 +126,6 @@ class BasicPagedTable extends BasicTableView
       @pagingLock = false
 
       requestAnimationFrame ()->
-        $('.previous .next').removeClass('disabled')
+        $('.previous, .next').removeClass('disabled')
 
 module.exports = BasicPagedTable

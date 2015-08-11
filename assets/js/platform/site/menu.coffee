@@ -18,6 +18,7 @@ menu = [
       pages.Coupons
       pages.Stores
       pages.MailingLists
+      pages.Subscribers
     ]
   }
   {
