@@ -3,6 +3,6 @@
     <span>{ opts.label }</span>
   </label>
   <div class="section { opts.controlclasses || 'col-xs-12' }">
-    <p class="form-control-static">{ model.value }</p>
+    <p class="form-control-static">{ model.value || '&nbsp;' }</p>
   </div>
 </div>
