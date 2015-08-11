@@ -1,6 +1,7 @@
 crowdcontrol = require 'crowdcontrol'
 Events = crowdcontrol.Events
 
+store = require 'store'
 table = require '../types'
 
 Api = crowdcontrol.data.Api
@@ -27,6 +28,12 @@ class BasicPagedTable extends BasicTableView
       , 1000
 
   js: (opts)->
+    display = store.get 'display'
+    if display
+      @display = display
+    else
+      store.set 'display', @display
+
     @filterModel =
       sortField: 'UpdatedAt'
       sortDirection: ''
@@ -83,6 +90,7 @@ class BasicPagedTable extends BasicTableView
   updateDisplay: (event)->
     display = parseInt $(event.target).val(), 10
     if @display != display
+      store.set 'display', display
       @display = display
       @page = 1
       @refresh()
