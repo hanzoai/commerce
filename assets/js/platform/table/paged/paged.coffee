@@ -19,6 +19,7 @@ class BasicPagedTable extends BasicTableView
   display: 10
   $pagination: $()
   firstLoad: false
+  pagingLock: false
 
   events:
     # finishing a form that is linked to this table will refresh it
@@ -82,7 +83,8 @@ class BasicPagedTable extends BasicTableView
     if !@initializedPaging && $pagination[0]?
       $pagination.jqPagination
         paged: (page)=>
-          if page != @page
+          if page != @page && !@pagingLock
+            @pagingLock = true
             @page = page
             @refresh()
       @initializedPaging = true
@@ -106,6 +108,7 @@ class BasicPagedTable extends BasicTableView
       m.trigger 'stop-spin', @tag + @path + '-paged-table-load'
       data = res.responseText
       @model = data.models
+      @count = data.count
 
       @maxPage = Math.ceil data.count/data.display
 
@@ -113,6 +116,8 @@ class BasicPagedTable extends BasicTableView
 
       @initDynamicContent()
       @$pagination.jqPagination 'option', 'max_page', @maxPage
+
+      @pagingLock = false
 
       requestAnimationFrame ()->
         $('.previous .next').removeClass('disabled')
