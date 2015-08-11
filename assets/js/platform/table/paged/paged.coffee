@@ -48,7 +48,7 @@ class BasicPagedTable extends BasicTableView
     field = capitalizeFirstLetter id
     return ()=>
       if field == 'Number'
-        field = 'Id'
+        field = '__key__'
       if field != @filterModel.sortField
         @filterModel.sortField = field
         @filterModel.sortDirection = 'sort-desc'
