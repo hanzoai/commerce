@@ -43,9 +43,9 @@ func New(db *datastore.Datastore) *Subscriber {
 	return s
 }
 
-func (s Subscriber) Key() string {
-	return s.MailingListId + ":" + s.Email
-}
+// func (s Subscriber) Key() string {
+// 	return s.MailingListId + ":" + s.Email
+// }
 
 func (s Subscriber) Kind() string {
 	return "subscriber"
