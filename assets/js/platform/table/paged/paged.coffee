@@ -96,6 +96,7 @@ class BasicPagedTable extends BasicTableView
       @display = display
       @page = 1
       @refresh()
+      @update()
 
   refresh: ()->
     path = @path + '?page=' + @page + '&display=' + @display + '&sort=' + (if @filterModel.sortDirection == 'sort-desc' then '' else '-') + if @filterModel.sortField == "Id" then "Id_" else @filterModel.sortField
