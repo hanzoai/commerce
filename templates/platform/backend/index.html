@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <!-- Meta, title, CSS, favicons, etc. -->
+  <meta charset="utf-8">
+  <title>Welcome to Crowdstart</title>
+
+  <meta name="description" content="Crowdstart is a brand new crowdfunding platform">
+  <meta name="author" content="verusmedia">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Font CSS (Via CDN) -->
+  <link rel='stylesheet' type='text/css' href='http://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700'>
+
+  <!-- FullCalendar Plugin CSS -->
+  <link rel="stylesheet" type="text/css" href="{{ staticUrl }}/vendor/plugins/fullcalendar/fullcalendar.min.css">
+
+  <!-- Highlight.js CSS -->
+  <link rel="stylesheet" type="text/css" href="{{ staticUrl }}/vendor/plugins/highlight/styles/github.css">
+
+  <!-- Theme CSS -->
+  <link rel="stylesheet" type="text/css" href="{{ staticUrl }}/backend/skin/default_skin/css/theme.css">
+
+  <!-- Admin Forms CSS -->
+  <link rel="stylesheet" type="text/css" href="{{ staticUrl }}/backend/admin-tools/admin-forms/css/admin-forms.min.css">
+  <link rel="stylesheet" type="text/css" href="//cdnjs.cloudflare.com/ajax/libs/select2/4.0.0/css/select2.min.css">
+  <link rel="stylesheet" type="text/css" href="{{ staticUrl }}/css/jqpagination.css">
+  <link rel="stylesheet" type="text/css" href="{{ staticUrl }}/css/platform.css">
+
+  <!-- Icons -->
+  <!-- The following icons can be replaced with your own, they are used by desktop and mobile browsers -->
+  <link rel="shortcut icon" href="{{ staticUrl }}/frontend/img/favicon.png">
+  <link rel="apple-touch-icon" href="{{ staticUrl }}/frontend/img/icon57.png" sizes="57x57">
+  <link rel="apple-touch-icon" href="{{ staticUrl }}/frontend/img/icon72.png" sizes="72x72">
+  <link rel="apple-touch-icon" href="{{ staticUrl }}/frontend/img/icon76.png" sizes="76x76">
+  <link rel="apple-touch-icon" href="{{ staticUrl }}/frontend/img/icon114.png" sizes="114x114">
+  <link rel="apple-touch-icon" href="{{ staticUrl }}/frontend/img/icon120.png" sizes="120x120">
+  <link rel="apple-touch-icon" href="{{ staticUrl }}/frontend/img/icon144.png" sizes="144x144">
+  <link rel="apple-touch-icon" href="{{ staticUrl }}/frontend/img/icon152.png" sizes="152x152">
+  <link rel="apple-touch-icon" href="{{ staticUrl }}/frontend/img/icon180.png" sizes="180x180">
+  <!-- END Icons -->
+
+  <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+  <!--[if lt IE 9]>
+  <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+  <script src="https://oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
+<![endif]-->
+
+</head>
+
+<body class="dashboard-page">
+
+  <!-- Start: Main -->
+  <div id="main">
+
+    <!-- Start: Header -->
+    <header class="navbar navbar-fixed-top navbar-shadow bg-dark">
+      <div class="navbar-branding">
+        <a href="/" class="navbar-brand">
+          <img src="{{ staticUrl }}/frontend/img/logo-white.png" style="width:30px; opacity: 0.5;margin-right:5px; margin-bottom:5px">
+          <img src="{{ staticUrl }}/frontend/img/logo-text-white.png" style="width:100px; margin-bottom:5px">
+        </a>
+        <span id="toggle_sidemenu_l" class="ad ad-lines"></span>
+      </div>
+      <form action="#search" method="get" class="navbar-form navbar-left navbar-search alt" role="search">
+        <div class="form-group">
+          <input type="text" id="q" name="q" class="form-control search" placeholder="Search...">
+        </div>
+      </form>
+      <ul class="nav navbar-nav navbar-right">
+        <li class="menu-divider hidden-xs">
+          <i class="fa fa-circle"></i>
+        </li>
+        <li class="dropdown menu-merge">
+          <a href="#" class="dropdown-toggle fw600 p15" data-toggle="dropdown">
+            <span class="hidden-xs pl15"> {{ ctx.organization.FullName }} </span>
+            <span class="caret caret-tp hidden-xs"></span>
+          </a>
+          <ul class="dropdown-menu list-group dropdown-persist w250" role="menu">
+            <li class="list-group-item">
+              <a id="menu-profile" class="animated animated-short fadeInUp" href="#profile">
+                <span class="glyphicon glyphicon-user sidebar-nav-icon"></span>
+                <span class="sidebar-title">{{ ctx.user.Name() }}</span>
+              </a>
+            </li>
+            <li class="dropdown-footer">
+              <a href="{{ urlFor("platform", "/logout")}}">
+                <span class="fa fa-power-off pr5"></span> Logout
+              </a>
+            </li>
+          </ul>
+        </li>
+      </ul>
+    </header>
+    <!-- End: Header -->
+
+    <!-- Start: Sidebar -->
+    <aside id="sidebar_left" class="nano nano-light affix">
+
+      <!-- Start: Sidebar Left Content -->
+      <div class="sidebar-left-content nano-content">
+
+        <menu>
+        </menu>
+
+      </div>
+      <!-- End: Sidebar Left Content -->
+
+    </aside>
+    <!-- End: Sidebar Left -->
+
+    <!-- Start: Content-Wrapper -->
+    <section id="content_wrapper">
+
+      <!-- Start: Topbar -->
+      <crumbs>
+      </crumbs>
+      <!-- End: Topbar -->
+
+      <!-- Begin: Content -->
+      <section id="content" class="table-layout animated fadeIn">
+
+        <!-- begin: .tray-center -->
+        <div class="tray tray-center">
+
+        <!--   {% block content %} -->
+        <!--   {% endblock %} -->
+
+        </div>
+        <!-- end: .tray-center -->
+
+      </section>
+      <!-- End: Content -->
+
+      <!-- Begin: Page Footer -->
+      <footer id="content-footer" class="affix">
+        <div class="row">
+          <div class="col-md-6">
+            <span class="footer-legal">© 2015 Crowdstart, LLC.</span>
+          </div>
+        </div>
+      </footer>
+      <!-- End: Page Footer -->
+
+    </section>
+    <!-- End: Content-Wrapper -->
+
+  </div>
+  <!-- End: Main -->
+
+  <!-- BEGIN: PAGE SCRIPTS -->
+
+  <!-- Google Maps -->
+  <script src="//maps.google.com/maps/api/js?sensor=true"></script>
+
+  <!-- jQuery -->
+  <script src="{{ staticUrl }}/vendor/jquery/jquery-1.11.1.min.js"></script>
+  <script src="{{ staticUrl }}/vendor/jquery/jquery_ui/jquery-ui.min.js"></script>
+
+  <!-- HighCharts Plugin -->
+  <script src="{{ staticUrl }}/vendor/plugins/highcharts/highcharts.js"></script>
+
+  <!-- JvectorMap Plugin + US Map (more maps in plugin/backend folder) -->
+  <script src="{{ staticUrl }}/vendor/plugins/jvectormap/jquery.jvectormap.min.js"></script>
+  <script src="{{ staticUrl }}/vendor/plugins/jvectormap/assets/jquery-jvectormap-us-lcc-en.js"></script>
+  <script src="{{ staticUrl }}/vendor/plugins/map/gmaps.min.js"></script>
+
+  <!-- Bootstrap Tabdrop Plugin -->
+  <script src="{{ staticUrl }}/vendor/plugins/tabdrop/bootstrap-tabdrop.js"></script>
+
+  <!-- FullCalendar Plugin + moment Dependency -->
+  <script src="{{ staticUrl }}/vendor/plugins/fullcalendar/lib/moment.min.js"></script>
+  <script src="{{ staticUrl }}/vendor/plugins/fullcalendar/fullcalendar.min.js"></script>
+
+  <!-- Theme Javascript -->
+  <script src="{{ staticUrl }}/backend/js/utility/utility.js"></script>
+  <script src="{{ staticUrl }}/backend/js/demo/demo.js"></script>
+  <script src="{{ staticUrl }}/backend/js/main.js"></script>
+
+  <!-- Highlight.js -->
+  <script src="{{ staticUrl }}/vendor/plugins/highlight/highlight.pack.js"></script>
+
+  <!-- Widget Javascript -->
+  <script src="{{ staticUrl }}/backend/js/demo/widgets.js"></script>
+  <script src="{{ staticUrl }}/js/jquery.jqpagination.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-timeago/1.4.1/jquery.timeago.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.0/js/select2.min.js"></script>
+
+  <!-- Crowdstart Scripts -->
+  <script src="{{ staticUrl }}/js/platform.js"></script>
+  <script type="text/javascript">
+  var countries = {
+    {% for country in constants.Countries %}
+        '{{ country.ISO3166OneAlphaTwo }}': '{{ country.ISO3166OneEnglishShortNameReadingOrder }}',
+    {% endfor %}
+  }
+
+  var currencies = {
+    {% for type in constants.CurrencyTypes %}
+      '{{ type }}': '{{ type.Label() }}',
+    {% endfor %}
+  }
+
+  $(function(){
+    requestAnimationFrame(function(){
+      try {
+        window.Core.init()
+      } catch (e) {
+      }
+    })
+  })
+
+  window.Keys = {
+    'live-secret-key':      '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}',
+    'live-published-key':   '{{ ctx.organization.MustGetTokenByName("live-published-key") }}',
+    'test-secret-key':      '{{ ctx.organization.MustGetTokenByName("test-secret-key") }}',
+    'test-published-key':   '{{ ctx.organization.MustGetTokenByName("test-published-key") }}',
+  }
+
+  new crowdcontrol.data.Api(
+    '{{ urlFor("platform") }}',
+    window.Keys['live-secret-key']
+  ).register('platform')
+
+  new crowdcontrol.data.Api(
+    '{{ urlFor("api") }}',
+    window.Keys['live-secret-key']
+  ).register('crowdstart')
+
+  riot.mount('*')
+  </script>
+  <!-- <script src="{{urlFor("analytics", crowdstartId, "/native/js")}}"></script> -->
+  <!-- END: PAGE SCRIPTS -->
+
+  <!-- HighCharts Plugin -->
+  <script>
+    setTimeout( function () {
+      var highColors = [bgSystem, bgSuccess, bgWarning, bgPrimary];
+
+      // Chart data
+      var seriesData = [{
+        name: 'Sad Keanu Shirt',
+        data: [5.0, 9, 17, 22, 19, 11.5, 5.2, 9.5, 11.3, 15.3, 19.9, 24.6]
+      }, {
+        name: 'Cat Shirt',
+        data: [2.9, 3.2, 4.7, 5.5, 8.9, 12.2, 17.0, 16.6, 14.2, 10.3, 6.6, 4.8]
+      }, {
+        name: 'Such Tees',
+        data: [15, 19, 22.7, 29.3, 22.0, 17.0, 23.8, 19.1, 22.1, 14.1, 11.6, 7.5]
+      }, {
+        name: 'Clever Girl',
+        data: [11, 6, 5, 15, 17.0, 22.0, 30.8, 24.1, 14.1, 11.1, 9.6, 6.5]
+      }];
+
+      var ecomChart = $('#ecommerce_chart1');
+      if (ecomChart.length) {
+        ecomChart.highcharts({
+          credits: false,
+          colors: highColors,
+          chart: {
+            backgroundColor: 'transparent',
+            className: '',
+            type: 'line',
+            zoomType: 'x',
+            panning: true,
+            panKey: 'shift',
+            marginTop: 45,
+            marginRight: 1,
+          },
+          title: {
+            text: null
+          },
+          xAxis: {
+            gridLineColor: '#EEE',
+            lineColor: '#EEE',
+            tickColor: '#EEE',
+            categories: [
+              'Aug','Sep', 'Oct', 'Nov', 'Dec',
+              'Jan', 'Feb', 'Mar', 'Apr',
+              'May', 'Jun', 'Jul'
+            ]
+          },
+          yAxis: {
+            min: 0,
+            tickInterval: 5,
+            gridLineColor: '#EEE',
+            title: {
+              text: null,
+            }
+          },
+          plotOptions: {
+            spline: {
+              lineWidth: 3,
+            },
+            area: {
+              fillOpacity: 0.2
+            }
+          },
+          legend: {
+            enabled: true,
+            floating: false,
+            align: 'right',
+            verticalAlign: 'top',
+            x: -15
+          },
+          series: seriesData
+        });
+      }
+
+      // Widget VectorMap
+      function runVectorMaps() {
+
+        // Jvector Map Plugin
+        var runJvectorMap = function() {
+          // Data set
+          var mapData = [900, 700, 350, 500];
+          // Init Jvector Map
+          $('#WidgetMap').vectorMap({
+            map: 'us_lcc_en',
+            //regionsSelectable: true,
+            backgroundColor: 'transparent',
+            series: {
+              markers: [{
+                attribute: 'r',
+                scale: [3, 7],
+                values: mapData
+              }]
+            },
+            regionStyle: {
+              initial: {
+                fill: '#E8E8E8'
+              },
+              hover: {
+                "fill-opacity": 0.3
+              }
+            },
+            markers: [{
+              latLng: [37.78, -122.41],
+              name: 'San Francisco,CA'
+            }, {
+              latLng: [36.73, -103.98],
+              name: 'Texas,TX'
+            }, {
+              latLng: [38.62, -90.19],
+              name: 'St. Louis,MO'
+            }, {
+              latLng: [40.67, -73.94],
+              name: 'New York City,NY'
+            }],
+            markerStyle: {
+              initial: {
+                fill: '#a288d5',
+                stroke: '#b49ae0',
+                "fill-opacity": 1,
+                "stroke-width": 10,
+                "stroke-opacity": 0.3,
+                r: 3
+              },
+              hover: {
+                stroke: 'black',
+                "stroke-width": 2
+              },
+              selected: {
+                fill: 'blue'
+              },
+              selectedHover: {}
+            },
+          });
+          // Manual code to alter the Vector map plugin to
+          // allow for individual coloring of countries
+          var states = ['US-CA', 'US-TX', 'US-MO',
+            'US-NY'
+          ];
+          var colors = [bgInfo, bgPrimaryLr, bgSuccessLr, bgWarningLr];
+          var colors2 = [bgInfo, bgPrimary, bgSuccess, bgWarning];
+          $.each(states, function(i, e) {
+            $("#WidgetMap path[data-code=" + e + "]").css({
+              fill: colors[i]
+            });
+          });
+          $('#WidgetMap').find('.jvectormap-marker')
+            .each(function(i, e) {
+              $(e).css({
+                fill: colors2[i],
+                stroke: colors2[i]
+              });
+            });
+        }
+
+        if ($('#WidgetMap').length) {
+          runJvectorMap();
+        }
+      }
+
+      runVectorMaps();
+    }
+    , 500)
+
+  </script>
+</body>
+
+</html>

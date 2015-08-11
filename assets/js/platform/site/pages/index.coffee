@@ -1,0 +1,21 @@
+module.exports =
+  Dashboard:    require './dashboard'
+  User:         require './user'
+  Users:        require './users'
+  Order:        require './order'
+  Orders:       require './orders'
+  Product:      require './product'
+  Products:     require './products'
+  Coupon:       require './coupon'
+  Coupons:      require './coupons'
+  Store:        require './store'
+  Stores:       require './stores'
+  MailingList:  require './mailinglist'
+  MailingLists: require './mailinglists'
+
+  Profile:      require './profile'
+  Api:          require './api'
+  Organization: require './organization'
+  Integrations: require './integrations'
+
+  Search:       require './search'

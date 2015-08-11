@@ -1,328 +1,413 @@
 <!DOCTYPE html>
-<!--[if IE 9]>         <html class="no-js lt-ie10"> <![endif]-->
-<!--[if gt IE 9]><!--> <html class="no-js"> <!--<![endif]-->
-    <head>
-        <meta charset="utf-8">
+<html>
 
-        <title>Welcome to Crowdstart</title>
+<head>
+  <!-- Meta, title, CSS, favicons, etc. -->
+  <meta charset="utf-8">
+  <title>AbsoluteAdmin - A Responsive Bootstrap 3 Admin Dashboard Template</title>
+  <meta name="keywords" content="HTML5 Bootstrap 3 Admin Template UI Theme" />
+  <meta name="description" content="AbsoluteAdmin - A Responsive HTML5 Admin UI Framework">
+  <meta name="author" content="AbsoluteAdmin">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-        <meta name="description" content="Crowdstart is a brand new crowdfunding platform">
-        <meta name="author" content="verusmedia">
-        <meta name="robots" content="noindex, nofollow">
+  <!-- Font CSS (Via CDN) -->
+  <link rel='stylesheet' type='text/css' href='http://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700'>
 
-        <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1.0">
+  <!-- FullCalendar Plugin CSS -->
+  <link rel="stylesheet" type="text/css" href="{{ staticUrl }}/vendor/plugins/fullcalendar/fullcalendar.min.css">
 
-        <!-- Icons -->
-        <!-- The following icons can be replaced with your own, they are used by desktop and mobile browsers -->
-        <link rel="shortcut icon" href="{{ staticUrl }}/frontend/img/favicon.png">
-        <link rel="apple-touch-icon" href="{{ staticUrl }}/frontend/img/icon57.png" sizes="57x57">
-        <link rel="apple-touch-icon" href="{{ staticUrl }}/frontend/img/icon72.png" sizes="72x72">
-        <link rel="apple-touch-icon" href="{{ staticUrl }}/frontend/img/icon76.png" sizes="76x76">
-        <link rel="apple-touch-icon" href="{{ staticUrl }}/frontend/img/icon114.png" sizes="114x114">
-        <link rel="apple-touch-icon" href="{{ staticUrl }}/frontend/img/icon120.png" sizes="120x120">
-        <link rel="apple-touch-icon" href="{{ staticUrl }}/frontend/img/icon144.png" sizes="144x144">
-        <link rel="apple-touch-icon" href="{{ staticUrl }}/frontend/img/icon152.png" sizes="152x152">
-        <link rel="apple-touch-icon" href="{{ staticUrl }}/frontend/img/icon180.png" sizes="180x180">
-        <!-- END Icons -->
+  <!-- Theme CSS -->
+  <link rel="stylesheet" type="text/css" href="{{ staticUrl }}/backend/skin/default_skin/css/theme.css">
 
-        <!-- Stylesheets -->
-        <!-- Bootstrap is included in its original form, unaltered -->
-        <link rel="stylesheet" href="{{ staticUrl }}/appui/css/bootstrap.min.css">
+  <!-- Admin Forms CSS -->
+  <link rel="stylesheet" type="text/css" href="{{ staticUrl }}/backend/admin-tools/admin-forms/css/admin-forms.min.css">
+  <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.0/css/select2.min.css">
+  <link rel="stylesheet" type="text/css" href="{{ staticUrl }}/css/platform.css">
 
-        <!-- Related styles of various icon packs and plugins -->
-        <link rel="stylesheet" href="{{ staticUrl }}/appui/css/plugins.css">
+  <!-- Favicon -->
+  <link rel="shortcut icon" href="{{ staticUrl }}/backend/img/favicon.ico">
 
-        <!-- The main stylesheet of this template. All Bootstrap overwrites are defined in here -->
-        <link rel="stylesheet" href="{{ staticUrl }}/appui/css/main.css">
+  <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+  <!--[if lt IE 9]>
+  <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+  <script src="https://oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
+<![endif]-->
 
-        <!-- Include a specific file here from css/themes/ folder to alter the default theme of the template -->
-        <!-- Custom Overrides -->
-        <link rel="stylesheet" href="{{ staticUrl }}/css/platform.css">
+</head>
 
-        <!-- The themes stylesheet of this template (for using specific theme color in individual elements - must included last) -->
-        <link rel="stylesheet" href="{{ staticUrl }}/appui/css/themes.css">
+<body class="dashboard-page">
 
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dropzone/4.0.1/min/dropzone.min.css">
-        <!-- END Stylesheets -->
+<!-------------------------------------------------------------+
+  <body> Helper Classes:
+---------------------------------------------------------------+
+  '.sb-l-o' - Sets Left Sidebar to "open"
+  '.sb-l-m' - Sets Left Sidebar to "minified"
+  '.sb-l-c' - Sets Left Sidebar to "closed"
 
-        <!-- Modernizr (browser feature detection library) -->
-        <script src="{{ staticUrl }}/appui/js/vendor/modernizr-2.8.3.min.js"></script>
+  '.sb-r-o' - Sets Right Sidebar to "open"
+  '.sb-r-c' - Sets Right Sidebar to "closed"
+---------------------------------------------------------------+
+ Example: <body class="example-page sb-l-o sb-r-c">
+ Results: Sidebar left Open, Sidebar right Closed
+--------------------------------------------------------------->
 
-    </head>
-    <body>
-        <!-- Page Wrapper -->
-        <!-- In the PHP version you can set the following options from inc/config file -->
-        <!--
-            Available classes:
+  <!-- Start: Main -->
+  <div id="main">
 
-            'page-loading'      enables page preloader
-        -->
-        <div id="page-wrapper" class="page-loading">
-            <!-- Preloader -->
-            <!-- Preloader functionality (initialized in js/app.js) - pageLoading() -->
-            <!-- Used only if page preloader enabled from inc/config (PHP version) or the class 'page-loading' is added in #page-wrapper element (HTML version) -->
-            <div class="preloader">
-                <div class="inner">
-                    <!-- Animation spinner for all modern browsers -->
-                    <div class="preloader-spinner themed-background hidden-lt-ie10"></div>
+    <!-----------------------------------------------------------------+
+       ".navbar" Helper Classes:
+    -------------------------------------------------------------------+
+       * Positioning Classes:
+        '.navbar-static-top' - Static top positioned navbar
+        '.navbar-static-top' - Fixed top positioned navbar
 
-                    <!-- Text for IE9 -->
-                    <h3 class="text-primary visible-lt-ie10"><strong>Loading..</strong></h3>
-                </div>
-            </div>
-            <!-- END Preloader -->
+       * Available Skin Classes:
+         .bg-dark    .bg-primary   .bg-success
+         .bg-info    .bg-warning   .bg-danger
+         .bg-alert   .bg-system
+    -------------------------------------------------------------------+
+      Example: <header class="navbar navbar-fixed-top bg-primary">
+      Results: Fixed top navbar with blue background
+    ------------------------------------------------------------------->
 
-            <!-- Page Container -->
-            <!-- In the PHP version you can set the following options from inc/config file -->
-            <!--
-                Available #page-container classes:
-
-                'sidebar-light'                                 for a light main sidebar (You can add it along with any other class)
-
-                'sidebar-visible-lg-mini'                       main sidebar condensed - Mini Navigation (> 991px)
-                'sidebar-visible-lg-full'                       main sidebar full - Full Navigation (> 991px)
-
-                'sidebar-alt-visible-lg'                        alternative sidebar visible by default (> 991px) (You can add it along with any other class)
-
-                'header-fixed-top'                              has to be added only if the class 'navbar-fixed-top' was added on header.navbar
-                'header-fixed-bottom'                           has to be added only if the class 'navbar-fixed-bottom' was added on header.navbar
-
-                'fixed-width'                                   for a fixed width layout (can only be used with a static header/main sidebar layout)
-
-                'enable-cookies'                                enables cookies for remembering active color theme when changed from the sidebar links (You can add it along with any other class)
-            -->
-            <div id="page-container" class="header-fixed-top sidebar-visible-lg-full">
-                <!-- Main Sidebar -->
-                <div id="sidebar">
-                    <!-- Sidebar Brand -->
-                    <div id="sidebar-brand" class="themed-background">
-                        <a href="/" class="sidebar-title">
-                          <img src="{{ staticUrl }}/frontend/img/logo-white.png" style="width:30px; opacity: 0.5;margin-right:5px; margin-bottom:5px">
-                          <span class="sidebar-nav-mini-hide"><img src="{{ staticUrl }}/frontend/img/logo-text-white.png" style="width:100px; margin-bottom:5px"></span>
-                        </a>
-                    </div>
-                    <!-- END Sidebar Brand -->
-
-                    <!-- Wrapper for scrolling functionality -->
-                    <div id="sidebar-scroll">
-                        <!-- Sidebar Content -->
-                        <div class="sidebar-content">
-                            <!-- Sidebar Navigation -->
-                            <ul class="sidebar-nav">
-                                <li>
-                                  <a id="menu-dashboard" href="{{ urlFor("platform", "/dashboard") }}"><i class="gi gi-home sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Dashboard</span></a>
-                                </li>
-
-                                <li>
-                                    <a id="menu-users" href="{{ urlFor("platform", "/users") }}"><i class="gi gi-group sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Users</span></a>
-                                </li>
-
-                                <li>
-                                    <a id="menu-orders" href="{{ urlFor("platform", "/orders") }}"><i class="gi gi-money sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Orders</span></a>
-                                </li>
-
-                                <li>
-                                    <a id="menu-products" href="{{ urlFor("platform", "/products") }}"><i class="gi gi-book sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Products</span></a>
-                                </li>
-
-                                <li>
-                                    <a id="menu-coupons" href="{{ urlFor("platform", "/coupons") }}"><i class="gi gi-tag sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Coupons</span></a>
-                                </li>
-
-                                <li>
-                                    <a id="menu-stores" href="{{ urlFor("platform", "/stores") }}"><i class="gi gi-shop sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Stores</span></a>
-                                </li>
-
-                                <li>
-                                    <a id="menu-mailinglists" href="{{ urlFor("platform", "/mailinglists") }}"><i class="fa fa-envelope sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Mailing Lists</span></a>
-                                </li>
-
-                                <li>
-                                  <a id="menu-profile" href="{{ urlFor("platform", "/profile") }}"><i class="gi gi-user sidebar-nav-icon"></i><span class="sidebar-nav-mini-hide">Profile</span></a>
-                                </li>
-
-                                <li>
-                                    <a href="#" class="sidebar-nav-menu">
-                                        <i class="fa fa-chevron-left sidebar-nav-indicator sidebar-nav-mini-hide"></i>
-                                        <i class="gi gi-settings sidebar-nav-icon"></i>
-                                        <span class="sidebar-nav-mini-hide">Settings</span>
-                                    </a>
-                                    <ul>
-                                        <li>
-                                            <a id="menu-keys" href="{{ urlFor("platform", "/keys") }}">
-                                                <i class="gi gi-keys sidebar-nav-icon"></i>
-                                                <span class="sidebar-nav-mini-hide">API</span>
-                                            </a>
-                                        </li>
-
-                                        <li>
-                                            <a id="menu-organization" href="{{ urlFor("platform", "/organization") }}">
-                                                <i class="fa fa-sitemap sidebar-nav-icon"></i>
-                                                <span class="sidebar-nav-mini-hide">Organization</span>
-                                            </a>
-                                        </li>
-
-                                        <li>
-                                            <a id="menu-stripe-connect" href="{{ urlFor("platform", "/stripe/connect") }}">
-                                                <i class="fa fa-credit-card sidebar-nav-icon"></i>
-                                                <span class="sidebar-nav-mini-hide">Stripe</span>
-                                            </a>
-                                        </li>
-
-                                        <!-- <li> -->
-                                        <!--     <a id="menu-mailchimp" href="{{ urlFor("platform", "/mailchimp/connect") }}"> -->
-                                        <!--         <i class="fa fa-envelope sidebar-nav-icon"></i> -->
-                                        <!--         <span class="sidebar-nav-mini-hide">MailChimp</span> -->
-                                        <!--     </a> -->
-                                        <!-- </li> -->
-                                    </ul>
-                                </li>
-                            </ul>
-                            <!-- END Sidebar Navigation -->
-
-                        </div>
-                        <!-- END Sidebar Content -->
-                    </div>
-                    <!-- END Wrapper for scrolling functionality -->
-
-                    <!-- Sidebar Extra Info -->
-                    <div id="sidebar-extra-info" class="sidebar-content sidebar-nav-mini-hide">
-                      <small>&copy <span id="year-copy"></span> Crowdstart, LLC.</small>
-                    </div>
-                    <!-- END Sidebar Extra Info -->
-                </div>
-                <!-- END Main Sidebar -->
-
-                <!-- Main Container -->
-                <div id="main-container">
-                    <!-- Header -->
-                    <!-- In the PHP version you can set the following options from inc/config file -->
-                    <!--
-                        Available header.navbar classes:
-
-                        'navbar-default'            for the default light header
-                        'navbar-inverse'            for an alternative dark header
-
-                        'navbar-fixed-top'          for a top fixed header (fixed main sidebar with scroll will be auto initialized, functionality can be found in js/app.js - handleSidebar())
-                            'header-fixed-top'      has to be added on #page-container only if the class 'navbar-fixed-top' was added
-
-                        'navbar-fixed-bottom'       for a bottom fixed header (fixed main sidebar with scroll will be auto initialized, functionality can be found in js/app.js - handleSidebar()))
-                            'header-fixed-bottom'   has to be added on #page-container only if the class 'navbar-fixed-bottom' was added
-                    -->
-                    <header class="navbar navbar-inverse navbar-fixed-top">
-                        <!-- Left Header Navigation -->
-                        <ul class="nav navbar-nav-custom">
-                            <!-- Main Sidebar Toggle Button -->
-                            <li>
-                                <a href="javascript:void(0)" onclick="App.sidebar('toggle-sidebar');
-                                        this.blur();">
-                                    <i class="fa fa-ellipsis-v fa-fw animation-fadeInRight" id="sidebar-toggle-mini"></i>
-                                    <i class="fa fa-bars fa-fw animation-fadeInRight" id="sidebar-toggle-full"></i>
-                                </a>
-                            </li>
-                            <!-- END Main Sidebar Toggle Button -->
-
-                            <!-- Header Link -->
-                            <li class="hidden-xs animation-fadeInQuick">
-                                <a href=""><strong>{% block name %}{% endblock %}</strong></a>
-                            </li>
-                            <!-- END Header Link -->
-                        </ul>
-                        <!-- END Left Header Navigation -->
-
-                        <ul class="nav navbar-nav-custom pull-right">
-                            <li>
-                                <form action="{{ urlFor("platform", "/search") }}" method="get" class="navbar-form-custom" role="search">
-                                    <input type="text" id="q" name="q" class="form-control" placeholder="Search...">
-                                </form>
-                            </li>
-                            <!-- User Dropdown -->
-                            <li class="dropdown closed">
-                                <a href="javascript:void(0)" class="dropdown-toggle" data-toggle="dropdown">
-                                    <strong>{{ ctx.organization.FullName }}</strong>
-                                </a>
-                                <ul class="dropdown-menu dropdown-menu-right">
-                                    <li class="dropdown-header">
-                                        <strong>ADMINISTRATOR</strong>
-                                    </li>
-                                    <li>
-                                        <a href="{{ urlFor("platform", "/profile") }}">
-                                            <i class="fa fa-pencil-square fa-fw pull-right"></i>
-                                            {{ ctx.user.Name() }}
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a href="{{ urlFor("platform", "/settings")}}">
-                                        <i class="gi gi-settings fa-fw pull-right"></i>
-                                        Settings
-                                        </a>
-                                    </li>
-                                    <!-- <li> -->
-                                    <!-- <a href="page_ready_lock_screen.php"> -->
-                                    <!-- <i class="gi gi-lock fa-fw pull-right"></i> -->
-                                    <!-- Lock Account -->
-                                    <!-- </a> -->
-                                    <!-- </li> -->
-                                    <li>
-                                        <a href="{{ urlFor("platform", "/logout")}}">
-                                        <i class="fa fa-power-off fa-fw pull-right"></i>
-                                        Log out
-                                        </a>
-                                    </li>
-                                </ul>
-                            </li>
-                            <!-- END User Dropdown -->
-                        </ul>
-                        <!-- END Right Header Navigation -->
-                    </header>
-                    <!-- END Header -->
-
-                    <!-- Page content -->
-                    <div id="page-content">
-                        <div class="row">
-                          {% block content %}
-                          {% endblock %}
-                        </div>
-                        <modal-spinner>
-                        </modal-spinner>
-                    </div>
-                    <!-- END Page Content -->
-                </div>
-                <!-- END Main Container -->
-            </div>
-            <!-- END Page Container -->
+    <!-- Start: Header -->
+    <header class="navbar navbar-fixed-top navbar-shadow bg-dark">
+      <div class="navbar-branding">
+        <a href="/" class="navbar-brand">
+          <img src="{{ staticUrl }}/frontend/img/logo-white.png" style="width:30px; opacity: 0.5;margin-right:5px; margin-bottom:5px">
+          <img src="{{ staticUrl }}/frontend/img/logo-text-white.png" style="width:100px; margin-bottom:5px">
+        </a>
+        <span id="toggle_sidemenu_l" class="ad ad-lines"></span>
+      </div>
+      <form action="{{ urlFor("platform", "/search") }}" method="get" class="navbar-form navbar-left navbar-search alt" role="search">
+        <div class="form-group">
+          <input type="text" id="q" name="q" class="form-control" placeholder="Search...">
         </div>
-        <!-- END Page Wrapper -->
+      </form>
+      <ul class="nav navbar-nav navbar-right">
+        <li class="menu-divider hidden-xs">
+          <i class="fa fa-circle"></i>
+        </li>
+        <li class="dropdown menu-merge">
+          <a href="#" class="dropdown-toggle fw600 p15" data-toggle="dropdown">
+            <span class="hidden-xs pl15"> {{ ctx.organization.FullName }} </span>
+            <span class="caret caret-tp hidden-xs"></span>
+          </a>
+          <ul class="dropdown-menu list-group dropdown-persist w250" role="menu">
+            <li class="list-group-item">
+              <a id="menu-profile" class="animated animated-short fadeInUp" href="{{ urlFor("platform", "/profile") }}">
+                <span class="glyphicon glyphicon-user sidebar-nav-icon"></span>
+                <span class="sidebar-title">{{ ctx.user.Name() }}</span>
+              </a>
+            </li>
+            <li class="dropdown-footer">
+              <a href="{{ urlFor("platform", "/logout")}}">
+                <span class="fa fa-power-off pr5"></span> Logout
+              </a>
+            </li>
+          </ul>
+        </li>
+      </ul>
+    </header>
+    <!-- End: Header -->
 
-        <!-- ES5 shim -->
-        <script src="//cdnjs.cloudflare.com/ajax/libs/es5-shim/4.1.7/es5-shim.min.js"></script>
-        <!-- Include Jquery library from Google's CDN but if something goes wrong get Jquery from local file -->
-        <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
-        <script src="{{ staticUrl }}/js/dateFormat.js"></script>
-        <script src="{{ staticUrl }}/js/jquery.timeago.js"></script>
-        <script src="{{ staticUrl }}/js/platform.js"></script>
-        <script>$(function(){riot.mount('modal-spinner')})</script>
-        <script>!window.jQuery && document.write(decodeURI('%3Cscript src="{{ staticUrl }}/appui/js/vendor/jquery-2.1.3.min.js"%3E%3C/script%3E'));</script>
+    <!-----------------------------------------------------------------+
+       "#sidebar_left" Helper Classes:
+    -------------------------------------------------------------------+
+       * Positioning Classes:
+        '.affix' - Sets Sidebar Left to the fixed position
 
-        <!-- Bootstrap.js, Jquery plugins and Custom JS code -->
-        <script src="{{ staticUrl }}/appui/js/vendor/bootstrap.min.js"></script>
-        <script src="{{ staticUrl }}/appui/js/plugins.js"></script>
-        <script src="{{ staticUrl }}/appui/js/app.js"></script>
+       * Available Skin Classes:
+         .sidebar-dark (default no class needed)
+         .sidebar-light
+         .sidebar-light.light
+    -------------------------------------------------------------------+
+       Example: <aside id="sidebar_left" class="affix sidebar-light">
+       Results: Fixed Left Sidebar with light/white background
+    ------------------------------------------------------------------->
 
-        <!-- Load and execute javascript code used only in this page -->
-        {% block js %}
-        {% endblock %}
+    <!-- Start: Sidebar -->
+    <aside id="sidebar_left" class="nano nano-light affix">
 
-        <script>
-            var menuId = '{% block menulink %}none{% endblock %}';
-            var $menu = $('#' + menuId);
-            $menu.addClass('active');
-            $menu.closest('ul').closest('li').addClass('active');
-        </script>
-        <!-- Native Analytics -->
-        <script src="{{urlFor("analytics", crowdstartId, "/native/js")}}"></script>
-    </body>
-{% comment %}
-vim: ft=htmldjango
-{% endcomment %}
+      <!-- Start: Sidebar Left Content -->
+      <div class="sidebar-left-content nano-content">
+
+        <!-- Start: Sidebar Menu -->
+        <ul class="nav sidebar-menu">
+          <li class="sidebar-label pt20">Menu</li>
+          <li>
+            <a id="menu-dashboard" href="{{ urlFor("platform", "/dashboard") }}">
+              <span class="glyphicon glyphicon-home"></span>
+              <span class="sidebar-title">Dashboard</span>
+            </a>
+          </li>
+          <li>
+            <a id="menu-users" href="{{ urlFor("platform", "/users") }}">
+              <span class="fa fa-group"></span>
+              <span class="sidebar-title">Users</span>
+            </a>
+          </li>
+          <li>
+            <a id="menu-orders" href="{{ urlFor("platform", "/orders") }}">
+              <span class="glyphicon glyphicon-credit-card"></span>
+              <span class="sidebar-title">Orders</span>
+            </a>
+          </li>
+          <li>
+            <a id="menu-products" href="{{ urlFor("platform", "/products") }}">
+              <span class="glyphicon glyphicon-book"></span>
+              <span class="sidebar-title">Products</span>
+            </a>
+          </li>
+          <li>
+            <a id="menu-coupons" href="{{ urlFor("platform", "/coupons") }}">
+              <span class="glyphicon glyphicon-tag"></span>
+              <span class="sidebar-title">Coupons</span>
+            </a>
+          </li>
+          <li>
+            <a id="menu-stores" href="{{ urlFor("platform", "/stores") }}">
+              <span class="glyphicon glyphicon-shopping-cart"></span>
+              <span class="sidebar-title">Stores</span>
+            </a>
+          </li>
+          <li>
+            <a id="menu-mailinglists" href="{{ urlFor("platform", "/mailinglists") }}">
+              <span class="fa fa-envelope"></span>
+              <span class="sidebar-title">Mailing Lists</span>
+            </a>
+          </li>
+          <li class="sidebar-label pt15">System</li>
+          <li>
+            <a id="menu-profile" href="{{ urlFor("platform", "/profile") }}">
+              <span class="glyphicon glyphicon-user sidebar-nav-icon"></span>
+              <span class="sidebar-title">Profile</span>
+            </a>
+          </li>
+          <li>
+            <a href="#" class="accordion-toggle">
+              <span class="fa fa-gear"></span>
+              <span class="sidebar-title">Settings</span>
+              <span class="caret"></span>
+            </a>
+            <ul class="nav sub-nav">
+              <li>
+                <a id="menu-keys" href="{{ urlFor("platform", "/keys") }}">
+                  <span class="fa fa-key"></span>
+                  <span>API</span>
+                </a>
+              </li>
+              <li>
+                <a id="menu-organization" href="{{ urlFor("platform", "/organization") }}">
+                  <span class="fa fa-sitemap"></span>
+                  <span>Organization</span>
+                </a>
+              </li>
+              <li>
+                <a id="menu-stripe-connect" href="{{ urlFor("platform", "/stripe/connect") }}">
+                  <span class="fa fa-credit-card"></span>
+                  <span>Stripe</span>
+                </a>
+              </li>
+            </ul>
+          </li>
+        </ul>
+        <!-- End: Sidebar Menu -->
+      </div>
+      <!-- End: Sidebar Left Content -->
+
+    </aside>
+    <!-- End: Sidebar Left -->
+
+    <!-- Start: Content-Wrapper -->
+    <section id="content_wrapper">
+
+      <!-- Start: Topbar -->
+      <header id="topbar" class="alt">
+        <div class="topbar-left">
+          <ol class="breadcrumb">
+            <li class="crumb-active">
+              <a href="dashboard.html">Dashboard</a>
+            </li>
+            <li class="crumb-icon">
+              <a href="dashboard.html">
+                <span class="glyphicon glyphicon-home"></span>
+              </a>
+            </li>
+            <li class="crumb-link">
+              <a href="index.html">Home</a>
+            </li>
+            <li class="crumb-trail">Dashboard</li>
+          </ol>
+        </div>
+      </header>
+      <!-- End: Topbar -->
+
+      <!-- Begin: Content -->
+      <section id="content" class="table-layout animated fadeIn">
+
+        <!-- begin: .tray-center -->
+        <div class="tray tray-center">
+
+          {% block content %}
+          {% endblock %}
+
+        </div>
+        <!-- end: .tray-center -->
+
+      </section>
+      <!-- End: Content -->
+
+      <!-- Begin: Page Footer -->
+      <footer id="content-footer" class="affix">
+        <div class="row">
+          <div class="col-md-6">
+            <span class="footer-legal">© 2015 Crowdstart, LLC.</span>
+          </div>
+        </div>
+      </footer>
+      <!-- End: Page Footer -->
+
+    </section>
+    <!-- End: Content-Wrapper -->
+
+    <!-- Start: Right Sidebar -->
+    <aside id="sidebar_right" class="nano affix">
+
+      <!-- Start: Sidebar Right Content -->
+      <div class="sidebar-right-content nano-content">
+
+        <div class="tab-block sidebar-block br-n">
+          <ul class="nav nav-tabs tabs-border nav-justified hidden">
+            <li class="active">
+              <a href="#sidebar-right-tab1" data-toggle="tab">Tab 1</a>
+            </li>
+            <li>
+              <a href="#sidebar-right-tab2" data-toggle="tab">Tab 2</a>
+            </li>
+            <li>
+              <a href="#sidebar-right-tab3" data-toggle="tab">Tab 3</a>
+            </li>
+          </ul>
+          <div class="tab-content br-n">
+            <div id="sidebar-right-tab1" class="tab-pane active">
+
+              <h5 class="title-divider text-muted mb20"> Server Statistics
+                <span class="pull-right"> 2013
+                  <i class="fa fa-caret-down ml5"></i>
+                </span>
+              </h5>
+              <div class="progress mh5">
+                <div class="progress-bar progress-bar-primary" role="progressbar" aria-valuenow="45" aria-valuemin="0" aria-valuemax="100" style="width: 44%">
+                  <span class="fs11">DB Request</span>
+                </div>
+              </div>
+              <div class="progress mh5">
+                <div class="progress-bar progress-bar-info" role="progressbar" aria-valuenow="45" aria-valuemin="0" aria-valuemax="100" style="width: 84%">
+                  <span class="fs11 text-left">Server Load</span>
+                </div>
+              </div>
+              <div class="progress mh5">
+                <div class="progress-bar progress-bar-warning" role="progressbar" aria-valuenow="45" aria-valuemin="0" aria-valuemax="100" style="width: 61%">
+                  <span class="fs11 text-left">Server Connections</span>
+                </div>
+              </div>
+
+              <h5 class="title-divider text-muted mt30 mb10">Traffic Margins</h5>
+              <div class="row">
+                <div class="col-xs-5">
+                  <h3 class="text-primary mn pl5">132</h3>
+                </div>
+                <div class="col-xs-7 text-right">
+                  <h3 class="text-success-dark mn">
+                    <i class="fa fa-caret-up"></i> 13.2% </h3>
+                </div>
+              </div>
+
+              <h5 class="title-divider text-muted mt25 mb10">Database Request</h5>
+              <div class="row">
+                <div class="col-xs-5">
+                  <h3 class="text-primary mn pl5">212</h3>
+                </div>
+                <div class="col-xs-7 text-right">
+                  <h3 class="text-success-dark mn">
+                    <i class="fa fa-caret-up"></i> 25.6% </h3>
+                </div>
+              </div>
+
+              <h5 class="title-divider text-muted mt25 mb10">Server Response</h5>
+              <div class="row">
+                <div class="col-xs-5">
+                  <h3 class="text-primary mn pl5">82.5</h3>
+                </div>
+                <div class="col-xs-7 text-right">
+                  <h3 class="text-danger mn">
+                    <i class="fa fa-caret-down"></i> 17.9% </h3>
+                </div>
+              </div>
+
+              <h5 class="title-divider text-muted mt40 mb20"> Server Statistics
+                <span class="pull-right text-primary fw600">USA</span>
+              </h5>
+
+
+            </div>
+            <div id="sidebar-right-tab2" class="tab-pane"></div>
+            <div id="sidebar-right-tab3" class="tab-pane"></div>
+          </div>
+          <!-- end: .tab-content -->
+        </div>
+      </div>
+    </aside>
+    <!-- End: Right Sidebar -->
+
+  </div>
+  <!-- End: Main -->
+
+  <!-- BEGIN: PAGE SCRIPTS -->
+
+  <!-- jQuery -->
+  <script src="{{ staticUrl }}/vendor/jquery/jquery-1.11.1.min.js"></script>
+  <script src="{{ staticUrl }}/vendor/jquery/jquery_ui/jquery-ui.min.js"></script>
+
+  <!-- HighCharts Plugin -->
+  <script src="{{ staticUrl }}/vendor/plugins/highcharts/highcharts.js"></script>
+
+  <!-- JvectorMap Plugin + US Map (more maps in plugin/backend folder) -->
+  <script src="{{ staticUrl }}/vendor/plugins/jvectormap/jquery.jvectormap.min.js"></script>
+  <script src="{{ staticUrl }}/vendor/plugins/jvectormap/assets/jquery-jvectormap-us-lcc-en.js"></script>
+
+  <!-- Bootstrap Tabdrop Plugin -->
+  <script src="{{ staticUrl }}/vendor/plugins/tabdrop/bootstrap-tabdrop.js"></script>
+
+  <!-- FullCalendar Plugin + moment Dependency -->
+  <script src="{{ staticUrl }}/vendor/plugins/fullcalendar/lib/moment.min.js"></script>
+  <script src="{{ staticUrl }}/vendor/plugins/fullcalendar/fullcalendar.min.js"></script>
+
+  <!-- Theme Javascript -->
+  <script src="{{ staticUrl }}/backend/js/utility/utility.js"></script>
+  <script src="{{ staticUrl }}/backend/js/demo/demo.js"></script>
+  <script src="{{ staticUrl }}/backend/js/main.js"></script>
+
+  <!-- Widget Javascript -->
+  <script src="{{ staticUrl }}/backend/js/demo/widgets.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-timeago/1.4.1/jquery.timeago.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.0/js/select2.min.js"></script>
+  <script type="text/javascript">
+  jQuery(document).ready(function() {
+
+    "use strict";
+
+    // Init Theme Core
+    Core.init();
+  });
+  </script>
+  <script src="{{ staticUrl }}/js/platform.js"></script>
+  {% block js %}
+  {% endblock %}
+  <script src="{{urlFor("analytics", crowdstartId, "/native/js")}}"></script>
+  <!-- END: PAGE SCRIPTS -->
+
+</body>
+
 </html>
