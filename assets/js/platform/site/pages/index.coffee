@@ -4,6 +4,7 @@ module.exports =
   Users:        require './users'
   Order:        require './order'
   Orders:       require './orders'
+  Payment:      require './payment'
   Payments:     require './payments'
   Product:      require './product'
   Products:     require './products'
