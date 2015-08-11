@@ -1,0 +1,13 @@
+<div class="{has-error: hasError(), admin-form: true}">
+  <label __for="{ model.name }" class="control-label { opts.labelclasses }">
+    <span>{ opts.label }</span>
+  </label>
+  <div class="section { opts.controlclasses }" style="margin:5px 0">
+    <label class="switch switch-primary">
+      <input id="{ model.name }" name="{ model.name }" type="checkbox" onchange="{ change }" onblur="{ change }" __checked ="{ model.value }"></input>
+      <label for="{ model.name }" data-on="YES" data-off="NO"></label>
+    </label>
+    <div if="{hasError()}" class="error-container help-block animated fadeInUp">{ error }</div>
+  </div>
+</div>
+

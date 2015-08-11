@@ -1,6 +1,7 @@
 _ = require 'underscore'
 moment = require 'moment'
 crowdcontrol = require 'crowdcontrol'
+Events = crowdcontrol.Events
 
 util = require '../../util'
 table = require '../../table'
@@ -18,7 +19,7 @@ m = crowdcontrol.utils.mediator
 class BalanceWidgetFormView extends FormView
   tag: 'balance-widget-form'
   path: 'transaction'
-  html: require './balance-form.html'
+  html: require '../../templates/backend/widget/balance/balance-form.html'
   inputConfigs: [
     input('type', '', 'required basic-select'),
     input('amount', 'ex 100', 'required money'),
@@ -38,7 +39,7 @@ BalanceWidgetFormView.register()
 
 class BalanceWidget extends View
   tag: 'balance-widget'
-  html: require './template.html'
+  html: require '../../templates/backend/widget/balance/template.html'
 
   currencyOptions: {}
   isEmpty: true
@@ -54,7 +55,7 @@ class BalanceWidget extends View
     field('type', 'Type')
     field('amount', 'Amount', 'money')
     field('description', 'Description')
-    field('createdAt', 'Created On', 'date')
+    field('createdAt', 'Created', 'date')
   ]
 
   events:
@@ -94,13 +95,15 @@ class BalanceWidget extends View
       @currencyOptions[row.currency] = row.currency
 
     @model = newModel
-    @obs.trigger BasicTableView.Events.NewData, newModel[currency]
+    @obs.trigger Events.Table.NewData, newModel[currency]
     @update()
 
   change: (event)->
-    @currency = $(event.target).val()
-    @obs.trigger BasicTableView.Events.NewData, @model[@currency]
-    @update()
+    currency = $(event.target).val()
+    if @currency != currency
+      @currency = currency
+      @obs.trigger Events.Table.NewData, @model[@currency]
+      @update()
 
   balance: ()->
     transactions = @model[@currency]
@@ -117,23 +120,24 @@ class BalanceWidget extends View
 
     @path = "user/#{userId}/transactions"
 
-    @api = Api.get('crowdstart')
+    @api = Api.get 'crowdstart'
 
     @obs.trigger 'refresh'
 
     @formModel.userId = userId
 
     @on 'update', ()=>
-      $select = $(@root).find('#balance-currency-select')
-      if !@initialized && $select[0]?
-        $select.chosen(
-          width: '100%'
-          disable_search_threshold: 3
-        ).change((event)=>@change(event))
-        @initialized = true
-      setTimeout ()->
-        $select.chosen().trigger("chosen:updated")
-      , 500
+      $select = $(@root).find '#balance-currency-select'
+      if $select[0]?
+        if !@initialized
+          $select.select2(
+            minimumResultsForSearch: 10
+          ).change((event)=>@change(event))
+          @initialized = true
+        else
+          setTimeout ()=>
+            $select.select2('val', @currency)
+          , 500
 
 BalanceWidget.register()
 
