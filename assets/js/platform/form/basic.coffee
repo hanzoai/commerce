@@ -1,25 +1,29 @@
 riot = require 'riot'
 
 crowdcontrol = require 'crowdcontrol'
+Events = crowdcontrol.Events
 
 FormView = crowdcontrol.view.form.FormView
 Api = crowdcontrol.data.Api
 Source = crowdcontrol.data.Source
 m = crowdcontrol.utils.mediator
 
-LoadEvent = 'Load'
+Events.Form.Prefill = 'form-data-load'
+Events.Form.ResponseSuccess = 'form-response-success'
+Events.Form.ResponseFailed = 'form-response-failed'
 
 class BasicFormView extends FormView
-  @Events:
-    Load: LoadEvent
   tag: 'basic-form'
   redirectPath: ''
   path: ''
-  html: require './template.html'
+  html: require '../templates/backend/form/template.html'
   id: null
+  error: null
+  processButtonText: 'Saving...'
+  successButtonText: 'Saved'
 
   events:
-    "#{FormView.Events.SubmitFailed}": ()->
+    "#{Events.Form.SubmitFailed}": ()->
       requestAnimationFrame ()->
         $container = $(".error-container")
         if $container[0]
@@ -29,32 +33,48 @@ class BasicFormView extends FormView
 
   delete: ()->
     m.trigger 'start-spin', @path + '-delete'
-    @api.delete(@path).finally ()=>
-      window.location.replace('../' + @redirectPath)
+    @api.delete(@path).finally (e)=>
+      console.log(e.stack) if e
+      window.location.hash = @redirectPath
 
   js: (opts)->
     super
+
+    @api = api = Api.get 'crowdstart'
 
     if @id?
       @loading = true
       m.trigger 'start-spin', @path + '-form-load'
 
-      @api = api = Api.get('crowdstart')
       api.get(@path).then((res)=>
         m.trigger 'stop-spin', @path + '-form-load'
 
-        if res.status != 200
-          throw new Error("Form failed to load")
+        if res.status != 200 && res.status != 204
+          throw new Error 'Form failed to load: '
 
         @model = res.responseText
         @loadData @model
 
         @initFormGroup()
 
-        @obs.trigger LoadEvent, @model
+        @obs.trigger Events.Form.Prefill, @model
         riot.update()
-      ).catch ()=>
-        window.location.replace('../' + @redirectPath)
+      ).catch (e)=>
+        console.log(e.stack)
+        @error = e
+        # window.location.hash = @redirectPath
+    else
+      # the LoadEvent is meant to be triggered asynchrous of the object bootstrapping
+      # otherwise, it will fire before riot.mount finishes rendering this tag's children
+      requestAnimationFrame ()=>
+        @obs.trigger Events.Form.Prefill, @model
+
+  initFormGroup: ()->
+    if !@id? && @inputs?
+      for key, input of @inputs
+        input.model.value = ''
+
+    super
 
   loadData: (model)->
 
@@ -64,19 +84,38 @@ class BasicFormView extends FormView
 
     method = if @id? then 'patch' else 'post'
 
-    return @api[method](@path, @model).then ()=>
+    $button = $(event.target).find('input[type=submit], button[type=submit]')
+    buttonText= $button.text()
+    $button.text @processButtonText
+    $button.prop 'disabled', true
+    @fullyValidated = false
+
+    return @api[method](@path, @model).then((res)=>
+      if res.status != 200 && res.status != 201 && res.status != 204
+        throw new Error res.responseText.error.message
+
+      @error = undefined
+
       m.trigger 'stop-spin', @path + '-form-save'
-      $button = $(event.target).find('input[type=submit], button[type=submit]').text('Saved')
+      $button.text @successButtonText
+
       setTimeout ()->
-        $button.text('Save')
+        $button.text buttonText
+        $button.prop 'disabled', false
       , 1000
+      @obs.trigger Events.Form.ResponseSuccess
       @update()
-    , ()=>
+    ).catch (e)=>
+      @error = e
+
       m.trigger 'stop-spin', @path + '-form-save'
-      $button = $(event.target).find('input[type=submit], button[type=submit]').text('An Error Has Occured')
+      $button.text 'An Error Has Occured'
+
       setTimeout ()->
-        $button.text('Save')
+        $button.text buttonText
+        $button.prop 'disabled', false
       , 1000
+      @obs.trigger Events.Form.ResponseFailed
       @update()
 
 module.exports = BasicFormView

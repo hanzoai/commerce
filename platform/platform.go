@@ -61,38 +61,22 @@ func init() {
 	dash.GET("/dashboard", admin.Dashboard)
 
 	dash.GET("/profile", user.Profile)
-	dash.POST("/profile/contact", user.ContactSubmit)
+	dash.POST("/profile", user.ContactSubmit)
 	dash.POST("/profile/password", user.PasswordSubmit)
 	dash.GET("/keys", admin.Keys)
 	dash.POST("/keys", admin.NewKeys)
 
-	dash.GET("/users", admin.Users)
-	dash.GET("/user/:id", admin.User)
-
-	dash.GET("/orders", admin.Orders)
-	dash.GET("/order/:id", admin.Order)
 	dash.GET("/sendorderconfirmation/:id", admin.SendOrderConfirmation)
 
-	dash.GET("/mailinglists", admin.MailingLists)
-	dash.GET("/mailinglist/:id", admin.MailingList)
-
-	dash.GET("/products", admin.Products)
-	dash.GET("/product/:id", admin.Product)
-
-	dash.GET("/coupons", admin.Coupons)
-	dash.GET("/coupon/:id", admin.Coupon)
-
-	dash.GET("/stores", admin.Stores)
-	dash.GET("/store/:id", admin.Store)
-
 	dash.GET("/organization", admin.Organization)
+	dash.POST("/organization", admin.UpdateOrganization)
 
 	dash.GET("/settings", user.Profile)
 
 	dash.GET("/search", admin.Search)
 
 	// Stripe connect
-	dash.GET("/stripe/connect", admin.StripeConnect)
+	dash.GET("/stripe", admin.Stripe)
 	dash.GET("/stripe/callback", admin.StripeCallback)
 	dash.GET("/stripe/sync", admin.StripeSync)
 

@@ -3,22 +3,44 @@ package admin
 import (
 	"github.com/gin-gonic/gin"
 
+	"crowdstart.com/config"
 	"crowdstart.com/middleware"
 	"crowdstart.com/thirdparty/stripe/connect"
 	"crowdstart.com/thirdparty/stripe/tasks"
+	"crowdstart.com/util/json/http"
 	"crowdstart.com/util/log"
+	"crowdstart.com/util/template"
 )
 
 func StripeSync(c *gin.Context) {
 	ctx := middleware.GetAppEngine(c)
 	org := middleware.GetOrganization(c)
 	tasks.SyncCharges.Call(ctx, org.Id())
-	Render(c, "admin/stripe/sync-success.html")
+
+	c.Writer.WriteHeader(204)
+}
+
+type StripeData struct {
+	State       string `json:"state"`
+	ClientId    string `json:"clientId"`
+	RedirectUrl string `json:"redirectUrl"`
 }
 
 // Admin Payment Connectors
-func StripeConnect(c *gin.Context) {
-	Render(c, "admin/stripe/connect.html")
+func Stripe(c *gin.Context) {
+	org := middleware.GetOrganization(c)
+
+	sd := new(StripeData)
+	sd.ClientId = config.Stripe.ClientId
+	sd.RedirectUrl = config.Stripe.RedirectURL
+
+	if org.Stripe.AccessToken == "" {
+		sd.State = "new"
+	} else {
+		sd.State = "connected"
+	}
+
+	http.Render(c, 200, sd)
 }
 
 // Connect connect callback
@@ -30,7 +52,7 @@ func StripeCallback(c *gin.Context) {
 	// Failed to get back authorization code from Stripe
 	if errStr != "" {
 		log.Error("Failed to get authorization code from Stripe during Stripe Connect: %v", errStr, c)
-		Render(c, "admin/stripe/connect.html", "error", errStr)
+		template.Render(c, "admin/stripe/connect.html", "error", errStr)
 		return
 	}
 
@@ -40,7 +62,7 @@ func StripeCallback(c *gin.Context) {
 	token, testToken, err := connect.GetTokens(ctx, code)
 	if err != nil {
 		log.Error("There was an error with Stripe Connect: %v", err, c)
-		Render(c, "admin/stripe/connect.html", "stripeError", err)
+		c.Redirect(302, config.UrlFor("platform", "dashboard#integrations"))
 		return
 	}
 
@@ -64,5 +86,5 @@ func StripeCallback(c *gin.Context) {
 	}
 
 	// Success
-	Render(c, "admin/stripe/connect.html")
+	c.Redirect(302, config.UrlFor("platform", "dashboard#integrations"))
 }

@@ -7,12 +7,8 @@ import (
 
 	"crowdstart.com/auth"
 	"crowdstart.com/auth/password"
-	"crowdstart.com/config"
-	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/util/log"
-	"crowdstart.com/util/template"
+	"crowdstart.com/util/json/http"
 )
 
 var ErrorInvalidProfile = errors.New("Invalid Profile Saved")
@@ -21,19 +17,15 @@ var ErrorPasswordTooShort = errors.New("Password must be atleast 6 characters lo
 
 // Renders the profile page
 func Profile(c *gin.Context) {
-	Render(c, "admin/profile.html")
+	u := middleware.GetCurrentUser(c)
+	http.Render(c, 200, u)
 }
 
 // Handles submission on profile page
 func ContactSubmit(c *gin.Context) {
 	form := new(ContactForm)
 	if err := form.Parse(c); err != nil {
-		log.Panic("Failed to save user profile: %v", err)
-	}
-
-	// val.SanitizeUser2(&form.User)
-	if errs := form.Validate(); len(errs) > 0 {
-		c.AbortWithError(500, ErrorInvalidProfile)
+		http.Fail(c, 400, "Failed decode request body", err)
 		return
 	}
 
@@ -47,54 +39,39 @@ func ContactSubmit(c *gin.Context) {
 
 	u.Put()
 
-	c.Redirect(301, config.UrlFor("platform/", "profile"))
+	http.Render(c, 200, u)
 }
 
 func PasswordSubmit(c *gin.Context) {
 	form := new(ChangePasswordForm)
 	if err := form.Parse(c); err != nil {
-		log.Panic("Failed to update user password: %v", err)
+		http.Fail(c, 400, "Failed decode request body", err)
+		return
 	}
 
 	u := middleware.GetCurrentUser(c)
 
 	if !password.HashAndCompare(u.PasswordHash, form.OldPassword) {
-		log.Debug("Old password is incorrect.")
-		c.AbortWithError(500, ErrorPasswordIncorrect)
+		http.Fail(c, 500, ErrorPasswordIncorrect.Error(), ErrorPasswordIncorrect)
 		return
 	}
 
 	if form.Password == form.ConfirmPassword {
 		if errs := form.Validate(); len(errs) > 0 {
-			c.AbortWithError(500, ErrorPasswordTooShort)
+			http.Fail(c, 500, ErrorPasswordTooShort.Error(), ErrorPasswordTooShort)
 			return
 		}
 
 		var err error
 		if u.PasswordHash, err = password.Hash(form.Password); err != nil {
-			c.AbortWithError(500, err)
+			http.Fail(c, 500, "Something has gone wrong.", err)
 			return
 		}
 
 		u.Put()
-
-		c.Redirect(301, config.UrlFor("platform/", "profile"))
+		c.Writer.WriteHeader(204)
 	} else {
-		log.Debug("Passwords do not match.")
-		c.AbortWithError(500, auth.ErrorPasswordMismatch)
+		http.Fail(c, 500, auth.ErrorPasswordMismatch.Error(), auth.ErrorPasswordMismatch)
 		return
 	}
-}
-
-func Render(c *gin.Context, name string, args ...interface{}) {
-	db := datastore.New(c)
-	org := organization.New(db)
-	if err := org.GetById("crowdstart"); err == nil {
-		args = append(args, "crowdstartId", org.Id())
-	} else {
-		args = append(args, "crowdstartId", "")
-	}
-	log.Warn("Z%s", org.Id())
-
-	template.Render(c, name, args...)
 }

@@ -5,6 +5,7 @@ import (
 
 	"crowdstart.com/models/user"
 	"crowdstart.com/util/form"
+	"crowdstart.com/util/json"
 	"crowdstart.com/util/val"
 )
 
@@ -14,7 +15,7 @@ type ContactForm struct {
 }
 
 func (f *ContactForm) Parse(c *gin.Context) error {
-	return form.Parse(c, f)
+	return json.Decode(c.Request.Body, &f.User)
 }
 
 func (f *ContactForm) Validate() []string {
@@ -25,13 +26,13 @@ func (f *ContactForm) Validate() []string {
 
 // User profile form (change password)
 type ChangePasswordForm struct {
-	OldPassword     string
-	Password        string
-	ConfirmPassword string
+	OldPassword     string `json:"oldPassword"`
+	Password        string `json:"password"`
+	ConfirmPassword string `json:"confirmPassword"`
 }
 
 func (f *ChangePasswordForm) Parse(c *gin.Context) error {
-	return form.Parse(c, f)
+	return json.Decode(c.Request.Body, f)
 }
 
 func (f *ChangePasswordForm) Validate() []string {

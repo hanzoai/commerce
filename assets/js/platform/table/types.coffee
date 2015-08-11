@@ -2,6 +2,8 @@ riot = require 'riot'
 _ = require 'underscore'
 
 crowdcontrol = require 'crowdcontrol'
+Events = crowdcontrol.Events
+
 tokenize = crowdcontrol.view.form.tokenize
 
 View = crowdcontrol.view.View
@@ -33,18 +35,16 @@ class TableFieldConfig
 #     ]
 #   path: path relative to api.  Use only if retrieving live data
 
-TableViewEvents =
+Events.Table =
   NewData: 'table-new-data'
 
 class BasicTableView extends View
-  @Events: TableViewEvents
-
   tag: 'basic-table'
-  html: require './template.html'
+  html: require '../templates/backend/table/template.html'
   events:
-    "#{TableViewEvents.NewData}": (model)->
+    "#{Events.Table.NewData}": (model)->
       @model = model
-      @update()
+      riot.update()
   isEmpty: ()->
     model = @model
     return !model? || !model.length || model.length == 0

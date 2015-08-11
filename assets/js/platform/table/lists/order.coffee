@@ -10,13 +10,13 @@ class OrderList extends BasicList
   tag: 'order-list'
   path: 'order'
   headers: [
-    field('id', 'Number', 'id', 'id-display:number id-path:../order')
+    field('id', 'Number', 'id', 'id-display:number id-path:#order')
     field('currency', 'Currency', 'upper')
     field('total', 'Total', 'money')
     field('status', 'Order Status')
     field('fulfillmentStatus', 'Fulfillment Status')
-    field('createdAt', 'Created On', 'date')
-    # field('updatedAt', 'Last Updated', 'ago')
+    field('createdAt', 'Created', 'date')
+    field('updatedAt', 'Last Updated', 'ago')
   ]
 
 OrderList.register()
