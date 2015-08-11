@@ -1,14 +1,13 @@
-@require './animate.styl'
 @require './modal.styl'
 @require './loader.styl'
 
-.table thead > tr > th, .table tbody > tr > td
-  font-size: 14px
-  padding-top: 4px
-  padding-bottom: 4px
-
 .widget
   min-height: 100px
+
+listing-widget .table-viewport
+  overflow: scroll
+  height: 400px
+  display: block
 
 .table-viewport
   overflow: scroll
@@ -34,3 +33,78 @@ h5.variant-option-header
 .click-for-new
   input
     cursor: pointer !important
+
+.panel-heading > a:after
+  font-family:'Glyphicons Halflings'
+  content:"\e114"
+  float: right
+  color: grey
+
+.panel-heading > a.collapsed:after
+  content:"\e080"
+
+.selection .select2-selection
+  height: 39px
+  padding: 9px 4px
+
+  .select2-selection__rendered
+    line-height: inherit
+
+  .select2-selection__arrow
+    top: 6px
+
+.pagination
+  display: table
+  margin: 0 auto
+
+.pagination a
+  height: auto !important
+  padding: 5px 15px !important
+  background-image: none !important
+
+.pagination input
+  width:125px !important
+  display:inline !important
+  padding-top:10px !important
+
+.bg-dark
+  background-color: #353738 !important
+
+menu
+  display: block
+  margin: 0
+  padding: 0
+
+.map
+  display: block
+  height: 300px
+
+.modal-content
+  top: 200px
+
+textarea
+  resize: none
+  min-height: 107px
+
+.panel .panel .panel-heading
+  border-top: 0
+  border-left: 0
+  border-right: 0
+  background-color: inherit
+
+table-field
+  textarea
+    width: 100%
+
+input.search
+  &::-webkit-input-placeholder
+    color: white
+
+  &:-moz-placeholder
+    color: white
+
+  &::-moz-placeholder
+    color: white
+
+  &:-ms-input-placeholder
+    color: white

@@ -14,7 +14,7 @@ class PaymentList extends BasicList
     field('currency', 'Currency', 'upper')
     field('amount', 'Total', 'money')
     field('status', 'Status')
-    field('createdAt', 'Created On', 'date')
+    field('createdAt', 'Created', 'date')
     # field('updatedAt', 'Last Updated', 'ago')
   ]
 
