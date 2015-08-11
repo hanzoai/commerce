@@ -5,6 +5,9 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
+
+	"appengine"
 
 	"github.com/gin-gonic/gin"
 
@@ -261,8 +264,12 @@ func (r Rest) newSearchableKind() mixin.SearchableKind {
 
 // retuns a new interface of this entity type
 func (r Rest) newEntity(c *gin.Context) mixin.Entity {
+	// Increase timeout
+	ctx := middleware.GetAppEngine(c)
+	ctx = appengine.Timeout(ctx, 15*time.Second)
+
 	// Create a new entity
-	db := datastore.New(c)
+	db := datastore.New(ctx)
 	entity := reflect.New(r.entityType).Interface().(mixin.Entity)
 	model := mixin.Model{Db: db, Entity: entity}
 

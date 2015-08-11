@@ -14,6 +14,8 @@ module.exports =
   Stores:       require './stores'
   MailingList:  require './mailinglist'
   MailingLists: require './mailinglists'
+  Subscriber:   require './subscriber'
+  Subscribers:  require './subscribers'
 
   Profile:      require './profile'
   Api:          require './api'

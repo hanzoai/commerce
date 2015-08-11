@@ -6,3 +6,4 @@ module.exports =
   coupon: require       './coupon'
   store: require        './store'
   mailinglist: require  './mailinglist'
+  subscriber: require   './subscriber'
