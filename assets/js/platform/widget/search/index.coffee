@@ -29,6 +29,7 @@ class Search extends View
     requestAnimationFrame ()=>
       @userObs.trigger Events.Table.StartSearch
       @orderObs.trigger Events.Table.StartSearch
+      riot.update()
 
     api.get('search' + q).then((res) =>
       if res.status != 200 && res.status != 204
