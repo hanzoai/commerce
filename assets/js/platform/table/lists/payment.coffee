@@ -10,7 +10,8 @@ class PaymentList extends BasicList
   tag: 'payment-list'
   path: 'payment'
   headers: [
-    field('account.chargeId', 'Id', 'id', 'id-path://dashboard.stripe.com/payments')
+    field('id', 'Id', 'id', 'id-path:#payment')
+    field('account.chargeId', 'Stripe', 'id', 'id-path://dashboard.stripe.com/payments')
     field('currency', 'Currency', 'upper')
     field('amount', 'Total', 'money')
     field('status', 'Status')

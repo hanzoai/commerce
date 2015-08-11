@@ -3,8 +3,6 @@ _ = require 'underscore'
 crowdcontrol = require 'crowdcontrol'
 Events = crowdcontrol.Events
 
-m = crowdcontrol.utils.mediator
-
 input = require '../input'
 BasicFormView = require '../basic'
 Form = require './form'
@@ -62,22 +60,28 @@ class OrderUserStaticForm extends BasicFormView
   events:
     "#{Events.Form.Prefill}": (orderModel)->
       @loading = true
-      m.trigger 'start-spin', @path + '-form-load'
 
       @orderId = orderModel.id
-      @path = @basePath + '/' + orderModel.userId
 
-      @api = api = Api.get('crowdstart')
-      api.get(@path).then (res)=>
-        m.trigger 'stop-spin', @path + '-form-load'
+      if orderModel.userId
+        @path = @basePath + '/' + orderModel.userId
+        @api = api = Api.get('crowdstart')
+        api.get(@path).then((res)=>
 
-        if res.status != 200
-          throw new Error("Form failed to load")
+          if res.status != 200
+            throw new Error("Form failed to load")
 
-        @model = res.responseText
-        @loadData @model
+          @model = res.responseText
+          @loadData @model
 
-        @initFormGroup()
+          @initFormGroup()
+          riot.update()
+        ).catch (e)=>
+          @error = e
+          console.log e.stack
+          riot.update()
+      else
+        @error = new Error('No UserId')
         riot.update()
 
   js: ()->
