@@ -1,4 +1,5 @@
 crowdcontrol = require 'crowdcontrol'
+Events = crowdcontrol.Events
 
 table = require '../types'
 
@@ -11,7 +12,7 @@ capitalizeFirstLetter = (string) ->
 
 class BasicPagedTable extends BasicTableView
   tag: 'basic-paged-table'
-  html: require './template.html'
+  html: require '../../templates/backend/table/paged/template.html'
   page: 1
   maxPage: 2
   display: 10
@@ -19,6 +20,14 @@ class BasicPagedTable extends BasicTableView
   sortField: 'UpdatedAt'
   sortDirection: ''
   firstLoad: false
+
+  events:
+    # finishing a form that is linked to this table will refresh it
+    "#{Events.Form.SubmitSuccess}": ()->
+      setTimeout ()=>
+        @refresh()
+      , 1000
+
   js: (opts)->
     @path = opts.path if opts.path
     @api = Api.get 'crowdstart'
@@ -45,12 +54,16 @@ class BasicPagedTable extends BasicTableView
 
   initDynamicContent: ()->
     $select = $($(@root).find('select')[0])
-    if !@initializedSelect && $select[0]?
-      $select.chosen(
-        width: '80px'
-        disable_search_threshold: 0
-      ).change (event)=>@updateDisplay(event)
-      @initializedSelect = true
+    if $select[0]?
+      if !@initializedSelect
+        $select.select2(
+          minimumResultsForSearch: Infinity
+        ).change (event)=>@updateDisplay(event)
+        @initializedSelect = true
+      else
+        setTimeout ()=>
+          $select.select2('val', @display)
+        , 500
 
     @$pagination = $pagination = $(@root).find('.pagination')
     if !@initializedPaging && $pagination[0]?
@@ -61,15 +74,18 @@ class BasicPagedTable extends BasicTableView
             @refresh()
       @initializedPaging = true
 
-    requestAnimationFrame ()->
-      $select.chosen().trigger "chosen:updated"
-
   updateDisplay: (event)->
-    @display = parseInt $(event.target).val(), 10
-    @refresh()
+    display = parseInt $(event.target).val(), 10
+    if @display != display
+      @display = display
+      @page = 1
+      @refresh()
 
   refresh: ()->
     path = @path + '?page=' + @page + '&display=' + @display + '&sort=' + (if @sortDirection == 'sort-desc' then '' else '-') + if @sortField == "Id" then "Id_" else @sortField
+    requestAnimationFrame ()->
+      $('.previous .next').addClass('disabled')
+
     @api.get(path).then (res) =>
       @firstLoad = true
 
@@ -83,5 +99,8 @@ class BasicPagedTable extends BasicTableView
 
       @initDynamicContent()
       @$pagination.jqPagination 'option', 'max_page', @maxPage
+
+      requestAnimationFrame ()->
+        $('.previous .next').removeClass('disabled')
 
 module.exports = BasicPagedTable
