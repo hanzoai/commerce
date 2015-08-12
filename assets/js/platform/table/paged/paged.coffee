@@ -57,7 +57,7 @@ class BasicPagedTable extends BasicTableView
   sort: (id)->
     field = capitalizeFirstLetter id
     return ()=>
-      if @headerMap[id].hints['dontsort']
+      if @headerMap[id]?.hints['dontsort']
         return
 
       if field == 'Number'
