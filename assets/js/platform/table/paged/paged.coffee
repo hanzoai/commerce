@@ -29,6 +29,8 @@ class BasicPagedTable extends BasicTableView
       , 1000
 
   js: (opts)->
+    super
+
     display = store.get 'display'
     if display
       @display = display
