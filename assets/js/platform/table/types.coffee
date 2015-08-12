@@ -56,10 +56,10 @@ class BasicTableView extends View
     model = @model
     return !model? || !model.length || model.length == 0
   js: (opts)->
-    @headers = opts.headers
+    @headers ?= opts.headers
     @headerMap = {}
     for header in @headers
-      @heaperMap[header.id] = header
+      @headerMap[header.id] = header
 
 BasicTableView.register()
 
