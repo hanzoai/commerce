@@ -11,6 +11,8 @@ class BasicList extends BasicTableView
   tag: 'basic-list'
 
   js: (opts)->
+    super
+
     if opts.path?
       @path = opts.path if opts.path
 
