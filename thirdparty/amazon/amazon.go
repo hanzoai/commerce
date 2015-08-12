@@ -26,7 +26,7 @@ func New(ctx appengine.Context, accessToken string) *Client {
 	return &Client{ctx: ctx, accessToken: accessToken}
 }
 
-func (c Client) Authorize(pay *payment.Payment, ord *order.Order) (string, error) {
+func (c Client) Authorize(pay *payment.Payment, ord *order.Order, sellerAuthNote string, sellerId string) (string, error) {
 	authRequest := requests.AuthorizeRequest{
 		AmazonOrderReferenceId:   ord.ExternalId(), //NOT SURE ABOUT THIS DATA POINT
 		AuthorizationReferenceId: ord.DisplayId(),
@@ -48,19 +48,19 @@ func (c Client) Authorize(pay *payment.Payment, ord *order.Order) (string, error
 
 	// Marshal request
 	data := url.Values{}
-	data.Set("AWSAccessKeyId", "")
+	data.Set("AWSAccessKeyId", "amzn1.application-oa2-client.aa882edbf0ab4e2aa936e018928f1e80") // should be login with amazon app id
 	data.Set("Action", "Authorize")
 	data.Set("AmazonOrderReferenceId", authRequest.AmazonOrderReferenceId)
 	data.Set("AuthorizationAmount.Amount", authRequest.AuthorizationAmount.Amount)
 	data.Set("AuthorizationAmount.CurrencyCode", authRequest.AuthorizationAmount.CurrencyCode)
 	data.Set("AuthorizationReferenceId", authRequest.AuthorizationReferenceId)
-	data.Set("MWSAuthToken", "")
-	data.Set("SellerAuthorizationNote", "")
-	data.Set("SellerId", "")
+	data.Set("MWSAuthToken", "AKIA_REDACTED")    // static for crowdstart, came from amazon payments advanced
+	data.Set("SellerAuthorizationNote", sellerAuthNote) // should come from dashboard
+	data.Set("SellerId", sellerId)                      // should come from dashboard
 	data.Set("SignatureMethod", "")
 	data.Set("SignatureVersion", "")
 	data.Set("Timestamp", "")
-	data.Set("TransactionTimeout", "")
+	data.Set("TransactionTimeout", "60")
 	data.Set("Version", "")
 	data.Set("Signature", "")
 
@@ -89,7 +89,7 @@ func (c Client) Authorize(pay *payment.Payment, ord *order.Order) (string, error
 	return authResponse.AuthorizationDetails.AmazonAuthorizationId, nil
 }
 
-func (c Client) Capture(pay *payment.Payment, ord *order.Order, authId string) (string, error) {
+func (c Client) Capture(pay *payment.Payment, ord *order.Order, authId string, sellerAuthNote string, sellerId string) (string, error) {
 	capRequest := requests.CaptureRequest{
 		AmazonAuthorizationId: authId,
 		CaptureReferenceId:    pay.Key().String(),
@@ -107,15 +107,15 @@ func (c Client) Capture(pay *payment.Payment, ord *order.Order, authId string) (
 	client := urlfetch.Client(c.ctx)
 
 	data := url.Values{}
-	data.Set("AWSAccessKeyId", "")
+	data.Set("AWSAccessKeyId", "amzn1.application-oa2-client.aa882edbf0ab4e2aa936e018928f1e80") // should be login with amazon app id
 	data.Set("Action", "Capture")
 	data.Set("AmazonAuthorizationId", capRequest.AmazonAuthorizationId)
 	data.Set("CaptureAmount.Amount", capRequest.CaptureAmount.Amount)
 	data.Set("AuthorizationAmount.CurrencyCode", capRequest.CaptureAmount.CurrencyCode)
 	data.Set("CaptureReferenceId", capRequest.CaptureReferenceId)
-	data.Set("MWSAuthToken", "")
-	data.Set("SellerCaptureNote", "")
-	data.Set("SellerId", "")
+	data.Set("MWSAuthToken", "AKIA_REDACTED")    // static for crowdstart, came from amazon payments advanced
+	data.Set("SellerAuthorizationNote", sellerAuthNote) // should come from dashboard
+	data.Set("SellerId", sellerId)                      // should come from dashboard
 	data.Set("SignatureMethod", "")
 	data.Set("SignatureVersion", "")
 	data.Set("Timestamp", "")
