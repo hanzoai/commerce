@@ -219,6 +219,8 @@
     'test-published-key':   '{{ ctx.organization.MustGetTokenByName("test-published-key") }}',
   }
 
+  window.staticUrl = '{{ staticUrl }}/backend'
+
   new crowdcontrol.data.Api(
     '{{ urlFor("platform") }}',
     window.Keys['live-secret-key']
