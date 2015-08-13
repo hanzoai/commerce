@@ -9,7 +9,6 @@ import (
 	"crowdstart.com/models/campaign"
 	"crowdstart.com/models/collection"
 	"crowdstart.com/models/coupon"
-	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/product"
 	"crowdstart.com/models/referral"
@@ -27,6 +26,7 @@ import (
 	mailinglistApi "crowdstart.com/api/mailinglist"
 	namespaceApi "crowdstart.com/api/namespace"
 	orderApi "crowdstart.com/api/order"
+	organizationApi "crowdstart.com/api/organization"
 	paymentApi "crowdstart.com/api/payment"
 	searchApi "crowdstart.com/api/search"
 	storeApi "crowdstart.com/api/store"
@@ -83,10 +83,7 @@ func init() {
 	campaign.Prefix = "/c/"
 	campaign.Route(api, tokenRequired)
 
-	organization := rest.New(organization.Organization{})
-	organization.DefaultNamespace = true
-	organization.Prefix = "/c/"
-	organization.Route(api, tokenRequired)
+	organizationApi.Route(api, tokenRequired)
 
 	token := rest.New(token.Token{})
 	token.DefaultNamespace = true
