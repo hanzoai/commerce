@@ -1,5 +1,7 @@
 Page = require './page'
 
+Integration = require '../../widget/integrations'
+
 class Integrations extends Page
   tag: 'page-integrations'
   icon: 'fa fa-credit-card'
@@ -14,6 +16,17 @@ class Integrations extends Page
       e.preventDefault()
 
   collection: 'integrations'
+
+  analyticsIntegrations: [
+    Integration.Analytics.GoogleAnalytics
+  ]
+
+  js: ()->
+    super
+
+    @on 'update', ()->
+      $('#current-page').css
+        'padding-bottom': '20px'
 
 Integrations.register()
 
