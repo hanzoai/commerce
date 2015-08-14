@@ -28,6 +28,8 @@ func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []
 			// Update payment
 			p.Captured = true
 			p.Status = payment.Paid
+			p.Model.Db = db
+			p.Model.Entity = p
 			p.Put()
 
 			trans := transaction.New(db)
