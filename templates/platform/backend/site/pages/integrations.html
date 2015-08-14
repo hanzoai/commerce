@@ -1,33 +1,51 @@
-<!-- Stripe Integration information Form Block -->
-<div class="block col-xs-12">
-  <!-- Stripe Integration information Form Content -->
-  <st-ripe-integration-form>
-    <div class="col-md-8">
-      <div class="panel animated fadeIn">
-        <div class="panel-heading">
-          Stripe
-        </div>
-        <div class="panel-body">
-          <div class="section col-xs-12" style="padding:0">
-            <div class="well">
-              <h4 if="{ model.state == 'error' }" class="text-danger text-center">Your Stripe account was not successfully be connected.  Please try again.</h4>
-              <h4 if="{ model.state == 'connected' }" class="text-center">Your Stripe account is connected.</h4>
-              <h4 if="{ model.state == 'new' }" class="text-center">Connect a Stripe account to start selling products.</h4>
-            </div>
-          </div>
-          <div class="form-actions section col-xs-12" style="padding:0">
-            <div class="col-md-8" style="padding-left:0">
-              <button onclick="{ stripeOAuth }" __disabled="{ !model.clientId }" if="{ model.state == 'connected' }" class="btn btn-block btn-effect-ripple btn-success" class="stripe-connect" type="button"><i class="fa fa-check"></i>Update Stripe Connect</button>
-              <button onclick="{ stripeOAuth }" __disabled="{ !model.clientId }" if="{ model.state != 'connected' }" class="btn btn-block btn-effect-ripple btn-dark" class="stripe-connect" type="button">Connect with Stripe</button>
-            </div>
-            <div class="col-md-4" style="padding-right:0">
-              <button onclick="{ stripeSync }" __disabled="{ !model.clientId || syncing }" class="btn btn-block btn-default" type="button">Sync orders</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </st-ripe-integration-form>
-  <!-- END Stripe Integration information Form Content -->
+<!-- Integration information Form Block -->
+<div class="btn-group btn-group-justified mb20">
+  <a href="#" class="{ btn: true, btn-dark: true, active: type == 'paymentprocessors' }" onclick="{ setType('paymentprocessors') }">Payment Processors</a>
+  <a href="#" class="{ btn: true, btn-dark: true, active: type == 'analytics' }" onclick="{ setType('analytics') }">Analytics</a>
 </div>
-<!-- END Stripe Integration information Form Block -->
+
+<div class="tray tray-center">
+  <div class="block row">
+
+    <div id="paymentprocessors" if="{ type == 'paymentprocessors' }">
+
+      <!-- Stripe Integration information Form Content -->
+      <st-ripe-integration-form>
+        <div class="col-md-6">
+          <div class="panel animated fadeIn">
+            <div class="panel-heading">
+              Stripe
+            </div>
+            <div class="panel-body">
+              <div class="section col-xs-12" style="padding:0">
+                <div class="well">
+                  <h4 if="{ model.state == 'error' }" class="text-danger text-center">Your Stripe account was not successfully be connected.  Please try again.</h4>
+                  <h4 if="{ model.state == 'connected' }" class="text-center">Your Stripe account is connected.</h4>
+                  <h4 if="{ model.state == 'new' }" class="text-center">Connect a Stripe account to start selling products.</h4>
+                </div>
+              </div>
+              <div class="form-actions section col-xs-12" style="padding:0">
+                <div class="col-md-8" style="padding-left:0">
+                  <button onclick="{ stripeOAuth }" __disabled="{ !model.clientId }" if="{ model.state == 'connected' }" class="btn btn-block btn-effect-ripple btn-success" class="stripe-connect" type="button"><i class="fa fa-check"></i>Update Stripe Connect</button>
+                  <button onclick="{ stripeOAuth }" __disabled="{ !model.clientId }" if="{ model.state != 'connected' }" class="btn btn-block btn-effect-ripple btn-dark" class="stripe-connect" type="button">Connect with Stripe</button>
+                </div>
+                <div class="col-md-4" style="padding-right:0">
+                  <button onclick="{ stripeSync }" __disabled="{ !model.clientId || syncing }" class="btn btn-block btn-default" type="button">Sync orders</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </st-ripe-integration-form>
+      <!-- END Stripe Integration information Form Content -->
+
+    </div>
+  </div>
+</div>
+
+<div if="{ type == 'analytics' }">
+  <div class="tray-scroller">
+  </div>
+</div>
+
+<!-- END Integration information Form Block -->
