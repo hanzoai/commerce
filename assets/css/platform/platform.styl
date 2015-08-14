@@ -138,3 +138,46 @@ input.search
 
 .control-label
   text-align: left !important
+
+.cs-nav-tabs
+  margin-left: -20px
+  margin-right: -20px
+  margin-top: 2px
+  margin-bottom: 20px
+  padding-left: 15px
+
+  .btn
+    top: 1px
+    background-color: #e8e8e8
+
+    &.cs-selected
+      background-color: #eee
+      border-bottom: 1px solid #eee
+
+#current-page
+  display: table
+  width: 100%
+
+  .tray-right
+    display: table-cell
+    float: none
+    vertical-align: top
+    top: -25px
+    right: -20px
+
+    -webkit-transition: all 0.2s ease-in-out
+    -moz-transition: all 0.2s ease-in-out
+    transition: all 0.2s ease-in-out
+
+    &.tray-hidden
+      width: 0
+      padding-left: 0 !important
+      padding-right: 0 !important
+      display: block
+      right: -500px
+
+.cs-integration
+  .btn:active
+    outline: none !important
+    -webkit-box-shadow: none !important
+    box-shadow: none !important
