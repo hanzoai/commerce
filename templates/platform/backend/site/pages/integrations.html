@@ -1,7 +1,9 @@
 <!-- Integration information Form Block -->
-<div class="btn-group btn-group-justified mb20">
-  <a href="#" class="{ btn: true, btn-dark: true, active: type == 'paymentprocessors' }" onclick="{ setType('paymentprocessors') }">Payment Processors</a>
-  <a href="#" class="{ btn: true, btn-dark: true, active: type == 'analytics' }" onclick="{ setType('analytics') }">Analytics</a>
+<div class ="block cs-nav-tabs nav-tabs">
+  <div class="btn-group">
+    <a href="#" class="{ btn: true, btn-default: true, cs-selected: type == 'paymentprocessors' }" onclick="{ setType('paymentprocessors') }">Payment Processors</a>
+    <a href="#" class="{ btn: true, btn-default: true, cs-selected: type == 'analytics' }" onclick="{ setType('analytics') }">Analytics</a>
+  </div>
 </div>
 
 <div class="tray tray-center">
@@ -41,11 +43,25 @@
 
     </div>
   </div>
+
+  <div>
+    <drop>
+    </drop>
+  </div>
+
 </div>
 
-<div if="{ type == 'analytics' }">
-  <div class="tray-scroller">
+<aside class="{ tray-hidden: type != 'analytics', tray: true, tray-right: true, tray320: true, p20: true }">
+  <div class="tray-scroller cs-integration">
+    <h4>Plugins</h4>
+    <hr class="alt short">
+    <drag each="{ analyticsIntegrations }">
+      <div class="btn btn-lg btn-block btn-rounded">
+        <img if="{prototype.img}" src="{prototype.img}" alt="{prototype.alt}">
+        <span if="{!prototype.img}">{prototype.alt}</span>
+      </div>
+    </drag>
   </div>
-</div>
+</aside>
 
 <!-- END Integration information Form Block -->

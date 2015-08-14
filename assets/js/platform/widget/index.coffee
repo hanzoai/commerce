@@ -5,3 +5,4 @@ module.exports =
   Search:   require './search'
   Gmap:     require './gmap'
   Listing:  require './listing'
+  DnD:      require './dnd'

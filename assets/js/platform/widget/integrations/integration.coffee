@@ -1,12 +1,12 @@
-_ = require 'underscore'
-
 crowdcontrol = require 'crowdcontrol'
 
 View = crowdcontrol.view.View
 
 class Integration extends View
   tag: 'basic-integration'
+  html: ''
   img: window.staticUrl + '/img/integrations/basic.png'
+  alt: 'Basic'
 
   name: 'Basic Integration'
   Set: require './set'
@@ -16,7 +16,7 @@ class Integration extends View
     $(@root).attr('id', 'current-integration').addClass('animated').addClass('fadeIn')
 
   @register: ()->
-    @prototype.Set.integrations.push(@)
+    @prototype.Set.prototype.integrations.push(@)
     super
 
 module.exports = Integration
