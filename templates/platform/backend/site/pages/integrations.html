@@ -46,16 +46,8 @@
 
   <div id="analytics" if="{ tab == 'analytics' }">
     <div class="{cs-droparea: true, active: dragging}">
-      <div class="panel form-horizontal animated fadeIn" each="{ iModel, i in iModels.analytics }">
-        <div class="panel-heading">
-          <img if="{iModel.src}" src="{iModel.src}" alt="{iModel.alt}">
-          <span if="{iModel.text}">{iModel.text}</span>
-        </div>
-        <div class="panel-body">
-          <integration type="{ iModel.integration }" model="{ this.parent.models.analytics[i] }">
-          </integration>
-        </div>
-      </div>
+      <integration type="{ integration }" each="{ integration, i in integrations.analytics }">
+      </integration>
       <drop obs="{ obs }">
         <div class="{cs-droparea-overlay: true}">
           Drop Plugins Here
@@ -69,7 +61,7 @@
 <aside class="{ tray-hidden: tab != 'analytics', tray: true, tray-right: true, tray320: true, p20: true, cs-integration: true }">
   <h4>Plugins</h4>
   <hr class="alt short">
-  <drag each="{ integration, i in integrations.analytics }" model="{ integration.data() }" obs="{ this.parent.obs }">
+  <drag each="{ integrationClass, i in integrationClasses.analytics }" model="{ integrationClass.data() }" obs="{ this.parent.obs }">
     <div class="btn btn-lg btn-block btn-rounded mb10">
       <img if="{model.src}" src="{model.src}" alt="{model.alt}">
       <span if="{model.text}">{model.text}</span>
