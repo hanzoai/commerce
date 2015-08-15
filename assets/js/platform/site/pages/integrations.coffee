@@ -12,41 +12,41 @@ class Integrations extends Page
 
   tab: 'paymentprocessors'
 
-  iModels:
-    analytics: []
-
   models:
     analytics: []
 
-  integrations:
+  integrationClasses:
     analytics: [
       integrations.Analytics.GoogleAnalytics
       integrations.Analytics.FacebookConversions
     ]
 
+  integrations:
+    analytics: []
+
   # drag events
   dragging: false
-  draggingModel: null
+  draggingIntegration: null
 
   events:
     dragstart: (e, model)->
       if model?.integration?
         @dragging = true
-        @integrationModel = model
+        @draggingIntegration = model.integration
         @update()
 
     dragend: (e, model)->
       if model?.integration?
-        return if model != @integrationModel
+        return if model?.integration != @draggingIntegration
 
         @dragging = false
-        @integrationModel = null
+        @draggingIntegration = null
 
         @update()
 
     drop: (e)->
-      if @integrationModel?.integration?
-        @iModels[@tab].push @integrationModel
+      if @draggingIntegration?
+        @integrations[@tab].push @draggingIntegration
         @models[@tab].push {}
 
         @update()
