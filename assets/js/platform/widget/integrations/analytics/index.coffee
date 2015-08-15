@@ -1,2 +1,3 @@
 module.exports =
-  GoogleAnalytics: require './googleanalytics'
+  GoogleAnalytics: require './google-analytics'
+  FacebookConversions: require './facebook-conversions'
