@@ -15,20 +15,17 @@ class Drag extends View
     </div>
   '''
 
-  js: ()->
-    super
-    @model = @parent
-
   dragstart: (e)->
-    @obs.trigger 'dragstart', e
+    @obs.trigger 'dragstart', e, @model
+    e.dataTransfer.setData('application/node type', e.target)
     return true
 
   dragend: (e)->
-    @obs.trigger 'dragend', e
+    @obs.trigger 'dragend', e, @model
     return true
 
   drag: (e)->
-    @obs.trigger 'drag', e
+    @obs.trigger 'drag', e, @model
     return true
 
 Drag.register()
@@ -40,7 +37,7 @@ class Drop extends View
       ondrop="{drop}"
       ondragover="{dragover}"
       ondragenter="{dragenter}"
-      ondragleave="{dragleave}"
+      ondragleave="{dragleave}">
       <yield></yield>
     </div>
   '''
@@ -51,7 +48,8 @@ class Drop extends View
 
   dragover: (e)->
     @obs.trigger 'dragover', e
-    return true
+    e.preventDefault()
+    return false
 
   dragenter: (e)->
     @obs.trigger 'dragenter', e

@@ -1,3 +1,5 @@
+riot = require 'riot'
+
 class TableFieldCondition
   constructor: (@predicate, @tagName)->
 
@@ -33,7 +35,7 @@ helpers =
 
     return @defaultTagName
 
-riot.tag "table-field", "", (opts)->
+riot.tag 'table-field', '', (opts)->
   field = opts.field
 
   tag = helpers.render field

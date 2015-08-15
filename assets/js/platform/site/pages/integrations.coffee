@@ -1,6 +1,8 @@
+riot = require 'riot'
+
 Page = require './page'
 
-Integration = require '../../widget/integrations'
+integrations = require '../../widget/integrations'
 
 class Integrations extends Page
   tag: 'page-integrations'
@@ -8,18 +10,53 @@ class Integrations extends Page
   name: 'Integrations'
   html: require '../../templates/backend/site/pages/integrations.html'
 
-  type: 'paymentprocessors'
+  tab: 'paymentprocessors'
+
+  iModels:
+    analytics: []
+
+  models:
+    analytics: []
+
+  integrations:
+    analytics: [
+      integrations.Analytics.GoogleAnalytics
+      integrations.Analytics.FacebookConversions
+    ]
+
+  # drag events
+  dragging: false
+  draggingModel: null
+
+  events:
+    dragstart: (e, model)->
+      if model?.integration?
+        @dragging = true
+        @integrationModel = model
+        @update()
+
+    dragend: (e, model)->
+      if model?.integration?
+        return if model != @integrationModel
+
+        @dragging = false
+        @integrationModel = null
+
+        @update()
+
+    drop: (e)->
+      if @integrationModel?.integration?
+        @iModels[@tab].push @integrationModel
+        @models[@tab].push {}
+
+        @update()
 
   setType: (t)->
     return (e)=>
-      @type = t
+      @tab = t
       e.preventDefault()
 
   collection: 'integrations'
-
-  analyticsIntegrations: [
-    Integration.Analytics.GoogleAnalytics
-  ]
 
   js: ()->
     super
@@ -28,6 +65,18 @@ class Integrations extends Page
       $('#current-page').css
         'padding-bottom': '20px'
 
+    requestAnimationFrame ()->
+      try
+        window?.Core?.init()
+      catch e
+        e
+        #console?.log e
+
 Integrations.register()
+
+riot.tag 'integration', '', (opts)->
+  type = opts.type
+
+  riot.mount @root, type.prototype.tag, opts
 
 module.exports = Integrations
