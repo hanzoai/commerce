@@ -1,22 +1,31 @@
 crowdcontrol = require 'crowdcontrol'
 
-View = crowdcontrol.view.View
+FormView = crowdcontrol.view.form.FormView
 
-class Integration extends View
+class Integration extends FormView
   tag: 'basic-integration'
+  type: 'basic-integration'
   html: ''
-  img: window.staticUrl + '/img/integrations/basic.png'
+  instructions: 'Information on what to expect from the integration'
+  img: '/img/integrations/basic.png'
+  text: ''#'Basic Integration'
   alt: 'Basic'
 
   name: 'Basic Integration'
-  Set: require './set'
 
   js: (opts)->
     super
     $(@root).attr('id', 'current-integration').addClass('animated').addClass('fadeIn')
 
-  @register: ()->
-    @prototype.Set.prototype.integrations.push(@)
-    super
+  @data: ()->
+    return {
+      integration: @
+      src: @src()
+      text: @prototype.text
+      alt: @prototype.alt
+    }
+
+  @src: ()->
+    window.staticUrl + @prototype.img
 
 module.exports = Integration
