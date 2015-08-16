@@ -1,12 +1,13 @@
 <div class="panel-heading">
   <img if="{ model.src }" src="{ model.src }" alt="{ model.alt }">
   <span if="{ model.text }">{ model.text }</span>
-  <i if="{ model.error }" class="fa fa-exclamation-triangle warning"></i>
+  <i if="{ model.error && !model.model.disabled }" class="fa fa-exclamation-triangle warning"></i>
   <span class="admin-form integration-toggle">
     <label class="switch switch-primary">
       <input id="integration-toggle-{ model.instanceId }" type="checkbox" __checked="{ !model.model.disabled }" onchange="{ model.toggle }"></input>
       <label for="integration-toggle-{ model.instanceId }" data-on="YES" data-off="NO"></label>
     </label>
+    <i class="fa fa-times integration-remove" onclick="{ model.remove }"></i>
   </span>
 </div>
 
