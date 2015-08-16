@@ -6,6 +6,9 @@ FormView = crowdcontrol.view.form.FormView
 
 instanceId = 0
 
+Events.Integration =
+  Remove: 'integration-close'
+
 class Integration extends FormView
   tag: 'basic-integration'
   type: 'basic-integration'
@@ -52,8 +55,12 @@ class Integration extends FormView
     requestAnimationFrame ()=>
       @submit()
 
+  remove: ()->
+    @obs.trigger Events.Integration.Remove
+
   toggle: ()->
     @model.disabled = !@model.disabled
+    @update()
 
   @src: ()->
     return if @prototype.img then window.staticUrl + @prototype.img else ''
