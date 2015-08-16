@@ -27,7 +27,7 @@ func Render(org *organization.Organization) string {
 		jsTemplate = strings.Replace(jsTemplate, "analytics.initialize({})", "analytics.initialize(%s)", 1)
 	}
 
-	return fmt.Sprintf(jsTemplate, org.Analytics.JSON())
+	return fmt.Sprintf(jsTemplate, org.Analytics.SnippetJSON())
 }
 
 func Js(c *gin.Context) {

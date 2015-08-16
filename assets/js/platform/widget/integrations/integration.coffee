@@ -1,6 +1,7 @@
 crowdcontrol = require 'crowdcontrol'
 
 View = crowdcontrol.view.View
+Events = crowdcontrol.Events
 FormView = crowdcontrol.view.form.FormView
 
 instanceId = 0
@@ -19,6 +20,25 @@ class Integration extends FormView
 
   instanceId: -1
 
+  error: false
+
+  events:
+    "#{ Events.Form.SubmitFailed }": ()->
+      @error = true
+      @update()
+
+    "#{ Events.Form.SubmitSuccess }": ()->
+      @error = false
+      @update()
+
+    "#{ Events.Input.Error }": ()->
+      @error = true
+      @update()
+
+    "#{ Events.Input.Set }": ()->
+      @submit()
+      @update()
+
   js: (opts)->
     super
 
@@ -28,6 +48,9 @@ class Integration extends FormView
 
     @src = if @img then window.staticUrl + @img else ''
     @instanceId = instanceId++
+
+    requestAnimationFrame ()=>
+      @submit()
 
   toggle: ()->
     @model.disabled = !@model.disabled
