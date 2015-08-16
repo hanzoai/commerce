@@ -257,8 +257,37 @@ input.search
   float: right
   margin-top: 13px
 
-.fa.warning
-  color: #F6BB42
-  position: relative
-  top: 5px
-  font-size: 1.5em
+.fa
+  &.warning
+    color: #F6BB42
+    position: relative
+    top: 5px
+    font-size: 1.5em
+
+  &.integration-remove
+    position: relative
+    top: -18px
+    cursor: pointer
+
+    &:hover
+      color: #888
+
+integration
+  .panel-body
+    -webkit-transition: all 0.3s ease-in-out, border-width 0.3s step-start
+    -moz-transition:  all 0.3s ease-in-out, border-width 0.3s step-start
+    transition: all 0.3s ease-in-out, border-width 0.3s step-start
+    max-height: 500px
+
+    &.collapsed
+      max-height: 0
+      padding-top: 0
+      padding-bottom: 0
+      margin: 0
+      border-width: 0
+      overflow: hidden
+
+      -webkit-transition: all 0.3s ease-in-out, border-width 0.3s step-end
+      -moz-transition: all 0.3s ease-in-out, border-width 0.3s step-end
+      transition: all 0.3s ease-in-out, border-width 0.3s step-end
+

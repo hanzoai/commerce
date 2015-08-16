@@ -46,7 +46,7 @@
 
   <div id="analytics" if="{ tab == 'analytics' }">
     <div class="{cs-droparea: true, active: dragging}">
-      <integration type="{ integration }" each="{ integration, i in integrations.analytics }">
+      <integration type="{ integration }" obs="{ this.parent.obses.analytics[i] }" each="{ integration, i in integrations.analytics }">
       </integration>
       <drop obs="{ obs }">
         <div class="{cs-droparea-overlay: true}">

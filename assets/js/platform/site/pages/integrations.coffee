@@ -1,5 +1,7 @@
 riot = require 'riot'
 
+crowdcontrol = require 'crowdcontrol'
+Events = crowdcontrol.Events
 Page = require './page'
 
 integrations = require '../../widget/integrations'
@@ -24,6 +26,9 @@ class Integrations extends Page
   integrations:
     analytics: []
 
+  obses:
+    analytics: []
+
   # drag events
   dragging: false
   draggingIntegration: null
@@ -46,8 +51,16 @@ class Integrations extends Page
 
     drop: (e)->
       if @draggingIntegration?
+        i = @integrations[@tab].length
+
         @integrations[@tab].push @draggingIntegration
         @models[@tab].push {}
+        obs = {}
+        riot.observable(obs)
+        @obses[@tab].push obs
+
+        obs.on Events.Integration.Remove, ()->
+          console.log('remove', i)
 
         @update()
 
