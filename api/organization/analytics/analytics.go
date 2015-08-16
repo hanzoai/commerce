@@ -23,7 +23,8 @@ func Get(c *gin.Context) {
 		return
 	}
 
-	http.Render(c, 200, org.Analytics)
+	integrations := org.Analytics.UpdateShownDisabledStatus()
+	http.Render(c, 200, integrations)
 }
 
 func Set(c *gin.Context) {
@@ -44,6 +45,8 @@ func Set(c *gin.Context) {
 		http.Fail(c, 400, "Failed decode request body", err)
 		return
 	}
+
+	integrations.UpdateStoredDisabledStatus()
 
 	// Update integrations
 	org.Analytics = integrations
@@ -73,6 +76,8 @@ func Update(c *gin.Context) {
 		http.Fail(c, 400, "Failed decode request body", err)
 		return
 	}
+
+	org.Analytics.UpdateStoredDisabledStatus()
 
 	if err := org.Put(); err != nil {
 		http.Fail(c, 500, "Failed to save organization integrations", err)
