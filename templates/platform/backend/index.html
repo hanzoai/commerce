@@ -210,6 +210,8 @@
     'test-published-key':   '{{ ctx.organization.MustGetTokenByName("test-published-key") }}',
   }
 
+  window.Organization = '{{ ctx.organization.Name }}'
+
   window.staticUrl = '{{ staticUrl }}/backend'
 
   new crowdcontrol.data.Api(
