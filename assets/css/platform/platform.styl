@@ -1,6 +1,9 @@
 @require './modal.styl'
 @require './loader.styl'
 
+*
+  outline: none
+
 .widget
   min-height: 100px
 
@@ -89,7 +92,10 @@ menu
 
 textarea
   resize: none
-  min-height: 107px
+  border: 1px solid #ddd
+
+textarea:focus
+  border: 1px solid #5FAEE3
 
 .panel .panel .panel-heading
   border-top: 0
@@ -164,3 +170,12 @@ input.search
 .navbar[class*="bg-"] .navbar-search.alt input
   background-color: rgba(255, 255, 255, 0.1)
   color: rgba(255, 255, 255, 0.95)
+
+.select2-container--default .select2-selection--single
+  border: 1px solid #ddd
+
+.select2-container--default:active .select2-selection--single:active
+  border: 1px solid #aaa
+
+.select2-container--default.select2-container--open.select2-container--above .select2-selection--single, .select2-container--default.select2-container--open.select2-container--above .select2-selection--multiple
+  border: 1px solid #aaa
