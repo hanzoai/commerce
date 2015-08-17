@@ -19029,7 +19029,7 @@ body.tray-rescale .tray-right:hover {
 }
 /* Sidebar-Menu Top Level - Title */
 .sidebar-menu > li > a > span:nth-child(2) {
-  font-weight: 600;
+  font-weight: 300;
   padding-left: 6px;
 }
 /* Sidebar-Menu Top Level - Tray(holds labels,etc) */
@@ -20074,6 +20074,7 @@ body.sb-l-m.mobile-view .nano > .nano-pane {
     height: 44px;
     line-height: 44px;
     font-size: 14px;
+    font-weight: 300;
     padding-left: 15px;
     border-left: 1px solid #222;
     background-color: #282d33;
