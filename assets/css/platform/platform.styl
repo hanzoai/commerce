@@ -179,3 +179,30 @@ input.search
 
 .select2-container--default.select2-container--open.select2-container--above .select2-selection--single, .select2-container--default.select2-container--open.select2-container--above .select2-selection--multiple
   border: 1px solid #aaa
+
+span.sidebar-title
+  margin-left: 10px
+
+body.sb-l-m .sidebar-menu > li > a > .sidebar-title
+  font-size: .9em
+  line-height: .8em
+  padding: 12px
+  width: auto
+  height: 32px
+  top: -1px
+  margin-top: 0px
+  margin-left: 10px
+  border-left: 1px solid #444
+
+span.sidebar-title:before
+  content:'';
+  display:block;
+  width:0;
+  height:0;
+  position:absolute;
+
+  border-top: 15px solid transparent;
+  border-bottom: 15px solid transparent;
+  border-right:15px solid #444
+  left:-8px;
+  top:1px;

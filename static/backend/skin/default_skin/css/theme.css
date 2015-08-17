@@ -19887,7 +19887,7 @@ body.sb-l-m .sidebar-menu > li > a > .sidebar-title {
 }
 /* Minified Sidebar - Active Icon */
 body.sb-l-m .sidebar-menu > li.active > a > span:nth-child(1) {
-  color: #3498db;
+  color: white;
 }
 /*=======================================================
   G. Sidebar Light Color Settings
