@@ -31,11 +31,28 @@ class BasicFormView extends FormView
             scrollTop: $container.offset().top-$(window).height()/2
           , 1000)
 
+
+  deleteModal: ()->
+    bootbox.dialog
+      title: 'Are You Sure?'
+      message: 'Deleting this will remove it forever.'
+
+      buttons:
+        Yes:
+          className: 'btn btn-danger'
+          callback: ()=>
+            @delete()
+
+        No:
+          className: 'btn btn-primary'
+          callback: ()->
+
   delete: ()->
     m.trigger 'start-spin', @path + '-delete'
     @api.delete(@path).finally (e)=>
       console.log(e.stack) if e
       window.location.hash = @redirectPath
+      riot.update()
 
   js: (opts)->
     super

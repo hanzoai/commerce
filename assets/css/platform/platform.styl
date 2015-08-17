@@ -173,7 +173,6 @@ input.search
       width: 0
       padding-left: 0 !important
       padding-right: 0 !important
-      display: block
       right: -1000px
 
 .cs-integration
@@ -261,8 +260,8 @@ input.search
   &.warning
     color: #F6BB42
     position: relative
-    top: 5px
-    font-size: 1.5em
+    top: 3px
+    font-size: 1.2em
 
   &.integration-remove
     position: relative
@@ -273,6 +272,11 @@ input.search
       color: #888
 
 integration
+  .panel
+    -webkit-transition: all 0.3s ease-in-out
+    -moz-transition:  all 0.3s ease-in-out
+    transition: all 0.3s ease-in-out
+
   .panel-body
     -webkit-transition: all 0.3s ease-in-out, border-width 0.3s step-start
     -moz-transition:  all 0.3s ease-in-out, border-width 0.3s step-start
