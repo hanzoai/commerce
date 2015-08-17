@@ -113,16 +113,16 @@ table-field
 
 input.search
   &::-webkit-input-placeholder
-    color: white
+    color: #999
 
   &:-moz-placeholder
-    color: white
+    color: #999
 
   &::-moz-placeholder
-    color: white
+    color: #999
 
   &:-ms-input-placeholder
-    color: white
+    color: #999
 
 .sidebar-menu > li.active > a > span:nth-child(1)
   color: white
@@ -160,3 +160,7 @@ input.search
 
 .panel-heading
   padding: 0px 16px
+
+.navbar[class*="bg-"] .navbar-search.alt input
+  background-color: rgba(255, 255, 255, 0.1)
+  color: rgba(255, 255, 255, 0.95)
