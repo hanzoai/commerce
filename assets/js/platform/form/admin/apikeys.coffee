@@ -26,6 +26,21 @@ class ApiKeysForm extends Form
     input('test-published-key', '', 'text')
   ]
 
+  generateModal: (event)->
+    bootbox.dialog
+      title: 'Warning: This will reset all your keys!'
+      message: 'Any software integrated with Crowdstart will need to be updated to use the new keys.'
+
+      buttons:
+        Reset:
+          className: 'btn btn-danger'
+          callback: ()=>
+            @submit event
+
+        Cancel:
+          className: 'btn btn-primary'
+          callback: ()->
+
   js: ()->
     @model = window.Keys
 

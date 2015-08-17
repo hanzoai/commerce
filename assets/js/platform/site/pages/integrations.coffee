@@ -2,6 +2,7 @@ riot = require 'riot'
 
 crowdcontrol = require 'crowdcontrol'
 Events = crowdcontrol.Events
+Api = crowdcontrol.data.Api
 Page = require './page'
 
 integrations = require '../../widget/integrations'
@@ -14,6 +15,7 @@ class Integrations extends Page
 
   tab: 'paymentprocessors'
 
+  # models maintained by integration models
   models:
     analytics: []
 
@@ -51,18 +53,26 @@ class Integrations extends Page
 
     drop: (e)->
       if @draggingIntegration?
-        i = @integrations[@tab].length
+        @addIntegration @draggingIntegration, @tab
 
-        @integrations[@tab].push @draggingIntegration
-        @models[@tab].push {}
-        obs = {}
-        riot.observable(obs)
-        @obses[@tab].push obs
+  addIntegration: (integration, tab, model = {})->
+    i = @integrations[tab].length
 
-        obs.on Events.Integration.Remove, ()->
-          console.log('remove', i)
+    @integrations[tab].push integration
+    @models[tab].push model
+    obs = {}
+    riot.observable(obs)
+    @obses[tab].push obs
 
-        @update()
+    obs.on Events.Integration.Remove, ()=>
+      obs.off Events.Integration.Remove
+      console.log('remove', i)
+      delete @integrations[tab][i]
+      delete @models[tab][i]
+      delete @obses[tab][i]
+      riot.update()
+
+    riot.update()
 
   setType: (t)->
     return (e)=>
@@ -71,6 +81,11 @@ class Integrations extends Page
 
   collection: 'integrations'
 
+  isTabEmpty: (tab)->
+    for integration in @integrations[tab]
+      return false if integration
+    return true
+
   js: ()->
     super
 
@@ -78,17 +93,57 @@ class Integrations extends Page
       $('#current-page').css
         'padding-bottom': '20px'
 
+    # models maintained by integration models
+    @models =
+      analytics: []
+
+    @integrationClasses =
+      analytics: [
+        integrations.Analytics.GoogleAnalytics
+        integrations.Analytics.FacebookConversions
+      ]
+
+    @integrations =
+      analytics: []
+
+    @obses =
+      analytics: []
+
     requestAnimationFrame ()->
       try
+        # needs to init twice to cancel soem things
+        window?.Core?.init()
         window?.Core?.init()
       catch e
         e
         #console?.log e
 
+    @api = api = Api.get 'crowdstart'
+
+    api.get("c/organization/#{window.Organization}/analytics").then((res)=>
+      if res.status != 200 && res.status != 204
+        throw new Error 'Form failed to load: '
+
+      @model = res.responseText
+
+      for model in @model.integrations
+        for analyticsClass in @integrationClasses.analytics
+          if model.type == analyticsClass.prototype.type
+            @addIntegration analyticsClass, 'analytics', model
+            break
+
+      riot.update()
+    ).catch (e)=>
+      console.log(e.stack)
+      @error = e
+
 Integrations.register()
 
 riot.tag 'integration', '', (opts)->
   type = opts.type
+
+  if !type?
+    return
 
   riot.mount @root, type.prototype.tag, opts
 
