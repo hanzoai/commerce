@@ -46,7 +46,10 @@
 
   <div id="analytics" if="{ tab == 'analytics' }">
     <div class="{cs-droparea: true, active: dragging}">
-      <integration type="{ integration }" obs="{ this.parent.obses.analytics[i] }" each="{ integration, i in integrations.analytics }">
+      <div if="{ isTabEmpty('analytics') }" class="text-center mt30">
+        Drag plugins over here to enable them.
+      </div>
+      <integration if="{ integration }" type="{ integration }" model="{ this.parent.models.analytics[i] }" obs="{ this.parent.obses.analytics[i] }" each="{ integration, i in integrations.analytics }">
       </integration>
       <drop obs="{ obs }">
         <div class="{cs-droparea-overlay: true}">
@@ -59,14 +62,16 @@
 </div>
 
 <aside class="{ tray-hidden: tab != 'analytics', tray: true, tray-right: true, tray320: true, p20: true, cs-integration: true }">
-  <h4>Plugins</h4>
-  <hr class="alt short">
-  <drag each="{ integrationClass, i in integrationClasses.analytics }" model="{ integrationClass.data() }" obs="{ this.parent.obs }">
-    <div class="btn btn-lg btn-block btn-rounded mb10">
-      <img if="{model.src}" src="{model.src}" alt="{model.alt}">
-      <span if="{model.text}">{model.text}</span>
-    </div>
-  </drag>
+  <div if="{ tab == 'analytics'}">
+    <h4>Plugins</h4>
+    <hr class="alt short">
+    <drag each="{ integrationClass, i in integrationClasses.analytics }" model="{ integrationClass.data() }" obs="{ this.parent.obs }">
+      <div class="btn btn-lg btn-block btn-rounded mb10">
+        <img if="{model.src}" src="{model.src}" alt="{model.alt}">
+        <span if="{model.text}">{model.text}</span>
+      </div>
+    </drag>
+  </div>
 </aside>
 
 <!-- END Integration information Form Block -->

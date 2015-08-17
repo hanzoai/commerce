@@ -7,6 +7,7 @@ FormView = crowdcontrol.view.form.FormView
 instanceId = 0
 
 Events.Integration =
+  Save: 'integration-save'
   Remove: 'integration-close'
 
 class Integration extends FormView
@@ -24,10 +25,12 @@ class Integration extends FormView
   instanceId: -1
 
   error: false
+  realSubmit: false
 
   events:
     "#{ Events.Form.SubmitFailed }": ()->
       @error = true
+      @realSubmit = false
       @update()
 
     "#{ Events.Form.SubmitSuccess }": ()->
@@ -42,8 +45,20 @@ class Integration extends FormView
       @submit()
       @update()
 
+  save: ()->
+    @realSubmit = true
+    @submit()
+
+  _submit: ()->
+    if @realSubmit
+      @obs.trigger Events.Integration.Save
+      @realSubmit = false
+
   js: (opts)->
     super
+
+    @on 'update', ()->
+      $('[data-toggle="tooltip"]').tooltip()
 
     @model.disabled = false if !@model.disabled?
 
@@ -54,6 +69,23 @@ class Integration extends FormView
 
     requestAnimationFrame ()=>
       @submit()
+
+    @update()
+
+  removeModal: ()->
+    bootbox.dialog
+      title: 'Are You Sure?'
+      message: 'Removing this integration will delete its settings.'
+
+      buttons:
+        Yes:
+          className: 'btn btn-danger'
+          callback: ()=>
+            @remove()
+
+        No:
+          className: 'btn btn-primary'
+          callback: ()->
 
   remove: ()->
     @obs.trigger Events.Integration.Remove
