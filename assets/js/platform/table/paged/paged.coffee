@@ -116,6 +116,11 @@ class BasicPagedTable extends BasicTableView
 
       m.trigger 'stop-spin', @tag + @path + '-paged-table-load'
       data = res.responseText
+
+      # riot maintainer, why do you allow for desync in 2.2.x
+      @model = []
+      @update()
+
       @model = data.models
       @count = data.count
 

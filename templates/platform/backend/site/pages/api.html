@@ -20,31 +20,11 @@
             </div>
             <div class="form-actions section text-center">
               <div class="col-xs-4 col-xs-offset-4">
-                <button type="button" class="btn btn-block btn-dark" data-toggle="modal" data-target="#generate-new-keys">
+                <button type="button" class="btn btn-block btn-dark" onclick="{ generateModal }">
                   Generate New Keys
                 </button>
               </div>
 
-              <div class="modal fade" id="generate-new-keys">
-                <div class="modal-dialog" role="document" style="width:340px">
-                  <div class="modal-content">
-                    <div class="modal-header">
-                      <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                      <h4 class="modal-title text-center" id="exampleModalLabel">
-                        Warning: This will reset all your keys!
-                        <br />
-                        <br />
-                      </h4>
-                      <p>Any software integrated with Crowdstart will need to be updated to use the new keys.</p>
-                      <p>Continue?</p>
-                    </div>
-                    <div class="modal-footer" style="text-align:center">
-                      <button type="button" class="btn btn-danger" onclick="{ submit }" data-dismiss="modal">Yes</button>
-                      <button type="button" class="btn btn-primary" data-dismiss="modal">No</button>
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
