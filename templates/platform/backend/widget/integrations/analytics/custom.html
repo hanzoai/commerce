@@ -1,0 +1,12 @@
+<div class="panel form-horizontal animated fadeIn">
+  <integration-header model="{this}">
+  </integration-header>
+  <div class="{panel-body: true, collapsed: model.disabled}">
+    <div class="section mb20">
+      <control label="Tracking Event" input="{ inputs.event }"></control>
+    </div>
+    <div class="section mb20">
+      <control label="Custom Javascript" input="{ inputs.code }"></control>
+    </div>
+  </div>
+</div>

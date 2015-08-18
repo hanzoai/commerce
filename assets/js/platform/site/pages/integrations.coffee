@@ -129,6 +129,7 @@ class Integrations extends Page
 
     @integrationClasses =
       analytics: [
+        integrations.Analytics.Custom
         integrations.Analytics.GoogleAdwords
         integrations.Analytics.GoogleAnalytics
         integrations.Analytics.FacebookAudiences
