@@ -4,6 +4,14 @@ import (
 	"crowdstart.com/util/json"
 )
 
+var t bool
+var f bool
+
+func init() {
+	t = true
+	f = false
+}
+
 type Analytics struct {
 	Integrations []Integration `json:"integrations,omitempty"`
 }
@@ -23,7 +31,11 @@ func (a Analytics) UpdateStoredDisabledStatus() Analytics {
 
 func (a Analytics) UpdateShownDisabledStatus() Analytics {
 	for i, integration := range a.Integrations {
-		a.Integrations[i].Disabled_ = &integration.Disabled
+		if integration.Disabled {
+			a.Integrations[i].Disabled_ = &t
+		} else {
+			a.Integrations[i].Disabled_ = &f
+		}
 	}
 
 	return a
