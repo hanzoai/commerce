@@ -13,7 +13,7 @@ class CustomAnalytics extends Integration
     code: '//Do Something in JS'
 
   inputConfigs: [
-    input('event', 'Choose an event', 'analytics-events-dropdown required')
+    input('event', 'Choose an event', 'analytics-events-select required')
     input('code', '//Do Something in JS', 'js required')
   ]
 
