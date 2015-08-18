@@ -7,8 +7,8 @@
 </div>
 
 <div class="tray tray-center">
-  <div class="block row">
 
+  <div class="block row">
     <div id="paymentprocessors" if="{ tab == 'paymentprocessors' }">
 
       <!-- Stripe Integration information Form Content -->
@@ -26,12 +26,12 @@
                   <h4 if="{ model.state == 'new' }" class="text-center">Connect a Stripe account to start selling products.</h4>
                 </div>
               </div>
-              <div class="form-actions section col-xs-12" style="padding:0">
-                <div class="col-md-8" style="padding-left:0">
+              <div class="form-actions section row">
+                <div class="col-md-8">
                   <button onclick="{ stripeOAuth }" __disabled="{ !model.clientId }" if="{ model.state == 'connected' }" class="btn btn-block btn-effect-ripple btn-success" class="stripe-connect" type="button"><i class="fa fa-check"></i>Update Stripe Connect</button>
                   <button onclick="{ stripeOAuth }" __disabled="{ !model.clientId }" if="{ model.state != 'connected' }" class="btn btn-block btn-effect-ripple btn-dark" class="stripe-connect" type="button">Connect with Stripe</button>
                 </div>
-                <div class="col-md-4" style="padding-right:0">
+                <div class="col-md-4">
                   <button onclick="{ stripeSync }" __disabled="{ !model.clientId || syncing }" class="btn btn-block btn-default" type="button">Sync orders</button>
                 </div>
               </div>
@@ -73,5 +73,15 @@
     </drag>
   </div>
 </aside>
+
+<!-- Begin: Page Footer -->
+<footer id="content-footer" class="{ affix: true, footer-hidden: !showSave }">
+  <div class="row">
+    <i class="fa fa-info-circle"></i>
+    <h5>Save your changes?</h5>
+    <button type="button" class="btn btn-default btn-sm" onclick="{ save }" __disabled="{ saving }">{ saving ? 'Saving...' : 'Save' }</button>
+  </div>
+</footer>
+<!-- End: Page Footer -->
 
 <!-- END Integration information Form Block -->
