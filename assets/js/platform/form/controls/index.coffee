@@ -72,6 +72,25 @@ class BasicTextareaView extends BasicInputView
 
 BasicTextareaView.register()
 
+class CodeMirrorView extends BasicTextareaView
+  tag: 'codemirror-js'
+  js: (opts)->
+    @on 'update', ()=>
+      if @editor?
+        @editor.refresh()
+        return
+
+      $el = $(@root).find('textarea')
+
+      if $el[0]?
+        @editor = CodeMirror.fromTextArea $el[0],
+          lineNumbers: true,
+          mode: "javascript",
+          gutters: ["CodeMirror-lint-markers"],
+          lint: true
+
+CodeMirrorView.register()
+
 class Switch extends BasicInputView
   tag: 'switch'
   html: require '../../templates/backend/form/controls/switch.html'
@@ -283,6 +302,10 @@ helpers.registerTag (inputCfg)->
 helpers.registerTag (inputCfg)->
   return inputCfg.hints['text']
 , 'basic-textarea'
+
+helpers.registerTag (inputCfg)->
+  return inputCfg.hints['js']
+, 'codemirror-js'
 
 helpers.registerTag (inputCfg)->
   return inputCfg.hints['password']
