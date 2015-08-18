@@ -63,6 +63,9 @@
 
 <aside class="{ tray-hidden: tab != 'analytics', tray: true, tray-right: true, tray320: true, p20: true, cs-integration: true }">
   <div if="{ tab == 'analytics'}">
+    <h4>Snippet</h4>
+    <hr class="alt short">
+    <textarea class="form-control mb20">{analyticsSnippet}</textarea>
     <h4>Plugins</h4>
     <hr class="alt short">
     <drag each="{ integrationClass, i in integrationClasses.analytics }" model="{ integrationClass.data() }" obs="{ this.parent.obs }">
