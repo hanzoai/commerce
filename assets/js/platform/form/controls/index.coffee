@@ -75,19 +75,34 @@ BasicTextareaView.register()
 class CodeMirrorView extends BasicTextareaView
   tag: 'codemirror-js'
   js: (opts)->
+    super
+
+    @refresh()
+
     @on 'update', ()=>
-      if @editor?
+      @refresh()
+
+  refresh: ()->
+    if @editor?
+      @editor.refresh()
+      return
+
+    $el = $(@root).find('textarea')
+
+    if $el[0]?
+      @editor = CodeMirror.fromTextArea $el[0],
+        lineNumbers: true,
+        mode: "javascript",
+        gutters: ["CodeMirror-lint-markers"],
+        lint: true
+
+      @editor.on 'change', (instance, changeObj)=>
+        $el.val @editor.getValue()
+        @change target: $el[0]
+
+
+      requestAnimationFrame: ()=>
         @editor.refresh()
-        return
-
-      $el = $(@root).find('textarea')
-
-      if $el[0]?
-        @editor = CodeMirror.fromTextArea $el[0],
-          lineNumbers: true,
-          mode: "javascript",
-          gutters: ["CodeMirror-lint-markers"],
-          lint: true
 
 CodeMirrorView.register()
 
