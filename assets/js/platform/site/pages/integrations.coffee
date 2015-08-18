@@ -16,24 +16,28 @@ class Integrations extends Page
   tab: 'paymentprocessors'
 
   # models maintained by integration models
-  models:
-    analytics: []
+  # models:
+  #   analytics: []
 
-  integrationClasses:
-    analytics: [
-      integrations.Analytics.GoogleAnalytics
-      integrations.Analytics.FacebookConversions
-    ]
+  # integrationClasses:
+  #   analytics: [
+  #     integrations.Analytics.GoogleAnalytics
+  #     integrations.Analytics.FacebookConversions
+  #   ]
 
-  integrations:
-    analytics: []
+  # integrations:
+  #   analytics: []
 
-  obses:
-    analytics: []
+  # obses:
+  #   analytics: []
 
-  # drag events
+  # drag flags
   dragging: false
   draggingIntegration: null
+
+  # save flags
+  showSave: false
+  saving: false
 
   events:
     dragstart: (e, model)->
@@ -72,7 +76,36 @@ class Integrations extends Page
       delete @obses[tab][i]
       riot.update()
 
+    obs.on Events.Integration.Update, ()=>
+      console.log('update', i)
+      @showSave = true
+      riot.update()
+
     riot.update()
+
+  #only works for analytics right now
+  save: (event)->
+    model =
+      integrations: []
+
+    for m in @models['analytics']
+      if m._validated
+        model.integrations.push(m)
+
+    @saving = true
+
+    @api.post("c/organization/#{window.Organization}/analytics", model).then((res)=>
+      @saving = false
+      @showSave = false
+      @model = model
+
+      if res.status != 200 && res.status != 201 && res.status != 204
+        throw new Error 'Form failed to load: '
+
+      riot.update()
+    ).catch (e)=>
+      console.log(e.stack)
+      @error = e
 
   setType: (t)->
     return (e)=>
@@ -89,11 +122,7 @@ class Integrations extends Page
   js: ()->
     super
 
-    @on 'update', ()->
-      $('#current-page').css
-        'padding-bottom': '20px'
-
-    # models maintained by integration models
+    #set up model defaults
     @models =
       analytics: []
 
@@ -111,12 +140,15 @@ class Integrations extends Page
 
     requestAnimationFrame ()->
       try
-        # needs to init twice to cancel soem things
+        # needs to init twice so that side bar works things
         window?.Core?.init()
         window?.Core?.init()
       catch e
         e
         #console?.log e
+
+    @on 'update', ()->
+      $('.tray-right').outerHeight $('#content').outerHeight()
 
     @api = api = Api.get 'crowdstart'
 
