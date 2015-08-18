@@ -111,6 +111,7 @@ class Integrations extends Page
     return (e)=>
       @tab = t
       e.preventDefault()
+      riot.update()
 
   collection: 'integrations'
 
