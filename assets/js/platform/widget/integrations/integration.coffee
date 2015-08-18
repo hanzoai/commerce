@@ -7,7 +7,7 @@ FormView = crowdcontrol.view.form.FormView
 instanceId = 0
 
 Events.Integration =
-  Save: 'integration-save'
+  Update: 'integration-updated'
   Remove: 'integration-close'
 
 class Integration extends FormView
@@ -25,16 +25,18 @@ class Integration extends FormView
   instanceId: -1
 
   error: false
-  realSubmit: false
+  fakeSubmit: true
 
   events:
     "#{ Events.Form.SubmitFailed }": ()->
       @error = true
-      @realSubmit = false
+      @fakeSubmit = false
+      @model._validated = false
       @update()
 
     "#{ Events.Form.SubmitSuccess }": ()->
       @error = false
+      @model._validated = true
       @update()
 
     "#{ Events.Input.Error }": ()->
@@ -45,14 +47,12 @@ class Integration extends FormView
       @submit()
       @update()
 
-  save: ()->
-    @realSubmit = true
-    @submit()
-
   _submit: ()->
-    if @realSubmit
-      @obs.trigger Events.Integration.Save
-      @realSubmit = false
+    if @fakeSubmit
+      @fakeSubmit = false
+      return
+
+    @obs.trigger Events.Integration.Update
 
   js: (opts)->
     super
@@ -61,6 +61,7 @@ class Integration extends FormView
       $('[data-toggle="tooltip"]').tooltip()
 
     @model.disabled = false if !@model.disabled?
+    @model.type = @type
 
     $(@root).attr('id', 'current-integration').addClass('animated').addClass('fadeIn')
 
@@ -68,6 +69,7 @@ class Integration extends FormView
     @instanceId = instanceId++
 
     requestAnimationFrame ()=>
+      @fakeSubmit = true
       @submit()
 
     @update()
@@ -87,11 +89,12 @@ class Integration extends FormView
           className: 'btn btn-primary'
           callback: ()->
 
-  remove: ()->
-    @obs.trigger Events.Integration.Remove
+  remove: (event)->
+    @obs.trigger Events.Integration.Remove, event
 
-  toggle: ()->
+  toggle: (event)->
     @model.disabled = !@model.disabled
+    @submit()
     @update()
 
   @src: ()->
