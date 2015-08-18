@@ -175,6 +175,8 @@ class BasicSelectView extends BasicInputView
   tag: 'basic-select'
   html: require '../../templates/backend/form/controls/basic-select.html'
 
+  useOptgroup: false
+
   # Use when loading options async
   async: false
 
@@ -309,6 +311,33 @@ class ProductSelectView extends BasicSelectView
 
 ProductSelectView.register()
 
+class AnalyticsEventsSelect extends BasicSelectView
+  tag: 'analytics-events-select'
+  useOptgroup: true
+  options: ()->
+    return {
+      'Standard Events':
+        'page': 'Load/Page View'
+        'Sign-up': 'Sign-up'
+        'Logged In': 'Logged In'
+        'Viewed Product': 'Viewed Product'
+        'Added Product': 'Added Product'
+        'Removed Product': 'Removed Product'
+        'Completed Order': 'Completed Order'
+        'Viewed Promotion': 'Viewed Promotion'
+        'Clicked Promotion': 'Clicked Promotion'
+      'E-Commerce Events':
+        'Viewed Product Category': 'Viewed Product Category'
+        'Viewed Checkout Step': 'Viewed Checkout Step'
+        'Completed Checkout Step': 'Completed Checkout Step'
+        'Viewed Checkout Step': 'Viewed Checkout Step'
+        'Completed Checkout Step': 'Completed Checkout Step'
+        'Viewed Checkout Step': 'Viewed Checkout Step'
+        'Completed Checkout Step': 'Completed Checkout Step'
+    }
+
+AnalyticsEventsSelect.register()
+
 # tag registration
 helpers.registerTag (inputCfg)->
   return inputCfg.hints['switch']
@@ -353,6 +382,10 @@ helpers.registerTag (inputCfg)->
 helpers.registerTag (inputCfg)->
   return inputCfg.hints['currency-type-select']
 , 'currency-select'
+
+helpers.registerTag (inputCfg)->
+  return inputCfg.hints['analytics-events-select']
+, 'analytics-events-select'
 
 helpers.registerTag (inputCfg)->
   return inputCfg.hints['static-money']
