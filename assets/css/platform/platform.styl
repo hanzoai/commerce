@@ -140,10 +140,7 @@ input.search
   text-align: left !important
 
 .cs-nav-tabs
-  margin-left: -20px
-  margin-right: -20px
-  margin-top: 2px
-  margin-bottom: 20px
+  margin-top: 15px
   padding-left: 15px
 
   .btn
@@ -157,13 +154,12 @@ input.search
 #current-page
   display: table
   width: 100%
+  padding: 0 !important
 
   .tray-right
     display: table-cell
     float: none
     vertical-align: top
-    top: -25px
-    right: -20px
 
     -webkit-transition: all 0.3s ease-in-out
     -moz-transition: all 0.3s ease-in-out
@@ -174,6 +170,9 @@ input.search
       padding-left: 0 !important
       padding-right: 0 !important
       right: -1000px
+
+body.tray-rescale .tray.tray320
+  top: 123px !important;
 
 .cs-integration
   .btn
@@ -249,8 +248,7 @@ input.search
 
 .tray-center
   overflow: scroll;
-  margin-right: -20px;
-  padding-right: 20px;
+  padding: 25px 20px 20px 20px
 
 .integration-toggle
   float: right
@@ -295,3 +293,32 @@ integration
       -moz-transition: all 0.3s ease-in-out, border-width 0.3s step-end
       transition: all 0.3s ease-in-out, border-width 0.3s step-end
 
+footer
+  color: #FFF !important
+  background-color: #353738 !important
+  -webkit-transition: all 0.2s ease-in-out
+  -moz-transition: all 0.2s ease-in-out
+  transition: all 0.2s ease-in-out
+
+  i.fa, h5
+    display: inline-block
+
+  i.fa
+    position: relative;
+    top: -4px;
+    padding-left: 10px;
+    padding-right: 10px;
+    font-size: 2em
+
+  h5
+    position: relative
+    top: -9px
+    padding-right: 10px;
+
+  button
+    font-weight: 900 !important
+    position: relative;
+    top: -9px;
+
+  &.footer-hidden
+    margin-bottom: -50px
