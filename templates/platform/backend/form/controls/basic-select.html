@@ -9,6 +9,11 @@
         <option each="{ value, name in options }" value="{value}" __selected="{ this.parent.parent.model.value == value }">{name}</option>
       </optgroup>
       <option if="{ !this.parent.useOptgroup }" each="{ value, name in options() }" value="{value}" __selected="{ this.parent.model.value == value }">{name}</option>
+
+      <optgroup if="{ tags && isCustom() }" label="Custom Events">
+        <option value="{ model.value }" selected>{ model.value }<option>
+      </optgroup>
+
     </select>
     <div if="{hasError()}" class="error-container help-block animated fadeInUp">{ error }</div>
   </div>
