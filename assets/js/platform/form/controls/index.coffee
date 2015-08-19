@@ -176,7 +176,6 @@ class BasicSelectView extends BasicInputView
   html: require '../../templates/backend/form/controls/basic-select.html'
 
   tags: false
-  useOptgroup: false
 
   # Use when loading options async
   async: false
@@ -338,8 +337,9 @@ ProductSelectView.register()
 
 class AnalyticsEventsSelect extends BasicSelectView
   tag: 'analytics-events-select'
+  html: require '../../templates/backend/form/controls/optgroup-select.html'
+
   tags: true
-  useOptgroup: true
   options: ()->
     return {
       'Standard Events':
