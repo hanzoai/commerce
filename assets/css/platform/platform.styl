@@ -1,6 +1,9 @@
 @require './modal.styl'
 @require './loader.styl'
 
+*
+  outline: none
+
 .widget
   min-height: 100px
 
@@ -89,7 +92,10 @@ menu
 
 textarea
   resize: none
-  min-height: 107px
+  border: 1px solid #ddd
+
+textarea:focus
+  border: 1px solid #5FAEE3
 
 .panel .panel .panel-heading
   border-top: 0
@@ -113,19 +119,32 @@ table-field
 
 input.search
   &::-webkit-input-placeholder
-    color: white
+    color: #999
 
   &:-moz-placeholder
-    color: white
+    color: #999
 
   &::-moz-placeholder
-    color: white
+    color: #999
 
   &:-ms-input-placeholder
-    color: white
+    color: #999
 
 .sidebar-menu > li.active > a > span:nth-child(1)
-  color: #4CAAE6
+  color: white
+
+.sidebar-menu > li.active > a > span:nth-child(2)
+  font-weight: 600
+
+.sidebar-menu > li > a > span:nth-child(2)
+  font-weight: 400
+
+.sidebar-menu > li > a
+  color: #ddd
+  font-size: 14px
+
+.sidebar-menu > li.active > a
+  color: white
 
 .navbar.bg-dark .nav > li.open > a, .navbar.bg-dark .nav > li:hover > a, .navbar.bg-dark .nav > li:focus > a, .navbar.bg-dark .nav > li.active > a, .navbar.bg-dark .nav > li > a:hover, .navbar.bg-dark .nav > li > a:focus
   background-color: #444

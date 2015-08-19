@@ -147,6 +147,11 @@ else
 	gae_config = $(gae_staging)
 endif
 
+# force a single module to deploy
+ifneq ($(strip $(module)),)
+	gae_config = $(module)
+endif
+
 datastore_admin_url = https://datastore-admin-dot-$(datastore_app_id).appspot.com/_ah/remote_api
 
 test_target = -r=true
