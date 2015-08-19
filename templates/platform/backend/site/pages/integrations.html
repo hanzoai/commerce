@@ -1,33 +1,90 @@
-<!-- Stripe Integration information Form Block -->
-<div class="block col-xs-12">
-  <!-- Stripe Integration information Form Content -->
-  <st-ripe-integration-form>
-    <div class="col-md-8">
-      <div class="panel animated fadeIn">
-        <div class="panel-heading">
-          Stripe
-        </div>
-        <div class="panel-body">
-          <div class="section col-xs-12" style="padding:0">
-            <div class="well">
-              <h4 if="{ model.state == 'error' }" class="text-danger text-center">Your Stripe account was not successfully be connected.  Please try again.</h4>
-              <h4 if="{ model.state == 'connected' }" class="text-center">Your Stripe account is connected.</h4>
-              <h4 if="{ model.state == 'new' }" class="text-center">Connect a Stripe account to start selling products.</h4>
-            </div>
-          </div>
-          <div class="form-actions section col-xs-12" style="padding:0">
-            <div class="col-md-8" style="padding-left:0">
-              <button onclick="{ stripeOAuth }" __disabled="{ !model.clientId }" if="{ model.state == 'connected' }" class="btn btn-block btn-effect-ripple btn-success" class="stripe-connect" type="button"><i class="fa fa-check"></i>Update Stripe Connect</button>
-              <button onclick="{ stripeOAuth }" __disabled="{ !model.clientId }" if="{ model.state != 'connected' }" class="btn btn-block btn-effect-ripple btn-dark" class="stripe-connect" type="button">Connect with Stripe</button>
-            </div>
-            <div class="col-md-4" style="padding-right:0">
-              <button onclick="{ stripeSync }" __disabled="{ !model.clientId || syncing }" class="btn btn-block btn-default" type="button">Sync orders</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </st-ripe-integration-form>
-  <!-- END Stripe Integration information Form Content -->
+<!-- Integration information Form Block -->
+<div class ="block cs-nav-tabs nav-tabs">
+  <div class="btn-group">
+    <a href="#" class="{ btn: true, btn-default: true, cs-selected: tab == 'paymentprocessors' }" onclick="{ setType('paymentprocessors') }">Payment Processors</a>
+    <a href="#" class="{ btn: true, btn-default: true, cs-selected: tab == 'analytics' }" onclick="{ setType('analytics') }">Analytics</a>
+  </div>
 </div>
-<!-- END Stripe Integration information Form Block -->
+
+<div class="tray tray-center">
+
+  <div class="block row">
+    <div id="paymentprocessors" if="{ tab == 'paymentprocessors' }">
+
+      <!-- Stripe Integration information Form Content -->
+      <st-ripe-integration-form>
+        <div class="col-md-6">
+          <div class="panel animated fadeIn">
+            <div class="panel-heading">
+              Stripe
+            </div>
+            <div class="panel-body">
+              <div class="section col-xs-12" style="padding:0">
+                <div class="well">
+                  <h4 if="{ model.state == 'error' }" class="text-danger text-center">Your Stripe account was not successfully be connected.  Please try again.</h4>
+                  <h4 if="{ model.state == 'connected' }" class="text-center">Your Stripe account is connected.</h4>
+                  <h4 if="{ model.state == 'new' }" class="text-center">Connect a Stripe account to start selling products.</h4>
+                </div>
+              </div>
+              <div class="form-actions section row">
+                <div class="col-md-8">
+                  <button onclick="{ stripeOAuth }" __disabled="{ !model.clientId }" if="{ model.state == 'connected' }" class="btn btn-block btn-effect-ripple btn-success" class="stripe-connect" type="button"><i class="fa fa-check"></i>Update Stripe Connect</button>
+                  <button onclick="{ stripeOAuth }" __disabled="{ !model.clientId }" if="{ model.state != 'connected' }" class="btn btn-block btn-effect-ripple btn-dark" class="stripe-connect" type="button">Connect with Stripe</button>
+                </div>
+                <div class="col-md-4">
+                  <button onclick="{ stripeSync }" __disabled="{ !model.clientId || syncing }" class="btn btn-block btn-default" type="button">Sync orders</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </st-ripe-integration-form>
+      <!-- END Stripe Integration information Form Content -->
+
+    </div>
+  </div>
+
+  <div id="analytics" if="{ tab == 'analytics' }">
+    <div class="{cs-droparea: true, active: dragging}">
+      <div if="{ isTabEmpty('analytics') }" class="text-center mt30">
+        Drag plugins over here to enable them.
+      </div>
+      <integration if="{ integration }" type="{ integration }" model="{ this.parent.models.analytics[i] }" obs="{ this.parent.obses.analytics[i] }" each="{ integration, i in integrations.analytics }">
+      </integration>
+      <drop obs="{ obs }">
+        <div class="{cs-droparea-overlay: true}">
+          Drop Plugins Here
+        </div>
+      </drop>
+    </div>
+  </div>
+
+</div>
+
+<aside class="{ tray-hidden: tab != 'analytics', tray: true, tray-right: true, tray320: true, p20: true, cs-integration: true }">
+  <div if="{ tab == 'analytics'}">
+    <h4>Snippet</h4>
+    <hr class="alt short">
+    <textarea class="form-control mb20">{analyticsSnippet}</textarea>
+    <h4>Plugins</h4>
+    <hr class="alt short">
+    <drag each="{ integrationClass, i in integrationClasses.analytics }" model="{ integrationClass.data() }" obs="{ this.parent.obs }">
+      <div class="btn btn-lg btn-block btn-rounded mb10">
+        <img if="{model.src}" src="{model.src}" alt="{model.alt}">
+        <span if="{model.text}">{model.text}</span>
+      </div>
+    </drag>
+  </div>
+</aside>
+
+<!-- Begin: Page Footer -->
+<footer id="content-footer" class="{ affix: true, footer-hidden: !showSave }">
+  <div class="row">
+    <i class="fa fa-info-circle"></i>
+    <h5>Save your changes?</h5>
+    <button type="button" class="btn btn-default btn-sm" onclick="{ save }" __disabled="{ saving }">{ saving ? 'Saving...' : 'Save' }</button>
+  </div>
+</footer>
+<!-- End: Page Footer -->
+
+<!-- END Integration information Form Block -->
