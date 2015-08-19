@@ -23,6 +23,10 @@
   <!-- Theme CSS -->
   <link rel="stylesheet" type="text/css" href="{{ staticUrl }}/backend/skin/default_skin/css/theme.css">
 
+  <!-- CodeMirror CSS -->
+  <link rel="stylesheet" type="text/css" href="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.5.0/codemirror.min.css">
+  <link rel="stylesheet" type="text/css" href="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.5.0/addon/lint/lint.min.css">
+
   <!-- Admin Forms CSS -->
   <link rel="stylesheet" type="text/css" href="{{ staticUrl }}/backend/admin-tools/admin-forms/css/admin-forms.min.css">
   <link rel="stylesheet" type="text/css" href="//cdnjs.cloudflare.com/ajax/libs/select2/4.0.0/css/select2.min.css">
@@ -122,27 +126,8 @@
       <!-- Begin: Content -->
       <section id="content" class="table-layout animated fadeIn">
 
-        <!-- begin: .tray-center -->
-        <div class="tray tray-center">
-
-        <!--   {% block content %} -->
-        <!--   {% endblock %} -->
-
-        </div>
-        <!-- end: .tray-center -->
-
       </section>
       <!-- End: Content -->
-
-      <!-- Begin: Page Footer -->
-      <footer id="content-footer" class="affix">
-        <div class="row">
-          <div class="col-md-6">
-            <span class="footer-legal">© 2015 Crowdstart, LLC.</span>
-          </div>
-        </div>
-      </footer>
-      <!-- End: Page Footer -->
 
     </section>
     <!-- End: Content-Wrapper -->
@@ -152,12 +137,21 @@
 
   <!-- BEGIN: PAGE SCRIPTS -->
 
-  <!-- Google Maps -->
-  <script src="//maps.google.com/maps/api/js?sensor=true"></script>
-
   <!-- jQuery -->
   <script src="{{ staticUrl }}/vendor/jquery/jquery-1.11.1.min.js"></script>
   <script src="{{ staticUrl }}/vendor/jquery/jquery_ui/jquery-ui.min.js"></script>
+
+  <!-- Google Maps -->
+  <script src="//maps.google.com/maps/api/js?sensor=true"></script>
+
+  <!-- CodeMirror -->
+  <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.5.0/codemirror.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.5.0/mode/javascript/javascript.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.5.0/addon/lint/lint.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/codemirror/5.5.0/addon/lint/javascript-lint.min.js"></script>
+
+  <!-- JSHint -->
+  <script src="//cdnjs.cloudflare.com/ajax/libs/jshint/2.8.0/jshint.min.js"></script>
 
   <!-- HighCharts Plugin -->
   <script src="{{ staticUrl }}/vendor/plugins/highcharts/highcharts.js"></script>
@@ -218,6 +212,10 @@
     'test-secret-key':      '{{ ctx.organization.MustGetTokenByName("test-secret-key") }}',
     'test-published-key':   '{{ ctx.organization.MustGetTokenByName("test-published-key") }}',
   }
+
+  window.Organization = '{{ ctx.organization.Name }}'
+
+  window.staticUrl = '{{ staticUrl }}/backend'
 
   new crowdcontrol.data.Api(
     '{{ urlFor("platform") }}',

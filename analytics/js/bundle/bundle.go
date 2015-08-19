@@ -21,5 +21,5 @@ func Render(o *organization.Organization) string {
 		js = strings.Replace(js, "analytics.initialize({})", "analytics.initialize(%s)", 1)
 	}
 
-	return fmt.Sprintf(js, o.Analytics.JSON())
+	return fmt.Sprintf(js, o.Analytics.SnippetJSON())
 }
