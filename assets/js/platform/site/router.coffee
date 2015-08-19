@@ -24,8 +24,8 @@ changePage = (collection = '', id = '', action = '') ->
 
     proto = page.prototype
 
-    $('#content .tray').html "<#{proto.tag}/>"
-    lastPages = riot.mount proto.tag, _id: id
+    $('#content').html '<div id="replaceme"/>'
+    lastPages = riot.mount '#replaceme', proto.tag, _id: id
 
     $(window).scrollTop(0)
 
