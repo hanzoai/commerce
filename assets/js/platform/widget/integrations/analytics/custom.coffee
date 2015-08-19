@@ -6,7 +6,7 @@ class CustomAnalytics extends Integration
   tag: 'custom-integration'
   type: 'generic'
   html: require '../../../templates/backend/widget/integrations/analytics/custom.html'
-  img: '/img/integrations/custom-logo.png'
+  img: '/img/integrations/custom.png'
   text: 'Custom Analytics'
   alt: 'Custom Analytics'
   model:
