@@ -6,7 +6,7 @@ class FacebookConversions extends Integration
   tag: 'fb-conversions-integration'
   type: 'facebook-conversions'
   html: require '../../../templates/backend/widget/integrations/analytics/fbconversions.html'
-  img: '/img/integrations/FB-f-Logo__blue_144.png'
+  img: '/img/integrations/fb.png'
   text: 'Facebook Conversions'
   alt: 'Facebook Analytics'
 

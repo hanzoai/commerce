@@ -6,7 +6,7 @@ class FacebookAudiences extends Integration
   tag: 'fb-audiences-integration'
   type: 'facebook-audiences'
   html: require '../../../templates/backend/widget/integrations/analytics/fbaudiences.html'
-  img: '/img/integrations/FB-f-Logo__blue_144.png'
+  img: '/img/integrations/fb.png'
   text: 'Facebook Audiences'
   alt: 'Facebook Audiences'
 
