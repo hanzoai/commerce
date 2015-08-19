@@ -175,6 +175,7 @@ class BasicSelectView extends BasicInputView
   tag: 'basic-select'
   html: require '../../templates/backend/form/controls/basic-select.html'
 
+  tags: false
   useOptgroup: false
 
   # Use when loading options async
@@ -202,6 +203,21 @@ class BasicSelectView extends BasicInputView
       @changed = true
       @update()
 
+  isCustom: (o)->
+    options = o
+    if !options?
+      options = @options()
+
+    for name, value of options
+      if _.isObject value
+        if !@isCustom value
+          return false
+
+      else if name == @model.value
+        return false
+
+    return true
+
   # if async is set to true, then call this when async loading is done
   asyncDone: ()->
     @optionsLoaded = true
@@ -226,6 +242,13 @@ class BasicSelectView extends BasicInputView
       @model.value = @lastValueSet
     @update()
 
+  initSelect: ($select)->
+    $select.select2(
+      tags: @tags
+      placeholder: @model.placeholder
+      minimumResultsForSearch: 10
+    ).change((event)=>@change(event))
+
   js:(opts)->
     super
 
@@ -235,10 +258,7 @@ class BasicSelectView extends BasicInputView
       $select = $(@root).find('select')
       if $select[0]?
         if !@initialized
-          $select.select2(
-            placeholder: @model.placeholder
-            minimumResultsForSearch: 10
-          ).change((event)=>@change(event))
+          @initSelect($select)
           @initialized = true
           @changed = true
         else if @changed
@@ -246,6 +266,11 @@ class BasicSelectView extends BasicInputView
             if @async && !@optionsLoaded
               @lastValueSet = @model.value
             else
+              # this bypasses caching of select option names
+              # no other way to force select2 to flush cache
+              if @isCustom()
+                $select.select('destroy')
+                @initSelect($select)
               $select.select2('val', @model.value)
               @changed = false
       else
@@ -313,6 +338,7 @@ ProductSelectView.register()
 
 class AnalyticsEventsSelect extends BasicSelectView
   tag: 'analytics-events-select'
+  tags: true
   useOptgroup: true
   options: ()->
     return {
