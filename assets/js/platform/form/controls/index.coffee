@@ -72,6 +72,40 @@ class BasicTextareaView extends BasicInputView
 
 BasicTextareaView.register()
 
+class CodeMirrorView extends BasicTextareaView
+  tag: 'codemirror-js'
+  js: (opts)->
+    super
+
+    @refresh()
+
+    @on 'update', ()=>
+      @refresh()
+
+  refresh: ()->
+    if @editor?
+      @editor.refresh()
+      return
+
+    $el = $(@root).find('textarea')
+
+    if $el[0]?
+      @editor = CodeMirror.fromTextArea $el[0],
+        lineNumbers: true,
+        mode: "javascript",
+        gutters: ["CodeMirror-lint-markers"],
+        lint: true
+
+      @editor.on 'change', (instance, changeObj)=>
+        $el.val @editor.getValue()
+        @change target: $el[0]
+
+
+      requestAnimationFrame: ()=>
+        @editor.refresh()
+
+CodeMirrorView.register()
+
 class Switch extends BasicInputView
   tag: 'switch'
   html: require '../../templates/backend/form/controls/switch.html'
@@ -140,6 +174,8 @@ StaticMoneyView.register()
 class BasicSelectView extends BasicInputView
   tag: 'basic-select'
   html: require '../../templates/backend/form/controls/basic-select.html'
+
+  useOptgroup: false
 
   # Use when loading options async
   async: false
@@ -275,6 +311,33 @@ class ProductSelectView extends BasicSelectView
 
 ProductSelectView.register()
 
+class AnalyticsEventsSelect extends BasicSelectView
+  tag: 'analytics-events-select'
+  useOptgroup: true
+  options: ()->
+    return {
+      'Standard Events':
+        'page': 'Load/Page View'
+        'Sign-up': 'Sign-up'
+        'Logged In': 'Logged In'
+        'Viewed Product': 'Viewed Product'
+        'Added Product': 'Added Product'
+        'Removed Product': 'Removed Product'
+        'Completed Order': 'Completed Order'
+        'Viewed Promotion': 'Viewed Promotion'
+        'Clicked Promotion': 'Clicked Promotion'
+      'E-Commerce Events':
+        'Viewed Product Category': 'Viewed Product Category'
+        'Viewed Checkout Step': 'Viewed Checkout Step'
+        'Completed Checkout Step': 'Completed Checkout Step'
+        'Viewed Checkout Step': 'Viewed Checkout Step'
+        'Completed Checkout Step': 'Completed Checkout Step'
+        'Viewed Checkout Step': 'Viewed Checkout Step'
+        'Completed Checkout Step': 'Completed Checkout Step'
+    }
+
+AnalyticsEventsSelect.register()
+
 # tag registration
 helpers.registerTag (inputCfg)->
   return inputCfg.hints['switch']
@@ -283,6 +346,10 @@ helpers.registerTag (inputCfg)->
 helpers.registerTag (inputCfg)->
   return inputCfg.hints['text']
 , 'basic-textarea'
+
+helpers.registerTag (inputCfg)->
+  return inputCfg.hints['js']
+, 'codemirror-js'
 
 helpers.registerTag (inputCfg)->
   return inputCfg.hints['password']
@@ -315,6 +382,10 @@ helpers.registerTag (inputCfg)->
 helpers.registerTag (inputCfg)->
   return inputCfg.hints['currency-type-select']
 , 'currency-select'
+
+helpers.registerTag (inputCfg)->
+  return inputCfg.hints['analytics-events-select']
+, 'analytics-events-select'
 
 helpers.registerTag (inputCfg)->
   return inputCfg.hints['static-money']
