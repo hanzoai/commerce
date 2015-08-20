@@ -9,8 +9,6 @@ import (
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/transaction"
-
-	"crowdstart.com/thirdparty/redis"
 )
 
 var FailedToCaptureCharge = errors.New("Failed to capture charge")
@@ -42,14 +40,6 @@ func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []
 			trans.Test = ord.Test
 			trans.Put()
 		}
-	}
-
-	redis.IncrTotalOrders(redis.Hourly, org)
-	redis.IncrTotalSales(redis.Hourly, org, ord)
-
-	if ord.StoreId != "" {
-		redis.IncrStoreOrders(redis.Hourly, org, ord.StoreId)
-		redis.IncrStoreSales(redis.Hourly, org, ord.StoreId, ord)
 	}
 
 	return ord, keys, payments, nil
