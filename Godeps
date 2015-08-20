@@ -27,3 +27,4 @@ github.com/zeekay/go-logging master
 golang.org/x/crypto/bcrypt master
 golang.org/x/oauth2/google master
 google.golang.org/api/storage/v1
+gopkg.in/redis.v3
