@@ -1,6 +1,7 @@
 package redis
 
 import (
+	"strconv"
 	"time"
 
 	"crowdstart.com/config"
@@ -23,6 +24,8 @@ func init() {
 
 	sep = "_"
 	salesKey = "sales"
+	ordersKey = "orders"
+
 	client, err = New(config.Redis.Url, config.Redis.Password)
 	if err != nil {
 		log.Error("redis client could not connect")
@@ -31,11 +34,23 @@ func init() {
 
 type TimeFunc func(t time.Time) time.Time
 
-func New(addr, pw string) (*redis.Client, error) {
+func New(addr string, pw string) (*redis.Client, error) {
+	db := int64(0)
+
+	if config.IsDevelopment {
+		db = 0
+	} else if config.IsStaging {
+		db = 1
+	} else if config.IsSandbox {
+		db = 2
+	} else if config.IsProduction {
+		db = 3
+	}
+
 	client := redis.NewClient(&redis.Options{
 		Addr:       addr,
 		Password:   pw, // no password set
-		DB:         0,  // use default DB
+		DB:         db, // use default DB
 		MaxRetries: 3,
 	})
 
@@ -67,7 +82,7 @@ func addEnvironment(key string) string {
 }
 
 func addTimestamp(key string, tf TimeFunc) string {
-	return key + sep + tf(time.Now()).String()
+	return key + sep + strconv.FormatInt(tf(time.Now()).Unix(), 10)
 }
 
 func totalKey(org *organization.Organization, key string) string {
@@ -84,30 +99,38 @@ func storeKey(org *organization.Organization, storeId, key string) string {
 	return key
 }
 
-func IncrTotalSales(tf TimeFunc, org *organization.Organization, ord *order.Order) {
+func IncrTotalSales(tf TimeFunc, org *organization.Organization, ord *order.Order) error {
 	key := totalKey(org, salesKey) + sep + string(ord.Currency)
 	key = addTimestamp(key, tf)
 
-	client.IncrBy(key, int64(ord.Total))
+	log.Warn("%v incremented by %v", key, int64(ord.Total), org.Db.Context)
+
+	return client.IncrBy(key, int64(ord.Total)).Err()
 }
 
-func IncrStoreSales(tf TimeFunc, org *organization.Organization, storeId string, ord *order.Order) {
+func IncrStoreSales(tf TimeFunc, org *organization.Organization, storeId string, ord *order.Order) error {
 	key := storeKey(org, storeId, salesKey) + sep + string(ord.Currency)
 	key = addTimestamp(key, tf)
 
-	client.IncrBy(key, int64(ord.Total))
+	log.Warn("%v incremented by %v", key, int64(ord.Total), org.Db.Context)
+
+	return client.IncrBy(key, int64(ord.Total)).Err()
 }
 
-func IncrTotalOrders(tf TimeFunc, org *organization.Organization) {
+func IncrTotalOrders(tf TimeFunc, org *organization.Organization) error {
 	key := totalKey(org, ordersKey)
 	key = addTimestamp(key, tf)
 
-	client.Incr(key)
+	log.Warn("%v incremented by %v", key, 1, org.Db.Context)
+
+	return client.Incr(key).Err()
 }
 
-func IncrStoreOrders(tf TimeFunc, org *organization.Organization, storeId string) {
+func IncrStoreOrders(tf TimeFunc, org *organization.Organization, storeId string) error {
 	key := storeKey(org, storeId, ordersKey)
 	key = addTimestamp(key, tf)
 
-	client.Incr(key)
+	log.Warn("%v incremented by %v", key, 1, org.Db.Context)
+
+	return client.Incr(key).Err()
 }

@@ -13,6 +13,7 @@ import (
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/types/currency"
+	"crowdstart.com/thirdparty/redis"
 	"crowdstart.com/util/log"
 )
 
@@ -67,6 +68,25 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (
 	db := datastore.New(ord.Db.Context)
 	if _, err = db.PutMulti(keys, payments); err != nil {
 		return nil, err
+	}
+
+	ctx := db.Context
+
+	if err := redis.IncrTotalOrders(redis.Hourly, org); err != nil {
+		log.Warn("Redis Error %s", err, ctx)
+	}
+	if err := redis.IncrTotalSales(redis.Hourly, org, ord); err != nil {
+		log.Warn("Redis Error %s", err, ctx)
+	}
+
+	if ord.StoreId != "" {
+		if err := redis.IncrStoreOrders(redis.Hourly, org, ord.StoreId); err != nil {
+			log.Warn("Redis Error %s", err, ctx)
+		}
+
+		if err := redis.IncrStoreSales(redis.Hourly, org, ord.StoreId, ord); err != nil {
+			log.Warn("Redis Error %s", err, ctx)
+		}
 	}
 
 	// Need to figure out a way to count coupon uses
