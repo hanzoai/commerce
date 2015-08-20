@@ -16,6 +16,7 @@ var (
 	sep       string
 	salesKey  string
 	ordersKey string
+	subsKey   string
 	client    *redis.Client
 )
 
@@ -25,6 +26,7 @@ func init() {
 	sep = "_"
 	salesKey = "sales"
 	ordersKey = "orders"
+	subsKey = "subscribers"
 
 	client, err = New(config.Redis.Url, config.Redis.Password)
 	if err != nil {
@@ -35,7 +37,7 @@ func init() {
 type TimeFunc func(t time.Time) time.Time
 
 func New(addr string, pw string) (*redis.Client, error) {
-	db := int64(0)
+	db := int64(0) // unknown db assumed to be dev
 
 	if config.IsDevelopment {
 		db = 0
@@ -85,52 +87,66 @@ func addTimestamp(key string, tf TimeFunc) string {
 	return key + sep + strconv.FormatInt(tf(time.Now()).Unix(), 10)
 }
 
-func totalKey(org *organization.Organization, key string) string {
+func totalKey(org *organization.Organization, key string, tf TimeFunc) string {
 	key = org.Name + sep + key
 	key = addEnvironment(key)
+	key = addTimestamp(key, tf)
 
 	return key
 }
 
-func storeKey(org *organization.Organization, storeId, key string) string {
+func storeKey(org *organization.Organization, storeId, key string, tf TimeFunc) string {
 	key = org.Name + sep + storeId + sep + key
 	key = addEnvironment(key)
+	key = addTimestamp(key, tf)
+
+	return key
+}
+
+func subKey(org *organization.Organization, key string, tf TimeFunc) string {
+	key = org.Name + sep + subsKey + sep + key
+	key = addEnvironment(key)
+	key = addTimestamp(key, tf)
 
 	return key
 }
 
 func IncrTotalSales(tf TimeFunc, org *organization.Organization, ord *order.Order) error {
-	key := totalKey(org, salesKey) + sep + string(ord.Currency)
-	key = addTimestamp(key, tf)
+	key := totalKey(org, salesKey+sep+string(ord.Currency), tf)
 
-	log.Warn("%v incremented by %v", key, int64(ord.Total), org.Db.Context)
+	log.Debug("%v incremented by %v", key, int64(ord.Total), org.Db.Context)
 
 	return client.IncrBy(key, int64(ord.Total)).Err()
 }
 
 func IncrStoreSales(tf TimeFunc, org *organization.Organization, storeId string, ord *order.Order) error {
-	key := storeKey(org, storeId, salesKey) + sep + string(ord.Currency)
-	key = addTimestamp(key, tf)
+	key := storeKey(org, storeId, salesKey+sep+string(ord.Currency), tf)
 
-	log.Warn("%v incremented by %v", key, int64(ord.Total), org.Db.Context)
+	log.Debug("%v incremented by %v", key, int64(ord.Total), org.Db.Context)
 
 	return client.IncrBy(key, int64(ord.Total)).Err()
 }
 
 func IncrTotalOrders(tf TimeFunc, org *organization.Organization) error {
-	key := totalKey(org, ordersKey)
-	key = addTimestamp(key, tf)
+	key := totalKey(org, ordersKey, tf)
 
-	log.Warn("%v incremented by %v", key, 1, org.Db.Context)
+	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
 
 	return client.Incr(key).Err()
 }
 
 func IncrStoreOrders(tf TimeFunc, org *organization.Organization, storeId string) error {
-	key := storeKey(org, storeId, ordersKey)
-	key = addTimestamp(key, tf)
+	key := storeKey(org, storeId, ordersKey, tf)
 
-	log.Warn("%v incremented by %v", key, 1, org.Db.Context)
+	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
+
+	return client.Incr(key).Err()
+}
+
+func IncrSubscribers(tf TimeFunc, org *organization.Organization, mailinglistId string) error {
+	key := subKey(org, mailinglistId, tf)
+
+	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
 
 	return client.Incr(key).Err()
 }
