@@ -4,8 +4,9 @@ import (
 	"time"
 
 	"crowdstart.com/config"
+	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
-	"crowdstart.com/models/types/currency"
+	"crowdstart.com/util/log"
 
 	redis "gopkg.in/redis.v3"
 )
@@ -18,9 +19,14 @@ var (
 )
 
 func init() {
+	var err error
+
 	sep = "_"
 	salesKey = "sales"
-	client, _ = New(config.Redis.Url, config.Redis.Password)
+	client, err = New(config.Redis.Url, config.Redis.Password)
+	if err != nil {
+		log.Error("redis client could not connect")
+	}
 }
 
 type TimeFunc func(t time.Time) time.Time
@@ -78,18 +84,18 @@ func storeKey(org *organization.Organization, storeId, key string) string {
 	return key
 }
 
-func IncrTotalSales(tf TimeFunc, org *organization.Organization, cents currency.Cents) {
-	key := totalKey(org, salesKey)
+func IncrTotalSales(tf TimeFunc, org *organization.Organization, ord *order.Order) {
+	key := totalKey(org, salesKey) + sep + string(ord.Currency)
 	key = addTimestamp(key, tf)
 
-	client.IncrBy(key, int64(cents))
+	client.IncrBy(key, int64(ord.Total))
 }
 
-func IncrStoreSales(tf TimeFunc, org *organization.Organization, storeId string, cents currency.Cents) {
-	key := storeKey(org, storeId, salesKey)
+func IncrStoreSales(tf TimeFunc, org *organization.Organization, storeId string, ord *order.Order) {
+	key := storeKey(org, storeId, salesKey) + sep + string(ord.Currency)
 	key = addTimestamp(key, tf)
 
-	client.IncrBy(key, int64(cents))
+	client.IncrBy(key, int64(ord.Total))
 }
 
 func IncrTotalOrders(tf TimeFunc, org *organization.Organization) {
