@@ -7,11 +7,14 @@ import (
 
 	"crowdstart.com/config"
 	"crowdstart.com/datastore"
+	"crowdstart.com/middleware"
 	"crowdstart.com/models/mailinglist"
 	"crowdstart.com/models/subscriber"
 	"crowdstart.com/models/types/client"
+	"crowdstart.com/thirdparty/redis"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/json/http"
+	"crowdstart.com/util/log"
 
 	mailchimp "crowdstart.com/thirdparty/mailchimp/tasks"
 )
@@ -58,5 +61,12 @@ func addSubscriber(c *gin.Context) {
 		mailchimp.Subscriber.Call(db.Context, ml.JSON(), s.JSON())
 		c.Writer.Header().Add("Location", subscriberEndpoint+s.Id())
 		http.Render(c, 201, s)
+	}
+
+	ctx := db.Context
+	org := middleware.GetOrganization(c)
+
+	if err := redis.IncrSubscribers(redis.Hourly, org, ml.Id()); err != nil {
+		log.Warn("Redis Error %s", err, ctx)
 	}
 }
