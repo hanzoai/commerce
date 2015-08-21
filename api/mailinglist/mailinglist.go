@@ -66,7 +66,7 @@ func addSubscriber(c *gin.Context) {
 	ctx := db.Context
 	org := middleware.GetOrganization(c)
 
-	if err := redis.IncrSubscribers(redis.Hourly, org, ml.Id()); err != nil {
+	if err := redis.IncrSubscribers(org, ml.Id()); err != nil {
 		log.Warn("Redis Error %s", err, ctx)
 	}
 }
