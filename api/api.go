@@ -23,6 +23,7 @@ import (
 
 	accessTokenApi "crowdstart.com/api/accesstoken"
 	accountApi "crowdstart.com/api/account"
+	dataApi "crowdstart.com/api/data"
 	mailinglistApi "crowdstart.com/api/mailinglist"
 	namespaceApi "crowdstart.com/api/namespace"
 	orderApi "crowdstart.com/api/order"
@@ -108,4 +109,7 @@ func init() {
 
 	// Stripe webhook
 	stripeApi.Route(api)
+
+	// Data Api
+	dataApi.Route(api)
 }

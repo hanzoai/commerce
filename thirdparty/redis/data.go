@@ -3,18 +3,22 @@ package redis
 import (
 	"time"
 
+	"gopkg.in/redis.v3"
+
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/types/currency"
+	"crowdstart.com/util/log"
 )
 
-type currencyValues map[currency.Type]int64
+type currencyValue map[currency.Type]int64
+type currencyValues map[currency.Type][]int64
 
 type DashboardData struct {
-	TotalSales  currencyValues
+	TotalSales  currencyValue
 	TotalOrders int64
 
-	DailySales  []currencyValues
-	DailyOrders []currencyValues
+	DailySales  currencyValues
+	DailyOrders currencyValues
 
 	// DailyStoreSales  [](map[currency.Type]int64)
 	// DailyStoreOrders [](map[currency.Type]int64)
@@ -28,6 +32,7 @@ const (
 
 func GetDashboardData(t Type, date time.Time, org *organization.Organization) (DashboardData, error) {
 	data := DashboardData{}
+	data.TotalSales = make(currencyValue)
 
 	var (
 		newDate time.Time
@@ -55,6 +60,7 @@ func GetDashboardData(t Type, date time.Time, org *organization.Organization) (D
 
 	result := client.SMembers(setName(org, currencySetKey))
 	if err := result.Err(); err != nil {
+		log.Error("Redis Error: %v", err)
 		return data, err
 	}
 
@@ -63,56 +69,83 @@ func GetDashboardData(t Type, date time.Time, org *organization.Organization) (D
 	for _, cur := range currencies {
 		currency := currency.Type(cur)
 		keyId := salesKeyId(currency)
-		key := totalKey(org, keyId, AllTime(time.Now()))
+		key := totalKey(org, keyId, allTime)
 		result := client.Get(key)
 
 		if err := result.Err(); err != nil {
+			if err == redis.Nil {
+				return data, nil // No data
+			}
+			log.Error("Redis Error: %v", err)
 			return data, err
 		}
 
 		if sales, err := result.Int64(); err != nil {
+			log.Error("Redis Error: %v", err)
 			return data, err
 		} else {
 			data.TotalSales[currency] = sales
 		}
 
-		data.DailySales = make([]currencyValues, days)
+		data.DailySales = make(currencyValues)
+		data.DailyOrders = make(currencyValues)
 
 		currentDate := oldDate
 		startDay := currentDate.Day()
 		for currentDate.Before(newDate) {
 			i := currentDate.Day() - startDay
-			if data.DailySales[i] != nil {
-				data.DailySales[i] = make(currencyValues)
+			if data.DailySales[currency] == nil {
+				data.DailySales[currency] = make([]int64, days)
 			}
 
-			key := totalKey(org, keyId, Hourly(currentDate))
+			skip := false
+			key := totalKey(org, keyId, daily(currentDate))
 			result := client.Get(key)
 
 			if err := result.Err(); err != nil {
-				return data, err
+				if err == redis.Nil {
+					skip = true
+				} else {
+					log.Error("Redis Error while getting %v: %v", key, err)
+					return data, err
+				}
 			}
 
-			if sales, err := result.Int64(); err != nil {
-				return data, err
-			} else {
-				data.DailySales[i][currency] += sales
+			if !skip {
+				if sales, err := result.Int64(); err != nil {
+					log.Error("Redis Error while getting %v: %v", key, err)
+					return data, err
+				} else {
+					data.DailySales[currency][i] += sales
+				}
 			}
 
-			key = totalKey(org, ordersKey, Hourly(currentDate))
+			if data.DailyOrders[currency] == nil {
+				data.DailyOrders[currency] = make([]int64, days)
+			}
+			skip = false
+			key = totalKey(org, ordersKey, daily(currentDate))
 			result = client.Get(key)
 
 			if err := result.Err(); err != nil {
-				return data, err
+				if err == redis.Nil {
+					skip = true
+				} else {
+					log.Error("Redis Error while getting %v: %v", key, err)
+					return data, err
+				}
 			}
 
-			if orders, err := result.Int64(); err != nil {
-				return data, err
-			} else {
-				data.DailyOrders[i][currency] += orders
+			if !skip {
+				if orders, err := result.Int64(); err != nil {
+					log.Error("Redis Error while getting %v: %v", key, err)
+					return data, err
+				} else {
+					data.DailyOrders[currency][i] += orders
+				}
 			}
 
-			currentDate = currentDate.Add(time.Hour)
+			currentDate = currentDate.Add(time.Hour * 24)
 		}
 	}
 
