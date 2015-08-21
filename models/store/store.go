@@ -179,3 +179,7 @@ func (s *Store) UpdateFromListing(entity mixin.Entity) {
 	field := ev.FieldByName("Currency")
 	field.Set(reflect.ValueOf(s.Currency))
 }
+
+func Query(db *datastore.Datastore) *mixin.Query {
+	return New(db).Query()
+}
