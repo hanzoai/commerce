@@ -75,7 +75,7 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (
 	if err := redis.IncrTotalOrders(redis.Hourly, org); err != nil {
 		log.Warn("Redis Error %s", err, ctx)
 	}
-	if err := redis.IncrTotalSales(redis.Hourly, org, ord); err != nil {
+	if err := redis.IncrTotalSales(redis.Hourly, org, payments); err != nil {
 		log.Warn("Redis Error %s", err, ctx)
 	}
 
@@ -84,7 +84,7 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (
 			log.Warn("Redis Error %s", err, ctx)
 		}
 
-		if err := redis.IncrStoreSales(redis.Hourly, org, ord.StoreId, ord); err != nil {
+		if err := redis.IncrStoreSales(redis.Hourly, org, ord.StoreId, payments); err != nil {
 			log.Warn("Redis Error %s", err, ctx)
 		}
 	}
