@@ -20,6 +20,8 @@ var (
 	ordersKey      string
 	subsKey        string
 	client         *redis.Client
+
+	allTime string
 )
 
 func init() {
@@ -30,6 +32,7 @@ func init() {
 	ordersKey = "orders"
 	subsKey = "subscribers"
 	currencySetKey = "currencies"
+	allTime = "all"
 
 	client, err = New(config.Redis.Url, config.Redis.Password)
 	if err != nil {
@@ -66,11 +69,12 @@ func New(addr string, pw string) (*redis.Client, error) {
 	return client, nil
 }
 
-func AllTime(t time.Time) string {
-	return "all"
+func daily(t time.Time) string {
+	t2 := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
+	return strconv.FormatInt(t2.Unix(), 10)
 }
 
-func Hourly(t time.Time) string {
+func hourly(t time.Time) string {
 	t2 := time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), 0, 0, 0, t.Location())
 	return strconv.FormatInt(t2.Unix(), 10)
 }
@@ -126,7 +130,7 @@ func salesKeyId(cur currency.Type) string {
 	return salesKey + sep + string(cur)
 }
 
-func IncrTotalSales(tf TimeFunc, org *organization.Organization, pays []*payment.Payment) error {
+func IncrTotalSales(org *organization.Organization, pays []*payment.Payment) error {
 	var total currency.Cents
 	var currency currency.Type
 
@@ -150,9 +154,17 @@ func IncrTotalSales(tf TimeFunc, org *organization.Organization, pays []*payment
 	}
 
 	keyId := salesKeyId(currency)
-	key := totalKey(org, keyId, tf(time.Now()))
+	key := totalKey(org, keyId, hourly(time.Now()))
 	log.Debug("%v incremented by %v", key, int64(total), org.Db.Context)
 	err := client.IncrBy(key, int64(total)).Err()
+	if err != nil {
+		return err
+	}
+
+	keyId = salesKeyId(currency)
+	key = totalKey(org, keyId, daily(time.Now()))
+	log.Debug("%v incremented by %v", key, int64(total), org.Db.Context)
+	err = client.IncrBy(key, int64(total)).Err()
 	if err != nil {
 		return err
 	}
@@ -163,12 +175,12 @@ func IncrTotalSales(tf TimeFunc, org *organization.Organization, pays []*payment
 		return err
 	}
 
-	key = totalKey(org, keyId, AllTime(time.Now()))
+	key = totalKey(org, keyId, allTime)
 	log.Debug("%v incremented by %v", key, int64(total), org.Db.Context)
 	return client.IncrBy(key, int64(total)).Err()
 }
 
-func IncrStoreSales(tf TimeFunc, org *organization.Organization, storeId string, pays []*payment.Payment) error {
+func IncrStoreSales(org *organization.Organization, storeId string, pays []*payment.Payment) error {
 	var total currency.Cents
 	var currency currency.Type
 
@@ -192,9 +204,17 @@ func IncrStoreSales(tf TimeFunc, org *organization.Organization, storeId string,
 	}
 
 	keyId := salesKeyId(currency)
-	key := storeKey(org, storeId, keyId, tf(time.Now()))
+	key := storeKey(org, storeId, keyId, hourly(time.Now()))
 	log.Debug("%v incremented by %v", key, int64(total), org.Db.Context)
 	err := client.IncrBy(key, int64(total)).Err()
+	if err != nil {
+		return err
+	}
+
+	keyId = salesKeyId(currency)
+	key = storeKey(org, storeId, keyId, daily(time.Now()))
+	log.Debug("%v incremented by %v", key, int64(total), org.Db.Context)
+	err = client.IncrBy(key, int64(total)).Err()
 	if err != nil {
 		return err
 	}
@@ -205,46 +225,67 @@ func IncrStoreSales(tf TimeFunc, org *organization.Organization, storeId string,
 		return err
 	}
 
-	key = storeKey(org, storeId, keyId, AllTime(time.Now()))
+	key = storeKey(org, storeId, keyId, allTime)
 	log.Debug("%v incremented by %v", key, int64(total), org.Db.Context)
 	return client.IncrBy(key, int64(total)).Err()
 }
 
-func IncrTotalOrders(tf TimeFunc, org *organization.Organization) error {
-	key := totalKey(org, ordersKey, tf(time.Now()))
+func IncrTotalOrders(org *organization.Organization) error {
+	key := totalKey(org, ordersKey, hourly(time.Now()))
 	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
 	err := client.Incr(key).Err()
 	if err != nil {
 		return err
 	}
 
-	key = totalKey(org, ordersKey, AllTime(time.Now()))
+	key = totalKey(org, ordersKey, daily(time.Now()))
+	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
+	err = client.Incr(key).Err()
+	if err != nil {
+		return err
+	}
+
+	key = totalKey(org, ordersKey, allTime)
 	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
 	return client.Incr(key).Err()
 }
 
-func IncrStoreOrders(tf TimeFunc, org *organization.Organization, storeId string) error {
-	key := storeKey(org, storeId, ordersKey, tf(time.Now()))
+func IncrStoreOrders(org *organization.Organization, storeId string) error {
+	key := storeKey(org, storeId, ordersKey, hourly(time.Now()))
 	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
 	err := client.Incr(key).Err()
 	if err != nil {
 		return err
 	}
 
-	key = storeKey(org, storeId, ordersKey, AllTime(time.Now()))
+	key = storeKey(org, storeId, ordersKey, daily(time.Now()))
+	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
+	err = client.Incr(key).Err()
+	if err != nil {
+		return err
+	}
+
+	key = storeKey(org, storeId, ordersKey, allTime)
 	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
 	return client.Incr(key).Err()
 }
 
-func IncrSubscribers(tf TimeFunc, org *organization.Organization, mailinglistId string) error {
-	key := subKey(org, mailinglistId, tf(time.Now()))
+func IncrSubscribers(org *organization.Organization, mailinglistId string) error {
+	key := subKey(org, mailinglistId, hourly(time.Now()))
 	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
 	err := client.Incr(key).Err()
 	if err != nil {
 		return err
 	}
 
-	key = subKey(org, mailinglistId, AllTime(time.Now()))
+	key = subKey(org, mailinglistId, daily(time.Now()))
+	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
+	err = client.Incr(key).Err()
+	if err != nil {
+		return err
+	}
+
+	key = subKey(org, mailinglistId, allTime)
 	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
 	return client.Incr(key).Err()
 }
