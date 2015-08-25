@@ -2,6 +2,7 @@ package mailinglist
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -66,7 +67,7 @@ func addSubscriber(c *gin.Context) {
 	ctx := db.Context
 	org := middleware.GetOrganization(c)
 
-	if err := redis.IncrSubscribers(org, ml.Id()); err != nil {
+	if err := redis.IncrSubscribers(ctx, org, ml.Id(), time.Now()); err != nil {
 		log.Warn("Redis Error %s", err, ctx)
 	}
 }
