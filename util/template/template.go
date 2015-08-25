@@ -17,7 +17,7 @@ import (
 var cwd, _ = os.Getwd()
 
 func TemplateSet() *pongo2.TemplateSet {
-	set := pongo2.NewSet("default")
+	set := pongo2.NewSet("default", pongo2.MustNewLocalFileSystemLoader(""))
 
 	set.Debug = config.IsDevelopment
 

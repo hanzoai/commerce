@@ -3,6 +3,8 @@ package redis
 import (
 	"time"
 
+	"appengine"
+
 	"gopkg.in/redis.v3"
 
 	"crowdstart.com/models/organization"
@@ -26,13 +28,20 @@ type DashboardData struct {
 type Type string
 
 const (
-	Monthly Type = "Monthly"
+	Yearly  Type = "Yearly"
+	Monthly      = "Monthly"
 	Weekly       = "Weekly"
+	// Daily        = "Daily"
 )
 
-func GetDashboardData(t Type, date time.Time, org *organization.Organization) (DashboardData, error) {
+func GetDashboardData(ctx appengine.Context, t Type, date time.Time, org *organization.Organization) (DashboardData, error) {
 	data := DashboardData{}
 	data.TotalSales = make(currencyValue)
+
+	client, err := GetClient(ctx)
+	if err != nil {
+		return data, err
+	}
 
 	var (
 		newDate time.Time
