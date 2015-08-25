@@ -13,7 +13,7 @@ import (
 func dashboard(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 
-	data, err := redis.GetDashboardData(redis.Weekly, time.Now(), org)
+	data, err := redis.GetDashboardData(org.Db.Context, redis.Weekly, time.Now(), org)
 	if err != nil {
 		http.Fail(c, 500, "Failed to load data", err)
 	} else {
