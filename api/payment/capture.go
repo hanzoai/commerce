@@ -72,19 +72,20 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (
 
 	ctx := db.Context
 
-	if err := redis.IncrTotalOrders(org); err != nil {
+	t := ord.CreatedAt
+	if err := redis.IncrTotalOrders(ctx, org, t); err != nil {
 		log.Warn("Redis Error %s", err, ctx)
 	}
-	if err := redis.IncrTotalSales(org, payments); err != nil {
+	if err := redis.IncrTotalSales(ctx, org, payments, t); err != nil {
 		log.Warn("Redis Error %s", err, ctx)
 	}
 
 	if ord.StoreId != "" {
-		if err := redis.IncrStoreOrders(org, ord.StoreId); err != nil {
+		if err := redis.IncrStoreOrders(ctx, org, ord.StoreId, t); err != nil {
 			log.Warn("Redis Error %s", err, ctx)
 		}
 
-		if err := redis.IncrStoreSales(org, ord.StoreId, payments); err != nil {
+		if err := redis.IncrStoreSales(ctx, org, ord.StoreId, payments, t); err != nil {
 			log.Warn("Redis Error %s", err, ctx)
 		}
 	}
