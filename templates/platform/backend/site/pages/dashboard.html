@@ -1,20 +1,15 @@
 <div class="tray tray-center">
   <div>
-    <!-- <div class="row"> -->
-    <!--   <div class="col-sm-4 col-xl-3"> -->
-    <!--     <div class="panel panel-tile text-center br-a br-grey"> -->
-    <!--       <div class="panel-body"> -->
-    <!--         <h1 class="fs30 mt5 mbn">1,426</h1> -->
-    <!--         <h6 class="text-system">NEW ORDERS</h6> -->
-    <!--       </div> -->
-    <!--       <div class="panel-footer br-t p12"> -->
-    <!--         <span class="fs11"> -->
-    <!--           <i class="fa fa-arrow-up pr5"></i> 3% INCREASE -->
-    <!--           <b>1W AGO</b> -->
-    <!--         </span> -->
-    <!--       </div> -->
-    <!--     </div> -->
-    <!--   </div> -->
+    <div class="row">
+      <div class="col-sm-3">
+        <number-panel obs="{ totalOrdersObs }" description="{ 'Total Orders'}" label="{ 'ALL TIME' }"></number-panel>
+      </div>
+      <div class="col-sm-3">
+        <money-panel obs="{ totalSalesObs }" description="{ 'Total Sales' }" label="{ 'ALL TIME' }"></number-panel>
+      </div>
+      <div class="col-sm-3">
+        <money-panel obs="{ dailySalesObs }" description="{ 'Daily Sales' }" label="{ '1 WEEK AGO' }"></number-panel>
+      </div>
     <!--   <div class="col-sm-4 col-xl-3"> -->
     <!--     <div class="panel panel-tile text-center br-a br-grey"> -->
     <!--       <div class="panel-body"> -->
@@ -57,7 +52,7 @@
     <!--       </div> -->
     <!--     </div> -->
     <!--   </div> -->
-    <!-- </div> -->
+    </div>
 
     <h1 class="text-center">Welcome to the Crowdstart Beta</h1>
     <p class="text-center">Feedback about our beta is welcome! Contact <a href="mailto:support@crowdstart.com">support@crowdstart.com</a> and let us know what you think and what you'd like to see here :)</p>
