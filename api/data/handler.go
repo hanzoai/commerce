@@ -15,5 +15,5 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api := router.Group("/c/data")
 	api.Use(middleware.AccessControl("*"))
 
-	api.GET("/dashboard", adminRequired, namespaced, dashboard)
+	api.GET("/dashboard/:period/:year/:month/:day", adminRequired, namespaced, dashboard)
 }
