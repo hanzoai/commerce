@@ -60,3 +60,32 @@ var _ = New("load-redis-orders",
 		}
 	},
 )
+
+var _ = New("load-redis-product-orders",
+	func(c *gin.Context) []interface{} {
+		return NoArgs
+	},
+	func(db *ds.Datastore, ord *order.Order) {
+		ctx := db.Context
+		ns, err := hashid.GetNamespace(db.Context, ord.Id())
+		if err != nil {
+			log.Warn("hash id decode error %v", err, ctx)
+		}
+
+		org := organization.New(db)
+		org.Name = ns
+		log.Debug("org name is %v", ns)
+
+		t := ord.CreatedAt
+
+		if err := redis.IncrTotalProductOrders(ctx, org, ord, t); err != nil {
+			log.Warn("Redis Error %s", err, ctx)
+		}
+
+		if ord.StoreId != "" {
+			if err := redis.IncrStoreProductOrders(ctx, org, ord.StoreId, ord, t); err != nil {
+				log.Warn("Redis Error %s", err, ctx)
+			}
+		}
+	},
+)

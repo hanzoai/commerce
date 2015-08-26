@@ -12,3 +12,4 @@ window.crowdstart =
   form: require     './form'
   widget: require   './widget'
   util: require     './util'
+  visual: require   './visual'

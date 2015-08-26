@@ -50,9 +50,16 @@ var RedisDisabled = errors.New("Redis disabled(no host url specified)")
 type TimeFunc func(t time.Time) string
 
 func GetClient(ctx appengine.Context) (*redis.Client, error) {
-	if client, ok := redisClients.Get(ctx); ok {
+	if clientI, ok := redisClients.Get(ctx); ok {
 		log.Debug("Returning existing client")
-		return client.(*redis.Client), nil
+
+		client := clientI.(*redis.Client)
+
+		if _, err := client.Ping().Result(); err == nil {
+			return client, nil
+		}
+
+		// if the client is and ping has failed, try to replace with a new client
 	}
 
 	db := int64(0) // unknown db assumed to be dev

@@ -20,21 +20,21 @@ type DashboardData struct {
 	TotalOrders int64
 
 	DailySales  currencyValues
-	DailyOrders currencyValues
+	DailyOrders []int64
 
 	// DailyStoreSales  [](map[currency.Type]int64)
 	// DailyStoreOrders [](map[currency.Type]int64)
 }
-type Type string
+type Period string
 
 const (
-	Yearly  Type = "Yearly"
-	Monthly      = "Monthly"
-	Weekly       = "Weekly"
+	Yearly  Period = "yearly"
+	Monthly        = "monthly"
+	Weekly         = "weekly"
 	// Daily        = "Daily"
 )
 
-func GetDashboardData(ctx appengine.Context, t Type, date time.Time, org *organization.Organization) (DashboardData, error) {
+func GetDashboardData(ctx appengine.Context, t Period, date time.Time, org *organization.Organization) (DashboardData, error) {
 	data := DashboardData{}
 	data.TotalSales = make(currencyValue)
 
@@ -96,8 +96,26 @@ func GetDashboardData(ctx appengine.Context, t Type, date time.Time, org *organi
 			data.TotalSales[currency] = sales
 		}
 
+		key = totalKey(org, ordersKey, allTime)
+		result = client.Get(key)
+
+		if err := result.Err(); err != nil {
+			if err == redis.Nil {
+				return data, nil // No data
+			}
+			log.Error("Redis Error: %v", err)
+			return data, err
+		}
+
+		if orders, err := result.Int64(); err != nil {
+			log.Error("Redis Error: %v", err)
+			return data, err
+		} else {
+			data.TotalOrders = orders
+		}
+
 		data.DailySales = make(currencyValues)
-		data.DailyOrders = make(currencyValues)
+		data.DailyOrders = make([]int64, days)
 
 		currentDate := oldDate
 		startDay := currentDate.Day()
@@ -129,9 +147,6 @@ func GetDashboardData(ctx appengine.Context, t Type, date time.Time, org *organi
 				}
 			}
 
-			if data.DailyOrders[currency] == nil {
-				data.DailyOrders[currency] = make([]int64, days)
-			}
 			skip = false
 			key = totalKey(org, ordersKey, daily(currentDate))
 			result = client.Get(key)
@@ -150,7 +165,7 @@ func GetDashboardData(ctx appengine.Context, t Type, date time.Time, org *organi
 					log.Error("Redis Error while getting %v: %v", key, err)
 					return data, err
 				} else {
-					data.DailyOrders[currency][i] += orders
+					data.DailyOrders[i] += orders
 				}
 			}
 
