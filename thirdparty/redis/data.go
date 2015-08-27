@@ -1,7 +1,10 @@
 package redis
 
 import (
+	"strconv"
 	"time"
+
+	"appengine/memcache"
 
 	"appengine"
 
@@ -16,11 +19,15 @@ type currencyValue map[currency.Type]int64
 type currencyValues map[currency.Type][]int64
 
 type DashboardData struct {
-	TotalSales  currencyValue
-	TotalOrders int64
+	TotalSales       currencyValue
+	TotalOrders      int64
+	TotalUsers       int64
+	TotalSubscribers int64
 
-	DailySales  currencyValues
-	DailyOrders []int64
+	DailySales       currencyValues
+	DailyOrders      []int64
+	DailyUsers       []int64
+	DailySubscribers []int64
 
 	// DailyStoreSales  [](map[currency.Type]int64)
 	// DailyStoreOrders [](map[currency.Type]int64)
@@ -36,6 +43,12 @@ const (
 
 func GetDashboardData(ctx appengine.Context, t Period, date time.Time, org *organization.Organization) (DashboardData, error) {
 	data := DashboardData{}
+	dashboardKey := org.Name + sep + string(t) + sep + strconv.FormatInt(date.Unix(), 10)
+
+	if _, err := memcache.Gob.Get(ctx, dashboardKey, &data); err == nil {
+		return data, nil
+	}
+
 	data.TotalSales = make(currencyValue)
 
 	client, err := GetClient(ctx)
@@ -47,6 +60,9 @@ func GetDashboardData(ctx appengine.Context, t Period, date time.Time, org *orga
 		newDate time.Time
 		oldDate time.Time
 		days    int64
+		skip    bool
+		key     string
+		result  *redis.StringCmd
 	)
 
 	switch t {
@@ -67,55 +83,112 @@ func GetDashboardData(ctx appengine.Context, t Period, date time.Time, org *orga
 		days = 7
 	}
 
-	result := client.SMembers(setName(org, currencySetKey))
-	if err := result.Err(); err != nil {
+	resultMembers := client.SMembers(setName(org, currencySetKey))
+	if err := resultMembers.Err(); err != nil {
 		log.Error("Redis Error: %v", err)
 		return data, err
 	}
 
-	currencies := result.Val()
+	currencies := resultMembers.Val()
 
-	for _, cur := range currencies {
-		currency := currency.Type(cur)
-		keyId := salesKeyId(currency)
-		key := totalKey(org, keyId, allTime)
-		result := client.Get(key)
+	skip = false
+	key = userKey(org, allTime)
+	result = client.Get(key)
 
-		if err := result.Err(); err != nil {
-			if err == redis.Nil {
-				return data, nil // No data
-			}
+	if err := result.Err(); err != nil {
+		if err == redis.Nil {
+			skip = true
+		} else {
 			log.Error("Redis Error: %v", err)
 			return data, err
 		}
+	}
 
-		if sales, err := result.Int64(); err != nil {
+	if !skip {
+		if users, err := result.Int64(); err != nil {
 			log.Error("Redis Error: %v", err)
 			return data, err
 		} else {
-			data.TotalSales[currency] = sales
+			data.TotalUsers = users
 		}
+	}
 
-		key = totalKey(org, ordersKey, allTime)
-		result = client.Get(key)
+	skip = false
+	key = subKey(org, mailinglistAllKey, allTime)
+	result = client.Get(key)
 
-		if err := result.Err(); err != nil {
-			if err == redis.Nil {
-				return data, nil // No data
-			}
+	if err := result.Err(); err != nil {
+		if err == redis.Nil {
+			skip = true
+		} else {
 			log.Error("Redis Error: %v", err)
 			return data, err
 		}
+	}
 
+	if !skip {
+		if subs, err := result.Int64(); err != nil {
+			log.Error("Redis Error: %v", err)
+			return data, err
+		} else {
+			data.TotalUsers = subs
+		}
+	}
+
+	skip = false
+	key = totalKey(org, ordersKey, allTime)
+	result = client.Get(key)
+
+	if err := result.Err(); err != nil {
+		if err == redis.Nil {
+			skip = true
+		} else {
+			log.Error("Redis Error: %v", err)
+			return data, err
+		}
+	}
+
+	if !skip {
 		if orders, err := result.Int64(); err != nil {
 			log.Error("Redis Error: %v", err)
 			return data, err
 		} else {
 			data.TotalOrders = orders
 		}
+	}
+
+	for _, cur := range currencies {
+		currency := currency.Type(cur)
+
+		skip = false
+		keyId := salesKeyId(currency)
+		key = totalKey(org, keyId, allTime)
+		result = client.Get(key)
+
+		log.Warn("WAT %v, %v,  %v", cur, currency, key)
+
+		if err := result.Err(); err != nil {
+			if err == redis.Nil {
+				skip = true
+			} else {
+				log.Error("Redis Error: %v", err)
+				return data, err
+			}
+		}
+
+		if !skip {
+			if sales, err := result.Int64(); err != nil {
+				log.Error("Redis Error: %v", err)
+				return data, err
+			} else {
+				data.TotalSales[currency] = sales
+			}
+		}
 
 		data.DailySales = make(currencyValues)
 		data.DailyOrders = make([]int64, days)
+		data.DailyUsers = make([]int64, days)
+		data.DailySubscribers = make([]int64, days)
 
 		currentDate := oldDate
 		startDay := currentDate.Day()
@@ -125,9 +198,9 @@ func GetDashboardData(ctx appengine.Context, t Period, date time.Time, org *orga
 				data.DailySales[currency] = make([]int64, days)
 			}
 
-			skip := false
-			key := totalKey(org, keyId, daily(currentDate))
-			result := client.Get(key)
+			skip = false
+			key = totalKey(org, keyId, daily(currentDate))
+			result = client.Get(key)
 
 			if err := result.Err(); err != nil {
 				if err == redis.Nil {
@@ -169,6 +242,49 @@ func GetDashboardData(ctx appengine.Context, t Period, date time.Time, org *orga
 				}
 			}
 
+			skip = false
+			key = userKey(org, daily(currentDate))
+			result = client.Get(key)
+
+			if err := result.Err(); err != nil {
+				if err == redis.Nil {
+					skip = true
+				} else {
+					log.Error("Redis Error while getting %v: %v", key, err)
+					return data, err
+				}
+			}
+
+			if !skip {
+				if users, err := result.Int64(); err != nil {
+					log.Error("Redis Error while getting %v: %v", key, err)
+					return data, err
+				} else {
+					data.DailyUsers[i] += users
+				}
+			}
+
+			skip = false
+			key = subKey(org, mailinglistAllKey, daily(currentDate))
+			result = client.Get(key)
+
+			if err := result.Err(); err != nil {
+				if err == redis.Nil {
+					skip = true
+				} else {
+					log.Error("Redis Error while getting %v: %v", key, err)
+					return data, err
+				}
+			}
+
+			if !skip {
+				if subs, err := result.Int64(); err != nil {
+					log.Error("Redis Error while getting %v: %v", key, err)
+					return data, err
+				} else {
+					data.DailyUsers[i] += subs
+				}
+			}
 			currentDate = currentDate.Add(time.Hour * 24)
 		}
 	}
@@ -189,6 +305,14 @@ func GetDashboardData(ctx appengine.Context, t Period, date time.Time, org *orga
 
 	// for _, stor := range stors {
 	// }
+
+	item := &memcache.Item{
+		Key:        dashboardKey,
+		Object:     data,
+		Expiration: 15 * time.Minute,
+	}
+
+	memcache.Gob.Set(ctx, item)
 
 	return data, nil
 }

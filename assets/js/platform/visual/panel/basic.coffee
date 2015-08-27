@@ -40,10 +40,7 @@ class BasicPanelView extends View
     @model = model ? 0
     @compareModel = compareModel ? NaN
     if @canCompare()
-      if @compareModel < @model
-        @comparePercent = ((@model / @compareModel) - 1).toFixed(1) * 100
-      else
-        @comparePercent = (1 - (@compareModel / @model)).toFixed(1) * 100
+      @comparePercent = ((@model - @compareModel) / @compareModel).toFixed(1) * 100
 
     @spinNumber = 0
     if @model == 0
