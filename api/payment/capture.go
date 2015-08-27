@@ -79,15 +79,23 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (
 	if err := redis.IncrTotalSales(ctx, org, payments, t); err != nil {
 		log.Warn("Redis Error %s", err, ctx)
 	}
+	if err := redis.IncrTotalProductOrders(ctx, org, ord, t); err != nil {
+		log.Warn("Redis Error %s", err, ctx)
+	}
 
 	if ord.StoreId != "" {
 		if err := redis.IncrStoreOrders(ctx, org, ord.StoreId, t); err != nil {
 			log.Warn("Redis Error %s", err, ctx)
 		}
-
 		if err := redis.IncrStoreSales(ctx, org, ord.StoreId, payments, t); err != nil {
 			log.Warn("Redis Error %s", err, ctx)
 		}
+		if err := redis.IncrStoreProductOrders(ctx, org, ord.StoreId, ord, t); err != nil {
+			log.Warn("Redis Error %s", err, ctx)
+		}
+	}
+
+	if ord.StoreId != "" {
 	}
 
 	// Need to figure out a way to count coupon uses
