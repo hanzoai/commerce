@@ -33,13 +33,23 @@ class Dashboard extends Page
     # Initialize communications
     @totalOrdersObs = {}
     @totalSalesObs = {}
-    @dailyOrdersObs = {}
-    @dailySalesObs = {}
+    @totalUsersObs = {}
+    @totalSubsObs = {}
 
     riot.observable @totalOrdersObs
     riot.observable @totalSalesObs
+    riot.observable @totalUsersObs
+    riot.observable @totalSubsObs
+
+    @dailyOrdersObs = {}
+    @dailySalesObs = {}
+    @dailyUsersObs = {}
+    @dailySubsObs = {}
+
     riot.observable @dailyOrdersObs
     riot.observable @dailySalesObs
+    riot.observable @dailyUsersObs
+    riot.observable @dailySubsObs
 
     # Date calculations
     period = @period
@@ -94,16 +104,38 @@ class Dashboard extends Page
           totalCents[currency] += cents
           totalCompareCents[currency] += @compareModel.DailySales[currency][i]
 
+      totalUsers = 0
+      totalCompareUsers = 0
+      for users, i in @model.DailyUsers
+        totalUsers += users
+        totalCompareUsers += @compareModel.DailyUsers[i]
+
+      totalSubs = 0
+      totalCompareSubs = 0
+      for subs, i in @model.DailySubs
+        totalSubs += subs
+        totalCompareSubs += @compareModel.DailySubs[i]
+
       # Dispatch updated values
       @totalOrdersObs.trigger Events.Visual.NewData, @model.TotalOrders, NaN
       @totalSalesObs.trigger Events.Visual.NewData, @model.TotalSales, NaN
+      @totalUsersObs.trigger Events.Visual.NewData, @model.TotalUsers, NaN
+      @totalSubsObs.trigger Events.Visual.NewData, @model.TotalSubs, NaN
 
       @dailyOrdersObs.trigger Events.Visual.NewData, totalOrders, totalCompareOrders
       @dailySalesObs.trigger Events.Visual.NewData, totalCents, totalCompareCents
+      @dailyUsersObs.trigger Events.Visual.NewData, totalUsers, totalCompareUsers
+      @dailySubsObs.trigger Events.Visual.NewData, totalSubs, totalCompareSubs
+
       @dailyOrdersObs.trigger Events.Visual.NewDescription, @periodDescription() + ' Orders'
       @dailySalesObs.trigger Events.Visual.NewDescription, @periodDescription() + ' Sales'
+      @dailyUsersObs.trigger Events.Visual.NewDescription, @periodDescription() + ' Sign-ups'
+      @dailySubsObs.trigger Events.Visual.NewDescription, @periodDescription() + ' Subscribers'
+
       @dailyOrdersObs.trigger Events.Visual.NewLabel, @periodLabel()
       @dailySalesObs.trigger Events.Visual.NewLabel, @periodLabel()
+      @dailyUsersObs.trigger Events.Visual.NewLabel, @periodLabel()
+      @dailySubsObs.trigger Events.Visual.NewLabel, @periodLabel()
     ).catch (e)=>
       console.log(e.stack)
       @error = e
