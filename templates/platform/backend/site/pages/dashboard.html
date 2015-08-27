@@ -5,13 +5,25 @@
         <number-panel obs="{ totalOrdersObs }" description="{ 'Total Orders'}" label="{ 'ALL TIME' }"></number-panel>
       </div>
       <div class="col-sm-3">
-        <money-panel obs="{ totalSalesObs }" description="{ 'Total Sales' }" label="{ 'ALL TIME' }"></number-panel>
+        <money-panel obs="{ totalSalesObs }" description="{ 'Total Sales' }" label="{ 'ALL TIME' }"></money-panel>
+      </div>
+      <div class="col-sm-3">
+        <number-panel obs="{ totalUsersObs }" description="{ 'Total Users'}" label="{ 'ALL TIME' }"></number-panel>
+      </div>
+      <div class="col-sm-3">
+        <number-panel obs="{ totalSubsObs }" description="{ 'Total Subscribers' }" label="{ 'ALL TIME' }"></number-panel>
       </div>
       <div class="col-sm-3">
         <number-panel obs="{ dailyOrdersObs }" description="{ periodDescription() + ' Orders' }" label="{ periodLabel()  }"></number-panel>
       </div>
       <div class="col-sm-3">
         <money-panel obs="{ dailySalesObs }" description="{ periodDescription() + ' Sales' }" label="{ periodLabel() }"></number-panel>
+      </div>
+      <div class="col-sm-3">
+        <number-panel obs="{ dailyUsersObs }" description="{ periodDescription() + ' Sign-Ups' }" label="{ periodLabel()  }"></number-panel>
+      </div>
+      <div class="col-sm-3">
+        <money-panel obs="{ dailySubsObs }" description="{ periodDescription() + ' Subscribers' }" label="{ periodLabel() }"></number-panel>
       </div>
     <!--   <div class="col-sm-4 col-xl-3"> -->
     <!--     <div class="panel panel-tile text-center br-a br-grey"> -->

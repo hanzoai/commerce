@@ -23,12 +23,14 @@ import (
 )
 
 var (
-	sep            = "_"
-	soldKey        = "sold"
-	salesKey       = "sales"
-	ordersKey      = "orders"
-	currencySetKey = "currencies"
-	subsKey        = "subscribers"
+	sep               = "_"
+	soldKey           = "sold"
+	salesKey          = "sales"
+	ordersKey         = "orders"
+	currencySetKey    = "currencies"
+	subsKey           = "subscribers"
+	usersKey          = "users"
+	mailinglistAllKey = "ml_all"
 
 	allTime = "all"
 
@@ -160,6 +162,14 @@ func storeKey(org *organization.Organization, storeId, key string, timeStamp str
 
 func subKey(org *organization.Organization, key string, timeStamp string) string {
 	key = org.Name + sep + subsKey + sep + key
+	key = addEnvironment(key)
+	key = key + sep + timeStamp
+
+	return key
+}
+
+func userKey(org *organization.Organization, timeStamp string) string {
+	key := org.Name + sep + usersKey
 	key = addEnvironment(key)
 	key = key + sep + timeStamp
 
@@ -382,6 +392,57 @@ func IncrSubscribers(ctx appengine.Context, org *organization.Organization, mail
 	}
 
 	key = subKey(org, mailinglistId, allTime)
+	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
+	return client.Incr(key).Err()
+
+	key = subKey(org, mailinglistAllKey, hourly(t))
+	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
+	if err := client.Incr(key).Err(); err != nil {
+		return err
+	}
+
+	key = subKey(org, mailinglistAllKey, daily(t))
+	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
+	if err := client.Incr(key).Err(); err != nil {
+		return err
+	}
+
+	key = subKey(org, mailinglistAllKey, monthly(t))
+	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
+	if err := client.Incr(key).Err(); err != nil {
+		return err
+	}
+
+	key = subKey(org, mailinglistAllKey, allTime)
+	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
+	return client.Incr(key).Err()
+}
+
+func IncrUsers(ctx appengine.Context, org *organization.Organization, t time.Time) error {
+	client, err := GetClient(ctx)
+	if err != nil {
+		return err
+	}
+
+	key := userKey(org, hourly(t))
+	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
+	if err := client.Incr(key).Err(); err != nil {
+		return err
+	}
+
+	key = userKey(org, daily(t))
+	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
+	if err := client.Incr(key).Err(); err != nil {
+		return err
+	}
+
+	key = userKey(org, monthly(t))
+	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
+	if err := client.Incr(key).Err(); err != nil {
+		return err
+	}
+
+	key = userKey(org, allTime)
 	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
 	return client.Incr(key).Err()
 }
