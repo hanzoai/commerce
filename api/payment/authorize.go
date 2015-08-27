@@ -3,6 +3,7 @@ package payment
 import (
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -15,6 +16,7 @@ import (
 	"crowdstart.com/models/types/client"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/models/user"
+	"crowdstart.com/thirdparty/redis"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
 )
@@ -142,6 +144,10 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 
 	ord.BillingAddress.Country = strings.ToUpper(ord.BillingAddress.Country)
 	ord.ShippingAddress.Country = strings.ToUpper(ord.ShippingAddress.Country)
+
+	if err := redis.IncrUsers(ctx, org, time.Now()); err != nil {
+		log.Warn("Redis Error %s", err, ctx)
+	}
 
 	// Save user, order, payment
 	usr.MustPut()
