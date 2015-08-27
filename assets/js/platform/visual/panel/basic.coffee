@@ -6,6 +6,8 @@ spinFrames = 10
 
 Events.Visual =
   NewData: 'visual-new-data'
+  NewDescription: 'visual-new-description'
+  NewLabel: 'visual-new-label'
 
 class BasicPanelView extends View
   tag: 'basic-panel'
@@ -15,6 +17,14 @@ class BasicPanelView extends View
   events:
     "#{ Events.Visual.NewData }": (model, compareModel)->
       @loadData model, compareModel
+      @update()
+
+    "#{ Events.Visual.NewDescription }": (description)->
+      @description = description
+      @update()
+
+    "#{ Events.Visual.NewLabel }": (label)->
+      @label = label
       @update()
 
   js: (opts)->
@@ -28,7 +38,7 @@ class BasicPanelView extends View
 
   loadData: (model, compareModel)->
     @model = model ? 0
-    @compareModel = compareModel ? 0
+    @compareModel = compareModel ? NaN
     if @canCompare()
       if @compareModel < @model
         @comparePercent = ((@model / @compareModel) - 1).toFixed(1) * 100
