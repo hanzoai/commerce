@@ -24,6 +24,11 @@ class Dashboard extends Page
 
   events:
     "#{Events.Input.Change}": (name, value) ->
+      switch name
+        when 'period'
+          @periodModel.value = value
+        when 'date'
+          @periodDateModel.value = value
       @refresh()
 
   # For the period select
@@ -82,23 +87,24 @@ class Dashboard extends Page
   refresh: ()->
     period = @periodModel.value
     date = new Date(@periodDateModel.value)
-    year = date.getFullYear()
-    month = date.getMonth() + 1
-    day = date.getDate()
+    compareYear = year = date.getFullYear()
+    compareMonth = month = date.getMonth() + 1
+    compareDay = day = date.getDate()
 
     percent = 1
 
     # calulate date intervals
     switch period
       when 'week'
-        percent = (date.day + 1) / 7
+        percent = (date.getDay() + 1) / 7
+        compareDay -= 7
       when 'month'
         percent = day / lastDayInMonth()
-
+        compareMonth -= 1
 
     # Load new and comparative data from previous date interval
     promise.settle([
-      @api.get("c/data/dashboard/#{period}ly/#{year}/#{month}/#{day-7}").then((res)=>
+      @api.get("c/data/dashboard/#{period}ly/#{compareYear}/#{compareMonth}/#{compareDay}").then((res)=>
         @compareModel = res.responseText
 
         if res.status != 200 && res.status != 201 && res.status != 204
