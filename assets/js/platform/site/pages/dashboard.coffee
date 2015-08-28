@@ -18,16 +18,32 @@ class Dashboard extends Page
   tag: 'page-dashboard'
   icon: 'glyphicon glyphicon-home'
   name: 'Dashboard'
-  period: 'week'
   html: require '../../templates/backend/site/pages/dashboard.html'
 
   collection: ''
 
+  events:
+    "#{Events.Input.Change}": (name, value) ->
+      @refresh()
+
+  # For the period select
+  periodModel:
+    name: 'period'
+    value: 'week'
+
+  periodDateModel:
+    name: 'date'
+    value: ''
+
+  periodOptions:
+    week: 'Week'
+    month: 'Month'
+
   periodDescription: ()->
-    return capitalize(@period) + 'ly'
+    return capitalize(@periodModel.value) + 'ly'
 
   periodLabel: ()->
-    return 'THIS ' + @period.toUpperCase()
+    return 'THIS ' + @periodModel.value.toUpperCase()
 
   js: (opts)->
     # Initialize communications
@@ -52,9 +68,20 @@ class Dashboard extends Page
     riot.observable @dailySubsObs
 
     # Date calculations
-    period = @period
-
     date = new Date()
+    year = date.getFullYear()
+    month = date.getMonth() + 1
+    day = date.getDate()
+
+    @periodDateModel.value = "#{month}/#{day}/#{year}"
+
+    @api = api = Api.get 'crowdstart'
+
+    @refresh()
+
+  refresh: ()->
+    period = @periodModel.value
+    date = new Date(@periodDateModel.value)
     year = date.getFullYear()
     month = date.getMonth() + 1
     day = date.getDate()
@@ -68,18 +95,17 @@ class Dashboard extends Page
       when 'month'
         percent = day / lastDayInMonth()
 
-    @api = api = Api.get 'crowdstart'
 
     # Load new and comparative data from previous date interval
     promise.settle([
-      api.get("c/data/dashboard/#{period}ly/#{year}/#{month}/#{day-7}").then((res)=>
+      @api.get("c/data/dashboard/#{period}ly/#{year}/#{month}/#{day-7}").then((res)=>
         @compareModel = res.responseText
 
         if res.status != 200 && res.status != 201 && res.status != 204
           throw new Error 'Form failed to load: '
       )
 
-      api.get("c/data/dashboard/#{period}ly/#{year}/#{month}/#{day}").then((res)=>
+      @api.get("c/data/dashboard/#{period}ly/#{year}/#{month}/#{day}").then((res)=>
         @model = res.responseText
 
         if res.status != 200 && res.status != 201 && res.status != 204
@@ -112,9 +138,9 @@ class Dashboard extends Page
 
       totalSubs = 0
       totalCompareSubs = 0
-      for subs, i in @model.DailySubs
+      for subs, i in @model.DailySubscribers
         totalSubs += subs
-        totalCompareSubs += @compareModel.DailySubs[i]
+        totalCompareSubs += @compareModel.DailySubscribers[i]
 
       # Dispatch updated values
       @totalOrdersObs.trigger Events.Visual.NewData, @model.TotalOrders, NaN
