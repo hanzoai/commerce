@@ -165,8 +165,6 @@ func GetDashboardData(ctx appengine.Context, t Period, date time.Time, org *orga
 		key = totalKey(org, keyId, allTime)
 		result = client.Get(key)
 
-		log.Warn("WAT %v, %v,  %v", cur, currency, key)
-
 		if err := result.Err(); err != nil {
 			if err == redis.Nil {
 				skip = true
@@ -191,9 +189,16 @@ func GetDashboardData(ctx appengine.Context, t Period, date time.Time, org *orga
 		data.DailySubscribers = make([]int64, days)
 
 		currentDate := oldDate
-		startDay := currentDate.Day()
+		startDate := currentDate
+		log.Warn("Start %v", startDate)
 		for currentDate.Before(newDate) {
-			i := currentDate.Day() - startDay
+			i := currentDate.Day() - startDate.Day()
+			if currentDate.Month() != startDate.Month() {
+				i += time.Date(currentDate.Year(), currentDate.Month()+1, 0, 0, 0, 0, 0, time.UTC).Day()
+			}
+
+			log.Warn("WAT %v = %v - %v", i, currentDate.Day(), startDate.Day())
+
 			if data.DailySales[currency] == nil {
 				data.DailySales[currency] = make([]int64, days)
 			}
