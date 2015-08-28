@@ -1,5 +1,5 @@
 <div class="{has-error: hasError()}">
-  <label __for="{ model.name }" class="control-label { opts.labelclasses }">
+  <label __for="{ model.name }" class="control-label { opts.labelclasses }" if="{ options.label }">
     <span>{ opts.label }</span>
   </label>
   <div class="section { opts.controlclasses }">
