@@ -6,6 +6,8 @@ util = require '../../util'
 
 class MoneyPanel extends BasicPanelView
   tag: 'money-panel'
+  html: require '../../templates/backend/visual/panel/money.html'
+
   decimals: 0
 
   loadData: (model, compareModel)->
