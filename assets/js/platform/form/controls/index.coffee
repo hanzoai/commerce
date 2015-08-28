@@ -66,6 +66,23 @@ class NumericInputView extends BasicInputView
 
 NumericInputView.register()
 
+class DatePickerView extends BasicInputView
+  tag: 'date-picker'
+  js: (opts)->
+    @on 'update', ()=>
+      $input = $(@root).find('input')
+      if $input[0]?
+        if !@initialized
+          requestAnimationFrame ()=>
+            $input.datepicker().on('changeDate', (event)=>@change(event))
+
+          @initialized = true
+      else
+        requestAnimationFrame ()=>
+          @update()
+
+DatePickerView.register()
+
 class BasicTextareaView extends BasicInputView
   tag: 'basic-textarea'
   html: require '../../templates/backend/form/controls/basic-textarea.html'
@@ -257,9 +274,10 @@ class BasicSelectView extends BasicInputView
       $select = $(@root).find('select')
       if $select[0]?
         if !@initialized
-          @initSelect($select)
-          @initialized = true
-          @changed = true
+          requestAnimationFrame ()=>
+            @initSelect($select)
+            @initialized = true
+            @changed = true
         else if @changed
           requestAnimationFrame ()=>
             if @async && !@optionsLoaded

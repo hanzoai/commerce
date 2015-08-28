@@ -1,5 +1,18 @@
-<div class="tray tray-center">
+<div class="tray tray-center" style="padding-top:0px">
   <div>
+    <div class="period-configure row mb20">
+      <div class="col-sm-12">
+        <div class="period-picker">
+          <basic-select options="{ periodOptions }" model="{ periodModel }" obs="{obs}"></basic-select>
+        </div>
+        <h5 class="text-center">
+          Of
+        </h5>
+        <div class="period-datepicker">
+          <date-picker model="{ periodDateModel }" obs="{obs}"></date-picker>
+        </div>
+      </div>
+    </div>
     <div class="row">
       <div class="col-sm-3">
         <number-panel obs="{ totalOrdersObs }" description="{ 'Total Orders'}" label="{ 'ALL TIME' }"></number-panel>
