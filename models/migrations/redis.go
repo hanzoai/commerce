@@ -20,6 +20,10 @@ var _ = New("load-redis-orders",
 		return NoArgs
 	},
 	func(db *ds.Datastore, ord *order.Order) {
+		if ord.Test {
+			return
+		}
+
 		var pays []*payment.Payment
 
 		for _, pid := range ord.PaymentIds {
@@ -68,6 +72,10 @@ var _ = New("load-redis-product-orders",
 		return NoArgs
 	},
 	func(db *ds.Datastore, ord *order.Order) {
+		if ord.Test {
+			return
+		}
+
 		ctx := db.Context
 		ns, err := hashid.GetNamespace(db.Context, ord.Id())
 		if err != nil {
