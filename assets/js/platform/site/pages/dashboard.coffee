@@ -1,5 +1,6 @@
 promise = require 'bluebird'
 riot = require 'riot'
+util = require '../../util'
 
 Page = require './page'
 
@@ -31,6 +32,59 @@ class Dashboard extends Page
           @periodDateModel.value = value
       @refresh()
 
+  chartModel:
+    xAxis: [{
+      categories: []
+      crosshair: true
+    }]
+    yAxis: [
+      {
+        labels:
+          format: '{value:.2f}'
+          style:
+            color: Highcharts.getOptions().colors[2]
+        title:
+          text: 'Sales',
+          style:
+              color: Highcharts.getOptions().colors[2]
+      },
+      {
+        labels:
+          style:
+            color: Highcharts.getOptions().colors[0]
+        title:
+          text: 'Count',
+          style:
+              color: Highcharts.getOptions().colors[0]
+        opposite: true
+      },
+    ]
+    series: [
+      {
+        name: 'Orders'
+        type: 'spline'
+        yAxis: 1
+        data: []
+        tooltip:
+          valueSuffix: ' '
+      }
+      {
+        name: 'Users'
+        type: 'spline'
+        yAxis: 1
+        data: []
+        tooltip:
+          valueSuffix: ' '
+      }
+      {
+        name: 'Sales'
+        type: 'areaspline'
+        data: []
+        tooltip:
+          valueSuffix: ' '
+      }
+    ]
+
   # For the period select
   periodModel:
     name: 'period'
@@ -52,6 +106,9 @@ class Dashboard extends Page
 
   js: (opts)->
     # Initialize communications
+    @chartObs = {}
+    riot.observable @chartObs
+
     @totalOrdersObs = {}
     @totalSalesObs = {}
     @totalUsersObs = {}
@@ -98,8 +155,16 @@ class Dashboard extends Page
       when 'week'
         percent = (date.getDay() + 1) / 7
         compareDay -= 7
+        @chartModel.xAxis[0].categories = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
       when 'month'
-        percent = day / lastDayInMonth()
+        daysInMonth = lastDayInMonth()
+        categories = []
+        for d in [1..daysInMonth]
+          categories.push "#{month}/#{d}"
+
+        @chartModel.xAxis[0].categories = categories
+        percent = day / daysInMonth
         compareMonth -= 1
 
     # Load new and comparative data from previous date interval
@@ -119,6 +184,15 @@ class Dashboard extends Page
       )]
     ).then((rets)=>
       @currency = ''
+
+      for currency, cents of @model.TotalSales
+        if currency != ''
+          @currency = currency
+          break
+
+      if @currency == ''
+        super 0, 0, @currency
+        return
 
       # Aggregate values for numeric panels
       totalOrders = 0
@@ -150,12 +224,12 @@ class Dashboard extends Page
 
       # Dispatch updated values
       @totalOrdersObs.trigger Events.Visual.NewData, @model.TotalOrders, NaN
-      @totalSalesObs.trigger Events.Visual.NewData, @model.TotalSales, NaN
+      @totalSalesObs.trigger Events.Visual.NewData, @model.TotalSales[@currency], NaN, @currency
       @totalUsersObs.trigger Events.Visual.NewData, @model.TotalUsers, NaN
       @totalSubsObs.trigger Events.Visual.NewData, @model.TotalSubs, NaN
 
       @dailyOrdersObs.trigger Events.Visual.NewData, totalOrders, totalCompareOrders
-      @dailySalesObs.trigger Events.Visual.NewData, totalCents, totalCompareCents
+      @dailySalesObs.trigger Events.Visual.NewData, totalCents[@currency], totalCompareCents[@currency], @currency
       @dailyUsersObs.trigger Events.Visual.NewData, totalUsers, totalCompareUsers
       @dailySubsObs.trigger Events.Visual.NewData, totalSubs, totalCompareSubs
 
@@ -168,6 +242,15 @@ class Dashboard extends Page
       @dailySalesObs.trigger Events.Visual.NewLabel, @periodLabel()
       @dailyUsersObs.trigger Events.Visual.NewLabel, @periodLabel()
       @dailySubsObs.trigger Events.Visual.NewLabel, @periodLabel()
+
+      @chartModel.series[0].data = @model.DailyOrders
+      @chartModel.series[1].data = @model.DailyUsers
+      @chartModel.series[2].data = @model.DailySales[@currency].map (val)=>
+        return parseFloat(util.currency.renderUpdatedUICurrency '', val)
+
+      @chartModel.yAxis[0].labels.format = "#{util.currency.getSymbol(@currency)}{value:.2f} (#{@currency.toUpperCase()})"
+
+      @chartObs.trigger Events.Visual.NewData, @chartModel
     ).catch (e)=>
       console.log(e.stack)
       @error = e
