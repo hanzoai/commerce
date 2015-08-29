@@ -49,8 +49,8 @@ class Chart extends View
         shared: true
       legend:
         layout: 'vertical'
-        align: 'left'
-        x: 80
+        align: 'right'
+        x: -80
         verticalAlign: 'top'
         y: 55
         floating: true
