@@ -321,10 +321,20 @@ func GetDashboardData(ctx appengine.Context, t Period, date time.Time, org *orga
 	// for _, stor := range stors {
 	// }
 
+	expiration := 0 * time.Minute
+
+	isToday := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+
+	if isToday.Equal(today) {
+		expiration = 15 * time.Minute
+	}
+
 	item := &memcache.Item{
 		Key:        dashboardKey,
 		Object:     data,
-		Expiration: 15 * time.Minute,
+		Expiration: expiration,
 	}
 
 	memcache.Gob.Set(ctx, item)
