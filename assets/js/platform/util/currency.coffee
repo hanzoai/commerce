@@ -10,6 +10,9 @@ isZeroDecimal = (code)->
   return false
 
 module.exports = Util =
+  getSymbol: (code)->
+    return currencySigns[code] || ''
+
   renderUpdatedUICurrency: (code, uiCurrency)->
     return Util.renderUICurrencyFromJSON code, Util.renderJSONCurrencyFromUI(code, uiCurrency)
 

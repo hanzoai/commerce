@@ -4,19 +4,14 @@ View = crowdcontrol.view.View
 
 spinFrames = 10
 
-Events.Visual =
-  NewData: 'visual-new-data'
-  NewDescription: 'visual-new-description'
-  NewLabel: 'visual-new-label'
-
 class BasicPanelView extends View
   tag: 'basic-panel'
   label: ''
   description: 'Description'
   html: require '../../templates/backend/visual/panel/template.html'
   events:
-    "#{ Events.Visual.NewData }": (model, compareModel)->
-      @loadData model, compareModel
+    "#{ Events.Visual.NewData }": ()->
+      @loadData.apply @, arguments
       @update()
 
     "#{ Events.Visual.NewDescription }": (description)->
@@ -40,7 +35,7 @@ class BasicPanelView extends View
     @model = model ? 0
     @compareModel = compareModel ? NaN
     if @canCompare()
-      @comparePercent = ((@model - @compareModel) / @compareModel).toFixed(3) * 100
+      @comparePercent = ((@model - @compareModel) / @compareModel * 100).toFixed(1)
 
     @spinNumber = 0
     if @model == 0
