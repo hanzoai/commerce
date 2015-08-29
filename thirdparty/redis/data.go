@@ -43,12 +43,25 @@ const (
 
 func GetDashboardData(ctx appengine.Context, t Period, date time.Time, org *organization.Organization) (DashboardData, error) {
 	data := DashboardData{}
-	dashboardKey := org.Name + sep + string(t) + sep + strconv.FormatInt(date.Unix(), 10)
+	dashboardKey := org.Name + sep + string(t) + sep
+	switch t {
+	case Monthly:
+		d := time.Date(date.Year(), date.Month(), 1, 0, 0, 0, 0, date.Location())
+		dashboardKey += strconv.FormatInt(d.Unix(), 10)
+	case Weekly:
+		weekday := int(date.Weekday())
+		d := time.Date(date.Year(), date.Month(), 1, (7-weekday)+date.Day(), 0, 0, 0, date.Location())
+		dashboardKey += strconv.FormatInt(d.Unix(), 10)
+	}
+
+	log.Debug("Redis memcache lookup for key: %v", dashboardKey)
 
 	if _, err := memcache.Gob.Get(ctx, dashboardKey, &data); err == nil {
+		log.Debug("Redis memcache hit for key: %v", dashboardKey)
 		return data, nil
 	}
 
+	log.Debug("Redis memcache miss for key: %v", dashboardKey)
 	data.TotalSales = make(currencyValue)
 
 	client, err := GetClient(ctx)
@@ -190,14 +203,11 @@ func GetDashboardData(ctx appengine.Context, t Period, date time.Time, org *orga
 
 		currentDate := oldDate
 		startDate := currentDate
-		log.Warn("Start %v", startDate)
 		for currentDate.Before(newDate) {
 			i := currentDate.Day() - startDate.Day()
 			if currentDate.Month() != startDate.Month() {
 				i += time.Date(currentDate.Year(), currentDate.Month()+1, 0, 0, 0, 0, 0, time.UTC).Day()
 			}
-
-			log.Warn("WAT %v = %v - %v", i, currentDate.Day(), startDate.Day())
 
 			if data.DailySales[currency] == nil {
 				data.DailySales[currency] = make([]int64, days)
