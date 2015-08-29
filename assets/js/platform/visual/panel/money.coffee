@@ -10,19 +10,9 @@ class MoneyPanel extends BasicPanelView
 
   decimals: 0
 
-  loadData: (model, compareModel)->
-    @currency = ''
-
-    for currency, cents of model
-      if currency != ''
-        @currency = currency
-        break
-
-    if @currency == ''
-      super 0, 0
-      return
-
-    super model[@currency], compareModel[@currency]
+  loadData: (model, compareModel, currency)->
+    @currency = currency
+    super model, compareModel
 
   js: (opts)->
     super
