@@ -12,26 +12,26 @@ import (
 	"crowdstart.com/util/log"
 )
 
-var Spero = New("spero", func(c *gin.Context) *organization.Organization {
+var Kanoa = New("kanoa", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)
-	org.Name = "spero"
+	org.Name = "kanoa"
 	org.GetOrCreate("Name=", org.Name)
 
 	u := user.New(db)
-	u.Email = "spero@verus.io"
+	u.Email = "cival@getkanoa.com"
 	u.GetOrCreate("Email=", u.Email)
-	u.FirstName = "Michael"
-	u.LastName = "Walker"
+	u.FirstName = "Cival"
+	u.LastName = ""
 	u.Organizations = []string{org.Id()}
-	u.PasswordHash, _ = password.Hash("speropassword!")
+	u.PasswordHash, _ = password.Hash("kanoapassword!")
 	u.Put()
 
-	org.FullName = "spero"
+	org.FullName = "KANOA Inc"
 	org.Owners = []string{u.Id()}
-	org.Website = "http://www.speroaudio.com"
-	org.SecretKey = []byte("yW83JZGLjkGJE2gMfB4i0bwEoP03yJa5")
+	org.Website = "http://www.getkanoa.com"
+	org.SecretKey = []byte("EZ2E011iX2Bp5lv149N2STd1d580cU58")
 	org.AddDefaultTokens()
 
 	// Save org into default namespace
