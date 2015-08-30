@@ -96,7 +96,14 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 
 	// Update payment with order information
 	pay.Amount = ord.Total
-	pay.Fee = ord.Fee()
+
+	// Fee defaults to 2%, override with organization fee if customized.
+	fee := 0.02
+	if org.Fee > 0 {
+		fee = org.Fee
+	}
+	pay.Fee = ord.Fee(fee)
+
 	pay.Currency = ord.Currency
 	pay.Description = ord.Description()
 
