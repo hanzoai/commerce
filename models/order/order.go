@@ -209,8 +209,8 @@ func (o *Order) Save(c chan<- aeds.Property) (err error) {
 	return IgnoreFieldMismatch(aeds.SaveStruct(o, c))
 }
 
-func (o Order) Fee() currency.Cents {
-	return currency.Cents(math.Floor(float64(o.Total) * 0.02))
+func (o Order) Fee(percent float64) currency.Cents {
+	return currency.Cents(math.Floor(float64(o.Total) * percent))
 }
 
 func (o Order) NumberFromId() int {

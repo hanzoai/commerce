@@ -70,6 +70,8 @@ type Organization struct {
 	Country string `json:"country"`
 	TaxId   string `json:"-"`
 
+	Fee float64 `json:"fee"`
+
 	// Analytics config
 	Analytics analytics.Analytics `json:"analytics"`
 
