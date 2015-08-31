@@ -24,7 +24,8 @@ github.com/vanng822/go-premailer/premailer master
 github.com/vincent-petithory/countries master
 github.com/zeekay/aetest master
 github.com/zeekay/go-logging master
+github.com/hashicorp/golang-lru
 golang.org/x/crypto/bcrypt master
 golang.org/x/oauth2/google master
 google.golang.org/api/storage/v1
-gopkg.in/redis.v3 master
+gopkg.in/redis.v3

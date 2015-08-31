@@ -90,6 +90,12 @@ type Config struct {
 		}
 	}
 
+	// Redis
+	Redis struct {
+		Url      string
+		Password string
+	}
+
 	// Current working dir
 	WorkingDir string
 }
@@ -211,6 +217,7 @@ var SiteTitle = config.SiteTitle
 var StaticUrl = config.StaticUrl
 var Stripe = config.Stripe
 var WorkingDir = config.WorkingDir
+var Redis = config.Redis
 
 func UrlFor(moduleName string, args ...string) string {
 	return config.UrlFor(moduleName, args...)

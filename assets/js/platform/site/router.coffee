@@ -16,7 +16,9 @@ changePage = (collection = '', id = '', action = '') ->
   if page?
     if lastPages?
       for lastPage in lastPages
-        lastPage.unmount()
+        try
+          lastPage.unmount()
+        catch e
 
     Router.Menu.setActive(page)
     Router.Crumbs.setActive(page)
