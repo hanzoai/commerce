@@ -13,6 +13,7 @@ import (
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/types/currency"
+	"crowdstart.com/thirdparty/redis"
 	"crowdstart.com/util/log"
 )
 
@@ -67,6 +68,34 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (
 	db := datastore.New(ord.Db.Context)
 	if _, err = db.PutMulti(keys, payments); err != nil {
 		return nil, err
+	}
+
+	ctx := db.Context
+
+	t := ord.CreatedAt
+	if err := redis.IncrTotalOrders(ctx, org, t); err != nil {
+		log.Warn("Redis Error %s", err, ctx)
+	}
+	if err := redis.IncrTotalSales(ctx, org, payments, t); err != nil {
+		log.Warn("Redis Error %s", err, ctx)
+	}
+	if err := redis.IncrTotalProductOrders(ctx, org, ord, t); err != nil {
+		log.Warn("Redis Error %s", err, ctx)
+	}
+
+	if ord.StoreId != "" {
+		if err := redis.IncrStoreOrders(ctx, org, ord.StoreId, t); err != nil {
+			log.Warn("Redis Error %s", err, ctx)
+		}
+		if err := redis.IncrStoreSales(ctx, org, ord.StoreId, payments, t); err != nil {
+			log.Warn("Redis Error %s", err, ctx)
+		}
+		if err := redis.IncrStoreProductOrders(ctx, org, ord.StoreId, ord, t); err != nil {
+			log.Warn("Redis Error %s", err, ctx)
+		}
+	}
+
+	if ord.StoreId != "" {
 	}
 
 	// Need to figure out a way to count coupon uses
