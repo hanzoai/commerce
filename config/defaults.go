@@ -28,5 +28,8 @@ func Defaults() *Config {
 	config.Mandrill.FromName = "Crowdstart"
 	config.Mandrill.FromEmail = "noreply@crowdstart.com"
 
+	config.Redis.Url = "pub-redis-19324.us-central1-1-1.gce.garantiadata.com:19324"
+	config.Redis.Password = ""
+
 	return config
 }
