@@ -155,7 +155,7 @@ class Dashboard extends Page
       when 'week'
         percent = (date.getDay() + 1) / 7
         compareDay -= 7
-        @chartModel.xAxis[0].categories = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        @chartModel.xAxis[0].categories = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
       when 'month'
         daysInMonth = lastDayInMonth()
