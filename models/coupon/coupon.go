@@ -1,12 +1,17 @@
 package coupon
 
 import (
+	"strings"
 	"time"
+
+	aeds "appengine/datastore"
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/util/val"
 )
+
+var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 type Type string
 
@@ -75,6 +80,23 @@ func (c Coupon) Document() mixin.Document {
 
 func (c *Coupon) Validator() *val.Validator {
 	return val.New(c)
+}
+
+func (co *Coupon) Load(c <-chan aeds.Property) (err error) {
+	// Load supported properties
+	if err = IgnoreFieldMismatch(aeds.LoadStruct(co, c)); err != nil {
+		return err
+	}
+
+	return err
+}
+
+func (co *Coupon) Save(c chan<- aeds.Property) (err error) {
+
+	co.Code = strings.ToUpper(co.Code)
+
+	// Save properties
+	return IgnoreFieldMismatch(aeds.SaveStruct(co, c))
 }
 
 func Query(db *datastore.Datastore) *mixin.Query {

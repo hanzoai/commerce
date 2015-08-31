@@ -13,6 +13,7 @@ class CouponForm extends Form
   path: 'coupon'
   model:
     productId: '_'
+    enabled: 'true'
 
   inputConfigs: [
     input('id', '', 'static'),
@@ -20,6 +21,7 @@ class CouponForm extends Form
     input('code', 'Coupon Code', 'required unique unique-api:coupon')
     input('type', 'Coupon Type', 'coupon-type-select')
     input('amount', 'Coupon Amount', 'money'),
+    input('enabled', 'Enabled', 'switch'),
     input('productId', 'Select a Product', 'product-type-select')
 
     input('createdAt', '', 'static-date'),
