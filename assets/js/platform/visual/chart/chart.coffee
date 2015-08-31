@@ -36,6 +36,7 @@ class Chart extends View
 
   refresh: ()->
     @chart = new Highcharts.Chart
+      credits: false
       chart:
         renderTo: @root
         zoomType: 'x'
