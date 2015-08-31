@@ -244,10 +244,10 @@ class Dashboard extends Page
       @dailyUsersObs.trigger Events.Visual.NewLabel, @periodLabel()
       @dailySubsObs.trigger Events.Visual.NewLabel, @periodLabel()
 
-      @chartModel.series[0].data = @model.DailyOrders
-      @chartModel.series[1].data = @model.DailyUsers
-      @chartModel.series[2].data = @model.DailySales[@currency].map (val)=>
+      @chartModel.series[0].data = @model.DailySales[@currency].map (val)=>
         return parseFloat(util.currency.renderUpdatedUICurrency '', val)
+      @chartModel.series[1].data = @model.DailyOrders
+      @chartModel.series[2].data = @model.DailyUsers
 
       @chartModel.yAxis[0].labels.format = "#{util.currency.getSymbol(@currency)}{value:.2f} (#{@currency.toUpperCase()})"
 
