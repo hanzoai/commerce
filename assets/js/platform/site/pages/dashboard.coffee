@@ -61,6 +61,13 @@ class Dashboard extends Page
     ]
     series: [
       {
+        name: 'Sales'
+        type: 'areaspline'
+        data: []
+        tooltip:
+          valueSuffix: ' '
+      }
+      {
         name: 'Orders'
         type: 'spline'
         yAxis: 1
@@ -72,13 +79,6 @@ class Dashboard extends Page
         name: 'Users'
         type: 'spline'
         yAxis: 1
-        data: []
-        tooltip:
-          valueSuffix: ' '
-      }
-      {
-        name: 'Sales'
-        type: 'areaspline'
         data: []
         tooltip:
           valueSuffix: ' '
@@ -185,10 +185,11 @@ class Dashboard extends Page
     ).then((rets)=>
       @currency = ''
 
+      largestCents = 0
       for currency, cents of @model.TotalSales
-        if currency != ''
+        if cents > largestCents && currency != ''
           @currency = currency
-          break
+          largestCents = cents
 
       if @currency == ''
         super 0, 0, @currency
