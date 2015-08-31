@@ -51,7 +51,7 @@ class BasicPanelView extends View
         @spinNumber = parseInt spinActualNumber, 10
         @update()
 
-        if frames > 0
+        if frames > 1
           frames--
           spin()
     spin()
