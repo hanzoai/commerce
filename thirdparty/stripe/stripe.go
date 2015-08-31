@@ -196,8 +196,8 @@ func (c Client) UpdateCharge(pay *payment.Payment) (*Charge, error) {
 
 	// Create params for update
 	params := &stripe.ChargeParams{
-		Desc:  pay.Description,
-		Email: pay.Buyer.Email,
+		Desc: pay.Description,
+		// Email: pay.Buyer.Email,
 	}
 
 	// Update metadata
@@ -222,12 +222,12 @@ func (c Client) UpdateCharge(pay *payment.Payment) (*Charge, error) {
 func (c Client) NewCharge(source interface{}, pay *payment.Payment) (*Charge, error) {
 	params := &stripe.ChargeParams{
 		Amount:    uint64(pay.Amount),
-		Fee:       uint64(pay.Fee),
 		Currency:  stripe.Currency(pay.Currency),
 		Customer:  pay.Account.CustomerId,
-		Email:     pay.Buyer.Email,
 		Desc:      pay.Description,
+		Fee:       uint64(pay.Fee),
 		NoCapture: true,
+		// Email:     pay.Buyer.Email,
 	}
 
 	// Update with our user metadata
