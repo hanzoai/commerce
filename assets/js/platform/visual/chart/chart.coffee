@@ -69,15 +69,8 @@ module.exports = Chart
  * @author Torstein Honsi
 ###
 
-Highcharts.createElement('link', {
-  href: '//fonts.googleapis.com/css?family=Unica+One'
-  rel: 'stylesheet'
-  type: 'text/css'
-}, null, document.getElementsByTagName('head')[0])
-
 Highcharts.theme = {
-  colors: ["#2b908f", "#90ee7e", "#f45b5b", "#7798BF", "#aaeeee", "#ff0066", "#eeaaee",
-      "#55BF3B", "#DF5353", "#7798BF", "#aaeeee"],
+  colors: ["#2b908f", "#90ee7e", "#f45b5b", "#7798BF", "#aaeeee", "#ff0066", "#eeaaee","#55BF3B", "#DF5353", "#7798BF", "#aaeeee"],
   chart: {
     backgroundColor: {
       linearGradient: { x1: 0, y1: 0, x2: 1, y2: 1 },
@@ -87,7 +80,7 @@ Highcharts.theme = {
       ]
     },
     style: {
-      fontFamily: "'Unica One', sans-serif"
+      fontFamily: '"Open Sans",Helvetica,Arial,sans-serif'
     },
     plotBorderColor: '#606063'
   },
