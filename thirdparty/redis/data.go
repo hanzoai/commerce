@@ -41,19 +41,21 @@ const (
 	Daily          = "daily"
 )
 
-func GetDashboardData(ctx appengine.Context, t Period, date time.Time, org *organization.Organization) (DashboardData, error) {
+func GetDashboardData(ctx appengine.Context, t Period, date time.Time, tzOffset int, org *organization.Organization) (DashboardData, error) {
+	loc := time.FixedZone("utc +"+strconv.Itoa(tzOffset), tzOffset)
+
 	data := DashboardData{}
-	dashboardKey := org.Name + sep + string(t) + sep
+	dashboardKey := org.Name + sep + string(t) + sep + loc.String() + sep
 	switch t {
 	case Monthly:
-		d := time.Date(date.Year(), date.Month(), 1, 0, 0, 0, 0, date.Location())
+		d := time.Date(date.Year(), date.Month(), 1, 0, 0, 0, 0, loc)
 		dashboardKey += strconv.FormatInt(d.Unix(), 10)
 	case Weekly:
 		weekday := int(date.Weekday())
-		d := time.Date(date.Year(), date.Month(), (7-weekday)+date.Day(), 0, 0, 0, 0, date.Location())
+		d := time.Date(date.Year(), date.Month(), (7-weekday)+date.Day(), 0, 0, 0, 0, loc)
 		dashboardKey += strconv.FormatInt(d.Unix(), 10)
 	case Daily:
-		d := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+		d := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, loc)
 		dashboardKey += strconv.FormatInt(d.Unix(), 10)
 	}
 
@@ -85,22 +87,22 @@ func GetDashboardData(ctx appengine.Context, t Period, date time.Time, org *orga
 	case Monthly:
 		year := date.Year()
 		month := date.Month()
-		oldDate = time.Date(year, month, 1, 0, 0, 0, 0, date.Location())
-		newDate = time.Date(year, month+1, 1, 0, 0, 0, 0, date.Location())
+		oldDate = time.Date(year, month, 1, 0, 0, 0, 0, loc)
+		newDate = time.Date(year, month+1, 1, 0, 0, 0, 0, loc)
 
 		// 0th day of month is last day of previous month
 		buckets = int64(time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC).Day())
 
 	case Weekly:
 		weekday := int(date.Weekday())
-		newDate = time.Date(date.Year(), date.Month(), (7-weekday)+date.Day(), 0, 0, 0, 0, date.Location())
-		oldDate = time.Date(date.Year(), date.Month(), (7-weekday)+date.Day()-7, 0, 0, 0, 0, date.Location())
+		newDate = time.Date(date.Year(), date.Month(), (7-weekday)+date.Day(), 0, 0, 0, 0, loc)
+		oldDate = time.Date(date.Year(), date.Month(), (7-weekday)+date.Day()-7, 0, 0, 0, 0, loc)
 
 		buckets = 7
 
 	case Daily:
-		newDate = time.Date(date.Year(), date.Month(), date.Day(), 23, 59, 0, 0, date.Location())
-		oldDate = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+		newDate = time.Date(date.Year(), date.Month(), date.Day(), 23, 59, 0, 0, loc)
+		oldDate = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, loc)
 
 		buckets = 24
 	}

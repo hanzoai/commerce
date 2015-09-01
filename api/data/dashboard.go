@@ -17,6 +17,7 @@ func dashboard(c *gin.Context) {
 	year, _ := strconv.Atoi(c.Params.ByName("year"))
 	month, _ := strconv.Atoi(c.Params.ByName("month"))
 	day, _ := strconv.Atoi(c.Params.ByName("day"))
+	tzOffset, _ := strconv.Atoi(c.Params.ByName("tzOffset"))
 
 	switch period {
 	case redis.Yearly:
@@ -33,7 +34,7 @@ func dashboard(c *gin.Context) {
 
 	org := middleware.GetOrganization(c)
 
-	data, err := redis.GetDashboardData(org.Db.Context, period, date, org)
+	data, err := redis.GetDashboardData(org.Db.Context, period, date, tzOffset*3600, org)
 	if err != nil {
 		http.Fail(c, 500, "Failed to load data", err)
 	} else {

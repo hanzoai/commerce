@@ -203,16 +203,18 @@ class Dashboard extends Page
         percent = day / daysInMonth
         compareMonth -= 1
 
+    tz = -date.getTimezoneOffset() / 60
+
     # Load new and comparative data from previous date interval
     promise.settle([
-      @api.get("c/data/dashboard/#{period}ly/#{compareYear}/#{compareMonth}/#{compareDay}").then((res)=>
+      @api.get("c/data/dashboard/#{period}ly/#{compareYear}/#{compareMonth}/#{compareDay}/#{tz}").then((res)=>
         @compareModel = res.responseText
 
         if res.status != 200 && res.status != 201 && res.status != 204
           throw new Error 'Form failed to load: '
       )
 
-      @api.get("c/data/dashboard/#{period}ly/#{year}/#{month}/#{day}").then((res)=>
+      @api.get("c/data/dashboard/#{period}ly/#{year}/#{month}/#{day}/#{tz}").then((res)=>
         @model = res.responseText
 
         if res.status != 200 && res.status != 201 && res.status != 204
