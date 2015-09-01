@@ -1,6 +1,7 @@
 crowdcontrol = require 'crowdcontrol'
 Events = crowdcontrol.Events
 View = crowdcontrol.view.View
+humanize = require 'humanize'
 
 spinFrames = 10
 
@@ -58,7 +59,7 @@ class BasicPanelView extends View
 
   render: (val)->
     # humanize or whatever
-    return val
+    return humanize.numberFormat(val)
 
 module.exports = BasicPanelView
 

@@ -20,7 +20,8 @@ class MoneyPanel extends BasicPanelView
     @decimals = opts.decimals || @decimals || 0
 
   render: (val)->
-    return util.currency.renderUpdatedUICurrency @currency, val
+    v = (util.currency.renderUpdatedUICurrency @currency, val)
+    v = v.substring(0, v.indexOf('.'))
 
 MoneyPanel.register()
 
