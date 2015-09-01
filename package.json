@@ -14,7 +14,7 @@
     "card": "1.0.0",
     "coffee-script": "1.9.2",
     "crowdcontrol": "^1.0.41",
-    "crowdstart-analytics": "^0.2.6",
+    "crowdstart-analytics": "^0.2.7",
     "crowdstart.js": "0.0.5",
     "csso-stylus": "0.0.3",
     "cuckoo-js": "1.0.3",
