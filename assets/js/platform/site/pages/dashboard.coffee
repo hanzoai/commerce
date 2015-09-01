@@ -1,6 +1,7 @@
 promise = require 'bluebird'
 riot = require 'riot'
 util = require '../../util'
+store = require 'store'
 
 Page = require './page'
 
@@ -28,6 +29,7 @@ class Dashboard extends Page
       switch name
         when 'period'
           @periodModel.value = value
+          store.set 'periodModelValue', value
         when 'date'
           @periodDateModel.value = value
       @refresh()
@@ -103,7 +105,7 @@ class Dashboard extends Page
     return capitalize(@periodModel.value) + 'ly'
 
   periodLabel: ()->
-    return 'THIS ' + @periodModel.value.toUpperCase()
+    return 'THIS ' + if @periodModel.value == 'dai' then 'DAY' else @periodModel.value.toUpperCase()
 
   js: (opts)->
     # Initialize communications
@@ -136,6 +138,10 @@ class Dashboard extends Page
     month = date.getMonth() + 1
     day = date.getDate()
 
+    period = store.get 'periodModelValue'
+    if period
+      @periodModel.value = period
+
     @periodDateModel.value = "#{month}/#{day}/#{year}"
 
     @api = api = Api.get 'crowdstart'
@@ -154,6 +160,7 @@ class Dashboard extends Page
     # calulate date intervals
     switch period
       when 'dai'
+        compareDay -=1
         @chartModel.xAxis[0].categories = [
           '00:00'
           '01:00'
