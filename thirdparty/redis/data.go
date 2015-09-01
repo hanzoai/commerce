@@ -38,7 +38,7 @@ const (
 	Yearly  Period = "yearly"
 	Monthly        = "monthly"
 	Weekly         = "weekly"
-	// Daily        = "Daily"
+	Daily          = "daily"
 )
 
 func GetDashboardData(ctx appengine.Context, t Period, date time.Time, org *organization.Organization) (DashboardData, error) {
@@ -50,7 +50,10 @@ func GetDashboardData(ctx appengine.Context, t Period, date time.Time, org *orga
 		dashboardKey += strconv.FormatInt(d.Unix(), 10)
 	case Weekly:
 		weekday := int(date.Weekday())
-		d := time.Date(date.Year(), date.Month(), 1, (7-weekday)+date.Day(), 0, 0, 0, date.Location())
+		d := time.Date(date.Year(), date.Month(), (7-weekday)+date.Day(), 0, 0, 0, 0, date.Location())
+		dashboardKey += strconv.FormatInt(d.Unix(), 10)
+	case Daily:
+		d := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
 		dashboardKey += strconv.FormatInt(d.Unix(), 10)
 	}
 
@@ -72,7 +75,7 @@ func GetDashboardData(ctx appengine.Context, t Period, date time.Time, org *orga
 	var (
 		newDate time.Time
 		oldDate time.Time
-		days    int64
+		buckets int64
 		skip    bool
 		key     string
 		result  *redis.StringCmd
@@ -86,14 +89,20 @@ func GetDashboardData(ctx appengine.Context, t Period, date time.Time, org *orga
 		newDate = time.Date(year, month+1, 1, 0, 0, 0, 0, date.Location())
 
 		// 0th day of month is last day of previous month
-		days = int64(time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC).Day())
+		buckets = int64(time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC).Day())
 
 	case Weekly:
 		weekday := int(date.Weekday())
 		newDate = time.Date(date.Year(), date.Month(), (7-weekday)+date.Day(), 0, 0, 0, 0, date.Location())
 		oldDate = time.Date(date.Year(), date.Month(), (7-weekday)+date.Day()-7, 0, 0, 0, 0, date.Location())
 
-		days = 7
+		buckets = 7
+
+	case Daily:
+		newDate = time.Date(date.Year(), date.Month(), date.Day(), 23, 59, 0, 0, date.Location())
+		oldDate = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+
+		buckets = 24
 	}
 
 	resultMembers := client.SMembers(setName(org, currencySetKey))
@@ -197,24 +206,34 @@ func GetDashboardData(ctx appengine.Context, t Period, date time.Time, org *orga
 		}
 
 		data.DailySales = make(currencyValues)
-		data.DailyOrders = make([]int64, days)
-		data.DailyUsers = make([]int64, days)
-		data.DailySubscribers = make([]int64, days)
+		data.DailyOrders = make([]int64, buckets)
+		data.DailyUsers = make([]int64, buckets)
+		data.DailySubscribers = make([]int64, buckets)
 
 		currentDate := oldDate
 		startDate := currentDate
 		for currentDate.Before(newDate) {
-			i := currentDate.Day() - startDate.Day()
-			if currentDate.Month() != startDate.Month() {
-				i += time.Date(currentDate.Year(), currentDate.Month(), 0, 0, 0, 0, 0, time.UTC).Day()
+			var (
+				i  int
+				tf TimeFunc
+			)
+			if t == Daily {
+				i = currentDate.Hour() - startDate.Hour()
+				tf = hourly
+			} else {
+				i = currentDate.Day() - startDate.Day()
+				if currentDate.Month() != startDate.Month() {
+					i += time.Date(currentDate.Year(), currentDate.Month(), 0, 0, 0, 0, 0, time.UTC).Day()
+				}
+				tf = daily
 			}
 
 			if data.DailySales[currency] == nil {
-				data.DailySales[currency] = make([]int64, days)
+				data.DailySales[currency] = make([]int64, buckets)
 			}
 
 			skip = false
-			key = totalKey(org, keyId, daily(currentDate))
+			key = totalKey(org, keyId, tf(currentDate))
 			result = client.Get(key)
 
 			if err := result.Err(); err != nil {
@@ -236,7 +255,7 @@ func GetDashboardData(ctx appengine.Context, t Period, date time.Time, org *orga
 			}
 
 			skip = false
-			key = totalKey(org, ordersKey, daily(currentDate))
+			key = totalKey(org, ordersKey, tf(currentDate))
 			result = client.Get(key)
 
 			if err := result.Err(); err != nil {
@@ -258,7 +277,7 @@ func GetDashboardData(ctx appengine.Context, t Period, date time.Time, org *orga
 			}
 
 			skip = false
-			key = userKey(org, daily(currentDate))
+			key = userKey(org, tf(currentDate))
 			result = client.Get(key)
 
 			if err := result.Err(); err != nil {
@@ -280,7 +299,7 @@ func GetDashboardData(ctx appengine.Context, t Period, date time.Time, org *orga
 			}
 
 			skip = false
-			key = subKey(org, mailinglistAllKey, daily(currentDate))
+			key = subKey(org, mailinglistAllKey, tf(currentDate))
 			result = client.Get(key)
 
 			if err := result.Err(); err != nil {
@@ -300,7 +319,12 @@ func GetDashboardData(ctx appengine.Context, t Period, date time.Time, org *orga
 					data.DailyUsers[i] += subs
 				}
 			}
-			currentDate = currentDate.Add(time.Hour * 24)
+
+			if t == Daily {
+				currentDate = currentDate.Add(time.Hour)
+			} else {
+				currentDate = currentDate.Add(time.Hour * 24)
+			}
 		}
 	}
 

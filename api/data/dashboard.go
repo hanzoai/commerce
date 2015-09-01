@@ -22,6 +22,7 @@ func dashboard(c *gin.Context) {
 	case redis.Yearly:
 	case redis.Weekly:
 	case redis.Monthly:
+	case redis.Daily:
 	default:
 		period = redis.Weekly
 	}

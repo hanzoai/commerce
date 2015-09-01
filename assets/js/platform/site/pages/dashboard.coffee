@@ -97,6 +97,7 @@ class Dashboard extends Page
   periodOptions:
     week: 'Week'
     month: 'Month'
+    dai: 'Day'
 
   periodDescription: ()->
     return capitalize(@periodModel.value) + 'ly'
@@ -152,6 +153,34 @@ class Dashboard extends Page
 
     # calulate date intervals
     switch period
+      when 'dai'
+        @chartModel.xAxis[0].categories = [
+          '00:00'
+          '01:00'
+          '02:00'
+          '03:00'
+          '04:00'
+          '05:00'
+          '06:00'
+          '07:00'
+          '08:00'
+          '09:00'
+          '10:00'
+          '11:00'
+          '12:00'
+          '13:00'
+          '14:00'
+          '15:00'
+          '16:00'
+          '17:00'
+          '18:00'
+          '19:00'
+          '20:00'
+          '21:00'
+          '22:00'
+          '23:00'
+        ]
+
       when 'week'
         percent = (date.getDay() + 1) / 7
         compareDay -= 7
@@ -244,8 +273,15 @@ class Dashboard extends Page
       @dailyUsersObs.trigger Events.Visual.NewLabel, @periodLabel()
       @dailySubsObs.trigger Events.Visual.NewLabel, @periodLabel()
 
-      @chartModel.series[0].data = @model.DailySales[@currency].map (val)=>
-        return parseFloat(util.currency.renderUpdatedUICurrency '', val)
+      sales = @model.DailySales[@currency]
+      if sales?
+        sales = @model.DailySales[@currency].map (val)=>
+          return parseFloat(util.currency.renderUpdatedUICurrency '', val)
+      else
+        sales =@model.DailyOrders.map (val)=>
+          return 0
+
+      @chartModel.series[0].data = sales
       @chartModel.series[1].data = @model.DailyOrders
       @chartModel.series[2].data = @model.DailyUsers
 
