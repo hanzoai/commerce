@@ -1,4 +1,5 @@
 _ = require 'underscore'
+humanize = require 'humanize'
 
 currencySigns = require './data/currencies'
 currencySeparator = '.'
@@ -30,7 +31,7 @@ module.exports = Util =
     while jsonCurrency.length < 3
       jsonCurrency = '0' + jsonCurrency
 
-    return currentCurrencySign + jsonCurrency.substr(0, jsonCurrency.length - 2) + '.' + jsonCurrency.substr(-2)
+    return currentCurrencySign + humanize.numberFormat(jsonCurrency.substr(0, jsonCurrency.length - 2), 0) + '.' + jsonCurrency.substr(-2)
 
   renderJSONCurrencyFromUI: (code, uiCurrency) ->
     if _.isNumber(uiCurrency)
