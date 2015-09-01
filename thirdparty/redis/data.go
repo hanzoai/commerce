@@ -206,7 +206,7 @@ func GetDashboardData(ctx appengine.Context, t Period, date time.Time, org *orga
 		for currentDate.Before(newDate) {
 			i := currentDate.Day() - startDate.Day()
 			if currentDate.Month() != startDate.Month() {
-				i += time.Date(currentDate.Year(), currentDate.Month()+1, 0, 0, 0, 0, 0, time.UTC).Day()
+				i += time.Date(currentDate.Year(), currentDate.Month(), 0, 0, 0, 0, 0, time.UTC).Day()
 			}
 
 			if data.DailySales[currency] == nil {
@@ -323,13 +323,13 @@ func GetDashboardData(ctx appengine.Context, t Period, date time.Time, org *orga
 
 	expiration := 0 * time.Minute
 
-	isToday := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
-	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	// isToday := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
+	// now := time.Now()
+	// today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 
-	if isToday.Equal(today) {
-		expiration = 15 * time.Minute
-	}
+	// if isToday.Equal(today) {
+	expiration = 15 * time.Minute
+	// }
 
 	item := &memcache.Item{
 		Key:        dashboardKey,
