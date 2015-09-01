@@ -1,5 +1,4 @@
 _ = require 'underscore'
-humanize = require 'humanize'
 
 BasicPanelView = require './basic'
 util = require '../../util'

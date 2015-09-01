@@ -282,10 +282,10 @@ class Dashboard extends Page
 
       sales = @model.DailySales[@currency]
       if sales?
-        sales = @model.DailySales[@currency].map (val)=>
-          return parseFloat(util.currency.renderUpdatedUICurrency '', val)
+        sales = @model.DailySales[@currency].map (val)->
+          return val/100
       else
-        sales =@model.DailyOrders.map (val)=>
+        sales =@model.DailyOrders.map (val)->
           return 0
 
       @chartModel.series[0].data = sales
