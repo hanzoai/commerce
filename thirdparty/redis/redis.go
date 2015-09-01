@@ -315,7 +315,7 @@ func IncrTotalOrders(ctx appengine.Context, org *organization.Organization, t ti
 	key := totalKey(org, ordersKey, hourly(t))
 	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
 
-	log.Warn("redis client %v", client, org.Db.Context)
+	log.Debug("redis client %v", client, org.Db.Context)
 
 	if err := client.Incr(key).Err(); err != nil {
 		return err
@@ -459,7 +459,7 @@ func IncrTotalProductOrders(ctx appengine.Context, org *organization.Organizatio
 		key := totalKey(org, productsKey, hourly(t))
 		log.Debug("%v incremented by %v", key, 1, org.Db.Context)
 
-		log.Warn("redis client %v", client, org.Db.Context)
+		log.Debug("redis client %v", client, org.Db.Context)
 
 		if err := client.Incr(key).Err(); err != nil {
 			return err
