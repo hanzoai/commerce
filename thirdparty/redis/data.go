@@ -87,16 +87,16 @@ func GetDashboardData(ctx appengine.Context, t Period, date time.Time, tzOffset 
 	case Monthly:
 		year := date.Year()
 		month := date.Month()
-		oldDate = time.Date(year, month, 1, 0, 0, 0, 0, loc)
-		newDate = time.Date(year, month+1, 1, 0, 0, 0, 0, loc)
+		oldDate = time.Date(year, month, 1, 0, 0, 0, 0, date.Location())
+		newDate = time.Date(year, month+1, 1, 0, 0, 0, 0, date.Location())
 
 		// 0th day of month is last day of previous month
 		buckets = int64(time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC).Day())
 
 	case Weekly:
 		weekday := int(date.Weekday())
-		newDate = time.Date(date.Year(), date.Month(), (7-weekday)+date.Day(), 0, 0, 0, 0, loc)
-		oldDate = time.Date(date.Year(), date.Month(), (7-weekday)+date.Day()-7, 0, 0, 0, 0, loc)
+		newDate = time.Date(date.Year(), date.Month(), (7-weekday)+date.Day(), 0, 0, 0, 0, date.Location())
+		oldDate = time.Date(date.Year(), date.Month(), (7-weekday)+date.Day()-7, 0, 0, 0, 0, date.Location())
 
 		buckets = 7
 
