@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math"
 	"strconv"
-	"strings"
 	"time"
 
 	aeds "appengine/datastore"
@@ -246,7 +245,8 @@ func (o *Order) GetCoupons() error {
 
 	for i := 0; i < num; i++ {
 		c := coupon.New(db)
-		ok, err := c.Query().Filter("Code=", strings.ToUpper(o.CouponCodes[i])).KeysOnly().First()
+		// ok, err := c.Query().Filter("Code=", strings.ToUpper(o.CouponCodes[i])).KeysOnly().First()
+		ok, err := c.Query().Filter("Code=", o.CouponCodes[i]).KeysOnly().First()
 		if err != nil {
 			return err
 		}
