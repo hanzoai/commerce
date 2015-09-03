@@ -62,7 +62,7 @@ func getReferrers(c *gin.Context) {
 	id := c.Params.ByName("userid")
 
 	referrers := make([]referrer.Referrer, 0)
-	if _, err := referrer.Query(db).Filter("UserId=", id).GetAll(&referrers); err != nil {
+	if _, err := referrer.Query(db).Filter("ReferrerUserId=", id).GetAll(&referrers); err != nil {
 		http.Fail(c, 400, "Could not query referrer", err)
 		return
 	}
