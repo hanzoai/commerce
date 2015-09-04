@@ -41,6 +41,7 @@ class Dashboard extends Page
     }]
     yAxis: [
       {
+        floor: 0
         labels:
           format: '{value:.2f}'
           style:
@@ -51,6 +52,7 @@ class Dashboard extends Page
               color: Highcharts.getOptions().colors[2]
       },
       {
+        floor: 0
         labels:
           style:
             color: Highcharts.getOptions().colors[0]
