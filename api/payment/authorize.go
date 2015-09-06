@@ -136,12 +136,12 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	switch ord.Type {
 	case "balance":
 		if err := balance.Authorize(org, ord, usr, pay); err != nil {
-			log.Debug("Failed to authorize order using Balance:\n User: %v, Order: %v, Payment: %v", usr, ord, pay, ctx)
+			log.Info("Failed to authorize order using Balance:\n User: %+v, Order: %+v, Payment: %+v, Error: %v", usr, ord, pay, err, ctx)
 			return nil, nil, err
 		}
 	default:
 		if err := stripe.Authorize(org, ord, usr, pay); err != nil {
-			log.Debug("Failed to authorize order using Stripe:\n User: %v, Order: %v, Payment: %v", usr, ord, pay, ctx)
+			log.Info("Failed to authorize order using Stripe:\n User: %+v, Order: %+v, Payment: %+v, Error: %v", usr, ord, pay, err, ctx)
 			return nil, nil, err
 		}
 	}
@@ -161,7 +161,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	ord.MustPut()
 	pay.MustPut()
 
-	log.Debug("New authorization for order\n User: %v, Order: %v, Payment: %v", usr, ord, pay, ctx)
+	log.Info("New authorization for order\n User: %+v, Order: %+v, Payment: %+v", usr, ord, pay, ctx)
 
 	return pay, usr, nil
 }
