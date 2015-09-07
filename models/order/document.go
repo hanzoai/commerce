@@ -1,6 +1,9 @@
 package order
 
+import "time"
+
 type Document struct {
+	IntId  string //not int64 support so encode as string to avoid rounding
 	Id_    string
 	UserId string
 
@@ -17,6 +20,20 @@ type Document struct {
 	ShippingAddressState      string
 	ShippingAddressCountry    string
 	ShippingAddressPostalCode string
+
+	Created   time.Time
+	UpdatedAt time.Time
+
+	Currency    string
+	Total       float64
+	CouponCodes string
+	ReferrerId  string
+
+	Status             string
+	PaymentStatus      string
+	FullfillmentStatus string
+	Preorder           string
+	Confirmed          string
 }
 
 func (d Document) Id() string {
