@@ -12,6 +12,8 @@ import (
 )
 
 func New(moduleName string) *gin.RouterGroup {
+	gin.SetMode(gin.ReleaseMode)
+
 	router := gin.New()
 
 	prefix := strings.TrimSpace(config.Prefixes[moduleName])
