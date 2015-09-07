@@ -28,6 +28,8 @@ import (
 )
 
 func Init() {
+	gin.SetMode(gin.ReleaseMode)
+
 	router := router.New("default")
 
 	// Index, development has nice index with links
