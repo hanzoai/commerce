@@ -158,7 +158,17 @@ func (o Order) Kind() string {
 }
 
 func (o Order) Document() mixin.Document {
+	preorder := "true"
+	if !o.Preorder {
+		preorder = "false"
+	}
+	confirmed := "true"
+	if o.Unconfirmed {
+		confirmed = "false"
+	}
+
 	return &Document{
+		strconv.Itoa(int(o.Key().IntID())),
 		o.Id(),
 		o.UserId,
 
@@ -175,6 +185,20 @@ func (o Order) Document() mixin.Document {
 		o.ShippingAddress.State,
 		country.ByISOCodeISO3166_2[o.ShippingAddress.Country].ISO3166OneEnglishShortNameReadingOrder,
 		o.ShippingAddress.PostalCode,
+
+		o.CreatedAt,
+		o.UpdatedAt,
+
+		string(o.Currency),
+		float64(o.Total),
+		strings.Join(o.CouponCodes, " "),
+		o.ReferrerId,
+
+		string(o.Status),
+		string(o.PaymentStatus),
+		string(o.FulfillmentStatus),
+		string(preorder),
+		string(confirmed),
 	}
 }
 
