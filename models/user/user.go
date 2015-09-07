@@ -1,6 +1,7 @@
 package user
 
 import (
+	"strconv"
 	"strings"
 
 	aeds "appengine/datastore"
@@ -97,6 +98,7 @@ func (u User) Kind() string {
 func (u User) Document() mixin.Document {
 	emailUser := strings.Split(u.Email, "@")[0]
 	return &Document{
+		strconv.Itoa(int(u.Key().IntID())),
 		u.Id(),
 		search.Atom(u.Email),
 		searchpartial.Partials(emailUser) + " " + emailUser,
