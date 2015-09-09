@@ -4,10 +4,11 @@ crowdcontrol = require 'crowdcontrol'
 Events = crowdcontrol.Events
 
 input = require '../input'
-Form = require './pane'
+Pane = require './pane'
 
-class OrderFilterForm extends Pane
-  tag: 'order-filter-pane'
+class OrderFilterPane extends Pane
+  tag: 'orders-filter-pane'
+  html: require '../../templates/backend/form/pane/order.html'
   path: ''
 
   inputConfigs: [
@@ -18,7 +19,7 @@ class OrderFilterForm extends Pane
   js: ()->
     super
 
-OrderFilterForm.register()
+OrderFilterPane.register()
 
-module.exports = OrderFilterForm
+module.exports = OrderFilterPane
 
