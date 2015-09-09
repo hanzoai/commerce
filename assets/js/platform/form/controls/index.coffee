@@ -420,6 +420,10 @@ helpers.registerTag (inputCfg)->
 , 'product-type-select'
 
 helpers.registerTag (inputCfg)->
+  return inputCfg.hints['date-picker']
+, 'date-picker'
+
+helpers.registerTag (inputCfg)->
   return inputCfg.hints['mailinglist-thankyou-select']
 , 'mailinglist-thankyou-select'
 
