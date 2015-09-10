@@ -19,6 +19,10 @@ class OrderFilterPane extends Pane
   js: ()->
     super
 
+    @on 'update', ()->
+      $root = $(@root)
+      $root.children().height($root.height())
+
 OrderFilterPane.register()
 
 module.exports = OrderFilterPane
