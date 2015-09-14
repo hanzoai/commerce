@@ -19,9 +19,19 @@ class BasicPagedTable extends BasicTableView
   display: 10
   $pagination: $()
   firstLoad: false
+
+  # Lock the form controls when paging
   pagingLock: false
 
+  # Is the data being sourced from a static model?
+  # If this is set to the array of records from which to source model records from
+  staticModel: null
+
   events:
+    "#{Events.Table.NewData}": (model)->
+      @staticModel = model
+      @loadData @staticModel
+
     # finishing a form that is linked to this table will refresh it
     "#{Events.Form.SubmitSuccess}": ()->
       setTimeout ()=>
@@ -107,33 +117,39 @@ class BasicPagedTable extends BasicTableView
         @initDynamicContent()
 
   refresh: ()->
+    if @staticModel?
+      @loadData @staticModel
+
     path = @path + '?page=' + @page + '&display=' + @display + '&sort=' + (if @filterModel.sortDirection == 'sort-desc' then '' else '-') + if @filterModel.sortField == "Id" then "Id_" else @filterModel.sortField
     requestAnimationFrame ()->
       $('.previous, .next').addClass('disabled')
 
     @api.get(path).then (res) =>
       @firstLoad = true
-
-      m.trigger 'stop-spin', @tag + @path + '-paged-table-load'
       data = res.responseText
 
-      # riot maintainer, why do you allow for desync in 2.2.x
-      @model = []
-      @update()
+      @loadData(data)
 
-      @model = data.models
-      @count = data.count
+  loadData: (data)->
+    m.trigger 'stop-spin', @tag + @path + '-paged-table-load'
 
-      @maxPage = Math.ceil data.count/data.display
+    # riot maintainer, why do you allow for desync in 2.2.x
+    @model = []
+    @update()
 
-      @update()
+    @model = data.models
+    @count = data.count
 
-      @initDynamicContent()
-      @$pagination.jqPagination 'option', 'max_page', @maxPage
+    @maxPage = Math.ceil data.count/data.display
 
-      @pagingLock = false
+    @update()
 
-      requestAnimationFrame ()->
-        $('.previous, .next').removeClass('disabled')
+    @initDynamicContent()
+    @$pagination.jqPagination 'option', 'max_page', @maxPage
+
+    @pagingLock = false
+
+    requestAnimationFrame ()->
+      $('.previous, .next').removeClass('disabled')
 
 module.exports = BasicPagedTable
