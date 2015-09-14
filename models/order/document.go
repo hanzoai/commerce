@@ -1,9 +1,13 @@
 package order
 
-import "time"
+import (
+	"time"
+
+	"appengine/search"
+)
 
 type Document struct {
-	IntId  string //not int64 support so encode as string to avoid rounding
+	IntId  search.Atom //not int64 support so encode as string to avoid rounding
 	Id_    string
 	UserId string
 
@@ -21,7 +25,7 @@ type Document struct {
 	ShippingAddressCountry    string
 	ShippingAddressPostalCode string
 
-	Created   time.Time
+	CreatedAt time.Time
 	UpdatedAt time.Time
 
 	Currency    string
