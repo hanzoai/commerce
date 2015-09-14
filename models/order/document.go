@@ -1,13 +1,8 @@
 package order
 
-import (
-	"time"
-
-	"appengine/search"
-)
+import "time"
 
 type Document struct {
-	IntId  search.Atom //not int64 support so encode as string to avoid rounding
 	Id_    string
 	UserId string
 
