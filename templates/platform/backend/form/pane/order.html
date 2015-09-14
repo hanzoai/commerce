@@ -1,8 +1,20 @@
 <div class="tray tray-right tray290 p20">
   <div class="admin-form">
-    <div class="section ">
-      <control input="{ inputs['min-date'] }">
-      <control input="{ inputs['max-date'] }">
+    <h4>Filter Orders</h4>
+    <hr class="short">
+    <h5><small>Date Range (MM/DD/YYYY)</small></h5>
+    <div >
+    <div class="section row">
+      <div class="col-md-6">
+        <control input="{ inputs.minDate }"></control>
+      </div>
+      <div class="col-md-6">
+        <control input="{ inputs.maxDate }"></control>
+      </div>
+    </div>
+    <hr class="short">
+    <div class="section">
+      <button class="btn btn-default btn-block btn-sm ph25" type="button" onclick="{ submit }">Search</button>
     </div>
   </div>
 </div>
