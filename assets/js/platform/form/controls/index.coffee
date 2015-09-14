@@ -60,7 +60,8 @@ class NumericInputView extends BasicInputView
         v = parseFloat(value)
         @model.value = if isNaN(v) then 0 else v
   js:(opts)->
-    @model = if opts.input then opts.input.model else @model
+    super
+
     v = parseFloat(@model.value)
     @model.value = if isNaN(v) then 0 else v
 
@@ -69,6 +70,8 @@ NumericInputView.register()
 class DatePickerView extends BasicInputView
   tag: 'date-picker'
   js: (opts)->
+    super
+
     @on 'update', ()=>
       $input = $(@root).find('input')
       if $input[0]?
