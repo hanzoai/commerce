@@ -36,6 +36,7 @@ class TableFieldConfig
 #   path: path relative to api.  Use only if retrieving live data
 
 Events.Table =
+  PrepareForNewData: 'table-prepare'
   NewData: 'table-new-data'
   StartSearch: 'table-start-search'
   EndSearch: 'table-end-search'

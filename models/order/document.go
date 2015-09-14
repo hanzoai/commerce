@@ -28,11 +28,11 @@ type Document struct {
 	CouponCodes string
 	ReferrerId  string
 
-	Status             string
-	PaymentStatus      string
-	FullfillmentStatus string
-	Preorder           string
-	Confirmed          string
+	Status            string
+	PaymentStatus     string
+	FulfillmentStatus string
+	Preorder          string
+	Confirmed         string
 }
 
 func (d Document) Id() string {
