@@ -136,6 +136,9 @@ type Order struct {
 }
 
 func (o *Order) Init() {
+	o.Status = Open
+	o.PaymentStatus = payment.Unpaid
+	o.FulfillmentStatus = FulfillmentUnfulfilled
 	o.Adjustments = make([]Adjustment, 0)
 	o.History = make([]Event, 0)
 	o.Items = make([]LineItem, 0)
@@ -147,10 +150,6 @@ func New(db *datastore.Datastore) *Order {
 	o := new(Order)
 	o.Init()
 	o.Model = mixin.Model{Db: db, Entity: o}
-
-	o.Status = Open
-	o.PaymentStatus = payment.Unpaid
-	o.FulfillmentStatus = FulfillmentUnfulfilled
 	return o
 }
 

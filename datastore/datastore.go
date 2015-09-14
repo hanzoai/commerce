@@ -174,6 +174,8 @@ func (d *Datastore) keyOrEncodedKey(key interface{}) (_key *aeds.Key, err error)
 	switch v := key.(type) {
 	case *aeds.Key:
 		return v, nil
+	case Key:
+		return v.(*aeds.Key), nil
 	case string:
 		return d.DecodeKey(v)
 	case reflect.Value:
@@ -271,7 +273,15 @@ func (d *Datastore) GetMulti(keys interface{}, vals interface{}) error {
 		_keys[i] = key
 	}
 
-	return d.SkipFieldMismatch(nds.GetMulti(d.Context, _keys, vals))
+	err := d.SkipFieldMismatch(nds.GetMulti(d.Context, _keys, vals))
+	if err != nil {
+		if me, ok := err.(appengine.MultiError); ok {
+			for _, merr := range me {
+				log.Warn(merr, d.Context)
+			}
+		}
+	}
+	return err
 }
 
 // Same as GetKind, but works for multiple key/vals, keys can be slice of any
