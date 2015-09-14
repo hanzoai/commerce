@@ -69,6 +69,12 @@ NumericInputView.register()
 
 class DatePickerView extends BasicInputView
   tag: 'date-picker'
+
+#localize here
+# events:
+  #   "#{Events.Input.Set}": (name, value) ->
+  #     if name == @model.name
+
   js: (opts)->
     super
 
@@ -212,7 +218,8 @@ class BasicSelectView extends BasicInputView
         # whole page needs to be updated for side effects
         riot.update()
   options: ()->
-    @selectOptions
+    return @selectOptions
+
   changed: false
   change: (event) ->
     value = $(event.target).val()
@@ -322,8 +329,17 @@ CountrySelectView.register()
 
 class CurrencySelectView extends BasicSelectView
   tag: 'currency-select'
+  any: false
+
   options: ()->
-    return window.currencies
+    currencies = _.extend window.currencies, {}
+    currencies['_any'] = 'Any Currency' if @any
+    return currencies
+
+  js: (opts)->
+    @any = opts.any ? false
+
+    super
 
 CurrencySelectView.register()
 
