@@ -10,7 +10,6 @@ import (
 	"time"
 
 	aeds "appengine/datastore"
-	"appengine/search"
 
 	"github.com/dustin/go-humanize"
 
@@ -168,7 +167,6 @@ func (o Order) Document() mixin.Document {
 	}
 
 	return &Document{
-		search.Atom(strconv.Itoa(int(o.Key().IntID()))),
 		o.Id(),
 		o.UserId,
 
