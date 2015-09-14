@@ -3,7 +3,7 @@ package user
 import "appengine/search"
 
 type Document struct {
-	IntId             string //not int64 support so encode as string to avoid rounding
+	IntId             search.Atom //not int64 support so encode as string to avoid rounding
 	Id_               string
 	Email             search.Atom
 	EmailPartials     string

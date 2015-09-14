@@ -1,6 +1,7 @@
 _ = require 'underscore'
 
 crowdcontrol = require 'crowdcontrol'
+Events = crowdcontrol.Events
 
 input = require '../input'
 BasicForm = require '../basic'
@@ -15,9 +16,33 @@ class Pane extends FormView
   html:     BasicForm.prototype.html
   events:   BasicForm.prototype.events
   reset: ()->
-  _submit:  BasicForm.prototype._submit
-
   js: (opts)->
     super
+
+    @api = api = Api.get 'crowdstart'
+
+    @on 'update', ()=>
+      setTimeout ()=>
+        $root = $(@root)
+        $root.children().height $root.height()
+      , 500
+
+  queryString: ()->
+    return ''
+
+  _submit:  (event)->
+    path = @path + '?q=' + @queryString()
+
+    @api.get(path, @model).then((res)=>
+      if res.status != 200
+        throw new Error res.responseText.error.message
+
+      data = res.responseText ? []
+      @obs.trigger Events.Table.NewData, data
+    ).catch (e)=>
+      console.log(e.stack)
+      @error = e
+      # window.location.hash = @redirectPath
+
 
 module.exports = Pane
