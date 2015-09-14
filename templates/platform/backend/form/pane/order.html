@@ -3,7 +3,6 @@
     <h4>Filter Orders</h4>
     <hr class="short">
     <h5><small>Date Range (MM/DD/YYYY)</small></h5>
-    <div >
     <div class="section row">
       <div class="col-md-6">
         <control input="{ inputs.minDate }"></control>
@@ -12,9 +11,37 @@
         <control input="{ inputs.maxDate }"></control>
       </div>
     </div>
+    <h5><small>Sales Amount</small></h5>
+    <div class="section">
+      <control input="{ inputs.currency }" any="{ true }"></control>
+    </div>
+    <div class="section row">
+      <div class="col-md-6">
+        <control input="{ inputs.minTotal }"></control>
+      </div>
+      <div class="col-md-6">
+        <control input="{ inputs.maxTotal }"></control>
+      </div>
+    </div>
+    <h5><small>Status</small></h5>
+    <div class="section">
+      <control input="{ inputs.status }" options="{ statusOptions }"></control>
+    </div>
+    <div class="section">
+      <control input="{ inputs.paymentStatus }" options="{ paymentStatusOptions }"></control>
+    </div>
+    <div class="section">
+      <control input="{ inputs.fulfillmentStatus }" options="{ fulfillmentStatusOptions }"></control>
+    </div>
+    <div class="section">
+      <control input="{ inputs.preorder }" options="{ preorderOptions }"></control>
+    </div>
+    <div class="section">
+      <control input="{ inputs.confirmed }" options="{ confirmedOptions }"></control>
+    </div>
     <hr class="short">
     <div class="section">
-      <button class="btn btn-default btn-block btn-sm ph25" type="button" onclick="{ submit }">Search</button>
+      <button class="btn btn-default btn-block btn-sm ph25" type="button" onclick="{ submit }" __disabled="{ searching }">{ searching ? 'Searching...' : 'Search' }</button>
     </div>
   </div>
 </div>
