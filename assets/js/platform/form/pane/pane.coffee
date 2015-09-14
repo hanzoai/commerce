@@ -19,26 +19,37 @@ class Pane extends FormView
   js: (opts)->
     super
 
+    @tableObs = opts.tableobs ? @obs
+
     @api = api = Api.get 'crowdstart'
 
     @on 'update', ()=>
       setTimeout ()=>
         $root = $(@root)
-        $root.children().height $root.height()
+        if $root.children().attr('style') == ''
+          $root.children().height $root.height()
       , 500
 
   queryString: ()->
     return ''
 
   _submit:  (event)->
+    @searching = true
+    @update()
+
     path = @path + '?q=' + @queryString()
 
+    @tableObs.trigger Events.Table.PrepareForNewData
+
     @api.get(path, @model).then((res)=>
+      @searching = false
+      @update()
+
       if res.status != 200
         throw new Error res.responseText.error.message
 
       data = res.responseText ? []
-      @obs.trigger Events.Table.NewData, data
+      @tableObs.trigger Events.Table.NewData, data
     ).catch (e)=>
       console.log(e.stack)
       @error = e
