@@ -14,7 +14,6 @@ import (
 	"crowdstart.com/models/user"
 	"crowdstart.com/util/hashid"
 	"crowdstart.com/util/json/http"
-	"crowdstart.com/util/log"
 )
 
 func searchUser(c *gin.Context) {
@@ -85,8 +84,6 @@ func searchOrder(c *gin.Context) {
 		http.Fail(c, 500, fmt.Sprintf("Failed to get orders %v", err), err)
 		return
 	}
-
-	log.Warn("wut %v", orders)
 
 	http.Render(c, 200, orders)
 }
