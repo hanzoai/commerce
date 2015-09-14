@@ -217,3 +217,12 @@ func DecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key, err error)
 
 	return key, nil
 }
+
+func MustDecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key) {
+	key, err := DecodeKey(ctx, encoded)
+	if err != nil {
+		panic(err)
+	}
+
+	return key
+}

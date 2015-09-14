@@ -2,8 +2,8 @@ package search
 
 import (
 	"fmt"
-	"strconv"
 
+	aeds "appengine/datastore"
 	"appengine/search"
 
 	"github.com/gin-gonic/gin"
@@ -12,6 +12,7 @@ import (
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/user"
+	"crowdstart.com/util/hashid"
 	"crowdstart.com/util/json/http"
 	"crowdstart.com/util/log"
 )
@@ -28,7 +29,7 @@ func searchUser(c *gin.Context) {
 
 	db := datastore.New(middleware.GetNamespace(c))
 
-	keys := make([]datastore.Key, 0)
+	keys := make([]*aeds.Key, 0)
 	for t := index.Search(db.Context, q, nil); ; {
 		var doc user.Document
 		_, err := t.Next(&doc) // We use the int id stored on the doc rather than the key
@@ -40,14 +41,7 @@ func searchUser(c *gin.Context) {
 			return
 		}
 
-		intId, err := strconv.Atoi(string(doc.IntId))
-		if err != nil {
-			http.Fail(c, 500, fmt.Sprintf("Failed to decode id for user %v", err), err)
-			return
-		}
-
-		key := db.KeyFromInt(u.Kind(), int64(intId))
-		keys = append(keys, key)
+		keys = append(keys, hashid.MustDecodeKey(db.Context, doc.Id()))
 	}
 
 	users := make([]user.User, len(keys))
@@ -69,10 +63,9 @@ func searchOrder(c *gin.Context) {
 		return
 	}
 
-	org := middleware.GetOrganization(c)
 	db := datastore.New(middleware.GetNamespace(c))
 
-	keys := make([]datastore.Key, 0)
+	keys := make([]*aeds.Key, 0)
 	for t := index.Search(db.Context, q, nil); ; {
 		var doc order.Document
 		_, err := t.Next(&doc) // We use the int id stored on the doc rather than the key
@@ -84,16 +77,7 @@ func searchOrder(c *gin.Context) {
 			return
 		}
 
-		intId, err := strconv.Atoi(string(doc.IntId))
-		if err != nil {
-			http.Fail(c, 500, fmt.Sprintf("Failed to decode id for order %v", err), err)
-			return
-		}
-
-		key := db.KeyFromInt(o.Kind(), int64(intId))
-		log.Warn("IntId %v %v %v", org.Name, intId, key)
-
-		keys = append(keys, key)
+		keys = append(keys, hashid.MustDecodeKey(db.Context, doc.Id()))
 	}
 
 	orders := make([]order.Order, len(keys))
