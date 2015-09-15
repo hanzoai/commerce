@@ -136,15 +136,15 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	switch ord.Type {
 	case "balance":
 		if err := balance.Authorize(org, ord, usr, pay); err != nil {
+			log.Info("Failed to authorize order using Balance:\n User: %+v, Order: %+v, Payment: %+v, Error: %v", usr, ord, pay, err, ctx)
 			return nil, nil, err
 		}
 	default:
 		if err := stripe.Authorize(org, ord, usr, pay); err != nil {
+			log.Info("Failed to authorize order using Stripe:\n User: %+v, Order: %+v, Payment: %+v, Error: %v", usr, ord, pay, err, ctx)
 			return nil, nil, err
 		}
 	}
-
-	log.Warn("Test? Ord  %v, Pay %v", ord.Test, pay.Test, c)
 
 	// If the charge is not live or test flag is set, then it is a test charge
 	ord.Test = pay.Test || !pay.Live
@@ -160,6 +160,8 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	usr.MustPut()
 	ord.MustPut()
 	pay.MustPut()
+
+	log.Info("New authorization for order\n User: %+v, Order: %+v, Payment: %+v", usr, ord, pay, ctx)
 
 	return pay, usr, nil
 }
