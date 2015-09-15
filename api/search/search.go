@@ -3,12 +3,16 @@ package search
 import (
 	"fmt"
 
+	aeds "appengine/datastore"
 	"appengine/search"
 
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.com/datastore"
+	"crowdstart.com/middleware"
+	"crowdstart.com/models/order"
 	"crowdstart.com/models/user"
+	"crowdstart.com/util/hashid"
 	"crowdstart.com/util/json/http"
 )
 
@@ -22,28 +26,64 @@ func searchUser(c *gin.Context) {
 		return
 	}
 
-	db := datastore.New(c)
+	db := datastore.New(middleware.GetNamespace(c))
 
-	users := make([]*user.User, 0)
+	keys := make([]*aeds.Key, 0)
 	for t := index.Search(db.Context, q, nil); ; {
 		var doc user.Document
-		id, err := t.Next(&doc)
+		_, err := t.Next(&doc) // We use the int id stored on the doc rather than the key
 		if err == search.Done {
 			break
 		}
 		if err != nil {
 			http.Fail(c, 404, fmt.Sprintf("Failed to search index 'user' %v", err), err)
-			break
+			return
 		}
 
-		u := user.New(db)
-		err = u.GetById(id)
-		if err != nil {
-			continue
-		}
+		keys = append(keys, hashid.MustDecodeKey(db.Context, doc.Id()))
+	}
 
-		users = append(users, u)
+	users := make([]user.User, len(keys))
+	if err := db.GetMulti(keys, users); err != nil {
+		http.Fail(c, 500, fmt.Sprintf("Failed to get users %v", err), err)
+		return
 	}
 
 	http.Render(c, 200, users)
+}
+
+func searchOrder(c *gin.Context) {
+	q := c.Request.URL.Query().Get("q")
+
+	o := order.Order{}
+	index, err := search.Open(o.Kind())
+	if err != nil {
+		http.Fail(c, 404, fmt.Sprintf("Failed to find index 'order'"), err)
+		return
+	}
+
+	db := datastore.New(middleware.GetNamespace(c))
+
+	keys := make([]*aeds.Key, 0)
+	for t := index.Search(db.Context, q, nil); ; {
+		var doc order.Document
+		_, err := t.Next(&doc) // We use the int id stored on the doc rather than the key
+		if err == search.Done {
+			break
+		}
+		if err != nil {
+			http.Fail(c, 404, fmt.Sprintf("Failed to search index 'order' %v", err), err)
+			return
+		}
+
+		keys = append(keys, hashid.MustDecodeKey(db.Context, doc.Id()))
+	}
+
+	orders := make([]order.Order, len(keys))
+	if err := db.GetMulti(keys, orders); err != nil {
+		http.Fail(c, 500, fmt.Sprintf("Failed to get orders %v", err), err)
+		return
+	}
+
+	http.Render(c, 200, orders)
 }

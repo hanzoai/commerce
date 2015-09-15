@@ -60,7 +60,8 @@ class NumericInputView extends BasicInputView
         v = parseFloat(value)
         @model.value = if isNaN(v) then 0 else v
   js:(opts)->
-    @model = if opts.input then opts.input.model else @model
+    super
+
     v = parseFloat(@model.value)
     @model.value = if isNaN(v) then 0 else v
 
@@ -68,7 +69,15 @@ NumericInputView.register()
 
 class DatePickerView extends BasicInputView
   tag: 'date-picker'
+
+#localize here
+# events:
+  #   "#{Events.Input.Set}": (name, value) ->
+  #     if name == @model.name
+
   js: (opts)->
+    super
+
     @on 'update', ()=>
       $input = $(@root).find('input')
       if $input[0]?
@@ -209,7 +218,8 @@ class BasicSelectView extends BasicInputView
         # whole page needs to be updated for side effects
         riot.update()
   options: ()->
-    @selectOptions
+    return @selectOptions
+
   changed: false
   change: (event) ->
     value = $(event.target).val()
@@ -319,8 +329,17 @@ CountrySelectView.register()
 
 class CurrencySelectView extends BasicSelectView
   tag: 'currency-select'
+  any: false
+
   options: ()->
-    return window.currencies
+    currencies = _.extend window.currencies, {}
+    currencies['_any'] = 'Any Currency' if @any
+    return currencies
+
+  js: (opts)->
+    @any = opts.any ? false
+
+    super
 
 CurrencySelectView.register()
 
@@ -418,6 +437,10 @@ helpers.registerTag (inputCfg)->
 helpers.registerTag (inputCfg)->
   return inputCfg.hints['product-type-select']
 , 'product-type-select'
+
+helpers.registerTag (inputCfg)->
+  return inputCfg.hints['date-picker']
+, 'date-picker'
 
 helpers.registerTag (inputCfg)->
   return inputCfg.hints['mailinglist-thankyou-select']
