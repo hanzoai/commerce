@@ -190,7 +190,7 @@ class BasicPagedTable extends BasicTableView
 
     @maxPage = Math.ceil @count/(data?.display ? @display)
 
-    @update()
+    riot.update()
 
     @initDynamicContent()
     @$pagination.jqPagination 'option', 'max_page', @maxPage
