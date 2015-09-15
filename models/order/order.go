@@ -135,6 +135,9 @@ type Order struct {
 }
 
 func (o *Order) Init() {
+	o.Status = Open
+	o.PaymentStatus = payment.Unpaid
+	o.FulfillmentStatus = FulfillmentUnfulfilled
 	o.Adjustments = make([]Adjustment, 0)
 	o.History = make([]Event, 0)
 	o.Items = make([]LineItem, 0)
@@ -146,10 +149,6 @@ func New(db *datastore.Datastore) *Order {
 	o := new(Order)
 	o.Init()
 	o.Model = mixin.Model{Db: db, Entity: o}
-
-	o.Status = Open
-	o.PaymentStatus = payment.Unpaid
-	o.FulfillmentStatus = FulfillmentUnfulfilled
 	return o
 }
 
@@ -158,6 +157,15 @@ func (o Order) Kind() string {
 }
 
 func (o Order) Document() mixin.Document {
+	preorder := "true"
+	if !o.Preorder {
+		preorder = "false"
+	}
+	confirmed := "true"
+	if o.Unconfirmed {
+		confirmed = "false"
+	}
+
 	return &Document{
 		o.Id(),
 		o.UserId,
@@ -175,6 +183,20 @@ func (o Order) Document() mixin.Document {
 		o.ShippingAddress.State,
 		country.ByISOCodeISO3166_2[o.ShippingAddress.Country].ISO3166OneEnglishShortNameReadingOrder,
 		o.ShippingAddress.PostalCode,
+
+		o.CreatedAt,
+		o.UpdatedAt,
+
+		string(o.Currency),
+		float64(o.Total),
+		strings.Join(o.CouponCodes, " "),
+		o.ReferrerId,
+
+		string(o.Status),
+		string(o.PaymentStatus),
+		string(o.FulfillmentStatus),
+		string(preorder),
+		string(confirmed),
 	}
 }
 

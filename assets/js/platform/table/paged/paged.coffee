@@ -1,3 +1,4 @@
+_ = require 'underscore'
 crowdcontrol = require 'crowdcontrol'
 Events = crowdcontrol.Events
 
@@ -8,8 +9,17 @@ Api = crowdcontrol.data.Api
 BasicTableView = table.BasicTableView
 m = crowdcontrol.utils.mediator
 
+lowerCaseFirstLetter = (string) ->
+  return string.charAt(0).toLowerCase() + string.slice(1)
+
 capitalizeFirstLetter = (string) ->
   return string.charAt(0).toUpperCase() + string.slice(1)
+
+getSortField = (sortField)->
+  if sortField == "Id"
+    return "Id_"
+
+  return sortField
 
 class BasicPagedTable extends BasicTableView
   tag: 'basic-paged-table'
@@ -18,10 +28,28 @@ class BasicPagedTable extends BasicTableView
   maxPage: 2
   display: 10
   $pagination: $()
-  firstLoad: false
-  pagingLock: false
+  loaded: false
+
+  # Lock the form controls when paging/loading
+  lock: false
+
+  # Is the data being sourced from a static model?
+  # If this is set to the array of records from which to source model records from
+  staticModel: null
 
   events:
+    "#{Events.Table.PrepareForNewData}": ()->
+      @loaded = false
+      @staticModel = null
+      @model = []
+      @lock = true
+      @update()
+
+    "#{Events.Table.NewData}": (model)->
+      @loaded = true
+      @staticModel = model
+      @loadData()
+
     # finishing a form that is linked to this table will refresh it
     "#{Events.Form.SubmitSuccess}": ()->
       setTimeout ()=>
@@ -46,8 +74,6 @@ class BasicPagedTable extends BasicTableView
     @path = opts.path if opts.path
     @api = Api.get 'crowdstart'
 
-    m.trigger 'start-spin', @tag + @path + '-paged-table-load'
-
     @on 'update', ()=>
       requestAnimationFrame ()=>
         @initDynamicContent()
@@ -57,6 +83,9 @@ class BasicPagedTable extends BasicTableView
   sort: (id)->
     field = capitalizeFirstLetter id
     return ()=>
+      if @locked
+        return
+
       if @headerMap[id]?.hints['dontsort']
         return
 
@@ -89,8 +118,8 @@ class BasicPagedTable extends BasicTableView
     if !@initializedPaging && $pagination[0]?
       $pagination.jqPagination
         paged: (page)=>
-          if page != @page && !@pagingLock
-            @pagingLock = true
+          if page != @page && !@lock
+            @lock = true
             @page = page
             @refresh()
       @initializedPaging = true
@@ -107,33 +136,68 @@ class BasicPagedTable extends BasicTableView
         @initDynamicContent()
 
   refresh: ()->
-    path = @path + '?page=' + @page + '&display=' + @display + '&sort=' + (if @filterModel.sortDirection == 'sort-desc' then '' else '-') + if @filterModel.sortField == "Id" then "Id_" else @filterModel.sortField
+    sortField = getSortField @filterModel.sortField
+
+    if @staticModel?
+      # sort the static model if we have static model to sort
+
+      # fields on json are camelcase while the ones in query are capitalized
+      sortField = lowerCaseFirstLetter sortField
+
+      coeff = 1
+      if @filterModel.sortDirection == 'sort-asc'
+        coeff = -1
+
+      @staticModel.sort((a, b)->
+        if _.isNumber(a[sortField])
+          return coeff *(a[sortField] - b[sortField])
+        else if moment.isDate(a[sortField])
+          return  coeff *(if moment(a[sortField]).isAfter(b[sortField]) then 1 else -1)
+        else if _.isString(a[sortField])
+          return  coeff *(a[sortField].localeCompare b[sortField])
+        else if _.isBoolean(a[sortField])
+          return  coeff *(if a[sortField] then 1 else -1)
+        else
+          return -coeff
+      )
+
+      @loadData()
+      return
+
+    # construct sort query string if querying server
+    path = @path + '?page=' + @page + '&display=' + @display + '&sort=' + (if @filterModel.sortDirection == 'sort-desc' then '' else '-') + sortField
     requestAnimationFrame ()->
       $('.previous, .next').addClass('disabled')
 
     @api.get(path).then (res) =>
-      @firstLoad = true
-
-      m.trigger 'stop-spin', @tag + @path + '-paged-table-load'
+      @loaded = true
       data = res.responseText
 
-      # riot maintainer, why do you allow for desync in 2.2.x
-      @model = []
-      @update()
+      @loadData(data)
 
+  # This handles
+  loadData: (data)->
+    # riot maintainer, why do you allow for desync in 2.2.x
+    @model = []
+    @update()
+
+    if @staticModel?
+      @model = @staticModel.slice @display * (@page - 1), @display * @page
+      @count = @staticModel.length
+    else
       @model = data.models
       @count = data.count
 
-      @maxPage = Math.ceil data.count/data.display
+    @maxPage = Math.ceil @count/(data?.display ? @display)
 
-      @update()
+    @update()
 
-      @initDynamicContent()
-      @$pagination.jqPagination 'option', 'max_page', @maxPage
+    @initDynamicContent()
+    @$pagination.jqPagination 'option', 'max_page', @maxPage
 
-      @pagingLock = false
+    @lock = false
 
-      requestAnimationFrame ()->
-        $('.previous, .next').removeClass('disabled')
+    requestAnimationFrame ()->
+      $('.previous, .next').removeClass('disabled')
 
 module.exports = BasicPagedTable

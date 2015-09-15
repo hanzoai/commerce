@@ -336,6 +336,14 @@ func (m *Model) GetById(id string) error {
 		} else {
 			filterStr = "Username"
 		}
+	case "order":
+		// Special-cased since order is filtered by IntId (order number)
+		key := m.Db.KeyFromInt("order", id)
+		ok, err := m.Query().Filter("__key__ =", key).First()
+		if !ok {
+			return datastore.KeyNotFound
+		}
+		return err
 	default:
 		return datastore.InvalidKey
 	}
