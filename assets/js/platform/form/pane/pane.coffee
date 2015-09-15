@@ -26,7 +26,8 @@ class Pane extends FormView
     @on 'update', ()=>
       setTimeout ()=>
         $root = $(@root)
-        if $root.children().attr('style') == ''
+        style = $root.children().attr('style')
+        if !style? || style == ''
           $root.children().height $root.height()
       , 500
 
