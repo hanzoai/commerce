@@ -1,5 +1,7 @@
 package order
 
+import "time"
+
 type Document struct {
 	Id_    string
 	UserId string
@@ -17,8 +19,22 @@ type Document struct {
 	ShippingAddressState      string
 	ShippingAddressCountry    string
 	ShippingAddressPostalCode string
+
+	CreatedAt time.Time
+	UpdatedAt time.Time
+
+	Currency    string
+	Total       float64
+	CouponCodes string
+	ReferrerId  string
+
+	Status            string
+	PaymentStatus     string
+	FulfillmentStatus string
+	Preorder          string
+	Confirmed         string
 }
 
 func (d Document) Id() string {
-	return string(d.Id_)
+	return d.Id_
 }
