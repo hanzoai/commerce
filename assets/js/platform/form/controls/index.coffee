@@ -322,8 +322,16 @@ MailinglistThankyouSelectView.register()
 
 class CountrySelectView extends BasicSelectView
   tag: 'country-select'
+  any: false
+
   options: ()->
-    return window.countries
+    countries = _.extend window.countries, {}
+    countries['_any'] = 'Any Country' if @any
+    return countries
+
+  js: (opts)->
+    @any = opts.any ? false
+    super
 
 CountrySelectView.register()
 
@@ -338,7 +346,6 @@ class CurrencySelectView extends BasicSelectView
 
   js: (opts)->
     @any = opts.any ? false
-
     super
 
 CurrencySelectView.register()

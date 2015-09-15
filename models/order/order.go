@@ -174,6 +174,7 @@ func (o Order) Document() mixin.Document {
 		o.BillingAddress.Line2,
 		o.BillingAddress.City,
 		o.BillingAddress.State,
+		o.BillingAddress.Country,
 		country.ByISOCodeISO3166_2[o.BillingAddress.Country].ISO3166OneEnglishShortNameReadingOrder,
 		o.BillingAddress.PostalCode,
 
@@ -181,6 +182,7 @@ func (o Order) Document() mixin.Document {
 		o.ShippingAddress.Line2,
 		o.ShippingAddress.City,
 		o.ShippingAddress.State,
+		o.BillingAddress.Country,
 		country.ByISOCodeISO3166_2[o.ShippingAddress.Country].ISO3166OneEnglishShortNameReadingOrder,
 		o.ShippingAddress.PostalCode,
 
