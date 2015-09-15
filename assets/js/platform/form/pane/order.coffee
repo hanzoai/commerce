@@ -13,7 +13,7 @@ localizeDate = (date)->
   return moment((tokens[2] ? '2015') + ' ' + (tokens[0] ? '01') + ' ' + (tokens[1] ? '01'), 'YYYY-MM-DD').format 'YYYY-MM-DD'
 
 class OrderFilterPane extends Pane
-  tag: 'orders-filter-pane'
+  tag: 'order-filter-pane'
   html: require '../../templates/backend/form/pane/order.html'
   path: 'search/order'
 
