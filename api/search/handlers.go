@@ -16,4 +16,5 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	group.Use(middleware.AccessControl("*"))
 
 	group.GET("/user", adminRequired, namespaced, searchUser)
+	group.GET("/order", adminRequired, namespaced, searchOrder)
 }
