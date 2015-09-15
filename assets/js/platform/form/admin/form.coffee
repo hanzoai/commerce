@@ -38,7 +38,7 @@ class AdminForm extends FormView
 
         @obs.trigger Events.Form.Prefill, @model
         riot.update()
-      ).catch (e)=>
+      ).catch (e)->
         console.log(e.stack)
 
 module.exports = AdminForm

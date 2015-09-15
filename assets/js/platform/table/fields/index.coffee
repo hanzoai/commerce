@@ -95,7 +95,7 @@ class AgoTableFieldView extends DateTableFieldView
   tag: 'ago-table-field'
   js: ()->
     super
-    @value = $.timeago(@value)
+    @value = moment(@value).fromNow()
 
 AgoTableFieldView.register()
 
