@@ -196,7 +196,7 @@ func create(c *gin.Context) {
 	}
 
 	// Test key users are automatically confirmed
-	if org.Live {
+	if !org.Live {
 		usr.Enabled = true
 	}
 
