@@ -63,7 +63,7 @@ type User struct {
 		Affirm payment.Account `json:"affirm,omitempty"`
 	} `json:"accounts"`
 
-	Enabled bool `json:"-"` //whether or not the user can login yet
+	Enabled bool `json:"enabled"` //whether or not the user can login yet
 
 	Metadata  Metadata `json:"metadata" datastore:"-"`
 	Metadata_ string   `json:"-" datastore:",noindex"`
