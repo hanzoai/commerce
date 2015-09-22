@@ -18,6 +18,7 @@ class UserForm extends Form
     input('phone', 'Phone'),
     input('createdAt', '', 'static-date'),
     input('updatedAt', '', 'static-date'),
+    input('enabled', '', 'switch'),
 
     input('billingAddress.line1', 'Street Address'),
     input('billingAddress.line2', 'Apt/Suite Number'),
