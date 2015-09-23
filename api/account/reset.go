@@ -21,7 +21,7 @@ import (
 
 type resetReq struct {
 	Password        string `json:"password"`
-	ConfirmPassword string `json:"confirmPassword"`
+	PasswordConfirm string `json:"passwordConfirm"`
 }
 
 func sendPasswordReset(c *gin.Context, org *organization.Organization, usr *user.User, tok *token.Token) {
@@ -120,7 +120,7 @@ func resetConfirm(c *gin.Context) {
 		return
 	}
 
-	if req.Password != req.ConfirmPassword {
+	if req.Password != req.PasswordConfirm {
 		http.Fail(c, 400, "Passwords need to match", errors.New("Passwords need to match"))
 		return
 	}
