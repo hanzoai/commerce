@@ -81,7 +81,7 @@ func login(c *gin.Context) {
 
 	// If user is not enabled fail
 	if !usr.Enabled {
-		http.Fail(c, 401, "User is not enabled", errors.New("User is not enabled"))
+		http.Fail(c, 401, "Account needs to be enabled", errors.New("Account needs to be enabled"))
 		return
 	}
 
