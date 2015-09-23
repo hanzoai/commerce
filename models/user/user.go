@@ -63,7 +63,7 @@ type User struct {
 		Affirm payment.Account `json:"affirm,omitempty"`
 	} `json:"accounts"`
 
-	Enabled bool `json:"-"` //whether or not the user can login yet
+	Enabled bool `json:"enabled"` //whether or not the user can login yet
 
 	Metadata  Metadata `json:"metadata" datastore:"-"`
 	Metadata_ string   `json:"-" datastore:",noindex"`
@@ -112,6 +112,7 @@ func (u User) Document() mixin.Document {
 		u.BillingAddress.Line2,
 		u.BillingAddress.City,
 		u.BillingAddress.State,
+		u.BillingAddress.Country,
 		country.ByISOCodeISO3166_2[u.BillingAddress.Country].ISO3166OneEnglishShortNameReadingOrder,
 		u.BillingAddress.PostalCode,
 
@@ -119,8 +120,12 @@ func (u User) Document() mixin.Document {
 		u.ShippingAddress.Line2,
 		u.ShippingAddress.City,
 		u.ShippingAddress.State,
+		u.ShippingAddress.Country,
 		country.ByISOCodeISO3166_2[u.ShippingAddress.Country].ISO3166OneEnglishShortNameReadingOrder,
 		u.ShippingAddress.PostalCode,
+
+		u.CreatedAt,
+		u.UpdatedAt,
 
 		u.Accounts.Stripe.BalanceTransactionId,
 		u.Accounts.Stripe.CardId,

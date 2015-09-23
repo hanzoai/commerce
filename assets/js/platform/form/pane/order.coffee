@@ -13,7 +13,7 @@ localizeDate = (date)->
   return moment((tokens[2] ? '2015') + ' ' + (tokens[0] ? '01') + ' ' + (tokens[1] ? '01'), 'YYYY-MM-DD').format 'YYYY-MM-DD'
 
 class OrderFilterPane extends Pane
-  tag: 'orders-filter-pane'
+  tag: 'order-filter-pane'
   html: require '../../templates/backend/form/pane/order.html'
   path: 'search/order'
 
@@ -23,24 +23,13 @@ class OrderFilterPane extends Pane
     input('currency', '', 'currency-type-select')
     input('minDate', '', 'date-picker')
     input('maxDate', '', 'date-picker')
+    input('country', '', 'country-select')
     input('status', '', 'basic-select')
     input('paymentStatus', '', 'basic-select')
     input('fulfillmentStatus', '', 'basic-select')
     input('preorder', '', 'basic-select')
     input('confirmed', '', 'basic-select')
   ]
-
-  model:
-    minTotal:           0
-    maxTotal:           0
-    currency:           '_any'
-    minDate:            '01/01/2015'
-    maxDate:            moment().format 'L'
-    status:             '_any'
-    paymentStatus:      '_any'
-    fulfillmentStatus:  '_any'
-    preorder:           '_any'
-    confirmed:          '_any'
 
   statusOptions:
     _any:       'Any Order State'
@@ -77,6 +66,22 @@ class OrderFilterPane extends Pane
     true:   'Confirmed'
     false:  'Unconfirmed'
 
+  js: ()->
+    @model =
+      minTotal:           0
+      maxTotal:           0
+      country:            '_any'
+      currency:           '_any'
+      minDate:            '01/01/2015'
+      maxDate:            moment().format 'L'
+      status:             '_any'
+      paymentStatus:      '_any'
+      fulfillmentStatus:  '_any'
+      preorder:           '_any'
+      confirmed:          '_any'
+
+    super
+
   queryString: ()->
     minDate = localizeDate(@model.minDate)
     maxDate = localizeDate(@model.maxDate)
@@ -95,6 +100,9 @@ class OrderFilterPane extends Pane
     maxDateStr = moment(maxDate, 'YYYY-MM-DD').format 'YYYY-MM-DD'
 
     query = "CreatedAt >= #{minDateStr} AND CreatedAt <= #{maxDateStr}"
+    if @model.country != '_any'
+      query += " AND ShippingAddressCountryCode = \"#{ @model.country }\""
+
     if @model.currency != '_any'
       query += " AND Currency = \"#{ @model.currency }\""
 

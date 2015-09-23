@@ -195,14 +195,22 @@ func create(c *gin.Context) {
 		log.Warn("Redis Error %s", err, ctx)
 	}
 
+	// Test key users are automatically confirmed
+	if !org.Live {
+		usr.Enabled = true
+	}
+
 	// Save new user
 	if err := usr.Put(); err != nil {
 		http.Fail(c, 400, "Failed to create user", err)
 	}
 
-	// Send welcome, email confirmation emails
-	sendEmailConfirmation(c, org, usr)
-	sendWelcome(c, org, usr)
+	// Don't send email confirmation if test key is used
+	if org.Live {
+		// Send welcome, email confirmation emails
+		sendEmailConfirmation(c, org, usr)
+		sendWelcome(c, org, usr)
+	}
 }
 
 func createConfirm(c *gin.Context) {
