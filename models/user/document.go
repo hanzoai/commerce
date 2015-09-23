@@ -1,6 +1,10 @@
 package user
 
-import "appengine/search"
+import (
+	"time"
+
+	"appengine/search"
+)
 
 type Document struct {
 	Id_               string
@@ -14,19 +18,24 @@ type Document struct {
 	LastNamePartials  string
 	Phone             string
 
-	BillingAddressLine1      string
-	BillingAddressLine2      string
-	BillingAddressCity       string
-	BillingAddressState      string
-	BillingAddressCountry    string
-	BillingAddressPostalCode string
+	BillingAddressLine1       string
+	BillingAddressLine2       string
+	BillingAddressCity        string
+	BillingAddressState       string
+	BillingAddressCountryCode string
+	BillingAddressCountry     string
+	BillingAddressPostalCode  string
 
-	ShippingAddressLine1      string
-	ShippingAddressLine2      string
-	ShippingAddressCity       string
-	ShippingAddressState      string
-	ShippingAddressCountry    string
-	ShippingAddressPostalCode string
+	ShippingAddressLine1       string
+	ShippingAddressLine2       string
+	ShippingAddressCity        string
+	ShippingAddressState       string
+	ShippingAddressCountryCode string
+	ShippingAddressCountry     string
+	ShippingAddressPostalCode  string
+
+	CreatedAt time.Time
+	UpdatedAt time.Time
 
 	StripeBalanceTransactionId string
 	StripeCardId               string
