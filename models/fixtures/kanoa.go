@@ -56,7 +56,7 @@ var Kanoa = New("kanoa", func(c *gin.Context) *organization.Organization {
 
 	org.Email.User.EmailConfirmed.Subject = "Thank you for confirming your email"
 	org.Email.User.EmailConfirmed.Template = readEmailTemplate("/resources/kanoa/emails/user-email-confirmed.html")
-	org.Email.User.EmailConfirmed.Enabled = true
+	org.Email.User.EmailConfirmed.Enabled = false
 
 	// Save org into default namespace
 	org.Put()
