@@ -42,7 +42,7 @@ class MailingListForm extends Form
 
   loadData: (model)->
     super
-    @inputConfigs[1].hints['unique-exception'] = model.slug
+    @inputConfigs[1].hints['unique-exception'] = model.name
 
 MailingListForm.register()
 
