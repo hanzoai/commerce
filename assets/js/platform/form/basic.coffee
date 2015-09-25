@@ -120,6 +120,9 @@ class BasicFormView extends FormView
         $button.text buttonText
         $button.prop 'disabled', false
       , 1000
+
+      @loadData(res.responseText)
+
       @obs.trigger Events.Form.ResponseSuccess
       @update()
     ).catch (e)=>
