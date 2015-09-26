@@ -453,6 +453,21 @@ func (m *Model) RunInTransaction(fn func() error) error {
 	return err
 }
 
+func (m Model) DeleteDocument() error {
+	if doc := m.Entity.Document(); doc != nil {
+		index, err := search.Open(m.Entity.Kind())
+		if err != nil {
+			return err
+		}
+
+		err = index.Delete(m.Db.Context, m.Id())
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Delete entity from Datastore
 func (m *Model) Delete(args ...interface{}) error {
 	if m.Mock { // Need mock Delete
@@ -466,6 +481,11 @@ func (m *Model) Delete(args ...interface{}) error {
 			return err
 		}
 	}
+
+	if err := m.DeleteDocument(); err != nil {
+		log.Error("Could not delete search document for model with id %v", m.Id(), m.Db.Context)
+	}
+
 	return m.Db.Delete(m.key)
 }
 
