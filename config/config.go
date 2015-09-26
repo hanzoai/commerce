@@ -53,6 +53,14 @@ type Config struct {
 		CallbackURL    string
 	}
 
+	Paypal struct {
+		PaypalSecurityUserId    string
+		PaypalSecurityPassword  string
+		PaypalSecuritySignature string
+		PaypalApplicationId     string
+		ParallelPaymentsUrl     string
+	}
+
 	Stripe struct {
 		// Current id/keys based on development mode
 		ClientId       string
@@ -218,6 +226,7 @@ var StaticUrl = config.StaticUrl
 var Stripe = config.Stripe
 var WorkingDir = config.WorkingDir
 var Redis = config.Redis
+var Paypal = config.Paypal
 
 func UrlFor(moduleName string, args ...string) string {
 	return config.UrlFor(moduleName, args...)
