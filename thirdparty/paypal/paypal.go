@@ -20,15 +20,11 @@ import (
 )
 
 type Client struct {
-	ctx          appengine.Context
-	devUserName  string
-	devPassword  string
-	devSignature string
-	appId        string
+	ctx appengine.Context
 }
 
-func New(ctx appengine.Context, devUserName string, devPassword string, devSignature string, appId string) *Client {
-	return &Client{ctx: ctx, devUserName: devUserName, devPassword: devPassword, devSignature: devSignature, appId: appId}
+func New(ctx appengine.Context) *Client {
+	return &Client{ctx: ctx}
 }
 
 func (c Client) GetPayKey(pay *payment.Payment, ord *order.Order, user *user.User, org *organization.Organization) (string, error) {
