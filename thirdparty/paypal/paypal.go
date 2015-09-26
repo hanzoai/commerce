@@ -37,6 +37,7 @@ func (c Client) GetPayKey(pay *payment.Payment, ord *order.Order, user *user.Use
 	data.Set("currencyCode", pay.Currency.Code())
 
 	var csFee = float64(pay.Amount) * org.Fee
+	//TODO: Fee is not always going to be set on the organization.  That is for overrides.  We need to refactor our defaults into Config.
 	var clientPayout = float64(pay.Amount) - csFee
 
 	data.Set("receiverList.receiver(0).amount", strconv.FormatFloat(clientPayout, 'E', -1, 64)) // Our client
