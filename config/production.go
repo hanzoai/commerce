@@ -28,6 +28,12 @@ func Production() *Config {
 
 	config.DemoMode = false
 
+	config.Paypal.PaypalApplicationId = ""
+	config.Paypal.PaypalSecurityUserId = "paypal_api1.verus.io"
+	config.Paypal.PaypalSecurityPassword = "EH4HZWXCWXVDYWM2"
+	config.Paypal.PaypalSecuritySignature = "AJd-SFo6hKDOAw2o1mufYejLBcKvAMX-QHZ9..uLkFX45mnUulajOXBJ"
+	config.Paypal.ParallelPaymentsUrl = ""
+
 	config.Stripe.ClientId = config.Stripe.ProductionClientId
 	config.Stripe.SecretKey = config.Stripe.LiveSecretKey
 	config.Stripe.PublishableKey = config.Stripe.LivePublishablKey
