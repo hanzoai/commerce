@@ -33,7 +33,7 @@ func (c Client) GetPayKey(pay *payment.Payment, ord *order.Order, user *user.Use
 	data.Set("actionType", "PAY")
 	data.Set("clientDetails.applicationId", config.Paypal.PaypalApplicationId) // Standard sandbox APP ID, for testing
 	data.Set("clientDetails.ipAddress", pay.Client.Ip)                         // IP address from which request is sent.
-	data.Set("senderEmail", user.Email)
+	data.Set("senderEmail", user.PaypalEmail)
 	data.Set("currencyCode", pay.Currency.Code())
 
 	var csFee = float64(pay.Amount) * org.Fee
