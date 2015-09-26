@@ -45,8 +45,8 @@ func searchUser(c *gin.Context) {
 
 	users := make([]user.User, len(keys))
 	if err := db.GetMulti(keys, users); err != nil {
-		http.Fail(c, 500, fmt.Sprintf("Failed to get users %v", err), err)
-		return
+		// http.Fail(c, 500, fmt.Sprintf("Failed to get users %v", err), err)
+		// return
 	}
 
 	http.Render(c, 200, users)
@@ -81,8 +81,8 @@ func searchOrder(c *gin.Context) {
 
 	orders := make([]order.Order, len(keys))
 	if err := db.GetMulti(keys, orders); err != nil {
-		http.Fail(c, 500, fmt.Sprintf("Failed to get orders %v", err), err)
-		return
+		// http.Fail(c, 500, fmt.Sprintf("Failed to get orders %v", err), err)
+		// return
 	}
 
 	http.Render(c, 200, orders)
