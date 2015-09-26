@@ -41,6 +41,7 @@ type User struct {
 	BillingAddress  Address  `json:"billingAddress,omitempty"`
 	ShippingAddress Address  `json:"shippingAddress,omitempty"`
 	Email           string   `json:"email"`
+	PaypalEmail     string   `json:"paypalEmail"`
 	PasswordHash    []byte   `schema:"-" datastore:",noindex" json:"-"`
 	Organizations   []string `json:"organizations"`
 
