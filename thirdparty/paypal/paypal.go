@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"crowdstart.com/config"
-	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/user"
@@ -27,7 +26,7 @@ func New(ctx appengine.Context) *Client {
 	return &Client{ctx: ctx}
 }
 
-func (c Client) GetPayKey(pay *payment.Payment, ord *order.Order, user *user.User, org *organization.Organization) (string, error) {
+func (c Client) GetPayKey(pay *payment.Payment, user *user.User, org *organization.Organization) (string, error) {
 
 	data := url.Values{}
 	data.Set("actionType", "PAY")
@@ -80,5 +79,6 @@ func (c Client) GetPayKey(pay *payment.Payment, ord *order.Order, user *user.Use
 	if err != nil {
 		return "", err
 	}
+
 	return paymentResponse.PayKey, nil
 }
