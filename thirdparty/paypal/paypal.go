@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"strconv"
 	"strings"
@@ -62,7 +63,8 @@ func (c Client) GetPayKey(pay *payment.Payment, user *user.User, org *organizati
 
 	req.PostForm = data
 
-	log.Warn("REQ %v", req, c.ctx)
+	dump, _ := httputil.DumpRequestOut(req, true)
+	log.Warn("REQ %v", string(dump), c.ctx)
 
 	client := urlfetch.Client(c.ctx)
 	res, err := client.Do(req)
