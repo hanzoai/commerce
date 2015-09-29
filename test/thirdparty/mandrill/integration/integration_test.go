@@ -7,11 +7,13 @@ import (
 
 	"crowdstart.com/config"
 	"crowdstart.com/thirdparty/mandrill"
+	"crowdstart.com/util/log"
 
 	. "crowdstart.com/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {
+	log.SetVerbose(testing.Verbose())
 	Setup("thirdparty/mandrill/integration", t)
 }
 
