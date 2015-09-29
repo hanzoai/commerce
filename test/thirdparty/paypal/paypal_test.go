@@ -13,11 +13,13 @@ import (
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/models/user"
 	"crowdstart.com/thirdparty/paypal"
+	"crowdstart.com/util/log"
 
 	. "crowdstart.com/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {
+	log.SetVerbose(testing.Verbose())
 	Setup("thirdparty/paypal", t)
 }
 
