@@ -13,6 +13,7 @@ import (
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/user"
 	"crowdstart.com/thirdparty/paypal/responses"
+	"crowdstart.com/util/log"
 
 	"appengine"
 	"appengine/urlfetch"
@@ -61,22 +62,29 @@ func (c Client) GetPayKey(pay *payment.Payment, user *user.User, org *organizati
 
 	req.PostForm = data
 
+	log.Warn("REQ %v", req, c.ctx)
+
 	client := urlfetch.Client(c.ctx)
 	res, err := client.Do(req)
 	defer res.Body.Close()
 	if err != nil {
+		log.Error("Request Came Back With Error %v", err, c.ctx)
 		return "", err
 	}
 
 	responseBytes, err := ioutil.ReadAll(res.Body)
 	if err != nil {
+		log.Error("Could Not Decode Response %v", err, c.ctx)
 		return "", err
 	}
+
+	log.Warn("Response Bytes: %v", string(responseBytes), c.ctx)
 
 	paymentResponse := responses.ParallelPaymentResponse{}
 	err = json.Unmarshal(responseBytes, &paymentResponse)
 
 	if err != nil {
+		log.Error("Could Not Unmarshal Response: %v", err, c.ctx)
 		return "", err
 	}
 
