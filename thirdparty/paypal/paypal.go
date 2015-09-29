@@ -71,8 +71,7 @@ func (c Client) GetPayKey(pay *payment.Payment, user *user.User, org *organizati
 	req.PostForm = data
 
 	dump, _ := httputil.DumpRequestOut(req, true)
-	log.Warn("'%v'", config.Paypal.ParallelPaymentsUrl, c.ctx)
-	log.Warn("REQ %s", string(dump), c.ctx)
+	log.Info("REQ %s", string(dump), c.ctx)
 
 	client := urlfetch.Client(c.ctx)
 	res, err := client.Do(req)
@@ -88,7 +87,7 @@ func (c Client) GetPayKey(pay *payment.Payment, user *user.User, org *organizati
 		return "", err
 	}
 
-	log.Warn("Response Bytes: %v", string(responseBytes), c.ctx)
+	log.Info("Response Bytes: %v", string(responseBytes), c.ctx)
 
 	paymentResponse := responses.ParallelPaymentResponse{}
 	err = json.Unmarshal(responseBytes, &paymentResponse)
