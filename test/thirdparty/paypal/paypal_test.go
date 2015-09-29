@@ -1,6 +1,8 @@
 package test
 
 import (
+	"testing"
+
 	"github.com/zeekay/aetest"
 
 	"crowdstart.com/datastore"
@@ -9,16 +11,22 @@ import (
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/models/user"
+	"crowdstart.com/thirdparty/paypal"
 
 	. "crowdstart.com/util/test/ginkgo"
 )
 
+func Test(t *testing.T) {
+	Setup("thirdparty/paypal", t)
+}
+
 var (
-	ctx aetest.Context
-	org *organization.Organization
-	usr *user.User
-	ord *order.Order
-	pay *payment.Payment
+	ctx    aetest.Context
+	org    *organization.Organization
+	usr    *user.User
+	ord    *order.Order
+	pay    *payment.Payment
+	client *paypal.Client
 )
 
 var _ = BeforeSuite(func() {
@@ -29,18 +37,20 @@ var _ = BeforeSuite(func() {
 	db := datastore.New(ctx)
 
 	usr = user.New(db)
-	usr.PaypalEmail = ""
+	usr.PaypalEmail = "brokeima@gmail.com"
 
 	org = organization.New(db)
-	org.Paypal.Email = ""
-	org.Paypal.ConfirmUrl = ""
-	org.Paypal.CancelUrl = ""
+	org.Paypal.Email = "paypal@suchtees.com"
+	org.Paypal.ConfirmUrl = "localhost:8080"
+	org.Paypal.CancelUrl = "localhost:8080"
 	org.Fee = 0.05
 
 	pay = payment.New(db)
 	pay.Amount = 100
 	pay.Currency = currency.USD
 	pay.Client.Ip = "1.1.1.1"
+
+	client = paypal.New(ctx)
 })
 
 var _ = AfterSuite(func() {
@@ -49,7 +59,11 @@ var _ = AfterSuite(func() {
 })
 
 var _ = Describe("paypal.GetPayKey", func() {
-	Context("Should Succeed", func() {
-		// Do things here
+	Context("Get Paypal PayKey", func() {
+		It("Should succeed in the normal case", func() {
+			key, err := client.GetPayKey(pay, usr, org)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(key).ToNot(Equal(""))
+		})
 	})
 })

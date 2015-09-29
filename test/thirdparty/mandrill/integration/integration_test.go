@@ -3,20 +3,16 @@ package mandrill_integration_test
 import (
 	"testing"
 
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-
 	"github.com/zeekay/aetest"
 
 	"crowdstart.com/config"
 	"crowdstart.com/thirdparty/mandrill"
-	"crowdstart.com/util/log"
+
+	. "crowdstart.com/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {
-	log.SetVerbose(testing.Verbose())
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "thirdparty/mandrill/integration")
+	Setup("thirdparty/mandrill/integration", t)
 }
 
 var (
