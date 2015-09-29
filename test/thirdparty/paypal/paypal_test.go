@@ -48,7 +48,7 @@ var _ = BeforeSuite(func() {
 	pay = payment.New(db)
 	pay.Amount = 100
 	pay.Currency = currency.USD
-	pay.Client.Ip = "1.1.1.1"
+	pay.Client.Ip = "64.136.209.186"
 
 	client = paypal.New(ctx)
 })
