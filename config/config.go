@@ -47,6 +47,8 @@ type Config struct {
 	Prefixes map[string]string
 	Hosts    map[string]string
 
+	Fee float64
+
 	Salesforce struct {
 		ConsumerKey    string
 		ConsumerSecret string
@@ -209,6 +211,7 @@ var CookieDomain = config.CookieDomain
 var DatastoreWarn = config.DatastoreWarn
 var DemoMode = config.DemoMode
 var Facebook = config.Facebook
+var Fee = config.Fee
 var Google = config.Google
 var IsDevelopment = config.IsDevelopment
 var IsProduction = config.IsProduction

@@ -39,10 +39,10 @@ func Development() *Config {
 	config.Stripe.WebhookURL = "http://localhost:8080" + config.UrlFor("platform", "/stripe/hook")
 
 	config.Paypal.PaypalApplicationId = "APP-80W284485P519543T"
-	config.Paypal.PaypalSecurityUserId = "paypal_api1.verus.io"
-	config.Paypal.PaypalSecurityPassword = "EH4HZWXCWXVDYWM2"
-	config.Paypal.PaypalSecuritySignature = "AJd-SFo6hKDOAw2o1mufYejLBcKvAMX-QHZ9..uLkFX45mnUulajOXBJ"
-	config.Paypal.ParallelPaymentsUrl = "https://svcs.sandbox.paypal.com/AdaptivePayments/Pay "
+	config.Paypal.PaypalSecurityUserId = "sandboxpaypal_api1.verus.io"
+	config.Paypal.PaypalSecurityPassword = "LTCEUG8Z6RZDCSWL"
+	config.Paypal.PaypalSecuritySignature = "A-qfk86fpHB4QlDDX.QRap2Q4iHGAa9QjVSDBGxcNT08r.2od2UXoCdn"
+	config.Paypal.ParallelPaymentsUrl = "https://svcs.sandbox.paypal.com/AdaptivePayments/Pay"
 
 	config.Facebook.AppId = "484263268389194"
 	config.Facebook.AppSecret = "e82c15c92f9679a146a136790baf7d67"

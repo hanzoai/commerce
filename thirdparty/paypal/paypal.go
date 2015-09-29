@@ -2,7 +2,9 @@ package paypal
 
 import (
 	"encoding/json"
+	"errors"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -37,7 +39,12 @@ func (c Client) GetPayKey(pay *payment.Payment, user *user.User, org *organizati
 	data.Set("senderEmail", user.PaypalEmail)
 	data.Set("currencyCode", pay.Currency.Code())
 
-	var csFee = float64(pay.Amount) * org.Fee
+	fee := config.Fee
+	if org.Fee > 0 {
+		fee = org.Fee
+	}
+
+	var csFee = math.Ceil(float64(pay.Amount) * fee)
 	//TODO: Fee is not always going to be set on the organization.  That is for overrides.  We need to refactor our defaults into Config.
 	var clientPayout = float64(pay.Amount) - csFee
 
@@ -64,7 +71,8 @@ func (c Client) GetPayKey(pay *payment.Payment, user *user.User, org *organizati
 	req.PostForm = data
 
 	dump, _ := httputil.DumpRequestOut(req, true)
-	log.Warn("REQ %v", string(dump), c.ctx)
+	log.Warn("'%v'", config.Paypal.ParallelPaymentsUrl, c.ctx)
+	log.Warn("REQ %s", string(dump), c.ctx)
 
 	client := urlfetch.Client(c.ctx)
 	res, err := client.Do(req)
@@ -88,6 +96,15 @@ func (c Client) GetPayKey(pay *payment.Payment, user *user.User, org *organizati
 	if err != nil {
 		log.Error("Could Not Unmarshal Response: %v", err, c.ctx)
 		return "", err
+	}
+
+	errs := len(paymentResponse.Error)
+	if errs > 0 {
+		errStr := ""
+		if errs > 1 {
+			errStr = " and " + strconv.Itoa(errs) + " others"
+		}
+		return "", errors.New(paymentResponse.Error[0].Message + errStr)
 	}
 
 	return paymentResponse.PayKey, nil

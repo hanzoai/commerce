@@ -5,6 +5,7 @@ import (
 
 	"github.com/zeekay/aetest"
 
+	"crowdstart.com/config"
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
@@ -37,13 +38,13 @@ var _ = BeforeSuite(func() {
 	db := datastore.New(ctx)
 
 	usr = user.New(db)
-	usr.PaypalEmail = "brokeima@gmail.com"
+	usr.PaypalEmail = "dev@hanzo.ai"
 
 	org = organization.New(db)
 	org.Paypal.Email = "paypal@suchtees.com"
-	org.Paypal.ConfirmUrl = "localhost:8080"
-	org.Paypal.CancelUrl = "localhost:8080"
-	org.Fee = 0.05
+	org.Paypal.ConfirmUrl = "http://www.crowdstart.com"
+	org.Paypal.CancelUrl = "http://www.crowdstart.com"
+	org.Fee = config.Fee
 
 	pay = payment.New(db)
 	pay.Amount = 100
