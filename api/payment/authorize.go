@@ -100,7 +100,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	pay.Amount = ord.Total
 
 	// Fee defaults to 2%, override with organization fee if customized.
-	fee := 0.02
+	fee := config.Fee
 	if org.Fee > 0 {
 		fee = org.Fee
 	}

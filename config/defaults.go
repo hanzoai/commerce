@@ -10,7 +10,9 @@ func Defaults() *Config {
 	config.Hosts = make(map[string]string, 10)
 	config.Prefixes = make(map[string]string, 10)
 	config.RootDir, _ = filepath.Abs(cwd + "/../..")
-	config.SiteTitle = "SKULLY"
+	config.SiteTitle = "Crowdstart"
+
+	config.Fee = 0.02
 
 	config.Secret = "change-me-in-production"
 	config.SessionName = "session"
