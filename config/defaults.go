@@ -21,7 +21,7 @@ func Defaults() *Config {
 	config.Paypal.PaypalSecurityUserId = "paypal_api1.verus.io"
 	config.Paypal.PaypalSecurityPassword = "EH4HZWXCWXVDYWM2"
 	config.Paypal.PaypalSecuritySignature = "AJd-SFo6hKDOAw2o1mufYejLBcKvAMX-QHZ9..uLkFX45mnUulajOXBJ"
-	config.Paypal.ParallelPaymentsUrl = "https://svcs.sandbox.paypal.com/AdaptivePayments/Pay "
+	config.Paypal.ParallelPaymentsUrl = "https://svcs.sandbox.paypal.com/AdaptivePayments/Pay"
 
 	config.Stripe.DevelopmentClientId = "ca_53yyPzxlPsdAtzMEIuS2mXYDp4FFXLmm"
 	config.Stripe.ProductionClientId = "ca_53yyRUNpMtTRUgMlVlLAM3vllY1AVybU"
