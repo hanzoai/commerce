@@ -45,6 +45,10 @@ var Organization = New("organization", func(c *gin.Context) *organization.Organi
 	org.Stripe.PublishableKey = org.Stripe.Test.PublishableKey
 	org.Stripe.RefreshToken = org.Stripe.Test.RefreshToken
 
+	org.Paypal.Email = "paypal@suchtees.com"
+	org.Paypal.ConfirmUrl = "http://www.crowdstart.com"
+	org.Paypal.CancelUrl = "http://www.crowdstart.com"
+
 	// Add default access tokens
 	org.AddDefaultTokens()
 	log.Debug("Adding tokens: %v", org.Tokens)
