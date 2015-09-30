@@ -40,7 +40,7 @@ var _ = BeforeSuite(func() {
 	db := datastore.New(ctx)
 
 	usr = user.New(db)
-	usr.PaypalEmail = "dev@hanzo.ai"
+	// usr.PaypalEmail = "dev@hanzo.ai"
 
 	org = organization.New(db)
 	org.Paypal.Email = "paypal@suchtees.com"
