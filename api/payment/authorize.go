@@ -135,6 +135,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 
 	// Have stripe handle authorization
 	switch ord.Type {
+	case "paypal":
 	case "balance":
 		if err := balance.Authorize(org, ord, usr, pay); err != nil {
 			log.Info("Failed to authorize order using Balance:\n User: %+v, Order: %+v, Payment: %+v, Error: %v", usr, ord, pay, err, ctx)
