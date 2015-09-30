@@ -27,7 +27,6 @@ func PayPalPayKey(c *gin.Context) {
 	ord.Type = "paypal"
 
 	pay, usr, err := authorize(c, org, ord)
-
 	if err != nil {
 		http.Fail(c, 500, "Error during authorize", err)
 		return
@@ -40,6 +39,7 @@ func PayPalPayKey(c *gin.Context) {
 	if err != nil {
 		ord.Status = order.Cancelled
 		pay.Status = payment.Cancelled
+		pay.Account.Error = err.Error()
 		ord.MustPut()
 		pay.MustPut()
 
@@ -99,4 +99,48 @@ func PayPalConfirm(c *gin.Context) {
 }
 
 func PayPalCancel(c *gin.Context) {
+	org := middleware.GetOrganization(c)
+	ctx := org.Namespace(c)
+	db := datastore.New(ctx)
+
+	var ok bool
+	var err error
+	var ord *order.Order
+	var payments []*payment.Payment
+
+	ord = order.New(db)
+	payments = make([]*payment.Payment, 0)
+
+	if payKey := c.Params.ByName("payKey"); payKey != "" {
+		_, err = payment.Query(db).Filter("Account.PayKey=", payKey).GetAll(&payments)
+		if err != nil {
+			http.Fail(c, 500, "Failed to retrieve payment", err)
+			return
+		}
+	}
+
+	if len(payments) > 0 {
+		http.Fail(c, 404, "Failed to retrieve payment", PaymentDoesNotExist)
+		return
+	}
+
+	ok, err = ord.Query().Filter("Id=", payments[0].OrderId).First()
+	if !ok {
+		http.Fail(c, 404, "Failed to retrieve order", OrderDoesNotExist)
+		return
+	}
+
+	for _, pay := range payments {
+		pay.Model.Db = db
+		pay.Model.Entity = pay
+
+		pay.Status = payment.Cancelled
+		pay.Account.Error = PaymentCancelled.Error()
+		pay.MustPut()
+	}
+
+	ord.Status = order.Cancelled
+	ord.MustPut()
+
+	http.Render(c, 200, ord)
 }
