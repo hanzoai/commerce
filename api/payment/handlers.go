@@ -111,4 +111,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 
 	// Auth & Capture Pament API (Two Step Payment)
 	api.POST("/authorize", publishedRequired, Authorize)
+
+	// Paypal Paykey flow
+	api.POST("/paypal/pay", publishedRequired, PayKey)
 }
