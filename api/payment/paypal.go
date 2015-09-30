@@ -3,6 +3,10 @@ package payment
 import (
 	"github.com/gin-gonic/gin"
 
+	aeds "appengine/datastore"
+
+	"crowdstart.com/datastore"
+	"crowdstart.com/middleware"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/thirdparty/paypal"
@@ -43,7 +47,8 @@ func PayPalPayKey(c *gin.Context) {
 		return
 	}
 
-	pay.Account.PayPalAccount.PayKey = payKey
+	pay.Account.PayKey = payKey
+	ord.MustPut()
 	pay.MustPut()
 
 	payKeyResponse := PayKeyResponse{payKey}
@@ -52,6 +57,45 @@ func PayPalPayKey(c *gin.Context) {
 }
 
 func PayPalConfirm(c *gin.Context) {
+	org := middleware.GetOrganization(c)
+	ctx := org.Namespace(c)
+	db := datastore.New(ctx)
+
+	var ok bool
+	var err error
+	var keys []*aeds.Key
+	var ord *order.Order
+	var payments []*payment.Payment
+
+	ord = order.New(db)
+	payments = make([]*payment.Payment, 0)
+
+	if payKey := c.Params.ByName("payKey"); payKey != "" {
+		keys, err = payment.Query(db).Filter("Account.PayKey=", payKey).GetAll(&payments)
+		if err != nil {
+			http.Fail(c, 500, "Failed to retrieve payment", err)
+			return
+		}
+	}
+
+	if len(payments) > 0 {
+		http.Fail(c, 404, "Failed to retrieve payment", PaymentDoesNotExist)
+		return
+	}
+
+	ok, err = ord.Query().Filter("Id=", payments[0].OrderId).First()
+	if !ok {
+		http.Fail(c, 404, "Failed to retrieve order", OrderDoesNotExist)
+		return
+	}
+
+	ord, err = completeCapture(c, org, ord, keys, payments)
+	if err != nil {
+		http.Fail(c, 500, "Error during capture", err)
+		return
+	}
+
+	http.Render(c, 200, ord)
 }
 
 func PayPalCancel(c *gin.Context) {
