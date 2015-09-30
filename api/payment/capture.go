@@ -24,6 +24,7 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (
 
 	// We could actually capture different types of things here...
 	switch ord.Type {
+	case "paypal":
 	case "balance":
 		ord, keys, payments, err = balance.Capture(org, ord)
 		if err != nil {
@@ -35,6 +36,12 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (
 			return nil, err
 		}
 	}
+
+	return completeCapture(c, org, ord, keys, payments)
+}
+
+func completeCapture(c *gin.Context, org *organization.Organization, ord *order.Order, keys []*aeds.Key, payments []*payment.Payment) (*order.Order, error) {
+	var err error
 
 	// Referral
 	if ord.ReferrerId != "" {
