@@ -34,9 +34,13 @@ func (c Client) GetPayKey(pay *payment.Payment, user *user.User, org *organizati
 
 	data := url.Values{}
 	data.Set("actionType", "PAY")
-	data.Set("clientDetails.applicationId", config.Paypal.PaypalApplicationId) // Standard sandbox APP ID, for testing
-	data.Set("clientDetails.ipAddress", pay.Client.Ip)                         // IP address from which request is sent.
-	data.Set("senderEmail", user.PaypalEmail)
+	// Standard sandbox APP ID, for testing
+	data.Set("clientDetails.applicationId", config.Paypal.PaypalApplicationId)
+	// IP address from which request is sent.
+	data.Set("clientDetails.ipAddress", pay.Client.Ip)
+	if user.PaypalEmail != "" {
+		data.Set("senderEmail", user.PaypalEmail)
+	}
 	data.Set("currencyCode", pay.Currency.Code())
 
 	fee := config.Fee
