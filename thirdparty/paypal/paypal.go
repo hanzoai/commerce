@@ -31,7 +31,6 @@ func New(ctx appengine.Context) *Client {
 }
 
 func (c Client) GetPayKey(pay *payment.Payment, user *user.User, org *organization.Organization) (string, error) {
-
 	data := url.Values{}
 	data.Set("actionType", "PAY")
 	// Standard sandbox APP ID, for testing

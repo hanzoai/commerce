@@ -5,7 +5,6 @@ import (
 
 	"github.com/zeekay/aetest"
 
-	"crowdstart.com/config"
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
@@ -46,7 +45,6 @@ var _ = BeforeSuite(func() {
 	org.Paypal.Email = "paypal@suchtees.com"
 	org.Paypal.ConfirmUrl = "http://www.crowdstart.com"
 	org.Paypal.CancelUrl = "http://www.crowdstart.com"
-	org.Fee = config.Fee
 
 	pay = payment.New(db)
 	pay.Amount = 100

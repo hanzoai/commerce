@@ -20,6 +20,9 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	// API for getting a full product/variant/bundle for a specific store
 	api.POST("/:storeid/authorize", publishedRequired, namespaced, authorize)
 	api.POST("/:storeid/charge", publishedRequired, namespaced, charge)
+	api.POST("/:storeid/paypal/pay", publishedRequired, namespaced, charge)
+	api.POST("/:storeid/paypal/confirm/:payKey", publishedRequired, namespaced, charge)
+	api.POST("/:storeid/paypal/cancel/:payKey", publishedRequired, namespaced, charge)
 
 	// API for getting a full product/variant/bundle for a specific store
 	api.GET("/:storeid/bundle/:key", publishedRequired, namespaced, getItem("bundle"))
