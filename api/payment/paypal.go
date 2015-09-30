@@ -3,6 +3,8 @@ package payment
 import (
 	"github.com/gin-gonic/gin"
 
+	"crowdstart.com/models/order"
+	"crowdstart.com/models/payment"
 	"crowdstart.com/thirdparty/paypal"
 	"crowdstart.com/util/json/http"
 )
@@ -11,7 +13,7 @@ type PayKeyResponse struct {
 	PayKey string `json:"payKey"`
 }
 
-func PayKey(c *gin.Context) {
+func PayPalPayKey(c *gin.Context) {
 	org, ord := getOrganizationAndOrder(c)
 	if ord == nil {
 		http.Fail(c, 404, "Failed to retrieve order", OrderDoesNotExist)
@@ -19,7 +21,6 @@ func PayKey(c *gin.Context) {
 	}
 
 	ord.Type = "paypal"
-	ctx := org.Db.Context
 
 	pay, usr, err := authorize(c, org, ord)
 
@@ -28,10 +29,30 @@ func PayKey(c *gin.Context) {
 		return
 	}
 
+	ctx := org.Db.Context
 	client := paypal.New(ctx)
+
 	payKey, err := client.GetPayKey(pay, usr, org)
+	if err != nil {
+		ord.Status = order.Cancelled
+		pay.Status = payment.Cancelled
+		ord.MustPut()
+		pay.MustPut()
+
+		http.Fail(c, 500, "Paypal Error", err)
+		return
+	}
+
+	pay.Account.PayPalAccount.PayKey = payKey
+	pay.MustPut()
 
 	payKeyResponse := PayKeyResponse{payKey}
 
 	http.Render(c, 200, payKeyResponse)
+}
+
+func PayPalConfirm(c *gin.Context) {
+}
+
+func PayPalCancel(c *gin.Context) {
 }
