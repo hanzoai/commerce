@@ -113,5 +113,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api.POST("/authorize", publishedRequired, Authorize)
 
 	// Paypal Paykey flow
-	api.POST("/paypal/pay", publishedRequired, PayKey)
+	api.POST("/paypal/pay", publishedRequired, PayPalPayKey)
+	api.POST("/paypal/confirm:payKey", publishedRequired, PayPalPayKey)
+	api.POST("/paypal/cancel/:payKey", publishedRequired, PayPalPayKey)
 }
