@@ -127,9 +127,9 @@ func CancelPaypal(stor *store.Store) testHelperReturn {
 	log.Debug("ord %v", ord)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(ord.Type).To(Equal("paypal"))
-	Expect(string(ord.Status)).To(Equal(order.Cancelled))
+	Expect(string(ord.Status)).To(Equal(string(order.Cancelled)))
 	Expect(ord.FulfillmentStatus).To(Equal(FulfillmentUnfulfilled))
-	Expect(string(ord.PaymentStatus)).To(Equal(payment.Cancelled))
+	Expect(string(ord.PaymentStatus)).To(Equal(string(payment.Cancelled)))
 
 	// User should be in db
 	usr := user.New(db)
@@ -172,7 +172,7 @@ func ConfirmPaypal(stor *store.Store) testHelperReturn {
 	Expect(ord.Type).To(Equal("paypal"))
 	Expect(string(ord.Status)).To(Equal(string(order.Open)))
 	Expect(ord.FulfillmentStatus).To(Equal(FulfillmentUnfulfilled))
-	Expect(string(ord.PaymentStatus)).To(Equal(payment.Paid))
+	Expect(string(ord.PaymentStatus)).To(Equal(string(payment.Paid)))
 
 	// User should be in db
 	usr := user.New(db)
