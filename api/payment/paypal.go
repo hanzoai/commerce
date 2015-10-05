@@ -88,17 +88,11 @@ func PayPalConfirm(c *gin.Context) {
 		return
 	}
 
-	for i, pay := range payments {
-		pay.Model.Db = db
-		pay.Model.Entity = pay
-
+	for _, pay := range payments {
 		pay.Status = payment.Paid
-		pay.SetKey(keys[i])
-		pay.MustPut()
 	}
 
 	ord.PaymentStatus = payment.Paid
-	ord.MustPut()
 
 	ord, err = completeCapture(c, org, ord, keys, payments)
 	if err != nil {
