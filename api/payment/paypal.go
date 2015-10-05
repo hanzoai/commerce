@@ -61,7 +61,6 @@ func PayPalConfirm(c *gin.Context) {
 	ctx := org.Namespace(c)
 	db := datastore.New(ctx)
 
-	var ok bool
 	var err error
 	var keys []*aeds.Key
 	var ord *order.Order
@@ -78,16 +77,28 @@ func PayPalConfirm(c *gin.Context) {
 		}
 	}
 
-	if len(payments) > 0 {
+	if len(payments) == 0 {
 		http.Fail(c, 404, "Failed to retrieve payment", PaymentDoesNotExist)
 		return
 	}
 
-	ok, err = ord.Query().Filter("Id=", payments[0].OrderId).First()
-	if !ok {
+	err = ord.GetById(payments[0].OrderId)
+	if err != nil {
 		http.Fail(c, 404, "Failed to retrieve order", OrderDoesNotExist)
 		return
 	}
+
+	for i, pay := range payments {
+		pay.Model.Db = db
+		pay.Model.Entity = pay
+
+		pay.Status = payment.Paid
+		pay.SetKey(keys[i])
+		pay.MustPut()
+	}
+
+	ord.PaymentStatus = payment.Paid
+	ord.MustPut()
 
 	ord, err = completeCapture(c, org, ord, keys, payments)
 	if err != nil {
@@ -103,8 +114,8 @@ func PayPalCancel(c *gin.Context) {
 	ctx := org.Namespace(c)
 	db := datastore.New(ctx)
 
-	var ok bool
 	var err error
+	var keys []*aeds.Key
 	var ord *order.Order
 	var payments []*payment.Payment
 
@@ -112,34 +123,36 @@ func PayPalCancel(c *gin.Context) {
 	payments = make([]*payment.Payment, 0)
 
 	if payKey := c.Params.ByName("payKey"); payKey != "" {
-		_, err = payment.Query(db).Filter("Account.PayKey=", payKey).GetAll(&payments)
+		keys, err = payment.Query(db).Filter("Account.PayKey=", payKey).GetAll(&payments)
 		if err != nil {
 			http.Fail(c, 500, "Failed to retrieve payment", err)
 			return
 		}
 	}
 
-	if len(payments) > 0 {
+	if len(payments) == 0 {
 		http.Fail(c, 404, "Failed to retrieve payment", PaymentDoesNotExist)
 		return
 	}
 
-	ok, err = ord.Query().Filter("Id=", payments[0].OrderId).First()
-	if !ok {
+	err = ord.GetById(payments[0].OrderId)
+	if err != nil {
 		http.Fail(c, 404, "Failed to retrieve order", OrderDoesNotExist)
 		return
 	}
 
-	for _, pay := range payments {
+	for i, pay := range payments {
 		pay.Model.Db = db
 		pay.Model.Entity = pay
 
+		pay.SetKey(keys[i])
 		pay.Status = payment.Cancelled
 		pay.Account.Error = PaymentCancelled.Error()
 		pay.MustPut()
 	}
 
 	ord.Status = order.Cancelled
+	ord.PaymentStatus = payment.Cancelled
 	ord.MustPut()
 
 	http.Render(c, 200, ord)

@@ -1,8 +1,10 @@
 package test
 
 import (
+	"math/rand"
 	"net/http"
 	"testing"
+	"time"
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
@@ -27,6 +29,7 @@ import (
 	paymentApi "crowdstart.com/api/payment"
 	storeApi "crowdstart.com/api/store"
 
+	. "crowdstart.com/models"
 	. "crowdstart.com/util/test/ginkgo"
 )
 
@@ -97,6 +100,92 @@ type testHelperReturn struct {
 	Orders   []*order.Order
 }
 
+func CancelPaypal(stor *store.Store) testHelperReturn {
+	ret := GetPayKey(stor)
+
+	path := "/paypal/cancel/" + ret.PayKey + "?token=" + accessToken
+	if stor != nil {
+		path = "/store/" + stor.Id() + path
+	}
+
+	log.Debug("Path %v", path)
+
+	// Should come back with 200
+	w := client.PostRawJSON(path, "{}")
+	Expect(w.Code).To(Equal(200))
+
+	log.Debug("JSON %v", w.Body)
+
+	// Payment should be in db
+	pay := payment.New(db)
+	err := pay.Get(ret.Payments[0].Id())
+
+	Expect(err).ToNot(HaveOccurred())
+	Expect(string(pay.Status)).To(Equal(payment.Cancelled))
+
+	// Order should be in db
+	ord := order.New(db)
+	err = ord.Get(pay.OrderId)
+	log.Debug("ord %v", ord)
+	Expect(err).ToNot(HaveOccurred())
+	Expect(ord.Type).To(Equal("paypal"))
+	Expect(string(ord.Status)).To(Equal(order.Cancelled))
+	Expect(ord.FulfillmentStatus).To(Equal(FulfillmentUnfulfilled))
+	Expect(string(ord.PaymentStatus)).To(Equal(payment.Cancelled))
+
+	// User should be in db
+	usr := user.New(db)
+	err = usr.Get(ord.UserId)
+
+	Expect(err).ToNot(HaveOccurred())
+	Expect(usr.Key()).ToNot(BeNil())
+
+	return ret
+}
+
+func ConfirmPaypal(stor *store.Store) testHelperReturn {
+	ret := GetPayKey(stor)
+
+	path := "/paypal/confirm/" + ret.PayKey + "?token=" + accessToken
+	if stor != nil {
+		path = "/store/" + stor.Id() + path
+	}
+
+	log.Debug("Path %v", path)
+
+	// Should come back with 200
+	w := client.PostRawJSON(path, "{}")
+	Expect(w.Code).To(Equal(200))
+
+	log.Debug("JSON %v", w.Body)
+
+	// Payment should be in db
+	pay := payment.New(db)
+	err := pay.Get(ret.Payments[0].Id())
+
+	Expect(err).ToNot(HaveOccurred())
+	Expect(string(pay.Status)).To(Equal(payment.Paid))
+
+	// Order should be in db
+	ord := order.New(db)
+	err = ord.Get(pay.OrderId)
+
+	Expect(err).ToNot(HaveOccurred())
+	Expect(ord.Type).To(Equal("paypal"))
+	Expect(string(ord.Status)).To(Equal(order.Open))
+	Expect(ord.FulfillmentStatus).To(Equal(FulfillmentUnfulfilled))
+	Expect(string(ord.PaymentStatus)).To(Equal(payment.Paid))
+
+	// User should be in db
+	usr := user.New(db)
+	err = usr.Get(ord.UserId)
+
+	Expect(err).ToNot(HaveOccurred())
+	Expect(usr.Key()).ToNot(BeNil())
+
+	return ret
+}
+
 func GetPayKey(stor *store.Store) testHelperReturn {
 	path := "/paypal/pay"
 	if stor != nil {
@@ -115,7 +204,7 @@ func GetPayKey(stor *store.Store) testHelperReturn {
 	err := json.DecodeBuffer(w.Body, &payKeyResponse)
 	Expect(err).ToNot(HaveOccurred())
 
-	log.Debug("PayKey Response %v", payKeyResponse)
+	log.Debug("PayKey Response %v", payKeyResponse.PayKey)
 
 	// Payment should be in db
 	pay := payment.New(db)
@@ -129,6 +218,8 @@ func GetPayKey(stor *store.Store) testHelperReturn {
 	ord := order.New(db)
 	err = ord.Get(pay.OrderId)
 	Expect(err).ToNot(HaveOccurred())
+	log.Debug("Ord %v", ord)
+	Expect(ord.Type).To(Equal("paypal"))
 
 	// User should be in db
 	usr := user.New(db)
@@ -146,8 +237,25 @@ func GetPayKey(stor *store.Store) testHelperReturn {
 
 var _ = Describe("payment/paypal", func() {
 	Context("Get a PayPal PayKey", func() {
+		time.Sleep(time.Duration(rand.Int63n(100) * 10))
 		It("Should Get a PayPal PayKey", func() {
 			log.Debug("Results: %v", GetPayKey(nil))
+		})
+
+		// It("Should Get a PayPal PayKey For Store", func() {
+		// 	log.Debug("Results: %v", GetPayKey(stor))
+		// })
+	})
+
+	Context("Finish a PayPal Order", func() {
+		It("Should Complete an Order", func() {
+			time.Sleep(time.Duration(rand.Int63n(100) * 10))
+			log.Debug("Results: %v", ConfirmPaypal(nil))
+		})
+
+		It("Should Cancel an Order", func() {
+			time.Sleep(time.Duration(rand.Int63n(100) * 10))
+			log.Debug("Results: %v", CancelPaypal(nil))
 		})
 	})
 })
