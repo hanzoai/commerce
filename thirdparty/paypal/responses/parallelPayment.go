@@ -14,3 +14,6 @@ type ParallelPaymentResponse struct {
 	PaymentExecStatus string
 	Error             []Error
 }
+
+type PaymentDetailsResponse struct {
+}
