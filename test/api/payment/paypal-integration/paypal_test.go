@@ -1,10 +1,8 @@
 package test
 
 import (
-	"math/rand"
 	"net/http"
 	"testing"
-	"time"
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
@@ -237,7 +235,6 @@ func GetPayKey(stor *store.Store) testHelperReturn {
 
 var _ = Describe("payment/paypal", func() {
 	Context("Get a PayPal PayKey", func() {
-		time.Sleep(time.Duration(rand.Int63n(100) * 10))
 		It("Should Get a PayPal PayKey", func() {
 			log.Debug("Results: %v", GetPayKey(nil))
 		})
@@ -249,12 +246,10 @@ var _ = Describe("payment/paypal", func() {
 
 	Context("Finish a PayPal Order", func() {
 		It("Should Complete an Order", func() {
-			time.Sleep(time.Duration(rand.Int63n(100) * 10))
 			log.Debug("Results: %v", ConfirmPaypal(nil))
 		})
 
 		It("Should Cancel an Order", func() {
-			time.Sleep(time.Duration(rand.Int63n(100) * 10))
 			log.Debug("Results: %v", CancelPaypal(nil))
 		})
 	})
