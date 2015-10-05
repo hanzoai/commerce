@@ -30,11 +30,20 @@ func New(ctx appengine.Context) *Client {
 	return &Client{ctx: ctx}
 }
 
+func setupHeaders(req *http.Request) {
+	req.Header.Set("X-PAYPAL-SECURITY-USERID", config.Paypal.SecurityUserId)
+	req.Header.Set("X-PAYPAL-SECURITY-PASSWORD", config.Paypal.SecurityPassword)
+	req.Header.Set("X-PAYPAL-SECURITY-SIGNATURE", config.Paypal.SecuritySignature)
+	req.Header.Set("X-PAYPAL-REQUEST-DATA-FORMAT", "NV")
+	req.Header.Set("X-PAYPAL-RESPONSE-DATA-FORMAT", "JSON")
+	req.Header.Set("X-PAYPAL-APPLICATION-ID", config.Paypal.ApplicationId)
+}
+
 func (c Client) GetPayKey(pay *payment.Payment, user *user.User, org *organization.Organization) (string, error) {
 	data := url.Values{}
 	data.Set("actionType", "PAY")
 	// Standard sandbox APP ID, for testing
-	data.Set("clientDetails.applicationId", config.Paypal.PaypalApplicationId)
+	data.Set("clientDetails.applicationId", config.Paypal.ApplicationId)
 	// IP address from which request is sent.
 	data.Set("clientDetails.ipAddress", pay.Client.Ip)
 	if user.PaypalEmail != "" {
@@ -59,17 +68,12 @@ func (c Client) GetPayKey(pay *payment.Payment, user *user.User, org *organizati
 	data.Set("returnUrl", org.Paypal.ConfirmUrl)
 	data.Set("cancelUrl", org.Paypal.CancelUrl)
 
-	req, err := http.NewRequest("POST", config.Paypal.ParallelPaymentsUrl, strings.NewReader(data.Encode()))
+	req, err := http.NewRequest("POST", config.Paypal.Api+"/AdaptivePayments/Pay", strings.NewReader(data.Encode()))
 	if err != nil {
 		return "", err
 	}
 
-	req.Header.Set("X-PAYPAL-SECURITY-USERID", config.Paypal.PaypalSecurityUserId)
-	req.Header.Set("X-PAYPAL-SECURITY-PASSWORD", config.Paypal.PaypalSecurityPassword)
-	req.Header.Set("X-PAYPAL-SECURITY-SIGNATURE", config.Paypal.PaypalSecuritySignature)
-	req.Header.Set("X-PAYPAL-REQUEST-DATA-FORMAT", "NV")
-	req.Header.Set("X-PAYPAL-RESPONSE-DATA-FORMAT", "JSON")
-	req.Header.Set("X-PAYPAL-APPLICATION-ID", config.Paypal.PaypalApplicationId)
+	setupHeaders(req)
 
 	req.PostForm = data
 
@@ -110,4 +114,15 @@ func (c Client) GetPayKey(pay *payment.Payment, user *user.User, org *organizati
 	}
 
 	return paymentResponse.PayKey, nil
+}
+
+func (c Client) GetPaymentDetails(payKey string) (*responses.PaymentDetailsResponse, error) {
+	req, err := http.NewRequest("POST", config.Paypal.Api+"/AdaptivePayments/PaymentDetails", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	setupHeaders(req)
+
+	return nil, nil
 }
