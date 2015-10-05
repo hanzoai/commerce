@@ -78,31 +78,29 @@ func completeCapture(c *gin.Context, org *organization.Organization, ord *order.
 	}
 
 	ctx := db.Context
-
-	t := ord.CreatedAt
-	if err := redis.IncrTotalOrders(ctx, org, t); err != nil {
-		log.Warn("Redis Error %s", err, ctx)
-	}
-	if err := redis.IncrTotalSales(ctx, org, payments, t); err != nil {
-		log.Warn("Redis Error %s", err, ctx)
-	}
-	if err := redis.IncrTotalProductOrders(ctx, org, ord, t); err != nil {
-		log.Warn("Redis Error %s", err, ctx)
-	}
-
-	if ord.StoreId != "" {
-		if err := redis.IncrStoreOrders(ctx, org, ord.StoreId, t); err != nil {
+	if !ord.Test {
+		t := ord.CreatedAt
+		if err := redis.IncrTotalOrders(ctx, org, t); err != nil {
 			log.Warn("Redis Error %s", err, ctx)
 		}
-		if err := redis.IncrStoreSales(ctx, org, ord.StoreId, payments, t); err != nil {
+		if err := redis.IncrTotalSales(ctx, org, payments, t); err != nil {
 			log.Warn("Redis Error %s", err, ctx)
 		}
-		if err := redis.IncrStoreProductOrders(ctx, org, ord.StoreId, ord, t); err != nil {
+		if err := redis.IncrTotalProductOrders(ctx, org, ord, t); err != nil {
 			log.Warn("Redis Error %s", err, ctx)
 		}
-	}
 
-	if ord.StoreId != "" {
+		if ord.StoreId != "" {
+			if err := redis.IncrStoreOrders(ctx, org, ord.StoreId, t); err != nil {
+				log.Warn("Redis Error %s", err, ctx)
+			}
+			if err := redis.IncrStoreSales(ctx, org, ord.StoreId, payments, t); err != nil {
+				log.Warn("Redis Error %s", err, ctx)
+			}
+			if err := redis.IncrStoreProductOrders(ctx, org, ord.StoreId, ord, t); err != nil {
+				log.Warn("Redis Error %s", err, ctx)
+			}
+		}
 	}
 
 	// Need to figure out a way to count coupon uses

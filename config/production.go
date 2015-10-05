@@ -28,11 +28,11 @@ func Production() *Config {
 
 	config.DemoMode = false
 
-	config.Paypal.PaypalApplicationId = ""
-	config.Paypal.PaypalSecurityUserId = "paypal_api1.verus.io"
-	config.Paypal.PaypalSecurityPassword = "EH4HZWXCWXVDYWM2"
-	config.Paypal.PaypalSecuritySignature = "AJd-SFo6hKDOAw2o1mufYejLBcKvAMX-QHZ9..uLkFX45mnUulajOXBJ"
-	config.Paypal.ParallelPaymentsUrl = ""
+	config.Paypal.ApplicationId = ""
+	config.Paypal.SecurityUserId = "paypal_api1.verus.io"
+	config.Paypal.SecurityPassword = "EH4HZWXCWXVDYWM2"
+	config.Paypal.SecuritySignature = "AJd-SFo6hKDOAw2o1mufYejLBcKvAMX-QHZ9..uLkFX45mnUulajOXBJ"
+	config.Paypal.Api = ""
 
 	config.Stripe.ClientId = config.Stripe.ProductionClientId
 	config.Stripe.SecretKey = config.Stripe.LiveSecretKey
