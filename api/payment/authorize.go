@@ -154,8 +154,10 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	ord.BillingAddress.Country = strings.ToUpper(ord.BillingAddress.Country)
 	ord.ShippingAddress.Country = strings.ToUpper(ord.ShippingAddress.Country)
 
-	if err := redis.IncrUsers(ctx, org, time.Now()); err != nil {
-		log.Warn("Redis Error %s", err, ctx)
+	if !ord.Test {
+		if err := redis.IncrUsers(ctx, org, time.Now()); err != nil {
+			log.Warn("Redis Error %s", err, ctx)
+		}
 	}
 
 	// Save user, order, payment

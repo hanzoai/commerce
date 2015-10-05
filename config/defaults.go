@@ -19,11 +19,11 @@ func Defaults() *Config {
 
 	config.DemoMode = demoMode
 
-	config.Paypal.PaypalApplicationId = "APP-80W284485P519543T"
-	config.Paypal.PaypalSecurityUserId = "paypal_api1.verus.io"
-	config.Paypal.PaypalSecurityPassword = "EH4HZWXCWXVDYWM2"
-	config.Paypal.PaypalSecuritySignature = "AJd-SFo6hKDOAw2o1mufYejLBcKvAMX-QHZ9..uLkFX45mnUulajOXBJ"
-	config.Paypal.ParallelPaymentsUrl = "https://svcs.sandbox.paypal.com/AdaptivePayments/Pay"
+	config.Paypal.ApplicationId = "APP-80W284485P519543T"
+	config.Paypal.SecurityUserId = "paypal_api1.verus.io"
+	config.Paypal.SecurityPassword = "EH4HZWXCWXVDYWM2"
+	config.Paypal.SecuritySignature = "AJd-SFo6hKDOAw2o1mufYejLBcKvAMX-QHZ9..uLkFX45mnUulajOXBJ"
+	config.Paypal.Api = "https://svcs.sandbox.paypal.com"
 
 	config.Stripe.DevelopmentClientId = "ca_53yyPzxlPsdAtzMEIuS2mXYDp4FFXLmm"
 	config.Stripe.ProductionClientId = "ca_53yyRUNpMtTRUgMlVlLAM3vllY1AVybU"
