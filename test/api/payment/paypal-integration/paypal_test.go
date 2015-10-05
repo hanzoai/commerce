@@ -15,7 +15,6 @@ import (
 	"crowdstart.com/models/store"
 	"crowdstart.com/models/user"
 	"crowdstart.com/test/api/payment/requests"
-	"crowdstart.com/thirdparty/paypal"
 	"crowdstart.com/util/gincontext"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
@@ -44,7 +43,6 @@ var (
 	org         *organization.Organization
 	prod        *product.Product
 	stor        *store.Store
-	pc          *paypal.Client
 	u           *user.User
 	refIn       *referrer.Referrer
 )
@@ -80,8 +78,6 @@ var _ = BeforeSuite(func() {
 	client.Setup(func(r *http.Request) {
 		r.Header.Set("Authorization", accessToken)
 	})
-
-	pc = paypal.New(ctx)
 
 	// Save namespaced db
 	db = datastore.New(org.Namespace(ctx))
