@@ -8,8 +8,8 @@ import (
 
 	"crowdstart.com/config"
 	"crowdstart.com/datastore"
-	"crowdstart.com/middleware"
 	"crowdstart.com/models/mailinglist"
+	"crowdstart.com/models/organization"
 	"crowdstart.com/models/subscriber"
 	"crowdstart.com/models/types/client"
 	"crowdstart.com/thirdparty/redis"
@@ -32,6 +32,8 @@ func addSubscriber(c *gin.Context) {
 	// Set key and namespace correctly
 	ml.SetKey(id)
 	ml.SetNamespace(ml.Key().Namespace())
+	db.Context = ml.Db.Context
+	ctx := db.Context
 
 	if err := ml.Get(); err != nil {
 		http.Fail(c, 404, fmt.Sprintf("Failed to retrieve mailing list '%v': %v", id, err), err)
@@ -39,7 +41,6 @@ func addSubscriber(c *gin.Context) {
 	}
 
 	// Make sure Subscriber is created with the right context
-	db.Context = ml.Db.Context
 	s := subscriber.New(db)
 
 	// Decode response body for subscriber
@@ -64,8 +65,8 @@ func addSubscriber(c *gin.Context) {
 		http.Render(c, 201, s)
 	}
 
-	ctx := db.Context
-	org := middleware.GetOrganization(c)
+	org := organization.New(db)
+	org.GetById(ml.Key().Namespace())
 
 	if err := redis.IncrSubscribers(ctx, org, ml.Id(), time.Now()); err != nil {
 		log.Warn("Redis Error %s", err, ctx)
