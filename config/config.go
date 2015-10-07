@@ -90,6 +90,13 @@ type Config struct {
 		}
 	}
 
+	// Netlify
+	Netlify struct {
+		ClientId    string
+		Secret      string
+		AccessToken string
+	}
+
 	// Redis
 	Redis struct {
 		Url      string
