@@ -9,11 +9,13 @@ github.com/gin-gonic/gin master
 github.com/go-errors/errors master
 github.com/gorilla/schema master
 github.com/gorilla/sessions master
+github.com/hashicorp/golang-lru
 github.com/headzoo/surf master
 github.com/huandu/facebook master
 github.com/julienschmidt/httprouter 8c199fb6259ffc1af525cc3ad52ee60ba8359669
 github.com/mattbaird/gochimp master
 github.com/mholt/binding master
+github.com/netlify/netlify-go master
 github.com/onsi/ginkgo/ginkgo master
 github.com/onsi/gomega master
 github.com/qedus/nds classic
@@ -24,7 +26,6 @@ github.com/vanng822/go-premailer/premailer master
 github.com/vincent-petithory/countries master
 github.com/zeekay/aetest master
 github.com/zeekay/go-logging master
-github.com/hashicorp/golang-lru
 golang.org/x/crypto/bcrypt master
 golang.org/x/oauth2/google master
 google.golang.org/api/storage/v1
