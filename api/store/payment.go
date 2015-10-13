@@ -35,6 +35,12 @@ func authorize(c *gin.Context) {
 	}
 }
 
+func capture(c *gin.Context) {
+	if err := setStore(c); err == nil {
+		payment.Capture(c)
+	}
+}
+
 func charge(c *gin.Context) {
 	if err := setStore(c); err == nil {
 		payment.Charge(c)
