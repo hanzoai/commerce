@@ -50,6 +50,8 @@ func Authorize(c *gin.Context) {
 	}
 
 	c.Writer.Header().Add("Location", orderEndpoint+ord.Id())
+
+	ord.Number = ord.NumberFromId()
 	http.Render(c, 200, ord)
 }
 
@@ -68,6 +70,7 @@ func Capture(c *gin.Context) {
 		return
 	}
 
+	ord.Number = ord.NumberFromId()
 	http.Render(c, 200, ord)
 }
 
@@ -95,6 +98,8 @@ func Charge(c *gin.Context) {
 	emails.SendOrderConfirmationEmail(c, org, ord, usr)
 
 	c.Writer.Header().Add("Location", orderEndpoint+ord.Id())
+
+	ord.Number = ord.NumberFromId()
 	http.Render(c, 200, ord)
 }
 
