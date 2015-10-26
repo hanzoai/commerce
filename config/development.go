@@ -43,6 +43,7 @@ func Development() *Config {
 	config.Paypal.SecurityPassword = "LTCEUG8Z6RZDCSWL"
 	config.Paypal.SecuritySignature = "A-qfk86fpHB4QlDDX.QRap2Q4iHGAa9QjVSDBGxcNT08r.2od2UXoCdn"
 	config.Paypal.Api = "https://svcs.sandbox.paypal.com"
+	config.Paypal.IpnUrl = "https://www.sandbox.paypal.com/cgi-bin/webscr"
 
 	config.Facebook.AppId = "484263268389194"
 	config.Facebook.AppSecret = "e82c15c92f9679a146a136790baf7d67"
