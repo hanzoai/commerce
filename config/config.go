@@ -61,6 +61,7 @@ type Config struct {
 		SecuritySignature string
 		ApplicationId     string
 		Api               string
+		IpnUrl            string
 	}
 
 	Stripe struct {
