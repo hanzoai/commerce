@@ -116,6 +116,7 @@ func (c Client) GetPayKey(pay *payment.Payment, user *user.User, org *organizati
 		if errs > 1 {
 			errStr = " and " + strconv.Itoa(errs) + " others"
 		}
+		log.Error("PayPal Error: %v", paymentResponse.Error[0].Message+errStr, c.ctx)
 		return "", errors.New("PayPal Error: " + paymentResponse.Error[0].Message + errStr)
 	}
 
