@@ -56,9 +56,15 @@ func (c Client) GetPayKey(pay *payment.Payment, user *user.User, org *organizati
 		fee = org.Fee
 	}
 
-	var csFee = math.Ceil(float64(pay.Amount) * fee)
+	var amount = float64(pay.Amount)
+	var csFee = math.Ceil(amount * fee)
 	//TODO: Fee is not always going to be set on the organization.  That is for overrides.  We need to refactor our defaults into Config.
-	var clientPayout = float64(pay.Amount) - csFee
+	var clientPayout = amount - csFee
+
+	if !pay.Currency.IsZeroDecimal() {
+		csFee /= 100
+		clientPayout /= 100
+	}
 
 	data.Set("receiverList.receiver(0).amount", strconv.FormatFloat(clientPayout, 'E', -1, 64)) // Our client
 	data.Set("receiverList.receiver(0).email", org.Paypal.Email)
@@ -67,8 +73,8 @@ func (c Client) GetPayKey(pay *payment.Payment, user *user.User, org *organizati
 	data.Set("receiverList.receiver(1).email", "dev@hanzo.ai")
 	data.Set("receiverList.receiver(1).primary", "false")
 	data.Set("requestEnvelope.errorLanguage", "en-US")
-	data.Set("returnUrl", org.Paypal.ConfirmUrl)
-	data.Set("cancelUrl", org.Paypal.CancelUrl)
+	data.Set("returnUrl", org.Paypal.ConfirmUrl+"#checkoutsuccess")
+	data.Set("cancelUrl", org.Paypal.CancelUrl+"#checkoutfailure")
 
 	req, err := http.NewRequest("POST", config.Paypal.Api+"/AdaptivePayments/Pay", strings.NewReader(data.Encode()))
 	if err != nil {
@@ -112,6 +118,7 @@ func (c Client) GetPayKey(pay *payment.Payment, user *user.User, org *organizati
 		if errs > 1 {
 			errStr = " and " + strconv.Itoa(errs) + " others"
 		}
+		log.Error("PayPal Error: %v", paymentResponse.Error[0].Message+errStr, c.ctx)
 		return "", errors.New("PayPal Error: " + paymentResponse.Error[0].Message + errStr)
 	}
 

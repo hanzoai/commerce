@@ -20,10 +20,11 @@ func Defaults() *Config {
 	config.DemoMode = demoMode
 
 	config.Paypal.ApplicationId = "APP-80W284485P519543T"
-	config.Paypal.SecurityUserId = "paypal_api1.verus.io"
-	config.Paypal.SecurityPassword = "EH4HZWXCWXVDYWM2"
-	config.Paypal.SecuritySignature = "AJd-SFo6hKDOAw2o1mufYejLBcKvAMX-QHZ9..uLkFX45mnUulajOXBJ"
+	config.Paypal.SecurityUserId = "sandboxpaypal_api1.verus.io"
+	config.Paypal.SecurityPassword = "LTCEUG8Z6RZDCSWL"
+	config.Paypal.SecuritySignature = "A-qfk86fpHB4QlDDX.QRap2Q4iHGAa9QjVSDBGxcNT08r.2od2UXoCdn"
 	config.Paypal.Api = "https://svcs.sandbox.paypal.com"
+	config.Paypal.IpnUrl = "https://www.sandbox.paypal.com/cgi-bin/webscr"
 
 	config.Stripe.DevelopmentClientId = "ca_53yyPzxlPsdAtzMEIuS2mXYDp4FFXLmm"
 	config.Stripe.ProductionClientId = "ca_53yyRUNpMtTRUgMlVlLAM3vllY1AVybU"
