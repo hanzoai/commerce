@@ -71,8 +71,8 @@ func (c Client) GetPayKey(pay *payment.Payment, user *user.User, org *organizati
 	data.Set("receiverList.receiver(1).amount", strconv.FormatFloat(csFee, 'E', -1, 64)) // Us
 	data.Set("receiverList.receiver(1).email", "dev@hanzo.ai")
 	data.Set("requestEnvelope.errorLanguage", "en-US")
-	data.Set("returnUrl", org.Paypal.ConfirmUrl)
-	data.Set("cancelUrl", org.Paypal.CancelUrl)
+	data.Set("returnUrl", org.Paypal.ConfirmUrl+"#checkoutsuccess")
+	data.Set("cancelUrl", org.Paypal.CancelUrl+"#checkoutfailure")
 
 	req, err := http.NewRequest("POST", config.Paypal.Api+"/AdaptivePayments/Pay", strings.NewReader(data.Encode()))
 	if err != nil {
