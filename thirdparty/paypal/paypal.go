@@ -56,6 +56,11 @@ func (c Client) GetPayKey(pay *payment.Payment, user *user.User, org *organizati
 		fee = org.Fee
 	}
 
+	var amount = float64(pay.Amount)
+	if !pay.Currency.IsZeroDecimal() {
+		amount /= 100
+	}
+
 	var csFee = math.Ceil(float64(pay.Amount) * fee)
 	//TODO: Fee is not always going to be set on the organization.  That is for overrides.  We need to refactor our defaults into Config.
 	var clientPayout = float64(pay.Amount) - csFee
