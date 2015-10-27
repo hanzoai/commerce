@@ -62,8 +62,10 @@ func (c Client) GetPayKey(pay *payment.Payment, user *user.User, org *organizati
 
 	data.Set("receiverList.receiver(0).amount", strconv.FormatFloat(clientPayout, 'E', -1, 64)) // Our client
 	data.Set("receiverList.receiver(0).email", org.Paypal.Email)
+	data.Set("receiverList.receiver(0).primary", "true")
 	data.Set("receiverList.receiver(1).amount", strconv.FormatFloat(csFee, 'E', -1, 64)) // Us
 	data.Set("receiverList.receiver(1).email", "dev@hanzo.ai")
+	data.Set("receiverList.receiver(1).primary", "false")
 	data.Set("requestEnvelope.errorLanguage", "en-US")
 	data.Set("returnUrl", org.Paypal.ConfirmUrl)
 	data.Set("cancelUrl", org.Paypal.CancelUrl)
