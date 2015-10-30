@@ -19,6 +19,7 @@ func Defaults() *Config {
 
 	config.DemoMode = demoMode
 
+	config.Paypal.Email = "dev@hanzo.ai"
 	config.Paypal.Api = "https://svcs.sandbox.paypal.com"
 	config.Paypal.IpnUrl = "https://www.sandbox.paypal.com/cgi-bin/webscr"
 

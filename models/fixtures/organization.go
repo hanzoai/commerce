@@ -45,19 +45,20 @@ var Organization = New("organization", func(c *gin.Context) *organization.Organi
 	org.Stripe.PublishableKey = org.Stripe.Test.PublishableKey
 	org.Stripe.RefreshToken = org.Stripe.Test.RefreshToken
 
-	org.Paypal.Email = "paypal@suchtees.com"
 	org.Paypal.ConfirmUrl = "http://www.crowdstart.com"
 	org.Paypal.CancelUrl = "http://www.crowdstart.com"
 
-	org.Paypal.SecurityUserId = "sandboxpaypal_api1.verus.io"
-	org.Paypal.ApplicationId = "APP-80W284485P519543T"
-	org.Paypal.SecurityPassword = "LTCEUG8Z6RZDCSWL"
-	org.Paypal.SecuritySignature = "A-qfk86fpHB4QlDDX.QRap2Q4iHGAa9QjVSDBGxcNT08r.2od2UXoCdn"
+	org.Paypal.Live.Email = "dev@hanzo.ai"
+	org.Paypal.Live.SecurityUserId = "dev@hanzo.ai"
+	org.Paypal.Live.ApplicationId = "APP-80W284485P519543T"
+	org.Paypal.Test.SecurityPassword = ""
+	org.Paypal.Live.SecuritySignature = ""
 
-	org.Paypal.TestSecurityUserId = "sandboxpaypal_api1.verus.io"
-	org.Paypal.TestApplicationId = "APP-80W284485P519543T"
-	org.Paypal.TestSecurityPassword = "LTCEUG8Z6RZDCSWL"
-	org.Paypal.TestSecuritySignature = "A-qfk86fpHB4QlDDX.QRap2Q4iHGAa9QjVSDBGxcNT08r.2od2UXoCdn"
+	org.Paypal.Test.Email = "dev@hanzo.ai"
+	org.Paypal.Test.SecurityUserId = "dev@hanzo.ai"
+	org.Paypal.Test.ApplicationId = "APP-80W284485P519543T"
+	org.Paypal.Test.SecurityPassword = ""
+	org.Paypal.Test.SecuritySignature = ""
 
 	// Add default access tokens
 	org.AddDefaultTokens()
