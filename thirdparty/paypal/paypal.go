@@ -31,12 +31,20 @@ func New(ctx appengine.Context) *Client {
 }
 
 func setupHeaders(req *http.Request, org *organization.Organization) {
-	req.Header.Set("X-PAYPAL-SECURITY-USERID", org.Paypal.SecurityUserId)
-	req.Header.Set("X-PAYPAL-SECURITY-PASSWORD", org.Paypal.SecurityPassword)
-	req.Header.Set("X-PAYPAL-SECURITY-SIGNATURE", org.Paypal.SecuritySignature)
+	if config.IsProduction {
+		req.Header.Set("X-PAYPAL-SECURITY-USERID", org.Paypal.SecurityUserId)
+		req.Header.Set("X-PAYPAL-SECURITY-PASSWORD", org.Paypal.SecurityPassword)
+		req.Header.Set("X-PAYPAL-SECURITY-SIGNATURE", org.Paypal.SecuritySignature)
+		req.Header.Set("X-PAYPAL-APPLICATION-ID", org.Paypal.ApplicationId)
+	} else {
+		req.Header.Set("X-PAYPAL-SECURITY-USERID", org.Paypal.TestSecurityUserId)
+		req.Header.Set("X-PAYPAL-SECURITY-PASSWORD", org.Paypal.TestSecurityPassword)
+		req.Header.Set("X-PAYPAL-SECURITY-SIGNATURE", org.Paypal.TestSecuritySignature)
+		req.Header.Set("X-PAYPAL-APPLICATION-ID", org.Paypal.TestApplicationId)
+	}
+
 	req.Header.Set("X-PAYPAL-REQUEST-DATA-FORMAT", "NV")
 	req.Header.Set("X-PAYPAL-RESPONSE-DATA-FORMAT", "JSON")
-	req.Header.Set("X-PAYPAL-APPLICATION-ID", org.Paypal.ApplicationId)
 }
 
 func (c Client) GetPayKey(pay *payment.Payment, user *user.User, org *organization.Organization) (string, error) {
