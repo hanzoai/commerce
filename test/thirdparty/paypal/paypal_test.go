@@ -42,9 +42,14 @@ var _ = BeforeSuite(func() {
 	// usr.PaypalEmail = "dev@hanzo.ai"
 
 	org = organization.New(db)
-	org.Paypal.Email = "paypal@suchtees.com"
 	org.Paypal.ConfirmUrl = "http://www.crowdstart.com"
 	org.Paypal.CancelUrl = "http://www.crowdstart.com"
+
+	org.Paypal.Test.Email = "dev@hanzo.ai"
+	org.Paypal.Test.SecurityUserId = "dev@hanzo.ai"
+	org.Paypal.Test.ApplicationId = "APP-80W284485P519543T"
+	org.Paypal.Test.SecurityPassword = ""
+	org.Paypal.Test.SecuritySignature = ""
 
 	pay = payment.New(db)
 	pay.Amount = 100
