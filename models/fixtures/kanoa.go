@@ -38,15 +38,15 @@ var Kanoa = New("kanoa", func(c *gin.Context) *organization.Organization {
 	// Email configuration
 	org.Mandrill.APIKey = ""
 
-	org.Paypal.SecurityUserId = "sandboxpaypal_api1.verus.io"
-	org.Paypal.ApplicationId = "APP-80W284485P519543T"
-	org.Paypal.SecurityPassword = "LTCEUG8Z6RZDCSWL"
-	org.Paypal.SecuritySignature = "A-qfk86fpHB4QlDDX.QRap2Q4iHGAa9QjVSDBGxcNT08r.2od2UXoCdn"
+	org.Paypal.SecurityUserId = "cival_api1.getkanoa.com"
+	org.Paypal.ApplicationId = "APP-6PG93936C8597944N"
+	org.Paypal.SecurityPassword = "2YNUBS9TB9U7EDCM"
+	org.Paypal.SecuritySignature = "AFcWxV21C7fd0v3bYYYRCpSSRl31AZ6CAELso7zxPQz8gLc5YSsz6Iza"
 
-	org.Paypal.TestSecurityUserId = "sandboxpaypal_api1.verus.io"
+	org.Paypal.TestSecurityUserId = "cival-facilitator_api1.getkanoa.com"
 	org.Paypal.TestApplicationId = "APP-80W284485P519543T"
-	org.Paypal.TestSecurityPassword = "LTCEUG8Z6RZDCSWL"
-	org.Paypal.TestSecuritySignature = "A-qfk86fpHB4QlDDX.QRap2Q4iHGAa9QjVSDBGxcNT08r.2od2UXoCdn"
+	org.Paypal.TestSecurityPassword = "XMDRP9CF75ESA8P8"
+	org.Paypal.TestSecuritySignature = "AcoBndPxINN2yEkgSKALAXYErpWTAFpUk3S6BucWeefHiUNpGxIleLof"
 
 	org.Email.Defaults.Enabled = true
 	org.Email.Defaults.FromName = "KANOA"
