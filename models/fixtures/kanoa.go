@@ -32,11 +32,21 @@ var Kanoa = New("kanoa", func(c *gin.Context) *organization.Organization {
 	org.Owners = []string{u.Id()}
 	org.Website = "http://www.getkanoa.com"
 	org.SecretKey = []byte("EZ2E011iX2Bp5lv149N2STd1d580cU58")
-	org.AddDefaultTokens()
+	//org.AddDefaultTokens()
 	org.Fee = 0.05
 
 	// Email configuration
 	org.Mandrill.APIKey = ""
+
+	org.Paypal.SecurityUserId = "sandboxpaypal_api1.verus.io"
+	org.Paypal.ApplicationId = "APP-80W284485P519543T"
+	org.Paypal.SecurityPassword = "LTCEUG8Z6RZDCSWL"
+	org.Paypal.SecuritySignature = "A-qfk86fpHB4QlDDX.QRap2Q4iHGAa9QjVSDBGxcNT08r.2od2UXoCdn"
+
+	org.Paypal.TestSecurityUserId = "sandboxpaypal_api1.verus.io"
+	org.Paypal.TestApplicationId = "APP-80W284485P519543T"
+	org.Paypal.TestSecurityPassword = "LTCEUG8Z6RZDCSWL"
+	org.Paypal.TestSecuritySignature = "A-qfk86fpHB4QlDDX.QRap2Q4iHGAa9QjVSDBGxcNT08r.2od2UXoCdn"
 
 	org.Email.Defaults.Enabled = true
 	org.Email.Defaults.FromName = "KANOA"
