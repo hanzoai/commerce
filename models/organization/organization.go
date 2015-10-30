@@ -110,20 +110,24 @@ type Organization struct {
 	} `json:"-"`
 
 	Paypal struct {
-		SecurityUserId    string
-		SecurityPassword  string
-		SecuritySignature string
-		ApplicationId     string
-
-		TestSecurityUserId    string
-		TestSecurityPassword  string
-		TestSecuritySignature string
-		TestApplicationId     string
+		Live struct {
+			Email             string `json:"paypalEmail"`
+			SecurityUserId    string
+			SecurityPassword  string
+			SecuritySignature string
+			ApplicationId     string
+		}
+		Test struct {
+			Email             string `json:"paypalEmail"`
+			SecurityUserId    string
+			SecurityPassword  string
+			SecuritySignature string
+			ApplicationId     string
+		}
 
 		ConfirmUrl string `json:"confirmUrl"`
 		CancelUrl  string `json:"cancelUrl"`
-		Email      string `json:"paypalEmail"`
-	}
+	} `json:"-"`
 
 	Stripe struct {
 		// For convenience duplicated

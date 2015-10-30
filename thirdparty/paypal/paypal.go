@@ -32,15 +32,15 @@ func New(ctx appengine.Context) *Client {
 
 func setupHeaders(req *http.Request, org *organization.Organization) {
 	if config.IsProduction {
-		req.Header.Set("X-PAYPAL-SECURITY-USERID", org.Paypal.SecurityUserId)
-		req.Header.Set("X-PAYPAL-SECURITY-PASSWORD", org.Paypal.SecurityPassword)
-		req.Header.Set("X-PAYPAL-SECURITY-SIGNATURE", org.Paypal.SecuritySignature)
-		req.Header.Set("X-PAYPAL-APPLICATION-ID", org.Paypal.ApplicationId)
+		req.Header.Set("X-PAYPAL-SECURITY-USERID", org.Paypal.Live.SecurityUserId)
+		req.Header.Set("X-PAYPAL-SECURITY-PASSWORD", org.Paypal.Live.SecurityPassword)
+		req.Header.Set("X-PAYPAL-SECURITY-SIGNATURE", org.Paypal.Live.SecuritySignature)
+		req.Header.Set("X-PAYPAL-APPLICATION-ID", org.Paypal.Live.ApplicationId)
 	} else {
-		req.Header.Set("X-PAYPAL-SECURITY-USERID", org.Paypal.TestSecurityUserId)
-		req.Header.Set("X-PAYPAL-SECURITY-PASSWORD", org.Paypal.TestSecurityPassword)
-		req.Header.Set("X-PAYPAL-SECURITY-SIGNATURE", org.Paypal.TestSecuritySignature)
-		req.Header.Set("X-PAYPAL-APPLICATION-ID", org.Paypal.TestApplicationId)
+		req.Header.Set("X-PAYPAL-SECURITY-USERID", org.Paypal.Test.SecurityUserId)
+		req.Header.Set("X-PAYPAL-SECURITY-PASSWORD", org.Paypal.Test.SecurityPassword)
+		req.Header.Set("X-PAYPAL-SECURITY-SIGNATURE", org.Paypal.Test.SecuritySignature)
+		req.Header.Set("X-PAYPAL-APPLICATION-ID", org.Paypal.Test.ApplicationId)
 	}
 
 	req.Header.Set("X-PAYPAL-REQUEST-DATA-FORMAT", "NV")
@@ -51,7 +51,11 @@ func (c Client) GetPayKey(pay *payment.Payment, user *user.User, org *organizati
 	data := url.Values{}
 	data.Set("actionType", "PAY")
 	// Standard sandbox APP ID, for testing
-	data.Set("clientDetails.applicationId", org.Paypal.ApplicationId)
+	if config.IsProduction {
+		data.Set("clientDetails.applicationId", org.Paypal.Live.ApplicationId)
+	} else {
+		data.Set("clientDetails.applicationId", org.Paypal.Test.ApplicationId)
+	}
 	// IP address from which request is sent.
 	data.Set("clientDetails.ipAddress", pay.Client.Ip)
 	if user.PaypalEmail != "" {
@@ -75,7 +79,11 @@ func (c Client) GetPayKey(pay *payment.Payment, user *user.User, org *organizati
 	}
 
 	data.Set("receiverList.receiver(0).amount", strconv.FormatFloat(clientPayout, 'E', -1, 64)) // Our client
-	data.Set("receiverList.receiver(0).email", org.Paypal.Email)
+	if config.IsProduction {
+		data.Set("receiverList.receiver(0).email", org.Paypal.Live.Email)
+	} else {
+		data.Set("receiverList.receiver(0).email", org.Paypal.Test.Email)
+	}
 	data.Set("receiverList.receiver(0).primary", "true")
 	data.Set("receiverList.receiver(1).amount", strconv.FormatFloat(csFee, 'E', -1, 64)) // Us
 	data.Set("receiverList.receiver(1).email", config.Paypal.Email)
