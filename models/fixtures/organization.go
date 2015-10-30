@@ -51,7 +51,7 @@ var Organization = New("organization", func(c *gin.Context) *organization.Organi
 	org.Paypal.Live.Email = "dev@hanzo.ai"
 	org.Paypal.Live.SecurityUserId = "dev@hanzo.ai"
 	org.Paypal.Live.ApplicationId = "APP-80W284485P519543T"
-	org.Paypal.Test.SecurityPassword = ""
+	org.Paypal.Live.SecurityPassword = ""
 	org.Paypal.Live.SecuritySignature = ""
 
 	org.Paypal.Test.Email = "dev@hanzo.ai"
