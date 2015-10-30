@@ -56,12 +56,9 @@ type Config struct {
 	}
 
 	Paypal struct {
-		SecurityUserId    string
-		SecurityPassword  string
-		SecuritySignature string
-		ApplicationId     string
-		Api               string
-		IpnUrl            string
+		Email  string
+		Api    string
+		IpnUrl string
 	}
 
 	Stripe struct {
