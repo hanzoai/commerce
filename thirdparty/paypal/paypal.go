@@ -30,20 +30,20 @@ func New(ctx appengine.Context) *Client {
 	return &Client{ctx: ctx}
 }
 
-func setupHeaders(req *http.Request) {
-	req.Header.Set("X-PAYPAL-SECURITY-USERID", config.Paypal.SecurityUserId)
-	req.Header.Set("X-PAYPAL-SECURITY-PASSWORD", config.Paypal.SecurityPassword)
-	req.Header.Set("X-PAYPAL-SECURITY-SIGNATURE", config.Paypal.SecuritySignature)
+func setupHeaders(req *http.Request, org *organization.Organization) {
+	req.Header.Set("X-PAYPAL-SECURITY-USERID", org.Paypal.SecurityUserId)
+	req.Header.Set("X-PAYPAL-SECURITY-PASSWORD", org.Paypal.SecurityPassword)
+	req.Header.Set("X-PAYPAL-SECURITY-SIGNATURE", org.Paypal.SecuritySignature)
 	req.Header.Set("X-PAYPAL-REQUEST-DATA-FORMAT", "NV")
 	req.Header.Set("X-PAYPAL-RESPONSE-DATA-FORMAT", "JSON")
-	req.Header.Set("X-PAYPAL-APPLICATION-ID", config.Paypal.ApplicationId)
+	req.Header.Set("X-PAYPAL-APPLICATION-ID", org.Paypal.ApplicationId)
 }
 
 func (c Client) GetPayKey(pay *payment.Payment, user *user.User, org *organization.Organization) (string, error) {
 	data := url.Values{}
 	data.Set("actionType", "PAY")
 	// Standard sandbox APP ID, for testing
-	data.Set("clientDetails.applicationId", config.Paypal.ApplicationId)
+	data.Set("clientDetails.applicationId", org.Paypal.ApplicationId)
 	// IP address from which request is sent.
 	data.Set("clientDetails.ipAddress", pay.Client.Ip)
 	if user.PaypalEmail != "" {
@@ -70,7 +70,7 @@ func (c Client) GetPayKey(pay *payment.Payment, user *user.User, org *organizati
 	data.Set("receiverList.receiver(0).email", org.Paypal.Email)
 	data.Set("receiverList.receiver(0).primary", "true")
 	data.Set("receiverList.receiver(1).amount", strconv.FormatFloat(csFee, 'E', -1, 64)) // Us
-	data.Set("receiverList.receiver(1).email", "dev@hanzo.ai")
+	data.Set("receiverList.receiver(1).email", config.Paypal.Email)
 	data.Set("receiverList.receiver(1).primary", "false")
 	data.Set("requestEnvelope.errorLanguage", "en-US")
 	data.Set("returnUrl", org.Paypal.ConfirmUrl+"#checkoutsuccess")
@@ -81,7 +81,7 @@ func (c Client) GetPayKey(pay *payment.Payment, user *user.User, org *organizati
 		return "", err
 	}
 
-	setupHeaders(req)
+	setupHeaders(req, org)
 
 	req.PostForm = data
 
@@ -125,13 +125,13 @@ func (c Client) GetPayKey(pay *payment.Payment, user *user.User, org *organizati
 	return paymentResponse.PayKey, nil
 }
 
-func (c Client) GetPaymentDetails(payKey string) (*responses.PaymentDetailsResponse, error) {
+func (c Client) GetPaymentDetails(payKey string, org *organization.Organization) (*responses.PaymentDetailsResponse, error) {
 	req, err := http.NewRequest("POST", config.Paypal.Api+"/AdaptivePayments/PaymentDetails", nil)
 	if err != nil {
 		return nil, err
 	}
 
-	setupHeaders(req)
+	setupHeaders(req, org)
 
 	return nil, nil
 }

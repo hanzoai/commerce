@@ -110,6 +110,16 @@ type Organization struct {
 	} `json:"-"`
 
 	Paypal struct {
+		SecurityUserId    string
+		SecurityPassword  string
+		SecuritySignature string
+		ApplicationId     string
+
+		TestSecurityUserId    string
+		TestSecurityPassword  string
+		TestSecuritySignature string
+		TestApplicationId     string
+
 		ConfirmUrl string `json:"confirmUrl"`
 		CancelUrl  string `json:"cancelUrl"`
 		Email      string `json:"paypalEmail"`
