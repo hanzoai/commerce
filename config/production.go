@@ -28,10 +28,6 @@ func Production() *Config {
 
 	config.DemoMode = false
 
-	config.Paypal.ApplicationId = ""
-	config.Paypal.SecurityUserId = "paypal_api1.verus.io"
-	config.Paypal.SecurityPassword = "EH4HZWXCWXVDYWM2"
-	config.Paypal.SecuritySignature = "AJd-SFo6hKDOAw2o1mufYejLBcKvAMX-QHZ9..uLkFX45mnUulajOXBJ"
 	config.Paypal.Api = ""
 	config.Paypal.IpnUrl = "https://www.paypal.com/cgi-bin/webscr"
 

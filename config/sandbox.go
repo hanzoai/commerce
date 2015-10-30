@@ -21,13 +21,6 @@ func Sandbox() *Config {
 
 	config.StaticUrl = "//static-dot-crowdstart-sandbox.appspot.com"
 
-	config.Paypal.ApplicationId = "APP-80W284485P519543T"
-	config.Paypal.SecurityUserId = "paypal_api1.verus.io"
-	config.Paypal.SecurityPassword = "EH4HZWXCWXVDYWM2"
-	config.Paypal.SecuritySignature = "AJd-SFo6hKDOAw2o1mufYejLBcKvAMX-QHZ9..uLkFX45mnUulajOXBJ"
-	config.Paypal.Api = "https://svcs.sandbox.paypal.com"
-	config.Paypal.IpnUrl = "https://www.sandbox.paypal.com/cgi-bin/webscr"
-
 	config.Stripe.ClientId = config.Stripe.DevelopmentClientId
 	config.Stripe.PublishableKey = config.Stripe.TestPublishableKey
 	config.Stripe.SecretKey = config.Stripe.TestSecretKey
