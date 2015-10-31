@@ -71,14 +71,13 @@ func (c Client) GetPayKey(pay *payment.Payment, user *user.User, org *organizati
 	var amount = float64(pay.Amount)
 	var csFee = math.Ceil(amount * fee)
 	//TODO: Fee is not always going to be set on the organization.  That is for overrides.  We need to refactor our defaults into Config.
-	var clientPayout = amount - csFee
 
 	if !pay.Currency.IsZeroDecimal() {
 		csFee /= 100
-		clientPayout /= 100
+		amount /= 100
 	}
 
-	data.Set("receiverList.receiver(0).amount", strconv.FormatFloat(clientPayout, 'E', -1, 64)) // Our client
+	data.Set("receiverList.receiver(0).amount", strconv.FormatFloat(amount, 'E', -1, 64)) // Our client
 	if config.IsProduction {
 		data.Set("receiverList.receiver(0).email", org.Paypal.Live.Email)
 	} else {
