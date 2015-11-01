@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"crowdstart.com/config"
+	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/user"
@@ -47,7 +48,7 @@ func setupHeaders(req *http.Request, org *organization.Organization) {
 	req.Header.Set("X-PAYPAL-RESPONSE-DATA-FORMAT", "JSON")
 }
 
-func (c Client) GetPayKey(pay *payment.Payment, user *user.User, org *organization.Organization) (string, error) {
+func (c Client) GetPayKey(pay *payment.Payment, user *user.User, org *organization.Organization, ord *order.Order) (string, error) {
 	data := url.Values{}
 	data.Set("actionType", "PAY")
 	// Standard sandbox APP ID, for testing
@@ -84,6 +85,7 @@ func (c Client) GetPayKey(pay *payment.Payment, user *user.User, org *organizati
 		data.Set("receiverList.receiver(0).email", org.Paypal.Test.Email)
 	}
 	data.Set("receiverList.receiver(0).primary", "true")
+	data.Set("memo", ord.LineItemsAsString())
 	data.Set("receiverList.receiver(1).amount", strconv.FormatFloat(csFee, 'E', -1, 64)) // Us
 	data.Set("receiverList.receiver(1).email", config.Paypal.Email)
 	data.Set("receiverList.receiver(1).primary", "false")
