@@ -581,3 +581,11 @@ func (o Order) DecimalFee() uint64 {
 func Query(db *datastore.Datastore) *mixin.Query {
 	return New(db).Query()
 }
+
+func (o Order) LineItemsAsString() string {
+	var ret string
+	for _, lineItem := range o.Items {
+		ret += fmt.Sprintf("%v - %v /r/n", lineItem.VariantSKU, lineItem.VariantName)
+	}
+	return ret
+}
