@@ -51,6 +51,8 @@ var _ = BeforeSuite(func() {
 	org.Paypal.Test.SecurityPassword = ""
 	org.Paypal.Test.SecuritySignature = ""
 
+	ord = order.New(db)
+
 	pay = payment.New(db)
 	pay.Amount = 100
 	pay.Currency = currency.USD
@@ -67,7 +69,7 @@ var _ = AfterSuite(func() {
 var _ = Describe("paypal.GetPayKey", func() {
 	Context("Get Paypal PayKey", func() {
 		It("Should succeed in the normal case", func() {
-			key, err := client.GetPayKey(pay, usr, org)
+			key, err := client.GetPayKey(pay, usr, ord, org)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(key).ToNot(Equal(""))
 		})
