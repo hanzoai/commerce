@@ -35,7 +35,7 @@ func PayPalPayKey(c *gin.Context) {
 	ctx := org.Db.Context
 	client := paypal.New(ctx)
 
-	payKey, err := client.GetPayKey(pay, usr, org, ord)
+	payKey, err := client.GetPayKey(pay, usr, ord, org)
 	if err != nil {
 		ord.Status = order.Cancelled
 		pay.Status = payment.Cancelled
