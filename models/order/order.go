@@ -585,7 +585,7 @@ func Query(db *datastore.Datastore) *mixin.Query {
 func (o Order) LineItemsAsString() string {
 	var ret string
 	for _, lineItem := range o.Items {
-		ret += fmt.Sprintf("%v - %v /r/n", lineItem.VariantSKU, lineItem.VariantName)
+		ret += fmt.Sprintf("Product: %v\\nQuantity:%v \\n", lineItem.ProductName, lineItem.Quantity)
 	}
 	return ret
 }
