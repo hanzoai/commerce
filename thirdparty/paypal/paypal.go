@@ -143,6 +143,48 @@ func (c Client) GetPayKey(pay *payment.Payment, user *user.User, ord *order.Orde
 		return "", errors.New("PayPal Error: " + paymentResponse.Error[0].Message + errStr)
 	}
 
+	// Set invoice information
+	invoiceData := url.Values{}
+	invoiceData.Set("requestEnvelope.errorLanguage", "en-US")
+	if config.IsProduction {
+		invoiceData.Set("receiverOptions[0].receiver.email", org.Paypal.Live.Email)
+	} else {
+		invoiceData.Set("receiverOptions[0].receiver.email", org.Paypal.Test.Email)
+	}
+	for index, lineItem := range ord.Items {
+		invoiceData.Set("receiverOptions[0].invoiceData.item["+string(index)+"].name", lineItem.String())
+		invoiceData.Set("receiverOptions[0].invoiceData.item["+string(index)+"].price", ord.Currency.ToStringNoSymbol(lineItem.TotalPrice()))
+		invoiceData.Set("receiverOptions[0].invoiceData.item["+string(index)+"].itemCount", string(lineItem.Quantity))
+		invoiceData.Set("receiverOptions[0].invoiceData.item["+string(index)+"].itemPrice", ord.Currency.ToStringNoSymbol(lineItem.Price))
+	}
+	invoiceData.Set("receiverOptions[0].invoiceData.totalTax", ord.Currency.ToStringNoSymbol(ord.Tax))
+	invoiceData.Set("receiverOptions[0].invoiceData.totalShipping", ord.Currency.ToStringNoSymbol(ord.Shipping))
+	invoiceData.Set("payKey", paymentResponse.PayKey)
+
+	req, err = http.NewRequest("POST", config.Paypal.Api+"/AdaptivePayments/SetPaymentOptions", strings.NewReader(data.Encode()))
+	if err != nil {
+		return "", err
+	}
+
+	setupHeaders(req, org)
+
+	req.PostForm = data
+
+	dump, _ = httputil.DumpRequestOut(req, true)
+	log.Info("REQ %s", string(dump), c.ctx)
+
+	setPaymentOptionsResponse := responses.SetPaymentOptionsResponse{}
+	err = json.Unmarshal(responseBytes, &setPaymentOptionsResponse)
+
+	if err != nil {
+		log.Error("Could Not Unmarshal Response: %v", err, c.ctx)
+		return "", err
+	}
+
+	if setPaymentOptionsResponse.Ack != "Success" {
+		log.Error("Problem encountered while setting payment options.  Returned code: %v", setPaymentOptionsResponse.Error)
+	}
+
 	return paymentResponse.PayKey, nil
 }
 
