@@ -13,7 +13,10 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.com/config"
+	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
+	"crowdstart.com/models/payment"
+	"crowdstart.com/models/types/currency"
 	"crowdstart.com/util/router"
 )
 
@@ -49,12 +52,48 @@ func Webhook(c *gin.Context) {
 	}
 
 	// Message is now trustable.  Parse into an object and take action.
-	_ = &PayPalIpnMessage{
+	ipnMessage := &PayPalIpnMessage{
 		Status:     values.Get("status"),
 		PayerEmail: values.Get("sender_email"),
 		PayeeEmail: values.Get("transaction[0].receiver"),
 		PayKey:     values.Get("pay_key"),
+		Amount:     currency.CentsFromString(values.Get("payment_gross")),
 	}
+	if err != nil {
+		return
+	}
+	db := datastore.New(c)
+	p := payment.New(db)
+	_, err = p.Query().Filter("PayKey=", ipnMessage.PayKey).First()
+	if err != nil {
+		return
+	}
+	if ipnMessage.Status != "Completed" {
+		if ipnMessage.Status == "Processed" || ipnMessage.Status == "Pending" {
+			return
+		}
+		// Denied, Failed, Refunded, Reversed, Voided
+		p.Status = payment.Failed
+		// No need to call Refund API.
+		err = p.Put()
+		if err != nil {
+			return
+		}
+		return
+	}
+	if p.Amount != ipnMessage.Amount {
+		// Probably fraud.
+		p.Status = payment.Fraudulent
+		p.Put()
+		// call refund API
+		return
+
+	}
+
+	// Looking good.
+	p.Status = payment.Paid
+	p.Put()
+	return
 
 }
 
