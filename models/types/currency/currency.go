@@ -165,6 +165,16 @@ func (t Type) ToString(c Cents) string {
 	return t.Symbol() + strconv.Itoa(int(c)/100) + "." + cents
 }
 
+func (t Type) ToStringNoSymbol(c Cents) string {
+	if t.IsZeroDecimal() {
+		return strconv.Itoa(int(c))
+	}
+	cents := strconv.Itoa(int(c) % 100)
+	if len(cents) < 2 {
+		cents += "0"
+	}
+	return strconv.Itoa(int(c)/100) + "." + cents
+}
 func (t Type) Label() string {
 	return t.Symbol() + " " + t.Code()
 }
