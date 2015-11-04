@@ -14,6 +14,7 @@ import (
 	"crowdstart.com/thirdparty/paypal"
 	"crowdstart.com/util/log"
 
+	. "crowdstart.com/models/lineitem"
 	. "crowdstart.com/util/test/ginkgo"
 )
 
@@ -52,6 +53,18 @@ var _ = BeforeSuite(func() {
 	org.Paypal.Test.SecuritySignature = ""
 
 	ord = order.New(db)
+	ord.Items = make([]LineItem, 1)
+	ord.Items[0] = LineItem{
+		ProductId:   "Test Product Id",
+		ProductName: "Test Product Name",
+		ProductSlug: "Test Product Slug",
+		Price:       100,
+		Quantity:    1,
+	}
+	ord.Currency = currency.USD
+	ord.Tax = 1
+	ord.Shipping = 2
+	ord.Total = 100
 
 	pay = payment.New(db)
 	pay.Amount = 100
