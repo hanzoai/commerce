@@ -48,7 +48,7 @@ func setupHeaders(req *http.Request, org *organization.Organization) {
 	req.Header.Set("X-PAYPAL-RESPONSE-DATA-FORMAT", "JSON")
 }
 
-func (c Client) GetPayKey(pay *payment.Payment, user *user.User, ord *order.Order, org *organization.Organization) (string, error) {
+func (c Client) Pay(pay *payment.Payment, usr *user.User, ord *order.Order, org *organization.Organization) (string, error) {
 	data := url.Values{}
 	data.Set("actionType", "PAY")
 	// Standard sandbox APP ID, for testing
@@ -59,8 +59,8 @@ func (c Client) GetPayKey(pay *payment.Payment, user *user.User, ord *order.Orde
 	}
 	// IP address from which request is sent.
 	data.Set("clientDetails.ipAddress", pay.Client.Ip)
-	if user.PaypalEmail != "" {
-		data.Set("senderEmail", user.PaypalEmail)
+	if usr.PaypalEmail != "" {
+		data.Set("senderEmail", usr.PaypalEmail)
 	}
 	data.Set("currencyCode", pay.Currency.Code())
 
@@ -143,50 +143,78 @@ func (c Client) GetPayKey(pay *payment.Payment, user *user.User, ord *order.Orde
 		return "", errors.New("PayPal Error: " + paymentResponse.Error[0].Message + errStr)
 	}
 
-	// Set invoice information
-	invoiceData := url.Values{}
-	invoiceData.Set("requestEnvelope.errorLanguage", "en-US")
-	if config.IsProduction {
-		invoiceData.Set("receiverOptions[0].receiver.email", org.Paypal.Live.Email)
-	} else {
-		invoiceData.Set("receiverOptions[0].receiver.email", org.Paypal.Test.Email)
-	}
-	for index, lineItem := range ord.Items {
-		invoiceData.Set("receiverOptions[0].invoiceData.item["+string(index)+"].name", lineItem.String())
-		invoiceData.Set("receiverOptions[0].invoiceData.item["+string(index)+"].price", ord.Currency.ToStringNoSymbol(lineItem.TotalPrice()))
-		invoiceData.Set("receiverOptions[0].invoiceData.item["+string(index)+"].itemCount", string(lineItem.Quantity))
-		invoiceData.Set("receiverOptions[0].invoiceData.item["+string(index)+"].itemPrice", ord.Currency.ToStringNoSymbol(lineItem.Price))
-	}
-	invoiceData.Set("receiverOptions[0].invoiceData.totalTax", ord.Currency.ToStringNoSymbol(ord.Tax))
-	invoiceData.Set("receiverOptions[0].invoiceData.totalShipping", ord.Currency.ToStringNoSymbol(ord.Shipping))
-	invoiceData.Set("payKey", paymentResponse.PayKey)
+	return paymentResponse.PayKey, nil
+}
 
-	req, err = http.NewRequest("POST", config.Paypal.Api+"/AdaptivePayments/SetPaymentOptions", strings.NewReader(data.Encode()))
+func (c Client) SetPaymentOptions(payKey string, user *user.User, ord *order.Order, org *organization.Organization) error {
+
+	// Set invoice information
+	data := url.Values{}
+	data.Set("requestEnvelope.errorLanguage", "en-US")
+	if config.IsProduction {
+		data.Set("receiverOptions[0].receiver.email", org.Paypal.Live.Email)
+	} else {
+		data.Set("receiverOptions[0].receiver.email", org.Paypal.Test.Email)
+	}
+	for i, lineItem := range ord.Items {
+		data.Set("receiverOptions[0].data.item["+strconv.Itoa(i)+"].name", lineItem.String())
+		data.Set("receiverOptions[0].data.item["+strconv.Itoa(i)+"].price", ord.Currency.ToStringNoSymbol(lineItem.TotalPrice()))
+		data.Set("receiverOptions[0].data.item["+strconv.Itoa(i)+"].itemCount", string(lineItem.Quantity))
+		data.Set("receiverOptions[0].data.item["+strconv.Itoa(i)+"].itemPrice", ord.Currency.ToStringNoSymbol(lineItem.Price))
+		log.Warn("receiverOptions[0].data.item[" + strconv.Itoa(i) + "]")
+	}
+	data.Set("receiverOptions[0].data.totalTax", ord.Currency.ToStringNoSymbol(ord.Tax))
+	data.Set("receiverOptions[0].data.totalShipping", ord.Currency.ToStringNoSymbol(ord.Shipping))
+	data.Set("payKey", payKey)
+
+	req, err := http.NewRequest("POST", config.Paypal.Api+"/AdaptivePayments/SetPaymentOptions", strings.NewReader(data.Encode()))
 	if err != nil {
 		log.Error("Request Came Back With Error %v", err, c.ctx)
-		return "", err
+		return err
 	}
 
 	setupHeaders(req, org)
 
 	req.PostForm = data
 
-	dump, _ = httputil.DumpRequestOut(req, true)
+	dump, _ := httputil.DumpRequestOut(req, true)
 	log.Info("REQ %s", string(dump), c.ctx)
+
+	client := urlfetch.Client(c.ctx)
+	res, err := client.Do(req)
+	defer res.Body.Close()
+	if err != nil {
+		log.Error("Request Came Back With Error %v", err, c.ctx)
+		return err
+	}
+
+	responseBytes, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		log.Error("Could Not Decode Response %v", err, c.ctx)
+		return err
+	}
+
+	log.Info("Response Bytes: %v", string(responseBytes), c.ctx)
 
 	setPaymentOptionsResponse := responses.SetPaymentOptionsResponse{}
 	err = json.Unmarshal(responseBytes, &setPaymentOptionsResponse)
 
 	if err != nil {
 		log.Error("Could Not Unmarshal Response: %v", err, c.ctx)
-		return "", err
+		return err
 	}
 
 	if setPaymentOptionsResponse.ResponseEnvelope.Ack != "Success" {
 		log.Error("Problem encountered while setting payment options.  Returned code: %v", setPaymentOptionsResponse.ResponseEnvelope.Error)
 	}
 
-	return paymentResponse.PayKey, nil
+	return nil
+}
+
+func (c Client) GetPayKey(pay *payment.Payment, usr *user.User, ord *order.Order, org *organization.Organization) (string, error) {
+	payKey, err := c.Pay(pay, usr, ord, org)
+	c.SetPaymentOptions(payKey, usr, ord, org)
+	return payKey, err
 }
 
 func (c Client) GetPaymentDetails(payKey string, org *organization.Organization) (*responses.PaymentDetailsResponse, error) {
