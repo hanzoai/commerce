@@ -163,6 +163,7 @@ func (c Client) GetPayKey(pay *payment.Payment, user *user.User, ord *order.Orde
 
 	req, err = http.NewRequest("POST", config.Paypal.Api+"/AdaptivePayments/SetPaymentOptions", strings.NewReader(data.Encode()))
 	if err != nil {
+		log.Error("Request Came Back With Error %v", err, c.ctx)
 		return "", err
 	}
 
