@@ -181,8 +181,8 @@ func (c Client) GetPayKey(pay *payment.Payment, user *user.User, ord *order.Orde
 		return "", err
 	}
 
-	if setPaymentOptionsResponse.Ack != "Success" {
-		log.Error("Problem encountered while setting payment options.  Returned code: %v", setPaymentOptionsResponse.Error)
+	if setPaymentOptionsResponse.ResponseEnvelope.Ack != "Success" {
+		log.Error("Problem encountered while setting payment options.  Returned code: %v", setPaymentOptionsResponse.ResponseEnvelope.Error)
 	}
 
 	return paymentResponse.PayKey, nil
