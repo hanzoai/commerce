@@ -157,14 +157,13 @@ func (c Client) SetPaymentOptions(payKey string, user *user.User, ord *order.Ord
 		data.Set("receiverOptions[0].receiver.email", org.Paypal.Test.Email)
 	}
 	for i, lineItem := range ord.Items {
-		data.Set("receiverOptions[0].data.item["+strconv.Itoa(i)+"].name", lineItem.String())
-		data.Set("receiverOptions[0].data.item["+strconv.Itoa(i)+"].price", ord.Currency.ToStringNoSymbol(lineItem.TotalPrice()))
-		data.Set("receiverOptions[0].data.item["+strconv.Itoa(i)+"].itemCount", string(lineItem.Quantity))
-		data.Set("receiverOptions[0].data.item["+strconv.Itoa(i)+"].itemPrice", ord.Currency.ToStringNoSymbol(lineItem.Price))
-		log.Warn("receiverOptions[0].data.item[" + strconv.Itoa(i) + "]")
+		data.Set("receiverOptions[0].invoiceData.item["+strconv.Itoa(i)+"].name", lineItem.String())
+		data.Set("receiverOptions[0].invoiceData.item["+strconv.Itoa(i)+"].price", ord.Currency.ToStringNoSymbol(lineItem.TotalPrice()))
+		data.Set("receiverOptions[0].invoiceData.item["+strconv.Itoa(i)+"].itemCount", strconv.Itoa(lineItem.Quantity))
+		data.Set("receiverOptions[0].invoiceData.item["+strconv.Itoa(i)+"].itemPrice", ord.Currency.ToStringNoSymbol(lineItem.Price))
 	}
-	data.Set("receiverOptions[0].data.totalTax", ord.Currency.ToStringNoSymbol(ord.Tax))
-	data.Set("receiverOptions[0].data.totalShipping", ord.Currency.ToStringNoSymbol(ord.Shipping))
+	data.Set("receiverOptions[0].invoiceData.totalTax", ord.Currency.ToStringNoSymbol(ord.Tax))
+	data.Set("receiverOptions[0].invoiceData.totalShipping", ord.Currency.ToStringNoSymbol(ord.Shipping))
 	data.Set("payKey", payKey)
 
 	req, err := http.NewRequest("POST", config.Paypal.Api+"/AdaptivePayments/SetPaymentOptions", strings.NewReader(data.Encode()))
