@@ -171,7 +171,7 @@ func (t Type) ToStringNoSymbol(c Cents) string {
 	}
 	cents := strconv.Itoa(int(c) % 100)
 	if len(cents) < 2 {
-		cents += "0"
+		cents = "0" + cents
 	}
 	return strconv.Itoa(int(c)/100) + "." + cents
 }
