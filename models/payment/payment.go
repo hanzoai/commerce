@@ -102,6 +102,8 @@ type Account struct {
 	AffirmAccount
 	PayPalAccount
 	StripeAccount
+
+	Error string `json:"error,omitempty"`
 }
 
 type Payment struct {

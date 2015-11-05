@@ -84,4 +84,13 @@ var _ = Describe("Order", func() {
 		Expect(ord2.Subtotal).To(Equal(currency.Cents(2000)))
 		Expect(ord2.Total).To(Equal(currency.Cents(2000)))
 	})
+
+	It("Should Serialize Line Items", func() {
+		ord2 := order.New(ord.Db)
+		ord2.CouponCodes = []string{"sad-coupon"}
+		ord2.Items = []lineitem.LineItem{lineitem.LineItem{ProductSlug: "doge-shirt", ProductName: "Doge Shirt", Quantity: 1}}
+
+		memo := ord2.LineItemsAsString()
+		Expect(memo).To(Equal("Product: Doge Shirt\nQuantity: 1\n"))
+	})
 })
