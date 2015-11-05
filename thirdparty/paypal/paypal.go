@@ -86,10 +86,10 @@ func (c Client) Pay(pay *payment.Payment, usr *user.User, ord *order.Order, org 
 	}
 	data.Set("receiverList.receiver(0).primary", "true")
 
-	memo := ord.LineItemsAsString()
-	if memo != "" {
-		data.Set("memo", memo)
-	}
+	// memo := ord.LineItemsAsString()
+	// if memo != "" {
+	// 	data.Set("memo", memo)
+	// }
 	data.Set("receiverList.receiver(1).amount", strconv.FormatFloat(csFee, 'E', -1, 64)) // Us
 	data.Set("receiverList.receiver(1).email", config.Paypal.Email)
 	data.Set("receiverList.receiver(1).primary", "false")
