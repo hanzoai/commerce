@@ -64,10 +64,10 @@ var _ = BeforeSuite(func() {
 	ord.Currency = currency.USD
 	ord.Tax = 1
 	ord.Shipping = 2
-	ord.Total = 100
+	ord.Total = 103
 
 	pay = payment.New(db)
-	pay.Amount = 100
+	pay.Amount = 103
 	pay.Currency = currency.USD
 	pay.Client.Ip = "64.136.209.186"
 
