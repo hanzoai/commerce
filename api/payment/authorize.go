@@ -9,6 +9,7 @@ import (
 
 	"crowdstart.com/api/payment/balance"
 	"crowdstart.com/api/payment/stripe"
+	"crowdstart.com/config"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"
@@ -100,7 +101,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	pay.Amount = ord.Total
 
 	// Fee defaults to 2%, override with organization fee if customized.
-	fee := 0.02
+	fee := config.Fee
 	if org.Fee > 0 {
 		fee = org.Fee
 	}
@@ -134,6 +135,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 
 	// Have stripe handle authorization
 	switch ord.Type {
+	case "paypal":
 	case "balance":
 		if err := balance.Authorize(org, ord, usr, pay); err != nil {
 			log.Info("Failed to authorize order using Balance:\n User: %+v, Order: %+v, Payment: %+v, Error: %v", usr, ord, pay, err, ctx)
@@ -152,8 +154,10 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	ord.BillingAddress.Country = strings.ToUpper(ord.BillingAddress.Country)
 	ord.ShippingAddress.Country = strings.ToUpper(ord.ShippingAddress.Country)
 
-	if err := redis.IncrUsers(ctx, org, time.Now()); err != nil {
-		log.Warn("Redis Error %s", err, ctx)
+	if !ord.Test {
+		if err := redis.IncrUsers(ctx, org, time.Now()); err != nil {
+			log.Warn("Redis Error %s", err, ctx)
+		}
 	}
 
 	// Save user, order, payment

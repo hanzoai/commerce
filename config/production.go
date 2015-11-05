@@ -28,6 +28,10 @@ func Production() *Config {
 
 	config.DemoMode = false
 
+	config.Paypal.Email = "dev@hanzo.ai"
+	config.Paypal.Api = "https://svcs.paypal.com"
+	config.Paypal.IpnUrl = "https://www.paypal.com/cgi-bin/webscr"
+
 	config.Stripe.ClientId = config.Stripe.ProductionClientId
 	config.Stripe.SecretKey = config.Stripe.LiveSecretKey
 	config.Stripe.PublishableKey = config.Stripe.LivePublishablKey

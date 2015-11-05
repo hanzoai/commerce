@@ -50,6 +50,8 @@ func Authorize(c *gin.Context) {
 	}
 
 	c.Writer.Header().Add("Location", orderEndpoint+ord.Id())
+
+	ord.Number = ord.NumberFromId()
 	http.Render(c, 200, ord)
 }
 
@@ -68,6 +70,7 @@ func Capture(c *gin.Context) {
 		return
 	}
 
+	ord.Number = ord.NumberFromId()
 	http.Render(c, 200, ord)
 }
 
@@ -95,6 +98,8 @@ func Charge(c *gin.Context) {
 	emails.SendOrderConfirmationEmail(c, org, ord, usr)
 
 	c.Writer.Header().Add("Location", orderEndpoint+ord.Id())
+
+	ord.Number = ord.NumberFromId()
 	http.Render(c, 200, ord)
 }
 
@@ -111,4 +116,11 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 
 	// Auth & Capture Pament API (Two Step Payment)
 	api.POST("/authorize", publishedRequired, Authorize)
+	api.POST("/authorize/:orderid", publishedRequired, Authorize)
+	api.POST("/capture/:orderid", publishedRequired, Capture)
+
+	// Paypal Paykey flow
+	api.POST("/paypal/pay", publishedRequired, PayPalPayKey)
+	api.POST("/paypal/confirm/:payKey", publishedRequired, PayPalConfirm)
+	api.POST("/paypal/cancel/:payKey", publishedRequired, PayPalCancel)
 }
