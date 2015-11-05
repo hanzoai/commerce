@@ -58,8 +58,8 @@ tools = github.com/golang/lint/golint \
 		github.com/rogpeppe/godef \
 		golang.org/x/tools/cmd/cover \
 		golang.org/x/tools/cmd/goimports \
-		golang.org/x/tools/cmd/gorename \
-		golang.org/x/tools/cmd/oracle
+		golang.org/x/tools/cmd/gorename
+		# golang.org/x/tools/cmd/oracle
 
 # Various patches for SDK
 mtime_file_watcher = https://gist.githubusercontent.com/zeekay/5eba991c39426ca42cbb/raw/8db2e910b89e3927adc9b7c183387186facee17b/mtime_file_watcher.py
