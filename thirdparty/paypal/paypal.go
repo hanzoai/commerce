@@ -162,6 +162,7 @@ func (c Client) SetPaymentOptions(payKey string, user *user.User, ord *order.Ord
 		data.Set("receiverOptions[0].invoiceData.item["+strconv.Itoa(i)+"].itemCount", strconv.Itoa(lineItem.Quantity))
 		data.Set("receiverOptions[0].invoiceData.item["+strconv.Itoa(i)+"].itemPrice", ord.Currency.ToStringNoSymbol(lineItem.Price))
 	}
+	// log.Warn("Tax %v, Shipping %v", ord.Currency.ToStringNoSymbol(ord.Tax), ord.Currency.ToStringNoSymbol(ord.Shipping))
 	data.Set("receiverOptions[0].invoiceData.totalTax", ord.Currency.ToStringNoSymbol(ord.Tax))
 	data.Set("receiverOptions[0].invoiceData.totalShipping", ord.Currency.ToStringNoSymbol(ord.Shipping))
 	data.Set("payKey", payKey)
