@@ -581,3 +581,19 @@ func (o Order) DecimalFee() uint64 {
 func Query(db *datastore.Datastore) *mixin.Query {
 	return New(db).Query()
 }
+
+func (o Order) LineItemsAsString() string {
+	if o.Items == nil {
+		return ""
+	}
+
+	var ret string
+	for _, lineItem := range o.Items {
+		nameorslug := lineItem.ProductName
+		if nameorslug == "" {
+			nameorslug = lineItem.ProductSlug
+		}
+		ret += fmt.Sprintf("Product: %v\nQuantity: %v\n", nameorslug, lineItem.Quantity)
+	}
+	return ret
+}

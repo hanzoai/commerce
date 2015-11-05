@@ -544,7 +544,6 @@ helpers.registerValidator ((inputCfg) ->return inputCfg.hints['email-unique'])
     return value
   , ()->
     return value
-  return value
 
 helpers.registerValidator ((inputCfg) ->return inputCfg.hints['unique'])
 , (model, name)->
@@ -558,7 +557,6 @@ helpers.registerValidator ((inputCfg) ->return inputCfg.hints['unique'])
     return value
   , ()->
     return value
-  return value
 
 helpers.registerValidator ((inputCfg) -> return inputCfg.hints['copy'])
 , (model, name)->

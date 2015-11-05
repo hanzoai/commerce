@@ -33,6 +33,21 @@ var Kanoa = New("kanoa", func(c *gin.Context) *organization.Organization {
 	// Email configuration
 	org.Mandrill.APIKey = ""
 
+	org.Paypal.ConfirmUrl = "https://www.getkanoa.com"
+	org.Paypal.CancelUrl = "https://www.getkanoa.com"
+
+	org.Paypal.Live.Email = "cival@getkanoa.com"
+	org.Paypal.Live.SecurityUserId = "cival_api1.getkanoa.com"
+	org.Paypal.Live.ApplicationId = "APP-6PG93936C8597944N"
+	org.Paypal.Live.SecurityPassword = "2YNUBS9TB9U7EDCM"
+	org.Paypal.Live.SecuritySignature = "AFcWxV21C7fd0v3bYYYRCpSSRl31AZ6CAELso7zxPQz8gLc5YSsz6Iza"
+
+	org.Paypal.Live.Email = "cival-facilitator@getkanoa.com"
+	org.Paypal.Test.SecurityUserId = "cival-facilitator_api1.getkanoa.com"
+	org.Paypal.Test.ApplicationId = "APP-80W284485P519543T"
+	org.Paypal.Test.SecurityPassword = "XMDRP9CF75ESA8P8"
+	org.Paypal.Test.SecuritySignature = "AcoBndPxINN2yEkgSKALAXYErpWTAFpUk3S6BucWeefHiUNpGxIleLof"
+
 	org.Email.Defaults.Enabled = true
 	org.Email.Defaults.FromName = "KANOA"
 	org.Email.Defaults.FromEmail = "hi@kanoa.com"

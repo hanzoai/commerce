@@ -109,6 +109,26 @@ type Organization struct {
 		Signature    string `json:"signature"`
 	} `json:"-"`
 
+	Paypal struct {
+		Live struct {
+			Email             string `json:"paypalEmail"`
+			SecurityUserId    string
+			SecurityPassword  string
+			SecuritySignature string
+			ApplicationId     string
+		}
+		Test struct {
+			Email             string `json:"paypalEmail"`
+			SecurityUserId    string
+			SecurityPassword  string
+			SecuritySignature string
+			ApplicationId     string
+		}
+
+		ConfirmUrl string `json:"confirmUrl"`
+		CancelUrl  string `json:"cancelUrl"`
+	} `json:"-"`
+
 	Stripe struct {
 		// For convenience duplicated
 		AccessToken    string
