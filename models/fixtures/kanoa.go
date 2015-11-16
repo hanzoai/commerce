@@ -20,7 +20,7 @@ var Kanoa = New("kanoa", func(c *gin.Context) *organization.Organization {
 	// u.FirstName = "Cival"
 	// u.LastName = ""
 	// u.Organizations = []string{org.Id()}
-	// u.PasswordHash, _ = password.Hash("kanoapassword!")
+	// u.PasswordHash, _ = password.Hash("1Kanoa23")
 	// u.Put()
 
 	// org.FullName = "KANOA Inc"
