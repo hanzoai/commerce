@@ -32,7 +32,7 @@ func New(ctx appengine.Context) *Client {
 }
 
 func setupHeaders(req *http.Request, ord *order.Order, org *organization.Organization) {
-	if config.IsProduction && !ord.Test {
+	if config.IsProduction {
 		req.Header.Set("X-PAYPAL-SECURITY-USERID", org.Paypal.Live.SecurityUserId)
 		req.Header.Set("X-PAYPAL-SECURITY-PASSWORD", org.Paypal.Live.SecurityPassword)
 		req.Header.Set("X-PAYPAL-SECURITY-SIGNATURE", org.Paypal.Live.SecuritySignature)
@@ -52,7 +52,7 @@ func (c Client) Pay(pay *payment.Payment, usr *user.User, ord *order.Order, org 
 	data := url.Values{}
 	data.Set("actionType", "PAY")
 	// Standard sandbox APP ID, for testing
-	if config.IsProduction || ord.Test {
+	if config.IsProduction {
 		data.Set("clientDetails.applicationId", org.Paypal.Live.ApplicationId)
 	} else {
 		data.Set("clientDetails.applicationId", org.Paypal.Test.ApplicationId)
@@ -79,7 +79,7 @@ func (c Client) Pay(pay *payment.Payment, usr *user.User, ord *order.Order, org 
 	}
 
 	data.Set("receiverList.receiver(0).amount", strconv.FormatFloat(amount, 'E', -1, 64)) // Our client
-	if config.IsProduction && !ord.Test {
+	if config.IsProduction {
 		data.Set("receiverList.receiver(0).email", org.Paypal.Live.Email)
 	} else {
 		data.Set("receiverList.receiver(0).email", org.Paypal.Test.Email)
@@ -107,7 +107,7 @@ func (c Client) Pay(pay *payment.Payment, usr *user.User, ord *order.Order, org 
 	req.PostForm = data
 
 	dump, _ := httputil.DumpRequestOut(req, true)
-	log.Info("REQ %s", string(dump), c.ctx)
+	log.Warn("REQ %s", string(dump), c.ctx)
 
 	client := urlfetch.Client(c.ctx)
 	res, err := client.Do(req)
@@ -123,7 +123,7 @@ func (c Client) Pay(pay *payment.Payment, usr *user.User, ord *order.Order, org 
 		return "", err
 	}
 
-	log.Info("Response Bytes: %v", string(responseBytes), c.ctx)
+	log.Warn("Response Bytes: %v", string(responseBytes), c.ctx)
 
 	paymentResponse := responses.ParallelPaymentResponse{}
 	err = json.Unmarshal(responseBytes, &paymentResponse)
@@ -151,7 +151,7 @@ func (c Client) SetPaymentOptions(payKey string, user *user.User, ord *order.Ord
 	// Set invoice information
 	data := url.Values{}
 	data.Set("requestEnvelope.errorLanguage", "en-US")
-	if config.IsProduction && !ord.Test {
+	if config.IsProduction {
 		data.Set("receiverOptions[0].receiver.email", org.Paypal.Live.Email)
 	} else {
 		data.Set("receiverOptions[0].receiver.email", org.Paypal.Test.Email)
