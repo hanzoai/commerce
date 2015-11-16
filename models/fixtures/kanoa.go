@@ -42,7 +42,7 @@ var Kanoa = New("kanoa", func(c *gin.Context) *organization.Organization {
 	org.Paypal.Live.SecurityPassword = "2YNUBS9TB9U7EDCM"
 	org.Paypal.Live.SecuritySignature = "AFcWxV21C7fd0v3bYYYRCpSSRl31AZ6CAELso7zxPQz8gLc5YSsz6Iza"
 
-	org.Paypal.Live.Email = "cival-facilitator@getkanoa.com"
+	org.Paypal.Test.Email = "cival-facilitator@getkanoa.com"
 	org.Paypal.Test.SecurityUserId = "cival-facilitator_api1.getkanoa.com"
 	org.Paypal.Test.ApplicationId = "APP-80W284485P519543T"
 	org.Paypal.Test.SecurityPassword = "XMDRP9CF75ESA8P8"
