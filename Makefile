@@ -89,7 +89,7 @@ stylus_opts = assets/css/store/store.styl \
 			  -o static/css
 stylus_opts_min = -u csso-stylus -c
 
-autoprefixer = node_modules/.bin/autoprefixer
+autoprefixer = node_modules/.bin/autoprefixer-cli
 autoprefixer_opts = -b 'ie > 8, firefox > 24, chrome > 30, safari > 6, opera > 17, ios > 6, android > 4' \
 					static/css/store.css \
 					static/css/theme.css \
