@@ -31,8 +31,8 @@ func New(ctx appengine.Context) *Client {
 	return &Client{ctx: ctx}
 }
 
-func setupHeaders(req *http.Request, org *organization.Organization) {
-	if config.IsProduction {
+func setupHeaders(req *http.Request, ord *order.Order, org *organization.Organization) {
+	if config.IsProduction && !ord.Test {
 		req.Header.Set("X-PAYPAL-SECURITY-USERID", org.Paypal.Live.SecurityUserId)
 		req.Header.Set("X-PAYPAL-SECURITY-PASSWORD", org.Paypal.Live.SecurityPassword)
 		req.Header.Set("X-PAYPAL-SECURITY-SIGNATURE", org.Paypal.Live.SecuritySignature)
@@ -52,7 +52,7 @@ func (c Client) Pay(pay *payment.Payment, usr *user.User, ord *order.Order, org 
 	data := url.Values{}
 	data.Set("actionType", "PAY")
 	// Standard sandbox APP ID, for testing
-	if config.IsProduction {
+	if config.IsProduction || ord.Test {
 		data.Set("clientDetails.applicationId", org.Paypal.Live.ApplicationId)
 	} else {
 		data.Set("clientDetails.applicationId", org.Paypal.Test.ApplicationId)
@@ -79,7 +79,7 @@ func (c Client) Pay(pay *payment.Payment, usr *user.User, ord *order.Order, org 
 	}
 
 	data.Set("receiverList.receiver(0).amount", strconv.FormatFloat(amount, 'E', -1, 64)) // Our client
-	if config.IsProduction {
+	if config.IsProduction && !ord.Test {
 		data.Set("receiverList.receiver(0).email", org.Paypal.Live.Email)
 	} else {
 		data.Set("receiverList.receiver(0).email", org.Paypal.Test.Email)
@@ -102,7 +102,7 @@ func (c Client) Pay(pay *payment.Payment, usr *user.User, ord *order.Order, org 
 		return "", err
 	}
 
-	setupHeaders(req, org)
+	setupHeaders(req, ord, org)
 
 	req.PostForm = data
 
@@ -151,7 +151,7 @@ func (c Client) SetPaymentOptions(payKey string, user *user.User, ord *order.Ord
 	// Set invoice information
 	data := url.Values{}
 	data.Set("requestEnvelope.errorLanguage", "en-US")
-	if config.IsProduction {
+	if config.IsProduction && !ord.Test {
 		data.Set("receiverOptions[0].receiver.email", org.Paypal.Live.Email)
 	} else {
 		data.Set("receiverOptions[0].receiver.email", org.Paypal.Test.Email)
@@ -173,7 +173,7 @@ func (c Client) SetPaymentOptions(payKey string, user *user.User, ord *order.Ord
 		return err
 	}
 
-	setupHeaders(req, org)
+	setupHeaders(req, ord, org)
 
 	req.PostForm = data
 
@@ -217,13 +217,13 @@ func (c Client) GetPayKey(pay *payment.Payment, usr *user.User, ord *order.Order
 	return payKey, err
 }
 
-func (c Client) GetPaymentDetails(payKey string, org *organization.Organization) (*responses.PaymentDetailsResponse, error) {
+func (c Client) GetPaymentDetails(payKey string, ord *order.Order, org *organization.Organization) (*responses.PaymentDetailsResponse, error) {
 	req, err := http.NewRequest("POST", config.Paypal.Api+"/AdaptivePayments/PaymentDetails", nil)
 	if err != nil {
 		return nil, err
 	}
 
-	setupHeaders(req, org)
+	setupHeaders(req, ord, org)
 
 	return nil, nil
 }
