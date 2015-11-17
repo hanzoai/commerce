@@ -96,6 +96,7 @@ func (c Client) Pay(pay *payment.Payment, usr *user.User, ord *order.Order, org 
 	data.Set("requestEnvelope.errorLanguage", "en-US")
 	data.Set("returnUrl", org.Paypal.ConfirmUrl+"#checkoutsuccess")
 	data.Set("cancelUrl", org.Paypal.CancelUrl+"#checkoutfailure")
+	data.Set("ipnNotificationUrl", config.Paypal.IpnUrl+org.Name)
 
 	req, err := http.NewRequest("POST", config.Paypal.Api+"/AdaptivePayments/Pay", strings.NewReader(data.Encode()))
 	if err != nil {
