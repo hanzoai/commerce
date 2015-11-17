@@ -31,28 +31,34 @@ func Webhook(c *gin.Context) {
 	db := datastore.New(c)
 	db.SetNamespace(org)
 
-	// Send empty HTTP 200
-	c.String(200, "")
+	ctx := db.Context
 
 	var confirm = "cmd=_notify_validate&%s"
 
 	ipnBytes, err := ioutil.ReadAll(c.Request.Body)
 	if err != nil {
+		log.Panic("Could not decode bytes: %s", err, ctx)
+		// Send empty HTTP 200
+		c.String(200, "")
 		return
 	}
 
 	var ipnString = string(ipnBytes)
+
+	log.Warn("IPN From Paypal %s", ipnString, ctx)
 
 	var confirmResponse = fmt.Sprintf(confirm, ipnString)
 	// Send command as received with cmd=_notify_validate, in its own request client.  Check to make sure Paypal responds with "VALIDATED".
 	c.String(200, confirmResponse)
 
 	respStr, err := getResponseBody(urlfetch.Client(middleware.GetAppEngine(c)).Post(
-		config.Paypal.IpnUrl, "application/x-www-form-urlencoded", strings.NewReader(confirmResponse)))
+		config.Paypal.PaypalIpnUrl, "application/x-www-form-urlencoded", strings.NewReader(confirmResponse)))
 	if err != nil {
+		log.Panic("Could not issue response: %s", err, ctx)
 		return
 	}
 	if respStr != "VERIFIED" {
+		log.Panic("Response was not verified: %s", respStr, ctx)
 		return
 	}
 
@@ -72,9 +78,11 @@ func Webhook(c *gin.Context) {
 	if err != nil {
 		return
 	}
+
 	p := payment.New(db)
-	_, err = p.Query().Filter("PayKey=", ipnMessage.PayKey).First()
+	_, err = p.Query().Filter("Account.PayKey=", ipnMessage.PayKey).First()
 	if err != nil {
+		log.Panic("Could not find paykey: %s", err, ctx)
 		return
 	}
 	if ipnMessage.Status != "Completed" {
@@ -86,6 +94,7 @@ func Webhook(c *gin.Context) {
 		// No need to call Refund API.
 		err = p.Put()
 		if err != nil {
+			log.Panic("Could not put payment: %s", err, ctx)
 			return
 		}
 		return
@@ -96,7 +105,6 @@ func Webhook(c *gin.Context) {
 		p.Put()
 		// call refund API
 		return
-
 	}
 
 	// Looking good.
