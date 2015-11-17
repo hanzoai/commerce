@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"strings"
 
@@ -14,7 +15,6 @@ import (
 
 	"crowdstart.com/config"
 	"crowdstart.com/datastore"
-	"crowdstart.com/middleware"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/util/log"
@@ -33,7 +33,7 @@ func Webhook(c *gin.Context) {
 
 	ctx := db.Context
 
-	var confirm = "cmd=_notify_validate&%s"
+	var confirm = "%s&cmd=_notify_validate"
 
 	ipnBytes, err := ioutil.ReadAll(c.Request.Body)
 	if err != nil {
@@ -51,14 +51,23 @@ func Webhook(c *gin.Context) {
 	// Send command as received with cmd=_notify_validate, in its own request client.  Check to make sure Paypal responds with "VALIDATED".
 	c.String(200, confirmResponse)
 
-	respStr, err := getResponseBody(urlfetch.Client(middleware.GetAppEngine(c)).Post(
-		config.Paypal.PaypalIpnUrl, "application/x-www-form-urlencoded", strings.NewReader(confirmResponse)))
+	req, err := http.NewRequest("POST", config.Paypal.PaypalIpnUrl, strings.NewReader(confirmResponse))
+	if err != nil {
+		log.Panic("Could create request: %s", err, ctx)
+		return
+	}
+
+	dump, _ := httputil.DumpRequestOut(req, true)
+	log.Info("REQ %s", string(dump), ctx)
+
+	client := urlfetch.Client(ctx)
+	respStr, err := getResponseBody(client.Do(req))
 	if err != nil {
 		log.Panic("Could not issue response: %s", err, ctx)
 		return
 	}
 	if respStr != "VERIFIED" {
-		log.Panic("Response was not verified: %s", respStr, ctx)
+		// log.Panic("Response was not verified: %s", respStr, ctx)
 		return
 	}
 
