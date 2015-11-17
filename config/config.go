@@ -56,9 +56,10 @@ type Config struct {
 	}
 
 	Paypal struct {
-		Email  string
-		Api    string
-		IpnUrl string
+		Email        string
+		Api          string
+		IpnUrl       string
+		PaypalIpnUrl string
 	}
 
 	Stripe struct {
