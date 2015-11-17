@@ -2,7 +2,6 @@ package ipn
 
 import (
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
@@ -33,8 +32,6 @@ func Webhook(c *gin.Context) {
 
 	ctx := db.Context
 
-	var confirm = "%s&cmd=_notify_validate"
-
 	ipnBytes, err := ioutil.ReadAll(c.Request.Body)
 	if err != nil {
 		log.Panic("Could not decode bytes: %s", err, ctx)
@@ -47,9 +44,9 @@ func Webhook(c *gin.Context) {
 
 	log.Warn("IPN From Paypal %s", ipnString, ctx)
 
-	var confirmResponse = fmt.Sprintf(confirm, ipnString)
+	var confirmResponse = ipnString + "&cmd=_notify_validate"
 	// Send command as received with cmd=_notify_validate, in its own request client.  Check to make sure Paypal responds with "VALIDATED".
-	c.String(200, confirmResponse)
+	c.String(200, "")
 
 	req, err := http.NewRequest("POST", config.Paypal.PaypalIpnUrl, strings.NewReader(confirmResponse))
 	if err != nil {
@@ -67,7 +64,7 @@ func Webhook(c *gin.Context) {
 		return
 	}
 	if respStr != "VERIFIED" {
-		// log.Panic("Response was not verified: %s", respStr, ctx)
+		log.Panic("Response was not verified", ctx)
 		return
 	}
 
