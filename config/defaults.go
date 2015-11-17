@@ -21,7 +21,7 @@ func Defaults() *Config {
 
 	config.Paypal.Email = "dev@hanzo.ai"
 	config.Paypal.Api = "https://svcs.sandbox.paypal.com"
-	config.Paypal.IpnUrl = "https://www.sandbox.paypal.com/cgi-bin/webscr"
+	config.Paypal.IpnUrl = "https://api.staging.crowdstart.com/paypal/ipn/"
 
 	config.Stripe.DevelopmentClientId = "ca_53yyPzxlPsdAtzMEIuS2mXYDp4FFXLmm"
 	config.Stripe.ProductionClientId = "ca_53yyRUNpMtTRUgMlVlLAM3vllY1AVybU"
