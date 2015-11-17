@@ -31,6 +31,8 @@ func Staging() *Config {
 
 	config.Paypal.Email = "dev@hanzo.ai"
 	config.Paypal.Api = "https://svcs.sandbox.paypal.com"
+	config.Paypal.IpnUrl = "https://api.staging.crowdstart.com/paypal/ipn/"
+	config.Paypal.PaypalIpnUrl = "https://www.sandbox.paypal.com/cgi-bin/webscr"
 
 	config.Stripe.ClientId = config.Stripe.DevelopmentClientId
 	config.Stripe.PublishableKey = config.Stripe.TestPublishableKey
