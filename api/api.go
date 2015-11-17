@@ -35,6 +35,7 @@ import (
 
 	shipstationApi "crowdstart.com/thirdparty/shipstation"
 	stripeApi "crowdstart.com/thirdparty/stripe/webhook"
+	paypalApi "crowdstart.com/thirdparty/paypal/ipn"
 )
 
 func init() {
@@ -109,6 +110,9 @@ func init() {
 
 	// Stripe webhook
 	stripeApi.Route(api)
+
+	// Paypal IPN
+	paypalApi.Route(api)
 
 	// Data Api
 	dataApi.Route(api)
