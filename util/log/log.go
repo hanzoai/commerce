@@ -260,3 +260,7 @@ func Dump(args ...interface{}) {
 	// dump := spew.Sdump(args...)
 	// std.Dump("\n%s", dump)
 }
+
+func Escape(s string) string {
+	return strings.Replace(s, "%", "%%", -1)
+}
