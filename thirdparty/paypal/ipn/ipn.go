@@ -98,8 +98,8 @@ func Webhook(c *gin.Context) {
 }
 
 func Route(router router.Router, args ...gin.HandlerFunc) {
-	api := router.Group("ipn")
-	api.POST("/ipn", Webhook)
+	api := router.Group("paypal")
+	api.POST("/ipn/:organization", Webhook)
 }
 
 func getResponseBody(resp *http.Response, err error) (string, error) {
