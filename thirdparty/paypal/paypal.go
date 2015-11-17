@@ -108,7 +108,7 @@ func (c Client) Pay(pay *payment.Payment, usr *user.User, ord *order.Order, org 
 	req.PostForm = data
 
 	dump, _ := httputil.DumpRequestOut(req, true)
-	log.Warn("REQ %s", string(dump), c.ctx)
+	log.Info("REQ %s", string(dump), c.ctx)
 
 	client := urlfetch.Client(c.ctx)
 	res, err := client.Do(req)
@@ -124,7 +124,7 @@ func (c Client) Pay(pay *payment.Payment, usr *user.User, ord *order.Order, org 
 		return "", err
 	}
 
-	log.Warn("Response Bytes: %v", string(responseBytes), c.ctx)
+	log.Info("Response Bytes: %v", string(responseBytes), c.ctx)
 
 	paymentResponse := responses.ParallelPaymentResponse{}
 	err = json.Unmarshal(responseBytes, &paymentResponse)
