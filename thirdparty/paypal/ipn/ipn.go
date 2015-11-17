@@ -17,10 +17,20 @@ import (
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/types/currency"
+	"crowdstart.com/util/log"
 	"crowdstart.com/util/router"
 )
 
 func Webhook(c *gin.Context) {
+	org := c.Params.ByName("organization")
+	if org == "" {
+		log.Panic("Organization not specified", c)
+	}
+
+	// Get namespaced db
+	db := datastore.New(c)
+	db.SetNamespace(org)
+
 	// Send empty HTTP 200
 	c.String(200, "")
 
@@ -62,7 +72,6 @@ func Webhook(c *gin.Context) {
 	if err != nil {
 		return
 	}
-	db := datastore.New(c)
 	p := payment.New(db)
 	_, err = p.Query().Filter("PayKey=", ipnMessage.PayKey).First()
 	if err != nil {
