@@ -13,6 +13,7 @@ import (
 
 	"github.com/dustin/go-humanize"
 
+	"crowdstart.com/config"
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/coupon"
 	"crowdstart.com/models/mixin"
@@ -234,7 +235,12 @@ func (o *Order) Save(c chan<- aeds.Property) (err error) {
 	return IgnoreFieldMismatch(aeds.SaveStruct(o, c))
 }
 
-func (o Order) Fee(percent float64) currency.Cents {
+func (o Order) CalculateFee(percent float64) currency.Cents {
+	// Default to config.Fee if percent is not provided
+	if percent <= 0 {
+		percent = config.Fee
+	}
+
 	return currency.Cents(math.Floor(float64(o.Total) * percent))
 }
 
@@ -243,20 +249,6 @@ func (o Order) NumberFromId() int {
 		return -1
 	}
 	return hashid.Decode(o.Id_)[1]
-}
-
-func (o Order) Description() string {
-	buffer := bytes.NewBufferString("")
-
-	for i, item := range o.Items {
-		if i > 0 {
-			buffer.WriteString(", ")
-		}
-		buffer.WriteString(item.String())
-		buffer.WriteString(" x")
-		buffer.WriteString(strconv.Itoa(item.Quantity))
-	}
-	return buffer.String()
 }
 
 // Get line items from datastore
@@ -582,16 +574,34 @@ func Query(db *datastore.Datastore) *mixin.Query {
 	return New(db).Query()
 }
 
-func (o Order) DisplaySummary() string {
-	summary := ""
-
+func (o Order) Description() string {
 	if o.Items == nil {
-		return summary
+		return ""
 	}
+
+	buffer := bytes.NewBufferString("")
+
+	for i, item := range o.Items {
+		if i > 0 {
+			buffer.WriteString(", ")
+		}
+		buffer.WriteString(item.String())
+		buffer.WriteString(" x")
+		buffer.WriteString(strconv.Itoa(item.Quantity))
+	}
+	return buffer.String()
+}
+
+func (o Order) DescriptionLong() string {
+	if o.Items == nil {
+		return ""
+	}
+
+	buffer := bytes.NewBufferString("")
 
 	for _, li := range o.Items {
-		summary += fmt.Sprintf("%v (%v) x %v\n", li.DisplayName(), li.DisplayId(), li.Quantity)
+		buffer.WriteString(fmt.Sprintf("%v (%v) x %v\n", li.DisplayName(), li.DisplayId(), li.Quantity))
 	}
 
-	return summary
+	return buffer.String()
 }

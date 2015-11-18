@@ -162,7 +162,7 @@ func (c Client) SetPaymentOptions(pay *payment.Payment, user *user.User, ord *or
 	data.Set("receiverOptions[0].customId", ord.Id())
 
 	// Simple description
-	data.Set("receiverOptions[0].description", ord.DisplaySummary())
+	data.Set("receiverOptions[0].description", ord.DescriptionLong())
 
 	// Add invoice data
 	if pay.Test {
