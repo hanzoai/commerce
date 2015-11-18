@@ -132,6 +132,9 @@ func (c Client) Pay(pay *payment.Payment, usr *user.User, ord *order.Order, org 
 		return "", errors.New("PayPal Error: " + paymentResponse.Error[0].Message + errStr)
 	}
 
+	// Update payment with PayKey
+	pay.Account.PayKey = paymentResponse.PayKey
+
 	return paymentResponse.PayKey, nil
 }
 
