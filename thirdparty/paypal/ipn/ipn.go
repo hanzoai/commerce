@@ -18,6 +18,7 @@ import (
 
 	"crowdstart.com/config"
 	"crowdstart.com/datastore"
+	"crowdstart.com/models/order"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/router"
@@ -104,41 +105,62 @@ func Webhook(c *gin.Context) {
 	ipnMessage := NewIpnMessage(form)
 
 	// Update payment
-	p := payment.New(db)
-	_, err = p.Query().Filter("Account.PayKey=", ipnMessage.PayKey).First()
+	pay := payment.New(db)
+	_, err = pay.Query().Filter("Account.PayKey=", ipnMessage.PayKey).First()
 	if err != nil {
 		log.Panic("Could not find PayKey: %s", err, ctx)
 		return
 	}
 
-	if ipnMessage.Status != "Completed" {
-		if ipnMessage.Status == "Processed" || ipnMessage.Status == "Pending" {
-			return
-		}
-
-		// Denied, Failed, Refunded, Reversed, Voided
-		p.Status = payment.Failed
-
-		// No need to call Refund API.
-		err = p.Put()
-		if err != nil {
-			log.Panic("Could not put payment: %s", err, ctx)
-		}
+	ord := order.New(db)
+	err = ord.GetById(pay.OrderId)
+	if err != nil {
+		log.Panic("Could not find Order: %s", err, ctx)
 		return
 	}
 
-	if p.Amount != ipnMessage.Amount {
+	if ipnMessage.Status != "Completed" {
+		switch ipnMessage.Status {
+		case "Processing", "Pending", "Created":
+			ord.Status = order.Open
+			return
+		case "Refunded", "Partially_Refunded", "Reversed":
+			pay.Status = payment.Refunded
+			ord.Status = order.Completed
+		// Denied, Failed, Voided
+		default:
+			pay.Status = payment.Failed
+			ord.Status = order.Cancelled
+		}
+
+		ord.PaymentStatus = pay.Status
+
+		// No need to call Refund API.
+		pay.MustPut()
+		ord.MustPut()
+		return
+	}
+
+	if pay.Amount != ipnMessage.Amount || pay.Currency != ipnMessage.Currency {
 		// Probably fraud.
-		p.Status = payment.Fraudulent
-		p.MustPut()
+		pay.Status = payment.Fraudulent
+		pay.MustPut()
+
+		ord.Status = order.Cancelled
+		ord.PaymentStatus = pay.Status
+		ord.MustPut()
 
 		// call refund API
 		return
 	}
 
 	// Looking good.
-	p.Status = payment.Paid
-	p.MustPut()
+	pay.Status = payment.Paid
+	pay.MustPut()
+
+	ord.Status = order.Completed
+	ord.PaymentStatus = pay.Status
+	ord.MustPut()
 }
 
 func Route(router router.Router, args ...gin.HandlerFunc) {
