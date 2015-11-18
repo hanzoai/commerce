@@ -14,7 +14,7 @@ type IpnMessage struct {
 	PayeeEmail string         // transaction[0].receiver
 	Amount     currency.Cents // extracted from transaction[0].amount
 	PayKey     string         // pay_key
-	Currency   string
+	Currency   currency.Type
 }
 
 func NewIpnMessage(form url.Values) *IpnMessage {
@@ -28,7 +28,7 @@ func NewIpnMessage(form url.Values) *IpnMessage {
 	parts := strings.Split(amount, " ")
 
 	message.Amount = currency.CentsFromString(parts[1])
-	message.Currency = parts[0]
+	message.Currency = currency.Type(strings.ToLower(parts[0]))
 
 	return message
 }
