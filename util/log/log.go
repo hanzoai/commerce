@@ -159,8 +159,7 @@ func New() *Logger {
 
 	multiBackend := logging.SetBackend(defaultBackend)
 	log.SetBackend(multiBackend)
-	// log.SetVerbose(appengine.IsDevAppServer())
-	log.SetVerbose(true)
+	log.SetVerbose(appengine.IsDevAppServer())
 	return log
 }
 
@@ -192,10 +191,6 @@ func Debug(formatOrError interface{}, args ...interface{}) {
 
 func Info(formatOrError interface{}, args ...interface{}) {
 	args = std.parseArgs(args...)
-
-	if !std.VerboseOverride() && !std.Verbose() {
-		return
-	}
 
 	switch v := formatOrError.(type) {
 	case error:
