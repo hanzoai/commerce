@@ -89,15 +89,15 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		return nil, nil, err
 	}
 
+	// Use user as buyer
+	pay.Buyer = usr.Buyer()
+	log.Debug("Buyer: %#v", pay.Buyer, c)
+
 	// Override total to $0.50 is test email is used
 	if org.IsTestEmail(pay.Buyer.Email) {
 		ord.Total = currency.Cents(50)
 		pay.Test = true
 	}
-
-	// Use user as buyer
-	pay.Buyer = usr.Buyer()
-	log.Debug("Buyer: %#v", pay.Buyer, c)
 
 	// Fill with debug information about user's browser
 	pay.Client = client.New(c)
