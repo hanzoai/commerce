@@ -122,11 +122,10 @@ func Webhook(c *gin.Context) {
 	if ipnMessage.Status != "Completed" {
 		switch ipnMessage.Status {
 		case "Processing", "Pending", "Created":
-			ord.Status = order.Open
 			return
 		case "Refunded", "Partially_Refunded", "Reversed":
 			pay.Status = payment.Refunded
-			ord.Status = order.Completed
+			ord.Status = order.Cancelled
 		// Denied, Failed, Voided
 		default:
 			pay.Status = payment.Failed
@@ -158,7 +157,6 @@ func Webhook(c *gin.Context) {
 	pay.Status = payment.Paid
 	pay.MustPut()
 
-	ord.Status = order.Completed
 	ord.PaymentStatus = pay.Status
 	ord.MustPut()
 }
