@@ -159,7 +159,8 @@ func New() *Logger {
 
 	multiBackend := logging.SetBackend(defaultBackend)
 	log.SetBackend(multiBackend)
-	log.SetVerbose(appengine.IsDevAppServer())
+	// log.SetVerbose(appengine.IsDevAppServer())
+	log.SetVerbose(true)
 	return log
 }
 
