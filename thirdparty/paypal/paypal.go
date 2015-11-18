@@ -87,6 +87,7 @@ func (c Client) Pay(pay *payment.Payment, usr *user.User, ord *order.Order, org 
 	data.Set("returnUrl", org.Paypal.ConfirmUrl+"#checkoutsuccess")
 	data.Set("cancelUrl", org.Paypal.CancelUrl+"#checkoutfailure")
 	data.Set("ipnNotificationUrl", config.Paypal.IpnUrl+org.Name)
+	data.Set("feesPayer", "PRIMARYRECEIVER")
 
 	// Make payment request
 	req, err := http.NewRequest("POST", config.Paypal.Api+"/AdaptivePayments/Pay", strings.NewReader(data.Encode()))
