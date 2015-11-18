@@ -70,12 +70,12 @@ func Webhook(c *gin.Context) {
 		}
 
 	case "ping":
-		log.Warn("Decode 3")
 		c.String(200, "pong")
 		return
 
 	default:
-		log.Warn("Unsupported Stripe event '%s': %#v", event.Type, event, c)
+		// Unsupported stripe event
+		return
 	}
 
 	c.String(200, "ok")
