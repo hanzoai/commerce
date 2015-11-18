@@ -49,12 +49,14 @@ func respond(ctx appengine.Context, message url.Values) (string, error) {
 	dump, _ := httputil.DumpRequestOut(req, true)
 	log.Debug("IPN response: %s", string(dump), ctx)
 
+	// Create client
 	client := urlfetch.Client(ctx)
 	client.Transport = &urlfetch.Transport{
 		Context:  ctx,
-		Deadline: time.Duration(20) * time.Second, // Update deadline to 10 seconds
+		Deadline: time.Duration(20) * time.Second, // Update deadline to 20 seconds
 	}
 
+	// Make Post request
 	res, err := client.Do(req)
 	if err != nil {
 		log.Panic("Unable to make request: %v", err, ctx)
@@ -112,36 +114,38 @@ func Webhook(c *gin.Context) {
 	p := payment.New(db)
 	_, err = p.Query().Filter("Account.PayKey=", ipnMessage.PayKey).First()
 	if err != nil {
-		log.Panic("Could not find paykey: %s", err, ctx)
+		log.Panic("Could not find PayKey: %s", err, ctx)
 		return
 	}
+
 	if ipnMessage.Status != "Completed" {
 		if ipnMessage.Status == "Processed" || ipnMessage.Status == "Pending" {
 			return
 		}
+
 		// Denied, Failed, Refunded, Reversed, Voided
 		p.Status = payment.Failed
+
 		// No need to call Refund API.
 		err = p.Put()
 		if err != nil {
 			log.Panic("Could not put payment: %s", err, ctx)
-			return
 		}
 		return
 	}
+
 	if p.Amount != ipnMessage.Amount {
 		// Probably fraud.
 		p.Status = payment.Fraudulent
-		p.Put()
+		p.MustPut()
+
 		// call refund API
 		return
 	}
 
 	// Looking good.
 	p.Status = payment.Paid
-	p.Put()
-	return
-
+	p.MustPut()
 }
 
 func Route(router router.Router, args ...gin.HandlerFunc) {
