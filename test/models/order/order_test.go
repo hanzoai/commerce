@@ -90,7 +90,7 @@ var _ = Describe("Order", func() {
 		ord2.CouponCodes = []string{"sad-coupon"}
 		ord2.Items = []lineitem.LineItem{lineitem.LineItem{ProductSlug: "doge-shirt", ProductName: "Doge Shirt", Quantity: 1}}
 
-		memo := ord2.LineItemsAsString()
-		Expect(memo).To(Equal("Product: Doge Shirt\nQuantity: 1\n"))
+		memo := ord2.DisplaySummary()
+		Expect(memo).To(Equal("Doge Shirt (doge-shirt) x 1\n"))
 	})
 })

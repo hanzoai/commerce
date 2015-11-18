@@ -582,18 +582,16 @@ func Query(db *datastore.Datastore) *mixin.Query {
 	return New(db).Query()
 }
 
-func (o Order) LineItemsAsString() string {
+func (o Order) DisplaySummary() string {
+	summary := ""
+
 	if o.Items == nil {
-		return ""
+		return summary
 	}
 
-	var ret string
-	for _, lineItem := range o.Items {
-		nameorslug := lineItem.ProductName
-		if nameorslug == "" {
-			nameorslug = lineItem.ProductSlug
-		}
-		ret += fmt.Sprintf("Product: %v\nQuantity: %v\n", nameorslug, lineItem.Quantity)
+	for _, li := range o.Items {
+		summary += fmt.Sprintf("%v (%v) x %v\n", li.DisplayName(), li.DisplayId(), li.Quantity)
 	}
-	return ret
+
+	return summary
 }

@@ -170,26 +170,26 @@ func (c Client) SetPaymentOptions(payKey string, user *user.User, ord *order.Ord
 		data.Set("receiverOptions[0].receiver.email", org.Paypal.Test.Email)
 	}
 
+	// Set order id for reference later
+	data.Set("receiverOptions[0].customId", ord.Id())
+
+	// Simple description
+	data.Set("receiverOptions[0].description", ord.DisplaySummary())
+
 	// Add invoice data
 	if ord.Test {
-		data.Set("receiverOptions[0].customId", ord.Id())
-		data.Set("receiverOptions[0].description", "This is a swell description")
-
 		data.Set("receiverOptions[0].invoiceData.item[0].itemCount", "1")
 		data.Set("receiverOptions[0].invoiceData.item[0].name", "test")
 		data.Set("receiverOptions[0].invoiceData.item[0].price", "0.50")
 	} else {
-		data.Set("receiverOptions[0].customId", ord.Id())
-		data.Set("receiverOptions[0].description", "This is a swell description")
-
 		// Add each line item
 		for i, lineItem := range ord.Items {
 			n := strconv.Itoa(i)
-			data.Set("receiverOptions[0].invoiceData.item["+n+"].name", lineItem.String())
 			data.Set("receiverOptions[0].invoiceData.item["+n+"].identifier", lineItem.DisplayId())
-			data.Set("receiverOptions[0].invoiceData.item["+n+"].price", ord.Currency.ToStringNoSymbol(lineItem.TotalPrice()))
+			data.Set("receiverOptions[0].invoiceData.item["+n+"].name", lineItem.String())
 			data.Set("receiverOptions[0].invoiceData.item["+n+"].itemCount", strconv.Itoa(lineItem.Quantity))
 			data.Set("receiverOptions[0].invoiceData.item["+n+"].itemPrice", ord.Currency.ToStringNoSymbol(lineItem.Price))
+			data.Set("receiverOptions[0].invoiceData.item["+n+"].price", ord.Currency.ToStringNoSymbol(lineItem.TotalPrice()))
 		}
 	}
 
