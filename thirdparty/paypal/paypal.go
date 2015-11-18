@@ -112,7 +112,7 @@ func (c Client) Pay(pay *payment.Payment, usr *user.User, ord *order.Order, org 
 	req.PostForm = data
 
 	dump, _ := httputil.DumpRequestOut(req, true)
-	log.Info(log.Escape(string(dump)), c.ctx)
+	log.Info("%v", string(dump), c.ctx)
 
 	client := urlfetch.Client(c.ctx)
 	res, err := client.Do(req)
@@ -209,7 +209,7 @@ func (c Client) SetPaymentOptions(payKey string, user *user.User, ord *order.Ord
 	req.PostForm = data
 
 	dump, _ := httputil.DumpRequestOut(req, true)
-	log.Info(log.Escape(string(dump)), c.ctx)
+	log.Info("%v", string(dump), c.ctx)
 
 	client := urlfetch.Client(c.ctx)
 	res, err := client.Do(req)
