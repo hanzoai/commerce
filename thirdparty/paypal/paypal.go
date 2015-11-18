@@ -152,15 +152,19 @@ func (c Client) SetPaymentOptions(payKey string, user *user.User, ord *order.Ord
 
 	data.Set("requestEnvelope.errorLanguage", "en-US")
 
+	// Set business name (overriding via PayPal is difficult and awful
+	data.Set("displayOptions.businessName", org.FullName)
+
+	// data.Set("displayOptions.headerImageUrl", "")
+	// data.Set("displayOptions.emailHeaderImageUrl", "")
+	// data.Set("displayOptions.emailMarketingImageUrl", "")
+
 	// Set receiver email to match organizations
 	if config.IsProduction {
 		data.Set("receiverOptions[0].receiver.email", org.Paypal.Live.Email)
 	} else {
 		data.Set("receiverOptions[0].receiver.email", org.Paypal.Test.Email)
 	}
-
-	// Add description
-	data.Set("receiverOptions[0].description", "Test description")
 
 	// Add invoice data
 	for i, lineItem := range ord.Items {
