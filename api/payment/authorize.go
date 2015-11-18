@@ -89,6 +89,12 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		return nil, nil, err
 	}
 
+	// Override total to $0.50 is test email is used
+	if org.IsTestEmail(pay.Buyer.Email) {
+		ord.Total = currency.Cents(50)
+		pay.Test = true
+	}
+
 	// Use user as buyer
 	pay.Buyer = usr.Buyer()
 	log.Debug("Buyer: %#v", pay.Buyer, c)
@@ -106,13 +112,6 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	pay.Description = ord.Description()
 
 	log.Debug("Payment: %#v", pay, c)
-
-	// Set order total to $0.50 if using a test email
-	if org.IsTestEmail(pay.Buyer.Email) {
-		pay.Amount = currency.Cents(50)
-		ord.Total = currency.Cents(50)
-		pay.Test = true
-	}
 
 	// Setup all relationships before we try to authorize to ensure that keys
 	// that get created are actually valid.

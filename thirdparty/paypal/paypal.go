@@ -61,13 +61,15 @@ func (c Client) Pay(pay *payment.Payment, usr *user.User, ord *order.Order, org 
 	if usr.PaypalEmail != "" {
 		data.Set("senderEmail", usr.PaypalEmail)
 	}
-	data.Set("currencyCode", pay.Currency.Code())
 
-	// No idea why we're converting to scientific notation here
-	amount := strconv.FormatFloat(float64(pay.Amount), 'E', -1, 64)
-	fee := strconv.FormatFloat(float64(pay.Fee), 'E', -1, 64)
+	cur := pay.Currency
 
-	// Our client is the primary receiver
+	data.Set("currencyCode", cur.Code())
+
+	amount := cur.ToStringNoSymbol(pay.Amount)
+	fee := cur.ToStringNoSymbol(pay.Fee)
+
+	// Organization is primary receiver
 	data.Set("receiverList.receiver(0).primary", "true")
 	data.Set("receiverList.receiver(0).amount", amount)
 	if config.IsProduction {
@@ -76,7 +78,7 @@ func (c Client) Pay(pay *payment.Payment, usr *user.User, ord *order.Order, org 
 		data.Set("receiverList.receiver(0).email", org.Paypal.Test.Email)
 	}
 
-	// We are the second receiver
+	// We take our fee as the second receiver
 	data.Set("receiverList.receiver(1).amount", fee)
 	data.Set("receiverList.receiver(1).email", config.Paypal.Email)
 	data.Set("receiverList.receiver(1).primary", "false")
@@ -140,6 +142,8 @@ func (c Client) Pay(pay *payment.Payment, usr *user.User, ord *order.Order, org 
 }
 
 func (c Client) SetPaymentOptions(pay *payment.Payment, user *user.User, ord *order.Order, org *organization.Organization) error {
+	cur := pay.Currency
+
 	data := url.Values{}
 
 	data.Set("requestEnvelope.errorLanguage", "en-US")
@@ -176,14 +180,14 @@ func (c Client) SetPaymentOptions(pay *payment.Payment, user *user.User, ord *or
 			data.Set("receiverOptions[0].invoiceData.item["+n+"].identifier", lineItem.DisplayId())
 			data.Set("receiverOptions[0].invoiceData.item["+n+"].name", lineItem.String())
 			data.Set("receiverOptions[0].invoiceData.item["+n+"].itemCount", strconv.Itoa(lineItem.Quantity))
-			data.Set("receiverOptions[0].invoiceData.item["+n+"].itemPrice", ord.Currency.ToStringNoSymbol(lineItem.Price))
-			data.Set("receiverOptions[0].invoiceData.item["+n+"].price", ord.Currency.ToStringNoSymbol(lineItem.TotalPrice()))
+			data.Set("receiverOptions[0].invoiceData.item["+n+"].itemPrice", cur.ToStringNoSymbol(lineItem.Price))
+			data.Set("receiverOptions[0].invoiceData.item["+n+"].price", cur.ToStringNoSymbol(lineItem.TotalPrice()))
 		}
 	}
 
 	// Add shipping, tax
-	data.Set("receiverOptions[0].invoiceData.totalShipping", ord.Currency.ToStringNoSymbol(ord.Shipping))
-	data.Set("receiverOptions[0].invoiceData.totalTax", ord.Currency.ToStringNoSymbol(ord.Tax))
+	data.Set("receiverOptions[0].invoiceData.totalShipping", cur.ToStringNoSymbol(ord.Shipping))
+	data.Set("receiverOptions[0].invoiceData.totalTax", cur.ToStringNoSymbol(ord.Tax))
 
 	// Make request
 	req, err := http.NewRequest("POST", config.Paypal.Api+"/AdaptivePayments/SetPaymentOptions", strings.NewReader(data.Encode()))
