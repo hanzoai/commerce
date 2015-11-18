@@ -148,21 +148,29 @@ func (c Client) Pay(pay *payment.Payment, usr *user.User, ord *order.Order, org 
 }
 
 func (c Client) SetPaymentOptions(payKey string, user *user.User, ord *order.Order, org *organization.Organization) error {
-
-	// Set invoice information
 	data := url.Values{}
+
 	data.Set("requestEnvelope.errorLanguage", "en-US")
+
+	// Set receiver email to match organizations
 	if config.IsProduction {
 		data.Set("receiverOptions[0].receiver.email", org.Paypal.Live.Email)
 	} else {
 		data.Set("receiverOptions[0].receiver.email", org.Paypal.Test.Email)
 	}
+
+	// Add description
+	data.Set("receiverOptions[0].description", "Test description")
+
+	// Add invoice data
 	for i, lineItem := range ord.Items {
-		data.Set("receiverOptions[0].invoiceData.item["+strconv.Itoa(i)+"].name", lineItem.String())
-		data.Set("receiverOptions[0].invoiceData.item["+strconv.Itoa(i)+"].price", ord.Currency.ToStringNoSymbol(lineItem.TotalPrice()))
-		data.Set("receiverOptions[0].invoiceData.item["+strconv.Itoa(i)+"].itemCount", strconv.Itoa(lineItem.Quantity))
-		data.Set("receiverOptions[0].invoiceData.item["+strconv.Itoa(i)+"].itemPrice", ord.Currency.ToStringNoSymbol(lineItem.Price))
+		lineNo := strconv.Itoa(i)
+		data.Set("receiverOptions[0].invoiceData.item["+lineNo+"].name", lineItem.String())
+		data.Set("receiverOptions[0].invoiceData.item["+lineNo+"].price", ord.Currency.ToStringNoSymbol(lineItem.TotalPrice()))
+		data.Set("receiverOptions[0].invoiceData.item["+lineNo+"].itemCount", strconv.Itoa(lineItem.Quantity))
+		data.Set("receiverOptions[0].invoiceData.item["+lineNo+"].itemPrice", ord.Currency.ToStringNoSymbol(lineItem.Price))
 	}
+
 	// log.Warn("Tax %v, Shipping %v", ord.Currency.ToStringNoSymbol(ord.Tax), ord.Currency.ToStringNoSymbol(ord.Shipping))
 	data.Set("receiverOptions[0].invoiceData.totalTax", ord.Currency.ToStringNoSymbol(ord.Tax))
 	data.Set("receiverOptions[0].invoiceData.totalShipping", ord.Currency.ToStringNoSymbol(ord.Shipping))
