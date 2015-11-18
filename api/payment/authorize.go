@@ -9,7 +9,6 @@ import (
 
 	"crowdstart.com/api/payment/balance"
 	"crowdstart.com/api/payment/stripe"
-	"crowdstart.com/config"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"
@@ -101,11 +100,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	pay.Amount = ord.Total
 
 	// Fee defaults to 2%, override with organization fee if customized.
-	fee := config.Fee
-	if org.Fee > 0 {
-		fee = org.Fee
-	}
-	pay.Fee = ord.Fee(fee)
+	pay.Fee = ord.CalculateFee(org.Fee)
 
 	pay.Currency = ord.Currency
 	pay.Description = ord.Description()
