@@ -19,7 +19,6 @@ import (
 	"crowdstart.com/config"
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/payment"
-	"crowdstart.com/models/types/currency"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/router"
 )
@@ -102,13 +101,7 @@ func Webhook(c *gin.Context) {
 	}
 
 	// Parse form into ipnMessage for ease of use.
-	ipnMessage := &PayPalIpnMessage{
-		Status:     form.Get("status"),
-		PayerEmail: form.Get("sender_email"),
-		PayeeEmail: form.Get("transaction[0].receiver"),
-		PayKey:     form.Get("pay_key"),
-		Amount:     currency.CentsFromString(form.Get("payment_gross")),
-	}
+	ipnMessage := NewIpnMessage(form)
 
 	// Update payment
 	p := payment.New(db)
