@@ -74,7 +74,7 @@ func Webhook(c *gin.Context) {
 		return
 
 	default:
-		// Unsupported stripe event
+		log.Warn("Unsupported Stripe event '%s': %#v", event.Type, event, c)
 		return
 	}
 
