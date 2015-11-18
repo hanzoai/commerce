@@ -166,6 +166,7 @@ func (c Client) SetPaymentOptions(payKey string, user *user.User, ord *order.Ord
 	for i, lineItem := range ord.Items {
 		lineNo := strconv.Itoa(i)
 		data.Set("receiverOptions[0].invoiceData.item["+lineNo+"].name", lineItem.String())
+		data.Set("receiverOptions[0].invoiceData.item["+lineNo+"].identifier", lineItem.DisplayId())
 		data.Set("receiverOptions[0].invoiceData.item["+lineNo+"].price", ord.Currency.ToStringNoSymbol(lineItem.TotalPrice()))
 		data.Set("receiverOptions[0].invoiceData.item["+lineNo+"].itemCount", strconv.Itoa(lineItem.Quantity))
 		data.Set("receiverOptions[0].invoiceData.item["+lineNo+"].itemPrice", ord.Currency.ToStringNoSymbol(lineItem.Price))
