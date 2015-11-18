@@ -70,6 +70,7 @@ var _ = BeforeSuite(func() {
 	pay.Amount = 103
 	pay.Currency = currency.USD
 	pay.Client.Ip = "64.136.209.186"
+	pay.Fee = ord.CalculateFee(org.Fee)
 
 	client = paypal.New(ctx)
 })
