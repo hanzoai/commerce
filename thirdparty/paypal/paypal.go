@@ -63,8 +63,9 @@ func (c Client) Pay(pay *payment.Payment, usr *user.User, ord *order.Order, org 
 	}
 	data.Set("currencyCode", pay.Currency.Code())
 
-	amount := ord.Currency.ToStringNoSymbol(pay.Amount)
-	fee := ord.Currency.ToStringNoSymbol(pay.Fee)
+	// No idea why we're converting to scientific notation here
+	amount := strconv.FormatFloat(float64(pay.Amount), 'E', -1, 64)
+	fee := strconv.FormatFloat(float64(pay.Fee), 'E', -1, 64)
 
 	// Our client is the primary receiver
 	data.Set("receiverList.receiver(0).primary", "true")
