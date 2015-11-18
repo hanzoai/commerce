@@ -151,11 +151,11 @@ func (c Client) Pay(pay *payment.Payment, usr *user.User, ord *order.Order, org 
 	return paymentResponse.PayKey, nil
 }
 
-func (c Client) SetPaymentOptions(payKey string, user *user.User, ord *order.Order, org *organization.Organization) error {
+func (c Client) SetPaymentOptions(pay *payment.Payment, user *user.User, ord *order.Order, org *organization.Organization) error {
 	data := url.Values{}
 
 	data.Set("requestEnvelope.errorLanguage", "en-US")
-	data.Set("payKey", payKey)
+	data.Set("payKey", pay.Account.PayKey)
 
 	// Can configure display options here -- probably should
 	// data.Set("displayOptions.businessName", org.FullName)
@@ -177,7 +177,7 @@ func (c Client) SetPaymentOptions(payKey string, user *user.User, ord *order.Ord
 	data.Set("receiverOptions[0].description", ord.DisplaySummary())
 
 	// Add invoice data
-	if ord.Test {
+	if pay.Test {
 		data.Set("receiverOptions[0].invoiceData.item[0].itemCount", "1")
 		data.Set("receiverOptions[0].invoiceData.item[0].name", "test")
 		data.Set("receiverOptions[0].invoiceData.item[0].price", "0.50")
@@ -244,7 +244,7 @@ func (c Client) SetPaymentOptions(payKey string, user *user.User, ord *order.Ord
 
 func (c Client) GetPayKey(pay *payment.Payment, usr *user.User, ord *order.Order, org *organization.Organization) (string, error) {
 	payKey, err := c.Pay(pay, usr, ord, org)
-	c.SetPaymentOptions(payKey, usr, ord, org)
+	c.SetPaymentOptions(pay, usr, ord, org)
 	return payKey, err
 }
 
