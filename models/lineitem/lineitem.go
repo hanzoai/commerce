@@ -64,6 +64,18 @@ func (li LineItem) Id() string {
 	return li.ProductId
 }
 
+func (li LineItem) DisplayName() string {
+	if li.VariantName != "" {
+		return li.VariantName
+	}
+
+	if li.ProductName != "" {
+		return li.ProductName
+	}
+
+	return li.DisplayId()
+}
+
 func (li LineItem) DisplayId() string {
 	if li.VariantSKU != "" {
 		return li.VariantSKU
