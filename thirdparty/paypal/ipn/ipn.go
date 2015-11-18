@@ -1,12 +1,16 @@
 package ipn
 
 import (
+	"bytes"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"strings"
+	"time"
+
+	"appengine"
 
 	"appengine/urlfetch"
 
@@ -20,6 +24,45 @@ import (
 	"crowdstart.com/util/router"
 )
 
+// Read body from response
+func readBody(res *http.Response) (string, error) {
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		return "", errors.New(fmt.Sprintf("Invalid status code: %v", res.Status))
+	}
+
+	bytes, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return "", err
+	}
+
+	return string(bytes), nil
+}
+
+func respond(ctx appengine.Context, message url.Values) (string, error) {
+	req, err := http.NewRequest("POST", config.Paypal.PaypalIpnUrl, bytes.NewBufferString(message.Encode()))
+	if err != nil {
+		log.Panic("Could create request: %s", err, ctx)
+	}
+
+	dump, _ := httputil.DumpRequestOut(req, true)
+	log.Debug("IPN response: %s", string(dump), ctx)
+
+	client := urlfetch.Client(ctx)
+	client.Transport = &urlfetch.Transport{
+		Context:  ctx,
+		Deadline: time.Duration(20) * time.Second, // Update deadline to 10 seconds
+	}
+
+	res, err := client.Do(req)
+	if err != nil {
+		log.Panic("Unable to make request: %v", err, ctx)
+	}
+
+	return readBody(res)
+}
+
 func Webhook(c *gin.Context) {
 	org := c.Params.ByName("organization")
 	if org == "" {
@@ -32,59 +75,40 @@ func Webhook(c *gin.Context) {
 
 	ctx := db.Context
 
-	ipnBytes, err := ioutil.ReadAll(c.Request.Body)
-	if err != nil {
-		log.Panic("Could not decode bytes: %s", err, ctx)
-		// Send empty HTTP 200
-		c.String(200, "")
-		return
+	// Parse form
+	if err := c.Request.ParseForm(); err != nil {
+		log.Panic("Failed to parse request from PayPal", c)
 	}
 
-	var ipnString = string(ipnBytes)
+	form := c.Request.Form
+	log.Debug("IPN message: %v", form, ctx)
 
-	log.Warn("IPN From Paypal %s", ipnString, ctx)
+	// Append cmd=_notify-validate
+	form.Add("cmd", "_notify-validate")
 
-	var confirmResponse = ipnString + "&cmd=_notify_validate"
-	// Send command as received with cmd=_notify_validate, in its own request client.  Check to make sure Paypal responds with "VALIDATED".
+	// Send command as received with cmd=_notify-validate, in its own request client.  Check to make sure Paypal responds with "VALIDATED".
 	c.String(200, "")
 
-	req, err := http.NewRequest("POST", config.Paypal.PaypalIpnUrl, strings.NewReader(confirmResponse))
+	// Send response
+	status, err := respond(ctx, form)
 	if err != nil {
-		log.Panic("Could create request: %s", err, ctx)
-		return
+		log.Panic("Failed to respond to PayPal: %s", err, ctx)
 	}
 
-	dump, _ := httputil.DumpRequestOut(req, true)
-	log.Info("REQ %s", string(dump), ctx)
-
-	client := urlfetch.Client(ctx)
-	respStr, err := getResponseBody(client.Do(req))
-	if err != nil {
-		log.Panic("Could not issue response: %s", err, ctx)
-		return
-	}
-	if respStr != "VERIFIED" {
+	if status != "VERIFIED" {
 		log.Panic("Response was not verified", ctx)
-		return
 	}
 
-	values, err := url.ParseQuery(ipnString)
-	if err != nil {
-		return
-	}
-
-	// Message is now trustable.  Parse into an object and take action.
+	// Parse form into ipnMessage for ease of use.
 	ipnMessage := &PayPalIpnMessage{
-		Status:     values.Get("status"),
-		PayerEmail: values.Get("sender_email"),
-		PayeeEmail: values.Get("transaction[0].receiver"),
-		PayKey:     values.Get("pay_key"),
-		Amount:     currency.CentsFromString(values.Get("payment_gross")),
-	}
-	if err != nil {
-		return
+		Status:     form.Get("status"),
+		PayerEmail: form.Get("sender_email"),
+		PayeeEmail: form.Get("transaction[0].receiver"),
+		PayKey:     form.Get("pay_key"),
+		Amount:     currency.CentsFromString(form.Get("payment_gross")),
 	}
 
+	// Update payment
 	p := payment.New(db)
 	_, err = p.Query().Filter("Account.PayKey=", ipnMessage.PayKey).First()
 	if err != nil {
@@ -123,19 +147,4 @@ func Webhook(c *gin.Context) {
 func Route(router router.Router, args ...gin.HandlerFunc) {
 	api := router.Group("paypal")
 	api.POST("/ipn/:organization", Webhook)
-}
-
-func getResponseBody(resp *http.Response, err error) (string, error) {
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return "", errors.New(resp.Status)
-	}
-	bytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-	return string(bytes), nil
 }
