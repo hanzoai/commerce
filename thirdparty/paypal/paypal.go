@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io/ioutil"
-	"math"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -48,10 +47,6 @@ func setupHeaders(req *http.Request, ord *order.Order, org *organization.Organiz
 	req.Header.Set("X-PAYPAL-RESPONSE-DATA-FORMAT", "JSON")
 }
 
-func formatFloat(f float64) string {
-	return strconv.FormatFloat(f, 'E', -1, 64)
-}
-
 func (c Client) Pay(pay *payment.Payment, usr *user.User, ord *order.Order, org *organization.Organization) (string, error) {
 	data := url.Values{}
 	data.Set("actionType", "PAY")
@@ -68,23 +63,12 @@ func (c Client) Pay(pay *payment.Payment, usr *user.User, ord *order.Order, org 
 	}
 	data.Set("currencyCode", pay.Currency.Code())
 
-	// TODO: Fee is not always going to be set on the organization.  That is for overrides.  We need to refactor our defaults into Config.
-	fee := config.Fee
-	if org.Fee > 0 {
-		fee = org.Fee
-	}
-
-	var amount = float64(pay.Amount)
-	var csFee = math.Ceil(amount * fee)
-
-	if !pay.Currency.IsZeroDecimal() {
-		csFee /= 100
-		amount /= 100
-	}
+	amount := ord.Currency.ToStringNoSymbol(pay.Amount)
+	fee := ord.Currency.ToStringNoSymbol(pay.Fee)
 
 	// Our client is the primary receiver
 	data.Set("receiverList.receiver(0).primary", "true")
-	data.Set("receiverList.receiver(0).amount", formatFloat(amount))
+	data.Set("receiverList.receiver(0).amount", amount)
 	if config.IsProduction {
 		data.Set("receiverList.receiver(0).email", org.Paypal.Live.Email)
 	} else {
@@ -92,7 +76,7 @@ func (c Client) Pay(pay *payment.Payment, usr *user.User, ord *order.Order, org 
 	}
 
 	// We are the second receiver
-	data.Set("receiverList.receiver(1).amount", formatFloat(csFee)) // Us
+	data.Set("receiverList.receiver(1).amount", fee)
 	data.Set("receiverList.receiver(1).email", config.Paypal.Email)
 	data.Set("receiverList.receiver(1).primary", "false")
 
