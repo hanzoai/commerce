@@ -48,6 +48,10 @@ func setupHeaders(req *http.Request, ord *order.Order, org *organization.Organiz
 	req.Header.Set("X-PAYPAL-RESPONSE-DATA-FORMAT", "JSON")
 }
 
+func formatFloat(f float64) string {
+	return strconv.FormatFloat(f, 'E', -1, 64)
+}
+
 func (c Client) Pay(pay *payment.Payment, usr *user.User, ord *order.Order, org *organization.Organization) (string, error) {
 	data := url.Values{}
 	data.Set("actionType", "PAY")
@@ -64,6 +68,7 @@ func (c Client) Pay(pay *payment.Payment, usr *user.User, ord *order.Order, org 
 	}
 	data.Set("currencyCode", pay.Currency.Code())
 
+	// TODO: Fee is not always going to be set on the organization.  That is for overrides.  We need to refactor our defaults into Config.
 	fee := config.Fee
 	if org.Fee > 0 {
 		fee = org.Fee
@@ -71,33 +76,32 @@ func (c Client) Pay(pay *payment.Payment, usr *user.User, ord *order.Order, org 
 
 	var amount = float64(pay.Amount)
 	var csFee = math.Ceil(amount * fee)
-	//TODO: Fee is not always going to be set on the organization.  That is for overrides.  We need to refactor our defaults into Config.
 
 	if !pay.Currency.IsZeroDecimal() {
 		csFee /= 100
 		amount /= 100
 	}
 
-	data.Set("receiverList.receiver(0).amount", strconv.FormatFloat(amount, 'E', -1, 64)) // Our client
+	// Our client is the primary receiver
+	data.Set("receiverList.receiver(0).primary", "true")
+	data.Set("receiverList.receiver(0).amount", formatFloat(amount))
 	if config.IsProduction {
 		data.Set("receiverList.receiver(0).email", org.Paypal.Live.Email)
 	} else {
 		data.Set("receiverList.receiver(0).email", org.Paypal.Test.Email)
 	}
-	data.Set("receiverList.receiver(0).primary", "true")
 
-	// memo := ord.LineItemsAsString()
-	// if memo != "" {
-	// 	data.Set("memo", memo)
-	// }
-	data.Set("receiverList.receiver(1).amount", strconv.FormatFloat(csFee, 'E', -1, 64)) // Us
+	// We are the second receiver
+	data.Set("receiverList.receiver(1).amount", formatFloat(csFee)) // Us
 	data.Set("receiverList.receiver(1).email", config.Paypal.Email)
 	data.Set("receiverList.receiver(1).primary", "false")
+
 	data.Set("requestEnvelope.errorLanguage", "en-US")
 	data.Set("returnUrl", org.Paypal.ConfirmUrl+"#checkoutsuccess")
 	data.Set("cancelUrl", org.Paypal.CancelUrl+"#checkoutfailure")
 	data.Set("ipnNotificationUrl", config.Paypal.IpnUrl+org.Name)
 
+	// Make payment request
 	req, err := http.NewRequest("POST", config.Paypal.Api+"/AdaptivePayments/Pay", strings.NewReader(data.Encode()))
 	if err != nil {
 		return "", err
@@ -108,7 +112,7 @@ func (c Client) Pay(pay *payment.Payment, usr *user.User, ord *order.Order, org 
 	req.PostForm = data
 
 	dump, _ := httputil.DumpRequestOut(req, true)
-	log.Info("REQ %s", string(dump), c.ctx)
+	log.Info(log.Escape(string(dump)), c.ctx)
 
 	client := urlfetch.Client(c.ctx)
 	res, err := client.Do(req)
@@ -151,10 +155,10 @@ func (c Client) SetPaymentOptions(payKey string, user *user.User, ord *order.Ord
 	data := url.Values{}
 
 	data.Set("requestEnvelope.errorLanguage", "en-US")
+	data.Set("payKey", payKey)
 
-	// Set business name (overriding via PayPal is difficult and awful
-	data.Set("displayOptions.businessName", org.FullName)
-
+	// Can configure display options here -- probably should
+	// data.Set("displayOptions.businessName", org.FullName)
 	// data.Set("displayOptions.headerImageUrl", "")
 	// data.Set("displayOptions.emailHeaderImageUrl", "")
 	// data.Set("displayOptions.emailMarketingImageUrl", "")
@@ -167,20 +171,33 @@ func (c Client) SetPaymentOptions(payKey string, user *user.User, ord *order.Ord
 	}
 
 	// Add invoice data
-	for i, lineItem := range ord.Items {
-		lineNo := strconv.Itoa(i)
-		data.Set("receiverOptions[0].invoiceData.item["+lineNo+"].name", lineItem.String())
-		data.Set("receiverOptions[0].invoiceData.item["+lineNo+"].identifier", lineItem.DisplayId())
-		data.Set("receiverOptions[0].invoiceData.item["+lineNo+"].price", ord.Currency.ToStringNoSymbol(lineItem.TotalPrice()))
-		data.Set("receiverOptions[0].invoiceData.item["+lineNo+"].itemCount", strconv.Itoa(lineItem.Quantity))
-		data.Set("receiverOptions[0].invoiceData.item["+lineNo+"].itemPrice", ord.Currency.ToStringNoSymbol(lineItem.Price))
+	if ord.Test {
+		data.Set("receiverOptions[0].customId", ord.Id())
+		data.Set("receiverOptions[0].description", "This is a swell description")
+
+		data.Set("receiverOptions[0].invoiceData.item[0].itemCount", "1")
+		data.Set("receiverOptions[0].invoiceData.item[0].name", "test")
+		data.Set("receiverOptions[0].invoiceData.item[0].price", "0.50")
+	} else {
+		data.Set("receiverOptions[0].customId", ord.Id())
+		data.Set("receiverOptions[0].description", "This is a swell description")
+
+		// Add each line item
+		for i, lineItem := range ord.Items {
+			n := strconv.Itoa(i)
+			data.Set("receiverOptions[0].invoiceData.item["+n+"].name", lineItem.String())
+			data.Set("receiverOptions[0].invoiceData.item["+n+"].identifier", lineItem.DisplayId())
+			data.Set("receiverOptions[0].invoiceData.item["+n+"].price", ord.Currency.ToStringNoSymbol(lineItem.TotalPrice()))
+			data.Set("receiverOptions[0].invoiceData.item["+n+"].itemCount", strconv.Itoa(lineItem.Quantity))
+			data.Set("receiverOptions[0].invoiceData.item["+n+"].itemPrice", ord.Currency.ToStringNoSymbol(lineItem.Price))
+		}
 	}
 
-	// log.Warn("Tax %v, Shipping %v", ord.Currency.ToStringNoSymbol(ord.Tax), ord.Currency.ToStringNoSymbol(ord.Shipping))
-	data.Set("receiverOptions[0].invoiceData.totalTax", ord.Currency.ToStringNoSymbol(ord.Tax))
+	// Add shipping, tax
 	data.Set("receiverOptions[0].invoiceData.totalShipping", ord.Currency.ToStringNoSymbol(ord.Shipping))
-	data.Set("payKey", payKey)
+	data.Set("receiverOptions[0].invoiceData.totalTax", ord.Currency.ToStringNoSymbol(ord.Tax))
 
+	// Make request
 	req, err := http.NewRequest("POST", config.Paypal.Api+"/AdaptivePayments/SetPaymentOptions", strings.NewReader(data.Encode()))
 	if err != nil {
 		log.Error("Request Came Back With Error %v", err, c.ctx)
@@ -192,7 +209,7 @@ func (c Client) SetPaymentOptions(payKey string, user *user.User, ord *order.Ord
 	req.PostForm = data
 
 	dump, _ := httputil.DumpRequestOut(req, true)
-	log.Info("REQ %s", string(dump), c.ctx)
+	log.Info(log.Escape(string(dump)), c.ctx)
 
 	client := urlfetch.Client(c.ctx)
 	res, err := client.Do(req)
