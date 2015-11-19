@@ -94,7 +94,7 @@ func PayPalConfirm(c *gin.Context) {
 
 	ord.PaymentStatus = payment.Paid
 
-	ord, err = completeCapture(c, org, ord, keys, payments)
+	ord, err = CompleteCapture(c, org, ord, keys, payments)
 	if err != nil {
 		http.Fail(c, 500, "Error during capture", err)
 		return
