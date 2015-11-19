@@ -255,6 +255,7 @@ func (o Order) NumberFromId() int {
 func (o *Order) GetCoupons() error {
 	o.DedupeCouponCodes()
 	db := o.Model.Db
+	ctx := db.Context
 
 	num := len(o.CouponCodes)
 	o.Coupons = make([]coupon.Coupon, num, num)
@@ -265,10 +266,12 @@ func (o *Order) GetCoupons() error {
 		code := strings.TrimSpace(strings.ToUpper(o.CouponCodes[i]))
 		ok, err := c.Query().Filter("Code=", code).KeysOnly().First()
 		if err != nil {
+			log.Error("Error looking for coupon: CouponCodes[%v] => %v: %v", i, o.CouponCodes[i], err, ctx)
 			return err
 		}
 
 		if !ok {
+			log.Warn("Could not find CouponCodes[%v] => %v", i, o.CouponCodes[i], ctx)
 			return errors.New("Invalid coupon code: " + code)
 		}
 
