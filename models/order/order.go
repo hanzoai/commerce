@@ -263,15 +263,16 @@ func (o *Order) GetCoupons() error {
 
 	for i := 0; i < num; i++ {
 		c := coupon.New(db)
-		ok, err := c.Query().Filter("Code=", strings.ToUpper(o.CouponCodes[i])).KeysOnly().First()
+		code := strings.TrimSpace(strings.ToUpper(o.CouponCodes[i]))
+		ok, err := c.Query().Filter("Code=", code).KeysOnly().First()
 		if err != nil {
 			log.Error("Error looking for coupon: CouponCodes[%v] => %v: %v", i, o.CouponCodes[i], err, ctx)
 			return err
 		}
 
 		if !ok {
-			log.Error("Could not find CouponCodes[%v] => %v", i, o.CouponCodes[i], ctx)
-			return errors.New("Invalid coupon code")
+			log.Warn("Could not find CouponCodes[%v] => %v", i, o.CouponCodes[i], ctx)
+			return errors.New("Invalid coupon code: " + code)
 		}
 
 		keys[i] = c.Key()
