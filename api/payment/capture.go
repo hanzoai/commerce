@@ -37,11 +37,13 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (
 		}
 	}
 
-	return completeCapture(c, org, ord, keys, payments)
+	return CompleteCapture(c, org, ord, keys, payments)
 }
 
-func completeCapture(c *gin.Context, org *organization.Organization, ord *order.Order, keys []*aeds.Key, payments []*payment.Payment) (*order.Order, error) {
+func CompleteCapture(c *gin.Context, org *organization.Organization, ord *order.Order, keys []*aeds.Key, payments []*payment.Payment) (*order.Order, error) {
 	var err error
+
+	log.Debug("Completing Capture for\nOrder %v\nPayments %v", ord, payments, c)
 
 	// Referral
 	if ord.ReferrerId != "" {
@@ -78,7 +80,9 @@ func completeCapture(c *gin.Context, org *organization.Organization, ord *order.
 	}
 
 	ctx := db.Context
+	log.Debug("Incrementing Counters? %v", ord.Test, c)
 	if !ord.Test {
+		log.Debug("Incrementing Counters", c)
 		t := ord.CreatedAt
 		if err := redis.IncrTotalOrders(ctx, org, t); err != nil {
 			log.Warn("Redis Error %s", err, ctx)
