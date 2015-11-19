@@ -240,21 +240,21 @@ var _ = Describe("payment/paypal", func() {
 		})
 	})
 
-	Context("Finish a PayPal Order", func() {
-		It("Should Complete an Order", func() {
-			log.Debug("Results: %v", ConfirmPaypal(nil))
-		})
+	// Context("Finish a PayPal Order", func() {
+	// 	It("Should Complete an Order", func() {
+	// 		log.Debug("Results: %v", ConfirmPaypal(nil))
+	// 	})
 
-		It("Should Complete an Order For Store", func() {
-			log.Debug("Results: %v", ConfirmPaypal(stor))
-		})
+	// 	It("Should Complete an Order For Store", func() {
+	// 		log.Debug("Results: %v", ConfirmPaypal(stor))
+	// 	})
 
-		It("Should Cancel an Order", func() {
-			log.Debug("Results: %v", CancelPaypal(nil))
-		})
+	// 	It("Should Cancel an Order", func() {
+	// 		log.Debug("Results: %v", CancelPaypal(nil))
+	// 	})
 
-		It("Should Cancel an Order For Store", func() {
-			log.Debug("Results: %v", CancelPaypal(stor))
-		})
-	})
+	// 	It("Should Cancel an Order For Store", func() {
+	// 		log.Debug("Results: %v", CancelPaypal(stor))
+	// 	})
+	// })
 })
