@@ -262,13 +262,14 @@ func (o *Order) GetCoupons() error {
 
 	for i := 0; i < num; i++ {
 		c := coupon.New(db)
-		ok, err := c.Query().Filter("Code=", strings.ToUpper(o.CouponCodes[i])).KeysOnly().First()
+		code := strings.TrimSpace(strings.ToUpper(o.CouponCodes[i]))
+		ok, err := c.Query().Filter("Code=", code).KeysOnly().First()
 		if err != nil {
 			return err
 		}
 
 		if !ok {
-			return errors.New("Invalid coupon code")
+			return errors.New("Invalid coupon code: " + code)
 		}
 
 		keys[i] = c.Key()
