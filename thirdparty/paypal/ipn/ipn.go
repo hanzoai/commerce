@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"appengine"
+	aeds "appengine/datastore"
 
 	"appengine/urlfetch"
 
@@ -19,9 +20,12 @@ import (
 	"crowdstart.com/config"
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/order"
+	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/router"
+
+	paymentApi "crowdstart.com/api/payment"
 )
 
 // Read body from response
@@ -66,14 +70,18 @@ func respond(ctx appengine.Context, message url.Values) (string, error) {
 }
 
 func Webhook(c *gin.Context) {
-	org := c.Params.ByName("organization")
-	if org == "" {
+	orgName := c.Params.ByName("organization")
+	if orgName == "" {
 		log.Panic("Organization not specified", c)
 	}
 
-	// Get namespaced db
+	// Get org
 	db := datastore.New(c)
-	db.SetNamespace(org)
+	org := organization.New(db)
+	err := org.GetById(orgName)
+
+	// Get namespaced db
+	db.SetNamespace(org.Name)
 
 	ctx := db.Context
 
@@ -157,8 +165,8 @@ func Webhook(c *gin.Context) {
 	pay.Status = payment.Paid
 	pay.MustPut()
 
-	ord.PaymentStatus = pay.Status
-	ord.MustPut()
+	// Increment counters and figure update referrer things
+	paymentApi.CompleteCapture(c, org, ord, []*aeds.Key{pay.Key().(*aeds.Key)}, []*payment.Payment{pay})
 }
 
 func Route(router router.Router, args ...gin.HandlerFunc) {
