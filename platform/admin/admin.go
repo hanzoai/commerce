@@ -12,7 +12,6 @@ import (
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/user"
 	"crowdstart.com/util/emails"
-	"crowdstart.com/util/json"
 	"crowdstart.com/util/json/http"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/template"
@@ -106,40 +105,6 @@ func SendOrderConfirmation(c *gin.Context) {
 	u.MustGet(o.UserId)
 
 	emails.SendOrderConfirmationEmail(c, org, o, u)
-
-	c.Writer.WriteHeader(204)
-}
-
-func Organization(c *gin.Context) {
-	o := middleware.GetOrganization(c)
-
-	org := new(organization.Organization)
-	org.Name = o.Name
-	org.FullName = o.FullName
-	org.Website = o.Website
-	org.EmailWhitelist = o.EmailWhitelist
-	org.GoogleAnalytics = o.GoogleAnalytics
-	org.FacebookTag = o.FacebookTag
-
-	http.Render(c, 200, org)
-}
-
-func UpdateOrganization(c *gin.Context) {
-	o := new(organization.Organization)
-	if err := json.Decode(c.Request.Body, o); err != nil {
-		http.Fail(c, 400, "Failed decode request body", err)
-		return
-	}
-
-	org := middleware.GetOrganization(c)
-
-	org.FullName = o.FullName
-	org.Website = o.Website
-	org.EmailWhitelist = o.EmailWhitelist
-	org.GoogleAnalytics = o.GoogleAnalytics
-	org.FacebookTag = o.FacebookTag
-
-	org.Put()
 
 	c.Writer.WriteHeader(204)
 }
