@@ -83,7 +83,7 @@ func SetActiveOrganization(c *gin.Context) {
 	}
 
 	org := organization.New(db)
-	err := org.Get(orgId)
+	err := org.GetById(orgId)
 	if err != nil {
 		log.Warn("Tried to switch to invalid organization: '%v'", orgId)
 		session.Clear(c)
