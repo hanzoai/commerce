@@ -11,6 +11,8 @@ import (
 	"github.com/stripe/stripe-go/client"
 
 	"crowdstart.com/models/payment"
+	"crowdstart.com/models/plan"
+	"crowdstart.com/models/subscription"
 	"crowdstart.com/models/user"
 	"crowdstart.com/thirdparty/stripe/errors"
 	"crowdstart.com/util/json"
@@ -52,6 +54,50 @@ func PaymentToCard(pay *payment.Payment) *stripe.CardParams {
 	card.Zip = pay.Buyer.Address.PostalCode
 	card.Country = pay.Buyer.Address.Country
 	return &card
+}
+
+// Subscribe to a plan
+func (c Client) NewSubscription(usr *user.User, pln *plan.Plan) (*subscription.Subscription, error) {
+	cust, err := c.NewCustomer(usr, "")
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	params := stripe.SubParams{Customer: cust.ID, Plan: pln.StripeId}
+	params.AddMeta("user", usr.Id())
+	params.AddMeta("plan", pln.Id())
+
+	s, err := c.Subs.New(&params)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	sub := subscription.New(usr.Db)
+	sub.PlanId = pln.Id()
+	sub.UserId = usr.Id()
+	sub.StripeId = s.ID
+	sub.StripeCustomerId = cust.ID
+	sub.FeePercent = s.FeePercent
+	sub.EndCancel = s.EndCancel
+	sub.PeriodStart = time.Unix(s.PeriodStart, 0)
+	sub.PeriodEnd = time.Unix(s.PeriodEnd, 0)
+	// sub.Start = time.Unix(s.Start, 0)
+	sub.Ended = time.Unix(s.Ended, 0)
+	sub.TrialStart = time.Unix(s.TrialStart, 0)
+	sub.TrialEnd = time.Unix(s.TrialEnd, 0)
+
+	sub.Quantity = s.Quantity
+	sub.Status = string(s.Status)
+	sub.Metadata["user"] = s.Meta["user"]
+	sub.Metadata["plan"] = s.Meta["plan"]
+
+	return sub, nil
+}
+
+// Subscribe to a plan
+func (c Client) CancelSubscription(sub *subscription.Subscription) error {
+	err := c.Subs.Cancel(sub.StripeId, &stripe.SubParams{Customer: sub.StripeCustomerId})
+	return err
 }
 
 // Do authorization, return token
@@ -121,12 +167,15 @@ func (c Client) UpdateCustomer(user *user.User) (*Customer, error) {
 }
 
 // Create new stripe customer
-func (c Client) NewCustomer(token string, user *user.User) (*Customer, error) {
+func (c Client) NewCustomer(user *user.User, token string) (*Customer, error) {
 	params := &stripe.CustomerParams{
 		Desc:  user.Name(),
 		Email: user.Email,
 	}
-	params.SetSource(token)
+
+	if token != "" {
+		params.SetSource(token)
+	}
 
 	// Update with our user metadata
 	for k, v := range user.Metadata {

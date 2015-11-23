@@ -63,7 +63,7 @@ func updatePaymentFromUser(pay *payment.Payment, usr *user.User) {
 
 func firstTime(client *stripe.Client, tok *stripe.Token, u *user.User, ord *order.Order, pay *payment.Payment) error {
 	// Create Stripe customer, which we will attach to our payment account.
-	cust, err := client.NewCustomer(tok.ID, u)
+	cust, err := client.NewCustomer(u, tok.ID)
 	if err != nil {
 		return err
 	}

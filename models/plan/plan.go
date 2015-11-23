@@ -1,10 +1,15 @@
 package plan
 
 import (
+	aeds "appengine/datastore"
+
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/types/currency"
+	"crowdstart.com/util/json"
 	"crowdstart.com/util/val"
+
+	. "crowdstart.com/models"
 )
 
 type Interval string
@@ -13,6 +18,8 @@ const (
 	Year  Interval = "year"
 	Month          = "month"
 )
+
+var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 // Based On Stripe Plan
 // Stripe\Plan JSON: {
@@ -50,6 +57,9 @@ type Plan struct {
 	Interval        Interval       `json:"interval"`
 	IntervalCount   int            `json:"intervalCount"`
 	TrialPeriodDays int            `json:"trialPeriodDays"`
+
+	Metadata  Metadata `json:"metadata" datastore:"-"`
+	Metadata_ string   `json:"-" datastore:"-"`
 }
 
 func New(db *datastore.Datastore) *Plan {
@@ -58,12 +68,45 @@ func New(db *datastore.Datastore) *Plan {
 	return p
 }
 
+func (p *Plan) Init() {
+	p.Metadata = make(Metadata)
+}
+
 func (p Plan) Kind() string {
 	return "plan"
 }
 
 func (p Plan) Document() mixin.Document {
 	return nil
+}
+
+func (p *Plan) Load(c <-chan aeds.Property) (err error) {
+	// Ensure we're initialized
+	p.Init()
+
+	// Load supported properties
+	if err = IgnoreFieldMismatch(aeds.LoadStruct(p, c)); err != nil {
+		return err
+	}
+
+	// Deserialize from datastore
+	if len(p.Metadata_) > 0 {
+		err = json.DecodeBytes([]byte(p.Metadata_), &p.Metadata)
+	}
+
+	return err
+}
+
+func (p *Plan) Save(c chan<- aeds.Property) (err error) {
+	// Serialize unsupported properties
+	p.Metadata_ = string(json.EncodeBytes(&p.Metadata))
+
+	if err != nil {
+		return err
+	}
+
+	// Save properties
+	return IgnoreFieldMismatch(aeds.SaveStruct(p, c))
 }
 
 func (p *Plan) Validator() *val.Validator {
