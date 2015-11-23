@@ -3,10 +3,15 @@ package subscription
 import (
 	"time"
 
+	aeds "appengine/datastore"
+
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/plan"
+	"crowdstart.com/util/json"
 	"crowdstart.com/util/val"
+
+	. "crowdstart.com/models"
 )
 
 // Based On Stripe Subscription
@@ -34,6 +39,8 @@ import (
 //   "trial_start": null
 // }
 
+var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
+
 type Subscription struct {
 	mixin.Model
 
@@ -43,40 +50,77 @@ type Subscription struct {
 	StripeId         string `json:"stripeId"`
 	StripeCustomerId string `json:"customer"`
 
-	ApplicationFeePercent float64 `json:"application_fee_percent"`
-	CancelAtPeriodEnd     bool    `json:"cancel_at_period_end"`
+	FeePercent float64 `json:"application_fee_percent"`
+	EndCancel  bool    `json:"cancel_at_period_end"`
 
-	CurrentPeriodStart time.Time `json:"current_period_start"`
-	CurrentPeriodEnd   time.Time `json:"current_period_end"`
+	PeriodStart time.Time `json:"current_period_start"`
+	PeriodEnd   time.Time `json:"current_period_end"`
 
 	Start      time.Time `json:"start"`
-	EndedAt    time.Time `json:"ended_at"`
+	Ended      time.Time `json:"ended_at"`
 	CanceledAt time.Time `json:"canceled_at"`
 
 	TrialStart time.Time `json:"trial_start"`
 	TrialEnd   time.Time `json:"trial_end"`
 
 	Plan     plan.Plan `json:"plan"`
-	Quantity int       `json:"quantity"`
+	Quantity uint64    `json:"quantity"`
 	Status   string    `json:"status"`
+
+	Metadata  Metadata `json:"metadata" datastore:"-"`
+	Metadata_ string   `json:"-" datastore:"-"`
 }
 
 func New(db *datastore.Datastore) *Subscription {
-	p := new(Subscription)
-	p.Model = mixin.Model{Db: db, Entity: p}
-	return p
+	s := new(Subscription)
+	s.Init()
+	s.Model = mixin.Model{Db: db, Entity: s}
+	return s
 }
 
-func (p Subscription) Kind() string {
+func (s *Subscription) Init() {
+	s.Metadata = make(Metadata)
+}
+
+func (s Subscription) Kind() string {
 	return "subscription"
 }
 
-func (p Subscription) Document() mixin.Document {
+func (s Subscription) Document() mixin.Document {
 	return nil
 }
 
-func (p *Subscription) Validator() *val.Validator {
-	return val.New(p)
+func (s *Subscription) Load(c <-chan aeds.Property) (err error) {
+	// Ensure we're initialized
+	s.Init()
+
+	// Load supported properties
+	if err = IgnoreFieldMismatch(aeds.LoadStruct(s, c)); err != nil {
+		return err
+	}
+
+	// Deserialize from datastore
+	if len(s.Metadata_) > 0 {
+		err = json.DecodeBytes([]byte(s.Metadata_), &s.Metadata)
+	}
+
+	return err
+}
+
+func (s *Subscription) Save(c chan<- aeds.Property) (err error) {
+	// Serialize unsupported properties
+	s.Metadata_ = string(json.EncodeBytes(&s.Metadata))
+
+	if err != nil {
+		return err
+	}
+
+	// Save properties
+	return IgnoreFieldMismatch(aeds.SaveStruct(s, c))
+}
+
+func (s *Subscription) Validator() *val.Validator {
+	return val.New(s)
 }
 
 func Query(db *datastore.Datastore) *mixin.Query {
