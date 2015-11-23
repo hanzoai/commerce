@@ -1,7 +1,6 @@
 package stripe
 
 import (
-	"strconv"
 	"time"
 
 	"appengine"
@@ -24,6 +23,10 @@ type Client struct {
 	ctx appengine.Context
 }
 
+type Payable interface {
+	ToCard() *stripe.CardParams
+}
+
 func New(ctx appengine.Context, accessToken string) *Client {
 	// Set HTTP Client for App engine
 	httpClient := urlfetch.Client(ctx)
@@ -40,30 +43,26 @@ func New(ctx appengine.Context, accessToken string) *Client {
 }
 
 // Covert a payment model into a card card we can use for authorization
-func PaymentToCard(pay *payment.Payment) *stripe.CardParams {
-	card := stripe.CardParams{}
-	card.Name = pay.Buyer.Name()
-	card.Number = pay.Account.Number
-	card.CVC = pay.Account.CVC
-	card.Month = strconv.Itoa(pay.Account.Month)
-	card.Year = strconv.Itoa(pay.Account.Year)
-	card.Address1 = pay.Buyer.Address.Line1
-	card.Address2 = pay.Buyer.Address.Line2
-	card.City = pay.Buyer.Address.City
-	card.State = pay.Buyer.Address.State
-	card.Zip = pay.Buyer.Address.PostalCode
-	card.Country = pay.Buyer.Address.Country
-	return &card
+func PaymentToCard(pay Payable) *stripe.CardParams {
+	card := pay.ToCard()
+	return card
 }
 
 // Subscribe to a plan
-func (c Client) NewSubscription(usr *user.User, pln *plan.Plan) (*subscription.Subscription, error) {
+func (c Client) NewSubscription(usr *user.User, pln *plan.Plan, sub *subscription.Subscription) (*Sub, error) {
 	cust, err := c.NewCustomer(usr, "")
 	if err != nil {
 		return nil, errors.New(err)
 	}
 
-	params := stripe.SubParams{Customer: cust.ID, Plan: pln.StripeId}
+	card := PaymentToCard(sub)
+
+	params := stripe.SubParams{
+		Customer: cust.ID,
+		Plan:     pln.StripeId,
+		Card:     card,
+	}
+
 	params.AddMeta("user", usr.Id())
 	params.AddMeta("plan", pln.Id())
 
@@ -72,7 +71,6 @@ func (c Client) NewSubscription(usr *user.User, pln *plan.Plan) (*subscription.S
 		return nil, errors.New(err)
 	}
 
-	sub := subscription.New(usr.Db)
 	sub.PlanId = pln.Id()
 	sub.UserId = usr.Id()
 	sub.StripeId = s.ID
@@ -91,7 +89,7 @@ func (c Client) NewSubscription(usr *user.User, pln *plan.Plan) (*subscription.S
 	sub.Metadata["user"] = s.Meta["user"]
 	sub.Metadata["plan"] = s.Meta["plan"]
 
-	return sub, nil
+	return (*Sub)(s), nil
 }
 
 // Subscribe to a plan
