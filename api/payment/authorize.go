@@ -93,6 +93,12 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	pay.Buyer = usr.Buyer()
 	log.Debug("Buyer: %#v", pay.Buyer, c)
 
+	// Override total to $0.50 is test email is used
+	if org.IsTestEmail(pay.Buyer.Email) {
+		ord.Total = currency.Cents(50)
+		pay.Test = true
+	}
+
 	// Fill with debug information about user's browser
 	pay.Client = client.New(c)
 
@@ -100,23 +106,12 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	pay.Amount = ord.Total
 
 	// Fee defaults to 2%, override with organization fee if customized.
-	fee := 0.02
-	if org.Fee > 0 {
-		fee = org.Fee
-	}
-	pay.Fee = ord.Fee(fee)
+	pay.Fee = ord.CalculateFee(org.Fee)
 
 	pay.Currency = ord.Currency
 	pay.Description = ord.Description()
 
 	log.Debug("Payment: %#v", pay, c)
-
-	// Set order total to $0.50 if using a test email
-	if org.IsTestEmail(pay.Buyer.Email) {
-		pay.Amount = currency.Cents(50)
-		ord.Total = currency.Cents(50)
-		pay.Test = true
-	}
 
 	// Setup all relationships before we try to authorize to ensure that keys
 	// that get created are actually valid.
@@ -134,6 +129,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 
 	// Have stripe handle authorization
 	switch ord.Type {
+	case "paypal":
 	case "balance":
 		if err := balance.Authorize(org, ord, usr, pay); err != nil {
 			log.Info("Failed to authorize order using Balance:\n User: %+v, Order: %+v, Payment: %+v, Error: %v", usr, ord, pay, err, ctx)
@@ -152,8 +148,10 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	ord.BillingAddress.Country = strings.ToUpper(ord.BillingAddress.Country)
 	ord.ShippingAddress.Country = strings.ToUpper(ord.ShippingAddress.Country)
 
-	if err := redis.IncrUsers(ctx, org, time.Now()); err != nil {
-		log.Warn("Redis Error %s", err, ctx)
+	if !ord.Test {
+		if err := redis.IncrUsers(ctx, org, time.Now()); err != nil {
+			log.Warn("Redis Error %s", err, ctx)
+		}
 	}
 
 	// Save user, order, payment
