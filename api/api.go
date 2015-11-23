@@ -10,6 +10,7 @@ import (
 	"crowdstart.com/models/collection"
 	"crowdstart.com/models/coupon"
 	"crowdstart.com/models/payment"
+	"crowdstart.com/models/plan"
 	"crowdstart.com/models/product"
 	"crowdstart.com/models/referral"
 	"crowdstart.com/models/referrer"
@@ -33,9 +34,9 @@ import (
 	storeApi "crowdstart.com/api/store"
 	userApi "crowdstart.com/api/user"
 
+	paypalApi "crowdstart.com/thirdparty/paypal/ipn"
 	shipstationApi "crowdstart.com/thirdparty/shipstation"
 	stripeApi "crowdstart.com/thirdparty/stripe/webhook"
-	paypalApi "crowdstart.com/thirdparty/paypal/ipn"
 )
 
 func init() {
@@ -70,6 +71,7 @@ func init() {
 	rest.New(referral.Referral{}).Route(api, tokenRequired)
 	rest.New(referrer.Referrer{}).Route(api, tokenRequired)
 	rest.New(subscriber.Subscriber{}).Route(api, tokenRequired)
+	rest.New(plan.Plan{}).Route(api, tokenRequired)
 	rest.New(variant.Variant{}).Route(api, tokenRequired)
 	rest.New(transaction.Transaction{}).Route(api, tokenRequired)
 
