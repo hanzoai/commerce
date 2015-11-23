@@ -192,10 +192,6 @@ func Debug(formatOrError interface{}, args ...interface{}) {
 func Info(formatOrError interface{}, args ...interface{}) {
 	args = std.parseArgs(args...)
 
-	if !std.VerboseOverride() && !std.Verbose() {
-		return
-	}
-
 	switch v := formatOrError.(type) {
 	case error:
 		args = append([]interface{}{v}, args...)
@@ -259,4 +255,8 @@ func Dump(args ...interface{}) {
 	// spew.Config.Indent = "  "
 	// dump := spew.Sdump(args...)
 	// std.Dump("\n%s", dump)
+}
+
+func Escape(s string) string {
+	return strings.Replace(s, "%", "%%", -1)
 }
