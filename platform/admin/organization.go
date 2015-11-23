@@ -85,15 +85,13 @@ func SetActiveOrganization(c *gin.Context) {
 	org := organization.New(db)
 	err := org.Get(orgId)
 	if err != nil {
-		log.Warn("Tried to switch to invalid organization.")
+		log.Warn("Tried to switch to invalid organization: '%v'", orgId)
 		session.Clear(c)
 		http.Fail(c, 400, "Failed decode request body", err)
 		return
 	} else {
-		log.Debug("Organization acquired")
-		c.Set("user", u)
-		c.Set("organization", org)
-		c.Set("active-organization", org.Id())
+		log.Debug("Set active organization to '%v'", orgId, c)
+		session.Set(c, "active-organization", org.Id())
 	}
 
 	http.Render(c, 200, org)
