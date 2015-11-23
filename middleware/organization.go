@@ -46,6 +46,7 @@ func AcquireOrganization(moduleName string) gin.HandlerFunc {
 			c.Set("user", u)
 			c.Set("organization", org)
 			c.Set("active-organization", org.Id())
+			session.Set(c, "active-organization", org.Id())
 		}
 	}
 }
