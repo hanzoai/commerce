@@ -19,3 +19,13 @@ type Key interface {
 	StringID() string
 	UnmarshalJSON(buf []byte) error
 }
+
+func AedsKeysToDsKeys(keys []*aeds.Key) []Key {
+	dsKeys := make([]Key, len(keys))
+
+	for i, key := range keys {
+		dsKeys[i] = key
+	}
+
+	return dsKeys
+}
