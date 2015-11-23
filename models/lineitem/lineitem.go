@@ -57,6 +57,32 @@ func (li LineItem) DisplayTotalPrice() string {
 	return DisplayPrice(li.TotalPrice())
 }
 
+func (li LineItem) Id() string {
+	if li.VariantId != "" {
+		return li.VariantId
+	}
+	return li.ProductId
+}
+
+func (li LineItem) DisplayName() string {
+	if li.VariantName != "" {
+		return li.VariantName
+	}
+
+	if li.ProductName != "" {
+		return li.ProductName
+	}
+
+	return li.DisplayId()
+}
+
+func (li LineItem) DisplayId() string {
+	if li.VariantSKU != "" {
+		return li.VariantSKU
+	}
+	return li.ProductSlug
+}
+
 // Returns the entity represented by this line item, which can be used later to
 // update it's price. If key is nil, this product is already fleshed out and
 // does not need to be fetched.

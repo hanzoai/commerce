@@ -47,10 +47,19 @@ type Config struct {
 	Prefixes map[string]string
 	Hosts    map[string]string
 
+	Fee float64
+
 	Salesforce struct {
 		ConsumerKey    string
 		ConsumerSecret string
 		CallbackURL    string
+	}
+
+	Paypal struct {
+		Email        string
+		Api          string
+		IpnUrl       string
+		PaypalIpnUrl string
 	}
 
 	Stripe struct {
@@ -208,6 +217,7 @@ var CookieDomain = config.CookieDomain
 var DatastoreWarn = config.DatastoreWarn
 var DemoMode = config.DemoMode
 var Facebook = config.Facebook
+var Fee = config.Fee
 var Google = config.Google
 var IsDevelopment = config.IsDevelopment
 var IsProduction = config.IsProduction
@@ -225,6 +235,7 @@ var StaticUrl = config.StaticUrl
 var Stripe = config.Stripe
 var WorkingDir = config.WorkingDir
 var Redis = config.Redis
+var Paypal = config.Paypal
 
 func UrlFor(moduleName string, args ...string) string {
 	return config.UrlFor(moduleName, args...)

@@ -1,7 +1,7 @@
 pwd				= $(shell pwd)
 os				= $(shell uname | tr '[A-Z]' '[a-z]')
 platform		= $(os)_amd64
-sdk				= go_appengine_sdk_$(platform)-1.9.26
+sdk				= go_appengine_sdk_$(platform)-1.9.28
 sdk_path		= $(pwd)/.sdk
 goroot			= $(sdk_path)/goroot
 gopath			= $(sdk_path)/gopath
@@ -58,8 +58,8 @@ tools = github.com/golang/lint/golint \
 		github.com/rogpeppe/godef \
 		golang.org/x/tools/cmd/cover \
 		golang.org/x/tools/cmd/goimports \
-		golang.org/x/tools/cmd/gorename \
-		golang.org/x/tools/cmd/oracle
+		golang.org/x/tools/cmd/gorename
+		# golang.org/x/tools/cmd/oracle
 
 # Various patches for SDK
 mtime_file_watcher = https://gist.githubusercontent.com/zeekay/5eba991c39426ca42cbb/raw/8db2e910b89e3927adc9b7c183387186facee17b/mtime_file_watcher.py
@@ -89,7 +89,7 @@ stylus_opts = assets/css/store/store.styl \
 			  -o static/css
 stylus_opts_min = -u csso-stylus -c
 
-autoprefixer = node_modules/.bin/autoprefixer
+autoprefixer = node_modules/.bin/autoprefixer-cli
 autoprefixer_opts = -b 'ie > 8, firefox > 24, chrome > 30, safari > 6, opera > 17, ios > 6, android > 4' \
 					static/css/store.css \
 					static/css/theme.css \
@@ -208,7 +208,7 @@ deps: deps-assets deps-go
 
 # DEPS JS/CSS
 deps-assets:
-	npm install && npm update
+	npm update
 
 # DEPS GO
 deps-go: .sdk .sdk/go .sdk/gpm .sdk/gopath/bin/ginkgo .sdk/gopath/src/crowdstart.com

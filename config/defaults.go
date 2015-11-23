@@ -10,12 +10,19 @@ func Defaults() *Config {
 	config.Hosts = make(map[string]string, 10)
 	config.Prefixes = make(map[string]string, 10)
 	config.RootDir, _ = filepath.Abs(cwd + "/../..")
-	config.SiteTitle = "SKULLY"
+	config.SiteTitle = "Crowdstart"
+
+	config.Fee = 0.02
 
 	config.Secret = "change-me-in-production"
 	config.SessionName = "session"
 
 	config.DemoMode = demoMode
+
+	config.Paypal.Email = "dev@hanzo.ai"
+	config.Paypal.Api = "https://svcs.sandbox.paypal.com"
+	config.Paypal.IpnUrl = "https://api.staging.crowdstart.com/paypal/ipn/"
+	config.Paypal.PaypalIpnUrl = "https://www.sandbox.paypal.com/cgi-bin/webscr"
 
 	config.Stripe.DevelopmentClientId = "ca_53yyPzxlPsdAtzMEIuS2mXYDp4FFXLmm"
 	config.Stripe.ProductionClientId = "ca_53yyRUNpMtTRUgMlVlLAM3vllY1AVybU"
