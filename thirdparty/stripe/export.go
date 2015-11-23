@@ -15,6 +15,7 @@ type Customer stripe.Customer
 type Dispute stripe.Dispute
 type Token stripe.Token
 type Event stripe.Event
+type Sub stripe.Sub
 
 const ReportFraudulent = charge.ReportFraudulent
 const ReportSafe = charge.ReportSafe

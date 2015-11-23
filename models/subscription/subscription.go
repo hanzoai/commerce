@@ -1,7 +1,10 @@
 package subscription
 
 import (
+	"strconv"
 	"time"
+
+	"github.com/stripe/stripe-go"
 
 	aeds "appengine/datastore"
 
@@ -43,6 +46,13 @@ var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 type Subscription struct {
 	mixin.Model
+
+	// Payment source information
+	Account Account `json:"account"`
+
+	// Immutable buyer data from time of payment, may or may not be associated
+	// with a user.
+	Buyer Buyer `json:"buyer"`
 
 	PlanId string `json:"planId"`
 	UserId string `json:"userId"`
@@ -88,6 +98,22 @@ func (s Subscription) Kind() string {
 
 func (s Subscription) Document() mixin.Document {
 	return nil
+}
+
+func (s Subscription) ToCard() *stripe.CardParams {
+	card := stripe.CardParams{}
+	card.Name = s.Buyer.Name()
+	card.Number = s.Account.Number
+	card.CVC = s.Account.CVC
+	card.Month = strconv.Itoa(s.Account.Month)
+	card.Year = strconv.Itoa(s.Account.Year)
+	card.Address1 = s.Buyer.Address.Line1
+	card.Address2 = s.Buyer.Address.Line2
+	card.City = s.Buyer.Address.City
+	card.State = s.Buyer.Address.State
+	card.Zip = s.Buyer.Address.PostalCode
+	card.Country = s.Buyer.Address.Country
+	return &card
 }
 
 func (s *Subscription) Load(c <-chan aeds.Property) (err error) {

@@ -10,7 +10,6 @@ import (
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/order"
-	"crowdstart.com/models/payment"
 	"crowdstart.com/models/referral"
 	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/transaction"
@@ -59,9 +58,9 @@ type User struct {
 
 	// Account to use for new orders when customer creates new orders
 	Accounts struct {
-		Stripe payment.Account `json:"stripe,omitempty"`
-		PayPal payment.Account `json:"paypal,omitempty"`
-		Affirm payment.Account `json:"affirm,omitempty"`
+		Stripe Account `json:"stripe,omitempty"`
+		PayPal Account `json:"paypal,omitempty"`
+		Affirm Account `json:"affirm,omitempty"`
 	} `json:"accounts"`
 
 	Enabled bool `json:"enabled"` //whether or not the user can login yet
