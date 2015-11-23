@@ -1,8 +1,6 @@
 package shipstation
 
 import (
-	"log"
-
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.com/auth"
@@ -11,6 +9,7 @@ import (
 	"crowdstart.com/models/organization"
 	"crowdstart.com/thirdparty/shipstation/export"
 	"crowdstart.com/thirdparty/shipstation/shipnotify"
+	"crowdstart.com/util/log"
 	"crowdstart.com/util/router"
 )
 
@@ -18,7 +17,7 @@ func setOrg(c *gin.Context) {
 	db := datastore.New(c)
 	org := organization.New(db)
 	if err := org.GetById(c.Params.ByName("organization")); err != nil {
-		log.Panic("Unable to get current user", c)
+		log.Panic("Organization not specified", c)
 	}
 
 	userid, err := auth.GetCurrentUserId(c)
