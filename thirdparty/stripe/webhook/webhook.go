@@ -23,7 +23,7 @@ func Webhook(c *gin.Context) {
 		return
 	}
 
-	log.Debug("Webhook recieved '%s': %+v", event.Type, event, c)
+	log.Debug("Received '%s' event: %+v", event.Type, event, c)
 
 	// Look up organization
 	db := datastore.New(c)
@@ -70,12 +70,12 @@ func Webhook(c *gin.Context) {
 		}
 
 	case "ping":
-		log.Warn("Decode 3")
 		c.String(200, "pong")
 		return
 
 	default:
 		log.Warn("Unsupported Stripe event '%s': %#v", event.Type, event, c)
+		return
 	}
 
 	c.String(200, "ok")
