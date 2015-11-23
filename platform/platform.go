@@ -71,6 +71,8 @@ func init() {
 	dash.GET("/organization", admin.Organization)
 	dash.POST("/organization", admin.UpdateOrganization)
 
+	dash.GET("/organization/:organizationid/set-active", admin.SetActiveOrganization)
+
 	dash.GET("/settings", user.Profile)
 
 	dash.GET("/search", admin.Search)
