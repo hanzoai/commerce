@@ -22,6 +22,7 @@ class AdminForm extends FormView
   reset: ()->
   _submit:  BasicForm.prototype._submit
 
+  loadData: (model)->
   js: (opts)->
     super
 
