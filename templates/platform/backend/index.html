@@ -94,9 +94,9 @@
             <li class="dropdown-header">
               Switch Organizations
             </li>
-            {% for orgFullName, orgId in orgNames %}
+            {% for org in orgNames %}
             <li>
-              <a id="switch-to-{{ orgId }}" href="#">{{ orgFullName }}</a>
+              <a id="switch-to-{{ org.Id_ }}" href="#">{{ org.FullName }}</a>
             </li>
             {% endfor %}
             {% endif %}
@@ -240,11 +240,11 @@
 
   riot.mount('*')
 
-  {% for orgFullName, orgId in orgNames %}
-    $('#switch-to-{{ orgId }}').on('click', function() {
+  {% for org in orgNames %}
+    $('#switch-to-{{ org.Id_ }}').on('click', function() {
       $.ajax({
         method: 'GET',
-        url: '{{ urlFor("platform", "/organization", orgId, "set-active") }}'
+        url: '{{ urlFor("platform", "/organization", org.Id_, "set-active") }}'
       }).always(function(){
         window.location.reload()
       })
