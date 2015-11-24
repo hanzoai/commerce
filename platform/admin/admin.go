@@ -31,9 +31,10 @@ func Dashboard(c *gin.Context) {
 	orgNames := make(map[string]string)
 
 	if verusEmailRe.MatchString(usr.Email) {
+		log.Warn("Match", c)
 		var orgs []organization.Organization
 		_, err := organization.Query(db).GetAll(&orgs)
-		if err != nil {
+		if err == nil {
 			for _, org := range orgs {
 				orgNames[org.FullName] = org.Id()
 			}
@@ -50,7 +51,7 @@ func Dashboard(c *gin.Context) {
 		}
 	}
 
-	log.Warn("Organization %v", (middleware.GetOrganization(c)).Name, c)
+	log.Warn("OrgNames %v", orgNames, c)
 	Render(c, "backend/index.html", "orgNames", orgNames, "orgNumber", len(orgNames))
 }
 
