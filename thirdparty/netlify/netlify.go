@@ -2,7 +2,6 @@ package netlify
 
 import (
 	"bytes"
-	"encoding/json"
 	"io/ioutil"
 	"net/http"
 
@@ -11,6 +10,7 @@ import (
 	"crowdstart.com/config"
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/site"
+	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
 
 	"appengine/urlfetch"
@@ -18,8 +18,8 @@ import (
 
 func CreateSite(c *gin.Context, s *site.Site) {
 	ctx := middleware.GetAppEngine(c)
-	jsonreq, _ := json.Marshal(s)
-	reqbuf := bytes.NewBuffer(jsonreq)
+	jsonreq := json.Encode(s)
+	reqbuf := bytes.NewBufferString(jsonreq)
 	req, err := http.NewRequest("POST", config.Netlify.BaseUrl+"sites/", reqbuf)
 
 	if err != nil {
@@ -39,8 +39,8 @@ func CreateSite(c *gin.Context, s *site.Site) {
 
 func UpdateSite(c *gin.Context, s *site.Site) {
 	ctx := middleware.GetAppEngine(c)
-	jsonreq, _ := json.Marshal(s)
-	reqbuf := bytes.NewBuffer(jsonreq)
+	jsonreq := json.Encode(s)
+	reqbuf := bytes.NewBufferString(jsonreq)
 	req, err := http.NewRequest("PUT", config.Netlify.BaseUrl+"sites/"+s.SiteId, reqbuf)
 
 	if err != nil {
