@@ -50,15 +50,19 @@ func PaymentToCard(pay Payable) *stripe.CardParams {
 
 // Subscribe to a plan
 func (c Client) NewSubscription(usr *user.User, pln *plan.Plan, sub *subscription.Subscription) (*Sub, error) {
-	cust, err := c.NewCustomer(usr, "")
-	if err != nil {
-		return nil, errors.New(err)
+	custId := usr.Accounts.Stripe.CustomerId
+	if custId == "" {
+		cust, err := c.NewCustomer(usr, "")
+		if err != nil {
+			return nil, errors.New(err)
+		}
+		custId = cust.ID
 	}
 
 	card := PaymentToCard(sub)
 
 	params := stripe.SubParams{
-		Customer: cust.ID,
+		Customer: custId,
 		Plan:     pln.StripeId,
 		Card:     card,
 	}
@@ -74,7 +78,7 @@ func (c Client) NewSubscription(usr *user.User, pln *plan.Plan, sub *subscriptio
 	sub.PlanId = pln.Id()
 	sub.UserId = usr.Id()
 	sub.StripeId = s.ID
-	sub.StripeCustomerId = cust.ID
+	sub.StripeCustomerId = custId
 	sub.FeePercent = s.FeePercent
 	sub.EndCancel = s.EndCancel
 	sub.PeriodStart = time.Unix(s.PeriodStart, 0)
