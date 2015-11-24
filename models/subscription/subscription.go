@@ -11,6 +11,7 @@ import (
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/plan"
+	"crowdstart.com/util/hashid"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/val"
 
@@ -46,6 +47,8 @@ var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 type Subscription struct {
 	mixin.Model
+
+	Number int `json:"number,omitempty" datastore:"-"`
 
 	// Payment source information
 	Account Account `json:"account"`
@@ -131,6 +134,9 @@ func (s *Subscription) Load(c <-chan aeds.Property) (err error) {
 		return err
 	}
 
+	// Set order number
+	s.Number = s.NumberFromId()
+
 	// Deserialize from datastore
 	if len(s.Metadata_) > 0 {
 		err = json.DecodeBytes([]byte(s.Metadata_), &s.Metadata)
@@ -153,6 +159,13 @@ func (s *Subscription) Save(c chan<- aeds.Property) (err error) {
 
 func (s *Subscription) Validator() *val.Validator {
 	return val.New(s)
+}
+
+func (s Subscription) NumberFromId() int {
+	if s.Id_ == "" {
+		return -1
+	}
+	return hashid.Decode(s.Id_)[1]
 }
 
 func Query(db *datastore.Datastore) *mixin.Query {
