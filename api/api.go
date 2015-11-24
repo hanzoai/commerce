@@ -32,6 +32,7 @@ import (
 	paymentApi "crowdstart.com/api/payment"
 	searchApi "crowdstart.com/api/search"
 	storeApi "crowdstart.com/api/store"
+	subscriptionApi "crowdstart.com/api/subscription"
 	userApi "crowdstart.com/api/user"
 
 	paypalApi "crowdstart.com/thirdparty/paypal/ipn"
@@ -62,6 +63,9 @@ func init() {
 
 	// One Step Payment API
 	paymentApi.Route(api)
+
+	// Subscription API
+	subscriptionApi.Route(api)
 
 	// Models with public RESTful API
 	rest.New(collection.Collection{}).Route(api, tokenRequired)
