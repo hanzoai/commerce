@@ -23,6 +23,7 @@ class AdminForm extends FormView
   _submit:  BasicForm.prototype._submit
 
   loadData: (model)->
+
   js: (opts)->
     super
 
