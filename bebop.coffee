@@ -66,8 +66,7 @@ module.exports =
 
   exclude: [
     /api\/static/
-    /platform\/static/
-    /store\/static/
+    /config.json$/
     /config\/production\/assets/
     /config\/production\/static/
     /config\/sandbox\/assets/
@@ -76,11 +75,13 @@ module.exports =
     /config\/skully\/static/
     /config\/staging\/assets/
     /config\/staging\/static/
-    /config.json$/
+    /platform\/static/
     /platform\/templates/
+    /static\/vendor\/plugins/
+    /store\/static/
     /\.go$/
-    /\.yaml$/
     /\.test$/
+    /\.yaml$/
   ]
 
   compilers:
