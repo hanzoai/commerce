@@ -48,8 +48,9 @@ func subscribe(c *gin.Context, org *organization.Organization) (*subscription.Su
 	pln := plan.New(db)
 	err = pln.GetById(sub.PlanId)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, PlanDoesNotExist
 	}
+	log.Debug("Plan: %#v", pln, c)
 
 	usr, err := sr.User()
 	if err != nil {
