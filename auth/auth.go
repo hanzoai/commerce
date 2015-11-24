@@ -103,5 +103,5 @@ func Login(c *gin.Context, u *user.User) error {
 }
 
 func Logout(c *gin.Context) error {
-	return session.Delete(c, loginKey)
+	return session.Clear(c)
 }
