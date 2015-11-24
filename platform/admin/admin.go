@@ -1,6 +1,8 @@
 package admin
 
 import (
+	"sort"
+
 	"appengine/search"
 
 	"github.com/gin-gonic/gin"
@@ -34,6 +36,8 @@ func Dashboard(c *gin.Context) {
 		log.Warn("Match", c)
 		var orgs []organization.Organization
 		_, err := organization.Query(db).GetAll(&orgs)
+		// Sort organizations by name
+		sort.Sort(organization.ByName(orgs))
 		if err == nil {
 			for _, org := range orgs {
 				orgNames[org.FullName] = org.Id()
