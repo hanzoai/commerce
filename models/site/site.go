@@ -7,9 +7,17 @@ import (
 
 type Site struct {
 	mixin.Model
-
-	Name               string             `json: "name"`
-	CustomDomain       string             `json: "custom_domain"`
+	SiteId             string             `json:"id"`
+	Premium            bool               `json:"premium"`
+	Claimed            bool               `json:"claimed"`
+	NotificationEmail  string             `json:"notification_email"`
+	Url                string             `json:"url"`
+	AdminUrl           string             `json:"admin_url"`
+	ScreenshotUrl      string             `json:"screenshot_url"`
+	CreatedAt          string             `json:"created_at"`
+	UpdatedAt          string             `json:"updated_at"`
+	Name               string             `json:"name"`
+	CustomDomain       string             `json:"custom_domain"`
 	Password           string             `json:"password"`
 	ProcessingSettings ProcessingSettings `json:"processing_settings"`
 }
