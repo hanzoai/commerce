@@ -90,6 +90,16 @@
                 <span class="sidebar-title">{{ ctx.user.Name() }}</span>
               </a>
             </li>
+            {% if orgNumber > 0 %}
+            <li class="dropdown-header">
+              Switch Organizations
+            </li>
+            {% for orgFullName, orgId in orgNames %}
+            <li>
+              <a id="switch-to-{{ orgId }}" href="#">{{ orgFullName }}</a>
+            </li>
+            {% endfor %}
+            {% endif %}
             <li class="dropdown-footer">
               <a href="{{ urlFor("platform", "/logout")}}">
                 <span class="fa fa-power-off pr5"></span> Logout
@@ -229,8 +239,19 @@
   ).register('crowdstart')
 
   riot.mount('*')
+
+  {% for orgFullName, orgId in orgNames %}
+    $('#switch-to-{{ orgId }}').on('click', function() {
+      $.ajax({
+        method: 'GET',
+        url: '{{ urlFor("platform", "/organization", orgId, "set-active") }}'
+      }).always(function(){
+        window.location.reload()
+      })
+    })
+  {% endfor %}
+
   </script>
-  <!-- <script src="{{urlFor("analytics", crowdstartId, "/native/js")}}"></script> -->
   <!-- END: PAGE SCRIPTS -->
 
   <!-- <1!-- HighCharts Plugin --1> -->
