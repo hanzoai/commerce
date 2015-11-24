@@ -282,7 +282,7 @@ bench:
 	@$(ginkgo) $(test_target) -p=true --progress --randomizeAllSpecs --failFast --skipPackage=integration $(test_verbose)
 
 test-ci:
-	$(ginkgo) -r=true -p=true --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace --compilers=2 -v=true -- -test.v=true
+	$(ginkgo) -r=true -p=true --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace --compilers=2
 
 # DEPLOY
 deploy: assets-min docs rollback
