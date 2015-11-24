@@ -107,3 +107,35 @@ func GetSingleSite(c *gin.Context, s *site.Site) (*site.Site, error) {
 
 	return s, nil
 }
+
+func GetAllSites(c *gin.Context) ([]*site.Site, error) {
+	ctx := middleware.GetAppEngine(c)
+	req, err := http.NewRequest("GET", config.Netlify.BaseUrl+"sites/", nil)
+
+	if err != nil {
+		log.Error("Error upon creating new request %v", err, ctx)
+		return nil, err
+	}
+
+	client := urlfetch.Client(ctx)
+	res, err := client.Do(req)
+	defer res.Body.Close()
+
+	if err != nil {
+		log.Error("Request came back with error %v", err, ctx)
+		return nil, err
+	}
+
+	responseBytes, err := ioutil.ReadAll(res.Body)
+
+	log.Debug("Response Bytes: %v", string(responseBytes), ctx)
+	s := []*site.Site{}
+	err = json.Unmarshal(responseBytes, s)
+
+	if err != nil {
+		log.Error("Could not unmarshal response: %v", err, ctx)
+		return nil, err
+	}
+
+	return s, nil
+}
