@@ -25,7 +25,33 @@ func Index(c *gin.Context) {
 }
 
 func Dashboard(c *gin.Context) {
-	Render(c, "backend/index.html")
+	db := datastore.New(c)
+
+	usr := middleware.GetCurrentUser(c)
+	orgNames := make(map[string]string)
+
+	if verusEmailRe.MatchString(usr.Email) {
+		var orgs []organization.Organization
+		_, err := organization.Query(db).GetAll(&orgs)
+		if err != nil {
+			for _, org := range orgs {
+				orgNames[org.FullName] = org.Id()
+			}
+		}
+	} else {
+		orgIds := usr.Organizations
+		for _, orgId := range orgIds {
+			org := organization.New(db)
+			err := org.GetById(orgId)
+			if err != nil {
+				continue
+			}
+			orgNames[org.FullName] = org.Id()
+		}
+	}
+
+	log.Warn("Organization %v", (middleware.GetOrganization(c)).Name, c)
+	Render(c, "backend/index.html", "orgNames", orgNames, "orgNumber", len(orgNames))
 }
 
 type SearchResults struct {
