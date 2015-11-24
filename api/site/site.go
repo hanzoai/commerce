@@ -13,4 +13,9 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 
 	api := router.Group("site")
 	api.POST("/", adminRequired, createSite)
+	api.PATCH("/:siteid", adminRequired, updateSite)
+	api.PUT("/:siteid", adminRequired, updateSite)
+	api.DELETE("/:siteid", adminRequired, destroySite)
+	api.GET("/", adminRequired, getAllSites)
+	api.GET("/:siteid", adminRequired, getSingleSite)
 }
