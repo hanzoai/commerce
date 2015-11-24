@@ -20,7 +20,7 @@ func CreateSite(c *gin.Context, s *site.Site) {
 	ctx := middleware.GetAppEngine(c)
 	jsonreq := json.Encode(s)
 	reqbuf := bytes.NewBufferString(jsonreq)
-	req, err := http.NewRequest("POST", config.Netlify.BaseUrl+"sites/", reqbuf)
+	req, err := http.NewRequest("POST", config.Netlify.BaseUrl+"sites?access_token="+config.Netlify.AccessToken, reqbuf)
 
 	if err != nil {
 		log.Error("Error upon creating new request %v", err, ctx)
@@ -41,7 +41,7 @@ func UpdateSite(c *gin.Context, s *site.Site) {
 	ctx := middleware.GetAppEngine(c)
 	jsonreq := json.Encode(s)
 	reqbuf := bytes.NewBufferString(jsonreq)
-	req, err := http.NewRequest("PUT", config.Netlify.BaseUrl+"sites/"+s.SiteId, reqbuf)
+	req, err := http.NewRequest("PUT", config.Netlify.BaseUrl+"sites/"+s.SiteId+"?access_token="+config.Netlify.AccessToken, reqbuf)
 
 	if err != nil {
 		log.Error("Error upon creating new request %v", err, ctx)
@@ -60,7 +60,7 @@ func UpdateSite(c *gin.Context, s *site.Site) {
 
 func DeleteSite(c *gin.Context, s *site.Site) {
 	ctx := middleware.GetAppEngine(c)
-	req, err := http.NewRequest("DELETE", config.Netlify.BaseUrl+"sites/"+s.SiteId, nil)
+	req, err := http.NewRequest("DELETE", config.Netlify.BaseUrl+"sites/"+s.SiteId+"?access_token="+config.Netlify.AccessToken, nil)
 
 	if err != nil {
 		log.Error("Error upon creating new request %v", err, ctx)
@@ -79,7 +79,7 @@ func DeleteSite(c *gin.Context, s *site.Site) {
 
 func GetSingleSite(c *gin.Context, s *site.Site) (*site.Site, error) {
 	ctx := middleware.GetAppEngine(c)
-	req, err := http.NewRequest("GET", config.Netlify.BaseUrl+"sites/"+s.SiteId, nil)
+	req, err := http.NewRequest("GET", config.Netlify.BaseUrl+"sites/"+s.SiteId+"?access_token="+config.Netlify.AccessToken, nil)
 
 	if err != nil {
 		log.Error("Error upon creating new request %v", err, ctx)
@@ -110,7 +110,7 @@ func GetSingleSite(c *gin.Context, s *site.Site) (*site.Site, error) {
 
 func GetAllSites(c *gin.Context) ([]*site.Site, error) {
 	ctx := middleware.GetAppEngine(c)
-	req, err := http.NewRequest("GET", config.Netlify.BaseUrl+"sites/", nil)
+	req, err := http.NewRequest("GET", config.Netlify.BaseUrl+"sites?access_token="+config.Netlify.AccessToken, nil)
 
 	if err != nil {
 		log.Error("Error upon creating new request %v", err, ctx)
