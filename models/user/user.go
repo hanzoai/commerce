@@ -43,7 +43,7 @@ type User struct {
 	Email           string   `json:"email"`
 	PaypalEmail     string   `json:"paypalEmail"`
 	PasswordHash    []byte   `schema:"-" datastore:",noindex" json:"-"`
-	Organizations   []string `json:"organizations"`
+	Organizations   []string `json:"-"`
 
 	Facebook struct {
 		AccessToken string `facebook:"-"`
