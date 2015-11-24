@@ -12,7 +12,6 @@ import (
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/user"
 	"crowdstart.com/util/emails"
-	"crowdstart.com/util/json"
 	"crowdstart.com/util/json/http"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/template"
@@ -26,7 +25,34 @@ func Index(c *gin.Context) {
 }
 
 func Dashboard(c *gin.Context) {
-	Render(c, "backend/index.html")
+	db := datastore.New(c)
+
+	usr := middleware.GetCurrentUser(c)
+	orgNames := make(map[string]string)
+
+	if verusEmailRe.MatchString(usr.Email) {
+		log.Warn("Match", c)
+		var orgs []organization.Organization
+		_, err := organization.Query(db).GetAll(&orgs)
+		if err == nil {
+			for _, org := range orgs {
+				orgNames[org.FullName] = org.Id()
+			}
+		}
+	} else {
+		orgIds := usr.Organizations
+		for _, orgId := range orgIds {
+			org := organization.New(db)
+			err := org.GetById(orgId)
+			if err != nil {
+				continue
+			}
+			orgNames[org.FullName] = org.Id()
+		}
+	}
+
+	log.Warn("OrgNames %v", orgNames, c)
+	Render(c, "backend/index.html", "orgNames", orgNames, "orgNumber", len(orgNames))
 }
 
 type SearchResults struct {
@@ -106,40 +132,6 @@ func SendOrderConfirmation(c *gin.Context) {
 	u.MustGet(o.UserId)
 
 	emails.SendOrderConfirmationEmail(c, org, o, u)
-
-	c.Writer.WriteHeader(204)
-}
-
-func Organization(c *gin.Context) {
-	o := middleware.GetOrganization(c)
-
-	org := new(organization.Organization)
-	org.Name = o.Name
-	org.FullName = o.FullName
-	org.Website = o.Website
-	org.EmailWhitelist = o.EmailWhitelist
-	org.GoogleAnalytics = o.GoogleAnalytics
-	org.FacebookTag = o.FacebookTag
-
-	http.Render(c, 200, org)
-}
-
-func UpdateOrganization(c *gin.Context) {
-	o := new(organization.Organization)
-	if err := json.Decode(c.Request.Body, o); err != nil {
-		http.Fail(c, 400, "Failed decode request body", err)
-		return
-	}
-
-	org := middleware.GetOrganization(c)
-
-	org.FullName = o.FullName
-	org.Website = o.Website
-	org.EmailWhitelist = o.EmailWhitelist
-	org.GoogleAnalytics = o.GoogleAnalytics
-	org.FacebookTag = o.FacebookTag
-
-	org.Put()
 
 	c.Writer.WriteHeader(204)
 }
