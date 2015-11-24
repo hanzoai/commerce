@@ -79,6 +79,12 @@ type Subscription struct {
 
 	Metadata  Metadata `json:"metadata" datastore:"-"`
 	Metadata_ string   `json:"-" datastore:"-"`
+
+	// Stripe livemode
+	Live bool `json:"live"`
+
+	// Internal testing flag
+	Test bool `json:"-"`
 }
 
 func New(db *datastore.Datastore) *Subscription {
