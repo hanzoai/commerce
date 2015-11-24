@@ -30,18 +30,11 @@ func Dashboard(c *gin.Context) {
 	db := datastore.New(c)
 
 	usr := middleware.GetCurrentUser(c)
-	orgNames := make(map[string]string)
+	var orgNames []organization.Organization
 
 	if verusEmailRe.MatchString(usr.Email) {
-		log.Warn("Match", c)
-		var orgs []organization.Organization
-		_, err := organization.Query(db).GetAll(&orgs)
-		// Sort organizations by name
-		sort.Sort(organization.ByName(orgs))
-		if err == nil {
-			for _, org := range orgs {
-				orgNames[org.FullName] = org.Id()
-			}
+		if _, err := organization.Query(db).GetAll(&orgNames); err != nil {
+			log.Warn("Unable to fetch organizations for switcher.")
 		}
 	} else {
 		orgIds := usr.Organizations
@@ -51,11 +44,13 @@ func Dashboard(c *gin.Context) {
 			if err != nil {
 				continue
 			}
-			orgNames[org.FullName] = org.Id()
+			orgNames = append(orgNames, *org)
 		}
 	}
 
-	log.Warn("OrgNames %v", orgNames, c)
+	// Sort organizations by name
+	sort.Sort(organization.ByName(orgNames))
+
 	Render(c, "backend/index.html", "orgNames", orgNames, "orgNumber", len(orgNames))
 }
 
