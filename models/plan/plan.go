@@ -15,8 +15,8 @@ import (
 type Interval string
 
 const (
-	Year  Interval = "year"
-	Month          = "month"
+	Yearly  Interval = "year"
+	Monthly          = "month"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
@@ -52,7 +52,7 @@ type Plan struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 
-	Amount          currency.Cents `json:"amount"`
+	Price           currency.Cents `json:"price"`
 	Currency        currency.Type  `json:"currency"`
 	Interval        Interval       `json:"interval"`
 	IntervalCount   int            `json:"intervalCount"`
