@@ -30,6 +30,9 @@ var Plan = New("plan", func(c *gin.Context) *plan.Plan {
 	pln.Currency = currency.USD
 	pln.Interval = plan.Monthly
 	pln.IntervalCount = 1
+	// manually made in stripe test dashboard
+	pln.StripeId = "much-shirts"
+
 	pln.MustPut()
 
 	return pln

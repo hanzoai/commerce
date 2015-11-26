@@ -320,7 +320,7 @@ func (m *Model) GetById(id string) error {
 
 	// Use unique filter based on model type
 	switch m.Kind() {
-	case "store", "product":
+	case "store", "product", "plan":
 		filterStr = "Slug"
 	case "variant":
 		filterStr = "SKU"
