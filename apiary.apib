@@ -1324,6 +1324,97 @@ request, while any fields not specified in the JSON will be left alone.
 
 + Response 201 (application/json)
 
+# Group Site
+| Field Name        | Field Description                                                                                      | Type   |
+| ----------        | -----------------                                                                                      | ----   |
+| siteId            | A unique identifier for the site.                                                                      | string |
+| notificationEmail | The email on record for the site, emailed when alerts such as site failures happen.                    | string |
+| url               | The live URL for the site in question.                                                                 | string |
+| adminUrl          | The URL used for the administration of the site in question.                                           | string |
+| screenshotUrl     | A URL to a screenshot of your site, which can make it easier to inspect through your dashboard.        | string |
+| createdAt         | When the site was created, formatted in RFC 3339 specifications.                                       | string |
+| updatedAt         | When the site was updated, formatted in RFC 3339 specifications.                                       | string |
+| name              | The public, human-readable moniker for the site.                                                       | string |
+| customDomain      | Filling this out will override the default domain setup, instead making it whatever you want it to be. | string |
+| password          | The password for administrating the site.  Keep this safe!                                             | string |
+| repo              | A link to a Github repo, for use in continuous deployments.                                            | string |
+
+## Calls related to Site [/site/]
+There are a couple of non-keyed site calls.  Nonetheless, they require an access
+key to be included with the request.
+
+### Get all Sites [GET]
+Returns all sites that you are authorized to see.
+
++ Response 200 (application/json)
+
+    [
+        {
+            "id":"3970e0fe-8564-4903-9a55-c5f8de49fb8b",
+            "name":"example",
+            "custom_domain":"www.example.com",
+            "url":"http://www.example.com",
+            "admin_url":"https://api.crowdstart.com/sites/example",
+            "screenshot_url":null,
+            "created_at":"2013-09-17T05:13:08Z",
+            "updated_at":"2013-09-17T05:13:19Z"
+        }
+    ]
+
+### Create a Site [POST]
+This will deploy a new site.
+
++ Request
+
+    {
+        "name": "example",
+        "custom_domain": "www.example.com",
+        "password": "super_secret",
+        "repo": "http://github.com/bestsites/examplesite"
+    }
+
++ Response 200
+
+## Calls related to Site [/site/{id}}]
+These site calls are keyed on the SiteId in the Site object. As with all calls,
+it also requires an access key to be sent along with the request.
+
+### Get a single site [GET]
+
++ Response 200 (application/json)
+
+    {
+        "id":"3970e0fe-8564-4903-9a55-c5f8de49fb8b",
+        "name":"example",
+        "custom_domain":"www.example.com",
+        "notification_email":"me@example.com",
+        "url":"http://www.example.com",
+        "admin_url":"https://api.crowdstart.com/sites/example",
+        "screenshot_url":null,
+        "created_at":"2013-09-17T05:13:08Z",
+        "updated_at":"2013-09-17T05:13:19Z",
+    }
+
+### Update a site [PUT]
+This functionally is a POST/Create command with a contextual site ID.
+
++ Request
+
+    {
+        "name": "example",
+        "custom_domain": "www.example.com",
+        "password": "super_secret",
+        "repo": "http://github.com/bestsites/examplesite"
+    }
+
++ Response 200
+
+### Delete a site [DELETE]
+The only input this requires is the contextual site ID, and it will respond with
+200 OK.
+
++ Response 200
+
 # Group Store
 
 | Field Name        | Field Description                                                                                                                             | Type              |

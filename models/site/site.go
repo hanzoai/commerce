@@ -15,10 +15,12 @@ type Site struct {
 	AdminUrl           string             `json:"admin_url"`
 	ScreenshotUrl      string             `json:"screenshot_url"`
 	CreatedAt          string             `json:"created_at"`
+	State              string             `json:"state"`
 	UpdatedAt          string             `json:"updated_at"`
 	Name               string             `json:"name"`
 	CustomDomain       string             `json:"custom_domain"`
 	Password           string             `json:"password"`
+	Repo               string             `json:"repo"`
 	ProcessingSettings ProcessingSettings `json:"processing_settings"`
 }
 
