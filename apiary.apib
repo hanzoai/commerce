@@ -72,7 +72,6 @@ Any failure in this process will result in a failure of the call.
           "subtotal":2000,
           "shipping":0,
           "tax":0,
-          "adjustment":0,
           "total":2000,
           "balance":0,
           "paid":0,
@@ -215,7 +214,6 @@ capture portion.
            "subtotal":2000,
            "shipping":0,
            "tax":0,
-           "adjustment":0,
            "total":2000,
            "balance":0,
            "paid":0,
@@ -324,7 +322,6 @@ returned in the Authorize step (see above).
           "subtotal":2000,
           "shipping":0,
           "tax":0,
-          "adjustment":0,
           "total":2000,
           "balance":0,
           "paid":0,
@@ -736,25 +733,34 @@ request, while any fields not specified in the JSON will be left alone.
 
 # Group Order
 
-This object is a representation of a user's **confirmed purchase**.  The order should not be
+This object is a representation of a user's **completed purchase**.  The order should not be
 confused with a [Cart](#cart), which are prospective purchases.
 
-| Field Name | Field Description                                                                          | Type                    |
-| ---------- | -----------------                                                                          | ----                    |
-| createdAt  | The time the order first came to be.                                                       | string                  |
-| updatedAt  | The time the order was last modified (not necessarily by the user).                        | string                  |
-| id         | The internal unique identifier for this order.                                             | string                  |
-| userId     | The identifier for the user who placed this order.                                         | string                  |
-| shipping   | Charges for mailing the order in cents                                                     | int64                   |
-| tax        | Charges on the order levied by any relevant governments in cents                           | int64                   |
-| subtotal   | Charges from actual purchases in cents                                                     | int64                   |
-| total      | Net charge to be sent to the client cents. Includes Subtotal, Tax, and Shipping.           | int64                   |
-| items      | A list of LineItems that comprise this order.                                              | [[]LineItem](#lineitem) |
-| campaignId | The unique identifier for the fundraising campaign that spawned this order (if applicable) | string                  |
-| preorder   | A switch indicating whether or not this is a preorder.                                     | bool                    |
-| cancelled  | A switch indicating whether or not this order has been cancelled.                          | bool                    |
-| shipped    | A switch indicating whether or not this order has been shipped.                            | bool                    |
-| test       | A switch indicating whether or not this is a test order.                                   | bool                    |
+| Field Name  | Field Description                                                                                                                           | Type                    |
+| ----------  | -----------------                                                                                                                           | ----                    |
+| createdAt   | The time the order first came to be.                                                                                                        | string                  |
+| updatedAt   | The time the order was last modified (not necessarily by the user).                                                                         | string                  |
+| id          | The internal unique identifier for this order.                                                                                              | string                  |
+| userId      | The identifier for the user who placed this order.                                                                                          | string                  |
+| currency    | The 3-letter ISO currency code for the currency used on this order. Uses lowercase.                                                         | string                  |
+| lineTotal   | The sum of all line item amounts, in the most basic unit (such as cents), as defined by Currency.                                           | int64                   |
+| shipping    | Charges for mailing the order in cents                                                                                                      | int64                   |
+| tax         | Charges on the order levied by any relevant governments in cents                                                                            | int64                   |
+| discount    | Discount amount applied to the order, in the most basic unit (such as cents) as defined by the Currency.                                    | int64                   |
+| subtotal    | Charges from actual purchases in the most basic unit (such as cents) as defined by the Currency, less any discounts.                        | int64                   |
+| total       | Net charge to be sent to the client cents. Includes Subtotal, Tax, and Shipping.                                                            | int64                   |
+| balance     | The net amount owed to the seller, in the currency's basic unit (such as cents).                                                            | int64                   |
+| paid        | The amount currently paid to the seller, in the currency's basic unit (such as cents)                                                       | int64                   |
+| refunded    | The amount refunded to the customer, in the currency's basic unit (such as cents)                                                           | int64                   |
+| items       | A list of LineItems that comprise this order.                                                                                               | [[]LineItem](#lineitem) |
+| campaignId  | The unique identifier for the fundraising campaign that spawned this order (if applicable)                                                  | string                  |
+| storeId     | The unique identifier for the specific store that spawned this order (if applicable)                                                        | string                  |
+| preorder    | A switch indicating whether or not this is a preorder.                                                                                      | bool                    |
+| cancelled   | A switch indicating whether or not this order has been cancelled.                                                                           | bool                    |
+| shipped     | A switch indicating whether or not this order has been shipped.                                                                             | bool                    |
+| test        | A switch indicating whether or not this is a test order.                                                                                    | bool                    |
+| unconfirmed | A switch indicating whether or not all details are confirmed. If false, most often the user has not declared precise order variant options. | bool                    |
+| type        | This is a payment processor type, such as stripe (for credit card payments), paypal (for escrow payments), etc.                             | string                  |
 
 ## Calls related to Orders [/order/{id}]
 Basic Order calls are keyed upon the unique ID of the Order.  As with all calls,
