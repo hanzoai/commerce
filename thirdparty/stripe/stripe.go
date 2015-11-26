@@ -10,7 +10,6 @@ import (
 	"github.com/stripe/stripe-go/client"
 
 	"crowdstart.com/models/payment"
-	"crowdstart.com/models/plan"
 	"crowdstart.com/models/subscription"
 	"crowdstart.com/models/user"
 	"crowdstart.com/thirdparty/stripe/errors"
@@ -43,42 +42,36 @@ func New(ctx appengine.Context, accessToken string) *Client {
 }
 
 // Covert a payment model into a card card we can use for authorization
-func PaymentToCard(pay Payable) *stripe.CardParams {
+func ToCard(pay Payable) *stripe.CardParams {
 	card := pay.ToCard()
 	return card
 }
 
 // Subscribe to a plan
-func (c Client) NewSubscription(usr *user.User, pln *plan.Plan, sub *subscription.Subscription) (*Sub, error) {
-	custId := usr.Accounts.Stripe.CustomerId
-	if custId == "" {
-		cust, err := c.NewCustomer(usr, "")
-		if err != nil {
-			return nil, errors.New(err)
-		}
-		custId = cust.ID
-	}
-
-	card := PaymentToCard(sub)
-
+func (c Client) NewSubscription(token string, source interface{}, sub *subscription.Subscription) (*Sub, error) {
+	log.Warn("sub.Plan %v", sub.Plan)
 	params := stripe.SubParams{
-		Customer: custId,
-		Plan:     pln.StripeId,
-		Card:     card,
+		Plan:  sub.Plan.StripeId,
+		Token: token,
 	}
 
-	params.AddMeta("user", usr.Id())
-	params.AddMeta("plan", pln.Id())
+	switch v := source.(type) {
+	case *Customer:
+		params.Customer = v.ID
+	case *user.User:
+		params.Customer = v.Accounts.Stripe.CustomerId
+		params.AddMeta("user", v.Id())
+	}
+
+	params.AddMeta("plan", sub.Plan.Id())
 
 	s, err := c.Subs.New(&params)
 	if err != nil {
 		return nil, errors.New(err)
 	}
 
-	sub.PlanId = pln.Id()
-	sub.UserId = usr.Id()
 	sub.StripeId = s.ID
-	sub.StripeCustomerId = custId
+	sub.StripeCustomerId = params.Customer
 	sub.FeePercent = s.FeePercent
 	sub.EndCancel = s.EndCancel
 	sub.PeriodStart = time.Unix(s.PeriodStart, 0)
@@ -88,7 +81,7 @@ func (c Client) NewSubscription(usr *user.User, pln *plan.Plan, sub *subscriptio
 	sub.TrialStart = time.Unix(s.TrialStart, 0)
 	sub.TrialEnd = time.Unix(s.TrialEnd, 0)
 
-	sub.Quantity = s.Quantity
+	sub.Quantity = int(s.Quantity)
 	sub.Status = string(s.Status)
 	sub.Metadata["user"] = s.Meta["user"]
 	sub.Metadata["plan"] = s.Meta["plan"]
@@ -103,9 +96,9 @@ func (c Client) CancelSubscription(sub *subscription.Subscription) error {
 }
 
 // Do authorization, return token
-func (c Client) Authorize(pay *payment.Payment) (*Token, error) {
+func (c Client) Authorize(pay Payable) (*Token, error) {
 	t, err := c.API.Tokens.New(&stripe.TokenParams{
-		Card: PaymentToCard(pay),
+		Card: ToCard(pay),
 	})
 
 	if err != nil {
@@ -210,7 +203,7 @@ func (c Client) AddCard(token string, user *user.User) (*Card, error) {
 }
 
 // Update card associated with Stripe customer
-func (c Client) UpdateCard(token string, pay *payment.Payment, user *user.User) (*Card, error) {
+func (c Client) UpdateCard(token string, user *user.User) (*Card, error) {
 	acct := user.Accounts.Stripe
 	customerId := acct.CustomerId
 	cardId := acct.CardId

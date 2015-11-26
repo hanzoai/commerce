@@ -3,12 +3,12 @@ package subscription
 import (
 	"github.com/gin-gonic/gin"
 
+	"crowdstart.com/api/subscription/stripe"
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/plan"
 	"crowdstart.com/models/subscription"
 	"crowdstart.com/models/user"
-	"crowdstart.com/thirdparty/stripe"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
 )
@@ -29,7 +29,8 @@ func subscriptionRequest(c *gin.Context, org *organization.Organization) (*Subsc
 
 func subscribe(c *gin.Context, org *organization.Organization) (*subscription.Subscription, *user.User, error) {
 	ctx := org.Db.Context
-	db := datastore.New(org.Namespace(c))
+	nsCtx := org.Namespace(ctx)
+	db := datastore.New(nsCtx)
 
 	sr, err := subscriptionRequest(c, org)
 	if err != nil {
@@ -61,16 +62,19 @@ func subscribe(c *gin.Context, org *organization.Organization) (*subscription.Su
 	sub.Buyer = usr.Buyer()
 	log.Debug("Buyer: %#v", sub.Buyer, c)
 
-	// Override total to $0.50 is test email is used
 	if org.IsTestEmail(sub.Buyer.Email) {
 		sub.Test = true
 	}
 
 	sub.Parent = usr.Key()
 	sub.UserId = usr.Id()
+	sub.PlanId = pln.Id()
+	sub.Plan = *pln
 
-	client := stripe.New(ctx, org.StripeToken())
-	client.NewSubscription(usr, pln, sub)
+	err = stripe.Subscribe(org, usr, sub)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	usr.MustPut()
 	sub.MustPut()

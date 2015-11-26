@@ -22,18 +22,18 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User,
 	// New customer
 	if usr.Accounts.Stripe.CustomerId == "" {
 		log.Debug("New stripe customer")
-		return firstTime(client, tok, usr, ord, pay)
+		return firstTime(client, tok, usr, pay)
 	}
 
 	// Existing customer, already have card on record
 	if usr.Accounts.Stripe.CardMatches(pay.Account) {
 		log.Debug("Returning stripe customer")
-		return returning(client, tok, usr, ord, pay)
+		return returning(client, tok, usr, pay)
 	}
 
 	// Existing customer, new card
 	log.Debug("Returning stripe customer, new card")
-	return returningNewCard(client, tok, usr, ord, pay)
+	return returningNewCard(client, tok, usr, pay)
 }
 
 func updatePaymentFromCard(pay *payment.Payment, card *stripe.Card) {
@@ -61,7 +61,7 @@ func updatePaymentFromUser(pay *payment.Payment, usr *user.User) {
 	pay.Account.CVCCheck = acct.CVCCheck
 }
 
-func firstTime(client *stripe.Client, tok *stripe.Token, u *user.User, ord *order.Order, pay *payment.Payment) error {
+func firstTime(client *stripe.Client, tok *stripe.Token, u *user.User, pay *payment.Payment) error {
 	// Create Stripe customer, which we will attach to our payment account.
 	cust, err := client.NewCustomer(u, tok.ID)
 	if err != nil {
@@ -90,7 +90,7 @@ func firstTime(client *stripe.Client, tok *stripe.Token, u *user.User, ord *orde
 	return err
 }
 
-func returning(client *stripe.Client, tok *stripe.Token, usr *user.User, ord *order.Order, pay *payment.Payment) error {
+func returning(client *stripe.Client, tok *stripe.Token, usr *user.User, pay *payment.Payment) error {
 	// Update customer details
 	cust, err := client.UpdateCustomer(usr)
 	if err != nil {
@@ -99,7 +99,7 @@ func returning(client *stripe.Client, tok *stripe.Token, usr *user.User, ord *or
 	pay.Live = cust.Live
 
 	// Update card details using token
-	card, err := client.UpdateCard(tok.ID, pay, usr)
+	card, err := client.UpdateCard(tok.ID, usr)
 	updatePaymentFromCard(pay, card)
 
 	// Charge using customer
@@ -107,7 +107,7 @@ func returning(client *stripe.Client, tok *stripe.Token, usr *user.User, ord *or
 	return err
 }
 
-func returningNewCard(client *stripe.Client, tok *stripe.Token, usr *user.User, ord *order.Order, pay *payment.Payment) error {
+func returningNewCard(client *stripe.Client, tok *stripe.Token, usr *user.User, pay *payment.Payment) error {
 	// Add new card to customer
 	card, err := client.AddCard(tok.ID, usr)
 	if err != nil {

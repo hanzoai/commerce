@@ -77,7 +77,7 @@ type Subscription struct {
 	TrialEnd   time.Time `json:"trial_end"`
 
 	Plan     plan.Plan `json:"plan"`
-	Quantity uint64    `json:"quantity"`
+	Quantity int       `json:"quantity"`
 	Status   string    `json:"status"`
 
 	Metadata  Metadata `json:"metadata" datastore:"-"`
