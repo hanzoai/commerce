@@ -125,6 +125,7 @@ func create(c *gin.Context) {
 	req.User = user.New(db)
 
 	// Default these fields to exotic unicode character to test if they are set to empty
+	req.Email = "\u263A"
 	req.FirstName = "\u263A"
 	req.LastName = "\u263A"
 
@@ -138,23 +139,19 @@ func create(c *gin.Context) {
 	usr := req.User
 
 	// Email is required
-	if usr.Email == "" {
+	if usr.Email == "" || usr.Email == "\u263A" {
 		http.Fail(c, 400, "Email is required", errors.New("Email is required"))
 		return
 	}
 
-	if usr.FirstName == "" {
+	if usr.FirstName == "" || usr.FirstName == "\u263A" {
 		http.Fail(c, 400, "First name cannot be blank", errors.New("First name cannot be blank"))
 		return
-	} else if usr.FirstName == "\u263A" {
-		usr.FirstName = ""
 	}
 
-	if usr.LastName == "" {
+	if usr.LastName == "" || usr.LastName == "\u263A" {
 		http.Fail(c, 400, "Last name cannot be blank", errors.New("Last name cannot be blank"))
 		return
-	} else if usr.LastName == "\u263A" {
-		usr.LastName = ""
 	}
 
 	usr.Email = strings.ToLower(strings.TrimSpace(usr.Email))
