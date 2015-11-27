@@ -60,6 +60,15 @@ class IdTableFieldView extends BasicTableFieldView
 
 IdTableFieldView.register()
 
+class IdListTableFieldView extends BasicTableFieldView
+  tag: 'id-list-table-field'
+  html: require '../../templates/backend/table/fields/link-list-field.html'
+  js: (opts)->
+    super
+    @path = opts.field.hints['id-path']
+
+IdListTableFieldView.register()
+
 class NumericTableFieldView extends BasicTableFieldView
   tag: 'numeric-table-field'
   html: require '../../templates/backend/table/fields/numeric-field.html'
@@ -123,6 +132,10 @@ helpers.registerTag (fieldCfg)->
 helpers.registerTag (fieldCfg)->
   return fieldCfg.type == 'id'
 , 'id-table-field'
+
+helpers.registerTag (fieldCfg)->
+  return fieldCfg.type == 'id-list'
+, 'id-list-table-field'
 
 helpers.registerTag (fieldCfg)->
   return fieldCfg.type == 'textarea'
