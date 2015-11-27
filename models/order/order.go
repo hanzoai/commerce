@@ -114,6 +114,9 @@ type Order struct {
 	// Individual line items
 	Items []LineItem `json:"items"`
 
+	// Free Items from Coupons
+	CouponItems []LineItem `json:"couponItems"`
+
 	Adjustments []Adjustment `json:"adjustments,omitempty"`
 
 	Coupons     []coupon.Coupon `json:"coupons,omitempty"`
@@ -350,6 +353,72 @@ func (o *Order) UpdateDiscount() {
 	}
 }
 
+// Update discount using coupon codes/order info.
+func (o *Order) UpdateCouponItems() error {
+	nCodes := len(o.CouponCodes)
+
+	o.CouponItems = make([]LineItem, 0)
+
+	for i := 0; i < nCodes; i++ {
+		c := &o.Coupons[i]
+		if !c.Enabled {
+			continue
+		}
+		if c.ProductId == "" {
+			switch c.Type {
+			case coupon.FreeItem:
+				o.CouponItems = append(o.CouponItems, LineItem{
+					ProductId: c.FreeProductId,
+					VariantId: c.FreeVariantId,
+					Quantity:  c.FreeQuantity,
+				})
+			}
+		} else {
+			for _, item := range o.Items {
+				if item.ProductId == c.ProductId {
+					switch c.Type {
+					case coupon.FreeItem:
+						o.CouponItems = append(o.CouponItems, LineItem{
+							ProductId: c.FreeProductId,
+							VariantId: c.FreeVariantId,
+							Quantity:  c.FreeQuantity,
+						})
+					}
+				}
+			}
+		}
+	}
+
+	db := o.Model.Db
+	ctx := o.Model.Db.Context
+
+	nItems := len(o.Items)
+	keys := make([]datastore.Key, nItems, nItems)
+	vals := make([]interface{}, nItems, nItems)
+
+	for i := 0; i < nItems; i++ {
+		key, dst, err := o.CouponItems[i].Entity(db)
+		if err != nil {
+			log.Error("Failed to get entity for %#v: %v", o.CouponItems[i], err, ctx)
+			return err
+		}
+		keys[i] = key
+		vals[i] = dst
+	}
+
+	err := db.GetMulti(keys, vals)
+	if err != nil {
+		log.Error("Failed to get coupon items: %v", err, ctx)
+		return err
+	}
+
+	for i := 0; i < nItems; i++ {
+		(&o.Items[i]).Update()
+	}
+
+	return nil
+}
+
 // Update order's payment status based on payments
 func (o *Order) UpdatePaymentStatus() {
 	keys := make([]*aeds.Key, len(o.PaymentIds))
@@ -516,6 +585,9 @@ func (o *Order) UpdateAndTally(stor *store.Store) error {
 
 	// Update discount amount
 	o.UpdateDiscount()
+
+	// Update the list of free coupon items
+	o.UpdateCouponItems()
 
 	// Tally up order again
 	o.Tally()
