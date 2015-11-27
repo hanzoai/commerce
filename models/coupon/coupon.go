@@ -58,6 +58,10 @@ type Coupon struct {
 	// Number of times coupon was redeemed.
 	Used int `json:"used"`
 
+	// Free product with coupon
+	FreeProductId string `json:"freeProductId"`
+	FreeVariantId string `json:"freeVariantId"`
+
 	// List of buyer email addresses who have redeemed coupon.
 	//Buyers []string `json:"buyers"`
 }
