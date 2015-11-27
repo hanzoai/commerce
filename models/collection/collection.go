@@ -34,7 +34,7 @@ type Collection struct {
 	// Range in which collection is available. If active, it takes precedent
 	// over Available bool.
 	Availability struct {
-		Active    bool
+		Active    bool      `json:"active'"`
 		StartDate time.Time `json:"startDate"`
 		EndDate   time.Time `json:"endDate"`
 	} `json:"availability"`
@@ -52,7 +52,7 @@ type Collection struct {
 	ProductIds []string `json:"productIds"`
 	VariantIds []string `json:"variantIds"`
 
-	History []Event `json:"history"`
+	History []Event `json:"-"`
 }
 
 func New(db *datastore.Datastore) *Collection {
