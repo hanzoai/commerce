@@ -115,7 +115,7 @@ type Order struct {
 	Items []LineItem `json:"items"`
 
 	// Free Items from Coupons
-	CouponItems []LineItem `json:"couponItems"`
+	CouponItems []LineItem `json:"couponItems,omitempty"`
 
 	Adjustments []Adjustment `json:"adjustments,omitempty"`
 
