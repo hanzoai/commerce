@@ -64,6 +64,16 @@
           </div>
         </div>
 
+        <div id="order-items" class="panel animated fadeIn" if="{ model.couponItems }">
+          <div class="panel-heading">
+            Free Coupon Items
+          </div>
+          <div class="panel-body">
+            <item-list obs="{ obs }" itemsModel="{ 'couponItems' }">
+            </item-list>
+          </div>
+        </div>
+
         <div id="order-payments" class="panel animated fadeIn">
           <div class="panel-heading">
             Payments
@@ -100,6 +110,15 @@
             <control label="Status" input="{ inputs.status }" labelClasses="col-md-6" controlClasses="col-md-6"></control>
             <control label="Payment Status" input="{ inputs.paymentStatus }" labelClasses="col-md-6" controlClasses="col-md-6"></control>
             <control label="Fulfillment Status" input="{ inputs.fulfillmentStatus }" labelClasses="col-md-6" controlClasses="col-md-6"></control>
+          </div>
+        </div>
+
+        <div id="order-status" class="panel animated fadeIn" if="{ model.couponCodes }">
+          <div class="panel-heading">
+            Coupons
+          </div>
+          <div class="panel-body">
+            <control label="Coupon(s)" input="{ inputs.couponCodes }" labelClasses="col-md-4" controlClasses="col-md-8"></control>
           </div>
         </div>
 

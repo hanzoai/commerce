@@ -35,11 +35,18 @@ class OrderForm extends Form
     input('shipping', '', 'static-money'),
     input('tax', '', 'static-money'),
     input('total', '', 'static-money'),
+    input('couponCodes', '', 'id-list id-path:#coupon')
 
     input('status', '', 'static'),
     input('paymentStatus', '', 'static'),
     input('fulfillmentStatus', '', 'static'),
   ]
+
+  # hack for couponCodes because crowdcontrol doenst treat arrays as leaves
+  initFormGroup: ()->
+    super
+
+    @inputs.couponCodes.model.value = @model.couponCodes
 
 OrderForm.register()
 

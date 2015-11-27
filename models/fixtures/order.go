@@ -28,5 +28,9 @@ var Order = New("order", func(c *gin.Context) *order.Order {
 		},
 	}
 
+	ord.CouponCodes = []string{"SUCH-COUPON", "FREE-DOGE"}
+	ord.UpdateAndTally(nil)
+	ord.MustPut()
+
 	return ord
 })

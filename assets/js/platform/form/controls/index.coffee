@@ -35,6 +35,12 @@ class IdLinkView extends StaticView
 
 IdLinkView.register()
 
+class IdListLinkView extends IdLinkView
+  tag: 'id-list-link'
+  html: require '../../templates/backend/form/controls/id-list-link.html'
+
+IdListLinkView.register()
+
 class BasicInputView extends InputView
   errorHtml: ''
   tag: 'basic-input'
@@ -476,6 +482,10 @@ helpers.registerTag (inputCfg)->
 helpers.registerTag (inputCfg)->
   return inputCfg.hints['id']
 , 'id-link'
+
+helpers.registerTag (inputCfg)->
+  return inputCfg.hints['id-list']
+, 'id-list-link'
 
 helpers.registerTag (inputCfg)->
   return inputCfg.hints['numeric']
