@@ -38,7 +38,7 @@ type Product struct {
 	Price     currency.Cents `json:"price"`
 	ListPrice currency.Cents `json:"listPrice"`
 
-	// Override for the shipping formula
+	// Basic cost for shipping this product
 	Shipping currency.Cents `json:"shipping"`
 
 	Inventory int `json:"inventory"`
