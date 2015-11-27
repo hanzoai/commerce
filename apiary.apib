@@ -935,6 +935,76 @@ this endpoint.
          "live":false
         }
 
+# Group Referral
+
+This represents an [Order](#order) that happened because of the intervention of
+a specific [User](#user).
+
+| Field Name     | Field Description                                                               | Type   |
+| ----------     | -----------------                                                               | ----   |
+| userId         | The identifier for the [User](#user) that made a purchase.                      | string |
+| orderId        | The identifier for the [Order](#order) that happened because of the referral.   | string |
+| referrerUserId | The identifier for the [User](#user) that induced the purchase.                 | string |
+| referrerId     | The identifier for the [Referrer](#referrer) that this referral is credited to. | string |
+
+## Calls related to Referrals [/referrer/{id}]
+Basic Referral calls are keyed upon the unique ID of the Referral.  As with all
+calls, it also requires an access key included with the request.
+
+### Get a Referral [GET]
++ Response 200 (application/json)
+
+        {
+          "id": "M6rsDDXCXM",
+          "createdAt": "2015-11-27T00:27:46.91231Z",
+          "updatedAt": "2015-11-27T00:27:46.915169Z",
+          "userId": "lVg6HluKM4",
+          "orderId": "VdNi66rHwa",
+          "referrerUserId": "",
+          "referrerId": ""
+        }
+
+### Creating a Referral [POST]
++ Request (application/json)
+        {
+          "userId": "lVg6HluKM4",
+          "orderId": "VdNi66rHwa",
+          "referrerUserId": "",
+          "referrerId": ""
+        }
+
++ Response 200 (application/json)
+        {
+          "id": "M6rsDDXCXM",
+          "createdAt": "2015-11-27T00:27:46.91231Z",
+          "updatedAt": "2015-11-27T00:27:46.915169Z",
+          "userId": "lVg6HluKM4",
+          "orderId": "VdNi66rHwa",
+          "referrerUserId": "",
+          "referrerId": ""
+        }
+
+### Deleting a Referral [DELETE]
+Deleting a Referral is as simple as passing its ID to the Referral endpoint using
+the HTTP Delete method. You will not receive a response past the normal HTTP
+200.
+
++ Response 204 (application/json)
+
+### Updating a Referral [PUT]
+The PUT method will allow you to replace a given ID's data in its entirety.
+Passing in valid Referral JSON (see the POST method), will overwrite any and all
+data existing on that ID.
+
++ Response 201 (application/json)
+
+### Patching a Referral [PATCH]
+The PATCH method will allow you to replace a given ID's data in a piecemeal
+fashion.  Any fields passed in to a PATCH method will be updated with what you
+request, while any fields not specified in the JSON will be left alone.
+
++ Response 201 (application/json)
+
 # Group Referrer
 
 This represents a [User](#User) that has induced an [Order](#order) to be
@@ -950,17 +1020,104 @@ easy for you to set up [Programs](#Program) to encourage it to happen.
 | transactionIds | A list of [Transaction](#transaction) identifiers that this referrer has generated. | []string                      |
 | transactions   | A list of [Transactions](#transaction) that this referrer has generated.            | [[]Transaction](#transaction) |
 
-# Group Referral
+## Calls related to Referrers [/referrer/{id}]
+Basic Referrer calls are keyed upon the unique ID of the Referrer.  As with all
+calls, it also requires an access key included with the request.
 
-This represents an [Order](#order) that happened because of the intervention of
-a specific [User](#user).
+### Get a Referrer [GET]
++ Response 200 (application/json)
 
-| Field Name     | Field Description                                                               | Type   |
-| ----------     | -----------------                                                               | ----   |
-| userId         | The identifier for the [User](#user) that made a purchase.                      | string |
-| orderId        | The identifier for the [Order](#order) that happened because of the referral.   | string |
-| referrerUserId | The identifier for the [User](#user) that induced the purchase.                 | string |
-| referrerId     | The identifier for the [Referrer](#referrer) that this referral is credited to. | string |
+        {
+          "id": "VmWFkkxhKa",
+          "createdAt": "2015-11-27T00:28:33.233939Z",
+          "updatedAt": "2015-11-27T00:28:33.236821Z",
+          "program": {
+            "name": "",
+            "triggers": [
+              0
+            ],
+            "actions": [
+              {
+                "type": "Credit",
+                "currency": "usd",
+                "amount": 1000
+              }
+            ]
+          },
+          "orderId": "VdNi66rHwa",
+          "userId": "lVg6HluKM4",
+          "referralIds": null,
+          "transactionsIds": null
+        }
+
+### Creating a Referrer [POST]
++ Request (application/json)
+
+        {
+          "program": {
+            "name": "",
+            "triggers": [
+              0
+            ],
+            "actions": [
+              {
+                "type": "Credit",
+                "currency": "usd",
+                "amount": 1000
+              }
+            ]
+          },
+          "orderId": "VdNi66rHwa",
+          "userId": "lVg6HluKM4",
+          "referralIds": null,
+          "transactionsIds": null
+        }
+
++ Response 200 (application/json)
+
+        {
+          "id": "VmWFkkxhKa",
+          "createdAt": "2015-11-27T00:28:33.233939Z",
+          "updatedAt": "2015-11-27T00:28:33.236821Z",
+          "program": {
+            "name": "",
+            "triggers": [
+              0
+            ],
+            "actions": [
+              {
+                "type": "Credit",
+                "currency": "usd",
+                "amount": 1000
+              }
+            ]
+          },
+          "orderId": "VdNi66rHwa",
+          "userId": "lVg6HluKM4",
+          "referralIds": null,
+          "transactionsIds": null
+        }
+
+### Deleting a Referrer [DELETE]
+Deleting a Referrer is as simple as passing its ID to the Referrer endpoint using
+the HTTP Delete method. You will not receive a response past the normal HTTP
+200.
+
++ Response 204 (application/json)
+
+### Updating a Referrer [PUT]
+The PUT method will allow you to replace a given ID's data in its entirety.
+Passing in valid Referrer JSON (see the POST method), will overwrite any and all
+data existing on that ID.
+
++ Response 201 (application/json)
+
+### Patching a Referrer [PATCH]
+The PATCH method will allow you to replace a given ID's data in a piecemeal
+fashion.  Any fields passed in to a PATCH method will be updated with what you
+request, while any fields not specified in the JSON will be left alone.
+
++ Response 201 (application/json)
 
 # Group Transaction
 
