@@ -52,7 +52,7 @@ type Coupon struct {
 	// Whether coupon is valid.
 	Enabled bool `json:"enabled"`
 
-	// Coupon amount. $5 should be 500 (prices in cents). 10% should be 10.
+	// Coupon amount. $5 should be 500 (prices in basic currency unit, like cents). 10% should be 10.
 	Amount int `json:"amount"`
 
 	// Number of times coupon was redeemed.
