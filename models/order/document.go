@@ -22,6 +22,8 @@ type Document struct {
 	ShippingAddressCountry     string
 	ShippingAddressPostalCode  string
 
+	Type string
+
 	CreatedAt time.Time
 	UpdatedAt time.Time
 
