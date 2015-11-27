@@ -19,6 +19,7 @@ const (
 	Flat         Type = "flat"
 	Percent           = "percent"
 	FreeShipping      = "free-shipping"
+	FreeItem          = "free-item"
 )
 
 var Types = []Type{Flat, Percent, FreeShipping}
@@ -61,6 +62,7 @@ type Coupon struct {
 	// Free product with coupon
 	FreeProductId string `json:"freeProductId"`
 	FreeVariantId string `json:"freeVariantId"`
+	FreeQuantity  int    `json:"freeQuantity"`
 
 	// List of buyer email addresses who have redeemed coupon.
 	//Buyers []string `json:"buyers"`
