@@ -506,6 +506,7 @@ This object is a representation of a bundle of [Products](#product) and/or
 | available    | A flag denoting whether or not the bundle can be purchased.                                                       | bool                          |
 | availability | A date range over which the collection is available.  If this is not null, it overrides the 'available' property. | [Availability](#availability) |
 | published    | A flag denoting whether or not this should be shown in the store.                                                 | bool                          |
+| preorder     | A flag denoting whether or not this is a preorder collection (as opposed to ready for immediate shipment).        | bool                          |
 | outOfStock   | A flag denoting whether or not any of these collections are stocked properly.                                     | bool                          |
 | productIds   | A list of products that are associated with this collection.                                                      | []string                      |
 | variantIds   | A list of variants that are associated with this collection.                                                      | []string                      |
@@ -527,7 +528,7 @@ all calls, it also requires an API key to be included with the request.
           "media": null,
           "available": true,
           "availability": {
-            "Active": false,
+            "active": false,
             "startDate": "0001-01-01T00:00:00Z",
             "endDate": "0001-01-01T00:00:00Z"
           },
@@ -548,7 +549,7 @@ all calls, it also requires an API key to be included with the request.
           "description": "Much tees in one pack!",
           "available": true,
           "availability": {
-            "Active": false,
+            "active": false,
             "startDate": "0001-01-01T00:00:00Z",
             "endDate": "0001-01-01T00:00:00Z"
           },
@@ -569,7 +570,7 @@ all calls, it also requires an API key to be included with the request.
           "media": null,
           "available": true,
           "availability": {
-            "Active": false,
+            "active": false,
             "startDate": "0001-01-01T00:00:00Z",
             "endDate": "0001-01-01T00:00:00Z"
           },
@@ -736,31 +737,38 @@ request, while any fields not specified in the JSON will be left alone.
 This object is a representation of a user's **completed purchase**.  The order should not be
 confused with a [Cart](#cart), which are prospective purchases.
 
-| Field Name  | Field Description                                                                                                                           | Type                    |
-| ----------  | -----------------                                                                                                                           | ----                    |
-| createdAt   | The time the order first came to be.                                                                                                        | string                  |
-| updatedAt   | The time the order was last modified (not necessarily by the user).                                                                         | string                  |
-| id          | The internal unique identifier for this order.                                                                                              | string                  |
-| userId      | The identifier for the user who placed this order.                                                                                          | string                  |
-| currency    | The 3-letter ISO currency code for the currency used on this order. Uses lowercase.                                                         | string                  |
-| lineTotal   | The sum of all line item amounts, in the most basic unit (such as cents), as defined by Currency.                                           | int64                   |
-| shipping    | Charges for mailing the order in cents                                                                                                      | int64                   |
-| tax         | Charges on the order levied by any relevant governments in cents                                                                            | int64                   |
-| discount    | Discount amount applied to the order, in the most basic unit (such as cents) as defined by the Currency.                                    | int64                   |
-| subtotal    | Charges from actual purchases in the most basic unit (such as cents) as defined by the Currency, less any discounts.                        | int64                   |
-| total       | Net charge to be sent to the client cents. Includes Subtotal, Tax, and Shipping.                                                            | int64                   |
-| balance     | The net amount owed to the seller, in the currency's basic unit (such as cents).                                                            | int64                   |
-| paid        | The amount currently paid to the seller, in the currency's basic unit (such as cents)                                                       | int64                   |
-| refunded    | The amount refunded to the customer, in the currency's basic unit (such as cents)                                                           | int64                   |
-| items       | A list of LineItems that comprise this order.                                                                                               | [[]LineItem](#lineitem) |
-| campaignId  | The unique identifier for the fundraising campaign that spawned this order (if applicable)                                                  | string                  |
-| storeId     | The unique identifier for the specific store that spawned this order (if applicable)                                                        | string                  |
-| preorder    | A switch indicating whether or not this is a preorder.                                                                                      | bool                    |
-| cancelled   | A switch indicating whether or not this order has been cancelled.                                                                           | bool                    |
-| shipped     | A switch indicating whether or not this order has been shipped.                                                                             | bool                    |
-| test        | A switch indicating whether or not this is a test order.                                                                                    | bool                    |
-| unconfirmed | A switch indicating whether or not all details are confirmed. If false, most often the user has not declared precise order variant options. | bool                    |
-| type        | This is a payment processor type, such as stripe (for credit card payments), paypal (for escrow payments), etc.                             | string                  |
+| Field Name        | Field Description                                                                                                                                                                  | Type                    |
+| ----------        | -----------------                                                                                                                                                                  | ----                    |
+| createdAt         | The time the order first came to be.                                                                                                                                               | string                  |
+| updatedAt         | The time the order was last modified (not necessarily by the user).                                                                                                                | string                  |
+| id                | The internal unique identifier for this order.                                                                                                                                     | string                  |
+| userId            | The identifier for the user who placed this order.                                                                                                                                 | string                  |
+| status            | A report of the current state of the order.  Potential states are 'cancelled', 'completed', 'locked', 'on-hold', and 'open'.                                                       | string                  |
+| paymentStatus     | A report of the state of the payment associated with the order.  Potential states are 'cancelled', 'credit', 'disputed', 'failed', 'fraudulent', 'paid', 'refunded', and 'unpaid'. | string                  |
+| fulfillmentStatus | A report of the state of the fulfillment/delivery of this order.  Potentail states are 'unfulfilled', 'shipped', 'processing', and 'cancelled'                                     | string                  |
+| currency          | The 3-letter ISO currency code for the currency used on this order. Uses lowercase.                                                                                                | string                  |
+| coupons           | A list of the special offers used on this order.                                                                                                                                   | [[]coupon](#coupon)     |
+| couponCodes       | An easily digestable list of the unique codes for the special offer list above.                                                                                                    | []string                |
+| paymentIds        | A list of recorded payments to this order.  These ids coincide with the id field in the [Payment] object.                                                                          | []string                |
+| fulfillment       | An object containing data for the shipment of the order to the buyer.                                                                                                              | [fulfillment]           |
+| lineTotal         | The sum of all line item amounts, in the most basic unit (such as cents), as defined by Currency.                                                                                  | int64                   |
+| shipping          | Charges for mailing the order in cents                                                                                                                                             | int64                   |
+| tax               | Charges on the order levied by any relevant governments in cents                                                                                                                   | int64                   |
+| discount          | Discount amount applied to the order, in the most basic unit (such as cents) as defined by the Currency.                                                                           | int64                   |
+| subtotal          | Charges from actual purchases in the most basic unit (such as cents) as defined by the Currency, less any discounts.                                                               | int64                   |
+| total             | Net charge to be sent to the client cents. Includes Subtotal, Tax, and Shipping.                                                                                                   | int64                   |
+| balance           | The net amount owed to the seller, in the currency's basic unit (such as cents).                                                                                                   | int64                   |
+| paid              | The amount currently paid to the seller, in the currency's basic unit (such as cents)                                                                                              | int64                   |
+| refunded          | The amount refunded to the customer, in the currency's basic unit (such as cents)                                                                                                  | int64                   |
+| items             | A list of LineItems that comprise this order.                                                                                                                                      | [[]lineitem](#lineitem) |
+| campaignId        | The unique identifier for the fundraising campaign that spawned this order (if applicable)                                                                                         | string                  |
+| storeId           | The unique identifier for the specific store that spawned this order (if applicable)                                                                                               | string                  |
+| preorder          | A switch indicating whether or not this is a preorder.                                                                                                                             | bool                    |
+| cancelled         | A switch indicating whether or not this order has been cancelled.                                                                                                                  | bool                    |
+| shipped           | A switch indicating whether or not this order has been shipped.                                                                                                                    | bool                    |
+| test              | A switch indicating whether or not this is a test order.                                                                                                                           | bool                    |
+| unconfirmed       | A switch indicating whether or not all details are confirmed. If false, most often the user has not declared precise order variant options.                                        | bool                    |
+| type              | This is a payment processor type, such as stripe (for credit card payments), paypal (for escrow payments), etc.                                                                    | string                  |
 
 ## Calls related to Orders [/order/{id}]
 Basic Order calls are keyed upon the unique ID of the Order.  As with all calls,
@@ -927,25 +935,79 @@ this endpoint.
          "live":false
         }
 
+# Group Referrer
+
+This represents a [User](#User) that has induced an [Order](#order) to be
+placed. As merchants, we generally want to encourage that, so we try to make it
+easy for you to set up [Programs](#Program) to encourage it to happen.
+
+| Field Name     | Field Description                                                                   | Type                          |
+| ----------     | -----------------                                                                   | ----                          |
+| program        | The referral offer this referrer is participating in.                               | [Program](#program)           |
+| orderId        | The order ID that is affected by the program's perks.                               | string                        |
+| userId         | The identifier for the user that is doing all the referring.                        | string                        |
+| referralIds    | A list of [Referral](#referral) identifiers that this referrer has generated.       | []string                      |
+| transactionIds | A list of [Transaction](#transaction) identifiers that this referrer has generated. | []string                      |
+| transactions   | A list of [Transactions](#transaction) that this referrer has generated.            | [[]Transaction](#transaction) |
+
+# Group Referral
+
+This represents an [Order](#order) that happened because of the intervention of
+a specific [User](#user).
+
+| Field Name     | Field Description                                                               | Type   |
+| ----------     | -----------------                                                               | ----   |
+| userId         | The identifier for the [User](#user) that made a purchase.                      | string |
+| orderId        | The identifier for the [Order](#order) that happened because of the referral.   | string |
+| referrerUserId | The identifier for the [User](#user) that induced the purchase.                 | string |
+| referrerId     | The identifier for the [Referrer](#referrer) that this referral is credited to. | string |
+
+# Group Transaction
+
+This represents movement of value inside of your store/organization.  It can
+help you keep track of things like restocking charges for returns, or customer
+service and referral credits.  It differs from a [Payment](#payment) in that
+it's all internal - think of these as store credit/charges, as opposed to actual
+cash events.
+
+| Field Name | Field Description                                                              | Type   |
+| ---------- | -----------------                                                              | ----   |
+| userId     | The identifier for the [User](#user) affected by this transaction.             | string |
+| type       | The basic variety of transaction.  Can be 'deposit' or 'withdraw'.             | string |
+| currency   | The 3-digit currency identifier, such as 'usd' or 'gbp'.  Always in lowercase. | string |
+| amount     | The size of the transaction, in the most basic currency unit (such as cents).  | int64  |
+| test       | A flag showing whether or not this is was a test.                              | bool   |
+
+
 # Group Product
 
 This represents a single product (or, perk, if intangible) that is offered by a
 campaign.
 
-| Field Name  | Field Description                                                                                 | Type                         |
-| ----------  | -----------------------------------------------------------                                       | ------                       |
-| id          | The unique identifier for this product.                                                           | string                       |
-| slug        | The friendly Url representation (such as whizbang-200).                                           | string                       |
-| title       | The top-level title of this product (such as Whizbang 2000).                                      | string                       |
-| headline    | The most important one-liner regarding the product.                                               | string                       |
-| excerpt     | A short paragraph explaining the product.                                                         | string                       |
-| description | The long form explanation of the product.                                                         | string                       |
-| released    | The time associated with the product's release.                                                   | string                       |
-| available   | A switch indicating whether or not the product is available.                                      | bool                         |
-| addLabel    | The text used when staging the product for purchase.                                              | string                       |
-| headerImage | An image used as the primary representation of the product.                                       | [Media](#media)              |
-| media       | A set of Media resources representing the product.  Does not include headerImage.                 | [[]Media](#media)            |
-| variants    | A listing of variations of the same product, such as different sizes or different offered colors. | [[]ProductVariant](#variant) |
+| Field Name  | Field Description                                                                                                                                       | Type                         |
+| ----------  | -----------------------------------------------------------                                                                                             | ------                       |
+| id          | The unique internal identifier for this product.                                                                                                        | string                       |
+| slug        | The friendly Url representation (such as whizbang-200).                                                                                                 | string                       |
+| sku         | The unique external identifier for this product.                                                                                                        | string                       |
+| currency    | The 3-letter ISO currency code, such as 'usd' or 'gbp'.  Always returned in lowercase.                                                                  | string                       |
+| price       | How much the product costs, in the most basic currency unit (such as cents for usd).                                                                    | int64                        |
+| listPrice   | How much the product is currently listed for, so you can display that something is discounted.  Listed in the most basic currency unit (such as cents). | int64                        |
+| shipping    | The basic cost for shipping this product, in the most basic currency unit (such as cents).                                                              | int64                        |
+| inventory   | How many of the product is in stock.                                                                                                                    | int64                        |
+| weight      | The measurement of the product's mass.                                                                                                                  | float                        |
+| weightUnit  | The unit used in weight. Supported units are 'lb', 'oz', 'kg', and 'g'.                                                                                 | string                       |
+| dimensions  | A free-form representation of the dimensions of the product. Units are not included, so be sure to include it yourself.                                 | string                       |
+| taxable     | A switch denoting if the object is subject to tax.                                                                                                      | bool                         |
+| title       | The top-level title of this product (such as Whizbang 2000).                                                                                            | string                       |
+| headline    | The most important one-liner regarding the product.                                                                                                     | string                       |
+| excerpt     | A short paragraph explaining the product.                                                                                                               | string                       |
+| description | The long form explanation of the product.                                                                                                               | string                       |
+| released    | The time associated with the product's release.                                                                                                         | string                       |
+| available   | A switch indicating whether or not the product is available.                                                                                            | bool                         |
+| addLabel    | The text used when staging the product for purchase.                                                                                                    | string                       |
+| headerImage | An image used as the primary representation of the product.                                                                                             | [Media](#media)              |
+| media       | A set of Media resources representing the product.  Does not include headerImage.                                                                       | [[]Media](#media)            |
+| variants    | A listing of variations of the same product, such as different sizes or different offered colors.                                                       | [[]ProductVariant](#variant) |
 
 ## Calls related to Products [/product/{id}]
 Basic Product calls are keyed upon the unique ID of the Product.  As with all
@@ -1159,19 +1221,24 @@ request, while any fields not specified in the JSON will be left alone.
 + Response 201 (application/json)
 
 # Group Variant
-The Variant object signifies specifics about
-an individual kind of Product.
+The Variant object signifies specifics about an individual kind of Product.
 
-| Field Name | Field Description                                                                                                                              | Type                |
-| ---------- | -----------------                                                                                                                              | ----                |
-| id         | The unique internal identifier for this variant.                                                                                               | string              |
-| sku        | The unique external product identifier for this variant (helps with fulfillment)                                                               | string              |
-| name       | Display name for this variant                                                                                                                  | string              |
-| price      | The price of this variant in cents                                                                                                             | int64               |
-| inventory  | How many of the variant are currently in stock.                                                                                                | int                 |
-| weight     | How much the variant weighs. This is typically in ounces, but can be in grams, miligrams, or whatever else as long as the usage is consistent. | float               |
-| dimensions | The height by width by depth of the variant, physically. Typically in inches, but handles metric measurements fine with consistent use.        | string              |
-| options    | Metadata associated with the variant. It is designed to hold arbitrary data and can vary.                                                      | [[]Option](#option) |
+| Field Name   | Field Description                                                                                                                       | Type                          |
+| ----------   | -----------------                                                                                                                       | ----                          |
+| id           | The unique internal identifier for this variant.                                                                                        | string                        |
+| sku          | The unique external product identifier for this variant (helps with fulfillment)                                                        | string                        |
+| productId    | The identifier for the product that this variant is a variant of.                                                                       | string                        |
+| name         | Display name for this variant.                                                                                                          | string                        |
+| currency     | The 3-letter ISO currency code, such as 'usd' or 'gbp'.  Always returned in lowercase.                                                  | string                        |
+| price        | The price of this variant in cents.                                                                                                     | int64                         |
+| available    | A switch denoting whether or not this product is available.                                                                             | bool                          |
+| availability | A date range in which the variant is available.  If set, it overrides the 'available' bool.                                             | [availability](#availability) |
+| inventory    | How many of the variant are currently in stock.                                                                                         | int                           |
+| sold         | How many of this variant has been sold.                                                                                                 | int64                         |
+| weight       | How much the variant masses in its given unit.                                                                                          | float                         |
+| weightUnit   | The unit used in weight. Supported units are 'lb', 'oz', 'kg', and 'g'.                                                                 | string                        |
+| dimensions   | The height by width by depth of the variant, physically. Typically in inches, but handles metric measurements fine with consistent use. | string                        |
+| options      | Potential elections for the variant, such as size for a shirt.                                                                          | [[]Option](#option)           |
 
 # Calls related to Variants [/variant/{id}]
 Basic Variant calls are keyed upon the unique ID of the Variant.  As with all
@@ -1247,19 +1314,24 @@ request, while any fields not specified in the JSON will be left alone.
 
 # Group User
 
-| Field Name     | Field Description                                                  | Type    |
-| ----------     | -----------------                                                  | ----    |
-| createdAt      | The time the user first came to be.                                | string    |
-| updatedAt      | The time the user was last modified (not necessarily by the user). | string    |
-| id             | The internal unique identifier.                                    | string  |
-| username       | The username for this user.                                        | string  |
-| firstName      | The first name for this user.                                      | string  |
-| lastName       | The last name for this user.                                       | string  |
-| firstName      | The first name for this user.                                      | string  |
-| phone          | The phone for this user.                                           | string  |
-| billingAddress | The billing address for this user.                                 | string |
-| shippingAddress| The shipping address for this user.                                 | string |
-| email          | The email for this user.                                           | string  |
+| Field Name      | Field Description                                                                         | Type                    |
+| ----------      | -----------------                                                                         | ----                    |
+| createdAt       | The time the user first came to be.                                                       | string                  |
+| updatedAt       | The time the user was last modified (not necessarily by the user).                        | string                  |
+| id              | The internal unique identifier.                                                           | string                  |
+| username        | The username for this user.                                                               | string                  |
+| firstName       | The first name for this user.                                                             | string                  |
+| lastName        | The last name for this user.                                                              | string                  |
+| firstName       | The first name for this user.                                                             | string                  |
+| company         | The company associated with the user (in the case of a rep with purchase order authority) | string                  |
+| phone           | The phone for this user.                                                                  | string                  |
+| billingAddress  | The billing address for this user.                                                        | string                  |
+| shippingAddress | The shipping address for this user.                                                       | string                  |
+| email           | The email for this user.                                                                  | string                  |
+| paypalEmail     | The email used for the paypal account attached to this user.                              | string                  |
+| enabled         | Whether or not the user can log in.                                                       | bool                    |
+| referrals       | A list of referrals that this user has generated.                                         | [[]referral(#referral)] |
+| referrers       | A list of referrers this user has been referred by.                                       | [[]referrer](#referrer) |
 
 ## Calls relating to Users [/user/{id}]
 Basic User calls are keyed upon the unique ID of the User.  As with all calls,
@@ -1680,3 +1752,37 @@ you page for customers that accept an offer from your mailing list.
 | type       | The class of thank-you page that is configured for this object. Potential values are "Redirect", "Html", and "Disabled" | string |
 | url        | Required for "Redirect" type ThankYous, this denotes the place to redirect to.  Omitted if not set.                     | string |
 | html       | Required for "Html" type ThankYous, this contains the HTML used for the thank-you page.  Omitted if not set.            | string |
+
+## Fulfillment
+This object represents data regarding a shipment to a customer, to fulfill one
+of their [Orders](#order)
+
+| Field Name     | Field Description                                                                                                                                                                               | Type   |
+| ----------     | -----------------                                                                                                                                                                               | ----   |
+| carrier        | The courier service being used.                                                                                                                                                                 | string |
+| service        | The class or rate being used - helps to distinguish between normal first-class and overnight, as an example.                                                                                    | string |
+| trackingNumber | The identifier with the carrier that will allow you to find the individual shipment.                                                                                                            | string |
+| createdAt      | The time this object was created.  This traditionally refers to the time that the fulfilment was processed on your company's end.                                                               | string |
+| shippedAt      | The time the carrier picked up the shipment.                                                                                                                                                    | string |
+| cost           | The shipping cost, in the currency's most basic unit (such as cents). To determine which currency is being used, reference the Currency property in the [Order](#order) this object belongs to. | int64  |
+
+## Program
+This object represents an incentive campaign for referring people.  It is used
+by [Referrers](#referrer) in order to figure out what perks they are due.
+
+| Field Name | Field Description                                                                                                                                                 | Type                |
+| ---------- | -----------------                                                                                                                                                 | ----                |
+| name       | The human-readable identifier for the program                                                                                                                     | string              |
+| triggers   | A list of the number of referrals a user needs to make each perk happen. '0' means that the associated action will happen with every referral.                    | []int               |
+| actions    | A list of actions that will be taken when the number of referrals, denoted in triggers, is reached.  Every action must have an index-aligned trigger to be valid. | [[]Action(#action)] |
+
+## Action
+Used by [Programs](#program), this object describes what should happen to
+reward users that participate in referral campaigns.
+
+| Field Name | Field Description                                                                                                                          | Type   |
+| ---------- | -----------------                                                                                                                          | ----   |
+| type       | The basic style of action to perform.  Can be 'credit' or 'refund', to grant store credit or refund some portion of a payment on an order. | string |
+| currency   | In the case of flat value incentives, this has the 3-letter code to denote the currency the incentive is in.                               | string |
+| amount     | In the case of flat value incentives, this is the number of basic currency units (such as cents) that should be credited.                  | int64  |
+| percent    | The number of percentage points to discount on a percentage action, with 100.00 being a total forgival of charges.                         | float  |
