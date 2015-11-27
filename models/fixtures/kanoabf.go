@@ -41,7 +41,8 @@ var KanoaBF = New("kanoabf", func(c *gin.Context) *organization.Organization {
 	cpn.Type = "free-item"
 	cpn.StartDate = now
 	cpn.Enabled = true
-	cpn.ProductId = "black-friday-cap"
+	cpn.FreeProductId = "black-friday-cap"
+	cpn.FreeQuantity = 1
 	cpn.MustPut()
 
 	return org
