@@ -60,9 +60,6 @@ type Subscription struct {
 	PlanId string `json:"planId"`
 	UserId string `json:"userId"`
 
-	StripeId         string `json:"stripeId"`
-	StripeCustomerId string `json:"customer"`
-
 	FeePercent float64 `json:"application_fee_percent"`
 	EndCancel  bool    `json:"cancel_at_period_end"`
 

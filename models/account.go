@@ -34,6 +34,7 @@ type StripeAccount struct {
 	BalanceTransactionId string `json:"balanceTransactionId,omitempty"`
 	CardId               string `json:"cardId,omitempty"`
 	ChargeId             string `json:"chargeId,omitempty"`
+	SubscriptionId       string `json:"subscriptionId,omitempty"`
 	CustomerId           string `json:"customerId,omitempty"`
 
 	Fingerprint string `json:"fingerprint,omitempty"`
