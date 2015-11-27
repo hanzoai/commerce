@@ -354,6 +354,7 @@ func (o *Order) UpdateDiscount() {
 }
 
 // Update discount using coupon codes/order info.
+// Refactor later when we have more time to think about it
 func (o *Order) UpdateCouponItems() error {
 	nCodes := len(o.CouponCodes)
 
@@ -392,7 +393,7 @@ func (o *Order) UpdateCouponItems() error {
 	db := o.Model.Db
 	ctx := o.Model.Db.Context
 
-	nItems := len(o.Items)
+	nItems := len(o.CouponItems)
 	keys := make([]datastore.Key, nItems, nItems)
 	vals := make([]interface{}, nItems, nItems)
 
@@ -413,7 +414,7 @@ func (o *Order) UpdateCouponItems() error {
 	}
 
 	for i := 0; i < nItems; i++ {
-		(&o.Items[i]).Update()
+		(&o.CouponItems[i]).Update()
 	}
 
 	return nil
