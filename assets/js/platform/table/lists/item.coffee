@@ -12,6 +12,7 @@ BasicList = require './list'
 class ItemList extends BasicList
   tag: 'item-list'
   path: 'item'
+  itemsModel: 'items'
   headers: [
     field('productId', 'Product Slug', 'id', 'id-display:productSlug id-path:../product')
     field('productName', 'Product ')
@@ -21,12 +22,15 @@ class ItemList extends BasicList
     # field('updatedAt', 'Last Updated', 'ago')
   ]
 
+  js: (opts)->
+    super
+    @itemsModel = opts.itemsmodel ? @itemsModel
+
   events:
     "#{ Events.Form.Prefill }": (orderModel) ->
-      @model = orderModel.items
+      @model = orderModel[@itemsModel]
       for item in @model
         item.currency = orderModel.currency
       @update()
 
 ItemList.register()
-
