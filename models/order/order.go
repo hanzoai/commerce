@@ -190,6 +190,8 @@ func (o Order) Document() mixin.Document {
 		country.ByISOCodeISO3166_2[o.ShippingAddress.Country].ISO3166OneEnglishShortNameReadingOrder,
 		o.ShippingAddress.PostalCode,
 
+		o.Type,
+
 		o.CreatedAt,
 		o.UpdatedAt,
 
