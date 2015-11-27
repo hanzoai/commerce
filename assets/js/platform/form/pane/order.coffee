@@ -24,6 +24,8 @@ class OrderFilterPane extends Pane
     input('minDate', '', 'date-picker')
     input('maxDate', '', 'date-picker')
     input('country', '', 'country-select')
+    input('type', '', 'basic-select')
+    input('couponCodes', 'Coupon Code')
     input('status', '', 'basic-select')
     input('paymentStatus', '', 'basic-select')
     input('fulfillmentStatus', '', 'basic-select')
@@ -66,6 +68,11 @@ class OrderFilterPane extends Pane
     true:   'Confirmed'
     false:  'Unconfirmed'
 
+  typeOptions:
+    _any:   'Any Payment Processor'
+    stripe: 'Stripe'
+    paypal: 'Paypal'
+
   js: ()->
     @model =
       minTotal:           0
@@ -74,6 +81,8 @@ class OrderFilterPane extends Pane
       currency:           '_any'
       minDate:            '01/01/2015'
       maxDate:            moment().format 'L'
+      couponCodes:        ''
+      type:               '_any'
       status:             '_any'
       paymentStatus:      '_any'
       fulfillmentStatus:  '_any'
@@ -123,6 +132,12 @@ class OrderFilterPane extends Pane
 
     if @model.confirmed != '_any'
       query += " AND Confirmed = \"#{ @model.confirmed }\""
+
+    if @model.type != '_any'
+      query += " AND Type = \"#{ @model.type }\""
+
+    if @model.couponCodes
+      query += " AND CouponCodes = \"#{ @model.couponCodes }\""
 
     return query
 
