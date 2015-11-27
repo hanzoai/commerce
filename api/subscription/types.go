@@ -42,6 +42,7 @@ func (sr *SubscriptionReq) User() (*user.User, error) {
 
 func (sr *SubscriptionReq) Subscription() (*subscription.Subscription, error) {
 	sub := sr.Subscription_
+	sub.Init()
 	sub.Model.Entity = sr.Subscription_
 	sub.Model.Db = sr.Db
 

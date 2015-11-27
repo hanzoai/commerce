@@ -51,8 +51,7 @@ func ToCard(pay Payable) *stripe.CardParams {
 func (c Client) NewSubscription(token string, source interface{}, sub *subscription.Subscription) (*Sub, error) {
 	log.Warn("sub.Plan %v", sub.Plan)
 	params := stripe.SubParams{
-		Plan:  sub.Plan.StripeId,
-		Token: token,
+		Plan: sub.Plan.StripeId,
 	}
 
 	switch v := source.(type) {
@@ -70,8 +69,8 @@ func (c Client) NewSubscription(token string, source interface{}, sub *subscript
 		return nil, errors.New(err)
 	}
 
-	sub.StripeId = s.ID
-	sub.StripeCustomerId = params.Customer
+	sub.Account.SubscriptionId = s.ID
+	sub.Account.CustomerId = params.Customer
 	sub.FeePercent = s.FeePercent
 	sub.EndCancel = s.EndCancel
 	sub.PeriodStart = time.Unix(s.PeriodStart, 0)
@@ -83,15 +82,13 @@ func (c Client) NewSubscription(token string, source interface{}, sub *subscript
 
 	sub.Quantity = int(s.Quantity)
 	sub.Status = string(s.Status)
-	sub.Metadata["user"] = s.Meta["user"]
-	sub.Metadata["plan"] = s.Meta["plan"]
 
 	return (*Sub)(s), nil
 }
 
 // Subscribe to a plan
 func (c Client) CancelSubscription(sub *subscription.Subscription) error {
-	err := c.Subs.Cancel(sub.StripeId, &stripe.SubParams{Customer: sub.StripeCustomerId})
+	err := c.Subs.Cancel(sub.Account.SubscriptionId, &stripe.SubParams{Customer: sub.Account.CustomerId})
 	return err
 }
 
