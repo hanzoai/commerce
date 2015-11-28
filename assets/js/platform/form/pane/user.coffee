@@ -64,33 +64,33 @@ class UserFilterPane extends Pane
     minDateStr = moment(minDate, 'YYYY-MM-DD').format 'YYYY-MM-DD'
     maxDateStr = moment(maxDate, 'YYYY-MM-DD').format 'YYYY-MM-DD'
 
-    query = "CreatedAt >= #{minDateStr} AND CreatedAt <= #{maxDateStr}"
+    query = "CreatedAt >= #{encodeURIComponent minDateStr} AND CreatedAt <= #{encodeURIComponent maxDateStr}"
     if @model.email
-      query += " AND Email = \"#{ @model.email }\""
+      query += " AND Email = \"#{ encodeURIComponent @model.email }\""
 
     if @model.firstName
-      query += " AND FirstName = \"#{ @model.firstName }\""
+      query += " AND FirstName = \"#{ encodeURIComponent @model.firstName }\""
 
     if @model.lastName
-      query += " AND LastName = \"#{ @model.lastName }\""
+      query += " AND LastName = \"#{ encodeURIComponent @model.lastName }\""
 
     if @model.line1
-      query += " AND ShippingAddressLine1 = \"#{ @model.line1 }\""
+      query += " AND ShippingAddressLine1 = \"#{ encodeURIComponent @model.line1 }\""
 
     if @model.line2
-      query += " AND ShippingAddressLine2 = \"#{ @model.line2 }\""
+      query += " AND ShippingAddressLine2 = \"#{ encodeURIComponent @model.line2 }\""
 
     if @model.city
-      query += " AND ShippingAddressCity = \"#{ @model.city }\""
+      query += " AND ShippingAddressCity = \"#{ encodeURIComponent @model.city }\""
 
     if @model.state
-      query += " AND ShippingAddressState = \"#{ @model.state }\""
+      query += " AND ShippingAddressState = \"#{ encodeURIComponent @model.state }\""
 
     if @model.postal
-      query += " AND ShippingAddressPostalCode = \"#{ @model.postal }\""
+      query += " AND ShippingAddressPostalCode = \"#{ encodeURIComponent @model.postal }\""
 
     if @model.country != '_any'
-      query += " AND ShippingAddressCountryCode = \"#{ @model.country }\""
+      query += " AND ShippingAddressCountryCode = \"#{ encodeURIComponent @model.country }\""
 
     return query
 

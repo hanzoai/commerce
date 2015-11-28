@@ -108,36 +108,36 @@ class OrderFilterPane extends Pane
     minDateStr = moment(minDate, 'YYYY-MM-DD').format 'YYYY-MM-DD'
     maxDateStr = moment(maxDate, 'YYYY-MM-DD').format 'YYYY-MM-DD'
 
-    query = "CreatedAt >= #{minDateStr} AND CreatedAt <= #{maxDateStr}"
+    query = "CreatedAt >= #{encodeURIComponent minDateStr} AND CreatedAt <= #{encodeURIComponent maxDateStr}"
     if @model.country != '_any'
-      query += " AND ShippingAddressCountryCode = \"#{ @model.country }\""
+      query += " AND ShippingAddressCountryCode = \"#{ encodeURIComponent @model.country }\""
 
     if @model.currency != '_any'
-      query += " AND Currency = \"#{ @model.currency }\""
+      query += " AND Currency = \"#{ encodeURIComponent @model.currency }\""
 
     if @model.maxTotal != 0
-      query += " AND Total >= #{ @model.minTotal } AND Total <= #{ @model.maxTotal }"
+      query += " AND Total >= #{ encodeURIComponent @model.minTotal } AND Total <= #{ @model.maxTotal }"
 
     if @model.status != '_any'
-      query += " AND Status = \"#{ @model.status }\""
+      query += " AND Status = \"#{ encodeURIComponent @model.status }\""
 
     if @model.paymentStatus != '_any'
-      query += " AND PaymentStatus = \"#{ @model.paymentStatus }\""
+      query += " AND PaymentStatus = \"#{ encodeURIComponent @model.paymentStatus }\""
 
     if @model.fulfillmentStatus != '_any'
-      query += " AND FulfillmentStatus = \"#{ @model.fulfillmentStatus }\""
+      query += " AND FulfillmentStatus = \"#{ encodeURIComponent @model.fulfillmentStatus }\""
 
     if @model.preorder != '_any'
-      query += " AND Preorder = \"#{ @model.preorder }\""
+      query += " AND Preorder = \"#{ encodeURIComponent @model.preorder }\""
 
     if @model.confirmed != '_any'
-      query += " AND Confirmed = \"#{ @model.confirmed }\""
+      query += " AND Confirmed = \"#{ encodeURIComponent @model.confirmed }\""
 
     if @model.type != '_any'
-      query += " AND Type = \"#{ @model.type }\""
+      query += " AND Type = \"#{ encodeURIComponent @model.type }\""
 
     if @model.couponCodes
-      query += " AND CouponCodes = \"#{ @model.couponCodes }\""
+      query += " AND CouponCodes = \"#{ encodeURIComponent @model.couponCodes }\""
 
     return query
 
