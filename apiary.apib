@@ -1135,6 +1135,32 @@ cash events.
 | amount     | The size of the transaction, in the most basic currency unit (such as cents).  | int64  |
 | test       | A flag showing whether or not this is was a test.                              | bool   |
 
+## Calls related to Transaction [/transaction/{id}]
+The only basic call related to Transactions is keyed upon the unique identifier
+for the transaction. As with all calls, it also requires an access key to be
+included with the request.
+
+### Get a Transaction [GET]
+This is the only call that is available for Transactions, as they are too
+directly sensitive to allow to be modified.
+
++ Response (application/json)
+
+        {
+          "id": "Mkei8xdCpL",
+          "createdAt": "2015-11-27T04:14:00.361654Z",
+          "updatedAt": "2015-11-27T04:14:00.369243Z",
+          "userId": "lVg6HluKM4",
+          "type": "deposit",
+          "currency": "usd",
+          "amount": 1000,
+          "test": false,
+          "notes": "",
+          "tags": "",
+          "sourceId": "",
+          "sourceKind": ""
+        }
+
 
 # Group Product
 
