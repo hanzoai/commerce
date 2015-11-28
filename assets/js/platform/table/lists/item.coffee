@@ -29,8 +29,9 @@ class ItemList extends BasicList
   events:
     "#{ Events.Form.Prefill }": (orderModel) ->
       @model = orderModel[@itemsModel]
-      for item in @model
-        item.currency = orderModel.currency
-      @update()
+      if @model?
+        for item in @model
+          item.currency = orderModel.currency
+        @update()
 
 ItemList.register()
