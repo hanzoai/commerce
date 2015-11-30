@@ -24,6 +24,7 @@ class ProductForm extends Form
     input('currency', '', 'currency-type-select'),
     input('listPrice', 'How much this should cost', 'money'),
     input('price', 'How much this costs right now', 'money'),
+    input('estimatedDelivery', 'Estimated Delivery')
 
     input('size', '10cm x 10cm x 10cm'),
     input('weight', '1000', 'numeric'),
