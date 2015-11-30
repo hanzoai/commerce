@@ -6,6 +6,8 @@ type Document struct {
 	Id_    string
 	UserId string
 
+	ProductIds string
+
 	BillingAddressLine1       string
 	BillingAddressLine2       string
 	BillingAddressCity        string
