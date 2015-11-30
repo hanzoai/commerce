@@ -81,6 +81,9 @@ type Product struct {
 	// Pre-order now or Add to cart
 	AddLabel string `json:"addLabel"`
 
+	// Optional Estimated Delivery line
+	EstimatedDelivery string `json:"estimatedDelivery"`
+
 	// List of variants
 	Variants  []*variant.Variant `json:"variants" datastore:"-"`
 	Variants_ string             `json:"-" datastore:",noindex"`
