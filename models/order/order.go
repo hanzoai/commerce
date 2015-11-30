@@ -170,9 +170,17 @@ func (o Order) Document() mixin.Document {
 		confirmed = "false"
 	}
 
+	productIds := make([]string, 0)
+	for _, item := range o.Items {
+		productIds = append(productIds, item.ProductId)
+		productIds = append(productIds, item.ProductSlug)
+	}
+
 	return &Document{
 		o.Id(),
 		o.UserId,
+
+		strings.Join(productIds, " "),
 
 		o.BillingAddress.Line1,
 		o.BillingAddress.Line2,
