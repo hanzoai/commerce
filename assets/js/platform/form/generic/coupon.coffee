@@ -12,7 +12,7 @@ class CouponForm extends Form
   redirectPath: 'coupons'
   path: 'coupon'
   model:
-    productId: '_'
+    productId: '_all'
     enabled: 'true'
 
   inputConfigs: [
@@ -29,12 +29,12 @@ class CouponForm extends Form
   ]
 
   _submit: (event)->
-    @model.productId = '' if @model.productId == '_'
+    @model.productId = '' if @model.productId == '_all'
     super
 
   loadData: (model)->
     super
-    model.productId = '_' if model.productId == ''
+    model.productId = '_all' if model.productId == ''
     @inputConfigs[2].hints['unique-exception'] = model.code
 
 CouponForm.register()
