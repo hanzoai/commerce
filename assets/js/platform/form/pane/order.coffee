@@ -28,9 +28,11 @@ class OrderFilterPane extends Pane
     input('couponCodes', 'Coupon Code')
     input('status', '', 'basic-select')
     input('paymentStatus', '', 'basic-select')
+    input('paymentStatus', '', 'basic-select')
     input('fulfillmentStatus', '', 'basic-select')
     input('preorder', '', 'basic-select')
     input('confirmed', '', 'basic-select')
+    input('productIds', '', 'product-type-select')
   ]
 
   statusOptions:
@@ -75,12 +77,12 @@ class OrderFilterPane extends Pane
 
   js: ()->
     @model =
+      maxDate:            moment().format 'L'
       minTotal:           0
       maxTotal:           0
       country:            '_any'
       currency:           '_any'
       minDate:            '01/01/2015'
-      maxDate:            moment().format 'L'
       couponCodes:        ''
       type:               '_any'
       status:             '_any'
@@ -88,6 +90,7 @@ class OrderFilterPane extends Pane
       fulfillmentStatus:  '_any'
       preorder:           '_any'
       confirmed:          '_any'
+      productIds:         '_any'
 
     super
 
@@ -138,6 +141,9 @@ class OrderFilterPane extends Pane
 
     if @model.couponCodes
       query += " AND CouponCodes = \"#{ encodeURIComponent @model.couponCodes }\""
+
+    if @model.productIds
+      query += " AND ProductIds = \"#{ encodeURIComponent @model.productIds }\""
 
     return query
 
