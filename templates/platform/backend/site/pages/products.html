@@ -51,7 +51,12 @@
               <div class="panel-body">
                 <control label="Size (L x W x H)" input="{ inputs.size }"></control>
                 <control label="Weight (grams)" input="{ inputs.weight }"></control>
-                <control label="In Stock" input="{ inputs.available }"></control>
+                <div class="col-md-6">
+                  <control label="In Stock" input="{ inputs.available }"></control>
+                </div>
+                <div class="col-md-6">
+                  <control label="Estimated Delivery" input="{ inputs.estimatedDelivery }"></control>
+                </div>
               </div>
             </div>
           </div>
