@@ -375,13 +375,13 @@ class ProductSelectView extends BasicSelectView
 
     api = Api.get('crowdstart')
     api.get('product').then (res)=>
-      @products = '_all': 'Any Product'
+      @products = '_any': 'Any Product'
       for product in res.responseText.models
         @products[product.id] = product.name
 
       @asyncDone()
 
-    return @products = '_all': 'Any Product'
+    return @products = '_any': 'Any Product'
 
 ProductSelectView.register()
 
