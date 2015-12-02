@@ -25,7 +25,7 @@ import (
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/router"
 
-	paymentApi "crowdstart.com/api/payment"
+	checkoutApi "crowdstart.com/api/checkout"
 )
 
 // Read body from response
@@ -166,7 +166,7 @@ func Webhook(c *gin.Context) {
 	pay.MustPut()
 
 	// Increment counters and figure update referrer things
-	paymentApi.CompleteCapture(c, org, ord, []*aeds.Key{pay.Key().(*aeds.Key)}, []*payment.Payment{pay})
+	checkoutApi.CompleteCapture(c, org, ord, []*aeds.Key{pay.Key().(*aeds.Key)}, []*payment.Payment{pay})
 }
 
 func Route(router router.Router, args ...gin.HandlerFunc) {

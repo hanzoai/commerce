@@ -14,7 +14,7 @@ import (
 	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/store"
 	"crowdstart.com/models/user"
-	"crowdstart.com/test/api/payment/requests"
+	"crowdstart.com/test/api/checkout/requests"
 	"crowdstart.com/util/gincontext"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
@@ -22,8 +22,8 @@ import (
 	"crowdstart.com/util/test/ae"
 	"crowdstart.com/util/test/ginclient"
 
+	checkoutApi "crowdstart.com/api/checkout"
 	orderApi "crowdstart.com/api/order"
-	paymentApi "crowdstart.com/api/payment"
 	storeApi "crowdstart.com/api/store"
 
 	. "crowdstart.com/models"
@@ -32,7 +32,7 @@ import (
 
 func Test(t *testing.T) {
 	log.SetVerbose(testing.Verbose())
-	Setup("api/payment/paypal", t)
+	Setup("api/checkout/paypal", t)
 }
 
 var (
@@ -65,7 +65,7 @@ var _ = BeforeSuite(func() {
 
 	// Setup client and add routes for payment API tests.
 	client = ginclient.New(ctx)
-	paymentApi.Route(client.Router, adminRequired)
+	checkoutApi.Route(client.Router, adminRequired)
 	orderApi.Route(client.Router, adminRequired)
 	storeApi.Route(client.Router, adminRequired)
 
@@ -193,7 +193,7 @@ func GetPayKey(stor *store.Store) testHelperReturn {
 	log.Debug("JSON %v", w.Body)
 
 	// Payment and Order info should be in the db
-	payKeyResponse := paymentApi.PayKeyResponse{}
+	payKeyResponse := checkoutApi.PayKeyResponse{}
 
 	err := json.DecodeBuffer(w.Body, &payKeyResponse)
 	Expect(err).ToNot(HaveOccurred())
