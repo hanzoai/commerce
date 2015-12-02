@@ -104,7 +104,8 @@ func Charge(c *gin.Context) {
 }
 
 func route(router router.Router, prefix string) {
-	api := router.Group("")
+	api := router.Group(prefix)
+
 	api.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 	})
