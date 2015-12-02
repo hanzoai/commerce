@@ -5,11 +5,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/api/payment"
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/store"
 	"crowdstart.com/util/json/http"
+
+	checkoutApi "crowdstart.com/api/checkout"
 )
 
 func setStore(c *gin.Context) error {
@@ -31,36 +32,36 @@ func setStore(c *gin.Context) error {
 
 func authorize(c *gin.Context) {
 	if err := setStore(c); err == nil {
-		payment.Authorize(c)
+		checkoutApi.Authorize(c)
 	}
 }
 
 func capture(c *gin.Context) {
 	if err := setStore(c); err == nil {
-		payment.Capture(c)
+		checkoutApi.Capture(c)
 	}
 }
 
 func charge(c *gin.Context) {
 	if err := setStore(c); err == nil {
-		payment.Charge(c)
+		checkoutApi.Charge(c)
 	}
 }
 
 func payPalPayKey(c *gin.Context) {
 	if err := setStore(c); err == nil {
-		payment.PayPalPayKey(c)
+		checkoutApi.PayPalPayKey(c)
 	}
 }
 
 func payPalConfirm(c *gin.Context) {
 	if err := setStore(c); err == nil {
-		payment.PayPalConfirm(c)
+		checkoutApi.PayPalConfirm(c)
 	}
 }
 
 func payPalCancel(c *gin.Context) {
 	if err := setStore(c); err == nil {
-		payment.PayPalCancel(c)
+		checkoutApi.PayPalCancel(c)
 	}
 }
