@@ -176,6 +176,11 @@ func (o Order) Document() mixin.Document {
 		productIds = append(productIds, item.ProductSlug)
 	}
 
+	for _, item := range o.CouponItems {
+		productIds = append(productIds, item.ProductId)
+		productIds = append(productIds, item.ProductSlug)
+	}
+
 	return &Document{
 		o.Id(),
 		o.UserId,

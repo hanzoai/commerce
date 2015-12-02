@@ -118,8 +118,8 @@ class OrderFilterPane extends Pane
     if @model.currency != '_any'
       query += " AND Currency = \"#{ encodeURIComponent @model.currency }\""
 
-    if @model.maxTotal != 0
-      query += " AND Total >= #{ encodeURIComponent @model.minTotal } AND Total <= #{ @model.maxTotal }"
+    query += " AND Total >= #{ encodeURIComponent @model.minTotal }" if @model.minTotal != 0
+    query += " AND Total <= #{ encodeURIComponent @model.maxTotal }" if @model.maxTotal != 0
 
     if @model.status != '_any'
       query += " AND Status = \"#{ encodeURIComponent @model.status }\""
@@ -142,7 +142,7 @@ class OrderFilterPane extends Pane
     if @model.couponCodes
       query += " AND CouponCodes = \"#{ encodeURIComponent @model.couponCodes }\""
 
-    if @model.productIds
+    if @model.productIds != '_any'
       query += " AND ProductIds = \"#{ encodeURIComponent @model.productIds }\""
 
     return query
