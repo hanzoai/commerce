@@ -99,6 +99,14 @@ type Config struct {
 		}
 	}
 
+	// Netlify
+	Netlify struct {
+		BaseUrl     string
+		ClientId    string
+		Secret      string
+		AccessToken string
+	}
+
 	// Redis
 	Redis struct {
 		Url      string
@@ -217,7 +225,10 @@ var IsProduction = config.IsProduction
 var IsSandbox = config.IsSandbox
 var IsStaging = config.IsStaging
 var Mandrill = config.Mandrill
+var Netlify = config.Netlify
+var Paypal = config.Paypal
 var Prefixes = config.Prefixes
+var Redis = config.Redis
 var RootDir = config.RootDir
 var Salesforce = config.Salesforce
 var Secret = config.Secret
@@ -227,8 +238,6 @@ var SiteTitle = config.SiteTitle
 var StaticUrl = config.StaticUrl
 var Stripe = config.Stripe
 var WorkingDir = config.WorkingDir
-var Redis = config.Redis
-var Paypal = config.Paypal
 
 func UrlFor(moduleName string, args ...string) string {
 	return config.UrlFor(moduleName, args...)
