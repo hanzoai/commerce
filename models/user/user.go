@@ -62,7 +62,7 @@ type User struct {
 		Stripe payment.Account `json:"stripe,omitempty"`
 		PayPal payment.Account `json:"paypal,omitempty"`
 		Affirm payment.Account `json:"affirm,omitempty"`
-	} `json:"accounts"`
+	} `json:"-"`
 
 	Enabled bool `json:"enabled"` //whether or not the user can login yet
 
@@ -76,7 +76,7 @@ type User struct {
 	Balances map[currency.Type]currency.Cents `json:"balances" datastore:"-"`
 
 	// Series of events that have occured relevant to this order
-	History []Event `json:"history,omitempty"`
+	History []Event `json:"-,omitempty"`
 }
 
 func (u *User) Init() {

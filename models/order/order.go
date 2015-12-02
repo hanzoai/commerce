@@ -72,7 +72,7 @@ type Order struct {
 	// 3-letter ISO currency code (lowercase).
 	Currency currency.Type `json:"currency"`
 
-	// Type of order
+	// Payment processor type - paypal, stripe, etc
 	Type string `json:"type"`
 
 	// Shipping method
@@ -94,7 +94,7 @@ type Order struct {
 	Tax currency.Cents `json:"tax"`
 
 	// Price adjustments applied. Amount in cents.
-	Adjustment currency.Cents `json:"adjustment"`
+	Adjustment currency.Cents `json:"-"`
 
 	// Total = subtotal + shipping + taxes + adjustments. Amount in cents.
 	Total currency.Cents `json:"total"`
@@ -117,7 +117,7 @@ type Order struct {
 	// Free Items from Coupons
 	CouponItems []LineItem `json:"couponItems,omitempty"`
 
-	Adjustments []Adjustment `json:"adjustments,omitempty"`
+	Adjustments []Adjustment `json:"-"`
 
 	Coupons     []coupon.Coupon `json:"coupons,omitempty"`
 	CouponCodes []string        `json:"couponCodes,omitempty"`
@@ -129,7 +129,7 @@ type Order struct {
 	Fulfillment Fulfillment `json:"fulfillment"`
 
 	// Series of events that have occured relevant to this order
-	History []Event `json:"history,omitempty"`
+	History []Event `json:"-,omitempty"`
 
 	// Arbitrary key/value pairs associated with this order
 	Metadata  Metadata `json:"metadata" datastore:"-"`
