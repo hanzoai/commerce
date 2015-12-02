@@ -1,4 +1,4 @@
-package payment
+package checkout
 
 import (
 	"errors"
@@ -7,8 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/api/payment/balance"
-	"crowdstart.com/api/payment/stripe"
+	"crowdstart.com/api/checkout/balance"
+	"crowdstart.com/api/checkout/stripe"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"

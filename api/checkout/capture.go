@@ -1,12 +1,12 @@
-package payment
+package checkout
 
 import (
 	"github.com/gin-gonic/gin"
 
 	aeds "appengine/datastore"
 
-	"crowdstart.com/api/payment/balance"
-	"crowdstart.com/api/payment/stripe"
+	"crowdstart.com/api/checkout/balance"
+	"crowdstart.com/api/checkout/stripe"
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"

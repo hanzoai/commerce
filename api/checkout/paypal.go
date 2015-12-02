@@ -1,4 +1,4 @@
-package payment
+package checkout
 
 import (
 	"github.com/gin-gonic/gin"
