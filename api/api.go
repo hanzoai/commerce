@@ -23,19 +23,19 @@ import (
 
 	accessTokenApi "crowdstart.com/api/accesstoken"
 	accountApi "crowdstart.com/api/account"
+	checkoutApi "crowdstart.com/api/checkout"
 	dataApi "crowdstart.com/api/data"
 	mailinglistApi "crowdstart.com/api/mailinglist"
 	namespaceApi "crowdstart.com/api/namespace"
 	orderApi "crowdstart.com/api/order"
 	organizationApi "crowdstart.com/api/organization"
-	paymentApi "crowdstart.com/api/payment"
 	searchApi "crowdstart.com/api/search"
 	storeApi "crowdstart.com/api/store"
 	userApi "crowdstart.com/api/user"
 
+	paypalApi "crowdstart.com/thirdparty/paypal/ipn"
 	shipstationApi "crowdstart.com/thirdparty/shipstation"
 	stripeApi "crowdstart.com/thirdparty/stripe/webhook"
-	paypalApi "crowdstart.com/thirdparty/paypal/ipn"
 )
 
 func init() {
@@ -59,8 +59,8 @@ func init() {
 
 	// Organization APIs, namespaced by organization
 
-	// One Step Payment API
-	paymentApi.Route(api)
+	// Checkout APIs (charge, authorize, capture)
+	checkoutApi.Route(api)
 
 	// Models with public RESTful API
 	rest.New(collection.Collection{}).Route(api, tokenRequired)
