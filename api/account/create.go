@@ -202,6 +202,9 @@ func create(c *gin.Context) {
 		http.Fail(c, 400, "Failed to create user", err)
 	}
 
+	// Render user
+	http.Render(c, 201, usr)
+
 	// Don't send email confirmation if test key is used
 	if org.Live {
 		// Send welcome, email confirmation emails
