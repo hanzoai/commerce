@@ -14,6 +14,8 @@ import (
 )
 
 type PayKeyResponse struct {
+	order.Order
+
 	PayKey string `json:"payKey"`
 }
 
@@ -51,7 +53,7 @@ func PayPalPayKey(c *gin.Context) {
 	ord.MustPut()
 	pay.MustPut()
 
-	payKeyResponse := PayKeyResponse{payKey}
+	payKeyResponse := PayKeyResponse{*ord, payKey}
 
 	http.Render(c, 200, payKeyResponse)
 }
