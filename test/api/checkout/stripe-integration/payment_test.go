@@ -19,7 +19,7 @@ import (
 	"crowdstart.com/models/transaction"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/models/user"
-	"crowdstart.com/test/api/payment/requests"
+	"crowdstart.com/test/api/checkout/requests"
 	"crowdstart.com/thirdparty/stripe"
 	"crowdstart.com/util/gincontext"
 	"crowdstart.com/util/json"
@@ -28,15 +28,15 @@ import (
 	"crowdstart.com/util/test/ae"
 	"crowdstart.com/util/test/ginclient"
 
+	checkoutApi "crowdstart.com/api/checkout"
 	orderApi "crowdstart.com/api/order"
-	paymentApi "crowdstart.com/api/payment"
 	storeApi "crowdstart.com/api/store"
 
 	. "crowdstart.com/util/test/ginkgo"
 )
 
 func Test(t *testing.T) {
-	Setup("api/payment", t)
+	Setup("api/checkout", t)
 }
 
 var (
@@ -70,7 +70,7 @@ var _ = BeforeSuite(func() {
 
 	// Setup client and add routes for payment API tests.
 	client = ginclient.New(ctx)
-	paymentApi.Route(client.Router, adminRequired)
+	checkoutApi.Route(client.Router, adminRequired)
 	orderApi.Route(client.Router, adminRequired)
 	storeApi.Route(client.Router, adminRequired)
 

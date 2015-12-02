@@ -1,4 +1,4 @@
-package payment
+package checkout
 
 import (
 	"github.com/gin-gonic/gin"
@@ -103,7 +103,7 @@ func Charge(c *gin.Context) {
 	http.Render(c, 200, ord)
 }
 
-func Route(router router.Router, args ...gin.HandlerFunc) {
+func route(router router.Router, prefix string) {
 	api := router.Group("")
 	api.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
@@ -123,4 +123,9 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api.POST("/paypal/pay", publishedRequired, PayPalPayKey)
 	// api.POST("/paypal/confirm/:payKey", publishedRequired, PayPalConfirm)
 	// api.POST("/paypal/cancel/:payKey", publishedRequired, PayPalCancel)
+}
+
+func Route(router router.Router, args ...gin.HandlerFunc) {
+	route(router, "")
+	route(router, "/checkout")
 }
