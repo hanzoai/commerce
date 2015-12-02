@@ -14,7 +14,11 @@ func AccountRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tok := GetToken(c)
 
-		id := tok.Get("user-id").(string)
+		id, ok := tok.Get("user-id").(string)
+		if !ok {
+			http.Fail(c, 403, "Access Denied", errors.New("Access Denied"))
+			return
+		}
 
 		org := GetOrganization(c)
 		db := datastore.New(org.Namespace(c))
