@@ -48,8 +48,9 @@ type Entity interface {
 	Get(args ...interface{}) error
 	GetById(string) error
 	Exists() (bool, error)
+	IdExists(id string) (bool, error)
 	KeyExists(key interface{}) (datastore.Key, bool, error)
-	IdExists(id string) (datastore.Key, bool, error)
+	KeyById(string) (datastore.Key, bool, error)
 	MustGet(args ...interface{})
 	Put() error
 	PutDocument() error
@@ -321,7 +322,7 @@ func (m *Model) GetById(id string) error {
 
 	// Use unique filter based on model type
 	switch m.Kind() {
-	case "store", "product":
+	case "store", "product", "collection":
 		filterStr = "Slug"
 	case "variant":
 		filterStr = "SKU"
@@ -365,7 +366,13 @@ func (m *Model) Exists() (bool, error) {
 	return ok, err
 }
 
-func (m *Model) IdExists(id string) (datastore.Key, bool, error) {
+// Check if key is in datastore.
+func (m *Model) IdExists(id string) (bool, error) {
+	_, ok, err := m.KeyById(id)
+	return ok, err
+}
+
+func (m *Model) KeyById(id string) (datastore.Key, bool, error) {
 	// Try to decode key
 	key, err := hashid.DecodeKey(m.Db.Context, id)
 
@@ -381,7 +388,7 @@ func (m *Model) IdExists(id string) (datastore.Key, bool, error) {
 
 	// Use unique filter based on model type
 	switch m.Kind() {
-	case "store", "product":
+	case "store", "product", "collection":
 		filterStr = "Slug"
 	case "variant":
 		filterStr = "SKU"
