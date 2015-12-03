@@ -416,7 +416,7 @@ func (r Rest) update(c *gin.Context) {
 	entity := r.newEntity(c)
 
 	// Try to retrieve key from datastore
-	_, ok, err := entity.KeyExists(id)
+	_, ok, err := entity.IdExists(id)
 	if !ok {
 		r.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
 		return
@@ -450,7 +450,7 @@ func (r Rest) patch(c *gin.Context) {
 	id := c.Params.ByName(r.ParamId)
 
 	entity := r.newEntity(c)
-	err := entity.Get(id)
+	err := entity.GetById(id)
 	if err != nil {
 		r.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
 		return
@@ -476,7 +476,7 @@ func (r Rest) delete(c *gin.Context) {
 
 	id := c.Params.ByName(r.ParamId)
 	entity := r.newEntity(c)
-	err := entity.Get(id)
+	err := entity.GetById(id)
 	if err != nil {
 		r.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
 		return
