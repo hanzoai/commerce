@@ -416,7 +416,7 @@ func (r Rest) update(c *gin.Context) {
 	entity := r.newEntity(c)
 
 	// Try to retrieve key from datastore
-	_, ok, err := entity.IdExists(id)
+	ok, err := entity.IdExists(id)
 	if !ok {
 		r.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
 		return
