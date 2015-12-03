@@ -327,6 +327,7 @@ func (m *Model) GetById(id string) error {
 		filterStr = "SKU"
 	case "coupon":
 		filterStr = "Code"
+		id = strings.ToUpper(id)
 	case "organization", "mailinglist":
 		filterStr = "Name"
 	case "aggregate":
