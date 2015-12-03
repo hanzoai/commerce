@@ -35,20 +35,26 @@ func accessTokenFromHeader(fieldValue string) string {
 }
 
 func ParseToken(c *gin.Context) {
-	// Grab access token out of Authorization header (Basic Auth)
-	accessToken := accessTokenFromHeader(c.Request.Header.Get("Authorization"))
+	query := c.Request.URL.Query()
 
-	// If not set using Authorization header, check request query for token param
+	// Check for `key` query param by default
+	accessToken := query.Get("key")
+
+	// Fallback to `token` query param
 	if accessToken == "" {
-		query := c.Request.URL.Query()
 		accessToken = query.Get("token")
+	}
 
-		// During development cookie may be set from development pages.
-		if appengine.IsDevAppServer() && accessToken == "" {
-			value, _ := session.Get(c, "access-token")
-			if tokstr, ok := value.(string); ok {
-				accessToken = tokstr
-			}
+	// Try to grab key from Authorization header (basic auth)
+	if accessToken == "" {
+		accessToken = accessTokenFromHeader(c.Request.Header.Get("Authorization"))
+	}
+
+	// If it's still not set and dev server is running, grab from session
+	if accessToken == "" && appengine.IsDevAppServer() {
+		value, _ := session.Get(c, "access-token")
+		if tokstr, ok := value.(string); ok {
+			accessToken = tokstr
 		}
 	}
 
