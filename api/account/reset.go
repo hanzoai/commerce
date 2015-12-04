@@ -10,6 +10,7 @@ import (
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/token"
 	"crowdstart.com/models/user"
+	"crowdstart.com/util/json"
 	"crowdstart.com/util/json/http"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/template"
@@ -18,8 +19,9 @@ import (
 )
 
 type resetReq struct {
-	Password        string `json:"password"`
-	PasswordConfirm string `json:"passwordConfirm"`
+	Email    string `json:"email"`
+	Username string `json:"username"`
+	Id       string `json:"id"`
 }
 
 func sendPasswordReset(c *gin.Context, org *organization.Organization, usr *user.User, tok *token.Token) {
@@ -52,7 +54,14 @@ func reset(c *gin.Context) {
 	db := datastore.New(org.Namespace(c))
 	usr := user.New(db)
 
-	email := c.Params.ByName("email")
+	// Get new password
+	req := &resetReq{}
+	if err := json.Decode(c.Request.Body, req); err != nil {
+		http.Fail(c, 400, "Failed decode request body", err)
+		return
+	}
+
+	email := req.Email
 
 	if err := usr.GetByEmail(email); err != nil {
 		// If user doesn't exist, we pretend like it's ok
