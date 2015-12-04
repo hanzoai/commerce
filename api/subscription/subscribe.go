@@ -46,6 +46,10 @@ func subscribe(c *gin.Context, org *organization.Organization) (*subscription.Su
 	}
 	log.Debug("Subscription: %#v", sub, c)
 
+	if sub.Quantity < 1 {
+		sub.Quantity = 1
+	}
+
 	pln := plan.New(db)
 	err = pln.GetById(sub.PlanId)
 	if err != nil {
@@ -80,6 +84,49 @@ func subscribe(c *gin.Context, org *organization.Organization) (*subscription.Su
 	sub.MustPut()
 
 	return sub, usr, nil
+}
+
+func updateSubscribe(c *gin.Context, org *organization.Organization, sub *subscription.Subscription) (*subscription.Subscription, error) {
+	ctx := org.Db.Context
+	nsCtx := org.Namespace(ctx)
+	db := datastore.New(nsCtx)
+
+	userId := sub.UserId
+
+	// Try decode request body
+	if err := json.Decode(c.Request.Body, &sub); err != nil {
+		log.Error("Failed to decode request body: %v\n%v", c.Request.Body, err, c)
+		return nil, FailedToDecodeRequestBody
+	}
+
+	if userId != sub.UserId {
+		return nil, CannotChangeUser
+	}
+
+	log.Warn("Quantity %v", sub.Quantity)
+
+	// Delete Case
+	if sub.Quantity < 1 {
+		return unsubscribe(c, org, sub)
+	}
+
+	pln := plan.New(db)
+	err := pln.GetById(sub.PlanId)
+	if err != nil {
+		return nil, PlanDoesNotExist
+	}
+	log.Debug("Plan: %#v", pln, c)
+
+	sub.Plan = *pln
+
+	err = stripe.UpdateSubscription(org, sub)
+	if err != nil {
+		return nil, err
+	}
+
+	sub.MustPut()
+
+	return sub, nil
 }
 
 func unsubscribe(c *gin.Context, org *organization.Organization, sub *subscription.Subscription) (*subscription.Subscription, error) {

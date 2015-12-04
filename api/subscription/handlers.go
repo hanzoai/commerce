@@ -49,6 +49,35 @@ func Subscribe(c *gin.Context) {
 	http.Render(c, 200, sub)
 }
 
+func GetSubscribe(c *gin.Context) {
+	sub, err := getSubscription(c)
+	if err != nil {
+		http.Fail(c, 404, "No subscription found", err)
+		return
+	}
+
+	sub.Number = sub.NumberFromId()
+	http.Render(c, 200, sub)
+}
+
+func UpdateSubscribe(c *gin.Context) {
+	org := middleware.GetOrganization(c)
+	sub, err := getSubscription(c)
+	if err != nil {
+		http.Fail(c, 404, "No subscription found", err)
+		return
+	}
+
+	_, err = updateSubscribe(c, org, sub)
+	if err != nil {
+		http.Fail(c, 500, "Error during subscribe", err)
+		return
+	}
+
+	sub.Number = sub.NumberFromId()
+	http.Render(c, 200, sub)
+}
+
 func Unsubscribe(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	sub, err := getSubscription(c)
@@ -63,7 +92,6 @@ func Unsubscribe(c *gin.Context) {
 		return
 	}
 
-	c.Writer.Header().Add("Location", subscriptionEndpoint+sub.Id())
 	sub.Number = sub.NumberFromId()
 	http.Render(c, 200, sub)
 }
@@ -78,5 +106,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 
 	// Charge Payment API
 	api.POST("/subscribe", publishedRequired, Subscribe)
+	api.GET("/subscribe/:subscriptionid", publishedRequired, GetSubscribe)
+	api.POST("/subscribe/:subscriptionid", publishedRequired, UpdateSubscribe)
 	api.DELETE("/subscribe/:subscriptionid", publishedRequired, Unsubscribe)
 }
