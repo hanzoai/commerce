@@ -14,6 +14,11 @@ import (
 	"crowdstart.com/util/log"
 )
 
+type confirmPasswordReq struct {
+	Password        string `json:"password"`
+	PasswordConfirm string `json:"passwordConfirm"`
+}
+
 func confirm(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespace(c))
@@ -38,7 +43,7 @@ func confirm(c *gin.Context) {
 	}
 
 	// Get new password
-	req := &resetReq{}
+	req := &confirmPasswordReq{}
 	if err := json.Decode(c.Request.Body, req); err != nil {
 		http.Fail(c, 400, "Failed decode request body", err)
 		return
