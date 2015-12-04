@@ -81,3 +81,14 @@ func subscribe(c *gin.Context, org *organization.Organization) (*subscription.Su
 
 	return sub, usr, nil
 }
+
+func unsubscribe(c *gin.Context, org *organization.Organization, sub *subscription.Subscription) (*subscription.Subscription, error) {
+	err := stripe.Unsubscribe(org, sub)
+	if err != nil {
+		return nil, err
+	}
+
+	sub.MustPut()
+
+	return sub, nil
+}

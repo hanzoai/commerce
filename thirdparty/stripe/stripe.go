@@ -70,7 +70,7 @@ func (c Client) NewSubscription(token string, source interface{}, sub *subscript
 	}
 
 	sub.Account.SubscriptionId = s.ID
-	sub.Account.CustomerId = params.Customer
+	sub.Account.CustomerId = s.Customer.ID
 	sub.FeePercent = s.FeePercent
 	sub.EndCancel = s.EndCancel
 	sub.PeriodStart = time.Unix(s.PeriodStart, 0)
@@ -87,9 +87,38 @@ func (c Client) NewSubscription(token string, source interface{}, sub *subscript
 }
 
 // Subscribe to a plan
-func (c Client) CancelSubscription(sub *subscription.Subscription) error {
-	err := c.Subs.Cancel(sub.Account.SubscriptionId, &stripe.SubParams{Customer: sub.Account.CustomerId})
-	return err
+func (c Client) CancelSubscription(sub *subscription.Subscription) (*Sub, error) {
+	params := &stripe.SubParams{
+		Customer:  sub.Account.CustomerId,
+		EndCancel: true,
+	}
+	s, err := c.Subs.Get(sub.Account.SubscriptionId, params)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	err = c.Subs.Cancel(sub.Account.SubscriptionId, params)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	sub.Account.SubscriptionId = s.ID
+	sub.Account.CustomerId = s.Customer.ID
+	sub.FeePercent = s.FeePercent
+	sub.EndCancel = s.EndCancel
+	sub.PeriodStart = time.Unix(s.PeriodStart, 0)
+	sub.PeriodEnd = time.Unix(s.PeriodEnd, 0)
+	// sub.Start = time.Unix(s.Start, 0)
+	sub.Ended = sub.PeriodEnd
+	sub.TrialStart = time.Unix(s.TrialStart, 0)
+	sub.TrialEnd = time.Unix(s.TrialEnd, 0)
+	sub.CanceledAt = time.Now()
+	sub.EndCancel = true
+
+	sub.Quantity = int(s.Quantity)
+	sub.Status = string(s.Status)
+
+	return (*Sub)(s), nil
 }
 
 // Do authorization, return token
