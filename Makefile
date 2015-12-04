@@ -29,13 +29,13 @@ gae_development = config/development/app.yaml \
 				  store/app.dev.yaml
 
 gae_sandbox = config/sandbox \
-			  analytics/app.staging.yaml \
-			  api/app.staging.yaml \
+			  analytics/app.sandbox.yaml \
+			  api/app.sandbox.yaml \
 
 gae_staging = config/staging \
 			  analytics/app.staging.yaml \
 			  api/app.staging.yaml \
-			  cdn/app.dev.yaml \
+			  cdn/app.staging.yaml \
 			  platform/app.staging.yaml
 
 gae_production = config/production \
