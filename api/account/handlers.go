@@ -29,9 +29,8 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api.POST("/login", publishedRequired, namespaced, login)
 
 	api.POST("/create", publishedRequired, namespaced, create)
-	api.GET("/enable/:tokenid", publishedRequired, namespaced, enable)
 	api.POST("/enable/:tokenid", publishedRequired, namespaced, enable)
 
-	api.GET("/reset", publishedRequired, namespaced, reset)
+	api.POST("/reset", publishedRequired, namespaced, reset)
 	api.POST("/confirm/:tokenid", publishedRequired, namespaced, confirm)
 }
