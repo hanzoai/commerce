@@ -11,4 +11,5 @@ var (
 	FailedToCreateCustomer    = errors.New("Failed to create customer")
 	FailedToCreateUser        = errors.New("Failed to create user")
 	OnlyOneOfUserBuyerAllowed = errors.New("Only one of user buyer allowed")
+	CannotChangeUser          = errors.New("Subscription user cannot be changed")
 )

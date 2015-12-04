@@ -36,6 +36,14 @@ func Subscribe(org *organization.Organization, usr *user.User, sub *subscription
 	return returningNewCard(client, tok, usr, sub)
 }
 
+func UpdateSubscription(org *organization.Organization, sub *subscription.Subscription) error {
+	// Create stripe client
+	client := stripe.New(sub.Db.Context, org.StripeToken())
+
+	_, err := client.UpdateSubscription(sub)
+	return err
+}
+
 func Unsubscribe(org *organization.Organization, sub *subscription.Subscription) error {
 	// Create stripe client
 	client := stripe.New(sub.Db.Context, org.StripeToken())
