@@ -102,17 +102,15 @@ a.list-group-item.heading:hover {
 .list-group-item a.collapsed span.open {
   display: none;
 }
-</style><div class="row"><div class="col-md-9"><!-- div(data-bind=multipage ? "visible: page() == 'home'" : undefined)--><!--     header--><!--         .page-header--><!--             h1#top= api.name || 'API Documentation'--><!--     .description!= markdown(api.description)--><!--     if multipage--><!--         a.btn.btn-default.pull-right(href="#page:#{slug(api.resourceGroups[0].name)}")--><!--             | Next&nbsp;--><!--             i.fa.fa-arrow-circle-right--><!--         .clearfix--><!--         hr--><div><div class="panel panel-default"><div class="panel-heading"><h3 id="payment-api">Payment API&nbsp;<a href="#payment-api"><i class="fa fa-link"></i></a></h3></div><div class="panel-body"><p>There is a special, easy-to-use API with static endpoints for collecting money.
-There is a one-step payment process (charge endpoint) and a two-step payment
-process (authorize endpoint, followed by the capture endpoint on the Order
-object).</p>
-<h4 id="payment-api-one-step-payments">One-step Payments&nbsp;<a href="#payment-api-one-step-payments"><i class="fa fa-link"></i></a></h4><p>The one-step payment process is mostly used for general commerce for immediate
+</style><div class="row"><div class="col-md-9"><!-- div(data-bind=multipage ? "visible: page() == 'home'" : undefined)--><!--     header--><!--         .page-header--><!--             h1#top= api.name || 'API Documentation'--><!--     .description!= markdown(api.description)--><!--     if multipage--><!--         a.btn.btn-default.pull-right(href="#page:#{slug(api.resourceGroups[0].name)}")--><!--             | Next&nbsp;--><!--             i.fa.fa-arrow-circle-right--><!--         .clearfix--><!--         hr--><div><div class="panel panel-default"><div class="panel-heading"><h3 id="checkout-api">Checkout API&nbsp;<a href="#checkout-api"><i class="fa fa-link"></i></a></h3></div><div class="panel-body"><p>Our Checkout API supports one-step (charge endpoint) and two payment (authorize,
+capture) processes.</p>
+<h4 id="checkout-api-one-step-payments">One-step Payments&nbsp;<a href="#checkout-api-one-step-payments"><i class="fa fa-link"></i></a></h4><p>The one-step payment process is mostly used for general commerce for immediate
 fulfillment/sale.  In general, you must send three things to successfully
 complete a charge call: order information, payment information, and user
 information. In essence, the one-step payment method takes this information,
 authorizes the payment, and, if successful, immediately attempts to capture it.
 Any failure in this process will result in a failure of the call.</p>
-<section id="payment-api-one-step-payments-post" class="panel panel-success"><div class="panel-heading"><div style="float:right"><span style="text-transform: lowercase">Charge an Order</span></div><div style="float:left"><a href="#payment-api-one-step-payments-post" class="btn btn-xs btn-success">POST</a></div><div style="overflow:hidden"><code>/charge</code></div></div><ul class="list-group"><li class="list-group-item"><strong>Request</strong><a data-toggle="collapse" data-target="#0992ee04a9504e296e82dd10875aacef" class="pull-right collapsed"><span class="closed">Show</span><span class="open">Hide</span></a></li><li id="0992ee04a9504e296e82dd10875aacef" class="list-group-item panel-collapse collapse"><h5>Headers</h5><pre><code><span class="hljs-attribute">Content-Type</span>: <span class="hljs-string">application/json</span><br/></code></pre><h5>Body</h5><pre><code>{
+<section id="checkout-api-one-step-payments-post" class="panel panel-success"><div class="panel-heading"><div style="float:right"><span style="text-transform: lowercase">Charge an Order</span></div><div style="float:left"><a href="#checkout-api-one-step-payments-post" class="btn btn-xs btn-success">POST</a></div><div style="overflow:hidden"><code>/checkout/charge</code></div></div><ul class="list-group"><li class="list-group-item"><strong>Request</strong><a data-toggle="collapse" data-target="#3e60420ceb998037f49224bb342b93eb" class="pull-right collapsed"><span class="closed">Show</span><span class="open">Hide</span></a></li><li id="3e60420ceb998037f49224bb342b93eb" class="list-group-item panel-collapse collapse"><h5>Headers</h5><pre><code><span class="hljs-attribute">Content-Type</span>: <span class="hljs-string">application/json</span><br/></code></pre><h5>Body</h5><pre><code>{
   "<span class="hljs-attribute">buyer</span>": <span class="hljs-value">{
     "<span class="hljs-attribute">type</span>": <span class="hljs-value"><span class="hljs-string">"card"</span></span>,
     "<span class="hljs-attribute">number</span>": <span class="hljs-value"><span class="hljs-string">"4242424242424242"</span></span>,
@@ -138,98 +136,109 @@ Any failure in this process will result in a failure of the call.</p>
       </span>}
     ]
   </span>}
-</span>}</code></pre></li><li class="list-group-item"><strong>Response&nbsp;&nbsp;<code>200</code></strong><a data-toggle="collapse" data-target="#453fd1650d6f6eabffe987ead5342c7d" class="pull-right collapsed"><span class="closed">Show</span><span class="open">Hide</span></a></li><li id="453fd1650d6f6eabffe987ead5342c7d" class="list-group-item panel-collapse collapse"><h5>Headers</h5><pre><code><span class="hljs-attribute">Content-Type</span>: <span class="hljs-string">application/json</span><br/></code></pre><h5>Body</h5><pre><code>{
-  "<span class="hljs-attribute">id</span>": <span class="hljs-value"><span class="hljs-string">"9"</span></span>,
-  "<span class="hljs-attribute">createdAt</span>": <span class="hljs-value"><span class="hljs-string">"2015-03-23T04:13:56.666272023Z"</span></span>,
-  "<span class="hljs-attribute">updatedAt</span>": <span class="hljs-value"><span class="hljs-string">"2015-03-23T04:13:58.989441381Z"</span></span>,
-  "<span class="hljs-attribute">campaignId</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-  "<span class="hljs-attribute">orderStatus</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-  "<span class="hljs-attribute">paymentStatus</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-  "<span class="hljs-attribute">fulfillmentStatus</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-  "<span class="hljs-attribute">preorder</span>": <span class="hljs-value"><span class="hljs-literal">false</span></span>,
-  "<span class="hljs-attribute">unconfirmed</span>": <span class="hljs-value"><span class="hljs-literal">false</span></span>,
-  "<span class="hljs-attribute">currency</span>": <span class="hljs-value"><span class="hljs-string">"usd"</span></span>,
-  "<span class="hljs-attribute">type</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-  "<span class="hljs-attribute">shippingMethod</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-  "<span class="hljs-attribute">lineTotal</span>": <span class="hljs-value"><span class="hljs-number">2000</span></span>,
-  "<span class="hljs-attribute">discount</span>": <span class="hljs-value"><span class="hljs-number">0</span></span>,
-  "<span class="hljs-attribute">subtotal</span>": <span class="hljs-value"><span class="hljs-number">2000</span></span>,
-  "<span class="hljs-attribute">shipping</span>": <span class="hljs-value"><span class="hljs-number">0</span></span>,
-  "<span class="hljs-attribute">tax</span>": <span class="hljs-value"><span class="hljs-number">0</span></span>,
-  "<span class="hljs-attribute">total</span>": <span class="hljs-value"><span class="hljs-number">2000</span></span>,
-  "<span class="hljs-attribute">balance</span>": <span class="hljs-value"><span class="hljs-number">0</span></span>,
-  "<span class="hljs-attribute">paid</span>": <span class="hljs-value"><span class="hljs-number">0</span></span>,
-  "<span class="hljs-attribute">refunded</span>": <span class="hljs-value"><span class="hljs-number">0</span></span>,
-  "<span class="hljs-attribute">fee</span>": <span class="hljs-value"><span class="hljs-number">0</span></span>,
-  "<span class="hljs-attribute">billingAddress</span>": <span class="hljs-value">{}</span>,
-  "<span class="hljs-attribute">shippingAddress</span>": <span class="hljs-value">{}</span>,
-  "<span class="hljs-attribute">items</span>": <span class="hljs-value">[
+</span>}</code></pre></li><li class="list-group-item"><strong>Response&nbsp;&nbsp;<code>200</code></strong><a data-toggle="collapse" data-target="#e525475bf760c7f8c87570b951c9ff2d" class="pull-right collapsed"><span class="closed">Show</span><span class="open">Hide</span></a></li><li id="e525475bf760c7f8c87570b951c9ff2d" class="list-group-item panel-collapse collapse"><h5>Headers</h5><pre><code><span class="hljs-attribute">Content-Type</span>: <span class="hljs-string">application/json</span><br/></code></pre><h5>Body</h5><pre><code>{
+  "<span class="hljs-attribute">id</span>":<span class="hljs-value"><span class="hljs-string">"9"</span></span>,
+  "<span class="hljs-attribute">createdAt</span>":<span class="hljs-value"><span class="hljs-string">"2015-03-23T04:13:56.666272023Z"</span></span>,
+  "<span class="hljs-attribute">updatedAt</span>":<span class="hljs-value"><span class="hljs-string">"2015-03-23T04:13:58.989441381Z"</span></span>,
+  "<span class="hljs-attribute">campaignId</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+  "<span class="hljs-attribute">orderStatus</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+  "<span class="hljs-attribute">paymentStatus</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+  "<span class="hljs-attribute">fulfillmentStatus</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+  "<span class="hljs-attribute">preorder</span>":<span class="hljs-value"><span class="hljs-literal">false</span></span>,
+  "<span class="hljs-attribute">unconfirmed</span>":<span class="hljs-value"><span class="hljs-literal">false</span></span>,
+  "<span class="hljs-attribute">currency</span>":<span class="hljs-value"><span class="hljs-string">"usd"</span></span>,
+  "<span class="hljs-attribute">type</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+  "<span class="hljs-attribute">shippingMethod</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+  "<span class="hljs-attribute">lineTotal</span>":<span class="hljs-value"><span class="hljs-number">2000</span></span>,
+  "<span class="hljs-attribute">discount</span>":<span class="hljs-value"><span class="hljs-number">0</span></span>,
+  "<span class="hljs-attribute">subtotal</span>":<span class="hljs-value"><span class="hljs-number">2000</span></span>,
+  "<span class="hljs-attribute">shipping</span>":<span class="hljs-value"><span class="hljs-number">0</span></span>,
+  "<span class="hljs-attribute">tax</span>":<span class="hljs-value"><span class="hljs-number">0</span></span>,
+  "<span class="hljs-attribute">total</span>":<span class="hljs-value"><span class="hljs-number">2000</span></span>,
+  "<span class="hljs-attribute">balance</span>":<span class="hljs-value"><span class="hljs-number">0</span></span>,
+  "<span class="hljs-attribute">paid</span>":<span class="hljs-value"><span class="hljs-number">0</span></span>,
+  "<span class="hljs-attribute">refunded</span>":<span class="hljs-value"><span class="hljs-number">0</span></span>,
+  "<span class="hljs-attribute">fee</span>":<span class="hljs-value"><span class="hljs-number">0</span></span>,
+  "<span class="hljs-attribute">billingAddress</span>":<span class="hljs-value">{
+
+  }</span>,
+  "<span class="hljs-attribute">shippingAddress</span>":<span class="hljs-value">{
+
+  }</span>,
+  "<span class="hljs-attribute">items</span>":<span class="hljs-value">[
     {
-      "<span class="hljs-attribute">productId</span>": <span class="hljs-value"><span class="hljs-string">"1"</span></span>,
-      "<span class="hljs-attribute">productName</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-      "<span class="hljs-attribute">productSlug</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-      "<span class="hljs-attribute">collectionId</span>": <span class="hljs-value"><span class="hljs-string">"1"</span></span>,
-      "<span class="hljs-attribute">variantId</span>": <span class="hljs-value"><span class="hljs-string">"1"</span></span>,
-      "<span class="hljs-attribute">variantName</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-      "<span class="hljs-attribute">variantSKU</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-      "<span class="hljs-attribute">price</span>": <span class="hljs-value"><span class="hljs-number">100</span></span>,
-      "<span class="hljs-attribute">quantity</span>": <span class="hljs-value"><span class="hljs-number">20</span></span>,
-      "<span class="hljs-attribute">weight</span>": <span class="hljs-value"><span class="hljs-number">0</span></span>,
-      "<span class="hljs-attribute">taxable</span>": <span class="hljs-value"><span class="hljs-literal">false</span>
+      "<span class="hljs-attribute">productId</span>":<span class="hljs-value"><span class="hljs-string">"1"</span></span>,
+      "<span class="hljs-attribute">productName</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+      "<span class="hljs-attribute">productSlug</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+      "<span class="hljs-attribute">collectionId</span>":<span class="hljs-value"><span class="hljs-string">"1"</span></span>,
+      "<span class="hljs-attribute">variantId</span>":<span class="hljs-value"><span class="hljs-string">"1"</span></span>,
+      "<span class="hljs-attribute">variantName</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+      "<span class="hljs-attribute">variantSKU</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+      "<span class="hljs-attribute">price</span>":<span class="hljs-value"><span class="hljs-number">100</span></span>,
+      "<span class="hljs-attribute">quantity</span>":<span class="hljs-value"><span class="hljs-number">20</span></span>,
+      "<span class="hljs-attribute">weight</span>":<span class="hljs-value"><span class="hljs-number">0</span></span>,
+      "<span class="hljs-attribute">taxable</span>":<span class="hljs-value"><span class="hljs-literal">false</span>
     </span>}
   ]</span>,
-  "<span class="hljs-attribute">discounts</span>": <span class="hljs-value">[]</span>,
-  "<span class="hljs-attribute">payments</span>": <span class="hljs-value">[
+  "<span class="hljs-attribute">discounts</span>":<span class="hljs-value">[
+
+  ]</span>,
+  "<span class="hljs-attribute">payments</span>":<span class="hljs-value">[
     {
-      "<span class="hljs-attribute">account</span>": <span class="hljs-value">{
-        "<span class="hljs-attribute">type</span>": <span class="hljs-value"><span class="hljs-string">"stripe"</span></span>,
-        "<span class="hljs-attribute">buyer</span>": <span class="hljs-value">{
-          "<span class="hljs-attribute">email</span>": <span class="hljs-value"><span class="hljs-string">"joe@buystoomuchstuff.com"</span></span>,
-          "<span class="hljs-attribute">firstName</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-          "<span class="hljs-attribute">lastName</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-          "<span class="hljs-attribute">company</span>": <span class="hljs-value"><span class="hljs-string">"Buys Too Much Stuff Dotcom"</span></span>,
-          "<span class="hljs-attribute">phone</span>": <span class="hljs-value"><span class="hljs-string">"555-555-5555"</span></span>,
-          "<span class="hljs-attribute">notes</span>": <span class="hljs-value"><span class="hljs-string">"non"</span></span>,
-          "<span class="hljs-attribute">address</span>": <span class="hljs-value">{}
+      "<span class="hljs-attribute">account</span>":<span class="hljs-value">{
+        "<span class="hljs-attribute">type</span>":<span class="hljs-value"><span class="hljs-string">"stripe"</span></span>,
+        "<span class="hljs-attribute">buyer</span>":<span class="hljs-value">{
+          "<span class="hljs-attribute">email</span>":<span class="hljs-value"><span class="hljs-string">"joe@buystoomuchstuff.com"</span></span>,
+          "<span class="hljs-attribute">firstName</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+          "<span class="hljs-attribute">lastName</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+          "<span class="hljs-attribute">company</span>":<span class="hljs-value"><span class="hljs-string">"Buys Too Much Stuff Dotcom"</span></span>,
+          "<span class="hljs-attribute">phone</span>":<span class="hljs-value"><span class="hljs-string">"555-555-5555"</span></span>,
+          "<span class="hljs-attribute">notes</span>":<span class="hljs-value"><span class="hljs-string">"non"</span></span>,
+          "<span class="hljs-attribute">address</span>":<span class="hljs-value">{
+
+          }
         </span>}</span>,
-        "<span class="hljs-attribute">affirm</span>": <span class="hljs-value">{}</span>,
-        "<span class="hljs-attribute">stripe</span>": <span class="hljs-value">{
-          "<span class="hljs-attribute">fingerprint</span>": <span class="hljs-value"><span class="hljs-string">"k6NxwTEJxyHMPCr3"</span></span>,
-          "<span class="hljs-attribute">customerId</span>": <span class="hljs-value"><span class="hljs-string">"cus_5vDNDt1Xi2YBBe"</span></span>,
-          "<span class="hljs-attribute">cardId</span>": <span class="hljs-value"><span class="hljs-string">"card_15jMwmCSRlllXCwP3TSacP62"</span></span>,
-          "<span class="hljs-attribute">brand</span>": <span class="hljs-value"><span class="hljs-string">"Visa"</span></span>,
-          "<span class="hljs-attribute">type</span>": <span class="hljs-value"><span class="hljs-string">"credit"</span></span>,
-          "<span class="hljs-attribute">lastFour</span>": <span class="hljs-value"><span class="hljs-string">"4242"</span></span>,
-          "<span class="hljs-attribute">expiration</span>": <span class="hljs-value">{
-            "<span class="hljs-attribute">month</span>": <span class="hljs-value"><span class="hljs-number">12</span></span>,
-            "<span class="hljs-attribute">year</span>": <span class="hljs-value"><span class="hljs-number">2016</span>
+        "<span class="hljs-attribute">affirm</span>":<span class="hljs-value">{
+
+        }</span>,
+        "<span class="hljs-attribute">stripe</span>":<span class="hljs-value">{
+          "<span class="hljs-attribute">fingerprint</span>":<span class="hljs-value"><span class="hljs-string">"k6NxwTEJxyHMPCr3"</span></span>,
+          "<span class="hljs-attribute">customerId</span>":<span class="hljs-value"><span class="hljs-string">"cus_5vDNDt1Xi2YBBe"</span></span>,
+          "<span class="hljs-attribute">cardId</span>":<span class="hljs-value"><span class="hljs-string">"card_15jMwmCSRlllXCwP3TSacP62"</span></span>,
+          "<span class="hljs-attribute">brand</span>":<span class="hljs-value"><span class="hljs-string">"Visa"</span></span>,
+          "<span class="hljs-attribute">type</span>":<span class="hljs-value"><span class="hljs-string">"credit"</span></span>,
+          "<span class="hljs-attribute">lastFour</span>":<span class="hljs-value"><span class="hljs-string">"4242"</span></span>,
+          "<span class="hljs-attribute">expiration</span>":<span class="hljs-value">{
+            "<span class="hljs-attribute">month</span>":<span class="hljs-value"><span class="hljs-number">12</span></span>,
+            "<span class="hljs-attribute">year</span>":<span class="hljs-value"><span class="hljs-number">2016</span>
           </span>}</span>,
-          "<span class="hljs-attribute">cvcCheck</span>": <span class="hljs-value"><span class="hljs-string">"pass"</span>
+          "<span class="hljs-attribute">cvcCheck</span>":<span class="hljs-value"><span class="hljs-string">"pass"</span>
         </span>}</span>,
-        "<span class="hljs-attribute">paypal</span>": <span class="hljs-value">{}
-      </span>}</span>,
-      "<span class="hljs-attribute">currency</span>": <span class="hljs-value"><span class="hljs-string">"usd"</span></span>,
-      "<span class="hljs-attribute">campaignId</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-      "<span class="hljs-attribute">chargeId</span>": <span class="hljs-value"><span class="hljs-string">"ch_15jMwqCSRlllXCwPpVNGPktU"</span></span>,
-      "<span class="hljs-attribute">amount</span>": <span class="hljs-value"><span class="hljs-number">2000</span></span>,
-      "<span class="hljs-attribute">amountRefunded</span>": <span class="hljs-value"><span class="hljs-number">0</span></span>,
-      "<span class="hljs-attribute">status</span>": <span class="hljs-value"><span class="hljs-string">"paid"</span></span>,
-      "<span class="hljs-attribute">client</span>": <span class="hljs-value">{}</span>,
-      "<span class="hljs-attribute">captured</span>": <span class="hljs-value"><span class="hljs-literal">true</span></span>,
-      "<span class="hljs-attribute">live</span>": <span class="hljs-value"><span class="hljs-literal">false</span>
+      }</span>,
+      "<span class="hljs-attribute">currency</span>":<span class="hljs-value"><span class="hljs-string">"usd"</span></span>,
+      "<span class="hljs-attribute">campaignId</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+      "<span class="hljs-attribute">chargeId</span>":<span class="hljs-value"><span class="hljs-string">"ch_15jMwqCSRlllXCwPpVNGPktU"</span></span>,
+      "<span class="hljs-attribute">amount</span>":<span class="hljs-value"><span class="hljs-number">2000</span></span>,
+      "<span class="hljs-attribute">amountRefunded</span>":<span class="hljs-value"><span class="hljs-number">0</span></span>,
+      "<span class="hljs-attribute">status</span>":<span class="hljs-value"><span class="hljs-string">"paid"</span></span>,
+      "<span class="hljs-attribute">client</span>":<span class="hljs-value">{
+
+      }</span>,
+      "<span class="hljs-attribute">captured</span>":<span class="hljs-value"><span class="hljs-literal">true</span></span>,
+      "<span class="hljs-attribute">live</span>":<span class="hljs-value"><span class="hljs-literal">false</span>
     </span>}
   ]</span>,
-  "<span class="hljs-attribute">fulfillment</span>": <span class="hljs-value">{
-    "<span class="hljs-attribute">courier</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-    "<span class="hljs-attribute">trackingNumber</span>": <span class="hljs-value"><span class="hljs-string">""</span>
+  "<span class="hljs-attribute">fulfillment</span>":<span class="hljs-value">{
+    "<span class="hljs-attribute">courier</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+    "<span class="hljs-attribute">trackingNumber</span>":<span class="hljs-value"><span class="hljs-string">""</span>
   </span>}
-</span>}</code></pre></li></ul></section><h4 id="payment-api-two-step-payment-process,-part-1">Two-step payment process, part 1&nbsp;<a href="#payment-api-two-step-payment-process,-part-1"><i class="fa fa-link"></i></a></h4><p>The two-step payment process separates the two steps mentioned in the one-step
+</span>}</code></pre></li></ul></section><h4 id="checkout-api-two-step-payment-process,-part-1">Two-step payment process, part 1&nbsp;<a href="#checkout-api-two-step-payment-process,-part-1"><i class="fa fa-link"></i></a></h4><p>The two-step payment process separates the two steps mentioned in the one-step
 payment process, and allows you to authorize a payment, and then capture it at a
 later period.  This is useful for pre-orders or other such payments that you do
 not wish to collect until shipment.  The basic data needs remain the same, as
 Crowdstart implicitly creates the Order and User for you, for later use in the
 capture portion.</p>
-<section id="payment-api-two-step-payment-process,-part-1-post" class="panel panel-success"><div class="panel-heading"><div style="float:right"><span style="text-transform: lowercase">Authorize</span></div><div style="float:left"><a href="#payment-api-two-step-payment-process,-part-1-post" class="btn btn-xs btn-success">POST</a></div><div style="overflow:hidden"><code>/authorize</code></div></div><ul class="list-group"><li class="list-group-item"><strong>Request</strong><a data-toggle="collapse" data-target="#49896e05a0c5be710ac97cfca7ad514a" class="pull-right collapsed"><span class="closed">Show</span><span class="open">Hide</span></a></li><li id="49896e05a0c5be710ac97cfca7ad514a" class="list-group-item panel-collapse collapse"><h5>Headers</h5><pre><code><span class="hljs-attribute">Content-Type</span>: <span class="hljs-string">application/json</span><br/></code></pre><h5>Body</h5><pre><code>{
+<section id="checkout-api-two-step-payment-process,-part-1-post" class="panel panel-success"><div class="panel-heading"><div style="float:right"><span style="text-transform: lowercase">Authorize</span></div><div style="float:left"><a href="#checkout-api-two-step-payment-process,-part-1-post" class="btn btn-xs btn-success">POST</a></div><div style="overflow:hidden"><code>/checkout/authorize</code></div></div><ul class="list-group"><li class="list-group-item"><strong>Request</strong><a data-toggle="collapse" data-target="#185934b11c0374a74be85f0d424b4871" class="pull-right collapsed"><span class="closed">Show</span><span class="open">Hide</span></a></li><li id="185934b11c0374a74be85f0d424b4871" class="list-group-item panel-collapse collapse"><h5>Headers</h5><pre><code><span class="hljs-attribute">Content-Type</span>: <span class="hljs-string">application/json</span><br/></code></pre><h5>Body</h5><pre><code>{
   "<span class="hljs-attribute">buyer</span>": <span class="hljs-value">{
     "<span class="hljs-attribute">type</span>": <span class="hljs-value"><span class="hljs-string">"card"</span></span>,
     "<span class="hljs-attribute">number</span>": <span class="hljs-value"><span class="hljs-string">"4242424242424242"</span></span>,
@@ -255,177 +264,187 @@ capture portion.</p>
       </span>}
     ]
   </span>}
-</span>}</code></pre></li><li class="list-group-item"><strong>Response&nbsp;&nbsp;<code>200</code></strong><a data-toggle="collapse" data-target="#b0c12e0c880eda5699a05e7d1f36a163" class="pull-right collapsed"><span class="closed">Show</span><span class="open">Hide</span></a></li><li id="b0c12e0c880eda5699a05e7d1f36a163" class="list-group-item panel-collapse collapse"><h5>Headers</h5><pre><code><span class="hljs-attribute">Content-Type</span>: <span class="hljs-string">application/json</span><br/></code></pre><h5>Body</h5><pre><code>{
-  "<span class="hljs-attribute">id</span>": <span class="hljs-value"><span class="hljs-string">"12"</span></span>,
-  "<span class="hljs-attribute">createdAt</span>": <span class="hljs-value"><span class="hljs-string">"2015-03-23T04:53:57.840871693Z"</span></span>,
-  "<span class="hljs-attribute">updatedAt</span>": <span class="hljs-value"><span class="hljs-string">"2015-03-23T04:53:57.840871693Z"</span></span>,
-  "<span class="hljs-attribute">campaignId</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-  "<span class="hljs-attribute">orderStatus</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-  "<span class="hljs-attribute">paymentStatus</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-  "<span class="hljs-attribute">fulfillmentStatus</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-  "<span class="hljs-attribute">preorder</span>": <span class="hljs-value"><span class="hljs-literal">false</span></span>,
-  "<span class="hljs-attribute">unconfirmed</span>": <span class="hljs-value"><span class="hljs-literal">false</span></span>,
-  "<span class="hljs-attribute">currency</span>": <span class="hljs-value"><span class="hljs-string">"usd"</span></span>,
-  "<span class="hljs-attribute">type</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-  "<span class="hljs-attribute">shippingMethod</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-  "<span class="hljs-attribute">lineTotal</span>": <span class="hljs-value"><span class="hljs-number">2000</span></span>,
-  "<span class="hljs-attribute">discount</span>": <span class="hljs-value"><span class="hljs-number">0</span></span>,
-  "<span class="hljs-attribute">subtotal</span>": <span class="hljs-value"><span class="hljs-number">2000</span></span>,
-  "<span class="hljs-attribute">shipping</span>": <span class="hljs-value"><span class="hljs-number">0</span></span>,
-  "<span class="hljs-attribute">tax</span>": <span class="hljs-value"><span class="hljs-number">0</span></span>,
-  "<span class="hljs-attribute">total</span>": <span class="hljs-value"><span class="hljs-number">2000</span></span>,
-  "<span class="hljs-attribute">balance</span>": <span class="hljs-value"><span class="hljs-number">0</span></span>,
-  "<span class="hljs-attribute">paid</span>": <span class="hljs-value"><span class="hljs-number">0</span></span>,
-  "<span class="hljs-attribute">refunded</span>": <span class="hljs-value"><span class="hljs-number">0</span></span>,
-  "<span class="hljs-attribute">fee</span>": <span class="hljs-value"><span class="hljs-number">0</span></span>,
-  "<span class="hljs-attribute">billingAddress</span>": <span class="hljs-value">{}</span>,
-  "<span class="hljs-attribute">shippingAddress</span>": <span class="hljs-value">{}</span>,
-  "<span class="hljs-attribute">items</span>": <span class="hljs-value">[
-    {
-      "<span class="hljs-attribute">productId</span>": <span class="hljs-value"><span class="hljs-string">"1"</span></span>,
-      "<span class="hljs-attribute">productName</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-      "<span class="hljs-attribute">productSlug</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-      "<span class="hljs-attribute">collectionId</span>": <span class="hljs-value"><span class="hljs-string">"1"</span></span>,
-      "<span class="hljs-attribute">variantId</span>": <span class="hljs-value"><span class="hljs-string">"1"</span></span>,
-      "<span class="hljs-attribute">variantName</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-      "<span class="hljs-attribute">variantSKU</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-      "<span class="hljs-attribute">price</span>": <span class="hljs-value"><span class="hljs-number">100</span></span>,
-      "<span class="hljs-attribute">quantity</span>": <span class="hljs-value"><span class="hljs-number">20</span></span>,
-      "<span class="hljs-attribute">weight</span>": <span class="hljs-value"><span class="hljs-number">0</span></span>,
-      "<span class="hljs-attribute">taxable</span>": <span class="hljs-value"><span class="hljs-literal">false</span>
-    </span>}
-  ]</span>,
-  "<span class="hljs-attribute">discounts</span>": <span class="hljs-value">[]</span>,
-  "<span class="hljs-attribute">payments</span>": <span class="hljs-value">[
-    {
-      "<span class="hljs-attribute">account</span>": <span class="hljs-value">{
-        "<span class="hljs-attribute">type</span>": <span class="hljs-value"><span class="hljs-string">"stripe"</span></span>,
-        "<span class="hljs-attribute">buyer</span>": <span class="hljs-value">{
-          "<span class="hljs-attribute">email</span>": <span class="hljs-value"><span class="hljs-string">"joe@buystoomuchstuff.com"</span></span>,
-          "<span class="hljs-attribute">firstName</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-          "<span class="hljs-attribute">lastName</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-          "<span class="hljs-attribute">company</span>": <span class="hljs-value"><span class="hljs-string">"Buys Too Much Stuff Dotcom"</span></span>,
-          "<span class="hljs-attribute">phone</span>": <span class="hljs-value"><span class="hljs-string">"555-555-5555"</span></span>,
-          "<span class="hljs-attribute">notes</span>": <span class="hljs-value"><span class="hljs-string">"non"</span></span>,
-          "<span class="hljs-attribute">address</span>": <span class="hljs-value">{}
-        </span>}</span>,
-        "<span class="hljs-attribute">affirm</span>": <span class="hljs-value">{}</span>,
-        "<span class="hljs-attribute">stripe</span>": <span class="hljs-value">{
-          "<span class="hljs-attribute">fingerprint</span>": <span class="hljs-value"><span class="hljs-string">"k6NxwTEJxyHMPCr3"</span></span>,
-          "<span class="hljs-attribute">customerId</span>": <span class="hljs-value"><span class="hljs-string">"cus_5vE1sYKb8AayVC"</span></span>,
-          "<span class="hljs-attribute">cardId</span>": <span class="hljs-value"><span class="hljs-string">"card_15jNZVCSRlllXCwPrD6GKV1j"</span></span>,
-          "<span class="hljs-attribute">brand</span>": <span class="hljs-value"><span class="hljs-string">"Visa"</span></span>,
-          "<span class="hljs-attribute">type</span>": <span class="hljs-value"><span class="hljs-string">"credit"</span></span>,
-          "<span class="hljs-attribute">lastFour</span>": <span class="hljs-value"><span class="hljs-string">"4242"</span></span>,
-          "<span class="hljs-attribute">expiration</span>": <span class="hljs-value">{
-            "<span class="hljs-attribute">month</span>": <span class="hljs-value"><span class="hljs-number">12</span></span>,
-            "<span class="hljs-attribute">year</span>": <span class="hljs-value"><span class="hljs-number">2016</span>
-          </span>}</span>,
-          "<span class="hljs-attribute">cvcCheck</span>": <span class="hljs-value"><span class="hljs-string">"pass"</span>
-        </span>}</span>,
-        "<span class="hljs-attribute">paypal</span>": <span class="hljs-value">{}
-      </span>}</span>,
-      "<span class="hljs-attribute">currency</span>": <span class="hljs-value"><span class="hljs-string">"usd"</span></span>,
-      "<span class="hljs-attribute">campaignId</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-      "<span class="hljs-attribute">chargeId</span>": <span class="hljs-value"><span class="hljs-string">"ch_15jNZZCSRlllXCwPWFblE4Hr"</span></span>,
-      "<span class="hljs-attribute">amount</span>": <span class="hljs-value"><span class="hljs-number">2000</span></span>,
-      "<span class="hljs-attribute">amountRefunded</span>": <span class="hljs-value"><span class="hljs-number">0</span></span>,
-      "<span class="hljs-attribute">status</span>": <span class="hljs-value"><span class="hljs-string">"unpaid"</span></span>,
-      "<span class="hljs-attribute">client</span>": <span class="hljs-value">{}</span>,
-      "<span class="hljs-attribute">captured</span>": <span class="hljs-value"><span class="hljs-literal">false</span></span>,
-      "<span class="hljs-attribute">live</span>": <span class="hljs-value"><span class="hljs-literal">false</span>
-    </span>}
-  ]</span>,
-  "<span class="hljs-attribute">fulfillment</span>": <span class="hljs-value">{
-    "<span class="hljs-attribute">courier</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-    "<span class="hljs-attribute">trackingNumber</span>": <span class="hljs-value"><span class="hljs-string">""</span>
-  </span>}
-</span>}</code></pre></li></ul></section><h4 id="payment-api-group-two-step-payment-process,-part-2">Group Two-step payment process, part 2&nbsp;<a href="#payment-api-group-two-step-payment-process,-part-2"><i class="fa fa-link"></i></a></h4><p>The second step of the two-step payment process involves capturing a
+</span>}</code></pre></li><li class="list-group-item"><strong>Response&nbsp;&nbsp;<code>200</code></strong><a data-toggle="collapse" data-target="#6fad6ddb9ae182b58989df292b49ad43" class="pull-right collapsed"><span class="closed">Show</span><span class="open">Hide</span></a></li><li id="6fad6ddb9ae182b58989df292b49ad43" class="list-group-item panel-collapse collapse"><h5>Headers</h5><pre><code><span class="hljs-attribute">Content-Type</span>: <span class="hljs-string">application/json</span><br/></code></pre><h5>Body</h5><pre><code>{
+   "<span class="hljs-attribute">id</span>":<span class="hljs-value"><span class="hljs-string">"12"</span></span>,
+   "<span class="hljs-attribute">createdAt</span>":<span class="hljs-value"><span class="hljs-string">"2015-03-23T04:53:57.840871693Z"</span></span>,
+   "<span class="hljs-attribute">updatedAt</span>":<span class="hljs-value"><span class="hljs-string">"2015-03-23T04:53:57.840871693Z"</span></span>,
+   "<span class="hljs-attribute">campaignId</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+   "<span class="hljs-attribute">orderStatus</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+   "<span class="hljs-attribute">paymentStatus</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+   "<span class="hljs-attribute">fulfillmentStatus</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+   "<span class="hljs-attribute">preorder</span>":<span class="hljs-value"><span class="hljs-literal">false</span></span>,
+   "<span class="hljs-attribute">unconfirmed</span>":<span class="hljs-value"><span class="hljs-literal">false</span></span>,
+   "<span class="hljs-attribute">currency</span>":<span class="hljs-value"><span class="hljs-string">"usd"</span></span>,
+   "<span class="hljs-attribute">type</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+   "<span class="hljs-attribute">shippingMethod</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+   "<span class="hljs-attribute">lineTotal</span>":<span class="hljs-value"><span class="hljs-number">2000</span></span>,
+   "<span class="hljs-attribute">discount</span>":<span class="hljs-value"><span class="hljs-number">0</span></span>,
+   "<span class="hljs-attribute">subtotal</span>":<span class="hljs-value"><span class="hljs-number">2000</span></span>,
+   "<span class="hljs-attribute">shipping</span>":<span class="hljs-value"><span class="hljs-number">0</span></span>,
+   "<span class="hljs-attribute">tax</span>":<span class="hljs-value"><span class="hljs-number">0</span></span>,
+   "<span class="hljs-attribute">total</span>":<span class="hljs-value"><span class="hljs-number">2000</span></span>,
+   "<span class="hljs-attribute">balance</span>":<span class="hljs-value"><span class="hljs-number">0</span></span>,
+   "<span class="hljs-attribute">paid</span>":<span class="hljs-value"><span class="hljs-number">0</span></span>,
+   "<span class="hljs-attribute">refunded</span>":<span class="hljs-value"><span class="hljs-number">0</span></span>,
+   "<span class="hljs-attribute">fee</span>":<span class="hljs-value"><span class="hljs-number">0</span></span>,
+   "<span class="hljs-attribute">billingAddress</span>":<span class="hljs-value">{
+
+   }</span>,
+   "<span class="hljs-attribute">shippingAddress</span>":<span class="hljs-value">{
+
+   }</span>,
+   "<span class="hljs-attribute">items</span>":<span class="hljs-value">[
+      {
+         "<span class="hljs-attribute">productId</span>":<span class="hljs-value"><span class="hljs-string">"1"</span></span>,
+         "<span class="hljs-attribute">productName</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+         "<span class="hljs-attribute">productSlug</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+         "<span class="hljs-attribute">collectionId</span>":<span class="hljs-value"><span class="hljs-string">"1"</span></span>,
+         "<span class="hljs-attribute">variantId</span>":<span class="hljs-value"><span class="hljs-string">"1"</span></span>,
+         "<span class="hljs-attribute">variantName</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+         "<span class="hljs-attribute">variantSKU</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+         "<span class="hljs-attribute">price</span>":<span class="hljs-value"><span class="hljs-number">100</span></span>,
+         "<span class="hljs-attribute">quantity</span>":<span class="hljs-value"><span class="hljs-number">20</span></span>,
+         "<span class="hljs-attribute">weight</span>":<span class="hljs-value"><span class="hljs-number">0</span></span>,
+         "<span class="hljs-attribute">taxable</span>":<span class="hljs-value"><span class="hljs-literal">false</span>
+      </span>}
+   ]</span>,
+   "<span class="hljs-attribute">discounts</span>":<span class="hljs-value">[]</span>,
+   "<span class="hljs-attribute">payments</span>":<span class="hljs-value">[
+      {
+         "<span class="hljs-attribute">account</span>":<span class="hljs-value">{
+            "<span class="hljs-attribute">type</span>":<span class="hljs-value"><span class="hljs-string">"stripe"</span></span>,
+            "<span class="hljs-attribute">buyer</span>":<span class="hljs-value">{
+               "<span class="hljs-attribute">email</span>":<span class="hljs-value"><span class="hljs-string">"joe@buystoomuchstuff.com"</span></span>,
+               "<span class="hljs-attribute">firstName</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+               "<span class="hljs-attribute">lastName</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+               "<span class="hljs-attribute">company</span>":<span class="hljs-value"><span class="hljs-string">"Buys Too Much Stuff Dotcom"</span></span>,
+               "<span class="hljs-attribute">phone</span>":<span class="hljs-value"><span class="hljs-string">"555-555-5555"</span></span>,
+               "<span class="hljs-attribute">notes</span>":<span class="hljs-value"><span class="hljs-string">"non"</span></span>,
+               "<span class="hljs-attribute">address</span>":<span class="hljs-value">{
+
+               }
+            </span>}</span>,
+            "<span class="hljs-attribute">affirm</span>":<span class="hljs-value">{
+
+            }</span>,
+            "<span class="hljs-attribute">stripe</span>":<span class="hljs-value">{
+               "<span class="hljs-attribute">fingerprint</span>":<span class="hljs-value"><span class="hljs-string">"k6NxwTEJxyHMPCr3"</span></span>,
+               "<span class="hljs-attribute">customerId</span>":<span class="hljs-value"><span class="hljs-string">"cus_5vE1sYKb8AayVC"</span></span>,
+               "<span class="hljs-attribute">cardId</span>":<span class="hljs-value"><span class="hljs-string">"card_15jNZVCSRlllXCwPrD6GKV1j"</span></span>,
+               "<span class="hljs-attribute">brand</span>":<span class="hljs-value"><span class="hljs-string">"Visa"</span></span>,
+               "<span class="hljs-attribute">type</span>":<span class="hljs-value"><span class="hljs-string">"credit"</span></span>,
+               "<span class="hljs-attribute">lastFour</span>":<span class="hljs-value"><span class="hljs-string">"4242"</span></span>,
+               "<span class="hljs-attribute">expiration</span>":<span class="hljs-value">{
+                  "<span class="hljs-attribute">month</span>":<span class="hljs-value"><span class="hljs-number">12</span></span>,
+                  "<span class="hljs-attribute">year</span>":<span class="hljs-value"><span class="hljs-number">2016</span>
+               </span>}</span>,
+               "<span class="hljs-attribute">cvcCheck</span>":<span class="hljs-value"><span class="hljs-string">"pass"</span>
+            </span>}</span>,
+         }</span>,
+         "<span class="hljs-attribute">currency</span>":<span class="hljs-value"><span class="hljs-string">"usd"</span></span>,
+         "<span class="hljs-attribute">campaignId</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+         "<span class="hljs-attribute">chargeId</span>":<span class="hljs-value"><span class="hljs-string">"ch_15jNZZCSRlllXCwPWFblE4Hr"</span></span>,
+         "<span class="hljs-attribute">amount</span>":<span class="hljs-value"><span class="hljs-number">2000</span></span>,
+         "<span class="hljs-attribute">amountRefunded</span>":<span class="hljs-value"><span class="hljs-number">0</span></span>,
+         "<span class="hljs-attribute">status</span>":<span class="hljs-value"><span class="hljs-string">"unpaid"</span></span>,
+         "<span class="hljs-attribute">client</span>":<span class="hljs-value">{
+         }</span>,
+         "<span class="hljs-attribute">captured</span>":<span class="hljs-value"><span class="hljs-literal">false</span></span>,
+         "<span class="hljs-attribute">live</span>":<span class="hljs-value"><span class="hljs-literal">false</span>
+      </span>}
+   ]</span>,
+   "<span class="hljs-attribute">fulfillment</span>":<span class="hljs-value">{
+      "<span class="hljs-attribute">courier</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+      "<span class="hljs-attribute">trackingNumber</span>":<span class="hljs-value"><span class="hljs-string">""</span>
+   </span>}
+</span>}</code></pre></li></ul></section><h4 id="checkout-api-group-two-step-payment-process,-part-2">Group Two-step payment process, part 2&nbsp;<a href="#checkout-api-group-two-step-payment-process,-part-2"><i class="fa fa-link"></i></a></h4><p>The second step of the two-step payment process involves capturing a
 pre-authorized payment.  The order ID is required for this step, but it is
 returned in the Authorize step (see above).</p>
-<section id="payment-api-group-two-step-payment-process,-part-2-post" class="panel panel-success"><div class="panel-heading"><div style="float:right"><span style="text-transform: lowercase">Capture payment</span></div><div style="float:left"><a href="#payment-api-group-two-step-payment-process,-part-2-post" class="btn btn-xs btn-success">POST</a></div><div style="overflow:hidden"><code>/order/{id}/capture</code></div></div><ul class="list-group"><li class="list-group-item"><strong>Request</strong><a data-toggle="collapse" data-target="#ab1aca1c0c47efc80d0b9a45cbbcee99" class="pull-right collapsed"><span class="closed">Show</span><span class="open">Hide</span></a></li><li id="ab1aca1c0c47efc80d0b9a45cbbcee99" class="list-group-item panel-collapse collapse"><h5>Headers</h5><pre><code><span class="hljs-attribute">Content-Type</span>: <span class="hljs-string">application/json</span><br/></code></pre></li><li class="list-group-item"><strong>Response&nbsp;&nbsp;<code>200</code></strong><a data-toggle="collapse" data-target="#52fe7e8dc4e89e56ba0e27ecd88d70e8" class="pull-right collapsed"><span class="closed">Show</span><span class="open">Hide</span></a></li><li id="52fe7e8dc4e89e56ba0e27ecd88d70e8" class="list-group-item panel-collapse collapse"><h5>Headers</h5><pre><code><span class="hljs-attribute">Content-Type</span>: <span class="hljs-string">application/json</span><br/></code></pre><h5>Body</h5><pre><code>{
-  "<span class="hljs-attribute">id</span>": <span class="hljs-value"><span class="hljs-string">"9"</span></span>,
-  "<span class="hljs-attribute">createdAt</span>": <span class="hljs-value"><span class="hljs-string">"2015-03-23T04:13:56.666272023Z"</span></span>,
-  "<span class="hljs-attribute">updatedAt</span>": <span class="hljs-value"><span class="hljs-string">"2015-03-23T04:13:58.989441381Z"</span></span>,
-  "<span class="hljs-attribute">campaignId</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-  "<span class="hljs-attribute">orderStatus</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-  "<span class="hljs-attribute">paymentStatus</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-  "<span class="hljs-attribute">fulfillmentStatus</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-  "<span class="hljs-attribute">preorder</span>": <span class="hljs-value"><span class="hljs-literal">false</span></span>,
-  "<span class="hljs-attribute">unconfirmed</span>": <span class="hljs-value"><span class="hljs-literal">false</span></span>,
-  "<span class="hljs-attribute">currency</span>": <span class="hljs-value"><span class="hljs-string">"usd"</span></span>,
-  "<span class="hljs-attribute">type</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-  "<span class="hljs-attribute">shippingMethod</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-  "<span class="hljs-attribute">lineTotal</span>": <span class="hljs-value"><span class="hljs-number">2000</span></span>,
-  "<span class="hljs-attribute">discount</span>": <span class="hljs-value"><span class="hljs-number">0</span></span>,
-  "<span class="hljs-attribute">subtotal</span>": <span class="hljs-value"><span class="hljs-number">2000</span></span>,
-  "<span class="hljs-attribute">shipping</span>": <span class="hljs-value"><span class="hljs-number">0</span></span>,
-  "<span class="hljs-attribute">tax</span>": <span class="hljs-value"><span class="hljs-number">0</span></span>,
-  "<span class="hljs-attribute">total</span>": <span class="hljs-value"><span class="hljs-number">2000</span></span>,
-  "<span class="hljs-attribute">balance</span>": <span class="hljs-value"><span class="hljs-number">0</span></span>,
-  "<span class="hljs-attribute">paid</span>": <span class="hljs-value"><span class="hljs-number">0</span></span>,
-  "<span class="hljs-attribute">refunded</span>": <span class="hljs-value"><span class="hljs-number">0</span></span>,
-  "<span class="hljs-attribute">fee</span>": <span class="hljs-value"><span class="hljs-number">0</span></span>,
-  "<span class="hljs-attribute">billingAddress</span>": <span class="hljs-value">{}</span>,
-  "<span class="hljs-attribute">items</span>": <span class="hljs-value">[
+<section id="checkout-api-group-two-step-payment-process,-part-2-post" class="panel panel-success"><div class="panel-heading"><div style="float:right"><span style="text-transform: lowercase">Capture payment</span></div><div style="float:left"><a href="#checkout-api-group-two-step-payment-process,-part-2-post" class="btn btn-xs btn-success">POST</a></div><div style="overflow:hidden"><code>/order/{id}/capture</code></div></div><ul class="list-group"><li class="list-group-item"><strong>Request</strong><a data-toggle="collapse" data-target="#8cd84a6759f86393fdb46f7bdf838c95" class="pull-right collapsed"><span class="closed">Show</span><span class="open">Hide</span></a></li><li id="8cd84a6759f86393fdb46f7bdf838c95" class="list-group-item panel-collapse collapse"><h5>Headers</h5><pre><code><span class="hljs-attribute">Content-Type</span>: <span class="hljs-string">application/json</span><br/></code></pre></li><li class="list-group-item"><strong>Response&nbsp;&nbsp;<code>200</code></strong><a data-toggle="collapse" data-target="#543c96fc6c6a43478e18db266e0e8abd" class="pull-right collapsed"><span class="closed">Show</span><span class="open">Hide</span></a></li><li id="543c96fc6c6a43478e18db266e0e8abd" class="list-group-item panel-collapse collapse"><h5>Headers</h5><pre><code><span class="hljs-attribute">Content-Type</span>: <span class="hljs-string">application/json</span><br/></code></pre><h5>Body</h5><pre><code>{
+  "<span class="hljs-attribute">id</span>":<span class="hljs-value"><span class="hljs-string">"9"</span></span>,
+  "<span class="hljs-attribute">createdAt</span>":<span class="hljs-value"><span class="hljs-string">"2015-03-23T04:13:56.666272023Z"</span></span>,
+  "<span class="hljs-attribute">updatedAt</span>":<span class="hljs-value"><span class="hljs-string">"2015-03-23T04:13:58.989441381Z"</span></span>,
+  "<span class="hljs-attribute">campaignId</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+  "<span class="hljs-attribute">orderStatus</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+  "<span class="hljs-attribute">paymentStatus</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+  "<span class="hljs-attribute">fulfillmentStatus</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+  "<span class="hljs-attribute">preorder</span>":<span class="hljs-value"><span class="hljs-literal">false</span></span>,
+  "<span class="hljs-attribute">unconfirmed</span>":<span class="hljs-value"><span class="hljs-literal">false</span></span>,
+  "<span class="hljs-attribute">currency</span>":<span class="hljs-value"><span class="hljs-string">"usd"</span></span>,
+  "<span class="hljs-attribute">type</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+  "<span class="hljs-attribute">shippingMethod</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+  "<span class="hljs-attribute">lineTotal</span>":<span class="hljs-value"><span class="hljs-number">2000</span></span>,
+  "<span class="hljs-attribute">discount</span>":<span class="hljs-value"><span class="hljs-number">0</span></span>,
+  "<span class="hljs-attribute">subtotal</span>":<span class="hljs-value"><span class="hljs-number">2000</span></span>,
+  "<span class="hljs-attribute">shipping</span>":<span class="hljs-value"><span class="hljs-number">0</span></span>,
+  "<span class="hljs-attribute">tax</span>":<span class="hljs-value"><span class="hljs-number">0</span></span>,
+  "<span class="hljs-attribute">total</span>":<span class="hljs-value"><span class="hljs-number">2000</span></span>,
+  "<span class="hljs-attribute">balance</span>":<span class="hljs-value"><span class="hljs-number">0</span></span>,
+  "<span class="hljs-attribute">paid</span>":<span class="hljs-value"><span class="hljs-number">0</span></span>,
+  "<span class="hljs-attribute">refunded</span>":<span class="hljs-value"><span class="hljs-number">0</span></span>,
+  "<span class="hljs-attribute">fee</span>":<span class="hljs-value"><span class="hljs-number">0</span></span>,
+  "<span class="hljs-attribute">billingAddress</span>":<span class="hljs-value">{
+  }</span>,
+  "<span class="hljs-attribute">items</span>":<span class="hljs-value">[
     {
-      "<span class="hljs-attribute">productId</span>": <span class="hljs-value"><span class="hljs-string">"1"</span></span>,
-      "<span class="hljs-attribute">productName</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-      "<span class="hljs-attribute">productSlug</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-      "<span class="hljs-attribute">collectionId</span>": <span class="hljs-value"><span class="hljs-string">"1"</span></span>,
-      "<span class="hljs-attribute">variantId</span>": <span class="hljs-value"><span class="hljs-string">"1"</span></span>,
-      "<span class="hljs-attribute">variantName</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-      "<span class="hljs-attribute">variantSKU</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-      "<span class="hljs-attribute">price</span>": <span class="hljs-value"><span class="hljs-number">100</span></span>,
-      "<span class="hljs-attribute">quantity</span>": <span class="hljs-value"><span class="hljs-number">20</span></span>,
-      "<span class="hljs-attribute">weight</span>": <span class="hljs-value"><span class="hljs-number">0</span></span>,
-      "<span class="hljs-attribute">taxable</span>": <span class="hljs-value"><span class="hljs-literal">false</span>
+      "<span class="hljs-attribute">productId</span>":<span class="hljs-value"><span class="hljs-string">"1"</span></span>,
+      "<span class="hljs-attribute">productName</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+      "<span class="hljs-attribute">productSlug</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+      "<span class="hljs-attribute">collectionId</span>":<span class="hljs-value"><span class="hljs-string">"1"</span></span>,
+      "<span class="hljs-attribute">variantId</span>":<span class="hljs-value"><span class="hljs-string">"1"</span></span>,
+      "<span class="hljs-attribute">variantName</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+      "<span class="hljs-attribute">variantSKU</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+      "<span class="hljs-attribute">price</span>":<span class="hljs-value"><span class="hljs-number">100</span></span>,
+      "<span class="hljs-attribute">quantity</span>":<span class="hljs-value"><span class="hljs-number">20</span></span>,
+      "<span class="hljs-attribute">weight</span>":<span class="hljs-value"><span class="hljs-number">0</span></span>,
+      "<span class="hljs-attribute">taxable</span>":<span class="hljs-value"><span class="hljs-literal">false</span>
     </span>}
   ]</span>,
-  "<span class="hljs-attribute">discounts</span>": <span class="hljs-value">[]</span>,
-  "<span class="hljs-attribute">payments</span>": <span class="hljs-value">[
+  "<span class="hljs-attribute">discounts</span>":<span class="hljs-value">[]</span>,
+  "<span class="hljs-attribute">payments</span>":<span class="hljs-value">[
     {
-      "<span class="hljs-attribute">account</span>": <span class="hljs-value">{
-        "<span class="hljs-attribute">type</span>": <span class="hljs-value"><span class="hljs-string">"stripe"</span></span>,
-        "<span class="hljs-attribute">buyer</span>": <span class="hljs-value">{
-          "<span class="hljs-attribute">email</span>": <span class="hljs-value"><span class="hljs-string">"joe@buystoomuchstuff.com"</span></span>,
-          "<span class="hljs-attribute">firstName</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-          "<span class="hljs-attribute">lastName</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-          "<span class="hljs-attribute">company</span>": <span class="hljs-value"><span class="hljs-string">"Buys Too Much Stuff Dotcom"</span></span>,
-          "<span class="hljs-attribute">phone</span>": <span class="hljs-value"><span class="hljs-string">"555-555-5555"</span></span>,
-          "<span class="hljs-attribute">notes</span>": <span class="hljs-value"><span class="hljs-string">"non"</span></span>,
-          "<span class="hljs-attribute">address</span>": <span class="hljs-value">{}
+      "<span class="hljs-attribute">account</span>":<span class="hljs-value">{
+        "<span class="hljs-attribute">type</span>":<span class="hljs-value"><span class="hljs-string">"stripe"</span></span>,
+        "<span class="hljs-attribute">buyer</span>":<span class="hljs-value">{
+          "<span class="hljs-attribute">email</span>":<span class="hljs-value"><span class="hljs-string">"joe@buystoomuchstuff.com"</span></span>,
+          "<span class="hljs-attribute">firstName</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+          "<span class="hljs-attribute">lastName</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+          "<span class="hljs-attribute">company</span>":<span class="hljs-value"><span class="hljs-string">"Buys Too Much Stuff Dotcom"</span></span>,
+          "<span class="hljs-attribute">phone</span>":<span class="hljs-value"><span class="hljs-string">"555-555-5555"</span></span>,
+          "<span class="hljs-attribute">notes</span>":<span class="hljs-value"><span class="hljs-string">"non"</span></span>,
+          "<span class="hljs-attribute">address</span>":<span class="hljs-value">{}
         </span>}</span>,
-        "<span class="hljs-attribute">affirm</span>": <span class="hljs-value">{}</span>,
-        "<span class="hljs-attribute">stripe</span>": <span class="hljs-value">{
-          "<span class="hljs-attribute">fingerprint</span>": <span class="hljs-value"><span class="hljs-string">"k6NxwTEJxyHMPCr3"</span></span>,
-          "<span class="hljs-attribute">customerId</span>": <span class="hljs-value"><span class="hljs-string">"cus_5vDNDt1Xi2YBBe"</span></span>,
-          "<span class="hljs-attribute">cardId</span>": <span class="hljs-value"><span class="hljs-string">"card_15jMwmCSRlllXCwP3TSacP62"</span></span>,
-          "<span class="hljs-attribute">brand</span>": <span class="hljs-value"><span class="hljs-string">"Visa"</span></span>,
-          "<span class="hljs-attribute">type</span>": <span class="hljs-value"><span class="hljs-string">"credit"</span></span>,
-          "<span class="hljs-attribute">lastFour</span>": <span class="hljs-value"><span class="hljs-string">"4242"</span></span>,
-          "<span class="hljs-attribute">expiration</span>": <span class="hljs-value">{
-            "<span class="hljs-attribute">month</span>": <span class="hljs-value"><span class="hljs-number">12</span></span>,
-            "<span class="hljs-attribute">year</span>": <span class="hljs-value"><span class="hljs-number">2016</span>
+        "<span class="hljs-attribute">affirm</span>":<span class="hljs-value">{}</span>,
+        "<span class="hljs-attribute">stripe</span>":<span class="hljs-value">{
+          "<span class="hljs-attribute">fingerprint</span>":<span class="hljs-value"><span class="hljs-string">"k6NxwTEJxyHMPCr3"</span></span>,
+          "<span class="hljs-attribute">customerId</span>":<span class="hljs-value"><span class="hljs-string">"cus_5vDNDt1Xi2YBBe"</span></span>,
+          "<span class="hljs-attribute">cardId</span>":<span class="hljs-value"><span class="hljs-string">"card_15jMwmCSRlllXCwP3TSacP62"</span></span>,
+          "<span class="hljs-attribute">brand</span>":<span class="hljs-value"><span class="hljs-string">"Visa"</span></span>,
+          "<span class="hljs-attribute">type</span>":<span class="hljs-value"><span class="hljs-string">"credit"</span></span>,
+          "<span class="hljs-attribute">lastFour</span>":<span class="hljs-value"><span class="hljs-string">"4242"</span></span>,
+          "<span class="hljs-attribute">expiration</span>":<span class="hljs-value">{
+            "<span class="hljs-attribute">month</span>":<span class="hljs-value"><span class="hljs-number">12</span></span>,
+            "<span class="hljs-attribute">year</span>":<span class="hljs-value"><span class="hljs-number">2016</span>
           </span>}</span>,
-          "<span class="hljs-attribute">cvcCheck</span>": <span class="hljs-value"><span class="hljs-string">"pass"</span>
+          "<span class="hljs-attribute">cvcCheck</span>":<span class="hljs-value"><span class="hljs-string">"pass"</span>
         </span>}</span>,
-        "<span class="hljs-attribute">paypal</span>": <span class="hljs-value">{}
-      </span>}</span>,
-      "<span class="hljs-attribute">currency</span>": <span class="hljs-value"><span class="hljs-string">"usd"</span></span>,
-      "<span class="hljs-attribute">campaignId</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-      "<span class="hljs-attribute">chargeId</span>": <span class="hljs-value"><span class="hljs-string">"ch_15jMwqCSRlllXCwPpVNGPktU"</span></span>,
-      "<span class="hljs-attribute">amount</span>": <span class="hljs-value"><span class="hljs-number">2000</span></span>,
-      "<span class="hljs-attribute">amountRefunded</span>": <span class="hljs-value"><span class="hljs-number">0</span></span>,
-      "<span class="hljs-attribute">status</span>": <span class="hljs-value"><span class="hljs-string">"paid"</span></span>,
-      "<span class="hljs-attribute">client</span>": <span class="hljs-value">{}</span>,
-      "<span class="hljs-attribute">captured</span>": <span class="hljs-value"><span class="hljs-literal">true</span></span>,
-      "<span class="hljs-attribute">live</span>": <span class="hljs-value"><span class="hljs-literal">false</span>
+      }</span>,
+      "<span class="hljs-attribute">currency</span>":<span class="hljs-value"><span class="hljs-string">"usd"</span></span>,
+      "<span class="hljs-attribute">campaignId</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+      "<span class="hljs-attribute">chargeId</span>":<span class="hljs-value"><span class="hljs-string">"ch_15jMwqCSRlllXCwPpVNGPktU"</span></span>,
+      "<span class="hljs-attribute">amount</span>":<span class="hljs-value"><span class="hljs-number">2000</span></span>,
+      "<span class="hljs-attribute">amountRefunded</span>":<span class="hljs-value"><span class="hljs-number">0</span></span>,
+      "<span class="hljs-attribute">status</span>":<span class="hljs-value"><span class="hljs-string">"paid"</span></span>,
+      "<span class="hljs-attribute">client</span>":<span class="hljs-value">{
+
+      }</span>,
+      "<span class="hljs-attribute">captured</span>":<span class="hljs-value"><span class="hljs-literal">true</span></span>,
+      "<span class="hljs-attribute">live</span>":<span class="hljs-value"><span class="hljs-literal">false</span>
     </span>}
   ]</span>,
-  "<span class="hljs-attribute">fulfillment</span>": <span class="hljs-value">{
-    "<span class="hljs-attribute">courier</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-    "<span class="hljs-attribute">trackingNumber</span>": <span class="hljs-value"><span class="hljs-string">""</span>
+  "<span class="hljs-attribute">fulfillment</span>":<span class="hljs-value">{
+    "<span class="hljs-attribute">courier</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+    "<span class="hljs-attribute">trackingNumber</span>":<span class="hljs-value"><span class="hljs-string">""</span>
   </span>}
 </span>}</code></pre></li></ul></section></div></div></div><div><div class="panel panel-default"><div class="panel-heading"><h3 id="coupon">Coupon&nbsp;<a href="#coupon"><i class="fa fa-link"></i></a></h3></div><div class="panel-body"><p>This object is a representation of special offers that provide discounts
 associated with a certain order or item.</p>
@@ -981,7 +1000,7 @@ confused with a <a href="#cart">Cart</a>, which are prospective purchases.</p>
 </tr>
 <tr>
 <td>type</td>
-<td>This is a payment processor type, such as stripe (for credit card payments), paypal (for escrow payments), etc.</td>
+<td>This is a payment processor type, such as Stripe (for credit card payments), PayPal (for escrow payments), etc.</td>
 <td>string</td>
 </tr>
 </tbody>
@@ -1079,43 +1098,43 @@ fashion.  Any fields passed in to a PATCH method will be updated with what you
 request, while any fields not specified in the JSON will be left alone.</p>
 </div><ul class="list-group"><li class="list-group-item"><strong>Response&nbsp;&nbsp;<code>201</code></strong><a data-toggle="collapse" data-target="#a0b8980c2c7c1b9ba5bbfa2b9701ca07" class="pull-right collapsed"><span class="closed">Show</span><span class="open">Hide</span></a></li><li id="a0b8980c2c7c1b9ba5bbfa2b9701ca07" class="list-group-item panel-collapse collapse"><h5>Headers</h5><pre><code><span class="hljs-attribute">Content-Type</span>: <span class="hljs-string">application/json</span><br/></code></pre></li></ul></section><h4 id="order-payments-on-an-order">Payments on an Order&nbsp;<a href="#order-payments-on-an-order"><i class="fa fa-link"></i></a></h4><p>It is possible to get a listing of all the payments on a specific order with
 this endpoint.</p>
-<section id="order-payments-on-an-order-get" class="panel panel-info"><div class="panel-heading"><div style="float:right"><span style="text-transform: lowercase">Get Payments on an Order</span></div><div style="float:left"><a href="#order-payments-on-an-order-get" class="btn btn-xs btn-info">GET</a></div><div style="overflow:hidden"><code>/order/{id}/payments</code></div></div><ul class="list-group"><li class="list-group-item"><strong>Response&nbsp;&nbsp;<code>200</code></strong><a data-toggle="collapse" data-target="#92fe5ca9a86f46031e1ce5ba2f8bec0a" class="pull-right collapsed"><span class="closed">Show</span><span class="open">Hide</span></a></li><li id="92fe5ca9a86f46031e1ce5ba2f8bec0a" class="list-group-item panel-collapse collapse"><h5>Headers</h5><pre><code><span class="hljs-attribute">Content-Type</span>: <span class="hljs-string">application/json</span><br/></code></pre><h5>Body</h5><pre><code>{
-  "<span class="hljs-attribute">account</span>": <span class="hljs-value">{
-    "<span class="hljs-attribute">type</span>": <span class="hljs-value"><span class="hljs-string">"stripe"</span></span>,
-    "<span class="hljs-attribute">buyer</span>": <span class="hljs-value">{
-      "<span class="hljs-attribute">email</span>": <span class="hljs-value"><span class="hljs-string">"joe@buystoomuchstuff.com"</span></span>,
-      "<span class="hljs-attribute">firstname</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-      "<span class="hljs-attribute">lastname</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-      "<span class="hljs-attribute">company</span>": <span class="hljs-value"><span class="hljs-string">"buys too much stuff dotcom"</span></span>,
-      "<span class="hljs-attribute">phone</span>": <span class="hljs-value"><span class="hljs-string">"555-555-5555"</span></span>,
-      "<span class="hljs-attribute">notes</span>": <span class="hljs-value"><span class="hljs-string">"non"</span></span>,
-      "<span class="hljs-attribute">address</span>": <span class="hljs-value">{}
+<section id="order-payments-on-an-order-get" class="panel panel-info"><div class="panel-heading"><div style="float:right"><span style="text-transform: lowercase">Get Payments on an Order</span></div><div style="float:left"><a href="#order-payments-on-an-order-get" class="btn btn-xs btn-info">GET</a></div><div style="overflow:hidden"><code>/order/{id}/payments</code></div></div><ul class="list-group"><li class="list-group-item"><strong>Response&nbsp;&nbsp;<code>200</code></strong><a data-toggle="collapse" data-target="#467534052bca6fa435b0dbafab0d6a4a" class="pull-right collapsed"><span class="closed">Show</span><span class="open">Hide</span></a></li><li id="467534052bca6fa435b0dbafab0d6a4a" class="list-group-item panel-collapse collapse"><h5>Headers</h5><pre><code><span class="hljs-attribute">Content-Type</span>: <span class="hljs-string">application/json</span><br/></code></pre><h5>Body</h5><pre><code>{
+ "<span class="hljs-attribute">account</span>":<span class="hljs-value">{
+    "<span class="hljs-attribute">type</span>":<span class="hljs-value"><span class="hljs-string">"stripe"</span></span>,
+    "<span class="hljs-attribute">buyer</span>":<span class="hljs-value">{
+       "<span class="hljs-attribute">email</span>":<span class="hljs-value"><span class="hljs-string">"joe@buystoomuchstuff.com"</span></span>,
+       "<span class="hljs-attribute">firstname</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+       "<span class="hljs-attribute">lastname</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+       "<span class="hljs-attribute">company</span>":<span class="hljs-value"><span class="hljs-string">"buys too much stuff dotcom"</span></span>,
+       "<span class="hljs-attribute">phone</span>":<span class="hljs-value"><span class="hljs-string">"555-555-5555"</span></span>,
+       "<span class="hljs-attribute">notes</span>":<span class="hljs-value"><span class="hljs-string">"non"</span></span>,
+       "<span class="hljs-attribute">address</span>":<span class="hljs-value">{}
     </span>}</span>,
-    "<span class="hljs-attribute">affirm</span>": <span class="hljs-value">{}</span>,
-    "<span class="hljs-attribute">stripe</span>": <span class="hljs-value">{
-      "<span class="hljs-attribute">fingerprint</span>": <span class="hljs-value"><span class="hljs-string">"k6nxwtejxyhmpcr3"</span></span>,
-      "<span class="hljs-attribute">customerid</span>": <span class="hljs-value"><span class="hljs-string">"cus_5ve1sykb8aayvc"</span></span>,
-      "<span class="hljs-attribute">cardid</span>": <span class="hljs-value"><span class="hljs-string">"card_15jnzvcsrlllxcwprd6gkv1j"</span></span>,
-      "<span class="hljs-attribute">brand</span>": <span class="hljs-value"><span class="hljs-string">"visa"</span></span>,
-      "<span class="hljs-attribute">type</span>": <span class="hljs-value"><span class="hljs-string">"credit"</span></span>,
-      "<span class="hljs-attribute">lastfour</span>": <span class="hljs-value"><span class="hljs-string">"4242"</span></span>,
-      "<span class="hljs-attribute">expiration</span>": <span class="hljs-value">{
-        "<span class="hljs-attribute">month</span>": <span class="hljs-value"><span class="hljs-number">12</span></span>,
-        "<span class="hljs-attribute">year</span>": <span class="hljs-value"><span class="hljs-number">2016</span>
-      </span>}</span>,
-      "<span class="hljs-attribute">cvccheck</span>": <span class="hljs-value"><span class="hljs-string">"pass"</span>
+    "<span class="hljs-attribute">stripe</span>":<span class="hljs-value">{
+       "<span class="hljs-attribute">fingerprint</span>":<span class="hljs-value"><span class="hljs-string">"k6nxwtejxyhmpcr3"</span></span>,
+       "<span class="hljs-attribute">customerid</span>":<span class="hljs-value"><span class="hljs-string">"cus_5ve1sykb8aayvc"</span></span>,
+       "<span class="hljs-attribute">cardid</span>":<span class="hljs-value"><span class="hljs-string">"card_15jnzvcsrlllxcwprd6gkv1j"</span></span>,
+       "<span class="hljs-attribute">brand</span>":<span class="hljs-value"><span class="hljs-string">"visa"</span></span>,
+       "<span class="hljs-attribute">type</span>":<span class="hljs-value"><span class="hljs-string">"credit"</span></span>,
+       "<span class="hljs-attribute">lastfour</span>":<span class="hljs-value"><span class="hljs-string">"4242"</span></span>,
+       "<span class="hljs-attribute">expiration</span>":<span class="hljs-value">{
+          "<span class="hljs-attribute">month</span>":<span class="hljs-value"><span class="hljs-number">12</span></span>,
+          "<span class="hljs-attribute">year</span>":<span class="hljs-value"><span class="hljs-number">2016</span>
+       </span>}</span>,
+       "<span class="hljs-attribute">cvccheck</span>":<span class="hljs-value"><span class="hljs-string">"pass"</span>
     </span>}</span>,
-    "<span class="hljs-attribute">paypal</span>": <span class="hljs-value">{}
-  </span>}</span>,
-  "<span class="hljs-attribute">currency</span>": <span class="hljs-value"><span class="hljs-string">"usd"</span></span>,
-  "<span class="hljs-attribute">campaignid</span>": <span class="hljs-value"><span class="hljs-string">""</span></span>,
-  "<span class="hljs-attribute">chargeid</span>": <span class="hljs-value"><span class="hljs-string">"ch_15jnzzcsrlllxcwpwfble4hr"</span></span>,
-  "<span class="hljs-attribute">amount</span>": <span class="hljs-value"><span class="hljs-number">2000</span></span>,
-  "<span class="hljs-attribute">amountrefunded</span>": <span class="hljs-value"><span class="hljs-number">0</span></span>,
-  "<span class="hljs-attribute">status</span>": <span class="hljs-value"><span class="hljs-string">"unpaid"</span></span>,
-  "<span class="hljs-attribute">client</span>": <span class="hljs-value">{}</span>,
-  "<span class="hljs-attribute">captured</span>": <span class="hljs-value"><span class="hljs-literal">false</span></span>,
-  "<span class="hljs-attribute">live</span>": <span class="hljs-value"><span class="hljs-literal">false</span>
+ }</span>,
+ "<span class="hljs-attribute">currency</span>":<span class="hljs-value"><span class="hljs-string">"usd"</span></span>,
+ "<span class="hljs-attribute">campaignid</span>":<span class="hljs-value"><span class="hljs-string">""</span></span>,
+ "<span class="hljs-attribute">chargeid</span>":<span class="hljs-value"><span class="hljs-string">"ch_15jnzzcsrlllxcwpwfble4hr"</span></span>,
+ "<span class="hljs-attribute">amount</span>":<span class="hljs-value"><span class="hljs-number">2000</span></span>,
+ "<span class="hljs-attribute">amountrefunded</span>":<span class="hljs-value"><span class="hljs-number">0</span></span>,
+ "<span class="hljs-attribute">status</span>":<span class="hljs-value"><span class="hljs-string">"unpaid"</span></span>,
+ "<span class="hljs-attribute">client</span>":<span class="hljs-value">{
+
+ }</span>,
+ "<span class="hljs-attribute">captured</span>":<span class="hljs-value"><span class="hljs-literal">false</span></span>,
+ "<span class="hljs-attribute">live</span>":<span class="hljs-value"><span class="hljs-literal">false</span>
 </span>}</code></pre></li></ul></section></div></div></div><div><div class="panel panel-default"><div class="panel-heading"><h3 id="referral">Referral&nbsp;<a href="#referral"><i class="fa fa-link"></i></a></h3></div><div class="panel-body"><p>This represents an <a href="#order">Order</a> that happened because of the intervention of
 a specific <a href="#user">User</a>.</p>
 <table class="table table-striped table-borderless table-vcenter">
@@ -1860,7 +1879,7 @@ request, while any fields not specified in the JSON will be left alone.</p>
 <td>string</td>
 </tr>
 <tr>
-<td>paypalEmail</td>
+<td>payPalEmail</td>
 <td>The email used for the paypal account attached to this user.</td>
 <td>string</td>
 </tr>
@@ -2593,4 +2612,4 @@ reward users that participate in referral campaigns.</p>
 </tr>
 </tbody>
 </table class="table table-striped table-borderless table-vcenter">
-</div></div></div></div><div class="col-md-3"><nav id="nav" class="nav hidden-s"><div class="list-group"><a data-toggle="collapse" data-target="#payment-api-menu" href="javascript:void(0)" class="list-group-item heading collapsed"><span class="toggle pull-right"><span class="open fa fa-angle-up"></span><span class="closed fa fa-angle-down"></span></span>Payment API</a><div id="payment-api-menu" class="collapse"><a href="#payment-api-one-step-payments" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)-->One-step Payments</a><a href="#payment-api-two-step-payment-process,-part-1" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)-->Two-step payment process, part 1</a><a href="#payment-api-group-two-step-payment-process,-part-2" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)-->Group Two-step payment process, part 2</a></div></div><div class="list-group"><a data-toggle="collapse" data-target="#coupon-menu" href="javascript:void(0)" class="list-group-item heading collapsed"><span class="toggle pull-right"><span class="open fa fa-angle-up"></span><span class="closed fa fa-angle-down"></span></span>Coupon</a><div id="coupon-menu" class="collapse"><a href="#coupon-calls-related-to-coupons" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item">Calls related to Coupons</a><a href="#coupon-calls-related-to-coupons-get" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Get a Coupon</span></a><a href="#coupon-calls-related-to-coupons-post" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Create a Coupon</span></a><a href="#coupon-calls-related-to-coupons-delete" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Deleting a Coupon</span></a><a href="#coupon-calls-related-to-coupons-put" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Updating a Coupon</span></a><a href="#coupon-calls-related-to-coupons-patch" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Patching a Coupon</span></a></div></div><div class="list-group"><a data-toggle="collapse" data-target="#collection-menu" href="javascript:void(0)" class="list-group-item heading collapsed"><span class="toggle pull-right"><span class="open fa fa-angle-up"></span><span class="closed fa fa-angle-down"></span></span>Collection</a><div id="collection-menu" class="collapse"><a href="#collection-calls-related-to-collections" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item">Calls related to Collections</a><a href="#collection-calls-related-to-collections-get" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Get a Collection</span></a><a href="#collection-calls-related-to-collections-post" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Create a Collection</span></a><a href="#collection-calls-related-to-collections-delete" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Deleting a Collection</span></a><a href="#collection-calls-related-to-collections-put" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Updating a Collection</span></a><a href="#collection-calls-related-to-collections-patch" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Patching a Collection</span></a></div></div><div class="list-group"><a data-toggle="collapse" data-target="#mailing-list-menu" href="javascript:void(0)" class="list-group-item heading collapsed"><span class="toggle pull-right"><span class="open fa fa-angle-up"></span><span class="closed fa fa-angle-down"></span></span>Mailing List</a><div id="mailing-list-menu" class="collapse"><a href="#mailing-list-calls-related-to-mailing-lists" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item">Calls related to Mailing Lists</a><a href="#mailing-list-calls-related-to-mailing-lists-get" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Get a Mailing List</span></a><a href="#mailing-list-calls-related-to-mailing-lists-post" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Create a Mailing List</span></a><a href="#mailing-list-calls-related-to-mailing-lists-delete" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Deleting a Mailing List</span></a><a href="#mailing-list-calls-related-to-mailing-lists-put" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Updating a Mailing List</span></a><a href="#mailing-list-calls-related-to-mailing-lists-patch" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Patching a Mailing List</span></a></div></div><div class="list-group"><a data-toggle="collapse" data-target="#order-menu" href="javascript:void(0)" class="list-group-item heading collapsed"><span class="toggle pull-right"><span class="open fa fa-angle-up"></span><span class="closed fa fa-angle-down"></span></span>Order</a><div id="order-menu" class="collapse"><a href="#order-calls-related-to-orders" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item">Calls related to Orders</a><a href="#order-calls-related-to-orders-get" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Get an Order</span></a><a href="#order-calls-related-to-orders-post" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Create an Order</span></a><a href="#order-calls-related-to-orders-delete" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Deleting a Order</span></a><a href="#order-calls-related-to-orders-put" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Updating a Order</span></a><a href="#order-calls-related-to-orders-patch" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Patching a Order</span></a><a href="#order-payments-on-an-order" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)-->Payments on an Order</a></div></div><div class="list-group"><a data-toggle="collapse" data-target="#referral-menu" href="javascript:void(0)" class="list-group-item heading collapsed"><span class="toggle pull-right"><span class="open fa fa-angle-up"></span><span class="closed fa fa-angle-down"></span></span>Referral</a><div id="referral-menu" class="collapse"><a href="#referral-calls-related-to-referrals" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item">Calls related to Referrals</a><a href="#referral-calls-related-to-referrals-get" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Get a Referral</span></a><a href="#referral-calls-related-to-referrals-post" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Creating a Referral</span></a><a href="#referral-calls-related-to-referrals-delete" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Deleting a Referral</span></a><a href="#referral-calls-related-to-referrals-put" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Updating a Referral</span></a><a href="#referral-calls-related-to-referrals-patch" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Patching a Referral</span></a></div></div><div class="list-group"><a data-toggle="collapse" data-target="#referrer-menu" href="javascript:void(0)" class="list-group-item heading collapsed"><span class="toggle pull-right"><span class="open fa fa-angle-up"></span><span class="closed fa fa-angle-down"></span></span>Referrer</a><div id="referrer-menu" class="collapse"><a href="#referrer-calls-related-to-referrers" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item">Calls related to Referrers</a><a href="#referrer-calls-related-to-referrers-get" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Get a Referrer</span></a><a href="#referrer-calls-related-to-referrers-post" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Creating a Referrer</span></a><a href="#referrer-calls-related-to-referrers-delete" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Deleting a Referrer</span></a><a href="#referrer-calls-related-to-referrers-put" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Updating a Referrer</span></a><a href="#referrer-calls-related-to-referrers-patch" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Patching a Referrer</span></a></div></div><div class="list-group"><a data-toggle="collapse" data-target="#transaction-menu" href="javascript:void(0)" class="list-group-item heading collapsed"><span class="toggle pull-right"><span class="open fa fa-angle-up"></span><span class="closed fa fa-angle-down"></span></span>Transaction</a><div id="transaction-menu" class="collapse"><a href="#transaction-calls-related-to-transaction" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)-->Calls related to Transaction</a></div></div><div class="list-group"><a data-toggle="collapse" data-target="#product-menu" href="javascript:void(0)" class="list-group-item heading collapsed"><span class="toggle pull-right"><span class="open fa fa-angle-up"></span><span class="closed fa fa-angle-down"></span></span>Product</a><div id="product-menu" class="collapse"><a href="#product-calls-related-to-products" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item">Calls related to Products</a><a href="#product-calls-related-to-products-get" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Get a Product</span></a><a href="#product-calls-related-to-products-post" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Creating a Product</span></a><a href="#product-calls-related-to-products-delete" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Deleting a Product</span></a><a href="#product-calls-related-to-products-put" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Updating a Product</span></a><a href="#product-calls-related-to-products-patch" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Patching a Product</span></a></div></div><div class="list-group"><a data-toggle="collapse" data-target="#variant-menu" href="javascript:void(0)" class="list-group-item heading collapsed"><span class="toggle pull-right"><span class="open fa fa-angle-up"></span><span class="closed fa fa-angle-down"></span></span>Variant</a><div id="variant-menu" class="collapse"><a href="#variant-calls-related-to-variants" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item">Calls related to Variants</a><a href="#variant-calls-related-to-variants-get" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Get a Variant</span></a><a href="#variant-calls-related-to-variants-post" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Create a Variant</span></a><a href="#variant-calls-related-to-variants-delete" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Deleting a Variant</span></a><a href="#variant-calls-related-to-variants-put" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Updating a Variant</span></a><a href="#variant-calls-related-to-variants-patch" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Patching a Variant</span></a></div></div><div class="list-group"><a data-toggle="collapse" data-target="#user-menu" href="javascript:void(0)" class="list-group-item heading collapsed"><span class="toggle pull-right"><span class="open fa fa-angle-up"></span><span class="closed fa fa-angle-down"></span></span>User</a><div id="user-menu" class="collapse"><a href="#user-calls-relating-to-users" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item">Calls relating to Users</a><a href="#user-calls-relating-to-users-get" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Get a User</span></a><a href="#user-calls-relating-to-users-post" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Create a User</span></a><a href="#user-calls-relating-to-users-delete" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Deleting a User</span></a><a href="#user-calls-relating-to-users-put" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Updating a User</span></a><a href="#user-calls-relating-to-users-patch" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Patching a User</span></a></div></div><div class="list-group"><a data-toggle="collapse" data-target="#site-menu" href="javascript:void(0)" class="list-group-item heading collapsed"><span class="toggle pull-right"><span class="open fa fa-angle-up"></span><span class="closed fa fa-angle-down"></span></span>Site</a><div id="site-menu" class="collapse"><a href="#site-calls-related-to-site" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item">Calls related to Site</a><a href="#site-calls-related-to-site-get" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Get all Sites</span></a><a href="#site-calls-related-to-site-post" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Create a Site</span></a><a href="#site-calls-related-to-site" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item">Calls related to Site</a><a href="#site-calls-related-to-site-get" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Get a single site</span></a><a href="#site-calls-related-to-site-put" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Update a site</span></a><a href="#site-calls-related-to-site-delete" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Delete a site</span></a></div></div><div class="list-group"><a data-toggle="collapse" data-target="#store-menu" href="javascript:void(0)" class="list-group-item heading collapsed"><span class="toggle pull-right"><span class="open fa fa-angle-up"></span><span class="closed fa fa-angle-down"></span></span>Store</a><div id="store-menu" class="collapse"><a href="#store-calls-related-to-stores" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)-->Calls related to Stores</a><a href="#store-store-product-subcalls" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)-->Store Product Subcalls</a><a href="#store-store-variant-subcalls" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item">Store Variant Subcalls</a><a href="#store-store-variant-subcalls-get" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Get a store's variant</span></a><a href="#store-store-variant-subcalls-delete" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Deleting a Variant</span></a><a href="#store-store-variant-subcalls-put" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Updating a Variant</span></a><a href="#store-store-variant-subcalls-patch" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Patching a Variant</span></a></div></div><div class="list-group"><a data-toggle="collapse" data-target="#additional-objects-menu" href="#additional-objects" class="list-group-item heading collapsed">Additional objects</a><div id="additional-objects-menu" class="collapse"></div></div></nav></div></div>
+</div></div></div></div><div class="col-md-3"><nav id="nav" class="nav hidden-s"><div class="list-group"><a data-toggle="collapse" data-target="#checkout-api-menu" href="javascript:void(0)" class="list-group-item heading collapsed"><span class="toggle pull-right"><span class="open fa fa-angle-up"></span><span class="closed fa fa-angle-down"></span></span>Checkout API</a><div id="checkout-api-menu" class="collapse"><a href="#checkout-api-one-step-payments" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)-->One-step Payments</a><a href="#checkout-api-two-step-payment-process,-part-1" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)-->Two-step payment process, part 1</a><a href="#checkout-api-group-two-step-payment-process,-part-2" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)-->Group Two-step payment process, part 2</a></div></div><div class="list-group"><a data-toggle="collapse" data-target="#coupon-menu" href="javascript:void(0)" class="list-group-item heading collapsed"><span class="toggle pull-right"><span class="open fa fa-angle-up"></span><span class="closed fa fa-angle-down"></span></span>Coupon</a><div id="coupon-menu" class="collapse"><a href="#coupon-calls-related-to-coupons" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item">Calls related to Coupons</a><a href="#coupon-calls-related-to-coupons-get" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Get a Coupon</span></a><a href="#coupon-calls-related-to-coupons-post" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Create a Coupon</span></a><a href="#coupon-calls-related-to-coupons-delete" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Deleting a Coupon</span></a><a href="#coupon-calls-related-to-coupons-put" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Updating a Coupon</span></a><a href="#coupon-calls-related-to-coupons-patch" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Patching a Coupon</span></a></div></div><div class="list-group"><a data-toggle="collapse" data-target="#collection-menu" href="javascript:void(0)" class="list-group-item heading collapsed"><span class="toggle pull-right"><span class="open fa fa-angle-up"></span><span class="closed fa fa-angle-down"></span></span>Collection</a><div id="collection-menu" class="collapse"><a href="#collection-calls-related-to-collections" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item">Calls related to Collections</a><a href="#collection-calls-related-to-collections-get" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Get a Collection</span></a><a href="#collection-calls-related-to-collections-post" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Create a Collection</span></a><a href="#collection-calls-related-to-collections-delete" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Deleting a Collection</span></a><a href="#collection-calls-related-to-collections-put" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Updating a Collection</span></a><a href="#collection-calls-related-to-collections-patch" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Patching a Collection</span></a></div></div><div class="list-group"><a data-toggle="collapse" data-target="#mailing-list-menu" href="javascript:void(0)" class="list-group-item heading collapsed"><span class="toggle pull-right"><span class="open fa fa-angle-up"></span><span class="closed fa fa-angle-down"></span></span>Mailing List</a><div id="mailing-list-menu" class="collapse"><a href="#mailing-list-calls-related-to-mailing-lists" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item">Calls related to Mailing Lists</a><a href="#mailing-list-calls-related-to-mailing-lists-get" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Get a Mailing List</span></a><a href="#mailing-list-calls-related-to-mailing-lists-post" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Create a Mailing List</span></a><a href="#mailing-list-calls-related-to-mailing-lists-delete" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Deleting a Mailing List</span></a><a href="#mailing-list-calls-related-to-mailing-lists-put" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Updating a Mailing List</span></a><a href="#mailing-list-calls-related-to-mailing-lists-patch" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Patching a Mailing List</span></a></div></div><div class="list-group"><a data-toggle="collapse" data-target="#order-menu" href="javascript:void(0)" class="list-group-item heading collapsed"><span class="toggle pull-right"><span class="open fa fa-angle-up"></span><span class="closed fa fa-angle-down"></span></span>Order</a><div id="order-menu" class="collapse"><a href="#order-calls-related-to-orders" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item">Calls related to Orders</a><a href="#order-calls-related-to-orders-get" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Get an Order</span></a><a href="#order-calls-related-to-orders-post" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Create an Order</span></a><a href="#order-calls-related-to-orders-delete" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Deleting a Order</span></a><a href="#order-calls-related-to-orders-put" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Updating a Order</span></a><a href="#order-calls-related-to-orders-patch" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Patching a Order</span></a><a href="#order-payments-on-an-order" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)-->Payments on an Order</a></div></div><div class="list-group"><a data-toggle="collapse" data-target="#referral-menu" href="javascript:void(0)" class="list-group-item heading collapsed"><span class="toggle pull-right"><span class="open fa fa-angle-up"></span><span class="closed fa fa-angle-down"></span></span>Referral</a><div id="referral-menu" class="collapse"><a href="#referral-calls-related-to-referrals" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item">Calls related to Referrals</a><a href="#referral-calls-related-to-referrals-get" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Get a Referral</span></a><a href="#referral-calls-related-to-referrals-post" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Creating a Referral</span></a><a href="#referral-calls-related-to-referrals-delete" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Deleting a Referral</span></a><a href="#referral-calls-related-to-referrals-put" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Updating a Referral</span></a><a href="#referral-calls-related-to-referrals-patch" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Patching a Referral</span></a></div></div><div class="list-group"><a data-toggle="collapse" data-target="#referrer-menu" href="javascript:void(0)" class="list-group-item heading collapsed"><span class="toggle pull-right"><span class="open fa fa-angle-up"></span><span class="closed fa fa-angle-down"></span></span>Referrer</a><div id="referrer-menu" class="collapse"><a href="#referrer-calls-related-to-referrers" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item">Calls related to Referrers</a><a href="#referrer-calls-related-to-referrers-get" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Get a Referrer</span></a><a href="#referrer-calls-related-to-referrers-post" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Creating a Referrer</span></a><a href="#referrer-calls-related-to-referrers-delete" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Deleting a Referrer</span></a><a href="#referrer-calls-related-to-referrers-put" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Updating a Referrer</span></a><a href="#referrer-calls-related-to-referrers-patch" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Patching a Referrer</span></a></div></div><div class="list-group"><a data-toggle="collapse" data-target="#transaction-menu" href="javascript:void(0)" class="list-group-item heading collapsed"><span class="toggle pull-right"><span class="open fa fa-angle-up"></span><span class="closed fa fa-angle-down"></span></span>Transaction</a><div id="transaction-menu" class="collapse"><a href="#transaction-calls-related-to-transaction" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)-->Calls related to Transaction</a></div></div><div class="list-group"><a data-toggle="collapse" data-target="#product-menu" href="javascript:void(0)" class="list-group-item heading collapsed"><span class="toggle pull-right"><span class="open fa fa-angle-up"></span><span class="closed fa fa-angle-down"></span></span>Product</a><div id="product-menu" class="collapse"><a href="#product-calls-related-to-products" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item">Calls related to Products</a><a href="#product-calls-related-to-products-get" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Get a Product</span></a><a href="#product-calls-related-to-products-post" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Creating a Product</span></a><a href="#product-calls-related-to-products-delete" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Deleting a Product</span></a><a href="#product-calls-related-to-products-put" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Updating a Product</span></a><a href="#product-calls-related-to-products-patch" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Patching a Product</span></a></div></div><div class="list-group"><a data-toggle="collapse" data-target="#variant-menu" href="javascript:void(0)" class="list-group-item heading collapsed"><span class="toggle pull-right"><span class="open fa fa-angle-up"></span><span class="closed fa fa-angle-down"></span></span>Variant</a><div id="variant-menu" class="collapse"><a href="#variant-calls-related-to-variants" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item">Calls related to Variants</a><a href="#variant-calls-related-to-variants-get" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Get a Variant</span></a><a href="#variant-calls-related-to-variants-post" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Create a Variant</span></a><a href="#variant-calls-related-to-variants-delete" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Deleting a Variant</span></a><a href="#variant-calls-related-to-variants-put" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Updating a Variant</span></a><a href="#variant-calls-related-to-variants-patch" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Patching a Variant</span></a></div></div><div class="list-group"><a data-toggle="collapse" data-target="#user-menu" href="javascript:void(0)" class="list-group-item heading collapsed"><span class="toggle pull-right"><span class="open fa fa-angle-up"></span><span class="closed fa fa-angle-down"></span></span>User</a><div id="user-menu" class="collapse"><a href="#user-calls-relating-to-users" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item">Calls relating to Users</a><a href="#user-calls-relating-to-users-get" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Get a User</span></a><a href="#user-calls-relating-to-users-post" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Create a User</span></a><a href="#user-calls-relating-to-users-delete" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Deleting a User</span></a><a href="#user-calls-relating-to-users-put" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Updating a User</span></a><a href="#user-calls-relating-to-users-patch" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Patching a User</span></a></div></div><div class="list-group"><a data-toggle="collapse" data-target="#site-menu" href="javascript:void(0)" class="list-group-item heading collapsed"><span class="toggle pull-right"><span class="open fa fa-angle-up"></span><span class="closed fa fa-angle-down"></span></span>Site</a><div id="site-menu" class="collapse"><a href="#site-calls-related-to-site" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item">Calls related to Site</a><a href="#site-calls-related-to-site-get" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Get all Sites</span></a><a href="#site-calls-related-to-site-post" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Create a Site</span></a><a href="#site-calls-related-to-site" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item">Calls related to Site</a><a href="#site-calls-related-to-site-get" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Get a single site</span></a><a href="#site-calls-related-to-site-put" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Update a site</span></a><a href="#site-calls-related-to-site-delete" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Delete a site</span></a></div></div><div class="list-group"><a data-toggle="collapse" data-target="#store-menu" href="javascript:void(0)" class="list-group-item heading collapsed"><span class="toggle pull-right"><span class="open fa fa-angle-up"></span><span class="closed fa fa-angle-down"></span></span>Store</a><div id="store-menu" class="collapse"><a href="#store-calls-related-to-stores" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)-->Calls related to Stores</a><a href="#store-store-product-subcalls" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)-->Store Product Subcalls</a><a href="#store-store-variant-subcalls" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item">Store Variant Subcalls</a><a href="#store-store-variant-subcalls-get" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Get a store's variant</span></a><a href="#store-store-variant-subcalls-delete" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Deleting a Variant</span></a><a href="#store-store-variant-subcalls-put" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Updating a Variant</span></a><a href="#store-store-variant-subcalls-patch" style="border-top-left-radius: 0; border-top-right-radius: 0" class="list-group-item"><!-- +Icon(action.method)--><span class="indent">Patching a Variant</span></a></div></div><div class="list-group"><a data-toggle="collapse" data-target="#additional-objects-menu" href="#additional-objects" class="list-group-item heading collapsed">Additional objects</a><div id="additional-objects-menu" class="collapse"></div></div></nav></div></div>
