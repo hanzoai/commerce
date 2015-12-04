@@ -121,7 +121,6 @@ func FirstTimeSuccessfulOrderTest(isCharge bool, stor *store.Store) testHelperRe
 
 	// Payment and Order info should be in the dv
 	ord := order.New(db)
-
 	err := json.DecodeBuffer(w.Body, &ord)
 	Expect(err).ToNot(HaveOccurred())
 
