@@ -212,34 +212,3 @@ func create(c *gin.Context) {
 		sendWelcome(c, org, usr)
 	}
 }
-
-func createConfirm(c *gin.Context) {
-	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespace(c))
-
-	usr := user.New(db)
-	tok := token.New(db)
-
-	// Get Token
-	id := c.Params.ByName("tokenid")
-	if err := tok.GetById(id); err != nil {
-		panic(err)
-	}
-
-	// Get user associated with token
-	if err := usr.GetById(tok.UserId); err != nil {
-		panic(err)
-	}
-
-	// Set user as enabled
-	usr.Enabled = true
-	err := usr.Put()
-	if err != nil {
-		panic(err)
-	}
-
-	// Send account confirmed email
-	sendEmailConfirmed(c, org, usr)
-
-	http.Render(c, 200, gin.H{"status": "ok"})
-}
