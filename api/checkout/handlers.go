@@ -121,6 +121,7 @@ func route(router router.Router, prefix string) {
 	api.POST("/capture/:orderid", publishedRequired, Capture)
 
 	// Paypal Paykey flow
+	api.POST("/paypal", publishedRequired, PayPalPayKey)
 	api.POST("/paypal/pay", publishedRequired, PayPalPayKey)
 	// api.POST("/paypal/confirm/:payKey", publishedRequired, PayPalConfirm)
 	// api.POST("/paypal/cancel/:payKey", publishedRequired, PayPalCancel)
