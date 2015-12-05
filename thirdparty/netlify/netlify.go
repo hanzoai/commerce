@@ -77,7 +77,7 @@ func DeleteSite(c *gin.Context, s *site.Site) {
 	}
 }
 
-func GetSingleSite(c *gin.Context, s *site.Site) (*site.Site, error) {
+func GetSite(c *gin.Context, s *site.Site) (*site.Site, error) {
 	ctx := middleware.GetAppEngine(c)
 	req, err := http.NewRequest("GET", config.Netlify.BaseUrl+"sites/"+s.Netlify.Id+"?access_token="+config.Netlify.AccessToken, nil)
 
@@ -108,7 +108,7 @@ func GetSingleSite(c *gin.Context, s *site.Site) (*site.Site, error) {
 	return s, nil
 }
 
-func GetAllSites(c *gin.Context) ([]*site.Site, error) {
+func ListSites(c *gin.Context) ([]*site.Site, error) {
 	ctx := middleware.GetAppEngine(c)
 	req, err := http.NewRequest("GET", config.Netlify.BaseUrl+"sites?access_token="+config.Netlify.AccessToken, nil)
 
