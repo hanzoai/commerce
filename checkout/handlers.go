@@ -104,7 +104,7 @@ func charge(c *gin.Context) {
 
 	form.Order.CreatedAt = time.Now()
 	form.Order.UpdatedAt = form.Order.CreatedAt
-	form.Order.EstimatedDelivery = "Late 2015"
+	form.Order.EstimatedDelivery = "March 2016"
 
 	ctx := middleware.GetAppEngine(c)
 	db := datastore.New(ctx)
