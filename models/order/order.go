@@ -72,7 +72,7 @@ type Order struct {
 	// 3-letter ISO currency code (lowercase).
 	Currency currency.Type `json:"currency"`
 
-	// Type of order
+	// Payment processor type - paypal, stripe, etc
 	Type string `json:"type"`
 
 	// Shipping method
@@ -94,7 +94,7 @@ type Order struct {
 	Tax currency.Cents `json:"tax"`
 
 	// Price adjustments applied. Amount in cents.
-	Adjustment currency.Cents `json:"adjustment"`
+	Adjustment currency.Cents `json:"-"`
 
 	// Total = subtotal + shipping + taxes + adjustments. Amount in cents.
 	Total currency.Cents `json:"total"`
@@ -114,7 +114,10 @@ type Order struct {
 	// Individual line items
 	Items []LineItem `json:"items"`
 
-	Adjustments []Adjustment `json:"adjustments,omitempty"`
+	// Free Items from Coupons
+	CouponItems []LineItem `json:"couponItems,omitempty"`
+
+	Adjustments []Adjustment `json:"-"`
 
 	Coupons     []coupon.Coupon `json:"coupons,omitempty"`
 	CouponCodes []string        `json:"couponCodes,omitempty"`
@@ -126,7 +129,7 @@ type Order struct {
 	Fulfillment Fulfillment `json:"fulfillment"`
 
 	// Series of events that have occured relevant to this order
-	History []Event `json:"history,omitempty"`
+	History []Event `json:"-,omitempty"`
 
 	// Arbitrary key/value pairs associated with this order
 	Metadata  Metadata `json:"metadata" datastore:"-"`
@@ -167,9 +170,22 @@ func (o Order) Document() mixin.Document {
 		confirmed = "false"
 	}
 
+	productIds := make([]string, 0)
+	for _, item := range o.Items {
+		productIds = append(productIds, item.ProductId)
+		productIds = append(productIds, item.ProductSlug)
+	}
+
+	for _, item := range o.CouponItems {
+		productIds = append(productIds, item.ProductId)
+		productIds = append(productIds, item.ProductSlug)
+	}
+
 	return &Document{
 		o.Id(),
 		o.UserId,
+
+		strings.Join(productIds, " "),
 
 		o.BillingAddress.Line1,
 		o.BillingAddress.Line2,
@@ -186,6 +202,8 @@ func (o Order) Document() mixin.Document {
 		o.BillingAddress.Country,
 		country.ByISOCodeISO3166_2[o.ShippingAddress.Country].ISO3166OneEnglishShortNameReadingOrder,
 		o.ShippingAddress.PostalCode,
+
+		o.Type,
 
 		o.CreatedAt,
 		o.UpdatedAt,
@@ -348,6 +366,73 @@ func (o *Order) UpdateDiscount() {
 			}
 		}
 	}
+}
+
+// Update discount using coupon codes/order info.
+// Refactor later when we have more time to think about it
+func (o *Order) UpdateCouponItems() error {
+	nCodes := len(o.CouponCodes)
+
+	o.CouponItems = make([]LineItem, 0)
+
+	for i := 0; i < nCodes; i++ {
+		c := &o.Coupons[i]
+		if !c.Enabled {
+			continue
+		}
+		if c.ProductId == "" {
+			switch c.Type {
+			case coupon.FreeItem:
+				o.CouponItems = append(o.CouponItems, LineItem{
+					ProductId: c.FreeProductId,
+					VariantId: c.FreeVariantId,
+					Quantity:  c.FreeQuantity,
+				})
+			}
+		} else {
+			for _, item := range o.Items {
+				if item.ProductId == c.ProductId {
+					switch c.Type {
+					case coupon.FreeItem:
+						o.CouponItems = append(o.CouponItems, LineItem{
+							ProductId: c.FreeProductId,
+							VariantId: c.FreeVariantId,
+							Quantity:  c.FreeQuantity,
+						})
+					}
+				}
+			}
+		}
+	}
+
+	db := o.Model.Db
+	ctx := o.Model.Db.Context
+
+	nItems := len(o.CouponItems)
+	keys := make([]datastore.Key, nItems, nItems)
+	vals := make([]interface{}, nItems, nItems)
+
+	for i := 0; i < nItems; i++ {
+		key, dst, err := o.CouponItems[i].Entity(db)
+		if err != nil {
+			log.Error("Failed to get entity for %#v: %v", o.CouponItems[i], err, ctx)
+			return err
+		}
+		keys[i] = key
+		vals[i] = dst
+	}
+
+	err := db.GetMulti(keys, vals)
+	if err != nil {
+		log.Error("Failed to get coupon items: %v", err, ctx)
+		return err
+	}
+
+	for i := 0; i < nItems; i++ {
+		(&o.CouponItems[i]).Update()
+	}
+
+	return nil
 }
 
 // Update order's payment status based on payments
@@ -516,6 +601,9 @@ func (o *Order) UpdateAndTally(stor *store.Store) error {
 
 	// Update discount amount
 	o.UpdateDiscount()
+
+	// Update the list of free coupon items
+	o.UpdateCouponItems()
 
 	// Tally up order again
 	o.Tally()

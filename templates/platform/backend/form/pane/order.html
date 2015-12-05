@@ -11,6 +11,10 @@
         <control input="{ inputs.maxDate }"></control>
       </div>
     </div>
+    <h5><small>Products</small></h5>
+    <div class="section">
+      <control input="{ inputs.productIds }"></control>
+    </div>
     <h5><small>Country</small></h5>
     <div class="section">
       <control input="{ inputs.country }" any="{ true }"></control>
@@ -26,6 +30,14 @@
       <div class="col-md-6">
         <control input="{ inputs.maxTotal }"></control>
       </div>
+    </div>
+    <h5><small>Coupon</small></h5>
+    <div class="section">
+      <control input="{ inputs.couponCodes }"></control>
+    </div>
+    <h5><small>Payment Processor</small></h5>
+    <div class="section">
+      <control input="{ inputs.type }" options="{ typeOptions }"></control>
     </div>
     <h5><small>Status</small></h5>
     <div class="section">

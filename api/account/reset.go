@@ -1,7 +1,6 @@
 package account
 
 import (
-	"errors"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -20,8 +19,9 @@ import (
 )
 
 type resetReq struct {
-	Password        string `json:"password"`
-	PasswordConfirm string `json:"passwordConfirm"`
+	Email    string `json:"email"`
+	Username string `json:"username"`
+	Id       string `json:"id"`
 }
 
 func sendPasswordReset(c *gin.Context, org *organization.Organization, usr *user.User, tok *token.Token) {
@@ -54,8 +54,14 @@ func reset(c *gin.Context) {
 	db := datastore.New(org.Namespace(c))
 	usr := user.New(db)
 
-	query := c.Request.URL.Query()
-	email := query.Get("email")
+	// Get new password
+	req := &resetReq{}
+	if err := json.Decode(c.Request.Body, req); err != nil {
+		http.Fail(c, 400, "Failed decode request body", err)
+		return
+	}
+
+	email := req.Email
 
 	if err := usr.GetByEmail(email); err != nil {
 		// If user doesn't exist, we pretend like it's ok
@@ -77,70 +83,6 @@ func reset(c *gin.Context) {
 
 	// Send email
 	sendPasswordReset(c, org, usr, tok)
-
-	http.Render(c, 200, gin.H{"status": "ok"})
-}
-
-func resetConfirm(c *gin.Context) {
-	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespace(c))
-
-	usr := user.New(db)
-	tok := token.New(db)
-
-	// Get Token
-	id := c.Params.ByName("tokenid")
-	if err := tok.GetById(id); err != nil {
-		panic(err)
-	}
-
-	// Get user associated with token
-	if err := usr.GetById(tok.UserId); err != nil {
-		panic(err)
-	}
-
-	if tok.Expired() {
-		http.Fail(c, 403, "Token expired", errors.New("Token expired"))
-		return
-	}
-
-	// Get new password
-	req := &resetReq{}
-	if err := json.Decode(c.Request.Body, req); err != nil {
-		http.Fail(c, 400, "Failed decode request body", err)
-		return
-	}
-
-	// Enable user in case this user has never confirmed account
-	usr.Enabled = true
-
-	// Validate password
-	if len(req.Password) < 6 {
-		http.Fail(c, 400, "Password needs to be atleast 6 characters", errors.New("Password needs to be atleast 6 characters"))
-		return
-	}
-
-	if req.Password != req.PasswordConfirm {
-		http.Fail(c, 400, "Passwords need to match", errors.New("Passwords need to match"))
-		return
-	}
-
-	// Update password
-	if err := usr.SetPassword(req.Password); err != nil {
-		http.Fail(c, 500, "Failed to set password", err)
-		return
-	}
-
-	if err := usr.Put(); err != nil {
-		http.Fail(c, 500, "Failed to update password", err)
-		return
-	}
-
-	// Save token
-	tok.Used = true
-	if err := tok.Put(); err != nil {
-		log.Warn("Unable to update token", err, c)
-	}
 
 	http.Render(c, 200, gin.H{"status": "ok"})
 }

@@ -6,6 +6,8 @@ type Document struct {
 	Id_    string
 	UserId string
 
+	ProductIds string
+
 	BillingAddressLine1       string
 	BillingAddressLine2       string
 	BillingAddressCity        string
@@ -21,6 +23,8 @@ type Document struct {
 	ShippingAddressCountryCode string
 	ShippingAddressCountry     string
 	ShippingAddressPostalCode  string
+
+	Type string
 
 	CreatedAt time.Time
 	UpdatedAt time.Time

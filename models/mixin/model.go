@@ -48,7 +48,9 @@ type Entity interface {
 	Get(args ...interface{}) error
 	GetById(string) error
 	Exists() (bool, error)
+	IdExists(id string) (bool, error)
 	KeyExists(key interface{}) (datastore.Key, bool, error)
+	KeyById(string) (datastore.Key, bool, error)
 	MustGet(args ...interface{})
 	Put() error
 	PutDocument() error
@@ -320,12 +322,13 @@ func (m *Model) GetById(id string) error {
 
 	// Use unique filter based on model type
 	switch m.Kind() {
-	case "store", "product", "plan":
+	case "store", "product", "collection", "plan":
 		filterStr = "Slug"
 	case "variant":
 		filterStr = "SKU"
 	case "coupon":
 		filterStr = "Code"
+		id = strings.ToUpper(id)
 	case "organization", "mailinglist":
 		filterStr = "Name"
 	case "aggregate":
@@ -361,6 +364,65 @@ func (m *Model) GetById(id string) error {
 func (m *Model) Exists() (bool, error) {
 	_, ok, err := m.KeyExists(nil)
 	return ok, err
+}
+
+// Check if key is in datastore.
+func (m *Model) IdExists(id string) (bool, error) {
+	_, ok, err := m.KeyById(id)
+	return ok, err
+}
+
+func (m *Model) KeyById(id string) (datastore.Key, bool, error) {
+	// Try to decode key
+	key, err := hashid.DecodeKey(m.Db.Context, id)
+
+	// Use key if we have one
+	if err == nil {
+		err = m.Get(key)
+		return m.Key(), err != nil, err
+	}
+
+	// Set err to nil and try to use filter
+	err = nil
+	filterStr := ""
+
+	// Use unique filter based on model type
+	switch m.Kind() {
+	case "store", "product", "collection":
+		filterStr = "Slug"
+	case "variant":
+		filterStr = "SKU"
+	case "coupon":
+		filterStr = "Code"
+	case "organization", "mailinglist":
+		filterStr = "Name"
+	case "aggregate":
+		filterStr = "Instance"
+	case "user":
+		if strings.Contains(id, "@") {
+			filterStr = "Email"
+		} else {
+			filterStr = "Username"
+		}
+	case "order":
+		// Special-cased since order is filtered by IntId (order number)
+		key := m.Db.KeyFromInt("order", id)
+		ok, err := m.Query().Filter("__key__ =", key).First()
+		if !ok {
+			return nil, false, datastore.KeyNotFound
+		}
+		return nil, false, err
+	default:
+		return nil, false, datastore.InvalidKey
+	}
+
+	// Try and fetch by filterStr
+	ok, err := m.Query().Filter(filterStr+"=", id).First()
+	if !ok {
+		return nil, false, datastore.KeyNotFound
+	}
+
+	return m.Key(), true, nil
 }
 
 // Get's key only (ensures key is good)

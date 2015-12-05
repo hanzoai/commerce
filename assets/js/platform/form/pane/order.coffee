@@ -24,11 +24,15 @@ class OrderFilterPane extends Pane
     input('minDate', '', 'date-picker')
     input('maxDate', '', 'date-picker')
     input('country', '', 'country-select')
+    input('type', '', 'basic-select')
+    input('couponCodes', 'Coupon Code')
     input('status', '', 'basic-select')
+    input('paymentStatus', '', 'basic-select')
     input('paymentStatus', '', 'basic-select')
     input('fulfillmentStatus', '', 'basic-select')
     input('preorder', '', 'basic-select')
     input('confirmed', '', 'basic-select')
+    input('productIds', '', 'product-type-select')
   ]
 
   statusOptions:
@@ -66,19 +70,27 @@ class OrderFilterPane extends Pane
     true:   'Confirmed'
     false:  'Unconfirmed'
 
+  typeOptions:
+    _any:   'Any Payment Processor'
+    stripe: 'Stripe'
+    paypal: 'Paypal'
+
   js: ()->
     @model =
+      maxDate:            moment().format 'L'
       minTotal:           0
       maxTotal:           0
       country:            '_any'
       currency:           '_any'
       minDate:            '01/01/2015'
-      maxDate:            moment().format 'L'
+      couponCodes:        ''
+      type:               '_any'
       status:             '_any'
       paymentStatus:      '_any'
       fulfillmentStatus:  '_any'
       preorder:           '_any'
       confirmed:          '_any'
+      productIds:         '_any'
 
     super
 
@@ -99,30 +111,39 @@ class OrderFilterPane extends Pane
     minDateStr = moment(minDate, 'YYYY-MM-DD').format 'YYYY-MM-DD'
     maxDateStr = moment(maxDate, 'YYYY-MM-DD').format 'YYYY-MM-DD'
 
-    query = "CreatedAt >= #{minDateStr} AND CreatedAt <= #{maxDateStr}"
+    query = "CreatedAt >= #{encodeURIComponent minDateStr} AND CreatedAt <= #{encodeURIComponent maxDateStr}"
     if @model.country != '_any'
-      query += " AND ShippingAddressCountryCode = \"#{ @model.country }\""
+      query += " AND ShippingAddressCountryCode = \"#{ encodeURIComponent @model.country }\""
 
     if @model.currency != '_any'
-      query += " AND Currency = \"#{ @model.currency }\""
+      query += " AND Currency = \"#{ encodeURIComponent @model.currency }\""
 
-    if @model.maxTotal != 0
-      query += " AND Total >= #{ @model.minTotal } AND Total <= #{ @model.maxTotal }"
+    query += " AND Total >= #{ encodeURIComponent @model.minTotal }" if @model.minTotal != 0
+    query += " AND Total <= #{ encodeURIComponent @model.maxTotal }" if @model.maxTotal != 0
 
     if @model.status != '_any'
-      query += " AND Status = \"#{ @model.status }\""
+      query += " AND Status = \"#{ encodeURIComponent @model.status }\""
 
     if @model.paymentStatus != '_any'
-      query += " AND PaymentStatus = \"#{ @model.paymentStatus }\""
+      query += " AND PaymentStatus = \"#{ encodeURIComponent @model.paymentStatus }\""
 
     if @model.fulfillmentStatus != '_any'
-      query += " AND FulfillmentStatus = \"#{ @model.fulfillmentStatus }\""
+      query += " AND FulfillmentStatus = \"#{ encodeURIComponent @model.fulfillmentStatus }\""
 
     if @model.preorder != '_any'
-      query += " AND Preorder = \"#{ @model.preorder }\""
+      query += " AND Preorder = \"#{ encodeURIComponent @model.preorder }\""
 
     if @model.confirmed != '_any'
-      query += " AND Confirmed = \"#{ @model.confirmed }\""
+      query += " AND Confirmed = \"#{ encodeURIComponent @model.confirmed }\""
+
+    if @model.type != '_any'
+      query += " AND Type = \"#{ encodeURIComponent @model.type }\""
+
+    if @model.couponCodes
+      query += " AND CouponCodes = \"#{ encodeURIComponent @model.couponCodes }\""
+
+    if @model.productIds != '_any'
+      query += " AND ProductIds = \"#{ encodeURIComponent @model.productIds }\""
 
     return query
 
