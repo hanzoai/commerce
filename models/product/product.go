@@ -38,7 +38,7 @@ type Product struct {
 	Price     currency.Cents `json:"price"`
 	ListPrice currency.Cents `json:"listPrice"`
 
-	// Override for the shipping formula
+	// Basic cost for shipping this product
 	Shipping currency.Cents `json:"shipping"`
 
 	Inventory int `json:"inventory"`
@@ -80,6 +80,9 @@ type Product struct {
 
 	// Pre-order now or Add to cart
 	AddLabel string `json:"addLabel"`
+
+	// Optional Estimated Delivery line
+	EstimatedDelivery string `json:"estimatedDelivery"`
 
 	// List of variants
 	Variants  []*variant.Variant `json:"variants" datastore:"-"`

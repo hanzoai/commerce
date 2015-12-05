@@ -24,12 +24,12 @@ import (
 
 	accessTokenApi "crowdstart.com/api/accesstoken"
 	accountApi "crowdstart.com/api/account"
+	checkoutApi "crowdstart.com/api/checkout"
 	dataApi "crowdstart.com/api/data"
 	mailinglistApi "crowdstart.com/api/mailinglist"
 	namespaceApi "crowdstart.com/api/namespace"
 	orderApi "crowdstart.com/api/order"
 	organizationApi "crowdstart.com/api/organization"
-	paymentApi "crowdstart.com/api/payment"
 	searchApi "crowdstart.com/api/search"
 	storeApi "crowdstart.com/api/store"
 	subscriptionApi "crowdstart.com/api/subscription"
@@ -61,8 +61,8 @@ func init() {
 
 	// Organization APIs, namespaced by organization
 
-	// One Step Payment API
-	paymentApi.Route(api)
+	// Checkout APIs (charge, authorize, capture)
+	checkoutApi.Route(api)
 
 	// Subscription API
 	subscriptionApi.Route(api)

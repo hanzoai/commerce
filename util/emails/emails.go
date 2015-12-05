@@ -6,6 +6,7 @@ import (
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
+	"crowdstart.com/models/product"
 	"crowdstart.com/models/user"
 	"crowdstart.com/util/template"
 
@@ -28,12 +29,16 @@ func SendOrderConfirmationEmail(c *gin.Context, org *organization.Organization, 
 	toEmail := usr.Email
 	toName := usr.Name()
 
+	prod := product.New(ord.Db)
+	prod.GetById(ord.Items[0].ProductId)
+
 	// Subject, HTML
 	subject := conf.Subject
 	html := template.RenderStringFromString(conf.Template,
 		"order", ord,
 		"orderId", ord.Id(),
-		"user", usr)
+		"user", usr,
+		"estimatedDelivery", prod.EstimatedDelivery)
 
 	mandrill.Send.Call(ctx, org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, html)
 }

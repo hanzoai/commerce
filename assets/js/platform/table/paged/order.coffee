@@ -17,6 +17,7 @@ class OrderPagedTable extends BasicPagedTable
     field('status', 'Status')
     field('paymentStatus', 'Paid')
     field('fulfillmentStatus', 'Fullfilled')
+    field('couponCodes', 'Coupon(s)', 'id-list', 'id-path:#coupon')
     field('createdAt', 'Created On', 'date')
     field('updatedAt', 'Last Updated', 'ago')
   ]

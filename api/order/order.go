@@ -15,7 +15,7 @@ import (
 	"crowdstart.com/util/rest"
 	"crowdstart.com/util/router"
 
-	paymentApi "crowdstart.com/api/payment"
+	checkoutApi "crowdstart.com/api/checkout"
 )
 
 func Route(router router.Router, args ...gin.HandlerFunc) {
@@ -25,9 +25,9 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 
 	api := rest.New(order.Order{})
 
-	api.POST("/:orderid/capture", adminRequired, namespaced, paymentApi.Capture)
-	api.POST("/:orderid/charge", publishedRequired, namespaced, paymentApi.Charge)
-	api.POST("/:orderid/authorize", publishedRequired, namespaced, paymentApi.Authorize)
+	api.POST("/:orderid/capture", adminRequired, namespaced, checkoutApi.Capture)
+	api.POST("/:orderid/charge", publishedRequired, namespaced, checkoutApi.Charge)
+	api.POST("/:orderid/authorize", publishedRequired, namespaced, checkoutApi.Authorize)
 
 	api.GET("/:orderid/payments", adminRequired, namespaced, func(c *gin.Context) {
 		id := c.Params.ByName("orderid")

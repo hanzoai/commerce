@@ -19,6 +19,7 @@ const (
 	Flat         Type = "flat"
 	Percent           = "percent"
 	FreeShipping      = "free-shipping"
+	FreeItem          = "free-item"
 )
 
 var Types = []Type{Flat, Percent, FreeShipping}
@@ -52,11 +53,16 @@ type Coupon struct {
 	// Whether coupon is valid.
 	Enabled bool `json:"enabled"`
 
-	// Coupon amount. $5 should be 500 (prices in cents). 10% should be 10.
+	// Coupon amount. $5 should be 500 (prices in basic currency unit, like cents). 10% should be 10.
 	Amount int `json:"amount"`
 
 	// Number of times coupon was redeemed.
 	Used int `json:"used"`
+
+	// Free product with coupon
+	FreeProductId string `json:"freeProductId"`
+	FreeVariantId string `json:"freeVariantId"`
+	FreeQuantity  int    `json:"freeQuantity"`
 
 	// List of buyer email addresses who have redeemed coupon.
 	//Buyers []string `json:"buyers"`
