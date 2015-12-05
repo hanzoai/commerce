@@ -12,10 +12,11 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 
 	api := router.Group("site")
-	api.POST("/", adminRequired, createSite)
-	api.PATCH("/:siteid", adminRequired, updateSite)
-	api.PUT("/:siteid", adminRequired, updateSite)
-	api.DELETE("/:siteid", adminRequired, destroySite)
-	api.GET("/", adminRequired, getAllSites)
-	api.GET("/:siteid", adminRequired, getSingleSite)
+
+	api.GET("/", adminRequired, list)
+	api.GET("/:siteid", adminRequired, get)
+	api.POST("/", adminRequired, create)
+	api.PATCH("/:siteid", adminRequired, update)
+	api.PUT("/:siteid", adminRequired, update)
+	api.DELETE("/:siteid", adminRequired, delete)
 }
