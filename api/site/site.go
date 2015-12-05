@@ -39,7 +39,7 @@ func deleteSite(c *gin.Context) {
 	s := site.New(db)
 	siteid := c.Param("siteid")
 	s.Netlify.Id = siteid
-	netlify.DeleteSite(c, s)
+	netlify.DeleteSite(c, s.Netlify.Id)
 }
 
 func listSites(c *gin.Context) {
@@ -52,5 +52,5 @@ func getSite(c *gin.Context) {
 	siteid := c.Param("siteid")
 	s.Netlify.Id = siteid
 
-	netlify.GetSite(c, s)
+	netlify.GetSite(c, s.Netlify.Id)
 }
