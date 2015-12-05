@@ -46,6 +46,28 @@ func CreateSite(c *gin.Context, s *site.Site) error {
 }
 
 func UpdateSite(c *gin.Context, s *site.Site) error {
+	client := createClient(c)
+
+	nsite, _, err := client.Sites.Get(s.Netlify.Id)
+	if err != nil {
+		return err
+	}
+
+	nsite.Url = s.Netlify.Url
+	nsite.Name = s.Netlify.Name
+	nsite.State = s.Netlify.State
+	nsite.UserId = s.Netlify.UserId
+	nsite.Premium = s.Netlify.Premium
+	nsite.Claimed = s.Netlify.Claimed
+	nsite.Password = s.Netlify.Password
+	nsite.AdminUrl = s.Netlify.AdminUrl
+	nsite.DeployUrl = s.Netlify.DeployUrl
+	nsite.CustomDomain = s.Netlify.CustomDomain
+
+	_, err = nsite.Update()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
