@@ -7,21 +7,28 @@ import (
 
 type Site struct {
 	mixin.Model
-	SiteId             string             `json:"id"`
-	Premium            bool               `json:"premium"`
-	Claimed            bool               `json:"claimed"`
-	NotificationEmail  string             `json:"notification_email"`
-	Url                string             `json:"url"`
-	AdminUrl           string             `json:"admin_url"`
-	ScreenshotUrl      string             `json:"screenshot_url"`
-	CreatedAt          string             `json:"created_at"`
-	State              string             `json:"state"`
-	UpdatedAt          string             `json:"updated_at"`
-	Name               string             `json:"name"`
-	CustomDomain       string             `json:"custom_domain"`
-	Password           string             `json:"password"`
-	Repo               string             `json:"repo"`
-	ProcessingSettings ProcessingSettings `json:"processing_settings"`
+
+	Domain string
+	Name   string
+	Url    string
+
+	Netlify struct {
+		AdminUrl           string             `json:"admin_url"`
+		Claimed            bool               `json:"claimed"`
+		CreatedAt          string             `json:"created_at"`
+		CustomDomain       string             `json:"custom_domain"`
+		Name               string             `json:"name"`
+		NotificationEmail  string             `json:"notification_email"`
+		Password           string             `json:"password"`
+		Premium            bool               `json:"premium"`
+		ProcessingSettings ProcessingSettings `json:"processing_settings"`
+		Repo               string             `json:"repo"`
+		ScreenshotUrl      string             `json:"screenshot_url"`
+		Id                 string             `json:"id"`
+		State              string             `json:"state"`
+		UpdatedAt          string             `json:"updated_at"`
+		Url                string             `json:"url"`
+	} `json:"-"`
 }
 
 type ProcessingSettings struct {
