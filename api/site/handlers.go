@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func createSite(c *gin.Context) {
+func create(c *gin.Context) {
 	db := datastore.New(c)
 	s := site.New(db)
 	if err := json.Decode(c.Request.Body, s); err != nil {
@@ -20,11 +20,11 @@ func createSite(c *gin.Context) {
 	netlify.CreateSite(c, s)
 }
 
-func updateSite(c *gin.Context) {
+func update(c *gin.Context) {
 	db := datastore.New(c)
 	s := site.New(db)
 	siteid := c.Param("siteid")
-	s.SiteId = siteid
+	s.Netlify.Id = siteid
 	if err := json.Decode(c.Request.Body, s); err != nil {
 		http.Fail(c, 400, "Failed to decode request body", err)
 		return
@@ -33,23 +33,23 @@ func updateSite(c *gin.Context) {
 	netlify.UpdateSite(c, s)
 }
 
-func destroySite(c *gin.Context) {
+func delete(c *gin.Context) {
 	db := datastore.New(c)
 	s := site.New(db)
 	siteid := c.Param("siteid")
-	s.SiteId = siteid
+	s.Netlify.Id = siteid
 	netlify.DeleteSite(c, s)
 }
 
-func getAllSites(c *gin.Context) {
+func list(c *gin.Context) {
 	netlify.GetAllSites(c)
 }
 
-func getSingleSite(c *gin.Context) {
+func get(c *gin.Context) {
 	db := datastore.New(c)
 	s := site.New(db)
 	siteid := c.Param("siteid")
-	s.SiteId = siteid
+	s.Netlify.Id = siteid
 
 	netlify.GetSingleSite(c, s)
 
