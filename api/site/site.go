@@ -12,6 +12,7 @@ import (
 func createSite(c *gin.Context) {
 	db := datastore.New(c)
 	s := site.New(db)
+
 	if err := json.Decode(c.Request.Body, s); err != nil {
 		http.Fail(c, 400, "Failed to decode request body", err)
 		return
