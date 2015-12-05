@@ -1,141 +1,80 @@
 package netlify
 
 import (
-	"bytes"
-	"io/ioutil"
-	"net/http"
-
-	"github.com/gin-gonic/gin"
+	"time"
 
 	"crowdstart.com/config"
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/site"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/log"
+
+	"github.com/gin-gonic/gin"
 
 	"appengine/urlfetch"
+
+	"github.com/netlify/netlify-go"
 )
 
-func CreateSite(c *gin.Context, s *site.Site) {
+func createClient(c *gin.Context) *netlify.Client {
 	ctx := middleware.GetAppEngine(c)
-	jsonreq := json.Encode(s)
-	reqbuf := bytes.NewBufferString(jsonreq)
-	req, err := http.NewRequest("POST", config.Netlify.BaseUrl+"sites?access_token="+config.Netlify.AccessToken, reqbuf)
 
-	if err != nil {
-		log.Error("Error upon creating new request %v", err, ctx)
-		return
+	httpClient := urlfetch.Client(ctx)
+	httpClient.Transport = &urlfetch.Transport{
+		Context:  ctx,
+		Deadline: time.Duration(20) * time.Second, // Update deadline to 20 seconds
 	}
 
-	client := urlfetch.Client(ctx)
-	res, err := client.Do(req)
-	defer res.Body.Close()
-
-	if err != nil {
-		log.Error("Request came back with error %v", err, ctx)
-		return
-	}
+	return netlify.NewClient(&netlify.Config{
+		AccessToken: config.Netlify.AccessToken,
+		HttpClient:  httpClient,
+		UserAgent:   "Crowdstart/1.0",
+	})
 }
 
-func UpdateSite(c *gin.Context, s *site.Site) {
-	ctx := middleware.GetAppEngine(c)
-	jsonreq := json.Encode(s)
-	reqbuf := bytes.NewBufferString(jsonreq)
-	req, err := http.NewRequest("PUT", config.Netlify.BaseUrl+"sites/"+s.Netlify.Id+"?access_token="+config.Netlify.AccessToken, reqbuf)
+func CreateSite(c *gin.Context, s *site.Site) error {
+	client := createClient(c)
 
-	if err != nil {
-		log.Error("Error upon creating new request %v", err, ctx)
-		return
-	}
+	// Create new site on Netlify's side
+	nsite, _, err := client.Sites.Create(&netlify.SiteAttributes{
+		Name:         s.Name,
+		CustomDomain: s.Domain,
+	})
 
-	client := urlfetch.Client(ctx)
-	res, err := client.Do(req)
-	defer res.Body.Close()
+	// Copy over netlify site attributes
+	s.Netlify = *nsite
 
-	if err != nil {
-		log.Error("Request came back with error %v", err, ctx)
-		return
-	}
+	return err
 }
 
-func DeleteSite(c *gin.Context, s *site.Site) {
-	ctx := middleware.GetAppEngine(c)
-	req, err := http.NewRequest("DELETE", config.Netlify.BaseUrl+"sites/"+s.Netlify.Id+"?access_token="+config.Netlify.AccessToken, nil)
-
-	if err != nil {
-		log.Error("Error upon creating new request %v", err, ctx)
-		return
-	}
-
-	client := urlfetch.Client(ctx)
-	res, err := client.Do(req)
-	defer res.Body.Close()
-
-	if err != nil {
-		log.Error("Request came back with error %v", err, ctx)
-		return
-	}
+func UpdateSite(c *gin.Context, s *site.Site) error {
+	return nil
 }
 
-func GetSite(c *gin.Context, s *site.Site) (*site.Site, error) {
-	ctx := middleware.GetAppEngine(c)
-	req, err := http.NewRequest("GET", config.Netlify.BaseUrl+"sites/"+s.Netlify.Id+"?access_token="+config.Netlify.AccessToken, nil)
+func DeleteSite(c *gin.Context, siteId string) error {
+	client := createClient(c)
 
+	nsite, _, err := client.Sites.Get(siteId)
 	if err != nil {
-		log.Error("Error upon creating new request %v", err, ctx)
-		return nil, err
+		return err
 	}
 
-	client := urlfetch.Client(ctx)
-	res, err := client.Do(req)
-	defer res.Body.Close()
+	_, err = nsite.Destroy()
 
-	if err != nil {
-		log.Error("Request came back with error %v", err, ctx)
-		return nil, err
-	}
-
-	responseBytes, err := ioutil.ReadAll(res.Body)
-
-	log.Debug("Response Bytes: %v", string(responseBytes), ctx)
-	err = json.Unmarshal(responseBytes, s)
-
-	if err != nil {
-		log.Error("Could not unmarshal response: %v", err, ctx)
-		return nil, err
-	}
-
-	return s, nil
+	return err
 }
 
-func ListSites(c *gin.Context) ([]*site.Site, error) {
-	ctx := middleware.GetAppEngine(c)
-	req, err := http.NewRequest("GET", config.Netlify.BaseUrl+"sites?access_token="+config.Netlify.AccessToken, nil)
+func GetSite(c *gin.Context, siteId string) (*netlify.Site, error) {
+	client := createClient(c)
 
-	if err != nil {
-		log.Error("Error upon creating new request %v", err, ctx)
-		return nil, err
-	}
+	nsite, _, err := client.Sites.Get(siteId)
 
-	client := urlfetch.Client(ctx)
-	res, err := client.Do(req)
-	defer res.Body.Close()
+	return nsite, err
+}
 
-	if err != nil {
-		log.Error("Request came back with error %v", err, ctx)
-		return nil, err
-	}
+func ListSites(c *gin.Context) ([]netlify.Site, error) {
+	client := createClient(c)
 
-	responseBytes, err := ioutil.ReadAll(res.Body)
+	// Create new site on Netlify's side
+	nsites, _, err := client.Sites.List(&netlify.ListOptions{})
 
-	log.Debug("Response Bytes: %v", string(responseBytes), ctx)
-	s := []*site.Site{}
-	err = json.Unmarshal(responseBytes, s)
-
-	if err != nil {
-		log.Error("Could not unmarshal response: %v", err, ctx)
-		return nil, err
-	}
-
-	return s, nil
+	return nsites, err
 }
