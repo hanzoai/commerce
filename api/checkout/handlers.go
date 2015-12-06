@@ -122,12 +122,13 @@ func route(router router.Router, prefix string) {
 
 	// Paypal Paykey flow
 	api.POST("/paypal", publishedRequired, PayPalPayKey)
-	api.POST("/paypal/pay", publishedRequired, PayPalPayKey)
+
+	api.POST("/paypal/pay", publishedRequired, PayPalPayKey) // Deprecated
 	// api.POST("/paypal/confirm/:payKey", publishedRequired, PayPalConfirm)
 	// api.POST("/paypal/cancel/:payKey", publishedRequired, PayPalCancel)
 }
 
 func Route(router router.Router, args ...gin.HandlerFunc) {
-	route(router, "")
+	route(router, "") // Deprecated
 	route(router, "/checkout")
 }
