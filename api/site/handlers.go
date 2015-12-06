@@ -1,56 +1,34 @@
 package site
 
 import (
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/site"
-	"crowdstart.com/thirdparty/netlify"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/json/http"
 	"github.com/gin-gonic/gin"
+
+	"crowdstart.com/middleware"
+	"crowdstart.com/util/permission"
+	"crowdstart.com/util/router"
 )
 
-func createSite(c *gin.Context) {
-	db := datastore.New(c)
-	s := site.New(db)
-	if err := json.Decode(c.Request.Body, s); err != nil {
-		http.Fail(c, 400, "Failed to decode request body", err)
-		return
-	}
+func Route(router router.Router, args ...gin.HandlerFunc) {
+	adminRequired := middleware.TokenRequired(permission.Admin)
 
-	netlify.CreateSite(c, s)
-}
+	api := router.Group("site")
 
-func updateSite(c *gin.Context) {
-	db := datastore.New(c)
-	s := site.New(db)
-	siteid := c.Param("siteid")
-	s.SiteId = siteid
-	if err := json.Decode(c.Request.Body, s); err != nil {
-		http.Fail(c, 400, "Failed to decode request body", err)
-		return
-	}
+	// Sites
+	api.GET("/", adminRequired, listSites)
+	api.GET("/:siteid", adminRequired, getSite)
+	api.POST("/", adminRequired, createSite)
+	api.PATCH("/:siteid", adminRequired, updateSite)
+	api.PUT("/:siteid", adminRequired, updateSite)
+	api.DELETE("/:siteid", adminRequired, deleteSite)
 
-	netlify.UpdateSite(c, s)
-}
+	// Deploys
+	api.GET("/:siteid/deploy", adminRequired, listDeploys)
+	api.GET("/:siteid/deploy/:deployid", adminRequired, getDeploy)
+	api.POST("/:siteid/deploy", adminRequired, createDeploy)
+	api.GET("/:siteid/deploy/:deployid/restore", adminRequired, restoreDeploy)
+	api.PUT("/:siteid/deploy/:deployid/files/*filepath", adminRequired, putFile)
 
-func destroySite(c *gin.Context) {
-	db := datastore.New(c)
-	s := site.New(db)
-	siteid := c.Param("siteid")
-	s.SiteId = siteid
-	netlify.DeleteSite(c, s)
-}
-
-func getAllSites(c *gin.Context) {
-	netlify.GetAllSites(c)
-}
-
-func getSingleSite(c *gin.Context) {
-	db := datastore.New(c)
-	s := site.New(db)
-	siteid := c.Param("siteid")
-	s.SiteId = siteid
-
-	netlify.GetSingleSite(c, s)
-
+	// Files
+	api.GET("/:siteid/file", adminRequired, listFiles)
+	api.GET("/:siteid/file/*filepath", adminRequired, getFile)
 }
