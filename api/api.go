@@ -49,6 +49,9 @@ func init() {
 	} else {
 		api.GET("/", router.Ok)
 		api.HEAD("/", router.Empty)
+
+		api.GET("/ping", router.Ok)
+		api.HEAD("/ping", router.Empty)
 	}
 
 	// Use permissive CORS policy for all API routes.

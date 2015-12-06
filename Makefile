@@ -1,7 +1,7 @@
 pwd				= $(shell pwd)
 os				= $(shell uname | tr '[A-Z]' '[a-z]')
 platform		= $(os)_amd64
-sdk				= go_appengine_sdk_$(platform)-1.9.28
+sdk				= go_appengine_sdk_$(platform)-1.9.30
 sdk_path		= $(pwd)/.sdk
 goroot			= $(sdk_path)/goroot
 gopath			= $(sdk_path)/gopath
@@ -29,13 +29,13 @@ gae_development = config/development/app.yaml \
 				  store/app.dev.yaml
 
 gae_sandbox = config/sandbox \
-			  analytics/app.staging.yaml \
-			  api/app.staging.yaml \
+			  analytics/app.sandbox.yaml \
+			  api/app.sandbox.yaml \
 
 gae_staging = config/staging \
 			  analytics/app.staging.yaml \
 			  api/app.staging.yaml \
-			  cdn/app.dev.yaml \
+			  cdn/app.staging.yaml \
 			  platform/app.staging.yaml
 
 gae_production = config/production \
