@@ -18,14 +18,18 @@ func createSite(c *gin.Context) {
 		return
 	}
 
-	netlify.CreateSite(c, s)
+	if err := netlify.CreateSite(c, s); err != nil {
+		http.Fail(c, 500, "Failed to create site", err)
+	}
 }
 
 func updateSite(c *gin.Context) {
 	db := datastore.New(c)
 	s := site.New(db)
+
 	siteid := c.Param("siteid")
 	s.Netlify.Id = siteid
+
 	if err := json.Decode(c.Request.Body, s); err != nil {
 		http.Fail(c, 400, "Failed to decode request body", err)
 		return
@@ -37,8 +41,10 @@ func updateSite(c *gin.Context) {
 func deleteSite(c *gin.Context) {
 	db := datastore.New(c)
 	s := site.New(db)
+
 	siteid := c.Param("siteid")
 	s.Netlify.Id = siteid
+
 	netlify.DeleteSite(c, s.Netlify.Id)
 }
 
@@ -49,7 +55,10 @@ func listSites(c *gin.Context) {
 func getSite(c *gin.Context) {
 	db := datastore.New(c)
 	s := site.New(db)
+
 	siteid := c.Param("siteid")
+	s.Get(siteid)
+
 	s.Netlify.Id = siteid
 
 	netlify.GetSite(c, s.Netlify.Id)
