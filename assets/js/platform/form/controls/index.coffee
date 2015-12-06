@@ -207,6 +207,7 @@ class BasicSelectView extends BasicInputView
   tag: 'basic-select'
   html: require '../../templates/backend/form/controls/basic-select.html'
 
+  any: false
   tags: false
 
   # Use when loading options async
@@ -284,6 +285,7 @@ class BasicSelectView extends BasicInputView
   js:(opts)->
     super
 
+    @any = opts.any ? false
     @selectOptions = opts.options
 
     @on 'update', ()=>
@@ -328,31 +330,21 @@ MailinglistThankyouSelectView.register()
 
 class CountrySelectView extends BasicSelectView
   tag: 'country-select'
-  any: false
 
   options: ()->
     countries = _.extend window.countries, {}
     countries['_any'] = 'Any Country' if @any
     return countries
 
-  js: (opts)->
-    @any = opts.any ? false
-    super
-
 CountrySelectView.register()
 
 class CurrencySelectView extends BasicSelectView
   tag: 'currency-select'
-  any: false
 
   options: ()->
     currencies = _.extend window.currencies, {}
     currencies['_any'] = 'Any Currency' if @any
     return currencies
-
-  js: (opts)->
-    @any = opts.any ? false
-    super
 
 CurrencySelectView.register()
 
@@ -375,7 +367,7 @@ class ProductSelectView extends BasicSelectView
 
     api = Api.get('crowdstart')
     api.get('product').then (res)=>
-      @products = '_any': 'Any Product'
+      @products = '_any': 'Any Product' if @any
       for product in res.responseText.models
         @products[product.id] = product.name
 
@@ -413,6 +405,41 @@ class AnalyticsEventsSelect extends BasicSelectView
     }
 
 AnalyticsEventsSelect.register()
+
+class OrderStatusSelect extends BasicSelectView
+  tag: 'order-status-select'
+  options: ()->
+    cancelled:  'Cancelled'
+    completed:  'Completed'
+    locked:     'Locked'
+    'on-hold':  'On Hold'
+    open:       'Open'
+
+OrderStatusSelect.register()
+
+class PaymentStatusSelect extends BasicSelectView
+  tag: 'payment-status-select'
+  options: ()->
+    cancelled:  'Cancelled'
+    credit:     'Credit'
+    disputed:   'Disputed'
+    failed:     'Failed'
+    fraudulent: 'Fraudulent'
+    paid:       'Paid'
+    refunded:   'Refunded'
+    unpaid:     'Unpaid'
+
+PaymentStatusSelect.register()
+
+class FulfillmentStatusSelect extends BasicSelectView
+  tag: 'fulfillment-status-select'
+  options: ()->
+    unfulfilled:    'Unfulfilled'
+    shipped:        'Shipped'
+    processing:     'Processing'
+    cancelled:      'Cancelled'
+
+FulfillmentStatusSelect.register()
 
 # tag registration
 helpers.registerTag (inputCfg)->
@@ -466,6 +493,18 @@ helpers.registerTag (inputCfg)->
 helpers.registerTag (inputCfg)->
   return inputCfg.hints['analytics-events-select']
 , 'analytics-events-select'
+
+helpers.registerTag (inputCfg)->
+  return inputCfg.hints['order-status-select']
+, 'order-status-select'
+
+helpers.registerTag (inputCfg)->
+  return inputCfg.hints['payment-status-select']
+, 'payment-status-select'
+
+helpers.registerTag (inputCfg)->
+  return inputCfg.hints['fulfillment-status-select']
+, 'fulfillment-status-select'
 
 helpers.registerTag (inputCfg)->
   return inputCfg.hints['static-money']

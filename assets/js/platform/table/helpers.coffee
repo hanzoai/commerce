@@ -1,4 +1,5 @@
 riot = require 'riot'
+_ = require 'underscore'
 
 class TableFieldCondition
   constructor: (@predicate, @tagName)->
@@ -40,6 +41,11 @@ riot.tag 'table-field', '', (opts)->
 
   tag = helpers.render field
 
-  riot.mount @root, tag, opts
+  dummyOpts = _.extend {}, opts
+
+  tags = riot.mount @root, tag, opts
+
+  #hack :\
+  tags[0].js opts
 
 module.exports = helpers

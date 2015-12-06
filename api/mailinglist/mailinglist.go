@@ -12,7 +12,7 @@ import (
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/subscriber"
 	"crowdstart.com/models/types/client"
-	"crowdstart.com/thirdparty/redis"
+	"crowdstart.com/util/counter"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/json/http"
 	"crowdstart.com/util/log"
@@ -68,7 +68,7 @@ func addSubscriber(c *gin.Context) {
 	org := organization.New(db)
 	org.GetById(ml.Key().Namespace())
 
-	if err := redis.IncrSubscribers(ctx, org, ml.Id(), time.Now()); err != nil {
+	if err := counter.IncrSubscribers(ctx, org, ml.Id(), time.Now()); err != nil {
 		log.Warn("Redis Error %s", err, ctx)
 	}
 }
