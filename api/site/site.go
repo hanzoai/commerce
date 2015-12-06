@@ -18,7 +18,7 @@ func createSite(c *gin.Context) {
 		return
 	}
 
-	if err := netlify.CreateSite(c, s); err != nil {
+	if _, err := netlify.CreateSite(c, s); err != nil {
 		http.Fail(c, 500, "Failed to create site", err)
 	}
 }
