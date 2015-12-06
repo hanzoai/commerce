@@ -3,10 +3,15 @@ package counter
 import (
 	"fmt"
 	"math/rand"
+	"time"
 
 	"appengine"
 	"appengine/datastore"
+	"appengine/delay"
 	"appengine/memcache"
+	"appengine/taskqueue"
+
+	"crowdstart.com/util/log"
 )
 
 type counterConfig struct {
@@ -22,7 +27,7 @@ type shard struct {
 }
 
 const (
-	defaultShards = 20
+	defaultShards = 3
 	configKind    = "GeneralCounterShardConfig"
 	shardKind     = "GeneralCounterShard"
 )
@@ -108,51 +113,7 @@ func AddSetMember(c appengine.Context, name, value string) error {
 
 // Adds a member to the array on the shard
 func AddMember(c appengine.Context, name, value string) error {
-	// Get counter config.
-	var cfg counterConfig
-	ckey := datastore.NewKey(c, configKind, name, 0, nil)
-	err := datastore.RunInTransaction(c, func(c appengine.Context) error {
-		err := datastore.Get(c, ckey, &cfg)
-		if err == datastore.ErrNoSuchEntity {
-			cfg.Shards = defaultShards
-			_, err = datastore.Put(c, ckey, &cfg)
-		}
-		return err
-	}, nil)
-	if err != nil {
-		return err
-	}
-	var s shard
-	err = datastore.RunInTransaction(c, func(c appengine.Context) error {
-		shardName := fmt.Sprintf("%s-shard%d", name, rand.Intn(cfg.Shards))
-		key := datastore.NewKey(c, shardKind, shardName, 0, nil)
-		err := datastore.Get(c, key, &s)
-		// A missing entity and a present entity will both work.
-		if err != nil && err != datastore.ErrNoSuchEntity {
-			return err
-		}
-		s.Name = name
-		s.Members = append(s.Members, value)
-		_, err = datastore.Put(c, key, &s)
-		return err
-	}, nil)
-	if err == datastore.ErrConcurrentTransaction {
-		IncreaseShards(c, name, 1)
-		return AddMember(c, name, value)
-	}
-	if err != nil {
-		return err
-	}
-
-	mkey := memcacheKey(name)
-	var members []string
-	if _, err := memcache.JSON.Get(c, mkey, &members); err == nil {
-		memcache.JSON.Set(c, &memcache.Item{
-			Key:        mkey,
-			Object:     &s.Members,
-			Expiration: 60,
-		})
-	}
+	AddMemberTask.Call(c, name, value)
 	return nil
 }
 
@@ -163,42 +124,7 @@ func Increment(c appengine.Context, name string) error {
 
 // Increment increments the named counter by amount
 func IncrementBy(c appengine.Context, name string, amount int) error {
-	// Get counter config.
-	var cfg counterConfig
-	ckey := datastore.NewKey(c, configKind, name, 0, nil)
-	err := datastore.RunInTransaction(c, func(c appengine.Context) error {
-		err := datastore.Get(c, ckey, &cfg)
-		if err == datastore.ErrNoSuchEntity {
-			cfg.Shards = defaultShards
-			_, err = datastore.Put(c, ckey, &cfg)
-		}
-		return err
-	}, nil)
-	if err != nil {
-		return err
-	}
-	var s shard
-	err = datastore.RunInTransaction(c, func(c appengine.Context) error {
-		shardName := fmt.Sprintf("%s-shard%d", name, rand.Intn(cfg.Shards))
-		key := datastore.NewKey(c, shardKind, shardName, 0, nil)
-		err := datastore.Get(c, key, &s)
-		// A missing entity and a present entity will both work.
-		if err != nil && err != datastore.ErrNoSuchEntity {
-			return err
-		}
-		s.Name = name
-		s.Count += amount
-		_, err = datastore.Put(c, key, &s)
-		return err
-	}, nil)
-	if err == datastore.ErrConcurrentTransaction {
-		IncreaseShards(c, name, 1)
-		return IncrementBy(c, name, amount)
-	}
-	if err != nil {
-		return err
-	}
-	memcache.IncrementExisting(c, memcacheKey(name), int64(amount))
+	IncrementByTask.Call(c, name, amount)
 	return nil
 }
 
@@ -225,4 +151,118 @@ func IncreaseShards(c appengine.Context, name string, n int) error {
 		}
 		return err
 	}, nil)
+}
+
+var IncrementByTask *delay.Function
+var AddMemberTask *delay.Function
+
+func init() {
+	IncrementByTask = delay.Func("IncrementByTask", func(c appengine.Context, name string, amount int) {
+		log.Warn("INCREMENT BY", c)
+		// Get counter config.
+		var cfg counterConfig
+		ckey := datastore.NewKey(c, configKind, name, 0, nil)
+		err := datastore.RunInTransaction(c, func(c appengine.Context) error {
+			err := datastore.Get(c, ckey, &cfg)
+			if err == datastore.ErrNoSuchEntity {
+				cfg.Shards = defaultShards
+				_, err = datastore.Put(c, ckey, &cfg)
+			}
+			return err
+		}, nil)
+		if err != nil {
+			log.Panic("IncrementByTask Error %v", err, c)
+		}
+		var s shard
+		err = datastore.RunInTransaction(c, func(c appengine.Context) error {
+			shardName := fmt.Sprintf("%s-shard%d", name, rand.Intn(cfg.Shards))
+			key := datastore.NewKey(c, shardKind, shardName, 0, nil)
+			err := datastore.Get(c, key, &s)
+			// A missing entity and a present entity will both work.
+			if err != nil && err != datastore.ErrNoSuchEntity {
+				panic(err)
+			}
+			s.Name = name
+			s.Count += amount
+			_, err = datastore.Put(c, key, &s)
+			return err
+		}, nil)
+		if err == datastore.ErrConcurrentTransaction {
+			IncreaseShards(c, name, 1)
+			t, err := IncrementByTask.Task(c, name, amount)
+			if err != nil {
+				log.Panic("IncrementByTask Error %v", err, c)
+			}
+
+			t.Delay = time.Duration(rand.Intn(30) * 1000000)
+			_, err = taskqueue.Add(c, t, "")
+			if err != nil {
+				log.Panic("IncrementByTask Error %v", err, c)
+			}
+			return
+		}
+		if err != nil {
+			log.Panic("IncrementByTask Error %v", err, c)
+		}
+		memcache.IncrementExisting(c, memcacheKey(name), int64(amount))
+	})
+
+	AddMemberTask = delay.Func("AddMember", func(c appengine.Context, name, value string) {
+		log.Warn("ADD MEMBER", c)
+		// Get counter config.
+		var cfg counterConfig
+		ckey := datastore.NewKey(c, configKind, name, 0, nil)
+		err := datastore.RunInTransaction(c, func(c appengine.Context) error {
+			err := datastore.Get(c, ckey, &cfg)
+			if err == datastore.ErrNoSuchEntity {
+				cfg.Shards = defaultShards
+				_, err = datastore.Put(c, ckey, &cfg)
+			}
+			return err
+		}, nil)
+		if err != nil {
+			log.Panic("AddMemberTask Error %v", err, c)
+		}
+		var s shard
+		err = datastore.RunInTransaction(c, func(c appengine.Context) error {
+			shardName := fmt.Sprintf("%s-shard%d", name, rand.Intn(cfg.Shards))
+			key := datastore.NewKey(c, shardKind, shardName, 0, nil)
+			err := datastore.Get(c, key, &s)
+			// A missing entity and a present entity will both work.
+			if err != nil && err != datastore.ErrNoSuchEntity {
+				return err
+			}
+			s.Name = name
+			s.Members = append(s.Members, value)
+			_, err = datastore.Put(c, key, &s)
+			return err
+		}, nil)
+		if err == datastore.ErrConcurrentTransaction {
+			IncreaseShards(c, name, 1)
+			t, err := AddMemberTask.Task(c, name, value)
+			if err != nil {
+				log.Panic("AddMemberTask Error %v", err, c)
+			}
+
+			t.Delay = time.Duration(rand.Intn(30) * 1000000)
+			_, err = taskqueue.Add(c, t, "")
+			if err != nil {
+				log.Panic("AddMemberTask Error %v", err, c)
+			}
+			return
+		}
+		if err != nil {
+			log.Panic("AddMemberTask Error %v", err, c)
+		}
+
+		mkey := memcacheKey(name)
+		var members []string
+		if _, err := memcache.JSON.Get(c, mkey, &members); err == nil {
+			memcache.JSON.Set(c, &memcache.Item{
+				Key:        mkey,
+				Object:     &s.Members,
+				Expiration: 60,
+			})
+		}
+	})
 }
