@@ -136,6 +136,10 @@ func AddMember(c appengine.Context, name, value string) error {
 		_, err = datastore.Put(c, key, &s)
 		return err
 	}, nil)
+	if err == datastore.ErrConcurrentTransaction {
+		IncreaseShards(c, name, 1)
+		return AddMember(c, name, value)
+	}
 	if err != nil {
 		return err
 	}
@@ -187,6 +191,10 @@ func IncrementBy(c appengine.Context, name string, amount int) error {
 		_, err = datastore.Put(c, key, &s)
 		return err
 	}, nil)
+	if err == datastore.ErrConcurrentTransaction {
+		IncreaseShards(c, name, 1)
+		return IncrementBy(c, name, amount)
+	}
 	if err != nil {
 		return err
 	}
