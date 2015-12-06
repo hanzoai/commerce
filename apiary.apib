@@ -7,13 +7,11 @@ associated with running a crowdfunding campaign.
 The API is currently in beta. Please contact support@crowdstart.com if you
 intend to use our API in any production code.
 
-# Group Payment API
-There is a special, easy-to-use API with static endpoints for collecting money.
-There is a one-step payment process (charge endpoint) and a two-step payment
-process (authorize endpoint, followed by the capture endpoint on the Order
-object).
+# Group Checkout API
+Our Checkout API supports one-step (charge endpoint) and two payment (authorize,
+capture) processes.
 
-## One-step Payments [/charge]
+## One-step Payments [/checkout/charge]
 The one-step payment process is mostly used for general commerce for immediate
 fulfillment/sale.  In general, you must send three things to successfully
 complete a charge call: order information, payment information, and user
@@ -132,9 +130,6 @@ Any failure in this process will result in a failure of the call.
                   },
                   "cvcCheck":"pass"
                 },
-                "paypal":{
-
-                }
               },
               "currency":"usd",
               "campaignId":"",
@@ -155,7 +150,7 @@ Any failure in this process will result in a failure of the call.
           }
         }
 
-## Two-step payment process, part 1 [/authorize]
+## Two-step payment process, part 1 [/checkout/authorize]
 The two-step payment process separates the two steps mentioned in the one-step
 payment process, and allows you to authorize a payment, and then capture it at a
 later period.  This is useful for pre-orders or other such payments that you do
@@ -272,9 +267,6 @@ capture portion.
                        },
                        "cvcCheck":"pass"
                     },
-                    "paypal":{
-
-                    }
                  },
                  "currency":"usd",
                  "campaignId":"",
@@ -372,7 +364,6 @@ returned in the Authorize step (see above).
                   },
                   "cvcCheck":"pass"
                 },
-                "paypal":{}
               },
               "currency":"usd",
               "campaignId":"",
@@ -768,7 +759,7 @@ confused with a [Cart](#cart), which are prospective purchases.
 | shipped           | A switch indicating whether or not this order has been shipped.                                                                                                                    | bool                    |
 | test              | A switch indicating whether or not this is a test order.                                                                                                                           | bool                    |
 | unconfirmed       | A switch indicating whether or not all details are confirmed. If false, most often the user has not declared precise order variant options.                                        | bool                    |
-| type              | This is a payment processor type, such as stripe (for credit card payments), paypal (for escrow payments), etc.                                                                    | string                  |
+| type              | This is a payment processor type, such as Stripe (for credit card payments), PayPal (for escrow payments), etc.                                                                    | string                  |
 
 ## Calls related to Orders [/order/{id}]
 Basic Order calls are keyed upon the unique ID of the Order.  As with all calls,
@@ -906,7 +897,6 @@ this endpoint.
                "notes":"non",
                "address":{}
             },
-            "affirm":{},
             "stripe":{
                "fingerprint":"k6nxwtejxyhmpcr3",
                "customerid":"cus_5ve1sykb8aayvc",
@@ -920,7 +910,6 @@ this endpoint.
                },
                "cvccheck":"pass"
             },
-            "paypal":{}
          },
          "currency":"usd",
          "campaignid":"",
@@ -1510,7 +1499,7 @@ request, while any fields not specified in the JSON will be left alone.
 | billingAddress  | The billing address for this user.                                                        | string                  |
 | shippingAddress | The shipping address for this user.                                                       | string                  |
 | email           | The email for this user.                                                                  | string                  |
-| paypalEmail     | The email used for the paypal account attached to this user.                              | string                  |
+| payPalEmail     | The email used for the paypal account attached to this user.                              | string                  |
 | enabled         | Whether or not the user can log in.                                                       | bool                    |
 | referrals       | A list of referrals that this user has generated.                                         | [[]referral(#referral)] |
 | referrers       | A list of referrers this user has been referred by.                                       | [[]referrer](#referrer) |

@@ -3,51 +3,18 @@ package site
 import (
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
+
+	"github.com/netlify/netlify-go"
 )
 
 type Site struct {
 	mixin.Model
-	SiteId             string             `json:"id"`
-	Premium            bool               `json:"premium"`
-	Claimed            bool               `json:"claimed"`
-	NotificationEmail  string             `json:"notification_email"`
-	Url                string             `json:"url"`
-	AdminUrl           string             `json:"admin_url"`
-	ScreenshotUrl      string             `json:"screenshot_url"`
-	CreatedAt          string             `json:"created_at"`
-	State              string             `json:"state"`
-	UpdatedAt          string             `json:"updated_at"`
-	Name               string             `json:"name"`
-	CustomDomain       string             `json:"custom_domain"`
-	Password           string             `json:"password"`
-	Repo               string             `json:"repo"`
-	ProcessingSettings ProcessingSettings `json:"processing_settings"`
-}
 
-type ProcessingSettings struct {
-	Css    Css    `json: "css"`
-	Js     Js     `json: "js"`
-	Html   Html   `json: "html"`
-	Images Images `json: "images"`
-}
+	Domain string
+	Name   string
+	Url    string
 
-type Css struct {
-	Bundle bool `json: "bundle"`
-	Minify bool `json: "minify"`
-}
-
-type Js struct {
-	Bundle bool `json: "bundle"`
-	Minify bool `json: "minify"`
-}
-
-type Html struct {
-	PrettyUrls    bool `json: "pretty_urls"`
-	CanonicalUrls bool `json: "canonical_urls"`
-}
-
-type Images struct {
-	Optimize bool `json: "optimize"`
+	Netlify netlify.Site `json:"-"`
 }
 
 func (s *Site) Init() {
