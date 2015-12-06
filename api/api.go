@@ -30,6 +30,7 @@ import (
 	orderApi "crowdstart.com/api/order"
 	organizationApi "crowdstart.com/api/organization"
 	searchApi "crowdstart.com/api/search"
+	siteApi "crowdstart.com/api/site"
 	storeApi "crowdstart.com/api/store"
 	userApi "crowdstart.com/api/user"
 
@@ -81,6 +82,7 @@ func init() {
 	orderApi.Route(api, tokenRequired)
 	storeApi.Route(api, tokenRequired)
 	userApi.Route(api, tokenRequired)
+	siteApi.Route(api, tokenRequired)
 
 	// Crowdstart APIs, using default namespace (internal use only)
 	campaign := rest.New(campaign.Campaign{})
