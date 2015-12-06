@@ -13,7 +13,7 @@ import (
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/types/currency"
-	"crowdstart.com/thirdparty/redis"
+	"crowdstart.com/util/counter"
 	"crowdstart.com/util/log"
 )
 
@@ -84,25 +84,25 @@ func CompleteCapture(c *gin.Context, org *organization.Organization, ord *order.
 	if !ord.Test {
 		log.Debug("Incrementing Counters", c)
 		t := ord.CreatedAt
-		if err := redis.IncrTotalOrders(ctx, org, t); err != nil {
-			log.Warn("Redis Error %s", err, ctx)
+		if err := counter.IncrTotalOrders(ctx, org, t); err != nil {
+			log.Warn("Counter Error %s", err, ctx)
 		}
-		if err := redis.IncrTotalSales(ctx, org, payments, t); err != nil {
-			log.Warn("Redis Error %s", err, ctx)
+		if err := counter.IncrTotalSales(ctx, org, payments, t); err != nil {
+			log.Warn("Counter Error %s", err, ctx)
 		}
-		if err := redis.IncrTotalProductOrders(ctx, org, ord, t); err != nil {
-			log.Warn("Redis Error %s", err, ctx)
+		if err := counter.IncrTotalProductOrders(ctx, org, ord, t); err != nil {
+			log.Warn("Counter Error %s", err, ctx)
 		}
 
 		if ord.StoreId != "" {
-			if err := redis.IncrStoreOrders(ctx, org, ord.StoreId, t); err != nil {
-				log.Warn("Redis Error %s", err, ctx)
+			if err := counter.IncrStoreOrders(ctx, org, ord.StoreId, t); err != nil {
+				log.Warn("Counter Error %s", err, ctx)
 			}
-			if err := redis.IncrStoreSales(ctx, org, ord.StoreId, payments, t); err != nil {
-				log.Warn("Redis Error %s", err, ctx)
+			if err := counter.IncrStoreSales(ctx, org, ord.StoreId, payments, t); err != nil {
+				log.Warn("Counter Error %s", err, ctx)
 			}
-			if err := redis.IncrStoreProductOrders(ctx, org, ord.StoreId, ord, t); err != nil {
-				log.Warn("Redis Error %s", err, ctx)
+			if err := counter.IncrStoreProductOrders(ctx, org, ord.StoreId, ord, t); err != nil {
+				log.Warn("Counter Error %s", err, ctx)
 			}
 		}
 	}
