@@ -40,6 +40,8 @@ const (
 )
 
 func GetDashboardData(ctx appengine.Context, t Period, date time.Time, tzOffset int, org *organization.Organization) (DashboardData, error) {
+	ctx = org.Namespace(ctx)
+
 	loc := time.FixedZone("utc +"+strconv.Itoa(tzOffset), tzOffset)
 
 	data := DashboardData{}
