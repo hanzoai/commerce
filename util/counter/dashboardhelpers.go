@@ -1,0 +1,249 @@
+package counter
+
+import (
+	"strconv"
+	"time"
+
+	"appengine/memcache"
+
+	"appengine"
+
+	"crowdstart.com/models/organization"
+	"crowdstart.com/models/types/currency"
+	"crowdstart.com/util/log"
+)
+
+type currencyValue map[currency.Type]int
+type currencyValues map[currency.Type][]int
+
+type DashboardData struct {
+	TotalSales       currencyValue
+	TotalOrders      int
+	TotalUsers       int
+	TotalSubscribers int
+
+	DailySales       currencyValues
+	DailyOrders      []int
+	DailyUsers       []int
+	DailySubscribers []int
+
+	// DailyStoreSales  [](map[currency.Type]int64)
+	// DailyStoreOrders [](map[currency.Type]int64)
+}
+type Period string
+
+const (
+	Yearly  Period = "yearly"
+	Monthly        = "monthly"
+	Weekly         = "weekly"
+	Daily          = "daily"
+)
+
+func GetDashboardData(ctx appengine.Context, t Period, date time.Time, tzOffset int, org *organization.Organization) (DashboardData, error) {
+	ctx = org.Namespace(ctx)
+
+	loc := time.FixedZone("utc +"+strconv.Itoa(tzOffset), tzOffset)
+
+	data := DashboardData{}
+	dashboardKey := org.Name + sep + string(t) + sep + loc.String() + sep
+	switch t {
+	case Monthly:
+		d := time.Date(date.Year(), date.Month(), 1, 0, 0, 0, 0, loc)
+		dashboardKey += strconv.FormatInt(d.Unix(), 10)
+	case Weekly:
+		weekday := int(date.Weekday())
+		d := time.Date(date.Year(), date.Month(), (7-weekday)+date.Day(), 0, 0, 0, 0, loc)
+		dashboardKey += strconv.FormatInt(d.Unix(), 10)
+	case Daily:
+		d := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, loc)
+		dashboardKey += strconv.FormatInt(d.Unix(), 10)
+	}
+
+	log.Debug("Redis memcache lookup for key: %v", dashboardKey)
+
+	if _, err := memcache.Gob.Get(ctx, dashboardKey, &data); err == nil {
+		log.Debug("Redis memcache hit for key: %v", dashboardKey)
+		return data, nil
+	}
+
+	log.Debug("Redis memcache miss for key: %v", dashboardKey)
+	data.TotalSales = make(currencyValue)
+
+	var (
+		newDate time.Time
+		oldDate time.Time
+		buckets int64
+	)
+
+	switch t {
+	case Monthly:
+		year := date.Year()
+		month := date.Month()
+		oldDate = time.Date(year, month, 1, 0, 0, 0, 0, date.Location())
+		newDate = time.Date(year, month+1, 1, 0, 0, 0, 0, date.Location())
+
+		// 0th day of month is last day of previous month
+		buckets = int64(time.Date(year, month+1, 0, 0, 0, 0, 0, time.UTC).Day())
+
+	case Weekly:
+		weekday := int(date.Weekday())
+		newDate = time.Date(date.Year(), date.Month(), (7-weekday)+date.Day(), 0, 0, 0, 0, date.Location())
+		oldDate = time.Date(date.Year(), date.Month(), (7-weekday)+date.Day()-7, 0, 0, 0, 0, date.Location())
+
+		buckets = 7
+
+	case Daily:
+		newDate = time.Date(date.Year(), date.Month(), date.Day(), 23, 59, 0, 0, loc)
+		oldDate = time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, loc)
+
+		buckets = 24
+	}
+
+	currencies, err := Members(ctx, setName(org, currencySetKey))
+	if err != nil {
+		log.Error("Redis Error: %v", err)
+		return data, err
+	}
+
+	users, err := Count(ctx, userKey(org, allTime))
+	if err != nil {
+		log.Error("Redis Error: %v", err)
+		return data, err
+	}
+
+	data.TotalUsers = users
+
+	subs, err := Count(ctx, subKey(org, mailinglistAllKey, allTime))
+
+	if err != nil {
+		log.Error("Redis Error: %v", err)
+		return data, err
+	}
+
+	data.TotalSubscribers = subs
+
+	orders, err := Count(ctx, totalKey(org, ordersKey, allTime))
+
+	if err != nil {
+		log.Error("Redis Error: %v", err)
+		return data, err
+	}
+
+	data.TotalOrders = orders
+
+	for _, cur := range currencies {
+		currency := currency.Type(cur)
+
+		keyId := salesKeyId(currency)
+		sales, err := Count(ctx, totalKey(org, keyId, allTime))
+		if err != nil {
+			log.Error("Redis Error: %v", err)
+			return data, err
+		}
+
+		data.TotalSales[currency] = sales
+
+		data.DailySales = make(currencyValues)
+		data.DailyOrders = make([]int, buckets)
+		data.DailyUsers = make([]int, buckets)
+		data.DailySubscribers = make([]int, buckets)
+
+		currentDate := oldDate
+		startDate := currentDate
+		for currentDate.Before(newDate) {
+			var (
+				i  int
+				tf TimeFunc
+			)
+			if t == Daily {
+				i = currentDate.Hour() - startDate.Hour()
+				tf = hourly
+			} else {
+				i = currentDate.Day() - startDate.Day()
+				if currentDate.Month() != startDate.Month() {
+					i += time.Date(currentDate.Year(), currentDate.Month(), 0, 0, 0, 0, 0, time.UTC).Day()
+				}
+				tf = daily
+			}
+
+			if data.DailySales[currency] == nil {
+				data.DailySales[currency] = make([]int, buckets)
+			}
+
+			sales, err := Count(ctx, totalKey(org, keyId, tf(currentDate)))
+			if err != nil {
+				log.Error("Redis Error: %v", err)
+				return data, err
+			}
+
+			data.DailySales[currency][i] += sales
+
+			orders, err := Count(ctx, totalKey(org, ordersKey, tf(currentDate)))
+			if err != nil {
+				log.Error("Redis Error: %v", err)
+				return data, err
+			}
+
+			data.DailyOrders[i] += orders
+
+			users, err := Count(ctx, userKey(org, tf(currentDate)))
+			if err != nil {
+				log.Error("Redis Error: %v", err)
+				return data, err
+			}
+
+			data.DailyUsers[i] += users
+
+			subs, err := Count(ctx, subKey(org, mailinglistAllKey, tf(currentDate)))
+			if err != nil {
+				log.Error("Redis Error: %v", err)
+				return data, err
+			}
+
+			data.DailyUsers[i] += subs
+
+			if t == Daily {
+				currentDate = currentDate.Add(time.Hour)
+			} else {
+				currentDate = currentDate.Add(time.Hour * 24)
+			}
+		}
+	}
+
+	// var stors []store.Store
+	// if _, err := store.Query(db).GetAll(&stors); err != nil {
+	// 	return data, err
+	// }
+	// currentDate := oldDate
+	// startDay := currentDate.Day()
+	// for currentDate.Before(newDate) {
+	// 	i := currentDate.Day() - startDay
+	// 	totalSalesKey := totalKey(org, salesKeyId(stor.Currency), strconv.FormatInt(currentDate.Unix(), 10))
+	// 	totalOrdersKey := totalKey(org, ordersKey, strconv.FormatInt(currentDate.Unix(), 10))
+
+	// 	data.DailyOrders[i]
+	// }
+
+	// for _, stor := range stors {
+	// }
+
+	expiration := 0 * time.Minute
+
+	// isToday := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
+	// now := time.Now()
+	// today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+
+	// if isToday.Equal(today) {
+	expiration = 15 * time.Minute
+	// }
+
+	item := &memcache.Item{
+		Key:        dashboardKey,
+		Object:     data,
+		Expiration: expiration,
+	}
+
+	memcache.Gob.Set(ctx, item)
+
+	return data, nil
+}
