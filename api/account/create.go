@@ -14,7 +14,7 @@ import (
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/token"
 	"crowdstart.com/models/user"
-	"crowdstart.com/thirdparty/redis"
+	"crowdstart.com/util/counter"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/json/http"
 	"crowdstart.com/util/log"
@@ -188,7 +188,7 @@ func create(c *gin.Context) {
 	}
 
 	ctx := org.Db.Context
-	if err := redis.IncrUsers(ctx, org, time.Now()); err != nil {
+	if err := counter.IncrUsers(ctx, org, time.Now()); err != nil {
 		log.Warn("Redis Error %s", err, ctx)
 	}
 
