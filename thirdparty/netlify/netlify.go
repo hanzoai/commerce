@@ -17,20 +17,20 @@ import (
 func createClient(c *gin.Context) *netlify.Client {
 	ctx := middleware.GetAppEngine(c)
 
-	httpClient := urlfetch.Client(ctx)
-	httpClient.Transport = &urlfetch.Transport{
+	client := urlfetch.Client(ctx)
+	client.Transport = &urlfetch.Transport{
 		Context:  ctx,
 		Deadline: time.Duration(20) * time.Second, // Update deadline to 20 seconds
 	}
 
 	return netlify.NewClient(&netlify.Config{
 		AccessToken: config.Netlify.AccessToken,
-		HttpClient:  httpClient,
+		HttpClient:  client,
 		UserAgent:   "Crowdstart/1.0",
 	})
 }
 
-func CreateSite(c *gin.Context, s *site.Site) error {
+func CreateSite(c *gin.Context, s *site.Site) (*netlify.Site, error) {
 	client := createClient(c)
 
 	// Create new site on Netlify's side
@@ -42,7 +42,24 @@ func CreateSite(c *gin.Context, s *site.Site) error {
 	// Copy over netlify site attributes
 	s.Netlify = *nsite
 
-	return err
+	return nsite, err
+}
+
+func GetSite(c *gin.Context, siteId string) (*netlify.Site, error) {
+	client := createClient(c)
+
+	nsite, _, err := client.Sites.Get(siteId)
+
+	return nsite, err
+}
+
+func ListSites(c *gin.Context) ([]netlify.Site, error) {
+	client := createClient(c)
+
+	// Create new site on Netlify's side
+	nsites, _, err := client.Sites.List(&netlify.ListOptions{})
+
+	return nsites, err
 }
 
 func UpdateSite(c *gin.Context, s *site.Site) error {
@@ -82,21 +99,4 @@ func DeleteSite(c *gin.Context, siteId string) error {
 	_, err = nsite.Destroy()
 
 	return err
-}
-
-func GetSite(c *gin.Context, siteId string) (*netlify.Site, error) {
-	client := createClient(c)
-
-	nsite, _, err := client.Sites.Get(siteId)
-
-	return nsite, err
-}
-
-func ListSites(c *gin.Context) ([]netlify.Site, error) {
-	client := createClient(c)
-
-	// Create new site on Netlify's side
-	nsites, _, err := client.Sites.List(&netlify.ListOptions{})
-
-	return nsites, err
 }
