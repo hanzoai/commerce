@@ -27,6 +27,8 @@ var (
 	allTime = "all"
 )
 
+type TimeFunc func(t time.Time) string
+
 func monthly(t time.Time) string {
 	t2 := time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, t.Location())
 	return "monthly" + sep + strconv.FormatInt(t2.Unix(), 10)
