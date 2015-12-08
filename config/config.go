@@ -107,6 +107,13 @@ type Config struct {
 		AccessToken string
 	}
 
+	// Cloudflare {
+	Cloudflare struct {
+		Email string
+		Key   string
+		Zone  string
+	}
+
 	// Redis
 	Redis struct {
 		Url      string
@@ -215,6 +222,7 @@ var config = Get()
 var AutoCompileAssets = config.AutoCompileAssets
 var AutoLoadFixtures = config.AutoLoadFixtures
 var CookieDomain = config.CookieDomain
+var Cloudflare = config.Cloudflare
 var DatastoreWarn = config.DatastoreWarn
 var DemoMode = config.DemoMode
 var Facebook = config.Facebook
