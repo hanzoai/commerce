@@ -43,5 +43,9 @@ func Defaults() *Config {
 	config.Netlify.Secret = ""
 	config.Netlify.AccessToken = "420a9e1f834a183cb70af98dfa4ba6f8c4589b7ab50b34c0a35acc88573c338e"
 
+	config.Cloudflare.Email = "dev@hanzo.ai"
+	config.Cloudflare.Key = ""
+	config.Cloudflare.Zone = "crowdstart.com"
+
 	return config
 }
