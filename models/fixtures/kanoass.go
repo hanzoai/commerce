@@ -25,6 +25,9 @@ var KanoaSS = New("kanoa-ss", func(c *gin.Context) *organization.Organization {
 	u.PasswordHash, _ = password.Hash("6bgX8LVwzwJaDwCd")
 	u.Put()
 
+	// Add to admins
+	org.Admins = append(org.Admins, u.Id())
+
 	// Save org into default namespace
 	org.Put()
 
