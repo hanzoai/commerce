@@ -136,6 +136,10 @@ type Order struct {
 	Metadata_ string   `json:"-" datastore:",noindex"`
 
 	Test bool `json:"-"` // Whether our internal test flag is active or not
+
+	Gift        bool   `json:"gift"`        // Is this a gift?
+	GiftMessage string `json:"giftMessage"` // Message to go on gift
+	GiftEmail   string `json:"giftEmail"`   // Email for digital gifts
 }
 
 func (o *Order) Init() {
