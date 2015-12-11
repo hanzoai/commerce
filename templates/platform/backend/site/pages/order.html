@@ -79,8 +79,10 @@
             Gift Information
           </div>
           <div class="panel-body">
-            <control label="Email" input="{ inputs.giftEmail }" if="{ model.giftEmail }" labelClasses="col-xs-2 col-xs-offset-8 text-right" controlClasses="col-xs-2 text-right"></control>
-            <control label="Message" input="{ inputs.giftMessage }" labelClasses="col-xs-2 col-xs-offset-8 text-right" controlClasses="col-xs-2 text-right"></control>
+            <div class="section col-xs-12" style="padding:0">
+              <control label="Email" input="{ inputs.giftEmail }" if="{ model.giftEmail }"></control>
+              <control label="Message" input="{ inputs.giftMessage }"></control>
+            </div>
           </div>
         </div>
 
