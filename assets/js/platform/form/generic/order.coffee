@@ -28,6 +28,9 @@ class OrderForm extends Form
     input('shippingAddress.postalCode', 'Postal/ZIP Code', 'postal-code'),
     input('shippingAddress.country', 'Choose a Country...', 'country-select', 'required'),
 
+    input('giftEmail', ''),
+    input('giftMessage', ''),
+
     input('currency', '', 'static'),
     input('lineTotal', '', 'static-money'),
     input('discount', '', 'static-money'),
