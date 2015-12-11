@@ -64,13 +64,23 @@
           </div>
         </div>
 
-        <div id="order-items" class="panel animated fadeIn" if="{ model.couponItems }">
+        <div id="free-order-items" class="panel animated fadeIn" if="{ model.couponItems }">
           <div class="panel-heading">
             Free Coupon Items
           </div>
           <div class="panel-body">
             <item-list obs="{ obs }" itemsModel="{ 'couponItems' }">
             </item-list>
+          </div>
+        </div>
+
+        <div id="gift-info" class="panel animated fadeIn" if="{ model.gift }">
+          <div class="panel-heading">
+            Gift Information
+          </div>
+          <div class="panel-body">
+            <control label="Email" input="{ inputs.giftEmail }" if="{ model.giftEmail }" labelClasses="col-xs-2 col-xs-offset-8 text-right" controlClasses="col-xs-2 text-right"></control>
+            <control label="Message" input="{ inputs.giftMessage }" labelClasses="col-xs-2 col-xs-offset-8 text-right" controlClasses="col-xs-2 text-right"></control>
           </div>
         </div>
 
