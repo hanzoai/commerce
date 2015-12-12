@@ -43,6 +43,12 @@ type LineItem struct {
 
 	// Whether taxes apply to this line item
 	Taxable bool `json:"taxable"`
+
+	// Item should be considered free due to coupon being applied or whatnot.
+	Free bool `json:"free"`
+
+	// Non-user party which added this lineitem (coupon or otherwise).
+	AddedBy string `json:"addedBy"`
 }
 
 func (li LineItem) TotalPrice() currency.Cents {
