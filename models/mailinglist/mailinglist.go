@@ -25,8 +25,10 @@ type Mailchimp struct {
 	UpdateExisting   bool   `json:"updateExisting"`
 	ReplaceInterests bool   `json:"replaceInterests"`
 
-	// Whether to have mailchimp email confirmation
+	// Whether to have Mailchimp send email confirmation
 	SendWelcome bool `json:"sendWelcome"`
+
+	Enabled bool `json:"enabled"`
 }
 
 type MailingList struct {
@@ -40,6 +42,13 @@ type MailingList struct {
 
 	// Mailchimp settings for this list
 	Mailchimp Mailchimp `json:"mailchimp"`
+
+	// Email forwarding
+	Forward struct {
+		Email   string `json:"email"`
+		Name    string `json:"name"`
+		Enabled bool   `json:"enabled"`
+	} `json:"forward"`
 
 	// Url to Thank you page
 	ThankYou struct {
