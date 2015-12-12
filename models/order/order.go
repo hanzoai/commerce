@@ -360,6 +360,10 @@ func (o *Order) UpdateDiscount() {
 						o.Discount = currency.Cents(int(o.Discount) + (item.Quantity * c.Amount))
 					case coupon.Percent:
 						o.Discount = currency.Cents(int(o.Discount) + int(math.Floor(float64(item.TotalPrice())*float64(c.Amount)*0.01)))
+					case coupon.FreeItem:
+						o.Discount = currency.Cents(o.Discount + item.TotalPrice())
+
+						break // Discount should never be applied more than once per coupon.
 					}
 
 					// Break out unless required to apply to each product
