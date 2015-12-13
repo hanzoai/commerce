@@ -601,6 +601,12 @@ func (o *Order) Tally() {
 func (o *Order) UpdateAndTally(stor *store.Store) error {
 	ctx := o.Db.Context
 
+	// Get coupons from datastore
+	if err := o.GetCoupons(); err != nil {
+		log.Error(err, ctx)
+		return errors.New("Failed to get coupons")
+	}
+
 	// Update the list of free coupon items
 	o.UpdateCouponItems()
 
@@ -617,12 +623,6 @@ func (o *Order) UpdateAndTally(stor *store.Store) error {
 
 	// Update line items using that information
 	o.UpdateFromEntities()
-
-	// Get coupons from datastore
-	if err := o.GetCoupons(); err != nil {
-		log.Error(err, ctx)
-		return errors.New("Failed to get coupons")
-	}
 
 	// Update discount amount
 	o.UpdateDiscount()
