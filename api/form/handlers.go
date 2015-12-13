@@ -14,17 +14,8 @@ import (
 func Route(router router.Router, args ...gin.HandlerFunc) {
 	api := rest.New(mailinglist.MailingList{})
 
-	group := router.Group("form")
-	group.Use(middleware.AccessControl("*"))
-
-	group.POST("/:formid/submit", handleForm)
-	group.POST("/:formid/subscribe", handleForm)
-	group.GET("/:formid/js", ml.Js)
-
-	api.Route(router, args...)
-
 	// TODO: Remove deprecated endpoint
-	group = router.Group("mailinglist")
+	group := router.Group("mailinglist")
 	group.Use(middleware.AccessControl("*"))
 
 	group.POST("/:formid/subscribe", handleForm)
@@ -32,4 +23,12 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 
 	api.Route(router, args...)
 
+	// group := router.Group("form")
+	// group.Use(middleware.AccessControl("*"))
+
+	// group.POST("/:formid/submit", handleForm)
+	// group.POST("/:formid/subscribe", handleForm)
+	// group.GET("/:formid/js", ml.Js)
+
+	// api.Route(router, args...)
 }
