@@ -5,6 +5,7 @@ import (
 
 	"appengine"
 
+	"crowdstart.com/config"
 	"crowdstart.com/models/mailinglist"
 	"crowdstart.com/models/organization"
 
@@ -24,5 +25,6 @@ func forward(ctx appengine.Context, org *organization.Organization, ml *mailingl
 	fromName := "Crowdstart"
 	subject := "New submission for form " + ml.Name
 	html := fmt.Sprintf("%v", s)
-	mandrill.Send.Call(ctx, org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, html)
+
+	mandrill.Send.Call(ctx, config.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, html)
 }
