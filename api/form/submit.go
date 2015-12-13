@@ -1,4 +1,4 @@
-package mailinglist
+package form
 
 import (
 	"github.com/gin-gonic/gin"
