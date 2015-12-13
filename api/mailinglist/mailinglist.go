@@ -5,15 +5,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/config"
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mailinglist"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/types/form"
 	"crowdstart.com/util/json/http"
 )
-
-var subscriberEndpoint = config.UrlFor("api", "/subscriber/")
 
 // Add subscriber to mailing list
 func addSubscriber(c *gin.Context) {
