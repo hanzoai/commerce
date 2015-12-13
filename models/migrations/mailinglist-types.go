@@ -15,7 +15,7 @@ var _ = New("mailinglist-types",
 		return NoArgs
 	},
 	func(db *ds.Datastore, ml *mailinglist.MailingList) {
-		ml.Type = form.Signup
+		ml.Type = form.Subscribe
 		if err := ml.Put(); err != nil {
 			log.Error(err, db.Context)
 		}
