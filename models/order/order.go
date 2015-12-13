@@ -326,7 +326,7 @@ func (o *Order) UpdateDiscount() {
 
 	for i := 0; i < num; i++ {
 		c := &o.Coupons[i]
-		if !c.Enabled {
+		if !c.ValidFor(o.CreatedAt) {
 			continue
 		}
 
@@ -382,7 +382,7 @@ func (o *Order) UpdateCouponItems() error {
 
 	for i := 0; i < nCodes; i++ {
 		c := &o.Coupons[i]
-		if !c.Enabled {
+		if !c.ValidFor(o.CreatedAt) {
 			continue
 		}
 		if c.ProductId == "" {
