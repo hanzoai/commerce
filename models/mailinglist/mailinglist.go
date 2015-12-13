@@ -10,6 +10,7 @@ import (
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/subscriber"
+	"crowdstart.com/models/types/form"
 	"crowdstart.com/models/types/thankyou"
 	"crowdstart.com/util/fs"
 	"crowdstart.com/util/json"
@@ -18,30 +19,31 @@ import (
 
 var jsTemplate = ""
 
-type Mailchimp struct {
-	Id               string `json:"id"`
-	APIKey           string `json:"apiKey"`
-	DoubleOptin      bool   `json:"doubleOptin"`
-	UpdateExisting   bool   `json:"updateExisting"`
-	ReplaceInterests bool   `json:"replaceInterests"`
-
-	// Whether to have Mailchimp send email confirmation
-	SendWelcome bool `json:"sendWelcome"`
-
-	Enabled bool `json:"enabled"`
-}
-
 type MailingList struct {
 	mixin.Model
 
 	// Name of list
 	Name string `json:"name"`
 
+	// Type of form
+	Type form.Type `json:"type"`
+
 	// Whether to send email confirmation
 	SendWelcome bool `json:"sendWelcome"`
 
 	// Mailchimp settings for this list
-	Mailchimp Mailchimp `json:"mailchimp"`
+	Mailchimp struct {
+		Id               string `json:"id"`
+		APIKey           string `json:"apiKey"`
+		DoubleOptin      bool   `json:"doubleOptin"`
+		UpdateExisting   bool   `json:"updateExisting"`
+		ReplaceInterests bool   `json:"replaceInterests"`
+
+		// Whether to have Mailchimp send email confirmation
+		SendWelcome bool `json:"sendWelcome"`
+
+		Enabled bool `json:"enabled"`
+	} `json:"mailchimp"`
 
 	// Email forwarding
 	Forward struct {
