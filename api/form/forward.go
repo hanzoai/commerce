@@ -41,10 +41,10 @@ func forward(ctx appengine.Context, org *organization.Organization, ml *mailingl
 	fromName := "Crowdstart"
 	subject := "New submission for form " + ml.Name
 
-	html := fmt.Sprintf("Form submission from: %v\n", replyTo)
+	html := fmt.Sprintf("<b>From</b>: %v<br>", replyTo)
 
 	for k, v := range metadata {
-		html += fmt.Sprintf("%s: %s\n", k, v)
+		html += fmt.Sprintf("<b>%s</b>: %s<br>", k, v)
 	}
 
 	mandrill.Send.Call(ctx, config.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, html)
