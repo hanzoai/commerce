@@ -936,7 +936,7 @@ a specific [User](#user).
 | referrerUserId | The identifier for the [User](#user) that induced the purchase.                 | string |
 | referrerId     | The identifier for the [Referrer](#referrer) that this referral is credited to. | string |
 
-## Calls related to Referrals [/referrer/{id}]
+## Calls related to Referrals [/referral/{id}]
 Basic Referral calls are keyed upon the unique ID of the Referral.  As with all
 calls, it also requires an access key included with the request.
 
@@ -955,6 +955,7 @@ calls, it also requires an access key included with the request.
 
 ### Creating a Referral [POST]
 + Request (application/json)
+
         {
           "userId": "lVg6HluKM4",
           "orderId": "VdNi66rHwa",
@@ -963,6 +964,7 @@ calls, it also requires an access key included with the request.
         }
 
 + Response 200 (application/json)
+
         {
           "id": "M6rsDDXCXM",
           "createdAt": "2015-11-27T00:27:46.91231Z",
@@ -1133,7 +1135,7 @@ included with the request.
 This is the only call that is available for Transactions, as they are too
 directly sensitive to allow to be modified.
 
-+ Response (application/json)
++ Response 200 (application/json)
 
         {
           "id": "Mkei8xdCpL",
@@ -1597,34 +1599,34 @@ Returns all sites that you are authorized to see.
 
 + Response 200 (application/json)
 
-    [
-        {
-            "id":"3970e0fe-8564-4903-9a55-c5f8de49fb8b",
-            "name":"example",
-            "custom_domain":"www.example.com",
-            "url":"http://www.example.com",
-            "admin_url":"https://api.crowdstart.com/sites/example",
-            "screenshot_url":null,
-            "created_at":"2013-09-17T05:13:08Z",
-            "updated_at":"2013-09-17T05:13:19Z"
-        }
-    ]
+        [
+            {
+                "id":"3970e0fe-8564-4903-9a55-c5f8de49fb8b",
+                "name":"example",
+                "custom_domain":"www.example.com",
+                "url":"http://www.example.com",
+                "admin_url":"https://api.crowdstart.com/sites/example",
+                "screenshot_url":null,
+                "created_at":"2013-09-17T05:13:08Z",
+                "updated_at":"2013-09-17T05:13:19Z"
+            }
+        ]
 
 ### Create a Site [POST]
 This will deploy a new site.
 
 + Request
 
-    {
-        "name": "example",
-        "custom_domain": "www.example.com",
-        "password": "super_secret",
-        "repo": "http://github.com/bestsites/examplesite"
-    }
+        {
+            "name": "example",
+            "custom_domain": "www.example.com",
+            "password": "super_secret",
+            "repo": "http://github.com/bestsites/examplesite"
+        }
 
 + Response 200
 
-## Calls related to Site [/site/{id}}]
+## Calls related to Site [/site/{id}]
 These site calls are keyed on the SiteId in the Site object. As with all calls,
 it also requires an access key to be sent along with the request.
 
@@ -1632,29 +1634,29 @@ it also requires an access key to be sent along with the request.
 
 + Response 200 (application/json)
 
-    {
-        "id":"3970e0fe-8564-4903-9a55-c5f8de49fb8b",
-        "name":"example",
-        "custom_domain":"www.example.com",
-        "notification_email":"me@example.com",
-        "url":"http://www.example.com",
-        "admin_url":"https://api.crowdstart.com/sites/example",
-        "screenshot_url":null,
-        "created_at":"2013-09-17T05:13:08Z",
-        "updated_at":"2013-09-17T05:13:19Z",
-    }
+        {
+            "id":"3970e0fe-8564-4903-9a55-c5f8de49fb8b",
+            "name":"example",
+            "custom_domain":"www.example.com",
+            "notification_email":"me@example.com",
+            "url":"http://www.example.com",
+            "admin_url":"https://api.crowdstart.com/sites/example",
+            "screenshot_url":null,
+            "created_at":"2013-09-17T05:13:08Z",
+            "updated_at":"2013-09-17T05:13:19Z",
+        }
 
 ### Update a site [PUT]
 This functionally is a POST/Create command with a contextual site ID.
 
 + Request
 
-    {
-        "name": "example",
-        "custom_domain": "www.example.com",
-        "password": "super_secret",
-        "repo": "http://github.com/bestsites/examplesite"
-    }
+        {
+            "name": "example",
+            "custom_domain": "www.example.com",
+            "password": "super_secret",
+            "repo": "http://github.com/bestsites/examplesite"
+        }
 
 + Response 200
 
