@@ -330,8 +330,8 @@ func (o *Order) UpdateDiscount() {
 			continue
 		}
 
-		if c.ProductId == "" {
-			// Coupons per product
+		if c.ItemId() == "" {
+			// Not per product
 			switch c.Type {
 			case coupon.Flat:
 				o.Discount += currency.Cents(c.Amount)
@@ -346,14 +346,14 @@ func (o *Order) UpdateDiscount() {
 			// Coupons per product
 			for _, item := range o.Items {
 				log.Debug("Coupon.ProductId: %v, Item.ProductId: %v", c.ProductId, item.ProductId, ctx)
-				if item.Id() == c.ProductId || item.Id() == c.FreeProductId || item.Id() == c.FreeVariantId {
+				if item.Id() == c.ItemId() {
 					switch c.Type {
 					case coupon.Flat:
 						o.Discount += currency.Cents(item.Quantity * c.Amount)
 					case coupon.Percent:
 						o.Discount += currency.Cents(math.Floor(float64(item.TotalPrice()) * float64(c.Amount) * 0.01))
 					case coupon.FreeItem:
-						o.Discount += currency.Cents(item.TotalPrice())
+						o.Discount += currency.Cents(item.Price)
 					}
 
 					// Break out unless required to apply to each product
