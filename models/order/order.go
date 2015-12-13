@@ -327,6 +327,13 @@ func (o Order) HasDiscount() bool {
 // Update discount using coupon codes/order info.
 func (o *Order) UpdateDiscount() {
 	o.Discount = 0
+
+	for _, item := range o.Items {
+		if item.Free {
+			o.Discount += item.Price
+		}
+	}
+
 	num := len(o.CouponCodes)
 
 	ctx := o.Model.Db.Context
@@ -341,13 +348,13 @@ func (o *Order) UpdateDiscount() {
 			// Coupons per product
 			switch c.Type {
 			case coupon.Flat:
-				o.Discount = currency.Cents(int(o.Discount) + c.Amount)
+				o.Discount += currency.Cents(int(o.Discount) + c.Amount)
 			case coupon.Percent:
 				for _, item := range o.Items {
-					o.Discount = currency.Cents(int(o.Discount) + int(math.Floor(float64(item.TotalPrice())*float64(c.Amount)*0.01)))
+					o.Discount += currency.Cents(int(o.Discount) + int(math.Floor(float64(item.TotalPrice())*float64(c.Amount)*0.01)))
 				}
 			case coupon.FreeShipping:
-				o.Discount = currency.Cents(int(o.Discount) + int(o.Shipping))
+				o.Discount += currency.Cents(int(o.Discount) + int(o.Shipping))
 			}
 		} else {
 			// Coupons per product
@@ -357,13 +364,9 @@ func (o *Order) UpdateDiscount() {
 				if item.ProductId == c.ProductId {
 					switch c.Type {
 					case coupon.Flat:
-						o.Discount = currency.Cents(int(o.Discount) + (item.Quantity * c.Amount))
+						o.Discount += currency.Cents(int(o.Discount) + (item.Quantity * c.Amount))
 					case coupon.Percent:
-						o.Discount = currency.Cents(int(o.Discount) + int(math.Floor(float64(item.TotalPrice())*float64(c.Amount)*0.01)))
-					case coupon.FreeItem:
-						o.Discount = currency.Cents(o.Discount + item.TotalPrice())
-
-						break // Discount should never be applied more than once per coupon.
+						o.Discount += currency.Cents(int(o.Discount) + int(math.Floor(float64(item.TotalPrice())*float64(c.Amount)*0.01)))
 					}
 
 					// Break out unless required to apply to each product
@@ -381,7 +384,14 @@ func (o *Order) UpdateDiscount() {
 func (o *Order) UpdateCouponItems() error {
 	nCodes := len(o.CouponCodes)
 
-	o.CouponItems = make([]LineItem, 0)
+	items := make([]LineItem, 0)
+	for _, item := range o.Items {
+		if item.AddedBy != "coupon" {
+			items = append(items, item)
+		}
+	}
+
+	o.Items = items
 
 	for i := 0; i < nCodes; i++ {
 		c := &o.Coupons[i]
@@ -391,10 +401,12 @@ func (o *Order) UpdateCouponItems() error {
 		if c.ProductId == "" {
 			switch c.Type {
 			case coupon.FreeItem:
-				o.CouponItems = append(o.CouponItems, LineItem{
+				o.Items = append(o.Items, LineItem{
 					ProductId: c.FreeProductId,
 					VariantId: c.FreeVariantId,
 					Quantity:  c.FreeQuantity,
+					Free:      true,
+					AddedBy:   "coupon",
 				})
 			}
 		} else {
@@ -402,10 +414,12 @@ func (o *Order) UpdateCouponItems() error {
 				if item.ProductId == c.ProductId {
 					switch c.Type {
 					case coupon.FreeItem:
-						o.CouponItems = append(o.CouponItems, LineItem{
+						o.Items = append(o.Items, LineItem{
 							ProductId: c.FreeProductId,
 							VariantId: c.FreeVariantId,
 							Quantity:  c.FreeQuantity,
+							Free:      true,
+							AddedBy:   "coupon",
 						})
 					}
 				}
@@ -587,6 +601,9 @@ func (o *Order) Tally() {
 func (o *Order) UpdateAndTally(stor *store.Store) error {
 	ctx := o.Db.Context
 
+	// Update the list of free coupon items
+	o.UpdateCouponItems()
+
 	// Get underlying product/variant entities
 	if err := o.GetItemEntities(); err != nil {
 		log.Error(err, ctx)
@@ -609,9 +626,6 @@ func (o *Order) UpdateAndTally(stor *store.Store) error {
 
 	// Update discount amount
 	o.UpdateDiscount()
-
-	// Update the list of free coupon items
-	o.UpdateCouponItems()
 
 	// Tally up order again
 	o.Tally()
