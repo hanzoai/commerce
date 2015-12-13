@@ -320,12 +320,6 @@ func (o Order) HasDiscount() bool {
 func (o *Order) UpdateDiscount() {
 	o.Discount = 0
 
-	for _, item := range o.Items {
-		if item.Free {
-			o.Discount += item.Price
-		}
-	}
-
 	num := len(o.CouponCodes)
 
 	ctx := o.Model.Db.Context
@@ -340,13 +334,13 @@ func (o *Order) UpdateDiscount() {
 			// Coupons per product
 			switch c.Type {
 			case coupon.Flat:
-				o.Discount += currency.Cents(int(o.Discount) + c.Amount)
+				o.Discount += currency.Cents(c.Amount)
 			case coupon.Percent:
 				for _, item := range o.Items {
-					o.Discount += currency.Cents(int(o.Discount) + int(math.Floor(float64(item.TotalPrice())*float64(c.Amount)*0.01)))
+					o.Discount += currency.Cents(int(math.Floor(float64(item.TotalPrice()) * float64(c.Amount) * 0.01)))
 				}
 			case coupon.FreeShipping:
-				o.Discount += currency.Cents(int(o.Discount) + int(o.Shipping))
+				o.Discount += currency.Cents(int(o.Shipping))
 			}
 		} else {
 			// Coupons per product
@@ -356,9 +350,12 @@ func (o *Order) UpdateDiscount() {
 				if item.ProductId == c.ProductId {
 					switch c.Type {
 					case coupon.Flat:
-						o.Discount += currency.Cents(int(o.Discount) + (item.Quantity * c.Amount))
+						o.Discount += currency.Cents(item.Quantity * c.Amount)
 					case coupon.Percent:
-						o.Discount += currency.Cents(int(o.Discount) + int(math.Floor(float64(item.TotalPrice())*float64(c.Amount)*0.01)))
+						o.Discount += currency.Cents(int(math.Floor(float64(item.TotalPrice()) * float64(c.Amount) * 0.01)))
+					case coupon.FreeItem:
+						o.Discount += currency.Cents(item.TotalPrice())
+						break
 					}
 
 					// Break out unless required to apply to each product
