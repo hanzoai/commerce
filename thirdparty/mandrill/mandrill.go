@@ -49,9 +49,9 @@ type SendReq struct {
 		FromName  string      `json:"from_name"`
 		To        []Recipient `json:"to"`
 
-		// Headers   struct {
-		// 	ReplyTo string `json:"Reply-To"`
-		// } `json:"headers"`
+		Headers struct {
+			ReplyTo string `json:"Reply-To"`
+		} `json:"headers"`
 
 		// Important bool `json:"important"`
 		// TrackOpens         interface{} `json:"track_opens"`
