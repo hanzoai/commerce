@@ -734,6 +734,18 @@ request, while any fields not specified in the JSON will be left alone.
 
 + Response 201 (application/json)
 
+## Calls related to Form submission [/form/{id}/submit]
+
+### Submitting a Form [POST]
++ Request (application/json)
+
+        {
+          "name": "Such Fan",
+          "email" "suchfan@gmail.com"
+        }
+
++ Response 201 (application/json)
+
 # Group Order
 
 This object is a representation of a user's **completed purchase**.  The order should not be
