@@ -38,9 +38,9 @@ func addSubscriber(c *gin.Context) {
 	}
 
 	switch ml.Type {
-	case form.Signup:
+	case form.Subscribe:
 		subscribe(c, db, org, ml)
-	case form.Contact:
+	case form.Submit:
 		submit(c, db, org, ml)
 	}
 }
