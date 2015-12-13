@@ -12,7 +12,7 @@ import (
 	"crowdstart.com/models/types/currency"
 )
 
-var _ = New("kanoabf", func(c *gin.Context) *organization.Organization {
+var _ = New("kanoa-bf", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)
