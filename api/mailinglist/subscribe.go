@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"crowdstart.com/config"
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mailinglist"
 	"crowdstart.com/models/organization"
@@ -17,6 +18,8 @@ import (
 
 	mailchimp "crowdstart.com/thirdparty/mailchimp/tasks"
 )
+
+var subscriberEndpoint = config.UrlFor("api", "/subscriber/")
 
 func subscribe(c *gin.Context, db *datastore.Datastore, org *organization.Organization, ml *mailinglist.MailingList) {
 	ctx := db.Context
