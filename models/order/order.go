@@ -359,7 +359,7 @@ func (o *Order) UpdateDiscount() {
 		} else {
 			// Coupons per product
 			for _, item := range o.Items {
-				log.Warn("Coupon.ProductId: %v, Item.ProductId: %v", c.ProductId, item.ProductId, ctx)
+				log.Debug("Coupon.ProductId: %v, Item.ProductId: %v", c.ProductId, item.ProductId, ctx)
 				// log.Warn("%v, %v ==? %v", item.ProductName, item.ProductId, c.ProductId)
 				if item.ProductId == c.ProductId {
 					switch c.Type {
