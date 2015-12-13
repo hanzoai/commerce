@@ -43,7 +43,7 @@ func forward(ctx appengine.Context, org *organization.Organization, ml *mailingl
 
 	html := ""
 	for k, v := range metadata {
-		html += fmt.Sprintf("<b>%s</b>: %s<br>", k, v)
+		html += fmt.Sprintf("<b>%s</b>: %s<br><br>", k, v)
 	}
 
 	mandrill.Forward.Call(ctx, config.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, replyTo, subject, html)
