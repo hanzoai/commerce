@@ -12,6 +12,7 @@ import (
 
 var _ = New("recalculate-coupon-items",
 	func(c *gin.Context) []interface{} {
+		c.Set("namespace", "kanoa")
 		return NoArgs
 	},
 	func(db *ds.Datastore, ord *order.Order) {
@@ -20,11 +21,12 @@ var _ = New("recalculate-coupon-items",
 			if ord.StoreId != "" {
 				if err := stor.GetById(ord.StoreId); err != nil {
 					log.Error("Could not find store %v", err, db.Context)
-					return
+					ord.StoreId = ""
+					stor = nil
 				}
 			}
 
-			ord.UpdateAndTally(stor)
+			ord.UpdateAndTally(nil)
 			ord.MustPut()
 		}
 	},
