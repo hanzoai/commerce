@@ -9,7 +9,7 @@ import (
 	"crowdstart.com/models/user"
 )
 
-var KanoaSS = New("kanoa-ss", func(c *gin.Context) *organization.Organization {
+var _ = New("kanoa-ss", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)
