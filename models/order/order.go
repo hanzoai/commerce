@@ -114,9 +114,6 @@ type Order struct {
 	// Individual line items
 	Items []LineItem `json:"items"`
 
-	// Free Items from Coupons
-	CouponItems []LineItem `json:"couponItems,omitempty"`
-
 	Adjustments []Adjustment `json:"-"`
 
 	Coupons     []coupon.Coupon `json:"coupons,omitempty"`
@@ -176,11 +173,6 @@ func (o Order) Document() mixin.Document {
 
 	productIds := make([]string, 0)
 	for _, item := range o.Items {
-		productIds = append(productIds, item.ProductId)
-		productIds = append(productIds, item.ProductSlug)
-	}
-
-	for _, item := range o.CouponItems {
 		productIds = append(productIds, item.ProductId)
 		productIds = append(productIds, item.ProductSlug)
 	}
@@ -425,33 +417,6 @@ func (o *Order) UpdateCouponItems() error {
 				}
 			}
 		}
-	}
-
-	db := o.Model.Db
-	ctx := o.Model.Db.Context
-
-	nItems := len(o.CouponItems)
-	keys := make([]datastore.Key, nItems, nItems)
-	vals := make([]interface{}, nItems, nItems)
-
-	for i := 0; i < nItems; i++ {
-		key, dst, err := o.CouponItems[i].Entity(db)
-		if err != nil {
-			log.Error("Failed to get entity for %#v: %v", o.CouponItems[i], err, ctx)
-			return err
-		}
-		keys[i] = key
-		vals[i] = dst
-	}
-
-	err := db.GetMulti(keys, vals)
-	if err != nil {
-		log.Error("Failed to get coupon items: %v", err, ctx)
-		return err
-	}
-
-	for i := 0; i < nItems; i++ {
-		(&o.CouponItems[i]).Update()
 	}
 
 	return nil
