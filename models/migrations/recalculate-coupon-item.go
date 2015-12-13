@@ -19,7 +19,8 @@ var _ = New("recalculate-coupon-items",
 			stor := store.New(db)
 			if ord.StoreId != "" {
 				if err := stor.GetById(ord.StoreId); err != nil {
-					log.Error("Could not find store", err, db.Context)
+					log.Error("Could not find store %v", err, db.Context)
+					return
 				}
 			}
 
