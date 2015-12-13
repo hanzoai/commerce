@@ -1,4 +1,4 @@
-package mailinglist
+package form
 
 import (
 	"fmt"
@@ -12,8 +12,8 @@ import (
 	"crowdstart.com/util/json/http"
 )
 
-// Add subscriber to mailing list
-func addSubscriber(c *gin.Context) {
+// handle form submissions
+func handleForm(c *gin.Context) {
 	id := c.Params.ByName("mailinglistid")
 	db := datastore.New(c)
 
