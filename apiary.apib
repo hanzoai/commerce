@@ -594,7 +594,7 @@ request, while any fields not specified in the JSON will be left alone.
 
 + Response 201 (application/json)
 
-# Group Mailing List
+# Group Form
 This object represents your list of email subscribers, and a number of settings
 related to interacting with them.
 
@@ -607,11 +607,11 @@ related to interacting with them.
 | facebook    | A sub-object containing information for conversion tracking on Facebook.                         | [Facebook](#facebook)   |
 | google      | A sub-object containing information for conversion tracking with Google.                         | [Google](#google)       |
 
-## Calls related to Mailing Lists [/mailinglist/{id}]
-Basic Mailing List calls are keyed to the unique ID of the list.  As with
+## Calls related to Forms [/form/{id}]
+Basic Form calls are keyed to the unique ID of the form.  As with
 all calls, it also requires an API key to be included with the request.
 
-### Get a Mailing List [GET]
+### Get a Form [GET]
 + Response 200 (application/json)
 
         {
@@ -619,14 +619,21 @@ all calls, it also requires an API key to be included with the request.
           "createdAt": "2015-04-27T01:15:33.113334Z",
           "updatedAt": "2015-04-27T01:15:33.113334Z",
           "name": "Teh Nooest Mailing List!",
+          "type": "subscribe",
           "sendWelcome": true,
           "mailchimp": {
             "id": "aowieij",
+            "enabled": true,
             "apiKey": "23098fIOWJEOIJFW",
             "doubleOptin": false,
-            "updateExisting": true,
             "replaceInterests": true,
-            "sendWelcome": false
+            "sendWelcome": false,
+            "updateExisting": true
+          },
+          "forward": {
+              "name": "Such Owner",
+              "email": "info@suchtees.com",
+              "enabled": true
           },
           "thankyou": {
             "type": "redirect",
@@ -643,11 +650,12 @@ all calls, it also requires an API key to be included with the request.
           }
         }
 
-### Create a Mailing List [POST]
+### Create a Form [POST]
 + Request (application/json)
 
         {
           "name": "Teh Nooest Mailing List!",
+          "type": "subscribe",
           "sendWelcome": true,
           "mailchimp": {
             "id": "aowieij",
@@ -655,7 +663,8 @@ all calls, it also requires an API key to be included with the request.
             "doubleOptin": false,
             "updateExisting": true,
             "replaceInterests": true,
-            "sendWelcome": false
+            "sendWelcome": false,
+            "enabled": true
           },
           "thankyou": {
             "type": "redirect",
@@ -679,6 +688,7 @@ all calls, it also requires an API key to be included with the request.
           "createdAt": "2015-04-27T01:15:33.113334Z",
           "updatedAt": "2015-04-27T01:15:33.113334Z",
           "name": "Teh Nooest Mailing List!",
+          "type": "subscribe",
           "sendWelcome": true,
           "mailchimp": {
             "id": "aowieij",
@@ -686,7 +696,8 @@ all calls, it also requires an API key to be included with the request.
             "doubleOptin": false,
             "updateExisting": true,
             "replaceInterests": true,
-            "sendWelcome": false
+            "sendWelcome": false,
+            "enabled": true
           },
           "thankyou": {
             "type": "redirect",
@@ -702,23 +713,23 @@ all calls, it also requires an API key to be included with the request.
             "name": "T-Shirt List Sign-up"
           }
 
-### Deleting a Mailing List [DELETE]
-Deleting a Mailing List is as simple as passing its ID to the Mailing List endpoint using
+### Deleting a Form [DELETE]
+Deleting a Form is as simple as passing its ID to the Form endpoint using
 the HTTP Delete method. You will not receive a response past the normal HTTP
 204.
 
 + Response 204 (application/json)
 
-### Updating a Mailing List [PUT]
+### Updating a Form [PUT]
 The PUT method will allow you to replace a given ID's data in its entirety.
-Passing in valid Mailing List JSON (see the POST method), will overwrite any and all
+Passing in valid Form JSON (see the POST method), will overwrite any and all
 data existing on that ID.
 
 + Response 201 (application/json)
 
-### Patching a Mailing List [PATCH]
+### Patching a Form [PATCH]
 The PATCH method will allow you to replace a given ID's data in a piecemeal
-fashion.  Any fields passed in to a PATCH method will be updated with what you
+fashion. Any fields passed in to a PATCH method will be updated with what you
 request, while any fields not specified in the JSON will be left alone.
 
 + Response 201 (application/json)
@@ -1866,8 +1877,8 @@ support@crowdstart.com.
 | "technology" | Technology    |
 
 ## Facebook
-This object holds information needed to track conversions from your mailing list
-to facebook campaigns.
+This object holds information needed to track conversions from your form to
+facebook campaigns.
 
 | Field Name | Field Description                                                               | Type   |
 | ---------- | ----------------                                                                | ----   |
@@ -1876,8 +1887,8 @@ to facebook campaigns.
 | currency   | The currency type used, to give what's defined in the value field some meaning. | string |
 
 ## Google
-This object holds information needed to track conversions from your mailing list
-when it is used in conjunction with Google campaigns.
+This object holds information needed to track conversions from your form when it
+is used in conjunction with Google campaigns.
 
 | Field Name | Field Description                                       | Type   |
 | ---------- | -----------------                                       | ----   |
@@ -1905,7 +1916,8 @@ or a confirmed one (in the case of [Order](#order))
 
 ## Mailchimp
 This object contains information that is used to integrate with your Mailchimp
-account, allowing your mailing lists to be notified of offers much more easily.
+account, allowing your form to automatically import susbcribers into Mailchimp
+and more.
 
 | Field Name       | Field Description                                                                                   | Type   |
 | ----------       | -----------------                                                                                   | ----   |
@@ -1918,7 +1930,7 @@ account, allowing your mailing lists to be notified of offers much more easily.
 
 ## ThankYou
 This object represents a handful of options in storing and designing the thank
-you page for customers that accept an offer from your mailing list.
+you page for customers that accept an offer from your form.
 
 | Field Name | Field Description                                                                                                       | Type   |
 | ---------- | -----------------                                                                                                       | ----   |
