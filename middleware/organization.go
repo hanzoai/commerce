@@ -56,7 +56,7 @@ func Namespace() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := GetAppEngine(c)
 		org := GetOrganization(c)
-		ctx = org.Namespace(ctx)
+		ctx = org.Namespaced(ctx)
 		c.Set("appengine", ctx)
 	}
 }
@@ -71,5 +71,5 @@ func GetToken(c *gin.Context) *token.Token {
 
 func GetNamespace(c *gin.Context) appengine.Context {
 	ctx := GetAppEngine(c)
-	return GetOrganization(c).Namespace(ctx)
+	return GetOrganization(c).Namespaced(ctx)
 }
