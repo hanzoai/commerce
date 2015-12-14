@@ -32,6 +32,7 @@ type Entity interface {
 	Context() appengine.Context
 	SetContext(ctx interface{})
 	SetNamespace(namespace string)
+	Namespace() string
 
 	// Get, Set keys
 	Key() (key datastore.Key)
@@ -139,6 +140,10 @@ func (m *Model) SetNamespace(namespace string) {
 	}
 
 	m.SetContext(ctx)
+}
+
+func (m *Model) Namespace() string {
+	return m.Key().Namespace()
 }
 
 // Return kind of entity

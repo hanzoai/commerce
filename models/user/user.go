@@ -20,6 +20,7 @@ import (
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/searchpartial"
 	"crowdstart.com/util/val"
+	"crowdstart.com/util/webhook"
 
 	. "crowdstart.com/models"
 )
@@ -264,60 +265,6 @@ func (u *User) GetByEmail(email string) error {
 	return nil
 }
 
-// // Insert new user
-// func (u *User) Insert(db *datastore.Datastore) error {
-// 	id := db.AllocateId("user")
-// 	k := db.KeyFromId("user", id)
-
-// 	log.Debug("Inserting New User with key %v", k)
-
-// 	u.Id = k.Encode()
-// 	u.CreatedAt = time.Now()
-// 	u.UpdatedAt = u.CreatedAt
-
-// 	_, err := db.PutKind("user", k, u)
-// 	return err
-// }
-
-// // Actual upsert method
-// func (u *User) upsert(db *datastore.Datastore) error {
-// 	k, err := db.DecodeKey(u.Id)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	_, err = db.PutKind("user", k, u)
-// 	return err
-// }
-
-// // Idempotent user upsert method.
-// func (u *User) Upsert(db *datastore.Datastore) error {
-// 	// We have an ID, we can just upsert
-// 	if u.Id != "" {
-// 		return u.upsert(db)
-// 	}
-
-// 	// We don't have an ID, we need to figure out if this is a new user or not.
-// 	user := new(User)
-// 	err := user.GetByEmail(db, u.Email)
-
-// 	// if we can't find the user, insert new user
-// 	if err == UserNotFound {
-// 		return u.Insert(db)
-// 	}
-
-// 	// Something bad happened, let's bail out
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	// Found user, set Id
-// 	u.Id = user.Id
-// 	u.UpdatedAt = time.Now()
-
-// 	return u.upsert(db)
-// }
-
 func (u *User) LoadReferrals() error {
 	if _, err := referrer.Query(u.Db).Filter("UserId=", u.Id()).GetAll(&u.Referrers); err != nil {
 		return err
@@ -365,6 +312,21 @@ func (u *User) SetPassword(newPassword string) error {
 	}
 
 	u.PasswordHash = hash
+	return nil
+}
+
+func (u *User) AfterCreate() error {
+	webhook.Emit(u.Context(), u.Namespace(), "user.created", u)
+	return nil
+}
+
+func (u *User) AfterUpdate() error {
+	webhook.Emit(u.Context(), u.Namespace(), "user.updated", u)
+	return nil
+}
+
+func (u *User) AfterDelete() error {
+	webhook.Emit(u.Context(), u.Namespace(), "user.deleted", u)
 	return nil
 }
 
