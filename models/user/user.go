@@ -28,6 +28,7 @@ var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 type User struct {
 	mixin.Model
+	mixin.Counter
 	mixin.Salesforce
 
 	// Crowdstart Id, found in default namespace
@@ -88,6 +89,7 @@ func New(db *datastore.Datastore) *User {
 	u := new(User)
 	u.Init()
 	u.Model = mixin.Model{Db: db, Entity: u}
+	u.Counter = mixin.Counter{Entity: u}
 	return u
 }
 

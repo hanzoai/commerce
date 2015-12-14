@@ -1,21 +1,15 @@
 package user
 
-import (
-	"time"
-
-	"crowdstart.com/util/webhook"
-
-	counter "crowdstart.com/util/counter2"
-)
+import "crowdstart.com/util/webhook"
 
 // Hooks
 func (u *User) AfterCreate() error {
 	webhook.Emit(u.Context(), u.Namespace(), "user.created", u)
 
-	counter.Increment(u.Context(), u.Kind())
-	counter.IncrementDay(u.Context(), u.Kind(), time.Now())
-	counter.IncrementHour(u.Context(), u.Kind(), time.Now())
-	counter.IncrementMonth(u.Context(), u.Kind(), time.Now())
+	u.Increment()
+	u.IncrementDay()
+	u.IncrementHour()
+	u.IncrementMonth()
 
 	return nil
 }
