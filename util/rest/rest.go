@@ -2,6 +2,7 @@ package rest
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -163,7 +164,8 @@ func (r Rest) CheckPermissions(c *gin.Context, method string) bool {
 		// msg := "Unsupported method for API access"
 		// r.Fail(c, 500, msg, errors.New(msg))
 		// return false
-		log.Warn("Unsupported method for API access", c)
+		msg := fmt.Sprintf("No permissions found matching method: '%s', skipping permission check.", method)
+		log.Warn(msg, c)
 		return true
 	}
 
@@ -175,7 +177,7 @@ func (r Rest) CheckPermissions(c *gin.Context, method string) bool {
 	}
 
 	// Token lacks valid permission
-	msg := "Token doesn't support " + method + " " + r.Kind
+	msg := "Token lacks permission to " + method + " " + r.Kind
 	r.Fail(c, 403, msg, errors.New(msg))
 	return false
 }
