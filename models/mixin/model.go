@@ -36,37 +36,60 @@ type SearchableKind interface {
 
 // A specific datastore entity, with methods inherited from this mixin
 type Entity interface {
+	// TODO: Should not be embedded in Entity I don't think
 	SearchableKind
 
+	// Get, Set context/namespace
 	Context() appengine.Context
 	SetContext(ctx interface{})
 	SetNamespace(namespace string)
+
+	// Get, Set keys
 	Key() (key datastore.Key)
 	SetKey(key interface{}) (err error)
 	NewKey() datastore.Key
 	Id() string
-	Get(args ...interface{}) error
-	GetById(string) error
+
+	// Various existential helpers
 	Exists() (bool, error)
 	IdExists(id string) (bool, error)
-	KeyExists(key interface{}) (datastore.Key, bool, error)
 	KeyById(string) (datastore.Key, bool, error)
-	MustGet(args ...interface{})
+	KeyExists(key interface{}) (datastore.Key, bool, error)
+
+	// Get, Put, Delete + Create, Update
+	Get(args ...interface{}) error
+	GetById(string) error
 	Put() error
 	Create() error
 	Update() error
-	PutDocument() error
+	Delete(args ...interface{}) error
+
+	// Must variants
+	MustCreate()
+	MustDelete(args ...interface{})
+	MustGet(args ...interface{})
 	MustPut()
+	MustUpdate()
+
+	// Document
+	PutDocument() error
+
+	// Get or Create, Update helpers
 	GetOrCreate(filterStr string, value interface{}) error
 	GetOrUpdate(filterStr string, value interface{}) error
-	RunInTransaction(fn func() error) error
-	Delete(args ...interface{}) error
-	Query() *Query
+
+	// Validation
 	Validate() error
 	Validator() *val.Validator
-	Slice() interface{}
-	JSON() []byte
+
+	// Query
+	Query() *Query
+
+	// Various helpers
 	Datastore() *datastore.Datastore
+	JSON() []byte
+	RunInTransaction(fn func() error) error
+	Slice() interface{}
 }
 
 // Model is a mixin which adds Datastore/Validation/Serialization methods to
@@ -566,6 +589,14 @@ func (m *Model) Delete(args ...interface{}) error {
 	}
 
 	return nil
+}
+
+// Delete or panic
+func (m *Model) MustDelete(args ...interface{}) {
+	err := m.Delete(args...)
+	if err != nil {
+		panic(err)
+	}
 }
 
 // Get entity from datastore or create new one
