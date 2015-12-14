@@ -62,11 +62,11 @@ type Entity interface {
 	Put() error
 	Create() error
 	Update() error
-	Delete(args ...interface{}) error
+	Delete() error
 
 	// Must variants
 	MustCreate()
-	MustDelete(args ...interface{})
+	MustDelete()
 	MustGet(args ...interface{})
 	MustPut()
 	MustUpdate()
@@ -553,17 +553,9 @@ func (m Model) DeleteDocument() error {
 }
 
 // Delete entity from Datastore
-func (m *Model) Delete(args ...interface{}) error {
+func (m *Model) Delete() error {
 	if m.Mock { // Need mock Delete
 		return m.mockDelete()
-	}
-
-	// If a key is specified, try to use that, ignore nil keys (which would
-	// otherwise create a new incomplete key which makes no sense in this case.
-	if len(args) == 1 && args[0] != nil {
-		if err := m.SetKey(args[0]); err != nil {
-			return err
-		}
 	}
 
 	// Execute BeforeDelete hook if defined on entity.
@@ -592,8 +584,8 @@ func (m *Model) Delete(args ...interface{}) error {
 }
 
 // Delete or panic
-func (m *Model) MustDelete(args ...interface{}) {
-	err := m.Delete(args...)
+func (m *Model) MustDelete() {
+	err := m.Delete()
 	if err != nil {
 		panic(err)
 	}
