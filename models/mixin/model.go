@@ -53,6 +53,8 @@ type Entity interface {
 	KeyById(string) (datastore.Key, bool, error)
 	MustGet(args ...interface{})
 	Put() error
+	Create() error
+	Update() error
 	PutDocument() error
 	MustPut()
 	GetOrCreate(filterStr string, value interface{}) error
@@ -286,6 +288,37 @@ func (m Model) PutDocument() error {
 	return nil
 }
 
+// Create new entity (should not exist yet)
+func (m *Model) Create() error {
+	// Execute BeforeCreate hook if defined on entity.
+	if hook, ok := m.Entity.(BeforeCreate); ok {
+		if err := hook.BeforeCreate(); err != nil {
+			return err
+		}
+	}
+
+	if err := m.Put(); err != nil {
+		return err
+	}
+
+	// Execute AfterCreate hook if defined on entity.
+	if hook, ok := m.Entity.(AfterCreate); ok {
+		if err := hook.AfterCreate(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Create new entity or panic
+func (m *Model) MustCreate() {
+	err := m.Create()
+	if err != nil {
+		panic(err)
+	}
+}
+
 // Get entity from datastore
 func (m *Model) Get(args ...interface{}) error {
 	// If a key is specified, try to use that, ignore nil keys (which would
@@ -450,69 +483,35 @@ func (m *Model) KeyExists(key interface{}) (datastore.Key, bool, error) {
 	return keys[0], true, nil
 }
 
-// Get entity from datastore or create new one
-func (m *Model) GetOrCreate(filterStr string, value interface{}) error {
-	ok, err := m.Query().Filter(filterStr, value).First()
+// Update new entity (should already exist)
+func (m *Model) Update() error {
+	// Execute BeforeUpdate hook if defined on entity.
+	if hook, ok := m.Entity.(BeforeUpdate); ok {
+		if err := hook.BeforeUpdate(); err != nil {
+			return err
+		}
+	}
 
-	// Something bad happened
-	if err != nil {
+	if err := m.Put(); err != nil {
 		return err
 	}
 
-	// Not found, save entity
-	if !ok {
-		// What were we filtering on? Make sure the field is set to value of
-		// filter. This prevents any duplicate attempts from creating new
-		// models as well.
-		name := strings.TrimSpace(strings.Split(filterStr, "=")[0])
-		field := reflect.Indirect(reflect.ValueOf(m.Entity)).FieldByName(name)
-		field.Set(reflect.ValueOf(value))
-
-		return m.Put()
+	// Execute AfterUpdate hook if defined on entity.
+	if hook, ok := m.Entity.(AfterUpdate); ok {
+		if err := hook.AfterUpdate(); err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
-// Get entity from datastore or create new one
-func (m *Model) GetOrUpdate(filterStr string, value interface{}) error {
-	entity := reflect.ValueOf(m.Entity).Interface()
-
-	q := m.Db.Query(m.Kind())
-	key, ok, err := q.Filter(filterStr, value).First(entity)
-
-	// Something bad happened
+// Update new entity or panic
+func (m *Model) MustUpdate() {
+	err := m.Update()
 	if err != nil {
-		return err
+		panic(err)
 	}
-
-	if !ok {
-		name := strings.TrimSpace(strings.Split(filterStr, "=")[0])
-		field := reflect.Indirect(reflect.ValueOf(m.Entity)).FieldByName(name)
-		field.Set(reflect.ValueOf(value))
-		return m.Put()
-	}
-
-	// Update copy found with our new data, use it's key, and save updated entity
-	structs.Copy(m.Entity, entity)
-	m.Entity = entity.(Entity)
-	m.SetKey(key)
-	return m.Put()
-}
-
-// NOTE: This is not thread-safe
-func (m *Model) RunInTransaction(fn func() error) error {
-	ctx := m.Db.Context
-
-	err := aeds.RunInTransaction(ctx, func(c appengine.Context) error {
-		m.Db.Context = c
-		return fn()
-	}, &aeds.TransactionOptions{XG: true})
-
-	// Should I set old context back?
-	m.Db.Context = ctx
-
-	return err
 }
 
 func (m Model) DeleteDocument() error {
@@ -544,11 +543,95 @@ func (m *Model) Delete(args ...interface{}) error {
 		}
 	}
 
+	// Execute BeforeUpdate hook if defined on entity.
+	if hook, ok := m.Entity.(BeforeDelete); ok {
+		if err := hook.BeforeDelete(); err != nil {
+			return err
+		}
+	}
+
 	if err := m.DeleteDocument(); err != nil {
 		log.Error("Could not delete search document for model with id %v", m.Id(), m.Db.Context)
 	}
 
-	return m.Db.Delete(m.key)
+	if err := m.Db.Delete(m.key); err != nil {
+		return err
+	}
+
+	// Execute BeforeUpdate hook if defined on entity.
+	if hook, ok := m.Entity.(AfterDelete); ok {
+		if err := hook.AfterDelete(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Get entity from datastore or create new one
+func (m *Model) GetOrCreate(filterStr string, value interface{}) error {
+	ok, err := m.Query().Filter(filterStr, value).First()
+
+	// Something bad happened
+	if err != nil {
+		return err
+	}
+
+	// Not found, save entity
+	if !ok {
+		// What were we filtering on? Make sure the field is set to value of
+		// filter. This prevents any duplicate attempts from creating new
+		// models as well.
+		name := strings.TrimSpace(strings.Split(filterStr, "=")[0])
+		field := reflect.Indirect(reflect.ValueOf(m.Entity)).FieldByName(name)
+		field.Set(reflect.ValueOf(value))
+
+		return m.Create()
+	}
+
+	return nil
+}
+
+// Get entity from datastore or create new one
+func (m *Model) GetOrUpdate(filterStr string, value interface{}) error {
+	entity := reflect.ValueOf(m.Entity).Interface()
+
+	q := m.Db.Query(m.Kind())
+	key, ok, err := q.Filter(filterStr, value).First(entity)
+
+	// Something bad happened
+	if err != nil {
+		return err
+	}
+
+	// Not found create
+	if !ok {
+		name := strings.TrimSpace(strings.Split(filterStr, "=")[0])
+		field := reflect.Indirect(reflect.ValueOf(m.Entity)).FieldByName(name)
+		field.Set(reflect.ValueOf(value))
+		return m.Create()
+	}
+
+	// Update copy found with our new data, use it's key, and save updated entity
+	structs.Copy(m.Entity, entity)
+	m.Entity = entity.(Entity)
+	m.SetKey(key)
+	return m.Update()
+}
+
+// NOTE: This is not thread-safe
+func (m *Model) RunInTransaction(fn func() error) error {
+	ctx := m.Db.Context
+
+	err := aeds.RunInTransaction(ctx, func(c appengine.Context) error {
+		m.Db.Context = c
+		return fn()
+	}, &aeds.TransactionOptions{XG: true})
+
+	// Should I set old context back?
+	m.Db.Context = ctx
+
+	return err
 }
 
 // Return a query for this entity kind
