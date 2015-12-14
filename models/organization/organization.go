@@ -227,7 +227,8 @@ func (o Organization) IsOwner(userOrId interface{}) bool {
 	return false
 }
 
-func (o Organization) Namespace(ctx interface{}) appengine.Context {
+// Get namespaced context for this organization
+func (o Organization) Namespaced(ctx interface{}) appengine.Context {
 	var _ctx appengine.Context
 
 	switch v := ctx.(type) {
