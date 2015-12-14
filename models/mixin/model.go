@@ -7,12 +7,10 @@ import (
 
 	"appengine"
 	aeds "appengine/datastore"
-	"appengine/search"
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/util/hashid"
 	"crowdstart.com/util/json"
-	"crowdstart.com/util/log"
 	"crowdstart.com/util/rand"
 	"crowdstart.com/util/structs"
 	"crowdstart.com/util/val"
@@ -25,19 +23,10 @@ type Kind interface {
 	Kind() string
 }
 
-type Searchable interface {
-	Document() Document
-}
-
-type SearchableKind interface {
-	Kind
-	Searchable
-}
-
 // A specific datastore entity, with methods inherited from this mixin
 type Entity interface {
 	// TODO: Should not be embedded in Entity I don't think
-	SearchableKind
+	Kind
 
 	// Get, Set context/namespace
 	Context() appengine.Context
@@ -73,6 +62,7 @@ type Entity interface {
 
 	// Document
 	PutDocument() error
+	DeleteDocument() error
 
 	// Get or Create, Update helpers
 	GetOrCreate(filterStr string, value interface{}) error
@@ -96,7 +86,7 @@ type Entity interface {
 // any Kind that it has been embedded in.
 type Model struct {
 	Db     *datastore.Datastore `json:"-" datastore:"-"`
-	Entity SearchableKind       `json:"-" datastore:"-"`
+	Entity Kind                 `json:"-" datastore:"-"`
 	Parent datastore.Key        `json:"-" datastore:"-"`
 	Mock   bool                 `json:"-" datastore:"-"`
 
@@ -113,7 +103,7 @@ type Model struct {
 }
 
 // Wire up datastore/entity
-func (m *Model) Mixin(db *datastore.Datastore, entity SearchableKind) {
+func (m *Model) Mixin(db *datastore.Datastore, entity Kind) {
 	// Do some reflection here and copy key Id_ off entity (if it had that stuff already populated)?
 	// oldmodel := reflect.ValueOf(entity).Elem().FieldByName("Model").(*Model)
 	// if oldmodel.Id_ != "" {
@@ -289,25 +279,9 @@ func (m *Model) Put() error {
 	// Update key
 	m.setKey(key)
 
-	if err := m.PutDocument(); err != nil {
-		log.Error("Could not save search document for model with id %v", m.Id(), m.Db.Context)
-	}
+	// Errors are ignored
+	m.PutDocument()
 
-	return nil
-}
-
-func (m Model) PutDocument() error {
-	if doc := m.Entity.Document(); doc != nil {
-		index, err := search.Open(m.Entity.Kind())
-		if err != nil {
-			return err
-		}
-
-		_, err = index.Put(m.Db.Context, m.Id(), doc)
-		if err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
@@ -537,21 +511,6 @@ func (m *Model) MustUpdate() {
 	}
 }
 
-func (m Model) DeleteDocument() error {
-	if doc := m.Entity.Document(); doc != nil {
-		index, err := search.Open(m.Entity.Kind())
-		if err != nil {
-			return err
-		}
-
-		err = index.Delete(m.Db.Context, m.Id())
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // Delete entity from Datastore
 func (m *Model) Delete() error {
 	if m.Mock { // Need mock Delete
@@ -565,9 +524,8 @@ func (m *Model) Delete() error {
 		}
 	}
 
-	if err := m.DeleteDocument(); err != nil {
-		log.Error("Could not delete search document for model with id %v", m.Id(), m.Db.Context)
-	}
+	// Errors are ignored
+	m.DeleteDocument()
 
 	if err := m.Db.Delete(m.key); err != nil {
 		return err
