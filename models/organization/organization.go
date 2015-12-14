@@ -179,10 +179,6 @@ func (o Organization) Kind() string {
 	return "organization"
 }
 
-func (o Organization) Document() mixin.Document {
-	return nil
-}
-
 func (o *Organization) Validator() *val.Validator {
 	return val.New(o).Check("FullName").Exists()
 }

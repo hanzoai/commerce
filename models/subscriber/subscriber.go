@@ -51,10 +51,6 @@ func (s Subscriber) Kind() string {
 	return "subscriber"
 }
 
-func (s Subscriber) Document() mixin.Document {
-	return nil
-}
-
 func (s Subscriber) MergeVars() Metadata {
 	vars := make(Metadata)
 

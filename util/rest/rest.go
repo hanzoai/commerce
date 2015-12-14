@@ -260,10 +260,6 @@ func (r Rest) newKind() mixin.Kind {
 	return reflect.New(r.entityType).Interface().(mixin.Kind)
 }
 
-func (r Rest) newSearchableKind() mixin.SearchableKind {
-	return reflect.New(r.entityType).Interface().(mixin.SearchableKind)
-}
-
 // retuns a new interface of this entity type
 func (r Rest) newEntity(c *gin.Context) mixin.Entity {
 	// Increase timeout
