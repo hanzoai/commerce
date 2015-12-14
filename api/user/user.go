@@ -21,7 +21,7 @@ type Password struct {
 
 func resetPassword(c *gin.Context) {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespace(c))
+	db := datastore.New(org.Namespaced(c))
 	id := c.Params.ByName("userid")
 
 	u := user.New(db)
@@ -44,7 +44,7 @@ func resetPassword(c *gin.Context) {
 
 func getReferrals(c *gin.Context) {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespace(c))
+	db := datastore.New(org.Namespaced(c))
 	id := c.Params.ByName("userid")
 
 	referrals := make([]referral.Referral, 0)
@@ -58,7 +58,7 @@ func getReferrals(c *gin.Context) {
 
 func getReferrers(c *gin.Context) {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespace(c))
+	db := datastore.New(org.Namespaced(c))
 	id := c.Params.ByName("userid")
 
 	referrers := make([]referrer.Referrer, 0)
@@ -72,7 +72,7 @@ func getReferrers(c *gin.Context) {
 
 func getOrders(c *gin.Context) {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespace(c))
+	db := datastore.New(org.Namespaced(c))
 	id := c.Params.ByName("userid")
 
 	orders := make([]order.Order, 0)
@@ -86,7 +86,7 @@ func getOrders(c *gin.Context) {
 
 func getTransactions(c *gin.Context) {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespace(c))
+	db := datastore.New(org.Namespaced(c))
 	id := c.Params.ByName("userid")
 
 	trans := make([]transaction.Transaction, 0)
