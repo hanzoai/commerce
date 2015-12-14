@@ -74,10 +74,6 @@ func (e AnalyticsEvent) Kind() string {
 	return "event"
 }
 
-func (e AnalyticsEvent) Document() mixin.Document {
-	return nil
-}
-
 func (e *AnalyticsEvent) Load(c <-chan aeds.Property) (err error) {
 	// Ensure we're initialized
 	e.Init()
