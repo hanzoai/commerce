@@ -66,8 +66,8 @@ type User struct {
 
 	Enabled bool `json:"enabled"` //whether or not the user can login yet
 
-	Metadata  Metadata `json:"metadata" datastore:"-"`
-	Metadata_ string   `json:"-" datastore:",noindex"`
+	Metadata  Map    `json:"metadata" datastore:"-"`
+	Metadata_ string `json:"-" datastore:",noindex"`
 
 	Referrals []referral.Referral `json:"referrals,omitempty" datastore:"-"`
 	Referrers []referrer.Referrer `json:"referrers,omitempty" datastore:"-"`
@@ -80,7 +80,7 @@ type User struct {
 }
 
 func (u *User) Init() {
-	u.Metadata = make(Metadata)
+	u.Metadata = make(Map)
 	u.History = make([]Event, 0)
 }
 
