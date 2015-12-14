@@ -23,7 +23,7 @@ func forward(ctx appengine.Context, org *organization.Organization, ml *mailingl
 	}
 
 	replyTo := ""
-	metadata := make(Metadata)
+	metadata := make(Map)
 
 	switch v := s.(type) {
 	case *subscriber.Subscriber:
