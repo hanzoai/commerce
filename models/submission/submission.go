@@ -22,12 +22,12 @@ type Submission struct {
 
 	Client client.Client `json:"client"`
 
-	Metadata  Metadata `json:"metadata" datastore:"-"`
-	Metadata_ string   `json:"-" datastore:",noindex"`
+	Metadata  Map    `json:"metadata" datastore:"-"`
+	Metadata_ string `json:"-" datastore:",noindex"`
 }
 
 func (s *Submission) Init() {
-	s.Metadata = make(Metadata)
+	s.Metadata = make(Map)
 }
 
 func New(db *datastore.Datastore) *Submission {

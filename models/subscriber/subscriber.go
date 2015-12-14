@@ -28,12 +28,12 @@ type Subscriber struct {
 
 	Client client.Client `json:"client"`
 
-	Metadata  Metadata `json:"metadata" datastore:"-"`
-	Metadata_ string   `json:"-" datastore:",noindex"`
+	Metadata  Map    `json:"metadata" datastore:"-"`
+	Metadata_ string `json:"-" datastore:",noindex"`
 }
 
 func (s *Subscriber) Init() {
-	s.Metadata = make(Metadata)
+	s.Metadata = make(Map)
 }
 
 func New(db *datastore.Datastore) *Subscriber {
@@ -51,8 +51,8 @@ func (s Subscriber) Kind() string {
 	return "subscriber"
 }
 
-func (s Subscriber) MergeVars() Metadata {
-	vars := make(Metadata)
+func (s Subscriber) MergeVars() Map {
+	vars := make(Map)
 
 	for k, v := range s.Metadata {
 		vars[k] = v
