@@ -47,7 +47,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 
 	api.Create = func(c *gin.Context) {
 		org := middleware.GetOrganization(c)
-		db := datastore.New(org.Namespace(c))
+		db := datastore.New(org.Namespaced(c))
 		ord := order.New(db)
 
 		// Decode response body to create new order
@@ -72,7 +72,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 
 	api.Update = func(c *gin.Context) {
 		org := middleware.GetOrganization(c)
-		db := datastore.New(org.Namespace(c))
+		db := datastore.New(org.Namespaced(c))
 
 		id := c.Params.ByName("orderid")
 		ord := order.New(db)
@@ -105,7 +105,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 
 	api.Patch = func(c *gin.Context) {
 		org := middleware.GetOrganization(c)
-		db := datastore.New(org.Namespace(c))
+		db := datastore.New(org.Namespaced(c))
 
 		id := c.Params.ByName("orderid")
 		ord := order.New(db)
