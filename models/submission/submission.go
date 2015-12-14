@@ -41,10 +41,6 @@ func (s Submission) Kind() string {
 	return "submission"
 }
 
-func (s Submission) Document() mixin.Document {
-	return nil
-}
-
 func (s *Submission) Load(c <-chan aeds.Property) (err error) {
 	// Ensure we're initialized
 	s.Init()
