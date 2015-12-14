@@ -20,7 +20,6 @@ import (
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/searchpartial"
 	"crowdstart.com/util/val"
-	"crowdstart.com/util/webhook"
 
 	. "crowdstart.com/models"
 )
@@ -312,22 +311,6 @@ func (u *User) SetPassword(newPassword string) error {
 	}
 
 	u.PasswordHash = hash
-	return nil
-}
-
-// Hooks
-func (u *User) AfterCreate() error {
-	webhook.Emit(u.Context(), u.Namespace(), "user.created", u)
-	return nil
-}
-
-func (u *User) AfterUpdate() error {
-	webhook.Emit(u.Context(), u.Namespace(), "user.updated", u)
-	return nil
-}
-
-func (u *User) AfterDelete() error {
-	webhook.Emit(u.Context(), u.Namespace(), "user.deleted", u)
 	return nil
 }
 
