@@ -543,7 +543,7 @@ func (m *Model) Delete(args ...interface{}) error {
 		}
 	}
 
-	// Execute BeforeUpdate hook if defined on entity.
+	// Execute BeforeDelete hook if defined on entity.
 	if hook, ok := m.Entity.(BeforeDelete); ok {
 		if err := hook.BeforeDelete(); err != nil {
 			return err
@@ -558,7 +558,7 @@ func (m *Model) Delete(args ...interface{}) error {
 		return err
 	}
 
-	// Execute BeforeUpdate hook if defined on entity.
+	// Execute AfterDelete hook if defined on entity.
 	if hook, ok := m.Entity.(AfterDelete); ok {
 		if err := hook.AfterDelete(); err != nil {
 			return err
