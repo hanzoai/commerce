@@ -31,10 +31,6 @@ func (n Namespace) Kind() string {
 	return "namespace"
 }
 
-func (n Namespace) Document() mixin.Document {
-	return nil
-}
-
 func (n *Namespace) Validator() *val.Validator {
 	return val.New(n)
 }
