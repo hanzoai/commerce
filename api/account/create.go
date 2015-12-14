@@ -119,7 +119,7 @@ func sendWelcome(c *gin.Context, org *organization.Organization, usr *user.User)
 
 func create(c *gin.Context) {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespace(c))
+	db := datastore.New(org.Namespaced(c))
 
 	req := &createReq{}
 	req.User = user.New(db)

@@ -334,7 +334,7 @@ func Export(c *gin.Context) {
 	endDate := parseDate(query.Get("end_date"))
 
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespace(c))
+	db := datastore.New(org.Namespaced(c))
 
 	// Query out relevant orders
 	q := order.Query(db).Order("UpdatedAt").

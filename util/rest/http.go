@@ -91,7 +91,7 @@ func ListRoutes() gin.HandlerFunc {
 		}
 
 		// Get namespaced datastore context
-		orgDb := datastore.New(org.Namespace(c))
+		orgDb := datastore.New(org.Namespaced(c))
 
 		// We special case order endpoint because of a few useful API calls we want to work.
 		var orderEndpoint *endpoint

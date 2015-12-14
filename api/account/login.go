@@ -30,7 +30,7 @@ type loginRes struct {
 
 func login(c *gin.Context) {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespace(c))
+	db := datastore.New(org.Namespaced(c))
 
 	req := &loginReq{}
 
