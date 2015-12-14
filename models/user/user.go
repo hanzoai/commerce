@@ -315,6 +315,7 @@ func (u *User) SetPassword(newPassword string) error {
 	return nil
 }
 
+// Hooks
 func (u *User) AfterCreate() error {
 	webhook.Emit(u.Context(), u.Namespace(), "user.created", u)
 	return nil
