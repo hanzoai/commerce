@@ -10,11 +10,14 @@ import (
 
 func Emit(ctx interface{}, org string, event string, data interface{}) {
 
+	var aectx appengine.Context
+
 	switch v := ctx.(type) {
 	case *gin.Context:
-		aectx := v.MustGet("appengine").(appengine.Context)
-		tasks.Emit.Call(aectx, org, event, data)
+		aectx = v.MustGet("appengine").(appengine.Context)
 	case appengine.Context:
-		tasks.Emit.Call(v, org, event, data)
+		aectx = v
 	}
+
+	tasks.Emit.Call(aectx, org, event, data)
 }
