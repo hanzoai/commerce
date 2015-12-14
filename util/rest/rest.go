@@ -399,7 +399,7 @@ func (r Rest) create(c *gin.Context) {
 		return
 	}
 
-	if err := entity.Put(); err != nil {
+	if err := entity.Create(); err != nil {
 		r.Fail(c, 500, "Failed to create "+r.Kind, err)
 	} else {
 		c.Writer.Header().Add("Location", c.Request.URL.Path+"/"+entity.Id())
@@ -436,7 +436,7 @@ func (r Rest) update(c *gin.Context) {
 	}
 
 	// Replace whatever was in the datastore with our new updated entity
-	if err := entity.Put(); err != nil {
+	if err := entity.Update(); err != nil {
 		r.Fail(c, 500, "Failed to update "+r.Kind, err)
 	} else {
 		r.Render(c, 200, entity)
@@ -463,7 +463,7 @@ func (r Rest) patch(c *gin.Context) {
 		return
 	}
 
-	if err := entity.Put(); err != nil {
+	if err := entity.Update(); err != nil {
 		r.Fail(c, 500, "Failed to update "+r.Kind, err)
 	} else {
 		r.Render(c, 200, entity)
