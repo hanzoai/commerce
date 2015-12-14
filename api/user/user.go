@@ -9,6 +9,7 @@ import (
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/referral"
 	"crowdstart.com/models/referrer"
+	"crowdstart.com/models/subscription"
 	"crowdstart.com/models/transaction"
 	"crowdstart.com/models/user"
 	"crowdstart.com/util/json/http"
@@ -68,6 +69,20 @@ func getReferrers(c *gin.Context) {
 	}
 
 	http.Render(c, 200, referrers)
+}
+
+func getSubscriptions(c *gin.Context) {
+	org := middleware.GetOrganization(c)
+	db := datastore.New(org.Namespace(c))
+	id := c.Params.ByName("userid")
+
+	subscriptions := make([]subscription.Subscription, 0)
+	if _, err := subscription.Query(db).Filter("UserId=", id).GetAll(&subscriptions); err != nil {
+		http.Fail(c, 400, "Could not query subscription", err)
+		return
+	}
+
+	http.Render(c, 200, subscriptions)
 }
 
 func getOrders(c *gin.Context) {
