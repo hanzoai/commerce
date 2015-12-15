@@ -7,13 +7,11 @@ associated with running a crowdfunding campaign.
 The API is currently in beta. Please contact support@crowdstart.com if you
 intend to use our API in any production code.
 
-# Group Payment API
-There is a special, easy-to-use API with static endpoints for collecting money.
-There is a one-step payment process (charge endpoint) and a two-step payment
-process (authorize endpoint, followed by the capture endpoint on the Order
-object).
+# Group Checkout API
+Our Checkout API supports one-step (charge endpoint) and two payment (authorize,
+capture) processes.
 
-## One-step Payments [/charge]
+## One-step Payments [/checkout/charge]
 The one-step payment process is mostly used for general commerce for immediate
 fulfillment/sale.  In general, you must send three things to successfully
 complete a charge call: order information, payment information, and user
@@ -132,9 +130,6 @@ Any failure in this process will result in a failure of the call.
                   },
                   "cvcCheck":"pass"
                 },
-                "paypal":{
-
-                }
               },
               "currency":"usd",
               "campaignId":"",
@@ -155,7 +150,7 @@ Any failure in this process will result in a failure of the call.
           }
         }
 
-## Two-step payment process, part 1 [/authorize]
+## Two-step payment process, part 1 [/checkout/authorize]
 The two-step payment process separates the two steps mentioned in the one-step
 payment process, and allows you to authorize a payment, and then capture it at a
 later period.  This is useful for pre-orders or other such payments that you do
@@ -272,9 +267,6 @@ capture portion.
                        },
                        "cvcCheck":"pass"
                     },
-                    "paypal":{
-
-                    }
                  },
                  "currency":"usd",
                  "campaignId":"",
@@ -372,7 +364,6 @@ returned in the Authorize step (see above).
                   },
                   "cvcCheck":"pass"
                 },
-                "paypal":{}
               },
               "currency":"usd",
               "campaignId":"",
@@ -603,7 +594,7 @@ request, while any fields not specified in the JSON will be left alone.
 
 + Response 201 (application/json)
 
-# Group Mailing List
+# Group Form
 This object represents your list of email subscribers, and a number of settings
 related to interacting with them.
 
@@ -616,11 +607,11 @@ related to interacting with them.
 | facebook    | A sub-object containing information for conversion tracking on Facebook.                         | [Facebook](#facebook)   |
 | google      | A sub-object containing information for conversion tracking with Google.                         | [Google](#google)       |
 
-## Calls related to Mailing Lists [/mailinglist/{id}]
-Basic Mailing List calls are keyed to the unique ID of the list.  As with
+## Calls related to Forms [/form/{id}]
+Basic Form calls are keyed to the unique ID of the form.  As with
 all calls, it also requires an API key to be included with the request.
 
-### Get a Mailing List [GET]
+### Get a Form [GET]
 + Response 200 (application/json)
 
         {
@@ -628,14 +619,21 @@ all calls, it also requires an API key to be included with the request.
           "createdAt": "2015-04-27T01:15:33.113334Z",
           "updatedAt": "2015-04-27T01:15:33.113334Z",
           "name": "Teh Nooest Mailing List!",
+          "type": "subscribe",
           "sendWelcome": true,
           "mailchimp": {
             "id": "aowieij",
+            "enabled": true,
             "apiKey": "23098fIOWJEOIJFW",
             "doubleOptin": false,
-            "updateExisting": true,
             "replaceInterests": true,
-            "sendWelcome": false
+            "sendWelcome": false,
+            "updateExisting": true
+          },
+          "forward": {
+              "name": "Such Owner",
+              "email": "info@suchtees.com",
+              "enabled": true
           },
           "thankyou": {
             "type": "redirect",
@@ -652,11 +650,12 @@ all calls, it also requires an API key to be included with the request.
           }
         }
 
-### Create a Mailing List [POST]
+### Create a Form [POST]
 + Request (application/json)
 
         {
           "name": "Teh Nooest Mailing List!",
+          "type": "subscribe",
           "sendWelcome": true,
           "mailchimp": {
             "id": "aowieij",
@@ -664,7 +663,8 @@ all calls, it also requires an API key to be included with the request.
             "doubleOptin": false,
             "updateExisting": true,
             "replaceInterests": true,
-            "sendWelcome": false
+            "sendWelcome": false,
+            "enabled": true
           },
           "thankyou": {
             "type": "redirect",
@@ -688,6 +688,7 @@ all calls, it also requires an API key to be included with the request.
           "createdAt": "2015-04-27T01:15:33.113334Z",
           "updatedAt": "2015-04-27T01:15:33.113334Z",
           "name": "Teh Nooest Mailing List!",
+          "type": "subscribe",
           "sendWelcome": true,
           "mailchimp": {
             "id": "aowieij",
@@ -695,7 +696,8 @@ all calls, it also requires an API key to be included with the request.
             "doubleOptin": false,
             "updateExisting": true,
             "replaceInterests": true,
-            "sendWelcome": false
+            "sendWelcome": false,
+            "enabled": true
           },
           "thankyou": {
             "type": "redirect",
@@ -711,24 +713,36 @@ all calls, it also requires an API key to be included with the request.
             "name": "T-Shirt List Sign-up"
           }
 
-### Deleting a Mailing List [DELETE]
-Deleting a Mailing List is as simple as passing its ID to the Mailing List endpoint using
+### Deleting a Form [DELETE]
+Deleting a Form is as simple as passing its ID to the Form endpoint using
 the HTTP Delete method. You will not receive a response past the normal HTTP
 204.
 
 + Response 204 (application/json)
 
-### Updating a Mailing List [PUT]
+### Updating a Form [PUT]
 The PUT method will allow you to replace a given ID's data in its entirety.
-Passing in valid Mailing List JSON (see the POST method), will overwrite any and all
+Passing in valid Form JSON (see the POST method), will overwrite any and all
 data existing on that ID.
 
 + Response 201 (application/json)
 
-### Patching a Mailing List [PATCH]
+### Patching a Form [PATCH]
 The PATCH method will allow you to replace a given ID's data in a piecemeal
-fashion.  Any fields passed in to a PATCH method will be updated with what you
+fashion. Any fields passed in to a PATCH method will be updated with what you
 request, while any fields not specified in the JSON will be left alone.
+
++ Response 201 (application/json)
+
+## Calls related to Form submission [/form/{id}/submit]
+
+### Submitting a Form [POST]
++ Request (application/json)
+
+        {
+          "name": "Such Fan",
+          "email" "suchfan@gmail.com"
+        }
 
 + Response 201 (application/json)
 
@@ -768,7 +782,7 @@ confused with a [Cart](#cart), which are prospective purchases.
 | shipped           | A switch indicating whether or not this order has been shipped.                                                                                                                    | bool                    |
 | test              | A switch indicating whether or not this is a test order.                                                                                                                           | bool                    |
 | unconfirmed       | A switch indicating whether or not all details are confirmed. If false, most often the user has not declared precise order variant options.                                        | bool                    |
-| type              | This is a payment processor type, such as stripe (for credit card payments), paypal (for escrow payments), etc.                                                                    | string                  |
+| type              | This is a payment processor type, such as Stripe (for credit card payments), PayPal (for escrow payments), etc.                                                                    | string                  |
 
 ## Calls related to Orders [/order/{id}]
 Basic Order calls are keyed upon the unique ID of the Order.  As with all calls,
@@ -906,7 +920,6 @@ this endpoint.
                "notes":"non",
                "address":{}
             },
-            "affirm":{},
             "stripe":{
                "fingerprint":"k6nxwtejxyhmpcr3",
                "customerid":"cus_5ve1sykb8aayvc",
@@ -920,7 +933,6 @@ this endpoint.
                },
                "cvccheck":"pass"
             },
-            "paypal":{}
          },
          "currency":"usd",
          "campaignid":"",
@@ -947,7 +959,7 @@ a specific [User](#user).
 | referrerUserId | The identifier for the [User](#user) that induced the purchase.                 | string |
 | referrerId     | The identifier for the [Referrer](#referrer) that this referral is credited to. | string |
 
-## Calls related to Referrals [/referrer/{id}]
+## Calls related to Referrals [/referral/{id}]
 Basic Referral calls are keyed upon the unique ID of the Referral.  As with all
 calls, it also requires an access key included with the request.
 
@@ -966,6 +978,7 @@ calls, it also requires an access key included with the request.
 
 ### Creating a Referral [POST]
 + Request (application/json)
+
         {
           "userId": "lVg6HluKM4",
           "orderId": "VdNi66rHwa",
@@ -974,6 +987,7 @@ calls, it also requires an access key included with the request.
         }
 
 + Response 200 (application/json)
+
         {
           "id": "M6rsDDXCXM",
           "createdAt": "2015-11-27T00:27:46.91231Z",
@@ -1144,7 +1158,7 @@ included with the request.
 This is the only call that is available for Transactions, as they are too
 directly sensitive to allow to be modified.
 
-+ Response (application/json)
++ Response 200 (application/json)
 
         {
           "id": "Mkei8xdCpL",
@@ -1510,7 +1524,7 @@ request, while any fields not specified in the JSON will be left alone.
 | billingAddress  | The billing address for this user.                                                        | string                  |
 | shippingAddress | The shipping address for this user.                                                       | string                  |
 | email           | The email for this user.                                                                  | string                  |
-| paypalEmail     | The email used for the paypal account attached to this user.                              | string                  |
+| payPalEmail     | The email used for the paypal account attached to this user.                              | string                  |
 | enabled         | Whether or not the user can log in.                                                       | bool                    |
 | referrals       | A list of referrals that this user has generated.                                         | [[]referral(#referral)] |
 | referrers       | A list of referrers this user has been referred by.                                       | [[]referrer](#referrer) |
@@ -1608,34 +1622,34 @@ Returns all sites that you are authorized to see.
 
 + Response 200 (application/json)
 
-    [
-        {
-            "id":"3970e0fe-8564-4903-9a55-c5f8de49fb8b",
-            "name":"example",
-            "custom_domain":"www.example.com",
-            "url":"http://www.example.com",
-            "admin_url":"https://api.crowdstart.com/sites/example",
-            "screenshot_url":null,
-            "created_at":"2013-09-17T05:13:08Z",
-            "updated_at":"2013-09-17T05:13:19Z"
-        }
-    ]
+        [
+            {
+                "id":"3970e0fe-8564-4903-9a55-c5f8de49fb8b",
+                "name":"example",
+                "custom_domain":"www.example.com",
+                "url":"http://www.example.com",
+                "admin_url":"https://api.crowdstart.com/sites/example",
+                "screenshot_url":null,
+                "created_at":"2013-09-17T05:13:08Z",
+                "updated_at":"2013-09-17T05:13:19Z"
+            }
+        ]
 
 ### Create a Site [POST]
 This will deploy a new site.
 
 + Request
 
-    {
-        "name": "example",
-        "custom_domain": "www.example.com",
-        "password": "super_secret",
-        "repo": "http://github.com/bestsites/examplesite"
-    }
+        {
+            "name": "example",
+            "custom_domain": "www.example.com",
+            "password": "super_secret",
+            "repo": "http://github.com/bestsites/examplesite"
+        }
 
 + Response 200
 
-## Calls related to Site [/site/{id}}]
+## Calls related to Site [/site/{id}]
 These site calls are keyed on the SiteId in the Site object. As with all calls,
 it also requires an access key to be sent along with the request.
 
@@ -1643,29 +1657,29 @@ it also requires an access key to be sent along with the request.
 
 + Response 200 (application/json)
 
-    {
-        "id":"3970e0fe-8564-4903-9a55-c5f8de49fb8b",
-        "name":"example",
-        "custom_domain":"www.example.com",
-        "notification_email":"me@example.com",
-        "url":"http://www.example.com",
-        "admin_url":"https://api.crowdstart.com/sites/example",
-        "screenshot_url":null,
-        "created_at":"2013-09-17T05:13:08Z",
-        "updated_at":"2013-09-17T05:13:19Z",
-    }
+        {
+            "id":"3970e0fe-8564-4903-9a55-c5f8de49fb8b",
+            "name":"example",
+            "custom_domain":"www.example.com",
+            "notification_email":"me@example.com",
+            "url":"http://www.example.com",
+            "admin_url":"https://api.crowdstart.com/sites/example",
+            "screenshot_url":null,
+            "created_at":"2013-09-17T05:13:08Z",
+            "updated_at":"2013-09-17T05:13:19Z",
+        }
 
 ### Update a site [PUT]
 This functionally is a POST/Create command with a contextual site ID.
 
 + Request
 
-    {
-        "name": "example",
-        "custom_domain": "www.example.com",
-        "password": "super_secret",
-        "repo": "http://github.com/bestsites/examplesite"
-    }
+        {
+            "name": "example",
+            "custom_domain": "www.example.com",
+            "password": "super_secret",
+            "repo": "http://github.com/bestsites/examplesite"
+        }
 
 + Response 200
 
@@ -1875,8 +1889,8 @@ support@crowdstart.com.
 | "technology" | Technology    |
 
 ## Facebook
-This object holds information needed to track conversions from your mailing list
-to facebook campaigns.
+This object holds information needed to track conversions from your form to
+facebook campaigns.
 
 | Field Name | Field Description                                                               | Type   |
 | ---------- | ----------------                                                                | ----   |
@@ -1885,8 +1899,8 @@ to facebook campaigns.
 | currency   | The currency type used, to give what's defined in the value field some meaning. | string |
 
 ## Google
-This object holds information needed to track conversions from your mailing list
-when it is used in conjunction with Google campaigns.
+This object holds information needed to track conversions from your form when it
+is used in conjunction with Google campaigns.
 
 | Field Name | Field Description                                       | Type   |
 | ---------- | -----------------                                       | ----   |
@@ -1914,7 +1928,8 @@ or a confirmed one (in the case of [Order](#order))
 
 ## Mailchimp
 This object contains information that is used to integrate with your Mailchimp
-account, allowing your mailing lists to be notified of offers much more easily.
+account, allowing your form to automatically import susbcribers into Mailchimp
+and more.
 
 | Field Name       | Field Description                                                                                   | Type   |
 | ----------       | -----------------                                                                                   | ----   |
@@ -1927,7 +1942,7 @@ account, allowing your mailing lists to be notified of offers much more easily.
 
 ## ThankYou
 This object represents a handful of options in storing and designing the thank
-you page for customers that accept an offer from your mailing list.
+you page for customers that accept an offer from your form.
 
 | Field Name | Field Description                                                                                                       | Type   |
 | ---------- | -----------------                                                                                                       | ----   |

@@ -53,14 +53,14 @@ type AnalyticsEvent struct {
 
 	Name            string        `json:"name"` // Event appended with special data (used by pageview and pageleave)
 	Event           string        `json:"event"`
-	Data            Metadata      `json:"data" datastore:"-"`
+	Data            Map           `json:"data" datastore:"-"`
 	Data_           string        `json:"-" datastore:",noindex"`
 	Count           int           `json:"count"`
 	RequestMetadata client.Client `json:"-"`
 }
 
 func (e *AnalyticsEvent) Init() {
-	e.Data = make(Metadata)
+	e.Data = make(Map)
 }
 
 func New(db *datastore.Datastore) *AnalyticsEvent {
@@ -72,10 +72,6 @@ func New(db *datastore.Datastore) *AnalyticsEvent {
 
 func (e AnalyticsEvent) Kind() string {
 	return "event"
-}
-
-func (e AnalyticsEvent) Document() mixin.Document {
-	return nil
 }
 
 func (e *AnalyticsEvent) Load(c <-chan aeds.Property) (err error) {

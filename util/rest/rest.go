@@ -2,6 +2,7 @@ package rest
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -163,7 +164,8 @@ func (r Rest) CheckPermissions(c *gin.Context, method string) bool {
 		// msg := "Unsupported method for API access"
 		// r.Fail(c, 500, msg, errors.New(msg))
 		// return false
-		log.Warn("Unsupported method for API access", c)
+		msg := fmt.Sprintf("No permissions found matching method: '%s', skipping permission check.", method)
+		log.Warn(msg, c)
 		return true
 	}
 
@@ -175,7 +177,7 @@ func (r Rest) CheckPermissions(c *gin.Context, method string) bool {
 	}
 
 	// Token lacks valid permission
-	msg := "Token doesn't support " + method + " " + r.Kind
+	msg := "Token lacks permission to " + method + " " + r.Kind
 	r.Fail(c, 403, msg, errors.New(msg))
 	return false
 }
@@ -258,11 +260,7 @@ func (r Rest) newKind() mixin.Kind {
 	return reflect.New(r.entityType).Interface().(mixin.Kind)
 }
 
-func (r Rest) newSearchableKind() mixin.SearchableKind {
-	return reflect.New(r.entityType).Interface().(mixin.SearchableKind)
-}
-
-// retuns a new interface of this entity type
+// Returns a new interface of this entity type
 func (r Rest) newEntity(c *gin.Context) mixin.Entity {
 	// Increase timeout
 	ctx := middleware.GetAppEngine(c)
@@ -397,7 +395,7 @@ func (r Rest) create(c *gin.Context) {
 		return
 	}
 
-	if err := entity.Put(); err != nil {
+	if err := entity.Create(); err != nil {
 		r.Fail(c, 500, "Failed to create "+r.Kind, err)
 	} else {
 		c.Writer.Header().Add("Location", c.Request.URL.Path+"/"+entity.Id())
@@ -434,7 +432,7 @@ func (r Rest) update(c *gin.Context) {
 	}
 
 	// Replace whatever was in the datastore with our new updated entity
-	if err := entity.Put(); err != nil {
+	if err := entity.Update(); err != nil {
 		r.Fail(c, 500, "Failed to update "+r.Kind, err)
 	} else {
 		r.Render(c, 200, entity)
@@ -461,7 +459,7 @@ func (r Rest) patch(c *gin.Context) {
 		return
 	}
 
-	if err := entity.Put(); err != nil {
+	if err := entity.Update(); err != nil {
 		r.Fail(c, 500, "Failed to update "+r.Kind, err)
 	} else {
 		r.Render(c, 200, entity)

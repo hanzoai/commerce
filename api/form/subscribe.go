@@ -1,7 +1,6 @@
-package mailinglist
+package form
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -12,7 +11,7 @@ import (
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/subscriber"
 	"crowdstart.com/models/types/client"
-	"crowdstart.com/thirdparty/redis"
+	"crowdstart.com/util/counter"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/json/http"
 	"crowdstart.com/util/log"
@@ -22,23 +21,8 @@ import (
 
 var subscriberEndpoint = config.UrlFor("api", "/subscriber/")
 
-// Add subscriber to mailing list
-func addSubscriber(c *gin.Context) {
-	id := c.Params.ByName("mailinglistid")
-	db := datastore.New(c)
-
-	ml := mailinglist.New(db)
-
-	// Set key and namespace correctly
-	ml.SetKey(id)
-	ml.SetNamespace(ml.Key().Namespace())
-	db.Context = ml.Db.Context
+func subscribe(c *gin.Context, db *datastore.Datastore, org *organization.Organization, ml *mailinglist.MailingList) {
 	ctx := db.Context
-
-	if err := ml.Get(); err != nil {
-		http.Fail(c, 404, fmt.Sprintf("Failed to retrieve mailing list '%v': %v", id, err), err)
-		return
-	}
 
 	// Make sure Subscriber is created with the right context
 	s := subscriber.New(db)
@@ -56,19 +40,25 @@ func addSubscriber(c *gin.Context) {
 	if err := ml.AddSubscriber(s); err != nil {
 		if err == mailinglist.SubscriberAlreadyExists {
 			http.Fail(c, 409, "Subscriber already exists", nil)
-		} else {
-			http.Fail(c, 500, "Failed to save subscriber to mailing list", err)
 		}
-	} else {
-		mailchimp.Subscriber.Call(db.Context, ml.JSON(), s.JSON())
-		c.Writer.Header().Add("Location", subscriberEndpoint+s.Id())
-		http.Render(c, 201, s)
+		http.Fail(c, 500, "Failed to save subscriber to mailing list", err)
+		return
 	}
 
-	org := organization.New(db)
-	org.GetById(ml.Key().Namespace())
-
-	if err := redis.IncrSubscribers(ctx, org, ml.Id(), time.Now()); err != nil {
+	// Increment subscribers
+	if err := counter.IncrSubscribers(ctx, org, ml.Id(), time.Now()); err != nil {
 		log.Warn("Redis Error %s", err, ctx)
 	}
+
+	// Add subscriber to Mailchimp
+	if ml.Mailchimp.Enabled {
+		mailchimp.Subscriber.Call(db.Context, ml.JSON(), s.JSON())
+	}
+
+	// Forward subscriber (if enabled)
+	forward(ctx, org, ml, s)
+
+	// Success!
+	c.Writer.Header().Add("Location", subscriberEndpoint+s.Id())
+	http.Render(c, 201, s)
 }

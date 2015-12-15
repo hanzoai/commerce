@@ -1,4 +1,4 @@
-package mailinglist
+package form
 
 import (
 	"github.com/gin-gonic/gin"
@@ -12,13 +12,20 @@ import (
 )
 
 func Route(router router.Router, args ...gin.HandlerFunc) {
-	api := rest.New(mailinglist.MailingList{})
-
-	group := router.Group("mailinglist")
+	group := router.Group("form")
 	group.Use(middleware.AccessControl("*"))
 
-	group.POST("/:mailinglistid/subscribe", addSubscriber)
-	group.GET("/:mailinglistid/js", ml.Js)
+	group.POST("/:formid/submit", handleForm)
+	group.POST("/:formid/subscribe", handleForm)
+	group.GET("/:formid/js", ml.Js)
 
+	// TODO: Remove deprecated endpoint
+	api := rest.New(mailinglist.MailingList{})
 	api.Route(router, args...)
+
+	group = router.Group("mailinglist")
+	group.Use(middleware.AccessControl("*"))
+
+	group.POST("/:mailinglistid/subscribe", handleForm)
+	group.GET("/:mailinglistid/js", ml.Js)
 }

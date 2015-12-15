@@ -63,7 +63,7 @@ var _ = BeforeSuite(func() {
 	})
 
 	// Save namespaced db
-	db = datastore.New(org.Namespace(ctx))
+	db = datastore.New(org.Namespaced(ctx))
 	usr := user.New(db)
 	usr.Email = "dev@hanzo.ai"
 	usr.SetPassword("Z0rd0N")

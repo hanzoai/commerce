@@ -99,3 +99,25 @@ var Send = delay.Func("send-email", func(ctx appengine.Context, apiKey, toEmail,
 		log.Error("Failed to send email: %v", err, ctx)
 	}
 })
+
+// Helper to forward emails using custom reply-to address
+var Forward = delay.Func("forward-email", func(ctx appengine.Context, apiKey, toEmail, toName, fromEmail, fromName, replyTo, subject, html string) {
+	req := mandrill.NewSendReq()
+	req.AddRecipient(toEmail, toName)
+	req.Key = apiKey
+
+	req.Message.FromEmail = fromEmail
+	req.Message.FromName = fromName
+	req.Message.Subject = subject
+	req.Message.Headers.ReplyTo = replyTo
+
+	log.Debug("Sending email to %s, %v", toEmail, req, ctx)
+
+	// Render body
+	req.Message.Html = html
+
+	// Send template
+	if err := mandrill.Send(ctx, &req); err != nil {
+		log.Error("Failed to send email: %v", err, ctx)
+	}
+})

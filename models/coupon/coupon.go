@@ -80,10 +80,6 @@ func (c Coupon) Kind() string {
 	return "coupon"
 }
 
-func (c Coupon) Document() mixin.Document {
-	return nil
-}
-
 func (c *Coupon) Validator() *val.Validator {
 	return val.New(c)
 }
@@ -103,6 +99,31 @@ func (co *Coupon) Save(c chan<- aeds.Property) (err error) {
 
 	// Save properties
 	return IgnoreFieldMismatch(aeds.SaveStruct(co, c))
+}
+
+func (c Coupon) ValidFor(t time.Time) bool {
+	if c.Enabled {
+		return true // currently active, no need to check?
+	}
+
+	if c.StartDate.Before(t) && c.EndDate.After(t) {
+		return true
+	}
+
+	return false
+}
+
+func (c Coupon) ItemId() string {
+	if c.ProductId != "" {
+		return c.ProductId
+	}
+	if c.FreeProductId != "" {
+		return c.FreeProductId
+	}
+	if c.FreeVariantId != "" {
+		return c.FreeProductId
+	}
+	return ""
 }
 
 func Query(db *datastore.Datastore) *mixin.Query {
