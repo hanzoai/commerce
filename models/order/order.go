@@ -129,8 +129,8 @@ type Order struct {
 	History []Event `json:"-,omitempty"`
 
 	// Arbitrary key/value pairs associated with this order
-	Metadata  Metadata `json:"metadata" datastore:"-"`
-	Metadata_ string   `json:"-" datastore:",noindex"`
+	Metadata  Map    `json:"metadata" datastore:"-"`
+	Metadata_ string `json:"-" datastore:",noindex"`
 
 	Test bool `json:"-"` // Whether our internal test flag is active or not
 
@@ -146,7 +146,7 @@ func (o *Order) Init() {
 	o.Adjustments = make([]Adjustment, 0)
 	o.History = make([]Event, 0)
 	o.Items = make([]LineItem, 0)
-	o.Metadata = make(Metadata)
+	o.Metadata = make(Map)
 	o.Coupons = make([]coupon.Coupon, 0)
 }
 

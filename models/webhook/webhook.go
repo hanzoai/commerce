@@ -1,0 +1,77 @@
+package webhook
+
+import (
+	aeds "appengine/datastore"
+
+	"crowdstart.com/datastore"
+	"crowdstart.com/models/mixin"
+	"crowdstart.com/util/json"
+)
+
+var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
+
+type Events map[string]bool
+
+type Webhook struct {
+	mixin.Model
+
+	// Endpoint webhook should deliver events to.
+	Url string `json:"url"`
+
+	// Whether to use Live or Test data.
+	Live bool `json:"live"`
+
+	// Whether to send all events or selectively using Events.
+	All bool `json:"all"`
+
+	// Events to selectively send.
+	Events  Events `json:"events" datastore:"-"`
+	Events_ string `json:"-" datastore:",noindex"`
+
+	// Whether this webhook is enabled or not.
+	Enabled bool `json:"enabled"`
+}
+
+func (s *Webhook) Init() {
+	s.Events = make(Events)
+}
+
+func New(db *datastore.Datastore) *Webhook {
+	w := new(Webhook)
+	w.Init()
+	w.Model = mixin.Model{Db: db, Entity: w}
+	return w
+}
+
+func (w Webhook) Kind() string {
+	return "webhook"
+}
+
+func (s *Webhook) Load(c <-chan aeds.Property) (err error) {
+	// Ensure we're initialized
+	s.Init()
+
+	// Load supported properties
+	if err = IgnoreFieldMismatch(aeds.LoadStruct(s, c)); err != nil {
+		return err
+	}
+
+	// Deserialize from datastore
+	if len(s.Events_) > 0 {
+		err = json.DecodeBytes([]byte(s.Events_), &s.Events)
+	}
+
+	return err
+}
+
+func (s *Webhook) Save(c chan<- aeds.Property) (err error) {
+	// Serialize unsupported properties
+	s.Events_ = string(json.EncodeBytes(&s.Events))
+
+	// Save properties
+	return IgnoreFieldMismatch(aeds.SaveStruct(s, c))
+}
+
+func Query(db *datastore.Datastore) *mixin.Query {
+	return New(db).Query()
+}

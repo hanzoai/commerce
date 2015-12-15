@@ -28,6 +28,7 @@ var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 type User struct {
 	mixin.Model
+	mixin.Counter
 	mixin.Salesforce
 
 	// Crowdstart Id, found in default namespace
@@ -66,8 +67,8 @@ type User struct {
 
 	Enabled bool `json:"enabled"` //whether or not the user can login yet
 
-	Metadata  Metadata `json:"metadata" datastore:"-"`
-	Metadata_ string   `json:"-" datastore:",noindex"`
+	Metadata  Map    `json:"metadata" datastore:"-"`
+	Metadata_ string `json:"-" datastore:",noindex"`
 
 	Referrals []referral.Referral `json:"referrals,omitempty" datastore:"-"`
 	Referrers []referrer.Referrer `json:"referrers,omitempty" datastore:"-"`
@@ -80,7 +81,7 @@ type User struct {
 }
 
 func (u *User) Init() {
-	u.Metadata = make(Metadata)
+	u.Metadata = make(Map)
 	u.History = make([]Event, 0)
 }
 
@@ -88,6 +89,7 @@ func New(db *datastore.Datastore) *User {
 	u := new(User)
 	u.Init()
 	u.Model = mixin.Model{Db: db, Entity: u}
+	u.Counter = mixin.Counter{Entity: u}
 	return u
 }
 
@@ -263,60 +265,6 @@ func (u *User) GetByEmail(email string) error {
 
 	return nil
 }
-
-// // Insert new user
-// func (u *User) Insert(db *datastore.Datastore) error {
-// 	id := db.AllocateId("user")
-// 	k := db.KeyFromId("user", id)
-
-// 	log.Debug("Inserting New User with key %v", k)
-
-// 	u.Id = k.Encode()
-// 	u.CreatedAt = time.Now()
-// 	u.UpdatedAt = u.CreatedAt
-
-// 	_, err := db.PutKind("user", k, u)
-// 	return err
-// }
-
-// // Actual upsert method
-// func (u *User) upsert(db *datastore.Datastore) error {
-// 	k, err := db.DecodeKey(u.Id)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	_, err = db.PutKind("user", k, u)
-// 	return err
-// }
-
-// // Idempotent user upsert method.
-// func (u *User) Upsert(db *datastore.Datastore) error {
-// 	// We have an ID, we can just upsert
-// 	if u.Id != "" {
-// 		return u.upsert(db)
-// 	}
-
-// 	// We don't have an ID, we need to figure out if this is a new user or not.
-// 	user := new(User)
-// 	err := user.GetByEmail(db, u.Email)
-
-// 	// if we can't find the user, insert new user
-// 	if err == UserNotFound {
-// 		return u.Insert(db)
-// 	}
-
-// 	// Something bad happened, let's bail out
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	// Found user, set Id
-// 	u.Id = user.Id
-// 	u.UpdatedAt = time.Now()
-
-// 	return u.upsert(db)
-// }
 
 func (u *User) LoadReferrals() error {
 	if _, err := referrer.Query(u.Db).Filter("UserId=", u.Id()).GetAll(&u.Referrers); err != nil {
