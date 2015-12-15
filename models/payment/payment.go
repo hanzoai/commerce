@@ -147,21 +147,17 @@ type Payment struct {
 	// Internal testing flag
 	Test bool `json:"-"`
 
-	Metadata  Metadata `json:"metadata" datastore:"-"`
-	Metadata_ string   `json:"-" datastore:"-"`
+	Metadata  Map    `json:"metadata" datastore:"-"`
+	Metadata_ string `json:"-" datastore:"-"`
 }
 
 func (p Payment) Kind() string {
 	return "payment"
 }
 
-func (p Payment) Document() mixin.Document {
-	return nil
-}
-
 func (p *Payment) Init() {
 	p.Status = Unpaid
-	p.Metadata = make(Metadata)
+	p.Metadata = make(Map)
 }
 
 func (p *Payment) Load(c <-chan aeds.Property) (err error) {
