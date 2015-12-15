@@ -18,10 +18,10 @@ var IncrementByTask *delay.Function
 var AddMemberTask *delay.Function
 
 func incrementByTask(c appengine.Context, name string, amount int) {
-	log.Warn("INCREMENT BY", c)
-	// Get counter config.
+	// Get config for counter
 	var cfg counterConfig
 	ckey := datastore.NewKey(c, configKind, name, 0, nil)
+
 	err := datastore.RunInTransaction(c, func(c appengine.Context) error {
 		err := datastore.Get(c, ckey, &cfg)
 		if err == datastore.ErrNoSuchEntity {
@@ -30,30 +30,43 @@ func incrementByTask(c appengine.Context, name string, amount int) {
 		}
 		return err
 	}, nil)
+
 	if err != nil {
-		log.Panic("IncrementByTask Error %v", err, c)
+		log.Panic("Failed to get or create counter config: %v", err, c)
 	}
+
+	// Increment count
 	var s shard
 	err = datastore.RunInTransaction(c, func(c appengine.Context) error {
+		// Get random shard
 		shardName := fmt.Sprintf("%s-shard%d", name, rand.Intn(cfg.Shards))
 		key := datastore.NewKey(c, shardKind, shardName, 0, nil)
 		err := datastore.Get(c, key, &s)
+
 		// A missing entity and a present entity will both work.
 		if err != nil && err != datastore.ErrNoSuchEntity {
 			panic(err)
 		}
+
+		// Increment and save
 		s.Name = name
 		s.Count += amount
 		_, err = datastore.Put(c, key, &s)
 		return err
 	}, nil)
+
+	// Automatically increase shard count if necessary
 	if err == datastore.ErrConcurrentTransaction {
+		// Increment shards
 		IncreaseShards(c, name, 1)
+
+		// Get task so we can retry
 		t, err := IncrementByTask.Task(c, name, amount)
 		if err != nil {
 			log.Panic("IncrementByTask Error %v", err, c)
 		}
 
+		// Add task back to queue
 		t.Delay = time.Duration(rand.Intn(30) * 1000000)
 		_, err = taskqueue.Add(c, t, "")
 		if err != nil {
@@ -61,9 +74,13 @@ func incrementByTask(c appengine.Context, name string, amount int) {
 		}
 		return
 	}
+
+	// Failed to increment
 	if err != nil {
 		log.Panic("IncrementByTask Error %v", err, c)
 	}
+
+	// Cache
 	memcache.IncrementExisting(c, memcacheKey(name), int64(amount))
 }
 
