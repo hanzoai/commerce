@@ -8,7 +8,7 @@ dispatch:
     module: default
 
   - url: "cdn.crowdstart.com/*"
-    module: api
+    module: cdn
 
   - url: "static.crowdstart.com/*"
     module: default
