@@ -14,7 +14,7 @@ func (u *User) AfterCreate() error {
 	return nil
 }
 
-func (u *User) AfterUpdate() error {
+func (u *User) AfterUpdate(previous *User) error {
 	webhook.Emit(u.Context(), u.Namespace(), "user.updated", u)
 	return nil
 }

@@ -5,7 +5,7 @@ type BeforeCreate interface {
 }
 
 type BeforeUpdate interface {
-	BeforeUpdate() error
+	BeforeUpdate(Entity) error
 }
 
 type BeforeDelete interface {
@@ -17,7 +17,7 @@ type AfterCreate interface {
 }
 
 type AfterUpdate interface {
-	AfterUpdate() error
+	AfterUpdate(Entity) error
 }
 
 type AfterDelete interface {
