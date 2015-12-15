@@ -19,7 +19,7 @@ func getSubscription(c *gin.Context) (*subscription.Subscription, error) {
 	org := middleware.GetOrganization(c)
 
 	// Set up the db with the namespaced appengine context
-	ctx := org.Namespace(c)
+	ctx := org.Namespaced(c)
 	db := datastore.New(ctx)
 
 	// Create order that's properly namespaced

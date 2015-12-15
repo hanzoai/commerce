@@ -77,8 +77,8 @@ type Subscription struct {
 	Quantity int       `json:"quantity"`
 	Status   string    `json:"status"`
 
-	Metadata  Metadata `json:"metadata" datastore:"-"`
-	Metadata_ string   `json:"-" datastore:"-"`
+	Metadata  Map    `json:"metadata" datastore:"-"`
+	Metadata_ string `json:"-" datastore:"-"`
 
 	// Stripe livemode
 	Live bool `json:"live"`
@@ -95,15 +95,11 @@ func New(db *datastore.Datastore) *Subscription {
 }
 
 func (s *Subscription) Init() {
-	s.Metadata = make(Metadata)
+	s.Metadata = make(Map)
 }
 
 func (s Subscription) Kind() string {
 	return "subscription"
-}
-
-func (s Subscription) Document() mixin.Document {
-	return nil
 }
 
 func (s Subscription) ToCard() *stripe.CardParams {

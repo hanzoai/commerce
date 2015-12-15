@@ -73,7 +73,7 @@ func getReferrers(c *gin.Context) {
 
 func getSubscriptions(c *gin.Context) {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespace(c))
+	db := datastore.New(org.Namespaced(c))
 	id := c.Params.ByName("userid")
 
 	subscriptions := make([]subscription.Subscription, 0)
