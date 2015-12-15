@@ -22,12 +22,12 @@ type Submission struct {
 
 	Client client.Client `json:"client"`
 
-	Metadata  Metadata `json:"metadata" datastore:"-"`
-	Metadata_ string   `json:"-" datastore:",noindex"`
+	Metadata  Map    `json:"metadata" datastore:"-"`
+	Metadata_ string `json:"-" datastore:",noindex"`
 }
 
 func (s *Submission) Init() {
-	s.Metadata = make(Metadata)
+	s.Metadata = make(Map)
 }
 
 func New(db *datastore.Datastore) *Submission {
@@ -39,10 +39,6 @@ func New(db *datastore.Datastore) *Submission {
 
 func (s Submission) Kind() string {
 	return "submission"
-}
-
-func (s Submission) Document() mixin.Document {
-	return nil
 }
 
 func (s *Submission) Load(c <-chan aeds.Property) (err error) {

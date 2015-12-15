@@ -89,10 +89,6 @@ func (m MailingList) Kind() string {
 	return "mailinglist"
 }
 
-func (m MailingList) Document() mixin.Document {
-	return nil
-}
-
 func (m *MailingList) Validator() *val.Validator {
 	return val.New(m)
 }
