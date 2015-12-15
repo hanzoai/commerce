@@ -33,7 +33,7 @@ func get(c *gin.Context) {
 
 func update(c *gin.Context) {
 	// org := middleware.GetOrganization(c)
-	// db := datastore.New(org.Namespace(c))
+	// db := datastore.New(org.Namespaced(c))
 	// usr := middleware.GetUser(c)
 
 	// id := usr.Id()

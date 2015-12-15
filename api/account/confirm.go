@@ -21,7 +21,7 @@ type confirmPasswordReq struct {
 
 func confirm(c *gin.Context) {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespace(c))
+	db := datastore.New(org.Namespaced(c))
 
 	usr := user.New(db)
 	tok := token.New(db)

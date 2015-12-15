@@ -60,10 +60,6 @@ func (v Variant) Kind() string {
 	return "variant"
 }
 
-func (v Variant) Document() mixin.Document {
-	return nil
-}
-
 func (v *Variant) Validator() *val.Validator {
 	return val.New(v).Check("ProductId").Exists().
 		Check("SKU").Exists().

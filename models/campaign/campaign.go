@@ -47,10 +47,6 @@ func (c Campaign) Kind() string {
 	return "campaign"
 }
 
-func (c Campaign) Document() mixin.Document {
-	return nil
-}
-
 func (c *Campaign) Validator() *val.Validator {
 	return val.New(c)
 }

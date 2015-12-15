@@ -19,6 +19,7 @@ import (
 	// Imported for side-effect, ensures tasks are registered
 	_ "crowdstart.com/models/fixtures"
 	_ "crowdstart.com/models/migrations"
+	_ "crowdstart.com/models/webhook/tasks"
 	_ "crowdstart.com/thirdparty/mailchimp/tasks"
 	_ "crowdstart.com/thirdparty/mandrill/tasks"
 	_ "crowdstart.com/util/aggregate/tasks"
