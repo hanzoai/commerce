@@ -58,8 +58,8 @@ type Plan struct {
 	IntervalCount   int            `json:"intervalCount"`
 	TrialPeriodDays int            `json:"trialPeriodDays"`
 
-	Metadata  Metadata `json:"metadata" datastore:"-"`
-	Metadata_ string   `json:"-" datastore:"-"`
+	Metadata  Map    `json:"metadata" datastore:"-"`
+	Metadata_ string `json:"-" datastore:"-"`
 }
 
 func New(db *datastore.Datastore) *Plan {
@@ -69,7 +69,7 @@ func New(db *datastore.Datastore) *Plan {
 }
 
 func (p *Plan) Init() {
-	p.Metadata = make(Metadata)
+	p.Metadata = make(Map)
 }
 
 func (p Plan) Kind() string {

@@ -16,7 +16,7 @@ import (
 func subscriptionRequest(c *gin.Context, org *organization.Organization) (*SubscriptionReq, error) {
 	// Create AuthReq properly by calling order.New
 	sr := new(SubscriptionReq)
-	sr.Db = datastore.New(org.Namespace(c))
+	sr.Db = datastore.New(org.Namespaced(c))
 
 	// Try decode request body
 	if err := json.Decode(c.Request.Body, &sr); err != nil {
@@ -29,7 +29,7 @@ func subscriptionRequest(c *gin.Context, org *organization.Organization) (*Subsc
 
 func subscribe(c *gin.Context, org *organization.Organization) (*subscription.Subscription, *user.User, error) {
 	ctx := org.Db.Context
-	nsCtx := org.Namespace(ctx)
+	nsCtx := org.Namespaced(ctx)
 	db := datastore.New(nsCtx)
 
 	sr, err := subscriptionRequest(c, org)
@@ -88,7 +88,7 @@ func subscribe(c *gin.Context, org *organization.Organization) (*subscription.Su
 
 func updateSubscribe(c *gin.Context, org *organization.Organization, sub *subscription.Subscription) (*subscription.Subscription, error) {
 	ctx := org.Db.Context
-	nsCtx := org.Namespace(ctx)
+	nsCtx := org.Namespaced(ctx)
 	db := datastore.New(nsCtx)
 
 	userId := sub.UserId
