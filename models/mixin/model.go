@@ -9,6 +9,7 @@ import (
 	aeds "appengine/datastore"
 
 	"crowdstart.com/datastore"
+	"crowdstart.com/util/cache"
 	"crowdstart.com/util/hashid"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/rand"
@@ -487,9 +488,13 @@ func (m *Model) KeyExists(key interface{}) (datastore.Key, bool, error) {
 
 // Update new entity (should already exist)
 func (m *Model) Update() error {
+	// Get previous entity
+	getPrevious := cache.Once(cloneEntity)
+
 	// Execute BeforeUpdate hook if defined on entity.
 	if hook, ok := m.Entity.(BeforeUpdate); ok {
-		if err := hook.BeforeUpdate(); err != nil {
+		previous := getPrevious(m).(Entity)
+		if err := hook.BeforeUpdate(previous); err != nil {
 			return err
 		}
 	}
@@ -500,7 +505,8 @@ func (m *Model) Update() error {
 
 	// Execute AfterUpdate hook if defined on entity.
 	if hook, ok := m.Entity.(AfterUpdate); ok {
-		if err := hook.AfterUpdate(); err != nil {
+		previous := getPrevious(m).(Entity)
+		if err := hook.AfterUpdate(previous); err != nil {
 			return err
 		}
 	}
