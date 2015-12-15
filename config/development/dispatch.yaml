@@ -4,26 +4,14 @@ dispatch:
   - url: "*/api/*"
     module: api
 
-  # - url: "*/checkout/*"
-  #   module: checkout
-
   - url: "*/analytics/*"
     module: analytics
 
   - url: "*/admin/*"
     module: platform
 
-  - url: "*/cdn/*"
-    module: cdn
-
   - url: "*/platform/*"
     module: platform
-
-  # - url: "*/preorder/*"
-  #   module: preorder
-
-  - url: "*/store/*"
-    module: store
 
   - url: "*/default/*"
     module: default
