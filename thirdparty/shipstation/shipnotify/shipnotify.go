@@ -106,7 +106,7 @@ func ShipNotify(c *gin.Context) {
 	}
 
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespace(c))
+	db := datastore.New(org.Namespaced(c))
 	ctx := db.Context
 
 	ord := order.New(db)

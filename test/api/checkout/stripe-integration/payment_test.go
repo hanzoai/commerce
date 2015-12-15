@@ -87,7 +87,7 @@ var _ = BeforeSuite(func() {
 	sc = stripe.New(ctx, org.Stripe.Test.AccessToken)
 
 	// Save namespaced db
-	db = datastore.New(org.Namespace(ctx))
+	db = datastore.New(org.Namespaced(ctx))
 })
 
 // Tear-down appengine context
