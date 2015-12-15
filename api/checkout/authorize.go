@@ -16,7 +16,7 @@ import (
 	"crowdstart.com/models/types/client"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/models/user"
-	"crowdstart.com/thirdparty/redis"
+	"crowdstart.com/util/counter"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
 )
@@ -149,8 +149,8 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	ord.ShippingAddress.Country = strings.ToUpper(ord.ShippingAddress.Country)
 
 	if !ord.Test {
-		if err := redis.IncrUsers(ctx, org, time.Now()); err != nil {
-			log.Warn("Redis Error %s", err, ctx)
+		if err := counter.IncrUsers(ctx, org, time.Now()); err != nil {
+			log.Warn("Counter Error %s", err, ctx)
 		}
 	}
 

@@ -61,8 +61,6 @@ do ->
 
   # Get elements from inside a parent
   getElements = (parent, selector) ->
-    console.log 'getElements', parent, selector
-
     if selector? and selector != ''
       parent.querySelectorAll selector
     else
@@ -74,22 +72,20 @@ do ->
     el?.value?.trim()
 
   # serialize a form
-  serializeForm = (el) ->
-    return {} unless el?
+  serializeForm = (form) ->
+    return {} unless form?
 
     data =
       metadata: {}
 
-    inputs = el.getElementsByTagName 'input'
-
     # Loop over form elements
-    for input in inputs
+    for el in form.elements
       # Clean up inputs
-      k = input.name.trim().toLowerCase()
-      v = input.value.trim()
+      k = el.name.trim().toLowerCase()
+      v = el.value.trim()
 
       # Skip inputs we don't care about
-      if k == '' or v == '' or (input.getAttribute 'type') == 'submit'
+      if k == '' or v == '' or (el.getAttribute 'type') == 'submit'
         continue
 
       # Detect emails
@@ -100,15 +96,13 @@ do ->
 
     # Use selectors if necessary
     if selectors.email
-      data.email = getValue el, selectors.email
+      data.email = getValue form, selectors.email
     else
       data.email ?= ''
 
     for prop in ['firstname', 'lastname', 'name']
       if (selector = selectors[prop])?
-        data.metadata[prop] = getValue el, selector
-
-    console.error 'Email is required' if data.email == ''
+        data.metadata[prop] = getValue form, selector
 
     data
 
@@ -239,7 +233,6 @@ do ->
         ev.preventDefault()
 
       data = serializeForm el
-      console.log data
 
       if ml.validate
         unless data.email?
@@ -303,11 +296,6 @@ do ->
       errors = getElements parent, selectors.errors
     else
       errors = []
-
-    console.log 'selectors', selectors
-    console.log 'forms', forms
-    console.log 'handlers', handlers
-    console.log 'errors', errors
 
     for handler, i in handlers
       do (handler, i) ->

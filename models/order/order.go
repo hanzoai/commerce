@@ -114,9 +114,6 @@ type Order struct {
 	// Individual line items
 	Items []LineItem `json:"items"`
 
-	// Free Items from Coupons
-	CouponItems []LineItem `json:"couponItems,omitempty"`
-
 	Adjustments []Adjustment `json:"-"`
 
 	Coupons     []coupon.Coupon `json:"coupons,omitempty"`
@@ -132,10 +129,14 @@ type Order struct {
 	History []Event `json:"-,omitempty"`
 
 	// Arbitrary key/value pairs associated with this order
-	Metadata  Metadata `json:"metadata" datastore:"-"`
-	Metadata_ string   `json:"-" datastore:",noindex"`
+	Metadata  Map    `json:"metadata" datastore:"-"`
+	Metadata_ string `json:"-" datastore:",noindex"`
 
 	Test bool `json:"-"` // Whether our internal test flag is active or not
+
+	Gift        bool   `json:"gift"`        // Is this a gift?
+	GiftMessage string `json:"giftMessage"` // Message to go on gift
+	GiftEmail   string `json:"giftEmail"`   // Email for digital gifts
 }
 
 func (o *Order) Init() {
@@ -145,7 +146,7 @@ func (o *Order) Init() {
 	o.Adjustments = make([]Adjustment, 0)
 	o.History = make([]Event, 0)
 	o.Items = make([]LineItem, 0)
-	o.Metadata = make(Metadata)
+	o.Metadata = make(Map)
 	o.Coupons = make([]coupon.Coupon, 0)
 }
 
@@ -172,11 +173,6 @@ func (o Order) Document() mixin.Document {
 
 	productIds := make([]string, 0)
 	for _, item := range o.Items {
-		productIds = append(productIds, item.ProductId)
-		productIds = append(productIds, item.ProductSlug)
-	}
-
-	for _, item := range o.CouponItems {
 		productIds = append(productIds, item.ProductId)
 		productIds = append(productIds, item.ProductSlug)
 	}
@@ -323,39 +319,41 @@ func (o Order) HasDiscount() bool {
 // Update discount using coupon codes/order info.
 func (o *Order) UpdateDiscount() {
 	o.Discount = 0
+
 	num := len(o.CouponCodes)
 
 	ctx := o.Model.Db.Context
 
 	for i := 0; i < num; i++ {
 		c := &o.Coupons[i]
-		if !c.Enabled {
+		if !c.ValidFor(o.CreatedAt) {
 			continue
 		}
 
-		if c.ProductId == "" {
-			// Coupons per product
+		if c.ItemId() == "" {
+			// Not per product
 			switch c.Type {
 			case coupon.Flat:
-				o.Discount = currency.Cents(int(o.Discount) + c.Amount)
+				o.Discount += currency.Cents(c.Amount)
 			case coupon.Percent:
 				for _, item := range o.Items {
-					o.Discount = currency.Cents(int(o.Discount) + int(math.Floor(float64(item.TotalPrice())*float64(c.Amount)*0.01)))
+					o.Discount += currency.Cents(int(math.Floor(float64(item.TotalPrice()) * float64(c.Amount) * 0.01)))
 				}
 			case coupon.FreeShipping:
-				o.Discount = currency.Cents(int(o.Discount) + int(o.Shipping))
+				o.Discount += currency.Cents(int(o.Shipping))
 			}
 		} else {
 			// Coupons per product
 			for _, item := range o.Items {
-				log.Warn("Coupon.ProductId: %v, Item.ProductId: %v", c.ProductId, item.ProductId, ctx)
-				// log.Warn("%v, %v ==? %v", item.ProductName, item.ProductId, c.ProductId)
-				if item.ProductId == c.ProductId {
+				log.Debug("Coupon.ProductId: %v, Item.ProductId: %v", c.ProductId, item.ProductId, ctx)
+				if item.Id() == c.ItemId() {
 					switch c.Type {
 					case coupon.Flat:
-						o.Discount = currency.Cents(int(o.Discount) + (item.Quantity * c.Amount))
+						o.Discount += currency.Cents(item.Quantity * c.Amount)
 					case coupon.Percent:
-						o.Discount = currency.Cents(int(o.Discount) + int(math.Floor(float64(item.TotalPrice())*float64(c.Amount)*0.01)))
+						o.Discount += currency.Cents(math.Floor(float64(item.TotalPrice()) * float64(c.Amount) * 0.01))
+					case coupon.FreeItem:
+						o.Discount += currency.Cents(item.Price)
 					}
 
 					// Break out unless required to apply to each product
@@ -373,20 +371,29 @@ func (o *Order) UpdateDiscount() {
 func (o *Order) UpdateCouponItems() error {
 	nCodes := len(o.CouponCodes)
 
-	o.CouponItems = make([]LineItem, 0)
+	items := make([]LineItem, 0)
+	for _, item := range o.Items {
+		if item.AddedBy != "coupon" {
+			items = append(items, item)
+		}
+	}
+
+	o.Items = items
 
 	for i := 0; i < nCodes; i++ {
 		c := &o.Coupons[i]
-		if !c.Enabled {
+		if !c.ValidFor(o.CreatedAt) {
 			continue
 		}
 		if c.ProductId == "" {
 			switch c.Type {
 			case coupon.FreeItem:
-				o.CouponItems = append(o.CouponItems, LineItem{
+				o.Items = append(o.Items, LineItem{
 					ProductId: c.FreeProductId,
 					VariantId: c.FreeVariantId,
 					Quantity:  c.FreeQuantity,
+					Free:      true,
+					AddedBy:   "coupon",
 				})
 			}
 		} else {
@@ -394,42 +401,17 @@ func (o *Order) UpdateCouponItems() error {
 				if item.ProductId == c.ProductId {
 					switch c.Type {
 					case coupon.FreeItem:
-						o.CouponItems = append(o.CouponItems, LineItem{
+						o.Items = append(o.Items, LineItem{
 							ProductId: c.FreeProductId,
 							VariantId: c.FreeVariantId,
 							Quantity:  c.FreeQuantity,
+							Free:      true,
+							AddedBy:   "coupon",
 						})
 					}
 				}
 			}
 		}
-	}
-
-	db := o.Model.Db
-	ctx := o.Model.Db.Context
-
-	nItems := len(o.CouponItems)
-	keys := make([]datastore.Key, nItems, nItems)
-	vals := make([]interface{}, nItems, nItems)
-
-	for i := 0; i < nItems; i++ {
-		key, dst, err := o.CouponItems[i].Entity(db)
-		if err != nil {
-			log.Error("Failed to get entity for %#v: %v", o.CouponItems[i], err, ctx)
-			return err
-		}
-		keys[i] = key
-		vals[i] = dst
-	}
-
-	err := db.GetMulti(keys, vals)
-	if err != nil {
-		log.Error("Failed to get coupon items: %v", err, ctx)
-		return err
-	}
-
-	for i := 0; i < nItems; i++ {
-		(&o.CouponItems[i]).Update()
 	}
 
 	return nil
@@ -579,6 +561,15 @@ func (o *Order) Tally() {
 func (o *Order) UpdateAndTally(stor *store.Store) error {
 	ctx := o.Db.Context
 
+	// Get coupons from datastore
+	if err := o.GetCoupons(); err != nil {
+		log.Error(err, ctx)
+		return errors.New("Failed to get coupons")
+	}
+
+	// Update the list of free coupon items
+	o.UpdateCouponItems()
+
 	// Get underlying product/variant entities
 	if err := o.GetItemEntities(); err != nil {
 		log.Error(err, ctx)
@@ -593,17 +584,8 @@ func (o *Order) UpdateAndTally(stor *store.Store) error {
 	// Update line items using that information
 	o.UpdateFromEntities()
 
-	// Get coupons from datastore
-	if err := o.GetCoupons(); err != nil {
-		log.Error(err, ctx)
-		return errors.New("Failed to get coupons")
-	}
-
 	// Update discount amount
 	o.UpdateDiscount()
-
-	// Update the list of free coupon items
-	o.UpdateCouponItems()
 
 	// Tally up order again
 	o.Tally()

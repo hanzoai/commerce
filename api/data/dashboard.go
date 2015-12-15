@@ -7,25 +7,25 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.com/middleware"
-	"crowdstart.com/thirdparty/redis"
+	"crowdstart.com/util/counter"
 	"crowdstart.com/util/json/http"
 	"crowdstart.com/util/log"
 )
 
 func dashboard(c *gin.Context) {
-	period := redis.Period(c.Params.ByName("period"))
+	period := counter.Period(c.Params.ByName("period"))
 	year, _ := strconv.Atoi(c.Params.ByName("year"))
 	month, _ := strconv.Atoi(c.Params.ByName("month"))
 	day, _ := strconv.Atoi(c.Params.ByName("day"))
 	tzOffset, _ := strconv.Atoi(c.Params.ByName("tzOffset"))
 
 	switch period {
-	case redis.Yearly:
-	case redis.Weekly:
-	case redis.Monthly:
-	case redis.Daily:
+	case counter.Yearly:
+	case counter.Weekly:
+	case counter.Monthly:
+	case counter.Daily:
 	default:
-		period = redis.Weekly
+		period = counter.Weekly
 	}
 
 	date := time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC)
@@ -34,7 +34,7 @@ func dashboard(c *gin.Context) {
 
 	org := middleware.GetOrganization(c)
 
-	data, err := redis.GetDashboardData(org.Db.Context, period, date, tzOffset*3600, org)
+	data, err := counter.GetDashboardData(org.Db.Context, period, date, tzOffset*3600, org)
 	if err != nil {
 		http.Fail(c, 500, "Failed to load data", err)
 	} else {

@@ -33,10 +33,6 @@ func (f Funnel) Kind() string {
 	return "funnel"
 }
 
-func (f Funnel) Document() mixin.Document {
-	return nil
-}
-
 func (f *Funnel) Load(c <-chan aeds.Property) (err error) {
 	// Ensure we're initialized
 	f.Init()

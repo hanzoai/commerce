@@ -76,10 +76,6 @@ func (p Plan) Kind() string {
 	return "plan"
 }
 
-func (p Plan) Document() mixin.Document {
-	return nil
-}
-
 func (p *Plan) Load(c <-chan aeds.Property) (err error) {
 	// Ensure we're initialized
 	p.Init()

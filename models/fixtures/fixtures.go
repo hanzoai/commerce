@@ -50,7 +50,7 @@ func getNamespaceDb(c *gin.Context) *datastore.Datastore {
 	log.Debug("Using (%v,%s) namespace", org.Key(), org.Name)
 
 	// Use org's namespace
-	ctx := org.Namespace(org.Db.Context)
+	ctx := org.Namespaced(org.Db.Context)
 	db := datastore.New(ctx)
 	return db
 }
