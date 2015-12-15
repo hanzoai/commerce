@@ -16,6 +16,7 @@ func call(fn interface{}, args ...interface{}) interface{} {
 	return reflect.ValueOf(fn).Call(reflectArgs)
 }
 
+// Simplifed version of Memoize w/o expiration
 func Once(fn interface{}) Memoized {
 	var cached interface{}
 
