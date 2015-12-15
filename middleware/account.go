@@ -21,7 +21,7 @@ func AccountRequired() gin.HandlerFunc {
 		}
 
 		org := GetOrganization(c)
-		db := datastore.New(org.Namespace(c))
+		db := datastore.New(org.Namespaced(c))
 		u := user.New(db)
 
 		if err := u.GetById(id); err != nil {
