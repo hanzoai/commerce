@@ -32,6 +32,7 @@ func subscribe(c *gin.Context, org *organization.Organization) (*subscription.Su
 	nsCtx := org.Namespaced(ctx)
 	db := datastore.New(nsCtx)
 
+	// Parse request
 	sr, err := subscriptionRequest(c, org)
 	if err != nil {
 		return nil, nil, err
@@ -46,10 +47,12 @@ func subscribe(c *gin.Context, org *organization.Organization) (*subscription.Su
 	}
 	log.Debug("Subscription: %#v", sub, c)
 
+	// Subscription w/o quantity defaults to 1
 	if sub.Quantity < 1 {
 		sub.Quantity = 1
 	}
 
+	// Try to find plan
 	pln := plan.New(db)
 	err = pln.GetById(sub.PlanId)
 	if err != nil {
@@ -57,12 +60,14 @@ func subscribe(c *gin.Context, org *organization.Organization) (*subscription.Su
 	}
 	log.Debug("Plan: %#v", pln, c)
 
+	// Get user
 	usr, err := sr.User()
 	if err != nil {
 		return nil, nil, err
 	}
 	log.Debug("User: %#v", usr, c)
 
+	// Payment information
 	sub.Buyer = usr.Buyer()
 	log.Debug("Buyer: %#v", sub.Buyer, c)
 
@@ -70,16 +75,21 @@ func subscribe(c *gin.Context, org *organization.Organization) (*subscription.Su
 		sub.Test = true
 	}
 
+	// Parent subscription to user
 	sub.Parent = usr.Key()
 	sub.UserId = usr.Id()
+
+	// Set plan on subscription
 	sub.PlanId = pln.Id()
 	sub.Plan = *pln
 
+	// Subscribe user to plan in Stripe
 	err = stripe.Subscribe(org, usr, sub)
 	if err != nil {
 		return nil, nil, err
 	}
 
+	// Save user and subscription
 	usr.MustPut()
 	sub.MustPut()
 
