@@ -16,21 +16,21 @@ appcfg.py 		= $(sdk_path)/appcfg.py --skip_sdk_update_check
 bulkloader.py   = $(sdk_path)/bulkloader.py
 
 deps	= $(shell cat Godeps | cut -d ' ' -f 1)
-modules	= crowdstart.com/api \
-		  crowdstart.com/platform \
-		  crowdstart.com/store
+modules	= crowdstart.com/analytics \
+		  crowdstart.com/api \
+		  crowdstart.com/cdn \
+		  crowdstart.com/platform
 
 gae_development = config/development/app.yaml \
 				  config/development/dispatch.yaml \
 				  analytics/app.dev.yaml \
 				  api/app.dev.yaml \
 				  cdn/app.dev.yaml \
-				  platform/app.dev.yaml \
-				  store/app.dev.yaml
+				  platform/app.dev.yaml
 
 gae_sandbox = config/sandbox \
 			  analytics/app.sandbox.yaml \
-			  api/app.sandbox.yaml \
+			  api/app.sandbox.yaml
 
 gae_staging = config/staging \
 			  analytics/app.staging.yaml \
@@ -42,7 +42,7 @@ gae_production = config/production \
 				 analytics \
 				 api \
 			  	 cdn \
-				 platform \
+				 platform
 
 gae_skully = config/skully \
 			 analytics/app.skully.yaml \
