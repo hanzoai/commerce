@@ -17,7 +17,6 @@ func Subscribe(org *organization.Organization, usr *user.User, sub *subscription
 	if err != nil {
 		return err
 	}
-	log.Warn("NEw Token %v", tok)
 
 	// New customer
 	if usr.Accounts.Stripe.CustomerId == "" {
