@@ -17,7 +17,7 @@ func getOrder(c *gin.Context) {
 	id := c.Params.ByName("orderid")
 
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespace(c))
+	db := datastore.New(org.Namespaced(c))
 
 	ord := order.New(db)
 	if err := ord.GetById(id); err != nil {
@@ -38,7 +38,7 @@ func patchOrder(c *gin.Context) {
 	id := c.Params.ByName("orderid")
 
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespace(c))
+	db := datastore.New(org.Namespaced(c))
 
 	ord := order.New(db)
 	if err := ord.GetById(id); err != nil {

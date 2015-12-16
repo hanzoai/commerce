@@ -80,7 +80,7 @@ var _ = BeforeSuite(func() {
 	})
 
 	// Save namespaced db
-	db = datastore.New(org.Namespace(ctx))
+	db = datastore.New(org.Namespaced(ctx))
 })
 
 // Tear-down appengine context
