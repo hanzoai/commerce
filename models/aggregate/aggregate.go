@@ -58,10 +58,6 @@ func (a Aggregate) Kind() string {
 	return "aggregate"
 }
 
-func (a Aggregate) Document() mixin.Document {
-	return nil
-}
-
 func (a *Aggregate) Load(c <-chan aeds.Property) (err error) {
 	// Ensure we're initialized
 	a.Init()

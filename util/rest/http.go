@@ -34,7 +34,7 @@ func newEndpoint(db *datastore.Datastore, r *Rest) *endpoint {
 	endpoint.prefix = strings.TrimLeft(r.Prefix, "/")
 	endpoint.rest = r
 	endpoint.kind = r.Kind
-	endpoint.Model = mixin.Model{Db: db, Entity: r.newSearchableKind()}
+	endpoint.Model = mixin.Model{Db: db, Entity: r.newKind()}
 	return endpoint
 }
 
@@ -91,7 +91,7 @@ func ListRoutes() gin.HandlerFunc {
 		}
 
 		// Get namespaced datastore context
-		orgDb := datastore.New(org.Namespace(c))
+		orgDb := datastore.New(org.Namespaced(c))
 
 		// We special case order endpoint because of a few useful API calls we want to work.
 		var orderEndpoint *endpoint

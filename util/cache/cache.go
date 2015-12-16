@@ -1,11 +1,35 @@
 package cache
 
-import "time"
+import (
+	"reflect"
+	"time"
+)
 
-type MemoizedFn func(args ...interface{}) interface{}
+type Memoized func(args ...interface{}) interface{}
+
+func call(fn interface{}, args ...interface{}) interface{} {
+	// Call fn
+	reflectArgs := make([]reflect.Value, len(args))
+	for i, arg := range args {
+		reflectArgs[i] = reflect.ValueOf(arg)
+	}
+	return reflect.ValueOf(fn).Call(reflectArgs)
+}
+
+func Once(fn interface{}) Memoized {
+	var cached interface{}
+
+	return func(args ...interface{}) interface{} {
+		if cached == nil {
+			cached = call(fn, args...)
+		}
+
+		return cached
+	}
+}
 
 // Cache result of fn, optionally expiring result.
-func Memoize(fn MemoizedFn, args ...interface{}) MemoizedFn {
+func Memoize(fn interface{}, args ...interface{}) Memoized {
 	seconds := int64(0)
 
 	// Takes one extra optional argument, a timeout in seconds
@@ -18,19 +42,19 @@ func Memoize(fn MemoizedFn, args ...interface{}) MemoizedFn {
 	expires := time.Now()
 	expires.Add(duration)
 
-	var cachedResult interface{}
+	var cached interface{}
 
 	return func(args ...interface{}) interface{} {
 		now := time.Now()
 
 		// If this is the first time being called or expiration hit, cache result
-		if cachedResult == nil || (seconds > 0 && now.After(expires)) {
-			cachedResult = fn(args...)
+		if cached == nil || (seconds > 0 && now.After(expires)) {
+			cached = call(fn, args...)
 
 			// Reset expiration timeout
 			expires = now.Add(duration)
 		}
 
-		return cachedResult
+		return cached
 	}
 }

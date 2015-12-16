@@ -129,8 +129,8 @@ type Order struct {
 	History []Event `json:"-,omitempty"`
 
 	// Arbitrary key/value pairs associated with this order
-	Metadata  Metadata `json:"metadata" datastore:"-"`
-	Metadata_ string   `json:"-" datastore:",noindex"`
+	Metadata  Map    `json:"metadata" datastore:"-"`
+	Metadata_ string `json:"-" datastore:",noindex"`
 
 	Test bool `json:"-"` // Whether our internal test flag is active or not
 
@@ -146,7 +146,7 @@ func (o *Order) Init() {
 	o.Adjustments = make([]Adjustment, 0)
 	o.History = make([]Event, 0)
 	o.Items = make([]LineItem, 0)
-	o.Metadata = make(Metadata)
+	o.Metadata = make(Map)
 	o.Coupons = make([]coupon.Coupon, 0)
 }
 
@@ -326,12 +326,12 @@ func (o *Order) UpdateDiscount() {
 
 	for i := 0; i < num; i++ {
 		c := &o.Coupons[i]
-		if !c.Enabled {
+		if !c.ValidFor(o.CreatedAt) {
 			continue
 		}
 
-		if c.ProductId == "" {
-			// Coupons per product
+		if c.ItemId() == "" {
+			// Not per product
 			switch c.Type {
 			case coupon.Flat:
 				o.Discount += currency.Cents(c.Amount)
@@ -346,16 +346,14 @@ func (o *Order) UpdateDiscount() {
 			// Coupons per product
 			for _, item := range o.Items {
 				log.Debug("Coupon.ProductId: %v, Item.ProductId: %v", c.ProductId, item.ProductId, ctx)
-				// log.Warn("%v, %v ==? %v", item.ProductName, item.ProductId, c.ProductId)
-				if item.ProductId == c.ProductId {
+				if item.Id() == c.ItemId() {
 					switch c.Type {
 					case coupon.Flat:
 						o.Discount += currency.Cents(item.Quantity * c.Amount)
 					case coupon.Percent:
-						o.Discount += currency.Cents(int(math.Floor(float64(item.TotalPrice()) * float64(c.Amount) * 0.01)))
+						o.Discount += currency.Cents(math.Floor(float64(item.TotalPrice()) * float64(c.Amount) * 0.01))
 					case coupon.FreeItem:
-						o.Discount += currency.Cents(item.TotalPrice())
-						break
+						o.Discount += currency.Cents(item.Price)
 					}
 
 					// Break out unless required to apply to each product
@@ -384,7 +382,7 @@ func (o *Order) UpdateCouponItems() error {
 
 	for i := 0; i < nCodes; i++ {
 		c := &o.Coupons[i]
-		if !c.Enabled {
+		if !c.ValidFor(o.CreatedAt) {
 			continue
 		}
 		if c.ProductId == "" {
