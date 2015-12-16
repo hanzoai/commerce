@@ -7,12 +7,11 @@ import (
 
 	"appengine"
 	aeds "appengine/datastore"
-	"appengine/search"
 
 	"crowdstart.com/datastore"
+	"crowdstart.com/util/cache"
 	"crowdstart.com/util/hashid"
 	"crowdstart.com/util/json"
-	"crowdstart.com/util/log"
 	"crowdstart.com/util/rand"
 	"crowdstart.com/util/structs"
 	"crowdstart.com/util/val"
@@ -25,53 +24,71 @@ type Kind interface {
 	Kind() string
 }
 
-type Searchable interface {
-	Document() Document
-}
-
-type SearchableKind interface {
-	Kind
-	Searchable
-}
-
 // A specific datastore entity, with methods inherited from this mixin
 type Entity interface {
-	SearchableKind
+	// TODO: Should not be embedded in Entity I don't think
+	Kind
 
+	// Get, Set context/namespace
 	Context() appengine.Context
 	SetContext(ctx interface{})
 	SetNamespace(namespace string)
+	Namespace() string
+
+	// Get, Set keys
 	Key() (key datastore.Key)
 	SetKey(key interface{}) (err error)
 	NewKey() datastore.Key
 	Id() string
-	Get(args ...interface{}) error
-	GetById(string) error
+
+	// Various existential helpers
 	Exists() (bool, error)
 	IdExists(id string) (bool, error)
-	KeyExists(key interface{}) (datastore.Key, bool, error)
 	KeyById(string) (datastore.Key, bool, error)
-	MustGet(args ...interface{})
+	KeyExists(key interface{}) (datastore.Key, bool, error)
+
+	// Get, Put, Delete + Create, Update
+	Get(args ...interface{}) error
+	GetById(string) error
 	Put() error
-	PutDocument() error
+	Create() error
+	Update() error
+	Delete() error
+
+	// Must variants
+	MustCreate()
+	MustDelete()
+	MustGet(args ...interface{})
 	MustPut()
+	MustUpdate()
+
+	// Document
+	PutDocument() error
+	DeleteDocument() error
+
+	// Get or Create, Update helpers
 	GetOrCreate(filterStr string, value interface{}) error
 	GetOrUpdate(filterStr string, value interface{}) error
-	RunInTransaction(fn func() error) error
-	Delete(args ...interface{}) error
-	Query() *Query
+
+	// Validation
 	Validate() error
 	Validator() *val.Validator
-	Slice() interface{}
-	JSON() []byte
+
+	// Query
+	Query() *Query
+
+	// Various helpers
 	Datastore() *datastore.Datastore
+	JSON() []byte
+	RunInTransaction(fn func() error) error
+	Slice() interface{}
 }
 
 // Model is a mixin which adds Datastore/Validation/Serialization methods to
 // any Kind that it has been embedded in.
 type Model struct {
 	Db     *datastore.Datastore `json:"-" datastore:"-"`
-	Entity SearchableKind       `json:"-" datastore:"-"`
+	Entity Kind                 `json:"-" datastore:"-"`
 	Parent datastore.Key        `json:"-" datastore:"-"`
 	Mock   bool                 `json:"-" datastore:"-"`
 
@@ -88,7 +105,7 @@ type Model struct {
 }
 
 // Wire up datastore/entity
-func (m *Model) Mixin(db *datastore.Datastore, entity SearchableKind) {
+func (m *Model) Mixin(db *datastore.Datastore, entity Kind) {
 	// Do some reflection here and copy key Id_ off entity (if it had that stuff already populated)?
 	// oldmodel := reflect.ValueOf(entity).Elem().FieldByName("Model").(*Model)
 	// if oldmodel.Id_ != "" {
@@ -124,6 +141,10 @@ func (m *Model) SetNamespace(namespace string) {
 	}
 
 	m.SetContext(ctx)
+}
+
+func (m *Model) Namespace() string {
+	return m.Key().Namespace()
 }
 
 // Return kind of entity
@@ -264,26 +285,41 @@ func (m *Model) Put() error {
 	// Update key
 	m.setKey(key)
 
-	if err := m.PutDocument(); err != nil {
-		log.Error("Could not save search document for model with id %v", m.Id(), m.Db.Context)
+	// Errors are ignored
+	m.PutDocument()
+
+	return nil
+}
+
+// Create new entity (should not exist yet)
+func (m *Model) Create() error {
+	// Execute BeforeCreate hook if defined on entity.
+	if hook, ok := m.Entity.(BeforeCreate); ok {
+		if err := hook.BeforeCreate(); err != nil {
+			return err
+		}
+	}
+
+	if err := m.Put(); err != nil {
+		return err
+	}
+
+	// Execute AfterCreate hook if defined on entity.
+	if hook, ok := m.Entity.(AfterCreate); ok {
+		if err := hook.AfterCreate(); err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
-func (m Model) PutDocument() error {
-	if doc := m.Entity.Document(); doc != nil {
-		index, err := search.Open(m.Entity.Kind())
-		if err != nil {
-			return err
-		}
-
-		_, err = index.Put(m.Db.Context, m.Id(), doc)
-		if err != nil {
-			return err
-		}
+// Create new entity or panic
+func (m *Model) MustCreate() {
+	err := m.Create()
+	if err != nil {
+		panic(err)
 	}
-	return nil
 }
 
 // Get entity from datastore
@@ -450,6 +486,80 @@ func (m *Model) KeyExists(key interface{}) (datastore.Key, bool, error) {
 	return keys[0], true, nil
 }
 
+// Update new entity (should already exist)
+func (m *Model) Update() error {
+	// Get previous entity
+	getPrevious := cache.Once(cloneEntity)
+
+	// Execute BeforeUpdate hook if defined on entity.
+	if hook, ok := m.Entity.(BeforeUpdate); ok {
+		previous := getPrevious(m).(Entity)
+		if err := hook.BeforeUpdate(previous); err != nil {
+			return err
+		}
+	}
+
+	if err := m.Put(); err != nil {
+		return err
+	}
+
+	// Execute AfterUpdate hook if defined on entity.
+	if hook, ok := m.Entity.(AfterUpdate); ok {
+		previous := getPrevious(m).(Entity)
+		if err := hook.AfterUpdate(previous); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Update new entity or panic
+func (m *Model) MustUpdate() {
+	err := m.Update()
+	if err != nil {
+		panic(err)
+	}
+}
+
+// Delete entity from Datastore
+func (m *Model) Delete() error {
+	if m.Mock { // Need mock Delete
+		return m.mockDelete()
+	}
+
+	// Execute BeforeDelete hook if defined on entity.
+	if hook, ok := m.Entity.(BeforeDelete); ok {
+		if err := hook.BeforeDelete(); err != nil {
+			return err
+		}
+	}
+
+	// Errors are ignored
+	m.DeleteDocument()
+
+	if err := m.Db.Delete(m.key); err != nil {
+		return err
+	}
+
+	// Execute AfterDelete hook if defined on entity.
+	if hook, ok := m.Entity.(AfterDelete); ok {
+		if err := hook.AfterDelete(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Delete or panic
+func (m *Model) MustDelete() {
+	err := m.Delete()
+	if err != nil {
+		panic(err)
+	}
+}
+
 // Get entity from datastore or create new one
 func (m *Model) GetOrCreate(filterStr string, value interface{}) error {
 	ok, err := m.Query().Filter(filterStr, value).First()
@@ -468,7 +578,7 @@ func (m *Model) GetOrCreate(filterStr string, value interface{}) error {
 		field := reflect.Indirect(reflect.ValueOf(m.Entity)).FieldByName(name)
 		field.Set(reflect.ValueOf(value))
 
-		return m.Put()
+		return m.Create()
 	}
 
 	return nil
@@ -486,18 +596,19 @@ func (m *Model) GetOrUpdate(filterStr string, value interface{}) error {
 		return err
 	}
 
+	// Not found create
 	if !ok {
 		name := strings.TrimSpace(strings.Split(filterStr, "=")[0])
 		field := reflect.Indirect(reflect.ValueOf(m.Entity)).FieldByName(name)
 		field.Set(reflect.ValueOf(value))
-		return m.Put()
+		return m.Create()
 	}
 
 	// Update copy found with our new data, use it's key, and save updated entity
 	structs.Copy(m.Entity, entity)
 	m.Entity = entity.(Entity)
 	m.SetKey(key)
-	return m.Put()
+	return m.Update()
 }
 
 // NOTE: This is not thread-safe
@@ -513,42 +624,6 @@ func (m *Model) RunInTransaction(fn func() error) error {
 	m.Db.Context = ctx
 
 	return err
-}
-
-func (m Model) DeleteDocument() error {
-	if doc := m.Entity.Document(); doc != nil {
-		index, err := search.Open(m.Entity.Kind())
-		if err != nil {
-			return err
-		}
-
-		err = index.Delete(m.Db.Context, m.Id())
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// Delete entity from Datastore
-func (m *Model) Delete(args ...interface{}) error {
-	if m.Mock { // Need mock Delete
-		return m.mockDelete()
-	}
-
-	// If a key is specified, try to use that, ignore nil keys (which would
-	// otherwise create a new incomplete key which makes no sense in this case.
-	if len(args) == 1 && args[0] != nil {
-		if err := m.SetKey(args[0]); err != nil {
-			return err
-		}
-	}
-
-	if err := m.DeleteDocument(); err != nil {
-		log.Error("Could not delete search document for model with id %v", m.Id(), m.Db.Context)
-	}
-
-	return m.Db.Delete(m.key)
 }
 
 // Return a query for this entity kind

@@ -5,10 +5,8 @@ import (
 
 	"crowdstart.com/auth/password"
 	"crowdstart.com/datastore"
-	"crowdstart.com/models/namespace"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/user"
-	"crowdstart.com/util/log"
 )
 
 var Verus = New("verus", func(c *gin.Context) *organization.Organization {
@@ -23,42 +21,45 @@ var Verus = New("verus", func(c *gin.Context) *organization.Organization {
 	u := user.New(db)
 	u.Email = "dev@hanzo.ai"
 	u.GetOrCreate("Email=", u.Email)
-
-	u2 := user.New(db)
-	u2.Email = "dev@hanzo.ai"
-	u2.GetOrCreate("Email=", u2.Email)
-
-	u3 := user.New(db)
-	u3.Email = "dev@hanzo.ai"
-	u3.GetOrCreate("Email=", u3.Email)
-
-	// Configure org
-	org.FullName = "verus"
-	org.Owners = []string{u.Id(), u2.Id(), u3.Id()}
-	org.Website = "http://www.verus.com"
-	org.SecretKey = []byte("zW85MZHMklGJE3hNgC5j1cxFpQ04zLb6")
-	org.AddDefaultTokens()
-
-	// Configure user
 	u.FirstName = "Michael"
 	u.LastName = "Walker"
 	u.Organizations = []string{org.Id()}
 	u.PasswordHash, _ = password.Hash("veruspassword!")
 	u.Put()
 
-	// Configure user
+	u2 := user.New(db)
+	u2.Email = "dev@hanzo.ai"
+	u2.GetOrCreate("Email=", u2.Email)
 	u2.FirstName = "Zach"
 	u2.LastName = "Kelling"
 	u2.Organizations = []string{org.Id()}
 	u2.PasswordHash, _ = password.Hash("veruspassword!")
 	u2.Put()
 
-	// Configure user
+	u3 := user.New(db)
+	u3.Email = "dev@hanzo.ai"
+	u3.GetOrCreate("Email=", u3.Email)
 	u3.FirstName = "David"
 	u3.LastName = "Tai"
 	u3.Organizations = []string{org.Id()}
 	u3.PasswordHash, _ = password.Hash("veruspassword!")
 	u3.Put()
+
+	u4 := user.New(db)
+	u4.Email = "tmesser@verus.io"
+	u4.GetOrCreate("Email=", u4.Email)
+	u4.FirstName = "Tim"
+	u4.LastName = "Messer"
+	u4.Organizations = []string{org.Id()}
+	u4.PasswordHash, _ = password.Hash("veruspassword!")
+	u4.Put()
+
+	// Configure org
+	org.FullName = "verus"
+	org.Owners = []string{u.Id(), u2.Id(), u3.Id(), u4.Id()}
+	org.Website = "http://www.verus.com"
+	org.SecretKey = []byte("zW85MZHMklGJE3hNgC5j1cxFpQ04zLb6")
+	org.AddDefaultTokens()
 
 	// Email configuration
 	// org.Mandrill.APIKey = ""
@@ -87,13 +88,13 @@ var Verus = New("verus", func(c *gin.Context) *organization.Organization {
 	org.Put()
 
 	// Save namespace so we can decode keys for this organization later
-	ns := namespace.New(db)
-	ns.Name = org.Name
-	ns.IntId = org.Key().IntID()
-	err := ns.Put()
-	if err != nil {
-		log.Warn("Failed to put namespace: %v", err)
-	}
+	// ns := namespace.New(db)
+	// ns.Name = org.Name
+	// ns.IntId = org.Key().IntID()
+	// err := ns.Put()
+	// if err != nil {
+	// 	log.Warn("Failed to put namespace: %v", err)
+	// }
 
 	return org
 })

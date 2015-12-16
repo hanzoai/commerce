@@ -31,7 +31,7 @@ func create(c *gin.Context) {
 		return
 	}
 
-	db = datastore.New(org.Namespace(ctx))
+	db = datastore.New(org.Namespaced(ctx))
 
 	var events []*analytics.AnalyticsEvent
 

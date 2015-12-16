@@ -108,7 +108,7 @@ func productKeyId(productId string) string {
 }
 
 func IncrTotalSales(ctx appengine.Context, org *organization.Organization, pays []*payment.Payment, t time.Time) error {
-	ctx = org.Namespace(ctx)
+	ctx = org.Namespaced(ctx)
 
 	var total currency.Cents
 	var currency currency.Type
@@ -168,7 +168,7 @@ func IncrTotalSales(ctx appengine.Context, org *organization.Organization, pays 
 }
 
 func IncrStoreSales(ctx appengine.Context, org *organization.Organization, storeId string, pays []*payment.Payment, t time.Time) error {
-	ctx = org.Namespace(ctx)
+	ctx = org.Namespaced(ctx)
 
 	var total currency.Cents
 	var currency currency.Type
@@ -224,7 +224,7 @@ func IncrStoreSales(ctx appengine.Context, org *organization.Organization, store
 }
 
 func IncrTotalOrders(ctx appengine.Context, org *organization.Organization, t time.Time) error {
-	ctx = org.Namespace(ctx)
+	ctx = org.Namespaced(ctx)
 
 	key := totalKey(org, ordersKey, hourly(t))
 	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
@@ -251,7 +251,7 @@ func IncrTotalOrders(ctx appengine.Context, org *organization.Organization, t ti
 }
 
 func IncrStoreOrders(ctx appengine.Context, org *organization.Organization, storeId string, t time.Time) error {
-	ctx = org.Namespace(ctx)
+	ctx = org.Namespaced(ctx)
 
 	key := storeKey(org, storeId, ordersKey, hourly(t))
 	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
@@ -277,7 +277,7 @@ func IncrStoreOrders(ctx appengine.Context, org *organization.Organization, stor
 }
 
 func IncrSubscribers(ctx appengine.Context, org *organization.Organization, mailinglistId string, t time.Time) error {
-	ctx = org.Namespace(ctx)
+	ctx = org.Namespaced(ctx)
 
 	key := subKey(org, mailinglistId, hourly(t))
 	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
@@ -325,7 +325,7 @@ func IncrSubscribers(ctx appengine.Context, org *organization.Organization, mail
 }
 
 func IncrUsers(ctx appengine.Context, org *organization.Organization, t time.Time) error {
-	ctx = org.Namespace(ctx)
+	ctx = org.Namespaced(ctx)
 
 	key := userKey(org, hourly(t))
 	log.Debug("%v incremented by %v", key, 1, org.Db.Context)
@@ -351,7 +351,7 @@ func IncrUsers(ctx appengine.Context, org *organization.Organization, t time.Tim
 }
 
 func IncrTotalProductOrders(ctx appengine.Context, org *organization.Organization, ord *order.Order, t time.Time) error {
-	ctx = org.Namespace(ctx)
+	ctx = org.Namespaced(ctx)
 
 	for _, item := range ord.Items {
 		productsKey := productKeyId(item.ProductId)
@@ -385,7 +385,7 @@ func IncrTotalProductOrders(ctx appengine.Context, org *organization.Organizatio
 }
 
 func IncrStoreProductOrders(ctx appengine.Context, org *organization.Organization, storeId string, ord *order.Order, t time.Time) error {
-	ctx = org.Namespace(ctx)
+	ctx = org.Namespaced(ctx)
 
 	for _, item := range ord.Items {
 		productsKey := productKeyId(item.ProductId)
