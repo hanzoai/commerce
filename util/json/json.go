@@ -30,6 +30,10 @@ func EncodeBytes(value interface{}) []byte {
 	return b
 }
 
+func EncodeBuffer(value interface{}) *bytes.Buffer {
+	return bytes.NewBuffer(EncodeBytes(value))
+}
+
 func Decode(body io.ReadCloser, v interface{}) error {
 	content, err := ioutil.ReadAll(body)
 	body.Close()
