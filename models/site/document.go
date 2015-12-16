@@ -5,5 +5,5 @@ type Document struct {
 }
 
 func (d Document) Id() string {
-	return string(d.Id_)
+	return d.Id_
 }

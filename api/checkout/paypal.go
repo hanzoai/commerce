@@ -60,7 +60,7 @@ func PayPalPayKey(c *gin.Context) {
 
 func PayPalConfirm(c *gin.Context) {
 	org := middleware.GetOrganization(c)
-	ctx := org.Namespace(c)
+	ctx := org.Namespaced(c)
 	db := datastore.New(ctx)
 
 	var err error
@@ -107,7 +107,7 @@ func PayPalConfirm(c *gin.Context) {
 
 func PayPalCancel(c *gin.Context) {
 	org := middleware.GetOrganization(c)
-	ctx := org.Namespace(c)
+	ctx := org.Namespaced(c)
 	db := datastore.New(ctx)
 
 	var err error
