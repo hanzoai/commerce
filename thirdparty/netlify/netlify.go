@@ -6,6 +6,7 @@ import (
 	"appengine"
 
 	"crowdstart.com/config"
+	"crowdstart.com/util/log"
 
 	"appengine/urlfetch"
 
@@ -18,6 +19,8 @@ func createClient(ctx appengine.Context) *netlify.Client {
 		Context:  ctx,
 		Deadline: time.Duration(20) * time.Second, // Update deadline to 20 seconds
 	}
+
+	log.Debug("Created Netlift client using AccessToken: '%s'", config.Netlify.AccessToken, ctx)
 
 	return netlify.NewClient(&netlify.Config{
 		AccessToken: config.Netlify.AccessToken,
