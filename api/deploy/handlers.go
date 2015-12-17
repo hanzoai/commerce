@@ -13,14 +13,6 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 
 	api := router.Group("site")
 
-	// Sites
-	api.GET("/", adminRequired, listSites)
-	api.GET("/:siteid", adminRequired, getSite)
-	api.POST("/", adminRequired, createSite)
-	api.PATCH("/:siteid", adminRequired, updateSite)
-	api.PUT("/:siteid", adminRequired, updateSite)
-	api.DELETE("/:siteid", adminRequired, deleteSite)
-
 	// Deploys
 	api.GET("/:siteid/deploy", adminRequired, listDeploys)
 	api.GET("/:siteid/deploy/:deployid", adminRequired, getDeploy)
