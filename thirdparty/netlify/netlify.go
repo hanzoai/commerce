@@ -25,7 +25,7 @@ func New(ctx appengine.Context, token string) *Client {
 		Deadline: time.Duration(20) * time.Second, // Update deadline to 20 seconds
 	}
 
-	log.Debug("Created Netlift client using AccessToken: '%s'", config.Netlify.AccessToken, ctx)
+	log.Debug("Created Netlify client using AccessToken: '%s'", config.Netlify.AccessToken, ctx)
 
 	c := new(Client)
 	c.ctx = ctx
