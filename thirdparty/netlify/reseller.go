@@ -87,17 +87,21 @@ func cacheAccessToken(ctx appengine.Context, accessToken string) {
 
 	// Persist to memcache
 	if err := memcache.Set(ctx, item); err != nil {
-		log.Debug("Unable to persist access token: %v", err, ctx)
+		log.Error("Unable to persist access token: %v", err, ctx)
 	}
 }
 
 // Get a client for netlify
 func NewFromNamespace(ctx appengine.Context, orgName string) *Client {
+	log.Debug("Fetching access token for organization from memcached", ctx)
 	accessToken := getCachedToken(ctx, orgName)
 	if accessToken == "" {
+		log.Debug("No access token found, creating new access token.", ctx)
 		accessToken = getAccessToken(ctx, orgName)
+		log.Debug("Caching access token '%s'", accessToken, ctx)
 		cacheAccessToken(ctx, accessToken)
 	}
 
+	log.Debug("Creating new client using access token '%s'", accessToken, ctx)
 	return New(ctx, accessToken)
 }
