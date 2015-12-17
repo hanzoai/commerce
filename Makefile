@@ -38,10 +38,15 @@ gae_staging = config/staging \
 			  cdn/app.staging.yaml \
 			  platform/app.staging.yaml
 
+# CDN is deprecated, analytics not used
+# gae_production = config/production \
+# 				 analytics \
+# 				 api \
+# 			  	 cdn \
+# 				 platform
+
 gae_production = config/production \
-				 analytics \
 				 api \
-			  	 cdn \
 				 platform
 
 gae_skully = config/skully \
