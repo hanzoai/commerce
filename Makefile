@@ -218,7 +218,7 @@ deps: deps-assets deps-go
 
 # DEPS JS/CSS
 deps-assets:
-	npm install
+	npm update
 
 # DEPS GO
 deps-go: .sdk .sdk/go .sdk/gpm .sdk/gopath/bin/ginkgo .sdk/gopath/src/crowdstart.com
