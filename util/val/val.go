@@ -10,7 +10,7 @@ import (
 	"crowdstart.com/util/log"
 )
 
-type ValidatorFunction func(interface{}) error
+type ValidatorFunction interface{}
 
 type Validator struct {
 	Value     reflect.Value
@@ -100,8 +100,13 @@ func (v *Validator) Exec(value interface{}) []error {
 		// Loop over all validation functions for a field
 		for _, fn := range fns {
 			// Only append real errors
-			if err := fn(i); err != nil {
-				errs = append(errs, NewFieldError(field, err.Error()))
+			fnVal := reflect.ValueOf(fn)
+			errVal := fnVal.Call([]reflect.Value{reflect.ValueOf(i)})
+			if !errVal[0].IsNil() {
+				err := errVal[0].Interface().(error)
+				if err != nil {
+					errs = append(errs, NewFieldError(field, err.Error()))
+				}
 			}
 		}
 	}
@@ -111,6 +116,18 @@ func (v *Validator) Exec(value interface{}) []error {
 
 func NewValidatorFn(v *Validator, fn ValidatorFunction) *Validator {
 	field := v.lastField
+	typ := reflect.TypeOf(fn)
+	if typ.Kind() != reflect.Func {
+		log.Panic("ValidatorFunction must be a function")
+	}
+	if typ.NumIn() != 1 {
+		log.Panic("ValidatorFunction must have one argument")
+	}
+
+	if typ.NumOut() != 1 {
+		log.Panic("ValidatorFunction must have one return")
+	}
+
 	v.fnsMap[field] = append(v.fnsMap[field], fn)
 	return v
 }
@@ -129,27 +146,21 @@ func (v *Validator) Exists() *Validator {
 }
 
 func (v *Validator) IsEmail() *Validator {
-	return NewValidatorFn(v, func(i interface{}) error {
-		switch value := i.(type) {
-		case string:
-			if strings.Contains(value, "@") &&
-				strings.Contains(value, ".") &&
-				strings.Index(value, "@") < strings.Index(value, ".") &&
-				len(value) > 5 {
-				return nil
-			}
+	return NewValidatorFn(v, func(value string) error {
+		if strings.Contains(value, "@") &&
+			strings.Contains(value, ".") &&
+			strings.Index(value, "@") < strings.Index(value, ".") &&
+			len(value) > 5 {
+			return nil
 		}
 		return errors.New("Field must be an email.")
 	})
 }
 
 func (v *Validator) MinLength(minLength int) *Validator {
-	return NewValidatorFn(v, func(i interface{}) error {
-		switch value := i.(type) {
-		case string:
-			if len(value) >= minLength {
-				return nil
-			}
+	return NewValidatorFn(v, func(value string) error {
+		if len(value) >= minLength {
+			return nil
 		}
 		return errors.New(fmt.Sprintf("Field must be atleast %d characters long.", minLength))
 	})
@@ -157,16 +168,13 @@ func (v *Validator) MinLength(minLength int) *Validator {
 
 // Use for enums
 func (v *Validator) Matches(strs ...string) *Validator {
-	return NewValidatorFn(v, func(i interface{}) error {
-		switch value := i.(type) {
-		case string:
-			for _, str := range strs {
-				if str == value {
-					return nil
-				}
+	return NewValidatorFn(v, func(value string) error {
+		for _, str := range strs {
+			if str == value {
+				return nil
 			}
 		}
-		return errors.New(fmt.Sprintf("Field must be one of ['%v'], not '%v'.", strings.Join(strs, "', '"), i))
+		return errors.New(fmt.Sprintf("Field must be one of ['%v'], not '%v'.", strings.Join(strs, "', '"), value))
 	})
 }
 
