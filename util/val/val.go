@@ -33,7 +33,7 @@ func depointer(value reflect.Value) reflect.Value {
 }
 
 // Helper to deal with traversing dot notation
-func traverseDots(value reflect.Value, field string) reflect.Value {
+func traverseAddts(value reflect.Value, field string) reflect.Value {
 	fields := strings.Split(field, ".")
 	for _, field := range fields {
 		switch value.Kind() {
@@ -71,7 +71,7 @@ func (v *Validator) Exec(value interface{}) []error {
 	errs := make([]error, 0)
 	// Loop over all the field values
 	for field, fns := range v.fnsMap {
-		value := traverseDots(v.Value, field)
+		value := traverseAddts(v.Value, field)
 
 		// we have to add the & to make the fields on the value settable
 		if !value.IsValid() {
@@ -114,7 +114,7 @@ func (v *Validator) Exec(value interface{}) []error {
 	return errs
 }
 
-func NewValidatorFn(v *Validator, fn ValidatorFunction) *Validator {
+func (v *Validator) Add(fn ValidatorFunction) *Validator {
 	field := v.lastField
 	typ := reflect.TypeOf(fn)
 	if typ.Kind() != reflect.Func {
@@ -134,7 +134,7 @@ func NewValidatorFn(v *Validator, fn ValidatorFunction) *Validator {
 
 // Built in validation routines
 func (v *Validator) Exists() *Validator {
-	return NewValidatorFn(v, func(i interface{}) error {
+	return v.Add(func(i interface{}) error {
 		switch value := i.(type) {
 		case string:
 			if len(value) > 0 {
@@ -146,7 +146,7 @@ func (v *Validator) Exists() *Validator {
 }
 
 func (v *Validator) IsEmail() *Validator {
-	return NewValidatorFn(v, func(value string) error {
+	return v.Add(func(value string) error {
 		if strings.Contains(value, "@") &&
 			strings.Contains(value, ".") &&
 			strings.Index(value, "@") < strings.Index(value, ".") &&
@@ -158,7 +158,7 @@ func (v *Validator) IsEmail() *Validator {
 }
 
 func (v *Validator) MinLength(minLength int) *Validator {
-	return NewValidatorFn(v, func(value string) error {
+	return v.Add(func(value string) error {
 		if len(value) >= minLength {
 			return nil
 		}
@@ -168,7 +168,7 @@ func (v *Validator) MinLength(minLength int) *Validator {
 
 // Use for enums
 func (v *Validator) Matches(strs ...string) *Validator {
-	return NewValidatorFn(v, func(value string) error {
+	return v.Add(func(value string) error {
 		for _, str := range strs {
 			if str == value {
 				return nil
@@ -179,9 +179,7 @@ func (v *Validator) Matches(strs ...string) *Validator {
 }
 
 func (v *Validator) Ensure(fn ValidatorFunction) *Validator {
-	field := v.lastField
-	v.fnsMap[field] = append(v.fnsMap[field], fn)
-	return v
+	return v.Add(fn)
 }
 
 // Higher Order Functions
@@ -257,7 +255,7 @@ func (s *StringValidationContext) LengthIsGreaterThanOrEqualTo(n int) *StringVal
 // 		errs = append(errs, "Please enter a last name.")
 // 	}
 
-// 	// Do we care?
+// 	// Add we care?
 // 	// if !Check(user.Phone).Exists().IsValid {
 // 	// 	log.Debug("Form posted without phone number")
 // 	// 	errs = append(errs, "Please enter a phone number.")
