@@ -65,3 +65,10 @@ handlers:
 - url: /.*
   script: _go_app
   secure: always
+
+skip_files:
+- ^(.*/)?\.lang$
+- ^(.*/)?\.less$
+- ^(.*/)?\.md$
+- ^(.*/)?\.php$
+- ^(.*/)?\.scss$
