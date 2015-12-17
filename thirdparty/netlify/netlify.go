@@ -1,6 +1,7 @@
 package netlify
 
 import (
+	"io/ioutil"
 	"time"
 
 	"appengine"
@@ -39,12 +40,15 @@ func New(ctx appengine.Context, token string) *Client {
 }
 
 func (c *Client) CreateSite(s Site) (*Site, error) {
+	log.Debug("Creating site in netlify: %v", s, c.ctx)
 	// Create new site on Netlify's side
 	nsite, res, err := c.client.Sites.Create(&netlify.SiteAttributes{
 		Name: s.Name,
 	})
+	defer res.Body.Close()
 
-	log.Debug("Response from netlify: %v", res, c.ctx)
+	b, _ := ioutil.ReadAll(res.Body)
+	log.Debug("Response from netlify (%v): %v", res.StatusCode, string(b), c.ctx)
 
 	if err != nil {
 		log.Error("Failed to create site: %v", err, c.ctx)
@@ -57,6 +61,7 @@ func (c *Client) CreateSite(s Site) (*Site, error) {
 
 func (c *Client) GetSite(siteId string) (*Site, error) {
 	nsite, res, err := c.client.Sites.Get(siteId)
+	defer res.Body.Close()
 
 	log.Debug("Response from netlify: %v", res, c.ctx)
 
@@ -74,6 +79,7 @@ func (c *Client) GetSite(siteId string) (*Site, error) {
 
 func (c *Client) UpdateSite(s Site) (*Site, error) {
 	nsite, res, err := c.client.Sites.Get(s.Id)
+	defer res.Body.Close()
 
 	log.Debug("Response from netlify: %v", res, c.ctx)
 
@@ -101,6 +107,7 @@ func (c *Client) UpdateSite(s Site) (*Site, error) {
 
 func (c *Client) DeleteSite(s Site) error {
 	nsite, res, err := c.client.Sites.Get(s.Id)
+	defer res.Body.Close()
 
 	log.Debug("Response from netlify: %v", res, c.ctx)
 
