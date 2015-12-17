@@ -5,7 +5,7 @@ import (
 	"crowdstart.com/util/webhook"
 )
 
-// Hooks
+// Create
 func (s *Site) BeforeCreate() error {
 	nsite, err := netlify.CreateSite(s.Context(), s.Netlify())
 	if err != nil {
@@ -22,6 +22,7 @@ func (s *Site) AfterCreate() error {
 	return nil
 }
 
+// Update
 func (s *Site) BeforeUpdate(previous *Site) error {
 	nsite, err := netlify.UpdateSite(s.Context(), s.Netlify())
 	if err != nil {
@@ -38,6 +39,7 @@ func (s *Site) AfterUpdate(previous *Site) error {
 	return nil
 }
 
+// Delete
 func (s *Site) BeforeDelete() error {
 	if err := netlify.DeleteSite(s.Context(), s.Netlify()); err != nil {
 		return err
