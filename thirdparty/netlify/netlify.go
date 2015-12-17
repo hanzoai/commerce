@@ -39,10 +39,11 @@ func New(ctx appengine.Context, token string) *Client {
 }
 
 func (c *Client) CreateSite(s Site) (*Site, error) {
-	log.Debug("Creating site in netlify: %v", s, c.ctx)
+	log.Debug("Creating site in netlify: %#v", s, c.ctx)
 	// Create new site on Netlify's side
 	nsite, res, err := c.client.Sites.Create(&netlify.SiteAttributes{
-		Name: s.Name,
+		Name:         s.Name,
+		CustomDomain: s.CustomDomain,
 	})
 	defer res.Body.Close()
 
