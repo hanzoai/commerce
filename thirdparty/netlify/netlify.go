@@ -4,33 +4,38 @@ import (
 	"time"
 
 	"appengine"
+	"appengine/urlfetch"
 
 	"crowdstart.com/config"
 	"crowdstart.com/util/log"
-
-	"appengine/urlfetch"
 
 	"github.com/netlify/netlify-go"
 )
 
 type Client struct {
+	ctx    appengine.Context
 	client *netlify.Client
+	token  string
 }
 
 func New(ctx appengine.Context, token string) *Client {
-	client := urlfetch.Client(ctx)
-	client.Transport = &urlfetch.Transport{
+	httpclient := urlfetch.Client(ctx)
+	httpclient.Transport = &urlfetch.Transport{
 		Context:  ctx,
 		Deadline: time.Duration(20) * time.Second, // Update deadline to 20 seconds
 	}
 
 	log.Debug("Created Netlift client using AccessToken: '%s'", config.Netlify.AccessToken, ctx)
 
-	return &Client{netlify.NewClient(&netlify.Config{
+	c := new(Client)
+	c.ctx = ctx
+	c.token = token
+	c.client = netlify.NewClient(&netlify.Config{
 		AccessToken: token,
-		HttpClient:  client,
+		HttpClient:  httpclient,
 		UserAgent:   "Crowdstart/1.0",
-	})}
+	})
+	return c
 }
 
 func (c *Client) CreateSite(s Site) (*Site, error) {
