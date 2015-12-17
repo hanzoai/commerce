@@ -66,7 +66,7 @@ func (c Bundle) Kind() string {
 }
 
 func (c *Bundle) Validator() *val.Validator {
-	return val.New(c).Check("Slug").Exists().
+	return val.New().Check("Slug").Exists().
 		Check("Name").Exists()
 }
 

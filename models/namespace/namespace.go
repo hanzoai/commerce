@@ -32,7 +32,7 @@ func (n Namespace) Kind() string {
 }
 
 func (n *Namespace) Validator() *val.Validator {
-	return val.New(n)
+	return val.New()
 }
 
 func Query(db *datastore.Datastore) *mixin.Query {

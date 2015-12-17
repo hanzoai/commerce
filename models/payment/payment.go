@@ -190,7 +190,7 @@ func (p *Payment) Save(c chan<- aeds.Property) (err error) {
 }
 
 func (p *Payment) Validator() *val.Validator {
-	return val.New(p)
+	return val.New()
 }
 
 func New(db *datastore.Datastore) *Payment {

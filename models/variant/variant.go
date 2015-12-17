@@ -61,7 +61,7 @@ func (v Variant) Kind() string {
 }
 
 func (v *Variant) Validator() *val.Validator {
-	return val.New(v).Check("ProductId").Exists().
+	return val.New().Check("ProductId").Exists().
 		Check("SKU").Exists().
 		Check("Name").Exists()
 

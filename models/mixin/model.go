@@ -636,7 +636,7 @@ func (m *Model) Query() *Query {
 
 // Validate a model
 func (m *Model) Validator() *val.Validator {
-	return val.New(nil)
+	return val.New()
 }
 
 func (m *Model) Validate() error {

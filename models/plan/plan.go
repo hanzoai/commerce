@@ -33,7 +33,7 @@ func (p Plan) Kind() string {
 }
 
 func (p *Plan) Validator() *val.Validator {
-	return val.New(p)
+	return val.New()
 }
 
 func Query(db *datastore.Datastore) *mixin.Query {

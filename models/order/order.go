@@ -218,7 +218,7 @@ func (o Order) Document() mixin.Document {
 }
 
 func (o *Order) Validator() *val.Validator {
-	return val.New(o)
+	return val.New()
 }
 
 func (o *Order) Load(c <-chan aeds.Property) (err error) {

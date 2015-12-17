@@ -209,7 +209,7 @@ func (u User) Buyer() Buyer {
 }
 
 func (u *User) Validator() *val.Validator {
-	return val.New(u).Check("FirstName").Exists().
+	return val.New().Check("FirstName").Exists().
 		Check("LastName").Exists().
 		Check("Email").Exists()
 	// // Name cannot be empty string.
