@@ -81,9 +81,9 @@ func (v *Validator) Exec(value interface{}) []error {
 		for _, fn := range fns {
 			// Only append real errors
 			fnVal := reflect.ValueOf(fn)
-			errVal := fnVal.Call([]reflect.Value{value})
-			if !errVal[0].IsNil() {
-				err := errVal[0].Interface().(error)
+			errVals := fnVal.Call([]reflect.Value{value})
+			if len(errVals) > 0 && !errVals[0].IsNil() {
+				err := errVals[0].Interface().(error)
 				if err != nil {
 					errs = append(errs, NewFieldError(field, err.Error()))
 				}
@@ -102,10 +102,6 @@ func (v *Validator) Add(fn ValidatorFunction) *Validator {
 	}
 	if typ.NumIn() != 1 {
 		log.Panic("ValidatorFunction must have one argument")
-	}
-
-	if typ.NumOut() != 1 {
-		log.Panic("ValidatorFunction must have one return")
 	}
 
 	v.fnsMap[field] = append(v.fnsMap[field], fn)
