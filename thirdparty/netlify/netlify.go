@@ -13,7 +13,11 @@ import (
 	"github.com/netlify/netlify-go"
 )
 
-func createClient(ctx appengine.Context) *netlify.Client {
+type Client struct {
+	client *netlify.Client
+}
+
+func New(ctx appengine.Context, token string) *Client {
 	client := urlfetch.Client(ctx)
 	client.Transport = &urlfetch.Transport{
 		Context:  ctx,
@@ -22,18 +26,16 @@ func createClient(ctx appengine.Context) *netlify.Client {
 
 	log.Debug("Created Netlift client using AccessToken: '%s'", config.Netlify.AccessToken, ctx)
 
-	return netlify.NewClient(&netlify.Config{
-		AccessToken: config.Netlify.AccessToken,
+	return &Client{netlify.NewClient(&netlify.Config{
+		AccessToken: token,
 		HttpClient:  client,
 		UserAgent:   "Crowdstart/1.0",
-	})
+	})}
 }
 
-func CreateSite(ctx appengine.Context, s Site) (*Site, error) {
-	client := createClient(ctx)
-
+func (c *Client) CreateSite(s Site) (*Site, error) {
 	// Create new site on Netlify's side
-	nsite, _, err := client.Sites.Create(&netlify.SiteAttributes{
+	nsite, _, err := c.client.Sites.Create(&netlify.SiteAttributes{
 		Name:         s.Name,
 		CustomDomain: s.CustomDomain,
 	})
@@ -43,10 +45,8 @@ func CreateSite(ctx appengine.Context, s Site) (*Site, error) {
 	return (*Site)(nsite), err
 }
 
-func GetSite(ctx appengine.Context, siteId string) (*Site, error) {
-	client := createClient(ctx)
-
-	nsite, _, err := client.Sites.Get(siteId)
+func (c *Client) GetSite(siteId string) (*Site, error) {
+	nsite, _, err := c.client.Sites.Get(siteId)
 
 	return (*Site)(nsite), err
 }
@@ -60,10 +60,8 @@ func GetSite(ctx appengine.Context, siteId string) (*Site, error) {
 // 	return nsites, err
 // }
 
-func UpdateSite(ctx appengine.Context, s Site) (*Site, error) {
-	client := createClient(ctx)
-
-	nsite, _, err := client.Sites.Get(s.Id)
+func (c *Client) UpdateSite(s Site) (*Site, error) {
+	nsite, _, err := c.client.Sites.Get(s.Id)
 	if err != nil {
 		return (*Site)(nsite), err
 	}
@@ -86,10 +84,8 @@ func UpdateSite(ctx appengine.Context, s Site) (*Site, error) {
 	return (*Site)(nsite), nil
 }
 
-func DeleteSite(ctx appengine.Context, s Site) error {
-	client := createClient(ctx)
-
-	nsite, _, err := client.Sites.Get(s.Id)
+func (c *Client) DeleteSite(s Site) error {
+	nsite, _, err := c.client.Sites.Get(s.Id)
 	if err != nil {
 		return err
 	}
