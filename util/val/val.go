@@ -109,7 +109,7 @@ func (v *Validator) Exec(value interface{}) []error {
 	return errs
 }
 
-func newValidator(v *Validator, fn ValidatorFunction) *Validator {
+func NewValidatorFn(v *Validator, fn ValidatorFunction) *Validator {
 	field := v.lastField
 	v.fnsMap[field] = append(v.fnsMap[field], fn)
 	return v
@@ -117,7 +117,7 @@ func newValidator(v *Validator, fn ValidatorFunction) *Validator {
 
 // Built in validation routines
 func (v *Validator) Exists() *Validator {
-	return newValidator(v, func(i interface{}) error {
+	return NewValidatorFn(v, func(i interface{}) error {
 		switch value := i.(type) {
 		case string:
 			if len(value) > 0 {
@@ -129,7 +129,7 @@ func (v *Validator) Exists() *Validator {
 }
 
 func (v *Validator) IsEmail() *Validator {
-	return newValidator(v, func(i interface{}) error {
+	return NewValidatorFn(v, func(i interface{}) error {
 		switch value := i.(type) {
 		case string:
 			if strings.Contains(value, "@") &&
@@ -144,7 +144,7 @@ func (v *Validator) IsEmail() *Validator {
 }
 
 func (v *Validator) MinLength(minLength int) *Validator {
-	return newValidator(v, func(i interface{}) error {
+	return NewValidatorFn(v, func(i interface{}) error {
 		switch value := i.(type) {
 		case string:
 			if len(value) >= minLength {
@@ -157,7 +157,7 @@ func (v *Validator) MinLength(minLength int) *Validator {
 
 // Use for enums
 func (v *Validator) Matches(strs ...string) *Validator {
-	return newValidator(v, func(i interface{}) error {
+	return NewValidatorFn(v, func(i interface{}) error {
 		switch value := i.(type) {
 		case string:
 			for _, str := range strs {
