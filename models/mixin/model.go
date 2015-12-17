@@ -347,9 +347,15 @@ func (m *Model) GetById(id string) error {
 	// Try to decode key
 	key, err := hashid.DecodeKey(m.Db.Context, id)
 
-	// Use key if we have one
+	// Try to use key if we have one
 	if err == nil {
-		return m.Get(key)
+		err = m.Get(key)
+	}
+
+	// Return if key worked, otherwise keep going (sometimes a random string
+	// will erroneously decode as a hashid)
+	if err == nil {
+		return nil
 	}
 
 	// Set err to nil and try to use filter
