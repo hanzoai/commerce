@@ -30,12 +30,11 @@ func (c *Client) AccessToken(userId, email string) (User, error) {
 	buf := json.EncodeBuffer(AccessTokenReq{User: User{Email: email, Uid: userId}})
 	url := config.Netlify.BaseUrl + "access_tokens?access_token=" + config.Netlify.AccessToken
 	req, err := http.NewRequest("POST", url, buf)
-
-	user := User{}
+	req.Header.Set("Content-Type", "application/json")
 
 	if err != nil {
 		log.Error("Error upon creating new request %v", err, c.ctx)
-		return user, err
+		return User{}, err
 	}
 
 	log.Debug("Requesting new access token for %s (%s)", userId, email, c.ctx)
@@ -43,16 +42,18 @@ func (c *Client) AccessToken(userId, email string) (User, error) {
 	res, err := client.Do(req)
 	defer res.Body.Close()
 
-	// Decode body
-	// if err := json.Decode(res.Body, &user); err != nil {
-	// 	log.Error("Unable to parse response from Netlify: %v", err, c.ctx)
-	// }
+	if err != nil || res.StatusCode != 200 {
+		log.Error("Request failed with status %v: %v", res.StatusCode, err, c.ctx)
+		return User{}, err
+	}
 
+	// Read response body
 	b, _ := ioutil.ReadAll(res.Body)
 	log.Debug("Response %v from Netlify: %v", res.StatusCode, string(b), c.ctx)
-	json.DecodeBytes(b, &user)
 
-	if err != nil {
+	// Decode JSON
+	user := User{}
+	if err := json.DecodeBytes(b, &user); err != nil {
 		log.Error("Request came back with error %v", err, c.ctx)
 		return user, err
 	}
