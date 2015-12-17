@@ -28,7 +28,7 @@ func (t Token) Kind() string {
 }
 
 func (t *Token) Validator() *val.Validator {
-	return val.New(t)
+	return val.New()
 }
 
 func (t Token) Expired() bool {

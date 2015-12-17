@@ -70,7 +70,7 @@ func (c Collection) Kind() string {
 }
 
 func (c *Collection) Validator() *val.Validator {
-	return val.New(c).Check("Slug").Exists().
+	return val.New().Check("Slug").Exists().
 		Check("Name").Exists()
 }
 
