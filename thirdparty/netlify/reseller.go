@@ -65,7 +65,7 @@ func NewFromNamespace(ctx appengine.Context, orgName string) *Client {
 	// Get organization
 	org := organization.New(db)
 	if err := org.GetById(orgName); err != nil {
-		log.Error("Unable to get organization: %v", err, ctx)
+		log.Error("Unable to get organization '%s': %v", orgName, err, ctx)
 	}
 
 	// Get access token if we don't have one
