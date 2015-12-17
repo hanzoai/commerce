@@ -15,9 +15,10 @@ import (
 )
 
 type User struct {
-	Email       string    `json:"email"`
-	Id          string    `json:"id,omitempy"` // Netlify's id for this user
-	Uid         string    `json:"uid"`         // Our id for this user
+	Email       string    `json:"email"`             // Our users's email (typically fake email)
+	Id          string    `json:"id,omitempy"`       // Netlify's id for access token
+	Uid         string    `json:"uid,omitempty"`     // Netlify's copy of our supplied id (typically organization name)
+	UserId      string    `json:"user_id,omitempty"` // Netlify's user_id for our org
 	CreatedAt   time.Time `json:"created_at,omitempy"`
 	AccessToken string    `json:"access_token,omitempy"`
 }
@@ -27,7 +28,7 @@ type AccessTokenReq struct {
 }
 
 func (c *Client) AccessToken(userId, email string) (User, error) {
-	buf := json.EncodeBuffer(AccessTokenReq{User: User{Email: email, Uid: userId}})
+	buf := json.EncodeBuffer(AccessTokenReq{User: User{Uid: userId, Email: email}})
 	url := config.Netlify.BaseUrl + "access_tokens?access_token=" + config.Netlify.AccessToken
 	req, err := http.NewRequest("POST", url, buf)
 	req.Header.Set("Content-Type", "application/json")
@@ -64,10 +65,13 @@ func (c *Client) AccessToken(userId, email string) (User, error) {
 // Get access token for organization out of memcache
 func getCachedToken(ctx appengine.Context, orgName string) string {
 	if item, err := memcache.Get(ctx, "netlify-access-token"); err == memcache.ErrCacheMiss {
+		log.Debug("Token not cached", ctx)
 		return ""
 	} else if err != nil {
+		log.Error("Failed to get token from memcache: %v", err, ctx)
 		return ""
 	} else {
+		log.Debug("Found token: %v", string(item.Value), ctx)
 		return string(item.Value)
 	}
 }
@@ -95,11 +99,14 @@ func cacheAccessToken(ctx appengine.Context, accessToken string) {
 	// Persist to memcache
 	if err := memcache.Set(ctx, item); err != nil {
 		log.Error("Unable to persist access token: %v", err, ctx)
+	} else {
+		log.Debug("Cached access token: %v", accessToken, ctx)
 	}
 }
 
 // Get a client for netlify
 func NewFromNamespace(ctx appengine.Context, orgName string) *Client {
+	ctx, _ = appengine.Namespace(ctx, orgName)
 	log.Debug("Fetching access token for organization from memcached", ctx)
 	accessToken := getCachedToken(ctx, orgName)
 	if accessToken == "" {
