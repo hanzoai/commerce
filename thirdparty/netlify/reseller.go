@@ -1,6 +1,7 @@
 package netlify
 
 import (
+	"io/ioutil"
 	"net/http"
 	"time"
 
@@ -25,7 +26,7 @@ type AccessTokenReq struct {
 	User User `json:"user"`
 }
 
-func (c *Client) AccessToken(email, userId string) (User, error) {
+func (c *Client) AccessToken(userId, email string) (User, error) {
 	buf := json.EncodeBuffer(AccessTokenReq{User: User{Email: email, Uid: userId}})
 	url := config.Netlify.BaseUrl + "access_tokens?access_token=" + config.Netlify.AccessToken
 	req, err := http.NewRequest("POST", url, buf)
@@ -37,14 +38,19 @@ func (c *Client) AccessToken(email, userId string) (User, error) {
 		return user, err
 	}
 
+	log.Debug("Requesting new access token for %s (%s)", userId, email, c.ctx)
 	client := urlfetch.Client(c.ctx)
 	res, err := client.Do(req)
 	defer res.Body.Close()
 
 	// Decode body
-	if err := json.Decode(res.Body, &user); err != nil {
-		log.Error("Unable to parse response from Netlify: %v", err, c.ctx)
-	}
+	// if err := json.Decode(res.Body, &user); err != nil {
+	// 	log.Error("Unable to parse response from Netlify: %v", err, c.ctx)
+	// }
+
+	b, _ := ioutil.ReadAll(res.Body)
+	log.Debug("Response %v from Netlify: %v", res.StatusCode, string(b), c.ctx)
+	json.DecodeBytes(b, &user)
 
 	if err != nil {
 		log.Error("Request came back with error %v", err, c.ctx)
