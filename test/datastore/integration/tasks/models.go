@@ -21,7 +21,7 @@ func (m Model) Document() mixin.Document {
 }
 
 func (m *Model) Validator() *val.Validator {
-	return val.New(m)
+	return val.New()
 }
 
 func NewModel(db *datastore.Datastore) *Model {
@@ -45,7 +45,7 @@ func (m Model2) Document() mixin.Document {
 }
 
 func (m *Model2) Validator() *val.Validator {
-	return val.New(m)
+	return val.New()
 }
 
 func NewModel2(db *datastore.Datastore) *Model2 {

@@ -90,7 +90,7 @@ func (m MailingList) Kind() string {
 }
 
 func (m *MailingList) Validator() *val.Validator {
-	return val.New(m)
+	return val.New()
 }
 
 func (m *MailingList) AddSubscriber(s *subscriber.Subscriber) error {

@@ -180,7 +180,7 @@ func (o Organization) Kind() string {
 }
 
 func (o *Organization) Validator() *val.Validator {
-	return val.New(o).Check("FullName").Exists()
+	return val.New().Check("FullName").Exists()
 }
 
 func (o *Organization) AddDefaultTokens() {

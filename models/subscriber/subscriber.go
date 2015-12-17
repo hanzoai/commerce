@@ -95,7 +95,7 @@ func (s *Subscriber) Save(c chan<- aeds.Property) (err error) {
 }
 
 func (s *Subscriber) Validator() *val.Validator {
-	return val.New(s)
+	return val.New()
 }
 
 func Query(db *datastore.Datastore) *mixin.Query {

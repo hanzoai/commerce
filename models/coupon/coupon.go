@@ -81,7 +81,7 @@ func (c Coupon) Kind() string {
 }
 
 func (c *Coupon) Validator() *val.Validator {
-	return val.New(c)
+	return val.New()
 }
 
 func (co *Coupon) Load(c <-chan aeds.Property) (err error) {
