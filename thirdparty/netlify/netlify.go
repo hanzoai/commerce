@@ -7,7 +7,6 @@ import (
 	"appengine"
 	"appengine/urlfetch"
 
-	"crowdstart.com/config"
 	"crowdstart.com/util/log"
 
 	"github.com/netlify/netlify-go"
@@ -26,7 +25,7 @@ func New(ctx appengine.Context, token string) *Client {
 		Deadline: time.Duration(20) * time.Second, // Update deadline to 20 seconds
 	}
 
-	log.Debug("Created Netlify client using AccessToken: '%s'", config.Netlify.AccessToken, ctx)
+	log.Debug("Created Netlify client using AccessToken: '%s'", token, ctx)
 
 	c := new(Client)
 	c.ctx = ctx
