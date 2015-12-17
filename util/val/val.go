@@ -123,7 +123,7 @@ func (v *Validator) Exists() *Validator {
 				return nil
 			}
 		}
-		return NewFieldError(field, "Field cannot be blank")
+		return NewFieldError(field, "Field cannot be blank.")
 	})
 }
 
