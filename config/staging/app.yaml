@@ -150,10 +150,3 @@ pagespeed:
 
   disabled_rewriters:
     - FlushSubresources
-
-skip_files:
-- ^(.*/)?\.lang$
-- ^(.*/)?\.less$
-- ^(.*/)?\.md$
-- ^(.*/)?\.php$
-- ^(.*/)?\.scss$
