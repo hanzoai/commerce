@@ -42,7 +42,7 @@ func (c *Client) AccessToken(userId, email string) (User, error) {
 	res, err := client.Do(req)
 	defer res.Body.Close()
 
-	if err != nil || res.StatusCode != 200 {
+	if err != nil {
 		log.Error("Request failed with status %v: %v", res.StatusCode, err, c.ctx)
 		return User{}, err
 	}
