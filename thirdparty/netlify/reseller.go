@@ -57,10 +57,11 @@ func (c *Client) AccessToken(email, userId string) (User, error) {
 
 // Get a client for netlify
 func NewFromNamespace(ctx appengine.Context, orgName string) *Client {
+	ctx, err := appengine.Namespace(ctx, "")
+	if err != nil {
+		log.Error("Unable to switch to root namespace: %v", err, ctx)
+	}
 	db := datastore.New(ctx)
-
-	// Try to switch back to root namespace
-	db.SetNamespace("")
 
 	// Get organization
 	org := organization.New(db)
