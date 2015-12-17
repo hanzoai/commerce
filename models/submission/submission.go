@@ -67,7 +67,7 @@ func (s *Submission) Save(c chan<- aeds.Property) (err error) {
 }
 
 func (s *Submission) Validator() *val.Validator {
-	return val.New(s)
+	return val.New()
 }
 
 func Query(db *datastore.Datastore) *mixin.Query {

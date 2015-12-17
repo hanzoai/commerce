@@ -141,7 +141,7 @@ func (s *Store) Save(c chan<- aeds.Property) (err error) {
 }
 
 func (s *Store) Validator() *val.Validator {
-	return val.New(s)
+	return val.New()
 }
 
 // Add a new listing to the listings map
