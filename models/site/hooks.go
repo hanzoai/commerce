@@ -2,13 +2,16 @@ package site
 
 import (
 	"crowdstart.com/thirdparty/netlify"
+	"crowdstart.com/util/log"
 	"crowdstart.com/util/webhook"
 )
 
 // Create
 func (s *Site) BeforeCreate() error {
+	log.Debug("Creating site on Netlify", s.Context())
 	nsite, err := netlify.CreateSite(s.Context(), s.Netlify())
 	if err != nil {
+		log.Error("netlify.CreateSite failed: %v", err, s.Context())
 		return err
 	}
 
