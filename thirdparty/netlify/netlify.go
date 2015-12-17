@@ -40,18 +40,25 @@ func New(ctx appengine.Context, token string) *Client {
 
 func (c *Client) CreateSite(s Site) (*Site, error) {
 	// Create new site on Netlify's side
-	nsite, _, err := c.client.Sites.Create(&netlify.SiteAttributes{
-		Name:         s.Name,
-		CustomDomain: s.CustomDomain,
+	nsite, res, err := c.client.Sites.Create(&netlify.SiteAttributes{
+		Name: s.Name,
 	})
 
-	// Copy over netlify site attributes
+	log.Debug("Response from netlify: %v", res, c.ctx)
+
+	if err != nil {
+		log.Error("Failed to create site: %v", err, c.ctx)
+	} else {
+		log.Error("Created site: %v", nsite, c.ctx)
+	}
 
 	return (*Site)(nsite), err
 }
 
 func (c *Client) GetSite(siteId string) (*Site, error) {
-	nsite, _, err := c.client.Sites.Get(siteId)
+	nsite, res, err := c.client.Sites.Get(siteId)
+
+	log.Debug("Response from netlify: %v", res, c.ctx)
 
 	return (*Site)(nsite), err
 }
@@ -66,7 +73,10 @@ func (c *Client) GetSite(siteId string) (*Site, error) {
 // }
 
 func (c *Client) UpdateSite(s Site) (*Site, error) {
-	nsite, _, err := c.client.Sites.Get(s.Id)
+	nsite, res, err := c.client.Sites.Get(s.Id)
+
+	log.Debug("Response from netlify: %v", res, c.ctx)
+
 	if err != nil {
 		return (*Site)(nsite), err
 	}
@@ -90,7 +100,10 @@ func (c *Client) UpdateSite(s Site) (*Site, error) {
 }
 
 func (c *Client) DeleteSite(s Site) error {
-	nsite, _, err := c.client.Sites.Get(s.Id)
+	nsite, res, err := c.client.Sites.Get(s.Id)
+
+	log.Debug("Response from netlify: %v", res, c.ctx)
+
 	if err != nil {
 		return err
 	}
