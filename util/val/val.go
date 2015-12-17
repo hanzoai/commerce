@@ -67,7 +67,6 @@ func (v *Validator) Check(field string) *Validator {
 func (v *Validator) Exec(value interface{}) []error {
 	v.Value = depointer(reflect.ValueOf(value))
 
-	var i interface{}
 	errs := make([]error, 0)
 	// Loop over all the field values
 	for field, fns := range v.fnsMap {
@@ -78,30 +77,11 @@ func (v *Validator) Exec(value interface{}) []error {
 			log.Panic("Field %v does not exist!", field)
 		}
 
-		switch value.Kind() {
-		case reflect.Bool:
-			i = value.Bool()
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			i = value.Int()
-		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-			i = value.Uint()
-		case reflect.String:
-			i = value.String()
-		// case reflect.Slice:
-		// 	// don't handle
-		// case reflect.Complex64, reflect.Complex128:
-		// 	// don't handle
-		case reflect.Float32, reflect.Float64:
-			i = value.Float()
-		default:
-			log.Panic("Validator does not support type '%v'", value.Type())
-		}
-
 		// Loop over all validation functions for a field
 		for _, fn := range fns {
 			// Only append real errors
 			fnVal := reflect.ValueOf(fn)
-			errVal := fnVal.Call([]reflect.Value{reflect.ValueOf(i)})
+			errVal := fnVal.Call([]reflect.Value{value})
 			if !errVal[0].IsNil() {
 				err := errVal[0].Interface().(error)
 				if err != nil {
