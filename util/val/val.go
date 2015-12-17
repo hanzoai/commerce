@@ -154,6 +154,9 @@ func (v *Validator) Matches(strs ...string) *Validator {
 				return nil
 			}
 		}
+		if len(strs) == 1 {
+			return errors.New(fmt.Sprintf("Field must equal '%v', not '%v'.", strs[0], value))
+		}
 		return errors.New(fmt.Sprintf("Field must be one of ['%v'], not '%v'.", strings.Join(strs, "', '"), value))
 	})
 }
