@@ -14,6 +14,8 @@ import (
 	"crowdstart.com/util/log"
 )
 
+// This is really a token response, but for our purposes acts as a copy of
+// netlify's representation of our user.
 type User struct {
 	Email       string    `json:"email"`             // Our users's email (typically fake email)
 	Id          string    `json:"id,omitempy"`       // Netlify's id for access token
@@ -23,12 +25,12 @@ type User struct {
 	AccessToken string    `json:"access_token,omitempy"`
 }
 
-type AccessTokenReq struct {
+type TokenReq struct {
 	User User `json:"user"`
 }
 
 func (c *Client) AccessToken(userId, email string) (User, error) {
-	buf := json.EncodeBuffer(AccessTokenReq{User: User{Uid: userId, Email: email}})
+	buf := json.EncodeBuffer(TokenReq{User: User{Uid: userId, Email: email}})
 	url := config.Netlify.BaseUrl + "access_tokens?access_token=" + config.Netlify.AccessToken
 	req, err := http.NewRequest("POST", url, buf)
 	req.Header.Set("Content-Type", "application/json")
