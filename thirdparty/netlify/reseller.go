@@ -5,11 +5,10 @@ import (
 	"time"
 
 	"appengine"
+	"appengine/memcache"
 	"appengine/urlfetch"
 
 	"crowdstart.com/config"
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/organization"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
 )
@@ -55,38 +54,50 @@ func (c *Client) AccessToken(email, userId string) (User, error) {
 	return user, nil
 }
 
+// Get access token for organization out of memcache
+func getCachedToken(ctx appengine.Context, orgName string) string {
+	if item, err := memcache.Get(ctx, "netlify-access-token"); err == memcache.ErrCacheMiss {
+		return ""
+	} else if err != nil {
+		return ""
+	} else {
+		return string(item.Value)
+	}
+}
+
+// Get access token
+func getAccessToken(ctx appengine.Context, orgName string) string {
+	client := New(ctx, config.Netlify.AccessToken)
+	user, err := client.AccessToken(orgName, orgName+"@crowdstart.com")
+
+	if err != nil {
+		log.Error("Unable to get Netlify Access Token: %v", err, ctx)
+		return ""
+	}
+
+	return user.AccessToken
+}
+
+// Cache access token
+func cacheAccessToken(ctx appengine.Context, accessToken string) {
+	item := &memcache.Item{
+		Key:   "netlify-access-token",
+		Value: []byte(accessToken),
+	}
+
+	// Persist to memcache
+	if err := memcache.Set(ctx, item); err != nil {
+		log.Debug("Unable to persist access token: %v", err, ctx)
+	}
+}
+
 // Get a client for netlify
 func NewFromNamespace(ctx appengine.Context, orgName string) *Client {
-	ctx, err := appengine.Namespace(ctx, "")
-	if err != nil {
-		log.Error("Unable to switch to root namespace: %v", err, ctx)
-	}
-	db := datastore.New(ctx)
-
-	// Get organization
-	org := organization.New(db)
-	if err := org.GetById(orgName); err != nil {
-		log.Error("Unable to get organization '%s': %v", orgName, err, ctx)
+	accessToken := getCachedToken(ctx, orgName)
+	if accessToken == "" {
+		accessToken = getAccessToken(ctx, orgName)
+		cacheAccessToken(ctx, accessToken)
 	}
 
-	// Get access token if we don't have one
-	if org.Netlify.AccessToken == "" {
-		client := New(ctx, config.Netlify.AccessToken)
-		user, err := client.AccessToken(org.Id(), org.Name)
-		if err != nil {
-			log.Error("Unable to get Netlify Access Token: %v", err, ctx)
-		}
-
-		org.Netlify.AccessToken = user.AccessToken
-		org.Netlify.CreatedAt = user.CreatedAt
-		org.Netlify.Email = user.Email
-		org.Netlify.Id = user.Id
-		org.Netlify.Uid = user.Uid
-
-		if err := org.Put(); err != nil {
-			log.Error("Unable to save organiation with Netlify Access Token: %v", err, ctx)
-		}
-	}
-
-	return New(ctx, org.Netlify.AccessToken)
+	return New(ctx, accessToken)
 }
