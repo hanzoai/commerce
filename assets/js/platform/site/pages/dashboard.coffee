@@ -249,7 +249,8 @@ class Dashboard extends Page
         totalCompareCents[currency] = 0
         for cents, i in values
           totalCents[currency] += cents
-          totalCompareCents[currency] += @compareModel.DailySales[currency][i]
+          if @compareModel.DailySales[currency]?
+            totalCompareCents[currency] += @compareModel.DailySales[currency][i]
 
       totalUsers = 0
       totalCompareUsers = 0
