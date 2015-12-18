@@ -90,6 +90,10 @@ class Dashboard extends Page
     ]
 
   # For the period select
+  currencyModel:
+    name: 'currency'
+    value: null
+
   periodModel:
     name: 'period'
     value: 'week'
@@ -97,6 +101,8 @@ class Dashboard extends Page
   periodDateModel:
     name: 'date'
     value: ''
+
+  currencyOptions: {}
 
   periodOptions:
     week: 'Week'
@@ -147,6 +153,9 @@ class Dashboard extends Page
     @periodDateModel.value = "#{month}/#{day}/#{year}"
 
     @api = api = Api.get 'crowdstart'
+
+    @on 'update', ()=>
+      @updateCurrency()
 
     @refresh()
 
@@ -223,17 +232,20 @@ class Dashboard extends Page
           throw new Error 'Form failed to load: '
       )]
     ).then((rets)=>
-      @currency = ''
-
-      largestCents = 0
+      @currencyCount = 0
       for currency, cents of @model.TotalSales
-        if cents > largestCents && currency != ''
-          @currency = currency
-          largestCents = cents
+        @currencyOptions[currency.toLowerCase()] = currency.toUpperCase()
+        @currencyCount += 1
+      largestCents = 0
+      if !@currencyModel.value?
+        for currency, cents of @model.TotalSales
+          if cents > largestCents && currency != ''
+            @currencyModel.value = currency
+            largestCents = cents
 
-      if @currency == ''
-        super 0, 0, @currency
-        return
+        if @currencyModel.value == ''
+          super 0, 0, @currencyModel.value
+          return
 
       # Aggregate values for numeric panels
       totalOrders = 0
@@ -265,13 +277,8 @@ class Dashboard extends Page
         totalCompareSubs += @compareModel.DailySubscribers[i]
 
       # Dispatch updated values
-      @totalOrdersObs.trigger Events.Visual.NewData, @model.TotalOrders, NaN
-      @totalSalesObs.trigger Events.Visual.NewData, @model.TotalSales[@currency], NaN, @currency
-      @totalUsersObs.trigger Events.Visual.NewData, @model.TotalUsers, NaN
-      @totalSubsObs.trigger Events.Visual.NewData, @model.TotalSubs, NaN
-
       @dailyOrdersObs.trigger Events.Visual.NewData, totalOrders, totalCompareOrders
-      @dailySalesObs.trigger Events.Visual.NewData, totalCents[@currency], totalCompareCents[@currency], @currency
+      @dailySalesObs.trigger Events.Visual.NewData, totalCents[@currencyModel], totalCompareCents[@currencyModel.value], @currencyModel.value
       @dailyUsersObs.trigger Events.Visual.NewData, totalUsers, totalCompareUsers
       @dailySubsObs.trigger Events.Visual.NewData, totalSubs, totalCompareSubs
 
@@ -297,12 +304,25 @@ class Dashboard extends Page
       @chartModel.series[1].data = @model.DailyOrders
       @chartModel.series[2].data = @model.DailyUsers
 
-      @chartModel.yAxis[0].labels.format = "#{util.currency.getSymbol(@currency)}{value:.2f} (#{@currency.toUpperCase()})"
+      @chartModel.yAxis[0].labels.format = "#{util.currency.getSymbol(@currencyModel.value)}{value:.2f} (#{@currencyModel.value.toUpperCase()})"
 
       @chartObs.trigger Events.Visual.NewData, @chartModel
+      @update()
     ).catch (e)=>
       console.log(e.stack)
       @error = e
+
+  updateCurrency: (totalCents, totalCompareCents)->
+    if @model.TotalOrders?
+      @totalOrdersObs.trigger Events.Visual.NewData, @model.TotalOrders, NaN
+    if @model.TotalSales?[@currencyModel.value]?
+      @totalSalesObs.trigger Events.Visual.NewData, @model.TotalSales[@currencyModel.value], NaN, @currencyModel.value
+    if @model.TotalUsers?
+      @totalUsersObs.trigger Events.Visual.NewData, @model.TotalUsers, NaN
+    if @model.TotalSubs?
+      @totalSubsObs.trigger Events.Visual.NewData, @model.TotalSubs, NaN
+    if totalCents?[@currencyModel.value]? && totalCompareCents?[@currencyModel.value]?
+      @dailySalesObs.trigger Events.Visual.NewData, totalCents[@currencyModel.value], totalCompareCents[@currencyModel.value], @currencyModel.value
 
 Dashboard.register()
 
