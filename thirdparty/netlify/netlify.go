@@ -1,8 +1,6 @@
 package netlify
 
 import (
-	"io/ioutil"
-
 	"appengine"
 
 	"crowdstart.com/util/log"
@@ -31,48 +29,31 @@ func New(ctx appengine.Context, accessToken string) *Client {
 }
 
 func (c *Client) CreateSite(s Site) (*Site, error) {
-	log.Debug("Creating site in netlify: %#v", s, c.ctx)
 	// Create new site on Netlify's side
-	nsite, res, err := c.client.Sites.Create(&netlify.SiteAttributes{
+	nsite, _, err := logger(c.ctx)(c.client.Sites.Create(&netlify.SiteAttributes{
 		Name: s.Name,
-	})
-	defer res.Body.Close()
-
-	b, _ := ioutil.ReadAll(res.Body)
-	log.Debug("Response from netlify (%v): %v", res.StatusCode, string(b), c.ctx)
+	}))
 
 	if err != nil {
-		log.Error("Failed to create site: %v", err, c.ctx)
-	} else {
-		log.Debug("Created site: %v", nsite, c.ctx)
+		return newSite(nsite), err
+	}
+
+	log.Debug("Created site: %v", nsite, c.ctx)
+	return newSite(nsite), err
+}
+
+func (c *Client) GetSite(siteId string) (*Site, error) {
+	nsite, _, err := logger(c.ctx)(c.client.Sites.Get(siteId))
+
+	if err != nil {
+		return newSite(nsite), err
 	}
 
 	return newSite(nsite), err
 }
 
-func (c *Client) GetSite(siteId string) (*Site, error) {
-	nsite, res, err := c.client.Sites.Get(siteId)
-	defer res.Body.Close()
-
-	log.Debug("Response from netlify: %v", res, c.ctx)
-
-	return newSite(nsite), err
-}
-
-// func ListSites(ctx appengine.Context) ([]Site, error) {
-// 	client := createClient(ctx)
-
-// 	// Create new site on Netlify's side
-// 	nsites, _, err := client.Sites.List(&netlify.ListOptions{})
-
-// 	return nsites, err
-// }
-
 func (c *Client) UpdateSite(s Site) (*Site, error) {
-	nsite, res, err := c.client.Sites.Get(s.Id)
-	defer res.Body.Close()
-
-	log.Debug("Response from netlify: %v", res, c.ctx)
+	nsite, _, err := logger(c.ctx)(c.client.Sites.Get(s.Id))
 
 	if err != nil {
 		return newSite(nsite), err
@@ -93,14 +74,12 @@ func (c *Client) UpdateSite(s Site) (*Site, error) {
 	if err != nil {
 		return newSite(nsite), err
 	}
+
 	return newSite(nsite), nil
 }
 
 func (c *Client) DeleteSite(s Site) error {
-	nsite, res, err := c.client.Sites.Get(s.Id)
-	defer res.Body.Close()
-
-	log.Debug("Response from netlify: %v", res, c.ctx)
+	nsite, _, err := logger(c.ctx)(c.client.Sites.Get(s.Id))
 
 	if err != nil {
 		return err
@@ -110,3 +89,12 @@ func (c *Client) DeleteSite(s Site) error {
 
 	return err
 }
+
+// func ListSites(ctx appengine.Context) ([]Site, error) {
+// 	client := createClient(ctx)
+
+// 	// Create new site on Netlify's side
+// 	nsites, _, err := client.Sites.List(&netlify.ListOptions{})
+
+// 	return nsites, err
+// }
