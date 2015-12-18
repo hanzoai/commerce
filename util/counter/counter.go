@@ -23,7 +23,7 @@ type shard struct {
 	// Counter
 	Count int
 	// Array
-	Members []string
+	Set map[string]bool
 }
 
 const (
@@ -51,6 +51,7 @@ func MemberExists(c appengine.Context, name, value string) bool {
 }
 
 func Members(c appengine.Context, name string) ([]string, error) {
+	set := make(map[string]bool)
 	members := make([]string, 0)
 	mkey := memcacheKey(name)
 	if _, err := memcache.JSON.Get(c, mkey, &members); err == nil {
@@ -66,8 +67,16 @@ func Members(c appengine.Context, name string) ([]string, error) {
 		if err != nil {
 			return members, err
 		}
-		members = append(members, s.Members...)
+
+		for member, _ := range s.Set {
+			set[member] = true
+		}
 	}
+
+	for member, _ := range set {
+		members = append(members, member)
+	}
+
 	memcache.JSON.Set(c, &memcache.Item{
 		Key:        mkey,
 		Object:     &members,
@@ -233,7 +242,7 @@ func init() {
 				return err
 			}
 			s.Name = name
-			s.Members = append(s.Members, value)
+			s.Set[value] = true
 			_, err = datastore.Put(c, key, &s)
 			return err
 		}, nil)
@@ -256,11 +265,12 @@ func init() {
 		}
 
 		mkey := memcacheKey(name)
-		var members []string
+		var members map[string]bool
 		if _, err := memcache.JSON.Get(c, mkey, &members); err == nil {
+			members[value] = true
 			memcache.JSON.Set(c, &memcache.Item{
 				Key:        mkey,
-				Object:     &s.Members,
+				Object:     &members,
 				Expiration: 60,
 			})
 		}
