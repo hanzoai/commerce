@@ -6,12 +6,15 @@ import (
 	"time"
 
 	"appengine"
-	"appengine/datastore"
 	"appengine/delay"
 	"appengine/memcache"
 	"appengine/taskqueue"
 
+	"crowdstart.com/datastore"
+	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
+
+	aeds "appengine/datastore"
 )
 
 type counterConfig struct {
@@ -23,7 +26,25 @@ type shard struct {
 	// Counter
 	Count int
 	// Array
-	Set map[string]bool
+	Set  map[string]bool `datastore:"-"`
+	Set_ string          `datastore:",noindex"`
+}
+
+func (s *shard) Load(c <-chan aeds.Property) (err error) {
+	// Deserialize from datastore
+	if len(s.Set_) > 0 {
+		err = json.DecodeBytes([]byte(s.Set_), &s.Set)
+	}
+
+	return err
+}
+
+func (s *shard) Save(c chan<- aeds.Property) (err error) {
+	// Serialize unsupported properties
+	s.Set_ = string(json.EncodeBytes(&s.Set))
+
+	// Save properties
+	return datastore.IgnoreFieldMismatch(aeds.SaveStruct(s, c))
 }
 
 const (
@@ -57,15 +78,19 @@ func Members(c appengine.Context, name string) ([]string, error) {
 	if _, err := memcache.JSON.Get(c, mkey, &members); err == nil {
 		return members, nil
 	}
-	q := datastore.NewQuery(shardKind).Filter("Name =", name)
+	q := aeds.NewQuery(shardKind).Filter("Name =", name)
 	for t := q.Run(c); ; {
 		var s shard
 		_, err := t.Next(&s)
-		if err == datastore.Done {
+		if err == aeds.Done {
 			break
 		}
 		if err != nil {
 			return members, err
+		}
+
+		if s.Set == nil {
+			continue
 		}
 
 		for member, _ := range s.Set {
@@ -92,11 +117,11 @@ func Count(c appengine.Context, name string) (int, error) {
 	if _, err := memcache.JSON.Get(c, mkey, &total); err == nil {
 		return total, nil
 	}
-	q := datastore.NewQuery(shardKind).Filter("Name =", name)
+	q := aeds.NewQuery(shardKind).Filter("Name =", name)
 	for t := q.Run(c); ; {
 		var s shard
 		_, err := t.Next(&s)
-		if err == datastore.Done {
+		if err == aeds.Done {
 			break
 		}
 		if err != nil {
@@ -140,12 +165,12 @@ func IncrementBy(c appengine.Context, name string, amount int) error {
 // IncreaseShards increases the number of shards for the named counter to n.
 // It will never decrease the number of shards.
 func IncreaseShards(c appengine.Context, name string, n int) error {
-	ckey := datastore.NewKey(c, configKind, name, 0, nil)
-	return datastore.RunInTransaction(c, func(c appengine.Context) error {
+	ckey := aeds.NewKey(c, configKind, name, 0, nil)
+	return aeds.RunInTransaction(c, func(c appengine.Context) error {
 		var cfg counterConfig
 		mod := false
-		err := datastore.Get(c, ckey, &cfg)
-		if err == datastore.ErrNoSuchEntity {
+		err := aeds.Get(c, ckey, &cfg)
+		if err == aeds.ErrNoSuchEntity {
 			cfg.Shards = defaultShards
 			mod = true
 		} else if err != nil {
@@ -156,7 +181,7 @@ func IncreaseShards(c appengine.Context, name string, n int) error {
 			mod = true
 		}
 		if mod {
-			_, err = datastore.Put(c, ckey, &cfg)
+			_, err = aeds.Put(c, ckey, &cfg)
 		}
 		return err
 	}, nil)
@@ -170,33 +195,35 @@ func init() {
 		log.Warn("INCREMENT BY", c)
 		// Get counter config.
 		var cfg counterConfig
-		ckey := datastore.NewKey(c, configKind, name, 0, nil)
-		err := datastore.RunInTransaction(c, func(c appengine.Context) error {
-			err := datastore.Get(c, ckey, &cfg)
-			if err == datastore.ErrNoSuchEntity {
+		ckey := aeds.NewKey(c, configKind, name, 0, nil)
+		err := aeds.RunInTransaction(c, func(c appengine.Context) error {
+			err := aeds.Get(c, ckey, &cfg)
+			if err == aeds.ErrNoSuchEntity {
 				cfg.Shards = defaultShards
-				_, err = datastore.Put(c, ckey, &cfg)
+				_, err = aeds.Put(c, ckey, &cfg)
 			}
 			return err
 		}, nil)
+		err = datastore.IgnoreFieldMismatch(err)
 		if err != nil {
 			log.Panic("IncrementByTask Error %v", err, c)
 		}
 		var s shard
-		err = datastore.RunInTransaction(c, func(c appengine.Context) error {
+		err = aeds.RunInTransaction(c, func(c appengine.Context) error {
 			shardName := fmt.Sprintf("%s-shard%d", name, rand.Intn(cfg.Shards))
-			key := datastore.NewKey(c, shardKind, shardName, 0, nil)
-			err := datastore.Get(c, key, &s)
+			key := aeds.NewKey(c, shardKind, shardName, 0, nil)
+			err := aeds.Get(c, key, &s)
 			// A missing entity and a present entity will both work.
-			if err != nil && err != datastore.ErrNoSuchEntity {
+			err = datastore.IgnoreFieldMismatch(err)
+			if err != nil && err != aeds.ErrNoSuchEntity {
 				panic(err)
 			}
 			s.Name = name
 			s.Count += amount
-			_, err = datastore.Put(c, key, &s)
+			_, err = aeds.Put(c, key, &s)
 			return err
 		}, nil)
-		if err == datastore.ErrConcurrentTransaction {
+		if err == aeds.ErrConcurrentTransaction {
 			IncreaseShards(c, name, 1)
 			t, err := IncrementByTask.Task(c, name, amount)
 			if err != nil {
@@ -210,6 +237,7 @@ func init() {
 			}
 			return
 		}
+		err = datastore.IgnoreFieldMismatch(err)
 		if err != nil {
 			log.Panic("IncrementByTask Error %v", err, c)
 		}
@@ -220,33 +248,38 @@ func init() {
 		log.Warn("ADD MEMBER", c)
 		// Get counter config.
 		var cfg counterConfig
-		ckey := datastore.NewKey(c, configKind, name, 0, nil)
-		err := datastore.RunInTransaction(c, func(c appengine.Context) error {
-			err := datastore.Get(c, ckey, &cfg)
-			if err == datastore.ErrNoSuchEntity {
+		ckey := aeds.NewKey(c, configKind, name, 0, nil)
+		err := aeds.RunInTransaction(c, func(c appengine.Context) error {
+			err := aeds.Get(c, ckey, &cfg)
+			if err == aeds.ErrNoSuchEntity {
 				cfg.Shards = defaultShards
-				_, err = datastore.Put(c, ckey, &cfg)
+				_, err = aeds.Put(c, ckey, &cfg)
 			}
 			return err
 		}, nil)
+		err = datastore.IgnoreFieldMismatch(err)
 		if err != nil {
 			log.Panic("AddMemberTask Error %v", err, c)
 		}
 		var s shard
-		err = datastore.RunInTransaction(c, func(c appengine.Context) error {
+		err = aeds.RunInTransaction(c, func(c appengine.Context) error {
 			shardName := fmt.Sprintf("%s-shard%d", name, rand.Intn(cfg.Shards))
-			key := datastore.NewKey(c, shardKind, shardName, 0, nil)
-			err := datastore.Get(c, key, &s)
+			key := aeds.NewKey(c, shardKind, shardName, 0, nil)
+			err := aeds.Get(c, key, &s)
 			// A missing entity and a present entity will both work.
-			if err != nil && err != datastore.ErrNoSuchEntity {
+			err = datastore.IgnoreFieldMismatch(err)
+			if err != nil && err != aeds.ErrNoSuchEntity {
 				return err
 			}
 			s.Name = name
+			if s.Set == nil {
+				s.Set = make(map[string]bool)
+			}
 			s.Set[value] = true
-			_, err = datastore.Put(c, key, &s)
+			_, err = aeds.Put(c, key, &s)
 			return err
 		}, nil)
-		if err == datastore.ErrConcurrentTransaction {
+		if err == aeds.ErrConcurrentTransaction {
 			IncreaseShards(c, name, 1)
 			t, err := AddMemberTask.Task(c, name, value)
 			if err != nil {
@@ -260,6 +293,7 @@ func init() {
 			}
 			return
 		}
+		err = datastore.IgnoreFieldMismatch(err)
 		if err != nil {
 			log.Panic("AddMemberTask Error %v", err, c)
 		}
