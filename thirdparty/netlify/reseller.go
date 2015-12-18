@@ -64,8 +64,8 @@ func (c *Client) AccessToken(userId, email string) (User, error) {
 	return user, nil
 }
 
-// Get access token for organization out of memcache
-func getCachedToken(ctx appengine.Context, orgName string) string {
+// Get access token from memcache
+func getAccessToken(ctx appengine.Context, orgName string) string {
 	if item, err := memcache.Get(ctx, "netlify-access-token"); err == memcache.ErrCacheMiss {
 		log.Debug("Token not cached", ctx)
 		return ""
@@ -78,8 +78,8 @@ func getCachedToken(ctx appengine.Context, orgName string) string {
 	}
 }
 
-// Get access token
-func getAccessToken(ctx appengine.Context, orgName string) string {
+// Create new access token
+func createAccessToken(ctx appengine.Context, orgName string) string {
 	client := New(ctx, config.Netlify.AccessToken)
 	user, err := client.AccessToken(orgName, orgName+"@crowdstart.com")
 
@@ -91,8 +91,8 @@ func getAccessToken(ctx appengine.Context, orgName string) string {
 	return user.AccessToken
 }
 
-// Cache access token
-func cacheAccessToken(ctx appengine.Context, accessToken string) {
+// Cache access token in memcache
+func setAccessToken(ctx appengine.Context, accessToken string) {
 	item := &memcache.Item{
 		Key:   "netlify-access-token",
 		Value: []byte(accessToken),
@@ -109,15 +109,22 @@ func cacheAccessToken(ctx appengine.Context, accessToken string) {
 // Get a client for netlify
 func NewFromNamespace(ctx appengine.Context, orgName string) *Client {
 	ctx, _ = appengine.Namespace(ctx, orgName)
-	log.Debug("Fetching access token for organization from memcached", ctx)
-	accessToken := getCachedToken(ctx, orgName)
+
+	// Get user-level token for organization
+	accessToken := GetAccessToken(ctx, orgName)
+
+	return New(ctx, accessToken)
+}
+
+// Get access token
+func GetAccessToken(ctx appengine.Context, orgName string) string {
+	ctx, _ = appengine.Namespace(ctx, orgName)
+
+	accessToken := getAccessToken(ctx, orgName)
 	if accessToken == "" {
-		log.Debug("No access token found, creating new access token.", ctx)
-		accessToken = getAccessToken(ctx, orgName)
-		log.Debug("Caching access token '%s'", accessToken, ctx)
-		cacheAccessToken(ctx, accessToken)
+		accessToken = createAccessToken(ctx, orgName)
+		setAccessToken(ctx, accessToken)
 	}
 
-	log.Debug("Creating new client using access token '%s'", accessToken, ctx)
-	return New(ctx, accessToken)
+	return accessToken
 }
