@@ -13,21 +13,21 @@ import (
 type Client struct {
 	ctx    appengine.Context
 	client *netlify.Client
-	token  string
 }
 
-func New(ctx appengine.Context, token string) *Client {
-	log.Debug("Created Netlify client using AccessToken: '%s'", token, ctx)
+func New(ctx appengine.Context, accessToken string) *Client {
+	log.Debug("Created Netlify client using AccessToken: '%s'", accessToken, ctx)
 
-	c := new(Client)
-	c.ctx = ctx
-	c.token = token
-	c.client = netlify.NewClient(&netlify.Config{
-		AccessToken: token,
-		HttpClient:  newHttpClient(ctx, token),
-		UserAgent:   "Crowdstart/1.0",
-	})
-	return c
+	client := newHttpClient(ctx, accessToken)
+
+	return &Client{
+		ctx: ctx,
+		client: netlify.NewClient(&netlify.Config{
+			AccessToken: accessToken,
+			HttpClient:  client,
+			UserAgent:   "Crowdstart/1.0",
+		}),
+	}
 }
 
 func (c *Client) CreateSite(s Site) (*Site, error) {
