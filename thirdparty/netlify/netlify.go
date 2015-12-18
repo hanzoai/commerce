@@ -18,7 +18,7 @@ type Client struct {
 func New(ctx appengine.Context, accessToken string) *Client {
 	log.Debug("Created Netlify client using AccessToken: '%s'", accessToken, ctx)
 
-	client := newHttpClient(ctx, accessToken)
+	client := newOauthClient(ctx, accessToken)
 
 	return &Client{
 		ctx: ctx,
@@ -47,7 +47,7 @@ func (c *Client) CreateSite(s Site) (*Site, error) {
 		log.Debug("Created site: %v", nsite, c.ctx)
 	}
 
-	return (*Site)(nsite), err
+	return newSite(nsite), err
 }
 
 func (c *Client) GetSite(siteId string) (*Site, error) {
@@ -56,7 +56,7 @@ func (c *Client) GetSite(siteId string) (*Site, error) {
 
 	log.Debug("Response from netlify: %v", res, c.ctx)
 
-	return (*Site)(nsite), err
+	return newSite(nsite), err
 }
 
 // func ListSites(ctx appengine.Context) ([]Site, error) {
@@ -75,7 +75,7 @@ func (c *Client) UpdateSite(s Site) (*Site, error) {
 	log.Debug("Response from netlify: %v", res, c.ctx)
 
 	if err != nil {
-		return (*Site)(nsite), err
+		return newSite(nsite), err
 	}
 
 	nsite.Url = s.Url
@@ -91,9 +91,9 @@ func (c *Client) UpdateSite(s Site) (*Site, error) {
 
 	_, err = nsite.Update()
 	if err != nil {
-		return (*Site)(nsite), err
+		return newSite(nsite), err
 	}
-	return (*Site)(nsite), nil
+	return newSite(nsite), nil
 }
 
 func (c *Client) DeleteSite(s Site) error {
