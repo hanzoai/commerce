@@ -10,9 +10,9 @@ import (
 type Site struct {
 	mixin.Model
 
-	Domain string
-	Name   string
-	Url    string
+	Domain string `json:"domain"`
+	Name   string `json:"name"`
+	Url    string `json:"url"`
 
 	Netlify_ netlify.Site `json:"-"`
 }
