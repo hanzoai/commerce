@@ -15,14 +15,14 @@ type Transport struct {
 }
 
 func (t *Transport) RoundTrip(req *http.Request) (res *http.Response, err error) {
-	req.URL.Query().Add("access_token", t.AccessToken)
+	req.Header.Set("Authorization", "Bearer "+t.AccessToken)
 	return t.Transport.RoundTrip(req)
 }
 
-func newHttpClient(ctx appengine.Context, token string) *http.Client {
+func newHttpClient(ctx appengine.Context, accessToken string) *http.Client {
 	client := urlfetch.Client(ctx)
 	client.Transport = &Transport{
-		AccessToken: token,
+		AccessToken: accessToken,
 		Transport: &urlfetch.Transport{
 			Context:  ctx,
 			Deadline: time.Duration(20) * time.Second, // Update deadline to 20 seconds
