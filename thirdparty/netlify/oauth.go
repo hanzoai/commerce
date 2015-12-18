@@ -4,24 +4,23 @@ import (
 	"net/http"
 	"time"
 
-	"appengine/urlfetch"
-
 	"appengine"
+	"appengine/urlfetch"
 )
 
-type Transport struct {
+type OauthTransport struct {
 	*urlfetch.Transport
 	AccessToken string
 }
 
-func (t *Transport) RoundTrip(req *http.Request) (res *http.Response, err error) {
+func (t *OauthTransport) RoundTrip(req *http.Request) (res *http.Response, err error) {
 	req.Header.Set("Authorization", "Bearer "+t.AccessToken)
 	return t.Transport.RoundTrip(req)
 }
 
-func newHttpClient(ctx appengine.Context, accessToken string) *http.Client {
+func newOauthClient(ctx appengine.Context, accessToken string) *http.Client {
 	client := urlfetch.Client(ctx)
-	client.Transport = &Transport{
+	client.Transport = &OauthTransport{
 		AccessToken: accessToken,
 		Transport: &urlfetch.Transport{
 			Context:  ctx,
