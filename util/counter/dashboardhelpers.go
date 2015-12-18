@@ -59,14 +59,14 @@ func GetDashboardData(ctx appengine.Context, t Period, date time.Time, tzOffset 
 		dashboardKey += strconv.FormatInt(d.Unix(), 10)
 	}
 
-	log.Debug("Redis memcache lookup for key: %v", dashboardKey)
+	log.Debug("Counter memcache lookup for key: %v", dashboardKey)
 
 	if _, err := memcache.Gob.Get(ctx, dashboardKey, &data); err == nil {
-		log.Debug("Redis memcache hit for key: %v", dashboardKey)
+		log.Debug("Counter memcache hit for key: %v", dashboardKey)
 		return data, nil
 	}
 
-	log.Debug("Redis memcache miss for key: %v", dashboardKey)
+	log.Debug("Counter memcache miss for key: %v", dashboardKey)
 	data.TotalSales = make(currencyValue)
 
 	var (
@@ -101,13 +101,13 @@ func GetDashboardData(ctx appengine.Context, t Period, date time.Time, tzOffset 
 
 	currencies, err := Members(ctx, setName(org, currencySetKey))
 	if err != nil {
-		log.Error("Redis Error: %v", err)
+		log.Error("Counter Error: %v", err)
 		return data, err
 	}
 
 	users, err := Count(ctx, userKey(org, allTime))
 	if err != nil {
-		log.Error("Redis Error: %v", err)
+		log.Error("Counter Error: %v", err)
 		return data, err
 	}
 
@@ -116,7 +116,7 @@ func GetDashboardData(ctx appengine.Context, t Period, date time.Time, tzOffset 
 	subs, err := Count(ctx, subKey(org, mailinglistAllKey, allTime))
 
 	if err != nil {
-		log.Error("Redis Error: %v", err)
+		log.Error("Counter Error: %v", err)
 		return data, err
 	}
 
@@ -125,11 +125,13 @@ func GetDashboardData(ctx appengine.Context, t Period, date time.Time, tzOffset 
 	orders, err := Count(ctx, totalKey(org, ordersKey, allTime))
 
 	if err != nil {
-		log.Error("Redis Error: %v", err)
+		log.Error("Counter Error: %v", err)
 		return data, err
 	}
 
 	data.TotalOrders = orders
+
+	log.Debug("Currencies %v", currencies)
 
 	for _, cur := range currencies {
 		currency := currency.Type(cur)
@@ -137,7 +139,7 @@ func GetDashboardData(ctx appengine.Context, t Period, date time.Time, tzOffset 
 		keyId := salesKeyId(currency)
 		sales, err := Count(ctx, totalKey(org, keyId, allTime))
 		if err != nil {
-			log.Error("Redis Error: %v", err)
+			log.Error("Counter Error: %v", err)
 			return data, err
 		}
 
@@ -172,7 +174,7 @@ func GetDashboardData(ctx appengine.Context, t Period, date time.Time, tzOffset 
 
 			sales, err := Count(ctx, totalKey(org, keyId, tf(currentDate)))
 			if err != nil {
-				log.Error("Redis Error: %v", err)
+				log.Error("Counter Error: %v", err)
 				return data, err
 			}
 
@@ -180,7 +182,7 @@ func GetDashboardData(ctx appengine.Context, t Period, date time.Time, tzOffset 
 
 			orders, err := Count(ctx, totalKey(org, ordersKey, tf(currentDate)))
 			if err != nil {
-				log.Error("Redis Error: %v", err)
+				log.Error("Counter Error: %v", err)
 				return data, err
 			}
 
@@ -188,7 +190,7 @@ func GetDashboardData(ctx appengine.Context, t Period, date time.Time, tzOffset 
 
 			users, err := Count(ctx, userKey(org, tf(currentDate)))
 			if err != nil {
-				log.Error("Redis Error: %v", err)
+				log.Error("Counter Error: %v", err)
 				return data, err
 			}
 
@@ -196,7 +198,7 @@ func GetDashboardData(ctx appengine.Context, t Period, date time.Time, tzOffset 
 
 			subs, err := Count(ctx, subKey(org, mailinglistAllKey, tf(currentDate)))
 			if err != nil {
-				log.Error("Redis Error: %v", err)
+				log.Error("Counter Error: %v", err)
 				return data, err
 			}
 

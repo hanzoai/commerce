@@ -31,6 +31,11 @@ type shard struct {
 }
 
 func (s *shard) Load(c <-chan aeds.Property) (err error) {
+	// Load supported properties
+	if err = datastore.IgnoreFieldMismatch(aeds.LoadStruct(s, c)); err != nil {
+		return err
+	}
+
 	// Deserialize from datastore
 	if len(s.Set_) > 0 {
 		err = json.DecodeBytes([]byte(s.Set_), &s.Set)
@@ -192,7 +197,7 @@ var AddMemberTask *delay.Function
 
 func init() {
 	IncrementByTask = delay.Func("IncrementByTask", func(c appengine.Context, name string, amount int) {
-		log.Warn("INCREMENT BY", c)
+		log.Debug("INCREMENT BY", c)
 		// Get counter config.
 		var cfg counterConfig
 		ckey := aeds.NewKey(c, configKind, name, 0, nil)
@@ -245,7 +250,7 @@ func init() {
 	})
 
 	AddMemberTask = delay.Func("AddMember", func(c appengine.Context, name, value string) {
-		log.Warn("ADD MEMBER", c)
+		log.Debug("ADD MEMBER", c)
 		// Get counter config.
 		var cfg counterConfig
 		ckey := aeds.NewKey(c, configKind, name, 0, nil)
