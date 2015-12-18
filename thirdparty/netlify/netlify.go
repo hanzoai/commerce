@@ -14,7 +14,7 @@ type Client struct {
 }
 
 func New(ctx appengine.Context, accessToken string) *Client {
-	log.Debug("Created Netlify client using AccessToken: '%s'", accessToken, ctx)
+	log.Debug("Creating Netlify client using AccessToken: '%s'", accessToken, ctx)
 
 	client := newOauthClient(ctx, accessToken)
 
