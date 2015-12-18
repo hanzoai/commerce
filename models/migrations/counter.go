@@ -15,6 +15,28 @@ import (
 	ds "crowdstart.com/datastore"
 )
 
+var _ = New("fix-currency-set",
+	func(c *gin.Context) []interface{} {
+		return NoArgs
+	},
+	func(db *ds.Datastore, ord *order.Order) {
+		if ord.Test {
+			return
+		}
+
+		ctx := db.Context
+		ns, err := hashid.GetNamespace(db.Context, ord.Id())
+		if err != nil {
+			log.Warn("hash id decode error %v", err, ctx)
+		}
+
+		org := organization.New(db)
+		org.Name = ns
+
+		counter.AddCurrency(ctx, org, ord.Currency)
+	},
+)
+
 var _ = New("load-counter-orders",
 	func(c *gin.Context) []interface{} {
 		return NoArgs
