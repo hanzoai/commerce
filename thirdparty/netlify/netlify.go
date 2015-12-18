@@ -2,10 +2,8 @@ package netlify
 
 import (
 	"io/ioutil"
-	"time"
 
 	"appengine"
-	"appengine/urlfetch"
 
 	"crowdstart.com/util/log"
 
@@ -19,12 +17,6 @@ type Client struct {
 }
 
 func New(ctx appengine.Context, token string) *Client {
-	httpclient := urlfetch.Client(ctx)
-	httpclient.Transport = &urlfetch.Transport{
-		Context:  ctx,
-		Deadline: time.Duration(20) * time.Second, // Update deadline to 20 seconds
-	}
-
 	log.Debug("Created Netlify client using AccessToken: '%s'", token, ctx)
 
 	c := new(Client)
@@ -32,7 +24,7 @@ func New(ctx appengine.Context, token string) *Client {
 	c.token = token
 	c.client = netlify.NewClient(&netlify.Config{
 		AccessToken: token,
-		HttpClient:  httpclient,
+		HttpClient:  newHttpClient(ctx, token),
 		UserAgent:   "Crowdstart/1.0",
 	})
 	return c
@@ -42,8 +34,7 @@ func (c *Client) CreateSite(s Site) (*Site, error) {
 	log.Debug("Creating site in netlify: %#v", s, c.ctx)
 	// Create new site on Netlify's side
 	nsite, res, err := c.client.Sites.Create(&netlify.SiteAttributes{
-		Name:         s.Name,
-		CustomDomain: s.CustomDomain,
+		Name: s.Name,
 	})
 	defer res.Body.Close()
 
