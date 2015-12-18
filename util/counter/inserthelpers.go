@@ -171,56 +171,56 @@ func IncrStoreSales(ctx appengine.Context, org *organization.Organization, store
 	ctx = org.Namespaced(ctx)
 
 	var total currency.Cents
-	var currency currency.Type
+	var cur currency.Type
 
 	for _, pay := range pays {
 		// This is first because we care about it more :p
 		if pay.Type == payment.Stripe && pay.CurrencyTransferred != "" {
 			total += pay.AmountTransferred
-			if currency == "" {
-				currency = pay.CurrencyTransferred
-			} else if currency != pay.CurrencyTransferred {
+			if cur == "" {
+				cur = pay.CurrencyTransferred
+			} else if cur != pay.CurrencyTransferred {
 				log.Error("Multiple currencies in a single payment set should not happen", org.Db.Context)
 			}
 		} else {
 			total += pay.Amount
-			if currency == "" {
-				currency = pay.Currency
-			} else if currency != pay.Currency {
+			if cur == "" {
+				cur = pay.Currency
+			} else if cur != pay.Currency {
 				log.Error("Multiple currencies in a single payment set should not happen", org.Db.Context)
 			}
 		}
 	}
 
-	keyId := salesKeyId(currency)
+	keyId := salesKeyId(cur)
 	key := storeKey(org, storeId, keyId, hourly(t))
 	log.Debug("%v incremented by %v", key, int(total), org.Db.Context)
 	if err := IncrementBy(ctx, key, int(total)); err != nil {
 		return err
 	}
 
-	keyId = salesKeyId(currency)
+	keyId = salesKeyId(cur)
 	key = storeKey(org, storeId, keyId, daily(t))
 	log.Debug("%v incremented by %v", key, int(total), org.Db.Context)
 	if err := IncrementBy(ctx, key, int(total)); err != nil {
 		return err
 	}
 
-	keyId = salesKeyId(currency)
+	keyId = salesKeyId(cur)
 	key = storeKey(org, storeId, keyId, monthly(t))
 	log.Debug("%v incremented by %v", key, int(total), org.Db.Context)
 	if err := IncrementBy(ctx, key, int(total)); err != nil {
 		return err
 	}
 
-	currencySet := setName(org, currencySetKey)
-	if err := AddSetMember(ctx, currencySet, string(currency)); err != nil {
-		return err
-	}
-
 	key = storeKey(org, storeId, keyId, allTime)
 	log.Debug("%v incremented by %v", key, int(total), org.Db.Context)
 	return IncrementBy(ctx, key, int(total))
+}
+
+func AddCurrency(ctx appengine.Context, org *organization.Organization, cur currency.Type) error {
+	currencySet := setName(org, currencySetKey)
+	return AddSetMember(ctx, currencySet, string(cur))
 }
 
 func IncrTotalOrders(ctx appengine.Context, org *organization.Organization, t time.Time) error {
