@@ -15,7 +15,6 @@ type netlifyLogger func(*netlify.Site, *netlify.Response, error) (*netlify.Site,
 func logger(ctx appengine.Context) netlifyLogger {
 	return func(site *netlify.Site, res *netlify.Response, err error) (*netlify.Site, *netlify.Response, error) {
 		if err != nil {
-			log.Error("Failed to create site: %v", err, ctx)
 			return site, res, err
 		}
 
