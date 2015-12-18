@@ -44,7 +44,7 @@ func (c *Client) CreateSite(s Site) (*Site, error) {
 	if err != nil {
 		log.Error("Failed to create site: %v", err, c.ctx)
 	} else {
-		log.Error("Created site: %v", nsite, c.ctx)
+		log.Debug("Created site: %v", nsite, c.ctx)
 	}
 
 	return (*Site)(nsite), err
