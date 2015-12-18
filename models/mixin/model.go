@@ -375,6 +375,8 @@ func (m *Model) GetById(id string) error {
 		filterStr = "Name"
 	case "aggregate":
 		filterStr = "Instance"
+	case "site":
+		filterStr = "Name"
 	case "user":
 		if strings.Contains(id, "@") {
 			filterStr = "Email"
@@ -440,6 +442,8 @@ func (m *Model) KeyById(id string) (datastore.Key, bool, error) {
 		filterStr = "Name"
 	case "aggregate":
 		filterStr = "Instance"
+	case "site":
+		filterStr = "Name"
 	case "user":
 		if strings.Contains(id, "@") {
 			filterStr = "Email"
