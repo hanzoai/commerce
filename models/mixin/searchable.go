@@ -6,6 +6,10 @@ import (
 	"crowdstart.com/util/log"
 )
 
+type Document interface {
+	Id() string
+}
+
 type Searchable interface {
 	Document() Document
 }
