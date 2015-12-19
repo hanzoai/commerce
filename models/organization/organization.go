@@ -145,6 +145,14 @@ type Organization struct {
 		APIKey string
 	} `json:"-"`
 
+	Netlify struct {
+		AccessToken string
+		CreatedAt   time.Time
+		Email       string
+		Id          string
+		Uid         string
+	} `json:"-"`
+
 	// TODO: Delete?
 	GoogleAnalytics string `json:"googleAnalytics"`
 	FacebookTag     string `json:"facebookTag"`

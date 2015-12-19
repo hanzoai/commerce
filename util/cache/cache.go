@@ -13,7 +13,12 @@ func call(fn interface{}, args ...interface{}) interface{} {
 	for i, arg := range args {
 		reflectArgs[i] = reflect.ValueOf(arg)
 	}
-	return reflect.ValueOf(fn).Call(reflectArgs)
+	ret := reflect.ValueOf(fn).Call(reflectArgs)
+	if len(ret) > 0 {
+		return ret[0].Interface()
+	} else {
+		return nil
+	}
 }
 
 func Once(fn interface{}) Memoized {

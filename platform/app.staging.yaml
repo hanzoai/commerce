@@ -33,3 +33,10 @@ handlers:
   script: _go_app
   login: required
   secure: always
+
+skip_files:
+- ^(.*/)?\.lang$
+- ^(.*/)?\.less$
+- ^(.*/)?\.md$
+- ^(.*/)?\.php$
+- ^(.*/)?\.scss$

@@ -13,6 +13,7 @@ import (
 	"crowdstart.com/models/product"
 	"crowdstart.com/models/referral"
 	"crowdstart.com/models/referrer"
+	"crowdstart.com/models/site"
 	"crowdstart.com/models/submission"
 	"crowdstart.com/models/subscriber"
 	"crowdstart.com/models/token"
@@ -26,12 +27,12 @@ import (
 	accountApi "crowdstart.com/api/account"
 	checkoutApi "crowdstart.com/api/checkout"
 	dataApi "crowdstart.com/api/data"
+	deployApi "crowdstart.com/api/deploy"
 	formApi "crowdstart.com/api/form"
 	namespaceApi "crowdstart.com/api/namespace"
 	orderApi "crowdstart.com/api/order"
 	organizationApi "crowdstart.com/api/organization"
 	searchApi "crowdstart.com/api/search"
-	siteApi "crowdstart.com/api/site"
 	storeApi "crowdstart.com/api/store"
 	userApi "crowdstart.com/api/user"
 
@@ -74,15 +75,16 @@ func init() {
 	rest.New(product.Product{}).Route(api, tokenRequired)
 	rest.New(referral.Referral{}).Route(api, tokenRequired)
 	rest.New(referrer.Referrer{}).Route(api, tokenRequired)
+	rest.New(site.Site{}).Route(api, tokenRequired)
 	rest.New(submission.Submission{}).Route(api, tokenRequired)
 	rest.New(subscriber.Subscriber{}).Route(api, tokenRequired)
 	rest.New(transaction.Transaction{}).Route(api, tokenRequired)
 	rest.New(variant.Variant{}).Route(api, tokenRequired)
 
 	accountApi.Route(api, tokenRequired)
+	deployApi.Route(api, tokenRequired)
 	formApi.Route(api, tokenRequired)
 	orderApi.Route(api, tokenRequired)
-	siteApi.Route(api, tokenRequired)
 	storeApi.Route(api, tokenRequired)
 	userApi.Route(api, tokenRequired)
 

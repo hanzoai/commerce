@@ -19,6 +19,12 @@ inbound_services:
 - warmup
 
 handlers:
+- url: /
+  script: _go_app
+
+- url: /wake-up
+  script: _go_app
+
 - url: /tasks
   script: _go_app
   login: admin
@@ -36,6 +42,14 @@ handlers:
 - url: /_ah/queue/go/delay
   script: _go_app
   login: admin
+
+- url: /humans.txt
+  static_files: static/humans.txt
+  upload: static/humans.txt
+
+- url: /robots.txt
+  static_files: static/robots.txt
+  upload: static/robots.txt
 
 - url: /assets/css/(.*\.styl)
   static_files: assets/css/\1

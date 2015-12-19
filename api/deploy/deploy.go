@@ -1,0 +1,62 @@
+package site
+
+import (
+	"errors"
+
+	"github.com/gin-gonic/gin"
+
+	"crowdstart.com/datastore"
+	"crowdstart.com/middleware"
+	"crowdstart.com/models/site"
+	"crowdstart.com/thirdparty/netlify"
+	"crowdstart.com/util/json"
+	"crowdstart.com/util/json/http"
+)
+
+func createDeploy(c *gin.Context) {
+	ctx := middleware.GetAppEngine(c)
+	org := middleware.GetOrganization(c)
+	siteid := c.Params.ByName("siteid")
+
+	// Get associated site
+	db := datastore.New(ctx)
+	ste := site.New(db)
+	err := ste.GetById(siteid)
+	if err != nil {
+		err := errors.New("Failed to get site")
+		http.Fail(c, 500, err.Error(), err)
+		return
+	}
+
+	// Decode digest
+	digest := &netlify.Digest{}
+	err = json.Decode(c.Request.Body, digest)
+	if err != nil {
+		err := errors.New("Failed to decode digest")
+		http.Fail(c, 500, err.Error(), err)
+	}
+
+	// Get access token for organization
+	accessToken := netlify.GetAccessToken(ctx, org.Name)
+
+	// Create deploy
+	client := netlify.New(ctx, accessToken)
+	deploy, err := client.CreateDeploy(ste.Netlify(), digest, false)
+
+	if err != nil {
+		err := errors.New("Failed to create deploy")
+		http.Fail(c, 500, err.Error(), err)
+		return
+	}
+
+	http.Render(c, 200, deploy)
+}
+
+func getDeploy(c *gin.Context) {
+}
+
+func listDeploys(c *gin.Context) {
+}
+
+func restoreDeploy(c *gin.Context) {
+}
