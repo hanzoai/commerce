@@ -11,11 +11,9 @@ import (
 	"crowdstart.com/datastore"
 	"crowdstart.com/util/cache"
 	"crowdstart.com/util/hashid"
-	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/rand"
 	"crowdstart.com/util/structs"
-	"crowdstart.com/util/val"
 )
 
 var zeroTime = time.Time{}
@@ -71,19 +69,19 @@ type Entity interface {
 	GetOrCreate(filterStr string, value interface{}) error
 	GetOrUpdate(filterStr string, value interface{}) error
 
-	// Validation
-	Validate() error
-	Validator() *val.Validator
+	// Datastore
+	Datastore() *datastore.Datastore
+	RunInTransaction(fn func() error) error
 
 	// Query
 	Query() *Query
 
 	// Various helpers
-	Datastore() *datastore.Datastore
-	JSON() []byte
-	JSONEntity() Entity
-	RunInTransaction(fn func() error) error
+	Zero() Entity
+	Clone() Entity
+	CloneFromJSON() Entity
 	Slice() interface{}
+	JSON() []byte
 }
 
 // Model is a mixin which adds Datastore/Validation/Serialization methods to
@@ -503,12 +501,12 @@ func (m *Model) KeyExists(key interface{}) (datastore.Key, bool, error) {
 // Update new entity (should already exist)
 func (m *Model) Update() error {
 	// Get previous entity
-	getPrevious := cache.Once(cloneEntity)
+	getPrevious := cache.Once(m.Clone)
 
 	// Execute BeforeUpdate hook if defined on entity.
 	method, ok := getHook("BeforeUpdate", m)
 	if ok {
-		previous := getPrevious(m).(Entity)
+		previous := getPrevious()
 		err := callHook(m.Entity, method, previous)
 		if err != nil {
 			return err
@@ -520,9 +518,11 @@ func (m *Model) Update() error {
 	}
 
 	// Execute AfterUpdate hook if defined on entity.
-	if hook, ok := m.Entity.(AfterUpdate); ok {
-		previous := getPrevious(m).(Entity)
-		if err := hook.AfterUpdate(previous); err != nil {
+	method, ok = getHook("AfterUpdate", m)
+	if ok {
+		previous := getPrevious()
+		err := callHook(m.Entity, method, previous)
+		if err != nil {
 			return err
 		}
 	}
@@ -642,51 +642,7 @@ func (m *Model) RunInTransaction(fn func() error) error {
 	return err
 }
 
-// Return a query for this entity kind
-func (m *Model) Query() *Query {
-	q := new(Query)
-	q.Query = datastore.NewQuery(m.Db, m.Entity.Kind())
-	q.model = m
-	return q
-}
-
-// Validate a model
-func (m *Model) Validator() *val.Validator {
-	return val.New()
-}
-
-func (m *Model) Validate() error {
-	// val := m.Entity.Validator()
-	// errs := val.Check(m).Errors()
-	// if len(errs)
-
-	// err := val.NewError("Failed to validate " + m.Kind())
-	// err.Fields = errs
-	// return err
-	return nil
-}
-
-// Return slice suitable for use with GetAll
-func (m *Model) Slice() interface{} {
-	typ := reflect.TypeOf(m.Entity)
-	slice := reflect.MakeSlice(reflect.SliceOf(typ), 0, 0)
-	ptr := reflect.New(slice.Type())
-	ptr.Elem().Set(slice)
-	return ptr.Interface()
-}
-
-// Serialize entity to JSON
-func (m *Model) JSON() []byte {
-	return json.EncodeBytes(m.Entity)
-}
-
-func (m *Model) JSONEntity() Entity {
-	buf := json.EncodeBuffer(m.Entity)
-	entity := zeroEntity(m)
-	json.DecodeBuffer(buf, entity)
-	return entity
-}
-
+// Return Datastore
 func (m *Model) Datastore() *datastore.Datastore {
 	return m.Db
 }
@@ -707,53 +663,4 @@ func (m *Model) mockPut() error {
 
 func (m *Model) mockDelete() error {
 	return nil
-}
-
-// Wrap Query so we don't need to pass in entity to First() and key is updated
-// properly.
-type Query struct {
-	datastore.Query
-	model *Model
-}
-
-func (q *Query) Ancestor(key datastore.Key) *Query {
-	q.Query = q.Query.Ancestor(key)
-	return q
-}
-
-func (q *Query) Limit(limit int) *Query {
-	q.Query = q.Query.Limit(limit)
-	return q
-}
-
-func (q *Query) Offset(offset int) *Query {
-	q.Query = q.Query.Offset(offset)
-	return q
-}
-
-func (q *Query) Order(order string) *Query {
-	q.Query = q.Query.Order(order)
-	return q
-}
-
-func (q *Query) Filter(filterStr string, value interface{}) *Query {
-	q.Query = q.Query.Filter(filterStr, value)
-	return q
-}
-
-func (q *Query) KeysOnly() *Query {
-	q.Query = q.Query.KeysOnly()
-	return q
-}
-
-func (q *Query) First() (bool, error) {
-	key, ok, err := q.Query.First(q.model.Entity)
-	if ok {
-		q.model.setKey(key)
-	}
-	return ok, err
-}
-
-func (q *Query) GetAll(dst interface{}) ([]*aeds.Key, error) {
-	return q.Query.GetAll(dst)
 }
