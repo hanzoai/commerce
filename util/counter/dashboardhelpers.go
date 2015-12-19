@@ -130,10 +130,10 @@ func GetDashboardData(ctx appengine.Context, t Period, date time.Time, tzOffset 
 	}
 
 	data.TotalOrders = orders
+	data.DailySales = make(currencyValues)
 
 	log.Debug("Currencies %v", currencies)
 
-	data.DailySales = make(currencyValues)
 	for _, cr := range currencies {
 		cur := currency.Type(cr)
 
