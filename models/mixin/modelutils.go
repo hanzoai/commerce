@@ -49,7 +49,7 @@ func (m *Model) Slice() interface{} {
 	slice := reflect.MakeSlice(reflect.SliceOf(typ), 0, 0)
 	ptr := reflect.New(slice.Type())
 	ptr.Elem().Set(slice)
-	return ptr.Interface().(*[]Entity)
+	return ptr.Interface()
 }
 
 // Serialize entity to JSON
