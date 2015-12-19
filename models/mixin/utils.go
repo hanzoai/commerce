@@ -4,6 +4,7 @@ import (
 	"reflect"
 
 	"crowdstart.com/util/log"
+	"crowdstart.com/util/structs"
 )
 
 // Get type of entity
@@ -25,8 +26,8 @@ func zeroEntity(m *Model) Entity {
 // Return a clone of current entity
 func cloneEntity(m *Model) Entity {
 	entity := zeroEntity(m)
-	if err := m.Db.Get(m.Key(), entity); err != nil {
-		log.Warn("Unable to fetch copy of model from datastore: %v", err, m.Db.Context)
+	if err := structs.Copy(m.Entity, entity); err != nil {
+		log.Warn("Unable to copy of model: %v", err, m.Db.Context)
 	}
 	return entity
 }
