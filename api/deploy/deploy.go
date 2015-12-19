@@ -48,7 +48,7 @@ func createDeploy(c *gin.Context) {
 		return
 	}
 
-	http.Render(c, 200, deploy)
+	http.Render(c, 201, deploy)
 }
 
 func getDeploy(c *gin.Context) {
