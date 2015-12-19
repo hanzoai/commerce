@@ -32,16 +32,26 @@ gae_sandbox = config/sandbox \
 			  analytics/app.sandbox.yaml \
 			  api/app.sandbox.yaml
 
+# CDN is deprecated, analytics not used
+# gae_staging = config/staging \
+# 			  analytics/app.staging.yaml \
+# 			  api/app.staging.yaml \
+# 			  cdn/app.staging.yaml \
+# 			  platform/app.staging.yaml
+
+# gae_production = config/production \
+# 				 analytics \
+# 				 api \
+# 			  	 cdn \
+# 				 platform
+
 gae_staging = config/staging \
-			  analytics/app.staging.yaml \
 			  api/app.staging.yaml \
-			  cdn/app.staging.yaml \
 			  platform/app.staging.yaml
 
+
 gae_production = config/production \
-				 analytics \
 				 api \
-			  	 cdn \
 				 platform
 
 gae_skully = config/skully \

@@ -12,6 +12,7 @@ import (
 	"crowdstart.com/util/cache"
 	"crowdstart.com/util/hashid"
 	"crowdstart.com/util/json"
+	"crowdstart.com/util/log"
 	"crowdstart.com/util/rand"
 	"crowdstart.com/util/structs"
 	"crowdstart.com/util/val"
@@ -80,6 +81,7 @@ type Entity interface {
 	// Various helpers
 	Datastore() *datastore.Datastore
 	JSON() []byte
+	JSONEntity() Entity
 	RunInTransaction(fn func() error) error
 	Slice() interface{}
 }
@@ -300,6 +302,8 @@ func (m *Model) Create() error {
 		}
 	}
 
+	log.Debug("Site after BeforeCreate: %#v", m.Entity, m.Context())
+
 	if err := m.Put(); err != nil {
 		return err
 	}
@@ -375,6 +379,8 @@ func (m *Model) GetById(id string) error {
 		filterStr = "Name"
 	case "aggregate":
 		filterStr = "Instance"
+	case "site":
+		filterStr = "Name"
 	case "user":
 		if strings.Contains(id, "@") {
 			filterStr = "Email"
@@ -440,6 +446,8 @@ func (m *Model) KeyById(id string) (datastore.Key, bool, error) {
 		filterStr = "Name"
 	case "aggregate":
 		filterStr = "Instance"
+	case "site":
+		filterStr = "Name"
 	case "user":
 		if strings.Contains(id, "@") {
 			filterStr = "Email"
@@ -498,9 +506,11 @@ func (m *Model) Update() error {
 	getPrevious := cache.Once(cloneEntity)
 
 	// Execute BeforeUpdate hook if defined on entity.
-	if hook, ok := m.Entity.(BeforeUpdate); ok {
+	method, ok := getHook("BeforeUpdate", m)
+	if ok {
 		previous := getPrevious(m).(Entity)
-		if err := hook.BeforeUpdate(previous); err != nil {
+		err := callHook(m.Entity, method, previous)
+		if err != nil {
 			return err
 		}
 	}
@@ -668,6 +678,13 @@ func (m *Model) Slice() interface{} {
 // Serialize entity to JSON
 func (m *Model) JSON() []byte {
 	return json.EncodeBytes(m.Entity)
+}
+
+func (m *Model) JSONEntity() Entity {
+	buf := json.EncodeBuffer(m.Entity)
+	entity := zeroEntity(m)
+	json.DecodeBuffer(buf, entity)
+	return entity
 }
 
 func (m *Model) Datastore() *datastore.Datastore {
