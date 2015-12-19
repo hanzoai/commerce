@@ -277,8 +277,9 @@ class Dashboard extends Page
         totalCompareSubs += @compareModel.DailySubscribers[i]
 
       # Dispatch updated values
+      @totalOrdersObs.trigger Events.Visual.NewData, @model.TotalOrders, NaN
+
       @dailyOrdersObs.trigger Events.Visual.NewData, totalOrders, totalCompareOrders
-      @dailySalesObs.trigger Events.Visual.NewData, totalCents[@currencyModel], totalCompareCents[@currencyModel.value], @currencyModel.value
       @dailyUsersObs.trigger Events.Visual.NewData, totalUsers, totalCompareUsers
       @dailySubsObs.trigger Events.Visual.NewData, totalSubs, totalCompareSubs
 
@@ -292,12 +293,28 @@ class Dashboard extends Page
       @dailyUsersObs.trigger Events.Visual.NewLabel, @periodLabel()
       @dailySubsObs.trigger Events.Visual.NewLabel, @periodLabel()
 
-      sales = @model.DailySales[@currency]
+      @update()
+    ).catch (e)=>
+      console.log(e.stack)
+      @error = e
+
+  updateCurrency: (totalCents, totalCompareCents)->
+    if @model.TotalSales?[@currencyModel.value]?
+      @totalSalesObs.trigger Events.Visual.NewData, @model.TotalSales[@currencyModel.value], NaN, @currencyModel.value
+    if @model.TotalUsers?
+      @totalUsersObs.trigger Events.Visual.NewData, @model.TotalUsers, NaN
+    if @model.TotalSubs?
+      @totalSubsObs.trigger Events.Visual.NewData, @model.TotalSubs, NaN
+    if totalCents?[@currencyModel.value]? && totalCompareCents?[@currencyModel.value]?
+      @dailySalesObs.trigger Events.Visual.NewData, totalCents[@currencyModel.value], totalCompareCents[@currencyModel.value], @currencyModel.value
+
+    if @model.DailySales? && @model.DailyOrders
+      sales = @model.DailySales[@currencyModel.value]
       if sales?
-        sales = @model.DailySales[@currency].map (val)->
+        sales = @model.DailySales[@currencyModel.value].map (val)->
           return val/100
       else
-        sales =@model.DailyOrders.map (val)->
+        sales = @model.DailyOrders.map (val)->
           return 0
 
       @chartModel.series[0].data = sales
@@ -307,22 +324,6 @@ class Dashboard extends Page
       @chartModel.yAxis[0].labels.format = "#{util.currency.getSymbol(@currencyModel.value)}{value:.2f} (#{@currencyModel.value.toUpperCase()})"
 
       @chartObs.trigger Events.Visual.NewData, @chartModel
-      @update()
-    ).catch (e)=>
-      console.log(e.stack)
-      @error = e
-
-  updateCurrency: (totalCents, totalCompareCents)->
-    if @model.TotalOrders?
-      @totalOrdersObs.trigger Events.Visual.NewData, @model.TotalOrders, NaN
-    if @model.TotalSales?[@currencyModel.value]?
-      @totalSalesObs.trigger Events.Visual.NewData, @model.TotalSales[@currencyModel.value], NaN, @currencyModel.value
-    if @model.TotalUsers?
-      @totalUsersObs.trigger Events.Visual.NewData, @model.TotalUsers, NaN
-    if @model.TotalSubs?
-      @totalSubsObs.trigger Events.Visual.NewData, @model.TotalSubs, NaN
-    if totalCents?[@currencyModel.value]? && totalCompareCents?[@currencyModel.value]?
-      @dailySalesObs.trigger Events.Visual.NewData, totalCents[@currencyModel.value], totalCompareCents[@currencyModel.value], @currencyModel.value
 
 Dashboard.register()
 
