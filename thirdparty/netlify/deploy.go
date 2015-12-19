@@ -27,7 +27,5 @@ func (c *Client) CreateDeploy(ste *Site, digest *Digest, draft bool) (*Deploy, e
 		return &Deploy{}, err
 	}
 
-	deploy := newDeploy(ndeploy)
-	deploy.SiteId = ste.Id // Override netlify's site id with ours
-	return deploy, err
+	return newDeploy(ndeploy), err
 }
