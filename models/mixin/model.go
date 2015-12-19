@@ -80,6 +80,7 @@ type Entity interface {
 	// Various helpers
 	Datastore() *datastore.Datastore
 	JSON() []byte
+	JSONEntity() Entity
 	RunInTransaction(fn func() error) error
 	Slice() interface{}
 }
@@ -672,6 +673,13 @@ func (m *Model) Slice() interface{} {
 // Serialize entity to JSON
 func (m *Model) JSON() []byte {
 	return json.EncodeBytes(m.Entity)
+}
+
+func (m *Model) JSONEntity() Entity {
+	buf := json.EncodeBuffer(m.Entity)
+	entity := zeroEntity(m)
+	json.DecodeBuffer(buf, entity)
+	return entity
 }
 
 func (m *Model) Datastore() *datastore.Datastore {
