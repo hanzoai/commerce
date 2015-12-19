@@ -8,8 +8,7 @@ import (
 
 func (c *Client) CreateDeploy(ste *Site, digest *Digest, draft bool) (*Deploy, error) {
 	// Get site for deploy
-	_, res, err := c.client.Sites.Get(ste.Id)
-	logger(c.ctx)(res, err)
+	_, _, err := c.client.Sites.Get(ste.Id)
 
 	if err != nil {
 		return &Deploy{}, err
@@ -22,8 +21,7 @@ func (c *Client) CreateDeploy(ste *Site, digest *Digest, draft bool) (*Deploy, e
 	}
 	options := &netlify.RequestOptions{JsonBody: digest, QueryParams: &params}
 	ndeploy := &netlify.Deploy{}
-	res, err = c.client.Request("POST", "/deploys", options, ndeploy)
-	logger(c.ctx)(res, err)
+	_, err = c.client.Request("POST", "/deploys", options, ndeploy)
 
 	if err != nil {
 		return &Deploy{}, err

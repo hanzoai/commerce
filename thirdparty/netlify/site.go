@@ -7,40 +7,41 @@ import (
 )
 
 func (c *Client) CreateSite(s *Site) (*Site, error) {
+	log.Debug("Creating site: %#v", s, c.ctx)
+
 	// Create new site on Netlify's side
-	nsite, res, err := c.client.Sites.Create(&netlify.SiteAttributes{
+	nsite, _, err := c.client.Sites.Create(&netlify.SiteAttributes{
 		Name: s.Name,
 	})
 
-	logger(c.ctx)(res, err)
-
 	if err != nil {
-		return newSite(nsite), err
+		return &Site{}, err
 	}
 
 	log.Debug("Created site: %v", nsite, c.ctx)
 	return newSite(nsite), err
 }
 
-func (c *Client) GetSite(siteId string) (*Site, error) {
-	nsite, res, err := c.client.Sites.Get(siteId)
+func (c *Client) GetSite(s *Site) (*Site, error) {
+	log.Debug("Getting site: %#v", s, c.ctx)
 
-	logger(c.ctx)(res, err)
+	// Get site
+	nsite, _, err := c.client.Sites.Get(s.Id)
 
 	if err != nil {
-		return newSite(nsite), err
+		return &Site{}, err
 	}
 
 	return newSite(nsite), err
 }
 
 func (c *Client) UpdateSite(s *Site) (*Site, error) {
-	nsite, res, err := c.client.Sites.Get(s.Id)
+	log.Debug("Update site: %#v", s, c.ctx)
 
-	logger(c.ctx)(res, err)
+	nsite, _, err := c.client.Sites.Get(s.Id)
 
 	if err != nil {
-		return newSite(nsite), err
+		return &Site{}, err
 	}
 
 	nsite.Url = s.Url
@@ -56,16 +57,16 @@ func (c *Client) UpdateSite(s *Site) (*Site, error) {
 
 	_, err = nsite.Update()
 	if err != nil {
-		return newSite(nsite), err
+		return &Site{}, err
 	}
 
 	return newSite(nsite), nil
 }
 
 func (c *Client) DeleteSite(s *Site) error {
-	nsite, res, err := c.client.Sites.Get(s.Id)
+	log.Debug("Delete site: %#v", s, c.ctx)
 
-	logger(c.ctx)(res, err)
+	nsite, _, err := c.client.Sites.Get(s.Id)
 
 	if err != nil {
 		return err
