@@ -29,7 +29,7 @@ func (s *Site) AfterCreate() error {
 
 // Update
 func (s *Site) BeforeUpdate(previous *Site) error {
-	client := netlify.NewFromNamespace(s.Db.Context, s.Namespace())
+	client := netlify.NewFromNamespace(s.Context(), s.Namespace())
 	nsite, err := client.UpdateSite(s.Netlify())
 	if err != nil {
 		return err
