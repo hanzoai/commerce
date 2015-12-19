@@ -31,7 +31,7 @@ type TokenReq struct {
 
 func (c *Client) AccessToken(userId, email string) (User, error) {
 	buf := json.EncodeBuffer(TokenReq{User: User{Uid: userId, Email: email}})
-	url := config.Netlify.BaseUrl + "access_tokens?access_token=" + config.Netlify.AccessToken
+	url := config.Netlify.BaseUrl + "/access_tokens?access_token=" + config.Netlify.AccessToken
 	req, err := http.NewRequest("POST", url, buf)
 	req.Header.Set("Content-Type", "application/json")
 
