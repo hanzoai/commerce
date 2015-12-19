@@ -3,7 +3,6 @@ package site
 import (
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
-
 	"crowdstart.com/thirdparty/netlify"
 )
 
@@ -42,6 +41,6 @@ func (s Site) Netlify() *netlify.Site {
 	return &s.Netlify_
 }
 
-func (s Site) SetNetlify(nsite *netlify.Site) {
+func (s *Site) SetNetlify(nsite *netlify.Site) {
 	s.Netlify_ = *nsite
 }
