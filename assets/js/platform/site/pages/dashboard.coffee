@@ -254,16 +254,6 @@ class Dashboard extends Page
         totalOrders += orders
         totalCompareOrders += @compareModel.DailyOrders[i]
 
-      totalCents = {}
-      totalCompareCents = {}
-      for currency, values of @model.DailySales
-        totalCents[currency] = 0
-        totalCompareCents[currency] = 0
-        for cents, i in values
-          totalCents[currency] += cents
-          if @compareModel.DailySales[currency]?
-            totalCompareCents[currency] += @compareModel.DailySales[currency][i]
-
       totalUsers = 0
       totalCompareUsers = 0
       for users, i in @model.DailyUsers
@@ -298,17 +288,27 @@ class Dashboard extends Page
       console.log(e.stack)
       @error = e
 
-  updateCurrency: (totalCents, totalCompareCents)->
+  updateCurrency: ()->
+    if @model.DailySales?
+      totalCents = {}
+      totalCompareCents = {}
+      for currency, values of @model.DailySales
+        totalCents[currency] = 0
+        totalCompareCents[currency] = 0
+        for cents, i in values
+          totalCents[currency] += cents
+          if @compareModel.DailySales[currency]?
+            totalCompareCents[currency] += @compareModel.DailySales[currency][i]
+      @dailySalesObs.trigger Events.Visual.NewData, totalCents[@currencyModel.value], totalCompareCents[@currencyModel.value], @currencyModel.value
+
     if @model.TotalSales?[@currencyModel.value]?
       @totalSalesObs.trigger Events.Visual.NewData, @model.TotalSales[@currencyModel.value], NaN, @currencyModel.value
     if @model.TotalUsers?
       @totalUsersObs.trigger Events.Visual.NewData, @model.TotalUsers, NaN
     if @model.TotalSubs?
       @totalSubsObs.trigger Events.Visual.NewData, @model.TotalSubs, NaN
-    if totalCents?[@currencyModel.value]? && totalCompareCents?[@currencyModel.value]?
-      @dailySalesObs.trigger Events.Visual.NewData, totalCents[@currencyModel.value], totalCompareCents[@currencyModel.value], @currencyModel.value
 
-    if @model.DailySales? && @model.DailyOrders
+    if @model.DailySales? && @model.DailyOrders?
       sales = @model.DailySales[@currencyModel.value]
       if sales?
         sales = @model.DailySales[@currencyModel.value].map (val)->

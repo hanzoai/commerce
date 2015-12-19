@@ -133,19 +133,23 @@ func GetDashboardData(ctx appengine.Context, t Period, date time.Time, tzOffset 
 
 	log.Debug("Currencies %v", currencies)
 
-	for _, cur := range currencies {
-		currency := currency.Type(cur)
+	data.DailySales = make(currencyValues)
+	for _, cr := range currencies {
+		cur := currency.Type(cr)
 
-		keyId := salesKeyId(currency)
+		keyId := salesKeyId(cur)
 		sales, err := Count(ctx, totalKey(org, keyId, allTime))
 		if err != nil {
 			log.Error("Counter Error: %v", err)
 			return data, err
 		}
 
-		data.TotalSales[currency] = sales
+		data.TotalSales[cur] = sales
 
-		data.DailySales = make(currencyValues)
+		if data.DailySales[cur] == nil {
+			data.DailySales[cur] = make([]int, buckets)
+		}
+
 		data.DailyOrders = make([]int, buckets)
 		data.DailyUsers = make([]int, buckets)
 		data.DailySubscribers = make([]int, buckets)
@@ -168,17 +172,13 @@ func GetDashboardData(ctx appengine.Context, t Period, date time.Time, tzOffset 
 				tf = daily
 			}
 
-			if data.DailySales[currency] == nil {
-				data.DailySales[currency] = make([]int, buckets)
-			}
-
 			sales, err := Count(ctx, totalKey(org, keyId, tf(currentDate)))
 			if err != nil {
 				log.Error("Counter Error: %v", err)
 				return data, err
 			}
 
-			data.DailySales[currency][i] += sales
+			data.DailySales[cur][i] += sales
 
 			orders, err := Count(ctx, totalKey(org, ordersKey, tf(currentDate)))
 			if err != nil {
