@@ -42,7 +42,7 @@ func (m *Model) CloneFromJSON() Entity {
 }
 
 // Return slice suitable for use with GetAll
-func (m *Model) Slice() *[]Entity {
+func (m *Model) Slice() interface{} {
 	typ := reflect.TypeOf(m.Entity)
 	slice := reflect.MakeSlice(reflect.SliceOf(typ), 0, 0)
 	ptr := reflect.New(slice.Type())
