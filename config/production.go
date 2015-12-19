@@ -48,6 +48,7 @@ func Production() *Config {
 	config.Salesforce.ConsumerKey = ""
 	config.Salesforce.ConsumerSecret = ""
 	config.Salesforce.CallbackURL = "https:" + config.UrlFor("platform", "/salesforce/callback")
+	config.Netlify.AccessToken = "1739f774d10d95de710c35a3184c7e71d086e5e750cc99c6648274240e9377de"
 
 	return config
 }
