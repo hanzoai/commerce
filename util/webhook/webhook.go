@@ -5,6 +5,7 @@ import (
 
 	"appengine"
 
+	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/webhook/tasks"
 )
 
@@ -19,5 +20,11 @@ func Emit(ctx interface{}, org string, event string, data interface{}) {
 		aectx = v
 	}
 
-	tasks.Emit.Call(aectx, org, event, data)
+	// If we have a model, fire off a json-safe copy of it
+	model, ok := data.(mixin.Entity)
+	if ok {
+		tasks.Emit.Call(aectx, org, event, model.JSONEntity())
+	} else {
+		tasks.Emit.Call(aectx, org, event, data)
+	}
 }
