@@ -8,12 +8,17 @@ import (
 type Memoized func(args ...interface{}) interface{}
 
 func call(fn interface{}, args ...interface{}) interface{} {
-	// Call fn
+	// Construct args for call
 	reflectArgs := make([]reflect.Value, len(args))
 	for i, arg := range args {
 		reflectArgs[i] = reflect.ValueOf(arg)
 	}
-	ret := reflect.ValueOf(fn).Call(reflectArgs)
+
+	// Get reflected func
+	fnv := reflect.ValueOf(fn)
+
+	// Call function with reflected args
+	ret := fnv.Call(reflectArgs)
 	if len(ret) > 0 {
 		return ret[0].Interface()
 	} else {

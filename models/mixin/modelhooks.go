@@ -33,7 +33,7 @@ func getHook(name string, model *Model) (reflect.Method, bool) {
 }
 
 // Call method returned by getMethod
-func callHook(entity Kind, method reflect.Method, previous Entity) error {
+func callHook(entity Kind, method reflect.Method, previous interface{}) error {
 	args := []reflect.Value{
 		reflect.ValueOf(entity),
 		reflect.ValueOf(previous),
