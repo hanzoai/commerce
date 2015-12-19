@@ -40,6 +40,20 @@ type Deploy struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+func newDeploy(d *netlify.Deploy) *Deploy {
+	return &Deploy{
+		Id:            d.Id,
+		SiteId:        d.SiteId,
+		UserId:        d.UserId,
+		State:         d.State,
+		ErrorMessage:  d.ErrorMessage,
+		Required:      d.Required,
+		DeployUrl:     d.DeployUrl,
+		SiteUrl:       d.SiteUrl,
+		ScreenshotUrl: d.ScreenshotUrl,
+	}
+}
+
 // Represents a Netlify site
 type Site struct {
 	Id     string `json:"id"`
@@ -79,19 +93,5 @@ func newSite(s *netlify.Site) *Site {
 		AdminUrl:          s.AdminUrl,
 		DeployUrl:         s.DeployUrl,
 		ScreenshotUrl:     s.ScreenshotUrl,
-	}
-}
-
-func newDeploy(d *netlify.Deploy) *Deploy {
-	return &Deploy{
-		Id:            d.Id,
-		SiteId:        d.SiteId,
-		UserId:        d.UserId,
-		State:         d.State,
-		ErrorMessage:  d.ErrorMessage,
-		Required:      d.Required,
-		DeployUrl:     d.DeployUrl,
-		SiteUrl:       d.SiteUrl,
-		ScreenshotUrl: d.ScreenshotUrl,
 	}
 }
