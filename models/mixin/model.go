@@ -80,7 +80,7 @@ type Entity interface {
 	Zero() Entity
 	Clone() Entity
 	CloneFromJSON() Entity
-	Slice() *[]Entity
+	Slice() interface{}
 	JSON() []byte
 }
 
