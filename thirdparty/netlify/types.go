@@ -20,24 +20,24 @@ type Required struct {
 // Represents a Netlify deploy
 type Deploy struct {
 	Id     string `json:"id"`
-	SiteId string `json:"site_id"`
-	UserId string `json:"user_id"`
+	SiteId string `json:"siteId"`
+	UserId string `json:"userId"`
 
 	// State of the deploy (uploading/uploaded/processing/ready/error)
 	State string `json:"state"`
 
 	// Cause of error if State is "error"
-	ErrorMessage string `json:"error_message"`
+	ErrorMessage string `json:"errorMessage,omitempty"`
 
 	// Shas of files that needs to be uploaded before the deploy is ready
 	Required []string `json:"required"`
 
-	DeployUrl     string `json:"deploy_url"`
+	DeployUrl     string `json:"deployUrl"`
 	SiteUrl       string `json:"url"`
-	ScreenshotUrl string `json:"screenshot_url"`
+	ScreenshotUrl string `json:"screenshotUrl,omitempty"`
 
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 func newDeploy(d *netlify.Deploy) *Deploy {
@@ -51,6 +51,8 @@ func newDeploy(d *netlify.Deploy) *Deploy {
 		DeployUrl:     d.DeployUrl,
 		SiteUrl:       d.SiteUrl,
 		ScreenshotUrl: d.ScreenshotUrl,
+		CreatedAt:     d.CreatedAt.Time,
+		UpdatedAt:     d.UpdatedAt.Time,
 	}
 }
 
@@ -61,21 +63,21 @@ type Site struct {
 
 	// These fields can be updated through the API
 	Name              string `json:"name"`
-	CustomDomain      string `json:"custom_domain"`
+	Domain            string `json:"domain"`
 	Password          string `json:"password"`
-	NotificationEmail string `json:"notification_email"`
+	NotificationEmail string `json:"notificationEmail"`
 
 	State   string `json:"state"`
 	Premium bool   `json:"premium"`
 	Claimed bool   `json:"claimed"`
 
 	Url           string `json:"url"`
-	AdminUrl      string `json:"admin_url"`
-	DeployUrl     string `json:"deploy_url"`
-	ScreenshotUrl string `json:"screenshot_url"`
+	AdminUrl      string `json:"adminUrl"`
+	DeployUrl     string `json:"deployUrl"`
+	ScreenshotUrl string `json:"screenshotUrl"`
 
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 func newSite(s *netlify.Site) *Site {
@@ -83,7 +85,7 @@ func newSite(s *netlify.Site) *Site {
 		Id:                s.Id,
 		UserId:            s.UserId,
 		Name:              s.Name,
-		CustomDomain:      s.CustomDomain,
+		Domain:            s.CustomDomain,
 		Password:          s.Password,
 		NotificationEmail: s.NotificationEmail,
 		State:             s.State,
@@ -93,5 +95,7 @@ func newSite(s *netlify.Site) *Site {
 		AdminUrl:          s.AdminUrl,
 		DeployUrl:         s.DeployUrl,
 		ScreenshotUrl:     s.ScreenshotUrl,
+		CreatedAt:         s.CreatedAt.Time,
+		UpdatedAt:         s.UpdatedAt.Time,
 	}
 }
