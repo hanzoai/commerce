@@ -6,6 +6,17 @@ import (
 	"github.com/netlify/netlify-go"
 )
 
+// {"files": {"/index.html": "907d14fb3af2b0d4f18c2d46abe8aedce17367bd"}}
+type Digest struct {
+	Files map[string]string `json:"files"`
+}
+
+// {"deploy_id": "1234", "required": ["907d14fb3af2b0d4f18c2d46abe8aedce17367bd"]}
+type Required struct {
+	DeployId string   `json:"deploy_id"`
+	Required []string `json:"required"`
+}
+
 // Represents a Netlify deploy
 type Deploy struct {
 	Id     string `json:"id"`
