@@ -503,9 +503,11 @@ func (m *Model) Update() error {
 	getPrevious := cache.Once(cloneEntity)
 
 	// Execute BeforeUpdate hook if defined on entity.
-	if hook, ok := m.Entity.(BeforeUpdate); ok {
+	method, ok := getMethod("BeforeUpdate", m)
+	if ok {
 		previous := getPrevious(m).(Entity)
-		if err := hook.BeforeUpdate(previous); err != nil {
+		err := callMethod(method, previous)
+		if err != nil {
 			return err
 		}
 	}
