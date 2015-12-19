@@ -27,14 +27,15 @@ type AfterDelete interface {
 }
 
 // Try to get method off a model
-func getMethod(name string, model *Model) (reflect.Method, bool) {
+func getHook(name string, model *Model) (reflect.Method, bool) {
 	typ := reflect.TypeOf(model.Entity)
 	return typ.MethodByName(name)
 }
 
 // Call method returned by getMethod
-func callMethod(method reflect.Method, previous Entity) error {
+func callHook(entity Kind, method reflect.Method, previous Entity) error {
 	args := []reflect.Value{
+		reflect.ValueOf(entity),
 		reflect.ValueOf(previous),
 	}
 
