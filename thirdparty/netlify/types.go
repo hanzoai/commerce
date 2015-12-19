@@ -11,17 +11,11 @@ type Digest struct {
 	Files map[string]string `json:"files"`
 }
 
-// {"deploy_id": "1234", "required": ["907d14fb3af2b0d4f18c2d46abe8aedce17367bd"]}
-type Required struct {
-	DeployId string   `json:"deploy_id"`
-	Required []string `json:"required"`
-}
-
 // Represents a Netlify deploy
 type Deploy struct {
 	Id     string `json:"id"`
 	SiteId string `json:"siteId"`
-	UserId string `json:"userId"`
+	UserId string `json:"-"`
 
 	// State of the deploy (uploading/uploaded/processing/ready/error)
 	State string `json:"state"`
@@ -59,7 +53,7 @@ func newDeploy(d *netlify.Deploy) *Deploy {
 // Represents a Netlify site
 type Site struct {
 	Id     string `json:"id"`
-	UserId string `json:"user_id"`
+	UserId string `json:"userId"`
 
 	// These fields can be updated through the API
 	Name              string `json:"name"`
