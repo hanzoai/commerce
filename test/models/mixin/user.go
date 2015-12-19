@@ -29,5 +29,5 @@ func newUser(db *datastore.Datastore) *User {
 }
 
 func (u *User) Validator() *val.Validator {
-	return val.New(u)
+	return val.New()
 }
