@@ -8,23 +8,25 @@ import (
 	"crowdstart.com/util/structs"
 )
 
-// Get type of entity
-func modelType(m *Model) reflect.Type {
-	value := reflect.ValueOf(m.Entity)
-	for value.Kind() == reflect.Ptr {
-		value = reflect.Indirect(value)
-	}
-	return value.Type()
-}
-
-// Return a zero'd entity of this type
+// Create a new zero'd entity of this type
 func (m *Model) Zero() Entity {
-	typ := modelType(m)
-	entity := reflect.New(typ)
+	// Get type of entity
+	entity := reflect.ValueOf(m.Entity)
+
+	// De-pointer if necessary
+	for entity.Kind() == reflect.Ptr {
+		entity = reflect.Indirect(entity)
+	}
+
+	// Actual type
+	typ := entity.Type()
+
+	// Create new entity
+	entity = reflect.New(typ)
 	return entity.Interface().(Entity)
 }
 
-// Pulled out so it's easy to cache
+// Create a clone of current entity
 func (m *Model) Clone() Entity {
 	entity := m.Zero()
 	if err := structs.Copy(m.Entity, entity); err != nil {
@@ -33,7 +35,7 @@ func (m *Model) Clone() Entity {
 	return entity
 }
 
-// Return Clone with only "public" JSON-serializable fields set
+// Create a clone of currenty entity using only JSON-serializable data
 func (m *Model) CloneFromJSON() Entity {
 	buf := json.EncodeBuffer(m.Entity)
 	entity := m.Zero()
@@ -41,7 +43,7 @@ func (m *Model) CloneFromJSON() Entity {
 	return entity
 }
 
-// Return slice suitable for use with GetAll
+// Create a slice of entity type suitable for use with datastore.GetAll, etc.
 func (m *Model) Slice() interface{} {
 	typ := reflect.TypeOf(m.Entity)
 	slice := reflect.MakeSlice(reflect.SliceOf(typ), 0, 0)

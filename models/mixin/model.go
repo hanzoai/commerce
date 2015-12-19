@@ -506,7 +506,7 @@ func (m *Model) Update() error {
 	// Execute BeforeUpdate hook if defined on entity.
 	method, ok := getHook("BeforeUpdate", m)
 	if ok {
-		previous := getPrevious(m.Entity)
+		previous := getPrevious()
 		err := callHook(m.Entity, method, previous)
 		if err != nil {
 			return err
@@ -520,7 +520,7 @@ func (m *Model) Update() error {
 	// Execute AfterUpdate hook if defined on entity.
 	method, ok = getHook("AfterUpdate", m)
 	if ok {
-		previous := getPrevious(m.Entity)
+		previous := getPrevious()
 		err := callHook(m.Entity, method, previous)
 		if err != nil {
 			return err
