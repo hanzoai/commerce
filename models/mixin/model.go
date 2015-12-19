@@ -12,6 +12,7 @@ import (
 	"crowdstart.com/util/cache"
 	"crowdstart.com/util/hashid"
 	"crowdstart.com/util/json"
+	"crowdstart.com/util/log"
 	"crowdstart.com/util/rand"
 	"crowdstart.com/util/structs"
 	"crowdstart.com/util/val"
@@ -301,6 +302,8 @@ func (m *Model) Create() error {
 		}
 	}
 
+	log.Debug("Site after BeforeCreate: %#v", m.Entity, m.Context())
+
 	if err := m.Put(); err != nil {
 		return err
 	}
@@ -503,10 +506,10 @@ func (m *Model) Update() error {
 	getPrevious := cache.Once(cloneEntity)
 
 	// Execute BeforeUpdate hook if defined on entity.
-	method, ok := getMethod("BeforeUpdate", m)
+	method, ok := getHook("BeforeUpdate", m)
 	if ok {
 		previous := getPrevious(m).(Entity)
-		err := callMethod(method, previous)
+		err := callHook(m.Entity, method, previous)
 		if err != nil {
 			return err
 		}
