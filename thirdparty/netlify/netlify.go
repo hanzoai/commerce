@@ -1,102 +1,29 @@
 package netlify
 
 import (
-	"time"
+	"appengine"
 
-	"crowdstart.com/config"
-	"crowdstart.com/middleware"
-	"crowdstart.com/models/site"
-
-	"github.com/gin-gonic/gin"
-
-	"appengine/urlfetch"
+	"crowdstart.com/util/log"
 
 	"github.com/netlify/netlify-go"
 )
 
-func createClient(c *gin.Context) *netlify.Client {
-	ctx := middleware.GetAppEngine(c)
+type Client struct {
+	ctx    appengine.Context
+	client *netlify.Client
+}
 
-	client := urlfetch.Client(ctx)
-	client.Transport = &urlfetch.Transport{
-		Context:  ctx,
-		Deadline: time.Duration(20) * time.Second, // Update deadline to 20 seconds
+func New(ctx appengine.Context, accessToken string) *Client {
+	log.Debug("Creating Netlify client using AccessToken: '%s'", accessToken, ctx)
+
+	client := newOauthClient(ctx, accessToken)
+
+	return &Client{
+		ctx: ctx,
+		client: netlify.NewClient(&netlify.Config{
+			AccessToken: accessToken,
+			HttpClient:  client,
+			UserAgent:   "Crowdstart/1.0",
+		}),
 	}
-
-	return netlify.NewClient(&netlify.Config{
-		AccessToken: config.Netlify.AccessToken,
-		HttpClient:  client,
-		UserAgent:   "Crowdstart/1.0",
-	})
-}
-
-func CreateSite(c *gin.Context, s *site.Site) (*netlify.Site, error) {
-	client := createClient(c)
-
-	// Create new site on Netlify's side
-	nsite, _, err := client.Sites.Create(&netlify.SiteAttributes{
-		Name:         s.Name,
-		CustomDomain: s.Domain,
-	})
-
-	// Copy over netlify site attributes
-	s.Netlify = *nsite
-
-	return nsite, err
-}
-
-func GetSite(c *gin.Context, siteId string) (*netlify.Site, error) {
-	client := createClient(c)
-
-	nsite, _, err := client.Sites.Get(siteId)
-
-	return nsite, err
-}
-
-func ListSites(c *gin.Context) ([]netlify.Site, error) {
-	client := createClient(c)
-
-	// Create new site on Netlify's side
-	nsites, _, err := client.Sites.List(&netlify.ListOptions{})
-
-	return nsites, err
-}
-
-func UpdateSite(c *gin.Context, s *site.Site) error {
-	client := createClient(c)
-
-	nsite, _, err := client.Sites.Get(s.Netlify.Id)
-	if err != nil {
-		return err
-	}
-
-	nsite.Url = s.Netlify.Url
-	nsite.Name = s.Netlify.Name
-	nsite.State = s.Netlify.State
-	nsite.UserId = s.Netlify.UserId
-	nsite.Premium = s.Netlify.Premium
-	nsite.Claimed = s.Netlify.Claimed
-	nsite.Password = s.Netlify.Password
-	nsite.AdminUrl = s.Netlify.AdminUrl
-	nsite.DeployUrl = s.Netlify.DeployUrl
-	nsite.CustomDomain = s.Netlify.CustomDomain
-
-	_, err = nsite.Update()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func DeleteSite(c *gin.Context, siteId string) error {
-	client := createClient(c)
-
-	nsite, _, err := client.Sites.Get(siteId)
-	if err != nil {
-		return err
-	}
-
-	_, err = nsite.Destroy()
-
-	return err
 }

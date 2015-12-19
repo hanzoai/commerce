@@ -3,18 +3,17 @@ package site
 import (
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
-
-	"github.com/netlify/netlify-go"
+	"crowdstart.com/thirdparty/netlify"
 )
 
 type Site struct {
 	mixin.Model
 
-	Domain string
-	Name   string
-	Url    string
+	Domain string `json:"domain"`
+	Name   string `json:"name"`
+	Url    string `json:"url"`
 
-	Netlify netlify.Site `json:"-"`
+	Netlify_ netlify.Site `json:"-"`
 }
 
 func (s *Site) Init() {
@@ -33,4 +32,15 @@ func (s Site) Kind() string {
 
 func (s Site) Document() mixin.Document {
 	return &Document{}
+}
+
+// Return netlify overriden with our local properties
+func (s Site) Netlify() *netlify.Site {
+	s.Netlify_.Name = s.Name
+	s.Netlify_.CustomDomain = s.Domain
+	return &s.Netlify_
+}
+
+func (s *Site) SetNetlify(nsite *netlify.Site) {
+	s.Netlify_ = *nsite
 }

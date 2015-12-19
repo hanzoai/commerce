@@ -7,14 +7,19 @@ import (
 )
 
 // Get type of entity
-func entityType(m *Model) reflect.Type {
-	return reflect.ValueOf(m.Entity).Type()
+func modelType(m *Model) reflect.Type {
+	value := reflect.ValueOf(m.Entity)
+	for value.Kind() == reflect.Ptr {
+		value = reflect.Indirect(value)
+	}
+	return value.Type()
 }
 
 // Return a zero'd entity of this type
 func zeroEntity(m *Model) Entity {
-	typ := entityType(m)
-	return reflect.New(typ).Interface().(Entity)
+	typ := modelType(m)
+	entity := reflect.New(typ)
+	return entity.Interface().(Entity)
 }
 
 // Return a clone of current entity

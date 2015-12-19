@@ -1,5 +1,7 @@
 package mixin
 
+import "reflect"
+
 type BeforeCreate interface {
 	BeforeCreate() error
 }
@@ -22,4 +24,25 @@ type AfterUpdate interface {
 
 type AfterDelete interface {
 	AfterDelete() error
+}
+
+// Try to get method off a model
+func getHook(name string, model *Model) (reflect.Method, bool) {
+	typ := reflect.TypeOf(model.Entity)
+	return typ.MethodByName(name)
+}
+
+// Call method returned by getMethod
+func callHook(entity Kind, method reflect.Method, previous Entity) error {
+	args := []reflect.Value{
+		reflect.ValueOf(entity),
+		reflect.ValueOf(previous),
+	}
+
+	ret := method.Func.Call(args)
+	err, ok := ret[0].Interface().(error)
+	if ok {
+		return err
+	}
+	return nil
 }
