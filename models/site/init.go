@@ -6,5 +6,4 @@ import (
 
 func init() {
 	gob.Register(Site{})
-	gob.Register(&Site{})
 }
