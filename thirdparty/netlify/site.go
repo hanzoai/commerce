@@ -6,7 +6,7 @@ import (
 	"github.com/netlify/netlify-go"
 )
 
-func (c *Client) CreateSite(s Site) (*Site, error) {
+func (c *Client) CreateSite(s *Site) (*Site, error) {
 	// Create new site on Netlify's side
 	nsite, res, err := c.client.Sites.Create(&netlify.SiteAttributes{
 		Name: s.Name,
@@ -34,7 +34,7 @@ func (c *Client) GetSite(siteId string) (*Site, error) {
 	return newSite(nsite), err
 }
 
-func (c *Client) UpdateSite(s Site) (*Site, error) {
+func (c *Client) UpdateSite(s *Site) (*Site, error) {
 	nsite, res, err := c.client.Sites.Get(s.Id)
 
 	logger(c.ctx)(res, err)
@@ -62,7 +62,7 @@ func (c *Client) UpdateSite(s Site) (*Site, error) {
 	return newSite(nsite), nil
 }
 
-func (c *Client) DeleteSite(s Site) error {
+func (c *Client) DeleteSite(s *Site) error {
 	nsite, res, err := c.client.Sites.Get(s.Id)
 
 	logger(c.ctx)(res, err)
