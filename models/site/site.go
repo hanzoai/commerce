@@ -36,10 +36,10 @@ func (s Site) Document() mixin.Document {
 }
 
 // Return netlify overriden with our local properties
-func (s Site) Netlify() netlify.Site {
+func (s Site) Netlify() *netlify.Site {
 	s.Netlify_.Name = s.Name
 	s.Netlify_.CustomDomain = s.Domain
-	return s.Netlify_
+	return &s.Netlify_
 }
 
 func (s Site) SetNetlify(nsite *netlify.Site) {
