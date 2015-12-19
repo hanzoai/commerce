@@ -80,7 +80,7 @@ type Entity interface {
 	Zero() Entity
 	Clone() Entity
 	CloneFromJSON() Entity
-	Slice() []Entity
+	Slice() *[]Entity
 	JSON() []byte
 }
 
@@ -506,7 +506,7 @@ func (m *Model) Update() error {
 	// Execute BeforeUpdate hook if defined on entity.
 	method, ok := getHook("BeforeUpdate", m)
 	if ok {
-		previous := getPrevious(m)
+		previous := getPrevious(m.Entity)
 		err := callHook(m.Entity, method, previous)
 		if err != nil {
 			return err
@@ -520,7 +520,7 @@ func (m *Model) Update() error {
 	// Execute AfterUpdate hook if defined on entity.
 	method, ok = getHook("AfterUpdate", m)
 	if ok {
-		previous := getPrevious(m)
+		previous := getPrevious(m.Entity)
 		err := callHook(m.Entity, method, previous)
 		if err != nil {
 			return err
