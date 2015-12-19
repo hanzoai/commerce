@@ -18,7 +18,7 @@ func (c *Client) CreateSite(s *Site) (*Site, error) {
 		return &Site{}, err
 	}
 
-	log.Debug("Created site: %v", nsite, c.ctx)
+	log.Debug("Created site: %#v", nsite, c.ctx)
 	return newSite(nsite), err
 }
 
