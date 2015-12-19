@@ -38,7 +38,7 @@ func Defaults() *Config {
 	config.Redis.Url = "pub-redis-19324.us-central1-1-1.gce.garantiadata.com:19324"
 	config.Redis.Password = ""
 
-	config.Netlify.BaseUrl = "https://api.netlify.com/api/v1/"
+	config.Netlify.BaseUrl = "https://api.netlify.com/api/v1"
 	config.Netlify.ClientId = ""
 	config.Netlify.Secret = ""
 
