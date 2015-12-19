@@ -42,7 +42,7 @@ func (s Site) Document() mixin.Document {
 // Return netlify overriden with our local properties
 func (s Site) Netlify() *netlify.Site {
 	s.Netlify_.Name = s.Name
-	s.Netlify_.CustomDomain = s.Domain
+	s.Netlify_.Domain = s.Domain
 	return &s.Netlify_
 }
 
