@@ -23,7 +23,7 @@ func Emit(ctx interface{}, org string, event string, data interface{}) {
 	// If we have a model, fire off a json-safe copy of it
 	model, ok := data.(mixin.Entity)
 	if ok {
-		tasks.Emit.Call(aectx, org, event, model.JSONEntity())
+		tasks.Emit.Call(aectx, org, event, model.CloneFromJSON())
 	} else {
 		tasks.Emit.Call(aectx, org, event, data)
 	}
