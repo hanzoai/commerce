@@ -77,11 +77,11 @@ type Entity interface {
 	Query() *Query
 
 	// Various helpers
-	Clone() Entity
 	Zero() Entity
+	Clone() Entity
+	CloneFromJSON() Entity
+	Slice() []Entity
 	JSON() []byte
-	JSONEntity() Entity
-	Slice() interface{}
 }
 
 // Model is a mixin which adds Datastore/Validation/Serialization methods to
