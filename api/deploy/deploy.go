@@ -2,6 +2,7 @@ package site
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/gin-gonic/gin"
 
@@ -44,7 +45,7 @@ func createDeploy(c *gin.Context) {
 	deploy, err := client.CreateDeploy(ste.Netlify(), digest, false)
 
 	if err != nil {
-		err := errors.New("Failed to create deploy")
+		err := errors.New(fmt.Sprintf("Failed to create deploy: %v", err))
 		http.Fail(c, 500, err.Error(), err)
 		return
 	}
