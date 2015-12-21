@@ -53,7 +53,7 @@ func (c *Client) UpdateSite(s *Site) (*Site, error) {
 	nsite.Password = s.Password
 	nsite.AdminUrl = s.AdminUrl
 	nsite.DeployUrl = s.DeployUrl
-	nsite.CustomDomain = s.CustomDomain
+	nsite.CustomDomain = s.Domain
 
 	_, err = nsite.Update()
 	if err != nil {
