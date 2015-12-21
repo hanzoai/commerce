@@ -43,13 +43,14 @@ func createDeploy(c *gin.Context) {
 	client := netlify.New(ctx, accessToken)
 	deploy, err := client.CreateDeploy(ste.Netlify(), digest, false)
 
+	deploy.SiteId = siteid // Override netlify's site id with ours
+
 	if err != nil {
-		err := errors.New("Failed to create deploy")
-		http.Fail(c, 500, err.Error(), err)
+		http.Fail(c, 500, "Failed to create deploy", err)
 		return
 	}
 
-	http.Render(c, 200, deploy)
+	http.Render(c, 201, deploy)
 }
 
 func getDeploy(c *gin.Context) {

@@ -31,13 +31,18 @@ func (s Site) Kind() string {
 }
 
 func (s Site) Document() mixin.Document {
-	return &Document{}
+	return &Document{
+		Id_:    s.Id(),
+		Name:   s.Name,
+		Domain: s.Domain,
+		Url:    s.Url,
+	}
 }
 
 // Return netlify overriden with our local properties
 func (s Site) Netlify() *netlify.Site {
 	s.Netlify_.Name = s.Name
-	s.Netlify_.CustomDomain = s.Domain
+	s.Netlify_.Domain = s.Domain
 	return &s.Netlify_
 }
 
