@@ -54,9 +54,18 @@ var Verus = New("verus", func(c *gin.Context) *organization.Organization {
 	u4.PasswordHash, _ = password.Hash("veruspassword!")
 	u4.Put()
 
+	u5 := user.New(db)
+	u4.Email = "dev@hanzo.ai"
+	u4.GetOrCreate("Email=", u4.Email)
+	u4.FirstName = "Marvel"
+	u4.LastName = "Mathew"
+	u4.Organizations = []string{org.Id()}
+	u4.PasswordHash, _ = password.Hash("veruspassword!")
+	u4.Put()
+
 	// Configure org
 	org.FullName = "verus"
-	org.Owners = []string{u.Id(), u2.Id(), u3.Id(), u4.Id()}
+	org.Owners = []string{u.Id(), u2.Id(), u3.Id(), u4.Id(), u5.Id()}
 	org.Website = "http://www.verus.com"
 	org.SecretKey = []byte("zW85MZHMklGJE3hNgC5j1cxFpQ04zLb6")
 	org.AddDefaultTokens()
