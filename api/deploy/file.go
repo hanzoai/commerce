@@ -3,8 +3,12 @@ package site
 import (
 	"github.com/gin-gonic/gin"
 
+	// "crowdstart.com/datastore"
+	// "crowdstart.com/models/site"
+	"crowdstart.com/config"
 	"crowdstart.com/middleware"
 	"crowdstart.com/thirdparty/netlify"
+	"crowdstart.com/util/log"
 )
 
 func listFiles(c *gin.Context) {
@@ -14,15 +18,25 @@ func getFile(c *gin.Context) {
 }
 
 func putFile(c *gin.Context) {
-	siteid := c.Param("siteid")
+	// siteid := c.Param("siteid") // oursiteid
 	deployid := c.Param("deployid")
 	filepath := c.Param("filepath")
+
+	// db := datastore.New(c)
+	// ste := site.New(db)
+	// err := ste.GetById(siteid)
+	// if err != nil {
+	// 	msg := fmt.Sprintf("Site '%s' not found", siteid)
+	// 	http.Fail(c, 404, msg, nil)
+	// 	return
+	// }
 
 	ctx := middleware.GetAppEngine(c)
 	org := middleware.GetOrganization(c)
 	accessToken := netlify.GetAccessToken(ctx, org.Name)
 
-	url := "https://api.netlify.com/api/v1/sites/" + siteid + "/deploys/" + deployid + "/" + filepath
+	url := config.Netlify.BaseUrl + "/deploys/" + deployid + "/files" + filepath
 	url += "?access_token=" + accessToken
+	log.Debug("Returning redirect, upload file to: %s", url, c)
 	c.Redirect(307, url)
 }
