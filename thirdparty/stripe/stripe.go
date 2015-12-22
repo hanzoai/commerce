@@ -69,6 +69,8 @@ func (c Client) Authorize(pay *payment.Payment) (*Token, error) {
 	return (*Token)(t), err
 }
 
+// Attempts to refund payment and updates the payment in datastore
+// Returns the modified Payment and error
 func (c Client) RefundPayment(pay *payment.Payment, amount currency.Cents) (*payment.Payment, error) {
 	card := PaymentToCard(pay)
 	refund, err := c.API.Refunds.New(&stripe.RefundParams{
