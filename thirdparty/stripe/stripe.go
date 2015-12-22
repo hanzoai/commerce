@@ -87,10 +87,6 @@ func (c Client) RefundPayment(pay *payment.Payment, amount currency.Cents) (*pay
 	return pay, pay.Put()
 }
 
-func (c Client) RefundEntirePayment(pay *payment.Payment) (*payment.Payment, error) {
-	return c.RefundPayment(pay, pay.Amount)
-}
-
 // Get an exising Stripe card
 func (c Client) GetCard(cardId string, customerId string) (*Card, error) {
 	params := &stripe.CardParams{
