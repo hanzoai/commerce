@@ -11,6 +11,7 @@ import (
 	"github.com/stripe/stripe-go/client"
 
 	"crowdstart.com/models/payment"
+	"crowdstart.com/models/types/currency"
 	"crowdstart.com/models/user"
 	"crowdstart.com/thirdparty/stripe/errors"
 	"crowdstart.com/util/json"
@@ -66,6 +67,26 @@ func (c Client) Authorize(pay *payment.Payment) (*Token, error) {
 
 	// Cast back to our token
 	return (*Token)(t), err
+}
+
+func (c Client) RefundPayment(pay *payment.Payment, amount currency.Cents) (*payment.Payment, error) {
+	card := PaymentToCard(pay)
+	refund, err := c.API.Refunds.New(&stripe.RefundParams{
+		Charge: card.Token,
+		Amount: uint64(amount),
+	})
+
+	if err != nil {
+		log.Error("Error refunding payment %s", err.Error())
+		return nil, err
+	}
+
+	pay.AmountRefunded = currency.Cents(refund.Amount)
+	return pay, pay.Put()
+}
+
+func (c Client) RefundEntirePayment(pay *payment.Payment) (*payment.Payment, error) {
+	return c.RefundPayment(pay, pay.Amount)
 }
 
 // Get an exising Stripe card
