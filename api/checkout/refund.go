@@ -9,6 +9,7 @@ import (
 	"crowdstart.com/api/checkout/stripe"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
+	"crowdstart.com/models/types/currency"
 )
 
 var NonStripePayment = errors.New("Only refunds for Stripe payments are supported at the moment.")
@@ -19,12 +20,12 @@ func refund(c *gin.Context, org *organization.Organization, ord *order.Order) er
 	}
 	rawAmount := c.DefaultQuery("amount", "")
 	if rawAmount == "" {
-		return stripe.Refund(org, ord, uint64(ord.Total))
+		return stripe.Refund(org, ord, currency.Cents(ord.Total))
 	} else {
 		refundAmount, err := strconv.ParseUint(rawAmount, 10, 64)
 		if err != nil {
 			return err
 		}
-		return stripe.Refund(org, ord, refundAmount)
+		return stripe.Refund(org, ord, currency.Cents(refundAmount))
 	}
 }
