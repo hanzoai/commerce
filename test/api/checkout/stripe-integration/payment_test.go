@@ -648,7 +648,7 @@ var _ = Describe("payment", func() {
 			Expect(w.Code).To(Equal(200))
 			log.Debug("JSON %v", w.Body)
 
-			w := client.PostRawJSON("/order/"+ord1.Id()+"/refund", requests.Refund)
+			w = client.PostRawJSON("/order/"+ord1.Id()+"/refund", requests.Refund)
 			Expect(w.Code).To(Equal(200))
 			log.Debug("JSON %v", w.Body)
 
