@@ -2,6 +2,7 @@ package checkout
 
 import (
 	"errors"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 
@@ -16,5 +17,14 @@ func refund(c *gin.Context, org *organization.Organization, ord *order.Order) er
 	if ord.Type != "stripe" {
 		return NonStripePayment
 	}
-	return stripe.Refund(org, ord)
+	rawAmount := c.DefaultQuery("amount", "")
+	if rawAmount == "" {
+		return stripe.Refund(org, ord, uint64(ord.Total))
+	} else {
+		refundAmount, err := strconv.ParseUint(rawAmount, 10, 64)
+		if err != nil {
+			return err
+		}
+		return stripe.Refund(org, ord, refundAmount)
+	}
 }
