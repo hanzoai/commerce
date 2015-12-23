@@ -2,7 +2,6 @@ package checkout
 
 import (
 	"errors"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 
@@ -10,6 +9,8 @@ import (
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/types/currency"
+	"crowdstart.com/util/json"
+	"crowdstart.com/util/log"
 )
 
 var NonStripePayment = errors.New("Only refunds for Stripe payments are supported at the moment.")
@@ -18,14 +19,13 @@ func refund(c *gin.Context, org *organization.Organization, ord *order.Order) er
 	if ord.Type != "stripe" {
 		return NonStripePayment
 	}
-	rawAmount := c.DefaultQuery("amount", "")
-	if rawAmount == "" {
-		return stripe.Refund(org, ord, currency.Cents(ord.Total))
-	} else {
-		refundAmount, err := strconv.ParseUint(rawAmount, 10, 64)
-		if err != nil {
-			return err
-		}
-		return stripe.Refund(org, ord, currency.Cents(refundAmount))
+
+	// Try decode request body
+	refundReq := new(RefundRequest)
+	if err := json.Decode(c.Request.Body, &refundReq); err != nil {
+		log.Error("Failed to decode request body: %v\n%v", c.Request.Body, err, c)
+		return FailedToDecodeRequestBody
 	}
+
+	return stripe.Refund(org, ord, currency.Cents(refundReq.amount))
 }
