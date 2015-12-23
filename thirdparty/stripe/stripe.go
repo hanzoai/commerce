@@ -82,17 +82,20 @@ func (c Client) RefundPayment(pay *payment.Payment, refundAmount currency.Cents)
 	if pay.Status == payment.Unpaid {
 		return pay, UnableToRefundUnpaidTransaction
 	}
+
 	refund, err := c.API.Refunds.New(&stripe.RefundParams{
 		Charge: pay.Account.ChargeId,
 		Amount: uint64(refundAmount),
 	})
-
 	if err != nil {
 		log.Error("Error refunding payment %s", err.Error())
 		return pay, err
 	}
 
 	pay.AmountRefunded = currency.Cents(refund.Amount)
+	if pay.AmountRefunded == pay.Amount {
+		pay.Status = payment.Refunded
+	}
 	return pay, pay.Put()
 }
 
