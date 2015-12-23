@@ -1,6 +1,8 @@
 package stripe
 
 import (
+	"errors"
+
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"
@@ -9,14 +11,17 @@ import (
 	"crowdstart.com/util/log"
 )
 
-// Refunds the entire order
-func Refund(org *organization.Organization, ord *order.Order, refundAmount uint64) error {
+func Refund(org *organization.Organization, ord *order.Order, refundAmount currency.Cents) error {
 	// Get namespaced context off order
 	db := ord.Db
 	ctx := db.Context
 
-	// Get client we can use for API calls
-	client := stripe.New(ctx, org.StripeToken())
+	if refundAmount > ord.Total {
+		return errors.New("Requested refund amount is greater than the order total")
+	}
+	if ord.Refunded+refundAmount > ord.Total {
+		return errors.New("Previously refunded amounts and requested refund amount exceed the order total")
+	}
 
 	payments := make([]*payment.Payment, 0)
 	_, err := payment.Query(db).Ancestor(ord.Key()).GetAll(&payments)
@@ -25,13 +30,37 @@ func Refund(org *organization.Organization, ord *order.Order, refundAmount uint6
 	}
 
 	log.Debug("payments %v", payments)
-	// Capture any uncaptured payments
+
+	var amountPaid currency.Cents = 0
 	for _, p := range payments {
-		_, err := client.RefundPayment(p, currency.Cents(refundAmount))
-		if err != nil {
-			return err
+		amountPaid += p.Amount
+	}
+	if amountPaid < refundAmount {
+		return errors.New("Refund amount exceeds total payment amount")
+	}
+
+	// Get client we can use for API calls
+	client := stripe.New(ctx, org.StripeToken())
+
+	refundRemaining := refundAmount
+	for _, p := range payments {
+		if p.Amount <= refundRemaining {
+			if _, err := client.RefundPayment(p, p.Amount); err != nil {
+				return err
+			}
+			refundRemaining -= p.Amount
+		} else if p.Amount > refundRemaining {
+			if _, err := client.RefundPayment(p, refundRemaining); err != nil {
+				return err
+			}
+			refundRemaining = 0
+		}
+
+		if refundRemaining == 0 {
+			break
 		}
 	}
 
-	return nil
+	ord.Refunded += refundAmount
+	return ord.Put()
 }
