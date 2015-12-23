@@ -629,6 +629,55 @@ var _ = Describe("payment", func() {
 		})
 	})
 
+	Context("Refund Order", func() {
+		It("Should refund order successfully", func() {
+			ord1 := order.New(db)
+			ord1.UserId = u.Id()
+			ord1.Currency = currency.USD
+			ord1.ReferrerId = refIn.Id()
+			ord1.Items = []lineitem.LineItem{
+				lineitem.LineItem{
+					ProductId: prod.Id(),
+					Quantity:  1,
+				},
+			}
+			err := ord1.Put()
+			Expect(err).ToNot(HaveOccurred())
+
+			w := client.PostRawJSON("/order/"+ord1.Id()+"/charge", requests.ValidUserPaymentOnly)
+			Expect(w.Code).To(Equal(200))
+			log.Debug("JSON %v", w.Body)
+
+			w := client.PostRawJSON("/order/"+ord1.Id()+"/refund", requests.Refund)
+			Expect(w.Code).To(Equal(200))
+			log.Debug("JSON %v", w.Body)
+
+			refIn1 := referrer.New(db)
+			refIn1.MustGet(refIn.Id())
+			Expect(len(refIn.ReferralIds)).To(Equal(0))
+			Expect(len(refIn.TransactionIds)).To(Equal(0))
+
+			Expect(len(refIn1.ReferralIds)).To(Equal(1))
+			Expect(len(refIn1.TransactionIds)).To(Equal(1))
+
+			trans := transaction.New(db)
+			err = trans.GetById(refIn1.TransactionIds[0])
+			Expect(err).ToNot(HaveOccurred())
+			Expect(trans.UserId).To(Equal(u.Id()))
+			Expect(trans.Currency).To(Equal(refIn.Program.Actions[0].Currency))
+			Expect(trans.Amount).To(Equal(refIn.Program.Actions[0].Amount))
+
+			ord2 := order.New(db)
+			err = json.DecodeBuffer(w.Body, &ord2)
+			Expect(err).ToNot(HaveOccurred())
+
+			pay := payment.New(db)
+			pay.Get(ord2.PaymentIds[0])
+
+			stripeVerifyCharge(pay)
+		})
+	})
+
 	// Other things that could be tested
 	// Capturing an unauthorized order
 	// Capturing a captured order
