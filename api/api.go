@@ -71,7 +71,6 @@ func init() {
 	// Models with public RESTful API
 	rest.New(collection.Collection{}).Route(api, tokenRequired)
 	rest.New(coupon.Coupon{}).Route(api, tokenRequired)
-	rest.New(payment.Payment{}).Route(api, tokenRequired)
 	rest.New(product.Product{}).Route(api, tokenRequired)
 	rest.New(referral.Referral{}).Route(api, tokenRequired)
 	rest.New(referrer.Referrer{}).Route(api, tokenRequired)
@@ -80,6 +79,10 @@ func init() {
 	rest.New(subscriber.Subscriber{}).Route(api, tokenRequired)
 	rest.New(transaction.Transaction{}).Route(api, tokenRequired)
 	rest.New(variant.Variant{}).Route(api, tokenRequired)
+
+	paymentApi := rest.New(payment.Payment{})
+	paymentApi.POST("/:paymentid/refund", checkoutApi.Refund)
+	paymentApi.Route(api, tokenRequired)
 
 	accountApi.Route(api, tokenRequired)
 	deployApi.Route(api, tokenRequired)
