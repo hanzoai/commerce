@@ -1,8 +1,6 @@
 package checkout
 
 import (
-	"errors"
-
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.com/api/checkout/stripe"
@@ -13,13 +11,7 @@ import (
 	"crowdstart.com/util/log"
 )
 
-var NonStripePayment = errors.New("Only refunds for Stripe payments are supported at the moment.")
-
 func refund(c *gin.Context, org *organization.Organization, ord *order.Order) error {
-	if ord.Type != "stripe" {
-		return NonStripePayment
-	}
-
 	// Try decode request body
 	refundReq := new(RefundRequest)
 	if err := json.Decode(c.Request.Body, &refundReq); err != nil {
