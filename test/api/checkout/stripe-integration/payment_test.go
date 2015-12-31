@@ -629,8 +629,8 @@ var _ = Describe("payment", func() {
 		})
 	})
 
-	FContext("Refund Order", func() {
-		FIt("Should refund order successfully", func() {
+	Context("Refund Order", func() {
+		It("Should refund order successfully", func() {
 			ord1 := order.New(db)
 			ord1.UserId = u.Id()
 			ord1.Currency = currency.USD
@@ -655,18 +655,17 @@ var _ = Describe("payment", func() {
 			refundedOrder := order.New(db)
 			err = refundedOrder.Get(ordId)
 			Expect(err).ToNot(HaveOccurred())
+			Expect(refundedOrder.Refunded).To(Equal(currency.Cents(123)))
 
 			payments, err := refundedOrder.GetPayments()
 			Expect(err).ToNot(HaveOccurred())
-			Expect(refundedOrder.Refunded).To(Equal(currency.Cents(123)))
-			totalRefunded := 0
-			for _, pay := range payments {
-				if pay.AmountRefunded == pay.Amount {
-					Expect(pay.Status).To(Equal(payment.Refunded))
+			for _, p := range payments {
+				if p.AmountRefunded == p.Amount {
+					Expect(string(p.Status)).To(Equal(payment.Refunded))
+				} else {
+					Expect(string(p.Status)).To(Equal(payment.Paid))
 				}
-				totalRefunded += int(pay.AmountRefunded)
 			}
-			Expect(totalRefunded).To(Equal(123))
 
 			refIn1 := referrer.New(db)
 			refIn1.MustGet(refIn.Id())
