@@ -629,8 +629,8 @@ var _ = Describe("payment", func() {
 		})
 	})
 
-	Context("Refund Order", func() {
-		It("Should refund order successfully", func() {
+	FContext("Refund Order", func() {
+		FIt("Should refund order successfully", func() {
 			ord1 := order.New(db)
 			ord1.UserId = u.Id()
 			ord1.Currency = currency.USD
@@ -643,14 +643,30 @@ var _ = Describe("payment", func() {
 			}
 			err := ord1.Put()
 			Expect(err).ToNot(HaveOccurred())
+			ordId := ord1.Id()
 
-			w := client.PostRawJSON("/order/"+ord1.Id()+"/charge", requests.ValidUserPaymentOnly)
+			w := client.PostRawJSON("/order/"+ordId+"/charge", requests.ValidUserPaymentOnly)
 			Expect(w.Code).To(Equal(200))
 			log.Debug("JSON %v", w.Body)
 
-			w = client.PostRawJSON("/order/"+ord1.Id()+"/refund", requests.Refund)
+			w = client.PostRawJSON("/order/"+ordId+"/refund", requests.Refund)
 			Expect(w.Code).To(Equal(200))
-			log.Debug("JSON %v", w.Body)
+
+			refundedOrder := order.New(db)
+			err = refundedOrder.Get(ordId)
+			Expect(err).ToNot(HaveOccurred())
+
+			payments, err := refundedOrder.GetPayments()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(refundedOrder.Refunded).To(Equal(currency.Cents(123)))
+			totalRefunded := 0
+			for _, pay := range payments {
+				if pay.AmountRefunded == pay.Amount {
+					Expect(pay.Status).To(Equal(payment.Refunded))
+				}
+				totalRefunded += int(pay.AmountRefunded)
+			}
+			Expect(totalRefunded).To(Equal(123))
 
 			refIn1 := referrer.New(db)
 			refIn1.MustGet(refIn.Id())
