@@ -8,6 +8,7 @@ import (
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/thirdparty/stripe"
+	"crowdstart.com/util/log"
 )
 
 var NonStripePayment = errors.New("Only refunds for Stripe payments are supported at the moment. This order may contain non-Stripe payments")
@@ -70,8 +71,9 @@ func Refund(org *organization.Organization, ord *order.Order, refundAmount curre
 		}
 	}
 
-	ord.Refunded += refundAmount
-	ord.Paid -= refundAmount
+	log.Info("Refund amount: %v", refundAmount)
+	ord.Refunded = ord.Refunded + refundAmount
+	ord.Paid = ord.Paid - refundAmount
 
 	return ord.Put()
 }
