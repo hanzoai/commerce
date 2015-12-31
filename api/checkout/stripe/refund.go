@@ -28,24 +28,17 @@ func Refund(org *organization.Organization, ord *order.Order, refundAmount curre
 	}
 
 	payments, err := ord.GetPayments()
-	for _, p := range payments {
-		log.Info("These payments are probably nil %#v", p)
-	}
 	if err != nil {
 		return err
 	}
+
 	for _, pay := range payments {
 		if pay.Type != payment.Stripe {
 			return NonStripePayment
 		}
 	}
-	log.Debug("payments %v", payments)
 
-	var amountPaid currency.Cents = 0
-	for i := range payments {
-		amountPaid += payments[i].Amount
-	}
-	if amountPaid < refundAmount {
+	if ord.Paid < refundAmount {
 		return errors.New("Refund amount exceeds total payment amount")
 	}
 
@@ -72,5 +65,10 @@ func Refund(org *organization.Organization, ord *order.Order, refundAmount curre
 	}
 
 	ord.Refunded += refundAmount
-	return ord.Put()
+	ord.Paid -= refundAmount
+
+	log.Info("Refunded order: %#v", ord)
+	err = ord.Put()
+	log.Info("Persisted refunded order: %v", err)
+	return err
 }
