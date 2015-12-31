@@ -19,5 +19,5 @@ func refund(c *gin.Context, org *organization.Organization, ord *order.Order) er
 		return FailedToDecodeRequestBody
 	}
 
-	return stripe.Refund(org, ord, currency.Cents(refundReq.amount))
+	return stripe.Refund(org, ord, currency.Cents(refundReq.Amount))
 }

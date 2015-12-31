@@ -8,17 +8,23 @@ import (
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/thirdparty/stripe"
-	"crowdstart.com/util/log"
 )
 
 var NonStripePayment = errors.New("Only refunds for Stripe payments are supported at the moment. This order may contain non-Stripe payments")
+var ZeroRefund = errors.New("Refund `amount` cannot be 0")
+var NegativeRefund = errors.New("Refund `amount` must be a positive integer")
 
 func Refund(org *organization.Organization, ord *order.Order, refundAmount currency.Cents) error {
+	if refundAmount == currency.Cents(0) {
+		return ZeroRefund
+	}
+	if refundAmount < currency.Cents(0) {
+		return NegativeRefund
+	}
+
 	// Get namespaced context off order
 	db := ord.Db
-	log.Info("Db %#v", db)
 	ctx := db.Context
-	log.Info("Context %#v", ctx)
 
 	if refundAmount > ord.Total {
 		return errors.New("Requested refund amount is greater than the order total")
@@ -67,8 +73,5 @@ func Refund(org *organization.Organization, ord *order.Order, refundAmount curre
 	ord.Refunded += refundAmount
 	ord.Paid -= refundAmount
 
-	log.Info("Refunded order: %#v", ord)
-	err = ord.Put()
-	log.Info("Persisted refunded order: %v", err)
-	return err
+	return ord.Put()
 }
