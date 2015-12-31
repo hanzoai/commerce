@@ -629,8 +629,8 @@ var _ = Describe("payment", func() {
 		})
 	})
 
-	Context("Refund Order", func() {
-		It("Should refund order successfully", func() {
+	FContext("Refund Order", func() {
+		FIt("Should refund order successfully", func() {
 			ord1 := order.New(db)
 			ord1.UserId = u.Id()
 			ord1.Currency = currency.USD
@@ -648,8 +648,11 @@ var _ = Describe("payment", func() {
 			Expect(w.Code).To(Equal(200))
 			log.Debug("JSON %v", w.Body)
 
-			w = client.PostRawJSON("/order/"+ordId+"/refund", requests.Refund)
-			Expect(w.Code).To(Equal(200))
+			w = client.PostRawJSON("/order/"+ordId+"/refund", requests.NegativeRefund)
+			Expect(w.Code).ToNot(Equal(200))
+
+			w = client.PostRawJSON("/order/"+ordId+"/refund", requests.LargeRefundAmount)
+			Expect(w.Code).ToNot(Equal(200))
 
 			refundedOrder := order.New(db)
 			err = refundedOrder.Get(ordId)
