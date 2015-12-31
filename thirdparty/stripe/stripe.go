@@ -76,7 +76,10 @@ var RefundGreaterThanPayment = goerr.New("The requested refund amount is greater
 var UnableToRefundUnpaidTransaction = goerr.New("Unable to refund unpaid transaction")
 
 func (c Client) RefundPayment(pay *payment.Payment, refundAmount currency.Cents) (*payment.Payment, error) {
-	if refundAmount > pay.Amount || pay.AmountRefunded+refundAmount > pay.Amount {
+	if refundAmount > pay.Amount {
+		return pay, RefundGreaterThanPayment
+	}
+	if pay.AmountRefunded+refundAmount > pay.Amount {
 		return pay, RefundGreaterThanPayment
 	}
 	if pay.Status == payment.Unpaid {
@@ -96,6 +99,7 @@ func (c Client) RefundPayment(pay *payment.Payment, refundAmount currency.Cents)
 	if pay.AmountRefunded == pay.Amount {
 		pay.Status = payment.Refunded
 	}
+
 	return pay, pay.Put()
 }
 
