@@ -68,5 +68,5 @@ func (ar *AuthorizationReq) Payment() (*payment.Payment, error) {
 }
 
 type RefundRequest struct {
-	amount uint64
+	Amount uint64
 }
