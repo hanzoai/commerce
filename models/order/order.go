@@ -679,3 +679,15 @@ func (o Order) DescriptionLong() string {
 
 	return buffer.String()
 }
+
+func (o Order) GetPayments() ([]*payment.Payment, error) {
+	payments := make([]*payment.Payment, 0)
+	if _, err := payment.Query(o.Db).Ancestor(o.Key()).GetAll(&payments); err != nil {
+		return payments, err
+	}
+	// Initialize mixin model
+	for i := range payments {
+		payments[i].Model = mixin.Model{Db: o.Db, Entity: payments[i]}
+	}
+	return payments, nil
+}
