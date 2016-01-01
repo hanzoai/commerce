@@ -8,8 +8,10 @@ import (
 )
 
 var (
-	FailedToCreateCustomer = errors.New("Failed to create Stripe customer.")
-	FailedToUpdateCustomer = errors.New("Failed to update Stripe customer.")
+	FailedToCreateCustomer          = errors.New("Failed to create Stripe customer.")
+	FailedToUpdateCustomer          = errors.New("Failed to update Stripe customer.")
+	RefundGreaterThanPayment        = errors.New("The requested refund amount is greater than the paid amount")
+	UnableToRefundUnpaidTransaction = errors.New("Unable to refund unpaid transaction")
 )
 
 type StripeError struct {
