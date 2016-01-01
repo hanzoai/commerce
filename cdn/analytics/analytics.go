@@ -32,6 +32,12 @@ func Render(org *organization.Organization) string {
 
 func Js(c *gin.Context) {
 	id := c.Params.ByName("organizationid")
+	js := c.Params.ByName("filename")
+
+	if js != "" {
+		id = strings.Split(js, ".")[0]
+	}
+
 	db := datastore.New(c)
 
 	org := organization.New(db)
