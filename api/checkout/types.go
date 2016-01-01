@@ -66,3 +66,7 @@ func (ar *AuthorizationReq) Payment() (*payment.Payment, error) {
 		return nil, UnsupportedPaymentType
 	}
 }
+
+type RefundRequest struct {
+	Amount uint64
+}
