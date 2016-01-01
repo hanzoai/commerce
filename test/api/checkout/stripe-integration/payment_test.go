@@ -629,6 +629,51 @@ var _ = Describe("payment", func() {
 		})
 	})
 
+	Context("Refund Order", func() {
+		It("Should refund order successfully", func() {
+			ord1 := order.New(db)
+			ord1.UserId = u.Id()
+			ord1.Currency = currency.USD
+			ord1.Items = []lineitem.LineItem{
+				lineitem.LineItem{
+					ProductId: prod.Id(),
+					Quantity:  1,
+				},
+			}
+			err := ord1.Put()
+			Expect(err).ToNot(HaveOccurred())
+			ordId := ord1.Id()
+
+			w := client.PostRawJSON("/order/"+ordId+"/charge", requests.ValidUserPaymentOnly)
+			Expect(w.Code).To(Equal(200))
+			log.Debug("JSON %v", w.Body)
+
+			w = client.PostRawJSON("/order/"+ordId+"/refund", requests.NegativeRefund)
+			Expect(w.Code).ToNot(Equal(200))
+
+			w = client.PostRawJSON("/order/"+ordId+"/refund", requests.LargeRefundAmount)
+			Expect(w.Code).ToNot(Equal(200))
+
+			w = client.PostRawJSON("/order/"+ordId+"/refund", requests.PartialRefund)
+			Expect(w.Code).To(Equal(200))
+
+			refundedOrder := order.New(db)
+			err = refundedOrder.Get(ordId)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(refundedOrder.Refunded).To(Equal(currency.Cents(123)))
+
+			payments, err := refundedOrder.GetPayments()
+			Expect(err).ToNot(HaveOccurred())
+			for _, p := range payments {
+				if p.AmountRefunded == p.Amount {
+					Expect(string(p.Status)).To(Equal(payment.Refunded))
+				} else {
+					Expect(string(p.Status)).To(Equal(payment.Paid))
+				}
+			}
+		})
+	})
+
 	// Other things that could be tested
 	// Capturing an unauthorized order
 	// Capturing a captured order
