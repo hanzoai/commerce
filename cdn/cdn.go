@@ -21,6 +21,7 @@ func init() {
 	})
 
 	cdn.GET("/a/:organizationid/analytics.js", analytics.Js)
+	cdn.GET("/a/*filename", analytics.Js)
 	cdn.GET("/n/:organizationid/native.js", native.Js)
 	cdn.GET("/m/:mailinglistid/mailinglist.js", mailinglist.Js)
 
