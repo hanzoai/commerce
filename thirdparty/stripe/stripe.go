@@ -11,6 +11,7 @@ import (
 	"github.com/stripe/stripe-go/client"
 
 	"crowdstart.com/models/payment"
+	"crowdstart.com/models/types/currency"
 	"crowdstart.com/models/user"
 	"crowdstart.com/thirdparty/stripe/errors"
 	"crowdstart.com/util/json"
@@ -66,6 +67,39 @@ func (c Client) Authorize(pay *payment.Payment) (*Token, error) {
 
 	// Cast back to our token
 	return (*Token)(t), err
+}
+
+// Attempts to refund payment and updates the payment in datastore
+// Returns the modified Payment and error
+func (c Client) RefundPayment(pay *payment.Payment, refundAmount currency.Cents) (*payment.Payment, error) {
+	if refundAmount > pay.Amount {
+		return pay, errors.RefundGreaterThanPayment
+	}
+
+	if refundAmount+pay.AmountRefunded > pay.Amount {
+		return pay, errors.RefundGreaterThanPayment
+	}
+
+	if pay.Status == payment.Unpaid {
+		return pay, errors.UnableToRefundUnpaidTransaction
+	}
+
+	refund, err := c.API.Refunds.New(&stripe.RefundParams{
+		Charge: pay.Account.ChargeId,
+		Amount: uint64(refundAmount),
+	})
+
+	if err != nil {
+		log.Error("Error refunding payment %s", err.Error())
+		return pay, err
+	}
+
+	pay.AmountRefunded = currency.Cents(refund.Amount)
+	if pay.AmountRefunded == pay.Amount {
+		pay.Status = payment.Refunded
+	}
+
+	return pay, pay.Put()
 }
 
 // Get an exising Stripe card
