@@ -75,9 +75,11 @@ func (c Client) RefundPayment(pay *payment.Payment, refundAmount currency.Cents)
 	if refundAmount > pay.Amount {
 		return pay, errors.RefundGreaterThanPayment
 	}
-	if pay.AmountRefunded+refundAmount > pay.Amount {
+
+	if refundAmount+pay.AmountRefunded > pay.Amount {
 		return pay, errors.RefundGreaterThanPayment
 	}
+
 	if pay.Status == payment.Unpaid {
 		return pay, errors.UnableToRefundUnpaidTransaction
 	}
@@ -86,6 +88,7 @@ func (c Client) RefundPayment(pay *payment.Payment, refundAmount currency.Cents)
 		Charge: pay.Account.ChargeId,
 		Amount: uint64(refundAmount),
 	})
+
 	if err != nil {
 		log.Error("Error refunding payment %s", err.Error())
 		return pay, err
