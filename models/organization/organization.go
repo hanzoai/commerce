@@ -216,8 +216,8 @@ func userId(userOrId interface{}) string {
 func (o Organization) IsAdmin(userOrId interface{}) bool {
 	userid := userId(userOrId)
 
-	for _, id := range o.Admins {
-		if id == userid {
+	for i := range o.Admins {
+		if o.Admins[i] == userid {
 			return true
 		}
 	}
@@ -227,12 +227,30 @@ func (o Organization) IsAdmin(userOrId interface{}) bool {
 func (o Organization) IsOwner(userOrId interface{}) bool {
 	userid := userId(userOrId)
 
-	for _, id := range o.Owners {
-		if id == userid {
+	for i := range o.Owners {
+		if o.Owners[i] == userid {
 			return true
 		}
 	}
 	return false
+}
+
+// Add admin to organization
+func (o *Organization) AddAdmin(userOrId string) {
+	userid := userId(userOrId)
+
+	if !o.IsAdmin(userid) {
+		o.Admins = append(o.Admins, userid)
+	}
+}
+
+// Add admin to organization
+func (o *Organization) AddOwner(userOrId string) {
+	userid := userId(userOrId)
+
+	if !o.IsOwner(userid) {
+		o.Owners = append(o.Owners, userid)
+	}
 }
 
 // Get namespaced context for this organization
