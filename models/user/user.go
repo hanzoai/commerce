@@ -316,6 +316,23 @@ func (u *User) SetPassword(newPassword string) error {
 	return nil
 }
 
+// Check if user is part of an organization
+func (u *User) InOrganization(orgId string) bool {
+	for i := range u.Organizations {
+		if u.Organizations[i] == orgId {
+			return true
+		}
+	}
+	return false
+}
+
+// Save organization to organization slice.
+func (u *User) AddOrganization(orgId string) {
+	if !u.InOrganization(orgId) {
+		u.Organizations = append(u.Organizations, orgId)
+	}
+}
+
 func Query(db *datastore.Datastore) *mixin.Query {
 	return New(db).Query()
 }
