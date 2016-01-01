@@ -11,7 +11,7 @@ import (
 	"crowdstart.com/util/log"
 )
 
-var _ = New("hanzo", func(c *gin.Context) *organization.Organization {
+var Hanzo = New("hanzo", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	// Create organization
