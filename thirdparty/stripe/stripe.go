@@ -70,7 +70,6 @@ func (c Client) Authorize(pay *payment.Payment) (*Token, error) {
 }
 
 // Attempts to refund payment and updates the payment in datastore
-// Returns the modified Payment and error
 func (c Client) RefundPayment(pay *payment.Payment, refundAmount currency.Cents) (*payment.Payment, error) {
 	if refundAmount > pay.Amount {
 		return pay, errors.RefundGreaterThanPayment
@@ -84,6 +83,7 @@ func (c Client) RefundPayment(pay *payment.Payment, refundAmount currency.Cents)
 		return pay, errors.UnableToRefundUnpaidTransaction
 	}
 
+	// Process refund with Stripe
 	refund, err := c.API.Refunds.New(&stripe.RefundParams{
 		Charge: pay.Account.ChargeId,
 		Amount: uint64(refundAmount),
@@ -94,6 +94,7 @@ func (c Client) RefundPayment(pay *payment.Payment, refundAmount currency.Cents)
 		return pay, err
 	}
 
+	// Update payment
 	pay.AmountRefunded = currency.Cents(refund.Amount)
 	if pay.AmountRefunded == pay.Amount {
 		pay.Status = payment.Refunded
