@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	checkoutApi "crowdstart.com/api/checkout"
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/order"
@@ -14,8 +15,6 @@ import (
 	"crowdstart.com/util/permission"
 	"crowdstart.com/util/rest"
 	"crowdstart.com/util/router"
-
-	checkoutApi "crowdstart.com/api/checkout"
 )
 
 func Route(router router.Router, args ...gin.HandlerFunc) {
@@ -26,6 +25,9 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api := rest.New(order.Order{})
 
 	api.POST("/:orderid/capture", adminRequired, namespaced, checkoutApi.Capture)
+
+	api.POST("/:orderid/refund", adminRequired, namespaced, checkoutApi.Refund)
+
 	api.POST("/:orderid/charge", publishedRequired, namespaced, checkoutApi.Charge)
 	api.POST("/:orderid/authorize", publishedRequired, namespaced, checkoutApi.Authorize)
 
