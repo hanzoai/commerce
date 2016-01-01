@@ -32,6 +32,12 @@ func Render(org *organization.Organization) string {
 
 func Js(c *gin.Context) {
 	id := c.Params.ByName("organizationid")
+
+	// Passed organizationid as part of organization.js, strip extension.
+	if strings.Contains(id, ".") {
+		id = strings.Split(id, ".")[0]
+	}
+
 	db := datastore.New(c)
 
 	org := organization.New(db)
