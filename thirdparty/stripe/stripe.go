@@ -1,7 +1,6 @@
 package stripe
 
 import (
-	goerr "errors"
 	"strconv"
 	"time"
 
@@ -72,18 +71,15 @@ func (c Client) Authorize(pay *payment.Payment) (*Token, error) {
 
 // Attempts to refund payment and updates the payment in datastore
 // Returns the modified Payment and error
-var RefundGreaterThanPayment = goerr.New("The requested refund amount is greater than the paid amount")
-var UnableToRefundUnpaidTransaction = goerr.New("Unable to refund unpaid transaction")
-
 func (c Client) RefundPayment(pay *payment.Payment, refundAmount currency.Cents) (*payment.Payment, error) {
 	if refundAmount > pay.Amount {
-		return pay, RefundGreaterThanPayment
+		return pay, errors.RefundGreaterThanPayment
 	}
 	if pay.AmountRefunded+refundAmount > pay.Amount {
-		return pay, RefundGreaterThanPayment
+		return pay, errors.RefundGreaterThanPayment
 	}
 	if pay.Status == payment.Unpaid {
-		return pay, UnableToRefundUnpaidTransaction
+		return pay, errors.UnableToRefundUnpaidTransaction
 	}
 
 	refund, err := c.API.Refunds.New(&stripe.RefundParams{
