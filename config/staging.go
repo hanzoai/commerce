@@ -53,7 +53,7 @@ func Staging() *Config {
 	config.Salesforce.ConsumerSecret = "2354282251954184740"
 	config.Salesforce.CallbackURL = "https:" + config.UrlFor("platform", "/salesforce/callback")
 
-	config.Netlify.AccessToken = "ab0a3e36088a1be2a47abf2daf7ebb49f74c28c3a0b5ceb236918621256c2f9f"
+	config.Netlify.AccessToken = "cb55596d4400897691b51df746c9007ea0f073139d1ec0af705b0a3c77d70621"
 
 	log.SetVerbose(true) // Set verbose logging in staging
 
