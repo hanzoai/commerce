@@ -4,6 +4,9 @@ dispatch:
   - url: "*/api/*"
     module: api
 
+  - url: "*/cdn/*"
+    module: cdn
+
   - url: "*/analytics/*"
     module: analytics
 
