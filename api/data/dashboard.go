@@ -17,7 +17,7 @@ func dashboard(c *gin.Context) {
 	year, _ := strconv.Atoi(c.Params.ByName("year"))
 	month, _ := strconv.Atoi(c.Params.ByName("month"))
 	day, _ := strconv.Atoi(c.Params.ByName("day"))
-	tzOffset, _ := strconv.Atoi(c.Params.ByName("tzOffset"))
+	// tzOffset, _ := strconv.Atoi(c.Params.ByName("tzOffset"))
 
 	switch period {
 	case counter.Yearly:
@@ -34,7 +34,7 @@ func dashboard(c *gin.Context) {
 
 	org := middleware.GetOrganization(c)
 
-	data, err := counter.GetDashboardData(org.Db.Context, period, date, tzOffset*3600, org)
+	data, err := counter.GetDashboardData(org.Db.Context, period, date, -8*3600, org)
 	if err != nil {
 		http.Fail(c, 500, "Failed to load data", err)
 	} else {
