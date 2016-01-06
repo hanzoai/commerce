@@ -351,7 +351,7 @@ func (d *Datastore) PutMulti(keys interface{}, vals interface{}) ([]*aeds.Key, e
 	switch v := keys.(type) {
 	case []Key:
 		n := len(v)
-		_keys := make([]*aeds.Key, n)
+		_keys = make([]*aeds.Key, n)
 
 		for i := 0; i < n; i++ {
 			_keys[i], _ = v[i].(*aeds.Key)
