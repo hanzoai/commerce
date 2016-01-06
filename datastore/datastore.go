@@ -365,6 +365,14 @@ func (d *Datastore) PutMulti(keys interface{}, srcs interface{}) ([]*aeds.Key, e
 	return nds.PutMulti(d.Context, _keys, srcs)
 }
 
+func (d *Datastore) MustPutMulti(keys interface{}, srcs interface{}) ([]*aeds.Key, error) {
+	_keys, err := d.PutMulti(keys, srcs)
+	if err != nil {
+		panic(err)
+	}
+	return _keys, err
+}
+
 func (d *Datastore) PutKindMulti(kind string, keys []interface{}, srcs []interface{}) ([]*aeds.Key, error) {
 	nkeys := len(srcs)
 	_keys := make([]*aeds.Key, nkeys)
