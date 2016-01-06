@@ -9,6 +9,7 @@ import (
 
 	"crowdstart.com/api/checkout/balance"
 	"crowdstart.com/api/checkout/stripe"
+	"crowdstart.com/datastore"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"
@@ -57,7 +58,8 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 
 	// Peel off order for convience
 	ord = ar.Order
-	ctx := ord.Db.Context
+	db := ord.Db
+	ctx := db.Context
 
 	// Check if store has been set, if so pull it out of the context
 	var stor *store.Store
@@ -155,9 +157,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	}
 
 	// Save user, order, payment
-	usr.MustPut()
-	ord.MustPut()
-	pay.MustPut()
+	db.PutMulti([]datastore.Key{usr.Key(), ord.Key(), pay.Key()}, []interface{}{usr, ord, pay})
 
 	log.Info("New authorization for order\n User: %+v, Order: %+v, Payment: %+v", usr, ord, pay, ctx)
 
