@@ -7,7 +7,6 @@ import (
 
 	"crowdstart.com/api/checkout/balance"
 	"crowdstart.com/api/checkout/stripe"
-	"crowdstart.com/datastore"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"
@@ -43,6 +42,8 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (
 func CompleteCapture(c *gin.Context, org *organization.Organization, ord *order.Order, keys []*aeds.Key, payments []*payment.Payment) (*order.Order, error) {
 	var err error
 
+	db := ord.Db
+
 	log.Debug("Completing Capture for\nOrder %v\nPayments %v", ord, payments, c)
 
 	// Referral
@@ -72,10 +73,15 @@ func CompleteCapture(c *gin.Context, org *organization.Organization, ord *order.
 	}
 
 	// Save order and payments
-	ord.MustPut()
+	akey, _ := ord.Key().(*aeds.Key)
+	keys = append(keys, akey)
+	srcs := make([]interface{}, len(payments)+1)
+	for i := range payments {
+		srcs[i] = payments[i]
+	}
+	srcs[len(srcs)-1] = ord
 
-	db := datastore.New(ord.Db.Context)
-	if _, err = db.PutMulti(keys, payments); err != nil {
+	if _, err = db.PutMulti(keys, srcs); err != nil {
 		return nil, err
 	}
 
