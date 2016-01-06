@@ -73,15 +73,16 @@ func CompleteCapture(c *gin.Context, org *organization.Organization, ord *order.
 	}
 
 	// Save order and payments
+	vals := make([]interface{}, len(payments))
+	for i := range payments {
+		vals[i] = payments[i]
+	}
+
 	akey, _ := ord.Key().(*aeds.Key)
 	keys = append(keys, akey)
-	srcs := make([]interface{}, len(payments)+1)
-	for i := range payments {
-		srcs[i] = payments[i]
-	}
-	srcs[len(srcs)-1] = ord
+	vals = append(vals, ord)
 
-	if _, err = db.PutMulti(keys, srcs); err != nil {
+	if _, err = db.PutMulti(keys, vals); err != nil {
 		return nil, err
 	}
 
