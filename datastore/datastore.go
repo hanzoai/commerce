@@ -344,8 +344,8 @@ func (d *Datastore) PutKind(kind string, key interface{}, src interface{}) (*aed
 	return _key, nil
 }
 
-// Keys may be either either []datastore.Key or []*aeds.Key, srcs expected in typical format
-func (d *Datastore) PutMulti(keys interface{}, srcs interface{}) ([]*aeds.Key, error) {
+// Keys may be either either []datastore.Key or []*aeds.Key, vals expected in typical format
+func (d *Datastore) PutMulti(keys interface{}, vals interface{}) ([]*aeds.Key, error) {
 	var _keys []*aeds.Key
 
 	switch v := keys.(type) {
@@ -362,32 +362,32 @@ func (d *Datastore) PutMulti(keys interface{}, srcs interface{}) ([]*aeds.Key, e
 		return _keys, errors.New(fmt.Sprintf("Invalid slice of keys: %v", keys))
 	}
 
-	return nds.PutMulti(d.Context, _keys, srcs)
+	return nds.PutMulti(d.Context, _keys, vals)
 }
 
-func (d *Datastore) MustPutMulti(keys interface{}, srcs interface{}) ([]*aeds.Key, error) {
-	_keys, err := d.PutMulti(keys, srcs)
+func (d *Datastore) MustPutMulti(keys interface{}, vals interface{}) ([]*aeds.Key, error) {
+	_keys, err := d.PutMulti(keys, vals)
 	if err != nil {
 		panic(err)
 	}
 	return _keys, err
 }
 
-func (d *Datastore) PutKindMulti(kind string, keys []interface{}, srcs []interface{}) ([]*aeds.Key, error) {
-	nkeys := len(srcs)
+func (d *Datastore) PutKindMulti(kind string, keys []interface{}, vals []interface{}) ([]*aeds.Key, error) {
+	nkeys := len(vals)
 	_keys := make([]*aeds.Key, nkeys)
 
 	for i := 0; i < nkeys; i++ {
 		key := keys[i]
 		if _key, err := d.keyOrKindKey(kind, key); err != nil {
-			d.warn("Invalid key: unable to put (%v, %v, %v): %v", kind, key, srcs[i], err)
+			d.warn("Invalid key: unable to put (%v, %v, %v): %v", kind, key, vals[i], err)
 			return _keys, err
 		} else {
 			_keys[i] = _key
 		}
 	}
 
-	_keys, err := nds.PutMulti(d.Context, _keys, srcs)
+	_keys, err := nds.PutMulti(d.Context, _keys, vals)
 	if err != nil {
 		d.warn("%v", err, d.Context)
 		return _keys, err
