@@ -74,6 +74,10 @@ func Refund(org *organization.Organization, ord *order.Order, refundAmount curre
 	log.Info("Refund amount: %v", refundAmount)
 	ord.Refunded = ord.Refunded + refundAmount
 	ord.Paid = ord.Paid - refundAmount
+	if ord.Total == ord.Refunded {
+		ord.PaymentStatus = payment.Refunded
+		ord.Status = order.Cancelled
+	}
 
 	return ord.Put()
 }
