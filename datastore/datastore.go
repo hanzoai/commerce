@@ -2,6 +2,7 @@ package datastore
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"strconv"
 
@@ -343,8 +344,25 @@ func (d *Datastore) PutKind(kind string, key interface{}, src interface{}) (*aed
 	return _key, nil
 }
 
-func (d *Datastore) PutMulti(keys []*aeds.Key, srcs interface{}) ([]*aeds.Key, error) {
-	return nds.PutMulti(d.Context, keys, srcs)
+// Keys may be either either []datastore.Key or []*aeds.Key, srcs expected in typical format
+func (d *Datastore) PutMulti(keys interface{}, srcs interface{}) ([]*aeds.Key, error) {
+	var _keys []*aeds.Key
+
+	switch v := keys.(type) {
+	case []Key:
+		n := len(v)
+		_keys := make([]*aeds.Key, n)
+
+		for i := 0; i < n; i++ {
+			_keys[i], _ = v[i].(*aeds.Key)
+		}
+	case []*aeds.Key:
+		_keys = v
+	default:
+		return _keys, errors.New(fmt.Sprintf("Invalid slice of keys: %v", keys))
+	}
+
+	return nds.PutMulti(d.Context, _keys, srcs)
 }
 
 func (d *Datastore) PutKindMulti(kind string, keys []interface{}, srcs []interface{}) ([]*aeds.Key, error) {
