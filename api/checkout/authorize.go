@@ -157,7 +157,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	}
 
 	// Save user, order, payment
-	db.PutMulti([]datastore.Key{usr.Key(), ord.Key(), pay.Key()}, []interface{}{usr, ord, pay})
+	db.MustPutMulti([]datastore.Key{usr.Key(), ord.Key(), pay.Key()}, []interface{}{usr, ord, pay})
 
 	log.Info("New authorization for order\n User: %+v, Order: %+v, Payment: %+v", usr, ord, pay, ctx)
 
