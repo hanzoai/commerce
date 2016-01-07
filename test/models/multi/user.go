@@ -10,7 +10,8 @@ type User struct {
 	mixin.Model
 	mixin.AccessToken
 
-	Name string
+	Name    string
+	BCreate string
 }
 
 func (u *User) Kind() string {
@@ -30,4 +31,9 @@ func newUser(db *datastore.Datastore) *User {
 
 func (u *User) Validator() *val.Validator {
 	return val.New()
+}
+
+func (u *User) BeforeCreate() error {
+	u.BCreate = "BC"
+	return nil
 }
