@@ -31,6 +31,7 @@ func (ar *AuthorizationReq) User() (*user.User, error) {
 
 	// Ensure model mixin is setup correctly
 	ar.User_.Model = mixin.Model{Db: ar.Order.Db, Entity: ar.User_}
+	ar.User_.Counter = mixin.Counter{Entity: ar.User_}
 
 	// See if order has address if we don't.
 	if ar.User_.ShippingAddress.Empty() {
