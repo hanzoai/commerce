@@ -20,24 +20,33 @@ func multi(vals interface{}, fn func(mixin.Model) error) error {
 
 		for i := 0; i < s.Len(); i++ {
 			wg.Add(1)
-			go func() {
+
+			// Do something with model
+			model, ok := s.Index(i).Interface().(mixin.Model)
+			if !ok {
+				return errors.New(fmt.Sprintf("Slice must contain models, not: %v", s.Index(i).Interface))
+			}
+
+			// Run method in gofunc
+			go func(model mixin.Model) {
 				defer wg.Done()
-				// Break if there is an error
+
+				// Exit if there is an error
 				if err != nil {
 					return
 				}
-				// Do something with model
-				if model, ok := s.Index(i).Interface().(mixin.Model); ok {
-					err = fn(model)
-				} else {
-					err = errors.New(fmt.Sprintf("Slice must contain models, not: %v", s.Index(i)))
-				}
-			}()
+
+				err = fn(model)
+			}(model)
 		}
 	default:
 		return errors.New(fmt.Sprintf("Must be called with slice of entities, not: %v", vals))
 	}
+
+	// Wait to finish
 	wg.Wait()
+
+	// Return first error
 	return err
 }
 
