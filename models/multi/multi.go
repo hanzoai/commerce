@@ -10,7 +10,7 @@ import (
 )
 
 // Vals should be a slice of models
-func multi(vals interface{}, fn func(mixin.Model) error) error {
+func multi(vals interface{}, fn func(mixin.Entity) error) error {
 	var wg sync.WaitGroup
 	var err error
 
@@ -22,13 +22,13 @@ func multi(vals interface{}, fn func(mixin.Model) error) error {
 			wg.Add(1)
 
 			// Do something with model
-			model, ok := s.Index(i).Interface().(mixin.Model)
+			entity, ok := s.Index(i).Interface().(mixin.Entity)
 			if !ok {
-				return errors.New(fmt.Sprintf("Slice must contain models, not: %v", s.Index(i).Interface))
+				return errors.New(fmt.Sprintf("Slice must contain entities, not: %v", s.Index(i).Interface()))
 			}
 
 			// Run method in gofunc
-			go func(model mixin.Model) {
+			go func(model mixin.Entity) {
 				defer wg.Done()
 
 				// Exit if there is an error
@@ -36,8 +36,8 @@ func multi(vals interface{}, fn func(mixin.Model) error) error {
 					return
 				}
 
-				err = fn(model)
-			}(model)
+				err = fn(entity)
+			}(entity)
 		}
 	default:
 		return errors.New(fmt.Sprintf("Must be called with slice of entities, not: %v", vals))
@@ -51,26 +51,26 @@ func multi(vals interface{}, fn func(mixin.Model) error) error {
 }
 
 func Put(vals interface{}) error {
-	return multi(vals, func(model mixin.Model) error {
-		return model.Put()
+	return multi(vals, func(entity mixin.Entity) error {
+		return entity.Put()
 	})
 }
 
 func Create(vals interface{}) error {
-	return multi(vals, func(model mixin.Model) error {
-		return model.Create()
+	return multi(vals, func(entity mixin.Entity) error {
+		return entity.Create()
 	})
 }
 
 func Delete(vals interface{}) error {
-	return multi(vals, func(model mixin.Model) error {
-		return model.Delete()
+	return multi(vals, func(entity mixin.Entity) error {
+		return entity.Delete()
 	})
 }
 
 func Update(vals interface{}) error {
-	return multi(vals, func(model mixin.Model) error {
-		return model.Update()
+	return multi(vals, func(entity mixin.Entity) error {
+		return entity.Update()
 	})
 }
 
