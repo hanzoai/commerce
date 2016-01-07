@@ -9,6 +9,7 @@ import (
 
 	"crowdstart.com/api/checkout/balance"
 	"crowdstart.com/api/checkout/stripe"
+	"crowdstart.com/models/multi"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"
@@ -156,9 +157,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	}
 
 	// Save user, order, payment
-	usr.MustPut()
-	ord.MustPut()
-	pay.MustPut()
+	multi.MustCreate([]interface{}{usr, ord, pay})
 
 	log.Info("New authorization for order: %+v", ord, ctx)
 
