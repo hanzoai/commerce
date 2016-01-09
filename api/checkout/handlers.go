@@ -44,10 +44,13 @@ func Authorize(c *gin.Context) {
 		return
 	}
 
-	if _, _, err := authorize(c, org, ord); err != nil {
+	_, usr, err := authorize(c, org, ord)
+	if err != nil {
 		http.Fail(c, 500, "Error during authorize", err)
 		return
 	}
+
+	emails.SendOrderConfirmationEmail(c, org, ord, usr)
 
 	c.Writer.Header().Add("Location", orderEndpoint+ord.Id())
 
