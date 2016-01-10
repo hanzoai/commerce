@@ -169,10 +169,10 @@ func Ping(ctx appengine.Context) bool {
 
 	client := urlfetch.Client(ctx)
 	res, err := client.Do(req)
-	defer res.Body.Close()
 	if err != nil {
 		return false
 	}
+	defer res.Body.Close()
 
 	return res.StatusCode == 200
 }
@@ -190,10 +190,10 @@ func SendTemplate(ctx appengine.Context, req *SendTemplateReq) error {
 
 	client := urlfetch.Client(ctx)
 	res, err := client.Do(hreq)
-	defer res.Body.Close()
 	if err != nil {
 		return err
 	}
+	defer res.Body.Close()
 
 	if res.StatusCode == 200 {
 		return nil
@@ -217,10 +217,10 @@ func Send(ctx appengine.Context, req *SendReq) error {
 
 	client := urlfetch.Client(ctx)
 	res, err := client.Do(hreq)
-	defer res.Body.Close()
 	if err != nil {
 		return err
 	}
+	defer res.Body.Close()
 
 	if res.StatusCode == 200 {
 		return nil
