@@ -1,6 +1,7 @@
 package subscriber
 
 import (
+	"strings"
 	"time"
 
 	aeds "appengine/datastore"
@@ -12,6 +13,7 @@ import (
 	"crowdstart.com/util/val"
 
 	. "crowdstart.com/models"
+	. "crowdstart.com/util/strings"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
@@ -92,6 +94,11 @@ func (s *Subscriber) Save(c chan<- aeds.Property) (err error) {
 
 	// Save properties
 	return IgnoreFieldMismatch(aeds.SaveStruct(s, c))
+}
+
+func (s *Subscriber) Normalize() {
+	s.Email = StripWhitespace(s.Email)
+	s.Email = strings.ToLower(s.Email)
 }
 
 func (s *Subscriber) Validator() *val.Validator {

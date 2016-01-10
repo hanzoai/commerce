@@ -97,6 +97,7 @@ func (m *MailingList) AddSubscriber(s *subscriber.Subscriber) error {
 	mkey := m.Key()
 	s.MailingListId = m.Id()
 	s.Parent = mkey
+	s.Normalize()
 
 	return m.RunInTransaction(func() error {
 		keys, err := subscriber.Query(m.Db).Ancestor(mkey).Filter("Email=", s.Email).KeysOnly().GetAll(nil)
