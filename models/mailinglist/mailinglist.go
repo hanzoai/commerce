@@ -109,7 +109,7 @@ func (m *MailingList) AddSubscriber(s *subscriber.Subscriber) error {
 			return err
 		}
 
-		return s.Put()
+		return s.Create()
 	})
 }
 
