@@ -50,7 +50,7 @@ func Authorize(c *gin.Context) {
 		return
 	}
 
-	emails.SendOrderConfirmationEmail(c, org, ord, usr)
+	emails.SendOrderConfirmationEmail(org.Db.Context, org, ord, usr)
 
 	c.Writer.Header().Add("Location", orderEndpoint+ord.Id())
 
@@ -116,7 +116,7 @@ func Charge(c *gin.Context) {
 		return
 	}
 
-	emails.SendOrderConfirmationEmail(c, org, ord, usr)
+	emails.SendOrderConfirmationEmail(org.Db.Context, org, ord, usr)
 
 	c.Writer.Header().Add("Location", orderEndpoint+ord.Id())
 
