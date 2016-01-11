@@ -130,7 +130,7 @@ func SendOrderConfirmation(c *gin.Context) {
 	u := user.New(db)
 	u.MustGet(o.UserId)
 
-	emails.SendOrderConfirmationEmail(c, org, o, u)
+	emails.SendOrderConfirmationEmail(db.Context, org, o, u)
 
 	c.Writer.WriteHeader(204)
 }
