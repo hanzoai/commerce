@@ -105,17 +105,6 @@ type Model struct {
 	UseStringKey bool `json:"-" datastore:"-"`
 }
 
-// Create new entity using model & datastore, optionally executing defaults
-func (m *Model) New(db *datastore.Datastore) Kind {
-	m.Entity.Init(db)
-
-	if hook, ok := m.Entity.(Defaults); ok {
-		hook.Defaults()
-	}
-
-	return m.Entity
-}
-
 // Get AppEngine context
 func (m *Model) Context() appengine.Context {
 	return m.Db.Context

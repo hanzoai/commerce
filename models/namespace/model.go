@@ -18,7 +18,9 @@ func (n *Namespace) Init(db *datastore.Datastore) {
 }
 
 func New(db *datastore.Datastore) *Namespace {
-	return new(Namespace).New(db).(*Namespace)
+	n := new(Namespace)
+	n.Init(db)
+	return n
 }
 
 func Query(db *datastore.Datastore) *mixin.Query {
