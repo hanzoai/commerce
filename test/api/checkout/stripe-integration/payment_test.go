@@ -144,8 +144,6 @@ func FirstTimeSuccessfulOrderTest(isCharge bool, stor *store.Store) testHelperRe
 
 	// Payment should be in db
 	Expect(len(ord.PaymentIds)).To(Equal(1))
-	var payments []payment.Payment
-	payment.Query(db).GetAll(&payments)
 
 	pay := payment.New(db)
 	err = pay.Get(ord.PaymentIds[0])
