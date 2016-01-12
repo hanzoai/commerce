@@ -28,6 +28,9 @@ type Entity interface {
 	// TODO: Should not be embedded in Entity I don't think
 	Kind
 
+	// By convention where model is wired to entity
+	Init(db *datastore.Datastore)
+
 	// Get, Set context/namespace
 	Context() appengine.Context
 	SetContext(ctx interface{})
@@ -102,19 +105,6 @@ type Model struct {
 
 	// Flag used to specify that we're using a string key for this kind
 	UseStringKey bool `json:"-" datastore:"-"`
-}
-
-// Wire up datastore/entity
-func (m *Model) Mixin(db *datastore.Datastore, entity Kind) {
-	// Do some reflection here and copy key Id_ off entity (if it had that stuff already populated)?
-	// oldmodel := reflect.ValueOf(entity).Elem().FieldByName("Model").(*Model)
-	// if oldmodel.Id_ != "" {
-	// 	m.Id_ = oldmodel.Id_
-	// 	m.key = oldmodel.Key()
-	// }
-
-	m.Db = db
-	m.Entity = entity
 }
 
 // Get AppEngine context
@@ -483,7 +473,7 @@ func (m *Model) KeyExists(key interface{}) (datastore.Key, bool, error) {
 		}
 	}
 
-	keys, err := m.Query().Filter("__key__=", m.key).KeysOnly().GetAll(nil)
+	keys, err := m.Query().Filter("__key__=", m.key).GetKeys()
 	// Something bad happened
 	if err != nil {
 		return nil, false, err

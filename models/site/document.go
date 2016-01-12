@@ -1,5 +1,9 @@
 package site
 
+import (
+	"crowdstart.com/models/mixin"
+)
+
 type Document struct {
 	Id_    string
 	Name   string
@@ -9,4 +13,13 @@ type Document struct {
 
 func (d Document) Id() string {
 	return d.Id_
+}
+
+func (s Site) Document() mixin.Document {
+	return &Document{
+		Id_:    s.Id(),
+		Name:   s.Name,
+		Domain: s.Domain,
+		Url:    s.Url,
+	}
 }

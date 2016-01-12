@@ -1,7 +1,6 @@
 package site
 
 import (
-	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/thirdparty/netlify"
 )
@@ -14,29 +13,6 @@ type Site struct {
 	Url    string `json:"url"`
 
 	Netlify_ netlify.Site `json:"-"`
-}
-
-func (s *Site) Init() {
-}
-
-func New(db *datastore.Datastore) *Site {
-	s := new(Site)
-	s.Init()
-	s.Model = mixin.Model{Db: db, Entity: s}
-	return s
-}
-
-func (s Site) Kind() string {
-	return "site"
-}
-
-func (s Site) Document() mixin.Document {
-	return &Document{
-		Id_:    s.Id(),
-		Name:   s.Name,
-		Domain: s.Domain,
-		Url:    s.Url,
-	}
 }
 
 // Return netlify overriden with our local properties
