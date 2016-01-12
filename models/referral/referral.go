@@ -3,7 +3,6 @@ package referral
 import (
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
-	"crowdstart.com/util/val"
 )
 
 type Referral struct {
@@ -20,21 +19,15 @@ type Referral struct {
 	ReferrerId     string `json:"referrerId"`
 }
 
-func New(db *datastore.Datastore) *Referral {
-	r := new(Referral)
-	r.Model = mixin.Model{Db: db, Entity: r}
-	return r
-}
-
-func (r Referral) Init() {
-}
-
 func (r Referral) Kind() string {
 	return "referral"
 }
+func (r *Referral) Init(db *datastore.Datastore) {
+	r.Model = mixin.Model{Db: db, Entity: r}
+}
 
-func (r *Referral) Validator() *val.Validator {
-	return nil
+func New(db *datastore.Datastore) *Referral {
+	return new(Referral).New(db).(*Referral)
 }
 
 func Query(db *datastore.Datastore) *mixin.Query {
