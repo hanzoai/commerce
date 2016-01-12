@@ -46,7 +46,7 @@ var _ = New("set-userid-for-referrers",
 
 		for _, refl := range referrals {
 			refl.ReferrerUserId = ref.UserId
-			refl.Mixin(db, refl)
+			refl.Init(db)
 			if err := refl.Put(); err != nil {
 				log.Error("Failed to update referral: %v", refl, err, ctx)
 				return

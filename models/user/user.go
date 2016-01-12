@@ -80,23 +80,6 @@ type User struct {
 	History []Event `json:"-,omitempty"`
 }
 
-func (u *User) Init() {
-	u.Metadata = make(Map)
-	u.History = make([]Event, 0)
-}
-
-func New(db *datastore.Datastore) *User {
-	u := new(User)
-	u.Init()
-	u.Model = mixin.Model{Db: db, Entity: u}
-	u.Counter = mixin.Counter{Entity: u}
-	return u
-}
-
-func (u User) Kind() string {
-	return "user"
-}
-
 func (u User) Document() mixin.Document {
 	emailUser := strings.Split(u.Email, "@")[0]
 	return &Document{
@@ -140,7 +123,7 @@ func (u User) Document() mixin.Document {
 
 func (u *User) Load(c <-chan aeds.Property) (err error) {
 	// Ensure we're initialized
-	u.Init()
+	u.Defaults()
 
 	// Load supported properties
 	if err = IgnoreFieldMismatch(aeds.LoadStruct(u, c)); err != nil {
@@ -287,13 +270,14 @@ func (u *User) LoadOrders() error {
 }
 
 func (u *User) CalculateBalances() error {
-	var trans []transaction.Transaction
-	if _, err := transaction.Query(u.Db).Filter("UserId=", u.Id()).Filter("Test=", false).GetAll(&trans); err != nil {
+	trans, err := transaction.Query(u.Db).Filter("UserId=", u.Id()).Filter("Test=", false).GetEntities()
+	if err != nil {
 		return err
 	}
 
 	u.Balances = make(map[currency.Type]currency.Cents)
-	for _, t := range trans {
+	for i := range trans {
+		t := trans[i].(*transaction.Transaction)
 		cents := u.Balances[t.Currency]
 
 		if t.Type == transaction.Withdraw {
@@ -331,8 +315,4 @@ func (u *User) AddOrganization(orgId string) {
 	if !u.InOrganization(orgId) {
 		u.Organizations = append(u.Organizations, orgId)
 	}
-}
-
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
 }

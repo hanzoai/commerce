@@ -18,24 +18,9 @@ type Funnel struct {
 	Events_ string     `json:"-"`
 }
 
-func (f *Funnel) Init() {
-	f.Events = make([][]string, 0)
-}
-
-func New(db *datastore.Datastore) *Funnel {
-	f := new(Funnel)
-	f.Init()
-	f.Model = mixin.Model{Db: db, Entity: f}
-	return f
-}
-
-func (f Funnel) Kind() string {
-	return "funnel"
-}
-
 func (f *Funnel) Load(c <-chan aeds.Property) (err error) {
 	// Ensure we're initialized
-	f.Init()
+	f.Defaults()
 
 	// Load supported properties
 	if err = IgnoreFieldMismatch(aeds.LoadStruct(f, c)); err != nil {
@@ -56,8 +41,4 @@ func (f *Funnel) Save(c chan<- aeds.Property) (err error) {
 
 	// Save properties
 	return IgnoreFieldMismatch(aeds.SaveStruct(f, c))
-}
-
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
 }
