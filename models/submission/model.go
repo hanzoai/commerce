@@ -20,7 +20,9 @@ func (s *Submission) Defaults() {
 }
 
 func New(db *datastore.Datastore) *Submission {
-	return new(Submission).New(db).(*Submission)
+	s := new(Submission)
+	s.Init(db)
+	return s
 }
 
 func Query(db *datastore.Datastore) *mixin.Query {

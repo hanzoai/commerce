@@ -14,7 +14,9 @@ func (s *Site) Init(db *datastore.Datastore) {
 }
 
 func New(db *datastore.Datastore) *Site {
-	return new(Site).New(db).(*Site)
+	s := new(Site)
+	s.Init(db)
+	return s
 }
 
 func Query(db *datastore.Datastore) *mixin.Query {

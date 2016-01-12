@@ -11,16 +11,19 @@ func (s Subscriber) Kind() string {
 	return "subscriber"
 }
 
-func (s *Subscriber) Defaults() {
-	s.Metadata = make(Map)
-}
-
 func (s *Subscriber) Init(db *datastore.Datastore) {
 	s.Model = mixin.Model{Db: db, Entity: s}
 }
 
+func (s *Subscriber) Defaults() {
+	s.Metadata = make(Map)
+}
+
 func New(db *datastore.Datastore) *Subscriber {
-	return new(Subscriber).New(db).(*Subscriber)
+	s := new(Subscriber)
+	s.Init(db)
+	s.Defaults()
+	return s
 }
 
 func Query(db *datastore.Datastore) *mixin.Query {
