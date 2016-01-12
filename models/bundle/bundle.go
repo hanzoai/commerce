@@ -48,17 +48,18 @@ type Bundle struct {
 	VariantIds []string `json:"variantIds"`
 }
 
-func (c *Bundle) Init() {
+func New(db *datastore.Datastore) *Bundle {
+	return new(Bundle).New(db).(*Bundle)
+}
+
+func (c *Bundle) Init(db *datastore.Datastore) {
+	c.Model = mixin.Model{Db: db, Entity: c}
+}
+
+func (c *Bundle) Defaults() {
 	c.Media = make([]Media, 0)
 	c.ProductIds = make([]string, 0)
 	c.VariantIds = make([]string, 0)
-}
-
-func New(db *datastore.Datastore) *Bundle {
-	c := new(Bundle)
-	c.Init()
-	c.Model = mixin.Model{Db: db, Entity: c}
-	return c
 }
 
 func (c Bundle) Kind() string {

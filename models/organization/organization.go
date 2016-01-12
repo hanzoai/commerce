@@ -9,7 +9,6 @@ import (
 
 	"appengine"
 
-	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/types/analytics"
 	"crowdstart.com/models/user"
@@ -166,15 +165,6 @@ type Organization struct {
 	EmailWhitelist string `json:"emailWhitelist"`
 }
 
-func New(db *datastore.Datastore) *Organization {
-	o := new(Organization)
-	o.Model = mixin.Model{Db: db, Entity: o}
-	o.AccessToken = mixin.AccessToken{Entity: o}
-	o.Admins = make([]string, 0)
-	o.Moderators = make([]string, 0)
-	return o
-}
-
 func (o Organization) GetStripeAccessToken(userId string) (string, error) {
 	if o.Stripe.Live.UserId == userId {
 		return o.Stripe.Live.AccessToken, nil
@@ -183,10 +173,6 @@ func (o Organization) GetStripeAccessToken(userId string) (string, error) {
 		return o.Stripe.Test.AccessToken, nil
 	}
 	return "", StripeAccessTokenNotFound{userId, o.Stripe.Live.UserId, o.Stripe.Test.UserId}
-}
-
-func (o Organization) Kind() string {
-	return "organization"
 }
 
 func (o *Organization) Validator() *val.Validator {
@@ -295,8 +281,4 @@ func (o Organization) IsTestEmail(email string) bool {
 	}
 
 	return false
-}
-
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
 }

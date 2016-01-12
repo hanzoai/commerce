@@ -23,13 +23,15 @@ type Plan struct {
 }
 
 func New(db *datastore.Datastore) *Plan {
-	p := new(Plan)
-	p.Model = mixin.Model{Db: db, Entity: p}
-	return p
+	return new(Plan).New(db).(*Plan)
 }
 
 func (p Plan) Kind() string {
 	return "plan"
+}
+
+func (p *Plan) Init(db *datastore.Datastore) {
+	p.Model = mixin.Model{Db: db, Entity: p}
 }
 
 func (p *Plan) Validator() *val.Validator {

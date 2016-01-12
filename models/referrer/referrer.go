@@ -6,7 +6,6 @@ import (
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/referral"
 	"crowdstart.com/models/transaction"
-	"crowdstart.com/util/val"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
@@ -20,26 +19,6 @@ type Referrer struct {
 	ReferralIds    []string                  `json:"referralIds"`
 	TransactionIds []string                  `json:"transactionsIds"`
 	Transactions   []transaction.Transaction `json:"transactions,omitempty"`
-}
-
-func New(db *datastore.Datastore) *Referrer {
-	r := new(Referrer)
-	r.Init()
-	r.Model = mixin.Model{Db: db, Entity: r}
-	return r
-}
-
-func (r Referrer) Init() {
-	r.ReferralIds = make([]string, 0)
-	r.TransactionIds = make([]string, 0)
-}
-
-func (r Referrer) Kind() string {
-	return "referrer"
-}
-
-func (r *Referrer) Validator() *val.Validator {
-	return nil
 }
 
 func (r *Referrer) ApplyBonus() (*transaction.Transaction, error) {
@@ -84,8 +63,4 @@ func (r *Referrer) SaveReferral(ord *order.Order) (*referral.Referral, error) {
 	err := r.Put()
 
 	return ref, err
-}
-
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
 }

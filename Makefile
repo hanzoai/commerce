@@ -63,12 +63,12 @@ gae_skully = config/skully \
 
 tools = github.com/golang/lint/golint \
 		github.com/jstemmer/gotags \
-		github.com/kisielk/errcheck \
 		github.com/nsf/gocode \
 		github.com/rogpeppe/godef \
 		golang.org/x/tools/cmd/cover \
 		golang.org/x/tools/cmd/goimports \
 		golang.org/x/tools/cmd/gorename
+		# github.com/kisielk/errcheck \
 		# golang.org/x/tools/cmd/oracle
 
 # Various patches for SDK
