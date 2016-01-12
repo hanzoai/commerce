@@ -16,6 +16,10 @@ func (m Model) Kind() string {
 	return "user"
 }
 
+func (m *Model) Init(db *datastore.Datastore) {
+	m.Model = mixin.Model{Db: db, Entity: m}
+}
+
 func (m Model) Document() mixin.Document {
 	return nil
 }
@@ -25,9 +29,7 @@ func (m *Model) Validator() *val.Validator {
 }
 
 func NewModel(db *datastore.Datastore) *Model {
-	m := new(Model)
-	m.Model = mixin.Model{Db: db, Entity: m}
-	return m
+	return new(Model).New(db).(*Model)
 }
 
 // Model 2
@@ -40,6 +42,10 @@ func (m Model2) Kind() string {
 	return "order"
 }
 
+func (m *Model2) Init(db *datastore.Datastore) {
+	m.Model = mixin.Model{Db: db, Entity: m}
+}
+
 func (m Model2) Document() mixin.Document {
 	return nil
 }
@@ -49,7 +55,5 @@ func (m *Model2) Validator() *val.Validator {
 }
 
 func NewModel2(db *datastore.Datastore) *Model2 {
-	m := new(Model2)
-	m.Model = mixin.Model{Db: db, Entity: m}
-	return m
+	return new(Model2).New(db).(*Model2)
 }

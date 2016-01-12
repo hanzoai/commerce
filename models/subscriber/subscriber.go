@@ -10,7 +10,6 @@ import (
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/types/client"
 	"crowdstart.com/util/json"
-	"crowdstart.com/util/val"
 
 	. "crowdstart.com/models"
 	. "crowdstart.com/util/strings"
@@ -34,25 +33,6 @@ type Subscriber struct {
 	Metadata_ string `json:"-" datastore:",noindex"`
 }
 
-func (s *Subscriber) Init() {
-	s.Metadata = make(Map)
-}
-
-func New(db *datastore.Datastore) *Subscriber {
-	s := new(Subscriber)
-	s.Init()
-	s.Model = mixin.Model{Db: db, Entity: s}
-	return s
-}
-
-// func (s Subscriber) Key() string {
-// 	return s.MailingListId + ":" + s.Email
-// }
-
-func (s Subscriber) Kind() string {
-	return "subscriber"
-}
-
 func (s Subscriber) MergeVars() Map {
 	vars := make(Map)
 
@@ -73,7 +53,7 @@ func (s Subscriber) MergeVars() Map {
 
 func (s *Subscriber) Load(c <-chan aeds.Property) (err error) {
 	// Ensure we're initialized
-	s.Init()
+	s.Defaults()
 
 	// Load supported properties
 	if err = IgnoreFieldMismatch(aeds.LoadStruct(s, c)); err != nil {
@@ -99,14 +79,6 @@ func (s *Subscriber) Save(c chan<- aeds.Property) (err error) {
 func (s *Subscriber) Normalize() {
 	s.Email = StripWhitespace(s.Email)
 	s.Email = strings.ToLower(s.Email)
-}
-
-func (s *Subscriber) Validator() *val.Validator {
-	return val.New()
-}
-
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
 }
 
 func FromJSON(db *datastore.Datastore, data []byte) *Subscriber {

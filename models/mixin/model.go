@@ -20,6 +20,7 @@ var zeroTime = time.Time{}
 
 // A datastore kind that is compatible with the Model mixin
 type Kind interface {
+	Init(db *datastore.Datastore)
 	Kind() string
 }
 
@@ -104,17 +105,15 @@ type Model struct {
 	UseStringKey bool `json:"-" datastore:"-"`
 }
 
-// Wire up datastore/entity
-func (m *Model) Mixin(db *datastore.Datastore, entity Kind) {
-	// Do some reflection here and copy key Id_ off entity (if it had that stuff already populated)?
-	// oldmodel := reflect.ValueOf(entity).Elem().FieldByName("Model").(*Model)
-	// if oldmodel.Id_ != "" {
-	// 	m.Id_ = oldmodel.Id_
-	// 	m.key = oldmodel.Key()
-	// }
+// Create new entity using model & datastore, optionally executing defaults
+func (m *Model) New(db *datastore.Datastore) Kind {
+	m.Entity.Init(db)
 
-	m.Db = db
-	m.Entity = entity
+	if hook, ok := m.Entity.(Defaults); ok {
+		hook.Defaults()
+	}
+
+	return m.Entity
 }
 
 // Get AppEngine context
@@ -483,7 +482,7 @@ func (m *Model) KeyExists(key interface{}) (datastore.Key, bool, error) {
 		}
 	}
 
-	keys, err := m.Query().Filter("__key__=", m.key).KeysOnly().GetAll(nil)
+	keys, err := m.Query().Filter("__key__=", m.key).GetKeys()
 	// Something bad happened
 	if err != nil {
 		return nil, false, err
