@@ -22,7 +22,10 @@ func (u *User) Defaults() {
 }
 
 func New(db *datastore.Datastore) *User {
-	return new(User).New(db).(*User)
+	u := new(User)
+	u.Init(db)
+	u.Defaults()
+	return u
 }
 
 func Query(db *datastore.Datastore) *mixin.Query {

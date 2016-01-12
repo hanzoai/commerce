@@ -19,7 +19,10 @@ func (r *Referrer) Defaults() {
 }
 
 func New(db *datastore.Datastore) *Referrer {
-	return new(Referrer).New(db).(*Referrer)
+	r := new(Referrer)
+	r.Init(db)
+	r.Defaults()
+	return r
 }
 
 func Query(db *datastore.Datastore) *mixin.Query {

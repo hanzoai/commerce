@@ -19,7 +19,10 @@ func (s *Store) Defaults() {
 }
 
 func New(db *datastore.Datastore) *Store {
-	return new(Store).New(db).(*Store)
+	s := new(Store)
+	s.Init(db)
+	s.Defaults()
+	return s
 }
 
 func Query(db *datastore.Datastore) *mixin.Query {

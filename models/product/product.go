@@ -93,28 +93,9 @@ type Product struct {
 	Options_ string    `json:"-" datastore:",noindex"`
 }
 
-func (p *Product) Init(db *datastore.Datastore) {
-	p.Model = mixin.Model{Db: db, Entity: p}
-}
-
-func (p *Product) Defaults() {
-	p.Variants = make([]*variant.Variant, 0)
-	p.Options = make([]*Option, 0)
-}
-
-func New(db *datastore.Datastore) *Product {
-	p := new(Product)
-	p.Init(db)
-	p.Defaults()
-	return p
-}
-
-func (p Product) Kind() string {
-	return "product"
-}
-
 func (p *Product) Validator() *val.Validator {
-	return val.New().Check("Slug").Exists().
+	return val.New().
+		Check("Slug").Exists().
 		Check("SKU").Exists().
 		Check("Name").Exists()
 	// 	if p.Name == "" {
@@ -222,8 +203,4 @@ func (p Product) VariantOptions(name string) (options []string) {
 	}
 
 	return options
-}
-
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
 }

@@ -1,10 +1,8 @@
 package campaign
 
 import (
-	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/util/category"
-	"crowdstart.com/util/val"
 )
 
 type Campaign struct {
@@ -33,32 +31,4 @@ type Campaign struct {
 	GoogleAnalytics string   `json:"googleAnalytics"`
 	FacebookTag     string   `json:"facebookTag"`
 	Links           []string `json:"links"`
-}
-
-func New(db *datastore.Datastore) *Campaign {
-	c := new(Campaign)
-	c.Init(db)
-	c.Defaults()
-	return c
-}
-
-func (c *Campaign) Init(db *datastore.Datastore) {
-	c.Model = mixin.Model{Db: db, Entity: c}
-}
-
-func (c *Campaign) Defaults() {
-	c.Links = make([]string, 0)
-	c.ProductIds = make([]string, 0)
-}
-
-func (c Campaign) Kind() string {
-	return "campaign"
-}
-
-func (c *Campaign) Validator() *val.Validator {
-	return val.New()
-}
-
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
 }
