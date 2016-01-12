@@ -20,7 +20,6 @@ var zeroTime = time.Time{}
 
 // A datastore kind that is compatible with the Model mixin
 type Kind interface {
-	Init(db *datastore.Datastore)
 	Kind() string
 }
 
@@ -28,6 +27,7 @@ type Kind interface {
 type Entity interface {
 	// TODO: Should not be embedded in Entity I don't think
 	Kind
+	Init(db *datastore.Datastore)
 
 	// Get, Set context/namespace
 	Context() appengine.Context
