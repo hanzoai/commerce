@@ -39,13 +39,11 @@ type Transaction struct {
 	SourceKind string `json:"sourceKind"`
 }
 
-func New(db *datastore.Datastore) *Transaction {
-	t := new(Transaction)
+func (t *Transaction) Init(db *datastore.Datastore) {
 	t.Model = mixin.Model{Db: db, Entity: t}
-	return t
 }
 
-func (r Transaction) Kind() string {
+func (t Transaction) Kind() string {
 	return "transaction"
 }
 
@@ -65,6 +63,10 @@ func (t *Transaction) Save(c chan<- aeds.Property) (err error) {
 
 func (t *Transaction) Validator() *val.Validator {
 	return nil
+}
+
+func New(db *datastore.Datastore) *Transaction {
+	return new(Transaction).New(db).(*Transaction)
 }
 
 func Query(db *datastore.Datastore) *mixin.Query {

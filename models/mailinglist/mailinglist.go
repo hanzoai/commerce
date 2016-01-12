@@ -74,12 +74,16 @@ type MailingList struct {
 
 func New(db *datastore.Datastore) *MailingList {
 	m := new(MailingList)
-	m.Init()
-	m.Model = mixin.Model{Db: db, Entity: m}
+	m.Init(db)
+	m.Defaults()
 	return m
 }
 
-func (m *MailingList) Init() {
+func (m *MailingList) Init(db *datastore.Datastore) {
+	m.Model = mixin.Model{Db: db, Entity: m}
+}
+
+func (m *MailingList) Defaults() {
 	m.Facebook.Value = "0.00"
 	m.Facebook.Currency = "USD"
 	m.ThankYou.Type = thankyou.Disabled
@@ -100,7 +104,7 @@ func (m *MailingList) AddSubscriber(s *subscriber.Subscriber) error {
 	s.Normalize()
 
 	return m.RunInTransaction(func() error {
-		keys, err := subscriber.Query(m.Db).Ancestor(mkey).Filter("Email=", s.Email).KeysOnly().GetAll(nil)
+		keys, err := subscriber.Query(m.Db).Ancestor(mkey).Filter("Email=", s.Email).GetKeys()
 
 		if len(keys) != 0 {
 			return SubscriberAlreadyExists

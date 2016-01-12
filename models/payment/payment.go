@@ -151,18 +151,26 @@ type Payment struct {
 	Metadata_ string `json:"-" datastore:"-"`
 }
 
+func New(db *datastore.Datastore) *Payment {
+	return new(Payment).New(db).(*Payment)
+}
+
 func (p Payment) Kind() string {
 	return "payment"
 }
 
-func (p *Payment) Init() {
+func (p *Payment) Init(db *datastore.Datastore) {
+	p.Model = mixin.Model{Db: db, Entity: p}
+}
+
+func (p *Payment) Defaults() {
 	p.Status = Unpaid
 	p.Metadata = make(Map)
 }
 
 func (p *Payment) Load(c <-chan aeds.Property) (err error) {
 	// Ensure we're initialized
-	p.Init()
+	p.Defaults()
 
 	// Load supported properties
 	if err = IgnoreFieldMismatch(aeds.LoadStruct(p, c)); err != nil {
@@ -191,13 +199,6 @@ func (p *Payment) Save(c chan<- aeds.Property) (err error) {
 
 func (p *Payment) Validator() *val.Validator {
 	return val.New()
-}
-
-func New(db *datastore.Datastore) *Payment {
-	p := new(Payment)
-	p.Init()
-	p.Model = mixin.Model{Db: db, Entity: p}
-	return p
 }
 
 func Query(db *datastore.Datastore) *mixin.Query {

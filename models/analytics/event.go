@@ -59,24 +59,9 @@ type AnalyticsEvent struct {
 	RequestMetadata client.Client `json:"-"`
 }
 
-func (e *AnalyticsEvent) Init() {
-	e.Data = make(Map)
-}
-
-func New(db *datastore.Datastore) *AnalyticsEvent {
-	e := new(AnalyticsEvent)
-	e.Init()
-	e.Model = mixin.Model{Db: db, Entity: e}
-	return e
-}
-
-func (e AnalyticsEvent) Kind() string {
-	return "event"
-}
-
 func (e *AnalyticsEvent) Load(c <-chan aeds.Property) (err error) {
 	// Ensure we're initialized
-	e.Init()
+	e.Defaults()
 
 	// Load supported properties
 	if err = IgnoreFieldMismatch(aeds.LoadStruct(e, c)); err != nil {
@@ -102,8 +87,4 @@ func (e *AnalyticsEvent) Save(c chan<- aeds.Property) (err error) {
 
 	// Save properties
 	return IgnoreFieldMismatch(aeds.SaveStruct(e, c))
-}
-
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
 }
