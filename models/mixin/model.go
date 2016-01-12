@@ -27,6 +27,8 @@ type Kind interface {
 type Entity interface {
 	// TODO: Should not be embedded in Entity I don't think
 	Kind
+
+	// By convention where model is wired to entity
 	Init(db *datastore.Datastore)
 
 	// Get, Set context/namespace
