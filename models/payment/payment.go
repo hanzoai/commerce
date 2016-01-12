@@ -9,7 +9,6 @@ import (
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
-	"crowdstart.com/util/val"
 
 	. "crowdstart.com/models"
 )
@@ -151,23 +150,6 @@ type Payment struct {
 	Metadata_ string `json:"-" datastore:"-"`
 }
 
-func New(db *datastore.Datastore) *Payment {
-	return new(Payment).New(db).(*Payment)
-}
-
-func (p Payment) Kind() string {
-	return "payment"
-}
-
-func (p *Payment) Init(db *datastore.Datastore) {
-	p.Model = mixin.Model{Db: db, Entity: p}
-}
-
-func (p *Payment) Defaults() {
-	p.Status = Unpaid
-	p.Metadata = make(Map)
-}
-
 func (p *Payment) Load(c <-chan aeds.Property) (err error) {
 	// Ensure we're initialized
 	p.Defaults()
@@ -195,12 +177,4 @@ func (p *Payment) Save(c chan<- aeds.Property) (err error) {
 
 	// Save properties
 	return IgnoreFieldMismatch(aeds.SaveStruct(p, c))
-}
-
-func (p *Payment) Validator() *val.Validator {
-	return val.New()
-}
-
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
 }
