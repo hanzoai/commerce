@@ -6,9 +6,7 @@ import (
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
-	"crowdstart.com/models/namespace/consts"
 	"crowdstart.com/util/log"
-	"crowdstart.com/util/val"
 )
 
 type Namespace struct {
@@ -16,27 +14,6 @@ type Namespace struct {
 
 	IntId int64
 	Name  string
-}
-
-func New(db *datastore.Datastore) *Namespace {
-	n := new(Namespace)
-	n.Model = mixin.Model{Db: db, Entity: n}
-	n.SetNamespace(consts.Namespace)
-	n.Parent = db.NewKey(n.Kind(), "", consts.RootKey, nil)
-	n.UseStringKey = true
-	return n
-}
-
-func (n Namespace) Kind() string {
-	return "namespace"
-}
-
-func (n *Namespace) Validator() *val.Validator {
-	return val.New()
-}
-
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
 }
 
 func (n *Namespace) NameExists(name string) (ok bool, err error) {
@@ -48,6 +25,7 @@ func (n *Namespace) NameExists(name string) (ok bool, err error) {
 	return ok, err
 }
 
+// Override put on model
 func (n *Namespace) Put() (err error) {
 	return aeds.RunInTransaction(n.Db.Context, func(ctx appengine.Context) error {
 		// Set key

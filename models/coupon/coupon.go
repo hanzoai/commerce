@@ -8,7 +8,6 @@ import (
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
-	"crowdstart.com/util/val"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
@@ -65,23 +64,7 @@ type Coupon struct {
 	FreeQuantity  int    `json:"freeQuantity"`
 
 	// List of buyer email addresses who have redeemed coupon.
-	//Buyers []string `json:"buyers"`
-}
-
-func New(db *datastore.Datastore) *Coupon {
-	c := new(Coupon)
-	c.Model = mixin.Model{Db: db, Entity: c}
-	c.Enabled = true
-	//c.Buyers = make([]string, 0)
-	return c
-}
-
-func (c Coupon) Kind() string {
-	return "coupon"
-}
-
-func (c *Coupon) Validator() *val.Validator {
-	return val.New()
+	// Buyers []string `json:"buyers"`
 }
 
 func (co *Coupon) Load(c <-chan aeds.Property) (err error) {
@@ -124,8 +107,4 @@ func (c Coupon) ItemId() string {
 		return c.FreeProductId
 	}
 	return ""
-}
-
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
 }

@@ -6,7 +6,6 @@ import (
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
-	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/util/bit"
 	"crowdstart.com/util/rest"
@@ -49,19 +48,6 @@ var _ = BeforeSuite(func() {
 var _ = AfterSuite(func() {
 	ctx.Close()
 })
-
-type Model struct {
-	mixin.Model
-	Name string
-}
-
-func (m Model) Kind() string {
-	return "test-model"
-}
-
-func (m Model) Document() mixin.Document {
-	return nil
-}
 
 var _ = Describe("New", func() {
 	It("Should create a new Rest object with CRUD routes", func() {
