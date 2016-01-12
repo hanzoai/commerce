@@ -72,27 +72,6 @@ type MailingList struct {
 	} `json:"google"`
 }
 
-func New(db *datastore.Datastore) *MailingList {
-	m := new(MailingList)
-	m.Init(db)
-	m.Defaults()
-	return m
-}
-
-func (m *MailingList) Init(db *datastore.Datastore) {
-	m.Model = mixin.Model{Db: db, Entity: m}
-}
-
-func (m *MailingList) Defaults() {
-	m.Facebook.Value = "0.00"
-	m.Facebook.Currency = "USD"
-	m.ThankYou.Type = thankyou.Disabled
-}
-
-func (m MailingList) Kind() string {
-	return "mailinglist"
-}
-
 func (m *MailingList) Validator() *val.Validator {
 	return val.New()
 }
@@ -134,10 +113,6 @@ func (m *MailingList) Js() string {
 	}
 
 	return fmt.Sprintf(jsTemplate, endpoint, m.JSON())
-}
-
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
 }
 
 func FromJSON(db *datastore.Datastore, data []byte) *MailingList {

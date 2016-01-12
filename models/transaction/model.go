@@ -1,20 +1,20 @@
-package token
+package transaction
 
 import (
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
 )
 
-func (t Token) Kind() string {
-	return "token"
+func (t Transaction) Kind() string {
+	return "transaction"
 }
 
-func (t *Token) Init(db *datastore.Datastore) {
+func (t *Transaction) Init(db *datastore.Datastore) {
 	t.Model = mixin.Model{Db: db, Entity: t}
 }
 
-func New(db *datastore.Datastore) *Token {
-	t := new(Token)
+func New(db *datastore.Datastore) *Transaction {
+	t := new(Transaction)
 	t.Init(db)
 	return t
 }
