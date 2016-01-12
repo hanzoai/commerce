@@ -17,7 +17,7 @@ import (
 )
 
 func init() {
-	gob.Register(organization.EmailConfig{})
+	gob.Register(organization.Email{})
 }
 
 var _ = New("send-confirmations-for-jan",
@@ -28,9 +28,9 @@ var _ = New("send-confirmations-for-jan",
 		org := organization.New(db)
 		org.GetById("kanoa")
 
-		return []interface{}{org.Mandrill.APIKey, org.Email}
+		return []interface{}{org.Mandrill.APIKey, org.Email.Defaults.Enabled, org.Email.Defaults.FromName, org.Email.Defaults.FromEmail, org.Email.OrderConfirmation}
 	},
-	func(db *ds.Datastore, ord *order.Order, apiKey string, email organization.EmailConfig) {
+	func(db *ds.Datastore, ord *order.Order, apiKey string, defaultEnabled bool, defaultFromName, defaultFromEmail string, orderConfirmation organization.Email) {
 		// Fix issue with improperly set up orders
 		sendMail := false
 		if ord.CreatedAt.IsZero() {
@@ -53,16 +53,20 @@ var _ = New("send-confirmations-for-jan",
 		}
 
 		if !sendMail {
+			log.Warn("NOT SENDING Order %v", ord.Id(), ord.Db.Context)
 			return
 		}
 
-		// log.Warn("SENDING Order %v", ord.Id(), ord.Db.Context)
+		log.Warn("SENDING Order %v", ord.Id(), ord.Db.Context)
 
 		usr := user.New(ord.Db)
 		usr.GetById(ord.UserId)
 
 		org := organization.New(ord.Db)
-		org.Email = email
+		org.Email.Defaults.Enabled = defaultEnabled
+		org.Email.Defaults.FromName = defaultFromName
+		org.Email.Defaults.FromEmail = defaultFromEmail
+		org.Email.OrderConfirmation = orderConfirmation
 		org.Mandrill.APIKey = apiKey
 
 		// log.Warn("API email config %v", org.Email, ord.Db.Context)
