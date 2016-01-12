@@ -103,8 +103,8 @@ func (q *Query) GetEntities() ([]Entity, error) {
 
 	for i := range keys {
 		entity := value.Index(i).Interface().(Entity)
-		entity.SetKey(keys[i])
 		entity.Init(q.datastore)
+		entity.SetKey(keys[i])
 		slice[i] = entity
 	}
 
