@@ -60,9 +60,9 @@ var Emit = delay.Func("webhook-emit", func(ctx appengine.Context, org string, ev
 	db.SetNamespace(org)
 
 	// Fetch any webhooks for this organization
-	var hooks []webhook.Webhook
-	if _, err := webhook.Query(db).GetAll(hooks); err != nil {
-		log.Error("Failed to retrieve webhooks for organization '%s': %v", org, err, ctx)
+	hooks, err := webhook.Query(db).GetEntities()
+	if err != nil {
+		log.Warn("Failed to retrieve webhooks for organization '%s': %v", org, err, ctx)
 	}
 
 	// No hooks! Bye!
@@ -74,7 +74,9 @@ var Emit = delay.Func("webhook-emit", func(ctx appengine.Context, org string, ev
 	// Create client to send event data
 	client := createClient(ctx)
 
-	for _, hook := range hooks {
+	for i := range hooks {
+		hook := hooks[i].(*webhook.Webhook)
+
 		// Has all events enabled
 		if hook.All {
 			client.Post(hook.Url, data)

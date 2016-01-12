@@ -93,15 +93,19 @@ type Product struct {
 	Options_ string    `json:"-" datastore:",noindex"`
 }
 
-func (p *Product) Init() {
+func (p *Product) Init(db *datastore.Datastore) {
+	p.Model = mixin.Model{Db: db, Entity: p}
+}
+
+func (p *Product) Defaults() {
 	p.Variants = make([]*variant.Variant, 0)
 	p.Options = make([]*Option, 0)
 }
 
 func New(db *datastore.Datastore) *Product {
 	p := new(Product)
-	p.Init()
-	p.Model = mixin.Model{Db: db, Entity: p}
+	p.Init(db)
+	p.Defaults()
 	return p
 }
 
@@ -143,7 +147,7 @@ func (p *Product) Validator() *val.Validator {
 
 func (p *Product) Load(c <-chan aeds.Property) (err error) {
 	// Ensure we're initialized
-	p.Init()
+	p.Defaults()
 
 	// Load supported properties
 	if err = IgnoreFieldMismatch(aeds.LoadStruct(p, c)); err != nil {
