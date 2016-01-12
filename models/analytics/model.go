@@ -7,6 +7,10 @@ import (
 	. "crowdstart.com/models"
 )
 
+func (e AnalyticsEvent) Kind() string {
+	return "event"
+}
+
 func (e *AnalyticsEvent) Init(db *datastore.Datastore) {
 	e.Model = mixin.Model{Db: db, Entity: e}
 }
@@ -16,11 +20,10 @@ func (e *AnalyticsEvent) Defaults() {
 }
 
 func New(db *datastore.Datastore) *AnalyticsEvent {
-	return new(AnalyticsEvent).New(db).(*AnalyticsEvent)
-}
-
-func (e AnalyticsEvent) Kind() string {
-	return "event"
+	e := new(AnalyticsEvent)
+	e.Init(db)
+	e.Defaults()
+	return e
 }
 
 func Query(db *datastore.Datastore) *mixin.Query {

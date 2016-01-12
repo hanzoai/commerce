@@ -18,7 +18,10 @@ func (v *Variant) Defaults() {
 }
 
 func New(db *datastore.Datastore) *Variant {
-	return new(Variant).New(db).(*Variant)
+	v := new(Variant)
+	v.Init(db)
+	v.Defaults()
+	return v
 }
 
 func Query(db *datastore.Datastore) *mixin.Query {

@@ -30,7 +30,10 @@ func (o *Order) Defaults() {
 }
 
 func New(db *datastore.Datastore) *Order {
-	return new(Order).New(db).(*Order)
+	o := new(Order)
+	o.Init(db)
+	o.Defaults()
+	return o
 }
 
 func Query(db *datastore.Datastore) *mixin.Query {
