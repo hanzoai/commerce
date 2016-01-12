@@ -29,7 +29,9 @@ func (m *Model) Validator() *val.Validator {
 }
 
 func NewModel(db *datastore.Datastore) *Model {
-	return new(Model).New(db).(*Model)
+	m := new(Model)
+	m.Init(db)
+	return m
 }
 
 // Model 2
@@ -55,5 +57,7 @@ func (m *Model2) Validator() *val.Validator {
 }
 
 func NewModel2(db *datastore.Datastore) *Model2 {
-	return new(Model2).New(db).(*Model2)
+	m := new(Model2)
+	m.Init(db)
+	return m
 }
