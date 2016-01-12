@@ -64,13 +64,22 @@ func (q *Query) First() (bool, error) {
 	return ok, err
 }
 
+// Dst expected to be *[]*Model
 func (q *Query) GetAll(dst interface{}) ([]*aeds.Key, error) {
 	keys, err := q.Query.GetAll(dst)
 	if err != nil {
 		return keys, err
 	}
 
+	// Get value of slice
 	value := reflect.ValueOf(dst)
+
+	// De-pointer
+	for value.Kind() == reflect.Ptr {
+		value = reflect.Indirect(value)
+	}
+
+	// Initialize all entities
 	for i := range keys {
 		entity := value.Index(i).Interface().(Entity)
 		entity.SetKey(keys[i])
@@ -80,6 +89,7 @@ func (q *Query) GetAll(dst interface{}) ([]*aeds.Key, error) {
 	return keys, nil
 }
 
+// Get just keys
 func (q *Query) GetKeys() ([]*aeds.Key, error) {
 	return q.Query.KeysOnly().GetAll(nil)
 }
