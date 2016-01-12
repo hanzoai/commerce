@@ -82,8 +82,8 @@ func (q *Query) GetAll(dst interface{}) ([]*aeds.Key, error) {
 	// Initialize all entities
 	for i := range keys {
 		entity := value.Index(i).Interface().(Entity)
-		entity.SetKey(keys[i])
 		entity.Init(q.datastore)
+		entity.SetKey(keys[i])
 	}
 
 	return keys, nil
