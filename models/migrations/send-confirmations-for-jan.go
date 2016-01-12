@@ -10,6 +10,7 @@ import (
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/user"
 	"crowdstart.com/util/emails"
+	"crowdstart.com/util/log"
 
 	ds "crowdstart.com/datastore"
 )
@@ -30,6 +31,7 @@ var _ = New("send-confirmations-for-jan",
 		if ord.CreatedAt.IsZero() {
 			ord.MustCreate()
 			sendMail = true
+			log.Warn("Fixing Uninitialized Order %v", ord.Id(), ord.Db.Context)
 		}
 
 		t1, err := time.Parse(time.RFC3339, "2016-01-06T13:30:00-06:00")
@@ -48,6 +50,8 @@ var _ = New("send-confirmations-for-jan",
 		if !sendMail {
 			return
 		}
+
+		log.Warn("SENDING Order %v", ord.Id(), ord.Db.Context)
 
 		usr := user.New(ord.Db)
 		usr.GetById(ord.UserId)
