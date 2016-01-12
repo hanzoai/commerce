@@ -5,6 +5,7 @@ import (
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/product"
 	"crowdstart.com/models/user"
+	"crowdstart.com/util/log"
 	"crowdstart.com/util/template"
 
 	"appengine"
@@ -15,6 +16,7 @@ import (
 func SendOrderConfirmationEmail(ctx appengine.Context, org *organization.Organization, ord *order.Order, usr *user.User) {
 	conf := org.Email.OrderConfirmation.Config(org)
 	if !conf.Enabled || org.Mandrill.APIKey == "" {
+		log.Debug("Skip Email", ctx)
 		return
 	}
 

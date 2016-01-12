@@ -49,6 +49,24 @@ func (e Email) Config(org *Organization) Email {
 	return conf
 }
 
+type EmailConfig struct {
+	// Default email configuration
+	Defaults struct {
+		Enabled   bool   `json:"enabled"`
+		FromName  string `json:"fromName"`
+		FromEmail string `json:"fromEmail"`
+	} `json:"defaults"`
+
+	// Per-email configuration
+	OrderConfirmation Email `json:"orderConfirmation"`
+	User              struct {
+		Welcome           Email `json:"welcome`
+		EmailConfirmation Email `json:"emailConfirmation"`
+		EmailConfirmed    Email `json:"emailConfirmed"`
+		PasswordReset     Email `json:"PasswordReset"`
+	} `json:"user"`
+}
+
 type Organization struct {
 	mixin.Model
 	mixin.AccessToken
@@ -75,23 +93,7 @@ type Organization struct {
 	// Analytics config
 	Analytics analytics.Analytics `json:"analytics"`
 
-	Email struct {
-		// Default email configuration
-		Defaults struct {
-			Enabled   bool   `json:"enabled"`
-			FromName  string `json:"fromName"`
-			FromEmail string `json:"fromEmail"`
-		} `json:"defaults"`
-
-		// Per-email configuration
-		OrderConfirmation Email `json:"orderConfirmation"`
-		User              struct {
-			Welcome           Email `json:"welcome`
-			EmailConfirmation Email `json:"emailConfirmation"`
-			EmailConfirmed    Email `json:"emailConfirmed"`
-			PasswordReset     Email `json:"PasswordReset"`
-		} `json:"user"`
-	} `json:"email"`
+	Email EmailConfig `json:"email"`
 
 	Plan struct {
 		PlanId    string
