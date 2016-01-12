@@ -1,6 +1,7 @@
 package migrations
 
 import (
+	"encoding/gob"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -15,6 +16,10 @@ import (
 	ds "crowdstart.com/datastore"
 )
 
+func init() {
+	gob.Register(organization.EmailConfig{})
+}
+
 var _ = New("send-confirmations-for-jan",
 	func(c *gin.Context) []interface{} {
 		c.Set("namespace", "kanoa")
@@ -23,9 +28,9 @@ var _ = New("send-confirmations-for-jan",
 		org := organization.New(db)
 		org.GetById("kanoa")
 
-		return []interface{}{org.Mandrill.APIKey}
+		return []interface{}{org.Mandrill.APIKey, org.Email}
 	},
-	func(db *ds.Datastore, ord *order.Order, apiKey string) {
+	func(db *ds.Datastore, ord *order.Order, apiKey string, email organization.EmailConfig) {
 		// Fix issue with improperly set up orders
 		sendMail := false
 		if ord.CreatedAt.IsZero() {
@@ -51,13 +56,17 @@ var _ = New("send-confirmations-for-jan",
 			return
 		}
 
-		log.Warn("SENDING Order %v", ord.Id(), ord.Db.Context)
+		// log.Warn("SENDING Order %v", ord.Id(), ord.Db.Context)
 
 		usr := user.New(ord.Db)
 		usr.GetById(ord.UserId)
 
 		org := organization.New(ord.Db)
+		org.Email = email
 		org.Mandrill.APIKey = apiKey
+
+		// log.Warn("API email config %v", org.Email, ord.Db.Context)
+		// log.Warn("API Key %v", org.Mandrill.APIKey, ord.Db.Context)
 
 		emails.SendOrderConfirmationEmail(ord.Db.Context, org, ord, usr)
 	},
