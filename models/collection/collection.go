@@ -55,22 +55,9 @@ type Collection struct {
 	History []Event `json:"-"`
 }
 
-func New(db *datastore.Datastore) *Collection {
-	c := new(Collection)
-	c.Model = mixin.Model{Db: db, Entity: c}
-	c.Media = make([]Media, 0)
-	c.ProductIds = make([]string, 0)
-	c.VariantIds = make([]string, 0)
-	c.History = make([]Event, 0)
-	return c
-}
-
-func (c Collection) Kind() string {
-	return "collection"
-}
-
 func (c *Collection) Validator() *val.Validator {
-	return val.New().Check("Slug").Exists().
+	return val.New().
+		Check("Slug").Exists().
 		Check("Name").Exists()
 }
 
@@ -80,8 +67,4 @@ func (c Collection) GetDescriptionParagraphs() []string {
 
 func (c Collection) DisplayTitle() string {
 	return DisplayTitle(c.Name)
-}
-
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
 }
