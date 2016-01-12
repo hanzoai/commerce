@@ -37,10 +37,18 @@ type Campaign struct {
 
 func New(db *datastore.Datastore) *Campaign {
 	c := new(Campaign)
+	c.Init(db)
+	c.Defaults()
+	return c
+}
+
+func (c *Campaign) Init(db *datastore.Datastore) {
 	c.Model = mixin.Model{Db: db, Entity: c}
+}
+
+func (c *Campaign) Defaults() {
 	c.Links = make([]string, 0)
 	c.ProductIds = make([]string, 0)
-	return c
 }
 
 func (c Campaign) Kind() string {

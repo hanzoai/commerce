@@ -12,6 +12,7 @@ type Query interface {
 	End(c aeds.Cursor) *DatastoreQuery
 	EventualConsistency() *DatastoreQuery
 	Filter(filterStr string, value interface{}) *DatastoreQuery
+	First(dst interface{}) (*aeds.Key, bool, error)
 	GetAll(dst interface{}) ([]*aeds.Key, error)
 	KeysOnly() *DatastoreQuery
 	Limit(limit int) *DatastoreQuery
@@ -20,7 +21,6 @@ type Query interface {
 	Project(fieldNames ...string) *DatastoreQuery
 	Run() *aeds.Iterator
 	Start(c aeds.Cursor) *DatastoreQuery
-	First(dst interface{}) (*aeds.Key, bool, error)
 }
 
 type DatastoreQuery struct {

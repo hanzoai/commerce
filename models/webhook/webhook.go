@@ -32,14 +32,17 @@ type Webhook struct {
 	Enabled bool `json:"enabled"`
 }
 
-func (s *Webhook) Init() {
-	s.Events = make(Events)
+func (w *Webhook) Defaults() {
+	w.Events = make(Events)
+}
+
+func (w *Webhook) Init(db *datastore.Datastore) {
+	w.Model = mixin.Model{Db: db, Entity: w}
 }
 
 func New(db *datastore.Datastore) *Webhook {
 	w := new(Webhook)
-	w.Init()
-	w.Model = mixin.Model{Db: db, Entity: w}
+	w.Init(db)
 	return w
 }
 
@@ -49,7 +52,7 @@ func (w Webhook) Kind() string {
 
 func (s *Webhook) Load(c <-chan aeds.Property) (err error) {
 	// Ensure we're initialized
-	s.Init()
+	s.Defaults()
 
 	// Load supported properties
 	if err = IgnoreFieldMismatch(aeds.LoadStruct(s, c)); err != nil {
