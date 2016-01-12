@@ -3,7 +3,6 @@ package test
 import (
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
-	"crowdstart.com/util/val"
 )
 
 type User struct {
@@ -14,8 +13,13 @@ type User struct {
 	BCreate string
 }
 
-func (u *User) Kind() string {
+func (u User) Kind() string {
 	return "user"
+}
+
+func (u *User) Init(db *datastore.Datastore) {
+	u.Model = mixin.Model{Db: db, Entity: u}
+	u.AccessToken = mixin.AccessToken{Entity: u}
 }
 
 func (u *User) Document() mixin.Document {
@@ -24,13 +28,8 @@ func (u *User) Document() mixin.Document {
 
 func newUser(db *datastore.Datastore) *User {
 	u := new(User)
-	u.Model = mixin.Model{Db: db, Entity: u}
-	u.AccessToken = mixin.AccessToken{Entity: u}
+	u.Init(db)
 	return u
-}
-
-func (u *User) Validator() *val.Validator {
-	return val.New()
 }
 
 func (u *User) BeforeCreate() error {
