@@ -72,23 +72,6 @@ type MailingList struct {
 	} `json:"google"`
 }
 
-func New(db *datastore.Datastore) *MailingList {
-	m := new(MailingList)
-	m.Init()
-	m.Model = mixin.Model{Db: db, Entity: m}
-	return m
-}
-
-func (m *MailingList) Init() {
-	m.Facebook.Value = "0.00"
-	m.Facebook.Currency = "USD"
-	m.ThankYou.Type = thankyou.Disabled
-}
-
-func (m MailingList) Kind() string {
-	return "mailinglist"
-}
-
 func (m *MailingList) Validator() *val.Validator {
 	return val.New()
 }
@@ -100,7 +83,7 @@ func (m *MailingList) AddSubscriber(s *subscriber.Subscriber) error {
 	s.Normalize()
 
 	return m.RunInTransaction(func() error {
-		keys, err := subscriber.Query(m.Db).Ancestor(mkey).Filter("Email=", s.Email).KeysOnly().GetAll(nil)
+		keys, err := subscriber.Query(m.Db).Ancestor(mkey).Filter("Email=", s.Email).GetKeys()
 
 		if len(keys) != 0 {
 			return SubscriberAlreadyExists
@@ -130,10 +113,6 @@ func (m *MailingList) Js() string {
 	}
 
 	return fmt.Sprintf(jsTemplate, endpoint, m.JSON())
-}
-
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
 }
 
 func FromJSON(db *datastore.Datastore, data []byte) *MailingList {

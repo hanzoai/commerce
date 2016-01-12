@@ -84,7 +84,7 @@ var _ = New("update-old-payments",
 
 		for i, p := range payments {
 			// Make sure we have a payment we can work with
-			p.Mixin(db, p)
+			p.Init(db)
 
 			// Find the oldest
 			if p.CreatedAt.Before(oldest.CreatedAt) {

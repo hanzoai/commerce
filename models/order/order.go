@@ -139,28 +139,6 @@ type Order struct {
 	GiftEmail   string `json:"giftEmail"`   // Email for digital gifts
 }
 
-func (o *Order) Init() {
-	o.Status = Open
-	o.PaymentStatus = payment.Unpaid
-	o.FulfillmentStatus = FulfillmentUnfulfilled
-	o.Adjustments = make([]Adjustment, 0)
-	o.History = make([]Event, 0)
-	o.Items = make([]LineItem, 0)
-	o.Metadata = make(Map)
-	o.Coupons = make([]coupon.Coupon, 0)
-}
-
-func New(db *datastore.Datastore) *Order {
-	o := new(Order)
-	o.Init()
-	o.Model = mixin.Model{Db: db, Entity: o}
-	return o
-}
-
-func (o Order) Kind() string {
-	return "order"
-}
-
 func (o Order) Document() mixin.Document {
 	preorder := "true"
 	if !o.Preorder {
@@ -223,7 +201,7 @@ func (o *Order) Validator() *val.Validator {
 
 func (o *Order) Load(c <-chan aeds.Property) (err error) {
 	// Ensure we're initialized
-	o.Init()
+	o.Defaults()
 
 	// Load supported properties
 	if err = IgnoreFieldMismatch(aeds.LoadStruct(o, c)); err != nil {
@@ -644,10 +622,6 @@ func (o Order) DecimalFee() uint64 {
 	return uint64(FloatPrice(o.Total) * 100 * 0.02)
 }
 
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
-}
-
 func (o Order) Description() string {
 	if o.Items == nil {
 		return ""
@@ -682,12 +656,10 @@ func (o Order) DescriptionLong() string {
 
 func (o Order) GetPayments() ([]*payment.Payment, error) {
 	payments := make([]*payment.Payment, 0)
+
 	if _, err := payment.Query(o.Db).Ancestor(o.Key()).GetAll(&payments); err != nil {
-		return payments, err
+		return nil, err
 	}
-	// Initialize mixin model
-	for i := range payments {
-		payments[i].Model = mixin.Model{Db: o.Db, Entity: payments[i]}
-	}
+
 	return payments, nil
 }
