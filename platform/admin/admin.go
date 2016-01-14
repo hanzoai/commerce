@@ -30,7 +30,7 @@ func Dashboard(c *gin.Context) {
 	db := datastore.New(c)
 
 	usr := middleware.GetCurrentUser(c)
-	var orgNames []organization.Organization
+	var orgNames []*organization.Organization
 
 	if verusEmailRe.MatchString(usr.Email) {
 		if _, err := organization.Query(db).GetAll(&orgNames); err != nil {
@@ -44,7 +44,7 @@ func Dashboard(c *gin.Context) {
 			if err != nil {
 				continue
 			}
-			orgNames = append(orgNames, *org)
+			orgNames = append(orgNames, org)
 		}
 	}
 
