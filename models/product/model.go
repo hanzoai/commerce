@@ -11,7 +11,7 @@ func (p Product) Kind() string {
 }
 
 func (p *Product) Init(db *datastore.Datastore) {
-	p.Model = mixin.Model{Db: db, Entity: p}
+	p.Model.Init(db, p)
 }
 
 func (p *Product) Defaults() {

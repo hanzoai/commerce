@@ -12,7 +12,7 @@ func (e AnalyticsEvent) Kind() string {
 }
 
 func (e *AnalyticsEvent) Init(db *datastore.Datastore) {
-	e.Model = mixin.Model{Db: db, Entity: e}
+	e.Model.Init(db, e)
 }
 
 func (e *AnalyticsEvent) Defaults() {

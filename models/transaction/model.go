@@ -10,7 +10,7 @@ func (t Transaction) Kind() string {
 }
 
 func (t *Transaction) Init(db *datastore.Datastore) {
-	t.Model = mixin.Model{Db: db, Entity: t}
+	t.Model.Init(db, t)
 }
 
 func New(db *datastore.Datastore) *Transaction {

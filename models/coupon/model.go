@@ -10,7 +10,7 @@ func (c Coupon) Kind() string {
 }
 
 func (c *Coupon) Init(db *datastore.Datastore) {
-	c.Model = mixin.Model{Db: db, Entity: c}
+	c.Model.Init(db, c)
 }
 
 func (c *Coupon) Defaults() {
