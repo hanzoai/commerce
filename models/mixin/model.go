@@ -16,8 +16,6 @@ import (
 	"crowdstart.com/util/structs"
 )
 
-var zeroTime = time.Time{}
-
 // A datastore kind that is compatible with the Model mixin
 type Kind interface {
 	Kind() string
@@ -257,7 +255,7 @@ func (m *Model) MustPut() {
 func (m *Model) Put() error {
 	// Set CreatedAt, UpdatedAt
 	now := time.Now()
-	if m.key == nil || m.CreatedAt == zeroTime {
+	if m.key == nil || m.CreatedAt.IsZero() {
 		m.CreatedAt = now
 	}
 	m.UpdatedAt = now
