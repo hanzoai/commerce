@@ -121,6 +121,11 @@ func (q *Query) GetEntities() ([]Entity, error) {
 	keys, err := q.Query.GetAll(islice)
 
 	value := reflect.ValueOf(islice)
+	// De-pointer
+	for value.Kind() == reflect.Ptr {
+		value = reflect.Indirect(value)
+	}
+
 	slice := make([]Entity, len(keys))
 
 	for i := range keys {
