@@ -10,8 +10,8 @@ func (o Organization) Kind() string {
 }
 
 func (o *Organization) Init(db *datastore.Datastore) {
-	o.Model = mixin.Model{Db: db, Entity: o}
-	o.AccessToken = mixin.AccessToken{Entity: o}
+	o.Model.Init(db, o)
+	o.AccessToken.Init(o)
 }
 
 func (o *Organization) Defaults() {

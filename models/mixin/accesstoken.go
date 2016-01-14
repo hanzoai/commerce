@@ -27,6 +27,10 @@ type AccessToken struct {
 	currentToken *token.Token
 }
 
+func (at *AccessToken) Init(e Entity) {
+	at.Entity = e
+}
+
 func (at *AccessToken) AddToken(name string, permissions bit.Mask) string {
 	// Generate a new TokenId to invalidate previous key
 	t := token.New(name, at.Entity.Id(), permissions, at.SecretKey)

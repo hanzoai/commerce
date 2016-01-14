@@ -10,7 +10,7 @@ func (c Campaign) Kind() string {
 }
 
 func (c *Campaign) Init(db *datastore.Datastore) {
-	c.Model = mixin.Model{Db: db, Entity: c}
+	c.Model.Init(db, c)
 }
 
 func (c *Campaign) Defaults() {

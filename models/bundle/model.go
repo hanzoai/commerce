@@ -2,23 +2,22 @@ package bundle
 
 import (
 	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
 
 	. "crowdstart.com/models"
 )
 
-func (c Bundle) Kind() string {
+func (b Bundle) Kind() string {
 	return "bundle"
 }
 
-func (c *Bundle) Init(db *datastore.Datastore) {
-	c.Model = mixin.Model{Db: db, Entity: c}
+func (b *Bundle) Init(db *datastore.Datastore) {
+	b.Model.Init(db, b)
 }
 
-func (c *Bundle) Defaults() {
-	c.Media = make([]Media, 0)
-	c.ProductIds = make([]string, 0)
-	c.VariantIds = make([]string, 0)
+func (b *Bundle) Defaults() {
+	b.Media = make([]Media, 0)
+	b.ProductIds = make([]string, 0)
+	b.VariantIds = make([]string, 0)
 }
 
 func New(db *datastore.Datastore) *Bundle {

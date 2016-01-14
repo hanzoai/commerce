@@ -10,7 +10,7 @@ func (t Token) Kind() string {
 }
 
 func (t *Token) Init(db *datastore.Datastore) {
-	t.Model = mixin.Model{Db: db, Entity: t}
+	t.Model.Init(db, t)
 }
 
 func New(db *datastore.Datastore) *Token {

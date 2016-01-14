@@ -10,7 +10,7 @@ func (r Referrer) Kind() string {
 }
 
 func (r *Referrer) Init(db *datastore.Datastore) {
-	r.Model = mixin.Model{Db: db, Entity: r}
+	r.Model.Init(db, r)
 }
 
 func (r *Referrer) Defaults() {
