@@ -55,7 +55,9 @@ type Rest struct {
 
 	middleware []gin.HandlerFunc
 	routes     routeMap
+
 	entityType reflect.Type
+	sliceType  reflect.Type
 }
 
 type Pagination struct {
@@ -73,6 +75,8 @@ func (r *Rest) Init(prefix string) {
 func (r *Rest) InitModel(entity mixin.Kind) {
 	// Get type of entity
 	r.entityType = reflect.ValueOf(entity).Type()
+	ptrType := reflect.ValueOf(r.newKind()).Type()
+	r.sliceType = reflect.SliceOf(ptrType)
 	r.Kind = r.newKind().Kind()
 	r.ParamId = r.Kind + "id"
 	r.routes = make(routeMap)
@@ -285,13 +289,10 @@ func (r Rest) newEntity(c *gin.Context) mixin.Entity {
 
 // helper which returns a slice which is compatible with this entity
 func (r Rest) newEntitySlice() interface{} {
-	// Create a slice
-	slice := reflect.MakeSlice(reflect.SliceOf(r.entityType), 0, 0)
-
 	// Create pointer to a slice value and set it to the slice
+	slice := reflect.MakeSlice(r.sliceType, 0, 0)
 	ptr := reflect.New(slice.Type())
 	ptr.Elem().Set(slice)
-
 	return ptr.Interface()
 }
 
