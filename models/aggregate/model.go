@@ -10,7 +10,7 @@ func (a Aggregate) Kind() string {
 }
 
 func (a *Aggregate) Init(db *datastore.Datastore) {
-	a.Model = mixin.Model{Db: db, Entity: a}
+	a.Model.Init(db, a)
 }
 
 func (a *Aggregate) Defaults() {
