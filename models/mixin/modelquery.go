@@ -72,18 +72,40 @@ func (q *Query) GetAll(dst interface{}) ([]*aeds.Key, error) {
 	}
 
 	// Get value of slice
-	value := reflect.ValueOf(dst)
+	slice := reflect.ValueOf(dst)
 
 	// De-pointer
-	for value.Kind() == reflect.Ptr {
-		value = reflect.Indirect(value)
+	for slice.Kind() == reflect.Ptr {
+		slice = reflect.Indirect(slice)
 	}
 
-	// Initialize all entities
+	// Initialize all entities (if pointer type)
 	for i := range keys {
-		entity := value.Index(i).Interface().(Entity)
-		entity.Init(q.datastore)
-		entity.SetKey(keys[i])
+		v := slice.Index(i)
+		if v.Type().Kind() == reflect.Ptr {
+			entity := v.Interface().(Entity)
+			entity.Init(q.datastore)
+			entity.SetKey(keys[i])
+		}
+
+		// NOTE: Or we could do something like this instead, to support both
+		// entity values and pointers:
+		// v := slice.Index(i)
+
+		// var entity Entity
+		// if v.Type().Kind() == reflect.Ptr {
+		// 	// We have a pointer, this is a valid entity
+		// 	entity = v.Interface().(Entity)
+		// } else {
+		// 	// If we do not have a pointer we need to get one to this entity
+		// 	ptr := reflect.New(reflect.TypeOf(v))
+		// 	tmp := ptr.Elem()
+		// 	tmp.Set(v)
+		// 	entity = tmp.Interface().(Entity)
+		// }
+
+		// entity.Init(q.datastore)
+		// entity.SetKey(keys[i])
 	}
 
 	return keys, nil
