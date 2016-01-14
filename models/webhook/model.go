@@ -10,7 +10,7 @@ func (w Webhook) Kind() string {
 }
 
 func (w *Webhook) Init(db *datastore.Datastore) {
-	w.Model = mixin.Model{Db: db, Entity: w}
+	w.Model.Init(db, w)
 }
 
 func (w *Webhook) Defaults() {

@@ -10,7 +10,7 @@ func (f Funnel) Kind() string {
 }
 
 func (f *Funnel) Init(db *datastore.Datastore) {
-	f.Model = mixin.Model{Db: db, Entity: f}
+	f.Model.Init(db, f)
 }
 
 func (f *Funnel) Defaults() {
