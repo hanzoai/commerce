@@ -105,6 +105,12 @@ type Model struct {
 	UseStringKey bool `json:"-" datastore:"-"`
 }
 
+// Wire up model
+func (m *Model) Init(db *datastore.Datastore, kind Kind) {
+	m.Db = db
+	m.Entity = kind
+}
+
 // Get AppEngine context
 func (m *Model) Context() appengine.Context {
 	return m.Db.Context

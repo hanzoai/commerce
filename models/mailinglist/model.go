@@ -11,7 +11,7 @@ func (m MailingList) Kind() string {
 }
 
 func (m *MailingList) Init(db *datastore.Datastore) {
-	m.Model = mixin.Model{Db: db, Entity: m}
+	m.Model.Init(db, m)
 }
 
 func (m *MailingList) Defaults() {

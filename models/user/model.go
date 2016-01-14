@@ -12,8 +12,8 @@ func (u User) Kind() string {
 }
 
 func (u *User) Init(db *datastore.Datastore) {
-	u.Counter = mixin.Counter{Entity: u}
-	u.Model = mixin.Model{Db: db, Entity: u}
+	u.Counter.Init(u)
+	u.Model.Init(db, u)
 }
 
 func (u *User) Defaults() {

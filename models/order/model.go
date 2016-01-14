@@ -15,7 +15,7 @@ func (o Order) Kind() string {
 }
 
 func (o *Order) Init(db *datastore.Datastore) {
-	o.Model = mixin.Model{Db: db, Entity: o}
+	o.Model.Init(db, o)
 }
 
 func (o *Order) Defaults() {
