@@ -48,6 +48,15 @@ func Dashboard(c *gin.Context) {
 		}
 	}
 
+	org := middleware.GetOrganization(c)
+
+	for _, userId := range org.Owners {
+		if userId == usr.Id() {
+			usr.IsOwner = true
+			break
+		}
+	}
+
 	// Sort organizations by name
 	sort.Sort(organization.ByName(orgNames))
 
