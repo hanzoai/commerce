@@ -78,6 +78,8 @@ type User struct {
 
 	// Series of events that have occured relevant to this order
 	History []Event `json:"-,omitempty"`
+
+	IsOwner bool `json:"owner" datastore:"-"`
 }
 
 func (u User) Document() mixin.Document {
