@@ -2,6 +2,7 @@ package search
 
 import (
 	"fmt"
+	"strconv"
 
 	aeds "appengine/datastore"
 	"appengine/search"
@@ -54,6 +55,14 @@ func searchUser(c *gin.Context) {
 
 func searchOrder(c *gin.Context) {
 	q := c.Request.URL.Query().Get("q")
+
+	opts := &search.SearchOptions{}
+	limitStr := c.Request.URL.Query().Get("limit")
+	if limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
+			opts.Limit = l
+		}
+	}
 
 	o := order.Order{}
 	index, err := search.Open(o.Kind())
