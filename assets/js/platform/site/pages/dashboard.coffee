@@ -272,9 +272,9 @@ class Dashboard extends Page
       # Dispatch updated values
       @totalOrdersObs.trigger Events.Visual.NewData, @model.TotalOrders, NaN
 
-      @dailyOrdersObs.trigger Events.Visual.NewData, totalOrders, totalCompareOrders
-      @dailyUsersObs.trigger Events.Visual.NewData, totalUsers, totalCompareUsers
-      @dailySubsObs.trigger Events.Visual.NewData, totalSubs, totalCompareSubs
+      @dailyOrdersObs.trigger Events.Visual.NewData, totalOrders, totalCompareOrders * percent
+      @dailyUsersObs.trigger Events.Visual.NewData, totalUsers, totalCompareUsers * percent
+      @dailySubsObs.trigger Events.Visual.NewData, totalSubs, totalCompareSubs * percent
 
       @dailyOrdersObs.trigger Events.Visual.NewDescription, @periodDescription() + ' Orders'
       @dailySalesObs.trigger Events.Visual.NewDescription, @periodDescription() + ' Sales'
