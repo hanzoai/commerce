@@ -56,9 +56,6 @@ class UserFilterPane extends Pane
       maxDate = minDate
       minDate = swap2
 
-    @model.minDate = minDate
-    @model.maxDate = maxDate
-
     riot.update()
 
     minDateStr = moment(minDate, 'YYYY-MM-DD').format 'YYYY-MM-DD'
