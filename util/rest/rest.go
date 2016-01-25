@@ -345,6 +345,7 @@ func (r Rest) list(c *gin.Context) {
 	var err error
 	pageStr := query.Get("page")
 	displayStr := query.Get("display")
+	limitStr := query.Get("limit")
 
 	// if we have pagination values, then trigger pagination calculations
 	if displayStr != "" {
@@ -374,6 +375,12 @@ func (r Rest) list(c *gin.Context) {
 	if err != nil {
 		r.Fail(c, 500, "Could not count the models.", err)
 		return
+	}
+
+	if limitStr != "" {
+		if limit, err := strconv.Atoi(limitStr); err == nil && limit > 0 {
+			count = limit
+		}
 	}
 
 	r.Render(c, 200, Pagination{
