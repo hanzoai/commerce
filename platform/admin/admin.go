@@ -36,6 +36,8 @@ func Dashboard(c *gin.Context) {
 		if _, err := organization.Query(db).GetAll(&orgNames); err != nil {
 			log.Warn("Unable to fetch organizations for switcher.")
 		}
+
+		usr.IsOwner = true
 	} else {
 		orgIds := usr.Organizations
 		for _, orgId := range orgIds {
@@ -45,6 +47,15 @@ func Dashboard(c *gin.Context) {
 				continue
 			}
 			orgNames = append(orgNames, org)
+		}
+
+		org := middleware.GetOrganization(c)
+
+		for _, userId := range org.Owners {
+			if userId == usr.Id() {
+				usr.IsOwner = true
+				break
+			}
 		}
 	}
 

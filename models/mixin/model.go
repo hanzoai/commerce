@@ -83,6 +83,7 @@ type Entity interface {
 	CloneFromJSON() Entity
 	Slice() interface{}
 	JSON() []byte
+	JSONString() string
 }
 
 // Model is a mixin which adds Datastore/Validation/Serialization methods to
