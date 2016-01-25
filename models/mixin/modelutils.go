@@ -56,3 +56,7 @@ func (m *Model) Slice() interface{} {
 func (m *Model) JSON() []byte {
 	return json.EncodeBytes(m.Entity)
 }
+
+func (m *Model) JSONString() string {
+	return string(m.JSON())
+}
