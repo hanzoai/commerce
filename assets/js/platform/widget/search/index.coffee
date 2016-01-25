@@ -25,6 +25,7 @@ class Search extends View
     @api = api = Api.get 'platform'
 
     q = window.location.search
+    q += '&limit=1000' if window.User.owner
 
     requestAnimationFrame ()=>
       @userObs.trigger Events.Table.StartSearch
