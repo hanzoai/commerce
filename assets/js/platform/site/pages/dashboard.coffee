@@ -174,8 +174,9 @@ class Dashboard extends Page
       when 'dai'
         compareDay -=1
         d1 = new Date()
-        d2 = new Date(d1.getFullYear(), d1.getMonth(), d1.getDate(), 0,0,0)
-        @percent = (d1.getTime() - d2.getTime()) / 8.64e+7
+        if d1.getFullYear() == date.getFullYear() && d1.getMonth() == date.getMonth() && d1.getDate() == date.getDate()
+          d2 = new Date(d1.getFullYear(), d1.getMonth(), d1.getDate(), 0,0,0)
+          @percent = (d1.getTime() - d2.getTime()) / 8.64e+7
         @chartModel.xAxis[0].categories = [
           '00:00'
           '01:00'
@@ -204,7 +205,9 @@ class Dashboard extends Page
         ]
 
       when 'week'
-        @percent = (date.getDay() + 1) / 7
+        d1 = new Date()
+        if d1.getFullYear() == date.getFullYear() && d1.getMonth() == date.getMonth() && d1.getDate() == date.getDate()
+          @percent = (date.getDay() + 1) / 7
         compareDay -= 7
         @chartModel.xAxis[0].categories = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
@@ -215,7 +218,9 @@ class Dashboard extends Page
           categories.push "#{month}/#{d}"
 
         @chartModel.xAxis[0].categories = categories
-        @percent = day / daysInMonth
+        d1 = new Date()
+        if d1.getFullYear() == date.getFullYear() && d1.getMonth() == date.getMonth()
+          @percent = day / daysInMonth
         compareMonth -= 1
 
     tz = -date.getTimezoneOffset() / 60
