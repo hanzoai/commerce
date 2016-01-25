@@ -172,6 +172,9 @@ class Dashboard extends Page
     switch period
       when 'dai'
         compareDay -=1
+        d1 = new Date()
+        d2 = new Date(d1.getFullYear(), d1.getMonth(), d1.getDate(), 0,0,0)
+        percent = (d1.getTime() - d2.getTime()) / 8.64e+7
         @chartModel.xAxis[0].categories = [
           '00:00'
           '01:00'
