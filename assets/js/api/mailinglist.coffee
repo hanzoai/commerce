@@ -220,9 +220,14 @@ do ->
           el.innerHTML = ml.thankyou.html
 
       if document.createEvent && document.dispatchEvent
-        event = document.createEvent 'Event'
-        event.initEvent 'thankyou', true, true
-        document.dispatchEvent event
+        try
+          el.dispatchEvent new Event 'thankyou',
+            bubbles:    true
+            cancelable: true
+        catch e
+          event = document.createEvent 'Event'
+          event.initEvent 'thankyou', true, true
+          document.dispatchEvent event
       else
         console.log "Could not create or dispatch thankyou event"
 
@@ -265,9 +270,18 @@ do ->
       el.addEventListener    'submit', submitHandler
 
       setTimeout ->
-        el.dispatchEvent new Event 'submit',
-          bubbles:    false
-          cancelable: true
+        if document.createEvent && document.dispatchEvent
+          try
+            el.dispatchEvent new Event 'submit',
+              bubbles:    false
+              cancelable: true
+          catch e
+            # try it the terrible IE way
+            event = document.createEvent 'Event'
+            event.initEvent 'submit', false, true
+            el.dispatchEvent event
+        else
+          console.log "Could not create or dispatch submit event"
       , 500
 
       ev.preventDefault()
