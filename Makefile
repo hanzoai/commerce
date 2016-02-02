@@ -296,11 +296,17 @@ test-ci:
 
 # DEPLOY
 deploy: assets-min docs rollback
+	# Set env for deploy
+	@echo 'package config\n\nvar Env = "$(datastore_app_id)"' > config/env.go
+
 	for module in $(gae_config); do \
 		$(appcfg.py) update $$module; \
 	done
 	$(appcfg.py) update_indexes $(firstword $(gae_config))
 	$(appcfg.py) update_dispatch $(firstword $(gae_config))
+
+	# Reset env
+	@echo 'package config\n\nvar Env = "development"' > config/env.go
 
 rollback:
 	for module in $(gae_config); do \

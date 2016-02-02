@@ -188,17 +188,12 @@ func Get() *Config {
 	if appengine.IsDevAppServer() {
 		cachedConfig = Development()
 	} else {
-		// TODO: This is a total hack, probably can't rely on this.
-		// Use PWD to determine appid, if s~crowdstart-staging is in PWD,
-		// then we're in staging enviroment.
-		pwd := os.Getenv("PWD")
-		if strings.Contains(pwd, "s~crowdstart-sandbox") {
-			cachedConfig = Sandbox()
-		} else if strings.Contains(pwd, "s~crowdstart-staging") {
+		switch Env {
+		case "crowdstart-staging":
 			cachedConfig = Staging()
-		} else if strings.Contains(pwd, "s~crowdstart-skully") {
-			cachedConfig = Skully()
-		} else {
+		case "crowdstart-sandbox":
+			cachedConfig = Sandbox()
+		case "crowdstart-us":
 			cachedConfig = Production()
 		}
 	}
