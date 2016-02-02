@@ -144,16 +144,16 @@ endif
 
 # set production=1 to set datastore export/import target to use production
 ifeq ($(production), 1)
-	datastore_app_id = crowdstart-us
+	project_id = crowdstart-us
 	gae_config = $(gae_production)
 else ifeq ($(sandbox), 1)
-	datastore_app_id = crowdstart-sandbox
+	project_id = crowdstart-sandbox
 	gae_config = $(gae_sandbox)
 else ifeq ($(skully), 1)
-	datastore_app_id = crowdstart-skully
+	project_id = crowdstart-skully
 	gae_config = $(gae_skully)
 else
-	datastore_app_id = crowdstart-staging
+	project_id = crowdstart-staging
 	gae_config = $(gae_staging)
 endif
 
@@ -162,7 +162,7 @@ ifneq ($(strip $(module)),)
 	gae_config = $(module)
 endif
 
-datastore_admin_url = https://datastore-admin-dot-$(datastore_app_id).appspot.com/_ah/remote_api
+datastore_admin_url = https://datastore-admin-dot-$(project_id).appspot.com/_ah/remote_api
 
 test_target = -r=true
 test_focus := $(focus)
@@ -296,11 +296,17 @@ test-ci:
 
 # DEPLOY
 deploy: assets-min docs rollback
+	# Set env for deploy
+	@echo 'package config\n\nvar Env = "$(project_id)"' > config/env.go
+
 	for module in $(gae_config); do \
 		$(appcfg.py) update $$module; \
 	done
 	$(appcfg.py) update_indexes $(firstword $(gae_config))
 	$(appcfg.py) update_dispatch $(firstword $(gae_config))
+
+	# Reset env
+	@echo 'package config\n\nvar Env = "development"' > config/env.go
 
 rollback:
 	for module in $(gae_config); do \
@@ -322,7 +328,7 @@ datastore-export:
 				  	 --result_db_filename /tmp/bulkloader-result-$$kind.db \
 				  	 --namespace $$namespace \
 				  	 --kind $$kind \
-				  	 --filename _export/$$namespace-$$kind-$(datastore_app_id)-$(current_date).csv
+				  	 --filename _export/$$namespace-$$kind-$(project_id)-$(current_date).csv
 	rm -rf /tmp/bulkloader-$$kind.db \
 		   /tmp/bulkloader-$$kind.log \
 		   /tmp/bulkloader-result-$$kind.db
@@ -350,7 +356,7 @@ datastore-config:
 
 # Replicate production data to localhost
 datastore-replicate:
-	$(appcfg.py) download_data --application=s~$(datastore_app_id) --url=http://datastore-admin-dot-$(datastore_app_id).appspot.com/_ah/remote_api/ --filename=datastore.bin
+	$(appcfg.py) download_data --application=s~$(project_id) --url=http://datastore-admin-dot-$(project_id).appspot.com/_ah/remote_api/ --filename=datastore.bin
 	$(appcfg.py) --url=http://localhost:8080/_ah/remote_api --filename=datastore.bin upload_data
 
 # Generate API docs from wiki.
