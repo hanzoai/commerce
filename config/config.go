@@ -6,8 +6,6 @@ import (
 	"os"
 	"path"
 	"strings"
-
-	"appengine"
 )
 
 var demoMode = true
@@ -185,17 +183,15 @@ func Get() *Config {
 		return cachedConfig
 	}
 
-	if appengine.IsDevAppServer() {
-		cachedConfig = Development()
-	} else {
-		switch Env {
-		case "crowdstart-staging":
-			cachedConfig = Staging()
-		case "crowdstart-sandbox":
-			cachedConfig = Sandbox()
-		case "crowdstart-us":
-			cachedConfig = Production()
-		}
+	cachedConfig = Development()
+
+	switch Env {
+	case "crowdstart-staging":
+		cachedConfig = Staging()
+	case "crowdstart-sandbox":
+		cachedConfig = Sandbox()
+	case "crowdstart-us":
+		cachedConfig = Production()
 	}
 
 	// Allow local config file to override settings
