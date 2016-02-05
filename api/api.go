@@ -35,6 +35,7 @@ import (
 	searchApi "crowdstart.com/api/search"
 	storeApi "crowdstart.com/api/store"
 	userApi "crowdstart.com/api/user"
+	xdApi "crowdstart.com/api/xd"
 
 	paypalApi "crowdstart.com/thirdparty/paypal/ipn"
 	shipstationApi "crowdstart.com/thirdparty/shipstation"
@@ -128,4 +129,7 @@ func init() {
 
 	// Data Api
 	dataApi.Route(api)
+
+	// XDomain proxy.html
+	xdApi.Route(api)
 }
