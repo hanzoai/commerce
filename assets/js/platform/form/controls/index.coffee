@@ -143,6 +143,10 @@ class Switch extends BasicInputView
   html: require '../../templates/backend/form/controls/switch.html'
   change: (event) ->
     value = event.target.checked
+    if value == true || value == "true"
+      value == true
+    else
+      value = false
     if value != @model.value
       @obs.trigger Events.Input.Change, @model.name, value
       @model.value = value
