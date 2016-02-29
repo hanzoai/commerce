@@ -28,6 +28,8 @@ class OrderForm extends Form
     input('shippingAddress.postalCode', 'Postal/ZIP Code', 'postal-code'),
     input('shippingAddress.country', 'Choose a Country...', 'country-select', 'required'),
 
+    input('refundAmount', 'Refund Amount', 'money gtzero'),
+
     input('giftEmail', ''),
     input('giftMessage', ''),
 
@@ -36,6 +38,7 @@ class OrderForm extends Form
     input('discount', '', 'static-money'),
     input('subtotal', '', 'static-money'),
     input('shipping', '', 'static-money'),
+    input('refunded', '', 'static-money'),
     input('tax', '', 'static-money'),
     input('total', '', 'static-money'),
     input('couponCodes', '', 'id-list id-path:#coupon')
@@ -50,11 +53,15 @@ class OrderForm extends Form
     super
 
     @inputs.couponCodes.model.value = @model.couponCodes
+    @inputs.refundAmount.model.value = @model.refundAmount = @model.total
 
   refundModal: ()->
+
+    value = $('#refundAmount').val()
+
     bootbox.dialog
       title: 'Are You Sure?'
-      message: 'This will issue a full refund.'
+      message: 'This will issue a ' + value + ' refund.'
 
       buttons:
         Refund:
@@ -67,7 +74,7 @@ class OrderForm extends Form
           callback: ()->
 
   refund: ()->
-    @api.post(@path + '/refund', { amount: @model.total }).finally (e)=>
+    @api.post(@path + '/refund', { amount: @model.refundAmount }).finally (e)=>
       console.log(e.stack) if e
       window.location.hash = @redirectPath
       riot.update()
