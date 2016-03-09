@@ -617,5 +617,12 @@ helpers.registerValidator ((inputCfg) -> return inputCfg.hints['copy'])
   model[@hints.copy] =  value
   return value
 
+helpers.registerValidator ((inputCfg) -> return inputCfg.hints['gtzero'])
+, (model, name)->
+  value = model[name]
+  if value < 0
+    return 0
+  return value
+
 # module.exports =
 #   BasicInputView: BasicInputView
