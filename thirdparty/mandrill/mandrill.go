@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"time"
 
 	"appengine"
 	"appengine/urlfetch"
@@ -189,6 +190,10 @@ func SendTemplate(ctx appengine.Context, req *SendTemplateReq) error {
 	}
 
 	client := urlfetch.Client(ctx)
+	client.Transport = &urlfetch.Transport{
+		Context:  ctx,
+		Deadline: time.Duration(30) * time.Second,
+	}
 	res, err := client.Do(hreq)
 	if err != nil {
 		return err
