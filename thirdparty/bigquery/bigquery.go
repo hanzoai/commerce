@@ -5,6 +5,8 @@ import (
 
 	"google.golang.org/api/bigquery/v2"
 
+	"crowdstart.com/util/log"
+
 	"appengine"
 
 	"code.google.com/p/goauth2/appengine/serviceaccount"
@@ -15,6 +17,7 @@ type Fields map[string]string
 
 type Client struct {
 	Service *bigquery.Service
+	Context appengine.Context
 }
 
 func connect(c appengine.Context) (s *bigquery.Service, e error) {
@@ -35,6 +38,7 @@ func NewClient(c appengine.Context) (*Client, error) {
 	} else {
 		client := &Client{
 			Service: s,
+			Context: c,
 		}
 		return client, nil
 	}
@@ -66,6 +70,7 @@ func (c *Client) InsertNewTable(projectID, datasetID, tableName string, fields F
 
 	return nil
 }
+
 func (c *Client) InsertRows(projectID string, datasetID string, tableID string, rowsData []Row) error {
 	rows := make([]*bigquery.TableDataInsertAllRequestRows, len(rowsData))
 	for i := 0; i < len(rowsData); i++ {
@@ -81,6 +86,7 @@ func (c *Client) InsertRows(projectID string, datasetID string, tableID string, 
 	insertRequest := &bigquery.TableDataInsertAllRequest{Rows: rows}
 
 	result, err := c.Service.Tabledata.InsertAll(projectID, datasetID, tableID, insertRequest).Do()
+	log.Warn("Result %#v", result, c.Context)
 	if err != nil {
 		return fmt.Errorf("Error inserting row: %v", err)
 	}
