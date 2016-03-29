@@ -1,0 +1,138 @@
+package migrations
+
+import (
+	"strconv"
+	"time"
+
+	"github.com/gin-gonic/gin"
+
+	"crowdstart.com/config"
+	"crowdstart.com/middleware"
+	"crowdstart.com/models/order"
+	"crowdstart.com/models/user"
+	"crowdstart.com/thirdparty/bigquery"
+	"crowdstart.com/util/log"
+
+	ds "crowdstart.com/datastore"
+)
+
+var UserFields = bigquery.Fields{
+	"Id_":       "STRING",
+	"FirstName": "STRING",
+	"LastName":  "STRING",
+	"Email":     "STRING",
+	"Metadata_": "STRING",
+}
+
+var OrderFields = bigquery.Fields{
+	"Id_":                 "STRING",
+	"UserId":              "STRING",
+	"Status":              "STRING",
+	"PaymentStatus":       "STRING",
+	"FulfillmentStatus":   "STRING",
+	"Subtotal":            "INTEGER",
+	"Tax":                 "INTEGER",
+	"Shipping":            "INTEGER",
+	"Discount":            "INTEGER",
+	"Total":               "INTEGER",
+	"Paid":                "INTEGER",
+	"Refunded":            "INTEGER",
+	"CouponCodes_0":       "STRING",
+	"CouponCodes_1":       "STRING",
+	"CouponCodes_3":       "STRING",
+	"Items_0_ProductId":   "STRING",
+	"Items_0_ProductSlug": "STRING",
+	"Items_1_ProductId":   "STRING",
+	"Items_1_ProductSlug": "STRING",
+	"Items_2_ProductId":   "STRING",
+	"Items_2_ProductSlug": "STRING",
+	"Items_3_ProductId":   "STRING",
+	"Items_3_ProductSlug": "STRING",
+	"Items_4_ProductId":   "STRING",
+	"Items_4_ProductSlug": "STRING",
+	"Metadata_":           "STRING",
+}
+
+var _ = New("bigquery-user-order-kanoa",
+	func(c *gin.Context) []interface{} {
+		c.Set("namespace", "kanoa")
+
+		t := time.Now()
+		suffix := t.Format("20060102T150405")
+
+		ctx := middleware.GetAppEngine(c)
+
+		client, err := bigquery.NewClient(ctx)
+		if err != nil {
+			log.Panic("Could not create big query client: %v", err, ctx)
+		}
+
+		projectId := config.Env
+
+		client.InsertNewTable(projectId, "datastore", "user"+suffix, UserFields)
+		client.InsertNewTable(projectId, "datastore", "order"+suffix, OrderFields)
+
+		return []interface{}{projectId, suffix}
+	},
+	func(db *ds.Datastore, usr *user.User, projectId, tableSuffix string) {
+		ctx := db.Context
+		client, err := bigquery.NewClient(ctx)
+		if err != nil {
+			log.Error("Could not create big query client: %v", err, ctx)
+			return
+		}
+
+		data := make(bigquery.Row)
+		data["Id_"] = usr.Id_
+		data["FirstName"] = usr.FirstName
+		data["LastName"] = usr.LastName
+		data["Email"] = usr.Email
+		data["Metadata_"] = usr.Metadata_
+
+		err = client.InsertRows(projectId, "datastore", "user"+tableSuffix, []bigquery.Row{data})
+		if err != nil {
+			log.Error("Could not insert into bigquery: %v", err, ctx)
+			return
+		}
+	},
+	func(db *ds.Datastore, ord *order.Order, projectId, tableSuffix string) {
+		ctx := db.Context
+		client, err := bigquery.NewClient(ctx)
+		if err != nil {
+			log.Error("Could not create big query client: %v", err, ctx)
+			return
+		}
+
+		data := make(bigquery.Row)
+		data["Id_"] = ord.Id_
+		data["UserId"] = ord.UserId
+		data["Status"] = ord.Status
+		data["PaymentStatus"] = ord.PaymentStatus
+		data["FulfillmentStatus"] = ord.FulfillmentStatus
+		data["Subtotal"] = ord.Subtotal
+		data["Tax"] = ord.Tax
+		data["Shipping"] = ord.Shipping
+		data["Discount"] = ord.Discount
+		data["Total"] = ord.Total
+		data["Paid"] = ord.Paid
+		data["Refunded"] = ord.Refunded
+		if len(ord.CouponCodes) > 0 {
+			for i, code := range ord.CouponCodes {
+				data["CouponCodes_"+strconv.Itoa(i)] = code
+			}
+		}
+		if len(ord.Items) > 0 {
+			for i, item := range ord.Items {
+				data["Items_"+strconv.Itoa(i)+"_ProductId"] = item.ProductId
+				data["Items_"+strconv.Itoa(i)+"_ProductSlug"] = item.ProductSlug
+			}
+		}
+		data["Metadata_"] = ord.Metadata_
+
+		err = client.InsertRows(projectId, "datastore", "order"+tableSuffix, []bigquery.Row{data})
+		if err != nil {
+			log.Error("Could not insert into bigquery: %v", err, ctx)
+			return
+		}
+	},
+)
