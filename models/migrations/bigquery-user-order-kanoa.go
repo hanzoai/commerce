@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.com/config"
+	"crowdstart.com/datastore/parallel"
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/user"
@@ -22,6 +23,8 @@ var UserFields = bigquery.Fields{
 	"LastName":  "STRING",
 	"Email":     "STRING",
 	"Metadata_": "STRING",
+	"CreatedAt": "TIMESTAMP",
+	"UpdatedAt": "TIMESTAMP",
 }
 
 var OrderFields = bigquery.Fields{
@@ -51,9 +54,11 @@ var OrderFields = bigquery.Fields{
 	"Items_4_ProductId":   "STRING",
 	"Items_4_ProductSlug": "STRING",
 	"Metadata_":           "STRING",
+	"CreatedAt":           "TIMESTAMP",
+	"UpdatedAt":           "TIMESTAMP",
 }
 
-var _ = New("bigquery-user-order-kanoa",
+var _ = NewBigQuery("bigquery-export-kanoa-user-order",
 	func(c *gin.Context) []interface{} {
 		c.Set("namespace", "kanoa")
 
@@ -74,35 +79,26 @@ var _ = New("bigquery-user-order-kanoa",
 
 		return []interface{}{projectId, suffix}
 	},
-	func(db *ds.Datastore, usr *user.User, projectId, tableSuffix string) {
-		ctx := db.Context
-		client, err := bigquery.NewClient(ctx)
-		if err != nil {
-			log.Error("Could not create big query client: %v", err, ctx)
-			return
-		}
-
+	func(db *ds.Datastore, usr *user.User, rows *[]parallel.BigQueryRow, projectId, tableSuffix string) {
 		data := make(bigquery.Row)
 		data["Id_"] = usr.Id_
 		data["FirstName"] = usr.FirstName
 		data["LastName"] = usr.LastName
 		data["Email"] = usr.Email
 		data["Metadata_"] = usr.Metadata_
+		data["CreatedAt"] = usr.CreatedAt
+		data["UpdatedAt"] = usr.UpdatedAt
 
-		err = client.InsertRows(projectId, "datastore", "user"+tableSuffix, []bigquery.Row{data})
-		if err != nil {
-			log.Error("Could not insert into bigquery: %v", err, ctx)
-			return
+		row := parallel.BigQueryRow{
+			ProjectId: projectId,
+			DataSetId: "datastore",
+			TableId:   "user" + tableSuffix,
+			Row:       data,
 		}
+
+		*rows = append(*rows, row)
 	},
-	func(db *ds.Datastore, ord *order.Order, projectId, tableSuffix string) {
-		ctx := db.Context
-		client, err := bigquery.NewClient(ctx)
-		if err != nil {
-			log.Error("Could not create big query client: %v", err, ctx)
-			return
-		}
-
+	func(db *ds.Datastore, ord *order.Order, rows *[]parallel.BigQueryRow, projectId, tableSuffix string) {
 		data := make(bigquery.Row)
 		data["Id_"] = ord.Id_
 		data["UserId"] = ord.UserId
@@ -128,11 +124,15 @@ var _ = New("bigquery-user-order-kanoa",
 			}
 		}
 		data["Metadata_"] = ord.Metadata_
+		data["CreatedAt"] = ord.CreatedAt
+		data["UpdatedAt"] = ord.UpdatedAt
 
-		err = client.InsertRows(projectId, "datastore", "order"+tableSuffix, []bigquery.Row{data})
-		if err != nil {
-			log.Error("Could not insert into bigquery: %v", err, ctx)
-			return
+		row := parallel.BigQueryRow{
+			ProjectId: projectId,
+			DataSetId: "datastore",
+			TableId:   "order" + tableSuffix,
+			Row:       data,
 		}
+		*rows = append(*rows, row)
 	},
 )
