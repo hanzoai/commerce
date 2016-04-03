@@ -56,7 +56,7 @@ var _ = New("kanoa-batch2-refund",
 			return
 		}
 
-		// log.Error("Trying to refund %v cents, %v cents paid, %v cents discount using code %#v", refund, ord.Paid, ord.Refunded, ord.CouponCodes, db.Context)
+		log.Warn("Trying to refund %v cents, %v cents paid, %v cents discount using code %#v", refund, ord.Paid, ord.Refunded, ord.CouponCodes, db.Context)
 		if err := stripe.Refund(org, ord, currency.Cents(refund)); err != nil {
 			log.Error("Could not refund %v cents: %v", refund, err, db.Context)
 			return
