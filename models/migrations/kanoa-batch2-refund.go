@@ -3,7 +3,6 @@ package migrations
 import (
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/api/checkout/stripe"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/types/currency"
@@ -56,12 +55,13 @@ var _ = New("kanoa-batch2-refund",
 			return
 		}
 
-		if err := stripe.Refund(org, ord, currency.Cents(refund)); err != nil {
-			log.Error("Could not refund %v cents: %v", refund, err, db.Context)
-			return
-		}
+		log.Error("Trying to refund %v cents, %v cents paid, %v cents discount using code %$v", refund, ord.Paid, ord.Refunded, ord.CouponCodes, db.Context)
+		// if err := stripe.Refund(org, ord, currency.Cents(refund)); err != nil {
+		// 	log.Error("Could not refund %v cents: %v", refund, err, db.Context)
+		// 	return
+		// }
 
-		ord.Metadata["refunded"] = true
-		ord.MustPut()
+		// ord.Metadata["refunded"] = true
+		// ord.MustPut()
 	},
 )
