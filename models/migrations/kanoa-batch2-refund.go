@@ -29,6 +29,8 @@ var _ = New("kanoa-batch2-refund",
 	},
 	func(db *ds.Datastore, ord *order.Order, stripeToken, testStripeToken string) {
 		org := organization.New(db)
+
+		org.Live = true
 		org.Stripe.AccessToken = stripeToken
 		org.Stripe.Live.AccessToken = stripeToken
 		org.Stripe.Test.AccessToken = testStripeToken
