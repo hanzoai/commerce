@@ -25,11 +25,13 @@ var _ = New("kanoa-batch2-refund",
 			panic(err)
 		}
 
-		return []interface{}{org.Stripe.AccessToken}
+		return []interface{}{org.Stripe.Live.AccessToken, org.Stripe.Test.AccessToken}
 	},
-	func(db *ds.Datastore, ord *order.Order, stripeToken string) {
+	func(db *ds.Datastore, ord *order.Order, stripeToken, testStripeToken string) {
 		org := organization.New(db)
 		org.Stripe.AccessToken = stripeToken
+		org.Stripe.Live.AccessToken = stripeToken
+		org.Stripe.Test.AccessToken = testStripeToken
 
 		if v, ok := ord.Metadata["batch"]; !ok || v.(string) != "2" {
 			return
