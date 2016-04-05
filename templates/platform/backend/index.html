@@ -232,7 +232,11 @@
   })
 
   new crowdcontrol.data.Api(
-    '{{ urlFor("platform") }}',
+    {% if isProduction %}
+      '{{ urlFor("platform") }}',
+    {% else %}
+      '//api-dot-crowdstart-us.appsport.com/',
+    {% endif %}
     window.Keys['live-secret-key']
   ).register('platform')
 
