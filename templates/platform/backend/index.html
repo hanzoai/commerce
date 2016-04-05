@@ -233,9 +233,9 @@
 
   new crowdcontrol.data.Api(
     {% if isProduction %}
-      '{{ urlFor("platform") }}',
+      '//api-dot-crowdstart-us.appspot.com/',
     {% else %}
-      '//api-dot-crowdstart-us.appsport.com/',
+      '{{ urlFor("platform") }}',
     {% endif %}
     window.Keys['live-secret-key']
   ).register('platform')
