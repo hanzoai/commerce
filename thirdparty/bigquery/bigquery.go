@@ -9,7 +9,7 @@ import (
 
 	"appengine"
 
-	"code.google.com/p/goauth2/appengine/serviceaccount"
+	"https://github.com/arkxu/goauth2/appengine/serviceaccount"
 )
 
 type Row map[string]interface{}
