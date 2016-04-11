@@ -14,7 +14,7 @@ var EightyNineRobotics = New("89r", func(c *gin.Context) *organization.Organizat
 	db := datastore.New(c)
 
 	org := organization.New(db)
-	org.Name = "EIGHTY NINE ROBOTICS"
+	org.Name = "eighty-nine-robotics"
 	org.GetOrCreate("Name=", org.Name)
 
 	u := user.New(db)
