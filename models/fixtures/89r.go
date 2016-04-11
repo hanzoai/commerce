@@ -8,6 +8,7 @@ import (
 	"crowdstart.com/models/namespace"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/user"
+	"crowdstart.com/util/log"
 )
 
 var EightyNineRobotics = New("89r", func(c *gin.Context) *organization.Organization {
@@ -39,10 +40,11 @@ var EightyNineRobotics = New("89r", func(c *gin.Context) *organization.Organizat
 	// Save namespace so we can decode keys for this organization later
 	ns := namespace.New(db)
 	ns.Name = org.Name
-	ns.GetOrCreate("Name=", org.Name)
-
 	ns.IntId = org.Key().IntID()
-	ns.MustPut()
+	err := ns.Put()
+	if err != nil {
+		log.Warn("Failed to put namespace: %v", err)
+	}
 
 	return org
 })
