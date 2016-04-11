@@ -34,6 +34,9 @@ type Coupon struct {
 	// Coupon code (must be unique).
 	Code string `json:"code"`
 
+	// Indicates whether or not the Code is dynamically checked (for something like user-generated coupons)
+	Dynamic bool `json:"dynamic"`
+
 	CampaignId string `json:"campaignId,omitempty"`
 
 	// Range in which coupon is valid
@@ -43,8 +46,11 @@ type Coupon struct {
 	// Possible values: order, product.
 	Filter string `json:"filter"`
 
-	// Apply once or to every time
+	// Indicates whether this coupon may be applied once or more than once at checkout.
 	Once bool `json:"once"`
+
+	// The number of times this coupon can be used before it is used up and useless.  0 = unlimited
+	Limit int `json:"limit"`
 
 	// Product id for product-specific coupons.
 	ProductId string `json:"productId,omitempty"`
