@@ -1,6 +1,7 @@
 github.com/cenkalti/backoff master
 github.com/davecgh/go-spew/spew master
 github.com/davidtai/appenginetesting master
+github.com/davidtai/goauth2old/appengine/serviceaccount master
 github.com/dgrijalva/jwt-go master
 github.com/dustin/go-humanize master
 github.com/flosch/pongo2 master
@@ -29,4 +30,3 @@ github.com/zeekay/go-logging master
 golang.org/x/crypto/bcrypt master
 golang.org/x/oauth2/google master
 google.golang.org/api/storage/v1
-github.com/arkxu/goauth2/appengine/serviceaccount 84d8d5f9559683ea4fa60228354dbc64828cc31b
