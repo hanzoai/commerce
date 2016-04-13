@@ -53,7 +53,7 @@ class OrderForm extends Form
     super
 
     @inputs.couponCodes.model.value = @model.couponCodes
-    @inputs.refundAmount.model.value = @model.refundAmount = @model.total
+    @inputs.refundAmount.model.value = @model.refundAmount = @model.total - @model.refunded
 
   refundModal: ()->
 
