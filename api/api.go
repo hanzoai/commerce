@@ -8,7 +8,6 @@ import (
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/campaign"
 	"crowdstart.com/models/collection"
-	"crowdstart.com/models/coupon"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/product"
 	"crowdstart.com/models/referral"
@@ -26,6 +25,7 @@ import (
 	accessTokenApi "crowdstart.com/api/accesstoken"
 	accountApi "crowdstart.com/api/account"
 	checkoutApi "crowdstart.com/api/checkout"
+	couponApi "crowdstart.com/api/coupon"
 	dataApi "crowdstart.com/api/data"
 	deployApi "crowdstart.com/api/deploy"
 	formApi "crowdstart.com/api/form"
@@ -71,7 +71,6 @@ func init() {
 
 	// Models with public RESTful API
 	rest.New(collection.Collection{}).Route(api, tokenRequired)
-	rest.New(coupon.Coupon{}).Route(api, tokenRequired)
 	rest.New(product.Product{}).Route(api, tokenRequired)
 	rest.New(referral.Referral{}).Route(api, tokenRequired)
 	rest.New(referrer.Referrer{}).Route(api, tokenRequired)
@@ -86,6 +85,7 @@ func init() {
 	paymentApi.Route(api, tokenRequired)
 
 	accountApi.Route(api, tokenRequired)
+	couponApi.Route(api, tokenRequired)
 	deployApi.Route(api, tokenRequired)
 	formApi.Route(api, tokenRequired)
 	orderApi.Route(api, tokenRequired)
