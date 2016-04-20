@@ -379,10 +379,10 @@ func (m *Model) GetById(id string) error {
 		}
 	case "coupon":
 		id = strings.ToUpper(id)
-		if ok, err := m.Query().Filter("Code=", id).First(); ok {
+		if ok, _ := m.Query().Filter("Code=", id).First(); ok {
 			return nil
 		} else {
-			ids = hashid.Decode(id)
+			ids := hashid.Decode(id)
 			key := m.Db.KeyFromInt("order", ids[0])
 			_, err := m.Query().Filter("__key__ =", key).First()
 			return err
