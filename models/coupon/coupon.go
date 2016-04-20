@@ -90,6 +90,17 @@ func (co *Coupon) Save(c chan<- aeds.Property) (err error) {
 	return IgnoreFieldMismatch(aeds.SaveStruct(co, c))
 }
 
+func (c Coupon) Redeemable() bool {
+	if !c.Enabled {
+		return false
+	}
+
+	// TODO:Check if limit is reached
+	// return redeemed.Query(c.Db).FilterBy("Code=", code).Count() < c.Limit
+
+	return true
+}
+
 func (c Coupon) ValidFor(t time.Time) bool {
 	if c.Enabled {
 		return true // currently active, no need to check?
