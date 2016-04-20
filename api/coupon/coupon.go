@@ -18,18 +18,25 @@ func getCoupon(c *gin.Context) {
 
 	ids := make([]int, 0)
 
+	// Assume normal coupon
 	coup := coupon.New(c)
 	err := coup.GetById(couponid)
 
-	if err == nil {
+	// Try to decode as dynamic coupon
+	if err != nil {
 		ids = hashid.Decode(couponid)
 		err = coup.GetById(ids[0])
 	}
 
-	//
-	coupon := ids
+	if err != nil {
+		http.Fail(c, 404, "Failed to get coupon", err)
+		return
+	}
 
-	code := hashid.Encode(int(cid.IntID()), int(uid.IntID()))
+	// Check if coupon has been used
+	coup.Enabled = coup.Redeemable()
+
+	return coup
 }
 
 func codeFromId(c *gin.Context) {

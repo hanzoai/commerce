@@ -256,6 +256,9 @@ func (o *Order) GetCoupons() error {
 	for i := 0; i < num; i++ {
 		c := coupon.New(db)
 		code := strings.TrimSpace(strings.ToUpper(o.CouponCodes[i]))
+
+		c.GetById(code)
+
 		ok, err := c.Query().Filter("Code=", code).KeysOnly().First()
 		if err != nil {
 			log.Error("Error looking for coupon: CouponCodes[%v] => %v: %v", i, o.CouponCodes[i], err, ctx)
