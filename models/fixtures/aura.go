@@ -29,7 +29,7 @@ var Aura = New("aura", func(c *gin.Context) *organization.Organization {
 
 	org.FullName = "Aura Accessories"
 	org.Owners = []string{u.Id()}
-	org.Website = "http://www.getaura.com"
+	org.Website = "https://www.smokeaura.com"
 	org.SecretKey = []byte("7Z2e011iX2bp51lv592sTd1d589cu588")
 	org.AddDefaultTokens()
 	org.Fee = 0.05
