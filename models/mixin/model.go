@@ -365,9 +365,6 @@ func (m *Model) GetById(id string) error {
 		filterStr = "Slug"
 	case "variant":
 		filterStr = "SKU"
-	case "coupon":
-		filterStr = "Code"
-		id = strings.ToUpper(id)
 	case "organization", "mailinglist":
 		filterStr = "Name"
 	case "aggregate":
@@ -379,6 +376,16 @@ func (m *Model) GetById(id string) error {
 			filterStr = "Email"
 		} else {
 			filterStr = "Username"
+		}
+	case "coupon":
+		id = strings.ToUpper(id)
+		if ok, err := m.Query().Filter("Code=", id).First(); ok {
+			return nil
+		} else {
+			ids = hashid.Decode(id)
+			key := m.Db.KeyFromInt("order", ids[0])
+			_, err := m.Query().Filter("__key__ =", key).First()
+			return err
 		}
 	case "order":
 		// Special-cased since order is filtered by IntId (order number)
