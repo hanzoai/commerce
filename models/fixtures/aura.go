@@ -3,8 +3,12 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
+	"crowdstart.com/auth/password"
 	"crowdstart.com/datastore"
+	"crowdstart.com/models/namespace"
 	"crowdstart.com/models/organization"
+	"crowdstart.com/models/user"
+	"crowdstart.com/util/log"
 )
 
 var Aura = New("aura", func(c *gin.Context) *organization.Organization {
@@ -14,14 +18,14 @@ var Aura = New("aura", func(c *gin.Context) *organization.Organization {
 	org.Name = "aura"
 	org.GetOrCreate("Name=", org.Name)
 
-	// u := user.New(db)
-	// u.Email = "cival@getaura.com"
-	// u.GetOrCreate("Email=", u.Email)
-	// u.FirstName = "Cival"
-	// u.LastName = ""
-	// u.Organizations = []string{org.Id()}
-	// u.PasswordHash, _ = password.Hash("1Aura23")
-	// u.Put()
+	u := user.New(db)
+	u.Email = "jordan@smokeaura.com"
+	u.GetOrCreate("Email=", u.Email)
+	u.FirstName = "Jordan"
+	u.LastName = "Steranka"
+	u.Organizations = []string{org.Id()}
+	u.PasswordHash, _ = password.Hash("aurapassword!")
+	u.Put()
 
 	org.FullName = "Aura Accessories"
 	org.Owners = []string{u.Id()}
