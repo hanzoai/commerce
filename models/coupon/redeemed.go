@@ -14,7 +14,7 @@ type Redemption struct {
 	Code string `json:"code"`
 }
 
-func (c Coupon) Redemptions(code string) int {
+func (c Coupon) Redemptions(code string) (int, error) {
 	db := datastore.New(c.Context())
 
 	// If code is missing this is a normal coupon
@@ -25,8 +25,9 @@ func (c Coupon) Redemptions(code string) int {
 	return db.Query("redemption").Filter("Code=", code).Count()
 }
 
-func (c Coupon) SaveRedemptions(code string) err {
+func (c Coupon) SaveRedemption(code string) error {
 	db := datastore.New(c.Context())
 	key := db.KeyFromId("redemption", code)
-	return db.Put(key, &Redemption{time.Now(), code})
+	_, err := db.Put(key, &Redemption{time.Now(), code})
+	return err
 }

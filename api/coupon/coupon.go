@@ -3,6 +3,7 @@ package coupon
 import (
 	"github.com/gin-gonic/gin"
 
+	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/coupon"
 	"crowdstart.com/util/hashid"
@@ -16,17 +17,10 @@ import (
 func getCoupon(c *gin.Context) {
 	couponid := c.Params.ByName("couponid")
 
-	ids := make([]int, 0)
-
 	// Assume normal coupon
-	coup := coupon.New(c)
+	db := datastore.New(c)
+	coup := coupon.New(db)
 	err := coup.GetById(couponid)
-
-	// Try to decode as dynamic coupon
-	if err != nil {
-		ids = hashid.Decode(couponid)
-		err = coup.GetById(ids[0])
-	}
 
 	if err != nil {
 		http.Fail(c, 404, "Failed to get coupon", err)
@@ -36,7 +30,7 @@ func getCoupon(c *gin.Context) {
 	// Check if coupon has been used
 	coup.Enabled = coup.Redeemable()
 
-	return coup
+	http.Render(c, 200, coup)
 }
 
 func codeFromId(c *gin.Context) {
@@ -82,7 +76,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 
 	api := rest.New(coupon.Coupon{})
 
-	api.Get("/:couponid", adminRequired, namespaced, getCoupon)
+	api.Get = getCoupon
 	api.GET("/:couponid/code/:uniqueid", adminRequired, namespaced, codeFromId)
 	api.POST("/:couponid/code", adminRequired, namespaced, codeFromList)
 
