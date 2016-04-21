@@ -379,12 +379,24 @@ func (m *Model) GetById(id string) error {
 		}
 	case "coupon":
 		id = strings.ToUpper(id)
-		if ok, _ := m.Query().Filter("Code=", id).First(); ok {
+		if ok, err := m.Query().Filter("Code=", id).First(); ok {
 			return nil
+		} else if err != nil {
+			log.Warn("Failed to lookup coupon code: %v", err)
+			return err
 		} else {
-			ids := hashid.Decode(id)
-			key := m.Db.KeyFromInt("order", ids[0])
-			_, err := m.Query().Filter("__key__ =", key).First()
+			log.Warn("ID: %v", id)
+			ids, err := hashid.Decode(id)
+			if err != nil {
+				return err
+			}
+
+			if len(ids) != 2 {
+				return datastore.KeyNotFound
+			}
+
+			key := m.Db.KeyFromInt("coupon", ids[0])
+			_, err = m.Query().Filter("__key__ =", key).First()
 
 			// Set RawCode on fetched entity in case this was not parsed from JSON
 			val := reflect.ValueOf(m.Entity).Elem()
@@ -450,8 +462,6 @@ func (m *Model) KeyById(id string) (datastore.Key, bool, error) {
 		filterStr = "Slug"
 	case "variant":
 		filterStr = "SKU"
-	case "coupon":
-		filterStr = "Code"
 	case "organization", "mailinglist":
 		filterStr = "Name"
 	case "aggregate":
@@ -463,6 +473,34 @@ func (m *Model) KeyById(id string) (datastore.Key, bool, error) {
 			filterStr = "Email"
 		} else {
 			filterStr = "Username"
+		}
+	case "coupon":
+		id = strings.ToUpper(id)
+		if ok, _ := m.Query().Filter("Code=", id).First(); ok {
+			return m.Key(), true, nil
+		} else {
+			ids, err := hashid.Decode(id)
+			if err != nil {
+				return nil, false, err
+			}
+
+			if len(ids) != 2 {
+				return nil, false, datastore.KeyNotFound
+			}
+
+			key := m.Db.KeyFromInt("coupon", ids[0])
+			if _, err = m.Query().Filter("__key__ =", key).First(); err != nil {
+				return nil, false, err
+			}
+
+			// Set RawCode on fetched entity in case this was not parsed from JSON
+			val := reflect.ValueOf(m.Entity).Elem()
+			if val.Kind() == reflect.Struct {
+				f := val.FieldByName("RawCode")
+				if f.IsValid() && f.CanSet() && f.Kind() == reflect.String {
+					f.SetString(id)
+				}
+			}
 		}
 	case "order":
 		// Special-cased since order is filtered by IntId (order number)

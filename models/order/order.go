@@ -240,7 +240,8 @@ func (o Order) NumberFromId() int {
 	if o.Id_ == "" {
 		return -1
 	}
-	return hashid.Decode(o.Id_)[1]
+	ids, _ := hashid.Decode(o.Id_)
+	return ids[0]
 }
 
 // Get line items from datastore
@@ -254,17 +255,18 @@ func (o *Order) GetCoupons() error {
 	keys := make([]datastore.Key, num, num)
 
 	for i := 0; i < num; i++ {
-		coup := coupon.New(db)
+		cpn := coupon.New(db)
 		code := strings.TrimSpace(strings.ToUpper(o.CouponCodes[i]))
 
-		err := coup.GetById(code)
+		log.Debug("CODE: %v", code)
+		err := cpn.GetById(code)
 
 		if err != nil {
 			log.Warn("Could not find CouponCodes[%v] => %v", i, o.CouponCodes[i], ctx)
 			return errors.New("Invalid coupon code: " + code)
 		}
 
-		keys[i] = coup.Key()
+		keys[i] = cpn.Key()
 	}
 
 	return db.GetMulti(keys, o.Coupons)
