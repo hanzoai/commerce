@@ -254,23 +254,17 @@ func (o *Order) GetCoupons() error {
 	keys := make([]datastore.Key, num, num)
 
 	for i := 0; i < num; i++ {
-		c := coupon.New(db)
+		coup := coupon.New(db)
 		code := strings.TrimSpace(strings.ToUpper(o.CouponCodes[i]))
 
-		c.GetById(code)
+		err := coup.GetById(code)
 
-		ok, err := c.Query().Filter("Code=", code).KeysOnly().First()
 		if err != nil {
-			log.Error("Error looking for coupon: CouponCodes[%v] => %v: %v", i, o.CouponCodes[i], err, ctx)
-			return err
-		}
-
-		if !ok {
 			log.Warn("Could not find CouponCodes[%v] => %v", i, o.CouponCodes[i], ctx)
 			return errors.New("Invalid coupon code: " + code)
 		}
 
-		keys[i] = c.Key()
+		keys[i] = coup.Key()
 	}
 
 	return db.GetMulti(keys, o.Coupons)
