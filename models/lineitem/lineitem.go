@@ -95,7 +95,7 @@ func (li LineItem) DisplayId() string {
 func (li *LineItem) Entity(db *datastore.Datastore) (datastore.Key, interface{}, error) {
 	if li.ProductId != "" {
 		li.Product = product.New(db)
-		err := li.Product.SetKey(li.ProductId)
+		err := li.Product.GetById(li.ProductId)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -104,7 +104,7 @@ func (li *LineItem) Entity(db *datastore.Datastore) (datastore.Key, interface{},
 
 	if li.VariantId != "" {
 		li.Variant = variant.New(db)
-		err := li.Variant.SetKey(li.VariantId)
+		err := li.Variant.GetById(li.VariantId)
 		if err != nil {
 			return nil, nil, err
 		}
