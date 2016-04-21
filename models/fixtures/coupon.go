@@ -57,4 +57,21 @@ var Coupon = New("coupon", func(c *gin.Context) *coupon.Coupon {
 	cpn.FreeQuantity = 1
 	cpn.MustPut()
 	return cpn
+
+	cpn = coupon.New(db)
+	cpn.Code_ = "NO-DOGE-LEFT-BEHIND"
+	cpn.GetOrCreate("Code=", cpn.Code_)
+	cpn.Dynamic = true
+	cpn.Limit = 1
+	cpn.Name = "Free DogeShirt"
+	cpn.Type = "free-item"
+	cpn.StartDate = now
+	cpn.EndDate = now.Add(Month)
+	cpn.Once = true
+	cpn.Enabled = true
+	cpn.FreeProductId = "doge-shirt"
+	cpn.FreeQuantity = 1
+	cpn.MustPut()
+
+	return cpn
 })
