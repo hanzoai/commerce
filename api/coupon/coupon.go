@@ -8,6 +8,7 @@ import (
 	"crowdstart.com/models/coupon"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/json/http"
+	"crowdstart.com/util/log"
 	"crowdstart.com/util/permission"
 	"crowdstart.com/util/rest"
 	"crowdstart.com/util/router"
@@ -39,6 +40,7 @@ func codeFromId(c *gin.Context) {
 	db := datastore.New(c)
 	cpn := coupon.New(db)
 	if err := cpn.GetById(couponid); err != nil {
+		log.Warn("couponid %v", couponid)
 		http.Fail(c, 404, "Failed to get coupon", err)
 		return
 	}
@@ -54,7 +56,8 @@ func codeFromList(c *gin.Context) {
 	db := datastore.New(c)
 	cpn := coupon.New(db)
 	if err := cpn.GetById(couponid); err != nil {
-		http.Fail(c, 404, "Failed to get coupon", err)
+		log.Warn("couponid %v", couponid)
+		http.Fail(c, 404, "Failed to get coupon %v", err)
 		return
 	}
 

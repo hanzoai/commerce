@@ -379,7 +379,6 @@ func (m *Model) GetById(id string) error {
 		}
 	case "coupon":
 		id = strings.ToUpper(id)
-
 		if ok, err := m.Query().Filter("Code=", id).First(); ok {
 			return nil
 		} else if !ok {
@@ -388,7 +387,6 @@ func (m *Model) GetById(id string) error {
 			log.Warn("Failed to lookup coupon code: %v", err)
 			return err
 		} else {
-			log.Warn("ID: %v", id)
 			ids, err := hashid.Decode(id)
 			if err != nil {
 				return err
