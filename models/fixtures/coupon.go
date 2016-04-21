@@ -19,7 +19,7 @@ var Coupon = New("coupon", func(c *gin.Context) *coupon.Coupon {
 
 	cpn := coupon.New(db)
 	cpn.Code_ = "sad-coupon"
-	cpn.GetOrCreate("Code=", cpn.Code)
+	cpn.GetOrCreate("Code=", cpn.Code_)
 	cpn.Name = "Sad Coupon"
 	cpn.Type = "flat"
 	cpn.StartDate = now
@@ -33,7 +33,7 @@ var Coupon = New("coupon", func(c *gin.Context) *coupon.Coupon {
 
 	cpn = coupon.New(db)
 	cpn.Code_ = "such-coupon"
-	cpn.GetOrCreate("Code=", cpn.Code)
+	cpn.GetOrCreate("Code=", cpn.Code_)
 	cpn.Name = "Such Coupon"
 	cpn.Type = "flat"
 	cpn.StartDate = now
@@ -46,7 +46,7 @@ var Coupon = New("coupon", func(c *gin.Context) *coupon.Coupon {
 
 	cpn = coupon.New(db)
 	cpn.Code_ = "FREE-DOGE"
-	cpn.GetOrCreate("Code=", cpn.Code)
+	cpn.GetOrCreate("Code=", cpn.Code_)
 	cpn.Name = "Free DogeShirt"
 	cpn.Type = "free-item"
 	cpn.StartDate = now
@@ -55,8 +55,8 @@ var Coupon = New("coupon", func(c *gin.Context) *coupon.Coupon {
 	cpn.Enabled = true
 	cpn.FreeProductId = "doge-shirt"
 	cpn.FreeQuantity = 1
+
 	cpn.MustPut()
-	return cpn
 
 	cpn = coupon.New(db)
 	cpn.Code_ = "NO-DOGE-LEFT-BEHIND"
@@ -71,6 +71,7 @@ var Coupon = New("coupon", func(c *gin.Context) *coupon.Coupon {
 	cpn.Enabled = true
 	cpn.FreeProductId = "doge-shirt"
 	cpn.FreeQuantity = 1
+
 	cpn.MustPut()
 
 	return cpn
