@@ -88,8 +88,8 @@ func CompleteCapture(c *gin.Context, org *organization.Organization, ord *order.
 
 	// Save coupon redemptions
 	if len(ord.Coupons) > 0 {
-		for i, coup := range ord.Coupons {
-			coup.SaveRedemption(ord.CouponCodes[i])
+		for _, coup := range ord.Coupons {
+			coup.SaveRedemption()
 		}
 	}
 

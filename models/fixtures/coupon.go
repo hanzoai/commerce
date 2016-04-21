@@ -18,7 +18,7 @@ var Coupon = New("coupon", func(c *gin.Context) *coupon.Coupon {
 	p := Product(c)
 
 	cpn := coupon.New(db)
-	cpn.Code = "sad-coupon"
+	cpn.Code_ = "sad-coupon"
 	cpn.GetOrCreate("Code=", cpn.Code)
 	cpn.Name = "Sad Coupon"
 	cpn.Type = "flat"
@@ -32,7 +32,7 @@ var Coupon = New("coupon", func(c *gin.Context) *coupon.Coupon {
 	cpn.MustPut()
 
 	cpn = coupon.New(db)
-	cpn.Code = "such-coupon"
+	cpn.Code_ = "such-coupon"
 	cpn.GetOrCreate("Code=", cpn.Code)
 	cpn.Name = "Such Coupon"
 	cpn.Type = "flat"
@@ -45,7 +45,7 @@ var Coupon = New("coupon", func(c *gin.Context) *coupon.Coupon {
 	cpn.MustPut()
 
 	cpn = coupon.New(db)
-	cpn.Code = "FREE-DOGE"
+	cpn.Code_ = "FREE-DOGE"
 	cpn.GetOrCreate("Code=", cpn.Code)
 	cpn.Name = "Free DogeShirt"
 	cpn.Type = "free-item"
