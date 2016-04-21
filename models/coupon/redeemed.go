@@ -14,20 +14,33 @@ type Redemption struct {
 	Code string `json:"code"`
 }
 
-func (c Coupon) Redemptions(code string) (int, error) {
+func (c Coupon) SaveRedemption() error {
 	db := datastore.New(c.Context())
-
-	// If code is missing this is a normal coupon
-	if code == "" {
-		code = c.Code
-	}
-
-	return db.Query("redemption").Filter("Code=", code).Count()
+	key := db.KeyFromId("redemption", c.Code())
+	_, err := db.Put(key, &Redemption{time.Now(), c.Code()})
+	return err
 }
 
-func (c Coupon) SaveRedemption(code string) error {
+func (c Coupon) Redemptions() int {
 	db := datastore.New(c.Context())
-	key := db.KeyFromId("redemption", code)
-	_, err := db.Put(key, &Redemption{time.Now(), code})
-	return err
+	// If code is missing this is a normal coupon
+	count, _ := db.Query("redemption").Filter("Code=", c.Code()).Count()
+	return count
+}
+
+func (c Coupon) Redeemable() bool {
+	if !c.Enabled {
+		return false
+	}
+
+	// Unlimited coupon usage if limit is set less than 1
+	if c.Limit < 1 {
+		return true
+	}
+
+	if c.Redemptions() >= c.Limit {
+		return false
+	}
+
+	return true
 }
