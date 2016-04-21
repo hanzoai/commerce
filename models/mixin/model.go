@@ -379,8 +379,11 @@ func (m *Model) GetById(id string) error {
 		}
 	case "coupon":
 		id = strings.ToUpper(id)
+
 		if ok, err := m.Query().Filter("Code=", id).First(); ok {
 			return nil
+		} else if !ok {
+			return datastore.KeyNotFound
 		} else if err != nil {
 			log.Warn("Failed to lookup coupon code: %v", err)
 			return err
