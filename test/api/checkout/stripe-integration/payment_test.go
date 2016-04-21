@@ -624,10 +624,9 @@ var _ = Describe("payment", func() {
 
 	Context("Charge Order With Single Use Coupon", func() {
 		It("Should charge order with single use coupon successfully", func() {
-			w := client.Get("/coupon/no-doge-left-behind/code/" + u.Id() + "/")
+			w := client.Get("/coupon/no-doge-left-behind/code/" + u.Id())
 			log.Warn("JSON %v", w.Body)
 			Expect(w.Code).To(Equal(200))
-
 		})
 	})
 
