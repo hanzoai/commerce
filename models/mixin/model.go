@@ -385,6 +385,16 @@ func (m *Model) GetById(id string) error {
 			ids := hashid.Decode(id)
 			key := m.Db.KeyFromInt("order", ids[0])
 			_, err := m.Query().Filter("__key__ =", key).First()
+
+			// Set RawCode on fetched entity in case this was not parsed from JSON
+			val := reflect.ValueOf(m.Entity).Elem()
+			if val.Kind() == reflect.Struct {
+				f := val.FieldByName("RawCode")
+				if f.IsValid() && f.CanSet() && f.Kind() == reflect.String {
+					f.SetString(id)
+				}
+			}
+
 			return err
 		}
 	case "order":
