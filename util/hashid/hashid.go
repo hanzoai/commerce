@@ -27,13 +27,32 @@ func Encode(numbers ...int) string {
 	return hashid
 }
 
-func Decode(hashid string) []int {
+func Decode(hashid string) ([]int, error) {
+	var err error
+
+	// Catch panic from Decode
+	defer func() {
+		if r := recover(); r != nil {
+			switch v := r.(type) {
+			case string:
+				err = errors.New(v)
+			case error:
+				err = v
+			default:
+				err = errors.New("I don't even")
+			}
+		}
+	}()
+
 	h := hashids.NewWithData(hd)
-	return h.Decode(hashid)
+	return h.Decode(hashid), err
 }
 
 func GetNamespace(ctx appengine.Context, hashid string) (string, error) {
-	ids := Decode(hashid)
+	ids, err := Decode(hashid)
+	if err != nil {
+		return "", err
+	}
 	// ids should never be empty...
 	idsLen := len(ids)
 	if idsLen <= 0 {
