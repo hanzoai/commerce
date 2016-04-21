@@ -262,7 +262,8 @@ func (o *Order) GetCoupons() error {
 		err := cpn.GetById(code)
 
 		if err != nil {
-			log.Warn("Could not find CouponCodes[%v] => %v", i, o.CouponCodes[i], ctx)
+			panic(err)
+			log.Warn("Could not find CouponCodes[%v] => %v, Error: %v", i, code, ctx, err)
 			return errors.New("Invalid coupon code: " + code)
 		}
 
