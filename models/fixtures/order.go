@@ -5,7 +5,6 @@ import (
 
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/types/currency"
-	"crowdstart.com/util/log"
 
 	. "crowdstart.com/models/lineitem"
 )
@@ -33,8 +32,6 @@ var Order = New("order", func(c *gin.Context) *order.Order {
 	ord.CouponCodes = []string{"SUCH-COUPON", "FREE-DOGE"}
 	ord.UpdateAndTally(nil)
 	ord.MustPut()
-
-	log.Warn("Finished adding order")
 
 	return ord
 })
