@@ -32,7 +32,8 @@ type Coupon struct {
 	Type Type `json:"type"`
 
 	// Coupon code (must be unique).
-	Code string `json:"code"`
+	Code_       string `json:"-" datastore:"Code"`
+	DynamicCode string `json:"-" datastore:"-"`
 
 	// Indicates whether or not the Code is dynamically checked (for something like user-generated coupons)
 	Dynamic bool `json:"dynamic"`
@@ -84,21 +85,18 @@ func (co *Coupon) Load(c <-chan aeds.Property) (err error) {
 
 func (co *Coupon) Save(c chan<- aeds.Property) (err error) {
 
-	co.Code = strings.ToUpper(co.Code)
+	co.Code_ = strings.ToUpper(co.Code_)
 
 	// Save properties
 	return IgnoreFieldMismatch(aeds.SaveStruct(co, c))
 }
 
-func (c Coupon) Redeemable() bool {
-	if !c.Enabled {
-		return false
+func (c Coupon) Code() string {
+	code := c.Code_
+	if c.DynamicCode != "" {
+		code = c.DynamicCode
 	}
-
-	// TODO:Check if limit is reached
-	// return redeemed.Query(c.Db).FilterBy("Code=", code).Count() < c.Limit
-
-	return true
+	return code
 }
 
 func (c Coupon) ValidFor(t time.Time) bool {
