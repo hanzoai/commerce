@@ -8,6 +8,7 @@ import (
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
+	"crowdstart.com/util/hashid"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
@@ -105,6 +106,13 @@ func (c Coupon) DynamicCode() string {
 	}
 
 	return c.RawCode
+}
+
+func (c Coupon) CodeFromId(uniqueid string) string {
+	cid := c.Key()
+	uid, _ := hashid.DecodeKey(c.Context(), uniqueid)
+
+	return hashid.Encode(int(cid.IntID()), int(uid.IntID()))
 }
 
 func (c Coupon) ValidFor(t time.Time) bool {

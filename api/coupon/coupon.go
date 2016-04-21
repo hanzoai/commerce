@@ -6,7 +6,6 @@ import (
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/coupon"
-	"crowdstart.com/util/hashid"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/json/http"
 	"crowdstart.com/util/permission"
@@ -37,20 +36,27 @@ func codeFromId(c *gin.Context) {
 	couponid := c.Params.ByName("couponid")
 	uniqueid := c.Params.ByName("uniqueid")
 
-	ctx := middleware.GetAppEngine(c)
-	cid, _ := hashid.DecodeKey(ctx, couponid)
-	uid, _ := hashid.DecodeKey(ctx, uniqueid)
+	db := datastore.New(c)
+	cpn := coupon.New(db)
+	if err := cpn.GetById(couponid); err != nil {
+		http.Fail(c, 404, "Failed to get coupon", err)
+		return
+	}
 
-	code := hashid.Encode(int(cid.IntID()), int(uid.IntID()))
+	cpn.Code_ = cpn.CodeFromId(uniqueid)
 
-	http.Render(c, 200, code)
+	http.Render(c, 200, cpn)
 }
 
 func codeFromList(c *gin.Context) {
 	couponid := c.Params.ByName("couponid")
 
-	ctx := middleware.GetAppEngine(c)
-	cid, _ := hashid.DecodeKey(ctx, couponid)
+	db := datastore.New(c)
+	cpn := coupon.New(db)
+	if err := cpn.GetById(couponid); err != nil {
+		http.Fail(c, 404, "Failed to get coupon", err)
+		return
+	}
 
 	list := make([]string, 0)
 
@@ -63,8 +69,7 @@ func codeFromList(c *gin.Context) {
 	codes := make([]string, len(list))
 
 	for _, id := range list {
-		uid, _ := hashid.DecodeKey(ctx, id)
-		codes = append(codes, hashid.Encode(int(cid.IntID()), int(uid.IntID())))
+		codes = append(codes, cpn.CodeFromId(id))
 	}
 
 	http.Render(c, 200, codes)
