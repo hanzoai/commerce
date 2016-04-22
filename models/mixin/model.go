@@ -378,8 +378,8 @@ func (m *Model) GetById(id string) error {
 			filterStr = "Username"
 		}
 	case "coupon":
-		id = strings.ToUpper(id)
-		if ok, err := m.Query().Filter("Code=", id).First(); ok {
+		code := strings.ToUpper(id)
+		if ok, err := m.Query().Filter("Code_=", code).First(); ok {
 			return nil
 		} else if !ok {
 			return datastore.KeyNotFound
@@ -472,8 +472,8 @@ func (m *Model) KeyById(id string) (datastore.Key, bool, error) {
 			filterStr = "Username"
 		}
 	case "coupon":
-		id = strings.ToUpper(id)
-		if ok, _ := m.Query().Filter("Code=", id).First(); ok {
+		code := strings.ToUpper(id)
+		if ok, _ := m.Query().Filter("Code_=", code).First(); ok {
 			return m.Key(), true, nil
 		} else {
 			ids, err := hashid.Decode(id)

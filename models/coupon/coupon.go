@@ -33,8 +33,8 @@ type Coupon struct {
 	Type Type `json:"type"`
 
 	// Coupon code (must be unique).
-	Code_   string `json:"-" datastore:"Code"`
-	RawCode string `json:"code" datastore:"-"`
+	Code_   string `json:"code" datastore:"Code"`
+	RawCode string `json:"-" datastore:"-"`
 
 	// Indicates whether or not the Code is dynamically checked (for something like user-generated coupons)
 	Dynamic bool `json:"dynamic"`
@@ -93,7 +93,7 @@ func (co *Coupon) Save(c chan<- aeds.Property) (err error) {
 }
 
 func (c Coupon) Code() string {
-	if c.RawCode != c.Code_ {
+	if c.RawCode != "" && c.RawCode != c.Code_ {
 		return c.RawCode
 	} else {
 		return c.Code_
