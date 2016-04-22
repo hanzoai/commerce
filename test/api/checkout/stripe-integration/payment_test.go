@@ -636,7 +636,9 @@ var _ = Describe("payment", func() {
 			err := json.DecodeBuffer(w.Body, &coup)
 			Expect(err).ToNot(HaveOccurred())
 
-			w = client.PostRawJSON("/checkout/charge", fmt.Sprintf(requests.ValidOrderTemplate, u.Id(), coup.Code()))
+			jsonStr := fmt.Sprintf(requests.ValidOrderTemplate, u.Id(), coup.Code())
+			log.Warn("JSON Str %v", jsonStr)
+			w = client.PostRawJSON("/checkout/charge", jsonStr)
 			Expect(w.Code).To(Equal(200))
 			log.Debug("JSON %v", w.Body)
 
