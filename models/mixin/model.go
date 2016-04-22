@@ -400,13 +400,9 @@ func (m *Model) GetById(id string) error {
 			_, err = m.Query().Filter("__key__ =", key).First()
 
 			// Set RawCode on fetched entity in case this was not parsed from JSON
-			val := reflect.ValueOf(m.Entity).Elem()
-			if val.Kind() == reflect.Struct {
-				f := val.FieldByName("RawCode")
-				if f.IsValid() && f.CanSet() && f.Kind() == reflect.String {
-					f.SetString(id)
-				}
-			}
+			v := reflect.ValueOf(m.Entity).Elem().FieldByName("RawCode")
+			ptr := v.Addr().Interface().(*string)
+			*ptr = id
 
 			return err
 		}
@@ -495,13 +491,9 @@ func (m *Model) KeyById(id string) (datastore.Key, bool, error) {
 			}
 
 			// Set RawCode on fetched entity in case this was not parsed from JSON
-			val := reflect.ValueOf(m.Entity).Elem()
-			if val.Kind() == reflect.Struct {
-				f := val.FieldByName("RawCode")
-				if f.IsValid() && f.CanSet() && f.Kind() == reflect.String {
-					f.SetString(id)
-				}
-			}
+			v := reflect.ValueOf(m.Entity).Elem().FieldByName("RawCode")
+			ptr := v.Addr().Interface().(*string)
+			*ptr = id
 		}
 	case "order":
 		// Special-cased since order is filtered by IntId (order number)
