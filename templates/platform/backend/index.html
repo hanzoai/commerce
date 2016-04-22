@@ -232,16 +232,16 @@
   })
 
   new crowdcontrol.data.Api(
-    {% if isProduction %}
-      '//api-dot-crowdstart-us.appspot.com/',
-    {% else %}
-      '{{ urlFor("platform") }}',
-    {% endif %}
+    '{{ urlFor("platform") }}',
     window.Keys['live-secret-key']
   ).register('platform')
 
   new crowdcontrol.data.Api(
-    '{{ urlFor("api") }}',
+    {% if isProduction %}
+      '//api-dot-crowdstart-us.appspot.com/',
+    {% else %}
+      '{{ urlFor("api") }}',
+    {% endif %}
     window.Keys['live-secret-key']
   ).register('crowdstart')
 
