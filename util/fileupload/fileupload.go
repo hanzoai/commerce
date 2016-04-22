@@ -2,23 +2,25 @@ package fileupload
 
 import (
 	"mime/multipart"
+	"errors"
 
-	"golang.org/x/net/context"
+	// "golang.org/x/net/context"
 
 	"appengine"
 
-	"golang.org/x/oauth2/google"
-	storage "google.golang.org/api/storage/v1"
+	// "golang.org/x/oauth2/google"
+	// storage "google.golang.org/api/storage/v1"
 
 	"crowdstart.com/models/organization"
-	"crowdstart.com/util/log"
+	// "crowdstart.com/util/log"
 )
 
 func UploadFile(ctx *appengine.Context, org *organization.Organization, file multipart.File, header *multipart.FileHeader) (string, error) {
+	return "", errors.New("Disabled")
 	// client, err := google.DefaultClient(context.Background(), storage.DevstorageFullControlScope)
 	// if err != nil {
 	// 	log.Error("Unable to get default client: %v", err, ctx)
-		return "", err
+	//  return "", err
 	// }
 
 	// service, err := storage.New(client)
