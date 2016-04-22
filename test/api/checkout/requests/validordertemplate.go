@@ -12,7 +12,7 @@ var ValidOrderTemplate = `
     }
   },
   "user": {
-    "id": "%s",
+    "id": "%s"
   },
   "order": {
     "currency": "usd",
