@@ -61,13 +61,13 @@ gae_skully = config/skully \
 			 platform/app.skully.yaml \
 			 store/app.skully.yaml
 
-tools = github.com/golang/lint/golint \
-		github.com/jstemmer/gotags \
+tools = github.com/jstemmer/gotags \
 		github.com/nsf/gocode \
 		github.com/rogpeppe/godef \
 		golang.org/x/tools/cmd/cover \
-		golang.org/x/tools/cmd/goimports \
-		golang.org/x/tools/cmd/gorename
+		golang.org/x/tools/cmd/goimports
+		# golang.org/x/tools/cmd/gorename
+		# github.com/golang/lint/golint \
 		# github.com/kisielk/errcheck \
 		# golang.org/x/tools/cmd/oracle
 
