@@ -250,6 +250,7 @@ func (o *Order) GetCoupons() error {
 	db := o.Model.Db
 	ctx := db.Context
 
+	log.Debug("CouponCodes: %#v", o.CouponCodes)
 	num := len(o.CouponCodes)
 	o.Coupons = make([]coupon.Coupon, num, num)
 	keys := make([]datastore.Key, num, num)
@@ -258,12 +259,11 @@ func (o *Order) GetCoupons() error {
 		cpn := coupon.New(db)
 		code := strings.TrimSpace(strings.ToUpper(o.CouponCodes[i]))
 
-		log.Debug("CODE: %v", code)
+		log.Debug("CODE: %s", code)
 		err := cpn.GetById(code)
 
 		if err != nil {
-			panic(err)
-			log.Warn("Could not find CouponCodes[%v] => %v, Error: %v", i, code, ctx, err)
+			log.Warn("Could not find CouponCodes[%v] => %v, Error: %v", i, code, err, ctx)
 			return errors.New("Invalid coupon code: " + code)
 		}
 

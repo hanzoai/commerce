@@ -17,20 +17,17 @@ import (
 func getCoupon(c *gin.Context) {
 	couponid := c.Params.ByName("couponid")
 
-	// Assume normal coupon
 	db := datastore.New(c)
-	coup := coupon.New(db)
-	err := coup.GetById(couponid)
-
-	if err != nil {
+	cpn := coupon.New(db)
+	if err := cpn.GetById(couponid); err != nil {
 		http.Fail(c, 404, "Failed to get coupon", err)
 		return
 	}
 
 	// Check if coupon has been used
-	coup.Enabled = coup.Redeemable()
+	cpn.Enabled = cpn.Redeemable()
 
-	http.Render(c, 200, coup)
+	http.Render(c, 200, cpn)
 }
 
 func codeFromId(c *gin.Context) {
@@ -40,12 +37,16 @@ func codeFromId(c *gin.Context) {
 	db := datastore.New(c)
 	cpn := coupon.New(db)
 	if err := cpn.GetById(couponid); err != nil {
-		log.Warn("couponid %v", couponid)
 		http.Fail(c, 404, "Failed to get coupon", err)
 		return
 	}
 
 	cpn.Code_ = cpn.CodeFromId(uniqueid)
+
+	log.Debug("%#v", cpn)
+
+	// Check if coupon has been used
+	cpn.Enabled = cpn.Redeemable()
 
 	http.Render(c, 200, cpn)
 }
