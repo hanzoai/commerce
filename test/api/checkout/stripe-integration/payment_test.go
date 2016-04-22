@@ -630,7 +630,7 @@ var _ = Describe("payment", func() {
 		It("Should charge order with single use coupon successfully", func() {
 			w := client.Get("/coupon/no-doge-left-behind/code/" + u.Id())
 			Expect(w.Code).To(Equal(200))
-			log.Debug("JSON %v", w.Body)
+			log.Warn("JSON %v", w.Body)
 
 			coup := coupon.New(db)
 			err := json.DecodeBuffer(w.Body, &coup)
