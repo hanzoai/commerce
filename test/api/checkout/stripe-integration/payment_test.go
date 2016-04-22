@@ -1,11 +1,13 @@
 package test
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
+	"crowdstart.com/models/coupon"
 	"crowdstart.com/models/fixtures"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
@@ -14,8 +16,10 @@ import (
 	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/store"
 	"crowdstart.com/models/user"
+	"crowdstart.com/test/api/checkout/requests"
 	"crowdstart.com/thirdparty/stripe"
 	"crowdstart.com/util/gincontext"
+	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/permission"
 	"crowdstart.com/util/test/ae"
@@ -625,8 +629,17 @@ var _ = Describe("payment", func() {
 	Context("Charge Order With Single Use Coupon", func() {
 		It("Should charge order with single use coupon successfully", func() {
 			w := client.Get("/coupon/no-doge-left-behind/code/" + u.Id())
-			log.Warn("JSON %v", w.Body)
 			Expect(w.Code).To(Equal(200))
+			log.Debug("JSON %v", w.Body)
+
+			coup := coupon.New(db)
+			err := json.DecodeBuffer(w.Body, &coup)
+			Expect(err).ToNot(HaveOccurred())
+
+			w = client.PostRawJSON("/checkout/charge", fmt.Sprintf(requests.ValidOrderTemplate, u.Id(), coup.Code()))
+			Expect(w.Code).To(Equal(200))
+			log.Debug("JSON %v", w.Body)
+
 		})
 	})
 
