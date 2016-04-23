@@ -120,6 +120,10 @@ func (c Coupon) ValidFor(t time.Time) bool {
 		return true // currently active, no need to check?
 	}
 
+	if !c.Redeemable() {
+		return false
+	}
+
 	if c.StartDate.Before(t) && c.EndDate.After(t) {
 		return true
 	}
