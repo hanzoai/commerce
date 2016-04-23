@@ -377,10 +377,10 @@ func (m *Model) GetById(id string) error {
 		}
 	case "coupon":
 		code := strings.ToUpper(id)
-		log.Warn("GETBYIDCODE: %v", code)
+		log.Debug("GETBYIDCODE: %v", code)
 
 		if ok, _ := m.Query().Filter("Code=", code).First(); ok {
-			log.Warn("FOUND KEY")
+			log.Debug("FOUND KEY")
 			return nil
 		} else {
 			ids, err := hashid.Decode(id)

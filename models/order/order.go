@@ -256,7 +256,6 @@ func (o *Order) GetCoupons() error {
 	log.Debug("CouponCodes: %#v", o.CouponCodes)
 	num := len(o.CouponCodes)
 	o.Coupons = make([]coupon.Coupon, num, num)
-	keys := make([]datastore.Key, num, num)
 
 	for i := 0; i < num; i++ {
 		cpn := coupon.New(db)
@@ -270,10 +269,10 @@ func (o *Order) GetCoupons() error {
 			return errors.New("Invalid coupon code: " + code)
 		}
 
-		keys[i] = cpn.Key()
+		o.Coupons[i] = *cpn
 	}
 
-	return db.GetMulti(keys, o.Coupons)
+	return nil
 }
 
 func (o *Order) DedupeCouponCodes() {
@@ -546,6 +545,12 @@ func (o *Order) UpdateAndTally(stor *store.Store) error {
 	if err := o.GetCoupons(); err != nil {
 		log.Error(err, ctx)
 		return errors.New("Failed to get coupons")
+	}
+
+	for _, coup := range o.Coupons {
+		if !coup.Redeemable() {
+			return errors.New(fmt.Sprintf("Coupon %v limit reached", coup.Code()))
+		}
 	}
 
 	// Update the list of free coupon items
