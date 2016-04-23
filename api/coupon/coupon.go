@@ -57,7 +57,6 @@ func codeFromList(c *gin.Context) {
 	db := datastore.New(c)
 	cpn := coupon.New(db)
 	if err := cpn.GetById(couponid); err != nil {
-		log.Warn("couponid %v", couponid)
 		http.Fail(c, 404, "Failed to get coupon %v", err)
 		return
 	}
