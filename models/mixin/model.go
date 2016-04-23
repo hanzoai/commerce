@@ -295,8 +295,6 @@ func (m *Model) Create() error {
 		}
 	}
 
-	log.Debug("Site after BeforeCreate: %#v", m.Entity, m.Context())
-
 	if err := m.Put(); err != nil {
 		return err
 	}
@@ -379,13 +377,11 @@ func (m *Model) GetById(id string) error {
 		}
 	case "coupon":
 		code := strings.ToUpper(id)
-		if ok, err := m.Query().Filter("Code_=", code).First(); ok {
+		log.Warn("GETBYIDCODE: %v", code)
+
+		if ok, _ := m.Query().Filter("Code=", code).First(); ok {
+			log.Warn("FOUND KEY")
 			return nil
-		} else if !ok {
-			return datastore.KeyNotFound
-		} else if err != nil {
-			log.Warn("Failed to lookup coupon code: %v", err)
-			return err
 		} else {
 			ids, err := hashid.Decode(id)
 			if err != nil {
@@ -396,8 +392,10 @@ func (m *Model) GetById(id string) error {
 				return datastore.KeyNotFound
 			}
 
+			log.Debug("coupon ids: %v", ids)
 			key := m.Db.KeyFromInt("coupon", ids[0])
 			_, err = m.Query().Filter("__key__ =", key).First()
+			log.Debug("key: %v", key)
 
 			// Set RawCode on fetched entity in case this was not parsed from JSON
 			v := reflect.ValueOf(m.Entity).Elem().FieldByName("RawCode")
@@ -473,7 +471,7 @@ func (m *Model) KeyById(id string) (datastore.Key, bool, error) {
 		}
 	case "coupon":
 		code := strings.ToUpper(id)
-		if ok, _ := m.Query().Filter("Code_=", code).First(); ok {
+		if ok, _ := m.Query().Filter("Code=", code).First(); ok {
 			return m.Key(), true, nil
 		} else {
 			ids, err := hashid.Decode(id)
@@ -486,9 +484,11 @@ func (m *Model) KeyById(id string) (datastore.Key, bool, error) {
 			}
 
 			key := m.Db.KeyFromInt("coupon", ids[0])
+			log.Debug("coupon key: %v", key)
 			if _, err = m.Query().Filter("__key__ =", key).First(); err != nil {
 				return nil, false, err
 			}
+			log.Debug("coupon: %v", m)
 
 			// Set RawCode on fetched entity in case this was not parsed from JSON
 			v := reflect.ValueOf(m.Entity).Elem().FieldByName("RawCode")
@@ -633,9 +633,10 @@ func (m *Model) GetOrCreate(filterStr string, value interface{}) error {
 		// What were we filtering on? Make sure the field is set to value of
 		// filter. This prevents any duplicate attempts from creating new
 		// models as well.
-		name := strings.TrimSpace(strings.Split(filterStr, "=")[0])
-		field := reflect.Indirect(reflect.ValueOf(m.Entity)).FieldByName(name)
-		field.Set(reflect.ValueOf(value))
+
+		// name := strings.TrimSpace(strings.Split(filterStr, "=")[0])
+		// field := reflect.Indirect(reflect.ValueOf(m.Entity)).FieldByName(name)
+		// field.Set(reflect.ValueOf(value))
 
 		return m.Create()
 	}
