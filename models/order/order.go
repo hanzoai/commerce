@@ -210,6 +210,9 @@ func (o *Order) Load(c <-chan aeds.Property) (err error) {
 
 	// Set order number
 	o.Number = o.NumberFromId()
+	for _, coup := range o.Coupons {
+		coup.Init(o.Model.Db)
+	}
 
 	// Deserialize from datastore
 	if len(o.Metadata_) > 0 {

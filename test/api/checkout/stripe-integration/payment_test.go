@@ -646,7 +646,12 @@ var _ = Describe("payment", func() {
 			jsonStr := fmt.Sprintf(requests.ValidOrderTemplate, ord.UserId, cpn.Code())
 			w = client.PostRawJSON("/checkout/charge", jsonStr)
 			Expect(w.Code).To(Equal(200))
-			log.Debug("JSON %v", w.Body)
+			log.Debug("JSON %#v", w.Body)
+
+			jsonStr = fmt.Sprintf(requests.ValidOrderTemplate, ord.UserId, cpn.Code())
+			w = client.PostRawJSON("/checkout/charge", jsonStr)
+			Expect(w.Code).To(Equal(500))
+			log.Debug("JSON %#v", w.Body)
 		})
 	})
 
