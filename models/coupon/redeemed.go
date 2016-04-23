@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"crowdstart.com/datastore"
+	"crowdstart.com/util/log"
 )
 
 type Redemption struct {
@@ -30,15 +31,19 @@ func (c Coupon) Redemptions() int {
 
 func (c Coupon) Redeemable() bool {
 	if !c.Enabled {
+		log.Debug("Coupon Not Enabled")
 		return false
 	}
 
 	// Unlimited coupon usage if limit is set less than 1
 	if c.Limit < 1 {
+		log.Debug("Limit is Infinite")
 		return true
 	}
 
-	if c.Redemptions() >= c.Limit {
+	r := c.Redemptions()
+	if r >= c.Limit {
+		log.Debug("c.Redemptions %v >= c.Limits %v", r, c.Limit)
 		return false
 	}
 
