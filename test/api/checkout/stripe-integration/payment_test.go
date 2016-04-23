@@ -62,7 +62,7 @@ var _ = BeforeSuite(func() {
 	org = fixtures.Organization(c).(*organization.Organization)
 	refIn = fixtures.Referrer(c).(*referrer.Referrer)
 	prod = fixtures.Product(c).(*product.Product)
-	// fixtures.Coupon(c)
+	fixtures.Coupon(c)
 	fixtures.Variant(c)
 	stor = fixtures.Store(c).(*store.Store)
 
@@ -628,21 +628,30 @@ var _ = Describe("payment", func() {
 
 	FContext("Charge Order With Single Use Coupon", func() {
 		It("Should charge order with single use coupon successfully", func() {
-			w := client.Get("/coupon/no-doge-left-behind/code/" + u.Id())
+			w := client.PostRawJSON("/checkout/charge", requests.ValidOrder)
 			Expect(w.Code).To(Equal(200))
-			log.Warn("CODE JSON %v", w.Body)
 
-			cpn := coupon.New(db)
-			err := json.DecodeBuffer(w.Body, &cpn)
+			ord := order.New(db)
+			err := json.DecodeBuffer(w.Body, ord)
 			Expect(err).ToNot(HaveOccurred())
 
-			log.Warn("CODE TO USE: %v", cpn.Code())
-
-			jsonStr := fmt.Sprintf(requests.ValidOrderTemplate, u.Id(), cpn.Code())
-			log.Warn("JSON Str %v", jsonStr)
-			w = client.PostRawJSON("/checkout/charge", jsonStr)
+			w = client.Get("/coupon/no-doge-left-behind/code/" + u.Id())
 			Expect(w.Code).To(Equal(200))
 			log.Debug("JSON %v", w.Body)
+
+			cpn := coupon.New(db)
+			err = json.DecodeBuffer(w.Body, &cpn)
+			Expect(err).ToNot(HaveOccurred())
+
+			jsonStr := fmt.Sprintf(requests.ValidOrderTemplate, ord.UserId, cpn.Code())
+			w = client.PostRawJSON("/checkout/charge", jsonStr)
+			Expect(w.Code).To(Equal(200))
+			log.Debug("JSON %#v", w.Body)
+
+			jsonStr = fmt.Sprintf(requests.ValidOrderTemplate, ord.UserId, cpn.Code())
+			w = client.PostRawJSON("/checkout/charge", jsonStr)
+			Expect(w.Code).To(Equal(500))
+			log.Debug("JSON %#v", w.Body)
 		})
 	})
 
