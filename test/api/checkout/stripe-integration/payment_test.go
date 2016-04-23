@@ -62,7 +62,7 @@ var _ = BeforeSuite(func() {
 	org = fixtures.Organization(c).(*organization.Organization)
 	refIn = fixtures.Referrer(c).(*referrer.Referrer)
 	prod = fixtures.Product(c).(*product.Product)
-	fixtures.Coupon(c)
+	// fixtures.Coupon(c)
 	fixtures.Variant(c)
 	stor = fixtures.Store(c).(*store.Store)
 
@@ -626,7 +626,7 @@ var _ = Describe("payment", func() {
 	// 		})
 	// 	})
 
-	Context("Charge Order With Single Use Coupon", func() {
+	FContext("Charge Order With Single Use Coupon", func() {
 		It("Should charge order with single use coupon successfully", func() {
 			w := client.Get("/coupon/no-doge-left-behind/code/" + u.Id())
 			Expect(w.Code).To(Equal(200))
@@ -643,7 +643,6 @@ var _ = Describe("payment", func() {
 			w = client.PostRawJSON("/checkout/charge", jsonStr)
 			Expect(w.Code).To(Equal(200))
 			log.Debug("JSON %v", w.Body)
-
 		})
 	})
 

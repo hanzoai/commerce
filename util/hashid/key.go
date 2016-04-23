@@ -179,8 +179,6 @@ func EncodeKey(ctx appengine.Context, key datastore.Key) string {
 }
 
 func DecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key, err error) {
-	log.Debug("encoded key: %v", encoded)
-
 	ids, err := Decode(encoded)
 	if err != nil {
 		return nil, err
