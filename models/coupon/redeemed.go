@@ -23,7 +23,6 @@ func (c Coupon) SaveRedemption() error {
 
 func (c Coupon) Redemptions() int {
 	db := datastore.New(c.Context())
-	// If code is missing this is a normal coupon
 	count, _ := db.Query("redemption").Filter("Code=", c.Code()).Count()
 	return count
 }
