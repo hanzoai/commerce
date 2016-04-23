@@ -16,7 +16,7 @@ var ValidOrderTemplate = `
   },
   "order": {
     "currency": "usd",
-	"couponCodes": ["%s"],
+    "couponCodes": ["%s"],
     "items": [ {
       "productSlug": "doge-shirt",
       "price": 1000,
