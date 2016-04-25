@@ -1,14 +1,15 @@
 package account
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 
+	"crowdstart.com/auth/password"
 	"crowdstart.com/middleware"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/json/http"
-	"crowdstart.com/util/log"
 )
 
 func get(c *gin.Context) {
@@ -63,7 +64,10 @@ func patch(c *gin.Context) {
 	}
 
 	if req.Password != "" {
-		log.Warn("Password Change: %v, %v", req.Password, req.PasswordConfirm, c)
+		if !password.HashAndCompare(usr.PasswordHash, req.CurrentPassword) {
+			http.Fail(c, 401, "Password is incorrect", errors.New("Password is incorrect"))
+			return
+		}
 		if err := resetPassword(usr, req); err != nil {
 			switch err {
 			case PasswordMismatchError, PasswordMinLengthError:
