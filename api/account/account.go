@@ -8,6 +8,7 @@ import (
 	"crowdstart.com/middleware"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/json/http"
+	"crowdstart.com/util/log"
 )
 
 func get(c *gin.Context) {
@@ -62,6 +63,7 @@ func patch(c *gin.Context) {
 	}
 
 	if req.Password != "" {
+		log.Warn("Password Change: %v, %v", req.Password, req.PasswordConfirm, c)
 		if err := resetPassword(usr, req); err != nil {
 			switch err {
 			case PasswordMismatchError, PasswordMinLengthError:
