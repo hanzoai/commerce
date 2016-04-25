@@ -14,9 +14,42 @@ import (
 	"crowdstart.com/util/log"
 )
 
+// Copy to Hanzo
+var (
+	PasswordMinLengthError = errors.New("Password needs to be atleast 6 characters")
+	PasswordMismatchError  = errors.New("Passwords need to match")
+)
+
 type confirmPasswordReq struct {
+	*user.User
+
 	Password        string `json:"password"`
 	PasswordConfirm string `json:"passwordConfirm"`
+}
+
+func resetPassword(usr *user.User, req *confirmPasswordReq) error {
+	// Validate password
+	if len(req.Password) < 6 {
+		return PasswordMinLengthError
+	}
+
+	if req.Password != req.PasswordConfirm {
+		return PasswordMismatchError
+	}
+
+	// Update password
+	if err := usr.SetPassword(req.Password); err != nil {
+		return err
+	}
+
+	// Enable user in case this user has never confirmed account
+	usr.Enabled = true
+
+	if err := usr.Put(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func confirm(c *gin.Context) {
@@ -49,28 +82,13 @@ func confirm(c *gin.Context) {
 		return
 	}
 
-	// Validate password
-	if len(req.Password) < 6 {
-		http.Fail(c, 400, "Password needs to be atleast 6 characters", errors.New("Password needs to be atleast 6 characters"))
-		return
-	}
-
-	if req.Password != req.PasswordConfirm {
-		http.Fail(c, 400, "Passwords need to match", errors.New("Passwords need to match"))
-		return
-	}
-
-	// Update password
-	if err := usr.SetPassword(req.Password); err != nil {
-		http.Fail(c, 500, "Failed to set password", err)
-		return
-	}
-
-	// Enable user in case this user has never confirmed account
-	usr.Enabled = true
-
-	if err := usr.Put(); err != nil {
-		http.Fail(c, 500, "Failed to update password", err)
+	if err := resetPassword(usr, req); err != nil {
+		switch err {
+		case PasswordMismatchError, PasswordMinLengthError:
+			http.Fail(c, 400, err.Error(), err)
+		default:
+			http.Fail(c, 500, err.Error(), err)
+		}
 		return
 	}
 
