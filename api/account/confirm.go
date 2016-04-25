@@ -14,6 +14,7 @@ import (
 	"crowdstart.com/util/log"
 )
 
+// Copy to Hanzo
 var (
 	PasswordMinLengthError = errors.New("Password needs to be atleast 6 characters")
 	PasswordMismatchError  = errors.New("Passwords need to match")
