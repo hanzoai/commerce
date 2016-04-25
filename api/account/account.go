@@ -54,9 +54,23 @@ func patch(c *gin.Context) {
 
 	usr.Email = strings.ToLower(strings.TrimSpace(usr.Email))
 
-	if err := json.Decode(c.Request.Body, usr); err != nil {
+	req := &confirmPasswordReq{User: usr}
+
+	if err := json.Decode(c.Request.Body, req); err != nil {
 		http.Fail(c, 400, "Failed decode request body", err)
 		return
+	}
+
+	if req.Password != "" {
+		if err := resetPassword(usr, req); err != nil {
+			switch err {
+			case PasswordMismatchError, PasswordMinLengthError:
+				http.Fail(c, 400, err.Error(), err)
+			default:
+				http.Fail(c, 500, err.Error(), err)
+			}
+			return
+		}
 	}
 
 	if err := usr.Put(); err != nil {
