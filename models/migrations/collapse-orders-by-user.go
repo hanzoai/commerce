@@ -15,7 +15,7 @@ import (
 
 var _ = New("collapse-orders-by-user",
 	func(c *gin.Context) []interface{} {
-		c.Set("namespace", "bellabeat")
+		c.Set("namespace", "kanoa")
 		return NoArgs
 	},
 	func(db *ds.Datastore, ord *order.Order) {
