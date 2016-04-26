@@ -1,6 +1,8 @@
 package migrations
 
 import (
+	"strings"
+
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.com/models/order"
@@ -121,13 +123,18 @@ func dedupeOrders(db *ds.Datastore, ord *order.Order, currentUsr, masterUsr *use
 	}
 }
 
-var _ = New("merge-users-orders-payments",
+var _ = New("dedupe-users-orders-payments",
 	func(c *gin.Context) []interface{} {
 		c.Set("namespace", "kanoa")
 		return NoArgs
 	},
 	func(db *ds.Datastore, usr *user.User) {
 		ctx := db.Context
+
+		if !strings.HasPrefix(usr.Email, "!______") {
+			log.Warn("User deduped", ctx)
+			return
+		}
 
 		// Try to find newest instance of a user with this email
 		usr2 := user.New(db)
