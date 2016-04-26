@@ -162,6 +162,11 @@ var _ = New("dedupe-users-orders-payments",
 			put = true
 		}
 
+		if usr2.Enabled {
+			usr.Enabled = true
+			put = true
+		}
+
 		if put {
 			usr2.Put()
 		}
