@@ -17,9 +17,9 @@ var _ = New("dedupe-users",
 	func(db *ds.Datastore, usr *user.User) {
 		ctx := db.Context
 
-		// Try to find newest instance of a user with this email
+		// Try to find oldest instance of a user with this email
 		usr2 := user.New(db)
-		if _, err := usr2.Query().Filter("Email=", usr.Email).Order("-CreatedAt").First(); err != nil {
+		if _, err := usr2.Query().Filter("Email=", usr.Email).Order("CreatedAt").First(); err != nil {
 			log.Error("Failed to query for newest user: %v", err, ctx)
 			return
 		}
@@ -32,6 +32,9 @@ var _ = New("dedupe-users",
 
 		// transfer accounts in case of shenanigans
 		if usr2.Accounts.Stripe.CustomerId == "" && usr.Accounts.Stripe.CustomerId != "" {
+			if string(usr.PasswordHash) != "" {
+				usr2.PasswordHash = usr.PasswordHash
+			}
 			usr2.Accounts = usr.Accounts
 			usr2.Put()
 		}

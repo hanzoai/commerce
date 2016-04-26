@@ -29,9 +29,9 @@ var _ = New("collapse-orders-by-user",
 			return
 		}
 
-		// Try to find newest instance of a user with this email
+		// Try to find oldest instance of a user with this email
 		usr2 := user.New(db)
-		if _, err := usr2.Query().Filter("Email=", usr.Email).Order("-CreatedAt").First(); err != nil {
+		if _, err := usr2.Query().Filter("Email=", usr.Email).Order("CreatedAt").First(); err != nil {
 			log.Error("Failed to query for newest user: %v", err, ctx)
 			return
 		}
