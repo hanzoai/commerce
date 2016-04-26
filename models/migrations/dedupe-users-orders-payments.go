@@ -131,7 +131,7 @@ var _ = New("dedupe-users-orders-payments",
 	func(db *ds.Datastore, usr *user.User) {
 		ctx := db.Context
 
-		if !strings.HasPrefix(usr.Email, "!______") {
+		if strings.HasPrefix(usr.Email, "!______") {
 			log.Warn("User deduped", ctx)
 			return
 		}
