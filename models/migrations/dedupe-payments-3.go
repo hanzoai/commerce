@@ -10,7 +10,7 @@ import (
 
 var _ = New("dedupe-payments-3", func(c *gin.Context) []interface{} {
 	db := datastore.New(c)
-	db.SetNamespace("bellabeat")
+	db.SetNamespace("kanoa")
 
 	keys, err := payment.Query(db).Filter("Deleted=", true).KeysOnly().Limit(500).GetAll(nil)
 	if err != nil {
