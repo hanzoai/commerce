@@ -43,12 +43,7 @@ func Webhook(c *gin.Context) {
 	ctx := middleware.GetAppEngine(c)
 
 	switch event.Type {
-	case "charge.captured":
-	case "charge.failed":
-	case "charge.refunded":
-	case "charge.succeeded":
-	case "charge.updated":
-		log.Warn("Webhook: %v", string(event.Data.Raw), ctx)
+	case "charge.captured", "charge.failed", "charge.refunded", "charge.succeeded", "charge.updated":
 		ch := stripe.Charge{}
 		if err := json.Unmarshal(event.Data.Raw, &ch); err != nil {
 			log.Error("Failed to unmarshal stripe.Charge %#v: %v", event, err, c)
@@ -56,12 +51,7 @@ func Webhook(c *gin.Context) {
 			start := time.Now()
 			tasks.ChargeSync.Call(ctx, org.Name, token, ch, start)
 		}
-
-	case "charge.dispute.closed":
-	case "charge.dispute.created":
-	case "charge.dispute.funds_reinstated":
-	case "charge.dispute.funds_withdrawn":
-	case "charge.dispute.updated":
+	case "charge.dispute.closed", "charge.dispute.created", "charge.dispute.funds_reinstated", "charge.dispute.funds_withdrawn", "charge.dispute.updated":
 		dispute := stripe.Dispute{}
 		if err := json.Unmarshal(event.Data.Raw, &dispute); err != nil {
 			log.Error("Failed to unmarshal stripe.Dispute %#v: %v", event, err, c)
@@ -69,7 +59,6 @@ func Webhook(c *gin.Context) {
 			start := time.Now()
 			tasks.DisputeSync.Call(ctx, org.Name, token, dispute, start)
 		}
-
 	case "ping":
 		c.String(200, "pong")
 		return
