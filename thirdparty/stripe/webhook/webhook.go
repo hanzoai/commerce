@@ -48,6 +48,7 @@ func Webhook(c *gin.Context) {
 	case "charge.refunded":
 	case "charge.succeeded":
 	case "charge.updated":
+		log.Warn("Webhook: %v", string(event.Data.Raw), ctx)
 		ch := stripe.Charge{}
 		if err := json.Unmarshal(event.Data.Raw, &ch); err != nil {
 			log.Error("Failed to unmarshal stripe.Charge %#v: %v", event, err, c)
