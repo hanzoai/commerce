@@ -112,7 +112,7 @@ type Order struct {
 	ShippingAddress Address `json:"shippingAddress"`
 
 	// Individual line items
-	Items  []LineItem `json:"items"`
+	Items  []LineItem `json:"items" datastore:"-"`
 	Items_ string     `json:"-"` // need props
 
 	Adjustments []Adjustment `json:"-"`
