@@ -112,8 +112,8 @@ type Order struct {
 	ShippingAddress Address `json:"shippingAddress"`
 
 	// Individual line items
-	Items     []LineItem `json:"items"`
-	ItemsStr_ string     `json:"-"` // need props
+	Items  []LineItem `json:"items"`
+	Items_ string     `json:"-"` // need props
 
 	Adjustments []Adjustment `json:"-"`
 
@@ -213,8 +213,8 @@ func (o *Order) Load(c <-chan aeds.Property) (err error) {
 	o.Number = o.NumberFromId()
 
 	// Deserialize from datastore
-	// if len(o.ItemsStr_) > 0 {
-	// 	err = json.DecodeBytes([]byte(o.ItemsStr_), &o.Items)
+	// if len(o.Items_) > 0 {
+	// 	err = json.DecodeBytes([]byte(o.Items_), &o.Items)
 	// }
 	if len(o.Metadata_) > 0 {
 		err = json.DecodeBytes([]byte(o.Metadata_), &o.Metadata)
@@ -226,7 +226,7 @@ func (o *Order) Load(c <-chan aeds.Property) (err error) {
 func (o *Order) Save(c chan<- aeds.Property) (err error) {
 	// Serialize unsupported properties
 	o.Metadata_ = string(json.EncodeBytes(&o.Metadata))
-	o.ItemsStr_ = string(json.EncodeBytes(o.Items))
+	o.Items_ = string(json.EncodeBytes(o.Items))
 
 	// Save properties
 	return IgnoreFieldMismatch(aeds.SaveStruct(o, c))
