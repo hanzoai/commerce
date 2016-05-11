@@ -7,9 +7,8 @@ import (
 	ds "crowdstart.com/datastore"
 )
 
-var _ = New("reput-orders-for-kanoa",
+var _ = New("reput-orders",
 	func(c *gin.Context) []interface{} {
-		c.Set("namespace", "kanoa")
 		return NoArgs
 	},
 	func(db *ds.Datastore, ord *order.Order) {
