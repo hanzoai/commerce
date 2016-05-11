@@ -286,6 +286,26 @@ func (m *Model) Put() error {
 	return nil
 }
 
+func (m *Model) PutWithoutSideEffects() error {
+	if m.Mock { // Need mock Put
+		return m.mockPut()
+	}
+
+	// Put entity into datastore
+	key, err := m.Db.Put(m.Key(), m.Entity)
+	if err != nil {
+		return err
+	}
+
+	// Update key
+	m.setKey(key)
+
+	// Errors are ignored
+	m.PutDocument()
+
+	return nil
+}
+
 // Create new entity (should not exist yet)
 func (m *Model) Create() error {
 	// Execute BeforeCreate hook if defined on entity.
