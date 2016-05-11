@@ -6,7 +6,7 @@ import (
 	"appengine"
 	"appengine/urlfetch"
 
-	gochimp "github.com/rybit/gochimp/mailchimpV3"
+	"github.com/rybit/gochimp/chimp_v3"
 
 	"crowdstart.com/models/mailinglist"
 	"crowdstart.com/models/subscriber"
@@ -29,46 +29,39 @@ func New(ctx appengine.Context, apiKey string) *API {
 	return api
 }
 
-func (a API) Subscribe(ml *mailinglist.MailingList, s *subscriber.Subscriber) error {
-	email := gochimp.Email{
-		Email: s.Email,
-	}
-	req := gochimp.ListsSubscribe{
-		Email:            email,
-		MergeVars:        s.MergeVars(),
-		ListId:           ml.Mailchimp.Id,
-		DoubleOptIn:      ml.Mailchimp.DoubleOptin,
-		UpdateExisting:   ml.Mailchimp.UpdateExisting,
-		ReplaceInterests: ml.Mailchimp.ReplaceInterests,
-		SendWelcome:      ml.Mailchimp.SendWelcome,
-	}
-	_, err := a.client.ListsSubscribe(req)
+func (api API) Subscribe(ml *mailinglist.MailingList, s *subscriber.Subscriber) error {
+	list, err := api.client.GetList(ml.Mailchimp.Id, nil)
 	if err != nil {
-		log.Error("Failed to subscribe %v: %v", s, err, a.ctx)
+		log.Error("Failed to subscribe %v: %v", s, err, api.ctx)
+		return err
 	}
-	return err
-}
 
-func (a API) BatchSubscribe(ml *mailinglist.MailingList, subscribers []*subscriber.Subscriber) error {
-	members := make([]gochimp.ListsMember, 0)
-	for _, s := range subscribers {
-		members = append(members, gochimp.ListsMember{
-			Email: gochimp.Email{
-				Email: s.Email,
-			},
-			MergeVars: s.MergeVars(),
-		})
+	status := "subscribed"
+	if ml.Mailchimp.DoubleOptin {
+		status = "pending"
 	}
-	req := gochimp.BatchSubscribe{
-		ListId:           ml.Mailchimp.Id,
-		Batch:            members,
-		DoubleOptin:      ml.Mailchimp.DoubleOptin,
-		UpdateExisting:   ml.Mailchimp.UpdateExisting,
-		ReplaceInterests: ml.Mailchimp.ReplaceInterests,
+
+	req := &gochimp.MemberRequest{
+		EmailAddress: s.Email,
+		Status:       status,
+		MergeFields:  s.MergeFields(),
+		Interests:    make(map[string]interface{}),
+		Language:     s.Client.Language,
+		VIP:          false,
+		Location: gochimp.MemberLocation{
+			Latitude:    0.0,
+			Longitude:   0.0,
+			GMTOffset:   0,
+			DSTOffset:   0,
+			CountryCode: s.Client.Country,
+			Timezone:    "",
+		},
 	}
-	_, err := a.client.BatchSubscribe(req)
-	if err != nil {
-		log.Error("Batch subscribe failed: %v", err, a.ctx)
+
+	// Try to update subscriber, create new member if that fails.
+	if _, err := list.UpdateMember(s.Md5(), req); err != nil {
+		_, err := list.CreateMember(req)
+		return err
 	}
-	return err
+	return nil
 }
