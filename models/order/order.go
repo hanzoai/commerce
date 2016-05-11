@@ -213,6 +213,9 @@ func (o *Order) Load(c <-chan aeds.Property) (err error) {
 	o.Number = o.NumberFromId()
 
 	// Deserialize from datastore
+	if len(o.Items_) > 0 {
+		err = json.DecodeBytes([]byte(o.Metadata_), &o.Metadata)
+	}
 	if len(o.Metadata_) > 0 {
 		err = json.DecodeBytes([]byte(o.Metadata_), &o.Metadata)
 	}
