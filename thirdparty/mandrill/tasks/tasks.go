@@ -31,7 +31,7 @@ var Send = delay.Func("send-email", func(ctx appengine.Context, apiKey, toEmail,
 	}
 })
 
-var SendTemplate = delay.Func("send-email-template", func(ctx appengine.Context, template, toEmail, toName, subject string, vars map[string]string) {
+var SendTemplate = delay.Func("send-email-template", func(ctx appengine.Context, template, toEmail, toName, subject string, vars map[string]interface{}) {
 	req := mandrill.NewSendTemplateReq()
 	req.AddRecipient(toEmail, toName)
 
