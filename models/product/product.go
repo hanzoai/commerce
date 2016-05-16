@@ -170,7 +170,7 @@ func (p Product) DisplayImage() Media {
 }
 
 func (p Product) DisplayPrice() string {
-	return DisplayPrice(p.MinPrice())
+	return DisplayPrice(p.Currency, p.MinPrice())
 }
 
 func (p Product) MinPrice() currency.Cents {
