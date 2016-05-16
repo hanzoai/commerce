@@ -55,12 +55,12 @@ func (li LineItem) TotalPrice() currency.Cents {
 	return li.Price * currency.Cents(li.Quantity)
 }
 
-func (li LineItem) DisplayPrice() string {
-	return DisplayPrice(li.Price)
+func (li LineItem) DisplayPrice(t currency.Type) string {
+	return DisplayPrice(t, li.Price)
 }
 
-func (li LineItem) DisplayTotalPrice() string {
-	return DisplayPrice(li.TotalPrice())
+func (li LineItem) DisplayTotalPrice(t currency.Type) string {
+	return DisplayPrice(t, li.TotalPrice())
 }
 
 func (li LineItem) Id() string {
