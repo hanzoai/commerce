@@ -295,6 +295,12 @@ test-ci:
 	$(ginkgo) -r=true -p=true --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace --compilers=2
 
 # DEPLOY
+auth:
+	gcloud components reinstall
+	rm ~/.appcfg*
+	gcloud auth login
+	appcfg.py list_versions config/staging
+
 deploy: assets-min docs rollback
 	# Set env for deploy
 	@echo 'package config\n\nvar Env = "$(project_id)"' > config/env.go
@@ -388,7 +394,7 @@ docs:
 	$(sed) 's/table>/table class="table table-striped table-borderless table-vcenter">/' templates/platform/docs/_generated/salesforce.html
 	@rm -rf templates/platform/docs/_generated/salesforce.html.bak
 
-.PHONY: all bench build compile-js compile-js-min compile-css compile-css-min \
+.PHONY: all auth bench build compile-js compile-js-min compile-css compile-css-min \
 	datastore-import datastore-export datastore-config deploy deploy-staging \
 	deploy-skully deploy-production deps deps-assets deps-go live-reload \
 	serve serve-clear-datastore serve-public test test-integration test-watch \
