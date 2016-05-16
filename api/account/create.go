@@ -18,7 +18,6 @@ import (
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/json/http"
 	"crowdstart.com/util/log"
-	"crowdstart.com/util/template"
 
 	mandrill "crowdstart.com/thirdparty/mandrill/tasks"
 )
@@ -59,12 +58,22 @@ func sendEmailConfirmation(c *gin.Context, org *organization.Organization, usr *
 	// Subject
 	subject := conf.Subject
 
-	// Render email
-	html := template.RenderStringFromString(conf.Template, "user", usr, "token", tok)
+	// Create Merge Vars
+	vars := map[string]interface{}{
+		"user": map[string]interface{}{
+			"firstName": usr.FirstName,
+			"lastName":  usr.LastName,
+		},
+		"token": tok,
+
+		"USER_FIRSTNAME": usr.FirstName,
+		"USER_LASTNAME":  usr.LastName,
+		"TOKEN":          tok,
+	}
 
 	// Send Email
 	ctx := middleware.GetAppEngine(c)
-	mandrill.Send.Call(ctx, org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, html)
+	mandrill.SendTemplate.Call(ctx, org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
 }
 
 func sendEmailConfirmed(c *gin.Context, org *organization.Organization, usr *user.User) {
@@ -84,12 +93,19 @@ func sendEmailConfirmed(c *gin.Context, org *organization.Organization, usr *use
 	// Subject
 	subject := conf.Subject
 
-	// Render email
-	html := template.RenderStringFromString(conf.Template, "user", usr)
+	// Create Merge Vars
+	vars := map[string]interface{}{
+		"user": map[string]interface{}{
+			"firstName": usr.FirstName,
+			"lastName":  usr.LastName,
+		},
+		"USER_FIRSTNAME": usr.FirstName,
+		"USER_LASTNAME":  usr.LastName,
+	}
 
 	// Send Email
 	ctx := middleware.GetAppEngine(c)
-	mandrill.Send.Call(ctx, org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, html)
+	mandrill.SendTemplate.Call(ctx, org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
 }
 
 func sendWelcome(c *gin.Context, org *organization.Organization, usr *user.User) {
@@ -109,12 +125,19 @@ func sendWelcome(c *gin.Context, org *organization.Organization, usr *user.User)
 	// Subject
 	subject := conf.Subject
 
-	// Render email
-	html := template.RenderStringFromString(conf.Template, "user", usr)
+	// Create Merge Vars
+	vars := map[string]interface{}{
+		"user": map[string]interface{}{
+			"firstName": usr.FirstName,
+			"lastName":  usr.LastName,
+		},
+		"USER_FIRSTNAME": usr.FirstName,
+		"USER_LASTNAME":  usr.LastName,
+	}
 
 	// Send Email
 	ctx := middleware.GetAppEngine(c)
-	mandrill.Send.Call(ctx, org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, html)
+	mandrill.SendTemplate.Call(ctx, org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
 }
 
 func create(c *gin.Context) {
