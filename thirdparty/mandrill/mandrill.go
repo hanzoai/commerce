@@ -25,8 +25,8 @@ func init() {
 }
 
 type Var struct {
-	Name    string `json:"name"`
-	Content string `json:"content"`
+	Name    string      `json:"name"`
+	Content interface{} `json:"content"`
 }
 
 type RcptMergeVars struct {
