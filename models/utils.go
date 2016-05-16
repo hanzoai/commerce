@@ -16,9 +16,13 @@ func FloatPrice(price currency.Cents) float64 {
 	return math.Floor(float64(price)*100+0.5) / 10000
 }
 
-// TODO: Make this work with non-decimal currencies
-func DisplayPrice(price currency.Cents) string {
-	f := strconv.FormatFloat(FloatPrice(price), 'f', 2, 64)
+func DisplayPrice(t currency.Type, price currency.Cents) string {
+	f := ""
+	if t.IsZeroDecimal() {
+		f = strconv.FormatFloat(FloatPrice(price), 'f', 2, 64)
+	} else {
+		f = strconv.FormatFloat(float64(price), 'f', 0, 64)
+	}
 	bits := strings.Split(f, ".")
 	decimal := bits[1]
 	integer, _ := strconv.ParseInt(bits[0], 10, 64)
