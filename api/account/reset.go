@@ -13,7 +13,6 @@ import (
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/json/http"
 	"crowdstart.com/util/log"
-	"crowdstart.com/util/template"
 
 	mandrill "crowdstart.com/thirdparty/mandrill/tasks"
 )
@@ -41,12 +40,24 @@ func sendPasswordReset(c *gin.Context, org *organization.Organization, usr *user
 	// Subject
 	subject := conf.Subject
 
-	// Render email
-	html := template.RenderStringFromString(conf.Template, "user", usr, "token", tok)
+	// Create Merge Vars
+	vars := map[string]interface{}{
+		"user": map[string]interface{}{
+			"firstName": usr.FirstName,
+			"lastName":  usr.LastName,
+		},
+		"token": map[string]interface{}{
+			"id": tok.Id(),
+		},
+
+		"USER_FIRSTNAME": usr.FirstName,
+		"USER_LASTNAME":  usr.LastName,
+		"TOKEN_ID":       tok.Id(),
+	}
 
 	// Send Email
 	ctx := middleware.GetAppEngine(c)
-	mandrill.Send.Call(ctx, org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, html)
+	mandrill.SendTemplate(ctx, "password-reset", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
 }
 
 func reset(c *gin.Context) {
