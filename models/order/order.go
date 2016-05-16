@@ -247,6 +247,18 @@ func (o Order) NumberFromId() int {
 	return ids[0]
 }
 
+func (o Order) OrderDay() string {
+	return string(o.CreatedAt.Day())
+}
+
+func (o Order) OrderMonthName() string {
+	return o.CreatedAt.Month().String()
+}
+
+func (o Order) OrderYear() string {
+	return string(o.CreatedAt.Year())
+}
+
 // Get line items from datastore
 func (o *Order) GetCoupons() error {
 	o.DedupeCouponCodes()
