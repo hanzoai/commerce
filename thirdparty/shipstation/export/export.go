@@ -148,7 +148,7 @@ type Item struct {
 	}
 }
 
-func newItem(item lineitem.LineItem) Item {
+func newItem(ord *order.Order, item lineitem.LineItem) Item {
 	si := Item{}
 	si.SKU = CDATA(item.ProductSlug)
 	si.Name = CDATA(item.ProductName)
@@ -161,7 +161,7 @@ func newItem(item lineitem.LineItem) Item {
 		si.SKU = CDATA(item.VariantName)
 	}
 
-	si.UnitPrice = removeCommas(item.DisplayPrice())
+	si.UnitPrice = removeCommas(item.DisplayPrice(ord.Currency))
 	si.Quantity = item.Quantity
 	si.Weight = item.Weight.String()
 	si.WeightUnits = string(item.WeightUnit)
@@ -264,7 +264,7 @@ func newOrder(ord *order.Order) *Order {
 	so.ShippingAmount = removeCommas(ord.DisplayShipping())
 	so.Items.Items = make([]Item, len(ord.Items))
 	for i, item := range ord.Items {
-		so.Items.Items[i] = newItem(item)
+		so.Items.Items[i] = newItem(ord, item)
 	}
 
 	// Try to figure out order status
