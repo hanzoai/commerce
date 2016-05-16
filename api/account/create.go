@@ -64,16 +64,18 @@ func sendEmailConfirmation(c *gin.Context, org *organization.Organization, usr *
 			"firstName": usr.FirstName,
 			"lastName":  usr.LastName,
 		},
-		"token": tok,
+		"token": map[string]interface{}{
+			"id": tok.Id(),
+		},
 
 		"USER_FIRSTNAME": usr.FirstName,
 		"USER_LASTNAME":  usr.LastName,
-		"TOKEN":          tok,
+		"TOKEN_ID":       tok.Id(),
 	}
 
 	// Send Email
 	ctx := middleware.GetAppEngine(c)
-	mandrill.SendTemplate.Call(ctx, org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
+	mandrill.SendTemplate(ctx, "user-email-confirmation", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
 }
 
 func sendEmailConfirmed(c *gin.Context, org *organization.Organization, usr *user.User) {
@@ -105,7 +107,7 @@ func sendEmailConfirmed(c *gin.Context, org *organization.Organization, usr *use
 
 	// Send Email
 	ctx := middleware.GetAppEngine(c)
-	mandrill.SendTemplate.Call(ctx, org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
+	mandrill.SendTemplate(ctx, "user-email-confirmed", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
 }
 
 func sendWelcome(c *gin.Context, org *organization.Organization, usr *user.User) {
@@ -137,7 +139,7 @@ func sendWelcome(c *gin.Context, org *organization.Organization, usr *user.User)
 
 	// Send Email
 	ctx := middleware.GetAppEngine(c)
-	mandrill.SendTemplate.Call(ctx, org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
+	mandrill.SendTemplate(ctx, "welcome-email", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
 }
 
 func create(c *gin.Context) {
