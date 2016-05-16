@@ -1,6 +1,7 @@
 package emails
 
 import (
+	"encoding/gob"
 	"strconv"
 	"strings"
 
@@ -15,6 +16,10 @@ import (
 
 	mandrill "crowdstart.com/thirdparty/mandrill/tasks"
 )
+
+func init() {
+	gob.Register([]map[string]interface{}{})
+}
 
 func SendOrderConfirmationEmail(ctx appengine.Context, org *organization.Organization, ord *order.Order, usr *user.User) {
 	conf := org.Email.OrderConfirmation.Config(org)
