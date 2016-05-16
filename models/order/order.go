@@ -603,31 +603,23 @@ func (o Order) DisplayCreatedAt() string {
 }
 
 func (o Order) DisplaySubtotal() string {
-	return DisplayPrice(o.Subtotal)
+	return DisplayPrice(o.Currency, o.Subtotal)
 }
 
 func (o Order) DisplayDiscount() string {
-	return DisplayPrice(o.Discount)
+	return DisplayPrice(o.Currency, o.Discount)
 }
 
 func (o Order) DisplayTax() string {
-	return DisplayPrice(o.Tax)
+	return DisplayPrice(o.Currency, o.Tax)
 }
 
 func (o Order) DisplayShipping() string {
-	return DisplayPrice(o.Shipping)
+	return DisplayPrice(o.Currency, o.Shipping)
 }
 
 func (o Order) DisplayTotal() string {
-	return DisplayPrice(o.Total)
-}
-
-func (o Order) DecimalTotal() uint64 {
-	return uint64(FloatPrice(o.Total) * 100)
-}
-
-func (o Order) DecimalFee() uint64 {
-	return uint64(FloatPrice(o.Total) * 100 * 0.02)
+	return DisplayPrice(o.Currency, o.Total)
 }
 
 func (o Order) Description() string {
