@@ -1,0 +1,53 @@
+package migrations
+
+import (
+	"appengine/search"
+
+	"github.com/gin-gonic/gin"
+
+	"crowdstart.com/datastore"
+	"crowdstart.com/util/log"
+)
+
+var _ = New("wipe-search-documents",
+	func(c *gin.Context) []interface{} {
+		db := datastore.New(c)
+		db.SetNamespace("kanoa")
+		ctx := db.Context
+
+		index, err := search.Open("user")
+		if err != nil {
+			log.Error("Failed to open search index for model", ctx)
+			return NoArgs
+		}
+
+		iter := index.List(ctx, &search.ListOptions{IDsOnly: true})
+
+		for {
+			id, err := iter.Next(nil)
+			if err != nil {
+				break
+			}
+
+			index.Delete(ctx, id)
+		}
+
+		index, err = search.Open("order")
+		if err != nil {
+			log.Error("Failed to open search index for model", ctx)
+			return NoArgs
+		}
+
+		iter = index.List(ctx, &search.ListOptions{IDsOnly: true})
+
+		for {
+			id, err := iter.Next(nil)
+			if err != nil {
+				break
+			}
+
+			index.Delete(ctx, id)
+		}
+		return NoArgs
+	},
+)
