@@ -112,7 +112,8 @@ type Order struct {
 	ShippingAddress Address `json:"shippingAddress"`
 
 	// Individual line items
-	Items []LineItem `json:"items"`
+	Items  []LineItem `json:"items" datastore:"-"`
+	Items_ string     `json:"-"` // need props
 
 	Adjustments []Adjustment `json:"-"`
 
@@ -215,6 +216,10 @@ func (o *Order) Load(c <-chan aeds.Property) (err error) {
 	}
 
 	// Deserialize from datastore
+	if len(o.Items_) > 0 {
+		err = json.DecodeBytes([]byte(o.Items_), &o.Items)
+	}
+
 	if len(o.Metadata_) > 0 {
 		err = json.DecodeBytes([]byte(o.Metadata_), &o.Metadata)
 	}
@@ -225,6 +230,7 @@ func (o *Order) Load(c <-chan aeds.Property) (err error) {
 func (o *Order) Save(c chan<- aeds.Property) (err error) {
 	// Serialize unsupported properties
 	o.Metadata_ = string(json.EncodeBytes(&o.Metadata))
+	o.Items_ = string(json.EncodeBytes(o.Items))
 
 	// Save properties
 	return IgnoreFieldMismatch(aeds.SaveStruct(o, c))
@@ -245,6 +251,18 @@ func (o Order) NumberFromId() int {
 	}
 	ids, _ := hashid.Decode(o.Id_)
 	return ids[0]
+}
+
+func (o Order) OrderDay() string {
+	return string(o.CreatedAt.Day())
+}
+
+func (o Order) OrderMonthName() string {
+	return o.CreatedAt.Month().String()
+}
+
+func (o Order) OrderYear() string {
+	return string(o.CreatedAt.Year())
 }
 
 // Get line items from datastore
@@ -603,31 +621,23 @@ func (o Order) DisplayCreatedAt() string {
 }
 
 func (o Order) DisplaySubtotal() string {
-	return DisplayPrice(o.Subtotal)
+	return DisplayPrice(o.Currency, o.Subtotal)
 }
 
 func (o Order) DisplayDiscount() string {
-	return DisplayPrice(o.Discount)
+	return DisplayPrice(o.Currency, o.Discount)
 }
 
 func (o Order) DisplayTax() string {
-	return DisplayPrice(o.Tax)
+	return DisplayPrice(o.Currency, o.Tax)
 }
 
 func (o Order) DisplayShipping() string {
-	return DisplayPrice(o.Shipping)
+	return DisplayPrice(o.Currency, o.Shipping)
 }
 
 func (o Order) DisplayTotal() string {
-	return DisplayPrice(o.Total)
-}
-
-func (o Order) DecimalTotal() uint64 {
-	return uint64(FloatPrice(o.Total) * 100)
-}
-
-func (o Order) DecimalFee() uint64 {
-	return uint64(FloatPrice(o.Total) * 100 * 0.02)
+	return DisplayPrice(o.Currency, o.Total)
 }
 
 func (o Order) Description() string {
