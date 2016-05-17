@@ -240,7 +240,7 @@
     {% if isProduction %}
       '//api-dot-crowdstart-us.appspot.com/',
     {% else %}
-      '{{ urlFor("api") }}',
+      '//api-dot-crowdstart-staging.appspot.com/',
     {% endif %}
     window.Keys['live-secret-key']
   ).register('crowdstart')
