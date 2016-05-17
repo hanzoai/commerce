@@ -295,9 +295,12 @@ test-ci:
 	$(ginkgo) -r=true -p=true --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace --compilers=2
 
 # DEPLOY
+
+# To re-auth you might need to:
+# 	gcloud components reinstall
+# 	rm ~/.appcfg*
+
 auth:
-	gcloud components reinstall
-	rm ~/.appcfg*
 	gcloud auth login
 	appcfg.py list_versions config/staging
 
