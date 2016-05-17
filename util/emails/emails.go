@@ -62,7 +62,11 @@ func SendOrderConfirmationEmail(ctx appengine.Context, org *organization.Organiz
 	subject := conf.Subject
 
 	currencyCode := strings.ToUpper(ord.Currency.Code())
-	countryCode := country.ByISOCodeISO3166_2[ord.ShippingAddress.Country].ISO3166OneEnglishShortNameReadingOrder
+	countryName := country.ByISOCodeISO3166_2[ord.ShippingAddress.Country].ISO3166OneEnglishShortNameReadingOrder
+	stateName := ord.ShippingAddress.State
+	if len(stateName) <= 2 {
+		stateName = strings.ToUpper(stateName)
+	}
 	items := make([]map[string]interface{}, len(ord.Items))
 	vars := map[string]interface{}{
 		"order": map[string]interface{}{
@@ -78,8 +82,8 @@ func SendOrderConfirmationEmail(ctx appengine.Context, org *organization.Organiz
 				"line1":      ord.ShippingAddress.Line1,
 				"line2":      ord.ShippingAddress.Line2,
 				"postalCode": ord.ShippingAddress.PostalCode,
-				"state":      ord.ShippingAddress.State,
-				"country":    countryCode,
+				"state":      stateName,
+				"country":    countryName,
 			},
 		},
 		"ORDER_NUMBER":                      ord.DisplayId(),
@@ -92,8 +96,8 @@ func SendOrderConfirmationEmail(ctx appengine.Context, org *organization.Organiz
 		"ORDER_SHIPPING_ADDRESS_LINE1":      ord.ShippingAddress.Line1,
 		"ORDER_SHIPPING_ADDRESS_LINE2":      ord.ShippingAddress.Line2,
 		"ORDER_SHIPPING_ADDRESS_POSTALCODE": ord.ShippingAddress.PostalCode,
-		"ORDER_SHIPPING_ADDRESS_STATE":      ord.ShippingAddress.State,
-		"ORDER_SHIPPING_ADDRESS_COUNTRY":    ord.ShippingAddress.Country,
+		"ORDER_SHIPPING_ADDRESS_STATE":      stateName,
+		"ORDER_SHIPPING_ADDRESS_COUNTRY":    countryName,
 
 		"user": map[string]interface{}{
 			"firstName": usr.FirstName,
