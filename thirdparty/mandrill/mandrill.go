@@ -25,8 +25,8 @@ func init() {
 }
 
 type Var struct {
-	Name    string `json:"name"`
-	Content string `json:"content"`
+	Name    string      `json:"name"`
+	Content interface{} `json:"content"`
 }
 
 type RcptMergeVars struct {
@@ -133,6 +133,7 @@ func NewSendReq() (req SendReq) {
 	req.Async = true
 	req.IpPool = "Main Pool"
 	req.Key = config.Mandrill.APIKey
+	req.Message.MergeLanguage = "mailchimp"
 	req.Message.AutoHtml = true
 	req.Message.Merge = true
 	return req
