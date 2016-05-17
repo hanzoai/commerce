@@ -61,8 +61,8 @@ func sendEmailConfirmation(c *gin.Context, org *organization.Organization, usr *
 	// Create Merge Vars
 	vars := map[string]interface{}{
 		"user": map[string]interface{}{
-			"firstName": usr.FirstName,
-			"lastName":  usr.LastName,
+			"firstname": usr.FirstName,
+			"lastname":  usr.LastName,
 		},
 		"token": map[string]interface{}{
 			"id": tok.Id(),
@@ -98,8 +98,8 @@ func sendEmailConfirmed(c *gin.Context, org *organization.Organization, usr *use
 	// Create Merge Vars
 	vars := map[string]interface{}{
 		"user": map[string]interface{}{
-			"firstName": usr.FirstName,
-			"lastName":  usr.LastName,
+			"firstname": usr.FirstName,
+			"lastname":  usr.LastName,
 		},
 		"USER_FIRSTNAME": usr.FirstName,
 		"USER_LASTNAME":  usr.LastName,
@@ -130,8 +130,8 @@ func sendWelcome(c *gin.Context, org *organization.Organization, usr *user.User)
 	// Create Merge Vars
 	vars := map[string]interface{}{
 		"user": map[string]interface{}{
-			"firstName": usr.FirstName,
-			"lastName":  usr.LastName,
+			"firstname": usr.FirstName,
+			"lastname":  usr.LastName,
 		},
 		"USER_FIRSTNAME": usr.FirstName,
 		"USER_LASTNAME":  usr.LastName,

@@ -71,17 +71,17 @@ func SendOrderConfirmationEmail(ctx appengine.Context, org *organization.Organiz
 	vars := map[string]interface{}{
 		"order": map[string]interface{}{
 			"number":          ord.DisplayId(),
-			"displaySubtotal": ord.DisplaySubtotal(),
-			"displayDiscount": ord.DisplayDiscount(),
-			"displayTax":      ord.DisplayTax(),
-			"displayShipping": ord.DisplayShipping(),
-			"displayTotal":    ord.DisplayTotal(),
+			"displaysubtotal": ord.DisplaySubtotal(),
+			"displaydiscount": ord.DisplayDiscount(),
+			"displaytax":      ord.DisplayTax(),
+			"displayshipping": ord.DisplayShipping(),
+			"displaytotal":    ord.DisplayTotal(),
 			"currency":        currencyCode,
 			"items":           items,
-			"shippingAddress": map[string]interface{}{
+			"shippingaddress": map[string]interface{}{
 				"line1":      ord.ShippingAddress.Line1,
 				"line2":      ord.ShippingAddress.Line2,
-				"postalCode": ord.ShippingAddress.PostalCode,
+				"postalcode": ord.ShippingAddress.PostalCode,
 				"state":      stateName,
 				"country":    countryName,
 			},
@@ -100,8 +100,8 @@ func SendOrderConfirmationEmail(ctx appengine.Context, org *organization.Organiz
 		"ORDER_SHIPPING_ADDRESS_COUNTRY":    countryName,
 
 		"user": map[string]interface{}{
-			"firstName": usr.FirstName,
-			"lastName":  usr.LastName,
+			"firstname": usr.FirstName,
+			"lastname":  usr.LastName,
 		},
 
 		"USER_FIRSTNAME": usr.FirstName,
@@ -110,15 +110,17 @@ func SendOrderConfirmationEmail(ctx appengine.Context, org *organization.Organiz
 
 	for i, item := range ord.Items {
 		items[i] = map[string]interface{}{
-			"productName":  item.ProductName,
+			"productname":  item.ProductName,
 			"quantity":     item.Quantity,
-			"displayPrice": item.DisplayPrice(ord.Currency),
+			"displayprice": item.DisplayPrice(ord.Currency),
+			"currency":     currencyCode,
 		}
 
 		idx := strconv.Itoa(i)
 		vars["ORDER_ITEMS_"+idx+"_PRODUCT_NAME"] = item.ProductName
 		vars["ORDER_ITEMS_"+idx+"_QUANTITY"] = item.Quantity
 		vars["ORDER_ITEMS_"+idx+"_DISPLAY_PRICE"] = item.DisplayTotalPrice(ord.Currency)
+		vars["ORDER_ITEMS_"+idx+"_CURRENCY"] = currencyCode
 	}
 
 	mandrill.SendTemplate(ctx, "order-confirmation", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
