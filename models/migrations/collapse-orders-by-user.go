@@ -1,6 +1,8 @@
 package migrations
 
 import (
+	"strings"
+
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.com/models/order"
@@ -15,7 +17,7 @@ import (
 
 var _ = New("collapse-orders-by-user",
 	func(c *gin.Context) []interface{} {
-		c.Set("namespace", "bellabeat")
+		c.Set("namespace", "kanoa")
 		return NoArgs
 	},
 	func(db *ds.Datastore, ord *order.Order) {
@@ -31,7 +33,7 @@ var _ = New("collapse-orders-by-user",
 
 		// Try to find newest instance of a user with this email
 		usr2 := user.New(db)
-		if _, err := usr2.Query().Filter("Email=", usr.Email).Order("-CreatedAt").First(); err != nil {
+		if _, err := usr2.Query().Filter("Email=", strings.Replace(usr.Email, "!______", "", 1)).Order("-CreatedAt").First(); err != nil {
 			log.Error("Failed to query for newest user: %v", err, ctx)
 			return
 		}

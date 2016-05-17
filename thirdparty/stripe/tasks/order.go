@@ -8,10 +8,11 @@ import (
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/order"
+	"crowdstart.com/models/types/currency"
 	"crowdstart.com/util/log"
 )
 
-var updateOrder = delay.Func("stripe-update-order", func(ctx appengine.Context, ns string, orderId string, start time.Time) {
+var updateOrder = delay.Func("stripe-update-order", func(ctx appengine.Context, ns string, orderId string, refunded currency.Cents, start time.Time) {
 	ctx = getNamespacedContext(ctx, ns)
 	db := datastore.New(ctx)
 	ord := order.New(db)
