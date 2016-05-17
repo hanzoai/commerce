@@ -113,12 +113,14 @@ func SendOrderConfirmationEmail(ctx appengine.Context, org *organization.Organiz
 			"productName":  item.ProductName,
 			"quantity":     item.Quantity,
 			"displayPrice": item.DisplayPrice(ord.Currency),
+			"currency":     currencyCode,
 		}
 
 		idx := strconv.Itoa(i)
 		vars["ORDER_ITEMS_"+idx+"_PRODUCT_NAME"] = item.ProductName
 		vars["ORDER_ITEMS_"+idx+"_QUANTITY"] = item.Quantity
 		vars["ORDER_ITEMS_"+idx+"_DISPLAY_PRICE"] = item.DisplayTotalPrice(ord.Currency)
+		vars["ORDER_ITEMS_"+idx+"_CURRENCY"] = currencyCode
 	}
 
 	mandrill.SendTemplate(ctx, "order-confirmation", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
