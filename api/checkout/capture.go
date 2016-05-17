@@ -86,6 +86,13 @@ func CompleteCapture(c *gin.Context, org *organization.Organization, ord *order.
 		return nil, err
 	}
 
+	// Save coupon redemptions
+	if len(ord.Coupons) > 0 {
+		for _, coup := range ord.Coupons {
+			coup.SaveRedemption()
+		}
+	}
+
 	ctx := db.Context
 	log.Debug("Incrementing Counters? %v", ord.Test, c)
 	if !ord.Test {
