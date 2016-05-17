@@ -14,7 +14,7 @@ github.com/hashicorp/golang-lru
 github.com/headzoo/surf master
 github.com/huandu/facebook master
 github.com/julienschmidt/httprouter 8c199fb6259ffc1af525cc3ad52ee60ba8359669
-github.com/mattbaird/gochimp master
+github.com/rybit/gochimp v3
 github.com/mholt/binding master
 github.com/netlify/netlify-go master
 github.com/onsi/ginkgo/ginkgo master
@@ -28,5 +28,3 @@ github.com/vincent-petithory/countries master
 github.com/zeekay/aetest 94ec681f66449be39390468ceb71fe6090948e09
 github.com/zeekay/go-logging master
 golang.org/x/crypto/bcrypt master
-golang.org/x/oauth2/google master
-google.golang.org/api/storage/v1
