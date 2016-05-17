@@ -33,7 +33,6 @@ var updateOrder = delay.Func("stripe-update-order", func(ctx appengine.Context, 
 		// Update order using latest payment information
 		log.Debug("Order before: %+v", ord, ctx)
 		ord.UpdatePaymentStatus()
-		ord.Refunded += refunded
 		log.Debug("Order after: %+v", ord, ctx)
 
 		return ord.Put()
