@@ -11,12 +11,12 @@ import (
 
 var _ = New("dedupe-payments",
 	func(c *gin.Context) []interface{} {
-		c.Set("namespace", "bellabeat")
+		c.Set("namespace", "kanoa")
 		return NoArgs
 	},
 	func(db *ds.Datastore, pay *payment.Payment) {
 		// Bail out if we've been previously deleted
-		if pay.Deleted || pay.Test {
+		if pay.Deleted {
 			return
 		}
 
