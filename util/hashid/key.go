@@ -179,23 +179,11 @@ func EncodeKey(ctx appengine.Context, key datastore.Key) string {
 }
 
 func DecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key, err error) {
-	log.Debug("encoded key: %v", encoded)
+	ids, err := Decode(encoded)
+	if err != nil {
+		return nil, err
+	}
 
-	// Catch panic from Decode
-	defer func() {
-		if r := recover(); r != nil {
-			switch v := r.(type) {
-			case string:
-				err = errors.New(v)
-			case error:
-				err = v
-			default:
-				err = errors.New("I don't even")
-			}
-		}
-	}()
-
-	ids := Decode(encoded)
 	n := len(ids)
 
 	// Check for invalid keys.

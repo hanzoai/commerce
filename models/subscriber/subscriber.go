@@ -1,6 +1,9 @@
 package subscriber
 
 import (
+	"crypto/md5"
+	"fmt"
+	"io"
 	"strings"
 	"time"
 
@@ -33,22 +36,28 @@ type Subscriber struct {
 	Metadata_ string `json:"-" datastore:",noindex"`
 }
 
-func (s Subscriber) MergeVars() Map {
-	vars := make(Map)
+func (s Subscriber) Md5() string {
+	h := md5.New()
+	io.WriteString(h, s.Email)
+	return fmt.Sprintf("%x", h.Sum(nil))
+}
+
+func (s Subscriber) MergeFields() Map {
+	fields := make(Map)
 
 	for k, v := range s.Metadata {
-		vars[k] = v
+		fields[k] = v
 	}
 
 	// Update metadata with some extra client data
-	vars["useragent"] = s.Client.UserAgent
-	vars["referer"] = s.Client.Referer
-	vars["language"] = s.Client.Language
-	vars["country"] = s.Client.Country
-	vars["region"] = s.Client.Region
-	vars["city"] = s.Client.City
+	fields["useragent"] = s.Client.UserAgent
+	fields["referer"] = s.Client.Referer
+	fields["language"] = s.Client.Language
+	fields["country"] = s.Client.Country
+	fields["region"] = s.Client.Region
+	fields["city"] = s.Client.City
 
-	return vars
+	return fields
 }
 
 func (s *Subscriber) Load(c <-chan aeds.Property) (err error) {

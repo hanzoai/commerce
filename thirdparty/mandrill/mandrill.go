@@ -69,7 +69,7 @@ type SendReq struct {
 		// ReturnPathDomain interface{} `json:"return_path_domain"`
 
 		Merge         bool            `json:"merge"`
-		MergeLanguage string          `json:"merge_language"`
+		MergeLanguage string          `json:"merge_language,omitempty"`
 		MergeVars     []Var           `json:"global_merge_vars"`
 		RcptMergeVars []RcptMergeVars `json:"merge_vars"`
 
@@ -133,7 +133,6 @@ func NewSendReq() (req SendReq) {
 	req.Async = true
 	req.IpPool = "Main Pool"
 	req.Key = config.Mandrill.APIKey
-	req.Message.MergeLanguage = "mailchimp"
 	req.Message.AutoHtml = true
 	req.Message.Merge = true
 	return req

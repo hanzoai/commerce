@@ -8,6 +8,7 @@ import (
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
+	"crowdstart.com/models/coupon"
 	"crowdstart.com/models/fixtures"
 	"crowdstart.com/models/lineitem"
 	"crowdstart.com/models/order"
@@ -29,6 +30,7 @@ import (
 	"crowdstart.com/util/test/ginclient"
 
 	checkoutApi "crowdstart.com/api/checkout"
+	couponApi "crowdstart.com/api/coupon"
 	orderApi "crowdstart.com/api/order"
 	storeApi "crowdstart.com/api/store"
 
@@ -73,6 +75,7 @@ var _ = BeforeSuite(func() {
 	checkoutApi.Route(client.Router, adminRequired)
 	orderApi.Route(client.Router, adminRequired)
 	storeApi.Route(client.Router, adminRequired)
+	couponApi.Route(client.Router, adminRequired)
 
 	// Create organization for tests, accessToken
 	accessToken = org.AddToken("test-published-key", permission.Admin)
@@ -344,7 +347,7 @@ func OrderBadUserTest(isCharge bool, stor *store.Store) {
 	body := fmt.Sprintf(requests.ReturningUserOrderNewCard, "BadId")
 	w := client.PostRawJSON(path, body)
 	log.Debug("JSON %v", w.Body)
-	Expect(w.Code).To(Equal(500))
+	Expect(w.Code).To(Equal(400))
 }
 
 var _ = Describe("payment", func() {
@@ -624,6 +627,41 @@ var _ = Describe("payment", func() {
 			pay.Get(ord2.PaymentIds[0])
 
 			stripeVerifyCharge(pay)
+		})
+	})
+
+	Context("Charge Order With Single Use Coupon", func() {
+		It("Should charge order with single use coupon successfully", func() {
+			w := client.PostRawJSON("/checkout/charge", requests.ValidOrder)
+			Expect(w.Code).To(Equal(200))
+
+			ord := order.New(db)
+			err := json.DecodeBuffer(w.Body, ord)
+			Expect(err).ToNot(HaveOccurred())
+
+			w = client.Get("/coupon/no-doge-left-behind/code/" + u.Id())
+			Expect(w.Code).To(Equal(200))
+			log.Debug("JSON %v", w.Body)
+
+			cpn := coupon.New(db)
+			err = json.DecodeBuffer(w.Body, &cpn)
+			Expect(err).ToNot(HaveOccurred())
+
+			jsonStr := fmt.Sprintf(requests.ValidOrderTemplate, ord.UserId, cpn.Code())
+			w = client.PostRawJSON("/checkout/charge", jsonStr)
+			Expect(w.Code).To(Equal(200))
+			log.Debug("JSON %v", w.Body)
+
+			ord2 := order.New(db)
+			err = json.DecodeBuffer(w.Body, ord2)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(ord2.Items[1].ProductSlug).To(Equal("doge-shirt"))
+
+			jsonStr = fmt.Sprintf(requests.ValidOrderTemplate, ord.UserId, cpn.Code())
+			w = client.PostRawJSON("/checkout/charge", jsonStr)
+			Expect(w.Code).To(Equal(400))
+			log.Debug("JSON %v", w.Body)
 		})
 	})
 

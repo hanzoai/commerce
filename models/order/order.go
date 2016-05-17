@@ -211,6 +211,9 @@ func (o *Order) Load(c <-chan aeds.Property) (err error) {
 
 	// Set order number
 	o.Number = o.NumberFromId()
+	for _, coup := range o.Coupons {
+		coup.Init(o.Model.Db)
+	}
 
 	// Deserialize from datastore
 	if len(o.Items_) > 0 {
@@ -246,7 +249,20 @@ func (o Order) NumberFromId() int {
 	if o.Id_ == "" {
 		return -1
 	}
-	return hashid.Decode(o.Id_)[1]
+	ids, _ := hashid.Decode(o.Id_)
+	return ids[0]
+}
+
+func (o Order) OrderDay() string {
+	return string(o.CreatedAt.Day())
+}
+
+func (o Order) OrderMonthName() string {
+	return o.CreatedAt.Month().String()
+}
+
+func (o Order) OrderYear() string {
+	return string(o.CreatedAt.Year())
 }
 
 // Get line items from datastore
@@ -255,28 +271,26 @@ func (o *Order) GetCoupons() error {
 	db := o.Model.Db
 	ctx := db.Context
 
+	log.Debug("CouponCodes: %#v", o.CouponCodes)
 	num := len(o.CouponCodes)
 	o.Coupons = make([]coupon.Coupon, num, num)
-	keys := make([]datastore.Key, num, num)
 
 	for i := 0; i < num; i++ {
-		c := coupon.New(db)
+		cpn := coupon.New(db)
 		code := strings.TrimSpace(strings.ToUpper(o.CouponCodes[i]))
-		ok, err := c.Query().Filter("Code=", code).KeysOnly().First()
-		if err != nil {
-			log.Error("Error looking for coupon: CouponCodes[%v] => %v: %v", i, o.CouponCodes[i], err, ctx)
-			return err
-		}
 
-		if !ok {
-			log.Warn("Could not find CouponCodes[%v] => %v", i, o.CouponCodes[i], ctx)
+		log.Debug("CODE: %s", code)
+		err := cpn.GetById(code)
+
+		if err != nil {
+			log.Warn("Could not find CouponCodes[%v] => %v, Error: %v", i, code, err, ctx)
 			return errors.New("Invalid coupon code: " + code)
 		}
 
-		keys[i] = c.Key()
+		o.Coupons[i] = *cpn
 	}
 
-	return db.GetMulti(keys, o.Coupons)
+	return nil
 }
 
 func (o *Order) DedupeCouponCodes() {
@@ -551,6 +565,12 @@ func (o *Order) UpdateAndTally(stor *store.Store) error {
 		return errors.New("Failed to get coupons")
 	}
 
+	for _, coup := range o.Coupons {
+		if !coup.Redeemable() {
+			return errors.New(fmt.Sprintf("Coupon %v limit reached", coup.Code()))
+		}
+	}
+
 	// Update the list of free coupon items
 	o.UpdateCouponItems()
 
@@ -601,31 +621,23 @@ func (o Order) DisplayCreatedAt() string {
 }
 
 func (o Order) DisplaySubtotal() string {
-	return DisplayPrice(o.Subtotal)
+	return DisplayPrice(o.Currency, o.Subtotal)
 }
 
 func (o Order) DisplayDiscount() string {
-	return DisplayPrice(o.Discount)
+	return DisplayPrice(o.Currency, o.Discount)
 }
 
 func (o Order) DisplayTax() string {
-	return DisplayPrice(o.Tax)
+	return DisplayPrice(o.Currency, o.Tax)
 }
 
 func (o Order) DisplayShipping() string {
-	return DisplayPrice(o.Shipping)
+	return DisplayPrice(o.Currency, o.Shipping)
 }
 
 func (o Order) DisplayTotal() string {
-	return DisplayPrice(o.Total)
-}
-
-func (o Order) DecimalTotal() uint64 {
-	return uint64(FloatPrice(o.Total) * 100)
-}
-
-func (o Order) DecimalFee() uint64 {
-	return uint64(FloatPrice(o.Total) * 100 * 0.02)
+	return DisplayPrice(o.Currency, o.Total)
 }
 
 func (o Order) Description() string {
