@@ -72,7 +72,6 @@ func SendOrderConfirmationEmail(ctx appengine.Context, org *organization.Organiz
 		"order": map[string]interface{}{
 			"number":          ord.DisplayId(),
 			"displaysubtotal": ord.DisplaySubtotal(),
-			"displaydiscount": ord.DisplayDiscount(),
 			"displaytax":      ord.DisplayTax(),
 			"displayshipping": ord.DisplayShipping(),
 			"displaytotal":    ord.DisplayTotal(),
@@ -92,7 +91,6 @@ func SendOrderConfirmationEmail(ctx appengine.Context, org *organization.Organiz
 		},
 		"ORDER_NUMBER":                      ord.DisplayId(),
 		"ORDER_DISPLAY_SUBTOTAL":            ord.DisplaySubtotal(),
-		"ORDER_DISPLAY_DISCOUNT":            ord.DisplayDiscount(),
 		"ORDER_DISPLAY_TAX":                 ord.DisplayTax(),
 		"ORDER_DISPLAY_SHIPPING":            ord.DisplayShipping(),
 		"ORDER_DISPLAY_TOTAL":               ord.DisplayTotal(),
@@ -114,6 +112,12 @@ func SendOrderConfirmationEmail(ctx appengine.Context, org *organization.Organiz
 
 		"USER_FIRSTNAME": usr.FirstName,
 		"USER_LASTNAME":  usr.LastName,
+	}
+
+	if ord.Discount != 0 {
+		ordVars := vars["order"].(map[string]interface{})
+		ordVars["displaydiscount"] = ord.DisplayDiscount()
+		vars["ORDER_DISPLAY_DISCOUNT"] = ord.DisplayDiscount()
 	}
 
 	for i, item := range ord.Items {
