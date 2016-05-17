@@ -295,6 +295,15 @@ test-ci:
 	$(ginkgo) -r=true -p=true --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace --compilers=2
 
 # DEPLOY
+
+# To re-auth you might need to:
+# 	gcloud components reinstall
+# 	rm ~/.appcfg*
+
+auth:
+	gcloud auth login
+	appcfg.py list_versions config/staging
+
 deploy: assets-min docs rollback
 	# Set env for deploy
 	@echo 'package config\n\nvar Env = "$(project_id)"' > config/env.go
@@ -316,19 +325,19 @@ rollback:
 # EXPORT / Usage: make datastore-export kind=user namespace=bellabeat
 datastore-export:
 	@mkdir -p _export/
-	$(bulkloader.py) --download \
-				  	 --bandwidth_limit 1000000000 \
-				  	 --rps_limit 10000 \
-				  	 --batch_size 250 \
-				  	 --http_limit 200 \
-				  	 --url $(datastore_admin_url) \
-				  	 --config_file util/bulkloader/bulkloader.yaml \
-				  	 --db_filename /tmp/bulkloader-$$kind.db \
-				  	 --log_file /tmp/bulkloader-$$kind.log \
-				  	 --result_db_filename /tmp/bulkloader-result-$$kind.db \
-				  	 --namespace $$namespace \
-				  	 --kind $$kind \
-				  	 --filename _export/$$namespace-$$kind-$(project_id)-$(current_date).csv
+	$(appcfg.py) download_data \
+				 --bandwidth_limit 1000000000 \
+				 --rps_limit 10000 \
+				 --batch_size 250 \
+				 --http_limit 200 \
+				 --url $(datastore_admin_url) \
+				 --config_file util/bulkloader/bulkloader.yaml \
+				 --db_filename /tmp/bulkloader-$$kind.db \
+				 --log_file /tmp/bulkloader-$$kind.log \
+				 --result_db_filename /tmp/bulkloader-result-$$kind.db \
+				 --namespace $$namespace \
+				 --kind $$kind \
+				 --filename _export/$$namespace-$$kind-$(project_id)-$(current_date).csv
 	rm -rf /tmp/bulkloader-$$kind.db \
 		   /tmp/bulkloader-$$kind.log \
 		   /tmp/bulkloader-result-$$kind.db
@@ -349,10 +358,10 @@ datastore-import:
 
 # Generate config for use with datastore-export target
 datastore-config:
-	@$(bulkloader.py) --create_config \
-				      --url=$(datastore_admin_url) \
-				      --namespace $$namespace \
-				      --filename=bulkloader.yaml
+	@$(appcfg.py) create_bulkloader_config \
+				  --url=$(datastore_admin_url) \
+				  --namespace $$namespace \
+				  --filename=bulkloader.yaml
 
 # Replicate production data to localhost
 datastore-replicate:
@@ -388,7 +397,7 @@ docs:
 	$(sed) 's/table>/table class="table table-striped table-borderless table-vcenter">/' templates/platform/docs/_generated/salesforce.html
 	@rm -rf templates/platform/docs/_generated/salesforce.html.bak
 
-.PHONY: all bench build compile-js compile-js-min compile-css compile-css-min \
+.PHONY: all auth bench build compile-js compile-js-min compile-css compile-css-min \
 	datastore-import datastore-export datastore-config deploy deploy-staging \
 	deploy-skully deploy-production deps deps-assets deps-go live-reload \
 	serve serve-clear-datastore serve-public test test-integration test-watch \

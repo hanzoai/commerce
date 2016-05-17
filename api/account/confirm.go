@@ -23,6 +23,7 @@ var (
 type confirmPasswordReq struct {
 	*user.User
 
+	CurrentPassword string `json:"currentPassword"`
 	Password        string `json:"password"`
 	PasswordConfirm string `json:"passwordConfirm"`
 }
