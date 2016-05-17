@@ -69,7 +69,7 @@ type SendReq struct {
 		// ReturnPathDomain interface{} `json:"return_path_domain"`
 
 		Merge         bool            `json:"merge"`
-		MergeLanguage string          `json:"merge_language"`
+		MergeLanguage string          `json:"merge_language,omitempty"`
 		MergeVars     []Var           `json:"global_merge_vars"`
 		RcptMergeVars []RcptMergeVars `json:"merge_vars"`
 
