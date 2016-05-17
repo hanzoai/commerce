@@ -8,6 +8,8 @@ import (
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
+	"crowdstart.com/util/hashid"
+	"crowdstart.com/util/log"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
@@ -32,7 +34,11 @@ type Coupon struct {
 	Type Type `json:"type"`
 
 	// Coupon code (must be unique).
-	Code string `json:"code"`
+	Code_   string `json:"code" datastore:"Code"`
+	RawCode string `json:"-" datastore:"-"`
+
+	// Indicates whether or not the Code is dynamically checked (for something like user-generated coupons)
+	Dynamic bool `json:"dynamic"`
 
 	CampaignId string `json:"campaignId,omitempty"`
 
@@ -43,8 +49,11 @@ type Coupon struct {
 	// Possible values: order, product.
 	Filter string `json:"filter"`
 
-	// Apply once or to every time
+	// Indicates whether this coupon may be applied once or more than once at checkout.
 	Once bool `json:"once"`
+
+	// The number of times this coupon can be used before it is used up and useless.  0 = unlimited
+	Limit int `json:"limit"`
 
 	// Product id for product-specific coupons.
 	ProductId string `json:"productId,omitempty"`
@@ -78,22 +87,52 @@ func (co *Coupon) Load(c <-chan aeds.Property) (err error) {
 
 func (co *Coupon) Save(c chan<- aeds.Property) (err error) {
 
-	co.Code = strings.ToUpper(co.Code)
+	co.Code_ = strings.ToUpper(co.Code_)
 
 	// Save properties
 	return IgnoreFieldMismatch(aeds.SaveStruct(co, c))
 }
 
+func (c Coupon) Code() string {
+	if c.RawCode != "" && c.RawCode != c.Code_ {
+		return c.RawCode
+	} else {
+		return c.Code_
+	}
+}
+
+func (c Coupon) DynamicCode() string {
+	if c.RawCode == c.Code_ {
+		return ""
+	}
+
+	return c.RawCode
+}
+
+func (c Coupon) CodeFromId(uniqueid string) string {
+	cid := c.Key()
+	uid, _ := hashid.DecodeKey(c.Context(), uniqueid)
+
+	return hashid.Encode(int(cid.IntID()), int(uid.IntID()))
+}
+
 func (c Coupon) ValidFor(t time.Time) bool {
-	if c.Enabled {
-		return true // currently active, no need to check?
+	if !c.Enabled {
+		log.Debug("Coupon Not Enabled")
+		return false // currently active, no need to check?
 	}
 
-	if c.StartDate.Before(t) && c.EndDate.After(t) {
-		return true
+	if !c.StartDate.IsZero() && c.StartDate.After(t) {
+		log.Debug("Coupon not yet Usable")
+		return false
 	}
 
-	return false
+	if !c.EndDate.IsZero() && c.EndDate.Before(t) {
+		log.Debug("Coupon is Expired")
+		return false
+	}
+
+	return true
 }
 
 func (c Coupon) ItemId() string {

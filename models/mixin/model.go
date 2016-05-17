@@ -315,8 +315,6 @@ func (m *Model) Create() error {
 		}
 	}
 
-	log.Debug("Site after BeforeCreate: %#v", m.Entity, m.Context())
-
 	if err := m.Put(); err != nil {
 		return err
 	}
@@ -385,9 +383,6 @@ func (m *Model) GetById(id string) error {
 		filterStr = "Slug"
 	case "variant":
 		filterStr = "SKU"
-	case "coupon":
-		filterStr = "Code"
-		id = strings.ToUpper(id)
 	case "organization", "mailinglist":
 		filterStr = "Name"
 	case "aggregate":
@@ -399,6 +394,35 @@ func (m *Model) GetById(id string) error {
 			filterStr = "Email"
 		} else {
 			filterStr = "Username"
+		}
+	case "coupon":
+		code := strings.ToUpper(id)
+		log.Debug("GETBYIDCODE: %v", code)
+
+		if ok, _ := m.Query().Filter("Code=", code).First(); ok {
+			log.Debug("FOUND KEY")
+			return nil
+		} else {
+			ids, err := hashid.Decode(id)
+			if err != nil {
+				return err
+			}
+
+			if len(ids) != 2 {
+				return datastore.KeyNotFound
+			}
+
+			log.Debug("coupon ids: %v", ids)
+			key := m.Db.KeyFromInt("coupon", ids[0])
+			_, err = m.Query().Filter("__key__ =", key).First()
+			log.Debug("key: %v", key)
+
+			// Set RawCode on fetched entity in case this was not parsed from JSON
+			v := reflect.ValueOf(m.Entity).Elem().FieldByName("RawCode")
+			ptr := v.Addr().Interface().(*string)
+			*ptr = id
+
+			return err
 		}
 	case "order":
 		// Special-cased since order is filtered by IntId (order number)
@@ -453,8 +477,6 @@ func (m *Model) KeyById(id string) (datastore.Key, bool, error) {
 		filterStr = "Slug"
 	case "variant":
 		filterStr = "SKU"
-	case "coupon":
-		filterStr = "Code"
 	case "organization", "mailinglist":
 		filterStr = "Name"
 	case "aggregate":
@@ -466,6 +488,32 @@ func (m *Model) KeyById(id string) (datastore.Key, bool, error) {
 			filterStr = "Email"
 		} else {
 			filterStr = "Username"
+		}
+	case "coupon":
+		code := strings.ToUpper(id)
+		if ok, _ := m.Query().Filter("Code=", code).First(); ok {
+			return m.Key(), true, nil
+		} else {
+			ids, err := hashid.Decode(id)
+			if err != nil {
+				return nil, false, err
+			}
+
+			if len(ids) != 2 {
+				return nil, false, datastore.KeyNotFound
+			}
+
+			key := m.Db.KeyFromInt("coupon", ids[0])
+			log.Debug("coupon key: %v", key)
+			if _, err = m.Query().Filter("__key__ =", key).First(); err != nil {
+				return nil, false, err
+			}
+			log.Debug("coupon: %v", m)
+
+			// Set RawCode on fetched entity in case this was not parsed from JSON
+			v := reflect.ValueOf(m.Entity).Elem().FieldByName("RawCode")
+			ptr := v.Addr().Interface().(*string)
+			*ptr = id
 		}
 	case "order":
 		// Special-cased since order is filtered by IntId (order number)
@@ -605,9 +653,10 @@ func (m *Model) GetOrCreate(filterStr string, value interface{}) error {
 		// What were we filtering on? Make sure the field is set to value of
 		// filter. This prevents any duplicate attempts from creating new
 		// models as well.
-		name := strings.TrimSpace(strings.Split(filterStr, "=")[0])
-		field := reflect.Indirect(reflect.ValueOf(m.Entity)).FieldByName(name)
-		field.Set(reflect.ValueOf(value))
+
+		// name := strings.TrimSpace(strings.Split(filterStr, "=")[0])
+		// field := reflect.Indirect(reflect.ValueOf(m.Entity)).FieldByName(name)
+		// field.Set(reflect.ValueOf(value))
 
 		return m.Create()
 	}
