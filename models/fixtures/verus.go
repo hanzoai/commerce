@@ -45,14 +45,14 @@ var Verus = New("verus", func(c *gin.Context) *organization.Organization {
 	// u3.PasswordHash, _ = password.Hash("veruspassword!")
 	// u3.Put()
 
-	// u4 := user.New(db)
-	// u4.Email = "tmesser@verus.io"
-	// u4.GetOrCreate("Email=", u4.Email)
-	// u4.FirstName = "Tim"
-	// u4.LastName = "Messer"
-	// u4.Organizations = []string{org.Id()}
-	// u4.PasswordHash, _ = password.Hash("veruspassword!")
-	// u4.Put()
+	u4 := user.New(db)
+	u4.Email = "tmesser@verus.io"
+	u4.GetOrCreate("Email=", u4.Email)
+	u4.FirstName = "Tim"
+	u4.LastName = "Messer"
+	u4.Organizations = []string{org.Id()}
+	u4.PasswordHash, _ = password.Hash("veruspassword!")
+	u4.Put()
 
 	// u5 := user.New(db)
 	// u5.Email = "dev@hanzo.ai"
@@ -63,14 +63,14 @@ var Verus = New("verus", func(c *gin.Context) *organization.Organization {
 	// u5.PasswordHash, _ = password.Hash("veruspassword!")
 	// u5.Put()
 
-	u6 := user.New(db)
-	u6.Email = "helpfulhuman@verus.io"
-	u6.GetOrCreate("Email=", u6.Email)
-	u6.FirstName = "Helpful Human"
-	u6.LastName = ""
-	u6.Organizations = []string{org.Id()}
-	u6.PasswordHash, _ = password.Hash("HelpfulHumans!")
-	u6.Put()
+	// u6 := user.New(db)
+	// u6.Email = "helpfulhuman@verus.io"
+	// u6.GetOrCreate("Email=", u6.Email)
+	// u6.FirstName = "Helpful Human"
+	// u6.LastName = ""
+	// u6.Organizations = []string{org.Id()}
+	// u6.PasswordHash, _ = password.Hash("HelpfulHumans!")
+	// u6.Put()
 
 	// Configure org
 	// org.FullName = "verus"
