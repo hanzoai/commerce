@@ -68,5 +68,5 @@ var DisputeSync = delay.Func("stripe-update-disputed-payment", func(ctx appengin
 	updateChargeFromPayment(ctx, token, pay, ch)
 
 	// Update order
-	updateOrder.Call(ctx, ns, pay.OrderId, start)
+	updateOrder.Call(ctx, ns, pay.OrderId, pay.AmountRefunded, start)
 })

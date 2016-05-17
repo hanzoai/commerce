@@ -71,6 +71,10 @@ func (q *Query) GetAll(dst interface{}) ([]*aeds.Key, error) {
 		return keys, err
 	}
 
+	if dst == nil {
+		return keys, nil
+	}
+
 	// Get value of slice
 	slice := reflect.ValueOf(dst)
 
