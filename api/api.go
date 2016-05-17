@@ -6,7 +6,6 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.com/middleware"
-	"crowdstart.com/models/campaign"
 	"crowdstart.com/models/collection"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/product"
@@ -24,6 +23,7 @@ import (
 
 	accessTokenApi "crowdstart.com/api/accesstoken"
 	accountApi "crowdstart.com/api/account"
+	campaignApi "crowdstart.com/api/campaign"
 	checkoutApi "crowdstart.com/api/checkout"
 	couponApi "crowdstart.com/api/coupon"
 	dataApi "crowdstart.com/api/data"
@@ -86,6 +86,7 @@ func init() {
 
 	accountApi.Route(api, tokenRequired)
 	couponApi.Route(api, tokenRequired)
+	campaignApi.Route(api, tokenRequired)
 	deployApi.Route(api, tokenRequired)
 	formApi.Route(api, tokenRequired)
 	orderApi.Route(api, tokenRequired)
@@ -93,11 +94,6 @@ func init() {
 	userApi.Route(api, tokenRequired)
 
 	// Crowdstart APIs, using default namespace (internal use only)
-	campaign := rest.New(campaign.Campaign{})
-	campaign.DefaultNamespace = true
-	campaign.Prefix = "/c/"
-	campaign.Route(api, tokenRequired)
-
 	organizationApi.Route(api, tokenRequired)
 
 	token := rest.New(token.Token{})
