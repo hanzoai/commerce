@@ -43,8 +43,8 @@ func sendPasswordReset(c *gin.Context, org *organization.Organization, usr *user
 	// Create Merge Vars
 	vars := map[string]interface{}{
 		"user": map[string]interface{}{
-			"firstName": usr.FirstName,
-			"lastName":  usr.LastName,
+			"firstname": usr.FirstName,
+			"lastname":  usr.LastName,
 		},
 		"token": map[string]interface{}{
 			"id": tok.Id(),
