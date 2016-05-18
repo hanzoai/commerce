@@ -250,7 +250,7 @@ func (o Order) NumberFromId() int {
 		return -1
 	}
 	ids, _ := hashid.Decode(o.Id_)
-	return ids[0]
+	return ids[1]
 }
 
 func (o Order) OrderDay() string {
