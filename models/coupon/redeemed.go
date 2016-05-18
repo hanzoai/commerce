@@ -15,20 +15,20 @@ type Redemption struct {
 	Code string `json:"code"`
 }
 
-func (c Coupon) SaveRedemption() error {
+func (c *Coupon) SaveRedemption() error {
 	db := datastore.New(c.Context())
 	key := db.KeyFromId("redemption", c.Code())
 	_, err := db.Put(key, &Redemption{time.Now(), c.Code()})
 	return err
 }
 
-func (c Coupon) Redemptions() int {
+func (c *Coupon) Redemptions() int {
 	db := datastore.New(c.Context())
 	count, _ := db.Query("redemption").Filter("Code=", c.Code()).Count()
 	return count
 }
 
-func (c Coupon) Redeemable() bool {
+func (c *Coupon) Redeemable() bool {
 	if !c.Enabled {
 		log.Debug("Coupon Not Enabled")
 		return false
