@@ -249,8 +249,7 @@ func (o Order) NumberFromId() int {
 	if o.Id_ == "" {
 		return -1
 	}
-	ids, _ := hashid.Decode(o.Id_)
-	return ids[1]
+	return hashid.Decode(o.Id_)[1]
 }
 
 func (o Order) OrderDay() string {
