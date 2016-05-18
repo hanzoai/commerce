@@ -109,7 +109,7 @@ func (c Coupon) DynamicCode() string {
 	return c.RawCode
 }
 
-func (c Coupon) CodeFromId(uniqueid string) string {
+func (c *Coupon) CodeFromId(uniqueid string) string {
 	cid := c.Key()
 	uid, _ := hashid.DecodeKey(c.Context(), uniqueid)
 
