@@ -403,10 +403,7 @@ func (m *Model) GetById(id string) error {
 			log.Debug("FOUND KEY")
 			return nil
 		} else {
-			ids, err := hashid.Decode(id)
-			if err != nil {
-				return err
-			}
+			ids := hashid.Decode(id)
 
 			if len(ids) != 2 {
 				return datastore.KeyNotFound
@@ -494,10 +491,7 @@ func (m *Model) KeyById(id string) (datastore.Key, bool, error) {
 		if ok, _ := m.Query().Filter("Code=", code).First(); ok {
 			return m.Key(), true, nil
 		} else {
-			ids, err := hashid.Decode(id)
-			if err != nil {
-				return nil, false, err
-			}
+			ids := hashid.Decode(id)
 
 			if len(ids) != 2 {
 				return nil, false, datastore.KeyNotFound
