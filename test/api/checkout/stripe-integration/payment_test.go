@@ -505,7 +505,7 @@ var _ = Describe("payment", func() {
 			log.Debug("JSON %v", w.Body)
 		})
 
-		It("Should authorize order with coupon successfully", func() {
+		FIt("Should authorize order with coupon successfully", func() {
 			w := client.PostRawJSON("/order", requests.ValidCouponOrderOnly)
 			Expect(w.Code).To(Equal(201))
 
