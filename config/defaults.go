@@ -12,7 +12,7 @@ func Defaults() *Config {
 	config.RootDir, _ = filepath.Abs(cwd + "/../..")
 	config.SiteTitle = "Crowdstart"
 
-	config.Fee = 0.02
+	config.Fee = 0.05
 
 	config.Secret = "change-me-in-production"
 	config.SessionName = "session"
