@@ -397,29 +397,30 @@ func (m *Model) GetById(id string) error {
 		}
 	case "coupon":
 		code := strings.ToUpper(id)
-		log.Debug("GETBYIDCODE: %v", code)
+		log.Warn("GETBYIDCODE: %v", code, m.Context())
 
 		if ok, _ := m.Query().Filter("Code=", code).First(); ok {
-			log.Debug("FOUND KEY")
+			log.Warn("FOUND KEY", m.Context())
 			return nil
 		} else {
-			ids := hashid.Decode(id)
-
-			if len(ids) != 2 {
+			key, err := hashid.DecodeKey(m.Context(), id)
+			if err != nil {
+				log.Warn("Unable to decode key for coupon: %v", err, m.Context())
 				return datastore.KeyNotFound
 			}
 
-			log.Debug("coupon ids: %v", ids)
-			key := m.Db.KeyFromInt("coupon", ids[0])
-			_, err = m.Query().Filter("__key__ =", key).First()
-			log.Debug("key: %v", key)
+			err = m.Get(key)
+			if err != nil {
+				log.Warn("Unable to filter by key for coupon: %v", err, m.Context())
+				return datastore.KeyNotFound
+			}
 
 			// Set RawCode on fetched entity in case this was not parsed from JSON
 			v := reflect.ValueOf(m.Entity).Elem().FieldByName("RawCode")
 			ptr := v.Addr().Interface().(*string)
 			*ptr = id
 
-			return err
+			return nil
 		}
 	case "order":
 		// Special-cased since order is filtered by IntId (order number)
