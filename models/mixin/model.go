@@ -14,6 +14,7 @@ import (
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/rand"
 	"crowdstart.com/util/structs"
+	"crowdstart.com/util/timeutil"
 )
 
 // A datastore kind that is compatible with the Model mixin
@@ -262,7 +263,7 @@ func (m *Model) MustPut() {
 func (m *Model) Put() error {
 	// Set CreatedAt, UpdatedAt
 	now := time.Now()
-	if m.key == nil || m.CreatedAt.IsZero() {
+	if m.key == nil || timeutil.IsZero(m.CreatedAt) {
 		m.CreatedAt = now
 	}
 	m.UpdatedAt = now
