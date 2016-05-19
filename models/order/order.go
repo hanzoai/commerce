@@ -321,35 +321,47 @@ func (o *Order) UpdateDiscount() {
 
 	ctx := o.Model.Db.Context
 
+	log.Warn("TRYING TO APPLY COUPONS", ctx)
 	for i := 0; i < num; i++ {
 		c := &o.Coupons[i]
 		if !c.ValidFor(o.CreatedAt) {
 			continue
 		}
 
+		log.Warn("TRYING TO APPLY COUPON %v", c.Code(), ctx)
+
 		if c.ItemId() == "" {
+			log.Warn("Coupon Applies to All", ctx)
+
 			// Not per product
 			switch c.Type {
 			case coupon.Flat:
+				log.Warn("Flat", ctx)
 				o.Discount += currency.Cents(c.Amount)
 			case coupon.Percent:
+				log.Warn("Percent", ctx)
 				for _, item := range o.Items {
 					o.Discount += currency.Cents(int(math.Floor(float64(item.TotalPrice()) * float64(c.Amount) * 0.01)))
 				}
 			case coupon.FreeShipping:
+				log.Warn("FreeShipping", ctx)
 				o.Discount += currency.Cents(int(o.Shipping))
 			}
 		} else {
+			log.Warn("Coupon Applies to %v", c.ItemId(), ctx)
 			// Coupons per product
 			for _, item := range o.Items {
 				log.Debug("Coupon.ProductId: %v, Item.ProductId: %v", c.ProductId, item.ProductId, ctx)
 				if item.Id() == c.ItemId() {
 					switch c.Type {
 					case coupon.Flat:
+						log.Warn("Flat", ctx)
 						o.Discount += currency.Cents(item.Quantity * c.Amount)
 					case coupon.Percent:
+						log.Warn("Percent", ctx)
 						o.Discount += currency.Cents(math.Floor(float64(item.TotalPrice()) * float64(c.Amount) * 0.01))
 					case coupon.FreeItem:
+						log.Warn("FreeShipping", ctx)
 						o.Discount += currency.Cents(item.Price)
 					}
 
@@ -556,6 +568,7 @@ func (o *Order) Tally() {
 
 // Update order with information from datastore and tally
 func (o *Order) UpdateAndTally(stor *store.Store) error {
+	log.Warn("UpdateAndTally: %v", o.DisplayId(), o.Context())
 	ctx := o.Db.Context
 
 	// Get coupons from datastore
@@ -564,6 +577,7 @@ func (o *Order) UpdateAndTally(stor *store.Store) error {
 		return errors.New("Failed to get coupons")
 	}
 
+	log.Warn("Coupons: %#v", o.Coupons, o.Context())
 	for _, coup := range o.Coupons {
 		if !coup.Redeemable() {
 			return errors.New(fmt.Sprintf("Coupon %v limit reached", coup.Code()))
@@ -572,6 +586,7 @@ func (o *Order) UpdateAndTally(stor *store.Store) error {
 
 	// Update the list of free coupon items
 	o.UpdateCouponItems()
+	log.Warn("Update Coupons: %#v", o.Coupons, o.Context())
 
 	// Get underlying product/variant entities
 	if err := o.GetItemEntities(); err != nil {
@@ -589,6 +604,7 @@ func (o *Order) UpdateAndTally(stor *store.Store) error {
 
 	// Update discount amount
 	o.UpdateDiscount()
+	log.Warn("Update Discount: %#v", o.Discount, o.Context())
 
 	// Tally up order again
 	o.Tally()
