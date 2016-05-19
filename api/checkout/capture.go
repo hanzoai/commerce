@@ -89,11 +89,11 @@ func CompleteCapture(c *gin.Context, org *organization.Organization, ord *order.
 	ctx := db.Context
 
 	// Save coupon redemptions
-	ord.GetCoupons()
 	if len(ord.Coupons) > 0 {
 		for _, coup := range ord.Coupons {
-			err := coup.SaveRedemption()
-			log.Warn("Unable to save redemption: %v", err, ctx)
+			if err := coup.SaveRedemption(); err != nil {
+				log.Warn("Unable to save redemption: %v", err, ctx)
+			}
 		}
 	}
 
