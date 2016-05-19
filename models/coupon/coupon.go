@@ -10,6 +10,7 @@ import (
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/util/hashid"
 	"crowdstart.com/util/log"
+	"crowdstart.com/util/timeutil"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
@@ -118,17 +119,17 @@ func (c *Coupon) CodeFromId(uniqueid string) string {
 
 func (c Coupon) ValidFor(t time.Time) bool {
 	if !c.Enabled {
-		log.Debug("Coupon Not Enabled")
+		log.Warn("Coupon Not Enabled", c.Context())
 		return false // currently active, no need to check?
 	}
 
-	if !c.StartDate.IsZero() && c.StartDate.After(t) {
-		log.Debug("Coupon not yet Usable")
+	if !timeutil.IsZero(c.StartDate) && c.StartDate.After(t) {
+		log.Warn("Coupon not yet Usable: %v > %v", c.StartDate.Unix(), t, c.Context())
 		return false
 	}
 
-	if !c.EndDate.IsZero() && c.EndDate.Before(t) {
-		log.Debug("Coupon is Expired")
+	if !timeutil.IsZero(c.EndDate) && c.EndDate.Before(t) {
+		log.Warn("Coupon is Expired: %v < %v", c.EndDate.Unix(), t, c.Context())
 		return false
 	}
 
