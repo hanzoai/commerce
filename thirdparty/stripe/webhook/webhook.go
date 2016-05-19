@@ -43,7 +43,9 @@ func Webhook(c *gin.Context) {
 	ctx := middleware.GetAppEngine(c)
 
 	switch event.Type {
-	case "charge.captured", "charge.failed", "charge.refunded", "charge.succeeded", "charge.updated":
+	case "charge.succeeded":
+		//Do Nothing
+	case "charge.captured", "charge.failed", "charge.refunded", "charge.updated":
 		ch := stripe.Charge{}
 		if err := json.Unmarshal(event.Data.Raw, &ch); err != nil {
 			log.Error("Failed to unmarshal stripe.Charge %#v: %v", event, err, c)
