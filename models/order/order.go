@@ -568,7 +568,6 @@ func (o *Order) Tally() {
 
 // Update order with information from datastore and tally
 func (o *Order) UpdateAndTally(stor *store.Store) error {
-	log.Warn("UpdateAndTally: %v", o.DisplayId(), o.Context())
 	ctx := o.Db.Context
 
 	// Get coupons from datastore
@@ -577,7 +576,6 @@ func (o *Order) UpdateAndTally(stor *store.Store) error {
 		return errors.New("Failed to get coupons")
 	}
 
-	log.Warn("Coupons: %#v", o.Coupons, o.Context())
 	for _, coup := range o.Coupons {
 		if !coup.Redeemable() {
 			return errors.New(fmt.Sprintf("Coupon %v limit reached", coup.Code()))
@@ -586,7 +584,6 @@ func (o *Order) UpdateAndTally(stor *store.Store) error {
 
 	// Update the list of free coupon items
 	o.UpdateCouponItems()
-	log.Warn("Update Coupons: %#v", o.Coupons, o.Context())
 
 	// Get underlying product/variant entities
 	if err := o.GetItemEntities(); err != nil {
@@ -604,7 +601,6 @@ func (o *Order) UpdateAndTally(stor *store.Store) error {
 
 	// Update discount amount
 	o.UpdateDiscount()
-	log.Warn("Update Discount: %#v", o.Discount, o.Context())
 
 	// Tally up order again
 	o.Tally()
