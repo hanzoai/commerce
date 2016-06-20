@@ -26,11 +26,9 @@ var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 type Status string
 
 const (
-	Cancelled Status = "cancelled"
-	Completed        = "completed"
-	Locked           = "locked"
-	OnHold           = "on-hold"
-	Open             = "open"
+	Active    = "active"
+	Discarded = "discarded"
+	Ordered   = "ordered"
 )
 
 type Cart struct {
@@ -45,21 +43,14 @@ type Cart struct {
 	// Associated Crowdstart user or buyer.
 	UserId string `json:"userId,omitempty"`
 
-	// Whether this was a preorder or not
-	Preorder bool `json:"preorder"`
+	// Associated order ID, if any
+	OrderId string `json:"orderId,omitempty"`
 
-	// Cart is unconfirmed if user has not declared (either implicitly or
-	// explicitly) precise order variant options.
-	Unconfirmed bool `json:"unconfirmed"`
+	// Status
+	Status Status `json:"status"`
 
 	// 3-letter ISO currency code (lowercase).
 	Currency currency.Type `json:"currency"`
-
-	// Payment processor type - paypal, stripe, etc
-	Type string `json:"type"`
-
-	// Shipping method
-	ShippingMethod string `json:"shippingMethod"`
 
 	// Sum of the line item amounts. Amount in cents.
 	LineTotal currency.Cents `json:"lineTotal"`
@@ -76,20 +67,8 @@ type Cart struct {
 	// Sales tax applied. Amount in cents.
 	Tax currency.Cents `json:"tax"`
 
-	// Price adjustments applied. Amount in cents.
-	Adjustment currency.Cents `json:"-"`
-
 	// Total = subtotal + shipping + taxes + adjustments. Amount in cents.
 	Total currency.Cents `json:"total"`
-
-	// Amount owed to the seller. Amount in cents.
-	Balance currency.Cents `json:"balance"`
-
-	// Gross amount paid to the seller. Amount in cents.
-	Paid currency.Cents `json:"paid"`
-
-	// integer	Amount refunded by the seller. Amount in cents.
-	Refunded currency.Cents `json:"refunded"`
 
 	BillingAddress  Address `json:"billingAddress"`
 	ShippingAddress Address `json:"shippingAddress"`
@@ -98,16 +77,9 @@ type Cart struct {
 	Items  []LineItem `json:"items" datastore:"-"`
 	Items_ string     `json:"-"` // need props
 
-	Adjustments []Adjustment `json:"-"`
-
 	Coupons     []coupon.Coupon `json:"coupons,omitempty"`
 	CouponCodes []string        `json:"couponCodes,omitempty"`
 	ReferrerId  string          `json:"referrerId,omitempty"`
-
-	PaymentIds []string `json:"payments"`
-
-	// Fulfillment information
-	Fulfillment Fulfillment `json:"fulfillment"`
 
 	// Series of events that have occured relevant to this order
 	History []Event `json:"-,omitempty"`
@@ -116,102 +88,152 @@ type Cart struct {
 	Metadata  Map    `json:"metadata" datastore:"-"`
 	Metadata_ string `json:"-" datastore:",noindex"`
 
-	Test bool `json:"-"` // Whether our internal test flag is active or not
-
 	Gift        bool   `json:"gift"`        // Is this a gift?
 	GiftMessage string `json:"giftMessage"` // Message to go on gift
 	GiftEmail   string `json:"giftEmail"`   // Email for digital gifts
 }
 
-func (o *Cart) Validator() *val.Validator {
+func (c *Cart) Validator() *val.Validator {
 	return val.New()
 }
 
-func (o *Cart) Load(c <-chan aeds.Property) (err error) {
+func (c *Cart) Load(ch <-chan aeds.Property) (err error) {
 	// Ensure we're initialized
-	o.Defaults()
+	c.Defaults()
 
 	// Load supported properties
-	if err = IgnoreFieldMismatch(aeds.LoadStruct(o, c)); err != nil {
+	if err = IgnoreFieldMismatch(aeds.LoadStruct(c, ch)); err != nil {
 		return err
 	}
 
-	for _, coup := range o.Coupons {
-		coup.Init(o.Model.Db)
+	for _, coup := range c.Coupons {
+		coup.Init(c.Model.Db)
 	}
 
 	// Deserialize from datastore
-	if len(o.Items_) > 0 {
-		err = json.DecodeBytes([]byte(o.Items_), &o.Items)
+	if len(c.Items_) > 0 {
+		err = json.DecodeBytes([]byte(c.Items_), &c.Items)
 	}
 
-	if len(o.Metadata_) > 0 {
-		err = json.DecodeBytes([]byte(o.Metadata_), &o.Metadata)
+	if len(c.Metadata_) > 0 {
+		err = json.DecodeBytes([]byte(c.Metadata_), &c.Metadata)
 	}
 
 	return err
 }
 
-func (o *Cart) Save(c chan<- aeds.Property) (err error) {
+func (c *Cart) Save(ch chan<- aeds.Property) (err error) {
 	// Serialize unsupported properties
-	o.Metadata_ = string(json.EncodeBytes(&o.Metadata))
-	o.Items_ = string(json.EncodeBytes(o.Items))
+	c.Metadata_ = string(json.EncodeBytes(&c.Metadata))
+	c.Items_ = string(json.EncodeBytes(c.Items))
 
 	// Save properties
-	return IgnoreFieldMismatch(aeds.SaveStruct(o, c))
+	return IgnoreFieldMismatch(aeds.SaveStruct(c, ch))
 }
 
-func (o Cart) ItemsJSON() string {
-	return json.Encode(o.Items)
+func (c *Cart) SetItem(db *datastore.Datastore, id string, typ string, quantity int) (err error) {
+	// Remove item from cart
+	if quantity == 0 {
+		c.RemoveItem(id)
+		return nil
+	}
+
+	// Update quantity of existing item
+	for _, li := range c.Items {
+		if li.HasId(id) {
+			li.Quantity = quantity
+			return nil
+		}
+	}
+
+	// New item
+	li := &LineItem{}
+	switch typ {
+	case "product":
+		err = li.SetProduct(db, id, quantity)
+	case "variant":
+		err = li.SetVariant(db, id, quantity)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	c.Items = append(c.Items, *li)
+	return nil
+
 }
 
-func (o Cart) IntId() int {
-	return int(o.Key().IntID())
+func (c *Cart) RemoveItem(id string) (err error) {
+	items := make([]LineItem, 0)
+	for _, li := range c.Items {
+		if !li.HasId(id) {
+			items = append(items, li)
+		}
+	}
+	c.Items = items
+	return nil
 }
 
-func (o Cart) DisplayId() string {
-	return strconv.Itoa(o.IntId())
+func (c *Cart) SetProduct(db *datastore.Datastore, id string, quantity int) (err error) {
+	return c.SetItem(db, id, "product", quantity)
 }
 
-func (o Cart) DisplayCreatedAt() string {
-	duration := time.Since(o.CreatedAt)
+func (c *Cart) SetVariant(db *datastore.Datastore, id string, quantity int) (err error) {
+	return c.SetItem(db, id, "variant", quantity)
+}
+
+func (c Cart) ItemsJSON() string {
+	return json.Encode(c.Items)
+}
+
+func (c Cart) IntId() int {
+	return int(c.Key().IntID())
+}
+
+func (c Cart) DisplayId() string {
+	return strconv.Itoa(c.IntId())
+}
+
+func (c Cart) DisplayCreatedAt() string {
+	duration := time.Since(c.CreatedAt)
 
 	if duration.Hours() > 24 {
-		year, month, day := o.CreatedAt.Date()
+		year, month, day := c.CreatedAt.Date()
 		return fmt.Sprintf("%s %s, %s", month.String(), strconv.Itoa(day), strconv.Itoa(year))
 	}
 
-	return humanize.Time(o.CreatedAt)
+	return humanize.Time(c.CreatedAt)
 }
 
-func (o Cart) DisplaySubtotal() string {
-	return DisplayPrice(o.Currency, o.Subtotal)
+func (c Cart) DisplaySubtotal() string {
+	return DisplayPrice(c.Currency, c.Subtotal)
 }
 
-func (o Cart) DisplayDiscount() string {
-	return DisplayPrice(o.Currency, o.Discount)
+func (c Cart) DisplayDiscount() string {
+	return DisplayPrice(c.Currency, c.Discount)
 }
 
-func (o Cart) DisplayTax() string {
-	return DisplayPrice(o.Currency, o.Tax)
+func (c Cart) DisplayTax() string {
+	return DisplayPrice(c.Currency, c.Tax)
 }
 
-func (o Cart) DisplayShipping() string {
-	return DisplayPrice(o.Currency, o.Shipping)
+func (c Cart) DisplayShipping() string {
+	return DisplayPrice(c.Currency, c.Shipping)
 }
 
-func (o Cart) DisplayTotal() string {
-	return DisplayPrice(o.Currency, o.Total)
+func (c Cart) DisplayTotal() string {
+	return DisplayPrice(c.Currency, c.Total)
 }
 
-func (o Cart) Description() string {
-	if o.Items == nil {
+func (c Cart) Description() string {
+	if c.Items == nil {
 		return ""
 	}
 
 	buffer := bytes.NewBufferString("")
 
-	for i, item := range o.Items {
+	for i, item := range c.Items {
 		if i > 0 {
 			buffer.WriteString(", ")
 		}
