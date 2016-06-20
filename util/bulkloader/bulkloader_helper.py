@@ -139,11 +139,11 @@ def export_date_time(format):
 
     def export_date_time_lambda(value):
         if not value:
-            return '2014-08-10T00:00:01'
+            return '2014-08-10 00:00:01'
         try:
             return datetime.datetime.strftime(value, format)
         except:
-            return '2014-08-10T00:00:01'
+            return '2014-08-10 00:00:01'
 
     return export_date_time_lambda
 

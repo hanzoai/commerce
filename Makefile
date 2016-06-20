@@ -358,10 +358,9 @@ datastore-import:
 
 # Generate config for use with datastore-export target
 datastore-config:
-	@$(appcfg.py) create_bulkloader_config \
-				  --url=$(datastore_admin_url) \
-				  --namespace $$namespace \
-				  --filename=bulkloader.yaml
+	$(appcfg.py) create_bulkloader_config \
+				 --url=$(datastore_admin_url) \
+				 --filename=bulkloader.yaml
 
 # Replicate production data to localhost
 datastore-replicate:
