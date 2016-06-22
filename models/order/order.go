@@ -11,8 +11,6 @@ import (
 
 	aeds "appengine/datastore"
 
-	"github.com/dustin/go-humanize"
-
 	"crowdstart.com/config"
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/coupon"
@@ -56,6 +54,9 @@ type Order struct {
 
 	// Associated Crowdstart user or buyer.
 	UserId string `json:"userId,omitempty"`
+
+	// Associated cart
+	CartId string `json:"orderId,omitempty"`
 
 	// Status
 	Status            Status            `json:"status"`
