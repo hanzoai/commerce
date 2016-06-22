@@ -11,6 +11,8 @@ import (
 
 	aeds "appengine/datastore"
 
+	"github.com/dustin/go-humanize"
+
 	"crowdstart.com/config"
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/coupon"

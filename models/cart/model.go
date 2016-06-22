@@ -21,6 +21,7 @@ func (o *Cart) Defaults() {
 	o.Items = make([]LineItem, 0)
 	o.Metadata = make(Map)
 	o.Coupons = make([]coupon.Coupon, 0)
+	o.Status = Active
 }
 
 func New(db *datastore.Datastore) *Cart {

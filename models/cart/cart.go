@@ -26,9 +26,9 @@ var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 type Status string
 
 const (
-	Active    = "active"
-	Discarded = "discarded"
-	Ordered   = "ordered"
+	Active    Status = "active"
+	Discarded        = "discarded"
+	Ordered          = "ordered"
 )
 
 type Cart struct {
