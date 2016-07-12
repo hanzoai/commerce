@@ -3,32 +3,34 @@ package fixtures
 import (
 	"github.com/gin-gonic/gin"
 
+	"crowdstart.com/auth/password"
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/organization"
+	"crowdstart.com/models/user"
 )
 
-var Kanoa = New("ludela", func(c *gin.Context) *organization.Organization {
+var Ludela = New("ludela", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)
 	org.Name = "ludela"
 	org.GetOrCreate("Name=", org.Name)
 
-	// u := user.New(db)
-	// u.Email = "cival@getkanoa.com"
-	// u.GetOrCreate("Email=", u.Email)
-	// u.FirstName = "Cival"
-	// u.LastName = ""
-	// u.Organizations = []string{org.Id()}
-	// u.PasswordHash, _ = password.Hash("1Kanoa23")
-	// u.Put()
+	u := user.New(db)
+	u.Email = "jamie@ludela.com"
+	u.GetOrCreate("Email=", u.Email)
+	u.FirstName = "Jamie"
+	u.LastName = ""
+	u.Organizations = []string{org.Id()}
+	u.PasswordHash, _ = password.Hash("1Ludela23")
+	u.Put()
 
-	// org.FullName = "KANOA Inc"
-	// org.Owners = []string{u.Id()}
-	// org.Website = "http://www.getkanoa.com"
-	// org.SecretKey = []byte("EZ2E011iX2Bp5lv149N2STd1d580cU58")
-	// org.AddDefaultTokens()
-	// org.Fee = 0.05
+	org.FullName = "Ludela Inc"
+	org.Owners = []string{u.Id()}
+	org.Website = "http://www.ludela.com"
+	org.SecretKey = []byte("EU8E011iX2Bp5lv481N2STd1d999cU58")
+	org.AddDefaultTokens()
+	org.Fee = 0.05
 
 	// Email configuration
 	org.Mandrill.APIKey = "40gP4DdLRLHo1QX_A8mfHw"
@@ -37,21 +39,21 @@ var Kanoa = New("ludela", func(c *gin.Context) *organization.Organization {
 	org.Email.Defaults.FromName = "Ludela"
 	org.Email.Defaults.FromEmail = "hi@ludela.com"
 
-	org.Email.OrderConfirmation.Subject = "KANOA Earphones Order Confirmation"
-	org.Email.OrderConfirmation.Template = readEmailTemplate("/resources/kanoa/emails/order-confirmation.html")
-	org.Email.OrderConfirmation.Enabled = true
+	// org.Email.OrderConfirmation.Subject = "KANOA Earphones Order Confirmation"
+	// org.Email.OrderConfirmation.Template = readEmailTemplate("/resources/kanoa/emails/order-confirmation.html")
+	// org.Email.OrderConfirmation.Enabled = true
 
-	org.Email.User.PasswordReset.Template = readEmailTemplate("/resources/kanoa/emails/user-password-reset.html")
-	org.Email.User.PasswordReset.Subject = "Reset your KANOA password"
-	org.Email.User.PasswordReset.Enabled = true
+	// org.Email.User.PasswordReset.Template = readEmailTemplate("/resources/kanoa/emails/user-password-reset.html")
+	// org.Email.User.PasswordReset.Subject = "Reset your KANOA password"
+	// org.Email.User.PasswordReset.Enabled = true
 
-	org.Email.User.EmailConfirmation.Template = readEmailTemplate("/resources/kanoa/emails/user-email-confirmation.html")
-	org.Email.User.EmailConfirmation.Subject = "Please confirm your email"
-	org.Email.User.EmailConfirmation.Enabled = true
+	// org.Email.User.EmailConfirmation.Template = readEmailTemplate("/resources/kanoa/emails/user-email-confirmation.html")
+	// org.Email.User.EmailConfirmation.Subject = "Please confirm your email"
+	// org.Email.User.EmailConfirmation.Enabled = true
 
-	org.Email.User.EmailConfirmed.Subject = "Thank you for confirming your email"
-	org.Email.User.EmailConfirmed.Template = readEmailTemplate("/resources/kanoa/emails/user-email-confirmed.html")
-	org.Email.User.EmailConfirmed.Enabled = false
+	// org.Email.User.EmailConfirmed.Subject = "Thank you for confirming your email"
+	// org.Email.User.EmailConfirmed.Template = readEmailTemplate("/resources/kanoa/emails/user-email-confirmed.html")
+	// org.Email.User.EmailConfirmed.Enabled = false
 
 	// Save org into default namespace
 	org.Put()
