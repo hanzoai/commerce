@@ -2,7 +2,7 @@ github.com/cenkalti/backoff master
 github.com/davecgh/go-spew/spew master
 github.com/davidtai/appenginetesting master
 github.com/davidtai/goauth2old/appengine/serviceaccount master
-github.com/dgrijalva/jwt-go master
+github.com/dgrijalva/jwt-go v2.7.0
 github.com/dustin/go-humanize master
 github.com/flosch/pongo2 master
 github.com/getsentry/raven-go master
