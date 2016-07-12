@@ -3,6 +3,7 @@ node_modules
 .sdk
 npm-debug.log
 .datastore.bin
+_export
 
 config.json
 config/production/bulkloader_helper.pyc
