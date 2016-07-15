@@ -19,7 +19,27 @@ import (
 
 var jsTemplate = ""
 
-type MailChimpData struct {
+// Settings used for injection into form.js
+type Settings struct {
+	// Name of list
+	Name string `json:"name"`
+
+	// Type of form
+	Type form.Type `json:"type"`
+
+	// Thank you settings
+	ThankYou ThankYou `json:"thankyou"`
+}
+
+// Thank you configuration
+type ThankYou struct {
+	Type thankyou.Type `json:"type"`
+	Url  string        `json:"url,omitempty"`
+	HTML string        `json:"html,omitempty"`
+}
+
+// Mailchimp configuration
+type MailChimp struct {
 	Id               string `json:"id"`
 	APIKey           string `json:"apiKey"`
 	DoubleOptin      bool   `json:"doubleOptin"`
@@ -45,7 +65,7 @@ type MailingList struct {
 	SendWelcome bool `json:"sendWelcome"`
 
 	// Mailchimp settings for this list
-	Mailchimp *MailChimpData `json:"mailchimp,omitempty"`
+	Mailchimp MailChimp `json:"mailchimp,omitempty"`
 
 	// Email forwarding
 	Forward struct {
@@ -54,12 +74,8 @@ type MailingList struct {
 		Enabled bool   `json:"enabled"`
 	} `json:"forward"`
 
-	// Url to Thank you page
-	ThankYou struct {
-		Type thankyou.Type `json:"type"`
-		Url  string        `json:"url,omitempty"`
-		HTML string        `json:"html,omitempty"`
-	} `json:"thankyou"`
+	// Thank you settings
+	ThankYou ThankYou `json:"thankyou"`
 
 	// Conversion tracking info
 	Facebook struct {
@@ -114,13 +130,7 @@ func (m *MailingList) Js() string {
 		endpoint = "https:" + endpoint
 	}
 
-	mc := m.Mailchimp
-	m.Mailchimp = nil
-
-	ret := fmt.Sprintf(jsTemplate, endpoint, m.JSON())
-	m.Mailchimp = mc
-
-	return ret
+	return fmt.Sprintf(jsTemplate, endpoint, json.Encode(Settings{m.Name, m.Type, m.ThankYou}))
 }
 
 func FromJSON(db *datastore.Datastore, data []byte) *MailingList {
