@@ -19,6 +19,7 @@ func (m *MailingList) Defaults() {
 	m.Facebook.Currency = "USD"
 	m.ThankYou.Type = thankyou.Disabled
 	m.Mailchimp.Enabled = true
+	m.Mailchimp = &MailChimpData{}
 }
 
 func New(db *datastore.Datastore) *MailingList {
