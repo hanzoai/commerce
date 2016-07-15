@@ -19,6 +19,19 @@ import (
 
 var jsTemplate = ""
 
+type MailChimpData struct {
+	Id               string `json:"id"`
+	APIKey           string `json:"apiKey"`
+	DoubleOptin      bool   `json:"doubleOptin"`
+	UpdateExisting   bool   `json:"updateExisting"`
+	ReplaceInterests bool   `json:"replaceInterests"`
+
+	// Whether to have Mailchimp send email confirmation
+	SendWelcome bool `json:"sendWelcome"`
+
+	Enabled bool `json:"enabled"`
+}
+
 type MailingList struct {
 	mixin.Model
 
@@ -32,18 +45,7 @@ type MailingList struct {
 	SendWelcome bool `json:"sendWelcome"`
 
 	// Mailchimp settings for this list
-	Mailchimp struct {
-		Id               string `json:"id"`
-		APIKey           string `json:"apiKey"`
-		DoubleOptin      bool   `json:"doubleOptin"`
-		UpdateExisting   bool   `json:"updateExisting"`
-		ReplaceInterests bool   `json:"replaceInterests"`
-
-		// Whether to have Mailchimp send email confirmation
-		SendWelcome bool `json:"sendWelcome"`
-
-		Enabled bool `json:"enabled"`
-	} `json:"mailchimp"`
+	Mailchimp *MailChimpData `json:"mailchimp,omitempty"`
 
 	// Email forwarding
 	Forward struct {
@@ -112,7 +114,13 @@ func (m *MailingList) Js() string {
 		endpoint = "https:" + endpoint
 	}
 
-	return fmt.Sprintf(jsTemplate, endpoint, m.JSON())
+	mc := m.Mailchimp
+	m.Mailchimp = nil
+
+	ret := fmt.Sprintf(jsTemplate, endpoint, m.JSON())
+	m.Mailchimp = mc
+
+	return ret
 }
 
 func FromJSON(db *datastore.Datastore, data []byte) *MailingList {
