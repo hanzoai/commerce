@@ -80,19 +80,22 @@ do ->
 
     # Loop over form elements
     for el in form.elements
-      # Clean up inputs
-      k = el.name.trim().toLowerCase()
-      v = el.value.trim()
+      try
+        # Clean up inputs
+        k = el.name.trim().toLowerCase()
+        v = el.value.trim()
 
-      # Skip inputs we don't care about
-      if k == '' or v == '' or (el.getAttribute 'type') == 'submit'
-        continue
+        # Skip inputs we don't care about
+        if k == '' or v == '' or (el.getAttribute 'type') == 'submit'
+          continue
 
-      # Detect emails
-      if /email/.test k
-        data.email = v
-      else
-        data.metadata[k] = v
+        # Detect emails
+        if /email/.test k
+          data.email = v
+        else
+          data.metadata[k] = v
+      catch e
+        console.log "Skipping valueless form input"
 
     # Use selectors if necessary
     if selectors.email
