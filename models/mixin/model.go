@@ -17,6 +17,8 @@ import (
 	"crowdstart.com/util/timeutil"
 )
 
+var zeroTime = time.Time{}
+
 // A datastore kind that is compatible with the Model mixin
 type Kind interface {
 	Kind() string
@@ -111,6 +113,13 @@ type Model struct {
 func (m *Model) Init(db *datastore.Datastore, kind Kind) {
 	m.Db = db
 	m.Entity = kind
+
+	// Automatically call defaults on init
+	if m.CreatedAt == zeroTime {
+		if hook, ok := (m.Entity).(Defaults); ok {
+			hook.Defaults()
+		}
+	}
 }
 
 // Get AppEngine context
