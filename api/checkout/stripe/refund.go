@@ -55,13 +55,17 @@ func Refund(org *organization.Organization, ord *order.Order, refundAmount curre
 	refundRemaining := refundAmount
 	for _, p := range payments {
 		if p.Amount <= refundRemaining {
-			if _, err := client.RefundPayment(p, p.Amount); err != nil {
-				return err
+			if !p.Test {
+				if _, err := client.RefundPayment(p, p.Amount); err != nil {
+					return err
+				}
 			}
 			refundRemaining -= p.Amount
 		} else if p.Amount > refundRemaining {
-			if _, err := client.RefundPayment(p, refundRemaining); err != nil {
-				return err
+			if !p.Test {
+				if _, err := client.RefundPayment(p, refundRemaining); err != nil {
+					return err
+				}
 			}
 			refundRemaining = 0
 		}
