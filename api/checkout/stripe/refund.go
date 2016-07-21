@@ -7,7 +7,9 @@ import (
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/types/currency"
+	"crowdstart.com/models/user"
 	"crowdstart.com/thirdparty/stripe"
+	"crowdstart.com/util/emails"
 	"crowdstart.com/util/log"
 )
 
@@ -55,13 +57,17 @@ func Refund(org *organization.Organization, ord *order.Order, refundAmount curre
 	refundRemaining := refundAmount
 	for _, p := range payments {
 		if p.Amount <= refundRemaining {
-			if _, err := client.RefundPayment(p, p.Amount); err != nil {
-				return err
+			if !p.Test {
+				if _, err := client.RefundPayment(p, p.Amount); err != nil {
+					return err
+				}
 			}
 			refundRemaining -= p.Amount
 		} else if p.Amount > refundRemaining {
-			if _, err := client.RefundPayment(p, refundRemaining); err != nil {
-				return err
+			if !p.Test {
+				if _, err := client.RefundPayment(p, refundRemaining); err != nil {
+					return err
+				}
 			}
 			refundRemaining = 0
 		}
@@ -74,9 +80,15 @@ func Refund(org *organization.Organization, ord *order.Order, refundAmount curre
 	log.Info("Refund amount: %v", refundAmount)
 	ord.Refunded = ord.Refunded + refundAmount
 	ord.Paid = ord.Paid - refundAmount
+	usr := user.New(db)
+	usr.GetById(ord.UserId)
 	if ord.Total == ord.Refunded {
+		emails.SendFullRefundEmail(ctx, org, ord, usr, payments[0])
+
 		ord.PaymentStatus = payment.Refunded
 		ord.Status = order.Cancelled
+	} else {
+		emails.SendPartialRefundEmail(ctx, org, ord, usr, payments[0])
 	}
 
 	return ord.Put()
