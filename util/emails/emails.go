@@ -9,7 +9,6 @@ import (
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"
-	"crowdstart.com/models/product"
 	"crowdstart.com/models/token"
 	"crowdstart.com/models/types/country"
 	"crowdstart.com/models/user"
@@ -192,9 +191,6 @@ func SendOrderConfirmationEmail(ctx appengine.Context, org *organization.Organiz
 	toEmail := usr.Email
 	toName := usr.Name()
 
-	prod := product.New(ord.Db)
-	prod.GetById(ord.Items[0].ProductId)
-
 	// Subject, HTML
 
 	// order.number
@@ -308,9 +304,6 @@ func SendPartialRefundEmail(ctx appengine.Context, org *organization.Organizatio
 	toEmail := usr.Email
 	toName := usr.Name()
 
-	prod := product.New(ord.Db)
-	prod.GetById(ord.Items[0].ProductId)
-
 	// Subject, HTML
 	subject := conf.Subject
 
@@ -328,6 +321,7 @@ func SendPartialRefundEmail(ctx appengine.Context, org *organization.Organizatio
 			"displaytax":      ord.DisplayTax(),
 			"displayshipping": ord.DisplayShipping(),
 			"displaytotal":    ord.DisplayTotal(),
+			"displayrefunded": ord.DisplayRefunded(),
 			"currency":        currencyCode,
 			"items":           items,
 			"shippingaddress": map[string]interface{}{
@@ -347,6 +341,7 @@ func SendPartialRefundEmail(ctx appengine.Context, org *organization.Organizatio
 		"ORDER_DISPLAY_TAX":                 ord.DisplayTax(),
 		"ORDER_DISPLAY_SHIPPING":            ord.DisplayShipping(),
 		"ORDER_DISPLAY_TOTAL":               ord.DisplayTotal(),
+		"ORDER_DISPLAY_REFUNDED":            ord.DisplayRefunded(),
 		"ORDER_CURRENCY":                    currencyCode,
 		"ORDER_SHIPPING_ADDRESS_LINE1":      ord.ShippingAddress.Line1,
 		"ORDER_SHIPPING_ADDRESS_LINE2":      ord.ShippingAddress.Line2,
@@ -411,9 +406,6 @@ func SendFullRefundEmail(ctx appengine.Context, org *organization.Organization, 
 	toEmail := usr.Email
 	toName := usr.Name()
 
-	prod := product.New(ord.Db)
-	prod.GetById(ord.Items[0].ProductId)
-
 	// Subject, HTML
 	subject := conf.Subject
 
@@ -431,6 +423,7 @@ func SendFullRefundEmail(ctx appengine.Context, org *organization.Organization, 
 			"displaytax":      ord.DisplayTax(),
 			"displayshipping": ord.DisplayShipping(),
 			"displaytotal":    ord.DisplayTotal(),
+			"displayrefunded": ord.DisplayRefunded(),
 			"currency":        currencyCode,
 			"items":           items,
 			"shippingaddress": map[string]interface{}{
@@ -450,6 +443,7 @@ func SendFullRefundEmail(ctx appengine.Context, org *organization.Organization, 
 		"ORDER_DISPLAY_TAX":                 ord.DisplayTax(),
 		"ORDER_DISPLAY_SHIPPING":            ord.DisplayShipping(),
 		"ORDER_DISPLAY_TOTAL":               ord.DisplayTotal(),
+		"ORDER_DISPLAY_REFUNDED":            ord.DisplayRefunded(),
 		"ORDER_CURRENCY":                    currencyCode,
 		"ORDER_SHIPPING_ADDRESS_LINE1":      ord.ShippingAddress.Line1,
 		"ORDER_SHIPPING_ADDRESS_LINE2":      ord.ShippingAddress.Line2,
@@ -497,5 +491,5 @@ func SendFullRefundEmail(ctx appengine.Context, org *organization.Organization, 
 		vars["ORDER_ITEMS_"+idx+"_CURRENCY"] = currencyCode
 	}
 
-	mandrill.SendTemplate(ctx, "order-partially-refunded", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
+	mandrill.SendTemplate(ctx, "order-refunded", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
 }
