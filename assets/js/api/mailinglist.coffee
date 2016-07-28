@@ -125,7 +125,7 @@ do ->
   # Trigger event tracking
   track = ->
     return unless typeof analytics?.track is 'function'
-    analytics.track 'Signup', category: 'Subscription'
+    analytics.track 'Lead', category: 'Subscription'
 
   # Wire up submit handler
   addHandler = (el, errorEl) ->
