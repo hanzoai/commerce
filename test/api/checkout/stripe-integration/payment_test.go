@@ -632,6 +632,7 @@ var _ = Describe("payment", func() {
 
 	Context("Charge Order With Single Use Coupon", func() {
 		It("Should charge order with single use coupon successfully", func() {
+			Skip("Single-use coupons not yet supported")
 			w := client.PostRawJSON("/checkout/charge", requests.ValidOrder)
 			Expect(w.Code).To(Equal(200))
 

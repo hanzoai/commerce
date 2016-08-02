@@ -16,11 +16,20 @@ var KanoaCSUsers = New("kanoa-cs-users", func(c *gin.Context) {
 	org.Name = "kanoa"
 	org.GetOrCreate("Name=", org.Name)
 
+	// u := user.New(db)
+	// u.Email = "dev@hanzo.ai"
+	// u.GetOrCreate("Email=", u.Email)
+	// u.FirstName = "Lorenzo"
+	// u.LastName = "Castillo"
+	// u.Organizations = []string{org.Id()}
+	// u.PasswordHash, _ = password.Hash("1Kanoa23")
+	// u.Put()
+
 	u := user.New(db)
-	u.Email = "dev@hanzo.ai"
+	u.Email = "jordan@getkanoa.com"
 	u.GetOrCreate("Email=", u.Email)
-	u.FirstName = "Lorenzo"
-	u.LastName = "Castillo"
+	u.FirstName = "Jordan"
+	u.LastName = "Shou"
 	u.Organizations = []string{org.Id()}
 	u.PasswordHash, _ = password.Hash("1Kanoa23")
 	u.Put()
