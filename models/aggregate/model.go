@@ -20,7 +20,6 @@ func (a *Aggregate) Defaults() {
 func New(db *datastore.Datastore) *Aggregate {
 	a := new(Aggregate)
 	a.Init(db)
-	a.Defaults()
 	return a
 }
 
