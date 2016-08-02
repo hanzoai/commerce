@@ -66,6 +66,7 @@ var SynchronizedAfterSuite = ginkgo.SynchronizedAfterSuite
 var BeforeEach = ginkgo.BeforeEach
 var JustBeforeEach = ginkgo.JustBeforeEach
 var AfterEach = ginkgo.AfterEach
+var Skip = ginkgo.Skip
 
 // Declarations for Gomega DSL
 var RegisterFailHandler = gomega.RegisterFailHandler
