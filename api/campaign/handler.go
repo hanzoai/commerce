@@ -1,6 +1,7 @@
 package xd
 
 import (
+	"math"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -22,14 +23,14 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 		// hardcoded for KANOA
 		now := time.Now()
 		startDate := time.Date(2016, time.May, 1, 0, 0, 0, 0, time.UTC)
-		endDate := time.Date(2016, time.August, 1, 0, 0, 0, 0, time.UTC)
+		endDate := time.Date(2016, time.August, 15, 0, 0, 0, 0, time.UTC)
 		daysTotal := endDate.Sub(startDate).Hours() / 24
 		days := now.Sub(startDate).Hours() / 24
 		daysComplete := days / daysTotal
 
 		startPct := 74.0
 
-		progress := startPct + ((100.0 - startPct) * daysComplete)
+		progress := math.Min(startPct+((100.0-startPct)*daysComplete), 99.9)
 		http.Render(c, 200, ProgressRes{progress})
 	})
 
