@@ -9,6 +9,7 @@ import (
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/token"
 	"crowdstart.com/models/user"
+	"crowdstart.com/util/emails"
 	"crowdstart.com/util/json/http"
 	"crowdstart.com/util/log"
 )
@@ -50,7 +51,8 @@ func enable(c *gin.Context) {
 	}
 
 	// Send account confirmed email
-	sendEmailConfirmed(c, org, usr)
+	ctx := middleware.GetAppEngine(c)
+	emails.SendEmailConfirmedEmail(ctx, org, usr)
 
 	http.Render(c, 200, gin.H{"status": "ok"})
 }

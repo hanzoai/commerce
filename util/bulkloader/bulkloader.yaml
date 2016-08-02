@@ -26,7 +26,7 @@ python_preamble:
 transformers:
 
 - kind: GeneralCounterShardConfig
-  connector: csv
+  connector: csv # TODO: Choose a connector here: csv, simplexml, etc...
   connector_options:
     # TODO: Add connector options here--these are specific to each connector.
   property_map:
@@ -41,7 +41,7 @@ transformers:
 
 
 - kind: GeneralCounterShard
-  connector: csv
+  connector: csv # TODO: Choose a connector here: csv, simplexml, etc...
   connector_options:
     # TODO: Add connector options here--these are specific to each connector.
   property_map:
@@ -65,7 +65,7 @@ transformers:
 
 
 - kind: _AE_Backup_Information_Kind_Files
-  connector: csv
+  connector: csv # TODO: Choose a connector here: csv, simplexml, etc...
   connector_options:
     # TODO: Add connector options here--these are specific to each connector.
   property_map:
@@ -79,7 +79,7 @@ transformers:
 
 
 - kind: _AE_Backup_Information_Kind_Type_Info
-  connector: csv
+  connector: csv # TODO: Choose a connector here: csv, simplexml, etc...
   connector_options:
     # TODO: Add connector options here--these are specific to each connector.
   property_map:
@@ -99,7 +99,7 @@ transformers:
 
 
 - kind: _AE_Backup_Information
-  connector: csv
+  connector: csv # TODO: Choose a connector here: csv, simplexml, etc...
   connector_options:
     # TODO: Add connector options here--these are specific to each connector.
   property_map:
@@ -114,8 +114,8 @@ transformers:
     - property: complete_time
       external_name: complete_time
       # Type: Date/Time Stats: 5878 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: completed_jobs
       external_name: completed_jobs
@@ -145,12 +145,12 @@ transformers:
     - property: start_time
       external_name: start_time
       # Type: Date/Time Stats: 5878 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
 
 - kind: _AE_DatastoreAdmin_Operation
-  connector: csv
+  connector: csv # TODO: Choose a connector here: csv, simplexml, etc...
   connector_options:
     # TODO: Add connector options here--these are specific to each connector.
   property_map:
@@ -180,8 +180,8 @@ transformers:
     - property: last_updated
       external_name: last_updated
       # Type: Date/Time Stats: 5996 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: status
       external_name: status
@@ -193,7 +193,7 @@ transformers:
 
 
 - kind: _AE_TokenStorage_
-  connector: csv
+  connector: csv # TODO: Choose a connector here: csv, simplexml, etc...
   connector_options:
     # TODO: Add connector options here--these are specific to each connector.
   property_map:
@@ -212,7 +212,7 @@ transformers:
 
 
 - kind: _GAE_MR_MapreduceControl
-  connector: csv
+  connector: csv # TODO: Choose a connector here: csv, simplexml, etc...
   connector_options:
     # TODO: Add connector options here--these are specific to each connector.
   property_map:
@@ -227,7 +227,7 @@ transformers:
 
 
 - kind: _GAE_MR_MapreduceState
-  connector: csv
+  connector: csv # TODO: Choose a connector here: csv, simplexml, etc...
   connector_options:
     # TODO: Add connector options here--these are specific to each connector.
   property_map:
@@ -273,8 +273,8 @@ transformers:
     - property: last_poll_time
       external_name: last_poll_time
       # Type: Date/Time Stats: 524 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: mapreduce_spec
       external_name: mapreduce_spec
@@ -293,8 +293,8 @@ transformers:
     - property: start_time
       external_name: start_time
       # Type: Date/Time Stats: 524 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: writer_state
       external_name: writer_state
@@ -303,7 +303,7 @@ transformers:
 
 
 - kind: _GAE_MR_ShardState
-  connector: csv
+  connector: csv # TODO: Choose a connector here: csv, simplexml, etc...
   connector_options:
     # TODO: Add connector options here--these are specific to each connector.
   property_map:
@@ -371,14 +371,14 @@ transformers:
     - property: slice_start_time
       external_name: slice_start_time
       # Type: Date/Time Stats: 3550 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: update_time
       external_name: update_time
       # Type: Date/Time Stats: 3914 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: writer_state
       external_name: writer_state
@@ -387,7 +387,7 @@ transformers:
 
 
 - kind: _GAE_MR_TaskPayload
-  connector: csv
+  connector: csv # TODO: Choose a connector here: csv, simplexml, etc...
   connector_options:
     # TODO: Add connector options here--these are specific to each connector.
   property_map:
@@ -403,7 +403,7 @@ transformers:
 
 
 - kind: _counterconfig
-  connector: csv
+  connector: csv # TODO: Choose a connector here: csv, simplexml, etc...
   connector_options:
     # TODO: Add connector options here--these are specific to each connector.
   property_map:
@@ -418,7 +418,7 @@ transformers:
 
 
 - kind: _countershard
-  connector: csv
+  connector: csv # TODO: Choose a connector here: csv, simplexml, etc...
   connector_options:
     # TODO: Add connector options here--these are specific to each connector.
   property_map:
@@ -437,7 +437,7 @@ transformers:
 
 
 - kind: campaign
-  connector: csv
+  connector: csv # TODO: Choose a connector here: csv, simplexml, etc...
   connector_options:
     # TODO: Add connector options here--these are specific to each connector.
   property_map:
@@ -543,7 +543,7 @@ transformers:
 
 
 - kind: collection
-  connector: csv
+  connector: csv # TODO: Choose a connector here: csv, simplexml, etc...
   connector_options:
     # TODO: Add connector options here--these are specific to each connector.
   property_map:
@@ -619,7 +619,7 @@ transformers:
 
 
 - kind: coupon
-  connector: csv
+  connector: csv # TODO: Choose a connector here: csv, simplexml, etc...
   connector_options:
     # TODO: Add connector options here--these are specific to each connector.
   property_map:
@@ -643,8 +643,8 @@ transformers:
     - property: CreatedAt
       external_name: CreatedAt
       # Type: Date/Time Stats: 19 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Deleted
       external_name: Deleted
@@ -659,8 +659,8 @@ transformers:
     - property: EndDate
       external_name: EndDate
       # Type: Date/Time Stats: 19 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Filter
       external_name: Filter
@@ -699,8 +699,8 @@ transformers:
     - property: StartDate
       external_name: StartDate
       # Type: Date/Time Stats: 19 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Type
       external_name: Type
@@ -709,8 +709,8 @@ transformers:
     - property: UpdatedAt
       external_name: UpdatedAt
       # Type: Date/Time Stats: 19 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Used
       external_name: Used
@@ -719,7 +719,7 @@ transformers:
 
 
 - kind: deleted
-  connector: csv
+  connector: csv # TODO: Choose a connector here: csv, simplexml, etc...
   connector_options:
     # TODO: Add connector options here--these are specific to each connector.
   property_map:
@@ -1072,8 +1072,8 @@ transformers:
     - property: CreatedAt
       external_name: CreatedAt
       # Type: Date/Time Stats: 32 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Currency
       external_name: Currency
@@ -1096,8 +1096,8 @@ transformers:
     - property: EndDate
       external_name: EndDate
       # Type: Date/Time Stats: 2 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: ExternalId_
       external_name: ExternalId_
@@ -1183,8 +1183,8 @@ transformers:
     - property: LastSync_
       external_name: LastSync_
       # Type: Date/Time Stats: 26 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Listings_
       external_name: Listings_
@@ -1311,6 +1311,45 @@ transformers:
       import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
       export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
 
+    - property: ShippingAddress.City
+      external_name: ShippingAddress.City
+      # Type: String Stats: 26 properties of this type in this kind.
+
+    - property: ShippingAddress.Country
+      external_name: ShippingAddress.Country
+      # Type: String Stats: 26 properties of this type in this kind.
+
+    - property: ShippingAddress.Line1
+      external_name: ShippingAddress.Line1
+      # Type: String Stats: 26 properties of this type in this kind.
+
+    - property: ShippingAddress.Line2
+      external_name: ShippingAddress.Line2
+      # Type: String Stats: 26 properties of this type in this kind.
+
+    - property: ShippingAddress.PostalCode
+      external_name: ShippingAddress.PostalCode
+      # Type: String Stats: 26 properties of this type in this kind.
+
+    - property: ShippingAddress.State
+      external_name: ShippingAddress.State
+      # Type: String Stats: 26 properties of this type in this kind.
+
+    - property: ShippingRateTable_
+      external_name: ShippingRateTable_
+      # Type: Text Stats: 2 properties of this type in this kind.
+      import_transform: db.Text
+
+    - property: Slug
+      external_name: Slug
+      # Type: String Stats: 2 properties of this type in this kind.
+
+    - property: StartDate
+      external_name: StartDate
+      # Type: Date/Time Stats: 2 properties of this type in this kind.
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
+
     - property: ThankYou.HTML
       external_name: ThankYou.HTML
       # Type: String Stats: 2 properties of this type in this kind.
@@ -1330,8 +1369,8 @@ transformers:
     - property: UpdatedAt
       external_name: UpdatedAt
       # Type: Date/Time Stats: 32 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Used
       external_name: Used
@@ -1344,7 +1383,7 @@ transformers:
 
 
 - kind: mailinglist
-  connector: csv
+  connector: csv # TODO: Choose a connector here: csv, simplexml, etc...
   connector_options:
     # TODO: Add connector options here--these are specific to each connector.
   property_map:
@@ -1355,8 +1394,8 @@ transformers:
     - property: CreatedAt
       external_name: CreatedAt
       # Type: Date/Time Stats: 11 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Deleted
       external_name: Deleted
@@ -1461,12 +1500,9 @@ transformers:
     - property: UpdatedAt
       external_name: UpdatedAt
       # Type: Date/Time Stats: 11 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
-
 
 - kind: namespace
-  connector: csv
+  connector: csv # TODO: Choose a connector here: csv, simplexml, etc...
   connector_options:
     # TODO: Add connector options here--these are specific to each connector.
   property_map:
@@ -1477,8 +1513,8 @@ transformers:
     - property: CreatedAt
       external_name: CreatedAt
       # Type: Date/Time Stats: 15 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Deleted
       external_name: Deleted
@@ -1501,12 +1537,12 @@ transformers:
     - property: UpdatedAt
       external_name: UpdatedAt
       # Type: Date/Time Stats: 15 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
 
 - kind: order
-  connector: csv
+  connector: csv # TODO: Choose a connector here: csv, simplexml, etc...
   connector_options:
     # TODO: Add connector options here--these are specific to each connector.
   property_map:
@@ -1572,8 +1608,8 @@ transformers:
     - property: Coupons.CreatedAt
       external_name: Coupons.CreatedAt
       # Type: Date/Time Stats: 19039 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Coupons.Deleted
       external_name: Coupons.Deleted
@@ -1593,8 +1629,8 @@ transformers:
     - property: Coupons.EndDate
       external_name: Coupons.EndDate
       # Type: Date/Time Stats: 19039 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Coupons.Filter
       external_name: Coupons.Filter
@@ -1638,8 +1674,8 @@ transformers:
     - property: Coupons.StartDate
       external_name: Coupons.StartDate
       # Type: Date/Time Stats: 19039 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Coupons.Type
       external_name: Coupons.Type
@@ -1648,8 +1684,8 @@ transformers:
     - property: Coupons.UpdatedAt
       external_name: Coupons.UpdatedAt
       # Type: Date/Time Stats: 19039 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Coupons.Used
       external_name: Coupons.Used
@@ -1659,26 +1695,11 @@ transformers:
     - property: CreatedAt
       external_name: CreatedAt
       # Type: Date/Time Stats: 41662 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Currency
       external_name: Currency
-      # Type: String Stats: 41662 properties of this type in this kind.
-
-    - property: Deleted
-      external_name: Deleted
-      # Type: Boolean Stats: 41662 properties of this type in this kind.
-      import_transform: transform.regexp_bool('true', re.IGNORECASE)
-
-    - property: Discount
-      external_name: Discount
-      # Type: Integer Stats: 41662 properties of this type in this kind.
-      import_transform: transform.none_if_empty(int)
-
-    - property: ExternalId_
-      external_name: ExternalId_
-      # Type: String Stats: 41662 properties of this type in this kind.
 
     - property: Fulfillment.Carrier
       external_name: Fulfillment.Carrier
@@ -1692,8 +1713,8 @@ transformers:
     - property: Fulfillment.CreatedAt
       external_name: Fulfillment.CreatedAt
       # Type: Date/Time Stats: 41662 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Fulfillment.Service
       external_name: Fulfillment.Service
@@ -1702,8 +1723,8 @@ transformers:
     - property: Fulfillment.ShippedAt
       external_name: Fulfillment.ShippedAt
       # Type: Date/Time Stats: 41662 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Fulfillment.TrackingNumber
       external_name: Fulfillment.TrackingNumber
@@ -1750,8 +1771,8 @@ transformers:
     - property: Items.LastSync_
       external_name: Items.LastSync_
       # Type: Date/Time Stats: 29120 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Items.Price
       external_name: Items.Price
@@ -1816,8 +1837,8 @@ transformers:
     - property: LastSync_
       external_name: LastSync_
       # Type: Date/Time Stats: 41662 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: LineTotal
       external_name: LineTotal
@@ -1937,8 +1958,8 @@ transformers:
     - property: UpdatedAt
       external_name: UpdatedAt
       # Type: Date/Time Stats: 41662 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: UserId
       external_name: UserId
@@ -1946,7 +1967,7 @@ transformers:
 
 
 - kind: organization
-  connector: csv
+  connector: csv # TODO: Choose a connector here: csv, simplexml, etc...
   connector_options:
     # TODO: Add connector options here--these are specific to each connector.
   property_map:
@@ -2034,8 +2055,8 @@ transformers:
     - property: CreatedAt
       external_name: CreatedAt
       # Type: Date/Time Stats: 17 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Deleted
       external_name: Deleted
@@ -2210,8 +2231,8 @@ transformers:
     - property: Netlify.CreatedAt
       external_name: Netlify.CreatedAt
       # Type: Date/Time Stats: 4 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Netlify.Email
       external_name: Netlify.Email
@@ -2288,8 +2309,8 @@ transformers:
     - property: Plan.StartDate
       external_name: Plan.StartDate
       # Type: Date/Time Stats: 16 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Salesforce.AccessToken
       external_name: Salesforce.AccessToken
@@ -2434,8 +2455,8 @@ transformers:
     - property: Tokens.IssuedAt
       external_name: Tokens.IssuedAt
       # Type: Date/Time Stats: 68 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Tokens.Name
       external_name: Tokens.Name
@@ -2459,8 +2480,8 @@ transformers:
     - property: UpdatedAt
       external_name: UpdatedAt
       # Type: Date/Time Stats: 17 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Website
       external_name: Website
@@ -2468,7 +2489,7 @@ transformers:
 
 
 - kind: payment
-  connector: csv
+  connector: csv # TODO: Choose a connector here: csv, simplexml, etc...
   connector_options:
     # TODO: Add connector options here--these are specific to each connector.
   property_map:
@@ -2678,8 +2699,8 @@ transformers:
     - property: CreatedAt
       external_name: CreatedAt
       # Type: Date/Time Stats: 41756 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: CurrencyTransferred
       external_name: CurrencyTransferred
@@ -2732,12 +2753,12 @@ transformers:
     - property: UpdatedAt
       external_name: UpdatedAt
       # Type: Date/Time Stats: 41756 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
 
 - kind: product
-  connector: csv
+  connector: csv # TODO: Choose a connector here: csv, simplexml, etc...
   connector_options:
     # TODO: Add connector options here--these are specific to each connector.
   property_map:
@@ -2757,14 +2778,14 @@ transformers:
     - property: Availability.EndDate
       external_name: Availability.EndDate
       # Type: Date/Time Stats: 31 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Availability.StartDate
       external_name: Availability.StartDate
       # Type: Date/Time Stats: 31 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Available
       external_name: Available
@@ -2774,8 +2795,8 @@ transformers:
     - property: CreatedAt
       external_name: CreatedAt
       # Type: Date/Time Stats: 31 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Currency
       external_name: Currency
@@ -2894,8 +2915,8 @@ transformers:
     - property: UpdatedAt
       external_name: UpdatedAt
       # Type: Date/Time Stats: 31 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Variants_
       external_name: Variants_
@@ -2913,7 +2934,7 @@ transformers:
 
 
 - kind: redemption
-  connector: csv
+  connector: csv # TODO: Choose a connector here: csv, simplexml, etc...
   connector_options:
     # TODO: Add connector options here--these are specific to each connector.
   property_map:
@@ -2928,12 +2949,12 @@ transformers:
     - property: CreatedAt
       external_name: CreatedAt
       # Type: Date/Time Stats: 3 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
 
 - kind: referral
-  connector: csv
+  connector: csv # TODO: Choose a connector here: csv, simplexml, etc...
   connector_options:
     # TODO: Add connector options here--these are specific to each connector.
   property_map:
@@ -2944,8 +2965,8 @@ transformers:
     - property: CreatedAt
       external_name: CreatedAt
       # Type: Date/Time Stats: 1396 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Deleted
       external_name: Deleted
@@ -2971,8 +2992,8 @@ transformers:
     - property: UpdatedAt
       external_name: UpdatedAt
       # Type: Date/Time Stats: 1396 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: UserId
       external_name: UserId
@@ -2980,7 +3001,7 @@ transformers:
 
 
 - kind: referrer
-  connector: csv
+  connector: csv # TODO: Choose a connector here: csv, simplexml, etc...
   connector_options:
     # TODO: Add connector options here--these are specific to each connector.
   property_map:
@@ -2991,8 +3012,8 @@ transformers:
     - property: CreatedAt
       external_name: CreatedAt
       # Type: Date/Time Stats: 52702 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Deleted
       external_name: Deleted
@@ -3045,8 +3066,8 @@ transformers:
     - property: UpdatedAt
       external_name: UpdatedAt
       # Type: Date/Time Stats: 52702 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: UserId
       external_name: UserId
@@ -3054,7 +3075,7 @@ transformers:
 
 
 - kind: store
-  connector: csv
+  connector: csv # TODO: Choose a connector here: csv, simplexml, etc...
   connector_options:
     # TODO: Add connector options here--these are specific to each connector.
   property_map:
@@ -3065,8 +3086,8 @@ transformers:
     - property: CreatedAt
       external_name: CreatedAt
       # Type: Date/Time Stats: 25 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Currency
       external_name: Currency
@@ -3138,12 +3159,12 @@ transformers:
     - property: UpdatedAt
       external_name: UpdatedAt
       # Type: Date/Time Stats: 25 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
 
 - kind: subscriber
-  connector: csv
+  connector: csv # TODO: Choose a connector here: csv, simplexml, etc...
   connector_options:
     # TODO: Add connector options here--these are specific to each connector.
   property_map:
@@ -3182,8 +3203,8 @@ transformers:
     - property: CreatedAt
       external_name: CreatedAt
       # Type: Date/Time Stats: 150196 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Deleted
       external_name: Deleted
@@ -3210,8 +3231,8 @@ transformers:
     - property: UnsubscribeDate
       external_name: UnsubscribeDate
       # Type: Date/Time Stats: 150196 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Unsubscribed
       external_name: Unsubscribed
@@ -3221,8 +3242,8 @@ transformers:
     - property: UpdatedAt
       external_name: UpdatedAt
       # Type: Date/Time Stats: 150196 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: UserId
       external_name: UserId
@@ -3230,7 +3251,7 @@ transformers:
 
 
 - kind: token
-  connector: csv
+  connector: csv # TODO: Choose a connector here: csv, simplexml, etc...
   connector_options:
     # TODO: Add connector options here--these are specific to each connector.
   property_map:
@@ -3241,8 +3262,8 @@ transformers:
     - property: CreatedAt
       external_name: CreatedAt
       # Type: Date/Time Stats: 36557 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Deleted
       external_name: Deleted
@@ -3256,8 +3277,8 @@ transformers:
     - property: Expires
       external_name: Expires
       # Type: Date/Time Stats: 36557 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Id_
       external_name: Id_
@@ -3266,8 +3287,8 @@ transformers:
     - property: UpdatedAt
       external_name: UpdatedAt
       # Type: Date/Time Stats: 36557 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Used
       external_name: Used
@@ -3280,7 +3301,7 @@ transformers:
 
 
 - kind: transaction
-  connector: csv
+  connector: csv # TODO: Choose a connector here: csv, simplexml, etc...
   connector_options:
     # TODO: Add connector options here--these are specific to each connector.
   property_map:
@@ -3296,8 +3317,8 @@ transformers:
     - property: CreatedAt
       external_name: CreatedAt
       # Type: Date/Time Stats: 1531 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Currency
       external_name: Currency
@@ -3340,8 +3361,8 @@ transformers:
     - property: UpdatedAt
       external_name: UpdatedAt
       # Type: Date/Time Stats: 1531 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: UserId
       external_name: UserId
@@ -3349,7 +3370,7 @@ transformers:
 
 
 - kind: user
-  connector: csv
+  connector: csv # TODO: Choose a connector here: csv, simplexml, etc...
   connector_options:
     # TODO: Add connector options here--these are specific to each connector.
   property_map:
@@ -3689,8 +3710,8 @@ transformers:
     - property: CreatedAt
       external_name: CreatedAt
       # Type: Date/Time Stats: 47509 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Deleted
       external_name: Deleted
@@ -3749,8 +3770,8 @@ transformers:
     - property: LastSync_
       external_name: LastSync_
       # Type: Date/Time Stats: 47509 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Metadata_
       external_name: Metadata_
@@ -3810,8 +3831,8 @@ transformers:
     - property: UpdatedAt
       external_name: UpdatedAt
       # Type: Date/Time Stats: 47509 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
 
     - property: Username
       external_name: Username
@@ -3819,7 +3840,7 @@ transformers:
 
 
 - kind: variant
-  connector: csv
+  connector: csv # TODO: Choose a connector here: csv, simplexml, etc...
   connector_options:
     # TODO: Add connector options here--these are specific to each connector.
   property_map:
