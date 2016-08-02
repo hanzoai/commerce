@@ -9,26 +9,25 @@ import (
 	. "crowdstart.com/models/lineitem"
 )
 
-func (o Cart) Kind() string {
+func (c Cart) Kind() string {
 	return "cart"
 }
 
-func (o *Cart) Init(db *datastore.Datastore) {
-	o.Model.Init(db, o)
+func (c *Cart) Init(db *datastore.Datastore) {
+	c.Model.Init(db, c)
 }
 
-func (o *Cart) Defaults() {
-	o.Items = make([]LineItem, 0)
-	o.Metadata = make(Map)
-	o.Coupons = make([]coupon.Coupon, 0)
-	o.Status = Active
+func (c *Cart) Defaults() {
+	c.Items = make([]LineItem, 0)
+	c.Metadata = make(Map)
+	c.Coupons = make([]coupon.Coupon, 0)
+	c.Status = Active
 }
 
 func New(db *datastore.Datastore) *Cart {
-	o := new(Cart)
-	o.Init(db)
-	o.Defaults()
-	return o
+	c := new(Cart)
+	c.Init(db)
+	return c
 }
 
 func Query(db *datastore.Datastore) *mixin.Query {
