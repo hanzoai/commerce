@@ -80,19 +80,22 @@ do ->
 
     # Loop over form elements
     for el in form.elements
-      # Clean up inputs
-      k = el.name.trim().toLowerCase()
-      v = el.value.trim()
+      try
+        # Clean up inputs
+        k = el.name.trim().toLowerCase()
+        v = el.value.trim()
 
-      # Skip inputs we don't care about
-      if k == '' or v == '' or (el.getAttribute 'type') == 'submit'
-        continue
+        # Skip inputs we don't care about
+        if k == '' or v == '' or (el.getAttribute 'type') == 'submit'
+          continue
 
-      # Detect emails
-      if /email/.test k
-        data.email = v
-      else
-        data.metadata[k] = v
+        # Detect emails
+        if /email/.test k
+          data.email = v
+        else
+          data.metadata[k] = v
+      catch e
+        console.log "Skipping valueless form input"
 
     # Use selectors if necessary
     if selectors.email
@@ -119,79 +122,10 @@ do ->
       else
         val
 
-  # Google event tracking code
-  google =
-    setup: ->
-      return if window.ga? or window._gaq?
-
-      ((i, s, o, g, r, a, m) ->
-        i['GoogleAnalyticsObject'] = r
-        i[r] = i[r] or ->
-          (i[r].q = i[r].q or []).push arguments
-          return
-
-        i[r].l = 1 * new Date()
-
-        a = s.createElement(o)
-        m = s.getElementsByTagName(o)[0]
-
-        a.async = 1
-        a.src = g
-        m.parentNode.insertBefore a, m
-        return
-      ) window, document, 'script', '//www.google-analytics.com/analytics.js', 'ga'
-      return
-
-    track: (opts) ->
-      return unless opts.category?
-
-      google.setup()
-
-      category = opts.category ? 'Subscription'
-      action   = opts.action   ? opts.name ? 'Signup'
-      label    = opts.label    ? 'Lead'
-      value    = opts.value    ? 1
-
-      if window._gaq?
-        window._gaq.push ['_trackEvent', category, action, label, value]
-      if window.ga?
-        window.ga 'send', 'event', category, action, label, value
-      return
-
-  # Facebook event tracking
-  facebook =
-    setup: ->
-      return if window._fbq?.loaded
-
-      _fbq = window._fbq or (window._fbq = [])
-
-      fbds = document.createElement('script')
-      fbds.async = true
-      fbds.src = '//connect.facebook.net/en_US/fbds.js'
-      s = document.getElementsByTagName('script')[0]
-      s.parentNode.insertBefore fbds, s
-      _fbq.loaded = true
-      return
-
-    track: (opts) ->
-      return unless opts.id?
-
-      facebook.setup()
-
-      value    = opts.value    ? '1.00'
-      currency = opts.currency ? 'USD'
-
-      window._fbq.push ['track', opts.id,
-        value:    value,
-        currency: currency,
-      ]
-      return
-
   # Trigger event tracking
   track = ->
-    facebook.track ml.facebook
-    google.track ml.google
-    return
+    return unless typeof analytics?.track is 'function'
+    analytics.track 'Lead', category: 'Subscription'
 
   # Wire up submit handler
   addHandler = (el, errorEl) ->
