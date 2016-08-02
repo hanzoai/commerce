@@ -24,7 +24,6 @@ func (m *MailingList) Defaults() {
 func New(db *datastore.Datastore) *MailingList {
 	m := new(MailingList)
 	m.Init(db)
-	m.Defaults()
 	return m
 }
 
