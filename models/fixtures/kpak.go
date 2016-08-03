@@ -15,7 +15,7 @@ var Kpak = New("kpak", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)
-	org.Name = "K-pak"
+	org.Name = "k-pak"
 	org.GetOrCreate("Name=", org.Name)
 
 	u := user.New(db)
