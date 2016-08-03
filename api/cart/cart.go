@@ -17,10 +17,10 @@ import (
 )
 
 type SetReq struct {
-	Quantity int    `json:"quantity"`
-	Id       string `json:"id"`
-	SKU      string `json:"sku"`
-	Slug     string `json:"slug"`
+	Quantity    int    `json:"quantity"`
+	ProductId   string `json:"productId"`
+	ProductSlug string `json:"productSlug"`
+	VariantSKU  string `json:"variantSku"`
 }
 
 func Set(c *gin.Context) {
@@ -42,27 +42,32 @@ func Set(c *gin.Context) {
 		return
 	}
 
+	var setId string
+
 	// Try to figure out what sort of item we are setting
 	var typ string
-	if req.Id != "" {
-		key, err := hashid.DecodeKey(db.Context, req.Id)
+	if req.ProductId != "" {
+		key, err := hashid.DecodeKey(db.Context, req.ProductId)
 		if err != nil {
 			http.Fail(c, 400, "Failed to decode id", err)
 			return
 		}
+		setId = req.ProductId
 
 		typ = key.Kind()
-	} else if req.Slug != "" {
+	} else if req.ProductSlug != "" {
 		typ = "product"
-	} else if req.SKU != "" {
+		setId = req.ProductSlug
+	} else if req.VariantSKU != "" {
 		typ = "variant"
+		setId = req.VariantSKU
 	} else {
 		http.Fail(c, 400, "No product or variant specified", errors.New("No product or variant specified"))
 		return
 	}
 
 	// Update cart with new item quantity information
-	if err := car.SetItem(db, req.Id, typ, req.Quantity); err != nil {
+	if err := car.SetItem(db, setId, typ, req.Quantity); err != nil {
 		http.Fail(c, 400, "Failed to update line item", err)
 		return
 	}
