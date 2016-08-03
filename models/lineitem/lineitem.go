@@ -162,16 +162,34 @@ func (li *LineItem) Entity(db *datastore.Datastore) (datastore.Key, interface{},
 
 // Set product by id
 func (li *LineItem) SetProduct(db *datastore.Datastore, id string, quantity int) error {
-	li.Product = product.New(db)
+	prod := product.New(db)
+	if err := prod.GetById(id); err != nil {
+		return err
+	}
+
+	li.Product = prod
+	li.ProductId = prod.Id()
+	li.ProductName = prod.Name
+	li.ProductSlug = prod.Slug
 	li.Quantity = quantity
-	return li.Product.GetById(id)
+
+	return nil
 }
 
 // Set variant by id
 func (li *LineItem) SetVariant(db *datastore.Datastore, id string, quantity int) error {
-	li.Variant = variant.New(db)
+	vari := variant.New(db)
+	if err := vari.GetById(id); err != nil {
+		return err
+	}
+
+	li.Variant = vari
+	li.VariantId = vari.Id()
+	li.VariantName = vari.Name
+	li.VariantSKU = vari.SKU
 	li.Quantity = quantity
-	return li.Variant.GetById(id)
+
+	return nil
 }
 
 func (li *LineItem) Update() {
