@@ -139,9 +139,9 @@ func (c *Cart) SetItem(db *datastore.Datastore, id string, typ string, quantity 
 	}
 
 	// Update quantity of existing item
-	for _, li := range c.Items {
+	for i, li := range c.Items {
 		if li.HasId(id) {
-			li.Quantity = quantity
+			c.Items[i].Quantity = quantity
 			return nil
 		}
 	}
