@@ -23,6 +23,10 @@ type SetReq struct {
 	VariantSKU  string `json:"variantSku"`
 }
 
+type CartResponse struct {
+	Id string `json:"id"`
+}
+
 func Set(c *gin.Context) {
 	db := datastore.New(c)
 
@@ -76,7 +80,7 @@ func Set(c *gin.Context) {
 	if err := car.Update(); err != nil {
 		http.Fail(c, 500, "Failed to update cart", err)
 	} else {
-		http.Render(c, 200, car)
+		http.Render(c, 200, CartResponse{Id: car.Id()})
 	}
 }
 
@@ -98,7 +102,100 @@ func Discard(c *gin.Context) {
 	if err := car.Update(); err != nil {
 		http.Fail(c, 500, "Failed to update cart", err)
 	} else {
-		http.Render(c, 200, car)
+		http.Render(c, 200, CartResponse{Id: car.Id()})
+	}
+}
+
+func create(r *rest.Rest) func(*gin.Context) {
+	return func(c *gin.Context) {
+		if !r.CheckPermissions(c, "create") {
+			return
+		}
+
+		db := datastore.New(c)
+		entity := cart.New(db)
+
+		if err := json.Decode(c.Request.Body, entity); err != nil {
+			r.Fail(c, 400, "Failed decode request body", err)
+			return
+		}
+
+		if err := entity.Create(); err != nil {
+			r.Fail(c, 500, "Failed to create "+r.Kind, err)
+		} else {
+			c.Writer.Header().Add("Location", c.Request.URL.Path+"/"+entity.Id())
+			r.Render(c, 201, CartResponse{Id: entity.Id()})
+		}
+	}
+}
+
+// Completely replaces an entity for given `id`.
+func update(r *rest.Rest) func(*gin.Context) {
+	return func(c *gin.Context) {
+		if !r.CheckPermissions(c, "update") {
+			return
+		}
+
+		id := c.Params.ByName(r.ParamId)
+
+		db := datastore.New(c)
+		entity := cart.New(db)
+
+		// Try to retrieve key from datastore
+		ok, err := entity.IdExists(id)
+		if !ok {
+			r.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
+			return
+		}
+
+		if err != nil {
+			r.Fail(c, 500, "Failed to retrieve key for "+id, err)
+			return
+		}
+
+		// Decode response body to create new entity
+		if err := json.Decode(c.Request.Body, entity); err != nil {
+			r.Fail(c, 400, "Failed decode request body", err)
+			return
+		}
+
+		// Replace whatever was in the datastore with our new updated entity
+		if err := entity.Update(); err != nil {
+			r.Fail(c, 500, "Failed to update "+r.Kind, err)
+		} else {
+			r.Render(c, 200, CartResponse{Id: entity.Id()})
+		}
+	}
+}
+
+// Partially updates pre-existing entity by given `id`.
+func patch(r *rest.Rest) func(*gin.Context) {
+	return func(c *gin.Context) {
+		if !r.CheckPermissions(c, "patch") {
+			return
+		}
+
+		id := c.Params.ByName(r.ParamId)
+
+		db := datastore.New(c)
+		entity := cart.New(db)
+
+		err := entity.GetById(id)
+		if err != nil {
+			r.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
+			return
+		}
+
+		if err := json.Decode(c.Request.Body, entity); err != nil {
+			r.Fail(c, 400, "Failed decode request body", err)
+			return
+		}
+
+		if err := entity.Update(); err != nil {
+			r.Fail(c, 500, "Failed to update "+r.Kind, err)
+		} else {
+			r.Render(c, 200, CartResponse{Id: entity.Id()})
+		}
 	}
 }
 
@@ -107,6 +204,10 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	namespaced := middleware.Namespace()
 
 	api := rest.New(cart.Cart{})
+
+	api.Create = create(api)
+	api.Update = update(api)
+	api.Patch = patch(api)
 
 	api.POST("/:cartid/set", publishedRequired, namespaced, Set)
 	api.POST("/:cartid/discard", publishedRequired, namespaced, Discard)
