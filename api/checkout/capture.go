@@ -7,6 +7,7 @@ import (
 
 	"crowdstart.com/api/checkout/balance"
 	"crowdstart.com/api/checkout/stripe"
+	"crowdstart.com/models/cart"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"
@@ -94,6 +95,23 @@ func CompleteCapture(c *gin.Context, org *organization.Organization, ord *order.
 		for _, coup := range ord.Coupons {
 			if err := coup.SaveRedemption(); err != nil {
 				log.Warn("Unable to save redemption: %v", err, ctx)
+			}
+		}
+	}
+
+	// Mailchimp 360 Order Stuff Goes Here
+
+	// Cart hooks go here
+	if ord.CartId != "" {
+		car := cart.New(db)
+		if err := car.GetById(ord.CartId); err != nil {
+			log.Warn("Unable to find cart: %v", err, ctx)
+		} else {
+			car.Status = cart.Ordered
+			if err := car.Update(); err != nil {
+				log.Warn("Unable to save cart: %v", err, ctx)
+			} else {
+				// Mailchimp 360 Cart Stuff Goes Here
 			}
 		}
 	}

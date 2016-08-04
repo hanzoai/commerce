@@ -43,6 +43,9 @@ type Cart struct {
 	// Associated Crowdstart user or buyer.
 	UserId string `json:"userId,omitempty"`
 
+	// Email of the user or someone else if no user id exists
+	UserEmail string `json:"userEmail,omitempty"`
+
 	// Associated order ID, if any
 	OrderId string `json:"orderId,omitempty"`
 
@@ -70,8 +73,8 @@ type Cart struct {
 	// Total = subtotal + shipping + taxes + adjustments. Amount in cents.
 	Total currency.Cents `json:"total"`
 
-	BillingAddress  Address `json:"billingAddress"`
-	ShippingAddress Address `json:"shippingAddress"`
+	BillingAddress  Address `json:"billingAddress,omitempty"`
+	ShippingAddress Address `json:"shippingAddress,omitempty"`
 
 	// Individual line items
 	Items  []LineItem `json:"items" datastore:"-"`
