@@ -28,8 +28,12 @@ func Webhook(c *gin.Context) {
 	// Look up organization
 	db := datastore.New(c)
 	org := organization.New(db)
-	if ok, err := org.Query().Filter("Stripe.UserId=", event.UserID).First(); !ok || err != nil {
-		log.Error("Failed to look up organization by Stripe user id: %v", err, c)
+	if ok, err := org.Query().Filter("Stripe.UserId=", event.UserID).First(); !ok {
+		if err != nil {
+			log.Error("Failed to query organization using Stripe UserId '%s': %v", event.UserID, err, c)
+		} else {
+			log.Warn("No organization found with Stripe UserId '%s': %#v", event.UserID, event, c)
+		}
 		return
 	}
 
