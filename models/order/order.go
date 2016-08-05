@@ -58,7 +58,7 @@ type Order struct {
 	UserId string `json:"userId,omitempty"`
 
 	// Associated cart
-	CartId string `json:"orderId,omitempty"`
+	CartId string `json:"cartId,omitempty"`
 
 	// Status
 	Status            Status            `json:"status"`
