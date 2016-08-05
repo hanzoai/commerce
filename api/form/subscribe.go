@@ -40,6 +40,7 @@ func subscribe(c *gin.Context, db *datastore.Datastore, org *organization.Organi
 	if err := ml.AddSubscriber(s); err != nil {
 		if err == mailinglist.SubscriberAlreadyExists {
 			http.Fail(c, 409, "Subscriber already exists", nil)
+			return
 		}
 		http.Fail(c, 500, "Failed to save subscriber to mailing list", err)
 		return
