@@ -6,7 +6,7 @@ import (
 	"appengine"
 	"appengine/urlfetch"
 
-	"github.com/rybit/gochimp/chimp_v3"
+	"github.com/zeekay/gochimp/chimp_v3"
 
 	"crowdstart.com/models/mailinglist"
 	"crowdstart.com/models/subscriber"
