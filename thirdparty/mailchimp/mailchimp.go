@@ -133,7 +133,7 @@ func (api API) CreateCart(storeId string, cart *cart.Cart) error {
 	lines := make([]gochimp.LineItem, 0)
 	for _, line := range cart.Items {
 		lines = append(lines, gochimp.LineItem{
-			ID:               line.Id(),
+			ID:               cart.Id() + line.VariantId,
 			ProductID:        line.ProductId,
 			ProductVariantID: line.VariantId,
 			Quantity:         line.Quantity,
@@ -174,5 +174,59 @@ func (api API) CreateCart(storeId string, cart *cart.Cart) error {
 	}
 	stor, err := api.client.GetStore(storeId, nil)
 	_, err = stor.CreateCart(req)
+	return err
+}
+
+func (api API) UpdateCart(storeId string, cart *cart.Cart) error {
+	lines := make([]gochimp.LineItem, 0)
+	for _, line := range cart.Items {
+		lines = append(lines, gochimp.LineItem{
+			ID:               cart.Id() + line.VariantId,
+			ProductID:        line.ProductId,
+			ProductVariantID: line.VariantId,
+			Quantity:         line.Quantity,
+			Price:            float64(line.Price),
+		})
+	}
+
+	req := &gochimp.Cart{
+		// Required
+		CurrencyCode: string(cart.Currency),
+		OrderTotal:   float64(cart.Total),
+
+		Customer: gochimp.Customer{
+			// Required
+			ID: cart.UserId, //string  `json:"id"`
+
+			// Optional
+			EmailAddress: cart.UserEmail,
+			OptInStatus:  true,
+			Company:      cart.Company,
+			FirstName:    "",
+			LastName:     "",
+			OrdersCount:  0,
+			TotalSpent:   0,
+			Address:      gochimp.Address{},
+			CreatedAt:    "",
+			UpdatedAt:    "",
+		},
+
+		Lines: lines,
+
+		// Optional
+		ID: cart.Id(),
+
+		TaxTotal:    float64(cart.Tax),
+		CampaignID:  "",
+		CheckoutURL: "",
+	}
+	stor, err := api.client.GetStore(storeId, nil)
+	_, err = stor.UpdateCart(req)
+	return err
+}
+
+func (api API) DeleteCart(storeId string, cart *cart.Cart) error {
+	stor, err := api.client.GetStore(storeId, nil)
+	_, err = stor.DeleteCart(cart.Id())
 	return err
 }
