@@ -8,7 +8,9 @@ import (
 
 	"github.com/zeekay/gochimp/chimp_v3"
 
+	"crowdstart.com/models/cart"
 	"crowdstart.com/models/mailinglist"
+	"crowdstart.com/models/store"
 	"crowdstart.com/models/subscriber"
 	"crowdstart.com/util/log"
 )
@@ -64,4 +66,113 @@ func (api API) Subscribe(ml *mailinglist.MailingList, s *subscriber.Subscriber) 
 		return err
 	}
 	return nil
+}
+
+func (api API) CreateStore(stor *store.Store) error {
+	req := &gochimp.Store{
+		// Required
+		ID:           stor.Id(),
+		ListID:       stor.Mailchimp.ListId, // Immutable after creation
+		Name:         stor.Name,
+		CurrencyCode: "USD",
+
+		// Optional
+		Platform:      "Hanzo",
+		Domain:        stor.Domain,
+		EmailAddress:  stor.Email,
+		PrimaryLocale: "en",
+		Timezone:      stor.Timezone,
+		Phone:         stor.Phone,
+		Address: gochimp.Address{
+			Address1:     stor.Address.Line1,
+			Address2:     stor.Address.Line2,
+			City:         stor.Address.City,
+			ProvinceCode: stor.Address.State,
+			PostalCode:   stor.Address.PostalCode,
+			CountryCode:  stor.Address.Country,
+		},
+	}
+	_, err := api.client.CreateStore(req)
+	return err
+}
+
+func (api API) UpdateStore(stor *store.Store) error {
+	req := &gochimp.Store{
+		// Required
+		ID:           stor.Id(),
+		ListID:       stor.Mailchimp.ListId, // Immutable after creation
+		Name:         stor.Name,
+		CurrencyCode: "USD",
+
+		// Optional
+		Platform:      "Hanzo",
+		Domain:        stor.Domain,
+		EmailAddress:  stor.Email,
+		PrimaryLocale: "en",
+		Timezone:      stor.Timezone,
+		Phone:         stor.Phone,
+		Address: gochimp.Address{
+			Address1:     stor.Address.Line1,
+			Address2:     stor.Address.Line2,
+			City:         stor.Address.City,
+			ProvinceCode: stor.Address.State,
+			PostalCode:   stor.Address.PostalCode,
+			CountryCode:  stor.Address.Country,
+		},
+	}
+	_, err := api.client.UpdateStore(req)
+	return err
+}
+
+func (api API) DeleteStore(stor *store.Store) error {
+	_, err := api.client.DeleteStore(stor.Id())
+	return err
+}
+
+func (api API) CreateCart(storeId string, cart *cart.Cart) error {
+	lines := make([]gochimp.LineItem, 0)
+	for _, line := range cart.Items {
+		lines = append(lines, gochimp.LineItem{
+			ID:               line.Id(),
+			ProductID:        line.ProductId,
+			ProductVariantID: line.VariantId,
+			Quantity:         line.Quantity,
+			Price:            float64(line.Price),
+		})
+	}
+
+	req := &gochimp.Cart{
+		// Required
+		CurrencyCode: string(cart.Currency),
+		OrderTotal:   float64(cart.Total),
+
+		Customer: gochimp.Customer{
+			// Required
+			ID: cart.UserId, //string  `json:"id"`
+
+			// Optional
+			EmailAddress: cart.UserEmail,
+			OptInStatus:  true,
+			Company:      cart.Company,
+			FirstName:    "",
+			LastName:     "",
+			OrdersCount:  0,
+			TotalSpent:   0,
+			Address:      gochimp.Address{},
+			CreatedAt:    "",
+			UpdatedAt:    "",
+		},
+
+		Lines: lines,
+
+		// Optional
+		ID: cart.Id(),
+
+		TaxTotal:    float64(cart.Tax),
+		CampaignID:  "",
+		CheckoutURL: "",
+	}
+	stor, err := api.client.GetStore(storeId, nil)
+	_, err = stor.CreateCart(req)
+	return err
 }
