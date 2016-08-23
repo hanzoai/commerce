@@ -111,6 +111,7 @@ type Order struct {
 	// integer	Amount refunded by the seller. Amount in cents.
 	Refunded currency.Cents `json:"refunded"`
 
+	Company         string  `json:"company,omitempty"`
 	BillingAddress  Address `json:"billingAddress"`
 	ShippingAddress Address `json:"shippingAddress"`
 
