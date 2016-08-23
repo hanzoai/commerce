@@ -73,6 +73,8 @@ type Cart struct {
 	// Total = subtotal + shipping + taxes + adjustments. Amount in cents.
 	Total currency.Cents `json:"total"`
 
+	Company string `json:"company,omitempty"`
+
 	BillingAddress  Address `json:"billingAddress,omitempty"`
 	ShippingAddress Address `json:"shippingAddress,omitempty"`
 
