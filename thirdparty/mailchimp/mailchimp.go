@@ -14,8 +14,11 @@ import (
 	"crowdstart.com/models/product"
 	"crowdstart.com/models/store"
 	"crowdstart.com/models/subscriber"
+	"crowdstart.com/models/types/client"
 	"crowdstart.com/models/variant"
 	"crowdstart.com/util/log"
+
+	. "crowdstart.com/models"
 )
 
 type API struct {
@@ -69,6 +72,18 @@ func (api API) Subscribe(ml *mailinglist.MailingList, s *subscriber.Subscriber) 
 		return err
 	}
 	return nil
+}
+
+func (api API) SubscribeCustomer(ml *mailinglist.MailingList, buy Buyer) error {
+	s := &subscriber.Subscriber{
+		Email:         buy.Email,
+		MailingListId: ml.Id(),
+		UserId:        buy.UserId,
+		Client: client.Client{
+			Country: buy.Address.Country,
+		},
+	}
+	return api.Subscribe(ml, s)
 }
 
 func (api API) CreateStore(stor *store.Store) error {
