@@ -23,6 +23,7 @@ import (
 
 	accessTokenApi "crowdstart.com/api/accesstoken"
 	accountApi "crowdstart.com/api/account"
+	affiliateApi "crowdstart.com/api/affiliate"
 	campaignApi "crowdstart.com/api/campaign"
 	checkoutApi "crowdstart.com/api/checkout"
 	couponApi "crowdstart.com/api/coupon"
@@ -85,6 +86,7 @@ func init() {
 	paymentApi.Route(api, tokenRequired)
 
 	accountApi.Route(api, tokenRequired)
+	affiliateApi.Route(api, tokenRequired)
 	couponApi.Route(api, tokenRequired)
 	campaignApi.Route(api, tokenRequired)
 	deployApi.Route(api, tokenRequired)
