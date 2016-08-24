@@ -38,13 +38,6 @@ type Affiliate struct {
 		Live connect.Token
 		Test connect.Token
 	} `json:"-"`
-
-	Mandrill struct {
-		APIKey string
-	} `json:"-"`
-
-	// Whether we use live or test tokens, mostly applicable to stripe
-	Live bool `json:"-" datastore:"-"`
 }
 
 func (a Affiliate) GetStripeAccessToken(userId string) (string, error) {
@@ -70,12 +63,4 @@ func userId(userOrId interface{}) string {
 		userid = v
 	}
 	return userid
-}
-
-func (a Affiliate) StripeToken() string {
-	if a.Live {
-		return a.Stripe.Live.AccessToken
-	}
-
-	return a.Stripe.Test.AccessToken
 }
