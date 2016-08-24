@@ -1,0 +1,99 @@
+package affiliate
+
+import (
+	"github.com/gin-gonic/gin"
+
+	"crowdstart.com/auth/password"
+	"crowdstart.com/datastore"
+	"crowdstart.com/middleware"
+	"crowdstart.com/models/order"
+	"crowdstart.com/models/referral"
+	"crowdstart.com/models/referrer"
+	"crowdstart.com/models/transaction"
+	"crowdstart.com/models/user"
+	"crowdstart.com/util/json/http"
+	"crowdstart.com/util/rand"
+)
+
+type Password struct {
+	Password string `json:"password"`
+}
+
+func resetPassword(c *gin.Context) {
+	org := middleware.GetOrganization(c)
+	db := datastore.New(org.Namespaced(c))
+	id := c.Params.ByName("affiliateid")
+
+	u := user.New(db)
+	if err := u.GetById(id); err != nil {
+		http.Fail(c, 400, "Could not query affiliate", err)
+		return
+	}
+
+	newPassword := rand.ShortPassword()
+	if hash, err := password.Hash(newPassword); err != nil {
+		http.Fail(c, 400, "Password generation failed", err)
+		return
+	} else {
+		u.PasswordHash = hash
+	}
+
+	u.MustPut()
+	http.Render(c, 200, Password{Password: newPassword})
+}
+
+func getReferrals(c *gin.Context) {
+	org := middleware.GetOrganization(c)
+	db := datastore.New(org.Namespaced(c))
+	id := c.Params.ByName("userid")
+
+	referrals := make([]referral.Referral, 0)
+	if _, err := referral.Query(db).Filter("ReferrerUserId=", id).GetAll(&referrals); err != nil {
+		http.Fail(c, 400, "Could not query referral", err)
+		return
+	}
+
+	http.Render(c, 200, referrals)
+}
+
+func getReferrers(c *gin.Context) {
+	org := middleware.GetOrganization(c)
+	db := datastore.New(org.Namespaced(c))
+	id := c.Params.ByName("affiliate")
+
+	referrers := make([]referrer.Referrer, 0)
+	if _, err := referrer.Query(db).Filter("AffiliateId=", id).GetAll(&referrers); err != nil {
+		http.Fail(c, 400, "Could not query referrer", err)
+		return
+	}
+
+	http.Render(c, 200, referrers)
+}
+
+func getOrders(c *gin.Context) {
+	org := middleware.GetOrganization(c)
+	db := datastore.New(org.Namespaced(c))
+	id := c.Params.ByName("affiliateId")
+
+	orders := make([]order.Order, 0)
+	if _, err := order.Query(db).Filter("AffiliateId=", id).GetAll(&orders); err != nil {
+		http.Fail(c, 400, "Could not query order", err)
+		return
+	}
+
+	http.Render(c, 200, orders)
+}
+
+func getTransactions(c *gin.Context) {
+	org := middleware.GetOrganization(c)
+	db := datastore.New(org.Namespaced(c))
+	id := c.Params.ByName("affiliateId")
+
+	trans := make([]transaction.Transaction, 0)
+	if _, err := transaction.Query(db).Filter("Test=", false).Filter("AffiliateId=", id).GetAll(&trans); err != nil {
+		http.Fail(c, 400, "Could not query transaction", err)
+		return
+	}
+
+	http.Render(c, 200, trans)
+}
