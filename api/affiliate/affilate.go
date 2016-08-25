@@ -1,45 +1,81 @@
 package affiliate
 
 import (
+	"fmt"
+
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/auth/password"
+	"crowdstart.com/config"
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/referral"
 	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/transaction"
-	"crowdstart.com/models/user"
 	"crowdstart.com/util/json/http"
-	"crowdstart.com/util/rand"
+
+	"crowdstart.com/models/affiliate"
+	stripeconnect "crowdstart.com/thirdparty/stripe/connect"
+	"crowdstart.com/util/log"
 )
 
-type Password struct {
-	Password string `json:"password"`
+const (
+	stripeConnectUrl = "https://connect.stripe.com/oauth/authorize?response_type=code&client_id=%s&scope=read_write&state=%s&stripe_landing=login&redirect_uri=%s"
+)
+
+func connect(c *gin.Context) {
+	id := c.Params.ByName("affiliateid")
+	url := fmt.Sprintf(stripeConnectUrl, config.Stripe.ClientId, config.Stripe.RedirectURL, id)
+	c.Redirect(302, url)
 }
 
-func resetPassword(c *gin.Context) {
-	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespaced(c))
-	id := c.Params.ByName("affiliateid")
+// Connect connect callback
+func stripeCallback(c *gin.Context) {
+	req := c.Request
+	code := req.URL.Query().Get("code")
+	affid := req.URL.Query().Get("state")
+	errStr := req.URL.Query().Get("error")
 
-	u := user.New(db)
-	if err := u.GetById(id); err != nil {
-		http.Fail(c, 400, "Could not query affiliate", err)
+	ctx := middleware.GetAppEngine(c)
+	//org := middleware.GetOrganization(c)
+	db := datastore.New(c)
+	aff := affiliate.New(db)
+	aff.GetById(affid)
+
+	// Failed to get back authorization code from Stripe
+	if errStr != "" {
+		log.Error("Failed to get authorization code from Stripe during Stripe Connect: %v", errStr, c)
+		c.Redirect(302, "organization affiliate error url")
 		return
 	}
 
-	newPassword := rand.ShortPassword()
-	if hash, err := password.Hash(newPassword); err != nil {
-		http.Fail(c, 400, "Password generation failed", err)
+	// Get live and test tokens
+	token, testToken, err := stripeconnect.GetTokens(ctx, code)
+	if err != nil {
+		log.Error("There was an error with Stripe Connect: %v", err, c)
+		c.Redirect(302, "organization affiliate error url")
 		return
-	} else {
-		u.PasswordHash = hash
 	}
 
-	u.MustPut()
-	http.Render(c, 200, Password{Password: newPassword})
+	// Update stripe data
+	aff.Stripe.UserId = token.UserId
+	aff.Stripe.AccessToken = token.AccessToken
+	aff.Stripe.PublishableKey = token.PublishableKey
+	aff.Stripe.RefreshToken = token.RefreshToken
+
+	// Save live/test tokens
+	aff.Stripe.Live = *token
+	aff.Stripe.Test = *testToken
+
+	// Save to datastore
+	if err := aff.Put(); err != nil {
+		log.Error("There was saving tokens to datastore: %v", err, c)
+		c.Redirect(302, "organization affiliate error url")
+		return
+	}
+
+	// Success
+	c.Redirect(302, "organization affiliate success url")
 }
 
 func getReferrals(c *gin.Context) {
@@ -59,7 +95,7 @@ func getReferrals(c *gin.Context) {
 func getReferrers(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
-	id := c.Params.ByName("affiliate")
+	id := c.Params.ByName("affiliateid")
 
 	referrers := make([]referrer.Referrer, 0)
 	if _, err := referrer.Query(db).Filter("AffiliateId=", id).GetAll(&referrers); err != nil {
@@ -73,7 +109,7 @@ func getReferrers(c *gin.Context) {
 func getOrders(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
-	id := c.Params.ByName("affiliateId")
+	id := c.Params.ByName("affiliateid")
 
 	orders := make([]order.Order, 0)
 	if _, err := order.Query(db).Filter("AffiliateId=", id).GetAll(&orders); err != nil {
@@ -87,7 +123,7 @@ func getOrders(c *gin.Context) {
 func getTransactions(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
-	id := c.Params.ByName("affiliateId")
+	id := c.Params.ByName("affiliateid")
 
 	trans := make([]transaction.Transaction, 0)
 	if _, err := transaction.Query(db).Filter("Test=", false).Filter("AffiliateId=", id).GetAll(&trans); err != nil {
