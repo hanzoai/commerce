@@ -80,6 +80,8 @@ type User struct {
 	History []Event `json:"-,omitempty"`
 
 	IsOwner bool `json:"owner" datastore:"-"`
+
+	AffiliateId string `json:"affiliateId,omitempty"`
 }
 
 func (u User) Document() mixin.Document {
