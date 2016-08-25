@@ -154,6 +154,11 @@ type Organization struct {
 		Uid         string
 	} `json:"-"`
 
+	AffilliateSettings struct {
+		ConfirmUrl string
+		ErrorUrl   string
+	} `json:"-"`
+
 	// TODO: Delete?
 	GoogleAnalytics string `json:"googleAnalytics"`
 	FacebookTag     string `json:"facebookTag"`

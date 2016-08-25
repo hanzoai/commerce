@@ -37,7 +37,7 @@ func stripeCallback(c *gin.Context) {
 	errStr := req.URL.Query().Get("error")
 
 	ctx := middleware.GetAppEngine(c)
-	//org := middleware.GetOrganization(c)
+	org := middleware.GetOrganization(c)
 	db := datastore.New(c)
 	aff := affiliate.New(db)
 	aff.GetById(affid)
@@ -45,7 +45,7 @@ func stripeCallback(c *gin.Context) {
 	// Failed to get back authorization code from Stripe
 	if errStr != "" {
 		log.Error("Failed to get authorization code from Stripe during Stripe Connect: %v", errStr, c)
-		c.Redirect(302, "organization affiliate error url")
+		c.Redirect(302, org.AffilliateSettings.ErrorUrl)
 		return
 	}
 
@@ -53,7 +53,7 @@ func stripeCallback(c *gin.Context) {
 	token, testToken, err := stripeconnect.GetTokens(ctx, code)
 	if err != nil {
 		log.Error("There was an error with Stripe Connect: %v", err, c)
-		c.Redirect(302, "organization affiliate error url")
+		c.Redirect(302, org.AffilliateSettings.ErrorUrl)
 		return
 	}
 
@@ -70,12 +70,12 @@ func stripeCallback(c *gin.Context) {
 	// Save to datastore
 	if err := aff.Put(); err != nil {
 		log.Error("There was saving tokens to datastore: %v", err, c)
-		c.Redirect(302, "organization affiliate error url")
+		c.Redirect(302, org.AffilliateSettings.ErrorUrl)
 		return
 	}
 
 	// Success
-	c.Redirect(302, "organization affiliate success url")
+	c.Redirect(302, org.AffilliateSettings.ConfirmUrl)
 }
 
 func getReferrals(c *gin.Context) {
