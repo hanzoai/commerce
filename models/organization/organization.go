@@ -154,8 +154,8 @@ type Organization struct {
 		Uid         string
 	} `json:"-"`
 
-	AffilliateSettings struct {
-		ConfirmUrl string
+	Affilliate struct {
+		SuccessUrl string
 		ErrorUrl   string
 	} `json:"-"`
 
