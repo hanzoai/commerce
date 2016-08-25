@@ -45,7 +45,7 @@ func stripeCallback(c *gin.Context) {
 	// Failed to get back authorization code from Stripe
 	if errStr != "" {
 		log.Error("Failed to get authorization code from Stripe during Stripe Connect: %v", errStr, c)
-		c.Redirect(302, org.AffilliateSettings.ErrorUrl)
+		c.Redirect(302, org.Affilliate.ErrorUrl)
 		return
 	}
 
@@ -53,7 +53,7 @@ func stripeCallback(c *gin.Context) {
 	token, testToken, err := stripeconnect.GetTokens(ctx, code)
 	if err != nil {
 		log.Error("There was an error with Stripe Connect: %v", err, c)
-		c.Redirect(302, org.AffilliateSettings.ErrorUrl)
+		c.Redirect(302, org.Affilliate.ErrorUrl)
 		return
 	}
 
@@ -70,12 +70,12 @@ func stripeCallback(c *gin.Context) {
 	// Save to datastore
 	if err := aff.Put(); err != nil {
 		log.Error("There was saving tokens to datastore: %v", err, c)
-		c.Redirect(302, org.AffilliateSettings.ErrorUrl)
+		c.Redirect(302, org.Affilliate.ErrorUrl)
 		return
 	}
 
 	// Success
-	c.Redirect(302, org.AffilliateSettings.ConfirmUrl)
+	c.Redirect(302, org.Affilliate.SuccessUrl)
 }
 
 func getReferrals(c *gin.Context) {
