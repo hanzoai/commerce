@@ -250,7 +250,7 @@ func (api API) CreateOrder(storeId string, ord *order.Order) error {
 	lines := make([]gochimp.LineItem, 0)
 	for _, line := range ord.Items {
 		lines = append(lines, gochimp.LineItem{
-			ID:               ord.Id() + line.VariantId,
+			ID:               ord.Id() + line.Id(),
 			ProductID:        line.ProductId,
 			ProductVariantID: line.VariantId,
 			Quantity:         line.Quantity,
@@ -288,8 +288,8 @@ func (api API) CreateOrder(storeId string, ord *order.Order) error {
 		FulfillmentStatus:  string(ord.FulfillmentStatus),
 		CampaignID:         "",
 		TrackingCode:       "",
-		ProcessedAtForeign: ord.CreatedAt.Format(time.RFC3339),
-		CancelledAtForeign: "",
+		ProcessedAtForeign: ord.ProcessedAt.Format(time.RFC3339),
+		CancelledAtForeign: ord.CancelledAt.Format(time.RFC3339),
 		UpdatedAtForeign:   ord.UpdatedAt.Format(time.RFC3339),
 	}
 	stor, err := api.client.GetStore(storeId, nil)
@@ -301,7 +301,7 @@ func (api API) UpdateOrder(storeId string, ord *order.Order) error {
 	lines := make([]gochimp.LineItem, 0)
 	for _, line := range ord.Items {
 		lines = append(lines, gochimp.LineItem{
-			ID:               ord.Id() + line.VariantId,
+			ID:               ord.Id() + line.Id(),
 			ProductID:        line.ProductId,
 			ProductVariantID: line.VariantId,
 			Quantity:         line.Quantity,
@@ -339,8 +339,8 @@ func (api API) UpdateOrder(storeId string, ord *order.Order) error {
 		FulfillmentStatus:  string(ord.FulfillmentStatus),
 		CampaignID:         "",
 		TrackingCode:       "",
-		ProcessedAtForeign: ord.CreatedAt.Format(time.RFC3339),
-		CancelledAtForeign: "",
+		ProcessedAtForeign: ord.ProcessedAt.Format(time.RFC3339),
+		CancelledAtForeign: ord.CancelledAt.Format(time.RFC3339),
 		UpdatedAtForeign:   ord.UpdatedAt.Format(time.RFC3339),
 	}
 	stor, err := api.client.GetStore(storeId, nil)
