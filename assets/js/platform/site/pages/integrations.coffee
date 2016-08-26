@@ -141,7 +141,7 @@ class Integrations extends Page
         integrations.Analytics.GoogleAnalytics
         integrations.Analytics.GoogleAdwords
         integrations.Analytics.FacebookConversions
-        integrations.Analytics.FacebookAudiences
+        integrations.Analytics.FacebookPixel
         integrations.Analytics.Custom
       ]
 
