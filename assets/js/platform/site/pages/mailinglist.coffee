@@ -14,7 +14,10 @@ class MailingList extends Page
     @on 'update', ()->
       requestAnimationFrame ()->
         try
-          $('pre code').each (i, block)->
+          $code = $('pre code')
+          return if $code.html().indexOf('undefined') > -1
+
+          $code.each (i, block)->
             hljs.highlightBlock block
         catch e
           e

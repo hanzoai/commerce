@@ -9,7 +9,6 @@ import (
 
 	"appengine"
 
-	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/types/analytics"
 	"crowdstart.com/models/user"
@@ -49,6 +48,24 @@ func (e Email) Config(org *Organization) Email {
 	return conf
 }
 
+type EmailConfig struct {
+	// Default email configuration
+	Defaults struct {
+		Enabled   bool   `json:"enabled"`
+		FromName  string `json:"fromName"`
+		FromEmail string `json:"fromEmail"`
+	} `json:"defaults"`
+
+	// Per-email configuration
+	OrderConfirmation Email `json:"orderConfirmation"`
+	User              struct {
+		Welcome           Email `json:"welcome`
+		EmailConfirmation Email `json:"emailConfirmation"`
+		EmailConfirmed    Email `json:"emailConfirmed"`
+		PasswordReset     Email `json:"PasswordReset"`
+	} `json:"user"`
+}
+
 type Organization struct {
 	mixin.Model
 	mixin.AccessToken
@@ -75,23 +92,7 @@ type Organization struct {
 	// Analytics config
 	Analytics analytics.Analytics `json:"analytics"`
 
-	Email struct {
-		// Default email configuration
-		Defaults struct {
-			Enabled   bool   `json:"enabled"`
-			FromName  string `json:"fromName"`
-			FromEmail string `json:"fromEmail"`
-		} `json:"defaults"`
-
-		// Per-email configuration
-		OrderConfirmation Email `json:"orderConfirmation"`
-		User              struct {
-			Welcome           Email `json:"welcome`
-			EmailConfirmation Email `json:"emailConfirmation"`
-			EmailConfirmed    Email `json:"emailConfirmed"`
-			PasswordReset     Email `json:"PasswordReset"`
-		} `json:"user"`
-	} `json:"email"`
+	Email EmailConfig `json:"email"`
 
 	Plan struct {
 		PlanId    string
@@ -164,15 +165,6 @@ type Organization struct {
 	EmailWhitelist string `json:"emailWhitelist"`
 }
 
-func New(db *datastore.Datastore) *Organization {
-	o := new(Organization)
-	o.Model = mixin.Model{Db: db, Entity: o}
-	o.AccessToken = mixin.AccessToken{Entity: o}
-	o.Admins = make([]string, 0)
-	o.Moderators = make([]string, 0)
-	return o
-}
-
 func (o Organization) GetStripeAccessToken(userId string) (string, error) {
 	if o.Stripe.Live.UserId == userId {
 		return o.Stripe.Live.AccessToken, nil
@@ -181,10 +173,6 @@ func (o Organization) GetStripeAccessToken(userId string) (string, error) {
 		return o.Stripe.Test.AccessToken, nil
 	}
 	return "", StripeAccessTokenNotFound{userId, o.Stripe.Live.UserId, o.Stripe.Test.UserId}
-}
-
-func (o Organization) Kind() string {
-	return "organization"
 }
 
 func (o *Organization) Validator() *val.Validator {
@@ -216,8 +204,8 @@ func userId(userOrId interface{}) string {
 func (o Organization) IsAdmin(userOrId interface{}) bool {
 	userid := userId(userOrId)
 
-	for _, id := range o.Admins {
-		if id == userid {
+	for i := range o.Admins {
+		if o.Admins[i] == userid {
 			return true
 		}
 	}
@@ -227,12 +215,30 @@ func (o Organization) IsAdmin(userOrId interface{}) bool {
 func (o Organization) IsOwner(userOrId interface{}) bool {
 	userid := userId(userOrId)
 
-	for _, id := range o.Owners {
-		if id == userid {
+	for i := range o.Owners {
+		if o.Owners[i] == userid {
 			return true
 		}
 	}
 	return false
+}
+
+// Add admin to organization
+func (o *Organization) AddAdmin(userOrId string) {
+	userid := userId(userOrId)
+
+	if !o.IsAdmin(userid) {
+		o.Admins = append(o.Admins, userid)
+	}
+}
+
+// Add admin to organization
+func (o *Organization) AddOwner(userOrId string) {
+	userid := userId(userOrId)
+
+	if !o.IsOwner(userid) {
+		o.Owners = append(o.Owners, userid)
+	}
 }
 
 // Get namespaced context for this organization
@@ -275,8 +281,4 @@ func (o Organization) IsTestEmail(email string) bool {
 	}
 
 	return false
-}
-
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
 }

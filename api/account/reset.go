@@ -7,46 +7,18 @@ import (
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
-	"crowdstart.com/models/organization"
 	"crowdstart.com/models/token"
 	"crowdstart.com/models/user"
+	"crowdstart.com/util/emails"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/json/http"
 	"crowdstart.com/util/log"
-	"crowdstart.com/util/template"
-
-	mandrill "crowdstart.com/thirdparty/mandrill/tasks"
 )
 
 type resetReq struct {
 	Email    string `json:"email"`
 	Username string `json:"username"`
 	Id       string `json:"id"`
-}
-
-func sendPasswordReset(c *gin.Context, org *organization.Organization, usr *user.User, tok *token.Token) {
-	conf := org.Email.User.PasswordReset.Config(org)
-	if !conf.Enabled || org.Mandrill.APIKey == "" {
-		return
-	}
-
-	// From
-	fromName := conf.FromName
-	fromEmail := conf.FromEmail
-
-	// To
-	toEmail := usr.Email
-	toName := usr.Name()
-
-	// Subject
-	subject := conf.Subject
-
-	// Render email
-	html := template.RenderStringFromString(conf.Template, "user", usr, "token", tok)
-
-	// Send Email
-	ctx := middleware.GetAppEngine(c)
-	mandrill.Send.Call(ctx, org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, html)
 }
 
 func reset(c *gin.Context) {
@@ -82,7 +54,8 @@ func reset(c *gin.Context) {
 	}
 
 	// Send email
-	sendPasswordReset(c, org, usr, tok)
+	ctx := middleware.GetAppEngine(c)
+	emails.SendPasswordResetEmail(ctx, org, usr, tok)
 
 	http.Render(c, 200, gin.H{"status": "ok"})
 }

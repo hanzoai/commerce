@@ -16,8 +16,8 @@ var Mailinglist = New("mailinglist", func(c *gin.Context) *mailinglist.MailingLi
 	mailingList.SendWelcome = true
 	mailingList.Type = "signup"
 
-	mailingList.Mailchimp.Id = "30d872227a"
-	mailingList.Mailchimp.APIKey = "473b358fd2972742c8ef6af581c3c0-us9"
+	mailingList.Mailchimp.Id = "cc383800a7"
+	mailingList.Mailchimp.APIKey = "4a241ef914c2b098a3965d718c8f7f7e-us13"
 	mailingList.Mailchimp.DoubleOptin = false
 	mailingList.Mailchimp.UpdateExisting = true
 	mailingList.Mailchimp.ReplaceInterests = false
