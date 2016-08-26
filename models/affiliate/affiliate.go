@@ -11,21 +11,14 @@ import (
 
 type Affiliate struct {
 	mixin.Model
-	mixin.AccessToken
 
-	FirstName string `json:"firstName"`
-	LastName  string `json:"lastName"`
-	Enabled   bool   `json:"enabled"`
+	Enabled bool `json:"enabled"`
 
-	Email   string  `json:"billingEmail,omitempty"`
-	Phone   string  `json:"phone,omitempty"`
-	Address Address `json:"address,omitempty"`
-	Website string  `json:"website,omitempty"`
-
+	UserId   string `json:userId`
+	Company  string `json:"company"`
+	Country  string `json:"country"`
+	TaxId    string `json:"-"`
 	Timezone string `json:"timezone"`
-
-	Country string `json:"country"`
-	TaxId   string `json:"-"`
 
 	Stripe struct {
 		// For convenience duplicated
