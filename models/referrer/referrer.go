@@ -13,9 +13,11 @@ var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 type Referrer struct {
 	mixin.Model
 
+	Code           string                    `json:"code"`
 	Program        Program                   `json:"program"`
 	OrderId        string                    `json:"orderId"`
 	UserId         string                    `json:"userId"`
+	AffiliateId    string                    `json:"affiliateId,omitempty"`
 	ReferralIds    []string                  `json:"referralIds"`
 	TransactionIds []string                  `json:"transactionsIds"`
 	Transactions   []transaction.Transaction `json:"transactions,omitempty"`
