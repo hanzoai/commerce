@@ -142,6 +142,11 @@ type Organization struct {
 		Test connect.Token
 	} `json:"-"`
 
+	Mailchimp struct {
+		Id     string `json:"id"`
+		APIKey string `json:"apiKey"`
+	}
+
 	Mandrill struct {
 		APIKey string
 	} `json:"-"`
