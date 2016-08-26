@@ -4,7 +4,7 @@
 <head>
   <!-- Meta, title, CSS, favicons, etc. -->
   <meta charset="utf-8">
-  <title>Welcome to Crowdstart</title>
+  <title>Crowdstart</title>
 
   <meta name="description" content="Crowdstart is a brand new crowdfunding platform">
   <meta name="author" content="verusmedia">
@@ -194,7 +194,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.0/js/select2.min.js"></script>
 
   <!-- Crowdstart Scripts -->
-  <script src="{{ staticUrl }}/js/platform.js"></script>
   <script type="text/javascript">
   var countries = {
     {% for country in constants.Countries %}
@@ -208,6 +207,21 @@
     {% endfor %}
   }
 
+  window.Keys = {
+    'live-secret-key':      '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}',
+    'live-published-key':   '{{ ctx.organization.MustGetTokenByName("live-published-key") }}',
+    'test-secret-key':      '{{ ctx.organization.MustGetTokenByName("test-secret-key") }}',
+    'test-published-key':   '{{ ctx.organization.MustGetTokenByName("test-published-key") }}',
+  }
+
+  window.User = {{ ctx.user.JSONString() | safe }}
+
+  window.Organization = '{{ ctx.organization.Name }}'
+
+  window.staticUrl = '{{ staticUrl }}/backend'
+  </script>
+  <script src="{{ staticUrl }}/js/platform.js"></script>
+  <script type="text/javascript">
   $(function(){
     requestAnimationFrame(function(){
       try {
@@ -217,24 +231,17 @@
     })
   })
 
-  window.Keys = {
-    'live-secret-key':      '{{ ctx.organization.MustGetTokenByName("live-secret-key") }}',
-    'live-published-key':   '{{ ctx.organization.MustGetTokenByName("live-published-key") }}',
-    'test-secret-key':      '{{ ctx.organization.MustGetTokenByName("test-secret-key") }}',
-    'test-published-key':   '{{ ctx.organization.MustGetTokenByName("test-published-key") }}',
-  }
-
-  window.Organization = '{{ ctx.organization.Name }}'
-
-  window.staticUrl = '{{ staticUrl }}/backend'
-
   new crowdcontrol.data.Api(
     '{{ urlFor("platform") }}',
     window.Keys['live-secret-key']
   ).register('platform')
 
   new crowdcontrol.data.Api(
-    '{{ urlFor("api") }}',
+    {% if isProduction %}
+      '//api-dot-crowdstart-us.appspot.com/',
+    {% else %}
+      '//api-dot-crowdstart-staging.appspot.com/',
+    {% endif %}
     window.Keys['live-secret-key']
   ).register('crowdstart')
 

@@ -94,25 +94,9 @@ type Store struct {
 	} `json:"-"`
 }
 
-func (s Store) Kind() string {
-	return "store"
-}
-
-func (s *Store) Init() {
-	s.ShippingRateTable = make(ShippingRateTable)
-	s.Listings = make(Listings)
-}
-
-func New(db *datastore.Datastore) *Store {
-	s := new(Store)
-	s.Init()
-	s.Model = mixin.Model{Db: db, Entity: s}
-	return s
-}
-
 func (s *Store) Load(c <-chan aeds.Property) (err error) {
 	// Ensure we're initialized
-	s.Init()
+	s.Defaults()
 
 	// Load supported properties
 	if err = IgnoreFieldMismatch(aeds.LoadStruct(s, c)); err != nil {
@@ -174,8 +158,4 @@ func (s *Store) UpdateFromListing(entity mixin.Entity) {
 	// Ensure currency is set to currency of store
 	field := ev.FieldByName("Currency")
 	field.Set(reflect.ValueOf(s.Currency))
-}
-
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
 }

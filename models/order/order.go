@@ -112,7 +112,8 @@ type Order struct {
 	ShippingAddress Address `json:"shippingAddress"`
 
 	// Individual line items
-	Items []LineItem `json:"items"`
+	Items  []LineItem `json:"items" datastore:"-"`
+	Items_ string     `json:"-"` // need props
 
 	Adjustments []Adjustment `json:"-"`
 
@@ -137,28 +138,6 @@ type Order struct {
 	Gift        bool   `json:"gift"`        // Is this a gift?
 	GiftMessage string `json:"giftMessage"` // Message to go on gift
 	GiftEmail   string `json:"giftEmail"`   // Email for digital gifts
-}
-
-func (o *Order) Init() {
-	o.Status = Open
-	o.PaymentStatus = payment.Unpaid
-	o.FulfillmentStatus = FulfillmentUnfulfilled
-	o.Adjustments = make([]Adjustment, 0)
-	o.History = make([]Event, 0)
-	o.Items = make([]LineItem, 0)
-	o.Metadata = make(Map)
-	o.Coupons = make([]coupon.Coupon, 0)
-}
-
-func New(db *datastore.Datastore) *Order {
-	o := new(Order)
-	o.Init()
-	o.Model = mixin.Model{Db: db, Entity: o}
-	return o
-}
-
-func (o Order) Kind() string {
-	return "order"
 }
 
 func (o Order) Document() mixin.Document {
@@ -223,7 +202,7 @@ func (o *Order) Validator() *val.Validator {
 
 func (o *Order) Load(c <-chan aeds.Property) (err error) {
 	// Ensure we're initialized
-	o.Init()
+	o.Defaults()
 
 	// Load supported properties
 	if err = IgnoreFieldMismatch(aeds.LoadStruct(o, c)); err != nil {
@@ -232,8 +211,15 @@ func (o *Order) Load(c <-chan aeds.Property) (err error) {
 
 	// Set order number
 	o.Number = o.NumberFromId()
+	for _, coup := range o.Coupons {
+		coup.Init(o.Model.Db)
+	}
 
 	// Deserialize from datastore
+	if len(o.Items_) > 0 {
+		err = json.DecodeBytes([]byte(o.Items_), &o.Items)
+	}
+
 	if len(o.Metadata_) > 0 {
 		err = json.DecodeBytes([]byte(o.Metadata_), &o.Metadata)
 	}
@@ -244,6 +230,7 @@ func (o *Order) Load(c <-chan aeds.Property) (err error) {
 func (o *Order) Save(c chan<- aeds.Property) (err error) {
 	// Serialize unsupported properties
 	o.Metadata_ = string(json.EncodeBytes(&o.Metadata))
+	o.Items_ = string(json.EncodeBytes(o.Items))
 
 	// Save properties
 	return IgnoreFieldMismatch(aeds.SaveStruct(o, c))
@@ -265,34 +252,44 @@ func (o Order) NumberFromId() int {
 	return hashid.Decode(o.Id_)[1]
 }
 
+func (o Order) OrderDay() string {
+	return string(o.CreatedAt.Day())
+}
+
+func (o Order) OrderMonthName() string {
+	return o.CreatedAt.Month().String()
+}
+
+func (o Order) OrderYear() string {
+	return string(o.CreatedAt.Year())
+}
+
 // Get line items from datastore
 func (o *Order) GetCoupons() error {
 	o.DedupeCouponCodes()
 	db := o.Model.Db
 	ctx := db.Context
 
+	log.Debug("CouponCodes: %#v", o.CouponCodes)
 	num := len(o.CouponCodes)
 	o.Coupons = make([]coupon.Coupon, num, num)
-	keys := make([]datastore.Key, num, num)
 
 	for i := 0; i < num; i++ {
-		c := coupon.New(db)
+		cpn := coupon.New(db)
 		code := strings.TrimSpace(strings.ToUpper(o.CouponCodes[i]))
-		ok, err := c.Query().Filter("Code=", code).KeysOnly().First()
-		if err != nil {
-			log.Error("Error looking for coupon: CouponCodes[%v] => %v: %v", i, o.CouponCodes[i], err, ctx)
-			return err
-		}
 
-		if !ok {
-			log.Warn("Could not find CouponCodes[%v] => %v", i, o.CouponCodes[i], ctx)
+		log.Debug("CODE: %s", code)
+		err := cpn.GetById(code)
+
+		if err != nil {
+			log.Warn("Could not find CouponCodes[%v] => %v, Error: %v", i, code, err, ctx)
 			return errors.New("Invalid coupon code: " + code)
 		}
 
-		keys[i] = c.Key()
+		o.Coupons[i] = *cpn
 	}
 
-	return db.GetMulti(keys, o.Coupons)
+	return nil
 }
 
 func (o *Order) DedupeCouponCodes() {
@@ -324,35 +321,47 @@ func (o *Order) UpdateDiscount() {
 
 	ctx := o.Model.Db.Context
 
+	log.Warn("TRYING TO APPLY COUPONS", ctx)
 	for i := 0; i < num; i++ {
 		c := &o.Coupons[i]
 		if !c.ValidFor(o.CreatedAt) {
 			continue
 		}
 
+		log.Warn("TRYING TO APPLY COUPON %v", c.Code(), ctx)
+
 		if c.ItemId() == "" {
+			log.Warn("Coupon Applies to All", ctx)
+
 			// Not per product
 			switch c.Type {
 			case coupon.Flat:
+				log.Warn("Flat", ctx)
 				o.Discount += currency.Cents(c.Amount)
 			case coupon.Percent:
+				log.Warn("Percent", ctx)
 				for _, item := range o.Items {
 					o.Discount += currency.Cents(int(math.Floor(float64(item.TotalPrice()) * float64(c.Amount) * 0.01)))
 				}
 			case coupon.FreeShipping:
+				log.Warn("FreeShipping", ctx)
 				o.Discount += currency.Cents(int(o.Shipping))
 			}
 		} else {
+			log.Warn("Coupon Applies to %v", c.ItemId(), ctx)
 			// Coupons per product
 			for _, item := range o.Items {
 				log.Debug("Coupon.ProductId: %v, Item.ProductId: %v", c.ProductId, item.ProductId, ctx)
 				if item.Id() == c.ItemId() {
 					switch c.Type {
 					case coupon.Flat:
+						log.Warn("Flat", ctx)
 						o.Discount += currency.Cents(item.Quantity * c.Amount)
 					case coupon.Percent:
+						log.Warn("Percent", ctx)
 						o.Discount += currency.Cents(math.Floor(float64(item.TotalPrice()) * float64(c.Amount) * 0.01))
 					case coupon.FreeItem:
+						log.Warn("FreeShipping", ctx)
 						o.Discount += currency.Cents(item.Price)
 					}
 
@@ -567,6 +576,12 @@ func (o *Order) UpdateAndTally(stor *store.Store) error {
 		return errors.New("Failed to get coupons")
 	}
 
+	for _, coup := range o.Coupons {
+		if !coup.Redeemable() {
+			return errors.New(fmt.Sprintf("Coupon %v limit reached", coup.Code()))
+		}
+	}
+
 	// Update the list of free coupon items
 	o.UpdateCouponItems()
 
@@ -617,35 +632,27 @@ func (o Order) DisplayCreatedAt() string {
 }
 
 func (o Order) DisplaySubtotal() string {
-	return DisplayPrice(o.Subtotal)
+	return DisplayPrice(o.Currency, o.Subtotal)
 }
 
 func (o Order) DisplayDiscount() string {
-	return DisplayPrice(o.Discount)
+	return DisplayPrice(o.Currency, o.Discount)
 }
 
 func (o Order) DisplayTax() string {
-	return DisplayPrice(o.Tax)
+	return DisplayPrice(o.Currency, o.Tax)
 }
 
 func (o Order) DisplayShipping() string {
-	return DisplayPrice(o.Shipping)
+	return DisplayPrice(o.Currency, o.Shipping)
 }
 
 func (o Order) DisplayTotal() string {
-	return DisplayPrice(o.Total)
+	return DisplayPrice(o.Currency, o.Total)
 }
 
-func (o Order) DecimalTotal() uint64 {
-	return uint64(FloatPrice(o.Total) * 100)
-}
-
-func (o Order) DecimalFee() uint64 {
-	return uint64(FloatPrice(o.Total) * 100 * 0.02)
-}
-
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
+func (o Order) DisplayRefunded() string {
+	return DisplayPrice(o.Currency, o.Refunded)
 }
 
 func (o Order) Description() string {
@@ -682,12 +689,10 @@ func (o Order) DescriptionLong() string {
 
 func (o Order) GetPayments() ([]*payment.Payment, error) {
 	payments := make([]*payment.Payment, 0)
+
 	if _, err := payment.Query(o.Db).Ancestor(o.Key()).GetAll(&payments); err != nil {
-		return payments, err
+		return nil, err
 	}
-	// Initialize mixin model
-	for i := range payments {
-		payments[i].Model = mixin.Model{Db: o.Db, Entity: payments[i]}
-	}
+
 	return payments, nil
 }

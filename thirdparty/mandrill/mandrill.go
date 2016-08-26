@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"time"
 
 	"appengine"
 	"appengine/urlfetch"
@@ -24,8 +25,8 @@ func init() {
 }
 
 type Var struct {
-	Name    string `json:"name"`
-	Content string `json:"content"`
+	Name    string      `json:"name"`
+	Content interface{} `json:"content"`
 }
 
 type RcptMergeVars struct {
@@ -68,7 +69,7 @@ type SendReq struct {
 		// ReturnPathDomain interface{} `json:"return_path_domain"`
 
 		Merge         bool            `json:"merge"`
-		MergeLanguage string          `json:"merge_language"`
+		MergeLanguage string          `json:"merge_language,omitempty"`
 		MergeVars     []Var           `json:"global_merge_vars"`
 		RcptMergeVars []RcptMergeVars `json:"merge_vars"`
 
@@ -132,7 +133,6 @@ func NewSendReq() (req SendReq) {
 	req.Async = true
 	req.IpPool = "Main Pool"
 	req.Key = config.Mandrill.APIKey
-	req.Message.MergeLanguage = "mailchimp"
 	req.Message.AutoHtml = true
 	req.Message.Merge = true
 	return req
@@ -169,10 +169,10 @@ func Ping(ctx appengine.Context) bool {
 
 	client := urlfetch.Client(ctx)
 	res, err := client.Do(req)
-	defer res.Body.Close()
 	if err != nil {
 		return false
 	}
+	defer res.Body.Close()
 
 	return res.StatusCode == 200
 }
@@ -189,11 +189,15 @@ func SendTemplate(ctx appengine.Context, req *SendTemplateReq) error {
 	}
 
 	client := urlfetch.Client(ctx)
+	client.Transport = &urlfetch.Transport{
+		Context:  ctx,
+		Deadline: time.Duration(30) * time.Second,
+	}
 	res, err := client.Do(hreq)
-	defer res.Body.Close()
 	if err != nil {
 		return err
 	}
+	defer res.Body.Close()
 
 	if res.StatusCode == 200 {
 		return nil
@@ -201,7 +205,7 @@ func SendTemplate(ctx appengine.Context, req *SendTemplateReq) error {
 
 	// Failed to send
 	b, _ := ioutil.ReadAll(res.Body)
-	return errors.New(fmt.Sprintf("Invalid response from Mandrill: %v", b))
+	return errors.New(fmt.Sprintf("Invalid response from Mandrill: %s", b))
 }
 
 func Send(ctx appengine.Context, req *SendReq) error {
@@ -217,10 +221,10 @@ func Send(ctx appengine.Context, req *SendReq) error {
 
 	client := urlfetch.Client(ctx)
 	res, err := client.Do(hreq)
-	defer res.Body.Close()
 	if err != nil {
 		return err
 	}
+	defer res.Body.Close()
 
 	if res.StatusCode == 200 {
 		return nil
@@ -228,5 +232,5 @@ func Send(ctx appengine.Context, req *SendReq) error {
 
 	// Failed to send
 	b, _ := ioutil.ReadAll(res.Body)
-	return errors.New(fmt.Sprintf("Invalid response from Mandrill: %v", b))
+	return errors.New(fmt.Sprintf("Invalid response from Mandrill: %s", b))
 }

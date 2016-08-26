@@ -1,7 +1,6 @@
 package variant
 
 import (
-	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/models/types/weight"
@@ -9,13 +8,6 @@ import (
 
 	. "crowdstart.com/models"
 )
-
-type Option struct {
-	// Ex. Size
-	Name string `json:"name"`
-	// Ex. M
-	Value string `json:"value"`
-}
 
 type Variant struct {
 	mixin.Model
@@ -49,17 +41,6 @@ type Variant struct {
 	Options []Option `json:"options"`
 }
 
-func New(db *datastore.Datastore) *Variant {
-	v := new(Variant)
-	v.Options = make([]Option, 0)
-	v.Model = mixin.Model{Db: db, Entity: v}
-	return v
-}
-
-func (v Variant) Kind() string {
-	return "variant"
-}
-
 func (v *Variant) Validator() *val.Validator {
 	return val.New().Check("ProductId").Exists().
 		Check("SKU").Exists().
@@ -81,8 +62,4 @@ func (v *Variant) Validator() *val.Validator {
 	// 	})
 	// }
 	// return errs
-}
-
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
 }

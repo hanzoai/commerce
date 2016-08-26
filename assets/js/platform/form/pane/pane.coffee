@@ -39,6 +39,7 @@ class Pane extends FormView
     @update()
 
     path = @path + '?q=' + @queryString()
+    path += "&limit=1000" if window.User.owner
 
     @tableObs.trigger Events.Table.PrepareForNewData
 
