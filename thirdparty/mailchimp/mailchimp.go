@@ -151,7 +151,7 @@ func (api API) CreateCart(storeId string, car *cart.Cart) error {
 	lines := make([]gochimp.LineItem, 0)
 	for _, line := range car.Items {
 		lines = append(lines, gochimp.LineItem{
-			ID:               car.Id() + line.VariantId,
+			ID:               car.Id() + line.Id(),
 			ProductID:        line.ProductId,
 			ProductVariantID: line.VariantId,
 			Quantity:         line.Quantity,
@@ -177,8 +177,6 @@ func (api API) CreateCart(storeId string, car *cart.Cart) error {
 			OrdersCount:  0,
 			TotalSpent:   0,
 			Address:      gochimp.Address{},
-			CreatedAt:    "",
-			UpdatedAt:    "",
 		},
 
 		Lines: lines,
