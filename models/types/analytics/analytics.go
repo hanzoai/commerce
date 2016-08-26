@@ -71,7 +71,7 @@ type Integration struct {
 
 	// Available integrations
 	Generic
-	FacebookAudiences
+	FacebookPixel
 	FacebookConversions
 	GoogleAnalytics
 	GoogleAdWords
@@ -82,7 +82,7 @@ type Generic struct {
 	Code string `json:"code,omitempty"`
 }
 
-type FacebookAudiences struct {
+type FacebookPixel struct {
 }
 
 type FacebookConversions struct {
