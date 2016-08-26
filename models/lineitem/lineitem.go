@@ -51,16 +51,31 @@ type LineItem struct {
 	AddedBy string `json:"addedBy"`
 }
 
+func (li LineItem) ToMap() map[string]interface{} {
+	vals := make(map[string]interface{})
+
+	vals["CollectionId"] = li.CollectionId
+	vals["ProductId"] = li.ProductId
+	vals["VariantId"] = li.VariantId
+	vals["Quantity"] = int64(li.Quantity)
+	vals["Price"] = int64(li.Price)
+	vals["Taxable"] = li.Taxable
+	vals["Free"] = li.Free
+	vals["AddedBy"] = li.AddedBy
+
+	return vals
+}
+
 func (li LineItem) TotalPrice() currency.Cents {
 	return li.Price * currency.Cents(li.Quantity)
 }
 
-func (li LineItem) DisplayPrice() string {
-	return DisplayPrice(li.Price)
+func (li LineItem) DisplayPrice(t currency.Type) string {
+	return DisplayPrice(t, li.Price)
 }
 
-func (li LineItem) DisplayTotalPrice() string {
-	return DisplayPrice(li.TotalPrice())
+func (li LineItem) DisplayTotalPrice(t currency.Type) string {
+	return DisplayPrice(t, li.TotalPrice())
 }
 
 func (li LineItem) Id() string {
@@ -95,7 +110,7 @@ func (li LineItem) DisplayId() string {
 func (li *LineItem) Entity(db *datastore.Datastore) (datastore.Key, interface{}, error) {
 	if li.ProductId != "" {
 		li.Product = product.New(db)
-		err := li.Product.SetKey(li.ProductId)
+		err := li.Product.GetById(li.ProductId)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -104,7 +119,7 @@ func (li *LineItem) Entity(db *datastore.Datastore) (datastore.Key, interface{},
 
 	if li.VariantId != "" {
 		li.Variant = variant.New(db)
-		err := li.Variant.SetKey(li.VariantId)
+		err := li.Variant.GetById(li.VariantId)
 		if err != nil {
 			return nil, nil, err
 		}

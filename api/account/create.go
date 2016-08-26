@@ -11,16 +11,12 @@ import (
 	"crowdstart.com/auth/password"
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/models/token"
 	"crowdstart.com/models/user"
 	"crowdstart.com/util/counter"
+	"crowdstart.com/util/emails"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/json/http"
 	"crowdstart.com/util/log"
-	"crowdstart.com/util/template"
-
-	mandrill "crowdstart.com/thirdparty/mandrill/tasks"
 )
 
 var emailRegex = regexp.MustCompile("(\\w[-._\\w]*\\w@\\w[-._\\w]*\\w\\.\\w{2,4})")
@@ -29,92 +25,6 @@ type createReq struct {
 	*user.User
 	Password        string `json:"password"`
 	PasswordConfirm string `json:"passwordConfirm"`
-}
-
-func sendEmailConfirmation(c *gin.Context, org *organization.Organization, usr *user.User) {
-	conf := org.Email.User.EmailConfirmation.Config(org)
-	if !conf.Enabled || org.Mandrill.APIKey == "" {
-		return
-	}
-
-	// Create token
-	tok := token.New(usr.Db)
-	tok.Email = usr.Email
-	tok.UserId = usr.Id()
-	tok.Expires = time.Now().Add(time.Hour * 72)
-
-	err := tok.Put()
-	if err != nil {
-		panic(err)
-	}
-
-	// From
-	fromName := conf.FromName
-	fromEmail := conf.FromEmail
-
-	// To
-	toEmail := usr.Email
-	toName := usr.Name()
-
-	// Subject
-	subject := conf.Subject
-
-	// Render email
-	html := template.RenderStringFromString(conf.Template, "user", usr, "token", tok)
-
-	// Send Email
-	ctx := middleware.GetAppEngine(c)
-	mandrill.Send.Call(ctx, org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, html)
-}
-
-func sendEmailConfirmed(c *gin.Context, org *organization.Organization, usr *user.User) {
-	conf := org.Email.User.EmailConfirmed.Config(org)
-	if !conf.Enabled || org.Mandrill.APIKey == "" {
-		return
-	}
-
-	// From
-	fromName := conf.FromName
-	fromEmail := conf.FromEmail
-
-	// To
-	toEmail := usr.Email
-	toName := usr.Name()
-
-	// Subject
-	subject := conf.Subject
-
-	// Render email
-	html := template.RenderStringFromString(conf.Template, "user", usr)
-
-	// Send Email
-	ctx := middleware.GetAppEngine(c)
-	mandrill.Send.Call(ctx, org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, html)
-}
-
-func sendWelcome(c *gin.Context, org *organization.Organization, usr *user.User) {
-	conf := org.Email.User.Welcome.Config(org)
-	if !conf.Enabled || org.Mandrill.APIKey == "" {
-		return
-	}
-
-	// From
-	fromName := conf.FromName
-	fromEmail := conf.FromEmail
-
-	// To
-	toEmail := usr.Email
-	toName := usr.Name()
-
-	// Subject
-	subject := conf.Subject
-
-	// Render email
-	html := template.RenderStringFromString(conf.Template, "user", usr)
-
-	// Send Email
-	ctx := middleware.GetAppEngine(c)
-	mandrill.Send.Call(ctx, org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, html)
 }
 
 func create(c *gin.Context) {
@@ -208,7 +118,8 @@ func create(c *gin.Context) {
 	// Don't send email confirmation if test key is used
 	if org.Live {
 		// Send welcome, email confirmation emails
-		sendEmailConfirmation(c, org, usr)
-		sendWelcome(c, org, usr)
+		ctx := middleware.GetAppEngine(c)
+		emails.SendAccountCreationConfirmationEmail(ctx, org, usr)
+		emails.SendWelcomeEmail(ctx, org, usr)
 	}
 }

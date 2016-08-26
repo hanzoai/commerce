@@ -6,9 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.com/middleware"
-	"crowdstart.com/models/campaign"
 	"crowdstart.com/models/collection"
-	"crowdstart.com/models/coupon"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/product"
 	"crowdstart.com/models/referral"
@@ -25,7 +23,9 @@ import (
 
 	accessTokenApi "crowdstart.com/api/accesstoken"
 	accountApi "crowdstart.com/api/account"
+	campaignApi "crowdstart.com/api/campaign"
 	checkoutApi "crowdstart.com/api/checkout"
+	couponApi "crowdstart.com/api/coupon"
 	dataApi "crowdstart.com/api/data"
 	deployApi "crowdstart.com/api/deploy"
 	formApi "crowdstart.com/api/form"
@@ -35,6 +35,7 @@ import (
 	searchApi "crowdstart.com/api/search"
 	storeApi "crowdstart.com/api/store"
 	userApi "crowdstart.com/api/user"
+	xdApi "crowdstart.com/api/xd"
 
 	paypalApi "crowdstart.com/thirdparty/paypal/ipn"
 	shipstationApi "crowdstart.com/thirdparty/shipstation"
@@ -70,7 +71,6 @@ func init() {
 
 	// Models with public RESTful API
 	rest.New(collection.Collection{}).Route(api, tokenRequired)
-	rest.New(coupon.Coupon{}).Route(api, tokenRequired)
 	rest.New(product.Product{}).Route(api, tokenRequired)
 	rest.New(referral.Referral{}).Route(api, tokenRequired)
 	rest.New(referrer.Referrer{}).Route(api, tokenRequired)
@@ -85,6 +85,8 @@ func init() {
 	paymentApi.Route(api, tokenRequired)
 
 	accountApi.Route(api, tokenRequired)
+	couponApi.Route(api, tokenRequired)
+	campaignApi.Route(api, tokenRequired)
 	deployApi.Route(api, tokenRequired)
 	formApi.Route(api, tokenRequired)
 	orderApi.Route(api, tokenRequired)
@@ -92,11 +94,6 @@ func init() {
 	userApi.Route(api, tokenRequired)
 
 	// Crowdstart APIs, using default namespace (internal use only)
-	campaign := rest.New(campaign.Campaign{})
-	campaign.DefaultNamespace = true
-	campaign.Prefix = "/c/"
-	campaign.Route(api, tokenRequired)
-
 	organizationApi.Route(api, tokenRequired)
 
 	token := rest.New(token.Token{})
@@ -128,4 +125,7 @@ func init() {
 
 	// Data Api
 	dataApi.Route(api)
+
+	// XDomain proxy.html
+	xdApi.Route(api)
 }

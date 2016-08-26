@@ -22,7 +22,7 @@ func (ar *AuthorizationReq) User() (*user.User, error) {
 	// If id is set, this is a pre-existing user, use data from datastore
 	if id != "" {
 		ar.User_ = user.New(ar.Order.Db)
-		if err := ar.User_.Get(id); err != nil {
+		if err := ar.User_.GetById(id); err != nil {
 			return nil, UserDoesNotExist
 		} else {
 			return ar.User_, nil
@@ -31,6 +31,7 @@ func (ar *AuthorizationReq) User() (*user.User, error) {
 
 	// Ensure model mixin is setup correctly
 	ar.User_.Model = mixin.Model{Db: ar.Order.Db, Entity: ar.User_}
+	ar.User_.Counter = mixin.Counter{Entity: ar.User_}
 
 	// See if order has address if we don't.
 	if ar.User_.ShippingAddress.Empty() {
