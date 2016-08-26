@@ -17,6 +17,10 @@ type Counter struct {
 	Entity Entity `json:"-" datastore:"-"`
 }
 
+func (c *Counter) Init(e Entity) {
+	c.Entity = e
+}
+
 func (c *Counter) Increment() {
 	counter.Increment(c.Entity.Context(), c.Entity.Kind())
 }

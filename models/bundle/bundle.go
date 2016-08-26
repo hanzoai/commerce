@@ -48,25 +48,9 @@ type Bundle struct {
 	VariantIds []string `json:"variantIds"`
 }
 
-func (c *Bundle) Init() {
-	c.Media = make([]Media, 0)
-	c.ProductIds = make([]string, 0)
-	c.VariantIds = make([]string, 0)
-}
-
-func New(db *datastore.Datastore) *Bundle {
-	c := new(Bundle)
-	c.Init()
-	c.Model = mixin.Model{Db: db, Entity: c}
-	return c
-}
-
-func (c Bundle) Kind() string {
-	return "bundle"
-}
-
 func (c *Bundle) Validator() *val.Validator {
-	return val.New().Check("Slug").Exists().
+	return val.New().
+		Check("Slug").Exists().
 		Check("Name").Exists()
 }
 

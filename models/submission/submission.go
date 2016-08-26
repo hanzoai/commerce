@@ -26,24 +26,9 @@ type Submission struct {
 	Metadata_ string `json:"-" datastore:",noindex"`
 }
 
-func (s *Submission) Init() {
-	s.Metadata = make(Map)
-}
-
-func New(db *datastore.Datastore) *Submission {
-	s := new(Submission)
-	s.Init()
-	s.Model = mixin.Model{Db: db, Entity: s}
-	return s
-}
-
-func (s Submission) Kind() string {
-	return "submission"
-}
-
 func (s *Submission) Load(c <-chan aeds.Property) (err error) {
 	// Ensure we're initialized
-	s.Init()
+	s.Defaults()
 
 	// Load supported properties
 	if err = IgnoreFieldMismatch(aeds.LoadStruct(s, c)); err != nil {
@@ -68,10 +53,6 @@ func (s *Submission) Save(c chan<- aeds.Property) (err error) {
 
 func (s *Submission) Validator() *val.Validator {
 	return val.New()
-}
-
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
 }
 
 func FromJSON(db *datastore.Datastore, data []byte) *Submission {

@@ -53,6 +53,8 @@ var ChargeSync = delay.Func("stripe-charge-sync", func(ctx appengine.Context, ns
 		return
 	}
 
+	log.Warn("Payment Id: %v from ChargeId: %v", pay.Id(), ch.ID, ctx)
+
 	if !ok {
 		log.Warn("No payment associated with charge '%s'", ch.ID, ctx)
 		return
@@ -86,5 +88,5 @@ var ChargeSync = delay.Func("stripe-charge-sync", func(ctx appengine.Context, ns
 		return
 	}
 
-	updateOrder.Call(ctx, ns, pay.OrderId, start)
+	updateOrder.Call(ctx, ns, pay.OrderId, pay.AmountRefunded, start)
 })

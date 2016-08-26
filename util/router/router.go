@@ -53,3 +53,7 @@ func Ok(c *gin.Context) {
 func Empty(c *gin.Context) {
 	c.AbortWithStatus(200)
 }
+
+func Robots(c *gin.Context) {
+	c.String(200, "User-agent: *\nDisallow: /\n")
+}
