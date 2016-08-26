@@ -23,6 +23,7 @@ var _ = BeforeSuite(func() {
 	ctx = ae.NewContext(ae.Options{
 		Modules:    []string{"default"},
 		TaskQueues: []string{"default"},
+		Noisy:      true,
 	})
 })
 

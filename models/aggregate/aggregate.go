@@ -43,24 +43,9 @@ type Aggregate struct {
 	VectorValue  []int64   `json:"vectorValue,omitempty"`
 }
 
-func (a *Aggregate) Init() {
-	a.VectorValue = make([]int64, 0)
-}
-
-func New(db *datastore.Datastore) *Aggregate {
-	a := new(Aggregate)
-	a.Init()
-	a.Model = mixin.Model{Db: db, Entity: a}
-	return a
-}
-
-func (a Aggregate) Kind() string {
-	return "aggregate"
-}
-
 func (a *Aggregate) Load(c <-chan aeds.Property) (err error) {
 	// Ensure we're initialized
-	a.Init()
+	a.Defaults()
 
 	// Load supported properties
 	if err = IgnoreFieldMismatch(aeds.LoadStruct(a, c)); err != nil {
@@ -73,8 +58,4 @@ func (a *Aggregate) Load(c <-chan aeds.Property) (err error) {
 func (a *Aggregate) Save(c chan<- aeds.Property) (err error) {
 	// Save properties
 	return IgnoreFieldMismatch(aeds.SaveStruct(a, c))
-}
-
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
 }

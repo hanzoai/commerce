@@ -26,4 +26,5 @@ func init() {
 	cdn.GET("/m/:mailinglistid/mailinglist.js", mailinglist.Js)
 
 	cdn.HEAD("/", router.Empty)
+	cdn.GET("/robots.txt", router.Robots)
 }

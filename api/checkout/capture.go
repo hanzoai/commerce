@@ -7,7 +7,6 @@ import (
 
 	"crowdstart.com/api/checkout/balance"
 	"crowdstart.com/api/checkout/stripe"
-	"crowdstart.com/datastore"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"
@@ -43,6 +42,8 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (
 func CompleteCapture(c *gin.Context, org *organization.Organization, ord *order.Order, keys []*aeds.Key, payments []*payment.Payment) (*order.Order, error) {
 	var err error
 
+	db := ord.Db
+
 	log.Debug("Completing Capture for\nOrder %v\nPayments %v", ord, payments, c)
 
 	// Referral
@@ -72,14 +73,31 @@ func CompleteCapture(c *gin.Context, org *organization.Organization, ord *order.
 	}
 
 	// Save order and payments
-	ord.MustPut()
+	vals := make([]interface{}, len(payments))
+	for i := range payments {
+		vals[i] = payments[i]
+	}
 
-	db := datastore.New(ord.Db.Context)
-	if _, err = db.PutMulti(keys, payments); err != nil {
+	akey, _ := ord.Key().(*aeds.Key)
+	keys = append(keys, akey)
+	vals = append(vals, ord)
+
+	if _, err = db.PutMulti(keys, vals); err != nil {
 		return nil, err
 	}
 
 	ctx := db.Context
+
+	// Save coupon redemptions
+	ord.GetCoupons()
+	if len(ord.Coupons) > 0 {
+		for _, coup := range ord.Coupons {
+			if err := coup.SaveRedemption(); err != nil {
+				log.Warn("Unable to save redemption: %v", err, ctx)
+			}
+		}
+	}
+
 	log.Debug("Incrementing Counters? %v", ord.Test, c)
 	if !ord.Test {
 		log.Debug("Incrementing Counters", c)

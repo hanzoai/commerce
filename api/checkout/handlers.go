@@ -44,10 +44,13 @@ func Authorize(c *gin.Context) {
 		return
 	}
 
-	if _, _, err := authorize(c, org, ord); err != nil {
-		http.Fail(c, 500, "Error during authorize", err)
+	_, usr, err := authorize(c, org, ord)
+	if err != nil {
+		http.Fail(c, 400, "Error during authorize", err)
 		return
 	}
+
+	emails.SendOrderConfirmationEmail(org.Db.Context, org, ord, usr)
 
 	c.Writer.Header().Add("Location", orderEndpoint+ord.Id())
 
@@ -63,7 +66,7 @@ func Refund(c *gin.Context) {
 	}
 
 	if err := refund(c, org, ord); err != nil {
-		http.Fail(c, 500, "Error during refund", err)
+		http.Fail(c, 400, "Error during refund", err)
 		return
 	}
 
@@ -84,7 +87,7 @@ func Capture(c *gin.Context) {
 	var err error
 	ord, err = capture(c, org, ord)
 	if err != nil {
-		http.Fail(c, 500, "Error during capture", err)
+		http.Fail(c, 400, "Error during capture", err)
 		return
 	}
 
@@ -102,18 +105,18 @@ func Charge(c *gin.Context) {
 	// Do authorization
 	_, usr, err := authorize(c, org, ord)
 	if err != nil {
-		http.Fail(c, 500, "Error during authorize", err)
+		http.Fail(c, 400, "Error during authorize", err)
 		return
 	}
 
 	// Do capture using order from authorization
 	ord, err = capture(c, org, ord)
 	if err != nil {
-		http.Fail(c, 500, "Error during capture", err)
+		http.Fail(c, 400, "Error during capture", err)
 		return
 	}
 
-	emails.SendOrderConfirmationEmail(c, org, ord, usr)
+	emails.SendOrderConfirmationEmail(org.Db.Context, org, ord, usr)
 
 	c.Writer.Header().Add("Location", orderEndpoint+ord.Id())
 

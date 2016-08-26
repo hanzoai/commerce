@@ -2,6 +2,7 @@ package datastore
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"strconv"
 
@@ -312,56 +313,81 @@ func (d *Datastore) GetKindMulti(kind string, keys interface{}, vals interface{}
 }
 
 // Puts entity, returning encoded key
-func (d *Datastore) Put(keyOrKind interface{}, src interface{}) (*aeds.Key, error) {
+func (d *Datastore) Put(keyOrKind interface{}, val interface{}) (*aeds.Key, error) {
 	key, err := d.keyOrKind(keyOrKind)
 	if err != nil {
 		return key, err
 	}
 
-	key, err = nds.Put(d.Context, key, src)
+	key, err = nds.Put(d.Context, key, val)
 	if err != nil {
-		d.warn("Unable to put (%v, %#v): %v", keyOrKind, src, err, d.Context)
+		d.warn("Unable to put (%v, %#v): %v", keyOrKind, val, err, d.Context)
 		return key, err
 	}
 	return key, nil
 }
 
-func (d *Datastore) PutKind(kind string, key interface{}, src interface{}) (*aeds.Key, error) {
+func (d *Datastore) PutKind(kind string, key interface{}, val interface{}) (*aeds.Key, error) {
 	_key, err := d.keyOrKindKey(kind, key)
 
 	// Invalid key, bail out.
 	if err != nil {
-		d.warn("Invalid key: unable to put (%v, %v, %#v): %v", kind, key, src, err)
+		d.warn("Invalid key: unable to put (%v, %v, %#v): %v", kind, key, val, err)
 		return _key, err
 	}
 
-	_key, err = nds.Put(d.Context, _key, src)
+	_key, err = nds.Put(d.Context, _key, val)
 	if err != nil {
-		d.warn("%v, %v, %v, %#v", err, kind, _key, src, d.Context)
+		d.warn("%v, %v, %v, %#v", err, kind, _key, val, d.Context)
 		return _key, err
 	}
 	return _key, nil
 }
 
-func (d *Datastore) PutMulti(keys []*aeds.Key, srcs interface{}) ([]*aeds.Key, error) {
-	return nds.PutMulti(d.Context, keys, srcs)
+// Keys may be either either []datastore.Key or []*aeds.Key, vals expected in typical format
+func (d *Datastore) PutMulti(keys interface{}, vals interface{}) ([]*aeds.Key, error) {
+	var _keys []*aeds.Key
+
+	switch v := keys.(type) {
+	case []Key:
+		n := len(v)
+		_keys = make([]*aeds.Key, n)
+
+		for i := 0; i < n; i++ {
+			_keys[i] = v[i].(*aeds.Key)
+		}
+	case []*aeds.Key:
+		_keys = v
+	default:
+		return _keys, errors.New(fmt.Sprintf("Invalid slice of keys: %v", keys))
+	}
+
+	return nds.PutMulti(d.Context, _keys, vals)
 }
 
-func (d *Datastore) PutKindMulti(kind string, keys []interface{}, srcs []interface{}) ([]*aeds.Key, error) {
-	nkeys := len(srcs)
+func (d *Datastore) MustPutMulti(keys interface{}, vals interface{}) ([]*aeds.Key, error) {
+	_keys, err := d.PutMulti(keys, vals)
+	if err != nil {
+		panic(err)
+	}
+	return _keys, err
+}
+
+func (d *Datastore) PutKindMulti(kind string, keys []interface{}, vals []interface{}) ([]*aeds.Key, error) {
+	nkeys := len(vals)
 	_keys := make([]*aeds.Key, nkeys)
 
 	for i := 0; i < nkeys; i++ {
 		key := keys[i]
 		if _key, err := d.keyOrKindKey(kind, key); err != nil {
-			d.warn("Invalid key: unable to put (%v, %v, %v): %v", kind, key, srcs[i], err)
+			d.warn("Invalid key: unable to put (%v, %v, %v): %v", kind, key, vals[i], err)
 			return _keys, err
 		} else {
 			_keys[i] = _key
 		}
 	}
 
-	_keys, err := nds.PutMulti(d.Context, _keys, srcs)
+	_keys, err := nds.PutMulti(d.Context, _keys, vals)
 	if err != nil {
 		d.warn("%v", err, d.Context)
 		return _keys, err
@@ -374,7 +400,7 @@ func (d *Datastore) PutKindMulti(kind string, keys []interface{}, srcs []interfa
 	return _keys, nil
 }
 
-func (d *Datastore) Update(key string, src interface{}) (string, error) {
+func (d *Datastore) Update(key string, val interface{}) (string, error) {
 	d.warn("DEPRECATED. DOES NOTHING PUT DOES NOT.", d.Context)
 
 	k, err := d.DecodeKey(key)
@@ -382,7 +408,7 @@ func (d *Datastore) Update(key string, src interface{}) (string, error) {
 		return "", err
 	}
 
-	k, err = nds.Put(d.Context, k, src)
+	k, err = nds.Put(d.Context, k, val)
 	if err != nil {
 		d.warn("%v", err, d.Context)
 		return "", err

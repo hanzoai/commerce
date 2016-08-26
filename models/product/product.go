@@ -93,24 +93,9 @@ type Product struct {
 	Options_ string    `json:"-" datastore:",noindex"`
 }
 
-func (p *Product) Init() {
-	p.Variants = make([]*variant.Variant, 0)
-	p.Options = make([]*Option, 0)
-}
-
-func New(db *datastore.Datastore) *Product {
-	p := new(Product)
-	p.Init()
-	p.Model = mixin.Model{Db: db, Entity: p}
-	return p
-}
-
-func (p Product) Kind() string {
-	return "product"
-}
-
 func (p *Product) Validator() *val.Validator {
-	return val.New().Check("Slug").Exists().
+	return val.New().
+		Check("Slug").Exists().
 		Check("SKU").Exists().
 		Check("Name").Exists()
 	// 	if p.Name == "" {
@@ -143,7 +128,7 @@ func (p *Product) Validator() *val.Validator {
 
 func (p *Product) Load(c <-chan aeds.Property) (err error) {
 	// Ensure we're initialized
-	p.Init()
+	p.Defaults()
 
 	// Load supported properties
 	if err = IgnoreFieldMismatch(aeds.LoadStruct(p, c)); err != nil {
@@ -185,7 +170,7 @@ func (p Product) DisplayImage() Media {
 }
 
 func (p Product) DisplayPrice() string {
-	return DisplayPrice(p.MinPrice())
+	return DisplayPrice(p.Currency, p.MinPrice())
 }
 
 func (p Product) MinPrice() currency.Cents {
@@ -218,8 +203,4 @@ func (p Product) VariantOptions(name string) (options []string) {
 	}
 
 	return options
-}
-
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
 }

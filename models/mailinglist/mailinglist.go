@@ -19,6 +19,39 @@ import (
 
 var jsTemplate = ""
 
+// Settings used for injection into form.js
+type Settings struct {
+	// Name of list
+	Name string `json:"name"`
+
+	// Type of form
+	Type form.Type `json:"type"`
+
+	// Thank you settings
+	ThankYou ThankYou `json:"thankyou"`
+}
+
+// Thank you configuration
+type ThankYou struct {
+	Type thankyou.Type `json:"type"`
+	Url  string        `json:"url,omitempty"`
+	HTML string        `json:"html,omitempty"`
+}
+
+// Mailchimp configuration
+type MailChimp struct {
+	Id               string `json:"id"`
+	APIKey           string `json:"apiKey"`
+	DoubleOptin      bool   `json:"doubleOptin"`
+	UpdateExisting   bool   `json:"updateExisting"`
+	ReplaceInterests bool   `json:"replaceInterests"`
+
+	// Whether to have Mailchimp send email confirmation
+	SendWelcome bool `json:"sendWelcome"`
+
+	Enabled bool `json:"enabled"`
+}
+
 type MailingList struct {
 	mixin.Model
 
@@ -32,18 +65,7 @@ type MailingList struct {
 	SendWelcome bool `json:"sendWelcome"`
 
 	// Mailchimp settings for this list
-	Mailchimp struct {
-		Id               string `json:"id"`
-		APIKey           string `json:"apiKey"`
-		DoubleOptin      bool   `json:"doubleOptin"`
-		UpdateExisting   bool   `json:"updateExisting"`
-		ReplaceInterests bool   `json:"replaceInterests"`
-
-		// Whether to have Mailchimp send email confirmation
-		SendWelcome bool `json:"sendWelcome"`
-
-		Enabled bool `json:"enabled"`
-	} `json:"mailchimp"`
+	Mailchimp MailChimp `json:"mailchimp,omitempty"`
 
 	// Email forwarding
 	Forward struct {
@@ -52,12 +74,8 @@ type MailingList struct {
 		Enabled bool   `json:"enabled"`
 	} `json:"forward"`
 
-	// Url to Thank you page
-	ThankYou struct {
-		Type thankyou.Type `json:"type"`
-		Url  string        `json:"url,omitempty"`
-		HTML string        `json:"html,omitempty"`
-	} `json:"thankyou"`
+	// Thank you settings
+	ThankYou ThankYou `json:"thankyou"`
 
 	// Conversion tracking info
 	Facebook struct {
@@ -72,23 +90,6 @@ type MailingList struct {
 	} `json:"google"`
 }
 
-func New(db *datastore.Datastore) *MailingList {
-	m := new(MailingList)
-	m.Init()
-	m.Model = mixin.Model{Db: db, Entity: m}
-	return m
-}
-
-func (m *MailingList) Init() {
-	m.Facebook.Value = "0.00"
-	m.Facebook.Currency = "USD"
-	m.ThankYou.Type = thankyou.Disabled
-}
-
-func (m MailingList) Kind() string {
-	return "mailinglist"
-}
-
 func (m *MailingList) Validator() *val.Validator {
 	return val.New()
 }
@@ -97,9 +98,10 @@ func (m *MailingList) AddSubscriber(s *subscriber.Subscriber) error {
 	mkey := m.Key()
 	s.MailingListId = m.Id()
 	s.Parent = mkey
+	s.Normalize()
 
 	return m.RunInTransaction(func() error {
-		keys, err := subscriber.Query(m.Db).Ancestor(mkey).Filter("Email=", s.Email).KeysOnly().GetAll(nil)
+		keys, err := subscriber.Query(m.Db).Ancestor(mkey).Filter("Email=", s.Email).GetKeys()
 
 		if len(keys) != 0 {
 			return SubscriberAlreadyExists
@@ -109,7 +111,7 @@ func (m *MailingList) AddSubscriber(s *subscriber.Subscriber) error {
 			return err
 		}
 
-		return s.Put()
+		return s.Create()
 	})
 }
 
@@ -128,11 +130,7 @@ func (m *MailingList) Js() string {
 		endpoint = "https:" + endpoint
 	}
 
-	return fmt.Sprintf(jsTemplate, endpoint, m.JSON())
-}
-
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
+	return fmt.Sprintf(jsTemplate, endpoint, json.Encode(Settings{m.Name, m.Type, m.ThankYou}))
 }
 
 func FromJSON(db *datastore.Datastore, data []byte) *MailingList {
