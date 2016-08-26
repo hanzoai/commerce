@@ -396,6 +396,8 @@ func (m *Model) GetById(id string) error {
 		} else {
 			filterStr = "Username"
 		}
+	case "referrer":
+		filterStr = "Code"
 	case "coupon":
 		code := strings.ToUpper(id)
 		log.Warn("GETBYIDCODE: %v", code, m.Context())
@@ -488,6 +490,8 @@ func (m *Model) KeyById(id string) (datastore.Key, bool, error) {
 		} else {
 			filterStr = "Username"
 		}
+	case "referrer":
+		filterStr = "Code"
 	case "coupon":
 		code := strings.ToUpper(id)
 		if ok, _ := m.Query().Filter("Code=", code).First(); ok {
