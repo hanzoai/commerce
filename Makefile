@@ -61,14 +61,14 @@ gae_skully = config/skully \
 			 platform/app.skully.yaml \
 			 store/app.skully.yaml
 
-tools = github.com/golang/lint/golint \
-		github.com/jstemmer/gotags \
-		github.com/kisielk/errcheck \
+tools = github.com/jstemmer/gotags \
 		github.com/nsf/gocode \
 		github.com/rogpeppe/godef \
 		golang.org/x/tools/cmd/cover \
-		golang.org/x/tools/cmd/goimports \
-		golang.org/x/tools/cmd/gorename
+		golang.org/x/tools/cmd/goimports
+		# golang.org/x/tools/cmd/gorename
+		# github.com/golang/lint/golint \
+		# github.com/kisielk/errcheck \
 		# golang.org/x/tools/cmd/oracle
 
 # Various patches for SDK
@@ -144,16 +144,16 @@ endif
 
 # set production=1 to set datastore export/import target to use production
 ifeq ($(production), 1)
-	datastore_app_id = crowdstart-us
+	project_id = crowdstart-us
 	gae_config = $(gae_production)
 else ifeq ($(sandbox), 1)
-	datastore_app_id = crowdstart-sandbox
+	project_id = crowdstart-sandbox
 	gae_config = $(gae_sandbox)
 else ifeq ($(skully), 1)
-	datastore_app_id = crowdstart-skully
+	project_id = crowdstart-skully
 	gae_config = $(gae_skully)
 else
-	datastore_app_id = crowdstart-staging
+	project_id = crowdstart-staging
 	gae_config = $(gae_staging)
 endif
 
@@ -162,7 +162,7 @@ ifneq ($(strip $(module)),)
 	gae_config = $(module)
 endif
 
-datastore_admin_url = https://datastore-admin-dot-$(datastore_app_id).appspot.com/_ah/remote_api
+datastore_admin_url = https://datastore-admin-dot-$(project_id).appspot.com/_ah/remote_api
 
 test_target = -r=true
 test_focus := $(focus)
@@ -295,12 +295,27 @@ test-ci:
 	$(ginkgo) -r=true -p=true --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace --compilers=2
 
 # DEPLOY
+
+# To re-auth you might need to:
+# 	gcloud components reinstall
+# 	rm ~/.appcfg*
+
+auth:
+	gcloud auth login
+	appcfg.py list_versions config/staging
+
 deploy: assets-min docs rollback
+	# Set env for deploy
+	@echo 'package config\n\nvar Env = "$(project_id)"' > config/env.go
+
 	for module in $(gae_config); do \
 		$(appcfg.py) update $$module; \
 	done
 	$(appcfg.py) update_indexes $(firstword $(gae_config))
 	$(appcfg.py) update_dispatch $(firstword $(gae_config))
+
+	# Reset env
+	@echo 'package config\n\nvar Env = "development"' > config/env.go
 
 rollback:
 	for module in $(gae_config); do \
@@ -310,19 +325,19 @@ rollback:
 # EXPORT / Usage: make datastore-export kind=user namespace=bellabeat
 datastore-export:
 	@mkdir -p _export/
-	$(bulkloader.py) --download \
-				  	 --bandwidth_limit 1000000000 \
-				  	 --rps_limit 10000 \
-				  	 --batch_size 250 \
-				  	 --http_limit 200 \
-				  	 --url $(datastore_admin_url) \
-				  	 --config_file util/bulkloader/bulkloader.yaml \
-				  	 --db_filename /tmp/bulkloader-$$kind.db \
-				  	 --log_file /tmp/bulkloader-$$kind.log \
-				  	 --result_db_filename /tmp/bulkloader-result-$$kind.db \
-				  	 --namespace $$namespace \
-				  	 --kind $$kind \
-				  	 --filename _export/$$namespace-$$kind-$(datastore_app_id)-$(current_date).csv
+	$(appcfg.py) download_data \
+				 --bandwidth_limit 1000000000 \
+				 --rps_limit 10000 \
+				 --batch_size 250 \
+				 --http_limit 200 \
+				 --url $(datastore_admin_url) \
+				 --config_file util/bulkloader/bulkloader.yaml \
+				 --db_filename /tmp/bulkloader-$$kind.db \
+				 --log_file /tmp/bulkloader-$$kind.log \
+				 --result_db_filename /tmp/bulkloader-result-$$kind.db \
+				 --namespace $$namespace \
+				 --kind $$kind \
+				 --filename _export/$$namespace-$$kind-$(project_id)-$(current_date).csv
 	rm -rf /tmp/bulkloader-$$kind.db \
 		   /tmp/bulkloader-$$kind.log \
 		   /tmp/bulkloader-result-$$kind.db
@@ -343,14 +358,14 @@ datastore-import:
 
 # Generate config for use with datastore-export target
 datastore-config:
-	@$(bulkloader.py) --create_config \
-				      --url=$(datastore_admin_url) \
-				      --namespace $$namespace \
-				      --filename=bulkloader.yaml
+	@$(appcfg.py) create_bulkloader_config \
+				  --url=$(datastore_admin_url) \
+				  --namespace $$namespace \
+				  --filename=bulkloader.yaml
 
 # Replicate production data to localhost
 datastore-replicate:
-	$(appcfg.py) download_data --application=s~$(datastore_app_id) --url=http://datastore-admin-dot-$(datastore_app_id).appspot.com/_ah/remote_api/ --filename=datastore.bin
+	$(appcfg.py) download_data --application=s~$(project_id) --url=http://datastore-admin-dot-$(project_id).appspot.com/_ah/remote_api/ --filename=datastore.bin
 	$(appcfg.py) --url=http://localhost:8080/_ah/remote_api --filename=datastore.bin upload_data
 
 # Generate API docs from wiki.
@@ -382,7 +397,7 @@ docs:
 	$(sed) 's/table>/table class="table table-striped table-borderless table-vcenter">/' templates/platform/docs/_generated/salesforce.html
 	@rm -rf templates/platform/docs/_generated/salesforce.html.bak
 
-.PHONY: all bench build compile-js compile-js-min compile-css compile-css-min \
+.PHONY: all auth bench build compile-js compile-js-min compile-css compile-css-min \
 	datastore-import datastore-export datastore-config deploy deploy-staging \
 	deploy-skully deploy-production deps deps-assets deps-go live-reload \
 	serve serve-clear-datastore serve-public test test-integration test-watch \

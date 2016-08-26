@@ -3,12 +3,12 @@ package checkout
 import (
 	"errors"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.com/api/checkout/balance"
 	"crowdstart.com/api/checkout/stripe"
+	"crowdstart.com/models/multi"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"
@@ -16,7 +16,6 @@ import (
 	"crowdstart.com/models/types/client"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/models/user"
-	"crowdstart.com/util/counter"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
 )
@@ -57,7 +56,8 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 
 	// Peel off order for convience
 	ord = ar.Order
-	ctx := ord.Db.Context
+	db := ord.Db
+	ctx := db.Context
 
 	// Check if store has been set, if so pull it out of the context
 	var stor *store.Store
@@ -132,12 +132,12 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	case "paypal":
 	case "balance":
 		if err := balance.Authorize(org, ord, usr, pay); err != nil {
-			log.Info("Failed to authorize order using Balance:\n User: %+v, Order: %+v, Payment: %+v, Error: %v", usr, ord, pay, err, ctx)
+			log.Info("Failed to authorize order using Balance: %v", err, ctx)
 			return nil, nil, err
 		}
 	default:
 		if err := stripe.Authorize(org, ord, usr, pay); err != nil {
-			log.Info("Failed to authorize order using Stripe:\n User: %+v, Order: %+v, Payment: %+v, Error: %v", usr, ord, pay, err, ctx)
+			log.Info("Failed to authorize order using Stripe: %v", err, ctx)
 			return nil, nil, err
 		}
 	}
@@ -148,18 +148,10 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	ord.BillingAddress.Country = strings.ToUpper(ord.BillingAddress.Country)
 	ord.ShippingAddress.Country = strings.ToUpper(ord.ShippingAddress.Country)
 
-	if !ord.Test {
-		if err := counter.IncrUsers(ctx, org, time.Now()); err != nil {
-			log.Warn("Counter Error %s", err, ctx)
-		}
-	}
-
 	// Save user, order, payment
-	usr.MustPut()
-	ord.MustPut()
-	pay.MustPut()
+	multi.MustCreate([]interface{}{usr, ord, pay})
 
-	log.Info("New authorization for order\n User: %+v, Order: %+v, Payment: %+v", usr, ord, pay, ctx)
+	log.Info("New authorization for order: %+v", ord, ctx)
 
 	return pay, usr, nil
 }

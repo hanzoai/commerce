@@ -13,7 +13,7 @@ class CouponForm extends Form
   path: 'coupon'
   model:
     productId: '_any'
-    enabled: 'true'
+    enabled: true
 
   inputConfigs: [
     input('id', '', 'static'),

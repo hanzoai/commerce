@@ -6,31 +6,42 @@ Router = require './router'
 
 View = crowdcontrol.view.View
 
-menu = [
-  {
-    name: 'Menu'
-    data: [
-      pages.Dashboard
-      pages.Users
-      pages.Orders
-      pages.Payments
-      pages.Products
-      pages.Coupons
-      pages.Stores
-      pages.MailingLists
-      pages.Subscribers
-    ]
-  }
-  {
-    name: 'System'
-    data: [
-      pages.Profile
-      pages.Api
-      pages.Organization
-      pages.Integrations
-    ]
-  }
-]
+menu = if window.User.owner
+  [
+    {
+      name: 'Menu'
+      data: [
+        pages.Dashboard
+        pages.Users
+        pages.Orders
+        pages.Payments
+        pages.Products
+        pages.Coupons
+        pages.Stores
+        pages.MailingLists
+        pages.Subscribers
+      ]
+    }
+    {
+      name: 'System'
+      data: [
+        pages.Profile
+        pages.Api
+        pages.Organization
+        pages.Integrations
+      ]
+    }
+  ]
+else
+  [
+    {
+      name: 'Menu'
+      data: [
+        pages.Users
+        pages.Orders
+      ]
+    }
+  ]
 
 activePage = pages.Dashboard
 

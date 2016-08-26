@@ -143,6 +143,10 @@ class Switch extends BasicInputView
   html: require '../../templates/backend/form/controls/switch.html'
   change: (event) ->
     value = event.target.checked
+    if value == true || value == "true"
+      value == true
+    else
+      value = false
     if value != @model.value
       @obs.trigger Events.Input.Change, @model.name, value
       @model.value = value
@@ -611,6 +615,13 @@ helpers.registerValidator ((inputCfg) -> return inputCfg.hints['copy'])
 , (model, name)->
   value = model[name]
   model[@hints.copy] =  value
+  return value
+
+helpers.registerValidator ((inputCfg) -> return inputCfg.hints['gtzero'])
+, (model, name)->
+  value = model[name]
+  if value < 0
+    return 0
   return value
 
 # module.exports =

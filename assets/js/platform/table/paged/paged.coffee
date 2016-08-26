@@ -166,6 +166,7 @@ class BasicPagedTable extends BasicTableView
 
     # construct sort query string if querying server
     path = @path + '?page=' + @page + '&display=' + @display + '&sort=' + (if @filterModel.sortDirection == 'sort-desc' then '' else '-') + sortField
+    path += '&limit=1000' if !window.User.owner
     requestAnimationFrame ()->
       $('.previous, .next').addClass('disabled')
 

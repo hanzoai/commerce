@@ -35,8 +35,8 @@ var _ = New("kanoa-bf", func(c *gin.Context) *organization.Organization {
 
 	// Black Friday Coupon
 	cpn := coupon.New(db)
-	cpn.Code = "BLACKANDBLUE"
-	cpn.GetOrCreate("Code=", cpn.Code)
+	cpn.Code_ = "BLACKANDBLUE"
+	cpn.GetOrCreate("Code=", cpn.Code_)
 	cpn.Name = "Black Friday Coupon"
 	cpn.Type = "free-item"
 	cpn.StartDate = now

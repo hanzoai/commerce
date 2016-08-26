@@ -13,8 +13,13 @@ type User struct {
 	Name string
 }
 
-func (u *User) Kind() string {
+func (u User) Kind() string {
 	return "user"
+}
+
+func (u *User) Init(db *datastore.Datastore) {
+	u.Model = mixin.Model{Db: db, Entity: u}
+	u.AccessToken = mixin.AccessToken{Entity: u}
 }
 
 func (u *User) Document() mixin.Document {
@@ -23,8 +28,7 @@ func (u *User) Document() mixin.Document {
 
 func newUser(db *datastore.Datastore) *User {
 	u := new(User)
-	u.Model = mixin.Model{Db: db, Entity: u}
-	u.AccessToken = mixin.AccessToken{Entity: u}
+	u.Init(db)
 	return u
 }
 

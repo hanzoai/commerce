@@ -28,15 +28,16 @@ var updateFunnels = delay.Func("UpdateFunnels", func(ctx appengine.Context, name
 		return
 	}
 
-	var fs []*funnel.Funnel
-	_, err = funnel.Query(db).GetAll(&fs)
+	fs, err := funnel.Query(db).GetEntities()
 	if err != nil {
 		log.Error("Could not get funnel %v", err, ctx)
 		return
 	}
 
 	// Loop over funnels
-	for _, f := range fs {
+	for i := range fs {
+		f := fs[i].(*funnel.Funnel)
+
 		updateFunnel := false
 		var counts = make([]int64, len(f.Events))
 		// Loop over the events required by the funnel

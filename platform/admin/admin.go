@@ -30,12 +30,14 @@ func Dashboard(c *gin.Context) {
 	db := datastore.New(c)
 
 	usr := middleware.GetCurrentUser(c)
-	var orgNames []organization.Organization
+	var orgNames []*organization.Organization
 
 	if verusEmailRe.MatchString(usr.Email) {
 		if _, err := organization.Query(db).GetAll(&orgNames); err != nil {
 			log.Warn("Unable to fetch organizations for switcher.")
 		}
+
+		usr.IsOwner = true
 	} else {
 		orgIds := usr.Organizations
 		for _, orgId := range orgIds {
@@ -44,7 +46,16 @@ func Dashboard(c *gin.Context) {
 			if err != nil {
 				continue
 			}
-			orgNames = append(orgNames, *org)
+			orgNames = append(orgNames, org)
+		}
+
+		org := middleware.GetOrganization(c)
+
+		for _, userId := range org.Owners {
+			if userId == usr.Id() {
+				usr.IsOwner = true
+				break
+			}
 		}
 	}
 
@@ -130,7 +141,7 @@ func SendOrderConfirmation(c *gin.Context) {
 	u := user.New(db)
 	u.MustGet(o.UserId)
 
-	emails.SendOrderConfirmationEmail(c, org, o, u)
+	emails.SendOrderConfirmationEmail(db.Context, org, o, u)
 
 	c.Writer.WriteHeader(204)
 }
