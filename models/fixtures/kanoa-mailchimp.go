@@ -16,6 +16,8 @@ var _ = New("kanoa-mailchimp", func(c *gin.Context) *organization.Organization {
 
 	org := organization.New(db)
 	org.Query().Filter("Name=", "kanoa").First()
+	org.Mailchimp.APIKey = ""
+	org.Update()
 
 	// Create new store
 	stor := store.New(db)
