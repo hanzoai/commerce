@@ -205,7 +205,7 @@ func SendTemplate(ctx appengine.Context, req *SendTemplateReq) error {
 
 	// Failed to send
 	b, _ := ioutil.ReadAll(res.Body)
-	return errors.New(fmt.Sprintf("Invalid response from Mandrill: %v", b))
+	return errors.New(fmt.Sprintf("Invalid response from Mandrill: %s", b))
 }
 
 func Send(ctx appengine.Context, req *SendReq) error {
@@ -232,5 +232,5 @@ func Send(ctx appengine.Context, req *SendReq) error {
 
 	// Failed to send
 	b, _ := ioutil.ReadAll(res.Body)
-	return errors.New(fmt.Sprintf("Invalid response from Mandrill: %v", b))
+	return errors.New(fmt.Sprintf("Invalid response from Mandrill: %s", b))
 }
