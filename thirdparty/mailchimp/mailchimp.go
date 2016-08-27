@@ -74,7 +74,9 @@ func (api API) Subscribe(ml *mailinglist.MailingList, s *subscriber.Subscriber) 
 	return nil
 }
 
-func (api API) SubscribeCustomer(ml *mailinglist.MailingList, buy Buyer) error {
+func (api API) SubscribeCustomer(listId string, buy Buyer) error {
+	ml := new(mailinglist.MailingList)
+	ml.Mailchimp.Id = listId
 	s := &subscriber.Subscriber{
 		Email:         buy.Email,
 		MailingListId: ml.Id(),
