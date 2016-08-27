@@ -27,7 +27,7 @@ var _ = New("kanoa-mailchimp", func(c *gin.Context) *organization.Organization {
 
 	// Fetch earphones
 	prod := product.New(db)
-	prod.GetById("Slug=", "earphone")
+	prod.Query().Filter("Slug=", "earphone").First()
 
 	// Create corresponding Mailchimp entities
 	client := mailchimp.New(db.Context, org.Mailchimp.APIKey)
