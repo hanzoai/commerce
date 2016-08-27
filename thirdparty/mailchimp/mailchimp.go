@@ -34,6 +34,7 @@ func New(ctx appengine.Context, apiKey string) *API {
 		Context:  ctx,
 		Deadline: time.Duration(60) * time.Second, // Update deadline to 60 seconds
 	}
+	api.client.Debug = true
 	return api
 }
 
