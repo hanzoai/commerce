@@ -145,7 +145,7 @@ type Organization struct {
 	Mailchimp struct {
 		Id     string `json:"id"`
 		APIKey string `json:"apiKey"`
-	}
+	} `json:"-"`
 
 	Mandrill struct {
 		APIKey string
