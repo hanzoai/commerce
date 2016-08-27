@@ -13,6 +13,7 @@ import (
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/types/currency"
+	"crowdstart.com/thirdparty/mailchimp"
 	"crowdstart.com/util/counter"
 	"crowdstart.com/util/log"
 )
@@ -99,7 +100,14 @@ func CompleteCapture(c *gin.Context, org *organization.Organization, ord *order.
 		}
 	}
 
-	// Mailchimp 360 Order Stuff Goes Here
+	// Create mailchimp subscriber, should be no-op on Mailchimp's end if subscriber already exists
+	if org.Mailchimp.APIKey != "" {
+		client := mailchimp.New(ctx, org.Mailchimp.APIKey)
+		// Just get buyer off first payment
+		if err := client.SubscribeCustomer(org.Mailchimp.Id, payments[0].Buyer); err != nil {
+			log.Warn("Failed to subscribe '%s' to Mailchimp list '%s': %v", payments[0].Buyer.Email, org.Mailchimp.Id, err)
+		}
+	}
 
 	// Cart hooks go here
 	if ord.CartId != "" {
