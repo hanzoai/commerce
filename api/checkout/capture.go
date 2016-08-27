@@ -100,16 +100,20 @@ func CompleteCapture(c *gin.Context, org *organization.Organization, ord *order.
 		}
 	}
 
+	// Used elsewhere
+	var client *mailchimp.API
+
 	// Create mailchimp subscriber, should be no-op on Mailchimp's end if subscriber already exists
 	if org.Mailchimp.APIKey != "" {
-		client := mailchimp.New(ctx, org.Mailchimp.APIKey)
+		// Create new mailchimp client (used everywhere else)
+		client = mailchimp.New(ctx, org.Mailchimp.APIKey)
 		// Just get buyer off first payment
 		if err := client.SubscribeCustomer(org.Mailchimp.Id, payments[0].Buyer); err != nil {
 			log.Warn("Failed to subscribe '%s' to Mailchimp list '%s': %v", payments[0].Buyer.Email, org.Mailchimp.Id, err)
 		}
 	}
 
-	// Cart hooks go here
+	// Update cart
 	if ord.CartId != "" {
 		car := cart.New(db)
 		if err := car.GetById(ord.CartId); err != nil {
@@ -119,9 +123,16 @@ func CompleteCapture(c *gin.Context, org *organization.Organization, ord *order.
 			if err := car.Update(); err != nil {
 				log.Warn("Unable to save cart: %v", err, ctx)
 			} else {
-				// Mailchimp 360 Cart Stuff Goes Here
+				if org.Mailchimp.APIKey != "" {
+					client.DeleteCart(org.DefaultStore, car)
+				}
 			}
 		}
+	}
+
+	// Create mailchimp order
+	if org.Mailchimp.APIKey != "" {
+		client.CreateOrder(org.DefaultStore, ord)
 	}
 
 	log.Debug("Incrementing Counters? %v", ord.Test, c)
