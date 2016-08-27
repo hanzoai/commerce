@@ -99,6 +99,9 @@ type Organization struct {
 		StartDate time.Time
 	} `json:"-"`
 
+	// Default store
+	DefaultStore string `json:"defaultStore"`
+
 	Salesforce struct {
 		AccessToken        string `json:"accessToken"`
 		DefaultPriceBookId string `json:"defaultPriceBookId"`
