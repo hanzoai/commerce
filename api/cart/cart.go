@@ -8,6 +8,7 @@ import (
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/cart"
+	"crowdstart.com/thirdparty/mailchimp"
 	"crowdstart.com/util/hashid"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/json/http"
@@ -113,19 +114,25 @@ func create(r *rest.Rest) func(*gin.Context) {
 		}
 
 		db := datastore.New(c)
-		entity := cart.New(db)
+		car := cart.New(db)
 
-		if err := json.Decode(c.Request.Body, entity); err != nil {
+		if err := json.Decode(c.Request.Body, car); err != nil {
 			r.Fail(c, 400, "Failed decode request body", err)
 			return
 		}
 
-		if err := entity.Create(); err != nil {
+		if err := car.Create(); err != nil {
 			r.Fail(c, 500, "Failed to create "+r.Kind, err)
-		} else {
-			c.Writer.Header().Add("Location", c.Request.URL.Path+"/"+entity.Id())
-			r.Render(c, 201, CartResponse{Id: entity.Id()})
+			return
 		}
+
+		// Create Mailchimp cart
+		org := middleware.GetOrganization(c)
+		client := mailchimp.New(db.Context, org.Mailchimp.APIKey)
+		client.CreateCart(org.DefaultStore, car)
+
+		c.Writer.Header().Add("Location", c.Request.URL.Path+"/"+car.Id())
+		r.Render(c, 201, CartResponse{Id: car.Id()})
 	}
 }
 
