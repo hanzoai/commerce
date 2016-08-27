@@ -271,7 +271,6 @@ serve-no-reload: assets
 tools:
 	$(goapp) get $(tools)
 	$(goapp) install $(tools)
-	$(gopath)/bin/gocode set autobuild true
 	$(gopath)/bin/gocode set propose-builtins true
 	$(gopath)/bin/gocode set lib-path "$(gopath_pkg_path):$(goroot_pkg_path)"
 
