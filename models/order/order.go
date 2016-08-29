@@ -146,6 +146,11 @@ type Order struct {
 	Gift        bool   `json:"gift"`        // Is this a gift?
 	GiftMessage string `json:"giftMessage"` // Message to go on gift
 	GiftEmail   string `json:"giftEmail"`   // Email for digital gifts
+
+	Mailchimp struct {
+		CampaignId   string `json:"campaignId,omitempty"`
+		TrackingCode string `json:"trackingCode,omitempty"`
+	} `json:"mailchimp,omitempty"`
 }
 
 func (o Order) Document() mixin.Document {
