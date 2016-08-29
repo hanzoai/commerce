@@ -80,7 +80,7 @@ func (api API) SubscribeCustomer(listId string, buy Buyer) error {
 	ml.Mailchimp.ListId = listId
 	s := &subscriber.Subscriber{
 		Email:         buy.Email,
-		MailingListId: ml.Id(),
+		MailingListId: "",
 		UserId:        buy.UserId,
 		Client: client.Client{
 			Country: buy.Address.Country,
