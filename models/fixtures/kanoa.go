@@ -5,6 +5,9 @@ import (
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/organization"
+	"crowdstart.com/models/product"
+	"crowdstart.com/models/store"
+	"crowdstart.com/models/types/currency"
 )
 
 var Kanoa = New("kanoa", func(c *gin.Context) *organization.Organization {
@@ -79,6 +82,30 @@ var Kanoa = New("kanoa", func(c *gin.Context) *organization.Organization {
 	// if err != nil {
 	// 	log.Warn("Failed to put namespace: %v", err)
 	// }
+
+	nsdb := datastore.New(org.Namespaced(db.Context))
+
+	// Create default store
+	stor := store.New(nsdb)
+	stor.Name = "default"
+	stor.GetOrCreate("Name=", stor.Name)
+	stor.Prefix = "/"
+	stor.Currency = currency.USD
+	stor.Mailchimp.APIKey = ""
+	stor.Mailchimp.ListId = "23ad4e4ba4"
+	stor.Update()
+
+	// Create earphone product
+	prod := product.New(nsdb)
+	prod.Slug = "earphone"
+	prod.GetOrCreate("Slug=", prod.Slug)
+	prod.Name = "KANOA Earphone"
+	prod.Description = "2 Ear Buds, 1 Charging Case, 3 Ergonomic Ear Tips, 1 Micro USB Cable"
+	prod.Price = currency.Cents(19999)
+	prod.Inventory = 9000
+	prod.Preorder = true
+	prod.Hidden = false
+	prod.Update()
 
 	return org
 })

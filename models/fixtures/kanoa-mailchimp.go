@@ -29,7 +29,7 @@ var _ = New("kanoa-mailchimp", func(c *gin.Context) *organization.Organization {
 	stor.Currency = currency.USD
 	stor.Mailchimp.APIKey = ""
 	stor.Mailchimp.ListId = "23ad4e4ba4"
-	stor.Create()
+	stor.Update()
 
 	org.DefaultStore = stor.Id()
 	org.Update()
