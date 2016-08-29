@@ -146,7 +146,7 @@ type Organization struct {
 	} `json:"-"`
 
 	Mailchimp struct {
-		Id     string `json:"id"`
+		ListId string `json:"listId"`
 		APIKey string `json:"apiKey"`
 	} `json:"-"`
 
