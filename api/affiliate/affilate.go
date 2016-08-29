@@ -23,7 +23,7 @@ const (
 	stripeConnectUrl = "https://connect.stripe.com/oauth/authorize?response_type=code&client_id=%s&scope=read_write&state=%s&stripe_landing=login&redirect_uri=%s"
 )
 
-<a href="api.crowdstart.com/affiliate/:id/connect"></a>
+//<a href="api.crowdstart.com/affiliate/:id/connect"></a>
 
 func connect(c *gin.Context) {
 	id := c.Params.ByName("affiliateid")
