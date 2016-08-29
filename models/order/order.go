@@ -15,9 +15,12 @@ import (
 
 	"crowdstart.com/config"
 	"crowdstart.com/datastore"
+	"crowdstart.com/models/affiliate"
 	"crowdstart.com/models/coupon"
+	"crowdstart.com/models/fee"
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/payment"
+	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/store"
 	"crowdstart.com/models/types/country"
 	"crowdstart.com/models/types/currency"
@@ -236,13 +239,93 @@ func (o *Order) Save(c chan<- aeds.Property) (err error) {
 	return IgnoreFieldMismatch(aeds.SaveStruct(o, c))
 }
 
-func (o Order) CalculateFee(percent float64) currency.Cents {
-	// Default to config.Fee if percent is not provided
+func (o *Order) AddPlatformFee(percent float64, fees []*fee.Fee) {
+	// Default platform fee config.Fee if percent is not provided
 	if percent <= 0 {
 		percent = config.Fee
 	}
 
-	return currency.Cents(math.Floor(float64(o.Total) * percent))
+	// Platform fee
+	fe := fee.New(o.Db)
+	fe.Type = fee.Platform
+	fe.Currency = o.Currency
+	fe.Amount = currency.Cents(math.Ceil(float64(o.Total) * percent)) // Round up for platform fee
+
+	fees = append(fees, fe)
+}
+
+func (o *Order) AddPartnerFee(partnerId string, fees []*fee.Fee) error {
+	if partnerId == "" {
+		return nil
+	}
+
+	// Add partner fee
+	// fe := fee.New(o.Db)
+	// fe.Type = fee.Platform
+	// fe.Currency = o.Currency
+	// fe.Amount = currency.Cents(math.Floor(float64(o.Total) * partner.Commission.Percent))
+
+	// fees = append(fees, fe)
+	return nil
+}
+
+func (o *Order) AddAffiliateFee(fees []*fee.Fee) error {
+	if o.ReferrerId == "" {
+		// No referrer, no need to check affiliate
+		return nil
+	}
+
+	// Lookup referrer
+	ref := referrer.New(o.Db)
+	if err := ref.GetById(o.ReferrerId); err != nil {
+		return err
+	}
+
+	if ref.AffiliateId == "" {
+		// No affiliate, no fee
+		return nil
+	}
+
+	// Lookup affiliate
+	aff := affiliate.New(o.Db)
+	if err := aff.GetById(ref.AffiliateId); err != nil {
+		return err
+	}
+
+	// Compute new fee based on affiliate comission
+	fe := fee.New(o.Db)
+	fe.Type = fee.Affiliate
+	fe.Currency = o.Currency
+	fe.Amount = currency.Cents(math.Floor(float64(o.Total) * aff.Commission.Percent))
+
+	fees = append(fees, fe)
+
+	return nil
+}
+
+func (o *Order) CalculateFee(platformFee float64, partnerId string) (currency.Cents, []*fee.Fee, error) {
+	fees := make([]*fee.Fee, 0)
+	total := currency.Cents(0)
+
+	// Add platform fee
+	o.AddPlatformFee(platformFee, fees)
+
+	// Add Partner fee
+	if err := o.AddPartnerFee(partnerId, fees); err != nil {
+		return total, fees, err
+	}
+
+	// Add Affiliate fee
+	if err := o.AddAffiliateFee(fees); err != nil {
+		return total, fees, err
+	}
+
+	// Calculate total fee collected
+	for _, fe := range fees {
+		total += fe.Amount
+	}
+
+	return total, fees, nil
 }
 
 func (o Order) NumberFromId() int {
