@@ -3,7 +3,6 @@ package referrer
 import (
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
-	"crowdstart.com/models/order"
 	"crowdstart.com/models/referral"
 	"crowdstart.com/models/transaction"
 )
@@ -41,12 +40,12 @@ func (r *Referrer) ApplyBonus() (*transaction.Transaction, error) {
 	return trans, nil
 }
 
-func (r *Referrer) SaveReferral(ord *order.Order) (*referral.Referral, error) {
-	ref := referral.New(ord.Db)
-	ref.UserId = ord.UserId
+func (r *Referrer) SaveReferral(orderId, userId string) (*referral.Referral, error) {
+	ref := referral.New(r.Db)
 	ref.ReferrerUserId = r.UserId
-	ref.OrderId = ord.Id()
-	ref.ReferrerId = ord.ReferrerId
+	ref.OrderId = orderId
+	ref.UserId = userId
+	ref.ReferrerId = r.Id()
 
 	// Try to save referral
 	if err := ref.Put(); err != nil {
