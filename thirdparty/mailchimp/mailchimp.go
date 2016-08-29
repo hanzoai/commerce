@@ -39,7 +39,7 @@ func New(ctx appengine.Context, apiKey string) *API {
 }
 
 func (api API) Subscribe(ml *mailinglist.MailingList, s *subscriber.Subscriber) error {
-	list, err := api.client.GetList(ml.Mailchimp.Id, nil)
+	list, err := api.client.GetList(ml.Mailchimp.ListId, nil)
 	if err != nil {
 		log.Error("Failed to subscribe %v: %v", s, err, api.ctx)
 		return err
@@ -77,7 +77,7 @@ func (api API) Subscribe(ml *mailinglist.MailingList, s *subscriber.Subscriber) 
 
 func (api API) SubscribeCustomer(listId string, buy Buyer) error {
 	ml := new(mailinglist.MailingList)
-	ml.Mailchimp.Id = listId
+	ml.Mailchimp.ListId = listId
 	s := &subscriber.Subscriber{
 		Email:         buy.Email,
 		MailingListId: ml.Id(),
