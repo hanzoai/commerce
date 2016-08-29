@@ -5,10 +5,8 @@ import (
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/organization"
-	"crowdstart.com/models/product"
 	"crowdstart.com/models/store"
 	"crowdstart.com/models/types/currency"
-	"crowdstart.com/thirdparty/mailchimp"
 )
 
 var _ = New("kanoa-mailchimp", func(c *gin.Context) *organization.Organization {
@@ -17,7 +15,6 @@ var _ = New("kanoa-mailchimp", func(c *gin.Context) *organization.Organization {
 	org := organization.New(db)
 	org.Query().Filter("Name=", "kanoa").First()
 	org.Mailchimp.APIKey = ""
-	org.Update()
 
 	// Create new store
 	stor := store.New(db)
@@ -27,14 +24,17 @@ var _ = New("kanoa-mailchimp", func(c *gin.Context) *organization.Organization {
 	stor.Mailchimp.ListId = "23ad4e4ba4"
 	stor.Create()
 
-	// Fetch earphones
-	prod := product.New(db)
-	prod.Query().Filter("Slug=", "earphone").First()
+	org.DefaultStore = stor.Id()
+	org.Update()
 
-	// Create corresponding Mailchimp entities
-	client := mailchimp.New(db.Context, org.Mailchimp.APIKey)
-	client.CreateStore(stor)
-	client.CreateProduct(stor.Id(), prod)
+	// // Fetch earphones
+	// prod := product.New(db)
+	// prod.Query().Filter("Slug=", "earphone").First()
+
+	// // Create corresponding Mailchimp entities
+	// client := mailchimp.New(db.Context, org.Mailchimp.APIKey)
+	// client.CreateStore(stor)
+	// client.CreateProduct(stor.Id(), prod)
 
 	return org
 })
