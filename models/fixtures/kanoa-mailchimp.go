@@ -5,8 +5,10 @@ import (
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/organization"
+	"crowdstart.com/models/product"
 	"crowdstart.com/models/store"
 	"crowdstart.com/models/types/currency"
+	"crowdstart.com/thirdparty/mailchimp"
 )
 
 var _ = New("kanoa-mailchimp", func(c *gin.Context) *organization.Organization {
@@ -31,14 +33,14 @@ var _ = New("kanoa-mailchimp", func(c *gin.Context) *organization.Organization {
 	org.DefaultStore = stor.Id()
 	org.Update()
 
-	// // Fetch earphones
-	// prod := product.New(db)
-	// prod.Query().Filter("Slug=", "earphone").First()
+	// Fetch earphones
+	prod := product.New(db)
+	prod.Query().Filter("Slug=", "earphone").First()
 
-	// // Create corresponding Mailchimp entities
-	// client := mailchimp.New(db.Context, org.Mailchimp.APIKey)
-	// client.CreateStore(stor)
-	// client.CreateProduct(stor.Id(), prod)
+	// Create corresponding Mailchimp entities
+	client := mailchimp.New(db.Context, org.Mailchimp.APIKey)
+	client.CreateStore(stor)
+	client.CreateProduct(stor.Id(), prod)
 
 	return org
 })
