@@ -2,17 +2,10 @@ package affiliate
 
 import (
 	"crowdstart.com/models/mixin"
-	"crowdstart.com/models/types/currency"
+	"crowdstart.com/models/types/commission"
 	"crowdstart.com/models/user"
 	"crowdstart.com/thirdparty/stripe/connect"
 	"crowdstart.com/util/val"
-)
-
-type FeeType string
-
-const (
-	Percent FeeType = "percent"
-	Flat            = "flat"
 )
 
 type Affiliate struct {
@@ -28,14 +21,10 @@ type Affiliate struct {
 	TaxId     string `json:"-"`
 	Timezone  string `json:"timezone"`
 
-	Fee struct {
-		Type    FeeType        `json:"feeType"`
-		Percent float64        `json:"percent,omitempty"`
-		Flat    currency.Cents `json:"flat,omitempty"`
-	} `json:"fee"`
+	Commission commission.Commission `json:"commission"`
 
 	Stripe struct {
-		// For convenience duplicated
+		// FIXME: What do we need to persist?
 		AccessToken    string
 		PublishableKey string
 		RefreshToken   string
