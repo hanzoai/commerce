@@ -24,7 +24,7 @@ var _ = New("kanoa-mailchimp", func(c *gin.Context) *organization.Organization {
 	// Create new store
 	stor := store.New(nsdb)
 	stor.Name = "default"
-	prod.GetOrCreate("Name=", stor.Name)
+	stor.GetOrCreate("Name=", stor.Name)
 	stor.Prefix = "/"
 	stor.Currency = currency.USD
 	stor.Mailchimp.APIKey = ""
