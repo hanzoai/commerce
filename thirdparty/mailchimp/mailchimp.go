@@ -185,11 +185,10 @@ func (api API) CreateCart(storeId string, car *cart.Cart) error {
 		Lines: lines,
 
 		// Optional
-		ID: car.Id(),
-
+		ID:          car.Id(),
 		TaxTotal:    float64(car.Tax),
-		CampaignID:  "",
-		CheckoutURL: "",
+		CampaignID:  car.Mailchimp.CampaignId,
+		CheckoutURL: car.Mailchimp.CheckoutUrl,
 	}
 	stor, err := api.client.GetStore(storeId, nil)
 	_, err = stor.CreateCart(req)
