@@ -16,8 +16,10 @@ var _ = New("kanoa-mailchimp", func(c *gin.Context) *organization.Organization {
 	org.Query().Filter("Name=", "kanoa").First()
 	org.Mailchimp.APIKey = ""
 
+	nsdb := datastore.New(org.Namespaced(db.Context))
+
 	// Create new store
-	stor := store.New(db)
+	stor := store.New(nsdb)
 	stor.Name = "default"
 	stor.Prefix = "/"
 	stor.Currency = currency.USD
