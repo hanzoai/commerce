@@ -249,7 +249,7 @@ func (o *Order) AddPlatformFee(percent float64, fees []*fee.Fee) {
 	fe := fee.New(o.Db)
 	fe.Type = fee.Platform
 	fe.Currency = o.Currency
-	fe.Amount = currency.Cents(float64(o.Total) * percent)
+	fe.Amount = currency.Cents(math.Ceil(float64(o.Total) * percent)) // Round up for platform fee
 
 	fees = append(fees, fe)
 }
@@ -259,12 +259,13 @@ func (o *Order) AddPartnerFee(partnerId string, fees []*fee.Fee) error {
 		return nil
 	}
 
-	// fee := fee.New(o.Db)
-	// fee.Type = fee.Partner
-	// fee.Currency = o.Currency
-	// fee.Amount = o.Total * percent
+	// Add partner fee
+	// fe := fee.New(o.Db)
+	// fe.Type = fee.Platform
+	// fe.Currency = o.Currency
+	// fe.Amount = currency.Cents(math.Floor(float64(o.Total) * partner.Commission.Percent))
 
-	// fees = append(fees, fee)
+	// fees = append(fees, fe)
 	return nil
 }
 
@@ -295,7 +296,7 @@ func (o *Order) AddAffiliateFee(fees []*fee.Fee) error {
 	fe := fee.New(o.Db)
 	fe.Type = fee.Affiliate
 	fe.Currency = o.Currency
-	fe.Amount = currency.Cents(float64(o.Total) * aff.Commission.Percent)
+	fe.Amount = currency.Cents(math.Floor(float64(o.Total) * aff.Commission.Percent))
 
 	fees = append(fees, fe)
 
