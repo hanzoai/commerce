@@ -96,6 +96,11 @@ type Cart struct {
 	Gift        bool   `json:"gift"`        // Is this a gift?
 	GiftMessage string `json:"giftMessage"` // Message to go on gift
 	GiftEmail   string `json:"giftEmail"`   // Email for digital gifts
+
+	Mailchimp struct {
+		CampaignId  string `json:"campaignId,omitempty"`
+		CheckoutUrl string `json:"checkoutUrl,omitempty"`
+	} `json:"mailchimp,omitempty"`
 }
 
 func (c *Cart) Validator() *val.Validator {
