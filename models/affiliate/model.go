@@ -11,7 +11,6 @@ func (a Affiliate) Kind() string {
 
 func (a *Affiliate) Init(db *datastore.Datastore) {
 	a.Model.Init(db, a)
-	a.AccessToken.Init(a)
 }
 
 func (a *Affiliate) Defaults() {
