@@ -148,6 +148,7 @@ type Order struct {
 	GiftEmail   string `json:"giftEmail"`   // Email for digital gifts
 
 	Mailchimp struct {
+		Id           string `json:"id,omitempty"`
 		CampaignId   string `json:"campaignId,omitempty"`
 		TrackingCode string `json:"trackingCode,omitempty"`
 	} `json:"mailchimp,omitempty"`
