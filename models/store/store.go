@@ -100,7 +100,8 @@ type Store struct {
 	Timezone string `json:"timezone,omitempty`
 
 	Mailchimp struct {
-		ListId string `json:"listId,omitempty"`
+		ListId string `json:"listId"`
+		APIKey string `json:"apiKey"`
 	} `json:"mailchimp,omitempty`
 }
 
