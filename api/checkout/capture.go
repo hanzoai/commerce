@@ -55,7 +55,7 @@ func CompleteCapture(c *gin.Context, org *organization.Organization, ord *order.
 			ord.ReferrerId = ""
 		} else {
 			// Try to save referral, save updated referrer
-			if _, err := ref.SaveReferral(ord); err != nil {
+			if _, err := ref.SaveReferral(ord.Id(), ord.UserId); err != nil {
 				log.Warn("Unable to save referral: %v", err, c)
 			}
 		}
