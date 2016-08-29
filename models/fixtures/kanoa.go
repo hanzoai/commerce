@@ -36,6 +36,8 @@ var Kanoa = New("kanoa", func(c *gin.Context) *organization.Organization {
 	org.SecretKey = []byte("EZ2E011iX2Bp5lv149N2STd1d580cU58")
 	org.AddDefaultTokens()
 	org.Fee = 0.05
+	org.Mailchimp.APIKey = ""
+	org.Mailchimp.ListId = "23ad4e4ba4"
 
 	// Email configuration
 	org.Mandrill.APIKey = ""
