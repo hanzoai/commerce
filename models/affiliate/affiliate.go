@@ -3,7 +3,6 @@ package affiliate
 import (
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/types/commission"
-	"crowdstart.com/models/user"
 	"crowdstart.com/thirdparty/stripe/connect"
 	"crowdstart.com/util/val"
 )
@@ -48,15 +47,4 @@ func (a Affiliate) GetStripeAccessToken(userId string) (string, error) {
 
 func (a *Affiliate) Validator() *val.Validator {
 	return val.New().Check("Email").Exists()
-}
-
-func userId(userOrId interface{}) string {
-	userid := ""
-	switch v := userOrId.(type) {
-	case *user.User:
-		userid = v.Id()
-	case string:
-		userid = v
-	}
-	return userid
 }
