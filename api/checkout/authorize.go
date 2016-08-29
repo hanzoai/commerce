@@ -108,10 +108,9 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	// Fee defaults to 2%, override with organization fee if customized.
 	fee, fees, err := ord.CalculateFee(org.Fee, "")
 
-	pay.Fee = fee
 	pay.Currency = ord.Currency
 	pay.Description = ord.Description()
-	pay.Fees = fees
+	pay.Fee = fee
 
 	log.Debug("Payment: %#v", pay, c)
 
@@ -150,8 +149,17 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	ord.BillingAddress.Country = strings.ToUpper(ord.BillingAddress.Country)
 	ord.ShippingAddress.Country = strings.ToUpper(ord.ShippingAddress.Country)
 
-	// Save user, order, payment
-	multi.MustCreate([]interface{}{usr, ord, pay})
+	// Batch save user, order, payment, fees
+	entities := []interface{}{usr, ord, pay}
+
+	// Link payments/fees
+	for _, fe := range fees {
+		fe.PaymentId = pay.Id()
+		pay.FeeIds = append(pay.FeeIds, fe.Id())
+		entities = append(entities, fe)
+	}
+
+	multi.MustCreate(entities)
 
 	log.Info("New authorization for order: %+v", ord, ctx)
 
