@@ -79,9 +79,8 @@ func (api API) SubscribeCustomer(listId string, buy Buyer) error {
 	ml := new(mailinglist.MailingList)
 	ml.Mailchimp.ListId = listId
 	s := &subscriber.Subscriber{
-		Email:         buy.Email,
-		MailingListId: "",
-		UserId:        buy.UserId,
+		Email:  buy.Email,
+		UserId: buy.UserId,
 		Client: client.Client{
 			Country: buy.Address.Country,
 		},
