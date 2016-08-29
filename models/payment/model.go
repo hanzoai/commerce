@@ -2,6 +2,7 @@ package payment
 
 import (
 	"crowdstart.com/datastore"
+	"crowdstart.com/models/fee"
 	"crowdstart.com/models/mixin"
 
 	. "crowdstart.com/models"
@@ -17,6 +18,8 @@ func (p *Payment) Init(db *datastore.Datastore) {
 
 func (p *Payment) Defaults() {
 	p.Status = Unpaid
+	p.Fees = make([]*fee.Fee, 0)
+	p.FeeIds = make([]string, 0)
 	p.Metadata = make(Map)
 }
 
