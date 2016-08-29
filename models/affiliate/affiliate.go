@@ -2,11 +2,17 @@ package affiliate
 
 import (
 	"crowdstart.com/models/mixin"
+	"crowdstart.com/models/types/currency"
 	"crowdstart.com/models/user"
 	"crowdstart.com/thirdparty/stripe/connect"
 	"crowdstart.com/util/val"
+)
 
-	. "crowdstart.com/models"
+type FeeType string
+
+const (
+	Percent FeeType = "percent"
+	Flat            = "flat"
 )
 
 type Affiliate struct {
@@ -14,11 +20,19 @@ type Affiliate struct {
 
 	Enabled bool `json:"enabled"`
 
-	UserId   string `json:userId`
-	Company  string `json:"company"`
-	Country  string `json:"country"`
-	TaxId    string `json:"-"`
-	Timezone string `json:"timezone"`
+	UserId    string `json:"userId"`
+	FirstName string `json:"firstName"`
+	LastName  string `json:"lastName"`
+	Company   string `json:"company"`
+	Country   string `json:"country"`
+	TaxId     string `json:"-"`
+	Timezone  string `json:"timezone"`
+
+	Fee struct {
+		Type    FeeType        `json:"feeType"`
+		Percent float64        `json:"percent,omitempty"`
+		Flat    currency.Cents `json:"flat,omitempty"`
+	} `json:"fee"`
 
 	Stripe struct {
 		// For convenience duplicated
