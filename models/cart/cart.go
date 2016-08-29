@@ -98,6 +98,7 @@ type Cart struct {
 	GiftEmail   string `json:"giftEmail"`   // Email for digital gifts
 
 	Mailchimp struct {
+		Id          string `json:"id,omitempty"`
 		CampaignId  string `json:"campaignId,omitempty"`
 		CheckoutUrl string `json:"checkoutUrl,omitempty"`
 	} `json:"mailchimp,omitempty"`
