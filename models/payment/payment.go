@@ -4,6 +4,7 @@ import (
 	aeds "appengine/datastore"
 
 	"crowdstart.com/datastore"
+	"crowdstart.com/models/fee"
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/types/client"
 	"crowdstart.com/models/types/currency"
@@ -127,7 +128,8 @@ type Payment struct {
 	Amount         currency.Cents `json:"amount"`
 	AmountRefunded currency.Cents `json:"amountRefunded"`
 	Fee            currency.Cents `json:"fee"`
-	Fees           []string       `json:"fees"`
+	Fees           []*fee.Fee     `json:"-" datastore:"-"`
+	FeeIds         []string       `json:"fees"`
 
 	AmountTransferred   currency.Cents `json:"-"`
 	CurrencyTransferred currency.Type  `json:"-"`
