@@ -63,7 +63,7 @@ func (api API) Subscribe(ml *mailinglist.MailingList, s *subscriber.Subscriber) 
 			Longitude:   0.0,
 			GMTOffset:   0,
 			DSTOffset:   0,
-			CountryCode: s.Client.Country,
+			CountryCode: strings.ToUpper(s.Client.Country),
 			Timezone:    "",
 		},
 	}
@@ -110,7 +110,7 @@ func (api API) CreateStore(stor *store.Store) error {
 			City:         stor.Address.City,
 			ProvinceCode: stor.Address.State,
 			PostalCode:   stor.Address.PostalCode,
-			CountryCode:  stor.Address.Country,
+			CountryCode:  strings.ToUpper(stor.Address.Country),
 		},
 	}
 	_, err := api.client.CreateStore(req)
@@ -138,7 +138,7 @@ func (api API) UpdateStore(stor *store.Store) error {
 			City:         stor.Address.City,
 			ProvinceCode: stor.Address.State,
 			PostalCode:   stor.Address.PostalCode,
-			CountryCode:  stor.Address.Country,
+			CountryCode:  strings.ToUpper(stor.Address.Country),
 		},
 	}
 	_, err := api.client.UpdateStore(req)
