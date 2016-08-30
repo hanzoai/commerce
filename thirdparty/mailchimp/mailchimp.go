@@ -191,7 +191,7 @@ func (api API) CreateCart(storeId string, car *cart.Cart) error {
 		Lines: lines,
 
 		// Optional
-		ID:          idOrEmail(car.UserId, car.Email),
+		ID:          car.Id(),
 		TaxTotal:    float64(car.Tax),
 		CampaignID:  car.Mailchimp.CampaignId,
 		CheckoutURL: car.Mailchimp.CheckoutUrl,
