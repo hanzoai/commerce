@@ -83,6 +83,13 @@ func Set(c *gin.Context) {
 	} else {
 		http.Render(c, 200, CartResponse{Id: car.Id()})
 	}
+
+	// Update Mailchimp cart
+	if car.UserId != "" || car.Email != "" {
+		org := middleware.GetOrganization(c)
+		client := mailchimp.New(db.Context, org.Mailchimp.APIKey)
+		client.UpdateOrCreateCart(org.DefaultStore, car)
+	}
 }
 
 func Discard(c *gin.Context) {
