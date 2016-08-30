@@ -43,8 +43,7 @@ func stripeVerifyCards(usr *user.User, cardIds []string) {
 		sources = append(sources, source.Card.ID)
 	}
 
-	log.Warn("StripeVerifyCard Expected: %v\nGot:%v", cardIds, sources)
-
+	log.Debug("StripeVerifyCards Expected: %v\nGot:%v", cardIds, sources)
 	Expect(len(cust.Sources.Values)).To(Equal(len(cardIds)))
 	Expect(sources).To(ConsistOf(cardIds))
 }
