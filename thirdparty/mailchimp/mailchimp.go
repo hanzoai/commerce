@@ -94,7 +94,7 @@ func (api API) CreateStore(stor *store.Store) error {
 		ID:           stor.Id(),
 		ListID:       stor.Mailchimp.ListId, // Immutable after creation
 		Name:         stor.Name,
-		CurrencyCode: "USD",
+		CurrencyCode: string(stor.Currency),
 
 		// Optional
 		Platform:      "Hanzo",
@@ -122,7 +122,7 @@ func (api API) UpdateStore(stor *store.Store) error {
 		ID:           stor.Id(),
 		ListID:       stor.Mailchimp.ListId, // Immutable after creation
 		Name:         stor.Name,
-		CurrencyCode: "USD",
+		CurrencyCode: string(stor.Currency),
 
 		// Optional
 		Platform:      "Hanzo",
@@ -165,7 +165,6 @@ func (api API) CreateCart(storeId string, car *cart.Cart) error {
 		// Required
 		CurrencyCode: string(car.Currency),
 		OrderTotal:   float64(car.Total),
-
 		Customer: gochimp.Customer{
 			// Required
 			ID: car.UserId,
