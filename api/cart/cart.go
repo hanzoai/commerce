@@ -105,6 +105,13 @@ func Discard(c *gin.Context) {
 	} else {
 		http.Render(c, 200, CartResponse{Id: car.Id()})
 	}
+
+	// Update Mailchimp cart
+	if car.UserId != "" || car.Email != "" {
+		org := middleware.GetOrganization(c)
+		client := mailchimp.New(db.Context, org.Mailchimp.APIKey)
+		client.DeleteCart(org.DefaultStore, car)
+	}
 }
 
 func create(r *rest.Rest) func(*gin.Context) {
@@ -127,16 +134,18 @@ func create(r *rest.Rest) func(*gin.Context) {
 		}
 
 		// Create Mailchimp cart
-		org := middleware.GetOrganization(c)
-		client := mailchimp.New(db.Context, org.Mailchimp.APIKey)
-		client.CreateCart(org.DefaultStore, car)
+		if car.UserId != "" || car.Email != "" {
+			org := middleware.GetOrganization(c)
+			client := mailchimp.New(db.Context, org.Mailchimp.APIKey)
+			client.CreateCart(org.DefaultStore, car)
+		}
 
 		c.Writer.Header().Add("Location", c.Request.URL.Path+"/"+car.Id())
 		r.Render(c, 201, CartResponse{Id: car.Id()})
 	}
 }
 
-// Completely replaces an entity for given `id`.
+// Completely replaces an cart for given `id`.
 func update(r *rest.Rest) func(*gin.Context) {
 	return func(c *gin.Context) {
 		if !r.CheckPermissions(c, "update") {
@@ -146,10 +155,10 @@ func update(r *rest.Rest) func(*gin.Context) {
 		id := c.Params.ByName(r.ParamId)
 
 		db := datastore.New(c)
-		entity := cart.New(db)
+		car := cart.New(db)
 
 		// Try to retrieve key from datastore
-		ok, err := entity.IdExists(id)
+		ok, err := car.IdExists(id)
 		if !ok {
 			r.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
 			return
@@ -160,22 +169,29 @@ func update(r *rest.Rest) func(*gin.Context) {
 			return
 		}
 
-		// Decode response body to create new entity
-		if err := json.Decode(c.Request.Body, entity); err != nil {
+		// Decode response body to create new cart
+		if err := json.Decode(c.Request.Body, car); err != nil {
 			r.Fail(c, 400, "Failed decode request body", err)
 			return
 		}
 
-		// Replace whatever was in the datastore with our new updated entity
-		if err := entity.Update(); err != nil {
+		// Replace whatever was in the datastore with our new updated cart
+		if err := car.Update(); err != nil {
 			r.Fail(c, 500, "Failed to update "+r.Kind, err)
 		} else {
-			r.Render(c, 200, CartResponse{Id: entity.Id()})
+			r.Render(c, 200, CartResponse{Id: car.Id()})
+		}
+
+		// Update Mailchimp cart
+		if car.UserId != "" || car.Email != "" {
+			org := middleware.GetOrganization(c)
+			client := mailchimp.New(db.Context, org.Mailchimp.APIKey)
+			client.UpdateOrCreateCart(org.DefaultStore, car)
 		}
 	}
 }
 
-// Partially updates pre-existing entity by given `id`.
+// Partially updates pre-existing cart by given `id`.
 func patch(r *rest.Rest) func(*gin.Context) {
 	return func(c *gin.Context) {
 		if !r.CheckPermissions(c, "patch") {
@@ -185,23 +201,30 @@ func patch(r *rest.Rest) func(*gin.Context) {
 		id := c.Params.ByName(r.ParamId)
 
 		db := datastore.New(c)
-		entity := cart.New(db)
+		car := cart.New(db)
 
-		err := entity.GetById(id)
+		err := car.GetById(id)
 		if err != nil {
 			r.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
 			return
 		}
 
-		if err := json.Decode(c.Request.Body, entity); err != nil {
+		if err := json.Decode(c.Request.Body, car); err != nil {
 			r.Fail(c, 400, "Failed decode request body", err)
 			return
 		}
 
-		if err := entity.Update(); err != nil {
+		if err := car.Update(); err != nil {
 			r.Fail(c, 500, "Failed to update "+r.Kind, err)
 		} else {
-			r.Render(c, 200, CartResponse{Id: entity.Id()})
+			r.Render(c, 200, CartResponse{Id: car.Id()})
+		}
+
+		// Update Mailchimp cart
+		if car.UserId != "" || car.Email != "" {
+			org := middleware.GetOrganization(c)
+			client := mailchimp.New(db.Context, org.Mailchimp.APIKey)
+			client.UpdateOrCreateCart(org.DefaultStore, car)
 		}
 	}
 }
