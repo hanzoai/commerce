@@ -133,19 +133,24 @@ func (c Client) GetCustomer(token, user *user.User) (*Customer, error) {
 }
 
 // Update Stripe customer
-func (c Client) UpdateCustomer(user *user.User) (*Customer, error) {
+func (c Client) UpdateCustomer(usr *user.User) (*Customer, error) {
 	params := &stripe.CustomerParams{
-		Email: user.Email,
+		Email: usr.Email,
+	}
+
+	// Update Default source
+	if usr.Accounts.Stripe.CardId != "" {
+		params.DefaultSource = usr.Accounts.Stripe.CardId
 	}
 
 	// Update with our user metadata
-	for k, v := range user.Metadata {
+	for k, v := range usr.Metadata {
 		params.AddMeta(k, json.Encode(v))
 	}
 
-	params.AddMeta("user", user.Id())
+	params.AddMeta("user", usr.Id())
 
-	customerId := user.Accounts.Stripe.CustomerId
+	customerId := usr.Accounts.Stripe.CustomerId
 
 	customer, err := c.API.Customers.Update(customerId, params)
 	if err != nil {
@@ -205,6 +210,23 @@ func (c Client) UpdateCard(token string, pay *payment.Payment, user *user.User) 
 	}
 
 	card, err := c.API.Cards.Update(cardId, params)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	return (*Card)(card), err
+}
+
+// Update card associated with Stripe customer
+func (c Client) DeleteCard(id string, usr *user.User) (*Card, error) {
+	acct := usr.Accounts.Stripe
+	customerId := acct.CustomerId
+
+	params := &stripe.CardParams{
+		Customer: customerId,
+	}
+
+	card, err := c.API.Cards.Del(id, params)
 	if err != nil {
 		return nil, errors.New(err)
 	}
