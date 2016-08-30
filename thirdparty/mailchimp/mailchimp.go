@@ -168,10 +168,10 @@ func (api API) CreateCart(storeId string, car *cart.Cart) error {
 
 		Customer: gochimp.Customer{
 			// Required
-			ID: car.UserId, //string  `json:"id"`
+			ID: car.UserId,
 
 			// Optional
-			EmailAddress: car.UserEmail,
+			EmailAddress: car.Email,
 			OptInStatus:  true,
 			Company:      car.Company,
 			FirstName:    "",
@@ -189,6 +189,7 @@ func (api API) CreateCart(storeId string, car *cart.Cart) error {
 		CampaignID:  car.Mailchimp.CampaignId,
 		CheckoutURL: car.Mailchimp.CheckoutUrl,
 	}
+
 	stor, err := api.client.GetStore(storeId, nil)
 	_, err = stor.CreateCart(req)
 	return err
@@ -212,10 +213,10 @@ func (api API) UpdateCart(storeId string, car *cart.Cart) error {
 		OrderTotal:   float64(car.Total),
 		Customer: gochimp.Customer{
 			// Required
-			ID: car.UserId, //string  `json:"id"`
+			ID: car.UserId,
 
 			// Optional
-			EmailAddress: car.UserEmail,
+			EmailAddress: car.Email,
 			OptInStatus:  true,
 			Company:      car.Company,
 			FirstName:    "",
@@ -234,9 +235,17 @@ func (api API) UpdateCart(storeId string, car *cart.Cart) error {
 		CampaignID:  "",
 		CheckoutURL: "",
 	}
+
 	stor, err := api.client.GetStore(storeId, nil)
 	_, err = stor.UpdateCart(req)
 	return err
+}
+
+func (api API) UpdateOrCreateCart(storeId string, car *cart.Cart) error {
+	if err := api.UpdateCart(storeId, car); err != nil {
+		return api.CreateCart(storeId, car)
+	}
+	return nil
 }
 
 func (api API) DeleteCart(storeId string, car *cart.Cart) error {
@@ -291,6 +300,7 @@ func (api API) CreateOrder(storeId string, ord *order.Order) error {
 		CancelledAtForeign: ord.CancelledAt.Format(time.RFC3339),
 		UpdatedAtForeign:   ord.UpdatedAt.Format(time.RFC3339),
 	}
+
 	stor, err := api.client.GetStore(storeId, nil)
 	_, err = stor.CreateOrder(req)
 	return err
@@ -342,6 +352,7 @@ func (api API) UpdateOrder(storeId string, ord *order.Order) error {
 		CancelledAtForeign: ord.CancelledAt.Format(time.RFC3339),
 		UpdatedAtForeign:   ord.UpdatedAt.Format(time.RFC3339),
 	}
+
 	stor, err := api.client.GetStore(storeId, nil)
 	_, err = stor.UpdateOrder(req)
 	return err
@@ -381,6 +392,7 @@ func (api API) CreateProduct(storeId string, prod *product.Product) error {
 		},
 		PublishedAt: prod.CreatedAt.Format(time.RFC3339),
 	}
+
 	stor, err := api.client.GetStore(storeId, nil)
 	_, err = stor.CreateProduct(req)
 	return err
@@ -414,6 +426,7 @@ func (api API) UpdateProduct(storeId string, prod *product.Product) error {
 		},
 		PublishedAt: prod.CreatedAt.Format(time.RFC3339),
 	}
+
 	stor, err := api.client.GetStore(storeId, nil)
 	_, err = stor.UpdateProduct(req)
 	return err
@@ -440,6 +453,7 @@ func (api API) CreateVariant(storeId, productId string, vari *variant.Variant) e
 		Backorders:        "",
 		Visibility:        "visible",
 	}
+
 	stor, err := api.client.GetStore(storeId, nil)
 	prod, err := stor.GetProduct(productId, nil)
 	_, err = prod.CreateVariant(req)
@@ -461,6 +475,7 @@ func (api API) UpdateVariant(storeId, productId string, vari *variant.Variant) e
 		Backorders:        "",
 		Visibility:        "visible",
 	}
+
 	stor, err := api.client.GetStore(storeId, nil)
 	prod, err := stor.GetProduct(productId, nil)
 	_, err = prod.UpdateVariant(req)

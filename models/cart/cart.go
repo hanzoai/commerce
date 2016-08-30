@@ -44,7 +44,7 @@ type Cart struct {
 	UserId string `json:"userId,omitempty"`
 
 	// Email of the user or someone else if no user id exists
-	UserEmail string `json:"userEmail,omitempty"`
+	Email string `json:"email,omitempty"`
 
 	// Associated order ID, if any
 	OrderId string `json:"orderId,omitempty"`
