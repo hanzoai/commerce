@@ -16,6 +16,7 @@ import (
 	"crowdstart.com/models/store"
 	"crowdstart.com/models/subscriber"
 	"crowdstart.com/models/types/client"
+	"crowdstart.com/models/user"
 	"crowdstart.com/models/variant"
 	"crowdstart.com/util/log"
 
@@ -181,11 +182,11 @@ func (api API) CreateCart(storeId string, car *cart.Cart) error {
 			EmailAddress: car.Email,
 			OptInStatus:  true,
 			Company:      car.Company,
-			FirstName:    "",
-			LastName:     "",
-			OrdersCount:  0,
-			TotalSpent:   0,
-			Address:      gochimp.Address{},
+			// FirstName:    "",
+			// LastName:     "",
+			// OrdersCount:  0,
+			// TotalSpent:   0,
+			// Address:      gochimp.Address{},
 		},
 
 		Lines: lines,
@@ -226,21 +227,19 @@ func (api API) UpdateCart(storeId string, car *cart.Cart) error {
 			EmailAddress: car.Email,
 			OptInStatus:  true,
 			Company:      car.Company,
-			FirstName:    "",
-			LastName:     "",
-			OrdersCount:  0,
-			TotalSpent:   0,
-			Address:      gochimp.Address{},
-			CreatedAt:    "",
-			UpdatedAt:    "",
+			// FirstName:    "",
+			// LastName:     "",
+			// OrdersCount:  0,
+			// TotalSpent:   0,
+			// Address:      gochimp.Address{},
 		},
 		Lines: lines,
 
 		// Optional
 		ID:          car.Id(),
 		TaxTotal:    float64(car.Tax),
-		CampaignID:  "",
-		CheckoutURL: "",
+		CampaignID:  car.Mailchimp.CampaignId,
+		CheckoutURL: car.Mailchimp.CheckoutUrl,
 	}
 
 	stor, err := api.client.GetStore(storeId, nil)
@@ -262,6 +261,13 @@ func (api API) DeleteCart(storeId string, car *cart.Cart) error {
 }
 
 func (api API) CreateOrder(storeId string, ord *order.Order) error {
+	// Fetch user
+	usr := user.New(ord.Db)
+	if err := usr.GetById(ord.UserId); err != nil {
+		return err
+	}
+
+	// Create line items
 	lines := make([]gochimp.LineItem, 0)
 	for _, line := range ord.Items {
 		lines = append(lines, gochimp.LineItem{
@@ -273,6 +279,7 @@ func (api API) CreateOrder(storeId string, ord *order.Order) error {
 		})
 	}
 
+	// Create Order
 	req := &gochimp.Order{
 		// Required
 		ID:           ord.Id(),
@@ -280,19 +287,24 @@ func (api API) CreateOrder(storeId string, ord *order.Order) error {
 		OrderTotal:   float64(ord.Total),
 		Customer: gochimp.Customer{
 			// Required
-			ID: ord.UserId,
+			ID: usr.Id(),
 
 			// Optional
-			EmailAddress: ord.UserId, // FIXME
+			EmailAddress: usr.Email,
 			OptInStatus:  true,
 			Company:      ord.Company,
-			FirstName:    "",
-			LastName:     "",
-			OrdersCount:  0,
-			TotalSpent:   0,
-			Address:      gochimp.Address{},
-			CreatedAt:    "",
-			UpdatedAt:    "",
+			FirstName:    usr.FirstName,
+			LastName:     usr.LastName,
+			// OrdersCount:  1,
+			// TotalSpent:   float64(ord.Total),
+			Address: gochimp.Address{
+				Address1:     ord.ShippingAddress.Line1,
+				Address2:     ord.ShippingAddress.Line2,
+				City:         ord.ShippingAddress.City,
+				ProvinceCode: ord.ShippingAddress.State,
+				PostalCode:   ord.ShippingAddress.PostalCode,
+				CountryCode:  strings.ToUpper(ord.ShippingAddress.Country),
+			},
 		},
 		Lines: lines,
 
@@ -301,8 +313,8 @@ func (api API) CreateOrder(storeId string, ord *order.Order) error {
 		ShippingTotal:      float64(ord.Shipping),
 		FinancialStatus:    string(ord.PaymentStatus),
 		FulfillmentStatus:  string(ord.FulfillmentStatus),
-		CampaignID:         "",
-		TrackingCode:       "",
+		CampaignID:         ord.Mailchimp.CampaignId,
+		TrackingCode:       ord.Mailchimp.TrackingCode,
 		ProcessedAtForeign: ord.ProcessedAt.Format(time.RFC3339),
 		CancelledAtForeign: ord.CancelledAt.Format(time.RFC3339),
 		UpdatedAtForeign:   ord.UpdatedAt.Format(time.RFC3339),
@@ -314,6 +326,13 @@ func (api API) CreateOrder(storeId string, ord *order.Order) error {
 }
 
 func (api API) UpdateOrder(storeId string, ord *order.Order) error {
+	// Fetch user
+	usr := user.New(ord.Db)
+	if err := usr.GetById(ord.UserId); err != nil {
+		return err
+	}
+
+	// Create line items
 	lines := make([]gochimp.LineItem, 0)
 	for _, line := range ord.Items {
 		lines = append(lines, gochimp.LineItem{
@@ -325,6 +344,7 @@ func (api API) UpdateOrder(storeId string, ord *order.Order) error {
 		})
 	}
 
+	// Create order request
 	req := &gochimp.Order{
 		// Required
 		ID:           ord.Id(),
@@ -332,19 +352,24 @@ func (api API) UpdateOrder(storeId string, ord *order.Order) error {
 		OrderTotal:   float64(ord.Total),
 		Customer: gochimp.Customer{
 			// Required
-			ID: ord.UserId,
+			ID: usr.Id(),
 
 			// Optional
-			EmailAddress: ord.UserId, // FIXME
+			EmailAddress: usr.Email,
 			OptInStatus:  true,
 			Company:      ord.Company,
-			FirstName:    "",
-			LastName:     "",
-			OrdersCount:  0,
-			TotalSpent:   0,
-			Address:      gochimp.Address{},
-			CreatedAt:    "",
-			UpdatedAt:    "",
+			FirstName:    usr.FirstName,
+			LastName:     usr.LastName,
+			// OrdersCount:  1,
+			// TotalSpent:   ord.Total,
+			Address: gochimp.Address{
+				Address1:     ord.ShippingAddress.Line1,
+				Address2:     ord.ShippingAddress.Line2,
+				City:         ord.ShippingAddress.City,
+				ProvinceCode: ord.ShippingAddress.State,
+				PostalCode:   ord.ShippingAddress.PostalCode,
+				CountryCode:  strings.ToUpper(ord.ShippingAddress.Country),
+			},
 		},
 		Lines: lines,
 
@@ -353,8 +378,8 @@ func (api API) UpdateOrder(storeId string, ord *order.Order) error {
 		ShippingTotal:      float64(ord.Shipping),
 		FinancialStatus:    string(ord.PaymentStatus),
 		FulfillmentStatus:  string(ord.FulfillmentStatus),
-		CampaignID:         "",
-		TrackingCode:       "",
+		CampaignID:         ord.Mailchimp.CampaignId,
+		TrackingCode:       ord.Mailchimp.TrackingCode,
 		ProcessedAtForeign: ord.ProcessedAt.Format(time.RFC3339),
 		CancelledAtForeign: ord.CancelledAt.Format(time.RFC3339),
 		UpdatedAtForeign:   ord.UpdatedAt.Format(time.RFC3339),
@@ -375,12 +400,12 @@ func (api API) CreateProduct(storeId string, prod *product.Product) error {
 	req := &gochimp.Product{
 		ID:          prod.Id(),
 		Title:       prod.Name,
-		Handle:      "",
-		URL:         "",
 		Description: prod.Description,
-		Type:        "",
-		Vendor:      "",
-		ImageURL:    "",
+		// Handle:      "",
+		// ImageURL:    "",
+		// Type:        "",
+		// URL:         "",
+		// Vendor:      "",
 		Variants: []gochimp.Variant{
 			gochimp.Variant{
 				// Required
@@ -388,13 +413,13 @@ func (api API) CreateProduct(storeId string, prod *product.Product) error {
 				Title: prod.Name,
 
 				// Optional
-				Url:               "",
 				SKU:               prod.Slug,
 				Price:             float64(prod.Price),
 				InventoryQuantity: prod.Inventory,
-				ImageUrl:          "",
-				Backorders:        "",
 				Visibility:        "visible",
+				// Backorders:        "",
+				// ImageUrl:          "",
+				// Url:               "",
 			},
 		},
 		PublishedAt: prod.CreatedAt.Format(time.RFC3339),
@@ -409,12 +434,12 @@ func (api API) UpdateProduct(storeId string, prod *product.Product) error {
 	req := &gochimp.Product{
 		ID:          prod.Id(),
 		Title:       prod.Name,
-		Handle:      "",
-		URL:         "",
 		Description: prod.Description,
-		Type:        "",
-		Vendor:      "",
-		ImageURL:    "",
+		// Handle:      "",
+		// ImageURL:    "",
+		// Type:        "",
+		// URL:         "",
+		// Vendor:      "",
 		Variants: []gochimp.Variant{
 			gochimp.Variant{
 				// Required
@@ -422,13 +447,13 @@ func (api API) UpdateProduct(storeId string, prod *product.Product) error {
 				Title: prod.Name,
 
 				// Optional
-				Url:               "",
 				SKU:               prod.Slug,
 				Price:             float64(prod.Price),
 				InventoryQuantity: prod.Inventory,
-				ImageUrl:          "",
-				Backorders:        "",
 				Visibility:        "visible",
+				// Backorders:        "",
+				// ImageUrl:          "",
+				// Url:               "",
 			},
 		},
 		PublishedAt: prod.CreatedAt.Format(time.RFC3339),
@@ -452,13 +477,13 @@ func (api API) CreateVariant(storeId, productId string, vari *variant.Variant) e
 		Title: vari.Name,
 
 		// Optional
-		Url:               "",
 		SKU:               vari.SKU,
 		Price:             float64(vari.Price),
 		InventoryQuantity: vari.Inventory,
-		ImageUrl:          "",
-		Backorders:        "",
 		Visibility:        "visible",
+		// Backorders:        "",
+		// ImageUrl:          "",
+		// Url:               "",
 	}
 
 	stor, err := api.client.GetStore(storeId, nil)
@@ -474,13 +499,13 @@ func (api API) UpdateVariant(storeId, productId string, vari *variant.Variant) e
 		Title: vari.Name,
 
 		// Optional
-		Url:               "",
 		SKU:               vari.SKU,
 		Price:             float64(vari.Price),
 		InventoryQuantity: vari.Inventory,
-		ImageUrl:          "",
-		Backorders:        "",
 		Visibility:        "visible",
+		// Backorders:        "",
+		// ImageUrl:          "",
+		// Url:               "",
 	}
 
 	stor, err := api.client.GetStore(storeId, nil)
