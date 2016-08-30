@@ -22,6 +22,13 @@ import (
 	. "crowdstart.com/models"
 )
 
+func idOrEmail(id, email string) string {
+	if id == "" {
+		return email
+	}
+	return id
+}
+
 type API struct {
 	ctx    appengine.Context
 	client *gochimp.ChimpAPI
@@ -81,7 +88,7 @@ func (api API) SubscribeCustomer(listId string, buy Buyer) error {
 	ml.Mailchimp.ListId = listId
 	s := &subscriber.Subscriber{
 		Email:  buy.Email,
-		UserId: buy.UserId,
+		UserId: idOrEmail(buy.UserId, buy.Email),
 		Client: client.Client{
 			Country: buy.Address.Country,
 		},
@@ -153,14 +160,10 @@ func (api API) DeleteStore(stor *store.Store) error {
 func (api API) CreateCart(storeId string, car *cart.Cart) error {
 	lines := make([]gochimp.LineItem, 0)
 	for _, line := range car.Items {
-		variantId := line.VariantId
-		if variantId == "" {
-			variantId = line.ProductId
-		}
 		lines = append(lines, gochimp.LineItem{
 			ID:               car.Id() + line.Id(),
 			ProductID:        line.ProductId,
-			ProductVariantID: variantId,
+			ProductVariantID: line.Id(),
 			Quantity:         line.Quantity,
 			Price:            float64(line.Price),
 		})
@@ -172,7 +175,7 @@ func (api API) CreateCart(storeId string, car *cart.Cart) error {
 		OrderTotal:   float64(car.Total),
 		Customer: gochimp.Customer{
 			// Required
-			ID: car.UserId,
+			ID: idOrEmail(car.UserId, car.Email),
 
 			// Optional
 			EmailAddress: car.Email,
@@ -188,7 +191,7 @@ func (api API) CreateCart(storeId string, car *cart.Cart) error {
 		Lines: lines,
 
 		// Optional
-		ID:          car.Id(),
+		ID:          idOrEmail(car.UserId, car.Email),
 		TaxTotal:    float64(car.Tax),
 		CampaignID:  car.Mailchimp.CampaignId,
 		CheckoutURL: car.Mailchimp.CheckoutUrl,
@@ -202,14 +205,10 @@ func (api API) CreateCart(storeId string, car *cart.Cart) error {
 func (api API) UpdateCart(storeId string, car *cart.Cart) error {
 	lines := make([]gochimp.LineItem, 0)
 	for _, line := range car.Items {
-		variantId := line.VariantId
-		if variantId == "" {
-			variantId = line.ProductId
-		}
 		lines = append(lines, gochimp.LineItem{
 			ID:               car.Id() + line.Id(),
 			ProductID:        line.ProductId,
-			ProductVariantID: variantId,
+			ProductVariantID: line.Id(),
 			Quantity:         line.Quantity,
 			Price:            float64(line.Price),
 		})
@@ -221,7 +220,7 @@ func (api API) UpdateCart(storeId string, car *cart.Cart) error {
 		OrderTotal:   float64(car.Total),
 		Customer: gochimp.Customer{
 			// Required
-			ID: car.UserId,
+			ID: idOrEmail(car.UserId, car.Email),
 
 			// Optional
 			EmailAddress: car.Email,
@@ -265,14 +264,10 @@ func (api API) DeleteCart(storeId string, car *cart.Cart) error {
 func (api API) CreateOrder(storeId string, ord *order.Order) error {
 	lines := make([]gochimp.LineItem, 0)
 	for _, line := range ord.Items {
-		variantId := line.VariantId
-		if variantId == "" {
-			variantId = line.ProductId
-		}
 		lines = append(lines, gochimp.LineItem{
 			ID:               ord.Id() + line.Id(),
 			ProductID:        line.ProductId,
-			ProductVariantID: variantId,
+			ProductVariantID: line.Id(),
 			Quantity:         line.Quantity,
 			Price:            float64(line.Price),
 		})
@@ -285,7 +280,7 @@ func (api API) CreateOrder(storeId string, ord *order.Order) error {
 		OrderTotal:   float64(ord.Total),
 		Customer: gochimp.Customer{
 			// Required
-			ID: ord.UserId, //string  `json:"id"`
+			ID: ord.UserId,
 
 			// Optional
 			EmailAddress: ord.UserId, // FIXME
@@ -321,14 +316,10 @@ func (api API) CreateOrder(storeId string, ord *order.Order) error {
 func (api API) UpdateOrder(storeId string, ord *order.Order) error {
 	lines := make([]gochimp.LineItem, 0)
 	for _, line := range ord.Items {
-		variantId := line.VariantId
-		if variantId == "" {
-			variantId = line.ProductId
-		}
 		lines = append(lines, gochimp.LineItem{
 			ID:               ord.Id() + line.Id(),
 			ProductID:        line.ProductId,
-			ProductVariantID: variantId,
+			ProductVariantID: line.Id(),
 			Quantity:         line.Quantity,
 			Price:            float64(line.Price),
 		})
@@ -341,7 +332,7 @@ func (api API) UpdateOrder(storeId string, ord *order.Order) error {
 		OrderTotal:   float64(ord.Total),
 		Customer: gochimp.Customer{
 			// Required
-			ID: ord.UserId, //string  `json:"id"`
+			ID: ord.UserId,
 
 			// Optional
 			EmailAddress: ord.UserId, // FIXME
@@ -462,7 +453,7 @@ func (api API) CreateVariant(storeId, productId string, vari *variant.Variant) e
 
 		// Optional
 		Url:               "",
-		SKU:               "",
+		SKU:               vari.SKU,
 		Price:             float64(vari.Price),
 		InventoryQuantity: vari.Inventory,
 		ImageUrl:          "",
@@ -484,7 +475,7 @@ func (api API) UpdateVariant(storeId, productId string, vari *variant.Variant) e
 
 		// Optional
 		Url:               "",
-		SKU:               "",
+		SKU:               vari.SKU,
 		Price:             float64(vari.Price),
 		InventoryQuantity: vari.Inventory,
 		ImageUrl:          "",
