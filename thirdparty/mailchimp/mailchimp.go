@@ -1,6 +1,7 @@
 package mailchimp
 
 import (
+	"strings"
 	"time"
 
 	"appengine"
@@ -94,7 +95,7 @@ func (api API) CreateStore(stor *store.Store) error {
 		ID:           stor.Id(),
 		ListID:       stor.Mailchimp.ListId, // Immutable after creation
 		Name:         stor.Name,
-		CurrencyCode: string(stor.Currency),
+		CurrencyCode: strings.ToUpper(string(stor.Currency)),
 
 		// Optional
 		Platform:      "Hanzo",
@@ -122,7 +123,7 @@ func (api API) UpdateStore(stor *store.Store) error {
 		ID:           stor.Id(),
 		ListID:       stor.Mailchimp.ListId, // Immutable after creation
 		Name:         stor.Name,
-		CurrencyCode: string(stor.Currency),
+		CurrencyCode: strings.ToUpper(string(stor.Currency)),
 
 		// Optional
 		Platform:      "Hanzo",
@@ -163,7 +164,7 @@ func (api API) CreateCart(storeId string, car *cart.Cart) error {
 
 	req := &gochimp.Cart{
 		// Required
-		CurrencyCode: string(car.Currency),
+		CurrencyCode: strings.ToUpper(string(car.Currency)),
 		OrderTotal:   float64(car.Total),
 		Customer: gochimp.Customer{
 			// Required
@@ -208,7 +209,7 @@ func (api API) UpdateCart(storeId string, car *cart.Cart) error {
 
 	req := &gochimp.Cart{
 		// Required
-		CurrencyCode: string(car.Currency),
+		CurrencyCode: strings.ToUpper(string(car.Currency)),
 		OrderTotal:   float64(car.Total),
 		Customer: gochimp.Customer{
 			// Required
@@ -268,7 +269,7 @@ func (api API) CreateOrder(storeId string, ord *order.Order) error {
 	req := &gochimp.Order{
 		// Required
 		ID:           ord.Id(),
-		CurrencyCode: string(ord.Currency),
+		CurrencyCode: strings.ToUpper(string(ord.Currency)),
 		OrderTotal:   float64(ord.Total),
 		Customer: gochimp.Customer{
 			// Required
@@ -320,7 +321,7 @@ func (api API) UpdateOrder(storeId string, ord *order.Order) error {
 	req := &gochimp.Order{
 		// Required
 		ID:           ord.Id(),
-		CurrencyCode: string(ord.Currency),
+		CurrencyCode: strings.ToUpper(string(ord.Currency)),
 		OrderTotal:   float64(ord.Total),
 		Customer: gochimp.Customer{
 			// Required
