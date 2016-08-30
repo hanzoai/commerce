@@ -172,6 +172,7 @@ func (li *LineItem) SetProduct(db *datastore.Datastore, id string, quantity int)
 	li.ProductName = prod.Name
 	li.ProductSlug = prod.Slug
 	li.Quantity = quantity
+	li.Price = prod.Price
 
 	return nil
 }
@@ -188,6 +189,7 @@ func (li *LineItem) SetVariant(db *datastore.Datastore, id string, quantity int)
 	li.VariantName = vari.Name
 	li.VariantSKU = vari.SKU
 	li.Quantity = quantity
+	li.Price = vari.Price
 
 	return nil
 }
