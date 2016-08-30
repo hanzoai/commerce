@@ -25,15 +25,9 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User,
 		return firstTime(client, tok, usr, ord, pay)
 	}
 
-	// Existing customer, already have card on record
-	if usr.Accounts.Stripe.CardMatches(pay.Account) {
-		log.Debug("Returning stripe customer")
-		return returning(client, tok, usr, ord, pay)
-	}
-
 	// Existing customer, new card
 	log.Debug("Returning stripe customer, new card")
-	return returningNewCard(client, tok, usr, ord, pay)
+	return returning(client, tok, usr, ord, pay)
 }
 
 func updatePaymentFromCard(pay *payment.Payment, card *stripe.Card) {
@@ -91,32 +85,41 @@ func firstTime(client *stripe.Client, tok *stripe.Token, u *user.User, ord *orde
 }
 
 func returning(client *stripe.Client, tok *stripe.Token, usr *user.User, ord *order.Order, pay *payment.Payment) error {
-	// Update customer details
+	// Add card to customer
+	card, err := client.AddCard(tok.ID, usr)
+	if err != nil {
+		return err
+	}
+	updatePaymentFromCard(pay, card)
+
+	acct := pay.Account
+
+	// Update customer details (which will set new card as default)
+	usr.Accounts.Stripe = acct
 	cust, err := client.UpdateCustomer(usr)
 	if err != nil {
 		return err
 	}
 	pay.Live = cust.Live
 
-	// Update card details using token
-	card, err := client.UpdateCard(tok.ID, pay, usr)
-	updatePaymentFromCard(pay, card)
+	// Remove any other cards that match from customer
+	for _, source := range cust.Sources.Values {
+		card := source.Card
 
-	// Charge using customer
-	_, err = client.NewCharge(cust, pay)
-	return err
-}
+		// Skip card we just added
+		if card.ID == acct.CardId {
+			continue
+		}
 
-func returningNewCard(client *stripe.Client, tok *stripe.Token, usr *user.User, ord *order.Order, pay *payment.Payment) error {
-	// Add new card to customer
-	card, err := client.AddCard(tok.ID, usr)
-	if err != nil {
-		return err
+		// Delete any cards that otherwise match (duplicates, generally)
+		if card.LastFour == acct.LastFour {
+			if _, err := client.DeleteCard(card.ID, usr); err != nil {
+				log.Warn("Unable to delete card '%s': %v", card.ID, err, ord.Db.Context)
+			}
+		}
 	}
 
-	updatePaymentFromCard(pay, card)
-
-	// Charge using customerId on user
+	// Charge using Stripe Customer Id on user
 	_, err = client.NewCharge(usr, pay)
 	return err
 }
