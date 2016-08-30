@@ -56,6 +56,7 @@ type Order struct {
 
 	// Associated Crowdstart user or buyer.
 	UserId string `json:"userId,omitempty"`
+	Email  string `json:"email,omitempty"`
 
 	// Associated cart
 	CartId string `json:"cartId,omitempty"`
