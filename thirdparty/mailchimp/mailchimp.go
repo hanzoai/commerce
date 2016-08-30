@@ -153,10 +153,14 @@ func (api API) DeleteStore(stor *store.Store) error {
 func (api API) CreateCart(storeId string, car *cart.Cart) error {
 	lines := make([]gochimp.LineItem, 0)
 	for _, line := range car.Items {
+		variantId := line.VariantId
+		if variantId == "" {
+			variantId = line.ProductId
+		}
 		lines = append(lines, gochimp.LineItem{
 			ID:               car.Id() + line.Id(),
 			ProductID:        line.ProductId,
-			ProductVariantID: line.VariantId,
+			ProductVariantID: variantId,
 			Quantity:         line.Quantity,
 			Price:            float64(line.Price),
 		})
@@ -198,10 +202,14 @@ func (api API) CreateCart(storeId string, car *cart.Cart) error {
 func (api API) UpdateCart(storeId string, car *cart.Cart) error {
 	lines := make([]gochimp.LineItem, 0)
 	for _, line := range car.Items {
+		variantId := line.VariantId
+		if variantId == "" {
+			variantId = line.ProductId
+		}
 		lines = append(lines, gochimp.LineItem{
-			ID:               car.Id() + line.VariantId,
+			ID:               car.Id() + line.Id(),
 			ProductID:        line.ProductId,
-			ProductVariantID: line.VariantId,
+			ProductVariantID: variantId,
 			Quantity:         line.Quantity,
 			Price:            float64(line.Price),
 		})
@@ -257,10 +265,14 @@ func (api API) DeleteCart(storeId string, car *cart.Cart) error {
 func (api API) CreateOrder(storeId string, ord *order.Order) error {
 	lines := make([]gochimp.LineItem, 0)
 	for _, line := range ord.Items {
+		variantId := line.VariantId
+		if variantId == "" {
+			variantId = line.ProductId
+		}
 		lines = append(lines, gochimp.LineItem{
 			ID:               ord.Id() + line.Id(),
 			ProductID:        line.ProductId,
-			ProductVariantID: line.VariantId,
+			ProductVariantID: variantId,
 			Quantity:         line.Quantity,
 			Price:            float64(line.Price),
 		})
@@ -309,10 +321,14 @@ func (api API) CreateOrder(storeId string, ord *order.Order) error {
 func (api API) UpdateOrder(storeId string, ord *order.Order) error {
 	lines := make([]gochimp.LineItem, 0)
 	for _, line := range ord.Items {
+		variantId := line.VariantId
+		if variantId == "" {
+			variantId = line.ProductId
+		}
 		lines = append(lines, gochimp.LineItem{
 			ID:               ord.Id() + line.Id(),
 			ProductID:        line.ProductId,
-			ProductVariantID: line.VariantId,
+			ProductVariantID: variantId,
 			Quantity:         line.Quantity,
 			Price:            float64(line.Price),
 		})
