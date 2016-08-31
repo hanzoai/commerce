@@ -15,7 +15,7 @@ const (
 	Stripe Type = "stripe"
 )
 
-type StripeData struct {
+type StripeAccount struct {
 	// note: all times should be in UTC. sadly, the stdlib does not
 	// include a datatype that enforces this
 	DestinationPaymentId string    `json:"destinationPaymentId,omitempty"`
@@ -25,16 +25,16 @@ type StripeData struct {
 	Destination          string    `json:"destination,omitempty"`
 	DeliveryDate         time.Time `json:"deliveryDate,omitempty"`
 	Description          string    `json:"description,omitempty"`
-	Live                 bool      `json:"live,omitempty"`        // see stripe's "livemode" field
-	PaymentType          string    `json:"paymentType,omitempty"` // see stripe's "type" field
+	Live                 bool      `json:"live,omitempty"`        // see Stripe's "livemode" field
+	PaymentType          string    `json:"paymentType,omitempty"` // see Stripe's "type" field
 	FailureCode          string    `json:"failureCode,omitempty"`
 	FailureMessage       string    `json:"failureMessage,omitempty"`
 	ApplicationFee       string    `json:"applicationFee,omitempty"`
 }
 
 // data TransferData = Stripe StripeData | ...
-type TransferData struct {
-	StripeData
+type Account struct {
+	StripeAccount
 }
 
 type Status string
@@ -50,7 +50,7 @@ const (
 
 type Transfer struct {
 	mixin.Model
-	TransferData // see 'Type'
+	Account // see 'Type'
 
 	Amount         currency.Cents `json:"amount"`
 	AmountRefunded currency.Cents `json:"amountRefunded,omitempty"`
