@@ -7,6 +7,7 @@ import (
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/user"
+	stringutil "crowdstart.com/util/strings"
 )
 
 type AuthorizationReq struct {
@@ -53,8 +54,15 @@ func (ar *AuthorizationReq) Payment() (*payment.Payment, error) {
 	pay := ar.Payment_
 	pay.Model.Entity = ar.Payment_
 	pay.Model.Db = ar.Order.Db
-
 	pay.Status = "unpaid"
+
+	// Normalize card number, save last four
+	acct := pay.Account
+	acct.Number = stringutil.StripWhitespace(acct.Number)
+	if len(acct.Number) >= 4 {
+		acct.LastFour = acct.Number[len(acct.Number)-4:]
+	}
+	pay.Account = acct
 
 	// Default all payment types to Stripe for now, although eventually we
 	// should use organization settings
