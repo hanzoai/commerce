@@ -19,18 +19,19 @@ type StripeAccount struct {
 	Id                  string    `json:"transferId,omimtempty"`
 	ApplicationFee      int64     `json:"applicationFee,omitempty"` // FIXME: Apparently not returned by stripe-go?
 	BalanceTransaction  int64     `json:"balanceTransaction,omitempty"`
-	Created             string    `json:"created,omitempty"`
-	DeliveryDate        time.Time `json:"deliveryDate,omitempty"`
+	Created             time.Time `json:"created,omitempty"`
+	Date                time.Time `json:"date,omitempty"`
 	Description         string    `json:"description,omitempty"`
-	DestinationId       string    `json:"destinationId,omitempty"`
+	Destination         string    `json:"destination,omitempty"`
 	DestinationType     string    `json:"destinationType,omitempty"`
 	FailureCode         string    `json:"failureCode,omitempty"`
 	FailureMessage      string    `json:"failureMessage,omitempty"`
 	Live                bool      `json:"live,omitempty"`
 	Reversed            bool      `json:"reversed,omitempty"`
-	SourceId            string    `json:"sourcId,omitempty"`
+	SourceTransaction   string    `json:"sourceTransaction,omitempty"`
 	SourceType          string    `json:"sourceType,omitempty"`
 	StatementDescriptor string    `json:"statementDescriptor,omitempty"`
+	Type                string    `json:"type,omitempty"`
 }
 
 type Account struct {
