@@ -62,9 +62,3 @@ type Transfer struct {
 	Metadata  Map    `json:"metadata" datastore:"-"`
 	Metadata_ string `json:"-" datastore:",noindex"`
 }
-
-// XXXih: the typical lifecycle of a Transfer is as follows:
-// 1. a Transfer is created and stored to datastore; this produces a unique ID
-// 2. the aforementioned unique ID is then used as an "idempotency tag" in all
-//    associated requests to our payment processor
-// 3. ...
