@@ -16,12 +16,22 @@ import (
 	"crowdstart.com/models/store"
 	"crowdstart.com/models/subscriber"
 	"crowdstart.com/models/types/client"
+	"crowdstart.com/models/types/currency"
 	"crowdstart.com/models/user"
 	"crowdstart.com/models/variant"
 	"crowdstart.com/util/log"
 
 	. "crowdstart.com/models"
 )
+
+func centsToFloat(cents currency.Cents, typ currency.Type) float64 {
+	amount := float64(cents)
+	if !typ.IsZeroDecimal() {
+		// Convert cents to dollars
+		amount = amount * 0.01
+	}
+	return amount
+}
 
 func idOrEmail(id, email string) string {
 	if id == "" {
@@ -166,14 +176,14 @@ func (api API) CreateCart(storeId string, car *cart.Cart) error {
 			ProductID:        line.ProductId,
 			ProductVariantID: line.Id(),
 			Quantity:         line.Quantity,
-			Price:            float64(line.Price),
+			Price:            centsToFloat(line.Price, car.Currency),
 		})
 	}
 
 	req := &gochimp.Cart{
 		// Required
 		CurrencyCode: strings.ToUpper(string(car.Currency)),
-		OrderTotal:   float64(car.Total),
+		OrderTotal:   centsToFloat(car.Total, car.Currency),
 		Customer: gochimp.Customer{
 			// Required
 			ID: idOrEmail(car.UserId, car.Email),
@@ -193,7 +203,7 @@ func (api API) CreateCart(storeId string, car *cart.Cart) error {
 
 		// Optional
 		ID:          car.Id(),
-		TaxTotal:    float64(car.Tax),
+		TaxTotal:    centsToFloat(car.Tax, car.Currency),
 		CampaignID:  car.Mailchimp.CampaignId,
 		CheckoutURL: car.Mailchimp.CheckoutUrl,
 	}
@@ -216,14 +226,14 @@ func (api API) UpdateCart(storeId string, car *cart.Cart) error {
 			ProductID:        line.ProductId,
 			ProductVariantID: line.Id(),
 			Quantity:         line.Quantity,
-			Price:            float64(line.Price),
+			Price:            centsToFloat(line.Price, car.Currency),
 		})
 	}
 
 	req := &gochimp.Cart{
 		// Required
 		CurrencyCode: strings.ToUpper(string(car.Currency)),
-		OrderTotal:   float64(car.Total),
+		OrderTotal:   centsToFloat(car.Total, car.Currency),
 		Customer: gochimp.Customer{
 			// Required
 			ID: idOrEmail(car.UserId, car.Email),
@@ -242,7 +252,7 @@ func (api API) UpdateCart(storeId string, car *cart.Cart) error {
 
 		// Optional
 		ID:          car.Id(),
-		TaxTotal:    float64(car.Tax),
+		TaxTotal:    centsToFloat(car.Tax, car.Currency),
 		CampaignID:  car.Mailchimp.CampaignId,
 		CheckoutURL: car.Mailchimp.CheckoutUrl,
 	}
@@ -290,7 +300,7 @@ func (api API) CreateOrder(storeId string, ord *order.Order) error {
 			ProductID:        line.ProductId,
 			ProductVariantID: line.Id(),
 			Quantity:         line.Quantity,
-			Price:            float64(line.Price),
+			Price:            centsToFloat(line.Price, ord.Currency),
 		})
 	}
 
@@ -299,7 +309,7 @@ func (api API) CreateOrder(storeId string, ord *order.Order) error {
 		// Required
 		ID:           ord.Id(),
 		CurrencyCode: strings.ToUpper(string(ord.Currency)),
-		OrderTotal:   float64(ord.Total),
+		OrderTotal:   centsToFloat(ord.Total, ord.Currency),
 		Customer: gochimp.Customer{
 			// Required
 			ID: usr.Id(),
@@ -311,7 +321,7 @@ func (api API) CreateOrder(storeId string, ord *order.Order) error {
 			FirstName:    usr.FirstName,
 			LastName:     usr.LastName,
 			// OrdersCount:  1,
-			// TotalSpent:   float64(ord.Total),
+			// TotalSpent:   centsToFloat(usr.Total, usr.Currency),
 			Address: gochimp.Address{
 				Address1:     ord.ShippingAddress.Line1,
 				Address2:     ord.ShippingAddress.Line2,
@@ -324,8 +334,8 @@ func (api API) CreateOrder(storeId string, ord *order.Order) error {
 		Lines: lines,
 
 		// Optional
-		TaxTotal:          float64(ord.Tax),
-		ShippingTotal:     float64(ord.Shipping),
+		TaxTotal:          centsToFloat(ord.Tax, ord.Currency),
+		ShippingTotal:     centsToFloat(ord.Shipping, ord.Currency),
 		FinancialStatus:   string(ord.PaymentStatus),
 		FulfillmentStatus: string(ord.FulfillmentStatus),
 		CampaignID:        ord.Mailchimp.CampaignId,
@@ -376,7 +386,7 @@ func (api API) UpdateOrder(storeId string, ord *order.Order) error {
 			ProductID:        line.ProductId,
 			ProductVariantID: line.Id(),
 			Quantity:         line.Quantity,
-			Price:            float64(line.Price),
+			Price:            centsToFloat(line.Price, ord.Currency),
 		})
 	}
 
@@ -385,7 +395,7 @@ func (api API) UpdateOrder(storeId string, ord *order.Order) error {
 		// Required
 		ID:           ord.Id(),
 		CurrencyCode: strings.ToUpper(string(ord.Currency)),
-		OrderTotal:   float64(ord.Total),
+		OrderTotal:   centsToFloat(ord.Total, ord.Currency),
 		Customer: gochimp.Customer{
 			// Required
 			ID: usr.Id(),
@@ -397,7 +407,7 @@ func (api API) UpdateOrder(storeId string, ord *order.Order) error {
 			FirstName:    usr.FirstName,
 			LastName:     usr.LastName,
 			// OrdersCount:  1,
-			// TotalSpent:   ord.Total,
+			// TotalSpent:   centsToFloat(usr.Total, usr.Currency),
 			Address: gochimp.Address{
 				Address1:     ord.ShippingAddress.Line1,
 				Address2:     ord.ShippingAddress.Line2,
@@ -410,8 +420,8 @@ func (api API) UpdateOrder(storeId string, ord *order.Order) error {
 		Lines: lines,
 
 		// Optional
-		TaxTotal:          float64(ord.Tax),
-		ShippingTotal:     float64(ord.Shipping),
+		TaxTotal:          centsToFloat(ord.Tax, ord.Currency),
+		ShippingTotal:     centsToFloat(ord.Shipping, ord.Currency),
 		FinancialStatus:   string(ord.PaymentStatus),
 		FulfillmentStatus: string(ord.FulfillmentStatus),
 		CampaignID:        ord.Mailchimp.CampaignId,
@@ -476,7 +486,7 @@ func (api API) CreateProduct(storeId string, prod *product.Product) error {
 
 				// Optional
 				SKU:               prod.Slug,
-				Price:             float64(prod.Price),
+				Price:             centsToFloat(prod.Price, prod.Currency),
 				InventoryQuantity: prod.Inventory,
 				Visibility:        "visible",
 				// Backorders:        "",
@@ -515,7 +525,7 @@ func (api API) UpdateProduct(storeId string, prod *product.Product) error {
 
 				// Optional
 				SKU:               prod.Slug,
-				Price:             float64(prod.Price),
+				Price:             centsToFloat(prod.Price, prod.Currency),
 				InventoryQuantity: prod.Inventory,
 				Visibility:        "visible",
 				// Backorders:        "",
@@ -555,7 +565,7 @@ func (api API) CreateVariant(storeId, productId string, vari *variant.Variant) e
 
 		// Optional
 		SKU:               vari.SKU,
-		Price:             float64(vari.Price),
+		Price:             centsToFloat(vari.Price, vari.Currency),
 		InventoryQuantity: vari.Inventory,
 		Visibility:        "visible",
 		// Backorders:        "",
@@ -587,7 +597,7 @@ func (api API) UpdateVariant(storeId, productId string, vari *variant.Variant) e
 
 		// Optional
 		SKU:               vari.SKU,
-		Price:             float64(vari.Price),
+		Price:             centsToFloat(vari.Price, vari.Currency),
 		InventoryQuantity: vari.Inventory,
 		Visibility:        "visible",
 		// Backorders:        "",
