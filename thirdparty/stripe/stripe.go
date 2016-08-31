@@ -312,10 +312,13 @@ func (c Client) Capture(id string) (*Charge, error) {
 func (c Client) Transfer(tr *transfer.Transfer) (*Transfer, error) {
 	params := &stripe.TransferParams{
 		Amount:   int64(tr.Amount),
+		Dest:     tr.Destination,
 		Currency: stripe.Currency(tr.Currency),
 		Desc:     tr.Description,
-		Fee:      uint64(tr.ApplicationFee),
 	}
+
+	params.AddMeta("affiliate", tr.AffiliateId)
+	params.AddMeta("transfer", tr.Id())
 
 	// Create transfer
 	str, err := c.API.Transfers.New(params)
