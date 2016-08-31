@@ -55,7 +55,8 @@ type Transfer struct {
 	Amount         currency.Cents `json:"amount"`
 	AmountRefunded currency.Cents `json:"amountRefunded,omitempty"`
 
-	Type Type `json:"type"`
+	Type   Type   `json:"type"`
+	Status Status `json:"status"`
 
 	Metadata  Map    `json:"metadata" datastore:"-"`
 	Metadata_ string `json:"-" datastore:"-"`
