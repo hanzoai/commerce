@@ -7,7 +7,7 @@ import (
 	"appengine"
 	"appengine/urlfetch"
 
-	"github.com/zeekay/gochimp/chimp_v3"
+	"github.com/zeekay/gochimp3"
 
 	"crowdstart.com/models/cart"
 	"crowdstart.com/models/mailinglist"
@@ -42,13 +42,13 @@ func idOrEmail(id, email string) string {
 
 type API struct {
 	ctx    appengine.Context
-	client *gochimp.ChimpAPI
+	client *gochimp3.API
 }
 
 func New(ctx appengine.Context, apiKey string) *API {
 	api := new(API)
 	api.ctx = ctx
-	api.client = gochimp.NewChimp(apiKey, true)
+	api.client = gochimp3.New(apiKey)
 	api.client.Transport = &urlfetch.Transport{
 		Context:  ctx,
 		Deadline: time.Duration(60) * time.Second, // Update deadline to 60 seconds
@@ -69,14 +69,14 @@ func (api API) Subscribe(ml *mailinglist.MailingList, s *subscriber.Subscriber) 
 		status = "pending"
 	}
 
-	req := &gochimp.MemberRequest{
+	req := &gochimp3.MemberRequest{
 		EmailAddress: s.Email,
 		Status:       status,
 		MergeFields:  s.MergeFields(),
 		Interests:    make(map[string]interface{}),
 		Language:     s.Client.Language,
 		VIP:          false,
-		Location: gochimp.MemberLocation{
+		Location: gochimp3.MemberLocation{
 			Latitude:    0.0,
 			Longitude:   0.0,
 			GMTOffset:   0,
@@ -108,7 +108,7 @@ func (api API) SubscribeCustomer(listId string, buy Buyer) error {
 }
 
 func (api API) CreateStore(stor *store.Store) error {
-	req := &gochimp.Store{
+	req := &gochimp3.Store{
 		// Required
 		ID:           stor.Id(),
 		ListID:       stor.Mailchimp.ListId, // Immutable after creation
@@ -122,7 +122,7 @@ func (api API) CreateStore(stor *store.Store) error {
 		PrimaryLocale: "en",
 		Timezone:      stor.Timezone,
 		Phone:         stor.Phone,
-		Address: gochimp.Address{
+		Address: gochimp3.Address{
 			Address1:     stor.Address.Line1,
 			Address2:     stor.Address.Line2,
 			City:         stor.Address.City,
@@ -136,7 +136,7 @@ func (api API) CreateStore(stor *store.Store) error {
 }
 
 func (api API) UpdateStore(stor *store.Store) error {
-	req := &gochimp.Store{
+	req := &gochimp3.Store{
 		// Required
 		ID:           stor.Id(),
 		ListID:       stor.Mailchimp.ListId, // Immutable after creation
@@ -150,7 +150,7 @@ func (api API) UpdateStore(stor *store.Store) error {
 		PrimaryLocale: "en",
 		Timezone:      stor.Timezone,
 		Phone:         stor.Phone,
-		Address: gochimp.Address{
+		Address: gochimp3.Address{
 			Address1:     stor.Address.Line1,
 			Address2:     stor.Address.Line2,
 			City:         stor.Address.City,
@@ -169,9 +169,9 @@ func (api API) DeleteStore(stor *store.Store) error {
 }
 
 func (api API) CreateCart(storeId string, car *cart.Cart) error {
-	lines := make([]gochimp.LineItem, 0)
+	lines := make([]gochimp3.LineItem, 0)
 	for _, line := range car.Items {
-		lines = append(lines, gochimp.LineItem{
+		lines = append(lines, gochimp3.LineItem{
 			ID:               car.Id() + line.Id(),
 			ProductID:        line.ProductId,
 			ProductVariantID: line.Id(),
@@ -180,11 +180,11 @@ func (api API) CreateCart(storeId string, car *cart.Cart) error {
 		})
 	}
 
-	req := &gochimp.Cart{
+	req := &gochimp3.Cart{
 		// Required
 		CurrencyCode: strings.ToUpper(string(car.Currency)),
 		OrderTotal:   centsToFloat(car.Total, car.Currency),
-		Customer: gochimp.Customer{
+		Customer: gochimp3.Customer{
 			// Required
 			ID: idOrEmail(car.UserId, car.Email),
 
@@ -196,7 +196,7 @@ func (api API) CreateCart(storeId string, car *cart.Cart) error {
 			// LastName:     "",
 			// OrdersCount:  0,
 			// TotalSpent:   0,
-			// Address:      gochimp.Address{},
+			// Address:      gochimp3.Address{},
 		},
 
 		Lines: lines,
@@ -219,9 +219,9 @@ func (api API) CreateCart(storeId string, car *cart.Cart) error {
 }
 
 func (api API) UpdateCart(storeId string, car *cart.Cart) error {
-	lines := make([]gochimp.LineItem, 0)
+	lines := make([]gochimp3.LineItem, 0)
 	for _, line := range car.Items {
-		lines = append(lines, gochimp.LineItem{
+		lines = append(lines, gochimp3.LineItem{
 			ID:               car.Id() + line.Id(),
 			ProductID:        line.ProductId,
 			ProductVariantID: line.Id(),
@@ -230,11 +230,11 @@ func (api API) UpdateCart(storeId string, car *cart.Cart) error {
 		})
 	}
 
-	req := &gochimp.Cart{
+	req := &gochimp3.Cart{
 		// Required
 		CurrencyCode: strings.ToUpper(string(car.Currency)),
 		OrderTotal:   centsToFloat(car.Total, car.Currency),
-		Customer: gochimp.Customer{
+		Customer: gochimp3.Customer{
 			// Required
 			ID: idOrEmail(car.UserId, car.Email),
 
@@ -246,7 +246,7 @@ func (api API) UpdateCart(storeId string, car *cart.Cart) error {
 			// LastName:     "",
 			// OrdersCount:  0,
 			// TotalSpent:   0,
-			// Address:      gochimp.Address{},
+			// Address:      gochimp3.Address{},
 		},
 		Lines: lines,
 
@@ -293,9 +293,9 @@ func (api API) CreateOrder(storeId string, ord *order.Order) error {
 	}
 
 	// Create line items
-	lines := make([]gochimp.LineItem, 0)
+	lines := make([]gochimp3.LineItem, 0)
 	for _, line := range ord.Items {
-		lines = append(lines, gochimp.LineItem{
+		lines = append(lines, gochimp3.LineItem{
 			ID:               ord.Id() + line.Id(),
 			ProductID:        line.ProductId,
 			ProductVariantID: line.Id(),
@@ -305,12 +305,12 @@ func (api API) CreateOrder(storeId string, ord *order.Order) error {
 	}
 
 	// Create Order
-	req := &gochimp.Order{
+	req := &gochimp3.Order{
 		// Required
 		ID:           ord.Id(),
 		CurrencyCode: strings.ToUpper(string(ord.Currency)),
 		OrderTotal:   centsToFloat(ord.Total, ord.Currency),
-		Customer: gochimp.Customer{
+		Customer: gochimp3.Customer{
 			// Required
 			ID: usr.Id(),
 
@@ -322,7 +322,7 @@ func (api API) CreateOrder(storeId string, ord *order.Order) error {
 			LastName:     usr.LastName,
 			// OrdersCount:  1,
 			// TotalSpent:   centsToFloat(usr.Total, usr.Currency),
-			Address: gochimp.Address{
+			Address: gochimp3.Address{
 				Address1:     ord.ShippingAddress.Line1,
 				Address2:     ord.ShippingAddress.Line2,
 				City:         ord.ShippingAddress.City,
@@ -340,7 +340,7 @@ func (api API) CreateOrder(storeId string, ord *order.Order) error {
 		FulfillmentStatus: string(ord.FulfillmentStatus),
 		CampaignID:        ord.Mailchimp.CampaignId,
 		TrackingCode:      ord.Mailchimp.TrackingCode,
-		BillingAddress: gochimp.Address{
+		BillingAddress: gochimp3.Address{
 			Address1:     ord.BillingAddress.Line1,
 			Address2:     ord.BillingAddress.Line2,
 			City:         ord.BillingAddress.City,
@@ -348,7 +348,7 @@ func (api API) CreateOrder(storeId string, ord *order.Order) error {
 			PostalCode:   ord.BillingAddress.PostalCode,
 			CountryCode:  strings.ToUpper(ord.BillingAddress.Country),
 		},
-		ShippingAddress: gochimp.Address{
+		ShippingAddress: gochimp3.Address{
 			Address1:     ord.ShippingAddress.Line1,
 			Address2:     ord.ShippingAddress.Line2,
 			City:         ord.ShippingAddress.City,
@@ -356,9 +356,9 @@ func (api API) CreateOrder(storeId string, ord *order.Order) error {
 			PostalCode:   ord.ShippingAddress.PostalCode,
 			CountryCode:  strings.ToUpper(ord.ShippingAddress.Country),
 		},
-		ProcessedAtForeign: ord.CreatedAt.Format(time.RFC3339),
-		CancelledAtForeign: ord.CancelledAt.Format(time.RFC3339),
-		UpdatedAtForeign:   ord.UpdatedAt.Format(time.RFC3339),
+		ProcessedAtForeign: ord.CreatedAt,
+		CancelledAtForeign: ord.CancelledAt,
+		UpdatedAtForeign:   ord.UpdatedAt,
 	}
 
 	stor, err := api.client.GetStore(storeId, nil)
@@ -379,9 +379,9 @@ func (api API) UpdateOrder(storeId string, ord *order.Order) error {
 	}
 
 	// Create line items
-	lines := make([]gochimp.LineItem, 0)
+	lines := make([]gochimp3.LineItem, 0)
 	for _, line := range ord.Items {
-		lines = append(lines, gochimp.LineItem{
+		lines = append(lines, gochimp3.LineItem{
 			ID:               ord.Id() + line.Id(),
 			ProductID:        line.ProductId,
 			ProductVariantID: line.Id(),
@@ -391,12 +391,12 @@ func (api API) UpdateOrder(storeId string, ord *order.Order) error {
 	}
 
 	// Create order request
-	req := &gochimp.Order{
+	req := &gochimp3.Order{
 		// Required
 		ID:           ord.Id(),
 		CurrencyCode: strings.ToUpper(string(ord.Currency)),
 		OrderTotal:   centsToFloat(ord.Total, ord.Currency),
-		Customer: gochimp.Customer{
+		Customer: gochimp3.Customer{
 			// Required
 			ID: usr.Id(),
 
@@ -408,7 +408,7 @@ func (api API) UpdateOrder(storeId string, ord *order.Order) error {
 			LastName:     usr.LastName,
 			// OrdersCount:  1,
 			// TotalSpent:   centsToFloat(usr.Total, usr.Currency),
-			Address: gochimp.Address{
+			Address: gochimp3.Address{
 				Address1:     ord.ShippingAddress.Line1,
 				Address2:     ord.ShippingAddress.Line2,
 				City:         ord.ShippingAddress.City,
@@ -426,7 +426,7 @@ func (api API) UpdateOrder(storeId string, ord *order.Order) error {
 		FulfillmentStatus: string(ord.FulfillmentStatus),
 		CampaignID:        ord.Mailchimp.CampaignId,
 		TrackingCode:      ord.Mailchimp.TrackingCode,
-		BillingAddress: gochimp.Address{
+		BillingAddress: gochimp3.Address{
 			Address1:     ord.BillingAddress.Line1,
 			Address2:     ord.BillingAddress.Line2,
 			City:         ord.BillingAddress.City,
@@ -434,7 +434,7 @@ func (api API) UpdateOrder(storeId string, ord *order.Order) error {
 			PostalCode:   ord.BillingAddress.PostalCode,
 			CountryCode:  strings.ToUpper(ord.BillingAddress.Country),
 		},
-		ShippingAddress: gochimp.Address{
+		ShippingAddress: gochimp3.Address{
 			Address1:     ord.ShippingAddress.Line1,
 			Address2:     ord.ShippingAddress.Line2,
 			City:         ord.ShippingAddress.City,
@@ -442,9 +442,9 @@ func (api API) UpdateOrder(storeId string, ord *order.Order) error {
 			PostalCode:   ord.ShippingAddress.PostalCode,
 			CountryCode:  strings.ToUpper(ord.ShippingAddress.Country),
 		},
-		ProcessedAtForeign: ord.CreatedAt.Format(time.RFC3339),
-		CancelledAtForeign: ord.CancelledAt.Format(time.RFC3339),
-		UpdatedAtForeign:   ord.UpdatedAt.Format(time.RFC3339),
+		ProcessedAtForeign: ord.CreatedAt,
+		CancelledAtForeign: ord.CancelledAt,
+		UpdatedAtForeign:   ord.UpdatedAt,
 	}
 
 	stor, err := api.client.GetStore(storeId, nil)
@@ -469,7 +469,7 @@ func (api API) DeleteOrder(storeId string, ord *order.Order) error {
 }
 
 func (api API) CreateProduct(storeId string, prod *product.Product) error {
-	req := &gochimp.Product{
+	req := &gochimp3.Product{
 		ID:          prod.Id(),
 		Title:       prod.Name,
 		Description: prod.Description,
@@ -478,8 +478,8 @@ func (api API) CreateProduct(storeId string, prod *product.Product) error {
 		// Type:        "",
 		// URL:         "",
 		// Vendor:      "",
-		Variants: []gochimp.Variant{
-			gochimp.Variant{
+		Variants: []gochimp3.Variant{
+			gochimp3.Variant{
 				// Required
 				ID:    prod.Id(),
 				Title: prod.Name,
@@ -494,7 +494,7 @@ func (api API) CreateProduct(storeId string, prod *product.Product) error {
 				// Url:               "",
 			},
 		},
-		PublishedAt: prod.CreatedAt.Format(time.RFC3339),
+		PublishedAt: prod.CreatedAt,
 	}
 
 	stor, err := api.client.GetStore(storeId, nil)
@@ -508,7 +508,7 @@ func (api API) CreateProduct(storeId string, prod *product.Product) error {
 }
 
 func (api API) UpdateProduct(storeId string, prod *product.Product) error {
-	req := &gochimp.Product{
+	req := &gochimp3.Product{
 		ID:          prod.Id(),
 		Title:       prod.Name,
 		Description: prod.Description,
@@ -517,8 +517,8 @@ func (api API) UpdateProduct(storeId string, prod *product.Product) error {
 		// Type:        "",
 		// URL:         "",
 		// Vendor:      "",
-		Variants: []gochimp.Variant{
-			gochimp.Variant{
+		Variants: []gochimp3.Variant{
+			gochimp3.Variant{
 				// Required
 				ID:    prod.Id(),
 				Title: prod.Name,
@@ -533,7 +533,7 @@ func (api API) UpdateProduct(storeId string, prod *product.Product) error {
 				// Url:               "",
 			},
 		},
-		PublishedAt: prod.CreatedAt.Format(time.RFC3339),
+		PublishedAt: prod.CreatedAt,
 	}
 
 	stor, err := api.client.GetStore(storeId, nil)
@@ -558,7 +558,7 @@ func (api API) DeleteProduct(storeId string, prod *product.Product) error {
 }
 
 func (api API) CreateVariant(storeId, productId string, vari *variant.Variant) error {
-	req := &gochimp.Variant{
+	req := &gochimp3.Variant{
 		// Required
 		ID:    vari.Id(),
 		Title: vari.Name,
@@ -590,7 +590,7 @@ func (api API) CreateVariant(storeId, productId string, vari *variant.Variant) e
 }
 
 func (api API) UpdateVariant(storeId, productId string, vari *variant.Variant) error {
-	req := &gochimp.Variant{
+	req := &gochimp3.Variant{
 		// Required
 		ID:    vari.Id(),
 		Title: vari.Name,
