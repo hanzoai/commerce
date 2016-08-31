@@ -1,3 +1,3 @@
 package config
 
-var Env = "crowdstart-us"
+var Env = "development"

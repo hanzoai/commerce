@@ -90,7 +90,7 @@ func (sa StripeAccount) CardMatches(acct Account) bool {
 	if sa.Year != acct.Year {
 		return false
 	}
-	if len(acct.Number) > 4 && sa.LastFour != acct.Number[len(acct.Number)-4:] {
+	if len(sa.LastFour) == 4 && sa.LastFour != acct.LastFour {
 		return false
 	}
 	return true
