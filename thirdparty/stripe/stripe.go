@@ -309,19 +309,22 @@ func (c Client) Capture(id string) (*Charge, error) {
 	return (*Charge)(ch), err
 }
 
-func (c Client) Transfer(transfer *transfer.Transfer) (*stripe.Transfer, error) {
-	panic("XXXih: work in progress")
-	destinationId := ""
+func (c Client) Transfer(tr *transfer.Transfer) (*Transfer, error) {
 	params := &stripe.TransferParams{
-		Amount: int64(transfer.Amount),
-		Dest: destinationId,
-		Desc: "Fee payout from <source> to <dest>",
-		
+		Amount:   int64(tr.Amount),
+		Currency: stripe.Currency(tr.Currency),
+		Desc:     tr.Description,
+		Fee:      uint64(tr.ApplicationFee),
 	}
-	params.Params.IdempotencyKey = transfer.Id()
-	s_tr, err := c.API.Transfers.New(params)
+
+	// Create transfer
+	str, err := c.API.Transfers.New(params)
 	if err != nil {
-		return nil, err
+		return nil, errors.New(err)
 	}
-	return s_tr, nil
+
+	t := (*Transfer)(str)
+	UpdateTransferFromStripe(tr, t)
+
+	return t, err
 }
