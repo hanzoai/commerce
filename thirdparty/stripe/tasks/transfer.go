@@ -16,6 +16,8 @@ import (
 func UpdateTransfer(tr *transfer.Transfer, str *stripe.Transfer) {
 	tr.Amount = currency.Cents(str.Amount)
 	tr.AmountReversed = currency.Cents(str.AmountReversed)
+	tr.Currency = currency.Type(str.Currency)
+	tr.Live = str.Live
 
 	tr.Account.ApplicationFee = str.Tx.Fee
 	tr.Account.BalanceTransaction = str.Tx.Amount
@@ -26,7 +28,6 @@ func UpdateTransfer(tr *transfer.Transfer, str *stripe.Transfer) {
 	tr.Account.DestinationType = string(str.Dest.Type)
 	tr.Account.FailureCode = string(str.FailCode)
 	tr.Account.FailureMessage = str.FailMsg
-	tr.Account.Live = str.Live
 	tr.Account.Reversed = str.Reversed
 	tr.Account.SourceTransaction = str.SourceTx.ID
 	tr.Account.SourceType = string(str.SourceType)
