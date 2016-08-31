@@ -277,12 +277,15 @@ func (r Rest) newEntity(c *gin.Context) mixin.Entity {
 
 	// Disable Put/Delete if in test mode
 	if middleware.GetPermissions(c).Has(permission.Test) {
-		model.Mock = true
+		model.Mock = false // force mock off due to testing issues
 	}
 
 	// Set model on entity
 	field := reflect.Indirect(reflect.ValueOf(entity)).FieldByName("Model")
 	field.Set(reflect.ValueOf(model))
+
+	// Initialize entity
+	entity.Init(db)
 
 	return entity
 }
