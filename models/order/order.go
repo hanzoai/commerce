@@ -128,8 +128,7 @@ type Order struct {
 
 	PaymentIds []string `json:"payments"`
 
-	// Date order was processed or cancelled
-	ProcessedAt time.Time `json:"processedAt,omitempty"`
+	// Date order was cancelled at
 	CancelledAt time.Time `json:"cancelledAt,omitempty"`
 
 	// Fulfillment information
