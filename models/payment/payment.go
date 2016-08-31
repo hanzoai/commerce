@@ -148,7 +148,7 @@ type Payment struct {
 	Test bool `json:"-"`
 
 	Metadata  Map    `json:"metadata" datastore:"-"`
-	Metadata_ string `json:"-" datastore:"-"`
+	Metadata_ string `json:"-" datastore:",noindex"`
 }
 
 func (p *Payment) Load(c <-chan aeds.Property) (err error) {
