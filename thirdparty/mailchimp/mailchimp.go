@@ -199,6 +199,11 @@ func (api API) CreateCart(storeId string, car *cart.Cart) error {
 	}
 
 	stor, err := api.client.GetStore(storeId, nil)
+	if err != nil {
+		log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, car.Db.Context)
+		return err
+	}
+
 	_, err = stor.CreateCart(req)
 	return err
 }
@@ -243,6 +248,11 @@ func (api API) UpdateCart(storeId string, car *cart.Cart) error {
 	}
 
 	stor, err := api.client.GetStore(storeId, nil)
+	if err != nil {
+		log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, car.Db.Context)
+		return err
+	}
+
 	_, err = stor.UpdateCart(req)
 	return err
 }
@@ -256,6 +266,11 @@ func (api API) UpdateOrCreateCart(storeId string, car *cart.Cart) error {
 
 func (api API) DeleteCart(storeId string, car *cart.Cart) error {
 	stor, err := api.client.GetStore(storeId, nil)
+	if err != nil {
+		log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, car.Db.Context)
+		return err
+	}
+
 	_, err = stor.DeleteCart(car.Id())
 	return err
 }
@@ -337,6 +352,11 @@ func (api API) CreateOrder(storeId string, ord *order.Order) error {
 	}
 
 	stor, err := api.client.GetStore(storeId, nil)
+	if err != nil {
+		log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, ord.Db.Context)
+		return err
+	}
+
 	_, err = stor.CreateOrder(req)
 	return err
 }
@@ -418,12 +438,22 @@ func (api API) UpdateOrder(storeId string, ord *order.Order) error {
 	}
 
 	stor, err := api.client.GetStore(storeId, nil)
+	if err != nil {
+		log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, ord.Db.Context)
+		return err
+	}
+
 	_, err = stor.UpdateOrder(req)
 	return err
 }
 
 func (api API) DeleteOrder(storeId string, ord *order.Order) error {
 	stor, err := api.client.GetStore(storeId, nil)
+	if err != nil {
+		log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, ord.Db.Context)
+		return err
+	}
+
 	_, err = stor.DeleteOrder(ord.Id())
 	return err
 }
@@ -458,6 +488,11 @@ func (api API) CreateProduct(storeId string, prod *product.Product) error {
 	}
 
 	stor, err := api.client.GetStore(storeId, nil)
+	if err != nil {
+		log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, prod.Db.Context)
+		return err
+	}
+
 	_, err = stor.CreateProduct(req)
 	return err
 }
@@ -492,12 +527,22 @@ func (api API) UpdateProduct(storeId string, prod *product.Product) error {
 	}
 
 	stor, err := api.client.GetStore(storeId, nil)
+	if err != nil {
+		log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, prod.Db.Context)
+		return err
+	}
+
 	_, err = stor.UpdateProduct(req)
 	return err
 }
 
 func (api API) DeleteProduct(storeId string, prod *product.Product) error {
 	stor, err := api.client.GetStore(storeId, nil)
+	if err != nil {
+		log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, prod.Db.Context)
+		return err
+	}
+
 	_, err = stor.DeleteProduct(prod.Id())
 	return err
 }
@@ -519,7 +564,17 @@ func (api API) CreateVariant(storeId, productId string, vari *variant.Variant) e
 	}
 
 	stor, err := api.client.GetStore(storeId, nil)
+	if err != nil {
+		log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, vari.Db.Context)
+		return err
+	}
+
 	prod, err := stor.GetProduct(productId, nil)
+	if err != nil {
+		log.Warn("Unable to get mailchimp product '%s': %v", productId, err, vari.Db.Context)
+		return err
+	}
+
 	_, err = prod.CreateVariant(req)
 	return err
 }
@@ -541,14 +596,34 @@ func (api API) UpdateVariant(storeId, productId string, vari *variant.Variant) e
 	}
 
 	stor, err := api.client.GetStore(storeId, nil)
+	if err != nil {
+		log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, vari.Db.Context)
+		return err
+	}
+
 	prod, err := stor.GetProduct(productId, nil)
+	if err != nil {
+		log.Warn("Unable to get mailchimp product '%s': %v", productId, err, vari.Db.Context)
+		return err
+	}
+
 	_, err = prod.UpdateVariant(req)
 	return err
 }
 
 func (api API) DeleteVariant(storeId, productId string, vari *variant.Variant) error {
 	stor, err := api.client.GetStore(storeId, nil)
+	if err != nil {
+		log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, vari.Db.Context)
+		return err
+	}
+
 	prod, err := stor.GetProduct(productId, nil)
+	if err != nil {
+		log.Warn("Unable to get mailchimp product '%s': %v", productId, err, vari.Db.Context)
+		return err
+	}
+
 	_, err = prod.DeleteVariant(vari.Id())
 	return err
 }
