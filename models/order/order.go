@@ -239,7 +239,7 @@ func (o *Order) Save(c chan<- aeds.Property) (err error) {
 	return IgnoreFieldMismatch(aeds.SaveStruct(o, c))
 }
 
-func (o *Order) AddPlatformFee(percent float64, fees []*fee.Fee) {
+func (o *Order) AddPlatformFee(percent float64, fees []*fee.Fee) []*fee.Fee {
 	// Default platform fee config.Fee if percent is not provided
 	if percent <= 0 {
 		percent = config.Fee
@@ -251,12 +251,12 @@ func (o *Order) AddPlatformFee(percent float64, fees []*fee.Fee) {
 	fe.Currency = o.Currency
 	fe.Amount = currency.Cents(math.Ceil(float64(o.Total) * percent)) // Round up for platform fee
 
-	fees = append(fees, fe)
+	return append(fees, fe)
 }
 
-func (o *Order) AddPartnerFee(partnerId string, fees []*fee.Fee) error {
+func (o *Order) AddPartnerFee(partnerId string, fees []*fee.Fee) ([]*fee.Fee, error) {
 	if partnerId == "" {
-		return nil
+		return fees, nil
 	}
 
 	// Add partner fee
@@ -266,30 +266,30 @@ func (o *Order) AddPartnerFee(partnerId string, fees []*fee.Fee) error {
 	// fe.Amount = currency.Cents(math.Floor(float64(o.Total) * partner.Commission.Percent))
 
 	// fees = append(fees, fe)
-	return nil
+	return fees, nil
 }
 
-func (o *Order) AddAffiliateFee(fees []*fee.Fee) error {
+func (o *Order) AddAffiliateFee(fees []*fee.Fee) ([]*fee.Fee, error) {
 	if o.ReferrerId == "" {
 		// No referrer, no need to check affiliate
-		return nil
+		return fees, nil
 	}
 
 	// Lookup referrer
 	ref := referrer.New(o.Db)
 	if err := ref.GetById(o.ReferrerId); err != nil {
-		return err
+		return fees, err
 	}
 
 	if ref.AffiliateId == "" {
 		// No affiliate, no fee
-		return nil
+		return fees, nil
 	}
 
 	// Lookup affiliate
 	aff := affiliate.New(o.Db)
 	if err := aff.GetById(ref.AffiliateId); err != nil {
-		return err
+		return fees, err
 	}
 
 	// Compute new fee based on affiliate comission
@@ -298,9 +298,7 @@ func (o *Order) AddAffiliateFee(fees []*fee.Fee) error {
 	fe.Currency = o.Currency
 	fe.Amount = currency.Cents(math.Floor(float64(o.Total) * aff.Commission.Percent))
 
-	fees = append(fees, fe)
-
-	return nil
+	return append(fees, fe), nil
 }
 
 func (o *Order) CalculateFee(platformFee float64, partnerId string) (currency.Cents, []*fee.Fee, error) {
@@ -308,15 +306,15 @@ func (o *Order) CalculateFee(platformFee float64, partnerId string) (currency.Ce
 	total := currency.Cents(0)
 
 	// Add platform fee
-	o.AddPlatformFee(platformFee, fees)
+	fees = o.AddPlatformFee(platformFee, fees)
 
 	// Add Partner fee
-	if err := o.AddPartnerFee(partnerId, fees); err != nil {
+	if fees, err := o.AddPartnerFee(partnerId, fees); err != nil {
 		return total, fees, err
 	}
 
 	// Add Affiliate fee
-	if err := o.AddAffiliateFee(fees); err != nil {
+	if fees, err := o.AddAffiliateFee(fees); err != nil {
 		return total, fees, err
 	}
 
