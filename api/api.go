@@ -16,6 +16,7 @@ import (
 	"crowdstart.com/models/subscriber"
 	"crowdstart.com/models/token"
 	"crowdstart.com/models/transaction"
+	"crowdstart.com/models/transfer"
 	"crowdstart.com/models/user"
 	"crowdstart.com/models/variant"
 	"crowdstart.com/util/rest"
@@ -33,11 +34,11 @@ import (
 	namespaceApi "crowdstart.com/api/namespace"
 	orderApi "crowdstart.com/api/order"
 	organizationApi "crowdstart.com/api/organization"
+	periodicApi "crowdstart.com/api/periodic"
 	searchApi "crowdstart.com/api/search"
 	storeApi "crowdstart.com/api/store"
 	userApi "crowdstart.com/api/user"
 	xdApi "crowdstart.com/api/xd"
-	periodicApi "crowdstart.com/api/periodic"
 
 	paypalApi "crowdstart.com/thirdparty/paypal/ipn"
 	shipstationApi "crowdstart.com/thirdparty/shipstation"
@@ -80,6 +81,7 @@ func init() {
 	rest.New(submission.Submission{}).Route(api, tokenRequired)
 	rest.New(subscriber.Subscriber{}).Route(api, tokenRequired)
 	rest.New(transaction.Transaction{}).Route(api, tokenRequired)
+	rest.New(transfer.Transfer{}).Route(api, tokenRequired)
 	rest.New(variant.Variant{}).Route(api, tokenRequired)
 
 	paymentApi := rest.New(payment.Payment{})
