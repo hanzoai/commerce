@@ -74,8 +74,7 @@ coffee	 = node_modules/.bin/coffee
 uglifyjs = node_modules/.bin/uglifyjs
 
 requisite	   = node_modules/.bin/requisite -g
-requisite_opts = --no-source-map \
-				 assets/js/store/store.coffee \
+requisite_opts = assets/js/store/store.coffee \
 				 assets/js/api/api.coffee \
 				 assets/js/platform/platform.coffee \
 				 node_modules/crowdstart.js/src/index.coffee \
@@ -178,7 +177,7 @@ assets-min: deps-assets compile-css-min compile-js-min
 compile-js:
 	$(requisite) $(requisite_opts)
 	$(coffee) -bc -o static/js assets/js/api/mailinglist.coffee
-	$(requisite) --no-source-map node_modules/crowdstart-analytics/lib/index.js -o static/js/analytics/analytics.js
+	$(requisite) node_modules/crowdstart-analytics/lib/index.js -o static/js/analytics/analytics.js
 	cp node_modules/crowdstart-analytics/lib/snippet.js static/js/analytics
 	cp node_modules/crowdstart-analytics/lib/bundle.js static/js/analytics
 
