@@ -19,17 +19,19 @@ func UpdateTransfer(tr *transfer.Transfer, str *stripe.Transfer) {
 
 	tr.Account.ApplicationFee = str.Tx.Fee
 	tr.Account.BalanceTransaction = str.Tx.Amount
-	tr.Account.DeliveryDate = time.Unix(str.Date, 0)
+	tr.Account.Date = time.Unix(str.Date, 0)
+	tr.Account.Created = time.Unix(str.Date, 0)
 	tr.Account.Description = str.Desc
-	tr.Account.DestinationId = str.Dest.ID
+	tr.Account.Destination = str.Dest.ID
 	tr.Account.DestinationType = string(str.Dest.Type)
 	tr.Account.FailureCode = string(str.FailCode)
 	tr.Account.FailureMessage = str.FailMsg
 	tr.Account.Live = str.Live
 	tr.Account.Reversed = str.Reversed
-	tr.Account.SourceId = str.SourceTx.ID
+	tr.Account.SourceTransaction = str.SourceTx.ID
 	tr.Account.SourceType = string(str.SourceType)
 	tr.Account.StatementDescriptor = str.Statement
+	tr.Account.Type = string(str.Type)
 
 	switch str.Status {
 	case "paid":
