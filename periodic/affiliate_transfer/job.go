@@ -3,7 +3,8 @@ package affiliate_transfer
 import (
 	"github.com/gin-gonic/gin"
 	"crowdstart.com/models/transfer"
-	"crowdstart.com/datastore/datastore"
+	"crowdstart.com/models/fee"
+	"crowdstart.com/datastore"
 )
 
 func getEligiblePayouts() {
@@ -18,10 +19,13 @@ func transferToDestination() {
 //    associated requests to our payment processor
 // 3. ...
 func Run(c *gin.Context) {
-	panic('XXXih: work in progress')
-	tr := transfer.New(datastore.New(c))
+	panic("XXXih: work in progress")
+	ds := datastore.New(c)
+	tr := transfer.New(ds)
 	tr.Defaults()
 
-	idempotencyTag := tr.Id()
-	err := tr.MustCreate()
+	tr.MustCreate()
+
+	q := ds.Query(fee.Fee{}.Kind())
+	q.Filter("TransferId =", "")
 }
