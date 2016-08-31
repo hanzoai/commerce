@@ -65,6 +65,14 @@ func Webhook(c *gin.Context) {
 			start := time.Now()
 			tasks.DisputeSync.Call(ctx, org.Name, token, dispute, start)
 		}
+	case "transfer.created", "transfer.failed", "transfer.paid", "transfer.reversed", "transfer.updated":
+		transfer := stripe.Transfer{}
+		if err := json.Unmarshal(event.Data.Raw, &transfer); err != nil {
+			log.Error("Failed to unmarshal stripe.Transfer %#v: %v", event, err, c)
+		} else {
+			start := time.Now()
+			tasks.TransferSync.Call(ctx, org.Name, token, transfer, start)
+		}
 	case "ping":
 		c.String(200, "pong")
 		return
