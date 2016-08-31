@@ -128,7 +128,7 @@ func ShipNotify(c *gin.Context) {
 
 	ord.FulfillmentStatus = "shipped"
 	ord.Fulfillment.TrackingNumber = req.TrackingNumber
-	ord.Fulfillment.CreatedAt = parseTime(req.LabelCreateDate)
+	ord.ProcessedAt = parseTime(req.LabelCreateDate)
 	ord.Fulfillment.ShippedAt = parseDate(req.ShipDate)
 	ord.Fulfillment.Service = req.Service
 	ord.Fulfillment.Carrier = req.Carrier
