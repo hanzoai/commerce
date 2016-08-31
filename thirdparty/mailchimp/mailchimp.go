@@ -1,17 +1,34 @@
 package mailchimp
 
 import (
+	"strings"
 	"time"
 
 	"appengine"
 	"appengine/urlfetch"
 
-	"github.com/rybit/gochimp/chimp_v3"
+	"github.com/zeekay/gochimp/chimp_v3"
 
+	"crowdstart.com/models/cart"
 	"crowdstart.com/models/mailinglist"
+	"crowdstart.com/models/order"
+	"crowdstart.com/models/product"
+	"crowdstart.com/models/store"
 	"crowdstart.com/models/subscriber"
+	"crowdstart.com/models/types/client"
+	"crowdstart.com/models/user"
+	"crowdstart.com/models/variant"
 	"crowdstart.com/util/log"
+
+	. "crowdstart.com/models"
 )
+
+func idOrEmail(id, email string) string {
+	if id == "" {
+		return email
+	}
+	return id
+}
 
 type API struct {
 	ctx    appengine.Context
@@ -26,11 +43,12 @@ func New(ctx appengine.Context, apiKey string) *API {
 		Context:  ctx,
 		Deadline: time.Duration(60) * time.Second, // Update deadline to 60 seconds
 	}
+	api.client.Debug = true
 	return api
 }
 
 func (api API) Subscribe(ml *mailinglist.MailingList, s *subscriber.Subscriber) error {
-	list, err := api.client.GetList(ml.Mailchimp.Id, nil)
+	list, err := api.client.GetList(ml.Mailchimp.ListId, nil)
 	if err != nil {
 		log.Error("Failed to subscribe %v: %v", s, err, api.ctx)
 		return err
@@ -53,7 +71,7 @@ func (api API) Subscribe(ml *mailinglist.MailingList, s *subscriber.Subscriber) 
 			Longitude:   0.0,
 			GMTOffset:   0,
 			DSTOffset:   0,
-			CountryCode: s.Client.Country,
+			CountryCode: strings.ToUpper(s.Client.Country),
 			Timezone:    "",
 		},
 	}
@@ -64,4 +82,473 @@ func (api API) Subscribe(ml *mailinglist.MailingList, s *subscriber.Subscriber) 
 		return err
 	}
 	return nil
+}
+
+func (api API) SubscribeCustomer(listId string, buy Buyer) error {
+	ml := new(mailinglist.MailingList)
+	ml.Mailchimp.ListId = listId
+	s := &subscriber.Subscriber{
+		Email:  buy.Email,
+		UserId: idOrEmail(buy.UserId, buy.Email),
+		Client: client.Client{
+			Country: buy.Address.Country,
+		},
+	}
+	return api.Subscribe(ml, s)
+}
+
+func (api API) CreateStore(stor *store.Store) error {
+	req := &gochimp.Store{
+		// Required
+		ID:           stor.Id(),
+		ListID:       stor.Mailchimp.ListId, // Immutable after creation
+		Name:         stor.Name,
+		CurrencyCode: strings.ToUpper(string(stor.Currency)),
+
+		// Optional
+		Platform:      "Hanzo",
+		Domain:        stor.Domain,
+		EmailAddress:  stor.Email,
+		PrimaryLocale: "en",
+		Timezone:      stor.Timezone,
+		Phone:         stor.Phone,
+		Address: gochimp.Address{
+			Address1:     stor.Address.Line1,
+			Address2:     stor.Address.Line2,
+			City:         stor.Address.City,
+			ProvinceCode: stor.Address.State,
+			PostalCode:   stor.Address.PostalCode,
+			CountryCode:  strings.ToUpper(stor.Address.Country),
+		},
+	}
+	_, err := api.client.CreateStore(req)
+	return err
+}
+
+func (api API) UpdateStore(stor *store.Store) error {
+	req := &gochimp.Store{
+		// Required
+		ID:           stor.Id(),
+		ListID:       stor.Mailchimp.ListId, // Immutable after creation
+		Name:         stor.Name,
+		CurrencyCode: strings.ToUpper(string(stor.Currency)),
+
+		// Optional
+		Platform:      "Hanzo",
+		Domain:        stor.Domain,
+		EmailAddress:  stor.Email,
+		PrimaryLocale: "en",
+		Timezone:      stor.Timezone,
+		Phone:         stor.Phone,
+		Address: gochimp.Address{
+			Address1:     stor.Address.Line1,
+			Address2:     stor.Address.Line2,
+			City:         stor.Address.City,
+			ProvinceCode: stor.Address.State,
+			PostalCode:   stor.Address.PostalCode,
+			CountryCode:  strings.ToUpper(stor.Address.Country),
+		},
+	}
+	_, err := api.client.UpdateStore(req)
+	return err
+}
+
+func (api API) DeleteStore(stor *store.Store) error {
+	_, err := api.client.DeleteStore(stor.Id())
+	return err
+}
+
+func (api API) CreateCart(storeId string, car *cart.Cart) error {
+	lines := make([]gochimp.LineItem, 0)
+	for _, line := range car.Items {
+		lines = append(lines, gochimp.LineItem{
+			ID:               car.Id() + line.Id(),
+			ProductID:        line.ProductId,
+			ProductVariantID: line.Id(),
+			Quantity:         line.Quantity,
+			Price:            float64(line.Price),
+		})
+	}
+
+	req := &gochimp.Cart{
+		// Required
+		CurrencyCode: strings.ToUpper(string(car.Currency)),
+		OrderTotal:   float64(car.Total),
+		Customer: gochimp.Customer{
+			// Required
+			ID: idOrEmail(car.UserId, car.Email),
+
+			// Optional
+			EmailAddress: car.Email,
+			OptInStatus:  true,
+			Company:      car.Company,
+			// FirstName:    "",
+			// LastName:     "",
+			// OrdersCount:  0,
+			// TotalSpent:   0,
+			// Address:      gochimp.Address{},
+		},
+
+		Lines: lines,
+
+		// Optional
+		ID:          car.Id(),
+		TaxTotal:    float64(car.Tax),
+		CampaignID:  car.Mailchimp.CampaignId,
+		CheckoutURL: car.Mailchimp.CheckoutUrl,
+	}
+
+	stor, err := api.client.GetStore(storeId, nil)
+	_, err = stor.CreateCart(req)
+	return err
+}
+
+func (api API) UpdateCart(storeId string, car *cart.Cart) error {
+	lines := make([]gochimp.LineItem, 0)
+	for _, line := range car.Items {
+		lines = append(lines, gochimp.LineItem{
+			ID:               car.Id() + line.Id(),
+			ProductID:        line.ProductId,
+			ProductVariantID: line.Id(),
+			Quantity:         line.Quantity,
+			Price:            float64(line.Price),
+		})
+	}
+
+	req := &gochimp.Cart{
+		// Required
+		CurrencyCode: strings.ToUpper(string(car.Currency)),
+		OrderTotal:   float64(car.Total),
+		Customer: gochimp.Customer{
+			// Required
+			ID: idOrEmail(car.UserId, car.Email),
+
+			// Optional
+			EmailAddress: car.Email,
+			OptInStatus:  true,
+			Company:      car.Company,
+			// FirstName:    "",
+			// LastName:     "",
+			// OrdersCount:  0,
+			// TotalSpent:   0,
+			// Address:      gochimp.Address{},
+		},
+		Lines: lines,
+
+		// Optional
+		ID:          car.Id(),
+		TaxTotal:    float64(car.Tax),
+		CampaignID:  car.Mailchimp.CampaignId,
+		CheckoutURL: car.Mailchimp.CheckoutUrl,
+	}
+
+	stor, err := api.client.GetStore(storeId, nil)
+	_, err = stor.UpdateCart(req)
+	return err
+}
+
+func (api API) UpdateOrCreateCart(storeId string, car *cart.Cart) error {
+	if err := api.UpdateCart(storeId, car); err != nil {
+		return api.CreateCart(storeId, car)
+	}
+	return nil
+}
+
+func (api API) DeleteCart(storeId string, car *cart.Cart) error {
+	stor, err := api.client.GetStore(storeId, nil)
+	_, err = stor.DeleteCart(car.Id())
+	return err
+}
+
+func (api API) CreateOrder(storeId string, ord *order.Order) error {
+	// Fetch user
+	usr := user.New(ord.Db)
+	if err := usr.GetById(ord.UserId); err != nil {
+		return err
+	}
+
+	// Create line items
+	lines := make([]gochimp.LineItem, 0)
+	for _, line := range ord.Items {
+		lines = append(lines, gochimp.LineItem{
+			ID:               ord.Id() + line.Id(),
+			ProductID:        line.ProductId,
+			ProductVariantID: line.Id(),
+			Quantity:         line.Quantity,
+			Price:            float64(line.Price),
+		})
+	}
+
+	// Create Order
+	req := &gochimp.Order{
+		// Required
+		ID:           ord.Id(),
+		CurrencyCode: strings.ToUpper(string(ord.Currency)),
+		OrderTotal:   float64(ord.Total),
+		Customer: gochimp.Customer{
+			// Required
+			ID: usr.Id(),
+
+			// Optional
+			EmailAddress: usr.Email,
+			OptInStatus:  true,
+			Company:      ord.Company,
+			FirstName:    usr.FirstName,
+			LastName:     usr.LastName,
+			// OrdersCount:  1,
+			// TotalSpent:   float64(ord.Total),
+			Address: gochimp.Address{
+				Address1:     ord.ShippingAddress.Line1,
+				Address2:     ord.ShippingAddress.Line2,
+				City:         ord.ShippingAddress.City,
+				ProvinceCode: ord.ShippingAddress.State,
+				PostalCode:   ord.ShippingAddress.PostalCode,
+				CountryCode:  strings.ToUpper(ord.ShippingAddress.Country),
+			},
+		},
+		Lines: lines,
+
+		// Optional
+		TaxTotal:          float64(ord.Tax),
+		ShippingTotal:     float64(ord.Shipping),
+		FinancialStatus:   string(ord.PaymentStatus),
+		FulfillmentStatus: string(ord.FulfillmentStatus),
+		CampaignID:        ord.Mailchimp.CampaignId,
+		TrackingCode:      ord.Mailchimp.TrackingCode,
+		BillingAddress: gochimp.Address{
+			Address1:     ord.BillingAddress.Line1,
+			Address2:     ord.BillingAddress.Line2,
+			City:         ord.BillingAddress.City,
+			ProvinceCode: ord.BillingAddress.State,
+			PostalCode:   ord.BillingAddress.PostalCode,
+			CountryCode:  strings.ToUpper(ord.BillingAddress.Country),
+		},
+		ShippingAddress: gochimp.Address{
+			Address1:     ord.ShippingAddress.Line1,
+			Address2:     ord.ShippingAddress.Line2,
+			City:         ord.ShippingAddress.City,
+			ProvinceCode: ord.ShippingAddress.State,
+			PostalCode:   ord.ShippingAddress.PostalCode,
+			CountryCode:  strings.ToUpper(ord.ShippingAddress.Country),
+		},
+		ProcessedAtForeign: ord.ProcessedAt.Format(time.RFC3339),
+		CancelledAtForeign: ord.CancelledAt.Format(time.RFC3339),
+		UpdatedAtForeign:   ord.UpdatedAt.Format(time.RFC3339),
+	}
+
+	stor, err := api.client.GetStore(storeId, nil)
+	_, err = stor.CreateOrder(req)
+	return err
+}
+
+func (api API) UpdateOrder(storeId string, ord *order.Order) error {
+	// Fetch user
+	usr := user.New(ord.Db)
+	if err := usr.GetById(ord.UserId); err != nil {
+		return err
+	}
+
+	// Create line items
+	lines := make([]gochimp.LineItem, 0)
+	for _, line := range ord.Items {
+		lines = append(lines, gochimp.LineItem{
+			ID:               ord.Id() + line.Id(),
+			ProductID:        line.ProductId,
+			ProductVariantID: line.Id(),
+			Quantity:         line.Quantity,
+			Price:            float64(line.Price),
+		})
+	}
+
+	// Create order request
+	req := &gochimp.Order{
+		// Required
+		ID:           ord.Id(),
+		CurrencyCode: strings.ToUpper(string(ord.Currency)),
+		OrderTotal:   float64(ord.Total),
+		Customer: gochimp.Customer{
+			// Required
+			ID: usr.Id(),
+
+			// Optional
+			EmailAddress: usr.Email,
+			OptInStatus:  true,
+			Company:      ord.Company,
+			FirstName:    usr.FirstName,
+			LastName:     usr.LastName,
+			// OrdersCount:  1,
+			// TotalSpent:   ord.Total,
+			Address: gochimp.Address{
+				Address1:     ord.ShippingAddress.Line1,
+				Address2:     ord.ShippingAddress.Line2,
+				City:         ord.ShippingAddress.City,
+				ProvinceCode: ord.ShippingAddress.State,
+				PostalCode:   ord.ShippingAddress.PostalCode,
+				CountryCode:  strings.ToUpper(ord.ShippingAddress.Country),
+			},
+		},
+		Lines: lines,
+
+		// Optional
+		TaxTotal:          float64(ord.Tax),
+		ShippingTotal:     float64(ord.Shipping),
+		FinancialStatus:   string(ord.PaymentStatus),
+		FulfillmentStatus: string(ord.FulfillmentStatus),
+		CampaignID:        ord.Mailchimp.CampaignId,
+		TrackingCode:      ord.Mailchimp.TrackingCode,
+		BillingAddress: gochimp.Address{
+			Address1:     ord.BillingAddress.Line1,
+			Address2:     ord.BillingAddress.Line2,
+			City:         ord.BillingAddress.City,
+			ProvinceCode: ord.BillingAddress.State,
+			PostalCode:   ord.BillingAddress.PostalCode,
+			CountryCode:  strings.ToUpper(ord.BillingAddress.Country),
+		},
+		ShippingAddress: gochimp.Address{
+			Address1:     ord.ShippingAddress.Line1,
+			Address2:     ord.ShippingAddress.Line2,
+			City:         ord.ShippingAddress.City,
+			ProvinceCode: ord.ShippingAddress.State,
+			PostalCode:   ord.ShippingAddress.PostalCode,
+			CountryCode:  strings.ToUpper(ord.ShippingAddress.Country),
+		},
+		ProcessedAtForeign: ord.ProcessedAt.Format(time.RFC3339),
+		CancelledAtForeign: ord.CancelledAt.Format(time.RFC3339),
+		UpdatedAtForeign:   ord.UpdatedAt.Format(time.RFC3339),
+	}
+
+	stor, err := api.client.GetStore(storeId, nil)
+	_, err = stor.UpdateOrder(req)
+	return err
+}
+
+func (api API) DeleteOrder(storeId string, ord *order.Order) error {
+	stor, err := api.client.GetStore(storeId, nil)
+	_, err = stor.DeleteOrder(ord.Id())
+	return err
+}
+
+func (api API) CreateProduct(storeId string, prod *product.Product) error {
+	req := &gochimp.Product{
+		ID:          prod.Id(),
+		Title:       prod.Name,
+		Description: prod.Description,
+		// Handle:      "",
+		// ImageURL:    "",
+		// Type:        "",
+		// URL:         "",
+		// Vendor:      "",
+		Variants: []gochimp.Variant{
+			gochimp.Variant{
+				// Required
+				ID:    prod.Id(),
+				Title: prod.Name,
+
+				// Optional
+				SKU:               prod.Slug,
+				Price:             float64(prod.Price),
+				InventoryQuantity: prod.Inventory,
+				Visibility:        "visible",
+				// Backorders:        "",
+				// ImageUrl:          "",
+				// Url:               "",
+			},
+		},
+		PublishedAt: prod.CreatedAt.Format(time.RFC3339),
+	}
+
+	stor, err := api.client.GetStore(storeId, nil)
+	_, err = stor.CreateProduct(req)
+	return err
+}
+
+func (api API) UpdateProduct(storeId string, prod *product.Product) error {
+	req := &gochimp.Product{
+		ID:          prod.Id(),
+		Title:       prod.Name,
+		Description: prod.Description,
+		// Handle:      "",
+		// ImageURL:    "",
+		// Type:        "",
+		// URL:         "",
+		// Vendor:      "",
+		Variants: []gochimp.Variant{
+			gochimp.Variant{
+				// Required
+				ID:    prod.Id(),
+				Title: prod.Name,
+
+				// Optional
+				SKU:               prod.Slug,
+				Price:             float64(prod.Price),
+				InventoryQuantity: prod.Inventory,
+				Visibility:        "visible",
+				// Backorders:        "",
+				// ImageUrl:          "",
+				// Url:               "",
+			},
+		},
+		PublishedAt: prod.CreatedAt.Format(time.RFC3339),
+	}
+
+	stor, err := api.client.GetStore(storeId, nil)
+	_, err = stor.UpdateProduct(req)
+	return err
+}
+
+func (api API) DeleteProduct(storeId string, prod *product.Product) error {
+	stor, err := api.client.GetStore(storeId, nil)
+	_, err = stor.DeleteProduct(prod.Id())
+	return err
+}
+
+func (api API) CreateVariant(storeId, productId string, vari *variant.Variant) error {
+	req := &gochimp.Variant{
+		// Required
+		ID:    vari.Id(),
+		Title: vari.Name,
+
+		// Optional
+		SKU:               vari.SKU,
+		Price:             float64(vari.Price),
+		InventoryQuantity: vari.Inventory,
+		Visibility:        "visible",
+		// Backorders:        "",
+		// ImageUrl:          "",
+		// Url:               "",
+	}
+
+	stor, err := api.client.GetStore(storeId, nil)
+	prod, err := stor.GetProduct(productId, nil)
+	_, err = prod.CreateVariant(req)
+	return err
+}
+
+func (api API) UpdateVariant(storeId, productId string, vari *variant.Variant) error {
+	req := &gochimp.Variant{
+		// Required
+		ID:    vari.Id(),
+		Title: vari.Name,
+
+		// Optional
+		SKU:               vari.SKU,
+		Price:             float64(vari.Price),
+		InventoryQuantity: vari.Inventory,
+		Visibility:        "visible",
+		// Backorders:        "",
+		// ImageUrl:          "",
+		// Url:               "",
+	}
+
+	stor, err := api.client.GetStore(storeId, nil)
+	prod, err := stor.GetProduct(productId, nil)
+	_, err = prod.UpdateVariant(req)
+	return err
+}
+
+func (api API) DeleteVariant(storeId, productId string, vari *variant.Variant) error {
+	stor, err := api.client.GetStore(storeId, nil)
+	prod, err := stor.GetProduct(productId, nil)
+	_, err = prod.DeleteVariant(vari.Id())
+	return err
 }

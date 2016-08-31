@@ -20,10 +20,9 @@ func (o *Organization) Defaults() {
 }
 
 func New(db *datastore.Datastore) *Organization {
-	r := new(Organization)
-	r.Init(db)
-	r.Defaults()
-	return r
+	o := new(Organization)
+	o.Init(db)
+	return o
 }
 
 func Query(db *datastore.Datastore) *mixin.Query {

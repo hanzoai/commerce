@@ -19,7 +19,6 @@ type Fulfillment struct {
 	Carrier        string         `json:"carrier"`
 	Service        string         `json:"service"`
 	TrackingNumber string         `json:"trackingNumber"`
-	CreatedAt      time.Time      `json:"createdAt"`
 	ShippedAt      time.Time      `json:"shippedAt"`
 	Cost           currency.Cents `json:"cost"`
 }

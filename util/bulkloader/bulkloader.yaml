@@ -462,8 +462,8 @@ transformers:
     - property: CreatedAt
       external_name: CreatedAt
       # Type: Date/Time Stats: 2 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
 
     - property: Description
       external_name: Description
@@ -530,8 +530,8 @@ transformers:
     - property: UpdatedAt
       external_name: UpdatedAt
       # Type: Date/Time Stats: 2 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
 
     - property: VideoOverlayUrl
       external_name: VideoOverlayUrl
@@ -559,14 +559,14 @@ transformers:
     - property: Availability.EndDate
       external_name: Availability.EndDate
       # Type: Date/Time Stats: 1 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
 
     - property: Availability.StartDate
       external_name: Availability.StartDate
       # Type: Date/Time Stats: 1 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
 
     - property: Available
       external_name: Available
@@ -576,8 +576,8 @@ transformers:
     - property: CreatedAt
       external_name: CreatedAt
       # Type: Date/Time Stats: 1 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
 
     - property: Description
       external_name: Description
@@ -614,8 +614,8 @@ transformers:
     - property: UpdatedAt
       external_name: UpdatedAt
       # Type: Date/Time Stats: 1 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
 
 
 - kind: coupon
@@ -1308,8 +1308,8 @@ transformers:
     - property: StartDate
       external_name: StartDate
       # Type: Date/Time Stats: 2 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
 
     - property: ThankYou.HTML
       external_name: ThankYou.HTML
@@ -1461,9 +1461,6 @@ transformers:
     - property: UpdatedAt
       external_name: UpdatedAt
       # Type: Date/Time Stats: 11 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
-
 
 - kind: namespace
   connector: csv # TODO: Choose a connector here: csv, simplexml, etc...
@@ -1664,21 +1661,6 @@ transformers:
 
     - property: Currency
       external_name: Currency
-      # Type: String Stats: 41662 properties of this type in this kind.
-
-    - property: Deleted
-      external_name: Deleted
-      # Type: Boolean Stats: 41662 properties of this type in this kind.
-      import_transform: transform.regexp_bool('true', re.IGNORECASE)
-
-    - property: Discount
-      external_name: Discount
-      # Type: Integer Stats: 41662 properties of this type in this kind.
-      import_transform: transform.none_if_empty(int)
-
-    - property: ExternalId_
-      external_name: ExternalId_
-      # Type: String Stats: 41662 properties of this type in this kind.
 
     - property: Fulfillment.Carrier
       external_name: Fulfillment.Carrier
@@ -3835,14 +3817,14 @@ transformers:
     - property: Availability.EndDate
       external_name: Availability.EndDate
       # Type: Date/Time Stats: 2 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
 
     - property: Availability.StartDate
       external_name: Availability.StartDate
       # Type: Date/Time Stats: 2 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
 
     - property: Available
       external_name: Available
@@ -3852,8 +3834,8 @@ transformers:
     - property: CreatedAt
       external_name: CreatedAt
       # Type: Date/Time Stats: 2 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
 
     - property: Currency
       external_name: Currency
@@ -3875,8 +3857,8 @@ transformers:
     - property: LastSync_
       external_name: LastSync_
       # Type: Date/Time Stats: 2 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
 
     - property: Name
       external_name: Name
@@ -3924,8 +3906,8 @@ transformers:
     - property: UpdatedAt
       external_name: UpdatedAt
       # Type: Date/Time Stats: 2 properties of this type in this kind.
-      import_transform: transform.import_date_time('%Y-%m-%dT%H:%M:%S')
-      export_transform: bulkloader_helper.export_date_time('%Y-%m-%dT%H:%M:%S')
+      import_transform: transform.import_date_time('%Y-%m-%d %H:%M:%S')
+      export_transform: bulkloader_helper.export_date_time('%Y-%m-%d %H:%M:%S')
 
     - property: WeightUnit
       external_name: WeightUnit
@@ -3935,4 +3917,3 @@ transformers:
       external_name: Weight
       # Type: Float Stats: 2 properties of this type in this kind.
       import_transform: transform.none_if_empty(float)
-
