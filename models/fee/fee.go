@@ -33,6 +33,7 @@ type Fee struct {
 	PartnerId   string `json:"partnerId,omitempty"`
 
 	PaymentId string `json:"paymentId"`
+	TransferId string `json:"transferId"`
 
 	Commission commission.Commission `json:"commission,omitempty"`
 
