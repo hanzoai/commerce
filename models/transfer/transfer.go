@@ -32,7 +32,7 @@ type StripeAccount struct {
 	ApplicationFee       string    `json:"applicationFee,omitempty"`
 }
 
-// data TransferData = Stripe StripeData | ...
+// data Account = Stripe StripeAccount | ...
 type Account struct {
 	StripeAccount
 }
