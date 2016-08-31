@@ -7,7 +7,7 @@ import (
 	"crowdstart.com/util/permission"
 	"crowdstart.com/util/router"
 
-	"crowdstart.com/periodic/stripe_payout"
+	"crowdstart.com/periodic/affiliate_transfer"
 )
 
 func Route(router router.Router, args ...gin.HandlerFunc) {
@@ -15,5 +15,5 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 
 	api := router.Group("periodic")
 
-	api.GET("/stripe_payout/", adminRequired, stripe_payout.Run)
+	api.GET("/affiliate_transfer/", adminRequired, affiliate_transfer.Run)
 }
