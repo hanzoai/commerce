@@ -356,7 +356,7 @@ func (api API) CreateOrder(storeId string, ord *order.Order) error {
 			PostalCode:   ord.ShippingAddress.PostalCode,
 			CountryCode:  strings.ToUpper(ord.ShippingAddress.Country),
 		},
-		ProcessedAtForeign: ord.ProcessedAt.Format(time.RFC3339),
+		ProcessedAtForeign: ord.CreatedAt.Format(time.RFC3339),
 		CancelledAtForeign: ord.CancelledAt.Format(time.RFC3339),
 		UpdatedAtForeign:   ord.UpdatedAt.Format(time.RFC3339),
 	}
@@ -442,7 +442,7 @@ func (api API) UpdateOrder(storeId string, ord *order.Order) error {
 			PostalCode:   ord.ShippingAddress.PostalCode,
 			CountryCode:  strings.ToUpper(ord.ShippingAddress.Country),
 		},
-		ProcessedAtForeign: ord.ProcessedAt.Format(time.RFC3339),
+		ProcessedAtForeign: ord.CreatedAt.Format(time.RFC3339),
 		CancelledAtForeign: ord.CancelledAt.Format(time.RFC3339),
 		UpdatedAtForeign:   ord.UpdatedAt.Format(time.RFC3339),
 	}
