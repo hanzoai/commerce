@@ -26,7 +26,6 @@ type StripeAccount struct {
 	DestinationType     string    `json:"destinationType,omitempty"`
 	FailureCode         string    `json:"failureCode,omitempty"`
 	FailureMessage      string    `json:"failureMessage,omitempty"`
-	Live                bool      `json:"live,omitempty"`
 	Reversed            bool      `json:"reversed,omitempty"`
 	SourceTransaction   string    `json:"sourceTransaction,omitempty"`
 	SourceType          string    `json:"sourceType,omitempty"`
@@ -44,7 +43,7 @@ const (
 	Initializing Status = "initializing"
 	Pending             = "pending"
 	Paid                = "paid"
-	InTransit           = "inTransit"
+	InTransit           = "in-transit"
 	Canceled            = "canceled"
 	Failed              = "failed"
 )
@@ -59,6 +58,7 @@ type Transfer struct {
 
 	Type   Type   `json:"type"`
 	Status Status `json:"status"`
+	Live   bool   `json:"live,omitempty"`
 
 	Metadata  Map    `json:"metadata" datastore:"-"`
 	Metadata_ string `json:"-" datastore:",noindex"`
