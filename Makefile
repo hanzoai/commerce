@@ -61,15 +61,10 @@ gae_skully = config/skully \
 			 platform/app.skully.yaml \
 			 store/app.skully.yaml
 
-tools = github.com/jstemmer/gotags \
-		github.com/nsf/gocode \
-		github.com/rogpeppe/godef \
-		golang.org/x/tools/cmd/cover \
-		golang.org/x/tools/cmd/goimports
-		# golang.org/x/tools/cmd/gorename
-		# github.com/golang/lint/golint \
-		# github.com/kisielk/errcheck \
-		# golang.org/x/tools/cmd/oracle
+tools = github.com/nsf/gocode \
+        github.com/rogpeppe/godef \
+        github.com/jstemmer/gotags \
+        github.com/klauspost/asmfmt/cmd/asmfmt
 
 # Various patches for SDK
 mtime_file_watcher = https://gist.githubusercontent.com/zeekay/5eba991c39426ca42cbb/raw/8db2e910b89e3927adc9b7c183387186facee17b/mtime_file_watcher.py
@@ -276,6 +271,7 @@ serve-no-reload: assets
 tools:
 	$(goapp) get $(tools)
 	$(goapp) install $(tools)
+	$(gopath)/bin/gocode set propose-builtins true
 	$(gopath)/bin/gocode set lib-path "$(gopath_pkg_path):$(goroot_pkg_path)"
 
 # TEST/ BENCH
@@ -358,10 +354,9 @@ datastore-import:
 
 # Generate config for use with datastore-export target
 datastore-config:
-	@$(appcfg.py) create_bulkloader_config \
-				  --url=$(datastore_admin_url) \
-				  --namespace $$namespace \
-				  --filename=bulkloader.yaml
+	$(appcfg.py) create_bulkloader_config \
+				 --url=$(datastore_admin_url) \
+				 --filename=bulkloader.yaml
 
 # Replicate production data to localhost
 datastore-replicate:
