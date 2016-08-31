@@ -10,8 +10,8 @@ import (
 	"github.com/stripe/stripe-go"
 	"github.com/stripe/stripe-go/client"
 
-	"crowdstart.com/models/fee"
 	"crowdstart.com/models/payment"
+	"crowdstart.com/models/transfer"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/models/user"
 	"crowdstart.com/thirdparty/stripe/errors"
@@ -309,19 +309,19 @@ func (c Client) Capture(id string) (*Charge, error) {
 	return (*Charge)(ch), err
 }
 
-func (c Client) PayFee(fee *fee.Fee) (*stripe.Transfer, error) {
+func (c Client) Transfer(transfer *transfer.Transfer) (*stripe.Transfer, error) {
 	panic("XXXih: work in progress")
 	destinationId := ""
 	params := &stripe.TransferParams{
-		Amount: int64(fee.Amount),
+		Amount: int64(transfer.Amount),
 		Dest: destinationId,
 		Desc: "Fee payout from <source> to <dest>",
 		
 	}
-	params.Params.IdempotencyKey = fee.Id()
-	transfer, err := c.API.Transfers.New(params)
+	params.Params.IdempotencyKey = transfer.Id()
+	s_tr, err := c.API.Transfers.New(params)
 	if err != nil {
 		return nil, err
 	}
-	return transfer, nil
+	return s_tr, nil
 }
