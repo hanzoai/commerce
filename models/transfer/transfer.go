@@ -16,23 +16,23 @@ const (
 )
 
 type StripeAccount struct {
-	// note: all times should be in UTC. sadly, the stdlib does not
-	// include a datatype that enforces this
-	DestinationPaymentId string    `json:"destinationPaymentId,omitempty"`
-	BalanceTransactionId string    `json:"balanceTransactionId,omitempty"`
-	SourceTransactionId  string    `json:"sourceTransactionId,omitempty"`
-	StatementDescriptor  string    `json:"statementDescriptor,omitempty"`
-	Destination          string    `json:"destination,omitempty"`
-	DeliveryDate         time.Time `json:"deliveryDate,omitempty"`
-	Description          string    `json:"description,omitempty"`
-	Live                 bool      `json:"live,omitempty"`        // see Stripe's "livemode" field
-	PaymentType          string    `json:"paymentType,omitempty"` // see Stripe's "type" field
-	FailureCode          string    `json:"failureCode,omitempty"`
-	FailureMessage       string    `json:"failureMessage,omitempty"`
-	ApplicationFee       string    `json:"applicationFee,omitempty"`
+	Id                  string    `json:"transferId,omimtempty"`
+	ApplicationFee      int64     `json:"applicationFee,omitempty"` // FIXME: Apparently not returned by stripe-go?
+	BalanceTransaction  int64     `json:"balanceTransaction,omitempty"`
+	Created             string    `json:"created,omitempty"`
+	DeliveryDate        time.Time `json:"deliveryDate,omitempty"`
+	Description         string    `json:"description,omitempty"`
+	DestinationId       string    `json:"destinationId,omitempty"`
+	DestinationType     string    `json:"destinationType,omitempty"`
+	FailureCode         string    `json:"failureCode,omitempty"`
+	FailureMessage      string    `json:"failureMessage,omitempty"`
+	Live                bool      `json:"live,omitempty"`
+	Reversed            bool      `json:"reversed,omitempty"`
+	SourceId            string    `json:"sourcId,omitempty"`
+	SourceType          string    `json:"sourceType,omitempty"`
+	StatementDescriptor string    `json:"statementDescriptor,omitempty"`
 }
 
-// data Account = Stripe StripeAccount | ...
 type Account struct {
 	StripeAccount
 }
@@ -50,10 +50,11 @@ const (
 
 type Transfer struct {
 	mixin.Model
-	Account // see 'Type'
+	Account
 
+	Currency       currency.Type  `json:"currency"`
 	Amount         currency.Cents `json:"amount"`
-	AmountRefunded currency.Cents `json:"amountRefunded,omitempty"`
+	AmountReversed currency.Cents `json:"amountReversed,omitempty"`
 
 	Type   Type   `json:"type"`
 	Status Status `json:"status"`
