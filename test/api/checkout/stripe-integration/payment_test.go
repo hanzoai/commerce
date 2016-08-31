@@ -202,6 +202,7 @@ func ReturningSuccessfulOrderSameCardTest(isCharge bool, stor *store.Store) test
 	// Save user, customerId from first order
 	usr := user.New(db)
 	usr.Get(ord1.UserId)
+	log.Debug("user: %#v", usr)
 	customerId := usr.Accounts.Stripe.CustomerId
 	stripeVerifyUser(usr)
 
@@ -230,9 +231,8 @@ func ReturningSuccessfulOrderSameCardTest(isCharge bool, stor *store.Store) test
 	user2.Get(ord2.UserId)
 	Expect(user2.Accounts.Stripe.CustomerId).To(Equal(customerId))
 
-	// Payment/Card logic
-	Expect(pay1.Account.CardId).To(Equal(pay2.Account.CardId))
-	stripeVerifyCards(usr, []string{pay1.Account.CardId})
+	Expect(pay1.Account.CardId).ToNot(Equal(pay2.Account.CardId))
+	stripeVerifyCards(usr, []string{pay2.Account.CardId})
 
 	return testHelperReturn{
 		Payments: []*payment.Payment{pay1, pay2},
