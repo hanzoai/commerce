@@ -52,6 +52,8 @@ type Transfer struct {
 	mixin.Model
 	Account
 
+	AffiliateId string `json:"affiliateId"`
+
 	Currency       currency.Type  `json:"currency"`
 	Amount         currency.Cents `json:"amount"`
 	AmountReversed currency.Cents `json:"amountReversed,omitempty"`
