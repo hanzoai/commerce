@@ -59,7 +59,7 @@ type Transfer struct {
 	Status Status `json:"status"`
 
 	Metadata  Map    `json:"metadata" datastore:"-"`
-	Metadata_ string `json:"-" datastore:"-"`
+	Metadata_ string `json:"-" datastore:",noindex"`
 }
 
 // XXXih: the typical lifecycle of a Transfer is as follows:
