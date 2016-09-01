@@ -31,12 +31,11 @@ type Product struct {
 
 	// Unique human readable id
 	Slug string `json:"slug"`
-	SKU  string `json:"sku"`
 
 	// 3-letter ISO currency code (lowercase).
 	Currency  currency.Type  `json:"currency"`
 	Price     currency.Cents `json:"price"`
-	ListPrice currency.Cents `json:"listPrice"`
+	ListPrice currency.Cents `json:"listPrice,omitempty"`
 
 	// Basic cost for shipping this product
 	Shipping currency.Cents `json:"shipping"`

@@ -236,14 +236,7 @@
     window.Keys['live-secret-key']
   ).register('platform')
 
-  new crowdcontrol.data.Api(
-    {% if isProduction %}
-      '//api-dot-crowdstart-us.appspot.com/',
-    {% else %}
-      '//api-dot-crowdstart-staging.appspot.com/',
-    {% endif %}
-    window.Keys['live-secret-key']
-  ).register('crowdstart')
+  new crowdcontrol.data.Api('{{ urlFor("api") }}', window.Keys['live-secret-key']).register('crowdstart')
 
   riot.mount('*')
 
