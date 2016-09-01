@@ -85,6 +85,15 @@ func (li LineItem) Id() string {
 	return li.ProductId
 }
 
+// Check if id is valid identifier for this line item
+func (li LineItem) HasId(id string) bool {
+	if id == li.ProductId || id == li.VariantId || id == li.ProductSlug || id == li.VariantSKU {
+		return true
+	}
+
+	return false
+}
+
 func (li LineItem) DisplayName() string {
 	if li.VariantName != "" {
 		return li.VariantName
@@ -149,6 +158,40 @@ func (li *LineItem) Entity(db *datastore.Datastore) (datastore.Key, interface{},
 	}
 
 	return nil, nil, InvalidLineItem
+}
+
+// Set product by id
+func (li *LineItem) SetProduct(db *datastore.Datastore, id string, quantity int) error {
+	prod := product.New(db)
+	if err := prod.GetById(id); err != nil {
+		return err
+	}
+
+	li.Product = prod
+	li.ProductId = prod.Id()
+	li.ProductName = prod.Name
+	li.ProductSlug = prod.Slug
+	li.Quantity = quantity
+	li.Price = prod.Price
+
+	return nil
+}
+
+// Set variant by id
+func (li *LineItem) SetVariant(db *datastore.Datastore, id string, quantity int) error {
+	vari := variant.New(db)
+	if err := vari.GetById(id); err != nil {
+		return err
+	}
+
+	li.Variant = vari
+	li.VariantId = vari.Id()
+	li.VariantName = vari.Name
+	li.VariantSKU = vari.SKU
+	li.Quantity = quantity
+	li.Price = vari.Price
+
+	return nil
 }
 
 func (li *LineItem) Update() {
