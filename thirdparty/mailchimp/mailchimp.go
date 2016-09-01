@@ -75,7 +75,7 @@ func (api API) Subscribe(ml *mailinglist.MailingList, s *subscriber.Subscriber) 
 		Interests:    make(map[string]interface{}),
 		Language:     s.Client.Language,
 		VIP:          false,
-		Location: gochimp3.MemberLocation{
+		Location: &gochimp3.MemberLocation{
 			Latitude:    0.0,
 			Longitude:   0.0,
 			GMTOffset:   0,
