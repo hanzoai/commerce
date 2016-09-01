@@ -1,7 +1,6 @@
 package mailchimp
 
 import (
-	"strings"
 	"time"
 
 	"appengine"
@@ -76,12 +75,12 @@ func (api API) Subscribe(ml *mailinglist.MailingList, s *subscriber.Subscriber) 
 		Interests:    make(map[string]interface{}),
 		Language:     s.Client.Language,
 		VIP:          false,
-		Location: gochimp3.MemberLocation{
+		Location: &gochimp3.MemberLocation{
 			Latitude:    0.0,
 			Longitude:   0.0,
 			GMTOffset:   0,
 			DSTOffset:   0,
-			CountryCode: strings.ToUpper(s.Client.Country),
+			CountryCode: s.Client.Country,
 			Timezone:    "",
 		},
 	}
@@ -113,7 +112,7 @@ func (api API) CreateStore(stor *store.Store) error {
 		ID:           stor.Id(),
 		ListID:       stor.Mailchimp.ListId, // Immutable after creation
 		Name:         stor.Name,
-		CurrencyCode: strings.ToUpper(string(stor.Currency)),
+		CurrencyCode: string(stor.Currency),
 
 		// Optional
 		Platform:      "Hanzo",
@@ -122,13 +121,13 @@ func (api API) CreateStore(stor *store.Store) error {
 		PrimaryLocale: "en",
 		Timezone:      stor.Timezone,
 		Phone:         stor.Phone,
-		Address: gochimp3.Address{
+		Address: &gochimp3.Address{
 			Address1:     stor.Address.Line1,
 			Address2:     stor.Address.Line2,
 			City:         stor.Address.City,
 			ProvinceCode: stor.Address.State,
 			PostalCode:   stor.Address.PostalCode,
-			CountryCode:  strings.ToUpper(stor.Address.Country),
+			CountryCode:  stor.Address.Country,
 		},
 	}
 	_, err := api.client.CreateStore(req)
@@ -141,7 +140,7 @@ func (api API) UpdateStore(stor *store.Store) error {
 		ID:           stor.Id(),
 		ListID:       stor.Mailchimp.ListId, // Immutable after creation
 		Name:         stor.Name,
-		CurrencyCode: strings.ToUpper(string(stor.Currency)),
+		CurrencyCode: string(stor.Currency),
 
 		// Optional
 		Platform:      "Hanzo",
@@ -150,13 +149,13 @@ func (api API) UpdateStore(stor *store.Store) error {
 		PrimaryLocale: "en",
 		Timezone:      stor.Timezone,
 		Phone:         stor.Phone,
-		Address: gochimp3.Address{
+		Address: &gochimp3.Address{
 			Address1:     stor.Address.Line1,
 			Address2:     stor.Address.Line2,
 			City:         stor.Address.City,
 			ProvinceCode: stor.Address.State,
 			PostalCode:   stor.Address.PostalCode,
-			CountryCode:  strings.ToUpper(stor.Address.Country),
+			CountryCode:  stor.Address.Country,
 		},
 	}
 	_, err := api.client.UpdateStore(req)
@@ -182,7 +181,7 @@ func (api API) CreateCart(storeId string, car *cart.Cart) error {
 
 	req := &gochimp3.Cart{
 		// Required
-		CurrencyCode: strings.ToUpper(string(car.Currency)),
+		CurrencyCode: string(car.Currency),
 		OrderTotal:   centsToFloat(car.Total, car.Currency),
 		Customer: gochimp3.Customer{
 			// Required
@@ -232,7 +231,7 @@ func (api API) UpdateCart(storeId string, car *cart.Cart) error {
 
 	req := &gochimp3.Cart{
 		// Required
-		CurrencyCode: strings.ToUpper(string(car.Currency)),
+		CurrencyCode: string(car.Currency),
 		OrderTotal:   centsToFloat(car.Total, car.Currency),
 		Customer: gochimp3.Customer{
 			// Required
@@ -308,7 +307,7 @@ func (api API) CreateOrder(storeId string, ord *order.Order) error {
 	req := &gochimp3.Order{
 		// Required
 		ID:           ord.Id(),
-		CurrencyCode: strings.ToUpper(string(ord.Currency)),
+		CurrencyCode: string(ord.Currency),
 		OrderTotal:   centsToFloat(ord.Total, ord.Currency),
 		Customer: gochimp3.Customer{
 			// Required
@@ -322,13 +321,13 @@ func (api API) CreateOrder(storeId string, ord *order.Order) error {
 			LastName:     usr.LastName,
 			// OrdersCount:  1,
 			// TotalSpent:   centsToFloat(usr.Total, usr.Currency),
-			Address: gochimp3.Address{
+			Address: &gochimp3.Address{
 				Address1:     ord.ShippingAddress.Line1,
 				Address2:     ord.ShippingAddress.Line2,
 				City:         ord.ShippingAddress.City,
 				ProvinceCode: ord.ShippingAddress.State,
 				PostalCode:   ord.ShippingAddress.PostalCode,
-				CountryCode:  strings.ToUpper(ord.ShippingAddress.Country),
+				CountryCode:  ord.ShippingAddress.Country,
 			},
 		},
 		Lines: lines,
@@ -340,21 +339,21 @@ func (api API) CreateOrder(storeId string, ord *order.Order) error {
 		FulfillmentStatus: string(ord.FulfillmentStatus),
 		CampaignID:        ord.Mailchimp.CampaignId,
 		TrackingCode:      ord.Mailchimp.TrackingCode,
-		BillingAddress: gochimp3.Address{
+		BillingAddress: &gochimp3.Address{
 			Address1:     ord.BillingAddress.Line1,
 			Address2:     ord.BillingAddress.Line2,
 			City:         ord.BillingAddress.City,
 			ProvinceCode: ord.BillingAddress.State,
 			PostalCode:   ord.BillingAddress.PostalCode,
-			CountryCode:  strings.ToUpper(ord.BillingAddress.Country),
+			CountryCode:  ord.BillingAddress.Country,
 		},
-		ShippingAddress: gochimp3.Address{
+		ShippingAddress: &gochimp3.Address{
 			Address1:     ord.ShippingAddress.Line1,
 			Address2:     ord.ShippingAddress.Line2,
 			City:         ord.ShippingAddress.City,
 			ProvinceCode: ord.ShippingAddress.State,
 			PostalCode:   ord.ShippingAddress.PostalCode,
-			CountryCode:  strings.ToUpper(ord.ShippingAddress.Country),
+			CountryCode:  ord.ShippingAddress.Country,
 		},
 		ProcessedAtForeign: ord.CreatedAt,
 		CancelledAtForeign: ord.CancelledAt,
@@ -394,7 +393,7 @@ func (api API) UpdateOrder(storeId string, ord *order.Order) error {
 	req := &gochimp3.Order{
 		// Required
 		ID:           ord.Id(),
-		CurrencyCode: strings.ToUpper(string(ord.Currency)),
+		CurrencyCode: string(ord.Currency),
 		OrderTotal:   centsToFloat(ord.Total, ord.Currency),
 		Customer: gochimp3.Customer{
 			// Required
@@ -408,13 +407,13 @@ func (api API) UpdateOrder(storeId string, ord *order.Order) error {
 			LastName:     usr.LastName,
 			// OrdersCount:  1,
 			// TotalSpent:   centsToFloat(usr.Total, usr.Currency),
-			Address: gochimp3.Address{
+			Address: &gochimp3.Address{
 				Address1:     ord.ShippingAddress.Line1,
 				Address2:     ord.ShippingAddress.Line2,
 				City:         ord.ShippingAddress.City,
 				ProvinceCode: ord.ShippingAddress.State,
 				PostalCode:   ord.ShippingAddress.PostalCode,
-				CountryCode:  strings.ToUpper(ord.ShippingAddress.Country),
+				CountryCode:  ord.ShippingAddress.Country,
 			},
 		},
 		Lines: lines,
@@ -426,21 +425,21 @@ func (api API) UpdateOrder(storeId string, ord *order.Order) error {
 		FulfillmentStatus: string(ord.FulfillmentStatus),
 		CampaignID:        ord.Mailchimp.CampaignId,
 		TrackingCode:      ord.Mailchimp.TrackingCode,
-		BillingAddress: gochimp3.Address{
+		BillingAddress: &gochimp3.Address{
 			Address1:     ord.BillingAddress.Line1,
 			Address2:     ord.BillingAddress.Line2,
 			City:         ord.BillingAddress.City,
 			ProvinceCode: ord.BillingAddress.State,
 			PostalCode:   ord.BillingAddress.PostalCode,
-			CountryCode:  strings.ToUpper(ord.BillingAddress.Country),
+			CountryCode:  ord.BillingAddress.Country,
 		},
-		ShippingAddress: gochimp3.Address{
+		ShippingAddress: &gochimp3.Address{
 			Address1:     ord.ShippingAddress.Line1,
 			Address2:     ord.ShippingAddress.Line2,
 			City:         ord.ShippingAddress.City,
 			ProvinceCode: ord.ShippingAddress.State,
 			PostalCode:   ord.ShippingAddress.PostalCode,
-			CountryCode:  strings.ToUpper(ord.ShippingAddress.Country),
+			CountryCode:  ord.ShippingAddress.Country,
 		},
 		ProcessedAtForeign: ord.CreatedAt,
 		CancelledAtForeign: ord.CancelledAt,
@@ -494,7 +493,7 @@ func (api API) CreateProduct(storeId string, prod *product.Product) error {
 				// Url:               "",
 			},
 		},
-		PublishedAt: prod.CreatedAt,
+		PublishedAtForeign: prod.CreatedAt,
 	}
 
 	stor, err := api.client.GetStore(storeId, nil)
@@ -533,7 +532,7 @@ func (api API) UpdateProduct(storeId string, prod *product.Product) error {
 				// Url:               "",
 			},
 		},
-		PublishedAt: prod.CreatedAt,
+		PublishedAtForeign: prod.CreatedAt,
 	}
 
 	stor, err := api.client.GetStore(storeId, nil)

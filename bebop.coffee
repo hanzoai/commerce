@@ -64,6 +64,8 @@ files =
 module.exports =
   cwd: process.cwd()
 
+  port: 8081
+
   exclude: [
     /api\/static/
     /config.json$/
