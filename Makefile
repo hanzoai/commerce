@@ -61,15 +61,10 @@ gae_skully = config/skully \
 			 platform/app.skully.yaml \
 			 store/app.skully.yaml
 
-tools = github.com/jstemmer/gotags \
-		github.com/nsf/gocode \
-		github.com/rogpeppe/godef \
-		golang.org/x/tools/cmd/cover \
-		golang.org/x/tools/cmd/goimports
-		# golang.org/x/tools/cmd/gorename
-		# github.com/golang/lint/golint \
-		# github.com/kisielk/errcheck \
-		# golang.org/x/tools/cmd/oracle
+tools = github.com/nsf/gocode \
+        github.com/rogpeppe/godef \
+        github.com/jstemmer/gotags \
+        github.com/klauspost/asmfmt/cmd/asmfmt
 
 # Various patches for SDK
 mtime_file_watcher = https://gist.githubusercontent.com/zeekay/5eba991c39426ca42cbb/raw/8db2e910b89e3927adc9b7c183387186facee17b/mtime_file_watcher.py
@@ -79,8 +74,7 @@ coffee	 = node_modules/.bin/coffee
 uglifyjs = node_modules/.bin/uglifyjs
 
 requisite	   = node_modules/.bin/requisite -g
-requisite_opts = --no-source-map \
-				 assets/js/store/store.coffee \
+requisite_opts = assets/js/store/store.coffee \
 				 assets/js/api/api.coffee \
 				 assets/js/platform/platform.coffee \
 				 node_modules/crowdstart.js/src/index.coffee \
@@ -183,7 +177,7 @@ assets-min: deps-assets compile-css-min compile-js-min
 compile-js:
 	$(requisite) $(requisite_opts)
 	$(coffee) -bc -o static/js assets/js/api/mailinglist.coffee
-	$(requisite) --no-source-map node_modules/crowdstart-analytics/lib/index.js -o static/js/analytics/analytics.js
+	$(requisite) node_modules/crowdstart-analytics/lib/index.js -o static/js/analytics/analytics.js
 	cp node_modules/crowdstart-analytics/lib/snippet.js static/js/analytics
 	cp node_modules/crowdstart-analytics/lib/bundle.js static/js/analytics
 
@@ -276,6 +270,7 @@ serve-no-reload: assets
 tools:
 	$(goapp) get $(tools)
 	$(goapp) install $(tools)
+	$(gopath)/bin/gocode set propose-builtins true
 	$(gopath)/bin/gocode set lib-path "$(gopath_pkg_path):$(goroot_pkg_path)"
 
 # TEST/ BENCH
@@ -358,10 +353,9 @@ datastore-import:
 
 # Generate config for use with datastore-export target
 datastore-config:
-	@$(appcfg.py) create_bulkloader_config \
-				  --url=$(datastore_admin_url) \
-				  --namespace $$namespace \
-				  --filename=bulkloader.yaml
+	$(appcfg.py) create_bulkloader_config \
+				 --url=$(datastore_admin_url) \
+				 --filename=bulkloader.yaml
 
 # Replicate production data to localhost
 datastore-replicate:
