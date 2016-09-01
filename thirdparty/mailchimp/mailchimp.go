@@ -494,7 +494,7 @@ func (api API) CreateProduct(storeId string, prod *product.Product) error {
 				// Url:               "",
 			},
 		},
-		PublishedAt: prod.CreatedAt,
+		PublishedAtForeign: prod.CreatedAt,
 	}
 
 	stor, err := api.client.GetStore(storeId, nil)
@@ -533,7 +533,7 @@ func (api API) UpdateProduct(storeId string, prod *product.Product) error {
 				// Url:               "",
 			},
 		},
-		PublishedAt: prod.CreatedAt,
+		PublishedAtForeign: prod.CreatedAt,
 	}
 
 	stor, err := api.client.GetStore(storeId, nil)
