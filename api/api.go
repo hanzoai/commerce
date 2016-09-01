@@ -26,6 +26,7 @@ import (
 	accountApi "crowdstart.com/api/account"
 	affiliateApi "crowdstart.com/api/affiliate"
 	campaignApi "crowdstart.com/api/campaign"
+	cartApi "crowdstart.com/api/cart"
 	checkoutApi "crowdstart.com/api/checkout"
 	couponApi "crowdstart.com/api/coupon"
 	dataApi "crowdstart.com/api/data"
@@ -90,8 +91,9 @@ func init() {
 
 	accountApi.Route(api, tokenRequired)
 	affiliateApi.Route(api, tokenRequired)
-	couponApi.Route(api, tokenRequired)
 	campaignApi.Route(api, tokenRequired)
+	cartApi.Route(api, tokenRequired)
+	couponApi.Route(api, tokenRequired)
 	deployApi.Route(api, tokenRequired)
 	formApi.Route(api, tokenRequired)
 	orderApi.Route(api, tokenRequired)
@@ -131,6 +133,7 @@ func init() {
 	// Data Api
 	dataApi.Route(api)
 
+	// Cron tasks
 	periodicApi.Route(api)
 
 	// XDomain proxy.html
