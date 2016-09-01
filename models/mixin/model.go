@@ -11,7 +11,6 @@ import (
 	"crowdstart.com/datastore"
 	"crowdstart.com/util/cache"
 	"crowdstart.com/util/hashid"
-	"crowdstart.com/util/log"
 	"crowdstart.com/util/rand"
 	"crowdstart.com/util/structs"
 	"crowdstart.com/util/timeutil"
@@ -360,90 +359,12 @@ func (m *Model) MustGet(args ...interface{}) {
 
 // Helper that will retrieve entity by id (which may be an encoded key/slug/sku)
 func (m *Model) GetById(id string) error {
-	// Try to decode key
-	key, err := hashid.DecodeKey(m.Db.Context, id)
-
-	// Try to use key if we have one
-	if err == nil {
-		err = m.Get(key)
-	}
-
-	// Return if key worked, otherwise keep going (sometimes a random string
-	// will erroneously decode as a hashid)
-	if err == nil {
-		return nil
-	}
-
-	// Set err to nil and try to use filter
-	err = nil
-	filterStr := ""
-
-	// Use unique filter based on model type
-	switch m.Kind() {
-	case "store", "product", "collection":
-		filterStr = "Slug"
-	case "variant":
-		filterStr = "SKU"
-	case "organization", "mailinglist":
-		filterStr = "Name"
-	case "aggregate":
-		filterStr = "Instance"
-	case "site":
-		filterStr = "Name"
-	case "user":
-		if strings.Contains(id, "@") {
-			filterStr = "Email"
-		} else {
-			filterStr = "Username"
-		}
-	case "referrer":
-		filterStr = "Code"
-	case "coupon":
-		code := strings.ToUpper(id)
-		log.Warn("GETBYIDCODE: %v", code, m.Context())
-
-		if ok, _ := m.Query().Filter("Code=", code).First(); ok {
-			log.Warn("FOUND KEY", m.Context())
-			return nil
-		} else {
-			key, err := hashid.DecodeKey(m.Context(), id)
-			if err != nil {
-				log.Warn("Unable to decode key for coupon: %v", err, m.Context())
-				return datastore.KeyNotFound
-			}
-
-			err = m.Get(key)
-			if err != nil {
-				log.Warn("Unable to filter by key for coupon: %v", err, m.Context())
-				return datastore.KeyNotFound
-			}
-
-			// Set RawCode on fetched entity in case this was not parsed from JSON
-			v := reflect.ValueOf(m.Entity).Elem().FieldByName("RawCode")
-			ptr := v.Addr().Interface().(*string)
-			*ptr = id
-
-			return nil
-		}
-	case "order":
-		// Special-cased since order is filtered by IntId (order number)
-		key := m.Db.KeyFromInt("order", id)
-		ok, err := m.Query().Filter("__key__ =", key).First()
-		if !ok {
-			return datastore.KeyNotFound
-		}
+	key, ok, err := m.KeyById(id)
+	if !ok || err != nil {
 		return err
-	default:
-		return datastore.InvalidKey
 	}
 
-	// Try and fetch by filterStr
-	ok, err := m.Query().Filter(filterStr+"=", id).First()
-	if !ok {
-		return datastore.KeyNotFound
-	}
-
-	return err
+	return m.Get(key)
 }
 
 // Check if entity is in datastore.
@@ -493,36 +414,9 @@ func (m *Model) KeyById(id string) (datastore.Key, bool, error) {
 	case "referrer":
 		filterStr = "Code"
 	case "coupon":
-		code := strings.ToUpper(id)
-		if ok, _ := m.Query().Filter("Code=", code).First(); ok {
-			return m.Key(), true, nil
-		} else {
-			ids := hashid.Decode(id)
-
-			if len(ids) != 2 {
-				return nil, false, datastore.KeyNotFound
-			}
-
-			key := m.Db.KeyFromInt("coupon", ids[0])
-			log.Debug("coupon key: %v", key)
-			if _, err = m.Query().Filter("__key__ =", key).First(); err != nil {
-				return nil, false, err
-			}
-			log.Debug("coupon: %v", m)
-
-			// Set RawCode on fetched entity in case this was not parsed from JSON
-			v := reflect.ValueOf(m.Entity).Elem().FieldByName("RawCode")
-			ptr := v.Addr().Interface().(*string)
-			*ptr = id
-		}
+		return couponFromId(m, id)
 	case "order":
-		// Special-cased since order is filtered by IntId (order number)
-		key := m.Db.KeyFromInt("order", id)
-		ok, err := m.Query().Filter("__key__ =", key).First()
-		if !ok {
-			return nil, false, datastore.KeyNotFound
-		}
-		return nil, false, err
+		return orderFromId(m, id)
 	default:
 		return nil, false, datastore.InvalidKey
 	}

@@ -24,7 +24,6 @@ func (u *User) Defaults() {
 func New(db *datastore.Datastore) *User {
 	u := new(User)
 	u.Init(db)
-	u.Defaults()
 	return u
 }
 

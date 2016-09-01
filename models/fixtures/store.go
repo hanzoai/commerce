@@ -18,7 +18,7 @@ var Store = New("store", func(c *gin.Context) *store.Store {
 	stor.GetOrCreate("Slug=", stor.Slug)
 
 	stor.Name = "default"
-	stor.Hostname = "www.suchtees.com"
+	stor.Domain = "suchtees.com"
 	stor.Prefix = "/"
 	stor.Currency = currency.USD
 	stor.TaxNexus = []models.Address{models.Address{Line1: "123 Such St", City: "Tee City"}, models.Address{Line1: "456 Noo Ln", City: "Memetown"}}
