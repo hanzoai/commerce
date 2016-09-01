@@ -11,6 +11,7 @@ type Affiliate struct {
 	mixin.Model
 
 	Enabled bool `json:"enabled"`
+	Period int `json:"period"`
 
 	UserId    string `json:"userId"`
 	FirstName string `json:"firstName"`
