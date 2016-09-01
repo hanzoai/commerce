@@ -17,13 +17,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func truncateMidnightUtc(t time.Time) time.Time {
+func cutoffForAffiliate(aff affiliate.Affiliate, now time.Time) {
 	year, month, day := t.UTC().Date()
-	return time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
+	ret := time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
+	ret.AddDate(0, 0, -aff.Period)
+	return ret
 }
 
-func fetchFeesForAffiliate(ds *datastore.Datastore, aff affiliate.Affiliate, cutoff time.Time) ([]fee.Fee, error) {
+func fetchFeesForAffiliate(ds *datastore.Datastore, aff affiliate.Affiliate, now time.Time) ([]fee.Fee, error) {
 	affId := aff.Id()
+	cutoff := cutoffForAffiliate(aff, now)
 	fees := make([]fee.Fee, 0, 0)
 	_, err := ds.Query(fee.Fee{}.Kind()).
 		Filter("AffiliateId =", affId).
@@ -80,8 +83,8 @@ func sendTransferToStripe(ds *datastore.Datastore, tr *transfer.Transfer) {
 	}
 }
 
-func processAffiliateFees(ds *datastore.Datastore, aff affiliate.Affiliate, cutoff time.Time) {
-	fees, err := fetchFeesForAffiliate(ds, aff, cutoff)
+func processAffiliateFees(ds *datastore.Datastore, aff affiliate.Affiliate, now time.Time) {
+	fees, err := fetchFeesForAffiliate(ds, aff, now)
 	if err != nil {
 		log.Warn(err)
 	}
@@ -144,6 +147,6 @@ func Run(c *gin.Context) {
 	panic("XXXih: work in progress")
 	ds := datastore.New(c)
 	retryIncompleteTransfers(ds)
-	cutoff := truncateMidnightUtc(time.Now())
-	pfn.Run(c, 100, cutoff)
+	now := time.Now()
+	pfn.Run(c, 100, now)
 }
