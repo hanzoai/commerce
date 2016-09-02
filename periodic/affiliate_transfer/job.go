@@ -22,7 +22,7 @@ import (
 func cutoffForAffiliate(aff affiliate.Affiliate, now time.Time) time.Time {
 	year, month, day := now.UTC().Date()
 	ret := time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
-	ret.AddDate(0, 0, -aff.Period)
+	ret = ret.AddDate(0, 0, -aff.Period)
 	return ret
 }
 
