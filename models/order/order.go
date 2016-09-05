@@ -310,7 +310,8 @@ func (o *Order) AddAffiliateFee(fees []*fee.Fee) ([]*fee.Fee, error) {
 	fe := fee.New(o.Db)
 	fe.Type = fee.Affiliate
 	fe.Currency = o.Currency
-	fe.Amount = currency.Cents(math.Floor(float64(o.Total)*aff.Commission.Percent)) + currency.Cents(aff.FlatFee) + currency.Cents(float64(o.Total)*aff.PlatformFee)
+	affFee := math.Floor(float64(o.Total) * aff.Commission.Percent)
+	fe.Amount = currency.Cents(affFee) + currency.Cents(aff.FlatFee) + currency.Cents(math.Floor(affFee*aff.PlatformFee))
 
 	return append(fees, fe), nil
 }
