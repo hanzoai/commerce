@@ -14,7 +14,6 @@ import (
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/models/user"
 	"crowdstart.com/thirdparty/mailchimp"
-	"crowdstart.com/util/log"
 	"crowdstart.com/util/token"
 )
 
@@ -141,11 +140,9 @@ var _ = New("kanoa-dev", func(c *gin.Context) *organization.Organization {
 	// Save namespace so we can decode keys for this organization later
 	ns := namespace.New(db)
 	ns.Name = org.Name
+	ns.GetOrCreate("Name=", ns.Name)
 	ns.IntId = org.Key().IntID()
-	err := ns.Put()
-	if err != nil {
-		log.Warn("Failed to put namespace: %v", err)
-	}
+	ns.Update()
 
 	// Create namespaced context
 	nsdb := datastore.New(org.Namespaced(db.Context))
