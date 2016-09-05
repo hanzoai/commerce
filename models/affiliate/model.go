@@ -14,6 +14,8 @@ func (a *Affiliate) Init(db *datastore.Datastore) {
 }
 
 func (a *Affiliate) Defaults() {
+	a.FlatFee = 30
+	a.PlatformFee = .30
 }
 
 func New(db *datastore.Datastore) *Affiliate {
