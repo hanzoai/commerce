@@ -39,7 +39,7 @@ func fetchFeesForAffiliate(ds *datastore.Datastore, aff affiliate.Affiliate, now
 		return nil, err
 	}
 	fees := make(map[currency.Type][]fee.Fee)
-	for _, fee := range(rawfees) {
+	for _, fee := range rawfees {
 		cfees := fees[fee.Currency]
 		cfees = append(cfees, fee)
 		fees[fee.Currency] = cfees
@@ -47,28 +47,58 @@ func fetchFeesForAffiliate(ds *datastore.Datastore, aff affiliate.Affiliate, now
 	return fees, nil
 }
 
-func createTransfer(ds *datastore.Datastore, currency currency.Type) *transfer.Transfer {
+func fetchFeesForPlatform(ds *datastore.Datastore, now time.Time) (map[currency.Type][]fee.Fee, error) {
+	year, month, day := now.UTC().Date()
+	cutoff := time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
+	cutoff = cutoff.AddDate(0, 0, -1)
+	rawfees := make([]fee.Fee, 0, 0)
+	_, err := ds.Query(fee.Fee{}.Kind()).
+		Filter("Type =", fee.Platform).
+		Filter("TransferId =", "").
+		Filter("CreatedAt <", cutoff).
+		GetAll(&rawfees)
+	if err != nil {
+		return nil, err
+	}
+	fees := make(map[currency.Type][]fee.Fee)
+	for _, fee := range rawfees {
+		cfees := fees[fee.Currency]
+		cfees = append(cfees, fee)
+		fees[fee.Currency] = cfees
+	}
+	return fees, nil
+}
+
+func createTransfer(ds *datastore.Datastore, currency currency.Type, destination string, destinationType string) *transfer.Transfer {
 	var tr transfer.Transfer
 	tr.Defaults()
 	tr.Currency = currency
+	tr.DestinationType = destinationType
+	tr.Destination = destination
 	tr.MustPut()
 	return &tr
 }
 
-func associateFeesToTransfers(ds *datastore.Datastore, fees map[currency.Type][]fee.Fee) (map[currency.Type]*transfer.Transfer, error) {
+func associateFeesToTransfers(ds *datastore.Datastore, fees map[currency.Type][]fee.Fee, destination string, destinationType string) (map[currency.Type]*transfer.Transfer, error) {
+	if destination == "" {
+		return nil, fmt.Errorf("associateFeesToTransfers: invalid invocation.  empty destination.")
+	}
+	if destinationType == "" {
+		return nil, fmt.Errorf("associateFeesToTransfers: invalid invocation.  empty destinationType.")
+	}
 	ret := make(map[currency.Type]*transfer.Transfer)
-	for currency, cfees := range(fees) {
-		for i, fee := range(cfees) {
+	for currency, cfees := range fees {
+		for i, fee := range cfees {
 			if fee.Currency != currency {
 				return nil, fmt.Errorf("associateFeesToTransfers: should be impossible: currency mismatch for fee %v", fee.Id())
 			}
 			tr, ok := ret[currency]
 			if !ok {
-				tr = createTransfer(ds, currency)
+				tr = createTransfer(ds, currency, destination, destinationType)
 			}
 			fee.TransferId = tr.Id()
 			tr.Amount = tr.Amount + fee.Amount
-			txfn := func (ctx appengine.Context) error {
+			txfn := func(ctx appengine.Context) error {
 				ds := datastore.New(ctx)
 				_, err := ds.Put(fee.Id(), fee)
 				if err != nil {
@@ -106,12 +136,31 @@ func processAffiliateFees(ds *datastore.Datastore, aff affiliate.Affiliate, now 
 	if err != nil {
 		log.Warn(err)
 	}
-	trs, err := associateFeesToTransfers(ds, fees)
+	trs, err := associateFeesToTransfers(ds, fees, aff.Stripe.UserId, string(fee.Affiliate))
 	if err != nil {
 		panic(err)
 	}
 	st := makeStripeApi(ds)
-	for _, tr := range(trs) {
+	for _, tr := range trs {
+		sendTransferToStripe(st, tr)
+		_, err := st.Transfer(tr)
+		if err != nil {
+			panic(err)
+		}
+	}
+}
+
+func processPlatformFees(ds *datastore.Datastore, now time.Time) {
+	fees, err := fetchFeesForPlatform(ds, now)
+	if err != nil {
+		log.Warn(err)
+	}
+	trs, err := associateFeesToTransfers(ds, fees, "default_for_currency", string(fee.Platform))
+	if err != nil {
+		panic(err)
+	}
+	st := makeStripeApi(ds)
+	for _, tr := range trs {
 		sendTransferToStripe(st, tr)
 		_, err := st.Transfer(tr)
 		if err != nil {
@@ -122,7 +171,7 @@ func processAffiliateFees(ds *datastore.Datastore, aff affiliate.Affiliate, now 
 
 type retryError struct {
 	transferKey string
-	err error
+	err         error
 }
 
 func retryIncompleteTransfers(ds *datastore.Datastore) {
@@ -136,7 +185,7 @@ func retryIncompleteTransfers(ds *datastore.Datastore) {
 		log.Error("failed to fetch keys for incomplete transfers: %v", err)
 	} else {
 		trs := make([]transfer.Transfer, 0, len(keys))
-		for _, key_ := range(keys) {
+		for _, key_ := range keys {
 			key := key_.Encode()
 			var tr transfer.Transfer
 			err := ds.Get(key, &tr)
@@ -150,7 +199,7 @@ func retryIncompleteTransfers(ds *datastore.Datastore) {
 			log.Warn("failures while fetching incomplete transfers: %v", errs)
 		}
 		st := makeStripeApi(ds)
-		for _, tr := range(trs) {
+		for _, tr := range trs {
 			sendTransferToStripe(st, &tr)
 		}
 	}
