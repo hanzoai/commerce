@@ -11,7 +11,7 @@ type Affiliate struct {
 	mixin.Model
 
 	Enabled bool `json:"enabled"`
-	Period int `json:"period"`
+	Period  int  `json:"period"`
 
 	UserId    string `json:"userId"`
 	FirstName string `json:"firstName"`
@@ -21,7 +21,9 @@ type Affiliate struct {
 	TaxId     string `json:"-"`
 	Timezone  string `json:"timezone"`
 
-	Commission commission.Commission `json:"commission"`
+	Commission  commission.Commission `json:"commission"`
+	FlatFee     int                   `json:"flatFee"`
+	PlatformFee float64               `json:"platformFee"`
 
 	Stripe struct {
 		// FIXME: What do we need to persist?
