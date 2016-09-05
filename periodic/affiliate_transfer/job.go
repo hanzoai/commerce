@@ -8,7 +8,6 @@ import (
 	aeds "appengine/datastore"
 
 	"crowdstart.com/datastore"
-	"crowdstart.com/datastore/parallel"
 	"crowdstart.com/models/affiliate"
 	"crowdstart.com/models/fee"
 	"crowdstart.com/models/organization"
@@ -19,7 +18,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func cutoffForAffiliate(aff affiliate.Affiliate, now time.Time) time.Time {
+func CutoffForAffiliate(aff affiliate.Affiliate, now time.Time) time.Time {
 	year, month, day := now.UTC().Date()
 	ret := time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
 	ret = ret.AddDate(0, 0, -aff.Period)
@@ -28,7 +27,7 @@ func cutoffForAffiliate(aff affiliate.Affiliate, now time.Time) time.Time {
 
 func fetchFeesForAffiliate(ds *datastore.Datastore, aff affiliate.Affiliate, now time.Time) (map[currency.Type][]fee.Fee, error) {
 	affId := aff.Id()
-	cutoff := cutoffForAffiliate(aff, now)
+	cutoff := CutoffForAffiliate(aff, now)
 	rawfees := make([]fee.Fee, 0, 0)
 	_, err := ds.Query(fee.Fee{}.Kind()).
 		Filter("AffiliateId =", affId).
@@ -210,17 +209,23 @@ func makeStripeApi(ds *datastore.Datastore) *stripe.Client {
 	return stripe.New(ds.Context, org.Stripe.AccessToken)
 }
 
-var pfn = parallel.New("periodic-affiliate_transfer-task", processAffiliateFees)
+func fetchAllAffiliates(ds *datastore.Datastore) []affiliate.Affiliate {
+	affiliates := make([]affiliate.Affiliate, 0, 0)
+	_, err := ds.Query(affiliate.Affiliate{}.Kind()).GetAll(&affiliates)
+	if err != nil {
+		log.Error("failed to fetch affiliates: %v", err)
+		panic(err)
+	}
+	return affiliates
+}
 
-// XXXih: the typical lifecycle of a Transfer is as follows:
-// 1. a Transfer is created and stored to datastore; this produces a unique ID
-// 2. the aforementioned unique ID is then used as an "idempotency tag" in all
-//    associated requests to our payment processor
-// 3. ...
 func Run(c *gin.Context) {
 	panic("XXXih: work in progress")
 	ds := datastore.New(c)
 	retryIncompleteTransfers(ds)
 	now := time.Now()
-	pfn.Run(c, 100, now)
+	affiliates := fetchAllAffiliates(ds)
+	for _, aff := range(affiliates) {
+		processAffiliateFees(ds, aff, now)
+	}
 }
