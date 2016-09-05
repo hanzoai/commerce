@@ -4,8 +4,14 @@ import (
 	"time"
 	"testing"
 
+	// "crowdstart.com/api/checkout"
 	"crowdstart.com/models/affiliate"
+	"crowdstart.com/models/fixtures"
+	"crowdstart.com/models/organization"
 	"crowdstart.com/periodic/affiliate_transfer"
+	"crowdstart.com/thirdparty/stripe"
+	"crowdstart.com/util/gincontext"
+	"crowdstart.com/util/test/ae"
 
 	. "crowdstart.com/util/test/ginkgo"
 )
@@ -42,5 +48,16 @@ var _ = Describe("periodic/affiliate_transfer/job", func() {
 		cutoff = affiliate_transfer.CutoffForAffiliate(aff, orig)
 		expected = time.Date(2015, time.February, 28, 0, 0, 0, 0, time.UTC)
 		Expect(cutoff).To(Equal(expected))
+	})
+
+	Context("integration tests", func() {
+		ctx := ae.NewContext()
+		c := gincontext.New(ctx)
+		org := fixtures.Organization(c).(*organization.Organization)
+		stripe.New(ctx, org.Stripe.Test.AccessToken)
+		It("hober", func() {
+			// checkout.Authorize(c)
+			Expect(5).To(Equal(5))
+		})
 	})
 })
