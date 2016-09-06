@@ -4,7 +4,7 @@ input = require '../../../form/input'
 
 class CustomAnalytics extends Integration
   tag: 'custom-integration'
-  type: 'generic'
+  type: 'custom'
   html: require '../../../templates/backend/widget/integrations/analytics/custom.html'
   img: '/img/integrations/custom.png'
   text: 'Custom Analytics'
