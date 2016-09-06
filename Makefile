@@ -47,19 +47,13 @@ gae_sandbox = config/sandbox \
 
 gae_staging = config/staging \
 			  api/app.staging.yaml \
+			  cdn/app.staging.yaml \
 			  platform/app.staging.yaml
-
 
 gae_production = config/production \
 				 api \
+				 cdn \
 				 platform
-
-gae_skully = config/skully \
-			 analytics/app.skully.yaml \
-			 api/app.skully.yaml \
-			 cdn/app.skully.yaml \
-			 platform/app.skully.yaml \
-			 store/app.skully.yaml
 
 tools = github.com/nsf/gocode \
         github.com/rogpeppe/godef \
@@ -143,9 +137,6 @@ ifeq ($(production), 1)
 else ifeq ($(sandbox), 1)
 	project_id = crowdstart-sandbox
 	gae_config = $(gae_sandbox)
-else ifeq ($(skully), 1)
-	project_id = crowdstart-skully
-	gae_config = $(gae_skully)
 else
 	project_id = crowdstart-staging
 	gae_config = $(gae_staging)
@@ -397,6 +388,5 @@ docs:
 
 .PHONY: all auth bench build compile-js compile-js-min compile-css compile-css-min \
 	datastore-import datastore-export datastore-config deploy deploy-staging \
-	deploy-skully deploy-production deps deps-assets deps-go live-reload \
-	serve serve-clear-datastore serve-public test test-integration test-watch \
-	tools
+	deploy-production deps deps-assets deps-go live-reload serve serve-clear-datastore \
+	serve-public test test-integration test-watch tools
