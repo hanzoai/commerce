@@ -72,14 +72,16 @@ type Store struct {
 	Slug string `json:"slug"`
 
 	// Where this is hosted if not on crowdstart.com
-	Hostname string `json:"hostname"`
-	Prefix   string `json:"prefix"`
+	Domain string `json:"domain"`
+	Prefix string `json:"prefix"`
 
 	// Currency for store
 	Currency currency.Type `json:"currency"`
 
 	// Taxation information
-	TaxNexus []Address `json:"taxNexus"`
+
+	Address  Address   `json:"address,omitempty"`
+	TaxNexus []Address `json:"taxNexus,omitempty"`
 
 	// Shipping Rate Table, country name to shipping rate
 	ShippingRateTable  ShippingRateTable `json:"shippingRates" datastore:"-"`
@@ -92,6 +94,15 @@ type Store struct {
 	Salesforce struct {
 		PriceBookId string `json:"PriceBookId"`
 	} `json:"-"`
+
+	Email    string `json:"email,omitempty"`
+	Phone    string `json:"phone,omitempty"`
+	Timezone string `json:"timezone,omitempty`
+
+	Mailchimp struct {
+		ListId string `json:"listId"`
+		APIKey string `json:"apiKey"`
+	} `json:"mailchimp,omitempty`
 }
 
 func (s *Store) Load(c <-chan aeds.Property) (err error) {

@@ -70,15 +70,15 @@ type Integration struct {
 	} `json:"src,omitempty"`
 
 	// Available integrations
-	Generic
-	FacebookPixel
+	Custom
 	FacebookConversions
-	GoogleAnalytics
+	FacebookPixel
 	GoogleAdWords
+	GoogleAnalytics
 }
 
 // Integration specific properties
-type Generic struct {
+type Custom struct {
 	Code string `json:"code,omitempty"`
 }
 
