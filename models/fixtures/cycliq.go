@@ -43,7 +43,7 @@ var Cycliq = New("cycliq", func(c *gin.Context) *organization.Organization {
 	// Add default analytics config
 	integrations := []Integration{
 		Integration{
-			Type: "facebook-audiences",
+			Type: "facebook-pixel",
 			Id:   "381279715352892",
 		},
 		Integration{
