@@ -7,11 +7,13 @@ import (
 
 	"crowdstart.com/api/checkout/balance"
 	"crowdstart.com/api/checkout/stripe"
+	"crowdstart.com/models/cart"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/types/currency"
+	"crowdstart.com/thirdparty/mailchimp"
 	"crowdstart.com/util/counter"
 	"crowdstart.com/util/log"
 )
@@ -95,6 +97,34 @@ func CompleteCapture(c *gin.Context, org *organization.Organization, ord *order.
 			if err := coup.SaveRedemption(); err != nil {
 				log.Warn("Unable to save redemption: %v", err, ctx)
 			}
+		}
+	}
+
+	// Update cart
+	car := cart.New(db)
+
+	if ord.CartId != "" {
+		if err := car.GetById(ord.CartId); err != nil {
+			log.Warn("Unable to find cart: %v", err, ctx)
+		} else {
+			car.Status = cart.Ordered
+			if err := car.Update(); err != nil {
+				log.Warn("Unable to save cart: %v", err, ctx)
+			}
+		}
+	}
+
+	// Mailchimp shenanigans
+	if org.Mailchimp.APIKey != "" {
+		// Create new mailchimp client (used everywhere else)
+		client := mailchimp.New(ctx, org.Mailchimp.APIKey)
+
+		client.DeleteCart(org.DefaultStore, car)
+		client.CreateOrder(org.DefaultStore, ord)
+
+		// Just get buyer off first payment
+		if err := client.SubscribeCustomer(org.Mailchimp.ListId, payments[0].Buyer); err != nil {
+			log.Warn("Failed to subscribe '%s' to Mailchimp list '%s': %v", payments[0].Buyer.Email, org.Mailchimp.ListId, err)
 		}
 	}
 

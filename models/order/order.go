@@ -56,6 +56,10 @@ type Order struct {
 
 	// Associated Crowdstart user or buyer.
 	UserId string `json:"userId,omitempty"`
+	Email  string `json:"email,omitempty"`
+
+	// Associated cart
+	CartId string `json:"cartId,omitempty"`
 
 	// Status
 	Status            Status            `json:"status"`
@@ -108,6 +112,7 @@ type Order struct {
 	// integer	Amount refunded by the seller. Amount in cents.
 	Refunded currency.Cents `json:"refunded"`
 
+	Company         string  `json:"company,omitempty"`
 	BillingAddress  Address `json:"billingAddress"`
 	ShippingAddress Address `json:"shippingAddress"`
 
@@ -122,6 +127,9 @@ type Order struct {
 	ReferrerId  string          `json:"referrerId,omitempty"`
 
 	PaymentIds []string `json:"payments"`
+
+	// Date order was cancelled at
+	CancelledAt time.Time `json:"cancelledAt,omitempty"`
 
 	// Fulfillment information
 	Fulfillment Fulfillment `json:"fulfillment"`
@@ -138,6 +146,12 @@ type Order struct {
 	Gift        bool   `json:"gift"`        // Is this a gift?
 	GiftMessage string `json:"giftMessage"` // Message to go on gift
 	GiftEmail   string `json:"giftEmail"`   // Email for digital gifts
+
+	Mailchimp struct {
+		Id           string `json:"id,omitempty"`
+		CampaignId   string `json:"campaignId,omitempty"`
+		TrackingCode string `json:"trackingCode,omitempty"`
+	} `json:"mailchimp,omitempty"`
 }
 
 func (o Order) Document() mixin.Document {

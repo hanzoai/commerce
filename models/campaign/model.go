@@ -21,7 +21,6 @@ func (c *Campaign) Defaults() {
 func New(db *datastore.Datastore) *Campaign {
 	c := new(Campaign)
 	c.Init(db)
-	c.Defaults()
 	return c
 }
 

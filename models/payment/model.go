@@ -23,7 +23,6 @@ func (p *Payment) Defaults() {
 func New(db *datastore.Datastore) *Payment {
 	p := new(Payment)
 	p.Init(db)
-	p.Defaults()
 	return p
 }
 

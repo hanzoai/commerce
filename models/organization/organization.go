@@ -99,6 +99,9 @@ type Organization struct {
 		StartDate time.Time
 	} `json:"-"`
 
+	// Default store
+	DefaultStore string `json:"defaultStore"`
+
 	Salesforce struct {
 		AccessToken        string `json:"accessToken"`
 		DefaultPriceBookId string `json:"defaultPriceBookId"`
@@ -140,6 +143,11 @@ type Organization struct {
 		// Save entire live and test tokens
 		Live connect.Token
 		Test connect.Token
+	} `json:"-"`
+
+	Mailchimp struct {
+		ListId string `json:"listId"`
+		APIKey string `json:"apiKey"`
 	} `json:"-"`
 
 	Mandrill struct {
