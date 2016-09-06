@@ -1,6 +1,7 @@
 package mailchimp
 
 import (
+	"strconv"
 	"time"
 
 	"appengine"
@@ -169,9 +170,9 @@ func (api API) DeleteStore(stor *store.Store) error {
 
 func (api API) CreateCart(storeId string, car *cart.Cart) error {
 	lines := make([]gochimp3.LineItem, 0)
-	for _, line := range car.Items {
+	for i, line := range car.Items {
 		lines = append(lines, gochimp3.LineItem{
-			ID:               car.Id() + line.Id(),
+			ID:               strconv.Itoa(i),
 			ProductID:        line.ProductId,
 			ProductVariantID: line.Id(),
 			Quantity:         line.Quantity,
@@ -219,9 +220,9 @@ func (api API) CreateCart(storeId string, car *cart.Cart) error {
 
 func (api API) UpdateCart(storeId string, car *cart.Cart) error {
 	lines := make([]gochimp3.LineItem, 0)
-	for _, line := range car.Items {
+	for i, line := range car.Items {
 		lines = append(lines, gochimp3.LineItem{
-			ID:               car.Id() + line.Id(),
+			ID:               strconv.Itoa(i),
 			ProductID:        line.ProductId,
 			ProductVariantID: line.Id(),
 			Quantity:         line.Quantity,
@@ -293,9 +294,9 @@ func (api API) CreateOrder(storeId string, ord *order.Order) error {
 
 	// Create line items
 	lines := make([]gochimp3.LineItem, 0)
-	for _, line := range ord.Items {
+	for i, line := range ord.Items {
 		lines = append(lines, gochimp3.LineItem{
-			ID:               ord.Id() + line.Id(),
+			ID:               strconv.Itoa(i),
 			ProductID:        line.ProductId,
 			ProductVariantID: line.Id(),
 			Quantity:         line.Quantity,
@@ -306,7 +307,7 @@ func (api API) CreateOrder(storeId string, ord *order.Order) error {
 	// Create Order
 	req := &gochimp3.Order{
 		// Required
-		ID:           ord.Id(),
+		ID:           strconv.Itoa(ord.Number),
 		CurrencyCode: string(ord.Currency),
 		OrderTotal:   centsToFloat(ord.Total, ord.Currency),
 		Customer: gochimp3.Customer{
@@ -379,9 +380,9 @@ func (api API) UpdateOrder(storeId string, ord *order.Order) error {
 
 	// Create line items
 	lines := make([]gochimp3.LineItem, 0)
-	for _, line := range ord.Items {
+	for i, line := range ord.Items {
 		lines = append(lines, gochimp3.LineItem{
-			ID:               ord.Id() + line.Id(),
+			ID:               strconv.Itoa(i),
 			ProductID:        line.ProductId,
 			ProductVariantID: line.Id(),
 			Quantity:         line.Quantity,
@@ -389,10 +390,10 @@ func (api API) UpdateOrder(storeId string, ord *order.Order) error {
 		})
 	}
 
-	// Create order request
+	// Update Order
 	req := &gochimp3.Order{
 		// Required
-		ID:           ord.Id(),
+		ID:           strconv.Itoa(ord.Number),
 		CurrencyCode: string(ord.Currency),
 		OrderTotal:   centsToFloat(ord.Total, ord.Currency),
 		Customer: gochimp3.Customer{
