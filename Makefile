@@ -23,9 +23,7 @@ modules	= crowdstart.com/analytics \
 
 gae_development = config/development/app.yaml \
 				  config/development/dispatch.yaml \
-				  analytics/app.dev.yaml \
 				  api/app.dev.yaml \
-				  cdn/app.dev.yaml \
 				  platform/app.dev.yaml
 
 gae_sandbox = config/sandbox \
