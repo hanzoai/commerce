@@ -14,7 +14,7 @@ github.com/hashicorp/golang-lru
 github.com/headzoo/surf master
 github.com/huandu/facebook master
 github.com/julienschmidt/httprouter 8c199fb6259ffc1af525cc3ad52ee60ba8359669
-github.com/rybit/gochimp e3bb594bf8d4dcbda6db2b6c24297296f67be4d5
+github.com/zeekay/gochimp3
 github.com/mholt/binding master
 github.com/netlify/netlify-go master
 github.com/onsi/ginkgo/ginkgo master

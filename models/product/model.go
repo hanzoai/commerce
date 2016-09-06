@@ -22,7 +22,6 @@ func (p *Product) Defaults() {
 func New(db *datastore.Datastore) *Product {
 	p := new(Product)
 	p.Init(db)
-	p.Defaults()
 	return p
 }
 

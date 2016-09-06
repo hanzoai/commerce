@@ -21,7 +21,6 @@ func (r *Referrer) Defaults() {
 func New(db *datastore.Datastore) *Referrer {
 	r := new(Referrer)
 	r.Init(db)
-	r.Defaults()
 	return r
 }
 
