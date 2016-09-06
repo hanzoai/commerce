@@ -71,10 +71,10 @@ type Integration struct {
 
 	// Available integrations
 	Custom
-	FacebookAudiences
 	FacebookConversions
-	GoogleAnalytics
+	FacebookPixel
 	GoogleAdWords
+	GoogleAnalytics
 }
 
 // Integration specific properties
@@ -82,7 +82,7 @@ type Custom struct {
 	Code string `json:"code,omitempty"`
 }
 
-type FacebookAudiences struct {
+type FacebookPixel struct {
 }
 
 type FacebookConversions struct {
