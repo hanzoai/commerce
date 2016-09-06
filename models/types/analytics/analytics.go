@@ -70,7 +70,7 @@ type Integration struct {
 	} `json:"src,omitempty"`
 
 	// Available integrations
-	Generic
+	Custom
 	FacebookAudiences
 	FacebookConversions
 	GoogleAnalytics
@@ -78,7 +78,7 @@ type Integration struct {
 }
 
 // Integration specific properties
-type Generic struct {
+type Custom struct {
 	Code string `json:"code,omitempty"`
 }
 
