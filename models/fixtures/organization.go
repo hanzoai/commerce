@@ -67,22 +67,12 @@ var Organization = New("organization", func(c *gin.Context) *organization.Organi
 	// Add default analytics config
 	integrations := []Integration{
 		Integration{
-			Type: "facebook-audiences",
+			Type: "facebook-pixel",
 			Id:   "920910517982389",
-		},
-		Integration{
-			Type:  "facebook-conversions",
-			Id:    "6025763568614",
-			Event: "Sign-up",
 		},
 		Integration{
 			Type: "google-analytics",
 			Id:   "UA-65099214-1",
-		},
-		Integration{
-			Type:  "google-adwords",
-			Id:    "945491661",
-			Event: "Sign-up",
 		},
 	}
 	org.Analytics = Analytics{integrations}
