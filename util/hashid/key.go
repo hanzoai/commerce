@@ -9,7 +9,6 @@ import (
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/namespace/consts"
-	"crowdstart.com/util/log"
 )
 
 var (
@@ -102,8 +101,6 @@ func getNamespace(ctx appengine.Context, id int64) string {
 
 // Encodes organzation namespace into it's IntID
 func encodeNamespace(ctx appengine.Context, namespace string) int {
-	log.Debug("namespace: '%v'", namespace)
-
 	// Default namespace
 	if namespace == "" {
 		return 0
@@ -117,12 +114,10 @@ func encodeNamespace(ctx appengine.Context, namespace string) int {
 		cache(namespace, id)
 	}
 
-	log.Debug("encoded '%v' to %v", namespace, id)
 	return int(id)
 }
 
 func decodeNamespace(ctx appengine.Context, encoded int) string {
-	log.Debug("id: %v", encoded)
 	// Default namespace
 	if encoded == 0 {
 		return ""
@@ -137,12 +132,10 @@ func decodeNamespace(ctx appengine.Context, encoded int) string {
 		cache(namespace, id)
 	}
 
-	log.Debug("decoded '%v' to %v", namespace, id)
 	return namespace
 }
 
 func EncodeKey(ctx appengine.Context, key datastore.Key) string {
-	log.Debug("key: %v", key)
 	id := int(key.IntID())
 
 	// Return if incomplete key
@@ -174,13 +167,10 @@ func EncodeKey(ctx appengine.Context, key datastore.Key) string {
 	// Append namespace
 	ids = append(ids, namespace)
 
-	log.Debug("ids to encode: %v, %v", key, ids)
 	return Encode(ids...)
 }
 
 func DecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key, err error) {
-	log.Debug("encoded key: %v", encoded)
-
 	// Catch panic from Decode
 	defer func() {
 		if r := recover(); r != nil {
