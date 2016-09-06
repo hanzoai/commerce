@@ -21,7 +21,6 @@ func (s *Store) Defaults() {
 func New(db *datastore.Datastore) *Store {
 	s := new(Store)
 	s.Init(db)
-	s.Defaults()
 	return s
 }
 

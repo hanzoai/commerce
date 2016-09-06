@@ -30,6 +30,15 @@ var DefaultPermissions = map[string]Permissions{
 		"list":   masks(Admin, Campaign),
 	},
 
+	"cart": Permissions{
+		"create": masks(Admin, Published),
+		"delete": masks(Admin),
+		"patch":  masks(Admin, Published),
+		"update": masks(Admin, Published),
+		"get":    masks(Admin),
+		"list":   masks(Admin),
+	},
+
 	"collection": Permissions{
 		"create": masks(Admin, WriteCollection),
 		"delete": masks(Admin, WriteCollection),

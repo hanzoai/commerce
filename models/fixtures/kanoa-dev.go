@@ -1,6 +1,8 @@
 package fixtures
 
 import (
+	"time"
+
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.com/auth/password"
@@ -11,37 +13,42 @@ import (
 	"crowdstart.com/models/store"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/models/user"
-	"crowdstart.com/util/log"
+	"crowdstart.com/thirdparty/mailchimp"
+	"crowdstart.com/util/token"
 )
 
-var Kanoa = New("kanoa", func(c *gin.Context) *organization.Organization {
+var _ = New("kanoa-dev", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
+	// Create user
+	usr := user.New(db)
+	usr.Email = "cival@getkanoa.com"
+	usr.GetOrCreate("Email=", usr.Email)
+	usr.FirstName = "Cival"
+	usr.LastName = ""
+	usr.PasswordHash, _ = password.Hash("1Kanoa23")
+
+	// Create organization
 	org := organization.New(db)
 	org.Name = "kanoa"
 	org.GetOrCreate("Name=", org.Name)
+	org.SetKey("vMAXTXuKa3")
 
-	u := user.New(db)
-	u.Email = "cival@getkanoa.com"
-	u.GetOrCreate("Email=", u.Email)
-	u.FirstName = "Cival"
-	u.LastName = ""
-	u.Organizations = []string{org.Id()}
-	u.PasswordHash, _ = password.Hash("1Kanoa23")
-	u.Update()
+	// Set organization on user
+	usr.Organizations = []string{org.Id()}
 
 	org.FullName = "KANOA Inc"
-	org.Owners = []string{u.Id()}
-	org.Website = "http://www.getkanoa.com"
+	org.Owners = []string{usr.Id()}
+	org.Website = "https://www.getkanoa.com"
 	org.SecretKey = []byte("EZ2E011iX2Bp5lv149N2STd1d580cU58")
-	org.AddDefaultTokens()
 	org.Fee = 0.05
+
+	// Integration configuration
 	org.Mailchimp.APIKey = ""
 	org.Mailchimp.ListId = "23ad4e4ba4"
-
-	// Email configuration
 	org.Mandrill.APIKey = ""
 
+	// Paypal Config
 	org.Paypal.ConfirmUrl = "https://www.getkanoa.com"
 	org.Paypal.CancelUrl = "https://www.getkanoa.com"
 
@@ -57,6 +64,7 @@ var Kanoa = New("kanoa", func(c *gin.Context) *organization.Organization {
 	org.Paypal.Test.SecurityPassword = "XMDRP9CF75ESA8P8"
 	org.Paypal.Test.SecuritySignature = "AcoBndPxINN2yEkgSKALAXYErpWTAFpUk3S6BucWeefHiUNpGxIleLof"
 
+	// Email config
 	org.Email.Defaults.Enabled = true
 	org.Email.Defaults.FromName = "KANOA"
 	org.Email.Defaults.FromEmail = "hi@kanoa.com"
@@ -77,41 +85,103 @@ var Kanoa = New("kanoa", func(c *gin.Context) *organization.Organization {
 	org.Email.User.EmailConfirmed.Template = readEmailTemplate("/resources/kanoa/emails/user-email-confirmed.html")
 	org.Email.User.EmailConfirmed.Enabled = false
 
-	// Save org into default namespace
-	org.Put()
+	// Stripe tokens
+	org.Stripe.AccessToken = "sk_test_aqA1nQ6aWNjJoIaynPIwdY0w"
+	org.Stripe.Live.AccessToken = "sk_test_aqA1nQ6aWNjJoIaynPIwdY0w"
+	org.Stripe.Live.PublishableKey = "pk_test_OhE3VKqrWXxht14ztjgluGgG"
+	org.Stripe.Live.RefreshToken = "rt_6tPyHWMqDd3C2Ii5IX85lzCqHDN5msJGg1n6zNQgBKdQZONv"
+	org.Stripe.Live.Scope = "read_write"
+	org.Stripe.Live.UserId = "acct_16PFH2Iau5NyccPf"
+	org.Stripe.PublishableKey = "pk_test_OhE3VKqrWXxht14ztjgluGgG"
+	org.Stripe.RefreshToken = "rt_6tPyHWMqDd3C2Ii5IX85lzCqHDN5msJGg1n6zNQgBKdQZONv"
+	org.Stripe.Test.AccessToken = "sk_test_aqA1nQ6aWNjJoIaynPIwdY0w"
+	org.Stripe.Test.PublishableKey = "pk_test_OhE3VKqrWXxht14ztjgluGgG"
+	org.Stripe.Test.RefreshToken = "rt_6tPyHWMqDd3C2Ii5IX85lzCqHDN5msJGg1n6zNQgBKdQZONv"
+	org.Stripe.Test.Scope = "read_write"
+	org.Stripe.Test.UserId = "acct_16PFH2Iau5NyccPf"
+	org.Stripe.UserId = "acct_16PFH2Iau5NyccPf"
+
+	// API Tokens
+	org.Tokens = []token.Token{
+		token.Token{
+			EntityId:    "vMAXTXuKa3",
+			Id:          "OUmLMjm",
+			IssuedAt:    time.Now(),
+			Name:        "live-secret-key",
+			Permissions: 20,
+			Secret:      []byte("EZ2E011iX2Bp5lv149N2STd1d580cU58"),
+		},
+		token.Token{
+			EntityId:    "vMAXTXuKa3",
+			Id:          "lpmxHnNMN8Y",
+			IssuedAt:    time.Now(),
+			Name:        "live-published-key",
+			Permissions: 4503617075675172,
+			Secret:      []byte("EZ2E011iX2Bp5lv149N2STd1d580cU58"),
+		},
+		token.Token{
+			EntityId:    "vMAXTXuKa3",
+			Id:          "YYoUAGes",
+			IssuedAt:    time.Now(),
+			Name:        "test-secret-key",
+			Permissions: 24,
+			Secret:      []byte("EZ2E011iX2Bp5lv149N2STd1d580cU58"),
+		},
+		token.Token{
+			EntityId:    "vMAXTXuKa3",
+			Id:          "WSXQDoVe6Bs",
+			IssuedAt:    time.Now(),
+			Name:        "live-published-key",
+			Permissions: 4503617075675176,
+			Secret:      []byte("EZ2E011iX2Bp5lv149N2STd1d580cU58"),
+		},
+	}
 
 	// Save namespace so we can decode keys for this organization later
 	ns := namespace.New(db)
 	ns.Name = org.Name
+	ns.GetOrCreate("Name=", ns.Name)
 	ns.IntId = org.Key().IntID()
-	err := ns.Put()
-	if err != nil {
-		log.Warn("Failed to put namespace: %v", err)
-	}
+	ns.Update()
 
+	// Create namespaced context
 	nsdb := datastore.New(org.Namespaced(db.Context))
 
-	// Create default store
+	// Create new store
 	stor := store.New(nsdb)
-	stor.Name = "default"
+	stor.Name = "development"
 	stor.GetOrCreate("Name=", stor.Name)
+	stor.SetKey("MZbtooKHjM")
 	stor.Prefix = "/"
 	stor.Currency = currency.USD
 	stor.Mailchimp.APIKey = ""
 	stor.Mailchimp.ListId = "23ad4e4ba4"
-	stor.Update()
 
-	// Create earphone product
+	// Set default store on org
+	org.DefaultStore = stor.Id()
+
+	// Fetch earphones
 	prod := product.New(nsdb)
 	prod.Slug = "earphone"
 	prod.GetOrCreate("Slug=", prod.Slug)
+	prod.SetKey("9V84cGS9VK")
 	prod.Name = "KANOA Earphone"
 	prod.Description = "2 Ear Buds, 1 Charging Case, 3 Ergonomic Ear Tips, 1 Micro USB Cable"
 	prod.Price = currency.Cents(19999)
 	prod.Inventory = 9000
 	prod.Preorder = true
 	prod.Hidden = false
-	prod.Update()
+
+	// Save entities
+	usr.MustUpdate()
+	org.MustUpdate()
+	stor.MustUpdate()
+	prod.MustUpdate()
+
+	// Create corresponding Mailchimp entities
+	client := mailchimp.New(db.Context, org.Mailchimp.APIKey)
+	client.CreateStore(stor)
+	client.CreateProduct(stor.Id(), prod)
 
 	return org
 })
