@@ -299,11 +299,9 @@ auth:
 	gcloud auth login
 	appcfg.py list_versions config/staging
 
-ifeq ($(production),1)
 deploy: assets-min docs deploy-app
-else
-deploy: assets deploy-app
-endif
+
+deploy-debug: assets deploy-app
 
 deploy-app: rollback
 	# Set env for deploy
