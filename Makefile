@@ -299,7 +299,13 @@ auth:
 	gcloud auth login
 	appcfg.py list_versions config/staging
 
-deploy: assets-min docs rollback
+ifeq ($(production),1)
+deploy: assets-min docs deploy-app
+else
+deploy: assets deploy-app
+endif
+
+deploy-app: rollback
 	# Set env for deploy
 	@echo 'package config\n\nvar Env = "$(project_id)"' > config/env.go
 
