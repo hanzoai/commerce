@@ -34,3 +34,5 @@ static/v1.js
 *.orig
 *.coverprofile
 templates/platform/docs/_generated/*.html
+
+_export
