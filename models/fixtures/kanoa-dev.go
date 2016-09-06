@@ -13,7 +13,6 @@ import (
 	"crowdstart.com/models/store"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/models/user"
-	"crowdstart.com/thirdparty/mailchimp"
 	"crowdstart.com/util/token"
 )
 
@@ -179,9 +178,9 @@ var _ = New("kanoa-dev", func(c *gin.Context) *organization.Organization {
 	prod.MustUpdate()
 
 	// Create corresponding Mailchimp entities
-	client := mailchimp.New(db.Context, org.Mailchimp.APIKey)
-	client.CreateStore(stor)
-	client.CreateProduct(stor.Id(), prod)
+	// client := mailchimp.New(db.Context, org.Mailchimp.APIKey)
+	// client.CreateStore(stor)
+	// client.CreateProduct(stor.Id(), prod)
 
 	return org
 })
