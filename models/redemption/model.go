@@ -19,7 +19,6 @@ func (r *Redemption) Defaults() {
 func New(db *datastore.Datastore) *Redemption {
 	r := new(Redemption)
 	r.Init(db)
-	r.Defaults()
 	return r
 }
 
