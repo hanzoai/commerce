@@ -92,7 +92,7 @@ autoprefixer_opts = -b 'ie > 8, firefox > 24, chrome > 30, safari > 6, opera > 1
 					static/css/platform.css
 
 dev_appserver = $(sdk_path)/dev_appserver.py --skip_sdk_update_check \
-											 --datastore_path=~/.gae_datastore.bin \
+											 --datastore_path=$(sdk_path)/.datastore.bin \
 											 --dev_appserver_log_level=error
 
 sdk_install_extra = rm -rf $(sdk_path)/demos
