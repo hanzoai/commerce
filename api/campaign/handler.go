@@ -1,4 +1,4 @@
-package xd
+package campaign
 
 import (
 	"fmt"
