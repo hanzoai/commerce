@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"appengine"
-	aeds "appengine/datastore"
+	aedb "appengine/datastore"
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/affiliate"
@@ -18,6 +18,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type feeMap map[currency.Type][]fee.Fee
+type transferMap map[currency.Type]*transfer.Transfer
+
 func CutoffForAffiliate(aff affiliate.Affiliate, now time.Time) time.Time {
 	year, month, day := now.UTC().Date()
 	ret := time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
@@ -25,11 +28,12 @@ func CutoffForAffiliate(aff affiliate.Affiliate, now time.Time) time.Time {
 	return ret
 }
 
-func fetchFeesForAffiliate(ds *datastore.Datastore, aff affiliate.Affiliate, now time.Time) (map[currency.Type][]fee.Fee, error) {
+func fetchFeesForAffiliate(db *datastore.Datastore, aff affiliate.Affiliate, now time.Time) (feeMap, error) {
 	affId := aff.Id()
 	cutoff := CutoffForAffiliate(aff, now)
 	rawfees := make([]fee.Fee, 0, 0)
-	_, err := ds.Query(fee.Fee{}.Kind()).
+
+	_, err := db.Query(fee.Fee{}.Kind()).
 		Filter("AffiliateId =", affId).
 		Filter("TransferId =", "").
 		Filter("CreatedAt <", cutoff).
@@ -37,21 +41,24 @@ func fetchFeesForAffiliate(ds *datastore.Datastore, aff affiliate.Affiliate, now
 	if err != nil {
 		return nil, err
 	}
-	fees := make(map[currency.Type][]fee.Fee)
+
+	fees := make(feeMap)
+
 	for _, fee := range rawfees {
 		cfees := fees[fee.Currency]
 		cfees = append(cfees, fee)
 		fees[fee.Currency] = cfees
 	}
+
 	return fees, nil
 }
 
-func fetchFeesForPlatform(ds *datastore.Datastore, now time.Time) (map[currency.Type][]fee.Fee, error) {
+func fetchFeesForPlatform(db *datastore.Datastore, now time.Time) (feeMap, error) {
 	year, month, day := now.UTC().Date()
 	cutoff := time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
 	cutoff = cutoff.AddDate(0, 0, -1)
 	rawfees := make([]fee.Fee, 0, 0)
-	_, err := ds.Query(fee.Fee{}.Kind()).
+	_, err := db.Query(fee.Fee{}.Kind()).
 		Filter("Type =", fee.Platform).
 		Filter("TransferId =", "").
 		Filter("CreatedAt <", cutoff).
@@ -59,7 +66,7 @@ func fetchFeesForPlatform(ds *datastore.Datastore, now time.Time) (map[currency.
 	if err != nil {
 		return nil, err
 	}
-	fees := make(map[currency.Type][]fee.Fee)
+	fees := make(feeMap)
 	for _, fee := range rawfees {
 		cfees := fees[fee.Currency]
 		cfees = append(cfees, fee)
@@ -68,7 +75,7 @@ func fetchFeesForPlatform(ds *datastore.Datastore, now time.Time) (map[currency.
 	return fees, nil
 }
 
-func createTransfer(ds *datastore.Datastore, currency currency.Type, destination string, destinationType string) *transfer.Transfer {
+func createTransfer(db *datastore.Datastore, currency currency.Type, destination string, destinationType string) *transfer.Transfer {
 	var tr transfer.Transfer
 	tr.Defaults()
 	tr.Currency = currency
@@ -78,14 +85,14 @@ func createTransfer(ds *datastore.Datastore, currency currency.Type, destination
 	return &tr
 }
 
-func associateFeesToTransfers(ds *datastore.Datastore, fees map[currency.Type][]fee.Fee, destination string, destinationType string) (map[currency.Type]*transfer.Transfer, error) {
+func associateFeesToTransfers(db *datastore.Datastore, fees feeMap, destination string, destinationType string) (transferMap, error) {
 	if destination == "" {
 		return nil, fmt.Errorf("associateFeesToTransfers: invalid invocation.  empty destination.")
 	}
 	if destinationType == "" {
 		return nil, fmt.Errorf("associateFeesToTransfers: invalid invocation.  empty destinationType.")
 	}
-	ret := make(map[currency.Type]*transfer.Transfer)
+	ret := make(transferMap)
 	for currency, cfees := range fees {
 		for i, fee := range cfees {
 			if fee.Currency != currency {
@@ -93,24 +100,24 @@ func associateFeesToTransfers(ds *datastore.Datastore, fees map[currency.Type][]
 			}
 			tr, ok := ret[currency]
 			if !ok {
-				tr = createTransfer(ds, currency, destination, destinationType)
+				tr = createTransfer(db, currency, destination, destinationType)
 			}
 			fee.TransferId = tr.Id()
 			tr.Amount = tr.Amount + fee.Amount
 			txfn := func(ctx appengine.Context) error {
-				ds := datastore.New(ctx)
-				_, err := ds.Put(fee.Id(), fee)
+				db := datastore.New(ctx)
+				_, err := db.Put(fee.Id(), fee)
 				if err != nil {
 					return err
 				}
-				_, err = ds.Put(tr.Id(), tr)
+				_, err = db.Put(tr.Id(), tr)
 				if err != nil {
 					return err
 				}
 				return nil
 			}
-			txopts := &aeds.TransactionOptions{XG: true}
-			err := ds.RunInTransaction(txfn, txopts)
+			txopts := &aedb.TransactionOptions{XG: true}
+			err := db.RunInTransaction(txfn, txopts)
 			if err != nil {
 				return nil, err
 			}
@@ -130,16 +137,16 @@ func sendTransferToStripe(st *stripe.Client, tr *transfer.Transfer) {
 	tr.MustPut()
 }
 
-func processAffiliateFees(ds *datastore.Datastore, aff affiliate.Affiliate, now time.Time) {
-	fees, err := fetchFeesForAffiliate(ds, aff, now)
+func processAffiliateFees(db *datastore.Datastore, aff affiliate.Affiliate, now time.Time) {
+	fees, err := fetchFeesForAffiliate(db, aff, now)
 	if err != nil {
 		log.Warn(err)
 	}
-	trs, err := associateFeesToTransfers(ds, fees, aff.Stripe.UserId, string(fee.Affiliate))
+	trs, err := associateFeesToTransfers(db, fees, aff.Stripe.UserId, string(fee.Affiliate))
 	if err != nil {
 		panic(err)
 	}
-	st := makeStripeApi(ds)
+	st := makeStripeApi(db)
 	for _, tr := range trs {
 		sendTransferToStripe(st, tr)
 		_, err := st.Transfer(tr)
@@ -149,16 +156,16 @@ func processAffiliateFees(ds *datastore.Datastore, aff affiliate.Affiliate, now 
 	}
 }
 
-func processPlatformFees(ds *datastore.Datastore, now time.Time) {
-	fees, err := fetchFeesForPlatform(ds, now)
+func processPlatformFees(db *datastore.Datastore, now time.Time) {
+	fees, err := fetchFeesForPlatform(db, now)
 	if err != nil {
 		log.Warn(err)
 	}
-	trs, err := associateFeesToTransfers(ds, fees, "default_for_currency", string(fee.Platform))
+	trs, err := associateFeesToTransfers(db, fees, "default_for_currency", string(fee.Platform))
 	if err != nil {
 		panic(err)
 	}
-	st := makeStripeApi(ds)
+	st := makeStripeApi(db)
 	for _, tr := range trs {
 		sendTransferToStripe(st, tr)
 		_, err := st.Transfer(tr)
@@ -173,9 +180,9 @@ type retryError struct {
 	err         error
 }
 
-func retryIncompleteTransfers(ds *datastore.Datastore) {
+func retryIncompleteTransfers(db *datastore.Datastore) {
 	errs := make([]retryError, 0, 0)
-	keys, err := ds.Query(transfer.Transfer{}.Kind()).
+	keys, err := db.Query(transfer.Transfer{}.Kind()).
 		Filter("Status =", "Initializing").
 		Filter("Amount >", 0).
 		KeysOnly().
@@ -187,7 +194,7 @@ func retryIncompleteTransfers(ds *datastore.Datastore) {
 		for _, key_ := range keys {
 			key := key_.Encode()
 			var tr transfer.Transfer
-			err := ds.Get(key, &tr)
+			err := db.Get(key, &tr)
 			if err != nil {
 				errs = append(errs, retryError{key, err})
 			} else {
@@ -197,21 +204,21 @@ func retryIncompleteTransfers(ds *datastore.Datastore) {
 		if len(errs) > 0 {
 			log.Warn("failures while fetching incomplete transfers: %v", errs)
 		}
-		st := makeStripeApi(ds)
+		st := makeStripeApi(db)
 		for _, tr := range trs {
 			sendTransferToStripe(st, &tr)
 		}
 	}
 }
 
-func makeStripeApi(ds *datastore.Datastore) *stripe.Client {
-	org := organization.New(ds)
-	return stripe.New(ds.Context, org.Stripe.AccessToken)
+func makeStripeApi(db *datastore.Datastore) *stripe.Client {
+	org := organization.New(db)
+	return stripe.New(db.Context, org.Stripe.AccessToken)
 }
 
-func fetchAllAffiliates(ds *datastore.Datastore) []affiliate.Affiliate {
+func fetchAllAffiliates(db *datastore.Datastore) []affiliate.Affiliate {
 	affiliates := make([]affiliate.Affiliate, 0, 0)
-	_, err := ds.Query(affiliate.Affiliate{}.Kind()).GetAll(&affiliates)
+	_, err := db.Query(affiliate.Affiliate{}.Kind()).GetAll(&affiliates)
 	if err != nil {
 		log.Error("failed to fetch affiliates: %v", err)
 		panic(err)
@@ -221,11 +228,11 @@ func fetchAllAffiliates(ds *datastore.Datastore) []affiliate.Affiliate {
 
 func Run(c *gin.Context) {
 	panic("XXXih: work in progress")
-	ds := datastore.New(c)
-	retryIncompleteTransfers(ds)
+	db := datastore.New(c)
+	retryIncompleteTransfers(db)
 	now := time.Now()
-	affiliates := fetchAllAffiliates(ds)
-	for _, aff := range(affiliates) {
-		processAffiliateFees(ds, aff, now)
+	affiliates := fetchAllAffiliates(db)
+	for _, aff := range affiliates {
+		processAffiliateFees(db, aff, now)
 	}
 }
