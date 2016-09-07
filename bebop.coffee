@@ -2,7 +2,7 @@ fs   = require 'fs'
 path = require 'path'
 
 coffee    = 'node_modules/.bin/coffee'
-requisite = 'node_modules/.bin/requisite -g'
+requisite = 'node_modules/.bin/requisite -g --no-source-map'
 stylus    = 'node_modules/.bin/stylus -u autoprefixer-stylus --sourcemap --sourcemap-inline'
 
 files =
@@ -10,6 +10,11 @@ files =
     js:
       in:  'assets/js/api/api.coffee'
       out: 'static/js/api.js'
+
+  analyticsNative:
+    js:
+      in:  'assets/js/analytics/native.coffee'
+      out: 'static/js/analytics/native.js'
 
   mailinglist:
     js:
@@ -59,10 +64,11 @@ files =
 module.exports =
   cwd: process.cwd()
 
+  port: 8081
+
   exclude: [
     /api\/static/
-    /platform\/static/
-    /store\/static/
+    /config.json$/
     /config\/production\/assets/
     /config\/production\/static/
     /config\/sandbox\/assets/
@@ -71,11 +77,13 @@ module.exports =
     /config\/skully\/static/
     /config\/staging\/assets/
     /config\/staging\/static/
-    /config.json$/
+    /platform\/static/
     /platform\/templates/
+    /static\/vendor\/plugins/
+    /store\/static/
     /\.go$/
-    /\.yaml$/
     /\.test$/
+    /\.yaml$/
   ]
 
   compilers:
@@ -93,6 +101,8 @@ module.exports =
         return "#{requisite} #{files.store.js.in} -o #{files.store.js.out}"
       if /^assets\/js\/platform/.test src
         return "#{requisite} #{files.platform.js.in} -o #{files.platform.js.out}"
+      if /^assets\/js\/analytics\/native/.test src
+        return "#{requisite} #{files.analyticsNative.js.in} -o #{files.analyticsNative.js.out}"
       if /^assets\/js\/api/.test src
         if /mailinglist/.test src
           return "#{coffee} -bc -o #{files.mailinglist.js.out} #{files.mailinglist.js.in}"

@@ -24,6 +24,6 @@ func AccessControl(allowOrigin string) gin.HandlerFunc {
 		header.Set("Access-Control-Allow-Headers", reqHeaders)
 
 		c.Data(200, "text/plain", make([]byte, 0))
-		c.Abort(200)
+		c.AbortWithStatus(200)
 	}
 }

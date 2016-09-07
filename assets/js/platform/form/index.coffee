@@ -2,6 +2,7 @@
 require './controls'
 
 module.exports =
-  # must be after controls
-  user: require './user'
-  randomPassword: require './random-password'
+  admin:            require './admin'
+  generic:          require './generic'
+  randomPassword:   require './random-password'
+  pane:             require './pane'

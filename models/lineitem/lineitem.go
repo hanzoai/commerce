@@ -43,18 +43,74 @@ type LineItem struct {
 
 	// Whether taxes apply to this line item
 	Taxable bool `json:"taxable"`
+
+	// Item should be considered free due to coupon being applied or whatnot.
+	Free bool `json:"free"`
+
+	// Non-user party which added this lineitem (coupon or otherwise).
+	AddedBy string `json:"addedBy"`
+}
+
+func (li LineItem) ToMap() map[string]interface{} {
+	vals := make(map[string]interface{})
+
+	vals["CollectionId"] = li.CollectionId
+	vals["ProductId"] = li.ProductId
+	vals["VariantId"] = li.VariantId
+	vals["Quantity"] = int64(li.Quantity)
+	vals["Price"] = int64(li.Price)
+	vals["Taxable"] = li.Taxable
+	vals["Free"] = li.Free
+	vals["AddedBy"] = li.AddedBy
+
+	return vals
 }
 
 func (li LineItem) TotalPrice() currency.Cents {
 	return li.Price * currency.Cents(li.Quantity)
 }
 
-func (li LineItem) DisplayPrice() string {
-	return DisplayPrice(li.Price)
+func (li LineItem) DisplayPrice(t currency.Type) string {
+	return DisplayPrice(t, li.Price)
 }
 
-func (li LineItem) DisplayTotalPrice() string {
-	return DisplayPrice(li.TotalPrice())
+func (li LineItem) DisplayTotalPrice(t currency.Type) string {
+	return DisplayPrice(t, li.TotalPrice())
+}
+
+func (li LineItem) Id() string {
+	if li.VariantId != "" {
+		return li.VariantId
+	}
+	return li.ProductId
+}
+
+// Check if id is valid identifier for this line item
+func (li LineItem) HasId(id string) bool {
+	if id == li.ProductId || id == li.VariantId || id == li.ProductSlug || id == li.VariantSKU {
+		return true
+	}
+
+	return false
+}
+
+func (li LineItem) DisplayName() string {
+	if li.VariantName != "" {
+		return li.VariantName
+	}
+
+	if li.ProductName != "" {
+		return li.ProductName
+	}
+
+	return li.DisplayId()
+}
+
+func (li LineItem) DisplayId() string {
+	if li.VariantSKU != "" {
+		return li.VariantSKU
+	}
+	return li.ProductSlug
 }
 
 // Returns the entity represented by this line item, which can be used later to
@@ -63,7 +119,7 @@ func (li LineItem) DisplayTotalPrice() string {
 func (li *LineItem) Entity(db *datastore.Datastore) (datastore.Key, interface{}, error) {
 	if li.ProductId != "" {
 		li.Product = product.New(db)
-		err := li.Product.SetKey(li.ProductId)
+		err := li.Product.GetById(li.ProductId)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -72,7 +128,7 @@ func (li *LineItem) Entity(db *datastore.Datastore) (datastore.Key, interface{},
 
 	if li.VariantId != "" {
 		li.Variant = variant.New(db)
-		err := li.Variant.SetKey(li.VariantId)
+		err := li.Variant.GetById(li.VariantId)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -102,6 +158,40 @@ func (li *LineItem) Entity(db *datastore.Datastore) (datastore.Key, interface{},
 	}
 
 	return nil, nil, InvalidLineItem
+}
+
+// Set product by id
+func (li *LineItem) SetProduct(db *datastore.Datastore, id string, quantity int) error {
+	prod := product.New(db)
+	if err := prod.GetById(id); err != nil {
+		return err
+	}
+
+	li.Product = prod
+	li.ProductId = prod.Id()
+	li.ProductName = prod.Name
+	li.ProductSlug = prod.Slug
+	li.Quantity = quantity
+	li.Price = prod.Price
+
+	return nil
+}
+
+// Set variant by id
+func (li *LineItem) SetVariant(db *datastore.Datastore, id string, quantity int) error {
+	vari := variant.New(db)
+	if err := vari.GetById(id); err != nil {
+		return err
+	}
+
+	li.Variant = vari
+	li.VariantId = vari.Id()
+	li.VariantName = vari.Name
+	li.VariantSKU = vari.SKU
+	li.Quantity = quantity
+	li.Price = vari.Price
+
+	return nil
 }
 
 func (li *LineItem) Update() {

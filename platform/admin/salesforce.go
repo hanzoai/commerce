@@ -37,7 +37,7 @@ func SalesforceCallback(c *gin.Context) {
 
 	tokenReq, err := http.NewRequest("POST", salesforce.LoginUrl, strings.NewReader(data.Encode()))
 	if err != nil {
-		c.Fail(500, err)
+		c.AbortWithError(500, err)
 		return
 	}
 
@@ -45,14 +45,14 @@ func SalesforceCallback(c *gin.Context) {
 	res, err := client.Do(tokenReq)
 	defer res.Body.Close()
 	if err != nil {
-		c.Fail(500, err)
+		c.AbortWithError(500, err)
 		return
 	}
 
 	// decode the json
 	jsonBlob, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		c.Fail(500, err)
+		c.AbortWithError(500, err)
 		return
 	}
 
@@ -60,7 +60,7 @@ func SalesforceCallback(c *gin.Context) {
 
 	// try and extract the json struct
 	if err := json.Unmarshal(jsonBlob, token); err != nil {
-		c.Fail(500, err)
+		c.AbortWithError(500, err)
 		return
 	}
 

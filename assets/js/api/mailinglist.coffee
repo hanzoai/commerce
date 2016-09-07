@@ -52,19 +52,15 @@ do ->
 
   # get this script tag
   getScript = ->
-    # start at the root element
-    node = document.documentElement
+    # find last script node
+    scripts = document.getElementsByTagName( 'script' )
 
-    # find last HTMLElement child node
-    node = node.lastChild while node.childNodes.length and node.lastChild.nodeType is 1
-
-    # last HTMLElement is script tag
-    node
+    # last element is this script tag
+    script = scripts[ scripts.length - 1 ]
+    script
 
   # Get elements from inside a parent
   getElements = (parent, selector) ->
-    console.log 'getElements', parent, selector
-
     if selector? and selector != ''
       parent.querySelectorAll selector
     else
@@ -76,41 +72,40 @@ do ->
     el?.value?.trim()
 
   # serialize a form
-  serializeForm = (el) ->
-    return {} unless el?
+  serializeForm = (form) ->
+    return {} unless form?
 
     data =
       metadata: {}
 
-    inputs = el.getElementsByTagName 'input'
-
     # Loop over form elements
-    for input in inputs
-      # Clean up inputs
-      k = input.name.trim().toLowerCase()
-      v = input.value.trim()
+    for el in form.elements
+      try
+        # Clean up inputs
+        k = el.name.trim().toLowerCase()
+        v = el.value.trim()
 
-      # Skip inputs we don't care about
-      if k == '' or v == '' or (input.getAttribute 'type') == 'submit'
-        continue
+        # Skip inputs we don't care about
+        if k == '' or v == '' or (el.getAttribute 'type') == 'submit'
+          continue
 
-      # Detect emails
-      if /email/.test k
-        data.email = v
-      else
-        data.metadata[k] = v
+        # Detect emails
+        if /email/.test k
+          data.email = v
+        else
+          data.metadata[k] = v
+      catch e
+        console.log "Skipping valueless form input"
 
     # Use selectors if necessary
     if selectors.email
-      data.email = getValue el, selectors.email
+      data.email = getValue form, selectors.email
     else
       data.email ?= ''
 
     for prop in ['firstname', 'lastname', 'name']
       if (selector = selectors[prop])?
-        data.metadata[prop] = getValue el, selector
-
-    console.error 'Email is required' if data.email == ''
+        data.metadata[prop] = getValue form, selector
 
     data
 
@@ -127,74 +122,10 @@ do ->
       else
         val
 
-  # Google event tracking code
-  google =
-    setup: ->
-      return if window.ga? or window._gaq?
-
-      ((i, s, o, g, r, a, m) ->
-        i['GoogleAnalyticsObject'] = r
-        i[r] = i[r] or ->
-          (i[r].q = i[r].q or []).push arguments
-          return
-
-        i[r].l = 1 * new Date()
-
-        a = s.createElement(o)
-        m = s.getElementsByTagName(o)[0]
-
-        a.async = 1
-        a.src = g
-        m.parentNode.insertBefore a, m
-        return
-      ) window, document, 'script', '//www.google-analytics.com/analytics.js', 'ga'
-      return
-
-    track: (opts) ->
-      return unless opts.category?
-
-      google.setup()
-
-      category = opts.category ? 'Subscription'
-      action   = opts.action   ? opts.name ? 'Signup'
-      label    = opts.label    ? ''
-
-      if window._gaq?
-        window._gaq.push ['_trackEvent', category, action]
-      if window.ga?
-        window.ga 'send', 'event', category, action, label, 0
-
-  # Facebook event tracking
-  facebook =
-    setup: ->
-      return if window._fbq?.loaded
-
-      _fbq = window._fbq or (window._fbq = [])
-
-      fbds = document.createElement('script')
-      fbds.async = true
-      fbds.src = '//connect.facebook.net/en_US/fbds.js'
-      s = document.getElementsByTagName('script')[0]
-      s.parentNode.insertBefore fbds, s
-      _fbq.loaded = true
-      return
-
-    track: (opts) ->
-      return unless opts.id?
-
-      facebook.setup()
-
-      window._fbq.push ['track', opts.id,
-        value:    opts.value,
-        currency: opts.currency,
-      ]
-      return
-
   # Trigger event tracking
   track = ->
-    facebook.track ml.facebook
-    google.track ml.google
-    return
+    return unless typeof analytics?.track is 'function'
+    analytics.track 'Lead', category: 'Subscription'
 
   # Wire up submit handler
   addHandler = (el, errorEl) ->
@@ -223,9 +154,14 @@ do ->
           el.innerHTML = ml.thankyou.html
 
       if document.createEvent && document.dispatchEvent
-        event = document.createEvent 'Event'
-        event.initEvent 'thankyou', true, true
-        document.dispatchEvent event
+        try
+          el.dispatchEvent new Event 'thankyou',
+            bubbles:    true
+            cancelable: true
+        catch e
+          event = document.createEvent 'Event'
+          event.initEvent 'thankyou', true, true
+          document.dispatchEvent event
       else
         console.log "Could not create or dispatch thankyou event"
 
@@ -236,7 +172,6 @@ do ->
         ev.preventDefault()
 
       data = serializeForm el
-      console.log data
 
       if ml.validate
         unless data.email?
@@ -269,9 +204,18 @@ do ->
       el.addEventListener    'submit', submitHandler
 
       setTimeout ->
-        el.dispatchEvent new Event 'submit',
-          bubbles:    false
-          cancelable: true
+        if document.createEvent && document.dispatchEvent
+          try
+            el.dispatchEvent new Event 'submit',
+              bubbles:    false
+              cancelable: true
+          catch e
+            # try it the terrible IE way
+            event = document.createEvent 'Event'
+            event.initEvent 'submit', false, true
+            el.dispatchEvent event
+        else
+          console.log "Could not create or dispatch submit event"
       , 500
 
       ev.preventDefault()
@@ -286,7 +230,7 @@ do ->
       selectors[prop] = (attr prop) ? ml.selectors?[prop]
 
     # default selector for submit button
-    selectors.submits ?= 'input[type="submit"]'
+    selectors.submits ?= 'input[type="submit"], button[type="submit"]'
 
     # are we validating?
     ml.validate ?= (attr 'validate') ? false
@@ -300,11 +244,6 @@ do ->
       errors = getElements parent, selectors.errors
     else
       errors = []
-
-    console.log 'selectors', selectors
-    console.log 'forms', forms
-    console.log 'handlers', handlers
-    console.log 'errors', errors
 
     for handler, i in handlers
       do (handler, i) ->
@@ -325,8 +264,8 @@ do ->
       init() if document.readyState == 'complete'
 
   if window.addEventListener
-      window.addEventListener 'load', init, false
+    window.addEventListener 'load', init, false
   else if window.attachEvent
-      window.attachEvent 'onload', init
+    window.attachEvent 'onload', init
 
   return

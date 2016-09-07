@@ -11,7 +11,7 @@ import (
 
 func exists(c *gin.Context) {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespace(c))
+	db := datastore.New(org.Namespaced(c))
 	email := c.Params.ByName("email")
 
 	usr := user.New(db)

@@ -1,6 +1,10 @@
 package subscriber
 
 import (
+	"crypto/md5"
+	"fmt"
+	"io"
+	"strings"
 	"time"
 
 	aeds "appengine/datastore"
@@ -9,9 +13,9 @@ import (
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/types/client"
 	"crowdstart.com/util/json"
-	"crowdstart.com/util/val"
 
 	. "crowdstart.com/models"
+	. "crowdstart.com/util/strings"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
@@ -28,54 +32,37 @@ type Subscriber struct {
 
 	Client client.Client `json:"client"`
 
-	Metadata  Metadata `json:"metadata" datastore:"-"`
-	Metadata_ string   `json:"-" datastore:",noindex"`
+	Metadata  Map    `json:"metadata" datastore:"-"`
+	Metadata_ string `json:"-" datastore:",noindex"`
 }
 
-func (s *Subscriber) Init() {
-	s.Metadata = make(Metadata)
+func (s Subscriber) Md5() string {
+	h := md5.New()
+	io.WriteString(h, s.Email)
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
-func New(db *datastore.Datastore) *Subscriber {
-	s := new(Subscriber)
-	s.Init()
-	s.Model = mixin.Model{Db: db, Entity: s}
-	return s
-}
-
-func (s Subscriber) Key() string {
-	return s.MailingListId + ":" + s.Email
-}
-
-func (s Subscriber) Kind() string {
-	return "subscriber"
-}
-
-func (s Subscriber) Document() mixin.Document {
-	return nil
-}
-
-func (s Subscriber) MergeVars() Metadata {
-	vars := make(Metadata)
+func (s Subscriber) MergeFields() Map {
+	fields := make(Map)
 
 	for k, v := range s.Metadata {
-		vars[k] = v
+		fields[k] = v
 	}
 
 	// Update metadata with some extra client data
-	vars["useragent"] = s.Client.UserAgent
-	vars["referer"] = s.Client.Referer
-	vars["language"] = s.Client.Language
-	vars["country"] = s.Client.Country
-	vars["region"] = s.Client.Region
-	vars["city"] = s.Client.City
+	fields["useragent"] = s.Client.UserAgent
+	fields["referer"] = s.Client.Referer
+	fields["language"] = s.Client.Language
+	fields["country"] = s.Client.Country
+	fields["region"] = s.Client.Region
+	fields["city"] = s.Client.City
 
-	return vars
+	return fields
 }
 
 func (s *Subscriber) Load(c <-chan aeds.Property) (err error) {
 	// Ensure we're initialized
-	s.Init()
+	s.Defaults()
 
 	// Load supported properties
 	if err = IgnoreFieldMismatch(aeds.LoadStruct(s, c)); err != nil {
@@ -98,12 +85,9 @@ func (s *Subscriber) Save(c chan<- aeds.Property) (err error) {
 	return IgnoreFieldMismatch(aeds.SaveStruct(s, c))
 }
 
-func (s *Subscriber) Validator() *val.Validator {
-	return val.New(s)
-}
-
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
+func (s *Subscriber) Normalize() {
+	s.Email = StripWhitespace(s.Email)
+	s.Email = strings.ToLower(s.Email)
 }
 
 func FromJSON(db *datastore.Datastore, data []byte) *Subscriber {

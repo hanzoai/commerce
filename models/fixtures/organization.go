@@ -8,6 +8,8 @@ import (
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/user"
 	"crowdstart.com/util/log"
+
+	. "crowdstart.com/models/types/analytics"
 )
 
 var Organization = New("organization", func(c *gin.Context) *organization.Organization {
@@ -30,7 +32,7 @@ var Organization = New("organization", func(c *gin.Context) *organization.Organi
 	org.Stripe.Test.UserId = "acct_14lSsRCSRlllXCwP"
 	org.Stripe.Test.AccessToken = "sk_test_REDACTED"
 	org.Stripe.Test.PublishableKey = "pk_test_REDACTED"
-	org.Stripe.Test.RefreshToken = "rt_5ySFSL7IYMd6jL8p7gijCZf8jURx0z3Cg02sGGAo3PaQAytq"
+	org.Stripe.Test.RefreshToken = "rt_6kqLkyTC8IgfJOSlxjECmGaJfLbWyhy2BY3GgXry4tlzm6rZ"
 
 	// You can only have one set of test credentials, so live/test are the same.
 	org.Stripe.Live.UserId = org.Stripe.Test.UserId
@@ -43,9 +45,37 @@ var Organization = New("organization", func(c *gin.Context) *organization.Organi
 	org.Stripe.PublishableKey = org.Stripe.Test.PublishableKey
 	org.Stripe.RefreshToken = org.Stripe.Test.RefreshToken
 
+	org.Paypal.ConfirmUrl = "http://www.crowdstart.com"
+	org.Paypal.CancelUrl = "http://www.crowdstart.com"
+
+	org.Paypal.Live.Email = "dev@hanzo.ai"
+	org.Paypal.Live.SecurityUserId = "dev@hanzo.ai"
+	org.Paypal.Live.ApplicationId = "APP-80W284485P519543T"
+	org.Paypal.Live.SecurityPassword = ""
+	org.Paypal.Live.SecuritySignature = ""
+
+	org.Paypal.Test.Email = "dev@hanzo.ai"
+	org.Paypal.Test.SecurityUserId = "dev@hanzo.ai"
+	org.Paypal.Test.ApplicationId = "APP-80W284485P519543T"
+	org.Paypal.Test.SecurityPassword = ""
+	org.Paypal.Test.SecuritySignature = ""
+
 	// Add default access tokens
 	org.AddDefaultTokens()
 	log.Debug("Adding tokens: %v", org.Tokens)
+
+	// Add default analytics config
+	integrations := []Integration{
+		Integration{
+			Type: "facebook-pixel",
+			Id:   "920910517982389",
+		},
+		Integration{
+			Type: "google-analytics",
+			Id:   "UA-65099214-1",
+		},
+	}
+	org.Analytics = Analytics{integrations}
 
 	// Save org into default namespace
 	org.MustPut()

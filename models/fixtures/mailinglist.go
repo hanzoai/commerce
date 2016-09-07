@@ -14,14 +14,16 @@ var Mailinglist = New("mailinglist", func(c *gin.Context) *mailinglist.MailingLi
 
 	mailingList.Name = "Such Tees Newsletter"
 	mailingList.SendWelcome = true
-	mailingList.Mailchimp = mailinglist.Mailchimp{
-		Id:               "30d872227a",
-		APIKey:           "473b358fd2972742c8ef6af581c3c0-us9",
-		DoubleOptin:      false,
-		UpdateExisting:   true,
-		ReplaceInterests: false,
-		SendWelcome:      false,
-	}
+	mailingList.Type = "signup"
+
+	mailingList.Mailchimp.ListId = "cc383800a7"
+	mailingList.Mailchimp.APIKey = "4a241ef914c2b098a3965d718c8f7f7e-us13"
+	mailingList.Mailchimp.DoubleOptin = false
+	mailingList.Mailchimp.UpdateExisting = true
+	mailingList.Mailchimp.ReplaceInterests = false
+	mailingList.Mailchimp.SendWelcome = false
+	mailingList.Mailchimp.Enabled = true
+
 	mailingList.ThankYou.Type = thankyou.Redirect
 	mailingList.ThankYou.Url = "http://suchtees.com/thanks/"
 	mailingList.Facebook.Id = "6031480185266"

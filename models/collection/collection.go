@@ -34,7 +34,7 @@ type Collection struct {
 	// Range in which collection is available. If active, it takes precedent
 	// over Available bool.
 	Availability struct {
-		Active    bool
+		Active    bool      `json:"active'"`
 		StartDate time.Time `json:"startDate"`
 		EndDate   time.Time `json:"endDate"`
 	} `json:"availability"`
@@ -52,29 +52,12 @@ type Collection struct {
 	ProductIds []string `json:"productIds"`
 	VariantIds []string `json:"variantIds"`
 
-	History []Event `json:"history"`
-}
-
-func New(db *datastore.Datastore) *Collection {
-	c := new(Collection)
-	c.Model = mixin.Model{Db: db, Entity: c}
-	c.Media = make([]Media, 0)
-	c.ProductIds = make([]string, 0)
-	c.VariantIds = make([]string, 0)
-	c.History = make([]Event, 0)
-	return c
-}
-
-func (c Collection) Kind() string {
-	return "collection"
-}
-
-func (c Collection) Document() mixin.Document {
-	return nil
+	History []Event `json:"-"`
 }
 
 func (c *Collection) Validator() *val.Validator {
-	return val.New(c).Check("Slug").Exists().
+	return val.New().
+		Check("Slug").Exists().
 		Check("Name").Exists()
 }
 
@@ -84,8 +67,4 @@ func (c Collection) GetDescriptionParagraphs() []string {
 
 func (c Collection) DisplayTitle() string {
 	return DisplayTitle(c.Name)
-}
-
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
 }

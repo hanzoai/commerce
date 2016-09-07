@@ -13,5 +13,8 @@ dispatch:
   - url: "api.staging.crowdstart.com/*"
     module: api
 
+  - url: "cdn.staging.crowdstart.com/*"
+    module: cdn
+
   - url: "platform.staging.crowdstart.com/*"
     module: platform
