@@ -1,7 +1,9 @@
-package xd
+package campaign
 
 import (
+	"fmt"
 	"math"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -13,7 +15,7 @@ import (
 )
 
 type ProgressRes struct {
-	Progress interface{} `json:"progress"`
+	Progress float64 `json:"progress"`
 }
 
 func Route(router router.Router, args ...gin.HandlerFunc) {
@@ -22,7 +24,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api.GET("/:campaignid/progress", func(c *gin.Context) {
 		// hardcoded for KANOA
 		now := time.Now()
-		startDate := time.Date(2016, time.May, 1, 0, 0, 0, 0, time.UTC)
+		startDate := time.Date(2016, time.September, 6, 0, 0, 0, 0, time.UTC)
 		endDate := time.Date(2017, time.March, 15, 0, 0, 0, 0, time.UTC)
 		daysTotal := endDate.Sub(startDate).Hours() / 24
 		days := now.Sub(startDate).Hours() / 24
@@ -31,7 +33,9 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 		startPct := 3.0
 
 		progress := math.Min(startPct+((100.0-startPct)*daysComplete), 99.9)
-		http.Render(c, 200, ProgressRes{progress})
+		// Go has no math.Round, sadly
+		f, _ := strconv.ParseFloat(fmt.Sprintf("%.2f", progress), 64)
+		http.Render(c, 200, ProgressRes{f})
 	})
 
 	api.Route(router, args...)
