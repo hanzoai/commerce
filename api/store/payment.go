@@ -5,14 +5,15 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"crowdstart.com/api/payment"
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/store"
 	"crowdstart.com/util/json/http"
+
+	checkoutApi "crowdstart.com/api/checkout"
 )
 
-func authorize(c *gin.Context) {
+func setStore(c *gin.Context) error {
 	ctx := middleware.GetAppEngine(c)
 	db := datastore.New(ctx)
 	id := c.Params.ByName("storeid")
@@ -21,27 +22,46 @@ func authorize(c *gin.Context) {
 	stor := store.New(db)
 	if err := stor.GetById(id); err != nil {
 		http.Fail(c, 500, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
-		return
+		return err
 	}
 
 	// Set store and do authorize
 	c.Set("store", stor)
-	payment.Authorize(c)
+	return nil
+}
+
+func authorize(c *gin.Context) {
+	if err := setStore(c); err == nil {
+		checkoutApi.Authorize(c)
+	}
+}
+
+func capture(c *gin.Context) {
+	if err := setStore(c); err == nil {
+		checkoutApi.Capture(c)
+	}
 }
 
 func charge(c *gin.Context) {
-	ctx := middleware.GetAppEngine(c)
-	db := datastore.New(ctx)
-	id := c.Params.ByName("storeid")
-
-	// Get store
-	stor := store.New(db)
-	if err := stor.GetById(id); err != nil {
-		http.Fail(c, 500, fmt.Sprintf("Failed to retrieve store '%v': %v", id, err), err)
-		return
+	if err := setStore(c); err == nil {
+		checkoutApi.Charge(c)
 	}
+}
 
-	// Set store and do charge
-	c.Set("store", stor)
-	payment.Charge(c)
+func payPalPayKey(c *gin.Context) {
+	if err := setStore(c); err == nil {
+		checkoutApi.PayPalPayKey(c)
+	}
+}
+
+func payPalConfirm(c *gin.Context) {
+	if err := setStore(c); err == nil {
+		checkoutApi.PayPalConfirm(c)
+	}
+}
+
+func payPalCancel(c *gin.Context) {
+	if err := setStore(c); err == nil {
+		checkoutApi.PayPalCancel(c)
+	}
 }

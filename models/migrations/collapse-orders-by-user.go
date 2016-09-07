@@ -1,6 +1,8 @@
 package migrations
 
 import (
+	"strings"
+
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.com/models/order"
@@ -15,7 +17,7 @@ import (
 
 var _ = New("collapse-orders-by-user",
 	func(c *gin.Context) []interface{} {
-		c.Set("namespace", "bellabeat")
+		c.Set("namespace", "kanoa")
 		return NoArgs
 	},
 	func(db *ds.Datastore, ord *order.Order) {
@@ -31,7 +33,7 @@ var _ = New("collapse-orders-by-user",
 
 		// Try to find newest instance of a user with this email
 		usr2 := user.New(db)
-		if _, err := usr2.Query().Filter("Email=", usr.Email).Order("-CreatedAt").First(); err != nil {
+		if _, err := usr2.Query().Filter("Email=", strings.Replace(usr.Email, "!______", "", 1)).Order("-CreatedAt").First(); err != nil {
 			log.Error("Failed to query for newest user: %v", err, ctx)
 			return
 		}
@@ -82,7 +84,7 @@ var _ = New("collapse-orders-by-user",
 
 		for _, ref := range referrers {
 			ref.OrderId = ord.Id()
-			ref.Mixin(db, ref)
+			ref.Init(db)
 			if err := ref.Put(); err != nil {
 				log.Warn("Failed to update referrer: %v", ref, err, ctx)
 				return
@@ -91,7 +93,7 @@ var _ = New("collapse-orders-by-user",
 
 		for _, refl := range referrals {
 			refl.OrderId = ord.Id()
-			refl.Mixin(db, refl)
+			refl.Init(db)
 			if err := refl.Put(); err != nil {
 				log.Warn("Failed to update referral: %v", refl, err, ctx)
 				return
@@ -101,7 +103,7 @@ var _ = New("collapse-orders-by-user",
 		for _, pay := range payments {
 			pay.OrderId = ord.Id()
 			pay.Buyer.UserId = ord.UserId
-			pay.Mixin(db, pay)
+			pay.Init(db)
 			if err := pay.Put(); err != nil {
 				log.Warn("Failed to update referral: %v", pay, err, ctx)
 				return

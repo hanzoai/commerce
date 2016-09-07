@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"time"
 
 	"appengine"
 	"appengine/urlfetch"
@@ -24,8 +25,8 @@ func init() {
 }
 
 type Var struct {
-	Name    string `json:"name"`
-	Content string `json:"content"`
+	Name    string      `json:"name"`
+	Content interface{} `json:"content"`
 }
 
 type RcptMergeVars struct {
@@ -49,9 +50,9 @@ type SendReq struct {
 		FromName  string      `json:"from_name"`
 		To        []Recipient `json:"to"`
 
-		// Headers   struct {
-		// 	ReplyTo string `json:"Reply-To"`
-		// } `json:"headers"`
+		Headers struct {
+			ReplyTo string `json:"Reply-To"`
+		} `json:"headers"`
 
 		// Important bool `json:"important"`
 		// TrackOpens         interface{} `json:"track_opens"`
@@ -68,7 +69,7 @@ type SendReq struct {
 		// ReturnPathDomain interface{} `json:"return_path_domain"`
 
 		Merge         bool            `json:"merge"`
-		MergeLanguage string          `json:"merge_language"`
+		MergeLanguage string          `json:"merge_language,omitempty"`
 		MergeVars     []Var           `json:"global_merge_vars"`
 		RcptMergeVars []RcptMergeVars `json:"merge_vars"`
 
@@ -132,7 +133,6 @@ func NewSendReq() (req SendReq) {
 	req.Async = true
 	req.IpPool = "Main Pool"
 	req.Key = config.Mandrill.APIKey
-	req.Message.MergeLanguage = "mailchimp"
 	req.Message.AutoHtml = true
 	req.Message.Merge = true
 	return req
@@ -149,7 +149,6 @@ func GetTemplate(filename string) string {
 	log.Info(wd)
 	bytes, err := ioutil.ReadFile(filename)
 	if err != nil {
-		log.Panic(err.Error())
 		return ""
 	}
 
@@ -165,17 +164,15 @@ func Ping(ctx appengine.Context) bool {
 	body := []byte(str)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
 	if err != nil {
-		log.Panic(err.Error())
 		return false
 	}
 
 	client := urlfetch.Client(ctx)
 	res, err := client.Do(req)
-	defer res.Body.Close()
 	if err != nil {
-		log.Panic(err.Error())
 		return false
 	}
+	defer res.Body.Close()
 
 	return res.StatusCode == 200
 }
@@ -188,26 +185,27 @@ func SendTemplate(ctx appengine.Context, req *SendTemplateReq) error {
 
 	hreq, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(j)))
 	if err != nil {
-		log.Panic(err.Error())
 		return err
 	}
 
 	client := urlfetch.Client(ctx)
+	client.Transport = &urlfetch.Transport{
+		Context:  ctx,
+		Deadline: time.Duration(30) * time.Second,
+	}
 	res, err := client.Do(hreq)
-	defer res.Body.Close()
 	if err != nil {
-		log.Panic(err.Error())
 		return err
 	}
-
-	b, _ := ioutil.ReadAll(res.Body)
-	log.Dump("Response from Mandrill: %v", b)
+	defer res.Body.Close()
 
 	if res.StatusCode == 200 {
 		return nil
 	}
 
-	return errors.New("Failed to send email.")
+	// Failed to send
+	b, _ := ioutil.ReadAll(res.Body)
+	return errors.New(fmt.Sprintf("Invalid response from Mandrill: %s", b))
 }
 
 func Send(ctx appengine.Context, req *SendReq) error {
@@ -218,24 +216,21 @@ func Send(ctx appengine.Context, req *SendReq) error {
 
 	hreq, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(j)))
 	if err != nil {
-		log.Panic(err.Error())
 		return err
 	}
 
 	client := urlfetch.Client(ctx)
 	res, err := client.Do(hreq)
-	defer res.Body.Close()
 	if err != nil {
-		log.Panic(err.Error())
 		return err
 	}
-
-	b, _ := ioutil.ReadAll(res.Body)
-	log.Dump("Response from Mandrill: %v", b)
+	defer res.Body.Close()
 
 	if res.StatusCode == 200 {
 		return nil
 	}
 
-	return errors.New("Failed to send email.")
+	// Failed to send
+	b, _ := ioutil.ReadAll(res.Body)
+	return errors.New(fmt.Sprintf("Invalid response from Mandrill: %s", b))
 }

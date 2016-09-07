@@ -28,6 +28,7 @@ var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 type User struct {
 	mixin.Model
+	mixin.Counter
 	mixin.Salesforce
 
 	// Crowdstart Id, found in default namespace
@@ -41,8 +42,9 @@ type User struct {
 	BillingAddress  Address  `json:"billingAddress,omitempty"`
 	ShippingAddress Address  `json:"shippingAddress,omitempty"`
 	Email           string   `json:"email"`
+	PaypalEmail     string   `json:"paypalEmail"`
 	PasswordHash    []byte   `schema:"-" datastore:",noindex" json:"-"`
-	Organizations   []string `json:"organizations"`
+	Organizations   []string `json:"-"`
 
 	Facebook struct {
 		AccessToken string `facebook:"-"`
@@ -61,12 +63,12 @@ type User struct {
 		Stripe payment.Account `json:"stripe,omitempty"`
 		PayPal payment.Account `json:"paypal,omitempty"`
 		Affirm payment.Account `json:"affirm,omitempty"`
-	} `json:"accounts"`
+	} `json:"-"`
 
-	Enabled bool `json:"-"` //whether or not the user can login yet
+	Enabled bool `json:"enabled"` //whether or not the user can login yet
 
-	Metadata  Metadata `json:"metadata" datastore:"-"`
-	Metadata_ string   `json:"-" datastore:",noindex"`
+	Metadata  Map    `json:"metadata" datastore:"-"`
+	Metadata_ string `json:"-" datastore:",noindex"`
 
 	Referrals []referral.Referral `json:"referrals,omitempty" datastore:"-"`
 	Referrers []referrer.Referrer `json:"referrers,omitempty" datastore:"-"`
@@ -75,23 +77,9 @@ type User struct {
 	Balances map[currency.Type]currency.Cents `json:"balances" datastore:"-"`
 
 	// Series of events that have occured relevant to this order
-	History []Event `json:"history,omitempty"`
-}
+	History []Event `json:"-,omitempty"`
 
-func (u *User) Init() {
-	u.Metadata = make(Metadata)
-	u.History = make([]Event, 0)
-}
-
-func New(db *datastore.Datastore) *User {
-	u := new(User)
-	u.Init()
-	u.Model = mixin.Model{Db: db, Entity: u}
-	return u
-}
-
-func (u User) Kind() string {
-	return "user"
+	IsOwner bool `json:"owner" datastore:"-"`
 }
 
 func (u User) Document() mixin.Document {
@@ -112,6 +100,7 @@ func (u User) Document() mixin.Document {
 		u.BillingAddress.Line2,
 		u.BillingAddress.City,
 		u.BillingAddress.State,
+		u.BillingAddress.Country,
 		country.ByISOCodeISO3166_2[u.BillingAddress.Country].ISO3166OneEnglishShortNameReadingOrder,
 		u.BillingAddress.PostalCode,
 
@@ -119,8 +108,12 @@ func (u User) Document() mixin.Document {
 		u.ShippingAddress.Line2,
 		u.ShippingAddress.City,
 		u.ShippingAddress.State,
+		u.ShippingAddress.Country,
 		country.ByISOCodeISO3166_2[u.ShippingAddress.Country].ISO3166OneEnglishShortNameReadingOrder,
 		u.ShippingAddress.PostalCode,
+
+		u.CreatedAt,
+		u.UpdatedAt,
 
 		u.Accounts.Stripe.BalanceTransactionId,
 		u.Accounts.Stripe.CardId,
@@ -132,7 +125,7 @@ func (u User) Document() mixin.Document {
 
 func (u *User) Load(c <-chan aeds.Property) (err error) {
 	// Ensure we're initialized
-	u.Init()
+	u.Defaults()
 
 	// Load supported properties
 	if err = IgnoreFieldMismatch(aeds.LoadStruct(u, c)); err != nil {
@@ -201,7 +194,7 @@ func (u User) Buyer() Buyer {
 }
 
 func (u *User) Validator() *val.Validator {
-	return val.New(u).Check("FirstName").Exists().
+	return val.New().Check("FirstName").Exists().
 		Check("LastName").Exists().
 		Check("Email").Exists()
 	// // Name cannot be empty string.
@@ -258,60 +251,6 @@ func (u *User) GetByEmail(email string) error {
 	return nil
 }
 
-// // Insert new user
-// func (u *User) Insert(db *datastore.Datastore) error {
-// 	id := db.AllocateId("user")
-// 	k := db.KeyFromId("user", id)
-
-// 	log.Debug("Inserting New User with key %v", k)
-
-// 	u.Id = k.Encode()
-// 	u.CreatedAt = time.Now()
-// 	u.UpdatedAt = u.CreatedAt
-
-// 	_, err := db.PutKind("user", k, u)
-// 	return err
-// }
-
-// // Actual upsert method
-// func (u *User) upsert(db *datastore.Datastore) error {
-// 	k, err := db.DecodeKey(u.Id)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	_, err = db.PutKind("user", k, u)
-// 	return err
-// }
-
-// // Idempotent user upsert method.
-// func (u *User) Upsert(db *datastore.Datastore) error {
-// 	// We have an ID, we can just upsert
-// 	if u.Id != "" {
-// 		return u.upsert(db)
-// 	}
-
-// 	// We don't have an ID, we need to figure out if this is a new user or not.
-// 	user := new(User)
-// 	err := user.GetByEmail(db, u.Email)
-
-// 	// if we can't find the user, insert new user
-// 	if err == UserNotFound {
-// 		return u.Insert(db)
-// 	}
-
-// 	// Something bad happened, let's bail out
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	// Found user, set Id
-// 	u.Id = user.Id
-// 	u.UpdatedAt = time.Now()
-
-// 	return u.upsert(db)
-// }
-
 func (u *User) LoadReferrals() error {
 	if _, err := referrer.Query(u.Db).Filter("UserId=", u.Id()).GetAll(&u.Referrers); err != nil {
 		return err
@@ -333,13 +272,14 @@ func (u *User) LoadOrders() error {
 }
 
 func (u *User) CalculateBalances() error {
-	var trans []transaction.Transaction
-	if _, err := transaction.Query(u.Db).Filter("UserId=", u.Id()).Filter("Test=", false).GetAll(&trans); err != nil {
+	trans, err := transaction.Query(u.Db).Filter("UserId=", u.Id()).Filter("Test=", false).GetEntities()
+	if err != nil {
 		return err
 	}
 
 	u.Balances = make(map[currency.Type]currency.Cents)
-	for _, t := range trans {
+	for i := range trans {
+		t := trans[i].(*transaction.Transaction)
 		cents := u.Balances[t.Currency]
 
 		if t.Type == transaction.Withdraw {
@@ -362,6 +302,19 @@ func (u *User) SetPassword(newPassword string) error {
 	return nil
 }
 
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
+// Check if user is part of an organization
+func (u *User) InOrganization(orgId string) bool {
+	for i := range u.Organizations {
+		if u.Organizations[i] == orgId {
+			return true
+		}
+	}
+	return false
+}
+
+// Save organization to organization slice.
+func (u *User) AddOrganization(orgId string) {
+	if !u.InOrganization(orgId) {
+		u.Organizations = append(u.Organizations, orgId)
+	}
 }

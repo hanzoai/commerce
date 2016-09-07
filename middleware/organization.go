@@ -40,12 +40,13 @@ func AcquireOrganization(moduleName string) gin.HandlerFunc {
 			log.Warn("Unable to acquire organization.")
 			session.Clear(c)
 			c.Redirect(302, config.UrlFor(moduleName, "/login"))
-			c.Abort(302)
+			c.AbortWithStatus(302)
 		} else {
 			log.Debug("Organization acquired")
 			c.Set("user", u)
 			c.Set("organization", org)
 			c.Set("active-organization", org.Id())
+			session.Set(c, "active-organization", org.Id())
 		}
 	}
 }
@@ -55,7 +56,7 @@ func Namespace() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := GetAppEngine(c)
 		org := GetOrganization(c)
-		ctx = org.Namespace(ctx)
+		ctx = org.Namespaced(ctx)
 		c.Set("appengine", ctx)
 	}
 }
@@ -70,5 +71,5 @@ func GetToken(c *gin.Context) *token.Token {
 
 func GetNamespace(c *gin.Context) appengine.Context {
 	ctx := GetAppEngine(c)
-	return GetOrganization(c).Namespace(ctx)
+	return GetOrganization(c).Namespaced(ctx)
 }

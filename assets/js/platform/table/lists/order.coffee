@@ -6,19 +6,19 @@ field = table.field
 Source = crowdcontrol.data.Source
 BasicList = require './list'
 
-m = crowdcontrol.utils.mediator
-
 class OrderList extends BasicList
   tag: 'order-list'
   path: 'order'
   headers: [
-    field('id', 'Id', 'id', 'id-path:../order/')
+    field('id', 'Number', 'id', 'id-display:number id-path:#order dontsort')
     field('currency', 'Currency', 'upper')
     field('total', 'Total', 'money')
     field('status', 'Order Status')
+    field('paymentStatus', 'Paid')
     field('fulfillmentStatus', 'Fulfillment Status')
-    field('createdAt', 'Created On', 'date')
-    # field('updatedAt', 'Last Updated', 'ago')
+    field('couponCodes', 'Coupon(s)', 'id-list', 'id-path:#coupon')
+    field('createdAt', 'Created', 'date')
+    field('updatedAt', 'Last Updated', 'ago')
   ]
 
 OrderList.register()

@@ -32,7 +32,7 @@ var DisputeSync = delay.Func("stripe-update-disputed-payment", func(ctx appengin
 	client := stripe.New(ctx, token)
 	ch, err := client.GetCharge(dispute.Charge)
 	if err != nil {
-		log.Error("Unable to get charge '%s' for dispute %v: %v", ch.ID, dispute, err, ctx)
+		log.Error("Unable to get charge '%s' for dispute %v: %v", dispute.ID, dispute, err, ctx)
 		return
 	}
 
@@ -68,5 +68,5 @@ var DisputeSync = delay.Func("stripe-update-disputed-payment", func(ctx appengin
 	updateChargeFromPayment(ctx, token, pay, ch)
 
 	// Update order
-	updateOrder.Call(ctx, ns, pay.OrderId, start)
+	updateOrder.Call(ctx, ns, pay.OrderId, pay.AmountRefunded, start)
 })
