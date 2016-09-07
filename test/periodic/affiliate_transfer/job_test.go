@@ -1,10 +1,11 @@
 package test
 
 import (
-	"time"
 	"testing"
+	"time"
 
 	// "crowdstart.com/api/checkout"
+
 	"crowdstart.com/models/affiliate"
 	"crowdstart.com/models/fixtures"
 	"crowdstart.com/models/organization"
@@ -17,9 +18,27 @@ import (
 )
 
 func Test(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "periodic/affiliate_transfer/job")
+	Setup("periodic/affiliate_transfer/job", t)
 }
+
+var (
+	ctx ae.Context
+	org *organization.Organization
+	sc  *stripe.Client
+)
+
+// Setup appengine context
+var _ = BeforeSuite(func() {
+	ctx = ae.NewContext()
+	c := gincontext.New(ctx)
+	org = fixtures.Organization(c).(*organization.Organization)
+	sc = stripe.New(ctx, org.Stripe.Test.AccessToken)
+})
+
+// Tear-down appengine context
+var _ = AfterSuite(func() {
+	ctx.Close()
+})
 
 var _ = Describe("periodic/affiliate_transfer/job", func() {
 	It("should calculate payment time delays correctly", func() {
@@ -51,10 +70,6 @@ var _ = Describe("periodic/affiliate_transfer/job", func() {
 	})
 
 	Context("integration tests", func() {
-		ctx := ae.NewContext()
-		c := gincontext.New(ctx)
-		org := fixtures.Organization(c).(*organization.Organization)
-		stripe.New(ctx, org.Stripe.Test.AccessToken)
 		It("hober", func() {
 			// checkout.Authorize(c)
 			Expect(5).To(Equal(5))
