@@ -2,6 +2,8 @@ riot = require 'riot'
 _ = require 'underscore'
 
 crowdcontrol = require 'crowdcontrol'
+Events = crowdcontrol.Events
+
 tokenize = crowdcontrol.view.form.tokenize
 
 View = crowdcontrol.view.View
@@ -33,23 +35,32 @@ class TableFieldConfig
 #     ]
 #   path: path relative to api.  Use only if retrieving live data
 
-TableViewEvents =
+Events.Table =
+  PrepareForNewData: 'table-prepare'
   NewData: 'table-new-data'
+  StartSearch: 'table-start-search'
+  EndSearch: 'table-end-search'
 
 class BasicTableView extends View
-  @Events: TableViewEvents
-
   tag: 'basic-table'
-  html: require './template.html'
+  html: require '../templates/backend/table/template.html'
+  searching: false
   events:
-    "#{TableViewEvents.NewData}": (model)->
+    "#{Events.Table.NewData}": (model)->
       @model = model
-      @update()
+      riot.update()
+    "#{Events.Table.StartSearch}": ()->
+      @searching = true
+    "#{Events.Table.EndSearch}": ()->
+      @searching = false
   isEmpty: ()->
     model = @model
     return !model? || !model.length || model.length == 0
   js: (opts)->
-    @headers = opts.headers
+    @headers ?= opts.headers
+    @headerMap = {}
+    for header in @headers
+      @headerMap[header.id] = header
 
 BasicTableView.register()
 

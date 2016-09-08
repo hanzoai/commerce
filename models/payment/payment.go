@@ -9,7 +9,6 @@ import (
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
-	"crowdstart.com/util/val"
 
 	. "crowdstart.com/models"
 )
@@ -91,7 +90,7 @@ func (sa StripeAccount) CardMatches(acct Account) bool {
 	if sa.Year != acct.Year {
 		return false
 	}
-	if len(acct.Number) > 4 && sa.LastFour != acct.Number[len(acct.Number)-4:] {
+	if len(sa.LastFour) == 4 && sa.LastFour != acct.LastFour {
 		return false
 	}
 	return true
@@ -102,6 +101,8 @@ type Account struct {
 	AffirmAccount
 	PayPalAccount
 	StripeAccount
+
+	Error string `json:"error,omitempty"`
 }
 
 type Payment struct {
@@ -145,26 +146,13 @@ type Payment struct {
 	// Internal testing flag
 	Test bool `json:"-"`
 
-	Metadata  Metadata `json:"metadata" datastore:"-"`
-	Metadata_ string   `json:"-" datastore:"-"`
-}
-
-func (p Payment) Kind() string {
-	return "payment"
-}
-
-func (p Payment) Document() mixin.Document {
-	return nil
-}
-
-func (p *Payment) Init() {
-	p.Status = Unpaid
-	p.Metadata = make(Metadata)
+	Metadata  Map    `json:"metadata" datastore:"-"`
+	Metadata_ string `json:"-" datastore:"-"`
 }
 
 func (p *Payment) Load(c <-chan aeds.Property) (err error) {
 	// Ensure we're initialized
-	p.Init()
+	p.Defaults()
 
 	// Load supported properties
 	if err = IgnoreFieldMismatch(aeds.LoadStruct(p, c)); err != nil {
@@ -189,19 +177,4 @@ func (p *Payment) Save(c chan<- aeds.Property) (err error) {
 
 	// Save properties
 	return IgnoreFieldMismatch(aeds.SaveStruct(p, c))
-}
-
-func (p *Payment) Validator() *val.Validator {
-	return val.New(p)
-}
-
-func New(db *datastore.Datastore) *Payment {
-	p := new(Payment)
-	p.Init()
-	p.Model = mixin.Model{Db: db, Entity: p}
-	return p
-}
-
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
 }

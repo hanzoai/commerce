@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	checkoutApi "crowdstart.com/api/checkout"
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/order"
@@ -14,8 +15,6 @@ import (
 	"crowdstart.com/util/permission"
 	"crowdstart.com/util/rest"
 	"crowdstart.com/util/router"
-
-	paymentApi "crowdstart.com/api/payment"
 )
 
 func Route(router router.Router, args ...gin.HandlerFunc) {
@@ -25,9 +24,12 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 
 	api := rest.New(order.Order{})
 
-	api.POST("/:orderid/capture", adminRequired, namespaced, paymentApi.Capture)
-	api.POST("/:orderid/charge", publishedRequired, namespaced, paymentApi.Charge)
-	api.POST("/:orderid/authorize", publishedRequired, namespaced, paymentApi.Authorize)
+	api.POST("/:orderid/capture", adminRequired, namespaced, checkoutApi.Capture)
+
+	api.POST("/:orderid/refund", adminRequired, namespaced, checkoutApi.Refund)
+
+	api.POST("/:orderid/charge", publishedRequired, namespaced, checkoutApi.Charge)
+	api.POST("/:orderid/authorize", publishedRequired, namespaced, checkoutApi.Authorize)
 
 	api.GET("/:orderid/payments", adminRequired, namespaced, func(c *gin.Context) {
 		id := c.Params.ByName("orderid")
@@ -47,7 +49,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 
 	api.Create = func(c *gin.Context) {
 		org := middleware.GetOrganization(c)
-		db := datastore.New(org.Namespace(c))
+		db := datastore.New(org.Namespaced(c))
 		ord := order.New(db)
 
 		// Decode response body to create new order
@@ -72,7 +74,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 
 	api.Update = func(c *gin.Context) {
 		org := middleware.GetOrganization(c)
-		db := datastore.New(org.Namespace(c))
+		db := datastore.New(org.Namespaced(c))
 
 		id := c.Params.ByName("orderid")
 		ord := order.New(db)
@@ -105,7 +107,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 
 	api.Patch = func(c *gin.Context) {
 		org := middleware.GetOrganization(c)
-		db := datastore.New(org.Namespace(c))
+		db := datastore.New(org.Namespaced(c))
 
 		id := c.Params.ByName("orderid")
 		ord := order.New(db)

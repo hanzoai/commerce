@@ -17,6 +17,11 @@ func GetCurrentUserId(c *gin.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	if value == nil {
+		return "", err
+	}
+
 	return value.(string), nil
 }
 
@@ -98,5 +103,5 @@ func Login(c *gin.Context, u *user.User) error {
 }
 
 func Logout(c *gin.Context) error {
-	return session.Delete(c, loginKey)
+	return session.Clear(c)
 }

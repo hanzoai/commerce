@@ -1,27 +1,26 @@
 package val
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
 
 	"crowdstart.com/util/log"
-	"crowdstart.com/util/template"
 )
 
-type ValidatorFunction func(interface{}) *FieldError
+type ValidatorFunction interface{}
 
 type Validator struct {
 	Value     reflect.Value
 	lastField string
 	fnsMap    map[string][]ValidatorFunction
-	jsTmplMap map[string][]string
 }
 
 // Create a new Validator using a custom struct
-func New(value interface{}) *Validator {
-	return &Validator{Value: depointer(reflect.ValueOf(value)), fnsMap: make(map[string][]ValidatorFunction), jsTmplMap: make(map[string][]string)}
+func New() *Validator {
+	return &Validator{fnsMap: make(map[string][]ValidatorFunction)}
 }
 
 // Helper to dereference all pointer layers
@@ -34,7 +33,7 @@ func depointer(value reflect.Value) reflect.Value {
 }
 
 // Helper to deal with traversing dot notation
-func traverseDots(value reflect.Value, field string) reflect.Value {
+func traverseAddts(value reflect.Value, field string) reflect.Value {
 	fields := strings.Split(field, ".")
 	for _, field := range fields {
 		switch value.Kind() {
@@ -56,11 +55,6 @@ func traverseDots(value reflect.Value, field string) reflect.Value {
 
 // Set the current field to be Validated
 func (v *Validator) Check(field string) *Validator {
-	// we have to add the & to make the fields on the value settable
-	if !traverseDots(v.Value, field).IsValid() {
-		log.Panic("Field does not exist!")
-	}
-
 	if _, ok := v.fnsMap[field]; !ok {
 		v.fnsMap[field] = make([]ValidatorFunction, 0)
 	}
@@ -70,36 +64,29 @@ func (v *Validator) Check(field string) *Validator {
 }
 
 // Generate Validation Errors
-func (v *Validator) Execute() []*FieldError {
-	var i interface{}
-	errs := make([]*FieldError, 0)
+func (v *Validator) Exec(value interface{}) []error {
+	v.Value = depointer(reflect.ValueOf(value))
 
+	errs := make([]error, 0)
 	// Loop over all the field values
 	for field, fns := range v.fnsMap {
-		switch value := traverseDots(v.Value, field); value.Kind() {
-		case reflect.Bool:
-			i = value.Bool()
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			i = value.Int()
-		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-			i = value.Uint()
-		case reflect.String:
-			i = value.String()
-		// case reflect.Slice:
-		// 	// don't handle
-		// case reflect.Complex64, reflect.Complex128:
-		// 	// don't handle
-		case reflect.Float32, reflect.Float64:
-			i = value.Float()
-		default:
-			log.Panic("Validator does not support type '%v'", value.Type())
+		value := traverseAddts(v.Value, field)
+
+		// we have to add the & to make the fields on the value settable
+		if !value.IsValid() {
+			log.Panic("Field %v does not exist!", field)
 		}
 
 		// Loop over all validation functions for a field
 		for _, fn := range fns {
 			// Only append real errors
-			if err := fn(i); err != nil {
-				errs = append(errs, err)
+			fnVal := reflect.ValueOf(fn)
+			errVals := fnVal.Call([]reflect.Value{value})
+			if len(errVals) > 0 && !errVals[0].IsNil() {
+				err := errVals[0].Interface().(error)
+				if err != nil {
+					errs = append(errs, NewFieldError(field, err.Error()))
+				}
 			}
 		}
 	}
@@ -107,93 +94,76 @@ func (v *Validator) Execute() []*FieldError {
 	return errs
 }
 
+func (v *Validator) Add(fn ValidatorFunction) *Validator {
+	field := v.lastField
+	typ := reflect.TypeOf(fn)
+	if typ.Kind() != reflect.Func {
+		log.Panic("ValidatorFunction must be a function")
+	}
+	if typ.NumIn() != 1 {
+		log.Panic("ValidatorFunction must have one argument")
+	}
+
+	v.fnsMap[field] = append(v.fnsMap[field], fn)
+	return v
+}
+
 // Built in validation routines
 func (v *Validator) Exists() *Validator {
-	field := v.lastField
-	v.fnsMap[field] = append(v.fnsMap[field], func(i interface{}) *FieldError {
+	return v.Add(func(i interface{}) error {
 		switch value := i.(type) {
 		case string:
 			if len(value) > 0 {
 				return nil
 			}
 		}
-		return NewFieldError(field, "Field cannot be blank")
+		return errors.New("Field cannot be blank.")
 	})
-	v.jsTmplMap[field] = append(v.jsTmplMap[field], template.RenderStringFromString(ExistsCoffee, "field", field))
-	return v
 }
 
 func (v *Validator) IsEmail() *Validator {
-	field := v.lastField
-	v.fnsMap[field] = append(v.fnsMap[field], func(i interface{}) *FieldError {
-		switch value := i.(type) {
-		case string:
-			if strings.Contains(value, "@") &&
-				strings.Contains(value, ".") &&
-				strings.Index(value, "@") < strings.Index(value, ".") &&
-				len(value) > 5 {
-				return nil
-			}
+	return v.Add(func(value string) error {
+		if strings.Contains(value, "@") &&
+			strings.Contains(value, ".") &&
+			strings.Index(value, "@") < strings.Index(value, ".") &&
+			len(value) > 5 {
+			return nil
 		}
-		return NewFieldError(field, "Email is invalid")
+		return errors.New("Field must be an email.")
 	})
-	v.jsTmplMap[field] = append(v.jsTmplMap[field], template.RenderStringFromString(IsEmailCoffee, "field", field))
-	return v
-}
-
-func (v *Validator) IsPassword() *Validator {
-	field := v.lastField
-	v.fnsMap[field] = append(v.fnsMap[field], func(i interface{}) *FieldError {
-		switch value := i.(type) {
-		case string:
-			if len(value) >= 6 {
-				return nil
-			}
-		}
-		return NewFieldError(field, "Passwords must be atleast 6 characters long.")
-	})
-	v.jsTmplMap[field] = append(v.jsTmplMap[field], template.RenderStringFromString(IsPasswordCoffee, "field", field))
-	return v
 }
 
 func (v *Validator) MinLength(minLength int) *Validator {
-	field := v.lastField
-	v.fnsMap[field] = append(v.fnsMap[field], func(i interface{}) *FieldError {
-		switch value := i.(type) {
-		case string:
-			if len(value) >= minLength {
-				return nil
-			}
+	return v.Add(func(value string) error {
+		if len(value) >= minLength {
+			return nil
 		}
-		return NewFieldError(field, fmt.Sprintf("Field must be atleast %d characters long.", minLength))
+		return errors.New(fmt.Sprintf("Field must be atleast %d characters long.", minLength))
 	})
-	v.jsTmplMap[field] = append(v.jsTmplMap[field], template.RenderStringFromString(IsMinLengthCoffee, "field", field, "minLength", minLength))
-	return v
 }
 
 // Use for enums
 func (v *Validator) Matches(strs ...string) *Validator {
-	field := v.lastField
-	v.fnsMap[field] = append(v.fnsMap[field], func(i interface{}) *FieldError {
-		switch value := i.(type) {
-		case string:
-			for _, str := range strs {
-				if str == value {
-					return nil
-				}
+	return v.Add(func(value string) error {
+		for _, str := range strs {
+			if str == value {
+				return nil
 			}
 		}
-		return NewFieldError(field, fmt.Sprintf("Field must be one of ['%v'], not '%v'.", strings.Join(strs, "', '"), i))
+		if len(strs) == 1 {
+			return errors.New(fmt.Sprintf("Field must equal '%v', not '%v'.", strs[0], value))
+		}
+		return errors.New(fmt.Sprintf("Field must be one of ['%v'], not '%v'.", strings.Join(strs, "', '"), value))
 	})
-	v.jsTmplMap[field] = append(v.jsTmplMap[field], template.RenderStringFromString(IsMatchesCoffee, "field", field, "matches", strs))
-	return v
 }
 
-func (v *Validator) CustomRule(fn ValidatorFunction, jsTmpl string) *Validator {
-	field := v.lastField
-	v.fnsMap[field] = append(v.fnsMap[field], fn)
-	v.jsTmplMap[field] = append(v.jsTmplMap[field], jsTmpl)
-	return v
+func (v *Validator) Ensure(fn ValidatorFunction) *Validator {
+	return v.Add(fn)
+}
+
+// Higher Order Functions
+func (v *Validator) IsPassword() *Validator {
+	return v.MinLength(6)
 }
 
 type StringValidationContext struct {
@@ -205,29 +175,29 @@ func Check(str string) *StringValidationContext {
 	return &(StringValidationContext{str, true})
 }
 
-// Higher Level Validation
-func (s *StringValidationContext) Empty() *StringValidationContext {
-	return s.LengthIsGreaterThanOrEqualTo(1)
-}
+// // Higher Level Validation
+// func (s *StringValidationContext) Empty() *StringValidationContext {
+// 	return s.LengthIsGreaterThanOrEqualTo(1)
+// }
 
-func (s *StringValidationContext) Exists() *StringValidationContext {
-	return s.LengthIsGreaterThanOrEqualTo(1)
-}
+// func (s *StringValidationContext) Exists() *StringValidationContext {
+// 	return s.LengthIsGreaterThanOrEqualTo(1)
+// }
 
-func (s *StringValidationContext) IsEmail() *StringValidationContext {
-	return s.StringBeforeString("@", ".").LengthIsGreaterThanOrEqualTo(5) //a@b.c
-}
+// func (s *StringValidationContext) IsEmail() *StringValidationContext {
+// 	return s.StringBeforeString("@", ".").LengthIsGreaterThanOrEqualTo(5) //a@b.c
+// }
 
 func (s *StringValidationContext) IsPassword() *StringValidationContext {
 	// We should ahve char restrictions here but whatever
 	return s.LengthIsGreaterThanOrEqualTo(6) // Min Length 6
 }
 
-func (s *StringValidationContext) StringBeforeString(a string, b string) *StringValidationContext {
-	s.Contains(a).Contains(b)
-	s.IsValid = s.IsValid && (strings.Index(s.value, a) < strings.LastIndex(s.value, b))
-	return s
-}
+// func (s *StringValidationContext) StringBeforeString(a string, b string) *StringValidationContext {
+// 	s.Contains(a).Contains(b)
+// 	s.IsValid = s.IsValid && (strings.Index(s.value, a) < strings.LastIndex(s.value, b))
+// 	return s
+// }
 
 // Basic Validation
 func (s *StringValidationContext) LengthIsGreaterThanOrEqualTo(n int) *StringValidationContext {
@@ -236,17 +206,17 @@ func (s *StringValidationContext) LengthIsGreaterThanOrEqualTo(n int) *StringVal
 	return s
 }
 
-func (s *StringValidationContext) EqualTo(str string) *StringValidationContext {
-	s.IsValid = s.IsValid && (str == s.value)
-	log.Debug("%v is equal to %v is %v", s.value, str, s.IsValid)
-	return s
-}
+// func (s *StringValidationContext) EqualTo(str string) *StringValidationContext {
+// 	s.IsValid = s.IsValid && (str == s.value)
+// 	log.Debug("%v is equal to %v is %v", s.value, str, s.IsValid)
+// 	return s
+// }
 
-func (s *StringValidationContext) Contains(str string) *StringValidationContext {
-	s.IsValid = s.IsValid && (strings.Contains(s.value, str))
-	log.Debug("%v contains %v is %v", s.value, str, s.IsValid)
-	return s
-}
+// func (s *StringValidationContext) Contains(str string) *StringValidationContext {
+// 	s.IsValid = s.IsValid && (strings.Contains(s.value, str))
+// 	log.Debug("%v contains %v is %v", s.value, str, s.IsValid)
+// 	return s
+// }
 
 // func ValidateUser(user *models.User, errs []string) []string {
 // 	if !Check(user.Email).IsEmail().IsValid {
@@ -264,7 +234,7 @@ func (s *StringValidationContext) Contains(str string) *StringValidationContext 
 // 		errs = append(errs, "Please enter a last name.")
 // 	}
 
-// 	// Do we care?
+// 	// Add we care?
 // 	// if !Check(user.Phone).Exists().IsValid {
 // 	// 	log.Debug("Form posted without phone number")
 // 	// 	errs = append(errs, "Please enter a phone number.")

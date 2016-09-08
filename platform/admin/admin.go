@@ -1,9 +1,8 @@
 package admin
 
 import (
-	"time"
+	"sort"
 
-	"appengine/memcache"
 	"appengine/search"
 
 	"github.com/gin-gonic/gin"
@@ -11,15 +10,11 @@ import (
 	"crowdstart.com/config"
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
-	"crowdstart.com/models/coupon"
-	"crowdstart.com/models/mailinglist"
 	"crowdstart.com/models/order"
-	"crowdstart.com/models/product"
-	"crowdstart.com/models/store"
-	"crowdstart.com/models/subscriber"
-	"crowdstart.com/models/types/currency"
+	"crowdstart.com/models/organization"
 	"crowdstart.com/models/user"
 	"crowdstart.com/util/emails"
+	"crowdstart.com/util/json/http"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/template"
 )
@@ -31,176 +26,48 @@ func Index(c *gin.Context) {
 	c.Redirect(301, url)
 }
 
-type StoreData struct {
-	StoreId    string
-	StoreName  string
-	OrderCount int
-	Sales      currency.Cents
-}
-
-type IRef struct {
-	I int
-}
-
-type ICCSRef struct {
-	I  int
-	C  currency.Cents
-	C2 currency.Type
-	S  []*StoreData
-}
-
-// Admin Dashboard
 func Dashboard(c *gin.Context) {
-	// Update Stats
-	db := datastore.New(middleware.GetNamespace(c))
-	u := user.New(db)
+	db := datastore.New(c)
 
-	orgName := middleware.GetOrganization(c).Name
+	usr := middleware.GetCurrentUser(c)
+	var orgNames []*organization.Organization
 
-	ctx := db.Context
-	key := orgName + "-userCount"
-	ir := IRef{}
-
-	userCount := 0
-	subCount := 0
-	orderTotal := 0
-	salesTotal := currency.Cents(0)
-
-	_, err := memcache.Gob.Get(ctx, key, &ir)
-	if err != nil {
-		userCount, err = u.Query().KeysOnly().Count()
-		if err != nil {
-			panic(err)
+	if verusEmailRe.MatchString(usr.Email) {
+		if _, err := organization.Query(db).GetAll(&orgNames); err != nil {
+			log.Warn("Unable to fetch organizations for switcher.")
 		}
 
-		item := &memcache.Item{
-			Key:        key,
-			Object:     IRef{userCount},
-			Expiration: time.Duration(time.Minute * 17),
-		}
-
-		memcache.Gob.Set(db.Context, item)
+		usr.IsOwner = true
 	} else {
-		userCount = ir.I
+		orgIds := usr.Organizations
+		for _, orgId := range orgIds {
+			org := organization.New(db)
+			err := org.GetById(orgId)
+			if err != nil {
+				continue
+			}
+			orgNames = append(orgNames, org)
+		}
+
+		org := middleware.GetOrganization(c)
+
+		for _, userId := range org.Owners {
+			if userId == usr.Id() {
+				usr.IsOwner = true
+				break
+			}
+		}
 	}
 
-	key = orgName + "-subCount"
+	// Sort organizations by name
+	sort.Sort(organization.ByName(orgNames))
 
-	_, err = memcache.Gob.Get(ctx, key, &ir)
-	if err != nil {
-		sub := subscriber.New(db)
-		subCount, err = sub.Query().KeysOnly().Count()
-		if err != nil {
-			panic(err)
-		}
+	Render(c, "backend/index.html", "orgNames", orgNames, "orgNumber", len(orgNames))
+}
 
-		item := &memcache.Item{
-			Key:        key,
-			Object:     IRef{subCount},
-			Expiration: time.Duration(time.Minute * 19),
-		}
-
-		memcache.Gob.Set(db.Context, item)
-	} else {
-		subCount = ir.I
-	}
-
-	key = orgName + "-totalCount"
-	// iccsr := ICCSRef{}
-	storeDatas := make([]*StoreData, 0)
-	var cur currency.Type
-
-	// _, err = memcache.Gob.Get(ctx, key, &iccsr)
-	// if err != nil {
-	// 	o := order.New(db)
-	// 	var orders []order.Order
-	// 	_, err = o.Query().GetAll(&orders)
-	// 	if err != nil {
-	// 		panic(err)
-	// 	}
-
-	// 	log.Warn("%v", orders)
-
-	// 	storeDataMap := make(map[string]*StoreData)
-	// 	for _, ord := range orders {
-	// 		if ord.Test && ord.PaymentStatus == payment.Paid {
-	// 			continue
-	// 		}
-
-	// 		var storeData *StoreData
-	// 		var ok bool
-
-	// 		if storeData, ok = storeDataMap[ord.StoreId]; !ok {
-	// 			storeData = &StoreData{StoreId: ord.StoreId}
-	// 			storeDatas = append(storeDatas, storeData)
-	// 			storeDataMap[ord.StoreId] = storeData
-	// 		}
-	// 		storeData.OrderCount++
-
-	// 		for _, payId := range ord.PaymentIds {
-	// 			pay := payment.New(db)
-	// 			err = pay.GetById(payId)
-	// 			if err != nil {
-	// 				continue
-	// 			}
-	// 			if pay.AmountTransferred == 0 {
-	// 				storeData.Sales += pay.AmountTransferred
-	// 			} else {
-	// 				storeData.Sales += pay.Amount
-	// 			}
-
-	// 			if pay.CurrencyTransferred == "" {
-	// 				cur = pay.CurrencyTransferred
-	// 			} else {
-	// 				cur = pay.Currency
-	// 			}
-	// 		}
-	// 	}
-
-	// 	s := store.New(db)
-	// 	var stores []store.Store
-	// 	_, err = s.Query().GetAll(&stores)
-	// 	if err != nil {
-	// 		panic(err)
-	// 	}
-
-	// 	for _, stor := range stores {
-	// 		if storeData, ok := storeDataMap[stor.Id()]; ok {
-	// 			storeData.StoreName = strings.ToUpper(stor.Name)
-	// 		}
-	// 	}
-
-	// 	orderTotal = 0
-	// 	salesTotal = currency.Cents(0)
-	// 	for _, storeData := range storeDatas {
-	// 		orderTotal += storeData.OrderCount
-	// 		salesTotal += storeData.Sales
-	// 	}
-
-	// 	item := &memcache.Item{
-	// 		Key:        key,
-	// 		Object:     ICCSRef{orderTotal, salesTotal, cur, storeDatas},
-	// 		Expiration: time.Duration(time.Minute * 23),
-	// 	}
-
-	// 	memcache.Gob.Set(db.Context, item)
-	// } else {
-	// 	orderTotal = iccsr.I
-	// 	salesTotal = iccsr.C
-	// 	cur = iccsr.C2
-	// 	storeDatas = iccsr.S
-	// }
-
-	log.Warn("%v %v %v %v %v", userCount, subCount, cur, orderTotal, salesTotal)
-
-	template.Render(c, "admin/dashboard.html",
-		"userCount", userCount,
-		"subCount", subCount,
-		"currency", cur,
-		"orderTotal", orderTotal,
-		"salesTotal", salesTotal,
-		"storeDatas", storeDatas,
-	)
+type SearchResults struct {
+	Users  []*user.User   `json:"users"`
+	Orders []*order.Order `json:"orders"`
 }
 
 func Search(c *gin.Context) {
@@ -260,120 +127,7 @@ func Search(c *gin.Context) {
 		orders = append(orders, o)
 	}
 
-	template.Render(c, "admin/search-results.html", "users", users, "orders", orders)
-}
-
-func Products(c *gin.Context) {
-	template.Render(c, "admin/list-products.html")
-}
-
-func Product(c *gin.Context) {
-	db := datastore.New(middleware.GetNamespace(c))
-
-	p := product.New(db)
-	id := c.Params.ByName("id")
-	p.MustGet(id)
-
-	template.Render(c, "admin/product.html", "product", p)
-}
-
-func Coupons(c *gin.Context) {
-	db := datastore.New(middleware.GetNamespace(c))
-
-	var products []product.Product
-	product.Query(db).GetAll(&products)
-
-	template.Render(c, "admin/list-coupons.html", "products", products)
-}
-
-func Coupon(c *gin.Context) {
-	id := c.Params.ByName("id")
-	db := datastore.New(middleware.GetNamespace(c))
-
-	cou := coupon.New(db)
-	cou.MustGet(id)
-
-	var products []product.Product
-	product.Query(db).GetAll(&products)
-
-	template.Render(c, "admin/coupon.html", "coupon", cou, "products", products)
-}
-
-type ProductsMap map[string]product.Product
-
-func (p ProductsMap) Find(id string) product.Product {
-	return p[id]
-}
-
-func Store(c *gin.Context) {
-	db := datastore.New(middleware.GetNamespace(c))
-
-	s := store.New(db)
-	id := c.Params.ByName("id")
-	s.MustGet(id)
-
-	listings := make([]store.Listing, 0, len(s.Listings))
-	for _, listing := range s.Listings {
-		listings = append(listings, listing)
-	}
-
-	var products []product.Product
-	product.Query(db).GetAll(&products)
-
-	productsMap := make(ProductsMap)
-	for _, product := range products {
-		productsMap[product.Id()] = product
-	}
-
-	template.Render(c, "admin/store.html", "store", s, "listings", listings, "products", products, "productsMap", productsMap)
-}
-
-func Stores(c *gin.Context) {
-	db := datastore.New(middleware.GetNamespace(c))
-
-	var products []product.Product
-	product.Query(db).GetAll(&products)
-
-	template.Render(c, "admin/list-stores.html", "products", products)
-}
-
-func MailingList(c *gin.Context) {
-	db := datastore.New(middleware.GetNamespace(c))
-
-	m := mailinglist.New(db)
-	id := c.Params.ByName("id")
-	m.MustGet(id)
-
-	template.Render(c, "admin/mailinglist.html", "mailingList", m)
-}
-
-func MailingLists(c *gin.Context) {
-	template.Render(c, "admin/list-mailinglists.html")
-}
-
-func User(c *gin.Context) {
-	template.Render(c, "admin/user.html")
-}
-
-func Users(c *gin.Context) {
-	template.Render(c, "admin/list-users.html")
-}
-
-func Order(c *gin.Context) {
-	db := datastore.New(middleware.GetNamespace(c))
-
-	o := order.New(db)
-	id := c.Params.ByName("id")
-	o.MustGet(id)
-
-	u := user.New(db)
-	u.MustGet(o.UserId)
-
-	template.Render(c, "admin/order.html", "order", o, "user", u)
-}
-
-func Orders(c *gin.Context) {
-	template.Render(c, "admin/list-orders.html")
+	http.Render(c, 200, SearchResults{users, orders})
 }
 
 func SendOrderConfirmation(c *gin.Context) {
@@ -387,17 +141,18 @@ func SendOrderConfirmation(c *gin.Context) {
 	u := user.New(db)
 	u.MustGet(o.UserId)
 
-	emails.SendOrderConfirmationEmail(c, org, o, u)
+	emails.SendOrderConfirmationEmail(db.Context, org, o, u)
 
-	template.Render(c, "admin/order.html", "order", o, "user", u)
-}
-
-func Organization(c *gin.Context) {
-	template.Render(c, "admin/organization.html")
+	c.Writer.WriteHeader(204)
 }
 
 func Keys(c *gin.Context) {
-	template.Render(c, "admin/keys.html")
+	// Think about rendering a json of all keys after reading in
+	// login credentials like Stripe and literally everyone else
+
+	// We use the master key for the dashboard so it is kind of pointless right now
+
+	// We REALLY need a crowdstart domain restricted master key for dashboard
 }
 
 func NewKeys(c *gin.Context) {
@@ -409,5 +164,18 @@ func NewKeys(c *gin.Context) {
 		panic(err)
 	}
 
-	template.Render(c, "admin/keys.html")
+	c.Writer.WriteHeader(204)
+}
+
+func Render(c *gin.Context, name string, args ...interface{}) {
+	db := datastore.New(c)
+	org := organization.New(db)
+	if err := org.GetById("crowdstart"); err == nil {
+		args = append(args, "crowdstartId", org.Id())
+	} else {
+		args = append(args, "crowdstartId", "")
+	}
+	log.Warn("Z%s", org.Id())
+
+	template.Render(c, name, args...)
 }

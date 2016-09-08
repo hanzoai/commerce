@@ -1,7 +1,7 @@
 pwd				= $(shell pwd)
 os				= $(shell uname | tr '[A-Z]' '[a-z]')
 platform		= $(os)_amd64
-sdk				= go_appengine_sdk_$(platform)-1.9.23
+sdk				= go_appengine_sdk_$(platform)-1.9.30
 sdk_path		= $(pwd)/.sdk
 goroot			= $(sdk_path)/goroot
 gopath			= $(sdk_path)/gopath
@@ -16,54 +16,59 @@ appcfg.py 		= $(sdk_path)/appcfg.py --skip_sdk_update_check
 bulkloader.py   = $(sdk_path)/bulkloader.py
 
 deps	= $(shell cat Godeps | cut -d ' ' -f 1)
-modules	= crowdstart.com/api \
-		  crowdstart.com/platform \
-		  crowdstart.com/store
-
-gae_token = 1/DLPZCHjjCkiegGp0SiIvkWmtZcUNl15JlOg4qB0-1r0MEudVrK5jSpoR30zcRFq6
+modules	= crowdstart.com/analytics \
+		  crowdstart.com/api \
+		  crowdstart.com/cdn \
+		  crowdstart.com/platform
 
 gae_development = config/development/app.yaml \
 				  config/development/dispatch.yaml \
+				  analytics/app.dev.yaml \
 				  api/app.dev.yaml \
-				  platform/app.dev.yaml \
-				  store/app.dev.yaml
+				  cdn/app.dev.yaml \
+				  platform/app.dev.yaml
 
 gae_sandbox = config/sandbox \
-			  api/app.staging.yaml
+			  analytics/app.sandbox.yaml \
+			  api/app.sandbox.yaml
+
+# CDN is deprecated, analytics not used
+# gae_staging = config/staging \
+# 			  analytics/app.staging.yaml \
+# 			  api/app.staging.yaml \
+# 			  cdn/app.staging.yaml \
+# 			  platform/app.staging.yaml
+
+# gae_production = config/production \
+# 				 analytics \
+# 				 api \
+# 			  	 cdn \
+# 				 platform
 
 gae_staging = config/staging \
 			  api/app.staging.yaml \
+			  cdn/app.staging.yaml \
 			  platform/app.staging.yaml
 
 gae_production = config/production \
 				 api \
+				 cdn \
 				 platform
 
-gae_skully = config/skully \
-			 api/app.skully.yaml \
-			 platform/app.skully.yaml \
-			 store/app.skully.yaml
-
-tools = github.com/golang/lint/golint \
-		github.com/jstemmer/gotags \
-		github.com/kisielk/errcheck \
-		github.com/nsf/gocode \
-		github.com/rogpeppe/godef \
-		golang.org/x/tools/cmd/cover \
-		golang.org/x/tools/cmd/goimports \
-		golang.org/x/tools/cmd/gorename \
-		golang.org/x/tools/cmd/oracle
+tools = github.com/nsf/gocode \
+        github.com/rogpeppe/godef \
+        github.com/jstemmer/gotags \
+        github.com/klauspost/asmfmt/cmd/asmfmt
 
 # Various patches for SDK
 mtime_file_watcher = https://gist.githubusercontent.com/zeekay/5eba991c39426ca42cbb/raw/8db2e910b89e3927adc9b7c183387186facee17b/mtime_file_watcher.py
 
-# static assets, requisite javascript from assets -> static
-bebop = node_modules/.bin/bebop
+bebop    = node_modules/.bin/bebop
+coffee	 = node_modules/.bin/coffee
+uglifyjs = node_modules/.bin/uglifyjs
 
-coffee	   	   = node_modules/.bin/coffee
 requisite	   = node_modules/.bin/requisite -g
-requisite_opts = --no-source-map \
-				 assets/js/store/store.coffee \
+requisite_opts = assets/js/store/store.coffee \
 				 assets/js/api/api.coffee \
 				 assets/js/platform/platform.coffee \
 				 node_modules/crowdstart.js/src/index.coffee \
@@ -72,7 +77,8 @@ requisite_opts = --no-source-map \
 				 -o static/js/platform.js \
 				 -o static/v1.js
 
-requisite_opts_min = -m --strip-debug --minifier uglify
+# requisite_opts_min = --strip-debug --minifier uglify
+requisite_opts_min = --strip-debug
 
 stylus		= node_modules/.bin/stylus
 stylus_opts = assets/css/store/store.styl \
@@ -81,7 +87,7 @@ stylus_opts = assets/css/store/store.styl \
 			  -o static/css
 stylus_opts_min = -u csso-stylus -c
 
-autoprefixer = node_modules/.bin/autoprefixer
+autoprefixer = node_modules/.bin/autoprefixer-cli
 autoprefixer_opts = -b 'ie > 8, firefox > 24, chrome > 30, safari > 6, opera > 17, ios > 6, android > 4' \
 					static/css/store.css \
 					static/css/theme.css \
@@ -126,20 +132,22 @@ endif
 
 # set production=1 to set datastore export/import target to use production
 ifeq ($(production), 1)
-	datastore_app_id = crowdstart-us
+	project_id = crowdstart-us
 	gae_config = $(gae_production)
 else ifeq ($(sandbox), 1)
-	datastore_app_id = crowdstart-sandbox
+	project_id = crowdstart-sandbox
 	gae_config = $(gae_sandbox)
-else ifeq ($(skully), 1)
-	datastore_app_id = crowdstart-skully
-	gae_config = $(gae_skully)
 else
-	datastore_app_id = crowdstart-staging
+	project_id = crowdstart-staging
 	gae_config = $(gae_staging)
 endif
 
-datastore_admin_url = https://datastore-admin-dot-$(datastore_app_id).appspot.com/_ah/remote_api
+# force a single module to deploy
+ifneq ($(strip $(module)),)
+	gae_config = $(module)
+endif
+
+datastore_admin_url = https://datastore-admin-dot-$(project_id).appspot.com/_ah/remote_api
 
 test_target = -r=true
 test_focus := $(focus)
@@ -160,10 +168,25 @@ assets-min: deps-assets compile-css-min compile-js-min
 compile-js:
 	$(requisite) $(requisite_opts)
 	$(coffee) -bc -o static/js assets/js/api/mailinglist.coffee
+	$(requisite) node_modules/crowdstart-analytics/lib/index.js -o static/js/analytics/analytics.js
+	cp node_modules/crowdstart-analytics/lib/snippet.js static/js/analytics
+	cp node_modules/crowdstart-analytics/lib/bundle.js static/js/analytics
 
-compile-js-min:
-	$(requisite) $(requisite_opts_min) $(requisite_opts)
-	$(coffee) -bc -o static/js assets/js/api/mailinglist.coffee
+compile-js-min: compile-js
+	$(uglifyjs) static/js/api.js -o static/js/api.min.js -c
+	$(uglifyjs) static/js/analytics/analytics.js -o static/js/analytics/analytics.min.js -c -m
+	$(uglifyjs) static/js/analytics/bundle.js -o static/js/analytics/bundle.min.js -c -m
+	$(uglifyjs) static/js/analytics/snippet.js -o static/js/analytics/snippet.min.js -c -m
+	$(uglifyjs) static/js/platform.js -o static/js/platform.min.js -c
+	$(uglifyjs) static/js/store.js -o static/js/store.min.js -c
+	$(uglifyjs) static/v1.js -o static/v1.min.js -c
+	@mv static/js/api.min.js static/js/api.js
+	@mv static/js/analytics/analytics.min.js static/js/analytics/analytics.js
+	@mv static/js/analytics/bundle.min.js static/js/analytics/bundle.js
+	@mv static/js/analytics/snippet.min.js static/js/analytics/snippet.js
+	@mv static/js/platform.min.js static/js/platform.js
+	@mv static/js/store.min.js static/js/store.js
+	@mv static/v1.min.js static/v1.js
 
 compile-css:
 	$(stylus) $(stylus_opts) -u autoprefixer-stylus --sourcemap --sourcemap-inline
@@ -180,7 +203,7 @@ deps: deps-assets deps-go
 
 # DEPS JS/CSS
 deps-assets:
-	npm install && npm update
+	npm update
 
 # DEPS GO
 deps-go: .sdk .sdk/go .sdk/gpm .sdk/gopath/bin/ginkgo .sdk/gopath/src/crowdstart.com
@@ -238,6 +261,7 @@ serve-no-reload: assets
 tools:
 	$(goapp) get $(tools)
 	$(goapp) install $(tools)
+	$(gopath)/bin/gocode set propose-builtins true
 	$(gopath)/bin/gocode set lib-path "$(gopath_pkg_path):$(goroot_pkg_path)"
 
 # TEST/ BENCH
@@ -254,15 +278,34 @@ bench:
 	@$(ginkgo) $(test_target) -p=true --progress --randomizeAllSpecs --failFast --skipPackage=integration $(test_verbose)
 
 test-ci:
-	$(ginkgo) -r=true -p=true --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace --compilers=2 -v=true -- -test.v=true
+	$(ginkgo) -r=true -p=true --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace --compilers=2
 
 # DEPLOY
-deploy: assets-min docs rollback
+
+# To re-auth you might need to:
+# 	gcloud components reinstall
+# 	rm ~/.appcfg*
+
+auth:
+	gcloud auth login
+	appcfg.py list_versions config/staging
+
+deploy: assets-min docs deploy-app
+
+deploy-debug: assets deploy-app
+
+deploy-app: rollback
+	# Set env for deploy
+	@echo 'package config\n\nvar Env = "$(project_id)"' > config/env.go
+
 	for module in $(gae_config); do \
 		$(appcfg.py) update $$module; \
 	done
 	$(appcfg.py) update_indexes $(firstword $(gae_config))
 	$(appcfg.py) update_dispatch $(firstword $(gae_config))
+
+	# Reset env
+	@echo 'package config\n\nvar Env = "development"' > config/env.go
 
 rollback:
 	for module in $(gae_config); do \
@@ -272,19 +315,19 @@ rollback:
 # EXPORT / Usage: make datastore-export kind=user namespace=bellabeat
 datastore-export:
 	@mkdir -p _export/
-	$(bulkloader.py) --download \
-				  	 --bandwidth_limit 1000000000 \
-				  	 --rps_limit 10000 \
-				  	 --batch_size 250 \
-				  	 --http_limit 200 \
-				  	 --url $(datastore_admin_url) \
-				  	 --config_file util/bulkloader/bulkloader.yaml \
-				  	 --db_filename /tmp/bulkloader-$$kind.db \
-				  	 --log_file /tmp/bulkloader-$$kind.log \
-				  	 --result_db_filename /tmp/bulkloader-result-$$kind.db \
-				  	 --namespace $$namespace \
-				  	 --kind $$kind \
-				  	 --filename _export/$$namespace-$$kind-$(datastore_app_id)-$(current_date).csv
+	$(appcfg.py) download_data \
+				 --bandwidth_limit 1000000000 \
+				 --rps_limit 10000 \
+				 --batch_size 250 \
+				 --http_limit 200 \
+				 --url $(datastore_admin_url) \
+				 --config_file util/bulkloader/bulkloader.yaml \
+				 --db_filename /tmp/bulkloader-$$kind.db \
+				 --log_file /tmp/bulkloader-$$kind.log \
+				 --result_db_filename /tmp/bulkloader-result-$$kind.db \
+				 --namespace $$namespace \
+				 --kind $$kind \
+				 --filename _export/$$namespace-$$kind-$(project_id)-$(current_date).csv
 	rm -rf /tmp/bulkloader-$$kind.db \
 		   /tmp/bulkloader-$$kind.log \
 		   /tmp/bulkloader-result-$$kind.db
@@ -305,14 +348,13 @@ datastore-import:
 
 # Generate config for use with datastore-export target
 datastore-config:
-	@$(bulkloader.py) --create_config \
-				      --url=$(datastore_admin_url) \
-				      --namespace $$namespace \
-				      --filename=bulkloader.yaml
+	$(appcfg.py) create_bulkloader_config \
+				 --url=$(datastore_admin_url) \
+				 --filename=bulkloader.yaml
 
 # Replicate production data to localhost
 datastore-replicate:
-	$(appcfg.py) download_data --application=s~$(datastore_app_id) --url=http://datastore-admin-dot-$(datastore_app_id).appspot.com/_ah/remote_api/ --filename=datastore.bin
+	$(appcfg.py) download_data --application=s~$(project_id) --url=http://datastore-admin-dot-$(project_id).appspot.com/_ah/remote_api/ --filename=datastore.bin
 	$(appcfg.py) --url=http://localhost:8080/_ah/remote_api --filename=datastore.bin upload_data
 
 # Generate API docs from wiki.
@@ -344,8 +386,7 @@ docs:
 	$(sed) 's/table>/table class="table table-striped table-borderless table-vcenter">/' templates/platform/docs/_generated/salesforce.html
 	@rm -rf templates/platform/docs/_generated/salesforce.html.bak
 
-.PHONY: all bench build compile-js compile-js-min compile-css compile-css-min \
+.PHONY: all auth bench build compile-js compile-js-min compile-css compile-css-min \
 	datastore-import datastore-export datastore-config deploy deploy-staging \
-	deploy-skully deploy-production deps deps-assets deps-go live-reload \
-	serve serve-clear-datastore serve-public test test-integration test-watch \
-	tools
+	deploy-production deps deps-assets deps-go live-reload serve serve-clear-datastore \
+	serve-public test test-integration test-watch tools

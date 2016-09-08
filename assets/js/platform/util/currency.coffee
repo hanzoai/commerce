@@ -1,3 +1,6 @@
+_ = require 'underscore'
+humanize = require 'humanize'
+
 currencySigns = require './data/currencies'
 currencySeparator = '.'
 digitsOnlyRe = new RegExp('[^\\d.-]', 'g')
@@ -8,10 +11,15 @@ isZeroDecimal = (code)->
   return false
 
 module.exports = Util =
+  getSymbol: (code)->
+    return currencySigns[code] || ''
+
   renderUpdatedUICurrency: (code, uiCurrency)->
     return Util.renderUICurrencyFromJSON code, Util.renderJSONCurrencyFromUI(code, uiCurrency)
 
   renderUICurrencyFromJSON: (code, jsonCurrency)->
+    if isNaN jsonCurrency
+      jsonCurrency = 0
     currentCurrencySign = currencySigns[code] || ''
 
     jsonCurrency = '' + jsonCurrency
@@ -23,9 +31,12 @@ module.exports = Util =
     while jsonCurrency.length < 3
       jsonCurrency = '0' + jsonCurrency
 
-    return currentCurrencySign + jsonCurrency.substr(0, jsonCurrency.length - 2) + '.' + jsonCurrency.substr(-2)
+    return currentCurrencySign + humanize.numberFormat(jsonCurrency.substr(0, jsonCurrency.length - 2), 0) + '.' + jsonCurrency.substr(-2)
 
   renderJSONCurrencyFromUI: (code, uiCurrency) ->
+    if _.isNumber(uiCurrency)
+      return uiCurrency
+
     if isZeroDecimal code
       return parseInt(('' + uiCurrency).replace(digitsOnlyRe, '').replace(currencySeparator, ''), 10)
 

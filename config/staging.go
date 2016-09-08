@@ -9,21 +9,30 @@ func Staging() *Config {
 	config.IsProduction = false
 	config.IsStaging = true
 
-	config.Prefixes["default"] = "/"
+	config.Prefixes["analytics"] = "/"
 	config.Prefixes["api"] = "/"
+	config.Prefixes["cdn"] = "/"
 	config.Prefixes["checkout"] = "/"
+	config.Prefixes["default"] = "/"
 	config.Prefixes["platform"] = "/"
 	config.Prefixes["preorder"] = "/"
 	config.Prefixes["store"] = "/"
 
-	config.Hosts["default"] = "default.staging.crowdstart.com"
+	config.Hosts["analytics"] = "analytics.staging.crowdstart.com"
 	config.Hosts["api"] = "api.staging.crowdstart.com"
+	config.Hosts["cdn"] = "cdn.staging.crowdstart.com"
 	config.Hosts["checkout"] = "checkout.staging.crowdstart.com"
+	config.Hosts["default"] = "default.staging.crowdstart.com"
 	config.Hosts["platform"] = "platform.staging.crowdstart.com"
 	config.Hosts["preorder"] = "preorder.staging.crowdstart.com"
 	config.Hosts["store"] = "store.staging.crowdstart.com"
 
 	config.StaticUrl = "//static.staging.crowdstart.com"
+
+	config.Paypal.Email = "dev@hanzo.ai"
+	config.Paypal.Api = "https://svcs.sandbox.paypal.com"
+	config.Paypal.IpnUrl = "https://api.staging.crowdstart.com/paypal/ipn/"
+	config.Paypal.PaypalIpnUrl = "https://www.sandbox.paypal.com/cgi-bin/webscr"
 
 	config.Stripe.ClientId = config.Stripe.DevelopmentClientId
 	config.Stripe.PublishableKey = config.Stripe.TestPublishableKey
@@ -43,6 +52,8 @@ func Staging() *Config {
 	config.Salesforce.ConsumerKey = "3MVG9xOCXq4ID1uElRYWhpUWjXYxIIlf_W1_MSDefMxTxdgMz5aMsZ7uvZ4n8zHI1wq6UREv2KE31Kes_Bq6D"
 	config.Salesforce.ConsumerSecret = "2354282251954184740"
 	config.Salesforce.CallbackURL = "https:" + config.UrlFor("platform", "/salesforce/callback")
+
+	config.Netlify.AccessToken = "cb55596d4400897691b51df746c9007ea0f073139d1ec0af705b0a3c77d70621"
 
 	log.SetVerbose(true) // Set verbose logging in staging
 

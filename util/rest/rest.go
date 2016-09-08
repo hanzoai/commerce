@@ -2,9 +2,13 @@ package rest
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
+
+	"appengine"
 
 	"github.com/gin-gonic/gin"
 
@@ -51,7 +55,9 @@ type Rest struct {
 
 	middleware []gin.HandlerFunc
 	routes     routeMap
+
 	entityType reflect.Type
+	sliceType  reflect.Type
 }
 
 type Pagination struct {
@@ -69,6 +75,8 @@ func (r *Rest) Init(prefix string) {
 func (r *Rest) InitModel(entity mixin.Kind) {
 	// Get type of entity
 	r.entityType = reflect.ValueOf(entity).Type()
+	ptrType := reflect.ValueOf(r.newKind()).Type()
+	r.sliceType = reflect.SliceOf(ptrType)
 	r.Kind = r.newKind().Kind()
 	r.ParamId = r.Kind + "id"
 	r.routes = make(routeMap)
@@ -136,13 +144,13 @@ func (r Rest) Route(router router.Router, mw ...gin.HandlerFunc) {
 	// Add default routes
 	for _, route := range r.defaultRoutes() {
 		// log.Debug("%-7s %v", route.method, prefix+route.url)
-		group.Handle(route.method, route.url, append(mw, route.handlers...))
+		group.Handle(route.method, route.url, append(mw, route.handlers...)...)
 	}
 
 	for _, routes := range r.routes {
 		for _, route := range routes {
 			// log.Debug("%-7s %v", route.method, prefix+route.url)
-			group.Handle(route.method, route.url, route.handlers)
+			group.Handle(route.method, route.url, route.handlers...)
 		}
 	}
 }
@@ -160,7 +168,8 @@ func (r Rest) CheckPermissions(c *gin.Context, method string) bool {
 		// msg := "Unsupported method for API access"
 		// r.Fail(c, 500, msg, errors.New(msg))
 		// return false
-		log.Warn("Unsupported method for API access", c)
+		msg := fmt.Sprintf("No permissions found matching method: '%s', skipping permission check.", method)
+		log.Warn(msg, c)
 		return true
 	}
 
@@ -172,7 +181,7 @@ func (r Rest) CheckPermissions(c *gin.Context, method string) bool {
 	}
 
 	// Token lacks valid permission
-	msg := "Token doesn't support " + method + " " + r.Kind
+	msg := "Token lacks permission to " + method + " " + r.Kind
 	r.Fail(c, 403, msg, errors.New(msg))
 	return false
 }
@@ -255,38 +264,38 @@ func (r Rest) newKind() mixin.Kind {
 	return reflect.New(r.entityType).Interface().(mixin.Kind)
 }
 
-func (r Rest) newSearchableKind() mixin.SearchableKind {
-	return reflect.New(r.entityType).Interface().(mixin.SearchableKind)
-}
-
-// retuns a new interface of this entity type
+// Returns a new interface of this entity type
 func (r Rest) newEntity(c *gin.Context) mixin.Entity {
+	// Increase timeout
+	ctx := middleware.GetAppEngine(c)
+	ctx = appengine.Timeout(ctx, 15*time.Second)
+
 	// Create a new entity
-	db := datastore.New(c)
+	db := datastore.New(ctx)
 	entity := reflect.New(r.entityType).Interface().(mixin.Entity)
 	model := mixin.Model{Db: db, Entity: entity}
 
 	// Disable Put/Delete if in test mode
 	if middleware.GetPermissions(c).Has(permission.Test) {
-		model.Mock = true
+		model.Mock = false // force mock off due to testing issues
 	}
 
 	// Set model on entity
 	field := reflect.Indirect(reflect.ValueOf(entity)).FieldByName("Model")
 	field.Set(reflect.ValueOf(model))
 
+	// Initialize entity
+	entity.Init(db)
+
 	return entity
 }
 
 // helper which returns a slice which is compatible with this entity
 func (r Rest) newEntitySlice() interface{} {
-	// Create a slice
-	slice := reflect.MakeSlice(reflect.SliceOf(r.entityType), 0, 0)
-
 	// Create pointer to a slice value and set it to the slice
+	slice := reflect.MakeSlice(r.sliceType, 0, 0)
 	ptr := reflect.New(slice.Type())
 	ptr.Elem().Set(slice)
-
 	return ptr.Interface()
 }
 
@@ -339,6 +348,7 @@ func (r Rest) list(c *gin.Context) {
 	var err error
 	pageStr := query.Get("page")
 	displayStr := query.Get("display")
+	limitStr := query.Get("limit")
 
 	// if we have pagination values, then trigger pagination calculations
 	if displayStr != "" {
@@ -370,6 +380,12 @@ func (r Rest) list(c *gin.Context) {
 		return
 	}
 
+	if limitStr != "" {
+		if limit, err := strconv.Atoi(limitStr); err == nil && limit > 0 {
+			count = limit
+		}
+	}
+
 	r.Render(c, 200, Pagination{
 		Page:    pageStr,
 		Display: displayStr,
@@ -390,7 +406,7 @@ func (r Rest) create(c *gin.Context) {
 		return
 	}
 
-	if err := entity.Put(); err != nil {
+	if err := entity.Create(); err != nil {
 		r.Fail(c, 500, "Failed to create "+r.Kind, err)
 	} else {
 		c.Writer.Header().Add("Location", c.Request.URL.Path+"/"+entity.Id())
@@ -409,7 +425,7 @@ func (r Rest) update(c *gin.Context) {
 	entity := r.newEntity(c)
 
 	// Try to retrieve key from datastore
-	_, ok, err := entity.KeyExists(id)
+	ok, err := entity.IdExists(id)
 	if !ok {
 		r.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
 		return
@@ -427,7 +443,7 @@ func (r Rest) update(c *gin.Context) {
 	}
 
 	// Replace whatever was in the datastore with our new updated entity
-	if err := entity.Put(); err != nil {
+	if err := entity.Update(); err != nil {
 		r.Fail(c, 500, "Failed to update "+r.Kind, err)
 	} else {
 		r.Render(c, 200, entity)
@@ -443,7 +459,7 @@ func (r Rest) patch(c *gin.Context) {
 	id := c.Params.ByName(r.ParamId)
 
 	entity := r.newEntity(c)
-	err := entity.Get(id)
+	err := entity.GetById(id)
 	if err != nil {
 		r.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
 		return
@@ -454,7 +470,7 @@ func (r Rest) patch(c *gin.Context) {
 		return
 	}
 
-	if err := entity.Put(); err != nil {
+	if err := entity.Update(); err != nil {
 		r.Fail(c, 500, "Failed to update "+r.Kind, err)
 	} else {
 		r.Render(c, 200, entity)
@@ -469,7 +485,7 @@ func (r Rest) delete(c *gin.Context) {
 
 	id := c.Params.ByName(r.ParamId)
 	entity := r.newEntity(c)
-	err := entity.Get(id)
+	err := entity.GetById(id)
 	if err != nil {
 		r.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
 		return

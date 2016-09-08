@@ -11,15 +11,18 @@ class BasicList extends BasicTableView
   tag: 'basic-list'
 
   js: (opts)->
-    @path = opts.path if opts.path
+    super
 
-    @api = api = Api.get('crowdstart')
+    if opts.path?
+      @path = opts.path if opts.path
 
-    m.trigger 'start-spin', @tag + @path + '-list-load'
+      @api = api = Api.get 'crowdstart'
 
-    api.get(@path).then (res) =>
-      m.trigger 'stop-spin', @tag + @path + '-list-load'
-      @model = res.responseText
-      @update()
+      m.trigger 'start-spin', @tag + @path + '-list-load'
+
+      api.get(@path).then (res) =>
+        m.trigger 'stop-spin', @tag + @path + '-list-load'
+        @model = res.responseText
+        @update()
 
 module.exports = BasicList

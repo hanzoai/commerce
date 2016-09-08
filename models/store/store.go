@@ -72,14 +72,16 @@ type Store struct {
 	Slug string `json:"slug"`
 
 	// Where this is hosted if not on crowdstart.com
-	Hostname string `json:"hostname"`
-	Prefix   string `json:"prefix"`
+	Domain string `json:"domain"`
+	Prefix string `json:"prefix"`
 
 	// Currency for store
 	Currency currency.Type `json:"currency"`
 
 	// Taxation information
-	TaxNexus []Address `json:"taxNexus"`
+
+	Address  Address   `json:"address,omitempty"`
+	TaxNexus []Address `json:"taxNexus,omitempty"`
 
 	// Shipping Rate Table, country name to shipping rate
 	ShippingRateTable  ShippingRateTable `json:"shippingRates" datastore:"-"`
@@ -92,31 +94,20 @@ type Store struct {
 	Salesforce struct {
 		PriceBookId string `json:"PriceBookId"`
 	} `json:"-"`
-}
 
-func (s Store) Kind() string {
-	return "store"
-}
+	Email    string `json:"email,omitempty"`
+	Phone    string `json:"phone,omitempty"`
+	Timezone string `json:"timezone,omitempty`
 
-func (s Store) Document() mixin.Document {
-	return nil
-}
-
-func (s *Store) Init() {
-	s.ShippingRateTable = make(ShippingRateTable)
-	s.Listings = make(Listings)
-}
-
-func New(db *datastore.Datastore) *Store {
-	s := new(Store)
-	s.Init()
-	s.Model = mixin.Model{Db: db, Entity: s}
-	return s
+	Mailchimp struct {
+		ListId string `json:"listId"`
+		APIKey string `json:"apiKey"`
+	} `json:"mailchimp,omitempty`
 }
 
 func (s *Store) Load(c <-chan aeds.Property) (err error) {
 	// Ensure we're initialized
-	s.Init()
+	s.Defaults()
 
 	// Load supported properties
 	if err = IgnoreFieldMismatch(aeds.LoadStruct(s, c)); err != nil {
@@ -145,7 +136,7 @@ func (s *Store) Save(c chan<- aeds.Property) (err error) {
 }
 
 func (s *Store) Validator() *val.Validator {
-	return val.New(s)
+	return val.New()
 }
 
 // Add a new listing to the listings map

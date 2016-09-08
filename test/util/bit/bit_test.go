@@ -44,4 +44,25 @@ var _ = Describe("Field", func() {
 		Expect(field.Has(C)).To(Equal(true))
 	})
 
+	Measure("it should perform operations efficiently", func(b Benchmarker) {
+		runtime := b.Time("runtime", func() {
+			field := new(bit.Field)
+
+			n := 0
+
+			for {
+				field.Set(A)
+				field.Set(B)
+				field.Set(C)
+
+				n += 1
+
+				if n == 100000 {
+					break
+				}
+			}
+		})
+
+		Expect(runtime.Seconds()).Should(BeNumerically("<", 0.1))
+	}, 10)
 })
