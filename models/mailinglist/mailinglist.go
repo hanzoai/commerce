@@ -10,6 +10,7 @@ import (
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/subscriber"
+	"crowdstart.com/models/types/form"
 	"crowdstart.com/models/types/thankyou"
 	"crowdstart.com/util/fs"
 	"crowdstart.com/util/json"
@@ -18,15 +19,37 @@ import (
 
 var jsTemplate = ""
 
-type Mailchimp struct {
-	Id               string `json:"id"`
+// Settings used for injection into form.js
+type Settings struct {
+	// Name of list
+	Name string `json:"name"`
+
+	// Type of form
+	Type form.Type `json:"type"`
+
+	// Thank you settings
+	ThankYou ThankYou `json:"thankyou"`
+}
+
+// Thank you configuration
+type ThankYou struct {
+	Type thankyou.Type `json:"type"`
+	Url  string        `json:"url,omitempty"`
+	HTML string        `json:"html,omitempty"`
+}
+
+// Mailchimp configuration
+type MailChimp struct {
+	ListId           string `json:"listId"`
 	APIKey           string `json:"apiKey"`
 	DoubleOptin      bool   `json:"doubleOptin"`
 	UpdateExisting   bool   `json:"updateExisting"`
 	ReplaceInterests bool   `json:"replaceInterests"`
 
-	// Whether to have mailchimp email confirmation
+	// Whether to have Mailchimp send email confirmation
 	SendWelcome bool `json:"sendWelcome"`
+
+	Enabled bool `json:"enabled"`
 }
 
 type MailingList struct {
@@ -35,18 +58,24 @@ type MailingList struct {
 	// Name of list
 	Name string `json:"name"`
 
+	// Type of form
+	Type form.Type `json:"type"`
+
 	// Whether to send email confirmation
 	SendWelcome bool `json:"sendWelcome"`
 
 	// Mailchimp settings for this list
-	Mailchimp Mailchimp `json:"mailchimp"`
+	Mailchimp MailChimp `json:"mailchimp,omitempty"`
 
-	// Url to Thank you page
-	ThankYou struct {
-		Type thankyou.Type `json:"type"`
-		Url  string        `json:"url,omitempty"`
-		HTML string        `json:"html,omitempty"`
-	} `json:"thankyou"`
+	// Email forwarding
+	Forward struct {
+		Email   string `json:"email"`
+		Name    string `json:"name"`
+		Enabled bool   `json:"enabled"`
+	} `json:"forward"`
+
+	// Thank you settings
+	ThankYou ThankYou `json:"thankyou"`
 
 	// Conversion tracking info
 	Facebook struct {
@@ -61,38 +90,18 @@ type MailingList struct {
 	} `json:"google"`
 }
 
-func New(db *datastore.Datastore) *MailingList {
-	m := new(MailingList)
-	m.Init()
-	m.Model = mixin.Model{Db: db, Entity: m}
-	return m
-}
-
-func (m *MailingList) Init() {
-	m.Facebook.Value = "0.00"
-	m.Facebook.Currency = "USD"
-	m.ThankYou.Type = thankyou.Disabled
-}
-
-func (m MailingList) Kind() string {
-	return "mailinglist"
-}
-
-func (m MailingList) Document() mixin.Document {
-	return nil
-}
-
 func (m *MailingList) Validator() *val.Validator {
-	return val.New(m)
+	return val.New()
 }
 
 func (m *MailingList) AddSubscriber(s *subscriber.Subscriber) error {
 	mkey := m.Key()
 	s.MailingListId = m.Id()
 	s.Parent = mkey
+	s.Normalize()
 
 	return m.RunInTransaction(func() error {
-		keys, err := subscriber.Query(m.Db).Ancestor(mkey).Filter("Email=", s.Email).KeysOnly().GetAll(nil)
+		keys, err := subscriber.Query(m.Db).Ancestor(mkey).Filter("Email=", s.Email).GetKeys()
 
 		if len(keys) != 0 {
 			return SubscriberAlreadyExists
@@ -102,7 +111,7 @@ func (m *MailingList) AddSubscriber(s *subscriber.Subscriber) error {
 			return err
 		}
 
-		return s.Put()
+		return s.Create()
 	})
 }
 
@@ -121,11 +130,7 @@ func (m *MailingList) Js() string {
 		endpoint = "https:" + endpoint
 	}
 
-	return fmt.Sprintf(jsTemplate, endpoint, m.JSON())
-}
-
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
+	return fmt.Sprintf(jsTemplate, endpoint, json.Encode(Settings{m.Name, m.Type, m.ThankYou}))
 }
 
 func FromJSON(db *datastore.Datastore, data []byte) *MailingList {

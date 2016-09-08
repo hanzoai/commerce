@@ -11,14 +11,12 @@ import (
 	"crowdstart.com/auth/password"
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
-	"crowdstart.com/models/organization"
-	"crowdstart.com/models/token"
 	"crowdstart.com/models/user"
+	"crowdstart.com/util/counter"
+	"crowdstart.com/util/emails"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/json/http"
-	"crowdstart.com/util/template"
-
-	mandrill "crowdstart.com/thirdparty/mandrill/tasks"
+	"crowdstart.com/util/log"
 )
 
 var emailRegex = regexp.MustCompile("(\\w[-._\\w]*\\w@\\w[-._\\w]*\\w\\.\\w{2,4})")
@@ -29,100 +27,15 @@ type createReq struct {
 	PasswordConfirm string `json:"passwordConfirm"`
 }
 
-func sendEmailConfirmation(c *gin.Context, org *organization.Organization, usr *user.User) {
-	conf := org.Email.User.EmailConfirmation.Config(org)
-	if !conf.Enabled || org.Mandrill.APIKey == "" {
-		return
-	}
-
-	// Create token
-	tok := token.New(usr.Db)
-	tok.Email = usr.Email
-	tok.UserId = usr.Id()
-	tok.Expires = time.Now().Add(time.Hour * 72)
-
-	err := tok.Put()
-	if err != nil {
-		panic(err)
-	}
-
-	// From
-	fromName := conf.FromName
-	fromEmail := conf.FromEmail
-
-	// To
-	toEmail := usr.Email
-	toName := usr.Name()
-
-	// Subject
-	subject := conf.Subject
-
-	// Render email
-	html := template.RenderStringFromString(conf.Template, "user", usr, "token", tok)
-
-	// Send Email
-	ctx := middleware.GetAppEngine(c)
-	mandrill.Send.Call(ctx, org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, html)
-}
-
-func sendEmailConfirmed(c *gin.Context, org *organization.Organization, usr *user.User) {
-	conf := org.Email.User.EmailConfirmed.Config(org)
-	if !conf.Enabled || org.Mandrill.APIKey == "" {
-		return
-	}
-
-	// From
-	fromName := conf.FromName
-	fromEmail := conf.FromEmail
-
-	// To
-	toEmail := usr.Email
-	toName := usr.Name()
-
-	// Subject
-	subject := conf.Subject
-
-	// Render email
-	html := template.RenderStringFromString(conf.Template, "user", usr)
-
-	// Send Email
-	ctx := middleware.GetAppEngine(c)
-	mandrill.Send.Call(ctx, org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, html)
-}
-
-func sendWelcome(c *gin.Context, org *organization.Organization, usr *user.User) {
-	conf := org.Email.User.Welcome.Config(org)
-	if !conf.Enabled || org.Mandrill.APIKey == "" {
-		return
-	}
-
-	// From
-	fromName := conf.FromName
-	fromEmail := conf.FromEmail
-
-	// To
-	toEmail := usr.Email
-	toName := usr.Name()
-
-	// Subject
-	subject := conf.Subject
-
-	// Render email
-	html := template.RenderStringFromString(conf.Template, "user", usr)
-
-	// Send Email
-	ctx := middleware.GetAppEngine(c)
-	mandrill.Send.Call(ctx, org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, html)
-}
-
 func create(c *gin.Context) {
 	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespace(c))
+	db := datastore.New(org.Namespaced(c))
 
 	req := &createReq{}
 	req.User = user.New(db)
 
 	// Default these fields to exotic unicode character to test if they are set to empty
+	req.Email = "\u263A"
 	req.FirstName = "\u263A"
 	req.LastName = "\u263A"
 
@@ -136,23 +49,19 @@ func create(c *gin.Context) {
 	usr := req.User
 
 	// Email is required
-	if usr.Email == "" {
+	if usr.Email == "" || usr.Email == "\u263A" {
 		http.Fail(c, 400, "Email is required", errors.New("Email is required"))
 		return
 	}
 
-	if usr.FirstName == "" {
+	if usr.FirstName == "" || usr.FirstName == "\u263A" {
 		http.Fail(c, 400, "First name cannot be blank", errors.New("First name cannot be blank"))
 		return
-	} else if usr.FirstName == "\u263A" {
-		usr.FirstName = ""
 	}
 
-	if usr.LastName == "" {
+	if usr.LastName == "" || usr.LastName == "\u263A" {
 		http.Fail(c, 400, "Last name cannot be blank", errors.New("Last name cannot be blank"))
 		return
-	} else if usr.LastName == "\u263A" {
-		usr.LastName = ""
 	}
 
 	usr.Email = strings.ToLower(strings.TrimSpace(usr.Email))
@@ -188,43 +97,29 @@ func create(c *gin.Context) {
 		usr.PasswordHash = hash
 	}
 
+	ctx := org.Db.Context
+	if err := counter.IncrUsers(ctx, org, time.Now()); err != nil {
+		log.Warn("Redis Error %s", err, ctx)
+	}
+
+	// Test key users are automatically confirmed
+	if !org.Live {
+		usr.Enabled = true
+	}
+
 	// Save new user
 	if err := usr.Put(); err != nil {
 		http.Fail(c, 400, "Failed to create user", err)
 	}
 
-	// Send welcome, email confirmation emails
-	sendEmailConfirmation(c, org, usr)
-	sendWelcome(c, org, usr)
-}
+	// Render user
+	http.Render(c, 201, usr)
 
-func createConfirm(c *gin.Context) {
-	org := middleware.GetOrganization(c)
-	db := datastore.New(org.Namespace(c))
-
-	usr := user.New(db)
-	tok := token.New(db)
-
-	// Get Token
-	id := c.Params.ByName("tokenid")
-	if err := tok.GetById(id); err != nil {
-		panic(err)
+	// Don't send email confirmation if test key is used
+	if org.Live {
+		// Send welcome, email confirmation emails
+		ctx := middleware.GetAppEngine(c)
+		emails.SendAccountCreationConfirmationEmail(ctx, org, usr)
+		emails.SendWelcomeEmail(ctx, org, usr)
 	}
-
-	// Get user associated with token
-	if err := usr.GetById(tok.UserId); err != nil {
-		panic(err)
-	}
-
-	// Set user as enabled
-	usr.Enabled = true
-	err := usr.Put()
-	if err != nil {
-		panic(err)
-	}
-
-	// Send account confirmed email
-	sendEmailConfirmed(c, org, usr)
-
-	http.Render(c, 200, gin.H{"status": "ok"})
 }

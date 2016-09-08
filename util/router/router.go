@@ -11,7 +11,9 @@ import (
 	"crowdstart.com/util/log"
 )
 
-func New(moduleName string) Router {
+func New(moduleName string) *gin.RouterGroup {
+	gin.SetMode(gin.ReleaseMode)
+
 	router := gin.New()
 
 	prefix := strings.TrimSpace(config.Prefixes[moduleName])
@@ -49,5 +51,9 @@ func Ok(c *gin.Context) {
 }
 
 func Empty(c *gin.Context) {
-	c.Abort(200)
+	c.AbortWithStatus(200)
+}
+
+func Robots(c *gin.Context) {
+	c.String(200, "User-agent: *\nDisallow: /\n")
 }

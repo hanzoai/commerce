@@ -229,7 +229,7 @@ header nav {
 
 .site-promo-img img {
     max-width: 100%;
-    border: 10px solid rgba(0, 0, 0, .2);
+    margin-bottom: -10px;
 }
 
 /* Media Container */

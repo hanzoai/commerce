@@ -47,10 +47,19 @@ type Config struct {
 	Prefixes map[string]string
 	Hosts    map[string]string
 
+	Fee float64
+
 	Salesforce struct {
 		ConsumerKey    string
 		ConsumerSecret string
 		CallbackURL    string
+	}
+
+	Paypal struct {
+		Email        string
+		Api          string
+		IpnUrl       string
+		PaypalIpnUrl string
 	}
 
 	Stripe struct {
@@ -88,6 +97,27 @@ type Config struct {
 		Bucket struct {
 			ImageUploads string
 		}
+	}
+
+	// Netlify
+	Netlify struct {
+		BaseUrl     string
+		ClientId    string
+		Secret      string
+		AccessToken string
+	}
+
+	// Cloudflare {
+	Cloudflare struct {
+		Email string
+		Key   string
+		Zone  string
+	}
+
+	// Redis
+	Redis struct {
+		Url      string
+		Password string
 	}
 
 	// Current working dir
@@ -155,20 +185,15 @@ func Get() *Config {
 		return cachedConfig
 	}
 
-	if appengine.IsDevAppServer() {
-		cachedConfig = Development()
-	} else {
-		// TODO: This is a total hack, probably can't rely on this.
-		// Use PWD to determine appid, if s~crowdstart-staging is in PWD,
-		// then we're in staging enviroment.
-		pwd := os.Getenv("PWD")
-		if strings.Contains(pwd, "s~crowdstart-sandbox") {
-			cachedConfig = Sandbox()
-		} else if strings.Contains(pwd, "s~crowdstart-staging") {
+	cachedConfig = Development()
+
+	if !appengine.IsDevAppServer() {
+		switch Env {
+		case "crowdstart-staging":
 			cachedConfig = Staging()
-		} else if strings.Contains(pwd, "s~crowdstart-skully") {
-			cachedConfig = Skully()
-		} else {
+		case "crowdstart-sandbox":
+			cachedConfig = Sandbox()
+		case "crowdstart-us":
 			cachedConfig = Production()
 		}
 	}
@@ -192,16 +217,21 @@ var config = Get()
 var AutoCompileAssets = config.AutoCompileAssets
 var AutoLoadFixtures = config.AutoLoadFixtures
 var CookieDomain = config.CookieDomain
+var Cloudflare = config.Cloudflare
 var DatastoreWarn = config.DatastoreWarn
 var DemoMode = config.DemoMode
 var Facebook = config.Facebook
+var Fee = config.Fee
 var Google = config.Google
 var IsDevelopment = config.IsDevelopment
 var IsProduction = config.IsProduction
 var IsSandbox = config.IsSandbox
 var IsStaging = config.IsStaging
 var Mandrill = config.Mandrill
+var Netlify = config.Netlify
+var Paypal = config.Paypal
 var Prefixes = config.Prefixes
+var Redis = config.Redis
 var RootDir = config.RootDir
 var Salesforce = config.Salesforce
 var Secret = config.Secret

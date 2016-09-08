@@ -10,12 +10,19 @@ func Defaults() *Config {
 	config.Hosts = make(map[string]string, 10)
 	config.Prefixes = make(map[string]string, 10)
 	config.RootDir, _ = filepath.Abs(cwd + "/../..")
-	config.SiteTitle = "SKULLY"
+	config.SiteTitle = "Crowdstart"
+
+	config.Fee = 0.05
 
 	config.Secret = "change-me-in-production"
 	config.SessionName = "session"
 
 	config.DemoMode = demoMode
+
+	config.Paypal.Email = "dev@hanzo.ai"
+	config.Paypal.Api = "https://svcs.sandbox.paypal.com"
+	config.Paypal.IpnUrl = "https://api.staging.crowdstart.com/paypal/ipn/"
+	config.Paypal.PaypalIpnUrl = "https://www.sandbox.paypal.com/cgi-bin/webscr"
 
 	config.Stripe.DevelopmentClientId = "ca_REDACTED"
 	config.Stripe.ProductionClientId = "ca_REDACTED"
@@ -27,6 +34,17 @@ func Defaults() *Config {
 
 	config.Mandrill.FromName = "Crowdstart"
 	config.Mandrill.FromEmail = "noreply@crowdstart.com"
+
+	config.Redis.Url = "pub-redis-19324.us-central1-1-1.gce.garantiadata.com:19324"
+	config.Redis.Password = ""
+
+	config.Netlify.BaseUrl = "https://api.netlify.com/api/v1"
+	config.Netlify.ClientId = ""
+	config.Netlify.Secret = ""
+
+	config.Cloudflare.Email = "dev@hanzo.ai"
+	config.Cloudflare.Key = ""
+	config.Cloudflare.Zone = "crowdstart.com"
 
 	return config
 }
