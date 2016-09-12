@@ -36,6 +36,32 @@
           </div>
         </div>
 
+        <div id="affiliate-info" class="panel animated fadeIn">
+          <affiliate-form userobs="{ obs }" assignToUserFn="{ assignToUser }">
+            <div class="panel-heading">
+              Affiliate Marketing
+            </div>
+            <div class="panel-body">
+              <div class="section col-xs-12 mb20" style="padding:0">
+                <control class="col-sm-4" label="Flat Fee" input="{ inputs['commission.flat'] }"></control>
+                <control class="col-sm-4" label="Percent Fee" input="{ inputs['commission.percent'] }"></control>
+                <control class="col-sm-4" label="Affiliate Enabled" input="{ inputs.enabled }"></control>
+              </div>
+
+              <div class="section col-xs-12 mb10 has-error" if="{error}" style="padding:0">
+                <span class="error-container help-block animated fadeInUp">{error.message}</span>
+              </div>
+
+              <div class="form-actions section col-xs-12" style="padding:0">
+                <div class="col-xs-6">
+                  <button type="submit" class="btn btn-block btn-dark">Save</button>
+                </div>
+
+              </div>
+            </div>
+          </affiliate-form>
+        </div>
+
         <!-- <div id="user-shipping-address" class="panel"> -->
         <!--   <div class="panel-heading"> -->
         <!--     <ul class="nav panel-tabs-border panel-tabs panel-tabs-left"> -->
