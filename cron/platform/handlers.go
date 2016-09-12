@@ -5,7 +5,10 @@ import (
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/fee"
+	"crowdstart.com/models/multi"
+	"crowdstart.com/models/transfer"
 	"crowdstart.com/models/types/currency"
+	"crowdstart.com/thirdparty/stripe"
 	"github.com/gin-gonic/gin"
 )
 
@@ -35,4 +38,24 @@ func fetchFeesForPlatform(db *datastore.Datastore, now time.Time) (feeMap, error
 		fees[fee.Currency] = cfees
 	}
 	return fees, nil
+}
+
+func sendTransferToStripe(st *stripe.Client, tr *transfer.Transfer) error {
+	_, err := st.Transfer(tr)
+	if err != nil {
+		return err
+	}
+	tr.MustPut()
+	return nil
+}
+
+func markFeesPaid(fees []*fee.Fee) error {
+	for _, fe := range fees {
+		fe.Status = fee.Paid
+	}
+	err := multi.Update(fees)
+	if err != nil {
+		return err
+	}
+	return nil
 }
