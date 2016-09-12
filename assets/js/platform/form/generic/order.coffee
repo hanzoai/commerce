@@ -130,7 +130,7 @@ class OrderUserStaticForm extends BasicFormView
     if orderModel.userId
       @path = @basePath + '/' + orderModel.userId
       @api = api = Api.get('crowdstart')
-      api.get(@path).then((res)=>
+      api.get(@path).then((res)->
         if res.status != 200
           throw new Error("Refund Failed")
 
