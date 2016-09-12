@@ -6,6 +6,7 @@ module.exports =
   payment:      require './payment'
   product:      require './product'
   coupon:       require './coupon'
+  affiliate:    require './affiliate'
   store:        require './store'
   mailinglist:  require './mailinglist'
   subscriber:   require './subscriber'
