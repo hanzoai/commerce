@@ -1,6 +1,7 @@
 package affiliate
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/gin-gonic/gin"
@@ -12,11 +13,14 @@ import (
 	"crowdstart.com/models/referral"
 	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/transaction"
+	"crowdstart.com/models/user"
+	"crowdstart.com/util/json"
 	"crowdstart.com/util/json/http"
 
 	"crowdstart.com/models/affiliate"
 	stripeconnect "crowdstart.com/thirdparty/stripe/connect"
 	"crowdstart.com/util/log"
+	"crowdstart.com/util/rest"
 )
 
 const (
@@ -134,4 +138,86 @@ func getTransactions(c *gin.Context) {
 	}
 
 	http.Render(c, 200, trans)
+}
+
+func create(r *rest.Rest) func(*gin.Context) {
+	return func(c *gin.Context) {
+		if !r.CheckPermissions(c, "create") {
+			return
+		}
+
+		db := datastore.New(c)
+		aff := affiliate.New(db)
+
+		if err := json.Decode(c.Request.Body, aff); err != nil {
+			r.Fail(c, 400, "Failed decode request body", err)
+			return
+		}
+
+		usr := user.New(db)
+
+		// Create Mailchimp cart
+		if aff.UserId == "" {
+			r.Fail(c, 500, "UserId required", errors.New("UserId required"))
+			return
+		}
+
+		if err := usr.GetById(aff.UserId); err != nil {
+			r.Fail(c, 500, "User does not exist: "+aff.UserId, err)
+			return
+		}
+
+		if usr.AffiliateId != "" {
+			r.Fail(c, 500, "User already has affiliate: "+usr.AffiliateId, errors.New("User already has affiliate: "+usr.AffiliateId))
+			return
+		}
+
+		if err := aff.Create(); err != nil {
+			r.Fail(c, 500, "Failed to create "+r.Kind, err)
+			return
+		}
+
+		usr.AffiliateId = aff.Id()
+
+		if err := usr.Update(); err != nil {
+			r.Fail(c, 500, "Failed to update user: "+usr.Id(), err)
+		}
+
+		c.Writer.Header().Add("Location", c.Request.URL.Path+"/"+aff.Id())
+		r.Render(c, 201, aff)
+	}
+}
+
+func enable(c *gin.Context) {
+	id := c.Params.ByName("affiliateid")
+
+	db := datastore.New(c)
+	aff := affiliate.New(db)
+
+	if err := aff.GetById(id); err != nil {
+		http.Fail(c, 400, "Affiliate not found: "+id, err)
+	}
+
+	aff.Enabled = true
+
+	aff.MustUpdate()
+
+	http.Render(c, 201, aff)
+}
+
+func disable(c *gin.Context) {
+	id := c.Params.ByName("affiliateid")
+
+	db := datastore.New(c)
+	aff := affiliate.New(db)
+
+	if err := aff.GetById(id); err != nil {
+		http.Fail(c, 400, "Affiliate not found: "+id, err)
+	}
+
+	aff.Enabled = true
+
+	aff.MustUpdate()
+
+	http.Render(c, 201, aff)
 }

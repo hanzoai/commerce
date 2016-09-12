@@ -4,8 +4,8 @@
   </label>
   <div class="section admin-form { opts.controlclasses }" style="margin:5px 0">
     <label class="switch switch-primary">
-      <input id="{ model.name }" name="{ model.name }" type="checkbox" onchange="{ change }" onblur="{ change }" __checked ="{ model.value }"></input>
-      <label for="{ model.name }" data-on="YES" data-off="NO"></label>
+      <input id="{ model.name+uid }" name="{ model.name+uid }" type="checkbox" onchange="{ change }" onblur="{ change }" __checked ="{ model.value }"></input>
+      <label for="{ model.name+uid }" data-on="YES" data-off="NO"></label>
     </label>
     <div if="{hasError()}" class="error-container help-block animated fadeInUp">{ error }</div>
   </div>
