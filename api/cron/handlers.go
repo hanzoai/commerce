@@ -1,4 +1,4 @@
-package periodic
+package cron
 
 import (
 	"github.com/gin-gonic/gin"
@@ -7,13 +7,15 @@ import (
 	"crowdstart.com/util/permission"
 	"crowdstart.com/util/router"
 
-	"crowdstart.com/periodic/affiliate_transfer"
+	"crowdstart.com/cron/affiliate"
+	"crowdstart.com/cron/platform"
 )
 
 func Route(router router.Router, args ...gin.HandlerFunc) {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 
-	api := router.Group("periodic")
+	api := router.Group("cron")
 
-	api.GET("/affiliate_transfer/", adminRequired, affiliate_transfer.Run)
+	api.GET("/affiliate/payout", adminRequired, affiliate.Payout)
+	api.GET("/platform/payout", adminRequired, platform.Payout)
 }
