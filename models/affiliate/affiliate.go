@@ -1,6 +1,8 @@
 package affiliate
 
 import (
+	"time"
+
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/types/commission"
 	"crowdstart.com/thirdparty/stripe/connect"
@@ -24,6 +26,7 @@ type Affiliate struct {
 	Commission  commission.Commission `json:"commission"`
 	FlatFee     int                   `json:"flatFee"`
 	PlatformFee float64               `json:"platformFee"`
+	LastPaid    time.Time             `json:"lastPaid"`
 
 	Stripe struct {
 		// FIXME: What do we need to persist?
