@@ -18,8 +18,8 @@ func Payout(c *gin.Context) {
 
 }
 
-func fetchFeesForPlatform(db *datastore.Datastore, now time.Time) (feeMap, error) {
-	year, month, day := now.UTC().Date()
+func fetchFeesForPlatform(db *datastore.Datastore) (feeMap, error) {
+	year, month, day := time.Now().UTC().Date()
 	cutoff := time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
 	cutoff = cutoff.AddDate(0, 0, -1)
 	rawfees := make([]fee.Fee, 0, 0)
