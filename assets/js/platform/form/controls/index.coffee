@@ -141,6 +141,10 @@ CodeMirrorView.register()
 class Switch extends BasicInputView
   tag: 'switch'
   html: require '../../templates/backend/form/controls/switch.html'
+  js: (opts)->
+    @uid = '_' + Math.random()*10000
+
+    super
   change: (event) ->
     value = event.target.checked
     if value == true || value == "true"
@@ -206,6 +210,22 @@ class StaticMoneyView extends MoneyInputView
   html: require '../../templates/backend/form/controls/static.html'
 
 StaticMoneyView.register()
+
+class PercentInputView extends BasicInputView
+  tag: 'percent-input'
+  html: require '../../templates/backend/form/controls/percent-input.html'
+
+  change: (event) ->
+    value = @getValue(event.target)
+    value = parseFloat(value)
+    if isNaN value
+      value = 0
+
+    @obs.trigger Events.Input.Change, @model.name, value
+    @model.value = value
+    @update()
+
+PercentInputView.register()
 
 class BasicSelectView extends BasicInputView
   tag: 'basic-select'
@@ -538,6 +558,10 @@ helpers.registerTag (inputCfg)->
   return inputCfg.hints['money']
 , 'money-input'
 
+helpers.registerTag (inputCfg)->
+  return inputCfg.hints['percent']
+, 'percent-input'
+
 # validator registration
 helpers.registerValidator ((inputCfg) -> return inputCfg.hints['numeric'])
 , (model, name)->
@@ -583,6 +607,15 @@ helpers.registerValidator ((inputCfg) -> return inputCfg.hints['money'])
 , (model, name)->
   value = model[name]
   return parseFloat(value)
+
+helpers.registerValidator ((inputCfg) -> return inputCfg.hints['percent'])
+, (model, name)->
+  value = model[name]
+  value = parseFloat(value)
+  if isNaN value
+    value = 0
+
+  return value
 
 # should be okay for single one of these on a form
 helpers.registerValidator ((inputCfg) ->return inputCfg.hints['email-unique'])
