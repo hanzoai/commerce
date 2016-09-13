@@ -7,11 +7,15 @@ import (
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/transfer"
 	"crowdstart.com/thirdparty/stripe"
+	"crowdstart.com/util/log"
 )
 
 func Payout(db *datastore.Datastore) error {
+	ctx := db.Context
+	log.Debug("Fetching all organizations", ctx)
 	orgs := make([]*organization.Organization, 0)
 	if _, err := organization.Query(db).GetAll(&orgs); err != nil {
+		log.Error("Failed to fetch organizations", ctx)
 		return err
 	}
 	return nil
