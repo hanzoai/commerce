@@ -448,8 +448,8 @@ func (d *Datastore) Query(kind string) *DatastoreQuery {
 	return NewQuery(d, kind)
 }
 
-func (d *Datastore) RunInTransaction(fn func(ctx appengine.Context) error, opts *aeds.TransactionOptions) error {
-	return nds.RunInTransaction(d.Context, fn, opts)
+func (d *Datastore) RunInTransaction(fn func(db *Datastore) error, opts *TransactionOptions) error {
+	return RunInTransaction(d.Context, fn, opts)
 }
 
 func (d *Datastore) DecodeCursor(cursor string) (aeds.Cursor, error) {
@@ -474,8 +474,11 @@ func IgnoreFieldMismatch(err error) error {
 	return err
 }
 
-func RunInTransaction(ctx appengine.Context, fn func(db *Datastore) error, opts *aeds.TransactionOptions) error {
+type TransactionOptions aeds.TransactionOptions
+
+func RunInTransaction(ctx appengine.Context, fn func(db *Datastore) error, opts *TransactionOptions) error {
+	var i interface{} = opts
 	return nds.RunInTransaction(ctx, func(ctx appengine.Context) error {
 		return fn(New(ctx))
-	}, opts)
+	}, i.(*aeds.TransactionOptions))
 }
