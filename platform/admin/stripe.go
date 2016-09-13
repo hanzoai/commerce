@@ -1,6 +1,10 @@
 package admin
 
 import (
+	"strings"
+
+	"appengine"
+
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.com/config"
@@ -43,11 +47,18 @@ func Stripe(c *gin.Context) {
 	http.Render(c, 200, sd)
 }
 
-// Connect connect callback
+// Connect callback for platform
 func StripeCallback(c *gin.Context) {
 	req := c.Request
 	code := req.URL.Query().Get("code")
+	state := req.URL.Query().Get("state")
 	errStr := req.URL.Query().Get("error")
+
+	// Handle affiliate callbacks
+	if state != "" {
+		affiliateCallback(c)
+		return
+	}
 
 	// Failed to get back authorization code from Stripe
 	if errStr != "" {
@@ -87,4 +98,58 @@ func StripeCallback(c *gin.Context) {
 
 	// Success
 	c.Redirect(302, config.UrlFor("platform", "dashboard#integrations"))
+}
+
+// Connect callback for affiliates
+func affiliateCallback(c *gin.Context) {
+	req := c.Request
+	code := req.URL.Query().Get("code")
+	state := req.URL.Query().Get("state")
+	errStr := req.URL.Query().Get("error")
+
+	// Get organization and affiliate id
+	parts := strings.Split(state, ":")
+	orgName := parts[0]
+	affId := pargs[1]
+
+	// Fetch affiliate
+	nsctx := appengine.Namespace(ctx, orgName)
+	db := datastore.New(nsctx)
+	aff := affiliate.New(db)
+	aff.GetById(affid)
+
+	// Failed to get back authorization code from Stripe
+	if errStr != "" {
+		log.Error("Failed to get authorization code from Stripe during Stripe Connect: %v", errStr, c)
+		c.Redirect(302, org.Affilliate.ErrorUrl)
+		return
+	}
+
+	// Get live and test tokens
+	token, testToken, err := stripeconnect.GetTokens(ctx, code)
+	if err != nil {
+		log.Error("There was an error with Stripe Connect: %v", err, c)
+		c.Redirect(302, org.Affilliate.ErrorUrl)
+		return
+	}
+
+	// Update stripe data
+	aff.Stripe.UserId = token.UserId
+	aff.Stripe.AccessToken = token.AccessToken
+	aff.Stripe.PublishableKey = token.PublishableKey
+	aff.Stripe.RefreshToken = token.RefreshToken
+
+	// Save live/test tokens
+	aff.Stripe.Live = *token
+	aff.Stripe.Test = *testToken
+
+	// Save to datastore
+	if err := aff.Put(); err != nil {
+		log.Error("There was saving tokens to datastore: %v", err, c)
+		c.Redirect(302, org.Affilliate.ErrorUrl)
+		return
+	}
+
+	// Success
+	c.Redirect(302, org.Affilliate.SuccessUrl)
 }
