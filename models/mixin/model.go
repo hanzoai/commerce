@@ -89,10 +89,10 @@ type Entity interface {
 // Model is a mixin which adds Datastore/Validation/Serialization methods to
 // any Kind that it has been embedded in.
 type Model struct {
-	Db     *datastore.Datastore `json:"-" datastore:"-"`
-	Entity Kind                 `json:"-" datastore:"-"`
-	Parent datastore.Key        `json:"-" datastore:"-"`
-	Mock   bool                 `json:"-" datastore:"-"`
+	Db       *datastore.Datastore `json:"-" datastore:"-"`
+	Entity   Kind                 `json:"-" datastore:"-"`
+	Ancestor datastore.Key        `json:"-" datastore:"-"`
+	Mock     bool                 `json:"-" datastore:"-"`
 
 	key datastore.Key
 
@@ -182,7 +182,7 @@ func (m *Model) SetKey(key interface{}) (err error) {
 	case string:
 		if m.UseStringKey {
 			// We've declared this model uses string keys.
-			k = m.Db.NewKey(m.Entity.Kind(), v, 0, m.Parent)
+			k = m.Db.NewKey(m.Entity.Kind(), v, 0, m.Ancestor)
 		} else {
 			// By default all keys are int ids internally (but we use hashid to convert them to strings)
 			k, err = hashid.DecodeKey(m.Db.Context, v)
@@ -221,11 +221,11 @@ func (m *Model) Key() (key datastore.Key) {
 
 		if m.UseStringKey {
 			// Id_ will unfortunately not be set first time around...
-			m.key = m.Db.NewIncompleteKey(kind, m.Parent)
+			m.key = m.Db.NewIncompleteKey(kind, m.Ancestor)
 		} else {
 			// We can allocate an id in advance and ensure that Id_ is populated
 			id := m.Db.AllocateId(kind)
-			m.setKey(m.Db.NewKey(kind, "", id, m.Parent))
+			m.setKey(m.Db.NewKey(kind, "", id, m.Ancestor))
 		}
 	}
 
@@ -237,7 +237,7 @@ func (m *Model) NewKey() datastore.Key {
 	kind := m.Kind()
 
 	if m.key == nil {
-		m.key = m.Db.NewIncompleteKey(kind, m.Parent)
+		m.key = m.Db.NewIncompleteKey(kind, m.Ancestor)
 		return m.key
 	}
 
@@ -245,7 +245,7 @@ func (m *Model) NewKey() datastore.Key {
 	intid := m.key.IntID()
 	stringid := m.key.StringID()
 
-	key := m.Db.NewKey(kind, stringid, intid, m.Parent)
+	key := m.Db.NewKey(kind, stringid, intid, m.Ancestor)
 	m.setKey(key)
 	return key
 }
@@ -608,9 +608,9 @@ func (m *Model) Datastore() *datastore.Datastore {
 // Mock methods for test keys. Does everything against datastore except create/update/delete/allocate ids.
 func (m *Model) mockKey() datastore.Key {
 	if m.UseStringKey {
-		return m.Db.NewKey(m.Kind(), rand.ShortId(), 0, m.Parent)
+		return m.Db.NewKey(m.Kind(), rand.ShortId(), 0, m.Ancestor)
 	}
-	return m.Db.NewKey(m.Kind(), "", rand.Int64(), m.Parent)
+	return m.Db.NewKey(m.Kind(), "", rand.Int64(), m.Ancestor)
 }
 
 func (m *Model) mockPut() error {
