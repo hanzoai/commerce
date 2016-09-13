@@ -28,6 +28,12 @@ type Task struct {
 	DelayFn      *delay.Function
 }
 
+func New(name string, fn interface{}) *Task {
+	t := NewTask(fn)
+	Register(name, t)
+	return t
+}
+
 func NewTask(fn interface{}) *Task {
 	task := new(Task)
 
