@@ -3,6 +3,8 @@ package affiliate
 import (
 	"time"
 
+	"appengine"
+
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/affiliate"
 	"crowdstart.com/models/fee"
@@ -10,13 +12,23 @@ import (
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/transfer"
 	"crowdstart.com/thirdparty/stripe"
+	"crowdstart.com/util/log"
 )
 
-func Payout(db *datastore.Datastore) error {
+func Payout(ctx appengine.Context) error {
+	db := datastore.New(ctx)
+
+	log.Debug("Fetching all organizations", ctx)
 	orgs := make([]*organization.Organization, 0)
 	if _, err := organization.Query(db).GetAll(&orgs); err != nil {
+		log.Error("Failed to fetch organizations", ctx)
 		return err
 	}
+
+	// for _, org := range orgs {
+	// 	orgPayout.Call(ctx, org.Id())
+	// }
+
 	return nil
 }
 
