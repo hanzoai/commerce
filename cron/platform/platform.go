@@ -9,7 +9,7 @@ import (
 	"crowdstart.com/thirdparty/stripe"
 )
 
-func payout(db *datastore.Datastore) error {
+func Payout(db *datastore.Datastore) error {
 	orgs := make([]*organization.Organization, 0)
 	if _, err := organization.Query(db).GetAll(&orgs); err != nil {
 		return err
