@@ -138,37 +138,3 @@ func create(r *rest.Rest) func(*gin.Context) {
 		r.Render(c, 201, aff)
 	}
 }
-
-func enable(c *gin.Context) {
-	id := c.Params.ByName("affiliateid")
-
-	db := datastore.New(c)
-	aff := affiliate.New(db)
-
-	if err := aff.GetById(id); err != nil {
-		http.Fail(c, 400, "Affiliate not found: "+id, err)
-	}
-
-	aff.Enabled = true
-
-	aff.MustUpdate()
-
-	http.Render(c, 201, aff)
-}
-
-func disable(c *gin.Context) {
-	id := c.Params.ByName("affiliateid")
-
-	db := datastore.New(c)
-	aff := affiliate.New(db)
-
-	if err := aff.GetById(id); err != nil {
-		http.Fail(c, 400, "Affiliate not found: "+id, err)
-	}
-
-	aff.Enabled = true
-
-	aff.MustUpdate()
-
-	http.Render(c, 201, aff)
-}
