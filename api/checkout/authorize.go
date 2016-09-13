@@ -118,11 +118,11 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	// that get created are actually valid.
 
 	// User -> order
-	ord.Ancestor = usr.Key()
+	ord.Parent = usr.Key()
 	ord.UserId = usr.Id()
 
 	// Order -> payment
-	pay.Ancestor = ord.Key()
+	pay.Parent = ord.Key()
 	pay.OrderId = ord.Id()
 
 	// Save payment Id on order
