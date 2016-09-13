@@ -46,6 +46,8 @@ var _ = New("kanoa-dev", func(c *gin.Context) *organization.Organization {
 	org.Mailchimp.APIKey = ""
 	org.Mailchimp.ListId = "23ad4e4ba4"
 	org.Mandrill.APIKey = ""
+
+	// Affiliate configuration
 	org.Affilliate.SuccessUrl = "http://localhost:1987/ambassador-account/"
 	org.Affilliate.ErrorUrl = "http://localhost:1987/ambassador-account/"
 
