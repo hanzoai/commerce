@@ -32,7 +32,11 @@ var EightyNineRobotics = New("89r", func(c *gin.Context) *organization.Organizat
 	org.Website = "http://www.eightyninerobotics.com/"
 	org.SecretKey = []byte("JuMVsRp26EzRXO9MzrXQXvH35XAW1W1E")
 	org.AddDefaultTokens()
-	org.Fee = 0.05
+
+	org.Fees.Card.Flat = 50
+	org.Fees.Card.Percent = 0.05
+	org.Fees.Affiliate.Flat = 30
+	org.Fees.Affiliate.Percent = 0.30
 
 	// Save org into default namespace
 	org.MustPut()
