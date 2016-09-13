@@ -32,7 +32,11 @@ var Ludela = New("ludela", func(c *gin.Context) *organization.Organization {
 	org.Website = "http://www.ludela.com"
 	org.SecretKey = []byte("EU8E011iX2Bp5lv481N2STd1d999cU58")
 	org.AddDefaultTokens()
-	org.Fee = 0.05
+
+	org.Fees.Card.Flat = 50
+	org.Fees.Card.Percent = 0.05
+	org.Fees.Affiliate.Flat = 30
+	org.Fees.Affiliate.Percent = 0.30
 
 	// Email configuration
 	org.Mandrill.APIKey = "40gP4DdLRLHo1QX_A8mfHw"
