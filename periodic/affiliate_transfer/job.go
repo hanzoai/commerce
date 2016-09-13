@@ -4,9 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"appengine"
-	aedb "appengine/datastore"
-
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/affiliate"
 	"crowdstart.com/models/fee"
@@ -104,8 +101,7 @@ func associateFeesToTransfers(db *datastore.Datastore, fees feeMap, destination 
 			}
 			fee.TransferId = tr.Id()
 			tr.Amount = tr.Amount + fee.Amount
-			txfn := func(ctx appengine.Context) error {
-				db := datastore.New(ctx)
+			txfn := func(db *datastore.Datastore) error {
 				_, err := db.Put(fee.Id(), fee)
 				if err != nil {
 					return err
@@ -116,7 +112,7 @@ func associateFeesToTransfers(db *datastore.Datastore, fees feeMap, destination 
 				}
 				return nil
 			}
-			txopts := &aedb.TransactionOptions{XG: true}
+			txopts := &datastore.TransactionOptions{XG: true}
 			err := db.RunInTransaction(txfn, txopts)
 			if err != nil {
 				return nil, err
