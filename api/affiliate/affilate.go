@@ -30,7 +30,7 @@ const (
 func connect(c *gin.Context) {
 	id := c.Params.ByName("affiliateid")
 	org := middleware.GetOrganization(c)
-	state := org.Name + ':' + id
+	state := org.Id() + ":" + id
 	url := fmt.Sprintf(stripeConnectUrl, config.Stripe.ClientId, config.Stripe.RedirectURL, state)
 	c.Redirect(302, url)
 }
