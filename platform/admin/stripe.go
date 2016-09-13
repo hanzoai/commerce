@@ -109,8 +109,19 @@ func affiliateCallback(c *gin.Context) {
 
 	// Get organization and affiliate id
 	parts := strings.Split(state, ":")
-	orgName := parts[0]
+	orgId := parts[0]
 	affId := pargs[1]
+
+	// Fetch organization
+	db := datastore.New(c)
+	org := organization.New(db)
+
+	// Failed to get back authorization code from Stripe
+	if err := org.GetById(orgId); err != nil {
+		log.Error("Failed fetch organization: %v", err, c)
+		c.Redirect(302, org.Affilliate.ErrorUrl)
+		return
+	}
 
 	// Fetch affiliate
 	nsctx := appengine.Namespace(ctx, orgName)
