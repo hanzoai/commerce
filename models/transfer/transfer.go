@@ -15,6 +15,16 @@ const (
 	Stripe Type = "stripe"
 )
 
+type Status string
+
+const (
+	Canceled  Status = "canceled"
+	Failed           = "failed"
+	InTransit        = "in-transit"
+	Paid             = "paid"
+	Pending          = "pending"
+)
+
 type StripeAccount struct {
 	Id                  string    `json:"transferId,omimtempty"`
 	ApplicationFee      int64     `json:"applicationFee,omitempty"` // FIXME: Apparently not returned by stripe-go?
@@ -36,17 +46,6 @@ type StripeAccount struct {
 type Account struct {
 	StripeAccount
 }
-
-type Status string
-
-const (
-	Initializing Status = "initializing"
-	Pending             = "pending"
-	Paid                = "paid"
-	InTransit           = "in-transit"
-	Canceled            = "canceled"
-	Failed              = "failed"
-)
 
 type Transfer struct {
 	mixin.Model

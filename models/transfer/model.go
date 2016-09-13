@@ -14,7 +14,7 @@ func (t *Transfer) Init(db *datastore.Datastore) {
 }
 
 func (t *Transfer) Defaults() {
-	t.Status = Initializing
+	t.Status = Pending
 }
 
 func New(db *datastore.Datastore) *Transfer {
