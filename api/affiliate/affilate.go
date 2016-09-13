@@ -31,7 +31,8 @@ const (
 
 func connect(c *gin.Context) {
 	id := c.Params.ByName("affiliateid")
-	url := fmt.Sprintf(stripeConnectUrl, config.Stripe.ClientId, config.Stripe.RedirectURL, id)
+	redirectUrl := config.UrlFor("api", "/affiliate", id, "/callback")
+	url := fmt.Sprintf(stripeConnectUrl, config.Stripe.ClientId, redirectUrl, id)
 	c.Redirect(302, url)
 }
 
