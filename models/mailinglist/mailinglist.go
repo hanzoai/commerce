@@ -97,7 +97,7 @@ func (m *MailingList) Validator() *val.Validator {
 func (m *MailingList) AddSubscriber(s *subscriber.Subscriber) error {
 	mkey := m.Key()
 	s.MailingListId = m.Id()
-	s.Ancestor = mkey
+	s.Parent = mkey
 	s.Normalize()
 
 	return m.RunInTransaction(func() error {

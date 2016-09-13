@@ -49,7 +49,7 @@ var _ = New("collapse-orders-by-user",
 
 		// Update order with correct user id
 		ord.UserId = usr2.Id()
-		ord.Ancestor = usr2.Key()
+		ord.Parent = usr2.Key()
 
 		// Save references to old order
 		oldkey := ord.Key()
