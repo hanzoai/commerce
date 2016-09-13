@@ -28,6 +28,8 @@ type Affiliate struct {
 	PlatformFee float64               `json:"platformFee"`
 	LastPaid    time.Time             `json:"lastPaid"`
 
+	Connected bool `json:"connected"`
+
 	Stripe struct {
 		// FIXME: What do we need to persist?
 		AccessToken    string
