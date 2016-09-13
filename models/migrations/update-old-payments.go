@@ -98,7 +98,7 @@ var _ = New("update-old-payments",
 				deletePayment(ctx, p)
 			} else {
 				// Found a valid order, hooray!
-				p.Parent = ord.Key()
+				p.Ancestor = ord.Key()
 				p.SetKey(keys[i])
 				valid = p
 			}
