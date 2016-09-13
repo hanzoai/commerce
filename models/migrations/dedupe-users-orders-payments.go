@@ -29,7 +29,7 @@ func dedupeOrders(db *ds.Datastore, ord *order.Order, currentUsr, masterUsr *use
 
 	// Update order with correct user id
 	ord.UserId = masterUsr.Id()
-	ord.Parent = masterUsr.Key()
+	ord.Ancestor = masterUsr.Key()
 
 	// Save references to old order
 	oldkey := ord.Key()
@@ -87,7 +87,7 @@ func dedupeOrders(db *ds.Datastore, ord *order.Order, currentUsr, masterUsr *use
 		oldpayid := pay.Id()
 
 		pay.OrderId = ord.Id()
-		pay.Parent = newkey
+		pay.Ancestor = newkey
 
 		// Create a new key for this order
 		pay.NewKey()
