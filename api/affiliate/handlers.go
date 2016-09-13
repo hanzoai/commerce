@@ -12,6 +12,7 @@ import (
 func Route(router router.Router, args ...gin.HandlerFunc) {
 	namespaced := middleware.Namespace()
 	tokenRequired := middleware.TokenRequired()
+	// writeAffiliateRequired := middleware.TokenRequired(permission.Admin, permission.WriteUser)
 
 	api := rest.New(affiliate.Affiliate{})
 	api.Create = create(api)
