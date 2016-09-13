@@ -12,14 +12,14 @@ import (
 )
 
 // Payout a single fee
-func payout(ctx appengine.Context, stripeToken, feeId string) {
+func payout(ctx appengine.Context, stripeToken, orgName, feeKey string) {
 	// Create stripe client
 	sc := stripe.New(ctx, stripeToken)
 
 	datastore.RunInTransaction(ctx, func(db *datastore.Datastore) error {
 		// Fetch related fee
 		fe := fee.New(db)
-		fe.MustGet(feeId)
+		fe.MustGet(feeKey)
 
 		// Create associated transfer
 		tr := transfer.New(db)
