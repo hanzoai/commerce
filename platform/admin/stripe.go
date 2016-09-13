@@ -8,7 +8,10 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.com/config"
+	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
+	"crowdstart.com/models/affiliate"
+	"crowdstart.com/models/organization"
 	"crowdstart.com/thirdparty/stripe/connect"
 	"crowdstart.com/thirdparty/stripe/tasks"
 	"crowdstart.com/util/json/http"
@@ -110,7 +113,7 @@ func affiliateCallback(c *gin.Context) {
 	// Get organization and affiliate id
 	parts := strings.Split(state, ":")
 	orgId := parts[0]
-	affId := pargs[1]
+	affId := parts[1]
 
 	// Fetch organization
 	db := datastore.New(c)
@@ -123,11 +126,14 @@ func affiliateCallback(c *gin.Context) {
 		return
 	}
 
+	//
+	ctx := middleware.GetAppEngine(c)
+
 	// Fetch affiliate
-	nsctx := appengine.Namespace(ctx, orgName)
-	db := datastore.New(nsctx)
+	nsctx, _ := appengine.Namespace(ctx, org.Name)
+	db = datastore.New(nsctx)
 	aff := affiliate.New(db)
-	aff.GetById(affid)
+	aff.GetById(affId)
 
 	// Failed to get back authorization code from Stripe
 	if errStr != "" {
@@ -137,7 +143,7 @@ func affiliateCallback(c *gin.Context) {
 	}
 
 	// Get live and test tokens
-	token, testToken, err := stripeconnect.GetTokens(ctx, code)
+	token, testToken, err := connect.GetTokens(ctx, code)
 	if err != nil {
 		log.Error("There was an error with Stripe Connect: %v", err, c)
 		c.Redirect(302, org.Affilliate.ErrorUrl)
