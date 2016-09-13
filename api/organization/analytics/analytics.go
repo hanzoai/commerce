@@ -10,7 +10,6 @@ import (
 	"crowdstart.com/models/types/analytics"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/json/http"
-	"crowdstart.com/util/log"
 )
 
 func Get(c *gin.Context) {
@@ -25,7 +24,6 @@ func Get(c *gin.Context) {
 	}
 
 	integrations := org.Analytics.UpdateShownDisabledStatus()
-	log.Warn("%v", *integrations.Integrations[0].Disabled_)
 	http.Render(c, 200, integrations)
 }
 
