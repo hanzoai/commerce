@@ -18,71 +18,21 @@ import (
 	"crowdstart.com/util/json/http"
 
 	"crowdstart.com/models/affiliate"
-	stripeconnect "crowdstart.com/thirdparty/stripe/connect"
-	"crowdstart.com/util/log"
 	"crowdstart.com/util/rest"
 )
 
 const (
-	stripeConnectUrl = "https://connect.stripe.com/oauth/authorize?response_type=code&client_id=%s&scope=read_write&state=%s&stripe_landing=login&redirect_uri=%s"
+	stripeConnectUrl = "https://connect.stripe.com/oauth/authorize?response_type=code&client_id=%s&scope=read_write&stripe_landing=login&redirect_uri=%s&state=%s"
 )
 
 //<a href="api.crowdstart.com/affiliate/:id/connect"></a>
 
 func connect(c *gin.Context) {
 	id := c.Params.ByName("affiliateid")
-	redirectUrl := config.UrlFor("api", "/affiliate", id, "/callback")
-	url := fmt.Sprintf(stripeConnectUrl, config.Stripe.ClientId, redirectUrl, id)
-	c.Redirect(302, url)
-}
-
-// Connect connect callback
-func stripeCallback(c *gin.Context) {
-	req := c.Request
-	code := req.URL.Query().Get("code")
-	affid := req.URL.Query().Get("state")
-	errStr := req.URL.Query().Get("error")
-
-	ctx := middleware.GetAppEngine(c)
 	org := middleware.GetOrganization(c)
-	db := datastore.New(c)
-	aff := affiliate.New(db)
-	aff.GetById(affid)
-
-	// Failed to get back authorization code from Stripe
-	if errStr != "" {
-		log.Error("Failed to get authorization code from Stripe during Stripe Connect: %v", errStr, c)
-		c.Redirect(302, org.Affilliate.ErrorUrl)
-		return
-	}
-
-	// Get live and test tokens
-	token, testToken, err := stripeconnect.GetTokens(ctx, code)
-	if err != nil {
-		log.Error("There was an error with Stripe Connect: %v", err, c)
-		c.Redirect(302, org.Affilliate.ErrorUrl)
-		return
-	}
-
-	// Update stripe data
-	aff.Stripe.UserId = token.UserId
-	aff.Stripe.AccessToken = token.AccessToken
-	aff.Stripe.PublishableKey = token.PublishableKey
-	aff.Stripe.RefreshToken = token.RefreshToken
-
-	// Save live/test tokens
-	aff.Stripe.Live = *token
-	aff.Stripe.Test = *testToken
-
-	// Save to datastore
-	if err := aff.Put(); err != nil {
-		log.Error("There was saving tokens to datastore: %v", err, c)
-		c.Redirect(302, org.Affilliate.ErrorUrl)
-		return
-	}
-
-	// Success
-	c.Redirect(302, org.Affilliate.SuccessUrl)
+	state := org.Name + ':' + id
+	url := fmt.Sprintf(stripeConnectUrl, config.Stripe.ClientId, config.Stripe.RedirectURL, state)
+	c.Redirect(302, url)
 }
 
 func getReferrals(c *gin.Context) {
