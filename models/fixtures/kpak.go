@@ -32,7 +32,11 @@ var Kpak = New("kpak", func(c *gin.Context) *organization.Organization {
 	org.Website = "http://www.kpakcase.com"
 	org.SecretKey = []byte("EU8E022iX2Bp5lv931N2STd1d777cU58")
 	org.AddDefaultTokens()
-	org.Fee = 0.05
+
+	org.Fees.Card.Flat = 50
+	org.Fees.Card.Percent = 0.05
+	org.Fees.Affiliate.Flat = 30
+	org.Fees.Affiliate.Percent = 0.30
 
 	// Email configuration
 	org.Mandrill.APIKey = ""
