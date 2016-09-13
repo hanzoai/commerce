@@ -11,8 +11,8 @@ import (
 	"crowdstart.com/util/delay"
 )
 
-// Payout a single fee
-func payout(ctx appengine.Context, stripeToken, orgName, feeKey string) {
+// Create transfer for single fee
+func transferFee(ctx appengine.Context, stripeToken, orgName, feeKey string) {
 	var tr *transfer.Transfer
 
 	// Create transfer and update payment in transaction
@@ -43,17 +43,13 @@ func payout(ctx appengine.Context, stripeToken, orgName, feeKey string) {
 
 	// Initiate transfer on Stripe's side
 	sc := stripe.New(ctx, stripeToken)
-	if _, err := sc.Transfer(tr); err != nil {
-		return err
-	}
-
-	// Update transfer to reflect failure status
-	if err != nil {
+	if _, err = sc.Transfer(tr); err != nil {
+		// Update transfer to reflect failure status
 		tr.Status = transfer.Canceled
 		tr.MustUpdate()
 	}
 }
 
 // Create associated tasks with unique queues
-var PayoutPlatform = delay.Func("payout-platform", payout)
-var PayoutAffiliate = delay.Func("payout-affiliate", payout)
+var TransferAffiliateFee = delay.Func("transfer-affiliate-fee", transferFee)
+var TransferPlatformFee = delay.Func("transfer-platform-fee", transferFee)
