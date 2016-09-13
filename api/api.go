@@ -29,7 +29,6 @@ import (
 	cartApi "crowdstart.com/api/cart"
 	checkoutApi "crowdstart.com/api/checkout"
 	couponApi "crowdstart.com/api/coupon"
-	cronApi "crowdstart.com/api/cron"
 	dataApi "crowdstart.com/api/data"
 	deployApi "crowdstart.com/api/deploy"
 	formApi "crowdstart.com/api/form"
@@ -132,9 +131,6 @@ func init() {
 
 	// Data Api
 	dataApi.Route(api)
-
-	// Routes for cron.yaml tasks
-	cronApi.Route(api)
 
 	// XDomain proxy.html
 	xdApi.Route(api)
