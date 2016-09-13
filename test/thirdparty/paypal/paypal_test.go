@@ -70,7 +70,7 @@ var _ = BeforeSuite(func() {
 	pay.Amount = 103
 	pay.Currency = currency.USD
 	pay.Client.Ip = "64.136.209.186"
-	pay.Fee, _, err = ord.CalculateFee(org.Fee, "")
+	pay.Fee, _, err = ord.CalculateFee(org.Key(), org.Fee, "")
 	Expect(err).ToNot(HaveOccurred())
 	client = paypal.New(ctx)
 })
