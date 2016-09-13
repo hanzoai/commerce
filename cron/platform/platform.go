@@ -21,7 +21,7 @@ var transferFeesForOrg = delay.Func("transfer-fees-for-org", func(ctx appengine.
 		log.Panic("Failed to fetch organization by id: '%s'", err)
 	}
 
-	log.Debug("Processing platform fees for organization: %s", org.Name, ctx)
+	log.Debug("Fetching platform fees for organization: %s", org.Name, ctx)
 
 	nsctx := org.Namespaced(ctx)
 	db = datastore.New(nsctx)
@@ -44,7 +44,7 @@ var transferFeesForOrg = delay.Func("transfer-fees-for-org", func(ctx appengine.
 		}
 
 		// Create transfer for associated fee
-		tasks.TransferFee.Call(ctx, org.Stripe.AccessToken, org.Name, key.Encode())
+		tasks.TransferPlatformFee.Call(ctx, org.Stripe.AccessToken, org.Name, key.Encode())
 	}
 })
 
@@ -61,6 +61,7 @@ func Payout(ctx appengine.Context) error {
 
 	// Transfer fees for each organization
 	for _, org := range orgs {
+		log.Debug("Processing platform fees for organization: %s", org.Name, ctx)
 		transferFeesForOrg.Call(ctx, org.Id())
 	}
 
