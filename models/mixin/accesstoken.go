@@ -56,6 +56,8 @@ func (at *AccessToken) GetTokenByName(name string) (*token.Token, error) {
 			return &tok, nil
 		}
 	}
+
+	log.Warn("Token not found by name '%s'", name)
 	return nil, TokenNotFoundByName
 }
 
@@ -84,6 +86,7 @@ func (at *AccessToken) GetToken(accessToken string) (*token.Token, error) {
 		}
 	}
 
+	log.Warn("Token not found: %v", tok)
 	return tok, TokenNotFound
 }
 
