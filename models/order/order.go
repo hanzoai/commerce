@@ -13,7 +13,6 @@ import (
 
 	"github.com/dustin/go-humanize"
 
-	"crowdstart.com/config"
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/affiliate"
 	"crowdstart.com/models/coupon"
@@ -24,6 +23,7 @@ import (
 	"crowdstart.com/models/store"
 	"crowdstart.com/models/types/country"
 	"crowdstart.com/models/types/currency"
+	"crowdstart.com/models/types/pricing"
 	"crowdstart.com/util/hashid"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
@@ -253,39 +253,7 @@ func (o *Order) Save(c chan<- aeds.Property) (err error) {
 	return IgnoreFieldMismatch(aeds.SaveStruct(o, c))
 }
 
-func (o *Order) AddPlatformFee(orgKey datastore.Key, percent float64, fees []*fee.Fee) []*fee.Fee {
-	// Default platform fee config.Fee if percent is not provided
-	if percent <= 0 {
-		percent = config.Fee
-	}
-
-	// Platform fee
-	fe := fee.New(o.Db)
-	fe.Type = fee.Platform
-	fe.Currency = o.Currency
-	fe.Amount = currency.Cents(math.Ceil(float64(o.Total) * percent)) // Round up for platform fee
-	fe.Parent = orgKey
-
-	return append(fees, fe)
-}
-
-func (o *Order) AddPartnerFee(partnerKey datastore.Key, partnerId string, fees []*fee.Fee) ([]*fee.Fee, error) {
-	if partnerId == "" {
-		return fees, nil
-	}
-
-	// Add partner fee
-	// fe := fee.New(o.Db)
-	// fe.Type = fee.Platform
-	// fe.Currency = o.Currency
-	// fe.Amount = currency.Cents(math.Floor(float64(o.Total) * partner.Commission.Percent))
-	// fe.Parent = partnerKey
-
-	// fees = append(fees, fe)
-	return fees, nil
-}
-
-func (o *Order) AddAffiliateFee(fees []*fee.Fee) ([]*fee.Fee, error) {
+func (o *Order) AddAffiliateFee(pricing pricing.Fees, fees []*fee.Fee) ([]*fee.Fee, error) {
 	if o.ReferrerId == "" {
 		// No referrer, no need to check affiliate
 		return fees, nil
@@ -308,31 +276,65 @@ func (o *Order) AddAffiliateFee(fees []*fee.Fee) ([]*fee.Fee, error) {
 		return fees, err
 	}
 
-	// Compute new fee based on affiliate comission
+	// Create fee
 	fe := fee.New(o.Db)
+	fe.Parent = aff.Key()
 	fe.Type = fee.Affiliate
 	fe.Currency = o.Currency
-	affFee := math.Floor(float64(o.Total)*aff.Commission.Percent) + float64(aff.Commission.Flat)
-	fe.Amount = currency.Cents(affFee) + currency.Cents(aff.FlatFee) + currency.Cents(math.Floor(affFee*aff.PlatformFee))
-	fe.Parent = aff.Key()
+
+	// Compute fee amount based on affiliate comission
+	affFee := currency.Cents(math.Floor(float64(o.Total)*aff.Commission.Percent)) + aff.Commission.Flat
+	platformFee := currency.Cents(math.Floor(float64(affFee)*pricing.Affiliate.Percent)) + pricing.Affiliate.Flat
+	fe.Amount = affFee + platformFee
 
 	return append(fees, fe), nil
 }
 
-func (o *Order) CalculateFee(orgKey datastore.Key, platformFee float64, partnerId string) (currency.Cents, []*fee.Fee, error) {
+func (o *Order) AddPlatformFee(pricing pricing.Fees, fees []*fee.Fee) []*fee.Fee {
+	ctx := o.Context()
+	db := datastore.New(ctx)
+
+	// Add platform fee
+	fe := fee.New(db)
+	fe.Parent = pricing.Key(ctx)
+	fe.Type = fee.Platform
+	fe.Currency = o.Currency
+	fe.Amount = pricing.Card.Flat + currency.Cents(math.Ceil(float64(o.Total)*pricing.Card.Percent)) // Round up for platform fee
+
+	return append(fees, fe)
+}
+
+func (o *Order) AddPartnerFee(partners []pricing.Partner, fees []*fee.Fee) ([]*fee.Fee, error) {
+	ctx := o.Context()
+	db := datastore.New(ctx)
+
+	// Add partner fees
+	for _, partner := range partners {
+		fe := fee.New(db)
+		fe.Parent = partner.Key(ctx)
+		fe.Type = fee.Platform
+		fe.Currency = o.Currency
+		fe.Amount = partner.Commission.Flat + currency.Cents(math.Floor(float64(o.Total)*partner.Commission.Percent))
+		fees = append(fees, fe)
+	}
+
+	return fees, nil
+}
+
+func (o *Order) CalculateFee(pricing pricing.Fees, partners []pricing.Partner) (currency.Cents, []*fee.Fee, error) {
 	fees := make([]*fee.Fee, 0)
 	total := currency.Cents(0)
 
-	// Add platform fee
-	fees = o.AddPlatformFee(orgKey, platformFee, fees)
+	// Add Affiliate fees
+	if fees, err := o.AddAffiliateFee(pricing, fees); err != nil {
+		return total, fees, err
+	}
 
-	// Add Partner fee
-	// if fees, err := o.AddPartnerFee(partnerId, fees); err != nil {
-	// 	return total, fees, err
-	// }
+	// Add Platform fees
+	fees = o.AddPlatformFee(pricing, fees)
 
-	// Add Affiliate fee
-	if fees, err := o.AddAffiliateFee(fees); err != nil {
+	// Add Partner fees
+	if fees, err := o.AddPartnerFee(partners, fees); err != nil {
 		return total, fees, err
 	}
 

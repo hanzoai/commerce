@@ -11,6 +11,7 @@ import (
 
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/types/analytics"
+	"crowdstart.com/models/types/pricing"
 	"crowdstart.com/models/user"
 	"crowdstart.com/thirdparty/stripe/connect"
 	"crowdstart.com/util/permission"
@@ -85,9 +86,13 @@ type Organization struct {
 	Timezone string `json:"timezone"`
 
 	Country string `json:"country"`
-	TaxId   string `json:"-"`
+	TaxId   string `json:"taxId"`
 
-	Fee float64 `json:"fee"`
+	// Fee structure for this organization
+	Fees pricing.Fees `json:"fees"`
+
+	// Partner fees
+	Partners []pricing.Partner `json:"-"`
 
 	// Analytics config
 	Analytics analytics.Analytics `json:"analytics"`
