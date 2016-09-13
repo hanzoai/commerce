@@ -11,17 +11,20 @@ import (
 	"appengine/delay"
 )
 
-var payoutPlatformByOrg = delay.Func("payout-platform-by-org", func(ctx appengine.Context, id string) {
+// Create transfers for all un-transferred fees for associated organization
+var transferFeesForOrg = delay.Func("transfer-fees-for-org", func(ctx appengine.Context, id string) {
 	db := datastore.New(ctx)
+
+	// Fetch organization
 	org := organization.New(db)
 	if err := org.GetById(id); err != nil {
 		log.Panic("Failed to fetch organization by id: '%s'", err)
 	}
 
+	log.Debug("Processing platform fees for organization: %s", org.Name, ctx)
+
 	nsctx := org.Namespaced(ctx)
 	db = datastore.New(nsctx)
-
-	log.Debug("Processing platform fees for organization: %s", org.Name, ctx)
 	q := fee.Query(db).Ancestor(org.Key()).Filter("TransferId=", "").KeysOnly()
 	t := q.Run()
 
@@ -40,10 +43,12 @@ var payoutPlatformByOrg = delay.Func("payout-platform-by-org", func(ctx appengin
 			break
 		}
 
-		tasks.PayoutPlatform.Call(ctx, org.Stripe.AccessToken, org.Name, key.Encode())
+		// Create transfer for associated fee
+		tasks.TransferFee.Call(ctx, org.Stripe.AccessToken, org.Name, key.Encode())
 	}
 })
 
+// Payout fees for all transfers
 func Payout(ctx appengine.Context) error {
 	db := datastore.New(ctx)
 
@@ -54,8 +59,9 @@ func Payout(ctx appengine.Context) error {
 		return err
 	}
 
+	// Transfer fees for each organization
 	for _, org := range orgs {
-		payoutPlatformByOrg.Call(ctx, org.Id())
+		transferFeesForOrg.Call(ctx, org.Id())
 	}
 
 	return nil
