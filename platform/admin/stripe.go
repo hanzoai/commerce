@@ -116,7 +116,8 @@ func affiliateCallback(c *gin.Context) {
 	affId := parts[1]
 
 	// Fetch organization
-	db := datastore.New(c)
+	ctx := middleware.GetAppEngine(c)
+	db := datastore.New(ctx)
 	org := organization.New(db)
 
 	// Failed to get back authorization code from Stripe
@@ -125,9 +126,6 @@ func affiliateCallback(c *gin.Context) {
 		c.Redirect(302, org.Affilliate.ErrorUrl)
 		return
 	}
-
-	//
-	ctx := middleware.GetAppEngine(c)
 
 	// Fetch affiliate
 	nsctx, _ := appengine.Namespace(ctx, org.Name)
