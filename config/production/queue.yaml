@@ -5,13 +5,13 @@ queue:
   max_concurrent_requests: 50
 
 queue:
-- name: cron-payout-platform
+- name: payout-platform
   rate: 100/s
   bucket_size: 100
   max_concurrent_requests: 100
 
 queue:
-- name: cron-payout-affiliate
+- name: payout-affiliate
   rate: 100/s
   bucket_size: 100
   max_concurrent_requests: 100
