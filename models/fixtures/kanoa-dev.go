@@ -134,7 +134,7 @@ var _ = New("kanoa-dev", func(c *gin.Context) *organization.Organization {
 			EntityId:    "vMAXTXuKa3",
 			Id:          "WSXQDoVe6Bs",
 			IssuedAt:    time.Now(),
-			Name:        "live-published-key",
+			Name:        "test-published-key",
 			Permissions: 4503617075675176,
 			Secret:      []byte("EZ2E011iX2Bp5lv149N2STd1d580cU58"),
 		},
