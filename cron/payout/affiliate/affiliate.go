@@ -3,8 +3,10 @@ package affiliate
 import (
 	"appengine"
 
+	"crowdstart.com/config"
 	"crowdstart.com/cron/payout"
 	"crowdstart.com/datastore"
+	"crowdstart.com/models/affiliate"
 	"crowdstart.com/models/fee"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/util/delay"
@@ -15,23 +17,22 @@ import (
 var transferFee = delay.FuncUniq("transfer-affiliate-fee", payout.TransferFee)
 
 // Create transfers for all un-transferred fees for associated organization
-var transferFees = delay.Func("transfer-affiliate-fees", func(ctx appengine.Context, id string) {
+var transferFees = delay.Func("transfer-affiliate-fees", func(ctx appengine.Context, namespace, affKey string) {
 	db := datastore.New(ctx)
 
-	// Fetch organization
-	org := organization.New(db)
-	if err := org.GetById(id); err != nil {
-		log.Panic("Failed to fetch organization by id: '%s'", err)
-	}
+	// Switch namespace
+	nsctx, _ := appengine.Namespace(ctx, namespace)
 
-	log.Debug("Fetching affiliate fees for organization: %s", org.Name, ctx)
+	// Decode affiliate key
+	key, _ := datastore.DecodeKey(nsctx, affKey)
 
-	nsctx := org.Namespaced(ctx)
+	log.Debug("Transferring affiliate fees collected in '%s'", namespace, ctx)
+
+	// Iterate over fees that have not been transfered
 	db = datastore.New(nsctx)
-	q := fee.Query(db).Ancestor(org.Key()).Filter("TransferId=", "").KeysOnly()
+	q := fee.Query(db).Ancestor(key).Filter("TransferId=", "").KeysOnly()
 	t := q.Run()
 
-	// Loop over entities passing them into workerFunc one at a time
 	for {
 		key, err := t.Next(nil)
 
@@ -47,7 +48,7 @@ var transferFees = delay.Func("transfer-affiliate-fees", func(ctx appengine.Cont
 		}
 
 		// Create transfer for associated fee
-		transferFee.Call(ctx, org.Stripe.AccessToken, org.Name, key.Encode())
+		transferFee.Call(ctx, config.Stripe.SecretKey, namespace, key.Encode())
 	}
 })
 
@@ -58,14 +59,27 @@ func Payout(ctx appengine.Context) error {
 	log.Debug("Fetching all organizations", ctx)
 	orgs := make([]*organization.Organization, 0)
 	if _, err := organization.Query(db).GetAll(&orgs); err != nil {
-		log.Error("Failed to fetch organizations", ctx)
+		log.Error("Failed to fetch organizations: %v", err, ctx)
 		return err
 	}
 
 	// Transfer fees for each organization
 	for _, org := range orgs {
-		log.Debug("Processing affiliate fees for affiliate: %s", org.Name, ctx)
-		transferFees.Call(ctx, org.Id())
+		// Switch namespace
+		nsctx, _ := appengine.Namespace(ctx, org.Name)
+
+		log.Debug("Fetching all affiliates for '%s'", org.Name, ctx)
+		affs := make([]*affiliate.Affiliate, 0)
+		db = datastore.New(nsctx)
+		if _, err := affiliate.Query(db).GetAll(&affs); err != nil {
+			log.Error("Failed to fetch affiliates for '%s': %v", org.Name, err, ctx)
+			return err
+		}
+
+		for _, aff := range affs {
+			log.Debug("Processing affiliate fees for affiliate '%s', organization: '%s'", aff.Id(), org.Name, ctx)
+			transferFees.Call(ctx, org.Name, aff.Key().Encode())
+		}
 	}
 
 	return nil
