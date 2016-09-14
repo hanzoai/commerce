@@ -52,4 +52,5 @@ func transferFee(ctx appengine.Context, stripeToken, orgName, feeKey string) {
 
 // Create associated tasks with unique queues
 var TransferAffiliateFee = delay.Func("transfer-affiliate-fee", transferFee)
-var TransferPlatformFee = delay.Func("transfer-platform-fee", transferFee)
+var TransferPartnerFee = delay.Func("transfer-platform-fee", transferFee)
+var TransferPlatformFee = delay.Func("transfer-partner-fee", transferFee)
