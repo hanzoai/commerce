@@ -24,7 +24,7 @@ var transferFees = delay.Func("transfer-partner-fees", func(ctx appengine.Contex
 
 	// Fetch partner
 	par := partner.New(db)
-	if err := par.GetById(partnerId); err != nil {
+	if err := par.Get(partnerId); err != nil {
 		log.Error("Failed to fetch partner '%s': %v", partnerId, err, ctx)
 		return
 	}
@@ -78,7 +78,7 @@ func Payout(ctx appengine.Context) error {
 		log.Debug("Processing partner fees for organization: %s", org.Name, ctx)
 		for _, p := range org.Partners {
 			par := partner.New(db)
-			if err := par.GetById(p.Id); err != nil {
+			if err := par.Get(p.Id); err != nil {
 				log.Error("Failed to get partner '%s': %v", p.Id, err, ctx)
 			} else {
 				log.Debug("Processing partner fees for organization: '%s'", org.Name, ctx)
