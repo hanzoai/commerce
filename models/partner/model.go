@@ -5,18 +5,18 @@ import (
 	"crowdstart.com/models/mixin"
 )
 
-func (a Partner) Kind() string {
+func (p Partner) Kind() string {
 	return "partner"
 }
 
-func (a *Partner) Init(db *datastore.Datastore) {
-	a.Model.Init(db, a)
+func (p *Partner) Init(db *datastore.Datastore) {
+	p.Model.Init(db, p)
 }
 
 func New(db *datastore.Datastore) *Partner {
-	r := new(Partner)
-	r.Init(db)
-	return r
+	p := new(Partner)
+	p.Init(db)
+	return p
 }
 
 func Query(db *datastore.Datastore) *mixin.Query {

@@ -13,10 +13,16 @@ func (a *Affiliate) Init(db *datastore.Datastore) {
 	a.Model.Init(db, a)
 }
 
+func (a *Affiliate) Defaults() {
+	a.Schedule.Period = 30
+	a.Schedule.Rolling = false
+}
+
 func New(db *datastore.Datastore) *Affiliate {
-	r := new(Affiliate)
-	r.Init(db)
-	return r
+	a := new(Affiliate)
+	a.Init(db)
+	a.Defaults()
+	return a
 }
 
 func Query(db *datastore.Datastore) *mixin.Query {
