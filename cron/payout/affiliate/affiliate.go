@@ -14,7 +14,7 @@ import (
 )
 
 // Create transfer task with associated unique queue
-var transferFee = delay.FuncUniq("transfer-affiliate-fee", payout.TransferFee)
+var transferFee = payout.TransferFee.Queue("transfer-affiliate-fee")
 
 // Create transfers for all un-transferred fees for associated organization
 var transferFees = delay.Func("transfer-affiliate-fees", func(ctx appengine.Context, namespace, affKey string) {

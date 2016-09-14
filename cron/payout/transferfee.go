@@ -8,10 +8,11 @@ import (
 	"crowdstart.com/models/multi"
 	"crowdstart.com/models/transfer"
 	"crowdstart.com/thirdparty/stripe"
+	"crowdstart.com/util/delay"
 )
 
 // Create transfer for single fee
-func TransferFee(ctx appengine.Context, stripeToken, namespace, key string) {
+var TransferFee = delay.Func("transfer-fee", func(ctx appengine.Context, stripeToken, namespace, key string) {
 	var tr *transfer.Transfer
 
 	// Switch to corrct namespace
@@ -57,4 +58,4 @@ func TransferFee(ctx appengine.Context, stripeToken, namespace, key string) {
 		}
 		tr.MustUpdate()
 	}
-}
+})
