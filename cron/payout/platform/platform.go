@@ -1,24 +1,29 @@
 package platform
 
 import (
+	"appengine"
+
+	"crowdstart.com/config"
+	"crowdstart.com/cron/payout"
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/fee"
-	"crowdstart.com/models/fee/tasks"
 	"crowdstart.com/models/organization"
+	"crowdstart.com/util/delay"
 	"crowdstart.com/util/log"
-
-	"appengine"
-	"appengine/delay"
 )
 
+// Create transfer task with associated unique queue
+var transferFee = delay.FuncUniq("transfer-platform-fee", payout.TransferFee)
+
 // Create transfers for all un-transferred fees for associated organization
-var transferFeesForOrg = delay.Func("transfer-fees-for-org", func(ctx appengine.Context, id string) {
+var transferFees = delay.Func("transfer-platform-fees", func(ctx appengine.Context, orgId string) {
 	db := datastore.New(ctx)
 
 	// Fetch organization
 	org := organization.New(db)
-	if err := org.GetById(id); err != nil {
-		log.Panic("Failed to fetch organization by id: '%s'", err)
+	if err := org.GetById(orgId); err != nil {
+		log.Error("Failed to fetch organization '%s': %v", orgId, err, ctx)
+		return
 	}
 
 	log.Debug("Fetching platform fees for organization: %s", org.Name, ctx)
@@ -44,7 +49,7 @@ var transferFeesForOrg = delay.Func("transfer-fees-for-org", func(ctx appengine.
 		}
 
 		// Create transfer for associated fee
-		tasks.TransferPlatformFee.Call(ctx, org.Stripe.AccessToken, org.Name, key.Encode())
+		transferFee.Call(ctx, config.Stripe.SecretKey, org.Name, key.Encode())
 	}
 })
 
@@ -62,7 +67,7 @@ func Payout(ctx appengine.Context) error {
 	// Transfer fees for each organization
 	for _, org := range orgs {
 		log.Debug("Processing platform fees for organization: %s", org.Name, ctx)
-		transferFeesForOrg.Call(ctx, org.Id())
+		transferFees.Call(ctx, org.Id())
 	}
 
 	return nil
