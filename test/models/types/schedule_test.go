@@ -15,6 +15,18 @@ var (
 	start = time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC)
 )
 
+// Net D should be supported
+// Jan 1 2000
+// Feb 1 2000
+// Mar 1 2000
+// 	Jan -> Feb
+// Mar 2 2000
+// 	Jan -> Feb
+// Mar 3 2000
+// 	Jan -> Feb
+// Apri 1
+// 	Jan -> Mar
+
 var _ = Describe("models/types/schedule", func() {
 	Context("Schedule.Started()", func() {
 		It("should know whether we've started yet", func() {
