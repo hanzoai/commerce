@@ -13,11 +13,6 @@ func (r *Referrer) Init(db *datastore.Datastore) {
 	r.Model.Init(db, r)
 }
 
-func (r *Referrer) Defaults() {
-	r.ReferralIds = make([]string, 0)
-	r.TransactionIds = make([]string, 0)
-}
-
 func New(db *datastore.Datastore) *Referrer {
 	r := new(Referrer)
 	r.Init(db)
