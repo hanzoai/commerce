@@ -13,8 +13,8 @@ import (
 	"crowdstart.com/util/log"
 )
 
-// Create transfer task with associated unique queue
-var transferFee = delay.FuncUniq("transfer-partner-fee", payout.TransferFee)
+// Create a copy delay func set to appropriate queue
+var transferFee = payout.TransferFee.Queue("transfer-partner-fee")
 
 // Create transfers for all un-transferred fees for associated partner
 var transferFees = delay.Func("transfer-partner-fees", func(ctx appengine.Context, namespace, partnerId string) {
