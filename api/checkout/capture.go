@@ -54,9 +54,10 @@ func CompleteCapture(c *gin.Context, org *organization.Organization, ord *order.
 
 		// if ReferrerId refers to non-existing token, then remove from order
 		if err = ref.Get(ord.ReferrerId); err != nil {
+			log.Warn("Order referenced non-existent referrer '%s'", ord.ReferrerId, c)
 			ord.ReferrerId = ""
 		} else {
-			// Try to save referral, save updated referrer
+			// Save referral
 			if _, err := ref.SaveReferral(ord.Id(), ord.UserId); err != nil {
 				log.Warn("Unable to save referral: %v", err, c)
 			}
