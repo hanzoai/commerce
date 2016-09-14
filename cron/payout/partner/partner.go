@@ -1,31 +1,37 @@
 package partner
 
 import (
+	"appengine"
+
+	"crowdstart.com/config"
+	"crowdstart.com/cron/payout"
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/fee"
-	"crowdstart.com/models/fee/tasks"
 	"crowdstart.com/models/organization"
+	"crowdstart.com/models/partner"
+	"crowdstart.com/util/delay"
 	"crowdstart.com/util/log"
-
-	"appengine"
-	"appengine/delay"
 )
 
-// Create transfers for all un-transferred fees for associated organization
-var transferFeesForOrg = delay.Func("transfer-fees-for-org", func(ctx appengine.Context, id string) {
+// Create transfer task with associated unique queue
+var transferFee = delay.FuncUniq("transfer-partner-fee", payout.TransferFee)
+
+// Create transfers for all un-transferred fees for associated partner
+var transferFees = delay.Func("transfer-partner-fees", func(ctx appengine.Context, namespace, partnerId string) {
 	db := datastore.New(ctx)
 
-	// Fetch organization
-	org := organization.New(db)
-	if err := org.GetById(id); err != nil {
-		log.Panic("Failed to fetch organization by id: '%s'", err)
+	// Fetch partner
+	par := partner.New(db)
+	if err := par.GetById(partnerId); err != nil {
+		log.Error("Failed to fetch partner '%s': %v", partnerId, err, ctx)
+		return
 	}
 
-	log.Debug("Fetching partner fees for organization: %s", org.Name, ctx)
+	log.Debug("Fetching partner fees for organization '%s' for partner '%s'", namespace, par.Name, ctx)
 
-	nsctx := org.Namespaced(ctx)
+	nsctx, _ := appengine.Namespace(ctx, namespace)
 	db = datastore.New(nsctx)
-	q := fee.Query(db).Ancestor(org.Key()).Filter("TransferId=", "").KeysOnly()
+	q := fee.Query(db).Ancestor(par.Key()).Filter("TransferId=", "").KeysOnly()
 	t := q.Run()
 
 	// Loop over entities passing them into workerFunc one at a time
@@ -44,11 +50,11 @@ var transferFeesForOrg = delay.Func("transfer-fees-for-org", func(ctx appengine.
 		}
 
 		// Create transfer for associated fee
-		tasks.TransferPartnerFee.Call(ctx, org.Stripe.AccessToken, org.Name, key.Encode())
+		transferFee.Call(ctx, config.Stripe.SecretKey, namespace, key.Encode())
 	}
 })
 
-// Payout fees for all transfers
+// Payout partners
 func Payout(ctx appengine.Context) error {
 	db := datastore.New(ctx)
 
@@ -61,8 +67,14 @@ func Payout(ctx appengine.Context) error {
 
 	// Transfer fees for each organization
 	for _, org := range orgs {
+		if len(org.Partners) == 0 {
+			continue
+		}
+
 		log.Debug("Processing partner fees for organization: %s", org.Name, ctx)
-		transferFeesForOrg.Call(ctx, org.Id())
+		for _, partner := range org.Partners {
+			transferFees.Call(ctx, org.Name, partner.Id)
+		}
 	}
 
 	return nil

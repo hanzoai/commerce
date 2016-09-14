@@ -13,16 +13,15 @@ import (
 type Affiliate struct {
 	mixin.Model
 
-	Connected bool `json:"connected"`
 	Enabled   bool `json:"enabled"`
+	Connected bool `json:"connected"`
 
-	UserId    string `json:"userId"`
-	FirstName string `json:"firstName"`
-	LastName  string `json:"lastName"`
-	Company   string `json:"company"`
-	Country   string `json:"country"`
-	TaxId     string `json:"-"`
-	Timezone  string `json:"timezone"`
+	UserId   string `json:"userId"`
+	Name     string `json:"name"`
+	Company  string `json:"company"`
+	Country  string `json:"country"`
+	TaxId    string `json:"taxId"`
+	Timezone string `json:"timezone"`
 
 	Commission commission.Commission `json:"commission"`
 	Period     int                   `json:"period"`

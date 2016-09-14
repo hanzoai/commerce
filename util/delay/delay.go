@@ -10,8 +10,8 @@ import (
 
 // Simple wrapper around delay.Func which allows queue to be customized
 type Function struct {
-	DelayFn *delay.Function
-	Queue   string
+	dfunc *delay.Function
+	Queue string
 }
 
 func (f *Function) Call(c appengine.Context, args ...interface{}) {
@@ -23,12 +23,19 @@ func (f *Function) Call(c appengine.Context, args ...interface{}) {
 }
 
 func (f *Function) Task(args ...interface{}) (*taskqueue.Task, error) {
-	return f.DelayFn.Task(args...)
+	return f.dfunc.Task(args...)
 }
 
 func Func(key string, i interface{}) *Function {
 	fn := new(Function)
-	fn.DelayFn = delay.Func(key, i)
-	fn.Queue = key
+	fn.dfunc = delay.Func(key, i)
+	fn.Queue = "" // Default queue
+	return fn
+}
+
+func FuncUniq(key string, i interface{}) *Function {
+	fn := new(Function)
+	fn.dfunc = delay.Func(key, i)
+	fn.Queue = key // Queue matches func name
 	return fn
 }
