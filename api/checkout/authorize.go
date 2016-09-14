@@ -105,7 +105,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	// Update payment with order information
 	pay.Amount = ord.Total
 
-	// Fee defaults to 2%, override with organization fee if customized.
+	// Calculate affiliate, partner and platform fees
 	fee, fees, err := ord.CalculateFee(org.Fees, org.Partners)
 
 	pay.Currency = ord.Currency

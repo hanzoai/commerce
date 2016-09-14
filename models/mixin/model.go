@@ -184,10 +184,14 @@ func (m *Model) SetKey(key interface{}) (err error) {
 			// We've declared this model uses string keys.
 			k = m.Db.NewKey(m.Entity.Kind(), v, 0, m.Parent)
 		} else {
-			// By default all keys are int ids internally (but we use hashid to convert them to strings)
+			// Try to decode key as hashid
 			k, err = hashid.DecodeKey(m.Db.Context, v)
 			if err != nil {
-				return datastore.InvalidKey
+				// Try to decode key as encoded key
+				k, err = m.Db.DecodeKey(v)
+				if err != nil {
+					return datastore.InvalidKey
+				}
 			}
 		}
 	case int64:
