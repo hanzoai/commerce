@@ -27,14 +27,16 @@ var transferFees = delay.Func("transfer-partner-fees", func(ctx appengine.Contex
 		return
 	}
 
-	log.Debug("Fetching partner fees for organization '%s' for partner '%s'", namespace, par.Name, ctx)
+	log.Debug("Transferring partner fees collected in '%s'", namespace, ctx)
 
+	// Switch namespace
 	nsctx, _ := appengine.Namespace(ctx, namespace)
+
+	// Iterate over fees that have not been transfered
 	db = datastore.New(nsctx)
 	q := fee.Query(db).Ancestor(par.Key()).Filter("TransferId=", "").KeysOnly()
 	t := q.Run()
 
-	// Loop over entities passing them into workerFunc one at a time
 	for {
 		key, err := t.Next(nil)
 
@@ -61,7 +63,7 @@ func Payout(ctx appengine.Context) error {
 	log.Debug("Fetching all organizations", ctx)
 	orgs := make([]*organization.Organization, 0)
 	if _, err := organization.Query(db).GetAll(&orgs); err != nil {
-		log.Error("Failed to fetch organizations", ctx)
+		log.Error("Failed to fetch organizations: %v", err, ctx)
 		return err
 	}
 
@@ -73,6 +75,7 @@ func Payout(ctx appengine.Context) error {
 
 		log.Debug("Processing partner fees for organization: %s", org.Name, ctx)
 		for _, partner := range org.Partners {
+			log.Debug("Processing partner fees for organization: '%s'", org.Name, ctx)
 			transferFees.Call(ctx, org.Name, partner.Id)
 		}
 	}
