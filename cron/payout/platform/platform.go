@@ -13,7 +13,7 @@ import (
 )
 
 // Create transfer task with associated unique queue
-var transferFee = delay.FuncUniq("transfer-platform-fee", payout.TransferFee)
+var transferFee = payout.TransferFee.Queue("transfer-platform-fee")
 
 // Create transfers for all un-transferred fees for associated organization
 var transferFees = delay.Func("transfer-platform-fees", func(ctx appengine.Context, orgId string) {
