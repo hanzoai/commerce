@@ -9,6 +9,7 @@ import (
 	"crowdstart.com/models/transfer"
 	"crowdstart.com/thirdparty/stripe"
 	"crowdstart.com/util/delay"
+	"crowdstart.com/util/log"
 )
 
 // Create transfer for single fee
@@ -22,7 +23,9 @@ var TransferFee = delay.Func("transfer-fee", func(ctx appengine.Context, stripeT
 	err := datastore.RunInTransaction(ctx, func(db *datastore.Datastore) error {
 		// Fetch related fee
 		fe := fee.New(db)
-		fe.MustGet(key)
+		if err := fe.Get(key); err != nil {
+			return err
+		}
 
 		// Create associated transfer
 		tr = transfer.New(db)
@@ -56,6 +59,8 @@ var TransferFee = delay.Func("transfer-fee", func(ctx appengine.Context, stripeT
 			tr.FailureCode = "stripe-error"
 			tr.FailureMessage = err.Error()
 		}
-		tr.MustUpdate()
+		if err := tr.Update(); err != nil {
+			log.Error("Failed to update status of failed transfer '%s': %v", tr.Id(), err, ctx)
+		}
 	}
 })
