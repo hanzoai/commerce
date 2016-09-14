@@ -36,17 +36,15 @@ type Program struct {
 	Actions  []Action `json:"actions"`
 }
 
-func (r *Program) GetBonus(trans *transaction.Transaction, referrals int) {
-	for i, trig := range r.Triggers {
-		if trig == referrals || trig == 0 {
-			action := r.Actions[i]
-			switch r.Actions[i].Type {
-			case StoreCredit:
-				trans.Amount = action.Amount
-				trans.Currency = action.Currency
-				return
-			case Refund:
-			}
+func (p *Program) GetBonus(trans *transaction.Transaction) {
+	for i, _ := range p.Triggers {
+		action := p.Actions[i]
+		switch action.Type {
+		case StoreCredit:
+			trans.Amount = action.Amount
+			trans.Currency = action.Currency
+			return
+		case Refund:
 		}
 	}
 }
