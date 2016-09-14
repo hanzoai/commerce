@@ -7,6 +7,7 @@ import (
 	"crowdstart.com/models/affiliate"
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/referral"
+	"crowdstart.com/models/transaction"
 	"crowdstart.com/util/timeutil"
 )
 
@@ -58,4 +59,16 @@ func (r *Referrer) SaveReferral(orderId, userId string) (*referral.Referral, err
 	}
 
 	return ref, nil
+}
+
+func (r *Referrer) Referrals() ([]*referral.Referral, error) {
+	referrals := make([]*referral.Referral, 0)
+	_, err := referral.Query(r.Db).Filter("ReferrerId=", r.Id()).GetAll(referrals)
+	return referrals, err
+}
+
+func (r *Referrer) Transactions() ([]*transaction.Transaction, error) {
+	transactions := make([]*transaction.Transaction, 0)
+	_, err := transaction.Query(r.Db).Filter("ReferrerId=", r.Id()).GetAll(transactions)
+	return transactions, err
 }
