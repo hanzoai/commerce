@@ -91,7 +91,7 @@ type Organization struct {
 	// Fee structure for this organization
 	Fees pricing.Fees `json:"fees"`
 
-	// Partner fees
+	// Partner fees (private, should be up to partner to disclose)
 	Partners []pricing.Partner `json:"-"`
 
 	// Analytics config
