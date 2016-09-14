@@ -12,7 +12,7 @@ import (
 	"crowdstart.com/util/log"
 )
 
-// Create transfer task with associated unique queue
+// Create a copy payout.TransferFee delay.Func configured to use unique queue
 var transferFee = payout.TransferFee.Queue("transfer-platform-fee")
 
 // Create transfers for all un-transferred fees for associated organization
