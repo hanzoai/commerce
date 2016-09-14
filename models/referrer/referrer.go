@@ -48,7 +48,6 @@ func (r *Referrer) SaveReferral(orderId, userId string) (*referral.Referral, err
 				aff.Update()
 			}
 		}
-
 	}
 
 	// Apply any program actions if they are configured
