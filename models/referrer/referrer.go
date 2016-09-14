@@ -7,7 +7,6 @@ import (
 	"crowdstart.com/models/affiliate"
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/referral"
-	"crowdstart.com/models/transaction"
 	"crowdstart.com/util/timeutil"
 )
 
@@ -24,23 +23,6 @@ type Referrer struct {
 	FirstReferredAt time.Time `json:"firstReferredAt"`
 }
 
-func (r *Referrer) ApplyBonus() (*transaction.Transaction, error) {
-	trans := transaction.New(r.Db)
-	trans.UserId = r.UserId
-	trans.Type = transaction.Deposit
-	trans.Notes = "Deposite due to referral"
-	trans.Tags = "referral"
-	trans.SourceId = r.Id()
-	trans.SourceKind = r.Kind()
-	r.Program.GetBonus(trans)
-
-	if err := trans.Put(); err != nil {
-		return nil, err
-	}
-
-	return trans, nil
-}
-
 func (r *Referrer) SaveReferral(orderId, userId string) (*referral.Referral, error) {
 	ref := referral.New(r.Db)
 	ref.ReferrerUserId = r.UserId
@@ -49,14 +31,15 @@ func (r *Referrer) SaveReferral(orderId, userId string) (*referral.Referral, err
 	ref.ReferrerId = r.Id()
 
 	// Try to save referral
-	if err := ref.Put(); err != nil {
+	if err := ref.Create(); err != nil {
 		return ref, err
 	}
 
+	// If this is the first referral, update referrer and affiliate
 	if timeutil.IsZero(r.FirstReferredAt) {
 		r.FirstReferredAt = time.Now()
+		r.Update()
 
-		// Update affiliate if referral from affiliate
 		if r.AffiliateId != "" {
 			aff := affiliate.New(r.Db)
 			if err := aff.Get(r.AffiliateId); err != nil {
@@ -67,9 +50,9 @@ func (r *Referrer) SaveReferral(orderId, userId string) (*referral.Referral, err
 
 	}
 
-	// Apply bonus if this is a referral for user
-	if r.UserId != "" {
-		if _, err := r.ApplyBonus(); err != nil {
+	// Apply any program actions if they are configured
+	if len(r.Program.Actions) > 0 {
+		if err := r.Program.ApplyActions(r); err != nil {
 			return ref, err
 		}
 	}
