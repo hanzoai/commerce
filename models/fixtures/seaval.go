@@ -19,7 +19,11 @@ var Seaval = New("seaval", func(c *gin.Context) *organization.Organization {
 	org.Website = "http://www.seavalshop.com"
 	org.SecretKey = []byte("81vHRE006iW4Ap4lu148M2Pc1b57cT57")
 	org.AddDefaultTokens()
-	org.Fee = 0.05
+
+	org.Fees.Card.Flat = 50
+	org.Fees.Card.Percent = 0.05
+	org.Fees.Affiliate.Flat = 30
+	org.Fees.Affiliate.Percent = 0.30
 
 	// Email configuration
 	org.Mandrill.APIKey = ""
