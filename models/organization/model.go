@@ -31,6 +31,7 @@ func (o *Organization) Defaults() {
 func New(db *datastore.Datastore) *Organization {
 	o := new(Organization)
 	o.Init(db)
+	o.Defaults()
 	return o
 }
 
