@@ -3,6 +3,7 @@ package organization
 import (
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
+	"crowdstart.com/models/types/pricing"
 )
 
 func (o Organization) Kind() string {
@@ -17,6 +18,14 @@ func (o *Organization) Init(db *datastore.Datastore) {
 func (o *Organization) Defaults() {
 	o.Admins = make([]string, 0)
 	o.Moderators = make([]string, 0)
+
+	o.Fees.Id = o.Id()
+	o.Fees.Card.Flat = 50
+	o.Fees.Card.Percent = 0.05
+	o.Fees.Affiliate.Flat = 30
+	o.Fees.Affiliate.Percent = 0.30
+
+	o.Partners = make([]pricing.Partner, 0)
 }
 
 func New(db *datastore.Datastore) *Organization {
