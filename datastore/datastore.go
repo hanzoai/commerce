@@ -154,19 +154,7 @@ func (d *Datastore) NewKey(kind, stringID string, intID int64, parent Key) *aeds
 }
 
 func (d *Datastore) DecodeKey(encodedKey string) (*aeds.Key, error) {
-	_key, err := aeds.DecodeKey(encodedKey)
-
-	// If unable to return key, bail out
-	if err != nil {
-		d.warn("Unable to decode key: %v", encodedKey)
-		return _key, err
-	}
-
-	// Since key returned might have been created with a different app, we'll
-	// recreate the key to ensure it has a valid AppID.
-	key := aeds.NewKey(d.Context, _key.Kind(), _key.StringID(), _key.IntID(), nil)
-
-	return key, err
+	return DecodeKey(d.Context, encodedKey)
 }
 
 // Helper func to get key for `datastore.Get/datastore.GetMulti`
@@ -481,4 +469,19 @@ func RunInTransaction(ctx appengine.Context, fn func(db *Datastore) error, opts 
 	return nds.RunInTransaction(ctx, func(ctx appengine.Context) error {
 		return fn(New(ctx))
 	}, i.(*aeds.TransactionOptions))
+}
+
+func DecodeKey(ctx appengine.Context, encodedKey string) (*aeds.Key, error) {
+	_key, err := aeds.DecodeKey(encodedKey)
+
+	// If unable to return key, bail out
+	if err != nil {
+		return _key, err
+	}
+
+	// Since key returned might have been created with a different app, we'll
+	// recreate the key to ensure it has a valid AppID.
+	key := aeds.NewKey(ctx, _key.Kind(), _key.StringID(), _key.IntID(), nil)
+
+	return key, err
 }

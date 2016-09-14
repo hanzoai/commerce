@@ -1,6 +1,6 @@
-package affiliate
+package partner
 
-type ByName []*Affiliate
+type ByName []*Partner
 
 func (a ByName) Len() int           { return len(a) }
 func (a ByName) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }

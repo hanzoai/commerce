@@ -148,7 +148,8 @@ func affiliateCallback(c *gin.Context) {
 		return
 	}
 
-	// Update stripe data
+	// Update affiliate
+	aff.Connected = true
 	aff.Stripe.UserId = token.UserId
 	aff.Stripe.AccessToken = token.AccessToken
 	aff.Stripe.PublishableKey = token.PublishableKey

@@ -5,6 +5,7 @@ import (
 
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/types/commission"
+	"crowdstart.com/models/types/currency"
 	"crowdstart.com/thirdparty/stripe/connect"
 	"crowdstart.com/util/val"
 )
@@ -12,24 +13,23 @@ import (
 type Affiliate struct {
 	mixin.Model
 
-	Enabled bool `json:"enabled"`
-	Period  int  `json:"period"`
+	Enabled   bool `json:"enabled"`
+	Connected bool `json:"connected"`
 
-	UserId    string `json:"userId"`
-	FirstName string `json:"firstName"`
-	LastName  string `json:"lastName"`
-	Company   string `json:"company"`
-	Country   string `json:"country"`
-	TaxId     string `json:"-"`
-	Timezone  string `json:"timezone"`
+	UserId   string `json:"userId"`
+	Name     string `json:"name"`
+	Company  string `json:"company"`
+	Country  string `json:"country"`
+	TaxId    string `json:"taxId"`
+	Timezone string `json:"timezone"`
 
-	Commission  commission.Commission `json:"commission"`
-	FlatFee     int                   `json:"flatFee"`
-	PlatformFee float64               `json:"platformFee"`
-	LastPaid    time.Time             `json:"lastPaid"`
+	Commission commission.Commission `json:"commission"`
+	Period     int                   `json:"period"`
+
+	LastPaid  time.Time      `json:"lastPaid,omitempty"`
+	TotalPaid currency.Cents `json:"totalPaid"`
 
 	Stripe struct {
-		// FIXME: What do we need to persist?
 		AccessToken    string
 		PublishableKey string
 		RefreshToken   string
