@@ -42,7 +42,7 @@ var transferFees = delay.Func("transfer-affiliate-fees", func(ctx appengine.Cont
 		}
 
 		// Skip field mismatch errors
-		if err := db.SkipFieldMismatch(err); err != nil {
+		if err = datastore.IgnoreFieldMismatch(err); err != nil {
 			log.Error("Failed to fetch next entity: %v", err, ctx)
 			break
 		}
