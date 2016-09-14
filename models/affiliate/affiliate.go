@@ -7,7 +7,7 @@ import (
 	"crowdstart.com/models/types/commission"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/thirdparty/stripe/connect"
-	"crowdstart.com/util/val"
+	"crowdstart.com/util/timeutil"
 )
 
 type Affiliate struct {
@@ -41,16 +41,18 @@ type Affiliate struct {
 	} `json:"-"`
 }
 
-func (a Affiliate) GetStripeAccessToken(userId string) (string, error) {
-	if a.Stripe.Live.UserId == userId {
-		return a.Stripe.Live.AccessToken, nil
+func (a *Affiliate) TransferCutoff() time.Time {
+	// Figure out payment start
+	start := a.LastPaid
+	if timeutil.IsZero(start) {
+		// FIXME: This should really be first date of first referral or some
+		// sort of scheduled start like 1, or 15th.
+		start = a.CreatedAt
 	}
-	if a.Stripe.Test.UserId == userId {
-		return a.Stripe.Test.AccessToken, nil
-	}
-	return "", StripeAccessTokenNotFound{userId, a.Stripe.Live.UserId, a.Stripe.Test.UserId}
-}
 
-func (a *Affiliate) Validator() *val.Validator {
-	return val.New().Check("Email").Exists()
+	// Should payout for transfers on net 20
+	year, month, day := start.Date()
+	t := time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
+	t = t.AddDate(0, 0, -a.Period)
+	return t
 }
