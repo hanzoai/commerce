@@ -40,7 +40,11 @@ var _ = New("kanoa-dev", func(c *gin.Context) *organization.Organization {
 	org.Owners = []string{usr.Id()}
 	org.Website = "https://www.getkanoa.com"
 	org.SecretKey = []byte("EZ2E011iX2Bp5lv149N2STd1d580cU58")
-	org.Fee = 0.05
+
+	org.Fees.Card.Flat = 50
+	org.Fees.Card.Percent = 0.05
+	org.Fees.Affiliate.Flat = 30
+	org.Fees.Affiliate.Percent = 0.30
 
 	// Integration configuration
 	org.Mailchimp.APIKey = ""
