@@ -11,6 +11,7 @@ import (
 	"crowdstart.com/auth/password"
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
+	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/user"
 	"crowdstart.com/util/counter"
 	"crowdstart.com/util/emails"
@@ -107,9 +108,23 @@ func create(c *gin.Context) {
 		usr.Enabled = true
 	}
 
+	usr.Enabled = org.SignUpOptions.AccountsEnabledByDefault
+
 	// Save new user
 	if err := usr.Put(); err != nil {
 		http.Fail(c, 400, "Failed to create user", err)
+	}
+
+	ref := referrer.New(usr.Db)
+
+	// if ReferrerId refers to non-existing token, then remove from order
+	if err := ref.GetById(usr.ReferrerId); err != nil {
+		usr.ReferrerId = ""
+	} else {
+		// Try to save referral, save updated referrer
+		if _, err := ref.SaveSignUpReferral(usr.Id(), usr.ReferrerId, usr.Db); err != nil {
+			log.Warn("Unable to save referral: %v", err, c)
+		}
 	}
 
 	// Render user

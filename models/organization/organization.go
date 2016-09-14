@@ -162,6 +162,10 @@ type Organization struct {
 		Uid         string
 	} `json:"-"`
 
+	SignUpOptions struct {
+		AccountsEnabledByDefault bool
+	}
+
 	// TODO: Delete?
 	GoogleAnalytics string `json:"googleAnalytics"`
 	FacebookTag     string `json:"facebookTag"`

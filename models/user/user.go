@@ -76,6 +76,8 @@ type User struct {
 
 	Balances map[currency.Type]currency.Cents `json:"balances" datastore:"-"`
 
+	ReferrerId string `json:"referrerId,omitempty"`
+
 	// Series of events that have occured relevant to this order
 	History []Event `json:"-,omitempty"`
 

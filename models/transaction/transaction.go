@@ -33,6 +33,8 @@ type Transaction struct {
 	// For searching
 	Tags string `json:"tags"`
 
+	Event string `json:"event"`
+
 	// Source Data
 	// We store Kind even though it is encoded in id for easier reference
 	SourceId   string `json:"sourceId"`
