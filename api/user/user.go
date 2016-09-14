@@ -6,10 +6,12 @@ import (
 	"crowdstart.com/auth/password"
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
+	"crowdstart.com/models/affiliate"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/referral"
 	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/transaction"
+	"crowdstart.com/models/transfer"
 	"crowdstart.com/models/user"
 	"crowdstart.com/util/json/http"
 	"crowdstart.com/util/rand"
@@ -96,4 +98,44 @@ func getTransactions(c *gin.Context) {
 	}
 
 	http.Render(c, 200, trans)
+}
+
+func getTransfers(c *gin.Context) {
+	org := middleware.GetOrganization(c)
+	db := datastore.New(org.Namespaced(c))
+	id := c.Params.ByName("userid")
+
+	usr := user.New(db)
+	if err := usr.GetById(id); err != nil {
+		http.Fail(c, 400, "Could not query user", err)
+		return
+	}
+
+	trans := make([]transfer.Transfer, 0)
+	if _, err := transfer.Query(db).Filter("AffiliateId=", usr.AffiliateId).GetAll(&trans); err != nil {
+		http.Fail(c, 400, "Could not query transfer", err)
+		return
+	}
+
+	http.Render(c, 200, trans)
+}
+
+func getAffiliate(c *gin.Context) {
+	org := middleware.GetOrganization(c)
+	db := datastore.New(org.Namespaced(c))
+	id := c.Params.ByName("userid")
+
+	usr := user.New(db)
+	if err := usr.GetById(id); err != nil {
+		http.Fail(c, 400, "Could not query user", err)
+		return
+	}
+
+	aff := affiliate.New(db)
+	if err := aff.GetById(usr.AffiliateId); err != nil {
+		http.Fail(c, 400, "Could not query affiliate", err)
+		return
+	}
+
+	http.Render(c, 200, aff)
 }
