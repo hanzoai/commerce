@@ -13,7 +13,7 @@ import (
 	"crowdstart.com/util/log"
 )
 
-// Create a copy delay func set to appropriate queue
+// Create a copy payout.TransferFee delay.Func configured to use unique queue
 var transferFee = payout.TransferFee.Queue("transfer-partner-fee")
 
 // Create transfers for all un-transferred fees for associated partner
