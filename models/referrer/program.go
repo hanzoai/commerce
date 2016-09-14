@@ -56,13 +56,10 @@ func saveStoreCredit(r *Referrer, amount currency.Cents, cur currency.Type) erro
 	trans.Type = transaction.Deposit
 	trans.Amount = amount
 	trans.Currency = cur
-
 	trans.SourceId = r.Id()
 	trans.SourceKind = r.Kind()
 	trans.UserId = r.UserId
-
 	trans.Notes = "Deposit due to referral"
 	trans.Tags = "referral"
-
 	return trans.Create()
 }
