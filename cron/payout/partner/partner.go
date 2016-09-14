@@ -46,7 +46,7 @@ var transferFees = delay.Func("transfer-partner-fees", func(ctx appengine.Contex
 		}
 
 		// Skip field mismatch errors
-		if err := db.SkipFieldMismatch(err); err != nil {
+		if err = datastore.IgnoreFieldMismatch(err); err != nil {
 			log.Error("Failed to fetch next entity: %v", err, ctx)
 			break
 		}
