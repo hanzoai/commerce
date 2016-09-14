@@ -1,6 +1,8 @@
 package partner
 
 import (
+	"time"
+
 	"appengine"
 
 	"crowdstart.com/config"
@@ -17,7 +19,7 @@ import (
 var transferFee = payout.TransferFee.Queue("transfer-partner-fee")
 
 // Create transfers for all un-transferred fees for associated partner
-var transferFees = delay.Func("transfer-partner-fees", func(ctx appengine.Context, namespace, partnerId string) {
+var transferFees = delay.Func("transfer-partner-fees", func(ctx appengine.Context, namespace, partnerId string, cutoff time.Time) {
 	db := datastore.New(ctx)
 
 	// Fetch partner
@@ -34,7 +36,7 @@ var transferFees = delay.Func("transfer-partner-fees", func(ctx appengine.Contex
 
 	// Iterate over fees that have not been transfered
 	db = datastore.New(nsctx)
-	q := fee.Query(db).Ancestor(par.Key()).Filter("TransferId=", "").KeysOnly()
+	q := fee.Query(db).Ancestor(par.Key()).Filter("TransferId=", "").Filter("CreatedAt<", cutoff).KeysOnly()
 	t := q.Run()
 
 	for {
@@ -74,9 +76,14 @@ func Payout(ctx appengine.Context) error {
 		}
 
 		log.Debug("Processing partner fees for organization: %s", org.Name, ctx)
-		for _, partner := range org.Partners {
-			log.Debug("Processing partner fees for organization: '%s'", org.Name, ctx)
-			transferFees.Call(ctx, org.Name, partner.Id)
+		for _, p := range org.Partners {
+			par := partner.New(db)
+			if err := par.GetById(p.Id); err != nil {
+				log.Error("Failed to get partner '%s': %v", p.Id, err, ctx)
+			} else {
+				log.Debug("Processing partner fees for organization: '%s'", org.Name, ctx)
+				transferFees.Call(ctx, org.Name, par.Id(), par.Schedule.Cutoff())
+			}
 		}
 	}
 
