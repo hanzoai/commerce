@@ -13,6 +13,7 @@ import (
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
+// Is a link that can refer customers to buy products
 type Referrer struct {
 	mixin.Model
 
