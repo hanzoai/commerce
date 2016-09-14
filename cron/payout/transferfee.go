@@ -45,9 +45,16 @@ func TransferFee(ctx appengine.Context, stripeToken, namespace, key string) {
 
 	// Initiate transfer on Stripe's side
 	sc := stripe.New(ctx, stripeToken)
-	if _, err = sc.Transfer(tr); err != nil {
+	if tr_, err := sc.Transfer(tr); err != nil {
 		// Update transfer to reflect failure status
-		tr.Status = transfer.Canceled
+		tr.Status = transfer.Error
+		if tr_.FailMsg == "" {
+			tr.FailureCode = string(tr_.FailCode)
+			tr.FailureMessage = tr_.FailMsg
+		} else {
+			tr.FailureCode = "stripe-error"
+			tr.FailureMessage = err.Error()
+		}
 		tr.MustUpdate()
 	}
 }
