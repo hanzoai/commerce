@@ -3,7 +3,6 @@ package partner
 import (
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/types/commission"
-	"crowdstart.com/models/types/currency"
 	"crowdstart.com/models/types/schedule"
 	"crowdstart.com/thirdparty/stripe/connect"
 
@@ -27,8 +26,6 @@ type Partner struct {
 
 	Commission commission.Commission `json:"commission"`
 	Schedule   schedule.Schedule     `json:"schedule"`
-
-	TotalPaid currency.Cents `json:"totalPaid"`
 
 	Stripe struct {
 		AccessToken    string
