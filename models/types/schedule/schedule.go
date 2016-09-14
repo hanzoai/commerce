@@ -7,7 +7,7 @@ import (
 )
 
 type Schedule struct {
-	Period  int       `json:"period"`
+	Period  int       `json:"period"` // Number of days
 	StartAt time.Time `json:"startAt,omitempty"`
 	LastAt  time.Time `json:"lastAt,omitempty"`
 	Rolling bool      `json:"rolling,omitempty"`

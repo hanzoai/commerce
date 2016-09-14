@@ -48,7 +48,8 @@ var transferFees = delay.Func("transfer-platform-fees", func(ctx appengine.Conte
 			break
 		}
 
-		// Create transfer for associated fee
+		// Create transfer for associated fee. Note: uses datastore-encoded key
+		// to identify fee rather than our hashid.
 		transferFee.Call(ctx, config.Stripe.SecretKey, org.Name, key.Encode())
 	}
 })
@@ -57,6 +58,7 @@ var transferFees = delay.Func("transfer-platform-fees", func(ctx appengine.Conte
 func Payout(ctx appengine.Context) error {
 	db := datastore.New(ctx)
 
+	// FIXME: Use iteration instead
 	log.Debug("Fetching all organizations", ctx)
 	orgs := make([]*organization.Organization, 0)
 	if _, err := organization.Query(db).GetAll(&orgs); err != nil {
