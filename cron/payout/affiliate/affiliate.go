@@ -1,6 +1,8 @@
 package affiliate
 
 import (
+	"time"
+
 	"appengine"
 
 	"crowdstart.com/config"
@@ -17,7 +19,7 @@ import (
 var transferFee = payout.TransferFee.Queue("transfer-affiliate-fee")
 
 // Create transfers for all un-transferred fees for associated organization
-var transferFees = delay.Func("transfer-affiliate-fees", func(ctx appengine.Context, namespace, affKey string) {
+var transferFees = delay.Func("transfer-affiliate-fees", func(ctx appengine.Context, namespace, affKey string, cutoff time.Time) {
 	db := datastore.New(ctx)
 
 	// Switch namespace
@@ -30,7 +32,7 @@ var transferFees = delay.Func("transfer-affiliate-fees", func(ctx appengine.Cont
 
 	// Iterate over fees that have not been transfered
 	db = datastore.New(nsctx)
-	q := fee.Query(db).Ancestor(key).Filter("TransferId=", "").KeysOnly()
+	q := fee.Query(db).Ancestor(key).Filter("TransferId=", "").Filter("CreatedAt<", cutoff).KeysOnly()
 	t := q.Run()
 
 	for {
@@ -77,8 +79,8 @@ func Payout(ctx appengine.Context) error {
 		}
 
 		for _, aff := range affs {
-			log.Debug("Processing affiliate fees for affiliate '%s', organization: '%s'", aff.Id(), org.Name, ctx)
-			transferFees.Call(ctx, org.Name, aff.Key().Encode())
+			log.Debug("Processing affiliate fees for affiliate '%s', organization: '%s'", aff.Key().Encode(), org.Name, ctx)
+			transferFees.Call(ctx, org.Name, aff.Key().Encode(), aff.Schedule.Cutoff())
 		}
 	}
 
