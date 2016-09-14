@@ -1,4 +1,4 @@
-package tasks
+package payout
 
 import (
 	"appengine"
@@ -8,18 +8,20 @@ import (
 	"crowdstart.com/models/multi"
 	"crowdstart.com/models/transfer"
 	"crowdstart.com/thirdparty/stripe"
-	"crowdstart.com/util/delay"
 )
 
 // Create transfer for single fee
-func transferFee(ctx appengine.Context, stripeToken, orgName, feeKey string) {
+func TransferFee(ctx appengine.Context, stripeToken, namespace, key string) {
 	var tr *transfer.Transfer
+
+	// Switch to corrct namespace
+	ctx, _ = appengine.Namespace(ctx, namespace)
 
 	// Create transfer and update payment in transaction
 	err := datastore.RunInTransaction(ctx, func(db *datastore.Datastore) error {
 		// Fetch related fee
 		fe := fee.New(db)
-		fe.MustGet(feeKey)
+		fe.MustGet(key)
 
 		// Create associated transfer
 		tr = transfer.New(db)
@@ -49,7 +51,3 @@ func transferFee(ctx appengine.Context, stripeToken, orgName, feeKey string) {
 		tr.MustUpdate()
 	}
 }
-
-// Create associated tasks with unique queues
-var TransferAffiliateFee = delay.Func("transfer-affiliate-fee", transferFee)
-var TransferPlatformFee = delay.Func("transfer-platform-fee", transferFee)
