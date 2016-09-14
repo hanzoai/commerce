@@ -1,11 +1,10 @@
 package partner
 
 import (
-	"time"
-
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/types/commission"
 	"crowdstart.com/models/types/currency"
+	"crowdstart.com/models/types/schedule"
 	"crowdstart.com/thirdparty/stripe/connect"
 
 	. "crowdstart.com/models"
@@ -27,9 +26,8 @@ type Partner struct {
 	Timezone string  `json:"timezone"`
 
 	Commission commission.Commission `json:"commission"`
-	Period     int                   `json:"period"`
+	Schedule   schedule.Schedule     `json:"schedule"`
 
-	LastPaid  time.Time      `json:"lastPaid,omitempty"`
 	TotalPaid currency.Cents `json:"totalPaid"`
 
 	Stripe struct {
