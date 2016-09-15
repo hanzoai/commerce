@@ -26,15 +26,15 @@ type Referrer struct {
 }
 
 func (r *Referrer) SaveReferral(orderId, userId string) (*referral.Referral, error) {
-	ref := referral.New(r.Db)
-	ref.ReferrerUserId = r.UserId
-	ref.OrderId = orderId
-	ref.UserId = userId
-	ref.ReferrerId = r.Id()
+	rfl := referral.New(r.Db)
+	rfl.ReferrerUserId = r.UserId
+	rfl.OrderId = orderId
+	rfl.UserId = userId
+	rfl.ReferrerId = r.Id()
 
 	// Try to save referral
-	if err := ref.Create(); err != nil {
-		return ref, err
+	if err := rfl.Create(); err != nil {
+		return rfl, err
 	}
 
 	// If this is the first referral, update referrer and affiliate
@@ -54,11 +54,11 @@ func (r *Referrer) SaveReferral(orderId, userId string) (*referral.Referral, err
 	// Apply any program actions if they are configured
 	if len(r.Program.Actions) > 0 {
 		if err := r.Program.ApplyActions(r); err != nil {
-			return ref, err
+			return rfl, err
 		}
 	}
 
-	return ref, nil
+	return rfl, nil
 }
 
 func (r *Referrer) Referrals() ([]*referral.Referral, error) {
