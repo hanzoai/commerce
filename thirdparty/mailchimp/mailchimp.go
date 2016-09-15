@@ -168,6 +168,58 @@ func (api API) DeleteStore(stor *store.Store) error {
 	return err
 }
 
+func (api API) CreateCustomer(storeId string, usr *user.User) error {
+	req := &gochimp3.Customer{
+		// Required
+		ID: usr.Id(),
+
+		// Optional
+		EmailAddress: usr.Email,
+		OptInStatus:  true,
+		Company:      usr.Company,
+		FirstName:    usr.FirstName,
+		LastName:     usr.LastName,
+		// OrdersCount:  0,
+		// TotalSpent:   0,
+		// Address:      gochimp3.Address{},
+	}
+
+	stor, err := api.client.GetStore(storeId, nil)
+	if err != nil {
+		log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, usr.Db.Context)
+		return err
+	}
+
+	_, err = stor.CreateCustomer(req)
+	return err
+}
+
+func (api API) UpdateCustomer(storeId string, usr *user.User) error {
+	req := &gochimp3.Customer{
+		// Required
+		ID: usr.Id(),
+
+		// Optional
+		EmailAddress: usr.Email,
+		OptInStatus:  true,
+		Company:      usr.Company,
+		// FirstName:    "",
+		// LastName:     "",
+		// OrdersCount:  0,
+		// TotalSpent:   0,
+		// Address:      gochimp3.Address{},
+	}
+
+	stor, err := api.client.GetStore(storeId, nil)
+	if err != nil {
+		log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, usr.Db.Context)
+		return err
+	}
+
+	_, err = stor.UpdateCustomer(req)
+	return err
+}
+
 func (api API) CreateCart(storeId string, car *cart.Cart) error {
 	lines := make([]gochimp3.LineItem, 0)
 	for i, line := range car.Items {
@@ -215,6 +267,17 @@ func (api API) CreateCart(storeId string, car *cart.Cart) error {
 	}
 
 	_, err = stor.CreateCart(req)
+	return err
+}
+
+func (api API) DeleteCustomer(storeId string, usr *user.User) error {
+	stor, err := api.client.GetStore(storeId, nil)
+	if err != nil {
+		log.Warn("Unable to get mailchimp Store '%s': %v", storeId, err, usr.Db.Context)
+		return err
+	}
+
+	_, err = stor.DeleteCustomer(usr.Id())
 	return err
 }
 
