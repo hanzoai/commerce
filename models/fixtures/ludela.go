@@ -78,7 +78,7 @@ var Ludela = New("ludela", func(c *gin.Context) *organization.Organization {
 			EntityId:    "V9OT22mI0a",
 			Id:          "GjpBDnTuDUk",
 			IssuedAt:    time.Now(),
-			Name:        "live-published-key",
+			Name:        "test-published-key",
 			Permissions: 4503617075675176,
 			Secret:      []byte("EU8E011iX2Bp5lv481N2STd1d999cU58"),
 		},
