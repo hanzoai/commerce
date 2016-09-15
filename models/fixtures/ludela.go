@@ -20,6 +20,7 @@ var Ludela = New("ludela", func(c *gin.Context) *organization.Organization {
 	org := organization.New(db)
 	org.Name = "ludela"
 	org.GetOrCreate("Name=", org.Name)
+	org.SetKey("V9OT22mI0a")
 
 	u := user.New(db)
 	u.Email = "jamie@ludela.com"
