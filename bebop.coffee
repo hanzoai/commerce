@@ -64,7 +64,7 @@ files =
 module.exports =
   cwd: process.cwd()
 
-  port: 8081
+  port: 8089
 
   exclude: [
     /api\/static/
