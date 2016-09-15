@@ -13,6 +13,7 @@ import (
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/user"
+	"crowdstart.com/thirdparty/mailchimp"
 	"crowdstart.com/util/counter"
 	"crowdstart.com/util/emails"
 	"crowdstart.com/util/json"
@@ -136,5 +137,16 @@ func create(c *gin.Context) {
 		ctx := middleware.GetAppEngine(c)
 		emails.SendAccountCreationConfirmationEmail(ctx, org, usr)
 		emails.SendWelcomeEmail(ctx, org, usr)
+	}
+
+	// Save user as customer in Mailchimp if configured
+	if org.Mailchimp.APIKey != "" {
+		// Create new mailchimp client
+		client := mailchimp.New(ctx, org.Mailchimp.APIKey)
+
+		// Create customer in mailchimp for this user
+		if err := client.CreateCustomer(org.DefaultStore, usr); err != nil {
+			log.Warn("Failed to create Mailchimp customer: %v", err, ctx)
+		}
 	}
 }
