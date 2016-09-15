@@ -45,6 +45,7 @@ func CompleteCapture(c *gin.Context, org *organization.Organization, ord *order.
 	var err error
 
 	db := ord.Db
+	ctx := db.Context
 
 	log.Debug("Completing Capture for\nOrder %v\nPayments %v", ord, payments, c)
 
@@ -58,8 +59,20 @@ func CompleteCapture(c *gin.Context, org *organization.Organization, ord *order.
 			ord.ReferrerId = ""
 		} else {
 			// Save referral
-			if _, err := ref.SaveReferral(ord.Id(), ord.UserId); err != nil {
+			rfl, err := ref.SaveReferral(ord.Id(), ord.UserId)
+			if err != nil {
 				log.Warn("Unable to save referral: %v", err, c)
+			} else {
+				// Update statistics
+				if ref.AffiliateId != "" {
+					if err := counter.IncrReferrerFees(ctx, org, ref.Id(), rfl); err != nil {
+						log.Warn("Counter Error %s", err, ctx)
+					}
+
+					if err := counter.IncrAffiliateFees(ctx, org, ref.AffiliateId, rfl); err != nil {
+						log.Warn("Counter Error %s", err, ctx)
+					}
+				}
 			}
 		}
 	}
@@ -88,8 +101,6 @@ func CompleteCapture(c *gin.Context, org *organization.Organization, ord *order.
 	if _, err = db.PutMulti(keys, vals); err != nil {
 		return nil, err
 	}
-
-	ctx := db.Context
 
 	// Save coupon redemptions
 	ord.GetCoupons()
