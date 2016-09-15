@@ -45,6 +45,9 @@ var Ludela = New("ludela", func(c *gin.Context) *organization.Organization {
 	org.Email.Defaults.FromName = "Ludela"
 	org.Email.Defaults.FromEmail = "hi@ludela.com"
 
+	// Enable accounts by default
+	org.SignUpOptions.AccountsEnabledByDefault = true
+
 	// API Tokens
 	org.Tokens = []token.Token{
 		token.Token{
