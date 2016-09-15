@@ -123,7 +123,7 @@ func create(c *gin.Context) {
 		usr.ReferrerId = ""
 	} else {
 		// Try to save referral, save updated referrer
-		if _, err := ref.SaveSignUpReferral(usr.Id(), usr.ReferrerId, usr.Db); err != nil {
+		if _, err := ref.SaveSignUpReferral(usr.Id(), usr.FirstName, usr.ReferrerId, usr.Db); err != nil {
 			log.Warn("Unable to save referral: %v", err, c)
 		}
 	}

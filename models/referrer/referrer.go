@@ -75,10 +75,11 @@ func (r *Referrer) SaveReferral(ord *order.Order) (*referral.Referral, error) {
 	return ref, err
 }
 
-func (r *Referrer) SaveSignUpReferral(userId, referrerId string, db *datastore.Datastore) (*referral.Referral, error) {
+func (r *Referrer) SaveSignUpReferral(userId, firstName, referrerId string, db *datastore.Datastore) (*referral.Referral, error) {
 	ref := referral.New(db)
 	ref.UserId = userId
-	ref.ReferrerUserId = userId
+	ref.FirstName = firstName
+	ref.ReferrerUserId = r.UserId
 	ref.ReferrerId = referrerId
 
 	if r.Program.Event != NewUser {

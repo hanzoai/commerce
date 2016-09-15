@@ -6,7 +6,8 @@ type Referral struct {
 	mixin.Model
 
 	// User being referred
-	UserId string `json:"userId"`
+	UserId    string `json:"userId"`
+	FirstName string `json:"firstName"`
 
 	// Associated order
 	OrderId string `json:"orderId"`
