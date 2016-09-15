@@ -262,6 +262,8 @@ func (u *User) LoadReferrals() error {
 		return err
 	}
 
+	log.Warn("Referrals %v", u.Referrals)
+
 	return nil
 }
 

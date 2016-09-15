@@ -42,7 +42,7 @@ type Program struct {
 	Triggers []int    `json:"triggers"`
 	Actions  []Action `json:"actions"`
 
-	Event Event `json:event`
+	Event Event `json:"event"`
 }
 
 func (r *Program) GetBonus(trans *transaction.Transaction, referrals int) {
