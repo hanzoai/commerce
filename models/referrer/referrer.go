@@ -6,6 +6,7 @@ import (
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/referral"
 	"crowdstart.com/models/transaction"
+	"crowdstart.com/models/types/client"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
@@ -19,6 +20,10 @@ type Referrer struct {
 	ReferralIds    []string                  `json:"referralIds"`
 	TransactionIds []string                  `json:"transactionsIds"`
 	Transactions   []transaction.Transaction `json:"transactions,omitempty"`
+
+	Client      client.Client `json:"-"`
+	Blacklisted bool          `json:"blacklisted,omitempty"`
+	Duplicate   bool          `json:"duplicate,omitempty"`
 }
 
 func (r *Referrer) ApplyBonus() (*transaction.Transaction, error) {
