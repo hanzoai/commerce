@@ -80,7 +80,7 @@ func Payout(ctx appengine.Context) error {
 
 		for _, aff := range affs {
 			log.Debug("Processing affiliate fees for affiliate '%s', organization: '%s'", aff.Key().Encode(), org.Name, ctx)
-			transferFees.Call(ctx, org.Name, aff.Key().Encode(), aff.Schedule.Cutoff())
+			transferFees.Call(ctx, org.Name, aff.Key().Encode(), aff.Schedule.Cutoff(time.Now()))
 		}
 	}
 
