@@ -86,6 +86,12 @@ import (
 
 type Type string
 
+const (
+	DailyRolling    Type = "daily-rolling"
+	WeeklyAnchored       = "weekly-anchored"
+	MonthlyAnchored      = "monthly-anchored"
+)
+
 type Schedule struct {
 	Type          Type   `json:"type"`
 	Period        int    `json:"period"`        // DailyRolling: number of days of payment latency
