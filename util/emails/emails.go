@@ -76,7 +76,7 @@ func SendPasswordResetEmail(ctx appengine.Context, org *organization.Organizatio
 }
 
 func SendEmailConfirmedEmail(ctx appengine.Context, org *organization.Organization, usr *user.User) {
-	conf := org.Email.User.EmailConfirmed.Config(org)
+	conf := org.Email.User.EmailConfirmation.Config(org)
 	if !MandrillEnabled(ctx, org, conf) {
 		return
 	}
