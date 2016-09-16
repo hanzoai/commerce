@@ -79,9 +79,9 @@ The current scheduling modes supported are:
 
 There are other scheduling methods possible. We could support a payroll-style
 schedule, in which payments are made monthly (this is equivalent to "monthly,
-anchored payments"), semimonthly (in which the year is divided into 24 payment
-and latency periods aligned with monthly boundaries), biweekly (in which
-the year is divided into 26 payment and latency periods that fall in and out
+anchored payments"), semimonthly (in which the year is divided into 24
+payment-and-latency periods aligned with monthly boundaries), biweekly (in which
+the year is divided into 26 payment-and-latency periods that fall in and out
 of sync with monthly boundaries), and weekly (this is equivalent to "weekly,
 anchored payments").
 */
