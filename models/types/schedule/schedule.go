@@ -65,7 +65,7 @@ The current scheduling modes supported are:
   * a payment received on 2016-01-15 will be paid out no earlier than 2016-03-15,
   * a payment received on 2016-02-01 will be paid out no earlier than 2016-04-15, and
   * a payment received on 2016-02-15 will be paid out no earlier than 2016-04-15.
-  
+
   Additonally, if the monthly anchor is the 31st, then:
   * a payment received on 2016-02-01 will be paid out no earlier than 2016-04-30,
   * a payment received on 2016-02-29 will be paid out no earlier than 2016-04-30,
@@ -75,7 +75,7 @@ The current scheduling modes supported are:
   Note that this adds an extra calendar-month (i.e. 28, 29, 30, 31 days) of
   latency between receipt-of-payment and transfer-of-funds.
   If the anchor is larger than the number of days present in the current
-  month, then the anchor is truncated to the last day of the month. 
+  month, then the anchor is truncated to the last day of the month.
 
 There are other scheduling methods possible. We could support a payroll-style
 schedule, in which payments are made monthly (this is equivalent to "monthly,
@@ -89,28 +89,28 @@ anchored payments").
 type Type string
 
 const (
-	DailyRolling Type = "daily-rolling"
-	WeeklyAnchored    = "weekly-anchored"
-	MonthlyAnchored   = "monthly-anchored"
+	DailyRolling    Type = "daily-rolling"
+	WeeklyAnchored       = "weekly-anchored"
+	MonthlyAnchored      = "monthly-anchored"
 )
 
 type Schedule struct {
 	Type          Type   `json:"type"`
-	Period        int    `json:"period"` // DailyRolling: number of days of payment latency
-	WeeklyAnchor  string `json:"weeklyAnchor"` // WeeklyAnchored: day of the week when the payout should occur
+	Period        int    `json:"period"`        // DailyRolling: number of days of payment latency
+	WeeklyAnchor  string `json:"weeklyAnchor"`  // WeeklyAnchored: day of the week when the payout should occur
 	MonthlyAnchor int    `json:"monthlyAnchor"` // MonthlyAnchored: day of the month when the payout should occur
 }
 
 func (s Schedule) Cutoff(t time.Time) time.Time {
 	switch s.Type {
-		case DailyRolling:
-			return rollingCutoff(t, -s.Period)
-		case WeeklyAnchored:
-			return weeklyCutoff(t, parseDayOfWeek(s.WeeklyAnchor))
-		case MonthlyAnchored:
-			return monthlyCutoff(t, s.MonthlyAnchor)
-		default:
-			panic("invalid cutoff type")
+	case DailyRolling:
+		return rollingCutoff(t, -s.Period)
+	case WeeklyAnchored:
+		return weeklyCutoff(t, parseDayOfWeek(s.WeeklyAnchor))
+	case MonthlyAnchored:
+		return monthlyCutoff(t, s.MonthlyAnchor)
+	default:
+		panic("invalid cutoff type")
 	}
 }
 
@@ -162,13 +162,13 @@ func clamp(val int, min int, max int) int {
 }
 
 func isLeapYear(year int) bool {
-	if year % 4 != 0 {
+	if year%4 != 0 {
 		return false
 	}
-	if year % 100 != 0 {
+	if year%100 != 0 {
 		return true
 	}
-	if year % 400 != 0 {
+	if year%400 != 0 {
 		return false
 	}
 	return true
@@ -176,56 +176,56 @@ func isLeapYear(year int) bool {
 
 func daysInMonth(year int, month time.Month) int {
 	switch month {
-		case time.January:
-			fallthrough
-		case time.March:
-			fallthrough
-		case time.May:
-			fallthrough
-		case time.July:
-			fallthrough
-		case time.August:
-			fallthrough
-		case time.October:
-			fallthrough
-		case time.December:
-			return 31
-		case time.February:
-			if isLeapYear(year) {
-				return 29
-			} else {
-				return 28
-			}
-		case time.April:
-			fallthrough
-		case time.June:
-			fallthrough
-		case time.September:
-			fallthrough
-		case time.November:
-			return 30
-		default:
-			panic("month out of range")
+	case time.January:
+		fallthrough
+	case time.March:
+		fallthrough
+	case time.May:
+		fallthrough
+	case time.July:
+		fallthrough
+	case time.August:
+		fallthrough
+	case time.October:
+		fallthrough
+	case time.December:
+		return 31
+	case time.February:
+		if isLeapYear(year) {
+			return 29
+		} else {
+			return 28
+		}
+	case time.April:
+		fallthrough
+	case time.June:
+		fallthrough
+	case time.September:
+		fallthrough
+	case time.November:
+		return 30
+	default:
+		panic("month out of range")
 	}
 }
 
 func parseDayOfWeek(s string) time.Weekday {
 	switch s {
-		case "sunday":
-			return time.Sunday
-		case "monday":
-			return time.Monday
-		case "tuesday":
-			return time.Tuesday
-		case "wednesday":
-			return time.Wednesday
-		case "thursday":
-			return time.Thursday
-		case "friday":
-			return time.Friday
-		case "saturday":
-			return time.Saturday
-		default:
-			panic("bad time string")
+	case "sunday":
+		return time.Sunday
+	case "monday":
+		return time.Monday
+	case "tuesday":
+		return time.Tuesday
+	case "wednesday":
+		return time.Wednesday
+	case "thursday":
+		return time.Thursday
+	case "friday":
+		return time.Friday
+	case "saturday":
+		return time.Saturday
+	default:
+		panic("bad time string")
 	}
 }
