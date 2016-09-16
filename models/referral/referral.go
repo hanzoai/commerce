@@ -12,22 +12,21 @@ const (
 	NewUser       = "new-user"
 )
 
-
 type Referral struct {
 	mixin.Model
 
 	Type Type `json:"type"`
 
 	// User created by referral
-	UserId    string `json:"userId"`
+	UserId string `json:"userId"`
 
 	// Order created by referral
 	OrderId string `json:"orderId"`
 
 	// Referred by
-	Referrer type {
-		Id string `json:"id"`
-		UserId string `json:"userId"`
+	Referrer struct {
+		Id          string `json:"id"`
+		UserId      string `json:"userId"`
 		AffiliateId string `json:"affiliateId"`
 	}
 
