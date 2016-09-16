@@ -30,12 +30,18 @@ type Referrer struct {
 	Duplicate   bool          `json:"duplicate,omitempty"`
 }
 
-func (r *Referrer) SaveReferral(orderId, userId string) (*referral.Referral, error) {
+func (r *Referrer) SaveReferral(typ string, referent interface{}) (*referral.Referral, error) {
 	rfl := referral.New(r.Db)
-	rfl.ReferrerUserId = r.UserId
-	rfl.OrderId = orderId
-	rfl.UserId = userId
-	rfl.ReferrerId = r.Id()
+
+	rfl.Referrer.UserId = r.UserId
+	rfl.Referrer.Id = r.Id()
+
+	// switch v := referent.(type) {
+	// case *order.Order:
+	// 	rfl.OrderId = v.Id()
+	// case *user.User:
+	// 	rfl.UserId = v.Id()
+	// }
 
 	// Try to save referral
 	if err := rfl.Create(); err != nil {

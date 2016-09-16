@@ -11,6 +11,7 @@ import (
 	"crowdstart.com/auth/password"
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
+	"crowdstart.com/models/referral"
 	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/user"
 	"crowdstart.com/thirdparty/mailchimp"
@@ -127,7 +128,7 @@ func create(c *gin.Context) {
 		usr.ReferrerId = ""
 	} else {
 		// Try to save referral, save updated referrer
-		if _, err := ref.SaveReferral(usr); err != nil {
+		if _, err := ref.SaveReferral(referral.NewUser, usr); err != nil {
 			log.Warn("Unable to save referral: %v", err, c)
 		}
 	}
