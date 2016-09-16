@@ -197,7 +197,7 @@ var AddMemberTask *delay.Function
 
 func init() {
 	IncrementByTask = delay.Func("IncrementByTask", func(c appengine.Context, name string, amount int) {
-		log.Debug("INCREMENT BY", c)
+		log.Debug("INCREMENT %s BY %d", name, amount, c)
 		// Get counter config.
 		var cfg counterConfig
 		ckey := aeds.NewKey(c, configKind, name, 0, nil)

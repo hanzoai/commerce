@@ -12,6 +12,13 @@ const (
 	Refund           = "Refund" // Refund part of the payment on a order
 )
 
+type Event string
+
+const (
+	NewOrder Event = "order.new"
+	NewUser        = "user.new"
+)
+
 type Credit struct {
 	Currency currency.Type  `json:"currency,omitempty"`
 	Amount   currency.Cents `json:"amount,omitempty"`
@@ -34,6 +41,8 @@ type Program struct {
 	// Trigger is the number of referrals, 0 means it triggers on every referral
 	Triggers []int    `json:"triggers"`
 	Actions  []Action `json:"actions"`
+
+	Event Event `json:"event"`
 }
 
 func (p *Program) ApplyActions(r *Referrer) error {

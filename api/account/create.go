@@ -11,7 +11,9 @@ import (
 	"crowdstart.com/auth/password"
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
+	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/user"
+	"crowdstart.com/thirdparty/mailchimp"
 	"crowdstart.com/util/counter"
 	"crowdstart.com/util/emails"
 	"crowdstart.com/util/json"
@@ -78,23 +80,27 @@ func create(c *gin.Context) {
 		return
 	}
 
-	// Password should be at least 6 characters long
-	if len(req.Password) < 6 {
-		http.Fail(c, 400, "Password needs to be atleast 6 characters", errors.New("Password needs to be atleast 6 characters"))
-		return
-	}
-
-	// Password confirm must match
-	if req.Password != req.PasswordConfirm {
-		http.Fail(c, 400, "Passwords need to match", errors.New("Passwords need to match"))
-		return
-	}
-
-	// Hash password
-	if hash, err := password.Hash(req.Password); err != nil {
-		http.Fail(c, 400, "Failed to hash user password", err)
+	if req.Password == "" && org.SignUpOptions.NoPasswordRequired {
+		// You are a bad person
 	} else {
-		usr.PasswordHash = hash
+		// Password should be at least 6 characters long
+		if len(req.Password) < 6 {
+			http.Fail(c, 400, "Password needs to be atleast 6 characters", errors.New("Password needs to be atleast 6 characters"))
+			return
+		}
+
+		// Password confirm must match
+		if req.Password != req.PasswordConfirm {
+			http.Fail(c, 400, "Passwords need to match", errors.New("Passwords need to match"))
+			return
+		}
+
+		// Hash password
+		if hash, err := password.Hash(req.Password); err != nil {
+			http.Fail(c, 400, "Failed to hash user password", err)
+		} else {
+			usr.PasswordHash = hash
+		}
 	}
 
 	ctx := org.Db.Context
@@ -107,9 +113,23 @@ func create(c *gin.Context) {
 		usr.Enabled = true
 	}
 
+	usr.Enabled = org.SignUpOptions.AccountsEnabledByDefault
+
 	// Save new user
 	if err := usr.Put(); err != nil {
 		http.Fail(c, 400, "Failed to create user", err)
+	}
+
+	ref := referrer.New(usr.Db)
+
+	// if ReferrerId refers to non-existing token, then remove from order
+	if err := ref.GetById(usr.ReferrerId); err != nil {
+		usr.ReferrerId = ""
+	} else {
+		// Try to save referral, save updated referrer
+		if _, err := ref.SaveReferral(usr); err != nil {
+			log.Warn("Unable to save referral: %v", err, c)
+		}
 	}
 
 	// Render user
@@ -121,5 +141,16 @@ func create(c *gin.Context) {
 		ctx := middleware.GetAppEngine(c)
 		emails.SendAccountCreationConfirmationEmail(ctx, org, usr)
 		emails.SendWelcomeEmail(ctx, org, usr)
+	}
+
+	// Save user as customer in Mailchimp if configured
+	if org.Mailchimp.APIKey != "" {
+		// Create new mailchimp client
+		client := mailchimp.New(ctx, org.Mailchimp.APIKey)
+
+		// Create customer in mailchimp for this user
+		if err := client.CreateCustomer(org.DefaultStore, usr); err != nil {
+			log.Warn("Failed to create Mailchimp customer: %v", err, ctx)
+		}
 	}
 }
