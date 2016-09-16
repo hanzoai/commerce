@@ -80,23 +80,27 @@ func create(c *gin.Context) {
 		return
 	}
 
-	// Password should be at least 6 characters long
-	if len(req.Password) < 6 {
-		http.Fail(c, 400, "Password needs to be atleast 6 characters", errors.New("Password needs to be atleast 6 characters"))
-		return
-	}
-
-	// Password confirm must match
-	if req.Password != req.PasswordConfirm {
-		http.Fail(c, 400, "Passwords need to match", errors.New("Passwords need to match"))
-		return
-	}
-
-	// Hash password
-	if hash, err := password.Hash(req.Password); err != nil {
-		http.Fail(c, 400, "Failed to hash user password", err)
+	if req.Password == "" && org.SignUpOptions.NoPasswordRequired {
+		// You are a bad person
 	} else {
-		usr.PasswordHash = hash
+		// Password should be at least 6 characters long
+		if len(req.Password) < 6 {
+			http.Fail(c, 400, "Password needs to be atleast 6 characters", errors.New("Password needs to be atleast 6 characters"))
+			return
+		}
+
+		// Password confirm must match
+		if req.Password != req.PasswordConfirm {
+			http.Fail(c, 400, "Passwords need to match", errors.New("Passwords need to match"))
+			return
+		}
+
+		// Hash password
+		if hash, err := password.Hash(req.Password); err != nil {
+			http.Fail(c, 400, "Failed to hash user password", err)
+		} else {
+			usr.PasswordHash = hash
+		}
 	}
 
 	ctx := org.Db.Context
