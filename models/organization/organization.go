@@ -163,8 +163,9 @@ type Organization struct {
 	} `json:"-"`
 
 	SignUpOptions struct {
-		AccountsEnabledByDefault bool
-	}
+		AccountsEnabledByDefault bool `json:"accountsEnabledByDefault"`
+		NoPasswordRequired       bool
+	} `json:"signUpOptions"`
 
 	// TODO: Delete?
 	GoogleAnalytics string `json:"googleAnalytics"`
