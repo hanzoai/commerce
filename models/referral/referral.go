@@ -5,21 +5,31 @@ import (
 	"crowdstart.com/models/types/currency"
 )
 
+type Type string
+
+const (
+	NewOrder Type = "new-order"
+	NewUser       = "new-user"
+)
+
+
 type Referral struct {
 	mixin.Model
 
-	// User being referred
-	UserId string `json:"userId"`
+	Type Type `json:"type"`
 
-	// Associated order
+	// User created by referral
+	UserId    string `json:"userId"`
+
+	// Order created by referral
 	OrderId string `json:"orderId"`
 
 	// Referred by
-	ReferrerUserId string `json:"referrerUserId"`
-	ReferrerId     string `json:"referrerId"`
-
-	// Affiliate and fee
-	AffiliateId string `json:"affiliateId"`
+	Referrer type {
+		Id string `json:"id"`
+		UserId string `json:"userId"`
+		AffiliateId string `json:"affiliateId"`
+	}
 
 	Fee struct {
 		Currency currency.Type  `json:"currency,omitempty"`
