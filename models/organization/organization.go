@@ -163,8 +163,14 @@ type Organization struct {
 	} `json:"-"`
 
 	SignUpOptions struct {
+		// Controls the enabled status of account after creation
 		AccountsEnabledByDefault bool `json:"accountsEnabledByDefault"`
-		NoPasswordRequired       bool
+		// Turns off required backend checks
+		NoNameRequired     bool `json:"noNameRequired"`
+		NoPasswordRequired bool `json:"noPasswordRequired"`
+		// Requires password set on create confirmation
+		TwoStageEnabled bool `json:"twoStageEnabled"`
+		ImmediateLogin  bool `json:"immediateLogin"`
 	} `json:"signUpOptions"`
 
 	// TODO: Delete?

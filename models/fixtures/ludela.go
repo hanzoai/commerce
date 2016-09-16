@@ -41,12 +41,12 @@ var Ludela = New("ludela", func(c *gin.Context) *organization.Organization {
 	// Email configuration
 	org.Mandrill.APIKey = "40gP4DdLRLHo1QX_A8mfHw"
 
-	org.Email.Defaults.Enabled = true
-	org.Email.Defaults.FromName = "Ludela"
-	org.Email.Defaults.FromEmail = "hi@ludela.com"
-
 	// Enable accounts by default
 	org.SignUpOptions.AccountsEnabledByDefault = true
+	org.SignUpOptions.NoNameRequired = true
+	org.SignUpOptions.NoPasswordRequired = true
+	org.SignUpOptions.TwoStageEnabled = true
+	org.SignUpOptions.ImmediateLogin = true
 
 	// API Tokens
 	org.Tokens = []token.Token{
@@ -84,21 +84,21 @@ var Ludela = New("ludela", func(c *gin.Context) *organization.Organization {
 		},
 	}
 
-	// org.Email.OrderConfirmation.Subject = "KANOA Earphones Order Confirmation"
-	// org.Email.OrderConfirmation.Template = readEmailTemplate("/resources/kanoa/emails/order-confirmation.html")
-	// org.Email.OrderConfirmation.Enabled = true
+	org.Email.Defaults.Enabled = true
+	org.Email.Defaults.FromName = "LUDELA"
+	org.Email.Defaults.FromEmail = "hi@ludela.com"
 
-	// org.Email.User.PasswordReset.Template = readEmailTemplate("/resources/kanoa/emails/user-password-reset.html")
-	// org.Email.User.PasswordReset.Subject = "Reset your KANOA password"
-	// org.Email.User.PasswordReset.Enabled = true
+	org.Email.OrderConfirmation.Subject = "LUDELA Order Confirmation"
+	org.Email.OrderConfirmation.Enabled = true
 
-	// org.Email.User.EmailConfirmation.Template = readEmailTemplate("/resources/kanoa/emails/user-email-confirmation.html")
-	// org.Email.User.EmailConfirmation.Subject = "Please confirm your email"
-	// org.Email.User.EmailConfirmation.Enabled = true
+	org.Email.User.PasswordReset.Subject = "Reset your LUDELA password"
+	org.Email.User.PasswordReset.Enabled = true
 
-	// org.Email.User.EmailConfirmed.Subject = "Thank you for confirming your email"
-	// org.Email.User.EmailConfirmed.Template = readEmailTemplate("/resources/kanoa/emails/user-email-confirmed.html")
-	// org.Email.User.EmailConfirmed.Enabled = false
+	// org.Email.User.EmailConfirmation.Subject = ""
+	org.Email.User.EmailConfirmation.Enabled = false
+
+	org.Email.User.EmailConfirmed.Subject = "Complete LUDELA Registration"
+	org.Email.User.EmailConfirmed.Enabled = true
 
 	// Save org into default namespace
 	org.Put()
