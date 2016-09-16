@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"crowdstart.com/datastore"
-	"crowdstart.com/models/affiliate"
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/referral"
 	"crowdstart.com/models/transaction"
@@ -37,18 +36,10 @@ func (r *Referrer) SaveReferral(orderId, userId string) (*referral.Referral, err
 		return rfl, err
 	}
 
-	// If this is the first referral, update referrer and affiliate
+	// If this is the first referral, update referrer
 	if timeutil.IsZero(r.FirstReferredAt) {
 		r.FirstReferredAt = time.Now()
 		r.Update()
-
-		if r.AffiliateId != "" {
-			aff := affiliate.New(r.Db)
-			if err := aff.Get(r.AffiliateId); err != nil {
-				aff.Schedule.StartAt = r.FirstReferredAt
-				aff.Update()
-			}
-		}
 	}
 
 	// Apply any program actions if they are configured

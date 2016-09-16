@@ -3,6 +3,7 @@ package affiliate
 import (
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
+	"crowdstart.com/models/types/schedule"
 )
 
 func (a Affiliate) Kind() string {
@@ -15,7 +16,7 @@ func (a *Affiliate) Init(db *datastore.Datastore) {
 
 func (a *Affiliate) Defaults() {
 	a.Schedule.Period = 30
-	a.Schedule.Rolling = false
+	a.Schedule.Type = schedule.DailyRolling
 }
 
 func New(db *datastore.Datastore) *Affiliate {
