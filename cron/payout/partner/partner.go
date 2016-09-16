@@ -82,7 +82,7 @@ func Payout(ctx appengine.Context) error {
 				log.Error("Failed to get partner '%s': %v", p.Id, err, ctx)
 			} else {
 				log.Debug("Processing partner fees for organization: '%s'", org.Name, ctx)
-				transferFees.Call(ctx, org.Name, par.Id(), par.Schedule.Cutoff())
+				transferFees.Call(ctx, org.Name, par.Id(), par.Schedule.Cutoff(time.Now()))
 			}
 		}
 	}
