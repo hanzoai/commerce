@@ -4,95 +4,87 @@ import (
 	"time"
 )
 
-/*
-This package provides functions that perform payment scheduling calendrical
-calculations.
+// This package provides functions that perform payment scheduling calendrical
+// calculations.
 
-We'd like to pay our affiliates according to some predictable schedule.
-Stripe does not permit creating a refund on a stripe-to-stripe transfer once
-the destination stripe account balance is insufficiently large to complete the
-refund (e.g., if some portion of the stripe balance has been transferred to an
-external bank), so it is necessary to add a configurable amount of latency
-between receipt-of-payment and transfer-of-funds to affiliates to provide a
-low-effort buffer against refund/chargeback affiliate fraud.
+// We'd like to pay our affiliates according to some predictable schedule.
+// Stripe does not permit creating a refund on a stripe-to-stripe transfer once
+// the destination stripe account balance is insufficiently large to complete the
+// refund (e.g., if some portion of the stripe balance has been transferred to an
+// external bank), so it is necessary to add a configurable amount of latency
+// between receipt-of-payment and transfer-of-funds to affiliates to provide a
+// low-effort buffer against refund/chargeback affiliate fraud.
 
-We currenly copy stripe's automated payout API. Here's their documentation:
-https://stripe.com/docs/connect/bank-transfers#payout-information
-http://web.archive.org/web/20160404035832/https://stripe.com/docs/connect/bank-transfers#payout-information
+// We currenly copy stripe's automated payout API. Here's their documentation:
+// https://stripe.com/docs/connect/bank-transfers#payout-information
+// http://web.archive.org/web/20160404035832/https://stripe.com/docs/connect/bank-transfers#payout-information
 
-The current scheduling modes supported are:
+// The current scheduling modes supported are:
 
-- Daily, rolling payments. For example, if there's a rolling payment latency of
-  12 days, then:
-  * a payment received on 2100-07-31 will be eligible for transfer on 2100-08-12.
+// - Daily, rolling payments. For example, if there's a rolling payment latency of
+//   12 days, then:
+//   * a payment received on 2100-07-31 will be eligible for transfer on 2100-08-12.
 
-- Weekly, anchored payments. Consider the following calendar:
-     September 2016
-  Su Mo Tu We Th Fr Sa
-               1  2  3
-   4  5  6  7  8  9 10
-  11 12 13 14 15 16 17
-  18 19 20 21 22 23 24
-  25 26 27 28 29 30
-  If the weekly anchor is Monday, then:
-  * a payment received on 2016-09-05 will be paid out no earlier than 2016-09-19,
-  * a payment received on 2016-09-11 will be paid out no earlier than 2016-09-19, and
-  * a payment received on 2016-09-12 will be paid out no earlier than 2016-09-26.
+// - Weekly, anchored payments. Consider the following calendar:
+//      September 2016
+//   Su Mo Tu We Th Fr Sa
+//                1  2  3
+//    4  5  6  7  8  9 10
+//   11 12 13 14 15 16 17
+//   18 19 20 21 22 23 24
+//   25 26 27 28 29 30
+//   If the weekly anchor is Monday, then:
+//   * a payment received on 2016-09-05 will be paid out no earlier than 2016-09-19,
+//   * a payment received on 2016-09-11 will be paid out no earlier than 2016-09-19, and
+//   * a payment received on 2016-09-12 will be paid out no earlier than 2016-09-26.
 
-  Note that this adds an extra week (7 days) of latency between
-  receipt-of-payment and transfer-of-funds.`
+//   Note that this adds an extra week (7 days) of latency between
+//   receipt-of-payment and transfer-of-funds.`
 
-- Monthly, anchored payments. Consider the following calendar:
-                                 2016
-         January               February                 March
-  Su Mo Tu We Th Fr Sa   Su Mo Tu We Th Fr Sa   Su Mo Tu We Th Fr Sa
-                  1  2       1  2  3  4  5  6          1  2  3  4  5
-   3  4  5  6  7  8  9    7  8  9 10 11 12 13    6  7  8  9 10 11 12
-  10 11 12 13 14 15 16   14 15 16 17 18 19 20   13 14 15 16 17 18 19
-  17 18 19 20 21 22 23   21 22 23 24 25 26 27   20 21 22 23 24 25 26
-  24 25 26 27 28 29 30   28 29                  27 28 29 30 31
+// - Monthly, anchored payments. Consider the following calendar:
+//                                  2016
+//          January               February                 March
+//   Su Mo Tu We Th Fr Sa   Su Mo Tu We Th Fr Sa   Su Mo Tu We Th Fr Sa
+//                   1  2       1  2  3  4  5  6          1  2  3  4  5
+//    3  4  5  6  7  8  9    7  8  9 10 11 12 13    6  7  8  9 10 11 12
+//   10 11 12 13 14 15 16   14 15 16 17 18 19 20   13 14 15 16 17 18 19
+//   17 18 19 20 21 22 23   21 22 23 24 25 26 27   20 21 22 23 24 25 26
+//   24 25 26 27 28 29 30   28 29                  27 28 29 30 31
 
-            April                   May                   June
-  Su Mo Tu We Th Fr Sa   Su Mo Tu We Th Fr Sa   Su Mo Tu We Th Fr Sa
-                  1  2    1  2  3  4  5  6  7             1  2  3  4
-   3  4  5  6  7  8  9    8  9 10 11 12 13 14    5  6  7  8  9 10 11
-  10 11 12 13 14 15 16   15 16 17 18 19 20 21   12 13 14 15 16 17 18
-  17 18 19 20 21 22 23   22 23 24 25 26 27 28   19 20 21 22 23 24 25
-  24 25 26 27 28 29 30   29 30 31               26 27 28 29 30
+//             April                   May                   June
+//   Su Mo Tu We Th Fr Sa   Su Mo Tu We Th Fr Sa   Su Mo Tu We Th Fr Sa
+//                   1  2    1  2  3  4  5  6  7             1  2  3  4
+//    3  4  5  6  7  8  9    8  9 10 11 12 13 14    5  6  7  8  9 10 11
+//   10 11 12 13 14 15 16   15 16 17 18 19 20 21   12 13 14 15 16 17 18
+//   17 18 19 20 21 22 23   22 23 24 25 26 27 28   19 20 21 22 23 24 25
+//   24 25 26 27 28 29 30   29 30 31               26 27 28 29 30
 
-  If the monthly anchor is the 15th, then:
-  * a payment received on 2016-01-14 will be paid out no earlier than 2016-03-15,
-  * a payment received on 2016-01-15 will be paid out no earlier than 2016-03-15,
-  * a payment received on 2016-02-01 will be paid out no earlier than 2016-04-15, and
-  * a payment received on 2016-02-15 will be paid out no earlier than 2016-04-15.
+//   If the monthly anchor is the 15th, then:
+//   * a payment received on 2016-01-14 will be paid out no earlier than 2016-03-15,
+//   * a payment received on 2016-01-15 will be paid out no earlier than 2016-03-15,
+//   * a payment received on 2016-02-01 will be paid out no earlier than 2016-04-15, and
+//   * a payment received on 2016-02-15 will be paid out no earlier than 2016-04-15.
 
-  Additonally, if the monthly anchor is the 31st, then:
-  * a payment received on 2016-02-01 will be paid out no earlier than 2016-04-30,
-  * a payment received on 2016-02-29 will be paid out no earlier than 2016-04-30,
-  * a payment received on 2016-03-01 will be paid out no earlier than 2016-05-31, and
-  * a payment received on 2016-03-31 will be paid out no earlier than 2016-05-31.
+//   Additonally, if the monthly anchor is the 31st, then:
+//   * a payment received on 2016-02-01 will be paid out no earlier than 2016-04-30,
+//   * a payment received on 2016-02-29 will be paid out no earlier than 2016-04-30,
+//   * a payment received on 2016-03-01 will be paid out no earlier than 2016-05-31, and
+//   * a payment received on 2016-03-31 will be paid out no earlier than 2016-05-31.
 
-  Note that this adds an extra calendar-month (i.e. 28, 29, 30, 31 days) of
-  latency between receipt-of-payment and transfer-of-funds.
-  If the anchor is larger than the number of days present in the current
-  month, then the anchor is truncated to the last day of the month.
+//   Note that this adds an extra calendar-month (i.e. 28, 29, 30, 31 days) of
+//   latency between receipt-of-payment and transfer-of-funds.
+//   If the anchor is larger than the number of days present in the current
+//   month, then the anchor is truncated to the last day of the month.
 
-There are other scheduling methods possible. We could support a payroll-style
-schedule, in which payments are made monthly (this is equivalent to "monthly,
-anchored payments"), semimonthly (in which the year is divided into 24
-payment-and-latency periods aligned with monthly boundaries), biweekly (in which
-the year is divided into 26 payment-and-latency periods that fall in and out
-of sync with monthly boundaries), and weekly (this is equivalent to "weekly,
-anchored payments").
-*/
+// There are other scheduling methods possible. We could support a payroll-style
+// schedule, in which payments are made monthly (this is equivalent to "monthly,
+// anchored payments"), semimonthly (in which the year is divided into 24
+// payment-and-latency periods aligned with monthly boundaries), biweekly (in which
+// the year is divided into 26 payment-and-latency periods that fall in and out
+// of sync with monthly boundaries), and weekly (this is equivalent to "weekly,
+// anchored payments").
 
 type Type string
-
-const (
-	DailyRolling    Type = "daily-rolling"
-	WeeklyAnchored       = "weekly-anchored"
-	MonthlyAnchored      = "monthly-anchored"
-)
 
 type Schedule struct {
 	Type          Type   `json:"type"`

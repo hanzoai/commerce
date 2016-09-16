@@ -172,6 +172,11 @@ type Organization struct {
 		ErrorUrl   string
 	} `json:"-"`
 
+	SignUpOptions struct {
+		AccountsEnabledByDefault bool `json:"accountsEnabledByDefault"`
+		NoPasswordRequired       bool `json:"noPasswordReequired"`
+	} `json:"signUpOptions"`
+
 	// TODO: Delete?
 	GoogleAnalytics string `json:"googleAnalytics"`
 	FacebookTag     string `json:"facebookTag"`
