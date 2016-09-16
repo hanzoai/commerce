@@ -29,6 +29,11 @@ type createReq struct {
 	PasswordConfirm string `json:"passwordConfirm"`
 }
 
+type createRes struct {
+	*user.User
+	Token string `json:"token,omitempty"`
+}
+
 func create(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
@@ -56,14 +61,16 @@ func create(c *gin.Context) {
 		return
 	}
 
-	if usr.FirstName == "" || usr.FirstName == "\u263A" {
-		http.Fail(c, 400, "First name cannot be blank", errors.New("First name cannot be blank"))
-		return
-	}
+	if !org.SignUpOptions.NoNameRequired {
+		if usr.FirstName == "" || usr.FirstName == "\u263A" {
+			http.Fail(c, 400, "First name cannot be blank", errors.New("First name cannot be blank"))
+			return
+		}
 
-	if usr.LastName == "" || usr.LastName == "\u263A" {
-		http.Fail(c, 400, "Last name cannot be blank", errors.New("Last name cannot be blank"))
-		return
+		if usr.LastName == "" || usr.LastName == "\u263A" {
+			http.Fail(c, 400, "Last name cannot be blank", errors.New("Last name cannot be blank"))
+			return
+		}
 	}
 
 	usr.Email = strings.ToLower(strings.TrimSpace(usr.Email))
@@ -80,9 +87,7 @@ func create(c *gin.Context) {
 		return
 	}
 
-	if req.Password == "" && org.SignUpOptions.NoPasswordRequired {
-		// You are a bad person
-	} else {
+	if !org.SignUpOptions.NoPasswordRequired {
 		// Password should be at least 6 characters long
 		if len(req.Password) < 6 {
 			http.Fail(c, 400, "Password needs to be atleast 6 characters", errors.New("Password needs to be atleast 6 characters"))
@@ -132,8 +137,17 @@ func create(c *gin.Context) {
 		}
 	}
 
+	tokStr := ""
+
+	if org.SignUpOptions.ImmediateLogin {
+		loginTok := middleware.GetToken(c)
+		loginTok.Set("user-id", usr.Id())
+		loginTok.Set("exp", time.Now().Add(time.Hour*24*7))
+		tokStr = loginTok.String()
+	}
+
 	// Render user
-	http.Render(c, 201, usr)
+	http.Render(c, 201, createRes{User: usr, Token: tokStr})
 
 	// Don't send email confirmation if test key is used
 	if org.Live {
