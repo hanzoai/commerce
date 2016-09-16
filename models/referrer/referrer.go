@@ -7,6 +7,7 @@ import (
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/referral"
 	"crowdstart.com/models/transaction"
+	"crowdstart.com/models/types/client"
 	"crowdstart.com/util/timeutil"
 )
 
@@ -16,12 +17,17 @@ var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 type Referrer struct {
 	mixin.Model
 
-	Code            string    `json:"code"`
-	Program         Program   `json:"program"`
-	OrderId         string    `json:"orderId"`
-	UserId          string    `json:"userId"`
+	Code    string  `json:"code"`
+	Program Program `json:"program"`
+	OrderId string  `json:"orderId"`
+	UserId  string  `json:"userId"`
+
 	AffiliateId     string    `json:"affiliateId,omitempty"`
 	FirstReferredAt time.Time `json:"firstReferredAt"`
+
+	Client      client.Client `json:"-"`
+	Blacklisted bool          `json:"blacklisted,omitempty"`
+	Duplicate   bool          `json:"duplicate,omitempty"`
 }
 
 func (r *Referrer) SaveReferral(orderId, userId string) (*referral.Referral, error) {

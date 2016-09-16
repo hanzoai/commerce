@@ -1,6 +1,8 @@
 package fixtures
 
 import (
+	"time"
+
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.com/auth/password"
@@ -9,6 +11,7 @@ import (
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/user"
 	"crowdstart.com/util/log"
+	"crowdstart.com/util/token"
 )
 
 var Ludela = New("ludela", func(c *gin.Context) *organization.Organization {
@@ -17,6 +20,7 @@ var Ludela = New("ludela", func(c *gin.Context) *organization.Organization {
 	org := organization.New(db)
 	org.Name = "ludela"
 	org.GetOrCreate("Name=", org.Name)
+	org.SetKey("V9OT22mI0a")
 
 	u := user.New(db)
 	u.Email = "jamie@ludela.com"
@@ -44,6 +48,45 @@ var Ludela = New("ludela", func(c *gin.Context) *organization.Organization {
 	org.Email.Defaults.Enabled = true
 	org.Email.Defaults.FromName = "Ludela"
 	org.Email.Defaults.FromEmail = "hi@ludela.com"
+
+	// Enable accounts by default
+	org.SignUpOptions.AccountsEnabledByDefault = true
+
+	// API Tokens
+	org.Tokens = []token.Token{
+		token.Token{
+			EntityId:    "V9OT22mI0a",
+			Id:          "XodGra0dirg",
+			IssuedAt:    time.Now(),
+			Name:        "live-secret-key",
+			Permissions: 20,
+			Secret:      []byte("EU8E011iX2Bp5lv481N2STd1d999cU58"),
+		},
+		token.Token{
+			EntityId:    "V9OT22mI0a",
+			Id:          "z2ZCUCxkfhE",
+			IssuedAt:    time.Now(),
+			Name:        "live-published-key",
+			Permissions: 4503617075675172,
+			Secret:      []byte("EU8E011iX2Bp5lv481N2STd1d999cU58"),
+		},
+		token.Token{
+			EntityId:    "V9OT22mI0a",
+			Id:          "hwsF9-4etJ4",
+			IssuedAt:    time.Now(),
+			Name:        "test-secret-key",
+			Permissions: 24,
+			Secret:      []byte("EU8E011iX2Bp5lv481N2STd1d999cU58"),
+		},
+		token.Token{
+			EntityId:    "V9OT22mI0a",
+			Id:          "GjpBDnTuDUk",
+			IssuedAt:    time.Now(),
+			Name:        "test-published-key",
+			Permissions: 4503617075675176,
+			Secret:      []byte("EU8E011iX2Bp5lv481N2STd1d999cU58"),
+		},
+	}
 
 	// org.Email.OrderConfirmation.Subject = "KANOA Earphones Order Confirmation"
 	// org.Email.OrderConfirmation.Template = readEmailTemplate("/resources/kanoa/emails/order-confirmation.html")

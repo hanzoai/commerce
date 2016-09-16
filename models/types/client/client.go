@@ -23,3 +23,8 @@ func New(c *gin.Context) Client {
 		City:      c.Request.Header.Get("X-AppEngine-City"),
 	}
 }
+
+func (c Client) Blacklisted() bool {
+	// Should check against a blacklist (probably configurable?)
+	return false
+}
