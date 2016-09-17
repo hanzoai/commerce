@@ -28,12 +28,23 @@ func New(c *gin.Context) Client {
 	long, _ := strconv.ParseFloat(geo, 64)
 	geoPoint := appengine.GeoPoint{lat, long}
 
+	// Get proxied values from Cloudflare, falling back to AppEngine headers
+	ip := req.Header.Get("CF-Connecting-IP")
+	if ip == "" {
+		ip = req.RemoteAddr
+	}
+
+	country := req.Header.Get("CF-IPCountry")
+	if country == "" {
+		country = req.Header.Get("X-AppEngine-Country")
+	}
+
 	return Client{
-		Ip:        req.RemoteAddr,
+		Ip:        ip,
 		UserAgent: req.UserAgent(),
 		Referer:   req.Referer(),
 		Language:  req.Header.Get("Accept-Language"),
-		Country:   req.Header.Get("X-AppEngine-Country"),
+		Country:   country,
 		Region:    req.Header.Get("X-AppEngine-Region"),
 		City:      req.Header.Get("X-AppEngine-City"),
 		GeoPoint:  geoPoint,
