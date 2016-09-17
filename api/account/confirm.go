@@ -2,6 +2,7 @@ package account
 
 import (
 	"errors"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -20,6 +21,11 @@ var (
 	PasswordMismatchError  = errors.New("Passwords need to match")
 )
 
+type resetPasswordReq interface {
+	GetPassword() string
+	GetPasswordConfirm() string
+}
+
 type confirmPasswordReq struct {
 	*user.User
 
@@ -28,18 +34,26 @@ type confirmPasswordReq struct {
 	PasswordConfirm string `json:"passwordConfirm"`
 }
 
-func resetPassword(usr *user.User, req *confirmPasswordReq) error {
+func (r confirmPasswordReq) GetPassword() string {
+	return r.Password
+}
+
+func (r confirmPasswordReq) GetPasswordConfirm() string {
+	return r.PasswordConfirm
+}
+
+func resetPassword(usr *user.User, req resetPasswordReq) error {
 	// Validate password
-	if len(req.Password) < 6 {
+	if len(req.GetPassword()) < 6 {
 		return PasswordMinLengthError
 	}
 
-	if req.Password != req.PasswordConfirm {
+	if req.GetPassword() != req.GetPasswordConfirm() {
 		return PasswordMismatchError
 	}
 
 	// Update password
-	if err := usr.SetPassword(req.Password); err != nil {
+	if err := usr.SetPassword(req.GetPassword()); err != nil {
 		return err
 	}
 
@@ -99,5 +113,10 @@ func confirm(c *gin.Context) {
 		log.Warn("Unable to update token", err, c)
 	}
 
-	http.Render(c, 200, gin.H{"status": "ok"})
+	// Return a new token with user id set
+	loginTok := middleware.GetToken(c)
+	loginTok.Set("user-id", usr.Id())
+	loginTok.Set("exp", time.Now().Add(time.Hour*24*7))
+
+	http.Render(c, 200, gin.H{"status": "ok", "token": loginTok.String()})
 }
