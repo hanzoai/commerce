@@ -122,7 +122,7 @@ var Ludela = New("ludela", func(c *gin.Context) *organization.Organization {
 
 	// Create new store
 	stor := store.New(nsdb)
-	stor.Name = "development"
+	stor.Name = "default"
 	stor.GetOrCreate("Name=", stor.Name)
 	stor.Prefix = "/"
 	stor.Currency = currency.USD
