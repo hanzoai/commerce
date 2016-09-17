@@ -26,7 +26,7 @@ func New(c *gin.Context) Client {
 	geo := c.Request.Header.Get("X-AppEngine-CitLatLong")
 	lat, _ := strconv.ParseFloat(geo, 64)
 	long, _ := strconv.ParseFloat(geo, 64)
-	geoPoint := appengine.GeoPoint{lat, long}
+	geoPoint := appengine.GeoPoint{Lat: lat, Lng: long}
 
 	// Get proxied values from Cloudflare, falling back to AppEngine headers
 	ip := req.Header.Get("CF-Connecting-IP")
