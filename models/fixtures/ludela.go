@@ -33,7 +33,7 @@ var Ludela = New("ludela", func(c *gin.Context) *organization.Organization {
 
 	org.FullName = "Ludela Inc"
 	org.Owners = []string{u.Id()}
-	org.Website = "http://www.ludela.com"
+	org.Website = "https://ludela.com"
 	org.SecretKey = []byte("EU8E011iX2Bp5lv481N2STd1d999cU58")
 	org.AddDefaultTokens()
 	org.Fee = 0.05
