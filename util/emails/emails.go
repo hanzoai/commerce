@@ -25,7 +25,14 @@ func init() {
 
 func MandrillEnabled(ctx appengine.Context, org *organization.Organization, conf organization.Email) bool {
 	if !conf.Enabled || org.Mandrill.APIKey == "" {
-		log.Debug("Mandrill Disabled", ctx)
+		if !conf.Enabled {
+			log.Debug("Mandrill Disabled", ctx)
+		}
+
+		if org.Mandrill.APIKey == "" {
+			log.Debug("No Mandrill Key", ctx)
+		}
+
 		return false
 	}
 
@@ -69,7 +76,7 @@ func SendPasswordResetEmail(ctx appengine.Context, org *organization.Organizatio
 }
 
 func SendEmailConfirmedEmail(ctx appengine.Context, org *organization.Organization, usr *user.User) {
-	conf := org.Email.User.EmailConfirmed.Config(org)
+	conf := org.Email.User.EmailConfirmation.Config(org)
 	if !MandrillEnabled(ctx, org, conf) {
 		return
 	}
@@ -140,7 +147,7 @@ func SendAccountCreationConfirmationEmail(ctx appengine.Context, org *organizati
 	tok := token.New(usr.Db)
 	tok.Email = usr.Email
 	tok.UserId = usr.Id()
-	tok.Expires = time.Now().Add(time.Hour * 72)
+	tok.Expires = time.Now().Add(time.Hour * 24 * 7)
 
 	err := tok.Put()
 	if err != nil {
