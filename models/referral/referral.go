@@ -2,6 +2,7 @@ package referral
 
 import (
 	"crowdstart.com/models/mixin"
+	"crowdstart.com/models/types/client"
 	"crowdstart.com/models/types/currency"
 )
 
@@ -35,4 +36,8 @@ type Referral struct {
 		Id       string         `json:"id,omitempty"`
 		Amount   currency.Cents `json:"amount,omitempty"`
 	} `json:"fee,omitempty"`
+
+	Client      client.Client `json:"-"`
+	Blacklisted bool          `json:"blacklisted,omitempty"`
+	Duplicate   bool          `json:"duplicate,omitempty"`
 }
