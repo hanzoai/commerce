@@ -16,6 +16,7 @@ import (
 	"crowdstart.com/config"
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/coupon"
+	"crowdstart.com/models/discount"
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/store"
@@ -122,9 +123,11 @@ type Order struct {
 
 	Adjustments []Adjustment `json:"-"`
 
-	Coupons     []coupon.Coupon `json:"coupons,omitempty"`
-	CouponCodes []string        `json:"couponCodes,omitempty"`
-	ReferrerId  string          `json:"referrerId,omitempty"`
+	Discounts   []discount.Discount `json:"discounts,omitempty"`
+	DiscountIds []string            `json:"discountIds,omitempty"`
+	Coupons     []coupon.Coupon     `json:"coupons,omitempty"`
+	CouponCodes []string            `json:"couponCodes,omitempty"`
+	ReferrerId  string              `json:"referrerId,omitempty"`
 
 	PaymentIds []string `json:"payments"`
 

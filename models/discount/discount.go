@@ -30,23 +30,23 @@ type Discount struct {
 	// Possible values: flat, percent, free_shipping.
 	Type Type `json:"type"`
 
-	// Range in which coupon is valid
+	// Range in which discount is valid
 	StartDate time.Time `json:"startDate"`
 	EndDate   time.Time `json:"endDate"`
 
 	// Possible values: order, product.
 	Filter string `json:"filter"`
 
-	// Product id for product-specific coupons.
+	// Product id for product-specific discount.
 	ProductId string `json:"productId,omitempty"`
 
-	// Whether coupon is valid.
+	// Whether discount is enabled.
 	Enabled bool `json:"enabled"`
 
 	// Discount amount. $5 should be 500 (prices in basic currency unit, like cents). 10% should be 10.
 	Amount int `json:"amount"`
 
-	// Free product with coupon
+	// Free product with enabled
 	FreeProductId string `json:"freeProductId"`
 	FreeVariantId string `json:"freeVariantId"`
 	FreeQuantity  int    `json:"freeQuantity"`
