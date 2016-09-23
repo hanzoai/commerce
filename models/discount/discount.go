@@ -3,13 +3,11 @@ package discount
 import (
 	"time"
 
-	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
+	"crowdstart.com/models/types/currency"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/timeutil"
 )
-
-var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
 type Type string
 
@@ -18,38 +16,70 @@ const (
 	Percent           = "percent"
 	FreeShipping      = "free-shipping"
 	FreeItem          = "free-item"
+	Bulk              = "bulk"
 )
 
-var Types = []Type{Flat, Percent, FreeShipping}
+var Types = []Type{Flat, Percent, FreeShipping, FreeItem, Bulk}
+
+type ScopeType string
+
+const (
+	Organization ScopeType = "organization"
+	Product                = "product"
+	Collection             = "collection"
+	Store                  = "store"
+	Variant                = "variant"
+)
+
+type Rule struct {
+	// Range in which this discount is active
+	Range struct {
+		// Quantity range which triggers this rule
+		Quantity struct {
+			Start int `json:"start,omitempty"`
+			End   int `json:"end,omitempty"`
+		} `json:"quantity,omitempty"`
+
+		// Price range which triggers this rule
+		Price struct {
+			Start currency.Cents `json:"start,omitempty"`
+			End   currency.Cents `json:"end,omitempty"`
+		} `json:"price,omitempty"`
+	} `json:"range"`
+
+	// Amount of discount
+	Amount struct {
+		Flat    int     `flat,omitempty`
+		Percent float64 `percent,omitempty`
+	} `json:"amount"`
+}
 
 type Discount struct {
 	mixin.Model
 
 	Name string `json:"name"`
 
-	// Possible values: flat, percent, free_shipping.
+	// Type of discount rule
 	Type Type `json:"type"`
 
-	// Range in which discount is valid
+	// Date range in which discount is valid
 	StartDate time.Time `json:"startDate"`
 	EndDate   time.Time `json:"endDate"`
 
-	// Possible values: order, product.
-	Filter string `json:"filter"`
+	// Scope this rule applies to
+	Scope ScopeType `json:"scope"`
 
-	// Product id for product-specific discount.
-	ProductId string `json:"productId,omitempty"`
+	// Id for this rule
+	StoreId      string `json:"storeId,omitempty"`
+	CollectionId string `json:"collectionId,omitempty"`
+	ProductId    string `json:"productId,omitempty"`
+	VariantId    string `json:"variantId,omitempty"`
+
+	// Rules for this discount
+	Rules []Rule `json:"rules"`
 
 	// Whether discount is enabled.
 	Enabled bool `json:"enabled"`
-
-	// Discount amount. $5 should be 500 (prices in basic currency unit, like cents). 10% should be 10.
-	Amount int `json:"amount"`
-
-	// Free product with enabled
-	FreeProductId string `json:"freeProductId"`
-	FreeVariantId string `json:"freeVariantId"`
-	FreeQuantity  int    `json:"freeQuantity"`
 }
 
 func (d Discount) ValidFor(t time.Time) bool {
@@ -72,15 +102,18 @@ func (d Discount) ValidFor(t time.Time) bool {
 	return true
 }
 
-func (d Discount) ItemId() string {
+func (d Discount) ScopeId() string {
+	if d.StoreId != "" {
+		return d.StoreId
+	}
+	if d.CollectionId != "" {
+		return d.CollectionId
+	}
 	if d.ProductId != "" {
 		return d.ProductId
 	}
-	if d.FreeProductId != "" {
-		return d.FreeProductId
-	}
-	if d.FreeVariantId != "" {
-		return d.FreeProductId
+	if d.VariantId != "" {
+		return d.ProductId
 	}
 	return ""
 }
