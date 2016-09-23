@@ -154,13 +154,14 @@ var Ludela = New("ludela", func(c *gin.Context) *organization.Organization {
 	dis := discount.New(db)
 	dis.Name = "LuDela Bulk Discount"
 	dis.GetOrCreate("Name=", dis.Name)
-	dis.Scope = discount.Product
-	dis.ProductId = prod.Id()
+	dis.Scope.Type = discount.Product
+	dis.Scope.ProductId = prod.Id()
+	dis.Target.Type = discount.ProductTarget
+	dis.Target.ProductId = prod.Id()
 
 	// Create Jamie's rules
 	rule1 := discount.Rule{}
 	rule1.Range.Quantity.Start = 2
-	rule1.Range.Quantity.End = 3
 	rule1.Amount.Flat = 5
 
 	rule2 := discount.Rule{}

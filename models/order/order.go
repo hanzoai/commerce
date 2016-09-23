@@ -330,9 +330,8 @@ func (o Order) HasDiscount() bool {
 	return false
 }
 
-// Update discount using coupon codes/order info.
-func (o *Order) UpdateDiscount() {
-	o.Discount = 0
+func (o *Order) CalcCouponDiscounts() currency.Cents {
+	var discount currency.Cents
 
 	num := len(o.CouponCodes)
 
@@ -354,15 +353,15 @@ func (o *Order) UpdateDiscount() {
 			switch c.Type {
 			case coupon.Flat:
 				log.Warn("Flat", ctx)
-				o.Discount += currency.Cents(c.Amount)
+				discount += currency.Cents(c.Amount)
 			case coupon.Percent:
 				log.Warn("Percent", ctx)
 				for _, item := range o.Items {
-					o.Discount += currency.Cents(int(math.Floor(float64(item.TotalPrice()) * float64(c.Amount) * 0.01)))
+					discount += currency.Cents(int(math.Floor(float64(item.TotalPrice()) * float64(c.Amount) * 0.01)))
 				}
 			case coupon.FreeShipping:
 				log.Warn("FreeShipping", ctx)
-				o.Discount += currency.Cents(int(o.Shipping))
+				discount += currency.Cents(int(o.Shipping))
 			}
 		} else {
 			log.Warn("Coupon Applies to %v", c.ItemId(), ctx)
@@ -373,13 +372,13 @@ func (o *Order) UpdateDiscount() {
 					switch c.Type {
 					case coupon.Flat:
 						log.Warn("Flat", ctx)
-						o.Discount += currency.Cents(item.Quantity * c.Amount)
+						discount += currency.Cents(item.Quantity * c.Amount)
 					case coupon.Percent:
 						log.Warn("Percent", ctx)
-						o.Discount += currency.Cents(math.Floor(float64(item.TotalPrice()) * float64(c.Amount) * 0.01))
+						discount += currency.Cents(math.Floor(float64(item.TotalPrice()) * float64(c.Amount) * 0.01))
 					case coupon.FreeItem:
 						log.Warn("FreeShipping", ctx)
-						o.Discount += currency.Cents(item.Price)
+						discount += currency.Cents(item.Price)
 					}
 
 					// Break out unless required to apply to each product
@@ -390,6 +389,109 @@ func (o *Order) UpdateDiscount() {
 			}
 		}
 	}
+	return discount
+}
+
+// Update discount using coupon codes/order info.
+func (o *Order) CalculateDiscount() (currency.Cents, error) {
+	discounts, err := o.GetDiscounts()
+	var discountTotal currency.Cents
+	if err != nil {
+		return discountTotal, err
+	}
+	totalQuantity := 0
+	for _, li := range o.Items {
+		totalQuantity += li.Quantity
+	}
+	for _, dis := range discounts {
+		quantity := 0
+		var price currency.Cents
+		switch dis.Scope.Type {
+		case discount.Product:
+			for _, li := range o.Items {
+				if li.ProductId == dis.Scope.ProductId {
+					quantity = li.Quantity
+					price = li.Price
+					break
+				}
+			}
+		case discount.Variant:
+			for _, li := range o.Items {
+				if li.VariantId == dis.Scope.VariantId {
+					quantity = li.Quantity
+					price = li.Price
+					break
+				}
+			}
+		case discount.Collection:
+			continue
+		case discount.Store:
+			quantity = totalQuantity
+			price = o.LineTotal
+		}
+
+		quantityMax := 0
+		quantityIx := -1
+		var priceMax currency.Cents
+		priceIx := -1
+		for i, rule := range dis.Rules {
+			ruleQuantity := rule.Range.Quantity.Start
+			if ruleQuantity != 0 {
+				if quantity > ruleQuantity && ruleQuantity > quantityMax {
+					quantityMax = ruleQuantity
+					quantityIx = i
+					continue
+				}
+			}
+			rulePrice := rule.Range.Price.Start
+			if rulePrice != 0 {
+				if price > rulePrice && rulePrice > priceMax {
+					priceMax = rulePrice
+					priceIx = i
+					continue
+				}
+			}
+		}
+
+		switch dis.Target.Type {
+		case discount.ProductTarget:
+			for _, li := range o.Items {
+				if li.ProductId == dis.Scope.ProductId {
+					quantity = li.Quantity
+					price = li.Price
+					break
+				}
+			}
+		case discount.VariantTarget:
+			for _, li := range o.Items {
+				if li.VariantId == dis.Scope.VariantId {
+					quantity = li.Quantity
+					price = li.Price
+					break
+				}
+			}
+		case discount.Cart:
+			quantity = totalQuantity
+			price = o.LineTotal
+		}
+
+		if quantityIx >= 0 {
+			rule := dis.Rules[quantityIx]
+			if rule.Amount.Flat != 0 {
+				discountTotal += currency.Cents(rule.Amount.Flat)
+			} else if rule.Amount.Percent != 0 {
+				discountTotal += currency.Cents(float64(price) * rule.Amount.Percent)
+			}
+		} else if priceIx >= 0 {
+			rule := dis.Rules[priceIx]
+			if rule.Amount.Flat != 0 {
+				discountTotal += currency.Cents(rule.Amount.Flat)
+			} else if rule.Amount.Percent != 0 {
+				discountTotal += currency.Cents(float64(price) * rule.Amount.Percent)
+			}
+		}
+	}
+	return discountTotal, nil
 }
 
 // Update discount using coupon codes/order info.
@@ -617,7 +719,12 @@ func (o *Order) UpdateAndTally(stor *store.Store) error {
 	o.UpdateFromEntities()
 
 	// Update discount amount
-	o.UpdateDiscount()
+	discount, err := o.CalculateDiscount()
+	if err != nil {
+		return err
+	}
+	o.Discount = discount
+
 
 	// Tally up order again
 	o.Tally()

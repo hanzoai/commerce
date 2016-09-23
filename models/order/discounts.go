@@ -19,10 +19,10 @@ func addDiscounts(to []*discount.Discount, from []*discount.Discount) {
 	}
 }
 
-func (o *Order) addOrgDiscounts(disc discountChan, errc errorChan) {
+func (o *Order) addGlobalDiscounts(disc discountChan, errc errorChan) {
 	dst := make([]*discount.Discount, 0)
 	_, err := discount.Query(o.Db).
-		Filter("Scope=", discount.Organization).
+		Filter("Scope=", "").
 		Filter("Enabled=", true).
 		GetAll(dst)
 	if err != nil {
@@ -85,14 +85,12 @@ func (o *Order) addVariantDiscounts(id string, disc discountChan, errc errorChan
 }
 
 func (o *Order) GetDiscounts() ([]*discount.Discount, error) {
-	discounts := make([]*discount.Discount, 0)
-
 	channels := 2 + len(o.Items)
 	errc := make(chan error, channels)
 	disc := make(chan []*discount.Discount, channels)
 
 	// Fetch any organization-level discounts
-	go o.addOrgDiscounts(disc, errc)
+	go o.addGlobalDiscounts(disc, errc)
 
 	// Fetch any store-level discounts
 	go o.addStoreDiscounts(disc, errc)
@@ -114,9 +112,10 @@ func (o *Order) GetDiscounts() ([]*discount.Discount, error) {
 	}
 
 	// Merge results together
-	for dis := range discounts {
+	discounts := make([]*discount.Discount, 0)
+	for dis := range disc {
 		addDiscounts(discounts, dis)
 	}
 
-	return discounts, err
+	return discounts, nil
 }
