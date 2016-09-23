@@ -24,12 +24,25 @@ var Types = []Type{Flat, Percent, FreeShipping, FreeItem, Bulk}
 type ScopeType string
 
 const (
-	Organization ScopeType = "organization"
-	Product                = "product"
-	Collection             = "collection"
-	Store                  = "store"
-	Variant                = "variant"
+	Product ScopeType = "product"
+	Collection        = "collection"
+	Store             = "store"
+	Variant           = "variant"
 )
+
+type TargetType string
+
+const (
+	Cart TargetType = "cart"
+	ProductTarget   = "product"
+	VariantTarget   = "variant"
+)
+
+
+type Amount struct {
+	Flat    int     `flat,omitempty`
+	Percent float64 `percent,omitempty`
+}
 
 type Rule struct {
 	// Range in which this discount is active
@@ -37,21 +50,16 @@ type Rule struct {
 		// Quantity range which triggers this rule
 		Quantity struct {
 			Start int `json:"start,omitempty"`
-			End   int `json:"end,omitempty"`
 		} `json:"quantity,omitempty"`
 
 		// Price range which triggers this rule
 		Price struct {
 			Start currency.Cents `json:"start,omitempty"`
-			End   currency.Cents `json:"end,omitempty"`
 		} `json:"price,omitempty"`
 	} `json:"range"`
 
 	// Amount of discount
-	Amount struct {
-		Flat    int     `flat,omitempty`
-		Percent float64 `percent,omitempty`
-	} `json:"amount"`
+	Amount Amount `json:"amount"`
 }
 
 type Discount struct {
@@ -66,14 +74,25 @@ type Discount struct {
 	StartDate time.Time `json:"startDate"`
 	EndDate   time.Time `json:"endDate"`
 
-	// Scope this rule applies to
-	Scope ScopeType `json:"scope"`
+	Scope struct {
+		// The scope these rules qualify against
+		Type ScopeType `json:"type"`
 
-	// Id for this rule
-	StoreId      string `json:"storeId,omitempty"`
-	CollectionId string `json:"collectionId,omitempty"`
-	ProductId    string `json:"productId,omitempty"`
-	VariantId    string `json:"variantId,omitempty"`
+		// Id for this rule
+		StoreId      string `json:"storeId,omitempty"`
+		CollectionId string `json:"collectionId,omitempty"`
+		ProductId    string `json:"productId,omitempty"`
+		VariantId    string `json:"variantId,omitempty"`
+	} `json:"scope"`
+
+	Target struct {
+		// Target for which all rules apply
+		Type TargetType `json:"type"`
+
+		// Id for the target
+		ProductId    string `json:"productId,omitempty"`
+		VariantId    string `json:"variantId,omitempty"`
+	} `json:"target"`
 
 	// Rules for this discount
 	Rules []Rule `json:"rules"`
@@ -103,17 +122,17 @@ func (d Discount) Valid(t time.Time) bool {
 }
 
 func (d Discount) ScopeId() string {
-	if d.StoreId != "" {
-		return d.StoreId
+	if d.Scope.StoreId != "" {
+		return d.Scope.StoreId
 	}
-	if d.CollectionId != "" {
-		return d.CollectionId
+	if d.Scope.CollectionId != "" {
+		return d.Scope.CollectionId
 	}
-	if d.ProductId != "" {
-		return d.ProductId
+	if d.Scope.ProductId != "" {
+		return d.Scope.ProductId
 	}
-	if d.VariantId != "" {
-		return d.ProductId
+	if d.Scope.VariantId != "" {
+		return d.Scope.ProductId
 	}
 	return ""
 }
