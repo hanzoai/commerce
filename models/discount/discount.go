@@ -82,7 +82,7 @@ type Discount struct {
 	Enabled bool `json:"enabled"`
 }
 
-func (d Discount) ValidFor(t time.Time) bool {
+func (d Discount) Valid(t time.Time) bool {
 	ctx := d.Context()
 	if !d.Enabled {
 		log.Warn("Discount Not Enabled", ctx)
