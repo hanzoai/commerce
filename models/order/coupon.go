@@ -1,0 +1,167 @@
+package order
+
+import (
+	"errors"
+	"math"
+	"strings"
+
+	"crowdstart.com/models/coupon"
+	"crowdstart.com/models/types/currency"
+	"crowdstart.com/util/log"
+
+	. "crowdstart.com/models/lineitem"
+)
+
+// Get line items from datastore
+func (o *Order) GetCoupons() error {
+	o.DedupeCouponCodes()
+	db := o.Model.Db
+	ctx := db.Context
+
+	log.Debug("CouponCodes: %#v", o.CouponCodes)
+	num := len(o.CouponCodes)
+	o.Coupons = make([]coupon.Coupon, num, num)
+
+	for i := 0; i < num; i++ {
+		cpn := coupon.New(db)
+		code := strings.TrimSpace(strings.ToUpper(o.CouponCodes[i]))
+
+		log.Debug("CODE: %s", code)
+		err := cpn.GetById(code)
+
+		if err != nil {
+			log.Warn("Could not find CouponCodes[%v] => %v, Error: %v", i, code, err, ctx)
+			return errors.New("Invalid coupon code: " + code)
+		}
+
+		o.Coupons[i] = *cpn
+	}
+
+	return nil
+}
+
+func (o *Order) DedupeCouponCodes() {
+	found := make(map[string]bool)
+	j := 0
+	for i, code := range o.CouponCodes {
+		if !found[code] {
+			found[code] = true
+			o.CouponCodes[j] = o.CouponCodes[i]
+			j++
+		}
+	}
+	o.CouponCodes = o.CouponCodes[:j]
+}
+
+func (o *Order) CalcCouponDiscount() currency.Cents {
+	var discount currency.Cents
+
+	num := len(o.CouponCodes)
+
+	ctx := o.Model.Db.Context
+
+	log.Warn("TRYING TO APPLY COUPONS", ctx)
+	for i := 0; i < num; i++ {
+		c := &o.Coupons[i]
+		if !c.ValidFor(o.CreatedAt) {
+			continue
+		}
+
+		log.Warn("TRYING TO APPLY COUPON %v", c.Code(), ctx)
+
+		if c.ItemId() == "" {
+			log.Warn("Coupon Applies to All", ctx)
+
+			// Not per product
+			switch c.Type {
+			case coupon.Flat:
+				log.Warn("Flat", ctx)
+				discount += currency.Cents(c.Amount)
+			case coupon.Percent:
+				log.Warn("Percent", ctx)
+				for _, item := range o.Items {
+					discount += currency.Cents(int(math.Floor(float64(item.TotalPrice()) * float64(c.Amount) * 0.01)))
+				}
+			case coupon.FreeShipping:
+				log.Warn("FreeShipping", ctx)
+				discount += currency.Cents(int(o.Shipping))
+			}
+		} else {
+			log.Warn("Coupon Applies to %v", c.ItemId(), ctx)
+			// Coupons per product
+			for _, item := range o.Items {
+				log.Debug("Coupon.ProductId: %v, Item.ProductId: %v", c.ProductId, item.ProductId, ctx)
+				if item.Id() == c.ItemId() {
+					switch c.Type {
+					case coupon.Flat:
+						log.Warn("Flat", ctx)
+						discount += currency.Cents(item.Quantity * c.Amount)
+					case coupon.Percent:
+						log.Warn("Percent", ctx)
+						discount += currency.Cents(math.Floor(float64(item.TotalPrice()) * float64(c.Amount) * 0.01))
+					case coupon.FreeItem:
+						log.Warn("FreeShipping", ctx)
+						discount += currency.Cents(item.Price)
+					}
+
+					// Break out unless required to apply to each product
+					if c.Once {
+						break
+					}
+				}
+			}
+		}
+	}
+	return discount
+}
+
+// Update discount using coupon codes/order info.
+// Refactor later when we have more time to think about it
+func (o *Order) UpdateCouponItems() error {
+	nCodes := len(o.CouponCodes)
+
+	items := make([]LineItem, 0)
+	for _, item := range o.Items {
+		if item.AddedBy != "coupon" {
+			items = append(items, item)
+		}
+	}
+
+	o.Items = items
+
+	for i := 0; i < nCodes; i++ {
+		c := &o.Coupons[i]
+		if !c.ValidFor(o.CreatedAt) {
+			continue
+		}
+		if c.ProductId == "" {
+			switch c.Type {
+			case coupon.FreeItem:
+				o.Items = append(o.Items, LineItem{
+					ProductId: c.FreeProductId,
+					VariantId: c.FreeVariantId,
+					Quantity:  c.FreeQuantity,
+					Free:      true,
+					AddedBy:   "coupon",
+				})
+			}
+		} else {
+			for _, item := range o.Items {
+				if item.ProductId == c.ProductId {
+					switch c.Type {
+					case coupon.FreeItem:
+						o.Items = append(o.Items, LineItem{
+							ProductId: c.FreeProductId,
+							VariantId: c.FreeVariantId,
+							Quantity:  c.FreeQuantity,
+							Free:      true,
+							AddedBy:   "coupon",
+						})
+					}
+				}
+			}
+		}
+	}
+
+	return nil
+}
