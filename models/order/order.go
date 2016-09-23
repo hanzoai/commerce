@@ -123,8 +123,8 @@ type Order struct {
 
 	Adjustments []Adjustment `json:"-"`
 
-	Discounts   []discount.Discount `json:"discounts,omitempty"`
-	DiscountIds []string            `json:"discountIds,omitempty"`
+	Discounts   []discount.Discount `json:"discounts,omitempty" datastore:"-"`
+	Discounts_  string              `json:"-"`
 	Coupons     []coupon.Coupon     `json:"coupons,omitempty"`
 	CouponCodes []string            `json:"couponCodes,omitempty"`
 	ReferrerId  string              `json:"referrerId,omitempty"`
