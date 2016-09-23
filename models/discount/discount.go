@@ -3,6 +3,8 @@ package discount
 import (
 	"time"
 
+	"crowdstart.com/models/discount/scope"
+	"crowdstart.com/models/discount/target"
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/util/log"
@@ -20,24 +22,6 @@ const (
 )
 
 var Types = []Type{Flat, Percent, FreeShipping, FreeItem, Bulk}
-
-type ScopeType string
-
-const (
-	Product ScopeType = "product"
-	Collection        = "collection"
-	Store             = "store"
-	Variant           = "variant"
-)
-
-type TargetType string
-
-const (
-	Cart TargetType = "cart"
-	ProductTarget   = "product"
-	VariantTarget   = "variant"
-)
-
 
 type Amount struct {
 	Flat    int     `flat,omitempty`
@@ -76,7 +60,7 @@ type Discount struct {
 
 	Scope struct {
 		// The scope these rules qualify against
-		Type ScopeType `json:"type"`
+		Type scope.Type `json:"type"`
 
 		// Id for this rule
 		StoreId      string `json:"storeId,omitempty"`
@@ -87,11 +71,11 @@ type Discount struct {
 
 	Target struct {
 		// Target for which all rules apply
-		Type TargetType `json:"type"`
+		Type target.Type `json:"type"`
 
 		// Id for the target
-		ProductId    string `json:"productId,omitempty"`
-		VariantId    string `json:"variantId,omitempty"`
+		ProductId string `json:"productId,omitempty"`
+		VariantId string `json:"variantId,omitempty"`
 	} `json:"target"`
 
 	// Rules for this discount
@@ -101,7 +85,7 @@ type Discount struct {
 	Enabled bool `json:"enabled"`
 }
 
-func (d Discount) Valid(t time.Time) bool {
+func (d Discount) ValidFor(t time.Time) bool {
 	ctx := d.Context()
 	if !d.Enabled {
 		log.Warn("Discount Not Enabled", ctx)

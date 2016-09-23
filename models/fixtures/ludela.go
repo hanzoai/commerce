@@ -8,6 +8,8 @@ import (
 	"crowdstart.com/auth/password"
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/discount"
+	"crowdstart.com/models/discount/scope"
+	"crowdstart.com/models/discount/target"
 	"crowdstart.com/models/namespace"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/product"
@@ -154,9 +156,9 @@ var Ludela = New("ludela", func(c *gin.Context) *organization.Organization {
 	dis := discount.New(db)
 	dis.Name = "LuDela Bulk Discount"
 	dis.GetOrCreate("Name=", dis.Name)
-	dis.Scope.Type = discount.Product
+	dis.Scope.Type = scope.Product
 	dis.Scope.ProductId = prod.Id()
-	dis.Target.Type = discount.ProductTarget
+	dis.Target.Type = target.Product
 	dis.Target.ProductId = prod.Id()
 
 	// Create Jamie's rules
