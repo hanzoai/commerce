@@ -22,33 +22,31 @@ type Client struct {
 func New(c *gin.Context) Client {
 	req := c.Request
 
-	// Parse geopoint
-	geo := c.Request.Header.Get("X-AppEngine-CitLatLong")
-	lat, _ := strconv.ParseFloat(geo, 64)
-	long, _ := strconv.ParseFloat(geo, 64)
-	geoPoint := appengine.GeoPoint{Lat: lat, Lng: long}
-
-	// Get proxied values from Cloudflare, falling back to AppEngine headers
-	ip := req.Header.Get("CF-Connecting-IP")
-	if ip == "" {
-		ip = req.RemoteAddr
-	}
-
-	country := req.Header.Get("CF-IPCountry")
-	if country == "" {
-		country = req.Header.Get("X-AppEngine-Country")
-	}
-
-	return Client{
-		Ip:        ip,
+	client := Client{
 		UserAgent: req.UserAgent(),
 		Referer:   req.Referer(),
 		Language:  req.Header.Get("Accept-Language"),
-		Country:   country,
-		Region:    req.Header.Get("X-AppEngine-Region"),
-		City:      req.Header.Get("X-AppEngine-City"),
-		GeoPoint:  geoPoint,
 	}
+
+	// Check for proxied values from Cloudflare
+	client.Ip = req.Header.Get("CF-Connecting-IP")
+	client.Country = req.Header.Get("CF-IPCountry")
+
+	// Not behind a proxy
+	if client.Ip == "" {
+		client.Ip = req.RemoteAddr
+		client.Country = req.Header.Get("X-AppEngine-Country")
+		client.Region = req.Header.Get("X-AppEngine-Region")
+		client.City = req.Header.Get("X-AppEngine-City")
+
+		// Parse latitude and longitude into geopoint
+		geo := c.Request.Header.Get("X-AppEngine-CitLatLong")
+		lat, _ := strconv.ParseFloat(geo, 64)
+		long, _ := strconv.ParseFloat(geo, 64)
+		client.GeoPoint = appengine.GeoPoint{Lat: lat, Lng: long}
+	}
+
+	return client
 }
 
 func (c Client) Blacklisted() bool {
