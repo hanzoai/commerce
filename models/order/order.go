@@ -456,7 +456,7 @@ func (o *Order) CalculateDiscount() (currency.Cents, error) {
 		switch dis.Target.Type {
 		case discount.ProductTarget:
 			for _, li := range o.Items {
-				if li.ProductId == dis.Scope.ProductId {
+				if li.ProductId == dis.Target.ProductId {
 					quantity = li.Quantity
 					price = li.Price
 					break
@@ -464,7 +464,7 @@ func (o *Order) CalculateDiscount() (currency.Cents, error) {
 			}
 		case discount.VariantTarget:
 			for _, li := range o.Items {
-				if li.VariantId == dis.Scope.VariantId {
+				if li.VariantId == dis.Target.VariantId {
 					quantity = li.Quantity
 					price = li.Price
 					break
