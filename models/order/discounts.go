@@ -87,9 +87,9 @@ func (o *Order) addVariantDiscounts(id string, disc discountChan, errc errorChan
 func (o *Order) GetDiscounts() ([]*discount.Discount, error) {
 	discounts := make([]*discount.Discount, 0)
 
-	channels := 2
-	errc := make(chan error)
-	disc := make(chan []*discount.Discount)
+	channels := 2 + len(o.Items)
+	errc := make(chan error, channels)
+	disc := make(chan []*discount.Discount, channels)
 
 	// Fetch any organization-level discounts
 	go o.addOrgDiscounts(disc, errc)
@@ -99,7 +99,6 @@ func (o *Order) GetDiscounts() ([]*discount.Discount, error) {
 
 	// Fetch any product or variant level discounts
 	for _, item := range o.Items {
-		channels += 1
 		if item.ProductId != "" {
 			go o.addProductDiscounts(item.ProductId, disc, errc)
 		} else if item.VariantId != "" {
@@ -108,17 +107,14 @@ func (o *Order) GetDiscounts() ([]*discount.Discount, error) {
 	}
 
 	// Check for any query errors
-	var err error
-	for i := 0; i < channels; i++ {
-		e := <-errc
-		if e != nil {
-			err = e
+	for err := range errc {
+		if err != nil {
+			return nil, err
 		}
 	}
 
 	// Merge results together
-	for i := 0; i < channels; i++ {
-		dis := <-disc
+	for dis := range discounts {
 		addDiscounts(discounts, dis)
 	}
 
