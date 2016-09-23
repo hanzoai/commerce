@@ -15,6 +15,7 @@ func (d *Discount) Init(db *datastore.Datastore) {
 
 func (d *Discount) Defaults() {
 	d.Enabled = true
+	d.Rules = make([]Rule, 0)
 }
 
 func New(db *datastore.Datastore) *Discount {
