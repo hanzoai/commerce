@@ -723,6 +723,7 @@ func (o *Order) UpdateAndTally(stor *store.Store) error {
 	if err != nil {
 		return err
 	}
+	discount += o.CalcCouponDiscounts()
 	o.Discount = discount
 
 
