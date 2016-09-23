@@ -24,7 +24,7 @@ func (o *Order) addGlobalDiscounts(disc discountChan, errc errorChan) {
 	_, err := discount.Query(o.Db).
 		Filter("Scope=", "").
 		Filter("Enabled=", true).
-		GetAll(dst)
+		GetAll(&dst)
 	if err != nil {
 		log.Warn("Unable to fetch discounts for organization: %v", err, o.Context())
 	}
@@ -37,7 +37,7 @@ func (o *Order) addStoreDiscounts(disc discountChan, errc errorChan) {
 	_, err := discount.Query(o.Db).
 		Filter("StoreId=", o.StoreId).
 		Filter("Enabled=", true).
-		GetAll(dst)
+		GetAll(&dst)
 	if err != nil {
 		log.Warn("Unable to fetch discounts for store '%s': %v", o.StoreId, err, o.Context())
 	}
@@ -50,7 +50,7 @@ func (o *Order) addCollectionDiscounts(id string, disc discountChan, errc errorC
 	_, err := discount.Query(o.Db).
 		Filter("CollectionId=", id).
 		Filter("Enabled=", true).
-		GetAll(dst)
+		GetAll(&dst)
 	if err != nil {
 		log.Warn("Unable to fetch discounts for collection '%s': %v", id, err, o.Context())
 	}
@@ -63,7 +63,7 @@ func (o *Order) addProductDiscounts(id string, disc discountChan, errc errorChan
 	_, err := discount.Query(o.Db).
 		Filter("ProductId=", id).
 		Filter("Enabled=", true).
-		GetAll(dst)
+		GetAll(&dst)
 	if err != nil {
 		log.Warn("Unable to fetch discounts for product '%s': %v", id, err, o.Context())
 	}
@@ -76,7 +76,7 @@ func (o *Order) addVariantDiscounts(id string, disc discountChan, errc errorChan
 	_, err := discount.Query(o.Db).
 		Filter("VariantId=", id).
 		Filter("Enabled=", true).
-		GetAll(dst)
+		GetAll(&dst)
 	if err != nil {
 		log.Warn("Unable to fetch discounts for variant '%s': %v", id, err, o.Context())
 	}
@@ -89,6 +89,7 @@ func (o *Order) GetDiscounts() ([]*discount.Discount, error) {
 	errc := make(chan error, channels)
 	disc := make(chan []*discount.Discount, channels)
 
+	chns := 2
 	// Fetch any organization-level discounts
 	go o.addGlobalDiscounts(disc, errc)
 
@@ -97,6 +98,7 @@ func (o *Order) GetDiscounts() ([]*discount.Discount, error) {
 
 	// Fetch any product or variant level discounts
 	for _, item := range o.Items {
+		chns += 1
 		if item.ProductId != "" {
 			go o.addProductDiscounts(item.ProductId, disc, errc)
 		} else if item.VariantId != "" {
@@ -105,7 +107,8 @@ func (o *Order) GetDiscounts() ([]*discount.Discount, error) {
 	}
 
 	// Check for any query errors
-	for err := range errc {
+	for i := 0; i < channels; i++ {
+		err := <-errc 
 		if err != nil {
 			return nil, err
 		}
@@ -113,7 +116,8 @@ func (o *Order) GetDiscounts() ([]*discount.Discount, error) {
 
 	// Merge results together
 	discounts := make([]*discount.Discount, 0)
-	for dis := range disc {
+	for i := 0; i < channels; i++ {
+		dis := <-disc
 		addDiscounts(discounts, dis)
 	}
 
