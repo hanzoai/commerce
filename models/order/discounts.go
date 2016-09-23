@@ -7,15 +7,19 @@ import (
 	"crowdstart.com/util/log"
 )
 
+type discountChan chan []*discount.Discount
+type errorChan chan error
+
 func addDiscounts(to []*discount.Discount, from []*discount.Discount) {
-	for i := 1; i < len(from); i++ {
-		if from[i].Valid(time.Now()) {
+	now := time.Now()
+	for i := 0; i < len(from); i++ {
+		if from[i].Valid(now) {
 			to = append(to, from[i])
 		}
 	}
 }
 
-func (o *Order) addOrgDiscounts(discounts []*discount.Discount) error {
+func (o *Order) addOrgDiscounts(disc discountChan, errc errorChan) {
 	dst := make([]*discount.Discount, 0)
 	_, err := discount.Query(o.Db).
 		Filter("Scope=", discount.Organization).
@@ -23,13 +27,12 @@ func (o *Order) addOrgDiscounts(discounts []*discount.Discount) error {
 		GetAll(dst)
 	if err != nil {
 		log.Warn("Unable to fetch discounts for organization: %v", err, o.Context())
-		return err
 	}
-	addDiscounts(discounts, dst)
-	return nil
+	errc <- err
+	disc <- dst
 }
 
-func (o *Order) addStoreDiscounts(discounts []*discount.Discount) error {
+func (o *Order) addStoreDiscounts(disc discountChan, errc errorChan) {
 	dst := make([]*discount.Discount, 0)
 	_, err := discount.Query(o.Db).
 		Filter("StoreId=", o.StoreId).
@@ -37,13 +40,12 @@ func (o *Order) addStoreDiscounts(discounts []*discount.Discount) error {
 		GetAll(dst)
 	if err != nil {
 		log.Warn("Unable to fetch discounts for store '%s': %v", o.StoreId, err, o.Context())
-		return err
 	}
-	addDiscounts(discounts, dst)
-	return nil
+	errc <- err
+	disc <- dst
 }
 
-func (o *Order) addCollectionDiscounts(discounts []*discount.Discount, id string) error {
+func (o *Order) addCollectionDiscounts(id string, disc discountChan, errc errorChan) {
 	dst := make([]*discount.Discount, 0)
 	_, err := discount.Query(o.Db).
 		Filter("CollectionId=", id).
@@ -51,13 +53,12 @@ func (o *Order) addCollectionDiscounts(discounts []*discount.Discount, id string
 		GetAll(dst)
 	if err != nil {
 		log.Warn("Unable to fetch discounts for collection '%s': %v", id, err, o.Context())
-		return err
 	}
-
-	return nil
+	errc <- err
+	disc <- dst
 }
 
-func (o *Order) addProductDiscounts(discounts []*discount.Discount, id string) error {
+func (o *Order) addProductDiscounts(id string, disc discountChan, errc errorChan) {
 	dst := make([]*discount.Discount, 0)
 	_, err := discount.Query(o.Db).
 		Filter("ProductId=", id).
@@ -65,13 +66,12 @@ func (o *Order) addProductDiscounts(discounts []*discount.Discount, id string) e
 		GetAll(dst)
 	if err != nil {
 		log.Warn("Unable to fetch discounts for product '%s': %v", id, err, o.Context())
-		return err
 	}
-	addDiscounts(discounts, dst)
-	return nil
+	errc <- err
+	disc <- dst
 }
 
-func (o *Order) addVariantDiscounts(discounts []*discount.Discount, id string) error {
+func (o *Order) addVariantDiscounts(id string, disc discountChan, errc errorChan) {
 	dst := make([]*discount.Discount, 0)
 	_, err := discount.Query(o.Db).
 		Filter("VariantId=", id).
@@ -80,35 +80,47 @@ func (o *Order) addVariantDiscounts(discounts []*discount.Discount, id string) e
 	if err != nil {
 		log.Warn("Unable to fetch discounts for variant '%s': %v", id, err, o.Context())
 	}
-	addDiscounts(discounts, dst)
-	return err
+	errc <- err
+	disc <- dst
 }
 
 func (o *Order) GetDiscounts() ([]*discount.Discount, error) {
 	discounts := make([]*discount.Discount, 0)
 
+	channels := 2
+	errc := make(chan error)
+	disc := make(chan []*discount.Discount)
+
 	// Fetch any organization-level discounts
-	if err := o.addOrgDiscounts(discounts); err != nil {
-		return discounts, err
-	}
+	go o.addOrgDiscounts(disc, errc)
 
 	// Fetch any store-level discounts
-	if err := o.addStoreDiscounts(discounts); err != nil {
-		return discounts, err
-	}
+	go o.addStoreDiscounts(disc, errc)
 
 	// Fetch any product or variant level discounts
 	for _, item := range o.Items {
+		channels += 1
 		if item.ProductId != "" {
-			if err := o.addProductDiscounts(discounts, item.ProductId); err != nil {
-				return discounts, err
-			}
+			go o.addProductDiscounts(item.ProductId, disc, errc)
 		} else if item.VariantId != "" {
-			if err := o.addVariantDiscounts(discounts, item.VariantId); err != nil {
-				return discounts, err
-			}
+			go o.addVariantDiscounts(item.VariantId, disc, errc)
 		}
 	}
 
-	return discounts, nil
+	// Check for any query errors
+	var err error
+	for i := 0; i < channels; i++ {
+		e := <-errc
+		if e != nil {
+			err = e
+		}
+	}
+
+	// Merge results together
+	for i := 0; i < channels; i++ {
+		dis := <-disc
+		addDiscounts(discounts, dis)
+	}
+
+	return discounts, err
 }
