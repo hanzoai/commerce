@@ -47,17 +47,33 @@ func (o *Order) appendValidDiscounts(to discounts, from discounts) discounts {
 	return to
 }
 
-func (o *Order) addOrgDiscounts(keyc chan []*aeds.Key, errc chan error) {
+func (o *Order) getScopedDiscount(sc scope.Type, id string, keyc chan []*aeds.Key, errc chan error) {
 	ctx := o.Context()
 
 	// Check memcache for keys
-	key := discount.KeyForScope(scope.Organization, "")
+	key := discount.KeyForScope(sc, id)
 	keys, err := getCachedDiscounts(ctx, key)
+
+	var queryCond string
+	switch sc {
+	case scope.Store:
+		queryCond = "StoreId="
+	case scope.Collection:
+		queryCond = "CollectionId="
+	case scope.Product:
+		queryCond = "ProductId="
+	case scope.Variant:
+		queryCond = "VariantId="
+	}
 
 	// Fetch keys from datastore if that fails
 	if err != nil {
-		keys, err = discount.Query(o.Db).
-			Filter("Scope=", scope.Organization).
+		query := discount.Query(o.Db).
+			Filter("Scope=", string(sc))
+		if queryCond != "" {
+			query = query.Filter(queryCond, id)
+		}
+		keys, err = query.
 			Filter("Enabled=", true).
 			KeysOnly().
 			GetAll(nil)
@@ -72,63 +88,23 @@ func (o *Order) addOrgDiscounts(keyc chan []*aeds.Key, errc chan error) {
 	keyc <- keys
 }
 
-func (o *Order) addStoreDiscounts(keyc chan []*aeds.Key, errc chan error) {
-	keys, err := discount.Query(o.Db).
-		Filter("StoreId=", o.StoreId).
-		Filter("Enabled=", true).
-		KeysOnly().
-		GetAll(nil)
-	errc <- err
-	keyc <- keys
-}
-
-func (o *Order) addCollectionDiscounts(id string, keyc chan []*aeds.Key, errc chan error) {
-	keys, err := discount.Query(o.Db).
-		Filter("CollectionId=", id).
-		Filter("Enabled=", true).
-		KeysOnly().
-		GetAll(nil)
-	errc <- err
-	keyc <- keys
-}
-
-func (o *Order) addProductDiscounts(id string, keyc chan []*aeds.Key, errc chan error) {
-	keys, err := discount.Query(o.Db).
-		Filter("ProductId=", id).
-		Filter("Enabled=", true).
-		KeysOnly().
-		GetAll(nil)
-	errc <- err
-	keyc <- keys
-}
-
-func (o *Order) addVariantDiscounts(id string, keyc chan []*aeds.Key, errc chan error) {
-	keys, err := discount.Query(o.Db).
-		Filter("VariantId=", id).
-		Filter("Enabled=", true).
-		KeysOnly().
-		GetAll(nil)
-	errc <- err
-	keyc <- keys
-}
-
 func (o *Order) GetDiscounts() (discounts, error) {
 	channels := 2 + len(o.Items)
 	errc := make(chan error, channels)
 	keyc := make(chan []*aeds.Key, channels)
 
 	// Fetch any organization-level discounts
-	go o.addOrgDiscounts(keyc, errc)
+	go o.getScopedDiscount(scope.Organization, "", keyc, errc)
 
 	// Fetch any store-level discounts
-	go o.addStoreDiscounts(keyc, errc)
+	go o.getScopedDiscount(scope.Store, o.StoreId, keyc, errc)
 
 	// Fetch any product or variant level discounts
 	for _, item := range o.Items {
 		if item.ProductId != "" {
-			go o.addProductDiscounts(item.ProductId, keyc, errc)
+			go o.getScopedDiscount(scope.Product, item.ProductId, keyc, errc)
 		} else if item.VariantId != "" {
-			go o.addVariantDiscounts(item.VariantId, keyc, errc)
+			go o.getScopedDiscount(scope.Variant, item.VariantId, keyc, errc)
 		}
 	}
 
