@@ -3,10 +3,10 @@ package discount
 import (
 	"time"
 
+	"crowdstart.com/models/discount/rule"
 	"crowdstart.com/models/discount/scope"
 	"crowdstart.com/models/discount/target"
 	"crowdstart.com/models/mixin"
-	"crowdstart.com/models/types/currency"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/timeutil"
 )
@@ -23,27 +23,13 @@ const (
 
 var Types = []Type{Flat, Percent, FreeShipping, FreeItem, Bulk}
 
-type Amount struct {
-	Flat    int     `flat,omitempty`
-	Percent float64 `percent,omitempty`
-}
-
+// Encompasses a given rule trigger and discount amount
 type Rule struct {
-	// Range in which this discount is active
-	Range struct {
-		// Quantity range which triggers this rule
-		Quantity struct {
-			Start int `json:"start,omitempty"`
-		} `json:"quantity,omitempty"`
+	// Condition which triggers this rule
+	Trigger rule.Trigger `json:"trigger"`
 
-		// Price range which triggers this rule
-		Price struct {
-			Start currency.Cents `json:"start,omitempty"`
-		} `json:"price,omitempty"`
-	} `json:"range"`
-
-	// Amount of discount
-	Amount Amount `json:"amount"`
+	// Action which happens as result of trigger
+	Action rule.Action `json:"action"`
 }
 
 type Discount struct {

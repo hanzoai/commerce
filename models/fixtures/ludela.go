@@ -8,6 +8,7 @@ import (
 	"crowdstart.com/auth/password"
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/discount"
+	"crowdstart.com/models/discount/rule"
 	"crowdstart.com/models/discount/scope"
 	"crowdstart.com/models/discount/target"
 	"crowdstart.com/models/namespace"
@@ -162,13 +163,25 @@ var Ludela = New("ludela", func(c *gin.Context) *organization.Organization {
 	dis.Target.ProductId = prod.Id()
 
 	// Create Jamie's rules
-	rule1 := discount.Rule{}
-	rule1.Range.Quantity.Start = 2
-	rule1.Amount.Flat = 5
+	rule1 := discount.Rule{
+		rule.Trigger{
+			Quantity: rule.Quantity{
+				Start: 2,
+			},
+		},
+		rule.Action{
+			Discount: rule.Discount{
+				Flat: 5,
+			},
+		},
+	}
+	// aka...
+	rule1.Trigger.Quantity.Start = 2
+	rule1.Action.Discount.Flat = 5
 
 	rule2 := discount.Rule{}
-	rule2.Range.Quantity.Start = 3
-	rule2.Amount.Flat = 16
+	rule2.Trigger.Quantity.Start = 3
+	rule2.Action.Discount.Flat = 16
 
 	dis.Rules = []discount.Rule{rule1, rule2}
 	dis.Update()
