@@ -10,6 +10,8 @@ import (
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/discount/scope"
+
+	"crowdstart.com/util/log"
 )
 
 // Computes memcache key, using format:
@@ -77,16 +79,16 @@ func GetScopedDiscounts(ctx appengine.Context, sc scope.Type, id string, keyc ch
 		var filter string
 		switch sc {
 		case scope.Store:
-			filter = "StoreId="
+			filter = "Scope.StoreId="
 		case scope.Collection:
-			filter = "CollectionId="
+			filter = "Scope.CollectionId="
 		case scope.Product:
-			filter = "ProductId="
+			filter = "Scope.ProductId="
 		case scope.Variant:
-			filter = "VariantId="
+			filter = "Scope.VariantId="
 		}
 
-		query := Query(datastore.New(ctx)).Filter("Scope=", string(sc))
+		query := Query(datastore.New(ctx)).Filter("Scope.Type=", string(sc))
 
 		if filter != "" {
 			query = query.Filter(filter, id)
@@ -101,6 +103,8 @@ func GetScopedDiscounts(ctx appengine.Context, sc scope.Type, id string, keyc ch
 		if err != nil {
 			err = cacheDiscounts(ctx, key, keys)
 		}
+
+		log.Error("sc = %v, id = %v, keys = %v", sc, id, keys)
 	}
 
 	// Return with keys
