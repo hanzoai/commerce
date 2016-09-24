@@ -4,6 +4,7 @@ import (
 	"crowdstart.com/models/discount"
 	"crowdstart.com/models/discount/scope"
 	"crowdstart.com/models/discount/target"
+	"crowdstart.com/models/discount/trigger"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/util/log"
 )
@@ -112,65 +113,76 @@ func (o *Order) GetDiscounts() (discounts, error) {
 
 // Discount for this order calculated using applicable discount rules
 func (o *Order) CalcDiscount() (currency.Cents, error) {
-	discounts, err := o.GetDiscounts()
-	var discountTotal currency.Cents
-	if err != nil {
-		return discountTotal, err
-	}
+	totalDiscount := currency.Cents(0)
 	totalQuantity := 0
+
+	// Get applicable discount rules
+	discounts, err := o.GetDiscounts()
+	if err != nil {
+		return totalDiscount, err
+	}
+
+	// Calculate total quantity
 	for _, li := range o.Items {
 		totalQuantity += li.Quantity
 	}
+
+	// Figure out scope's price and quantity. The same scope applies to all
+	// rules of a given discount.
 	for _, dis := range discounts {
+		price := currency.Cents(0)
 		quantity := 0
-		var price currency.Cents
+
 		switch dis.Scope.Type {
 		case scope.Product:
+			// Find product this discount is scoped to
 			for _, li := range o.Items {
 				if li.ProductId == dis.Scope.ProductId {
-					quantity = li.Quantity
 					price = li.Price
+					quantity = li.Quantity
 					break
 				}
 			}
 		case scope.Variant:
+			// Find variant this discount is scoped to
 			for _, li := range o.Items {
 				if li.VariantId == dis.Scope.VariantId {
-					quantity = li.Quantity
 					price = li.Price
+					quantity = li.Quantity
 					break
 				}
 			}
 		case scope.Collection:
 			continue
-		case scope.Store:
-			quantity = totalQuantity
+		case scope.Store, scope.Organization:
+			// Use total price, quantity for store and organization scopes.
 			price = o.LineTotal
+			quantity = totalQuantity
 		}
 
+		// Check if rule is triggered
 		quantityMax := 0
 		quantityIx := -1
 		var priceMax currency.Cents
 		priceIx := -1
 		for i, rule := range dis.Rules {
-			ruleQuantity := rule.Range.Quantity.Start
-			if ruleQuantity != 0 {
+			switch rule.Trigger.Type() {
+			case trigger.Quantity:
+				ruleQuantity := rule.Trigger.Quantity.Start
 				if quantity > ruleQuantity && ruleQuantity > quantityMax {
 					quantityMax = ruleQuantity
 					quantityIx = i
-					continue
 				}
-			}
-			rulePrice := rule.Range.Price.Start
-			if rulePrice != 0 {
+			case trigger.Price:
+				rulePrice := rule.Trigger.Price.Start
 				if price > rulePrice && rulePrice > priceMax {
 					priceMax = rulePrice
 					priceIx = i
-					continue
 				}
 			}
 		}
 
+		// Find target
 		switch dis.Target.Type {
 		case target.Product:
 			for _, li := range o.Items {
@@ -193,21 +205,25 @@ func (o *Order) CalcDiscount() (currency.Cents, error) {
 			price = o.LineTotal
 		}
 
+		// Apply rule
 		if quantityIx >= 0 {
 			rule := dis.Rules[quantityIx]
-			if rule.Amount.Flat != 0 {
-				discountTotal += currency.Cents(rule.Amount.Flat)
-			} else if rule.Amount.Percent != 0 {
-				discountTotal += currency.Cents(float64(price) * rule.Amount.Percent)
+			amt := rule.Action.Discount // Only handling Discount-type actions for now
+			if amt.Flat != 0 {
+				totalDiscount += amt.Flat
+			} else if amt.Percent != 0 {
+				totalDiscount += currency.Cents(float64(price) * amt.Percent)
 			}
 		} else if priceIx >= 0 {
 			rule := dis.Rules[priceIx]
-			if rule.Amount.Flat != 0 {
-				discountTotal += currency.Cents(rule.Amount.Flat)
-			} else if rule.Amount.Percent != 0 {
-				discountTotal += currency.Cents(float64(price) * rule.Amount.Percent)
+			amt := rule.Action.Discount // Only handles Discount-type actions for now
+			if amt.Flat != 0 {
+				totalDiscount += amt.Flat
+			} else if amt.Percent != 0 {
+				totalDiscount += currency.Cents(float64(price) * amt.Percent)
 			}
 		}
 	}
-	return discountTotal, nil
+
+	return totalDiscount, nil
 }
