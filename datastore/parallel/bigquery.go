@@ -105,8 +105,8 @@ func (fn *ParallelFn) createBigQueryDelayFn(name string) {
 				break
 			}
 
-			// Skip field mismatch errors
-			if err := db.SkipFieldMismatch(err); err != nil {
+			// Ignore field mismatch errors
+			if err := datastore.IgnoreFieldMismatch(err); err != nil {
 				log.Error("Failed to fetch next entity: %v", err, ctx)
 				break
 			}

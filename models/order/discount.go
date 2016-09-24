@@ -9,7 +9,6 @@ import (
 	"crowdstart.com/models/discount/trigger"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/util/log"
-
 	//"github.com/qedus/nds"
 )
 
@@ -59,43 +58,40 @@ func (o *Order) GetDiscounts() ([]*discount.Discount, error) {
 	// Merge results together
 	keys := make([]*aeds.Key, 0)
 	for i := 0; i < channels; i++ {
-		hoo := <-keyc
-		log.Error("hoo = %v, len = %v", hoo, len(hoo))
-		keys = append(keys, hoo...)
+		keys = append(keys, <-keyc...)
 	}
 
 	// Fetch discounts
-	var discounts []*discount.Discount
-	discounts = make([]*discount.Discount, len(keys))
-	for i, _ := range(discounts) {
-		discounts[i] = new(discount.Discount)
-	}
-	err := aeds.GetMulti(o.Db.Context, keys, &discounts)
+	discounts := make([]*discount.Discount, 0)
+	err := o.Db.GetMulti(keys, &discounts)
+
+	// discounts := make([]*discount.Discount, 0)
+	// err = o.Db.GetMulti(keys, discounts)
 	/*
-	*/
+	 */
 	/*
-	horf := make([]aeds.PropertyList, len(keys))
-	for i, dkey := range(keys) {
-		err := o.Db.Get(dkey, &horf[i])
-		log.Error("dkey = %v, err = %v, horf = %v", dkey, err, horf[i])
-	}
+		horf := make([]aeds.PropertyList, len(keys))
+		for i, dkey := range(keys) {
+			err := o.Db.Get(dkey, &horf[i])
+			log.Error("dkey = %v, err = %v, horf = %v", dkey, err, horf[i])
+		}
 	*/
 	//err := o.Db.GetMulti(keys, discounts)
 	log.Error("GetMulti keys = %v, err = %v", keys, err)
 	/*
-	if err != nil {
-		// Filter out non-valid discounts
-		discounts = o.filterValidDiscounts(discounts)
-	}
+		if err != nil {
+			// Filter out non-valid discounts
+			discounts = o.filterValidDiscounts(discounts)
+		}
 	*/
 
-/*
-	discy := make([]*discount.Discount, len(keys))
-	for i, _ := range(discounts) {
-		discy[i] = &discounts[i]
-	}
-	err = o.Db.GetMulti(keys, discy)
-	log.Error("GetMulti 2 keys = %v, err = %v", keys, err)
+	/*
+		discy := make([]*discount.Discount, len(keys))
+		for i, _ := range(discounts) {
+			discy[i] = &discounts[i]
+		}
+		err = o.Db.GetMulti(keys, discy)
+		log.Error("GetMulti 2 keys = %v, err = %v", keys, err)
 	*/
 
 	return discounts, err
