@@ -26,7 +26,9 @@ func (o *Order) filterValidDiscounts(discounts []*discount.Discount) []*discount
 }
 
 func (o *Order) GetDiscounts() ([]*discount.Discount, error) {
-	ctx := o.Context()
+	db := o.Db
+	ctx := db.Context
+
 	channels := 2 + len(o.Items)
 	errc := make(chan error, channels)
 	keyc := make(chan []*aeds.Key, channels)
@@ -63,37 +65,12 @@ func (o *Order) GetDiscounts() ([]*discount.Discount, error) {
 
 	// Fetch discounts
 	discounts := make([]*discount.Discount, 0)
-	err := o.Db.GetMulti(keys, &discounts)
+	err := db.GetMulti(keys, &discounts)
 
-	// discounts := make([]*discount.Discount, 0)
-	// err = o.Db.GetMulti(keys, discounts)
-	/*
-	 */
-	/*
-		horf := make([]aeds.PropertyList, len(keys))
-		for i, dkey := range(keys) {
-			err := o.Db.Get(dkey, &horf[i])
-			log.Error("dkey = %v, err = %v, horf = %v", dkey, err, horf[i])
-		}
-	*/
-	//err := o.Db.GetMulti(keys, discounts)
-	log.Error("GetMulti keys = %v, err = %v", keys, err)
-	/*
-		if err != nil {
-			// Filter out non-valid discounts
-			discounts = o.filterValidDiscounts(discounts)
-		}
-	*/
+	if err != nil {
+		log.Error("GetMulti failed: %v", err, ctx)
 
-	/*
-		discy := make([]*discount.Discount, len(keys))
-		for i, _ := range(discounts) {
-			discy[i] = &discounts[i]
-		}
-		err = o.Db.GetMulti(keys, discy)
-		log.Error("GetMulti 2 keys = %v, err = %v", keys, err)
-	*/
-
+	}
 	return discounts, err
 }
 
