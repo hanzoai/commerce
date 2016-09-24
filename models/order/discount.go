@@ -1,9 +1,6 @@
 package order
 
 import (
-	"appengine"
-	"appengine/memcache"
-
 	aeds "appengine/datastore"
 
 	"crowdstart.com/models/discount"
@@ -14,97 +11,35 @@ import (
 	"crowdstart.com/util/log"
 )
 
-// Alias type for simplicity
-type discounts []discount.Discount
-
-// Cache discount keys
-func cacheDiscounts(ctx appengine.Context, key string, keys []*aeds.Key) error {
-	return memcache.Gob.Set(ctx,
-		&memcache.Item{
-			Key:    key,
-			Object: keys,
-		})
-}
-
-// Get cached discount keys
-func getCachedDiscounts(ctx appengine.Context, key string) ([]*aeds.Key, error) {
-	keys := make([]*aeds.Key, 0)
-	_, err := memcache.Gob.Get(ctx, key, keys)
-	if err != nil {
-		return keys, err
-	}
-
-	return keys, nil
-}
-
 // Append discounts which are valid for order creation date
-func (o *Order) appendValidDiscounts(to discounts, from discounts) discounts {
-	for i := 0; i < len(from); i++ {
-		if from[i].ValidFor(o.CreatedAt) {
-			to = append(to, from[i])
+func (o *Order) filterValidDiscounts(discounts []*discount.Discount) []*discount.Discount {
+	valid := make([]*discount.Discount, 0)
+	for _, dis := range discounts {
+		if dis.ValidFor(o.CreatedAt) {
+			valid = append(valid, dis)
 		}
 	}
-	return to
+	return valid
 }
 
-func (o *Order) getScopedDiscount(sc scope.Type, id string, keyc chan []*aeds.Key, errc chan error) {
+func (o *Order) GetDiscounts() ([]*discount.Discount, error) {
 	ctx := o.Context()
-
-	// Check memcache for keys
-	key := discount.KeyForScope(sc, id)
-	keys, err := getCachedDiscounts(ctx, key)
-
-	var queryCond string
-	switch sc {
-	case scope.Store:
-		queryCond = "StoreId="
-	case scope.Collection:
-		queryCond = "CollectionId="
-	case scope.Product:
-		queryCond = "ProductId="
-	case scope.Variant:
-		queryCond = "VariantId="
-	}
-
-	// Fetch keys from datastore if that fails
-	if err != nil {
-		query := discount.Query(o.Db).
-			Filter("Scope=", string(sc))
-		if queryCond != "" {
-			query = query.Filter(queryCond, id)
-		}
-		keys, err = query.
-			Filter("Enabled=", true).
-			KeysOnly().
-			GetAll(nil)
-		// Cache keys for later
-		if err != nil {
-			err = cacheDiscounts(ctx, key, keys)
-		}
-	}
-
-	// Return with keys
-	errc <- err
-	keyc <- keys
-}
-
-func (o *Order) GetDiscounts() (discounts, error) {
 	channels := 2 + len(o.Items)
 	errc := make(chan error, channels)
 	keyc := make(chan []*aeds.Key, channels)
 
 	// Fetch any organization-level discounts
-	go o.getScopedDiscount(scope.Organization, "", keyc, errc)
+	go discount.GetScopedDiscounts(ctx, scope.Organization, "", keyc, errc)
 
 	// Fetch any store-level discounts
-	go o.getScopedDiscount(scope.Store, o.StoreId, keyc, errc)
+	go discount.GetScopedDiscounts(ctx, scope.Store, o.StoreId, keyc, errc)
 
 	// Fetch any product or variant level discounts
 	for _, item := range o.Items {
 		if item.ProductId != "" {
-			go o.getScopedDiscount(scope.Product, item.ProductId, keyc, errc)
+			go discount.GetScopedDiscounts(ctx, scope.Product, item.ProductId, keyc, errc)
 		} else if item.VariantId != "" {
-			go o.getScopedDiscount(scope.Variant, item.VariantId, keyc, errc)
+			go discount.GetScopedDiscounts(ctx, scope.Variant, item.VariantId, keyc, errc)
 		}
 	}
 
@@ -112,7 +47,7 @@ func (o *Order) GetDiscounts() (discounts, error) {
 	for i := 0; i < channels; i++ {
 		err := <-errc
 		if err != nil {
-			log.Warn("Unable to fetch all discounts: %v", err, o.Context())
+			log.Warn("Unable to fetch all discounts: %v", err, ctx)
 			return nil, err
 		}
 	}
@@ -124,9 +59,14 @@ func (o *Order) GetDiscounts() (discounts, error) {
 	}
 
 	// Fetch discounts
-	dst := make(discounts, len(keys))
-	err := o.Db.GetMulti(keys, dst)
-	return dst, err
+	discounts := make([]*discount.Discount, len(keys))
+	err := o.Db.GetMulti(keys, discounts)
+	if err != nil {
+		// Filter out non-valid discounts
+		discounts = o.filterValidDiscounts(discounts)
+	}
+
+	return discounts, err
 }
 
 // Discount for this order calculated using applicable discount rules
