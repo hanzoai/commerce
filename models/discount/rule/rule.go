@@ -18,8 +18,8 @@ type Price struct {
 
 // Union of possible triggers
 type Trigger struct {
-	Price
-	Quantity
+	Price    Price    `json:"price,omitempty"`
+	Quantity Quantity `json:"quantity,omitempty"`
 }
 
 // Determine type of trigger
