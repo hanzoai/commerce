@@ -11,6 +11,7 @@ import (
 	"crowdstart.com/datastore"
 	"crowdstart.com/util/cache"
 	"crowdstart.com/util/hashid"
+	"crowdstart.com/util/log"
 	"crowdstart.com/util/rand"
 	"crowdstart.com/util/structs"
 	"crowdstart.com/util/timeutil"
@@ -496,7 +497,7 @@ func (m *Model) Update() error {
 func (m *Model) MustUpdate() {
 	err := m.Update()
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 }
 
