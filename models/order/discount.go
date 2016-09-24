@@ -9,7 +9,6 @@ import (
 	"crowdstart.com/models/discount/trigger"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/util/log"
-	//"github.com/qedus/nds"
 )
 
 // Append discounts which are valid for order creation date
@@ -66,11 +65,10 @@ func (o *Order) GetDiscounts() ([]*discount.Discount, error) {
 	// Fetch discounts
 	discounts := make([]*discount.Discount, 0)
 	err := db.GetMulti(keys, &discounts)
-
 	if err != nil {
 		log.Error("GetMulti failed: %v", err, ctx)
-
 	}
+
 	return discounts, err
 }
 
@@ -81,7 +79,7 @@ func (o *Order) CalcDiscount() (currency.Cents, error) {
 
 	// Get applicable discount rules
 	discounts, err := o.GetDiscounts()
-	log.Error("calcdiscount!!!! %v", discounts)
+
 	if err != nil {
 		return totalDiscount, err
 	}
