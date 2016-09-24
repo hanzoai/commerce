@@ -62,13 +62,16 @@ var _ = BeforeSuite(func() {
 
 	// Mock gin context that we can use with fixtures
 	c := gincontext.New(ctx)
+
+	// Run default fixtures to setup organization and store, etc
 	u = fixtures.User(c).(*user.User)
 	org = fixtures.Organization(c).(*organization.Organization)
-	refIn = fixtures.Referrer(c).(*referrer.Referrer)
-	prod = fixtures.Product(c).(*product.Product)
-	fixtures.Coupon(c)
-	fixtures.Variant(c)
 	stor = fixtures.Store(c).(*store.Store)
+	prod = fixtures.Product(c).(*product.Product)
+	fixtures.Variant(c)
+	fixtures.Coupon(c)
+	fixtures.Discount(c)
+	refIn = fixtures.Referrer(c).(*referrer.Referrer)
 
 	// Setup client and add routes for payment API tests.
 	client = ginclient.New(ctx)
@@ -79,14 +82,14 @@ var _ = BeforeSuite(func() {
 
 	// Create organization for tests, accessToken
 	accessToken = org.AddToken("test-published-key", permission.Admin)
-	err := org.Put()
-	Expect(err).NotTo(HaveOccurred())
+	err := org.MustPut()
 
 	// Set authorization header for subsequent requests
 	client.Setup(func(r *http.Request) {
 		r.Header.Set("Authorization", accessToken)
 	})
 
+	// Stripe client
 	sc = stripe.New(ctx, org.Stripe.Test.AccessToken)
 
 	// Save namespaced db
@@ -663,6 +666,41 @@ var _ = Describe("payment", func() {
 			w = client.PostRawJSON("/checkout/charge", jsonStr)
 			Expect(w.Code).To(Equal(400))
 			log.Debug("JSON %v", w.Body)
+		})
+	})
+
+	Context("Charge Order With Discount Rules Applicable", func() {
+		It("Should charge order and apply appropriate discount rules", func() {
+			// w := client.PostRawJSON("/checkout/charge", requests.ValidOrder)
+			// Expect(w.Code).To(Equal(200))
+
+			// ord := order.New(db)
+			// err := json.DecodeBuffer(w.Body, ord)
+			// Expect(err).ToNot(HaveOccurred())
+
+			// w = client.Get("/coupon/no-doge-left-behind/code/" + u.Id())
+			// Expect(w.Code).To(Equal(200))
+			// log.Debug("JSON %v", w.Body)
+
+			// cpn := coupon.New(db)
+			// err = json.DecodeBuffer(w.Body, &cpn)
+			// Expect(err).ToNot(HaveOccurred())
+
+			// jsonStr := fmt.Sprintf(requests.ValidOrderTemplate, ord.UserId, cpn.Code())
+			// w = client.PostRawJSON("/checkout/charge", jsonStr)
+			// Expect(w.Code).To(Equal(200))
+			// log.Debug("JSON %v", w.Body)
+
+			// ord2 := order.New(db)
+			// err = json.DecodeBuffer(w.Body, ord2)
+			// Expect(err).ToNot(HaveOccurred())
+
+			// Expect(ord2.Items[1].ProductSlug).To(Equal("doge-shirt"))
+
+			// jsonStr = fmt.Sprintf(requests.ValidOrderTemplate, ord.UserId, cpn.Code())
+			// w = client.PostRawJSON("/checkout/charge", jsonStr)
+			// Expect(w.Code).To(Equal(400))
+			// log.Debug("JSON %v", w.Body)
 		})
 	})
 
