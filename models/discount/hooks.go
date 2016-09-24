@@ -8,29 +8,34 @@ import (
 	"crowdstart.com/models/discount/scope"
 )
 
-// Invalidate cache for all keys in matching scope
-func (d *Discount) invalidateCache() error {
-	// Key format:
-	//	discount-keys-organization
-	//  discount-keys-store-storeId
-	//  ..etc
-	key := d.Kind() + "-keys-"
+// Computes memcache key, using format:
+//	discount-keys-organization
+//  discount-keys-store-storeId
+//  ..etc
+func KeyForScope(scopeType scope.Type, id string) string {
+	key := "discount-keys-"
 	keyFmt := key + "%s-%s"
-	scopeName := string(d.Scope.Type)
+	scopeName := string(scopeType)
 
-	switch d.Scope.Type {
+	switch scopeType {
 	case scope.Organization:
 		key = key + scopeName
 	case scope.Store:
-		key = fmt.Sprintf(keyFmt, scopeName, d.Scope.StoreId)
+		key = fmt.Sprintf(keyFmt, scopeName, id)
 	case scope.Collection:
-		key = fmt.Sprintf(keyFmt, scopeName, d.Scope.CollectionId)
+		key = fmt.Sprintf(keyFmt, scopeName, id)
 	case scope.Product:
-		key = fmt.Sprintf(keyFmt, scopeName, d.Scope.ProductId)
+		key = fmt.Sprintf(keyFmt, scopeName, id)
 	case scope.Variant:
-		key = fmt.Sprintf(keyFmt, scopeName, d.Scope.VariantId)
+		key = fmt.Sprintf(keyFmt, scopeName, id)
 	}
 
+	return key
+}
+
+// Invalidate cache for all keys in matching scope
+func (d *Discount) invalidateCache() error {
+	key := KeyForScope(d.Scope.Type, d.ScopeId())
 	return memcache.Delete(d.Context(), key)
 }
 
