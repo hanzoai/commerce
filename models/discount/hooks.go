@@ -36,7 +36,11 @@ func KeyForScope(scopeType scope.Type, id string) string {
 // Invalidate cache for all keys in matching scope
 func (d *Discount) invalidateCache() error {
 	key := KeyForScope(d.Scope.Type, d.ScopeId())
-	return memcache.Delete(d.Context(), key)
+	err := memcache.Delete(d.Context(), key)
+	if err == memcache.ErrCacheMiss {
+		err = nil
+	}
+	return err
 }
 
 // Invalidate cache based on scope
