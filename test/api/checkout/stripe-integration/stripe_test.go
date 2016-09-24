@@ -669,27 +669,31 @@ var _ = Describe("payment", func() {
 		})
 	})
 
-	Context("Charge Order With Discount Rules Applicable", func() {
+	FContext("Charge Order With Discount Rules Applicable", func() {
 		It("Should charge order and apply appropriate discount rules", func() {
-			// w := client.PostRawJSON("/checkout/charge", requests.ValidOrder)
-			// Expect(w.Code).To(Equal(200))
+			log.Error("hellooooooo 1")
+			jsonStr := fmt.Sprintf(requests.DiscountOrderTemplate, "sad-keanu-shirt")
+			log.Error("hellooooooo 2")
+			w := client.PostRawJSON("/checkout/charge", jsonStr)
+			log.Error("hellooooooo 3")
+			Expect(w.Code).To(Equal(200))
+			log.Error("hellooooooo 4")
+			log.Error("JSON 1 %v", w.Body)
 
-			// ord := order.New(db)
-			// err := json.DecodeBuffer(w.Body, ord)
-			// Expect(err).ToNot(HaveOccurred())
+			ord := order.New(db)
+			err := json.DecodeBuffer(w.Body, ord)
+			Expect(err).ToNot(HaveOccurred())
+			ord.Items = []lineitem.LineItem{
+				lineitem.LineItem{
+					ProductId: prod.Id(),
+					Quantity:  2,
+				},
+			}
 
-			// w = client.Get("/coupon/no-doge-left-behind/code/" + u.Id())
-			// Expect(w.Code).To(Equal(200))
-			// log.Debug("JSON %v", w.Body)
-
-			// cpn := coupon.New(db)
-			// err = json.DecodeBuffer(w.Body, &cpn)
-			// Expect(err).ToNot(HaveOccurred())
-
-			// jsonStr := fmt.Sprintf(requests.ValidOrderTemplate, ord.UserId, cpn.Code())
-			// w = client.PostRawJSON("/checkout/charge", jsonStr)
-			// Expect(w.Code).To(Equal(200))
-			// log.Debug("JSON %v", w.Body)
+			jsonStr = fmt.Sprintf(requests.DiscountOrderTemplate, prod.Id())
+			w = client.PostRawJSON("/checkout/charge", jsonStr)
+			Expect(w.Code).To(Equal(200))
+			log.Error("JSON %v", w.Body)
 
 			// ord2 := order.New(db)
 			// err = json.DecodeBuffer(w.Body, ord2)
