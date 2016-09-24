@@ -6,6 +6,8 @@ import (
 	"crowdstart.com/models/discount/scope"
 	"crowdstart.com/models/discount/target"
 	"github.com/gin-gonic/gin"
+
+	"crowdstart.com/util/log"
 )
 
 var Discount = New("discount", func(c *gin.Context) *discount.Discount {
@@ -18,10 +20,11 @@ var Discount = New("discount", func(c *gin.Context) *discount.Discount {
 	dis := discount.New(db)
 	dis.Name = "Bulk Discount"
 	dis.GetOrCreate("Name=", dis.Name)
-	dis.Scope.Type = scope.Product
-	dis.Scope.ProductId = prod.Id()
+	dis.Scope.Type = scope.Organization
+	//dis.Scope.ProductId = prod.Id()
 	dis.Target.Type = target.Product
 	dis.Target.ProductId = prod.Id()
+	log.Error("hoberto   Hoberto %v", prod)
 
 	rule1 := discount.Rule{
 		rule.Trigger{
