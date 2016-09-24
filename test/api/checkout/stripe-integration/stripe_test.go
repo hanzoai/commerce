@@ -82,7 +82,7 @@ var _ = BeforeSuite(func() {
 
 	// Create organization for tests, accessToken
 	accessToken = org.AddToken("test-published-key", permission.Admin)
-	err := org.MustPut()
+	org.MustPut()
 
 	// Set authorization header for subsequent requests
 	client.Setup(func(r *http.Request) {
