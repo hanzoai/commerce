@@ -1,6 +1,11 @@
 package order
 
 import (
+	"appengine"
+	"appengine/memcache"
+
+	aeds "appengine/datastore"
+
 	"crowdstart.com/models/discount"
 	"crowdstart.com/models/discount/scope"
 	"crowdstart.com/models/discount/target"
@@ -12,6 +17,26 @@ import (
 // Alias type for simplicity
 type discounts []discount.Discount
 
+// Cache discount keys
+func cacheDiscounts(ctx appengine.Context, key string, keys []*aeds.Key) error {
+	return memcache.Gob.Set(ctx,
+		&memcache.Item{
+			Key:    key,
+			Object: keys,
+		})
+}
+
+// Get cached discount keys
+func getCachedDiscounts(ctx appengine.Context, key string) ([]*aeds.Key, error) {
+	keys := make([]*aeds.Key, 0)
+	_, err := memcache.Gob.Get(ctx, key, keys)
+	if err != nil {
+		return keys, err
+	}
+
+	return keys, nil
+}
+
 // Append discounts which are valid for order creation date
 func (o *Order) appendValidDiscounts(to discounts, from discounts) discounts {
 	for i := 0; i < len(from); i++ {
@@ -22,73 +47,88 @@ func (o *Order) appendValidDiscounts(to discounts, from discounts) discounts {
 	return to
 }
 
-func (o *Order) addOrgDiscounts(disc chan discounts, errc chan error) {
-	dst := make(discounts, 0)
-	_, err := discount.Query(o.Db).
-		Filter("Scope=", scope.Organization).
-		Filter("Enabled=", true).
-		GetAll(&dst)
+func (o *Order) addOrgDiscounts(keyc chan []*aeds.Key, errc chan error) {
+	ctx := o.Context()
+
+	// Check memcache for keys
+	key := discount.KeyForScope(scope.Organization, "")
+	keys, err := getCachedDiscounts(ctx, key)
+
+	// Fetch keys from datastore if that fails
+	if err != nil {
+		keys, err = discount.Query(o.Db).
+			Filter("Scope=", scope.Organization).
+			Filter("Enabled=", true).
+			KeysOnly().
+			GetAll(nil)
+		// Cache keys for later
+		if err != nil {
+			err = cacheDiscounts(ctx, key, keys)
+		}
+	}
+
+	// Return with keys
 	errc <- err
-	disc <- dst
+	keyc <- keys
 }
 
-func (o *Order) addStoreDiscounts(disc chan discounts, errc chan error) {
-	dst := make(discounts, 0)
-	_, err := discount.Query(o.Db).
+func (o *Order) addStoreDiscounts(keyc chan []*aeds.Key, errc chan error) {
+	keys, err := discount.Query(o.Db).
 		Filter("StoreId=", o.StoreId).
 		Filter("Enabled=", true).
-		GetAll(&dst)
+		KeysOnly().
+		GetAll(nil)
 	errc <- err
-	disc <- dst
+	keyc <- keys
 }
 
-func (o *Order) addCollectionDiscounts(id string, disc chan discounts, errc chan error) {
-	dst := make(discounts, 0)
-	_, err := discount.Query(o.Db).
+func (o *Order) addCollectionDiscounts(id string, keyc chan []*aeds.Key, errc chan error) {
+	keys, err := discount.Query(o.Db).
 		Filter("CollectionId=", id).
 		Filter("Enabled=", true).
-		GetAll(&dst)
+		KeysOnly().
+		GetAll(nil)
 	errc <- err
-	disc <- dst
+	keyc <- keys
 }
 
-func (o *Order) addProductDiscounts(id string, disc chan discounts, errc chan error) {
-	dst := make(discounts, 0)
-	_, err := discount.Query(o.Db).
+func (o *Order) addProductDiscounts(id string, keyc chan []*aeds.Key, errc chan error) {
+	keys, err := discount.Query(o.Db).
 		Filter("ProductId=", id).
 		Filter("Enabled=", true).
-		GetAll(&dst)
+		KeysOnly().
+		GetAll(nil)
 	errc <- err
-	disc <- dst
+	keyc <- keys
 }
 
-func (o *Order) addVariantDiscounts(id string, disc chan discounts, errc chan error) {
-	dst := make(discounts, 0)
-	_, err := discount.Query(o.Db).
+func (o *Order) addVariantDiscounts(id string, keyc chan []*aeds.Key, errc chan error) {
+	keys, err := discount.Query(o.Db).
 		Filter("VariantId=", id).
 		Filter("Enabled=", true).
-		GetAll(&dst)
+		KeysOnly().
+		GetAll(nil)
 	errc <- err
-	disc <- dst
+	keyc <- keys
 }
 
 func (o *Order) GetDiscounts() (discounts, error) {
 	channels := 2 + len(o.Items)
 	errc := make(chan error, channels)
-	disc := make(chan discounts, channels)
+	keyc := make(chan []*aeds.Key, channels)
 
 	// Fetch any organization-level discounts
-	go o.addOrgDiscounts(disc, errc)
+	go o.addOrgDiscounts(keyc, errc)
 
 	// Fetch any store-level discounts
-	go o.addStoreDiscounts(disc, errc)
+	go o.addStoreDiscounts(keyc, errc)
 
 	// Fetch any product or variant level discounts
 	for _, item := range o.Items {
 		if item.ProductId != "" {
-			go o.addProductDiscounts(item.ProductId, disc, errc)
+			go o.addProductDiscounts(item.ProductId, keyc, errc)
 		} else if item.VariantId != "" {
-			go o.addVariantDiscounts(item.VariantId, disc, errc)
+			go o.addVariantDiscounts(item.VariantId, keyc, errc)
 		}
 	}
 
@@ -102,13 +142,15 @@ func (o *Order) GetDiscounts() (discounts, error) {
 	}
 
 	// Merge results together
-	ret := make(discounts, 0)
+	keys := make([]*aeds.Key, 0)
 	for i := 0; i < channels; i++ {
-		dis := <-disc
-		ret = o.appendValidDiscounts(ret, dis)
+		keys = append(keys, <-keyc...)
 	}
 
-	return ret, nil
+	// Fetch discounts
+	dst := make(discounts, len(keys))
+	err := o.Db.GetMulti(keys, dst)
+	return dst, err
 }
 
 // Discount for this order calculated using applicable discount rules
