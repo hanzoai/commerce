@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/zeekay/go-logging"
 
-	// "github.com/davecgh/go-spew/spew"
+	"github.com/davecgh/go-spew/spew"
 )
 
 // Custom logger
@@ -249,12 +249,10 @@ func Panic(formatOrError interface{}, args ...interface{}) {
 	}
 }
 
-// Since spew uses unsafe, we can't use it in production. As a result we leave
-// this commented out unless needed.
 func Dump(args ...interface{}) {
-	// spew.Config.Indent = "  "
-	// dump := spew.Sdump(args...)
-	// std.Dump("\n%s", dump)
+	spew.Config.Indent = "  "
+	dump := spew.Sdump(args...)
+	std.Dump("\n%s", dump)
 }
 
 func Escape(s string) string {
