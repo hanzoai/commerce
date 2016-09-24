@@ -50,6 +50,14 @@ func (d *Datastore) warn(fmtOrError interface{}, args ...interface{}) {
 	}
 }
 
+// Helper to ignore tedious field mismatch errors
+func (d *Datastore) ignoreFieldMismatch(err error) error {
+	if d.IgnoreFieldMismatch {
+		return IgnoreFieldMismatch(err)
+	}
+	return err
+}
+
 // Set context for datastore
 func (d *Datastore) SetContext(ctx interface{}) {
 	switch ctx := ctx.(type) {
@@ -67,23 +75,6 @@ func (d *Datastore) SetNamespace(ns string) {
 	} else {
 		d.Context = ctx
 	}
-}
-
-// Helper to ignore tedious field mismatch errors (but warn appropriately
-// during development)
-func (d *Datastore) SkipFieldMismatch(err error) error {
-	// Ignore nil error or `IgnoreFieldMismatch` is disabled
-	if err == nil || !d.IgnoreFieldMismatch {
-		return nil
-	}
-
-	if _, ok := err.(*aeds.ErrFieldMismatch); ok {
-		// Ignore any field mismatch errors.
-		d.warn("Ignoring, %v", err, d.Context)
-		return nil
-	}
-
-	return err
 }
 
 // Return Key from either string or int id.
@@ -233,7 +224,7 @@ func (d *Datastore) Get(key interface{}, value interface{}) error {
 	}
 
 	// Try to retrieve entity using nds, which transparently uses memcache if possible
-	return d.SkipFieldMismatch(nds.Get(d.Context, _key, value))
+	return d.ignoreFieldMismatch(nds.Get(d.Context, _key, value))
 }
 
 // Gets an entity by literal datastore key of string type
@@ -247,34 +238,70 @@ func (d *Datastore) GetKind(kind string, key interface{}, value interface{}) err
 	}
 
 	// Try to retrieve entity using nds, which transparently uses memcache if possible
-	return d.SkipFieldMismatch(nds.Get(d.Context, _key, value))
+	return d.ignoreFieldMismatch(nds.Get(d.Context, _key, value))
 }
 
 // Same as Get, but works for multiple key/vals, keys can be slice of any type
-// accepted by Get
+// accepted by GetMulti as well as *[]*Model, which will automatically
+// allocated if necessary.
 func (d *Datastore) GetMulti(keys interface{}, vals interface{}) error {
 	var slice reflect.Value
 
+	// Check keys type
 	switch reflect.TypeOf(keys).Kind() {
 	case reflect.Slice:
 		slice = reflect.ValueOf(keys)
 	default:
-		return errors.New("Keys must be a slice.")
+		return errors.New("Keys must be a slice")
 	}
 
+	// Convert keys to appropriate type
 	nkeys := slice.Len()
-	_keys := make([]*aeds.Key, nkeys)
-
+	aekeys := make([]*aeds.Key, nkeys)
 	for i := 0; i < nkeys; i++ {
 		key, err := d.keyOrEncodedKey(slice.Index(i))
 		if err != nil {
 			d.warn("Invalid key: unable to get %v: %v", key, err)
 			return err
 		}
-		_keys[i] = key
+		aekeys[i] = key
 	}
 
-	err := d.SkipFieldMismatch(nds.GetMulti(d.Context, _keys, vals))
+	// Check type of vals
+	typ := reflect.TypeOf(vals)
+	switch typ.Kind() {
+	case reflect.Ptr:
+		slice = reflect.Indirect(reflect.ValueOf(vals))
+	case reflect.Slice:
+		slice = reflect.ValueOf(vals)
+	default:
+		return errors.New("Vals must be a slice or pointer to a slice")
+	}
+
+	// Auto allocate vals if length of slice is not set
+	if slice.Len() == 0 {
+		if !slice.CanAddr() {
+			return errors.New("Destination must be addressable to auto-allocate entities")
+		}
+
+		// Get type of slice, values
+		sliceType := typ.Elem()
+		valType := sliceType.Elem()
+		valType = reflect.Zero(valType).Type().Elem()
+
+		// Create new slice of correct capacity and insert properly instantiated values
+		zeroes := reflect.MakeSlice(sliceType, nkeys, nkeys)
+		for i := 0; i < nkeys; i++ {
+			zero := reflect.New(valType)
+			zeroes.Index(i).Set(zero)
+		}
+
+		// Append to vals slice, growing original slice to proper length
+		slice.Set(reflect.AppendSlice(slice, zeroes))
+	}
+
+	// Fetch entities from datastore
+	err := d.ignoreFieldMismatch(nds.GetMulti(d.Context, aekeys, slice.Interface()))
 	if err != nil {
 		if me, ok := err.(appengine.MultiError); ok {
 			for _, merr := range me {
@@ -309,7 +336,7 @@ func (d *Datastore) GetKindMulti(kind string, keys interface{}, vals interface{}
 		_keys[i] = key
 	}
 
-	return d.SkipFieldMismatch(nds.GetMulti(d.Context, _keys, vals))
+	return d.ignoreFieldMismatch(nds.GetMulti(d.Context, _keys, vals))
 }
 
 // Puts entity, returning encoded key
