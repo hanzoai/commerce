@@ -50,9 +50,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		return nil, nil, err
 	}
 
-	log.Debug("AuthorizationReq.User_: %#v", ar.User_, c)
-	log.Debug("AuthorizationReq.Order: %#v", ar.Order, c)
-	log.Debug("AuthorizationReq.Payment_: %#v", ar.Payment_, c)
+	log.JSON("Authorization Request:", ar, c)
 
 	// Peel off order for convience
 	ord = ar.Order
@@ -132,12 +130,12 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	case "paypal":
 	case "balance":
 		if err := balance.Authorize(org, ord, usr, pay); err != nil {
-			log.Info("Failed to authorize order using Balance: %v", err, ctx)
+			log.Warn("Failed to authorize order using Balance: %v", err, ctx)
 			return nil, nil, err
 		}
 	default:
 		if err := stripe.Authorize(org, ord, usr, pay); err != nil {
-			log.Info("Failed to authorize order using Stripe: %v", err, ctx)
+			log.Warn("Failed to authorize order using Stripe: %v", err, ctx)
 			return nil, nil, err
 		}
 	}
