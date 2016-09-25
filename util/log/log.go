@@ -2,7 +2,6 @@ package log
 
 import (
 	"fmt"
-	"log"
 	"strings"
 
 	"appengine"
@@ -13,6 +12,8 @@ import (
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/spew"
 )
+
+var isDevAppServer = false
 
 // Custom logger
 type Logger struct {
@@ -110,15 +111,7 @@ func (b AppengineBackend) Verbose() bool {
 
 // Log implementation for local dev server only.
 func (b AppengineBackend) logToDevServer(level logging.Level, formatted string) error {
-	if level == logging.INFO {
-		// Hack to make INFO level less verbose
-		parts := strings.Split(formatted, " ")
-		parts = append([]string{"INFO"}, parts[3:]...)
-		formatted = strings.Join(parts, " ")
-	}
-
-	log.Println(formatted)
-
+	fmt.Println(formatted)
 	return nil
 }
 
@@ -145,35 +138,42 @@ func (b AppengineBackend) Log(level logging.Level, calldepth int, record *loggin
 	// Create formatted log output
 	formatted := record.Formatted(calldepth + 2)
 
-	// Log using App Engine backend if we have a context, otherwise dev server
-	if b.context != nil {
-		return b.logToAppEngine(level, formatted)
-	} else {
+	if isDevAppServer {
+		// Logging for local server
 		return b.logToDevServer(level, formatted)
+	} else {
+		// Log to App Engine in staging and production when passed a context
+		if b.context != nil {
+			return b.logToAppEngine(level, formatted)
+		}
 	}
+	return nil
 }
 
 // Create a new App Engine-aware logger
 func New() *Logger {
 	log := new(Logger)
 
+	// Check for dev app server
+	isDevAppServer = appengine.IsDevAppServer()
+
 	// Backend that is appengine-aware
 	backend := new(AppengineBackend)
 	log.appengineBackend = backend
 
 	// Log formatters, color for dev, plain for production
-	plainFormatter := logging.MustStringFormatter("%{shortfile} %{longfunc} %{message}")
-	colorFormatter := logging.MustStringFormatter("%{color}%{level:.5s} %{shortfile} %{longfunc} %{color:reset}%{message}")
+	plainFormatter := MustStringFormatter("%{longfile} %{longfunc} %{message}")
+	colorFormatter := MustStringFormatter("%{color}%{level:.5s} %{longfile} %{longfunc} %{color:reset}%{message}")
 
 	// Use plain formatter for production logging, color for dev server
 	defaultBackend := logging.NewBackendFormatter(backend, plainFormatter)
-	if appengine.IsDevAppServer() {
+	if isDevAppServer {
 		defaultBackend = logging.NewBackendFormatter(backend, colorFormatter)
 	}
 
 	multiBackend := logging.SetBackend(defaultBackend)
 	log.SetBackend(multiBackend)
-	log.SetVerbose(appengine.IsDevAppServer())
+	log.SetVerbose(isDevAppServer)
 	return log
 }
 
@@ -265,10 +265,10 @@ func Panic(formatOrError interface{}, args ...interface{}) {
 
 func Dump(formatOrObject interface{}, args ...interface{}) {
 	args = std.parseArgs(args...)
-	args, obj := std.dumpObject(args)
 
 	switch v := formatOrObject.(type) {
 	case string:
+		args, obj := std.dumpObject(args)
 		msg := fmt.Sprintf(v, args...)
 		dump := spew.Sdump(obj)
 		std.Debug("%s\n%s", msg, dump)
@@ -280,14 +280,14 @@ func Dump(formatOrObject interface{}, args ...interface{}) {
 
 func JSON(formatOrObject interface{}, args ...interface{}) {
 	args = std.parseArgs(args...)
-	args, obj := std.dumpObject(args)
 
 	switch v := formatOrObject.(type) {
 	case string:
+		args, obj := std.dumpObject(args)
 		msg := fmt.Sprintf(v, args...)
-		std.Debug("%s\n%s", msg, json.EncodeBytes(obj))
+		std.Debug("%s\n%s", msg, json.Encode(obj))
 	default:
-		std.Debug("\n%s", json.EncodeBytes(v))
+		std.Debug("\n%s", json.Encode(v))
 	}
 }
 
