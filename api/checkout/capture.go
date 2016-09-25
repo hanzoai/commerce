@@ -46,7 +46,8 @@ func CompleteCapture(c *gin.Context, org *organization.Organization, ord *order.
 
 	db := ord.Db
 
-	log.Debug("Completing Capture for\nOrder %v\nPayments %v", ord, payments, c)
+	log.Dump("Completing Capture, order:", ord, c)
+	log.Dump("Payments:", payments, c)
 
 	// Referral
 	if ord.ReferrerId != "" {

@@ -124,19 +124,16 @@ func FirstTimeSuccessfulOrderTest(isCharge bool, stor *store.Store) testHelperRe
 	w := client.PostRawJSON(path, requests.ValidOrder)
 	Expect(w.Code).To(Equal(200))
 
-	log.Debug("JSON %v", w.Body)
-
 	// Payment and Order info should be in the dv
 	ord := order.New(db)
 
 	err := json.DecodeBuffer(w.Body, &ord)
 	Expect(err).ToNot(HaveOccurred())
 
-	log.Debug("Order %v", ord)
+	log.JSON("Order %v", ord)
 
 	// Order should be in db
 	key, _, err := order.New(db).KeyExists(ord.Id())
-	log.Debug("Err %v", err)
 
 	Expect(err).ToNot(HaveOccurred())
 	Expect(key).ToNot(BeNil())
