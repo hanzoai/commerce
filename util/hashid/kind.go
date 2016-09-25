@@ -49,7 +49,7 @@ func encodeKind(kind string) int {
 	if encoded, ok := kinds[kind]; ok {
 		return encoded
 	} else {
-		panic(fmt.Sprintf("Unknown kind %v. Please register in util/hashid/kind.go.", kind))
+		panic(fmt.Sprintf("Unknown kind '%s', register in util/hashid/kind.go", kind))
 	}
 }
 
@@ -57,6 +57,6 @@ func decodeKind(encoded int) string {
 	if kind, ok := kindsReversed[encoded]; ok {
 		return kind
 	} else {
-		panic(fmt.Sprintf("Unknown encoded kind %v. Please register in util/hashid/kind.go.", encoded))
+		panic(fmt.Sprintf("Unknown encoded kind '%s', register in util/hashid/kind.go", encoded))
 	}
 }

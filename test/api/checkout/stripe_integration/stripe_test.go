@@ -24,6 +24,7 @@ import (
 	"crowdstart.com/test/api/checkout/requests"
 	"crowdstart.com/thirdparty/stripe"
 	"crowdstart.com/util/gincontext"
+	"crowdstart.com/util/hashid"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/permission"
@@ -107,6 +108,24 @@ type testHelperReturn struct {
 	Orders   []*order.Order
 }
 
+func decodeOrder(w *httptest.ResponseRecorder) *order.Order {
+	Expect(w.Code).To(Equal(200))
+
+	ord := order.New(db)
+
+	err := json.DecodeBuffer(w.Body, ord)
+	Expect(err).ToNot(HaveOccurred())
+
+	log.JSON("Order '%s'", ord.Id(), ord)
+	return ord
+}
+
+func keyExists(key string) {
+	ok, err := hashid.KeyExists(ctx, key)
+	Expect(err).ToNot(HaveOccurred())
+	Expect(ok).To(BeTrue())
+}
+
 func FirstTimeSuccessfulOrderTest(isCharge bool, stor *store.Store) testHelperReturn {
 	var path string
 	if isCharge {
@@ -118,42 +137,26 @@ func FirstTimeSuccessfulOrderTest(isCharge bool, stor *store.Store) testHelperRe
 	if stor != nil {
 		path = "/store/" + stor.Id() + path
 	}
-	log.Warn(path)
 
 	// Should come back with 200
-	w := client.PostRawJSON(path, requests.ValidOrder)
-	Expect(w.Code).To(Equal(200))
-
-	// Payment and Order info should be in the dv
-	ord := order.New(db)
-
-	err := json.DecodeBuffer(w.Body, &ord)
-	Expect(err).ToNot(HaveOccurred())
-
-	log.JSON("Order %v", ord)
+	ord := decodeOrder(client.PostRawJSON(path, requests.ValidOrder))
 
 	// Order should be in db
-	key, _, err := order.New(db).KeyExists(ord.Id())
-
-	Expect(err).ToNot(HaveOccurred())
-	Expect(key).ToNot(BeNil())
+	keyExists(ord.Id())
 
 	// User should be in db
-	usr := user.New(db)
-	err = usr.Get(ord.UserId)
+	keyExists(ord.UserId)
 
-	Expect(err).ToNot(HaveOccurred())
-	Expect(usr.Key()).ToNot(BeNil())
+	usr := user.New(db)
+	usr.Get(ord.Id())
 	stripeVerifyUser(usr)
 
 	// Payment should be in db
 	Expect(len(ord.PaymentIds)).To(Equal(1))
+	keyExists(ord.PaymentIds[0])
 
 	pay := payment.New(db)
-	err = pay.Get(ord.PaymentIds[0])
-
-	Expect(err).ToNot(HaveOccurred())
-	Expect(pay.Key()).ToNot(BeNil())
+	pay.Get(ord.PaymentIds[0])
 
 	if isCharge {
 		stripeVerifyCharge(pay)
@@ -669,26 +672,17 @@ var _ = Describe("payment", func() {
 
 	Context("Charge Order With Discount Rules Applicable", func() {
 		It("Should charge order and apply appropriate discount rules", func() {
-			var ordFromRes = func(w *httptest.ResponseRecorder) *order.Order {
-				Expect(w.Code).To(Equal(200))
-				ord := order.New(db)
-				err := json.DecodeBuffer(w.Body, ord)
-				Expect(err).ToNot(HaveOccurred())
-				log.JSON("Order '%s',", ord.Id(), ord)
-				return ord
-			}
-
 			jsonStr := fmt.Sprintf(requests.DiscountOrderTemplate, "batman-shirt")
 			w := client.PostRawJSON("/checkout/charge", jsonStr)
-			ordFromRes(w)
+			decodeOrder(w)
 
 			jsonStr = fmt.Sprintf(requests.DiscountOrderTemplate, prod.Id())
 			w = client.PostRawJSON("/checkout/charge", jsonStr)
-			ord := ordFromRes(w)
+			ord := decodeOrder(w)
 
 			jsonStr = fmt.Sprintf(requests.ValidOrderTemplate, ord.UserId, "NO-DOGE-LEFT-BEHIND")
 			w = client.PostRawJSON("/checkout/charge", jsonStr)
-			ordFromRes(w)
+			decodeOrder(w)
 		})
 	})
 
