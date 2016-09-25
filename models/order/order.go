@@ -72,13 +72,13 @@ type Order struct {
 
 	// Order is unconfirmed if user has not declared (either implicitly or
 	// explicitly) precise order variant options.
-	Unconfirmed bool `json:"unconfirmed"`
+	Unconfirmed bool `json:"unconfirmed,omitempty"`
 
 	// 3-letter ISO currency code (lowercase).
 	Currency currency.Type `json:"currency"`
 
 	// Payment processor type - paypal, stripe, etc
-	Type string `json:"type"`
+	Type string `json:"type,omitempty"`
 
 	// Shipping method
 	ShippingMethod string `json:"shippingMethod,omitempty"`
@@ -87,16 +87,16 @@ type Order struct {
 	LineTotal currency.Cents `json:"lineTotal"`
 
 	// Discount amount applied to the order. Amount in cents.
-	Discount currency.Cents `json:"discount,omitempty"`
+	Discount currency.Cents `json:"discount"`
 
 	// Sum of line totals less discount. Amount in cents.
 	Subtotal currency.Cents `json:"subtotal"`
 
 	// Shipping cost applied. Amount in cents.
-	Shipping currency.Cents `json:"shipping,omitempty"`
+	Shipping currency.Cents `json:"shipping"`
 
 	// Sales tax applied. Amount in cents.
-	Tax currency.Cents `json:"tax,omitempty"`
+	Tax currency.Cents `json:"tax"`
 
 	// Price adjustments applied. Amount in cents.
 	Adjustment currency.Cents `json:"-"`

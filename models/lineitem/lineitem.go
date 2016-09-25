@@ -16,7 +16,7 @@ import (
 type LineItem struct {
 	mixin.Salesforce
 
-	CollectionId string `json:"collectionId"`
+	CollectionId string `json:"collectionId,omitempty"`
 
 	Product     *product.Product `json:"-" datastore:"-"`
 	ProductId   string           `json:"productId,omitempty"`
@@ -36,16 +36,16 @@ type LineItem struct {
 
 	// Unit weight
 	Weight     weight.Mass `json:"weight"`
-	WeightUnit weight.Unit `json:"weightUnit"`
+	WeightUnit weight.Unit `json:"weightUnit,omitempty"`
 
 	// Whether taxes apply to this line item
 	Taxable bool `json:"taxable"`
 
 	// Item should be considered free due to coupon being applied or whatnot.
-	Free bool `json:"free"`
+	Free bool `json:"free,omitempty"`
 
 	// Non-user party which added this lineitem (coupon or otherwise).
-	AddedBy string `json:"addedBy"`
+	AddedBy string `json:"addedBy,omitempty"`
 }
 
 func (li LineItem) ToMap() map[string]interface{} {
