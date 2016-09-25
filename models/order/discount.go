@@ -76,7 +76,7 @@ func (o *Order) GetDiscounts() ([]*discount.Discount, error) {
 }
 
 // Discount for this order calculated using applicable discount rules
-func (o *Order) CalcDiscount() (currency.Cents, error) {
+func (o *Order) CalcRuleDiscount() (currency.Cents, error) {
 	totalDiscount := currency.Cents(0)
 	totalQuantity := 0
 
