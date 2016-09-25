@@ -37,12 +37,12 @@ type User struct {
 	Username        string   `json:"username"`
 	FirstName       string   `json:"firstName"`
 	LastName        string   `json:"lastName"`
-	Company         string   `json:"company"`
-	Phone           string   `json:"phone"`
+	Company         string   `json:"company,omitempty"`
+	Phone           string   `json:"phone,omitempty"`
 	BillingAddress  Address  `json:"billingAddress,omitempty"`
 	ShippingAddress Address  `json:"shippingAddress,omitempty"`
 	Email           string   `json:"email"`
-	PaypalEmail     string   `json:"paypalEmail"`
+	PaypalEmail     string   `json:"paypalEmail,omitempty"`
 	PasswordHash    []byte   `schema:"-" datastore:",noindex" json:"-"`
 	Organizations   []string `json:"-"`
 
@@ -67,21 +67,21 @@ type User struct {
 
 	Enabled bool `json:"enabled"` //whether or not the user can login yet
 
-	Metadata  Map    `json:"metadata" datastore:"-"`
+	Metadata  Map    `json:"metadata,omitempty" datastore:"-"`
 	Metadata_ string `json:"-" datastore:",noindex"`
 
 	Referrals []referral.Referral `json:"referrals,omitempty" datastore:"-"`
 	Referrers []referrer.Referrer `json:"referrers,omitempty" datastore:"-"`
 	Orders    []order.Order       `json:"orders,omitempty" datastore:"-"`
 
-	Balances map[currency.Type]currency.Cents `json:"balances" datastore:"-"`
+	Balances map[currency.Type]currency.Cents `json:"balances,omitempty" datastore:"-"`
 
 	ReferrerId string `json:"referrerId,omitempty"`
 
 	// Series of events that have occured relevant to this order
 	History []Event `json:"-,omitempty"`
 
-	IsOwner bool `json:"owner" datastore:"-"`
+	IsOwner bool `json:"owner,omitempty" datastore:"-"`
 }
 
 func (u User) Document() mixin.Document {
