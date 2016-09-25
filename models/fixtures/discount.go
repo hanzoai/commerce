@@ -1,30 +1,49 @@
 package fixtures
 
 import (
+	"github.com/gin-gonic/gin"
+
 	"crowdstart.com/models/discount"
 	"crowdstart.com/models/discount/rule"
 	"crowdstart.com/models/discount/scope"
 	"crowdstart.com/models/discount/target"
-	"github.com/gin-gonic/gin"
-
-	"crowdstart.com/util/log"
+	"crowdstart.com/models/product"
+	"crowdstart.com/models/types/currency"
 )
 
 var Discount = New("discount", func(c *gin.Context) *discount.Discount {
 	// Get namespaced db
 	db := getNamespaceDb(c)
 
-	prod := Product(c)
+	// Batman shirt
+	prod := product.New(db)
+	prod.Slug = "batman"
+	prod.GetOrCreate("Slug=", prod.Slug)
+	prod.Name = "Batman T-shirt"
+	prod.Headline = "Batman."
+	prod.Description = "It's a batman t-shirt."
+	prod.Options = []*product.Option{
+		&product.Option{
+			Name:   "Size",
+			Values: []string{"Batwing"},
+		},
+		&product.Option{
+			Name:   "Size",
+			Values: []string{"Batmobile"},
+		},
+	}
+	prod.Price = 9900
+	prod.Currency = currency.USD
+	prod.MustPut()
 
 	// Create discount rules for ludela
 	dis := discount.New(db)
 	dis.Name = "Bulk Discount"
+	dis.Type = discount.Bulk
 	dis.GetOrCreate("Name=", dis.Name)
 	dis.Scope.Type = scope.Organization
-	//dis.Scope.ProductId = prod.Id()
 	dis.Target.Type = target.Product
 	dis.Target.ProductId = prod.Id()
-	log.Error("hoberto   Hoberto %v", prod)
 
 	rule1 := discount.Rule{
 		rule.Trigger{
