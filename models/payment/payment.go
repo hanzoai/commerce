@@ -122,7 +122,7 @@ type Payment struct {
 
 	Currency currency.Type `json:"currency"`
 
-	CampaignId string `json:"campaignId"`
+	CampaignId string `json:"campaignId,omitempty"`
 
 	Amount         currency.Cents `json:"amount"`
 	AmountRefunded currency.Cents `json:"amountRefunded"`
@@ -131,11 +131,11 @@ type Payment struct {
 	AmountTransferred   currency.Cents `json:"-"`
 	CurrencyTransferred currency.Type  `json:"-"`
 
-	Description string `json:"description"`
+	Description string `json:"description,omitempty"`
 	Status      Status `json:"status"`
 
 	// Client's browser, associated info
-	Client client.Client `json:"client"`
+	Client client.Client `json:"client,omitempty"`
 
 	// Whether this payment has been captured or not
 	Captured bool `json:"captured"`
