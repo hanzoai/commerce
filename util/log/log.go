@@ -1,6 +1,7 @@
 package log
 
 import (
+	"fmt"
 	"log"
 	"strings"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/zeekay/go-logging"
 
+	"crowdstart.com/util/json"
 	"crowdstart.com/util/spew"
 )
 
@@ -60,6 +62,18 @@ func (l *Logger) detectError(args []interface{}) {
 			l.appengineBackend.error = err
 		}
 	}
+}
+
+// Grab last object (presumably to dump)
+func (l *Logger) dumpObject(args []interface{}) ([]interface{}, interface{}) {
+	if len(args) > 0 {
+		// Grab last argument
+		last := args[len(args)-1]
+		// Remove from args
+		args = args[:len(args)-1]
+		return args, last
+	}
+	return args, nil
 }
 
 // Process args, setting app engine context if passed one.
@@ -249,9 +263,32 @@ func Panic(formatOrError interface{}, args ...interface{}) {
 	}
 }
 
-func Dump(args ...interface{}) {
-	dump := spew.Sdump(args...)
-	std.Dump("\n%s", dump)
+func Dump(formatOrObject interface{}, args ...interface{}) {
+	args = std.parseArgs(args...)
+	args, obj := std.dumpObject(args)
+
+	switch v := formatOrObject.(type) {
+	case string:
+		msg := fmt.Sprintf(v, args...)
+		dump := spew.Sdump(obj)
+		std.Debug("%s\n%s", msg, dump)
+	default:
+		dump := spew.Sdump(v)
+		std.Debug("\n%s", dump)
+	}
+}
+
+func JSON(formatOrObject interface{}, args ...interface{}) {
+	args = std.parseArgs(args...)
+	args, obj := std.dumpObject(args)
+
+	switch v := formatOrObject.(type) {
+	case string:
+		msg := fmt.Sprintf(v, args...)
+		std.Debug("%s\n%s", msg, json.EncodeBytes(obj))
+	default:
+		std.Debug("\n%s", json.EncodeBytes(v))
+	}
 }
 
 func Escape(s string) string {

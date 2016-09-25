@@ -3,6 +3,7 @@ package test
 import (
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -671,40 +672,26 @@ var _ = Describe("payment", func() {
 
 	FContext("Charge Order With Discount Rules Applicable", func() {
 		It("Should charge order and apply appropriate discount rules", func() {
-			log.Error("hellooooooo 1")
-			jsonStr := fmt.Sprintf(requests.DiscountOrderTemplate, "sad-keanu-shirt")
-			log.Error("hellooooooo 2")
-			w := client.PostRawJSON("/checkout/charge", jsonStr)
-			log.Error("hellooooooo 3")
-			Expect(w.Code).To(Equal(200))
-			log.Error("hellooooooo 4")
-			log.Error("JSON 1 %v", w.Body)
-
-			ord := order.New(db)
-			err := json.DecodeBuffer(w.Body, ord)
-			Expect(err).ToNot(HaveOccurred())
-			ord.Items = []lineitem.LineItem{
-				lineitem.LineItem{
-					ProductId: prod.Id(),
-					Quantity:  2,
-				},
+			var ordFromRes = func(w *httptest.ResponseRecorder) *order.Order {
+				Expect(w.Code).To(Equal(200))
+				ord := order.New(db)
+				err := json.DecodeBuffer(w.Body, ord)
+				Expect(err).ToNot(HaveOccurred())
+				log.JSON("Order '%s',", ord.Id(), ord)
+				return ord
 			}
+
+			jsonStr := fmt.Sprintf(requests.DiscountOrderTemplate, "sad-keanu-shirt")
+			w := client.PostRawJSON("/checkout/charge", jsonStr)
+			ordFromRes(w)
 
 			jsonStr = fmt.Sprintf(requests.DiscountOrderTemplate, prod.Id())
 			w = client.PostRawJSON("/checkout/charge", jsonStr)
-			Expect(w.Code).To(Equal(200))
-			log.Error("JSON %v", w.Body)
+			ord := ordFromRes(w)
 
-			// ord2 := order.New(db)
-			// err = json.DecodeBuffer(w.Body, ord2)
-			// Expect(err).ToNot(HaveOccurred())
-
-			// Expect(ord2.Items[1].ProductSlug).To(Equal("doge-shirt"))
-
-			// jsonStr = fmt.Sprintf(requests.ValidOrderTemplate, ord.UserId, cpn.Code())
-			// w = client.PostRawJSON("/checkout/charge", jsonStr)
-			// Expect(w.Code).To(Equal(400))
-			// log.Debug("JSON %v", w.Body)
+			jsonStr = fmt.Sprintf(requests.ValidOrderTemplate, ord.UserId, "NO-DOGE-LEFT-BEHIND")
+			w = client.PostRawJSON("/checkout/charge", jsonStr)
+			ordFromRes(w)
 		})
 	})
 
