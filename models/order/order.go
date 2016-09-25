@@ -150,7 +150,7 @@ type Order struct {
 	} `json:"mailchimp,omitempty"`
 
 	// Arbitrary key/value pairs associated with this order
-	Metadata  Map    `json:"metadata" datastore:"-"`
+	Metadata  Map    `json:"metadata,omitempty" datastore:"-"`
 	Metadata_ string `json:"-" datastore:",noindex"`
 
 	// Series of events that have occured relevant to this order
