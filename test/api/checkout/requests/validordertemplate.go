@@ -50,10 +50,17 @@ var DiscountOrderTemplate = `
   },
   "order": {
     "currency": "usd",
-    "items": [ {
-      "productId": "%s",
-      "price": 1000,
-      "quantity": 2
-    } ]
+    "items": [
+		{
+		  "productSlug": "doge-shirt",
+		  "price": 1000,
+		  "quantity": 2
+		},
+		{
+		  "productId": "%s",
+		  "price": 1000,
+		  "quantity": 2
+		}
+    ]
   }
 }`
