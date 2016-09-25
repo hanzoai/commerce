@@ -146,7 +146,7 @@ type Payment struct {
 	// Internal testing flag
 	Test bool `json:"-"`
 
-	Metadata  Map    `json:"metadata" datastore:"-"`
+	Metadata  Map    `json:"metadata,omitempty" datastore:"-"`
 	Metadata_ string `json:"-" datastore:"-"`
 }
 
