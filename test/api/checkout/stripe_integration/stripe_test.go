@@ -681,7 +681,7 @@ var _ = Describe("payment", func() {
 				return ord
 			}
 
-			jsonStr := fmt.Sprintf(requests.DiscountOrderTemplate, "sad-keanu-shirt")
+			jsonStr := fmt.Sprintf(requests.DiscountOrderTemplate, "batman-shirt")
 			w := client.PostRawJSON("/checkout/charge", jsonStr)
 			ordFromRes(w)
 
