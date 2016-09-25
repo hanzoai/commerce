@@ -16,7 +16,8 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User,
 	// Do authorization
 	tok, err := client.Authorize(pay)
 	if err != nil {
-		log.Warn("Authorization failed: %#v", pay)
+		log.Warn("Failed to authorize payment '%s'", pay.Id())
+		log.Debug(pay)
 		return err
 	}
 
