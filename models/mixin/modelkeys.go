@@ -21,8 +21,13 @@ func couponFromId(m *Model, id string) (datastore.Key, bool, error) {
 		log.Warn("FOUND KEY", ctx)
 		return m.Key(), true, nil
 	} else {
-		// Get ids from unique coupon code
+		// Get ids from coupon id
 		ids := hashid.Decode(id)
+
+		if len(ids) == 0 {
+			log.Warn("Unable to decode coupon code '%s'", id, ctx)
+			return nil, false, datastore.KeyNotFound
+		}
 
 		// Recreate coupon key
 		key := db.KeyFromInt(m.Kind(), ids[0])
