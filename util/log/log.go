@@ -9,7 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/zeekay/go-logging"
 
-	"github.com/davecgh/go-spew/spew"
+	"crowdstart.com/util/spew"
 )
 
 // Custom logger
@@ -250,7 +250,6 @@ func Panic(formatOrError interface{}, args ...interface{}) {
 }
 
 func Dump(args ...interface{}) {
-	spew.Config.Indent = "  "
 	dump := spew.Sdump(args...)
 	std.Dump("\n%s", dump)
 }

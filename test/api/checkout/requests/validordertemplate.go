@@ -51,7 +51,7 @@ var DiscountOrderTemplate = `
   "order": {
     "currency": "usd",
     "items": [ {
-      "productSlug": "%s",
+      "productId": "%s",
       "price": 1000,
       "quantity": 2
     } ]
