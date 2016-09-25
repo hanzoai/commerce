@@ -81,22 +81,22 @@ type Order struct {
 	Type string `json:"type"`
 
 	// Shipping method
-	ShippingMethod string `json:"shippingMethod"`
+	ShippingMethod string `json:"shippingMethod,omitempty"`
 
 	// Sum of the line item amounts. Amount in cents.
 	LineTotal currency.Cents `json:"lineTotal"`
 
 	// Discount amount applied to the order. Amount in cents.
-	Discount currency.Cents `json:"discount"`
+	Discount currency.Cents `json:"discount,omitempty"`
 
 	// Sum of line totals less discount. Amount in cents.
 	Subtotal currency.Cents `json:"subtotal"`
 
 	// Shipping cost applied. Amount in cents.
-	Shipping currency.Cents `json:"shipping"`
+	Shipping currency.Cents `json:"shipping,omitempty"`
 
 	// Sales tax applied. Amount in cents.
-	Tax currency.Cents `json:"tax"`
+	Tax currency.Cents `json:"tax,omitempty"`
 
 	// Price adjustments applied. Amount in cents.
 	Adjustment currency.Cents `json:"-"`
@@ -105,10 +105,10 @@ type Order struct {
 	Total currency.Cents `json:"total"`
 
 	// Amount owed to the seller. Amount in cents.
-	Balance currency.Cents `json:"balance"`
+	Balance currency.Cents `json:"balance,omitempty"`
 
 	// Gross amount paid to the seller. Amount in cents.
-	Paid currency.Cents `json:"paid"`
+	Paid currency.Cents `json:"paid,omitempty"`
 
 	// integer	Amount refunded by the seller. Amount in cents.
 	Refunded currency.Cents `json:"refunded"`
@@ -138,9 +138,9 @@ type Order struct {
 	Fulfillment Fulfillment `json:"fulfillment"`
 
 	// gift options
-	Gift        bool   `json:"gift"`        // Is this a gift?
-	GiftMessage string `json:"giftMessage"` // Message to go on gift
-	GiftEmail   string `json:"giftEmail"`   // Email for digital gifts
+	Gift        bool   `json:"gift"`                  // Is this a gift?
+	GiftMessage string `json:"giftMessage,omitempty"` // Message to go on gift
+	GiftEmail   string `json:"giftEmail,omitempty"`   // Email for digital gifts
 
 	// Mailchimp tracking information
 	Mailchimp struct {

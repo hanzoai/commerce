@@ -16,10 +16,10 @@ const (
 )
 
 type Fulfillment struct {
-	Carrier        string         `json:"carrier"`
-	Service        string         `json:"service"`
-	TrackingNumber string         `json:"trackingNumber"`
-	CreatedAt      time.Time      `json:"createdAt"`
-	ShippedAt      time.Time      `json:"shippedAt"`
-	Cost           currency.Cents `json:"cost"`
+	Carrier        string         `json:"carrier,omitempty"`
+	Service        string         `json:"service,omitempty"`
+	TrackingNumber string         `json:"trackingNumber,omitempty"`
+	CreatedAt      time.Time      `json:"createdAt,omitempty"`
+	ShippedAt      time.Time      `json:"shippedAt,omitempty"`
+	Cost           currency.Cents `json:"cost,omitempty"`
 }
