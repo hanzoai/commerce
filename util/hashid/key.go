@@ -230,3 +230,23 @@ func MustDecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key) {
 
 	return key
 }
+
+func KeyExists(ctx appengine.Context, encoded string) (bool, error) {
+	key, err := DecodeKey(ctx, encoded)
+	if err != nil {
+		return false, err
+	}
+
+	// Try to query out matching key
+	keys, err := aeds.NewQuery(key.Kind()).Filter("__key__=", key).KeysOnly().GetAll(ctx, nil)
+
+	if err != nil {
+		return false, err
+	}
+
+	if len(keys) == 0 {
+		return false, datastore.KeyNotFound
+	}
+
+	return true, nil
+}
