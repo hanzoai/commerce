@@ -60,17 +60,17 @@ func (o *Order) CalcCouponDiscount() currency.Cents {
 
 	ctx := o.Model.Db.Context
 
-	log.Warn("TRYING TO APPLY COUPONS", ctx)
+	log.Debug("Applying coupons: %v", o.CouponCodes, ctx)
 	for i := 0; i < num; i++ {
 		c := &o.Coupons[i]
 		if !c.ValidFor(o.CreatedAt) {
 			continue
 		}
 
-		log.Warn("TRYING TO APPLY COUPON %v", c.Code(), ctx)
+		log.Debug("Applying coupon '%v'", c.Code(), ctx)
 
 		if c.ItemId() == "" {
-			log.Warn("Coupon Applies to All", ctx)
+			log.Debug("Coupon applies to order", ctx)
 
 			// Not per product
 			switch c.Type {
@@ -87,20 +87,21 @@ func (o *Order) CalcCouponDiscount() currency.Cents {
 				discount += currency.Cents(int(o.Shipping))
 			}
 		} else {
-			log.Warn("Coupon Applies to %v", c.ItemId(), ctx)
+			log.Debug("Coupon applies to '%v'", c.ItemId(), ctx)
+
 			// Coupons per product
 			for _, item := range o.Items {
 				log.Debug("Coupon.ProductId: %v, Item.ProductId: %v", c.ProductId, item.ProductId, ctx)
 				if item.Id() == c.ItemId() {
 					switch c.Type {
 					case coupon.Flat:
-						log.Warn("Flat", ctx)
+						log.Debug("Flat %d", c.Amount, ctx)
 						discount += currency.Cents(item.Quantity * c.Amount)
 					case coupon.Percent:
-						log.Warn("Percent", ctx)
+						log.Debug("Percent %d", c.Amount, ctx)
 						discount += currency.Cents(math.Floor(float64(item.TotalPrice()) * float64(c.Amount) * 0.01))
 					case coupon.FreeItem:
-						log.Warn("FreeShipping", ctx)
+						log.Debug("FreeShipping", ctx)
 						discount += currency.Cents(item.Price)
 					}
 
