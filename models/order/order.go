@@ -52,12 +52,15 @@ type Order struct {
 	// Associated campaign
 	CampaignId string `json:"campaignId,omitempty"`
 
-	// Associated Crowdstart user or buyer.
+	// Associated user or buyer.
 	UserId string `json:"userId,omitempty"`
 	Email  string `json:"email,omitempty"`
 
 	// Associated cart
 	CartId string `json:"cartId,omitempty"`
+
+	// Associated referrer
+	ReferrerId string `json:"referrerId,omitempty"`
 
 	// Status
 	Status            Status            `json:"status"`
@@ -118,13 +121,10 @@ type Order struct {
 	Items  []LineItem `json:"items" datastore:"-"`
 	Items_ string     `json:"-"` // need props
 
-	Adjustments []Adjustment `json:"-"`
-
-	Discounts   []discount.Discount `json:"discounts,omitempty" datastore:"-"`
-	Discounts_  string              `json:"-"`
+	Adjustments []Adjustment        `json:"-"`
+	Discounts   []discount.Discount `json:"discounts,omitempty"`
 	Coupons     []coupon.Coupon     `json:"coupons,omitempty"`
 	CouponCodes []string            `json:"couponCodes,omitempty"`
-	ReferrerId  string              `json:"referrerId,omitempty"`
 
 	PaymentIds []string `json:"payments"`
 
@@ -134,24 +134,26 @@ type Order struct {
 	// Fulfillment information
 	Fulfillment Fulfillment `json:"fulfillment"`
 
-	// Series of events that have occured relevant to this order
-	History []Event `json:"-,omitempty"`
-
-	// Arbitrary key/value pairs associated with this order
-	Metadata  Map    `json:"metadata" datastore:"-"`
-	Metadata_ string `json:"-" datastore:",noindex"`
-
-	Test bool `json:"-"` // Whether our internal test flag is active or not
-
+	// gift options
 	Gift        bool   `json:"gift"`        // Is this a gift?
 	GiftMessage string `json:"giftMessage"` // Message to go on gift
 	GiftEmail   string `json:"giftEmail"`   // Email for digital gifts
 
+	// Mailchimp tracking information
 	Mailchimp struct {
 		Id           string `json:"id,omitempty"`
 		CampaignId   string `json:"campaignId,omitempty"`
 		TrackingCode string `json:"trackingCode,omitempty"`
 	} `json:"mailchimp,omitempty"`
+
+	// Arbitrary key/value pairs associated with this order
+	Metadata  Map    `json:"metadata" datastore:"-"`
+	Metadata_ string `json:"-" datastore:",noindex"`
+
+	// Series of events that have occured relevant to this order
+	History []Event `json:"-,omitempty"`
+
+	Test bool `json:"-"` // Whether our internal test flag is active or not
 }
 
 func (o *Order) Validator() *val.Validator {
@@ -169,6 +171,8 @@ func (o *Order) Load(c <-chan aeds.Property) (err error) {
 
 	// Set order number
 	o.Number = o.NumberFromId()
+
+	// Initalize coupons
 	for _, coup := range o.Coupons {
 		coup.Init(o.Model.Db)
 	}
