@@ -69,6 +69,12 @@ func (o *Order) GetDiscounts() ([]*discount.Discount, error) {
 		log.Error("GetMulti failed: %v", err, ctx)
 	}
 
+	// Update discounts on order
+	o.Discounts = make([]discount.Discount, len(discounts))
+	for i := 0; i < len(discounts); i++ {
+		o.Discounts[i] = *discounts[i]
+	}
+
 	return discounts, err
 }
 
