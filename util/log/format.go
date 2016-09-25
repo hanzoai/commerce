@@ -86,6 +86,7 @@ var (
 	pid         = os.Getpid()
 	program     = filepath.Base(os.Args[0])
 	projectPath = ""
+	sdkPath     = ""
 )
 
 func getFmtVerbByName(name string) fmtVerb {
@@ -309,9 +310,7 @@ func (f *stringFormatter) Format(calldepth int, r *logging.Record, output io.Wri
 				} else if part.verb == fmtVerbShortfile {
 					file = filepath.Base(file)
 				}
-				// Only care about filepath relative to project root
-				file = strings.Replace(file, projectPath, "", 2)
-				v = fmt.Sprintf("%s:%d", file, line)
+				v = fmt.Sprintf("%s:%d", relativePath(file), line)
 			case fmtVerbLongfunc, fmtVerbShortfunc,
 				fmtVerbLongpkg, fmtVerbShortpkg:
 				// TODO cache pc
@@ -407,7 +406,15 @@ func (bf *backendFormatter) Log(level logging.Level, calldepth int, r *logging.R
 	return bf.b.Log(level, calldepth+1, r)
 }
 
+// Stripe SDK and project paths from filename
+func relativePath(file string) string {
+	file = strings.Replace(file, sdkPath, "", 1)
+	file = strings.Replace(file, projectPath, "", 1)
+	return file
+}
+
 func init() {
 	_, filename, _, _ := runtime.Caller(1)
-	projectPath = strings.Replace(filename, "util/log/log.go", "", 1)
+	sdkPath = strings.Replace(filename, "util/log/log.go", "", 1)
+	projectPath = strings.Replace(sdkPath, "/.sdk/gopath/src/crowdstart.com", "", 1)
 }
