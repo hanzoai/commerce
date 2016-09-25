@@ -89,7 +89,7 @@ func firstTime(client *stripe.Client, tok *stripe.Token, usr *user.User, ord *or
 	pay.Account.CustomerId = cust.ID
 	pay.Live = cust.Live
 
-	log.Debug("Stripe customer: %#v", cust)
+	log.JSON("Stripe customer:", cust)
 
 	// Get default source
 	cardId := cust.DefaultSource.ID
