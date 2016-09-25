@@ -70,8 +70,18 @@ func getCachedDiscounts(ctx appengine.Context, key string) ([]*aeds.Key, error) 
 }
 
 func GetScopedDiscounts(ctx appengine.Context, sc scope.Type, id string, keyc chan []*aeds.Key, errc chan error) {
+	// Id required for all scopes except organization
+	if id == "" && sc != scope.Organization {
+		// TODO: Prevent this from happening. Usually due to store id missing on order.
+		errc <- nil
+		keyc <- make([]*aeds.Key, 0)
+		return
+	}
+
 	// Check memcache for keys
 	key := keyForScope(sc, id)
+
+	log.Debug("Trying to get discounts from cache using key '%s'", key)
 	keys, err := getCachedDiscounts(ctx, key)
 
 	// Fetch keys from datastore if that fails
@@ -94,17 +104,22 @@ func GetScopedDiscounts(ctx appengine.Context, sc scope.Type, id string, keyc ch
 			query = query.Filter(filter, id)
 		}
 
+		if sc == scope.Organization {
+			log.Debug("Trying to get discounts from datastore Scope.Type=organization")
+		} else {
+			log.Debug("Trying to get discounts from datastore Scope.Type=%s, %s%s", sc, filter, id)
+		}
+
 		keys, err = query.
 			Filter("Enabled=", true).
 			KeysOnly().
 			GetAll(nil)
 
 		// Cache keys for later
-		if err != nil {
+		if err == nil {
+			log.Debug("Caching discount keys for later using cache key '%s'", key)
 			err = cacheDiscounts(ctx, key, keys)
 		}
-
-		log.Error("sc = %v, id = %v, keys = %v", sc, id, keys)
 	}
 
 	// Return with keys
