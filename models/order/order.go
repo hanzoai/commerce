@@ -121,10 +121,13 @@ type Order struct {
 	Items  []LineItem `json:"items" datastore:"-"`
 	Items_ string     `json:"-"` // need props
 
-	Adjustments []Adjustment        `json:"-"`
-	Discounts   []discount.Discount `json:"discounts,omitempty"`
-	Coupons     []coupon.Coupon     `json:"coupons,omitempty"`
-	CouponCodes []string            `json:"couponCodes,omitempty"`
+	Adjustments []Adjustment `json:"-"`
+
+	Discounts  []*discount.Discount `json:"discounts,omitempty" datastore:"-"`
+	Discounts_ string               `json:"-"` // need props
+
+	Coupons     []coupon.Coupon `json:"coupons,omitempty"`
+	CouponCodes []string        `json:"couponCodes,omitempty"`
 
 	PaymentIds []string `json:"payments"`
 
@@ -172,12 +175,11 @@ func (o *Order) Load(c <-chan aeds.Property) (err error) {
 	// Set order number
 	o.Number = o.NumberFromId()
 
-	// Initalize coupons
-	for _, coup := range o.Coupons {
-		coup.Init(o.Model.Db)
+	// Deserialize from datastore
+	if len(o.Discounts_) > 0 {
+		err = json.DecodeBytes([]byte(o.Discounts_), &o.Discounts)
 	}
 
-	// Deserialize from datastore
 	if len(o.Items_) > 0 {
 		err = json.DecodeBytes([]byte(o.Items_), &o.Items)
 	}
@@ -186,13 +188,24 @@ func (o *Order) Load(c <-chan aeds.Property) (err error) {
 		err = json.DecodeBytes([]byte(o.Metadata_), &o.Metadata)
 	}
 
+	// Initalize coupons
+	for _, coup := range o.Coupons {
+		coup.Init(o.Model.Db)
+	}
+
+	// Initalize discounts
+	for _, dis := range o.Discounts {
+		dis.Init(o.Model.Db)
+	}
+
 	return err
 }
 
 func (o *Order) Save(c chan<- aeds.Property) (err error) {
 	// Serialize unsupported properties
-	o.Metadata_ = string(json.EncodeBytes(&o.Metadata))
+	o.Discounts_ = string(json.EncodeBytes(o.Discounts))
 	o.Items_ = string(json.EncodeBytes(o.Items))
+	o.Metadata_ = string(json.EncodeBytes(&o.Metadata))
 
 	// Save properties
 	return IgnoreFieldMismatch(aeds.SaveStruct(o, c))
