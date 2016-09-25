@@ -12,7 +12,6 @@ func stripeVerifyCharge(pay *payment.Payment) {
 	ch, err := sc.Charges.Get(pay.Account.ChargeId, nil)
 	Expect(ch).ToNot(BeNil())
 	Expect(err).ToNot(HaveOccurred())
-
 	Expect(ch.Captured).To(BeTrue())
 	log.Debug("StripeVerifyCharge Results:\n%v\n%v", ch, err)
 }
