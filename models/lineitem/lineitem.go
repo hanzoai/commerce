@@ -1,7 +1,6 @@
 package lineitem
 
 import (
-	"errors"
 	"fmt"
 
 	"crowdstart.com/datastore"
@@ -13,8 +12,6 @@ import (
 
 	. "crowdstart.com/models"
 )
-
-var InvalidLineItem = errors.New("Invalid line item. Ensure ID, slug or SKU is correct.")
 
 type LineItem struct {
 	mixin.Salesforce
@@ -157,7 +154,7 @@ func (li *LineItem) Entity(db *datastore.Datastore) (datastore.Key, interface{},
 		}
 	}
 
-	return nil, nil, InvalidLineItem
+	return nil, nil, LineItemError{li}
 }
 
 // Set product by id
