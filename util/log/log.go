@@ -13,14 +13,12 @@ import (
 	"crowdstart.com/util/spew"
 )
 
-var isDevAppServer = false
-
 // Custom logger
 type Logger struct {
 	logging.Logger
-	appengineBackend *AppengineBackend
-	verbose          bool
-	verboseOverride  bool
+	backend         *Backend
+	verbose         bool
+	verboseOverride bool
 }
 
 func (l *Logger) SetVerbose(verbose bool) {
@@ -42,17 +40,17 @@ func (l *Logger) detectContext(ctx interface{}) {
 	switch ctx := ctx.(type) {
 	case *gin.Context:
 		// Get App Engine from session
-		l.appengineBackend.context = ctx.MustGet("appengine").(appengine.Context)
+		l.backend.context = ctx.MustGet("appengine").(appengine.Context)
 		l.verboseOverride = ctx.MustGet("verbose").(bool)
 
 		// Request URI is useful for logging
 		if ctx.Request != nil {
-			l.appengineBackend.requestURI = ctx.Request.RequestURI
+			l.backend.requestURI = ctx.Request.RequestURI
 		}
 	case appengine.Context:
-		l.appengineBackend.context = ctx
+		l.backend.context = ctx
 	default:
-		l.appengineBackend.context = nil
+		l.backend.context = nil
 	}
 }
 
@@ -60,7 +58,7 @@ func (l *Logger) detectContext(ctx interface{}) {
 func (l *Logger) detectError(args []interface{}) {
 	if len(args) > 0 {
 		if err, ok := args[len(args)-1].(error); ok {
-			l.appengineBackend.error = err
+			l.backend.error = err
 		}
 	}
 }
@@ -87,7 +85,7 @@ func (l *Logger) parseArgs(args ...interface{}) []interface{} {
 	l.detectContext(args[len(args)-1])
 
 	// Remove context from args if we were passed one
-	if l.appengineBackend.context != nil {
+	if l.backend.context != nil {
 		args = args[:len(args)-1]
 	}
 
@@ -98,25 +96,26 @@ func (l *Logger) parseArgs(args ...interface{}) []interface{} {
 }
 
 // Custom logger backend that knows about AppEngine
-type AppengineBackend struct {
-	context    appengine.Context
-	error      error
-	requestURI string
-	verbose    bool
+type Backend struct {
+	context        appengine.Context
+	error          error
+	requestURI     string
+	verbose        bool
+	isDevAppServer bool
 }
 
-func (b AppengineBackend) Verbose() bool {
+func (b Backend) Verbose() bool {
 	return b.verbose
 }
 
 // Log implementation for local dev server only.
-func (b AppengineBackend) logToDevServer(level logging.Level, formatted string) error {
+func (b Backend) logToDevServer(level logging.Level, formatted string) error {
 	fmt.Println(formatted)
 	return nil
 }
 
 // Log implementation that uses App Engine's logging methods
-func (b AppengineBackend) logToAppEngine(level logging.Level, formatted string) error {
+func (b Backend) logToAppEngine(level logging.Level, formatted string) error {
 	switch level {
 	case logging.WARNING:
 		b.context.Warningf(formatted)
@@ -134,11 +133,11 @@ func (b AppengineBackend) logToAppEngine(level logging.Level, formatted string) 
 }
 
 // Log method that customizes logging behavior for AppEngine dev server / production
-func (b AppengineBackend) Log(level logging.Level, calldepth int, record *logging.Record) error {
+func (b Backend) Log(level logging.Level, calldepth int, record *logging.Record) error {
 	// Create formatted log output
 	formatted := record.Formatted(calldepth + 2)
 
-	if isDevAppServer {
+	if b.isDevAppServer {
 		// Logging for local server
 		return b.logToDevServer(level, formatted)
 	} else {
@@ -154,12 +153,14 @@ func (b AppengineBackend) Log(level logging.Level, calldepth int, record *loggin
 func New() *Logger {
 	log := new(Logger)
 
-	// Check for dev app server
-	isDevAppServer = appengine.IsDevAppServer()
+	isDevAppServer := appengine.IsDevAppServer()
 
 	// Backend that is appengine-aware
-	backend := new(AppengineBackend)
-	log.appengineBackend = backend
+	backend := new(Backend)
+	backend.isDevAppServer = isDevAppServer
+
+	log.backend = backend
+	log.SetVerbose(isDevAppServer)
 
 	// Log formatters, color for dev, plain for production
 	plainFormatter := MustStringFormatter("%{longfile} %{longfunc} %{message}")
@@ -169,11 +170,12 @@ func New() *Logger {
 	defaultBackend := logging.NewBackendFormatter(backend, plainFormatter)
 	if isDevAppServer {
 		defaultBackend = logging.NewBackendFormatter(backend, colorFormatter)
+	} else {
+
 	}
 
 	multiBackend := logging.SetBackend(defaultBackend)
 	log.SetBackend(multiBackend)
-	log.SetVerbose(isDevAppServer)
 	return log
 }
 
@@ -271,10 +273,10 @@ func Dump(formatOrObject interface{}, args ...interface{}) {
 		args, obj := std.dumpObject(args)
 		msg := fmt.Sprintf(v, args...)
 		dump := spew.Sdump(obj)
-		std.Debug("%s\n%s", msg, dump)
+		std.Debugf("%s\n%s", msg, dump)
 	default:
 		dump := spew.Sdump(v)
-		std.Debug("\n%s", dump)
+		std.Debugf("\n%s", dump)
 	}
 }
 
@@ -285,9 +287,9 @@ func JSON(formatOrObject interface{}, args ...interface{}) {
 	case string:
 		args, obj := std.dumpObject(args)
 		msg := fmt.Sprintf(v, args...)
-		std.Debug("%s\n%s", msg, json.Encode(obj))
+		std.Debugf("%s\n%s", msg, json.Encode(obj))
 	default:
-		std.Debug("\n%s", json.Encode(v))
+		std.Debugf("\n%s", json.Encode(v))
 	}
 }
 
