@@ -151,7 +151,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	// Save user, order, payment
 	multi.MustCreate([]interface{}{usr, ord, pay})
 
-	log.Debug("Order '%s' authorized'", ord.Id(), c)
+	log.Debug("Order '%s' authorized", ord.Id(), c)
 
 	return pay, usr, nil
 }
