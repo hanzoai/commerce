@@ -70,10 +70,7 @@ func (o *Order) GetDiscounts() ([]*discount.Discount, error) {
 	}
 
 	// Update discounts on order
-	o.Discounts = make([]discount.Discount, len(discounts))
-	for i := 0; i < len(discounts); i++ {
-		o.Discounts[i] = *discounts[i]
-	}
+	o.Discounts = discounts
 
 	return discounts, err
 }

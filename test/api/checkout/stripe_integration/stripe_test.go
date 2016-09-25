@@ -670,7 +670,7 @@ var _ = Describe("payment", func() {
 		})
 	})
 
-	FContext("Charge Order With Discount Rules Applicable", func() {
+	Context("Charge Order With Discount Rules Applicable", func() {
 		It("Should charge order and apply appropriate discount rules", func() {
 			var ordFromRes = func(w *httptest.ResponseRecorder) *order.Order {
 				Expect(w.Code).To(Equal(200))
