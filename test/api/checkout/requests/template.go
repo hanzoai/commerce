@@ -2,6 +2,8 @@ package requests
 
 import "fmt"
 
+type Map map[string]interface{}
+
 type templateFunc func(...interface{}) string
 
 func template(t string) templateFunc {
