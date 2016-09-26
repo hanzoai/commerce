@@ -38,10 +38,10 @@ func connect(c *gin.Context) {
 func getReferrals(c *gin.Context) {
 	org := middleware.GetOrganization(c)
 	db := datastore.New(org.Namespaced(c))
-	id := c.Params.ByName("userid")
+	id := c.Params.ByName("affiliateid")
 
 	referrals := make([]referral.Referral, 0)
-	if _, err := referral.Query(db).Filter("ReferrerUserId=", id).GetAll(&referrals); err != nil {
+	if _, err := referral.Query(db).Filter("Referrer.AffiliateId=", id).GetAll(&referrals); err != nil {
 		http.Fail(c, 400, "Could not query referral", err)
 		return
 	}
@@ -100,36 +100,48 @@ func create(r *rest.Rest) func(*gin.Context) {
 		db := datastore.New(c)
 		aff := affiliate.New(db)
 
+		// Decode request
 		if err := json.Decode(c.Request.Body, aff); err != nil {
 			r.Fail(c, 400, "Failed decode request body", err)
 			return
 		}
 
-		usr := user.New(db)
-
-		// Create Mailchimp cart
+		// Affiliates can only be created for pre-existing users
 		if aff.UserId == "" {
 			r.Fail(c, 500, "UserId required", errors.New("UserId required"))
 			return
 		}
 
+		// Find user which will be turned into affiliate
+		usr := user.New(db)
 		if err := usr.GetById(aff.UserId); err != nil {
 			r.Fail(c, 500, "User does not exist: "+aff.UserId, err)
 			return
 		}
 
+		// Don't create multiple affiliates per user
 		if usr.AffiliateId != "" {
-			r.Fail(c, 500, "User already has affiliate: "+usr.AffiliateId, errors.New("User already has affiliate: "+usr.AffiliateId))
+			r.Fail(c, 500, "User already is affiliate: "+usr.AffiliateId, errors.New("User already is affiliate: "+usr.AffiliateId))
 			return
 		}
 
+		// Create affiliate
 		if err := aff.Create(); err != nil {
 			r.Fail(c, 500, "Failed to create "+r.Kind, err)
 			return
 		}
 
-		usr.AffiliateId = aff.Id()
+		// Create special referrer for affiliate
+		ref := referrer.New(db)
+		ref.AffiliateId = aff.Id()
+		ref.UserId = usr.Id()
+		if err := ref.Create(); err != nil {
+			r.Fail(c, 500, "Failed to create "+r.Kind, err)
+			return
+		}
 
+		// Update user with affiliate information
+		usr.AffiliateId = aff.Id()
 		if err := usr.Update(); err != nil {
 			r.Fail(c, 500, "Failed to update user: "+usr.Id(), err)
 		}
