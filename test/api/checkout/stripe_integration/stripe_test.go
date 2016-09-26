@@ -108,9 +108,9 @@ type testHelperReturn struct {
 	Orders   []*order.Order
 }
 
-func post(path, req string, status int, dst interface{}) *httptest.ResponseRecorder {
+func post(path, req string, dst interface{}) *httptest.ResponseRecorder {
 	w := client.PostJSON(path, req)
-	Expect1(w.Code).To(Equal(status))
+	Expect1(w.Code < 400).To(BeTrue())
 	err := json.DecodeBuffer(w.Body, dst)
 	Expect1(err).ToNot(HaveOccurred())
 	return w
@@ -150,7 +150,7 @@ func FirstTimeSuccessfulOrderTest(isCharge bool, stor *store.Store) testHelperRe
 
 	// Should come back with 200
 	ord := order.New(db)
-	post(path, requests.ValidOrder, 200, ord)
+	post(path, requests.ValidOrder, ord)
 
 	// Order should be in db
 	keyExists(ord.Id())
@@ -197,7 +197,7 @@ func ReturningSuccessfulOrderSameCardTest(isCharge bool, stor *store.Store) test
 
 	// Make first request
 	ord1 := order.New(db)
-	post(path, requests.ValidOrder, 200, ord1)
+	post(path, requests.ValidOrder, ord1)
 
 	// Fetch the payment for the order to test later
 	pay1 := payment.New(db)
@@ -209,14 +209,14 @@ func ReturningSuccessfulOrderSameCardTest(isCharge bool, stor *store.Store) test
 	}
 
 	// Save user, customerId from first order
-	post(path, ReturningUserOrder(usr.Id()), ord1, 200)
+	post(path, ReturningUserOrder(usr.Id()), ord1)
 	usr := getUser(ord1.UserId)
 	customerId := usr.Accounts.Stripe.CustomerId
 	stripeVerifyUser(usr)
 
 	// Returning user, should reuse stripe customer id
 	ord2 := order.New(db)
-	post(path, ReturningUserOrder(usr.Id()), ord2, 200)
+	post(path, ReturningUserOrder(usr.Id()), ord2)
 
 	// Fetch the payment for the order to test later
 	pay2 := payment.New(db)
