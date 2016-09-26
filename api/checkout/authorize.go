@@ -106,7 +106,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	pay.Amount = ord.Total
 
 	// Calculate affiliate, partner and platform fees
-	fee, fees, err := ord.CalculateFee(org.Fees, org.Partners)
+	fee, fees, err := ord.CalculateFees(org.Fees, org.Partners)
 
 	pay.Currency = ord.Currency
 	pay.Description = ord.Description()
