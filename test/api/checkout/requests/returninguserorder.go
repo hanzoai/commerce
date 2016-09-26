@@ -1,6 +1,6 @@
 package requests
 
-var ReturningUserOrder = `
+var ReturningUserOrder = t(`
 {
   "payment": {
     "type": "stripe",
@@ -22,4 +22,4 @@ var ReturningUserOrder = `
       "quantity": 3
     } ]
   }
-}`
+}`)

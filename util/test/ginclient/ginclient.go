@@ -99,16 +99,19 @@ func (c *Client) Post(path, bodyType string, reader io.Reader) *httptest.Respons
 }
 
 func (c *Client) PostJSON(path string, src interface{}) *httptest.ResponseRecorder {
-	encoded := json.Encode(src)
-	reader := strings.NewReader(encoded)
-	req := c.NewRequest("POST", path, reader)
-	req.Header.Set("Content-Type", "application/json")
-	return c.Do(req)
-}
+	var req *http.Request
 
-func (c *Client) PostRawJSON(path string, src string) *httptest.ResponseRecorder {
-	reader := strings.NewReader(src)
-	req := c.NewRequest("POST", path, reader)
+	switch v := src.(type) {
+	case string:
+		// Assume strings are already JSON-encoded
+		reader := strings.NewReader(v)
+		req = c.NewRequest("POST", path, reader)
+	default:
+		// Blindly JSON encode!
+		buf := json.EncodeBuffer(src)
+		req = c.NewRequest("POST", path, buf)
+	}
+
 	req.Header.Set("Content-Type", "application/json")
 	return c.Do(req)
 }
