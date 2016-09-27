@@ -259,8 +259,11 @@ func (o *Order) AddAffiliateFee(pricing pricing.Fees, fees []*fee.Fee) ([]*fee.F
 		return fees, nil
 	}
 
+	ctx := o.Context()
+	db := datastore.New(ctx)
+
 	// Lookup referrer
-	ref := referrer.New(o.Db)
+	ref := referrer.New(db)
 	if err := ref.GetById(o.ReferrerId); err != nil {
 		return fees, err
 	}
@@ -271,21 +274,30 @@ func (o *Order) AddAffiliateFee(pricing pricing.Fees, fees []*fee.Fee) ([]*fee.F
 	}
 
 	// Lookup affiliate
-	aff := affiliate.New(o.Db)
+	aff := affiliate.New(db)
 	if err := aff.GetById(ref.AffiliateId); err != nil {
 		return fees, err
 	}
 
-	// Create fee
-	fe := fee.New(o.Db)
+	// Compute fees
+	affFee := currency.Cents(math.Floor(float64(o.Total)*aff.Commission.Percent)) + aff.Commission.Flat
+	platformFee := currency.Cents(math.Floor(float64(affFee)*pricing.Affiliate.Percent)) + pricing.Affiliate.Flat
+
+	// Create affiliate fee
+	fe := fee.New(db)
 	fe.Parent = aff.Key()
 	fe.Type = fee.Affiliate
 	fe.Currency = o.Currency
+	fe.Amount = affFee
 
-	// Compute fee amount based on affiliate comission
-	affFee := currency.Cents(math.Floor(float64(o.Total)*aff.Commission.Percent)) + aff.Commission.Flat
-	platformFee := currency.Cents(math.Floor(float64(affFee)*pricing.Affiliate.Percent)) + pricing.Affiliate.Flat
-	fe.Amount = affFee + platformFee
+	fees = append(fees, fe)
+
+	// Create platform fee
+	fe = fee.New(db)
+	fe.Parent = pricing.Key(ctx)
+	fe.Type = fee.Platform
+	fe.Currency = o.Currency
+	fe.Amount = platformFee
 
 	return append(fees, fe), nil
 }
