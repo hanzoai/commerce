@@ -326,7 +326,8 @@ func (o *Order) CalculateFees(pricing pricing.Fees, partners []pricing.Partner) 
 	total := currency.Cents(0)
 
 	// Add Affiliate fees
-	if fees, err := o.AddAffiliateFee(pricing, fees); err != nil {
+	fees, err := o.AddAffiliateFee(pricing, fees)
+	if err != nil {
 		return total, fees, err
 	}
 
@@ -334,7 +335,8 @@ func (o *Order) CalculateFees(pricing pricing.Fees, partners []pricing.Partner) 
 	fees = o.AddPlatformFee(pricing, fees)
 
 	// Add Partner fees
-	if fees, err := o.AddPartnerFee(partners, fees); err != nil {
+	fees, err = o.AddPartnerFee(partners, fees)
+	if err != nil {
 		return total, fees, err
 	}
 
