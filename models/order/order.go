@@ -328,7 +328,7 @@ func (o *Order) AddPartnerFee(partners []pricing.Partner, fees []*fee.Fee) ([]*f
 	return fees, nil
 }
 
-func (o *Order) CalculateFee(pricing pricing.Fees, partners []pricing.Partner) (currency.Cents, []*fee.Fee, error) {
+func (o *Order) CalculateFees(pricing pricing.Fees, partners []pricing.Partner) (currency.Cents, []*fee.Fee, error) {
 	fees := make([]*fee.Fee, 0)
 	total := currency.Cents(0)
 
