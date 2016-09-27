@@ -19,10 +19,10 @@ type Referrer struct {
 
 	Code    string  `json:"code"`
 	Program Program `json:"program"`
+	OrderId string  `json:"orderId"`
+	UserId  string  `json:"userId"`
 
-	UserId      string `json:"userId"`
-	AffiliateId string `json:"affiliateId,omitempty"`
-
+	AffiliateId     string    `json:"affiliateId,omitempty"`
 	FirstReferredAt time.Time `json:"firstReferredAt"`
 
 	Client      client.Client `json:"-"`
