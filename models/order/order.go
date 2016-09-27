@@ -262,8 +262,11 @@ func (o *Order) AddAffiliateFee(pricing pricing.Fees, fees []*fee.Fee) ([]*fee.F
 		return fees, nil
 	}
 
+	ctx := o.Context()
+	db := datastore.New(ctx)
+
 	// Lookup referrer
-	ref := referrer.New(o.Db)
+	ref := referrer.New(db)
 	if err := ref.GetById(o.ReferrerId); err != nil {
 		log.Warn("No Referrer")
 		return fees, err
@@ -276,23 +279,34 @@ func (o *Order) AddAffiliateFee(pricing pricing.Fees, fees []*fee.Fee) ([]*fee.F
 	}
 
 	// Lookup affiliate
-	aff := affiliate.New(o.Db)
+	aff := affiliate.New(db)
 	if err := aff.GetById(ref.AffiliateId); err != nil {
 		log.Warn("No Affiliate")
 		return fees, err
 	}
 
-	// Create fee
-	fe := fee.New(o.Db)
+	// Compute fees
+	affFee := currency.Cents(math.Floor(float64(o.Total)*aff.Commission.Percent)) + aff.Commission.Flat
+	platformFee := currency.Cents(math.Ceil(float64(affFee)*pricing.Affiliate.Percent)) + pricing.Affiliate.Flat
+
+	// Create affiliate fee
+	fe := fee.New(db)
+	fe.Name = "Affiliate commission"
 	fe.Parent = aff.Key()
 	fe.Type = fee.Affiliate
 	fe.Currency = o.Currency
 	fe.AffiliateId = aff.Id()
+	fe.Amount = affFee
 
-	// Compute fee amount based on affiliate comission
-	affFee := currency.Cents(math.Floor(float64(o.Total)*aff.Commission.Percent)) + aff.Commission.Flat
-	platformFee := currency.Cents(math.Floor(float64(affFee)*pricing.Affiliate.Percent)) + pricing.Affiliate.Flat
-	fe.Amount = affFee + platformFee
+	fees = append(fees, fe)
+
+	// Create platform fee
+	fe = fee.New(db)
+	fe.Name = "Affiliate fee"
+	fe.Parent = pricing.Key(ctx)
+	fe.Type = fee.Platform
+	fe.Currency = o.Currency
+	fe.Amount = platformFee
 
 	return append(fees, fe), nil
 }
@@ -303,6 +317,7 @@ func (o *Order) AddPlatformFee(pricing pricing.Fees, fees []*fee.Fee) []*fee.Fee
 
 	// Add platform fee
 	fe := fee.New(db)
+	fe.Name = "Platform fee"
 	fe.Parent = pricing.Key(ctx)
 	fe.Type = fee.Platform
 	fe.Currency = o.Currency
@@ -318,6 +333,7 @@ func (o *Order) AddPartnerFee(partners []pricing.Partner, fees []*fee.Fee) ([]*f
 	// Add partner fees
 	for _, partner := range partners {
 		fe := fee.New(db)
+		fe.Name = "Partner fee"
 		fe.Parent = partner.Key(ctx)
 		fe.Type = fee.Platform
 		fe.Currency = o.Currency
