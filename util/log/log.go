@@ -8,7 +8,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/zeekay/go-logging"
-
 	// "github.com/davecgh/go-spew/spew"
 )
 
@@ -183,9 +182,9 @@ func Debug(formatOrError interface{}, args ...interface{}) {
 	switch v := formatOrError.(type) {
 	case error:
 		args = append([]interface{}{v}, args...)
-		std.Debug("%s", args...)
+		std.Debugf("%s", args...)
 	case string:
-		std.Debug(v, args...)
+		std.Debugf(v, args...)
 	}
 }
 
@@ -195,9 +194,9 @@ func Info(formatOrError interface{}, args ...interface{}) {
 	switch v := formatOrError.(type) {
 	case error:
 		args = append([]interface{}{v}, args...)
-		std.Info("%s", args...)
+		std.Infof("%s", args...)
 	case string:
-		std.Info(v, args...)
+		std.Infof(v, args...)
 	}
 }
 
@@ -207,9 +206,9 @@ func Warn(formatOrError interface{}, args ...interface{}) {
 	switch v := formatOrError.(type) {
 	case error:
 		args = append([]interface{}{v}, args...)
-		std.Warning("%s", args...)
+		std.Warningf("%s", args...)
 	case string:
-		std.Warning(v, args...)
+		std.Warningf(v, args...)
 	}
 }
 
@@ -219,9 +218,9 @@ func Error(formatOrError interface{}, args ...interface{}) {
 	switch v := formatOrError.(type) {
 	case error:
 		args = append([]interface{}{v}, args...)
-		std.Error("%s", args...)
+		std.Errorf("%s", args...)
 	case string:
-		std.Error(v, args...)
+		std.Errorf(v, args...)
 	}
 }
 
