@@ -283,7 +283,7 @@ func (u *User) LoadOrders() error {
 
 func (u *User) LoadAffiliateAndPendingFees() error {
 	aff := affiliate.New(u.Db)
-	if _, err := aff.Query().Filter("AffiliateId=", u.AffiliateId).First(); err != nil {
+	if err := aff.GetById(u.AffiliateId); err != nil {
 		return err
 	}
 
