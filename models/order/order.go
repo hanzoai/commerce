@@ -254,25 +254,31 @@ func (o *Order) Save(c chan<- aeds.Property) (err error) {
 }
 
 func (o *Order) AddAffiliateFee(pricing pricing.Fees, fees []*fee.Fee) ([]*fee.Fee, error) {
+	log.Info("Add Affiliate Fee")
+
 	if o.ReferrerId == "" {
 		// No referrer, no need to check affiliate
+		log.Warn("No ReferrerId")
 		return fees, nil
 	}
 
 	// Lookup referrer
 	ref := referrer.New(o.Db)
 	if err := ref.GetById(o.ReferrerId); err != nil {
+		log.Warn("No Referrer")
 		return fees, err
 	}
 
 	if ref.AffiliateId == "" {
 		// No affiliate, no fee
+		log.Warn("No Affiliate Id")
 		return fees, nil
 	}
 
 	// Lookup affiliate
 	aff := affiliate.New(o.Db)
 	if err := aff.GetById(ref.AffiliateId); err != nil {
+		log.Warn("No Affiliate")
 		return fees, err
 	}
 
@@ -281,6 +287,7 @@ func (o *Order) AddAffiliateFee(pricing pricing.Fees, fees []*fee.Fee) ([]*fee.F
 	fe.Parent = aff.Key()
 	fe.Type = fee.Affiliate
 	fe.Currency = o.Currency
+	fe.AffiliateId = aff.Id()
 
 	// Compute fee amount based on affiliate comission
 	affFee := currency.Cents(math.Floor(float64(o.Total)*aff.Commission.Percent)) + aff.Commission.Flat
@@ -326,7 +333,8 @@ func (o *Order) CalculateFee(pricing pricing.Fees, partners []pricing.Partner) (
 	total := currency.Cents(0)
 
 	// Add Affiliate fees
-	if fees, err := o.AddAffiliateFee(pricing, fees); err != nil {
+	fees, err := o.AddAffiliateFee(pricing, fees)
+	if err != nil {
 		return total, fees, err
 	}
 
@@ -334,7 +342,8 @@ func (o *Order) CalculateFee(pricing pricing.Fees, partners []pricing.Partner) (
 	fees = o.AddPlatformFee(pricing, fees)
 
 	// Add Partner fees
-	if fees, err := o.AddPartnerFee(partners, fees); err != nil {
+	fees, err = o.AddPartnerFee(partners, fees)
+	if err != nil {
 		return total, fees, err
 	}
 
