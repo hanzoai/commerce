@@ -285,6 +285,7 @@ func (o *Order) AddAffiliateFee(pricing pricing.Fees, fees []*fee.Fee) ([]*fee.F
 
 	// Create affiliate fee
 	fe := fee.New(db)
+	fe.Name = "Affiliate commission"
 	fe.Parent = aff.Key()
 	fe.Type = fee.Affiliate
 	fe.Currency = o.Currency
@@ -294,6 +295,7 @@ func (o *Order) AddAffiliateFee(pricing pricing.Fees, fees []*fee.Fee) ([]*fee.F
 
 	// Create platform fee
 	fe = fee.New(db)
+	fe.Name = "Affiliate fee"
 	fe.Parent = pricing.Key(ctx)
 	fe.Type = fee.Platform
 	fe.Currency = o.Currency
@@ -308,6 +310,7 @@ func (o *Order) AddPlatformFee(pricing pricing.Fees, fees []*fee.Fee) []*fee.Fee
 
 	// Add platform fee
 	fe := fee.New(db)
+	fe.Name = "Platform fee"
 	fe.Parent = pricing.Key(ctx)
 	fe.Type = fee.Platform
 	fe.Currency = o.Currency
@@ -323,6 +326,7 @@ func (o *Order) AddPartnerFee(partners []pricing.Partner, fees []*fee.Fee) ([]*f
 	// Add partner fees
 	for _, partner := range partners {
 		fe := fee.New(db)
+		fe.Name = "Partner fee"
 		fe.Parent = partner.Key(ctx)
 		fe.Type = fee.Platform
 		fe.Currency = o.Currency
