@@ -177,7 +177,7 @@ func EncodeKey(ctx appengine.Context, key datastore.Key) string {
 
 	encoded := Encode(ids...)
 
-	log.Debug("/%s%v encoded to '%s'", fmtNs(key.Namespace()), key, encoded)
+	log.Debug("%s%v encoded to '%s'", fmtNs(key.Namespace()), key, encoded)
 
 	return encoded
 }
@@ -217,7 +217,7 @@ func DecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key, err error)
 		key = aeds.NewKey(ctx, decodeKind(ids[i-1]), "", int64(ids[i]), key)
 	}
 
-	log.Debug("'%s' decoded to /%s%v", encoded, fmtNs(namespace), key)
+	log.Debug("'%s' decoded to %s%v", encoded, fmtNs(namespace), key)
 
 	return key, nil
 }
