@@ -159,6 +159,8 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		entities = append(entities, fe)
 	}
 
+	log.Warn("Fees: %v", fees)
+
 	multi.MustCreate(entities)
 
 	log.Info("New authorization for order: %+v", ord, ctx)
