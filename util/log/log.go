@@ -2,6 +2,7 @@ package log
 
 import (
 	"fmt"
+	"log"
 	"strings"
 
 	"appengine"
@@ -110,7 +111,7 @@ func (b Backend) Verbose() bool {
 
 // Log implementation for local dev server only.
 func (b Backend) logToDevServer(level logging.Level, formatted string) error {
-	fmt.Println(formatted)
+	log.Println(formatted)
 	return nil
 }
 
