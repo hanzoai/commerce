@@ -133,6 +133,7 @@ var Ludela = New("ludela", func(c *gin.Context) *organization.Organization {
 	stor := store.New(nsdb)
 	stor.Name = "default"
 	stor.GetOrCreate("Name=", stor.Name)
+	stor.SetKey("ldt6eeKINN5")
 	stor.Prefix = "/"
 	stor.Currency = currency.USD
 	stor.Mailchimp.APIKey = ""
@@ -194,12 +195,12 @@ var Ludela = New("ludela", func(c *gin.Context) *organization.Organization {
 	usr.MustUpdate()
 	org.MustUpdate()
 	stor.MustUpdate()
-	// prod.MustUpdate()
+	prod.MustUpdate()
 
 	// Create corresponding Mailchimp entities
 	client := mailchimp.New(db.Context, org.Mailchimp.APIKey)
 	client.CreateStore(stor)
-	// client.CreateProduct(stor.Id(), prod)
+	client.CreateProduct(stor.Id(), prod)
 
 	return org
 })
