@@ -16,7 +16,7 @@ var Organization = New("organization", func(c *gin.Context) *organization.Organi
 	db := datastore.New(c)
 
 	// Such tees owner &operator
-	user := User(c).(*user.User)
+	usr := User(c).(*user.User)
 
 	// Our fake T-shirt company
 	org := organization.New(db)
@@ -24,7 +24,7 @@ var Organization = New("organization", func(c *gin.Context) *organization.Organi
 	org.GetOrCreate("Name=", org.Name)
 
 	org.FullName = "Such Tees, Inc."
-	org.Owners = []string{user.Id()}
+	org.Owners = []string{usr.Id()}
 	org.Website = "http://suchtees.com"
 	org.SecretKey = []byte("prettyprettyteesplease")
 
@@ -90,7 +90,7 @@ var Organization = New("organization", func(c *gin.Context) *organization.Organi
 	}
 
 	// Add org to user and also save
-	user.Organizations = []string{org.Id()}
-	user.MustPut()
+	usr.Organizations = []string{org.Id()}
+	usr.MustPut()
 	return org
 })

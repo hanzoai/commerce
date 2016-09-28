@@ -68,7 +68,7 @@ func (q *DatastoreQuery) Filter(filterStr string, value interface{}) *DatastoreQ
 
 func (q *DatastoreQuery) GetAll(dst interface{}) ([]*aeds.Key, error) {
 	keys, err := q.Query.GetAll(q.Context, dst)
-	err = q.Datastore.SkipFieldMismatch(err)
+	err = IgnoreFieldMismatch(err)
 	return keys, err
 }
 
@@ -111,7 +111,7 @@ func (q *DatastoreQuery) First(dst interface{}) (*aeds.Key, bool, error) {
 	key, err := t.Next(dst)
 
 	// Ignore field mismatch if set
-	err = q.Datastore.SkipFieldMismatch(err)
+	err = IgnoreFieldMismatch(err)
 
 	// Nothing found
 	if err == aeds.Done {

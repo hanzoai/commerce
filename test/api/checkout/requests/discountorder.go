@@ -1,6 +1,6 @@
 package requests
 
-var ReturningUserOrder = t(`
+var ValidOrderTemplate = `
 {
   "payment": {
     "type": "stripe",
@@ -12,14 +12,15 @@ var ReturningUserOrder = t(`
     }
   },
   "user": {
-	"id": "%s"
+    "id": "%s"
   },
   "order": {
     "currency": "usd",
+    "couponCodes": ["%s"],
     "items": [ {
       "productSlug": "doge-shirt",
       "price": 1000,
-      "quantity": 3
+      "quantity": 2
     } ]
   }
-}`)
+}`

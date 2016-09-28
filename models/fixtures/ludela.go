@@ -7,8 +7,13 @@ import (
 
 	"crowdstart.com/auth/password"
 	"crowdstart.com/datastore"
+	"crowdstart.com/models/discount"
+	"crowdstart.com/models/discount/rule"
+	"crowdstart.com/models/discount/scope"
+	"crowdstart.com/models/discount/target"
 	"crowdstart.com/models/namespace"
 	"crowdstart.com/models/organization"
+	"crowdstart.com/models/product"
 	"crowdstart.com/models/store"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/models/user"
@@ -133,17 +138,53 @@ var Ludela = New("ludela", func(c *gin.Context) *organization.Organization {
 	// Set default store on org
 	org.DefaultStore = stor.Id()
 
-	// // Create smart candle
-	// prod := product.New(nsdb)
-	// prod.Slug = "candle"
-	// prod.GetOrCreate("Slug=", prod.Slug)
-	// prod.SetKey("9V84cGS9VK")
-	// prod.Name = "LuDela Candle"
-	// prod.Description = "1 Smart Candle"
-	// prod.Price = currency.Cents(19999)
-	// prod.Inventory = 9000
-	// prod.Preorder = true
-	// prod.Hidden = false
+	// Create smart candle
+	prod := product.New(nsdb)
+	prod.Slug = "ludela"
+	prod.GetOrCreate("Slug=", prod.Slug)
+	prod.SetKey("Knc9wlZJUOOG")
+	prod.Name = "LuDela Candle"
+	prod.Description = "Includes: One (1) LuDela Smart Candle, Ivory Color, One (1) 100% Natural Soy-Beeswax Refill (30-hour burn time). Special Offer: One-month trial subscription to LuDela’s EssentialRefill Program of two (2) 30-hour refills per month, per LuDela ordered. $9.99 per month per LuDela thereafter. Modify or cancel anytime."
+	prod.Currency = currency.USD
+	prod.ListPrice = currency.Cents(19900)
+	prod.Price = currency.Cents(9900)
+	prod.Preorder = true
+	prod.Hidden = false
+	prod.EstimatedDelivery = "Early 2017"
+	prod.Update()
+
+	// Create discount rules for ludela
+	dis := discount.New(db)
+	dis.Name = "LuDela Bulk Discount"
+	dis.GetOrCreate("Name=", dis.Name)
+	dis.Scope.Type = scope.Product
+	dis.Scope.ProductId = prod.Id()
+	dis.Target.Type = target.Product
+	dis.Target.ProductId = prod.Id()
+
+	// Create Jamie's rules
+	rule1 := discount.Rule{
+		rule.Trigger{
+			Quantity: rule.Quantity{
+				Start: 2,
+			},
+		},
+		rule.Action{
+			Discount: rule.Discount{
+				Flat: 5,
+			},
+		},
+	}
+	// aka...
+	rule1.Trigger.Quantity.Start = 2
+	rule1.Action.Discount.Flat = 5
+
+	rule2 := discount.Rule{}
+	rule2.Trigger.Quantity.Start = 3
+	rule2.Action.Discount.Flat = 16
+
+	dis.Rules = []discount.Rule{rule1, rule2}
+	dis.Update()
 
 	// Save entities
 	usr.MustUpdate()

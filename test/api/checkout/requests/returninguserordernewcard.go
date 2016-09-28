@@ -1,6 +1,6 @@
 package requests
 
-var ReturningUserOrderNewCard = `
+var ReturningUserOrderNewCard = template(`
 {
   "payment": {
     "type": "stripe",
@@ -22,4 +22,4 @@ var ReturningUserOrderNewCard = `
       "quantity": 3
     } ]
   }
-}`
+}`)

@@ -16,7 +16,8 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User,
 	// Do authorization
 	tok, err := client.Authorize(pay)
 	if err != nil {
-		log.Warn("Authorization failed: %#v", pay)
+		log.Warn("Failed to authorize payment '%s'", pay.Id())
+		log.Debug(pay)
 		return err
 	}
 
@@ -88,7 +89,7 @@ func firstTime(client *stripe.Client, tok *stripe.Token, usr *user.User, ord *or
 	pay.Account.CustomerId = cust.ID
 	pay.Live = cust.Live
 
-	log.Debug("Stripe customer: %#v", cust)
+	log.JSON("Stripe customer:", cust)
 
 	// Get default source
 	cardId := cust.DefaultSource.ID
