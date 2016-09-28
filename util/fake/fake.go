@@ -1,0 +1,63 @@
+package fake
+
+import "reflect"
+
+type fieldMap map[string]reflect.Value
+
+// Check if field is in set
+func in(fields []string, field string) bool {
+	for _, f := range fields {
+		if field == f {
+			return true
+		}
+	}
+	return false
+}
+
+// Set field to zero value
+func zero(v reflect.Value) {
+	v.Set(reflect.Zero(v.Type().Elem()))
+}
+
+// Get exported / addressable fields on struct
+func fields(fake interface{}) fieldMap {
+	t := reflect.TypeOf(fake).Elem()
+	v := reflect.ValueOf(fake).Elem()
+	m := make(fieldMap)
+
+	for i := 0; i < v.NumField(); i++ {
+		f := v.Field(i)
+		ft := t.Field(i)
+
+		// Skip private fields, non-addressable fields
+		if ft.PkgPath != "" || !f.CanSet() {
+			continue
+		}
+
+		m[ft.Name] = f
+	}
+
+	return m
+}
+
+// Zero out non-specified fields on fake
+func Only(fake interface{}, only ...string) interface{} {
+	for name, f := range fields(fake) {
+		if !in(only, name) {
+			zero(f)
+		}
+	}
+
+	return fake
+}
+
+// Zero all fields except specified on fake
+func Except(fake interface{}, except ...string) interface{} {
+	for name, f := range fields(fake) {
+		if in(except, name) {
+			zero(f)
+		}
+	}
+
+	return fake
+}
