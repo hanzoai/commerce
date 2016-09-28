@@ -27,6 +27,13 @@ type Namespace struct {
 	Name  string
 }
 
+func fmtNs(ns string) string {
+	if ns == "" {
+		return "default"
+	}
+	return ns
+}
+
 func getRoot(ctx appengine.Context) *aeds.Key {
 	return aeds.NewKey(ctx, "namespace", "", consts.RootKey, nil)
 }
@@ -102,8 +109,6 @@ func getNamespace(ctx appengine.Context, id int64) string {
 
 // Encodes organzation namespace into it's IntID
 func encodeNamespace(ctx appengine.Context, namespace string) int {
-	log.Debug("namespace: '%v'", namespace)
-
 	// Default namespace
 	if namespace == "" {
 		return 0
@@ -117,12 +122,10 @@ func encodeNamespace(ctx appengine.Context, namespace string) int {
 		cache(namespace, id)
 	}
 
-	log.Debug("encoded '%v' to %v", namespace, id)
 	return int(id)
 }
 
 func decodeNamespace(ctx appengine.Context, encoded int) string {
-	log.Debug("id: %v", encoded)
 	// Default namespace
 	if encoded == 0 {
 		return ""
@@ -137,12 +140,10 @@ func decodeNamespace(ctx appengine.Context, encoded int) string {
 		cache(namespace, id)
 	}
 
-	log.Debug("decoded '%v' to %v", namespace, id)
 	return namespace
 }
 
 func EncodeKey(ctx appengine.Context, key datastore.Key) string {
-	log.Debug("key: %v", key)
 	id := int(key.IntID())
 
 	// Return if incomplete key
@@ -174,13 +175,14 @@ func EncodeKey(ctx appengine.Context, key datastore.Key) string {
 	// Append namespace
 	ids = append(ids, namespace)
 
-	log.Debug("ids to encode: %v, %v", key, ids)
-	return Encode(ids...)
+	encoded := Encode(ids...)
+
+	log.Debug("%s%v encoded to '%s'", fmtNs(key.Namespace()), key, encoded)
+
+	return encoded
 }
 
 func DecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key, err error) {
-	log.Debug("encoded key: %v", encoded)
-
 	// Catch panic from Decode
 	defer func() {
 		if r := recover(); r != nil {
@@ -190,7 +192,7 @@ func DecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key, err error)
 			case error:
 				err = v
 			default:
-				err = errors.New("I don't even")
+				err = errors.New("Impossible hashid.DecodeKey error")
 			}
 		}
 	}()
@@ -215,6 +217,8 @@ func DecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key, err error)
 		key = aeds.NewKey(ctx, decodeKind(ids[i-1]), "", int64(ids[i]), key)
 	}
 
+	log.Debug("'%s' decoded to %s%v", encoded, fmtNs(namespace), key)
+
 	return key, nil
 }
 
@@ -225,4 +229,24 @@ func MustDecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key) {
 	}
 
 	return key
+}
+
+func KeyExists(ctx appengine.Context, encoded string) (bool, error) {
+	key, err := DecodeKey(ctx, encoded)
+	if err != nil {
+		return false, err
+	}
+
+	// Try to query out matching key
+	keys, err := aeds.NewQuery(key.Kind()).Filter("__key__=", key).KeysOnly().GetAll(ctx, nil)
+
+	if err != nil {
+		return false, err
+	}
+
+	if len(keys) == 0 {
+		return false, datastore.KeyNotFound
+	}
+
+	return true, nil
 }

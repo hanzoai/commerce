@@ -15,14 +15,19 @@ func couponFromId(m *Model, id string) (datastore.Key, bool, error) {
 	ctx := m.Context()
 	code := strings.ToUpper(id)
 
-	log.Warn("GETBYIDCODE: %v", code, ctx)
+	log.Debug("Getting coupon for code or id '%s'", id, ctx)
 
 	if ok, _ := m.Query().Filter("Code=", code).First(); ok {
-		log.Warn("FOUND KEY", ctx)
+		log.Debug("Found coupon using code '%s'", code, ctx)
 		return m.Key(), true, nil
 	} else {
-		// Get ids from unique coupon code
+		// Get ids from coupon id
 		ids := hashid.Decode(id)
+
+		if len(ids) == 0 {
+			log.Warn("Unable to decode coupon code '%s'", id, ctx)
+			return nil, false, datastore.KeyNotFound
+		}
 
 		// Recreate coupon key
 		key := db.KeyFromInt(m.Kind(), ids[0])
@@ -30,7 +35,7 @@ func couponFromId(m *Model, id string) (datastore.Key, bool, error) {
 		// Fetch coupon using key
 		err := m.Get(key)
 		if err != nil {
-			log.Warn("Unable to filter by key for coupon: %v", err, ctx)
+			log.Warn("Unable to find coupon by key: %v", err, ctx)
 			return nil, false, datastore.KeyNotFound
 		}
 
@@ -38,6 +43,8 @@ func couponFromId(m *Model, id string) (datastore.Key, bool, error) {
 		v := reflect.ValueOf(m.Entity).Elem().FieldByName("RawCode")
 		ptr := v.Addr().Interface().(*string)
 		*ptr = id
+
+		log.JSON("Found coupon", m, ctx)
 
 		return m.Key(), true, nil
 	}
