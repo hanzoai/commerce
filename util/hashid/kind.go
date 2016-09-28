@@ -34,6 +34,7 @@ var kinds = map[string]int{
 	"fee":          33,
 	"transfer":     34,
 	"reversal":     35,
+	"discount":     37,
 }
 
 var kindsReversed = make(map[int]string)
@@ -48,7 +49,7 @@ func encodeKind(kind string) int {
 	if encoded, ok := kinds[kind]; ok {
 		return encoded
 	} else {
-		panic(fmt.Sprintf("Unknown kind %v. Please register in util/hashid/kind.go.", kind))
+		panic(fmt.Sprintf("Unknown kind '%s', register in util/hashid/kind.go", kind))
 	}
 }
 
@@ -56,6 +57,6 @@ func decodeKind(encoded int) string {
 	if kind, ok := kindsReversed[encoded]; ok {
 		return kind
 	} else {
-		panic(fmt.Sprintf("Unknown encoded kind %v. Please register in util/hashid/kind.go.", encoded))
+		panic(fmt.Sprintf("Unknown encoded kind '%s', register in util/hashid/kind.go", encoded))
 	}
 }
