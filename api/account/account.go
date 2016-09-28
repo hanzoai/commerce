@@ -8,8 +8,10 @@ import (
 
 	"crowdstart.com/auth/password"
 	"crowdstart.com/middleware"
+	"crowdstart.com/thirdparty/mailchimp"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/json/http"
+	"crowdstart.com/util/log"
 )
 
 func get(c *gin.Context) {
@@ -57,7 +59,9 @@ func update(c *gin.Context) {
 }
 
 func patch(c *gin.Context) {
+	org := middleware.GetOrganization(c)
 	usr := middleware.GetUser(c)
+	ctx := org.Db.Context
 
 	usr.Email = strings.ToLower(strings.TrimSpace(usr.Email))
 
@@ -87,6 +91,14 @@ func patch(c *gin.Context) {
 	if err := usr.Put(); err != nil {
 		http.Fail(c, 400, "Failed to update user", err)
 	} else {
+		// Create new mailchimp client
+		client := mailchimp.New(ctx, org.Mailchimp.APIKey)
+
+		// Update customer in mailchimp for this user
+		if err := client.UpdateCustomer(org.DefaultStore, usr); err != nil {
+			log.Warn("Failed to update Mailchimp customer: %v", err, ctx)
+		}
+
 		http.Render(c, 200, usr)
 	}
 }
