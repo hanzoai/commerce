@@ -1,18 +1,43 @@
 package referral
 
-import "crowdstart.com/models/mixin"
+import (
+	"crowdstart.com/models/mixin"
+	"crowdstart.com/models/types/client"
+	"crowdstart.com/models/types/currency"
+)
+
+type Type string
+
+const (
+	NewOrder Type = "new-order"
+	NewUser       = "new-user"
+)
 
 type Referral struct {
 	mixin.Model
 
-	// User being referred
-	UserId    string `json:"userId"`
-	FirstName string `json:"firstName"`
+	Type Type `json:"type"`
 
-	// Associated order
+	// User created by referral
+	UserId string `json:"userId"`
+
+	// Order created by referral
 	OrderId string `json:"orderId"`
 
 	// Referred by
-	ReferrerUserId string `json:"referrerUserId"`
-	ReferrerId     string `json:"referrerId"`
+	Referrer struct {
+		Id          string `json:"id"`
+		UserId      string `json:"userId"`
+		AffiliateId string `json:"affiliateId"`
+	}
+
+	Fee struct {
+		Currency currency.Type  `json:"currency,omitempty"`
+		Id       string         `json:"id,omitempty"`
+		Amount   currency.Cents `json:"amount,omitempty"`
+	} `json:"fee,omitempty"`
+
+	Client      client.Client `json:"-"`
+	Blacklisted bool          `json:"blacklisted,omitempty"`
+	Duplicate   bool          `json:"duplicate,omitempty"`
 }

@@ -18,7 +18,6 @@ import (
 	"crowdstart.com/models/product"
 	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/store"
-	"crowdstart.com/models/transaction"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/models/user"
 	"crowdstart.com/thirdparty/stripe"
@@ -623,16 +622,26 @@ var _ = Describe("payment", func() {
 			Expect(w.Code).To(Equal(200))
 			log.Debug("JSON %v", w.Body)
 
+			referrals, err := refIn.Referrals()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(referrals)).To(Equal(0))
+
+			transactions, err := refIn.Transactions()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(transactions)).To(Equal(0))
+
 			refIn1 := referrer.New(db)
 			refIn1.MustGet(refIn.Id())
-			Expect(len(refIn.ReferralIds)).To(Equal(0))
-			Expect(len(refIn.TransactionIds)).To(Equal(0))
 
-			Expect(len(refIn1.ReferralIds)).To(Equal(1))
-			Expect(len(refIn1.TransactionIds)).To(Equal(1))
+			referrals, err = refIn1.Referrals()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(referrals)).To(Equal(1))
 
-			trans := transaction.New(db)
-			err = trans.GetById(refIn1.TransactionIds[0])
+			transactions, err = refIn1.Transactions()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(len(transactions)).To(Equal(1))
+
+			trans := transactions[0]
 			Expect(err).ToNot(HaveOccurred())
 			Expect(trans.UserId).To(Equal(u.Id()))
 			Expect(trans.Currency).To(Equal(refIn.Program.Actions[0].Currency))

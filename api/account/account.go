@@ -25,6 +25,11 @@ func get(c *gin.Context) {
 		return
 	}
 
+	if err := usr.LoadAffiliateAndTransfers(); err != nil {
+		http.Fail(c, 500, "User order data could get be queried", err)
+		return
+	}
+
 	if err := usr.CalculateBalances(); err != nil {
 		http.Fail(c, 500, "User balance data could get be queried", err)
 		return
