@@ -11,6 +11,7 @@ import (
 	"crowdstart.com/datastore"
 	"crowdstart.com/util/cache"
 	"crowdstart.com/util/hashid"
+	"crowdstart.com/util/log"
 	"crowdstart.com/util/rand"
 	"crowdstart.com/util/structs"
 	"crowdstart.com/util/timeutil"
@@ -102,8 +103,8 @@ type Model struct {
 
 	// Set by our mixin
 	Id_       string    `json:"id"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	CreatedAt time.Time `json:"createdAt,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt,omitempty"`
 	Deleted   bool      `json:"deleted,omitempty"`
 
 	// Flag used to specify that we're using a string key for this kind
@@ -496,7 +497,7 @@ func (m *Model) Update() error {
 func (m *Model) MustUpdate() {
 	err := m.Update()
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 }
 

@@ -50,9 +50,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		return nil, nil, err
 	}
 
-	log.Debug("AuthorizationReq.User_: %#v", ar.User_, c)
-	log.Debug("AuthorizationReq.Order: %#v", ar.Order, c)
-	log.Debug("AuthorizationReq.Payment_: %#v", ar.Payment_, c)
+	log.JSON("Authorization Request:", ar, c)
 
 	// Peel off order for convience
 	ord = ar.Order
@@ -73,7 +71,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		return nil, nil, errors.New("Invalid or incomplete order")
 	}
 
-	log.Debug("Order: %#v", ord, c)
+	log.JSON("Order '%s'", ord.Id(), ord, c)
 
 	// Get user from request
 	usr, err := ar.User()
@@ -81,7 +79,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		return nil, nil, err
 	}
 
-	log.Debug("User: %#v", usr, c)
+	log.JSON("User '%s'", usr.Id(), usr, c)
 
 	// Get payment from request, update order
 	pay, err := ar.Payment()
@@ -91,7 +89,8 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 
 	// Use user as buyer
 	pay.Buyer = usr.Buyer()
-	log.Debug("Buyer: %#v", pay.Buyer, c)
+
+	log.JSON("Buyer '%s'", pay.Buyer.Email, pay.Buyer, c)
 
 	// Override total to $0.50 is test email is used
 	if org.IsTestEmail(pay.Buyer.Email) {
@@ -99,7 +98,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		pay.Test = true
 	}
 
-	// Fill with debug information about user's browser
+	// Capture client information to retain information about user at time of checkout
 	pay.Client = client.New(c)
 
 	// Update payment with order information
@@ -107,11 +106,10 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 
 	// Fee defaults to 2%, override with organization fee if customized.
 	pay.Fee = ord.CalculateFee(org.Fee)
-
 	pay.Currency = ord.Currency
 	pay.Description = ord.Description()
 
-	log.Debug("Payment: %#v", pay, c)
+	log.JSON("Payment '%s'", pay.Id(), pay, c)
 
 	// Setup all relationships before we try to authorize to ensure that keys
 	// that get created are actually valid.
@@ -132,12 +130,12 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	case "paypal":
 	case "balance":
 		if err := balance.Authorize(org, ord, usr, pay); err != nil {
-			log.Info("Failed to authorize order using Balance: %v", err, ctx)
+			log.Warn("Failed to authorize order using Balance: %v", err, ctx)
 			return nil, nil, err
 		}
 	default:
 		if err := stripe.Authorize(org, ord, usr, pay); err != nil {
-			log.Info("Failed to authorize order using Stripe: %v", err, ctx)
+			log.Warn("Failed to authorize order using Stripe: %v", err, ctx)
 			return nil, nil, err
 		}
 	}
@@ -151,7 +149,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	// Save user, order, payment
 	multi.MustCreate([]interface{}{usr, ord, pay})
 
-	log.Info("New authorization for order: %+v", ord, ctx)
+	log.Debug("Order '%s' authorized", ord.Id(), c)
 
 	return pay, usr, nil
 }

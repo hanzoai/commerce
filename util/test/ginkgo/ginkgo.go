@@ -112,3 +112,14 @@ var BeNumerically = gomega.BeNumerically
 var BeTemporally = gomega.BeTemporally
 var BeAssignableToTypeOf = gomega.BeAssignableToTypeOf
 var Panic = gomega.Panic
+
+// Helpers for nested Expect calls
+func Expect1(actual interface{}, extra ...interface{}) gomega.GomegaAssertion {
+	return ExpectWithOffset(1, actual, extra...)
+}
+func Expect2(actual interface{}, extra ...interface{}) gomega.GomegaAssertion {
+	return ExpectWithOffset(2, actual, extra...)
+}
+func Expect3(actual interface{}, extra ...interface{}) gomega.GomegaAssertion {
+	return ExpectWithOffset(3, actual, extra...)
+}

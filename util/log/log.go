@@ -1,23 +1,24 @@
 package log
 
 import (
-	"log"
+	"fmt"
 	"strings"
 
 	"appengine"
 
 	"github.com/gin-gonic/gin"
-	"github.com/zeekay/go-logging"
+	"github.com/op/go-logging"
 
-	// "github.com/davecgh/go-spew/spew"
+	"crowdstart.com/util/json"
+	"crowdstart.com/util/spew"
 )
 
 // Custom logger
 type Logger struct {
 	logging.Logger
-	appengineBackend *AppengineBackend
-	verbose          bool
-	verboseOverride  bool
+	backend         *Backend
+	verbose         bool
+	verboseOverride bool
 }
 
 func (l *Logger) SetVerbose(verbose bool) {
@@ -39,17 +40,17 @@ func (l *Logger) detectContext(ctx interface{}) {
 	switch ctx := ctx.(type) {
 	case *gin.Context:
 		// Get App Engine from session
-		l.appengineBackend.context = ctx.MustGet("appengine").(appengine.Context)
+		l.backend.context = ctx.MustGet("appengine").(appengine.Context)
 		l.verboseOverride = ctx.MustGet("verbose").(bool)
 
 		// Request URI is useful for logging
 		if ctx.Request != nil {
-			l.appengineBackend.requestURI = ctx.Request.RequestURI
+			l.backend.requestURI = ctx.Request.RequestURI
 		}
 	case appengine.Context:
-		l.appengineBackend.context = ctx
+		l.backend.context = ctx
 	default:
-		l.appengineBackend.context = nil
+		l.backend.context = nil
 	}
 }
 
@@ -57,9 +58,21 @@ func (l *Logger) detectContext(ctx interface{}) {
 func (l *Logger) detectError(args []interface{}) {
 	if len(args) > 0 {
 		if err, ok := args[len(args)-1].(error); ok {
-			l.appengineBackend.error = err
+			l.backend.error = err
 		}
 	}
+}
+
+// Grab last object (presumably to dump)
+func (l *Logger) dumpObject(args []interface{}) ([]interface{}, interface{}) {
+	if len(args) > 0 {
+		// Grab last argument
+		last := args[len(args)-1]
+		// Remove from args
+		args = args[:len(args)-1]
+		return args, last
+	}
+	return args, nil
 }
 
 // Process args, setting app engine context if passed one.
@@ -72,7 +85,7 @@ func (l *Logger) parseArgs(args ...interface{}) []interface{} {
 	l.detectContext(args[len(args)-1])
 
 	// Remove context from args if we were passed one
-	if l.appengineBackend.context != nil {
+	if l.backend.context != nil {
 		args = args[:len(args)-1]
 	}
 
@@ -83,33 +96,26 @@ func (l *Logger) parseArgs(args ...interface{}) []interface{} {
 }
 
 // Custom logger backend that knows about AppEngine
-type AppengineBackend struct {
-	context    appengine.Context
-	error      error
-	requestURI string
-	verbose    bool
+type Backend struct {
+	context        appengine.Context
+	error          error
+	requestURI     string
+	verbose        bool
+	isDevAppServer bool
 }
 
-func (b AppengineBackend) Verbose() bool {
+func (b Backend) Verbose() bool {
 	return b.verbose
 }
 
 // Log implementation for local dev server only.
-func (b AppengineBackend) logToDevServer(level logging.Level, formatted string) error {
-	if level == logging.INFO {
-		// Hack to make INFO level less verbose
-		parts := strings.Split(formatted, " ")
-		parts = append([]string{"INFO"}, parts[3:]...)
-		formatted = strings.Join(parts, " ")
-	}
-
-	log.Println(formatted)
-
+func (b Backend) logToDevServer(level logging.Level, formatted string) error {
+	fmt.Println(formatted)
 	return nil
 }
 
 // Log implementation that uses App Engine's logging methods
-func (b AppengineBackend) logToAppEngine(level logging.Level, formatted string) error {
+func (b Backend) logToAppEngine(level logging.Level, formatted string) error {
 	switch level {
 	case logging.WARNING:
 		b.context.Warningf(formatted)
@@ -127,39 +133,49 @@ func (b AppengineBackend) logToAppEngine(level logging.Level, formatted string) 
 }
 
 // Log method that customizes logging behavior for AppEngine dev server / production
-func (b AppengineBackend) Log(level logging.Level, calldepth int, record *logging.Record) error {
+func (b Backend) Log(level logging.Level, calldepth int, record *logging.Record) error {
 	// Create formatted log output
 	formatted := record.Formatted(calldepth + 2)
 
-	// Log using App Engine backend if we have a context, otherwise dev server
-	if b.context != nil {
-		return b.logToAppEngine(level, formatted)
-	} else {
+	if b.isDevAppServer {
+		// Logging for local server
 		return b.logToDevServer(level, formatted)
+	} else {
+		// Log to App Engine in staging and production when passed a context
+		if b.context != nil {
+			return b.logToAppEngine(level, formatted)
+		}
 	}
+	return nil
 }
 
 // Create a new App Engine-aware logger
 func New() *Logger {
 	log := new(Logger)
 
+	isDevAppServer := appengine.IsDevAppServer()
+
 	// Backend that is appengine-aware
-	backend := new(AppengineBackend)
-	log.appengineBackend = backend
+	backend := new(Backend)
+	backend.isDevAppServer = isDevAppServer
+
+	log.backend = backend
+	log.SetVerbose(isDevAppServer)
 
 	// Log formatters, color for dev, plain for production
-	plainFormatter := logging.MustStringFormatter("%{shortfile} %{longfunc} %{message}")
-	colorFormatter := logging.MustStringFormatter("%{color}%{level:.5s} %{shortfile} %{longfunc} %{color:reset}%{message}")
+	plainFormatter := MustStringFormatter("%{longfile} %{longfunc} %{message}")
+	colorFormatter := MustStringFormatter("%{color}%{level:.5s} %{longfile} %{longfunc} %{color:reset}%{message}")
 
 	// Use plain formatter for production logging, color for dev server
 	defaultBackend := logging.NewBackendFormatter(backend, plainFormatter)
-	if appengine.IsDevAppServer() {
+	if isDevAppServer {
 		defaultBackend = logging.NewBackendFormatter(backend, colorFormatter)
+	} else {
+
 	}
 
 	multiBackend := logging.SetBackend(defaultBackend)
 	log.SetBackend(multiBackend)
-	log.SetVerbose(appengine.IsDevAppServer())
 	return log
 }
 
@@ -183,9 +199,9 @@ func Debug(formatOrError interface{}, args ...interface{}) {
 	switch v := formatOrError.(type) {
 	case error:
 		args = append([]interface{}{v}, args...)
-		std.Debug("%s", args...)
+		std.Debugf("%s", args...)
 	case string:
-		std.Debug(v, args...)
+		std.Debugf(v, args...)
 	}
 }
 
@@ -195,9 +211,9 @@ func Info(formatOrError interface{}, args ...interface{}) {
 	switch v := formatOrError.(type) {
 	case error:
 		args = append([]interface{}{v}, args...)
-		std.Info("%s", args...)
+		std.Infof("%s", args...)
 	case string:
-		std.Info(v, args...)
+		std.Infof(v, args...)
 	}
 }
 
@@ -207,9 +223,9 @@ func Warn(formatOrError interface{}, args ...interface{}) {
 	switch v := formatOrError.(type) {
 	case error:
 		args = append([]interface{}{v}, args...)
-		std.Warning("%s", args...)
+		std.Warningf("%s", args...)
 	case string:
-		std.Warning(v, args...)
+		std.Warningf(v, args...)
 	}
 }
 
@@ -219,9 +235,9 @@ func Error(formatOrError interface{}, args ...interface{}) {
 	switch v := formatOrError.(type) {
 	case error:
 		args = append([]interface{}{v}, args...)
-		std.Error("%s", args...)
+		std.Errorf("%s", args...)
 	case string:
-		std.Error(v, args...)
+		std.Errorf(v, args...)
 	}
 }
 
@@ -249,12 +265,32 @@ func Panic(formatOrError interface{}, args ...interface{}) {
 	}
 }
 
-// Since spew uses unsafe, we can't use it in production. As a result we leave
-// this commented out unless needed.
-func Dump(args ...interface{}) {
-	// spew.Config.Indent = "  "
-	// dump := spew.Sdump(args...)
-	// std.Dump("\n%s", dump)
+func Dump(formatOrObject interface{}, args ...interface{}) {
+	args = std.parseArgs(args...)
+
+	switch v := formatOrObject.(type) {
+	case string:
+		args, obj := std.dumpObject(args)
+		msg := fmt.Sprintf(v, args...)
+		dump := spew.Sdump(obj)
+		std.Debugf("%s\n%s", msg, dump)
+	default:
+		dump := spew.Sdump(v)
+		std.Debugf("\n%s", dump)
+	}
+}
+
+func JSON(formatOrObject interface{}, args ...interface{}) {
+	args = std.parseArgs(args...)
+
+	switch v := formatOrObject.(type) {
+	case string:
+		args, obj := std.dumpObject(args)
+		msg := fmt.Sprintf(v, args...)
+		std.Debugf("%s\n%s", msg, json.Encode(obj))
+	default:
+		std.Debugf("\n%s", json.Encode(v))
+	}
 }
 
 func Escape(s string) string {
