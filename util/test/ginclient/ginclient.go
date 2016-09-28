@@ -22,6 +22,7 @@ type Client struct {
 }
 
 func newRouter(ctx ae.Context) *gin.Engine {
+	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
 		gincontext.SetDefaults(c, ctx)
