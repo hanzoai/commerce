@@ -224,7 +224,7 @@ func (api API) CreateCart(storeId string, car *cart.Cart) error {
 	lines := make([]gochimp3.LineItem, 0)
 	for i, line := range car.Items {
 		lines = append(lines, gochimp3.LineItem{
-			ID:               strconv.Itoa(i),
+			ID:               strconv.Itoa(i + 1),
 			ProductID:        line.ProductId,
 			ProductVariantID: line.Id(),
 			Quantity:         line.Quantity,
