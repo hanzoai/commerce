@@ -127,6 +127,7 @@ type Payment struct {
 	Amount         currency.Cents `json:"amount"`
 	AmountRefunded currency.Cents `json:"amountRefunded"`
 	Fee            currency.Cents `json:"fee"`
+	FeeIds         []string       `json:"fees"`
 
 	AmountTransferred   currency.Cents `json:"-"`
 	CurrencyTransferred currency.Type  `json:"-"`

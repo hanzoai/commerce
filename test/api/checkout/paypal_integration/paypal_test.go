@@ -31,7 +31,6 @@ import (
 )
 
 func Test(t *testing.T) {
-	log.SetVerbose(testing.Verbose())
 	Setup("api/checkout/paypal", t)
 }
 

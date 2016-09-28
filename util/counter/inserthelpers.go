@@ -10,16 +10,18 @@ import (
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"
+	"crowdstart.com/models/referral"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/util/log"
 )
 
 var (
 	sep               = "_"
-	soldKey           = "sold"
-	salesKey          = "sales"
-	ordersKey         = "orders"
 	currencySetKey    = "currencies"
+	feesKey           = "fees"
+	ordersKey         = "orders"
+	salesKey          = "sales"
+	soldKey           = "sold"
 	subsKey           = "subscribers"
 	usersKey          = "users"
 	mailinglistAllKey = "ml_all"
@@ -75,6 +77,22 @@ func totalKey(org *organization.Organization, key string, timeStamp string) stri
 	return key
 }
 
+func affiliateKey(org *organization.Organization, affId, key string, timeStamp string) string {
+	key = org.Name + sep + affId + sep + key
+	key = addEnvironment(key)
+	key = key + sep + timeStamp
+
+	return key
+}
+
+func referrerKey(org *organization.Organization, refId, key string, timeStamp string) string {
+	key = org.Name + sep + refId + sep + key
+	key = addEnvironment(key)
+	key = key + sep + timeStamp
+
+	return key
+}
+
 func storeKey(org *organization.Organization, storeId, key string, timeStamp string) string {
 	key = org.Name + sep + storeId + sep + key
 	key = addEnvironment(key)
@@ -101,6 +119,10 @@ func userKey(org *organization.Organization, timeStamp string) string {
 
 func salesKeyId(cur currency.Type) string {
 	return salesKey + sep + string(cur)
+}
+
+func feesKeyId(cur currency.Type) string {
+	return feesKey + sep + string(cur)
 }
 
 func productKeyId(productId string) string {
@@ -416,4 +438,26 @@ func IncrStoreProductOrders(ctx appengine.Context, org *organization.Organizatio
 	}
 
 	return nil
+}
+
+func IncrAffiliateFees(ctx appengine.Context, org *organization.Organization, affId string, rfl *referral.Referral) error {
+	ctx = org.Namespaced(ctx)
+
+	fee := rfl.Fee
+
+	keyId := feesKeyId(fee.Currency)
+	key := affiliateKey(org, affId, keyId, allTime)
+	log.Debug("%v incremented by %v", key, fee.Amount, org.Db.Context)
+	return IncrementBy(ctx, key, int(fee.Amount))
+}
+
+func IncrReferrerFees(ctx appengine.Context, org *organization.Organization, refId string, rfl *referral.Referral) error {
+	ctx = org.Namespaced(ctx)
+
+	fee := rfl.Fee
+
+	keyId := feesKeyId(fee.Currency)
+	key := referrerKey(org, refId, keyId, allTime)
+	log.Debug("%v incremented by %v", key, fee.Amount, org.Db.Context)
+	return IncrementBy(ctx, key, int(fee.Amount))
 }

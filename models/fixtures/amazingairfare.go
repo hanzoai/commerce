@@ -30,7 +30,11 @@ var AmazingAirfare = New("amazingairfare", func(c *gin.Context) *organization.Or
 	org.Website = "http://amazingairfare.net"
 	org.SecretKey = []byte("8z317zTRE005g4Am2kt19a1a56aS5969")
 	org.AddDefaultTokens()
-	org.Fee = 0.05
+
+	org.Fees.Card.Flat = 50
+	org.Fees.Card.Percent = 0.05
+	org.Fees.Affiliate.Flat = 30
+	org.Fees.Affiliate.Percent = 0.30
 
 	// Email configuration
 	// org.Mandrill.APIKey = ""
