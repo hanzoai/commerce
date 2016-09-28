@@ -7,6 +7,7 @@ import (
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"
+	"crowdstart.com/models/transfer"
 	"crowdstart.com/thirdparty/stripe"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
@@ -58,6 +59,27 @@ func getPaymentFromCharge(ctx appengine.Context, ch *stripe.Charge) (*payment.Pa
 	log.Debug("Lookup payment by charge id: %v", ch.ID, ctx)
 	ok, err := pay.Query().Filter("Account.ChargeId=", ch.ID).First()
 	return pay, ok, err
+}
+
+// Get our transfer from a stripe transfer
+func getTransfer(ctx appengine.Context, str *stripe.Transfer) (*transfer.Transfer, bool, error) {
+	db := datastore.New(ctx)
+	tr := transfer.New(db)
+
+	id, ok := str.Meta["transfer"]
+
+	// Try to get by transfer id
+	if ok {
+		log.Debug("Try to get transfer by transfer id: %v", id, ctx)
+		if err := tr.Get(id); err == nil {
+			return tr, true, nil
+		}
+	}
+
+	// Try to lookup transfer using transfer id
+	log.Debug("Lookup transfer by transfer id: %v", str.ID, ctx)
+	ok, err := tr.Query().Filter("Account.TransferId=", str.ID).First()
+	return tr, ok, err
 }
 
 // Update charge in case order/pay id is missing in metadata

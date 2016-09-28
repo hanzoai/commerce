@@ -3,3 +3,18 @@ queue:
   rate: 500/s
   bucket_size: 100
   max_concurrent_requests: 50
+
+- name: transfer-affiliate-fee
+  rate: 100/s
+  bucket_size: 100
+  max_concurrent_requests: 100
+
+- name: transfer-partner-fee
+  rate: 100/s
+  bucket_size: 100
+  max_concurrent_requests: 100
+
+- name: transfer-platform-fee
+  rate: 100/s
+  bucket_size: 100
+  max_concurrent_requests: 100

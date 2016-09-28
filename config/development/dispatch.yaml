@@ -4,11 +4,11 @@ dispatch:
   - url: "*/api/*"
     module: api
 
-  - url: "*/cdn/*"
-    module: cdn
+  # - url: "*/cdn/*"
+  #   module: cdn
 
-  - url: "*/analytics/*"
-    module: analytics
+  # - url: "*/analytics/*"
+  #   module: analytics
 
   - url: "*/admin/*"
     module: platform

@@ -42,6 +42,7 @@ type Coupon struct {
 	Dynamic bool `json:"dynamic"`
 
 	CampaignId string `json:"campaignId,omitempty"`
+	ReferrerId string `json:"referrerId,omitempty"`
 
 	// Range in which coupon is valid
 	StartDate time.Time `json:"startDate"`

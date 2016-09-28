@@ -17,7 +17,6 @@ import (
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/user"
 	"crowdstart.com/models/variant"
-
 	// . "crowdstart.com/thirdparty/salesforce"
 )
 
@@ -347,13 +346,13 @@ func PopulateMissingUserSFIds(c *gin.Context) {
 }
 
 func init() {
-	task.Register("salesforce-sync-users", ImportUsers)
-	task.Register("salesforce-sync-orders", ImportOrders)
-	task.Register("salesforce-sync-missing-users", ImportMissingUsers)
-	task.Register("salesforce-sync-missing-orders", ImportMissingOrders)
-	task.Register("salesforce-sync-product-variants", ImportProductVariant)
-	task.Register("salesforce-sync-updated-users", PullUpdatedUsersTask)
-	task.Register("salesforce-sync-updated-orders", PullUpdatedOrdersTask)
-	task.Register("salesforce-sync-updated-since-cleanup", PullUpdatedSinceCleanUpTask)
-	task.Register("salesforce-populate-missing-user-sf-ids", PopulateMissingUserSFIds)
+	task.New("salesforce-sync-users", ImportUsers)
+	task.New("salesforce-sync-orders", ImportOrders)
+	task.New("salesforce-sync-missing-users", ImportMissingUsers)
+	task.New("salesforce-sync-missing-orders", ImportMissingOrders)
+	task.New("salesforce-sync-product-variants", ImportProductVariant)
+	task.New("salesforce-sync-updated-users", PullUpdatedUsersTask)
+	task.New("salesforce-sync-updated-orders", PullUpdatedOrdersTask)
+	task.New("salesforce-sync-updated-since-cleanup", PullUpdatedSinceCleanUpTask)
+	task.New("salesforce-populate-missing-user-sf-ids", PopulateMissingUserSFIds)
 }
