@@ -145,19 +145,7 @@ func (d *Datastore) NewKey(kind, stringID string, intID int64, parent Key) *aeds
 }
 
 func (d *Datastore) DecodeKey(encodedKey string) (*aeds.Key, error) {
-	_key, err := aeds.DecodeKey(encodedKey)
-
-	// If unable to return key, bail out
-	if err != nil {
-		d.warn("Unable to decode key: %v", encodedKey)
-		return _key, err
-	}
-
-	// Since key returned might have been created with a different app, we'll
-	// recreate the key to ensure it has a valid AppID.
-	key := aeds.NewKey(d.Context, _key.Kind(), _key.StringID(), _key.IntID(), nil)
-
-	return key, err
+	return DecodeKey(d.Context, encodedKey)
 }
 
 // Helper func to get key for `datastore.Get/datastore.GetMulti`
@@ -475,8 +463,8 @@ func (d *Datastore) Query(kind string) *DatastoreQuery {
 	return NewQuery(d, kind)
 }
 
-func (d *Datastore) RunInTransaction(f func(tc appengine.Context) error, opts *aeds.TransactionOptions) error {
-	return nds.RunInTransaction(d.Context, f, opts)
+func (d *Datastore) RunInTransaction(fn func(db *Datastore) error, opts *TransactionOptions) error {
+	return RunInTransaction(d.Context, fn, opts)
 }
 
 func (d *Datastore) DecodeCursor(cursor string) (aeds.Cursor, error) {
@@ -499,4 +487,28 @@ func IgnoreFieldMismatch(err error) error {
 
 	// Any other errors we damn well need to know about!
 	return err
+}
+
+type TransactionOptions aeds.TransactionOptions
+
+func RunInTransaction(ctx appengine.Context, fn func(db *Datastore) error, opts *TransactionOptions) error {
+	var i interface{} = opts
+	return nds.RunInTransaction(ctx, func(ctx appengine.Context) error {
+		return fn(New(ctx))
+	}, i.(*aeds.TransactionOptions))
+}
+
+func DecodeKey(ctx appengine.Context, encodedKey string) (*aeds.Key, error) {
+	_key, err := aeds.DecodeKey(encodedKey)
+
+	// If unable to return key, bail out
+	if err != nil {
+		return _key, err
+	}
+
+	// Since key returned might have been created with a different app, we'll
+	// recreate the key to ensure it has a valid AppID.
+	key := aeds.NewKey(ctx, _key.Kind(), _key.StringID(), _key.IntID(), nil)
+
+	return key, err
 }
