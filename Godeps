@@ -29,4 +29,5 @@ github.com/vincent-petithory/countries master
 github.com/zeekay/aetest 94ec681f66449be39390468ceb71fe6090948e09
 github.com/zeekay/gochimp3 master
 golang.org/x/crypto/bcrypt master
+github.com/Machiel/slugify master
 gopkg.in/yaml.v2
