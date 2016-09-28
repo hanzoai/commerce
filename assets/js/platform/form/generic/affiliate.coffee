@@ -47,11 +47,14 @@ class AffiliateForm extends Form
     super
 
   loadData: (model)->
+    model?.commission?.percent *= 100
     super
 
   _submit: (event)->
+    @model.commission.percent /= 100
     super(event).then ()=>
-      @assignToUserFn @model
+      @model.commission.percent *= 100
+      @assignToUserFn model
 
 AffiliateForm.register()
 

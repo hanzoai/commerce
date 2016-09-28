@@ -25,7 +25,7 @@ func get(c *gin.Context) {
 		return
 	}
 
-	if err := usr.LoadAffiliateAndTransfers(); err != nil {
+	if err := usr.LoadAffiliateAndPendingFees(); err != nil {
 		http.Fail(c, 500, "User order data could get be queried", err)
 		return
 	}
