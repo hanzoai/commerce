@@ -15,6 +15,7 @@ import (
 	"crowdstart.com/models/subscriber"
 	"crowdstart.com/models/token"
 	"crowdstart.com/models/transaction"
+	"crowdstart.com/models/transfer"
 	"crowdstart.com/models/user"
 	"crowdstart.com/models/variant"
 	"crowdstart.com/util/rest"
@@ -22,6 +23,7 @@ import (
 
 	accessTokenApi "crowdstart.com/api/accesstoken"
 	accountApi "crowdstart.com/api/account"
+	affiliateApi "crowdstart.com/api/affiliate"
 	campaignApi "crowdstart.com/api/campaign"
 	cartApi "crowdstart.com/api/cart"
 	checkoutApi "crowdstart.com/api/checkout"
@@ -78,6 +80,7 @@ func init() {
 	rest.New(submission.Submission{}).Route(api, tokenRequired)
 	rest.New(subscriber.Subscriber{}).Route(api, tokenRequired)
 	rest.New(transaction.Transaction{}).Route(api, tokenRequired)
+	rest.New(transfer.Transfer{}).Route(api, tokenRequired)
 	rest.New(variant.Variant{}).Route(api, tokenRequired)
 
 	paymentApi := rest.New(payment.Payment{})
@@ -85,6 +88,7 @@ func init() {
 	paymentApi.Route(api, tokenRequired)
 
 	accountApi.Route(api, tokenRequired)
+	affiliateApi.Route(api, tokenRequired)
 	campaignApi.Route(api, tokenRequired)
 	cartApi.Route(api, tokenRequired)
 	couponApi.Route(api, tokenRequired)

@@ -14,13 +14,14 @@ func (s *Store) Init(db *datastore.Datastore) {
 }
 
 func (s *Store) Defaults() {
-	s.ShippingRateTable = make(ShippingRateTable)
 	s.Listings = make(Listings)
+	s.ShippingRateTable = make(ShippingRateTable)
 }
 
 func New(db *datastore.Datastore) *Store {
 	s := new(Store)
 	s.Init(db)
+	s.Defaults()
 	return s
 }
 

@@ -45,17 +45,30 @@ type Program struct {
 	Event Event `json:"event"`
 }
 
-func (r *Program) GetBonus(trans *transaction.Transaction, referrals int) {
-	for i, trig := range r.Triggers {
-		if trig == referrals || trig == 0 {
-			action := r.Actions[i]
-			switch r.Actions[i].Type {
-			case StoreCredit:
-				trans.Amount = action.Amount
-				trans.Currency = action.Currency
-				return
-			case Refund:
-			}
+func (p *Program) ApplyActions(r *Referrer) error {
+	for i, _ := range p.Triggers {
+		action := p.Actions[i]
+		switch action.Type {
+		case StoreCredit:
+			return saveStoreCredit(r, action.Amount, action.Currency)
+		case Refund:
 		}
 	}
+
+	// No actions triggered for this referral
+	return nil
+}
+
+// Credit user with store credit by saving transaction
+func saveStoreCredit(r *Referrer, amount currency.Cents, cur currency.Type) error {
+	trans := transaction.New(r.Db)
+	trans.Type = transaction.Deposit
+	trans.Amount = amount
+	trans.Currency = cur
+	trans.SourceId = r.Id()
+	trans.SourceKind = r.Kind()
+	trans.UserId = r.UserId
+	trans.Notes = "Deposit due to referral"
+	trans.Tags = "referral"
+	return trans.Create()
 }

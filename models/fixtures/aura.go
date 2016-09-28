@@ -32,7 +32,11 @@ var Aura = New("aura", func(c *gin.Context) *organization.Organization {
 	org.Website = "https://www.smokeaura.com"
 	org.SecretKey = []byte("7Z2e011iX2bp51lv592sTd1d589cu588")
 	org.AddDefaultTokens()
-	org.Fee = 0.05
+
+	org.Fees.Card.Flat = 50
+	org.Fees.Card.Percent = 0.05
+	org.Fees.Affiliate.Flat = 30
+	org.Fees.Affiliate.Percent = 0.30
 
 	// Email configuration
 	// org.Mandrill.APIKey = ""

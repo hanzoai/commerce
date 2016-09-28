@@ -32,7 +32,11 @@ var _ = New("soltrackr", func(c *gin.Context) *organization.Organization {
 	org.Website = "http://www.soltrackr.com/"
 	org.SecretKey = []byte("KuMWsRq26FzRYO9NzsXRXwH35YAX2X5F")
 	org.AddDefaultTokens()
-	org.Fee = 0.05
+
+	org.Fees.Card.Flat = 50
+	org.Fees.Card.Percent = 0.05
+	org.Fees.Affiliate.Flat = 30
+	org.Fees.Affiliate.Percent = 0.30
 
 	// Save org into default namespace
 	org.MustPut()

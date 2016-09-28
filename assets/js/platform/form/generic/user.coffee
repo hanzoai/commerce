@@ -1,6 +1,7 @@
 _ = require 'underscore'
 
 crowdcontrol = require 'crowdcontrol'
+Api = crowdcontrol.data.Api
 
 input = require '../input'
 Form = require './form'
@@ -9,6 +10,7 @@ class UserForm extends Form
   tag: 'user-form'
   redirectPath: '#users'
   path: 'user'
+  affiliated: false
 
   inputConfigs:[
     input('id', '', 'static'),
@@ -35,9 +37,18 @@ class UserForm extends Form
     input('shippingAddress.country', 'Choose a Country...', 'country-select'),
   ]
 
+  constructor: ()->
+    super
+
   loadData: (model)->
     super
     @inputConfigs[1].hints['email-unique-exception'] = model.email
+    @affiliated = (model.affiliateId? && model.affiliateId != "")
+
+  assignToUser: (model)->
+    if @model.affiliateId != model.id
+      @model.affiliateId = model.id
+      @_submit {}
 
 UserForm.register()
 

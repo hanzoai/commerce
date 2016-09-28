@@ -83,7 +83,6 @@ var _ = New("collapse-orders-by-user",
 		}
 
 		for _, ref := range referrers {
-			ref.OrderId = ord.Id()
 			ref.Init(db)
 			if err := ref.Put(); err != nil {
 				log.Warn("Failed to update referrer: %v", ref, err, ctx)

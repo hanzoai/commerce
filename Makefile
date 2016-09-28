@@ -23,9 +23,7 @@ modules	= crowdstart.com/analytics \
 
 gae_development = config/development/app.yaml \
 				  config/development/dispatch.yaml \
-				  analytics/app.dev.yaml \
 				  api/app.dev.yaml \
-				  cdn/app.dev.yaml \
 				  platform/app.dev.yaml
 
 gae_sandbox = config/sandbox \
@@ -94,8 +92,8 @@ autoprefixer_opts = -b 'ie > 8, firefox > 24, chrome > 30, safari > 6, opera > 1
 					static/css/platform.css
 
 dev_appserver = $(sdk_path)/dev_appserver.py --skip_sdk_update_check \
-											 --datastore_path=~/.gae_datastore.bin \
 											 --dev_appserver_log_level=debug
+											 --datastore_path=$(sdk_path)/.datastore.bin \
 
 sdk_install_extra = rm -rf $(sdk_path)/demos
 

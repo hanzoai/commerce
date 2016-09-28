@@ -8,12 +8,14 @@ import (
 
 	"crowdstart.com/auth/password"
 	"crowdstart.com/datastore"
+	"crowdstart.com/models/affiliate"
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/referral"
 	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/transaction"
+	"crowdstart.com/models/transfer"
 	"crowdstart.com/models/types/country"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/util/json"
@@ -73,6 +75,8 @@ type User struct {
 	Referrals []referral.Referral `json:"referrals,omitempty" datastore:"-"`
 	Referrers []referrer.Referrer `json:"referrers,omitempty" datastore:"-"`
 	Orders    []order.Order       `json:"orders,omitempty" datastore:"-"`
+	Transfers []transfer.Transfer `json:"transfers,omitempty" datastore:"-"`
+	Affiliate affiliate.Affiliate `json:"affiliate,omitempty" datastore:"-"`
 
 	Balances map[currency.Type]currency.Cents `json:"balances,omitempty" datastore:"-"`
 
@@ -82,6 +86,8 @@ type User struct {
 	History []Event `json:"-,omitempty"`
 
 	IsOwner bool `json:"owner,omitempty" datastore:"-"`
+
+	AffiliateId string `json:"affiliateId,omitempty"`
 }
 
 func (u User) Document() mixin.Document {
@@ -269,6 +275,21 @@ func (u *User) LoadReferrals() error {
 
 func (u *User) LoadOrders() error {
 	if _, err := order.Query(u.Db).Filter("UserId=", u.Id()).GetAll(&u.Orders); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (u *User) LoadAffiliateAndTransfers() error {
+	aff := affiliate.New(u.Db)
+	if _, err := aff.Query().Filter("AffiliateId=", u.AffiliateId).First(); err != nil {
+		return err
+	}
+
+	u.Affiliate = *aff
+
+	if _, err := transfer.Query(u.Db).Filter("AffiliateId=", u.AffiliateId).GetAll(&u.Transfers); err != nil {
 		return err
 	}
 

@@ -2,7 +2,7 @@ fs   = require 'fs'
 path = require 'path'
 
 coffee    = 'node_modules/.bin/coffee'
-requisite = 'node_modules/.bin/requisite -g --no-source-map'
+requisite = 'node_modules/.bin/requisite -g'
 stylus    = 'node_modules/.bin/stylus -u autoprefixer-stylus --sourcemap --sourcemap-inline'
 
 files =
@@ -64,7 +64,7 @@ files =
 module.exports =
   cwd: process.cwd()
 
-  port: 8089
+  port: 8090
 
   exclude: [
     /api\/static/

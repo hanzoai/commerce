@@ -17,6 +17,7 @@ func (p *Payment) Init(db *datastore.Datastore) {
 
 func (p *Payment) Defaults() {
 	p.Status = Unpaid
+	p.FeeIds = make([]string, 0)
 	p.Metadata = make(Map)
 }
 
