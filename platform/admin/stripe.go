@@ -58,7 +58,7 @@ func StripeCallback(c *gin.Context) {
 	errStr := req.URL.Query().Get("error")
 
 	// Handle affiliate callbacks
-	if state != "" {
+	if state != "" && state != "movetoserver" {
 		affiliateCallback(c)
 		return
 	}
