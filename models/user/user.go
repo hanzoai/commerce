@@ -9,13 +9,13 @@ import (
 	"crowdstart.com/auth/password"
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/affiliate"
+	"crowdstart.com/models/fee"
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/referral"
 	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/transaction"
-	"crowdstart.com/models/transfer"
 	"crowdstart.com/models/types/country"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/util/json"
@@ -72,11 +72,11 @@ type User struct {
 	Metadata  Map    `json:"metadata,omitempty" datastore:"-"`
 	Metadata_ string `json:"-" datastore:",noindex"`
 
-	Referrals []referral.Referral `json:"referrals,omitempty" datastore:"-"`
-	Referrers []referrer.Referrer `json:"referrers,omitempty" datastore:"-"`
-	Orders    []order.Order       `json:"orders,omitempty" datastore:"-"`
-	Transfers []transfer.Transfer `json:"transfers,omitempty" datastore:"-"`
-	Affiliate affiliate.Affiliate `json:"affiliate,omitempty" datastore:"-"`
+	Referrals   []referral.Referral `json:"referrals,omitempty" datastore:"-"`
+	Referrers   []referrer.Referrer `json:"referrers,omitempty" datastore:"-"`
+	Orders      []order.Order       `json:"orders,omitempty" datastore:"-"`
+	PendingFees []fee.Fee           `json:"pendingFees,omitempty" datastore:"-"`
+	Affiliate   affiliate.Affiliate `json:"affiliate,omitempty" datastore:"-"`
 
 	Balances map[currency.Type]currency.Cents `json:"balances,omitempty" datastore:"-"`
 
@@ -281,15 +281,15 @@ func (u *User) LoadOrders() error {
 	return nil
 }
 
-func (u *User) LoadAffiliateAndTransfers() error {
+func (u *User) LoadAffiliateAndPendingFees() error {
 	aff := affiliate.New(u.Db)
-	if _, err := aff.Query().Filter("AffiliateId=", u.AffiliateId).First(); err != nil {
+	if err := aff.GetById(u.AffiliateId); err != nil {
 		return err
 	}
 
 	u.Affiliate = *aff
 
-	if _, err := transfer.Query(u.Db).Filter("AffiliateId=", u.AffiliateId).GetAll(&u.Transfers); err != nil {
+	if _, err := fee.Query(u.Db).Filter("AffiliateId=", u.AffiliateId).Filter("Status=", fee.Pending).GetAll(&u.PendingFees); err != nil {
 		return err
 	}
 
