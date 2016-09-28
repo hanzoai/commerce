@@ -11,6 +11,7 @@ import (
 	"github.com/stripe/stripe-go/client"
 
 	"crowdstart.com/models/payment"
+	"crowdstart.com/models/transfer"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/models/user"
 	"crowdstart.com/thirdparty/stripe/errors"
@@ -331,4 +332,29 @@ func (c Client) Capture(chargeId string) (*Charge, error) {
 	}
 
 	return (*Charge)(ch), nil
+}
+
+func (c Client) Transfer(tr *transfer.Transfer) (*Transfer, error) {
+	tid := tr.Id()
+	params := &stripe.TransferParams{
+		Amount:   int64(tr.Amount),
+		Dest:     tr.Destination,
+		Currency: stripe.Currency(tr.Currency),
+		Desc:     tr.Description,
+	}
+	params.Params.IdempotencyKey = tid
+
+	params.AddMeta("affiliate", tr.AffiliateId)
+	params.AddMeta("transfer", tid)
+
+	// Create transfer
+	str, err := c.API.Transfers.New(params)
+	if err != nil {
+		return nil, errors.New(err)
+	}
+
+	t := (*Transfer)(str)
+	UpdateTransferFromStripe(tr, t)
+
+	return t, err
 }

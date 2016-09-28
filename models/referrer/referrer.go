@@ -1,106 +1,77 @@
 package referrer
 
 import (
+	"time"
+
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
-	"crowdstart.com/models/order"
 	"crowdstart.com/models/referral"
 	"crowdstart.com/models/transaction"
 	"crowdstart.com/models/types/client"
+	"crowdstart.com/util/timeutil"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 
+// Is a link that can refer customers to buy products
 type Referrer struct {
 	mixin.Model
 
-	Program        Program                   `json:"program"`
-	OrderId        string                    `json:"orderId"`
-	UserId         string                    `json:"userId"`
-	ReferralIds    []string                  `json:"referralIds"`
-	TransactionIds []string                  `json:"transactionsIds"`
-	Transactions   []transaction.Transaction `json:"transactions,omitempty"`
+	Code    string  `json:"code"`
+	Program Program `json:"program"`
+
+	UserId      string `json:"userId"`
+	AffiliateId string `json:"affiliateId,omitempty"`
+
+	FirstReferredAt time.Time `json:"firstReferredAt"`
 
 	Client      client.Client `json:"-"`
 	Blacklisted bool          `json:"blacklisted,omitempty"`
 	Duplicate   bool          `json:"duplicate,omitempty"`
 }
 
-func (r *Referrer) ApplyBonus() (*transaction.Transaction, error) {
-	trans := transaction.New(r.Db)
-	r.Program.GetBonus(trans, len(r.ReferralIds))
-	trans.UserId = r.UserId
-	trans.Type = transaction.Deposit
-	if err := trans.Put(); err != nil {
-		return nil, err
-	}
-	r.TransactionIds = append(r.TransactionIds, trans.Id())
-	trans.Notes = "Deposite due to referral"
-	trans.Tags = "referral"
-	trans.Event = string(r.Program.Event)
+func (r *Referrer) SaveReferral(typ string, referent interface{}) (*referral.Referral, error) {
+	rfl := referral.New(r.Db)
 
-	trans.SourceId = r.Id()
-	trans.SourceKind = r.Kind()
+	rfl.Referrer.UserId = r.UserId
+	rfl.Referrer.Id = r.Id()
 
-	return trans, nil
-}
-
-func (r *Referrer) SaveReferral(ord *order.Order) (*referral.Referral, error) {
-	ref := referral.New(ord.Db)
-	ref.UserId = ord.UserId
-	ref.ReferrerUserId = r.UserId
-	ref.OrderId = ord.Id()
-	ref.ReferrerId = ord.ReferrerId
-
-	if r.Program.Event != NewOrder && r.Program.Event != "" {
-		return ref, nil
-	}
+	// switch v := referent.(type) {
+	// case *order.Order:
+	// 	rfl.OrderId = v.Id()
+	// case *user.User:
+	// 	rfl.UserId = v.Id()
+	// }
 
 	// Try to save referral
-	if err := ref.Put(); err != nil {
-		return ref, err
+	if err := rfl.Create(); err != nil {
+		return rfl, err
 	}
 
-	// Save referral id on referrer
-	r.ReferralIds = append(r.ReferralIds, ref.Id())
-
-	// Save transaction to referral user's account to update their balance
-	if _, err := r.ApplyBonus(); err != nil {
-		return ref, err
+	// If this is the first referral, update referrer
+	if timeutil.IsZero(r.FirstReferredAt) {
+		r.FirstReferredAt = time.Now()
+		r.Update()
 	}
 
-	// Try to save referrer
-	err := r.Put()
+	// Apply any program actions if they are configured
+	if len(r.Program.Actions) > 0 {
+		if err := r.Program.ApplyActions(r); err != nil {
+			return rfl, err
+		}
+	}
 
-	return ref, err
+	return rfl, nil
 }
 
-func (r *Referrer) SaveSignUpReferral(userId, firstName, referrerId string, db *datastore.Datastore) (*referral.Referral, error) {
-	ref := referral.New(db)
-	ref.UserId = userId
-	ref.FirstName = firstName
-	ref.ReferrerUserId = r.UserId
-	ref.ReferrerId = referrerId
+func (r *Referrer) Referrals() ([]*referral.Referral, error) {
+	referrals := make([]*referral.Referral, 0)
+	_, err := referral.Query(r.Db).Filter("ReferrerId=", r.Id()).GetAll(referrals)
+	return referrals, err
+}
 
-	if r.Program.Event != NewUser {
-		return ref, nil
-	}
-
-	// Try to save referral
-	if err := ref.Put(); err != nil {
-		return ref, err
-	}
-
-	// Save referral id on referrer
-	r.ReferralIds = append(r.ReferralIds, ref.Id())
-
-	// Save transaction to referral user's account to update their balance
-	if _, err := r.ApplyBonus(); err != nil {
-		return ref, err
-	}
-
-	// Try to save referrer
-	err := r.Put()
-
-	return ref, err
+func (r *Referrer) Transactions() ([]*transaction.Transaction, error) {
+	transactions := make([]*transaction.Transaction, 0)
+	_, err := transaction.Query(r.Db).Filter("ReferrerId=", r.Id()).GetAll(transactions)
+	return transactions, err
 }

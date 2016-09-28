@@ -45,21 +45,35 @@ func CompleteCapture(c *gin.Context, org *organization.Organization, ord *order.
 	var err error
 
 	db := ord.Db
+	ctx := db.Context
 
 	log.JSON("Completing Capture, order:", ord, c)
 	log.JSON("Payments:", payments, c)
 
 	// Referral
 	if ord.ReferrerId != "" {
-		ref := referrer.New(ord.Db)
+		ref := referrer.New(db)
 
 		// if ReferrerId refers to non-existing token, then remove from order
-		if err = ref.GetById(ord.ReferrerId); err != nil {
+		if err = ref.Get(ord.ReferrerId); err != nil {
+			log.Warn("Order referenced non-existent referrer '%s'", ord.ReferrerId, c)
 			ord.ReferrerId = ""
 		} else {
-			// Try to save referral, save updated referrer
-			if _, err := ref.SaveReferral(ord); err != nil {
+			// Save referral
+			rfl, err := ref.SaveReferral(ord.Id(), ord.UserId)
+			if err != nil {
 				log.Warn("Unable to save referral: %v", err, c)
+			} else {
+				// Update statistics
+				if ref.AffiliateId != "" {
+					if err := counter.IncrReferrerFees(ctx, org, ref.Id(), rfl); err != nil {
+						log.Warn("Counter Error %s", err, ctx)
+					}
+
+					if err := counter.IncrAffiliateFees(ctx, org, ref.AffiliateId, rfl); err != nil {
+						log.Warn("Counter Error %s", err, ctx)
+					}
+				}
 			}
 		}
 	}
@@ -88,8 +102,6 @@ func CompleteCapture(c *gin.Context, org *organization.Organization, ord *order.
 	if _, err = db.PutMulti(keys, vals); err != nil {
 		return nil, err
 	}
-
-	ctx := db.Context
 
 	// Save coupon redemptions
 	ord.GetCoupons()

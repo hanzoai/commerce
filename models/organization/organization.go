@@ -11,6 +11,7 @@ import (
 
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/types/analytics"
+	"crowdstart.com/models/types/pricing"
 	"crowdstart.com/models/user"
 	"crowdstart.com/thirdparty/stripe/connect"
 	"crowdstart.com/util/permission"
@@ -85,9 +86,13 @@ type Organization struct {
 	Timezone string `json:"timezone"`
 
 	Country string `json:"country"`
-	TaxId   string `json:"-"`
+	TaxId   string `json:"taxId"`
 
-	Fee float64 `json:"fee"`
+	// Fee structure for this organization
+	Fees pricing.Fees `json:"fees"`
+
+	// Partner fees (private, should be up to partner to disclose)
+	Partners []pricing.Partner `json:"-"`
 
 	// Analytics config
 	Analytics analytics.Analytics `json:"analytics"`
@@ -162,12 +167,19 @@ type Organization struct {
 		Uid         string
 	} `json:"-"`
 
+	Affilliate struct {
+		SuccessUrl string
+		ErrorUrl   string
+	} `json:"-"`
+
 	SignUpOptions struct {
 		// Controls the enabled status of account after creation
 		AccountsEnabledByDefault bool `json:"accountsEnabledByDefault"`
+
 		// Turns off required backend checks
 		NoNameRequired     bool `json:"noNameRequired"`
 		NoPasswordRequired bool `json:"noPasswordRequired"`
+
 		// Requires password set on create confirmation
 		TwoStageEnabled bool `json:"twoStageEnabled"`
 		ImmediateLogin  bool `json:"immediateLogin"`

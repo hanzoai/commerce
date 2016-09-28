@@ -13,7 +13,6 @@ import (
 	"crowdstart.com/models/store"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/models/user"
-	"crowdstart.com/thirdparty/mailchimp"
 	"crowdstart.com/util/token"
 )
 
@@ -41,12 +40,20 @@ var _ = New("kanoa-dev", func(c *gin.Context) *organization.Organization {
 	org.Owners = []string{usr.Id()}
 	org.Website = "https://www.getkanoa.com"
 	org.SecretKey = []byte("EZ2E011iX2Bp5lv149N2STd1d580cU58")
-	org.Fee = 0.05
+
+	org.Fees.Card.Flat = 50
+	org.Fees.Card.Percent = 0.05
+	org.Fees.Affiliate.Flat = 30
+	org.Fees.Affiliate.Percent = 0.30
 
 	// Integration configuration
 	org.Mailchimp.APIKey = ""
 	org.Mailchimp.ListId = "23ad4e4ba4"
 	org.Mandrill.APIKey = ""
+
+	// Affiliate configuration
+	org.Affilliate.SuccessUrl = "http://localhost:1987/ambassador-account/"
+	org.Affilliate.ErrorUrl = "http://localhost:1987/ambassador-account/"
 
 	// Paypal Config
 	org.Paypal.ConfirmUrl = "https://www.getkanoa.com"
@@ -179,9 +186,9 @@ var _ = New("kanoa-dev", func(c *gin.Context) *organization.Organization {
 	prod.MustUpdate()
 
 	// Create corresponding Mailchimp entities
-	client := mailchimp.New(db.Context, org.Mailchimp.APIKey)
-	client.CreateStore(stor)
-	client.CreateProduct(stor.Id(), prod)
+	// client := mailchimp.New(db.Context, org.Mailchimp.APIKey)
+	// client.CreateStore(stor)
+	// client.CreateProduct(stor.Id(), prod)
 
 	return org
 })
