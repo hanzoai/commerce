@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -11,6 +12,8 @@ import (
 	"crowdstart.com/util/gincontext"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/test/ae"
+
+	. "crowdstart.com/util/test/ginkgo"
 )
 
 type setupFn func(c *http.Request)
@@ -69,7 +72,7 @@ func (c *Client) Setup(fn setupFn) {
 	c.setupFn = fn
 }
 
-func (c *Client) NewRequest(method, path string, reader io.Reader) *http.Request {
+func (c *Client) newRequest(method, path string, reader io.Reader) *http.Request {
 	// Create new request
 	req, err := http.NewRequest(method, path, reader)
 	if err != nil {
@@ -82,37 +85,119 @@ func (c *Client) NewRequest(method, path string, reader io.Reader) *http.Request
 	return req
 }
 
-func (c *Client) Do(req *http.Request) *httptest.ResponseRecorder {
+// Make request without a body
+func (c *Client) doRequest(method, uri string) *httptest.ResponseRecorder {
+	// Create request
+	r := c.newRequest(method, uri, nil)
+
+	// Do request
 	w := httptest.NewRecorder()
-	c.Router.ServeHTTP(w, req)
+	c.Router.ServeHTTP(w, r)
 	return w
 }
 
-func (c *Client) Get(path string) *httptest.ResponseRecorder {
-	req := c.NewRequest("GET", path, nil)
-	return c.Do(req)
-}
+// Make request with body
+func (c *Client) doRequestBody(method, uri string, body interface{}) *httptest.ResponseRecorder {
+	var r *http.Request
 
-func (c *Client) Post(path, bodyType string, reader io.Reader) *httptest.ResponseRecorder {
-	req := c.NewRequest("POST", path, reader)
-	req.Header.Set("Content-Type", bodyType)
-	return c.Do(req)
-}
-
-func (c *Client) PostJSON(path string, src interface{}) *httptest.ResponseRecorder {
-	var req *http.Request
-
-	switch v := src.(type) {
+	// Create request
+	switch v := body.(type) {
+	case url.Values:
+		// Posting a form
+		reader := strings.NewReader(v.Encode())
+		r = c.newRequest(method, uri, reader)
+		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	case string:
 		// Assume strings are already JSON-encoded
 		reader := strings.NewReader(v)
-		req = c.NewRequest("POST", path, reader)
+		r = c.newRequest(method, uri, reader)
+		r.Header.Set("Content-Type", "application/json")
 	default:
 		// Blindly JSON encode!
-		buf := json.EncodeBuffer(src)
-		req = c.NewRequest("POST", path, buf)
+		buf := json.EncodeBuffer(body)
+		r = c.newRequest(method, uri, buf)
+		r.Header.Set("Content-Type", "application/json")
 	}
 
-	req.Header.Set("Content-Type", "application/json")
-	return c.Do(req)
+	// Do request
+	w := httptest.NewRecorder()
+	c.Router.ServeHTTP(w, r)
+	return w
+}
+
+// Generic request handler
+func (c *Client) request(method, uri string, body interface{}, res interface{}, args ...interface{}) (w *httptest.ResponseRecorder) {
+	var code int
+
+	// Parse optional args. Two types of optional arguments may be passed:
+	//	 int:		  for required exit code
+	//   url.Values:  to be used as query param
+	for _, arg := range args {
+		switch v := arg.(type) {
+		case int:
+			code = v
+		case url.Values:
+			uri = uri + v.Encode()
+		default:
+			panic("Unknown optional argument")
+		}
+	}
+
+	// Handle various request methods
+	switch method {
+	case "GET", "HEAD", "OPTIONS":
+		w = c.doRequest(method, uri)
+	case "POST", "PUT", "PATCH", "DELETE":
+		w = c.doRequestBody(method, uri, body)
+	}
+
+	// Automatically decode body
+	if res != nil {
+		// TODO: Do we need to close this?
+		err := json.DecodeBuffer(w.Body, res)
+		Expect2(err).ToNot(HaveOccurred())
+	}
+
+	if code == 0 {
+		Expect2(w.Code < 400).To(BeTrue())
+	} else {
+		Expect2(w.Code == code).To(BeTrue())
+	}
+
+	return w
+}
+
+// Make OPTIONS request
+func (c *Client) Options(uri string, args ...interface{}) *httptest.ResponseRecorder {
+	return c.request("OPTIONS", uri, nil, nil, args...)
+}
+
+// Make HEAD request
+func (c *Client) Head(uri string, args ...interface{}) *httptest.ResponseRecorder {
+	return c.request("HEAD", uri, nil, nil, args...)
+}
+
+// Make GET request
+func (c *Client) Get(uri string, res interface{}, args ...interface{}) *httptest.ResponseRecorder {
+	return c.request("GET", uri, nil, res, args...)
+}
+
+// Make PATCH request
+func (c *Client) Patch(uri string, body interface{}, res interface{}, args ...interface{}) *httptest.ResponseRecorder {
+	return c.request("PATCH", uri, body, res, args...)
+}
+
+// Make POST request
+func (c *Client) Post(uri string, body interface{}, res interface{}, args ...interface{}) *httptest.ResponseRecorder {
+	return c.request("POST", uri, body, res, args...)
+}
+
+// Make PUT request
+func (c *Client) Put(uri string, body interface{}, res interface{}, args ...interface{}) *httptest.ResponseRecorder {
+	return c.request("PUT", uri, body, res, args...)
+}
+
+// Make DELETE request
+func (c *Client) Delete(uri string, args ...interface{}) *httptest.ResponseRecorder {
+	return c.request("DELETE", uri, nil, nil, args...)
 }
