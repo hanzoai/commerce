@@ -6,6 +6,7 @@ import (
 	aeds "appengine/datastore"
 
 	"crowdstart.com/api/checkout/balance"
+	"crowdstart.com/api/checkout/null"
 	"crowdstart.com/api/checkout/stripe"
 	"crowdstart.com/models/cart"
 	"crowdstart.com/models/order"
@@ -25,12 +26,17 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (
 
 	// We could actually capture different types of things here...
 	switch ord.Type {
-	case "paypal":
+	case "null":
+		ord, keys, payments, err = null.Capture(org, ord)
+		if err != nil {
+			return nil, err
+		}
 	case "balance":
 		ord, keys, payments, err = balance.Capture(org, ord)
 		if err != nil {
 			return nil, err
 		}
+	case "paypal":
 	default:
 		ord, keys, payments, err = stripe.Capture(org, ord)
 		if err != nil {
