@@ -16,12 +16,12 @@ import (
 	. "crowdstart.com/util/test/ginkgo"
 )
 
-type setupFn func(c *http.Request)
+type defaultsFunc func(c *http.Request)
 
 type Client struct {
-	Router  *gin.Engine
-	Context *gin.Context
-	setupFn setupFn
+	Router   *gin.Engine
+	Context  *gin.Context
+	defaults defaultsFunc
 }
 
 func newRouter(ctx ae.Context) *gin.Engine {
@@ -37,7 +37,7 @@ func New(ctx ae.Context) *Client {
 	c := new(Client)
 	router := newRouter(ctx)
 	c.Router = router
-	c.Setup(func(r *http.Request) {})
+	c.Defaults(func(r *http.Request) {})
 	return c
 }
 
@@ -68,21 +68,21 @@ func Middleware(ctx ae.Context, mw gin.HandlerFunc) *Client {
 	return client
 }
 
-func (c *Client) Setup(fn setupFn) {
-	c.setupFn = fn
+func (c *Client) Defaults(fn defaultsFunc) {
+	c.defaults = fn
 }
 
-func (c *Client) newRequest(method, path string, reader io.Reader) *http.Request {
+func (c *Client) newRequest(method, uri string, reader io.Reader) *http.Request {
 	// Create new request
-	req, err := http.NewRequest(method, path, reader)
+	r, err := http.NewRequest(method, uri, reader)
 	if err != nil {
 		panic(err)
 	}
 
 	// Run any sort of setup code necessary
-	c.setupFn(req)
+	c.defaults(r)
 
-	return req
+	return r
 }
 
 // Make request without a body
