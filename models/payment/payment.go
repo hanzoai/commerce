@@ -31,8 +31,9 @@ const (
 type Type string
 
 const (
-	Stripe Type = "stripe"
+	Null   Type = "null"
 	Affirm      = "affirm"
+	Stripe      = "stripe"
 	PayPal      = "paypal"
 )
 
