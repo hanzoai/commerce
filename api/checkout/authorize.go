@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.com/api/checkout/balance"
+	"crowdstart.com/api/checkout/null"
 	"crowdstart.com/api/checkout/stripe"
 	"crowdstart.com/models/multi"
 	"crowdstart.com/models/order"
@@ -128,12 +129,17 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 
 	// Have stripe handle authorization
 	switch ord.Type {
-	case "paypal":
+	case "null":
+		if err := null.Authorize(org, ord, usr, pay); err != nil {
+			log.Warn("Failed to authorize order using Balance: %v", err, ctx)
+			return nil, nil, err
+		}
 	case "balance":
 		if err := balance.Authorize(org, ord, usr, pay); err != nil {
 			log.Warn("Failed to authorize order using Balance: %v", err, ctx)
 			return nil, nil, err
 		}
+	case "paypal":
 	default:
 		if err := stripe.Authorize(org, ord, usr, pay); err != nil {
 			log.Warn("Failed to authorize order using Stripe: %v", err, ctx)
