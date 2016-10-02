@@ -1,6 +1,7 @@
 package ginclient
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -151,13 +152,16 @@ func (cl *Client) request(method, uri string, body interface{}, res interface{},
 	if res != nil {
 		// TODO: Do we need to close this?
 		err := json.DecodeBuffer(w.Body, res)
-		Expect2(err).ToNot(HaveOccurred())
+		msg := fmt.Sprintf("Request failed, unable to decode body:\n%v", err)
+		Expect2(err).ToNot(HaveOccurred(), msg)
 	}
 
 	if code == 0 {
-		Expect2(w.Code < 400).To(BeTrue())
+		msg := fmt.Sprintf("Request failed with invalid status:\n%s", w.Body)
+		Expect2(w.Code).To(BeNumerically("<", 400), msg)
 	} else {
-		Expect2(w.Code == code).To(BeTrue())
+		msg := fmt.Sprintf("Request failed with invalid status:\n%s", w.Body)
+		Expect2(w.Code).To(Equal(code), msg)
 	}
 
 	return w
