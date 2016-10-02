@@ -123,7 +123,7 @@ endif
 
 # set v=1 to enable verbose mode
 ifeq ($(v), 1)
-	test_verbose = -v=true -- -test.v=true
+	test_verbose = -v -- -test.v
 else
 	test_verbose =
 endif
@@ -150,7 +150,7 @@ datastore_admin_url = https://datastore-admin-dot-$(project_id).appspot.com/_ah/
 test_target = -r=true
 test_focus := $(focus)
 ifdef test_focus
-	test_target=$(focus)
+	test_target=test/$(focus)
 endif
 
 export GOROOT := $(goroot)
@@ -264,16 +264,16 @@ tools:
 
 # TEST/ BENCH
 test:
-	@$(ginkgo) $(test_target) -p=true --progress --randomizeAllSpecs --failFast --skipMeasurements --skipPackage=integration $(test_verbose)
+	@$(ginkgo) $(test_target) -p=true -progress --randomizeAllSpecs --failFast --skipMeasurements --skipPackage=integration $(test_verbose)
 
 test-integration:
-	@$(ginkgo) -r=true -p=true --progress --randomizeAllSpecs --failFast --skipMeasurements --focus=integration $(test_verbose)
+	@$(ginkgo) -r=true -p=true -progress --randomizeAllSpecs --failFast --skipMeasurements --focus=integration $(test_verbose)
 
 test-watch:
-	@$(ginkgo) watch -r=true -p=true --progress --failFast --skipMeasurements $(test_verbose)
+	@$(ginkgo) watch -r=true -p=true -progress --failFast --skipMeasurements $(test_verbose)
 
 bench:
-	@$(ginkgo) $(test_target) -p=true --progress --randomizeAllSpecs --failFast --skipPackage=integration $(test_verbose)
+	@$(ginkgo) $(test_target) -p=true -progress --randomizeAllSpecs --failFast --skipPackage=integration $(test_verbose)
 
 test-ci:
 	$(ginkgo) -r=true -p=true --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace --compilers=2
