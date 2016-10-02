@@ -68,7 +68,8 @@ var _ = Describe("middleware/accesstoken", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// Make request using access token
-			client := ginclient.Middleware(ctx, middleware.TokenRequired())
+			client := ginclient.New(ctx)
+			client.Use(middleware.TokenRequired())
 			client.Defaults(func(r *http.Request) {
 				r.Header.Set("Authorization", accessToken)
 			})
