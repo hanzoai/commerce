@@ -49,7 +49,7 @@ var _ = BeforeSuite(func() {
 	org.Put()
 
 	client = ginclient.New(ctx)
-	client.Setup(func(r *http.Request) {})
+	client.Defaults(func(r *http.Request) {})
 
 	stripeApi.Route(client.Router)
 })
