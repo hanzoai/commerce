@@ -2,7 +2,6 @@ package test
 
 import (
 	"crowdstart.com/models/product"
-	"crowdstart.com/util/log"
 
 	. "crowdstart.com/util/test/ginkgo"
 )
@@ -22,8 +21,6 @@ var _ = Describe("product", func() {
 
 		It("Should create new products", func() {
 			Expect(res.Name).To(Equal(req.Name))
-			log.JSON("request:", req)
-			log.JSON("response:", res)
 		})
 	})
 })
