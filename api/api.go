@@ -45,10 +45,8 @@ import (
 	stripeApi "crowdstart.com/thirdparty/stripe/webhook"
 )
 
-func init() {
+func Route(api router.Router) {
 	tokenRequired := middleware.TokenRequired()
-
-	api := router.New("api")
 
 	// Index
 	if appengine.IsDevAppServer() {
@@ -134,4 +132,9 @@ func init() {
 
 	// XDomain proxy.html
 	xdApi.Route(api)
+}
+
+func init() {
+	api := router.New("api")
+	Route(api)
 }
