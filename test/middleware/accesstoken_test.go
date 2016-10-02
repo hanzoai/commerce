@@ -69,10 +69,10 @@ var _ = Describe("middleware/accesstoken", func() {
 
 			// Make request using access token
 			client := ginclient.Middleware(ctx, middleware.TokenRequired())
-			client.Setup(func(r *http.Request) {
+			client.Defaults(func(r *http.Request) {
 				r.Header.Set("Authorization", accessToken)
 			})
-			client.Get("/")
+			client.Get("/", nil)
 
 			// middleware generates namespaced appengine context
 			org := middleware.GetOrganization(client.Context)

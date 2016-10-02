@@ -145,9 +145,9 @@ func (c *Client) request(method, uri string, body interface{}, res interface{}, 
 
 	// Handle various request methods
 	switch method {
-	case "GET", "HEAD", "OPTIONS":
+	case "OPTIONS", "HEAD", "GET", "DELETE":
 		w = c.doRequest(method, uri)
-	case "POST", "PUT", "PATCH", "DELETE":
+	case "POST", "PUT", "PATCH":
 		w = c.doRequestBody(method, uri, body)
 	}
 
