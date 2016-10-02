@@ -4,12 +4,15 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/gin-gonic/gin"
+
 	"appengine"
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/user"
+	"crowdstart.com/util/permission"
 	"crowdstart.com/util/test/ae"
 	"crowdstart.com/util/test/ginclient"
 
@@ -60,8 +63,8 @@ var _ = Describe("middleware/accesstoken", func() {
 
 			id := o.Name
 
-			// generate accessToken
-			accessToken := o.AddToken("some-token", 0)
+			// generate accessToken with any permission
+			accessToken := o.AddToken("some-token", permission.Any)
 
 			// Update organization, so middleware can find it
 			err = o.Put()
@@ -69,10 +72,17 @@ var _ = Describe("middleware/accesstoken", func() {
 
 			// Make request using access token
 			client := ginclient.New(ctx)
+			// Setup client router to check for token required
 			client.Use(middleware.TokenRequired())
+			// Return ok if token is valid
+			client.Handle("GET", "/", func(c *gin.Context) {
+				c.String(200, "ok")
+			})
+			// Set access token on client
 			client.Defaults(func(r *http.Request) {
 				r.Header.Set("Authorization", accessToken)
 			})
+			// Make request
 			client.Get("/", nil)
 
 			// middleware generates namespaced appengine context
