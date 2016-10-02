@@ -64,7 +64,7 @@ func ParseToken(c *gin.Context) {
 // Permissions required to access route
 func TokenPermits(masks ...bit.Mask) gin.HandlerFunc {
 	// Any permissions acceptable by default (i.e., only valid token required)
-	permissions := permission.All
+	permissions := permission.Any
 
 	// Any arguments passed will be used as new permissions
 	if len(masks) > 0 {
@@ -85,7 +85,7 @@ func TokenPermits(masks ...bit.Mask) gin.HandlerFunc {
 // Parses token, default permissions check
 func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 	// Any permissions acceptable by default (i.e., only valid token required)
-	permissions := permission.All
+	permissions := permission.Any
 
 	// Any arguments passed will be used as new permissions
 	if len(masks) > 0 {
@@ -112,7 +112,7 @@ func TokenRequired(masks ...bit.Mask) gin.HandlerFunc {
 		db := datastore.New(ctx)
 		org := organization.New(db)
 
-		// Try to validate the org's access token
+		// Try to find organization using access token
 		tok, err := org.GetWithAccessToken(accessToken)
 		if err != nil {
 			http.Fail(c, 401, "Unable to retrieve organization associated with access token: "+err.Error(), err)
