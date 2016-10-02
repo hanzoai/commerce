@@ -2,7 +2,6 @@ package test
 
 import (
 	"net/http"
-	"testing"
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
@@ -27,23 +26,6 @@ import (
 	storeApi "crowdstart.com/api/store"
 
 	. "crowdstart.com/util/test/ginkgo"
-)
-
-func Test(t *testing.T) {
-	Setup("api/checkout", t)
-}
-
-var (
-	ctx         ae.Context
-	client      *ginclient.Client
-	accessToken string
-	db          *datastore.Datastore
-	org         *organization.Organization
-	prod        *product.Product
-	stor        *store.Store
-	sc          *stripe.Client
-	u           *user.User
-	refIn       *referrer.Referrer
 )
 
 // Setup appengine context
@@ -92,11 +74,6 @@ var _ = BeforeSuite(func() {
 var _ = AfterSuite(func() {
 	ctx.Close()
 })
-
-type testHelperReturn struct {
-	Payments []*payment.Payment
-	Orders   []*order.Order
-}
 
 func keyExists(key string) {
 	ok, err := hashid.KeyExists(db.Context, key)
