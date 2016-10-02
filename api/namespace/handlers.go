@@ -1,8 +1,12 @@
 package namespace
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/gin-gonic/gin"
 
-func Route(router *gin.RouterGroup, args ...gin.HandlerFunc) {
+	"crowdstart.com/util/router"
+)
+
+func Route(router router.Router, args ...gin.HandlerFunc) {
 	router.GET("/c/namespace/by-id/:id", namespaceFromId)
 	router.GET("/c/namespace/to-id/:namespace", idFromNamespace)
 }
