@@ -58,7 +58,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 
 	// Set authorization header for subsequent requests
-	client.Setup(func(r *http.Request) {
+	client.Defaults(func(r *http.Request) {
 		r.Header.Set("Authorization", accessToken)
 	})
 
