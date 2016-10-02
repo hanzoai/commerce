@@ -86,7 +86,7 @@ var _ = BeforeSuite(func() {
 	org.MustPut()
 
 	// Set authorization header for subsequent requests
-	client.Setup(func(r *http.Request) {
+	client.Defaults(func(r *http.Request) {
 		r.Header.Set("Authorization", accessToken)
 	})
 
