@@ -64,7 +64,7 @@ var _ = Describe("middleware/accesstoken", func() {
 			id := o.Name
 
 			// generate accessToken with any permission
-			accessToken := o.AddToken("some-token", permission.Any)
+			accessToken := o.AddToken("some-token", permission.All)
 
 			// Update organization, so middleware can find it
 			err = o.Put()
