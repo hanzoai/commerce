@@ -34,45 +34,41 @@ func newRouter(ctx ae.Context) *gin.Engine {
 }
 
 func New(ctx ae.Context) *Client {
-	c := new(Client)
+	cl := new(Client)
 	router := newRouter(ctx)
-	c.Router = router
-	c.Defaults(func(r *http.Request) {})
-	return c
+	cl.Router = router
+	cl.Defaults(func(r *http.Request) {})
+	return cl
 }
 
-func Handler(ctx ae.Context, method, path string, handler gin.HandlerFunc) *Client {
-	client := New(ctx)
-
-	// Wrapper handler to save state of context
+// Add a new handler to router
+func (cl *Client) Handle(method, path string, handler gin.HandlerFunc) {
 	wrapper := func(c *gin.Context) {
 		handler(c)
-		client.Context = c
+		cl.Context = c
 	}
 
-	client.Router.Handle(method, path, wrapper)
-
-	return client
+	cl.Router.Handle(method, path, wrapper)
 }
 
-func Middleware(ctx ae.Context, mw gin.HandlerFunc) *Client {
-	client := New(ctx)
+// Add middleware to router
+func (cl *Client) Use(mw ...gin.HandlerFunc) {
+	for _, m := range mw {
+		cl.Router.Use(func(c *gin.Context) {
+			c.Next()
+			cl.Context = c
+		})
 
-	// Helper middleware to save state of context
-	client.Router.Use(func(c *gin.Context) {
-		c.Next()
-		client.Context = c
-	})
-	client.Router.Use(mw)
-
-	return client
+		cl.Router.Use(m)
+	}
 }
 
-func (c *Client) Defaults(fn defaultsFunc) {
-	c.defaults = fn
+// Set defaults for each request
+func (cl *Client) Defaults(fn defaultsFunc) {
+	cl.defaults = fn
 }
 
-func (c *Client) newRequest(method, uri string, reader io.Reader) *http.Request {
+func (cl *Client) newRequest(method, uri string, reader io.Reader) *http.Request {
 	// Create new request
 	r, err := http.NewRequest(method, uri, reader)
 	if err != nil {
@@ -80,24 +76,24 @@ func (c *Client) newRequest(method, uri string, reader io.Reader) *http.Request 
 	}
 
 	// Run any sort of setup code necessary
-	c.defaults(r)
+	cl.defaults(r)
 
 	return r
 }
 
 // Make request without a body
-func (c *Client) doRequest(method, uri string) *httptest.ResponseRecorder {
+func (cl *Client) doRequest(method, uri string) *httptest.ResponseRecorder {
 	// Create request
-	r := c.newRequest(method, uri, nil)
+	r := cl.newRequest(method, uri, nil)
 
 	// Do request
 	w := httptest.NewRecorder()
-	c.Router.ServeHTTP(w, r)
+	cl.Router.ServeHTTP(w, r)
 	return w
 }
 
 // Make request with body
-func (c *Client) doRequestBody(method, uri string, body interface{}) *httptest.ResponseRecorder {
+func (cl *Client) doRequestBody(method, uri string, body interface{}) *httptest.ResponseRecorder {
 	var r *http.Request
 
 	// Create request
@@ -105,28 +101,28 @@ func (c *Client) doRequestBody(method, uri string, body interface{}) *httptest.R
 	case url.Values:
 		// Posting a form
 		reader := strings.NewReader(v.Encode())
-		r = c.newRequest(method, uri, reader)
+		r = cl.newRequest(method, uri, reader)
 		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	case string:
 		// Assume strings are already JSON-encoded
 		reader := strings.NewReader(v)
-		r = c.newRequest(method, uri, reader)
+		r = cl.newRequest(method, uri, reader)
 		r.Header.Set("Content-Type", "application/json")
 	default:
 		// Blindly JSON encode!
 		buf := json.EncodeBuffer(body)
-		r = c.newRequest(method, uri, buf)
+		r = cl.newRequest(method, uri, buf)
 		r.Header.Set("Content-Type", "application/json")
 	}
 
 	// Do request
 	w := httptest.NewRecorder()
-	c.Router.ServeHTTP(w, r)
+	cl.Router.ServeHTTP(w, r)
 	return w
 }
 
 // Generic request handler
-func (c *Client) request(method, uri string, body interface{}, res interface{}, args ...interface{}) (w *httptest.ResponseRecorder) {
+func (cl *Client) request(method, uri string, body interface{}, res interface{}, args ...interface{}) (w *httptest.ResponseRecorder) {
 	var code int
 
 	// Parse optional args. Two types of optional arguments may be passed:
@@ -146,9 +142,9 @@ func (c *Client) request(method, uri string, body interface{}, res interface{}, 
 	// Handle various request methods
 	switch method {
 	case "OPTIONS", "HEAD", "GET", "DELETE":
-		w = c.doRequest(method, uri)
+		w = cl.doRequest(method, uri)
 	case "POST", "PUT", "PATCH":
-		w = c.doRequestBody(method, uri, body)
+		w = cl.doRequestBody(method, uri, body)
 	}
 
 	// Automatically decode body
@@ -168,36 +164,36 @@ func (c *Client) request(method, uri string, body interface{}, res interface{}, 
 }
 
 // Make OPTIONS request
-func (c *Client) Options(uri string, args ...interface{}) *httptest.ResponseRecorder {
-	return c.request("OPTIONS", uri, nil, nil, args...)
+func (cl *Client) Options(uri string, args ...interface{}) *httptest.ResponseRecorder {
+	return cl.request("OPTIONS", uri, nil, nil, args...)
 }
 
 // Make HEAD request
-func (c *Client) Head(uri string, args ...interface{}) *httptest.ResponseRecorder {
-	return c.request("HEAD", uri, nil, nil, args...)
+func (cl *Client) Head(uri string, args ...interface{}) *httptest.ResponseRecorder {
+	return cl.request("HEAD", uri, nil, nil, args...)
 }
 
 // Make GET request
-func (c *Client) Get(uri string, res interface{}, args ...interface{}) *httptest.ResponseRecorder {
-	return c.request("GET", uri, nil, res, args...)
+func (cl *Client) Get(uri string, res interface{}, args ...interface{}) *httptest.ResponseRecorder {
+	return cl.request("GET", uri, nil, res, args...)
 }
 
 // Make PATCH request
-func (c *Client) Patch(uri string, body interface{}, res interface{}, args ...interface{}) *httptest.ResponseRecorder {
-	return c.request("PATCH", uri, body, res, args...)
+func (cl *Client) Patch(uri string, body interface{}, res interface{}, args ...interface{}) *httptest.ResponseRecorder {
+	return cl.request("PATCH", uri, body, res, args...)
 }
 
 // Make POST request
-func (c *Client) Post(uri string, body interface{}, res interface{}, args ...interface{}) *httptest.ResponseRecorder {
-	return c.request("POST", uri, body, res, args...)
+func (cl *Client) Post(uri string, body interface{}, res interface{}, args ...interface{}) *httptest.ResponseRecorder {
+	return cl.request("POST", uri, body, res, args...)
 }
 
 // Make PUT request
-func (c *Client) Put(uri string, body interface{}, res interface{}, args ...interface{}) *httptest.ResponseRecorder {
-	return c.request("PUT", uri, body, res, args...)
+func (cl *Client) Put(uri string, body interface{}, res interface{}, args ...interface{}) *httptest.ResponseRecorder {
+	return cl.request("PUT", uri, body, res, args...)
 }
 
 // Make DELETE request
-func (c *Client) Delete(uri string, args ...interface{}) *httptest.ResponseRecorder {
-	return c.request("DELETE", uri, nil, nil, args...)
+func (cl *Client) Delete(uri string, args ...interface{}) *httptest.ResponseRecorder {
+	return cl.request("DELETE", uri, nil, nil, args...)
 }
