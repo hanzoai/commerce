@@ -7,6 +7,7 @@ import (
 
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/collection"
+	"crowdstart.com/models/discount"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/product"
 	"crowdstart.com/models/referral"
@@ -72,6 +73,7 @@ func Route(api router.Router) {
 
 	// Models with public RESTful API
 	rest.New(collection.Collection{}).Route(api, tokenRequired)
+	rest.New(discount.Discount{}).Route(api, tokenRequired)
 	rest.New(product.Product{}).Route(api, tokenRequired)
 	rest.New(referral.Referral{}).Route(api, tokenRequired)
 	rest.New(site.Site{}).Route(api, tokenRequired)
