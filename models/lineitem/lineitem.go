@@ -209,7 +209,7 @@ func (li *LineItem) Update() {
 		li.VariantSKU = li.Variant.SKU
 		li.Taxable = li.Variant.Taxable
 		li.Weight = li.Variant.Weight
-		li.WeightUnit = li.Product.WeightUnit
+		li.WeightUnit = li.Variant.WeightUnit
 	}
 }
 
