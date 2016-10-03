@@ -2,20 +2,16 @@ package order
 
 import (
 	"crowdstart.com/datastore"
-	. "crowdstart.com/models"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/util/fake"
+
+	. "crowdstart.com/models"
 )
 
-func Fake(db *datastore.Datastore, storeId string, campaignId string, userId string, cartId string, referrerId string) *Order {
+func Fake(db *datastore.Datastore) *Order {
 	o := New(db)
-	o.StoreId = storeId
-	o.CampaignId = campaignId
-	o.UserId = userId
 	o.Email = fake.EmailAddress()
-	o.CartId = cartId
-	o.ReferrerId = referrerId
 	o.Status = Open
 	o.PaymentStatus = payment.Unpaid
 	o.Preorder = fake.Bool

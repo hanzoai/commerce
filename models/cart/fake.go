@@ -7,13 +7,10 @@ import (
 	"crowdstart.com/util/fake"
 )
 
-func Fake(db *datastore.Datastore, storeId string, campaignId string, userId string, orderId string) *Cart {
+func Fake(db *datastore.Datastore, userId string) *Cart {
 	c := New(db)
-	c.StoreId = storeId
-	c.CampaignId = campaignId
 	c.UserId = userId
 	c.Email = fake.EmailAddress()
-	c.OrderId = orderId
 	c.Status = Active
 	c.Currency = currency.USD
 	c.LineTotal = currency.Cents(0).Fake()
