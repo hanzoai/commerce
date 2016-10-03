@@ -9,7 +9,7 @@ import (
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/util/log"
 
-	. "crowdstart.com/models/lineitem"
+	"crowdstart.com/models/lineitem"
 )
 
 // Get line items from datastore
@@ -121,7 +121,7 @@ func (o *Order) CalcCouponDiscount() currency.Cents {
 func (o *Order) UpdateCouponItems() error {
 	nCodes := len(o.CouponCodes)
 
-	items := make([]LineItem, 0)
+	items := make([]lineitem.LineItem, 0)
 	for _, item := range o.Items {
 		if item.AddedBy != "coupon" {
 			items = append(items, item)
@@ -138,7 +138,7 @@ func (o *Order) UpdateCouponItems() error {
 		if c.ProductId == "" {
 			switch c.Type {
 			case coupon.FreeItem:
-				o.Items = append(o.Items, LineItem{
+				o.Items = append(o.Items, lineitem.LineItem{
 					ProductId: c.FreeProductId,
 					VariantId: c.FreeVariantId,
 					Quantity:  c.FreeQuantity,
@@ -151,7 +151,7 @@ func (o *Order) UpdateCouponItems() error {
 				if item.ProductId == c.ProductId {
 					switch c.Type {
 					case coupon.FreeItem:
-						o.Items = append(o.Items, LineItem{
+						o.Items = append(o.Items, lineitem.LineItem{
 							ProductId: c.FreeProductId,
 							VariantId: c.FreeVariantId,
 							Quantity:  c.FreeQuantity,
