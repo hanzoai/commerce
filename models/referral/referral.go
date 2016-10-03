@@ -13,6 +13,18 @@ const (
 	NewUser       = "new-user"
 )
 
+type Referrer struct {
+	Id          string `json:"id"`
+	UserId      string `json:"userId"`
+	AffiliateId string `json:"affiliateId"`
+}
+
+type Fee struct {
+	Currency currency.Type  `json:"currency,omitempty"`
+	Id       string         `json:"id,omitempty"`
+	Amount   currency.Cents `json:"amount,omitempty"`
+}
+
 type Referral struct {
 	mixin.Model
 
@@ -25,17 +37,9 @@ type Referral struct {
 	OrderId string `json:"orderId"`
 
 	// Referred by
-	Referrer struct {
-		Id          string `json:"id"`
-		UserId      string `json:"userId"`
-		AffiliateId string `json:"affiliateId"`
-	}
+	Referrer Referrer `json:"referrer,omitempty"`
 
-	Fee struct {
-		Currency currency.Type  `json:"currency,omitempty"`
-		Id       string         `json:"id,omitempty"`
-		Amount   currency.Cents `json:"amount,omitempty"`
-	} `json:"fee,omitempty"`
+	Fee Fee `json:"fee,omitempty"`
 
 	Client      client.Client `json:"-"`
 	Blacklisted bool          `json:"blacklisted,omitempty"`
