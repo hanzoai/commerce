@@ -10,13 +10,15 @@ type Country countries.Country
 
 var Countries []Country
 var ByISOCodeISO3166_2 map[string]Country
+var numCountries int
 
 func init() {
-	Countries = make([]Country, len(countries.Countries))
+	numCountries = len(countries.Countries)
+	Countries = make([]Country, numCountries)
 	ByISOCodeISO3166_2 = make(map[string]Country)
 
 	nameToIsoMap := make(map[string]string)
-	sortedNames := make([]string, len(countries.Countries))
+	sortedNames := make([]string, numCountries)
 	i := 0
 	for iso, country := range countries.Countries {
 		name := country.ISO3166OneEnglishShortNameReadingOrder

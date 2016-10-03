@@ -3,6 +3,7 @@ package affiliate
 import (
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/types/commission"
+	"crowdstart.com/models/types/country"
 	"crowdstart.com/models/types/schedule"
 	"crowdstart.com/thirdparty/stripe/connect"
 )
@@ -13,12 +14,12 @@ type Affiliate struct {
 	Enabled   bool `json:"enabled"`
 	Connected bool `json:"connected"`
 
-	UserId   string `json:"userId"`
-	Name     string `json:"name"`
-	Company  string `json:"company"`
-	Country  string `json:"country"`
-	TaxId    string `json:"taxId"`
-	Timezone string `json:"timezone"`
+	UserId   string          `json:"userId"`
+	Name     string          `json:"name"`
+	Company  string          `json:"company"`
+	Country  country.Country `json:"country"`
+	TaxId    string          `json:"taxId"`
+	Timezone string          `json:"timezone"`
 
 	Commission commission.Commission `json:"commission"`
 	Schedule   schedule.Schedule     `json:"schedule"`
