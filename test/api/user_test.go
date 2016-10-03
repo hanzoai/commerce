@@ -2,7 +2,6 @@ package test
 
 import (
 	"crowdstart.com/models/user"
-	"crowdstart.com/util/log"
 
 	. "crowdstart.com/util/test/ginkgo"
 )
@@ -17,9 +16,7 @@ var _ = Describe("user", func() {
 			res = user.New(db)
 
 			// Create new user
-			log.JSON(req)
 			cl.Post("/user", req, res)
-			log.JSON(res)
 		})
 
 		It("Should create new users", func() {
