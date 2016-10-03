@@ -1,6 +1,9 @@
 package fake
 
-import "reflect"
+import (
+	"math/rand"
+	"reflect"
+)
 
 type fieldMap map[string]reflect.Value
 
@@ -60,4 +63,12 @@ func Except(fake interface{}, except ...string) interface{} {
 	}
 
 	return fake
+}
+
+func RandSeq(n int, runes []rune) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = runes[rand.Intn(len(runes))]
+	}
+	return string(b)
 }
