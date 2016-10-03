@@ -146,7 +146,7 @@ func create(r *rest.Rest) func(*gin.Context) {
 		}
 
 		c.Writer.Header().Add("Location", c.Request.URL.Path+"/"+car.Id())
-		r.Render(c, 201, CartResponse{Id: car.Id()})
+		r.Render(c, 201, car)
 	}
 }
 
