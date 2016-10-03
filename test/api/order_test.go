@@ -1,6 +1,8 @@
 package test
 
 import (
+	"strings"
+
 	"crowdstart.com/models/lineitem"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/product"
@@ -9,6 +11,10 @@ import (
 
 	. "crowdstart.com/util/test/ginkgo"
 )
+
+func normalize(s string) string {
+	return strings.ToLower(strings.TrimSpace(s))
+}
 
 var _ = Describe("order", func() {
 	Context("New order", func() {
@@ -30,7 +36,7 @@ var _ = Describe("order", func() {
 		})
 
 		It("Should create new orders", func() {
-			Expect(res.Email).To(Equal(req.Email))
+			Expect(res.Email).To(Equal(normalize(req.Email)))
 			Expect(res.Status).To(Equal(req.Status))
 			Expect(res.PaymentStatus).To(Equal(req.PaymentStatus))
 			Expect(res.Preorder).To(Equal(req.Preorder))
@@ -54,7 +60,7 @@ var _ = Describe("order", func() {
 			Expect(res.ShippingAddress).To(Equal(req.ShippingAddress))
 			Expect(res.Gift).To(Equal(req.Gift))
 			Expect(res.GiftMessage).To(Equal(req.GiftMessage))
-			Expect(res.GiftEmail).To(Equal(req.GiftEmail))
+			Expect(res.GiftEmail).To(Equal(normalize(req.GiftEmail)))
 		})
 	})
 })
