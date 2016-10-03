@@ -1,6 +1,8 @@
 package fake
 
 import (
+	"math/rand"
+
 	"github.com/icrowley/fake"
 )
 
@@ -42,6 +44,7 @@ var MonthShort = fake.MonthShort
 var Paragraph = fake.Paragraph
 var Paragraphs = fake.ParagraphsN
 var Password = fake.Password
+var Percent = rand.Float64()
 var Phone = fake.Phone
 var ProductName = fake.ProductName
 var Sentence = fake.Sentence
