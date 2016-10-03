@@ -1,10 +1,15 @@
 package test
 
 import (
+	"crowdstart.com/api/checkout"
+	"crowdstart.com/models/lineitem"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/payment"
+	"crowdstart.com/models/product"
 	"crowdstart.com/models/user"
+	"crowdstart.com/models/variant"
 	"crowdstart.com/util/hashid"
+	"crowdstart.com/util/log"
 
 	. "crowdstart.com/util/test/ginkgo"
 )
@@ -37,29 +42,61 @@ func getPayment(id string) *payment.Payment {
 }
 
 var _ = Describe("checkout", func() {
-	Context("Authorize First Time Customers", func() {
-		It("Should normalize the user information", func() {
+	Describe("checkout/authorize", func() {
+		var req *checkout.AuthorizationReq
+		var res *order.Order
+
+		Before(func() {
+			// Create new authorization request
+			req = new(checkout.AuthorizationReq)
+
+			// Create fake payment
+			req.Payment_ = payment.Fake(db)
+
+			// Create fake user
+			req.User_ = user.Fake(db)
+
+			// Create fake product, variant and subsequent order
+			p := product.Fake(db)
+			p.MustCreate()
+			v := variant.Fake(db, p.Id())
+			v.MustCreate()
+			li := lineitem.Fake(v.Id(), v.Name, v.SKU)
+			req.Order = order.Fake(db, li)
+
+			// Instantiate order to encompass result
+			res = order.New(db)
+
+			// Make request
+			cl.Post("/authorize", req, res)
+			log.JSON(res)
 		})
 
-		It("Should authorize new order successfully", func() {
-		})
+		Context("First Time Customers", func() {
+			FIt("Should authorize new order successfully", func() {
+				getUser(res.UserId)
+				// Payment should be in db
+				Expect(len(res.PaymentIds)).To(Equal(1))
+				getPayment(res.PaymentIds[0])
+			})
 
-		It("Should save new order successfully for store", func() {
-		})
+			It("Should save new order successfully for store", func() {
+			})
 
-		It("Should not authorize invalid credit card number", func() {
-		})
+			It("Should not authorize invalid credit card number", func() {
+			})
 
-		It("Should not authorize invalid credit card number for store", func() {
-		})
+			It("Should not authorize invalid credit card number for store", func() {
+			})
 
-		It("Should not authorize invalid product id", func() {
-		})
+			It("Should not authorize invalid product id", func() {
+			})
 
-		It("Should not authorize invalid variant id", func() {
-		})
+			It("Should not authorize invalid variant id", func() {
+			})
 
-		It("Should not authorize invalid collection id", func() {
+			It("Should not authorize invalid collection id", func() {
+			})
 		})
 	})
 
@@ -172,9 +209,4 @@ var _ = Describe("checkout", func() {
 		It("Should refund order successfully", func() {
 		})
 	})
-
-	// Other things that could be tested
-	// Capturing an unauthorized order
-	// Capturing a captured order
-	// Authorizing a captured order
 })
