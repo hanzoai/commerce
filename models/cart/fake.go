@@ -22,9 +22,6 @@ func Fake(db *datastore.Datastore, userId string) *Cart {
 	c.Company = fake.Company()
 	c.BillingAddress = Address{Line1: fake.Street(), City: fake.City(), State: fake.State(), PostalCode: fake.Zip(), Country: "US"}
 	c.ShippingAddress = Address{Line1: fake.Street(), City: fake.City(), State: fake.State(), PostalCode: fake.Zip(), Country: "US"}
-	c.Gift = fake.Bool
-	c.GiftMessage = fake.Sentence()
-	c.GiftEmail = fake.EmailAddress()
 
 	return c
 }
