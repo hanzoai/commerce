@@ -28,7 +28,7 @@ import (
 	"crowdstart.com/util/val"
 
 	. "crowdstart.com/models"
-	. "crowdstart.com/models/lineitem"
+	"crowdstart.com/models/lineitem"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
@@ -121,8 +121,8 @@ type Order struct {
 	ShippingAddress Address `json:"shippingAddress"`
 
 	// Individual line items
-	Items  []LineItem `json:"items" datastore:"-"`
-	Items_ string     `json:"-"` // need props
+	Items  []lineitem.LineItem `json:"items" datastore:"-"`
+	Items_ string              `json:"-"` // need props
 
 	Adjustments []Adjustment `json:"-"`
 

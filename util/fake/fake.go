@@ -72,3 +72,7 @@ func RandSeq(n int, runes []rune) string {
 	}
 	return string(b)
 }
+
+func Bool() bool {
+	return bool(rand.Intn(10)&1 == 0)
+}

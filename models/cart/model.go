@@ -6,7 +6,7 @@ import (
 	"crowdstart.com/models/mixin"
 
 	. "crowdstart.com/models"
-	. "crowdstart.com/models/lineitem"
+	"crowdstart.com/models/lineitem"
 )
 
 func (c Cart) Kind() string {
@@ -18,7 +18,7 @@ func (c *Cart) Init(db *datastore.Datastore) {
 }
 
 func (c *Cart) Defaults() {
-	c.Items = make([]LineItem, 0)
+	c.Items = make([]lineitem.LineItem, 0)
 	c.Metadata = make(Map)
 	c.Coupons = make([]coupon.Coupon, 0)
 	c.Status = Active
