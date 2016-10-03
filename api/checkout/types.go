@@ -66,10 +66,15 @@ func (ar *AuthorizationReq) Payment() (*payment.Payment, error) {
 
 	// Default all payment types to Stripe for now, although eventually we
 	// should use organization settings
-	pay.Type = payment.Stripe
+	if pay.Type == "" {
+		pay.Type = payment.Stripe
+	}
 
+	// TODO: Remove this check
 	switch pay.Type {
 	case payment.Stripe:
+		return pay, nil
+	case payment.Null:
 		return pay, nil
 	default:
 		return nil, UnsupportedPaymentType

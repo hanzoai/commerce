@@ -127,8 +127,8 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	// Save payment Id on order
 	ord.PaymentIds = append(ord.PaymentIds, pay.Id())
 
-	// Have stripe handle authorization
-	switch ord.Type {
+	// Handle authorization
+	switch pay.Type {
 	case "null":
 		if err := null.Authorize(org, ord, usr, pay); err != nil {
 			log.Warn("Failed to authorize order using Balance: %v", err, ctx)
