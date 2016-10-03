@@ -7,7 +7,7 @@ import (
 	"crowdstart.com/models/payment"
 
 	. "crowdstart.com/models"
-	. "crowdstart.com/models/lineitem"
+	"crowdstart.com/models/lineitem"
 )
 
 func (o Order) Kind() string {
@@ -24,7 +24,7 @@ func (o *Order) Defaults() {
 	o.FulfillmentStatus = FulfillmentUnfulfilled
 	o.Adjustments = make([]Adjustment, 0)
 	o.History = make([]Event, 0)
-	o.Items = make([]LineItem, 0)
+	o.Items = make([]lineitem.LineItem, 0)
 	o.Metadata = make(Map)
 	o.Coupons = make([]coupon.Coupon, 0)
 }

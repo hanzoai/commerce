@@ -18,7 +18,7 @@ import (
 	"crowdstart.com/util/val"
 
 	. "crowdstart.com/models"
-	. "crowdstart.com/models/lineitem"
+	"crowdstart.com/models/lineitem"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
@@ -79,8 +79,8 @@ type Cart struct {
 	ShippingAddress Address `json:"shippingAddress,omitempty"`
 
 	// Individual line items
-	Items  []LineItem `json:"items" datastore:"-"`
-	Items_ string     `json:"-"` // need props
+	Items  []lineitem.LineItem `json:"items" datastore:"-"`
+	Items_ string              `json:"-"` // need props
 
 	Coupons     []coupon.Coupon `json:"coupons,omitempty"`
 	CouponCodes []string        `json:"couponCodes,omitempty"`
@@ -158,7 +158,7 @@ func (c *Cart) SetItem(db *datastore.Datastore, id string, typ string, quantity 
 	}
 
 	// New item
-	li := &LineItem{}
+	li := &lineitem.LineItem{}
 	switch typ {
 	case "product":
 		err = li.SetProduct(db, id, quantity)
@@ -176,7 +176,7 @@ func (c *Cart) SetItem(db *datastore.Datastore, id string, typ string, quantity 
 }
 
 func (c *Cart) RemoveItem(id string) (err error) {
-	items := make([]LineItem, 0)
+	items := make([]lineitem.LineItem, 0)
 	for _, li := range c.Items {
 		if !li.HasId(id) {
 			items = append(items, li)

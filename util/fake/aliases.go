@@ -9,7 +9,6 @@ import (
 // Aliases to fake for convenience
 var Brand = fake.Brand
 var Character = fake.Character
-var Bool = bool(rand.Intn(10)&1 == 0)
 var Characters = fake.CharactersN
 var City = fake.City
 var Color = fake.Color
