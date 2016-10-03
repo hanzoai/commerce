@@ -81,7 +81,7 @@ type Order struct {
 	Currency currency.Type `json:"currency"`
 
 	// Payment processor type - paypal, stripe, etc
-	Type string `json:"type,omitempty"`
+	Type payment.Type `json:"type,omitempty"`
 
 	// Shipping method
 	ShippingMethod string `json:"shippingMethod,omitempty"`
