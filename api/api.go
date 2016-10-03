@@ -19,6 +19,7 @@ import (
 	"crowdstart.com/models/transfer"
 	"crowdstart.com/models/user"
 	"crowdstart.com/models/variant"
+	"crowdstart.com/models/webhook"
 	"crowdstart.com/util/rest"
 	"crowdstart.com/util/router"
 
@@ -82,6 +83,7 @@ func Route(api router.Router) {
 	rest.New(transaction.Transaction{}).Route(api, tokenRequired)
 	rest.New(transfer.Transfer{}).Route(api, tokenRequired)
 	rest.New(variant.Variant{}).Route(api, tokenRequired)
+	rest.New(webhook.Webhook{}).Route(api, tokenRequired)
 
 	paymentApi := rest.New(payment.Payment{})
 	paymentApi.POST("/:paymentid/refund", checkoutApi.Refund)
