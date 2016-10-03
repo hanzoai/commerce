@@ -152,7 +152,7 @@ func (cl *Client) request(method, uri string, body interface{}, res interface{},
 	if res != nil {
 		// TODO: Do we need to close this?
 		err := json.DecodeBuffer(w.Body, res)
-		msg := fmt.Sprintf("Request failed, unable to decode body:\n%v", err)
+		msg := fmt.Sprintf("Unable to decode body, %v:\n%v", err, w.Body)
 		Expect2(err).ToNot(HaveOccurred(), msg)
 	}
 

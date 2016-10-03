@@ -32,6 +32,26 @@ type Rule struct {
 	Action rule.Action `json:"action"`
 }
 
+type Scope struct {
+	// The scope these rules qualify against
+	Type scope.Type `json:"type"`
+
+	// Id for this rule
+	StoreId      string `json:"storeId,omitempty"`
+	CollectionId string `json:"collectionId,omitempty"`
+	ProductId    string `json:"productId,omitempty"`
+	VariantId    string `json:"variantId,omitempty"`
+}
+
+type Target struct {
+	// Target for which all rules apply
+	Type target.Type `json:"type"`
+
+	// Id for the target
+	ProductId string `json:"productId,omitempty"`
+	VariantId string `json:"variantId,omitempty"`
+}
+
 type Discount struct {
 	mixin.Model
 
@@ -44,25 +64,9 @@ type Discount struct {
 	StartDate time.Time `json:"startDate"`
 	EndDate   time.Time `json:"endDate"`
 
-	Scope struct {
-		// The scope these rules qualify against
-		Type scope.Type `json:"type"`
+	Scope Scope `json:"scope"`
 
-		// Id for this rule
-		StoreId      string `json:"storeId,omitempty"`
-		CollectionId string `json:"collectionId,omitempty"`
-		ProductId    string `json:"productId,omitempty"`
-		VariantId    string `json:"variantId,omitempty"`
-	} `json:"scope"`
-
-	Target struct {
-		// Target for which all rules apply
-		Type target.Type `json:"type"`
-
-		// Id for the target
-		ProductId string `json:"productId,omitempty"`
-		VariantId string `json:"variantId,omitempty"`
-	} `json:"target"`
+	Target Target `json:"target"`
 
 	// Rules for this discount
 	Rules []Rule `json:"rules"`
