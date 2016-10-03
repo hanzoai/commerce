@@ -5,6 +5,7 @@ import (
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/product"
 	"crowdstart.com/models/variant"
+	"crowdstart.com/util/log"
 
 	. "crowdstart.com/util/test/ginkgo"
 )
@@ -16,13 +17,16 @@ var _ = Describe("order", func() {
 
 		Before(func() {
 			p := product.Fake(db)
+			p.MustCreate()
 			v := variant.Fake(db, p.Id())
+			v.MustCreate()
 			li := lineitem.Fake(v.Id(), v.Name, v.SKU)
 			req = order.Fake(db, li)
 			res = order.New(db)
 
 			// Create new order
 			cl.Post("/order", req, res)
+			log.JSON(res)
 		})
 
 		It("Should create new orders", func() {
