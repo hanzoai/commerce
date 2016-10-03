@@ -64,6 +64,7 @@ type Coupon struct {
 	Enabled bool `json:"enabled"`
 
 	// Coupon amount. $5 should be 500 (prices in basic currency unit, like cents). 10% should be 10.
+	// TODO: This needs to be currency.Cents in Hanzo.
 	Amount int `json:"amount"`
 
 	// Number of times coupon was redeemed.
