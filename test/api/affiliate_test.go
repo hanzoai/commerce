@@ -8,7 +8,7 @@ import (
 )
 
 var _ = Describe("affiliate", func() {
-	Context("New affiliate", func() {
+	Context("Create affiliate", func() {
 		var req *affiliate.Affiliate
 		var res *affiliate.Affiliate
 
@@ -30,6 +30,118 @@ var _ = Describe("affiliate", func() {
 			Expect(res.Commission.Flat).To(Equal(req.Commission.Flat))
 			Expect(res.Commission.Minimum).To(Equal(req.Commission.Minimum))
 			Expect(res.Commission.Percent).To(Equal(req.Commission.Percent))
+		})
+	})
+
+	Context("Get affiliate", func() {
+		var res *affiliate.Affiliate
+		var aff *affiliate.Affiliate
+
+		Before(func() {
+			// Create user and affiliate
+			usr := user.Fake(db)
+			usr.MustCreate()
+
+			aff = affiliate.Fake(db, usr.Id())
+			aff.MustCreate()
+
+			// Verify it exists
+			res = affiliate.New(db)
+
+			// Get affiliate
+			cl.Get("/affiliate/"+aff.Id(), res)
+		})
+
+		It("Should get affiliate", func() {
+			Expect(res.Name).To(Equal(aff.Name))
+			Expect(res.Company).To(Equal(aff.Company))
+			Expect(res.Country).To(Equal(aff.Country))
+			Expect(res.TaxId).To(Equal(aff.TaxId))
+			Expect(res.Commission.Flat).To(Equal(aff.Commission.Flat))
+			Expect(res.Commission.Minimum).To(Equal(aff.Commission.Minimum))
+			Expect(res.Commission.Percent).To(Equal(aff.Commission.Percent))
+		})
+	})
+
+	Context("Patch affiliate", func() {
+		var res *affiliate.Affiliate
+		var req *affiliate.Affiliate
+
+		Before(func() {
+			// Create user and affiliate
+			usr := user.Fake(db)
+			usr.MustCreate()
+
+			aff := affiliate.Fake(db, usr.Id())
+			aff.MustCreate()
+
+			req = affiliate.Fake(db, usr.Id())
+
+			// Get affiliate
+			cl.Patch("/affiliate/"+aff.Id(), req, res)
+		})
+
+		It("Should update affiliate", func() {
+			Expect(res.Name).To(Equal(req.Name))
+			Expect(res.Company).To(Equal(req.Company))
+			Expect(res.Country).To(Equal(req.Country))
+			Expect(res.TaxId).To(Equal(req.TaxId))
+			Expect(res.Commission.Flat).To(Equal(req.Commission.Flat))
+			Expect(res.Commission.Minimum).To(Equal(req.Commission.Minimum))
+			Expect(res.Commission.Percent).To(Equal(req.Commission.Percent))
+		})
+	})
+
+	Context("Put affiliate", func() {
+		var res *affiliate.Affiliate
+		var req *affiliate.Affiliate
+
+		Before(func() {
+			// Create user and affiliate
+			usr := user.Fake(db)
+			usr.MustCreate()
+
+			aff := affiliate.Fake(db, usr.Id())
+			aff.MustCreate()
+
+			req = affiliate.Fake(db, usr.Id())
+
+			// Get affiliate
+			cl.Put("/affiliate/"+aff.Id(), req, res)
+		})
+
+		It("Should update affiliate", func() {
+			Expect(res.Name).To(Equal(req.Name))
+			Expect(res.Company).To(Equal(req.Company))
+			Expect(res.Country).To(Equal(req.Country))
+			Expect(res.TaxId).To(Equal(req.TaxId))
+			Expect(res.Commission.Flat).To(Equal(req.Commission.Flat))
+			Expect(res.Commission.Minimum).To(Equal(req.Commission.Minimum))
+			Expect(res.Commission.Percent).To(Equal(req.Commission.Percent))
+		})
+	})
+
+	Context("Delete affiliate", func() {
+		id := ""
+
+		Before(func() {
+			// Create user and affiliate
+			usr := user.Fake(db)
+			usr.MustCreate()
+
+			aff := affiliate.Fake(db, usr.Id())
+			aff.MustCreate()
+
+			// Get affiliate
+			cl.Delete("/affiliate/" + aff.Id())
+
+			id = aff.Id()
+		})
+
+		It("Should delete affiliate", func() {
+			aff := affiliate.New(db)
+			err := aff.GetById(id)
+			Expect(err).ToNot(BeNil())
 		})
 	})
 })
