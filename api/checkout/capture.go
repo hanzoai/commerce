@@ -13,6 +13,7 @@ import (
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/referrer"
+	"crowdstart.com/models/referrer/tasks"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/thirdparty/mailchimp"
 	"crowdstart.com/util/counter"
@@ -66,21 +67,7 @@ func CompleteCapture(c *gin.Context, org *organization.Organization, ord *order.
 			ord.ReferrerId = ""
 		} else {
 			// Save referral
-			rfl, err := ref.SaveReferral(ord.Id(), ord.UserId)
-			if err != nil {
-				log.Warn("Unable to save referral: %v", err, c)
-			} else {
-				// Update statistics
-				if ref.AffiliateId != "" {
-					if err := counter.IncrReferrerFees(ctx, org, ref.Id(), rfl); err != nil {
-						log.Warn("Counter Error %s", err, ctx)
-					}
-
-					if err := counter.IncrAffiliateFees(ctx, org, ref.AffiliateId, rfl); err != nil {
-						log.Warn("Counter Error %s", err, ctx)
-					}
-				}
-			}
+			tasks.SaveReferral(ctx, ref.Id(), tasks.Checkout)
 		}
 	}
 

@@ -64,6 +64,7 @@ type EmailConfig struct {
 		EmailConfirmation Email `json:"emailConfirmation"`
 		EmailConfirmed    Email `json:"emailConfirmed"`
 		PasswordReset     Email `json:"PasswordReset"`
+		ReferrerUpgrade   Email `json:"referrerUpgrade"`
 	} `json:"user"`
 }
 

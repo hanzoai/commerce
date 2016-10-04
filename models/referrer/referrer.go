@@ -8,7 +8,6 @@ import (
 	"crowdstart.com/models/referral"
 	"crowdstart.com/models/transaction"
 	"crowdstart.com/models/types/client"
-	"crowdstart.com/util/timeutil"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
@@ -28,40 +27,6 @@ type Referrer struct {
 	Client      client.Client `json:"-"`
 	Blacklisted bool          `json:"blacklisted,omitempty"`
 	Duplicate   bool          `json:"duplicate,omitempty"`
-}
-
-func (r *Referrer) SaveReferral(typ string, referent interface{}) (*referral.Referral, error) {
-	rfl := referral.New(r.Db)
-
-	rfl.Referrer.UserId = r.UserId
-	rfl.Referrer.Id = r.Id()
-
-	// switch v := referent.(type) {
-	// case *order.Order:
-	// 	rfl.OrderId = v.Id()
-	// case *user.User:
-	// 	rfl.UserId = v.Id()
-	// }
-
-	// Try to save referral
-	if err := rfl.Create(); err != nil {
-		return rfl, err
-	}
-
-	// If this is the first referral, update referrer
-	if timeutil.IsZero(r.FirstReferredAt) {
-		r.FirstReferredAt = time.Now()
-		r.Update()
-	}
-
-	// Apply any program actions if they are configured
-	if len(r.Program.Actions) > 0 {
-		if err := r.Program.ApplyActions(r); err != nil {
-			return rfl, err
-		}
-	}
-
-	return rfl, nil
 }
 
 func (r *Referrer) Referrals() ([]*referral.Referral, error) {

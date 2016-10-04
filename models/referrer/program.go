@@ -8,8 +8,9 @@ import (
 type Type string
 
 const (
-	StoreCredit Type = "Credit" // Add credit to user's balance
-	Refund           = "Refund" // Refund part of the payment on a order
+	StoreCredit Type = "credit" // Add credit to user's balance
+	Refund           = "refund" // Refund part of the payment on a order
+	EmailUser        = "email-user"
 )
 
 type Event string
@@ -51,6 +52,7 @@ func (p *Program) ApplyActions(r *Referrer) error {
 		switch action.Type {
 		case StoreCredit:
 			return saveStoreCredit(r, action.Amount, action.Currency)
+		case EmailUser:
 		case Refund:
 		}
 	}

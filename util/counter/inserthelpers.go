@@ -7,6 +7,7 @@ import (
 	"appengine"
 
 	"crowdstart.com/config"
+	"crowdstart.com/datastore"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"
@@ -77,16 +78,16 @@ func totalKey(org *organization.Organization, key string, timeStamp string) stri
 	return key
 }
 
-func affiliateKey(org *organization.Organization, affId, key string, timeStamp string) string {
-	key = org.Name + sep + affId + sep + key
+func affiliateKey(affId, key string, timeStamp string) string {
+	key = affId + sep + key
 	key = addEnvironment(key)
 	key = key + sep + timeStamp
 
 	return key
 }
 
-func referrerKey(org *organization.Organization, refId, key string, timeStamp string) string {
-	key = org.Name + sep + refId + sep + key
+func referrerKey(refId, key string, timeStamp string) string {
+	key = refId + sep + key
 	key = addEnvironment(key)
 	key = key + sep + timeStamp
 
@@ -440,24 +441,22 @@ func IncrStoreProductOrders(ctx appengine.Context, org *organization.Organizatio
 	return nil
 }
 
-func IncrAffiliateFees(ctx appengine.Context, org *organization.Organization, affId string, rfl *referral.Referral) error {
-	ctx = org.Namespaced(ctx)
-
+func IncrAffiliateFees(ctx appengine.Context, affId string, rfl *referral.Referral) error {
+	db := datastore.New(ctx)
 	fee := rfl.Fee
 
 	keyId := feesKeyId(fee.Currency)
-	key := affiliateKey(org, affId, keyId, allTime)
-	log.Debug("%v incremented by %v", key, fee.Amount, org.Db.Context)
+	key := affiliateKey(affId, keyId, allTime)
+	log.Debug("%v incremented by %v", key, fee.Amount, db)
 	return IncrementBy(ctx, key, int(fee.Amount))
 }
 
-func IncrReferrerFees(ctx appengine.Context, org *organization.Organization, refId string, rfl *referral.Referral) error {
-	ctx = org.Namespaced(ctx)
-
+func IncrReferrerFees(ctx appengine.Context, refId string, rfl *referral.Referral) error {
+	db := datastore.New(ctx)
 	fee := rfl.Fee
 
 	keyId := feesKeyId(fee.Currency)
-	key := referrerKey(org, refId, keyId, allTime)
-	log.Debug("%v incremented by %v", key, fee.Amount, org.Db.Context)
+	key := referrerKey(refId, keyId, allTime)
+	log.Debug("%v incremented by %v", key, fee.Amount, db)
 	return IncrementBy(ctx, key, int(fee.Amount))
 }
