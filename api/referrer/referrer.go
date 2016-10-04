@@ -21,7 +21,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 		db := datastore.New(org.Namespaced(c))
 		ref := referrer.New(db)
 
-		// Decode response body to create new order
+		// Decode response body to create new referrer
 		if err := json.Decode(c.Request.Body, ref); err != nil {
 			http.Fail(c, 400, "Failed decode request body", err)
 			return
