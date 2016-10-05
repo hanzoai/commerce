@@ -9,8 +9,8 @@ import (
 
 var _ = Describe("site", func() {
 	Context("New site", func() {
-		var req *site.Site
-		var res *site.Site
+		req := new(site.Site)
+		res := new(site.Site)
 
 		Before(func() {
 			req = site.Fake(db)
