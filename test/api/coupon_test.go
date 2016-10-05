@@ -67,7 +67,7 @@ var _ = Describe("coupon", func() {
 			Expect(res.Used).To(Equal(req.Used))
 		})
 	})
-	FContext("Delete coupon", func() {
+	Context("Delete coupon", func() {
 		res := ""
 
 		Before(func() {
