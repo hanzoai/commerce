@@ -105,7 +105,7 @@ var _ = Describe("affiliate", func() {
 		})
 	})
 
-	FContext("Put affiliate", func() {
+	Context("Put affiliate", func() {
 		aff := new(affiliate.Affiliate)
 		res := new(affiliate.Affiliate)
 		req := new(affiliate.Affiliate)
