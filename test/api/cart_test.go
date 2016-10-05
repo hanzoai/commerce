@@ -97,8 +97,8 @@ var _ = Describe("cart", func() {
 		})
 
 		It("Should delete carts", func() {
-			cart := cart.New(db)
-			err := cart.GetById(res)
+			car := cart.New(db)
+			err := car.GetById(res)
 			Expect(err).ToNot(BeNil())
 		})
 	})
