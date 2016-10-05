@@ -427,14 +427,17 @@ func (r Rest) update(c *gin.Context) {
 	// Try to retrieve key from datastore
 	ok, err := entity.IdExists(id)
 	if !ok {
+		if err != nil {
+			r.Fail(c, 500, "Failed to retrieve key for "+id, err)
+			return
+		}
+
 		r.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
 		return
 	}
 
-	if err != nil {
-		r.Fail(c, 500, "Failed to retrieve key for "+id, err)
-		return
-	}
+	// Preserve original key
+	entity.SetKey(id)
 
 	// Decode response body to create new entity
 	if err := json.Decode(c.Request.Body, entity); err != nil {
