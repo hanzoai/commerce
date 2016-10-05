@@ -91,13 +91,12 @@ var _ = Describe("cart", func() {
 			req := cart.Fake(db, usr.Id())
 			req.MustCreate()
 
-			// Create new cart
 			cl.Delete("/cart/" + req.Id())
 
 			res = req.Id()
 		})
 
-		It("Should create new carts", func() {
+		It("Should delete carts", func() {
 			cart := cart.New(db)
 			err := cart.GetById(res)
 			Expect(err).ToNot(BeNil())
