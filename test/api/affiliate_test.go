@@ -4,14 +4,15 @@ import (
 	"crowdstart.com/models/affiliate"
 	"crowdstart.com/models/user"
 	"crowdstart.com/util/fake"
+	"crowdstart.com/util/log"
 
 	. "crowdstart.com/util/test/ginkgo"
 )
 
 var _ = Describe("affiliate", func() {
 	Context("Create affiliate", func() {
-		var req *affiliate.Affiliate
-		var res *affiliate.Affiliate
+		req := new(affiliate.Affiliate)
+		res := new(affiliate.Affiliate)
 
 		Before(func() {
 			usr := user.Fake(db)
@@ -35,8 +36,8 @@ var _ = Describe("affiliate", func() {
 	})
 
 	Context("Get affiliate", func() {
-		var res *affiliate.Affiliate
-		var aff *affiliate.Affiliate
+		res := new(affiliate.Affiliate)
+		aff := new(affiliate.Affiliate)
 
 		Before(func() {
 			// Create user and affiliate
@@ -65,8 +66,8 @@ var _ = Describe("affiliate", func() {
 	})
 
 	Context("Patch affiliate", func() {
-		var aff *affiliate.Affiliate
-		var res *affiliate.Affiliate
+		aff := new(affiliate.Affiliate)
+		res := new(affiliate.Affiliate)
 
 		req := struct {
 			Name    string `json:"name"`
@@ -78,18 +79,21 @@ var _ = Describe("affiliate", func() {
 
 		Before(func() {
 			// Create user and affiliate
+			log.Debug("CREATING USER")
 			usr := user.Fake(db)
 			usr.MustCreate()
 
 			// Save affiliate
+			log.Debug("CREATING AFFILIATE")
 			aff = affiliate.Fake(db, usr.Id())
 			aff.MustCreate()
 
 			// Patch affiliate
+			log.Debug("PATCH AFFILIATE")
 			cl.Patch("/affiliate/"+aff.Id(), req, res)
 		})
 
-		It("Should update affiliate", func() {
+		It("Should patch affiliate", func() {
 			Expect(res.Id_).To(Equal(aff.Id()))
 			Expect(res.Name).To(Equal(req.Name))
 			Expect(res.Company).To(Equal(req.Company))
@@ -101,10 +105,10 @@ var _ = Describe("affiliate", func() {
 		})
 	})
 
-	Context("Put affiliate", func() {
-		var aff *affiliate.Affiliate
-		var res *affiliate.Affiliate
-		var req *affiliate.Affiliate
+	FContext("Put affiliate", func() {
+		aff := new(affiliate.Affiliate)
+		res := new(affiliate.Affiliate)
+		req := new(affiliate.Affiliate)
 
 		Before(func() {
 			// Create user and affiliate
@@ -117,11 +121,14 @@ var _ = Describe("affiliate", func() {
 
 			req = affiliate.Fake(db, usr.Id())
 
+			log.Debug("Aff id: %s, key: %v", aff.Id(), aff.Key())
+			log.JSON("Request:", req)
+
 			// Put affiliate
 			cl.Put("/affiliate/"+aff.Id(), req, res)
 		})
 
-		It("Should update affiliate", func() {
+		It("Should put affiliate", func() {
 			Expect(res.Id_).To(Equal(aff.Id()))
 			Expect(res.Name).To(Equal(req.Name))
 			Expect(res.Company).To(Equal(req.Company))
