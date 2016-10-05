@@ -8,7 +8,7 @@ import (
 	. "crowdstart.com/util/test/ginkgo"
 )
 
-var _ = FDescribe("user", func() {
+var _ = Describe("user", func() {
 	var normalize = func(s string) string {
 		return strings.ToLower(strings.TrimSpace(s))
 	}
