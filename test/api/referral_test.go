@@ -7,15 +7,14 @@ import (
 	"crowdstart.com/models/referral"
 	"crowdstart.com/models/user"
 	"crowdstart.com/models/variant"
-	"crowdstart.com/util/log"
 
 	. "crowdstart.com/util/test/ginkgo"
 )
 
 var _ = Describe("referral", func() {
 	Context("New referral", func() {
-		var req *referral.Referral
-		var res *referral.Referral
+		req := new(referral.Referral)
+		res := new(referral.Referral)
 
 		Before(func() {
 			p := product.Fake(db)
@@ -23,16 +22,15 @@ var _ = Describe("referral", func() {
 			v := variant.Fake(db, p.Id())
 			v.MustCreate()
 			li := lineitem.Fake(v.Id(), v.Name, v.SKU)
-			o := order.Fake(db, li)
-			o.MustCreate()
+			ord := order.Fake(db, li)
+			ord.MustCreate()
 			usr := user.Fake(db)
 			usr.MustCreate()
-			req = referral.Fake(db, usr.Id(), o.Id())
+			req = referral.Fake(db, usr.Id(), ord.Id())
 			res = referral.New(db)
 
 			// Create new referral
 			cl.Post("/referral", req, res)
-			log.JSON(res)
 		})
 
 		It("Should create new referrals", func() {
@@ -40,6 +38,62 @@ var _ = Describe("referral", func() {
 			Expect(res.OrderId).To(Equal(req.OrderId))
 			Expect(res.Referrer).To(Equal(req.Referrer))
 			Expect(res.Fee).To(Equal(req.Fee))
+		})
+	})
+	Context("Get referral", func() {
+		req := new(referral.Referral)
+		res := new(referral.Referral)
+
+		Before(func() {
+			p := product.Fake(db)
+			p.MustCreate()
+			v := variant.Fake(db, p.Id())
+			v.MustCreate()
+			li := lineitem.Fake(v.Id(), v.Name, v.SKU)
+			ord := order.Fake(db, li)
+			ord.MustCreate()
+			usr := user.Fake(db)
+			usr.MustCreate()
+			req = referral.Fake(db, usr.Id(), ord.Id())
+			req.MustCreate()
+
+			res = referral.New(db)
+
+			cl.Get("/referral/"+req.Id(), res)
+		})
+
+		It("Should get referrals", func() {
+			Expect(res.Type).To(Equal(req.Type))
+			Expect(res.OrderId).To(Equal(req.OrderId))
+			Expect(res.Referrer).To(Equal(req.Referrer))
+			Expect(res.Fee).To(Equal(req.Fee))
+		})
+	})
+	Context("Delete referral", func() {
+		res := ""
+
+		Before(func() {
+			p := product.Fake(db)
+			p.MustCreate()
+			v := variant.Fake(db, p.Id())
+			v.MustCreate()
+			li := lineitem.Fake(v.Id(), v.Name, v.SKU)
+			ord := order.Fake(db, li)
+			ord.MustCreate()
+			usr := user.Fake(db)
+			usr.MustCreate()
+			req := referral.Fake(db, usr.Id(), ord.Id())
+			req.MustCreate()
+
+			// Create new referral
+			cl.Delete("/referral/" + req.Id())
+			res = req.Id()
+		})
+
+		It("Should delete referrals", func() {
+			ref := referral.New(db)
+			err := ref.GetById(res)
+			Expect(err).ToNot(BeNil())
 		})
 	})
 })
