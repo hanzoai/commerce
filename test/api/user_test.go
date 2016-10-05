@@ -1,12 +1,18 @@
 package test
 
 import (
+	"strings"
+
 	"crowdstart.com/models/user"
 
 	. "crowdstart.com/util/test/ginkgo"
 )
 
-var _ = Describe("user", func() {
+var _ = FDescribe("user", func() {
+	var normalize = func(s string) string {
+		return strings.ToLower(strings.TrimSpace(s))
+	}
+
 	Context("New user", func() {
 		req := new(user.User)
 		res := new(user.User)
@@ -21,13 +27,14 @@ var _ = Describe("user", func() {
 		It("Should create new users", func() {
 			Expect(res.FirstName).To(Equal(req.FirstName))
 			Expect(res.LastName).To(Equal(req.LastName))
-			Expect(res.Username).To(Equal(req.Username))
+			Expect(res.Username).To(Equal(normalize(req.Username)))
 			Expect(res.BillingAddress).To(Equal(req.BillingAddress))
 			Expect(res.ShippingAddress).To(Equal(req.ShippingAddress))
-			Expect(res.Email).To(Equal(req.Email))
+			Expect(res.Email).To(Equal(normalize(req.Email)))
 			Expect(res.Enabled).To(Equal(req.Enabled))
 		})
 	})
+
 	Context("Get user", func() {
 		req := new(user.User)
 		res := new(user.User)
@@ -44,13 +51,14 @@ var _ = Describe("user", func() {
 		It("Should create new users", func() {
 			Expect(res.FirstName).To(Equal(req.FirstName))
 			Expect(res.LastName).To(Equal(req.LastName))
-			Expect(res.Username).To(Equal(req.Username))
+			Expect(res.Username).To(Equal(normalize(req.Username)))
 			Expect(res.BillingAddress).To(Equal(req.BillingAddress))
 			Expect(res.ShippingAddress).To(Equal(req.ShippingAddress))
-			Expect(res.Email).To(Equal(req.Email))
+			Expect(res.Email).To(Equal(normalize(req.Email)))
 			Expect(res.Enabled).To(Equal(req.Enabled))
 		})
 	})
+
 	Context("Delete user", func() {
 		res := ""
 
