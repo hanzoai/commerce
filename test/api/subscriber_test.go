@@ -9,8 +9,8 @@ import (
 
 var _ = Describe("subscriber", func() {
 	Context("New subscriber", func() {
-		var req *subscriber.Subscriber
-		var res *subscriber.Subscriber
+		req := new(subscriber.Subscriber)
+		res := new(subscriber.Subscriber)
 
 		Before(func() {
 			usr := user.Fake(db)
@@ -27,6 +27,47 @@ var _ = Describe("subscriber", func() {
 			Expect(res.UserId).To(Equal(req.UserId))
 			Expect(res.MailingListId).To(Equal(req.MailingListId))
 			Expect(res.Unsubscribed).To(Equal(req.Unsubscribed))
+		})
+	})
+	Context("Get subscriber", func() {
+		req := new(subscriber.Subscriber)
+		res := new(subscriber.Subscriber)
+
+		Before(func() {
+			usr := user.Fake(db)
+			usr.MustCreate()
+			req = subscriber.Fake(db, usr.Id())
+			req.MustCreate()
+
+			res = subscriber.New(db)
+
+			cl.Get("/subscriber/"+req.Id(), res)
+		})
+
+		It("Should create new subscribers", func() {
+			Expect(res.Email).To(Equal(req.Email))
+			Expect(res.UserId).To(Equal(req.UserId))
+			Expect(res.MailingListId).To(Equal(req.MailingListId))
+			Expect(res.Unsubscribed).To(Equal(req.Unsubscribed))
+		})
+	})
+	Context("Delete subscriber", func() {
+		res := ""
+
+		Before(func() {
+			usr := user.Fake(db)
+			usr.MustCreate()
+			req := subscriber.Fake(db, usr.Id())
+			req.MustCreate()
+
+			cl.Delete("/subscriber/" + req.Id())
+			res = req.Id()
+		})
+
+		It("Should create new subscribers", func() {
+			sub := subscriber.New(db)
+			err := sub.GetById(res)
+			Expect(err).ToNot(BeNil())
 		})
 	})
 })
