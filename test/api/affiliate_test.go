@@ -3,6 +3,7 @@ package test
 import (
 	"crowdstart.com/models/affiliate"
 	"crowdstart.com/models/user"
+	"crowdstart.com/util/fake"
 
 	. "crowdstart.com/util/test/ginkgo"
 )
@@ -64,35 +65,44 @@ var _ = Describe("affiliate", func() {
 	})
 
 	Context("Patch affiliate", func() {
+		var aff *affiliate.Affiliate
 		var res *affiliate.Affiliate
-		var req *affiliate.Affiliate
+
+		req := struct {
+			Name    string `json:"name"`
+			Company string `json:"company"`
+		}{
+			fake.FullName(),
+			fake.Company(),
+		}
 
 		Before(func() {
 			// Create user and affiliate
 			usr := user.Fake(db)
 			usr.MustCreate()
 
-			aff := affiliate.Fake(db, usr.Id())
+			// Save affiliate
+			aff = affiliate.Fake(db, usr.Id())
 			aff.MustCreate()
 
-			req = affiliate.Fake(db, usr.Id())
-
-			// Get affiliate
+			// Patch affiliate
 			cl.Patch("/affiliate/"+aff.Id(), req, res)
 		})
 
 		It("Should update affiliate", func() {
+			Expect(res.Id_).To(Equal(aff.Id()))
 			Expect(res.Name).To(Equal(req.Name))
 			Expect(res.Company).To(Equal(req.Company))
-			Expect(res.Country).To(Equal(req.Country))
-			Expect(res.TaxId).To(Equal(req.TaxId))
-			Expect(res.Commission.Flat).To(Equal(req.Commission.Flat))
-			Expect(res.Commission.Minimum).To(Equal(req.Commission.Minimum))
-			Expect(res.Commission.Percent).To(Equal(req.Commission.Percent))
+			Expect(res.Country).To(Equal(aff.Country))
+			Expect(res.TaxId).To(Equal(aff.TaxId))
+			Expect(res.Commission.Flat).To(Equal(aff.Commission.Flat))
+			Expect(res.Commission.Minimum).To(Equal(aff.Commission.Minimum))
+			Expect(res.Commission.Percent).To(Equal(aff.Commission.Percent))
 		})
 	})
 
 	Context("Put affiliate", func() {
+		var aff *affiliate.Affiliate
 		var res *affiliate.Affiliate
 		var req *affiliate.Affiliate
 
@@ -101,16 +111,18 @@ var _ = Describe("affiliate", func() {
 			usr := user.Fake(db)
 			usr.MustCreate()
 
+			// Save affiliate
 			aff := affiliate.Fake(db, usr.Id())
 			aff.MustCreate()
 
 			req = affiliate.Fake(db, usr.Id())
 
-			// Get affiliate
+			// Put affiliate
 			cl.Put("/affiliate/"+aff.Id(), req, res)
 		})
 
 		It("Should update affiliate", func() {
+			Expect(res.Id_).To(Equal(aff.Id()))
 			Expect(res.Name).To(Equal(req.Name))
 			Expect(res.Company).To(Equal(req.Company))
 			Expect(res.Country).To(Equal(req.Country))
