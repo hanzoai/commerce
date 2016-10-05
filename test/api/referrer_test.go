@@ -13,8 +13,8 @@ import (
 
 var _ = Describe("referrer", func() {
 	Context("New referrer", func() {
-		var req *referrer.Referrer
-		var res *referrer.Referrer
+		req := new(referrer.Referrer)
+		res := new(referrer.Referrer)
 
 		Before(func() {
 			p := product.Fake(db)
@@ -22,11 +22,11 @@ var _ = Describe("referrer", func() {
 			v := variant.Fake(db, p.Id())
 			v.MustCreate()
 			li := lineitem.Fake(v.Id(), v.Name, v.SKU)
-			o := order.Fake(db, li)
-			o.MustCreate()
+			ord := order.Fake(db, li)
+			ord.MustCreate()
 			usr := user.Fake(db)
 			usr.MustCreate()
-			req = referrer.Fake(db, usr.Id(), o.Id())
+			req = referrer.Fake(db, usr.Id(), ord.Id())
 			res = referrer.New(db)
 
 			// Create new referrer
@@ -38,6 +38,61 @@ var _ = Describe("referrer", func() {
 			Expect(res.OrderId).To(Equal(req.OrderId))
 			Expect(res.UserId).To(Equal(req.UserId))
 			Expect(res.FirstReferredAt).To(Equal(req.FirstReferredAt))
+		})
+	})
+	Context("Get referrer", func() {
+		req := new(referrer.Referrer)
+		res := new(referrer.Referrer)
+
+		Before(func() {
+			p := product.Fake(db)
+			p.MustCreate()
+			v := variant.Fake(db, p.Id())
+			v.MustCreate()
+			li := lineitem.Fake(v.Id(), v.Name, v.SKU)
+			ord := order.Fake(db, li)
+			ord.MustCreate()
+			usr := user.Fake(db)
+			usr.MustCreate()
+			req = referrer.Fake(db, usr.Id(), ord.Id())
+			req.MustCreate()
+
+			res = referrer.New(db)
+
+			cl.Get("/referrer/"+req.Id(), res)
+		})
+
+		It("Should get referrers", func() {
+			Expect(res.Code).To(Equal(req.Code))
+			Expect(res.OrderId).To(Equal(req.OrderId))
+			Expect(res.UserId).To(Equal(req.UserId))
+			Expect(res.FirstReferredAt.UTC()).To(Equal(req.FirstReferredAt.UTC()))
+		})
+	})
+	Context("Delete referrer", func() {
+		res := ""
+
+		Before(func() {
+			p := product.Fake(db)
+			p.MustCreate()
+			v := variant.Fake(db, p.Id())
+			v.MustCreate()
+			li := lineitem.Fake(v.Id(), v.Name, v.SKU)
+			ord := order.Fake(db, li)
+			ord.MustCreate()
+			usr := user.Fake(db)
+			usr.MustCreate()
+			req := referrer.Fake(db, usr.Id(), ord.Id())
+			req.MustCreate()
+
+			cl.Delete("/referrer/" + req.Id())
+			res = req.Id()
+		})
+
+		It("Should get referrers", func() {
+			refer := referrer.New(db)
+			err := refer.GetById(res)
+			Expect(err).ToNot(BeNil())
 		})
 	})
 })
