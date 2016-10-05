@@ -9,7 +9,6 @@ import (
 	"crowdstart.com/models/user"
 	"crowdstart.com/models/variant"
 	"crowdstart.com/util/hashid"
-	"crowdstart.com/util/log"
 
 	. "crowdstart.com/util/test/ginkgo"
 )
@@ -69,11 +68,10 @@ var _ = Describe("checkout", func() {
 
 			// Make request
 			cl.Post("/authorize", req, res)
-			log.JSON(res)
 		})
 
 		Context("First Time Customers", func() {
-			FIt("Should authorize new order successfully", func() {
+			It("Should authorize new order successfully", func() {
 				getUser(res.UserId)
 				// Payment should be in db
 				Expect(len(res.PaymentIds)).To(Equal(1))

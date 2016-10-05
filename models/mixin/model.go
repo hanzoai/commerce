@@ -98,7 +98,7 @@ type Model struct {
 	key datastore.Key
 
 	// Set by our mixin
-	Id_       string    `json:"id"`
+	Id_       string    `json:"id,omitempty"`
 	CreatedAt time.Time `json:"createdAt,omitempty"`
 	UpdatedAt time.Time `json:"updatedAt,omitempty"`
 	Deleted   bool      `json:"deleted,omitempty"`
