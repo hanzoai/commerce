@@ -94,9 +94,9 @@ const (
 
 type Schedule struct {
 	Type          Type   `json:"type"`
-	Period        int    `json:"period"`        // DailyRolling: number of days of payment latency
-	WeeklyAnchor  string `json:"weeklyAnchor"`  // WeeklyAnchored: day of the week when the payout should occur
-	MonthlyAnchor int    `json:"monthlyAnchor"` // MonthlyAnchored: day of the month when the payout should occur
+	Period        int    `json:"period"`                  // DailyRolling: number of days of payment latency
+	WeeklyAnchor  string `json:"weeklyAnchor,omitempty"`  // WeeklyAnchored: day of the week when the payout should occur
+	MonthlyAnchor int    `json:"monthlyAnchor,omitempty"` // MonthlyAnchored: day of the month when the payout should occur
 }
 
 func (s Schedule) Cutoff(t time.Time) time.Time {
