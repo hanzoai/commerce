@@ -11,11 +11,11 @@ import (
 	. "crowdstart.com/util/test/ginkgo"
 )
 
-func normalize(s string) string {
-	return strings.ToLower(strings.TrimSpace(s))
-}
-
 var _ = Describe("order", func() {
+	var normalize = func(s string) string {
+		return strings.ToLower(strings.TrimSpace(s))
+	}
+
 	Context("New order", func() {
 		req := new(order.Order)
 		res := new(order.Order)

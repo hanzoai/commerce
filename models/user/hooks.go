@@ -1,8 +1,18 @@
 package user
 
-import "crowdstart.com/util/webhook"
+import (
+	"strings"
+
+	"crowdstart.com/util/webhook"
+)
 
 // Hooks
+func (u *User) BeforeCreate() error {
+	u.Username = strings.ToLower(u.Username)
+	u.Email = strings.ToLower(u.Email)
+	return nil
+}
+
 func (u *User) AfterCreate() error {
 	webhook.Emit(u.Context(), u.Namespace(), "user.created", u)
 
