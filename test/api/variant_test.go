@@ -9,13 +9,13 @@ import (
 
 var _ = Describe("variant", func() {
 	Context("New variant", func() {
-		var req *variant.Variant
-		var res *variant.Variant
+		req := new(variant.Variant)
+		res := new(variant.Variant)
 
 		Before(func() {
-			p := product.Fake(db)
-			p.MustCreate()
-			req = variant.Fake(db, p.Id())
+			prod := product.Fake(db)
+			prod.MustCreate()
+			req = variant.Fake(db, prod.Id())
 			res = variant.New(db)
 
 			// Create new variant
