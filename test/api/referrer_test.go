@@ -17,11 +17,11 @@ var _ = Describe("referrer", func() {
 		res := new(referrer.Referrer)
 
 		Before(func() {
-			p := product.Fake(db)
-			p.MustCreate()
-			v := variant.Fake(db, p.Id())
-			v.MustCreate()
-			li := lineitem.Fake(v.Id(), v.Name, v.SKU)
+			prod := product.Fake(db)
+			prod.MustCreate()
+			vari := variant.Fake(db, prod.Id())
+			vari.MustCreate()
+			li := lineitem.Fake(vari.Id(), vari.Name, vari.SKU)
 			ord := order.Fake(db, li)
 			ord.MustCreate()
 			usr := user.Fake(db)
@@ -45,11 +45,11 @@ var _ = Describe("referrer", func() {
 		res := new(referrer.Referrer)
 
 		Before(func() {
-			p := product.Fake(db)
-			p.MustCreate()
-			v := variant.Fake(db, p.Id())
-			v.MustCreate()
-			li := lineitem.Fake(v.Id(), v.Name, v.SKU)
+			prod := product.Fake(db)
+			prod.MustCreate()
+			vari := variant.Fake(db, prod.Id())
+			vari.MustCreate()
+			li := lineitem.Fake(vari.Id(), vari.Name, vari.SKU)
 			ord := order.Fake(db, li)
 			ord.MustCreate()
 			usr := user.Fake(db)
