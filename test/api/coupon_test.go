@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"crowdstart.com/models/coupon"
+	"crowdstart.com/util/log"
 
 	. "crowdstart.com/util/test/ginkgo"
 )
@@ -48,7 +49,9 @@ var _ = Describe("coupon", func() {
 			res = coupon.New(db)
 
 			// Get coupon
-			cl.Get("/coupon/"+req.Id(), res)
+			w := cl.Get("/coupon/"+req.Id(), res)
+			log.Warn(w.Body.String())
+
 		})
 
 		It("Should get coupons", func() {
@@ -56,10 +59,8 @@ var _ = Describe("coupon", func() {
 			Expect(res.Name).To(Equal(req.Name))
 			Expect(res.Code_).To(Equal(strings.ToUpper(req.Code_)))
 			Expect(res.Dynamic).To(Equal(req.Dynamic))
-			// TODO: Ask Zach about this.
-			// It's respecting time zones so equal isn't right.  Not sure what it should be.
-			// Expect(res.StartDate).To(Equal(req.StartDate))
-			// Expect(res.EndDate).To(Equal(req.EndDate))
+			Expect(res.StartDate.UTC()).To(Equal(req.StartDate))
+			Expect(res.EndDate.UTC()).To(Equal(req.EndDate))
 			Expect(res.Once).To(Equal(req.Once))
 			Expect(res.Limit).To(Equal(req.Limit))
 			Expect(res.Enabled).To(Equal(req.Enabled))
