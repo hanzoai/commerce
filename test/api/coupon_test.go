@@ -11,8 +11,8 @@ import (
 
 var _ = Describe("coupon", func() {
 	Context("New coupon", func() {
-		var req *coupon.Coupon
-		var res *coupon.Coupon
+		req := new(coupon.Coupon)
+		res := new(coupon.Coupon)
 
 		Before(func() {
 			req = coupon.Fake(db)
@@ -36,6 +36,7 @@ var _ = Describe("coupon", func() {
 			Expect(res.Used).To(Equal(req.Used))
 		})
 	})
+
 	Context("Get coupon", func() {
 		req := new(coupon.Coupon)
 		res := new(coupon.Coupon)
@@ -68,6 +69,7 @@ var _ = Describe("coupon", func() {
 			Expect(res.Used).To(Equal(req.Used))
 		})
 	})
+
 	Context("Delete coupon", func() {
 		res := ""
 
@@ -83,8 +85,8 @@ var _ = Describe("coupon", func() {
 		})
 
 		It("Should delete coupons", func() {
-			c := coupon.New(db)
-			err := c.GetById(res)
+			cpn := coupon.New(db)
+			err := cpn.GetById(res)
 			Expect(err).ToNot(BeNil())
 		})
 	})
