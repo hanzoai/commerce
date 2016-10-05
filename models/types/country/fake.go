@@ -1,7 +1,10 @@
 package country
 
-import "math/rand"
+import (
+	"math/rand"
+	"strings"
+)
 
-func Fake() Country {
-	return Countries[rand.Intn(numCountries)]
+func Fake() string {
+	return strings.ToLower(Countries[rand.Intn(numCountries)].ISO3166OneAlphaTwo)
 }
