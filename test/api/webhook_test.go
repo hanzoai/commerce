@@ -8,8 +8,8 @@ import (
 
 var _ = Describe("webhook", func() {
 	Context("New webhook", func() {
-		var req *webhook.Webhook
-		var res *webhook.Webhook
+		req := new(webhook.Webhook)
+		res := new(webhook.Webhook)
 
 		Before(func() {
 			req = webhook.Fake(db)
@@ -24,6 +24,43 @@ var _ = Describe("webhook", func() {
 			Expect(res.Url).To(Equal(req.Url))
 			Expect(res.Live).To(Equal(req.Live))
 			Expect(res.All).To(Equal(req.All))
+		})
+	})
+	Context("Get webhook", func() {
+		req := new(webhook.Webhook)
+		res := new(webhook.Webhook)
+
+		Before(func() {
+			req = webhook.Fake(db)
+			req.MustCreate()
+
+			res = webhook.New(db)
+
+			cl.Get("/webhook/"+req.Id(), res)
+		})
+
+		It("Should get webhooks", func() {
+			Expect(res.Enabled).To(Equal(req.Enabled))
+			Expect(res.Url).To(Equal(req.Url))
+			Expect(res.Live).To(Equal(req.Live))
+			Expect(res.All).To(Equal(req.All))
+		})
+	})
+	Context("Delete webhook", func() {
+		res := ""
+
+		Before(func() {
+			req := webhook.Fake(db)
+			req.MustCreate()
+
+			cl.Delete("/webhook/" + req.Id())
+			res = req.Id()
+		})
+
+		It("Should delete webhooks", func() {
+			hook := webhook.New(db)
+			err := hook.GetById(res)
+			Expect(err).ToNot(BeNil())
 		})
 	})
 })
