@@ -64,7 +64,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 			return
 		}
 
-		if err := ord.Put(); err != nil {
+		if err := ord.Create(); err != nil {
 			http.Fail(c, 500, "Failed to create order", err)
 		} else {
 			c.Writer.Header().Add("Location", c.Request.URL.Path+"/"+ord.Id())
@@ -98,7 +98,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 		}
 
 		// Replace whatever was in the datastore with our new updated order
-		if err := ord.Put(); err != nil {
+		if err := ord.Update(); err != nil {
 			http.Fail(c, 500, "Failed to update order", err)
 		} else {
 			http.Render(c, 200, ord)
@@ -130,7 +130,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 			return
 		}
 
-		if err := ord.Put(); err != nil {
+		if err := ord.Update(); err != nil {
 			http.Fail(c, 500, "Failed to update order", err)
 		} else {
 			http.Render(c, 200, ord)
