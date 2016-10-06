@@ -295,10 +295,6 @@ func JSON(formatOrObject interface{}, args ...interface{}) {
 	}
 }
 
-func Escape(s string) string {
-	return strings.Replace(s, "%", "%%", -1)
-}
-
 func Stack() {
 	stack := debug.Stack()
 	lines := strings.Split(string(stack), "\n")

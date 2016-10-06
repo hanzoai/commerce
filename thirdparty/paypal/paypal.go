@@ -30,6 +30,10 @@ func New(ctx appengine.Context) *Client {
 	return &Client{ctx: ctx}
 }
 
+func escape(s string) string {
+	return strings.Replace(s, "%", "%%", -1)
+}
+
 func setupHeaders(req *http.Request, ord *order.Order, org *organization.Organization) {
 	if config.IsProduction {
 		req.Header.Set("X-PAYPAL-SECURITY-USERID", org.Paypal.Live.SecurityUserId)
@@ -100,7 +104,7 @@ func (c Client) Pay(pay *payment.Payment, usr *user.User, ord *order.Order, org 
 	req.PostForm = data
 
 	dump, _ := httputil.DumpRequestOut(req, true)
-	log.Debug("%v", log.Escape(string(dump)), c.ctx)
+	log.Debug("%v", escape(string(dump)), c.ctx)
 
 	client := urlfetch.Client(c.ctx)
 	res, err := client.Do(req)
@@ -202,7 +206,7 @@ func (c Client) SetPaymentOptions(pay *payment.Payment, user *user.User, ord *or
 	req.PostForm = data
 
 	dump, _ := httputil.DumpRequestOut(req, true)
-	log.Debug("%v", log.Escape(string(dump)), c.ctx)
+	log.Debug("%v", escape(string(dump)), c.ctx)
 
 	client := urlfetch.Client(c.ctx)
 	res, err := client.Do(req)
