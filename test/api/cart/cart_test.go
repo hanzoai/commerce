@@ -44,6 +44,7 @@ var _ = Describe("cart", func() {
 			Expect(res.GiftEmail).To(Equal(req.GiftEmail))
 		})
 	})
+
 	Context("Get cart", func() {
 		req := new(cart.Cart)
 		res := new(cart.Cart)
@@ -83,6 +84,7 @@ var _ = Describe("cart", func() {
 			Expect(res.GiftEmail).To(Equal(req.GiftEmail))
 		})
 	})
+
 	Context("Delete cart", func() {
 		res := ""
 
@@ -116,10 +118,10 @@ var _ = Describe("cart", func() {
 			usr.MustCreate()
 
 			// Create cart
-			car := cart.Fake(db, usr.Id())
+			car = cart.Fake(db, usr.Id())
 			car.MustCreate()
 
-			// Create new cart for update
+			// Create cart request
 			req = cart.Fake(db, usr.Id())
 
 			// Update cart
@@ -148,7 +150,7 @@ var _ = Describe("cart", func() {
 		})
 	})
 
-	FContext("Patch cart", func() {
+	Context("Patch cart", func() {
 		car := new(cart.Cart)
 		res := new(cart.Cart)
 
