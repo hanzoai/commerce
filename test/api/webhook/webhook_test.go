@@ -2,6 +2,7 @@ package test
 
 import (
 	"crowdstart.com/models/webhook"
+	"github.com/icrowley/fake"
 
 	. "crowdstart.com/util/test/ginkgo"
 )
@@ -26,6 +27,7 @@ var _ = Describe("webhook", func() {
 			Expect(res.All).To(Equal(req.All))
 		})
 	})
+
 	Context("Get webhook", func() {
 		req := new(webhook.Webhook)
 		res := new(webhook.Webhook)
@@ -46,6 +48,60 @@ var _ = Describe("webhook", func() {
 			Expect(res.All).To(Equal(req.All))
 		})
 	})
+
+	Context("Patch webhook", func() {
+		wh := new(webhook.Webhook)
+		res := new(webhook.Webhook)
+
+		req := struct {
+			Url string `json:"url"`
+		}{
+			fake.DomainName(),
+		}
+
+		Before(func() {
+			// Save webhook
+			wh = webhook.Fake(db)
+			wh.MustCreate()
+
+			// Patch webhook
+			cl.Patch("/webhook/"+wh.Id(), req, res)
+		})
+
+		It("Should patch webhook", func() {
+			Expect(res.Id_).To(Equal(wh.Id()))
+			Expect(res.Enabled).To(Equal(wh.Enabled))
+			Expect(res.Url).To(Equal(req.Url))
+			Expect(res.Live).To(Equal(wh.Live))
+			Expect(res.All).To(Equal(wh.All))
+		})
+	})
+
+	Context("Put webhook", func() {
+		wh := new(webhook.Webhook)
+		res := new(webhook.Webhook)
+		req := new(webhook.Webhook)
+
+		Before(func() {
+			// Save webhook
+			wh = webhook.Fake(db)
+			wh.MustCreate()
+
+			req = webhook.Fake(db)
+
+			// Put webhook
+			cl.Put("/webhook/"+wh.Id(), req, res)
+		})
+
+		It("Should put webhook", func() {
+			Expect(res.Id_).To(Equal(wh.Id()))
+			Expect(res.Enabled).To(Equal(req.Enabled))
+			Expect(res.Url).To(Equal(req.Url))
+			Expect(res.Live).To(Equal(req.Live))
+			Expect(res.All).To(Equal(req.All))
+		})
+	})
+
 	Context("Delete webhook", func() {
 		res := ""
 
