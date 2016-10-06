@@ -4,6 +4,7 @@ import (
 	"crowdstart.com/models/affiliate"
 	"crowdstart.com/models/user"
 	"crowdstart.com/util/fake"
+	"crowdstart.com/util/log"
 
 	. "crowdstart.com/util/test/ginkgo"
 )
@@ -108,16 +109,20 @@ var _ = Describe("affiliate", func() {
 
 		Before(func() {
 			// Create user and affiliate
+			log.Warn("create user")
 			usr := user.Fake(db)
 			usr.MustCreate()
 
 			// Save affiliate
+			log.Warn("create affiliate")
 			aff = affiliate.Fake(db, usr.Id())
 			aff.MustCreate()
 
 			req = affiliate.Fake(db, usr.Id())
+			log.JSON(req)
 
 			// Put affiliate
+			log.Warn("update affiliate")
 			cl.Put("/affiliate/"+aff.Id(), req, res)
 		})
 
