@@ -2,6 +2,7 @@ package test
 
 import (
 	"crowdstart.com/models/product"
+	"github.com/icrowley/fake"
 
 	. "crowdstart.com/util/test/ginkgo"
 )
@@ -30,6 +31,7 @@ var _ = Describe("product", func() {
 			Expect(res.ListPrice).To(Equal(req.ListPrice))
 		})
 	})
+
 	Context("Get product", func() {
 		req := new(product.Product)
 		res := new(product.Product)
@@ -53,6 +55,70 @@ var _ = Describe("product", func() {
 			Expect(res.ListPrice).To(Equal(req.ListPrice))
 		})
 	})
+
+	Context("Patch product", func() {
+		prod := new(product.Product)
+		res := new(product.Product)
+
+		req := struct {
+			Name        string `json:"name"`
+			Description string `json:"description"`
+		}{
+			fake.Word(),
+			fake.Sentence(),
+		}
+
+		Before(func() {
+			// Create product
+			prod = product.Fake(db)
+			prod.MustCreate()
+
+			// Patch product
+			cl.Patch("/product/"+prod.Id(), req, res)
+		})
+
+		It("Should patch product", func() {
+			Expect(res.Id_).To(Equal(prod.Id()))
+			Expect(res.Name).To(Equal(req.Name))
+			Expect(res.Headline).To(Equal(prod.Headline))
+			Expect(res.Description).To(Equal(req.Description))
+			Expect(res.Slug).To(Equal(prod.Slug))
+			Expect(res.Currency).To(Equal(prod.Currency))
+			Expect(res.Price).To(Equal(prod.Price))
+			Expect(res.Shipping).To(Equal(prod.Shipping))
+			Expect(res.ListPrice).To(Equal(prod.ListPrice))
+		})
+	})
+
+	Context("Put product", func() {
+		prod := new(product.Product)
+		res := new(product.Product)
+		req := new(product.Product)
+
+		Before(func() {
+			prod = product.Fake(db)
+			prod.MustCreate()
+
+			// Create product request
+			req = product.Fake(db)
+
+			// Update product
+			cl.Put("/product/"+prod.Id(), req, res)
+		})
+
+		It("Should put product", func() {
+			Expect(res.Id_).To(Equal(prod.Id()))
+			Expect(res.Name).To(Equal(req.Name))
+			Expect(res.Headline).To(Equal(req.Headline))
+			Expect(res.Description).To(Equal(req.Description))
+			Expect(res.Slug).To(Equal(req.Slug))
+			Expect(res.Currency).To(Equal(req.Currency))
+			Expect(res.Price).To(Equal(req.Price))
+			Expect(res.Shipping).To(Equal(req.Shipping))
+			Expect(res.ListPrice).To(Equal(req.ListPrice))
+		})
+	})
+
 	Context("Delete product", func() {
 		res := ""
 
