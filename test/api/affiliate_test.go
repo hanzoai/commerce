@@ -4,7 +4,6 @@ import (
 	"crowdstart.com/models/affiliate"
 	"crowdstart.com/models/user"
 	"crowdstart.com/util/fake"
-	"crowdstart.com/util/log"
 
 	. "crowdstart.com/util/test/ginkgo"
 )
@@ -40,17 +39,16 @@ var _ = Describe("affiliate", func() {
 		aff := new(affiliate.Affiliate)
 
 		Before(func() {
-			// Create user and affiliate
+			// Create user
 			usr := user.Fake(db)
 			usr.MustCreate()
 
+			// Create affiliate
 			aff = affiliate.Fake(db, usr.Id())
 			aff.MustCreate()
 
-			// Verify it exists
-			res = affiliate.New(db)
-
 			// Get affiliate
+			res = affiliate.New(db)
 			cl.Get("/affiliate/"+aff.Id(), res)
 		})
 
@@ -78,11 +76,11 @@ var _ = Describe("affiliate", func() {
 		}
 
 		Before(func() {
-			// Create user and affiliate
+			// Create user
 			usr := user.Fake(db)
 			usr.MustCreate()
 
-			// Save affiliate
+			// Create affiliate
 			aff = affiliate.Fake(db, usr.Id())
 			aff.MustCreate()
 
@@ -108,21 +106,18 @@ var _ = Describe("affiliate", func() {
 		req := new(affiliate.Affiliate)
 
 		Before(func() {
-			// Create user and affiliate
-			log.Warn("create user")
+			// Create user
 			usr := user.Fake(db)
 			usr.MustCreate()
 
-			// Save affiliate
-			log.Warn("create affiliate")
+			// Create affiliate
 			aff = affiliate.Fake(db, usr.Id())
 			aff.MustCreate()
 
+			// Create new affiliate request
 			req = affiliate.Fake(db, usr.Id())
-			log.JSON(req)
 
-			// Put affiliate
-			log.Warn("update affiliate")
+			// Update affiliate
 			cl.Put("/affiliate/"+aff.Id(), req, res)
 		})
 
