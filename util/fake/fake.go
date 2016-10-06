@@ -3,6 +3,7 @@ package fake
 import (
 	"math/rand"
 	"reflect"
+	"strings"
 )
 
 type fieldMap map[string]reflect.Value
@@ -79,4 +80,15 @@ func Bool() bool {
 
 func Url() string {
 	return "http://" + DomainName()
+}
+
+func Id() string {
+	return RandSeq(10, []rune("abcdefghijklmnopqrstuvwxyZABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"))
+}
+
+func SKU() string {
+	name := ProductName()
+	sku := strings.ToLower(name)
+	sku = strings.Replace(sku, " ", "-", -1)
+	return sku
 }
