@@ -391,7 +391,7 @@ func (m *Model) KeyById(id string) (datastore.Key, bool, error) {
 	// Use key if we have one
 	if err == nil {
 		err = m.Get(key)
-		return m.Key(), err != nil, err
+		return m.Key(), err == nil, err
 	}
 
 	// Set err to nil and try to use filter
