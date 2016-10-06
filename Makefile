@@ -276,7 +276,11 @@ bench:
 	@$(ginkgo) $(test_target) -p=true -progress --randomizeAllSpecs --failFast --skipPackage=integration $(test_verbose)
 
 test-ci:
-	$(ginkgo) -r=true -p=true --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace --compilers=2
+	$(ginkgo) -r=true -p=true --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace --compilers=2 -cover
+
+coverage:
+	gover test/
+	goveralls -coverprofile=gover.coverprofile -service=circle-ci -repotoken=$(COVERALLS_TOKEN)
 
 # DEPLOY
 
