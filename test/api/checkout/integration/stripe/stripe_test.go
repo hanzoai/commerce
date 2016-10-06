@@ -39,7 +39,7 @@ func FirstTimeSuccessfulOrderTest(isCharge bool, stor *store.Store) testHelperRe
 	log.Warn(path)
 
 	// Should come back with 200
-	w := client.PostRawJSON(path, requests.ValidOrder)
+	w := client.Post(path, requests.ValidOrder, nil)
 	Expect(w.Code).To(Equal(200))
 
 	log.Debug("JSON %v", w.Body)
@@ -103,14 +103,8 @@ func ReturningSuccessfulOrderSameCardTest(isCharge bool, stor *store.Store) test
 	}
 
 	// Make first request
-	w := client.PostRawJSON(path, requests.ValidOrder)
-	Expect(w.Code).To(Equal(200))
-	log.Debug("JSON %v", w.Body)
-
-	// Decode body so we can re-use user id
 	ord1 := order.New(db)
-	err := json.DecodeBuffer(w.Body, &ord1)
-	Expect(err).ToNot(HaveOccurred())
+	client.Post(path, requests.ValidOrder, ord1)
 
 	// Fetch the payment for the order to test later
 	pay1 := payment.New(db)
