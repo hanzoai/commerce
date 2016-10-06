@@ -30,7 +30,7 @@ func Test(t *testing.T) {
 
 var (
 	ctx         ae.Context
-	client      *ginclient.Client
+	cl          *ginclient.Client
 	accessToken string
 	db          *datastore.Datastore
 	org         *organization.Organization
@@ -57,10 +57,10 @@ var _ = BeforeSuite(func() {
 	stor = fixtures.Store(c).(*store.Store)
 
 	// Setup client and add routes for payment API tests.
-	client = ginclient.New(ctx)
-	checkoutApi.Route(client.Router, adminRequired)
-	orderApi.Route(client.Router, adminRequired)
-	storeApi.Route(client.Router, adminRequired)
+	cl = ginclient.New(ctx)
+	checkoutApi.Route(cl.Router, adminRequired)
+	orderApi.Route(cl.Router, adminRequired)
+	storeApi.Route(cl.Router, adminRequired)
 
 	// Create organization for tests, accessToken
 	accessToken = org.AddToken("test-published-key", permission.Admin)
@@ -68,7 +68,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 
 	// Set authorization header for subsequent requests
-	client.Defaults(func(r *http.Request) {
+	cl.Defaults(func(r *http.Request) {
 		r.Header.Set("Authorization", accessToken)
 	})
 
