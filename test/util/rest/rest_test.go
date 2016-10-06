@@ -62,7 +62,7 @@ var _ = Describe("New", func() {
 		r.Route(client.Router, middleware.TokenRequired())
 
 		// Should not be authorized
-		w := client.Get("/test-model", nil, 401)
+		client.Get("/test-model", nil, 401)
 
 		// Set authorization header for subsequent requests
 		client.Defaults(func(r *http.Request) {
@@ -70,10 +70,10 @@ var _ = Describe("New", func() {
 		})
 
 		// Get should work ok
-		w = client.Get("/test-model", nil, 200)
+		client.Get("/test-model", nil, 200)
 
 		// Should 404
-		w = client.Get("/test-model2", nil, 404)
+		client.Get("/test-model2", nil, 404)
 
 		// Should work with more complex token
 		client.Defaults(func(r *http.Request) {
@@ -81,9 +81,9 @@ var _ = Describe("New", func() {
 		})
 
 		// Get should work ok
-		w = client.Get("/test-model", nil, 200)
+		client.Get("/test-model", nil, 200)
 
 		// Should 404
-		w = client.Get("/test-model2", nil, 404)
+		client.Get("/test-model2", nil, 404)
 	})
 })
