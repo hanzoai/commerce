@@ -1,3 +1,10 @@
 dependencies:
   cache_directories:
     - ".sdk"
+test:
+  pre:
+    - make deps
+  override:
+    - make test-ci
+  post:
+    - make coverage
