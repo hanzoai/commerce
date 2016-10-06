@@ -59,7 +59,9 @@ func (q *Query) KeysOnly() *Query {
 func (q *Query) First() (bool, error) {
 	key, ok, err := q.Query.First(q.model.Entity)
 	if ok {
-		q.model.setKey(key)
+		if q.model.key == nil {
+			q.model.setKey(key)
+		}
 	}
 	return ok, err
 }
