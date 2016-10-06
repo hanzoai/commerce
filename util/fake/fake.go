@@ -3,7 +3,8 @@ package fake
 import (
 	"math/rand"
 	"reflect"
-	"strings"
+
+	"crowdstart.com/util/slug"
 )
 
 type fieldMap map[string]reflect.Value
@@ -87,8 +88,9 @@ func Id() string {
 }
 
 func SKU() string {
-	name := ProductName()
-	sku := strings.ToLower(name)
-	sku = strings.Replace(sku, " ", "-", -1)
-	return sku
+	return slug.Slugify(ProductName())
+}
+
+func Slug() string {
+	return slug.Slugify(ProductName())
 }
