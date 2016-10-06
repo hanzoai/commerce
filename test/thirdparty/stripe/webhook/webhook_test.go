@@ -23,11 +23,11 @@ import (
 )
 
 var (
-	c      *gin.Context
-	ctx    ae.Context
-	client *ginclient.Client
-	db     *datastore.Datastore
-	org    *organization.Organization
+	c   *gin.Context
+	ctx ae.Context
+	cl  *ginclient.Client
+	db  *datastore.Datastore
+	org *organization.Organization
 )
 
 func Test(t *testing.T) {
@@ -48,10 +48,10 @@ var _ = BeforeSuite(func() {
 	org.Stripe.Test.UserId = "1"
 	org.Put()
 
-	client = ginclient.New(ctx)
-	client.Defaults(func(r *http.Request) {})
+	cl = ginclient.New(ctx)
+	cl.Defaults(func(r *http.Request) {})
 
-	stripeApi.Route(client.Router)
+	stripeApi.Route(cl.Router)
 })
 
 var _ = AfterSuite(func() {
@@ -103,8 +103,7 @@ func mockStripeChargeEvent(event, status string, captured bool) (*order.Order, *
 	ord.Put()
 
 	request := CreatePayment(event, ord.Id(), pay.Id(), status, refunded, captured)
-	w := client.PostRawJSON("/stripe/webhook", request)
-	Expect(w.Code).To(Equal(200))
+	cl.Post("/stripe/webhook", request, nil)
 
 	pay2 := payment.New(db)
 	ord2 := order.New(db)
