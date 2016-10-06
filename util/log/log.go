@@ -3,6 +3,7 @@ package log
 import (
 	"fmt"
 	"log"
+	"runtime/debug"
 	"strings"
 
 	"appengine"
@@ -296,4 +297,17 @@ func JSON(formatOrObject interface{}, args ...interface{}) {
 
 func Escape(s string) string {
 	return strings.Replace(s, "%", "%%", -1)
+}
+
+func Stack() {
+	stack := debug.Stack()
+	lines := strings.Split(string(stack), "\n")
+	trace := []string{""}
+	for i := 4; i < len(lines); i++ {
+		if strings.Contains(lines[i], "github.com/onsi/ginkgo") {
+			break
+		}
+		trace = append(trace, lines[i])
+	}
+	std.Debug(strings.Join(trace, "\n"))
 }
