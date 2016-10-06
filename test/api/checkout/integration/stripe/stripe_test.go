@@ -10,7 +10,6 @@ import (
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/store"
-	"crowdstart.com/models/transaction"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/models/user"
 	"crowdstart.com/test/api/checkout/integration/requests"
@@ -39,7 +38,7 @@ func FirstTimeSuccessfulOrderTest(isCharge bool, stor *store.Store) testHelperRe
 	log.Warn(path)
 
 	// Should come back with 200
-	w := client.Post(path, requests.ValidOrder, nil)
+	w := cl.Post(path, requests.ValidOrder, nil)
 	Expect(w.Code).To(Equal(200))
 
 	log.Debug("JSON %v", w.Body)
@@ -104,7 +103,7 @@ func ReturningSuccessfulOrderSameCardTest(isCharge bool, stor *store.Store) test
 
 	// Make first request
 	ord1 := order.New(db)
-	client.Post(path, requests.ValidOrder, ord1)
+	cl.Post(path, requests.ValidOrder, ord1)
 
 	// Fetch the payment for the order to test later
 	pay1 := payment.New(db)
@@ -124,14 +123,9 @@ func ReturningSuccessfulOrderSameCardTest(isCharge bool, stor *store.Store) test
 
 	// Returning user, should reuse stripe customer id
 	body := fmt.Sprintf(requests.ReturningUserOrder, usr.Id())
-	log.Debug("JSON %v", w.Body)
-	w = client.PostRawJSON(path, body)
-	Expect(w.Code).To(Equal(200))
-
-	// Decode body from second request
 	ord2 := order.New(db)
-	err = json.DecodeBuffer(w.Body, &ord2)
-	Expect(err).ToNot(HaveOccurred())
+	cl.Post(path, body, ord2)
+
 	Expect(usr.Id()).To(Equal(ord2.UserId))
 
 	// Fetch the payment for the order to test later
@@ -169,14 +163,8 @@ func ReturningSuccessfulOrderNewCardTest(isCharge bool, stor *store.Store) testH
 	}
 
 	// Make first request
-	w := client.PostRawJSON(path, requests.ValidOrder)
-	Expect(w.Code).To(Equal(200))
-	log.Debug("JSON %v", w.Body)
-
-	// Decode body so we can re-use user id
 	ord1 := order.New(db)
-	err := json.DecodeBuffer(w.Body, &ord1)
-	Expect(err).ToNot(HaveOccurred())
+	cl.Post(path, requests.ValidOrder, ord1)
 
 	// Fetch the payment for the order to test later
 	pay1 := payment.New(db)
@@ -195,14 +183,8 @@ func ReturningSuccessfulOrderNewCardTest(isCharge bool, stor *store.Store) testH
 
 	// Returning user, should reuse stripe customer id
 	body := fmt.Sprintf(requests.ReturningUserOrderNewCard, usr.Id())
-	log.Debug("JSON %v", w.Body)
-	w = client.PostRawJSON(path, body)
-	Expect(w.Code).To(Equal(200))
-
-	// Decode body from second request
 	ord2 := order.New(db)
-	err = json.DecodeBuffer(w.Body, &ord2)
-	Expect(err).ToNot(HaveOccurred())
+	cl.Post(path, body, ord2)
 	Expect(usr.Id()).To(Equal(ord2.UserId))
 
 	// Fetch the payment for the order to test later
@@ -242,9 +224,7 @@ func OrderBadCardTest(isCharge bool, stor *store.Store) {
 
 	// Returning user, should reuse stripe customer id
 	body := fmt.Sprintf(requests.InvalidOrderBadCard)
-	w := client.PostRawJSON(path, body)
-	log.Debug("JSON %v", w.Body)
-	Expect(w.Code).To(Equal(402))
+	cl.Post(path, body, nil, 402)
 }
 
 func OrderBadUserTest(isCharge bool, stor *store.Store) {
@@ -261,19 +241,15 @@ func OrderBadUserTest(isCharge bool, stor *store.Store) {
 
 	// Returning user, should reuse stripe customer id
 	body := fmt.Sprintf(requests.ReturningUserOrderNewCard, "BadId")
-	w := client.PostRawJSON(path, body)
-	log.Debug("JSON %v", w.Body)
-	Expect(w.Code).To(Equal(400))
+	cl.Post(path, body, nil, 400)
 }
 
 var _ = Describe("payment", func() {
 	Context("Authorize First Time Customers", func() {
 		It("Should normalise the user information", func() {
 			path := "/order"
-			w := client.PostRawJSON(path, requests.NonNormalizedOrder)
-
 			ord := order.New(db)
-			json.DecodeBuffer(w.Body, &ord)
+			cl.Post(path, requests.NonNormalizedOrder, ord)
 
 			usr := user.New(db)
 			usr.Get(ord.UserId)
@@ -390,24 +366,15 @@ var _ = Describe("payment", func() {
 
 	Context("Authorize Order", func() {
 		It("Should authorize existing order successfully", func() {
-			w := client.PostRawJSON("/order", requests.ValidOrderOnly)
-			Expect(w.Code).To(Equal(201))
-
 			ord1 := order.New(db)
-			err := json.DecodeBuffer(w.Body, &ord1)
-			Expect(err).ToNot(HaveOccurred())
+			cl.Post("/order", requests.ValidOrderOnly, ord1, 201)
 
 			ord2 := order.New(db)
-			err = ord2.Get(ord1.Id())
+			err := ord2.Get(ord1.Id())
 			Expect(err).ToNot(HaveOccurred())
-
-			w = client.PostRawJSON("/order/"+ord2.Id()+"/authorize", requests.ValidUserPaymentOnly)
-			Expect(w.Code).To(Equal(200))
-			log.Debug("JSON %v", w.Body)
 
 			ord3 := order.New(db)
-			err = json.DecodeBuffer(w.Body, &ord3)
-			Expect(err).ToNot(HaveOccurred())
+			cl.Post("/order/"+ord2.Id()+"/authorize", requests.ValidUserPaymentOnly, ord3)
 
 			pay := payment.New(db)
 			pay.Get(ord3.PaymentIds[0])
@@ -416,30 +383,20 @@ var _ = Describe("payment", func() {
 		})
 
 		It("Should not capture invalid order", func() {
-			w := client.PostRawJSON("/order/BADID/authorize", "")
-			Expect(w.Code).To(Equal(404))
-			log.Debug("JSON %v", w.Body)
+			cl.Post("/order/BADID/authorize", "", 404)
 		})
 
 		It("Should authorize order with coupon successfully", func() {
-			w := client.PostRawJSON("/order", requests.ValidCouponOrderOnly)
-			Expect(w.Code).To(Equal(201))
-
 			ord1 := order.New(db)
-			err := json.DecodeBuffer(w.Body, &ord1)
-			Expect(err).ToNot(HaveOccurred())
+			cl.Post("/order", requests.ValidCouponOrderOnly, ord1, 201)
 
 			ord2 := order.New(db)
-			err = ord2.Get(ord1.Id())
+			err := ord2.Get(ord1.Id())
 			Expect(err).ToNot(HaveOccurred())
-
-			w = client.PostRawJSON("/order/"+ord2.Id()+"/authorize", requests.ValidUserPaymentOnly)
-			Expect(w.Code).To(Equal(200))
-			log.Debug("JSON %v", w.Body)
 
 			ord3 := order.New(db)
-			err = json.DecodeBuffer(w.Body, &ord3)
-			Expect(err).ToNot(HaveOccurred())
+			cl.Post("/order/"+ord2.Id()+"/authorize", requests.ValidUserPaymentOnly, ord3)
+
 			Expect(ord3.Subtotal).To(Equal(currency.Cents(3500)))
 
 			pay := payment.New(db)
@@ -454,39 +411,26 @@ var _ = Describe("payment", func() {
 			pnos := FirstTimeSuccessfulOrderTest(false, nil)
 			id := pnos.Orders[0].Id()
 
-			w := client.PostRawJSON("/order/"+id+"/capture", "")
-			Expect(w.Code).To(Equal(200))
-			log.Debug("JSON %v", w.Body)
+			cl.Post("/order/"+id+"/capture", "", nil)
 			stripeVerifyCharge(pnos.Payments[0])
 		})
 
 		It("Should not capture invalid order", func() {
-			w := client.PostRawJSON("/order/BADID/capture", "")
-			Expect(w.Code).To(Equal(404))
-			log.Debug("JSON %v", w.Body)
+			cl.Post("/order/BADID/capture", "", 404)
 		})
 	})
 
 	Context("Charge Order", func() {
 		It("Should charge existing order successfully", func() {
-			w := client.PostRawJSON("/order", requests.ValidOrderOnly)
-			Expect(w.Code).To(Equal(201))
-
 			ord1 := order.New(db)
-			err := json.DecodeBuffer(w.Body, &ord1)
-			Expect(err).ToNot(HaveOccurred())
+			cl.Post("/order", requests.ValidOrderOnly, ord1, 201)
 
 			ord2 := order.New(db)
-			err = ord2.Get(ord1.Id())
+			err := ord2.Get(ord1.Id())
 			Expect(err).ToNot(HaveOccurred())
-
-			w = client.PostRawJSON("/order/"+ord2.Id()+"/charge", requests.ValidUserPaymentOnly)
-			Expect(w.Code).To(Equal(200))
-			log.Debug("JSON %v", w.Body)
 
 			ord3 := order.New(db)
-			err = json.DecodeBuffer(w.Body, &ord3)
-			Expect(err).ToNot(HaveOccurred())
+			cl.Post("/order/"+ord2.Id()+"/charge", requests.ValidUserPaymentOnly, ord3)
 
 			pay := payment.New(db)
 			pay.Get(ord3.PaymentIds[0])
@@ -495,9 +439,7 @@ var _ = Describe("payment", func() {
 		})
 
 		It("Should not capture invalid order", func() {
-			w := client.PostRawJSON("/order/BADID/charge", "")
-			Expect(w.Code).To(Equal(404))
-			log.Debug("JSON %v", w.Body)
+			cl.Post("/order/BADID/charge", "", 404)
 		})
 	})
 
@@ -516,28 +458,18 @@ var _ = Describe("payment", func() {
 			err := ord1.Put()
 			Expect(err).ToNot(HaveOccurred())
 
-			w := client.PostRawJSON("/order/"+ord1.Id()+"/charge", requests.ValidUserPaymentOnly)
-			Expect(w.Code).To(Equal(200))
-			log.Debug("JSON %v", w.Body)
+			ord2 := order.New(db)
+			cl.Post("/order/"+ord1.Id()+"/charge", requests.ValidUserPaymentOnly, ord2)
 
 			refIn1 := referrer.New(db)
 			refIn1.MustGet(refIn.Id())
-			Expect(len(refIn.ReferralIds)).To(Equal(0))
-			Expect(len(refIn.TransactionIds)).To(Equal(0))
 
-			Expect(len(refIn1.ReferralIds)).To(Equal(1))
-			Expect(len(refIn1.TransactionIds)).To(Equal(1))
-
-			trans := transaction.New(db)
-			err = trans.GetById(refIn1.TransactionIds[0])
-			Expect(err).ToNot(HaveOccurred())
-			Expect(trans.UserId).To(Equal(u.Id()))
-			Expect(trans.Currency).To(Equal(refIn.Program.Actions[0].Currency))
-			Expect(trans.Amount).To(Equal(refIn.Program.Actions[0].Amount))
-
-			ord2 := order.New(db)
-			err = json.DecodeBuffer(w.Body, &ord2)
-			Expect(err).ToNot(HaveOccurred())
+			// trans := transaction.New(db)
+			// err = trans.GetById(refIn1.TransactionIds[0])
+			// Expect(err).ToNot(HaveOccurred())
+			// Expect(trans.UserId).To(Equal(u.Id()))
+			// Expect(trans.Currency).To(Equal(refIn.Program.Actions[0].Currency))
+			// Expect(trans.Amount).To(Equal(refIn.Program.Actions[0].Amount))
 
 			pay := payment.New(db)
 			pay.Get(ord2.PaymentIds[0])
@@ -549,36 +481,21 @@ var _ = Describe("payment", func() {
 	Context("Charge Order With Single Use Coupon", func() {
 		It("Should charge order with single use coupon successfully", func() {
 			Skip("Single-use coupons not yet supported")
-			w := client.PostRawJSON("/checkout/charge", requests.ValidOrder)
-			Expect(w.Code).To(Equal(200))
 
 			ord := order.New(db)
-			err := json.DecodeBuffer(w.Body, ord)
-			Expect(err).ToNot(HaveOccurred())
-
-			w = client.Get("/coupon/no-doge-left-behind/code/" + u.Id())
-			Expect(w.Code).To(Equal(200))
-			log.Debug("JSON %v", w.Body)
+			cl.Post("/checkout/charge", requests.ValidOrder, ord)
 
 			cpn := coupon.New(db)
-			err = json.DecodeBuffer(w.Body, &cpn)
-			Expect(err).ToNot(HaveOccurred())
+			cl.Get("/coupon/no-doge-left-behind/code/"+u.Id(), cpn)
 
 			jsonStr := fmt.Sprintf(requests.ValidOrderTemplate, ord.UserId, cpn.Code())
-			w = client.PostRawJSON("/checkout/charge", jsonStr)
-			Expect(w.Code).To(Equal(200))
-			log.Debug("JSON %v", w.Body)
-
 			ord2 := order.New(db)
-			err = json.DecodeBuffer(w.Body, ord2)
-			Expect(err).ToNot(HaveOccurred())
+			cl.Post("/checkout/charge", jsonStr, ord2)
 
 			Expect(ord2.Items[1].ProductSlug).To(Equal("doge-shirt"))
 
 			jsonStr = fmt.Sprintf(requests.ValidOrderTemplate, ord.UserId, cpn.Code())
-			w = client.PostRawJSON("/checkout/charge", jsonStr)
-			Expect(w.Code).To(Equal(400))
-			log.Debug("JSON %v", w.Body)
+			cl.Post("/checkout/charge", jsonStr, nil, 400)
 		})
 	})
 
@@ -597,18 +514,10 @@ var _ = Describe("payment", func() {
 			Expect(err).ToNot(HaveOccurred())
 			ordId := ord1.Id()
 
-			w := client.PostRawJSON("/order/"+ordId+"/charge", requests.ValidUserPaymentOnly)
-			Expect(w.Code).To(Equal(200))
-			log.Debug("JSON %v", w.Body)
-
-			w = client.PostRawJSON("/order/"+ordId+"/refund", requests.NegativeRefund)
-			Expect(w.Code).ToNot(Equal(200))
-
-			w = client.PostRawJSON("/order/"+ordId+"/refund", requests.LargeRefundAmount)
-			Expect(w.Code).ToNot(Equal(200))
-
-			w = client.PostRawJSON("/order/"+ordId+"/refund", requests.PartialRefund)
-			Expect(w.Code).To(Equal(200))
+			cl.Post("/order/"+ordId+"/charge", requests.ValidUserPaymentOnly, nil, 200)
+			cl.Post("/order/"+ordId+"/refund", requests.NegativeRefund, nil, 400)
+			cl.Post("/order/"+ordId+"/refund", requests.LargeRefundAmount, nil, 400)
+			cl.Post("/order/"+ordId+"/refund", requests.PartialRefund, nil, 200)
 
 			refundedOrder := order.New(db)
 			err = refundedOrder.Get(ordId)
