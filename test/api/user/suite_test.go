@@ -17,7 +17,7 @@ import (
 )
 
 func Test(t *testing.T) {
-	Setup("api/variant", t)
+	Setup("api/user", t)
 }
 
 var (
