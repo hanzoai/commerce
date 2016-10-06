@@ -5,8 +5,7 @@ import (
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/store"
 	"crowdstart.com/models/user"
-	"crowdstart.com/test/api/checkout/requests"
-	"crowdstart.com/util/json"
+	"crowdstart.com/test/api/checkout/integration/requests"
 	"crowdstart.com/util/log"
 
 	checkoutApi "crowdstart.com/api/checkout"
@@ -32,10 +31,7 @@ func CancelPaypal(stor *store.Store) testHelperReturn {
 	log.Debug("Path %v", path)
 
 	// Should come back with 200
-	w := client.PostRawJSON(path, "{}")
-	Expect(w.Code).To(Equal(200))
-
-	log.Debug("JSON %v", w.Body)
+	cl.Post(path, "{}", nil, 200)
 
 	// Payment should be in db
 	pay := payment.New(db)
@@ -75,10 +71,7 @@ func ConfirmPaypal(stor *store.Store) testHelperReturn {
 	log.Debug("Path %v", path)
 
 	// Should come back with 200
-	w := client.PostRawJSON(path, "{}")
-	Expect(w.Code).To(Equal(200))
-
-	log.Debug("JSON %v", w.Body)
+	cl.Post(path, "{}", nil)
 
 	// Payment should be in db
 	pay := payment.New(db)
@@ -114,20 +107,10 @@ func GetPayKey(stor *store.Store) testHelperReturn {
 	}
 
 	// Should come back with 200
-	w := client.PostRawJSON(path, requests.ValidOrder)
-	Expect(w.Code).To(Equal(200))
-
-	log.Debug("JSON %v", w.Body)
+	payKeyResponse := checkoutApi.PayKeyResponse{}
+	cl.Post(path, requests.ValidOrder, &payKeyResponse, 200)
 
 	// Payment and Order info should be in the db
-	payKeyResponse := checkoutApi.PayKeyResponse{}
-
-	err := json.DecodeBuffer(w.Body, &payKeyResponse)
-	Expect(err).ToNot(HaveOccurred())
-
-	log.Debug("PayKey Response %v", payKeyResponse.PayKey)
-
-	// Payment should be in db
 	pay := payment.New(db)
 	ok, err := pay.Query().Filter("Account.PayKey=", payKeyResponse.PayKey).First()
 	log.Debug("Err %v", err)
