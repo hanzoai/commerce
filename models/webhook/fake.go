@@ -7,7 +7,7 @@ import (
 
 func Fake(db *datastore.Datastore) *Webhook {
 	s := New(db)
-	s.Url = "http://www." + fake.Word() + ".com/hook/" + fake.Word()
+	s.Url = fake.Url()
 	s.Live = false
 	s.All = true
 	s.Enabled = true
