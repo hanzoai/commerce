@@ -295,15 +295,25 @@ func JSON(formatOrObject interface{}, args ...interface{}) {
 	}
 }
 
-func Stack() {
-	stack := debug.Stack()
-	lines := strings.Split(string(stack), "\n")
-	trace := []string{""}
-	for i := 4; i < len(lines); i++ {
-		if strings.Contains(lines[i], "github.com/onsi/ginkgo") {
+func Stack(args ...interface{}) {
+	args = std.parseArgs(args...)
+
+	// Grab stacktrace
+	stack := strings.Split(string(debug.Stack()), "\n")
+	lines := []string{""}
+	for i := 4; i < len(stack); i++ {
+		if strings.Contains(stack[i], "github.com/onsi/ginkgo") {
 			break
 		}
-		trace = append(trace, lines[i])
+		lines = append(lines, stack[i])
 	}
-	std.Debug(strings.Join(trace, "\n"))
+	trace := strings.Join(lines, "\n")
+
+	if len(args) > 0 {
+		format := args[0].(string)
+		msg := fmt.Sprintf(format, args[1:]...)
+		std.Debugf(msg + trace)
+	} else {
+		std.Debugf(trace)
+	}
 }
