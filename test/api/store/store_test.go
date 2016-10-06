@@ -2,6 +2,7 @@ package test
 
 import (
 	"crowdstart.com/models/store"
+	"crowdstart.com/util/fake"
 
 	. "crowdstart.com/util/test/ginkgo"
 )
@@ -28,6 +29,7 @@ var _ = Describe("store", func() {
 			Expect(res.Email).To(Equal(req.Email))
 		})
 	})
+
 	Context("Get store", func() {
 		req := new(store.Store)
 		res := new(store.Store)
@@ -51,6 +53,68 @@ var _ = Describe("store", func() {
 			Expect(res.Email).To(Equal(req.Email))
 		})
 	})
+
+	Context("Patch store", func() {
+		stor := new(store.Store)
+		res := new(store.Store)
+
+		req := struct {
+			Name string `json:"name"`
+			Slug string `json:"slug"`
+		}{
+			fake.ProductName(),
+			fake.Slug(),
+		}
+
+		Before(func() {
+			// Create store
+			stor = store.Fake(db)
+			stor.MustCreate()
+
+			// Patch store
+			cl.Patch("/store/"+stor.Id(), req, res)
+		})
+
+		It("Should patch store", func() {
+			Expect(res.Id_).To(Equal(stor.Id()))
+			Expect(res.Name).To(Equal(req.Name))
+			Expect(res.Slug).To(Equal(req.Slug))
+			Expect(res.Domain).To(Equal(stor.Domain))
+			Expect(res.Prefix).To(Equal(stor.Prefix))
+			Expect(res.Currency).To(Equal(stor.Currency))
+			Expect(res.Address).To(Equal(stor.Address))
+			Expect(res.Email).To(Equal(stor.Email))
+		})
+	})
+
+	Context("Put store", func() {
+		stor := new(store.Store)
+		res := new(store.Store)
+		req := new(store.Store)
+
+		Before(func() {
+			stor = store.Fake(db)
+			stor.MustCreate()
+
+			// Create store request
+			req = store.Fake(db)
+
+			// Update store
+			cl.Put("/store/"+stor.Id(), req, res)
+		})
+
+		It("Should put store", func() {
+			Expect(res.Id_).To(Equal(stor.Id()))
+			Expect(res.Name).To(Equal(req.Name))
+			Expect(res.Slug).To(Equal(req.Slug))
+			Expect(res.Domain).To(Equal(req.Domain))
+			Expect(res.Prefix).To(Equal(req.Prefix))
+			Expect(res.Currency).To(Equal(req.Currency))
+			Expect(res.Address).To(Equal(req.Address))
+			Expect(res.Email).To(Equal(req.Email))
+		})
+	})
+
 	Context("Delete store", func() {
 		res := ""
 
