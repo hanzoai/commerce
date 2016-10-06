@@ -79,7 +79,7 @@ func Set(c *gin.Context) {
 	if err := car.Update(); err != nil {
 		http.Fail(c, 500, "Failed to update cart", err)
 	} else {
-		http.Render(c, 200, CartResponse{Id: car.Id()})
+		http.Render(c, 200, car)
 	}
 
 	// Update Mailchimp cart
@@ -184,7 +184,7 @@ func update(r *rest.Rest) func(*gin.Context) {
 		if err := car.Update(); err != nil {
 			r.Fail(c, 500, "Failed to update "+r.Kind, err)
 		} else {
-			r.Render(c, 200, CartResponse{Id: car.Id()})
+			r.Render(c, 200, car)
 		}
 
 		// Update Mailchimp cart

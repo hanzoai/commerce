@@ -114,7 +114,7 @@ var _ = Describe("affiliate", func() {
 			aff = affiliate.Fake(db, usr.Id())
 			aff.MustCreate()
 
-			// Create new affiliate request
+			// Create affiliate request
 			req = affiliate.Fake(db, usr.Id())
 
 			// Update affiliate
