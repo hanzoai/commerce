@@ -3,6 +3,7 @@ package test
 import (
 	"crowdstart.com/models/submission"
 	"crowdstart.com/models/user"
+	"github.com/icrowley/fake"
 
 	. "crowdstart.com/util/test/ginkgo"
 )
@@ -27,6 +28,7 @@ var _ = Describe("submission", func() {
 			Expect(res.UserId).To(Equal(req.UserId))
 		})
 	})
+
 	Context("Get submission", func() {
 		req := new(submission.Submission)
 		res := new(submission.Submission)
@@ -47,6 +49,65 @@ var _ = Describe("submission", func() {
 			Expect(res.UserId).To(Equal(req.UserId))
 		})
 	})
+
+	Context("Patch submission", func() {
+		sub := new(submission.Submission)
+		res := new(submission.Submission)
+
+		req := struct {
+			Email string `json:"email"`
+		}{
+			fake.EmailAddress(),
+		}
+
+		Before(func() {
+			// Create user
+			usr := user.Fake(db)
+			usr.MustCreate()
+
+			// Create submission
+			sub = submission.Fake(db, usr.Id())
+			sub.MustCreate()
+
+			// Patch submission
+			cl.Patch("/submission/"+sub.Id(), req, res)
+		})
+
+		It("Should patch submission", func() {
+			Expect(res.Id_).To(Equal(sub.Id()))
+			Expect(res.Email).To(Equal(req.Email))
+			Expect(res.UserId).To(Equal(sub.UserId))
+		})
+	})
+
+	Context("Put submission", func() {
+		sub := new(submission.Submission)
+		res := new(submission.Submission)
+		req := new(submission.Submission)
+
+		Before(func() {
+			// Create user
+			usr := user.Fake(db)
+			usr.MustCreate()
+
+			// Create submission
+			sub = submission.Fake(db, usr.Id())
+			sub.MustCreate()
+
+			// Create submission request
+			req = submission.Fake(db, usr.Id())
+
+			// Update submission
+			cl.Put("/submission/"+sub.Id(), req, res)
+		})
+
+		It("Should put submission", func() {
+			Expect(res.Id_).To(Equal(sub.Id()))
+			Expect(res.Email).To(Equal(req.Email))
+			Expect(res.UserId).To(Equal(req.UserId))
+		})
+	})
+
 	Context("Delete submission", func() {
 		res := ""
 
