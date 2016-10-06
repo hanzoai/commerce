@@ -76,3 +76,7 @@ func RandSeq(n int, runes []rune) string {
 func Bool() bool {
 	return bool(rand.Intn(10)&1 == 0)
 }
+
+func Url() string {
+	return "http://" + DomainName()
+}
