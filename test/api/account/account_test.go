@@ -1,4 +1,4 @@
-package integration
+package test
 
 import (
 	"net/http"
@@ -91,10 +91,10 @@ var _ = Describe("account", func() {
 				"email": "dev@hanzo.ai",
 				"password": "Z0rd0N"
 			}`
+
 			res := loginRes{}
 
-			cl.Post("/account/login", req, res)
-			// TODO: should deconstruct token and test if the user id is in it
+			cl.Post("/account/login", req, &res)
 			Expect(res.Token).ToNot(Equal(""))
 		})
 
