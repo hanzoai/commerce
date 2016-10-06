@@ -5,6 +5,7 @@ import (
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/product"
 	"crowdstart.com/models/referral"
+	"crowdstart.com/models/types/currency"
 	"crowdstart.com/models/user"
 	"crowdstart.com/models/variant"
 
@@ -69,6 +70,80 @@ var _ = Describe("referral", func() {
 			Expect(res.Fee).To(Equal(req.Fee))
 		})
 	})
+
+	Context("Patch referral", func() {
+		re := new(referral.Referral)
+		res := new(referral.Referral)
+
+		req := struct {
+			referral.Fee `json:"fee"`
+		}{
+			referral.Fee{
+				Currency: currency.USD,
+				Amount:   currency.Cents(0).FakeN(1000),
+			},
+		}
+
+		Before(func() {
+			prod := product.Fake(db)
+			prod.MustCreate()
+			vari := variant.Fake(db, prod.Id())
+			vari.MustCreate()
+			li := lineitem.Fake(vari.Id(), vari.Name, vari.SKU)
+			ord := order.Fake(db, li)
+			ord.MustCreate()
+			usr := user.Fake(db)
+			usr.MustCreate()
+			re = referral.Fake(db, usr.Id(), ord.Id())
+			re.MustCreate()
+
+			res = referral.New(db)
+
+			cl.Patch("/referral/"+re.Id(), req, res)
+		})
+
+		It("Should patch referral", func() {
+			Expect(res.Id_).To(Equal(re.Id()))
+			Expect(res.Type).To(Equal(re.Type))
+			Expect(res.OrderId).To(Equal(re.OrderId))
+			Expect(res.Referrer).To(Equal(re.Referrer))
+			Expect(res.Fee).To(Equal(req.Fee))
+		})
+	})
+
+	Context("Put referral", func() {
+		re := new(referral.Referral)
+		res := new(referral.Referral)
+		req := new(referral.Referral)
+
+		Before(func() {
+			prod := product.Fake(db)
+			prod.MustCreate()
+			vari := variant.Fake(db, prod.Id())
+			vari.MustCreate()
+			li := lineitem.Fake(vari.Id(), vari.Name, vari.SKU)
+			ord := order.Fake(db, li)
+			ord.MustCreate()
+			usr := user.Fake(db)
+			usr.MustCreate()
+			re = referral.Fake(db, usr.Id(), ord.Id())
+			re.MustCreate()
+
+			req = referral.Fake(db, usr.Id(), ord.Id())
+
+			res = referral.New(db)
+			cl.Put("/referral/"+re.Id(), req, res)
+		})
+
+		It("Should put referral", func() {
+			Expect(res.Id_).To(Equal(re.Id()))
+			Expect(res.Type).To(Equal(req.Type))
+			Expect(res.OrderId).To(Equal(req.OrderId))
+			Expect(res.Referrer).To(Equal(req.Referrer))
+			Expect(res.Fee).To(Equal(req.Fee))
+		})
+	})
+
 	Context("Delete referral", func() {
 		res := ""
 
