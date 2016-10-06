@@ -460,3 +460,13 @@ func IncrReferrerFees(ctx appengine.Context, refId string, rfl *referral.Referra
 	log.Debug("%v incremented by %v", key, fee.Amount, db)
 	return IncrementBy(ctx, key, int(fee.Amount))
 }
+
+func IncrReferrerTotal(ctx appengine.Context, refId string) error {
+	key := referrerKey(refId, "totalReferrals", allTime)
+	return IncrementBy(ctx, key, 1)
+}
+
+func GetReferrerTotal(ctx appengine.Context, refId string) (int, error) {
+	key := referrerKey(refId, "totalReferrals", allTime)
+	return Count(ctx, key)
+}
