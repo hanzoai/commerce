@@ -103,10 +103,8 @@ var _ = Describe("account", func() {
 				"email": "dev@hanzo.ai",
 				"password": "ilikedragon"
 			}`
-			res := loginRes{}
 
-			cl.Post("/account/login", req, res, 401)
-			Expect(res.Token).To(Equal(""))
+			cl.Post("/account/login", req, nil, 401)
 		})
 
 		It("Should disallow login with wrong password", func() {
@@ -114,10 +112,8 @@ var _ = Describe("account", func() {
 				"email": "dev@hanzo.ai",
 				"password": "z3d"
 			}`
-			res := loginRes{}
 
-			cl.Post("/account/login", req, res, 401)
-			Expect(res.Token).To(Equal(""))
+			cl.Post("/account/login", req, nil, 401)
 		})
 
 		It("Should disallow login with wrong email", func() {
@@ -125,10 +121,8 @@ var _ = Describe("account", func() {
 				"email": "billy@blue.co.uk",
 				"password": "bloo"
 			}`
-			res := loginRes{}
 
-			cl.Post("/account/login", req, res, 401)
-			Expect(res.Token).To(Equal(""))
+			cl.Post("/account/login", req, nil, 401)
 		})
 	})
 })
