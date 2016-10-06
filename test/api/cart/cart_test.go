@@ -161,16 +161,15 @@ var _ = Describe("cart", func() {
 		}
 
 		Before(func() {
-			// Create user and cart
+			// Create user
 			usr := user.Fake(db)
 			usr.MustCreate()
 
+			// Create cart
 			car = cart.Fake(db, usr.Id())
 			car.MustCreate()
 
-			res = cart.New(db)
-
-			// patch cart
+			// Update cart
 			cl.Patch("/cart/"+car.Id(), req, res)
 			log.JSON(req)
 			log.JSON(res)
