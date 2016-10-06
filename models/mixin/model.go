@@ -148,26 +148,25 @@ func (m Model) Kind() string {
 	return m.Entity.Kind()
 }
 
-// Helper to set Id_ correctly
-func (m *Model) setId() {
-	key := m.Key()
-
-	if m.UseStringKey {
-		m.Id_ = key.StringID()
-	} else {
-		m.Id_ = hashid.EncodeKey(m.Db.Context, key)
-	}
-}
-
-// Returns string key for entity
+// Returns hashid for entity
 func (m *Model) Id() string {
 	if m.Id_ == "" {
-		m.setId()
+		// Create a new key
+		m.Key()
 	}
 	return m.Id_
 }
 
-// Helper to set key + Id_
+// Helper to set Id_ correctly
+func (m *Model) setId() {
+	if m.UseStringKey {
+		m.Id_ = m.key.StringID()
+	} else {
+		m.Id_ = hashid.EncodeKey(m.Db.Context, m.key)
+	}
+}
+
+// Helper to update key and id
 func (m *Model) setKey(key datastore.Key) {
 	m.key = key
 	m.setId()
@@ -176,6 +175,7 @@ func (m *Model) setKey(key datastore.Key) {
 // Set's key for entity.
 func (m *Model) SetKey(key interface{}) (err error) {
 	var k datastore.Key
+	var id string
 
 	switch v := key.(type) {
 	case datastore.Key:
@@ -193,6 +193,8 @@ func (m *Model) SetKey(key interface{}) (err error) {
 				if err != nil {
 					return datastore.InvalidKey
 				}
+			} else {
+				id = v
 			}
 		}
 	case int64:
@@ -212,8 +214,20 @@ func (m *Model) SetKey(key interface{}) (err error) {
 		return datastore.InvalidKey
 	}
 
-	// Set key, update Id_, etc.
-	m.setKey(k)
+	// Bail out if already set with same key
+	if m.key != nil && m.key.Equal(k.(*aeds.Key)) {
+		return nil
+	}
+
+	// Set key
+	m.key = k
+
+	// Update id
+	if id != "" {
+		m.Id_ = id
+	} else {
+		m.setId()
+	}
 
 	return nil
 }
@@ -230,8 +244,10 @@ func (m *Model) Key() (key datastore.Key) {
 		} else {
 			// We can allocate an id in advance and ensure that Id_ is populated
 			id := m.Db.AllocateId(kind)
-			m.setKey(m.Db.NewKey(kind, "", id, m.Parent))
+			m.key = m.Db.NewKey(kind, "", id, m.Parent)
 		}
+
+		m.setId()
 	}
 
 	return m.key
@@ -283,7 +299,9 @@ func (m *Model) Put() error {
 	}
 
 	// Update key
-	m.setKey(key)
+	if m.key == nil {
+		m.setKey(key)
+	}
 
 	// Errors are ignored
 	m.PutDocument()
@@ -303,7 +321,9 @@ func (m *Model) PutWithoutSideEffects() error {
 	}
 
 	// Update key
-	m.setKey(key)
+	if m.key == nil {
+		m.setKey(key)
+	}
 
 	// Errors are ignored
 	m.PutDocument()
@@ -620,7 +640,9 @@ func (m *Model) mockKey() datastore.Key {
 
 func (m *Model) mockPut() error {
 	// set key, id
-	m.setKey(m.mockKey())
+	if m.key == nil {
+		m.setKey(m.mockKey())
+	}
 	return nil
 }
 
