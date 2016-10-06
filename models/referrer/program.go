@@ -13,13 +13,6 @@ const (
 	EmailUser        = "email-user"
 )
 
-type Event string
-
-const (
-	NewOrder Event = "order.new"
-	NewUser        = "user.new"
-)
-
 type Credit struct {
 	Currency currency.Type  `json:"currency,omitempty"`
 	Amount   currency.Cents `json:"amount,omitempty"`
@@ -39,26 +32,44 @@ type Action struct {
 type Program struct {
 	Name string `json:"name"`
 
-	// Trigger is the number of referrals, 0 means it triggers on every referral
+	// Invariant: Triggers and Actions must have the same length.
+	// Each trigger entry specifies the minimum number of referrals
+	// necessary to fulfill the associated action.
+	// A trigger of 0 indicates that the associated action is always
+	// eligible for fulfillment.
 	Triggers []int    `json:"triggers"`
 	Actions  []Action `json:"actions"`
-
-	Event Event `json:"event"`
 }
 
-func (p *Program) ApplyActions(r *Referrer) error {
-	for i, _ := range p.Triggers {
-		action := p.Actions[i]
-		switch action.Type {
-		case StoreCredit:
-			return saveStoreCredit(r, action.Amount, action.Currency)
-		case EmailUser:
-		case Refund:
+func (p *Program) ApplyActions(r *Referrer, alreadyRewarded int, newReferrals int) []ActionError {
+	var ret []ActionError
+	
+	if (newReferrals <= alreadyRewarded) {
+		return ret
+	}
+
+	for i, trigger := range p.Triggers {
+		if trigger == 0 || (newReferrals >= trigger && trigger > alreadyRewarded) {
+			var err error
+			a := p.Actions[i]
+			switch a.Type {
+			case StoreCredit:
+				err = saveStoreCredit(r, a.Amount, a.Currency)
+			case EmailUser:
+			case Refund:
+			}
+			if err != nil {
+				ret = append(ret, ActionError{a, err})
+			}
 		}
 	}
 
-	// No actions triggered for this referral
-	return nil
+	return ret
+}
+
+type ActionError struct {
+	Action Action
+	Error error
 }
 
 // Credit user with store credit by saving transaction

@@ -27,6 +27,8 @@ type Referrer struct {
 	Client      client.Client `json:"-"`
 	Blacklisted bool          `json:"blacklisted,omitempty"`
 	Duplicate   bool          `json:"duplicate,omitempty"`
+
+	RewardedReferrals int `json:"-"`
 }
 
 func (r *Referrer) Referrals() ([]*referral.Referral, error) {
