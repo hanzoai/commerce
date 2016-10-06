@@ -1,13 +1,20 @@
 package test
 
 import (
+	"strings"
+
 	"crowdstart.com/models/subscriber"
 	"crowdstart.com/models/user"
+	"github.com/icrowley/fake"
 
 	. "crowdstart.com/util/test/ginkgo"
 )
 
 var _ = Describe("subscriber", func() {
+	var normalize = func(s string) string {
+		return strings.ToLower(strings.TrimSpace(s))
+	}
+
 	Context("New subscriber", func() {
 		req := new(subscriber.Subscriber)
 		res := new(subscriber.Subscriber)
@@ -23,12 +30,13 @@ var _ = Describe("subscriber", func() {
 		})
 
 		It("Should create new subscribers", func() {
-			Expect(res.Email).To(Equal(req.Email))
+			Expect(res.Email).To(Equal(normalize(req.Email)))
 			Expect(res.UserId).To(Equal(req.UserId))
 			Expect(res.MailingListId).To(Equal(req.MailingListId))
 			Expect(res.Unsubscribed).To(Equal(req.Unsubscribed))
 		})
 	})
+
 	Context("Get subscriber", func() {
 		req := new(subscriber.Subscriber)
 		res := new(subscriber.Subscriber)
@@ -45,12 +53,71 @@ var _ = Describe("subscriber", func() {
 		})
 
 		It("Should create new subscribers", func() {
-			Expect(res.Email).To(Equal(req.Email))
+			Expect(res.Email).To(Equal(normalize(req.Email)))
 			Expect(res.UserId).To(Equal(req.UserId))
 			Expect(res.MailingListId).To(Equal(req.MailingListId))
 			Expect(res.Unsubscribed).To(Equal(req.Unsubscribed))
 		})
 	})
+
+	Context("Patch subscriber", func() {
+		sub := new(subscriber.Subscriber)
+		res := new(subscriber.Subscriber)
+
+		req := struct {
+			Email string `json:"email"`
+		}{
+			fake.EmailAddress(),
+		}
+
+		Before(func() {
+			// Create user
+			usr := user.Fake(db)
+			usr.MustCreate()
+
+			// Create subscriber
+			sub = subscriber.Fake(db, usr.Id())
+			sub.MustCreate()
+
+			// Patch subscriber
+			cl.Patch("/subscriber/"+sub.Id(), req, res)
+		})
+
+		It("Should patch subscriber", func() {
+			Expect(res.Id_).To(Equal(sub.Id()))
+			Expect(res.Email).To(Equal(normalize(req.Email)))
+			Expect(res.UserId).To(Equal(sub.UserId))
+		})
+	})
+
+	Context("Put subscriber", func() {
+		sub := new(subscriber.Subscriber)
+		res := new(subscriber.Subscriber)
+		req := new(subscriber.Subscriber)
+
+		Before(func() {
+			// Create user
+			usr := user.Fake(db)
+			usr.MustCreate()
+
+			// Create subscriber
+			sub = subscriber.Fake(db, usr.Id())
+			sub.MustCreate()
+
+			// Create subscriber request
+			req = subscriber.Fake(db, usr.Id())
+
+			// Update subscriber
+			cl.Put("/subscriber/"+sub.Id(), req, res)
+		})
+
+		It("Should put subscriber", func() {
+			Expect(res.Id_).To(Equal(sub.Id()))
+			Expect(res.Email).To(Equal(normalize(req.Email)))
+			Expect(res.UserId).To(Equal(req.UserId))
+		})
+	})
+
 	Context("Delete subscriber", func() {
 		res := ""
 
