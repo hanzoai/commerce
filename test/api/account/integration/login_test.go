@@ -10,8 +10,6 @@ import (
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/user"
 	"crowdstart.com/util/gincontext"
-	"crowdstart.com/util/json"
-	"crowdstart.com/util/log"
 	"crowdstart.com/util/permission"
 	"crowdstart.com/util/test/ae"
 	"crowdstart.com/util/test/ginclient"
@@ -27,7 +25,7 @@ func Test(t *testing.T) {
 
 var (
 	ctx         ae.Context
-	client      *ginclient.Client
+	cl          *ginclient.Client
 	accessToken string
 	db          *datastore.Datastore
 	org         *organization.Organization
@@ -49,8 +47,8 @@ var _ = BeforeSuite(func() {
 	org = fixtures.Organization(c).(*organization.Organization)
 
 	// Setup client and add routes for account API tests.
-	client = ginclient.New(ctx)
-	accountApi.Route(client.Router, adminRequired)
+	cl = ginclient.New(ctx)
+	accountApi.Route(cl.Router, adminRequired)
 
 	// Create organization for tests, accessToken
 	accessToken = org.AddToken("test-published-key", permission.Published)
@@ -58,7 +56,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 
 	// Set authorization header for subsequent requests
-	client.Defaults(func(r *http.Request) {
+	cl.Defaults(func(r *http.Request) {
 		r.Header.Set("Authorization", accessToken)
 	})
 
@@ -95,12 +93,7 @@ var _ = Describe("account", func() {
 			}`
 			res := loginRes{}
 
-			w := client.PostRawJSON("/account/login", req)
-			json.DecodeBuffer(w.Body, &res)
-
-			log.Debug("%#v %#v", req, res)
-
-			Expect(w.Code).To(Equal(200))
+			cl.Post("/account/login", req, res)
 			// TODO: should deconstruct token and test if the user id is in it
 			Expect(res.Token).ToNot(Equal(""))
 		})
@@ -112,12 +105,7 @@ var _ = Describe("account", func() {
 			}`
 			res := loginRes{}
 
-			w := client.PostRawJSON("/account/login", req)
-			json.DecodeBuffer(w.Body, &res)
-
-			log.Debug("%#v %#v", req, res)
-
-			Expect(w.Code).To(Equal(401))
+			cl.Post("/account/login", req, res, 401)
 			Expect(res.Token).To(Equal(""))
 		})
 
@@ -128,12 +116,7 @@ var _ = Describe("account", func() {
 			}`
 			res := loginRes{}
 
-			w := client.PostRawJSON("/account/login", req)
-			json.DecodeBuffer(w.Body, &res)
-
-			log.Debug("%#v %#v", req, res)
-
-			Expect(w.Code).To(Equal(401))
+			cl.Post("/account/login", req, res, 401)
 			Expect(res.Token).To(Equal(""))
 		})
 
@@ -144,12 +127,7 @@ var _ = Describe("account", func() {
 			}`
 			res := loginRes{}
 
-			w := client.PostRawJSON("/account/login", req)
-			json.DecodeBuffer(w.Body, &res)
-
-			log.Debug("%#v %#v", req, res)
-
-			Expect(w.Code).To(Equal(401))
+			cl.Post("/account/login", req, res, 401)
 			Expect(res.Token).To(Equal(""))
 		})
 	})
