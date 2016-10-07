@@ -128,23 +128,15 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	ord.PaymentIds = append(ord.PaymentIds, pay.Id())
 
 	// Handle authorization
-	switch pay.Type {
+	switch ord.Type {
 	case "null":
-		if err := null.Authorize(org, ord, usr, pay); err != nil {
-			log.Warn("Failed to authorize order using Balance: %v", err, ctx)
-			return nil, nil, err
-		}
+		err = null.Authorize(org, ord, usr, pay)
 	case "balance":
-		if err := balance.Authorize(org, ord, usr, pay); err != nil {
-			log.Warn("Failed to authorize order using Balance: %v", err, ctx)
-			return nil, nil, err
-		}
+		err = balance.Authorize(org, ord, usr, pay)
 	case "paypal":
+		err = nil
 	default:
-		if err := stripe.Authorize(org, ord, usr, pay); err != nil {
-			log.Warn("Failed to authorize order using Stripe: %v", err, ctx)
-			return nil, nil, err
-		}
+		err = stripe.Authorize(org, ord, usr, pay)
 	}
 
 	// If the charge is not live or test flag is set, then it is a test charge
