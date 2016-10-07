@@ -3,7 +3,6 @@ package stripe_test
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"crowdstart.com/models/coupon"
 	"crowdstart.com/models/lineitem"
@@ -511,9 +510,6 @@ var _ = Describe("payment", func() {
 			ordId := ord1.Id()
 
 			cl.Post("/order/"+ordId+"/charge", requests.ValidUserPaymentOnly, nil, 200)
-
-			time.Sleep(time.Second * 100)
-
 			cl.Post("/order/"+ordId+"/refund", requests.NegativeRefund, nil, 400)
 			cl.Post("/order/"+ordId+"/refund", requests.LargeRefundAmount, nil, 400)
 			cl.Post("/order/"+ordId+"/refund", requests.PartialRefund, nil, 200)
