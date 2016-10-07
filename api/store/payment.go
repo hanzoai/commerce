@@ -48,20 +48,14 @@ func charge(c *gin.Context) {
 	}
 }
 
-func payPalPayKey(c *gin.Context) {
+func confirm(c *gin.Context) {
 	if err := setStore(c); err == nil {
-		checkoutApi.PayPalPayKey(c)
+		checkoutApi.Confirm(c)
 	}
 }
 
-func payPalConfirm(c *gin.Context) {
+func cancel(c *gin.Context) {
 	if err := setStore(c); err == nil {
-		checkoutApi.PayPalConfirm(c)
-	}
-}
-
-func payPalCancel(c *gin.Context) {
-	if err := setStore(c); err == nil {
-		checkoutApi.PayPalCancel(c)
+		checkoutApi.Cancel(c)
 	}
 }

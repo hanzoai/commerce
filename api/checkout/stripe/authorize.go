@@ -17,7 +17,7 @@ func Authorize(org *organization.Organization, ord *order.Order, usr *user.User,
 	tok, err := client.Authorize(pay)
 	if err != nil {
 		log.Warn("Failed to authorize payment '%s'", pay.Id())
-		log.Debug(pay)
+		log.JSON(pay)
 		return err
 	}
 

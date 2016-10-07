@@ -1,8 +1,6 @@
 package checkout
 
 import (
-	"errors"
-
 	"appengine"
 
 	"github.com/gin-gonic/gin"
@@ -17,8 +15,12 @@ import (
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/types/currency"
+	"crowdstart.com/models/user"
 	"crowdstart.com/util/counter"
+	"crowdstart.com/util/emails"
 	"crowdstart.com/util/log"
+
+	. "crowdstart.com/models"
 )
 
 func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (*order.Order, error) {
@@ -35,7 +37,8 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (
 	case "paypal":
 		payments = ord.Payments
 	default:
-		return nil, errors.New("Invalid order type")
+		// TODO: return nil, errors.New("Invalid order type")
+		ord, payments, err = stripe.Capture(org, ord)
 	}
 
 	if err != nil {
@@ -50,12 +53,11 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (
 		return ord, err
 	}
 
+	// TODO: Run in task, no need to block call on rest of this
+	sendOrderConfirmation(ctx, org, ord, payments[0].Buyer)
 	saveRedemptions(ctx, ord)
-
 	saveReferral(ctx, org, ord)
-
 	updateCart(ctx, ord)
-
 	updateStats(ctx, org, ord, payments)
 
 	return ord, nil
@@ -82,6 +84,15 @@ func saveOrder(ctx appengine.Context, ord *order.Order, payments []*payment.Paym
 	}
 
 	return multi.Update(vals)
+}
+
+func sendOrderConfirmation(ctx appengine.Context, org *organization.Organization, ord *order.Order, buyer Buyer) {
+	// Send Create user
+	usr := new(user.User)
+	usr.Email = buyer.Email
+	usr.FirstName = buyer.FirstName
+	usr.LastName = buyer.LastName
+	emails.SendOrderConfirmationEmail(ctx, org, ord, usr)
 }
 
 func saveRedemptions(ctx appengine.Context, ord *order.Order) {
