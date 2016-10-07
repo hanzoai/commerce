@@ -6,7 +6,6 @@ import (
 	"crowdstart.com/api/checkout/stripe"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
-	"crowdstart.com/models/types/currency"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
 )
@@ -19,5 +18,7 @@ func refund(c *gin.Context, org *organization.Organization, ord *order.Order) er
 		return FailedToDecodeRequestBody
 	}
 
-	return stripe.Refund(org, ord, currency.Cents(refundReq.Amount))
+	log.JSON(refundReq)
+
+	return stripe.Refund(org, ord, refundReq.Amount)
 }

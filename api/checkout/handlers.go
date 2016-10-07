@@ -66,7 +66,7 @@ func Refund(c *gin.Context) {
 	}
 
 	if err := refund(c, org, ord); err != nil {
-		http.Fail(c, 400, "Error during refund", err)
+		http.Fail(c, 400, err.Error(), err)
 		return
 	}
 
