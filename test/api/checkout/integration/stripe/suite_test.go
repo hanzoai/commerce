@@ -1,4 +1,4 @@
-package test
+package stripe_test
 
 import (
 	"net/http"
@@ -31,16 +31,16 @@ func Test(t *testing.T) {
 }
 
 var (
-	ctx         ae.Context
-	cl          *ginclient.Client
 	accessToken string
+	cl          *ginclient.Client
+	ctx         ae.Context
 	db          *datastore.Datastore
 	org         *organization.Organization
 	prod        *product.Product
-	stor        *store.Store
-	sc          *stripe.Client
-	u           *user.User
 	refIn       *referrer.Referrer
+	sc          *stripe.Client
+	stor        *store.Store
+	u           *user.User
 )
 
 // Setup appengine context

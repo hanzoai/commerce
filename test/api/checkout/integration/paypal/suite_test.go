@@ -1,4 +1,4 @@
-package test
+package paypal_test
 
 import (
 	"net/http"
@@ -29,15 +29,15 @@ func Test(t *testing.T) {
 }
 
 var (
-	ctx         ae.Context
-	cl          *ginclient.Client
 	accessToken string
+	cl          *ginclient.Client
+	ctx         ae.Context
 	db          *datastore.Datastore
 	org         *organization.Organization
 	prod        *product.Product
+	refIn       *referrer.Referrer
 	stor        *store.Store
 	u           *user.User
-	refIn       *referrer.Referrer
 )
 
 // Setup appengine context
