@@ -167,7 +167,7 @@ type Organization struct {
 		Uid         string
 	} `json:"-"`
 
-	Affilliate struct {
+	Affiliate struct {
 		SuccessUrl string
 		ErrorUrl   string
 	} `json:"-"`
