@@ -25,7 +25,7 @@ import (
 )
 
 func Test(t *testing.T) {
-	Setup("thirdparty/paypayl/checkout", t)
+	Setup("api/checkout/integration/paypal", t)
 }
 
 var (
