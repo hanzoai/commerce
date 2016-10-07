@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"appengine"
-	aeds "appengine/datastore"
 
 	"appengine/urlfetch"
 
@@ -24,8 +23,6 @@ import (
 	"crowdstart.com/models/payment"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/router"
-
-	checkoutApi "crowdstart.com/api/checkout"
 )
 
 // Read body from response
@@ -143,19 +140,19 @@ func Webhook(c *gin.Context) {
 		ord.PaymentStatus = pay.Status
 
 		// No need to call Refund API.
-		pay.MustPut()
-		ord.MustPut()
+		pay.MustUpdate()
+		ord.MustUpdate()
 		return
 	}
 
 	if pay.Amount != ipnMessage.Amount || pay.Currency != ipnMessage.Currency {
 		// Probably fraud.
 		pay.Status = payment.Fraudulent
-		pay.MustPut()
+		pay.MustUpdate()
 
 		ord.Status = order.Cancelled
 		ord.PaymentStatus = pay.Status
-		ord.MustPut()
+		ord.MustUpdate()
 
 		// call refund API
 		return
@@ -163,10 +160,10 @@ func Webhook(c *gin.Context) {
 
 	// Looking good.
 	pay.Status = payment.Paid
-	pay.MustPut()
+	pay.MustUpdate()
 
-	// Increment counters and figure update referrer things
-	checkoutApi.CompleteCapture(c, org, ord, []*aeds.Key{pay.Key().(*aeds.Key)}, []*payment.Payment{pay})
+	// TODO: Make this part of the payment model API
+	// checkoutApi.CompleteCapture(c, org, ord, []*aeds.Key{pay.Key().(*aeds.Key)}, []*payment.Payment{pay})
 }
 
 func Route(router router.Router, args ...gin.HandlerFunc) {

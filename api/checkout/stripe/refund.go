@@ -22,6 +22,7 @@ func Refund(org *organization.Organization, ord *order.Order, refundAmount curre
 	if refundAmount == currency.Cents(0) {
 		return ZeroRefund
 	}
+
 	if refundAmount < currency.Cents(0) {
 		return NegativeRefund
 	}
@@ -30,9 +31,14 @@ func Refund(org *organization.Organization, ord *order.Order, refundAmount curre
 	db := ord.Db
 	ctx := db.Context
 
-	if refundAmount > ord.Total {
+	log.JSON(ord)
+	log.Dump(refundAmount)
+	log.Dump(ord.Total)
+
+	if int64(refundAmount) > int64(ord.Total) {
 		return errors.New("Requested refund amount is greater than the order total")
 	}
+
 	if ord.Refunded+refundAmount > ord.Total {
 		return errors.New("Previously refunded amounts and requested refund amount exceed the order total")
 	}
