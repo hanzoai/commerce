@@ -58,24 +58,6 @@ func Authorize(c *gin.Context) {
 	http.Render(c, 200, ord)
 }
 
-func Refund(c *gin.Context) {
-	org, ord := getOrganizationAndOrder(c)
-	if ord == nil {
-		http.Fail(c, 404, "Failed to retrieve order", OrderDoesNotExist)
-		return
-	}
-
-	if err := refund(c, org, ord); err != nil {
-		http.Fail(c, 400, err.Error(), err)
-		return
-	}
-
-	c.Writer.Header().Add("Location", orderEndpoint+ord.Id())
-
-	ord.Number = ord.NumberFromId()
-	http.Render(c, 200, ord)
-}
-
 func Capture(c *gin.Context) {
 	org, ord := getOrganizationAndOrder(c)
 	if ord == nil {
@@ -117,6 +99,24 @@ func Charge(c *gin.Context) {
 	}
 
 	emails.SendOrderConfirmationEmail(org.Db.Context, org, ord, usr)
+
+	c.Writer.Header().Add("Location", orderEndpoint+ord.Id())
+
+	ord.Number = ord.NumberFromId()
+	http.Render(c, 200, ord)
+}
+
+func Refund(c *gin.Context) {
+	org, ord := getOrganizationAndOrder(c)
+	if ord == nil {
+		http.Fail(c, 404, "Failed to retrieve order", OrderDoesNotExist)
+		return
+	}
+
+	if err := refund(c, org, ord); err != nil {
+		http.Fail(c, 400, err.Error(), err)
+		return
+	}
 
 	c.Writer.Header().Add("Location", orderEndpoint+ord.Id())
 
