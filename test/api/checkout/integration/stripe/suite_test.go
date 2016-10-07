@@ -27,7 +27,7 @@ import (
 )
 
 func Test(t *testing.T) {
-	Setup("thirdparty/stripe/checkout", t)
+	Setup("api/checkout/integration/stripe", t)
 }
 
 var (
