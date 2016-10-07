@@ -16,6 +16,5 @@ func Fake(db *datastore.Datastore, productId string) *Variant {
 	v.Inventory = rand.Intn(400)
 	v.Sold = rand.Intn(400)
 	v.Taxable = false
-
 	return v
 }
