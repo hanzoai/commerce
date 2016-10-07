@@ -1,4 +1,4 @@
-package test
+package stripe_test
 
 import (
 	"crowdstart.com/models/payment"

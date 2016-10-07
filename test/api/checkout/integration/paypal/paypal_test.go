@@ -1,4 +1,4 @@
-package test
+package paypal_test
 
 import (
 	"crowdstart.com/models/order"
