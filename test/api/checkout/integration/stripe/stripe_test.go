@@ -3,6 +3,7 @@ package test
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"crowdstart.com/models/coupon"
 	"crowdstart.com/models/lineitem"
@@ -383,7 +384,7 @@ var _ = Describe("payment", func() {
 		})
 
 		It("Should not capture invalid order", func() {
-			cl.Post("/order/BADID/authorize", "", 404)
+			cl.Post("/order/BADID/authorize", "", nil, 404)
 		})
 
 		It("Should authorize order with coupon successfully", func() {
@@ -500,27 +501,25 @@ var _ = Describe("payment", func() {
 	})
 
 	Context("Refund Order", func() {
-		It("Should refund order successfully", func() {
-			ord1 := order.New(db)
-			ord1.UserId = u.Id()
-			ord1.Currency = currency.USD
-			ord1.Items = []lineitem.LineItem{
-				lineitem.LineItem{
-					ProductId: prod.Id(),
-					Quantity:  1,
-				},
-			}
-			err := ord1.Put()
-			Expect(err).ToNot(HaveOccurred())
+		FIt("Should refund order successfully", func() {
+			ord1 := order.Fake(db, lineitem.LineItem{
+				ProductId: prod.Id(),
+				Quantity:  1,
+			})
+
+			ord1.MustCreate()
 			ordId := ord1.Id()
 
 			cl.Post("/order/"+ordId+"/charge", requests.ValidUserPaymentOnly, nil, 200)
+
+			time.Sleep(time.Second * 100)
+
 			cl.Post("/order/"+ordId+"/refund", requests.NegativeRefund, nil, 400)
 			cl.Post("/order/"+ordId+"/refund", requests.LargeRefundAmount, nil, 400)
 			cl.Post("/order/"+ordId+"/refund", requests.PartialRefund, nil, 200)
 
 			refundedOrder := order.New(db)
-			err = refundedOrder.Get(ordId)
+			err := refundedOrder.Get(ordId)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(refundedOrder.Refunded).To(Equal(currency.Cents(123)))
 

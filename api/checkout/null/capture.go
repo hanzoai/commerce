@@ -3,8 +3,6 @@ package null
 import (
 	"errors"
 
-	aeds "appengine/datastore"
-
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"
@@ -12,13 +10,13 @@ import (
 
 var FailedToCaptureCharge = errors.New("Failed to capture charge")
 
-func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []*aeds.Key, []*payment.Payment, error) {
+func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []*payment.Payment, error) {
 	db := ord.Db
 
 	payments := make([]*payment.Payment, 0)
-	keys, err := payment.Query(db).Ancestor(ord.Key()).GetAll(&payments)
+	_, err := payment.Query(db).Ancestor(ord.Key()).GetAll(&payments)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, payments, err
 	}
 
 	// Capture any uncaptured payments
@@ -33,5 +31,5 @@ func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []
 		}
 	}
 
-	return ord, keys, payments, nil
+	return ord, payments, nil
 }
