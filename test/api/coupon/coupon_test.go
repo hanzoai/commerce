@@ -75,23 +75,23 @@ var _ = Describe("coupon", func() {
 	})
 
 	Context("Put coupon", func() {
-		coup := new(coupon.Coupon)
+		cpn := new(coupon.Coupon)
 		res := new(coupon.Coupon)
 		req := new(coupon.Coupon)
 
 		Before(func() {
-			coup = coupon.Fake(db)
-			coup.MustCreate()
+			cpn = coupon.Fake(db)
+			cpn.MustCreate()
 
 			// Create coupon request
 			req = coupon.Fake(db)
 
 			// Update coupon
-			cl.Put("/coupon/"+coup.Id(), req, res)
+			cl.Put("/coupon/"+cpn.Id(), req, res)
 		})
 
 		It("Should put coupon", func() {
-			Expect(res.Id_).To(Equal(coup.Id()))
+			Expect(res.Id_).To(Equal(cpn.Id()))
 			Expect(res.Type).To(Equal(req.Type))
 			Expect(res.Name).To(Equal(req.Name))
 			Expect(res.Code_).To(Equal(strings.ToUpper(req.Code_)))
@@ -107,7 +107,7 @@ var _ = Describe("coupon", func() {
 	})
 
 	Context("patch coupon", func() {
-		coup := new(coupon.Coupon)
+		cpn := new(coupon.Coupon)
 		res := new(coupon.Coupon)
 
 		req := struct {
@@ -121,28 +121,28 @@ var _ = Describe("coupon", func() {
 		}
 
 		Before(func() {
-			coup = coupon.Fake(db)
-			coup.MustCreate()
+			cpn = coupon.Fake(db)
+			cpn.MustCreate()
 
 			// Update coupon
-			cl.Put("/coupon/"+coup.Id(), req, res)
+			cl.Put("/coupon/"+cpn.Id(), req, res)
 			log.JSON(req)
 			log.JSON(res)
 		})
 
 		It("Should patch coupon", func() {
-			Expect(res.Id_).To(Equal(coup.Id()))
-			Expect(res.Type).To(Equal(coup.Type))
+			Expect(res.Id_).To(Equal(cpn.Id()))
+			Expect(res.Type).To(Equal(cpn.Type))
 			Expect(res.Name).To(Equal(req.Name))
-			Expect(res.Code_).To(Equal(strings.ToUpper(coup.Code_)))
-			Expect(res.Dynamic).To(Equal(coup.Dynamic))
+			Expect(res.Code_).To(Equal(strings.ToUpper(cpn.Code_)))
+			Expect(res.Dynamic).To(Equal(cpn.Dynamic))
 			Expect(res.StartDate.UTC()).To(Equal(req.StartDate.UTC()))
 			Expect(res.EndDate.UTC()).To(Equal(req.EndDate.UTC()))
-			Expect(res.Once).To(Equal(coup.Once))
-			Expect(res.Limit).To(Equal(coup.Limit))
-			Expect(res.Enabled).To(Equal(coup.Enabled))
-			Expect(res.Amount).To(Equal(coup.Amount))
-			Expect(res.Used).To(Equal(coup.Used))
+			Expect(res.Once).To(Equal(cpn.Once))
+			Expect(res.Limit).To(Equal(cpn.Limit))
+			Expect(res.Enabled).To(Equal(cpn.Enabled))
+			Expect(res.Amount).To(Equal(cpn.Amount))
+			Expect(res.Used).To(Equal(cpn.Used))
 		})
 	})
 
