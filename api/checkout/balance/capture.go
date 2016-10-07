@@ -3,24 +3,25 @@ package balance
 import (
 	"errors"
 
-	aeds "appengine/datastore"
-
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/transaction"
+	"crowdstart.com/util/log"
 )
 
 var FailedToCaptureCharge = errors.New("Failed to capture charge")
 
-func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []*aeds.Key, []*payment.Payment, error) {
+func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []*payment.Payment, error) {
 	db := ord.Db
 
+	// Get payments for this order
 	payments := make([]*payment.Payment, 0)
-	keys, err := payment.Query(db).Ancestor(ord.Key()).GetAll(&payments)
-	if err != nil {
-		return nil, nil, nil, err
+	if _, err := payment.Query(db).Ancestor(ord.Key()).GetAll(&payments); err != nil {
+		return nil, payments, err
 	}
+
+	log.Debug("payments %v", payments)
 
 	// Capture any uncaptured payments
 	for _, p := range payments {
@@ -42,5 +43,5 @@ func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []
 		}
 	}
 
-	return ord, keys, payments, nil
+	return ord, payments, nil
 }

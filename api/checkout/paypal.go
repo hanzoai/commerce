@@ -64,7 +64,6 @@ func PayPalConfirm(c *gin.Context) {
 	db := datastore.New(ctx)
 
 	var err error
-	var keys []*aeds.Key
 	var ord *order.Order
 	var payments []*payment.Payment
 
@@ -72,7 +71,7 @@ func PayPalConfirm(c *gin.Context) {
 	payments = make([]*payment.Payment, 0)
 
 	if payKey := c.Params.ByName("payKey"); payKey != "" {
-		keys, err = payment.Query(db).Filter("Account.PayKey=", payKey).GetAll(&payments)
+		_, err = payment.Query(db).Filter("Account.PayKey=", payKey).GetAll(&payments)
 		if err != nil {
 			http.Fail(c, 500, "Failed to retrieve payment", err)
 			return
@@ -95,8 +94,9 @@ func PayPalConfirm(c *gin.Context) {
 	}
 
 	ord.PaymentStatus = payment.Paid
+	ord.Payments = payments
 
-	ord, err = CompleteCapture(c, org, ord, keys, payments)
+	ord, err = capture(c, org, ord)
 	if err != nil {
 		http.Fail(c, 500, "Error during capture", err)
 		return
