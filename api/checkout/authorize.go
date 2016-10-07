@@ -8,6 +8,7 @@ import (
 
 	"crowdstart.com/api/checkout/balance"
 	"crowdstart.com/api/checkout/null"
+	"crowdstart.com/api/checkout/paypal"
 	"crowdstart.com/api/checkout/stripe"
 	"crowdstart.com/models/multi"
 	"crowdstart.com/models/order"
@@ -16,7 +17,6 @@ import (
 	"crowdstart.com/models/store"
 	"crowdstart.com/models/types/client"
 	"crowdstart.com/models/types/currency"
-	"crowdstart.com/models/user"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
 )
@@ -44,11 +44,11 @@ func authorizationRequest(c *gin.Context, ord *order.Order) (*AuthorizationReq, 
 	return ar, nil
 }
 
-func authorize(c *gin.Context, org *organization.Organization, ord *order.Order) (*payment.Payment, *user.User, error) {
+func authorize(c *gin.Context, org *organization.Organization, ord *order.Order) (*payment.Payment, error) {
 	// Process authorization request
 	ar, err := authorizationRequest(c, ord)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	log.JSON("Authorization Request:", ar, c)
@@ -66,18 +66,20 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		ord.Currency = stor.Currency // Set currency
 	}
 
+	log.JSON("BEFORE TALLY '%s'", ord.Id(), ord, c)
+
 	// Update order with information from datastore, store and tally
 	if err := ord.UpdateAndTally(stor); err != nil {
 		log.Error(err, ctx)
-		return nil, nil, errors.New("Invalid or incomplete order")
+		return nil, errors.New("Invalid or incomplete order")
 	}
 
-	log.JSON("Order '%s'", ord.Id(), ord, c)
+	log.JSON("AFTER TALLY '%s'", ord.Id(), ord, c)
 
 	// Get user from request
 	usr, err := ar.User()
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	log.JSON("User '%s'", usr.Id(), usr, c)
@@ -85,7 +87,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	// Get payment from request, update order
 	pay, err := ar.Payment()
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	// Use user as buyer
@@ -134,9 +136,19 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	case "balance":
 		err = balance.Authorize(org, ord, usr, pay)
 	case "paypal":
-		err = nil
+		err = paypal.Authorize(org, ord, usr, pay)
+	case "stripe":
+		err = stripe.Authorize(org, ord, usr, pay)
 	default:
 		err = stripe.Authorize(org, ord, usr, pay)
+	}
+
+	if err != nil {
+		ord.Status = order.Cancelled
+		pay.Status = payment.Cancelled
+		pay.Account.Error = err.Error()
+
+		return nil, err
 	}
 
 	// If the charge is not live or test flag is set, then it is a test charge
@@ -161,5 +173,5 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 
 	log.Debug("Order '%s' authorized", ord.Id(), c)
 
-	return pay, usr, nil
+	return pay, nil
 }
