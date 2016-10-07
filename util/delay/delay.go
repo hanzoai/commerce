@@ -12,6 +12,7 @@ import (
 type Function struct {
 	dfunc *delay.Function
 	queue string
+	name  string
 }
 
 // Create a new Function assigned to default queue
@@ -23,12 +24,15 @@ func Func(key string, i interface{}) *Function {
 }
 
 // Wrapper around delay.Func.Call
-func (f *Function) Call(c appengine.Context, args ...interface{}) {
+func (f *Function) Call(ctx appengine.Context, args ...interface{}) error {
 	t, _ := f.Task(args...)
-	_, err := taskqueue.Add(c, t, f.queue)
+	t.Name = f.name
+	_, err := taskqueue.Add(ctx, t, f.queue)
 	if err != nil {
 		log.Warn(err)
 	}
+
+	return err
 }
 
 // Wrapper around delay.Func.Task
@@ -42,4 +46,13 @@ func (f *Function) Queue(queue string) *Function {
 	f2.dfunc = f.dfunc
 	f2.queue = queue
 	return f2
+}
+
+// Add a task only once by using a unique name
+func (f *Function) Once(ctx appengine.Context, name string, args ...interface{}) error {
+	f2 := new(Function)
+	f2.dfunc = f.dfunc
+	f2.queue = f.queue
+	f2.name = name
+	return f2.Call(ctx, args...)
 }
