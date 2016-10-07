@@ -14,7 +14,6 @@ import (
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"
-	"crowdstart.com/models/user"
 	"crowdstart.com/thirdparty/paypal/responses"
 	"crowdstart.com/util/log"
 
@@ -51,7 +50,7 @@ func setupHeaders(req *http.Request, ord *order.Order, org *organization.Organiz
 	req.Header.Set("X-PAYPAL-RESPONSE-DATA-FORMAT", "JSON")
 }
 
-func (c Client) Pay(pay *payment.Payment, usr *user.User, ord *order.Order, org *organization.Organization) (string, error) {
+func (c Client) Pay(pay *payment.Payment, ord *order.Order, org *organization.Organization) (string, error) {
 	data := url.Values{}
 	data.Set("actionType", "PAY")
 	// Standard sandbox APP ID, for testing
@@ -62,9 +61,6 @@ func (c Client) Pay(pay *payment.Payment, usr *user.User, ord *order.Order, org 
 	}
 	// IP address from which request is sent.
 	data.Set("clientDetails.ipAddress", pay.Client.Ip)
-	if usr.PaypalEmail != "" {
-		data.Set("senderEmail", usr.PaypalEmail)
-	}
 
 	cur := pay.Currency
 
@@ -146,7 +142,7 @@ func (c Client) Pay(pay *payment.Payment, usr *user.User, ord *order.Order, org 
 	return paymentResponse.PayKey, nil
 }
 
-func (c Client) SetPaymentOptions(pay *payment.Payment, user *user.User, ord *order.Order, org *organization.Organization) error {
+func (c Client) SetPaymentOptions(pay *payment.Payment, ord *order.Order, org *organization.Organization) error {
 	cur := pay.Currency
 
 	data := url.Values{}
@@ -239,9 +235,9 @@ func (c Client) SetPaymentOptions(pay *payment.Payment, user *user.User, ord *or
 	return nil
 }
 
-func (c Client) GetPayKey(pay *payment.Payment, usr *user.User, ord *order.Order, org *organization.Organization) (string, error) {
-	payKey, err := c.Pay(pay, usr, ord, org)
-	c.SetPaymentOptions(pay, usr, ord, org)
+func (c Client) GetPayKey(pay *payment.Payment, ord *order.Order, org *organization.Organization) (string, error) {
+	payKey, err := c.Pay(pay, ord, org)
+	c.SetPaymentOptions(pay, ord, org)
 	return payKey, err
 }
 

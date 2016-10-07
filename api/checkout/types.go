@@ -73,9 +73,11 @@ func (ar *AuthorizationReq) Payment() (*payment.Payment, error) {
 
 	// TODO: Remove this check
 	switch pay.Type {
+	case payment.Null:
+		return pay, nil
 	case payment.Stripe:
 		return pay, nil
-	case payment.Null:
+	case payment.PayPal:
 		return pay, nil
 	default:
 		return nil, UnsupportedPaymentType

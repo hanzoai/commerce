@@ -14,22 +14,13 @@ func (o *Order) Tally() {
 	log.Debug("Tallying up order")
 
 	// Update total
-	subtotal := 0
-	nItems := len(o.Items)
-	for i := 0; i < nItems; i++ {
-		subtotal += o.Items[i].Quantity * int(o.Items[i].Price)
+	linetotal := 0
+	for _, item := range o.Items {
+		linetotal += item.Quantity * int(item.Price)
 	}
-	o.LineTotal = currency.Cents(subtotal)
-
-	// TODO: Make this use shipping/tax information
-	discount := int(o.Discount)
-	shipping := int(o.Shipping)
-	tax := int(o.Tax)
-	subtotal = subtotal - discount
-	total := subtotal + tax + shipping
-
-	o.Subtotal = currency.Cents(subtotal)
-	o.Total = currency.Cents(total)
+	o.LineTotal = currency.Cents(linetotal)
+	o.Subtotal = o.LineTotal - o.Discount
+	o.Total = o.Subtotal + o.Tax + o.Shipping
 }
 
 // Update order with information from datastore and tally

@@ -22,18 +22,18 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api.POST("/:storeid/authorize/:orderid", publishedRequired, namespaced, authorize)
 	api.POST("/:storeid/capture/:orderid", publishedRequired, namespaced, capture)
 	api.POST("/:storeid/charge", publishedRequired, namespaced, charge)
-	api.POST("/:storeid/paypal/pay", publishedRequired, namespaced, payPalPayKey)
-	api.POST("/:storeid/paypal/confirm/:payKey", publishedRequired, namespaced, payPalConfirm)
-	api.POST("/:storeid/paypal/cancel/:payKey", publishedRequired, namespaced, payPalCancel)
+	api.POST("/:storeid/paypal/pay", publishedRequired, namespaced, authorize)
+	api.POST("/:storeid/paypal/confirm/:payKey", publishedRequired, namespaced, confirm)
+	api.POST("/:storeid/paypal/cancel/:payKey", publishedRequired, namespaced, cancel)
 
 	// Support new checkout prefixed methods
 	api.POST("/:storeid/checkout/authorize", publishedRequired, namespaced, authorize)
 	api.POST("/:storeid/checkout/authorize/:orderid", publishedRequired, namespaced, authorize)
 	api.POST("/:storeid/checkout/capture/:orderid", publishedRequired, namespaced, capture)
 	api.POST("/:storeid/checkout/charge", publishedRequired, namespaced, charge)
-	api.POST("/:storeid/checkout/paypal/pay", publishedRequired, namespaced, payPalPayKey)
-	api.POST("/:storeid/checkout/paypal/confirm/:payKey", publishedRequired, namespaced, payPalConfirm)
-	api.POST("/:storeid/checkout/paypal/cancel/:payKey", publishedRequired, namespaced, payPalCancel)
+	api.POST("/:storeid/checkout/paypal/pay", publishedRequired, namespaced, authorize)
+	api.POST("/:storeid/checkout/paypal/confirm/:payKey", publishedRequired, namespaced, confirm)
+	api.POST("/:storeid/checkout/paypal/cancel/:payKey", publishedRequired, namespaced, cancel)
 
 	// API for getting a full product/variant/bundle for a specific store
 	api.GET("/:storeid/bundle/:key", publishedRequired, namespaced, getItem("bundle"))
