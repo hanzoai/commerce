@@ -12,8 +12,8 @@ import (
 // properly.
 type Query struct {
 	datastore.Query
-	datastore *datastore.Datastore
-	model     *Model
+	Datastore *datastore.Datastore
+	Model     *Model
 }
 
 // Return a query for this entity kind
@@ -21,8 +21,8 @@ func (m *Model) Query() *Query {
 	q := new(Query)
 	query := datastore.NewQuery(m.Db, m.Entity.Kind())
 	q.Query = query
-	q.datastore = query.Datastore
-	q.model = m
+	q.Datastore = query.Datastore
+	q.Model = m
 	return q
 }
 
@@ -57,10 +57,10 @@ func (q *Query) KeysOnly() *Query {
 }
 
 func (q *Query) First() (bool, error) {
-	key, ok, err := q.Query.First(q.model.Entity)
+	key, ok, err := q.Query.First(q.Model.Entity)
 	if ok {
-		if q.model.key == nil {
-			q.model.setKey(key)
+		if q.Model.key == nil {
+			q.Model.setKey(key)
 		}
 	}
 	return ok, err
@@ -90,7 +90,7 @@ func (q *Query) GetAll(dst interface{}) ([]*aeds.Key, error) {
 		v := slice.Index(i)
 		if v.Type().Kind() == reflect.Ptr {
 			entity := v.Interface().(Entity)
-			entity.Init(q.datastore)
+			entity.Init(q.Datastore)
 			entity.SetKey(keys[i])
 		}
 
@@ -123,7 +123,7 @@ func (q *Query) GetKeys() ([]*aeds.Key, error) {
 }
 
 func (q *Query) GetEntities() ([]Entity, error) {
-	islice := q.model.Slice()
+	islice := q.Model.Slice()
 	keys, err := q.Query.GetAll(islice)
 
 	value := reflect.ValueOf(islice)
@@ -136,7 +136,7 @@ func (q *Query) GetEntities() ([]Entity, error) {
 
 	for i := range keys {
 		entity := value.Index(i).Interface().(Entity)
-		entity.Init(q.datastore)
+		entity.Init(q.Datastore)
 		entity.SetKey(keys[i])
 		slice[i] = entity
 	}
