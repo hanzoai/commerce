@@ -50,25 +50,15 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (
 		return ord, err
 	}
 
-	saveReferral(ctx, org, ord)
-
 	saveRedemptions(ctx, ord)
+
+	saveReferral(ctx, org, ord)
 
 	updateCart(ctx, ord)
 
 	updateStats(ctx, org, ord, payments)
 
 	return ord, nil
-}
-
-func saveOrder(ctx appengine.Context, ord *order.Order, payments []*payment.Payment) error {
-	vals := []interface{}{ord}
-
-	for _, pay := range payments {
-		vals = append(vals, pay)
-	}
-
-	return multi.Update(vals)
 }
 
 func updateOrder(ctx appengine.Context, ord *order.Order, payments []*payment.Payment) {
@@ -81,6 +71,60 @@ func updateOrder(ctx appengine.Context, ord *order.Order, payments []*payment.Pa
 	ord.Paid = currency.Cents(int(ord.Paid) + totalPaid)
 	if ord.Paid == ord.Total {
 		ord.PaymentStatus = payment.Paid
+	}
+}
+
+func saveOrder(ctx appengine.Context, ord *order.Order, payments []*payment.Payment) error {
+	vals := []interface{}{ord}
+
+	for _, pay := range payments {
+		vals = append(vals, pay)
+	}
+
+	return multi.Update(vals)
+}
+
+func saveRedemptions(ctx appengine.Context, ord *order.Order) {
+	// Save coupon redemptions
+	ord.GetCoupons()
+	if len(ord.Coupons) > 0 {
+		for _, coup := range ord.Coupons {
+			if err := coup.SaveRedemption(); err != nil {
+				log.Warn("Unable to save redemption: %v", err, ctx)
+			}
+		}
+	}
+}
+
+func saveReferral(ctx appengine.Context, org *organization.Organization, ord *order.Order) {
+	db := ord.Db
+
+	// Referral
+	if ord.ReferrerId != "" {
+		ref := referrer.New(db)
+
+		// if ReferrerId refers to non-existing token, then remove from order
+		if err := ref.Get(ord.ReferrerId); err != nil {
+			log.Warn("Order referenced non-existent referrer '%s'", ord.ReferrerId, ctx)
+			ord.ReferrerId = ""
+		} else {
+			// Save referral
+			rfl, err := ref.SaveReferral(ord.Id(), ord.UserId)
+			if err != nil {
+				log.Warn("Unable to save referral: %v", err, ctx)
+			} else {
+				// Update statistics
+				if ref.AffiliateId != "" {
+					if err := counter.IncrReferrerFees(ctx, org, ref.Id(), rfl); err != nil {
+						log.Warn("Counter Error %s", err, ctx)
+					}
+
+					if err := counter.IncrAffiliateFees(ctx, org, ref.AffiliateId, rfl); err != nil {
+						log.Warn("Counter Error %s", err, ctx)
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -124,50 +168,6 @@ func updateStats(ctx appengine.Context, org *organization.Organization, ord *ord
 			}
 			if err := counter.IncrStoreProductOrders(ctx, org, ord.StoreId, ord, t); err != nil {
 				log.Warn("Counter Error %s", err, ctx)
-			}
-		}
-	}
-}
-
-func saveRedemptions(ctx appengine.Context, ord *order.Order) {
-	// Save coupon redemptions
-	ord.GetCoupons()
-	if len(ord.Coupons) > 0 {
-		for _, coup := range ord.Coupons {
-			if err := coup.SaveRedemption(); err != nil {
-				log.Warn("Unable to save redemption: %v", err, ctx)
-			}
-		}
-	}
-}
-
-func saveReferral(ctx appengine.Context, org *organization.Organization, ord *order.Order) {
-	db := ord.Db
-
-	// Referral
-	if ord.ReferrerId != "" {
-		ref := referrer.New(db)
-
-		// if ReferrerId refers to non-existing token, then remove from order
-		if err := ref.Get(ord.ReferrerId); err != nil {
-			log.Warn("Order referenced non-existent referrer '%s'", ord.ReferrerId, ctx)
-			ord.ReferrerId = ""
-		} else {
-			// Save referral
-			rfl, err := ref.SaveReferral(ord.Id(), ord.UserId)
-			if err != nil {
-				log.Warn("Unable to save referral: %v", err, ctx)
-			} else {
-				// Update statistics
-				if ref.AffiliateId != "" {
-					if err := counter.IncrReferrerFees(ctx, org, ref.Id(), rfl); err != nil {
-						log.Warn("Counter Error %s", err, ctx)
-					}
-
-					if err := counter.IncrAffiliateFees(ctx, org, ref.AffiliateId, rfl); err != nil {
-						log.Warn("Counter Error %s", err, ctx)
-					}
-				}
 			}
 		}
 	}
