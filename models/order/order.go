@@ -132,7 +132,8 @@ type Order struct {
 	Coupons     []coupon.Coupon `json:"coupons,omitempty"`
 	CouponCodes []string        `json:"couponCodes,omitempty"`
 
-	PaymentIds []string `json:"payments"`
+	PaymentIds []string           `json:"payments"`
+	Payments   []*payment.Payment `json:"-" datastore:"-"`
 
 	// Date order was cancelled at
 	CancelledAt time.Time `json:"cancelledAt,omitempty"`

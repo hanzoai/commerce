@@ -6,6 +6,7 @@ import (
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/payment"
+	"crowdstart.com/models/types/currency"
 	"crowdstart.com/models/user"
 	stringutil "crowdstart.com/util/strings"
 )
@@ -82,5 +83,5 @@ func (ar *AuthorizationReq) Payment() (*payment.Payment, error) {
 }
 
 type RefundRequest struct {
-	Amount uint64
+	Amount currency.Cents `json:"amount"`
 }
