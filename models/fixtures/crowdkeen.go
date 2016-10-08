@@ -14,11 +14,11 @@ import (
 	"crowdstart.com/util/log"
 )
 
-var Idedicated = New("idedicated", func(c *gin.Context) *organization.Organization {
+var Crowdkeen = New("crowdkeen", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)
-	org.Name = "idedicated"
+	org.Name = "crowdkeen"
 	org.GetOrCreate("Name=", org.Name)
 
 	u := user.New(db)
@@ -27,12 +27,12 @@ var Idedicated = New("idedicated", func(c *gin.Context) *organization.Organizati
 	u.FirstName = "michael"
 	u.LastName = "walker"
 	u.Organizations = []string{org.Id()}
-	u.PasswordHash, _ = password.Hash("1dedicated23")
+	u.PasswordHash, _ = password.Hash("1crowdkeen23")
 	u.Update()
 
-	org.FullName = "IDedicated Inc"
+	org.FullName = "crowdkeen Inc"
 	org.Owners = []string{u.Id()}
-	org.Website = "http://www.idedicated.net"
+	org.Website = "http://www.crowdkeen.net"
 	org.SecretKey = []byte("EZ2E91RKX2BpRlv149N3STd1g580cp58")
 	org.AddDefaultTokens()
 
@@ -41,18 +41,13 @@ var Idedicated = New("idedicated", func(c *gin.Context) *organization.Organizati
 	org.Fees.Affiliate.Flat = 30
 	org.Fees.Affiliate.Percent = 0.30
 
-	org.Mailchimp.APIKey = "37181ee9311a3eb5999cf457a2216aca-us9"
-	org.Mailchimp.ListId = "27eb8e23aab"
+	org.Mailchimp.APIKey = "4bf63eca9ca6594a7d37bf24aed84fcc-us14"
+	org.Mailchimp.ListId = "36005"
 
 	// Email configuration
-	org.Mandrill.APIKey = ""
-
-	org.Paypal.ConfirmUrl = "https://www.getkanoa.com"
-	org.Paypal.CancelUrl = "https://www.getkanoa.com"
-
 	org.Email.Defaults.Enabled = true
-	org.Email.Defaults.FromName = "IDedicated"
-	org.Email.Defaults.FromEmail = "hi@idedicated.net"
+	org.Email.Defaults.FromName = "crowdkeen"
+	org.Email.Defaults.FromEmail = "hi@crowdkeen.net"
 
 	// Save org into default namespace
 	org.Put()
