@@ -3,6 +3,7 @@ package hashid
 import (
 	"errors"
 	"strconv"
+	"time"
 
 	"appengine"
 	aeds "appengine/datastore"
@@ -25,6 +26,12 @@ func cache(namespace string, id int64) {
 type Namespace struct {
 	IntId int64
 	Name  string
+
+	// Included for compatibility with namespace models
+	Id_       string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	Deleted   bool
 }
 
 func fmtNs(ns string) string {
