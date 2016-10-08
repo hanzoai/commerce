@@ -51,7 +51,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		return nil, err
 	}
 
-	log.JSON("Authorization Request:", ar, c)
+	log.JSON("Authorization request:", ar, c)
 
 	// Peel off order for convience
 	ord = ar.Order
@@ -66,23 +66,17 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		ord.Currency = stor.Currency // Set currency
 	}
 
-	log.JSON("BEFORE TALLY '%s'", ord.Id(), ord, c)
-
 	// Update order with information from datastore, store and tally
 	if err := ord.UpdateAndTally(stor); err != nil {
 		log.Error(err, ctx)
 		return nil, errors.New("Invalid or incomplete order")
 	}
 
-	log.JSON("AFTER TALLY '%s'", ord.Id(), ord, c)
-
 	// Get user from request
 	usr, err := ar.User()
 	if err != nil {
 		return nil, err
 	}
-
-	log.JSON("User '%s'", usr.Id(), usr, c)
 
 	// Get payment from request, update order
 	pay, err := ar.Payment()
@@ -92,8 +86,6 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 
 	// Use user as buyer
 	pay.Buyer = usr.Buyer()
-
-	log.JSON("Buyer '%s'", pay.Buyer.Email, pay.Buyer, c)
 
 	// Override total to $0.50 is test email is used
 	if org.IsTestEmail(pay.Buyer.Email) {
@@ -112,8 +104,6 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 	pay.Currency = ord.Currency
 	pay.Description = ord.Description()
 	pay.Fee = fee
-
-	log.JSON("Payment '%s'", pay.Id(), pay, c)
 
 	// Setup all relationships before we try to authorize to ensure that keys
 	// that get created are actually valid.
@@ -167,11 +157,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		entities = append(entities, fe)
 	}
 
-	log.Warn("Fees: %v", fees)
-
 	multi.MustCreate(entities)
-
-	log.Debug("Order '%s' authorized", ord.Id(), c)
 
 	return pay, nil
 }
