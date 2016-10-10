@@ -22,38 +22,45 @@ func multi(vals interface{}, fn func(mixin.Entity) error) error {
 	slice := reflect.ValueOf(vals)
 
 	var wg sync.WaitGroup
-	var err error
+
+	n := slice.Len()
+
+	// Capture all errors
+	errs := make(MultiError, n)
+	haveErr := false
 
 	// Loop over slice initializing entities
-	for i := 0; i < slice.Len(); i++ {
+	for i := 0; i < n; i++ {
 		wg.Add(1)
-
-		// Grab next entity off slice
-		entity, ok := slice.Index(i).Interface().(mixin.Entity)
-		if !ok {
-			return errors.New(fmt.Sprintf("Slice must contain entities, not: %v", slice.Index(i).Interface()))
-		}
-
-		// Run method in gofunc
-		go func(model mixin.Entity) {
-			// Only continue if we haven't seen an error
-			if err == nil {
-				err = fn(entity)
+		go func(i int) {
+			// Grab next entity off slice
+			entity, ok := slice.Index(i).Interface().(mixin.Entity)
+			if !ok {
+				haveErr = true
+				errs[i] = errors.New(fmt.Sprintf("Slice must contain entities, not: %v", slice.Index(i).Interface()))
+			} else {
+				if err := fn(entity); err != nil {
+					haveErr = true
+					errs[i] = err
+				}
 			}
+
 			wg.Done()
-		}(entity)
+		}(i)
 	}
 
 	// Wait to finish
 	wg.Wait()
 
-	// Return first error
-	return err
+	if haveErr {
+		return errs
+	} else {
+		return nil
+	}
 }
 
 func Get(ctx appengine.Context, keys interface{}, vals interface{}) error {
 	var wg sync.WaitGroup
-	var err error
 	var valSlice reflect.Value
 
 	db := datastore.New(ctx)
@@ -95,6 +102,10 @@ func Get(ctx appengine.Context, keys interface{}, vals interface{}) error {
 		valSlice.Set(reflect.AppendSlice(valSlice, zeroes))
 	}
 
+	// Capture all errors
+	errs := make(MultiError, nkeys)
+	haveErr := false
+
 	// Loop over slice fetching entities
 	for i := 0; i < nkeys; i++ {
 		wg.Add(1)
@@ -112,10 +123,9 @@ func Get(ctx appengine.Context, keys interface{}, vals interface{}) error {
 
 			// Initialize and try to fetch with key
 			entity.Init(db)
-			err = entity.Get(key)
-
-			// Exit if there is an error
-			if err != nil {
+			if err := entity.Get(key); err != nil {
+				haveErr = true
+				errs[i] = err
 				return
 			}
 
@@ -127,8 +137,11 @@ func Get(ctx appengine.Context, keys interface{}, vals interface{}) error {
 	// Wait to finish
 	wg.Wait()
 
-	// Return first error
-	return err
+	if haveErr {
+		return errs
+	} else {
+		return nil
+	}
 }
 
 func Put(vals interface{}) error {

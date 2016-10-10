@@ -128,7 +128,7 @@ func (li *LineItem) Entity(db *datastore.Datastore) (datastore.Key, interface{},
 
 	if li.ProductSlug != "" {
 		li.Product = product.New(db)
-		ok, err := li.Product.Query().Filter("Slug=", li.ProductSlug).KeysOnly().First()
+		ok, err := li.Product.Query().Filter("Slug=", li.ProductSlug).GetKey()
 		if err != nil {
 			return nil, nil, err
 		}
@@ -139,7 +139,7 @@ func (li *LineItem) Entity(db *datastore.Datastore) (datastore.Key, interface{},
 
 	if li.VariantSKU != "" {
 		li.Variant = variant.New(db)
-		ok, err := li.Variant.Query().Filter("SKU=", li.VariantSKU).KeysOnly().First()
+		ok, err := li.Variant.Query().Filter("SKU=", li.VariantSKU).GetKey()
 		if err != nil {
 			return nil, nil, err
 		}
