@@ -109,6 +109,10 @@ func (cl *Client) doRequestBody(method, uri string, body interface{}) *httptest.
 		reader := strings.NewReader(v)
 		r = cl.newRequest(method, uri, reader)
 		r.Header.Set("Content-Type", "application/json")
+	case nil:
+		reader := strings.NewReader("{}")
+		r = cl.newRequest(method, uri, reader)
+		r.Header.Set("Content-Type", "application/json")
 	default:
 		// Blindly JSON encode!
 		buf := json.EncodeBuffer(body)
