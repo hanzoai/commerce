@@ -1,12 +1,11 @@
 package funnel
 
-import (
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
-)
+import "crowdstart.com/datastore"
+
+var kind = "funnel"
 
 func (f Funnel) Kind() string {
-	return "funnel"
+	return kind
 }
 
 func (f *Funnel) Init(db *datastore.Datastore) {
@@ -23,6 +22,6 @@ func New(db *datastore.Datastore) *Funnel {
 	return f
 }
 
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query(kind)
 }

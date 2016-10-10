@@ -2,12 +2,13 @@ package mailinglist
 
 import (
 	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/types/thankyou"
 )
 
+var kind = "mailinglist"
+
 func (m MailingList) Kind() string {
-	return "mailinglist"
+	return kind
 }
 
 func (m *MailingList) Init(db *datastore.Datastore) {
@@ -28,6 +29,6 @@ func New(db *datastore.Datastore) *MailingList {
 	return m
 }
 
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query(kind)
 }

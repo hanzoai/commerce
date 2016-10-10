@@ -41,23 +41,22 @@ func setupNamespaceRename(c *gin.Context) []interface{} {
 
 	// Try to find organization
 	org := new(organization.Organization)
-	key, ok, err := db.Query("organization").Filter("Name=", oldns).First(org)
-	if !ok {
+	ok, err := org.Query().Filter("Name=", oldns).Get()
+	if !ok || err != nil {
 		panic("Unable to find organization")
 	}
 
 	// Update namespace name
 	org.Name = newns
 
-	_, err = db.PutKind("organization", key, org)
-	if err != nil {
+	if err = org.Put(); err != nil {
 		panic(err)
 	}
 
 	// Save new namespace
 	ns := namespace.New(db)
 	ns.Name = newns
-	ns.IntId = key.IntID()
+	ns.IntId = org.Key().IntID()
 	err = ns.Put()
 	if err != nil {
 		log.Warn("Failed to put new namespace: %v", err)

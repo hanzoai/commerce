@@ -111,7 +111,7 @@ func Webhook(c *gin.Context) {
 
 	// Update payment
 	pay := payment.New(db)
-	_, err = pay.Query().Filter("Account.PayKey=", ipnMessage.PayKey).First()
+	_, err = pay.Query().Filter("Account.PayKey=", ipnMessage.PayKey).Get()
 	if err != nil {
 		log.Panic("Could not find PayKey: %s", err, ctx)
 		return
