@@ -117,7 +117,9 @@ func ReturningSuccessfulOrderSameCardTest(isCharge bool, stor *store.Store) test
 	// Save user, customerId from first order
 	usr := user.New(db)
 	usr.Get(ord1.UserId)
-	log.Debug("user: %#v", usr)
+
+	log.JSON("USERRRRRRRRRRRRRRRRRRRR", usr)
+
 	customerId := usr.Accounts.Stripe.CustomerId
 	stripeVerifyUser(usr)
 
@@ -247,12 +249,13 @@ func OrderBadUserTest(isCharge bool, stor *store.Store) {
 var _ = Describe("payment", func() {
 	Context("Authorize First Time Customers", func() {
 		It("Should normalise the user information", func() {
-			path := "/order"
 			ord := order.New(db)
-			cl.Post(path, requests.NonNormalizedOrder, ord)
+			cl.Post("/checkout/authorize", requests.NonNormalizedOrder, ord)
 
 			usr := user.New(db)
 			usr.Get(ord.UserId)
+
+			log.JSON("USER:", usr)
 
 			var normalize = func(s string) string {
 				return strings.ToLower(strings.TrimSpace(s))
@@ -416,7 +419,7 @@ var _ = Describe("payment", func() {
 		})
 
 		It("Should not capture invalid order", func() {
-			cl.Post("/order/BADID/capture", "", 404)
+			cl.Post("/order/BADID/capture", "", nil, 404)
 		})
 	})
 
@@ -439,7 +442,7 @@ var _ = Describe("payment", func() {
 		})
 
 		It("Should not capture invalid order", func() {
-			cl.Post("/order/BADID/charge", "", 404)
+			cl.Post("/order/BADID/charge", "", nil, 404)
 		})
 	})
 
@@ -500,7 +503,7 @@ var _ = Describe("payment", func() {
 	})
 
 	Context("Refund Order", func() {
-		FIt("Should refund order successfully", func() {
+		It("Should refund order successfully", func() {
 			ord1 := order.Fake(db, lineitem.LineItem{
 				ProductId: prod.Id(),
 				Quantity:  1,

@@ -92,7 +92,7 @@ func ConfirmPaypal(stor *store.Store) {
 	// Expect(usr.Key()).ToNot(BeNil())
 }
 
-func newAuthorization() checkout.AuthorizationReq {
+func newAuthorization() *checkout.Authorization {
 	// Create fake product, variant and subsequent order
 	prod := product.Fake(db)
 	prod.MustCreate()
@@ -100,7 +100,7 @@ func newAuthorization() checkout.AuthorizationReq {
 	vari := variant.Fake(db, prod.Id())
 	vari.MustCreate()
 
-	li := lineitem.Fake(vari.Id(), vari.Name, vari.SKU)
+	li := lineitem.Fake(vari)
 
 	usr := user.Fake(db)
 
@@ -111,8 +111,10 @@ func newAuthorization() checkout.AuthorizationReq {
 	pay.Type = payment.PayPal
 	pay.Amount = ord.Total
 
-	auth := checkout.AuthorizationReq{usr, pay, ord}
-	log.JSON(auth)
+	auth := new(checkout.Authorization)
+	auth.User = usr
+	auth.Payment = pay
+	auth.Order = ord
 	return auth
 }
 
