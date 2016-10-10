@@ -27,7 +27,7 @@ func multi(vals interface{}, fn func(mixin.Entity) error) error {
 
 	// Capture all errors
 	errs := make(MultiError, n)
-	haveErr := false
+	errd := false
 
 	// Loop over slice initializing entities
 	for i := 0; i < n; i++ {
@@ -36,11 +36,11 @@ func multi(vals interface{}, fn func(mixin.Entity) error) error {
 			// Grab next entity off slice
 			entity, ok := slice.Index(i).Interface().(mixin.Entity)
 			if !ok {
-				haveErr = true
+				errd = true
 				errs[i] = errors.New(fmt.Sprintf("Slice must contain entities, not: %v", slice.Index(i).Interface()))
 			} else {
 				if err := fn(entity); err != nil {
-					haveErr = true
+					errd = true
 					errs[i] = err
 				}
 			}
@@ -52,7 +52,7 @@ func multi(vals interface{}, fn func(mixin.Entity) error) error {
 	// Wait to finish
 	wg.Wait()
 
-	if haveErr {
+	if errd {
 		return errs
 	} else {
 		return nil
@@ -104,7 +104,7 @@ func Get(ctx appengine.Context, keys interface{}, vals interface{}) error {
 
 	// Capture all errors
 	errs := make(MultiError, nkeys)
-	haveErr := false
+	errd := false
 
 	// Loop over slice fetching entities
 	for i := 0; i < nkeys; i++ {
@@ -124,7 +124,7 @@ func Get(ctx appengine.Context, keys interface{}, vals interface{}) error {
 			// Initialize and try to fetch with key
 			entity.Init(db)
 			if err := entity.Get(key); err != nil {
-				haveErr = true
+				errd = true
 				errs[i] = err
 				return
 			}
@@ -137,7 +137,7 @@ func Get(ctx appengine.Context, keys interface{}, vals interface{}) error {
 	// Wait to finish
 	wg.Wait()
 
-	if haveErr {
+	if errd {
 		return errs
 	} else {
 		return nil
