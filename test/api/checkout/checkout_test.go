@@ -46,22 +46,19 @@ var _ = Describe("checkout", func() {
 		var res *order.Order
 
 		Before(func() {
+			// Create fake product, variant and order
+			prod := product.Fake(db)
+			prod.MustCreate()
+			vari := variant.Fake(db, prod.Id())
+			vari.MustCreate()
+			li := lineitem.Fake(vari)
+			ord := order.Fake(db, li)
+
 			// Create new authorization request
 			req = new(checkout.AuthorizationReq)
-
-			// Create fake payment
+			req.Order = ord
 			req.Payment_ = payment.Fake(db)
-
-			// Create fake user
 			req.User_ = user.Fake(db)
-
-			// Create fake product, variant and subsequent order
-			p := product.Fake(db)
-			p.MustCreate()
-			v := variant.Fake(db, p.Id())
-			v.MustCreate()
-			li := lineitem.Fake(v.Id(), v.Name, v.SKU)
-			req.Order = order.Fake(db, li)
 
 			// Instantiate order to encompass result
 			res = order.New(db)

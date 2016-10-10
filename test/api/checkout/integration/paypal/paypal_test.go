@@ -100,7 +100,7 @@ func newAuthorization() checkout.AuthorizationReq {
 	vari := variant.Fake(db, prod.Id())
 	vari.MustCreate()
 
-	li := lineitem.Fake(vari.Id(), vari.Name, vari.SKU)
+	li := lineitem.Fake(vari)
 
 	usr := user.Fake(db)
 
