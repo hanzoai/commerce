@@ -2,6 +2,7 @@ package test
 
 import (
 	"math"
+	"time"
 
 	"crowdstart.com/api/checkout"
 	"crowdstart.com/models/affiliate"
@@ -222,7 +223,61 @@ var _ = Describe("/checkout/authorize", func() {
 		})
 	})
 
-	Context("Authorize with affiliate", func() {
+	Context("Authorize with referrer", func() {
+		var req *checkout.Authorization
+		var res *order.Order
+		var ref *referrer.Referrer
+
+		Before(func() {
+			// Create affiliate user
+			usr := user.Fake(db)
+			usr.MustCreate()
+
+			// Create referrer for order request
+			ref := referrer.Fake(db, usr.Id())
+			ref.MustCreate()
+
+			// Create order user
+			usr = user.Fake(db)
+
+			// Create fake product, variant and order
+			prod := product.Fake(db)
+			prod.MustCreate()
+			vari := variant.Fake(db, prod.Id())
+			vari.MustCreate()
+			li := lineitem.Fake(vari)
+			ord := order.Fake(db, li)
+			ord.ReferrerId = ref.Id()
+
+			// Create new authorization request
+			req = new(checkout.Authorization)
+			req.Order = ord
+			req.Payment = payment.Fake(db)
+			req.User = usr
+
+			// Instantiate order to encompass result
+			res = order.New(db)
+
+			// Make request
+			cl.Post("/checkout/authorize", req, res)
+		})
+
+		It("Should save referrer information", func() {
+			Expect(res.ReferrerId).To(Equal(ref.Id()))
+		})
+
+		It("Should save referral", func() {
+			getReferral(res.Id())
+		})
+
+		It("Should save platform fee", func() {
+			pay := getPayment(res.Id())
+			fe := getFee(pay.Id(), "platform")
+			Expect(fe.Amount).To(Equal(calculatePlatformFee(org.Fees, res.Total)))
+		})
+	})
+
+	Context("Charge with affiliate", func() {
 		var req *checkout.Authorization
 		var res *order.Order
 		var aff *affiliate.Affiliate
@@ -251,6 +306,7 @@ var _ = Describe("/checkout/authorize", func() {
 			vari.MustCreate()
 			li := lineitem.Fake(vari)
 			ord := order.Fake(db, li)
+			ord.ReferrerId = ref.Id()
 
 			// Create new authorization request
 			req = new(checkout.Authorization)
@@ -262,18 +318,13 @@ var _ = Describe("/checkout/authorize", func() {
 			res = order.New(db)
 
 			// Make request
-			cl.Post("/checkout/authorize", req, res)
+			cl.Post("/checkout/charge", req, res)
+			time.Sleep(time.Second * 5)
 		})
 
-		It("Should save new affiliate on referral", func() {
+		It("Should save referral for affiliate", func() {
 			rfl := getReferral(res.Id())
-			rfl.Referrer.AffiliateId = aff.Id()
-		})
-
-		It("Should save platform fee", func() {
-			pay := getPayment(res.Id())
-			fe := getFee(pay.Id(), "platform")
-			Expect(fe.Amount).To(Equal(calculatePlatformFee(org.Fees, res.Total)))
+			Expect(rfl.Referrer.AffiliateId).To(Equal(aff.Id()))
 		})
 	})
 

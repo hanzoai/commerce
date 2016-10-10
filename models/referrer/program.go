@@ -1,6 +1,7 @@
 package referrer
 
 import (
+	"crowdstart.com/models/referral"
 	"crowdstart.com/models/transaction"
 	"crowdstart.com/models/types/currency"
 )
@@ -10,13 +11,6 @@ type Type string
 const (
 	StoreCredit Type = "Credit" // Add credit to user's balance
 	Refund           = "Refund" // Refund part of the payment on a order
-)
-
-type Event string
-
-const (
-	NewOrder Event = "order.new"
-	NewUser        = "user.new"
 )
 
 type Credit struct {
@@ -42,7 +36,7 @@ type Program struct {
 	Triggers []int    `json:"triggers"`
 	Actions  []Action `json:"actions"`
 
-	Event Event `json:"event"`
+	Event referral.Type `json:"event"`
 }
 
 func (p *Program) ApplyActions(r *Referrer) error {
