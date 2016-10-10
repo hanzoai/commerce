@@ -33,19 +33,38 @@ func multi(vals interface{}, fn func(mixin.Entity) error) error {
 	for i := 0; i < n; i++ {
 		wg.Add(1)
 		go func(i int) {
+			defer wg.Done()
+
 			// Grab next entity off slice
+			val := slice.Index(i)
+
+			// Ensure valid pointer to model
+			if val.Kind() != reflect.Ptr {
+				errd = true
+				errs[i] = errors.New(fmt.Sprintf("Slice must contain pointers to models, not %v", val))
+				return
+			}
+
+			// Ensure not nil pointer to model
+			if val.IsNil() {
+				errd = true
+				errs[i] = errors.New(fmt.Sprintf("Slice must contain initialized models, not %v", val))
+				return
+			}
+
+			// Assert entity is valid
 			entity, ok := slice.Index(i).Interface().(mixin.Entity)
 			if !ok {
 				errd = true
-				errs[i] = errors.New(fmt.Sprintf("Slice must contain entities, not: %v", slice.Index(i).Interface()))
-			} else {
-				if err := fn(entity); err != nil {
-					errd = true
-					errs[i] = err
-				}
+				errs[i] = errors.New(fmt.Sprintf("Slice must contain entities, not %v", slice.Index(i).Interface()))
+				return
 			}
 
-			wg.Done()
+			// Run operation on entity
+			if err := fn(entity); err != nil {
+				errd = true
+				errs[i] = err
+			}
 		}(i)
 	}
 
