@@ -25,3 +25,13 @@ func Fake(db *datastore.Datastore) *Payment {
 	pay.Status = Unpaid
 	return pay
 }
+
+func FakeStripe(db *datastore.Datastore) *Payment {
+	pay := Fake(db)
+	pay.Type = Stripe
+	pay.Account.Number = "4242424242424242"
+	pay.Account.CVC = "424"
+	pay.Account.Month = 12
+	pay.Account.Year = 2024
+	return pay
+}
