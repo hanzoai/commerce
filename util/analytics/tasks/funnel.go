@@ -28,15 +28,15 @@ var updateFunnels = delay.Func("UpdateFunnels", func(ctx appengine.Context, name
 		return
 	}
 
-	fs, err := funnel.Query(db).GetEntities()
+	fs := make([]*funnel.Funnel, 0)
+	_, err = funnel.Query(db).GetAll(fs)
 	if err != nil {
 		log.Error("Could not get funnel %v", err, ctx)
 		return
 	}
 
 	// Loop over funnels
-	for i := range fs {
-		f := fs[i].(*funnel.Funnel)
+	for _, f := range fs {
 
 		updateFunnel := false
 		var counts = make([]int64, len(f.Events))
@@ -52,7 +52,7 @@ var updateFunnels = delay.Func("UpdateFunnels", func(ctx appengine.Context, name
 					// Get the last time this event happened, we want to track unique passes through the funnel
 					if i > 0 {
 						// Only if it is no the first event though (kind of pointless)
-						previousSameEvent.Query().Filter("SessionId=", event.SessionId).Filter("Name=", option).Filter("CalculatedTimestamp<", event.CalculatedTimestamp).Order("-CalculatedTimestamp").First()
+						previousSameEvent.Query().Filter("SessionId=", event.SessionId).Filter("Name=", option).Filter("CalculatedTimestamp<", event.CalculatedTimestamp).Order("-CalculatedTimestamp").Get()
 					}
 					found = true
 					break
@@ -73,7 +73,7 @@ var updateFunnels = delay.Func("UpdateFunnels", func(ctx appengine.Context, name
 				previousStep := f.Events[last]
 				for _, option := range previousStep {
 					e := analytics.New(db)
-					ok, err := e.Query().Filter("SessionId=", currentEvent.SessionId).Filter("Name=", option).Filter("CalculatedTimestamp>=", previousSameEvent.CalculatedTimestamp).Filter("CalculatedTimestamp<=", currentEvent.CalculatedTimestamp).Order("-CalculatedTimestamp").First()
+					ok, err := e.Query().Filter("SessionId=", currentEvent.SessionId).Filter("Name=", option).Filter("CalculatedTimestamp>=", previousSameEvent.CalculatedTimestamp).Filter("CalculatedTimestamp<=", currentEvent.CalculatedTimestamp).Order("-CalculatedTimestamp").Get()
 					if err != nil {
 						log.Error("Could not get latest analytics event", err, ctx)
 						return

@@ -24,7 +24,7 @@ var _ = New("add-stripe-fix-mysterious",
 
 		db := ds.New(c)
 		org := organization.New(db)
-		if _, err := org.Query().Filter("Name=", "bellabeat").First(); err != nil {
+		if _, err := org.Query().Filter("Name=", "bellabeat").Get(); err != nil {
 			panic(err)
 		}
 		return []interface{}{org.Stripe.AccessToken}

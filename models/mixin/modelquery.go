@@ -1,145 +1,99 @@
 package mixin
 
 import (
-	"reflect"
-
-	aeds "appengine/datastore"
-
 	"crowdstart.com/datastore"
+	"crowdstart.com/datastore/query"
 )
 
-// Wrap Query so we don't need to pass in entity to First() and key is updated
-// properly.
+// This is a simple Query helper for individual models. Allows you to query for
+// a single entity or key only as a convenience on an individual model.
 type Query struct {
-	datastore.Query
-	Datastore *datastore.Datastore
-	Model     *Model
+	entity Entity
+	dsq    datastore.Query
+}
+
+func (q *Query) All() datastore.Query {
+	return q.dsq
+}
+
+func (q *Query) Ancestor(key datastore.Key) *Query {
+	q.dsq = q.dsq.Ancestor(key)
+	return q
+}
+
+func (q *Query) Limit(limit int) *Query {
+	q.dsq = q.dsq.Limit(limit)
+	return q
+}
+
+func (q *Query) Offset(offset int) *Query {
+	q.dsq = q.dsq.Offset(offset)
+	return q
+}
+
+func (q *Query) Order(order string) *Query {
+	q.dsq = q.dsq.Order(order)
+	return q
+}
+
+func (q *Query) Filter(filterStr string, value interface{}) *Query {
+	q.dsq = q.dsq.Filter(filterStr, value)
+	return q
+}
+
+// Get entity
+func (q *Query) Get() (bool, error) {
+	key, ok, err := q.dsq.First(q.entity)
+	if ok {
+		q.entity.SetKey(key)
+		return true, nil
+	}
+
+	if err != nil {
+		return false, err
+	}
+
+	return false, nil
+}
+
+// Get just key
+func (q *Query) GetKey() (bool, error) {
+	q.dsq = q.dsq.KeysOnly()
+	return q.Get()
+}
+
+// Check if id exists
+func (q *Query) IdExists(id string) (datastore.Key, bool, error) {
+	return q.dsq.IdExists(id)
+}
+
+// Check if key exists
+func (q *Query) KeyExists(key datastore.Key) (bool, error) {
+	return q.dsq.KeyExists(key)
+}
+
+// Helper to set key if it's query returns one
+func (q *Query) setAndForget(key datastore.Key, ok bool, err error) (bool, error) {
+	if ok {
+		q.entity.SetKey(key)
+	}
+	return ok, err
+}
+
+// Filter by key
+func (q *Query) ByKey(key interface{}) (bool, error) {
+	return q.setAndForget(q.dsq.ByKey(q.entity.Key(), q.entity))
+}
+
+// Filter By Id
+func (q *Query) ById(id string) (bool, error) {
+	return q.setAndForget(q.dsq.ById(id, q.entity))
 }
 
 // Return a query for this entity kind
 func (m *Model) Query() *Query {
 	q := new(Query)
-	query := datastore.NewQuery(m.Db, m.Entity.Kind())
-	q.Query = query
-	q.Datastore = query.Datastore
-	q.Model = m
+	q.entity = m.Entity.(Entity)
+	q.dsq = query.New(m.Context(), m.Kind())
 	return q
-}
-
-func (q *Query) Ancestor(key datastore.Key) *Query {
-	q.Query = q.Query.Ancestor(key)
-	return q
-}
-
-func (q *Query) Limit(limit int) *Query {
-	q.Query = q.Query.Limit(limit)
-	return q
-}
-
-func (q *Query) Offset(offset int) *Query {
-	q.Query = q.Query.Offset(offset)
-	return q
-}
-
-func (q *Query) Order(order string) *Query {
-	q.Query = q.Query.Order(order)
-	return q
-}
-
-func (q *Query) Filter(filterStr string, value interface{}) *Query {
-	q.Query = q.Query.Filter(filterStr, value)
-	return q
-}
-
-func (q *Query) KeysOnly() *Query {
-	q.Query = q.Query.KeysOnly()
-	return q
-}
-
-func (q *Query) First() (bool, error) {
-	key, ok, err := q.Query.First(q.Model.Entity)
-	if ok {
-		if q.Model.key == nil {
-			q.Model.setKey(key)
-		}
-	}
-	return ok, err
-}
-
-// Dst expected to be *[]*Model
-func (q *Query) GetAll(dst interface{}) ([]*aeds.Key, error) {
-	keys, err := q.Query.GetAll(dst)
-	if err != nil {
-		return keys, err
-	}
-
-	if dst == nil {
-		return keys, nil
-	}
-
-	// Get value of slice
-	slice := reflect.ValueOf(dst)
-
-	// De-pointer
-	for slice.Kind() == reflect.Ptr {
-		slice = reflect.Indirect(slice)
-	}
-
-	// Initialize all entities (if pointer type)
-	for i := range keys {
-		v := slice.Index(i)
-		if v.Type().Kind() == reflect.Ptr {
-			entity := v.Interface().(Entity)
-			entity.Init(q.Datastore)
-			entity.SetKey(keys[i])
-		}
-
-		// NOTE: Or we could do something like this instead, to support both
-		// entity values and pointers:
-		// v := slice.Index(i)
-
-		// var entity Entity
-		// if v.Type().Kind() == reflect.Ptr {
-		// 	// We have a pointer, this is a valid entity
-		// 	entity = v.Interface().(Entity)
-		// } else {
-		// 	// If we do not have a pointer we need to get one to this entity
-		// 	ptr := reflect.New(reflect.TypeOf(v))
-		// 	tmp := ptr.Elem()
-		// 	tmp.Set(v)
-		// 	entity = tmp.Interface().(Entity)
-		// }
-
-		// entity.Init(q.datastore)
-		// entity.SetKey(keys[i])
-	}
-
-	return keys, nil
-}
-
-// Get just keys
-func (q *Query) GetKeys() ([]*aeds.Key, error) {
-	return q.Query.KeysOnly().GetAll(nil)
-}
-
-func (q *Query) GetEntities() ([]Entity, error) {
-	islice := q.Model.Slice()
-	keys, err := q.Query.GetAll(islice)
-
-	value := reflect.ValueOf(islice)
-	// De-pointer
-	for value.Kind() == reflect.Ptr {
-		value = reflect.Indirect(value)
-	}
-
-	slice := make([]Entity, len(keys))
-
-	for i := range keys {
-		entity := value.Index(i).Interface().(Entity)
-		entity.Init(q.Datastore)
-		entity.SetKey(keys[i])
-		slice[i] = entity
-	}
-
-	return slice, err
 }
