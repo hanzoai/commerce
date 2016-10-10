@@ -11,7 +11,12 @@ import (
 	"crowdstart.com/datastore/iface"
 	"crowdstart.com/datastore/key"
 	. "crowdstart.com/datastore/utils"
+	"crowdstart.com/util/log"
 )
+
+type Id struct {
+	Id_ string
+}
 
 type Query struct {
 	ctx   appengine.Context
@@ -91,7 +96,30 @@ func (q *Query) End(c aeds.Cursor) iface.Query {
 }
 
 func (q *Query) ByKey(key iface.Key, dst interface{}) (*aeds.Key, bool, error) {
-	return q.Filter("__key__", key).First(dst)
+	aekey, _ := key.(*aeds.Key)
+
+	if dst == nil {
+		dst = &Id{}
+	}
+
+	err := aeds.Get(q.ctx, aekey, dst)
+
+	// Completely ignore this as we may be querying just for Id{}
+	err = ReallyIgnoreFieldMismatch(err)
+
+	// Not found
+	if err == aeds.ErrNoSuchEntity {
+		return nil, false, nil
+	}
+
+	// Query failed for some reason
+	if err != nil {
+		log.Warn("Failed to query by key: %v", err)
+		return nil, false, err
+	}
+
+	// Success
+	return aekey, true, nil
 }
 
 // Query for entity by id
@@ -118,6 +146,8 @@ func (q *Query) ById(id string, dst interface{}) (*aeds.Key, bool, error) {
 	case "aggregate":
 		filter = "Instance="
 	case "site":
+		filter = "Name="
+	case "namespace":
 		filter = "Name="
 	case "user":
 		if strings.Contains(id, "@") {
@@ -149,8 +179,8 @@ func (q *Query) IdExists(id string) (*aeds.Key, bool, error) {
 }
 
 func (q *Query) First(dst interface{}) (*aeds.Key, bool, error) {
-	t := q.Limit(1).Run()
-	key, err := t.Next(dst)
+	// Run query with iterator
+	key, err := q.Limit(1).Run().Next(dst)
 
 	// Ignore field mismatch if set
 	err = IgnoreFieldMismatch(err)
@@ -160,12 +190,12 @@ func (q *Query) First(dst interface{}) (*aeds.Key, bool, error) {
 		return key, false, nil
 	}
 
-	// Something went wrong
+	// Error trying run query
 	if err != nil {
 		return nil, false, err
 	}
 
-	// Success :)
+	// Found it
 	return key, true, nil
 }
 
