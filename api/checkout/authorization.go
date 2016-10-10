@@ -66,6 +66,9 @@ func initOrder(db *datastore.Datastore, ord *order.Order, usr *user.User) {
 	// Order is parented to user
 	ord.Parent = usr.Key()
 	ord.UserId = usr.Id()
+
+	// Update order number
+	ord.Number = ord.NumberFromId()
 }
 
 // Correctly initialize payment provided in authorization

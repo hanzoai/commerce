@@ -268,6 +268,7 @@ func (d *Datastore) GetMulti(keys interface{}, vals interface{}) error {
 
 	// Auto allocate vals if length of slice is not set
 	if slice.Len() == 0 {
+		log.Warn("Got slice of len 0: %v", slice)
 		if !slice.CanAddr() {
 			return errors.New("Destination must be addressable to auto-allocate entities")
 		}
