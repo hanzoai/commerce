@@ -1,12 +1,11 @@
 package referrer
 
-import (
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
-)
+import "crowdstart.com/datastore"
+
+var kind = "referrer"
 
 func (r Referrer) Kind() string {
-	return "referrer"
+	return kind
 }
 
 func (r *Referrer) Init(db *datastore.Datastore) {
@@ -19,6 +18,6 @@ func New(db *datastore.Datastore) *Referrer {
 	return r
 }
 
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query(kind)
 }

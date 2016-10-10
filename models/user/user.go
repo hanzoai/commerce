@@ -244,7 +244,7 @@ func (u *User) GetByEmail(email string) error {
 	log.Debug("Searching for user '%v'", email)
 
 	// Build query to return user
-	ok, err := u.Query().Filter("Email=", email).First()
+	ok, err := u.Query().Filter("Email=", email).Get()
 
 	if err != nil {
 		log.Warn("Unable to fetch user from datastore: '%v'", err)
@@ -297,14 +297,14 @@ func (u *User) LoadAffiliateAndPendingFees() error {
 }
 
 func (u *User) CalculateBalances() error {
-	trans, err := transaction.Query(u.Db).Filter("UserId=", u.Id()).Filter("Test=", false).GetEntities()
+	trans := make([]*transaction.Transaction, 0)
+	_, err := transaction.Query(u.Db).Filter("UserId=", u.Id()).Filter("Test=", false).GetAll(trans)
 	if err != nil {
 		return err
 	}
 
 	u.Balances = make(map[currency.Type]currency.Cents)
-	for i := range trans {
-		t := trans[i].(*transaction.Transaction)
+	for _, t := range trans {
 		cents := u.Balances[t.Currency]
 
 		if t.Type == transaction.Withdraw {

@@ -1,12 +1,11 @@
 package variant
 
-import (
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
-)
+import "crowdstart.com/datastore"
+
+var kind = "variant"
 
 func (v Variant) Kind() string {
-	return "variant"
+	return kind
 }
 
 func (v *Variant) Init(db *datastore.Datastore) {
@@ -23,6 +22,6 @@ func New(db *datastore.Datastore) *Variant {
 	return v
 }
 
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query(kind)
 }

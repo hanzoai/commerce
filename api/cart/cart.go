@@ -163,7 +163,7 @@ func update(r *rest.Rest) func(*gin.Context) {
 		car := cart.New(db)
 
 		// Try to retrieve key from datastore
-		ok, err := car.IdExists(id)
+		key, ok, err := car.IdExists(id)
 		if !ok {
 			r.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
 			return
@@ -179,6 +179,9 @@ func update(r *rest.Rest) func(*gin.Context) {
 			r.Fail(c, 400, "Failed decode request body", err)
 			return
 		}
+
+		// Use same key to save cart
+		car.SetKey(key)
 
 		// Replace whatever was in the datastore with our new updated cart
 		if err := car.Update(); err != nil {

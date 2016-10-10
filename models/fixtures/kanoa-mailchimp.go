@@ -15,7 +15,7 @@ var _ = New("kanoa-mailchimp", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)
-	org.Query().Filter("Name=", "kanoa").First()
+	org.Query().Filter("Name=", "kanoa").Get()
 	org.Mailchimp.APIKey = ""
 	org.Mailchimp.ListId = "23ad4e4ba4"
 
@@ -36,7 +36,7 @@ var _ = New("kanoa-mailchimp", func(c *gin.Context) *organization.Organization {
 
 	// Fetch earphones
 	prod := product.New(nsdb)
-	prod.Query().Filter("Slug=", "earphone").First()
+	prod.Query().Filter("Slug=", "earphone").Get()
 
 	// Create corresponding Mailchimp entities
 	client := mailchimp.New(db.Context, org.Mailchimp.APIKey)

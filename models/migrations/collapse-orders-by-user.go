@@ -33,7 +33,7 @@ var _ = New("collapse-orders-by-user",
 
 		// Try to find newest instance of a user with this email
 		usr2 := user.New(db)
-		if _, err := usr2.Query().Filter("Email=", strings.Replace(usr.Email, "!______", "", 1)).Order("-CreatedAt").First(); err != nil {
+		if _, err := usr2.Query().Filter("Email=", strings.Replace(usr.Email, "!______", "", 1)).Order("-CreatedAt").Get(); err != nil {
 			log.Error("Failed to query for newest user: %v", err, ctx)
 			return
 		}

@@ -1,12 +1,11 @@
 package campaign
 
-import (
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
-)
+import "crowdstart.com/datastore"
+
+var kind = "campaign"
 
 func (c Campaign) Kind() string {
-	return "campaign"
+	return kind
 }
 
 func (c *Campaign) Init(db *datastore.Datastore) {
@@ -24,6 +23,6 @@ func New(db *datastore.Datastore) *Campaign {
 	return c
 }
 
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query(kind)
 }
