@@ -2,10 +2,12 @@ package test
 
 import (
 	"crowdstart.com/api/checkout"
+	"crowdstart.com/models/affiliate"
 	"crowdstart.com/models/lineitem"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/product"
+	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/user"
 	"crowdstart.com/models/variant"
 	"crowdstart.com/util/hashid"
@@ -40,8 +42,8 @@ func getPayment(id string) *payment.Payment {
 	return pay
 }
 
-var _ = Describe("checkout", func() {
-	Describe("checkout/authorize", func() {
+var _ = Describe("/checkout/authorize", func() {
+	Context("Authorize new user", func() {
 		var req *checkout.Authorization
 		var res *order.Order
 
@@ -64,54 +66,164 @@ var _ = Describe("checkout", func() {
 			res = order.New(db)
 
 			// Make request
-			cl.Post("/authorize", req, res)
+			cl.Post("/checkout/authorize", req, res)
 		})
 
-		Context("First Time Customers", func() {
-			It("Should authorize new order successfully", func() {
-				getUser(res.UserId)
-				// Payment should be in db
-				Expect(len(res.PaymentIds)).To(Equal(1))
-				getPayment(res.PaymentIds[0])
-			})
+		It("Should save user", func() {
+			getUser(res.UserId)
+		})
 
-			It("Should save new order successfully for store", func() {
-			})
+		It("Should save payment", func() {
+			getPayment(res.PaymentIds[0])
+		})
 
-			It("Should not authorize invalid credit card number", func() {
-			})
+		It("Should save order", func() {
+			getOrder(res.Id())
+		})
 
-			It("Should not authorize invalid credit card number for store", func() {
-			})
+		It("Should save payment id on order", func() {
+			Expect(len(res.PaymentIds)).To(Equal(1))
+		})
 
-			It("Should not authorize invalid product id", func() {
-			})
-
-			It("Should not authorize invalid variant id", func() {
-			})
-
-			It("Should not authorize invalid collection id", func() {
-			})
+		It("Should calculate correct total for order and payment", func() {
+			Expect(res.Total).To(Equal(req.Order.Total))
 		})
 	})
 
-	Context("Authorize Returning Customers", func() {
-		It("Should save returning customer order with the same card successfully", func() {
+	Context("Authorize invalid product", func() {
+		var req *checkout.Authorization
+
+		Before(func() {
+			// Create fake product, variant and order
+			prod := product.Fake(db)
+			prod.MustCreate()
+			vari := variant.Fake(db, prod.Id())
+			vari.MustCreate()
+			li := lineitem.Fake(vari)
+			ord := order.Fake(db, li)
+
+			// Create new authorization request
+			req = new(checkout.Authorization)
+			req.Order = ord
+			req.Payment = payment.Fake(db)
+			req.User = user.Fake(db)
 		})
 
-		It("Should save returning customer order with the same card successfully for store", func() {
+		It("Should not authorize invalid product id", func() {
+
+		})
+	})
+
+	Context("Authorize invalid variant", func() {
+		It("Should not authorize invalid variant id", func() {
+
+		})
+	})
+
+	Context("Authorize invalid collection", func() {
+		It("Should not authorize invalid collection id", func() {
+
+		})
+	})
+
+	Context("Authorize existing user", func() {
+		var req *checkout.Authorization
+		var res *order.Order
+		var usr *user.User
+
+		Before(func() {
+			// Create returning user
+			usr = user.Fake(db)
+			usr.MustCreate()
+
+			// Create fake product, variant and order
+			prod := product.Fake(db)
+			prod.MustCreate()
+			vari := variant.Fake(db, prod.Id())
+			vari.MustCreate()
+			li := lineitem.Fake(vari)
+			ord := order.Fake(db, li)
+
+			// Create new authorization request
+			req = new(checkout.Authorization)
+			req.Order = ord
+			req.Payment = payment.Fake(db)
+			req.User = usr
+
+			// Instantiate order to encompass result
+			res = order.New(db)
+
+			// Make request
+			cl.Post("/checkout/authorize", req, res)
 		})
 
-		It("Should save returning customer order with a new card successfully", func() {
+		It("Should re-use user successfully", func() {
+			Expect(res.UserId).To(Equal(usr.Id()))
+		})
+	})
+
+	Context("Authorize invalid user", func() {
+		var req *checkout.Authorization
+
+		Before(func() {
+			// Create invalid user
+			usr := user.Fake(db)
+			usr.Id() // Allocate id, but don't create
+
+			// Create fake product, variant and order
+			prod := product.Fake(db)
+			prod.MustCreate()
+			vari := variant.Fake(db, prod.Id())
+			vari.MustCreate()
+			li := lineitem.Fake(vari)
+			ord := order.Fake(db, li)
+
+			// Create new authorization request
+			req = new(checkout.Authorization)
+			req.Order = ord
+			req.Payment = payment.Fake(db)
+			req.User = usr
 		})
 
-		It("Should save returning customer order with a new card successfully for store", func() {
+		It("Should not allow authorization with invalid user id", func() {
+			// Make request
+			cl.Post("/checkout/authorize", req, nil, 400)
 		})
+	})
 
-		It("Should not save customer with invalid user id", func() {
-		})
+	Context("Authorize with affiliate", func() {
+		var req *checkout.Authorization
 
-		It("Should not save customer with invalid user id for store", func() {
+		Before(func() {
+			// Create affiliate user
+			usr := user.Fake(db)
+			usr.MustCreate()
+
+			// Create affiliate
+			aff := affiliate.Fake(db, usr.Id())
+			aff.MustCreate()
+
+			// Create referrer for order request
+			ref := referrer.Fake(db, usr.Id())
+			ref.AffiliateId = aff.Id()
+			ref.MustCreate()
+
+			// Create order user
+			usr = user.Fake(db)
+
+			// Create fake product, variant and order
+			prod := product.Fake(db)
+			prod.MustCreate()
+			vari := variant.Fake(db, prod.Id())
+			vari.MustCreate()
+			li := lineitem.Fake(vari)
+			ord := order.Fake(db, li)
+
+			// Create new authorization request
+			req = new(checkout.Authorization)
+			req.Order = ord
+			req.Payment = payment.Fake(db)
+			req.User = usr
 		})
 	})
 
