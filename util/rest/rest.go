@@ -341,7 +341,7 @@ func (r Rest) list(c *gin.Context) {
 	}
 
 	// Create query
-	q := entity.Query().Order(sortField)
+	q := entity.Query().All().Order(sortField)
 
 	// Update query with page/display params
 	var display int
@@ -374,7 +374,7 @@ func (r Rest) list(c *gin.Context) {
 		return
 	}
 
-	count, err := entity.Query().Count()
+	count, err := entity.Query().All().Count()
 	if err != nil {
 		r.Fail(c, 500, "Could not count the models.", err)
 		return
@@ -425,7 +425,7 @@ func (r Rest) update(c *gin.Context) {
 	entity := r.newEntity(c)
 
 	// Try to retrieve key from datastore
-	ok, err := entity.IdExists(id)
+	key, ok, err := entity.IdExists(id)
 	if !ok {
 		if err != nil {
 			r.Fail(c, 500, "Failed to retrieve key for "+id, err)
@@ -437,7 +437,7 @@ func (r Rest) update(c *gin.Context) {
 	}
 
 	// Preserve original key
-	entity.SetKey(id)
+	entity.SetKey(key)
 
 	// Decode response body to create new entity
 	if err := json.Decode(c.Request.Body, entity); err != nil {

@@ -2,7 +2,6 @@ package mixin
 
 import (
 	"reflect"
-	"strings"
 	"time"
 
 	"appengine"
@@ -42,11 +41,10 @@ type Entity interface {
 	NewKey() datastore.Key
 	Id() string
 
-	// Various existential helpers
+	// Check if key has exists in datastore
 	Exists() (bool, error)
-	IdExists(id string) (bool, error)
-	KeyById(string) (datastore.Key, bool, error)
-	KeyExists(key interface{}) (datastore.Key, bool, error)
+	IdExists(id string) (datastore.Key, bool, error)
+	KeyExists(key datastore.Key) (bool, error)
 
 	// Get, Put, Delete + Create, Update
 	Get(args ...interface{}) error
@@ -73,7 +71,7 @@ type Entity interface {
 
 	// Datastore
 	Datastore() *datastore.Datastore
-	RunInTransaction(fn func() error) error
+	RunInTransaction(fn func() error, opts ...*datastore.TransactionOptions) error
 
 	// Query
 	Query() *Query
@@ -108,30 +106,40 @@ type Model struct {
 }
 
 // Wire up model
-func (m *Model) Init(db *datastore.Datastore, kind Kind) {
+func (m *Model) Init(db *datastore.Datastore, entity Kind) {
 	m.Db = db
-	m.Entity = kind
+	m.Entity = entity
+
+	// Automatically call defaults on init
+	if timeutil.IsZero(m.CreatedAt) {
+		if hook, ok := (m.Entity).(Defaults); ok {
+			hook.Defaults()
+		}
+	}
 }
 
-// Get AppEngine context
+// Get appengine.Context
 func (m *Model) Context() appengine.Context {
 	return m.Db.Context
 }
 
-// Set AppEngine Context
-func (m *Model) SetContext(ctx interface{}) {
-	// Update context
-	m.Db.SetContext(ctx)
+// Set entity on mixin so it can be referenced later
+func (m *Model) SetEntity(entity Kind) {
+	m.Entity = entity
+}
 
-	// Update key if necessary
-	if m.key != nil {
-		m.NewKey()
+// Set appengine.Context
+func (m *Model) SetContext(ctx interface{}) {
+	if m.Db == nil {
+		m.Db = datastore.New(ctx)
+	} else {
+		m.Db.SetContext(ctx)
 	}
 }
 
-// Set's the appengine context to whatev
+// Set appengine.Context namespace
 func (m *Model) SetNamespace(namespace string) {
-	ctx, err := appengine.Namespace(m.Db.Context, namespace)
+	ctx, err := appengine.Namespace(m.Context(), namespace)
 	if err != nil {
 		panic(err)
 	}
@@ -139,16 +147,17 @@ func (m *Model) SetNamespace(namespace string) {
 	m.SetContext(ctx)
 }
 
+// Returns namespace for this model
 func (m *Model) Namespace() string {
 	return m.Key().Namespace()
 }
 
-// Return kind of entity
+// Return Kind
 func (m Model) Kind() string {
 	return m.Entity.Kind()
 }
 
-// Returns hashid for entity
+// Returns ID for model
 func (m *Model) Id() string {
 	if m.Id_ == "" {
 		// Create a new key
@@ -384,100 +393,31 @@ func (m *Model) MustGet(args ...interface{}) {
 
 // Helper that will retrieve entity by id (which may be an encoded key/slug/sku)
 func (m *Model) GetById(id string) error {
-	key, ok, err := m.KeyById(id)
-	if !ok || err != nil {
+	ok, err := m.Query().ById(id)
+	if err != nil {
 		return err
 	}
 
-	return m.Get(key)
+	if !ok {
+		return datastore.ErrNoSuchEntity
+	}
+
+	return nil
 }
 
 // Check if entity is in datastore.
 func (m *Model) Exists() (bool, error) {
-	_, ok, err := m.KeyExists(nil)
-	return ok, err
+	return m.Query().KeyExists(m.Key())
 }
 
-// Check if key is in datastore.
-func (m *Model) IdExists(id string) (bool, error) {
-	_, ok, err := m.KeyById(id)
-	return ok, err
+// Check if entity is in datastore.
+func (m *Model) IdExists(id string) (datastore.Key, bool, error) {
+	return m.Query().IdExists(id)
 }
 
-func (m *Model) KeyById(id string) (datastore.Key, bool, error) {
-	// Try to decode key
-	key, err := hashid.DecodeKey(m.Db.Context, id)
-
-	// Use key if we have one
-	if err == nil {
-		err = m.Get(key)
-		return m.Key(), err == nil, err
-	}
-
-	// Set err to nil and try to use filter
-	err = nil
-	filterStr := ""
-
-	// Use unique filter based on model type
-	switch m.Kind() {
-	case "store", "product", "collection":
-		filterStr = "Slug"
-	case "variant":
-		filterStr = "SKU"
-	case "organization", "mailinglist":
-		filterStr = "Name"
-	case "aggregate":
-		filterStr = "Instance"
-	case "site":
-		filterStr = "Name"
-	case "user":
-		if strings.Contains(id, "@") {
-			filterStr = "Email"
-		} else {
-			filterStr = "Username"
-		}
-	case "referrer":
-		filterStr = "Code"
-	case "coupon":
-		return couponFromId(m, id)
-	case "order":
-		return orderFromId(m, id)
-	default:
-		return nil, false, datastore.InvalidKey
-	}
-
-	// Try and fetch by filterStr
-	ok, err := m.Query().Filter(filterStr+"=", id).First()
-	if !ok {
-		return nil, false, datastore.KeyNotFound
-	}
-
-	return m.Key(), true, nil
-}
-
-// Get's key only (ensures key is good)
-func (m *Model) KeyExists(key interface{}) (datastore.Key, bool, error) {
-	// If a key is specified, try to use that, ignore nil keys (which would
-	// otherwise create a new incomplete key which makes no sense in this case.
-	if key != nil {
-		if err := m.SetKey(key); err != nil {
-			return nil, false, err
-		}
-	}
-
-	keys, err := m.Query().Filter("__key__=", m.key).GetKeys()
-	// Something bad happened
-	if err != nil {
-		return nil, false, err
-	}
-
-	// We couldn't find it
-	if len(keys) != 1 {
-		return nil, false, datastore.KeyNotFound
-	}
-
-	m.SetKey(keys[0])
-	return keys[0], true, nil
+// Check if entity is in datastore.
+func (m *Model) KeyExists(key datastore.Key) (bool, error) {
+	return m.Query().KeyExists(key)
 }
 
 // Update new entity (should already exist)
@@ -560,23 +500,13 @@ func (m *Model) MustDelete() {
 
 // Get entity from datastore or create new one
 func (m *Model) GetOrCreate(filterStr string, value interface{}) error {
-	ok, err := m.Query().Filter(filterStr, value).First()
-
-	// Something bad happened
+	ok, err := m.Query().Filter(filterStr, value).Get()
 	if err != nil {
 		return err
 	}
 
 	// Not found, save entity
 	if !ok {
-		// What were we filtering on? Make sure the field is set to value of
-		// filter. This prevents any duplicate attempts from creating new
-		// models as well.
-
-		// name := strings.TrimSpace(strings.Split(filterStr, "=")[0])
-		// field := reflect.Indirect(reflect.ValueOf(m.Entity)).FieldByName(name)
-		// field.Set(reflect.ValueOf(value))
-
 		return m.Create()
 	}
 
@@ -585,49 +515,37 @@ func (m *Model) GetOrCreate(filterStr string, value interface{}) error {
 
 // Get entity from datastore or create new one
 func (m *Model) GetOrUpdate(filterStr string, value interface{}) error {
-	entity := reflect.ValueOf(m.Entity).Interface()
+	// Save reference to updated state of entity
+	update := m.Clone()
 
-	q := m.Db.Query(m.Kind())
-	key, ok, err := q.Filter(filterStr, value).First(entity)
-
-	// Something bad happened
+	// Fetch whatever is in datastore
+	ok, err := m.Query().Filter(filterStr, value).Get()
 	if err != nil {
 		return err
 	}
 
-	// Not found create
+	// Not found, create
 	if !ok {
-		name := strings.TrimSpace(strings.Split(filterStr, "=")[0])
-		field := reflect.Indirect(reflect.ValueOf(m.Entity)).FieldByName(name)
-		field.Set(reflect.ValueOf(value))
 		return m.Create()
 	}
 
-	// Update copy found with our new data, use it's key, and save updated entity
-	structs.Copy(m.Entity, entity)
-	m.Entity = entity.(Entity)
-	m.SetKey(key)
+	// Update fetched entity
+	structs.Copy(update, m.Entity)
+
+	// Persist
 	return m.Update()
 }
 
-// NOTE: This is not thread-safe
-func (m *Model) RunInTransaction(fn func() error) error {
-	ctx := m.Db.Context
-
-	err := aeds.RunInTransaction(ctx, func(c appengine.Context) error {
-		m.Db.Context = c
-		return fn()
-	}, &aeds.TransactionOptions{XG: true})
-
-	// Should I set old context back?
-	m.Db.Context = ctx
-
-	return err
-}
-
-// Return Datastore
+// Return datastore
 func (m *Model) Datastore() *datastore.Datastore {
 	return m.Db
+}
+
+// Run in transaction using model's current context
+func (m *Model) RunInTransaction(fn func() error, opts ...*datastore.TransactionOptions) error {
+	return datastore.RunInTransaction(m.Context(), func(db *datastore.Datastore) error {
+		return fn()
+	}, opts...)
 }
 
 // Mock methods for test keys. Does everything against datastore except create/update/delete/allocate ids.

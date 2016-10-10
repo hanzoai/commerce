@@ -14,15 +14,15 @@ import (
 
 // Vals should be a slice of models
 func multi(vals interface{}, fn func(mixin.Entity) error) error {
-	var wg sync.WaitGroup
-	var err error
-
 	// Vals must be a slice
 	if reflect.TypeOf(vals).Kind() != reflect.Slice {
 		return errors.New(fmt.Sprintf("Must be called with slice of entities, not: %v", vals))
 	}
 
 	slice := reflect.ValueOf(vals)
+
+	var wg sync.WaitGroup
+	var err error
 
 	// Loop over slice initializing entities
 	for i := 0; i < slice.Len(); i++ {
@@ -36,14 +36,11 @@ func multi(vals interface{}, fn func(mixin.Entity) error) error {
 
 		// Run method in gofunc
 		go func(model mixin.Entity) {
-			defer wg.Done()
-
-			// Exit if there is an error
-			if err != nil {
-				return
+			// Only continue if we haven't seen an error
+			if err == nil {
+				err = fn(entity)
 			}
-
-			err = fn(entity)
+			wg.Done()
 		}(entity)
 	}
 

@@ -80,7 +80,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 		ord := order.New(db)
 
 		// Get Key, and fail if this didn't exist in datastore
-		if _, _, err := ord.KeyExists(id); err != nil {
+		if _, _, err := ord.IdExists(id); err != nil {
 			http.Fail(c, 404, "No order found with id: "+id, err)
 			return
 		}

@@ -34,7 +34,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 		ref.Blacklisted = ref.Client.Blacklisted()
 
 		// Check if any other referrers have been created with this IP address
-		if ok, _ := referrer.Query(db).Filter("Client.Ip=", ref.Client.Ip).KeysOnly().First(); ok {
+		if _, ok, _ := referrer.Query(db).Filter("Client.Ip=", ref.Client.Ip).FirstKey(); ok {
 			ref.Duplicate = true
 		}
 

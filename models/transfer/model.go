@@ -1,12 +1,11 @@
 package transfer
 
-import (
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
-)
+import "crowdstart.com/datastore"
+
+var kind = "transfer"
 
 func (t Transfer) Kind() string {
-	return "transfer"
+	return kind
 }
 
 func (t *Transfer) Init(db *datastore.Datastore) {
@@ -23,6 +22,6 @@ func New(db *datastore.Datastore) *Transfer {
 	return t
 }
 
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query(kind)
 }
