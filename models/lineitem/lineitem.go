@@ -114,31 +114,38 @@ func (li LineItem) DisplayId() string {
 // update it's price. If key is nil, this product is already fleshed out and
 // does not need to be fetched.
 func (li *LineItem) Entity(db *datastore.Datastore) (datastore.Key, interface{}, error) {
-	var notZero = func(a string, b string) string {
-		if a != "" {
-			return a
-		}
-		return b
-	}
-
-	// Fetch product
-	id := notZero(li.ProductId, li.ProductSlug)
-	if id != "" {
+	if li.ProductId != "" {
 		li.Product = product.New(db)
-		if err := li.Product.GetById(id); err != nil {
-			return nil, nil, err
-		}
+		li.Product.SetKey(li.ProductId)
 		return li.Product.Key(), li.Product, nil
 	}
 
-	// Fetch variant
-	id = notZero(li.VariantId, li.VariantSKU)
-	if id != "" {
+	if li.VariantId != "" {
 		li.Variant = variant.New(db)
-		if err := li.Variant.GetById(id); err != nil {
+		li.Variant.SetKey(li.VariantId)
+		return li.Variant.Key(), li.Variant, nil
+	}
+
+	if li.ProductSlug != "" {
+		li.Product = product.New(db)
+		ok, err := li.Product.Query().Filter("Slug=", li.ProductSlug).KeysOnly().First()
+		if err != nil {
 			return nil, nil, err
 		}
-		return li.Variant.Key(), li.Variant, nil
+		if ok {
+			return li.Product.Key(), li.Product, nil
+		}
+	}
+
+	if li.VariantSKU != "" {
+		li.Variant = variant.New(db)
+		ok, err := li.Variant.Query().Filter("SKU=", li.VariantSKU).KeysOnly().First()
+		if err != nil {
+			return nil, nil, err
+		}
+		if ok {
+			return li.Variant.Key(), li.Variant, nil
+		}
 	}
 
 	return nil, nil, LineItemError{li}

@@ -22,7 +22,7 @@ var _ = Describe("referral", func() {
 			prod.MustCreate()
 			vari := variant.Fake(db, prod.Id())
 			vari.MustCreate()
-			li := lineitem.Fake(vari.Id(), vari.Name, vari.SKU)
+			li := lineitem.Fake(vari)
 			ord := order.Fake(db, li)
 			ord.MustCreate()
 			usr := user.Fake(db)
@@ -50,7 +50,7 @@ var _ = Describe("referral", func() {
 			prod.MustCreate()
 			vari := variant.Fake(db, prod.Id())
 			vari.MustCreate()
-			li := lineitem.Fake(vari.Id(), vari.Name, vari.SKU)
+			li := lineitem.Fake(vari)
 			ord := order.Fake(db, li)
 			ord.MustCreate()
 			usr := user.Fake(db)
@@ -72,7 +72,7 @@ var _ = Describe("referral", func() {
 	})
 
 	Context("Patch referral", func() {
-		re := new(referral.Referral)
+		rfl := new(referral.Referral)
 		res := new(referral.Referral)
 
 		req := struct {
@@ -89,30 +89,30 @@ var _ = Describe("referral", func() {
 			prod.MustCreate()
 			vari := variant.Fake(db, prod.Id())
 			vari.MustCreate()
-			li := lineitem.Fake(vari.Id(), vari.Name, vari.SKU)
+			li := lineitem.Fake(vari)
 			ord := order.Fake(db, li)
 			ord.MustCreate()
 			usr := user.Fake(db)
 			usr.MustCreate()
-			re = referral.Fake(db, usr.Id(), ord.Id())
-			re.MustCreate()
+			rfl = referral.Fake(db, usr.Id(), ord.Id())
+			rfl.MustCreate()
 
 			res = referral.New(db)
 
-			cl.Patch("/referral/"+re.Id(), req, res)
+			cl.Patch("/referral/"+rfl.Id(), req, res)
 		})
 
 		It("Should patch referral", func() {
-			Expect(res.Id_).To(Equal(re.Id()))
-			Expect(res.Type).To(Equal(re.Type))
-			Expect(res.OrderId).To(Equal(re.OrderId))
-			Expect(res.Referrer).To(Equal(re.Referrer))
+			Expect(res.Id_).To(Equal(rfl.Id()))
+			Expect(res.Type).To(Equal(rfl.Type))
+			Expect(res.OrderId).To(Equal(rfl.OrderId))
+			Expect(res.Referrer).To(Equal(rfl.Referrer))
 			Expect(res.Fee).To(Equal(req.Fee))
 		})
 	})
 
 	Context("Put referral", func() {
-		re := new(referral.Referral)
+		rfl := new(referral.Referral)
 		res := new(referral.Referral)
 		req := new(referral.Referral)
 
@@ -121,22 +121,22 @@ var _ = Describe("referral", func() {
 			prod.MustCreate()
 			vari := variant.Fake(db, prod.Id())
 			vari.MustCreate()
-			li := lineitem.Fake(vari.Id(), vari.Name, vari.SKU)
+			li := lineitem.Fake(vari)
 			ord := order.Fake(db, li)
 			ord.MustCreate()
 			usr := user.Fake(db)
 			usr.MustCreate()
-			re = referral.Fake(db, usr.Id(), ord.Id())
-			re.MustCreate()
+			rfl = referral.Fake(db, usr.Id(), ord.Id())
+			rfl.MustCreate()
 
 			req = referral.Fake(db, usr.Id(), ord.Id())
-
 			res = referral.New(db)
-			cl.Put("/referral/"+re.Id(), req, res)
+
+			cl.Put("/referral/"+rfl.Id(), req, res)
 		})
 
 		It("Should put referral", func() {
-			Expect(res.Id_).To(Equal(re.Id()))
+			Expect(res.Id_).To(Equal(rfl.Id()))
 			Expect(res.Type).To(Equal(req.Type))
 			Expect(res.OrderId).To(Equal(req.OrderId))
 			Expect(res.Referrer).To(Equal(req.Referrer))
@@ -152,7 +152,7 @@ var _ = Describe("referral", func() {
 			prod.MustCreate()
 			vari := variant.Fake(db, prod.Id())
 			vari.MustCreate()
-			li := lineitem.Fake(vari.Id(), vari.Name, vari.SKU)
+			li := lineitem.Fake(vari)
 			ord := order.Fake(db, li)
 			ord.MustCreate()
 			usr := user.Fake(db)
@@ -166,8 +166,8 @@ var _ = Describe("referral", func() {
 		})
 
 		It("Should delete referrals", func() {
-			ref := referral.New(db)
-			err := ref.GetById(res)
+			rfl := referral.New(db)
+			err := rfl.GetById(res)
 			Expect(err).ToNot(BeNil())
 		})
 	})

@@ -21,47 +21,44 @@ func keyExists(key string) {
 
 func getOrder(id string) *order.Order {
 	ord := order.New(db)
-	err := ord.Get(id)
+	err := ord.GetById(id)
 	Expect1(err).ToNot(HaveOccurred())
 	return ord
 }
 
 func getUser(id string) *user.User {
 	usr := user.New(db)
-	err := usr.Get(id)
+	err := usr.GetById(id)
 	Expect1(err).ToNot(HaveOccurred())
 	return usr
 }
 
 func getPayment(id string) *payment.Payment {
 	pay := payment.New(db)
-	err := pay.Get(id)
+	err := pay.GetById(id)
 	Expect1(err).ToNot(HaveOccurred())
 	return pay
 }
 
 var _ = Describe("checkout", func() {
 	Describe("checkout/authorize", func() {
-		var req *checkout.AuthorizationReq
+		var req *checkout.Authorization
 		var res *order.Order
 
 		Before(func() {
+			// Create fake product, variant and order
+			prod := product.Fake(db)
+			prod.MustCreate()
+			vari := variant.Fake(db, prod.Id())
+			vari.MustCreate()
+			li := lineitem.Fake(vari)
+			ord := order.Fake(db, li)
+
 			// Create new authorization request
-			req = new(checkout.AuthorizationReq)
-
-			// Create fake payment
-			req.Payment_ = payment.Fake(db)
-
-			// Create fake user
-			req.User_ = user.Fake(db)
-
-			// Create fake product, variant and subsequent order
-			p := product.Fake(db)
-			p.MustCreate()
-			v := variant.Fake(db, p.Id())
-			v.MustCreate()
-			li := lineitem.Fake(v.Id(), v.Name, v.SKU)
-			req.Order = order.Fake(db, li)
+			req = new(checkout.Authorization)
+			req.Order = ord
+			req.Payment = payment.Fake(db)
+			req.User = user.Fake(db)
 
 			// Instantiate order to encompass result
 			res = order.New(db)
