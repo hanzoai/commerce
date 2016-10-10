@@ -1,6 +1,8 @@
 package test
 
 import (
+	"math"
+
 	"crowdstart.com/api/checkout"
 	"crowdstart.com/models/affiliate"
 	"crowdstart.com/models/fee"
@@ -11,9 +13,11 @@ import (
 	"crowdstart.com/models/referral"
 	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/types/currency"
+	"crowdstart.com/models/types/pricing"
 	"crowdstart.com/models/user"
 	"crowdstart.com/models/variant"
 	"crowdstart.com/util/hashid"
+	"crowdstart.com/util/log"
 
 	. "crowdstart.com/util/test/ginkgo"
 )
@@ -46,9 +50,9 @@ func getPayment(orderId string) *payment.Payment {
 	return pay
 }
 
-func getFee(paymentId string) *fee.Fee {
+func getFee(paymentId, feeType string) *fee.Fee {
 	fe := fee.New(db)
-	ok, err := fe.Query().Filter("PaymentId=", paymentId).First()
+	ok, err := fe.Query().Filter("PaymentId=", paymentId).Filter("Type=", feeType).First()
 	Expect1(err).ToNot(HaveOccurred())
 	Expect1(ok).To(BeTrue())
 	return fe
@@ -60,6 +64,11 @@ func getReferral(orderId string) *referral.Referral {
 	Expect1(err).ToNot(HaveOccurred())
 	Expect1(ok).To(BeTrue())
 	return rfl
+}
+
+func calculatePlatformFee(pricing pricing.Fees, total currency.Cents) currency.Cents {
+	pctFee := math.Ceil(float64(total) * pricing.Card.Percent)
+	return pricing.Card.Flat + currency.Cents(pctFee)
 }
 
 var _ = Describe("/checkout/authorize", func() {
@@ -94,7 +103,7 @@ var _ = Describe("/checkout/authorize", func() {
 		})
 
 		It("Should save payment", func() {
-			getPayment(res.PaymentIds[0])
+			getPayment(res.Id())
 		})
 
 		It("Should save order", func() {
@@ -106,6 +115,8 @@ var _ = Describe("/checkout/authorize", func() {
 		})
 
 		It("Should calculate correct total for order and payment", func() {
+			log.JSON("REQUEST", req.Order)
+			log.JSON("RESPONSE", res)
 			Expect(res.Total).To(Equal(req.Order.Total))
 		})
 	})
@@ -261,8 +272,8 @@ var _ = Describe("/checkout/authorize", func() {
 
 		It("Should save platform fee", func() {
 			pay := getPayment(res.Id())
-			fe := getFee(pay.Id())
-			Expect(fe.Amount).To(Equal(currency.Cents(float64(res.Total) * org.Fees.Card.Percent)))
+			fe := getFee(pay.Id(), "platform")
+			Expect(fe.Amount).To(Equal(calculatePlatformFee(org.Fees, res.Total)))
 		})
 	})
 
