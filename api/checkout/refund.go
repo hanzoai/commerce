@@ -16,7 +16,6 @@ func refund(c *gin.Context, org *organization.Organization, ord *order.Order) er
 		Amount currency.Cents `json:"amount"`
 	}
 
-	// Try decode request body
 	req := new(Refund)
 	if err := json.Decode(c.Request.Body, req); err != nil {
 		log.Error("Failed to decode request body: %v\n%v", c.Request.Body, err, c)
