@@ -7,6 +7,7 @@ import (
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/user"
+	"crowdstart.com/util/log"
 	stringutil "crowdstart.com/util/strings"
 )
 
@@ -20,6 +21,8 @@ type Authorization struct {
 func initUser(db *datastore.Datastore, usr *user.User, ord *order.Order) error {
 	usr.Init(db)
 
+	log.JSON("Before updating user", usr)
+
 	// If Id_ is specified this is an existing user, ensure they exist
 	id := usr.Id_
 	if id != "" {
@@ -30,6 +33,8 @@ func initUser(db *datastore.Datastore, usr *user.User, ord *order.Order) error {
 			return UserDoesNotExist
 		}
 	}
+
+	log.JSON("After updating user", usr)
 
 	// Use order billing and shipping address if missing on user
 	if usr.ShippingAddress.Empty() {
