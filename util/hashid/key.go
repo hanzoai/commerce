@@ -27,15 +27,19 @@ func cache(namespace string, id int64) {
 	namespaceToId[namespace] = id
 }
 
-type Namespace struct {
-	IntId int64
-	Name  string
-
-	// Included for compatibility with namespace models
+type Model struct {
 	Id_       string
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	Deleted   bool
+}
+
+type Namespace struct {
+	// Included for compatibility with namespace models
+	Model
+
+	IntId int64
+	Name  string
 }
 
 func fmtNs(ns string) string {
@@ -61,25 +65,25 @@ func queryNamespace(ctx appengine.Context, filter string, value interface{}) (*N
 	root := getRoot(ctx)
 
 	// Filter for namespace by name
-	_, err := aeds.NewQuery("namespace").
+	q := aeds.NewQuery("namespace").
 		Ancestor(root).
 		Filter(filter, value).
-		GetAll(ctx, ns)
+		Limit(1)
 
-	// Ignore FieldMismatch errors
-	err = IgnoreFieldMismatch(err)
+	// Run query
+	_, err := q.Run(ctx).Next(ns)
 
-	// Namespace does not exist
-	if err == aeds.ErrNoSuchEntity {
+	// Nothing found
+	if err == aeds.Done {
 		return nil, false, nil
 	}
 
-	// Error trying to query for namespace
+	// Error trying run query
 	if err != nil {
 		return nil, false, err
 	}
 
-	// Found namespace
+	// Found it
 	return ns, true, nil
 }
 
@@ -91,7 +95,7 @@ func getId(ctx appengine.Context, name string) int64 {
 
 	ns, ok, err := queryNamespace(ctx, "Name=", name)
 
-	// Blow up if we can't find organization
+	// Blow up if we can't find namespace
 	if err != nil {
 		panic(err.Error())
 	}
@@ -273,14 +277,14 @@ func KeyExists(ctx appengine.Context, encoded string) (bool, error) {
 	}
 
 	// Try to query out matching key
-	keys, err := aeds.NewQuery(key.Kind()).Filter("__key__=", key).KeysOnly().GetAll(ctx, nil)
+	err = aeds.Get(ctx, key, Model{})
+
+	if err == aeds.ErrNoSuchEntity {
+		return false, nil
+	}
 
 	if err != nil {
 		return false, err
-	}
-
-	if len(keys) == 0 {
-		return false, aeds.ErrNoSuchEntity
 	}
 
 	return true, nil

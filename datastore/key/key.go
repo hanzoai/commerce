@@ -87,10 +87,7 @@ func Exists(ctx appengine.Context, key interface{}) (bool, error) {
 	}
 
 	// Search for key in datastore
-	_, err = aeds.NewQuery(k.Kind()).
-		Filter("__key__", k).
-		KeysOnly().
-		GetAll(ctx, nil)
+	err = aeds.Get(ctx, k, nil)
 
 	// Not found
 	if err == aeds.ErrNoSuchEntity {
