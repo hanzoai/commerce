@@ -74,7 +74,7 @@ type Entity interface {
 	RunInTransaction(fn func() error, opts ...*datastore.TransactionOptions) error
 
 	// Query
-	Query() *Query
+	Query() *ModelQuery
 
 	// Various helpers
 	Zero() Entity
