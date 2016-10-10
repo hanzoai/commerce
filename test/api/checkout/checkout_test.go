@@ -42,7 +42,7 @@ func getPayment(id string) *payment.Payment {
 
 var _ = Describe("checkout", func() {
 	Describe("checkout/authorize", func() {
-		var req *checkout.AuthorizationReq
+		var req *checkout.Authorization
 		var res *order.Order
 
 		Before(func() {
@@ -55,10 +55,10 @@ var _ = Describe("checkout", func() {
 			ord := order.Fake(db, li)
 
 			// Create new authorization request
-			req = new(checkout.AuthorizationReq)
+			req = new(checkout.Authorization)
 			req.Order = ord
-			req.Payment_ = payment.Fake(db)
-			req.User_ = user.Fake(db)
+			req.Payment = payment.Fake(db)
+			req.User = user.Fake(db)
 
 			// Instantiate order to encompass result
 			res = order.New(db)
