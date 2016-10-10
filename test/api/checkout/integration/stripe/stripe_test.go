@@ -417,7 +417,7 @@ var _ = Describe("payment", func() {
 		})
 
 		It("Should not capture invalid order", func() {
-			cl.Post("/order/BADID/capture", "", 404)
+			cl.Post("/order/BADID/capture", "", nil, 400)
 		})
 	})
 
@@ -440,7 +440,7 @@ var _ = Describe("payment", func() {
 		})
 
 		It("Should not capture invalid order", func() {
-			cl.Post("/order/BADID/charge", "", 404)
+			cl.Post("/order/BADID/charge", "", nil, 400)
 		})
 	})
 
