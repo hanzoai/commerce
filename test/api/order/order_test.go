@@ -27,7 +27,7 @@ var _ = Describe("order", func() {
 			prod.MustCreate()
 			vari := variant.Fake(db, prod.Id())
 			vari.MustCreate()
-			li := lineitem.Fake(vari.Id(), vari.Name, vari.SKU)
+			li := lineitem.Fake(vari)
 			req = order.Fake(db, li)
 			res = order.New(db)
 
@@ -73,7 +73,7 @@ var _ = Describe("order", func() {
 			prod.MustCreate()
 			vari := variant.Fake(db, prod.Id())
 			vari.MustCreate()
-			li := lineitem.Fake(vari.Id(), vari.Name, vari.SKU)
+			li := lineitem.Fake(vari)
 			req = order.Fake(db, li)
 			req.MustCreate()
 
@@ -128,7 +128,7 @@ var _ = Describe("order", func() {
 			prod.MustCreate()
 			vari := variant.Fake(db, prod.Id())
 			vari.MustCreate()
-			li := lineitem.Fake(vari.Id(), vari.Name, vari.SKU)
+			li := lineitem.Fake(vari)
 
 			// Create order
 			ord = order.Fake(db, li)
@@ -179,7 +179,7 @@ var _ = Describe("order", func() {
 			prod.MustCreate()
 			vari := variant.Fake(db, prod.Id())
 			vari.MustCreate()
-			li := lineitem.Fake(vari.Id(), vari.Name, vari.SKU)
+			li := lineitem.Fake(vari)
 
 			// Create order
 			ord = order.Fake(db, li)
@@ -230,7 +230,7 @@ var _ = Describe("order", func() {
 			prod.MustCreate()
 			vari := variant.Fake(db, prod.Id())
 			vari.MustCreate()
-			li := lineitem.Fake(vari.Id(), vari.Name, vari.SKU)
+			li := lineitem.Fake(vari)
 			req := order.Fake(db, li)
 			req.MustCreate()
 
