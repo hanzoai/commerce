@@ -83,7 +83,7 @@ var _ = AfterSuite(func() {
 var _ = Describe("paypal.GetPayKey", func() {
 	Context("Get Paypal PayKey", func() {
 		It("Should succeed in the normal case", func() {
-			key, err := client.GetPayKey(pay, usr, ord, org)
+			key, err := client.GetPayKey(pay, ord, org)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(key).ToNot(Equal(""))
 		})
