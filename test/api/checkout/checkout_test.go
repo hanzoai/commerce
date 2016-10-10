@@ -68,7 +68,7 @@ var _ = Describe("checkout", func() {
 		})
 
 		Context("First Time Customers", func() {
-			FIt("Should authorize new order successfully", func() {
+			It("Should authorize new order successfully", func() {
 				getUser(res.UserId)
 				// Payment should be in db
 				Expect(len(res.PaymentIds)).To(Equal(1))
