@@ -117,7 +117,9 @@ func ReturningSuccessfulOrderSameCardTest(isCharge bool, stor *store.Store) test
 	// Save user, customerId from first order
 	usr := user.New(db)
 	usr.Get(ord1.UserId)
-	log.Debug("user: %#v", usr)
+
+	log.JSON("USERRRRRRRRRRRRRRRRRRRR", usr)
+
 	customerId := usr.Accounts.Stripe.CustomerId
 	stripeVerifyUser(usr)
 
@@ -288,7 +290,7 @@ var _ = Describe("payment", func() {
 		// })
 	})
 
-	Context("Authorize Returning Customers", func() {
+	FContext("Authorize Returning Customers", func() {
 		It("Should save returning customer order with the same card successfully", func() {
 			ReturningSuccessfulOrderSameCardTest(false, nil)
 		})
@@ -417,7 +419,7 @@ var _ = Describe("payment", func() {
 		})
 
 		It("Should not capture invalid order", func() {
-			cl.Post("/order/BADID/capture", "", nil, 400)
+			cl.Post("/order/BADID/capture", "", nil, 404)
 		})
 	})
 
@@ -440,7 +442,7 @@ var _ = Describe("payment", func() {
 		})
 
 		It("Should not capture invalid order", func() {
-			cl.Post("/order/BADID/charge", "", nil, 400)
+			cl.Post("/order/BADID/charge", "", nil, 404)
 		})
 	})
 
