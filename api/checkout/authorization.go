@@ -100,7 +100,6 @@ func initPayment(db *datastore.Datastore, pay *payment.Payment, usr *user.User, 
 	pay.Buyer = usr.Buyer()
 
 	// Update payment with order information
-	pay.Amount = ord.Total
 	pay.Currency = ord.Currency
 	pay.Description = ord.Description()
 

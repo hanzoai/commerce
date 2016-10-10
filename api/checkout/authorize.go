@@ -80,6 +80,9 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		pay.Test = true
 	}
 
+	// Use updated order total
+	pay.Amount = ord.Total
+
 	// Capture client information to retain information about user at time of checkout
 	pay.Client = client.New(c)
 
