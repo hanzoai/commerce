@@ -247,12 +247,13 @@ func OrderBadUserTest(isCharge bool, stor *store.Store) {
 var _ = Describe("payment", func() {
 	Context("Authorize First Time Customers", func() {
 		It("Should normalise the user information", func() {
-			path := "/order"
 			ord := order.New(db)
-			cl.Post(path, requests.NonNormalizedOrder, ord)
+			cl.Post("/checkout/authorize", requests.NonNormalizedOrder, ord)
 
 			usr := user.New(db)
 			usr.Get(ord.UserId)
+
+			log.JSON("USER:", usr)
 
 			var normalize = func(s string) string {
 				return strings.ToLower(strings.TrimSpace(s))
