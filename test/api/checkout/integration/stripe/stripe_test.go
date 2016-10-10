@@ -52,7 +52,7 @@ func FirstTimeSuccessfulOrderTest(isCharge bool, stor *store.Store) testHelperRe
 	log.Debug("Order %v", ord)
 
 	// Order should be in db
-	key, _, err := order.New(db).KeyExists(ord.Id())
+	key, _, err := order.Query(db).IdExists(ord.Id())
 	log.Debug("Err %v", err)
 
 	Expect(err).ToNot(HaveOccurred())
