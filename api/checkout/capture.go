@@ -23,7 +23,7 @@ import (
 	. "crowdstart.com/models"
 )
 
-func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (*order.Order, error) {
+func capture(c *gin.Context, org *organization.Organization, ord *order.Order) error {
 	var err error
 	var payments []*payment.Payment
 
@@ -42,7 +42,7 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (
 	}
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	ctx := ord.Context()
@@ -50,7 +50,7 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (
 	updateOrder(ctx, ord, payments)
 
 	if err := saveOrder(ctx, ord, payments); err != nil {
-		return ord, err
+		return err
 	}
 
 	// TODO: Run in task, no need to block call on rest of this
@@ -60,7 +60,7 @@ func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (
 	updateCart(ctx, ord)
 	updateStats(ctx, org, ord, payments)
 
-	return ord, nil
+	return nil
 }
 
 func updateOrder(ctx appengine.Context, ord *order.Order, payments []*payment.Payment) {
