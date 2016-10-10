@@ -15,7 +15,7 @@ import (
 
 var orderEndpoint = config.UrlFor("api", "/order/")
 
-func getOrganizationAndOrder(c *gin.Context) (*organization.Organization, *order.Order) {
+func getOrganizationAndOrder(c *gin.Context) (*organization.Organization, *order.Order, error) {
 	// Get organization for this user
 	org := middleware.GetOrganization(c)
 
@@ -24,26 +24,27 @@ func getOrganizationAndOrder(c *gin.Context) (*organization.Organization, *order
 	db := datastore.New(ctx)
 
 	// Create order that's properly namespaced
-	ord := order.New(db)
+	var ord *order.Order
 
 	// Get order if an existing order was referenced
 	if id := c.Params.ByName("orderid"); id != "" {
+		ord = order.New(db)
 		if err := ord.Get(id); err != nil {
-			return nil, nil
+			http.Fail(c, 404, "Failed to retrieve order", OrderDoesNotExist)
+			return nil, nil, err
 		}
 	}
 
-	return org, ord
+	return org, ord, nil
 }
 
 func Authorize(c *gin.Context) {
-	org, ord := getOrganizationAndOrder(c)
-	if ord == nil {
-		http.Fail(c, 404, "Failed to retrieve order", OrderDoesNotExist)
+	org, ord, err := getOrganizationAndOrder(c)
+	if err != nil {
 		return
 	}
 
-	_, err := authorize(c, org, ord)
+	_, err = authorize(c, org, ord)
 	if err != nil {
 		http.Fail(c, 400, err.Error(), err)
 		return
@@ -55,14 +56,12 @@ func Authorize(c *gin.Context) {
 }
 
 func Capture(c *gin.Context) {
-	org, ord := getOrganizationAndOrder(c)
-	if ord == nil {
-		http.Fail(c, 404, "Failed to retrieve order", OrderDoesNotExist)
+	org, ord, err := getOrganizationAndOrder(c)
+	if err != nil {
 		return
 	}
 
 	// Do capture using order we've found
-	var err error
 	ord, err = capture(c, org, ord)
 	if err != nil {
 		http.Fail(c, 400, "Error during capture", err)
@@ -75,14 +74,13 @@ func Capture(c *gin.Context) {
 }
 
 func Charge(c *gin.Context) {
-	org, ord := getOrganizationAndOrder(c)
-	if ord == nil {
-		http.Fail(c, 404, "Failed to retrieve order", OrderDoesNotExist)
+	org, ord, err := getOrganizationAndOrder(c)
+	if err != nil {
 		return
 	}
 
 	// Do authorization
-	_, err := authorize(c, org, ord)
+	_, err = authorize(c, org, ord)
 	if err != nil {
 		http.Fail(c, 400, "Error during authorize", err)
 		return
@@ -101,9 +99,8 @@ func Charge(c *gin.Context) {
 }
 
 func Refund(c *gin.Context) {
-	org, ord := getOrganizationAndOrder(c)
-	if ord == nil {
-		http.Fail(c, 404, "Failed to retrieve order", OrderDoesNotExist)
+	org, ord, err := getOrganizationAndOrder(c)
+	if err != nil {
 		return
 	}
 
@@ -117,10 +114,8 @@ func Refund(c *gin.Context) {
 }
 
 func Cancel(c *gin.Context) {
-	org, ord := getOrganizationAndOrder(c)
-
-	if ord == nil {
-		http.Fail(c, 404, "Failed to retrieve order", OrderDoesNotExist)
+	org, ord, err := getOrganizationAndOrder(c)
+	if err != nil {
 		return
 	}
 
@@ -133,10 +128,8 @@ func Cancel(c *gin.Context) {
 }
 
 func Confirm(c *gin.Context) {
-	org, ord := getOrganizationAndOrder(c)
-
-	if ord == nil {
-		http.Fail(c, 404, "Failed to retrieve order", OrderDoesNotExist)
+	org, ord, err := getOrganizationAndOrder(c)
+	if err != nil {
 		return
 	}
 

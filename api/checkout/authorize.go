@@ -22,12 +22,16 @@ import (
 
 func newAuthorization(c *gin.Context, ord *order.Order) (*Authorization, error) {
 	a := new(Authorization)
-	a.Order = ord
 
 	// Try decode request body
 	if err := json.Decode(c.Request.Body, a); err != nil {
 		log.Error("Failed to decode request body: %v\n%v", c.Request.Body, err, c)
 		return nil, FailedToDecodeRequestBody
+	}
+
+	// Order specified by id, use queried order
+	if ord != nil {
+		a.Order = ord
 	}
 
 	return a, a.Init(ord.Db)
