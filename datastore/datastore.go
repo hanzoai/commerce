@@ -15,18 +15,24 @@ import (
 
 	"crowdstart.com/config"
 	"crowdstart.com/util/log"
+
+	"crowdstart.com/datastore/query"
+	"crowdstart.com/datastore/utils"
 )
 
-// Alias Done error
 var (
+	// Alias appengine types
 	Done                 = aeds.Done
 	ErrNoSuchEntity      = aeds.ErrNoSuchEntity
 	ErrInvalidEntityType = aeds.ErrInvalidEntityType
 	ErrInvalidKey        = aeds.ErrInvalidKey
 
-	// TODO: Use appengine aliases everywhere
-	InvalidKey  = errors.New("Invalid key")
-	KeyNotFound = errors.New("Key not found")
+	// Alias utils
+	IgnoreFieldMismatch = utils.IgnoreFieldMismatch
+
+	// Custom Errors
+	InvalidKey  = ErrInvalidKey
+	KeyNotFound = ErrNoSuchEntity
 )
 
 type Datastore struct {
@@ -144,8 +150,8 @@ func (d *Datastore) NewKey(kind, stringID string, intID int64, parent Key) *aeds
 	}
 }
 
-func (d *Datastore) DecodeKey(encodedKey string) (*aeds.Key, error) {
-	return DecodeKey(d.Context, encodedKey)
+func (d *Datastore) DecodeKey(encoded string) (*aeds.Key, error) {
+	return DecodeKey(d.Context, encoded)
 }
 
 // Helper func to get key for `datastore.Get/datastore.GetMulti`
@@ -459,56 +465,30 @@ func (d *Datastore) AllocateIntKey(kind string) Key {
 	return aeds.NewKey(d.Context, kind, "", id, nil)
 }
 
-func (d *Datastore) Query(kind string) *DatastoreQuery {
-	return NewQuery(d, kind)
+// Return a *datastore.Query
+func (d *Datastore) Query(kind string) Query {
+	return query.New(d.Context, kind)
 }
 
-func (d *Datastore) RunInTransaction(fn func(db *Datastore) error, opts *TransactionOptions) error {
-	return RunInTransaction(d.Context, fn, opts)
+func (d *Datastore) RunInTransaction(fn func(db *Datastore) error, opts ...*TransactionOptions) error {
+	return RunInTransaction(d.Context, fn, opts...)
 }
 
 func (d *Datastore) DecodeCursor(cursor string) (aeds.Cursor, error) {
 	return aeds.DecodeCursor(cursor)
 }
 
-// Helper to ignore tedious field mismatch errors (but warn appropriately
-// during development)
-func IgnoreFieldMismatch(err error) error {
-	if err == nil {
-		// Ignore nil error
-		return nil
-	}
-
-	if _, ok := err.(*aeds.ErrFieldMismatch); ok {
-		// Ignore any field mismatch errors, but warn user (at least during development)
-		log.Warn("Ignoring, %v", err)
-		return nil
-	}
-
-	// Any other errors we damn well need to know about!
-	return err
-}
-
 type TransactionOptions aeds.TransactionOptions
 
-func RunInTransaction(ctx appengine.Context, fn func(db *Datastore) error, opts *TransactionOptions) error {
-	var i interface{} = opts
-	return nds.RunInTransaction(ctx, func(ctx appengine.Context) error {
-		return fn(New(ctx))
-	}, i.(*aeds.TransactionOptions))
-}
+func RunInTransaction(ctx appengine.Context, fn func(db *Datastore) error, opts ...*TransactionOptions) error {
+	aeopts := new(aeds.TransactionOptions)
 
-func DecodeKey(ctx appengine.Context, encodedKey string) (*aeds.Key, error) {
-	_key, err := aeds.DecodeKey(encodedKey)
-
-	// If unable to return key, bail out
-	if err != nil {
-		return _key, err
+	if len(opts) > 0 {
+		aeopts.XG = opts[0].XG
+		aeopts.Attempts = opts[0].Attempts
 	}
 
-	// Since key returned might have been created with a different app, we'll
-	// recreate the key to ensure it has a valid AppID.
-	key := aeds.NewKey(ctx, _key.Kind(), _key.StringID(), _key.IntID(), nil)
-
-	return key, err
+	return nds.RunInTransaction(ctx, func(ctx appengine.Context) error {
+		return fn(New(ctx))
+	}, aeopts)
 }

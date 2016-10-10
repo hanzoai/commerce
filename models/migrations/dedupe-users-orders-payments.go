@@ -137,7 +137,7 @@ var _ = New("dedupe-users-orders-payments",
 
 		// Try to find newest instance of a user with this email
 		usr2 := user.New(db)
-		if _, err := usr2.Query().Filter("Email=", usr.Email).Order("-CreatedAt").First(); err != nil {
+		if _, err := usr2.Query().Filter("Email=", usr.Email).Order("-CreatedAt").Get(); err != nil {
 			log.Error("Failed to query for newest user: %v", err, ctx)
 			return
 		}

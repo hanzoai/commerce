@@ -40,7 +40,7 @@ func newEndpoint(db *datastore.Datastore, r *Rest) *endpoint {
 
 func (e *endpoint) FirstId() string {
 	if e.id == "" {
-		if ok, _ := e.Model.Query().First(); ok {
+		if ok, _ := e.Model.Query().Get(); ok {
 			e.id = e.Model.Id()
 		} else {
 			e.id = "<id>"
@@ -52,7 +52,7 @@ func (e *endpoint) FirstId() string {
 
 func (e *endpoint) EntityCount() string {
 	if e.count == "" {
-		count, _ := e.Query().Count()
+		count, _ := e.Query().All().Count()
 		e.count = strconv.Itoa(count)
 	}
 

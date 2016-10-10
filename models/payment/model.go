@@ -2,13 +2,14 @@ package payment
 
 import (
 	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
 
 	. "crowdstart.com/models"
 )
 
+var kind = "payment"
+
 func (p Payment) Kind() string {
-	return "payment"
+	return kind
 }
 
 func (p *Payment) Init(db *datastore.Datastore) {
@@ -27,6 +28,6 @@ func New(db *datastore.Datastore) *Payment {
 	return p
 }
 
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query(kind)
 }
