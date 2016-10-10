@@ -6,7 +6,6 @@ import (
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/payment"
-	"crowdstart.com/models/types/currency"
 	"crowdstart.com/models/user"
 	stringutil "crowdstart.com/util/strings"
 )
@@ -17,6 +16,7 @@ type Authorization struct {
 	Order   *order.Order     `json:"order"`
 }
 
+// Correctly initialize user provided in authorization
 func initUser(db *datastore.Datastore, usr *user.User, ord *order.Order) error {
 	usr.Init(db)
 
@@ -47,6 +47,7 @@ func initUser(db *datastore.Datastore, usr *user.User, ord *order.Order) error {
 	return nil
 }
 
+// Correctly initialize order provided in authorization
 func initOrder(db *datastore.Datastore, ord *order.Order, usr *user.User) {
 	ord.Init(db)
 
@@ -67,6 +68,7 @@ func initOrder(db *datastore.Datastore, ord *order.Order, usr *user.User) {
 	ord.UserId = usr.Id()
 }
 
+// Correctly initialize payment provided in authorization
 func initPayment(db *datastore.Datastore, pay *payment.Payment, usr *user.User, ord *order.Order) {
 	pay.Init(db)
 
@@ -110,8 +112,4 @@ func (a *Authorization) Init(db *datastore.Datastore) error {
 	initPayment(db, a.Payment, a.User, a.Order)
 
 	return nil
-}
-
-type RefundRequest struct {
-	Amount currency.Cents `json:"amount"`
 }
