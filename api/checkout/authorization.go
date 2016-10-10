@@ -89,6 +89,10 @@ func initPayment(db *datastore.Datastore, pay *payment.Payment, usr *user.User, 
 		pay.Type = payment.Stripe
 	}
 
+	// Ensure order has same type as payment
+	// TODO: Remove this from order
+	ord.Type = pay.Type
+
 	// User buyer information on user
 	pay.Buyer = usr.Buyer()
 
