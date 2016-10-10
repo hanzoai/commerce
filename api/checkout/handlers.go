@@ -24,12 +24,11 @@ func getOrganizationAndOrder(c *gin.Context) (*organization.Organization, *order
 	db := datastore.New(ctx)
 
 	// Create order that's properly namespaced
-	var ord *order.Order
+	ord := order.New(db)
 
 	// Get order if an existing order was referenced
 	if id := c.Params.ByName("orderid"); id != "" {
-		ord = order.New(db)
-		if err := ord.Get(id); err != nil {
+		if err := ord.GetById(id); err != nil {
 			http.Fail(c, 404, "Failed to retrieve order", OrderDoesNotExist)
 			return nil, nil, err
 		}
@@ -44,14 +43,12 @@ func Authorize(c *gin.Context) {
 		return
 	}
 
-	_, err = authorize(c, org, ord)
-	if err != nil {
+	if _, err = authorize(c, org, ord); err != nil {
 		http.Fail(c, 400, err.Error(), err)
 		return
 	}
 
 	c.Writer.Header().Add("Location", orderEndpoint+ord.Id())
-	ord.Number = ord.NumberFromId()
 	http.Render(c, 200, ord)
 }
 
@@ -61,15 +58,12 @@ func Capture(c *gin.Context) {
 		return
 	}
 
-	// Do capture using order we've found
-	ord, err = capture(c, org, ord)
-	if err != nil {
+	if err = capture(c, org, ord); err != nil {
 		http.Fail(c, 400, "Error during capture", err)
 		return
 	}
 
 	c.Writer.Header().Add("Location", orderEndpoint+ord.Id())
-	ord.Number = ord.NumberFromId()
 	http.Render(c, 200, ord)
 }
 
@@ -80,21 +74,18 @@ func Charge(c *gin.Context) {
 	}
 
 	// Do authorization
-	_, err = authorize(c, org, ord)
-	if err != nil {
+	if _, err = authorize(c, org, ord); err != nil {
 		http.Fail(c, 400, "Error during authorize", err)
 		return
 	}
 
 	// Do capture using order from authorization
-	ord, err = capture(c, org, ord)
-	if err != nil {
+	if err = capture(c, org, ord); err != nil {
 		http.Fail(c, 400, "Error during capture", err)
 		return
 	}
 
 	c.Writer.Header().Add("Location", orderEndpoint+ord.Id())
-	ord.Number = ord.NumberFromId()
 	http.Render(c, 200, ord)
 }
 
@@ -109,7 +100,6 @@ func Refund(c *gin.Context) {
 		return
 	}
 
-	ord.Number = ord.NumberFromId()
 	http.Render(c, 200, ord)
 }
 

@@ -21,21 +21,21 @@ func keyExists(key string) {
 
 func getOrder(id string) *order.Order {
 	ord := order.New(db)
-	err := ord.Get(id)
+	err := ord.GetById(id)
 	Expect1(err).ToNot(HaveOccurred())
 	return ord
 }
 
 func getUser(id string) *user.User {
 	usr := user.New(db)
-	err := usr.Get(id)
+	err := usr.GetById(id)
 	Expect1(err).ToNot(HaveOccurred())
 	return usr
 }
 
 func getPayment(id string) *payment.Payment {
 	pay := payment.New(db)
-	err := pay.Get(id)
+	err := pay.GetById(id)
 	Expect1(err).ToNot(HaveOccurred())
 	return pay
 }
@@ -68,7 +68,7 @@ var _ = Describe("checkout", func() {
 		})
 
 		Context("First Time Customers", func() {
-			It("Should authorize new order successfully", func() {
+			FIt("Should authorize new order successfully", func() {
 				getUser(res.UserId)
 				// Payment should be in db
 				Expect(len(res.PaymentIds)).To(Equal(1))

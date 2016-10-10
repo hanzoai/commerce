@@ -16,42 +16,49 @@ import (
 	"crowdstart.com/models/store"
 	"crowdstart.com/models/types/client"
 	"crowdstart.com/models/types/currency"
+	"crowdstart.com/models/user"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
+	"crowdstart.com/util/structs"
 )
 
-func newAuthorization(c *gin.Context, ord *order.Order) (*Authorization, error) {
+// Decode authorization request, grab user and payment information off it
+func decodeAuthorization(c *gin.Context, ord *order.Order) (*user.User, *payment.Payment, error) {
 	a := new(Authorization)
+	db := ord.Db
 
-	// Try decode request body
+	// Decode request
 	if err := json.Decode(c.Request.Body, a); err != nil {
 		log.Error("Failed to decode request body: %v\n%v", c.Request.Body, err, c)
-		return nil, FailedToDecodeRequestBody
+		return nil, nil, FailedToDecodeRequestBody
 	}
 
-	// Order specified by id, use queried order
-	if ord != nil {
-		a.Order = ord
+	log.JSON("Authorization:", a)
+
+	// Copy request order into order used everywhere
+	if a.Order != nil {
+		structs.Copy(a.Order, ord)
 	}
 
-	return a, a.Init(ord.Db)
+	// Use provided order rather than initialize another order and break references
+	a.Order = ord
+
+	// Initialize and normalize models in authorization request
+	if err := a.Init(db); err != nil {
+		return nil, nil, err
+	}
+
+	log.JSON("Order after initalization:", ord)
+
+	return a.User, a.Payment, nil
 }
 
 func authorize(c *gin.Context, org *organization.Organization, ord *order.Order) (*payment.Payment, error) {
-	db := ord.Db
-	ctx := db.Context
-
-	// Process authorization request
-	a, err := newAuthorization(c, ord)
+	// Decode authorization request
+	usr, pay, err := decodeAuthorization(c, ord)
 	if err != nil {
 		return nil, err
 	}
-
-	log.JSON("Authorization request:", a, c)
-
-	// Grab payment and user off authorization
-	usr := a.User
-	pay := a.Payment
 
 	// Check if store has been set, if so pull it out of the context
 	var stor *store.Store
@@ -63,7 +70,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 
 	// Update order with information from datastore, and tally
 	if err := ord.UpdateAndTally(stor); err != nil {
-		log.Error(err, ctx)
+		log.Error(err, c)
 		return nil, errors.New("Invalid or incomplete order")
 	}
 

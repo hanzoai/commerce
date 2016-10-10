@@ -334,10 +334,7 @@ func (o *Order) CalculateFees(pricing pricing.Fees, partners []pricing.Partner) 
 }
 
 func (o Order) NumberFromId() int {
-	if o.Id_ == "" {
-		return -1
-	}
-	return hashid.Decode(o.Id_)[1]
+	return hashid.Decode(o.Id())[1]
 }
 
 func (o Order) OrderDay() string {
@@ -434,9 +431,10 @@ func (o *Order) UpdatePaymentStatus() {
 
 // Get line items from datastore
 func (o *Order) GetItemEntities() error {
-	db := o.Model.Db
-	ctx := o.Model.Db.Context
+	db := o.Datastore()
+	ctx := o.Context()
 
+	log.JSON("Getting underlying entities for:", o.Items)
 	nItems := len(o.Items)
 	keys := make([]datastore.Key, nItems, nItems)
 	vals := make([]interface{}, nItems, nItems)
