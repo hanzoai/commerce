@@ -100,8 +100,8 @@ func (m *MailingList) AddSubscriber(s *subscriber.Subscriber) error {
 	s.Parent = mkey
 	s.Normalize()
 
-	return m.RunInTransaction(func() error {
-		keys, err := subscriber.Query(m.Db).Ancestor(mkey).Filter("Email=", s.Email).GetKeys()
+	return m.Db.RunInTransaction(func(db *datastore.Datastore) error {
+		keys, err := subscriber.Query(db).Ancestor(mkey).Filter("Email=", s.Email).GetKeys()
 
 		if len(keys) != 0 {
 			return SubscriberAlreadyExists

@@ -3,14 +3,15 @@ package cart
 import (
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/coupon"
-	"crowdstart.com/models/mixin"
+	"crowdstart.com/models/lineitem"
 
 	. "crowdstart.com/models"
-	"crowdstart.com/models/lineitem"
 )
 
+var kind = "cart"
+
 func (c Cart) Kind() string {
-	return "cart"
+	return kind
 }
 
 func (c *Cart) Init(db *datastore.Datastore) {
@@ -30,6 +31,6 @@ func New(db *datastore.Datastore) *Cart {
 	return c
 }
 
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query(kind)
 }

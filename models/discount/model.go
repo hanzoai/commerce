@@ -1,12 +1,11 @@
 package discount
 
-import (
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
-)
+import "crowdstart.com/datastore"
+
+var kind = "discount"
 
 func (d Discount) Kind() string {
-	return "discount"
+	return kind
 }
 
 func (d *Discount) Init(db *datastore.Datastore) {
@@ -24,6 +23,6 @@ func New(db *datastore.Datastore) *Discount {
 	return d
 }
 
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query(kind)
 }

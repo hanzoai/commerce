@@ -17,7 +17,7 @@ func couponFromId(m *Model, id string) (datastore.Key, bool, error) {
 
 	log.Debug("Getting coupon for code or id '%s'", id, ctx)
 
-	if ok, _ := m.Query().Filter("Code=", code).First(); ok {
+	if ok, _ := m.Query().Filter("Code=", code).Get(); ok {
 		log.Debug("Found coupon using code '%s'", code, ctx)
 		return m.Key(), true, nil
 	} else {
@@ -55,7 +55,7 @@ func orderFromId(m *Model, id string) (datastore.Key, bool, error) {
 	db := m.Db
 	key := db.KeyFromInt("order", id)
 
-	ok, _ := m.Query().Filter("__key__ =", key).First()
+	ok, _ := m.Query().Filter("__key__ =", key).Get()
 	if !ok {
 		return nil, false, datastore.KeyNotFound
 	}

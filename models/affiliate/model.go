@@ -2,12 +2,13 @@ package affiliate
 
 import (
 	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/types/schedule"
 )
 
+var kind = "affiliate"
+
 func (a Affiliate) Kind() string {
-	return "affiliate"
+	return kind
 }
 
 func (a *Affiliate) Init(db *datastore.Datastore) {
@@ -26,6 +27,6 @@ func New(db *datastore.Datastore) *Affiliate {
 	return a
 }
 
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query(kind)
 }

@@ -1,31 +1,11 @@
 package datastore
 
-import aeds "appengine/datastore"
+import (
+	"crowdstart.com/datastore/iface"
+	"crowdstart.com/datastore/key"
+)
 
-// Alias datastore.Key with our Key interface
-type Key interface {
-	AppID() string
-	Encode() string
-	Equal(o *aeds.Key) bool
-	GobDecode(buf []byte) error
-	GobEncode() ([]byte, error)
-	Incomplete() bool
-	IntID() int64
-	Kind() string
-	MarshalJSON() ([]byte, error)
-	Namespace() string
-	Parent() *aeds.Key
-	String() string
-	StringID() string
-	UnmarshalJSON(buf []byte) error
-}
+type Key iface.Key
 
-func AedsKeysToDsKeys(keys []*aeds.Key) []Key {
-	dsKeys := make([]Key, len(keys))
-
-	for i, key := range keys {
-		dsKeys[i] = key
-	}
-
-	return dsKeys
-}
+var EncodeKey = key.Encode
+var DecodeKey = key.Decode

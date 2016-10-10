@@ -18,7 +18,7 @@ var _ = New("mailchimp-orders",
 
 		db := ds.New(c)
 		org := organization.New(db)
-		if _, err := org.Query().Filter("Name=", "kanoa").First(); err != nil {
+		if _, err := org.Query().Filter("Name=", "kanoa").Get(); err != nil {
 			panic(err)
 		}
 		return []interface{}{org.Mailchimp.APIKey, org.Mailchimp.ListId, org.DefaultStore}
@@ -44,7 +44,7 @@ var _ = New("mailchimp-orders",
 
 		pay := payment.New(db)
 
-		if _, err := pay.Query().Filter("OrderId=", ord.Id()).First(); err != nil {
+		if _, err := pay.Query().Filter("OrderId=", ord.Id()).Get(); err != nil {
 			log.Warn("No Payment Found for %v: %v", ord.Id(), err, db.Context)
 			return
 		}

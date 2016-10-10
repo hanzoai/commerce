@@ -1,12 +1,11 @@
 package transaction
 
-import (
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
-)
+import "crowdstart.com/datastore"
+
+var kind = "transaction"
 
 func (t Transaction) Kind() string {
-	return "transaction"
+	return kind
 }
 
 func (t *Transaction) Init(db *datastore.Datastore) {
@@ -19,6 +18,6 @@ func New(db *datastore.Datastore) *Transaction {
 	return t
 }
 
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query(kind)
 }

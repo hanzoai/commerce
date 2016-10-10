@@ -2,13 +2,14 @@ package analytics
 
 import (
 	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
 
 	. "crowdstart.com/models"
 )
 
+var kind = "event"
+
 func (e AnalyticsEvent) Kind() string {
-	return "event"
+	return kind
 }
 
 func (e *AnalyticsEvent) Init(db *datastore.Datastore) {
@@ -25,6 +26,6 @@ func New(db *datastore.Datastore) *AnalyticsEvent {
 	return e
 }
 
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query(kind)
 }

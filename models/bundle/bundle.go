@@ -61,7 +61,3 @@ func (c Bundle) GetDescriptionParagraphs() []string {
 func (c Bundle) DisplayTitle() string {
 	return DisplayTitle(c.Name)
 }
-
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
-}

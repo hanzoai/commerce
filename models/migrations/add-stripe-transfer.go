@@ -18,7 +18,7 @@ var _ = New("add-stripe-transfer",
 
 		db := ds.New(c)
 		org := organization.New(db)
-		if _, err := org.Query().Filter("Name=", "cycliq").First(); err != nil {
+		if _, err := org.Query().Filter("Name=", "cycliq").Get(); err != nil {
 			panic(err)
 		}
 		return []interface{}{org.Stripe.AccessToken}

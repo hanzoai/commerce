@@ -2,13 +2,14 @@ package subscriber
 
 import (
 	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
 
 	. "crowdstart.com/models"
 )
 
+var kind = "subscriber"
+
 func (s Subscriber) Kind() string {
-	return "subscriber"
+	return kind
 }
 
 func (s *Subscriber) Init(db *datastore.Datastore) {
@@ -25,6 +26,6 @@ func New(db *datastore.Datastore) *Subscriber {
 	return s
 }
 
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query(kind)
 }

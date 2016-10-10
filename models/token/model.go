@@ -1,12 +1,11 @@
 package token
 
-import (
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
-)
+import "crowdstart.com/datastore"
+
+var kind = "token"
 
 func (t Token) Kind() string {
-	return "token"
+	return kind
 }
 
 func (t *Token) Init(db *datastore.Datastore) {
@@ -19,6 +18,6 @@ func New(db *datastore.Datastore) *Token {
 	return t
 }
 
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query(kind)
 }

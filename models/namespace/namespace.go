@@ -1,9 +1,6 @@
 package namespace
 
 import (
-	"appengine"
-	aeds "appengine/datastore"
-
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/util/log"
@@ -18,16 +15,15 @@ type Namespace struct {
 
 func (n *Namespace) NameExists(name string) (ok bool, err error) {
 	n.RunInTransaction(func() error {
-		_, ok, err = n.Model.KeyExists(name)
+		_, ok, err = n.IdExists(name)
 		return err
 	})
-
 	return ok, err
 }
 
 // Override put on model
 func (n *Namespace) Put() (err error) {
-	return aeds.RunInTransaction(n.Db.Context, func(ctx appengine.Context) error {
+	return n.RunInTransaction(func() error {
 		// Set key
 		n.SetKey(n.Name)
 
@@ -44,5 +40,5 @@ func (n *Namespace) Put() (err error) {
 		} else {
 			return n.Model.Put()
 		}
-	}, &aeds.TransactionOptions{XG: true})
+	}, &datastore.TransactionOptions{XG: true})
 }

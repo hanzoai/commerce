@@ -2,13 +2,14 @@ package user
 
 import (
 	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
 
 	. "crowdstart.com/models"
 )
 
+var kind = "user"
+
 func (u User) Kind() string {
-	return "user"
+	return kind
 }
 
 func (u *User) Init(db *datastore.Datastore) {
@@ -27,6 +28,6 @@ func New(db *datastore.Datastore) *User {
 	return u
 }
 
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query(kind)
 }
