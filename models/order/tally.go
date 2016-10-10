@@ -25,7 +25,7 @@ func (o *Order) Tally() {
 
 // Update order with information from datastore and tally
 func (o *Order) UpdateAndTally(stor *store.Store) error {
-	ctx := o.Db.Context
+	ctx := o.Context()
 
 	// Get coupons from datastore
 	log.Debug("Getting coupons for order")
