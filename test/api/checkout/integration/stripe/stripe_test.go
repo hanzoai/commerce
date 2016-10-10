@@ -290,7 +290,7 @@ var _ = Describe("payment", func() {
 		// })
 	})
 
-	FContext("Authorize Returning Customers", func() {
+	Context("Authorize Returning Customers", func() {
 		It("Should save returning customer order with the same card successfully", func() {
 			ReturningSuccessfulOrderSameCardTest(false, nil)
 		})
