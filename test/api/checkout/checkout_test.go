@@ -2,7 +2,6 @@ package test
 
 import (
 	"math"
-	"time"
 
 	"crowdstart.com/api/checkout"
 	"crowdstart.com/models/affiliate"
@@ -226,7 +225,6 @@ var _ = Describe("/checkout/authorize", func() {
 	Context("Authorize with referrer", func() {
 		var req *checkout.Authorization
 		var res *order.Order
-		var ref *referrer.Referrer
 
 		Before(func() {
 			// Create affiliate user
@@ -260,14 +258,6 @@ var _ = Describe("/checkout/authorize", func() {
 
 			// Make request
 			cl.Post("/checkout/authorize", req, res)
-		})
-
-		It("Should save referrer information", func() {
-			Expect(res.ReferrerId).To(Equal(ref.Id()))
-		})
-
-		It("Should save referral", func() {
-			getReferral(res.Id())
 		})
 
 		It("Should save platform fee", func() {
@@ -319,7 +309,6 @@ var _ = Describe("/checkout/authorize", func() {
 
 			// Make request
 			cl.Post("/checkout/charge", req, res)
-			time.Sleep(time.Second * 5)
 		})
 
 		It("Should save referral for affiliate", func() {
