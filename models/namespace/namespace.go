@@ -29,7 +29,8 @@ func (n *Namespace) Put() (err error) {
 
 		// Check if namespace exists
 		ok, err := n.Exists()
-		if err != nil && err != datastore.KeyNotFound {
+		if err != nil {
+			log.Warn("Failed to check for existence of namespace: %v", err)
 			return err
 		}
 
