@@ -4,12 +4,8 @@ import (
 	"math/rand"
 	"time"
 
-	"crowdstart.com/models/lineitem"
-	"crowdstart.com/models/order"
-	"crowdstart.com/models/product"
 	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/user"
-	"crowdstart.com/models/variant"
 	"github.com/icrowley/fake"
 
 	. "crowdstart.com/util/test/ginkgo"
@@ -21,16 +17,10 @@ var _ = Describe("referrer", func() {
 		res := new(referrer.Referrer)
 
 		Before(func() {
-			prod := product.Fake(db)
-			prod.MustCreate()
-			vari := variant.Fake(db, prod.Id())
-			vari.MustCreate()
-			li := lineitem.Fake(vari)
-			ord := order.Fake(db, li)
-			ord.MustCreate()
 			usr := user.Fake(db)
 			usr.MustCreate()
-			req = referrer.Fake(db, usr.Id(), ord.Id())
+
+			req = referrer.Fake(db, usr.Id())
 			res = referrer.New(db)
 
 			// Create new referrer
@@ -39,7 +29,6 @@ var _ = Describe("referrer", func() {
 
 		It("Should create new referrers", func() {
 			Expect(res.Code).To(Equal(req.Code))
-			Expect(res.OrderId).To(Equal(req.OrderId))
 			Expect(res.UserId).To(Equal(req.UserId))
 			Expect(res.FirstReferredAt).To(Equal(req.FirstReferredAt))
 		})
@@ -49,16 +38,10 @@ var _ = Describe("referrer", func() {
 		res := new(referrer.Referrer)
 
 		Before(func() {
-			prod := product.Fake(db)
-			prod.MustCreate()
-			vari := variant.Fake(db, prod.Id())
-			vari.MustCreate()
-			li := lineitem.Fake(vari)
-			ord := order.Fake(db, li)
-			ord.MustCreate()
 			usr := user.Fake(db)
 			usr.MustCreate()
-			req = referrer.Fake(db, usr.Id(), ord.Id())
+
+			req = referrer.Fake(db, usr.Id())
 			req.MustCreate()
 
 			res = referrer.New(db)
@@ -68,14 +51,13 @@ var _ = Describe("referrer", func() {
 
 		It("Should get referrers", func() {
 			Expect(res.Code).To(Equal(req.Code))
-			Expect(res.OrderId).To(Equal(req.OrderId))
 			Expect(res.UserId).To(Equal(req.UserId))
 			Expect(res.FirstReferredAt.UTC()).To(Equal(req.FirstReferredAt.UTC()))
 		})
 	})
 
 	Context("Patch referrer", func() {
-		re := new(referrer.Referrer)
+		ref := new(referrer.Referrer)
 		res := new(referrer.Referrer)
 
 		req := struct {
@@ -87,59 +69,45 @@ var _ = Describe("referrer", func() {
 		}
 
 		Before(func() {
-			prod := product.Fake(db)
-			prod.MustCreate()
-			vari := variant.Fake(db, prod.Id())
-			vari.MustCreate()
-			li := lineitem.Fake(vari)
-			ord := order.Fake(db, li)
-			ord.MustCreate()
 			usr := user.Fake(db)
 			usr.MustCreate()
-			re = referrer.Fake(db, usr.Id(), ord.Id())
-			re.MustCreate()
+
+			ref = referrer.Fake(db, usr.Id())
+			ref.MustCreate()
 
 			// Patch referrer
-			cl.Patch("/referrer/"+re.Id(), req, res)
+			cl.Patch("/referrer/"+ref.Id(), req, res)
 		})
 
 		It("Should patch referrer", func() {
-			Expect(res.Id_).To(Equal(re.Id()))
+			Expect(res.Id_).To(Equal(ref.Id()))
 			Expect(res.Code).To(Equal(req.Code))
-			Expect(res.OrderId).To(Equal(re.OrderId))
-			Expect(res.UserId).To(Equal(re.UserId))
+			Expect(res.UserId).To(Equal(ref.UserId))
 			Expect(res.FirstReferredAt.UTC()).To(Equal(req.FirstReferredAt.UTC()))
 		})
 	})
 
 	Context("Put referrer", func() {
-		re := new(referrer.Referrer)
+		ref := new(referrer.Referrer)
 		res := new(referrer.Referrer)
 		req := new(referrer.Referrer)
 
 		Before(func() {
-			prod := product.Fake(db)
-			prod.MustCreate()
-			vari := variant.Fake(db, prod.Id())
-			vari.MustCreate()
-			li := lineitem.Fake(vari)
-			ord := order.Fake(db, li)
-			ord.MustCreate()
 			usr := user.Fake(db)
 			usr.MustCreate()
-			re = referrer.Fake(db, usr.Id(), ord.Id())
-			re.MustCreate()
 
-			req = referrer.Fake(db, usr.Id(), ord.Id())
+			ref = referrer.Fake(db, usr.Id())
+			ref.MustCreate()
+
+			req = referrer.Fake(db, usr.Id())
 
 			// Update referrer
-			cl.Put("/referrer/"+re.Id(), req, res)
+			cl.Put("/referrer/"+ref.Id(), req, res)
 		})
 
 		It("Should put referrer", func() {
-			Expect(res.Id_).To(Equal(re.Id()))
+			Expect(res.Id_).To(Equal(ref.Id()))
 			Expect(res.Code).To(Equal(req.Code))
-			Expect(res.OrderId).To(Equal(req.OrderId))
 			Expect(res.UserId).To(Equal(req.UserId))
 			Expect(res.FirstReferredAt.UTC()).To(Equal(req.FirstReferredAt.UTC()))
 		})
@@ -149,16 +117,10 @@ var _ = Describe("referrer", func() {
 		res := ""
 
 		Before(func() {
-			prod := product.Fake(db)
-			prod.MustCreate()
-			vari := variant.Fake(db, prod.Id())
-			vari.MustCreate()
-			li := lineitem.Fake(vari)
-			ord := order.Fake(db, li)
-			ord.MustCreate()
 			usr := user.Fake(db)
 			usr.MustCreate()
-			req := referrer.Fake(db, usr.Id(), ord.Id())
+
+			req := referrer.Fake(db, usr.Id())
 			req.MustCreate()
 
 			cl.Delete("/referrer/" + req.Id())
@@ -166,8 +128,8 @@ var _ = Describe("referrer", func() {
 		})
 
 		It("Should get referrers", func() {
-			refer := referrer.New(db)
-			err := refer.GetById(res)
+			ref := referrer.New(db)
+			err := ref.GetById(res)
 			Expect(err).ToNot(BeNil())
 		})
 	})

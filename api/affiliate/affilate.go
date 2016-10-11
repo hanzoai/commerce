@@ -31,7 +31,7 @@ func connect(c *gin.Context) {
 	id := c.Params.ByName("affiliateid")
 	org := middleware.GetOrganization(c)
 	state := org.Id() + ":" + id
-	url := fmt.Sprintf(stripeConnectUrl, config.Stripe.ClientId, org.Affiliate.SuccessUrl, state)
+	url := fmt.Sprintf(stripeConnectUrl, config.Stripe.ClientId, config.Stripe.RedirectURL, state)
 	c.Redirect(302, url)
 }
 
