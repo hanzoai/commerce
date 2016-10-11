@@ -2,154 +2,14 @@ package log
 
 import (
 	"fmt"
-	"log"
-	"runtime/debug"
-	"strings"
 
 	"appengine"
 
-	"github.com/gin-gonic/gin"
 	"github.com/op/go-logging"
 
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/spew"
 )
-
-// Custom logger
-type Logger struct {
-	logging.Logger
-	backend         *Backend
-	verbose         bool
-	verboseOverride bool
-}
-
-func (l *Logger) SetVerbose(verbose bool) {
-	l.verbose = verbose
-}
-
-func (l *Logger) Verbose() bool {
-	return l.verbose
-}
-
-func (l *Logger) VerboseOverride() bool {
-	return l.verboseOverride
-}
-
-// Check if we've been pased a gin or app engine context
-func (l *Logger) detectContext(ctx interface{}) {
-	l.verboseOverride = false
-
-	switch ctx := ctx.(type) {
-	case *gin.Context:
-		// Get App Engine from session
-		l.backend.context = ctx.MustGet("appengine").(appengine.Context)
-		l.verboseOverride = ctx.MustGet("verbose").(bool)
-
-		// Request URI is useful for logging
-		if ctx.Request != nil {
-			l.backend.requestURI = ctx.Request.RequestURI
-		}
-	case appengine.Context:
-		l.backend.context = ctx
-	default:
-		l.backend.context = nil
-	}
-}
-
-// Check if error was passed as last argument
-func (l *Logger) detectError(args []interface{}) {
-	if len(args) > 0 {
-		if err, ok := args[len(args)-1].(error); ok {
-			l.backend.error = err
-		}
-	}
-}
-
-// Grab last object (presumably to dump)
-func (l *Logger) dumpObject(args []interface{}) ([]interface{}, interface{}) {
-	if len(args) > 0 {
-		// Grab last argument
-		last := args[len(args)-1]
-		// Remove from args
-		args = args[:len(args)-1]
-		return args, last
-	}
-	return args, nil
-}
-
-// Process args, setting app engine context if passed one.
-func (l *Logger) parseArgs(args ...interface{}) []interface{} {
-	if len(args) == 0 {
-		return args
-	}
-
-	// Check if we've been passed an App Engine or Gin context
-	l.detectContext(args[len(args)-1])
-
-	// Remove context from args if we were passed one
-	if l.backend.context != nil {
-		args = args[:len(args)-1]
-	}
-
-	// Last non-context argument might be an error.
-	l.detectError(args)
-
-	return args
-}
-
-// Custom logger backend that knows about AppEngine
-type Backend struct {
-	context        appengine.Context
-	error          error
-	requestURI     string
-	verbose        bool
-	isDevAppServer bool
-}
-
-func (b Backend) Verbose() bool {
-	return b.verbose
-}
-
-// Log implementation for local dev server only.
-func (b Backend) logToDevServer(level logging.Level, formatted string) error {
-	log.Println(formatted)
-	return nil
-}
-
-// Log implementation that uses App Engine's logging methods
-func (b Backend) logToAppEngine(level logging.Level, formatted string) error {
-	switch level {
-	case logging.WARNING:
-		b.context.Warningf(formatted)
-	case logging.ERROR:
-		b.context.Errorf(formatted)
-	case logging.CRITICAL:
-		b.context.Criticalf(formatted)
-	case logging.INFO:
-		b.context.Infof(formatted)
-	default:
-		b.context.Debugf(formatted)
-	}
-
-	return nil
-}
-
-// Log method that customizes logging behavior for AppEngine dev server / production
-func (b Backend) Log(level logging.Level, calldepth int, record *logging.Record) error {
-	// Create formatted log output
-	formatted := record.Formatted(calldepth + 2)
-
-	if b.isDevAppServer {
-		// Logging for local server
-		return b.logToDevServer(level, formatted)
-	} else {
-		// Log to App Engine in staging and production when passed a context
-		if b.context != nil {
-			return b.logToAppEngine(level, formatted)
-		}
-	}
-	return nil
-}
 
 // Create a new App Engine-aware logger
 func New() *Logger {
@@ -200,8 +60,7 @@ func Debug(formatOrError interface{}, args ...interface{}) {
 
 	switch v := formatOrError.(type) {
 	case error:
-		args = append([]interface{}{v}, args...)
-		std.Debugf("%s", args...)
+		std.Debugf(errAndStack(v))
 	case string:
 		std.Debugf(v, args...)
 	}
@@ -212,8 +71,7 @@ func Info(formatOrError interface{}, args ...interface{}) {
 
 	switch v := formatOrError.(type) {
 	case error:
-		args = append([]interface{}{v}, args...)
-		std.Infof("%s", args...)
+		std.Infof(errAndStack(v))
 	case string:
 		std.Infof(v, args...)
 	}
@@ -224,8 +82,7 @@ func Warn(formatOrError interface{}, args ...interface{}) {
 
 	switch v := formatOrError.(type) {
 	case error:
-		args = append([]interface{}{v}, args...)
-		std.Warningf("%s", args...)
+		std.Warningf(errAndStack(v))
 	case string:
 		std.Warningf(v, args...)
 	}
@@ -236,8 +93,7 @@ func Error(formatOrError interface{}, args ...interface{}) {
 
 	switch v := formatOrError.(type) {
 	case error:
-		args = append([]interface{}{v}, args...)
-		std.Errorf("%s", args...)
+		std.Errorf(errAndStack(v))
 	case string:
 		std.Errorf(v, args...)
 	}
@@ -248,8 +104,7 @@ func Fatal(formatOrError interface{}, args ...interface{}) {
 
 	switch v := formatOrError.(type) {
 	case error:
-		args = append([]interface{}{v}, args...)
-		std.Fatalf("%s", args...)
+		std.Fatalf(errAndStack(v))
 	case string:
 		std.Fatalf(v, args...)
 	}
@@ -260,8 +115,7 @@ func Panic(formatOrError interface{}, args ...interface{}) {
 
 	switch v := formatOrError.(type) {
 	case error:
-		args = append([]interface{}{v}, args...)
-		std.Panicf("%s", args...)
+		std.Panicf(errAndStack(v))
 	case string:
 		std.Panicf(v, args...)
 	}
@@ -298,22 +152,11 @@ func JSON(formatOrObject interface{}, args ...interface{}) {
 func Stack(args ...interface{}) {
 	args = std.parseArgs(args...)
 
-	// Grab stacktrace
-	stack := strings.Split(string(debug.Stack()), "\n")
-	lines := []string{""}
-	for i := 4; i < len(stack); i++ {
-		if strings.Contains(stack[i], "github.com/onsi/ginkgo") {
-			break
-		}
-		lines = append(lines, stack[i])
-	}
-	trace := strings.Join(lines, "\n")
-
 	if len(args) > 0 {
 		format := args[0].(string)
 		msg := fmt.Sprintf(format, args[1:]...)
-		std.Debugf(msg + trace)
+		std.Debugf(msg + stack(4))
 	} else {
-		std.Debugf(trace)
+		std.Debugf(stack(4))
 	}
 }
