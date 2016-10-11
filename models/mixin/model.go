@@ -1,6 +1,7 @@
 package mixin
 
 import (
+	"errors"
 	"reflect"
 	"time"
 
@@ -242,21 +243,33 @@ func (m *Model) SetKey(key interface{}) (err error) {
 
 // Returns Key for this entity
 func (m *Model) Key() (key datastore.Key) {
-	// Create a new incomplete key for this new entity
-	if m.key == nil {
-		kind := m.Entity.Kind()
-
-		if m.UseStringKey {
-			// Id_ will unfortunately not be set first time around...
-			m.key = m.Db.NewIncompleteKey(kind, m.Parent)
-		} else {
-			// We can allocate an id in advance and ensure that Id_ is populated
-			id := m.Db.AllocateId(kind)
-			m.key = m.Db.NewKey(kind, "", id, m.Parent)
-		}
-
-		m.setId()
+	// Return key if we've already allocated or set one
+	if m.key != nil {
+		return m.key
 	}
+
+	// Regenerate key from Id_ if it exists
+	if id := m.Id_; id != "" {
+		if err := m.SetKey(m.Id_); err != nil {
+			panic(errors.New("Failed to decode ID"))
+		}
+		return m.key
+	}
+
+	// Create new key
+	kind := m.Kind()
+
+	if m.UseStringKey {
+		// Id_ will unfortunately not be set first time around...
+		m.key = m.Db.NewIncompleteKey(kind, m.Parent)
+	} else {
+		// We can allocate an id in advance and ensure that Id_ is populated
+		id := m.Db.AllocateId(kind)
+		m.key = m.Db.NewKey(kind, "", id, m.Parent)
+	}
+
+	// Update ID
+	m.setId()
 
 	return m.key
 }
