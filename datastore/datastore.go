@@ -23,10 +23,6 @@ var (
 	ErrNoSuchEntity      = aeds.ErrNoSuchEntity
 	ErrInvalidEntityType = aeds.ErrInvalidEntityType
 	ErrInvalidKey        = aeds.ErrInvalidKey
-
-	// TODO: Use appengine aliases everywhere
-	InvalidKey  = errors.New("Invalid key")
-	KeyNotFound = errors.New("Key not found")
 )
 
 type Datastore struct {
@@ -161,20 +157,20 @@ func (d *Datastore) keyOrEncodedKey(key interface{}) (_key *aeds.Key, err error)
 	case reflect.Value:
 		return d.keyOrEncodedKey(v.Interface())
 	default:
-		return _key, InvalidKey
+		return _key, fmt.Errorf("Invalid key: %v", key)
 	}
 }
 
 // Return either an incomplete key if passed just the kind, or key
-func (d *Datastore) keyOrKind(keyOrKind interface{}) (_key *aeds.Key, err error) {
+func (d *Datastore) keyOrKind(key interface{}) (_key *aeds.Key, err error) {
 	// Try to construct a datastore key from whatever we were given as a key
-	switch v := keyOrKind.(type) {
+	switch v := key.(type) {
 	case string:
 		return aeds.NewIncompleteKey(d.Context, v, nil), nil
 	case *aeds.Key:
 		return v, nil
 	default:
-		return _key, InvalidKey
+		return _key, fmt.Errorf("Invalid key: %v", key)
 	}
 }
 
@@ -195,7 +191,7 @@ func (d *Datastore) keyOrKindKey(kind string, key interface{}) (_key *aeds.Key, 
 	case reflect.Value:
 		return d.keyOrKindKey(kind, v.Interface())
 	default:
-		return _key, InvalidKey
+		return _key, fmt.Errorf("Invalid key: %v", key)
 	}
 
 	return _key, nil
