@@ -8,6 +8,7 @@ import (
 	"crowdstart.com/models/referral"
 	"crowdstart.com/models/transaction"
 	"crowdstart.com/models/types/client"
+	"crowdstart.com/util/log"
 	"crowdstart.com/util/timeutil"
 )
 
@@ -30,18 +31,31 @@ type Referrer struct {
 	Duplicate   bool          `json:"duplicate,omitempty"`
 }
 
-func (r *Referrer) SaveReferral(typ string, referent interface{}) (*referral.Referral, error) {
+type Referrent interface {
+	Id() string
+	Kind() string
+}
+
+func (r *Referrer) SaveReferral(typ referral.Type, rfn Referrent) (*referral.Referral, error) {
+	log.Debug("Creating referral")
+	// Create new referral
 	rfl := referral.New(r.Db)
-
-	rfl.Referrer.UserId = r.UserId
+	rfl.Type = typ
 	rfl.Referrer.Id = r.Id()
+	rfl.Referrer.AffiliateId = r.AffiliateId
+	rfl.Referrer.UserId = r.UserId
 
-	// switch v := referent.(type) {
-	// case *order.Order:
-	// 	rfl.OrderId = v.Id()
-	// case *user.User:
-	// 	rfl.UserId = v.Id()
-	// }
+	// Save referrent's id
+	switch rfn.Kind() {
+	case "order":
+		log.Debug("Saving referral for new order")
+		rfl.OrderId = rfn.Id()
+	case "user":
+		log.Debug("Saving referral for new user")
+		rfl.UserId = rfn.Id()
+	}
+
+	log.JSON("Saving referral", rfl)
 
 	// Try to save referral
 	if err := rfl.Create(); err != nil {
