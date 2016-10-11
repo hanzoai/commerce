@@ -78,7 +78,7 @@ func calcPlatformAffFee(pricing pricing.Fees, total currency.Cents) currency.Cen
 	return pricing.Affiliate.Flat + currency.Cents(pctFee)
 }
 
-func calcAffiliateFee(pricing pricing.Fees, total currency.Cents, comm commission.Commission) currency.Cents {
+func calcAffiliateFee(comm commission.Commission, total currency.Cents) currency.Cents {
 	pctFee := math.Floor(float64(total) * comm.Percent)
 	return comm.Flat + currency.Cents(pctFee)
 }
@@ -336,7 +336,7 @@ var _ = Describe("/checkout/authorize", func() {
 
 		It("Should save platform fees", func() {
 			pay := getPayment(res.Id())
-			affFee := calcAffiliateFee(org.Fees, res.Total, aff.Commission)
+			affFee := calcAffiliateFee(aff.Commission, res.Total)
 			platformFee := calcPlatformFee(org.Fees, res.Total)
 			platformAffFee := calcPlatformAffFee(org.Fees, affFee)
 
