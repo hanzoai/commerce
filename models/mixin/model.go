@@ -463,7 +463,7 @@ func (m *Model) KeyById(id string) (datastore.Key, bool, error) {
 	// Try and fetch by filterStr
 	ok, err := m.Query().Filter(filterStr+"=", id).First()
 	if !ok {
-		return nil, false, datastore.KeyNotFound
+		return nil, false, datastore.ErrNoSuchEntity
 	}
 
 	return m.Key(), true, nil
@@ -487,7 +487,7 @@ func (m *Model) KeyExists(key interface{}) (datastore.Key, bool, error) {
 
 	// We couldn't find it
 	if len(keys) != 1 {
-		return nil, false, datastore.KeyNotFound
+		return nil, false, datastore.ErrNoSuchEntity
 	}
 
 	m.SetKey(keys[0])
