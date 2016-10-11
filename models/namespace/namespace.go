@@ -29,7 +29,7 @@ func (n *Namespace) Put() (err error) {
 
 		// Check if namespace exists
 		ok, err := n.Exists()
-		if err != nil {
+		if err != nil && err != datastore.ErrNoSuchEntity {
 			log.Warn("Failed to check for existence of namespace: %v", err)
 			return err
 		}

@@ -41,6 +41,7 @@ var _ = Describe("referral", func() {
 			Expect(res.Fee).To(Equal(req.Fee))
 		})
 	})
+
 	Context("Get referral", func() {
 		req := new(referral.Referral)
 		res := new(referral.Referral)

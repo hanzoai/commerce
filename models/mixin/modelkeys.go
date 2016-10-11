@@ -1,6 +1,7 @@
 package mixin
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 
@@ -26,7 +27,7 @@ func couponFromId(m *Model, id string) (datastore.Key, bool, error) {
 
 		if len(ids) == 0 {
 			log.Warn("Unable to decode coupon code '%s'", id, ctx)
-			return nil, false, datastore.KeyNotFound
+			return nil, false, fmt.Errorf("Unable to decode coupon id: %v", id)
 		}
 
 		// Recreate coupon key
@@ -36,7 +37,7 @@ func couponFromId(m *Model, id string) (datastore.Key, bool, error) {
 		err := m.Get(key)
 		if err != nil {
 			log.Warn("Unable to find coupon by key: %v", err, ctx)
-			return nil, false, datastore.KeyNotFound
+			return nil, false, datastore.ErrNoSuchEntity
 		}
 
 		// Set RawCode on fetched entity in case this was not parsed from JSON
@@ -57,7 +58,7 @@ func orderFromId(m *Model, id string) (datastore.Key, bool, error) {
 
 	ok, _ := m.Query().Filter("__key__ =", key).Get()
 	if !ok {
-		return nil, false, datastore.KeyNotFound
+		return nil, false, datastore.ErrNoSuchEntity
 	}
 	return m.Key(), true, nil
 }

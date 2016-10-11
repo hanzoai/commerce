@@ -2,6 +2,7 @@ package mixin
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"time"
 
@@ -200,7 +201,7 @@ func (m *Model) SetKey(key interface{}) (err error) {
 				// Try to decode key as encoded key
 				k, err = m.Db.DecodeKey(v)
 				if err != nil {
-					return datastore.InvalidKey
+					return fmt.Errorf("Unable to decode %v, %v", v, err)
 				}
 			} else {
 				id = v
@@ -215,12 +216,12 @@ func (m *Model) SetKey(key interface{}) (err error) {
 	case reflect.Value:
 		return m.SetKey(v.Interface())
 	default:
-		return datastore.InvalidKey
+		return fmt.Errorf("Unable to set %v as key", key)
 	}
 
 	// Make sure this is a valid key for this kind of entity
 	if k.Kind() != m.Kind() {
-		return datastore.InvalidKey
+		return fmt.Errorf("Not a valid key for kind %v: %v", m.Kind(), k)
 	}
 
 	// Bail out if already set with same key
@@ -412,6 +413,69 @@ func (m *Model) GetById(id string) error {
 
 	if !ok {
 		return datastore.ErrNoSuchEntity
+	}
+	return nil
+}
+
+// Check if entity is in datastore.
+func (m *Model) Exists() (bool, error) {
+	_, ok, err := m.KeyExists(nil)
+	return ok, err
+}
+
+// Check if key is in datastore.
+func (m *Model) IdExists(id string) (bool, error) {
+	_, ok, err := m.KeyById(id)
+	return ok, err
+}
+
+func (m *Model) KeyById(id string) (datastore.Key, bool, error) {
+	// Try to decode key
+	key, err := hashid.DecodeKey(m.Db.Context, id)
+
+	// Use key if we have one
+	if err == nil {
+		err = m.Get(key)
+		return m.Key(), err == nil, err
+	}
+
+	// Set err to nil and try to use filter
+	err = nil
+	filterStr := ""
+
+	// Use unique filter based on model type
+	switch m.Kind() {
+	case "store", "product", "collection":
+		filterStr = "Slug"
+	case "variant":
+		filterStr = "SKU"
+	case "organization", "mailinglist":
+		filterStr = "Name"
+	case "aggregate":
+		filterStr = "Instance"
+	case "site":
+		filterStr = "Name"
+	case "user":
+		if strings.Contains(id, "@") {
+			filterStr = "Email"
+		} else {
+			filterStr = "Username"
+		}
+	case "referrer":
+		filterStr = "Code"
+	case "coupon":
+		return couponFromId(m, id)
+	case "order":
+		return orderFromId(m, id)
+	default:
+		return nil, false, fmt.Errorf("Kind %v not supported for KeyById, id: %v", m.Kind(), id)
+	}
+
+	// Try and fetch by filterStr
+	ok, err := m.Query().Filter(filterStr+"=", id).First()
+	if !ok {
+		return nil, false, datastore.ErrNoSuchEntity
+>>>>>>> master
 	}
 
 	return nil
