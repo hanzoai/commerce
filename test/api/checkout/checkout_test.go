@@ -226,12 +226,34 @@ var _ = Describe("/checkout/authorize", func() {
 			// Instantiate order to encompass result
 			res = order.New(db)
 
-			// Make request
+		})
+
+		JustBefore(func() {
 			cl.Post("/checkout/authorize", req, res)
 		})
 
-		It("Should re-use user successfully", func() {
-			Expect(res.UserId).To(Equal(usr.Id()))
+		Context("User id used as id", func() {
+			It("Should re-use user successfully", func() {
+				Expect(res.UserId).To(Equal(usr.Id()))
+			})
+
+			It("Should allow email to be used as id", func() {
+				Expect(res.UserId).To(Equal(usr.Id()))
+			})
+		})
+
+		Context("User email used as id", func() {
+			Before(func() {
+				req.User.Id_ = req.User.Email
+			})
+
+			It("Should re-use user successfully", func() {
+				Expect(res.UserId).To(Equal(usr.Id()))
+			})
+
+			It("Should allow email to be used as id", func() {
+				Expect(res.UserId).To(Equal(usr.Id()))
+			})
 		})
 	})
 
