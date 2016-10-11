@@ -52,8 +52,8 @@ var _ = New("kanoa-dev", func(c *gin.Context) *organization.Organization {
 	org.Mandrill.APIKey = ""
 
 	// Affiliate configuration
-	org.Affiliate.SuccessUrl = "http://localhost:1987/ambassador-account/"
-	org.Affiliate.ErrorUrl = "http://localhost:1987/ambassador-account/"
+	org.Affiliate.SuccessUrl = "http://localhost:1987/account/"
+	org.Affiliate.ErrorUrl = "http://localhost:1987/account/"
 
 	// Paypal Config
 	org.Paypal.ConfirmUrl = "https://www.getkanoa.com"
