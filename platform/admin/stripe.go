@@ -59,6 +59,7 @@ func StripeCallback(c *gin.Context) {
 
 	// Handle affiliate callbacks
 	if state != "" && state != "movetoserver" {
+		log.Debug("Using Affiliate Callback %v", state, c)
 		affiliateCallback(c)
 		return
 	}
