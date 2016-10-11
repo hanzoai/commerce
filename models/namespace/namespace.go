@@ -33,7 +33,7 @@ func (n *Namespace) Put() (err error) {
 
 		// Check if namespace exists
 		ok, err := n.Exists()
-		if err != nil && err != datastore.KeyNotFound {
+		if err != nil && err != datastore.ErrNoSuchEntity {
 			return err
 		}
 
