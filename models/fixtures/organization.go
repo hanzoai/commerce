@@ -29,10 +29,10 @@ var Organization = New("organization", func(c *gin.Context) *organization.Organi
 	org.SecretKey = []byte("prettyprettyteesplease")
 
 	// Saved stripe tokens
-	org.Stripe.Test.UserId = "acct_14lSsRCSRlllXCwP"
-	org.Stripe.Test.AccessToken = "sk_test_ui7iDOm3bQnWgofK4JKCenXQ"
-	org.Stripe.Test.PublishableKey = "pk_test_6tplJ9HKk0u7eOh29LXYP3Ae"
-	org.Stripe.Test.RefreshToken = "rt_6kqLkyTC8IgfJOSlxjECmGaJfLbWyhy2BY3GgXry4tlzm6rZ"
+	org.Stripe.Test.UserId = "acct_16fNBDH4ZOGOmFfW"
+	org.Stripe.Test.AccessToken = "sk_test_RnnTXycI4vLympetwb66jTab"
+	org.Stripe.Test.PublishableKey = "pk_test_1Y8PTDLIWERNUYcpg8tglNBY"
+	org.Stripe.Test.RefreshToken = "rt_9MArkOe9fEf4bDRstgha9Ma6r6W5JM5c3LWlWFBRwv9iA2qi"
 
 	// You can only have one set of test credentials, so live/test are the same.
 	org.Stripe.Live.UserId = org.Stripe.Test.UserId
