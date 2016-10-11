@@ -107,12 +107,12 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		err = stripe.Authorize(org, ord, usr, pay)
 	}
 
-	// Update payment status accordingly
+	// Bail on authorization failure
 	if err != nil {
+		// Update payment status accordingly
 		ord.Status = order.Cancelled
 		pay.Status = payment.Cancelled
 		pay.Account.Error = err.Error()
-
 		return nil, err
 	}
 
