@@ -1,7 +1,6 @@
 package test
 
 import (
-	"errors"
 	"math"
 
 	"crowdstart.com/api/checkout"
@@ -20,7 +19,6 @@ import (
 	"crowdstart.com/models/user"
 	"crowdstart.com/models/variant"
 	"crowdstart.com/util/hashid"
-	"crowdstart.com/util/log"
 
 	. "crowdstart.com/util/test/ginkgo"
 )
@@ -130,8 +128,6 @@ var _ = Describe("/checkout/authorize", func() {
 
 			// Instantiate order to encompass result
 			res = order.New(db)
-
-			log.Error(errors.New("fuck you"))
 
 			// Make request
 			cl.Post("/checkout/authorize", req, res)
