@@ -2,6 +2,7 @@ package mixin
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"time"
@@ -192,7 +193,7 @@ func (m *Model) SetKey(key interface{}) (err error) {
 				// Try to decode key as encoded key
 				k, err = m.Db.DecodeKey(v)
 				if err != nil {
-					return datastore.InvalidKey
+					return fmt.Errorf("Unable to decode %v, %v", v, err)
 				}
 			} else {
 				id = v
@@ -207,12 +208,12 @@ func (m *Model) SetKey(key interface{}) (err error) {
 	case reflect.Value:
 		return m.SetKey(v.Interface())
 	default:
-		return datastore.InvalidKey
+		return fmt.Errorf("Unable to set %v as key", key)
 	}
 
 	// Make sure this is a valid key for this kind of entity
 	if k.Kind() != m.Kind() {
-		return datastore.InvalidKey
+		return fmt.Errorf("Not a valid key for kind %v: %v", m.Kind(), k)
 	}
 
 	// Bail out if already set with same key
@@ -456,7 +457,7 @@ func (m *Model) KeyById(id string) (datastore.Key, bool, error) {
 	case "order":
 		return orderFromId(m, id)
 	default:
-		return nil, false, datastore.InvalidKey
+		return nil, false, fmt.Errorf("Kind %v not supported for KeyById, id: %v", m.Kind(), id)
 	}
 
 	// Try and fetch by filterStr
