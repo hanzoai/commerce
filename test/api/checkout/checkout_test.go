@@ -45,7 +45,7 @@ func getUser(id string) *user.User {
 
 func getPayment(orderId string) *payment.Payment {
 	pay := payment.New(db)
-	ok, err := pay.Query().Filter("OrderId=", orderId).First()
+	ok, err := pay.Query().Filter("OrderId=", orderId).Get()
 	Expect1(err).ToNot(HaveOccurred())
 	Expect1(ok).To(BeTrue())
 	return pay
@@ -53,7 +53,7 @@ func getPayment(orderId string) *payment.Payment {
 
 func getPaymentByParent(key datastore.Key) *payment.Payment {
 	pay := payment.New(db)
-	ok, err := pay.Query().Ancestor(key).First()
+	ok, err := pay.Query().Ancestor(key).Get()
 	Expect1(err).ToNot(HaveOccurred())
 	Expect1(ok).To(BeTrue())
 	return pay
@@ -61,7 +61,7 @@ func getPaymentByParent(key datastore.Key) *payment.Payment {
 
 func getOrderByParent(key datastore.Key) *order.Order {
 	ord := order.New(db)
-	ok, err := ord.Query().Ancestor(key).First()
+	ok, err := ord.Query().Ancestor(key).Get()
 	Expect1(err).ToNot(HaveOccurred())
 	Expect1(ok).To(BeTrue())
 	return ord
@@ -79,7 +79,7 @@ func getFees(paymentId, feeType string) []*fee.Fee {
 
 func getReferral(orderId string) *referral.Referral {
 	rfl := referral.New(db)
-	ok, err := rfl.Query().Filter("OrderId=", orderId).First()
+	ok, err := rfl.Query().Filter("OrderId=", orderId).Get()
 	Expect1(err).ToNot(HaveOccurred())
 	Expect1(ok).To(BeTrue())
 	return rfl
