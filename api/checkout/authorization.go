@@ -23,8 +23,7 @@ func initUser(db *datastore.Datastore, usr *user.User, ord *order.Order) error {
 	// If Id_ is specified this is an existing user, ensure they exist
 	if id := usr.Id_; id != "" {
 		// TODO: Decide what if any values to allow to be updated via user in request
-		usr.SetKey(id)
-		if err := usr.Get(); err != nil {
+		if err := usr.GetById(id); err != nil {
 			return UserDoesNotExist
 		}
 	}
