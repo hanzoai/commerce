@@ -101,7 +101,7 @@ func calcAffiliateFee(comm commission.Commission, total currency.Cents) currency
 }
 
 var _ = Describe("/checkout/authorize", func() {
-	FContext("Authorize new user", func() {
+	Context("Authorize new user", func() {
 		var req *checkout.Authorization
 		var res *order.Order
 
