@@ -252,7 +252,7 @@ func KeyExists(ctx appengine.Context, encoded string) (bool, error) {
 	}
 
 	if len(keys) == 0 {
-		return false, datastore.KeyNotFound
+		return false, datastore.ErrNoSuchEntity
 	}
 
 	return true, nil
