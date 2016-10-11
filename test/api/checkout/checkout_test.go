@@ -12,12 +12,12 @@ import (
 	"crowdstart.com/models/product"
 	"crowdstart.com/models/referral"
 	"crowdstart.com/models/referrer"
+	"crowdstart.com/models/types/commission"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/models/types/pricing"
 	"crowdstart.com/models/user"
 	"crowdstart.com/models/variant"
 	"crowdstart.com/util/hashid"
-	"crowdstart.com/util/log"
 
 	. "crowdstart.com/util/test/ginkgo"
 )
@@ -50,12 +50,14 @@ func getPayment(orderId string) *payment.Payment {
 	return pay
 }
 
-func getFee(paymentId, feeType string) *fee.Fee {
-	fe := fee.New(db)
-	ok, err := fe.Query().Filter("PaymentId=", paymentId).Filter("Type=", feeType).First()
+func getFees(paymentId, feeType string) []*fee.Fee {
+	fees := make([]*fee.Fee, 0)
+	_, err := fee.Query(db).
+		Filter("PaymentId=", paymentId).
+		Filter("Type=", feeType).
+		GetAll(&fees)
 	Expect1(err).ToNot(HaveOccurred())
-	Expect1(ok).To(BeTrue())
-	return fe
+	return fees
 }
 
 func getReferral(orderId string) *referral.Referral {
@@ -66,9 +68,19 @@ func getReferral(orderId string) *referral.Referral {
 	return rfl
 }
 
-func calculatePlatformFee(pricing pricing.Fees, total currency.Cents) currency.Cents {
+func calcPlatformFee(pricing pricing.Fees, total currency.Cents) currency.Cents {
 	pctFee := math.Ceil(float64(total) * pricing.Card.Percent)
 	return pricing.Card.Flat + currency.Cents(pctFee)
+}
+
+func calcPlatformAffFee(pricing pricing.Fees, total currency.Cents) currency.Cents {
+	pctFee := math.Ceil(float64(total) * pricing.Affiliate.Percent)
+	return pricing.Affiliate.Flat + currency.Cents(pctFee)
+}
+
+func calcAffiliateFee(pricing pricing.Fees, total currency.Cents, comm commission.Commission) currency.Cents {
+	pctFee := math.Floor(float64(total) * comm.Percent)
+	return comm.Flat + currency.Cents(pctFee)
 }
 
 var _ = Describe("/checkout/authorize", func() {
@@ -115,8 +127,6 @@ var _ = Describe("/checkout/authorize", func() {
 		})
 
 		It("Should calculate correct total for order and payment", func() {
-			log.JSON("REQUEST", req.Order)
-			log.JSON("RESPONSE", res)
 			Expect(res.Total).To(Equal(req.Order.Total))
 		})
 	})
@@ -225,6 +235,7 @@ var _ = Describe("/checkout/authorize", func() {
 	Context("Authorize with referrer", func() {
 		var req *checkout.Authorization
 		var res *order.Order
+		var ref *referrer.Referrer
 
 		Before(func() {
 			// Create affiliate user
@@ -232,7 +243,7 @@ var _ = Describe("/checkout/authorize", func() {
 			usr.MustCreate()
 
 			// Create referrer for order request
-			ref := referrer.Fake(db, usr.Id())
+			ref = referrer.Fake(db, usr.Id())
 			ref.MustCreate()
 
 			// Create order user
@@ -260,10 +271,17 @@ var _ = Describe("/checkout/authorize", func() {
 			cl.Post("/checkout/authorize", req, res)
 		})
 
-		It("Should save platform fee", func() {
+		It("Should save referrer information", func() {
+			Expect(res.ReferrerId).To(Equal(ref.Id()))
+		})
+
+		It("Should save platform fees", func() {
 			pay := getPayment(res.Id())
-			fe := getFee(pay.Id(), "platform")
-			Expect(fe.Amount).To(Equal(calculatePlatformFee(org.Fees, res.Total)))
+			platformFee := calcPlatformFee(org.Fees, res.Total)
+
+			fees := getFees(pay.Id(), "platform")
+			Expect(len(fees)).To(Equal(1))
+			Expect(fees[0].Amount).To(Equal(platformFee))
 		})
 	})
 
@@ -314,6 +332,21 @@ var _ = Describe("/checkout/authorize", func() {
 		It("Should save referral for affiliate", func() {
 			rfl := getReferral(res.Id())
 			Expect(rfl.Referrer.AffiliateId).To(Equal(aff.Id()))
+		})
+
+		It("Should save platform fees", func() {
+			pay := getPayment(res.Id())
+			affFee := calcAffiliateFee(org.Fees, res.Total, aff.Commission)
+			platformFee := calcPlatformFee(org.Fees, res.Total)
+			platformAffFee := calcPlatformAffFee(org.Fees, affFee)
+
+			fees := getFees(pay.Id(), "affiliate")
+			Expect(len(fees)).To(Equal(1))
+			Expect(fees[0].Amount).To(Equal(affFee))
+
+			fees = getFees(pay.Id(), "platform")
+			Expect(len(fees)).To(Equal(2))
+			Expect(fees[0].Amount + fees[1].Amount).To(Equal(platformFee + platformAffFee))
 		})
 	})
 
