@@ -4,6 +4,7 @@ import (
 	"math"
 
 	"crowdstart.com/api/checkout"
+	"crowdstart.com/datastore"
 	"crowdstart.com/models/affiliate"
 	"crowdstart.com/models/fee"
 	"crowdstart.com/models/lineitem"
@@ -48,6 +49,22 @@ func getPayment(orderId string) *payment.Payment {
 	Expect1(err).ToNot(HaveOccurred())
 	Expect1(ok).To(BeTrue())
 	return pay
+}
+
+func getPaymentByParent(key datastore.Key) *payment.Payment {
+	pay := payment.New(db)
+	ok, err := pay.Query().Ancestor(key).First()
+	Expect1(err).ToNot(HaveOccurred())
+	Expect1(ok).To(BeTrue())
+	return pay
+}
+
+func getOrderByParent(key datastore.Key) *order.Order {
+	ord := order.New(db)
+	ok, err := ord.Query().Ancestor(key).First()
+	Expect1(err).ToNot(HaveOccurred())
+	Expect1(ok).To(BeTrue())
+	return ord
 }
 
 func getFees(paymentId, feeType string) []*fee.Fee {
@@ -97,11 +114,17 @@ var _ = Describe("/checkout/authorize", func() {
 			li := lineitem.Fake(vari)
 			ord := order.Fake(db, li)
 
+			// Create fake user to purchase some fake things
+			usr := user.Fake(db)
+
+			// Create some fake money for our fake user to spend
+			pay := payment.Fake(db)
+
 			// Create new authorization request
 			req = new(checkout.Authorization)
 			req.Order = ord
-			req.Payment = payment.Fake(db)
-			req.User = user.Fake(db)
+			req.Payment = pay
+			req.User = usr
 
 			// Instantiate order to encompass result
 			res = order.New(db)
@@ -120,6 +143,15 @@ var _ = Describe("/checkout/authorize", func() {
 
 		It("Should save order", func() {
 			getOrder(res.Id())
+		})
+
+		It("Should parent order to user", func() {
+			usr := getUser(res.UserId)
+			getOrderByParent(usr.Key())
+		})
+
+		It("Should parent payment to order", func() {
+			getPaymentByParent(res.Key())
 		})
 
 		It("Should save payment id on order", func() {
