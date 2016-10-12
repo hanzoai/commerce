@@ -73,7 +73,9 @@ func Payout(ctx appengine.Context) error {
 		log.Debug("Fetching all affiliates for '%s'", org.Name, ctx)
 		affs := make([]*affiliate.Affiliate, 0)
 		db = datastore.New(nsctx)
-		if _, err := affiliate.Query(db).GetAll(&affs); err != nil {
+
+		// Find all affiliates which have connected to Stripe
+		if _, err := affiliate.Query(db).Filter("Stripe.AcessToken >", "").GetAll(&affs); err != nil {
 			log.Error("Failed to fetch affiliates for '%s': %v", org.Name, err, ctx)
 			return err
 		}
