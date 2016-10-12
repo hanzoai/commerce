@@ -9,10 +9,14 @@ cron:
   schedule: every 24 hours
   target: ah-builtin-python-bundle
 
-- description: Payout affiliates fees
-  url: /tasks/payout-affiliate
-  schedule: every 24 hours
+# - description: Payout affiliates fees
+#   url: /tasks/payout-affiliate
+#   schedule: every 24 hours
 
-- description: Payout platform fees
-  url: /tasks/payout-platform
-  schedule: every 24 hours
+# - description: Payout partner fees
+#   url: /tasks/payout-partner
+#   schedule: every 24 hours
+
+# - description: Payout platform fees
+#   url: /tasks/payout-platform
+#   schedule: every 24 hours

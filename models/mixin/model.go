@@ -1,6 +1,8 @@
 package mixin
 
 import (
+	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"time"
@@ -98,7 +100,7 @@ type Model struct {
 	key datastore.Key
 
 	// Set by our mixin
-	Id_       string    `json:"id"`
+	Id_       string    `json:"id,omitempty"`
 	CreatedAt time.Time `json:"createdAt,omitempty"`
 	UpdatedAt time.Time `json:"updatedAt,omitempty"`
 	Deleted   bool      `json:"deleted,omitempty"`
@@ -148,26 +150,25 @@ func (m Model) Kind() string {
 	return m.Entity.Kind()
 }
 
-// Helper to set Id_ correctly
-func (m *Model) setId() {
-	key := m.Key()
-
-	if m.UseStringKey {
-		m.Id_ = key.StringID()
-	} else {
-		m.Id_ = hashid.EncodeKey(m.Db.Context, key)
-	}
-}
-
-// Returns string key for entity
+// Returns hashid for entity
 func (m *Model) Id() string {
 	if m.Id_ == "" {
-		m.setId()
+		// Create a new key
+		m.Key()
 	}
 	return m.Id_
 }
 
-// Helper to set key + Id_
+// Helper to set Id_ correctly
+func (m *Model) setId() {
+	if m.UseStringKey {
+		m.Id_ = m.key.StringID()
+	} else {
+		m.Id_ = hashid.EncodeKey(m.Db.Context, m.key)
+	}
+}
+
+// Helper to update key and id
 func (m *Model) setKey(key datastore.Key) {
 	m.key = key
 	m.setId()
@@ -176,6 +177,7 @@ func (m *Model) setKey(key datastore.Key) {
 // Set's key for entity.
 func (m *Model) SetKey(key interface{}) (err error) {
 	var k datastore.Key
+	var id string
 
 	switch v := key.(type) {
 	case datastore.Key:
@@ -191,8 +193,10 @@ func (m *Model) SetKey(key interface{}) (err error) {
 				// Try to decode key as encoded key
 				k, err = m.Db.DecodeKey(v)
 				if err != nil {
-					return datastore.InvalidKey
+					return fmt.Errorf("Unable to decode %v, %v", v, err)
 				}
+			} else {
+				id = v
 			}
 		}
 	case int64:
@@ -204,35 +208,61 @@ func (m *Model) SetKey(key interface{}) (err error) {
 	case reflect.Value:
 		return m.SetKey(v.Interface())
 	default:
-		return datastore.InvalidKey
+		return fmt.Errorf("Unable to set %v as key", key)
 	}
 
 	// Make sure this is a valid key for this kind of entity
 	if k.Kind() != m.Kind() {
-		return datastore.InvalidKey
+		return fmt.Errorf("Not a valid key for kind %v: %v", m.Kind(), k)
 	}
 
-	// Set key, update Id_, etc.
-	m.setKey(k)
+	// Bail out if already set with same key
+	if m.key != nil && m.key.Equal(k.(*aeds.Key)) {
+		return nil
+	}
+
+	// Set key
+	m.key = k
+
+	// Update id
+	if id != "" {
+		m.Id_ = id
+	} else {
+		m.setId()
+	}
 
 	return nil
 }
 
 // Returns Key for this entity
 func (m *Model) Key() (key datastore.Key) {
-	// Create a new incomplete key for this new entity
-	if m.key == nil {
-		kind := m.Entity.Kind()
-
-		if m.UseStringKey {
-			// Id_ will unfortunately not be set first time around...
-			m.key = m.Db.NewIncompleteKey(kind, m.Parent)
-		} else {
-			// We can allocate an id in advance and ensure that Id_ is populated
-			id := m.Db.AllocateId(kind)
-			m.setKey(m.Db.NewKey(kind, "", id, m.Parent))
-		}
+	// Return key if we've already allocated or set one
+	if m.key != nil {
+		return m.key
 	}
+
+	// Regenerate key from Id_ if it exists
+	if id := m.Id_; id != "" {
+		if err := m.SetKey(m.Id_); err != nil {
+			panic(errors.New("Failed to decode ID"))
+		}
+		return m.key
+	}
+
+	// Create new key
+	kind := m.Kind()
+
+	if m.UseStringKey {
+		// Id_ will unfortunately not be set first time around...
+		m.key = m.Db.NewIncompleteKey(kind, m.Parent)
+	} else {
+		// We can allocate an id in advance and ensure that Id_ is populated
+		id := m.Db.AllocateId(kind)
+		m.key = m.Db.NewKey(kind, "", id, m.Parent)
+	}
+
+	// Update ID
+	m.setId()
 
 	return m.key
 }
@@ -283,7 +313,9 @@ func (m *Model) Put() error {
 	}
 
 	// Update key
-	m.setKey(key)
+	if m.key == nil {
+		m.setKey(key)
+	}
 
 	// Errors are ignored
 	m.PutDocument()
@@ -303,7 +335,9 @@ func (m *Model) PutWithoutSideEffects() error {
 	}
 
 	// Update key
-	m.setKey(key)
+	if m.key == nil {
+		m.setKey(key)
+	}
 
 	// Errors are ignored
 	m.PutDocument()
@@ -391,7 +425,7 @@ func (m *Model) KeyById(id string) (datastore.Key, bool, error) {
 	// Use key if we have one
 	if err == nil {
 		err = m.Get(key)
-		return m.Key(), err != nil, err
+		return m.Key(), err == nil, err
 	}
 
 	// Set err to nil and try to use filter
@@ -423,13 +457,13 @@ func (m *Model) KeyById(id string) (datastore.Key, bool, error) {
 	case "order":
 		return orderFromId(m, id)
 	default:
-		return nil, false, datastore.InvalidKey
+		return nil, false, fmt.Errorf("Kind %v not supported for KeyById, id: %v", m.Kind(), id)
 	}
 
 	// Try and fetch by filterStr
 	ok, err := m.Query().Filter(filterStr+"=", id).First()
 	if !ok {
-		return nil, false, datastore.KeyNotFound
+		return nil, false, datastore.ErrNoSuchEntity
 	}
 
 	return m.Key(), true, nil
@@ -453,7 +487,7 @@ func (m *Model) KeyExists(key interface{}) (datastore.Key, bool, error) {
 
 	// We couldn't find it
 	if len(keys) != 1 {
-		return nil, false, datastore.KeyNotFound
+		return nil, false, datastore.ErrNoSuchEntity
 	}
 
 	m.SetKey(keys[0])
@@ -620,7 +654,9 @@ func (m *Model) mockKey() datastore.Key {
 
 func (m *Model) mockPut() error {
 	// set key, id
-	m.setKey(m.mockKey())
+	if m.key == nil {
+		m.setKey(m.mockKey())
+	}
 	return nil
 }
 

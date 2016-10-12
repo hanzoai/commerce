@@ -2,12 +2,12 @@ package checkout
 
 import (
 	"errors"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.com/api/checkout/balance"
 	"crowdstart.com/api/checkout/null"
+	"crowdstart.com/api/checkout/paypal"
 	"crowdstart.com/api/checkout/stripe"
 	"crowdstart.com/models/multi"
 	"crowdstart.com/models/order"
@@ -19,44 +19,46 @@ import (
 	"crowdstart.com/models/user"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
+	"crowdstart.com/util/structs"
 )
 
-func authorizationRequest(c *gin.Context, ord *order.Order) (*AuthorizationReq, error) {
-	// Create AuthReq properly by calling order.New
-	ar := new(AuthorizationReq)
-	ar.Order = ord
+// Decode authorization request, grab user and payment information off it
+func decodeAuthorization(c *gin.Context, ord *order.Order) (*user.User, *payment.Payment, error) {
+	a := new(Authorization)
+	db := ord.Db
 
-	// Try decode request body
-	if err := json.Decode(c.Request.Body, &ar); err != nil {
+	// Decode request
+	if err := json.Decode(c.Request.Body, a); err != nil {
 		log.Error("Failed to decode request body: %v\n%v", c.Request.Body, err, c)
-		return nil, FailedToDecodeRequestBody
+		return nil, nil, FailedToDecodeRequestBody
 	}
 
-	// This is kind of terrible to do here but oh well...
-	if ar.Order.ShippingAddress.Empty() {
-		ar.Order.ShippingAddress = ar.User_.ShippingAddress
+	log.JSON("Authorization:", a)
+
+	// Copy request order into order used everywhere
+	if a.Order != nil {
+		structs.Copy(a.Order, ord)
 	}
 
-	if ar.Order.BillingAddress.Empty() {
-		ar.Order.BillingAddress = ar.User_.BillingAddress
-	}
+	// Use provided order rather than initialize another order and break references
+	a.Order = ord
 
-	return ar, nil
-}
-
-func authorize(c *gin.Context, org *organization.Organization, ord *order.Order) (*payment.Payment, *user.User, error) {
-	// Process authorization request
-	ar, err := authorizationRequest(c, ord)
-	if err != nil {
+	// Initialize and normalize models in authorization request
+	if err := a.Init(db); err != nil {
 		return nil, nil, err
 	}
 
-	log.JSON("Authorization Request:", ar, c)
+	log.JSON("Order after initalization:", ord)
 
-	// Peel off order for convience
-	ord = ar.Order
-	db := ord.Db
-	ctx := db.Context
+	return a.User, a.Payment, nil
+}
+
+func authorize(c *gin.Context, org *organization.Organization, ord *order.Order) (*payment.Payment, error) {
+	// Decode authorization request
+	usr, pay, err := decodeAuthorization(c, ord)
+	if err != nil {
+		return nil, err
+	}
 
 	// Check if store has been set, if so pull it out of the context
 	var stor *store.Store
@@ -66,32 +68,11 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		ord.Currency = stor.Currency // Set currency
 	}
 
-	// Update order with information from datastore, store and tally
+	// Update order with information from datastore, and tally
 	if err := ord.UpdateAndTally(stor); err != nil {
-		log.Error(err, ctx)
-		return nil, nil, errors.New("Invalid or incomplete order")
+		log.Error(err, c)
+		return nil, errors.New("Invalid or incomplete order")
 	}
-
-	log.JSON("Order '%s'", ord.Id(), ord, c)
-
-	// Get user from request
-	usr, err := ar.User()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	log.JSON("User '%s'", usr.Id(), usr, c)
-
-	// Get payment from request, update order
-	pay, err := ar.Payment()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// Use user as buyer
-	pay.Buyer = usr.Buyer()
-
-	log.JSON("Buyer '%s'", pay.Buyer.Email, pay.Buyer, c)
 
 	// Override total to $0.50 is test email is used
 	if org.IsTestEmail(pay.Buyer.Email) {
@@ -99,59 +80,44 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		pay.Test = true
 	}
 
+	// Use updated order total
+	pay.Amount = ord.Total
+
 	// Capture client information to retain information about user at time of checkout
 	pay.Client = client.New(c)
 
-	// Update payment with order information
-	pay.Amount = ord.Total
-
 	// Calculate affiliate, partner and platform fees
 	fee, fees, err := ord.CalculateFees(org.Fees, org.Partners)
-	pay.Currency = ord.Currency
-	pay.Description = ord.Description()
 	pay.Fee = fee
-
-	log.JSON("Payment '%s'", pay.Id(), pay, c)
-
-	// Setup all relationships before we try to authorize to ensure that keys
-	// that get created are actually valid.
-
-	// User -> order
-	ord.Parent = usr.Key()
-	ord.UserId = usr.Id()
-
-	// Order -> payment
-	pay.Parent = ord.Key()
-	pay.OrderId = ord.Id()
 
 	// Save payment Id on order
 	ord.PaymentIds = append(ord.PaymentIds, pay.Id())
 
 	// Handle authorization
-	switch pay.Type {
+	switch ord.Type {
 	case "null":
-		if err := null.Authorize(org, ord, usr, pay); err != nil {
-			log.Warn("Failed to authorize order using Balance: %v", err, ctx)
-			return nil, nil, err
-		}
+		err = null.Authorize(org, ord, usr, pay)
 	case "balance":
-		if err := balance.Authorize(org, ord, usr, pay); err != nil {
-			log.Warn("Failed to authorize order using Balance: %v", err, ctx)
-			return nil, nil, err
-		}
+		err = balance.Authorize(org, ord, usr, pay)
 	case "paypal":
+		err = paypal.Authorize(org, ord, usr, pay)
+	case "stripe":
+		err = stripe.Authorize(org, ord, usr, pay)
 	default:
-		if err := stripe.Authorize(org, ord, usr, pay); err != nil {
-			log.Warn("Failed to authorize order using Stripe: %v", err, ctx)
-			return nil, nil, err
-		}
+		err = stripe.Authorize(org, ord, usr, pay)
+	}
+
+	// Bail on authorization failure
+	if err != nil {
+		// Update payment status accordingly
+		ord.Status = order.Cancelled
+		pay.Status = payment.Cancelled
+		pay.Account.Error = err.Error()
+		return nil, err
 	}
 
 	// If the charge is not live or test flag is set, then it is a test charge
 	ord.Test = pay.Test || !pay.Live
-
-	ord.BillingAddress.Country = strings.ToUpper(ord.BillingAddress.Country)
-	ord.ShippingAddress.Country = strings.ToUpper(ord.ShippingAddress.Country)
 
 	// Batch save user, order, payment, fees
 	entities := []interface{}{usr, ord, pay}
@@ -163,11 +129,7 @@ func authorize(c *gin.Context, org *organization.Organization, ord *order.Order)
 		entities = append(entities, fe)
 	}
 
-	log.Warn("Fees: %v", fees)
-
 	multi.MustCreate(entities)
 
-	log.Debug("Order '%s' authorized", ord.Id(), c)
-
-	return pay, usr, nil
+	return pay, nil
 }

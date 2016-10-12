@@ -77,13 +77,20 @@ func Payout(ctx appengine.Context) error {
 
 		log.Debug("Processing partner fees for organization: %s", org.Name, ctx)
 		for _, p := range org.Partners {
+			// Fetch partner
 			par := partner.New(db)
 			if err := par.Get(p.Id); err != nil {
 				log.Error("Failed to get partner '%s': %v", p.Id, err, ctx)
-			} else {
-				log.Debug("Processing partner fees for organization: '%s'", org.Name, ctx)
-				transferFees.Call(ctx, org.Name, par.Id(), par.Schedule.Cutoff(time.Now()))
+				continue
 			}
+
+			// Do not process fees for partners that have not connected to Stripe
+			if par.Stripe.AccessToken == "" {
+				continue
+			}
+
+			log.Debug("Processing partner fees for organization: '%s'", org.Name, ctx)
+			transferFees.Call(ctx, org.Name, par.Id(), par.Schedule.Cutoff(time.Now()))
 		}
 	}
 

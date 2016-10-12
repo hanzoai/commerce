@@ -109,6 +109,10 @@ func (cl *Client) doRequestBody(method, uri string, body interface{}) *httptest.
 		reader := strings.NewReader(v)
 		r = cl.newRequest(method, uri, reader)
 		r.Header.Set("Content-Type", "application/json")
+	case nil:
+		reader := strings.NewReader("{}")
+		r = cl.newRequest(method, uri, reader)
+		r.Header.Set("Content-Type", "application/json")
 	default:
 		// Blindly JSON encode!
 		buf := json.EncodeBuffer(body)
@@ -153,7 +157,7 @@ func (cl *Client) request(method, uri string, body interface{}, res interface{},
 		// TODO: Do we need to close this?
 		err := json.DecodeBuffer(w.Body, res)
 		msg := fmt.Sprintf("Unable to decode body, %v:\n%v", err, w.Body)
-		Expect2(err).ToNot(HaveOccurred(), msg)
+		Expect2(err == nil).To(BeTrue(), msg)
 	}
 
 	if code == 0 {

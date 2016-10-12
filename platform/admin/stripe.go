@@ -59,6 +59,7 @@ func StripeCallback(c *gin.Context) {
 
 	// Handle affiliate callbacks
 	if state != "" && state != "movetoserver" {
+		log.Debug("Using Affiliate Callback %v", state, c)
 		affiliateCallback(c)
 		return
 	}
@@ -123,7 +124,7 @@ func affiliateCallback(c *gin.Context) {
 	// Failed to get back authorization code from Stripe
 	if err := org.GetById(orgId); err != nil {
 		log.Error("Failed fetch organization: %v", err, c)
-		c.Redirect(302, org.Affilliate.ErrorUrl)
+		c.Redirect(302, org.Affiliate.ErrorUrl)
 		return
 	}
 
@@ -136,7 +137,7 @@ func affiliateCallback(c *gin.Context) {
 	// Failed to get back authorization code from Stripe
 	if errStr != "" {
 		log.Error("Failed to get authorization code from Stripe during Stripe Connect: %v", errStr, c)
-		c.Redirect(302, org.Affilliate.ErrorUrl)
+		c.Redirect(302, org.Affiliate.ErrorUrl)
 		return
 	}
 
@@ -144,7 +145,7 @@ func affiliateCallback(c *gin.Context) {
 	token, testToken, err := connect.GetTokens(ctx, code)
 	if err != nil {
 		log.Error("There was an error with Stripe Connect: %v", err, c)
-		c.Redirect(302, org.Affilliate.ErrorUrl)
+		c.Redirect(302, org.Affiliate.ErrorUrl)
 		return
 	}
 
@@ -162,10 +163,10 @@ func affiliateCallback(c *gin.Context) {
 	// Save to datastore
 	if err := aff.Put(); err != nil {
 		log.Error("There was saving tokens to datastore: %v", err, c)
-		c.Redirect(302, org.Affilliate.ErrorUrl)
+		c.Redirect(302, org.Affiliate.ErrorUrl)
 		return
 	}
 
 	// Success
-	c.Redirect(302, org.Affilliate.SuccessUrl)
+	c.Redirect(302, org.Affiliate.SuccessUrl)
 }

@@ -6,6 +6,9 @@ import (
 	"reflect"
 	"sync"
 
+	"appengine"
+
+	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
 )
 
@@ -14,33 +17,114 @@ func multi(vals interface{}, fn func(mixin.Entity) error) error {
 	var wg sync.WaitGroup
 	var err error
 
-	switch reflect.TypeOf(vals).Kind() {
-	case reflect.Slice:
-		s := reflect.ValueOf(vals)
+	// Vals must be a slice
+	if reflect.TypeOf(vals).Kind() != reflect.Slice {
+		return errors.New(fmt.Sprintf("Must be called with slice of entities, not: %v", vals))
+	}
 
-		for i := 0; i < s.Len(); i++ {
-			wg.Add(1)
+	slice := reflect.ValueOf(vals)
 
-			// Do something with model
-			entity, ok := s.Index(i).Interface().(mixin.Entity)
-			if !ok {
-				return errors.New(fmt.Sprintf("Slice must contain entities, not: %v", s.Index(i).Interface()))
+	// Loop over slice initializing entities
+	for i := 0; i < slice.Len(); i++ {
+		wg.Add(1)
+
+		// Grab next entity off slice
+		entity, ok := slice.Index(i).Interface().(mixin.Entity)
+		if !ok {
+			return errors.New(fmt.Sprintf("Slice must contain entities, not: %v", slice.Index(i).Interface()))
+		}
+
+		// Run method in gofunc
+		go func(model mixin.Entity) {
+			defer wg.Done()
+
+			// Exit if there is an error
+			if err != nil {
+				return
 			}
 
-			// Run method in gofunc
-			go func(model mixin.Entity) {
-				defer wg.Done()
+			err = fn(entity)
+		}(entity)
+	}
 
-				// Exit if there is an error
-				if err != nil {
-					return
-				}
+	// Wait to finish
+	wg.Wait()
 
-				err = fn(entity)
-			}(entity)
-		}
+	// Return first error
+	return err
+}
+
+func Get(ctx appengine.Context, keys interface{}, vals interface{}) error {
+	var wg sync.WaitGroup
+	var err error
+	var valSlice reflect.Value
+
+	db := datastore.New(ctx)
+
+	// Keys must be a slice
+	if reflect.TypeOf(keys).Kind() != reflect.Slice {
+		return errors.New(fmt.Sprintf("Must be called with slice of keys, not: %v", keys))
+	}
+
+	keySlice := reflect.ValueOf(keys)
+	nkeys := keySlice.Len()
+
+	// Vals must be a slice
+	typ := reflect.TypeOf(vals)
+	switch typ.Kind() {
+	case reflect.Ptr:
+		valSlice = reflect.Indirect(reflect.ValueOf(vals))
+	case reflect.Slice:
+		valSlice = reflect.ValueOf(vals)
 	default:
-		return errors.New(fmt.Sprintf("Must be called with slice of entities, not: %v", vals))
+		return errors.New("Vals must be a slice or pointer to a slice")
+	}
+
+	// Get type of valSlice, values
+	valSliceType := typ.Elem()
+	valType := valSliceType.Elem()
+	valType = reflect.Zero(valType).Type().Elem()
+
+	// Auto allocate vals if length of valSlice is not set
+	if valSlice.Len() == 0 {
+		if !valSlice.CanAddr() {
+			return errors.New("Destination must be addressable to auto-allocate entities")
+		}
+
+		// Create new valSlice of correct capacity and insert properly instantiated values
+		zeroes := reflect.MakeSlice(valSliceType, nkeys, nkeys)
+
+		// Append to vals valSlice, growing original valSlice to proper length
+		valSlice.Set(reflect.AppendSlice(valSlice, zeroes))
+	}
+
+	// Loop over slice fetching entities
+	for i := 0; i < nkeys; i++ {
+		wg.Add(1)
+
+		// Run method in gofunc
+		go func(i int) {
+			defer wg.Done()
+
+			// Get key
+			key := keySlice.Index(i).Interface()
+
+			// Create new zero'd entity
+			val := reflect.New(valType)
+			entity := val.Interface().(mixin.Entity)
+
+			// Initialize and try to fetch with key
+			entity.Init(db)
+			err = entity.Get(key)
+
+			// Exit if there is an error
+			if err != nil {
+				return
+			}
+
+			// Set entity on val slice
+			valSlice.Index(i).Set(val)
+		}(i)
 	}
 
 	// Wait to finish
