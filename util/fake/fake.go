@@ -3,6 +3,8 @@ package fake
 import (
 	"math/rand"
 	"reflect"
+
+	"crowdstart.com/util/slug"
 )
 
 type fieldMap map[string]reflect.Value
@@ -75,4 +77,20 @@ func RandSeq(n int, runes []rune) string {
 
 func Bool() bool {
 	return bool(rand.Intn(10)&1 == 0)
+}
+
+func Url() string {
+	return "http://" + DomainName()
+}
+
+func Id() string {
+	return RandSeq(10, []rune("abcdefghijklmnopqrstuvwxyZABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"))
+}
+
+func SKU() string {
+	return slug.Slugify(ProductName())
+}
+
+func Slug() string {
+	return slug.Slugify(ProductName())
 }

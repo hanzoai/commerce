@@ -64,11 +64,10 @@ var saveReferral = delay.Func("save-referral", func(ctx appengine.Context, refer
 	switch evtType {
 	case Checkout:
 		// Update statistics
+		if err = counter.IncrReferrerFees(ctx, r.Id(), rfl); err != nil {
+			log.Warn("IncrReferrerFees: counter error %s", err, ctx)
+		}
 		if r.AffiliateId != "" {
-			if err = counter.IncrReferrerFees(ctx, r.Id(), rfl); err != nil {
-				log.Warn("IncrReferrerFees: counter error %s", err, ctx)
-			}
-
 			if err = counter.IncrAffiliateFees(ctx, r.AffiliateId, rfl); err != nil {
 				log.Warn("IncrAffiliateFees: counter error %s", err, ctx)
 			}

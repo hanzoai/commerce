@@ -1,8 +1,24 @@
 package user
 
-import "crowdstart.com/util/webhook"
+import (
+	"strings"
+
+	"crowdstart.com/util/webhook"
+)
 
 // Hooks
+func (u *User) BeforeCreate() error {
+	u.Username = strings.ToLower(u.Username)
+	u.Email = strings.ToLower(u.Email)
+	return nil
+}
+
+func (u *User) BeforeUpdate(prev *User) error {
+	u.Username = strings.ToLower(u.Username)
+	u.Email = strings.ToLower(u.Email)
+	return nil
+}
+
 func (u *User) AfterCreate() error {
 	webhook.Emit(u.Context(), u.Namespace(), "user.created", u)
 
@@ -14,7 +30,7 @@ func (u *User) AfterCreate() error {
 	return nil
 }
 
-func (u *User) AfterUpdate(previous *User) error {
+func (u *User) AfterUpdate(prev *User) error {
 	webhook.Emit(u.Context(), u.Namespace(), "user.updated", u)
 	return nil
 }

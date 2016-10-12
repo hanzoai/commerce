@@ -12,12 +12,17 @@ import (
 )
 
 func refund(c *gin.Context, org *organization.Organization, ord *order.Order) error {
-	// Try decode request body
-	refundReq := new(RefundRequest)
-	if err := json.Decode(c.Request.Body, &refundReq); err != nil {
+	type Refund struct {
+		Amount currency.Cents `json:"amount"`
+	}
+
+	req := new(Refund)
+	if err := json.Decode(c.Request.Body, req); err != nil {
 		log.Error("Failed to decode request body: %v\n%v", c.Request.Body, err, c)
 		return FailedToDecodeRequestBody
 	}
 
-	return stripe.Refund(org, ord, currency.Cents(refundReq.Amount))
+	log.JSON(req)
+
+	return stripe.Refund(org, ord, req.Amount)
 }

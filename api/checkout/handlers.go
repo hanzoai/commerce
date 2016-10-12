@@ -8,7 +8,6 @@ import (
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
-	"crowdstart.com/util/emails"
 	"crowdstart.com/util/json/http"
 	"crowdstart.com/util/permission"
 	"crowdstart.com/util/router"
@@ -16,7 +15,7 @@ import (
 
 var orderEndpoint = config.UrlFor("api", "/order/")
 
-func getOrganizationAndOrder(c *gin.Context) (*organization.Organization, *order.Order) {
+func getOrganizationAndOrder(c *gin.Context) (*organization.Organization, *order.Order, error) {
 	// Get organization for this user
 	org := middleware.GetOrganization(c)
 
@@ -29,124 +28,132 @@ func getOrganizationAndOrder(c *gin.Context) (*organization.Organization, *order
 
 	// Get order if an existing order was referenced
 	if id := c.Params.ByName("orderid"); id != "" {
-		if err := ord.Get(id); err != nil {
-			return nil, nil
+		if err := ord.GetById(id); err != nil {
+			http.Fail(c, 404, "Failed to retrieve order", OrderDoesNotExist)
+			return nil, nil, err
 		}
 	}
 
-	return org, ord
+	return org, ord, nil
 }
 
 func Authorize(c *gin.Context) {
-	org, ord := getOrganizationAndOrder(c)
-	if ord == nil {
-		http.Fail(c, 404, "Failed to retrieve order", OrderDoesNotExist)
-		return
-	}
-
-	_, usr, err := authorize(c, org, ord)
+	org, ord, err := getOrganizationAndOrder(c)
 	if err != nil {
-		http.Fail(c, 400, "Error during authorize", err)
 		return
 	}
 
-	emails.SendOrderConfirmationEmail(org.Db.Context, org, ord, usr)
-
-	c.Writer.Header().Add("Location", orderEndpoint+ord.Id())
-
-	ord.Number = ord.NumberFromId()
-	http.Render(c, 200, ord)
-}
-
-func Refund(c *gin.Context) {
-	org, ord := getOrganizationAndOrder(c)
-	if ord == nil {
-		http.Fail(c, 404, "Failed to retrieve order", OrderDoesNotExist)
-		return
-	}
-
-	if err := refund(c, org, ord); err != nil {
-		http.Fail(c, 400, "Error during refund", err)
+	if _, err = authorize(c, org, ord); err != nil {
+		http.Fail(c, 400, err.Error(), err)
 		return
 	}
 
 	c.Writer.Header().Add("Location", orderEndpoint+ord.Id())
-
-	ord.Number = ord.NumberFromId()
 	http.Render(c, 200, ord)
 }
 
 func Capture(c *gin.Context) {
-	org, ord := getOrganizationAndOrder(c)
-	if ord == nil {
-		http.Fail(c, 404, "Failed to retrieve order", OrderDoesNotExist)
+	org, ord, err := getOrganizationAndOrder(c)
+	if err != nil {
 		return
 	}
 
-	// Do capture using order we've found
-	var err error
-	ord, err = capture(c, org, ord)
-	if err != nil {
+	if err = capture(c, org, ord); err != nil {
 		http.Fail(c, 400, "Error during capture", err)
 		return
 	}
 
-	ord.Number = ord.NumberFromId()
+	c.Writer.Header().Add("Location", orderEndpoint+ord.Id())
 	http.Render(c, 200, ord)
 }
 
 func Charge(c *gin.Context) {
-	org, ord := getOrganizationAndOrder(c)
-	if ord == nil {
-		http.Fail(c, 404, "Failed to retrieve order", OrderDoesNotExist)
+	org, ord, err := getOrganizationAndOrder(c)
+	if err != nil {
 		return
 	}
 
 	// Do authorization
-	_, usr, err := authorize(c, org, ord)
-	if err != nil {
+	if _, err = authorize(c, org, ord); err != nil {
 		http.Fail(c, 400, "Error during authorize", err)
 		return
 	}
 
 	// Do capture using order from authorization
-	ord, err = capture(c, org, ord)
-	if err != nil {
+	if err = capture(c, org, ord); err != nil {
 		http.Fail(c, 400, "Error during capture", err)
 		return
 	}
 
-	emails.SendOrderConfirmationEmail(org.Db.Context, org, ord, usr)
-
 	c.Writer.Header().Add("Location", orderEndpoint+ord.Id())
+	http.Render(c, 200, ord)
+}
 
-	ord.Number = ord.NumberFromId()
+func Refund(c *gin.Context) {
+	org, ord, err := getOrganizationAndOrder(c)
+	if err != nil {
+		return
+	}
+
+	if err := refund(c, org, ord); err != nil {
+		http.Fail(c, 400, err.Error(), err)
+		return
+	}
+
+	http.Render(c, 200, ord)
+}
+
+func Cancel(c *gin.Context) {
+	org, ord, err := getOrganizationAndOrder(c)
+	if err != nil {
+		return
+	}
+
+	if err := cancel(c, org, ord); err != nil {
+		http.Fail(c, 400, err.Error(), err)
+		return
+	}
+
+	http.Render(c, 200, ord)
+}
+
+func Confirm(c *gin.Context) {
+	org, ord, err := getOrganizationAndOrder(c)
+	if err != nil {
+		return
+	}
+
+	if err := confirm(c, org, ord); err != nil {
+		http.Fail(c, 400, err.Error(), err)
+		return
+	}
+
 	http.Render(c, 200, ord)
 }
 
 func route(router router.Router, prefix string) {
-	api := router.Group(prefix)
+	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
 
+	api := router.Group(prefix)
 	api.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 	})
 
-	publishedRequired := middleware.TokenRequired(permission.Admin, permission.Published)
-
-	// Charge Payment API
-	api.POST("/charge", publishedRequired, Charge)
-
-	// Auth & Capture Pament API (Two Step Payment)
+	// Auth and Capture Flow (Two-step Payment)
 	api.POST("/authorize", publishedRequired, Authorize)
 	api.POST("/authorize/:orderid", publishedRequired, Authorize)
 	api.POST("/capture/:orderid", publishedRequired, Capture)
 
-	// Paypal Paykey flow
-	api.POST("/paypal", publishedRequired, PayPalPayKey)
+	// Charge Flow (implicit Auth+Capture)
+	api.POST("/charge", publishedRequired, Charge)
 
-	api.POST("/paypal/pay", publishedRequired, PayPalPayKey) // Deprecated
-	// api.POST("/paypal/confirm/:payKey", publishedRequired, PayPalConfirm)
-	// api.POST("/paypal/cancel/:payKey", publishedRequired, PayPalCancel)
+	// Confirm / Cancel Flow
+	api.POST("/confirm/:orderid", publishedRequired, Confirm)
+	api.POST("/cancel/:orderid", publishedRequired, Cancel)
+
+	// Deprecated (should use normal authorization flow to initiate)
+	api.POST("/paypal", publishedRequired, Authorize)
+	api.POST("/paypal/pay", publishedRequired, Authorize)
 }
 
 func Route(router router.Router, args ...gin.HandlerFunc) {

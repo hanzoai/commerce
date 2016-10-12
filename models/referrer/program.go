@@ -1,6 +1,7 @@
 package referrer
 
 import (
+	"crowdstart.com/models/referral"
 	"crowdstart.com/models/transaction"
 	"crowdstart.com/models/types/currency"
 )
@@ -8,9 +9,9 @@ import (
 type Type string
 
 const (
-	StoreCredit Type = "credit" // Add credit to user's balance
-	Refund           = "refund" // Refund part of the payment on a order
-	EmailUser        = "email-user"
+	StoreCredit Type = "Credit" // Add credit to user's balance
+	Refund           = "Refund" // Refund part of the payment on a order
+	EmailUser        = "EmailUser"
 )
 
 type Credit struct {

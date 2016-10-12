@@ -52,8 +52,8 @@ var _ = New("kanoa-dev", func(c *gin.Context) *organization.Organization {
 	org.Mandrill.APIKey = ""
 
 	// Affiliate configuration
-	org.Affilliate.SuccessUrl = "http://localhost:1987/ambassador-account/"
-	org.Affilliate.ErrorUrl = "http://localhost:1987/ambassador-account/"
+	org.Affiliate.SuccessUrl = "http://localhost:1987/account/"
+	org.Affiliate.ErrorUrl = "http://localhost:1987/account/"
 
 	// Paypal Config
 	org.Paypal.ConfirmUrl = "https://www.getkanoa.com"
@@ -96,17 +96,17 @@ var _ = New("kanoa-dev", func(c *gin.Context) *organization.Organization {
 	org.Stripe.AccessToken = "sk_test_REDACTED"
 	org.Stripe.Live.AccessToken = "sk_test_REDACTED"
 	org.Stripe.Live.PublishableKey = "pk_test_REDACTED"
-	org.Stripe.Live.RefreshToken = "rt_6tPyHWMqDd3C2Ii5IX85lzCqHDN5msJGg1n6zNQgBKdQZONv"
+	org.Stripe.Live.RefreshToken = "rt_9LysqW0Gc1cypHUU8IxjG0sMaegtA1COL61dgVvmZHeEtOZ0"
 	org.Stripe.Live.Scope = "read_write"
-	org.Stripe.Live.UserId = "acct_16PFH2Iau5NyccPf"
+	org.Stripe.Live.UserId = "acct_14lSsRCSRlllXCwP"
 	org.Stripe.PublishableKey = "pk_test_REDACTED"
-	org.Stripe.RefreshToken = "rt_6tPyHWMqDd3C2Ii5IX85lzCqHDN5msJGg1n6zNQgBKdQZONv"
+	org.Stripe.RefreshToken = "rt_9LysqW0Gc1cypHUU8IxjG0sMaegtA1COL61dgVvmZHeEtOZ0"
 	org.Stripe.Test.AccessToken = "sk_test_REDACTED"
 	org.Stripe.Test.PublishableKey = "pk_test_REDACTED"
-	org.Stripe.Test.RefreshToken = "rt_6tPyHWMqDd3C2Ii5IX85lzCqHDN5msJGg1n6zNQgBKdQZONv"
+	org.Stripe.Test.RefreshToken = "rt_9LysqW0Gc1cypHUU8IxjG0sMaegtA1COL61dgVvmZHeEtOZ0"
 	org.Stripe.Test.Scope = "read_write"
-	org.Stripe.Test.UserId = "acct_16PFH2Iau5NyccPf"
-	org.Stripe.UserId = "acct_16PFH2Iau5NyccPf"
+	org.Stripe.Test.UserId = "acct_14lSsRCSRlllXCwP"
+	org.Stripe.UserId = "acct_14lSsRCSRlllXCwP"
 
 	// API Tokens
 	org.Tokens = []token.Token{

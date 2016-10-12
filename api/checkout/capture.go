@@ -1,78 +1,72 @@
 package checkout
 
 import (
-	"github.com/gin-gonic/gin"
+	"appengine"
 
-	aeds "appengine/datastore"
+	"github.com/gin-gonic/gin"
 
 	"crowdstart.com/api/checkout/balance"
 	"crowdstart.com/api/checkout/null"
 	"crowdstart.com/api/checkout/stripe"
 	"crowdstart.com/models/cart"
+	"crowdstart.com/models/multi"
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"
+	"crowdstart.com/models/referral"
 	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/referrer/tasks"
 	"crowdstart.com/models/types/currency"
-	"crowdstart.com/thirdparty/mailchimp"
+	"crowdstart.com/models/user"
 	"crowdstart.com/util/counter"
+	"crowdstart.com/util/emails"
 	"crowdstart.com/util/log"
+
+	. "crowdstart.com/models"
 )
 
-func capture(c *gin.Context, org *organization.Organization, ord *order.Order) (*order.Order, error) {
+func capture(c *gin.Context, org *organization.Organization, ord *order.Order) error {
 	var err error
 	var payments []*payment.Payment
-	var keys []*aeds.Key
 
-	// We could actually capture different types of things here...
 	switch ord.Type {
 	case "null":
-		ord, keys, payments, err = null.Capture(org, ord)
-		if err != nil {
-			return nil, err
-		}
+		ord, payments, err = null.Capture(org, ord)
 	case "balance":
-		ord, keys, payments, err = balance.Capture(org, ord)
-		if err != nil {
-			return nil, err
-		}
+		ord, payments, err = balance.Capture(org, ord)
+	case "stripe":
+		ord, payments, err = stripe.Capture(org, ord)
 	case "paypal":
+		payments = ord.Payments
 	default:
-		ord, keys, payments, err = stripe.Capture(org, ord)
-		if err != nil {
-			return nil, err
-		}
+		// TODO: return nil, errors.New("Invalid order type")
+		ord, payments, err = stripe.Capture(org, ord)
 	}
 
-	return CompleteCapture(c, org, ord, keys, payments)
+	if err != nil {
+		return err
+	}
+
+	ctx := ord.Context()
+
+	updateOrder(ctx, ord, payments)
+
+	if err := saveOrder(ctx, ord, payments); err != nil {
+		return err
+	}
+
+	// TODO: Run in task, no need to block call on rest of this
+	sendOrderConfirmation(ctx, org, ord, payments[0].Buyer)
+	saveRedemptions(ctx, ord)
+	saveReferral(ctx, org, ord)
+	updateCart(ctx, ord)
+	updateStats(ctx, org, ord, payments)
+	return nil
 }
 
-func CompleteCapture(c *gin.Context, org *organization.Organization, ord *order.Order, keys []*aeds.Key, payments []*payment.Payment) (*order.Order, error) {
-	var err error
-
-	db := ord.Db
-	ctx := db.Context
-
-	log.JSON("Completing Capture, order:", ord, c)
-	log.JSON("Payments:", payments, c)
-
-	// Referral
-	if ord.ReferrerId != "" {
-		ref := referrer.New(db)
-
-		// if ReferrerId refers to non-existing token, then remove from order
-		if err = ref.Get(ord.ReferrerId); err != nil {
-			log.Warn("Order referenced non-existent referrer '%s'", ord.ReferrerId, c)
-			ord.ReferrerId = ""
-		} else {
-			// Save referral
-			tasks.SaveReferral(ctx, ref.Id(), tasks.Checkout)
-		}
-	}
-
-	// Update amount paid
+func updateOrder(ctx appengine.Context, ord *order.Order, payments []*payment.Payment) {
 	totalPaid := 0
+
 	for _, pay := range payments {
 		totalPaid += int(pay.Amount)
 	}
@@ -81,21 +75,28 @@ func CompleteCapture(c *gin.Context, org *organization.Organization, ord *order.
 	if ord.Paid == ord.Total {
 		ord.PaymentStatus = payment.Paid
 	}
+}
 
-	// Save order and payments
-	vals := make([]interface{}, len(payments))
-	for i := range payments {
-		vals[i] = payments[i]
+func saveOrder(ctx appengine.Context, ord *order.Order, payments []*payment.Payment) error {
+	vals := []interface{}{ord}
+
+	for _, pay := range payments {
+		vals = append(vals, pay)
 	}
 
-	akey, _ := ord.Key().(*aeds.Key)
-	keys = append(keys, akey)
-	vals = append(vals, ord)
+	return multi.Update(vals)
+}
 
-	if _, err = db.PutMulti(keys, vals); err != nil {
-		return nil, err
-	}
+func sendOrderConfirmation(ctx appengine.Context, org *organization.Organization, ord *order.Order, buyer Buyer) {
+	// Send Create user
+	usr := new(user.User)
+	usr.Email = buyer.Email
+	usr.FirstName = buyer.FirstName
+	usr.LastName = buyer.LastName
+	emails.SendOrderConfirmationEmail(ctx, org, ord, usr)
+}
 
+func saveRedemptions(ctx appengine.Context, ord *order.Order) {
 	// Save coupon redemptions
 	ord.GetCoupons()
 	if len(ord.Coupons) > 0 {
@@ -105,9 +106,30 @@ func CompleteCapture(c *gin.Context, org *organization.Organization, ord *order.
 			}
 		}
 	}
+}
 
+func saveReferral(ctx appengine.Context, org *organization.Organization, ord *order.Order) {
+	db := ord.Db
+
+	// Check for referrer
+	if ord.ReferrerId == "" {
+		return // No referrer
+	}
+
+	// Search for referrer
+	ref := referrer.New(db)
+	if err := ref.GetById(ord.ReferrerId); err != nil {
+		log.Warn("Order referenced non-existent referrer '%s'", ord.ReferrerId, ctx)
+		ord.ReferrerId = ""
+		return
+	}
+
+	tasks.SaveReferral(ctx, ref.Id(), tasks.Checkout)
+}
+
+func updateCart(ctx appengine.Context, ord *order.Order) {
 	// Update cart
-	car := cart.New(db)
+	car := cart.New(ord.Db)
 
 	if ord.CartId != "" {
 		if err := car.GetById(ord.CartId); err != nil {
@@ -119,24 +141,12 @@ func CompleteCapture(c *gin.Context, org *organization.Organization, ord *order.
 			}
 		}
 	}
+}
 
-	// Mailchimp shenanigans
-	if org.Mailchimp.APIKey != "" {
-		// Create new mailchimp client (used everywhere else)
-		client := mailchimp.New(ctx, org.Mailchimp.APIKey)
-
-		client.DeleteCart(org.DefaultStore, car)
-		client.CreateOrder(org.DefaultStore, ord)
-
-		// Just get buyer off first payment
-		if err := client.SubscribeCustomer(org.Mailchimp.ListId, payments[0].Buyer); err != nil {
-			log.Warn("Failed to subscribe '%s' to Mailchimp list '%s': %v", payments[0].Buyer.Email, org.Mailchimp.ListId, err)
-		}
-	}
-
-	log.Debug("Incrementing Counters? %v", ord.Test, c)
+func updateStats(ctx appengine.Context, org *organization.Organization, ord *order.Order, payments []*payment.Payment) {
+	log.Debug("Incrementing Counters? %v", ord.Test, ctx)
 	if !ord.Test {
-		log.Debug("Incrementing Counters", c)
+		log.Debug("Incrementing Counters", ctx)
 		t := ord.CreatedAt
 		if err := counter.IncrTotalOrders(ctx, org, t); err != nil {
 			log.Warn("Counter Error %s", err, ctx)
@@ -160,7 +170,4 @@ func CompleteCapture(c *gin.Context, org *organization.Organization, ord *order.
 			}
 		}
 	}
-
-	// Need to figure out a way to count coupon uses
-	return ord, nil
 }
