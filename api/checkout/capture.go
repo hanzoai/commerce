@@ -13,7 +13,6 @@ import (
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"
-	"crowdstart.com/models/referral"
 	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/referrer/tasks"
 	"crowdstart.com/models/types/currency"

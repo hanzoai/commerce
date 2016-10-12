@@ -69,6 +69,7 @@ func (r *Referrer) SaveReferral(typ referral.Type, rfn Referrent) (*referral.Ref
 		r.FirstReferredAt = time.Now()
 		r.Update()
 	}
+	return rfl, nil
 }
 
 func (r *Referrer) Referrals() ([]*referral.Referral, error) {
