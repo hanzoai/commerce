@@ -13,6 +13,10 @@ cron:
   url: /tasks/payout-affiliate
   schedule: every 24 hours
 
+- description: Payout partner fees
+  url: /tasks/payout-partner
+  schedule: every 24 hours
+
 - description: Payout platform fees
   url: /tasks/payout-platform
   schedule: every 24 hours
