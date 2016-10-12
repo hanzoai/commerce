@@ -1,7 +1,6 @@
 package referrer
 
 import (
-	"crowdstart.com/models/referral"
 	"crowdstart.com/models/transaction"
 	"crowdstart.com/models/types/currency"
 )
