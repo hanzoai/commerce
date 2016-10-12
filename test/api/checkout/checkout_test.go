@@ -172,6 +172,7 @@ var _ = Describe("/checkout/authorize", func() {
 			prod.MustCreate()
 			vari := variant.Fake(db, prod.Id())
 			vari.MustCreate()
+			vari.Id_ = "FAKE_AND_BAD"
 			li := lineitem.Fake(vari)
 			ord := order.Fake(db, li)
 
@@ -183,11 +184,28 @@ var _ = Describe("/checkout/authorize", func() {
 		})
 
 		It("Should not authorize invalid product id", func() {
-
+			cl.Post("/checkout/authorize", req, nil, 400)
 		})
 	})
 
 	Context("Authorize invalid variant", func() {
+		var req *checkout.Authorization
+		Before(func() {
+			// Create fake product, variant and order
+			prod := product.Fake(db)
+			prod.MustCreate()
+
+			prod.Id_ = "FAKE_AND_BAD"
+
+			li := lineitem.Fake(prod)
+			ord := order.Fake(db, li)
+
+			// Create new authorization request
+			req = new(checkout.Authorization)
+			req.Order = ord
+			req.Payment = payment.Fake(db)
+			req.User = user.Fake(db)
+		})
 		It("Should not authorize invalid variant id", func() {
 
 		})
