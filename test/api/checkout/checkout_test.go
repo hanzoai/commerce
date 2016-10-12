@@ -254,22 +254,17 @@ var _ = Describe("/checkout/authorize", func() {
 			It("Should re-use user successfully", func() {
 				Expect(res.UserId).To(Equal(usr.Id()))
 			})
-
-			It("Should allow email to be used as id", func() {
-				Expect(res.UserId).To(Equal(usr.Id()))
-			})
 		})
 
 		Context("User email used as id", func() {
 			Before(func() {
-				req.User.Id_ = req.User.Email
+				// Use a clone so we don't muck up Id_ on the usr we test against
+				usr := req.User.Clone().(*user.User)
+				usr.Id_ = req.User.Email
+				req.User = usr
 			})
 
 			It("Should re-use user successfully", func() {
-				Expect(res.UserId).To(Equal(usr.Id()))
-			})
-
-			It("Should allow email to be used as id", func() {
 				Expect(res.UserId).To(Equal(usr.Id()))
 			})
 		})
