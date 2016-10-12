@@ -17,6 +17,5 @@ func Fake(db *datastore.Datastore, itemIdType string, itemIds ...string) *Collec
 	} else {
 		coll.VariantIds = itemIds
 	}
-
 	return coll
 }
