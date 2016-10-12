@@ -482,7 +482,7 @@ var _ = Describe("/checkout/authorize", func() {
 		})
 	})
 
-	FContext("Charge invalid product", func() {
+	Context("Charge invalid product", func() {
 		var req *checkout.Authorization
 
 		Before(func() {
@@ -506,7 +506,7 @@ var _ = Describe("/checkout/authorize", func() {
 		})
 	})
 
-	FContext("Charge invalid variant", func() {
+	Context("Charge invalid variant", func() {
 		var req *checkout.Authorization
 		Before(func() {
 
