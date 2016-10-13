@@ -23,6 +23,7 @@ func (e *AnalyticsEvent) Defaults() {
 func New(db *datastore.Datastore) *AnalyticsEvent {
 	e := new(AnalyticsEvent)
 	e.Init(db)
+	e.Defaults()
 	return e
 }
 

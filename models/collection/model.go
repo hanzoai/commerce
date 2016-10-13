@@ -26,6 +26,7 @@ func (c *Collection) Defaults() {
 func New(db *datastore.Datastore) *Collection {
 	c := new(Collection)
 	c.Init(db)
+	c.Defaults()
 	return c
 }
 

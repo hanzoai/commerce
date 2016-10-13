@@ -110,19 +110,31 @@ func (li LineItem) DisplayId() string {
 	return li.ProductSlug
 }
 
-// Returns the entity represented by this line item, which can be used later to
-// update it's price. If key is nil, this product is already fleshed out and
-// does not need to be fetched.
-func (li *LineItem) Entity(db *datastore.Datastore) (datastore.Key, interface{}, error) {
+// Returns the key and entity represented by this line item.
+func (li *LineItem) Entity(db *datastore.Datastore) (datastore.Key, mixin.Entity, error) {
+	if li.VariantId != "" {
+		li.Variant = variant.New(db)
+		li.Variant.SetKey(li.VariantId)
+		return li.Variant.Key(), li.Variant, nil
+	}
+
 	if li.ProductId != "" {
 		li.Product = product.New(db)
 		li.Product.SetKey(li.ProductId)
 		return li.Product.Key(), li.Product, nil
 	}
 
-	if li.VariantId != "" {
+	if li.VariantSKU != "" {
 		li.Variant = variant.New(db)
-		li.Variant.SetKey(li.VariantId)
+		ok, err := li.Variant.Query().Filter("SKU=", li.VariantSKU).GetKey()
+		if err != nil {
+			return nil, nil, err
+		}
+
+		if !ok {
+			return nil, nil, fmt.Errorf("Variant for lineitem does not exist: %v", li)
+		}
+
 		return li.Variant.Key(), li.Variant, nil
 	}
 
@@ -132,19 +144,13 @@ func (li *LineItem) Entity(db *datastore.Datastore) (datastore.Key, interface{},
 		if err != nil {
 			return nil, nil, err
 		}
+
+		if !ok {
+			return nil, nil, fmt.Errorf("Product for lineitem does not exist: %v", li)
+		}
+
 		if ok {
 			return li.Product.Key(), li.Product, nil
-		}
-	}
-
-	if li.VariantSKU != "" {
-		li.Variant = variant.New(db)
-		ok, err := li.Variant.Query().Filter("SKU=", li.VariantSKU).GetKey()
-		if err != nil {
-			return nil, nil, err
-		}
-		if ok {
-			return li.Variant.Key(), li.Variant, nil
 		}
 	}
 

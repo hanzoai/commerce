@@ -19,6 +19,7 @@ func (w *Webhook) Defaults() {
 func New(db *datastore.Datastore) *Webhook {
 	w := new(Webhook)
 	w.Init(db)
+	w.Defaults()
 	return w
 }
 

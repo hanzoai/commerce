@@ -12,9 +12,13 @@ func (p *Plan) Init(db *datastore.Datastore) {
 	p.Model.Init(db, p)
 }
 
+func (p *Plan) Defaults() {
+}
+
 func New(db *datastore.Datastore) *Plan {
 	p := new(Plan)
 	p.Init(db)
+	p.Defaults()
 	return p
 }
 

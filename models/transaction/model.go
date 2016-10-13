@@ -12,9 +12,13 @@ func (t *Transaction) Init(db *datastore.Datastore) {
 	t.Model.Init(db, t)
 }
 
+func (t *Transaction) Defaults() {
+}
+
 func New(db *datastore.Datastore) *Transaction {
 	t := new(Transaction)
 	t.Init(db)
+	t.Defaults()
 	return t
 }
 
