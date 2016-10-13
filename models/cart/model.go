@@ -28,6 +28,7 @@ func (c *Cart) Defaults() {
 func New(db *datastore.Datastore) *Cart {
 	c := new(Cart)
 	c.Init(db)
+	c.Defaults()
 	return c
 }
 

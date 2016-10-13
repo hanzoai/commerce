@@ -23,6 +23,7 @@ func (s *Subscriber) Defaults() {
 func New(db *datastore.Datastore) *Subscriber {
 	s := new(Subscriber)
 	s.Init(db)
+	s.Defaults()
 	return s
 }
 

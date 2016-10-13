@@ -12,9 +12,13 @@ func (s *Site) Init(db *datastore.Datastore) {
 	s.Model.Init(db, s)
 }
 
+func (s *Site) Defaults() {
+}
+
 func New(db *datastore.Datastore) *Site {
 	s := new(Site)
 	s.Init(db)
+	s.Defaults()
 	return s
 }
 

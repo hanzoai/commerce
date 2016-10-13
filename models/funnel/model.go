@@ -19,6 +19,7 @@ func (f *Funnel) Defaults() {
 func New(db *datastore.Datastore) *Funnel {
 	f := new(Funnel)
 	f.Init(db)
+	f.Defaults()
 	return f
 }
 
