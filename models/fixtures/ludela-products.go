@@ -10,11 +10,10 @@ import (
 )
 
 var LudelaProd = New("ludela", func(c *gin.Context) []*product.Product {
-
 	db := datastore.New(c)
 
 	org := organization.New(db)
-	org.Query().Filter("Name=", "ludela").First()
+	org.Query().Filter("Name=", "ludela").Get()
 
 	nsdb := datastore.New(org.Namespaced(db.Context))
 
