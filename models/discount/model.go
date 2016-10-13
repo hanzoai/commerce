@@ -20,6 +20,7 @@ func (d *Discount) Defaults() {
 func New(db *datastore.Datastore) *Discount {
 	d := new(Discount)
 	d.Init(db)
+	d.Defaults()
 	return d
 }
 

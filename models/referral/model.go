@@ -12,9 +12,13 @@ func (r *Referral) Init(db *datastore.Datastore) {
 	r.Model.Init(db, r)
 }
 
+func (r *Referral) Defaults() {
+}
+
 func New(db *datastore.Datastore) *Referral {
 	r := new(Referral)
 	r.Init(db)
+	r.Defaults()
 	return r
 }
 

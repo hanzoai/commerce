@@ -19,6 +19,7 @@ func (v *Variant) Defaults() {
 func New(db *datastore.Datastore) *Variant {
 	v := new(Variant)
 	v.Init(db)
+	v.Defaults()
 	return v
 }
 

@@ -25,6 +25,7 @@ func (b *Bundle) Defaults() {
 func New(db *datastore.Datastore) *Bundle {
 	b := new(Bundle)
 	b.Init(db)
+	b.Defaults()
 	return b
 }
 

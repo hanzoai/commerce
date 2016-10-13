@@ -33,6 +33,7 @@ func (o *Order) Defaults() {
 func New(db *datastore.Datastore) *Order {
 	o := new(Order)
 	o.Init(db)
+	o.Defaults()
 	return o
 }
 
