@@ -170,8 +170,33 @@ var _ = Describe("/checkout/authorize", func() {
 			// Create fake product, variant and order
 			prod := product.Fake(db)
 			prod.MustCreate()
+
+			prod.Id_ = "FAKE_AND_BAD"
+
+			li := lineitem.Fake(prod)
+			ord := order.Fake(db, li)
+			// Create new authorization request
+			req = new(checkout.Authorization)
+			req.Order = ord
+			req.Payment = payment.Fake(db)
+			req.User = user.Fake(db)
+		})
+
+		It("Should not authorize invalid product id", func() {
+			cl.Post("/checkout/authorize", req, nil, 400)
+		})
+	})
+
+	Context("Authorize invalid variant", func() {
+		var req *checkout.Authorization
+		Before(func() {
+
+			// Create fake product, variant and order
+			prod := product.Fake(db)
+			prod.MustCreate()
 			vari := variant.Fake(db, prod.Id())
 			vari.MustCreate()
+			vari.Id_ = "FAKE_AND_BAD"
 			li := lineitem.Fake(vari)
 			ord := order.Fake(db, li)
 
@@ -181,15 +206,8 @@ var _ = Describe("/checkout/authorize", func() {
 			req.Payment = payment.Fake(db)
 			req.User = user.Fake(db)
 		})
-
-		It("Should not authorize invalid product id", func() {
-
-		})
-	})
-
-	Context("Authorize invalid variant", func() {
 		It("Should not authorize invalid variant id", func() {
-
+			cl.Post("/checkout/authorize", req, nil, 400)
 		})
 	})
 
@@ -236,22 +254,17 @@ var _ = Describe("/checkout/authorize", func() {
 			It("Should re-use user successfully", func() {
 				Expect(res.UserId).To(Equal(usr.Id()))
 			})
-
-			It("Should allow email to be used as id", func() {
-				Expect(res.UserId).To(Equal(usr.Id()))
-			})
 		})
 
 		Context("User email used as id", func() {
 			Before(func() {
-				req.User.Id_ = req.User.Email
+				// Use a clone so we don't muck up Id_ on the usr we test against
+				usr := req.User.Clone().(*user.User)
+				usr.Id_ = req.User.Email
+				req.User = usr
 			})
 
 			It("Should re-use user successfully", func() {
-				Expect(res.UserId).To(Equal(usr.Id()))
-			})
-
-			It("Should allow email to be used as id", func() {
 				Expect(res.UserId).To(Equal(usr.Id()))
 			})
 		})
@@ -405,25 +418,114 @@ var _ = Describe("/checkout/authorize", func() {
 	})
 
 	Context("Charge First Time Customers", func() {
+		var req *checkout.Authorization
+		var res *order.Order
+
+		Before(func() {
+			// Create fake product, variant and order
+			prod := product.Fake(db)
+			prod.MustCreate()
+			vari := variant.Fake(db, prod.Id())
+			vari.MustCreate()
+			li := lineitem.Fake(vari)
+			ord := order.Fake(db, li)
+
+			// Create fake user to purchase some fake things
+			usr := user.Fake(db)
+
+			// Create some fake money for our fake user to spend
+			pay := payment.Fake(db)
+
+			// Create new authorization request
+			req = new(checkout.Authorization)
+			req.Order = ord
+			req.Payment = pay
+			req.User = usr
+
+			// Instantiate order to encompass result
+			res = order.New(db)
+
+			// Make request
+			cl.Post("/checkout/charge", req, res)
+		})
 		It("Should save new order successfully", func() {
+			getUser(res.UserId)
+		})
+		It("Should save new payment successfully", func() {
+			getPayment(res.Id())
 		})
 
 		It("Should save new order successfully for store", func() {
+			getOrder(res.Id())
 		})
 
-		It("Should not authorize invalid credit card number", func() {
+		It("Should parent order to user", func() {
+			usr := getUser(res.UserId)
+			getOrderByParent(usr.Key())
 		})
 
-		It("Should not authorize invalid credit card number for store", func() {
+		It("Should parent payment to order", func() {
+			getPaymentByParent(res.Key())
 		})
 
-		It("Should not authorize invalid product id", func() {
+		It("Should save payment id on order", func() {
+			Expect(len(res.PaymentIds)).To(Equal(1))
 		})
 
-		It("Should not authorize invalid variant id", func() {
+		It("Should calculate correct total for order and payment", func() {
+			Expect(res.Total).To(Equal(req.Order.Total))
+		})
+	})
+
+	Context("Charge invalid product", func() {
+		var req *checkout.Authorization
+
+		Before(func() {
+			// Create fake product, variant and order
+			prod := product.Fake(db)
+			prod.MustCreate()
+
+			prod.Id_ = "FAKE_AND_BAD"
+
+			li := lineitem.Fake(prod)
+			ord := order.Fake(db, li)
+			// Create new authorization request
+			req = new(checkout.Authorization)
+			req.Order = ord
+			req.Payment = payment.Fake(db)
+			req.User = user.Fake(db)
 		})
 
-		It("Should not authorize invalid collection id", func() {
+		It("Should not charge invalid product id", func() {
+			cl.Post("/checkout/charge", req, nil, 400)
+		})
+	})
+
+	Context("Charge invalid variant", func() {
+		var req *checkout.Authorization
+		Before(func() {
+
+			// Create fake product, variant and order
+			prod := product.Fake(db)
+			prod.MustCreate()
+			vari := variant.Fake(db, prod.Id())
+			vari.MustCreate()
+			vari.Id_ = "FAKE_AND_BAD"
+			li := lineitem.Fake(vari)
+			ord := order.Fake(db, li)
+
+			// Create new authorization request
+			req = new(checkout.Authorization)
+			req.Order = ord
+			req.Payment = payment.Fake(db)
+			req.User = user.Fake(db)
+		})
+
+		It("Should not charge invalid variant id", func() {
+			cl.Post("/checkout/charge", req, nil, 400)
+		})
+
+		It("Should not charge invalid collection id", func() {
 		})
 	})
 
