@@ -23,6 +23,7 @@ func (s *Submission) Defaults() {
 func New(db *datastore.Datastore) *Submission {
 	s := new(Submission)
 	s.Init(db)
+	s.Defaults()
 	return s
 }
 

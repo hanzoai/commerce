@@ -12,9 +12,13 @@ func (t *Token) Init(db *datastore.Datastore) {
 	t.Model.Init(db, t)
 }
 
+func (t *Token) Defaults() {
+}
+
 func New(db *datastore.Datastore) *Token {
 	t := new(Token)
 	t.Init(db)
+	t.Defaults()
 	return t
 }
 

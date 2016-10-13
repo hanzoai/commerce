@@ -17,6 +17,7 @@ import (
 	"crowdstart.com/models/discount"
 	"crowdstart.com/models/fee"
 	"crowdstart.com/models/mixin"
+	"crowdstart.com/models/multi"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/store"
@@ -450,7 +451,7 @@ func (o *Order) GetItemEntities() error {
 		vals[i] = dst
 	}
 
-	return db.GetMulti(keys, vals)
+	return multi.Get(o.Context(), keys, vals)
 }
 
 // Update underlying line item entities using store listings

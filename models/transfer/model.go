@@ -19,6 +19,7 @@ func (t *Transfer) Defaults() {
 func New(db *datastore.Datastore) *Transfer {
 	t := new(Transfer)
 	t.Init(db)
+	t.Defaults()
 	return t
 }
 

@@ -110,13 +110,6 @@ type Model struct {
 func (m *Model) Init(db *datastore.Datastore, entity Kind) {
 	m.Db = db
 	m.Entity = entity
-
-	// Automatically call defaults on init
-	if timeutil.IsZero(m.CreatedAt) {
-		if hook, ok := (m.Entity).(Defaults); ok {
-			hook.Defaults()
-		}
-	}
 }
 
 // Get appengine.Context

@@ -448,7 +448,8 @@ var _ = Describe("/checkout/authorize", func() {
 			// Make request
 			cl.Post("/checkout/charge", req, res)
 		})
-		It("Should save new order successfully", func() {
+
+		FIt("Should save new order successfully", func() {
 			getUser(res.UserId)
 		})
 		It("Should save new payment successfully", func() {
