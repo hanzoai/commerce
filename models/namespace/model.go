@@ -18,9 +18,13 @@ func (n *Namespace) Init(db *datastore.Datastore) {
 	n.UseStringKey = true
 }
 
+func (n *Namespace) Defaults() {
+}
+
 func New(db *datastore.Datastore) *Namespace {
 	n := new(Namespace)
 	n.Init(db)
+	n.Defaults()
 	return n
 }
 
