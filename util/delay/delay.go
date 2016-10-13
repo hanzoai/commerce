@@ -20,6 +20,7 @@ func Func(key string, i interface{}) *Function {
 	fn := new(Function)
 	fn.dfunc = delay.Func(key, i)
 	fn.queue = "" // Use default queue
+	fn.name = "" // Use taskqueue-generated name
 	return fn
 }
 

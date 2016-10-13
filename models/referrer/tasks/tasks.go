@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"fmt"
 	"time"
 
 	"appengine"
@@ -20,6 +21,44 @@ const (
 	Checkout EventType = "checkout"
 	Signup             = "signup"
 )
+
+// Process a block of referrals.
+// This sorts and processes referrals in approximate temporal order.
+// Referral records are assigned a timestamp using each request handler's
+// local time, so this function should be scheduled to run with a delay
+// greater than the total expected clock drift between the "earliest" node
+// and the "latest" node.
+var saveReferral_ = delay.Func("", func(ctx appengine.Context, interval TimeInterval) {
+})
+
+type TimeInterval struct {
+	Start time.Time // inclusive
+	End   time.Time // exclusive
+}
+
+func IntervalFromInstant(t time.Time, width time.Duration) TimeInterval {
+	start := t.Truncate(intervalWidth)
+	end := start.Add(intervalWidth)
+	return TimeInterval{start, end}
+}
+
+func NameFromInterval(d time.Duration, i TimeInterval) string {
+	layout := time.RFC3339
+	start := i.Start.Format(layout)
+	end := i.End.Format(layout)
+	// taskqueue supports delays specified in terms of microseconds:
+	// https://github.com/golang/appengine/blob/75a29a66d4850a15c19eb6d70a31f5c453572be0/internal/taskqueue/taskqueue_service.pb.go#L456
+	// https://github.com/golang/appengine/blob/75a29a66d4850a15c19eb6d70a31f5c453572be0/taskqueue/taskqueue.go#L176
+	return fmt.Sprintf("processReferrals-%d-from-%s-to-%s", int64(d.Nanoseconds() / 1000), start, end)
+}
+
+const processingLatency = 5 * time.Minute
+const intervalWidth = 10 * time.Minute
+
+func ProcessReferrals(ctx appengine.Context, t time.Time) {
+	interval := IntervalFromInstant(t, intervalWidth)
+	saveReferral_.Once(ctx, NameFromInterval(processingLatency, interval), interval)
+}
 
 type LostRace struct {
 }
