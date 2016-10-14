@@ -529,6 +529,59 @@ var _ = Describe("/checkout/authorize", func() {
 		})
 	})
 
+	Context("Capture existing user", func() {
+		var req *checkout.Authorization
+		var res *order.Order
+		var usr *user.User
+
+		Before(func() {
+			// Create returning user
+			usr = user.Fake(db)
+			usr.MustCreate()
+
+			// Create fake product, variant and order
+			prod := product.Fake(db)
+			prod.MustCreate()
+			vari := variant.Fake(db, prod.Id())
+			vari.MustCreate()
+			li := lineitem.Fake(vari)
+			ord := order.Fake(db, li)
+
+			// Create new authorization request
+			req = new(checkout.Authorization)
+			req.Order = ord
+			req.Payment = payment.Fake(db)
+			req.User = usr
+
+			// Instantiate order to encompass result
+			res = order.New(db)
+
+		})
+
+		JustBefore(func() {
+			cl.Post("/checkout/capture", req, res)
+		})
+
+		Context("User id used as id", func() {
+			It("Should re-use user successfully", func() {
+				Expect(res.UserId).To(Equal(usr.Id()))
+			})
+		})
+
+		Context("User email used as id", func() {
+			Before(func() {
+				// Use a clone so we don't muck up Id_ on the usr we test against
+				usr := req.User.Clone().(*user.User)
+				usr.Id_ = req.User.Email
+				req.User = usr
+			})
+
+			It("Should re-use user successfully", func() {
+				Expect(res.UserId).To(Equal(usr.Id()))
+			})
+		})
+	})
+
 	Context("Charge Returning Customers", func() {
 		It("Should save returning customer order with the same card successfully", func() {
 		})
@@ -540,9 +593,6 @@ var _ = Describe("/checkout/authorize", func() {
 		})
 
 		It("Should save returning customer order with a new card successfully for store", func() {
-		})
-
-		It("Should not save customer with invalid user id", func() {
 		})
 
 		It("Should not save customer with invalid user id", func() {
