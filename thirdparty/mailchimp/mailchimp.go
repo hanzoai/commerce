@@ -537,7 +537,7 @@ func (api API) CreateProduct(storeId string, prod *product.Product) error {
 		Title:       prod.Name,
 		Description: prod.Description,
 		// Handle:      "",
-		// ImageURL:    "",
+		ImageURL: prod.Image.Url,
 		// Type:        "",
 		// URL:         "",
 		// Vendor:      "",
@@ -553,7 +553,7 @@ func (api API) CreateProduct(storeId string, prod *product.Product) error {
 				InventoryQuantity: prod.Inventory,
 				Visibility:        "visible",
 				// Backorders:        "",
-				// ImageUrl:          "",
+				ImageURL: prod.Image.Url,
 				// Url:               "",
 			},
 		},
@@ -576,7 +576,7 @@ func (api API) UpdateProduct(storeId string, prod *product.Product) error {
 		Title:       prod.Name,
 		Description: prod.Description,
 		// Handle:      "",
-		// ImageURL:    "",
+		ImageURL: prod.Image.Url,
 		// Type:        "",
 		// URL:         "",
 		// Vendor:      "",
@@ -592,7 +592,7 @@ func (api API) UpdateProduct(storeId string, prod *product.Product) error {
 				InventoryQuantity: prod.Inventory,
 				Visibility:        "visible",
 				// Backorders:        "",
-				// ImageUrl:          "",
+				ImageURL: prod.Image.Url,
 				// Url:               "",
 			},
 		},
@@ -632,7 +632,7 @@ func (api API) CreateVariant(storeId, productId string, vari *variant.Variant) e
 		InventoryQuantity: vari.Inventory,
 		Visibility:        "visible",
 		// Backorders:        "",
-		// ImageUrl:          "",
+		ImageURL: vari.Image.Url,
 		// Url:               "",
 	}
 
@@ -664,7 +664,7 @@ func (api API) UpdateVariant(storeId, productId string, vari *variant.Variant) e
 		InventoryQuantity: vari.Inventory,
 		Visibility:        "visible",
 		// Backorders:        "",
-		// ImageUrl:          "",
+		ImageURL: vari.Image.Url,
 		// Url:               "",
 	}
 
