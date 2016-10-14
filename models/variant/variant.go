@@ -22,6 +22,11 @@ type Variant struct {
 	Currency currency.Type  `json:"currency"`
 	Price    currency.Cents `json:"price"`
 
+	// Variant Media
+	Header Media   `json:"header"`
+	Image  Media   `json:"image"`
+	Media  []Media `json:"media"`
+
 	// Is the variant available
 	Available bool `json:"available"`
 

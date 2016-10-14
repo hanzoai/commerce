@@ -61,8 +61,9 @@ type Product struct {
 	Description string `json:"description", datastore:",noindex"`
 
 	// Product Media
-	HeaderImage Media   `json:"headerImage"`
-	Media       []Media `json:"media"`
+	Header Media   `json:"header"`
+	Image  Media   `json:"image"`
+	Media  []Media `json:"media"`
 
 	// Is the product available
 	Available bool `json:"available"`
