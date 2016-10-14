@@ -175,7 +175,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 
 	prod1d := product.New(nsdb)
 	prod1d.Slug = "Duo-W-I"
-	prod1d.GetOrCreate("Slug=", prod1.Slug)
+	prod1d.GetOrCreate("Slug=", prod1d.Slug)
 	// prod1d.SetKey("Knc9wlZJUOOG")
 	prod1d.Name = "Duo Starter Kit, Ivory Wax Shell"
 	prod1d.Description = "Includes: Two (2) LuDela Smart Candle, Ivory Color, Four (4) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
@@ -189,7 +189,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 
 	prod2d := product.New(nsdb)
 	prod2d.Slug = "Duo-W-O"
-	prod2d.GetOrCreate("Slug=", prod2.Slug)
+	prod2d.GetOrCreate("Slug=", prod2d.Slug)
 	// prod2d.SetKey("Knc9wlZJUFJE")
 	prod2d.Name = "Duo Starter Kit, Orange Wax Shell Upgrade"
 	prod2d.Description = "Includes: Two (2) LuDela Smart Candle, Orange Color, Four (4) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
@@ -203,7 +203,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 
 	prod3d := product.New(nsdb)
 	prod3d.Slug = "Duo-W-R"
-	prod3d.GetOrCreate("Slug=", prod3.Slug)
+	prod3d.GetOrCreate("Slug=", prod3d.Slug)
 	// prod3d.SetKey("Knc9wlZFJEJE")
 	prod3d.Name = "Duo Starter Kit, Red Wax Shell Upgrade"
 	prod3d.Description = "Includes: Two (2) LuDela Smart Candle, Red Color, Four (4) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
@@ -217,7 +217,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 
 	prod4d := product.New(nsdb)
 	prod4d.Slug = "Duo-W-B"
-	prod4d.GetOrCreate("Slug=", prod4.Slug)
+	prod4d.GetOrCreate("Slug=", prod4d.Slug)
 	// prod4d.SetKey("Knc9wlZFJEFE")
 	prod4d.Name = "Duo Starter Kit, Blue Wax Shell Upgrade"
 	prod4d.Description = "Includes: Two (2) LuDela Smart Candle, Blue Color, Four (4) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
@@ -231,7 +231,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 
 	prod5d := product.New(nsdb)
 	prod5d.Slug = "Duo-W-G"
-	prod5d.GetOrCreate("Slug=", prod5.Slug)
+	prod5d.GetOrCreate("Slug=", prod5d.Slug)
 	// prod5d.SetKey("Knc9wlZFJIII")
 	prod5d.Name = "Duo Starter Kit, Green Wax Shell Upgrade"
 	prod5d.Description = "Includes: Two (2) LuDela Smart Candle, Green Color, Four (4) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
@@ -245,7 +245,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 
 	prod6d := product.New(nsdb)
 	prod6d.Slug = "Duo-W-P"
-	prod6d.GetOrCreate("Slug=", prod6.Slug)
+	prod6d.GetOrCreate("Slug=", prod6d.Slug)
 	// prod6d.SetKey("Knc9wlZFJFFI")
 	prod6d.Name = "Duo Starter Kit, Purple Wax Shell Upgrade"
 	prod6d.Description = "Includes: Two (2) LuDela Smart Candle, Purple Color, Four (4) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
@@ -259,7 +259,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 
 	prod7d := product.New(nsdb)
 	prod7d.Slug = "Duo-G-B"
-	prod7d.GetOrCreate("Slug=", prod7.Slug)
+	prod7d.GetOrCreate("Slug=", prod7d.Slug)
 	// prod7d.SetKey("Knc9wlZFJFFI")
 	prod7d.Name = "Duo Starter Kit, Black Glass Shell Upgrade"
 	prod7d.Description = "Includes: Two (2) LuDela Smart Candle, Black Color, Glass Shell, Four (4) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
@@ -273,7 +273,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 
 	prod8d := product.New(nsdb)
 	prod8d.Slug = "Duo-G-W"
-	prod8d.GetOrCreate("Slug=", prod8.Slug)
+	prod8d.GetOrCreate("Slug=", prod8d.Slug)
 	// prod8d.SetKey("Knc9wlZFJFFI")
 	prod8d.Name = "Duo Starter Kit, White Glass Shell Upgrade"
 	prod8d.Description = "Includes: Two (2) LuDela Smart Candle, White Color, Glass Shell, Four (4) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
@@ -287,7 +287,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 
 	prod9d := product.New(nsdb)
 	prod9d.Slug = "Duo-G-R"
-	prod9d.GetOrCreate("Slug=", prod9.Slug)
+	prod9d.GetOrCreate("Slug=", prod9d.Slug)
 	// prod9d.SetKey("Knc9wlZFJFFI")
 	prod9d.Name = "Duo Starter Kit, Red Glass Shell Upgrade"
 	prod9d.Description = "Includes: Two (2) LuDela Smart Candle, Red Color, Glass Shell, Four (4) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
@@ -301,7 +301,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 
 	prod10d := product.New(nsdb)
 	prod10d.Slug = "Duo-G-SM"
-	prod10d.GetOrCreate("Slug=", prod10.Slug)
+	prod10d.GetOrCreate("Slug=", prod10d.Slug)
 	// prod10d.SetKey("Knc9wlZFJFOI")
 	prod10d.Name = "Duo Starter Kit, Silver Mercury Shell Upgrade"
 	prod10d.Description = "Includes: Two (2) LuDela Smart Candle, Silver Mercury Shell, Four (4) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
@@ -315,7 +315,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 
 	prod11d := product.New(nsdb)
 	prod11d.Slug = "Duo-G-BM"
-	prod11d.GetOrCreate("Slug=", prod11.Slug)
+	prod11d.GetOrCreate("Slug=", prod11d.Slug)
 	// prod11d.SetKey("Knc9wlZFkKOI")
 	prod11d.Name = "Duo Starter Kit, Bronze Mercury Shell Upgrade"
 	prod11d.Description = "Includes: Two (2) LuDela Smart Candle, Bronze Mercury Shell, Four (4) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
@@ -329,13 +329,13 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 
 	prod1t := product.New(nsdb)
 	prod1t.Slug = "Trio-W-I"
-	prod1t.GetOrCreate("Slug=", prod1.Slug)
+	prod1t.GetOrCreate("Slug=", prod1t.Slug)
 	// prod1t.SetKey("Knc9wlZJUOOG")
 	prod1t.Name = "Trio Starter Kit, Ivory Wax Shell"
 	prod1t.Description = "Includes: Three (3) LuDela Smart Candle, Ivory Color, Six (6) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
 	prod1t.Currency = currency.USD
-	prod1t.ListPrice = currency.Cents(39800)
-	prod1t.Price = currency.Cents(18900)
+	prod1t.ListPrice = currency.Cents(59700)
+	prod1t.Price = currency.Cents(27900)
 	prod1t.Preorder = true
 	prod1t.Hidden = false
 	prod1t.EstimatedDelivery = "Early 2017"
@@ -343,13 +343,13 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 
 	prod2t := product.New(nsdb)
 	prod2t.Slug = "Trio-W-O"
-	prod2t.GetOrCreate("Slug=", prod2.Slug)
+	prod2t.GetOrCreate("Slug=", prod2t.Slug)
 	// prod2t.SetKey("Knc9wlZJUFJE")
 	prod2t.Name = "Trio Starter Kit, Orange Wax Shell Upgrade"
 	prod2t.Description = "Includes: Three (3) LuDela Smart Candle, Orange Color, Six (6) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
 	prod2t.Currency = currency.USD
-	prod2t.ListPrice = currency.Cents(59700)
-	prod2t.Price = currency.Cents(27900)
+	prod2t.ListPrice = currency.Cents(65900)
+	prod2t.Price = currency.Cents(32900)
 	prod2t.Preorder = true
 	prod2t.Hidden = false
 	prod2t.EstimatedDelivery = "Early 2017"
@@ -357,7 +357,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 
 	prod3t := product.New(nsdb)
 	prod3t.Slug = "Trio-W-R"
-	prod3t.GetOrCreate("Slug=", prod3.Slug)
+	prod3t.GetOrCreate("Slug=", prod3t.Slug)
 	// prod3t.SetKey("Knc9wlZFJEJE")
 	prod3t.Name = "Trio Starter Kit, Red Wax Shell Upgrade"
 	prod3t.Description = "Includes: Three (3) LuDela Smart Candle, Red Color, Six (6) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
@@ -371,7 +371,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 
 	prod4t := product.New(nsdb)
 	prod4t.Slug = "Trio-W-B"
-	prod4t.GetOrCreate("Slug=", prod4.Slug)
+	prod4t.GetOrCreate("Slug=", prod4t.Slug)
 	// prod4t.SetKey("Knc9wlZFJEFE")
 	prod4t.Name = "Trio Starter Kit, Blue Wax Shell Upgrade"
 	prod4t.Description = "Includes: Three (3) LuDela Smart Candle, Blue Color, Six (6) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
@@ -385,7 +385,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 
 	prod5t := product.New(nsdb)
 	prod5t.Slug = "Trio-W-G"
-	prod5t.GetOrCreate("Slug=", prod5.Slug)
+	prod5t.GetOrCreate("Slug=", prod5t.Slug)
 	// prod5t.SetKey("Knc9wlZFJIII")
 	prod5t.Name = "Trio Starter Kit, Green Wax Shell Upgrade"
 	prod5t.Description = "Includes: Three (3) LuDela Smart Candle, Green Color, Six (6) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
@@ -399,7 +399,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 
 	prod6t := product.New(nsdb)
 	prod6t.Slug = "Trio-W-P"
-	prod6t.GetOrCreate("Slug=", prod6.Slug)
+	prod6t.GetOrCreate("Slug=", prod6t.Slug)
 	// prod6t.SetKey("Knc9wlZFJFFI")
 	prod6t.Name = "Trio Starter Kit, Purple Wax Shell Upgrade"
 	prod6t.Description = "Includes: Three (3) LuDela Smart Candle, Purple Color, Six (6) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
@@ -413,7 +413,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 
 	prod7t := product.New(nsdb)
 	prod7t.Slug = "Trio-G-B"
-	prod7t.GetOrCreate("Slug=", prod7.Slug)
+	prod7t.GetOrCreate("Slug=", prod7t.Slug)
 	// prod7t.SetKey("Knc9wlZFJFFI")
 	prod7t.Name = "Trio Starter Kit, Black Glass Shell Upgrade"
 	prod7t.Description = "Includes: Three (3) LuDela Smart Candle, Black Color, Glass Shell, Six (6) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
@@ -427,7 +427,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 
 	prod8t := product.New(nsdb)
 	prod8t.Slug = "Trio-G-W"
-	prod8t.GetOrCreate("Slug=", prod8.Slug)
+	prod8t.GetOrCreate("Slug=", prod8t.Slug)
 	// prod8t.SetKey("Knc9wlZFJFFI")
 	prod8t.Name = "Trio Starter Kit, White Glass Shell Upgrade"
 	prod8t.Description = "Includes: Three (3) LuDela Smart Candle, White Color, Glass Shell, Six (6) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
@@ -441,7 +441,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 
 	prod9t := product.New(nsdb)
 	prod9t.Slug = "Trio-G-R"
-	prod9t.GetOrCreate("Slug=", prod9.Slug)
+	prod9t.GetOrCreate("Slug=", prod9t.Slug)
 	// prod9t.SetKey("Knc9wlZFJFFI")
 	prod9t.Name = "Trio Starter Kit, Red Glass Shell Upgrade"
 	prod9t.Description = "Includes: Three (3) LuDela Smart Candle, Red Color, Glass Shell, Six (6) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
@@ -455,7 +455,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 
 	prod10t := product.New(nsdb)
 	prod10t.Slug = "Trio-G-SM"
-	prod10t.GetOrCreate("Slug=", prod10.Slug)
+	prod10t.GetOrCreate("Slug=", prod10t.Slug)
 	// prod10t.SetKey("Knc9wlZFJFOI")
 	prod10t.Name = "Trio Starter Kit, Silver Mercury Shell Upgrade"
 	prod10t.Description = "Includes: Three (3) LuDela Smart Candle, Silver Mercury Shell, Six (6) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
@@ -469,7 +469,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 
 	prod11t := product.New(nsdb)
 	prod11t.Slug = "Trio-G-BM"
-	prod11t.GetOrCreate("Slug=", prod11.Slug)
+	prod11t.GetOrCreate("Slug=", prod11t.Slug)
 	// prod11t.SetKey("Knc9wlZFkKOI")
 	prod11t.Name = "Trio Starter Kit, Bronze Mercury Shell Upgrade"
 	prod11t.Description = "Includes: Three (3) LuDela Smart Candle, Bronze Mercury Shell, Six (6) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
@@ -499,7 +499,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod14.Slug = "SC-1-S"
 	prod14.GetOrCreate("Slug=", prod14.Slug)
 	// prod14.SetKey("Knc9wlKKkKOI")
-	prod14.Name = "Scent: Vanilla Bliss (refill)"
+	prod14.Name = "Scent: Vanilla Bliss (Subscription)"
 	prod14.Description = "A relaxing blend of sweet, buttery vanilla with hints of coconut and tonka bean"
 	prod14.Currency = currency.USD
 	prod14.ListPrice = currency.Cents(800)
@@ -527,7 +527,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod16.Slug = "SC-2-S"
 	prod16.GetOrCreate("Slug=", prod16.Slug)
 	// prod16.SetKey("Knc9wlFioKOI")
-	prod16.Name = "Scent: Dew Kissed Petal (refill)"
+	prod16.Name = "Scent: Dew Kissed Petal (Subscription)"
 	prod16.Description = "A delightful blend of fruity pears and peaches with floral tons of jasmine and waterlily"
 	prod16.Currency = currency.USD
 	prod16.ListPrice = currency.Cents(800)
@@ -555,7 +555,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod18.Slug = "SC-3-S"
 	prod18.GetOrCreate("Slug=", prod18.Slug)
 	// prod18.SetKey("Knc99e2j932I")
-	prod18.Name = "Scent: Lavender Escape (refill)"
+	prod18.Name = "Scent: Lavender Escape (Subscription)"
 	prod18.Description = "A calming blend of lavender with vanilla makes this an excellent choice to reduce stress and help you sleep better"
 	prod18.Currency = currency.USD
 	prod18.ListPrice = currency.Cents(800)
@@ -583,7 +583,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod20.Slug = "SC-4-S"
 	prod20.GetOrCreate("Slug=", prod20.Slug)
 	// prod20.SetKey("Knc9933jwKOI")
-	prod20.Name = "Scent: Pomegranate Delight (refill)"
+	prod20.Name = "Scent: Pomegranate Delight (Subscription)"
 	prod20.Description = "Fresh red currants and pomegranate touched with a splash of orange and finished with a twist of lemon."
 	prod20.Currency = currency.USD
 	prod20.ListPrice = currency.Cents(800)
@@ -611,7 +611,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod22.Slug = "SC-5-S"
 	prod22.GetOrCreate("Slug=", prod22.Slug)
 	// prod22.SetKey("Knc939sssKOI")
-	prod22.Name = "Scent: Mango Driftwood (refill)"
+	prod22.Name = "Scent: Mango Driftwood (Subscription)"
 	prod22.Description = "A perfect blend of freshly-sliced mango and oranges combined with woody basenotes of cedarwood and amber"
 	prod22.Currency = currency.USD
 	prod22.ListPrice = currency.Cents(800)
@@ -639,7 +639,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod24.Slug = "SC-6-S"
 	prod24.GetOrCreate("Slug=", prod24.Slug)
 	// prod24.SetKey("Knc93995555I")
-	prod24.Name = "Scent: Turquoise Bay (refill)"
+	prod24.Name = "Scent: Turquoise Bay (Subscription)"
 	prod24.Description = "Enjoy a tropical cocktail of island pineapple and coconut combined with blissful basenotes of cedarwood and vanilla"
 	prod24.Currency = currency.USD
 	prod24.ListPrice = currency.Cents(800)
@@ -667,7 +667,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod26.Slug = "SC-7-S"
 	prod26.GetOrCreate("Slug=", prod26.Slug)
 	// prod26.SetKey("Knc9399fjfjI")
-	prod26.Name = "Scent: White Tea and Ginger (refill)"
+	prod26.Name = "Scent: White Tea and Ginger (Subscription)"
 	prod26.Description = "An intoxicating mixture of white tea notes and pungent, spicy ginger. This exotic mixture is great for every room in the house."
 	prod26.Currency = currency.USD
 	prod26.ListPrice = currency.Cents(800)
@@ -695,7 +695,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod28.Slug = "SC-8-S"
 	prod28.GetOrCreate("Slug=", prod28.Slug)
 	// prod28.SetKey("Knc9398rrrmI")
-	prod28.Name = "Scent: Sheer Linen and Orchid (refill)"
+	prod28.Name = "Scent: Sheer Linen and Orchid (Subscription)"
 	prod28.Description = "A light, refreshing combination lily and orange flowers with lavender and sheer musks."
 	prod28.Currency = currency.USD
 	prod28.ListPrice = currency.Cents(800)
@@ -723,7 +723,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod30.Slug = "SC-9-S"
 	prod30.GetOrCreate("Slug=", prod30.Slug)
 	// prod30.SetKey("Knc9jmlrfjmI")
-	prod30.Name = "Scent: Coastal Waters (refill)"
+	prod30.Name = "Scent: Coastal Waters (Subscription)"
 	prod30.Description = "Fresh ocean breezes gently blowing over a calm beach. Soft white floral background on a mossy musk base. A fresh coastal fragrance."
 	prod30.Currency = currency.USD
 	prod30.ListPrice = currency.Cents(800)
@@ -751,7 +751,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod32.Slug = "SC-10-S"
 	prod32.GetOrCreate("Slug=", prod32.Slug)
 	// prod32.SetKey("Knc9jfrjs4mI")
-	prod32.Name = "Scent: Midnight Showers (refill)"
+	prod32.Name = "Scent: Midnight Showers (Subscription)"
 	prod32.Description = "A soothing, masculine of bergamot and citrus with delightful hints of sandlewood and oak moss"
 	prod32.Currency = currency.USD
 	prod32.ListPrice = currency.Cents(800)
