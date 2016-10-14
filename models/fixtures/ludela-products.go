@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.com/datastore"
+	. "crowdstart.com/models"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/product"
 	"crowdstart.com/models/types/currency"
@@ -24,6 +25,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod1.GetOrCreate("Slug=", prod1.Slug)
 	// prod1.SetKey("Knc9wlZJUOOG")
 	prod1.Name = "Solo Starter Kit, Ivory Wax Shell"
+	prod1.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/kits/Solo-W-I.png", X: 500, Y: 500}
 	prod1.Description = "Includes: One (1) LuDela Smart Candle, Ivory Color, Two (2) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
 	prod1.Currency = currency.USD
 	prod1.ListPrice = currency.Cents(19900)
@@ -38,6 +40,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod2.GetOrCreate("Slug=", prod2.Slug)
 	// prod2.SetKey("Knc9wlZJUFJE")
 	prod2.Name = "Solo Starter Kit, Orange Wax Shell Upgrade"
+	prod2.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/kits/Solo-W-O.png", X: 500, Y: 500}
 	prod2.Description = "Includes: One (1) LuDela Smart Candle, Orange Color, Two (2) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
 	prod2.Currency = currency.USD
 	prod2.ListPrice = currency.Cents(22900)
@@ -51,6 +54,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod3.Slug = "Solo-W-R"
 	prod3.GetOrCreate("Slug=", prod3.Slug)
 	// prod3.SetKey("Knc9wlZFJEJE")
+	prod3.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/kits/Solo-W-R.png", X: 500, Y: 500}
 	prod3.Name = "Solo Starter Kit, Red Wax Shell Upgrade"
 	prod3.Description = "Includes: One (1) LuDela Smart Candle, Red Color, Two (2) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
 	prod3.Currency = currency.USD
@@ -65,6 +69,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod4.Slug = "Solo-W-B"
 	prod4.GetOrCreate("Slug=", prod4.Slug)
 	// prod4.SetKey("Knc9wlZFJEFE")
+	prod4.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/kits/Solo-W-B.png", X: 500, Y: 500}
 	prod4.Name = "Solo Starter Kit, Blue Wax Shell Upgrade"
 	prod4.Description = "Includes: One (1) LuDela Smart Candle, Blue Color, Two (2) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
 	prod4.Currency = currency.USD
@@ -79,6 +84,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod5.Slug = "Solo-W-G"
 	prod5.GetOrCreate("Slug=", prod5.Slug)
 	// prod5.SetKey("Knc9wlZFJIII")
+	prod5.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/kits/Solo-W-G.png", X: 500, Y: 500}
 	prod5.Name = "Solo Starter Kit, Green Wax Shell Upgrade"
 	prod5.Description = "Includes: One (1) LuDela Smart Candle, Green Color, Two (2) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
 	prod5.Currency = currency.USD
@@ -93,6 +99,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod6.Slug = "Solo-W-P"
 	prod6.GetOrCreate("Slug=", prod6.Slug)
 	// prod6.SetKey("Knc9wlZFJFFI")
+	prod6.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/kits/Solo-W-P.png", X: 500, Y: 500}
 	prod6.Name = "Solo Starter Kit, Purple Wax Shell Upgrade"
 	prod6.Description = "Includes: One (1) LuDela Smart Candle, Purple Color, Two (2) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
 	prod6.Currency = currency.USD
@@ -107,6 +114,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod7.Slug = "Solo-G-B"
 	prod7.GetOrCreate("Slug=", prod7.Slug)
 	// prod7.SetKey("Knc9wlZFJFFI")
+	prod7.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/kits/Solo-G-B.png", X: 500, Y: 500}
 	prod7.Name = "Solo Starter Kit, Black Glass Shell Upgrade"
 	prod7.Description = "Includes: One (1) LuDela Smart Candle, Black Color, Glass Shell, Two (2) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
 	prod7.Currency = currency.USD
@@ -121,6 +129,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod8.Slug = "Solo-G-W"
 	prod8.GetOrCreate("Slug=", prod8.Slug)
 	// prod8.SetKey("Knc9wlZFJFFI")
+	prod8.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/kits/Solo-G-W.png", X: 500, Y: 500}
 	prod8.Name = "Solo Starter Kit, White Glass Shell Upgrade"
 	prod8.Description = "Includes: One (1) LuDela Smart Candle, White Color, Glass Shell, Two (2) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
 	prod8.Currency = currency.USD
@@ -135,6 +144,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod9.Slug = "Solo-G-R"
 	prod9.GetOrCreate("Slug=", prod9.Slug)
 	// prod9.SetKey("Knc9wlZFJFFI")
+	prod9.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/kits/Solo-G-R.png", X: 500, Y: 500}
 	prod9.Name = "Solo Starter Kit, Red Glass Shell Upgrade"
 	prod9.Description = "Includes: One (1) LuDela Smart Candle, Red Color, Glass Shell, Two (2) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
 	prod9.Currency = currency.USD
@@ -149,6 +159,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod10.Slug = "Solo-G-SM"
 	prod10.GetOrCreate("Slug=", prod10.Slug)
 	// prod10.SetKey("Knc9wlZFJFOI")
+	prod10.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/kits/Solo-G-SM.png", X: 500, Y: 500}
 	prod10.Name = "Solo Starter Kit, Silver Mercury Shell Upgrade"
 	prod10.Description = "Includes: One (1) LuDela Smart Candle, Silver Mercury Shell, Two (2) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
 	prod10.Currency = currency.USD
@@ -163,6 +174,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod11.Slug = "Solo-G-BM"
 	prod11.GetOrCreate("Slug=", prod11.Slug)
 	// prod11.SetKey("Knc9wlZFkKOI")
+	prod11.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/kits/Solo-G-BM.png", X: 500, Y: 500}
 	prod11.Name = "Solo Starter Kit, Bronze Mercury Shell Upgrade"
 	prod11.Description = "Includes: One (1) LuDela Smart Candle, Bronze Mercury Shell, Two (2) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
 	prod11.Currency = currency.USD
@@ -177,6 +189,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod1d.Slug = "Duo-W-I"
 	prod1d.GetOrCreate("Slug=", prod1d.Slug)
 	// prod1d.SetKey("Knc9wlZJUOOG")
+	prod1d.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/kits/Duo-W-I.png", X: 500, Y: 500}
 	prod1d.Name = "Duo Starter Kit, Ivory Wax Shell"
 	prod1d.Description = "Includes: Two (2) LuDela Smart Candle, Ivory Color, Four (4) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
 	prod1d.Currency = currency.USD
@@ -191,6 +204,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod2d.Slug = "Duo-W-O"
 	prod2d.GetOrCreate("Slug=", prod2d.Slug)
 	// prod2d.SetKey("Knc9wlZJUFJE")
+	prod2d.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/kits/Duo-W-O.png", X: 500, Y: 500}
 	prod2d.Name = "Duo Starter Kit, Orange Wax Shell Upgrade"
 	prod2d.Description = "Includes: Two (2) LuDela Smart Candle, Orange Color, Four (4) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
 	prod2d.Currency = currency.USD
@@ -205,6 +219,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod3d.Slug = "Duo-W-R"
 	prod3d.GetOrCreate("Slug=", prod3d.Slug)
 	// prod3d.SetKey("Knc9wlZFJEJE")
+	prod3d.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/kits/Duo-W-R.png", X: 500, Y: 500}
 	prod3d.Name = "Duo Starter Kit, Red Wax Shell Upgrade"
 	prod3d.Description = "Includes: Two (2) LuDela Smart Candle, Red Color, Four (4) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
 	prod3d.Currency = currency.USD
@@ -219,6 +234,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod4d.Slug = "Duo-W-B"
 	prod4d.GetOrCreate("Slug=", prod4d.Slug)
 	// prod4d.SetKey("Knc9wlZFJEFE")
+	prod4d.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/kits/Duo-W-B.png", X: 500, Y: 500}
 	prod4d.Name = "Duo Starter Kit, Blue Wax Shell Upgrade"
 	prod4d.Description = "Includes: Two (2) LuDela Smart Candle, Blue Color, Four (4) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
 	prod4d.Currency = currency.USD
@@ -233,6 +249,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod5d.Slug = "Duo-W-G"
 	prod5d.GetOrCreate("Slug=", prod5d.Slug)
 	// prod5d.SetKey("Knc9wlZFJIII")
+	prod5d.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/kits/Duo-W-G.png", X: 500, Y: 500}
 	prod5d.Name = "Duo Starter Kit, Green Wax Shell Upgrade"
 	prod5d.Description = "Includes: Two (2) LuDela Smart Candle, Green Color, Four (4) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
 	prod5d.Currency = currency.USD
@@ -247,6 +264,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod6d.Slug = "Duo-W-P"
 	prod6d.GetOrCreate("Slug=", prod6d.Slug)
 	// prod6d.SetKey("Knc9wlZFJFFI")
+	prod6d.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/kits/Duo-W-P.png", X: 500, Y: 500}
 	prod6d.Name = "Duo Starter Kit, Purple Wax Shell Upgrade"
 	prod6d.Description = "Includes: Two (2) LuDela Smart Candle, Purple Color, Four (4) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
 	prod6d.Currency = currency.USD
@@ -261,6 +279,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod7d.Slug = "Duo-G-B"
 	prod7d.GetOrCreate("Slug=", prod7d.Slug)
 	// prod7d.SetKey("Knc9wlZFJFFI")
+	prod7d.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/kits/Duo-G-B.png", X: 500, Y: 500}
 	prod7d.Name = "Duo Starter Kit, Black Glass Shell Upgrade"
 	prod7d.Description = "Includes: Two (2) LuDela Smart Candle, Black Color, Glass Shell, Four (4) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
 	prod7d.Currency = currency.USD
@@ -289,6 +308,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod9d.Slug = "Duo-G-R"
 	prod9d.GetOrCreate("Slug=", prod9d.Slug)
 	// prod9d.SetKey("Knc9wlZFJFFI")
+	prod9d.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/kits/Duo-G-R.png", X: 500, Y: 500}
 	prod9d.Name = "Duo Starter Kit, Red Glass Shell Upgrade"
 	prod9d.Description = "Includes: Two (2) LuDela Smart Candle, Red Color, Glass Shell, Four (4) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
 	prod9d.Currency = currency.USD
@@ -303,6 +323,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod10d.Slug = "Duo-G-SM"
 	prod10d.GetOrCreate("Slug=", prod10d.Slug)
 	// prod10d.SetKey("Knc9wlZFJFOI")
+	prod10d.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/kits/Duo-G-SM.png", X: 500, Y: 500}
 	prod10d.Name = "Duo Starter Kit, Silver Mercury Shell Upgrade"
 	prod10d.Description = "Includes: Two (2) LuDela Smart Candle, Silver Mercury Shell, Four (4) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
 	prod10d.Currency = currency.USD
@@ -317,6 +338,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod11d.Slug = "Duo-G-BM"
 	prod11d.GetOrCreate("Slug=", prod11d.Slug)
 	// prod11d.SetKey("Knc9wlZFkKOI")
+	prod11d.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/kits/Duo-G-BM.png", X: 500, Y: 500}
 	prod11d.Name = "Duo Starter Kit, Bronze Mercury Shell Upgrade"
 	prod11d.Description = "Includes: Two (2) LuDela Smart Candle, Bronze Mercury Shell, Four (4) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
 	prod11d.Currency = currency.USD
@@ -332,6 +354,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod1t.GetOrCreate("Slug=", prod1t.Slug)
 	// prod1t.SetKey("Knc9wlZJUOOG")
 	prod1t.Name = "Trio Starter Kit, Ivory Wax Shell"
+	prod1t.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/kits/Trio-W-I.png", X: 500, Y: 500}
 	prod1t.Description = "Includes: Three (3) LuDela Smart Candle, Ivory Color, Six (6) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
 	prod1t.Currency = currency.USD
 	prod1t.ListPrice = currency.Cents(59700)
@@ -345,6 +368,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod2t.Slug = "Trio-W-O"
 	prod2t.GetOrCreate("Slug=", prod2t.Slug)
 	// prod2t.SetKey("Knc9wlZJUFJE")
+	prod2t.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/kits/Trio-W-O.png", X: 500, Y: 500}
 	prod2t.Name = "Trio Starter Kit, Orange Wax Shell Upgrade"
 	prod2t.Description = "Includes: Three (3) LuDela Smart Candle, Orange Color, Six (6) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
 	prod2t.Currency = currency.USD
@@ -359,6 +383,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod3t.Slug = "Trio-W-R"
 	prod3t.GetOrCreate("Slug=", prod3t.Slug)
 	// prod3t.SetKey("Knc9wlZFJEJE")
+	prod3t.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/kits/Trio-W-R.png", X: 500, Y: 500}
 	prod3t.Name = "Trio Starter Kit, Red Wax Shell Upgrade"
 	prod3t.Description = "Includes: Three (3) LuDela Smart Candle, Red Color, Six (6) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
 	prod3t.Currency = currency.USD
@@ -373,6 +398,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod4t.Slug = "Trio-W-B"
 	prod4t.GetOrCreate("Slug=", prod4t.Slug)
 	// prod4t.SetKey("Knc9wlZFJEFE")
+	prod4t.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/kits/Trio-W-B.png", X: 500, Y: 500}
 	prod4t.Name = "Trio Starter Kit, Blue Wax Shell Upgrade"
 	prod4t.Description = "Includes: Three (3) LuDela Smart Candle, Blue Color, Six (6) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
 	prod4t.Currency = currency.USD
@@ -387,6 +413,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod5t.Slug = "Trio-W-G"
 	prod5t.GetOrCreate("Slug=", prod5t.Slug)
 	// prod5t.SetKey("Knc9wlZFJIII")
+	prod5t.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/kits/Trio-W-G.png", X: 500, Y: 500}
 	prod5t.Name = "Trio Starter Kit, Green Wax Shell Upgrade"
 	prod5t.Description = "Includes: Three (3) LuDela Smart Candle, Green Color, Six (6) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
 	prod5t.Currency = currency.USD
@@ -402,6 +429,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod6t.GetOrCreate("Slug=", prod6t.Slug)
 	// prod6t.SetKey("Knc9wlZFJFFI")
 	prod6t.Name = "Trio Starter Kit, Purple Wax Shell Upgrade"
+	prod6t.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/kits/Trio-W-P.png", X: 500, Y: 500}
 	prod6t.Description = "Includes: Three (3) LuDela Smart Candle, Purple Color, Six (6) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
 	prod6t.Currency = currency.USD
 	prod6t.ListPrice = currency.Cents(65900)
@@ -415,6 +443,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod7t.Slug = "Trio-G-B"
 	prod7t.GetOrCreate("Slug=", prod7t.Slug)
 	// prod7t.SetKey("Knc9wlZFJFFI")
+	prod7t.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/kits/Trio-G-B.png", X: 500, Y: 500}
 	prod7t.Name = "Trio Starter Kit, Black Glass Shell Upgrade"
 	prod7t.Description = "Includes: Three (3) LuDela Smart Candle, Black Color, Glass Shell, Six (6) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
 	prod7t.Currency = currency.USD
@@ -429,6 +458,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod8t.Slug = "Trio-G-W"
 	prod8t.GetOrCreate("Slug=", prod8t.Slug)
 	// prod8t.SetKey("Knc9wlZFJFFI")
+	prod8t.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/kits/Trio-G-W.png", X: 500, Y: 500}
 	prod8t.Name = "Trio Starter Kit, White Glass Shell Upgrade"
 	prod8t.Description = "Includes: Three (3) LuDela Smart Candle, White Color, Glass Shell, Six (6) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
 	prod8t.Currency = currency.USD
@@ -443,6 +473,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod9t.Slug = "Trio-G-R"
 	prod9t.GetOrCreate("Slug=", prod9t.Slug)
 	// prod9t.SetKey("Knc9wlZFJFFI")
+	prod9t.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/kits/Trio-G-R.png", X: 500, Y: 500}
 	prod9t.Name = "Trio Starter Kit, Red Glass Shell Upgrade"
 	prod9t.Description = "Includes: Three (3) LuDela Smart Candle, Red Color, Glass Shell, Six (6) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
 	prod9t.Currency = currency.USD
@@ -457,6 +488,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod10t.Slug = "Trio-G-SM"
 	prod10t.GetOrCreate("Slug=", prod10t.Slug)
 	// prod10t.SetKey("Knc9wlZFJFOI")
+	prod10t.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/kits/Trio-G-SM.png", X: 500, Y: 500}
 	prod10t.Name = "Trio Starter Kit, Silver Mercury Shell Upgrade"
 	prod10t.Description = "Includes: Three (3) LuDela Smart Candle, Silver Mercury Shell, Six (6) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
 	prod10t.Currency = currency.USD
@@ -471,6 +503,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod11t.Slug = "Trio-G-BM"
 	prod11t.GetOrCreate("Slug=", prod11t.Slug)
 	// prod11t.SetKey("Knc9wlZFkKOI")
+	prod11t.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/kits/Trio-G-BM.png", X: 500, Y: 500}
 	prod11t.Name = "Trio Starter Kit, Bronze Mercury Shell Upgrade"
 	prod11t.Description = "Includes: Three (3) LuDela Smart Candle, Bronze Mercury Shell, Six (6) 100% Natural Soy-Beeswax Refill (30-hour burn time)."
 	prod11t.Currency = currency.USD
@@ -486,6 +519,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod13.GetOrCreate("Slug=", prod13.Slug)
 	// prod13.SetKey("Knc9wlKKkKOI")
 	prod13.Name = "Scent: Vanilla Bliss"
+	prod13.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/scent-candles/SC-1.png", X: 500, Y: 500}
 	prod13.Description = "A relaxing blend of sweet, buttery vanilla with hints of coconut and tonka bean"
 	prod13.Currency = currency.USD
 	prod13.ListPrice = currency.Cents(800)
@@ -499,6 +533,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod14.Slug = "SC-1-S"
 	prod14.GetOrCreate("Slug=", prod14.Slug)
 	// prod14.SetKey("Knc9wlKKkKOI")
+	prod14.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/scent-candles/SC-1.png", X: 500, Y: 500}
 	prod14.Name = "Scent: Vanilla Bliss (Subscription)"
 	prod14.Description = "A relaxing blend of sweet, buttery vanilla with hints of coconut and tonka bean"
 	prod14.Currency = currency.USD
@@ -514,6 +549,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod15.GetOrCreate("Slug=", prod15.Slug)
 	// prod15.SetKey("Knc9wlfjwKOI")
 	prod15.Name = "Scent: Dew Kissed Petal"
+	prod15.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/scent-candles/SC-2.png", X: 500, Y: 500}
 	prod15.Description = "A delightful blend of fruity pears and peaches with floral tons of jasmine and waterlily"
 	prod15.Currency = currency.USD
 	prod15.ListPrice = currency.Cents(800)
@@ -528,6 +564,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod16.GetOrCreate("Slug=", prod16.Slug)
 	// prod16.SetKey("Knc9wlFioKOI")
 	prod16.Name = "Scent: Dew Kissed Petal (Subscription)"
+	prod16.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/scent-candles/SC-2.png", X: 500, Y: 500}
 	prod16.Description = "A delightful blend of fruity pears and peaches with floral tons of jasmine and waterlily"
 	prod16.Currency = currency.USD
 	prod16.ListPrice = currency.Cents(800)
@@ -542,6 +579,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod17.GetOrCreate("Slug=", prod17.Slug)
 	// prod17.SetKey("Knc99e2jwKOI")
 	prod17.Name = "Scent: Lavender Escape"
+	prod17.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/scent-candles/SC-3.png", X: 500, Y: 500}
 	prod17.Description = "A calming blend of lavender with vanilla makes this an excellent choice to reduce stress and help you sleep better"
 	prod17.Currency = currency.USD
 	prod17.ListPrice = currency.Cents(800)
@@ -555,6 +593,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod18.Slug = "SC-3-S"
 	prod18.GetOrCreate("Slug=", prod18.Slug)
 	// prod18.SetKey("Knc99e2j932I")
+	prod18.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/scent-candles/SC-3.png", X: 500, Y: 500}
 	prod18.Name = "Scent: Lavender Escape (Subscription)"
 	prod18.Description = "A calming blend of lavender with vanilla makes this an excellent choice to reduce stress and help you sleep better"
 	prod18.Currency = currency.USD
@@ -569,6 +608,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod19.Slug = "SC-4"
 	prod19.GetOrCreate("Slug=", prod19.Slug)
 	// prod19.SetKey("Knc99e2jwKOI")
+	prod19.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/scent-candles/SC-4.png", X: 500, Y: 500}
 	prod19.Name = "Scent: Pomegranate Delight"
 	prod19.Description = "Fresh red currants and pomegranate touched with a splash of orange and finished with a twist of lemon."
 	prod19.Currency = currency.USD
@@ -583,6 +623,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod20.Slug = "SC-4-S"
 	prod20.GetOrCreate("Slug=", prod20.Slug)
 	// prod20.SetKey("Knc9933jwKOI")
+	prod20.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/scent-candles/SC-4.png", X: 500, Y: 500}
 	prod20.Name = "Scent: Pomegranate Delight (Subscription)"
 	prod20.Description = "Fresh red currants and pomegranate touched with a splash of orange and finished with a twist of lemon."
 	prod20.Currency = currency.USD
@@ -597,6 +638,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod21.Slug = "SC-5"
 	prod21.GetOrCreate("Slug=", prod21.Slug)
 	// prod21.SetKey("Knc939sssKOI")
+	prod21.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/scent-candles/SC-5.png", X: 500, Y: 500}
 	prod21.Name = "Scent: Mango Driftwood"
 	prod21.Description = "A perfect blend of freshly-sliced mango and oranges combined with woody basenotes of cedarwood and amber"
 	prod21.Currency = currency.USD
@@ -611,6 +653,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod22.Slug = "SC-5-S"
 	prod22.GetOrCreate("Slug=", prod22.Slug)
 	// prod22.SetKey("Knc939sssKOI")
+	prod22.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/scent-candles/SC-5.png", X: 500, Y: 500}
 	prod22.Name = "Scent: Mango Driftwood (Subscription)"
 	prod22.Description = "A perfect blend of freshly-sliced mango and oranges combined with woody basenotes of cedarwood and amber"
 	prod22.Currency = currency.USD
@@ -625,6 +668,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod23.Slug = "SC-6"
 	prod23.GetOrCreate("Slug=", prod23.Slug)
 	// prod23.SetKey("Knc939932KOI")
+	prod23.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/scent-candles/SC-6.png", X: 500, Y: 500}
 	prod23.Name = "Scent: Turquoise Bay"
 	prod23.Description = "Enjoy a tropical cocktail of island pineapple and coconut combined with blissful basenotes of cedarwood and vanilla"
 	prod23.Currency = currency.USD
@@ -640,6 +684,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod24.GetOrCreate("Slug=", prod24.Slug)
 	// prod24.SetKey("Knc93995555I")
 	prod24.Name = "Scent: Turquoise Bay (Subscription)"
+	prod24.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/scent-candles/SC-6.png", X: 500, Y: 500}
 	prod24.Description = "Enjoy a tropical cocktail of island pineapple and coconut combined with blissful basenotes of cedarwood and vanilla"
 	prod24.Currency = currency.USD
 	prod24.ListPrice = currency.Cents(800)
@@ -653,6 +698,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod25.Slug = "SC-7"
 	prod25.GetOrCreate("Slug=", prod25.Slug)
 	// prod25.SetKey("Knc9399fnweI")
+	prod25.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/scent-candles/SC-7.png", X: 500, Y: 500}
 	prod25.Name = "Scent: White Tea and Ginger"
 	prod25.Description = "An intoxicating mixture of white tea notes and pungent, spicy ginger. This exotic mixture is great for every room in the house."
 	prod25.Currency = currency.USD
@@ -667,6 +713,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod26.Slug = "SC-7-S"
 	prod26.GetOrCreate("Slug=", prod26.Slug)
 	// prod26.SetKey("Knc9399fjfjI")
+	prod26.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/scent-candles/SC-7.png", X: 500, Y: 500}
 	prod26.Name = "Scent: White Tea and Ginger (Subscription)"
 	prod26.Description = "An intoxicating mixture of white tea notes and pungent, spicy ginger. This exotic mixture is great for every room in the house."
 	prod26.Currency = currency.USD
@@ -681,6 +728,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod27.Slug = "SC-8"
 	prod27.GetOrCreate("Slug=", prod27.Slug)
 	// prod27.SetKey("Knc93982fjmI")
+	prod27.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/scent-candles/SC-8.png", X: 500, Y: 500}
 	prod27.Name = "Scent: Sheer Linen and Orchid"
 	prod27.Description = "A light, refreshing combination lily and orange flowers with lavender and sheer musks."
 	prod27.Currency = currency.USD
@@ -695,6 +743,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod28.Slug = "SC-8-S"
 	prod28.GetOrCreate("Slug=", prod28.Slug)
 	// prod28.SetKey("Knc9398rrrmI")
+	prod28.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/scent-candles/SC-8.png", X: 500, Y: 500}
 	prod28.Name = "Scent: Sheer Linen and Orchid (Subscription)"
 	prod28.Description = "A light, refreshing combination lily and orange flowers with lavender and sheer musks."
 	prod28.Currency = currency.USD
@@ -709,6 +758,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod29.Slug = "SC-9"
 	prod29.GetOrCreate("Slug=", prod29.Slug)
 	// prod29.SetKey("Knc9jmzzfjmI")
+	prod29.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/scent-candles/SC-9.png", X: 500, Y: 500}
 	prod29.Name = "Scent: Coastal Waters"
 	prod29.Description = "Fresh ocean breezes gently blowing over a calm beach. Soft white floral background on a mossy musk base. A fresh coastal fragrance."
 	prod29.Currency = currency.USD
@@ -723,6 +773,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod30.Slug = "SC-9-S"
 	prod30.GetOrCreate("Slug=", prod30.Slug)
 	// prod30.SetKey("Knc9jmlrfjmI")
+	prod30.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/scent-candles/SC-9.png", X: 500, Y: 500}
 	prod30.Name = "Scent: Coastal Waters (Subscription)"
 	prod30.Description = "Fresh ocean breezes gently blowing over a calm beach. Soft white floral background on a mossy musk base. A fresh coastal fragrance."
 	prod30.Currency = currency.USD
@@ -737,6 +788,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod31.Slug = "SC-10"
 	prod31.GetOrCreate("Slug=", prod31.Slug)
 	// prod31.SetKey("Knc9jjfjs4mI")
+	prod31.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/scent-candles/SC-10.png", X: 500, Y: 500}
 	prod31.Name = "Scent: Midnight Showers"
 	prod31.Description = "A soothing, masculine of bergamot and citrus with delightful hints of sandlewood and oak moss"
 	prod31.Currency = currency.USD
@@ -751,6 +803,7 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod32.Slug = "SC-10-S"
 	prod32.GetOrCreate("Slug=", prod32.Slug)
 	// prod32.SetKey("Knc9jfrjs4mI")
+	prod32.Image = Media{Type: MediaImage, Alt: "", Url: "http://ludela.com/images/product/scent-candles/SC-10.png", X: 500, Y: 500}
 	prod32.Name = "Scent: Midnight Showers (Subscription)"
 	prod32.Description = "A soothing, masculine of bergamot and citrus with delightful hints of sandlewood and oak moss"
 	prod32.Currency = currency.USD
