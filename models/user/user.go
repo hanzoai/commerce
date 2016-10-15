@@ -46,7 +46,7 @@ type User struct {
 	Email           string   `json:"email"`
 	PaypalEmail     string   `json:"paypalEmail,omitempty"`
 	PasswordHash    []byte   `schema:"-" datastore:",noindex" json:"-"`
-	Organizations   []string `json:"-"`
+	Organizations   []string `json:"-" datastore:",noindex"`
 
 	Facebook struct {
 		AccessToken string `facebook:"-"`
@@ -65,7 +65,7 @@ type User struct {
 		Stripe payment.Account `json:"stripe,omitempty"`
 		PayPal payment.Account `json:"paypal,omitempty"`
 		Affirm payment.Account `json:"affirm,omitempty"`
-	} `json:"-"`
+	} `json:"-" datastore:",noindex"`
 
 	Enabled bool `json:"enabled"` //whether or not the user can login yet
 
@@ -83,7 +83,7 @@ type User struct {
 	ReferrerId string `json:"referrerId,omitempty"`
 
 	// Series of events that have occured relevant to this order
-	History []Event `json:"-,omitempty"`
+	History []Event `json:"-,omitempty" datastore",noindex"`
 
 	IsOwner bool `json:"owner,omitempty" datastore:"-"`
 
