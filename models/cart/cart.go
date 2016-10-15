@@ -27,8 +27,8 @@ type Status string
 
 const (
 	Active    Status = "active"
-	Discarded        = "discarded"
-	Ordered          = "ordered"
+	Discarded Status = "discarded"
+	Ordered   Status = "ordered"
 )
 
 type Cart struct {
