@@ -37,10 +37,10 @@ type Status string
 
 const (
 	Cancelled Status = "cancelled"
-	Completed        = "completed"
-	Locked           = "locked"
-	OnHold           = "on-hold"
-	Open             = "open"
+	Completed Status = "completed"
+	Locked    Status = "locked"
+	OnHold    Status = "on-hold"
+	Open      Status = "open"
 )
 
 type Order struct {
