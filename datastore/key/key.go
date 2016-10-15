@@ -53,15 +53,24 @@ func Encode(ctx appengine.Context, key Key) string {
 }
 
 // Decode key from string, supports hash ids and aeds encoded keys
-func Decode(ctx appengine.Context, key string) (*aeds.Key, error) {
+func Decode(ctx appengine.Context, encoded string) (*aeds.Key, error) {
 	// Assume hashid
-	k, err := hashid.DecodeKey(ctx, key)
+	key, err := hashid.DecodeKey(ctx, encoded)
 	if err == nil {
-		return k, nil
+		return key, nil
 	}
 
 	// Fallback to aedsDecode
-	return aedsDecode(ctx, key)
+	return aedsDecode(ctx, encoded)
+}
+
+func Encode64(key Key) string {
+	return key.Encode()
+}
+
+// Return Key from either string or int id.
+func Decode64(ctx appengine.Context, encoded string) (*aeds.Key, error) {
+	return aedsDecode(ctx, encoded)
 }
 
 // Convert to Key from aeds.Key or encoded key
@@ -104,7 +113,7 @@ func Exists(ctx appengine.Context, key interface{}) (bool, error) {
 }
 
 // Return Key from int id (potentially a string int id).
-func FromInt(ctx appengine.Context, kind string, intid interface{}) *aeds.Key {
+func FromInt(ctx appengine.Context, kind string, intid interface{}, parent Key) *aeds.Key {
 	var id int64
 	switch v := intid.(type) {
 	case string:
@@ -121,5 +130,5 @@ func FromInt(ctx appengine.Context, kind string, intid interface{}) *aeds.Key {
 		panic("Not a valid integer")
 	}
 
-	return aeds.NewKey(ctx, kind, "", id, nil)
+	return aeds.NewKey(ctx, kind, "", id, convert(parent))
 }
