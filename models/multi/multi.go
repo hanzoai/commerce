@@ -6,10 +6,9 @@ import (
 	"reflect"
 	"sync"
 
-	"appengine"
-
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
+	"crowdstart.com/util/log"
 )
 
 // Vals should be a slice of models
@@ -78,19 +77,14 @@ func multi(vals interface{}, fn func(mixin.Entity) error) error {
 	}
 }
 
-func Get(ctx appengine.Context, keys interface{}, vals interface{}) error {
-	var wg sync.WaitGroup
+func Get(db *datastore.Datastore, keys interface{}, vals interface{}) error {
+	keySlice := reflect.ValueOf(keys)
 	var valSlice reflect.Value
-
-	db := datastore.New(ctx)
 
 	// Keys must be a slice
 	if reflect.TypeOf(keys).Kind() != reflect.Slice {
-		return errors.New(fmt.Sprintf("Must be called with slice of keys, not: %v", keys))
+		return fmt.Errorf("Keys must be a slice of keys, not: %v", keys)
 	}
-
-	keySlice := reflect.ValueOf(keys)
-	nkeys := keySlice.Len()
 
 	// Vals must be a slice
 	typ := reflect.TypeOf(vals)
@@ -100,13 +94,15 @@ func Get(ctx appengine.Context, keys interface{}, vals interface{}) error {
 	case reflect.Slice:
 		valSlice = reflect.ValueOf(vals)
 	default:
-		return errors.New("Vals must be a slice or pointer to a slice")
+		return fmt.Errorf("Vals must be a slice or pointer to a slice, not: %v", vals)
 	}
 
+	// Get number of entities we're fetching
+	nkeys := keySlice.Len()
+
 	// Get type of valSlice, values
-	valSliceType := typ.Elem()
-	valType := valSliceType.Elem()
-	valType = reflect.Zero(valType).Type().Elem()
+	valType := typ.Elem()
+	valType = reflect.Zero(valType).Type()
 
 	// Auto allocate vals if length of valSlice is not set
 	if valSlice.Len() == 0 {
@@ -115,15 +111,20 @@ func Get(ctx appengine.Context, keys interface{}, vals interface{}) error {
 		}
 
 		// Create new valSlice of correct capacity and insert properly instantiated values
-		zeroes := reflect.MakeSlice(valSliceType, nkeys, nkeys)
+		zeroes := reflect.MakeSlice(typ, nkeys, nkeys)
 
 		// Append to vals valSlice, growing original valSlice to proper length
 		valSlice.Set(reflect.AppendSlice(valSlice, zeroes))
 	}
 
+	// Create new zero'd entity
+	log.Debug("valtype: %v", valType)
+
 	// Capture all errors
 	errs := make(MultiError, nkeys)
 	errd := false
+
+	var wg sync.WaitGroup
 
 	// Loop over slice fetching entities
 	for i := 0; i < nkeys; i++ {
@@ -136,7 +137,6 @@ func Get(ctx appengine.Context, keys interface{}, vals interface{}) error {
 			// Get key
 			key := keySlice.Index(i).Interface()
 
-			// Create new zero'd entity
 			val := reflect.New(valType)
 			entity := val.Interface().(mixin.Entity)
 
