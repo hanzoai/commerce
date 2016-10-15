@@ -20,10 +20,10 @@ type Status string
 const (
 	// Stripe status
 	Canceled  Status = "canceled"
-	Failed           = "failed"
-	InTransit        = "in-transit"
-	Paid             = "paid"
-	Pending          = "pending"
+	Failed    Status = "failed"
+	InTransit Status = "in-transit"
+	Paid      Status = "paid"
+	Pending   Status = "pending"
 
 	// Failed to submit to stripe
 	Error = "error"

@@ -10,17 +10,17 @@ type Type string
 
 const (
 	Platform  Type = "platform"
-	Stripe         = "stripe"
-	Affiliate      = "affiliate"
-	Partner        = "partner"
+	Stripe    Type = "stripe"
+	Affiliate Type = "affiliate"
+	Partner   Type = "partner"
 )
 
 type Status string
 
 const (
 	Pending  Status = "pending"
-	Paid            = "paid"
-	Refunded        = "refunded"
+	Paid     Status = "paid"
+	Refunded Status = "refunded"
 )
 
 type Fee struct {
@@ -32,7 +32,7 @@ type Fee struct {
 	AffiliateId string `json:"affiliateId,omitempty"`
 	PartnerId   string `json:"partnerId,omitempty"`
 
-	PaymentId string `json:"paymentId"`
+	PaymentId  string `json:"paymentId"`
 	TransferId string `json:"transferId"`
 
 	Commission commission.Commission `json:"commission,omitempty"`
