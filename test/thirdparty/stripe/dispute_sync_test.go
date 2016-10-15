@@ -19,7 +19,7 @@ var _ = Describe("thirdparty.stripe.UpdatePaymentFromDispute", func() {
 		dispute.Status = stripe.Won
 		It("should mark the payment as Paid", func() {
 			tasks.UpdatePaymentFromDispute(pay, dispute)
-			Expect(string(pay.Status)).To(Equal(payment.Paid))
+			Expect(pay.Status).To(Equal(payment.Paid))
 		})
 	})
 
@@ -28,7 +28,7 @@ var _ = Describe("thirdparty.stripe.UpdatePaymentFromDispute", func() {
 		dispute.Status = stripe.ChargeRefunded
 		It("should mark the payment as Refunded", func() {
 			tasks.UpdatePaymentFromDispute(pay, dispute)
-			Expect(string(pay.Status)).To(Equal(payment.Refunded))
+			Expect(pay.Status).To(Equal(payment.Refunded))
 		})
 	})
 
@@ -38,11 +38,11 @@ var _ = Describe("thirdparty.stripe.UpdatePaymentFromDispute", func() {
 
 			dispute.Status = stripe.Lost
 			tasks.UpdatePaymentFromDispute(pay, dispute)
-			Expect(string(pay.Status)).To(Equal(payment.Disputed))
+			Expect(pay.Status).To(Equal(payment.Disputed))
 
 			dispute.Status = stripe.Review
 			tasks.UpdatePaymentFromDispute(pay, dispute)
-			Expect(string(pay.Status)).To(Equal(payment.Disputed))
+			Expect(pay.Status).To(Equal(payment.Disputed))
 		})
 	})
 })
