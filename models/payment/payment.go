@@ -19,13 +19,13 @@ type Status string
 
 const (
 	Cancelled  Status = "cancelled"
-	Credit            = "credit"
-	Disputed          = "disputed"
-	Failed            = "failed"
-	Fraudulent        = "fraudulent"
-	Paid              = "paid"
-	Refunded          = "refunded"
-	Unpaid            = "unpaid"
+	Credit     Status = "credit"
+	Disputed   Status = "disputed"
+	Failed     Status = "failed"
+	Fraudulent Status = "fraudulent"
+	Paid       Status = "paid"
+	Refunded   Status = "refunded"
+	Unpaid     Status = "unpaid"
 )
 
 type Type string
