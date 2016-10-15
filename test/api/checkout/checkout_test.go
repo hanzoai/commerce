@@ -20,6 +20,7 @@ import (
 	"crowdstart.com/models/variant"
 	"crowdstart.com/util/hashid"
 
+	. "crowdstart.com/models"
 	. "crowdstart.com/util/test/ginkgo"
 )
 
@@ -142,7 +143,13 @@ var _ = Describe("/checkout/authorize", func() {
 		})
 
 		It("Should save order", func() {
-			getOrder(res.Id())
+			ord := getOrder(res.Id())
+			Expect(ord.Status).To(Equal(order.Open))
+			Expect(ord.Total).To(Equal(req.Order.Total))
+			Expect(ord.Tax).To(Equal(req.Order.Tax))
+			Expect(ord.LineTotal).To(Equal(req.Order.LineTotal))
+			Expect(ord.Items).To(Equal(req.Order.Items))
+			Expect(ord.FulfillmentStatus).To(Equal(FulfillmentUnfulfilled))
 		})
 
 		It("Should parent order to user", func() {
