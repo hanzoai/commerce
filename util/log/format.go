@@ -415,6 +415,7 @@ func relativePath(file string) string {
 
 func init() {
 	_, filename, _, _ := runtime.Caller(1)
+	sdkPath = strings.Replace(filename, "util/log/stack.go", "", 1)
 	sdkPath = strings.Replace(filename, "util/log/log.go", "", 1)
 	projectPath = strings.Replace(sdkPath, "/.sdk/gopath/src/crowdstart.com", "", 1)
 }
