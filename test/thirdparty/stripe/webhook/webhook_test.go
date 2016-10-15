@@ -126,9 +126,9 @@ var _ = Describe("Stripe Webhook Events", func() {
 		It("Succeeded = true", func() {
 			ord, pay := mockStripeChargeEvent("charge.updated", "succeeded", true)
 
-			Expect(payment.Paid).To(Equal(string(pay.Status)))
-			Expect(payment.Paid).To(Equal(string(ord.PaymentStatus)))
-			Expect(order.Open).To(Equal(string(ord.Status)))
+			Expect(payment.Paid).To(Equal(pay.Status))
+			Expect(payment.Paid).To(Equal(ord.PaymentStatus))
+			Expect(order.Open).To(Equal(ord.Status))
 
 			Expect(ord.Paid).To(Equal(pay.Amount))
 		})
@@ -136,16 +136,16 @@ var _ = Describe("Stripe Webhook Events", func() {
 		It("Status = failed", func() {
 			ord, pay := mockStripeChargeEvent("charge.updated", "failed", true)
 
-			Expect(payment.Failed).To(Equal(string(pay.Status)))
-			Expect(payment.Failed).To(Equal(string(ord.PaymentStatus)))
+			Expect(payment.Failed).To(Equal(pay.Status))
+			Expect(payment.Failed).To(Equal(ord.PaymentStatus))
 			Expect(order.Cancelled).To(Equal(ord.Status))
 		})
 
 		It("Status = refunded", func() {
 			ord, pay := mockStripeChargeEvent("charge.updated", "refunded", true)
 
-			Expect(payment.Refunded).To(Equal(string(pay.Status)))
-			Expect(payment.Refunded).To(Equal(string(ord.PaymentStatus)))
+			Expect(payment.Refunded).To(Equal(pay.Status))
+			Expect(payment.Refunded).To(Equal(ord.PaymentStatus))
 			Expect(order.Cancelled).To(Equal(ord.Status))
 		})
 	})
