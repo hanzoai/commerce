@@ -524,11 +524,11 @@ var _ = Describe("payment", func() {
 
 			payments, err := refundedOrder.GetPayments()
 			Expect(err).ToNot(HaveOccurred())
-			for _, p := range payments {
-				if p.AmountRefunded == p.Amount {
-					Expect(string(p.Status)).To(Equal(payment.Refunded))
+			for _, pay := range payments {
+				if pay.AmountRefunded == pay.Amount {
+					Expect(pay.Status).To(Equal(payment.Refunded))
 				} else {
-					Expect(string(p.Status)).To(Equal(payment.Paid))
+					Expect(pay.Status).To(Equal(payment.Paid))
 				}
 			}
 		})
