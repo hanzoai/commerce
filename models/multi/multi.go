@@ -8,7 +8,6 @@ import (
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
-	"crowdstart.com/util/log"
 )
 
 // Vals should be a slice of models
@@ -18,13 +17,9 @@ func multi(vals interface{}, fn func(mixin.Entity) error) error {
 		return errors.New(fmt.Sprintf("Must be called with slice of entities, not: %v", vals))
 	}
 
-	slice := reflect.ValueOf(vals)
-
 	var wg sync.WaitGroup
-
+	slice := reflect.ValueOf(vals)
 	n := slice.Len()
-
-	// Capture all errors
 	errs := make(MultiError, n)
 	errd := false
 
@@ -78,49 +73,15 @@ func multi(vals interface{}, fn func(mixin.Entity) error) error {
 }
 
 func Get(db *datastore.Datastore, keys interface{}, vals interface{}) error {
+	// Fetch underlying entities
+	if err := db.GetMulti(keys, vals); err != nil {
+		return err
+	}
+
 	keySlice := reflect.ValueOf(keys)
-	var valSlice reflect.Value
-
-	// Keys must be a slice
-	if reflect.TypeOf(keys).Kind() != reflect.Slice {
-		return fmt.Errorf("Keys must be a slice of keys, not: %v", keys)
-	}
-
-	// Vals must be a slice
-	typ := reflect.TypeOf(vals)
-	switch typ.Kind() {
-	case reflect.Ptr:
-		valSlice = reflect.Indirect(reflect.ValueOf(vals))
-	case reflect.Slice:
-		valSlice = reflect.ValueOf(vals)
-	default:
-		return fmt.Errorf("Vals must be a slice or pointer to a slice, not: %v", vals)
-	}
-
-	// Get number of entities we're fetching
+	valSlice := reflect.ValueOf(vals)
 	nkeys := keySlice.Len()
 
-	// Get type of valSlice, values
-	valType := typ.Elem()
-	valType = reflect.Zero(valType).Type()
-
-	// Auto allocate vals if length of valSlice is not set
-	if valSlice.Len() == 0 {
-		if !valSlice.CanAddr() {
-			return errors.New("Destination must be addressable to auto-allocate entities")
-		}
-
-		// Create new valSlice of correct capacity and insert properly instantiated values
-		zeroes := reflect.MakeSlice(typ, nkeys, nkeys)
-
-		// Append to vals valSlice, growing original valSlice to proper length
-		valSlice.Set(reflect.AppendSlice(valSlice, zeroes))
-	}
-
-	// Create new zero'd entity
-	log.Debug("valtype: %v", valType)
-
-	// Capture all errors
 	errs := make(MultiError, nkeys)
 	errd := false
 
@@ -134,22 +95,16 @@ func Get(db *datastore.Datastore, keys interface{}, vals interface{}) error {
 		go func(i int) {
 			defer wg.Done()
 
-			// Get key
 			key := keySlice.Index(i).Interface()
+			entity := valSlice.Index(i).Interface().(mixin.Entity)
 
-			val := reflect.New(valType)
-			entity := val.Interface().(mixin.Entity)
-
-			// Initialize and try to fetch with key
-			entity.Init(db)
-			if err := entity.Get(key); err != nil {
+			// Set key on model
+			if err := entity.SetKey(key); err != nil {
 				errd = true
 				errs[i] = err
-				return
 			}
-
-			// Set entity on val slice
-			valSlice.Index(i).Set(val)
+			// Ensure model is initialized correctly
+			entity.Init(db)
 		}(i)
 	}
 
