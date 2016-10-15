@@ -22,13 +22,64 @@ const (
 	Signup             = "signup"
 )
 
+func ProcessReferralsInternal(ctx appengine.Context, referrerId string, interval TimeInterval) {
+	db := datastore.New(ctx)
+	// nsctx, _ := appengine.Namespace(ctx, namespace)
+	oldCount, err := referral.Query(db).Filter("CreatedAt<", interval.Start).KeysOnly().Count()
+	if err != nil {
+		log.Error("error while fetching old count: %v", err)
+		panic(err)
+	}
+	q := referral.Query(db).Filter("Referrer.Id=", referrerId)
+	q = q.Filter("CreatedAt>=", interval.Start)
+	q = q.Filter("CreatedAt<", interval.End)
+	q = q.Order("CreatedAt").KeysOnly()
+	t := q.Run()
+	intervalCount, err := q.Count()
+	if err != nil {
+		log.Error("error while fetching old count: %v", err)
+		panic(err)
+	}
+	totalCount := oldCount + intervalCount
+	log.Error("hoh: %v", totalCount)
+	r := referrer.New(db)
+	err = r.Get(referrerId)
+	if err != nil {
+		log.Error("error while fetching referrer id '%s': %v", referrerId, err, ctx)
+		panic(err)
+	}
+	currentCount := oldCount
+	for {
+		rflKey, err := t.Next(nil)
+
+		if err == datastore.Done {
+			break
+		}
+
+		if err = datastore.IgnoreFieldMismatch(err); err != nil {
+			log.Error("referrer: failed to fetch next entity: %v", err, ctx)
+			break
+		}
+
+		counter.IncrReferrerTotal(ctx, referrerId)
+		nextCount := currentCount + 1
+		errors := r.Program.ApplyActions(r, currentCount, nextCount)
+		if len(errors) > 0 {
+			log.Error("errors while applying program actions for referral '%s': %v", rflKey, errors, ctx)
+			return
+		}
+		currentCount = nextCount
+	}
+}
+
 // Process a block of referrals.
 // This sorts and processes referrals in approximate temporal order.
 // Referral records are assigned a timestamp using each request handler's
 // local time, so this function should be scheduled to run with a delay
-// greater than the total expected clock drift between the "earliest" node
-// and the "latest" node.
-var saveReferral_ = delay.Func("", func(ctx appengine.Context, interval TimeInterval) {
+// greater than the total expected clock drift between the "earliest"
+// request-handling node and the "latest" request-handling node.
+var saveReferral_ = delay.Func("", func(ctx appengine.Context, namespace string, interval TimeInterval) {
+	ProcessReferralsInternal(ctx, namespace, interval)
 })
 
 type TimeInterval struct {
@@ -57,7 +108,8 @@ const intervalWidth = 10 * time.Minute
 
 func ProcessReferrals(ctx appengine.Context, t time.Time) {
 	interval := IntervalFromInstant(t, intervalWidth)
-	saveReferral_.Once(ctx, NameFromInterval(processingLatency, interval), interval)
+	name := NameFromInterval(processingLatency, interval)
+	saveReferral_.Once(ctx, name, processingLatency, interval)
 }
 
 type LostRace struct {

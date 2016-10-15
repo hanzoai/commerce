@@ -1,6 +1,8 @@
 package delay
 
 import (
+	"time"
+
 	"crowdstart.com/util/log"
 
 	"appengine"
@@ -13,6 +15,7 @@ type Function struct {
 	dfunc *delay.Function
 	queue string
 	name  string
+	delay time.Duration
 }
 
 // Create a new Function assigned to default queue
@@ -21,6 +24,7 @@ func Func(key string, i interface{}) *Function {
 	fn.dfunc = delay.Func(key, i)
 	fn.queue = "" // Use default queue
 	fn.name = "" // Use taskqueue-generated name
+	fn.delay = 0
 	return fn
 }
 
@@ -50,10 +54,11 @@ func (f *Function) Queue(queue string) *Function {
 }
 
 // Add a task only once by using a unique name
-func (f *Function) Once(ctx appengine.Context, name string, args ...interface{}) error {
+func (f *Function) Once(ctx appengine.Context, name string, delay time.Duration, args ...interface{}) error {
 	f2 := new(Function)
 	f2.dfunc = f.dfunc
 	f2.queue = f.queue
 	f2.name = name
+	f2.delay = delay
 	return f2.Call(ctx, args...)
 }
