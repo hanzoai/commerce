@@ -2,6 +2,7 @@ package checkout
 
 import (
 	"appengine"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -13,6 +14,7 @@ import (
 	"crowdstart.com/models/order"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"
+	"crowdstart.com/models/referral"
 	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/referrer/tasks"
 	"crowdstart.com/models/types/currency"
@@ -123,7 +125,25 @@ func saveReferral(ctx appengine.Context, org *organization.Organization, ord *or
 		return
 	}
 
-	tasks.SaveReferral(ctx, ref.Id(), tasks.Checkout)
+	rfl, err := ref.SaveReferral(referral.NewOrder, ord)
+	if err != nil {
+		log.Warn("Unable to save referral: %v", err, ctx)
+		return
+	}
+
+	t := time.Now()
+	tasks.ProcessReferrals(ctx, t)
+
+	if err := counter.IncrReferrerFees(ctx, ref.Id(), rfl); err != nil {
+		log.Warn("Counter Error %s", err, ctx)
+	}
+
+	// Update statistics
+	if ref.AffiliateId != "" {
+		if err := counter.IncrAffiliateFees(ctx, ref.AffiliateId, rfl); err != nil {
+			log.Warn("Counter Error %s", err, ctx)
+		}
+	}
 }
 
 func updateCart(ctx appengine.Context, ord *order.Order) {
