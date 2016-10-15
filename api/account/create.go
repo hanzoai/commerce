@@ -11,6 +11,7 @@ import (
 	"crowdstart.com/auth/password"
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
+	"crowdstart.com/models/referral"
 	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/referrer/tasks"
 	"crowdstart.com/models/user"
@@ -133,7 +134,11 @@ func create(c *gin.Context) {
 		usr.ReferrerId = ""
 	} else {
 		// Try to save referral, save updated referrer
-		tasks.SaveReferral(ctx, ref.Id(), tasks.Signup)
+		if _, err := ref.SaveReferral(referral.NewUser, usr); err != nil {
+			log.Warn("Unable to save referral: %v", err, c)
+		}
+		now := time.Now()
+		tasks.ProcessReferrals(ctx, now)
 	}
 
 	tokStr := ""
