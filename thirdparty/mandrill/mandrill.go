@@ -191,7 +191,7 @@ func SendTemplate(ctx appengine.Context, req *SendTemplateReq) error {
 	client := urlfetch.Client(ctx)
 	client.Transport = &urlfetch.Transport{
 		Context:  ctx,
-		Deadline: time.Duration(30) * time.Second,
+		Deadline: time.Duration(60) * time.Second,
 	}
 	res, err := client.Do(hreq)
 	if err != nil {
