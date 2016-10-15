@@ -559,7 +559,7 @@ var _ = Describe("/checkout/authorize", func() {
 		})
 
 		JustBefore(func() {
-			cl.Post("/checkout/capture", req, res)
+			cl.Post("/checkout/charge", req, res)
 		})
 
 		Context("User id used as id", func() {
