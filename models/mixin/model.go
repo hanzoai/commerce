@@ -257,9 +257,7 @@ func (m *Model) Key() (key datastore.Key) {
 		// Id_ will unfortunately not be set first time around...
 		m.key = m.Db.NewIncompleteKey(kind, m.Parent)
 	} else {
-		// We can allocate an id in advance and ensure that Id_ is populated
-		id := m.Db.AllocateId(kind)
-		m.key = m.Db.NewKey(kind, "", id, m.Parent)
+		m.key = m.Db.AllocateKey(kind, m.Parent)
 	}
 
 	// Update ID
