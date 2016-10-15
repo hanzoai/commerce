@@ -451,7 +451,7 @@ func (o *Order) GetItemEntities() error {
 		vals[i] = dst
 	}
 
-	return multi.Get(o.Context(), keys, vals)
+	return multi.Get(o.Datastore(), keys, vals)
 }
 
 // Update underlying line item entities using store listings
