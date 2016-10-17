@@ -101,12 +101,22 @@ type Model struct {
 
 	// Set by our mixin
 	Id_       string    `json:"id,omitempty"`
+	Loaded_   bool      `json:"-" datastore:"-"`
 	CreatedAt time.Time `json:"createdAt,omitempty"`
 	UpdatedAt time.Time `json:"updatedAt,omitempty"`
 	Deleted   bool      `json:"deleted,omitempty"`
 
 	// Flag used to specify that we're using a string key for this kind
 	UseStringKey bool `json:"-" datastore:"-"`
+}
+
+// Helper to prevent duplicate deserialization
+func (m *Model) Loaded() bool {
+	if m.Loaded_ {
+		return true
+	}
+	m.Loaded_ = true
+	return false
 }
 
 // Wire up model
