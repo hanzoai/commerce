@@ -1,6 +1,7 @@
 package analytics
 
 import (
+	"crowdstart.com/models/types/currency"
 	"crowdstart.com/util/json"
 )
 
@@ -69,6 +70,9 @@ type Integration struct {
 		Type string `json:"type,omitempty"`
 	} `json:"src,omitempty"`
 
+	// Sampling percentage
+	Sampling float64 `json:"sampling,omitempty"`
+
 	// Available integrations
 	Custom
 	FacebookConversions
@@ -77,12 +81,28 @@ type Integration struct {
 	GoogleAnalytics
 }
 
+// Override value for a given event
+type Value struct {
+	Percent float64        `json:"percent,omitempty"`
+	Value   currency.Cents `json:"value,omitempty"`
+}
+
+// Event specific value overrides
+type Values struct {
+	Currency         currency.Type `json:"currency,omitempty"`
+	ViewedProduct    Value         `json:"viewedProduct,omitempty"`
+	AddedProduct     Value         `json:"addedProduct,omitempty"`
+	InitiateCheckout Value         `json:"initiateCheckout,omitempty"`
+	AddPaymentInfo   Value         `json:"addPaymentInfo,omitempty"`
+}
+
 // Integration specific properties
 type Custom struct {
 	Code string `json:"code,omitempty"`
 }
 
 type FacebookPixel struct {
+	Values Values `json:"values,omitempty"`
 }
 
 type FacebookConversions struct {
