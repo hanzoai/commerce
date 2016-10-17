@@ -115,3 +115,12 @@ type GoogleAnalytics struct {
 
 type GoogleAdWords struct {
 }
+
+type Heap struct {
+}
+
+type Heap struct {
+}
+
+type Sentry struct {
+}
