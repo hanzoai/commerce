@@ -109,6 +109,11 @@ func (c *Cart) Validator() *val.Validator {
 }
 
 func (c *Cart) Load(ch <-chan aeds.Property) (err error) {
+	// Prevent duplicate deserialization
+	if c.Loaded() {
+		return nil
+	}
+
 	// Ensure we're initialized
 	c.Defaults()
 
@@ -117,8 +122,10 @@ func (c *Cart) Load(ch <-chan aeds.Property) (err error) {
 		return err
 	}
 
-	for _, coup := range c.Coupons {
-		coup.Init(c.Model.Db)
+	// Initialize coupons
+	// TODO: See if this is necessary
+	for i := range c.Coupons {
+		c.Coupons[i].Init(c.Model.Db)
 	}
 
 	// Deserialize from datastore
