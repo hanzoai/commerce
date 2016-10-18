@@ -275,10 +275,14 @@ test-watch:
 	@$(ginkgo) watch -r=true -p=true -progress --failFast --skipMeasurements $(test_verbose)
 
 bench:
-	@$(ginkgo) $(test_target) -p=true -progress --randomizeAllSpecs --failFast --skipPackage=integration $(test_verbose)
+			@$(ginkgo) $(test_target) -p=true -progress --randomizeAllSpecs --failFast --skipPackage=integration $(test_verbose)
 
 test-ci:
-	$(ginkgo) $(test_target) -p=true --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace
+	$(ginkgo) $(test_target) -p=true --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace -cover
+
+coverage:
+	gover test/
+	goveralls -coverprofile=gover.coverprofile -service=circle-ci -repotoken=Tw5twjuGOKXT76UNhAXkY3TVJ2XMnFLls
 
 # DEPLOY
 
