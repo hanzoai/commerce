@@ -1,7 +1,6 @@
 package test
 
 import (
-	"errors"
 	"strconv"
 	"testing"
 
@@ -41,65 +40,27 @@ var _ = AfterSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 })
 
-var _ = Describe("EncodeId", func() {
-	Context("Allocate id", func() {
+var _ = Describe("Key", func() {
+	Context("AllocateID", func() {
 		It("should be non-zero", func() {
-			id := db.AllocateId("test")
+			id := db.AllocateID("test", nil)
 			Expect(id).NotTo(Equal(0))
 		})
 	})
 
-	Context("Encoding int64", func() {
-		It("should not be an empty string", func() {
-			id := db.EncodeId("test", int64(12345))
-			Expect(id).NotTo(Equal(""))
+	Context("Integer key", func() {
+		It("should create key from int", func() {
+			ickey := db.NewIncompleteKey("foo", nil)
+			aekey := db.NewKeyFromInt("foo", 10, nil)
+			Expect(aekey).NotTo(Equal(ickey))
 		})
 	})
 
-	Context("Encoding int", func() {
-		It("should not be an empty string", func() {
-			id := db.EncodeId("test", int(12345))
-			Expect(id).NotTo(Equal(""))
-		})
-	})
-
-	Context("Encoding string", func() {
-		It("should not be an empty string", func() {
-			id := db.EncodeId("test", "12345")
-			Expect(id).NotTo(Equal(""))
-		})
-	})
-
-	Context("Encoded int64 and int", func() {
-		It("should be the same", func() {
-			id1 := db.EncodeId("test", int64(12345))
-			id2 := db.EncodeId("test", int(12345))
-			Expect(id1).To(Equal(id2))
-		})
-	})
-
-	Context("Encoded int and string", func() {
-		It("should be the same", func() {
-			id1 := db.EncodeId("test", int(12345))
-			id2 := db.EncodeId("test", "12345")
-			Expect(id1).To(Equal(id2))
-		})
-	})
-
-	Context("Encoding bad types", func() {
-		// Since this is testing a negative case, we disable warning
-		// temporarily.
-		BeforeEach(func() {
-			db.Warn = false
-		})
-		AfterEach(func() {
-			db.Warn = true
-		})
-
-		It("should error", func() {
-			key := db.EncodeId("test", errors.New(""))
-			Expect(key).To(Equal(""))
-			Expect(key).NotTo(Equal(0))
+	Context("String key", func() {
+		It("should create key from string", func() {
+			ickey := db.NewIncompleteKey("foo", nil)
+			aekey := db.NewKeyFromString("foo", "bar", nil)
+			Expect(aekey).NotTo(Equal(ickey))
 		})
 	})
 })
@@ -158,7 +119,7 @@ var _ = Describe("Datastore.Get", func() {
 			_, err := aeds.Put(ctx, key, entity)
 			Expect(err).ToNot(HaveOccurred())
 
-			err = db.Get(key.Encode(), retrievedEntity)
+			err = db.GetById(key.Encode(), retrievedEntity)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -225,69 +186,6 @@ var _ = Describe("Put", func() {
 	})
 })
 
-var _ = Describe("Datastore.GetKind", func() {
-	kind := "datastore-getkey-test"
-	Context("With Datastore.PutKind", func() {
-		It("should be the same", func() {
-			key := "test-datastore-getkey_"
-			a := &Entity{"test-datastore-getkey"}
-			_, err := db.PutKind(kind, key, a)
-			Expect(err).ToNot(HaveOccurred())
-
-			b := &Entity{}
-			err = db.GetKind(kind, key, b)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(b).To(Equal(a))
-		})
-	})
-
-	Context("With appengine's datastore.Put", func() {
-		It("should be the same", func() {
-			a := &Entity{"test-appengine-put"}
-			key := aeds.NewKey(ctx, kind, "test-key", 0, nil)
-			_, err := aeds.Put(ctx, key, a)
-			Expect(err).ToNot(HaveOccurred())
-
-			b := &Entity{}
-			err = db.GetKind(kind, "test-key", b)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(b).To(Equal(a))
-		})
-	})
-})
-
-var _ = Describe("Datastore.PutKind", func() {
-	kind := "datastore-putkey-test"
-	Context("With Datastore.GetKind", func() {
-		It("should be the same", func() {
-			a := &Entity{"test-datastore"}
-			key := "test-datastore-putkey-getkey"
-			_, err := db.PutKind(kind, key, a)
-			Expect(err).ToNot(HaveOccurred())
-
-			b := &Entity{}
-			err = db.GetKind(kind, key, b)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(b).To(Equal(a))
-		})
-	})
-
-	Context("With appengine's datastore.Get", func() {
-		It("should be the same", func() {
-			a := &Entity{"test-datastore"}
-			key := "test-datastore-putkey-getkey"
-			_, err := db.PutKind(kind, key, a)
-			Expect(err).ToNot(HaveOccurred())
-
-			b := &Entity{}
-			aKey := aeds.NewKey(ctx, kind, key, 0, nil)
-			err = aeds.Get(ctx, aKey, b)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(b).To(Equal(a))
-		})
-	})
-})
-
 var _ = Describe("Datastore.GetMulti", func() {
 	kind := "datastore-getmulti-test"
 	// Context("With Datastore.PutMulti", func() {
@@ -313,21 +211,16 @@ var _ = Describe("Datastore.GetMulti", func() {
 	Context("With appengine's datastore.PutMulti", func() {
 		It("should be the same", func() {
 			a := make([]Entity, 10)
-			keys := func() []string {
+			keys := func() []*aeds.Key {
 				keys := make([]*aeds.Key, len(a))
 				for i, _ := range keys {
 					a[i].Field = str(i)
 					aKey := aeds.NewKey(ctx, kind, str(i), 0, nil)
 					keys[i] = aKey
 				}
-				_, err := aeds.PutMulti(ctx, keys, a)
+				keys, err := aeds.PutMulti(ctx, keys, a)
 				Expect(err).ToNot(HaveOccurred())
-
-				strKeys := make([]string, len(keys))
-				for i, key := range keys {
-					strKeys[i] = key.Encode()
-				}
-				return strKeys
+				return keys
 			}()
 
 			b := make([]Entity, 10)
@@ -401,76 +294,3 @@ var _ = Describe("Datastore.GetMulti", func() {
 // 		})
 // 	})
 // })
-
-var _ = Describe("Datastore.GetKindMulti", func() {
-	kind := "datastore-GetMultiKey-test"
-
-	Context("With Datastore.PutKind", func() {
-		It("should be the same", func() {
-			a := make([]Entity, 10)
-			keys := make([]string, len(a))
-			for i, _ := range a {
-				a[i].Field = str(i)
-				keys[i] = a[i].Field
-				_, err := db.PutKind(kind, a[i].Field, &a[i])
-				Expect(err).ToNot(HaveOccurred())
-			}
-
-			b := make([]Entity, len(a))
-			err := db.GetKindMulti(kind, keys, b)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(b).To(Equal(a))
-		})
-	})
-
-	Context("With appengine's datastore.PutMulti", func() {
-		It("should be the same", func() {
-			a := make([]Entity, 10)
-			keys := func() []string {
-				for i, _ := range a {
-					entity := Entity{str(i)}
-					a[i] = entity
-				}
-				_keys := make([]string, len(a))
-				keys := make([]*aeds.Key, len(a))
-				for i := 30; i < 30+len(a); i++ {
-					keys[i-30] = aeds.NewKey(ctx, kind, str(i), 0, nil)
-					_keys[i-30] = str(i)
-				}
-				_, err := aeds.PutMulti(ctx, keys, a)
-				Expect(err).ToNot(HaveOccurred())
-				return _keys
-			}()
-
-			c := make([]Entity, len(a))
-			err := db.GetKindMulti(kind, keys, c)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(c).To(Equal(a))
-		})
-	})
-})
-
-var _ = Describe("Datastore.PutKeyMulti", func() {
-	kind := "datastore-PutKeyMulti-test"
-	Context("With Datastore.GetKindMulti", func() {
-		It("should be the same", func() {
-			a := make([]Entity, 3)
-			b := make([]interface{}, len(a))
-			keys := make([]string, len(a))
-			_keys := make([]interface{}, len(a))
-			for i, _ := range a {
-				a[i].Field = str(i)
-				b[i] = &a[i]
-				keys[i] = a[i].Field
-				_keys[i] = keys[i]
-			}
-			_, err := db.PutKindMulti(kind, _keys, b)
-			Expect(err).ToNot(HaveOccurred())
-
-			c := make([]Entity, len(keys))
-			err = db.GetKindMulti(kind, keys, c)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(c).To(Equal(a))
-		})
-	})
-})
