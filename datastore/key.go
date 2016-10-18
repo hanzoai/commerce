@@ -60,7 +60,7 @@ func (d *Datastore) NewKeyFromId(id string) *aeds.Key {
 	return key.NewFromId(d.Context, id)
 }
 
-func (d *Datastore) NewKeyFromInt(kind string, id interface{}, parent Key) *aeds.Key {
+func (d *Datastore) NewKeyFromInt(kind string, id interface{}, parent Key) (*aeds.Key, error) {
 	return key.NewFromInt(d.Context, kind, id, parent)
 }
 
