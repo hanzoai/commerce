@@ -107,7 +107,7 @@ func mockStripeChargeEvent(event, status string, captured bool) (*order.Order, *
 
 	pay2 := payment.New(db)
 	ord2 := order.New(db)
-	err := Retry(25, func() error {
+	err := Retry(5, func() error {
 		pay2.GetById(pay.Id())
 		if pay.Status == pay2.Status {
 			return errors.New("error")
