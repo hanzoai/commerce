@@ -1,3 +1,4 @@
+github.com/Machiel/slugify master
 github.com/cenkalti/backoff master
 github.com/davecgh/go-spew/spew master
 github.com/davidtai/appenginetesting master
@@ -15,7 +16,9 @@ github.com/headzoo/surf master
 github.com/huandu/facebook master
 github.com/icrowley/fake master
 github.com/julienschmidt/httprouter 8c199fb6259ffc1af525cc3ad52ee60ba8359669
+github.com/mattn/goveralls master
 github.com/mholt/binding master
+github.com/modocache/gover master
 github.com/netlify/netlify-go master
 github.com/onsi/ginkgo/ginkgo master
 github.com/onsi/gomega master
@@ -29,5 +32,5 @@ github.com/vincent-petithory/countries master
 github.com/zeekay/aetest 94ec681f66449be39390468ceb71fe6090948e09
 github.com/zeekay/gochimp3 master
 golang.org/x/crypto/bcrypt master
-github.com/Machiel/slugify master
+golang.org/x/tools/cmd/cover master
 gopkg.in/yaml.v2
