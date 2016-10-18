@@ -302,7 +302,7 @@ func (c *Contact) ExternalId() string {
 
 func (c *Contact) Load(db *datastore.Datastore) SObjectCompatible {
 	c.Ref = user.New(db)
-	db.Get(c.ExternalId(), c.Ref)
+	db.GetById(c.ExternalId(), c.Ref)
 	return c.Ref
 }
 
@@ -500,7 +500,7 @@ func (a *Account) ExternalId() string {
 
 func (a *Account) Load(db *datastore.Datastore) SObjectCompatible {
 	a.Ref = user.New(db)
-	db.Get(a.ExternalId(), a.Ref)
+	db.GetById(a.ExternalId(), a.Ref)
 	return a.Ref
 }
 
@@ -786,7 +786,7 @@ func (o *Order) ExternalId() string {
 
 func (o *Order) Load(db *datastore.Datastore) SObjectCompatible {
 	o.Ref = order.New(db)
-	db.Get(o.ExternalId(), o.Ref)
+	db.GetById(o.ExternalId(), o.Ref)
 	return o.Ref
 }
 
