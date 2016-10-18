@@ -280,7 +280,7 @@ test-ci:
 
 coverage:
 	gover test/
-	goveralls -coverprofile=gover.coverprofile -service=circle-ci -repotoken=$(COVERALLS_TOKEN)
+	goveralls -coverprofile=gover.coverprofile -service=circle-ci -repotoken=Tw5twjuGOKXT76UNhAXkY3TVJ2XMnFLls
 
 # DEPLOY
 
