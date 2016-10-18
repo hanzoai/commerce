@@ -17,17 +17,25 @@ var (
 	FromId = Decode
 )
 
+func convertKey(key Key) *aeds.Key {
+	if key == nil {
+		return nil
+	}
+	return key.(*aeds.Key)
+}
+
 // Return new key
 func New(ctx appengine.Context, kind string, id interface{}, parent Key) *aeds.Key {
+	pkey := convertKey(parent)
 	switch v := id.(type) {
 	case int64:
-		return aeds.NewKey(ctx, kind, "", v, nil)
+		return aeds.NewKey(ctx, kind, "", v, pkey)
 	case int:
-		return aeds.NewKey(ctx, kind, "", int64(v), nil)
+		return aeds.NewKey(ctx, kind, "", int64(v), pkey)
 	case string:
-		return aeds.NewKey(ctx, kind, v, 0, nil)
+		return aeds.NewKey(ctx, kind, v, 0, pkey)
 	default:
-		return aeds.NewIncompleteKey(ctx, kind, nil)
+		return aeds.NewIncompleteKey(ctx, kind, pkey)
 	}
 }
 
@@ -58,7 +66,7 @@ func NewFromInt(ctx appengine.Context, kind string, intid interface{}, parent Ke
 		panic("Not a valid integer")
 	}
 
-	return aeds.NewKey(ctx, kind, "", id, parent.(*aeds.Key))
+	return aeds.NewKey(ctx, kind, "", id, convertKey(parent))
 }
 
 // Decode key encoded by aeds directly
