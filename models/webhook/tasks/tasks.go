@@ -54,7 +54,8 @@ func createClient(ctx appengine.Context) *Client {
 
 // Fire webhooks
 var Emit = delay.Func("webhook-emit", func(ctx appengine.Context, org string, event string, data interface{}) {
-	log.Debug("Emitting webhook '%s' for %s: %v", event, org, data, ctx)
+	log.Debug("Emit webhook '%s' for '%s'", event, org, ctx)
+	log.JSON(data)
 
 	db := datastore.New(ctx)
 	db.SetNamespace(org)
