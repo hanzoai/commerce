@@ -29,8 +29,8 @@ type AfterUpdate interface {
 }
 
 // Try to get method off a model
-func getHook(name string, model *Model) (reflect.Method, bool) {
-	typ := reflect.TypeOf(model.Entity)
+func getHook(name string, entity Kind) (reflect.Method, bool) {
+	typ := reflect.TypeOf(entity)
 	return typ.MethodByName(name)
 }
 

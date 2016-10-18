@@ -8,15 +8,15 @@ import (
 
 	"crowdstart.com/util/hashid"
 
-	dskey "crowdstart.com/datastore/key"
+	"crowdstart.com/datastore/key"
 )
 
 // Get coupon from id
 func (q *Query) couponFromId(id string, dst interface{}) (*aeds.Key, bool, error) {
 	code := strings.ToUpper(id)
 
-	if key, ok, _ := q.Filter("Code=", code).First(dst); ok {
-		return key, true, nil
+	if k, ok, _ := q.Filter("Code=", code).First(dst); ok {
+		return k, true, nil
 	} else {
 		// Get ids from coupon id
 		ids := hashid.Decode(id)
@@ -26,10 +26,10 @@ func (q *Query) couponFromId(id string, dst interface{}) (*aeds.Key, bool, error
 		}
 
 		// Recreate coupon key
-		key := dskey.NewFromInt(q.ctx, "coupon", ids[0], nil)
+		k := key.NewFromInt(q.ctx, "coupon", ids[0], nil)
 
 		// Fetch coupon using key
-		_, ok, err := q.ByKey(key, dst)
+		_, ok, err := q.ByKey(k, dst)
 
 		if err != nil {
 			return nil, false, err
@@ -44,14 +44,19 @@ func (q *Query) couponFromId(id string, dst interface{}) (*aeds.Key, bool, error
 		ptr := v.Addr().Interface().(*string)
 		*ptr = id
 
-		return key, true, nil
+		return k, true, nil
 	}
 }
 
 // Get order from id
 func (q *Query) orderFromId(id string, dst interface{}) (*aeds.Key, bool, error) {
-	key := dskey.NewFromInt(q.ctx, "order", id, nil)
-
-	_, ok, err := q.ByKey(key, dst)
-	return key, ok, err
+	k := key.NewFromInt(q.ctx, "order", id, nil)
+	k, ok, err := q.ByKey(k, dst)
+	if err != nil {
+		return nil, false, err
+	}
+	if !ok {
+		return nil, false, nil
+	}
+	return k, ok, err
 }

@@ -25,5 +25,6 @@ type Query interface {
 	First(dst interface{}) (*aeds.Key, bool, error)
 	FirstKey() (*aeds.Key, bool, error)
 	GetAll(dst interface{}) ([]*aeds.Key, error)
+	GetModels(dst interface{}) error
 	GetKeys() ([]*aeds.Key, error)
 }

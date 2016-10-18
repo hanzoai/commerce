@@ -20,7 +20,7 @@ func Capture(org *organization.Organization, ord *order.Order) (*order.Order, []
 
 	// Get payments for this order
 	payments := make([]*payment.Payment, 0)
-	if _, err := payment.Query(db).Ancestor(ord.Key()).GetAll(&payments); err != nil {
+	if err := payment.Query(db).Ancestor(ord.Key()).GetModels(&payments); err != nil {
 		return nil, payments, err
 	}
 
