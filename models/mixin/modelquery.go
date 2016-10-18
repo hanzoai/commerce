@@ -58,12 +58,17 @@ func (q *Query) KeysOnly() *Query {
 
 func (q *Query) First() (bool, error) {
 	key, ok, err := q.Query.First(q.Model.Entity)
-	if ok {
-		if q.Model.key == nil {
-			q.Model.setKey(key)
-		}
+	if err != nil {
+		return false, err
 	}
-	return ok, err
+
+	if !ok {
+		return false, datastore.ErrNoSuchEntity
+	}
+
+	q.Model.setKey(key)
+
+	return true, nil
 }
 
 // Dst expected to be *[]*Model

@@ -409,8 +409,13 @@ func (m *Model) MustGet(args ...interface{}) {
 // Helper that will retrieve entity by id (which may be an encoded key/slug/sku)
 func (m *Model) GetById(id string) error {
 	key, ok, err := m.KeyById(id)
-	if !ok || err != nil {
-		return err
+
+	if err != nil {
+		return erri
+	}
+
+	if !ok {
+		return datastore.ErrNoSuchEntity
 	}
 
 	return m.Get(key)
@@ -472,10 +477,12 @@ func (m *Model) KeyById(id string) (datastore.Key, bool, error) {
 
 	// Try and fetch by filterStr
 	ok, err := m.Query().Filter(filterStr+"=", id).First()
+	if err != nil {
+		return nil, false, err
+	}
 	if !ok {
 		return nil, false, datastore.ErrNoSuchEntity
 	}
-
 	return m.Key(), true, nil
 }
 
