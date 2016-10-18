@@ -215,7 +215,7 @@ func (o *Order) Save(c chan<- aeds.Property) (err error) {
 	return IgnoreFieldMismatch(aeds.SaveStruct(o, c))
 }
 
-func (o *Order) AddAffiliateFee(pricing pricing.Fees, fees []*fee.Fee) ([]*fee.Fee, error) {
+func (o *Order) AddAffiliateFee(pricing *pricing.Fees, fees []*fee.Fee) ([]*fee.Fee, error) {
 	log.Info("Add Affiliate Fee")
 
 	if o.ReferrerId == "" {
@@ -273,7 +273,7 @@ func (o *Order) AddAffiliateFee(pricing pricing.Fees, fees []*fee.Fee) ([]*fee.F
 	return append(fees, fe), nil
 }
 
-func (o *Order) AddPlatformFee(pricing pricing.Fees, fees []*fee.Fee) []*fee.Fee {
+func (o *Order) AddPlatformFee(pricing *pricing.Fees, fees []*fee.Fee) []*fee.Fee {
 	ctx := o.Context()
 	db := datastore.New(ctx)
 
@@ -306,7 +306,7 @@ func (o *Order) AddPartnerFee(partners []pricing.Partner, fees []*fee.Fee) ([]*f
 	return fees, nil
 }
 
-func (o *Order) CalculateFees(pricing pricing.Fees, partners []pricing.Partner) (currency.Cents, []*fee.Fee, error) {
+func (o *Order) CalculateFees(pricing *pricing.Fees, partners []pricing.Partner) (currency.Cents, []*fee.Fee, error) {
 	fees := make([]*fee.Fee, 0)
 	total := currency.Cents(0)
 
