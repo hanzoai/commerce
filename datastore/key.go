@@ -48,6 +48,14 @@ func (d *Datastore) EncodeKey(key Key) string {
 }
 
 // Wrap appengine key funcs
+func (d *Datastore) NewKey(kind, stringID string, intID int64, parent Key) *aeds.Key {
+	if p, ok := parent.(*aeds.Key); ok {
+		return aeds.NewKey(d.Context, kind, stringID, intID, p)
+	} else {
+		return aeds.NewKey(d.Context, kind, stringID, intID, nil)
+	}
+}
+
 func (d *Datastore) NewIncompleteKey(kind string, parent Key) *aeds.Key {
 	if p, ok := parent.(*aeds.Key); ok {
 		return aeds.NewIncompleteKey(d.Context, kind, p)
@@ -56,12 +64,17 @@ func (d *Datastore) NewIncompleteKey(kind string, parent Key) *aeds.Key {
 	}
 }
 
-func (d *Datastore) NewKey(kind, stringID string, intID int64, parent Key) *aeds.Key {
-	if p, ok := parent.(*aeds.Key); ok {
-		return aeds.NewKey(d.Context, kind, stringID, intID, p)
-	} else {
-		return aeds.NewKey(d.Context, kind, stringID, intID, nil)
-	}
+// Create helpers
+func (d *Datastore) NewKeyFromId(id string) *aeds.Key {
+	return key.NewFromId(d.Context, id)
+}
+
+func (d *Datastore) NewKeyFromInt(kind string, id interface{}, parent Key) *aeds.Key {
+	return key.NewFromInt(d.Context, kind, id, parent)
+}
+
+func (d *Datastore) NewKeyFromString(kind string, id string, parent Key) *aeds.Key {
+	return d.NewKey(kind, id, 0, parent)
 }
 
 func (d *Datastore) AllocateID(kind string, parent Key) int64 {
@@ -80,8 +93,4 @@ func (d *Datastore) AllocateIDs(kind string, parent Key, n int) (int64, int64) {
 func (d *Datastore) AllocateKey(kind string, parent Key) *aeds.Key {
 	id := d.AllocateID(kind, parent)
 	return d.NewKey(kind, "", id, parent)
-}
-
-func (d *Datastore) KeyFromInt(kind string, id interface{}) *aeds.Key {
-	return key.FromInt(d.Context, kind, id)
 }

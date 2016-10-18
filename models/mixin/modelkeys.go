@@ -31,7 +31,7 @@ func couponFromId(m *Model, id string) (datastore.Key, bool, error) {
 		}
 
 		// Recreate coupon key
-		key := db.KeyFromInt(m.Kind(), ids[0])
+		key := db.NewKeyFromInt(m.Kind(), ids[0], m.Parent)
 
 		// Fetch coupon using key
 		err := m.Get(key)
@@ -54,7 +54,7 @@ func couponFromId(m *Model, id string) (datastore.Key, bool, error) {
 // Get order from id
 func orderFromId(m *Model, id string) (datastore.Key, bool, error) {
 	db := m.Db
-	key := db.KeyFromInt("order", id)
+	key := db.NewKeyFromInt("order", id, m.Parent)
 
 	ok, _ := m.Query().Filter("__key__ =", key).Get()
 	if !ok {
