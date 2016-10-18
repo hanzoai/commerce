@@ -73,9 +73,9 @@ type Organization struct {
 
 	Name       string   `json:"name"`
 	FullName   string   `json:"fullName"`
-	Owners     []string `json:"owners,omitempty"`
-	Admins     []string `json:"admins,omitempty"`
-	Moderators []string `json:"moderators,omitempty"`
+	Owners     []string `json:"owners,omitempty" datastore:",noindex"`
+	Admins     []string `json:"admins,omitempty" datastore:",noindex"`
+	Moderators []string `json:"moderators,omitempty" datastore:",noindex"`
 	Enabled    bool     `json:"enabled"`
 
 	BillingEmail string  `json:"billingEmail,omitempty"`
@@ -107,7 +107,7 @@ type Organization struct {
 	Plan struct {
 		PlanId    string
 		StartDate time.Time
-	} `json:"-" datastore:",noindex"`
+	} `json:"-"`
 
 	// Salesforce settings
 	Salesforce struct {
@@ -118,29 +118,29 @@ type Organization struct {
 		InstanceUrl  string `json:"instanceUrl"`
 		IssuedAt     string `json:"issuedAt"`
 		RefreshToken string `json:"refreshToken"`
-		Signature    string `json:"signature"`
-	} `json:"-" datastore:",noindex"`
+		Signature    string `json:"signature" datastore:",noindex"`
+	} `json:"-"`
 
 	// Paypal connection
 	Paypal struct {
 		Live struct {
 			Email             string `json:"paypalEmail"`
 			SecurityUserId    string
-			SecurityPassword  string
-			SecuritySignature string
+			SecurityPassword  string `datastore:",noindex"`
+			SecuritySignature string `datastore:",noindex"`
 			ApplicationId     string
 		}
 		Test struct {
 			Email             string `json:"paypalEmail"`
 			SecurityUserId    string
-			SecurityPassword  string
-			SecuritySignature string
+			SecurityPassword  string `datastore:",noindex"`
+			SecuritySignature string `datastore:",noindex"`
 			ApplicationId     string
 		}
 
-		ConfirmUrl string `json:"confirmUrl"`
-		CancelUrl  string `json:"cancelUrl"`
-	} `json:"-" datastore:",noindex"`
+		ConfirmUrl string `json:"confirmUrl" datastore:",noindex"`
+		CancelUrl  string `json:"cancelUrl" datastore:",noindex"`
+	} `json:"-"`
 
 	// Stripe connection
 	Stripe struct {
@@ -151,20 +151,20 @@ type Organization struct {
 		UserId         string
 
 		// Save entire live and test tokens
-		Live connect.Token
-		Test connect.Token
-	} `json:"-" datastore:",noindex"`
+		Live connect.Token `datastore:",noindex"`
+		Test connect.Token `datastore:",noindex"`
+	} `json:"-"`
 
 	// Mailchimp settings
 	Mailchimp struct {
 		ListId string `json:"listId"`
 		APIKey string `json:"apiKey"`
-	} `json:"-" datastore:",noindex"`
+	} `json:"-"`
 
 	// Mandrill settings
 	Mandrill struct {
 		APIKey string
-	} `json:"-" datastore:",noindex"`
+	} `json:"-"`
 
 	// Netlify settings
 	Netlify struct {
@@ -173,7 +173,7 @@ type Organization struct {
 		Email       string
 		Id          string
 		Uid         string
-	} `json:"-" datastore:",noindex"`
+	} `json:"-"`
 
 	// Affiliate configuration
 	Affiliate struct {
