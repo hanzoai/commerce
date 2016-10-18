@@ -7,7 +7,7 @@ import (
 )
 
 func errAndStack(err error) string {
-	if !(std.VerboseOverride() || std.Verbose()) {
+	if !std.Verbose() {
 		return fmt.Sprintf("%v", err)
 	} else {
 		return fmt.Sprintf("%v:\n%s", err, stack(6))
