@@ -10,6 +10,7 @@ import (
 	aeds "appengine/datastore"
 
 	"crowdstart.com/datastore"
+	"crowdstart.com/util/cache"
 	"crowdstart.com/util/hashid"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/rand"
@@ -435,15 +436,12 @@ func (m *Model) KeyExists(key datastore.Key) (bool, error) {
 
 // Update new entity (should already exist)
 func (m *Model) Update() error {
-	// Save current entity as previous entity
-	var prev Entity
+	// Cache results of m.Clone() call in case it's needed in both hooks
+	prev := cache.Once(m.Clone)
 
 	// Execute BeforeUpdate hook if defined on entity.
-	if hook, ok := (m.Entity).(BeforeUpdate); ok {
-		if prev == nil {
-			prev = m.Clone()
-		}
-		if err := hook.BeforeUpdate(prev); err != nil {
+	if hook, ok := getHook("BeforeUpdate", m); ok {
+		if err := callHook(m.Entity, hook, prev()); err != nil {
 			return err
 		}
 	}
@@ -452,12 +450,9 @@ func (m *Model) Update() error {
 		return err
 	}
 
-	// Execute BeforeUpdate hook if defined on entity.
-	if hook, ok := (m.Entity).(AfterUpdate); ok {
-		if prev == nil {
-			prev = m.Clone()
-		}
-		if err := hook.AfterUpdate(prev); err != nil {
+	// Execute AfterUpdate hook if defined on entity.
+	if hook, ok := getHook("AfterUpdate", m); ok {
+		if err := callHook(m.Entity, hook, prev()); err != nil {
 			return err
 		}
 	}
