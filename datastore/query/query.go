@@ -95,80 +95,6 @@ func (q *Query) End(c aeds.Cursor) iface.Query {
 	return q
 }
 
-func (q *Query) ByKey(key iface.Key, dst interface{}) (*aeds.Key, bool, error) {
-	aekey, _ := key.(*aeds.Key)
-
-	if dst == nil {
-		dst = &Id{}
-	}
-
-	err := aeds.Get(q.ctx, aekey, dst)
-
-	// Completely ignore this as we may be querying just for Id{}
-	err = ReallyIgnoreFieldMismatch(err)
-
-	// Not found
-	if err == aeds.ErrNoSuchEntity {
-		return nil, false, nil
-	}
-
-	// Query failed for some reason
-	if err != nil {
-		log.Warn("Failed to query by key: %v", err)
-		return nil, false, err
-	}
-
-	// Success
-	return aekey, true, nil
-}
-
-// Query for entity by id
-func (q *Query) ById(id string, dst interface{}) (*aeds.Key, bool, error) {
-	// Assume encoded key
-	k, err := key.Decode(q.ctx, id)
-
-	if err == nil {
-		_, ok, err := q.ByKey(k, dst)
-		return k, ok, err
-	}
-
-	// Try to find by filter
-	filter := ""
-
-	// Use unique filter based on model type
-	switch q.kind {
-	case "store", "product", "collection":
-		filter = "Slug="
-	case "variant":
-		filter = "SKU="
-	case "organization", "mailinglist":
-		filter = "Name="
-	case "aggregate":
-		filter = "Instance="
-	case "site":
-		filter = "Name="
-	case "namespace":
-		filter = "Name="
-	case "user":
-		if strings.Contains(id, "@") {
-			filter = "Email="
-		} else {
-			filter = "Username="
-		}
-	case "referrer":
-		filter = "Code="
-	case "coupon":
-		return q.couponFromId(id, dst)
-	case "order":
-		return q.orderFromId(id, dst)
-	default:
-		return nil, false, errors.New(fmt.Sprintf("Not a valid kind for query: '%s'", q.kind))
-	}
-
-	// Query by filter
-	return q.Filter(filter, id).First(dst)
-}
-
 func (q *Query) KeyExists(key iface.Key) (bool, error) {
 	_, ok, err := q.KeysOnly().ByKey(key, nil)
 	return ok, err
@@ -210,4 +136,77 @@ func (q *Query) GetAll(dst interface{}) ([]*aeds.Key, error) {
 	keys, err := q.aedsq.GetAll(q.ctx, dst)
 	err = IgnoreFieldMismatch(err)
 	return keys, err
+}
+
+func (q *Query) ByKey(key iface.Key, dst interface{}) (*aeds.Key, bool, error) {
+	aekey, _ := key.(*aeds.Key)
+
+	if dst == nil {
+		dst = &Id{}
+	}
+
+	err := aeds.Get(q.ctx, aekey, dst)
+
+	// Completely ignore this as we may be querying just for Id{}
+	err = ReallyIgnoreFieldMismatch(err)
+
+	// Not found
+	if err == aeds.ErrNoSuchEntity {
+		return nil, false, nil
+	}
+
+	// Query failed for some reason
+	if err != nil {
+		log.Warn("Failed to query by key: %v", err)
+		return nil, false, err
+	}
+
+	// Success
+	return aekey, true, nil
+}
+
+// Query for entity by id
+func (q *Query) ById(id string, dst interface{}) (*aeds.Key, bool, error) {
+	// Assume encoded key
+	k, err := key.Decode(q.ctx, id)
+
+	if err == nil {
+		return q.ByKey(k, dst)
+	}
+
+	// Try to find by filter
+	filter := ""
+
+	// Use unique filter based on model type
+	switch q.kind {
+	case "store", "product", "collection":
+		filter = "Slug="
+	case "variant":
+		filter = "SKU="
+	case "organization", "mailinglist":
+		filter = "Name="
+	case "aggregate":
+		filter = "Instance="
+	case "site":
+		filter = "Name="
+	case "namespace":
+		filter = "Name="
+	case "user":
+		if strings.Contains(id, "@") {
+			filter = "Email="
+		} else {
+			filter = "Username="
+		}
+	case "referrer":
+		filter = "Code="
+	case "coupon":
+		return q.couponFromId(id, dst)
+	case "order":
+		return q.orderFromId(id, dst)
+	default:
+		return nil, false, errors.New(fmt.Sprintf("Not a valid kind for query: '%s'", q.kind))
+	}
+
+	// Query by filter
+	return q.Filter(filter, id).First(dst)
 }

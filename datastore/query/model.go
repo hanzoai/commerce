@@ -16,9 +16,9 @@ type Kind interface {
 
 // Subset of model API needed to initialize a model correctly.
 type Model interface {
-	SetContext(ctx appengine.Context)
-	SetEntity(entity Kind)
-	SetKey(key iface.Key)
+	SetContext(ctx interface{})
+	SetEntity(entity interface{})
+	SetKey(key interface{}) error
 }
 
 // De-pointer slice
