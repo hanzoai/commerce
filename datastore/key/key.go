@@ -1,6 +1,7 @@
 package key
 
 import (
+	"fmt"
 	"strconv"
 
 	"appengine"
@@ -64,7 +65,7 @@ func NewFromId(ctx appengine.Context, id string) *aeds.Key {
 }
 
 // Return key from integer id
-func NewFromInt(ctx appengine.Context, kind string, intid interface{}, parent Key) *aeds.Key {
+func NewFromInt(ctx appengine.Context, kind string, intid interface{}, parent Key) (*aeds.Key, error) {
 	var id int64
 	switch v := intid.(type) {
 	case string:
@@ -78,10 +79,10 @@ func NewFromInt(ctx appengine.Context, kind string, intid interface{}, parent Ke
 	case int:
 		id = int64(v)
 	default:
-		panic("Not a valid integer")
+		return nil, fmt.Errorf("Invalid integer for key: %v", intid)
 	}
 
-	return aeds.NewKey(ctx, kind, "", id, convertKey(parent))
+	return aeds.NewKey(ctx, kind, "", id, convertKey(parent)), nil
 }
 
 // Decode key encoded by aeds directly
