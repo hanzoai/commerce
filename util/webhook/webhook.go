@@ -10,7 +10,6 @@ import (
 )
 
 func Emit(ctx interface{}, org string, event string, data interface{}) {
-
 	var aectx appengine.Context
 
 	switch v := ctx.(type) {

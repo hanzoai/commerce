@@ -65,11 +65,6 @@ type Integration struct {
 	Event string `json:"event,omitempty"`
 	Id    string `json:"id,omitempty"`
 
-	Src struct {
-		Url  string `json:"url,omitempty"`
-		Type string `json:"type,omitempty"`
-	} `json:"src,omitempty"`
-
 	// Sampling percentage
 	Sampling float64 `json:"sampling,omitempty"`
 
