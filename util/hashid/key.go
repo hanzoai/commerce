@@ -185,7 +185,6 @@ func EncodeKey(ctx appengine.Context, key datastore.Key) string {
 	encoded := Encode(ids...)
 
 	log.Debug("%s%v encoded to '%s'", fmtNs(key.Namespace()), key, encoded)
-	log.Stack()
 
 	return encoded
 }
