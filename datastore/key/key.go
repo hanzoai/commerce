@@ -70,7 +70,7 @@ func NewFromInt(ctx appengine.Context, kind string, intid interface{}, parent Ke
 	switch v := intid.(type) {
 	case string:
 		if parsed, err := strconv.ParseInt(v, 10, 64); err != nil {
-			panic("Not a valid integer")
+			return nil, fmt.Errorf("Invalid integer for key: %v", intid)
 		} else {
 			id = parsed
 		}
