@@ -411,7 +411,7 @@ func (m *Model) GetById(id string) error {
 	key, ok, err := m.KeyById(id)
 
 	if err != nil {
-		return erri
+		return err
 	}
 
 	if !ok {
