@@ -24,12 +24,10 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 
 	api := rest.New(order.Order{})
 
-	api.POST("/:orderid/capture", adminRequired, namespaced, checkoutApi.Capture)
-
-	api.POST("/:orderid/refund", adminRequired, namespaced, checkoutApi.Refund)
-
-	api.POST("/:orderid/charge", publishedRequired, namespaced, checkoutApi.Charge)
 	api.POST("/:orderid/authorize", publishedRequired, namespaced, checkoutApi.Authorize)
+	api.POST("/:orderid/capture", adminRequired, namespaced, checkoutApi.Capture)
+	api.POST("/:orderid/charge", publishedRequired, namespaced, checkoutApi.Charge)
+	api.POST("/:orderid/refund", adminRequired, namespaced, checkoutApi.Refund)
 
 	api.GET("/:orderid/payments", adminRequired, namespaced, func(c *gin.Context) {
 		id := c.Params.ByName("orderid")
@@ -75,15 +73,18 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api.Update = func(c *gin.Context) {
 		org := middleware.GetOrganization(c)
 		db := datastore.New(org.Namespaced(c))
-
-		id := c.Params.ByName("orderid")
 		ord := order.New(db)
 
-		// Get Key, and fail if this didn't exist in datastore
+		id := c.Params.ByName("orderid")
+
+		// Ensure order exists
 		if _, _, err := ord.IdExists(id); err != nil {
 			http.Fail(c, 404, "No order found with id: "+id, err)
 			return
 		}
+
+		// Ensure id persists across updates
+		ord.SetKey(id)
 
 		// Decode response body to create new order
 		if err := json.Decode(c.Request.Body, ord); err != nil {
@@ -108,12 +109,12 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	api.Patch = func(c *gin.Context) {
 		org := middleware.GetOrganization(c)
 		db := datastore.New(org.Namespaced(c))
-
-		id := c.Params.ByName("orderid")
 		ord := order.New(db)
 
-		err := ord.Get(id)
-		if err != nil {
+		id := c.Params.ByName("orderid")
+
+		// Ensure order exists
+		if err := ord.Get(id); err != nil {
 			http.Fail(c, 404, "No order found with id: "+id, err)
 			return
 		}
