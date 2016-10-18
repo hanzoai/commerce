@@ -51,6 +51,7 @@ var _ = BeforeSuite(func() {
 	org.Paypal.Test.ApplicationId = "APP-80W284485P519543T"
 	org.Paypal.Test.SecurityPassword = ""
 	org.Paypal.Test.SecuritySignature = ""
+	org.MustCreate()
 
 	ord = order.New(db)
 	ord.Items = make([]LineItem, 1)

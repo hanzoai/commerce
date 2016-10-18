@@ -15,6 +15,7 @@ class CustomAnalytics extends Integration
   inputConfigs: [
     input('event', 'Choose an event', 'analytics-events-select required')
     input('code', '//Do Something in JS', 'js required')
+    input('sampling', '', 'numeric')
   ]
 
 CustomAnalytics.register()

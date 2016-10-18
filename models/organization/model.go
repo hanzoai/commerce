@@ -20,7 +20,6 @@ func (o *Organization) Defaults() {
 	o.Admins = make([]string, 0)
 	o.Moderators = make([]string, 0)
 
-	o.Fees.Id = o.Id()
 	o.Fees.Card.Flat = 50
 	o.Fees.Card.Percent = 0.05
 	o.Fees.Affiliate.Flat = 30

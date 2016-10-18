@@ -42,7 +42,7 @@ type Entity interface {
 	NewKey() datastore.Key
 	Id() string
 
-	// Check if key has exists in datastore
+	// Various existential helpers
 	Exists() (bool, error)
 	IdExists(id string) (datastore.Key, bool, error)
 	KeyExists(key datastore.Key) (bool, error)
