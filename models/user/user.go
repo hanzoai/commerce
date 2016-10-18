@@ -36,7 +36,7 @@ type User struct {
 	// Crowdstart Id, found in default namespace
 	Cid string `json:"-"`
 
-	Username        string   `json:"username"`
+	Username        string   `json:"username,omitempty"`
 	FirstName       string   `json:"firstName"`
 	LastName        string   `json:"lastName"`
 	Company         string   `json:"company,omitempty"`

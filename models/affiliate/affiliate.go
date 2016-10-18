@@ -13,15 +13,15 @@ type Affiliate struct {
 	Enabled   bool `json:"enabled"`
 	Connected bool `json:"connected"`
 
-	UserId   string `json:"userId"`
-	Name     string `json:"name"`
-	Company  string `json:"company"`
-	Country  string `json:"country"`
-	TaxId    string `json:"taxId"`
-	Timezone string `json:"timezone"`
+	UserId   string `json:"userId,omitempty"`
+	Name     string `json:"name,omitempty"`
+	Company  string `json:"company,omitempty"`
+	Country  string `json:"country,omitempty"`
+	TaxId    string `json:"taxId,omitempty"`
+	Timezone string `json:"timezone,omitempty"`
 
-	Commission commission.Commission `json:"commission"`
-	Schedule   schedule.Schedule     `json:"schedule"`
+	Commission commission.Commission `json:"commission,omitempty"`
+	Schedule   schedule.Schedule     `json:"schedule,omitempty"`
 
 	Stripe struct {
 		AccessToken    string
