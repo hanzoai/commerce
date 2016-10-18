@@ -36,3 +36,4 @@ static/v1.js
 templates/platform/docs/_generated/*.html
 
 _export
+**/*.coverprofile.*
