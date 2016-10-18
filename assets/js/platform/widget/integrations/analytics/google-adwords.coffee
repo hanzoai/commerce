@@ -13,6 +13,7 @@ class GoogleAdwords extends Integration
   inputConfigs: [
     input('id', '123456789', 'required')
     input('event', 'Choose an event', 'analytics-events-select required')
+    input('sampling', '', 'numeric')
   ]
 
 GoogleAdwords.register()

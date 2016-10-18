@@ -22,7 +22,7 @@ func AcquireOrganization(moduleName string) gin.HandlerFunc {
 			panic("THE WORLD MAKES NO SENSE.")
 		}
 
-		log.Debug("Found user.")
+		log.Debug("Found user")
 
 		// Try and re-use last organization
 		orgId := session.GetString(c, "active-organization")
@@ -35,7 +35,7 @@ func AcquireOrganization(moduleName string) gin.HandlerFunc {
 		// Fetch organization
 		db := datastore.New(c)
 		org := organization.New(db)
-		err := org.Get(orgId)
+		err := org.GetById(orgId)
 		if err != nil {
 			log.Warn("Unable to acquire organization.")
 			session.Clear(c)
