@@ -143,6 +143,7 @@ class Integrations extends Page
         integrations.Analytics.FacebookConversions
         integrations.Analytics.FacebookPixel
         integrations.Analytics.Custom
+        integrations.Analytics.HeapAnalytics
       ]
 
     @integrations =
