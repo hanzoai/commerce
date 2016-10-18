@@ -125,7 +125,7 @@ var _ = Describe("coupon", func() {
 			cpn.MustCreate()
 
 			// Update coupon
-			cl.Put("/coupon/"+cpn.Id(), req, res)
+			cl.Patch("/coupon/"+cpn.Id(), req, res)
 			log.JSON(req)
 			log.JSON(res)
 		})
