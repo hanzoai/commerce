@@ -7,7 +7,11 @@ import (
 )
 
 func errAndStack(err error) string {
-	return fmt.Sprintf("%v:\n%s", err, stack(6))
+	if !(std.VerboseOverride() || std.Verbose()) {
+		return fmt.Sprintf("%v", err)
+	} else {
+		return fmt.Sprintf("%v:\n%s", err, stack(6))
+	}
 }
 
 // Grab stacktrace
