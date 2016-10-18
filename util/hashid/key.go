@@ -71,10 +71,10 @@ func queryNamespace(ctx appengine.Context, filter string, value interface{}) (*N
 		Limit(1)
 
 	// Run query
-	_, err := q.Run(ctx).Next(ns)
+	key, err := q.Run(ctx).Next(ns)
 
 	// Nothing found
-	if err == aeds.Done {
+	if key == nil {
 		return nil, false, nil
 	}
 
