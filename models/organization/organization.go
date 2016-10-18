@@ -89,24 +89,27 @@ type Organization struct {
 	TaxId   string `json:"taxId"`
 
 	// Fee structure for this organization
-	Fees pricing.Fees `json:"fees"`
+	Fees pricing.Fees `json:"fees" datastore:",noindex"`
 
 	// Partner fees (private, should be up to partner to disclose)
-	Partners []pricing.Partner `json:"-"`
+	Partners []pricing.Partner `json:"-" datastore:",noindex"`
 
 	// Analytics config
-	Analytics analytics.Analytics `json:"analytics"`
+	Analytics analytics.Analytics `json:"analytics" datastore:",noindex"`
 
-	Email EmailConfig `json:"email"`
-
-	Plan struct {
-		PlanId    string
-		StartDate time.Time
-	} `json:"-"`
+	// Email config
+	Email EmailConfig `json:"email" datastore:",noindex"`
 
 	// Default store
 	DefaultStore string `json:"defaultStore"`
 
+	// Plan settings
+	Plan struct {
+		PlanId    string
+		StartDate time.Time
+	} `json:"-" datastore:",noindex"`
+
+	// Salesforce settings
 	Salesforce struct {
 		AccessToken        string `json:"accessToken"`
 		DefaultPriceBookId string `json:"defaultPriceBookId"`
@@ -116,8 +119,9 @@ type Organization struct {
 		IssuedAt     string `json:"issuedAt"`
 		RefreshToken string `json:"refreshToken"`
 		Signature    string `json:"signature"`
-	} `json:"-"`
+	} `json:"-" datastore:",noindex"`
 
+	// Paypal connection
 	Paypal struct {
 		Live struct {
 			Email             string `json:"paypalEmail"`
@@ -136,8 +140,9 @@ type Organization struct {
 
 		ConfirmUrl string `json:"confirmUrl"`
 		CancelUrl  string `json:"cancelUrl"`
-	} `json:"-"`
+	} `json:"-" datastore:",noindex"`
 
+	// Stripe connection
 	Stripe struct {
 		// For convenience duplicated
 		AccessToken    string
@@ -148,30 +153,35 @@ type Organization struct {
 		// Save entire live and test tokens
 		Live connect.Token
 		Test connect.Token
-	} `json:"-"`
+	} `json:"-" datastore:",noindex"`
 
+	// Mailchimp settings
 	Mailchimp struct {
 		ListId string `json:"listId"`
 		APIKey string `json:"apiKey"`
-	} `json:"-"`
+	} `json:"-" datastore:",noindex"`
 
+	// Mandrill settings
 	Mandrill struct {
 		APIKey string
-	} `json:"-"`
+	} `json:"-" datastore:",noindex"`
 
+	// Netlify settings
 	Netlify struct {
 		AccessToken string
 		CreatedAt   time.Time
 		Email       string
 		Id          string
 		Uid         string
-	} `json:"-"`
+	} `json:"-" datastore:",noindex"`
 
+	// Affiliate configuration
 	Affiliate struct {
 		SuccessUrl string
 		ErrorUrl   string
-	} `json:"-"`
+	} `json:"-" datastore:",noindex"`
 
+	// Signup options
 	SignUpOptions struct {
 		// Controls the enabled status of account after creation
 		AccountsEnabledByDefault bool `json:"accountsEnabledByDefault"`
@@ -183,17 +193,13 @@ type Organization struct {
 		// Requires password set on create confirmation
 		TwoStageEnabled bool `json:"twoStageEnabled"`
 		ImmediateLogin  bool `json:"immediateLogin"`
-	} `json:"signUpOptions"`
-
-	// TODO: Delete?
-	GoogleAnalytics string `json:"googleAnalytics"`
-	FacebookTag     string `json:"facebookTag"`
+	} `json:"signUpOptions" datastore:",noindex"`
 
 	// Whether we use live or test tokens, mostly applicable to stripe
 	Live bool `json:"-" datastore:"-"`
 
 	// List of comma deliminated email globs that result in charges of 50 cents
-	EmailWhitelist string `json:"emailWhitelist"`
+	EmailWhitelist string `json:"emailWhitelist" datastore:",noindex"`
 }
 
 func (o Organization) GetStripeAccessToken(userId string) (string, error) {
@@ -312,4 +318,11 @@ func (o Organization) IsTestEmail(email string) bool {
 	}
 
 	return false
+}
+
+func (o Organization) Pricing() (*pricing.Fees, []pricing.Partner) {
+	// Ensure our id is set on fees used
+	fees := o.Fees
+	fees.Id = o.Id()
+	return &fees, o.Partners
 }

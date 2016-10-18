@@ -43,8 +43,6 @@ func Organization(c *gin.Context) {
 	org.FullName = o.FullName
 	org.Website = o.Website
 	org.EmailWhitelist = o.EmailWhitelist
-	org.GoogleAnalytics = o.GoogleAnalytics
-	org.FacebookTag = o.FacebookTag
 
 	http.Render(c, 200, org)
 }
@@ -61,8 +59,6 @@ func UpdateOrganization(c *gin.Context) {
 	org.FullName = o.FullName
 	org.Website = o.Website
 	org.EmailWhitelist = o.EmailWhitelist
-	org.GoogleAnalytics = o.GoogleAnalytics
-	org.FacebookTag = o.FacebookTag
 
 	org.Put()
 
