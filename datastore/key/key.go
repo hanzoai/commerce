@@ -17,6 +17,7 @@ var (
 	FromId = Decode
 )
 
+// Safely convert our Key to *aeds.Key
 func convertKey(key Key) *aeds.Key {
 	if key == nil {
 		return nil
@@ -24,7 +25,21 @@ func convertKey(key Key) *aeds.Key {
 	return key.(*aeds.Key)
 }
 
-// Return new key
+// Convert or decode Key
+func convertOrDecode(ctx appengine.Context, key interface{}) (*aeds.Key, error) {
+	switch k := key.(type) {
+	case *aeds.Key:
+		return k, nil
+	case iface.Key:
+		return k.(*aeds.Key), nil
+	case string:
+		return Decode(ctx, k)
+	default:
+		return nil, aeds.ErrInvalidKey
+	}
+}
+
+// Return new key for given id type
 func New(ctx appengine.Context, kind string, id interface{}, parent Key) *aeds.Key {
 	pkey := convertKey(parent)
 	switch v := id.(type) {
@@ -39,7 +54,7 @@ func New(ctx appengine.Context, kind string, id interface{}, parent Key) *aeds.K
 	}
 }
 
-// Return new key
+// Return key from hashid or appengine encoded strings
 func NewFromId(ctx appengine.Context, id string) *aeds.Key {
 	key, err := Decode(ctx, id)
 	if err != nil {
@@ -48,16 +63,16 @@ func NewFromId(ctx appengine.Context, id string) *aeds.Key {
 	return key
 }
 
-// Return Key from int id (potentially a string int id).
+// Return key from integer id
 func NewFromInt(ctx appengine.Context, kind string, intid interface{}, parent Key) *aeds.Key {
 	var id int64
 	switch v := intid.(type) {
 	case string:
-		maybe, err := strconv.ParseInt(v, 10, 64)
-		if err != nil {
+		if parsed, err := strconv.ParseInt(v, 10, 64); err != nil {
 			panic("Not a valid integer")
+		} else {
+			id = parsed
 		}
-		id = maybe
 	case int64:
 		id = v
 	case int:
@@ -85,12 +100,12 @@ func aedsDecode(ctx appengine.Context, key string) (*aeds.Key, error) {
 	return k, nil
 }
 
-// Return Key from either string or int id.
+// Encode key using hashid algorithm
 func Encode(ctx appengine.Context, key Key) string {
 	return hashid.EncodeKey(ctx, key)
 }
 
-// Decode key from string, supports hash ids and aeds encoded keys
+// Decode key using hashid algorithm and falling back to base64 encoding
 func Decode(ctx appengine.Context, encoded string) (*aeds.Key, error) {
 	// Assume hashid
 	key, err := hashid.DecodeKey(ctx, encoded)
@@ -102,33 +117,20 @@ func Decode(ctx appengine.Context, encoded string) (*aeds.Key, error) {
 	return aedsDecode(ctx, encoded)
 }
 
+// Encode key with appengine's default base64 encoding
 func Encode64(key Key) string {
 	return key.Encode()
 }
 
-// Return Key from either string or int id.
+// Decode key encoded with appengine default base64 encoding
 func Decode64(ctx appengine.Context, encoded string) (*aeds.Key, error) {
 	return aedsDecode(ctx, encoded)
 }
 
-// Convert to Key from aeds.Key or encoded key
-func convert(ctx appengine.Context, key interface{}) (*aeds.Key, error) {
-	switch k := key.(type) {
-	case *aeds.Key:
-		return k, nil
-	case iface.Key:
-		return k.(*aeds.Key), nil
-	case string:
-		return Decode(ctx, k)
-	default:
-		return nil, aeds.ErrInvalidKey
-	}
-}
-
-// Check for entity in datastore using key
+// Check if key exist in datastore
 func Exists(ctx appengine.Context, key interface{}) (bool, error) {
 	// Convert into Key
-	k, err := convert(ctx, key)
+	k, err := convertOrDecode(ctx, key)
 	if err != nil {
 		return false, err
 	}
