@@ -54,7 +54,7 @@ func Verbose() bool {
 func Debug(formatOrError interface{}, args ...interface{}) {
 	args = std.parseArgs(args...)
 
-	if !(std.VerboseOverride() || std.Verbose()) {
+	if !std.Verbose() {
 		return
 	}
 
@@ -69,7 +69,7 @@ func Debug(formatOrError interface{}, args ...interface{}) {
 func Info(formatOrError interface{}, args ...interface{}) {
 	args = std.parseArgs(args...)
 
-	if !(std.VerboseOverride() || std.Verbose()) {
+	if !std.Verbose() {
 		return
 	}
 
@@ -84,7 +84,7 @@ func Info(formatOrError interface{}, args ...interface{}) {
 func Warn(formatOrError interface{}, args ...interface{}) {
 	args = std.parseArgs(args...)
 
-	if !(std.VerboseOverride() || std.Verbose()) {
+	if !std.Verbose() {
 		return
 	}
 
@@ -132,7 +132,7 @@ func Panic(formatOrError interface{}, args ...interface{}) {
 func Dump(formatOrObject interface{}, args ...interface{}) {
 	args = std.parseArgs(args...)
 
-	if !std.VerboseOverride() || !std.Verbose() {
+	if !std.Verbose() {
 		return
 	}
 
@@ -151,7 +151,7 @@ func Dump(formatOrObject interface{}, args ...interface{}) {
 func JSON(formatOrObject interface{}, args ...interface{}) {
 	args = std.parseArgs(args...)
 
-	if !std.VerboseOverride() || !std.Verbose() {
+	if !std.Verbose() {
 		return
 	}
 

@@ -21,6 +21,7 @@ class FacebookPixel extends Integration
     input('values.initiateCheckout.value', '', 'money')
     input('values.addPaymentInfo.percent', '', 'numeric')
     input('values.addPaymentInfo.value', '', 'money')
+    input('sampling', '', 'numeric')
   ]
 
 FacebookPixel.register()
