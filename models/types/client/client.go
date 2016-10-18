@@ -9,9 +9,9 @@ import (
 )
 
 type Client struct {
-	Ip        string             `json:"ip,omitempty"`
-	UserAgent string             `json:"userAgent,omitempty"`
-	Referer   string             `json:"referer,omitempty"`
+	Ip        string             `json:"ip,omitempty" datastore:",noindex"`
+	UserAgent string             `json:"userAgent,omitempty" datastore:",noindex"`
+	Referer   string             `json:"referer,omitempty" datastore:",noindex"`
 	Language  string             `json:"language,omitempty"`
 	Country   string             `json:"country,omitempty"`
 	Region    string             `json:"region,omitempty"`

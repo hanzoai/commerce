@@ -18,7 +18,7 @@ var _ = Describe("thirdparty.stripe.UpdatePaymentFromCharge", func() {
 		charge.Status = "success"
 		It("should mark the payment as Paid", func() {
 			tasks.UpdatePaymentFromCharge(pay, charge)
-			Expect(string(pay.Status)).To(Equal(payment.Paid))
+			Expect(pay.Status).To(Equal(payment.Paid))
 		})
 	})
 	Context("When a charge is refunded", func() {
@@ -26,7 +26,7 @@ var _ = Describe("thirdparty.stripe.UpdatePaymentFromCharge", func() {
 		charge.Refunded = true
 		It("should mark the payment as Paid", func() {
 			tasks.UpdatePaymentFromCharge(pay, charge)
-			Expect(string(pay.Status)).To(Equal(payment.Refunded))
+			Expect(pay.Status).To(Equal(payment.Refunded))
 		})
 	})
 	Context("When a charge is paid", func() {
@@ -36,14 +36,14 @@ var _ = Describe("thirdparty.stripe.UpdatePaymentFromCharge", func() {
 		charge.Status = "success"
 		It("should mark the payment as Paid", func() {
 			tasks.UpdatePaymentFromCharge(pay, charge)
-			Expect(string(pay.Status)).To(Equal(payment.Paid))
+			Expect(pay.Status).To(Equal(payment.Paid))
 		})
 	})
 	Context("For every other state", func() {
 		It("should mark the payment as Unpaid", func() {
 			pay, charge := construct()
 			tasks.UpdatePaymentFromCharge(pay, charge)
-			Expect(string(pay.Status)).To(Equal(payment.Unpaid))
+			Expect(pay.Status).To(Equal(payment.Unpaid))
 		})
 	})
 })
