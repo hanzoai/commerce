@@ -18,6 +18,12 @@ func (d *Datastore) Get(key Key, value interface{}) error {
 	return d.ignoreFieldMismatch(nds.Get(d.Context, aekey, value))
 }
 
+// Gets an entity using datastore.Key or encoded Key
+func (d *Datastore) GetById(id string, value interface{}) error {
+	aekey := d.NewKeyFromId(id)
+	return d.ignoreFieldMismatch(nds.Get(d.Context, aekey, value))
+}
+
 // Same as Get, but works for multiple key/vals, keys can be slice of any type
 // accepted by GetMulti as well as *[]*Model, which will automatically
 // allocated if necessary.

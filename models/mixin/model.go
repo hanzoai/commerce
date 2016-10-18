@@ -436,10 +436,13 @@ func (m *Model) KeyExists(key datastore.Key) (bool, error) {
 // Update new entity (should already exist)
 func (m *Model) Update() error {
 	// Save current entity as previous entity
-	prev := m.Clone()
+	var prev Entity
 
 	// Execute BeforeUpdate hook if defined on entity.
 	if hook, ok := (m.Entity).(BeforeUpdate); ok {
+		if prev == nil {
+			prev = m.Clone()
+		}
 		if err := hook.BeforeUpdate(prev); err != nil {
 			return err
 		}
@@ -451,6 +454,9 @@ func (m *Model) Update() error {
 
 	// Execute BeforeUpdate hook if defined on entity.
 	if hook, ok := (m.Entity).(AfterUpdate); ok {
+		if prev == nil {
+			prev = m.Clone()
+		}
 		if err := hook.AfterUpdate(prev); err != nil {
 			return err
 		}

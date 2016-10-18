@@ -18,8 +18,8 @@ var (
 )
 
 // Return new key
-func New(ctx appengine.Context, kind string, key interface{}) *aeds.Key {
-	switch v := key.(type) {
+func New(ctx appengine.Context, kind string, id interface{}, parent Key) *aeds.Key {
+	switch v := id.(type) {
 	case int64:
 		return aeds.NewKey(ctx, kind, "", v, nil)
 	case int:
@@ -29,6 +29,36 @@ func New(ctx appengine.Context, kind string, key interface{}) *aeds.Key {
 	default:
 		return aeds.NewIncompleteKey(ctx, kind, nil)
 	}
+}
+
+// Return new key
+func NewFromId(ctx appengine.Context, id string) *aeds.Key {
+	key, err := Decode(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return key
+}
+
+// Return Key from int id (potentially a string int id).
+func NewFromInt(ctx appengine.Context, kind string, intid interface{}, parent Key) *aeds.Key {
+	var id int64
+	switch v := intid.(type) {
+	case string:
+		maybe, err := strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			panic("Not a valid integer")
+		}
+		id = maybe
+	case int64:
+		id = v
+	case int:
+		id = int64(v)
+	default:
+		panic("Not a valid integer")
+	}
+
+	return aeds.NewKey(ctx, kind, "", id, parent.(*aeds.Key))
 }
 
 // Decode key encoded by aeds directly
@@ -110,25 +140,4 @@ func Exists(ctx appengine.Context, key interface{}) (bool, error) {
 
 	// Found it!
 	return true, nil
-}
-
-// Return Key from int id (potentially a string int id).
-func FromInt(ctx appengine.Context, kind string, intid interface{}, parent Key) *aeds.Key {
-	var id int64
-	switch v := intid.(type) {
-	case string:
-		maybe, err := strconv.ParseInt(v, 10, 64)
-		if err != nil {
-			panic("Not a valid integer")
-		}
-		id = maybe
-	case int64:
-		id = v
-	case int:
-		id = int64(v)
-	default:
-		panic("Not a valid integer")
-	}
-
-	return aeds.NewKey(ctx, kind, "", id, convert(parent))
 }
