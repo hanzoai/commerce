@@ -9,11 +9,14 @@ goroot_pkg_path = $(goroot)/pkg/$(platform)_appengine/
 gopath_pkg_path = $(gopath)/pkg/$(platform)_appengine/
 current_date	= $(shell date +"%Y-%m-%d")
 
-goapp			= $(sdk_path)/goapp
-gpm				= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(sdk_path)/gpm
-ginkgo			= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(gopath)/bin/ginkgo
 appcfg.py 		= $(sdk_path)/appcfg.py --skip_sdk_update_check
 bulkloader.py   = $(sdk_path)/bulkloader.py
+goapp			= $(sdk_path)/goapp
+gover 			= $(go_path)/bin/gover
+goveralls       = $(go_path)/bin/goveralls
+
+ginkgo			= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(gopath)/bin/ginkgo
+gpm				= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(sdk_path)/gpm
 
 deps	= $(shell cat Godeps | cut -d ' ' -f 1)
 modules	= crowdstart.com/analytics \
@@ -281,8 +284,8 @@ test-ci:
 	$(ginkgo) $(test_target) -p=true --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace -cover
 
 coverage:
-	gover test/
-	goveralls -coverprofile=gover.coverprofile -service=circle-ci -repotoken=Tw5twjuGOKXT76UNhAXkY3TVJ2XMnFLls
+	$(gover) test/
+	$(goveralls) -coverprofile=gover.coverprofile -service=circle-ci -repotoken=Tw5twjuGOKXT76UNhAXkY3TVJ2XMnFLls
 
 # DEPLOY
 
