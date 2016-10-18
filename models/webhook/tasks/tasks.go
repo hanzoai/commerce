@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -54,8 +55,7 @@ func createClient(ctx appengine.Context) *Client {
 
 // Fire webhooks
 var Emit = delay.Func("webhook-emit", func(ctx appengine.Context, org string, event string, data interface{}) {
-	log.Debug("Emit webhook '%s' for '%s'", event, org, ctx)
-	log.JSON(data)
+	log.JSON(fmt.Sprintf("Emit webhook '%s' for '%s'", event, org), data, ctx)
 
 	db := datastore.New(ctx)
 	db.SetNamespace(org)
