@@ -30,23 +30,6 @@ func multi(vals interface{}, fn func(mixin.Entity) error) error {
 			defer wg.Done()
 
 			// Grab next entity off slice
-			val := slice.Index(i)
-
-			// Ensure valid pointer to model
-			if val.Kind() != reflect.Ptr {
-				errd = true
-				errs[i] = errors.New(fmt.Sprintf("Slice must contain pointers to models, not %v", val))
-				return
-			}
-
-			// Ensure not nil pointer to model
-			if val.IsNil() {
-				errd = true
-				errs[i] = errors.New(fmt.Sprintf("Slice must contain initialized models, not %v", val))
-				return
-			}
-
-			// Assert entity is valid
 			entity, ok := slice.Index(i).Interface().(mixin.Entity)
 			if !ok {
 				errd = true
