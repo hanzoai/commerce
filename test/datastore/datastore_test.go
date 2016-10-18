@@ -51,7 +51,7 @@ var _ = Describe("Key", func() {
 	Context("Integer key", func() {
 		It("should create key from int", func() {
 			ickey := db.NewIncompleteKey("foo", nil)
-			aekey := db.NewKeyFromInt("foo", 10, nil)
+			aekey, _ := db.NewKeyFromInt("foo", 10, nil)
 			Expect(aekey).NotTo(Equal(ickey))
 		})
 	})
