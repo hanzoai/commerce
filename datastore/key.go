@@ -48,19 +48,11 @@ func (d *Datastore) EncodeKey(key Key) string {
 
 // Wrap appengine key funcs
 func (d *Datastore) NewKey(kind, stringID string, intID int64, parent Key) *aeds.Key {
-	if p, ok := parent.(*aeds.Key); ok {
-		return aeds.NewKey(d.Context, kind, stringID, intID, p)
-	} else {
-		return aeds.NewKey(d.Context, kind, stringID, intID, nil)
-	}
+	return aeds.NewKey(d.Context, kind, stringID, intID, convertKey(parent))
 }
 
 func (d *Datastore) NewIncompleteKey(kind string, parent Key) *aeds.Key {
-	if p, ok := parent.(*aeds.Key); ok {
-		return aeds.NewIncompleteKey(d.Context, kind, p)
-	} else {
-		return aeds.NewIncompleteKey(d.Context, kind, nil)
-	}
+	return aeds.NewIncompleteKey(d.Context, kind, convertKey(parent))
 }
 
 // Create helpers
