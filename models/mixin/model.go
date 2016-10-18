@@ -39,7 +39,7 @@ type Entity interface {
 
 	// Get, Set keys
 	Key() (key datastore.Key)
-	SetKey(key interface{}) (err error)
+	SetKey(key interface{}) error
 	NewKey() datastore.Key
 	Id() string
 
@@ -129,8 +129,8 @@ func (m *Model) Context() appengine.Context {
 }
 
 // Set entity on mixin so it can be referenced later
-func (m *Model) SetEntity(entity Kind) {
-	m.Entity = entity
+func (m *Model) SetEntity(entity interface{}) {
+	m.Entity = entity.(Kind)
 }
 
 // Set appengine.Context
@@ -440,7 +440,7 @@ func (m *Model) Update() error {
 	prev := cache.Once(m.Clone)
 
 	// Execute BeforeUpdate hook if defined on entity.
-	if hook, ok := getHook("BeforeUpdate", m); ok {
+	if hook, ok := getHook("BeforeUpdate", m.Entity); ok {
 		if err := callHook(m.Entity, hook, prev()); err != nil {
 			return err
 		}
@@ -451,7 +451,7 @@ func (m *Model) Update() error {
 	}
 
 	// Execute AfterUpdate hook if defined on entity.
-	if hook, ok := getHook("AfterUpdate", m); ok {
+	if hook, ok := getHook("AfterUpdate", m.Entity); ok {
 		if err := callHook(m.Entity, hook, prev()); err != nil {
 			return err
 		}
