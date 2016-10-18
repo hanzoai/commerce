@@ -10,9 +10,9 @@ import (
 // Custom logger
 type Logger struct {
 	logging.Logger
-	backend         *Backend
-	verbose         bool
-	verboseOverride bool
+	backend          *Backend
+	verbose          bool
+	verboseRequested bool
 }
 
 func (l *Logger) SetVerbose(verbose bool) {
@@ -20,22 +20,18 @@ func (l *Logger) SetVerbose(verbose bool) {
 }
 
 func (l *Logger) Verbose() bool {
-	return l.verbose
-}
-
-func (l *Logger) VerboseOverride() bool {
-	return l.verboseOverride
+	return l.verboseRequested || std.verbose
 }
 
 // Check if we've been pased a gin or app engine context
 func (l *Logger) detectContext(ctx interface{}) {
-	l.verboseOverride = false
+	l.verboseRequested = false
 
 	switch ctx := ctx.(type) {
 	case *gin.Context:
 		// Get App Engine from session
 		l.backend.context = ctx.MustGet("appengine").(appengine.Context)
-		l.verboseOverride = ctx.MustGet("verbose").(bool)
+		l.verboseRequested = ctx.MustGet("verbose").(bool)
 
 		// Request URI is useful for logging
 		if ctx.Request != nil {
