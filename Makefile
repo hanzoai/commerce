@@ -153,6 +153,11 @@ ifdef test_focus
 	test_target=test/$(focus)
 endif
 
+test_batch := $(batch)
+ifdef test_batch
+	test_target=$(batch)
+endif
+
 export GOROOT := $(goroot)
 export GOPATH := $(gopath)
 
@@ -273,7 +278,7 @@ bench:
 	@$(ginkgo) $(test_target) -p=true -progress --randomizeAllSpecs --failFast --skipPackage=integration $(test_verbose)
 
 test-ci:
-	@$(ginkgo) $(test_target) -r=true -p=true --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace --compilers=2
+	@$(ginkgo) $(test_target) -p=true --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace
 
 # DEPLOY
 
