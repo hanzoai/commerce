@@ -110,19 +110,16 @@ func (q *DatastoreQuery) First(dst interface{}) (*aeds.Key, bool, error) {
 	t := q.Limit(1).Run()
 	key, err := t.Next(dst)
 
-	// Ignore field mismatch if set
-	err = IgnoreFieldMismatch(err)
-
 	// Nothing found
-	if err == aeds.Done {
+	if key == nil {
 		return key, false, nil
 	}
 
-	// Something went wrong
-	if err != nil {
+	// Query failed
+	if IgnoreFieldMismatch(err) != nil {
 		return nil, false, err
 	}
 
-	// Success :)
+	// Found it
 	return key, true, nil
 }
