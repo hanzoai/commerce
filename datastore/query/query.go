@@ -182,16 +182,13 @@ func (q *Query) First(dst interface{}) (*aeds.Key, bool, error) {
 	// Run query with iterator
 	key, err := q.Limit(1).Run().Next(dst)
 
-	// Ignore field mismatch if set
-	err = IgnoreFieldMismatch(err)
-
 	// Nothing found
-	if err == aeds.Done {
-		return key, false, nil
+	if key == nil {
+		return nil, false, nil
 	}
 
 	// Error trying run query
-	if err != nil {
+	if IgnoreFieldMismatch(err) != nil {
 		return nil, false, err
 	}
 

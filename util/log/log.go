@@ -54,7 +54,7 @@ func Verbose() bool {
 func Debug(formatOrError interface{}, args ...interface{}) {
 	args = std.parseArgs(args...)
 
-	if !std.VerboseOverride() && !std.Verbose() {
+	if !(std.VerboseOverride() || std.Verbose()) {
 		return
 	}
 
@@ -69,6 +69,10 @@ func Debug(formatOrError interface{}, args ...interface{}) {
 func Info(formatOrError interface{}, args ...interface{}) {
 	args = std.parseArgs(args...)
 
+	if !(std.VerboseOverride() || std.Verbose()) {
+		return
+	}
+
 	switch v := formatOrError.(type) {
 	case error:
 		std.Infof(errAndStack(v))
@@ -79,6 +83,10 @@ func Info(formatOrError interface{}, args ...interface{}) {
 
 func Warn(formatOrError interface{}, args ...interface{}) {
 	args = std.parseArgs(args...)
+
+	if !(std.VerboseOverride() || std.Verbose()) {
+		return
+	}
 
 	switch v := formatOrError.(type) {
 	case error:
@@ -124,6 +132,10 @@ func Panic(formatOrError interface{}, args ...interface{}) {
 func Dump(formatOrObject interface{}, args ...interface{}) {
 	args = std.parseArgs(args...)
 
+	if !std.VerboseOverride() || !std.Verbose() {
+		return
+	}
+
 	switch v := formatOrObject.(type) {
 	case string:
 		args, obj := std.dumpObject(args)
@@ -138,6 +150,10 @@ func Dump(formatOrObject interface{}, args ...interface{}) {
 
 func JSON(formatOrObject interface{}, args ...interface{}) {
 	args = std.parseArgs(args...)
+
+	if !std.VerboseOverride() || !std.Verbose() {
+		return
+	}
 
 	switch v := formatOrObject.(type) {
 	case string:

@@ -10,6 +10,7 @@ import (
 	"crowdstart.com/models/types/analytics"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/json/http"
+	"crowdstart.com/util/log"
 )
 
 func Get(c *gin.Context) {
@@ -19,6 +20,7 @@ func Get(c *gin.Context) {
 	// Get organization
 	org := organization.New(db)
 	if err := org.GetById(id); err != nil {
+		log.Warn("Failed to retrieve organization '%v': %v", id, err, c)
 		http.Fail(c, 404, fmt.Sprintf("Failed to retrieve organization '%v': %v", id, err), err)
 		return
 	}
@@ -34,6 +36,7 @@ func Set(c *gin.Context) {
 	// Get organization
 	org := organization.New(db)
 	if err := org.GetById(id); err != nil {
+		log.Warn("Failed to retrieve organization '%v': %v", id, err, c)
 		http.Fail(c, 404, fmt.Sprintf("Failed to retrieve organization '%v': %v", id, err), err)
 		return
 	}
@@ -67,6 +70,7 @@ func Update(c *gin.Context) {
 	// Get organization
 	org := organization.New(db)
 	if err := org.GetById(id); err != nil {
+		log.Warn("Failed to retrieve organization '%v': %v", id, err, c)
 		http.Fail(c, 404, fmt.Sprintf("Failed to retrieve organization '%v': %v", id, err), err)
 		return
 	}
