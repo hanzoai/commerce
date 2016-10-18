@@ -37,10 +37,10 @@ type Status string
 
 const (
 	Cancelled Status = "cancelled"
-	Completed        = "completed"
-	Locked           = "locked"
-	OnHold           = "on-hold"
-	Open             = "open"
+	Completed Status = "completed"
+	Locked    Status = "locked"
+	OnHold    Status = "on-hold"
+	Open      Status = "open"
 )
 
 type Order struct {
@@ -122,17 +122,17 @@ type Order struct {
 
 	// Individual line items
 	Items  []lineitem.LineItem `json:"items" datastore:"-"`
-	Items_ string              `json:"-"` // need props
+	Items_ string              `json:"-" datastore:",noindex"`
 
 	Adjustments []Adjustment `json:"-"`
 
 	Discounts  []*discount.Discount `json:"discounts,omitempty" datastore:"-"`
-	Discounts_ string               `json:"-"` // need props
+	Discounts_ string               `json:"-" datastore:",noindex"` // need props
 
-	Coupons     []coupon.Coupon `json:"coupons,omitempty"`
-	CouponCodes []string        `json:"couponCodes,omitempty"`
+	Coupons     []coupon.Coupon `json:"coupons,omitempty" datastore:",noindex"`
+	CouponCodes []string        `json:"couponCodes,omitempty" datastore:",noindex"`
 
-	PaymentIds []string           `json:"payments"`
+	PaymentIds []string           `json:"payments" datastore:",noindex"`
 	Payments   []*payment.Payment `json:"-" datastore:"-"`
 
 	// Date order was cancelled at
@@ -142,15 +142,15 @@ type Order struct {
 	Fulfillment Fulfillment `json:"fulfillment"`
 
 	// gift options
-	Gift        bool   `json:"gift"`                  // Is this a gift?
-	GiftMessage string `json:"giftMessage,omitempty"` // Message to go on gift
-	GiftEmail   string `json:"giftEmail,omitempty"`   // Email for digital gifts
+	Gift        bool   `json:"gift"`                                       // Is this a gift?
+	GiftMessage string `json:"giftMessage,omitempty" datastore:",noindex"` // Message to go on gift
+	GiftEmail   string `json:"giftEmail,omitempty"`                        // Email for digital gifts
 
 	// Mailchimp tracking information
 	Mailchimp struct {
-		Id           string `json:"id,omitempty"`
+		Id           string `json:"id,omitempty" datastore:",noindex"`
 		CampaignId   string `json:"campaignId,omitempty"`
-		TrackingCode string `json:"trackingCode,omitempty"`
+		TrackingCode string `json:"trackingCode,omitempty" datastore:",noindex"`
 	} `json:"mailchimp,omitempty"`
 
 	// Arbitrary key/value pairs associated with this order
@@ -158,7 +158,7 @@ type Order struct {
 	Metadata_ string `json:"-" datastore:",noindex"`
 
 	// Series of events that have occured relevant to this order
-	History []Event `json:"-,omitempty"`
+	History []Event `json:"-,omitempty" datastore:",noindex"`
 
 	Test bool `json:"-"` // Whether our internal test flag is active or not
 }

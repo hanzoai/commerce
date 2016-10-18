@@ -92,7 +92,7 @@ autoprefixer_opts = -b 'ie > 8, firefox > 24, chrome > 30, safari > 6, opera > 1
 					static/css/platform.css
 
 dev_appserver = $(sdk_path)/dev_appserver.py --skip_sdk_update_check \
-											 --dev_appserver_log_level=debug
+											 --dev_appserver_log_level=error
 											 --datastore_path=$(sdk_path)/.datastore.bin \
 
 sdk_install_extra = rm -rf $(sdk_path)/demos
@@ -266,9 +266,6 @@ tools:
 test:
 	@$(ginkgo) $(test_target) -p=true -progress --randomizeAllSpecs --failFast --skipMeasurements --skipPackage=integration $(test_verbose)
 
-test-integration:
-	@$(ginkgo) -r=true -p=true -progress --randomizeAllSpecs --failFast --skipMeasurements --focus=integration $(test_verbose)
-
 test-watch:
 	@$(ginkgo) watch -r=true -p=true -progress --failFast --skipMeasurements $(test_verbose)
 
@@ -276,7 +273,7 @@ bench:
 	@$(ginkgo) $(test_target) -p=true -progress --randomizeAllSpecs --failFast --skipPackage=integration $(test_verbose)
 
 test-ci:
-	$(ginkgo) -r=true -p=true --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace --compilers=2
+	@$(ginkgo) $(test_target) -r=true -p=true --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace --compilers=2
 
 # DEPLOY
 

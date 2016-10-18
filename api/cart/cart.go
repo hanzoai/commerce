@@ -212,6 +212,7 @@ func patch(r *rest.Rest) func(*gin.Context) {
 		car := cart.New(db)
 
 		err := car.GetById(id)
+
 		if err != nil {
 			r.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
 			return
