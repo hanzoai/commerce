@@ -559,10 +559,8 @@ func (o Order) DescriptionLong() string {
 
 func (o Order) GetPayments() ([]*payment.Payment, error) {
 	payments := make([]*payment.Payment, 0)
-
-	if _, err := payment.Query(o.Db).Ancestor(o.Key()).GetAll(&payments); err != nil {
+	if err := payment.Query(o.Db).Ancestor(o.Key()).GetModels(&payments); err != nil {
 		return nil, err
 	}
-
 	return payments, nil
 }
