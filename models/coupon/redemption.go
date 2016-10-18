@@ -17,8 +17,7 @@ type Redemption struct {
 
 func (c *Coupon) SaveRedemption() error {
 	db := datastore.New(c.Context())
-	key := db.NewKeyFromString("redemption", c.Code(), nil)
-	_, err := db.Put(key, &Redemption{time.Now(), c.Code()})
+	_, err := db.Put("redemption", &Redemption{time.Now(), c.Code()})
 	return err
 }
 
