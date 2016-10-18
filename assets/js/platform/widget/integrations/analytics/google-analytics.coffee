@@ -12,6 +12,7 @@ class GoogleAnalytics extends Integration
 
   inputConfigs: [
     input('id', 'UA-XXXXXXXX-1', 'required')
+    input('sampling', '', 'numeric')
   ]
 
 GoogleAnalytics.register()

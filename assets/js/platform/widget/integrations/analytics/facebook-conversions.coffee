@@ -13,6 +13,7 @@ class FacebookConversions extends Integration
   inputConfigs: [
     input('id', 'ex. 1234567890123', 'required')
     input('event', 'Choose an event', 'analytics-events-select required')
+    input('sampling', '', 'numeric')
   ]
 
 FacebookConversions.register()
