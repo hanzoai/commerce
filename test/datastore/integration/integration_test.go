@@ -46,7 +46,7 @@ var _ = AfterSuite(func() {
 func checkCountValue(entity mixin.Entity, numModels int, expected int) {
 	err := Retry(10, func() error {
 		models := entity.Slice()
-		_, err := entity.Query().GetAll(models)
+		_, err := entity.Query().All().GetAll(models)
 		if err != nil {
 			log.Error("Failed to get models from datastore: %v", err)
 			return err
