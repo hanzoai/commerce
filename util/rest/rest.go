@@ -495,7 +495,8 @@ func (r Rest) delete(c *gin.Context) {
 	}
 
 	db := entity.Datastore()
-	if _, err := db.Put("deleted", entity); err != nil {
+	key := db.NewIncompleteKey("deleted", nil)
+	if _, err := db.Put(key, entity); err != nil {
 		r.Fail(c, 500, "Failed to start deletion "+r.Kind, err)
 		return
 	}
