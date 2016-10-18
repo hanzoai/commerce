@@ -15,21 +15,20 @@ var EncodeKey = key.Encode
 var DecodeKey = key.Decode
 
 func convertKey(key Key) *aeds.Key {
+	if key == nil {
+		return nil
+	}
 	return key.(*aeds.Key)
 }
 
 func convertKeys(keys interface{}) []*aeds.Key {
-	var aekeys []*aeds.Key
-
 	switch v := keys.(type) {
 	case []Key:
 		n := len(v)
-		aekeys = make([]*aeds.Key, n)
-
+		aekeys := make([]*aeds.Key, n)
 		for i := 0; i < n; i++ {
 			aekeys[i] = v[i].(*aeds.Key)
 		}
-
 		return aekeys
 	case []*aeds.Key:
 		return v
