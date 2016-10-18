@@ -2,6 +2,45 @@
   <integration-header model="{this}">
   </integration-header>
   <div class="{panel-body: true, collapsed: model.disabled }">
-    <control label="Pixel ID" input="{ inputs.id}"></control>
+    <div class="section row">
+      <div class="col-xs-6">
+        <control label="Pixel ID" input="{ inputs.id}"></control>
+      </div>
+      <div class="col-xs-6">
+        <control label="Currency" input="{ inputs['values.currency']}"></control>
+      </div>
+    </div>
+    <div class="section row">
+      <div class="col-xs-6">
+        <control label="ViewedProduct Percent" input="{ inputs['values.viewedProduct.percent']}"></control>
+      </div>
+      <div class="col-xs-6">
+        <control label="ViewedProduct Value" input="{ inputs['values.viewedProduct.value']}"></control>
+      </div>
+    </div>
+    <div class="section row">
+      <div class="col-xs-6">
+        <control label="AddedProduct Percent" input="{ inputs['values.addedProduct.percent']}"></control>
+      </div>
+      <div class="col-xs-6">
+        <control label="AddedProduct Value" input="{ inputs['values.addedProduct.value']}"></control>
+      </div>
+    </div>
+    <div class="section row">
+      <div class="col-xs-6">
+        <control label="InitiateCheckout Percent" input="{ inputs['values.initiateCheckout.percent']}"></control>
+      </div>
+      <div class="col-xs-6">
+        <control label="InitiateCheckout Value" input="{ inputs['values.initiateCheckout.value']}"></control>
+      </div>
+    </div>
+    <div class="section row">
+      <div class="col-xs-6">
+        <control label="AddPaymentInfo Percent" input="{ inputs['values.addPaymentInfo.percent']}"></control>
+      </div>
+      <div class="col-xs-6">
+        <control label="AddPaymentInfo Value" input="{ inputs['values.addPaymentInfo.value']}"></control>
+      </div>
+    </div>
   </div>
 </div>
