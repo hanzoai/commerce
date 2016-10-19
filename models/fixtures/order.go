@@ -12,7 +12,7 @@ import (
 var Order = New("order", func(c *gin.Context) *order.Order {
 	db := getNamespaceDb(c)
 
-	u := User(c)
+	u := UserCustomer(c)
 	p := Product(c)
 	Coupon(c)
 
