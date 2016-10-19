@@ -33,7 +33,7 @@ func Set(c *gin.Context) {
 
 	// Get cart, fail if it doesn't exist
 	car := cart.New(db)
-	if err := car.Get(id); err != nil {
+	if err := car.GetById(id); err != nil {
 		http.Fail(c, 404, "No cart found with id: "+id, err)
 		return
 	}
@@ -97,7 +97,7 @@ func Discard(c *gin.Context) {
 
 	// Get cart, fail if it doesn't exist
 	car := cart.New(db)
-	if err := car.Get(id); err != nil {
+	if err := car.GetById(id); err != nil {
 		http.Fail(c, 404, "No cart found with id: "+id, err)
 		return
 	}
