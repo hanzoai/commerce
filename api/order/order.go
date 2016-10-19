@@ -34,7 +34,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 		db := datastore.New(c)
 		ord := order.New(db)
 
-		err := ord.Get(id)
+		err := ord.GetById(id)
 		if err != nil {
 			http.Fail(c, 404, fmt.Sprintf("Failed to retrieve order %v: %v", id, err), err)
 			return
@@ -114,7 +114,7 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 		id := c.Params.ByName("orderid")
 
 		// Ensure order exists
-		if err := ord.Get(id); err != nil {
+		if err := ord.GetById(id); err != nil {
 			http.Fail(c, 404, "No order found with id: "+id, err)
 			return
 		}
