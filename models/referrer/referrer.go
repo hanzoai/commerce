@@ -23,6 +23,7 @@ type Referrer struct {
 	OrderId string  `json:"orderId"`
 	UserId  string  `json:"userId"`
 
+	CouponId        string    `json:"couponId,omitempty"`
 	AffiliateId     string    `json:"affiliateId,omitempty"`
 	FirstReferredAt time.Time `json:"firstReferredAt"`
 
