@@ -33,6 +33,7 @@ func New(ctx appengine.Context, kind string) iface.Query {
 	return q
 }
 
+// Wrap all App Engine query methods
 func (q *Query) Ancestor(ancestor iface.Key) iface.Query {
 	q.aedsq = q.aedsq.Ancestor(ancestor.(*aeds.Key))
 	return q
@@ -96,15 +97,18 @@ func (q *Query) End(c aeds.Cursor) iface.Query {
 	return q
 }
 
+// Returns true if entity with key is persisted to datastore
 func (q *Query) KeyExists(key iface.Key) (bool, error) {
 	_, ok, err := q.KeysOnly().ByKey(key, nil)
 	return ok, err
 }
 
+// Returns true if entity with key that encodes to id is persisted to datastore
 func (q *Query) IdExists(id string) (*aeds.Key, bool, error) {
 	return q.KeysOnly().ById(id, nil)
 }
 
+// Fetches first entity
 func (q *Query) First(dst interface{}) (*aeds.Key, bool, error) {
 	// Run query with iterator
 	key, err := q.Limit(1).Run().Next(dst)
@@ -123,10 +127,12 @@ func (q *Query) First(dst interface{}) (*aeds.Key, bool, error) {
 	return key, true, nil
 }
 
+// Fetches first key
 func (q *Query) FirstKey() (*aeds.Key, bool, error) {
 	return q.KeysOnly().First(nil)
 }
 
+// Fetches keys only
 func (q *Query) GetKeys() ([]*aeds.Key, error) {
 	return q.KeysOnly().GetAll(nil)
 }
@@ -214,6 +220,6 @@ func (q *Query) ById(id string, dst interface{}) (*aeds.Key, bool, error) {
 		return nil, false, errors.New(fmt.Sprintf("Not a valid kind for query: '%s'", q.kind))
 	}
 
-	// Query by filter
+	// Query by filter last
 	return q.Filter(filter, id).First(dst)
 }
