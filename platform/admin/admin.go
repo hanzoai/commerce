@@ -136,10 +136,10 @@ func SendOrderConfirmation(c *gin.Context) {
 
 	o := order.New(db)
 	id := c.Params.ByName("id")
-	o.MustGet(id)
+	o.MustGetById(id)
 
 	u := user.New(db)
-	u.MustGet(o.UserId)
+	u.MustGetById(o.UserId)
 
 	emails.SendOrderConfirmationEmail(db.Context, org, o, u)
 

@@ -22,7 +22,7 @@ func Js(c *gin.Context) {
 
 	id := c.Params.ByName("organizationid")
 	org := organization.New(db)
-	if err := org.Get(id); err != nil {
+	if err := org.GetById(id); err != nil {
 		http.Fail(c, 400, "Failed to get organization", err)
 		return
 	}
