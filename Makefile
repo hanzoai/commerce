@@ -272,20 +272,20 @@ tools:
 
 # TEST/ BENCH
 test:
-	@$(ginkgo) $(test_target) -p=true -progress --randomizeAllSpecs --failFast --skipMeasurements --skipPackage=integration $(test_verbose)
+	@$(ginkgo) $(test_target) -p=true -progress --randomizeAllSpecs --failFast --trace --skipMeasurements --skipPackage=integration $(test_verbose)
 
 test-watch:
-	@$(ginkgo) watch -r=true -p=true -progress --failFast --skipMeasurements $(test_verbose)
+	@$(ginkgo) watch -r=true -p=true -progress --failFast --trace $(test_verbose)
 
 bench:
-			@$(ginkgo) $(test_target) -p=true -progress --randomizeAllSpecs --failFast --skipPackage=integration $(test_verbose)
+	@$(ginkgo) $(test_target) -p=true -progress --randomizeAllSpecs --failFast --trace --skipPackage=integration $(test_verbose)
 
 test-ci:
-	$(ginkgo) $(test_target) -p=true --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace -cover -covermode=count
+	$(ginkgo) $(test_target) -p=true --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace
 
 coverage:
-	$(gover) test/ coverage.out
-	$(goveralls) -coverprofile=coverage.out -service=circle-ci -repotoken=$(COVERALLS_REPO_TOKEN)
+	# $(gover) test/ coverage.out
+	# $(goveralls) -coverprofile=coverage.out -service=circle-ci -repotoken=$(COVERALLS_REPO_TOKEN)
 
 # DEPLOY
 
