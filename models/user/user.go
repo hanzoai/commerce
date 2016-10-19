@@ -303,8 +303,7 @@ func (u *User) LoadAffiliateAndPendingFees() error {
 
 func (u *User) CalculateBalances() error {
 	trans := make([]*transaction.Transaction, 0)
-	_, err := transaction.Query(u.Db).Filter("UserId=", u.Id()).Filter("Test=", false).GetAll(trans)
-	if err != nil {
+	if _, err := transaction.Query(u.Db).Filter("UserId=", u.Id()).Filter("Test=", false).GetAll(&trans); err != nil {
 		return err
 	}
 
