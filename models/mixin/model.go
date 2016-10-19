@@ -49,8 +49,8 @@ type Entity interface {
 	KeyExists(key datastore.Key) (bool, error)
 
 	// Get, Put, Delete + Create, Update
-	Get(args ...interface{}) error
-	GetById(string) error
+	Get(key datastore.Key) error
+	GetById(id string) error
 	Put() error
 	Create() error
 	Update() error
@@ -59,7 +59,8 @@ type Entity interface {
 	// Must variants
 	MustCreate()
 	MustDelete()
-	MustGet(args ...interface{})
+	MustGet(key datastore.Key)
+	MustGetById(id string)
 	MustPut()
 	MustUpdate()
 
@@ -296,18 +297,10 @@ func (m *Model) NewKey() datastore.Key {
 }
 
 // Put entity in datastore
-func (m *Model) MustPut() {
-	err := m.Put()
-	if err != nil {
-		panic(err)
-	}
-}
-
-// Put entity in datastore
 func (m *Model) Put() error {
 	// Set CreatedAt, UpdatedAt
 	now := time.Now()
-	if m.key == nil || timeutil.IsZero(m.CreatedAt) {
+	if timeutil.IsZero(m.CreatedAt) {
 		m.CreatedAt = now
 	}
 	m.UpdatedAt = now
@@ -333,25 +326,24 @@ func (m *Model) Put() error {
 	return nil
 }
 
-func (m *Model) PutWithoutSideEffects() error {
-	if m.Mock { // Need mock Put
-		return m.mockPut()
+// Get entity from datastore
+func (m *Model) Get(key datastore.Key) error {
+	if key != nil {
+		m.SetKey(key)
 	}
+	return m.Db.Get(m.key, m.Entity)
+}
 
-	// Put entity into datastore
-	key, err := m.Db.Put(m.Key(), m.Entity)
+// Helper that will retrieve entity by id (which may be an encoded key/slug/sku)
+func (m *Model) GetById(id string) error {
+	ok, err := m.Query().ById(id)
 	if err != nil {
 		return err
 	}
 
-	// Update key
-	if m.key == nil {
-		m.setKey(key)
+	if !ok {
+		return datastore.ErrNoSuchEntity
 	}
-
-	// Errors are ignored
-	m.PutDocument()
-
 	return nil
 }
 
@@ -378,62 +370,6 @@ func (m *Model) Create() error {
 	return nil
 }
 
-// Create new entity or panic
-func (m *Model) MustCreate() {
-	err := m.Create()
-	if err != nil {
-		panic(err)
-	}
-}
-
-// Get entity from datastore
-func (m *Model) Get(args ...interface{}) error {
-	// If a key is specified, try to use that, ignore nil keys (which would
-	// otherwise create a new incomplete key which makes no sense in this case.
-	if len(args) == 1 && args[0] != nil {
-		if err := m.SetKey(args[0]); err != nil {
-			return err
-		}
-	}
-	return m.Db.Get(m.key, m.Entity)
-}
-
-// Get or panic
-func (m *Model) MustGet(args ...interface{}) {
-	err := m.Get(args...)
-	if err != nil {
-		panic(err)
-	}
-}
-
-// Helper that will retrieve entity by id (which may be an encoded key/slug/sku)
-func (m *Model) GetById(id string) error {
-	ok, err := m.Query().ById(id)
-	if err != nil {
-		return err
-	}
-
-	if !ok {
-		return datastore.ErrNoSuchEntity
-	}
-	return nil
-}
-
-// Check if entity is in datastore.
-func (m *Model) Exists() (bool, error) {
-	return m.Query().KeyExists(m.Key())
-}
-
-// Check if entity is in datastore.
-func (m *Model) IdExists(id string) (datastore.Key, bool, error) {
-	return m.Query().IdExists(id)
-}
-
-// Check if entity is in datastore.
-func (m *Model) KeyExists(key datastore.Key) (bool, error) {
-	return m.Query().KeyExists(key)
-}
-
 // Update new entity (should already exist)
 func (m *Model) Update() error {
 	// Cache results of m.Clone() call in case it's needed in both hooks
@@ -458,14 +394,6 @@ func (m *Model) Update() error {
 	}
 
 	return nil
-}
-
-// Update new entity or panic
-func (m *Model) MustUpdate() {
-	err := m.Update()
-	if err != nil {
-		log.Panic(err)
-	}
 }
 
 // Delete entity from Datastore
@@ -498,12 +426,61 @@ func (m *Model) Delete() error {
 	return nil
 }
 
-// Delete or panic
-func (m *Model) MustDelete() {
-	err := m.Delete()
-	if err != nil {
+// Put or panic
+func (m *Model) MustPut() {
+	if err := m.Put(); err != nil {
 		panic(err)
 	}
+}
+
+// Get or panic
+func (m *Model) MustGet(key datastore.Key) {
+	if err := m.Get(key); err != nil {
+		panic(err)
+	}
+}
+
+// Get by id or panic
+func (m *Model) MustGetById(id string) {
+	if err := m.GetById(id); err != nil {
+		panic(err)
+	}
+}
+
+// Create or panic
+func (m *Model) MustCreate() {
+	if err := m.Create(); err != nil {
+		panic(err)
+	}
+}
+
+// Update or panic
+func (m *Model) MustUpdate() {
+	if err := m.Update(); err != nil {
+		log.Panic(err)
+	}
+}
+
+// Delete or panic
+func (m *Model) MustDelete() {
+	if err := m.Delete(); err != nil {
+		panic(err)
+	}
+}
+
+// Check if entity is in datastore.
+func (m *Model) Exists() (bool, error) {
+	return m.Query().KeyExists(m.Key())
+}
+
+// Check if entity is in datastore.
+func (m *Model) IdExists(id string) (datastore.Key, bool, error) {
+	return m.Query().IdExists(id)
+}
+
+// Check if entity is in datastore.
+func (m *Model) KeyExists(key datastore.Key) (bool, error) {
+	return m.Query().KeyExists(key)
 }
 
 // Get entity from datastore or create new one

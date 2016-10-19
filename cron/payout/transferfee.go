@@ -13,7 +13,7 @@ import (
 )
 
 // Create transfer for single fee
-var TransferFee = delay.Func("transfer-fee", func(ctx appengine.Context, stripeToken, namespace, key string) {
+var TransferFee = delay.Func("transfer-fee", func(ctx appengine.Context, stripeToken, namespace, id string) {
 	var fe *fee.Fee
 	var tr *transfer.Transfer
 
@@ -24,8 +24,8 @@ var TransferFee = delay.Func("transfer-fee", func(ctx appengine.Context, stripeT
 	err := datastore.RunInTransaction(ctx, func(db *datastore.Datastore) error {
 		// Fetch related fee
 		fe = fee.New(db)
-		if err := fe.Get(key); err != nil {
-			log.Warn("Failed to get fee with key '%s': %v", key, err, ctx)
+		if err := fe.GetById(id); err != nil {
+			log.Warn("Failed to get fee with id '%s': %v", id, err, ctx)
 			return err
 		}
 
@@ -35,8 +35,6 @@ var TransferFee = delay.Func("transfer-fee", func(ctx appengine.Context, stripeT
 		// Allocate transfer ID and Update fee
 		fe.TransferId = tr.Id()
 		fe.Status = fee.Paid
-
-		// Save reference to transfer's key so we can update it later
 
 		// Save models
 		models := []interface{}{tr, fe}

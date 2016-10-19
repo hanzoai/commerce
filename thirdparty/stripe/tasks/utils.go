@@ -50,7 +50,7 @@ func getPaymentFromCharge(ctx appengine.Context, ch *stripe.Charge) (*payment.Pa
 	// Try to get by payment id
 	if ok {
 		log.Debug("Try to get payment by payment id: %v", id, ctx)
-		if err := pay.Get(id); err == nil {
+		if err := pay.GetById(id); err == nil {
 			return pay, true, nil
 		}
 	}
@@ -71,7 +71,7 @@ func getTransfer(ctx appengine.Context, str *stripe.Transfer) (*transfer.Transfe
 	// Try to get by transfer id
 	if ok {
 		log.Debug("Try to get transfer by transfer id: %v", id, ctx)
-		if err := tr.Get(id); err == nil {
+		if err := tr.GetById(id); err == nil {
 			return tr, true, nil
 		}
 	}

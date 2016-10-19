@@ -25,7 +25,7 @@ var updateOrder = delay.Func("stripe-update-order", func(ctx appengine.Context, 
 	}
 
 	err := ord.RunInTransaction(func() error {
-		err := ord.Get(orderId)
+		err := ord.GetById(orderId)
 		if err != nil {
 			return err
 		}

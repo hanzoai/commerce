@@ -76,7 +76,7 @@ func (at *AccessToken) GetToken(accessToken string) (*token.Token, error) {
 	}
 
 	// Try to fetch model using EntityId on token
-	if err := at.Entity.Get(tok.EntityId); err != nil {
+	if err := at.Entity.GetById(tok.EntityId); err != nil {
 		return tok, err
 	}
 
