@@ -91,7 +91,7 @@
             Metadata
           </div>
           <div class="panel-body">
-            <control label="Email" input="{ inputs.metadata }"></control>
+            <pre class="form-control-static">{ JSON.stringify(model.metadata, null, 2) || '&nbsp;' }</pre>
           </div>
         </div>
 
