@@ -60,7 +60,7 @@ func FirstTimeSuccessfulOrderTest(isCharge bool, stor *store.Store) testHelperRe
 
 	// User should be in db
 	usr := user.New(db)
-	err = usr.Get(ord.UserId)
+	err = usr.GetById(ord.UserId)
 
 	Expect(err).ToNot(HaveOccurred())
 	Expect(usr.Key()).ToNot(BeNil())
@@ -70,7 +70,7 @@ func FirstTimeSuccessfulOrderTest(isCharge bool, stor *store.Store) testHelperRe
 	Expect(len(ord.PaymentIds)).To(Equal(1))
 
 	pay := payment.New(db)
-	err = pay.Get(ord.PaymentIds[0])
+	err = pay.GetById(ord.PaymentIds[0])
 
 	Expect(err).ToNot(HaveOccurred())
 	Expect(pay.Key()).ToNot(BeNil())
@@ -107,7 +107,7 @@ func ReturningSuccessfulOrderSameCardTest(isCharge bool, stor *store.Store) test
 
 	// Fetch the payment for the order to test later
 	pay1 := payment.New(db)
-	pay1.Get(ord1.PaymentIds[0])
+	pay1.GetById(ord1.PaymentIds[0])
 	if isCharge {
 		stripeVerifyCharge(pay1)
 	} else {
@@ -116,7 +116,7 @@ func ReturningSuccessfulOrderSameCardTest(isCharge bool, stor *store.Store) test
 
 	// Save user, customerId from first order
 	usr := user.New(db)
-	usr.Get(ord1.UserId)
+	usr.GetById(ord1.UserId)
 
 	log.JSON("USERRRRRRRRRRRRRRRRRRRR", usr)
 
@@ -132,7 +132,7 @@ func ReturningSuccessfulOrderSameCardTest(isCharge bool, stor *store.Store) test
 
 	// Fetch the payment for the order to test later
 	pay2 := payment.New(db)
-	pay2.Get(ord2.PaymentIds[0])
+	pay2.GetById(ord2.PaymentIds[0])
 	if isCharge {
 		stripeVerifyCharge(pay2)
 	} else {
@@ -140,7 +140,7 @@ func ReturningSuccessfulOrderSameCardTest(isCharge bool, stor *store.Store) test
 	}
 
 	user2 := user.New(db)
-	user2.Get(ord2.UserId)
+	user2.GetById(ord2.UserId)
 	Expect(user2.Accounts.Stripe.CustomerId).To(Equal(customerId))
 
 	Expect(pay1.Account.CardId).ToNot(Equal(pay2.Account.CardId))
@@ -170,7 +170,7 @@ func ReturningSuccessfulOrderNewCardTest(isCharge bool, stor *store.Store) testH
 
 	// Fetch the payment for the order to test later
 	pay1 := payment.New(db)
-	pay1.Get(ord1.PaymentIds[0])
+	pay1.GetById(ord1.PaymentIds[0])
 	if isCharge {
 		stripeVerifyCharge(pay1)
 	} else {
@@ -179,7 +179,7 @@ func ReturningSuccessfulOrderNewCardTest(isCharge bool, stor *store.Store) testH
 
 	// Save user, customerId from first order
 	usr := user.New(db)
-	usr.Get(ord1.UserId)
+	usr.GetById(ord1.UserId)
 	customerId := usr.Accounts.Stripe.CustomerId
 	stripeVerifyUser(usr)
 
@@ -191,7 +191,7 @@ func ReturningSuccessfulOrderNewCardTest(isCharge bool, stor *store.Store) testH
 
 	// Fetch the payment for the order to test later
 	pay2 := payment.New(db)
-	pay2.Get(ord2.PaymentIds[0])
+	pay2.GetById(ord2.PaymentIds[0])
 	if isCharge {
 		stripeVerifyCharge(pay2)
 	} else {
@@ -199,7 +199,7 @@ func ReturningSuccessfulOrderNewCardTest(isCharge bool, stor *store.Store) testH
 	}
 
 	user2 := user.New(db)
-	user2.Get(ord2.UserId)
+	user2.GetById(ord2.UserId)
 	Expect(user2.Accounts.Stripe.CustomerId).To(Equal(customerId))
 
 	// Payment/Card logic
@@ -253,7 +253,7 @@ var _ = Describe("payment", func() {
 			cl.Post("/checkout/authorize", requests.NonNormalizedOrder, ord)
 
 			usr := user.New(db)
-			usr.Get(ord.UserId)
+			usr.GetById(ord.UserId)
 
 			log.JSON("USER:", usr)
 
@@ -373,14 +373,14 @@ var _ = Describe("payment", func() {
 			cl.Post("/order", requests.ValidOrderOnly, ord1, 201)
 
 			ord2 := order.New(db)
-			err := ord2.Get(ord1.Id())
+			err := ord2.GetById(ord1.Id())
 			Expect(err).ToNot(HaveOccurred())
 
 			ord3 := order.New(db)
 			cl.Post("/order/"+ord2.Id()+"/authorize", requests.ValidUserPaymentOnly, ord3)
 
 			pay := payment.New(db)
-			pay.Get(ord3.PaymentIds[0])
+			pay.GetById(ord3.PaymentIds[0])
 
 			stripeVerifyAuth(pay)
 		})
@@ -394,7 +394,7 @@ var _ = Describe("payment", func() {
 			cl.Post("/order", requests.ValidCouponOrderOnly, ord1, 201)
 
 			ord2 := order.New(db)
-			err := ord2.Get(ord1.Id())
+			err := ord2.GetById(ord1.Id())
 			Expect(err).ToNot(HaveOccurred())
 
 			ord3 := order.New(db)
@@ -403,7 +403,7 @@ var _ = Describe("payment", func() {
 			Expect(ord3.Subtotal).To(Equal(currency.Cents(3500)))
 
 			pay := payment.New(db)
-			pay.Get(ord3.PaymentIds[0])
+			pay.GetById(ord3.PaymentIds[0])
 
 			stripeVerifyAuth(pay)
 		})
@@ -429,14 +429,14 @@ var _ = Describe("payment", func() {
 			cl.Post("/order", requests.ValidOrderOnly, ord1, 201)
 
 			ord2 := order.New(db)
-			err := ord2.Get(ord1.Id())
+			err := ord2.GetById(ord1.Id())
 			Expect(err).ToNot(HaveOccurred())
 
 			ord3 := order.New(db)
 			cl.Post("/order/"+ord2.Id()+"/charge", requests.ValidUserPaymentOnly, ord3)
 
 			pay := payment.New(db)
-			pay.Get(ord3.PaymentIds[0])
+			pay.GetById(ord3.PaymentIds[0])
 
 			stripeVerifyCharge(pay)
 		})
@@ -465,7 +465,7 @@ var _ = Describe("payment", func() {
 			cl.Post("/order/"+ord1.Id()+"/charge", requests.ValidUserPaymentOnly, ord2)
 
 			refIn1 := referrer.New(db)
-			refIn1.MustGet(refIn.Id())
+			refIn1.MustGetById(refIn.Id())
 
 			// trans := transaction.New(db)
 			// err = trans.GetById(refIn1.TransactionIds[0])
@@ -475,7 +475,7 @@ var _ = Describe("payment", func() {
 			// Expect(trans.Amount).To(Equal(refIn.Program.Actions[0].Amount))
 
 			pay := payment.New(db)
-			pay.Get(ord2.PaymentIds[0])
+			pay.GetById(ord2.PaymentIds[0])
 
 			stripeVerifyCharge(pay)
 		})
@@ -518,7 +518,7 @@ var _ = Describe("payment", func() {
 			cl.Post("/order/"+ordId+"/refund", requests.PartialRefund, nil, 200)
 
 			refundedOrder := order.New(db)
-			err := refundedOrder.Get(ordId)
+			err := refundedOrder.GetById(ordId)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(refundedOrder.Refunded).To(Equal(currency.Cents(123)))
 
