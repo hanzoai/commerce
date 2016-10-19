@@ -231,7 +231,7 @@ func DecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key, err error)
 			case error:
 				err = v
 			default:
-				err = errors.New("Impossible hashid.DecodeKey error")
+				err = fmt.Errorf("Unknown panic decoding '%s'", encoded)
 			}
 		}
 	}()
@@ -241,7 +241,7 @@ func DecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key, err error)
 
 	// Check for invalid keys.
 	if n < 3 {
-		return key, errors.New("Invalid number of key segments")
+		return key, fmt.Errorf("Invalid number of segments: %v", ids)
 	}
 
 	// Set namespace

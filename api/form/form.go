@@ -14,22 +14,25 @@ import (
 
 // handle form submissions
 func handleForm(c *gin.Context) {
-	id := c.Params.ByName("mailinglistid")
 	db := datastore.New(c)
-
+	id := c.Params.ByName("mailinglistid")
+	org := organization.New(db)
 	ml := mailinglist.New(db)
 
-	// Set key and namespace correctly
+	// Set mailinglist key
 	ml.SetKey(id)
+
+	// Reset namespace to organization's
 	ml.SetNamespace(ml.Key().Namespace())
-	db.Context = ml.Db.Context
+
+	// Get namespaced db
+	db = ml.Datastore()
 
 	// Get organization for mailinglist
-	org := organization.New(db)
 	org.GetById(ml.Key().Namespace())
 
 	// Mailing list doesn't exist
-	if err := ml.Get(); err != nil {
+	if err := ml.Get(nil); err != nil {
 		http.Fail(c, 404, fmt.Sprintf("Failed to retrieve mailing list '%v': %v", id, err), err)
 		return
 	}

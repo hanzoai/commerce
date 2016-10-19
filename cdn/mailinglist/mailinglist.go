@@ -23,7 +23,7 @@ func Js(c *gin.Context) {
 	log.Debug("namespace: %v", ml.Key().Namespace())
 	ml.SetNamespace(ml.Key().Namespace())
 
-	if err := ml.Get(); err != nil {
+	if err := ml.Get(nil); err != nil {
 		c.String(404, fmt.Sprintf("Failed to retrieve mailing list '%v': %v", id, err))
 		return
 	}
