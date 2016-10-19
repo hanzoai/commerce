@@ -3,6 +3,7 @@ package query
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"appengine"
@@ -127,12 +128,18 @@ func (q *Query) FirstKey() (*aeds.Key, bool, error) {
 }
 
 func (q *Query) GetKeys() ([]*aeds.Key, error) {
-	keys, err := q.aedsq.KeysOnly().GetAll(q.ctx, nil)
-	err = IgnoreFieldMismatch(err)
-	return keys, err
+	return q.KeysOnly().GetAll(nil)
 }
 
+// Fetches entities. Dst must have type *[]S or *[]*S or *[]P, for some
+// struct type S or some non- interface, non-pointer type P such that P
+// or *P implements PropertyLoadSaver.
 func (q *Query) GetAll(dst interface{}) ([]*aeds.Key, error) {
+	v := reflect.ValueOf(dst)
+	if dst != nil && !isPtrSlice(v) {
+		return nil, fmt.Errorf("Expected dst to be a pointer to a slice or nil, got: %v", v.Kind())
+	}
+
 	keys, err := q.aedsq.GetAll(q.ctx, dst)
 	err = IgnoreFieldMismatch(err)
 	return keys, err

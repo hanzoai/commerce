@@ -1,6 +1,7 @@
 package query
 
 import (
+	"fmt"
 	"reflect"
 	"sync"
 
@@ -21,21 +22,22 @@ type Model interface {
 	SetKey(key interface{}) error
 }
 
-// De-pointer slice
-func getSlice(iface interface{}) reflect.Value {
-	// Get value of slice
-	slice := reflect.ValueOf(iface)
-
-	// De-pointer
-	for slice.Kind() == reflect.Ptr {
-		slice = reflect.Indirect(slice)
+// Only *[]Slice is valid
+func isPtrSlice(v reflect.Value) bool {
+	if v.Kind() != reflect.Ptr {
+		return false
 	}
 
-	return slice
+	v = v.Elem()
+	if v.Kind() != reflect.Slice {
+		return false
+	}
+
+	return true
 }
 
 // Check if this is a slice of pointers
-func sliceOfPtr(slice reflect.Value) bool {
+func isSliceOfPtr(slice reflect.Value) bool {
 	v := slice.Index(0)
 	if v.Type().Kind() == reflect.Ptr {
 		return true
@@ -53,7 +55,8 @@ func initModel(ctx appengine.Context, key iface.Key, value reflect.Value) {
 	model.SetKey(key)
 }
 
-// Load models into []Model or []*Model slice
+// Fetches models and initializes automatically. Dst must have type *[]*M, for
+// some model type M.
 func (q *Query) GetModels(dst interface{}) error {
 	keys, err := q.aedsq.GetAll(q.ctx, dst)
 	err = IgnoreFieldMismatch(err)
@@ -69,13 +72,20 @@ func (q *Query) GetModels(dst interface{}) error {
 		return nil
 	}
 
-	// Get value of slice
-	slice := getSlice(dst)
+	// Get slice
+	slice := reflect.ValueOf(dst)
+	if !isPtrSlice(slice) {
+		return fmt.Errorf("Expected dst to be a pointer to a slice of models, got: %v", slice.Kind())
+	}
 
-	// Check if models should be initialized, only a slice of pointers will
-	// matche Model interface.
-	if !sliceOfPtr(slice) {
-		return nil
+	// De-pointer
+	for slice.Kind() == reflect.Ptr {
+		slice = reflect.Indirect(slice)
+	}
+
+	// Only a pointer to an entity will match the Entity interface
+	if !isSliceOfPtr(slice) {
+		return fmt.Errorf("Expected dst to be a pointer to a slice of models, got: %v", slice.Kind())
 	}
 
 	// Initialize all models in parallel
