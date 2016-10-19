@@ -22,30 +22,6 @@ type Model interface {
 	SetKey(key interface{}) error
 }
 
-// Only *[]Slice is valid
-func isPtrSlice(v reflect.Value) bool {
-	if v.Kind() != reflect.Ptr {
-		return false
-	}
-
-	v = v.Elem()
-	if v.Kind() != reflect.Slice {
-		return false
-	}
-
-	return true
-}
-
-// Check if this is a slice of pointers
-func isSliceOfPtr(slice reflect.Value) bool {
-	v := slice.Index(0)
-	if v.Type().Kind() == reflect.Ptr {
-		return true
-	}
-
-	return false
-}
-
 // Initialize model
 func initModel(ctx appengine.Context, key iface.Key, value reflect.Value) {
 	entity := value.Interface().(Kind)
@@ -55,8 +31,8 @@ func initModel(ctx appengine.Context, key iface.Key, value reflect.Value) {
 	model.SetKey(key)
 }
 
-// Fetches models and initializes automatically. Dst must have type *[]*M, for
-// some model type M.
+// Fetches models and initializes them automatically. Dst must have type *[]*M,
+// for some model type M.
 func (q *Query) GetModels(dst interface{}) error {
 	keys, err := q.aedsq.GetAll(q.ctx, dst)
 	err = IgnoreFieldMismatch(err)
