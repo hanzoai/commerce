@@ -71,7 +71,7 @@ func NewFromInt(ctx appengine.Context, kind string, intid interface{}, parent Ke
 	switch v := intid.(type) {
 	case string:
 		if parsed, err := strconv.ParseInt(v, 10, 64); err != nil {
-			return nil, fmt.Errorf("Invalid integer for key: %v", intid)
+			return nil, fmt.Errorf("Invalid integer for key: '%v'", intid)
 		} else {
 			id = parsed
 		}
@@ -80,7 +80,7 @@ func NewFromInt(ctx appengine.Context, kind string, intid interface{}, parent Ke
 	case int:
 		id = int64(v)
 	default:
-		return nil, fmt.Errorf("Invalid integer for key: %v", intid)
+		return nil, fmt.Errorf("Invalid integer for key: '%v'", intid)
 	}
 
 	return aeds.NewKey(ctx, kind, "", id, convertKey(parent)), nil

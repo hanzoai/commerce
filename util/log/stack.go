@@ -10,7 +10,7 @@ func errAndStack(err error) string {
 	if !std.Verbose() {
 		return fmt.Sprintf("%v", err)
 	} else {
-		return fmt.Sprintf("%v:\n%s", err, stack(6))
+		return fmt.Sprintf("%v\n%s", err, stack(6))
 	}
 }
 
