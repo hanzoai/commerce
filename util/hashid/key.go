@@ -101,7 +101,7 @@ func getId(ctx appengine.Context, name string) int64 {
 	}
 
 	if !ok {
-		panic(fmt.Sprintf("Namespace '%s' does not exists", name))
+		panic(fmt.Errorf("Namespace '%s' does not exists", name))
 	}
 
 	return ns.IntId
@@ -121,7 +121,7 @@ func getName(ctx appengine.Context, id int64) string {
 	}
 
 	if !ok {
-		panic(fmt.Sprintf("Namespace with id %d does not exist", id))
+		panic(fmt.Errorf("Namespace with id %d does not exist", id))
 	}
 
 	return ns.Name
@@ -233,6 +233,8 @@ func DecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key, err error)
 			default:
 				err = fmt.Errorf("Unknown panic decoding '%s'", encoded)
 			}
+
+			log.Warn("Failed to decode key: %v", err, ctx)
 		}
 	}()
 
