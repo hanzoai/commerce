@@ -24,7 +24,7 @@ class StaticPreView extends StaticView
   tag: 'static-pre'
   html: require '../../templates/backend/form/controls/static-pre.html'
 
-StaticView.register()
+StaticPreView.register()
 
 class StaticDateView extends StaticView
   tag: 'static-date'
