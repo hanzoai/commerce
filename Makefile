@@ -285,7 +285,7 @@ test-ci:
 
 coverage:
 	$(gover) test/ coverage.out
-	$(goveralls) -coverprofile=coverage.out -repotoken=Tw5twjuGOKXT76UNhAXkY3TVJ2XMnFLls
+	$(goveralls) -coverprofile=coverage.out -service=circle-ci -repotoken=$(COVERALLS_REPO_TOKEN)
 
 # DEPLOY
 
