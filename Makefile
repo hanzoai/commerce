@@ -12,8 +12,8 @@ current_date	= $(shell date +"%Y-%m-%d")
 appcfg.py 		= $(sdk_path)/appcfg.py --skip_sdk_update_check
 bulkloader.py   = $(sdk_path)/bulkloader.py
 goapp			= $(sdk_path)/goapp
-gover 			= $(go_path)/bin/gover
-goveralls       = $(go_path)/bin/goveralls
+gover 			= $(gopath)/bin/gover
+goveralls       = $(gopath)/bin/goveralls
 
 ginkgo			= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(gopath)/bin/ginkgo
 gpm				= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(sdk_path)/gpm
