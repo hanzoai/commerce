@@ -11,7 +11,7 @@ var _ = New("kanoa-forms", func(c *gin.Context) *mailinglist.MailingList {
 	db := datastore.New(c)
 
 	ml := mailinglist.New(db)
-	ml.MustGet("3XudPY2SQeXQ3")
+	ml.MustGetById("3XudPY2SQeXQ3")
 	ml.Forward.Name = "Cival"
 	ml.Forward.Email = "dev@hanzo.ai"
 	ml.Forward.Enabled = true
