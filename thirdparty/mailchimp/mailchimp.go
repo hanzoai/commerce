@@ -351,7 +351,7 @@ func (api API) DeleteCart(storeId string, car *cart.Cart) error {
 func (api API) CreateOrder(storeId string, ord *order.Order) error {
 	// Fetch user
 	usr := user.New(ord.Db)
-	if err := usr.Get(ord.UserId); err != nil {
+	if err := usr.GetById(ord.UserId); err != nil {
 		return err
 	}
 
@@ -437,7 +437,7 @@ func (api API) CreateOrder(storeId string, ord *order.Order) error {
 func (api API) UpdateOrder(storeId string, ord *order.Order) error {
 	// Fetch user
 	usr := user.New(ord.Db)
-	if err := usr.Get(ord.UserId); err != nil {
+	if err := usr.GetById(ord.UserId); err != nil {
 		return err
 	}
 
