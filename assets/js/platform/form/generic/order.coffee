@@ -46,6 +46,8 @@ class OrderForm extends Form
     input('status', '', 'order-status-select'),
     input('paymentStatus', '', 'payment-status-select'),
     input('fulfillmentStatus', '', 'fulfillment-status-select'),
+
+    input('metadata', '', 'static-pre'),
   ]
 
   # hack for couponCodes because crowdcontrol doenst treat arrays as leaves

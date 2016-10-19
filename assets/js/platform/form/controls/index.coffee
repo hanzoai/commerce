@@ -20,6 +20,12 @@ class StaticView extends InputView
 
 StaticView.register()
 
+class StaticPreView extends StaticView
+  tag: 'static-pre'
+  html: require '../../templates/backend/form/controls/static-pre.html'
+
+StaticView.register()
+
 class StaticDateView extends StaticView
   tag: 'static-date'
   html: require '../../templates/backend/form/controls/static-date.html'
@@ -537,6 +543,10 @@ helpers.registerTag (inputCfg)->
 helpers.registerTag (inputCfg)->
   return inputCfg.hints['static-date']
 , 'static-date'
+
+helpers.registerTag (inputCfg)->
+  return inputCfg.hints['static-pre']
+, 'static-pre'
 
 helpers.registerTag (inputCfg)->
   return inputCfg.hints['static']
