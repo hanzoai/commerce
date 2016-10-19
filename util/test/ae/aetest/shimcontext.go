@@ -1,9 +1,9 @@
 package aetest
 
 import (
-	"log"
-
 	"appengine/aetest"
+
+	"crowdstart.com/util/log"
 )
 
 // Context which hase a Close() method returning an error for compatibility
