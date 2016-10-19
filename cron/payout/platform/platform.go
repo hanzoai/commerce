@@ -21,7 +21,7 @@ var transferFees = delay.Func("transfer-platform-fees", func(ctx appengine.Conte
 
 	// Fetch organization
 	org := organization.New(db)
-	if err := org.Get(orgId); err != nil {
+	if err := org.GetById(orgId); err != nil {
 		log.Error("Failed to fetch organization '%s': %v", orgId, err, ctx)
 		return
 	}

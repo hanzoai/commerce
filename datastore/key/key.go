@@ -8,6 +8,7 @@ import (
 	aeds "appengine/datastore"
 
 	"crowdstart.com/util/hashid"
+	"crowdstart.com/util/log"
 
 	"crowdstart.com/datastore/iface"
 )
@@ -113,6 +114,8 @@ func Decode(ctx appengine.Context, encoded string) (*aeds.Key, error) {
 	if err == nil {
 		return key, nil
 	}
+
+	log.Warn("Failed to decode hashid, assuming base64 encoding: %v", err, ctx)
 
 	// Fallback to aedsDecode
 	return aedsDecode(ctx, encoded)
