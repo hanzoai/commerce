@@ -93,7 +93,7 @@ var _ = New("update-old-payments",
 
 			// See if we have a valid order
 			ord = order.New(db)
-			if err := ord.Get(p.OrderId); err != nil {
+			if err := ord.GetById(p.OrderId); err != nil {
 				// Not a good payment, no matching order
 				deletePayment(ctx, p)
 			} else {
