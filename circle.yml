@@ -2,6 +2,10 @@ dependencies:
   cache_directories:
     - ".sdk"
 test:
+  pre:
+    - make deps
   override:
     - util/test/test-runner:
         parallel: true
+  post:
+    - make coverage

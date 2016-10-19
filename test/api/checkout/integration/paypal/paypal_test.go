@@ -146,14 +146,14 @@ var _ = Describe("payment/paypal", func() {
 
 				// Order should be in db
 				ord := order.New(db)
-				err = ord.Get(pay.OrderId)
+				err = ord.GetById(pay.OrderId)
 				Expect(err).ToNot(HaveOccurred())
 				log.Debug("Ord %v", ord)
 				Expect(string(ord.Type)).To(Equal("paypal"))
 
 				// User should be in db
 				usr := user.New(db)
-				err = usr.Get(ord.UserId)
+				err = usr.GetById(ord.UserId)
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(usr.Key()).ToNot(BeNil())
