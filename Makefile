@@ -284,8 +284,8 @@ test-ci:
 	$(ginkgo) $(test_target) -p=true --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace -cover
 
 coverage:
-	$(gover) test/
-	$(goveralls) -coverprofile=gover.coverprofile -service=circle-ci -repotoken=Tw5twjuGOKXT76UNhAXkY3TVJ2XMnFLls
+	$(gover) test/ coverage.out
+	$(goveralls) -coverprofile=coverage.out -repotoken=Tw5twjuGOKXT76UNhAXkY3TVJ2XMnFLls
 
 # DEPLOY
 
