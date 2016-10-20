@@ -42,10 +42,14 @@
               Affiliate Marketing
             </div>
             <div class="panel-body">
+              <div class="section col-xs-12" style="padding:0">
+                <control class="col-sm-6" label="Flat Fee" input="{ inputs['commission.flat'] }"></control>
+                <control class="col-sm-6" label="Percent Fee" input="{ inputs['commission.percent'] }"></control>
+              </div>
+
               <div class="section col-xs-12 mb20" style="padding:0">
-                <control class="col-sm-4" label="Flat Fee" input="{ inputs['commission.flat'] }"></control>
-                <control class="col-sm-4" label="Percent Fee" input="{ inputs['commission.percent'] }"></control>
-                <control class="col-sm-4" label="Affiliate Enabled" input="{ inputs.enabled }"></control>
+                <control class="col-sm-6" label="Affiliate Coupon" input="{ inputs.couponId }"></control>
+                <control class="col-sm-6" label="Affiliate Enabled" input="{ inputs.enabled }"></control>
               </div>
 
               <div class="section col-xs-12 mb10 has-error" if="{error}" style="padding:0">
