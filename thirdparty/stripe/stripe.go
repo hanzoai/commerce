@@ -250,6 +250,10 @@ func (c Client) GetCharge(chargeId string) (*Charge, error) {
 
 // Update Stripe charge
 func (c Client) UpdateCharge(pay *payment.Payment) (*Charge, error) {
+	// TODO: How is this ever nil?
+	if pay.Metadata == nil {
+		pay.Metadata = make(map[string]interface{})
+	}
 	pay.Metadata["order"] = pay.OrderId
 	pay.Metadata["payment"] = pay.Id()
 	pay.Metadata["user"] = pay.Buyer.UserId
