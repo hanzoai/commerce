@@ -22,6 +22,7 @@ type Affiliate struct {
 
 	Commission commission.Commission `json:"commission,omitempty"`
 	Schedule   schedule.Schedule     `json:"schedule,omitempty"`
+	CouponId   string                `json:"couponId,omitempty"`
 
 	Stripe struct {
 		AccessToken    string

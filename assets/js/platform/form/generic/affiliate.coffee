@@ -24,6 +24,7 @@ class AffiliateForm extends Form
     input('commission.percent', 'Percent Fee', 'percent'),
     input('commission.flat', 'Flat Fee', 'money'),
     input('enabled', '', 'switch'),
+    input('couponId', '', ''),
   ]
 
   constructor: ->
