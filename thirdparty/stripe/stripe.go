@@ -252,7 +252,7 @@ func (c Client) GetCharge(chargeId string) (*Charge, error) {
 func (c Client) UpdateCharge(pay *payment.Payment) (*Charge, error) {
 	// TODO: How is this ever nil?
 	if pay.Metadata == nil {
-		log.Error("Payment had nil metadata somehow: %v", pay, c.ctx)
+		log.Error("Payment had nil metadata somehow: %#v", pay, c.ctx)
 		pay.Metadata = make(map[string]interface{})
 	}
 	pay.Metadata["order"] = pay.OrderId
