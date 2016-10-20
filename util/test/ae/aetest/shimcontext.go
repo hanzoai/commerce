@@ -1,9 +1,9 @@
 package aetest
 
 import (
-	"log"
-
 	"appengine/aetest"
+
+	"crowdstart.com/util/log"
 )
 
 // Context which hase a Close() method returning an error for compatibility
@@ -31,6 +31,6 @@ func (c shimContext) GetCurrentNamespace() string {
 // Converter so Close() method matches signature we need.
 func (c shimContext) Close() {
 	if err := c.Context.Close(); err != nil {
-		log.Fatal("Unable to close aetest.Context: %v", err)
+		log.Error("Unable to close aetest.Context: %v", err)
 	}
 }
