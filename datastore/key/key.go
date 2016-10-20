@@ -7,10 +7,11 @@ import (
 	"appengine"
 	aeds "appengine/datastore"
 
-	"crowdstart.com/util/hashid"
-	"crowdstart.com/util/log"
+	"github.com/qedus/nds"
 
 	"crowdstart.com/datastore/iface"
+	"crowdstart.com/util/hashid"
+	"crowdstart.com/util/log"
 )
 
 type Key iface.Key
@@ -140,7 +141,7 @@ func Exists(ctx appengine.Context, key interface{}) (bool, error) {
 	}
 
 	// Search for key in datastore
-	err = aeds.Get(ctx, k, nil)
+	err = nds.Get(ctx, k, nil)
 
 	// Not found
 	if err == aeds.ErrNoSuchEntity {
