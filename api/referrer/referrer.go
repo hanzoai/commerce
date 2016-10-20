@@ -46,5 +46,25 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 		}
 	}
 
+	api.Get = func(c *gin.Context) {
+		org := middleware.GetOrganization(c)
+		db := datastore.New(org.Namespaced(c))
+		ref := referrer.New(db)
+
+		id := c.Params.ByName(api.ParamId)
+
+		if err := ref.GetById(id); err != nil {
+			http.Fail(c, 404, "No Referrer found with id: "+id, err)
+			return
+		}
+
+		if err := ref.LoadAffiliate(); err != nil {
+			http.Fail(c, 500, "Referrer affiliate data could not be queries", err)
+			return
+		}
+
+		api.Render(c, 200, ref)
+	}
+
 	api.Route(router, args...)
 }
