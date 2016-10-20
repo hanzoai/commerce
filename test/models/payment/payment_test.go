@@ -52,26 +52,4 @@ var _ = Describe("Payment", func() {
 			Expect(pay2.Metadata["orderId"]).To(Equal("some-order"))
 		})
 	})
-
-	Context("Old order payment", func() {
-		var pay *payment.Payment
-
-		Before(func() {
-			pay = payment.Fake(db)
-		})
-
-		It("should save new payments", func() {
-			pay.MustPut()
-		})
-
-		It("should correctly persist metadata", func() {
-			pay.Metadata["a"] = 1
-			pay.Metadata["orderId"] = "some-order"
-			pay.MustPut()
-			pay2 := payment.New(db)
-			pay2.MustGet(pay.Key())
-			Expect(pay2.Metadata["a"]).To(Equal(float64(1)))
-			Expect(pay2.Metadata["orderId"]).To(Equal("some-order"))
-		})
-	})
 })
