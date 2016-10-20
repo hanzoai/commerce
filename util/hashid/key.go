@@ -8,6 +8,8 @@ import (
 	"appengine"
 	aeds "appengine/datastore"
 
+	"github.com/qedus/nds"
+
 	"crowdstart.com/datastore/utils"
 	"crowdstart.com/models/namespace/consts"
 	"crowdstart.com/util/log"
@@ -279,7 +281,7 @@ func KeyExists(ctx appengine.Context, encoded string) (bool, error) {
 	}
 
 	// Try to query out matching key
-	err = aeds.Get(ctx, key, Model{})
+	err = nds.Get(ctx, key, Model{})
 
 	if err == aeds.ErrNoSuchEntity {
 		return false, nil
