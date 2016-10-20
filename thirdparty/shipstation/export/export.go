@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"appengine"
-
 	aeds "appengine/datastore"
 
 	"github.com/gin-gonic/gin"
+	"github.com/qedus/nds"
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
@@ -393,7 +393,7 @@ func Export(c *gin.Context) {
 
 	// Fetch users
 	users := make([]*user.User, len(keys))
-	if err := aeds.GetMulti(ctx, keys, users); err != nil {
+	if err := nds.GetMulti(ctx, keys, users); err != nil {
 		log.Warn("Unable to fetch all users using keys %v: %v", keys, err, c)
 
 		if me, ok := err.(appengine.MultiError); ok {
