@@ -16,16 +16,65 @@ type Authorization struct {
 	Order   *order.Order     `json:"order"`
 }
 
+// Copy newer attributes from request user onto existing user
+func mergeUsers(newer, usr *user.User) {
+	// Preserve new attributes if set on request
+	if newer.FirstName != "" {
+		usr.FirstName = newer.FirstName
+	}
+
+	if newer.LastName != "" {
+		usr.LastName = newer.LastName
+	}
+
+	if newer.Phone != "" {
+		usr.Phone = newer.Phone
+	}
+
+	if newer.Company != "" {
+		usr.Company = newer.Company
+	}
+
+	if !newer.BillingAddress.Empty() {
+		usr.BillingAddress = newer.BillingAddress
+	}
+
+	if !newer.ShippingAddress.Empty() {
+		usr.ShippingAddress = newer.ShippingAddress
+	}
+
+	// Update email or username, but only if those aren't persisted
+	if usr.Email != "" && newer.Email != "" {
+		usr.Email = newer.Email
+	}
+
+	if usr.Username != "" && newer.Username != "" {
+		usr.Username = newer.Username
+	}
+
+	// Merge metadata
+	for k, v := range newer.Metadata {
+		usr.Metadata[k] = v
+	}
+}
+
 // Correctly initialize user provided in authorization
 func initUser(db *datastore.Datastore, usr *user.User, ord *order.Order) error {
 	usr.Init(db)
 
-	// If Id_ is specified this is an existing user, ensure they exist
+	// If Id_ is specified this is an existing user, ensure they exist and
+	// re-use existing attributes and data.
 	if id := usr.Id_; id != "" {
-		// TODO: Decide what if any values to allow to be updated via user in request
+		// Preserve user passed in request
+		newer := usr.Clone().(*user.User)
+
+		// Try to fetch existing user
 		if err := usr.GetById(id); err != nil {
 			return UserDoesNotExist
 		}
+
+		// Copy newer attributes from request user onto existing user
+		mergeUsers(newer, usr)
 	}
 
 	// Use order billing and shipping address if missing on user
@@ -59,6 +108,15 @@ func initOrder(db *datastore.Datastore, ord *order.Order, usr *user.User) {
 	// Normalize country
 	ord.BillingAddress.Country = strings.ToUpper(ord.BillingAddress.Country)
 	ord.ShippingAddress.Country = strings.ToUpper(ord.ShippingAddress.Country)
+
+	// Use user's name for addresses if not present in request
+	if ord.BillingAddress.Name == "" {
+		ord.BillingAddress.Name = usr.Name()
+	}
+
+	if ord.ShippingAddress.Name == "" {
+		ord.ShippingAddress.Name = usr.Name()
+	}
 
 	// Order is parented to user
 	ord.Parent = usr.Key()
