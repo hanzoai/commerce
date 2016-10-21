@@ -4,11 +4,12 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"crowdstart.com/datastore"
-	. "crowdstart.com/models"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/product"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/thirdparty/mailchimp"
+
+	. "crowdstart.com/models"
 )
 
 var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product {
