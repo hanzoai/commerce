@@ -202,14 +202,15 @@ func (m *Model) SetKey(key interface{}) (err error) {
 		} else {
 			// Try to decode key as hashid
 			k, err = hashid.DecodeKey(m.Db.Context, v)
-			if err != nil {
-				// Try to decode key as encoded key
-				k, err = m.Db.DecodeKey(v)
-				if err != nil {
-					return fmt.Errorf("Unable to decode %v, %v", v, err)
-				}
-			} else {
+			if err == nil {
+				// Success, this is a hashid encoded key
 				id = v
+			} else {
+				// Try to decode key as encoded key
+				k, err := aeds.DecodeKey(v)
+				if err != nil {
+					return fmt.Errorf("Unable to decode '%v': %v", v, err)
+				}
 			}
 		}
 	case int64:
