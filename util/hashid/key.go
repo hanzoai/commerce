@@ -1,7 +1,6 @@
 package hashid
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
@@ -224,23 +223,11 @@ func EncodeKey(ctx appengine.Context, key iface.Key) string {
 }
 
 func DecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key, err error) {
-	// Catch panic from Decode
-	defer func() {
-		if r := recover(); r != nil {
-			switch v := r.(type) {
-			case string:
-				err = errors.New(v)
-			case error:
-				err = v
-			default:
-				err = fmt.Errorf("Unknown panic decoding '%s'", encoded)
-			}
+	ids, err := Decode(encoded)
+	if err != nil {
+		return nil, err
+	}
 
-			log.Warn("Failed to decode key: %v", err, ctx)
-		}
-	}()
-
-	ids := Decode(encoded)
 	n := len(ids)
 
 	// Check for invalid keys.
