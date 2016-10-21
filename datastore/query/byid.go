@@ -23,13 +23,17 @@ func (q *Query) couponFromId(id string, dst interface{}) (*aeds.Key, bool, error
 	}
 
 	// Get ids from coupon id
-	ids := hashid.Decode(id)
+	ids, err := hashid.Decode(id)
+	if err != nil {
+		return nil, false, ErrInvalidKey
+	}
+
 	if len(ids) == 0 {
 		return nil, false, ErrInvalidKey
 	}
 
 	// Recreate coupon key
-	key, err := newKeyFromInt(q.ctx, "coupon", ids[0], nil)
+	key, err = newKeyFromInt(q.ctx, "coupon", ids[0], nil)
 	if err != nil {
 		return nil, false, err
 	}
