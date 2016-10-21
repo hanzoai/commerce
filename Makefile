@@ -271,13 +271,13 @@ tools:
 	$(gopath)/bin/gocode set lib-path "$(gopath_pkg_path):$(goroot_pkg_path)"
 
 # TEST/ BENCH
-test:
+test: install
 	@$(ginkgo) $(test_target) -p=true -progress --randomizeAllSpecs --failFast --trace --skipMeasurements --skipPackage=integration $(test_verbose)
 
 test-watch:
 	@$(ginkgo) watch -r=true -p=true -progress --failFast --trace $(test_verbose)
 
-bench:
+bench: install
 	@$(ginkgo) $(test_target) -p=true -progress --randomizeAllSpecs --failFast --trace --skipPackage=integration $(test_verbose)
 
 test-ci:
