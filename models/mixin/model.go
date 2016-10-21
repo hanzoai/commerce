@@ -3,7 +3,6 @@ package mixin
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"time"
 
 	"appengine"
@@ -14,7 +13,7 @@ import (
 	"crowdstart.com/util/hashid"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/rand"
-	"crowdstart.com/util/structs"
+	"crowdstart.com/util/reflect"
 	"crowdstart.com/util/timeutil"
 )
 
@@ -220,8 +219,6 @@ func (m *Model) SetKey(key interface{}) (err error) {
 		k = m.Db.NewKey(m.Entity.Kind(), "", int64(v), nil)
 	case nil:
 		k = m.Key()
-	case reflect.Value:
-		return m.SetKey(v.Interface())
 	default:
 		return fmt.Errorf("Unable to set %v as key", key)
 	}
@@ -524,7 +521,7 @@ func (m *Model) GetOrUpdate(filterStr string, value interface{}) error {
 	}
 
 	// Update fetched entity
-	structs.Copy(update, m.Entity)
+	reflect.Copy(update, m.Entity)
 
 	// Persist
 	return m.Update()
