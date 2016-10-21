@@ -1,8 +1,6 @@
 package store
 
 import (
-	"reflect"
-
 	aeds "appengine/datastore"
 
 	"crowdstart.com/datastore"
@@ -12,7 +10,7 @@ import (
 	"crowdstart.com/models/types/weight"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
-	"crowdstart.com/util/structs"
+	"crowdstart.com/util/reflect"
 	"crowdstart.com/util/val"
 
 	. "crowdstart.com/models"
@@ -57,7 +55,7 @@ type Listing struct {
 	Hidden *bool `json:"hidden,omitempty"`
 }
 
-var ListingFields = structs.FieldNames(Listing{})
+var ListingFields = reflect.FieldNames(Listing{})
 
 type Listings map[string]Listing
 type ShippingRateTable map[string]shipping.Rates

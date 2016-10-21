@@ -1,12 +1,12 @@
 package query
 
 import (
-	"reflect"
 	"strings"
 
 	aeds "appengine/datastore"
 
 	"crowdstart.com/util/hashid"
+	"crowdstart.com/util/reflect"
 
 	"crowdstart.com/datastore/key"
 )
@@ -45,9 +45,7 @@ func (q *Query) couponFromId(id string, dst interface{}) (*aeds.Key, bool, error
 	}
 
 	// Set RawCode on fetched entity in case this was not parsed from JSON
-	v := reflect.ValueOf(dst).Elem().FieldByName("RawCode")
-	ptr := v.Addr().Interface().(*string)
-	*ptr = id
+	reflect.SetField(dst, "RawCode", id)
 
 	return key, true, nil
 }
