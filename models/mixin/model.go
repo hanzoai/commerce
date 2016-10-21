@@ -207,7 +207,7 @@ func (m *Model) SetKey(key interface{}) (err error) {
 				id = v
 			} else {
 				// Try to decode key as encoded key
-				k, err := aeds.DecodeKey(v)
+				k, err = aeds.DecodeKey(v)
 				if err != nil {
 					return fmt.Errorf("Unable to decode '%v': %v", v, err)
 				}
