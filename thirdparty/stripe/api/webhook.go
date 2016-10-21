@@ -1,18 +1,17 @@
-package webhook
+package api
 
 import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/stripe/stripe-go"
 
 	"crowdstart.com/datastore"
 	"crowdstart.com/middleware"
 	"crowdstart.com/models/organization"
-	"crowdstart.com/thirdparty/stripe"
 	"crowdstart.com/thirdparty/stripe/tasks"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
-	"crowdstart.com/util/router"
 )
 
 // Handle stripe webhook POSTs
@@ -85,10 +84,4 @@ func Webhook(c *gin.Context) {
 	}
 
 	c.String(200, "ok")
-}
-
-// Wire up webhook endpoint
-func Route(router router.Router, args ...gin.HandlerFunc) {
-	api := router.Group("stripe")
-	api.POST("/webhook", Webhook)
 }

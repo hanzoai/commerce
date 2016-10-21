@@ -44,7 +44,7 @@ import (
 
 	paypalApi "crowdstart.com/thirdparty/paypal/ipn"
 	shipstationApi "crowdstart.com/thirdparty/shipstation"
-	stripeApi "crowdstart.com/thirdparty/stripe/webhook"
+	stripeApi "crowdstart.com/thirdparty/stripe/api"
 )
 
 func Route(api router.Router) {
@@ -125,7 +125,7 @@ func Route(api router.Router) {
 	// Shipstation custom store API endpoints
 	shipstationApi.Route(api)
 
-	// Stripe webhook
+	// Stripe callback, webhook
 	stripeApi.Route(api)
 
 	// Paypal IPN

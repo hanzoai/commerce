@@ -36,8 +36,8 @@ func Production() *Config {
 	config.Stripe.ClientId = config.Stripe.ProductionClientId
 	config.Stripe.SecretKey = config.Stripe.LiveSecretKey
 	config.Stripe.PublishableKey = config.Stripe.LivePublishablKey
-	config.Stripe.RedirectURL = "https:" + config.UrlFor("platform", "/stripe/callback")
-	config.Stripe.WebhookURL = "https:" + config.UrlFor("platform", "/stripe/hook")
+	config.Stripe.RedirectURL = "https:" + config.UrlFor("api", "/stripe/callback")
+	config.Stripe.WebhookURL = "https:" + config.UrlFor("api", "/stripe/webhook")
 
 	config.Facebook.AppId = "484263268389194"
 	config.Facebook.AppSecret = "e82c15c92f9679a146a136790baf7d67"
