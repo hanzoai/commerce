@@ -62,6 +62,28 @@ func (q *ModelQuery) GetKey() (bool, error) {
 	return q.Get()
 }
 
+func (q *ModelQuery) MustGet() {
+	ok, err := q.Get()
+	if err != nil {
+		panic(err)
+	}
+
+	if !ok {
+		panic(datastore.ErrNoSuchEntity)
+	}
+}
+
+func (q *ModelQuery) MustGetKey() {
+	ok, err := q.GetKey()
+	if err != nil {
+		panic(err)
+	}
+
+	if !ok {
+		panic(datastore.ErrNoSuchEntity)
+	}
+}
+
 // Check if id exists
 func (q *ModelQuery) IdExists(id string) (datastore.Key, bool, error) {
 	return q.dsq.IdExists(id)

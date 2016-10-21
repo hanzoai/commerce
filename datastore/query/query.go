@@ -9,10 +9,13 @@ import (
 	"appengine"
 	aeds "appengine/datastore"
 
+	"github.com/qedus/nds"
+
 	"crowdstart.com/datastore/iface"
 	"crowdstart.com/datastore/key"
-	. "crowdstart.com/datastore/utils"
 	"crowdstart.com/util/log"
+
+	. "crowdstart.com/datastore/utils"
 )
 
 type Id struct {
@@ -158,7 +161,7 @@ func (q *Query) ByKey(key iface.Key, dst interface{}) (*aeds.Key, bool, error) {
 		dst = &Id{}
 	}
 
-	err := aeds.Get(q.ctx, aekey, dst)
+	err := nds.Get(q.ctx, aekey, dst)
 
 	// Completely ignore this as we may be querying just for Id{}
 	err = ReallyIgnoreFieldMismatch(err)
