@@ -8,6 +8,7 @@ import (
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/product"
 	"crowdstart.com/models/types/currency"
+	"crowdstart.com/thirdparty/mailchimp"
 )
 
 var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product {
@@ -812,5 +813,68 @@ var LudelaProd = New("ludela-products", func(c *gin.Context) []*product.Product 
 	prod32.Hidden = false
 	prod32.EstimatedDelivery = "Early 2017"
 	prod32.Update()
+
+	client := mailchimp.New(db.Context, "")
+	//developmentStoreId := "ODtkkYuooO"
+	defaultStoreId := "ldt6eeKINN5"
+	client.CreateProduct(defaultStoreId, prod1)
+	client.CreateProduct(defaultStoreId, prod2)
+	client.CreateProduct(defaultStoreId, prod3)
+	client.CreateProduct(defaultStoreId, prod4)
+	client.CreateProduct(defaultStoreId, prod5)
+	client.CreateProduct(defaultStoreId, prod6)
+	client.CreateProduct(defaultStoreId, prod7)
+	client.CreateProduct(defaultStoreId, prod8)
+	client.CreateProduct(defaultStoreId, prod9)
+	client.CreateProduct(defaultStoreId, prod10)
+	client.CreateProduct(defaultStoreId, prod11)
+
+	client.CreateProduct(defaultStoreId, prod1d)
+	client.CreateProduct(defaultStoreId, prod2d)
+	client.CreateProduct(defaultStoreId, prod3d)
+	client.CreateProduct(defaultStoreId, prod4d)
+	client.CreateProduct(defaultStoreId, prod5d)
+	client.CreateProduct(defaultStoreId, prod6d)
+	client.CreateProduct(defaultStoreId, prod7d)
+	client.CreateProduct(defaultStoreId, prod8d)
+	client.CreateProduct(defaultStoreId, prod9d)
+	client.CreateProduct(defaultStoreId, prod10d)
+	client.CreateProduct(defaultStoreId, prod11d)
+
+	client.CreateProduct(defaultStoreId, prod1t)
+	client.CreateProduct(defaultStoreId, prod2t)
+	client.CreateProduct(defaultStoreId, prod3t)
+	client.CreateProduct(defaultStoreId, prod4t)
+	client.CreateProduct(defaultStoreId, prod5t)
+	client.CreateProduct(defaultStoreId, prod6t)
+	client.CreateProduct(defaultStoreId, prod7t)
+	client.CreateProduct(defaultStoreId, prod8t)
+	client.CreateProduct(defaultStoreId, prod9t)
+	client.CreateProduct(defaultStoreId, prod10t)
+	client.CreateProduct(defaultStoreId, prod11t)
+
+	client.CreateProduct(defaultStoreId, prod13)
+	client.CreateProduct(defaultStoreId, prod14)
+	client.CreateProduct(defaultStoreId, prod15)
+	client.CreateProduct(defaultStoreId, prod16)
+	client.CreateProduct(defaultStoreId, prod17)
+	client.CreateProduct(defaultStoreId, prod18)
+	client.CreateProduct(defaultStoreId, prod19)
+
+	client.CreateProduct(defaultStoreId, prod20)
+	client.CreateProduct(defaultStoreId, prod21)
+	client.CreateProduct(defaultStoreId, prod22)
+	client.CreateProduct(defaultStoreId, prod23)
+	client.CreateProduct(defaultStoreId, prod24)
+	client.CreateProduct(defaultStoreId, prod25)
+	client.CreateProduct(defaultStoreId, prod26)
+	client.CreateProduct(defaultStoreId, prod27)
+	client.CreateProduct(defaultStoreId, prod28)
+	client.CreateProduct(defaultStoreId, prod29)
+
+	client.CreateProduct(defaultStoreId, prod30)
+	client.CreateProduct(defaultStoreId, prod31)
+	client.CreateProduct(defaultStoreId, prod32)
+
 	return []*product.Product{prod1}
 })
