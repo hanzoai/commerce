@@ -57,6 +57,7 @@ type Entity interface {
 	Delete() error
 
 	// Must variants
+	MustSetKey(key interface{})
 	MustCreate()
 	MustDelete()
 	MustGet(key datastore.Key)
@@ -425,6 +426,13 @@ func (m *Model) Delete() error {
 	}
 
 	return nil
+}
+
+// Set key or panic
+func (m *Model) MustSetKey(key interface{}) {
+	if err := m.SetKey(key); err != nil {
+		panic(err)
+	}
 }
 
 // Put or panic
