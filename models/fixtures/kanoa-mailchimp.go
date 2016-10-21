@@ -26,21 +26,26 @@ var _ = New("kanoa-mailchimp", func(c *gin.Context) *organization.Organization {
 	// Create new store
 	stor := store.New(nsdb)
 	stor.Name = "development"
-	stor.SetKey("7RtpEPYmCnJrnB")
 	stor.GetOrCreate("Name=", stor.Name)
+	// This is the production ID.
+	// stor.MustSetKey("7RtpEPYmCnJrnB")
+
+	// This is the development ID.
+	stor.MustSetKey("MZbtooKHjM")
+
 	stor.Prefix = "/"
 	stor.Currency = currency.USD
 	stor.Mailchimp.APIKey = ""
 	stor.Mailchimp.ListId = "23ad4e4ba4"
-	stor.Update()
+	stor.MustUpdate()
 
 	org.DefaultStore = stor.Id()
-	org.Update()
+	org.MustUpdate()
 
 	// Fetch earphones
 	prod := product.New(nsdb)
 	prod.Query().Filter("Slug=", "earphone").Get()
-	prod.SetKey("84cguxepxk")
+	prod.MustSetKey("84cguxepxk")
 	prod.Image = Media{Type: MediaImage, Alt: "", Url: "https://d33wubrfki0l68.cloudfront.net/7cd9a799b858535a729417c142a9465e70255a79/80015/img/batch1coda.png", X: 1252, Y: 1115}
 
 	// Create corresponding Mailchimp entities
