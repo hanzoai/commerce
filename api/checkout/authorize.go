@@ -19,7 +19,7 @@ import (
 	"crowdstart.com/models/user"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
-	"crowdstart.com/util/structs"
+	"crowdstart.com/util/reflect"
 )
 
 // Decode authorization request, grab user and payment information off it
@@ -37,7 +37,7 @@ func decodeAuthorization(c *gin.Context, ord *order.Order) (*user.User, *payment
 
 	// Copy request order into order used everywhere
 	if a.Order != nil {
-		structs.Copy(a.Order, ord)
+		reflect.Copy(a.Order, ord)
 	}
 
 	// Use provided order rather than initialize another order and break references
