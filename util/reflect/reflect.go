@@ -30,9 +30,9 @@ func IsSliceOfPtr(slice reflect.Value) bool {
 }
 
 // Set field of addressable struct (pointer to struct)
-func SetField(ps interface{}, name string, value interface{}) error {
+func SetField(ps reflect.Value, name string, value interface{}) error {
 	// Get struct
-	s := reflect.ValueOf(ps).Elem()
+	s := ps.Elem()
 
 	// Get field
 	f := s.FieldByName(name)
