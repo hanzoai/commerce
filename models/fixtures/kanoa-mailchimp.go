@@ -9,6 +9,8 @@ import (
 	"crowdstart.com/models/store"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/thirdparty/mailchimp"
+
+	. "crowdstart.com/models"
 )
 
 var _ = New("kanoa-mailchimp", func(c *gin.Context) *organization.Organization {
@@ -23,7 +25,8 @@ var _ = New("kanoa-mailchimp", func(c *gin.Context) *organization.Organization {
 
 	// Create new store
 	stor := store.New(nsdb)
-	stor.Name = "default"
+	stor.Name = "development"
+	stor.SetKey("7RtpEPYmCnJrnB")
 	stor.GetOrCreate("Name=", stor.Name)
 	stor.Prefix = "/"
 	stor.Currency = currency.USD
@@ -37,6 +40,8 @@ var _ = New("kanoa-mailchimp", func(c *gin.Context) *organization.Organization {
 	// Fetch earphones
 	prod := product.New(nsdb)
 	prod.Query().Filter("Slug=", "earphone").Get()
+	prod.SetKey("84cguxepxk")
+	prod.Image = Media{Type: MediaImage, Alt: "", Url: "https://d33wubrfki0l68.cloudfront.net/7cd9a799b858535a729417c142a9465e70255a79/80015/img/batch1coda.png", X: 1252, Y: 1115}
 
 	// Create corresponding Mailchimp entities
 	client := mailchimp.New(db.Context, org.Mailchimp.APIKey)
