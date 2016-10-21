@@ -1,8 +1,6 @@
 package aetest
 
 import (
-	"errors"
-
 	"appengine/aetest"
 
 	"crowdstart.com/util/log"
@@ -32,19 +30,7 @@ func (c shimContext) GetCurrentNamespace() string {
 
 // Converter so Close() method matches signature we need.
 func (c shimContext) Close() {
-	var err error
-	defer func() {
-		if r := recover(); r != nil {
-			switch v := r.(type) {
-			case string:
-				err = errors.New(v)
-			case error:
-				err = v
-			}
-		}
-		if err != nil {
-			log.Error("Unable to close aetest.Context: %v", err)
-		}
-	}()
-	err = c.Context.Close()
+	if err := c.Context.Close(); err != nil {
+		log.Error("Unable to close aetest.Context: %v", err)
+	}
 }
