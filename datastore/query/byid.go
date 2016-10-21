@@ -49,7 +49,7 @@ func (q *Query) couponFromId(id string, dst interface{}) (*aeds.Key, bool, error
 	}
 
 	// Set RawCode on fetched entity in case this was not parsed from JSON
-	reflect.SetField(dst, "RawCode", id)
+	reflect.SetField(reflect.ValueOf(dst), "RawCode", id)
 
 	return key, true, nil
 }
