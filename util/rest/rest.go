@@ -3,7 +3,6 @@ package rest
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -19,8 +18,8 @@ import (
 	"crowdstart.com/util/json/http"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/permission"
+	"crowdstart.com/util/reflect"
 	"crowdstart.com/util/router"
-	"crowdstart.com/util/structs"
 )
 
 var restApis = make([]*Rest, 0)
@@ -86,8 +85,7 @@ func (r *Rest) InitModel(entity mixin.Kind) {
 	}
 
 	// Introspect model to determine default sort field
-	fields := structs.FieldNames(entity)
-	for _, name := range fields {
+	for _, name := range reflect.FieldNames(entity) {
 		if name == "Slug" || name == "SKU" {
 			r.DefaultSortField = name
 			return
@@ -96,7 +94,7 @@ func (r *Rest) InitModel(entity mixin.Kind) {
 
 	// Use Id_ as default sort field if nothing is specified.
 	if r.DefaultSortField == "" {
-		r.DefaultSortField = "Id_"
+		r.DefaultSortField = "CreatedAt"
 	}
 }
 
@@ -281,8 +279,7 @@ func (r Rest) newEntity(c *gin.Context) mixin.Entity {
 	}
 
 	// Set model on entity
-	field := reflect.Indirect(reflect.ValueOf(entity)).FieldByName("Model")
-	field.Set(reflect.ValueOf(model))
+	reflect.SetField(entity, "Model", model)
 
 	// Initialize entity
 	entity.Init(db)
