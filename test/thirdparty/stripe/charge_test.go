@@ -39,6 +39,7 @@ var _ = Describe("thirdparty.stripe.UpdatePaymentFromCharge", func() {
 			Expect(pay.Status).To(Equal(payment.Paid))
 		})
 	})
+
 	Context("For every other state", func() {
 		It("should mark the payment as Unpaid", func() {
 			pay, charge := construct()

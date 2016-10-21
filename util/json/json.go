@@ -30,6 +30,10 @@ func EncodeBytes(value interface{}) []byte {
 	return b
 }
 
+func EncodeRaw(value interface{}) json.RawMessage {
+	return json.RawMessage(EncodeBytes(value))
+}
+
 func EncodeBuffer(value interface{}) *bytes.Buffer {
 	return bytes.NewBuffer(EncodeBytes(value))
 }
