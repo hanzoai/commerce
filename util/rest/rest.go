@@ -279,7 +279,8 @@ func (r Rest) newEntity(c *gin.Context) mixin.Entity {
 	}
 
 	// Set model on entity
-	reflect.SetField(entity, "Model", model)
+	field := reflect.Indirect(reflect.ValueOf(entity)).FieldByName("Model")
+	field.Set(reflect.ValueOf(model))
 
 	// Initialize entity
 	entity.Init(db)
