@@ -35,8 +35,8 @@ func Development() *Config {
 	config.Stripe.ClientId = config.Stripe.DevelopmentClientId
 	config.Stripe.PublishableKey = config.Stripe.TestPublishableKey
 	config.Stripe.SecretKey = config.Stripe.TestSecretKey
-	config.Stripe.RedirectURL = "http://localhost:8080" + config.UrlFor("platform", "/stripe/callback")
-	config.Stripe.WebhookURL = "http://localhost:8080" + config.UrlFor("platform", "/stripe/hook")
+	config.Stripe.RedirectURL = "http://localhost:8080" + config.UrlFor("api", "/stripe/callback")
+	config.Stripe.WebhookURL = "http://localhost:8080" + config.UrlFor("api", "/stripe/webhook")
 
 	config.Facebook.AppId = "484263268389194"
 	config.Facebook.AppSecret = "e82c15c92f9679a146a136790baf7d67"
