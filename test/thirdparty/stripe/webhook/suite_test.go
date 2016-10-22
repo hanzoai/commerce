@@ -25,7 +25,7 @@ var (
 )
 
 func Test(t *testing.T) {
-	Setup("thirdparty/stripe/api", t)
+	Setup("thirdparty/stripe/webhook", t)
 }
 
 var _ = BeforeSuite(func() {
@@ -33,7 +33,7 @@ var _ = BeforeSuite(func() {
 	ctx = ae.NewContext(ae.Options{
 		Modules:    []string{"default"},
 		TaskQueues: []string{"default"},
-		Noisy:      testing.Verbose(),
+		Noisy:      true,
 	})
 
 	// Get reference to datastore
