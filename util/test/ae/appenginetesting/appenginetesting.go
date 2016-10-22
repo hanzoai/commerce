@@ -71,5 +71,7 @@ func New(opts options.Options) (*appenginetesting.Context, error) {
 		addModule(aeopts, moduleName)
 	}
 
+	log.Debug("Creating new appenginetesting context: %#v", aeopts)
+
 	return appenginetesting.NewContext(aeopts)
 }
