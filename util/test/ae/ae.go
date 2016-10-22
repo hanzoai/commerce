@@ -30,19 +30,15 @@ func NewContext(args ...Options) Context {
 	}
 
 	// Detect backend to use and create context
-	backendUsed := "aetest"
 	if opts.PreferAppengineTesting || len(opts.TaskQueues) > 0 {
-		log.Debug("Using appenginetesting backend")
-		backendUsed = "appenginetesting"
 		ctx, err = appenginetesting.New(opts)
 	} else {
-		log.Debug("Using aetest backend")
 		ctx, err = aetest.New(opts)
 	}
 
 	// Blow up if we couldn't get a context.
 	if err != nil {
-		log.Panic("Failed to create %v context: %v", backendUsed, err)
+		log.Panic("Failed to create context: %v", err)
 	}
 
 	return ctx
