@@ -6,11 +6,11 @@ import (
 	"github.com/stripe/stripe-go/charge"
 
 	"appengine"
-	"appengine/delay"
 
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/thirdparty/stripe"
+	"crowdstart.com/util/delay"
 	"crowdstart.com/util/log"
 )
 

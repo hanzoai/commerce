@@ -4,9 +4,9 @@ import (
 	"time"
 
 	"appengine"
-	"appengine/delay"
 
 	"crowdstart.com/thirdparty/stripe"
+	"crowdstart.com/util/delay"
 	"crowdstart.com/util/log"
 )
 
