@@ -83,7 +83,7 @@ var _ = Describe("Stripe Webhook", func() {
 			})
 
 			It("Should update payment", func() {
-				time.Sleep(time.Second * 3)
+				time.Sleep(time.Second * 5)
 				id := pay.Id()
 				pay = payment.New(db)
 				pay.GetById(id)

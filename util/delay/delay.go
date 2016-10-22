@@ -25,14 +25,25 @@ func Func(key string, i interface{}) *Function {
 
 // Wrapper around delay.Func.Call
 func (f *Function) Call(ctx appengine.Context, args ...interface{}) error {
-	t, _ := f.Task(args...)
-	t.Name = f.name
-	_, err := taskqueue.Add(ctx, t, f.queue)
+	// Get task from delay.Func
+	t, err := f.Task(args...)
 	if err != nil {
 		log.Warn(err)
+		return err
 	}
 
-	return err
+	// Override name
+	if f.name != "" {
+		t.Name = f.name
+	}
+
+	// Add to taskqueue
+	if _, err := taskqueue.Add(ctx, t, f.queue); err != nil {
+		log.Warn(err)
+		return err
+	}
+
+	return nil
 }
 
 // Wrapper around delay.Func.Task
