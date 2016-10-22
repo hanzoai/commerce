@@ -46,7 +46,7 @@ func New(opts options.Options) (*appenginetesting.Context, error) {
 	opts.SetDefaults()
 
 	// Convert options.Options into *appenginetesting.Options
-	_opts := &appenginetesting.Options{
+	aeopts := &appenginetesting.Options{
 		AppId:      opts.AppId,
 		Testing:    GinkgoT(),
 		TaskQueues: opts.TaskQueues,
@@ -54,22 +54,22 @@ func New(opts options.Options) (*appenginetesting.Context, error) {
 
 	// Detect verbose
 	if log.Verbose() {
-		_opts.Debug = appenginetesting.LogDebug
+		aeopts.Debug = appenginetesting.LogDebug
 	} else {
-		_opts.Debug = appenginetesting.LogWarning
+		aeopts.Debug = appenginetesting.LogWarning
 	}
 
 	// Override and spam everything
 	if opts.Noisy {
-		_opts.Debug = appenginetesting.LogChild
+		aeopts.Debug = appenginetesting.LogChild
 	}
 
 	// Add modules
-	_opts.Modules = make([]appenginetesting.ModuleConfig, 0)
+	aeopts.Modules = make([]appenginetesting.ModuleConfig, 0)
 
 	for _, moduleName := range opts.Modules {
-		addModule(_opts, moduleName)
+		addModule(aeopts, moduleName)
 	}
 
-	return appenginetesting.NewContext(_opts)
+	return appenginetesting.NewContext(aeopts)
 }

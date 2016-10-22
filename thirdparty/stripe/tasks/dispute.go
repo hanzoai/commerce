@@ -4,10 +4,10 @@ import (
 	"time"
 
 	"appengine"
-	"appengine/delay"
 
 	"crowdstart.com/models/payment"
 	"crowdstart.com/thirdparty/stripe"
+	"crowdstart.com/util/delay"
 	"crowdstart.com/util/log"
 )
 

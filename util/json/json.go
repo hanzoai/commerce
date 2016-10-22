@@ -10,6 +10,8 @@ import (
 	"appengine"
 )
 
+type RawMessage json.RawMessage
+
 func Encode(value interface{}) string {
 	return string(EncodeBytes(value))
 }
