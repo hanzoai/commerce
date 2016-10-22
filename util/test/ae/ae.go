@@ -12,30 +12,32 @@ import (
 type Context context.Context
 type Options options.Options
 
-func NewContext(opts ...Options) Context {
+func NewContext(args ...Options) Context {
 	var (
-		_opts options.Options
-		ctx   Context
-		err   error
+		opts options.Options
+		ctx  Context
+		err  error
 	)
 
 	// Parse options
-	switch len(opts) {
+	switch len(args) {
 	case 0:
-		_opts = _opts
+		opts = opts
 	case 1:
-		_opts = options.Options(opts[0])
+		opts = options.Options(args[0])
 	default:
 		log.Panic("At most one ae.Options argument may be supplied.")
 	}
 
 	// Detect backend to use and create context
 	backendUsed := "aetest"
-	if _opts.PreferAppengineTesting || len(_opts.TaskQueues) > 0 {
+	if opts.PreferAppengineTesting || len(opts.TaskQueues) > 0 {
+		log.Debug("Using appenginetesting backend")
 		backendUsed = "appenginetesting"
-		ctx, err = appenginetesting.New(_opts)
+		ctx, err = appenginetesting.New(opts)
 	} else {
-		ctx, err = aetest.New(_opts)
+		log.Debug("Using aetest backend")
+		ctx, err = aetest.New(opts)
 	}
 
 	// Blow up if we couldn't get a context.
