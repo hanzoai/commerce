@@ -21,6 +21,7 @@ var _ = Describe("thirdparty.stripe.UpdatePaymentFromCharge", func() {
 			Expect(pay.Status).To(Equal(payment.Paid))
 		})
 	})
+
 	Context("When a charge is refunded", func() {
 		pay, charge := construct()
 		charge.Refunded = true
@@ -29,6 +30,7 @@ var _ = Describe("thirdparty.stripe.UpdatePaymentFromCharge", func() {
 			Expect(pay.Status).To(Equal(payment.Refunded))
 		})
 	})
+
 	Context("When a charge is paid", func() {
 		pay, charge := construct()
 		charge.Paid = true
