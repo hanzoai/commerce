@@ -14,11 +14,21 @@ var _ = New("fix-ludela-pt1",
 		return NoArgs
 	},
 	func(db *ds.Datastore, usr *user.User) {
+		if usr.FirstName == "\u263A" {
+			usr.FirstName = ""
+		}
+
+		if usr.LastName == "\u263A" {
+			usr.LastName = ""
+		}
+
 		if usr.FirstName == "☺" {
 			usr.FirstName = ""
 		}
+
 		if usr.LastName == "☺" {
 			usr.LastName = ""
 		}
+		usr.MustPut()
 	},
 )
