@@ -74,6 +74,18 @@ func create(c *gin.Context) {
 		}
 	}
 
+	if usr.Email == "\u263A" {
+		usr.Email = ""
+	}
+
+	if usr.FirstName == "\u263A" {
+		usr.FirstName = ""
+	}
+
+	if usr.LastName == "\u263A" {
+		usr.LastName = ""
+	}
+
 	usr.Email = strings.ToLower(strings.TrimSpace(usr.Email))
 
 	// Email can't already exist
