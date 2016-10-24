@@ -22,5 +22,6 @@ var _ = New("fix-ludela-pt2",
 		if usr.LastName == "" {
 			usr.LastName = pay.Buyer.LastName
 		}
+		usr.MustPut()
 	},
 )
