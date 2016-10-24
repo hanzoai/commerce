@@ -31,15 +31,26 @@ var _ = AfterSuite(func() {
 })
 
 var _ = Describe("User", func() {
-	It("should retrieve entity from datastore by email", func() {
-		// Manually create a new user and store in datastore
-		usr := user.Fake(db)
-		usr.MustCreate()
+	Context("GetById", func() {
+		var usr *user.User
 
-		// Retrieve usr from datastore using Model mixin
-		usr2 := user.New(db)
-		usr2.MustGetById(usr.Email)
-		Expect(usr2.Email).To(Equal(usr2.Email))
-		Expect(usr2.Name()).To(Equal(usr2.Name()))
+		Before(func() {
+			usr := user.Fake(db)
+			usr.MustCreate()
+		})
+
+		It("should retrieve entity from datastore by email", func() {
+			usr2 := user.New(db)
+			usr2.MustGetById(usr.Email)
+			Expect(usr2.Email).To(Equal(usr2.Email))
+			Expect(usr2.Name()).To(Equal(usr2.Name()))
+		})
+
+		It("should retrieve entity from datastore by username", func() {
+			usr2 := user.New(db)
+			usr2.MustGetById(usr.Username)
+			Expect(usr2.Email).To(Equal(usr2.Email))
+			Expect(usr2.Name()).To(Equal(usr2.Name()))
+		})
 	})
 })
