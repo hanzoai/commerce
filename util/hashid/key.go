@@ -96,36 +96,37 @@ func getId(ctx appengine.Context, name string) int64 {
 
 	ns, ok, err := queryNamespace(ctx, "Name=", name)
 
-	// Blow up if we can't find namespace
+	// Blow up if we can't complete query or find namespace
 	if err != nil {
 		panic(err.Error())
 	}
 
 	if !ok {
-		panic(fmt.Errorf("Namespace '%s' does not exists", name))
+		panic(fmt.Errorf("Namespace '%s' does not exist", name))
 	}
 
 	return ns.IntId
 }
 
 // Get namespace from organization using it's IntID
-func getName(ctx appengine.Context, id int64) string {
+func getName(ctx appengine.Context, id int64) (string, error) {
 	if id == 0 {
-		return consts.Namespace
+		return consts.Namespace, nil
 	}
 
 	ns, ok, err := queryNamespace(ctx, "IntId=", id)
 
-	// Blow up if we can't find namespace
+	// Query failed for some inexplicable reason
 	if err != nil {
-		panic(err.Error())
+		return "", err
 	}
 
+	// Failed to find matching namespace
 	if !ok {
-		panic(fmt.Errorf("Namespace with id %d does not exist", id))
+		return "", fmt.Errorf("Namespace with id %d does not exist", id)
 	}
 
-	return ns.Name
+	return ns.Name, nil
 }
 
 // Get namespaced context
@@ -165,22 +166,25 @@ func encodeNamespace(ctx appengine.Context, namespace string) int {
 	return int(id)
 }
 
-func decodeNamespace(ctx appengine.Context, encoded int) string {
+func decodeNamespace(ctx appengine.Context, encoded int) (string, error) {
 	// Default namespace
 	if encoded == 0 {
-		return ""
+		return "", nil
 	}
 
 	id := int64(encoded)
-	namespace, ok := idToNamespace[id]
+	ns, ok := idToNamespace[id]
 	if !ok {
-		namespace = getName(ctx, id)
+		ns, err := getName(ctx, id)
+		if err != nil {
+			return "", err
+		}
 
 		// Cache result
-		cache(namespace, id)
+		cache(ns, id)
 	}
 
-	return namespace
+	return ns, nil
 }
 
 func EncodeKey(ctx appengine.Context, key iface.Key) string {
@@ -236,8 +240,12 @@ func DecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key, err error)
 	}
 
 	// Set namespace
-	namespace := decodeNamespace(ctx, ids[n-1])
-	ctx = getContext(ctx, namespace)
+	ns, err := decodeNamespace(ctx, ids[n-1])
+	if err != nil {
+		return nil, err
+	}
+
+	ctx = getContext(ctx, ns)
 
 	// root key
 	key = aeds.NewKey(ctx, decodeKind(ids[n-3]), "", int64(ids[n-2]), nil)
@@ -247,7 +255,7 @@ func DecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key, err error)
 		key = aeds.NewKey(ctx, decodeKind(ids[i-1]), "", int64(ids[i]), key)
 	}
 
-	log.Debug("'%s' decoded to %s%v", encoded, fmtNs(namespace), key)
+	log.Debug("'%s' decoded to %s%v", encoded, fmtNs(ns), key)
 
 	return key, nil
 }
