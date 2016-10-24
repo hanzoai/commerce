@@ -46,5 +46,9 @@ func GetNamespace(ctx appengine.Context, hashid string) (string, error) {
 	}
 
 	id := ids[idsLen-1]
-	return decodeNamespace(ctx, id), nil
+	ns, err := decodeNamespace(ctx, id)
+	if err != nil {
+		return "", err
+	}
+	return ns, nil
 }
