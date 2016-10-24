@@ -186,8 +186,11 @@ func (q *Query) ById(id string, dst interface{}) (*aeds.Key, bool, error) {
 	// Assume encoded key
 	k, err := key.Decode(q.ctx, id)
 
+	// Try to fetch by key (can fail in rare edge cases
 	if err == nil {
-		return q.ByKey(k, dst)
+		if k, ok, _ := q.ByKey(k, dst); ok {
+			return k, true, nil
+		}
 	}
 
 	// Try to find by filter
