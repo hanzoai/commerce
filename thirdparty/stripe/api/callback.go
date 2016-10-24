@@ -14,69 +14,28 @@ import (
 	"crowdstart.com/models/organization"
 	"crowdstart.com/thirdparty/stripe/connect"
 	"crowdstart.com/util/log"
-	"crowdstart.com/util/template"
 )
 
-// Connect callback for platform
+// Handle stripe Connect callbacks
 func Callback(c *gin.Context) {
-	req := c.Request
-	code := req.URL.Query().Get("code")
-	state := req.URL.Query().Get("state")
-	errStr := req.URL.Query().Get("error")
+	url := c.Request.URL
+	state := url.Query().Get("state")
 
-	// Handle affiliate callbacks
 	if state != "" && state != "movetoserver" {
-		log.Debug("Using Affiliate Callback %v", state, c)
+		// Affiliate callback
 		affiliateCallback(c)
-		return
+	} else {
+		// Redirect to platform
+		c.Redirect(302, config.UrlFor("platform", "/stripe/callback")+"?"+url.RawQuery)
 	}
-
-	// Failed to get back authorization code from Stripe
-	if errStr != "" {
-		log.Error("Failed to get authorization code from Stripe during Stripe Connect: %v", errStr, c)
-		template.Render(c, "admin/stripe/connect.html", "error", errStr)
-		return
-	}
-
-	ctx := middleware.GetAppEngine(c)
-
-	// Get live and test tokens
-	token, testToken, err := connect.GetTokens(ctx, code)
-	if err != nil {
-		log.Error("There was an error with Stripe Connect: %v", err, c)
-		c.Redirect(302, config.UrlFor("platform", "dashboard#integrations"))
-		return
-	}
-
-	// Get user's organization
-	org := middleware.GetOrganization(c)
-
-	// Update stripe data
-	org.Stripe.UserId = token.UserId
-	org.Stripe.AccessToken = token.AccessToken
-	org.Stripe.PublishableKey = token.PublishableKey
-	org.Stripe.RefreshToken = token.RefreshToken
-
-	// Save live/test tokens
-	org.Stripe.Live = *token
-	org.Stripe.Test = *testToken
-
-	// Save to datastore
-	if err := org.Put(); err != nil {
-		c.AbortWithError(500, err)
-		return
-	}
-
-	// Success
-	c.Redirect(302, config.UrlFor("platform", "dashboard#integrations"))
 }
 
 // Connect callback for affiliates
 func affiliateCallback(c *gin.Context) {
-	req := c.Request
-	code := req.URL.Query().Get("code")
-	state := req.URL.Query().Get("state")
-	errStr := req.URL.Query().Get("error")
+	url := c.Request.URL
+	code := url.Query().Get("code")
+	state := url.Query().Get("state")
+	errStr := url.Query().Get("error")
 
 	// Get organization and affiliate id
 	parts := strings.Split(state, ":")
