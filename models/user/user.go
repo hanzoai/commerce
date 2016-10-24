@@ -243,11 +243,10 @@ func (u *User) GetByEmail(email string) error {
 	email = strings.ToLower(strings.TrimSpace(email))
 	log.Debug("Searching for user '%v'", email)
 
-	// Build query to return user
 	ok, err := u.Query().Filter("Email=", email).Get()
 
 	if err != nil {
-		log.Warn("Unable to fetch user from datastore: '%v'", err)
+		log.Warn("Unable to find user by email: '%v'", err)
 		return err
 	}
 
