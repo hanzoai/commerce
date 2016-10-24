@@ -277,7 +277,7 @@ func (m *Model) Key() (key datastore.Key) {
 		// Id_ will unfortunately not be set first time around...
 		m.key = m.Db.NewIncompleteKey(kind, m.Parent)
 	} else {
-		m.key = m.Db.AllocateKey(kind, m.Parent)
+		m.key = m.Db.AllocateOrphanKey(kind, m.Parent)
 	}
 
 	// Update ID
@@ -295,7 +295,6 @@ func (m *Model) NewKey() datastore.Key {
 		return m.key
 	}
 
-	// intid := m.Db.AllocateId(kind)
 	intid := m.key.IntID()
 	stringid := m.key.StringID()
 
