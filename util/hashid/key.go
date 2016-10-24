@@ -256,7 +256,7 @@ func DecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key, err error)
 
 	// root key is always last key, so reverse through list to recreate key
 	for i := n - 4; i >= 0; i = i - 2 {
-		kind, err := decodeKind(ids[n-1])
+		kind, err := decodeKind(ids[i-1])
 		if err != nil {
 			return nil, err
 		}
