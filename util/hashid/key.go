@@ -234,8 +234,9 @@ func DecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key, err error)
 
 	n := len(ids)
 
-	// Check for invalid keys.
-	if n < 3 {
+	// A valid key without parents will have exactly 3 segments: namespace,
+	// kind and intid. For each parent we expect two more segments.
+	if n < 3 || (n-3)%2 == 1 {
 		return key, fmt.Errorf("Invalid number of segments: %v", ids)
 	}
 
