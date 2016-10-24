@@ -248,11 +248,19 @@ func DecodeKey(ctx appengine.Context, encoded string) (key *aeds.Key, err error)
 	ctx = getContext(ctx, ns)
 
 	// root key
-	key = aeds.NewKey(ctx, decodeKind(ids[n-3]), "", int64(ids[n-2]), nil)
+	kind, err := decodeKind(ids[n-3])
+	if err != nil {
+		return nil, err
+	}
+	key = aeds.NewKey(ctx, kind, "", int64(ids[n-2]), nil)
 
 	// root key is always last key, so reverse through list to recreate key
 	for i := n - 4; i >= 0; i = i - 2 {
-		key = aeds.NewKey(ctx, decodeKind(ids[i-1]), "", int64(ids[i]), key)
+		kind, err := decodeKind(ids[n-1])
+		if err != nil {
+			return nil, err
+		}
+		key = aeds.NewKey(ctx, kind, "", int64(ids[i]), key)
 	}
 
 	log.Debug("'%s' decoded to %s%v", encoded, fmtNs(ns), key)

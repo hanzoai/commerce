@@ -42,7 +42,7 @@ var _ = Describe("Coupon", func() {
 		It("should retrieve coupon from datastore by code", func() {
 			cpn2 := coupon.New(db)
 			cpn2.MustGetById(cpn.Code())
-			Expect(cpn2.Code).To(Equal(cpn2.Code))
+			Expect(cpn2.Code()).To(Equal(cpn2.Code()))
 		})
 	})
 })
