@@ -112,8 +112,11 @@ type Payment struct {
 
 	Type Type `json:"type"`
 
-	// Order this is associated with
+	// Order this payment is associated with
 	OrderId string `json:"orderId,omitempty"`
+
+	// User this payment is associated with
+	UserId string `json:"userId,omitempty"`
 
 	// Payment source information
 	Account Account `json:"account"`

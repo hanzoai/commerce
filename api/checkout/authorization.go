@@ -161,6 +161,7 @@ func initPayment(db *datastore.Datastore, pay *payment.Payment, usr *user.User, 
 	// Payment is parented to order
 	pay.Parent = ord.Key()
 	pay.OrderId = ord.Id()
+	pay.UserId = usr.Id()
 }
 
 func (a *Authorization) Init(db *datastore.Datastore) error {
