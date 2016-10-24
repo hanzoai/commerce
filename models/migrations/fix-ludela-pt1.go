@@ -14,6 +14,11 @@ var _ = New("fix-ludela-pt1",
 		return NoArgs
 	},
 	func(db *ds.Datastore, usr *user.User) {
+		if usr.Email == "" {
+			usr.Delete()
+			return
+		}
+
 		if usr.FirstName == "\u263A" {
 			usr.FirstName = ""
 		}
@@ -29,6 +34,7 @@ var _ = New("fix-ludela-pt1",
 		if usr.LastName == "☺" {
 			usr.LastName = ""
 		}
+
 		usr.MustPut()
 	},
 )
