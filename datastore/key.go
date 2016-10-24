@@ -85,3 +85,18 @@ func (d *Datastore) AllocateKey(kind string, parent Key) *aeds.Key {
 	id := d.AllocateID(kind, parent)
 	return d.NewKey(kind, "", id, parent)
 }
+
+// Datastore uses a key's ancestry to allocate unique integer IDs. If you
+// allocate an ID with a nil parent you get an "orphaned" ID, i.e., an ID which
+// does not use ancestry to determine uniqueness.  We have historically
+// depended on this behavior for cheap, monotonically increasing order numbers
+// (which are calculated from the key's integer id component).
+func (d *Datastore) AllocateOrphanID(kind string) int64 {
+	id, _ := d.AllocateIDs(kind, nil, 1)
+	return id
+}
+
+func (d *Datastore) AllocateOrphanKey(kind string, parent Key) *aeds.Key {
+	id := d.AllocateOrphanID(kind)
+	return d.NewKey(kind, "", id, parent)
+}
