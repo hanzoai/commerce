@@ -183,7 +183,16 @@ func (m *Model) setId() {
 
 // Helper to update key and id
 func (m *Model) setKey(key datastore.Key) {
+	// Set key
 	m.key = key
+
+	// Set parent automatically
+	parent := key.Parent()
+	if parent != nil {
+		m.Parent = parent
+	}
+
+	// Update id
 	m.setId()
 }
 
