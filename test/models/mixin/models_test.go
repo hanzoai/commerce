@@ -1,37 +1,49 @@
 package test
 
-import (
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-)
+import . "crowdstart.com/util/test/ginkgo"
 
 var _ = Describe("models/mixin Model", func() {
 	Context("Model.Put", func() {
 		It("should save entity to datastore", func() {
 			// Create a new user and store using Model mixin
-			user := newUser(db)
-			user.Name = "Justin"
-			user.Put()
+			usr := newUser(db)
+			usr.Name = "Justin"
+			usr.MustPut()
 
 			// Manually retrieve to ensure it was saved properly
-			user2 := new(User)
-			db.Get(user.Key(), user2)
-			Expect(user2.Name).To(Equal(user.Name))
+			usr2 := newUser(db)
+			usr2.MustGet(usr.Key())
+			Expect(usr2.Name).To(Equal(usr.Name))
 		})
 	})
 
 	Context("Model.Get", func() {
 		It("should retrieve entity from datastore", func() {
 			// Manually create a new user and store in datastore
-			user := new(User)
-			user.Name = "Dustin"
-			key, err := db.Put("user", user)
-			Expect(err).NotTo(HaveOccurred())
+			usr := newUser(db)
+			usr.Name = "Dustin"
+			usr.MustCreate()
 
-			// Retrieve user from datastore using Model mixin
-			user2 := newUser(db)
-			user2.Get(key)
-			Expect(user2.Name).To(Equal(user.Name))
+			// Retrieve usr from datastore using Model mixin
+			usr2 := newUser(db)
+			usr2.MustGet(usr.Key())
+			Expect(usr2.Name).To(Equal(usr.Name))
+		})
+	})
+
+	Context("Model.GetById", func() {
+		It("should retrieve entity from datastore by Id()", func() {
+			// Manually create a new user and store in datastore
+			usr := newUser(db)
+			usr.Email = "dev@hanzo.ai"
+			usr.Name = "Dustin"
+			usr.MustCreate()
+
+			// Retrieve usr from datastore using Model mixin
+			usr2 := newUser(db)
+			usr2.MustGetById(usr.Id())
+			Expect(usr2.Email).To(Equal(usr.Email))
+			Expect(usr2.Name).To(Equal(usr.Name))
 		})
 	})
 })

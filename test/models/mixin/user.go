@@ -10,15 +10,24 @@ type User struct {
 	mixin.Model
 	mixin.AccessToken
 
-	Name string
+	Email string
+	Name  string
+
+	Friends []string
 }
 
+// We shadow the real user's kind because kinds must be defined in our hashid
+// map or none of this works.
 func (u User) Kind() string {
 	return "user"
 }
 
+func (u *User) Defaults() {
+	u.Friends = make([]string, 0)
+}
+
 func (u *User) Init(db *datastore.Datastore) {
-	u.Model = mixin.Model{Db: db, Entity: u}
+	u.Model.Init(db, u)
 	u.AccessToken = mixin.AccessToken{Entity: u}
 }
 
@@ -29,6 +38,7 @@ func (u *User) Document() mixin.Document {
 func newUser(db *datastore.Datastore) *User {
 	u := new(User)
 	u.Init(db)
+	u.Defaults()
 	return u
 }
 
