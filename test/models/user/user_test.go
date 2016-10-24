@@ -35,7 +35,7 @@ var _ = Describe("User", func() {
 		var usr *user.User
 
 		Before(func() {
-			usr := user.Fake(db)
+			usr = user.Fake(db)
 			usr.MustCreate()
 		})
 
