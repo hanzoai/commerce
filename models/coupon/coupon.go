@@ -114,9 +114,14 @@ func (c Coupon) DynamicCode() string {
 
 func (c *Coupon) CodeFromId(uniqueid string) string {
 	cid := c.Key()
-	uid, _ := hashid.DecodeKey(c.Context(), uniqueid)
+	uid, err := hashid.DecodeKey(c.Context(), uniqueid)
+	if err != nil {
+		return ""
+	}
 
-	return hashid.Encode(int(cid.IntID()), int(uid.IntID()))
+	// Normal kind id for coupon is 3, this is 3333 to prevent accidental
+	// decoding as normal hashid
+	return hashid.Encode(3333, int(cid.IntID()), int(uid.IntID()))
 }
 
 func (c Coupon) ValidFor(t time.Time) bool {
