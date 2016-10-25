@@ -102,7 +102,7 @@ func calcAffiliateFee(comm commission.Commission, total currency.Cents) currency
 }
 
 var _ = Describe("/checkout/authorize", func() {
-	Context("Authorize new user", func() {
+	FContext("Authorize new user", func() {
 		var req *checkout.Authorization
 		var res *order.Order
 
@@ -134,15 +134,14 @@ var _ = Describe("/checkout/authorize", func() {
 			cl.Post("/checkout/authorize", req, res)
 		})
 
-		It("Should save user", func() {
+		It("Should create order successfully", func() {
+			// Should have valid user
 			getUser(res.UserId)
-		})
 
-		It("Should save payment", func() {
+			// Should save payment
 			getPayment(res.Id())
-		})
 
-		It("Should save order", func() {
+			// Should save order
 			ord := getOrder(res.Id())
 			Expect(ord.Status).To(Equal(order.Open))
 			Expect(ord.Total).To(Equal(req.Order.Total))
@@ -150,22 +149,18 @@ var _ = Describe("/checkout/authorize", func() {
 			Expect(ord.LineTotal).To(Equal(req.Order.LineTotal))
 			Expect(ord.Items).To(Equal(req.Order.Items))
 			Expect(ord.FulfillmentStatus).To(Equal(FulfillmentUnfulfilled))
-		})
 
-		It("Should parent order to user", func() {
+			// Should parent order to user
 			usr := getUser(res.UserId)
 			getOrderByParent(usr.Key())
-		})
 
-		It("Should parent payment to order", func() {
+			// Should parent payment to order
 			getPaymentByParent(res.Key())
-		})
 
-		It("Should save payment id on order", func() {
+			// Should save payment id on order
 			Expect(len(res.PaymentIds)).To(Equal(1))
-		})
 
-		It("Should calculate correct total for order and payment", func() {
+			// Should calculate correct total for order and payment
 			Expect(res.Total).To(Equal(req.Order.Total))
 		})
 	})
@@ -196,8 +191,8 @@ var _ = Describe("/checkout/authorize", func() {
 
 	Context("Authorize invalid variant", func() {
 		var req *checkout.Authorization
-		Before(func() {
 
+		Before(func() {
 			// Create fake product, variant and order
 			prod := product.Fake(db)
 			prod.MustCreate()
@@ -213,6 +208,7 @@ var _ = Describe("/checkout/authorize", func() {
 			req.Payment = payment.Fake(db)
 			req.User = user.Fake(db)
 		})
+
 		It("Should not authorize invalid variant id", func() {
 			cl.Post("/checkout/authorize", req, nil, 400)
 		})
@@ -250,7 +246,6 @@ var _ = Describe("/checkout/authorize", func() {
 
 			// Instantiate order to encompass result
 			res = order.New(db)
-
 		})
 
 		JustBefore(func() {
@@ -345,11 +340,11 @@ var _ = Describe("/checkout/authorize", func() {
 			cl.Post("/checkout/authorize", req, res)
 		})
 
-		It("Should save referrer information", func() {
+		It("Should create order using affiliate information", func() {
+			// Should save referrer information
 			Expect(res.ReferrerId).To(Equal(ref.Id()))
-		})
 
-		It("Should save platform fees", func() {
+			// Should save platform fees
 			pay := getPayment(res.Id())
 			platformFee := calcPlatformFee(org.Fees, res.Total)
 
@@ -456,31 +451,27 @@ var _ = Describe("/checkout/authorize", func() {
 			cl.Post("/checkout/charge", req, res)
 		})
 
-		It("Should save new order successfully", func() {
+		It("Should create new order successfully", func() {
+			// Should save user associated with order
 			getUser(res.UserId)
-		})
-		It("Should save new payment successfully", func() {
+
+			// Should save new payment successfully
 			getPayment(res.Id())
-		})
 
-		It("Should save new order successfully for store", func() {
+			// Should save new order successfully for store
 			getOrder(res.Id())
-		})
 
-		It("Should parent order to user", func() {
+			// Should parent order to user
 			usr := getUser(res.UserId)
 			getOrderByParent(usr.Key())
-		})
 
-		It("Should parent payment to order", func() {
+			// Should parent payment to order
 			getPaymentByParent(res.Key())
-		})
 
-		It("Should save payment id on order", func() {
+			// Should save payment id on order
 			Expect(len(res.PaymentIds)).To(Equal(1))
-		})
 
-		It("Should calculate correct total for order and payment", func() {
+			// Should calculate correct total for order and payment
 			Expect(res.Total).To(Equal(req.Order.Total))
 		})
 	})
