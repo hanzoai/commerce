@@ -19,6 +19,21 @@ import (
 
 type defaultsFunc func(c *http.Request)
 
+func defaultStatus(code int) func([]interface{}) []interface{} {
+	return func(args []interface{}) []interface{} {
+		newargs := make([]interface{}, len(args))
+		for _, arg := range args {
+			switch v := arg.(type) {
+			case int:
+				code = v
+			default:
+				newargs = append(newargs, arg)
+			}
+		}
+		return append(newargs, code)
+	}
+}
+
 type Client struct {
 	Router   *gin.Engine
 	Context  *gin.Context
@@ -203,5 +218,6 @@ func (cl *Client) Put(uri string, body interface{}, res interface{}, args ...int
 
 // Make DELETE request
 func (cl *Client) Delete(uri string, args ...interface{}) *httptest.ResponseRecorder {
+	args = defaultStatus(204)(args)
 	return cl.request("DELETE", uri, nil, nil, args...)
 }
