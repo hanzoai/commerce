@@ -124,9 +124,34 @@ var Panic = gomega.Panic
 func Expect1(actual interface{}, extra ...interface{}) gomega.GomegaAssertion {
 	return ExpectWithOffset(1, actual, extra...)
 }
+
 func Expect2(actual interface{}, extra ...interface{}) gomega.GomegaAssertion {
 	return ExpectWithOffset(2, actual, extra...)
 }
+
 func Expect3(actual interface{}, extra ...interface{}) gomega.GomegaAssertion {
 	return ExpectWithOffset(3, actual, extra...)
+}
+
+// BeforeAll / AfterAll helpers
+func BeforeAll(fn func()) {
+	first := true
+	Before(func() {
+		// Only run first time BeforeEach block is executed
+		if first {
+			fn()
+			first = false
+		}
+	})
+}
+
+func AfterAll(fn func()) {
+	first := true
+	After(func() {
+		// Only run first time AfterEach block is executed
+		if first {
+			fn()
+			first = false
+		}
+	})
 }
