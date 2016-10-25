@@ -17,7 +17,7 @@ var newKeyFromInt = key.NewFromInt
 func (q *Query) couponFromId(id string, dst interface{}) (*aeds.Key, bool, error) {
 	code := strings.ToUpper(id)
 
-	key, ok, _ := q.Filter("Code=", code).First(dst)
+	key, ok, _ := q.Filter("Code_=", code).First(dst)
 	if ok {
 		return key, true, nil
 	}
