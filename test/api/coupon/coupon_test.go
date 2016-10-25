@@ -163,10 +163,7 @@ var _ = Describe("coupon", func() {
 
 		It("Should delete coupons", func() {
 			cpn2 := coupon.New(db)
-			log.Debug("ID IS: %v", id)
-			log.JSON("COUPON 1", cpn)
 			err := cpn2.GetById(id)
-			log.JSON("COUPON 2,", cpn2)
 			Expect(err).ToNot(BeNil())
 			Expect(cpn2.Code()).NotTo(Equal(cpn.Code()))
 		})

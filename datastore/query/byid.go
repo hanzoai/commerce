@@ -17,9 +17,12 @@ var newKeyFromInt = key.NewFromInt
 func (q *Query) couponFromId(id string, dst interface{}) (*aeds.Key, bool, error) {
 	code := strings.ToUpper(id)
 
-	key, ok, _ := q.Filter("Code_=", code).First(dst)
+	key, ok, err := q.Filter("Code_=", code).First(dst)
 	if ok {
 		return key, true, nil
+	}
+	if err != nil {
+		return nil, false, err
 	}
 
 	// Get ids from coupon id
@@ -28,12 +31,12 @@ func (q *Query) couponFromId(id string, dst interface{}) (*aeds.Key, bool, error
 		return nil, false, ErrInvalidKey
 	}
 
-	if len(ids) == 0 {
+	if len(ids) != 3 || ids[0] != 3333 {
 		return nil, false, ErrInvalidKey
 	}
 
 	// Recreate coupon key
-	key, err = newKeyFromInt(q.ctx, "coupon", ids[0], nil)
+	key, err = newKeyFromInt(q.ctx, "coupon", ids[1], nil)
 	if err != nil {
 		return nil, false, err
 	}
