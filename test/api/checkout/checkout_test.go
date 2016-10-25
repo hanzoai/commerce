@@ -106,7 +106,7 @@ var _ = Describe("/checkout/authorize", func() {
 		var req *checkout.Authorization
 		var res *order.Order
 
-		Before(func() {
+		BeforeAll(func() {
 			// Create fake product, variant and order
 			prod := product.Fake(db)
 			prod.MustCreate()
@@ -134,14 +134,15 @@ var _ = Describe("/checkout/authorize", func() {
 			cl.Post("/checkout/authorize", req, res)
 		})
 
-		It("Should create order successfully", func() {
-			// Should have valid user
+		It("Should save user", func() {
 			getUser(res.UserId)
+		})
 
-			// Should save payment
+		It("Should save payment", func() {
 			getPayment(res.Id())
+		})
 
-			// Should save order
+		It("Should save order", func() {
 			ord := getOrder(res.Id())
 			Expect(ord.Status).To(Equal(order.Open))
 			Expect(ord.Total).To(Equal(req.Order.Total))
@@ -149,18 +150,22 @@ var _ = Describe("/checkout/authorize", func() {
 			Expect(ord.LineTotal).To(Equal(req.Order.LineTotal))
 			Expect(ord.Items).To(Equal(req.Order.Items))
 			Expect(ord.FulfillmentStatus).To(Equal(FulfillmentUnfulfilled))
+		})
 
-			// Should parent order to user
+		It("Should parent order to user", func() {
 			usr := getUser(res.UserId)
 			getOrderByParent(usr.Key())
+		})
 
-			// Should parent payment to order
+		It("Should parent payment to order", func() {
 			getPaymentByParent(res.Key())
+		})
 
-			// Should save payment id on order
+		It("Should save payment id on order", func() {
 			Expect(len(res.PaymentIds)).To(Equal(1))
+		})
 
-			// Should calculate correct total for order and payment
+		It("Should calculate correct total for order and payment", func() {
 			Expect(res.Total).To(Equal(req.Order.Total))
 		})
 
@@ -433,7 +438,7 @@ var _ = Describe("/checkout/authorize", func() {
 		var req *checkout.Authorization
 		var res *order.Order
 
-		Before(func() {
+		BeforeAll(func() {
 			// Create fake product, variant and order
 			prod := product.Fake(db)
 			prod.MustCreate()
@@ -461,27 +466,32 @@ var _ = Describe("/checkout/authorize", func() {
 			cl.Post("/checkout/charge", req, res)
 		})
 
-		It("Should create new order successfully", func() {
-			// Should save user associated with order
+		It("Should save user associated with order", func() {
 			getUser(res.UserId)
+		})
 
-			// Should save new payment successfully
+		It("Should save new payment successfully", func() {
 			getPayment(res.Id())
+		})
 
-			// Should save new order successfully for store
+		It("Should save new order successfully for store", func() {
 			getOrder(res.Id())
+		})
 
-			// Should parent order to user
+		It("Should parent order to user", func() {
 			usr := getUser(res.UserId)
 			getOrderByParent(usr.Key())
+		})
 
-			// Should parent payment to order
+		It("Should parent payment to order", func() {
 			getPaymentByParent(res.Key())
+		})
 
-			// Should save payment id on order
+		It("Should save payment id on order", func() {
 			Expect(len(res.PaymentIds)).To(Equal(1))
+		})
 
-			// Should calculate correct total for order and payment
+		It("Should calculate correct total for order and payment", func() {
 			Expect(res.Total).To(Equal(req.Order.Total))
 		})
 	})
@@ -512,8 +522,8 @@ var _ = Describe("/checkout/authorize", func() {
 
 	Context("Charge invalid variant", func() {
 		var req *checkout.Authorization
-		Before(func() {
 
+		Before(func() {
 			// Create fake product, variant and order
 			prod := product.Fake(db)
 			prod.MustCreate()
