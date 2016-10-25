@@ -102,7 +102,7 @@ func calcAffiliateFee(comm commission.Commission, total currency.Cents) currency
 }
 
 var _ = Describe("/checkout/authorize", func() {
-	FContext("Authorize new user", func() {
+	Context("Authorize new user", func() {
 		var req *checkout.Authorization
 		var res *order.Order
 
@@ -162,6 +162,16 @@ var _ = Describe("/checkout/authorize", func() {
 
 			// Should calculate correct total for order and payment
 			Expect(res.Total).To(Equal(req.Order.Total))
+		})
+
+		It("Should create subsequen orders with monotonically increasing order numbers", func() {
+			res2 := order.New(db)
+			cl.Post("/checkout/authorize", req, res2)
+			res3 := order.New(db)
+			cl.Post("/checkout/authorize", req, res3)
+			Expect(res.Number).ToNot(Equal(res2.Number))
+			Expect(res.Number).ToNot(Equal(res3.Number))
+			Expect(res2.Number).ToNot(Equal(res3.Number))
 		})
 	})
 
