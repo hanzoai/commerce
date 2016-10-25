@@ -147,23 +147,28 @@ var _ = Describe("coupon", func() {
 	})
 
 	Context("Delete coupon", func() {
-		res := ""
+		var cpn *coupon.Coupon
+		var id string
 
 		Before(func() {
 			// Create coupon
-			req := coupon.Fake(db)
-			req.MustCreate()
+			cpn = coupon.Fake(db)
+			cpn.MustCreate()
 
 			// Delete it
-			cl.Delete("/coupon/" + req.Id())
+			cl.Delete("/coupon/" + cpn.Id())
 
-			res = req.Id()
+			id = cpn.Id()
 		})
 
 		It("Should delete coupons", func() {
-			cpn := coupon.New(db)
-			err := cpn.GetById(res)
+			cpn2 := coupon.New(db)
+			log.Debug("ID IS: %v", id)
+			log.JSON("COUPON 1", cpn)
+			err := cpn2.GetById(id)
+			log.JSON("COUPON 2,", cpn2)
 			Expect(err).ToNot(BeNil())
+			Expect(cpn2.Code()).NotTo(Equal(cpn.Code()))
 		})
 	})
 })
