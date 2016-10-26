@@ -12,8 +12,6 @@ import (
 
 	"crowdstart.com/util/log"
 
-	"golang.org/x/net/context"
-
 	"appengine"
 	"appengine/taskqueue"
 )
@@ -30,7 +28,7 @@ var (
 	Funcs = make(map[string]*Function)
 
 	// precomputed types
-	contextType = reflect.TypeOf((*context.Context)(nil)).Elem()
+	contextType = reflect.TypeOf((*appengine.Context)(nil)).Elem()
 	errorType   = reflect.TypeOf((*error)(nil)).Elem()
 
 	// errors

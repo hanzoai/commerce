@@ -1,6 +1,7 @@
 package referrer
 
 import (
+	"fmt"
 	"time"
 
 	"crowdstart.com/datastore"
@@ -9,6 +10,7 @@ import (
 	"crowdstart.com/models/referral"
 	"crowdstart.com/models/transaction"
 	"crowdstart.com/models/types/client"
+	"crowdstart.com/util/delay"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/timeutil"
 )
@@ -40,7 +42,31 @@ type Referrent interface {
 	Kind() string
 }
 
-func (r *Referrer) SaveReferral(typ referral.Type, rfn Referrent) (*referral.Referral, error) {
+type TimeInterval struct {
+	Start time.Time // inclusive
+	End   time.Time // exclusive
+}
+
+func IntervalFromInstant(t time.Time, width time.Duration) TimeInterval {
+	start := t.Truncate(intervalWidth)
+	end := start.Add(intervalWidth)
+	return TimeInterval{start, end}
+}
+
+func NameFromInterval(d time.Duration, i TimeInterval) string {
+	layout := time.RFC3339
+	start := i.Start.Format(layout)
+	end := i.End.Format(layout)
+	// taskqueue supports delays specified in terms of microseconds:
+	// https://github.com/golang/appengine/blob/75a29a66d4850a15c19eb6d70a31f5c453572be0/internal/taskqueue/taskqueue_service.pb.go#L456
+	// https://github.com/golang/appengine/blob/75a29a66d4850a15c19eb6d70a31f5c453572be0/taskqueue/taskqueue.go#L176
+	return fmt.Sprintf("processReferrals-%d-from-%s-to-%s", int64(d.Nanoseconds() / 1000), start, end)
+}
+
+const processingLatency = 5 * time.Minute
+const intervalWidth = 10 * time.Minute
+
+func (r *Referrer) SaveReferral(typ referral.Type, rfn Referrent, t time.Time) (*referral.Referral, error) {
 	log.Debug("Creating referral")
 	// Create new referral
 	rfl := referral.New(r.Db)
@@ -71,6 +97,11 @@ func (r *Referrer) SaveReferral(typ referral.Type, rfn Referrent) (*referral.Ref
 		r.FirstReferredAt = time.Now()
 		r.Update()
 	}
+
+	batchProcessReferrals := delay.FuncByKey("batch-process-referrals")
+	interval := IntervalFromInstant(t, intervalWidth)
+	name := NameFromInterval(processingLatency, interval)
+	batchProcessReferrals.Once(r.Context(), name, processingLatency, interval)
 	return rfl, nil
 }
 
