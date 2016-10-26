@@ -66,14 +66,14 @@ func PasswordResetConfirm(c *gin.Context) {
 
 	// Verify token is valid.
 	token := token.New(db)
-	if err := token.Get(tokenId); err != nil {
+	if err := token.GetById(tokenId); err != nil {
 		log.Warn("Invalid reset token: %v", err)
 		template.Render(c, "login/password-reset-confirm.html", "invalidCode", true)
 		return
 	}
 
 	user := user.New(db)
-	if err := user.Get(token.UserId); err != nil {
+	if err := user.GetById(token.UserId); err != nil {
 		log.Warn("Reset token has invalid UserId: %v", err)
 		template.Render(c, "login/password-reset-confirm.html", "invalidCode", true)
 		return
@@ -90,7 +90,7 @@ func PasswordResetConfirmSubmit(c *gin.Context) {
 
 	// Verify token is valid.
 	token := token.New(db)
-	if err := token.Get(tokenId); err != nil {
+	if err := token.GetById(tokenId); err != nil {
 		log.Warn("Invalid reset token: %v", err)
 		template.Render(c, "login/password-reset-confirm.html", "invalidCode", true)
 		return
@@ -98,7 +98,7 @@ func PasswordResetConfirmSubmit(c *gin.Context) {
 
 	// Lookup user by email
 	user := user.New(db)
-	if err := user.Get(token.UserId); err != nil {
+	if err := user.GetById(token.UserId); err != nil {
 		template.Render(c, "login/password-reset-confirm.html", "invalidEmail", true)
 		return
 	}

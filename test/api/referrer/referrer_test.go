@@ -4,6 +4,7 @@ import (
 	"math/rand"
 	"time"
 
+	"crowdstart.com/models/affiliate"
 	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/user"
 	"github.com/icrowley/fake"
@@ -34,6 +35,7 @@ var _ = Describe("referrer", func() {
 		})
 	})
 	Context("Get referrer", func() {
+		var aff *affiliate.Affiliate
 		req := new(referrer.Referrer)
 		res := new(referrer.Referrer)
 
@@ -41,7 +43,11 @@ var _ = Describe("referrer", func() {
 			usr := user.Fake(db)
 			usr.MustCreate()
 
+			aff = affiliate.Fake(db, usr.Id())
+			aff.MustCreate()
+
 			req = referrer.Fake(db, usr.Id())
+			req.AffiliateId = aff.Id()
 			req.MustCreate()
 
 			res = referrer.New(db)
@@ -52,6 +58,8 @@ var _ = Describe("referrer", func() {
 		It("Should get referrers", func() {
 			Expect(res.Code).To(Equal(req.Code))
 			Expect(res.UserId).To(Equal(req.UserId))
+			Expect(res.Affiliate.Id_).To(Equal(aff.Id()))
+			Expect(res.Affiliate.CouponId).To(Equal(aff.CouponId))
 			Expect(res.FirstReferredAt.UTC()).To(Equal(req.FirstReferredAt.UTC()))
 		})
 	})

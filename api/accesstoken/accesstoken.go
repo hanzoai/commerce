@@ -36,7 +36,7 @@ func getAccessToken(c *gin.Context, id, email, pass string, test bool) {
 
 	// Get organization
 	org := organization.New(db)
-	if err := org.Get(id); err != nil {
+	if err := org.GetById(id); err != nil {
 		http.Fail(c, 500, "Unable to retrieve organization", err)
 		return
 	}

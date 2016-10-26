@@ -2,12 +2,13 @@ package namespace
 
 import (
 	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/namespace/consts"
 )
 
+var kind = "namespace"
+
 func (n Namespace) Kind() string {
-	return "namespace"
+	return kind
 }
 
 func (n *Namespace) Init(db *datastore.Datastore) {
@@ -17,12 +18,16 @@ func (n *Namespace) Init(db *datastore.Datastore) {
 	n.UseStringKey = true
 }
 
+func (n *Namespace) Defaults() {
+}
+
 func New(db *datastore.Datastore) *Namespace {
 	n := new(Namespace)
 	n.Init(db)
+	n.Defaults()
 	return n
 }
 
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query(kind)
 }

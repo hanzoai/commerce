@@ -98,10 +98,11 @@ func GetScopedDiscounts(ctx appengine.Context, sc scope.Type, id string, keyc ch
 			filter = "Scope.VariantId="
 		}
 
-		query := Query(datastore.New(ctx)).Filter("Scope.Type=", string(sc))
+		db := datastore.New(ctx)
+		q := Query(db).Filter("Scope.Type=", string(sc))
 
 		if filter != "" {
-			query = query.Filter(filter, id)
+			q = q.Filter(filter, id)
 		}
 
 		if sc == scope.Organization {
@@ -110,10 +111,7 @@ func GetScopedDiscounts(ctx appengine.Context, sc scope.Type, id string, keyc ch
 			log.Debug("Trying to get discounts from datastore Scope.Type=%s, %s%s", sc, filter, id)
 		}
 
-		keys, err = query.
-			Filter("Enabled=", true).
-			KeysOnly().
-			GetAll(nil)
+		keys, err = q.Filter("Enabled=", true).GetKeys()
 
 		// Cache keys for later
 		if err == nil {

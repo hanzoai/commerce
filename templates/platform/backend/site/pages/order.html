@@ -86,6 +86,15 @@
           </div>
         </div>
 
+        <div id="metadata" class="panel animated fadeIn" if="{ Object.keys(model.metadata).length > 0 }">
+          <div class="panel-heading">
+            Metadata
+          </div>
+          <div class="panel-body">
+            <pre class="form-control-static">{ JSON.stringify(model.metadata, null, 2) || '&nbsp;' }</pre>
+          </div>
+        </div>
+
         <div id="free-order-items" class="panel animated fadeIn" if="{ model.couponItems }">
           <div class="panel-heading">
             Free Coupon Items

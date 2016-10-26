@@ -27,8 +27,8 @@ type Status string
 
 const (
 	Active    Status = "active"
-	Discarded        = "discarded"
-	Ordered          = "ordered"
+	Discarded Status = "discarded"
+	Ordered   Status = "ordered"
 )
 
 type Cart struct {
@@ -80,27 +80,27 @@ type Cart struct {
 
 	// Individual line items
 	Items  []lineitem.LineItem `json:"items" datastore:"-"`
-	Items_ string              `json:"-"` // need props
+	Items_ string              `json:"-" datastore:",noindex"`
 
-	Coupons     []coupon.Coupon `json:"coupons,omitempty"`
-	CouponCodes []string        `json:"couponCodes,omitempty"`
+	Coupons     []coupon.Coupon `json:"coupons,omitempty" datastore:",noindex"`
+	CouponCodes []string        `json:"couponCodes,omitempty" datastore:",noindex"`
 	ReferrerId  string          `json:"referrerId,omitempty"`
 
 	// Series of events that have occured relevant to this order
-	History []Event `json:"-,omitempty"`
+	History []Event `json:"-,omitempty" datastore:",noindex"`
 
 	// Arbitrary key/value pairs associated with this order
 	Metadata  Map    `json:"metadata" datastore:"-"`
 	Metadata_ string `json:"-" datastore:",noindex"`
 
-	Gift        bool   `json:"gift"`        // Is this a gift?
-	GiftMessage string `json:"giftMessage"` // Message to go on gift
-	GiftEmail   string `json:"giftEmail"`   // Email for digital gifts
+	Gift        bool   `json:"gift"`                                       // Is this a gift?
+	GiftMessage string `json:"giftMessage,omitempty" datastore:",noindex"` // Message to go on gift
+	GiftEmail   string `json:"giftEmail,omitempty"`                        // Email for digital gifts
 
 	Mailchimp struct {
-		Id          string `json:"id,omitempty"`
+		Id          string `json:"id,omitempty" datastore:",noindex"`
 		CampaignId  string `json:"campaignId,omitempty"`
-		CheckoutUrl string `json:"checkoutUrl,omitempty"`
+		CheckoutUrl string `json:"checkoutUrl,omitempty" datastore:",noindex"`
 	} `json:"mailchimp,omitempty"`
 }
 
@@ -109,6 +109,11 @@ func (c *Cart) Validator() *val.Validator {
 }
 
 func (c *Cart) Load(ch <-chan aeds.Property) (err error) {
+	// Prevent duplicate deserialization
+	if c.Loaded() {
+		return nil
+	}
+
 	// Ensure we're initialized
 	c.Defaults()
 
@@ -117,8 +122,10 @@ func (c *Cart) Load(ch <-chan aeds.Property) (err error) {
 		return err
 	}
 
-	for _, coup := range c.Coupons {
-		coup.Init(c.Model.Db)
+	// Initialize coupons
+	// TODO: See if this is necessary
+	for i := range c.Coupons {
+		c.Coupons[i].Init(c.Model.Db)
 	}
 
 	// Deserialize from datastore

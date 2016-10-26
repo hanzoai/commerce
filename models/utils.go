@@ -44,7 +44,7 @@ func SplitParagraph(text string) []string {
 func GetNamespaces(c interface{}) []string {
 	namespaces := make([]string, 0)
 	db := datastore.New(c)
-	keys, err := db.Query("__namespace__").KeysOnly().GetAll(nil)
+	keys, err := db.Query("__namespace__").GetKeys()
 	if err != nil {
 		panic(err)
 	}
@@ -59,7 +59,7 @@ func GetNamespaces(c interface{}) []string {
 func GetKinds(c interface{}) []string {
 	kinds := make([]string, 0)
 	db := datastore.New(c)
-	keys, err := db.Query("__kind__").KeysOnly().GetAll(nil)
+	keys, err := db.Query("__kind__").GetKeys()
 	if err != nil {
 		panic(err)
 	}

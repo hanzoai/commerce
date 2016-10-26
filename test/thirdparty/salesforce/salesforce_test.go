@@ -60,7 +60,7 @@ func (s *MockSObjectSerializeable) Read(so salesforce.SObjectCompatible) error {
 
 func (s *MockSObjectSerializeable) Load(db *datastore.Datastore) salesforce.SObjectCompatible {
 	s.Ref = user.New(db)
-	db.Get(s.ExternalId(), s.Ref)
+	db.GetById(s.ExternalId(), s.Ref)
 	return s.Ref
 }
 

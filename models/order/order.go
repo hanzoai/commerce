@@ -37,10 +37,10 @@ type Status string
 
 const (
 	Cancelled Status = "cancelled"
-	Completed        = "completed"
-	Locked           = "locked"
-	OnHold           = "on-hold"
-	Open             = "open"
+	Completed Status = "completed"
+	Locked    Status = "locked"
+	OnHold    Status = "on-hold"
+	Open      Status = "open"
 )
 
 type Order struct {
@@ -122,17 +122,17 @@ type Order struct {
 
 	// Individual line items
 	Items  []lineitem.LineItem `json:"items" datastore:"-"`
-	Items_ string              `json:"-"` // need props
+	Items_ string              `json:"-" datastore:",noindex"`
 
 	Adjustments []Adjustment `json:"-"`
 
 	Discounts  []*discount.Discount `json:"discounts,omitempty" datastore:"-"`
-	Discounts_ string               `json:"-"` // need props
+	Discounts_ string               `json:"-" datastore:",noindex"` // need props
 
-	Coupons     []coupon.Coupon `json:"coupons,omitempty"`
-	CouponCodes []string        `json:"couponCodes,omitempty"`
+	Coupons     []coupon.Coupon `json:"coupons,omitempty" datastore:",noindex"`
+	CouponCodes []string        `json:"couponCodes,omitempty" datastore:",noindex"`
 
-	PaymentIds []string           `json:"payments"`
+	PaymentIds []string           `json:"payments" datastore:",noindex"`
 	Payments   []*payment.Payment `json:"-" datastore:"-"`
 
 	// Date order was cancelled at
@@ -142,15 +142,15 @@ type Order struct {
 	Fulfillment Fulfillment `json:"fulfillment"`
 
 	// gift options
-	Gift        bool   `json:"gift"`                  // Is this a gift?
-	GiftMessage string `json:"giftMessage,omitempty"` // Message to go on gift
-	GiftEmail   string `json:"giftEmail,omitempty"`   // Email for digital gifts
+	Gift        bool   `json:"gift"`                                       // Is this a gift?
+	GiftMessage string `json:"giftMessage,omitempty" datastore:",noindex"` // Message to go on gift
+	GiftEmail   string `json:"giftEmail,omitempty"`                        // Email for digital gifts
 
 	// Mailchimp tracking information
 	Mailchimp struct {
-		Id           string `json:"id,omitempty"`
+		Id           string `json:"id,omitempty" datastore:",noindex"`
 		CampaignId   string `json:"campaignId,omitempty"`
-		TrackingCode string `json:"trackingCode,omitempty"`
+		TrackingCode string `json:"trackingCode,omitempty" datastore:",noindex"`
 	} `json:"mailchimp,omitempty"`
 
 	// Arbitrary key/value pairs associated with this order
@@ -158,7 +158,7 @@ type Order struct {
 	Metadata_ string `json:"-" datastore:",noindex"`
 
 	// Series of events that have occured relevant to this order
-	History []Event `json:"-,omitempty"`
+	History []Event `json:"-,omitempty" datastore:",noindex"`
 
 	Test bool `json:"-"` // Whether our internal test flag is active or not
 }
@@ -215,7 +215,7 @@ func (o *Order) Save(c chan<- aeds.Property) (err error) {
 	return IgnoreFieldMismatch(aeds.SaveStruct(o, c))
 }
 
-func (o *Order) AddAffiliateFee(pricing pricing.Fees, fees []*fee.Fee) ([]*fee.Fee, error) {
+func (o *Order) AddAffiliateFee(pricing *pricing.Fees, fees []*fee.Fee) ([]*fee.Fee, error) {
 	log.Info("Add Affiliate Fee")
 
 	if o.ReferrerId == "" {
@@ -273,7 +273,7 @@ func (o *Order) AddAffiliateFee(pricing pricing.Fees, fees []*fee.Fee) ([]*fee.F
 	return append(fees, fe), nil
 }
 
-func (o *Order) AddPlatformFee(pricing pricing.Fees, fees []*fee.Fee) []*fee.Fee {
+func (o *Order) AddPlatformFee(pricing *pricing.Fees, fees []*fee.Fee) []*fee.Fee {
 	ctx := o.Context()
 	db := datastore.New(ctx)
 
@@ -306,7 +306,7 @@ func (o *Order) AddPartnerFee(partners []pricing.Partner, fees []*fee.Fee) ([]*f
 	return fees, nil
 }
 
-func (o *Order) CalculateFees(pricing pricing.Fees, partners []pricing.Partner) (currency.Cents, []*fee.Fee, error) {
+func (o *Order) CalculateFees(pricing *pricing.Fees, partners []pricing.Partner) (currency.Cents, []*fee.Fee, error) {
 	fees := make([]*fee.Fee, 0)
 	total := currency.Cents(0)
 
@@ -334,7 +334,11 @@ func (o *Order) CalculateFees(pricing pricing.Fees, partners []pricing.Partner) 
 }
 
 func (o Order) NumberFromId() int {
-	return hashid.Decode(o.Id())[1]
+	ids, err := hashid.Decode(o.Id())
+	if err != nil {
+		panic(err)
+	}
+	return ids[1]
 }
 
 func (o Order) OrderDay() string {
@@ -559,10 +563,8 @@ func (o Order) DescriptionLong() string {
 
 func (o Order) GetPayments() ([]*payment.Payment, error) {
 	payments := make([]*payment.Payment, 0)
-
-	if _, err := payment.Query(o.Db).Ancestor(o.Key()).GetAll(&payments); err != nil {
+	if err := payment.Query(o.Db).Ancestor(o.Key()).GetModels(&payments); err != nil {
 		return nil, err
 	}
-
 	return payments, nil
 }

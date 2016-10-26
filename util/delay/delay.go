@@ -109,14 +109,24 @@ func Func(key string, i interface{}) *Function {
 func (f *Function) Call(c appengine.Context, args ...interface{}) error {
 	t, err := f.Task(args...)
 	if err != nil {
+		log.Warn(err)
 		return err
 	}
 	t.Name = f.name
 	_, err = taskqueue.Add(c, t, queue)
-	if err != nil {
-		log.Warn(err)
+
+	// Override name
+	if f.name != "" {
+		t.Name = f.name
 	}
-	return err
+
+	// Add to taskqueue
+	if _, err := taskqueue.Add(c, t, f.queue); err != nil {
+		log.Warn(err)
+		return err
+	}
+
+	return nil
 }
 
 // Task creates a Task that will invoke the function.

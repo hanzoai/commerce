@@ -20,6 +20,7 @@ import (
 	"crowdstart.com/models/variant"
 	"crowdstart.com/util/hashid"
 
+	. "crowdstart.com/models"
 	. "crowdstart.com/util/test/ginkgo"
 )
 
@@ -45,7 +46,7 @@ func getUser(id string) *user.User {
 
 func getPayment(orderId string) *payment.Payment {
 	pay := payment.New(db)
-	ok, err := pay.Query().Filter("OrderId=", orderId).First()
+	ok, err := pay.Query().Filter("OrderId=", orderId).Get()
 	Expect1(err).ToNot(HaveOccurred())
 	Expect1(ok).To(BeTrue())
 	return pay
@@ -53,7 +54,7 @@ func getPayment(orderId string) *payment.Payment {
 
 func getPaymentByParent(key datastore.Key) *payment.Payment {
 	pay := payment.New(db)
-	ok, err := pay.Query().Ancestor(key).First()
+	ok, err := pay.Query().Ancestor(key).Get()
 	Expect1(err).ToNot(HaveOccurred())
 	Expect1(ok).To(BeTrue())
 	return pay
@@ -61,7 +62,7 @@ func getPaymentByParent(key datastore.Key) *payment.Payment {
 
 func getOrderByParent(key datastore.Key) *order.Order {
 	ord := order.New(db)
-	ok, err := ord.Query().Ancestor(key).First()
+	ok, err := ord.Query().Ancestor(key).Get()
 	Expect1(err).ToNot(HaveOccurred())
 	Expect1(ok).To(BeTrue())
 	return ord
@@ -79,7 +80,7 @@ func getFees(paymentId, feeType string) []*fee.Fee {
 
 func getReferral(orderId string) *referral.Referral {
 	rfl := referral.New(db)
-	ok, err := rfl.Query().Filter("OrderId=", orderId).First()
+	ok, err := rfl.Query().Filter("OrderId=", orderId).Get()
 	Expect1(err).ToNot(HaveOccurred())
 	Expect1(ok).To(BeTrue())
 	return rfl
@@ -105,7 +106,7 @@ var _ = Describe("/checkout/authorize", func() {
 		var req *checkout.Authorization
 		var res *order.Order
 
-		Before(func() {
+		BeforeAll(func() {
 			// Create fake product, variant and order
 			prod := product.Fake(db)
 			prod.MustCreate()
@@ -142,7 +143,13 @@ var _ = Describe("/checkout/authorize", func() {
 		})
 
 		It("Should save order", func() {
-			getOrder(res.Id())
+			ord := getOrder(res.Id())
+			Expect(ord.Status).To(Equal(order.Open))
+			Expect(ord.Total).To(Equal(req.Order.Total))
+			Expect(ord.Tax).To(Equal(req.Order.Tax))
+			Expect(ord.LineTotal).To(Equal(req.Order.LineTotal))
+			Expect(ord.Items).To(Equal(req.Order.Items))
+			Expect(ord.FulfillmentStatus).To(Equal(FulfillmentUnfulfilled))
 		})
 
 		It("Should parent order to user", func() {
@@ -160,6 +167,16 @@ var _ = Describe("/checkout/authorize", func() {
 
 		It("Should calculate correct total for order and payment", func() {
 			Expect(res.Total).To(Equal(req.Order.Total))
+		})
+
+		It("Should create subsequen orders with monotonically increasing order numbers", func() {
+			res2 := order.New(db)
+			cl.Post("/checkout/authorize", req, res2)
+			res3 := order.New(db)
+			cl.Post("/checkout/authorize", req, res3)
+			Expect(res.Number).ToNot(Equal(res2.Number))
+			Expect(res.Number).ToNot(Equal(res3.Number))
+			Expect(res2.Number).ToNot(Equal(res3.Number))
 		})
 	})
 
@@ -189,8 +206,8 @@ var _ = Describe("/checkout/authorize", func() {
 
 	Context("Authorize invalid variant", func() {
 		var req *checkout.Authorization
-		Before(func() {
 
+		Before(func() {
 			// Create fake product, variant and order
 			prod := product.Fake(db)
 			prod.MustCreate()
@@ -206,6 +223,7 @@ var _ = Describe("/checkout/authorize", func() {
 			req.Payment = payment.Fake(db)
 			req.User = user.Fake(db)
 		})
+
 		It("Should not authorize invalid variant id", func() {
 			cl.Post("/checkout/authorize", req, nil, 400)
 		})
@@ -243,7 +261,6 @@ var _ = Describe("/checkout/authorize", func() {
 
 			// Instantiate order to encompass result
 			res = order.New(db)
-
 		})
 
 		JustBefore(func() {
@@ -254,22 +271,17 @@ var _ = Describe("/checkout/authorize", func() {
 			It("Should re-use user successfully", func() {
 				Expect(res.UserId).To(Equal(usr.Id()))
 			})
-
-			It("Should allow email to be used as id", func() {
-				Expect(res.UserId).To(Equal(usr.Id()))
-			})
 		})
 
 		Context("User email used as id", func() {
 			Before(func() {
-				req.User.Id_ = req.User.Email
+				// Use a clone so we don't muck up Id_ on the usr we test against
+				usr := req.User.Clone().(*user.User)
+				usr.Id_ = req.User.Email
+				req.User = usr
 			})
 
 			It("Should re-use user successfully", func() {
-				Expect(res.UserId).To(Equal(usr.Id()))
-			})
-
-			It("Should allow email to be used as id", func() {
 				Expect(res.UserId).To(Equal(usr.Id()))
 			})
 		})
@@ -343,11 +355,11 @@ var _ = Describe("/checkout/authorize", func() {
 			cl.Post("/checkout/authorize", req, res)
 		})
 
-		It("Should save referrer information", func() {
+		It("Should create order using affiliate information", func() {
+			// Should save referrer information
 			Expect(res.ReferrerId).To(Equal(ref.Id()))
-		})
 
-		It("Should save platform fees", func() {
+			// Should save platform fees
 			pay := getPayment(res.Id())
 			platformFee := calcPlatformFee(org.Fees, res.Total)
 
@@ -426,7 +438,7 @@ var _ = Describe("/checkout/authorize", func() {
 		var req *checkout.Authorization
 		var res *order.Order
 
-		Before(func() {
+		BeforeAll(func() {
 			// Create fake product, variant and order
 			prod := product.Fake(db)
 			prod.MustCreate()
@@ -453,9 +465,11 @@ var _ = Describe("/checkout/authorize", func() {
 			// Make request
 			cl.Post("/checkout/charge", req, res)
 		})
-		It("Should save new order successfully", func() {
+
+		It("Should save user associated with order", func() {
 			getUser(res.UserId)
 		})
+
 		It("Should save new payment successfully", func() {
 			getPayment(res.Id())
 		})
@@ -508,8 +522,8 @@ var _ = Describe("/checkout/authorize", func() {
 
 	Context("Charge invalid variant", func() {
 		var req *checkout.Authorization
-		Before(func() {
 
+		Before(func() {
 			// Create fake product, variant and order
 			prod := product.Fake(db)
 			prod.MustCreate()
@@ -534,6 +548,59 @@ var _ = Describe("/checkout/authorize", func() {
 		})
 	})
 
+	Context("Capture existing user", func() {
+		var req *checkout.Authorization
+		var res *order.Order
+		var usr *user.User
+
+		Before(func() {
+			// Create returning user
+			usr = user.Fake(db)
+			usr.MustCreate()
+
+			// Create fake product, variant and order
+			prod := product.Fake(db)
+			prod.MustCreate()
+			vari := variant.Fake(db, prod.Id())
+			vari.MustCreate()
+			li := lineitem.Fake(vari)
+			ord := order.Fake(db, li)
+
+			// Create new authorization request
+			req = new(checkout.Authorization)
+			req.Order = ord
+			req.Payment = payment.Fake(db)
+			req.User = usr
+
+			// Instantiate order to encompass result
+			res = order.New(db)
+
+		})
+
+		JustBefore(func() {
+			cl.Post("/checkout/charge", req, res)
+		})
+
+		Context("User id used as id", func() {
+			It("Should re-use user successfully", func() {
+				Expect(res.UserId).To(Equal(usr.Id()))
+			})
+		})
+
+		Context("User email used as id", func() {
+			Before(func() {
+				// Use a clone so we don't muck up Id_ on the usr we test against
+				usr := req.User.Clone().(*user.User)
+				usr.Id_ = req.User.Email
+				req.User = usr
+			})
+
+			It("Should re-use user successfully", func() {
+				Expect(res.UserId).To(Equal(usr.Id()))
+			})
+		})
+	})
+
 	Context("Charge Returning Customers", func() {
 		It("Should save returning customer order with the same card successfully", func() {
 		})
@@ -545,9 +612,6 @@ var _ = Describe("/checkout/authorize", func() {
 		})
 
 		It("Should save returning customer order with a new card successfully for store", func() {
-		})
-
-		It("Should not save customer with invalid user id", func() {
 		})
 
 		It("Should not save customer with invalid user id", func() {

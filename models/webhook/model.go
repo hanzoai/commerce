@@ -1,12 +1,11 @@
 package webhook
 
-import (
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
-)
+import "crowdstart.com/datastore"
+
+var kind = "webhook"
 
 func (w Webhook) Kind() string {
-	return "webhook"
+	return kind
 }
 
 func (w *Webhook) Init(db *datastore.Datastore) {
@@ -20,9 +19,10 @@ func (w *Webhook) Defaults() {
 func New(db *datastore.Datastore) *Webhook {
 	w := new(Webhook)
 	w.Init(db)
+	w.Defaults()
 	return w
 }
 
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query(kind)
 }

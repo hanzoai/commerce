@@ -6,97 +6,69 @@ import (
 	"reflect"
 	"sync"
 
-	"appengine"
-
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/mixin"
 )
 
 // Vals should be a slice of models
 func multi(vals interface{}, fn func(mixin.Entity) error) error {
-	var wg sync.WaitGroup
-	var err error
-
 	// Vals must be a slice
 	if reflect.TypeOf(vals).Kind() != reflect.Slice {
 		return errors.New(fmt.Sprintf("Must be called with slice of entities, not: %v", vals))
 	}
 
+	var wg sync.WaitGroup
 	slice := reflect.ValueOf(vals)
+	n := slice.Len()
+	errs := make(MultiError, n)
+	errd := false
 
 	// Loop over slice initializing entities
-	for i := 0; i < slice.Len(); i++ {
+	for i := 0; i < n; i++ {
 		wg.Add(1)
-
-		// Grab next entity off slice
-		entity, ok := slice.Index(i).Interface().(mixin.Entity)
-		if !ok {
-			return errors.New(fmt.Sprintf("Slice must contain entities, not: %v", slice.Index(i).Interface()))
-		}
-
-		// Run method in gofunc
-		go func(model mixin.Entity) {
+		go func(i int) {
 			defer wg.Done()
 
-			// Exit if there is an error
-			if err != nil {
+			// Grab next entity off slice
+			entity, ok := slice.Index(i).Interface().(mixin.Entity)
+			if !ok {
+				errd = true
+				errs[i] = errors.New(fmt.Sprintf("Slice must contain entities, not %v", slice.Index(i).Interface()))
 				return
 			}
 
-			err = fn(entity)
-		}(entity)
+			// Run operation on entity
+			if err := fn(entity); err != nil {
+				errd = true
+				errs[i] = err
+			}
+		}(i)
 	}
 
 	// Wait to finish
 	wg.Wait()
 
-	// Return first error
-	return err
+	if errd {
+		return errs
+	} else {
+		return nil
+	}
 }
 
-func Get(ctx appengine.Context, keys interface{}, vals interface{}) error {
-	var wg sync.WaitGroup
-	var err error
-	var valSlice reflect.Value
-
-	db := datastore.New(ctx)
-
-	// Keys must be a slice
-	if reflect.TypeOf(keys).Kind() != reflect.Slice {
-		return errors.New(fmt.Sprintf("Must be called with slice of keys, not: %v", keys))
+func Get(db *datastore.Datastore, keys interface{}, vals interface{}) error {
+	// Fetch underlying entities
+	if err := db.GetMulti(keys, vals); err != nil {
+		return err
 	}
 
 	keySlice := reflect.ValueOf(keys)
+	valSlice := reflect.ValueOf(vals)
 	nkeys := keySlice.Len()
 
-	// Vals must be a slice
-	typ := reflect.TypeOf(vals)
-	switch typ.Kind() {
-	case reflect.Ptr:
-		valSlice = reflect.Indirect(reflect.ValueOf(vals))
-	case reflect.Slice:
-		valSlice = reflect.ValueOf(vals)
-	default:
-		return errors.New("Vals must be a slice or pointer to a slice")
-	}
+	errs := make(MultiError, nkeys)
+	errd := false
 
-	// Get type of valSlice, values
-	valSliceType := typ.Elem()
-	valType := valSliceType.Elem()
-	valType = reflect.Zero(valType).Type().Elem()
-
-	// Auto allocate vals if length of valSlice is not set
-	if valSlice.Len() == 0 {
-		if !valSlice.CanAddr() {
-			return errors.New("Destination must be addressable to auto-allocate entities")
-		}
-
-		// Create new valSlice of correct capacity and insert properly instantiated values
-		zeroes := reflect.MakeSlice(valSliceType, nkeys, nkeys)
-
-		// Append to vals valSlice, growing original valSlice to proper length
-		valSlice.Set(reflect.AppendSlice(valSlice, zeroes))
-	}
+	var wg sync.WaitGroup
 
 	// Loop over slice fetching entities
 	for i := 0; i < nkeys; i++ {
@@ -106,32 +78,27 @@ func Get(ctx appengine.Context, keys interface{}, vals interface{}) error {
 		go func(i int) {
 			defer wg.Done()
 
-			// Get key
 			key := keySlice.Index(i).Interface()
+			entity := valSlice.Index(i).Interface().(mixin.Entity)
 
-			// Create new zero'd entity
-			val := reflect.New(valType)
-			entity := val.Interface().(mixin.Entity)
-
-			// Initialize and try to fetch with key
-			entity.Init(db)
-			err = entity.Get(key)
-
-			// Exit if there is an error
-			if err != nil {
-				return
+			// Set key on model
+			if err := entity.SetKey(key); err != nil {
+				errd = true
+				errs[i] = err
 			}
-
-			// Set entity on val slice
-			valSlice.Index(i).Set(val)
+			// Ensure model is initialized correctly
+			entity.Init(db)
 		}(i)
 	}
 
 	// Wait to finish
 	wg.Wait()
 
-	// Return first error
-	return err
+	if errd {
+		return errs
+	} else {
+		return nil
+	}
 }
 
 func Put(vals interface{}) error {

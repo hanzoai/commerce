@@ -10,6 +10,8 @@ import (
 	"appengine"
 )
 
+type RawMessage json.RawMessage
+
 func Encode(value interface{}) string {
 	return string(EncodeBytes(value))
 }
@@ -28,6 +30,10 @@ func EncodeBytes(value interface{}) []byte {
 		fmt.Println("%v", err)
 	}
 	return b
+}
+
+func EncodeRaw(value interface{}) json.RawMessage {
+	return json.RawMessage(EncodeBytes(value))
 }
 
 func EncodeBuffer(value interface{}) *bytes.Buffer {

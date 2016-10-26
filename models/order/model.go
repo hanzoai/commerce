@@ -3,15 +3,16 @@ package order
 import (
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/coupon"
-	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/payment"
 
 	. "crowdstart.com/models"
 	"crowdstart.com/models/lineitem"
 )
 
+var kind = "order"
+
 func (o Order) Kind() string {
-	return "order"
+	return kind
 }
 
 func (o *Order) Init(db *datastore.Datastore) {
@@ -31,10 +32,12 @@ func (o *Order) Defaults() {
 
 func New(db *datastore.Datastore) *Order {
 	o := new(Order)
+	o.Defaults()
 	o.Init(db)
+	o.Defaults()
 	return o
 }
 
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query(kind)
 }

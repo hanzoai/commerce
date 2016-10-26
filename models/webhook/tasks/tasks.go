@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -54,13 +55,14 @@ func createClient(ctx appengine.Context) *Client {
 
 // Fire webhooks
 var Emit = delay.Func("webhook-emit", func(ctx appengine.Context, org string, event string, data interface{}) {
-	log.Debug("Emitting webhook '%s' for %s: %v", event, org, data, ctx)
+	log.JSON(fmt.Sprintf("Emit webhook '%s' for '%s'", event, org), data, ctx)
 
 	db := datastore.New(ctx)
 	db.SetNamespace(org)
 
 	// Fetch any webhooks for this organization
-	hooks, err := webhook.Query(db).GetEntities()
+	hooks := make([]*webhook.Webhook, 0)
+	_, err := webhook.Query(db).GetAll(hooks)
 	if err != nil {
 		log.Warn("Failed to retrieve webhooks for organization '%s': %v", org, err, ctx)
 	}
@@ -74,9 +76,7 @@ var Emit = delay.Func("webhook-emit", func(ctx appengine.Context, org string, ev
 	// Create client to send event data
 	client := createClient(ctx)
 
-	for i := range hooks {
-		hook := hooks[i].(*webhook.Webhook)
-
+	for _, hook := range hooks {
 		// Has all events enabled
 		if hook.All {
 			client.Post(hook.Url, data)

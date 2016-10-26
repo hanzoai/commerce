@@ -36,7 +36,7 @@ type User struct {
 	// Crowdstart Id, found in default namespace
 	Cid string `json:"-"`
 
-	Username        string   `json:"username"`
+	Username        string   `json:"username,omitempty"`
 	FirstName       string   `json:"firstName"`
 	LastName        string   `json:"lastName"`
 	Company         string   `json:"company,omitempty"`
@@ -46,7 +46,7 @@ type User struct {
 	Email           string   `json:"email"`
 	PaypalEmail     string   `json:"paypalEmail,omitempty"`
 	PasswordHash    []byte   `schema:"-" datastore:",noindex" json:"-"`
-	Organizations   []string `json:"-"`
+	Organizations   []string `json:"-" datastore:",noindex"`
 
 	Facebook struct {
 		AccessToken string `facebook:"-"`
@@ -65,7 +65,7 @@ type User struct {
 		Stripe payment.Account `json:"stripe,omitempty"`
 		PayPal payment.Account `json:"paypal,omitempty"`
 		Affirm payment.Account `json:"affirm,omitempty"`
-	} `json:"-"`
+	} `json:"-" datastore:",noindex"`
 
 	Enabled bool `json:"enabled"` //whether or not the user can login yet
 
@@ -83,7 +83,7 @@ type User struct {
 	ReferrerId string `json:"referrerId,omitempty"`
 
 	// Series of events that have occured relevant to this order
-	History []Event `json:"-,omitempty"`
+	History []Event `json:"-,omitempty" datastore",noindex"`
 
 	IsOwner bool `json:"owner,omitempty" datastore:"-"`
 
@@ -243,11 +243,10 @@ func (u *User) GetByEmail(email string) error {
 	email = strings.ToLower(strings.TrimSpace(email))
 	log.Debug("Searching for user '%v'", email)
 
-	// Build query to return user
-	ok, err := u.Query().Filter("Email=", email).First()
+	ok, err := u.Query().Filter("Email=", email).Get()
 
 	if err != nil {
-		log.Warn("Unable to fetch user from datastore: '%v'", err)
+		log.Warn("Unable to find user by email: '%v'", err)
 		return err
 	}
 
@@ -302,14 +301,13 @@ func (u *User) LoadAffiliateAndPendingFees() error {
 }
 
 func (u *User) CalculateBalances() error {
-	trans, err := transaction.Query(u.Db).Filter("UserId=", u.Id()).Filter("Test=", false).GetEntities()
-	if err != nil {
+	trans := make([]*transaction.Transaction, 0)
+	if _, err := transaction.Query(u.Db).Filter("UserId=", u.Id()).Filter("Test=", false).GetAll(&trans); err != nil {
 		return err
 	}
 
 	u.Balances = make(map[currency.Type]currency.Cents)
-	for i := range trans {
-		t := trans[i].(*transaction.Transaction)
+	for _, t := range trans {
 		cents := u.Balances[t.Currency]
 
 		if t.Type == transaction.Withdraw {

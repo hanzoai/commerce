@@ -9,11 +9,14 @@ goroot_pkg_path = $(goroot)/pkg/$(platform)_appengine/
 gopath_pkg_path = $(gopath)/pkg/$(platform)_appengine/
 current_date	= $(shell date +"%Y-%m-%d")
 
-goapp			= $(sdk_path)/goapp
-gpm				= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(sdk_path)/gpm
-ginkgo			= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(gopath)/bin/ginkgo
 appcfg.py 		= $(sdk_path)/appcfg.py --skip_sdk_update_check
 bulkloader.py   = $(sdk_path)/bulkloader.py
+goapp			= $(sdk_path)/goapp
+gover 			= $(gopath)/bin/gover
+goveralls       = $(gopath)/bin/goveralls
+
+ginkgo			= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(gopath)/bin/ginkgo
+gpm				= GOPATH=$(gopath) PATH=$(sdk_path):$$PATH $(sdk_path)/gpm
 
 deps	= $(shell cat Godeps | cut -d ' ' -f 1)
 modules	= crowdstart.com/analytics \
@@ -92,7 +95,7 @@ autoprefixer_opts = -b 'ie > 8, firefox > 24, chrome > 30, safari > 6, opera > 1
 					static/css/platform.css
 
 dev_appserver = $(sdk_path)/dev_appserver.py --skip_sdk_update_check \
-											 --dev_appserver_log_level=debug
+											 --dev_appserver_log_level=error
 											 --datastore_path=$(sdk_path)/.datastore.bin \
 
 sdk_install_extra = rm -rf $(sdk_path)/demos
@@ -151,6 +154,11 @@ test_target = -r=true
 test_focus := $(focus)
 ifdef test_focus
 	test_target=test/$(focus)
+endif
+
+test_batch := $(batch)
+ifdef test_batch
+	test_target=$(batch)
 endif
 
 export GOROOT := $(goroot)
@@ -263,20 +271,21 @@ tools:
 	$(gopath)/bin/gocode set lib-path "$(gopath_pkg_path):$(goroot_pkg_path)"
 
 # TEST/ BENCH
-test:
-	@$(ginkgo) $(test_target) -p=true -progress --randomizeAllSpecs --failFast --skipMeasurements --skipPackage=integration $(test_verbose)
-
-test-integration:
-	@$(ginkgo) -r=true -p=true -progress --randomizeAllSpecs --failFast --skipMeasurements --focus=integration $(test_verbose)
+test: install
+	@$(ginkgo) $(test_target) -p=true -progress --randomizeAllSpecs --failFast --trace --skipMeasurements --skipPackage=integration $(test_verbose)
 
 test-watch:
-	@$(ginkgo) watch -r=true -p=true -progress --failFast --skipMeasurements $(test_verbose)
+	@$(ginkgo) watch -r=true -p=true -progress --failFast --trace $(test_verbose)
 
-bench:
-	@$(ginkgo) $(test_target) -p=true -progress --randomizeAllSpecs --failFast --skipPackage=integration $(test_verbose)
+bench: install
+	@$(ginkgo) $(test_target) -p=true -progress --randomizeAllSpecs --failFast --trace --skipPackage=integration $(test_verbose)
 
 test-ci:
-	$(ginkgo) -r=true -p=true --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace --compilers=2
+	$(ginkgo) $(test_target) -p=true --randomizeAllSpecs --randomizeSuites --failFast --failOnPending --trace
+
+coverage:
+	# $(gover) test/ coverage.out
+	# $(goveralls) -coverprofile=coverage.out -service=circle-ci -repotoken=$(COVERALLS_REPO_TOKEN)
 
 # DEPLOY
 

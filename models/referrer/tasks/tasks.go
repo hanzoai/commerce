@@ -26,7 +26,7 @@ func ProcessReferralsInternal(ctx appengine.Context, referrerId string, interval
 	// nsctx, _ := appengine.Namespace(ctx, namespace)
 
 	r := referrer.New(db)
-	err := r.Get(referrerId)
+	err := r.GetById(referrerId)
 	if err != nil {
 		log.Error("error while fetching referrer; referrerId = '%s': %v", referrerId, err, ctx)
 		panic(err)
