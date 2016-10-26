@@ -20,6 +20,7 @@ import (
 	_ "crowdstart.com/cron/tasks"
 	_ "crowdstart.com/models/fixtures"
 	_ "crowdstart.com/models/migrations"
+	_ "crowdstart.com/models/referrer/tasks"
 	_ "crowdstart.com/models/webhook/tasks"
 	_ "crowdstart.com/thirdparty/mailchimp/tasks"
 	_ "crowdstart.com/thirdparty/mandrill/tasks"

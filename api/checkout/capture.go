@@ -16,7 +16,6 @@ import (
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/referral"
 	"crowdstart.com/models/referrer"
-	"crowdstart.com/models/referrer/tasks"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/models/user"
 	"crowdstart.com/util/counter"
@@ -125,14 +124,12 @@ func saveReferral(ctx appengine.Context, org *organization.Organization, ord *or
 		return
 	}
 
-	rfl, err := ref.SaveReferral(referral.NewOrder, ord)
+	now := time.Now()
+	rfl, err := ref.SaveReferral(referral.NewOrder, ord, now)
 	if err != nil {
 		log.Warn("Unable to save referral: %v", err, ctx)
 		return
 	}
-
-	t := time.Now()
-	tasks.ProcessReferrals(ctx, t)
 
 	if err := counter.IncrReferrerFees(ctx, ref.Id(), rfl); err != nil {
 		log.Warn("Counter Error %s", err, ctx)

@@ -3,7 +3,7 @@ package test
 import (
 	"time"
 
-	. "crowdstart.com/models/referrer/tasks"
+	. "crowdstart.com/models/referrer"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

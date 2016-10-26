@@ -20,6 +20,8 @@ import (
 	"crowdstart.com/models/variant"
 	"crowdstart.com/util/hashid"
 
+	_ "crowdstart.com/models/referrer/tasks"
+
 	. "crowdstart.com/models"
 	. "crowdstart.com/util/test/ginkgo"
 )
