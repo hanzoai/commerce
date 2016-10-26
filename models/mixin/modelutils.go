@@ -1,11 +1,9 @@
 package mixin
 
 import (
-	"reflect"
-
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
-	"crowdstart.com/util/structs"
+	"crowdstart.com/util/reflect"
 )
 
 // Create a new zero'd entity of this type
@@ -29,7 +27,7 @@ func (m *Model) Zero() Entity {
 // Create a clone of current entity
 func (m *Model) Clone() Entity {
 	entity := m.Zero()
-	if err := structs.Copy(m.Entity, entity); err != nil {
+	if err := reflect.Copy(m.Entity, entity); err != nil {
 		log.Warn("Unable to copy of model: %v", err, m.Db.Context)
 	}
 	return entity

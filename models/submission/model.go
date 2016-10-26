@@ -2,13 +2,14 @@ package submission
 
 import (
 	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
 
 	. "crowdstart.com/models"
 )
 
+var kind = "submission"
+
 func (s Submission) Kind() string {
-	return "submission"
+	return kind
 }
 
 func (s *Submission) Init(db *datastore.Datastore) {
@@ -22,9 +23,10 @@ func (s *Submission) Defaults() {
 func New(db *datastore.Datastore) *Submission {
 	s := new(Submission)
 	s.Init(db)
+	s.Defaults()
 	return s
 }
 
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query(kind)
 }

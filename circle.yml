@@ -1,3 +1,12 @@
 dependencies:
   cache_directories:
     - ".sdk"
+  override:
+    - make deps:
+        timeout: 300
+test:
+  override:
+    - util/test/test-runner:
+        parallel: true
+  post:
+    - make coverage

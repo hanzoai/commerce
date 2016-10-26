@@ -138,7 +138,7 @@ var _ = Describe("payment/paypal", func() {
 
 				// Payment and Order info should be in the db
 				pay := payment.New(db)
-				ok, err := pay.Query().Filter("OrderId=", res.Id()).First()
+				ok, err := pay.Query().Filter("OrderId=", res.Id()).Get()
 				log.Debug("Err %v", err)
 
 				Expect(err).ToNot(HaveOccurred())
@@ -146,14 +146,14 @@ var _ = Describe("payment/paypal", func() {
 
 				// Order should be in db
 				ord := order.New(db)
-				err = ord.Get(pay.OrderId)
+				err = ord.GetById(pay.OrderId)
 				Expect(err).ToNot(HaveOccurred())
 				log.Debug("Ord %v", ord)
 				Expect(string(ord.Type)).To(Equal("paypal"))
 
 				// User should be in db
 				usr := user.New(db)
-				err = usr.Get(ord.UserId)
+				err = usr.GetById(ord.UserId)
 
 				Expect(err).ToNot(HaveOccurred())
 				Expect(usr.Key()).ToNot(BeNil())

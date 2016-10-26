@@ -132,7 +132,7 @@ func (c Context) Context(aectx *appengine.Context) (ctx *gin.Context, err error)
 		if id, ok := value.(string); ok {
 			db := datastore.New(*aectx)
 			org := organization.New(db)
-			org.Get(id)
+			org.GetById(id)
 			ctx.Set("organization", org)
 		}
 	}

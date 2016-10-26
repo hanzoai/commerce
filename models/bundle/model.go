@@ -6,8 +6,10 @@ import (
 	. "crowdstart.com/models"
 )
 
+var kind = "bundle"
+
 func (b Bundle) Kind() string {
-	return "bundle"
+	return kind
 }
 
 func (b *Bundle) Init(db *datastore.Datastore) {
@@ -23,5 +25,10 @@ func (b *Bundle) Defaults() {
 func New(db *datastore.Datastore) *Bundle {
 	b := new(Bundle)
 	b.Init(db)
+	b.Defaults()
 	return b
+}
+
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query(kind)
 }

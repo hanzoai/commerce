@@ -19,22 +19,23 @@ type Status string
 
 const (
 	Cancelled  Status = "cancelled"
-	Credit            = "credit"
-	Disputed          = "disputed"
-	Failed            = "failed"
-	Fraudulent        = "fraudulent"
-	Paid              = "paid"
-	Refunded          = "refunded"
-	Unpaid            = "unpaid"
+	Credit     Status = "credit"
+	Disputed   Status = "disputed"
+	Failed     Status = "failed"
+	Fraudulent Status = "fraudulent"
+	Paid       Status = "paid"
+	Refunded   Status = "refunded"
+	Unpaid     Status = "unpaid"
 )
 
 type Type string
 
 const (
-	Null   Type = "null"
-	Affirm      = "affirm"
-	Stripe      = "stripe"
-	PayPal      = "paypal"
+	Null    Type = "null"
+	Balance Type = "balance"
+	Affirm  Type = "affirm"
+	Stripe  Type = "stripe"
+	PayPal  Type = "paypal"
 )
 
 type AffirmAccount struct {
@@ -111,8 +112,11 @@ type Payment struct {
 
 	Type Type `json:"type"`
 
-	// Order this is associated with
+	// Order this payment is associated with
 	OrderId string `json:"orderId,omitempty"`
+
+	// User this payment is associated with
+	UserId string `json:"userId,omitempty"`
 
 	// Payment source information
 	Account Account `json:"account"`
@@ -128,7 +132,7 @@ type Payment struct {
 	Amount         currency.Cents `json:"amount"`
 	AmountRefunded currency.Cents `json:"amountRefunded"`
 	Fee            currency.Cents `json:"fee"`
-	FeeIds         []string       `json:"fees"`
+	FeeIds         []string       `json:"fees" datastore:",noindex"`
 
 	AmountTransferred   currency.Cents `json:"-"`
 	CurrencyTransferred currency.Type  `json:"-"`
@@ -149,7 +153,7 @@ type Payment struct {
 	Test bool `json:"-"`
 
 	Metadata  Map    `json:"metadata,omitempty" datastore:"-"`
-	Metadata_ string `json:"-" datastore:"-"`
+	Metadata_ string `json:"-" datastore:",noindex"`
 }
 
 func (p *Payment) Load(c <-chan aeds.Property) (err error) {

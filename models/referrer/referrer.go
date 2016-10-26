@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"crowdstart.com/datastore"
+	"crowdstart.com/models/affiliate"
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/referral"
 	"crowdstart.com/models/transaction"
@@ -23,8 +24,9 @@ type Referrer struct {
 	OrderId string  `json:"orderId"`
 	UserId  string  `json:"userId"`
 
-	AffiliateId     string    `json:"affiliateId,omitempty"`
-	FirstReferredAt time.Time `json:"firstReferredAt"`
+	AffiliateId     string              `json:"affiliateId,omitempty"`
+	Affiliate       affiliate.Affiliate `json:"affiliate,omitempty" datastore:"-"`
+	FirstReferredAt time.Time           `json:"firstReferredAt"`
 
 	Client      client.Client `json:"-"`
 	Blacklisted bool          `json:"blacklisted,omitempty"`
@@ -70,6 +72,22 @@ func (r *Referrer) SaveReferral(typ referral.Type, rfn Referrent) (*referral.Ref
 		r.Update()
 	}
 	return rfl, nil
+}
+
+func (r *Referrer) LoadAffiliate() error {
+	if r.AffiliateId == "" {
+		return nil
+	}
+
+	aff := affiliate.New(r.Db)
+
+	if err := aff.GetById(r.AffiliateId); err != nil {
+		return err
+	}
+
+	r.Affiliate = *aff
+
+	return nil
 }
 
 func (r *Referrer) Referrals() ([]*referral.Referral, error) {

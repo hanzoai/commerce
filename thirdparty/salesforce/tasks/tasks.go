@@ -9,7 +9,7 @@ import (
 	"crowdstart.com/datastore"
 	"crowdstart.com/datastore/parallel"
 	// "crowdstart.com/models"
-	"crowdstart.com/util/log"
+
 	// "crowdstart.com/util/queries"
 	"crowdstart.com/util/task"
 
@@ -60,13 +60,13 @@ var ImportUsersTask = parallel.New("sf-import-user-task", func(db *datastore.Dat
 
 // ImportUsers upserts all users into salesforce
 func ImportUsers(c *gin.Context) {
-	db := datastore.New(c)
-	campaign := campaign.Campaign{}
+	// db := datastore.New(c)
+	// campaign := campaign.Campaign{}
 
 	// Get user instance
-	if err := db.GetKind("campaign", "dev@hanzo.ai", &campaign); err != nil {
-		log.Panic("Unable to get campaign from database: %v", err, c)
-	}
+	// if err := db.GetKind("campaign", "dev@hanzo.ai", &campaign); err != nil {
+	// 	log.Panic("Unable to get campaign from database: %v", err, c)
+	// }
 
 	// if campaign.Salesforce.AccessToken != "" {
 	// 	ImportUsersTask.Run(c, 100, campaign)
@@ -91,13 +91,13 @@ var ImportMissingUsersTask = parallel.New("sf-import-missing-user-task", func(db
 
 // ImportMissingUsers upserts all users not synchronized into salesforce
 func ImportMissingUsers(c *gin.Context) {
-	db := datastore.New(c)
-	campaign := campaign.Campaign{}
+	// db := datastore.New(c)
+	// campaign := campaign.Campaign{}
 
 	// Get user instance
-	if err := db.GetKind("campaign", "dev@hanzo.ai", &campaign); err != nil {
-		log.Panic("Unable to get campaign from database: %v", err, c)
-	}
+	// if err := db.GetKind("campaign", "dev@hanzo.ai", &campaign); err != nil {
+	// 	log.Panic("Unable to get campaign from database: %v", err, c)
+	// }
 
 	// if campaign.Salesforce.AccessToken != "" {
 	// 	ImportMissingUsersTask.Run(c, 100, campaign)
@@ -117,13 +117,13 @@ var ImportOrdersTask = parallel.New("sf-import-order-task", func(db *datastore.D
 
 // ImportOrders upserts all orders into salesforce
 func ImportOrders(c *gin.Context) {
-	db := datastore.New(c)
-	campaign := campaign.Campaign{}
+	// db := datastore.New(c)
+	// campaign := campaign.Campaign{}
 
 	// Get order instance
-	if err := db.GetKind("campaign", "dev@hanzo.ai", &campaign); err != nil {
-		log.Panic("Unable to get campaign from database: %v", err, c)
-	}
+	// if err := db.GetKind("campaign", "dev@hanzo.ai", &campaign); err != nil {
+	// 	log.Panic("Unable to get campaign from database: %v", err, c)
+	// }
 
 	// if campaign.Salesforce.AccessToken != "" {
 	// 	ImportOrdersTask.Run(c, 100, campaign)
@@ -148,13 +148,13 @@ var ImportMissingOrdersTask = parallel.New("sf-import-missing-order-task", func(
 
 // ImportMissingOrders upserts all orders not synchronized into salesforce
 func ImportMissingOrders(c *gin.Context) {
-	db := datastore.New(c)
-	campaign := campaign.Campaign{}
+	// db := datastore.New(c)
+	// campaign := campaign.Campaign{}
 
 	// Get order instance
-	if err := db.GetKind("campaign", "dev@hanzo.ai", &campaign); err != nil {
-		log.Panic("Unable to get campaign from database: %v", err, c)
-	}
+	// if err := db.GetKind("campaign", "dev@hanzo.ai", &campaign); err != nil {
+	// 	log.Panic("Unable to get campaign from database: %v", err, c)
+	// }
 
 	// if campaign.Salesforce.AccessToken != "" {
 	// 	ImportMissingOrdersTask.Run(c, 100, campaign)
@@ -332,13 +332,13 @@ var PopulateMissingUserSFIdsTask = parallel.New("sf-populate-user-ids", func(db 
 
 // PopulateMissingUserSFIds ensures all users have salesforce ids
 func PopulateMissingUserSFIds(c *gin.Context) {
-	db := datastore.New(c)
-	campaign := campaign.Campaign{}
+	// db := datastore.New(c)
+	// campaign := campaign.Campaign{}
 
 	// Get user instance
-	if err := db.GetKind("campaign", "dev@hanzo.ai", &campaign); err != nil {
-		log.Panic("Unable to get campaign from database: %v", err, c)
-	}
+	// if err := db.GetKind("campaign", "dev@hanzo.ai", &campaign); err != nil {
+	// 	log.Panic("Unable to get campaign from database: %v", err, c)
+	// }
 
 	// if campaign.Salesforce.AccessToken != "" {
 	// 	PopulateMissingUserSFIdsTask.Run(c, 100, campaign)

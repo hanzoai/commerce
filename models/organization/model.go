@@ -2,12 +2,13 @@ package organization
 
 import (
 	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/types/pricing"
 )
 
+var kind = "organization"
+
 func (o Organization) Kind() string {
-	return "organization"
+	return kind
 }
 
 func (o *Organization) Init(db *datastore.Datastore) {
@@ -19,7 +20,6 @@ func (o *Organization) Defaults() {
 	o.Admins = make([]string, 0)
 	o.Moderators = make([]string, 0)
 
-	o.Fees.Id = o.Id()
 	o.Fees.Card.Flat = 50
 	o.Fees.Card.Percent = 0.05
 	o.Fees.Affiliate.Flat = 30
@@ -35,6 +35,6 @@ func New(db *datastore.Datastore) *Organization {
 	return o
 }
 
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query(kind)
 }

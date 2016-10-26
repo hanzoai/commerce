@@ -2,6 +2,7 @@ package payment
 
 import (
 	"crowdstart.com/datastore"
+	"crowdstart.com/models/types/currency"
 	"crowdstart.com/util/fake"
 
 	. "crowdstart.com/models"
@@ -23,6 +24,7 @@ func Fake(db *datastore.Datastore) *Payment {
 		},
 	}
 	pay.Status = Unpaid
+	pay.Currency = currency.USD
 	return pay
 }
 

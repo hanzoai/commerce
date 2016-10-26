@@ -42,6 +42,7 @@ class PaymentForm extends Form
     input('account.balanceTransactionId', '', 'static')
     input('account.fingerprint', '', 'static')
     input('account.funding', '', 'static')
+    input('account.lastFour', '', 'static')
     input('account.brand', '', 'static')
     input('account.month', '', 'static')
     input('account.year', '', 'static')

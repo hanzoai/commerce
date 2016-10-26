@@ -17,7 +17,7 @@ var _ = New("referrals-transactions-to-points",
 
 		db := ds.New(c)
 		org := organization.New(db)
-		if _, err := org.Query().Filter("Name=", "bellabeat").First(); err != nil {
+		if _, err := org.Query().Filter("Name=", "bellabeat").Get(); err != nil {
 			panic(err)
 		}
 		return NoArgs

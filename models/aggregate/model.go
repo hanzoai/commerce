@@ -1,12 +1,11 @@
 package aggregate
 
-import (
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
-)
+import "crowdstart.com/datastore"
+
+var kind = "aggregate"
 
 func (a Aggregate) Kind() string {
-	return "aggregate"
+	return kind
 }
 
 func (a *Aggregate) Init(db *datastore.Datastore) {
@@ -20,9 +19,10 @@ func (a *Aggregate) Defaults() {
 func New(db *datastore.Datastore) *Aggregate {
 	a := new(Aggregate)
 	a.Init(db)
+	a.Defaults()
 	return a
 }
 
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query(kind)
 }

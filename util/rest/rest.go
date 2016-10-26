@@ -3,7 +3,6 @@ package rest
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -19,8 +18,8 @@ import (
 	"crowdstart.com/util/json/http"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/permission"
+	"crowdstart.com/util/reflect"
 	"crowdstart.com/util/router"
-	"crowdstart.com/util/structs"
 )
 
 var restApis = make([]*Rest, 0)
@@ -86,8 +85,7 @@ func (r *Rest) InitModel(entity mixin.Kind) {
 	}
 
 	// Introspect model to determine default sort field
-	fields := structs.FieldNames(entity)
-	for _, name := range fields {
+	for _, name := range reflect.FieldNames(entity) {
 		if name == "Slug" || name == "SKU" {
 			r.DefaultSortField = name
 			return
@@ -96,7 +94,7 @@ func (r *Rest) InitModel(entity mixin.Kind) {
 
 	// Use Id_ as default sort field if nothing is specified.
 	if r.DefaultSortField == "" {
-		r.DefaultSortField = "Id_"
+		r.DefaultSortField = "CreatedAt"
 	}
 }
 
@@ -341,7 +339,7 @@ func (r Rest) list(c *gin.Context) {
 	}
 
 	// Create query
-	q := entity.Query().Order(sortField)
+	q := entity.Query().All().Order(sortField)
 
 	// Update query with page/display params
 	var display int
@@ -374,7 +372,7 @@ func (r Rest) list(c *gin.Context) {
 		return
 	}
 
-	count, err := entity.Query().Count()
+	count, err := entity.Query().All().Count()
 	if err != nil {
 		r.Fail(c, 500, "Could not count the models.", err)
 		return
@@ -425,7 +423,7 @@ func (r Rest) update(c *gin.Context) {
 	entity := r.newEntity(c)
 
 	// Try to retrieve key from datastore
-	ok, err := entity.IdExists(id)
+	key, ok, err := entity.IdExists(id)
 	if !ok {
 		if err != nil {
 			r.Fail(c, 500, "Failed to retrieve key for "+id, err)
@@ -437,7 +435,7 @@ func (r Rest) update(c *gin.Context) {
 	}
 
 	// Preserve original key
-	entity.SetKey(id)
+	entity.SetKey(key)
 
 	// Decode response body to create new entity
 	if err := json.Decode(c.Request.Body, entity); err != nil {
@@ -495,7 +493,8 @@ func (r Rest) delete(c *gin.Context) {
 	}
 
 	db := entity.Datastore()
-	if _, err := db.Put("deleted", entity); err != nil {
+	key := db.NewIncompleteKey("deleted", nil)
+	if _, err := db.Put(key, entity); err != nil {
 		r.Fail(c, 500, "Failed to start deletion "+r.Kind, err)
 		return
 	}

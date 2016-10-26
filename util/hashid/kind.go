@@ -55,10 +55,10 @@ func encodeKind(kind string) int {
 	}
 }
 
-func decodeKind(encoded int) string {
+func decodeKind(encoded int) (string, error) {
 	if kind, ok := kindsReversed[encoded]; ok {
-		return kind
+		return kind, nil
 	} else {
-		panic(fmt.Sprintf("Unknown encoded kind '%s', register in util/hashid/kind.go", encoded))
+		return "", fmt.Errorf("Unknown encoded kind '%s', register in util/hashid/kind.go", encoded)
 	}
 }

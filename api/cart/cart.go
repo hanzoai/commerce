@@ -33,7 +33,7 @@ func Set(c *gin.Context) {
 
 	// Get cart, fail if it doesn't exist
 	car := cart.New(db)
-	if err := car.Get(id); err != nil {
+	if err := car.GetById(id); err != nil {
 		http.Fail(c, 404, "No cart found with id: "+id, err)
 		return
 	}
@@ -97,7 +97,7 @@ func Discard(c *gin.Context) {
 
 	// Get cart, fail if it doesn't exist
 	car := cart.New(db)
-	if err := car.Get(id); err != nil {
+	if err := car.GetById(id); err != nil {
 		http.Fail(c, 404, "No cart found with id: "+id, err)
 		return
 	}
@@ -163,7 +163,7 @@ func update(r *rest.Rest) func(*gin.Context) {
 		car := cart.New(db)
 
 		// Try to retrieve key from datastore
-		ok, err := car.IdExists(id)
+		key, ok, err := car.IdExists(id)
 		if !ok {
 			r.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
 			return
@@ -179,6 +179,9 @@ func update(r *rest.Rest) func(*gin.Context) {
 			r.Fail(c, 400, "Failed decode request body", err)
 			return
 		}
+
+		// Use same key to save cart
+		car.SetKey(key)
 
 		// Replace whatever was in the datastore with our new updated cart
 		if err := car.Update(); err != nil {
@@ -209,6 +212,7 @@ func patch(r *rest.Rest) func(*gin.Context) {
 		car := cart.New(db)
 
 		err := car.GetById(id)
+
 		if err != nil {
 			r.Fail(c, 404, "No "+r.Kind+" found with id: "+id, err)
 			return

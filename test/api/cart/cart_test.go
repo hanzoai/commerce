@@ -2,8 +2,8 @@ package test
 
 import (
 	"crowdstart.com/models/cart"
+	"crowdstart.com/models/coupon"
 	"crowdstart.com/models/user"
-	"crowdstart.com/util/log"
 	"github.com/icrowley/fake"
 
 	. "crowdstart.com/util/test/ginkgo"
@@ -19,8 +19,9 @@ var _ = Describe("cart", func() {
 			usr.MustCreate()
 			req = cart.Fake(db, usr.Id())
 			res = cart.New(db)
+		})
 
-			// Create new cart
+		JustBefore(func() {
 			cl.Post("/cart", req, res)
 		})
 
@@ -169,12 +170,13 @@ var _ = Describe("cart", func() {
 
 			// Create cart
 			car = cart.Fake(db, usr.Id())
-			car.MustCreate()
 
 			// Update cart
+		})
+
+		JustBefore(func() {
+			car.MustCreate()
 			cl.Patch("/cart/"+car.Id(), req, res)
-			log.JSON(req)
-			log.JSON(res)
 		})
 
 		It("Should patch cart", func() {
@@ -196,6 +198,18 @@ var _ = Describe("cart", func() {
 			Expect(res.Gift).To(Equal(car.Gift))
 			Expect(res.GiftMessage).To(Equal(car.GiftMessage))
 			Expect(res.GiftEmail).To(Equal(car.GiftEmail))
+		})
+
+		Context("with coupons", func() {
+			Before(func() {
+				cpn := coupon.Fake(db)
+				cpn.MustCreate()
+				car.CouponCodes = []string{cpn.Code()}
+			})
+
+			It("Should not duplicate coupons", func() {
+				Expect(len(res.CouponCodes)).To(Equal(1))
+			})
 		})
 	})
 })

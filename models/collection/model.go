@@ -2,13 +2,14 @@ package collection
 
 import (
 	"crowdstart.com/datastore"
-	"crowdstart.com/models/mixin"
 
 	. "crowdstart.com/models"
 )
 
+var kind = "collection"
+
 func (c Collection) Kind() string {
-	return "collection"
+	return kind
 }
 
 func (c *Collection) Init(db *datastore.Datastore) {
@@ -25,9 +26,10 @@ func (c *Collection) Defaults() {
 func New(db *datastore.Datastore) *Collection {
 	c := new(Collection)
 	c.Init(db)
+	c.Defaults()
 	return c
 }
 
-func Query(db *datastore.Datastore) *mixin.Query {
-	return New(db).Query()
+func Query(db *datastore.Datastore) datastore.Query {
+	return db.Query(kind)
 }

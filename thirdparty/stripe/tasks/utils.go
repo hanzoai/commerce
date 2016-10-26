@@ -50,14 +50,14 @@ func getPaymentFromCharge(ctx appengine.Context, ch *stripe.Charge) (*payment.Pa
 	// Try to get by payment id
 	if ok {
 		log.Debug("Try to get payment by payment id: %v", id, ctx)
-		if err := pay.Get(id); err == nil {
+		if err := pay.GetById(id); err == nil {
 			return pay, true, nil
 		}
 	}
 
 	// Try to lookup payment using charge id
 	log.Debug("Lookup payment by charge id: %v", ch.ID, ctx)
-	ok, err := pay.Query().Filter("Account.ChargeId=", ch.ID).First()
+	ok, err := pay.Query().Filter("Account.ChargeId=", ch.ID).Get()
 	return pay, ok, err
 }
 
@@ -71,14 +71,14 @@ func getTransfer(ctx appengine.Context, str *stripe.Transfer) (*transfer.Transfe
 	// Try to get by transfer id
 	if ok {
 		log.Debug("Try to get transfer by transfer id: %v", id, ctx)
-		if err := tr.Get(id); err == nil {
+		if err := tr.GetById(id); err == nil {
 			return tr, true, nil
 		}
 	}
 
 	// Try to lookup transfer using transfer id
 	log.Debug("Lookup transfer by transfer id: %v", str.ID, ctx)
-	ok, err := tr.Query().Filter("Account.TransferId=", str.ID).First()
+	ok, err := tr.Query().Filter("Account.TransferId=", str.ID).Get()
 	return tr, ok, err
 }
 
