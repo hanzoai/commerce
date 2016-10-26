@@ -216,6 +216,14 @@ func (f *Function) Once(ctx appengine.Context, name string, delay time.Duration,
 	return f2.Call(ctx, args...)
 }
 
+func FuncByKey(key string) *Function {
+	f, ok := Funcs[key]
+	if !ok {
+		panic(fmt.Errorf("delay: key %s not found in delay.Funcs", key))
+	}
+	return f
+}
+
 func init() {
 	http.HandleFunc(path, func(w http.ResponseWriter, req *http.Request) {
 		runFunc(appengine.NewContext(req), w, req)
