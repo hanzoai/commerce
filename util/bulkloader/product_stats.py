@@ -17,11 +17,14 @@ if __name__ == '__main__':
 
         items_idx  = header['Items_']
         status_idx = header['PaymentStatus']
+        test_idx   = header['Test']
 
         total_ordered  = 0
         total_refunded = 0
 
         for i, row in enumerate(csv.reader(f)):
+            if row[test_idx] == 'True':
+                continue
             try:
                 items  = json.loads(row[items_idx])
             except:
