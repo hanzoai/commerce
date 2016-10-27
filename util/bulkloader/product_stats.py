@@ -13,18 +13,23 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     with open(args.file) as f:
-        header = dict((k,i) for i,k in enumerate(next(f).split(',')))
+        first_row = next(f).split(',')
+        header = dict((k.strip(),i) for i,k in enumerate(first_row))
 
         items_idx  = header['Items_']
         status_idx = header['PaymentStatus']
         test_idx   = header['Test']
+        total_idx  = header['Total']
 
         total_ordered  = 0
         total_refunded = 0
 
         for i, row in enumerate(csv.reader(f)):
+            if int(row[total_idx]) == 50:
+                continue
             if row[test_idx] == 'True':
                 continue
+
             try:
                 items  = json.loads(row[items_idx])
             except:
