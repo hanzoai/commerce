@@ -11,10 +11,7 @@ import (
 	"crowdstart.com/models/affiliate"
 	"crowdstart.com/models/fee"
 	"crowdstart.com/models/mixin"
-	"crowdstart.com/models/order"
 	"crowdstart.com/models/payment"
-	"crowdstart.com/models/referral"
-	"crowdstart.com/models/referrer"
 	"crowdstart.com/models/transaction"
 	"crowdstart.com/models/types/country"
 	"crowdstart.com/models/types/currency"
@@ -72,9 +69,6 @@ type User struct {
 	Metadata  Map    `json:"metadata,omitempty" datastore:"-"`
 	Metadata_ string `json:"-" datastore:",noindex"`
 
-	Referrals   []referral.Referral `json:"referrals,omitempty" datastore:"-"`
-	Referrers   []referrer.Referrer `json:"referrers,omitempty" datastore:"-"`
-	Orders      []order.Order       `json:"orders,omitempty" datastore:"-"`
 	PendingFees []fee.Fee           `json:"pendingFees,omitempty" datastore:"-"`
 	Affiliate   affiliate.Affiliate `json:"affiliate,omitempty" datastore:"-"`
 
@@ -253,28 +247,6 @@ func (u *User) GetByEmail(email string) error {
 	// Return error if no user found.
 	if !ok {
 		return UserNotFound
-	}
-
-	return nil
-}
-
-func (u *User) LoadReferrals() error {
-	if _, err := referrer.Query(u.Db).Filter("UserId=", u.Id()).GetAll(&u.Referrers); err != nil {
-		return err
-	}
-
-	if _, err := referral.Query(u.Db).Filter("ReferrerUserId=", u.Id()).GetAll(&u.Referrals); err != nil {
-		return err
-	}
-
-	log.Warn("Referrals %v", u.Referrals)
-
-	return nil
-}
-
-func (u *User) LoadOrders() error {
-	if _, err := order.Query(u.Db).Filter("UserId=", u.Id()).GetAll(&u.Orders); err != nil {
-		return err
 	}
 
 	return nil

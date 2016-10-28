@@ -8,21 +8,57 @@ import (
 
 	"crowdstart.com/auth/password"
 	"crowdstart.com/middleware"
+	"crowdstart.com/models/order"
+	"crowdstart.com/models/referral"
+	"crowdstart.com/models/referrer"
+	"crowdstart.com/models/user"
 	"crowdstart.com/thirdparty/mailchimp"
 	"crowdstart.com/util/json"
 	"crowdstart.com/util/json/http"
 	"crowdstart.com/util/log"
 )
 
-func get(c *gin.Context) {
-	usr := middleware.GetUser(c)
+type userResp struct {
+	*user.User
+	Referrals []referral.Referral `json:"referrals,omitempty" datastore:"-"`
+	Referrers []referrer.Referrer `json:"referrers,omitempty" datastore:"-"`
+	Orders    []order.Order       `json:"orders,omitempty" datastore:"-"`
+}
 
-	if err := usr.LoadReferrals(); err != nil {
+func loadReferrals(u *userResp) error {
+	if _, err := referrer.Query(u.Db).Filter("UserId=", u.Id()).GetAll(&u.Referrers); err != nil {
+		return err
+	}
+
+	if _, err := referral.Query(u.Db).Filter("ReferrerUserId=", u.Id()).GetAll(&u.Referrals); err != nil {
+		return err
+	}
+
+	log.Warn("Referrals %v", u.Referrals)
+
+	return nil
+}
+
+func loadOrders(u *userResp) error {
+	if _, err := order.Query(u.Db).Filter("UserId=", u.Id()).GetAll(&u.Orders); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+
+func get(c *gin.Context) {
+	usrm := middleware.GetUser(c)
+	usr := &userResp{}
+	usr.User = usrm
+
+	if err := loadReferrals(usr); err != nil {
 		http.Fail(c, 500, "User referral data could get be queried", err)
 		return
 	}
 
-	if err := usr.LoadOrders(); err != nil {
+	if err := loadOrders(usr); err != nil {
 		http.Fail(c, 500, "User order data could get be queried", err)
 		return
 	}

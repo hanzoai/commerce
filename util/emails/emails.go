@@ -501,8 +501,7 @@ func SendFullRefundEmail(ctx appengine.Context, org *organization.Organization, 
 	mandrill.SendTemplate(ctx, "order-refunded", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
 }
 
-/*
-func SendReferralUpgradeEmail(ctx appengine.Context, org *organization.Organization) {
+func SendReferralUpgradeEmail(ctx appengine.Context, usr *user.User, org *organization.Organization) {
 	conf := org.Email.User.ReferrerUpgrade.Config(org)
 	if !MandrillEnabled(ctx, org, conf) {
 		return
@@ -516,6 +515,11 @@ func SendReferralUpgradeEmail(ctx appengine.Context, org *organization.Organizat
 
 	subject := conf.Subject
 	vars := map[string]interface{}{
+		"user": map[string]interface{}{
+			"firstname": usr.FirstName,
+			"lastname":  usr.LastName,
+		},
 	}
+
+	mandrill.SendTemplate(ctx, "referral-upgrade", org.Mandrill.APIKey, toEmail, toName, fromEmail, fromName, subject, vars)
 }
-*/
