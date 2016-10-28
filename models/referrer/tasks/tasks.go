@@ -4,8 +4,10 @@ import (
 	"appengine"
 
 	"crowdstart.com/datastore"
+	"crowdstart.com/models/organization"
 	"crowdstart.com/models/referral"
 	"crowdstart.com/models/referrer"
+	"crowdstart.com/models/referrer/process_program"
 	"crowdstart.com/util/counter"
 	"crowdstart.com/util/delay"
 	"crowdstart.com/util/log"
@@ -24,12 +26,20 @@ const (
 // local time, so this function should be scheduled to run with a delay
 // greater than the total expected clock drift between the "earliest"
 // request-handling node and the "latest" request-handling node.
-func DoBatchProcessReferrals(ctx appengine.Context, referrerId string, interval referrer.TimeInterval) {
+func DoBatchProcessReferrals(ctx appengine.Context, namespace string, interval referrer.TimeInterval, referrerId string, orgId string) {
 	db := datastore.New(ctx)
 	// nsctx, _ := appengine.Namespace(ctx, namespace)
 
+	org := organization.New(db)
+	err := org.GetById(orgId)
+
+	if err != nil {
+		log.Error("error while fetching organization; orgId = '%s': %v", orgId, err, ctx)
+		panic(err)
+	}
+
 	r := referrer.New(db)
-	err := r.GetById(referrerId)
+	err = r.GetById(referrerId)
 	if err != nil {
 		log.Error("error while fetching referrer; referrerId = '%s': %v", referrerId, err, ctx)
 		panic(err)
@@ -62,7 +72,7 @@ func DoBatchProcessReferrals(ctx appengine.Context, referrerId string, interval 
 
 		counter.IncrReferrerTotal(ctx, referrerId)
 		nextCount := currentCount + 1
-		errors := r.Program.ApplyActions(r, currentCount, nextCount)
+		errors := process_program.ApplyActions(org, &r.Program, r, currentCount, nextCount)
 		if len(errors) > 0 {
 			log.Error("errors while applying program actions for referral '%s': %v", rflKey, errors, ctx)
 			return
@@ -71,7 +81,7 @@ func DoBatchProcessReferrals(ctx appengine.Context, referrerId string, interval 
 	}
 }
 
-var BatchProcessReferrals = delay.Func("batch-process-referrals", func(ctx appengine.Context, namespace string, interval referrer.TimeInterval) {
-	DoBatchProcessReferrals(ctx, namespace, interval)
+var BatchProcessReferrals = delay.Func("batch-process-referrals", func(ctx appengine.Context, namespace string, interval referrer.TimeInterval, referrerId string, orgId string) {
+	DoBatchProcessReferrals(ctx, namespace, interval, referrerId, orgId)
 })
 

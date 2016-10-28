@@ -16,8 +16,7 @@ var Referrer = New("referrer", func(c *gin.Context) *referrer.Referrer {
 	ref := referrer.New(db)
 	ref.UserId = u.Id()
 	ref.GetOrCreate("UserId=", ref.UserId)
-	ref.Program.Triggers = []int{0}
-	ref.Program.Actions = []referrer.Action{referrer.Action{Type: referrer.StoreCredit}}
+	ref.Program.Actions = []referrer.Action{referrer.Action{Trigger: referrer.Trigger{0}, Type: referrer.StoreCredit}}
 	ref.Program.Actions[0].Credit = referrer.Credit{Currency: currency.USD, Amount: currency.Cents(1000)}
 	ref.MustPut()
 

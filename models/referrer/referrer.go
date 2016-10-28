@@ -7,6 +7,7 @@ import (
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/affiliate"
 	"crowdstart.com/models/mixin"
+	"crowdstart.com/models/organization"
 	"crowdstart.com/models/referral"
 	"crowdstart.com/models/transaction"
 	"crowdstart.com/models/types/client"
@@ -53,20 +54,20 @@ func IntervalFromInstant(t time.Time, width time.Duration) TimeInterval {
 	return TimeInterval{start, end}
 }
 
-func NameFromInterval(d time.Duration, i TimeInterval) string {
+func NameFromInterval(d time.Duration, i TimeInterval, referrerId string) string {
 	layout := time.RFC3339
 	start := i.Start.Format(layout)
 	end := i.End.Format(layout)
 	// taskqueue supports delays specified in terms of microseconds:
 	// https://github.com/golang/appengine/blob/75a29a66d4850a15c19eb6d70a31f5c453572be0/internal/taskqueue/taskqueue_service.pb.go#L456
 	// https://github.com/golang/appengine/blob/75a29a66d4850a15c19eb6d70a31f5c453572be0/taskqueue/taskqueue.go#L176
-	return fmt.Sprintf("processReferrals-%d-from-%s-to-%s", int64(d.Nanoseconds() / 1000), start, end)
+	return fmt.Sprintf("processReferrals-%s-%d-from-%s-to-%s", referrerId, int64(d.Nanoseconds() / 1000), start, end)
 }
 
 const processingLatency = 5 * time.Minute
 const intervalWidth = 10 * time.Minute
 
-func (r *Referrer) SaveReferral(typ referral.Type, rfn Referrent, t time.Time) (*referral.Referral, error) {
+func (r *Referrer) SaveReferral(typ referral.Type, rfn Referrent, t time.Time, org *organization.Organization) (*referral.Referral, error) {
 	log.Debug("Creating referral")
 	// Create new referral
 	rfl := referral.New(r.Db)
@@ -100,8 +101,8 @@ func (r *Referrer) SaveReferral(typ referral.Type, rfn Referrent, t time.Time) (
 
 	batchProcessReferrals := delay.FuncByKey("batch-process-referrals")
 	interval := IntervalFromInstant(t, intervalWidth)
-	name := NameFromInterval(processingLatency, interval)
-	batchProcessReferrals.Once(r.Context(), name, processingLatency, interval)
+	name := NameFromInterval(processingLatency, interval, r.Id())
+	batchProcessReferrals.Once(r.Context(), name, processingLatency, interval, r.Id(), org.Id())
 	return rfl, nil
 }
 
