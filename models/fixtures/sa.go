@@ -1,0 +1,110 @@
+package fixtures
+
+import (
+	"github.com/gin-gonic/gin"
+
+	"crowdstart.com/auth/password"
+	"crowdstart.com/datastore"
+	"crowdstart.com/models/namespace"
+	"crowdstart.com/models/organization"
+	"crowdstart.com/models/product"
+	"crowdstart.com/models/store"
+	"crowdstart.com/models/types/currency"
+	"crowdstart.com/models/user"
+)
+
+var Stoned = New("kanoa", func(c *gin.Context) *organization.Organization {
+	db := datastore.New(c)
+
+	org := organization.New(db)
+	org.Name = "stonedaudio"
+	org.GetOrCreate("Name=", org.Name)
+	org.MustSetKey("8AGO0kKnNl")
+
+	usr := user.New(db)
+	usr.Email = "dev@hanzo.ai"
+	usr.GetOrCreate("Email=", usr.Email)
+	usr.FirstName = "Founders"
+	usr.LastName = ""
+	usr.Organizations = []string{org.Id()}
+	usr.PasswordHash, _ = password.Hash("1Stoned23")
+	usr.MustUpdate()
+
+	org.FullName = "Stoned Audio"
+	org.Owners = []string{usr.Id()}
+	org.Website = "http://www.stoned.audio"
+	org.SecretKey = []byte("EK9E344442BI5nia9i82pdi98ip0jvqz")
+	org.AddDefaultTokens()
+
+	org.Fees.Card.Flat = 50
+	org.Fees.Card.Percent = 0.05
+	org.Fees.Affiliate.Flat = 30
+	org.Fees.Affiliate.Percent = 0.30
+
+	org.Mailchimp.APIKey = ""
+	org.Mailchimp.ListId = "421751eb03"
+
+	// Email configuration
+	org.Mandrill.APIKey = ""
+
+	org.Paypal.ConfirmUrl = "https://www.stoned.audio"
+	org.Paypal.CancelUrl = "https://www.stoned.audio"
+
+	org.Email.Defaults.Enabled = true
+	org.Email.Defaults.FromName = "Stoned Audio"
+	org.Email.Defaults.FromEmail = "dev@hanzo.ai"
+
+	org.Email.OrderConfirmation.Subject = "Stoned Audio Order Confirmation"
+	org.Email.OrderConfirmation.Template = readEmailTemplate("/resources/sa/emails/order-confirmation.html")
+	org.Email.OrderConfirmation.Enabled = true
+
+	org.Email.User.PasswordReset.Template = readEmailTemplate("/resources/sa/emails/user-password-reset.html")
+	org.Email.User.PasswordReset.Subject = "Reset your password"
+	org.Email.User.PasswordReset.Enabled = true
+
+	org.Email.User.EmailConfirmation.Template = readEmailTemplate("/resources/sa/emails/user-email-confirmation.html")
+	org.Email.User.EmailConfirmation.Subject = "Please confirm your email"
+	org.Email.User.EmailConfirmation.Enabled = true
+
+	org.Email.User.EmailConfirmed.Subject = "Thank you for confirming your email"
+	org.Email.User.EmailConfirmed.Template = readEmailTemplate("/resources/sa/emails/user-email-confirmed.html")
+	org.Email.User.EmailConfirmed.Enabled = false
+
+	// Save org into default namespace
+	org.MustUpdate()
+
+	// Save namespace so we can decode keys for this organization later
+	ns := namespace.New(db)
+	ns.Name = org.Name
+	ns.GetOrCreate("Name=", ns.Name)
+	ns.IntId = org.Key().IntID()
+	ns.MustUpdate()
+
+	nsdb := datastore.New(org.Namespaced(db.Context))
+
+	// Create default store
+	stor := store.New(nsdb)
+	stor.Name = "development"
+	stor.GetOrCreate("Name=", stor.Name)
+	stor.MustSetKey("9oRmdLZUjj42ok")
+	stor.Prefix = "/"
+	stor.Currency = currency.USD
+	stor.Mailchimp.APIKey = ""
+	stor.Mailchimp.ListId = "421751eb03"
+	stor.MustUpdate()
+
+	// Create earphone product
+	prod := product.New(nsdb)
+	prod.Slug = "stoned"
+	prod.GetOrCreate("Slug=", prod.Slug)
+	prod.MustSetKey("84cguxepxk")
+	prod.Name = "Stoned Earphones"
+	prod.Description = "2 Ear Buds, 1 Charging Case"
+	prod.Price = currency.Cents(9999)
+	prod.Inventory = 9000
+	prod.Preorder = true
+	prod.Hidden = false
+	prod.MustUpdate()
+
+	return org
+})
