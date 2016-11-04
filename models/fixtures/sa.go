@@ -19,7 +19,7 @@ var Stoned = New("stoned", func(c *gin.Context) *organization.Organization {
 	org := organization.New(db)
 	org.Name = "stonedaudio"
 	org.GetOrCreate("Name=", org.Name)
-	org.MustSetKey("8AGO0kKnNl")
+	//org.MustSetKey("9at0kKmnSl")
 
 	usr := user.New(db)
 	usr.Email = "dev@hanzo.ai"
@@ -47,28 +47,25 @@ var Stoned = New("stoned", func(c *gin.Context) *organization.Organization {
 	// Email configuration
 	org.Mandrill.APIKey = ""
 
-	org.Paypal.ConfirmUrl = "https://www.stoned.audio"
-	org.Paypal.CancelUrl = "https://www.stoned.audio"
-
 	org.Email.Defaults.Enabled = true
 	org.Email.Defaults.FromName = "Stoned Audio"
 	org.Email.Defaults.FromEmail = "dev@hanzo.ai"
 
-	org.Email.OrderConfirmation.Subject = "Stoned Audio Order Confirmation"
-	org.Email.OrderConfirmation.Template = readEmailTemplate("/resources/sa/emails/order-confirmation.html")
-	org.Email.OrderConfirmation.Enabled = true
+	//org.Email.OrderConfirmation.Subject = "Stoned Audio Order Confirmation"
+	//org.Email.OrderConfirmation.Template = readEmailTemplate("/resources/sa/emails/order-confirmation.html")
+	//org.Email.OrderConfirmation.Enabled = true
 
-	org.Email.User.PasswordReset.Template = readEmailTemplate("/resources/sa/emails/user-password-reset.html")
-	org.Email.User.PasswordReset.Subject = "Reset your password"
-	org.Email.User.PasswordReset.Enabled = true
+	//org.Email.User.PasswordReset.Template = readEmailTemplate("/resources/sa/emails/user-password-reset.html")
+	//org.Email.User.PasswordReset.Subject = "Reset your password"
+	//org.Email.User.PasswordReset.Enabled = true
 
-	org.Email.User.EmailConfirmation.Template = readEmailTemplate("/resources/sa/emails/user-email-confirmation.html")
-	org.Email.User.EmailConfirmation.Subject = "Please confirm your email"
-	org.Email.User.EmailConfirmation.Enabled = true
+	//org.Email.User.EmailConfirmation.Template = readEmailTemplate("/resources/sa/emails/user-email-confirmation.html")
+	//org.Email.User.EmailConfirmation.Subject = "Please confirm your email"
+	//org.Email.User.EmailConfirmation.Enabled = true
 
-	org.Email.User.EmailConfirmed.Subject = "Thank you for confirming your email"
-	org.Email.User.EmailConfirmed.Template = readEmailTemplate("/resources/sa/emails/user-email-confirmed.html")
-	org.Email.User.EmailConfirmed.Enabled = false
+	//org.Email.User.EmailConfirmed.Subject = "Thank you for confirming your email"
+	//org.Email.User.EmailConfirmed.Template = readEmailTemplate("/resources/sa/emails/user-email-confirmed.html")
+	//org.Email.User.EmailConfirmed.Enabled = false
 
 	// Save org into default namespace
 	org.MustUpdate()
@@ -86,7 +83,7 @@ var Stoned = New("stoned", func(c *gin.Context) *organization.Organization {
 	stor := store.New(nsdb)
 	stor.Name = "development"
 	stor.GetOrCreate("Name=", stor.Name)
-	stor.MustSetKey("9oRmdLZUjj42ok")
+	//stor.MustSetKey("9oRmdLZUjj42ok")
 	stor.Prefix = "/"
 	stor.Currency = currency.USD
 	stor.Mailchimp.APIKey = ""
@@ -97,7 +94,7 @@ var Stoned = New("stoned", func(c *gin.Context) *organization.Organization {
 	prod := product.New(nsdb)
 	prod.Slug = "stoned"
 	prod.GetOrCreate("Slug=", prod.Slug)
-	prod.MustSetKey("84cguxepxk")
+	//prod.MustSetKey("84cguxepxk")
 	prod.Name = "Stoned Earphones"
 	prod.Description = "2 Ear Buds, 1 Charging Case"
 	prod.Price = currency.Cents(9999)
