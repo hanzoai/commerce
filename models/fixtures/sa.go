@@ -17,7 +17,7 @@ var Stoned = New("stoned", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)
-	org.Name = "stonedaudio"
+	org.Name = "stoned"
 	org.GetOrCreate("Name=", org.Name)
 	//org.MustSetKey("9at0kKmnSl")
 
