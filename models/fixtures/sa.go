@@ -13,7 +13,7 @@ import (
 	"crowdstart.com/models/user"
 )
 
-var Stoned = New("kanoa", func(c *gin.Context) *organization.Organization {
+var Stoned = New("stoned", func(c *gin.Context) *organization.Organization {
 	db := datastore.New(c)
 
 	org := organization.New(db)
