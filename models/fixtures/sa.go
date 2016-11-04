@@ -19,7 +19,7 @@ var Stoned = New("stoned", func(c *gin.Context) *organization.Organization {
 	org := organization.New(db)
 	org.Name = "stoned"
 	org.GetOrCreate("Name=", org.Name)
-	//org.MustSetKey("9at0kKmnSl")
+	org.MustSetKey("4NTxXlQrtb")
 
 	usr := user.New(db)
 	usr.Email = "dev@hanzo.ai"
@@ -30,7 +30,7 @@ var Stoned = New("stoned", func(c *gin.Context) *organization.Organization {
 	usr.PasswordHash, _ = password.Hash("1Stoned23")
 	usr.MustUpdate()
 
-	org.FullName = "Stoned Audio"
+	org.FullName = "Stoned, LLC"
 	org.Owners = []string{usr.Id()}
 	org.Website = "http://www.stoned.audio"
 	org.SecretKey = []byte("EK9E344442BI5nia9i82pdi98ip0jvqz")
@@ -83,7 +83,7 @@ var Stoned = New("stoned", func(c *gin.Context) *organization.Organization {
 	stor := store.New(nsdb)
 	stor.Name = "development"
 	stor.GetOrCreate("Name=", stor.Name)
-	//stor.MustSetKey("9oRmdLZUjj42ok")
+	stor.MustSetKey("KawdtZuoMY")
 	stor.Prefix = "/"
 	stor.Currency = currency.USD
 	stor.Mailchimp.APIKey = ""
@@ -94,7 +94,7 @@ var Stoned = New("stoned", func(c *gin.Context) *organization.Organization {
 	prod := product.New(nsdb)
 	prod.Slug = "stoned"
 	prod.GetOrCreate("Slug=", prod.Slug)
-	//prod.MustSetKey("84cguxepxk")
+	prod.MustSetKey("MrbcmBZbsd")
 	prod.Name = "Stoned Earphones"
 	prod.Description = "2 Ear Buds, 1 Charging Case"
 	prod.Price = currency.Cents(9999)
