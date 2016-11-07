@@ -8,6 +8,7 @@ import (
 	"crowdstart.com/config"
 	"crowdstart.com/middleware"
 	"crowdstart.com/util/exec"
+	hashid "crowdstart.com/util/hashid/http"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/router"
 	"crowdstart.com/util/task"
@@ -52,6 +53,7 @@ func Init() {
 
 	// Setup routes for tasks
 	task.SetupRoutes(router)
+	hashid.SetupRoutes(router)
 
 	// Development-only routes below
 	if config.IsProduction {
