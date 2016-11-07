@@ -23,13 +23,9 @@ handlers:
 
 - url: /hashid
   script: _go_app
-  login: admin
-  secure: always
 
 - url: /hashid/.*
   script: _go_app
-  login: admin
-  secure: always
 
 - url: /tasks
   script: _go_app
