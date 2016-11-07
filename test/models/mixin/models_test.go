@@ -3,6 +3,21 @@ package test
 import . "crowdstart.com/util/test/ginkgo"
 
 var _ = Describe("models/mixin Model", func() {
+	Context("Model.SetKey", func() {
+		It("should set key for model", func() {
+			// Create a new user and store using Model mixin
+			db.SetNamespace("suchtees")
+			usr := newUser(db)
+			usr.Name = "Justus"
+			usr.MustCreate()
+
+			usr2 := newUser(db)
+			usr2.SetKey(usr.Id())
+			Expect(usr2.Key()).To(Equal(usr.Key()))
+			Expect(usr2.Key().Namespace()).To(Equal(usr.Key().Namespace()))
+		})
+	})
+
 	Context("Model.Put", func() {
 		It("should save entity to datastore", func() {
 			// Create a new user and store using Model mixin
