@@ -20,11 +20,12 @@ func Js(c *gin.Context) {
 	ml.SetKey(id)
 	log.Debug("mailinglist: %v", ml, c)
 	log.Debug("key: %v", ml.Key(), c)
-	log.Warn("namespace: %v", ml.Key().Namespace(), c)
-	ml.SetNamespace(ml.Key().Namespace())
+	namespace := ml.Key().Namespace()
+	log.Warn("namespace: %v", namespace, c)
+	ml.SetNamespace(namespace)
 
 	if err := ml.Get(nil); err != nil {
-		log.Warn("Failed to retrieve mailing list '%s': %v", id, err, c)
+		log.Error("Failed to retrieve mailing list '%s' in namespace '%s': %v", id, namespace, err, c)
 		c.String(404, fmt.Sprintf("Failed to retrieve mailing list '%v': %v", id, err))
 		return
 	}
