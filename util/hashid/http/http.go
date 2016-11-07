@@ -9,6 +9,16 @@ import (
 	"crowdstart.com/util/template"
 )
 
+func decodeKey(c *gin.Context) {
+	ctx := middleware.GetAppEngine(c)
+	id := c.Params.ByName("id")
+	key, err := hashid.DecodeKey(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	template.Render(c, "hashid.html", "id", id, "kind", key.Kind(), "intind", key.IntID(), "namespace", key.Namespace())
+}
+
 // Setup handlers for HTTP registered tasks
 func SetupRoutes(router router.Router) {
 	// Redirects
@@ -17,13 +27,6 @@ func SetupRoutes(router router.Router) {
 	})
 
 	// Check a hashid
-	router.POST("/hashid/:id", func(c *gin.Context) {
-		ctx := middleware.GetAppEngine(c)
-		id := c.Params.ByName("id")
-		key, err := hashid.DecodeKey(ctx, id)
-		if err != nil {
-			panic(err)
-		}
-		template.Render(c, "hashid.html", "id", id, "kind", key.Kind(), "intind", key.IntID(), "namespace", key.Namespace())
-	})
+	router.GET("/hashid/:id", decodeKey)
+	router.POST("/hashid/:id", decodeKey)
 }
