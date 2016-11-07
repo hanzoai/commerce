@@ -18,12 +18,13 @@ func Js(c *gin.Context) {
 
 	// Set key and namespace correctly
 	ml.SetKey(id)
-	log.Debug("mailinglist: %v", ml)
-	log.Debug("key: %v", ml.Key())
-	log.Debug("namespace: %v", ml.Key().Namespace())
+	log.Debug("mailinglist: %v", ml, c)
+	log.Debug("key: %v", ml.Key(), c)
+	log.Warn("namespace: %v", ml.Key().Namespace(), c)
 	ml.SetNamespace(ml.Key().Namespace())
 
 	if err := ml.Get(nil); err != nil {
+		log.Warn("Failed to retrieve mailing list '%s': %v", id, err, c)
 		c.String(404, fmt.Sprintf("Failed to retrieve mailing list '%v': %v", id, err))
 		return
 	}
