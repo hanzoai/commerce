@@ -21,6 +21,16 @@ handlers:
 - url: /_ah/queue/go/delay
   script: _go_app
 
+- url: /hashid
+  script: _go_app
+  login: admin
+  secure: always
+
+- url: /hashid/.*
+  script: _go_app
+  login: admin
+  secure: always
+
 - url: /tasks
   script: _go_app
 
