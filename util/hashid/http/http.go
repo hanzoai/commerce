@@ -16,7 +16,13 @@ func decodeKey(c *gin.Context) {
 	if err != nil {
 		panic(err)
 	}
-	template.Render(c, "hashid.html", "id", id, "kind", key.Kind(), "intind", key.IntID(), "namespace", key.Namespace())
+	template.Render(c, "hashid.html",
+		"id", id,
+		"namespace", key.Namespace(),
+		"kind", key.Kind(),
+		"parent", key.Parent(),
+		"intid", key.IntID(),
+	)
 }
 
 // Setup handlers for HTTP registered tasks
