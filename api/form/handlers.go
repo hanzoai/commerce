@@ -20,8 +20,9 @@ func Route(router router.Router, args ...gin.HandlerFunc) {
 	group.GET("/:formid/js", ml.Js)
 
 	// TODO: Remove deprecated endpoint
+	tokenRequired := middleware.TokenRequired()
 	api := rest.New(mailinglist.MailingList{})
-	api.Route(router, args...)
+	api.Route(router, tokenRequired)
 
 	group = router.Group("mailinglist")
 	group.Use(middleware.AccessControl("*"))
