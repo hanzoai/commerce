@@ -4,6 +4,9 @@ import (
 	"testing"
 
 	"crowdstart.com/datastore"
+	"crowdstart.com/models/fixtures"
+	"crowdstart.com/models/organization"
+	"crowdstart.com/util/gincontext"
 	"crowdstart.com/util/test/ae"
 
 	. "crowdstart.com/util/test/ginkgo"
@@ -22,6 +25,12 @@ var (
 var _ = BeforeSuite(func() {
 	ctx = ae.NewContext()
 	db = datastore.New(ctx)
+
+	// Mock gin context that we can use with fixtures
+	c := gincontext.New(ctx)
+
+	org := fixtures.Organization(c).(*organization.Organization)
+	org.MustUpdate()
 })
 
 // Tear-down appengine context
