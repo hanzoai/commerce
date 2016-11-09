@@ -5,6 +5,8 @@ import (
 
 	"appengine"
 
+	"crowdstart.com/datastore"
+	"crowdstart.com/models/fee"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/thirdparty/stripe"
 	"crowdstart.com/util/delay"
@@ -20,6 +22,18 @@ func UpdatePaymentFromDispute(pay *payment.Payment, dispute *stripe.Dispute) {
 		pay.Status = payment.Refunded
 	default:
 		pay.Status = payment.Disputed
+	}
+}
+
+func updateFeesFromPayment(fees []*fee.Fee, pay *payment.Payment) {
+	switch pay.Status {
+	case payment.Paid:
+		pay.Status = payment.Paid
+	case payment.Refunded:
+		pay.Status = payment.Refunded
+	case payment.Disputed:
+	default:
+		log.Warn("Unhandled payment state")
 	}
 }
 
@@ -47,6 +61,17 @@ var DisputeSync = delay.Func("stripe-update-disputed-payment", func(ctx appengin
 		log.Warn("No payment associated with charge '%s'", ch.ID, ctx)
 		return
 	}
+
+	db := datastore.New(ctx)
+	fees := make([]*fee.Fee, 0)
+
+	if err := fee.Query(db).Filter("PaymentId=", pay.Id()).GetModels(&fees); err != nil {
+		log.Error("Failed to query for fees associated with charge '%s': %v", ch.ID, err, ctx)
+		return
+	}
+
+	// Update fees as necessary
+	updateFeesFromPayment(fees, pay)
 
 	if start.Before(pay.UpdatedAt) {
 		log.Warn("Payment '%s' previously updated, bailing out", pay.Id(), ctx)
