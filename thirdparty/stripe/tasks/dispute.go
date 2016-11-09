@@ -25,6 +25,26 @@ func UpdatePaymentFromDispute(pay *payment.Payment, dispute *stripe.Dispute) {
 	}
 }
 
+func updateFeesFromPayment(fees []*fee.Fee, pay *payment.Payment) {
+	var status fee.Status
+	switch pay.Status {
+	case payment.Paid:
+		status = fee.Paid
+	case payment.Refunded:
+		status = fee.Refunded
+	case payment.Disputed:
+		status = fee.Disputed
+	case payment.Unpaid:
+		status = fee.Pending
+	default:
+		log.Warn("Unhandled payment state")
+	}
+
+	for _, v := range fees {
+		v.Status = status
+	}
+}
+
 // Synchronize payment using dispute
 var DisputeSync = delay.Func("stripe-update-disputed-payment", func(ctx appengine.Context, ns string, token string, dispute stripe.Dispute, start time.Time) {
 	log.Warn("DISPUTE SYNC")
