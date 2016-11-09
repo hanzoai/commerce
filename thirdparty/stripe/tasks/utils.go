@@ -5,6 +5,7 @@ import (
 	"appengine/memcache"
 
 	"crowdstart.com/datastore"
+	"crowdstart.com/models/fee"
 	"crowdstart.com/models/organization"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/transfer"
@@ -102,5 +103,29 @@ func updateChargeFromPayment(ctx appengine.Context, token string, pay *payment.P
 	// Update charge with new metadata
 	if _, err := client.UpdateCharge(pay); err != nil {
 		log.Error("Unable to update charge for payment '%s': %v", pay.Id(), err, ctx)
+	}
+}
+
+func updateFeesFromPayment(fees []*fee.Fee, pay *payment.Payment) {
+	var feeStatus fee.Status
+
+	switch pay.Status {
+	case payment.Paid:
+		feeStatus = fee.Paid
+	case payment.Refunded:
+		feeStatus = fee.Refunded
+	case payment.Disputed:
+		feeStatus = fee.Disputed
+	default:
+		log.Warn("Unhandled payment state")
+	}
+
+	for _, fe := range fees {
+		// Ignore transferred fees
+		if fe.Status == fee.Transferred {
+			continue
+		}
+
+		fe.Status = feeStatus
 	}
 }

@@ -25,18 +25,6 @@ func UpdatePaymentFromDispute(pay *payment.Payment, dispute *stripe.Dispute) {
 	}
 }
 
-func updateFeesFromPayment(fees []*fee.Fee, pay *payment.Payment) {
-	switch pay.Status {
-	case payment.Paid:
-		pay.Status = payment.Paid
-	case payment.Refunded:
-		pay.Status = payment.Refunded
-	case payment.Disputed:
-	default:
-		log.Warn("Unhandled payment state")
-	}
-}
-
 // Synchronize payment using dispute
 var DisputeSync = delay.Func("stripe-update-disputed-payment", func(ctx appengine.Context, ns string, token string, dispute stripe.Dispute, start time.Time) {
 	log.Warn("DISPUTE SYNC")
@@ -62,6 +50,11 @@ var DisputeSync = delay.Func("stripe-update-disputed-payment", func(ctx appengin
 		return
 	}
 
+	if start.Before(pay.UpdatedAt) {
+		log.Warn("Payment '%s' previously updated, bailing out", pay.Id(), ctx)
+		return
+	}
+
 	db := datastore.New(ctx)
 	fees := make([]*fee.Fee, 0)
 
@@ -70,17 +63,11 @@ var DisputeSync = delay.Func("stripe-update-disputed-payment", func(ctx appengin
 		return
 	}
 
-	// Update fees as necessary
-	updateFeesFromPayment(fees, pay)
-
-	if start.Before(pay.UpdatedAt) {
-		log.Warn("Payment '%s' previously updated, bailing out", pay.Id(), ctx)
-		return
-	}
-
 	// Update payment using dispute
 	err = pay.RunInTransaction(func() error {
 		UpdatePaymentFromDispute(pay, &dispute)
+		// Update fees as necessary
+		updateFeesFromPayment(fees, pay)
 		return pay.Put()
 	})
 
