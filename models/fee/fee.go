@@ -19,6 +19,7 @@ type Status string
 
 const (
 	Pending  Status = "pending"
+	Disputed Status = "disputed"
 	Paid     Status = "paid"
 	Refunded Status = "refunded"
 )
