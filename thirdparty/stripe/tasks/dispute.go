@@ -26,14 +26,22 @@ func UpdatePaymentFromDispute(pay *payment.Payment, dispute *stripe.Dispute) {
 }
 
 func updateFeesFromPayment(fees []*fee.Fee, pay *payment.Payment) {
+	var status fee.Status
 	switch pay.Status {
 	case payment.Paid:
-		pay.Status = payment.Paid
+		status = fee.Paid
 	case payment.Refunded:
-		pay.Status = payment.Refunded
+		status = fee.Refunded
 	case payment.Disputed:
+		status = fee.Disputed
+	case payment.Unpaid:
+		status = fee.Pending
 	default:
 		log.Warn("Unhandled payment state")
+	}
+
+	for _, v := range fees {
+		v.Status = status
 	}
 }
 
