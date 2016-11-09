@@ -1,6 +1,8 @@
 package payout
 
 import (
+	"errors"
+
 	"appengine"
 
 	"crowdstart.com/datastore"
@@ -29,12 +31,16 @@ var TransferFee = delay.Func("transfer-fee", func(ctx appengine.Context, stripeT
 			return err
 		}
 
+		if fe.Status == fee.Disputed {
+			return errors.New("Fee is being disputed.")
+		}
+
 		// Create associated transfer
 		tr = transfer.New(db)
 
 		// Allocate transfer ID and Update fee
 		fe.TransferId = tr.Id()
-		fe.Status = fee.Paid
+		fe.Status = fee.Transferred
 
 		// Save models
 		models := []interface{}{tr, fe}
