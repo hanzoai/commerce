@@ -106,12 +106,12 @@ func updateChargeFromPayment(ctx appengine.Context, token string, pay *payment.P
 	}
 }
 
-func updateFeesFromPayment(fees []*fee.Fee, pay *payment.Payment) {
+func UpdateFeesFromPayment(fees []*fee.Fee, pay *payment.Payment) {
 	var feeStatus fee.Status
 
 	switch pay.Status {
 	case payment.Paid:
-		feeStatus = fee.Paid
+		feeStatus = fee.Payable
 	case payment.Refunded:
 		feeStatus = fee.Refunded
 	case payment.Disputed:
@@ -119,7 +119,7 @@ func updateFeesFromPayment(fees []*fee.Fee, pay *payment.Payment) {
 	case payment.Unpaid:
 		feeStatus = fee.Pending
 	default:
-		log.Warn("Unhandled payment state")
+		log.Warn("Unhandled payment state", pay.Db.Context)
 	}
 
 	for _, fe := range fees {
