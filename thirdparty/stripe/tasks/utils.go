@@ -116,6 +116,8 @@ func updateFeesFromPayment(fees []*fee.Fee, pay *payment.Payment) {
 		feeStatus = fee.Refunded
 	case payment.Disputed:
 		feeStatus = fee.Disputed
+	case payment.Unpaid:
+		feeStatus = fee.Pending
 	default:
 		log.Warn("Unhandled payment state")
 	}
