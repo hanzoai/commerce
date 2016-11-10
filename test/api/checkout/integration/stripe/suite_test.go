@@ -22,7 +22,9 @@ import (
 	couponApi "crowdstart.com/api/coupon"
 	orderApi "crowdstart.com/api/order"
 	storeApi "crowdstart.com/api/store"
+	stripeApi "crowdstart.com/thirdparty/stripe/api"
 
+	_ "crowdstart.com/thirdparty/stripe/tasks"
 	. "crowdstart.com/util/test/ginkgo"
 )
 
@@ -47,7 +49,11 @@ var (
 var _ = BeforeSuite(func() {
 	adminRequired := middleware.TokenRequired(permission.Admin)
 
-	ctx = ae.NewContext()
+	ctx = ae.NewContext(ae.Options{
+		Modules:    []string{"default"},
+		TaskQueues: []string{"default"},
+		Noisy:      true,
+	})
 
 	// Mock gin context that we can use with fixtures
 	c := gincontext.New(ctx)
@@ -68,6 +74,7 @@ var _ = BeforeSuite(func() {
 	orderApi.Route(cl.Router, adminRequired)
 	storeApi.Route(cl.Router, adminRequired)
 	couponApi.Route(cl.Router, adminRequired)
+	stripeApi.Route(cl.Router, adminRequired)
 
 	// Create organization for tests, accessToken
 	accessToken = org.AddToken("test-published-key", permission.Admin)
