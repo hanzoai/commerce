@@ -534,13 +534,15 @@ var _ = Describe("payment", func() {
 					Expect(pay.Status).To(Equal(payment.Paid))
 				}
 
-				log.Error("LOL")
+				body := fmt.Sprintf(requests.StripeRefundEvent, pay.Account.ChargeId)
+				cl.Post("/stripe/webhook", body, nil, 200)
+
 				err := Retry(10, func() error {
-					log.Error("LOL2")
 					fees, err := pay.GetFees()
 					Expect(err).ToNot(HaveOccurred())
 					Expect(len(fees) > 0).To(BeTrue())
 					for _, fe := range fees {
+						log.Error("Fee Status %s", fe.Status)
 						if fe.Status != fee.Refunded {
 							return errors.New("Fee not refunded")
 						}
