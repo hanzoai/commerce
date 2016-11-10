@@ -21,7 +21,7 @@ const (
 	Pending     Status = "pending"
 	Disputed    Status = "disputed"
 	Transferred Status = "transferred"
-	Paid        Status = "paid"
+	Payable     Status = "payable"
 	Refunded    Status = "refunded"
 )
 
