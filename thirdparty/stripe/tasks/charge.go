@@ -78,7 +78,7 @@ var ChargeSync = delay.Func("stripe-charge-sync", func(ctx appengine.Context, ns
 		log.Debug("Payment before: %+v", pay, ctx)
 		UpdatePaymentFromCharge(pay, &ch)
 		log.Debug("Payment after: %+v", pay, ctx)
-		updateFeesFromPayment(fees, pay)
+		UpdateFeesFromPayment(fees, pay)
 
 		return pay.Put()
 	})
