@@ -159,7 +159,7 @@ type Payment struct {
 
 func (p *Payment) GetFees() ([]*fee.Fee, error) {
 	fees := make([]*fee.Fee, 0)
-	if err := fee.Query(p.Db).Ancestor(p.Key()).GetModels(&fees); err != nil {
+	if err := fee.Query(p.Db).Filter("PaymentId=", p.Id()).GetModels(&fees); err != nil {
 		return nil, err
 	}
 	return fees, nil
