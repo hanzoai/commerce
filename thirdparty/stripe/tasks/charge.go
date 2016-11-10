@@ -7,8 +7,6 @@ import (
 
 	"appengine"
 
-	"crowdstart.com/datastore"
-	"crowdstart.com/models/fee"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/models/types/currency"
 	"crowdstart.com/thirdparty/stripe"
@@ -67,10 +65,8 @@ var ChargeSync = delay.Func("stripe-charge-sync", func(ctx appengine.Context, ns
 		return
 	}
 
-	db := datastore.New(ctx)
-	fees := make([]*fee.Fee, 0)
-
-	if err := fee.Query(db).Filter("PaymentId=", pay.Id()).GetModels(&fees); err != nil {
+	fees, err := pay.GetFees()
+	if err != nil {
 		log.Error("Failed to query for fees associated with charge '%s': %v", ch.ID, err, ctx)
 		return
 	}
