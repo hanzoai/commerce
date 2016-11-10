@@ -119,7 +119,7 @@ func UpdateFeesFromPayment(fees []*fee.Fee, pay *payment.Payment) {
 	case payment.Unpaid:
 		feeStatus = fee.Pending
 	default:
-		log.Warn("Unhandled payment state", pay.Db.Context)
+		log.Warn("Unhandled payment state: '%s'", pay.Status, pay.Db.Context)
 	}
 
 	for _, fe := range fees {
@@ -129,5 +129,6 @@ func UpdateFeesFromPayment(fees []*fee.Fee, pay *payment.Payment) {
 		}
 
 		fe.Status = feeStatus
+		fe.MustUpdate()
 	}
 }
