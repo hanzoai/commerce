@@ -98,7 +98,9 @@ func Webhook(c *gin.Context) {
 	// Process event accordingly
 	switch event.Type {
 	case "charge.succeeded":
-		// Do Nothing
+		if ch := unmarshal(ctx, event, &stripe.Charge{}); ch != nil {
+			addTask(tasks.FeeSync, ctx, event, org, token, ch)
+		}
 	case "charge.captured", "charge.failed", "charge.refunded", "charge.updated":
 		if ch := unmarshal(ctx, event, &stripe.Charge{}); ch != nil {
 			addTask(tasks.ChargeSync, ctx, event, org, token, ch)
