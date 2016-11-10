@@ -63,7 +63,7 @@ var DisputeSync = delay.Func("stripe-update-disputed-payment", func(ctx appengin
 	err = pay.RunInTransaction(func() error {
 		UpdatePaymentFromDispute(pay, &dispute)
 		// Update fees as necessary
-		updateFeesFromPayment(fees, pay)
+		UpdateFeesFromPayment(fees, pay)
 		return pay.Put()
 	})
 
