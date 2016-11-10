@@ -503,7 +503,7 @@ var _ = Describe("payment", func() {
 	})
 
 	Context("Refund Order", func() {
-		FIt("Should refund order successfully", func() {
+		It("Should refund order successfully", func() {
 			ord1 := order.Fake(db, lineitem.LineItem{
 				ProductId: prod.Id(),
 				Quantity:  1,
