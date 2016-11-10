@@ -32,7 +32,7 @@ var transferFees = delay.Func("transfer-affiliate-fees", func(ctx appengine.Cont
 
 	// Iterate over fees that have not been transfered
 	db = datastore.New(nsctx)
-	q := fee.Query(db).Ancestor(key).Filter("TransferId=", "").Filter("CreatedAt<", cutoff).KeysOnly()
+	q := fee.Query(db).Ancestor(key).Filter("TransferId=", "").Filter("Status=", fee.Payable).Filter("CreatedAt<", cutoff).KeysOnly()
 	t := q.Run()
 
 	for {
