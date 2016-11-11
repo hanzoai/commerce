@@ -14,8 +14,9 @@ func New(ctx appengine.Context, accessToken string) *Client {
 	// Set HTTP Client for App engine
 	httpClient := urlfetch.Client(ctx)
 	httpClient.Transport = &urlfetch.Transport{
-		Context:  ctx,
-		Deadline: time.Duration(55) * time.Second,
+		Context:                       ctx,
+		Deadline:                      time.Duration(55) * time.Second,
+		AllowInvalidServerCertificate: appengine.IsDevAppServer(),
 	}
 	stripe.SetBackend(stripe.APIBackend, nil)
 	stripe.SetHTTPClient(httpClient)
