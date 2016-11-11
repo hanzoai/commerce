@@ -293,7 +293,7 @@ func (u *User) LoadAffiliateAndPendingFees() error {
 
 	u.Affiliate = *aff
 
-	if _, err := fee.Query(u.Db).Filter("AffiliateId=", u.AffiliateId).Filter("Status=", fee.Pending).GetAll(&u.PendingFees); err != nil {
+	if _, err := fee.Query(u.Db).Filter("AffiliateId=", u.AffiliateId).Filter("Status=", fee.Payable).GetAll(&u.PendingFees); err != nil {
 		return err
 	}
 
