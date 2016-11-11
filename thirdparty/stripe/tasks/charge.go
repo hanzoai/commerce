@@ -44,6 +44,8 @@ func UpdatePaymentFromCharge(pay *payment.Payment, ch *stripe.Charge) {
 
 // Synchronize payment using charge
 var ChargeSync = delay.Func("stripe-charge-sync", func(ctx appengine.Context, ns string, token string, ch stripe.Charge, start time.Time) {
+	log.Debug("Charge %s", ch, ctx)
+
 	ctx = getNamespacedContext(ctx, ns)
 
 	// Get payment using charge
@@ -53,7 +55,7 @@ var ChargeSync = delay.Func("stripe-charge-sync", func(ctx appengine.Context, ns
 		return
 	}
 
-	log.Warn("Payment Id: %v from ChargeId: %v", pay.Id(), ch.ID, ctx)
+	log.Debug("Payment Id: %v from ChargeId: %v", pay.Id(), ch.ID, ctx)
 
 	if !ok {
 		log.Warn("No payment associated with charge '%s'", ch.ID, ctx)
@@ -65,11 +67,20 @@ var ChargeSync = delay.Func("stripe-charge-sync", func(ctx appengine.Context, ns
 		return
 	}
 
+	fees, err := pay.GetFees()
+	if err != nil {
+		log.Error("Failed to query for fees associated with charge '%s': %v", ch.ID, err, ctx)
+		return
+	}
+
 	// Update payment using charge
 	err = pay.RunInTransaction(func() error {
 		log.Debug("Payment before: %+v", pay, ctx)
 		UpdatePaymentFromCharge(pay, &ch)
 		log.Debug("Payment after: %+v", pay, ctx)
+		log.Debug("Fees before: %+v", fees, ctx)
+		UpdateFeesFromPayment(fees, pay)
+		log.Debug("Fees after: %+v", fees, ctx)
 
 		return pay.Put()
 	})

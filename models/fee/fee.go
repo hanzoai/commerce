@@ -18,9 +18,11 @@ const (
 type Status string
 
 const (
-	Pending  Status = "pending"
-	Paid     Status = "paid"
-	Refunded Status = "refunded"
+	Pending     Status = "pending"
+	Disputed    Status = "disputed"
+	Transferred Status = "transferred"
+	Payable     Status = "payable"
+	Refunded    Status = "refunded"
 )
 
 type Fee struct {
