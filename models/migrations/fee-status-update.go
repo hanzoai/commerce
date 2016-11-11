@@ -6,6 +6,7 @@ import (
 	"crowdstart.com/models/fee"
 	"crowdstart.com/models/payment"
 	"crowdstart.com/thirdparty/stripe/tasks"
+	"crowdstart.com/util/log"
 
 	ds "crowdstart.com/datastore"
 )
@@ -28,8 +29,11 @@ var _ = New("fee-status-update",
 	func(db *ds.Datastore, fe *fee.Fee) {
 		fees := []*fee.Fee{fe}
 		pay := payment.New(db)
-		if err := pay.GetById(fe.PaymentId); err != nil {
+		if err := pay.GetById(fe.PaymentId); err == nil {
+			log.Warn("Updating Fees", db.Context)
 			tasks.UpdateFeesFromPayment(fees, pay)
+		} else {
+			log.Error("Payment '%s' not found.", fe.PaymentId, db.Context)
 		}
 	},
 )
