@@ -30,7 +30,7 @@ var transferFees = delay.Func("transfer-platform-fees", func(ctx appengine.Conte
 
 	nsctx := org.Namespaced(ctx)
 	db = datastore.New(nsctx)
-	q := fee.Query(db).Ancestor(org.Key()).Filter("TransferId=", "").KeysOnly()
+	q := fee.Query(db).Ancestor(org.Key()).Filter("TransferId=", "").Filter("Status=", fee.Payable).KeysOnly()
 	t := q.Run()
 
 	// Loop over entities passing them into workerFunc one at a time

@@ -223,7 +223,7 @@ func (q *Query) ById(id string, dst interface{}) (*aeds.Key, bool, error) {
 	case "order":
 		return q.orderFromId(id, dst)
 	default:
-		return nil, false, errors.New(fmt.Sprintf("Not a valid kind for query: '%s'", q.kind))
+		return nil, false, errors.New(fmt.Sprintf("Not a valid kind for query: '%s'\nDecode error: '%s'", q.kind, err))
 	}
 
 	// Query by filter last
