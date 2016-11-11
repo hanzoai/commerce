@@ -21,3 +21,6 @@ dispatch:
 
   - url: "a.vifijo.com/*"
     module: api
+
+  - url: "c.vifijo.com/*"
+    module: cdn
