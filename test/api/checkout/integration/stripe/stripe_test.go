@@ -524,12 +524,31 @@ var _ = Describe("payment", func() {
 
 			payments, err := refundedOrder.GetPayments()
 			Expect(err).ToNot(HaveOccurred())
+			Expect(len(payments) > 0).To(BeTrue())
 			for _, pay := range payments {
 				if pay.AmountRefunded == pay.Amount {
 					Expect(pay.Status).To(Equal(payment.Refunded))
 				} else {
 					Expect(pay.Status).To(Equal(payment.Paid))
 				}
+
+				// body := fmt.Sprintf(requests.StripeRefundEvent, pay.Account.ChargeId)
+				// cl.Post("/stripe/webhook", body, nil, 200)
+
+				// err := Retry(10, func() error {
+				// 	fees, err := pay.GetFees()
+				// 	Expect(err).ToNot(HaveOccurred())
+				// 	Expect(len(fees) > 0).To(BeTrue())
+				// 	for _, fe := range fees {
+				// 		log.Error("Fee Status %s", fe.Status)
+				// 		if fe.Status != fee.Refunded {
+				// 			return errors.New("Fee not refunded")
+				// 		}
+				// 		// Expect(fe.Status).To(Equal(fee.Refunded))
+				// 	}
+				// 	return nil
+				// })
+				// Expect(err).ToNot(HaveOccurred())
 			}
 		})
 	})
