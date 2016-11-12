@@ -50,10 +50,14 @@ var TransferFee = delay.Func("transfer-fee", func(ctx appengine.Context, stripeT
 	var tr *transfer.Transfer
 
 	// Switch to corrct namespace
-	ctx, _ = appengine.Namespace(ctx, namespace)
+	ctx, err := appengine.Namespace(ctx, namespace)
+	if err != nil {
+		log.Error("Failed to switch to namespace '%s': %v", namespace, err, ctx)
+		return
+	}
 
 	// Create transfer and update payment in transaction
-	err := datastore.RunInTransaction(ctx, func(db *datastore.Datastore) error {
+	err = datastore.RunInTransaction(ctx, func(db *datastore.Datastore) error {
 		// Fetch related fee
 		fe = fee.New(db)
 		if err := fe.GetById(id); err != nil {
