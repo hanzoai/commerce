@@ -1,6 +1,9 @@
 package referrer
 
-import "crowdstart.com/datastore"
+import (
+	"crowdstart.com/datastore"
+	. "crowdstart.com/models"
+)
 
 var kind = "referrer"
 
@@ -13,6 +16,7 @@ func (r *Referrer) Init(db *datastore.Datastore) {
 }
 
 func (r *Referrer) Defaults() {
+	r.State = make(Map)
 }
 
 func New(db *datastore.Datastore) *Referrer {

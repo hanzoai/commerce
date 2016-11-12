@@ -3,14 +3,19 @@ package referrer
 import (
 	"time"
 
+	aeds "appengine/datastore"
+
 	"crowdstart.com/datastore"
 	"crowdstart.com/models/affiliate"
 	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/referral"
 	"crowdstart.com/models/transaction"
 	"crowdstart.com/models/types/client"
+	"crowdstart.com/util/json"
 	"crowdstart.com/util/log"
 	"crowdstart.com/util/timeutil"
+
+	. "crowdstart.com/models"
 )
 
 var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
@@ -31,11 +36,38 @@ type Referrer struct {
 	Client      client.Client `json:"-"`
 	Blacklisted bool          `json:"blacklisted,omitempty"`
 	Duplicate   bool          `json:"duplicate,omitempty"`
+
+	State  Map    `json:"state,omitempty" datastore:"-"`
+	State_ string `json:"-" datastore:",noindex"`
 }
 
 type Referrent interface {
 	Id() string
 	Kind() string
+}
+
+func (r *Referrer) Save(c chan<- aeds.Property) (err error) {
+	// Serialize unsupported properties
+	r.State_ = string(json.EncodeBytes(&r.State))
+
+	// Save properties
+	return IgnoreFieldMismatch(aeds.SaveStruct(r, c))
+}
+
+func (r *Referrer) Load(c <-chan aeds.Property) (err error) {
+	// Ensure we're initialized
+	r.Defaults()
+
+	// Load supported properties
+	if err = IgnoreFieldMismatch(aeds.LoadStruct(r, c)); err != nil {
+		return err
+	}
+
+	if len(r.State_) > 0 {
+		err = json.DecodeBytes([]byte(r.State_), &r.State)
+	}
+
+	return err
 }
 
 func (r *Referrer) SaveReferral(typ referral.Type, rfn Referrent) (*referral.Referral, error) {
