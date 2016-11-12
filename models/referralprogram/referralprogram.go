@@ -1,6 +1,7 @@
-package referrer
+package referralprogram
 
 import (
+	"crowdstart.com/models/mixin"
 	"crowdstart.com/models/referral"
 	"crowdstart.com/models/types/currency"
 )
@@ -50,7 +51,9 @@ type Trigger struct {
 	ReferralsGreaterThanTrigger
 }
 
-type Program struct {
+type ReferralProgram struct {
+	mixin.Model
+
 	Name string `json:"name"`
 
 	// Trigger is the number of referrals, 0 means it triggers on every referral
@@ -59,29 +62,4 @@ type Program struct {
 	Actions          []Action `json:"actions"`
 
 	Event referral.Type `json:"event"`
-}
-
-func (p *Program) TestTrigger(r *Referrer) error {
-	switch p.Trigger.Type {
-	case CreditGreaterThan:
-		return nil
-	case ReferralsGreaterThan:
-		return nil
-	}
-
-	return nil
-}
-
-func (p *Program) ApplyActions(r *Referrer) error {
-	for i, _ := range p.ReferralTriggers {
-		action := p.Actions[i]
-		switch action.Type {
-		case StoreCredit:
-			return saveStoreCredit(r, action.Amount, action.Currency)
-		case Refund:
-		}
-	}
-
-	// No actions triggered for this referral
-	return nil
 }
