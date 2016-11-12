@@ -1,18 +1,48 @@
 package payout
 
 import (
-	"errors"
+	"fmt"
 
 	"appengine"
 
+	"crowdstart.com/config"
 	"crowdstart.com/datastore"
+	"crowdstart.com/models/affiliate"
 	"crowdstart.com/models/fee"
 	"crowdstart.com/models/multi"
+	"crowdstart.com/models/partner"
 	"crowdstart.com/models/transfer"
 	"crowdstart.com/thirdparty/stripe"
 	"crowdstart.com/util/delay"
 	"crowdstart.com/util/log"
 )
+
+func transferFromFee(db *datastore.Datastore, fe *fee.Fee) *transfer.Transfer {
+	tr := transfer.New(db)
+	tr.Amount = fe.Amount
+	tr.Currency = fe.Currency
+	tr.FeeId = fe.Id()
+
+	// Setup transfer
+	switch fe.Type {
+	case fee.Affiliate:
+		aff := affiliate.New(db)
+		aff.MustGetById(fe.AffiliateId)
+		tr.Description = fmt.Sprintf("Affiliate transfer '%s'", tr.Id())
+		tr.Destination = aff.Stripe.UserId
+	case fee.Partner:
+		par := partner.New(db)
+		par.MustGetById(fe.PartnerId)
+		tr.Description = fmt.Sprintf("Partner transfer '%s'", tr.Id())
+		tr.Destination = par.Stripe.UserId
+	case fee.Platform:
+		tr.Description = fmt.Sprintf("Platform fee transfer '%s', fee '%s'", tr.Id(), fe.Id())
+		tr.Destination = config.Stripe.BankAccount
+	default:
+		panic(fmt.Errorf("Invalid fee type: '%s'\n", fe.Type, fe))
+	}
+	return tr
+}
 
 // Create transfer for single fee
 var TransferFee = delay.Func("transfer-fee", func(ctx appengine.Context, stripeToken, namespace, id string) {
@@ -31,16 +61,21 @@ var TransferFee = delay.Func("transfer-fee", func(ctx appengine.Context, stripeT
 			return err
 		}
 
+		// Deal with invalid states
 		if fe.Status == fee.Disputed {
-			return errors.New("Fee is being disputed.")
+			return fmt.Errorf("Fee '%s' is being disputed", fe.Id())
+		}
+
+		if fe.Status == fee.Transferred {
+			return fmt.Errorf("Fee '%s' is already transferred", fe.Id())
 		}
 
 		// Create associated transfer
-		tr = transfer.New(db)
+		tr := transferFromFee(db, fe)
 
 		// Allocate transfer ID and Update fee
-		fe.TransferId = tr.Id()
 		fe.Status = fee.Transferred
+		fe.TransferId = tr.Id()
 
 		// Save models
 		models := []interface{}{tr, fe}
@@ -56,22 +91,28 @@ var TransferFee = delay.Func("transfer-fee", func(ctx appengine.Context, stripeT
 
 	// Initiate transfer on Stripe's side
 	sc := stripe.New(ctx, stripeToken)
-	if tr_, err := sc.Transfer(tr); err != nil {
+	res, err := sc.Transfer(tr)
+
+	// Save transfer ID
+	tr.Account.Id = res.ID
+
+	if err != nil {
 		log.Warn("Failed to create Stripe transfer for fee '%s', transfer '%s': %v", fe.Id(), tr.Id(), err, ctx)
 
 		// Update transfer to reflect failure status
 		tr.Status = transfer.Error
-		if tr_.FailMsg == "" {
-			tr.FailureCode = string(tr_.FailCode)
-			tr.FailureMessage = tr_.FailMsg
+		if res.FailMsg == "" {
+			tr.FailureCode = string(res.FailCode)
+			tr.FailureMessage = res.FailMsg
 		} else {
 			tr.FailureCode = "stripe-error"
 			tr.FailureMessage = err.Error()
 		}
 
-		// Save transfer
-		if err := tr.Update(); err != nil {
-			log.Error("Failed to update status of failed transfer '%s': %v", tr.Id(), err, ctx)
-		}
+	}
+
+	// Save transfer
+	if err := tr.Update(); err != nil {
+		log.Error("Failed to update status of failed transfer '%s': %v\n%v", tr.Id(), err, tr, ctx)
 	}
 })
