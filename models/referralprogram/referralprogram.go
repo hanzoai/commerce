@@ -31,6 +31,9 @@ type PercentAction struct {
 // Union of possible actions
 type Action struct {
 	Type ActionType `json:"type"`
+	Name string     `json:"name"`
+	Once bool       `json:"once"`
+
 	CreditAction
 	PercentAction
 }
