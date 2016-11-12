@@ -265,7 +265,6 @@ func (o *Order) AddAffiliateFee(pricing *pricing.Fees, fees []*fee.Fee) ([]*fee.
 	// Create platform fee
 	fe = fee.New(db)
 	fe.Name = "Affiliate fee"
-	fe.Parent = pricing.Key(ctx)
 	fe.Type = fee.Platform
 	fe.Currency = o.Currency
 	fe.Amount = platformFee
