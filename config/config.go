@@ -63,6 +63,8 @@ type Config struct {
 	}
 
 	Stripe struct {
+		BankAccount string
+
 		// Current id/keys based on development mode
 		ClientId       string
 		SecretKey      string

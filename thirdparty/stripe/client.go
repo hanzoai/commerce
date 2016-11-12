@@ -325,8 +325,14 @@ func (c Client) Transfer(tr *transfer.Transfer) (*Transfer, error) {
 	}
 	params.Params.IdempotencyKey = tid
 
-	params.AddMeta("affiliate", tr.AffiliateId)
+	if tr.AffiliateId != "" {
+		params.AddMeta("affiliate", tr.AffiliateId)
+	}
+	if tr.PartnerId != "" {
+		params.AddMeta("affiliate", tr.AffiliateId)
+	}
 	params.AddMeta("transfer", tid)
+	params.AddMeta("fee", tr.FeeId)
 
 	// Create transfer
 	str, err := c.API.Transfers.New(params)
