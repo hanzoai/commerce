@@ -10,14 +10,19 @@ type ActionType string
 type TriggerType string
 
 const (
-	StoreCredit ActionType = "Credit" // Add credit to user's balance
-	Refund                 = "Refund" // Refund part of the payment on a order
+	StoreCredit   ActionType = "Credit" // Add credit to user's balance
+	Refund                   = "Refund" // Refund part of the payment on a order
+	SendUserEmail ActionType = "SendUserEmail"
 )
 
 const (
 	CreditGreaterThan    TriggerType = "CreditGreaterThan"
 	ReferralsGreaterThan             = "ReferralsGreaterThan"
 )
+
+type SendTransactionalUserEmailAction struct {
+	Template string `json:"template"`
+}
 
 type CreditAction struct {
 	Currency currency.Type  `json:"currency,omitempty"`
@@ -36,6 +41,7 @@ type Action struct {
 
 	CreditAction
 	PercentAction
+	SendTransactionalUserEmailAction
 }
 
 type CreditGreaterThanTrigger struct {

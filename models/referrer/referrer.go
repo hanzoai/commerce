@@ -193,8 +193,10 @@ func (r *Referrer) TestTrigger(p *referralprogram.ReferralProgram) (bool, error)
 			return true, nil
 		}
 	case referralprogram.ReferralsGreaterThan:
+		// Count number of referrals
 		if count, err := referral.Query(r.Db).Filter("Referrer.Id=", r.Id()).Count(); err != nil {
 			return false, err
+			// Check trigger
 		} else if count > p.Trigger.ReferralsGreaterThan {
 			return true, nil
 		}
@@ -220,6 +222,9 @@ func (r *Referrer) ApplyActions(p *referralprogram.ReferralProgram) error {
 			r.MustUpdate()
 			return saveStoreCredit(r, action.Amount, action.Currency)
 		case referralprogram.Refund:
+			return nil
+		case referralprogram.SendUserEmail:
+			return nil
 		}
 	}
 
