@@ -1,6 +1,8 @@
 package referrer
 
 import (
+	"errors"
+	"fmt"
 	"time"
 
 	aeds "appengine/datastore"
@@ -26,11 +28,11 @@ var IgnoreFieldMismatch = datastore.IgnoreFieldMismatch
 type Referrer struct {
 	mixin.Model
 
-	Code      string  `json:"code"`
-	Program   Program `json:"program"`
-	ProgramId string  `json:"programId"`
-	OrderId   string  `json:"orderId"`
-	UserId    string  `json:"userId"`
+	Code      string                          `json:"code"`
+	Program   referralprogram.ReferralProgram `json:"program"`
+	ProgramId string                          `json:"programId"`
+	OrderId   string                          `json:"orderId"`
+	UserId    string                          `json:"userId"`
 
 	AffiliateId     string              `json:"affiliateId,omitempty"`
 	Affiliate       affiliate.Affiliate `json:"affiliate,omitempty" datastore:"-"`
@@ -108,14 +110,27 @@ func (r *Referrer) SaveReferral(typ referral.Type, rfn Referrent) (*referral.Ref
 	if r.ProgramId != "" {
 		prog := referralprogram.New(r.Db)
 		if err := prog.GetById(r.ProgramId); err != nil {
-
+			return rfl, err
 		}
+		r.Program = *prog
 	}
 
 	// Apply any program actions if they are configured
-	if len(r.Program.Actions) > 0 {
-		if err := r.Program.ApplyActions(r); err != nil {
-			return rfl, err
+	if r.Program.Trigger.Type == "" {
+		// Deprecate this soon
+		if len(r.Program.Actions) > 0 {
+			if err := r.ApplyActions(&r.Program); err != nil {
+				return rfl, err
+			}
+		}
+	} else {
+		if ok, err := r.TestTrigger(&r.Program); ok {
+			if err != nil {
+				return rfl, err
+			}
+			if err := r.ApplyActions(&r.Program); err != nil {
+				return rfl, err
+			}
 		}
 	}
 
@@ -152,24 +167,59 @@ func (r *Referrer) Transactions() ([]*transaction.Transaction, error) {
 
 // Referral Program stuff
 
-func (r *Referrer) TestTrigger(p *Program) error {
+func (r *Referrer) TestTrigger(p *referralprogram.ReferralProgram) (bool, error) {
 	switch p.Trigger.Type {
-	case CreditGreaterThan:
-		return nil
-	case ReferralsGreaterThan:
-		return nil
+	case referralprogram.CreditGreaterThan:
+		// Get all transactions
+		trans := make([]*transaction.Transaction, 0)
+		if _, err := transaction.Query(r.Db).Filter("UserId=", r.UserId).Filter("Test=", false).GetAll(&trans); err != nil {
+			return false, err
+		}
+
+		// Total balance
+		balance := 0
+		for _, t := range trans {
+			if t.Currency == p.Trigger.Currency {
+				if t.Type == transaction.Withdraw {
+					balance -= int(t.Amount)
+				} else {
+					balance += int(t.Amount)
+				}
+			}
+		}
+
+		// Check trigger
+		if balance > p.Trigger.CreditGreaterThan {
+			return true, nil
+		}
+	case referralprogram.ReferralsGreaterThan:
+		if count, err := referral.Query(r.Db).Filter("Referrer.Id=", r.Id()).Count(); err != nil {
+			return false, err
+		} else if count > p.Trigger.ReferralsGreaterThan {
+			return true, nil
+		}
+		return false, nil
+	default:
+		return false, errors.New(fmt.Sprintf("Unknown Trigger '%s'", p.Trigger.Type))
 	}
 
-	return nil
+	return false, nil
 }
 
-func (r *Referrer) ApplyActions(p *Program) error {
-	for i, _ := range p.ReferralTriggers {
-		action := p.Actions[i]
+func (r *Referrer) ApplyActions(p *referralprogram.ReferralProgram) error {
+	for _, action := range p.Actions {
+		// Only execute if state isn't done
+		done, ok := r.State[action.Name+"_done"].(bool)
+		if action.Once && (!ok || !done) {
+			continue
+		}
+
 		switch action.Type {
-		case StoreCredit:
+		case referralprogram.StoreCredit:
+			r.State[action.Name+"_done"] = true
+			r.MustUpdate()
 			return saveStoreCredit(r, action.Amount, action.Currency)
-		case Refund:
+		case referralprogram.Refund:
 		}
 	}
 
